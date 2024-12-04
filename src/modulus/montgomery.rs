@@ -1,9 +1,11 @@
 use crate::modulus::barrett::BarrettPrecomp;
 use crate::modulus::ReduceOnce;
 
+/// Montgomery is a generic struct storing
+/// an element in the Montgomery domain.
 pub struct Montgomery<O>(O);
 
-
+/// Implements helper methods on the struct Montgomery<O>.
 impl<O> Montgomery<O>{
 
     #[inline(always)]
@@ -21,16 +23,23 @@ impl<O> Montgomery<O>{
     }
 }
 
+/// MontgomeryPrecomp is a generic struct storing 
+/// precomputations for Montgomery arithmetic.
 pub struct MontgomeryPrecomp<O>{
     q: O,
     q_barrett: BarrettPrecomp<O>,
     q_inv: O,
 }
 
+/// MontgomeryPrecomp is a set of methods implemented for MontgomeryPrecomp<u64>
+/// enabling Montgomery arithmetic over u64 values.
 impl MontgomeryPrecomp<u64>{
 
+    /// Returns an new instance of MontgomeryPrecomp<u64>.
+    /// This method will fail if gcd(q, 2^64) != 1.
     #[inline(always)]
     fn new(&self, q: u64) -> MontgomeryPrecomp<u64>{
+        assert!(q & 1 != 0, "Invalid argument: gcd(q={}, radix=2^64) != 1", q);
         let mut r: u64 = 1;
         let mut q_pow = q;
         for _i in 0..63{
@@ -40,6 +49,7 @@ impl MontgomeryPrecomp<u64>{
         Self{ q: q, q_barrett: BarrettPrecomp::new(q, q), q_inv: q_pow}
     }
 
+    /// Returns (lhs<<64)%q as a Montgomery<u64>.
     #[inline(always)]
     fn prepare(&self, lhs: u64) -> Montgomery<u64>{
         let mut rhs = Montgomery(0);
@@ -47,11 +57,14 @@ impl MontgomeryPrecomp<u64>{
         rhs
     }
 
+    /// Assigns (lhs<<64)%q to rhs.
+    #[inline(always)]
     fn prepare_assign(&self, lhs: u64, rhs: &mut Montgomery<u64>){
         self.prepare_lazy_assign(lhs, rhs);
         rhs.value_mut().reduce_once_assign(self.q);
     }
 
+    /// Returns (lhs<<64)%q in range [0, 2q-1] as a Montgomery<u64>.
     #[inline(always)]
     fn prepare_lazy(&self, lhs: u64) -> Montgomery<u64>{
         let mut rhs = Montgomery(0);
@@ -59,11 +72,14 @@ impl MontgomeryPrecomp<u64>{
         rhs
     }
 
+    /// Assigns (lhs<<64)%q in range [0, 2q-1] to rhs.
+    #[inline(always)]
     fn prepare_lazy_assign(&self, lhs: u64, rhs: &mut Montgomery<u64>){
         let (mhi, _) = lhs.widening_mul(*self.q_barrett.value_lo());
         *rhs = Montgomery((lhs.wrapping_mul(*self.q_barrett.value_hi()).wrapping_add(mhi)).wrapping_mul(self.q).wrapping_neg());
     }
 
+    /// Returns lhs * rhs * (2^{64})^-1 mod q.
     #[inline(always)]
     fn mul_external(&self, lhs: Montgomery<u64>, rhs: u64) -> u64{
         let mut r = self.mul_external_lazy(lhs, rhs);
@@ -71,12 +87,14 @@ impl MontgomeryPrecomp<u64>{
         r
     }
 
+    /// Assigns lhs * rhs * (2^{64})^-1 mod q to rhs.
     #[inline(always)]
     fn mul_external_assign(&self, lhs: Montgomery<u64>, rhs: &mut u64){
         self.mul_external_lazy_assign(lhs, rhs);
         rhs.reduce_once_assign(self.q);
     }
 
+    /// Returns lhs * rhs * (2^{64})^-1 mod q in range [0, 2q-1].
     #[inline(always)]
     fn mul_external_lazy(&self, lhs: Montgomery<u64>, rhs: u64) -> u64{
         let mut result = rhs;
@@ -84,6 +102,7 @@ impl MontgomeryPrecomp<u64>{
         result
     }
 
+    /// Assigns lhs * rhs * (2^{64})^-1 mod q in range [0, 2q-1] to rhs.
     #[inline(always)]
     fn mul_external_lazy_assign(&self, lhs: Montgomery<u64>, rhs: &mut u64){
         let (mhi, mlo) = lhs.value().widening_mul(*rhs);
@@ -91,21 +110,25 @@ impl MontgomeryPrecomp<u64>{
         *rhs = mhi - hhi + self.q
     }
 
+    /// Returns lhs * rhs * (2^{64})^-1 mod q in range [0, 2q-1].
     #[inline(always)]
     fn mul_internal(&self, lhs: Montgomery<u64>, rhs: Montgomery<u64>) -> Montgomery<u64>{
         Montgomery(self.mul_external(lhs, *rhs.value()))
     }
 
+    /// Assigns lhs * rhs * (2^{64})^-1 mod q to rhs.
     #[inline(always)]
     fn mul_internal_assign(&self, lhs: Montgomery<u64>, rhs: &mut Montgomery<u64>){
         self.mul_external_assign(lhs, rhs.value_mut());
     }
 
+    /// Returns lhs * rhs * (2^{64})^-1 mod q in range [0, 2q-1].
     #[inline(always)]
     fn mul_internal_lazy(&self, lhs: Montgomery<u64>, rhs: Montgomery<u64>) -> Montgomery<u64>{
         Montgomery(self.mul_external_lazy(lhs, *rhs.value()))
     }
 
+    /// Assigns lhs * rhs * (2^{64})^-1 mod q in range [0, 2q-1] to rhs.
     #[inline(always)]
     fn mul_internal_lazy_assign(&self, lhs: Montgomery<u64>, rhs: &mut Montgomery<u64>){
         self.mul_external_lazy_assign(lhs, rhs.value_mut());
