@@ -19,7 +19,7 @@ impl NTTFriendlyPrimesGenerator {
 		let next_prime = (1<<bit_size) + 1;
 		let mut prev_prime = next_prime;
 
-		if next_prime > 0xffff_ffff_ffff_ffff-nth_root{
+		if next_prime > nth_root.wrapping_neg(){
 			check_next_prime = false;
 		}
 
