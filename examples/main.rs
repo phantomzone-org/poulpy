@@ -17,6 +17,6 @@ fn main() {
     let n: u64 = 1024;
     let nth_root: u64 = n<<1;
 
-    let ntt_table: Table<'_, u64> = Table::<u64>::new(&mut prime_instance, n, nth_root);
+    let ntt_table: Table<'_, u64> = Table::<u64>::new(&mut prime_instance, nth_root);
 
 }

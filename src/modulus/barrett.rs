@@ -25,10 +25,9 @@ impl<O> BarrettPrecomp<O>{
 
 impl BarrettPrecomp<u64>{
     pub fn new(q: u64) -> BarrettPrecomp<u64> {
-        let mut big_r = BigUint::parse_bytes(b"100000000000000000000000000000000", 16).unwrap();
-        big_r = big_r / BigUint::from(q);
-        let lo = (&big_r & BigUint::from(u64::MAX)).to_u64().unwrap();
-        let hi = (big_r >> 64u64).to_u64().unwrap();
+        let big_r: BigUint = (BigUint::from(1 as usize)<<((u64::BITS<<1) as usize)) / BigUint::from(q);
+        let lo: u64 = (&big_r & BigUint::from(u64::MAX)).to_u64().unwrap();
+        let hi: u64 = (big_r >> u64::BITS).to_u64().unwrap();
         Self{q, lo, hi}
     }
 
