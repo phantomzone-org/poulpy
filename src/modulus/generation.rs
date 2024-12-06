@@ -3,16 +3,8 @@ use crate::modulus::prime;
 use prime::Prime;
 use primality_test::is_prime;
 
-pub struct NTTFriendlyPrimesGenerator{
-	size: f64,
-	next_prime: u64,
-	prev_prime: u64,
-	nth_root: u64,
-	check_next_prime: bool,
-	check_prev_prime: bool,
-}
-
-impl NTTFriendlyPrimesGenerator {
+impl NTTFriendlyPrimesGenerator<u64> {
+	
 	pub fn new(bit_size: u64, nth_root: u64) -> Self{
 		let mut check_next_prime: bool = true;
 		let mut check_prev_prime: bool = true;

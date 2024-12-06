@@ -2,3 +2,4 @@
 #![feature(test)]
 
 pub mod modulus;
+pub mod dft;

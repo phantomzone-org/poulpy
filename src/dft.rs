@@ -1,1 +1,1 @@
-pub(crate) mod primitive_root;
+pub mod ntt;
