@@ -1,5 +1,6 @@
 pub mod poly;
 
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Poly<O>(pub Vec<O>);
 
 impl Poly<u64>{

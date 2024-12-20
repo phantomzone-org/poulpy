@@ -34,10 +34,10 @@ impl Ring<u64>{
         let a_vec: &_ = &a.0;
 
         for i in 0..n{
-            let i_in: u64 = i as u64 * gal_el;
-            let i_out: u64 = i_in & mask;
-            let sign: u64 = (i_in>>log_n) & 1;
-            b_vec[i_out as usize] = a_vec[i_in as usize] * (sign^1) | (q - a_vec[i_in as usize]) * sign
+            let gal_el_i: u64 = i as u64 * gal_el;
+            let i_out: u64 = gal_el_i & mask;
+            let sign: u64 = (gal_el_i>>log_n) & 1;
+            b_vec[i_out as usize] = a_vec[i] * (sign^1) | (q - a_vec[i]) * sign
         }
     }
 }
