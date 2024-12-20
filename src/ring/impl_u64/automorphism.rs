@@ -33,11 +33,12 @@ impl Ring<u64>{
         let b_vec: &mut _ = &mut b.0;
         let a_vec: &_ = &a.0;
 
-        for i in 0..n{
+        a_vec.iter().enumerate().for_each(|(i, ai)|{
             let gal_el_i: u64 = i as u64 * gal_el;
-            let i_out: u64 = gal_el_i & mask;
             let sign: u64 = (gal_el_i>>log_n) & 1;
-            b_vec[i_out as usize] = a_vec[i] * (sign^1) | (q - a_vec[i]) * sign
-        }
+            let i_out: u64 = gal_el_i & mask;
+            b_vec[i_out as usize] = ai * (sign^1) | (q - ai) * sign
+        });
+
     }
 }

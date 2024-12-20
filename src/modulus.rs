@@ -4,6 +4,8 @@ pub mod montgomery;
 pub mod shoup;
 pub mod impl_u64;
 
+
+
 pub trait WordOps<O>{
     fn log2(self) -> O;
     fn reverse_bits_msb(self, n:u32) -> O;
@@ -71,3 +73,38 @@ impl ReduceOnce<u64> for u64{
         (*self).min(self.wrapping_sub(q))
     }
 }
+
+
+pub trait Operations<O>{
+    // Assigns a + b to c.
+    fn add_binary_assign(&self, a: &O, b:&O, c: &mut O);
+
+    // Assigns a + b to b.
+    fn add_unary_assign(&self, a: &O, b: &mut O);
+
+    // Assigns a[i] + b[i] to c[i]
+    fn add_vec_binary_assign<const CHUNK:usize>(&self, a: &[O], b:&[O], c: &mut [O]);
+
+    // Assigns a[i] + b[i] to b[i]
+    fn add_vec_unary_assign<const CHUNK:usize>(&self, a: &[O], b: &mut [O]);
+
+    // Assigns a - b to c.
+    fn sub_binary_assign(&self, a: &O, b:&O, c: &mut O);
+
+    // Assigns b - a to b.
+    fn sub_unary_assign(&self, a: &O, b: &mut O);
+
+    // Assigns a[i] - b[i] to c[i]
+    fn sub_vec_binary_assign<const CHUNK:usize>(&self, a: &[O], b:&[O], c: &mut [O]);
+
+    // Assigns a[i] - b[i] to b[i]
+    fn sub_vec_unary_assign<const CHUNK:usize>(&self, a: &[O], b: &mut [O]);
+
+    // Assigns -a to a.
+    fn neg_assign(&self, a:&mut O);
+
+    // Assigns -a[i] to a[i].
+    fn neg_vec_assign<const CHUNK:usize>(&self, a: &mut [O]);
+}
+
+
