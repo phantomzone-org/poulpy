@@ -4,8 +4,8 @@ use math::dft::ntt::Table;
 
 fn main() {
     // Example usage of `Prime<u64>`
-    let q_base: u64 = 65537;      // Example prime base
-    let q_power: u64 = 2;     // Example power
+    let q_base: u64 = 0x1fffffffffe00001;      // Example prime base
+    let q_power: u64 = 1;     // Example power
     let mut prime_instance: Prime<u64> = Prime::<u64>::new(q_base, q_power);
     
     // Display the fields of `Prime` to verify
@@ -18,5 +18,21 @@ fn main() {
     let nth_root: u64 = n<<1;
 
     let ntt_table: Table<'_, u64> = Table::<u64>::new(&mut prime_instance, nth_root);
+
+    let mut a: Vec<u64> = vec![0; (nth_root >> 1) as usize];
+
+    for i in 0..a.len(){
+        a[i] = i as u64;
+    }
+
+    println!("{:?}", a);
+
+    ntt_table.forward_inplace(&mut a);
+
+    println!("{:?}", a);
+
+    ntt_table.backward_inplace(&mut a);
+
+    println!("{:?}", a);
 
 }

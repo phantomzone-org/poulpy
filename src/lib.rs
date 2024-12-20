@@ -3,3 +3,5 @@
 
 pub mod modulus;
 pub mod dft;
+pub mod ring;
+pub mod poly;
