@@ -9,7 +9,7 @@ impl Prime<u64>{
     /// Returns a new instance of Prime<u64>.
     /// Panics if q_base is not a prime > 2 and
     /// if q_base^q_power would overflow u64.
-    pub fn new(q_base: u64, q_power: u64) -> Self{
+    pub fn new(q_base: u64, q_power: usize) -> Self{
 		assert!(is_prime(q_base) && q_base > 2);
         Self::new_unchecked(q_base, q_power)
 	}
@@ -17,7 +17,7 @@ impl Prime<u64>{
     /// Returns a new instance of Prime<u64>.
     /// Does not check if q_base is a prime > 2.
     /// Panics if q_base^q_power would overflow u64.
-	pub fn new_unchecked(q_base: u64, q_power: u64) -> Self {
+	pub fn new_unchecked(q_base: u64, q_power: usize) -> Self {
 
         let mut q = q_base;
         for _i in 1..q_power{
@@ -31,7 +31,7 @@ impl Prime<u64>{
             phi *= q_base
         }
 
-        Self {
+        let mut prime: Prime<u64> = Self {
             q:q,
             q_base:q_base,
             q_power:q_power,
@@ -39,7 +39,12 @@ impl Prime<u64>{
             montgomery:MontgomeryPrecomp::new(q),
             shoup:ShoupPrecomp::new(q),
             phi:phi,
-        }
+        };
+
+        prime.check_factors();
+
+        prime
+
     }
 
     pub fn q(&self) -> u64{
@@ -50,7 +55,7 @@ impl Prime<u64>{
         self.q_base
     }
 
-    pub fn q_power(&self) -> u64{
+    pub fn q_power(&self) -> usize{
         self.q_power
     }
 
@@ -84,9 +89,7 @@ impl Prime<u64>{
 
 impl Prime<u64>{
     /// Returns the smallest nth primitive root of q_base.
-    pub fn primitive_root(&mut self) -> u64{
-
-        self.check_factors();
+    pub fn primitive_root(&self) -> u64{
 
         let mut candidate: u64 = 1u64;
         let mut not_found: bool = true;
@@ -113,7 +116,7 @@ impl Prime<u64>{
     }
 
     /// Returns an nth primitive root of q = q_base^q_power in Montgomery.
-    pub fn primitive_nth_root(&mut self, nth_root:u64) -> u64{
+    pub fn primitive_nth_root(&self, nth_root:u64) -> u64{
 
         assert!(self.q & (nth_root-1) == 1, "invalid prime: q = {} % nth_root = {} = {} != 1", self.q, nth_root, self.q & (nth_root-1));
 

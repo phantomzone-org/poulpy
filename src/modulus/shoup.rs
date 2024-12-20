@@ -14,6 +14,7 @@ impl<O> Shoup<O> {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ShoupPrecomp<O>{
     pub q: O,
     pub one: Shoup<O>,

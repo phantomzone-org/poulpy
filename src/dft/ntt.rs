@@ -6,8 +6,8 @@ use crate::modulus::WordOps;
 use crate::dft::DFT;
 use itertools::izip;
 
-pub struct Table<'a, O>{
-    prime:&'a Prime<O>,
+pub struct Table<O>{
+    prime:Prime<O>,
     psi_forward_rev:Vec<Shoup<u64>>,
     psi_backward_rev: Vec<Shoup<u64>>,
     q:O,
@@ -15,8 +15,8 @@ pub struct Table<'a, O>{
     four_q:O,
 }
 
-impl<'a> Table<'a, u64> {
-    pub fn new(prime: &'a mut Prime<u64>, nth_root: u64)->Self{
+impl Table< u64> {
+    pub fn new(prime: Prime<u64>, nth_root: u64)->Self{
 
         assert!(nth_root&(nth_root-1) == 0, "invalid argument: nth_root = {} is not a power of two", nth_root);
 
@@ -47,13 +47,15 @@ impl<'a> Table<'a, u64> {
             psi_backward_rev[i_rev] = prime.shoup.prepare(powers_backward); 
         }
 
+        let q: u64 = prime.q();
+
         Self{ 
             prime: prime, 
             psi_forward_rev: psi_forward_rev, 
             psi_backward_rev: psi_backward_rev,
-            q:prime.q(),
-            two_q:prime.q()<<1,
-            four_q:prime.q()<<2,
+            q:q,
+            two_q:q<<1,
+            four_q:q<<2,
         }
     }
 
@@ -64,7 +66,7 @@ impl<'a> Table<'a, u64> {
 }
 
 
-impl<'a> DFT<u64> for Table<'a,u64>{
+impl DFT<u64> for Table<u64>{
     fn forward_inplace(&self, a: &mut [u64]){
         self.forward_inplace(a)
     }
@@ -82,7 +84,7 @@ impl<'a> DFT<u64> for Table<'a,u64>{
     }
 }
 
-impl<'a> Table<'a,u64>{
+impl Table<u64>{
 
     pub fn forward_inplace_lazy(&self, a: &mut [u64]){
         self.forward_inplace_core::<true>(a);

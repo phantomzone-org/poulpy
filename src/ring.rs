@@ -7,5 +7,5 @@ use crate::dft::DFT;
 pub struct Ring<O>{
     pub n:usize,
     pub modulus:Prime<O>,
-    pub dft:dyn DFT<O>,
+    pub dft:Box<dyn DFT<O>>,
 }
