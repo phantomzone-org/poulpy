@@ -1,6 +1,7 @@
 use crate::modulus::prime::Prime;
 use crate::modulus::montgomery::{Montgomery, MontgomeryPrecomp};
 use crate::modulus::shoup::{ShoupPrecomp};
+use crate::modulus::ONCE;
 use primality_test::is_prime;
 use prime_factorization::Factorization;
 
@@ -63,20 +64,20 @@ impl Prime<u64>{
     #[inline(always)]
     pub fn pow(&self, x: u64, exponent: u64) -> u64{
         let mut y_mont: Montgomery<u64> = self.montgomery.one();
-        let mut x_mont: Montgomery<u64> = self.montgomery.prepare(x);
+        let mut x_mont: Montgomery<u64> = self.montgomery.prepare::<ONCE>(x);
         let mut i: u64 = exponent;
         while i > 0{
             if i & 1 == 1{
-                self.montgomery.mul_internal_assign(x_mont, &mut y_mont);
+                self.montgomery.mul_internal_assign::<ONCE>(x_mont, &mut y_mont);
             }
 
-            self.montgomery.mul_internal_assign(x_mont, &mut x_mont);
+            self.montgomery.mul_internal_assign::<ONCE>(x_mont, &mut x_mont);
 
             i >>= 1;
 
         }
         
-        self.montgomery.unprepare(y_mont)
+        self.montgomery.unprepare::<ONCE>(y_mont)
     }
 
     /// Returns x^-1 mod q.
@@ -164,9 +165,7 @@ impl Prime<u64>{
             if q_base != 1{
                 panic!("invalid factor list: does not fully divide q_base: q_base % (all factors) = {}", q_base)
             }
-        }
-
-        
+        }        
     }
 
     /// Returns (psi + a * q_base)^{nth_root} = 1 mod q = q_base^q_power given psi^{nth_root} = 1 mod q_base.
@@ -174,23 +173,23 @@ impl Prime<u64>{
     fn hensel_lift(&self, psi: u64, nth_root: u64) -> u64{
         assert!(Pow(psi, nth_root, self.q_base)==1, "invalid argument psi: psi^nth_root = {} != 1", Pow(psi, nth_root, self.q_base));
 
-        let mut psi_mont: Montgomery<u64> = self.montgomery.prepare(psi);
-        let nth_root_mont: Montgomery<u64> = self.montgomery.prepare(nth_root);
+        let mut psi_mont: Montgomery<u64> = self.montgomery.prepare::<ONCE>(psi);
+        let nth_root_mont: Montgomery<u64> = self.montgomery.prepare::<ONCE>(nth_root);
 
         for _i in 1..self.q_power{
 
             let psi_pow: Montgomery<u64> = self.montgomery.pow(psi_mont, nth_root-1);
 
-            let num: Montgomery<u64> = Montgomery(self.montgomery.one().value() + self.q - self.montgomery.mul_internal(psi_pow, psi_mont).value());
+            let num: Montgomery<u64> = Montgomery(self.montgomery.one().value() + self.q - self.montgomery.mul_internal::<ONCE>(psi_pow, psi_mont).value());
 
-            let mut den: Montgomery<u64> = self.montgomery.mul_internal(nth_root_mont, psi_pow);
+            let mut den: Montgomery<u64> = self.montgomery.mul_internal::<ONCE>(nth_root_mont, psi_pow);
 
             den = self.montgomery.pow(den, self.phi-1);
 
-            psi_mont = self.montgomery.add_internal(psi_mont, self.montgomery.mul_internal(num, den));
+            psi_mont = self.montgomery.add_internal(psi_mont, self.montgomery.mul_internal::<ONCE>(num, den));
         }
         
-        self.montgomery.unprepare(psi_mont)
+        self.montgomery.unprepare::<ONCE>(psi_mont)
     }
 }
 
@@ -201,17 +200,17 @@ impl Prime<u64>{
 pub fn Pow(x:u64, exponent:u64, q:u64) -> u64{
     let montgomery: MontgomeryPrecomp<u64> = MontgomeryPrecomp::<u64>::new(q);
     let mut y_mont: Montgomery<u64> = montgomery.one();
-    let mut x_mont: Montgomery<u64> = montgomery.prepare(x);
+    let mut x_mont: Montgomery<u64> = montgomery.prepare::<ONCE>(x);
     let mut i: u64 = exponent;
     while i > 0{
         if i & 1 == 1{
-            montgomery.mul_internal_assign(x_mont, &mut y_mont);
+            montgomery.mul_internal_assign::<ONCE>(x_mont, &mut y_mont);
         }
 
-        montgomery.mul_internal_assign(x_mont, &mut x_mont);
+        montgomery.mul_internal_assign::<ONCE>(x_mont, &mut x_mont);
 
         i >>= 1;
     }
     
-    montgomery.unprepare(y_mont)
+    montgomery.unprepare::<ONCE>(y_mont)
 }

@@ -3,6 +3,7 @@ use crate::modulus::shoup::Shoup;
 use crate::modulus::prime::Prime;
 use crate::modulus::ReduceOnce;
 use crate::modulus::WordOps;
+use crate::modulus::ONCE;
 use crate::dft::DFT;
 use itertools::izip;
 
@@ -22,7 +23,7 @@ impl Table< u64> {
 
         let psi: u64 = prime.primitive_nth_root(nth_root);
 
-        let psi_mont: Montgomery<u64> = prime.montgomery.prepare(psi);
+        let psi_mont: Montgomery<u64> = prime.montgomery.prepare::<ONCE>(psi);
         let psi_inv_mont: Montgomery<u64> = prime.montgomery.pow(psi_mont, prime.phi-1);
         
         let mut psi_forward_rev: Vec<Shoup<u64>> = vec![Shoup(0, 0); (nth_root >> 1) as usize];
@@ -40,8 +41,8 @@ impl Table< u64> {
 
             let i_rev: usize = i.reverse_bits_msb(log_nth_root_half);
 
-            prime.montgomery.mul_external_assign(psi_mont, &mut powers_forward);
-            prime.montgomery.mul_external_assign(psi_inv_mont, &mut powers_backward);
+            prime.montgomery.mul_external_assign::<ONCE>(psi_mont, &mut powers_forward);
+            prime.montgomery.mul_external_assign::<ONCE>(psi_inv_mont, &mut powers_backward);
 
             psi_forward_rev[i_rev] = prime.shoup.prepare(powers_forward);
             psi_backward_rev[i_rev] = prime.shoup.prepare(powers_backward); 
@@ -61,7 +62,7 @@ impl Table< u64> {
 
     // Returns n^-1 mod q in Montgomery.
     fn inv(&self, n:u64) -> Montgomery<u64>{
-        self.prime.montgomery.pow(self.prime.montgomery.prepare(n), self.prime.phi-1)
+        self.prime.montgomery.pow(self.prime.montgomery.prepare::<ONCE>(n), self.prime.phi-1)
     }
 }
 

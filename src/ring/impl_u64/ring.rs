@@ -1,6 +1,7 @@
 use crate::ring::Ring;
 use crate::dft::ntt::Table;
 use crate::modulus::prime::Prime;
+use crate::modulus::montgomery::Montgomery;
 use crate::poly::Poly;
 
 impl Ring<u64>{
@@ -17,7 +18,15 @@ impl Ring<u64>{
         return self.n
     }
 
+    fn new_poly_core<O>(&self) -> Poly<O> where O: Default + Clone {
+        Poly::<O>::new(self.n())
+    }
+
     pub fn new_poly(&self) -> Poly<u64>{
-        Poly::<u64>::new(self.n())
+        self.new_poly_core::<u64>()
+    }
+
+    pub fn new_poly_montgomery(&self) -> Poly<Montgomery<u64>>{
+        self.new_poly_core::<Montgomery<u64>>()
     }
 }

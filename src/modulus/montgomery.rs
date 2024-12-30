@@ -23,11 +23,22 @@ impl<O> Montgomery<O>{
     }
 }
 
+/// Default instantiation.
+impl<O> Default for  Montgomery<O> where O:Default {
+    fn default() -> Self {
+        Self {
+            0: O::default(),
+        }
+    }
+}
+
 /// MontgomeryPrecomp is a generic struct storing 
 /// precomputations for Montgomery arithmetic.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct MontgomeryPrecomp<O>{
     pub q: O,
+    pub two_q: O,
+    pub four_q: O,
     pub barrett: BarrettPrecomp<O>,
     pub q_inv: O,
     pub one: Montgomery<O>,
