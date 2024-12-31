@@ -26,12 +26,12 @@ impl MontgomeryPrecomp<u64>{
             four_q: q<<2,
             barrett: BarrettPrecomp::new(q), 
             q_inv: q_inv,
-            one: Montgomery(0),
-            minus_one: Montgomery(0),
+            one: 0,
+            minus_one:0,
         };
 
         precomp.one = precomp.prepare::<ONCE>(1);
-        precomp.minus_one = Montgomery(q-precomp.one.value());
+        precomp.minus_one = q-precomp.one;
 
         precomp
     }
@@ -71,7 +71,7 @@ impl MontgomeryPrecomp<u64>{
             TWICE=>{x.reduce_once_assign(self.two_q)},
             FOURTIMES =>{x.reduce_once_assign(self.four_q)},
             BARRETT =>{self.barrett.reduce_assign(x)},
-            BARRETTLAZY =>{self.barrett.reduce_assign(x)},
+            BARRETTLAZY =>{self.barrett.reduce_lazy_assign(x)},
             _ => unreachable!("invalid REDUCE argument")
         }
     }
@@ -79,7 +79,7 @@ impl MontgomeryPrecomp<u64>{
     /// Returns lhs * 2^64 mod q as a Montgomery<u64>.
     #[inline(always)]
     pub fn prepare<const REDUCE:REDUCEMOD>(&self, lhs: u64) -> Montgomery<u64>{
-        let mut rhs = Montgomery(0);
+        let mut rhs: u64 = 0;
         self.prepare_assign::<REDUCE>(lhs, &mut rhs);
         rhs
     }
@@ -88,8 +88,8 @@ impl MontgomeryPrecomp<u64>{
     #[inline(always)]
     pub fn prepare_assign<const REDUCE:REDUCEMOD>(&self, lhs: u64, rhs: &mut Montgomery<u64>){
         let (_, mhi) = lhs.widening_mul(*self.barrett.value_lo());
-        *rhs = Montgomery((lhs.wrapping_mul(*self.barrett.value_hi()).wrapping_add(mhi)).wrapping_mul(self.q).wrapping_neg());
-        self.reduce_assign::<REDUCE>(rhs.value_mut()); 
+        *rhs = (lhs.wrapping_mul(*self.barrett.value_hi()).wrapping_add(mhi)).wrapping_mul(self.q).wrapping_neg();
+        self.reduce_assign::<REDUCE>(rhs); 
     }
 
     /// Returns lhs * (2^64)^-1 mod q as a u64.
@@ -103,7 +103,7 @@ impl MontgomeryPrecomp<u64>{
     /// Assigns lhs * (2^64)^-1 mod q to rhs.
     #[inline(always)]
     pub fn unprepare_assign<const REDUCE:REDUCEMOD>(&self, lhs: Montgomery<u64>, rhs: &mut u64){
-        let (_, r) = self.q.widening_mul(lhs.value().wrapping_mul(self.q_inv));
+        let (_, r) = self.q.widening_mul(lhs.wrapping_mul(self.q_inv));
         *rhs = self.reduce::<REDUCE>(self.q.wrapping_sub(r));        
     }
 
@@ -118,7 +118,7 @@ impl MontgomeryPrecomp<u64>{
     /// Assigns lhs * rhs * (2^{64})^-1 mod q to rhs.
     #[inline(always)]
     pub fn mul_external_assign<const REDUCE:REDUCEMOD>(&self, lhs: Montgomery<u64>, rhs: &mut u64){
-        let (mlo, mhi) = lhs.value().widening_mul(*rhs);
+        let (mlo, mhi) = lhs.widening_mul(*rhs);
         let (_, hhi) = self.q.widening_mul(mlo.wrapping_mul(self.q_inv));
         *rhs = self.reduce::<REDUCE>(mhi.wrapping_sub(hhi).wrapping_add(self.q));
     }
@@ -126,31 +126,31 @@ impl MontgomeryPrecomp<u64>{
     /// Returns lhs * rhs * (2^{64})^-1 mod q in range [0, 2q-1].
     #[inline(always)]
     pub fn mul_internal<const REDUCE:REDUCEMOD>(&self, lhs: Montgomery<u64>, rhs: Montgomery<u64>) -> Montgomery<u64>{
-        Montgomery(self.mul_external::<REDUCE>(lhs, *rhs.value()))
+        self.mul_external::<REDUCE>(lhs, rhs)
     }
 
     /// Assigns lhs * rhs * (2^{64})^-1 mod q to rhs.
     #[inline(always)]
     pub fn mul_internal_assign<const REDUCE:REDUCEMOD>(&self, lhs: Montgomery<u64>, rhs: &mut Montgomery<u64>){
-        self.mul_external_assign::<REDUCE>(lhs, rhs.value_mut());
+        self.mul_external_assign::<REDUCE>(lhs, rhs);
     }
 
     #[inline(always)]
     pub fn add_internal(&self, lhs: Montgomery<u64>, rhs: Montgomery<u64>) -> Montgomery<u64>{
-        Montgomery(self.barrett.reduce(rhs.value() + lhs.value()))
+        self.barrett.reduce(rhs + lhs)
     }
 
     /// Assigns lhs + rhs to rhs.
     #[inline(always)]
     pub fn add_internal_lazy_assign(&self, lhs: Montgomery<u64>, rhs: &mut Montgomery<u64>){
-        *rhs.value_mut() += lhs.value()
+        *rhs += lhs
     }
 
     /// Assigns lhs + rhs - q if (lhs + rhs) >= q to rhs.
     #[inline(always)]
     pub fn add_internal_reduce_once_assign<const LAZY:bool>(&self, lhs: Montgomery<u64>, rhs: &mut Montgomery<u64>){
         self.add_internal_lazy_assign(lhs, rhs);
-        rhs.value_mut().reduce_once_assign(self.q);
+        rhs.reduce_once_assign(self.q);
     }
 
     /// Returns lhs mod q in range [0, 2q-1].
@@ -173,28 +173,9 @@ impl MontgomeryPrecomp<u64>{
             i >>= 1;
         }
 
-        y.value_mut().reduce_once_assign(self.q);
+        y.reduce_once_assign(self.q);
         y
     }
-}
-
-/// Returns x^exponent mod q.
-/// This function internally instantiate a new MontgomeryPrecomp<u64>
-/// To be used when called only a few times and if there 
-/// is no Prime instantiated with q.
-fn pow(x:u64, exponent:u64, q:u64) -> u64{
-    let montgomery: MontgomeryPrecomp<u64> = MontgomeryPrecomp::<u64>::new(q);
-    let mut y_mont: Montgomery<u64> = montgomery.one();
-    let mut x_mont: Montgomery<u64> = montgomery.prepare::<ONCE>(x);
-    while exponent > 0{
-        if exponent & 1 == 1{
-            montgomery.mul_internal_assign::<ONCE>(x_mont, &mut y_mont);
-        }
-
-        montgomery.mul_internal_assign::<ONCE>(x_mont, &mut x_mont);
-    }
-    
-    montgomery.unprepare::<ONCE>(y_mont)
 }
 
 #[cfg(test)]

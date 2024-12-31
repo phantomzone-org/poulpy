@@ -5,7 +5,7 @@ use crate::poly::Poly;
 /// Returns a lookup table for the automorphism X^{i} -> X^{i * k mod nth_root}.
 /// Method will panic if n or nth_root are not power-of-two.
 /// Method will panic if gal_el is not coprime with nth_root.
-pub fn automorphism_index_ntt(n: usize, nth_root:u64, gal_el: u64) -> (Vec<u64>){
+pub fn automorphism_index_ntt(n: usize, nth_root:u64, gal_el: u64) -> Vec<u64>{
     assert!(n&(n-1) != 0, "invalid n={}: not a power-of-two", n);
     assert!(nth_root&(nth_root-1) != 0, "invalid nth_root={}: not a power-of-two", n);
     assert!(gal_el & 1 == 1, "invalid gal_el={}: not coprime with nth_root={}", gal_el, nth_root);
@@ -39,6 +39,5 @@ impl Ring<u64>{
             let i_out: u64 = gal_el_i & mask;
             b_vec[i_out as usize] = ai * (sign^1) | (q - ai) * sign
         });
-
     }
 }

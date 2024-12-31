@@ -28,11 +28,11 @@ fn main() {
 
     println!("{:?}", a);
 
-    ntt_table.forward_inplace(&mut a);
+    ntt_table.forward_inplace::<false>(&mut a);
 
     println!("{:?}", a);
 
-    ntt_table.backward_inplace(&mut a);
+    ntt_table.backward_inplace::<false>(&mut a);
 
     println!("{:?}", a);
 

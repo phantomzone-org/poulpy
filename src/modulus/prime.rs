@@ -1,14 +1,16 @@
 use crate::modulus::montgomery::MontgomeryPrecomp;
-use crate::modulus::shoup::ShoupPrecomp;
+use crate::modulus::barrett::BarrettPrecomp;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Prime<O> {
 	pub q: O, /// q_base^q_powers
+    pub two_q: O,
+    pub four_q: O,
     pub q_base: O,
     pub q_power: usize,
     pub factors: Vec<O>, /// distinct factors of q-1
     pub montgomery: MontgomeryPrecomp<O>,
-    pub shoup:ShoupPrecomp<O>,
+    pub barrett:BarrettPrecomp<O>,
     pub phi: O,
 }
 

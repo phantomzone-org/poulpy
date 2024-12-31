@@ -1,7 +1,6 @@
 pub mod prime;
 pub mod barrett;
 pub mod montgomery;
-pub mod shoup;
 pub mod impl_u64;
 
 pub type REDUCEMOD = u8;
@@ -55,75 +54,64 @@ pub trait ReduceOnce<O>{
     fn reduce_once(&self, q:O) -> O;
 }
 
-impl ReduceOnce<u64> for u64{
-    #[inline(always)]
-    fn reduce_once_constant_time_assign(&mut self, q: u64){
-        debug_assert!(q < 0x8000000000000000, "2q >= 2^64");
-        *self -= (q.wrapping_sub(*self)>>63)*q;
-    }
-    
-    #[inline(always)]
-    fn reduce_once_constant_time(&self, q:u64) -> u64{
-        debug_assert!(q < 0x8000000000000000, "2q >= 2^64");
-        self - (q.wrapping_sub(*self)>>63)*q
-    }
+pub trait WordOperations<O>{
 
-    #[inline(always)]
-    fn reduce_once_assign(&mut self, q: u64){
-        debug_assert!(q < 0x8000000000000000, "2q >= 2^64");
-        *self = *self.min(&mut self.wrapping_sub(q))
-    }
+    // Applies a parameterized modular reduction.
+    fn word_reduce_assign<const REDUCE:REDUCEMOD>(&self, x: &mut O);
 
-    #[inline(always)]
-    fn reduce_once(&self, q:u64) -> u64{
-        debug_assert!(q < 0x8000000000000000, "2q >= 2^64");
-        *self.min(&mut self.wrapping_sub(q))
-    }
-}
-
-
-pub trait Operations<O>{
     // Assigns a + b to c.
-    fn add_binary_assign<const REDUCE:REDUCEMOD>(&self, a: &O, b:&O, c: &mut O);
+    fn word_add_binary_assign<const REDUCE:REDUCEMOD>(&self, a: &O, b:&O, c: &mut O);
 
     // Assigns a + b to b.
-    fn add_unary_assign<const REDUCE:REDUCEMOD>(&self, a: &O, b: &mut O);
-
-    // Assigns a[i] + b[i] to c[i]
-    fn add_vec_binary_assign<const CHUNK:usize, const REDUCE:REDUCEMOD>(&self, a: &[O], b:&[O], c: &mut [O]);
-
-    // Assigns a[i] + b[i] to b[i]
-    fn add_vec_unary_assign<const CHUNK:usize, const REDUCE:REDUCEMOD>(&self, a: &[O], b: &mut [O]);
+    fn word_add_unary_assign<const REDUCE:REDUCEMOD>(&self, a: &O, b: &mut O);
 
     // Assigns a - b to c.
-    fn sub_binary_assign<const REDUCE:REDUCEMOD>(&self, a: &O, b:&O, c: &mut O);
+    fn word_sub_binary_assign<const REDUCE:REDUCEMOD>(&self, a: &O, b:&O, c: &mut O);
 
     // Assigns b - a to b.
-    fn sub_unary_assign<const REDUCE:REDUCEMOD>(&self, a: &O, b: &mut O);
-
-    // Assigns a[i] - b[i] to c[i]
-    fn sub_vec_binary_assign<const CHUNK:usize, const REDUCE:REDUCEMOD>(&self, a: &[O], b:&[O], c: &mut [O]);
-
-    // Assigns a[i] - b[i] to b[i]
-    fn sub_vec_unary_assign<const CHUNK:usize, const REDUCE:REDUCEMOD>(&self, a: &[O], b: &mut [O]);
+    fn word_sub_unary_assign<const REDUCE:REDUCEMOD>(&self, a: &O, b: &mut O);
 
     // Assigns -a to a.
-    fn neg_assign<const REDUCE:REDUCEMOD>(&self, a:&mut O);
+    fn word_neg_assign<const REDUCE:REDUCEMOD>(&self, a:&mut O);
 
-    // Assigns -a[i] to a[i].
-    fn neg_vec_assign<const CHUNK:usize, const REDUCE:REDUCEMOD>(&self, a: &mut [O]);
+    // Assigns a * 2^64 to b.
+    fn word_prepare_montgomery_assign<const REDUCE:REDUCEMOD>(&self, a: &O, b: &mut montgomery::Montgomery<O>);
 
     // Assigns a * b to c.
-    fn mul_montgomery_external_binary_assign<const REDUCE:REDUCEMOD>(&self, a:&montgomery::Montgomery<O>, b:&O, c: &mut O);
+    fn word_mul_montgomery_external_binary_assign<const REDUCE:REDUCEMOD>(&self, a:&montgomery::Montgomery<O>, b:&O, c: &mut O);
 
     // Assigns a * b to b.
-    fn mul_montgomery_external_unary_assign<const REDUCE:REDUCEMOD>(&self, a:&montgomery::Montgomery<O>, b:&mut O);
+    fn word_mul_montgomery_external_unary_assign<const REDUCE:REDUCEMOD>(&self, a:&montgomery::Montgomery<O>, b:&mut O);
+}
+
+pub trait VecOperations<O>{
+
+    // Applies a parameterized modular reduction.
+    fn vec_reduce_assign<const CHUNK:usize, const REDUCE:REDUCEMOD>(&self, x: &mut [O]);
+
+    // Assigns a[i] + b[i] to c[i]
+    fn vec_add_binary_assign<const CHUNK:usize, const REDUCE:REDUCEMOD>(&self, a: &[O], b:&[O], c: &mut [O]);
+
+    // Assigns a[i] + b[i] to b[i]
+    fn vec_add_unary_assign<const CHUNK:usize, const REDUCE:REDUCEMOD>(&self, a: &[O], b: &mut [O]);
+
+    // Assigns a[i] - b[i] to c[i]
+    fn vec_sub_binary_assign<const CHUNK:usize, const REDUCE:REDUCEMOD>(&self, a: &[O], b:&[O], c: &mut [O]);
+
+    // Assigns a[i] - b[i] to b[i]
+    fn vec_sub_unary_assign<const CHUNK:usize, const REDUCE:REDUCEMOD>(&self, a: &[O], b: &mut [O]);
+
+    // Assigns -a[i] to a[i].
+    fn vec_neg_assign<const CHUNK:usize, const REDUCE:REDUCEMOD>(&self, a: &mut [O]);
+
+    // Assigns a * 2^64 to b.
+    fn vec_prepare_montgomery_assign<const CHUNK:usize, const REDUCE:REDUCEMOD>(&self, a: &[O], b: &mut [montgomery::Montgomery<O>]);
 
     // Assigns a[i] * b[i] to c[i].
-    fn mul_vec_montgomery_external_binary_assign<const CHUNK:usize,const REDUCE:REDUCEMOD>(&self, a:&[montgomery::Montgomery<O>], b:&[O], c: &mut [O]);
+    fn vec_mul_montgomery_external_binary_assign<const CHUNK:usize,const REDUCE:REDUCEMOD>(&self, a:&[montgomery::Montgomery<O>], b:&[O], c: &mut [O]);
 
     // Assigns a[i] * b[i] to b[i].
-    fn mul_vec_montgomery_external_unary_assign<const CHUNK:usize, const REDUCE:REDUCEMOD>(&self, a:&[montgomery::Montgomery<O>], b:&mut [O]);
+    fn vec_mul_montgomery_external_unary_assign<const CHUNK:usize, const REDUCE:REDUCEMOD>(&self, a:&[montgomery::Montgomery<O>], b:&mut [O]);
 }
 
 

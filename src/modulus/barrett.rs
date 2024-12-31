@@ -1,8 +1,25 @@
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Barrett<O>(pub O, pub O);
+
+impl<O> Barrett<O> {
+    
+    #[inline(always)]
+    pub fn value(&self) -> &O {
+        &self.0
+    }
+
+    #[inline(always)]
+    pub fn quotient(&self) -> &O {
+        &self.1
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct BarrettPrecomp<O>{
     pub q: O,
     pub lo:O,
     pub hi:O,
+    pub one: Barrett<O>,
 }
 
 impl<O> BarrettPrecomp<O>{

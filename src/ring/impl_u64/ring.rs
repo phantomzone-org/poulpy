@@ -1,7 +1,6 @@
 use crate::ring::Ring;
 use crate::dft::ntt::Table;
 use crate::modulus::prime::Prime;
-use crate::modulus::montgomery::Montgomery;
 use crate::poly::Poly;
 
 impl Ring<u64>{
@@ -18,15 +17,37 @@ impl Ring<u64>{
         return self.n
     }
 
-    fn new_poly_core<O>(&self) -> Poly<O> where O: Default + Clone {
-        Poly::<O>::new(self.n())
-    }
-
     pub fn new_poly(&self) -> Poly<u64>{
-        self.new_poly_core::<u64>()
+        Poly::<u64>::new(self.n())
     }
 
-    pub fn new_poly_montgomery(&self) -> Poly<Montgomery<u64>>{
-        self.new_poly_core::<Montgomery<u64>>()
+    pub fn ntt_inplace<const LAZY:bool>(&self, poly: &mut Poly<u64>){
+        match LAZY{
+            true => self.dft.forward_inplace_lazy(&mut poly.0),
+            false => self.dft.forward_inplace(&mut poly.0)
+        }
+    }
+
+    pub fn intt_inplace<const LAZY:bool>(&self, poly: &mut Poly<u64>){
+        match LAZY{
+            true => self.dft.forward_inplace_lazy(&mut poly.0),
+            false => self.dft.forward_inplace(&mut poly.0)
+        }
+    }
+
+    pub fn ntt<const LAZY:bool>(&self, poly_in: &Poly<u64>, poly_out: &mut Poly<u64>){
+        poly_out.0.copy_from_slice(&poly_in.0);
+        match LAZY{
+            true => self.dft.backward_inplace_lazy(&mut poly_out.0),
+            false => self.dft.backward_inplace(&mut poly_out.0)
+        }
+    }
+
+    pub fn intt<const LAZY:bool>(&self, poly_in: &Poly<u64>, poly_out: &mut Poly<u64>){
+        poly_out.0.copy_from_slice(&poly_in.0);
+        match LAZY{
+            true => self.dft.backward_inplace_lazy(&mut poly_out.0),
+            false => self.dft.backward_inplace(&mut poly_out.0)
+        }
     }
 }

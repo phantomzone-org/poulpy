@@ -3,25 +3,25 @@ use math::{modulus::prime::Prime,dft::ntt::Table};
 use math::dft::DFT;
 
 fn forward_inplace(c: &mut Criterion) {
-    fn runner<T: DFT<u64> + 'static>(prime_instance: Prime<u64>, nth_root: u64) -> Box<dyn FnMut()> {
+    fn runner(prime_instance: Prime<u64>, nth_root: u64) -> Box<dyn FnMut()> {
         let ntt_table: Table<u64> = Table::<u64>::new(prime_instance, nth_root);
         let mut a: Vec<u64> = vec![0; (nth_root >> 1) as usize];
         for i in 0..a.len(){
             a[i] = i as u64;
         }
         Box::new(move || {
-            ntt_table.forward_inplace(&mut a)
+            ntt_table.forward_inplace::<false>(&mut a)
         })
     }
 
     let mut b: criterion::BenchmarkGroup<'_, criterion::measurement::WallTime> = c.benchmark_group("forward_inplace");
     for log_nth_root in 11..18 {
 
-        let mut prime_instance: Prime<u64> = Prime::<u64>::new(0x1fffffffffe00001, 1);
+        let prime_instance: Prime<u64> = Prime::<u64>::new(0x1fffffffffe00001, 1);
 
         let runners = [
             ("prime", {
-                runner::<Table<u64>>(prime_instance, 1<<log_nth_root)
+                runner(prime_instance, 1<<log_nth_root)
             }),
         ];
         for (name, mut runner) in runners {
@@ -32,7 +32,7 @@ fn forward_inplace(c: &mut Criterion) {
 }
 
 fn forward_inplace_lazy(c: &mut Criterion) {
-    fn runner<T: DFT<u64> + 'static>(prime_instance: Prime<u64>, nth_root: u64) -> Box<dyn FnMut()> {
+    fn runner(prime_instance: Prime<u64>, nth_root: u64) -> Box<dyn FnMut()> {
         let ntt_table: Table<u64> = Table::<u64>::new(prime_instance, nth_root);
         let mut a: Vec<u64> = vec![0; (nth_root >> 1) as usize];
         for i in 0..a.len(){
@@ -50,7 +50,7 @@ fn forward_inplace_lazy(c: &mut Criterion) {
 
         let runners = [
             ("prime", {
-                runner::<Table<u64>>(prime_instance, 1<<log_nth_root)
+                runner(prime_instance, 1<<log_nth_root)
             }),
         ];
         for (name, mut runner) in runners {
@@ -61,14 +61,14 @@ fn forward_inplace_lazy(c: &mut Criterion) {
 }
 
 fn backward_inplace(c: &mut Criterion) {
-    fn runner<T: DFT<u64> + 'static>(prime_instance: Prime<u64>, nth_root: u64) -> Box<dyn FnMut()> {
+    fn runner(prime_instance: Prime<u64>, nth_root: u64) -> Box<dyn FnMut()> {
         let ntt_table: Table<u64> = Table::<u64>::new(prime_instance, nth_root);
         let mut a: Vec<u64> = vec![0; (nth_root >> 1) as usize];
         for i in 0..a.len(){
             a[i] = i as u64;
         }
         Box::new(move || {
-            ntt_table.backward_inplace(&mut a)
+            ntt_table.backward_inplace::<false>(&mut a)
         })
     }
 
@@ -79,7 +79,7 @@ fn backward_inplace(c: &mut Criterion) {
 
         let runners = [
             ("prime", {
-                runner::<Table<u64>>(prime_instance, 1<<log_nth_root)
+                runner(prime_instance, 1<<log_nth_root)
             }),
         ];
         for (name, mut runner) in runners {
@@ -90,14 +90,14 @@ fn backward_inplace(c: &mut Criterion) {
 }
 
 fn backward_inplace_lazy(c: &mut Criterion) {
-    fn runner<T: DFT<u64> + 'static>(prime_instance: Prime<u64>, nth_root: u64) -> Box<dyn FnMut()> {
+    fn runner(prime_instance: Prime<u64>, nth_root: u64) -> Box<dyn FnMut()> {
         let ntt_table: Table<u64> = Table::<u64>::new(prime_instance, nth_root);
         let mut a: Vec<u64> = vec![0; (nth_root >> 1) as usize];
         for i in 0..a.len(){
             a[i] = i as u64;
         }
         Box::new(move || {
-            ntt_table.backward_inplace_lazy(&mut a)
+            ntt_table.backward_inplace::<true>(&mut a)
         })
     }
 
@@ -108,7 +108,7 @@ fn backward_inplace_lazy(c: &mut Criterion) {
 
         let runners = [
             ("prime", {
-                runner::<Table<u64>>(prime_instance, 1<<log_nth_root)
+                runner(prime_instance, 1<<log_nth_root)
             }),
         ];
         for (name, mut runner) in runners {

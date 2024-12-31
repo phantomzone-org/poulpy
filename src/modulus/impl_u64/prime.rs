@@ -1,6 +1,6 @@
 use crate::modulus::prime::Prime;
 use crate::modulus::montgomery::{Montgomery, MontgomeryPrecomp};
-use crate::modulus::shoup::{ShoupPrecomp};
+use crate::modulus::barrett::BarrettPrecomp;
 use crate::modulus::ONCE;
 use primality_test::is_prime;
 use prime_factorization::Factorization;
@@ -34,11 +34,13 @@ impl Prime<u64>{
 
         let mut prime: Prime<u64> = Self {
             q:q,
+            two_q:q<<1,
+            four_q:q<<2,
             q_base:q_base,
             q_power:q_power,
             factors: Vec::new(),
             montgomery:MontgomeryPrecomp::new(q),
-            shoup:ShoupPrecomp::new(q),
+            barrett:BarrettPrecomp::new(q),
             phi:phi,
         };
 
@@ -101,7 +103,7 @@ impl Prime<u64>{
 
             for &factor in &self.factors{
 
-                if  Pow(candidate, (self.q_base-1)/factor, self.q_base) == 1{
+                if  pow(candidate, (self.q_base-1)/factor, self.q_base) == 1{
                     not_found = true;
                     break
                 }
@@ -124,7 +126,7 @@ impl Prime<u64>{
         let psi: u64 = self.primitive_root();
 
         // nth primitive root mod q_base: psi_nth^(prime.q_base-1)/nth_root mod q_base
-        let psi_nth_q_base: u64 = Pow(psi, (self.q_base-1)/nth_root, self.q_base);
+        let psi_nth_q_base: u64 = pow(psi, (self.q_base-1)/nth_root, self.q_base);
 
         // lifts nth primitive root mod q_base to q = q_base^q_power
         let psi_nth_q: u64 = self.hensel_lift(psi_nth_q_base, nth_root);
@@ -171,7 +173,7 @@ impl Prime<u64>{
     /// Returns (psi + a * q_base)^{nth_root} = 1 mod q = q_base^q_power given psi^{nth_root} = 1 mod q_base.
     /// Panics if psi^{nth_root} != 1 mod q_base.
     fn hensel_lift(&self, psi: u64, nth_root: u64) -> u64{
-        assert!(Pow(psi, nth_root, self.q_base)==1, "invalid argument psi: psi^nth_root = {} != 1", Pow(psi, nth_root, self.q_base));
+        assert!(pow(psi, nth_root, self.q_base)==1, "invalid argument psi: psi^nth_root = {} != 1", pow(psi, nth_root, self.q_base));
 
         let mut psi_mont: Montgomery<u64> = self.montgomery.prepare::<ONCE>(psi);
         let nth_root_mont: Montgomery<u64> = self.montgomery.prepare::<ONCE>(nth_root);
@@ -180,7 +182,7 @@ impl Prime<u64>{
 
             let psi_pow: Montgomery<u64> = self.montgomery.pow(psi_mont, nth_root-1);
 
-            let num: Montgomery<u64> = Montgomery(self.montgomery.one().value() + self.q - self.montgomery.mul_internal::<ONCE>(psi_pow, psi_mont).value());
+            let num: Montgomery<u64> = self.montgomery.one() + self.q - self.montgomery.mul_internal::<ONCE>(psi_pow, psi_mont);
 
             let mut den: Montgomery<u64> = self.montgomery.mul_internal::<ONCE>(nth_root_mont, psi_pow);
 
@@ -197,7 +199,7 @@ impl Prime<u64>{
 /// This function internally instantiate a new MontgomeryPrecomp<u64>
 /// To be used when called only a few times and if there 
 /// is no Prime instantiated with q.
-pub fn Pow(x:u64, exponent:u64, q:u64) -> u64{
+pub fn pow(x:u64, exponent:u64, q:u64) -> u64{
     let montgomery: MontgomeryPrecomp<u64> = MontgomeryPrecomp::<u64>::new(q);
     let mut y_mont: Montgomery<u64> = montgomery.one();
     let mut x_mont: Montgomery<u64> = montgomery.prepare::<ONCE>(x);
