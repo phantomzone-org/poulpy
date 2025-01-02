@@ -2,9 +2,8 @@ use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use math::ring::Ring;
 use math::modulus::VecOperations;
 use math::modulus::montgomery::Montgomery;
-use math::modulus::{BARRETT, ONCE};
-
-const CHUNK: usize= 8;
+use math::modulus::ONCE;
+use math::CHUNK;
 
 fn vec_add_unary(c: &mut Criterion) {
     fn runner(r: Ring<u64>) -> Box<dyn FnMut()> {

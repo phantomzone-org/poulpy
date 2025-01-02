@@ -44,9 +44,15 @@ impl WordOperations<u64> for Prime<u64>{
     }
 
     #[inline(always)]
-    fn word_neg_assign<const REDUCE:REDUCEMOD>(&self, a: &mut u64){
+    fn word_neg_unary_assign<const REDUCE:REDUCEMOD>(&self, a: &mut u64){
         *a = self.q.wrapping_sub(*a);
         self.word_reduce_assign::<REDUCE>(a)
+    }
+
+    #[inline(always)]
+    fn word_neg_binary_assign<const REDUCE:REDUCEMOD>(&self, a: &u64, b: &mut u64){
+        *b = self.q.wrapping_sub(*a);
+        self.word_reduce_assign::<REDUCE>(b)
     }
 
     #[inline(always)]
@@ -100,8 +106,13 @@ impl VecOperations<u64> for Prime<u64>{
     }
 
     #[inline(always)]
-    fn vec_neg_assign<const CHUNK:usize, const REDUCE:REDUCEMOD>(&self, a: &mut [u64]){
-        apply_unary!(self, Self::word_neg_assign::<REDUCE>, a, CHUNK);
+    fn vec_neg_unary_assign<const CHUNK:usize, const REDUCE:REDUCEMOD>(&self, a: &mut [u64]){
+        apply_unary!(self, Self::word_neg_unary_assign::<REDUCE>, a, CHUNK);
+    }
+
+    #[inline(always)]
+    fn vec_neg_binary_assign<const CHUNK:usize, const REDUCE:REDUCEMOD>(&self, a: &[u64], b: &mut [u64]){
+        apply_binary!(self, Self::word_neg_binary_assign::<REDUCE>, a, b, CHUNK);
     }
 
     #[inline(always)]

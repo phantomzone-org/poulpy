@@ -1,4 +1,3 @@
-extern crate math;
 use math::ring::Ring;
 use math::modulus::prime::Prime;
 use math::dft::ntt::Table;

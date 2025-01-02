@@ -6,6 +6,8 @@ pub mod dft;
 pub mod ring;
 pub mod poly;
 
+pub const CHUNK: usize= 8;
+
 pub mod macros{
     
     #[macro_export]

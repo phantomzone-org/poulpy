@@ -1,0 +1,20 @@
+[package]
+name = "math"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+primality-test = "0.3.0"
+num-bigint = "0.4.6"
+num-traits = "0.2.19"
+prime_factorization = "1.0.5"
+itertools = "0.13.0"
+criterion = "0.5.1"
+
+[[bench]]
+name = "ntt"
+harness = false
+
+[[bench]]
+name = "operations"
+harness = false

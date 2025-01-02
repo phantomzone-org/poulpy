@@ -7,6 +7,7 @@ use crate::modulus::ONCE;
 use crate::dft::DFT;
 use itertools::izip;
 
+#[allow(dead_code)]
 pub struct Table<O>{
     prime:Prime<O>,
     psi: O,

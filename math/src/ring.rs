@@ -9,3 +9,6 @@ pub struct Ring<O>{
     pub modulus:Prime<O>,
     pub dft:Box<dyn DFT<O>>,
 }
+
+
+pub struct RingRNS<O>(pub Vec<Ring<O>>);

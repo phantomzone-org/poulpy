@@ -72,7 +72,10 @@ pub trait WordOperations<O>{
     fn word_sub_unary_assign<const REDUCE:REDUCEMOD>(&self, a: &O, b: &mut O);
 
     // Assigns -a to a.
-    fn word_neg_assign<const REDUCE:REDUCEMOD>(&self, a:&mut O);
+    fn word_neg_unary_assign<const REDUCE:REDUCEMOD>(&self, a:&mut O);
+
+    // Assigns -a to b.
+    fn word_neg_binary_assign<const REDUCE:REDUCEMOD>(&self, a: &O, b:&mut O);
 
     // Assigns a * 2^64 to b.
     fn word_prepare_montgomery_assign<const REDUCE:REDUCEMOD>(&self, a: &O, b: &mut montgomery::Montgomery<O>);
@@ -102,7 +105,10 @@ pub trait VecOperations<O>{
     fn vec_sub_unary_assign<const CHUNK:usize, const REDUCE:REDUCEMOD>(&self, a: &[O], b: &mut [O]);
 
     // Assigns -a[i] to a[i].
-    fn vec_neg_assign<const CHUNK:usize, const REDUCE:REDUCEMOD>(&self, a: &mut [O]);
+    fn vec_neg_unary_assign<const CHUNK:usize, const REDUCE:REDUCEMOD>(&self, a: &mut [O]);
+
+    // Assigns -a[i] to a[i].
+    fn vec_neg_binary_assign<const CHUNK:usize, const REDUCE:REDUCEMOD>(&self, a: &[O], b: &mut [O]);
 
     // Assigns a * 2^64 to b.
     fn vec_prepare_montgomery_assign<const CHUNK:usize, const REDUCE:REDUCEMOD>(&self, a: &[O], b: &mut [montgomery::Montgomery<O>]);
