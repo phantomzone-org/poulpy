@@ -3,7 +3,7 @@ use crate::modulus::barrett::Barrett;
 use crate::modulus::prime::Prime;
 use crate::modulus::ReduceOnce;
 use crate::modulus::WordOps;
-use crate::modulus::ONCE;
+use crate::modulus::{NONE, ONCE, BARRETT};
 use crate::dft::DFT;
 use itertools::izip;
 
@@ -114,8 +114,8 @@ impl Table<u64>{
                     izip!(a.chunks_exact_mut(t), &self.psi_forward_rev[m..]).for_each(|(a, psi)| {
                         let (a, b) = a.split_at_mut(size);
                         self.dit_inplace::<true>(&mut a[0], &mut b[0], *psi);
-                        self.prime.barrett.reduce_assign(&mut a[0]);
-                        self.prime.barrett.reduce_assign(&mut b[0]);
+                        self.prime.barrett.reduce_assign::<BARRETT>(&mut a[0]);
+                        self.prime.barrett.reduce_assign::<BARRETT>(&mut b[0]);
                         debug_assert!(a[0] < self.q, "forward_inplace_core::<LAZY=false> output {} > {} (q-1)", a[0], self.q-1);
                         debug_assert!(b[0] < self.q, "forward_inplace_core::<LAZY=false> output {} > {} (q-1)", b[0], self.q-1);
                     });
@@ -149,7 +149,7 @@ impl Table<u64>{
         debug_assert!(*a < self.four_q, "a:{} q:{}", a, self.four_q);
         debug_assert!(*b < self.four_q, "b:{} q:{}", b, self.four_q);
         a.reduce_once_assign(self.two_q);
-        let bt: u64 = self.prime.barrett.mul_external_lazy(t, *b);
+        let bt: u64 = self.prime.barrett.mul_external::<NONE>(t, *b);
         *b = a.wrapping_add(self.two_q-bt);
         *a = a.wrapping_add(bt);
         if !LAZY {
@@ -176,7 +176,7 @@ impl Table<u64>{
             if layer == 0 {
 
                 let n_inv: Barrett<u64> = self.prime.barrett.prepare(self.prime.inv(n as u64));
-                let psi: Barrett<u64> = self.prime.barrett.prepare(self.prime.barrett.mul_external(n_inv, self.psi_backward_rev[1].0));
+                let psi: Barrett<u64> = self.prime.barrett.prepare(self.prime.barrett.mul_external::<ONCE>(n_inv, self.psi_backward_rev[1].0));
 
                 izip!(a.chunks_exact_mut(2 * size)).for_each(
                     |a| {
@@ -225,7 +225,7 @@ impl Table<u64>{
     fn dif_inplace<const LAZY: bool>(&self, a: &mut u64, b: &mut u64, t: Barrett<u64>) {
         debug_assert!(*a < self.two_q, "a:{} q:{}", a, self.four_q);
         debug_assert!(*b < self.two_q, "b:{} q:{}", b, self.four_q);
-        let d: u64 = self.prime.barrett.mul_external_lazy(t, *a + self.two_q - *b);
+        let d: u64 = self.prime.barrett.mul_external::<NONE>(t, *a + self.two_q - *b);
         *a = a.wrapping_add(*b);
         a.reduce_once_assign(self.two_q);
         *b = d;
@@ -239,12 +239,12 @@ impl Table<u64>{
         debug_assert!(*a < self.two_q);
         debug_assert!(*b < self.two_q);
         if LAZY{
-            let d: u64 = self.prime.barrett.mul_external_lazy(psi, *a + self.two_q - *b);
-            *a = self.prime.barrett.mul_external_lazy(n_inv, *a + *b);
+            let d: u64 = self.prime.barrett.mul_external::<NONE>(psi, *a + self.two_q - *b);
+            *a = self.prime.barrett.mul_external::<NONE>(n_inv, *a + *b);
             *b = d;
         }else{
-            let d: u64 = self.prime.barrett.mul_external(psi, *a + self.two_q - *b);
-            *a = self.prime.barrett.mul_external(n_inv, *a + *b);
+            let d: u64 = self.prime.barrett.mul_external::<ONCE>(psi, *a + self.two_q - *b);
+            *a = self.prime.barrett.mul_external::<ONCE>(n_inv, *a + *b);
             *b = d;
         }
     }

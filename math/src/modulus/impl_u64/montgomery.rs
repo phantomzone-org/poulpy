@@ -2,7 +2,7 @@
 use crate::modulus::ReduceOnce;
 use crate::modulus::montgomery::{MontgomeryPrecomp, Montgomery};
 use crate::modulus::barrett::BarrettPrecomp;
-use crate::modulus::{REDUCEMOD, NONE, ONCE, TWICE, FOURTIMES, BARRETT, BARRETTLAZY};
+use crate::modulus::{REDUCEMOD, ONCE};
 extern crate test;
 
 /// MontgomeryPrecomp is a set of methods implemented for MontgomeryPrecomp<u64>
@@ -65,15 +65,7 @@ impl MontgomeryPrecomp<u64>{
     /// - FULL: maps x to x mod q using Barrett reduction.
     #[inline(always)]
     pub fn reduce_assign<const REDUCE:REDUCEMOD>(&self, x: &mut u64){
-        match REDUCE {
-            NONE =>{},
-            ONCE =>{x.reduce_once_assign(self.q)},
-            TWICE=>{x.reduce_once_assign(self.two_q)},
-            FOURTIMES =>{x.reduce_once_assign(self.four_q)},
-            BARRETT =>{self.barrett.reduce_assign(x)},
-            BARRETTLAZY =>{self.barrett.reduce_lazy_assign(x)},
-            _ => unreachable!("invalid REDUCE argument")
-        }
+        self.barrett.reduce_assign::<REDUCE>(x);
     }
 
     /// Returns lhs * 2^64 mod q as a Montgomery<u64>.
@@ -137,7 +129,7 @@ impl MontgomeryPrecomp<u64>{
 
     #[inline(always)]
     pub fn add_internal(&self, lhs: Montgomery<u64>, rhs: Montgomery<u64>) -> Montgomery<u64>{
-        self.barrett.reduce(rhs + lhs)
+        rhs + lhs
     }
 
     /// Assigns lhs + rhs to rhs.
@@ -151,12 +143,6 @@ impl MontgomeryPrecomp<u64>{
     pub fn add_internal_reduce_once_assign<const LAZY:bool>(&self, lhs: Montgomery<u64>, rhs: &mut Montgomery<u64>){
         self.add_internal_lazy_assign(lhs, rhs);
         rhs.reduce_once_assign(self.q);
-    }
-
-    /// Returns lhs mod q in range [0, 2q-1].
-    #[inline(always)]
-    pub fn reduce_lazy_assign(&self, lhs: &mut u64){
-        self.barrett.reduce_lazy_assign(lhs)
     }
 
     /// Returns (x^exponent) * 2^64 mod q.

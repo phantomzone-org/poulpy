@@ -17,6 +17,8 @@ impl<O> Barrett<O> {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct BarrettPrecomp<O>{
     pub q: O,
+    pub two_q:O,
+    pub four_q:O,
     pub lo:O,
     pub hi:O,
     pub one: Barrett<O>,

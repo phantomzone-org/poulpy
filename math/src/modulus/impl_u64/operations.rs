@@ -3,8 +3,9 @@ use crate::modulus::{WordOperations, VecOperations};
 use crate::modulus::prime::Prime;
 use crate::modulus::ReduceOnce;
 use crate::modulus::montgomery::Montgomery;
+use crate::modulus::barrett::Barrett;
 use crate::modulus::REDUCEMOD;
-use crate::{apply_unary, apply_binary, apply_ternary};
+use crate::{apply_v, apply_vv, apply_vvv, apply_sv, apply_svv, apply_vvsv};
 use itertools::izip;
 
 impl WordOperations<u64> for Prime<u64>{
@@ -69,6 +70,22 @@ impl WordOperations<u64> for Prime<u64>{
     fn word_mul_montgomery_external_unary_assign<const REDUCE:REDUCEMOD>(&self, lhs:&Montgomery<u64>, rhs:&mut u64){
         self.montgomery.mul_external_assign::<REDUCE>(*lhs, rhs);
     }
+
+    #[inline(always)]
+    fn word_mul_barrett_binary_assign<const REDUCE:REDUCEMOD>(&self, a: &Barrett<u64>, b:&u64, c: &mut u64){
+        *c = self.barrett.mul_external::<REDUCE>(*a, *b);
+    }
+
+    #[inline(always)]
+    fn word_mul_barrett_unary_assign<const REDUCE:REDUCEMOD>(&self, a:&Barrett<u64>, b:&mut u64){
+        self.barrett.mul_external_assign::<REDUCE>(*a, b);
+    }
+
+    #[inline(always)]
+    fn word_sum_aqqmb_prod_c_barrett_assign_d<const REDUCE:REDUCEMOD>(&self, a: &u64, b: &u64, c: &Barrett<u64>, d: &mut u64){
+        *d = self.two_q.wrapping_sub(*b).wrapping_add(*a);
+        self.barrett.mul_external_assign::<REDUCE>(*c, d);
+    }
 }
 
 impl VecOperations<u64> for Prime<u64>{
@@ -82,51 +99,65 @@ impl VecOperations<u64> for Prime<u64>{
     /// - BARRETTLAZY: maps x to x mod q using Barrett reduction with values in [0, 2q-1].
     #[inline(always)]
     fn vec_reduce_assign<const CHUNK:usize, const REDUCE:REDUCEMOD>(&self, x: &mut [u64]){
-        apply_unary!(self, Self::word_reduce_assign::<REDUCE>, x, CHUNK);
+        apply_v!(self, Self::word_reduce_assign::<REDUCE>, x, CHUNK);
     }
 
     #[inline(always)]
     fn vec_add_binary_assign<const CHUNK:usize, const REDUCE:REDUCEMOD>(&self, a: &[u64], b:&[u64], c:&mut [u64]){
-        apply_ternary!(self, Self::word_add_binary_assign::<REDUCE>, a, b, c, CHUNK);
+        apply_vvv!(self, Self::word_add_binary_assign::<REDUCE>, a, b, c, CHUNK);
     }
 
     #[inline(always)]
     fn vec_add_unary_assign<const CHUNK:usize, const REDUCE:REDUCEMOD>(&self, a: &[u64], b:&mut [u64]){
-        apply_binary!(self, Self::word_add_unary_assign::<REDUCE>, a, b, CHUNK);
+        apply_vv!(self, Self::word_add_unary_assign::<REDUCE>, a, b, CHUNK);
     }
 
     #[inline(always)]
     fn vec_sub_binary_assign<const CHUNK:usize, const REDUCE:REDUCEMOD>(&self, a: &[u64], b:&[u64], c:&mut [u64]){
-        apply_ternary!(self, Self::word_sub_binary_assign::<REDUCE>, a, b, c, CHUNK);
+        apply_vvv!(self, Self::word_sub_binary_assign::<REDUCE>, a, b, c, CHUNK);
     }
 
     #[inline(always)]
     fn vec_sub_unary_assign<const CHUNK:usize, const REDUCE:REDUCEMOD>(&self, a: &[u64], b:&mut [u64]){
-        apply_binary!(self, Self::word_sub_unary_assign::<REDUCE>, a, b, CHUNK);
+        apply_vv!(self, Self::word_sub_unary_assign::<REDUCE>, a, b, CHUNK);
     }
 
     #[inline(always)]
     fn vec_neg_unary_assign<const CHUNK:usize, const REDUCE:REDUCEMOD>(&self, a: &mut [u64]){
-        apply_unary!(self, Self::word_neg_unary_assign::<REDUCE>, a, CHUNK);
+        apply_v!(self, Self::word_neg_unary_assign::<REDUCE>, a, CHUNK);
     }
 
     #[inline(always)]
     fn vec_neg_binary_assign<const CHUNK:usize, const REDUCE:REDUCEMOD>(&self, a: &[u64], b: &mut [u64]){
-        apply_binary!(self, Self::word_neg_binary_assign::<REDUCE>, a, b, CHUNK);
+        apply_vv!(self, Self::word_neg_binary_assign::<REDUCE>, a, b, CHUNK);
     }
 
     #[inline(always)]
     fn vec_prepare_montgomery_assign<const CHUNK:usize, const REDUCE:REDUCEMOD>(&self, a: &[u64], b: &mut [Montgomery<u64>]){
-        apply_binary!(self, Self::word_prepare_montgomery_assign::<REDUCE>, a, b, CHUNK);
+        apply_vv!(self, Self::word_prepare_montgomery_assign::<REDUCE>, a, b, CHUNK);
     }
 
     #[inline(always)]
     fn vec_mul_montgomery_external_binary_assign<const CHUNK:usize,const REDUCE:REDUCEMOD>(&self, a:& [Montgomery<u64>], b:&[u64], c: &mut [u64]){
-        apply_ternary!(self, Self::word_mul_montgomery_external_binary_assign::<REDUCE>, a, b, c, CHUNK);
+        apply_vvv!(self, Self::word_mul_montgomery_external_binary_assign::<REDUCE>, a, b, c, CHUNK);
     }
 
     #[inline(always)]
     fn vec_mul_montgomery_external_unary_assign<const CHUNK:usize, const REDUCE:REDUCEMOD>(&self, a:& [Montgomery<u64>], b:&mut [u64]){
-        apply_binary!(self, Self::word_mul_montgomery_external_unary_assign::<REDUCE>, a, b, CHUNK);
+        apply_vv!(self, Self::word_mul_montgomery_external_unary_assign::<REDUCE>, a, b, CHUNK);
+    }
+
+    #[inline(always)]
+    fn vec_mul_scalar_barrett_external_binary_assign<const CHUNK:usize,const REDUCE:REDUCEMOD>(&self, a:& Barrett<u64>, b:&[u64], c: &mut [u64]){
+        apply_svv!(self, Self::word_mul_barrett_binary_assign::<REDUCE>, a, b, c, CHUNK);
+    }
+
+    #[inline(always)]
+    fn vec_mul_scalar_barrett_external_unary_assign<const CHUNK:usize, const REDUCE:REDUCEMOD>(&self, a:& Barrett<u64>, b:&mut [u64]){
+        apply_sv!(self, Self::word_mul_barrett_unary_assign::<REDUCE>, a, b, CHUNK);
+    }
+
+    fn vec_sum_aqqmb_prod_c_scalar_barrett_assign_d<const CHUNK:usize, const REDUCE:REDUCEMOD>(&self, a: &[u64], b: &[u64], c: &Barrett<u64>, d: &mut [u64]){
+        apply_vvsv!(self, Self::word_sum_aqqmb_prod_c_barrett_assign_d::<REDUCE>, a, b, c, d, CHUNK);
     }
 }

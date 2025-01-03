@@ -85,6 +85,15 @@ pub trait WordOperations<O>{
 
     // Assigns a * b to b.
     fn word_mul_montgomery_external_unary_assign<const REDUCE:REDUCEMOD>(&self, a:&montgomery::Montgomery<O>, b:&mut O);
+
+    // Assigns a * b to c.
+    fn word_mul_barrett_binary_assign<const REDUCE:REDUCEMOD>(&self, a: &barrett::Barrett<O>, b:&O, c: &mut O);
+
+    // Assigns a * b to b.
+    fn word_mul_barrett_unary_assign<const REDUCE:REDUCEMOD>(&self, a:&barrett::Barrett<O>, b:&mut O);
+
+    // Assigns (a + 2q - b) * c to d.
+    fn word_sum_aqqmb_prod_c_barrett_assign_d<const REDUCE:REDUCEMOD>(&self, a: &O, b: &O, c: &barrett::Barrett<O>, d: &mut O);
 }
 
 pub trait VecOperations<O>{
@@ -118,6 +127,15 @@ pub trait VecOperations<O>{
 
     // Assigns a[i] * b[i] to b[i].
     fn vec_mul_montgomery_external_unary_assign<const CHUNK:usize, const REDUCE:REDUCEMOD>(&self, a:&[montgomery::Montgomery<O>], b:&mut [O]);
+
+    // Assigns a * b[i] to b[i].
+    fn vec_mul_scalar_barrett_external_unary_assign<const CHUNK:usize, const REDUCE:REDUCEMOD>(&self, a:& barrett::Barrett<u64>, b:&mut [u64]);
+
+    // Assigns a * b[i] to c[i].
+    fn vec_mul_scalar_barrett_external_binary_assign<const CHUNK:usize,const REDUCE:REDUCEMOD>(&self, a:& barrett::Barrett<u64>, b:&[u64], c: &mut [u64]);
+
+    // Assigns (a[i] + 2q - b[i]) * c to d[i].
+    fn vec_sum_aqqmb_prod_c_scalar_barrett_assign_d<const CHUNK:usize, const REDUCE:REDUCEMOD>(&self, a: &[u64], b: &[u64], c: &barrett::Barrett<u64>, d: &mut [u64]);
 }
 
 

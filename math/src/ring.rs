@@ -1,6 +1,7 @@
 pub mod impl_u64;
 
 use crate::modulus::prime::Prime;
+use crate::poly::{Poly, PolyRNS};
 use crate::dft::DFT;
 
 
@@ -10,5 +11,45 @@ pub struct Ring<O>{
     pub dft:Box<dyn DFT<O>>,
 }
 
+impl<O> Ring<O>{
+    pub fn n(&self) -> usize{
+        return self.n
+    }
 
-pub struct RingRNS<O>(pub Vec<Ring<O>>);
+    pub fn new_poly(&self) -> Poly<u64>{
+        Poly::<u64>::new(self.n())
+    }
+}
+
+
+//pub struct RingRNS<'a, O: Copy>(pub Vec<Box<& 'a Ring<O>>>);
+
+pub struct RingRNS<'a, O>(& 'a [Ring<O>]);
+
+impl<O: Copy> RingRNS<'_, O>{
+
+    pub fn n(&self) -> usize{
+        self.0[0].n()
+    }
+
+    pub fn new_polyrns(&self) -> PolyRNS<u64>{
+        PolyRNS::<u64>::new(self.n(), self.level())
+    }
+
+    pub fn max_level(&self) -> usize{
+        self.0.len()-1
+    }
+
+    pub fn modulus<const LEVEL:usize>(&self) -> O{
+        self.0[LEVEL].modulus.q
+    }
+
+    pub fn level(&self) -> usize{
+        self.0.len()-1
+    }
+
+    pub fn at_level(&self, level:usize) -> RingRNS<O>{
+        assert!(level <= self.0.len());
+        RingRNS(&self.0[..level+1])
+    }
+}

@@ -18,3 +18,7 @@ harness = false
 [[bench]]
 name = "operations"
 harness = false
+
+[[bench]]
+name = "ring_rns"
+harness = false
