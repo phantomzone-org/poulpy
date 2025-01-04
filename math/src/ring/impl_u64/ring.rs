@@ -139,4 +139,11 @@ impl Ring<u64>{
         debug_assert!(d.n() == self.n(), "d.n()={} != n={}", d.n(), self.n());
         self.modulus.vec_sum_aqqmb_prod_c_scalar_barrett_assign_d::<CHUNK, REDUCE>(&a.0, &b.0, c, &mut d.0);
     }
+
+    #[inline(always)]
+    pub fn sum_aqqmb_prod_c_scalar_barrett_inplace<const REDUCE:REDUCEMOD>(&self, a: &Poly<u64>, c: &Barrett<u64>, b: &mut Poly<u64>){
+        debug_assert!(a.n() == self.n(), "a.n()={} != n={}", a.n(), self.n());
+        debug_assert!(b.n() == self.n(), "b.n()={} != n={}", b.n(), self.n());
+        self.modulus.vec_sum_aqqmb_prod_c_scalar_barrett_assign_b::<CHUNK, REDUCE>(&a.0, c, &mut b.0);
+    }
 }

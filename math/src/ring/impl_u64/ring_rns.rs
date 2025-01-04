@@ -19,6 +19,12 @@ impl<'a> RingRNS<'a, u64>{
         RingRNS(rings)
     }
 
+    pub fn modulus(&self) -> BigInt{
+        let mut modulus = BigInt::from(1);
+        self.0.iter().enumerate().for_each(|(_, r)|modulus *= BigInt::from(r.modulus.q));
+        modulus
+    }
+
     pub fn rescaling_constant(&self) -> Vec<Barrett<u64>> {
         let level = self.level();
         let q_scale: u64 = self.0[level].modulus.q;
@@ -29,6 +35,32 @@ impl<'a> RingRNS<'a, u64>{
         let level = self.level();
         assert!(level <= a.level(), "invalid level: level={} > a.level()={}", level, a.level());
         (0..level).for_each(|i|{self.0[i].from_bigint(coeffs, step, a.at_mut(i))});
+    }
+
+    pub fn set_bigint_from_poly(&self, a: &PolyRNS<u64>, step: usize, coeffs: &mut [BigInt]){
+        assert!(step <= a.n(), "invalid step: step={} > a.n()={}", step, a.n());
+        assert!(coeffs.len() <= a.n() / step, "invalid coeffs: coeffs.len()={} > a.n()/step={}", coeffs.len(), a.n()/step);
+
+        let mut inv_crt: Vec<BigInt> = vec![BigInt::default(); self.level()+1];
+        let q_big: BigInt = self.modulus();
+        let q_big_half: BigInt = &q_big>>1;
+
+        inv_crt.iter_mut().enumerate().for_each(|(i, a)|{
+            let qi_big = BigInt::from(self.0[i].modulus.q);
+            *a = (&q_big / &qi_big);
+            *a *= a.modinv(&qi_big).unwrap();
+        });
+
+        (0..self.n()).step_by(step).enumerate().for_each(|(i, j)|{
+            coeffs[j] = BigInt::from(a.at(0).0[i]) * &inv_crt[0];
+            (1..self.level()+1).for_each(|k|{
+                coeffs[j] += BigInt::from(a.at(k).0[i] * &inv_crt[k]);
+            });
+            coeffs[j] %= &q_big;
+            if &coeffs[j] >= &q_big_half{
+                coeffs[j] -= &q_big;
+            }
+        });
     }
 }
 

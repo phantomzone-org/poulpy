@@ -229,4 +229,41 @@ pub mod macros{
             }
         };
     }
+
+    #[macro_export]
+    macro_rules! apply_vsv {
+
+        ($self:expr, $f:expr, $a:expr, $c:expr, $b:expr, $CHUNK:expr) => {
+
+            let n: usize = $a.len();
+            debug_assert!($b.len() == n, "invalid argument b: b.len() = {} != a.len() = {}", $b.len(), n);
+            debug_assert!(CHUNK&(CHUNK-1) == 0, "invalid CHUNK const: not a power of two");
+
+            match CHUNK{
+                8 => {
+                    
+                    izip!($a.chunks_exact(8), $b.chunks_exact_mut(8)).for_each(|(a, b)| {
+                        $f(&$self, &a[0], $c, &mut b[0]);
+                        $f(&$self, &a[1], $c, &mut b[1]);
+                        $f(&$self, &a[2], $c, &mut b[2]);
+                        $f(&$self, &a[3], $c, &mut b[3]);
+                        $f(&$self, &a[4], $c, &mut b[4]);
+                        $f(&$self, &a[5], $c, &mut b[5]);
+                        $f(&$self, &a[6], $c, &mut b[6]);
+                        $f(&$self, &a[7], $c, &mut b[7]);
+                    });
+
+                    let m = n - (n&7);
+                    izip!($a[m..].iter(), $b[m..].iter_mut()).for_each(|(a, b)| {
+                        $f(&$self, a, $c, b);
+                    });
+                },
+                _=>{
+                    izip!($a.iter(), $b.iter_mut()).for_each(|(a, b)| {
+                        $f(&$self, a, $c, b);
+                    });
+                }
+            }
+        };
+    }
 }

@@ -94,6 +94,9 @@ pub trait WordOperations<O>{
 
     // Assigns (a + 2q - b) * c to d.
     fn word_sum_aqqmb_prod_c_barrett_assign_d<const REDUCE:REDUCEMOD>(&self, a: &O, b: &O, c: &barrett::Barrett<O>, d: &mut O);
+
+    // Assigns (a + 2q - b) * c to b.
+    fn word_sum_aqqmb_prod_c_barrett_assign_b<const REDUCE:REDUCEMOD>(&self, a: &u64, c: &barrett::Barrett<u64>, b: &mut u64);
 }
 
 pub trait VecOperations<O>{
@@ -136,6 +139,9 @@ pub trait VecOperations<O>{
 
     // Assigns (a[i] + 2q - b[i]) * c to d[i].
     fn vec_sum_aqqmb_prod_c_scalar_barrett_assign_d<const CHUNK:usize, const REDUCE:REDUCEMOD>(&self, a: &[u64], b: &[u64], c: &barrett::Barrett<u64>, d: &mut [u64]);
+
+    // Assigns (a[i] + 2q - b[i]) * c to b[i].
+    fn vec_sum_aqqmb_prod_c_scalar_barrett_assign_b<const CHUNK:usize, const REDUCE:REDUCEMOD>(&self, a: &[u64], c: &barrett::Barrett<u64>, b: &mut [u64]);
 }
 
 

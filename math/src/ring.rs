@@ -2,6 +2,7 @@ pub mod impl_u64;
 
 use crate::modulus::prime::Prime;
 use crate::poly::{Poly, PolyRNS};
+use num_bigint::BigInt;
 use crate::dft::DFT;
 
 
@@ -21,12 +22,9 @@ impl<O> Ring<O>{
     }
 }
 
-
-//pub struct RingRNS<'a, O: Copy>(pub Vec<Box<& 'a Ring<O>>>);
-
 pub struct RingRNS<'a, O>(& 'a [Ring<O>]);
 
-impl<O: Copy> RingRNS<'_, O>{
+impl<O: Copy> RingRNS<'_, O> {
 
     pub fn n(&self) -> usize{
         self.0[0].n()
@@ -39,11 +37,7 @@ impl<O: Copy> RingRNS<'_, O>{
     pub fn max_level(&self) -> usize{
         self.0.len()-1
     }
-
-    pub fn modulus<const LEVEL:usize>(&self) -> O{
-        self.0[LEVEL].modulus.q
-    }
-
+    
     pub fn level(&self) -> usize{
         self.0.len()-1
     }

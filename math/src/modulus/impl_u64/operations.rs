@@ -5,7 +5,7 @@ use crate::modulus::ReduceOnce;
 use crate::modulus::montgomery::Montgomery;
 use crate::modulus::barrett::Barrett;
 use crate::modulus::REDUCEMOD;
-use crate::{apply_v, apply_vv, apply_vvv, apply_sv, apply_svv, apply_vvsv};
+use crate::{apply_v, apply_vv, apply_vvv, apply_sv, apply_svv, apply_vvsv, apply_vsv};
 use itertools::izip;
 
 impl WordOperations<u64> for Prime<u64>{
@@ -86,6 +86,12 @@ impl WordOperations<u64> for Prime<u64>{
         *d = self.two_q.wrapping_sub(*b).wrapping_add(*a);
         self.barrett.mul_external_assign::<REDUCE>(*c, d);
     }
+
+    #[inline(always)]
+    fn word_sum_aqqmb_prod_c_barrett_assign_b<const REDUCE:REDUCEMOD>(&self, a: &u64, c: &Barrett<u64>, b: &mut u64){
+        *b = self.two_q.wrapping_sub(*b).wrapping_add(*a);
+        self.barrett.mul_external_assign::<REDUCE>(*c, b);
+    }
 }
 
 impl VecOperations<u64> for Prime<u64>{
@@ -159,5 +165,9 @@ impl VecOperations<u64> for Prime<u64>{
 
     fn vec_sum_aqqmb_prod_c_scalar_barrett_assign_d<const CHUNK:usize, const REDUCE:REDUCEMOD>(&self, a: &[u64], b: &[u64], c: &Barrett<u64>, d: &mut [u64]){
         apply_vvsv!(self, Self::word_sum_aqqmb_prod_c_barrett_assign_d::<REDUCE>, a, b, c, d, CHUNK);
+    }
+
+    fn vec_sum_aqqmb_prod_c_scalar_barrett_assign_b<const CHUNK:usize, const REDUCE:REDUCEMOD>(&self, a: &[u64], c: &Barrett<u64>, b: &mut [u64]){
+        apply_vsv!(self, Self::word_sum_aqqmb_prod_c_barrett_assign_b::<REDUCE>, a, c, b, CHUNK);
     }
 }
