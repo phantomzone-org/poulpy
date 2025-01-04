@@ -150,8 +150,9 @@ impl Table<u64>{
         debug_assert!(*b < self.four_q, "b:{} q:{}", b, self.four_q);
         a.reduce_once_assign(self.two_q);
         let bt: u64 = self.prime.barrett.mul_external::<NONE>(t, *b);
-        *b = a.wrapping_add(self.two_q-bt);
-        *a = a.wrapping_add(bt);
+        debug_assert!(bt < self.two_q, "bt:{} two_q:{}", bt, self.two_q);
+        *b = *a + self.two_q-bt;
+        *a += bt;
         if !LAZY {
             a.reduce_once_assign(self.two_q);
             b.reduce_once_assign(self.two_q);
@@ -223,10 +224,10 @@ impl Table<u64>{
 
     #[inline(always)]
     fn dif_inplace<const LAZY: bool>(&self, a: &mut u64, b: &mut u64, t: Barrett<u64>) {
-        debug_assert!(*a < self.two_q, "a:{} q:{}", a, self.four_q);
-        debug_assert!(*b < self.two_q, "b:{} q:{}", b, self.four_q);
+        debug_assert!(*a < self.two_q, "a:{} q:{}", a, self.two_q);
+        debug_assert!(*b < self.two_q, "b:{} q:{}", b, self.two_q);
         let d: u64 = self.prime.barrett.mul_external::<NONE>(t, *a + self.two_q - *b);
-        *a = a.wrapping_add(*b);
+        *a = *a + *b;
         a.reduce_once_assign(self.two_q);
         *b = d;
         if !LAZY {

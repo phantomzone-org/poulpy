@@ -21,10 +21,6 @@ impl BarrettPrecomp<u64>{
         self.one
     }
 
-    /// Applies a modular reduction on x based on REDUCE:
-    /// - LAZY: no modular reduction.
-    /// - ONCE: subtracts q if x >= q.
-    /// - FULL: maps x to x mod q using Barrett reduction.
     #[inline(always)]
     pub fn reduce_assign<const REDUCE:REDUCEMOD>(&self, x: &mut u64){
         match REDUCE {
@@ -43,6 +39,13 @@ impl BarrettPrecomp<u64>{
             },
             _ => unreachable!("invalid REDUCE argument")
         }
+    }
+
+    #[inline(always)]
+    pub fn reduce<const REDUCE:REDUCEMOD>(&self, x: &u64) -> u64{
+        let mut r = *x;
+        self.reduce_assign::<REDUCE>(&mut r);
+        r
     }
 
     #[inline(always)]

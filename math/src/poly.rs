@@ -20,12 +20,12 @@ impl<O> Poly<O>where
         self.0 = Vec::from(&buf[..n]);
     }
 
-    pub fn n(&self) -> usize{
-        (usize::BITS - self.0.len().leading_zeros()) as usize
+    pub fn log_n(&self) -> usize{
+        (usize::BITS - (self.n()-1).leading_zeros()) as usize
     }
 
-    pub fn log_n(&self) -> usize{
-        self.0.len()-1
+    pub fn n(&self) -> usize{
+        self.0.len()
     }
 
     pub fn resize(&mut self, n:usize){

@@ -14,6 +14,8 @@ impl<O> Barrett<O> {
     }
 }
 
+pub struct BarrettRNS<O>(pub Vec<Barrett<O>>);
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct BarrettPrecomp<O>{
     pub q: O,

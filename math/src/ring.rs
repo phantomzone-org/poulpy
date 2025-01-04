@@ -2,7 +2,6 @@ pub mod impl_u64;
 
 use crate::modulus::prime::Prime;
 use crate::poly::{Poly, PolyRNS};
-use num_bigint::BigInt;
 use crate::dft::DFT;
 
 
@@ -37,7 +36,7 @@ impl<O: Copy> RingRNS<'_, O> {
     pub fn max_level(&self) -> usize{
         self.0.len()-1
     }
-    
+
     pub fn level(&self) -> usize{
         self.0.len()-1
     }

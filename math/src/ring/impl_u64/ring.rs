@@ -4,7 +4,7 @@ use crate::modulus::prime::Prime;
 use crate::modulus::montgomery::Montgomery;
 use crate::modulus::barrett::Barrett;
 use crate::poly::Poly;
-use crate::modulus::REDUCEMOD;
+use crate::modulus::{REDUCEMOD, BARRETT};
 use crate::modulus::VecOperations;
 use num_bigint::BigInt;
 use num_traits::ToPrimitive;
@@ -38,16 +38,16 @@ impl Ring<u64>{
 
     pub fn intt_inplace<const LAZY:bool>(&self, poly: &mut Poly<u64>){
         match LAZY{
-            true => self.dft.forward_inplace_lazy(&mut poly.0),
-            false => self.dft.forward_inplace(&mut poly.0)
+            true => self.dft.backward_inplace_lazy(&mut poly.0),
+            false => self.dft.backward_inplace(&mut poly.0)
         }
     }
 
     pub fn ntt<const LAZY:bool>(&self, poly_in: &Poly<u64>, poly_out: &mut Poly<u64>){
         poly_out.0.copy_from_slice(&poly_in.0);
         match LAZY{
-            true => self.dft.backward_inplace_lazy(&mut poly_out.0),
-            false => self.dft.backward_inplace(&mut poly_out.0)
+            true => self.dft.forward_inplace_lazy(&mut poly_out.0),
+            false => self.dft.forward_inplace(&mut poly_out.0)
         }
     }
 
@@ -118,6 +118,19 @@ impl Ring<u64>{
         debug_assert!(a.n() == self.n(), "a.n()={} != n={}", a.n(), self.n());
         debug_assert!(b.n() == self.n(), "b.n()={} != n={}", b.n(), self.n());
         self.modulus.vec_mul_montgomery_external_unary_assign::<CHUNK, REDUCE>(&a.0, &mut b.0);
+    }
+
+    #[inline(always)]
+    pub fn mul_scalar<const REDUCE:REDUCEMOD>(&self, a:&Poly<u64>, b: &u64, c:&mut Poly<u64>){
+        debug_assert!(a.n() == self.n(), "b.n()={} != n={}", a.n(), self.n());
+        debug_assert!(c.n() == self.n(), "c.n()={} != n={}", c.n(), self.n());
+        self.modulus.vec_mul_scalar_barrett_external_binary_assign::<CHUNK, REDUCE>(&self.modulus.barrett.prepare(*b), &a.0, &mut c.0);
+    }
+
+    #[inline(always)]
+    pub fn mul_scalar_inplace<const REDUCE:REDUCEMOD>(&self, a:&u64, b:&mut Poly<u64>){
+        debug_assert!(b.n() == self.n(), "b.n()={} != n={}", b.n(), self.n());
+        self.modulus.vec_mul_scalar_barrett_external_unary_assign::<CHUNK, REDUCE>(&self.modulus.barrett.prepare(self.modulus.barrett.reduce::<BARRETT>(a)), &mut b.0);
     }
 
     #[inline(always)]
