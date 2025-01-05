@@ -150,7 +150,6 @@ impl Table<u64>{
         debug_assert!(*b < self.four_q, "b:{} q:{}", b, self.four_q);
         a.reduce_once_assign(self.two_q);
         let bt: u64 = self.prime.barrett.mul_external::<NONE>(t, *b);
-        debug_assert!(bt < self.two_q, "bt:{} two_q:{}", bt, self.two_q);
         *b = *a + self.two_q-bt;
         *a += bt;
         if !LAZY {

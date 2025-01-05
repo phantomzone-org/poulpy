@@ -1,17 +1,18 @@
 pub mod impl_u64;
 
+use num::traits::Unsigned;
 use crate::modulus::prime::Prime;
 use crate::poly::{Poly, PolyRNS};
 use crate::dft::DFT;
 
 
-pub struct Ring<O>{
+pub struct Ring<O: Unsigned>{
     pub n:usize,
     pub modulus:Prime<O>,
     pub dft:Box<dyn DFT<O>>,
 }
 
-impl<O> Ring<O>{
+impl<O: Unsigned> Ring<O>{
     pub fn n(&self) -> usize{
         return self.n
     }
@@ -21,9 +22,9 @@ impl<O> Ring<O>{
     }
 }
 
-pub struct RingRNS<'a, O>(& 'a [Ring<O>]);
+pub struct RingRNS<'a, O: Unsigned>(& 'a [Ring<O>]);
 
-impl<O: Copy> RingRNS<'_, O> {
+impl<O: Unsigned> RingRNS<'_, O> {
 
     pub fn n(&self) -> usize{
         self.0[0].n()

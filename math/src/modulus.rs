@@ -15,6 +15,7 @@ pub const BARRETTLAZY: REDUCEMOD = 5;
 pub trait WordOps<O>{
     fn log2(self) -> O;
     fn reverse_bits_msb(self, n:u32) -> O;
+    fn mask(self) -> O;
 }
 
 impl WordOps<u64> for u64{
@@ -26,6 +27,10 @@ impl WordOps<u64> for u64{
     fn reverse_bits_msb(self, n: u32) -> u64{
         self.reverse_bits() >> (usize::BITS - n)
     }
+    #[inline(always)]
+    fn mask(self) -> u64{
+        (1<<self.log2())-1
+    }
 }
 
 impl WordOps<usize> for usize{
@@ -36,6 +41,10 @@ impl WordOps<usize> for usize{
     #[inline(always)]
     fn reverse_bits_msb(self, n: u32) -> usize{
         self.reverse_bits() >> (usize::BITS - n)
+    }
+    #[inline(always)]
+    fn mask(self) -> usize{
+        (1<<self.log2())-1
     }
 }
 

@@ -1,6 +1,7 @@
 use crate::ring::RingRNS;
-use crate::poly::{Poly, PolyRNS};
-use crate::modulus::barrett::BarrettRNS;
+use crate::poly::PolyRNS;
+use crate::modulus::barrett::Barrett;
+use crate::scalar::ScalarRNS;
 use crate::modulus::ONCE;
 extern crate test;
 
@@ -12,7 +13,7 @@ impl RingRNS<'_, u64>{
         assert!(b.level() >= a.level()-1, "invalid input b: b.level()={} < a.level()-1={}", b.level(), a.level()-1);
         let level = self.level();
         self.0[level].intt::<false>(a.at(level), buf.at_mut(0));
-        let rescaling_constants: BarrettRNS<u64> = self.rescaling_constant();
+        let rescaling_constants: ScalarRNS<Barrett<u64>> = self.rescaling_constant();
         let (buf_ntt_q_scaling, buf_ntt_qi_scaling) = buf.0.split_at_mut(1);
         for (i, r) in self.0[0..level].iter().enumerate(){
             r.ntt::<false>(&buf_ntt_q_scaling[0], &mut buf_ntt_qi_scaling[0]);
@@ -25,7 +26,7 @@ impl RingRNS<'_, u64>{
     pub fn div_floor_by_last_modulus_ntt_inplace(&self, buf: &mut PolyRNS<u64>, b: &mut PolyRNS<u64>){
         let level = self.level();
         self.0[level].intt::<true>(b.at(level), buf.at_mut(0));
-        let rescaling_constants: BarrettRNS<u64> = self.rescaling_constant();
+        let rescaling_constants: ScalarRNS<Barrett<u64>> = self.rescaling_constant();
         let (buf_ntt_q_scaling, buf_ntt_qi_scaling) = buf.0.split_at_mut(1);
         for (i, r) in self.0[0..level].iter().enumerate(){
             r.ntt::<true>(&buf_ntt_q_scaling[0], &mut buf_ntt_qi_scaling[0]);
@@ -37,7 +38,7 @@ impl RingRNS<'_, u64>{
     pub fn div_floor_by_last_modulus(&self, a: &PolyRNS<u64>, b: &mut PolyRNS<u64>){
         assert!(b.level() >= a.level()-1, "invalid input b: b.level()={} < a.level()-1={}", b.level(), a.level()-1);
         let level = self.level();
-        let rescaling_constants:crate::modulus::barrett::BarrettRNS<u64>  = self.rescaling_constant();
+        let rescaling_constants:ScalarRNS<Barrett<u64>>  = self.rescaling_constant();
         for (i, r) in self.0[0..level].iter().enumerate(){
             r.sum_aqqmb_prod_c_scalar_barrett::<ONCE>(a.at(level), a.at(i), &rescaling_constants.0[i], b.at_mut(i));
         }
@@ -46,7 +47,7 @@ impl RingRNS<'_, u64>{
     /// Updates a to floor(b / q[b.level()]).
     pub fn div_floor_by_last_modulus_inplace(&self, a: &mut PolyRNS<u64>){
         let level = self.level();
-        let rescaling_constants: BarrettRNS<u64> = self.rescaling_constant();
+        let rescaling_constants: ScalarRNS<Barrett<u64>> = self.rescaling_constant();
         let (a_i, a_level) = a.split_at_mut(level);
         for (i, r) in self.0[0..level].iter().enumerate(){
             r.sum_aqqmb_prod_c_scalar_barrett_inplace::<ONCE>(&a_level[0], &rescaling_constants.0[i], &mut a_i[i]);
@@ -77,8 +78,10 @@ impl RingRNS<'_, u64>{
 #[cfg(test)]
 mod tests {
     use num_bigint::BigInt;
+    use num_bigint::Sign;
     use crate::ring::Ring;
     use crate::ring::impl_u64::ring_rns::new_rings;
+    use sampling::source::Source;
     use super::*;
 
     #[test]
@@ -86,21 +89,20 @@ mod tests {
         let n = 1<<10;
         let moduli: Vec<u64> = vec![0x1fffffffffc80001u64, 0x1fffffffffe00001u64];
         let rings: Vec<Ring<u64>> = new_rings(n, moduli);
-        let ring_rns = RingRNS::new(&rings);
+        let ring_rns: RingRNS<'_, u64> = RingRNS::new(&rings);
+        let seed: [u8; 32] = [0;32];
+        let mut source: Source = Source::new(seed);
 
         let mut a: PolyRNS<u64> = ring_rns.new_polyrns();
         let mut b: PolyRNS<u64> = ring_rns.new_polyrns();
         let mut c: PolyRNS<u64> = ring_rns.at_level(ring_rns.level()-1).new_polyrns();
 
-        // Allocates an rns poly with values [0..n]
-        let mut coeffs_a: Vec<BigInt> = (0..n).map(|i|{BigInt::from(i)}).collect();
-        ring_rns.from_bigint_inplace(&coeffs_a, 1, &mut a);
+        // Allocates a random PolyRNS
+        ring_rns.fill_uniform(&mut source, &mut a);
 
-        // Scales by q_level both a and coeffs_a
-        let scalar: u64 = ring_rns.0[ring_rns.level()].modulus.q;
-        ring_rns.mul_scalar_inplace::<ONCE>(&scalar, &mut a);
-        let scalar_big = BigInt::from(scalar);
-        coeffs_a.iter_mut().for_each(|a|{*a *= &scalar_big});
+        // Maps PolyRNS to [BigInt]
+        let mut coeffs_a: Vec<BigInt> = (0..n).map(|i|{BigInt::from(i)}).collect();
+        ring_rns.at_level(a.level()).to_bigint_inplace(&a, 1, &mut coeffs_a);
 
         // Performs c = intt(ntt(a) / q_level)
         ring_rns.ntt_inplace::<false>(&mut a);
@@ -112,7 +114,14 @@ mod tests {
         ring_rns.at_level(c.level()).to_bigint_inplace(&c, 1, &mut coeffs_c);
 
         // Performs floor division on a
-        coeffs_a.iter_mut().for_each(|a|{*a /= &scalar_big});
+        let scalar_big = BigInt::from(ring_rns.0[ring_rns.level()].modulus.q);
+        coeffs_a.iter_mut().for_each(|a|{
+            // Emulates floor division in [0, q-1] and maps to [-(q-1)/2, (q-1)/2-1]
+            *a /= &scalar_big;
+            if a.sign() == Sign::Minus {
+                *a -= 1;
+            }
+        });
 
     	assert!(coeffs_a == coeffs_c);
     }

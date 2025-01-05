@@ -1,7 +1,8 @@
 use crate::ring::{Ring, RingRNS};
 use crate::poly::PolyRNS;
 use crate::modulus::montgomery::Montgomery;
-use crate::modulus::barrett::BarrettRNS;
+use crate::modulus::barrett::Barrett;
+use crate::scalar::ScalarRNS;
 use crate::modulus::REDUCEMOD;
 use num_bigint::BigInt;
 
@@ -25,10 +26,10 @@ impl<'a> RingRNS<'a, u64>{
         modulus
     }
 
-    pub fn rescaling_constant(&self) -> BarrettRNS<u64> {
+    pub fn rescaling_constant(&self) -> ScalarRNS<Barrett<u64>> {
         let level = self.level();
         let q_scale: u64 = self.0[level].modulus.q;
-        BarrettRNS((0..level).map(|i| {self.0[i].modulus.barrett.prepare(self.0[i].modulus.q - self.0[i].modulus.inv(q_scale))}).collect())
+        ScalarRNS((0..level).map(|i| {self.0[i].modulus.barrett.prepare(self.0[i].modulus.q - self.0[i].modulus.inv(q_scale))}).collect())
     }
 
     pub fn from_bigint_inplace(&self, coeffs: &[BigInt], step:usize, a: &mut PolyRNS<u64>){

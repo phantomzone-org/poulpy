@@ -5,6 +5,7 @@ pub mod modulus;
 pub mod dft;
 pub mod ring;
 pub mod poly;
+pub mod scalar;
 
 pub const CHUNK: usize= 8;
 
