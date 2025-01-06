@@ -14,6 +14,7 @@ impl RingRNS<u64> {
         buf: &mut PolyRNS<u64>,
         b: &mut PolyRNS<u64>,
     ) {
+        debug_assert!(self.level() != 0, "invalid call: self.level()=0");
         debug_assert!(
             self.level() <= a.level(),
             "invalid input a: self.level()={} > a.level()={}",
@@ -21,10 +22,10 @@ impl RingRNS<u64> {
             a.level()
         );
         debug_assert!(
-            b.level() >= a.level() - 1,
-            "invalid input b: b.level()={} < a.level()-1={}",
+            b.level() >= self.level() - 1,
+            "invalid input b: b.level()={} < self.level()-1={}",
             b.level(),
-            a.level() - 1
+            self.level() - 1
         );
 
         let level = self.level();
@@ -102,28 +103,31 @@ impl RingRNS<u64> {
         buf: &mut PolyRNS<u64>,
         c: &mut PolyRNS<u64>,
     ) {
-
-        println!("{:?}", buf);
-
         debug_assert!(
-            self.level() <= a.level(),
+            nb_moduli <= self.level(),
+            "invalid input nb_moduli: nb_moduli={} > a.level()={}",
+            nb_moduli,
+            a.level()
+        );
+        debug_assert!(
+            a.level() <= self.level(),
             "invalid input a: self.level()={} > a.level()={}",
             self.level(),
             a.level()
         );
         debug_assert!(
-            c.level() >= a.level() - 1,
-            "invalid input b: b.level()={} < a.level()-1={}",
-            c.level(),
+            buf.level() >= self.level() - 1,
+            "invalid input buf: buf.level()={} < a.level()-1={}",
+            buf.level(),
             a.level() - 1
         );
         debug_assert!(
-            nb_moduli <= a.level(),
-            "invalid input nb_moduli: nb_moduli={} > a.level()={}",
-            nb_moduli,
-            a.level()
+            c.level() >= self.level() - nb_moduli,
+            "invalid input c: c.level()={} < c.level()-nb_moduli={}",
+            c.level(),
+            a.level() - nb_moduli
         );
-
+    
         if nb_moduli == 0 {
             if a != c {
                 c.copy(a);
@@ -140,11 +144,21 @@ impl RingRNS<u64> {
                 });
                 self.at_level(self.level() - nb_moduli).ntt::<false>(buf, c);
             } else {
-                self.div_floor_by_last_modulus::<false>(a, buf, c);
-                (1..nb_moduli).for_each(|i| {
+
+                let empty_buf: &mut PolyRNS<u64> = &mut PolyRNS::<u64>::default();
+
+                if nb_moduli == 1{
+                    self.div_floor_by_last_modulus::<false>(a, empty_buf, c);
+                }else{
+                    self.div_floor_by_last_modulus::<false>(a, empty_buf, buf);
+                }
+                
+                (1..nb_moduli-1).for_each(|i| {
                     self.at_level(self.level() - i)
-                        .div_floor_by_last_modulus_inplace::<false>(buf, c)
+                        .div_floor_by_last_modulus_inplace::<false>(empty_buf, buf);
                 });
+
+                self.at_level(self.level()-nb_moduli+1).div_floor_by_last_modulus::<false>(buf, empty_buf, c);
             }
         }
     }
@@ -168,17 +182,20 @@ impl RingRNS<u64> {
             nb_moduli,
             a.level()
         );
+        if nb_moduli == 0{
+            return
+        }
         if NTT {
             self.intt::<false>(a, buf);
             (0..nb_moduli).for_each(|i| {
                 self.at_level(self.level() - i)
                     .div_floor_by_last_modulus_inplace::<false>(&mut PolyRNS::<u64>::default(), buf)
             });
-            self.at_level(self.level() - nb_moduli).ntt::<false>(buf, a);
+            self.at_level(self.level() - nb_moduli+1).ntt::<false>(buf, a);
         } else {
             (0..nb_moduli).for_each(|i| {
                 self.at_level(self.level() - i)
-                    .div_floor_by_last_modulus_inplace::<false>(buf, a)
+                    .div_floor_by_last_modulus_inplace::<false>(buf, a);
             });
         }
     }

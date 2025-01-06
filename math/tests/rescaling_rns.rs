@@ -10,14 +10,14 @@ fn rescaling_rns_u64() {
     let moduli: Vec<u64> = vec![0x1fffffffffc80001u64, 0x1fffffffffe00001u64, 0x1fffffffffb40001, 0x1fffffffff500001];
     let ring_rns: RingRNS<u64> = RingRNS::new(n, moduli);
 
-    //test_div_floor_by_last_modulus::<false>(&ring_rns);
-    //test_div_floor_by_last_modulus::<true>(&ring_rns);
+    test_div_floor_by_last_modulus::<false>(&ring_rns);
+    test_div_floor_by_last_modulus::<true>(&ring_rns);
     test_div_floor_by_last_modulus_inplace::<false>(&ring_rns);
-    //test_div_floor_by_last_modulus_inplace::<true>(&ring_rns);
-    //test_div_floor_by_last_moduli::<false>(&ring_rns);
-    //test_div_floor_by_last_moduli::<true>(&ring_rns);
-    //test_div_floor_by_last_moduli_inplace::<false>(&ring_rns);
-    //test_div_floor_by_last_moduli_inplace::<true>(&ring_rns);
+    test_div_floor_by_last_modulus_inplace::<true>(&ring_rns);
+    test_div_floor_by_last_moduli::<false>(&ring_rns);
+    test_div_floor_by_last_moduli::<true>(&ring_rns);
+    test_div_floor_by_last_moduli_inplace::<false>(&ring_rns);
+    test_div_floor_by_last_moduli_inplace::<true>(&ring_rns);
 }
 
 fn test_div_floor_by_last_modulus<const NTT: bool>(ring_rns: &RingRNS<u64>) {
@@ -83,8 +83,6 @@ fn test_div_floor_by_last_modulus_inplace<const NTT: bool>(ring_rns: &RingRNS<u6
         .at_level(a.level())
         .to_bigint_inplace(&a, 1, &mut coeffs_a);
 
-        println!("{:?}", &coeffs_a[..8]);
-
     // Performs c = intt(ntt(a) / q_level)
     if NTT {
         ring_rns.ntt_inplace::<false>(&mut a);
@@ -112,9 +110,6 @@ fn test_div_floor_by_last_modulus_inplace<const NTT: bool>(ring_rns: &RingRNS<u6
         }
     });
 
-    println!("{:?}", &coeffs_a[..8]);
-    println!("{:?}", &coeffs_c[..8]);
-
     assert!(coeffs_a == coeffs_c, "test_div_floor_by_last_modulus_inplace");
 }
 
@@ -122,11 +117,11 @@ fn test_div_floor_by_last_moduli<const NTT: bool>(ring_rns: &RingRNS<u64>) {
     let seed: [u8; 32] = [0; 32];
     let mut source: Source = Source::new(seed);
 
-    let nb_moduli: usize = ring_rns.level()-1;
+    let nb_moduli: usize = ring_rns.level();
 
     let mut a: PolyRNS<u64> = ring_rns.new_polyrns();
     let mut b: PolyRNS<u64> = ring_rns.new_polyrns();
-    let mut c: PolyRNS<u64> = ring_rns.at_level(ring_rns.level() - 1).new_polyrns();
+    let mut c: PolyRNS<u64> = ring_rns.at_level(ring_rns.level() - nb_moduli).new_polyrns();
 
     // Allocates a random PolyRNS
     ring_rns.fill_uniform(&mut source, &mut a);
@@ -156,7 +151,8 @@ fn test_div_floor_by_last_moduli<const NTT: bool>(ring_rns: &RingRNS<u64>) {
 
     // Performs floor division on a
     let mut scalar_big = BigInt::from(1);
-    (0..nb_moduli).for_each(|i|{scalar_big *= BigInt::from(ring_rns.0[ring_rns.level()].modulus.q)});
+    (0..nb_moduli).for_each(|i|{scalar_big *= BigInt::from(ring_rns.0[ring_rns.level()-i].modulus.q)});
+   
     coeffs_a.iter_mut().for_each(|a| {
         // Emulates floor division in [0, q-1] and maps to [-(q-1)/2, (q-1)/2-1]
         *a /= &scalar_big;
@@ -172,7 +168,7 @@ fn test_div_floor_by_last_moduli_inplace<const NTT: bool>(ring_rns: &RingRNS<u64
     let seed: [u8; 32] = [0; 32];
     let mut source: Source = Source::new(seed);
 
-    let nb_moduli: usize = ring_rns.level()-1;
+    let nb_moduli: usize = ring_rns.level();
 
     let mut a: PolyRNS<u64> = ring_rns.new_polyrns();
     let mut b: PolyRNS<u64> = ring_rns.new_polyrns();
@@ -205,7 +201,7 @@ fn test_div_floor_by_last_moduli_inplace<const NTT: bool>(ring_rns: &RingRNS<u64
 
     // Performs floor division on a
     let mut scalar_big = BigInt::from(1);
-    (0..nb_moduli).for_each(|i|{scalar_big *= BigInt::from(ring_rns.0[ring_rns.level()].modulus.q)});
+    (0..nb_moduli).for_each(|i|{scalar_big *= BigInt::from(ring_rns.0[ring_rns.level()-i].modulus.q)});
     coeffs_a.iter_mut().for_each(|a| {
         // Emulates floor division in [0, q-1] and maps to [-(q-1)/2, (q-1)/2-1]
         *a /= &scalar_big;
