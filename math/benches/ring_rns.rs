@@ -1,10 +1,9 @@
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use math::poly::PolyRNS;
-use math::ring::impl_u64::ring_rns::new_rings;
-use math::ring::{Ring, RingRNS};
+use math::ring::RingRNS;
 
 fn div_floor_by_last_modulus_ntt_true(c: &mut Criterion) {
-    fn runner(r: RingRNS<u64>) -> Box<dyn FnMut() + '_> {
+    fn runner(r: RingRNS<u64>) -> Box<dyn FnMut()> {
         let a: PolyRNS<u64> = r.new_polyrns();
         let mut b: PolyRNS<u64> = r.new_polyrns();
         let mut c: PolyRNS<u64> = r.new_polyrns();
@@ -22,8 +21,8 @@ fn div_floor_by_last_modulus_ntt_true(c: &mut Criterion) {
             0x1fffffffffb40001,
             0x1fffffffff500001,
         ];
-        let rings: Vec<Ring<u64>> = new_rings(n, moduli);
-        let ring_rns: RingRNS<'_, u64> = RingRNS::new(&rings);
+
+        let ring_rns: RingRNS<u64> = RingRNS::new(n, moduli);
 
         let runners = [(format!("prime/n={}/level={}", n, ring_rns.level()), {
             runner(ring_rns)

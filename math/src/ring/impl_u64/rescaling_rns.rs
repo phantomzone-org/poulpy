@@ -6,7 +6,7 @@ use crate::ring::RingRNS;
 use crate::scalar::ScalarRNS;
 extern crate test;
 
-impl RingRNS<'_, u64> {
+impl RingRNS<u64> {
     /// Updates b to floor(a / q[b.level()]).
     pub fn div_floor_by_last_modulus<const NTT: bool>(
         &self,

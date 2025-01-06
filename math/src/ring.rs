@@ -4,6 +4,7 @@ use crate::dft::DFT;
 use crate::modulus::prime::Prime;
 use crate::poly::{Poly, PolyRNS};
 use num::traits::Unsigned;
+use std::sync::Arc;
 
 pub struct Ring<O: Unsigned> {
     pub n: usize,
@@ -21,9 +22,9 @@ impl<O: Unsigned> Ring<O> {
     }
 }
 
-pub struct RingRNS<'a, O: Unsigned>(pub &'a [Ring<O>]);
+pub struct RingRNS<O: Unsigned>(pub Vec<Arc<Ring<O>>>);
 
-impl<O: Unsigned> RingRNS<'_, O> {
+impl<O: Unsigned> RingRNS<O> {
     pub fn n(&self) -> usize {
         self.0[0].n()
     }
@@ -42,6 +43,6 @@ impl<O: Unsigned> RingRNS<'_, O> {
 
     pub fn at_level(&self, level: usize) -> RingRNS<O> {
         assert!(level <= self.0.len());
-        RingRNS(&self.0[..level + 1])
+        RingRNS(self.0[..level + 1].to_vec())
     }
 }

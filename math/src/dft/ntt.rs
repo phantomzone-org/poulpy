@@ -19,7 +19,7 @@ pub struct Table<O> {
 }
 
 impl Table<u64> {
-    pub fn new(prime: Prime<u64>, nth_root: u64) -> Self {
+    pub fn new(prime: Prime<u64>, nth_root: u64) -> Table<u64> {
         assert!(
             nth_root & (nth_root - 1) == 0,
             "invalid argument: nth_root = {} is not a power of two",

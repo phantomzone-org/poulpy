@@ -12,7 +12,7 @@ impl Ring<u64> {
     }
 }
 
-impl RingRNS<'_, u64> {
+impl RingRNS<u64> {
     pub fn fill_uniform(&self, source: &mut Source, a: &mut PolyRNS<u64>) {
         self.0
             .iter()

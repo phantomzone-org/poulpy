@@ -5,19 +5,16 @@ use crate::poly::PolyRNS;
 use crate::ring::{Ring, RingRNS};
 use crate::scalar::ScalarRNS;
 use num_bigint::BigInt;
+use std::sync::Arc;
 
-pub fn new_rings(n: usize, moduli: Vec<u64>) -> Vec<Ring<u64>> {
-    assert!(!moduli.is_empty(), "moduli cannot be empty");
-    let rings: Vec<Ring<u64>> = moduli
-        .into_iter()
-        .map(|prime| Ring::new(n, prime, 1))
-        .collect();
-    return rings;
-}
-
-impl<'a> RingRNS<'a, u64> {
-    pub fn new(rings: &'a [Ring<u64>]) -> Self {
-        RingRNS(rings)
+impl RingRNS<u64> {
+    pub fn new(n: usize, moduli: Vec<u64>) -> Self {
+        assert!(!moduli.is_empty(), "moduli cannot be empty");
+        let rings: Vec<Arc<Ring<u64>>> = moduli
+            .into_iter()
+            .map(|prime| Arc::new(Ring::new(n, prime, 1)))
+            .collect();
+        return RingRNS(rings);
     }
 
     pub fn modulus(&self) -> BigInt {
@@ -92,7 +89,7 @@ impl<'a> RingRNS<'a, u64> {
     }
 }
 
-impl RingRNS<'_, u64> {
+impl RingRNS<u64> {
     pub fn ntt_inplace<const LAZY: bool>(&self, a: &mut PolyRNS<u64>) {
         self.0
             .iter()
@@ -122,7 +119,7 @@ impl RingRNS<'_, u64> {
     }
 }
 
-impl RingRNS<'_, u64> {
+impl RingRNS<u64> {
     #[inline(always)]
     pub fn add<const REDUCE: REDUCEMOD>(
         &self,

@@ -1,6 +1,5 @@
 use math::poly::PolyRNS;
-use math::ring::impl_u64::ring_rns::new_rings;
-use math::ring::{Ring, RingRNS};
+use math::ring::RingRNS;
 use num_bigint::BigInt;
 use num_bigint::Sign;
 use sampling::source::Source;
@@ -9,8 +8,7 @@ use sampling::source::Source;
 fn rescaling_rns_u64() {
     let n = 1 << 10;
     let moduli: Vec<u64> = vec![0x1fffffffffc80001u64, 0x1fffffffffe00001u64];
-    let rings: Vec<Ring<u64>> = new_rings(n, moduli);
-    let ring_rns: RingRNS<'_, u64> = RingRNS::new(&rings);
+    let ring_rns: RingRNS<u64> = RingRNS::new(n, moduli);
 
     test_div_floor_by_last_modulus::<false>(&ring_rns);
     test_div_floor_by_last_modulus::<true>(&ring_rns);
