@@ -92,9 +92,9 @@ impl Ring<u64> {
     }
 
     #[inline(always)]
-    pub fn add_scalar_inplace<const REDUCE: REDUCEMOD>(&self, a: &u64, b: &mut Poly<u64>) {
-        debug_assert!(b.n() == self.n(), "b.n()={} != n={}", b.n(), self.n());
-        self.modulus.sa_add_vb_into_vb::<CHUNK, REDUCE>(a, &mut b.0);
+    pub fn add_scalar_inplace<const REDUCE: REDUCEMOD>(&self, b: &u64, a: &mut Poly<u64>) {
+        debug_assert!(a.n() == self.n(), "a.n()={} != n={}", a.n(), self.n());
+        self.modulus.va_add_sb_into_va::<CHUNK, REDUCE>(b, &mut a.0);
     }
 
     #[inline(always)]
@@ -106,33 +106,47 @@ impl Ring<u64> {
     }
 
     #[inline(always)]
-    pub fn sub_inplace<const REDUCE: REDUCEMOD>(&self, a: &Poly<u64>, b: &mut Poly<u64>) {
-        debug_assert!(a.n() == self.n(), "a.n()={} != n={}", a.n(), self.n());
-        debug_assert!(b.n() == self.n(), "b.n()={} != n={}", b.n(), self.n());
-        self.modulus
-            .va_sub_vb_into_vb::<CHUNK, REDUCE>(&a.0, &mut b.0);
+    pub fn add_scalar_then_mul_scalar_barrett_inplace<const REDUCE: REDUCEMOD>(&self, b: &u64, c: &Barrett<u64>, a: &mut Poly<u64>) {
+        debug_assert!(a.n() == self.n(), "b.n()={} != n={}", a.n(), self.n());
+        self.modulus.va_add_sb_mul_sc_into_va::<CHUNK, REDUCE>(b, c, &mut a.0);
     }
 
     #[inline(always)]
-    pub fn sub<const REDUCE: REDUCEMOD>(&self, a: &Poly<u64>, b: &Poly<u64>, c: &mut Poly<u64>) {
+    pub fn add_scalar_then_mul_scalar_barrett<const REDUCE: REDUCEMOD>(&self, a: &Poly<u64>, b: &u64, c: &Barrett<u64>, d: &mut Poly<u64>) {
+        debug_assert!(a.n() == self.n(), "a.n()={} != n={}", a.n(), self.n());
+        debug_assert!(d.n() == self.n(), "c.n()={} != n={}", d.n(), self.n());
+        self.modulus
+            .va_add_sb_mul_sc_into_vd::<CHUNK, REDUCE>(&a.0, b, c, &mut d.0);
+    }
+
+    #[inline(always)]
+    pub fn sub_inplace<const BRANGE:u8, const REDUCE: REDUCEMOD>(&self, a: &Poly<u64>, b: &mut Poly<u64>) {
+        debug_assert!(a.n() == self.n(), "a.n()={} != n={}", a.n(), self.n());
+        debug_assert!(b.n() == self.n(), "b.n()={} != n={}", b.n(), self.n());
+        self.modulus
+            .va_sub_vb_into_vb::<CHUNK, BRANGE, REDUCE>(&a.0, &mut b.0);
+    }
+
+    #[inline(always)]
+    pub fn sub<const BRANGE:u8, const REDUCE: REDUCEMOD>(&self, a: &Poly<u64>, b: &Poly<u64>, c: &mut Poly<u64>) {
         debug_assert!(a.n() == self.n(), "a.n()={} != n={}", a.n(), self.n());
         debug_assert!(b.n() == self.n(), "b.n()={} != n={}", b.n(), self.n());
         debug_assert!(c.n() == self.n(), "c.n()={} != n={}", c.n(), self.n());
         self.modulus
-            .va_sub_vb_into_vc::<CHUNK, REDUCE>(&a.0, &b.0, &mut c.0);
+            .va_sub_vb_into_vc::<CHUNK, BRANGE, REDUCE>(&a.0, &b.0, &mut c.0);
     }
 
     #[inline(always)]
-    pub fn neg<const REDUCE: REDUCEMOD>(&self, a: &Poly<u64>, b: &mut Poly<u64>) {
+    pub fn neg<const ARANGE:u8, const REDUCE: REDUCEMOD>(&self, a: &Poly<u64>, b: &mut Poly<u64>) {
         debug_assert!(a.n() == self.n(), "a.n()={} != n={}", a.n(), self.n());
         debug_assert!(b.n() == self.n(), "b.n()={} != n={}", b.n(), self.n());
-        self.modulus.va_neg_into_vb::<CHUNK, REDUCE>(&a.0, &mut b.0);
+        self.modulus.va_neg_into_vb::<CHUNK, ARANGE, REDUCE>(&a.0, &mut b.0);
     }
 
     #[inline(always)]
-    pub fn neg_inplace<const REDUCE: REDUCEMOD>(&self, a: &mut Poly<u64>) {
+    pub fn neg_inplace<const ARANGE:u8,const REDUCE: REDUCEMOD>(&self, a: &mut Poly<u64>) {
         debug_assert!(a.n() == self.n(), "a.n()={} != n={}", a.n(), self.n());
-        self.modulus.va_neg_into_va::<CHUNK, REDUCE>(&mut a.0);
+        self.modulus.va_neg_into_va::<CHUNK, ARANGE, REDUCE>(&mut a.0);
     }
 
     #[inline(always)]
@@ -208,7 +222,7 @@ impl Ring<u64> {
     }
 
     #[inline(always)]
-    pub fn sum_aqqmb_prod_c_scalar_barrett<const REDUCE: REDUCEMOD>(
+    pub fn a_sub_b_mul_c_scalar_barrett<const VBRANGE: u8, const REDUCE: REDUCEMOD>(
         &self,
         a: &Poly<u64>,
         b: &Poly<u64>,
@@ -219,11 +233,11 @@ impl Ring<u64> {
         debug_assert!(b.n() == self.n(), "b.n()={} != n={}", b.n(), self.n());
         debug_assert!(d.n() == self.n(), "d.n()={} != n={}", d.n(), self.n());
         self.modulus
-            .va_sub_vb_mul_sc_into_vd::<CHUNK, REDUCE>(&a.0, &b.0, c, &mut d.0);
+            .va_sub_vb_mul_sc_into_vd::<CHUNK, VBRANGE, REDUCE>(&a.0, &b.0, c, &mut d.0);
     }
 
     #[inline(always)]
-    pub fn sum_aqqmb_prod_c_scalar_barrett_inplace<const REDUCE: REDUCEMOD>(
+    pub fn a_sub_b_mul_c_scalar_barrett_inplace<const BRANGE: u8, const REDUCE: REDUCEMOD>(
         &self,
         a: &Poly<u64>,
         c: &Barrett<u64>,
@@ -232,6 +246,6 @@ impl Ring<u64> {
         debug_assert!(a.n() == self.n(), "a.n()={} != n={}", a.n(), self.n());
         debug_assert!(b.n() == self.n(), "b.n()={} != n={}", b.n(), self.n());
         self.modulus
-            .va_sub_vb_mul_sc_into_vb::<CHUNK, REDUCE>(&a.0, c, &mut b.0);
+            .va_sub_vb_mul_sc_into_vb::<CHUNK, BRANGE, REDUCE>(&a.0, c, &mut b.0);
     }
 }

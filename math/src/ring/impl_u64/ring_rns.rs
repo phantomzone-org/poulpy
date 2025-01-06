@@ -172,7 +172,7 @@ impl RingRNS<u64> {
     }
 
     #[inline(always)]
-    pub fn sub<const REDUCE: REDUCEMOD>(
+    pub fn sub<const BRANGE: u8, const REDUCE: REDUCEMOD>(
         &self,
         a: &PolyRNS<u64>,
         b: &PolyRNS<u64>,
@@ -199,11 +199,11 @@ impl RingRNS<u64> {
         self.0
             .iter()
             .enumerate()
-            .for_each(|(i, ring)| ring.sub::<REDUCE>(&a.0[i], &b.0[i], &mut c.0[i]));
+            .for_each(|(i, ring)| ring.sub::<BRANGE, REDUCE>(&a.0[i], &b.0[i], &mut c.0[i]));
     }
 
     #[inline(always)]
-    pub fn sub_inplace<const REDUCE: REDUCEMOD>(&self, a: &PolyRNS<u64>, b: &mut PolyRNS<u64>) {
+    pub fn sub_inplace<const BRANGE: u8, const REDUCE: REDUCEMOD>(&self, a: &PolyRNS<u64>, b: &mut PolyRNS<u64>) {
         debug_assert!(
             a.level() >= self.level(),
             "a.level()={} < self.level()={}",
@@ -219,11 +219,11 @@ impl RingRNS<u64> {
         self.0
             .iter()
             .enumerate()
-            .for_each(|(i, ring)| ring.sub_inplace::<REDUCE>(&a.0[i], &mut b.0[i]));
+            .for_each(|(i, ring)| ring.sub_inplace::<BRANGE, REDUCE>(&a.0[i], &mut b.0[i]));
     }
 
     #[inline(always)]
-    pub fn neg<const REDUCE: REDUCEMOD>(&self, a: &PolyRNS<u64>, b: &mut PolyRNS<u64>) {
+    pub fn neg<const ARANGE: u8, const REDUCE: REDUCEMOD>(&self, a: &PolyRNS<u64>, b: &mut PolyRNS<u64>) {
         debug_assert!(
             a.level() >= self.level(),
             "a.level()={} < self.level()={}",
@@ -239,11 +239,11 @@ impl RingRNS<u64> {
         self.0
             .iter()
             .enumerate()
-            .for_each(|(i, ring)| ring.neg::<REDUCE>(&a.0[i], &mut b.0[i]));
+            .for_each(|(i, ring)| ring.neg::<ARANGE, REDUCE>(&a.0[i], &mut b.0[i]));
     }
 
     #[inline(always)]
-    pub fn neg_inplace<const REDUCE: REDUCEMOD>(&self, a: &mut PolyRNS<u64>) {
+    pub fn neg_inplace<const ARANGE: u8, const REDUCE: REDUCEMOD>(&self, a: &mut PolyRNS<u64>) {
         debug_assert!(
             a.level() >= self.level(),
             "a.level()={} < self.level()={}",
@@ -253,7 +253,7 @@ impl RingRNS<u64> {
         self.0
             .iter()
             .enumerate()
-            .for_each(|(i, ring)| ring.neg_inplace::<REDUCE>(&mut a.0[i]));
+            .for_each(|(i, ring)| ring.neg_inplace::<ARANGE, REDUCE>(&mut a.0[i]));
     }
 
     #[inline(always)]
