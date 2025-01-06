@@ -3,7 +3,7 @@ use math::ring::{Ring, RingRNS};
 use math::ring::impl_u64::ring_rns::new_rings;
 use math::poly::PolyRNS;
 
-fn div_floor_by_last_modulus_ntt(c: &mut Criterion) {
+fn div_floor_by_last_modulus_ntt_true(c: &mut Criterion) {
     fn runner(r: RingRNS<u64>) -> Box<dyn FnMut() + '_> {
         
         let a: PolyRNS<u64> = r.new_polyrns();
@@ -11,11 +11,11 @@ fn div_floor_by_last_modulus_ntt(c: &mut Criterion) {
         let mut c: PolyRNS<u64> = r.new_polyrns();
 
         Box::new(move || {
-            r.div_floor_by_last_modulus_ntt(&a, &mut b, &mut c)
+            r.div_floor_by_last_modulus::<true>(&a, &mut b, &mut c)
         })
     }
 
-    let mut b: criterion::BenchmarkGroup<'_, criterion::measurement::WallTime> = c.benchmark_group("div_floor_by_last_modulus_ntt");
+    let mut b: criterion::BenchmarkGroup<'_, criterion::measurement::WallTime> = c.benchmark_group("div_floor_by_last_modulus_ntt_true");
     for log_n in 11..18 {
 
         let n = 1<<log_n;
@@ -35,5 +35,5 @@ fn div_floor_by_last_modulus_ntt(c: &mut Criterion) {
     }
 }
 
-criterion_group!(benches, div_floor_by_last_modulus_ntt);
+criterion_group!(benches, div_floor_by_last_modulus_ntt_true);
 criterion_main!(benches);

@@ -55,6 +55,12 @@ impl<O: PartialEq> PartialEq for Poly<O> {
     }
 }
 
+impl<O> Default for Poly<O> {
+    fn default() -> Self {
+        Poly(Vec::new())
+    }
+}
+
 #[derive(Clone, Debug, Eq)]
 pub struct PolyRNS<O>(pub Vec<Poly<O>>);
 
@@ -143,7 +149,6 @@ impl<O: PartialEq> PartialEq for PolyRNS<O> {
 
 impl<O> Default for PolyRNS<O>{
     fn default() -> Self{
-        let polys:Vec<Poly<O>> = Vec::new();
-        Self{0:polys}
+        Self{0:Vec::new()}
     }
 }

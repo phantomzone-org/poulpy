@@ -22,7 +22,7 @@ impl<O: Unsigned> Ring<O>{
     }
 }
 
-pub struct RingRNS<'a, O: Unsigned>(& 'a [Ring<O>]);
+pub struct RingRNS<'a, O: Unsigned>(pub & 'a [Ring<O>]);
 
 impl<O: Unsigned> RingRNS<'_, O> {
 
