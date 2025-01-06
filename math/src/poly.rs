@@ -4,45 +4,51 @@ use std::cmp::PartialEq;
 #[derive(Clone, Debug, Eq)]
 pub struct Poly<O>(pub Vec<O>);
 
-impl<O> Poly<O>where
+impl<O> Poly<O>
+where
     O: Default + Clone + Copy,
-    {
-    pub fn new(n: usize) -> Self{
-        Self(vec![O::default();n])
+{
+    pub fn new(n: usize) -> Self {
+        Self(vec![O::default(); n])
     }
 
-    pub fn buffer_size(&self) -> usize{
-        return self.0.len()
+    pub fn buffer_size(&self) -> usize {
+        return self.0.len();
     }
 
-    pub fn from_buffer(&mut self, n: usize, buf: &mut [O]){
-        assert!(buf.len() >= n, "invalid buffer: buf.len()={} < n={}", buf.len(), n);
+    pub fn from_buffer(&mut self, n: usize, buf: &mut [O]) {
+        assert!(
+            buf.len() >= n,
+            "invalid buffer: buf.len()={} < n={}",
+            buf.len(),
+            n
+        );
         self.0 = Vec::from(&buf[..n]);
     }
 
-    pub fn log_n(&self) -> usize{
-        (usize::BITS - (self.n()-1).leading_zeros()) as usize
+    pub fn log_n(&self) -> usize {
+        (usize::BITS - (self.n() - 1).leading_zeros()) as usize
     }
 
-    pub fn n(&self) -> usize{
+    pub fn n(&self) -> usize {
         self.0.len()
     }
 
-    pub fn resize(&mut self, n:usize){
+    pub fn resize(&mut self, n: usize) {
         self.0.resize(n, O::default());
     }
 
-    pub fn set_all(&mut self, v: &O){
+    pub fn set_all(&mut self, v: &O) {
         self.0.fill(*v)
     }
 
-    pub fn zero(&mut self){
+    pub fn zero(&mut self) {
         self.set_all(&O::default())
     }
 
-    pub fn copy_from(&mut self, other: &Poly<O>){
-        if std::ptr::eq(self, other){
-            return
+    pub fn copy_from(&mut self, other: &Poly<O>) {
+        if std::ptr::eq(self, other) {
+            return;
         }
         self.resize(other.n());
         self.0.copy_from_slice(&other.0)
@@ -64,80 +70,100 @@ impl<O> Default for Poly<O> {
 #[derive(Clone, Debug, Eq)]
 pub struct PolyRNS<O>(pub Vec<Poly<O>>);
 
-impl<O> PolyRNS<O>where
+impl<O> PolyRNS<O>
+where
     O: Default + Clone + Copy,
-    {
-
-    pub fn new(n: usize, level: usize) -> Self{
+{
+    pub fn new(n: usize, level: usize) -> Self {
         let mut polyrns: PolyRNS<O> = PolyRNS::<O>::default();
-        let mut buf: Vec<O> = vec![O::default();polyrns.buffer_size(n, level)];
+        let mut buf: Vec<O> = vec![O::default(); polyrns.buffer_size(n, level)];
         polyrns.from_buffer(n, level, &mut buf[..]);
         polyrns
     }
 
-    pub fn n(&self) -> usize{
+    pub fn n(&self) -> usize {
         self.0[0].n()
     }
 
-    pub fn log_n(&self) -> usize{
+    pub fn log_n(&self) -> usize {
         self.0[0].log_n()
     }
 
-    pub fn level(&self) -> usize{
-        self.0.len()-1
+    pub fn level(&self) -> usize {
+        self.0.len() - 1
     }
 
-    pub fn buffer_size(&self, n: usize, level:usize) -> usize{
-        n * (level+1)
+    pub fn buffer_size(&self, n: usize, level: usize) -> usize {
+        n * (level + 1)
     }
 
-    pub fn from_buffer(&mut self, n: usize, level: usize, buf: &mut [O]){
-        assert!(buf.len() >= n * (level+1), "invalid buffer: buf.len()={} < n * (level+1)={}", buf.len(), level+1);
+    pub fn from_buffer(&mut self, n: usize, level: usize, buf: &mut [O]) {
+        assert!(
+            buf.len() >= n * (level + 1),
+            "invalid buffer: buf.len()={} < n * (level+1)={}",
+            buf.len(),
+            level + 1
+        );
         self.0.clear();
-        for chunk in buf.chunks_mut(n).take(level+1) {
+        for chunk in buf.chunks_mut(n).take(level + 1) {
             let mut poly: Poly<O> = Poly(Vec::new());
             poly.from_buffer(n, chunk);
             self.0.push(poly);
         }
     }
 
-    pub fn resize(&mut self, level:usize){
-        self.0.resize(level+1, Poly::<O>::new(self.n()));
+    pub fn resize(&mut self, level: usize) {
+        self.0.resize(level + 1, Poly::<O>::new(self.n()));
     }
 
-    pub fn split_at_mut(&mut self, level:usize) -> (&mut [Poly<O>], &mut [Poly<O>]){
+    pub fn split_at_mut(&mut self, level: usize) -> (&mut [Poly<O>], &mut [Poly<O>]) {
         self.0.split_at_mut(level)
     }
 
-    pub fn at(&self, level:usize) -> &Poly<O>{
-        assert!(level <= self.level(), "invalid argument level: level={} > self.level()={}", level, self.level());
+    pub fn at(&self, level: usize) -> &Poly<O> {
+        assert!(
+            level <= self.level(),
+            "invalid argument level: level={} > self.level()={}",
+            level,
+            self.level()
+        );
         &self.0[level]
     }
 
-    pub fn at_mut(&mut self, level:usize) -> &mut Poly<O>{
+    pub fn at_mut(&mut self, level: usize) -> &mut Poly<O> {
         &mut self.0[level]
     }
 
-    pub fn set_all(&mut self, v: &O){
-        (0..self.level()+1).for_each(|i| self.at_mut(i).set_all(v))
+    pub fn set_all(&mut self, v: &O) {
+        (0..self.level() + 1).for_each(|i| self.at_mut(i).set_all(v))
     }
 
-    pub fn zero(&mut self){
+    pub fn zero(&mut self) {
         self.set_all(&O::default())
     }
 
-    pub fn copy(&mut self, other: &PolyRNS<O>){
-        if std::ptr::eq(self, other){
-            return
+    pub fn copy(&mut self, other: &PolyRNS<O>) {
+        if std::ptr::eq(self, other) {
+            return;
         }
         self.resize(other.level());
         self.copy_level(other.level(), other);
     }
 
-    pub fn copy_level(&mut self, level:usize, other: &PolyRNS<O>){
-        assert!(self.level() <= level, "invalid argument level: level={} > self.level()={}", level, self.level());
-        assert!(other.level() <= level, "invalid argument level: level={} > other.level()={}", level, other.level());
-        (0..level+1).for_each(|i| self.at_mut(i).copy_from(other.at(i)))
+    pub fn copy_level(&mut self, level: usize, other: &PolyRNS<O>) {
+        assert!(
+            self.level() <= level,
+            "invalid argument level: level={} > self.level()={}",
+            level,
+            self.level()
+        );
+        assert!(
+            other.level() <= level,
+            "invalid argument level: level={} > other.level()={}",
+            level,
+            other.level()
+        );
+        (0..level + 1).for_each(|i| self.at_mut(i).copy_from(other.at(i)))
     }
 }
 
@@ -147,8 +173,8 @@ impl<O: PartialEq> PartialEq for PolyRNS<O> {
     }
 }
 
-impl<O> Default for PolyRNS<O>{
-    fn default() -> Self{
-        Self{0:Vec::new()}
+impl<O> Default for PolyRNS<O> {
+    fn default() -> Self {
+        Self { 0: Vec::new() }
     }
 }

@@ -4,10 +4,10 @@ use crate::modulus::barrett::BarrettPrecomp;
 /// an element in the Montgomery domain.
 pub type Montgomery<O> = O;
 
-/// MontgomeryPrecomp is a generic struct storing 
+/// MontgomeryPrecomp is a generic struct storing
 /// precomputations for Montgomery arithmetic.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct MontgomeryPrecomp<O>{
+pub struct MontgomeryPrecomp<O> {
     pub q: O,
     pub two_q: O,
     pub four_q: O,
