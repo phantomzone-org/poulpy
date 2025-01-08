@@ -3,10 +3,10 @@
 
 pub mod dft;
 pub mod modulus;
+pub mod num_bigint;
 pub mod poly;
 pub mod ring;
 pub mod scalar;
-pub mod num_bigint;
 
 pub const CHUNK: usize = 8;
 
@@ -333,11 +333,7 @@ pub mod macros {
 
             match CHUNK {
                 8 => {
-                    izip!(
-                        $a.chunks_exact(8),
-                        $d.chunks_exact_mut(8)
-                    )
-                    .for_each(|(a, d)| {
+                    izip!($a.chunks_exact(8), $d.chunks_exact_mut(8)).for_each(|(a, d)| {
                         $f(&$self, &a[0], $b, $c, &mut d[0]);
                         $f(&$self, &a[1], $b, $c, &mut d[1]);
                         $f(&$self, &a[2], $b, $c, &mut d[2]);
@@ -349,11 +345,9 @@ pub mod macros {
                     });
 
                     let m = n - (n & 7);
-                    izip!($a[m..].iter(), $d[m..].iter_mut()).for_each(
-                        |(a, d)| {
-                            $f(&$self, a, $b, $c, d);
-                        },
-                    );
+                    izip!($a[m..].iter(), $d[m..].iter_mut()).for_each(|(a, d)| {
+                        $f(&$self, a, $b, $c, d);
+                    });
                 }
                 _ => {
                     izip!($a.iter(), $d.iter_mut()).for_each(|(a, d)| {

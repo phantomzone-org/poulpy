@@ -74,7 +74,12 @@ pub trait ScalarOperations<O> {
     fn sa_add_sb_into_sb<const REDUCE: REDUCEMOD>(&self, a: &O, b: &mut O);
 
     // Assigns a - b to c.
-    fn sa_sub_sb_into_sc<const SBRANGE: u8, const REDUCE: REDUCEMOD>(&self, a: &O, b: &O, c: &mut O);
+    fn sa_sub_sb_into_sc<const SBRANGE: u8, const REDUCE: REDUCEMOD>(
+        &self,
+        a: &O,
+        b: &O,
+        c: &mut O,
+    );
 
     // Assigns a - b to b.
     fn sa_sub_sb_into_sb<const SARANGE: u8, const REDUCE: REDUCEMOD>(&self, a: &O, b: &mut O);
@@ -147,7 +152,7 @@ pub trait ScalarOperations<O> {
         &self,
         b: &u64,
         c: &barrett::Barrett<u64>,
-        a: &mut u64
+        a: &mut u64,
     );
 
     // Assigns (a + b) * c to d.
@@ -156,25 +161,25 @@ pub trait ScalarOperations<O> {
         a: &u64,
         b: &u64,
         c: &barrett::Barrett<u64>,
-        d: &mut u64
+        d: &mut u64,
     );
 
     // Assigns (a - b + c) * d to e.
-    fn sb_sub_sa_add_sc_mul_sd_into_se<const SBRANGE: u8,const REDUCE: REDUCEMOD>(
+    fn sb_sub_sa_add_sc_mul_sd_into_se<const SBRANGE: u8, const REDUCE: REDUCEMOD>(
         &self,
         a: &u64,
         b: &u64,
         c: &u64,
         d: &barrett::Barrett<u64>,
-        e: &mut u64
+        e: &mut u64,
     );
 
-    fn sb_sub_sa_add_sc_mul_sd_into_sa<const SBRANGE: u8,const REDUCE: REDUCEMOD>(
+    fn sb_sub_sa_add_sc_mul_sd_into_sa<const SBRANGE: u8, const REDUCE: REDUCEMOD>(
         &self,
         b: &u64,
         c: &u64,
         d: &barrett::Barrett<u64>,
-        a: &mut u64
+        a: &mut u64,
     );
 }
 
@@ -206,10 +211,18 @@ pub trait VectorOperations<O> {
     fn va_add_sb_into_va<const CHUNK: usize, const REDUCE: REDUCEMOD>(&self, a: &O, b: &mut [O]);
 
     // vec(b) <- vec(a) - vec(b).
-    fn va_sub_vb_into_vb<const CHUNK: usize, const VBRANGE: u8, const REDUCE: REDUCEMOD>(&self, a: &[O], b: &mut [O]);
+    fn va_sub_vb_into_vb<const CHUNK: usize, const VBRANGE: u8, const REDUCE: REDUCEMOD>(
+        &self,
+        a: &[O],
+        b: &mut [O],
+    );
 
     // vec(a) <- vec(a) - vec(b).
-    fn va_sub_vb_into_va<const CHUNK: usize, const VBRANGE: u8, const REDUCE: REDUCEMOD>(&self, b: &[O], a: &mut [O]);
+    fn va_sub_vb_into_va<const CHUNK: usize, const VBRANGE: u8, const REDUCE: REDUCEMOD>(
+        &self,
+        b: &[O],
+        a: &mut [O],
+    );
 
     // vec(c) <- vec(a) - vec(b).
     fn va_sub_vb_into_vc<const CHUNK: usize, const VBRANGE: u8, const REDUCE: REDUCEMOD>(
@@ -220,10 +233,17 @@ pub trait VectorOperations<O> {
     );
 
     // vec(a) <- -vec(a).
-    fn va_neg_into_va<const CHUNK: usize, const VARANGE: u8, const REDUCE: REDUCEMOD>(&self, a: &mut [O]);
+    fn va_neg_into_va<const CHUNK: usize, const VARANGE: u8, const REDUCE: REDUCEMOD>(
+        &self,
+        a: &mut [O],
+    );
 
     // vec(b) <- -vec(a).
-    fn va_neg_into_vb<const CHUNK: usize, const VARANGE: u8, const REDUCE: REDUCEMOD>(&self, a: &[O], b: &mut [O]);
+    fn va_neg_into_vb<const CHUNK: usize, const VARANGE: u8, const REDUCE: REDUCEMOD>(
+        &self,
+        a: &[O],
+        b: &mut [O],
+    );
 
     // vec(b) <- vec(a)
     fn va_prep_mont_into_vb<const CHUNK: usize, const REDUCE: REDUCEMOD>(
@@ -297,7 +317,11 @@ pub trait VectorOperations<O> {
     );
 
     // vec(e) <- (vec(b) - vec(a) + scalar(c)) * scalar(e).
-    fn vb_sub_va_add_sc_mul_sd_into_ve<const CHUNK: usize, const VBRANGE: u8, const REDUCE: REDUCEMOD>(
+    fn vb_sub_va_add_sc_mul_sd_into_ve<
+        const CHUNK: usize,
+        const VBRANGE: u8,
+        const REDUCE: REDUCEMOD,
+    >(
         &self,
         va: &[u64],
         vb: &[u64],
@@ -307,7 +331,11 @@ pub trait VectorOperations<O> {
     );
 
     // vec(a) <- (vec(b) - vec(a) + scalar(c)) * scalar(e).
-    fn vb_sub_va_add_sc_mul_sd_into_va<const CHUNK: usize, const VBRANGE: u8, const REDUCE: REDUCEMOD>(
+    fn vb_sub_va_add_sc_mul_sd_into_va<
+        const CHUNK: usize,
+        const VBRANGE: u8,
+        const REDUCE: REDUCEMOD,
+    >(
         &self,
         vb: &[u64],
         sc: &u64,

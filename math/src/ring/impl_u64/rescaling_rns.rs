@@ -1,5 +1,5 @@
 use crate::modulus::barrett::Barrett;
-use crate::modulus::{NONE, ONCE, BARRETT};
+use crate::modulus::{BARRETT, NONE, ONCE};
 use crate::poly::PolyRNS;
 use crate::ring::Ring;
 use crate::ring::RingRNS;
@@ -31,9 +31,8 @@ impl RingRNS<u64> {
         let level = self.level();
         let rescaling_constants: ScalarRNS<Barrett<u64>> = self.rescaling_constant();
         let r_last: &Ring<u64> = &self.0[level];
-        
-        if ROUND{
 
+        if ROUND {
             let q_level_half: u64 = r_last.modulus.q >> 1;
 
             let (buf_q_scaling, buf_qi_scaling) = buf.0.split_at_mut(1);
@@ -56,7 +55,11 @@ impl RingRNS<u64> {
                     );
                 }
             } else {
-                r_last.a_add_b_scalar_into_c::<ONCE>(a.at(self.level()), &q_level_half, &mut buf_q_scaling[0]);
+                r_last.a_add_b_scalar_into_c::<ONCE>(
+                    a.at(self.level()),
+                    &q_level_half,
+                    &mut buf_q_scaling[0],
+                );
                 for (i, r) in self.0[0..level].iter().enumerate() {
                     r_last.a_add_b_scalar_into_c::<NONE>(
                         &buf_q_scaling[0],
@@ -71,7 +74,7 @@ impl RingRNS<u64> {
                     );
                 }
             }
-        }else{
+        } else {
             if NTT {
                 let (buf_ntt_q_scaling, buf_ntt_qi_scaling) = buf.0.split_at_mut(1);
                 self.0[level].intt::<false>(a.at(level), &mut buf_ntt_q_scaling[0]);
@@ -115,8 +118,7 @@ impl RingRNS<u64> {
         let rescaling_constants: ScalarRNS<Barrett<u64>> = self.rescaling_constant();
         let r_last: &Ring<u64> = &self.0[level];
 
-        if ROUND{
-
+        if ROUND {
             let q_level_half: u64 = r_last.modulus.q >> 1;
             let (buf_q_scaling, buf_qi_scaling) = buf.0.split_at_mut(1);
 
@@ -148,8 +150,7 @@ impl RingRNS<u64> {
                     );
                 }
             }
-        }else{
-
+        } else {
             if NTT {
                 let (buf_ntt_q_scaling, buf_ntt_qi_scaling) = buf.0.split_at_mut(1);
                 r_last.intt::<false>(a.at(level), &mut buf_ntt_q_scaling[0]);
@@ -161,7 +162,7 @@ impl RingRNS<u64> {
                         a.at_mut(i),
                     );
                 }
-            }else{
+            } else {
                 let (a_i, a_level) = a.0.split_at_mut(level);
                 for (i, r) in self.0[0..level].iter().enumerate() {
                     r.b_sub_a_mul_c_scalar_barrett_into_a::<2, ONCE>(
@@ -172,7 +173,6 @@ impl RingRNS<u64> {
                 }
             }
         }
-        
     }
 
     /// Updates b to floor(a / prod_{level - nb_moduli}^{level} q[i])
@@ -207,14 +207,13 @@ impl RingRNS<u64> {
             c.level(),
             a.level() - nb_moduli
         );
-    
+
         if nb_moduli == 0 {
             if a != c {
                 c.copy(a);
             }
         } else {
-
-            if NTT{
+            if NTT {
                 self.intt::<false>(a, buf);
                 (0..nb_moduli).for_each(|i| {
                     self.at_level(self.level() - i)
@@ -224,24 +223,24 @@ impl RingRNS<u64> {
                         )
                 });
                 self.at_level(self.level() - nb_moduli).ntt::<false>(buf, c);
-            }else{
-                
+            } else {
                 println!("{} {:?}", self.level(), buf.level());
                 self.div_by_last_modulus::<ROUND, false>(a, buf, c);
 
-                (1..nb_moduli-1).for_each(|i| {
+                (1..nb_moduli - 1).for_each(|i| {
                     println!("{} {:?}", self.level() - i, buf.level());
                     self.at_level(self.level() - i)
                         .div_by_last_modulus_inplace::<ROUND, false>(buf, c);
                 });
-                
-                self.at_level(self.level()-nb_moduli+1).div_by_last_modulus_inplace::<ROUND, false>(buf, c);
+
+                self.at_level(self.level() - nb_moduli + 1)
+                    .div_by_last_modulus_inplace::<ROUND, false>(buf, c);
             }
         }
     }
 
     /// Updates a to floor(a / prod_{level - nb_moduli}^{level} q[i])
-    pub fn div_by_last_moduli_inplace<const ROUND:bool, const NTT: bool>(
+    pub fn div_by_last_moduli_inplace<const ROUND: bool, const NTT: bool>(
         &self,
         nb_moduli: usize,
         buf: &mut PolyRNS<u64>,
@@ -259,15 +258,18 @@ impl RingRNS<u64> {
             nb_moduli,
             a.level()
         );
-        if nb_moduli == 0{
-            return
+        if nb_moduli == 0 {
+            return;
         }
 
         if NTT {
             self.intt::<false>(a, buf);
             (0..nb_moduli).for_each(|i| {
                 self.at_level(self.level() - i)
-                    .div_by_last_modulus_inplace::<ROUND, false>(&mut PolyRNS::<u64>::default(), buf)
+                    .div_by_last_modulus_inplace::<ROUND, false>(
+                        &mut PolyRNS::<u64>::default(),
+                        buf,
+                    )
             });
             self.at_level(self.level() - nb_moduli).ntt::<false>(buf, a);
         } else {
