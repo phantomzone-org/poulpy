@@ -199,6 +199,12 @@ impl Ring<u64> {
     }
 
     #[inline(always)]
+    pub fn a_prepare_montgomery_into_a<const REDUCE: REDUCEMOD>(&self, a: &mut Poly<Montgomery<u64>>){
+        debug_assert!(a.n() == self.n(), "a.n()={} != n={}", a.n(), self.n());
+        self.modulus.va_prepare_montgomery_into_va::<CHUNK, REDUCE>(&mut a.0);
+    }
+
+    #[inline(always)]
     pub fn a_mul_b_montgomery_into_c<const REDUCE: REDUCEMOD>(
         &self,
         a: &Poly<Montgomery<u64>>,

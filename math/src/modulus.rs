@@ -93,8 +93,14 @@ pub trait ScalarOperations<O> {
     // Assigns -a to b.
     fn sa_neg_into_sb<const SARANGE: u8, const REDUCE: REDUCEMOD>(&self, a: &O, b: &mut O);
 
+    // Assigns a * 2^64 to a.
+    fn sa_prepare_montgomery_into_sa<const REDUCE: REDUCEMOD>(
+        &self,
+        a: &mut montgomery::Montgomery<O>,
+    );
+
     // Assigns a * 2^64 to b.
-    fn sa_prep_mont_into_sb<const REDUCE: REDUCEMOD>(
+    fn sa_prepare_montgomery_into_sb<const REDUCE: REDUCEMOD>(
         &self,
         a: &O,
         b: &mut montgomery::Montgomery<O>,
@@ -250,6 +256,12 @@ pub trait VectorOperations<O> {
         &self,
         a: &[O],
         b: &mut [montgomery::Montgomery<O>],
+    );
+
+    // vec(a) <- vec(a).
+    fn va_prepare_montgomery_into_va<const CHUNK: usize, const REDUCE: REDUCEMOD>(
+        &self,
+        a: &mut [montgomery::Montgomery<O>],
     );
 
     // vec(c) <- vec(a) * vec(b).

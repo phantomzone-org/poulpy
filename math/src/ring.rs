@@ -3,6 +3,7 @@ pub mod impl_u64;
 use crate::dft::DFT;
 use crate::modulus::prime::Prime;
 use crate::poly::{Poly, PolyRNS};
+use crate::modulus::WordOps;
 use num::traits::Unsigned;
 use std::sync::Arc;
 
@@ -13,6 +14,11 @@ pub struct Ring<O: Unsigned> {
 }
 
 impl<O: Unsigned> Ring<O> {
+
+    pub fn log_n(&self) -> usize{
+        return self.n().log2();
+    }
+
     pub fn n(&self) -> usize {
         return self.n;
     }
@@ -25,6 +31,11 @@ impl<O: Unsigned> Ring<O> {
 pub struct RingRNS<O: Unsigned>(pub Vec<Arc<Ring<O>>>);
 
 impl<O: Unsigned> RingRNS<O> {
+
+    pub fn log_n(&self) -> usize{
+        return self.n().log2();
+    }
+
     pub fn n(&self) -> usize {
         self.0[0].n()
     }
