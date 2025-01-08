@@ -7,6 +7,8 @@ use crate::scalar::ScalarRNS;
 use num_bigint::BigInt;
 use std::sync::Arc;
 
+
+
 impl RingRNS<u64> {
     pub fn new(n: usize, moduli: Vec<u64>) -> Self {
         assert!(!moduli.is_empty(), "moduli cannot be empty");
@@ -121,7 +123,7 @@ impl RingRNS<u64> {
 
 impl RingRNS<u64> {
     #[inline(always)]
-    pub fn add<const REDUCE: REDUCEMOD>(
+    pub fn a_add_b_into_c<const REDUCE: REDUCEMOD>(
         &self,
         a: &PolyRNS<u64>,
         b: &PolyRNS<u64>,
@@ -148,11 +150,11 @@ impl RingRNS<u64> {
         self.0
             .iter()
             .enumerate()
-            .for_each(|(i, ring)| ring.add::<REDUCE>(&a.0[i], &b.0[i], &mut c.0[i]));
+            .for_each(|(i, ring)| ring.a_add_b_into_c::<REDUCE>(&a.0[i], &b.0[i], &mut c.0[i]));
     }
 
     #[inline(always)]
-    pub fn add_inplace<const REDUCE: REDUCEMOD>(&self, a: &PolyRNS<u64>, b: &mut PolyRNS<u64>) {
+    pub fn a_add_b_into_b<const REDUCE: REDUCEMOD>(&self, a: &PolyRNS<u64>, b: &mut PolyRNS<u64>) {
         debug_assert!(
             a.level() >= self.level(),
             "a.level()={} < self.level()={}",
@@ -168,11 +170,11 @@ impl RingRNS<u64> {
         self.0
             .iter()
             .enumerate()
-            .for_each(|(i, ring)| ring.add_inplace::<REDUCE>(&a.0[i], &mut b.0[i]));
+            .for_each(|(i, ring)| ring.a_add_b_into_b::<REDUCE>(&a.0[i], &mut b.0[i]));
     }
 
     #[inline(always)]
-    pub fn sub<const BRANGE: u8, const REDUCE: REDUCEMOD>(
+    pub fn a_sub_b_into_c<const BRANGE: u8, const REDUCE: REDUCEMOD>(
         &self,
         a: &PolyRNS<u64>,
         b: &PolyRNS<u64>,
@@ -199,11 +201,11 @@ impl RingRNS<u64> {
         self.0
             .iter()
             .enumerate()
-            .for_each(|(i, ring)| ring.sub::<BRANGE, REDUCE>(&a.0[i], &b.0[i], &mut c.0[i]));
+            .for_each(|(i, ring)| ring.a_sub_b_into_c::<BRANGE, REDUCE>(&a.0[i], &b.0[i], &mut c.0[i]));
     }
 
     #[inline(always)]
-    pub fn sub_inplace<const BRANGE: u8, const REDUCE: REDUCEMOD>(&self, a: &PolyRNS<u64>, b: &mut PolyRNS<u64>) {
+    pub fn a_sub_b_into_b<const BRANGE: u8, const REDUCE: REDUCEMOD>(&self, a: &PolyRNS<u64>, b: &mut PolyRNS<u64>) {
         debug_assert!(
             a.level() >= self.level(),
             "a.level()={} < self.level()={}",
@@ -219,11 +221,11 @@ impl RingRNS<u64> {
         self.0
             .iter()
             .enumerate()
-            .for_each(|(i, ring)| ring.sub_inplace::<BRANGE, REDUCE>(&a.0[i], &mut b.0[i]));
+            .for_each(|(i, ring)| ring.a_sub_b_into_b::<BRANGE, REDUCE>(&a.0[i], &mut b.0[i]));
     }
 
     #[inline(always)]
-    pub fn neg<const ARANGE: u8, const REDUCE: REDUCEMOD>(&self, a: &PolyRNS<u64>, b: &mut PolyRNS<u64>) {
+    pub fn a_sub_b_into_a<const BRANGE: u8, const REDUCE: REDUCEMOD>(&self, b: &PolyRNS<u64>, a: &mut PolyRNS<u64>) {
         debug_assert!(
             a.level() >= self.level(),
             "a.level()={} < self.level()={}",
@@ -239,11 +241,31 @@ impl RingRNS<u64> {
         self.0
             .iter()
             .enumerate()
-            .for_each(|(i, ring)| ring.neg::<ARANGE, REDUCE>(&a.0[i], &mut b.0[i]));
+            .for_each(|(i, ring)| ring.a_sub_b_into_a::<BRANGE, REDUCE>(&b.0[i], &mut a.0[i]));
     }
 
     #[inline(always)]
-    pub fn neg_inplace<const ARANGE: u8, const REDUCE: REDUCEMOD>(&self, a: &mut PolyRNS<u64>) {
+    pub fn a_neg_into_b<const ARANGE: u8, const REDUCE: REDUCEMOD>(&self, a: &PolyRNS<u64>, b: &mut PolyRNS<u64>) {
+        debug_assert!(
+            a.level() >= self.level(),
+            "a.level()={} < self.level()={}",
+            a.level(),
+            self.level()
+        );
+        debug_assert!(
+            b.level() >= self.level(),
+            "b.level()={} < self.level()={}",
+            b.level(),
+            self.level()
+        );
+        self.0
+            .iter()
+            .enumerate()
+            .for_each(|(i, ring)| ring.a_neg_into_b::<ARANGE, REDUCE>(&a.0[i], &mut b.0[i]));
+    }
+
+    #[inline(always)]
+    pub fn a_neg_into_a<const ARANGE: u8, const REDUCE: REDUCEMOD>(&self, a: &mut PolyRNS<u64>) {
         debug_assert!(
             a.level() >= self.level(),
             "a.level()={} < self.level()={}",
@@ -253,7 +275,7 @@ impl RingRNS<u64> {
         self.0
             .iter()
             .enumerate()
-            .for_each(|(i, ring)| ring.neg_inplace::<ARANGE, REDUCE>(&mut a.0[i]));
+            .for_each(|(i, ring)| ring.a_neg_into_a::<ARANGE, REDUCE>(&mut a.0[i]));
     }
 
     #[inline(always)]
@@ -282,7 +304,7 @@ impl RingRNS<u64> {
             self.level()
         );
         self.0.iter().enumerate().for_each(|(i, ring)| {
-            ring.mul_montgomery_external::<REDUCE>(&a.0[i], &b.0[i], &mut c.0[i])
+            ring.a_mul_b_montgomery_into_c::<REDUCE>(&a.0[i], &b.0[i], &mut c.0[i])
         });
     }
 
@@ -305,7 +327,7 @@ impl RingRNS<u64> {
             self.level()
         );
         self.0.iter().enumerate().for_each(|(i, ring)| {
-            ring.mul_montgomery_external_inplace::<REDUCE>(&a.0[i], &mut b.0[i])
+            ring.a_mul_b_montgomery_into_a::<REDUCE>(&a.0[i], &mut b.0[i])
         });
     }
 
@@ -331,11 +353,57 @@ impl RingRNS<u64> {
         self.0
             .iter()
             .enumerate()
-            .for_each(|(i, ring)| ring.mul_scalar::<REDUCE>(&a.0[i], b, &mut c.0[i]));
+            .for_each(|(i, ring)| ring.a_mul_b_scalar_into_c::<REDUCE>(&a.0[i], b, &mut c.0[i]));
     }
 
     #[inline(always)]
-    pub fn mul_scalar_inplace<const REDUCE: REDUCEMOD>(&self, a: &u64, b: &mut PolyRNS<u64>) {
+    pub fn mul_scalar_inplace<const REDUCE: REDUCEMOD>(&self, b: &u64, a: &mut PolyRNS<u64>) {
+        debug_assert!(
+            a.level() >= self.level(),
+            "b.level()={} < self.level()={}",
+            a.level(),
+            self.level()
+        );
+        self.0
+            .iter()
+            .enumerate()
+            .for_each(|(i, ring)| ring.a_mul_b_scalar_into_a::<REDUCE>(b, &mut a.0[i]));
+    }
+
+    #[inline(always)]
+    pub fn a_sub_b_add_scalar_mul_scalar_barrett_into_e<const BRANGE:u8, const REDUCE:REDUCEMOD>(&self, a: &PolyRNS<u64>, b: &PolyRNS<u64>, c: &u64, d: &Barrett<u64>, e: &mut PolyRNS<u64>){
+        debug_assert!(
+            a.level() >= self.level(),
+            "a.level()={} < self.level()={}",
+            a.level(),
+            self.level()
+        );
+        debug_assert!(
+            b.level() >= self.level(),
+            "b.level()={} < self.level()={}",
+            b.level(),
+            self.level()
+        );
+        debug_assert!(
+            e.level() >= self.level(),
+            "e.level()={} < self.level()={}",
+            e.level(),
+            self.level()
+        );
+        self.0
+            .iter()
+            .enumerate()
+            .for_each(|(i, ring)| ring.a_sub_b_add_c_scalar_mul_d_scalar_barrett_into_e::<BRANGE, REDUCE>(&a.0[i], &b.0[i], c, d, &mut e.0[i]));
+    }
+
+    #[inline(always)]
+    pub fn b_sub_a_add_c_scalar_mul_d_scalar_barrett_into_a<const BRANGE:u8, const REDUCE:REDUCEMOD>(&self, b: &PolyRNS<u64>, c: &u64, d: &Barrett<u64>, a: &mut PolyRNS<u64>){
+        debug_assert!(
+            a.level() >= self.level(),
+            "a.level()={} < self.level()={}",
+            a.level(),
+            self.level()
+        );
         debug_assert!(
             b.level() >= self.level(),
             "b.level()={} < self.level()={}",
@@ -345,6 +413,6 @@ impl RingRNS<u64> {
         self.0
             .iter()
             .enumerate()
-            .for_each(|(i, ring)| ring.mul_scalar_inplace::<REDUCE>(a, &mut b.0[i]));
+            .for_each(|(i, ring)| ring.b_sub_a_add_c_scalar_mul_d_scalar_barrett_into_a::<BRANGE, REDUCE>(&b.0[i], c, d, &mut a.0[i]));
     }
 }

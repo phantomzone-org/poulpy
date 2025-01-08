@@ -6,6 +6,7 @@ pub mod modulus;
 pub mod poly;
 pub mod ring;
 pub mod scalar;
+pub mod num_bigint;
 
 pub const CHUNK: usize = 8;
 
@@ -393,6 +394,61 @@ pub mod macros {
                 _ => {
                     izip!($c.iter_mut()).for_each(|c| {
                         $f(&$self, $a, $b, c);
+                    });
+                }
+            }
+        };
+    }
+
+    #[macro_export]
+    macro_rules! apply_vvssv {
+        ($self:expr, $f:expr, $a:expr, $b:expr, $c:expr, $d:expr, $e:expr, $CHUNK:expr) => {
+            let n: usize = $a.len();
+            debug_assert!(
+                $b.len() == n,
+                "invalid argument b: b.len() = {} != a.len() = {}",
+                $b.len(),
+                n
+            );
+            debug_assert!(
+                $e.len() == n,
+                "invalid argument e: e.len() = {} != a.len() = {}",
+                $e.len(),
+                n
+            );
+            debug_assert!(
+                CHUNK & (CHUNK - 1) == 0,
+                "invalid CHUNK const: not a power of two"
+            );
+
+            match CHUNK {
+                8 => {
+                    izip!(
+                        $a.chunks_exact(8),
+                        $b.chunks_exact(8),
+                        $e.chunks_exact_mut(8)
+                    )
+                    .for_each(|(a, b, e)| {
+                        $f(&$self, &a[0], &b[0], $c, $d, &mut e[0]);
+                        $f(&$self, &a[1], &b[1], $c, $d,  &mut e[1]);
+                        $f(&$self, &a[2], &b[2], $c, $d,  &mut e[2]);
+                        $f(&$self, &a[3], &b[3], $c, $d,  &mut e[3]);
+                        $f(&$self, &a[4], &b[4], $c, $d,  &mut e[4]);
+                        $f(&$self, &a[5], &b[5], $c, $d,  &mut e[5]);
+                        $f(&$self, &a[6], &b[6], $c, $d,  &mut e[6]);
+                        $f(&$self, &a[7], &b[7], $c, $d,  &mut e[7]);
+                    });
+
+                    let m = n - (n & 7);
+                    izip!($a[m..].iter(), $b[m..].iter(), $e[m..].iter_mut()).for_each(
+                        |(a, b, e)| {
+                            $f(&$self, a, b, $c, $d, e);
+                        },
+                    );
+                }
+                _ => {
+                    izip!($a.iter(), $b.iter(), $e.iter_mut()).for_each(|(a, b, e)| {
+                        $f(&$self, a, b, $c, $d, e);
                     });
                 }
             }

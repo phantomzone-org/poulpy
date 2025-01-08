@@ -22,11 +22,6 @@ impl Source {
     }
 
     #[inline(always)]
-    pub fn next_u64(&mut self) -> u64 {
-        self.source.next_u64()
-    }
-
-    #[inline(always)]
     pub fn next_u64n(&mut self, max: u64, mask: u64) -> u64 {
         let mut x: u64 = self.next_u64() & mask;
         while x >= max {
@@ -39,9 +34,26 @@ impl Source {
     pub fn next_f64(&mut self, min: f64, max: f64) -> f64 {
         min + ((self.next_u64() << 11 >> 11) as f64) / MAXF64 * (max - min)
     }
+}
+
+impl RngCore for Source{
+    #[inline(always)]
+    fn next_u32(&mut self) -> u32 {
+        self.source.next_u32()
+    }
 
     #[inline(always)]
-    pub fn fill_bytes(&mut self, bytes: &mut [u8]) {
+    fn next_u64(&mut self) -> u64 {
+        self.source.next_u64()
+    }
+
+    #[inline(always)]
+    fn fill_bytes(&mut self, bytes: &mut [u8]) {
         self.source.fill_bytes(bytes)
+    }
+
+    #[inline(always)]
+    fn try_fill_bytes(&mut self, bytes: &mut [u8]) -> Result<(), rand_core::Error>{
+        self.source.try_fill_bytes(bytes)
     }
 }

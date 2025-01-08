@@ -8,7 +8,7 @@ fn div_floor_by_last_modulus_ntt_true(c: &mut Criterion) {
         let mut b: PolyRNS<u64> = r.new_polyrns();
         let mut c: PolyRNS<u64> = r.new_polyrns();
 
-        Box::new(move || r.div_floor_by_last_modulus::<true>(&a, &mut b, &mut c))
+        Box::new(move || r.div_by_last_modulus::<false, true>(&a, &mut b, &mut c))
     }
 
     let mut b: criterion::BenchmarkGroup<'_, criterion::measurement::WallTime> =

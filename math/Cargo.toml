@@ -8,9 +8,11 @@ num = "0.4.3"
 primality-test = "0.3.0"
 num-bigint = "0.4.6"
 num-traits = "0.2.19"
+num-integer ="0.1.46"
 prime_factorization = "1.0.5"
 itertools = "0.14.0"
 criterion = "0.5.1"
+rand_distr = "0.4.3"
 sampling = { path = "../sampling" }
 
 [[bench]]
