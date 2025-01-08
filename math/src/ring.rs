@@ -33,6 +33,10 @@ impl<O: Unsigned> RingRNS<O> {
         PolyRNS::<u64>::new(self.n(), self.level())
     }
 
+    pub fn new_poly(&self) -> Poly<u64> {
+        Poly::<u64>::new(self.n())
+    }
+
     pub fn max_level(&self) -> usize {
         self.0.len() - 1
     }
