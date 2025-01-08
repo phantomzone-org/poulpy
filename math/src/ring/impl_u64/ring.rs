@@ -16,7 +16,7 @@ impl Ring<u64> {
         Self {
             n: n,
             modulus: prime.clone(),
-            dft: Box::new(Table::<u64>::new(prime, (2 * n) as u64)),
+            dft: Box::new(Table::<u64>::new(prime, n << 1)),
         }
     }
 

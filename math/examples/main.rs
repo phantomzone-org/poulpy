@@ -14,8 +14,8 @@ fn main() {
     println!("q_base: {}", prime_instance.q_base());
     println!("q_power: {}", prime_instance.q_power());
 
-    let n: u64 = 32;
-    let nth_root: u64 = n << 1;
+    let n: usize = 32;
+    let nth_root: usize = n << 1;
 
     let ntt_table: Table<u64> = Table::<u64>::new(prime_instance, nth_root);
 
@@ -44,7 +44,7 @@ fn main() {
         p0.0[i] = i as u64
     }
 
-    r.automorphism(p0, (2 * r.n - 1) as u64, &mut p1);
+    r.automorphism::<false>(&p0, 2 * r.n - 1, nth_root, &mut p1);
 
     println!("{:?}", p1);
 }

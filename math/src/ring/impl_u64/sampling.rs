@@ -2,7 +2,7 @@ use crate::modulus::WordOps;
 use crate::poly::{Poly, PolyRNS};
 use crate::ring::{Ring, RingRNS};
 use num::ToPrimitive;
-use rand_distr::{Distribution, Normal};
+use rand_distr::Distribution;
 use sampling::source::Source;
 
 impl Ring<u64> {

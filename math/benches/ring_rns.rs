@@ -5,7 +5,7 @@ use math::ring::RingRNS;
 fn div_floor_by_last_modulus_ntt_true(c: &mut Criterion) {
     fn runner(r: RingRNS<u64>) -> Box<dyn FnMut()> {
         let a: PolyRNS<u64> = r.new_polyrns();
-        let mut b: PolyRNS<u64> = r.new_polyrns();
+        let mut b: [math::poly::Poly<u64>; 2] = [r.new_poly(), r.new_poly()];
         let mut c: PolyRNS<u64> = r.new_polyrns();
 
         Box::new(move || r.div_by_last_modulus::<false, true>(&a, &mut b, &mut c))

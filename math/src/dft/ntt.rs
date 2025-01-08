@@ -19,14 +19,14 @@ pub struct Table<O> {
 }
 
 impl Table<u64> {
-    pub fn new(prime: Prime<u64>, nth_root: u64) -> Table<u64> {
+    pub fn new(prime: Prime<u64>, nth_root: usize) -> Table<u64> {
         assert!(
             nth_root & (nth_root - 1) == 0,
             "invalid argument: nth_root = {} is not a power of two",
             nth_root
         );
 
-        let psi: u64 = prime.primitive_nth_root(nth_root);
+        let psi: u64 = prime.primitive_nth_root(nth_root as u64);
 
         let psi_mont: Montgomery<u64> = prime.montgomery.prepare::<ONCE>(psi);
         let psi_inv_mont: Montgomery<u64> = prime.montgomery.pow(psi_mont, prime.phi - 1);
@@ -311,8 +311,8 @@ mod tests {
         let q_base: u64 = 0x800000000004001;
         let q_power: usize = 1;
         let prime_instance: Prime<u64> = Prime::<u64>::new(q_base, q_power);
-        let n: u64 = 32;
-        let two_nth_root: u64 = n << 1;
+        let n: usize = 32;
+        let two_nth_root: usize = n << 1;
         let ntt_table: Table<u64> = Table::<u64>::new(prime_instance, two_nth_root);
         let mut a: Vec<u64> = vec![0; n as usize];
         for i in 0..a.len() {
