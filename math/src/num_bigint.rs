@@ -1,5 +1,4 @@
 use num_bigint::BigInt;
-use num_bigint::Sign;
 use num_integer::Integer;
 use num_traits::{One, Signed, Zero};
 
@@ -11,7 +10,7 @@ pub trait Div {
 impl Div for BigInt {
     fn div_floor(&self, other: &Self) -> Self {
         let quo: BigInt = self / other;
-        if self.sign() == Sign::Minus {
+        if self.sign() != other.sign() {
             return quo - BigInt::one();
         }
         return quo;
