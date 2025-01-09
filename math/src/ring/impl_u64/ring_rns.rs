@@ -5,14 +5,14 @@ use crate::poly::PolyRNS;
 use crate::ring::{Ring, RingRNS};
 use crate::scalar::ScalarRNS;
 use num_bigint::BigInt;
-use std::sync::Arc;
+use std::rc::Rc;
 
 impl RingRNS<u64> {
     pub fn new(n: usize, moduli: Vec<u64>) -> Self {
         assert!(!moduli.is_empty(), "moduli cannot be empty");
-        let rings: Vec<Arc<Ring<u64>>> = moduli
+        let rings: Vec<Rc<Ring<u64>>> = moduli
             .into_iter()
-            .map(|prime| Arc::new(Ring::new(n, prime, 1)))
+            .map(|prime| Rc::new(Ring::new(n, prime, 1)))
             .collect();
         return RingRNS(rings);
     }

@@ -5,7 +5,7 @@ use crate::modulus::prime::Prime;
 use crate::poly::{Poly, PolyRNS};
 use crate::modulus::WordOps;
 use num::traits::Unsigned;
-use std::sync::Arc;
+use std::rc::Rc;
 
 pub struct Ring<O: Unsigned> {
     pub n: usize,
@@ -28,7 +28,7 @@ impl<O: Unsigned> Ring<O> {
     }
 }
 
-pub struct RingRNS<O: Unsigned>(pub Vec<Arc<Ring<O>>>);
+pub struct RingRNS<O: Unsigned>(pub Vec<Rc<Ring<O>>>);
 
 impl<O: Unsigned> RingRNS<O> {
 
