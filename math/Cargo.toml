@@ -13,6 +13,7 @@ prime_factorization = "1.0.5"
 itertools = "0.14.0"
 criterion = "0.5.1"
 rand_distr = "0.4.3"
+indexmap = "2.7.0"
 sampling = { path = "../sampling" }
 
 [[bench]]

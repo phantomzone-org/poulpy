@@ -9,6 +9,7 @@ pub mod ring;
 pub mod scalar;
 
 pub const CHUNK: usize = 8;
+pub const GALOISGENERATOR: usize = 5;
 
 pub mod macros {
 
