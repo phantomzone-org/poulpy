@@ -1,10 +1,9 @@
 use crate::modulus::barrett::Barrett;
-use crate::modulus::{WordOps, ONCE};
+use crate::modulus::ONCE;
 use crate::poly::Poly;
 use crate::ring::Ring;
 use std::cmp::min;
 use std::collections::HashSet;
-use std::mem::transmute;
 
 impl Ring<u64> {
     // Generates a vector storing {X^{2^0}, X^{2^1}, .., X^{2^log_n}}.
@@ -64,13 +63,16 @@ impl Ring<u64> {
 
         let set: HashSet<_> = indices.into_iter().collect();
 
-        let max_pow2_gap_divisor: usize = 1 << gap.trailing_zeros();
-
         if !ZEROGARBAGE {
             if gap > 0 {
-                log_end -= max_pow2_gap_divisor;
+                log_end -= gap.trailing_zeros() as usize;
             }
         }
+
+        assert!(
+            log_start < log_end,
+            "invalid input polys: gap between non None value is smaller than 2^log_gap"
+        );
 
         let n_inv: Barrett<u64> = self
             .modulus
@@ -102,30 +104,34 @@ impl Ring<u64> {
                     if let Some(poly_lo) = polys_lo[j].as_mut() {
                         self.a_sub_b_into_c::<1, ONCE>(poly_lo, poly_hi, &mut tmpa);
                         self.a_add_b_into_b::<ONCE>(poly_hi, poly_lo);
-                    } else {
-                        std::mem::swap(&mut polys_lo[j], &mut polys_hi[j]);
                     }
                 }
 
                 if let Some(poly_lo) = polys_lo[j].as_mut() {
-                    let gal_el: usize = self.galois_element(1 << (i - 1), i == 0, log_nth_root);
+                    let gal_el: usize = self.galois_element((1 << i) >> 1, i == 0, log_nth_root);
 
                     if !polys_hi[j].is_none() {
                         self.automorphism::<true>(&tmpa, gal_el, 2 << self.log_n(), &mut tmpb);
+                        self.a_add_b_into_b::<ONCE>(&tmpb, poly_lo);
                     } else {
                         self.automorphism::<true>(poly_lo, gal_el, nth_root, &mut tmpa);
+                        self.a_add_b_into_b::<ONCE>(&tmpa, poly_lo);
                     }
-
-                    self.a_add_b_into_b::<ONCE>(&tmpa, poly_lo);
                 } else if let Some(poly_hi) = polys_hi[j].as_mut() {
-                    let gal_el: usize = self.galois_element(1 << (i - 1), i == 0, log_nth_root);
-
+                    let gal_el: usize = self.galois_element((1 << i) >> 1, i == 0, log_nth_root);
                     self.automorphism::<true>(poly_hi, gal_el, nth_root, &mut tmpa);
-                    self.a_sub_b_into_a::<1, ONCE>(&tmpa, poly_hi)
+                    self.a_sub_b_into_a::<1, ONCE>(&tmpa, poly_hi);
+                    std::mem::swap(&mut polys_lo[j], &mut polys_hi[j]);
                 }
             }
 
             polys.truncate(t);
+        }
+
+        if !NTT {
+            if let Some(poly) = polys[0].as_mut() {
+                self.intt_inplace::<false>(poly);
+            }
         }
     }
 }
@@ -135,7 +141,7 @@ fn max_gap(vec: &[usize]) -> usize {
     let mut gap: usize = usize::MAX;
     for i in 1..vec.len() {
         let (l, r) = (vec[i - 1], vec[i]);
-        assert!(l > r, "invalid input vec: not sorted");
+        assert!(r > l, "invalid input vec: not sorted");
         gap = min(gap, r - l);
         if gap == 1 {
             break;

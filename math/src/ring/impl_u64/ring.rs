@@ -51,12 +51,12 @@ impl Ring<u64> {
                 gal_el = gal_el.wrapping_mul(gen_1_pow);
             }
 
-            gen_1_pow *= gen_1_pow;
+            gen_1_pow = gen_1_pow.wrapping_mul(gen_1_pow);
             e >>= 1;
         }
 
         let nth_root = 1 << log_nth_root;
-        gal_el &= (nth_root - 1);
+        gal_el &= nth_root - 1;
 
         if gen_2 {
             return nth_root - gal_el;

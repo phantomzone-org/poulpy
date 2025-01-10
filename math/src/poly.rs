@@ -38,12 +38,12 @@ where
         self.0.resize(n, O::default());
     }
 
-    pub fn set_all(&mut self, v: &O) {
+    pub fn fill(&mut self, v: &O) {
         self.0.fill(*v)
     }
 
     pub fn zero(&mut self) {
-        self.set_all(&O::default())
+        self.fill(&O::default())
     }
 
     pub fn copy_from(&mut self, other: &Poly<O>) {
@@ -134,12 +134,12 @@ where
         &mut self.0[level]
     }
 
-    pub fn set_all(&mut self, v: &O) {
-        (0..self.level() + 1).for_each(|i| self.at_mut(i).set_all(v))
+    pub fn fill(&mut self, v: &O) {
+        (0..self.level() + 1).for_each(|i| self.at_mut(i).fill(v))
     }
 
     pub fn zero(&mut self) {
-        self.set_all(&O::default())
+        self.fill(&O::default())
     }
 
     pub fn copy(&mut self, other: &PolyRNS<O>) {
