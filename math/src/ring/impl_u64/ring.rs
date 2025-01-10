@@ -42,24 +42,24 @@ impl Ring<u64> {
     }
 
     // Returns GALOISGENERATOR^gen_1 * (-1)^gen_2 mod 2^log_nth_root.
-    pub fn galois_element(&self, gen_1: usize, gen_2: bool, log_nth_root: usize) -> usize{
+    pub fn galois_element(&self, gen_1: usize, gen_2: bool, log_nth_root: usize) -> usize {
         let mut gal_el: usize = 1;
         let mut gen_1_pow: usize = GALOISGENERATOR;
         let mut e: usize = gen_1;
-        while e > 0{
-            if e & 1 == 1{
+        while e > 0 {
+            if e & 1 == 1 {
                 gal_el = gal_el.wrapping_mul(gen_1_pow);
             }
 
             gen_1_pow *= gen_1_pow;
-            e>>=1;
+            e >>= 1;
         }
 
-        let nth_root = 1<<log_nth_root;
-        gal_el &= (nth_root-1);
+        let nth_root = 1 << log_nth_root;
+        gal_el &= (nth_root - 1);
 
-        if gen_2{
-            return nth_root - gal_el
+        if gen_2 {
+            return nth_root - gal_el;
         }
         gal_el
     }
@@ -223,9 +223,13 @@ impl Ring<u64> {
     }
 
     #[inline(always)]
-    pub fn a_prepare_montgomery_into_a<const REDUCE: REDUCEMOD>(&self, a: &mut Poly<Montgomery<u64>>){
+    pub fn a_prepare_montgomery_into_a<const REDUCE: REDUCEMOD>(
+        &self,
+        a: &mut Poly<Montgomery<u64>>,
+    ) {
         debug_assert!(a.n() == self.n(), "a.n()={} != n={}", a.n(), self.n());
-        self.modulus.va_prepare_montgomery_into_va::<CHUNK, REDUCE>(&mut a.0);
+        self.modulus
+            .va_prepare_montgomery_into_va::<CHUNK, REDUCE>(&mut a.0);
     }
 
     #[inline(always)]

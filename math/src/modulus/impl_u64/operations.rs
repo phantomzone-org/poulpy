@@ -100,7 +100,11 @@ impl ScalarOperations<u64> for Prime<u64> {
     }
 
     #[inline(always)]
-    fn sa_prepare_montgomery_into_sb<const REDUCE: REDUCEMOD>(&self, a: &u64, b: &mut Montgomery<u64>) {
+    fn sa_prepare_montgomery_into_sb<const REDUCE: REDUCEMOD>(
+        &self,
+        a: &u64,
+        b: &mut Montgomery<u64>,
+    ) {
         self.montgomery.prepare_assign::<REDUCE>(*a, b);
     }
 
@@ -330,7 +334,13 @@ impl VectorOperations<u64> for Prime<u64> {
         a: &[u64],
         b: &mut [Montgomery<u64>],
     ) {
-        apply_vv!(self, Self::sa_prepare_montgomery_into_sb::<REDUCE>, a, b, CHUNK);
+        apply_vv!(
+            self,
+            Self::sa_prepare_montgomery_into_sb::<REDUCE>,
+            a,
+            b,
+            CHUNK
+        );
     }
 
     #[inline(always)]
@@ -338,9 +348,14 @@ impl VectorOperations<u64> for Prime<u64> {
         &self,
         a: &mut [Montgomery<u64>],
     ) {
-        apply_v!(self, Self::sa_prepare_montgomery_into_sa::<REDUCE>, a, CHUNK);
+        apply_v!(
+            self,
+            Self::sa_prepare_montgomery_into_sa::<REDUCE>,
+            a,
+            CHUNK
+        );
     }
-    
+
     #[inline(always)]
     fn va_mont_mul_vb_into_vc<const CHUNK: usize, const REDUCE: REDUCEMOD>(
         &self,

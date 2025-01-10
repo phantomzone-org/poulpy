@@ -36,7 +36,7 @@ impl Source {
     }
 }
 
-impl RngCore for Source{
+impl RngCore for Source {
     #[inline(always)]
     fn next_u32(&mut self) -> u32 {
         self.source.next_u32()
@@ -53,7 +53,7 @@ impl RngCore for Source{
     }
 
     #[inline(always)]
-    fn try_fill_bytes(&mut self, bytes: &mut [u8]) -> Result<(), rand_core::Error>{
+    fn try_fill_bytes(&mut self, bytes: &mut [u8]) -> Result<(), rand_core::Error> {
         self.source.try_fill_bytes(bytes)
     }
 }
