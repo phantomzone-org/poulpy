@@ -55,7 +55,7 @@ impl Ring<u64> {
 
         // Retrives non-empty indexes
         polys.iter().enumerate().for_each(|(i, poly)| {
-            if Some(poly) != None {
+            if !poly.is_none() {
                 indices.push(i);
             }
         });
