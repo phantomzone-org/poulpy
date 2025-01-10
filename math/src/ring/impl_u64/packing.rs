@@ -42,7 +42,7 @@ impl Ring<u64> {
 
     pub fn pack<const ZEROGARBAGE: bool, const NTT: bool>(
         &self,
-        polys: &mut [Option<Poly<u64>>],
+        polys: &mut Vec<Option<Poly<u64>>>,
         log_gap: usize,
     ) {
         let log_n: usize = self.log_n();
@@ -124,6 +124,8 @@ impl Ring<u64> {
                     self.a_sub_b_into_a::<1, ONCE>(&tmpa, poly_hi)
                 }
             }
+
+            polys.truncate(t);
         }
     }
 }

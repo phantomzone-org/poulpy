@@ -1,0 +1,63 @@
+thread 'rustc' panicked at /rustc/5ec7d6eee7e0f5236ec1559499070eaf836bc608\compiler\rustc_query_system\src\query\plumbing.rs:729:9:
+Found unstable fingerprints for thir_abstract_const(math[de55]::dft::ntt::{impl#2}::forward_inplace_core::{closure#2}): Ok(None)
+stack backtrace:
+   0:     0x7ff8de431d43 - std::backtrace_rs::backtrace::dbghelp64::trace
+                               at /rustc/5ec7d6eee7e0f5236ec1559499070eaf836bc608\library/std\src\..\..\backtrace\src\backtrace\dbghelp64.rs:91
+   1:     0x7ff8de431d43 - std::backtrace_rs::backtrace::trace_unsynchronized
+                               at /rustc/5ec7d6eee7e0f5236ec1559499070eaf836bc608\library/std\src\..\..\backtrace\src\backtrace\mod.rs:66
+   2:     0x7ff8de431d43 - std::backtrace::Backtrace::create
+                               at /rustc/5ec7d6eee7e0f5236ec1559499070eaf836bc608\library/std\src\backtrace.rs:331
+   3:     0x7ff8de431c8a - std::backtrace::Backtrace::force_capture
+                               at /rustc/5ec7d6eee7e0f5236ec1559499070eaf836bc608\library/std\src\backtrace.rs:312
+   4:     0x7ff8dfa55e22 - strncpy
+   5:     0x7ff8de44cb82 - alloc::boxed::impl$30::call
+                               at /rustc/5ec7d6eee7e0f5236ec1559499070eaf836bc608\library/alloc\src\boxed.rs:1982
+   6:     0x7ff8de44cb82 - std::panicking::rust_panic_with_hook
+                               at /rustc/5ec7d6eee7e0f5236ec1559499070eaf836bc608\library/std\src\panicking.rs:809
+   7:     0x7ff8de44c9c9 - std::panicking::begin_panic_handler::closure$0
+                               at /rustc/5ec7d6eee7e0f5236ec1559499070eaf836bc608\library/std\src\panicking.rs:674
+   8:     0x7ff8de44a1cf - std::sys::backtrace::__rust_end_short_backtrace<std::panicking::begin_panic_handler::closure_env$0,never$>
+                               at /rustc/5ec7d6eee7e0f5236ec1559499070eaf836bc608\library/std\src\sys\backtrace.rs:170
+   9:     0x7ff8de44c5ce - std::panicking::begin_panic_handler
+                               at /rustc/5ec7d6eee7e0f5236ec1559499070eaf836bc608\library/std\src\panicking.rs:665
+  10:     0x7ff8e1457e31 - core::panicking::panic_fmt
+                               at /rustc/5ec7d6eee7e0f5236ec1559499070eaf836bc608\library/core\src\panicking.rs:76
+  11:     0x7ff8e087eb42 - <rustc_ty_utils[611601a2e2e4762f]::opaque_types::OpaqueTypeCollector as rustc_type_ir[ed289d4b95bf9d77]::visit::TypeVisitor<rustc_middle[680c00e878606981]::ty::context::TyCtxt>>::visit_ty
+  12:     0x7ff8df148500 - rustc_ty_utils[611601a2e2e4762f]::ty::self_ty_of_trait_impl_enabling_order_dep_trait_object_hack
+  13:     0x7ff8df0b6a5f - rustc_ty_utils[611601a2e2e4762f]::ty::self_ty_of_trait_impl_enabling_order_dep_trait_object_hack
+  14:     0x7ff8de046cf9 - rustc_query_impl[5b7e8b0772f52dfc]::query_system
+  15:     0x7ff8de9b3ab6 - rustc_mir_build[c21120f9a6e0100a]::build::mir_build
+  16:     0x7ff8de899beb - rustc_mir_transform[79b20237fda78f87]::mir_built
+  17:     0x7ff8df1f5b8b - rustc_query_impl[5b7e8b0772f52dfc]::plumbing::query_key_hash_verify_all
+  18:     0x7ff8df13db6e - rustc_ty_utils[611601a2e2e4762f]::ty::self_ty_of_trait_impl_enabling_order_dep_trait_object_hack
+  19:     0x7ff8de038988 - rustc_ty_utils[611601a2e2e4762f]::ty::adt_sized_constraint
+  20:     0x7ff8e08f6c2f - <rustc_ty_utils[611601a2e2e4762f]::opaque_types::OpaqueTypeCollector as rustc_type_ir[ed289d4b95bf9d77]::visit::TypeVisitor<rustc_middle[680c00e878606981]::ty::context::TyCtxt>>::visit_ty
+  21:     0x7ff8df0ac364 - rustc_ty_utils[611601a2e2e4762f]::ty::self_ty_of_trait_impl_enabling_order_dep_trait_object_hack
+  22:     0x7ff8df0b3406 - rustc_ty_utils[611601a2e2e4762f]::ty::self_ty_of_trait_impl_enabling_order_dep_trait_object_hack
+  23:     0x7ff8df1fd6c7 - rustc_query_impl[5b7e8b0772f52dfc]::plumbing::query_key_hash_verify_all
+  24:     0x7ff8de4bf29e - rustc_interface[8d61ccc26bf4800c]::passes::resolver_for_lowering_raw
+  25:     0x7ff8db4854be - rustc_interface[8d61ccc26bf4800c]::passes::analysis
+  26:     0x7ff8de03dc5b - rustc_ty_utils[611601a2e2e4762f]::ty::adt_sized_constraint
+  27:     0x7ff8ddf512b7 - rustc_ty_utils[611601a2e2e4762f]::ty::adt_sized_constraint
+  28:     0x7ff8de043603 - rustc_query_impl[5b7e8b0772f52dfc]::query_system
+  29:     0x7ff8db443ce7 - _rust_alloc_error_handler
+  30:     0x7ff8db43f9bf - _rust_alloc_error_handler
+  31:     0x7ff8db4498d7 - _rust_alloc_error_handler
+  32:     0x7ff8de45e7cd - alloc::boxed::impl$28::call_once
+                               at /rustc/5ec7d6eee7e0f5236ec1559499070eaf836bc608\library/alloc\src\boxed.rs:1968
+  33:     0x7ff8de45e7cd - alloc::boxed::impl$28::call_once
+                               at /rustc/5ec7d6eee7e0f5236ec1559499070eaf836bc608\library/alloc\src\boxed.rs:1968
+  34:     0x7ff8de45e7cd - std::sys::pal::windows::thread::impl$0::new::thread_start
+                               at /rustc/5ec7d6eee7e0f5236ec1559499070eaf836bc608\library/std\src\sys\pal\windows\thread.rs:55
+  35:     0x7ff9be46e8d7 - BaseThreadInitThunk
+  36:     0x7ff9bec7fbcc - RtlUserThreadStart
+
+
+rustc version: 1.84.0-nightly (5ec7d6eee 2024-11-17)
+platform: x86_64-pc-windows-msvc
+
+query stack during panic:
+#0 [thir_abstract_const] building an abstract representation for `dft::ntt::<impl at math\src\dft\ntt.rs:91:1: 91:16>::forward_inplace_core::{closure#2}`
+#1 [mir_built] building MIR for `dft::ntt::<impl at math\src\dft\ntt.rs:91:1: 91:16>::forward_inplace_core::{closure#2}`
+#2 [analysis] running analysis passes on this crate
+end of query stack
