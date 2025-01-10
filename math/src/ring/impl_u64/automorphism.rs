@@ -1,6 +1,7 @@
-use crate::modulus::WordOps;
+use crate::modulus::{REDUCEMOD, WordOps};
 use crate::poly::Poly;
 use crate::ring::Ring;
+use crate::modulus::{ONCE, ScalarOperations};
 
 /// Returns a lookup table for the automorphism X^{i} -> X^{i * k mod nth_root}.
 /// Method will panic if n or nth_root are not power-of-two.
@@ -44,7 +45,41 @@ pub fn automorphism_index<const NTT: bool>(n: usize, nth_root: usize, gal_el: us
 }
 
 impl Ring<u64> {
-    pub fn automorphism<const NTT: bool>(
+
+    // b <- auto(a)
+    pub fn a_apply_automorphism_into_b<const NTT: bool>(
+        &self,
+        a: &Poly<u64>,
+        gal_el: usize,
+        nth_root: usize,
+        b: &mut Poly<u64>,
+    ){
+        self.apply_automorphism_core::<0, ONCE, NTT>(a, gal_el, nth_root, b)
+    }
+
+    // b <- REDUCEMOD(b + auto(a))
+    pub fn a_apply_automorphism_add_b_into_b<const REDUCE:REDUCEMOD, const NTT: bool>(
+        &self,
+        a: &Poly<u64>,
+        gal_el: usize,
+        nth_root: usize,
+        b: &mut Poly<u64>,
+    ){
+        self.apply_automorphism_core::<1, REDUCE, NTT>(a, gal_el, nth_root, b)
+    }
+
+    // b <- REDUCEMOD(b - auto(a))
+    pub fn a_apply_automorphism_sub_b_into_b<const REDUCE:REDUCEMOD, const NTT:bool>(
+    &self,
+    a: &Poly<u64>,
+    gal_el: usize,
+    nth_root: usize,
+    b: &mut Poly<u64>,
+    ){
+        self.apply_automorphism_core::<2, REDUCE, NTT>(a, gal_el, nth_root, b)
+    }
+
+    fn apply_automorphism_core<const MOD:u8, const REDUCE:REDUCEMOD, const NTT: bool>(
         &self,
         a: &Poly<u64>,
         gal_el: usize,
@@ -81,7 +116,12 @@ impl Ring<u64> {
                 let i_rev: usize = 2 * i.reverse_bits_msb(log_nth_root_half) + 1;
                 let gal_el_i: usize = (((gal_el * i_rev) & mask) - 1) >> 1;
                 let idx: usize = gal_el_i.reverse_bits_msb(log_nth_root_half);
-                b_vec[idx] = *ai;
+                match MOD{
+                    0 =>{b_vec[idx] = *ai}
+                    1=>{self.modulus.sa_add_sb_into_sb::<REDUCE>(ai, &mut b_vec[idx])}
+                    2=>{self.modulus.sa_sub_sb_into_sa::<1, REDUCE>(ai, &mut b_vec[idx])}
+                    _=>{panic!("invalid const MOD should be 0, 1, or 2 but is {}", MOD)}
+                }
             });
         } else {
             let n: usize = a.n();
@@ -92,12 +132,49 @@ impl Ring<u64> {
                 let gal_el_i: usize = i * gal_el;
                 let sign: u64 = ((gal_el_i >> log_n) & 1) as u64;
                 let i_out: usize = gal_el_i & mask;
-                b_vec[i_out] = ai * (sign ^ 1) | (q - ai) * sign
+                let v: u64 = ai * (sign ^ 1) | (q - ai) * sign;
+                match MOD{
+                    0 =>{b_vec[i_out] = v}
+                    1=>{self.modulus.sa_add_sb_into_sb::<REDUCE>(&v, &mut b_vec[i_out])}
+                    2=>{self.modulus.sa_sub_sb_into_sa::<1, REDUCE>(&v, &mut b_vec[i_out])}
+                    _=>{panic!("invalid const MOD should be 0, 1, or 2 but is {}", MOD)}
+                }
             });
         }
     }
 
-    pub fn automorphism_from_index<const NTT: bool>(
+    // b <- auto(a)
+    pub fn a_apply_automorphism_from_index_into_b<const NTT: bool>(
+        &self,
+        a: &Poly<u64>,
+        idx: &[usize],
+        b: &mut Poly<u64>,
+    ){
+        self.automorphism_from_index_core::<0, ONCE, NTT>(a, idx, b)
+    }
+
+    // b <- REDUCEMOD(b + auto(a))
+    pub fn a_apply_automorphism_from_index_add_b_into_b<const REDUCE:REDUCEMOD, const NTT: bool>(
+        &self,
+        a: &Poly<u64>,
+        idx: &[usize],
+        b: &mut Poly<u64>,
+    ){
+        self.automorphism_from_index_core::<1, REDUCE, NTT>(a, idx, b)
+    }
+
+    // b <- REDUCEMOD(b - auto(a))
+    pub fn a_apply_automorphism_from_index_sub_b_into_b<const REDUCE:REDUCEMOD, const NTT:bool>(
+    &self,
+    a: &Poly<u64>,
+    idx: &[usize],
+    b: &mut Poly<u64>,
+    ){
+        self.automorphism_from_index_core::<2, REDUCE, NTT>(a, idx, b)
+    }
+
+    // b <- auto(a) if OVERWRITE else b <- REDUCEMOD(b + auto(a))
+    fn automorphism_from_index_core<const MOD:u8, const REDUCE:REDUCEMOD, const NTT: bool>(
         &self,
         a: &Poly<u64>,
         idx: &[usize],
@@ -115,7 +192,12 @@ impl Ring<u64> {
 
         if NTT {
             a_vec.iter().enumerate().for_each(|(i, ai)| {
-                b_vec[idx[i]] = *ai;
+                match MOD{
+                    0 =>{ b_vec[idx[i]] = *ai}
+                    1 =>{self.modulus.sa_add_sb_into_sb::<REDUCE>(ai, &mut b_vec[idx[i]])}
+                    2=>{self.modulus.sa_sub_sb_into_sa::<1, REDUCE>(ai, &mut b_vec[idx[i]])}
+                    _=>{panic!("invalid const MOD should be 0, 1, or 2 but is {}", MOD)}
+                }
             });
         } else {
             let n: usize = a.n();
@@ -123,7 +205,13 @@ impl Ring<u64> {
             let q: u64 = self.modulus.q();
             a_vec.iter().enumerate().for_each(|(i, ai)| {
                 let sign: u64 = (idx[i] >> usize::BITS - 1) as u64;
-                b_vec[idx[i] & mask] = ai * (sign ^ 1) | (q - ai) * sign;
+                let v: u64 = ai * (sign ^ 1) | (q - ai) * sign;
+                match MOD{
+                    0 =>{b_vec[idx[i] & mask] = v}
+                    1 =>{self.modulus.sa_add_sb_into_sb::<REDUCE>(&v, &mut b_vec[idx[i] & mask])}
+                    2=>{self.modulus.sa_sub_sb_into_sa::<1, REDUCE>(&v, &mut b_vec[idx[i] & mask])}
+                    _=>{panic!("invalid const MOD should be 0, 1, or 2 but is {}", MOD)}
+                }
             });
         }
     }

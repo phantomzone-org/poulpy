@@ -44,7 +44,7 @@ fn main() {
         p0.0[i] = i as u64
     }
 
-    r.automorphism::<false>(&p0, 2 * r.n - 1, nth_root, &mut p1);
+    r.a_apply_automorphism_into_b::<false>(&p0, 2 * r.n - 1, nth_root, &mut p1);
 
     println!("{:?}", p1);
 }

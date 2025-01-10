@@ -39,7 +39,7 @@ fn test_automorphism_u64<const NTT: bool>(ring: &Ring<u64>, nth_root: usize) {
         ring.ntt_inplace::<false>(&mut p0);
     }
 
-    ring.automorphism::<NTT>(&p0, 2 * n - 1, nth_root, &mut p1);
+    ring.a_apply_automorphism_into_b::<NTT>(&p0, 2 * n - 1, nth_root, &mut p1);
 
     if NTT {
         ring.intt_inplace::<false>(&mut p1);

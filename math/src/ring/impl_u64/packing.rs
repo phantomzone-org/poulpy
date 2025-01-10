@@ -3,41 +3,8 @@ use crate::modulus::ONCE;
 use crate::poly::Poly;
 use crate::ring::Ring;
 use std::cmp::min;
-use std::collections::HashSet;
 
 impl Ring<u64> {
-    // Generates a vector storing {X^{2^0}, X^{2^1}, .., X^{2^log_n}}.
-    pub fn gen_x_pow_2<const NTT: bool, const INV: bool>(&self, log_n: usize) -> Vec<Poly<u64>> {
-        let mut x_pow: Vec<Poly<u64>> = Vec::<Poly<u64>>::with_capacity(log_n);
-
-        (0..log_n).for_each(|i| {
-            let mut idx: usize = 1 << i;
-
-            if INV {
-                idx = self.n() - idx;
-            }
-
-            x_pow.push(self.new_poly());
-
-            if i == 0 {
-                x_pow[i].0[idx] = self.modulus.montgomery.one();
-                self.ntt_inplace::<false>(&mut x_pow[i]);
-            } else {
-                let (left, right) = x_pow.split_at_mut(i);
-                self.a_mul_b_montgomery_into_c::<ONCE>(&left[i - 1], &left[i - 1], &mut right[0]);
-            }
-        });
-
-        if INV {
-            self.a_neg_into_a::<1, ONCE>(&mut x_pow[0]);
-        }
-
-        if !NTT {
-            x_pow.iter_mut().for_each(|x| self.intt_inplace::<false>(x));
-        }
-
-        x_pow
-    }
 
     pub fn pack<const ZEROGARBAGE: bool, const NTT: bool>(
         &self,
@@ -61,8 +28,6 @@ impl Ring<u64> {
 
         let gap: usize = max_gap(&indices);
 
-        let set: HashSet<_> = indices.into_iter().collect();
-
         if !ZEROGARBAGE {
             if gap > 0 {
                 log_end -= gap.trailing_zeros() as usize;
@@ -79,7 +44,7 @@ impl Ring<u64> {
             .barrett
             .prepare(self.modulus.inv(1 << (log_end - log_start)));
 
-        set.iter().for_each(|i| {
+        indices.iter().for_each(|i| {
             if let Some(poly) = polys[*i].as_mut() {
                 if !NTT {
                     self.ntt_inplace::<true>(poly);
@@ -111,15 +76,14 @@ impl Ring<u64> {
                     let gal_el: usize = self.galois_element((1 << i) >> 1, i == 0, log_nth_root);
 
                     if !polys_hi[j].is_none() {
-                        self.automorphism::<true>(&tmpa, gal_el, 2 << self.log_n(), &mut tmpb);
-                        self.a_add_b_into_b::<ONCE>(&tmpb, poly_lo);
+                        self.a_apply_automorphism_add_b_into_b::<ONCE, true>(&tmpa, gal_el, 2 << self.log_n(), poly_lo);
                     } else {
-                        self.automorphism::<true>(poly_lo, gal_el, nth_root, &mut tmpa);
+                        self.a_apply_automorphism_into_b::<true>(poly_lo, gal_el, nth_root, &mut tmpa);
                         self.a_add_b_into_b::<ONCE>(&tmpa, poly_lo);
                     }
                 } else if let Some(poly_hi) = polys_hi[j].as_mut() {
                     let gal_el: usize = self.galois_element((1 << i) >> 1, i == 0, log_nth_root);
-                    self.automorphism::<true>(poly_hi, gal_el, nth_root, &mut tmpa);
+                    self.a_apply_automorphism_into_b::<true>(poly_hi, gal_el, nth_root, &mut tmpa);
                     self.a_sub_b_into_a::<1, ONCE>(&tmpa, poly_hi);
                     std::mem::swap(&mut polys_lo[j], &mut polys_hi[j]);
                 }
@@ -136,12 +100,14 @@ impl Ring<u64> {
     }
 }
 
-// Returns the largest gap.
+
+// Returns the largest gap between two values in an ordered array of distinct values.
+// Panics if the array is not ordered or values are not distincts.
 fn max_gap(vec: &[usize]) -> usize {
     let mut gap: usize = usize::MAX;
     for i in 1..vec.len() {
         let (l, r) = (vec[i - 1], vec[i]);
-        assert!(r > l, "invalid input vec: not sorted");
+        assert!(r > l, "invalid input vec: not sorted or collision between indices");
         gap = min(gap, r - l);
         if gap == 1 {
             break;
