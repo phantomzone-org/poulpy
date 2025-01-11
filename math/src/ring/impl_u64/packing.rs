@@ -1,8 +1,10 @@
 use crate::modulus::barrett::Barrett;
+use crate::modulus::montgomery::Montgomery;
 use crate::modulus::ONCE;
 use crate::poly::Poly;
 use crate::ring::Ring;
 use std::cmp::min;
+use std::rc::Rc;
 
 impl Ring<u64> {
 
@@ -53,7 +55,7 @@ impl Ring<u64> {
             }
         });
 
-        let x_pow2: Vec<Poly<u64>> = self.gen_x_pow_2::<true, false>(log_n);
+        let x_pow2: Vec<Poly<Montgomery<u64>>> = self.gen_x_pow_2::<true, false>(log_n);
         let mut tmpa: Poly<u64> = self.new_poly();
         let mut tmpb: Poly<u64> = self.new_poly();
 
@@ -114,4 +116,113 @@ fn max_gap(vec: &[usize]) -> usize {
         }
     }
     gap
+}
+
+
+pub struct StreamRepacker{
+    accumulators: Vec<Accumulator>,
+    buf0: Poly<u64>,
+    buf1: Poly<u64>,
+    buf_auto: Poly<u64>,
+    x_pow_2: Vec<Poly<Montgomery<u64>>>,
+    n_inv: Barrett<u64>,
+    counter: usize,
+}
+
+pub struct Accumulator{
+    buf: [Option<Rc<Poly<u64>>>; 2],
+    control: bool,
+}
+
+impl Accumulator{
+    pub fn new(r: &Ring<u64>) -> Self{
+        Self { buf: [Some(Rc::new(r.new_poly())), None], control: false }
+    }
+}
+
+impl StreamRepacker{
+    pub fn new(r: &Ring<u64>) -> Self{
+
+        let mut accumulators: Vec<Accumulator> = Vec::<Accumulator>::new();
+
+        (0..r.log_n()).for_each(|_|
+            accumulators.push(Accumulator::new(r))
+        );
+
+        Self{
+            accumulators: accumulators,
+            buf0: r.new_poly(),
+            buf1: r.new_poly(),
+            buf_auto: r.new_poly(),
+            x_pow_2: r.gen_x_pow_2::<true, false>(r.log_n()),
+            n_inv: r.modulus.barrett.prepare(r.modulus.inv(r.n() as u64)),
+            counter:0,
+        }
+    }
+
+    fn merge_ab(&mut self, r: &Ring<u64>, a: &Poly<u64>, b: &Poly<u64>, i: usize) -> &Poly<u64>{
+
+        let tmp_a: &mut Poly<u64> = &mut self.buf0;
+        let tmp_b: &mut Poly<u64> = &mut self.buf1;
+
+        r.a_mul_b_montgomery_into_c::<ONCE>(a, &self.x_pow_2[r.log_n()-i-1], tmp_a);
+        r.a_sub_b_into_c::<1, ONCE>(a, tmp_a, tmp_b);
+        r.a_add_b_into_b::<ONCE>(a, tmp_a);
+
+        if i == 0{
+            r.a_mul_b_scalar_barrett_into_a::<ONCE>(&self.n_inv, tmp_a);
+            r.a_mul_b_scalar_barrett_into_a::<ONCE>(&self.n_inv, tmp_b);
+        }
+
+        let log_nth_root = r.log_n()+1;
+        let nth_root = 1<<log_nth_root;
+            
+        let gal_el: usize = r.galois_element((1 << i) >> 1, i == 0, log_nth_root);
+
+        r.a_apply_automorphism_add_b_into_b::<ONCE, true>(tmp_b, gal_el, nth_root, tmp_a);
+
+        tmp_a
+    }
+
+    fn merge_a(&mut self, r: &Ring<u64>, a: &Poly<u64>, i: usize) -> &Poly<u64>{
+
+        let tmp_a: &mut Poly<u64> = &mut self.buf0;
+ 
+        let log_nth_root = r.log_n()+1;
+        let nth_root = 1<<log_nth_root;
+        let gal_el: usize = r.galois_element((1 << i) >> 1, i == 0, log_nth_root);
+
+        if i == 0{
+            r.a_mul_b_scalar_barrett_into_a::<ONCE>(&self.n_inv, tmp_a);
+            r.a_apply_automorphism_into_b::<true>(tmp_a, gal_el, nth_root, &mut self.buf_auto)
+            r.a_add_b_into_c::<ONCE>(&self.buf_auto, a, tmp_a);
+        }else{
+            r.a_apply_automorphism_into_b::<true>(a, gal_el, nth_root, tmp_a);
+            r.a_add_b_into_b::<ONCE>(a, tmp_a);
+        }
+
+        tmp_a
+    }
+
+    fn merge_b(&mut self, r: &Ring<u64>, b: &Poly<u64>, i: usize) -> &Poly<u64>{
+
+        let tmp_a: &mut Poly<u64> = &mut self.buf0;
+        let tmp_b: &mut Poly<u64> = &mut self.buf1;
+
+        let log_nth_root = r.log_n()+1;
+        let nth_root = 1<<log_nth_root;
+        let gal_el: usize = r.galois_element((1 << i) >> 1, i == 0, log_nth_root);
+
+        if i == 0{
+            r.a_mul_b_scalar_barrett_into_c::<ONCE>(&self.n_inv, b, tmp_b);
+            r.a_mul_b_montgomery_into_a::<ONCE>(&self.x_pow_2[r.log_n()-i-1], tmp_b);
+        }else{
+            r.a_mul_b_montgomery_into_c::<ONCE>(b, &self.x_pow_2[r.log_n()-i-1], tmp_b);
+        }
+
+        r.a_apply_automorphism_into_b::<true>(tmp_b, gal_el, nth_root, &mut self.buf_auto);
+        r.a_sub_b_into_a::<1, ONCE>(&self.buf_auto, tmp_b);
+
+        tmp_b
+    }
 }
