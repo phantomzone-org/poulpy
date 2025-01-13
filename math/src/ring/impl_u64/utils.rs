@@ -1,8 +1,8 @@
-use crate::ring::Ring;
-use crate::poly::Poly;
 use crate::modulus::ONCE;
+use crate::poly::Poly;
+use crate::ring::Ring;
 
-impl Ring<u64>{
+impl Ring<u64> {
     // Generates a vector storing {X^{2^0}, X^{2^1}, .., X^{2^log_n}}.
     pub fn gen_x_pow_2<const NTT: bool, const INV: bool>(&self, log_n: usize) -> Vec<Poly<u64>> {
         let mut x_pow: Vec<Poly<u64>> = Vec::<Poly<u64>>::with_capacity(log_n);

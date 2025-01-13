@@ -7,7 +7,6 @@ use std::cmp::min;
 use std::rc::Rc;
 
 impl Ring<u64> {
-
     pub fn pack<const ZEROGARBAGE: bool, const NTT: bool>(
         &self,
         polys: &mut Vec<Option<Poly<u64>>>,
@@ -78,9 +77,16 @@ impl Ring<u64> {
                     let gal_el: usize = self.galois_element((1 << i) >> 1, i == 0, log_nth_root);
 
                     if !polys_hi[j].is_none() {
-                        self.a_apply_automorphism_add_b_into_b::<ONCE, true>(&tmpa, gal_el, 2 << self.log_n(), poly_lo);
+                        self.a_apply_automorphism_add_b_into_b::<ONCE, true>(
+                            &tmpa,
+                            gal_el,
+                            2 << self.log_n(),
+                            poly_lo,
+                        );
                     } else {
-                        self.a_apply_automorphism_into_b::<true>(poly_lo, gal_el, nth_root, &mut tmpa);
+                        self.a_apply_automorphism_into_b::<true>(
+                            poly_lo, gal_el, nth_root, &mut tmpa,
+                        );
                         self.a_add_b_into_b::<ONCE>(&tmpa, poly_lo);
                     }
                 } else if let Some(poly_hi) = polys_hi[j].as_mut() {
@@ -102,14 +108,16 @@ impl Ring<u64> {
     }
 }
 
-
 // Returns the largest gap between two values in an ordered array of distinct values.
 // Panics if the array is not ordered or values are not distincts.
 fn max_gap(vec: &[usize]) -> usize {
     let mut gap: usize = usize::MAX;
     for i in 1..vec.len() {
         let (l, r) = (vec[i - 1], vec[i]);
-        assert!(r > l, "invalid input vec: not sorted or collision between indices");
+        assert!(
+            r > l,
+            "invalid input vec: not sorted or collision between indices"
+        );
         gap = min(gap, r - l);
         if gap == 1 {
             break;
@@ -118,111 +126,193 @@ fn max_gap(vec: &[usize]) -> usize {
     gap
 }
 
-
-pub struct StreamRepacker{
+pub struct StreamRepacker {
     accumulators: Vec<Accumulator>,
-    buf0: Poly<u64>,
-    buf1: Poly<u64>,
-    buf_auto: Poly<u64>,
+    tmp_a: Poly<u64>,
+    tmp_b: Poly<u64>,
     x_pow_2: Vec<Poly<Montgomery<u64>>>,
     n_inv: Barrett<u64>,
+    pub results: Vec<Poly<u64>>,
     counter: usize,
 }
 
-pub struct Accumulator{
-    buf: [Option<Rc<Poly<u64>>>; 2],
+pub struct Accumulator {
+    buf: Poly<u64>,
+    value: bool,
     control: bool,
 }
 
-impl Accumulator{
-    pub fn new(r: &Ring<u64>) -> Self{
-        Self { buf: [Some(Rc::new(r.new_poly())), None], control: false }
+impl Accumulator {
+    pub fn new(r: &Ring<u64>) -> Self {
+        Self {
+            buf: r.new_poly(),
+            value: false,
+            control: false,
+        }
     }
 }
 
-impl StreamRepacker{
-    pub fn new(r: &Ring<u64>) -> Self{
-
+impl StreamRepacker {
+    pub fn new(r: &Ring<u64>) -> Self {
         let mut accumulators: Vec<Accumulator> = Vec::<Accumulator>::new();
 
-        (0..r.log_n()).for_each(|_|
-            accumulators.push(Accumulator::new(r))
-        );
+        (0..r.log_n()).for_each(|_| accumulators.push(Accumulator::new(r)));
 
-        Self{
+        Self {
             accumulators: accumulators,
-            buf0: r.new_poly(),
-            buf1: r.new_poly(),
-            buf_auto: r.new_poly(),
+            tmp_a: r.new_poly(),
+            tmp_b: r.new_poly(),
             x_pow_2: r.gen_x_pow_2::<true, false>(r.log_n()),
             n_inv: r.modulus.barrett.prepare(r.modulus.inv(r.n() as u64)),
-            counter:0,
+            results: Vec::<Poly<u64>>::new(),
+            counter: 0,
         }
     }
 
-    fn merge_ab(&mut self, r: &Ring<u64>, a: &Poly<u64>, b: &Poly<u64>, i: usize) -> &Poly<u64>{
-
-        let tmp_a: &mut Poly<u64> = &mut self.buf0;
-        let tmp_b: &mut Poly<u64> = &mut self.buf1;
-
-        r.a_mul_b_montgomery_into_c::<ONCE>(a, &self.x_pow_2[r.log_n()-i-1], tmp_a);
-        r.a_sub_b_into_c::<1, ONCE>(a, tmp_a, tmp_b);
-        r.a_add_b_into_b::<ONCE>(a, tmp_a);
-
-        if i == 0{
-            r.a_mul_b_scalar_barrett_into_a::<ONCE>(&self.n_inv, tmp_a);
-            r.a_mul_b_scalar_barrett_into_a::<ONCE>(&self.n_inv, tmp_b);
+    pub fn reset(&mut self) {
+        for i in 0..self.accumulators.len() {
+            self.accumulators[i].value = false;
+            self.accumulators[i].control = false;
         }
-
-        let log_nth_root = r.log_n()+1;
-        let nth_root = 1<<log_nth_root;
-            
-        let gal_el: usize = r.galois_element((1 << i) >> 1, i == 0, log_nth_root);
-
-        r.a_apply_automorphism_add_b_into_b::<ONCE, true>(tmp_b, gal_el, nth_root, tmp_a);
-
-        tmp_a
+        self.counter = 0;
     }
 
-    fn merge_a(&mut self, r: &Ring<u64>, a: &Poly<u64>, i: usize) -> &Poly<u64>{
-
-        let tmp_a: &mut Poly<u64> = &mut self.buf0;
- 
-        let log_nth_root = r.log_n()+1;
-        let nth_root = 1<<log_nth_root;
-        let gal_el: usize = r.galois_element((1 << i) >> 1, i == 0, log_nth_root);
-
-        if i == 0{
-            r.a_mul_b_scalar_barrett_into_a::<ONCE>(&self.n_inv, tmp_a);
-            r.a_apply_automorphism_into_b::<true>(tmp_a, gal_el, nth_root, &mut self.buf_auto)
-            r.a_add_b_into_c::<ONCE>(&self.buf_auto, a, tmp_a);
-        }else{
-            r.a_apply_automorphism_into_b::<true>(a, gal_el, nth_root, tmp_a);
-            r.a_add_b_into_b::<ONCE>(a, tmp_a);
+    pub fn add<const NTT: bool>(&mut self, r: &Ring<u64>, a: Option<&Poly<u64>>) {
+        assert!(NTT, "invalid parameterization: const NTT must be true");
+        pack_core::<NTT>(
+            r,
+            a,
+            &mut self.accumulators,
+            &self.n_inv,
+            &self.x_pow_2,
+            &mut self.tmp_a,
+            &mut self.tmp_b,
+            0,
+        );
+        self.counter += 1;
+        if self.counter == r.n() {
+            self.results
+                .push(self.accumulators[r.log_n() - 1].buf.clone());
+            self.reset();
         }
-
-        tmp_a
     }
 
-    fn merge_b(&mut self, r: &Ring<u64>, b: &Poly<u64>, i: usize) -> &Poly<u64>{
+    pub fn flush<const NTT: bool>(&mut self, r: &Ring<u64>) {
+        assert!(NTT, "invalid parameterization: const NTT must be true");
+        if self.counter != 0 {
+            while self.counter != r.n() - 1 {
+                self.add::<NTT>(r, None);
+            }
+        }
+    }
+}
 
-        let tmp_a: &mut Poly<u64> = &mut self.buf0;
-        let tmp_b: &mut Poly<u64> = &mut self.buf1;
+fn pack_core<const NTT: bool>(
+    r: &Ring<u64>,
+    a: Option<&Poly<u64>>,
+    accumulators: &mut [Accumulator],
+    n_inv: &Barrett<u64>,
+    x_pow_2: &[Poly<u64>],
+    tmp_a: &mut Poly<u64>,
+    tmp_b: &mut Poly<u64>,
+    i: usize,
+) {
+    if i == r.log_n() {
+        return;
+    }
 
-        let log_nth_root = r.log_n()+1;
-        let nth_root = 1<<log_nth_root;
-        let gal_el: usize = r.galois_element((1 << i) >> 1, i == 0, log_nth_root);
+    let (acc_prev, acc_next) = accumulators.split_at_mut(1);
 
-        if i == 0{
-            r.a_mul_b_scalar_barrett_into_c::<ONCE>(&self.n_inv, b, tmp_b);
-            r.a_mul_b_montgomery_into_a::<ONCE>(&self.x_pow_2[r.log_n()-i-1], tmp_b);
-        }else{
-            r.a_mul_b_montgomery_into_c::<ONCE>(b, &self.x_pow_2[r.log_n()-i-1], tmp_b);
+    if !acc_prev[0].control {
+        let acc_mut_ref: &mut Accumulator = &mut acc_prev[0]; // from split_at_mut
+
+        if let Some(a_ref) = a {
+            acc_mut_ref.buf.copy_from(a_ref);
+            acc_mut_ref.value = true
+        } else {
+            acc_mut_ref.value = false
+        }
+        acc_mut_ref.control = true;
+    } else {
+        combine::<true>(r, &mut acc_prev[0], a, n_inv, x_pow_2, tmp_a, tmp_b, i);
+        acc_prev[0].control = false;
+
+        if acc_prev[0].value {
+            pack_core::<NTT>(
+                r,
+                Some(&acc_prev[0].buf),
+                acc_next,
+                n_inv,
+                x_pow_2,
+                tmp_a,
+                tmp_b,
+                i + 1,
+            );
+        } else {
+            pack_core::<NTT>(r, None, acc_next, n_inv, x_pow_2, tmp_a, tmp_b, i + 1);
+        }
+    }
+}
+
+fn combine<const NTT: bool>(
+    r: &Ring<u64>,
+    acc: &mut Accumulator,
+    b: Option<&Poly<u64>>,
+    n_inv: &Barrett<u64>,
+    x_pow_2: &[Poly<u64>],
+    tmp_a: &mut Poly<u64>,
+    tmp_b: &mut Poly<u64>,
+    i: usize,
+) {
+    let log_n = r.log_n();
+    let log_nth_root = log_n + 1;
+    let nth_root = 1 << log_nth_root;
+    let gal_el: usize = r.galois_element((1 << i) >> 1, i == 0, log_nth_root);
+
+    let a: &mut Poly<u64> = &mut acc.buf;
+
+    if acc.value {
+        if i == 0 {
+            r.a_mul_b_scalar_barrett_into_a::<ONCE>(n_inv, a);
         }
 
-        r.a_apply_automorphism_into_b::<true>(tmp_b, gal_el, nth_root, &mut self.buf_auto);
-        r.a_sub_b_into_a::<1, ONCE>(&self.buf_auto, tmp_b);
+        if let Some(b) = b {
+            // tmp_a = b * X^t
+            r.a_mul_b_montgomery_into_c::<ONCE>(b, &x_pow_2[log_n - i - 1], tmp_a);
 
-        tmp_b
+            if i == 0 {
+                r.a_mul_b_scalar_barrett_into_a::<ONCE>(&n_inv, tmp_a);
+            }
+
+            // tmp_b = a - b*X^t
+            r.a_sub_b_into_c::<1, ONCE>(a, tmp_a, tmp_b);
+
+            // a = a + b * X^t
+            r.a_add_b_into_b::<ONCE>(tmp_a, a);
+
+            // a = a + b * X^t + phi(a - b * X^t)
+            r.a_apply_automorphism_add_b_into_b::<ONCE, NTT>(tmp_b, gal_el, nth_root, a);
+        } else {
+            // tmp_a = phi(a)
+            r.a_apply_automorphism_into_b::<NTT>(a, gal_el, nth_root, tmp_a);
+            // a = a + phi(a)
+            r.a_add_b_into_b::<ONCE>(tmp_a, a);
+        }
+    } else {
+        if let Some(b) = b {
+            // tmp_b = b * X^t
+            r.a_mul_b_montgomery_into_c::<ONCE>(b, &x_pow_2[log_n - i - 1], tmp_b);
+
+            if i == 0 {
+                r.a_mul_b_scalar_barrett_into_a::<ONCE>(&n_inv, tmp_b);
+            }
+
+            // tmp_a = phi(b * X^t)
+            r.a_apply_automorphism_into_b::<NTT>(tmp_b, gal_el, nth_root, tmp_a);
+
+            // a = (b* X^t - phi(b* X^t))
+            r.a_sub_b_into_c::<1, ONCE>(tmp_b, tmp_a, a);
+            acc.value = true
+        }
     }
 }
