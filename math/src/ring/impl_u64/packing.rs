@@ -4,12 +4,11 @@ use crate::modulus::ONCE;
 use crate::poly::Poly;
 use crate::ring::Ring;
 use std::cmp::min;
-use std::rc::Rc;
 
 impl Ring<u64> {
     pub fn pack<const ZEROGARBAGE: bool, const NTT: bool>(
         &self,
-        polys: &mut Vec<Option<Poly<u64>>>,
+        polys: &mut Vec<Option<&mut Poly<u64>>>,
         log_gap: usize,
     ) {
         let log_n: usize = self.log_n();
@@ -46,7 +45,7 @@ impl Ring<u64> {
             .prepare(self.modulus.inv(1 << (log_end - log_start)));
 
         indices.iter().for_each(|i| {
-            if let Some(poly) = polys[*i].as_mut() {
+            if let Some(poly) = polys[*i].as_deref_mut() {
                 if !NTT {
                     self.ntt_inplace::<true>(poly);
                 }
@@ -125,6 +124,7 @@ fn max_gap(vec: &[usize]) -> usize {
     }
     gap
 }
+
 
 pub struct StreamRepacker {
     accumulators: Vec<Accumulator>,

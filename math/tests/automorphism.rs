@@ -62,74 +62,46 @@ fn packing_u64() {
     let ring: Ring<u64> = Ring::new(n, q_base, q_power);
 
     sub_test("test_packing_u64::<NTT:false>", || {
-        test_packing_full_u64::<false>(&ring)
+        test_packing_sparse_u64::<false>(&ring, 1)
     });
     sub_test("test_packing_u64::<NTT:true>", || {
-        test_packing_full_u64::<true>(&ring)
+        test_packing_sparse_u64::<true>(&ring, 1)
     });
     sub_test("test_packing_sparse_u64::<NTT:false>", || {
-        test_packing_sparse_u64::<false>(&ring)
+        test_packing_sparse_u64::<false>(&ring, 3)
     });
     sub_test("test_packing_sparse_u64::<NTT:true>", || {
-        test_packing_sparse_u64::<true>(&ring)
+        test_packing_sparse_u64::<true>(&ring, 3)
     });
 }
 
-fn test_packing_full_u64<const NTT: bool>(ring: &Ring<u64>) {
+fn test_packing_sparse_u64<const NTT: bool>(ring: &Ring<u64>, gap: usize) {
     let n: usize = ring.n();
 
-    let mut result: Vec<Option<Poly<u64>>> = vec![None; n];
+    let mut result: Vec<Option<&mut Poly<u64>>> = Vec::with_capacity(n);
+    result.resize_with(n, || None);
 
-    for i in 0..n {
-        let mut poly: Poly<u64> = ring.new_poly();
-        poly.fill(&(1 + i as u64));
+    let mut polys: Vec<Poly<u64>> = vec![ring.new_poly(); (n+gap-1)/gap];
+
+    polys.iter_mut().enumerate().for_each(|(i , poly)|{
+        poly.fill(&((1 + i*gap) as u64));
         if NTT {
-            ring.ntt_inplace::<false>(&mut poly);
+            ring.ntt_inplace::<false>(poly);
         }
-
-        result[i] = Some(poly);
-    }
+        result[i*gap] = Some(poly);
+    });
 
     ring.pack::<true, NTT>(&mut result, ring.log_n());
 
     if let Some(poly) = result[0].as_mut() {
-        if NTT {
-            ring.intt_inplace::<false>(poly);
-        }
 
-        poly.0
-            .iter()
-            .enumerate()
-            .for_each(|(i, x)| assert_eq!(*x, 1 + i as u64));
-    }
-}
-
-fn test_packing_sparse_u64<const NTT: bool>(ring: &Ring<u64>) {
-    let n: usize = ring.n();
-
-    let mut result: Vec<Option<Poly<u64>>> = vec![None; n];
-
-    let gap: usize = 3;
-
-    for i in (0..n).step_by(gap) {
-        let mut poly: Poly<u64> = ring.new_poly();
-        poly.fill(&(1 + i as u64));
-        if NTT {
-            ring.ntt_inplace::<false>(&mut poly);
-        }
-        result[i] = Some(poly);
-    }
-
-    ring.pack::<true, NTT>(&mut result, ring.log_n());
-
-    if let Some(poly) = result[0].as_mut() {
         if NTT {
             ring.intt_inplace::<false>(poly);
         }
 
         poly.0.iter().enumerate().for_each(|(i, x)| {
             if i % gap == 0 {
-                assert_eq!(*x, 1 + i as u64)
+                assert_eq!(*x, (1+i) as u64)
             } else {
                 assert_eq!(*x, 0u64)
             }
