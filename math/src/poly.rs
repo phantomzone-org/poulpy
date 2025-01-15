@@ -1,4 +1,5 @@
 pub mod poly;
+use std::cmp::min;
 use std::cmp::PartialEq;
 
 #[derive(Clone, Debug, Eq)]
@@ -36,6 +37,11 @@ where
 
     pub fn resize(&mut self, n: usize) {
         self.0.resize(n, O::default());
+    }
+
+    pub fn set(&mut self, v: &[O]) {
+        let size: usize = min(v.len(), self.n());
+        self.0[..size].copy_from_slice(&v[..size]);
     }
 
     pub fn fill(&mut self, v: &O) {
