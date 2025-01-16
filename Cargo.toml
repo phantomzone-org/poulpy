@@ -1,2 +1,2 @@
 [workspace]
-members = ["math", "sampling"]
+members = ["math", "sampling", "utils"]

@@ -77,9 +77,10 @@ fn test_automorphism_from_perm_u64<const NTT: bool>(ring: &Ring<u64>, nth_root: 
         ring.ntt_inplace::<false>(&mut p0);
     }
 
-    let gal_el: usize = 2 * nth_root - 1;
+    let gen_1 = 0;
+    let gen_2 = true;
 
-    let auto_perm = AutoPerm::new::<NTT>(n, gal_el, nth_root);
+    let auto_perm = AutoPerm::new::<_, NTT>(&ring, gen_1, gen_2);
 
     ring.a_apply_automorphism_from_perm_into_b::<NTT>(&p0, &auto_perm, &mut p1);
 
