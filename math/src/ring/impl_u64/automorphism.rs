@@ -158,6 +158,13 @@ impl Ring<u64> {
             b.n()
         );
 
+        assert!(
+            NTT == auto_perm.ntt,
+            "missmatch between AutoPerm NTT flag={} and method NTT flag={}",
+            auto_perm.ntt,
+            NTT
+        );
+
         let b_vec: &mut Vec<u64> = &mut b.0;
         let a_vec: &Vec<u64> = &a.0;
 

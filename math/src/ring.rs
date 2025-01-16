@@ -45,11 +45,10 @@ impl<O: Unsigned> Ring<O> {
             e >>= 1;
         }
 
-        let nth_root = 1 << self.cyclotomic_order;
-        gal_el &= nth_root - 1;
+        gal_el &= self.cyclotomic_order - 1;
 
         if gen_2 {
-            return nth_root - gal_el;
+            return self.cyclotomic_order - gal_el;
         }
         gal_el
     }

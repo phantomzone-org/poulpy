@@ -18,7 +18,12 @@ impl AutoPermMap {
         gal_el
     }
 
-    pub fn gen<O: Unsigned, const NTT: bool>(&mut self, ring: &Ring<O>, gen_1: usize, gen_2: bool) -> usize {
+    pub fn gen<O: Unsigned, const NTT: bool>(
+        &mut self,
+        ring: &Ring<O>,
+        gen_1: usize,
+        gen_2: bool,
+    ) -> usize {
         self.insert(AutoPerm::new::<O, NTT>(ring, gen_1, gen_2))
     }
 
@@ -27,7 +32,9 @@ impl AutoPermMap {
     }
 }
 
+#[derive(Debug)]
 pub struct AutoPerm {
+    pub ntt: bool,
     pub gal_el: usize,
     pub permutation: Vec<usize>,
 }
@@ -64,6 +71,7 @@ impl AutoPerm {
         }
 
         Self {
+            ntt: NTT,
             gal_el: gal_el,
             permutation: permutation,
         }
