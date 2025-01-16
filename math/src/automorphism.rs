@@ -12,11 +12,13 @@ impl AutoPermMap {
         }
     }
 
-    pub fn insert(&mut self, perm: AutoPerm) {
+    pub fn insert(&mut self, perm: AutoPerm) -> usize {
+        let gal_el: usize = perm.gal_el;
         self.0.insert(perm.gal_el, perm);
+        gal_el
     }
 
-    pub fn gen<O: Unsigned, const NTT: bool>(&mut self, ring: &Ring<O>, gen_1: usize, gen_2: bool) {
+    pub fn gen<O: Unsigned, const NTT: bool>(&mut self, ring: &Ring<O>, gen_1: usize, gen_2: bool) -> usize {
         self.insert(AutoPerm::new::<O, NTT>(ring, gen_1, gen_2))
     }
 
