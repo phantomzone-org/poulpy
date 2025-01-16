@@ -1,84 +1,44 @@
+use crate::automorphism::AutomorphismPermutation;
 use crate::modulus::{ScalarOperations, ONCE};
 use crate::modulus::{WordOps, REDUCEMOD};
 use crate::poly::Poly;
 use crate::ring::Ring;
 
-/// Returns a lookup table for the automorphism X^{i} -> X^{i * k mod nth_root}.
-/// Method will panic if n or nth_root are not power-of-two.
-/// Method will panic if gal_el is not coprime with nth_root.
-pub fn automorphism_index<const NTT: bool>(n: usize, nth_root: usize, gal_el: usize) -> Vec<usize> {
-    assert!(n & (n - 1) != 0, "invalid n={}: not a power-of-two", n);
-    assert!(
-        nth_root & (nth_root - 1) == 0,
-        "invalid nth_root={}: not a power-of-two",
-        n
-    );
-    assert!(
-        gal_el & 1 == 1,
-        "invalid gal_el={}: not coprime with nth_root={}",
-        gal_el,
-        nth_root
-    );
-
-    let mut index: Vec<usize> = Vec::with_capacity(n);
-
-    if NTT {
-        let mask = nth_root - 1;
-        let log_nth_root_half: u32 = nth_root.log2() as u32 - 1;
-        for i in 0..n {
-            let i_rev: usize = 2 * i.reverse_bits_msb(log_nth_root_half) + 1;
-            let gal_el_i: usize = ((gal_el * i_rev) & mask) >> 1;
-            index.push(gal_el_i.reverse_bits_msb(log_nth_root_half));
-        }
-    } else {
-        let log_n: usize = n.log2();
-        let mask: usize = (n - 1) as usize;
-        for i in 0..n {
-            let gal_el_i: usize = i as usize * gal_el;
-            let sign: usize = (gal_el_i >> log_n) & 1;
-            let i_out: usize = (gal_el_i & mask) | (sign << (usize::BITS - 1));
-            index.push(i_out)
-        }
-    }
-
-    index
-}
-
 impl Ring<u64> {
     // b <- auto(a)
-    pub fn a_apply_automorphism_into_b<const NTT: bool>(
+    pub fn a_apply_automorphism_native_into_b<const NTT: bool>(
         &self,
         a: &Poly<u64>,
         gal_el: usize,
         nth_root: usize,
         b: &mut Poly<u64>,
     ) {
-        self.apply_automorphism_core::<0, ONCE, NTT>(a, gal_el, nth_root, b)
+        self.apply_automorphism_native_core::<0, ONCE, NTT>(a, gal_el, nth_root, b)
     }
 
     // b <- REDUCEMOD(b + auto(a))
-    pub fn a_apply_automorphism_add_b_into_b<const REDUCE: REDUCEMOD, const NTT: bool>(
+    pub fn a_apply_automorphism_native_add_b_into_b<const REDUCE: REDUCEMOD, const NTT: bool>(
         &self,
         a: &Poly<u64>,
         gal_el: usize,
         nth_root: usize,
         b: &mut Poly<u64>,
     ) {
-        self.apply_automorphism_core::<1, REDUCE, NTT>(a, gal_el, nth_root, b)
+        self.apply_automorphism_native_core::<1, REDUCE, NTT>(a, gal_el, nth_root, b)
     }
 
     // b <- REDUCEMOD(b - auto(a))
-    pub fn a_apply_automorphism_sub_b_into_b<const REDUCE: REDUCEMOD, const NTT: bool>(
+    pub fn a_apply_automorphism_native_sub_b_into_b<const REDUCE: REDUCEMOD, const NTT: bool>(
         &self,
         a: &Poly<u64>,
         gal_el: usize,
         nth_root: usize,
         b: &mut Poly<u64>,
     ) {
-        self.apply_automorphism_core::<2, REDUCE, NTT>(a, gal_el, nth_root, b)
+        self.apply_automorphism_native_core::<2, REDUCE, NTT>(a, gal_el, nth_root, b)
     }
 
-    fn apply_automorphism_core<const MOD: u8, const REDUCE: REDUCEMOD, const NTT: bool>(
+    fn apply_automorphism_native_core<const MOD: u8, const REDUCE: REDUCEMOD, const NTT: bool>(
         &self,
         a: &Poly<u64>,
         gal_el: usize,
@@ -155,46 +115,40 @@ impl Ring<u64> {
     }
 
     // b <- auto(a)
-    pub fn a_apply_automorphism_from_index_into_b<const NTT: bool>(
+    pub fn a_apply_automorphism_from_perm_into_b<const NTT: bool>(
         &self,
         a: &Poly<u64>,
-        idx: &[usize],
+        auto_perm: &AutomorphismPermutation,
         b: &mut Poly<u64>,
     ) {
-        self.automorphism_from_index_core::<0, ONCE, NTT>(a, idx, b)
+        self.automorphism_from_perm_core::<0, ONCE, NTT>(a, auto_perm, b)
     }
 
     // b <- REDUCEMOD(b + auto(a))
-    pub fn a_apply_automorphism_from_index_add_b_into_b<
-        const REDUCE: REDUCEMOD,
-        const NTT: bool,
-    >(
+    pub fn a_apply_automorphism_from_perm_add_b_into_b<const REDUCE: REDUCEMOD, const NTT: bool>(
         &self,
         a: &Poly<u64>,
-        idx: &[usize],
+        auto_perm: &AutomorphismPermutation,
         b: &mut Poly<u64>,
     ) {
-        self.automorphism_from_index_core::<1, REDUCE, NTT>(a, idx, b)
+        self.automorphism_from_perm_core::<1, REDUCE, NTT>(a, auto_perm, b)
     }
 
     // b <- REDUCEMOD(b - auto(a))
-    pub fn a_apply_automorphism_from_index_sub_b_into_b<
-        const REDUCE: REDUCEMOD,
-        const NTT: bool,
-    >(
+    pub fn a_apply_automorphism_from_perm_sub_b_into_b<const REDUCE: REDUCEMOD, const NTT: bool>(
         &self,
         a: &Poly<u64>,
-        idx: &[usize],
+        auto_perm: &AutomorphismPermutation,
         b: &mut Poly<u64>,
     ) {
-        self.automorphism_from_index_core::<2, REDUCE, NTT>(a, idx, b)
+        self.automorphism_from_perm_core::<2, REDUCE, NTT>(a, auto_perm, b)
     }
 
     // b <- auto(a) if OVERWRITE else b <- REDUCEMOD(b + auto(a))
-    fn automorphism_from_index_core<const MOD: u8, const REDUCE: REDUCEMOD, const NTT: bool>(
+    fn automorphism_from_perm_core<const MOD: u8, const REDUCE: REDUCEMOD, const NTT: bool>(
         &self,
         a: &Poly<u64>,
-        idx: &[usize],
+        auto_perm: &AutomorphismPermutation,
         b: &mut Poly<u64>,
     ) {
         debug_assert!(
@@ -206,6 +160,8 @@ impl Ring<u64> {
 
         let b_vec: &mut Vec<u64> = &mut b.0;
         let a_vec: &Vec<u64> = &a.0;
+
+        let idx: &Vec<usize> = &auto_perm.permutation;
 
         if NTT {
             a_vec.iter().enumerate().for_each(|(i, ai)| match MOD {

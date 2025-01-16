@@ -1,6 +1,7 @@
 #![feature(bigint_helper_methods)]
 #![feature(test)]
 
+pub mod automorphism;
 pub mod dft;
 pub mod modulus;
 pub mod num_bigint;
