@@ -1,4 +1,4 @@
-use crate::automorphism::AutomorphismPermutation;
+use crate::automorphism::AutoPerm;
 use crate::modulus::{ScalarOperations, ONCE};
 use crate::modulus::{WordOps, REDUCEMOD};
 use crate::poly::Poly;
@@ -118,7 +118,7 @@ impl Ring<u64> {
     pub fn a_apply_automorphism_from_perm_into_b<const NTT: bool>(
         &self,
         a: &Poly<u64>,
-        auto_perm: &AutomorphismPermutation,
+        auto_perm: &AutoPerm,
         b: &mut Poly<u64>,
     ) {
         self.automorphism_from_perm_core::<0, ONCE, NTT>(a, auto_perm, b)
@@ -128,7 +128,7 @@ impl Ring<u64> {
     pub fn a_apply_automorphism_from_perm_add_b_into_b<const REDUCE: REDUCEMOD, const NTT: bool>(
         &self,
         a: &Poly<u64>,
-        auto_perm: &AutomorphismPermutation,
+        auto_perm: &AutoPerm,
         b: &mut Poly<u64>,
     ) {
         self.automorphism_from_perm_core::<1, REDUCE, NTT>(a, auto_perm, b)
@@ -138,7 +138,7 @@ impl Ring<u64> {
     pub fn a_apply_automorphism_from_perm_sub_b_into_b<const REDUCE: REDUCEMOD, const NTT: bool>(
         &self,
         a: &Poly<u64>,
-        auto_perm: &AutomorphismPermutation,
+        auto_perm: &AutoPerm,
         b: &mut Poly<u64>,
     ) {
         self.automorphism_from_perm_core::<2, REDUCE, NTT>(a, auto_perm, b)
@@ -148,7 +148,7 @@ impl Ring<u64> {
     fn automorphism_from_perm_core<const MOD: u8, const REDUCE: REDUCEMOD, const NTT: bool>(
         &self,
         a: &Poly<u64>,
-        auto_perm: &AutomorphismPermutation,
+        auto_perm: &AutoPerm,
         b: &mut Poly<u64>,
     ) {
         debug_assert!(

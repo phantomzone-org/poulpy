@@ -1,5 +1,5 @@
 use itertools::izip;
-use math::automorphism::AutomorphismPermutation;
+use math::automorphism::AutoPerm;
 use math::poly::Poly;
 use math::ring::Ring;
 
@@ -79,7 +79,7 @@ fn test_automorphism_from_perm_u64<const NTT: bool>(ring: &Ring<u64>, nth_root: 
 
     let gal_el: usize = 2 * nth_root - 1;
 
-    let auto_perm = AutomorphismPermutation::new::<NTT>(n, gal_el, nth_root);
+    let auto_perm = AutoPerm::new::<NTT>(n, gal_el, nth_root);
 
     ring.a_apply_automorphism_from_perm_into_b::<NTT>(&p0, &auto_perm, &mut p1);
 

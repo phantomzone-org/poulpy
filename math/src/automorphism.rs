@@ -1,11 +1,11 @@
 use crate::modulus::WordOps;
 
-pub struct AutomorphismPermutation {
+pub struct AutoPerm {
     pub gal_el: usize,
     pub permutation: Vec<usize>,
 }
 
-impl AutomorphismPermutation {
+impl AutoPerm {
     /// Returns a lookup table for the automorphism X^{i} -> X^{i * k mod nth_root}.
     /// Method will panic if n or nth_root are not power-of-two.
     /// Method will panic if gal_el is not coprime with nth_root.
