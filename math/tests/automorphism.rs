@@ -19,10 +19,10 @@ fn automorphism_u64() {
     });
 
     sub_test("test_automorphism_from_perm_u64::<NTT:false>", || {
-        test_automorphism_from_perm_u64::<false>(&ring, nth_root)
+        test_automorphism_from_perm_u64::<false>(&ring)
     });
     sub_test("test_automorphism_from_perm_u64::<NTT:true>", || {
-        test_automorphism_from_perm_u64::<true>(&ring, nth_root)
+        test_automorphism_from_perm_u64::<true>(&ring)
     });
 }
 
@@ -62,7 +62,7 @@ fn test_automorphism_native_u64<const NTT: bool>(ring: &Ring<u64>, nth_root: usi
     izip!(p0.0, p1.0).for_each(|(a, b)| assert_eq!(a, b));
 }
 
-fn test_automorphism_from_perm_u64<const NTT: bool>(ring: &Ring<u64>, nth_root: usize) {
+fn test_automorphism_from_perm_u64<const NTT: bool>(ring: &Ring<u64>) {
     let n: usize = ring.n();
     let q: u64 = ring.modulus.q;
 

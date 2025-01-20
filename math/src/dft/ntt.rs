@@ -100,9 +100,17 @@ impl Table<u64> {
         let n: usize = a.len();
         assert!(
             n & n - 1 == 0,
-            "invalid x.len()= {} must be a power of two",
+            "invalid a.len()={} must be a power of two",
             n
         );
+
+        assert!(
+            n <= self.psi_forward_rev.len(),
+            "invalid a.len()={} > psi_forward_rev.len()={}",
+            n,
+            self.psi_forward_rev.len()
+        );
+
         let log_n: u32 = usize::BITS - ((n as usize) - 1).leading_zeros();
 
         let start: u32 = SKIPSTART as u32;
@@ -204,6 +212,14 @@ impl Table<u64> {
             "invalid x.len()= {} must be a power of two",
             n
         );
+
+        assert!(
+            n <= self.psi_backward_rev.len(),
+            "invalid a.len()={} > psi_backward_rev.len()={}",
+            n,
+            self.psi_backward_rev.len()
+        );
+
         let log_n = usize::BITS - ((n as usize) - 1).leading_zeros();
 
         let start: u32 = SKIPEND as u32;
