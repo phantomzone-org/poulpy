@@ -146,7 +146,6 @@ pub mod macros {
     macro_rules! apply_sv {
         ($self:expr, $f:expr, $a:expr, $b:expr, $CHUNK:expr) => {
             let n: usize = $b.len();
-
             debug_assert!(
                 CHUNK & (CHUNK - 1) == 0,
                 "invalid CHUNK const: not a power of two"
@@ -426,13 +425,13 @@ pub mod macros {
                     )
                     .for_each(|(a, b, e)| {
                         $f(&$self, &a[0], &b[0], $c, $d, &mut e[0]);
-                        $f(&$self, &a[1], &b[1], $c, $d,  &mut e[1]);
-                        $f(&$self, &a[2], &b[2], $c, $d,  &mut e[2]);
-                        $f(&$self, &a[3], &b[3], $c, $d,  &mut e[3]);
-                        $f(&$self, &a[4], &b[4], $c, $d,  &mut e[4]);
-                        $f(&$self, &a[5], &b[5], $c, $d,  &mut e[5]);
-                        $f(&$self, &a[6], &b[6], $c, $d,  &mut e[6]);
-                        $f(&$self, &a[7], &b[7], $c, $d,  &mut e[7]);
+                        $f(&$self, &a[1], &b[1], $c, $d, &mut e[1]);
+                        $f(&$self, &a[2], &b[2], $c, $d, &mut e[2]);
+                        $f(&$self, &a[3], &b[3], $c, $d, &mut e[3]);
+                        $f(&$self, &a[4], &b[4], $c, $d, &mut e[4]);
+                        $f(&$self, &a[5], &b[5], $c, $d, &mut e[5]);
+                        $f(&$self, &a[6], &b[6], $c, $d, &mut e[6]);
+                        $f(&$self, &a[7], &b[7], $c, $d, &mut e[7]);
                     });
 
                     let m = n - (n & 7);
@@ -445,6 +444,61 @@ pub mod macros {
                 _ => {
                     izip!($a.iter(), $b.iter(), $e.iter_mut()).for_each(|(a, b, e)| {
                         $f(&$self, a, b, $c, $d, e);
+                    });
+                }
+            }
+        };
+    }
+
+    #[macro_export]
+    macro_rules! apply_vsssvv {
+        ($self:expr, $f:expr, $a:expr, $b:expr, $c:expr, $d:expr, $e:expr, $g:expr, $CHUNK:expr) => {
+            let n: usize = $a.len();
+            debug_assert!(
+                $e.len() == n,
+                "invalid argument b: e.len() = {} != a.len() = {}",
+                $e.len(),
+                n
+            );
+            debug_assert!(
+                $g.len() == n,
+                "invalid argument g: g.len() = {} != a.len() = {}",
+                $g.len(),
+                n
+            );
+            debug_assert!(
+                CHUNK & (CHUNK - 1) == 0,
+                "invalid CHUNK const: not a power of two"
+            );
+
+            match CHUNK {
+                8 => {
+                    izip!(
+                        $a.chunks_exact(8),
+                        $e.chunks_exact_mut(8),
+                        $g.chunks_exact_mut(8)
+                    )
+                    .for_each(|(a, e, g)| {
+                        $f(&$self, &a[0], $b, $c, $d, &mut e[0], &mut g[0]);
+                        $f(&$self, &a[1], $b, $c, $d, &mut e[1], &mut g[1]);
+                        $f(&$self, &a[2], $b, $c, $d, &mut e[2], &mut g[2]);
+                        $f(&$self, &a[3], $b, $c, $d, &mut e[3], &mut g[3]);
+                        $f(&$self, &a[4], $b, $c, $d, &mut e[4], &mut g[4]);
+                        $f(&$self, &a[5], $b, $c, $d, &mut e[5], &mut g[5]);
+                        $f(&$self, &a[6], $b, $c, $d, &mut e[6], &mut g[6]);
+                        $f(&$self, &a[7], $b, $c, $d, &mut e[7], &mut g[7]);
+                    });
+
+                    let m = n - (n & 7);
+                    izip!($a[m..].iter(), $e[m..].iter_mut(), $g[m..].iter_mut()).for_each(
+                        |(a, e, g)| {
+                            $f(&$self, a, $b, $c, $d, e, g);
+                        },
+                    );
+                }
+                _ => {
+                    izip!($a.iter(), $e.iter_mut(), $g.iter_mut()).for_each(|(a, e, g)| {
+                        $f(&$self, a, $b, $c, $d, e, g);
                     });
                 }
             }

@@ -187,6 +187,22 @@ pub trait ScalarOperations<O> {
         d: &barrett::Barrett<u64>,
         a: &mut u64,
     );
+
+    fn sa_rsh_sb_mask_sc_into_sa(&self, c: &u64, b: &u64, a: &mut u64);
+
+    fn sa_rsh_sb_mask_sc_into_sd(&self, a: &u64, b: &u64, c: &u64, d: &mut u64);
+
+    fn sa_rsh_sb_mask_sc_add_sd_into_sd(&self, a: &u64, b: &u64, c: &u64, d: &mut u64);
+
+    fn sa_signed_digit_into_sb<const CARRYOVERWRITE: bool, const BALANCED: bool>(
+        &self,
+        a: &u64,
+        base: &u64,
+        shift: &u64,
+        mask: &u64,
+        carry: &mut u64,
+        b: &mut u64,
+    );
 }
 
 pub trait VectorOperations<O> {
@@ -353,5 +369,49 @@ pub trait VectorOperations<O> {
         sc: &u64,
         sd: &barrett::Barrett<u64>,
         va: &mut [u64],
+    );
+
+    // vec(a) <- (vec(a)>>scalar(b)) & scalar(c).
+    fn va_rsh_sb_mask_sd_into_va<const CHUNK: usize>(&self, sb: &u64, sc: &u64, va: &mut [u64]);
+
+    // vec(d) <- (vec(a)>>scalar(b)) & scalar(c).
+    fn va_rsh_sb_mask_sc_into_vd<const CHUNK: usize>(
+        &self,
+        va: &[u64],
+        sb: &u64,
+        sc: &u64,
+        vd: &mut [u64],
+    );
+
+    // vec(d) <- vec(d) + (vec(a)>>scalar(b)) & scalar(c).
+    fn va_rsh_sb_mask_sc_add_vd_into_vd<const CHUNK: usize>(
+        &self,
+        va: &[u64],
+        sb: &u64,
+        sc: &u64,
+        vd: &mut [u64],
+    );
+
+    // vec(c) <- i-th unsigned digit base 2^{sb} of vec(a).
+    // vec(c) is ensured to be in the range [0, 2^{sb}-1[ with E[vec(c)] = 2^{sb}-1.
+    fn va_ith_digit_unsigned_base_sb_into_vc<const CHUNK: usize>(
+        &self,
+        i: usize,
+        va: &[u64],
+        sb: &u64,
+        vc: &mut [u64],
+    );
+
+    // vec(c) <- i-th signed digit base 2^{w} of vec(a).
+    // Reads the carry of the i-1-th iteration and write the carry on the i-th iteration on carry.
+    // if i > 0, carry of the i-1th iteration must be provided.
+    // if BALANCED: vec(c) is ensured to be [-2^{sb-1}, 2^{sb-1}[ with E[vec(c)] = 0, else E[vec(c)] = -0.5
+    fn va_ith_digit_signed_base_sb_into_vc<const CHUNK: usize, const BALANCED: bool>(
+        &self,
+        i: usize,
+        va: &[u64],
+        sb: &u64,
+        carry: &mut [u64],
+        vc: &mut [u64],
     );
 }

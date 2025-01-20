@@ -35,7 +35,7 @@ impl Ring<u64> {
         });
     }
 
-    pub fn fill_normal(&self, source: &mut Source, sigma: f64, bound: f64, a: &mut Poly<u64>){
+    pub fn fill_normal(&self, source: &mut Source, sigma: f64, bound: f64, a: &mut Poly<u64>) {
         self.fill_dist_f64(source, Normal::new(0.0, sigma).unwrap(), bound, a);
     }
 }
