@@ -2,7 +2,7 @@ use crate::modulus::WordOps;
 use crate::poly::{Poly, PolyRNS};
 use crate::ring::{Ring, RingRNS};
 use num::ToPrimitive;
-use rand_distr::Distribution;
+use rand_distr::{Distribution, Normal};
 use sampling::source::Source;
 
 impl Ring<u64> {
@@ -33,6 +33,10 @@ impl Ring<u64> {
 
             *a = (dist_u64 * sign) | (max - dist_u64) * (sign ^ 1)
         });
+    }
+
+    pub fn fill_normal(&self, source: &mut Source, sigma: f64, bound: f64, a: &mut Poly<u64>){
+        self.fill_dist_f64(source, Normal::new(0.0, sigma).unwrap(), bound, a);
     }
 }
 
