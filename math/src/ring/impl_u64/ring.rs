@@ -224,6 +224,20 @@ impl Ring<u64> {
     }
 
     #[inline(always)]
+    pub fn a_mul_b_montgomery_add_c_into_c<const REDUCE1: REDUCEMOD, const REDUCE2: REDUCEMOD>(
+        &self,
+        a: &Poly<Montgomery<u64>>,
+        b: &Poly<u64>,
+        c: &mut Poly<u64>,
+    ) {
+        debug_assert!(a.n() == self.n(), "a.n()={} != n={}", a.n(), self.n());
+        debug_assert!(b.n() == self.n(), "b.n()={} != n={}", b.n(), self.n());
+        debug_assert!(c.n() == self.n(), "c.n()={} != n={}", c.n(), self.n());
+        self.modulus
+            .va_mul_vb_montgomery_add_vc_into_vc::<CHUNK, REDUCE1, REDUCE2>(&a.0, &b.0, &mut c.0);
+    }
+
+    #[inline(always)]
     pub fn a_mul_b_montgomery_into_a<const REDUCE: REDUCEMOD>(
         &self,
         b: &Poly<Montgomery<u64>>,
