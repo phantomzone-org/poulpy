@@ -1,5 +1,3 @@
-use itertools::izip;
-use math::automorphism::AutoPerm;
 use math::poly::Poly;
 use math::ring::Ring;
 
