@@ -22,7 +22,7 @@ impl MontgomeryPrecomp<u64> {
             q_inv = q_inv.wrapping_mul(q_pow);
             q_pow = q_pow.wrapping_mul(q_pow);
         }
-        let mut precomp = Self {
+        let mut precomp: MontgomeryPrecomp<u64> = Self {
             q: q,
             two_q: q << 1,
             four_q: q << 2,

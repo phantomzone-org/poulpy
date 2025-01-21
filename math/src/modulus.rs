@@ -13,14 +13,14 @@ pub const BARRETT: REDUCEMOD = 4;
 pub const BARRETTLAZY: REDUCEMOD = 5;
 
 pub trait WordOps<O> {
-    fn log2(self) -> O;
+    fn log2(self) -> usize;
     fn reverse_bits_msb(self, n: u32) -> O;
     fn mask(self) -> O;
 }
 
 impl WordOps<u64> for u64 {
     #[inline(always)]
-    fn log2(self) -> u64 {
+    fn log2(self) -> usize {
         (u64::BITS - (self - 1).leading_zeros()) as _
     }
     #[inline(always)]
@@ -188,17 +188,17 @@ pub trait ScalarOperations<O> {
         a: &mut u64,
     );
 
-    fn sa_rsh_sb_mask_sc_into_sa(&self, c: &u64, b: &u64, a: &mut u64);
+    fn sa_rsh_sb_mask_sc_into_sa(&self, c: &usize, b: &u64, a: &mut u64);
 
-    fn sa_rsh_sb_mask_sc_into_sd(&self, a: &u64, b: &u64, c: &u64, d: &mut u64);
+    fn sa_rsh_sb_mask_sc_into_sd(&self, a: &u64, b: &usize, c: &u64, d: &mut u64);
 
-    fn sa_rsh_sb_mask_sc_add_sd_into_sd(&self, a: &u64, b: &u64, c: &u64, d: &mut u64);
+    fn sa_rsh_sb_mask_sc_add_sd_into_sd(&self, a: &u64, b: &usize, c: &u64, d: &mut u64);
 
     fn sa_signed_digit_into_sb<const CARRYOVERWRITE: bool, const BALANCED: bool>(
         &self,
         a: &u64,
         base: &u64,
-        shift: &u64,
+        shift: &usize,
         mask: &u64,
         carry: &mut u64,
         b: &mut u64,
@@ -372,13 +372,13 @@ pub trait VectorOperations<O> {
     );
 
     // vec(a) <- (vec(a)>>scalar(b)) & scalar(c).
-    fn va_rsh_sb_mask_sd_into_va<const CHUNK: usize>(&self, sb: &u64, sc: &u64, va: &mut [u64]);
+    fn va_rsh_sb_mask_sc_into_va<const CHUNK: usize>(&self, sb: &usize, sc: &u64, va: &mut [u64]);
 
     // vec(d) <- (vec(a)>>scalar(b)) & scalar(c).
     fn va_rsh_sb_mask_sc_into_vd<const CHUNK: usize>(
         &self,
         va: &[u64],
-        sb: &u64,
+        sb: &usize,
         sc: &u64,
         vd: &mut [u64],
     );
@@ -387,7 +387,7 @@ pub trait VectorOperations<O> {
     fn va_rsh_sb_mask_sc_add_vd_into_vd<const CHUNK: usize>(
         &self,
         va: &[u64],
-        sb: &u64,
+        sb: &usize,
         sc: &u64,
         vd: &mut [u64],
     );
@@ -398,7 +398,7 @@ pub trait VectorOperations<O> {
         &self,
         i: usize,
         va: &[u64],
-        sb: &u64,
+        sb: &usize,
         vc: &mut [u64],
     );
 
@@ -410,7 +410,7 @@ pub trait VectorOperations<O> {
         &self,
         i: usize,
         va: &[u64],
-        sb: &u64,
+        sb: &usize,
         carry: &mut [u64],
         vc: &mut [u64],
     );

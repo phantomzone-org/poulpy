@@ -349,4 +349,69 @@ impl Ring<u64> {
         self.modulus
             .vb_sub_va_add_sc_mul_sd_into_va::<CHUNK, BRANGE, REDUCE>(&b.0, c, d, &mut a.0);
     }
+
+    pub fn a_rsh_scalar_b_mask_scalar_c_into_d(
+        &self,
+        a: &Poly<u64>,
+        b: &usize,
+        c: &u64,
+        d: &mut Poly<u64>,
+    ) {
+        debug_assert!(a.n() == self.n(), "a.n()={} != n={}", a.n(), self.n());
+        debug_assert!(d.n() == self.n(), "d.n()={} != n={}", d.n(), self.n());
+        self.modulus
+            .va_rsh_sb_mask_sc_into_vd::<CHUNK>(&a.0, b, c, &mut d.0);
+    }
+
+    pub fn a_rsh_scalar_b_mask_scalar_c_add_d_into_d(
+        &self,
+        a: &Poly<u64>,
+        b: &usize,
+        c: &u64,
+        d: &mut Poly<u64>,
+    ) {
+        debug_assert!(a.n() == self.n(), "a.n()={} != n={}", a.n(), self.n());
+        debug_assert!(d.n() == self.n(), "d.n()={} != n={}", d.n(), self.n());
+        self.modulus
+            .va_rsh_sb_mask_sc_add_vd_into_vd::<CHUNK>(&a.0, b, c, &mut d.0);
+    }
+
+    pub fn a_ith_digit_unsigned_base_scalar_b_into_c(
+        &self,
+        i: usize,
+        a: &Poly<u64>,
+        b: &usize,
+        c: &mut Poly<u64>,
+    ) {
+        debug_assert!(a.n() == self.n(), "a.n()={} != n={}", a.n(), self.n());
+        debug_assert!(c.n() == self.n(), "c.n()={} != n={}", c.n(), self.n());
+        self.modulus
+            .va_ith_digit_unsigned_base_sb_into_vc::<CHUNK>(i, &a.0, b, &mut c.0);
+    }
+
+    pub fn a_ith_digit_signed_base_scalar_b_into_c<const BALANCED: bool>(
+        &self,
+        i: usize,
+        a: &Poly<u64>,
+        b: &usize,
+        carry: &mut Poly<u64>,
+        c: &mut Poly<u64>,
+    ) {
+        debug_assert!(a.n() == self.n(), "a.n()={} != n={}", a.n(), self.n());
+        debug_assert!(
+            carry.n() == self.n(),
+            "carry.n()={} != n={}",
+            carry.n(),
+            self.n()
+        );
+        debug_assert!(c.n() == self.n(), "c.n()={} != n={}", c.n(), self.n());
+        self.modulus
+            .va_ith_digit_signed_base_sb_into_vc::<CHUNK, BALANCED>(
+                i,
+                &a.0,
+                b,
+                &mut carry.0,
+                &mut c.0,
+            );
+    }
 }

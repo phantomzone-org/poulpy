@@ -213,17 +213,17 @@ impl ScalarOperations<u64> for Prime<u64> {
     }
 
     #[inline(always)]
-    fn sa_rsh_sb_mask_sc_into_sa(&self, b: &u64, c: &u64, a: &mut u64) {
+    fn sa_rsh_sb_mask_sc_into_sa(&self, b: &usize, c: &u64, a: &mut u64) {
         *a = (*a >> b) & c
     }
 
     #[inline(always)]
-    fn sa_rsh_sb_mask_sc_into_sd(&self, a: &u64, b: &u64, c: &u64, d: &mut u64) {
+    fn sa_rsh_sb_mask_sc_into_sd(&self, a: &u64, b: &usize, c: &u64, d: &mut u64) {
         *d = (*a >> b) & c
     }
 
     #[inline(always)]
-    fn sa_rsh_sb_mask_sc_add_sd_into_sd(&self, a: &u64, b: &u64, c: &u64, d: &mut u64) {
+    fn sa_rsh_sb_mask_sc_add_sd_into_sd(&self, a: &u64, b: &usize, c: &u64, d: &mut u64) {
         *d += (*a >> b) & c
     }
 
@@ -232,7 +232,7 @@ impl ScalarOperations<u64> for Prime<u64> {
         &self,
         a: &u64,
         base: &u64,
-        shift: &u64,
+        shift: &usize,
         mask: &u64,
         carry: &mut u64,
         b: &mut u64,
@@ -246,7 +246,7 @@ impl ScalarOperations<u64> for Prime<u64> {
         let c: u64 = if BALANCED && *carry == base >> 1 {
             a & 1
         } else {
-            ((*carry | (*carry << 1)) >> base) & 1
+            ((*carry | (*carry << 1)) >> shift) & 1
         };
 
         *b = *carry + (self.q - base) * c;
@@ -561,7 +561,7 @@ impl VectorOperations<u64> for Prime<u64> {
     }
 
     // vec(a) <- (vec(a)>>scalar(b)) & scalar(c).
-    fn va_rsh_sb_mask_sd_into_va<const CHUNK: usize>(&self, sb: &u64, sc: &u64, va: &mut [u64]) {
+    fn va_rsh_sb_mask_sc_into_va<const CHUNK: usize>(&self, sb: &usize, sc: &u64, va: &mut [u64]) {
         apply_ssv!(self, Self::sa_rsh_sb_mask_sc_into_sa, sb, sc, va, CHUNK);
     }
 
@@ -569,7 +569,7 @@ impl VectorOperations<u64> for Prime<u64> {
     fn va_rsh_sb_mask_sc_into_vd<const CHUNK: usize>(
         &self,
         va: &[u64],
-        sb: &u64,
+        sb: &usize,
         sc: &u64,
         vd: &mut [u64],
     ) {
@@ -580,7 +580,7 @@ impl VectorOperations<u64> for Prime<u64> {
     fn va_rsh_sb_mask_sc_add_vd_into_vd<const CHUNK: usize>(
         &self,
         va: &[u64],
-        sb: &u64,
+        sb: &usize,
         sc: &u64,
         vd: &mut [u64],
     ) {
@@ -601,10 +601,10 @@ impl VectorOperations<u64> for Prime<u64> {
         &self,
         i: usize,
         va: &[u64],
-        sb: &u64,
+        sb: &usize,
         vc: &mut [u64],
     ) {
-        self.va_rsh_sb_mask_sc_into_vd::<CHUNK>(va, &((i as u64) * sb), &((1 << sb) - 1), vc);
+        self.va_rsh_sb_mask_sc_into_vd::<CHUNK>(va, &(i * sb), &((1 << sb) - 1), vc);
     }
 
     // vec(c) <- i-th signed digit base 2^{w} of vec(a).
@@ -615,7 +615,7 @@ impl VectorOperations<u64> for Prime<u64> {
         &self,
         i: usize,
         va: &[u64],
-        sb: &u64,
+        sb: &usize,
         carry: &mut [u64],
         vc: &mut [u64],
     ) {
@@ -627,7 +627,7 @@ impl VectorOperations<u64> for Prime<u64> {
                 Self::sa_signed_digit_into_sb::<true, BALANCED>,
                 va,
                 &base,
-                &(i as u64 * sb),
+                &(i * sb),
                 &mask,
                 carry,
                 vc,
@@ -639,7 +639,7 @@ impl VectorOperations<u64> for Prime<u64> {
                 Self::sa_signed_digit_into_sb::<false, BALANCED>,
                 va,
                 &base,
-                &(i as u64 * sb),
+                &(i * sb),
                 &mask,
                 carry,
                 vc,
