@@ -124,7 +124,7 @@ impl Table<u64> {
                     izip!(a.chunks_exact_mut(t), &self.psi_forward_rev[m..]).for_each(
                         |(a, psi)| {
                             let (a, b) = a.split_at_mut(size);
-                            self.dit_inplace::<false>(&mut a[0], &mut b[0], *psi);
+                            self.dit_inplace::<false>(&mut a[0], &mut b[0], psi);
                             debug_assert!(
                                 a[0] < self.two_q,
                                 "forward_inplace_core::<LAZY=true> output {} > {} (2q-1)",
@@ -143,7 +143,7 @@ impl Table<u64> {
                     izip!(a.chunks_exact_mut(t), &self.psi_forward_rev[m..]).for_each(
                         |(a, psi)| {
                             let (a, b) = a.split_at_mut(size);
-                            self.dit_inplace::<true>(&mut a[0], &mut b[0], *psi);
+                            self.dit_inplace::<true>(&mut a[0], &mut b[0], psi);
                             self.prime.barrett.reduce_assign::<BARRETT>(&mut a[0]);
                             self.prime.barrett.reduce_assign::<BARRETT>(&mut b[0]);
                             debug_assert!(
@@ -165,31 +165,31 @@ impl Table<u64> {
                 izip!(a.chunks_exact_mut(t), &self.psi_forward_rev[m..]).for_each(|(a, psi)| {
                     let (a, b) = a.split_at_mut(size);
                     izip!(a.chunks_exact_mut(8), b.chunks_exact_mut(8)).for_each(|(a, b)| {
-                        self.dit_inplace::<true>(&mut a[0], &mut b[0], *psi);
-                        self.dit_inplace::<true>(&mut a[1], &mut b[1], *psi);
-                        self.dit_inplace::<true>(&mut a[2], &mut b[2], *psi);
-                        self.dit_inplace::<true>(&mut a[3], &mut b[3], *psi);
-                        self.dit_inplace::<true>(&mut a[4], &mut b[4], *psi);
-                        self.dit_inplace::<true>(&mut a[5], &mut b[5], *psi);
-                        self.dit_inplace::<true>(&mut a[6], &mut b[6], *psi);
-                        self.dit_inplace::<true>(&mut a[7], &mut b[7], *psi);
+                        self.dit_inplace::<true>(&mut a[0], &mut b[0], psi);
+                        self.dit_inplace::<true>(&mut a[1], &mut b[1], psi);
+                        self.dit_inplace::<true>(&mut a[2], &mut b[2], psi);
+                        self.dit_inplace::<true>(&mut a[3], &mut b[3], psi);
+                        self.dit_inplace::<true>(&mut a[4], &mut b[4], psi);
+                        self.dit_inplace::<true>(&mut a[5], &mut b[5], psi);
+                        self.dit_inplace::<true>(&mut a[6], &mut b[6], psi);
+                        self.dit_inplace::<true>(&mut a[7], &mut b[7], psi);
                     });
                 });
             } else {
                 izip!(a.chunks_exact_mut(t), &self.psi_forward_rev[m..]).for_each(|(a, psi)| {
                     let (a, b) = a.split_at_mut(size);
-                    izip!(a, b).for_each(|(a, b)| self.dit_inplace::<true>(a, b, *psi));
+                    izip!(a, b).for_each(|(a, b)| self.dit_inplace::<true>(a, b, psi));
                 });
             }
         }
     }
 
     #[inline(always)]
-    fn dit_inplace<const LAZY: bool>(&self, a: &mut u64, b: &mut u64, t: Barrett<u64>) {
+    fn dit_inplace<const LAZY: bool>(&self, a: &mut u64, b: &mut u64, t: &Barrett<u64>) {
         debug_assert!(*a < self.four_q, "a:{} q:{}", a, self.four_q);
         debug_assert!(*b < self.four_q, "b:{} q:{}", b, self.four_q);
         a.reduce_once_assign(self.two_q);
-        let bt: u64 = self.prime.barrett.mul_external::<NONE>(t, *b);
+        let bt: u64 = self.prime.barrett.mul_external::<NONE>(t, b);
         *b = *a + self.two_q - bt;
         *a += bt;
         if !LAZY {
@@ -233,41 +233,41 @@ impl Table<u64> {
                 let psi: Barrett<u64> = self.prime.barrett.prepare(
                     self.prime
                         .barrett
-                        .mul_external::<ONCE>(n_inv, self.psi_backward_rev[1].0),
+                        .mul_external::<ONCE>(&n_inv, &self.psi_backward_rev[1].0),
                 );
 
                 izip!(a.chunks_exact_mut(2 * size)).for_each(|a| {
                     let (a, b) = a.split_at_mut(size);
                     izip!(a.chunks_exact_mut(8), b.chunks_exact_mut(8)).for_each(|(a, b)| {
-                        self.dif_last_inplace::<LAZY>(&mut a[0], &mut b[0], psi, n_inv);
-                        self.dif_last_inplace::<LAZY>(&mut a[1], &mut b[1], psi, n_inv);
-                        self.dif_last_inplace::<LAZY>(&mut a[2], &mut b[2], psi, n_inv);
-                        self.dif_last_inplace::<LAZY>(&mut a[3], &mut b[3], psi, n_inv);
-                        self.dif_last_inplace::<LAZY>(&mut a[4], &mut b[4], psi, n_inv);
-                        self.dif_last_inplace::<LAZY>(&mut a[5], &mut b[5], psi, n_inv);
-                        self.dif_last_inplace::<LAZY>(&mut a[6], &mut b[6], psi, n_inv);
-                        self.dif_last_inplace::<LAZY>(&mut a[7], &mut b[7], psi, n_inv);
+                        self.dif_last_inplace::<LAZY>(&mut a[0], &mut b[0], &psi, &n_inv);
+                        self.dif_last_inplace::<LAZY>(&mut a[1], &mut b[1], &psi, &n_inv);
+                        self.dif_last_inplace::<LAZY>(&mut a[2], &mut b[2], &psi, &n_inv);
+                        self.dif_last_inplace::<LAZY>(&mut a[3], &mut b[3], &psi, &n_inv);
+                        self.dif_last_inplace::<LAZY>(&mut a[4], &mut b[4], &psi, &n_inv);
+                        self.dif_last_inplace::<LAZY>(&mut a[5], &mut b[5], &psi, &n_inv);
+                        self.dif_last_inplace::<LAZY>(&mut a[6], &mut b[6], &psi, &n_inv);
+                        self.dif_last_inplace::<LAZY>(&mut a[7], &mut b[7], &psi, &n_inv);
                     });
                 });
             } else if t >= 16 {
                 izip!(a.chunks_exact_mut(t), &self.psi_backward_rev[m..]).for_each(|(a, psi)| {
                     let (a, b) = a.split_at_mut(size);
                     izip!(a.chunks_exact_mut(8), b.chunks_exact_mut(8)).for_each(|(a, b)| {
-                        self.dif_inplace::<true>(&mut a[0], &mut b[0], *psi);
-                        self.dif_inplace::<true>(&mut a[1], &mut b[1], *psi);
-                        self.dif_inplace::<true>(&mut a[2], &mut b[2], *psi);
-                        self.dif_inplace::<true>(&mut a[3], &mut b[3], *psi);
-                        self.dif_inplace::<true>(&mut a[4], &mut b[4], *psi);
-                        self.dif_inplace::<true>(&mut a[5], &mut b[5], *psi);
-                        self.dif_inplace::<true>(&mut a[6], &mut b[6], *psi);
-                        self.dif_inplace::<true>(&mut a[7], &mut b[7], *psi);
+                        self.dif_inplace::<true>(&mut a[0], &mut b[0], psi);
+                        self.dif_inplace::<true>(&mut a[1], &mut b[1], psi);
+                        self.dif_inplace::<true>(&mut a[2], &mut b[2], psi);
+                        self.dif_inplace::<true>(&mut a[3], &mut b[3], psi);
+                        self.dif_inplace::<true>(&mut a[4], &mut b[4], psi);
+                        self.dif_inplace::<true>(&mut a[5], &mut b[5], psi);
+                        self.dif_inplace::<true>(&mut a[6], &mut b[6], psi);
+                        self.dif_inplace::<true>(&mut a[7], &mut b[7], psi);
                     });
                 });
             } else {
                 izip!(a.chunks_exact_mut(2 * size), &self.psi_backward_rev[m..]).for_each(
                     |(a, psi)| {
                         let (a, b) = a.split_at_mut(size);
-                        izip!(a, b).for_each(|(a, b)| self.dif_inplace::<true>(a, b, *psi));
+                        izip!(a, b).for_each(|(a, b)| self.dif_inplace::<true>(a, b, psi));
                     },
                 );
             }
@@ -275,13 +275,13 @@ impl Table<u64> {
     }
 
     #[inline(always)]
-    fn dif_inplace<const LAZY: bool>(&self, a: &mut u64, b: &mut u64, t: Barrett<u64>) {
+    fn dif_inplace<const LAZY: bool>(&self, a: &mut u64, b: &mut u64, t: &Barrett<u64>) {
         debug_assert!(*a < self.two_q, "a:{} q:{}", a, self.two_q);
         debug_assert!(*b < self.two_q, "b:{} q:{}", b, self.two_q);
         let d: u64 = self
             .prime
             .barrett
-            .mul_external::<NONE>(t, *a + self.two_q - *b);
+            .mul_external::<NONE>(t, &(*a + self.two_q - *b));
         *a = *a + *b;
         a.reduce_once_assign(self.two_q);
         *b = d;
@@ -295,8 +295,8 @@ impl Table<u64> {
         &self,
         a: &mut u64,
         b: &mut u64,
-        psi: Barrett<u64>,
-        n_inv: Barrett<u64>,
+        psi: &Barrett<u64>,
+        n_inv: &Barrett<u64>,
     ) {
         debug_assert!(*a < self.two_q);
         debug_assert!(*b < self.two_q);
@@ -304,15 +304,15 @@ impl Table<u64> {
             let d: u64 = self
                 .prime
                 .barrett
-                .mul_external::<NONE>(psi, *a + self.two_q - *b);
-            *a = self.prime.barrett.mul_external::<NONE>(n_inv, *a + *b);
+                .mul_external::<NONE>(psi, &(*a + self.two_q - *b));
+            *a = self.prime.barrett.mul_external::<NONE>(n_inv, &(*a + *b));
             *b = d;
         } else {
             let d: u64 = self
                 .prime
                 .barrett
-                .mul_external::<ONCE>(psi, *a + self.two_q - *b);
-            *a = self.prime.barrett.mul_external::<ONCE>(n_inv, *a + *b);
+                .mul_external::<ONCE>(psi, &(*a + self.two_q - *b));
+            *a = self.prime.barrett.mul_external::<ONCE>(n_inv, &(*a + *b));
             *b = d;
         }
     }

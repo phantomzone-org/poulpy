@@ -4,7 +4,7 @@ use crate::modulus::prime::Prime;
 use crate::modulus::{ScalarOperations, VectorOperations};
 use crate::modulus::{NONE, REDUCEMOD};
 use crate::{
-    apply_ssv, apply_sv, apply_svv, apply_v, apply_vsssvv, apply_vssv, apply_vsv, apply_vv,
+    apply_ssv, apply_sv, apply_v, apply_vsssvv, apply_vssv, apply_vsv, apply_vv,
     apply_vvssv, apply_vvsv, apply_vvv,
 };
 use itertools::izip;
@@ -109,37 +109,41 @@ impl ScalarOperations<u64> for Prime<u64> {
     }
 
     #[inline(always)]
-    fn sa_mont_mul_sb_into_sc<const REDUCE: REDUCEMOD>(
+    fn sa_mul_sb_montgomery_into_sc<const REDUCE: REDUCEMOD>(
         &self,
-        a: &Montgomery<u64>,
-        b: &u64,
+        a: &u64,
+        b: &Montgomery<u64>,
         c: &mut u64,
     ) {
         *c = self.montgomery.mul_external::<REDUCE>(*a, *b);
     }
 
     #[inline(always)]
-    fn sa_mont_mul_sb_into_sb<const REDUCE: REDUCEMOD>(&self, a: &Montgomery<u64>, b: &mut u64) {
-        self.montgomery.mul_external_assign::<REDUCE>(*a, b);
+    fn sa_mul_sb_montgomery_into_sa<const REDUCE: REDUCEMOD>(
+        &self,
+        b: &Montgomery<u64>,
+        a: &mut u64,
+    ) {
+        self.montgomery.mul_external_assign::<REDUCE>(*b, a);
     }
 
     #[inline(always)]
-    fn sa_barrett_mul_sb_into_sc<const REDUCE: REDUCEMOD>(
+    fn sa_mul_sb_barrett_into_sc<const REDUCE: REDUCEMOD>(
         &self,
-        a: &Barrett<u64>,
-        b: &u64,
+        a: &u64,
+        b: &Barrett<u64>,
         c: &mut u64,
     ) {
-        *c = self.barrett.mul_external::<REDUCE>(*a, *b);
+        *c = self.barrett.mul_external::<REDUCE>(b, a);
     }
 
     #[inline(always)]
-    fn sa_barrett_mul_sb_into_sb<const REDUCE: REDUCEMOD>(&self, a: &Barrett<u64>, b: &mut u64) {
-        self.barrett.mul_external_assign::<REDUCE>(*a, b);
+    fn sa_mul_sb_barrett_into_sa<const REDUCE: REDUCEMOD>(&self, b: &Barrett<u64>, a: &mut u64) {
+        self.barrett.mul_external_assign::<REDUCE>(b, a);
     }
 
     #[inline(always)]
-    fn sa_sub_sb_mul_sc_into_sd<const VBRANGE: u8, const REDUCE: REDUCEMOD>(
+    fn sa_sub_sb_mul_sc_barrett_into_sd<const VBRANGE: u8, const REDUCE: REDUCEMOD>(
         &self,
         a: &u64,
         b: &u64,
@@ -152,43 +156,43 @@ impl ScalarOperations<u64> for Prime<u64> {
             4 => *d = a + self.four_q - b,
             _ => unreachable!("invalid SBRANGE argument"),
         }
-        self.barrett.mul_external_assign::<REDUCE>(*c, d);
+        self.barrett.mul_external_assign::<REDUCE>(c, d);
     }
 
     #[inline(always)]
-    fn sa_sub_sb_mul_sc_into_sb<const SBRANGE: u8, const REDUCE: REDUCEMOD>(
+    fn sa_sub_sb_mul_sc_barrett_into_sb<const SBRANGE: u8, const REDUCE: REDUCEMOD>(
         &self,
         a: &u64,
         c: &Barrett<u64>,
         b: &mut u64,
     ) {
         self.sa_sub_sb_into_sb::<SBRANGE, NONE>(a, b);
-        self.barrett.mul_external_assign::<REDUCE>(*c, b);
+        self.barrett.mul_external_assign::<REDUCE>(c, b);
     }
 
     #[inline(always)]
-    fn sa_add_sb_mul_sc_into_sd<const REDUCE: REDUCEMOD>(
+    fn sa_add_sb_mul_sc_barrett_into_sd<const REDUCE: REDUCEMOD>(
         &self,
         a: &u64,
         b: &u64,
         c: &Barrett<u64>,
         d: &mut u64,
     ) {
-        *d = self.barrett.mul_external::<REDUCE>(*c, *a + *b);
+        *d = self.barrett.mul_external::<REDUCE>(c, &(*a + b));
     }
 
     #[inline(always)]
-    fn sa_add_sb_mul_sc_into_sa<const REDUCE: REDUCEMOD>(
+    fn sa_add_sb_mul_sc_barrett_into_sa<const REDUCE: REDUCEMOD>(
         &self,
         b: &u64,
         c: &Barrett<u64>,
         a: &mut u64,
     ) {
-        *a = self.barrett.mul_external::<REDUCE>(*c, *a + *b);
+        *a = self.barrett.mul_external::<REDUCE>(c, &(*a + b));
     }
 
     #[inline(always)]
-    fn sb_sub_sa_add_sc_mul_sd_into_se<const SBRANGE: u8, const REDUCE: REDUCEMOD>(
+    fn sb_sub_sa_add_sc_mul_sd_barrett_into_se<const SBRANGE: u8, const REDUCE: REDUCEMOD>(
         &self,
         a: &u64,
         b: &u64,
@@ -197,11 +201,11 @@ impl ScalarOperations<u64> for Prime<u64> {
         e: &mut u64,
     ) {
         self.sa_sub_sb_into_sc::<SBRANGE, NONE>(&(b + c), a, e);
-        self.barrett.mul_external_assign::<REDUCE>(*d, e);
+        self.barrett.mul_external_assign::<REDUCE>(d, e);
     }
 
     #[inline(always)]
-    fn sb_sub_sa_add_sc_mul_sd_into_sa<const SBRANGE: u8, const REDUCE: REDUCEMOD>(
+    fn sb_sub_sa_add_sc_mul_sd_barrett_into_sa<const SBRANGE: u8, const REDUCE: REDUCEMOD>(
         &self,
         b: &u64,
         c: &u64,
@@ -209,7 +213,7 @@ impl ScalarOperations<u64> for Prime<u64> {
         a: &mut u64,
     ) {
         self.sa_sub_sb_into_sb::<SBRANGE, NONE>(&(b + c), a);
-        self.barrett.mul_external_assign::<REDUCE>(*d, a);
+        self.barrett.mul_external_assign::<REDUCE>(d, a);
     }
 
     #[inline(always)]
@@ -398,34 +402,15 @@ impl VectorOperations<u64> for Prime<u64> {
     }
 
     #[inline(always)]
-    fn va_mont_mul_vb_into_vc<const CHUNK: usize, const REDUCE: REDUCEMOD>(
+    fn va_mul_vb_montgomery_into_vc<const CHUNK: usize, const REDUCE: REDUCEMOD>(
         &self,
         a: &[Montgomery<u64>],
         b: &[u64],
         c: &mut [u64],
     ) {
-        apply_vvv!(self, Self::sa_mont_mul_sb_into_sc::<REDUCE>, a, b, c, CHUNK);
-    }
-
-    #[inline(always)]
-    fn va_mont_mul_vb_into_vb<const CHUNK: usize, const REDUCE: REDUCEMOD>(
-        &self,
-        a: &[Montgomery<u64>],
-        b: &mut [u64],
-    ) {
-        apply_vv!(self, Self::sa_mont_mul_sb_into_sb::<REDUCE>, a, b, CHUNK);
-    }
-
-    #[inline(always)]
-    fn sa_barrett_mul_vb_into_vc<const CHUNK: usize, const REDUCE: REDUCEMOD>(
-        &self,
-        a: &Barrett<u64>,
-        b: &[u64],
-        c: &mut [u64],
-    ) {
-        apply_svv!(
+        apply_vvv!(
             self,
-            Self::sa_barrett_mul_sb_into_sc::<REDUCE>,
+            Self::sa_mul_sb_montgomery_into_sc::<REDUCE>,
             a,
             b,
             c,
@@ -434,15 +419,51 @@ impl VectorOperations<u64> for Prime<u64> {
     }
 
     #[inline(always)]
-    fn sa_barrett_mul_vb_into_vb<const CHUNK: usize, const REDUCE: REDUCEMOD>(
+    fn va_mul_vb_montgomery_into_va<const CHUNK: usize, const REDUCE: REDUCEMOD>(
         &self,
-        a: &Barrett<u64>,
-        b: &mut [u64],
+        b: &[Montgomery<u64>],
+        a: &mut [u64],
     ) {
-        apply_sv!(self, Self::sa_barrett_mul_sb_into_sb::<REDUCE>, a, b, CHUNK);
+        apply_vv!(
+            self,
+            Self::sa_mul_sb_montgomery_into_sa::<REDUCE>,
+            b,
+            a,
+            CHUNK
+        );
     }
 
-    fn va_sub_vb_mul_sc_into_vd<const CHUNK: usize, const VBRANGE: u8, const REDUCE: REDUCEMOD>(
+    #[inline(always)]
+    fn va_mul_sb_barrett_into_vc<const CHUNK: usize, const REDUCE: REDUCEMOD>(
+        &self,
+        a: &[u64],
+        b: &Barrett<u64>,
+        c: &mut [u64],
+    ) {
+        apply_vsv!(
+            self,
+            Self::sa_mul_sb_barrett_into_sc::<REDUCE>,
+            a,
+            b,
+            c,
+            CHUNK
+        );
+    }
+
+    #[inline(always)]
+    fn va_mul_sb_barrett_into_va<const CHUNK: usize, const REDUCE: REDUCEMOD>(
+        &self,
+        b: &Barrett<u64>,
+        a: &mut [u64],
+    ) {
+        apply_sv!(self, Self::sa_mul_sb_barrett_into_sa::<REDUCE>, b, a, CHUNK);
+    }
+
+    fn va_sub_vb_mul_sc_barrett_into_vd<
+        const CHUNK: usize,
+        const VBRANGE: u8,
+        const REDUCE: REDUCEMOD,
+    >(
         &self,
         a: &[u64],
         b: &[u64],
@@ -451,7 +472,7 @@ impl VectorOperations<u64> for Prime<u64> {
     ) {
         apply_vvsv!(
             self,
-            Self::sa_sub_sb_mul_sc_into_sd::<VBRANGE, REDUCE>,
+            Self::sa_sub_sb_mul_sc_barrett_into_sd::<VBRANGE, REDUCE>,
             a,
             b,
             c,
@@ -460,7 +481,11 @@ impl VectorOperations<u64> for Prime<u64> {
         );
     }
 
-    fn va_sub_vb_mul_sc_into_vb<const CHUNK: usize, const VBRANGE: u8, const REDUCE: REDUCEMOD>(
+    fn va_sub_vb_mul_sc_barrett_into_vb<
+        const CHUNK: usize,
+        const VBRANGE: u8,
+        const REDUCE: REDUCEMOD,
+    >(
         &self,
         a: &[u64],
         b: &Barrett<u64>,
@@ -468,7 +493,7 @@ impl VectorOperations<u64> for Prime<u64> {
     ) {
         apply_vsv!(
             self,
-            Self::sa_sub_sb_mul_sc_into_sb::<VBRANGE, REDUCE>,
+            Self::sa_sub_sb_mul_sc_barrett_into_sb::<VBRANGE, REDUCE>,
             a,
             b,
             c,
@@ -477,7 +502,7 @@ impl VectorOperations<u64> for Prime<u64> {
     }
 
     // vec(a) <- (vec(a) + scalar(b)) * scalar(c);
-    fn va_add_sb_mul_sc_into_va<const CHUNK: usize, const REDUCE: REDUCEMOD>(
+    fn va_add_sb_mul_sc_barrett_into_va<const CHUNK: usize, const REDUCE: REDUCEMOD>(
         &self,
         b: &u64,
         c: &Barrett<u64>,
@@ -485,7 +510,7 @@ impl VectorOperations<u64> for Prime<u64> {
     ) {
         apply_ssv!(
             self,
-            Self::sa_add_sb_mul_sc_into_sa::<REDUCE>,
+            Self::sa_add_sb_mul_sc_barrett_into_sa::<REDUCE>,
             b,
             c,
             a,
@@ -494,7 +519,7 @@ impl VectorOperations<u64> for Prime<u64> {
     }
 
     // vec(a) <- (vec(a) + scalar(b)) * scalar(c);
-    fn va_add_sb_mul_sc_into_vd<const CHUNK: usize, const REDUCE: REDUCEMOD>(
+    fn va_add_sb_mul_sc_barrett_into_vd<const CHUNK: usize, const REDUCE: REDUCEMOD>(
         &self,
         a: &[u64],
         b: &u64,
@@ -503,7 +528,7 @@ impl VectorOperations<u64> for Prime<u64> {
     ) {
         apply_vssv!(
             self,
-            Self::sa_add_sb_mul_sc_into_sd::<REDUCE>,
+            Self::sa_add_sb_mul_sc_barrett_into_sd::<REDUCE>,
             a,
             b,
             c,
@@ -513,7 +538,7 @@ impl VectorOperations<u64> for Prime<u64> {
     }
 
     // vec(e) <- (vec(a) - vec(b) + scalar(c)) * scalar(e).
-    fn vb_sub_va_add_sc_mul_sd_into_ve<
+    fn vb_sub_va_add_sc_mul_sd_barrett_into_ve<
         const CHUNK: usize,
         const VBRANGE: u8,
         const REDUCE: REDUCEMOD,
@@ -527,7 +552,7 @@ impl VectorOperations<u64> for Prime<u64> {
     ) {
         apply_vvssv!(
             self,
-            Self::sb_sub_sa_add_sc_mul_sd_into_se::<VBRANGE, REDUCE>,
+            Self::sb_sub_sa_add_sc_mul_sd_barrett_into_se::<VBRANGE, REDUCE>,
             va,
             vb,
             sc,
@@ -538,7 +563,7 @@ impl VectorOperations<u64> for Prime<u64> {
     }
 
     // vec(a) <- (vec(b) - vec(a) + scalar(c)) * scalar(e).
-    fn vb_sub_va_add_sc_mul_sd_into_va<
+    fn vb_sub_va_add_sc_mul_sd_barrett_into_va<
         const CHUNK: usize,
         const VBRANGE: u8,
         const REDUCE: REDUCEMOD,
@@ -551,7 +576,7 @@ impl VectorOperations<u64> for Prime<u64> {
     ) {
         apply_vssv!(
             self,
-            Self::sb_sub_sa_add_sc_mul_sd_into_sa::<VBRANGE, REDUCE>,
+            Self::sb_sub_sa_add_sc_mul_sd_barrett_into_sa::<VBRANGE, REDUCE>,
             vb,
             sc,
             sd,

@@ -107,37 +107,37 @@ pub trait ScalarOperations<O> {
     );
 
     // Assigns a * b to c.
-    fn sa_mont_mul_sb_into_sc<const REDUCE: REDUCEMOD>(
+    fn sa_mul_sb_montgomery_into_sc<const REDUCE: REDUCEMOD>(
         &self,
-        a: &montgomery::Montgomery<O>,
-        b: &O,
+        a: &O,
+        b: &montgomery::Montgomery<O>,
         c: &mut O,
     );
 
     // Assigns a * b to b.
-    fn sa_mont_mul_sb_into_sb<const REDUCE: REDUCEMOD>(
+    fn sa_mul_sb_montgomery_into_sa<const REDUCE: REDUCEMOD>(
         &self,
-        a: &montgomery::Montgomery<O>,
-        b: &mut O,
+        b: &montgomery::Montgomery<O>,
+        a: &mut O,
     );
 
     // Assigns a * b to c.
-    fn sa_barrett_mul_sb_into_sc<const REDUCE: REDUCEMOD>(
+    fn sa_mul_sb_barrett_into_sc<const REDUCE: REDUCEMOD>(
         &self,
-        a: &barrett::Barrett<O>,
-        b: &O,
+        a: &O,
+        b: &barrett::Barrett<O>,
         c: &mut O,
     );
 
-    // Assigns a * b to b.
-    fn sa_barrett_mul_sb_into_sb<const REDUCE: REDUCEMOD>(
+    // Assigns a * b to a.
+    fn sa_mul_sb_barrett_into_sa<const REDUCE: REDUCEMOD>(
         &self,
-        a: &barrett::Barrett<O>,
-        b: &mut O,
+        b: &barrett::Barrett<O>,
+        a: &mut O,
     );
 
     // Assigns (a + q - b) * c to d.
-    fn sa_sub_sb_mul_sc_into_sd<const VBRANGE: u8, const REDUCE: REDUCEMOD>(
+    fn sa_sub_sb_mul_sc_barrett_into_sd<const VBRANGE: u8, const REDUCE: REDUCEMOD>(
         &self,
         a: &O,
         b: &O,
@@ -146,7 +146,7 @@ pub trait ScalarOperations<O> {
     );
 
     // Assigns (a + q - b) * c to b.
-    fn sa_sub_sb_mul_sc_into_sb<const SBRANGE: u8, const REDUCE: REDUCEMOD>(
+    fn sa_sub_sb_mul_sc_barrett_into_sb<const SBRANGE: u8, const REDUCE: REDUCEMOD>(
         &self,
         a: &u64,
         c: &barrett::Barrett<u64>,
@@ -154,7 +154,7 @@ pub trait ScalarOperations<O> {
     );
 
     // Assigns (a + b) * c to a.
-    fn sa_add_sb_mul_sc_into_sa<const REDUCE: REDUCEMOD>(
+    fn sa_add_sb_mul_sc_barrett_into_sa<const REDUCE: REDUCEMOD>(
         &self,
         b: &u64,
         c: &barrett::Barrett<u64>,
@@ -162,7 +162,7 @@ pub trait ScalarOperations<O> {
     );
 
     // Assigns (a + b) * c to d.
-    fn sa_add_sb_mul_sc_into_sd<const REDUCE: REDUCEMOD>(
+    fn sa_add_sb_mul_sc_barrett_into_sd<const REDUCE: REDUCEMOD>(
         &self,
         a: &u64,
         b: &u64,
@@ -171,7 +171,7 @@ pub trait ScalarOperations<O> {
     );
 
     // Assigns (a - b + c) * d to e.
-    fn sb_sub_sa_add_sc_mul_sd_into_se<const SBRANGE: u8, const REDUCE: REDUCEMOD>(
+    fn sb_sub_sa_add_sc_mul_sd_barrett_into_se<const SBRANGE: u8, const REDUCE: REDUCEMOD>(
         &self,
         a: &u64,
         b: &u64,
@@ -180,7 +180,7 @@ pub trait ScalarOperations<O> {
         e: &mut u64,
     );
 
-    fn sb_sub_sa_add_sc_mul_sd_into_sa<const SBRANGE: u8, const REDUCE: REDUCEMOD>(
+    fn sb_sub_sa_add_sc_mul_sd_barrett_into_sa<const SBRANGE: u8, const REDUCE: REDUCEMOD>(
         &self,
         b: &u64,
         c: &u64,
@@ -281,37 +281,41 @@ pub trait VectorOperations<O> {
     );
 
     // vec(c) <- vec(a) * vec(b).
-    fn va_mont_mul_vb_into_vc<const CHUNK: usize, const REDUCE: REDUCEMOD>(
+    fn va_mul_vb_montgomery_into_vc<const CHUNK: usize, const REDUCE: REDUCEMOD>(
         &self,
-        a: &[montgomery::Montgomery<O>],
-        b: &[O],
+        a: &[O],
+        b: &[montgomery::Montgomery<O>],
         c: &mut [O],
     );
 
-    // vec(b) <- vec(a) * vec(b).
-    fn va_mont_mul_vb_into_vb<const CHUNK: usize, const REDUCE: REDUCEMOD>(
+    // vec(a) <- vec(a) * vec(b).
+    fn va_mul_vb_montgomery_into_va<const CHUNK: usize, const REDUCE: REDUCEMOD>(
         &self,
-        a: &[montgomery::Montgomery<O>],
-        b: &mut [O],
+        b: &[montgomery::Montgomery<O>],
+        a: &mut [O],
     );
 
-    // vec(b) <- vec(b) * scalar(a).
-    fn sa_barrett_mul_vb_into_vb<const CHUNK: usize, const REDUCE: REDUCEMOD>(
+    // vec(b) <- vec(a) * scalar(b).
+    fn va_mul_sb_barrett_into_va<const CHUNK: usize, const REDUCE: REDUCEMOD>(
         &self,
-        a: &barrett::Barrett<u64>,
-        b: &mut [u64],
+        b: &barrett::Barrett<u64>,
+        a: &mut [u64],
     );
 
-    // vec(c) <- vec(b) * scalar(a).
-    fn sa_barrett_mul_vb_into_vc<const CHUNK: usize, const REDUCE: REDUCEMOD>(
+    // vec(c) <- vec(a) * scalar(b).
+    fn va_mul_sb_barrett_into_vc<const CHUNK: usize, const REDUCE: REDUCEMOD>(
         &self,
-        a: &barrett::Barrett<u64>,
-        b: &[u64],
+        a: &[u64],
+        b: &barrett::Barrett<u64>,
         c: &mut [u64],
     );
 
     // vec(d) <- (vec(a) + VBRANGE * q - vec(b)) * scalar(c).
-    fn va_sub_vb_mul_sc_into_vd<const CHUNK: usize, const VBRANGE: u8, const REDUCE: REDUCEMOD>(
+    fn va_sub_vb_mul_sc_barrett_into_vd<
+        const CHUNK: usize,
+        const VBRANGE: u8,
+        const REDUCE: REDUCEMOD,
+    >(
         &self,
         a: &[u64],
         b: &[u64],
@@ -320,7 +324,11 @@ pub trait VectorOperations<O> {
     );
 
     // vec(b) <- (vec(a) + VBRANGE * q - vec(b)) * scalar(c).
-    fn va_sub_vb_mul_sc_into_vb<const CHUNK: usize, const VBRANGE: u8, const REDUCE: REDUCEMOD>(
+    fn va_sub_vb_mul_sc_barrett_into_vb<
+        const CHUNK: usize,
+        const VBRANGE: u8,
+        const REDUCE: REDUCEMOD,
+    >(
         &self,
         a: &[u64],
         c: &barrett::Barrett<u64>,
@@ -328,7 +336,7 @@ pub trait VectorOperations<O> {
     );
 
     // vec(c) <- (vec(a) + scalar(b)) * scalar(c).
-    fn va_add_sb_mul_sc_into_vd<const CHUNK: usize, const REDUCE: REDUCEMOD>(
+    fn va_add_sb_mul_sc_barrett_into_vd<const CHUNK: usize, const REDUCE: REDUCEMOD>(
         &self,
         va: &[u64],
         sb: &u64,
@@ -337,7 +345,7 @@ pub trait VectorOperations<O> {
     );
 
     // vec(a) <- (vec(a) + scalar(b)) * scalar(c).
-    fn va_add_sb_mul_sc_into_va<const CHUNK: usize, const REDUCE: REDUCEMOD>(
+    fn va_add_sb_mul_sc_barrett_into_va<const CHUNK: usize, const REDUCE: REDUCEMOD>(
         &self,
         sb: &u64,
         sc: &barrett::Barrett<u64>,
@@ -345,7 +353,7 @@ pub trait VectorOperations<O> {
     );
 
     // vec(e) <- (vec(b) - vec(a) + scalar(c)) * scalar(e).
-    fn vb_sub_va_add_sc_mul_sd_into_ve<
+    fn vb_sub_va_add_sc_mul_sd_barrett_into_ve<
         const CHUNK: usize,
         const VBRANGE: u8,
         const REDUCE: REDUCEMOD,
@@ -359,7 +367,7 @@ pub trait VectorOperations<O> {
     );
 
     // vec(a) <- (vec(b) - vec(a) + scalar(c)) * scalar(e).
-    fn vb_sub_va_add_sc_mul_sd_into_va<
+    fn vb_sub_va_add_sc_mul_sd_barrett_into_va<
         const CHUNK: usize,
         const VBRANGE: u8,
         const REDUCE: REDUCEMOD,

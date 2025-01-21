@@ -63,14 +63,14 @@ impl BarrettPrecomp<u64> {
     }
 
     #[inline(always)]
-    pub fn mul_external<const REDUCE: REDUCEMOD>(&self, lhs: Barrett<u64>, rhs: u64) -> u64 {
-        let mut r: u64 = rhs;
+    pub fn mul_external<const REDUCE: REDUCEMOD>(&self, lhs: &Barrett<u64>, rhs: &u64) -> u64 {
+        let mut r: u64 = *rhs;
         self.mul_external_assign::<REDUCE>(lhs, &mut r);
         r
     }
 
     #[inline(always)]
-    pub fn mul_external_assign<const REDUCE: REDUCEMOD>(&self, lhs: Barrett<u64>, rhs: &mut u64) {
+    pub fn mul_external_assign<const REDUCE: REDUCEMOD>(&self, lhs: &Barrett<u64>, rhs: &mut u64) {
         let t: u64 = ((*lhs.quotient() as u128 * *rhs as u128) >> 64) as _;
         *rhs = (rhs.wrapping_mul(*lhs.value())).wrapping_sub(self.q.wrapping_mul(t));
         self.reduce_assign::<REDUCE>(rhs);
