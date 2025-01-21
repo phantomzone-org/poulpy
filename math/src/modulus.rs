@@ -114,6 +114,14 @@ pub trait ScalarOperations<O> {
         c: &mut O,
     );
 
+    // Assigns a * b + c to c.
+    fn sa_mul_sb_montgomery_add_sc_into_sc<const REDUCE1: REDUCEMOD, const REDUCE2: REDUCEMOD>(
+        &self,
+        a: &O,
+        b: &montgomery::Montgomery<O>,
+        c: &mut O,
+    );
+
     // Assigns a * b to b.
     fn sa_mul_sb_montgomery_into_sa<const REDUCE: REDUCEMOD>(
         &self,
@@ -282,6 +290,18 @@ pub trait VectorOperations<O> {
 
     // vec(c) <- vec(a) * vec(b).
     fn va_mul_vb_montgomery_into_vc<const CHUNK: usize, const REDUCE: REDUCEMOD>(
+        &self,
+        a: &[O],
+        b: &[montgomery::Montgomery<O>],
+        c: &mut [O],
+    );
+
+    // vec(c) <- vec(a) * vec(b) + vec(c).
+    fn va_mul_vb_montgomery_add_vc_into_vc<
+        const CHUNK: usize,
+        const REDUCE1: REDUCEMOD,
+        const REDUCE2: REDUCEMOD,
+    >(
         &self,
         a: &[O],
         b: &[montgomery::Montgomery<O>],

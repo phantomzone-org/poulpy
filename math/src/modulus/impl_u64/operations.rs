@@ -4,8 +4,8 @@ use crate::modulus::prime::Prime;
 use crate::modulus::{ScalarOperations, VectorOperations};
 use crate::modulus::{NONE, REDUCEMOD};
 use crate::{
-    apply_ssv, apply_sv, apply_v, apply_vsssvv, apply_vssv, apply_vsv, apply_vv,
-    apply_vvssv, apply_vvsv, apply_vvv,
+    apply_ssv, apply_sv, apply_v, apply_vsssvv, apply_vssv, apply_vsv, apply_vv, apply_vvssv,
+    apply_vvsv, apply_vvv,
 };
 use itertools::izip;
 
@@ -116,6 +116,17 @@ impl ScalarOperations<u64> for Prime<u64> {
         c: &mut u64,
     ) {
         *c = self.montgomery.mul_external::<REDUCE>(*a, *b);
+    }
+
+    #[inline(always)]
+    fn sa_mul_sb_montgomery_add_sc_into_sc<const REDUCE1: REDUCEMOD, const REDUCE2: REDUCEMOD>(
+        &self,
+        a: &u64,
+        b: &Montgomery<u64>,
+        c: &mut u64,
+    ) {
+        *c += self.montgomery.mul_external::<REDUCE1>(*a, *b);
+        self.sa_reduce_into_sa::<REDUCE2>(c);
     }
 
     #[inline(always)]
@@ -411,6 +422,27 @@ impl VectorOperations<u64> for Prime<u64> {
         apply_vvv!(
             self,
             Self::sa_mul_sb_montgomery_into_sc::<REDUCE>,
+            a,
+            b,
+            c,
+            CHUNK
+        );
+    }
+
+    #[inline(always)]
+    fn va_mul_vb_montgomery_add_vc_into_vc<
+        const CHUNK: usize,
+        const REDUCE1: REDUCEMOD,
+        const REDUCE2: REDUCEMOD,
+    >(
+        &self,
+        a: &[Montgomery<u64>],
+        b: &[u64],
+        c: &mut [u64],
+    ) {
+        apply_vvv!(
+            self,
+            Self::sa_mul_sb_montgomery_add_sc_into_sc::<REDUCE1, REDUCE2>,
             a,
             b,
             c,
