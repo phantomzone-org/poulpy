@@ -2,7 +2,7 @@ use crate::dft::ntt::Table;
 use crate::modulus::barrett::Barrett;
 use crate::modulus::montgomery::Montgomery;
 use crate::modulus::prime::Prime;
-use crate::modulus::VectorOperations;
+use crate::modulus::{VectorOperations, ONCE};
 use crate::modulus::{BARRETT, REDUCEMOD};
 use crate::poly::Poly;
 use crate::ring::Ring;
@@ -429,5 +429,23 @@ impl Ring<u64> {
                 &mut carry.0,
                 &mut c.0,
             );
+    }
+
+    pub fn a_mul_by_x_pow_b_into_a(&self, b: i32, a: &mut Poly<u64>) {
+        let n: usize = self.n();
+        let cyclotomic_order: usize = self.cyclotomic_order();
+
+        let b_0: usize = (b as usize).wrapping_add(cyclotomic_order) & (cyclotomic_order - 1);
+        let b_1: usize = b as usize & (n - 1);
+
+        a.0.rotate_right(b_1);
+
+        if b_0 > b_1 {
+            self.modulus
+                .va_neg_into_va::<CHUNK, 1, ONCE>(&mut a.0[b_1..])
+        } else {
+            self.modulus
+                .va_neg_into_va::<CHUNK, 1, ONCE>(&mut a.0[..b_1])
+        }
     }
 }
