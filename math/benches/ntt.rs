@@ -1,104 +1,87 @@
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
-use math::dft::DFT;
-use math::{dft::ntt::Table, modulus::prime::Prime};
+use math::modulus::WordOps;
+use math::ring::Ring;
+use math::poly::Poly;
 
-fn forward_inplace(c: &mut Criterion) {
-    fn runner(prime_instance: Prime<u64>, nth_root: usize) -> Box<dyn FnMut()> {
-        let ntt_table: Table<u64> = Table::<u64>::new(prime_instance, nth_root);
-        let mut a: Vec<u64> = vec![0; (nth_root >> 1) as usize];
-        for i in 0..a.len() {
-            a[i] = i as u64;
+fn ntt(c: &mut Criterion) {
+
+    fn runner<'a, const INPLACE: bool, const LAZY:bool>(ring: &'a Ring<u64>) -> Box<dyn FnMut() + 'a > {
+        let mut a: Poly<u64> = ring.new_poly();
+        for i in 0..a.n() {
+            a.0[i] = i as u64;
         }
-        Box::new(move || ntt_table.forward_inplace::<false>(&mut a))
+        if INPLACE{
+            Box::new(move || ring.ntt_inplace::<LAZY>(&mut a))
+        }else{
+            let mut b: Poly<u64> = ring.new_poly();
+            Box::new(move || ring.ntt::<LAZY>(&a, &mut b))
+        }
     }
 
-    let mut b: criterion::BenchmarkGroup<'_, criterion::measurement::WallTime> =
-        c.benchmark_group("forward_inplace");
-    for log_nth_root in 11..18 {
-        let prime_instance: Prime<u64> = Prime::<u64>::new(0x1fffffffffe00001, 1);
+    let q: u64 = 0x1fffffffffe00001u64;
 
-        let runners = [("prime", { runner(prime_instance, 1 << log_nth_root) })];
+    let mut b: criterion::BenchmarkGroup<'_, criterion::measurement::WallTime> =
+        c.benchmark_group("ntt");
+
+    for log_n in 10..17 {
+
+        let ring = Ring::new(1<<log_n, q, 1);
+
+        let runners: [(String, Box<dyn FnMut()>); 4] = [
+            (format!("inplace=true/LAZY=true/q={}", q.log2()), { runner::<true, true>(&ring) }),
+            (format!("inplace=true/LAZY=false/q={}", q.log2()), { runner::<true, false>(&ring) }),
+            (format!("inplace=false/LAZY=true/q={}", q.log2()), { runner::<false, true>(&ring) }),
+            (format!("inplace=false/LAZY=false/q={}", q.log2()), { runner::<false, false>(&ring) }),
+            ];
+
         for (name, mut runner) in runners {
-            let id = BenchmarkId::new(name, 1 << (log_nth_root - 1));
-            b.bench_with_input(id, &(), |b, _| b.iter(&mut runner));
+            let id: BenchmarkId = BenchmarkId::new(name, format!("n={}", 1 << log_n));
+            b.bench_with_input(id, &(), |b: &mut criterion::Bencher<'_>, _| b.iter(&mut runner));
         }
     }
 }
 
-fn forward_inplace_lazy(c: &mut Criterion) {
-    fn runner(prime_instance: Prime<u64>, nth_root: usize) -> Box<dyn FnMut()> {
-        let ntt_table: Table<u64> = Table::<u64>::new(prime_instance, nth_root);
-        let mut a: Vec<u64> = vec![0; (nth_root >> 1) as usize];
-        for i in 0..a.len() {
-            a[i] = i as u64;
+fn intt(c: &mut Criterion) {
+
+    fn runner<'a, const INPLACE: bool, const LAZY:bool>(ring: &'a Ring<u64>) -> Box<dyn FnMut() + 'a > {
+        let mut a: Poly<u64> = ring.new_poly();
+        for i in 0..a.n() {
+            a.0[i] = i as u64;
         }
-        Box::new(move || ntt_table.forward_inplace_lazy(&mut a))
+        if INPLACE{
+            Box::new(move || ring.intt_inplace::<LAZY>(&mut a))
+        }else{
+            let mut b: Poly<u64> = ring.new_poly();
+            Box::new(move || ring.intt::<LAZY>(&a, &mut b))
+        }
     }
+
+    let q: u64 = 0x1fffffffffe00001u64;
 
     let mut b: criterion::BenchmarkGroup<'_, criterion::measurement::WallTime> =
-        c.benchmark_group("forward_inplace_lazy");
-    for log_nth_root in 11..17 {
-        let prime_instance: Prime<u64> = Prime::<u64>::new(0x1fffffffffe00001, 1);
+        c.benchmark_group("intt");
 
-        let runners = [("prime", { runner(prime_instance, 1 << log_nth_root) })];
+    for log_n in 10..17 {
+
+        let ring = Ring::new(1<<log_n, q, 1);
+
+        let runners: [(String, Box<dyn FnMut()>); 4] = [
+            (format!("inplace=true/LAZY=true/q={}", q.log2()), { runner::<true, true>(&ring) }),
+            (format!("inplace=true/LAZY=false/q={}", q.log2()), { runner::<true, false>(&ring) }),
+            (format!("inplace=false/LAZY=true/q={}", q.log2()), { runner::<false, true>(&ring) }),
+            (format!("inplace=false/LAZY=false/q={}", q.log2()), { runner::<false, false>(&ring) }),
+            ];
+
         for (name, mut runner) in runners {
-            let id = BenchmarkId::new(name, 1 << (log_nth_root - 1));
-            b.bench_with_input(id, &(), |b, _| b.iter(&mut runner));
-        }
-    }
-}
-
-fn backward_inplace(c: &mut Criterion) {
-    fn runner(prime_instance: Prime<u64>, nth_root: usize) -> Box<dyn FnMut()> {
-        let ntt_table: Table<u64> = Table::<u64>::new(prime_instance, nth_root);
-        let mut a: Vec<u64> = vec![0; (nth_root >> 1) as usize];
-        for i in 0..a.len() {
-            a[i] = i as u64;
-        }
-        Box::new(move || ntt_table.backward_inplace::<false>(&mut a))
-    }
-
-    let mut b: criterion::BenchmarkGroup<'_, criterion::measurement::WallTime> =
-        c.benchmark_group("backward_inplace");
-    for log_nth_root in 11..18 {
-        let prime_instance: Prime<u64> = Prime::<u64>::new(0x1fffffffffe00001, 1);
-
-        let runners = [("prime", { runner(prime_instance, 1 << log_nth_root) })];
-        for (name, mut runner) in runners {
-            let id = BenchmarkId::new(name, 1 << (log_nth_root - 1));
-            b.bench_with_input(id, &(), |b, _| b.iter(&mut runner));
-        }
-    }
-}
-
-fn backward_inplace_lazy(c: &mut Criterion) {
-    fn runner(prime_instance: Prime<u64>, nth_root: usize) -> Box<dyn FnMut()> {
-        let ntt_table: Table<u64> = Table::<u64>::new(prime_instance, nth_root);
-        let mut a: Vec<u64> = vec![0; (nth_root >> 1) as usize];
-        for i in 0..a.len() {
-            a[i] = i as u64;
-        }
-        Box::new(move || ntt_table.backward_inplace::<true>(&mut a))
-    }
-
-    let mut b: criterion::BenchmarkGroup<'_, criterion::measurement::WallTime> =
-        c.benchmark_group("backward_inplace_lazy");
-    for log_nth_root in 11..17 {
-        let prime_instance: Prime<u64> = Prime::<u64>::new(0x1fffffffffe00001, 1);
-
-        let runners = [("prime", { runner(prime_instance, 1 << log_nth_root) })];
-        for (name, mut runner) in runners {
-            let id = BenchmarkId::new(name, 1 << (log_nth_root - 1));
-            b.bench_with_input(id, &(), |b, _| b.iter(&mut runner));
+            let id: BenchmarkId = BenchmarkId::new(name, format!("n={}", 1 << log_n));
+            b.bench_with_input(id, &(), |b: &mut criterion::Bencher<'_>, _| b.iter(&mut runner));
         }
     }
 }
 
 criterion_group!(
     benches,
-    forward_inplace,
-    forward_inplace_lazy,
-    backward_inplace,
-    backward_inplace_lazy
+    ntt,
+    intt,
 );
 criterion_main!(benches);
