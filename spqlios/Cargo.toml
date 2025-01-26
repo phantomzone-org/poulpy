@@ -1,0 +1,11 @@
+[package]
+name = "spqlios"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+itertools = "0.14.0"
+sampling = { path = "../sampling" }
+
+[build-dependencies]
+bindgen = "0.71.1"

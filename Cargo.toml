@@ -1,2 +1,2 @@
 [workspace]
-members = ["math", "sampling", "utils"]
+members = ["math", "sampling", "spqlios", "utils"]
