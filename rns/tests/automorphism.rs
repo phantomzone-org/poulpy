@@ -1,7 +1,7 @@
 use itertools::izip;
-use math::automorphism::AutoPerm;
-use math::poly::Poly;
-use math::ring::Ring;
+use rns::automorphism::AutoPerm;
+use rns::poly::Poly;
+use rns::ring::Ring;
 
 #[test]
 fn automorphism_u64() {

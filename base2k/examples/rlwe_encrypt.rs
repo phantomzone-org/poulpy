@@ -1,8 +1,8 @@
+use base2k::module::{Module, FFT64};
+use base2k::scalar::Scalar;
+use base2k::vector::Vector;
 use itertools::izip;
 use sampling::source::Source;
-use spqlios::module::{Module, FFT64};
-use spqlios::scalar::Scalar;
-use spqlios::vector::Vector;
 
 fn main() {
     let n: usize = 16;
@@ -23,7 +23,7 @@ fn main() {
     s.fill_ternary_prob(0.5, &mut source);
 
     // Buffer to store s in the DFT domain
-    let mut s_ppol: spqlios::module::SVPPOL = module.svp_new_ppol();
+    let mut s_ppol: base2k::module::SVPPOL = module.svp_new_ppol();
 
     // s_ppol <- DFT(s)
     module.svp_prepare(&mut s_ppol, &s);
@@ -33,13 +33,13 @@ fn main() {
     a.fill_uniform(&mut source);
 
     // Scratch space for DFT values
-    let mut buf_dft: spqlios::module::VECZNXDFT = module.new_vec_znx_dft(a.limbs());
+    let mut buf_dft: base2k::module::VECZNXDFT = module.new_vec_znx_dft(a.limbs());
 
     // Applies buf_dft <- s * a
     module.svp_apply_dft(&mut buf_dft, &s_ppol, &a);
 
     // Alias scratch space
-    let mut buf_big: spqlios::module::VECZNXBIG = buf_dft.as_vec_znx_big();
+    let mut buf_big: base2k::module::VECZNXBIG = buf_dft.as_vec_znx_big();
 
     // buf_big <- IDFT(buf_dft) (not normalized)
     module.vec_znx_idft_tmp_a(&mut buf_big, &mut buf_dft, a.limbs());

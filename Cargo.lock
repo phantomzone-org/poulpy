@@ -50,6 +50,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ace50bade8e6234aa140d9a2f552bbee1db4d353f69b8217bc503490fc1a9f26"
 
 [[package]]
+name = "base2k"
+version = "0.1.0"
+dependencies = [
+ "bindgen",
+ "criterion",
+ "itertools 0.14.0",
+ "rand",
+ "rand_core",
+ "rand_distr",
+ "sampling",
+ "utils",
+]
+
+[[package]]
 name = "bindgen"
 version = "0.71.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -361,24 +375,6 @@ name = "log"
 version = "0.4.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a7a70ba024b9dc04c27ea2f0c0548feb474ec5c54bba33a7f72f873a39d07b24"
-
-[[package]]
-name = "math"
-version = "0.1.0"
-dependencies = [
- "criterion",
- "itertools 0.14.0",
- "num",
- "num-bigint",
- "num-integer",
- "num-traits",
- "primality-test",
- "prime_factorization",
- "rand_distr",
- "sampling",
- "sprs",
- "utils",
-]
 
 [[package]]
 name = "matrixmultiply"
@@ -726,6 +722,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2b15c43186be67a4fd63bee50d0303afffcef381492ebe2c5d87f324e1b8815c"
 
 [[package]]
+name = "rns"
+version = "0.1.0"
+dependencies = [
+ "criterion",
+ "itertools 0.14.0",
+ "num",
+ "num-bigint",
+ "num-integer",
+ "num-traits",
+ "primality-test",
+ "prime_factorization",
+ "rand_distr",
+ "sampling",
+ "sprs",
+ "utils",
+]
+
+[[package]]
 name = "rustc-hash"
 version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -797,19 +811,6 @@ name = "smallvec"
 version = "1.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3c5e1a9a646d36c3599cd173a41282daf47c44583ad367b8e6837255952e5c67"
-
-[[package]]
-name = "spqlios"
-version = "0.1.0"
-dependencies = [
- "bindgen",
- "criterion",
- "itertools 0.14.0",
- "rand",
- "rand_core",
- "rand_distr",
- "sampling",
-]
 
 [[package]]
 name = "sprs"

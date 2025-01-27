@@ -1,8 +1,8 @@
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
-use math::modulus::montgomery::Montgomery;
-use math::modulus::{WordOps, ONCE};
-use math::poly::Poly;
-use math::ring::Ring;
+use rns::modulus::montgomery::Montgomery;
+use rns::modulus::{WordOps, ONCE};
+use rns::poly::Poly;
+use rns::ring::Ring;
 
 fn a_add_b_into_b(c: &mut Criterion) {
     fn runner(ring: Ring<u64>) -> Box<dyn FnMut()> {

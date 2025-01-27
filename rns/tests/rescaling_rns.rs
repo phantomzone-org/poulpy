@@ -1,8 +1,8 @@
 use itertools::izip;
-use math::num_bigint::Div;
-use math::poly::{Poly, PolyRNS};
-use math::ring::RingRNS;
 use num_bigint::BigInt;
+use rns::num_bigint::Div;
+use rns::poly::{Poly, PolyRNS};
+use rns::ring::RingRNS;
 use sampling::source::Source;
 
 #[test]

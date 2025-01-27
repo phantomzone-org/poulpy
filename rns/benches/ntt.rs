@@ -1,7 +1,7 @@
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
-use math::modulus::WordOps;
-use math::poly::Poly;
-use math::ring::Ring;
+use rns::modulus::WordOps;
+use rns::poly::Poly;
+use rns::ring::Ring;
 
 fn ntt(c: &mut Criterion) {
     fn runner<'a, const INPLACE: bool, const LAZY: bool>(

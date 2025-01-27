@@ -1,7 +1,7 @@
 use itertools::izip;
-use math::modulus::{WordOps, ONCE};
-use math::poly::Poly;
-use math::ring::Ring;
+use rns::modulus::{WordOps, ONCE};
+use rns::poly::Poly;
+use rns::ring::Ring;
 use sampling::source::Source;
 
 #[test]

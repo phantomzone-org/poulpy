@@ -1,6 +1,6 @@
-use rand::distributions::{Distribution, WeightedIndex};
 use rand::seq::SliceRandom;
 use rand_core::RngCore;
+use rand_distr::{Distribution, WeightedIndex};
 use sampling::source::Source;
 
 pub struct Scalar(pub Vec<i64>);

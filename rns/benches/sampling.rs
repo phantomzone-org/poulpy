@@ -1,6 +1,6 @@
 use criterion::{criterion_group, criterion_main, Criterion};
-use math::poly::PolyRNS;
-use math::ring::RingRNS;
+use rns::poly::PolyRNS;
+use rns::ring::RingRNS;
 use sampling::source::Source;
 
 fn fill_uniform(c: &mut Criterion) {

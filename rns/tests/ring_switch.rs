@@ -1,5 +1,5 @@
-use math::poly::Poly;
-use math::ring::Ring;
+use rns::poly::Poly;
+use rns::ring::Ring;
 
 #[test]
 fn ring_switch_u64() {

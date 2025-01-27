@@ -14,14 +14,20 @@ pub mod bindings {
 }
 
 pub mod vec_znx_arithmetic;
+
+#[allow(unused_imports)]
 pub use vec_znx_arithmetic::*;
 pub mod vec_znx_big_arithmetic;
+#[allow(unused_imports)]
 pub use vec_znx_big_arithmetic::*;
 pub mod vec_znx_dft;
+#[allow(unused_imports)]
 pub use vec_znx_dft::*;
 pub mod scalar_vector_product;
+#[allow(unused_imports)]
 pub use scalar_vector_product::*;
 
+#[allow(dead_code)]
 fn cast_mut_u64_to_mut_u8_slice(data: &mut [u64]) -> &mut [u8] {
     let ptr: *mut u8 = data.as_mut_ptr() as *mut u8;
     let len: usize = data.len() * std::mem::size_of::<u64>();

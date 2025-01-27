@@ -1,6 +1,6 @@
-use math::dft::ntt::Table;
-use math::modulus::prime::Prime;
-use math::ring::Ring;
+use rns::dft::ntt::Table;
+use rns::modulus::prime::Prime;
+use rns::ring::Ring;
 
 fn main() {
     // Example usage of `Prime<u64>`
@@ -37,8 +37,8 @@ fn main() {
 
     let r: Ring<u64> = Ring::<u64>::new(n as usize, q_base, q_power);
 
-    let mut p0: math::poly::Poly<u64> = r.new_poly();
-    let mut p1: math::poly::Poly<u64> = r.new_poly();
+    let mut p0: rns::poly::Poly<u64> = r.new_poly();
+    let mut p1: rns::poly::Poly<u64> = r.new_poly();
 
     for i in 0..p0.n() {
         p0.0[i] = i as u64

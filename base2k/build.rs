@@ -7,9 +7,9 @@ use std::time::SystemTime;
 
 fn main() {
     // Path to the C header file
-    let header_paths = [
-        "lib/spqlios/coeffs/coeffs_arithmetic.h",
-        "lib/spqlios/arithmetic/vec_znx_arithmetic.h",
+    let header_paths: [&str; 2] = [
+        "spqlios-arithmetic/spqlios/coeffs/coeffs_arithmetic.h",
+        "spqlios-arithmetic/spqlios/arithmetic/vec_znx_arithmetic.h",
     ];
 
     let out_path: PathBuf = PathBuf::from(env::var("OUT_DIR").unwrap());
@@ -46,7 +46,10 @@ fn main() {
 
     println!(
         "cargo:rustc-link-search=native={}",
-        absolute("./lib/build/spqlios").unwrap().to_str().unwrap()
+        absolute("./spqlios-arithmetic/build/spqlios")
+            .unwrap()
+            .to_str()
+            .unwrap()
     );
     println!("cargo:rustc-link-lib=static=spqlios"); //"cargo:rustc-link-lib=dylib=spqlios"
 }
