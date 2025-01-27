@@ -803,7 +803,11 @@ name = "spqlios"
 version = "0.1.0"
 dependencies = [
  "bindgen",
+ "criterion",
  "itertools 0.14.0",
+ "rand",
+ "rand_core",
+ "rand_distr",
  "sampling",
 ]
 

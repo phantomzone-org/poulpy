@@ -1,91 +1,268 @@
 use crate::bindings::*;
+use crate::poly::Poly;
+use crate::scalar::Scalar;
 
-pub fn create_module(N: u64, mtype: module_type_t) -> *mut MODULE {
-    unsafe {
-        let m = new_module_info(N, mtype);
-        if m.is_null() {
-            println!("Failed to create module.");
+pub type MODULETYPE = u8;
+pub const FFT64: u8 = 0;
+pub const NTT120: u8 = 1;
+
+pub struct Module(*mut MODULE);
+
+impl Module {
+    // Instantiates a new module.
+    pub fn new<const MODULETYPE: MODULETYPE>(n: usize) -> Self {
+        unsafe {
+            let m: *mut module_info_t = new_module_info(n as u64, MODULETYPE as u32);
+            if m.is_null() {
+                panic!("Failed to create module.");
+            }
+            Self(m)
         }
-        m
+    }
+
+    // Prepares a scalar polynomial (1 limb) for a scalar x vector product.
+    // Method will panic if a.limbs() != 1.
+    pub fn svp_prepare(&self, svp_ppol: &mut SVPPOL, a: &Scalar) {
+        unsafe { svp_prepare(self.0, svp_ppol.0, a.as_ptr()) }
+    }
+
+    // Allocates a scalar-vector-product prepared-poly (SVPPOL).
+    pub fn new_svp_ppol(&self) -> SVPPOL {
+        unsafe { SVPPOL(new_svp_ppol(self.0)) }
+    }
+
+    // Allocates a vector Z[X]/(X^N+1) that stores normalized in the DFT space.
+    pub fn new_vec_znx_dft(&self, limbs: usize) -> VECZNXDFT {
+        unsafe { VECZNXDFT(new_vec_znx_dft(self.0, limbs as u64), limbs) }
+    }
+
+    // Allocates a vector Z[X]/(X^N+1) that stores not normalized values.
+    pub fn new_vec_znx_big(&self, limbs: usize) -> VECZNXBIG {
+        unsafe { VECZNXBIG(new_vec_znx_big(self.0, limbs as u64), limbs) }
+    }
+
+    // Applies a scalar x vector product: res <- a (ppol) x b
+    pub fn svp_apply_dft(&self, c: &mut VECZNXDFT, a: &SVPPOL, b: &Poly) {
+        let limbs: u64 = b.limbs() as u64;
+        assert!(
+            c.limbs() as u64 >= limbs,
+            "invalid c_vector: c_vector.limbs()={} < b.limbs()={}",
+            c.limbs(),
+            limbs
+        );
+        unsafe { svp_apply_dft(self.0, c.0, limbs, a.0, b.as_ptr(), limbs, b.n() as u64) }
+    }
+
+    // b <- IDFT(a), uses a as scratch space.
+    pub fn vec_znx_idft_tmp_a(&self, b: &mut VECZNXBIG, a: &mut VECZNXDFT, a_limbs: usize) {
+        assert!(
+            b.limbs() >= a_limbs,
+            "invalid c_vector: b_vector.limbs()={} < a_limbs={}",
+            b.limbs(),
+            a_limbs
+        );
+        unsafe { vec_znx_idft_tmp_a(self.0, b.0, a_limbs as u64, a.0, a_limbs as u64) }
+    }
+
+    // Returns the size of the scratch space for [vec_znx_idft].
+    pub fn vec_znx_idft_tmp_bytes(&self) -> usize {
+        unsafe { vec_znx_idft_tmp_bytes(self.0) as usize }
+    }
+
+    // b <- IDFT(a), scratch space size obtained with [vec_znx_idft_tmp_bytes].
+    pub fn vec_znx_idft(
+        &self,
+        b_vector: &mut VECZNXBIG,
+        a_vector: &mut VECZNXDFT,
+        a_limbs: usize,
+        tmp_bytes: &mut [u8],
+    ) {
+        assert!(
+            b_vector.limbs() >= a_limbs,
+            "invalid c_vector: b_vector.limbs()={} < a_limbs={}",
+            b_vector.limbs(),
+            a_limbs
+        );
+        assert!(
+            a_vector.limbs() >= a_limbs,
+            "invalid c_vector: c_vector.limbs()={} < a_limbs={}",
+            a_vector.limbs(),
+            a_limbs
+        );
+        assert!(
+            tmp_bytes.len() <= self.vec_znx_idft_tmp_bytes(),
+            "invalid tmp_bytes: tmp_bytes.len()={} < self.vec_znx_idft_tmp_bytes()={}",
+            tmp_bytes.len(),
+            self.vec_znx_idft_tmp_bytes()
+        );
+        unsafe {
+            vec_znx_idft(
+                self.0,
+                b_vector.0,
+                a_limbs as u64,
+                a_vector.0,
+                a_limbs as u64,
+                tmp_bytes.as_mut_ptr(),
+            )
+        }
+    }
+
+    // c <- b - a
+    pub fn vec_znx_big_sub_small_a(&self, c: &mut VECZNXBIG, a: &Poly, b: &VECZNXBIG) {
+        let limbs: usize = a.limbs();
+        assert!(
+            b.limbs() >= limbs,
+            "invalid c: b.limbs()={} < a.limbs()={}",
+            b.limbs(),
+            limbs
+        );
+        assert!(
+            c.limbs() >= limbs,
+            "invalid c: c.limbs()={} < a.limbs()={}",
+            c.limbs(),
+            limbs
+        );
+        unsafe {
+            vec_znx_big_sub_small_a(
+                self.0,
+                c.0,
+                c.limbs() as u64,
+                a.as_ptr(),
+                limbs as u64,
+                a.n() as u64,
+                b.0,
+                b.limbs() as u64,
+            )
+        }
+    }
+
+    // b <- b - a
+    pub fn vec_znx_big_sub_small_a_inplace(&self, b: &mut VECZNXBIG, a: &Poly) {
+        let limbs: usize = a.limbs();
+        assert!(
+            b.limbs() >= limbs,
+            "invalid c_vector: b.limbs()={} < a.limbs()={}",
+            b.limbs(),
+            limbs
+        );
+        unsafe {
+            vec_znx_big_sub_small_a(
+                self.0,
+                b.0,
+                b.limbs() as u64,
+                a.as_ptr(),
+                limbs as u64,
+                a.n() as u64,
+                b.0,
+                b.limbs() as u64,
+            )
+        }
+    }
+
+    // c <- b + a
+    pub fn vec_znx_big_add_small(&self, c: &mut VECZNXBIG, a: &Poly, b: &VECZNXBIG) {
+        let limbs: usize = a.limbs();
+        assert!(
+            b.limbs() >= limbs,
+            "invalid c: b.limbs()={} < a.limbs()={}",
+            b.limbs(),
+            limbs
+        );
+        assert!(
+            c.limbs() >= limbs,
+            "invalid c: c.limbs()={} < a.limbs()={}",
+            c.limbs(),
+            limbs
+        );
+        unsafe {
+            vec_znx_big_add_small(
+                self.0,
+                c.0,
+                limbs as u64,
+                b.0,
+                limbs as u64,
+                a.as_ptr(),
+                limbs as u64,
+                a.n() as u64,
+            )
+        }
+    }
+
+    // b <- b + a
+    pub fn vec_znx_big_add_small_inplace(&self, b: &mut VECZNXBIG, a: &Poly) {
+        let limbs: usize = a.limbs();
+        assert!(
+            b.limbs() >= limbs,
+            "invalid c_vector: b.limbs()={} < a.limbs()={}",
+            b.limbs(),
+            limbs
+        );
+        unsafe {
+            vec_znx_big_add_small(
+                self.0,
+                b.0,
+                limbs as u64,
+                b.0,
+                limbs as u64,
+                a.as_ptr(),
+                limbs as u64,
+                a.n() as u64,
+            )
+        }
+    }
+
+    pub fn vec_znx_big_normalize_tmp_bytes(&self) -> usize {
+        unsafe { vec_znx_big_normalize_base2k_tmp_bytes(self.0) as usize }
+    }
+
+    // b <- normalize(a)
+    pub fn vec_znx_big_normalize(&self, b: &mut Poly, a: &VECZNXBIG, tmp_bytes: &mut [u8]) {
+        let limbs: usize = b.limbs();
+        assert!(
+            b.limbs() >= limbs,
+            "invalid c_vector: b.limbs()={} < a.limbs()={}",
+            b.limbs(),
+            limbs
+        );
+        assert!(
+            tmp_bytes.len() <= self.vec_znx_big_normalize_tmp_bytes(),
+            "invalid tmp_bytes: tmp_bytes.len()={} <= self.vec_znx_big_normalize_tmp_bytes()={}",
+            tmp_bytes.len(),
+            self.vec_znx_big_normalize_tmp_bytes()
+        );
+        unsafe {
+            vec_znx_big_normalize_base2k(
+                self.0,
+                b.log_base2k as u64,
+                b.as_mut_ptr(),
+                limbs as u64,
+                b.n() as u64,
+                a.0,
+                limbs as u64,
+                tmp_bytes.as_mut_ptr(),
+            )
+        }
     }
 }
 
-#[test]
-fn test_new_module_info() {
-    let N: u64 = 1024;
-    let module_ptr: *mut module_info_t = create_module(N, module_type_t_FFT64);
-    assert!(!module_ptr.is_null());
-    println!("{:?}", module_ptr);
+pub struct SVPPOL(*mut svp_ppol_t);
+pub struct VECZNXDFT(*mut vec_znx_dft_t, usize);
+pub struct VECZNXBIG(*mut vec_znx_bigcoeff_t, usize);
+
+impl VECZNXBIG {
+    pub fn as_vec_znx_dft(&mut self) -> VECZNXDFT {
+        VECZNXDFT(self.0 as *mut vec_znx_dft_t, self.1)
+    }
+    pub fn limbs(&self) -> usize {
+        self.1
+    }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::ffi::c_void;
-    use std::time::Instant;
-    //use test::Bencher;
-
-    #[test]
-    fn test_fft() {
-        let log_bound: usize = 19;
-
-        let n: usize = 2048;
-        let m: usize = n >> 1;
-
-        let mut a: Vec<i64> = vec![i64::default(); n];
-        let mut b: Vec<i64> = vec![i64::default(); n];
-        let mut c: Vec<i64> = vec![i64::default(); n];
-
-        a.iter_mut().enumerate().for_each(|(i, x)| *x = i as i64);
-        b[1] = 1;
-
-        println!("{:?}", b);
-
-        unsafe {
-            let reim_fft_precomp = new_reim_fft_precomp(m as u32, 2);
-            let reim_ifft_precomp = new_reim_ifft_precomp(m as u32, 1);
-
-            let buf_a = reim_fft_precomp_get_buffer(reim_fft_precomp, 0);
-            let buf_b = reim_fft_precomp_get_buffer(reim_fft_precomp, 1);
-            let buf_c = reim_ifft_precomp_get_buffer(reim_ifft_precomp, 0);
-
-            let now = Instant::now();
-            (0..1024).for_each(|i| {
-                reim_from_znx64_simple(
-                    m as u32,
-                    log_bound as u32,
-                    buf_a as *mut c_void,
-                    a.as_ptr(),
-                );
-                reim_fft(reim_fft_precomp, buf_a);
-
-                reim_from_znx64_simple(
-                    m as u32,
-                    log_bound as u32,
-                    buf_b as *mut c_void,
-                    b.as_ptr(),
-                );
-                reim_fft(reim_fft_precomp, buf_b);
-
-                reim_fftvec_mul_simple(
-                    m as u32,
-                    buf_c as *mut c_void,
-                    buf_a as *mut c_void,
-                    buf_b as *mut c_void,
-                );
-                reim_ifft(reim_ifft_precomp, buf_c);
-
-                reim_to_znx64_simple(
-                    m as u32,
-                    m as f64,
-                    log_bound as u32,
-                    c.as_mut_ptr(),
-                    buf_c as *mut c_void,
-                )
-            });
-
-            println!("time: {}us", now.elapsed().as_micros());
-            println!("{:?}", &c[..16]);
-        }
+impl VECZNXDFT {
+    pub fn as_vec_znx_big(&mut self) -> VECZNXBIG {
+        VECZNXBIG(self.0 as *mut vec_znx_bigcoeff_t, self.1)
+    }
+    pub fn limbs(&self) -> usize {
+        self.1
     }
 }

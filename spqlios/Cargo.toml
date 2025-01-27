@@ -4,8 +4,16 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+rand = "0.8.5"
+rand_core = "0.6.4"
 itertools = "0.14.0"
+criterion = "0.5.1"
+rand_distr = "0.4.3"
 sampling = { path = "../sampling" }
 
 [build-dependencies]
 bindgen = "0.71.1"
+
+[[bench]]
+name = "fft"
+harness = false
