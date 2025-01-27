@@ -1,6 +1,6 @@
 pub mod module;
-pub mod poly;
 pub mod scalar;
+pub mod vector;
 
 #[allow(
     non_camel_case_types,
@@ -13,7 +13,14 @@ pub mod bindings {
     include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 }
 
-pub use bindings::*;
+pub mod vec_znx_arithmetic;
+pub use vec_znx_arithmetic::*;
+pub mod vec_znx_big_arithmetic;
+pub use vec_znx_big_arithmetic::*;
+pub mod vec_znx_dft;
+pub use vec_znx_dft::*;
+pub mod scalar_vector_product;
+pub use scalar_vector_product::*;
 
 fn cast_mut_u64_to_mut_u8_slice(data: &mut [u64]) -> &mut [u8] {
     let ptr: *mut u8 = data.as_mut_ptr() as *mut u8;

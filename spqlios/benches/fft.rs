@@ -1,12 +1,16 @@
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
-use spqlios::bindings::*;
+use spqlios::bindings::{
+    new_reim_fft_precomp, new_reim_ifft_precomp, reim_fft, reim_fft_precomp,
+    reim_fft_precomp_get_buffer, reim_from_znx64_simple, reim_ifft, reim_ifft_precomp,
+    reim_ifft_precomp_get_buffer,
+};
 use std::ffi::c_void;
 
 fn fft(c: &mut Criterion) {
     fn forward<'a>(
         m: u32,
         log_bound: u32,
-        reim_fft_precomp: *mut spqlios::reim_fft_precomp,
+        reim_fft_precomp: *mut reim_fft_precomp,
         a: &'a [i64],
     ) -> Box<dyn FnMut() + 'a> {
         unsafe {
@@ -28,8 +32,6 @@ fn fft(c: &mut Criterion) {
             reim_ifft(reim_ifft_precomp, buf_a);
         })
     }
-
-    let q: u64 = 0x1fffffffffe00001u64;
 
     let mut b: criterion::BenchmarkGroup<'_, criterion::measurement::WallTime> =
         c.benchmark_group("fft");

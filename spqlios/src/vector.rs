@@ -1,20 +1,20 @@
-use crate::{
-    cast_mut_u8_to_mut_i64_slice, znx_automorphism_i64, znx_automorphism_inplace_i64,
-    znx_normalize, znx_zero_i64_ref,
+use crate::bindings::{
+    znx_automorphism_i64, znx_automorphism_inplace_i64, znx_normalize, znx_zero_i64_ref,
 };
+use crate::cast_mut_u8_to_mut_i64_slice;
 use itertools::izip;
 use rand_distr::{Distribution, Normal};
 use sampling::source::Source;
 use std::cmp::min;
 
-pub struct Poly {
+pub struct Vector {
     pub n: usize,
     pub log_base2k: usize,
     pub prec: usize,
     pub data: Vec<i64>,
 }
 
-impl Poly {
+impl Vector {
     pub fn new(n: usize, log_base2k: usize, prec: usize) -> Self {
         Self {
             n: n,
@@ -173,7 +173,7 @@ impl Poly {
             })
         }
     }
-    pub fn automorphism(&mut self, gal_el: i64, a: &mut Poly) {
+    pub fn automorphism(&mut self, gal_el: i64, a: &mut Vector) {
         unsafe {
             (0..self.limbs()).for_each(|i| {
                 znx_automorphism_i64(self.n as u64, gal_el, a.at_mut_ptr(i), self.at_ptr(i))
@@ -260,7 +260,7 @@ impl Poly {
 
 #[cfg(test)]
 mod tests {
-    use crate::poly::Poly;
+    use crate::vector::Vector;
     use itertools::izip;
     use sampling::source::Source;
 
@@ -269,7 +269,7 @@ mod tests {
         let n: usize = 32;
         let k: usize = 19;
         let prec: usize = 128;
-        let mut a: Poly = Poly::new(n, k, prec);
+        let mut a: Vector = Vector::new(n, k, prec);
         let mut have: Vec<i64> = vec![i64::default(); n];
         have.iter_mut()
             .enumerate()
@@ -285,7 +285,7 @@ mod tests {
         let n: usize = 8;
         let k: usize = 17;
         let prec: usize = 84;
-        let mut a: Poly = Poly::new(n, k, prec);
+        let mut a: Vector = Vector::new(n, k, prec);
         let mut have: Vec<i64> = vec![i64::default(); n];
         let mut source = Source::new([1; 32]);
         have.iter_mut().for_each(|x| {
@@ -305,7 +305,7 @@ mod tests {
         let n: usize = 8;
         let k: usize = 17;
         let prec: usize = 84;
-        let mut a: Poly = Poly::new(n, k, prec);
+        let mut a: Vector = Vector::new(n, k, prec);
         let mut have: Vec<i64> = vec![i64::default(); n];
         let mut source = Source::new([1; 32]);
         have.iter_mut().for_each(|x| {

@@ -1,12 +1,12 @@
 use itertools::izip;
 use sampling::source::Source;
-use spqlios::module::{Module, FFT64, VECZNXBIG};
-use spqlios::poly::Poly;
+use spqlios::module::{Module, FFT64};
 use spqlios::scalar::Scalar;
+use spqlios::vector::Vector;
 
 fn main() {
     let n: usize = 16;
-    let log_base2k: usize = 15;
+    let log_base2k: usize = 40;
     let prec: usize = 54;
     let log_scale: usize = 18;
     let module: Module = Module::new::<FFT64>(n);
@@ -16,23 +16,20 @@ fn main() {
     let seed: [u8; 32] = [0; 32];
     let mut source: Source = Source::new(seed);
 
-    let mut res: Poly = Poly::new(n, log_base2k, prec);
-
-    // Allocates a buffer to store DFT(s)
-    module.new_svp_ppol();
+    let mut res: Vector = Vector::new(n, log_base2k, prec);
 
     // s <- Z_{-1, 0, 1}[X]/(X^{N}+1)
     let mut s: Scalar = Scalar::new(n);
     s.fill_ternary_prob(0.5, &mut source);
 
     // Buffer to store s in the DFT domain
-    let mut s_ppol: spqlios::module::SVPPOL = module.new_svp_ppol();
+    let mut s_ppol: spqlios::module::SVPPOL = module.svp_new_ppol();
 
     // s_ppol <- DFT(s)
     module.svp_prepare(&mut s_ppol, &s);
 
     // a <- Z_{2^prec}[X]/(X^{N}+1)
-    let mut a: Poly = Poly::new(n, log_base2k, prec);
+    let mut a: Vector = Vector::new(n, log_base2k, prec);
     a.fill_uniform(&mut source);
 
     // Scratch space for DFT values
@@ -47,7 +44,7 @@ fn main() {
     // buf_big <- IDFT(buf_dft) (not normalized)
     module.vec_znx_idft_tmp_a(&mut buf_big, &mut buf_dft, a.limbs());
 
-    let mut m: Poly = Poly::new(n, log_base2k, prec - log_scale);
+    let mut m: Vector = Vector::new(n, log_base2k, prec - log_scale);
     let mut want: Vec<i64> = vec![0; n];
     want.iter_mut()
         .for_each(|x| *x = source.next_u64n(16, 15) as i64);
@@ -60,7 +57,7 @@ fn main() {
     module.vec_znx_big_sub_small_a_inplace(&mut buf_big, &m);
 
     // b <- normalize(buf_big) + e
-    let mut b: Poly = Poly::new(n, log_base2k, prec);
+    let mut b: Vector = Vector::new(n, log_base2k, prec);
     module.vec_znx_big_normalize(&mut b, &buf_big, &mut carry);
     b.add_normal(&mut source, 3.2, 19.0);
 
