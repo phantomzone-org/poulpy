@@ -2,17 +2,16 @@ use crate::bindings::{
     new_vec_znx_big, vec_znx_big_add_small, vec_znx_big_automorphism, vec_znx_big_normalize_base2k,
     vec_znx_big_normalize_base2k_tmp_bytes, vec_znx_big_sub_small_a,
 };
-use crate::module::{Module, VECZNXBIG};
-use crate::vector::Vector;
+use crate::{Module, VecZnx, VecZnxBig};
 
 impl Module {
     // Allocates a vector Z[X]/(X^N+1) that stores not normalized values.
-    pub fn new_vec_znx_big(&self, limbs: usize) -> VECZNXBIG {
-        unsafe { VECZNXBIG(new_vec_znx_big(self.0, limbs as u64), limbs) }
+    pub fn new_vec_znx_big(&self, limbs: usize) -> VecZnxBig {
+        unsafe { VecZnxBig(new_vec_znx_big(self.0, limbs as u64), limbs) }
     }
 
     // b <- b - a
-    pub fn vec_znx_big_sub_small_a_inplace(&self, b: &mut VECZNXBIG, a: &Vector) {
+    pub fn vec_znx_big_sub_small_a_inplace(&self, b: &mut VecZnxBig, a: &VecZnx) {
         let limbs: usize = a.limbs();
         assert!(
             b.limbs() >= limbs,
@@ -35,7 +34,7 @@ impl Module {
     }
 
     // c <- b - a
-    pub fn big_sub_small_a(&self, c: &mut VECZNXBIG, a: &Vector, b: &VECZNXBIG) {
+    pub fn vec_znx_big_sub_small_a(&self, c: &mut VecZnxBig, a: &VecZnx, b: &VecZnxBig) {
         let limbs: usize = a.limbs();
         assert!(
             b.limbs() >= limbs,
@@ -64,7 +63,7 @@ impl Module {
     }
 
     // c <- b + a
-    pub fn vec_znx_big_add_small(&self, c: &mut VECZNXBIG, a: &Vector, b: &VECZNXBIG) {
+    pub fn vec_znx_big_add_small(&self, c: &mut VecZnxBig, a: &VecZnx, b: &VecZnxBig) {
         let limbs: usize = a.limbs();
         assert!(
             b.limbs() >= limbs,
@@ -93,7 +92,7 @@ impl Module {
     }
 
     // b <- b + a
-    pub fn vec_znx_big_add_small_inplace(&self, b: &mut VECZNXBIG, a: &Vector) {
+    pub fn vec_znx_big_add_small_inplace(&self, b: &mut VecZnxBig, a: &VecZnx) {
         let limbs: usize = a.limbs();
         assert!(
             b.limbs() >= limbs,
@@ -120,7 +119,7 @@ impl Module {
     }
 
     // b <- normalize(a)
-    pub fn vec_znx_big_normalize(&self, b: &mut Vector, a: &VECZNXBIG, tmp_bytes: &mut [u8]) {
+    pub fn vec_znx_big_normalize(&self, b: &mut VecZnx, a: &VecZnxBig, tmp_bytes: &mut [u8]) {
         let limbs: usize = b.limbs();
         assert!(
             b.limbs() >= limbs,
@@ -148,13 +147,13 @@ impl Module {
         }
     }
 
-    pub fn big_automorphism(&self, gal_el: i64, b: &mut VECZNXBIG, a: &VECZNXBIG) {
+    pub fn vec_znx_big_automorphism(&self, gal_el: i64, b: &mut VecZnxBig, a: &VecZnxBig) {
         unsafe {
             vec_znx_big_automorphism(self.0, gal_el, b.0, b.limbs() as u64, a.0, a.limbs() as u64);
         }
     }
 
-    pub fn big_automorphism_inplace(&self, gal_el: i64, a: &mut VECZNXBIG) {
+    pub fn vec_znx_big_automorphism_inplace(&self, gal_el: i64, a: &mut VecZnxBig) {
         unsafe {
             vec_znx_big_automorphism(self.0, gal_el, a.0, a.limbs() as u64, a.0, a.limbs() as u64);
         }

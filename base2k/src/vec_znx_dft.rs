@@ -1,14 +1,14 @@
 use crate::bindings::{new_vec_znx_dft, vec_znx_idft, vec_znx_idft_tmp_a, vec_znx_idft_tmp_bytes};
-use crate::module::{Module, VECZNXBIG, VECZNXDFT};
+use crate::module::{Module, VecZnxBig, VecZnxDft};
 
 impl Module {
     // Allocates a vector Z[X]/(X^N+1) that stores normalized in the DFT space.
-    pub fn new_vec_znx_dft(&self, limbs: usize) -> VECZNXDFT {
-        unsafe { VECZNXDFT(new_vec_znx_dft(self.0, limbs as u64), limbs) }
+    pub fn new_vec_znx_dft(&self, limbs: usize) -> VecZnxDft {
+        unsafe { VecZnxDft(new_vec_znx_dft(self.0, limbs as u64), limbs) }
     }
 
     // b <- IDFT(a), uses a as scratch space.
-    pub fn vec_znx_idft_tmp_a(&self, b: &mut VECZNXBIG, a: &mut VECZNXDFT, a_limbs: usize) {
+    pub fn vec_znx_idft_tmp_a(&self, b: &mut VecZnxBig, a: &mut VecZnxDft, a_limbs: usize) {
         assert!(
             b.limbs() >= a_limbs,
             "invalid c_vector: b_vector.limbs()={} < a_limbs={}",
@@ -26,8 +26,8 @@ impl Module {
     // b <- IDFT(a), scratch space size obtained with [vec_znx_idft_tmp_bytes].
     pub fn vec_znx_idft(
         &self,
-        b_vector: &mut VECZNXBIG,
-        a_vector: &mut VECZNXDFT,
+        b_vector: &mut VecZnxBig,
+        a_vector: &mut VecZnxDft,
         a_limbs: usize,
         tmp_bytes: &mut [u8],
     ) {

@@ -1,0 +1,10 @@
+cargo-features = ["edition2024"]
+
+[package]
+name = "rlwe"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+base2k = {path="../base2k"}
+rand_distr = {workspace = true}

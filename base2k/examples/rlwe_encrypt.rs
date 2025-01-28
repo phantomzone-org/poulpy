@@ -1,6 +1,4 @@
-use base2k::module::{Module, FFT64};
-use base2k::scalar::Scalar;
-use base2k::vector::Vector;
+use base2k::{Module, Scalar, SvpPPol, VecZnx, VecZnxBig, VecZnxDft, FFT64};
 use itertools::izip;
 use sampling::source::Source;
 
@@ -16,35 +14,35 @@ fn main() {
     let seed: [u8; 32] = [0; 32];
     let mut source: Source = Source::new(seed);
 
-    let mut res: Vector = Vector::new(n, log_base2k, prec);
+    let mut res: VecZnx = VecZnx::new(n, log_base2k, prec);
 
     // s <- Z_{-1, 0, 1}[X]/(X^{N}+1)
     let mut s: Scalar = Scalar::new(n);
     s.fill_ternary_prob(0.5, &mut source);
 
     // Buffer to store s in the DFT domain
-    let mut s_ppol: base2k::module::SVPPOL = module.svp_new_ppol();
+    let mut s_ppol: SvpPPol = module.svp_new_ppol();
 
     // s_ppol <- DFT(s)
     module.svp_prepare(&mut s_ppol, &s);
 
     // a <- Z_{2^prec}[X]/(X^{N}+1)
-    let mut a: Vector = Vector::new(n, log_base2k, prec);
+    let mut a: VecZnx = VecZnx::new(n, log_base2k, prec);
     a.fill_uniform(&mut source);
 
     // Scratch space for DFT values
-    let mut buf_dft: base2k::module::VECZNXDFT = module.new_vec_znx_dft(a.limbs());
+    let mut buf_dft: VecZnxDft = module.new_vec_znx_dft(a.limbs());
 
     // Applies buf_dft <- s * a
     module.svp_apply_dft(&mut buf_dft, &s_ppol, &a);
 
     // Alias scratch space
-    let mut buf_big: base2k::module::VECZNXBIG = buf_dft.as_vec_znx_big();
+    let mut buf_big: VecZnxBig = buf_dft.as_vec_znx_big();
 
     // buf_big <- IDFT(buf_dft) (not normalized)
     module.vec_znx_idft_tmp_a(&mut buf_big, &mut buf_dft, a.limbs());
 
-    let mut m: Vector = Vector::new(n, log_base2k, prec - log_scale);
+    let mut m: VecZnx = VecZnx::new(n, log_base2k, prec - log_scale);
     let mut want: Vec<i64> = vec![0; n];
     want.iter_mut()
         .for_each(|x| *x = source.next_u64n(16, 15) as i64);
@@ -57,7 +55,7 @@ fn main() {
     module.vec_znx_big_sub_small_a_inplace(&mut buf_big, &m);
 
     // b <- normalize(buf_big) + e
-    let mut b: Vector = Vector::new(n, log_base2k, prec);
+    let mut b: VecZnx = VecZnx::new(n, log_base2k, prec);
     module.vec_znx_big_normalize(&mut b, &buf_big, &mut carry);
     b.add_normal(&mut source, 3.2, 19.0);
 

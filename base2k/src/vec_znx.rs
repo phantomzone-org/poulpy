@@ -2,46 +2,54 @@ use crate::bindings::{
     znx_automorphism_i64, znx_automorphism_inplace_i64, znx_normalize, znx_zero_i64_ref,
 };
 use crate::cast_mut_u8_to_mut_i64_slice;
+use crate::module::Module;
 use itertools::izip;
 use rand_distr::{Distribution, Normal};
 use sampling::source::Source;
 use std::cmp::min;
 
-pub struct Vector {
+impl Module {
+    pub fn new_vec_znx(&self, log_base2k: usize, log_q: usize) -> VecZnx {
+        VecZnx::new(self.n(), log_base2k, log_q)
+    }
+}
+
+#[derive(Clone)]
+pub struct VecZnx {
     pub n: usize,
     pub log_base2k: usize,
-    pub prec: usize,
+    pub log_q: usize,
     pub data: Vec<i64>,
 }
 
-impl Vector {
-    pub fn new(n: usize, log_base2k: usize, prec: usize) -> Self {
+impl VecZnx {
+    pub fn new(n: usize, log_base2k: usize, log_q: usize) -> Self {
         Self {
             n: n,
             log_base2k: log_base2k,
-            prec: prec,
-            data: vec![i64::default(); Self::buffer_size(n, log_base2k, prec)],
+            log_q: log_q,
+            data: vec![i64::default(); Self::buffer_size(n, log_base2k, log_q)],
         }
     }
 
-    pub fn buffer_size(n: usize, log_base2k: usize, prec: usize) -> usize {
-        n * ((prec + log_base2k - 1) / log_base2k)
+    pub fn buffer_size(n: usize, log_base2k: usize, log_q: usize) -> usize {
+        n * ((log_q + log_base2k - 1) / log_base2k)
     }
 
-    pub fn from_buffer(&mut self, n: usize, log_base2k: usize, prec: usize, buf: &[i64]) {
-        let size = Self::buffer_size(n, log_base2k, prec);
+    pub fn from_buffer(&mut self, n: usize, log_base2k: usize, log_q: usize, buf: &[i64]) {
+        let size = Self::buffer_size(n, log_base2k, log_q);
         assert!(
             buf.len() >= size,
-            "invalid buffer: buf.len()={} < self.buffer_size(n={}, k={}, prec={})={}",
+            "invalid buffer: buf.len()={} < self.buffer_size(n={}, k={}, log_q={})={}",
             buf.len(),
             n,
             log_base2k,
-            prec,
+            log_q,
             size
         );
         self.n = n;
         self.log_base2k = log_base2k;
-        self.prec = prec;
+        self.log_q = log_q;
         self.data = Vec::from(&buf[..size])
     }
 
@@ -53,12 +61,17 @@ impl Vector {
         self.n
     }
 
-    pub fn prec(&self) -> usize {
-        self.prec
+    pub fn log_q(&self) -> usize {
+        self.log_q
     }
 
     pub fn limbs(&self) -> usize {
         self.data.len() / self.n
+    }
+
+    pub fn copy_from(&mut self, a: &VecZnx) {
+        let size = min(self.data.len(), a.data.len());
+        self.data[..size].copy_from_slice(&a.data[..size])
     }
 
     pub fn as_ptr(&self) -> *const i64 {
@@ -87,7 +100,7 @@ impl Vector {
 
     pub fn set_i64(&mut self, data: &[i64], log_max: usize) {
         let size: usize = min(data.len(), self.n());
-        let k_rem: usize = self.log_base2k - (self.prec % self.log_base2k);
+        let k_rem: usize = self.log_base2k - (self.log_q % self.log_base2k);
 
         // If 2^{log_base2k} * 2^{k_rem} < 2^{63}-1, then we can simply copy
         // values on the last limb.
@@ -151,7 +164,7 @@ impl Vector {
             self.n
         );
         data.copy_from_slice(self.at(0));
-        let rem: usize = self.log_base2k - (self.prec % self.log_base2k);
+        let rem: usize = self.log_base2k - (self.log_q % self.log_base2k);
         (1..self.limbs()).for_each(|i| {
             if i == self.limbs() - 1 && rem != self.log_base2k {
                 let k_rem: usize = self.log_base2k - rem;
@@ -166,6 +179,22 @@ impl Vector {
         })
     }
 
+    pub fn get_single_i64(&self, i: usize) -> i64 {
+        assert!(i < self.n());
+        let mut res: i64 = self.data[i];
+        let rem: usize = self.log_base2k - (self.log_q % self.log_base2k);
+        (1..self.limbs()).for_each(|i| {
+            let x = self.data[i * self.n];
+            if i == self.limbs() - 1 && rem != self.log_base2k {
+                let k_rem: usize = self.log_base2k - rem;
+                res = (res << k_rem) + (x >> rem);
+            } else {
+                res = (res << self.log_base2k) + x;
+            }
+        });
+        res
+    }
+
     pub fn automorphism_inplace(&mut self, gal_el: i64) {
         unsafe {
             (0..self.limbs()).for_each(|i| {
@@ -173,7 +202,7 @@ impl Vector {
             })
         }
     }
-    pub fn automorphism(&mut self, gal_el: i64, a: &mut Vector) {
+    pub fn automorphism(&mut self, gal_el: i64, a: &mut VecZnx) {
         unsafe {
             (0..self.limbs()).for_each(|i| {
                 znx_automorphism_i64(self.n as u64, gal_el, a.at_mut_ptr(i), self.at_ptr(i))
@@ -192,7 +221,7 @@ impl Vector {
             .iter_mut()
             .for_each(|x| *x = (source.next_u64n(base2k, mask) as i64) - base2k_half);
 
-        let log_base2k_rem: usize = self.prec % self.log_base2k;
+        let log_base2k_rem: usize = self.log_q % self.log_base2k;
 
         if log_base2k_rem != 0 {
             base2k = 1 << log_base2k_rem;
@@ -206,7 +235,7 @@ impl Vector {
     }
 
     pub fn add_dist_f64<T: Distribution<f64>>(&mut self, source: &mut Source, dist: T, bound: f64) {
-        let log_base2k_rem: usize = self.prec % self.log_base2k;
+        let log_base2k_rem: usize = self.log_q % self.log_base2k;
 
         if log_base2k_rem != 0 {
             self.at_mut(self.limbs() - 1).iter_mut().for_each(|a| {
@@ -237,13 +266,13 @@ impl Vector {
         }
 
         assert!(
-            k <= self.prec,
+            k <= self.log_q,
             "invalid argument k: k={} > self.prec()={}",
             k,
-            self.prec()
+            self.log_q()
         );
 
-        self.prec -= k;
+        self.log_q -= k;
         self.data
             .truncate((self.limbs() - k / self.log_base2k) * self.n());
 
@@ -256,11 +285,43 @@ impl Vector {
                 .for_each(|x: &mut i64| *x &= mask)
         }
     }
+
+    pub fn rsh(&mut self, k: usize, carry: &mut [u8]) {
+        let limbs: usize = self.limbs();
+        let limbs_steps: usize = k / self.log_base2k;
+
+        self.data.rotate_right(self.n * limbs_steps);
+        unsafe {
+            znx_zero_i64_ref((self.n * limbs_steps) as u64, self.data.as_mut_ptr());
+        }
+
+        let k_rem = k % self.log_base2k;
+
+        if k_rem != 0 {
+            let carry_i64: &mut [i64] = cast_mut_u8_to_mut_i64_slice(carry);
+
+            unsafe {
+                znx_zero_i64_ref(self.n() as u64, carry_i64.as_mut_ptr());
+            }
+
+            let mask: i64 = (1 << k_rem) - 1;
+            let log_base2k: usize = self.log_base2k;
+            println!("mask: {} log_base2k: {}", mask, log_base2k);
+
+            (limbs_steps..limbs).for_each(|i| {
+                izip!(carry_i64.iter_mut(), self.at_mut(i).iter_mut()).for_each(|(ci, xi)| {
+                    *xi += *ci << log_base2k;
+                    *ci = *xi & mask;
+                    *xi /= 1 << k_rem;
+                });
+            })
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::vector::Vector;
+    use crate::VecZnx;
     use itertools::izip;
     use sampling::source::Source;
 
@@ -269,7 +330,7 @@ mod tests {
         let n: usize = 32;
         let k: usize = 19;
         let prec: usize = 128;
-        let mut a: Vector = Vector::new(n, k, prec);
+        let mut a: VecZnx = VecZnx::new(n, k, prec);
         let mut have: Vec<i64> = vec![i64::default(); n];
         have.iter_mut()
             .enumerate()
@@ -285,7 +346,7 @@ mod tests {
         let n: usize = 8;
         let k: usize = 17;
         let prec: usize = 84;
-        let mut a: Vector = Vector::new(n, k, prec);
+        let mut a: VecZnx = VecZnx::new(n, k, prec);
         let mut have: Vec<i64> = vec![i64::default(); n];
         let mut source = Source::new([1; 32]);
         have.iter_mut().for_each(|x| {
@@ -305,7 +366,7 @@ mod tests {
         let n: usize = 8;
         let k: usize = 17;
         let prec: usize = 84;
-        let mut a: Vector = Vector::new(n, k, prec);
+        let mut a: VecZnx = VecZnx::new(n, k, prec);
         let mut have: Vec<i64> = vec![i64::default(); n];
         let mut source = Source::new([1; 32]);
         have.iter_mut().for_each(|x| {
