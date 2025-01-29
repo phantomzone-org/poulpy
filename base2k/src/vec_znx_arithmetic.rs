@@ -1,4 +1,6 @@
-use crate::bindings::{vec_znx_add, vec_znx_automorphism, vec_znx_rotate, vec_znx_sub};
+use crate::bindings::{
+    vec_znx_add, vec_znx_automorphism, vec_znx_negate, vec_znx_rotate, vec_znx_sub,
+};
 use crate::{Module, VecZnx};
 
 impl Module {
@@ -70,6 +72,34 @@ impl Module {
                 b.as_ptr(),
                 b.limbs() as u64,
                 b.n() as u64,
+            )
+        }
+    }
+
+    pub fn vec_znx_negate(&self, b: &mut VecZnx, a: &VecZnx) {
+        unsafe {
+            vec_znx_negate(
+                self.0,
+                b.as_mut_ptr(),
+                b.limbs() as u64,
+                b.n() as u64,
+                a.as_ptr(),
+                a.limbs() as u64,
+                a.n() as u64,
+            )
+        }
+    }
+
+    pub fn vec_znx_negate_inplace(&self, a: &mut VecZnx) {
+        unsafe {
+            vec_znx_negate(
+                self.0,
+                a.as_mut_ptr(),
+                a.limbs() as u64,
+                a.n() as u64,
+                a.as_ptr(),
+                a.limbs() as u64,
+                a.n() as u64,
             )
         }
     }
