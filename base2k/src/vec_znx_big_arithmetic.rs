@@ -128,7 +128,7 @@ impl Module {
             limbs
         );
         assert!(
-            tmp_bytes.len() <= self.vec_znx_big_normalize_tmp_bytes(),
+            tmp_bytes.len() >= self.vec_znx_big_normalize_tmp_bytes(),
             "invalid tmp_bytes: tmp_bytes.len()={} <= self.vec_znx_big_normalize_tmp_bytes()={}",
             tmp_bytes.len(),
             self.vec_znx_big_normalize_tmp_bytes()

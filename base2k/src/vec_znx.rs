@@ -131,6 +131,37 @@ impl VecZnx {
         }
     }
 
+    pub fn set_single_i64(&mut self, i: usize, value: i64, log_max: usize) {
+        assert!(i < self.n());
+        let k_rem: usize = self.log_base2k - (self.log_q % self.log_base2k);
+
+        // If 2^{log_base2k} * 2^{k_rem} < 2^{63}-1, then we can simply copy
+        // values on the last limb.
+        // Else we decompose values base2k.
+        if log_max + k_rem < 63 || k_rem == self.log_base2k {
+            self.at_mut(self.limbs() - 1)[i] = value;
+        } else {
+            let mask: i64 = (1 << self.log_base2k) - 1;
+            let limbs = self.limbs();
+            let steps: usize = min(limbs, (log_max + self.log_base2k - 1) / self.log_base2k);
+            (limbs - steps..limbs)
+                .rev()
+                .enumerate()
+                .for_each(|(j, j_rev)| {
+                    self.at_mut(j_rev)[i] = (value >> (j * self.log_base2k)) & mask;
+                })
+        }
+
+        // Case where self.prec % self.k != 0.
+        if k_rem != self.log_base2k {
+            let limbs = self.limbs();
+            let steps: usize = min(limbs, (log_max + self.log_base2k - 1) / self.log_base2k);
+            (limbs - steps..limbs).rev().for_each(|j| {
+                self.at_mut(j)[i] <<= k_rem;
+            })
+        }
+    }
+
     pub fn normalize(&mut self, carry: &mut [u8]) {
         assert!(
             carry.len() >= self.n * 8,
