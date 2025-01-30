@@ -5,9 +5,7 @@
     dead_code,
     improper_ctypes
 )]
-pub mod bindings {
-    include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
-}
+pub mod ffi;
 
 pub mod module;
 #[allow(unused_imports)]
@@ -54,4 +52,16 @@ pub fn cast_mut_u8_to_mut_i64_slice(data: &mut [u8]) -> &mut [i64] {
     let ptr: *mut i64 = data.as_mut_ptr() as *mut i64;
     let len: usize = data.len() / std::mem::size_of::<i64>();
     unsafe { std::slice::from_raw_parts_mut(ptr, len) }
+}
+
+pub fn cast_mut_u8_to_mut_f64_slice(data: &mut [u8]) -> &mut [f64] {
+    let ptr: *mut f64 = data.as_mut_ptr() as *mut f64;
+    let len: usize = data.len() / std::mem::size_of::<f64>();
+    unsafe { std::slice::from_raw_parts_mut(ptr, len) }
+}
+
+pub fn cast_u8_to_f64_slice(data: &mut [u8]) -> &[f64] {
+    let ptr: *const f64 = data.as_mut_ptr() as *const f64;
+    let len: usize = data.len() / std::mem::size_of::<f64>();
+    unsafe { std::slice::from_raw_parts(ptr, len) }
 }

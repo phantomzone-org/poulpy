@@ -1,11 +1,16 @@
-use bindgen;
-use std::env;
-use std::fs;
+//use bindgen;
+//use std::env;
+//use std::fs;
 use std::path::absolute;
-use std::path::PathBuf;
-use std::time::SystemTime;
+//use std::path::PathBuf;
+//use std::time::SystemTime;
 
 fn main() {
+    /*
+
+    [build-dependencies]
+    bindgen ="0.71.1"
+
     // Path to the C header file
     let header_paths: [&str; 2] = [
         "spqlios-arithmetic/spqlios/coeffs/coeffs_arithmetic.h",
@@ -43,6 +48,7 @@ fn main() {
             .write_to_file(&bindings_file)
             .expect("Couldn't write bindings!");
     }
+    */
 
     println!(
         "cargo:rustc-link-search=native={}",

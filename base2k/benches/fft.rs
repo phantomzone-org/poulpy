@@ -1,8 +1,4 @@
-use base2k::bindings::{
-    new_reim_fft_precomp, new_reim_ifft_precomp, reim_fft, reim_fft_precomp,
-    reim_fft_precomp_get_buffer, reim_from_znx64_simple, reim_ifft, reim_ifft_precomp,
-    reim_ifft_precomp_get_buffer,
-};
+use base2k::ffi::reim::*;
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use std::ffi::c_void;
 

@@ -1,6 +1,15 @@
-use crate::bindings::{new_svp_ppol, svp_apply_dft, svp_prepare};
+use crate::ffi::svp::{delete_svp_ppol, new_svp_ppol, svp_apply_dft, svp_ppol_t, svp_prepare};
 use crate::scalar::Scalar;
-use crate::{Module, SvpPPol, VecZnx, VecZnxDft};
+use crate::{Module, VecZnx, VecZnxDft};
+
+pub struct SvpPPol(pub *mut svp_ppol_t);
+
+impl SvpPPol {
+    pub fn delete(self) {
+        unsafe { delete_svp_ppol(self.0) };
+        let _ = drop(self);
+    }
+}
 
 impl Module {
     // Prepares a scalar polynomial (1 limb) for a scalar x vector product.

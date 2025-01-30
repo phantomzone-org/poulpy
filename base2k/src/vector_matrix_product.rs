@@ -1,25 +1,96 @@
-use crate::bindings::{
-    new_vmp_pmat, vmp_apply_dft, vmp_apply_dft_tmp_bytes, vmp_apply_dft_to_dft,
+use crate::ffi::vmp::{
+    delete_vmp_pmat, new_vmp_pmat, vmp_apply_dft, vmp_apply_dft_tmp_bytes, vmp_apply_dft_to_dft,
     vmp_apply_dft_to_dft_tmp_bytes, vmp_pmat_t, vmp_prepare_contiguous,
-    vmp_prepare_contiguous_tmp_bytes, vmp_prepare_dblptr,
+    vmp_prepare_contiguous_tmp_bytes,
 };
 use crate::{Module, VecZnx, VecZnxDft};
 
-pub struct VmpPMat(pub *mut vmp_pmat_t, pub usize, pub usize);
+pub struct VmpPMat {
+    pub data: *mut vmp_pmat_t,
+    pub rows: usize,
+    pub cols: usize,
+    pub n: usize,
+}
 
 impl VmpPMat {
+    pub fn data(&self) -> *mut vmp_pmat_t {
+        self.data
+    }
+
     pub fn rows(&self) -> usize {
-        self.1
+        self.rows
     }
 
     pub fn cols(&self) -> usize {
-        self.2
+        self.cols
+    }
+
+    pub fn n(&self) -> usize {
+        self.n
+    }
+
+    pub fn as_f64(&self) -> &[f64] {
+        let ptr: *const f64 = self.data as *const f64;
+        let len: usize = (self.rows() * self.cols() * self.n() * 8) / std::mem::size_of::<f64>();
+        unsafe { &std::slice::from_raw_parts(ptr, len) }
+    }
+
+    pub fn get_addr(&self, row: usize, col: usize, blk: usize) -> &[f64] {
+        let nrows: usize = self.rows();
+        let ncols: usize = self.cols();
+        if col == (ncols - 1) && (ncols & 1 == 1) {
+            &self.as_f64()[blk * nrows * ncols * 8 + col * nrows * 8 + row * 8..]
+        } else {
+            &self.as_f64()[blk * nrows * ncols * 8
+                + (col / 2) * (2 * nrows) * 8
+                + row * 2 * 8
+                + (col % 2) * 8..]
+        }
+    }
+
+    pub fn at(&self, row: usize, col: usize) -> Vec<f64> {
+        //assert!(row <= self.rows && col <= self.cols);
+
+        let mut res: Vec<f64> = vec![f64::default(); self.n];
+
+        if self.n < 8 {
+            res.copy_from_slice(
+                &self.as_f64()[(row + col * self.rows()) * self.n()
+                    ..(row + col * self.rows()) * (self.n() + 1)],
+            );
+        } else {
+            (0..self.n >> 3).for_each(|blk| {
+                res[blk * 8..(blk + 1) * 8].copy_from_slice(&self.get_addr(row, col, blk)[..8]);
+            });
+        }
+
+        res
+    }
+
+    pub fn at_mut(&self, row: usize, col: usize) -> &mut [f64] {
+        assert!(row <= self.rows && col <= self.cols);
+        let idx: usize = col * (self.n / 2 * self.rows) + row * (self.n >> 1);
+        let ptr: *mut f64 = self.data as *mut f64;
+        let len: usize = (self.rows() * self.cols() * self.n() * 8) / std::mem::size_of::<f64>();
+        unsafe { &mut std::slice::from_raw_parts_mut(ptr, len)[idx..idx + self.n] }
+    }
+
+    pub fn delete(self) {
+        unsafe { delete_vmp_pmat(self.data) };
+        drop(self);
     }
 }
 
 impl Module {
     pub fn new_vmp_pmat(&self, rows: usize, cols: usize) -> VmpPMat {
-        unsafe { VmpPMat(new_vmp_pmat(self.0, rows as u64, cols as u64), rows, cols) }
+        unsafe {
+            VmpPMat {
+                data: new_vmp_pmat(self.0, rows as u64, cols as u64),
+                rows,
+                cols,
+                n: self.n(),
+            }
+        }
     }
 
     pub fn vmp_prepare_contiguous_tmp_bytes(&self, rows: usize, cols: usize) -> usize {
@@ -30,10 +101,10 @@ impl Module {
         unsafe {
             vmp_prepare_contiguous(
                 self.0,
-                b.0,
+                b.data(),
                 a.as_ptr(),
-                b.1 as u64,
-                b.2 as u64,
+                b.rows() as u64,
+                b.cols() as u64,
                 buf.as_mut_ptr(),
             );
         }
@@ -66,7 +137,7 @@ impl Module {
                 a.as_ptr(),
                 a.limbs() as u64,
                 a.n() as u64,
-                b.0,
+                b.data(),
                 b.rows() as u64,
                 b.cols() as u64,
                 buf.as_mut_ptr(),
@@ -106,7 +177,7 @@ impl Module {
                 c.limbs() as u64,
                 a.0,
                 a.limbs() as u64,
-                b.0,
+                b.data(),
                 b.rows() as u64,
                 b.cols() as u64,
                 buf.as_mut_ptr(),
@@ -122,7 +193,7 @@ impl Module {
                 b.limbs() as u64,
                 b.0,
                 b.limbs() as u64,
-                a.0,
+                a.data(),
                 a.rows() as u64,
                 a.cols() as u64,
                 buf.as_mut_ptr(),

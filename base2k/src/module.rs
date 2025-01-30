@@ -1,7 +1,4 @@
-use crate::bindings::{
-    module_info_t, new_module_info, svp_ppol_t, vec_znx_bigcoeff_t, vec_znx_dft_t, MODULE,
-};
-
+use crate::ffi::module::{delete_module_info, module_info_t, new_module_info, MODULE};
 use crate::GALOISGENERATOR;
 
 pub type MODULETYPE = u8;
@@ -56,28 +53,9 @@ impl Module {
 
         (gal_el as i64) * gen.signum()
     }
-}
 
-pub struct SvpPPol(pub *mut svp_ppol_t);
-
-pub struct VecZnxBig(pub *mut vec_znx_bigcoeff_t, pub usize);
-
-impl VecZnxBig {
-    pub fn as_vec_znx_dft(&mut self) -> VecZnxDft {
-        VecZnxDft(self.0 as *mut vec_znx_dft_t, self.1)
-    }
-    pub fn limbs(&self) -> usize {
-        self.1
-    }
-}
-
-pub struct VecZnxDft(pub *mut vec_znx_dft_t, pub usize);
-
-impl VecZnxDft {
-    pub fn as_vec_znx_big(&mut self) -> VecZnxBig {
-        VecZnxBig(self.0 as *mut vec_znx_bigcoeff_t, self.1)
-    }
-    pub fn limbs(&self) -> usize {
-        self.1
+    pub fn delete(self) {
+        unsafe { delete_module_info(self.0) }
+        drop(self);
     }
 }

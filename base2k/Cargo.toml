@@ -12,9 +12,6 @@ rand_core = {workspace = true}
 sampling = { path = "../sampling" }
 utils = { path = "../utils" }
 
-[build-dependencies]
-bindgen ="0.71.1"
-
 [[bench]]
 name = "fft"
 harness = false

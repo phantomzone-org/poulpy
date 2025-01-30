@@ -1,8 +1,28 @@
-use crate::bindings::{
-    new_vec_znx_big, vec_znx_big_add_small, vec_znx_big_automorphism, vec_znx_big_normalize_base2k,
-    vec_znx_big_normalize_base2k_tmp_bytes, vec_znx_big_sub_small_a,
+use crate::ffi::vec_znx_big::{
+    delete_vec_znx_big, new_vec_znx_big, vec_znx_big_add_small, vec_znx_big_automorphism,
+    vec_znx_big_normalize_base2k, vec_znx_big_normalize_base2k_tmp_bytes, vec_znx_big_sub_small_a,
+    vec_znx_bigcoeff_t,
 };
-use crate::{Module, VecZnx, VecZnxBig};
+use crate::ffi::vec_znx_dft::vec_znx_dft_t;
+
+use crate::{Module, VecZnx, VecZnxDft};
+
+pub struct VecZnxBig(pub *mut vec_znx_bigcoeff_t, pub usize);
+
+impl VecZnxBig {
+    pub fn as_vec_znx_dft(&mut self) -> VecZnxDft {
+        VecZnxDft(self.0 as *mut vec_znx_dft_t, self.1)
+    }
+    pub fn limbs(&self) -> usize {
+        self.1
+    }
+    pub fn delete(self) {
+        unsafe {
+            delete_vec_znx_big(self.0);
+        }
+        drop(self);
+    }
+}
 
 impl Module {
     // Allocates a vector Z[X]/(X^N+1) that stores not normalized values.

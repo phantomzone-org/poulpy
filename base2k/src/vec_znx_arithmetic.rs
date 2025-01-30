@@ -1,4 +1,4 @@
-use crate::bindings::{
+use crate::ffi::vec_znx::{
     vec_znx_add, vec_znx_automorphism, vec_znx_negate, vec_znx_rotate, vec_znx_sub,
 };
 use crate::{Module, VecZnx};

@@ -1,5 +1,25 @@
-use crate::bindings::{new_vec_znx_dft, vec_znx_idft, vec_znx_idft_tmp_a, vec_znx_idft_tmp_bytes};
-use crate::module::{Module, VecZnxBig, VecZnxDft};
+use crate::ffi::vec_znx_big::vec_znx_bigcoeff_t;
+use crate::ffi::vec_znx_dft::{
+    delete_vec_znx_dft, new_vec_znx_dft, vec_znx_dft_t, vec_znx_idft, vec_znx_idft_tmp_a,
+    vec_znx_idft_tmp_bytes,
+};
+use crate::{Module, VecZnxBig};
+
+pub struct VecZnxDft(pub *mut vec_znx_dft_t, pub usize);
+
+impl VecZnxDft {
+    pub fn as_vec_znx_big(&mut self) -> VecZnxBig {
+        VecZnxBig(self.0 as *mut vec_znx_bigcoeff_t, self.1)
+    }
+    pub fn limbs(&self) -> usize {
+        self.1
+    }
+
+    pub fn delete(self) {
+        unsafe { delete_vec_znx_dft(self.0) };
+        drop(self);
+    }
+}
 
 impl Module {
     // Allocates a vector Z[X]/(X^N+1) that stores normalized in the DFT space.

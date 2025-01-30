@@ -1,7 +1,7 @@
-use crate::bindings::{
+use crate::cast_mut_u8_to_mut_i64_slice;
+use crate::ffi::znx::{
     znx_automorphism_i64, znx_automorphism_inplace_i64, znx_normalize, znx_zero_i64_ref,
 };
-use crate::cast_mut_u8_to_mut_i64_slice;
 use crate::module::Module;
 use itertools::izip;
 use rand_distr::{Distribution, Normal};
@@ -98,7 +98,7 @@ impl VecZnx {
         &mut self.data[i * self.n..(i + 1) * self.n]
     }
 
-    pub fn set_i64(&mut self, data: &[i64], log_max: usize) {
+    pub fn from_i64(&mut self, data: &[i64], log_max: usize) {
         let size: usize = min(data.len(), self.n());
         let k_rem: usize = self.log_base2k - (self.log_q % self.log_base2k);
 
@@ -131,7 +131,7 @@ impl VecZnx {
         }
     }
 
-    pub fn set_single_i64(&mut self, i: usize, value: i64, log_max: usize) {
+    pub fn from_i64_single(&mut self, i: usize, value: i64, log_max: usize) {
         assert!(i < self.n());
         let k_rem: usize = self.log_base2k - (self.log_q % self.log_base2k);
 
@@ -187,7 +187,7 @@ impl VecZnx {
         }
     }
 
-    pub fn get_i64(&self, data: &mut [i64]) {
+    pub fn to_i64(&self, data: &mut [i64]) {
         assert!(
             data.len() >= self.n,
             "invalid data: data.len()={} < self.n()={}",
@@ -210,7 +210,7 @@ impl VecZnx {
         })
     }
 
-    pub fn get_single_i64(&self, i: usize) -> i64 {
+    pub fn to_i64_single(&self, i: usize) -> i64 {
         assert!(i < self.n());
         let mut res: i64 = self.data[i];
         let rem: usize = self.log_base2k - (self.log_q % self.log_base2k);
@@ -366,9 +366,9 @@ mod tests {
         have.iter_mut()
             .enumerate()
             .for_each(|(i, x)| *x = (i as i64) - (n as i64) / 2);
-        a.set_i64(&have, 10);
+        a.from_i64(&have, 10);
         let mut want = vec![i64::default(); n];
-        a.get_i64(&mut want);
+        a.to_i64(&mut want);
         izip!(want, have).for_each(|(a, b)| assert_eq!(a, b));
     }
 
@@ -385,11 +385,11 @@ mod tests {
                 .next_u64n(u64::MAX, u64::MAX)
                 .wrapping_sub(u64::MAX / 2 + 1) as i64;
         });
-        a.set_i64(&have, 63);
+        a.from_i64(&have, 63);
         //(0..a.limbs()).for_each(|i| println!("i:{} -> {:?}", i, a.at(i)));
         let mut want = vec![i64::default(); n];
         //(0..a.limbs()).for_each(|i| println!("i:{} -> {:?}", i, a.at(i)));
-        a.get_i64(&mut want);
+        a.to_i64(&mut want);
         izip!(want, have).for_each(|(a, b)| assert_eq!(a, b, "{} != {}", a, b));
     }
     #[test]
@@ -405,7 +405,7 @@ mod tests {
                 .next_u64n(u64::MAX, u64::MAX)
                 .wrapping_sub(u64::MAX / 2 + 1) as i64;
         });
-        a.set_i64(&have, 63);
+        a.from_i64(&have, 63);
         let mut carry: Vec<u8> = vec![u8::default(); n * 8];
         a.normalize(&mut carry);
 
@@ -414,7 +414,7 @@ mod tests {
             .iter()
             .for_each(|x| assert!(x.abs() <= base_half, "|x|={} > 2^(k-1)={}", x, base_half));
         let mut want = vec![i64::default(); n];
-        a.get_i64(&mut want);
+        a.to_i64(&mut want);
         izip!(want, have).for_each(|(a, b)| assert_eq!(a, b, "{} != {}", a, b));
     }
 }
