@@ -106,7 +106,7 @@ impl VecZnx {
         // values on the last limb.
         // Else we decompose values base2k.
         if log_max + k_rem < 63 || k_rem == self.log_base2k {
-            self.at_mut(self.limbs() - 1).copy_from_slice(&data[..size]);
+            self.at_mut(self.limbs() - 1)[..size].copy_from_slice(&data[..size]);
         } else {
             let mask: i64 = (1 << self.log_base2k) - 1;
             let limbs = self.limbs();
@@ -337,7 +337,6 @@ impl VecZnx {
 
             let mask: i64 = (1 << k_rem) - 1;
             let log_base2k: usize = self.log_base2k;
-            println!("mask: {} log_base2k: {}", mask, log_base2k);
 
             (limbs_steps..limbs).for_each(|i| {
                 izip!(carry_i64.iter_mut(), self.at_mut(i).iter_mut()).for_each(|(ci, xi)| {
