@@ -102,15 +102,25 @@ impl VecZnx {
         let size: usize = min(data.len(), self.n());
         let k_rem: usize = self.log_base2k - (self.log_q % self.log_base2k);
 
+        let limbs: usize = self.limbs();
+
         // If 2^{log_base2k} * 2^{k_rem} < 2^{63}-1, then we can simply copy
         // values on the last limb.
         // Else we decompose values base2k.
         if log_max + k_rem < 63 || k_rem == self.log_base2k {
+            (0..limbs - 1).for_each(|i| unsafe {
+                znx_zero_i64_ref(size as u64, self.at_mut(i).as_mut_ptr());
+            });
+
             self.at_mut(self.limbs() - 1)[..size].copy_from_slice(&data[..size]);
         } else {
             let mask: i64 = (1 << self.log_base2k) - 1;
-            let limbs = self.limbs();
             let steps: usize = min(limbs, (log_max + self.log_base2k - 1) / self.log_base2k);
+
+            (0..steps).for_each(|i| unsafe {
+                znx_zero_i64_ref(size as u64, self.at_mut(i).as_mut_ptr());
+            });
+
             (limbs - steps..limbs)
                 .rev()
                 .enumerate()
@@ -134,16 +144,21 @@ impl VecZnx {
     pub fn from_i64_single(&mut self, i: usize, value: i64, log_max: usize) {
         assert!(i < self.n());
         let k_rem: usize = self.log_base2k - (self.log_q % self.log_base2k);
+        let limbs = self.limbs();
 
         // If 2^{log_base2k} * 2^{k_rem} < 2^{63}-1, then we can simply copy
         // values on the last limb.
         // Else we decompose values base2k.
         if log_max + k_rem < 63 || k_rem == self.log_base2k {
+            (0..limbs - 1).for_each(|j| self.at_mut(j)[i] = 0);
+
             self.at_mut(self.limbs() - 1)[i] = value;
         } else {
             let mask: i64 = (1 << self.log_base2k) - 1;
-            let limbs = self.limbs();
             let steps: usize = min(limbs, (log_max + self.log_base2k - 1) / self.log_base2k);
+
+            (0..limbs - steps).for_each(|j| self.at_mut(j)[i] = 0);
+
             (limbs - steps..limbs)
                 .rev()
                 .enumerate()
