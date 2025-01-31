@@ -1,7 +1,7 @@
 use crate::ffi::vmp::{
     delete_vmp_pmat, new_vmp_pmat, vmp_apply_dft, vmp_apply_dft_tmp_bytes, vmp_apply_dft_to_dft,
     vmp_apply_dft_to_dft_tmp_bytes, vmp_pmat_t, vmp_prepare_contiguous,
-    vmp_prepare_contiguous_tmp_bytes,
+    vmp_prepare_contiguous_tmp_bytes, vmp_prepare_dblptr,
 };
 use crate::{Module, VecZnx, VecZnxDft};
 
@@ -110,6 +110,21 @@ impl Module {
         }
     }
 
+    pub fn vmp_prepare_dblptr(&self, b: &mut VmpPMat, a: &Vec<&Vec<i64>>, buf: &mut [u8]) {
+        let ptrs: Vec<*const i64> = a.iter().map(|v| v.as_ptr()).collect();
+
+        unsafe {
+            vmp_prepare_dblptr(
+                self.0,
+                b.data(),
+                ptrs.as_ptr(),
+                b.rows() as u64,
+                b.cols() as u64,
+                buf.as_mut_ptr(),
+            );
+        }
+    }
+
     pub fn vmp_apply_dft_tmp_bytes(
         &self,
         c_limbs: usize,
@@ -209,7 +224,7 @@ pub struct Matrix3D<T> {
     pub n: usize,
 }
 
-impl<T: Default + Clone> Matrix3D<T> {
+impl<T: Default + Clone + std::marker::Copy> Matrix3D<T> {
     pub fn new(rows: usize, cols: usize, n: usize) -> Self {
         let size = rows * cols * n;
         Self {
@@ -230,5 +245,10 @@ impl<T: Default + Clone> Matrix3D<T> {
         assert!(row <= self.rows && col <= self.cols);
         let idx: usize = col * (self.n * self.rows) + row * self.n;
         &mut self.data[idx..idx + self.n]
+    }
+
+    pub fn set_col(&mut self, col: usize, a: &[T]) {
+        let idx: usize = col * (self.n * self.rows);
+        self.data[idx..idx + self.rows * self.n].copy_from_slice(a);
     }
 }

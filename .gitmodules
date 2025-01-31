@@ -1,6 +1,3 @@
-[submodule "spqlios/spqlios-arithmetic"]
-	path = spqlios/spqlios-arithmetic
-	url = https://github.com/tfhe/spqlios-arithmetic
 [submodule "base2k/spqlios-arithmetic"]
 	path = base2k/spqlios-arithmetic
 	url = https://github.com/tfhe/spqlios-arithmetic

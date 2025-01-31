@@ -22,7 +22,7 @@ impl Scalar {
     }
 
     pub fn from_buffer(&mut self, n: usize, buf: &[i64]) {
-        let size = Self::buffer_size(n);
+        let size: usize = Self::buffer_size(n);
         assert!(
             buf.len() >= size,
             "invalid buffer: buf.len()={} < self.buffer_size(n={})={}",

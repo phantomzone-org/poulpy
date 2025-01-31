@@ -68,7 +68,7 @@ unsafe extern "C" {
 }
 
 unsafe extern "C" {
-    pub fn vmp_prepare_contiguous(
+    pub unsafe fn vmp_prepare_contiguous(
         module: *const MODULE,
         pmat: *mut VMP_PMAT,
         mat: *const i64,
@@ -78,10 +78,10 @@ unsafe extern "C" {
     );
 }
 unsafe extern "C" {
-    pub fn vmp_prepare_dblptr(
+    pub unsafe fn vmp_prepare_dblptr(
         module: *const MODULE,
         pmat: *mut VMP_PMAT,
-        mat: *mut *const i64,
+        mat: *const *const i64,
         nrows: u64,
         ncols: u64,
         tmp_space: *mut u8,
