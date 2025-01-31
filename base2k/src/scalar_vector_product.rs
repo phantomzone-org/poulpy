@@ -2,9 +2,13 @@ use crate::ffi::svp::{delete_svp_ppol, new_svp_ppol, svp_apply_dft, svp_ppol_t, 
 use crate::scalar::Scalar;
 use crate::{Module, VecZnx, VecZnxDft};
 
-pub struct SvpPPol(pub *mut svp_ppol_t);
+pub struct SvpPPol(pub *mut svp_ppol_t, pub usize);
 
 impl SvpPPol {
+    pub fn n(&self) -> usize {
+        self.1
+    }
+
     pub fn delete(self) {
         unsafe { delete_svp_ppol(self.0) };
         let _ = drop(self);
@@ -20,7 +24,7 @@ impl Module {
 
     // Allocates a scalar-vector-product prepared-poly (VecZnxBig).
     pub fn svp_new_ppol(&self) -> SvpPPol {
-        unsafe { SvpPPol(new_svp_ppol(self.0)) }
+        unsafe { SvpPPol(new_svp_ppol(self.0), self.n()) }
     }
 
     // Applies a scalar x vector product: res <- a (ppol) x b

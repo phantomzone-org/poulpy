@@ -1,9 +1,16 @@
+use crate::Module;
 use rand::seq::SliceRandom;
 use rand_core::RngCore;
 use rand_distr::{Distribution, WeightedIndex};
 use sampling::source::Source;
 
 pub struct Scalar(pub Vec<i64>);
+
+impl Module {
+    pub fn new_scalar(&self) -> Scalar {
+        Scalar::new(self.n())
+    }
+}
 
 impl Scalar {
     pub fn new(n: usize) -> Self {

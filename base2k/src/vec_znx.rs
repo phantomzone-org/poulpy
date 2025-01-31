@@ -98,6 +98,10 @@ impl VecZnx {
         &mut self.data[i * self.n..(i + 1) * self.n]
     }
 
+    pub fn zero(&mut self) {
+        unsafe { znx_zero_i64_ref(self.data.len() as u64, self.data.as_mut_ptr()) }
+    }
+
     pub fn from_i64(&mut self, data: &[i64], log_max: usize) {
         let size: usize = min(data.len(), self.n());
         let k_rem: usize = self.log_base2k - (self.log_q % self.log_base2k);
@@ -361,6 +365,28 @@ impl VecZnx {
                 });
             })
         }
+    }
+
+    pub fn switch_degree(&self, a: &mut VecZnx) {
+        let (n_in, n_out) = (self.n(), a.n());
+        let (gap_in, gap_out): (usize, usize);
+
+        if n_in > n_out {
+            (gap_in, gap_out) = (n_in / n_out, 1)
+        } else {
+            (gap_in, gap_out) = (1, n_out / n_in);
+            a.zero();
+        }
+
+        let limbs = min(self.limbs(), a.limbs());
+
+        (0..limbs).for_each(|i| {
+            izip!(
+                self.at(i).iter().step_by(gap_in),
+                a.at_mut(i).iter_mut().step_by(gap_out)
+            )
+            .for_each(|(x_in, x_out)| *x_out = *x_in);
+        });
     }
 }
 
