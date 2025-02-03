@@ -9,8 +9,8 @@ use sampling::source::Source;
 use std::cmp::min;
 
 impl Module {
-    pub fn new_vec_znx(&self, log_base2k: usize, log_q: usize) -> VecZnx {
-        VecZnx::new(self.n(), log_base2k, log_q)
+    pub fn new_vec_znx(&self, log_base2k: usize, limbs: usize) -> VecZnx {
+        VecZnx::new(self.n(), log_base2k, limbs)
     }
 }
 
