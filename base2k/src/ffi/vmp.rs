@@ -6,6 +6,8 @@ use crate::ffi::vec_znx_dft::VEC_ZNX_DFT;
 pub struct vmp_pmat_t {
     _unused: [u8; 0],
 }
+
+// [rows][cols] = [#Decomposition][#Limbs]
 pub type VMP_PMAT = vmp_pmat_t;
 
 unsafe extern "C" {
@@ -77,6 +79,9 @@ unsafe extern "C" {
         tmp_space: *mut u8,
     );
 }
+
+/*
+NOT IMPLEMENTED IN SPQLIOS
 unsafe extern "C" {
     pub unsafe fn vmp_prepare_dblptr(
         module: *const MODULE,
@@ -87,6 +92,7 @@ unsafe extern "C" {
         tmp_space: *mut u8,
     );
 }
+*/
 unsafe extern "C" {
     pub unsafe fn vmp_prepare_contiguous_tmp_bytes(
         module: *const MODULE,

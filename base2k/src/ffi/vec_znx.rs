@@ -69,10 +69,10 @@ unsafe extern "C" {
 }
 
 unsafe extern "C" {
-    pub fn vec_znx_zero(module: *const MODULE, res: *mut i64, res_size: u64, res_sl: u64);
+    pub unsafe fn vec_znx_zero(module: *const MODULE, res: *mut i64, res_size: u64, res_sl: u64);
 }
 unsafe extern "C" {
-    pub fn vec_znx_copy(
+    pub unsafe fn vec_znx_copy(
         module: *const MODULE,
         res: *mut i64,
         res_size: u64,
@@ -84,7 +84,7 @@ unsafe extern "C" {
 }
 
 unsafe extern "C" {
-    pub fn vec_znx_normalize_base2k(
+    pub unsafe fn vec_znx_normalize_base2k(
         module: *const MODULE,
         log2_base2k: u64,
         res: *mut i64,
@@ -97,5 +97,5 @@ unsafe extern "C" {
     );
 }
 unsafe extern "C" {
-    pub fn vec_znx_normalize_base2k_tmp_bytes(module: *const MODULE) -> u64;
+    pub unsafe fn vec_znx_normalize_base2k_tmp_bytes(module: *const MODULE) -> u64;
 }

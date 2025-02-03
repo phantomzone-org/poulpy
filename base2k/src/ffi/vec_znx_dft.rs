@@ -19,10 +19,10 @@ unsafe extern "C" {
 }
 
 unsafe extern "C" {
-    pub fn vec_dft_zero(module: *const MODULE, res: *mut VEC_ZNX_DFT, res_size: u64);
+    pub unsafe fn vec_dft_zero(module: *const MODULE, res: *mut VEC_ZNX_DFT, res_size: u64);
 }
 unsafe extern "C" {
-    pub fn vec_dft_add(
+    pub unsafe fn vec_dft_add(
         module: *const MODULE,
         res: *mut VEC_ZNX_DFT,
         res_size: u64,
@@ -33,7 +33,7 @@ unsafe extern "C" {
     );
 }
 unsafe extern "C" {
-    pub fn vec_dft_sub(
+    pub unsafe fn vec_dft_sub(
         module: *const MODULE,
         res: *mut VEC_ZNX_DFT,
         res_size: u64,
@@ -44,7 +44,7 @@ unsafe extern "C" {
     );
 }
 unsafe extern "C" {
-    pub fn vec_znx_dft(
+    pub unsafe fn vec_znx_dft(
         module: *const MODULE,
         res: *mut VEC_ZNX_DFT,
         res_size: u64,
@@ -54,7 +54,7 @@ unsafe extern "C" {
     );
 }
 unsafe extern "C" {
-    pub fn vec_znx_idft(
+    pub unsafe fn vec_znx_idft(
         module: *const MODULE,
         res: *mut VEC_ZNX_BIG,
         res_size: u64,
@@ -64,10 +64,10 @@ unsafe extern "C" {
     );
 }
 unsafe extern "C" {
-    pub fn vec_znx_idft_tmp_bytes(module: *const MODULE) -> u64;
+    pub unsafe fn vec_znx_idft_tmp_bytes(module: *const MODULE) -> u64;
 }
 unsafe extern "C" {
-    pub fn vec_znx_idft_tmp_a(
+    pub unsafe fn vec_znx_idft_tmp_a(
         module: *const MODULE,
         res: *mut VEC_ZNX_BIG,
         res_size: u64,
