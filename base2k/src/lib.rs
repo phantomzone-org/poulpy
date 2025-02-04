@@ -11,21 +11,13 @@ pub mod module;
 #[allow(unused_imports)]
 pub use module::*;
 
-pub mod scalar;
-#[allow(unused_imports)]
-pub use scalar::*;
-
 pub mod vec_znx;
 #[allow(unused_imports)]
 pub use vec_znx::*;
 
-pub mod vec_znx_arithmetic;
+pub mod vec_znx_big;
 #[allow(unused_imports)]
-pub use vec_znx_arithmetic::*;
-
-pub mod vec_znx_big_arithmetic;
-#[allow(unused_imports)]
-pub use vec_znx_big_arithmetic::*;
+pub use vec_znx_big::*;
 
 pub mod vec_znx_dft;
 #[allow(unused_imports)]
@@ -38,6 +30,22 @@ pub use svp::*;
 pub mod vmp;
 #[allow(unused_imports)]
 pub use vmp::*;
+
+pub mod sampling;
+#[allow(unused_imports)]
+pub use sampling::*;
+
+pub mod encoding;
+#[allow(unused_imports)]
+pub use encoding::*;
+
+pub mod infos;
+#[allow(unused_imports)]
+pub use infos::*;
+
+pub mod free;
+#[allow(unused_imports)]
+pub use free::*;
 
 pub const GALOISGENERATOR: u64 = 5;
 
@@ -64,11 +72,4 @@ pub fn cast_u8_to_f64_slice(data: &mut [u8]) -> &[f64] {
     let ptr: *const f64 = data.as_mut_ptr() as *const f64;
     let len: usize = data.len() / std::mem::size_of::<f64>();
     unsafe { std::slice::from_raw_parts(ptr, len) }
-}
-
-/// This trait should be implemented by structs that point to
-/// memory allocated through C.
-pub trait Free {
-    // Frees the memory and self destructs.
-    fn free(self);
 }

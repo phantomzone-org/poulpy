@@ -1,36 +1,22 @@
-use crate::ffi::vec_znx_big::{
-    delete_vec_znx_big, new_vec_znx_big, vec_znx_big_add_small, vec_znx_big_automorphism,
-    vec_znx_big_normalize_base2k, vec_znx_big_normalize_base2k_tmp_bytes, vec_znx_big_sub_small_a,
-    vec_znx_bigcoeff_t,
-};
-use crate::ffi::vec_znx_dft::vec_znx_dft_t;
-use crate::Free;
-use crate::{Module, VecZnx, VecZnxDft};
+use crate::ffi::vec_znx_big;
+use crate::ffi::vec_znx_dft;
+use crate::{Infos, Module, VecZnx, VecZnxDft};
 
-pub struct VecZnxBig(pub *mut vec_znx_bigcoeff_t, pub usize);
+pub struct VecZnxBig(pub *mut vec_znx_big::vec_znx_bigcoeff_t, pub usize);
 
 impl VecZnxBig {
     pub fn as_vec_znx_dft(&mut self) -> VecZnxDft {
-        VecZnxDft(self.0 as *mut vec_znx_dft_t, self.1)
+        VecZnxDft(self.0 as *mut vec_znx_dft::vec_znx_dft_t, self.1)
     }
     pub fn limbs(&self) -> usize {
         self.1
     }
 }
 
-impl Free for VecZnxBig {
-    fn free(self) {
-        unsafe {
-            delete_vec_znx_big(self.0);
-        }
-        drop(self);
-    }
-}
-
 impl Module {
     // Allocates a vector Z[X]/(X^N+1) that stores not normalized values.
     pub fn new_vec_znx_big(&self, limbs: usize) -> VecZnxBig {
-        unsafe { VecZnxBig(new_vec_znx_big(self.0, limbs as u64), limbs) }
+        unsafe { VecZnxBig(vec_znx_big::new_vec_znx_big(self.0, limbs as u64), limbs) }
     }
 
     // b <- b - a
@@ -43,7 +29,7 @@ impl Module {
             limbs
         );
         unsafe {
-            vec_znx_big_sub_small_a(
+            vec_znx_big::vec_znx_big_sub_small_a(
                 self.0,
                 b.0,
                 b.limbs() as u64,
@@ -72,7 +58,7 @@ impl Module {
             limbs
         );
         unsafe {
-            vec_znx_big_sub_small_a(
+            vec_znx_big::vec_znx_big_sub_small_a(
                 self.0,
                 c.0,
                 c.limbs() as u64,
@@ -101,7 +87,7 @@ impl Module {
             limbs
         );
         unsafe {
-            vec_znx_big_add_small(
+            vec_znx_big::vec_znx_big_add_small(
                 self.0,
                 c.0,
                 limbs as u64,
@@ -124,7 +110,7 @@ impl Module {
             limbs
         );
         unsafe {
-            vec_znx_big_add_small(
+            vec_znx_big::vec_znx_big_add_small(
                 self.0,
                 b.0,
                 limbs as u64,
@@ -138,7 +124,7 @@ impl Module {
     }
 
     pub fn vec_znx_big_normalize_tmp_bytes(&self) -> usize {
-        unsafe { vec_znx_big_normalize_base2k_tmp_bytes(self.0) as usize }
+        unsafe { vec_znx_big::vec_znx_big_normalize_base2k_tmp_bytes(self.0) as usize }
     }
 
     // b <- normalize(a)
@@ -163,7 +149,7 @@ impl Module {
             self.vec_znx_big_normalize_tmp_bytes()
         );
         unsafe {
-            vec_znx_big_normalize_base2k(
+            vec_znx_big::vec_znx_big_normalize_base2k(
                 self.0,
                 log_base2k as u64,
                 b.as_mut_ptr(),
@@ -178,13 +164,27 @@ impl Module {
 
     pub fn vec_znx_big_automorphism(&self, gal_el: i64, b: &mut VecZnxBig, a: &VecZnxBig) {
         unsafe {
-            vec_znx_big_automorphism(self.0, gal_el, b.0, b.limbs() as u64, a.0, a.limbs() as u64);
+            vec_znx_big::vec_znx_big_automorphism(
+                self.0,
+                gal_el,
+                b.0,
+                b.limbs() as u64,
+                a.0,
+                a.limbs() as u64,
+            );
         }
     }
 
     pub fn vec_znx_big_automorphism_inplace(&self, gal_el: i64, a: &mut VecZnxBig) {
         unsafe {
-            vec_znx_big_automorphism(self.0, gal_el, a.0, a.limbs() as u64, a.0, a.limbs() as u64);
+            vec_znx_big::vec_znx_big_automorphism(
+                self.0,
+                gal_el,
+                a.0,
+                a.limbs() as u64,
+                a.0,
+                a.limbs() as u64,
+            );
         }
     }
 }

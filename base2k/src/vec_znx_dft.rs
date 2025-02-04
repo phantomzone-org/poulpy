@@ -1,32 +1,22 @@
-use crate::ffi::vec_znx_big::vec_znx_bigcoeff_t;
-use crate::ffi::vec_znx_dft::{
-    delete_vec_znx_dft, new_vec_znx_dft, vec_znx_dft_t, vec_znx_idft, vec_znx_idft_tmp_a,
-    vec_znx_idft_tmp_bytes,
-};
-use crate::{Free, Module, VecZnxBig};
+use crate::ffi::vec_znx_big;
+use crate::ffi::vec_znx_dft;
+use crate::{Module, VecZnxBig};
 
-pub struct VecZnxDft(pub *mut vec_znx_dft_t, pub usize);
+pub struct VecZnxDft(pub *mut vec_znx_dft::vec_znx_dft_t, pub usize);
 
 impl VecZnxDft {
     pub fn as_vec_znx_big(&mut self) -> VecZnxBig {
-        VecZnxBig(self.0 as *mut vec_znx_bigcoeff_t, self.1)
+        VecZnxBig(self.0 as *mut vec_znx_big::vec_znx_bigcoeff_t, self.1)
     }
     pub fn limbs(&self) -> usize {
         self.1
     }
 }
 
-impl Free for VecZnxDft {
-    fn free(self) {
-        unsafe { delete_vec_znx_dft(self.0) };
-        drop(self);
-    }
-}
-
 impl Module {
     // Allocates a vector Z[X]/(X^N+1) that stores normalized in the DFT space.
     pub fn new_vec_znx_dft(&self, limbs: usize) -> VecZnxDft {
-        unsafe { VecZnxDft(new_vec_znx_dft(self.0, limbs as u64), limbs) }
+        unsafe { VecZnxDft(vec_znx_dft::new_vec_znx_dft(self.0, limbs as u64), limbs) }
     }
 
     // b <- IDFT(a), uses a as scratch space.
@@ -37,12 +27,12 @@ impl Module {
             b.limbs(),
             a_limbs
         );
-        unsafe { vec_znx_idft_tmp_a(self.0, b.0, a_limbs as u64, a.0, a_limbs as u64) }
+        unsafe { vec_znx_dft::vec_znx_idft_tmp_a(self.0, b.0, a_limbs as u64, a.0, a_limbs as u64) }
     }
 
     // Returns the size of the scratch space for [vec_znx_idft].
     pub fn vec_znx_idft_tmp_bytes(&self) -> usize {
-        unsafe { vec_znx_idft_tmp_bytes(self.0) as usize }
+        unsafe { vec_znx_dft::vec_znx_idft_tmp_bytes(self.0) as usize }
     }
 
     // b <- IDFT(a), scratch space size obtained with [vec_znx_idft_tmp_bytes].
@@ -72,7 +62,7 @@ impl Module {
             self.vec_znx_idft_tmp_bytes()
         );
         unsafe {
-            vec_znx_idft(
+            vec_znx_dft::vec_znx_idft(
                 self.0,
                 b_vector.0,
                 a_limbs as u64,

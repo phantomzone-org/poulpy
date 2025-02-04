@@ -1,10 +1,5 @@
-use crate::ffi::vmp::{
-    delete_vmp_pmat, new_vmp_pmat, vmp_apply_dft, vmp_apply_dft_tmp_bytes, vmp_apply_dft_to_dft,
-    vmp_apply_dft_to_dft_tmp_bytes, vmp_pmat_t, vmp_prepare_contiguous,
-    vmp_prepare_contiguous_tmp_bytes,
-};
-use crate::Free;
-use crate::{Module, VecZnx, VecZnxDft};
+use crate::ffi::vmp;
+use crate::{Infos, Module, VecZnx, VecZnxDft};
 use std::cmp::min;
 
 /// Vector Matrix Product Prepared Matrix: a vector of [VecZnx],
@@ -15,10 +10,10 @@ use std::cmp::min;
 /// and thus must be manually freed.
 ///
 /// [VmpPMat] is used to permform a vector matrix product between a [VecZnx] and a [VmpPMat].
-/// See the trait [VectorMatrixProduct] for additional information.
+/// See the trait [VmpPMatOps] for additional information.
 pub struct VmpPMat {
     /// The pointer to the C memory.
-    pub data: *mut vmp_pmat_t,
+    pub data: *mut vmp::vmp_pmat_t,
     /// The number of [VecZnxDft].
     pub rows: usize,
     /// The number of limbs in each [VecZnxDft].      
@@ -29,31 +24,18 @@ pub struct VmpPMat {
 
 impl VmpPMat {
     /// Returns the pointer to the [vmp_pmat_t].
-    pub fn data(&self) -> *mut vmp_pmat_t {
+    pub fn data(&self) -> *mut vmp::vmp_pmat_t {
         self.data
-    }
-
-    /// Returns the number of rows of the [VmpPMat].
-    /// The number of rows (i.e. of [VecZnx]) of the [VmpPMat].
-    pub fn rows(&self) -> usize {
-        self.rows
-    }
-
-    /// Returns the number of cols of the [VmpPMat].
-    /// The number of cols refers to the number of limbs  
-    /// of the prepared [VecZnx].
-    pub fn cols(&self) -> usize {
-        self.cols
-    }
-
-    /// Returns the ring dimension of the [VmpPMat].
-    pub fn n(&self) -> usize {
-        self.n
     }
 
     /// Returns a copy of the backend array at index (i, j) of the [VmpPMat].
     /// When using [`crate::FFT64`] as backend, `T` should be [f64].
     /// When using [`crate::NTT120`] as backend, `T` should be [i64].
+    ///
+    /// # Arguments
+    ///
+    /// * `row`: row index (i).
+    /// * `col`: col index (j).
     pub fn at<T: Default + Copy>(&self, row: usize, col: usize) -> Vec<T> {
         let mut res: Vec<T> = vec![T::default(); self.n];
 
@@ -86,7 +68,7 @@ impl VmpPMat {
         }
     }
 
-    /// Returns a non-mutable reference of [T] of the entire contiguous array of the [VmpPMat].
+    /// Returns a non-mutable reference of `T` of the entire contiguous array of the [VmpPMat].
     /// When using [`crate::FFT64`] as backend, `T` should be [f64].
     /// When using [`crate::NTT120`] as backend, `T` should be [i64].
     /// The length of the returned array is rows * cols * n.
@@ -97,32 +79,38 @@ impl VmpPMat {
     }
 }
 
-impl Free for VmpPMat {
-    fn free(self) {
-        unsafe { delete_vmp_pmat(self.data) };
-        drop(self);
-    }
-}
-
 /// This trait implements methods for vector matrix product,
 /// that is, multiplying a [VecZnx] with a [VmpPMat].
-pub trait VectorMatrixProduct {
+pub trait VmpPMatOps {
     /// Allocates a new [VmpPMat] with the given number of rows and columns.
+    ///
+    /// # Arguments
+    ///
+    /// * `rows`: number of rows (number of [VecZnxDft]).
+    /// * `cols`: number of cols (number of limbs of each [VecZnxDft]).
     fn new_vmp_pmat(&self, rows: usize, cols: usize) -> VmpPMat;
 
-    /// Returns the number of bytes needed as scratch space for [VectorMatrixProduct::vmp_prepare_contiguous].
+    /// Returns the number of bytes needed as scratch space for [VmpPMatOps::vmp_prepare_contiguous].
+    ///
+    /// # Arguments
+    ///
+    /// * `rows`: number of rows of the [VmpPMat] used in [VmpPMatOps::vmp_prepare_contiguous].
+    /// * `cols`: number of cols of the [VmpPMat] used in [VmpPMatOps::vmp_prepare_contiguous].
     fn vmp_prepare_contiguous_tmp_bytes(&self, rows: usize, cols: usize) -> usize;
 
     /// Prepares a [VmpPMat] from a contiguous array of [i64].
     /// The helper struct [Matrix3D] can be used to contruct and populate
     /// the appropriate contiguous array.
     ///
-    /// The size of buf can be obtained with [VectorMatrixProduct::vmp_prepare_contiguous_tmp_bytes].
+    /// # Arguments
+    ///
+    /// * `b`: [VmpPMat] on which the values are encoded.
+    /// * `a`: the contiguous array of [i64] of the 3D matrix to encode on the [VmpPMat].
+    /// * `buf`: scratch space, the size of buf can be obtained with [VmpPMatOps::vmp_prepare_contiguous_tmp_bytes].
     ///
     /// # Example
     /// ```
-    /// use base2k::{Module, Matrix3D, VmpPMat, FFT64, Free};
-    /// use base2k::vmp::VectorMatrixProduct;
+    /// use base2k::{Module, Matrix3D, VmpPMat, VmpPMatOps, FFT64, Free};
     /// use std::cmp::min;
     ///
     /// let n: usize = 1024;
@@ -148,12 +136,17 @@ pub trait VectorMatrixProduct {
 
     /// Prepares a [VmpPMat] from a vector of [VecZnx].
     ///
-    /// The size of buf can be obtained with [VectorMatrixProduct::vmp_prepare_contiguous_tmp_bytes].
+    /// # Arguments
+    ///
+    /// * `b`: [VmpPMat] on which the values are encoded.
+    /// * `a`: the vector of [VecZnx] to encode on the [VmpPMat].
+    /// * `buf`: scratch space, the size of buf can be obtained with [VmpPMatOps::vmp_prepare_contiguous_tmp_bytes].
+    ///
+    /// The size of buf can be obtained with [VmpPMatOps::vmp_prepare_contiguous_tmp_bytes].
     ///
     /// # Example
     /// ```
-    /// use base2k::{Module, FFT64, Matrix3D, VmpPMat, VecZnx, Free};
-    /// use base2k::vmp::VectorMatrixProduct;
+    /// use base2k::{Module, FFT64, Matrix3D, VmpPMat, VmpPMatOps, VecZnx, VecZnxOps, Free};
     /// use std::cmp::min;
     ///
     /// let n: usize = 1024;
@@ -176,7 +169,14 @@ pub trait VectorMatrixProduct {
     /// ```
     fn vmp_prepare_dblptr(&self, b: &mut VmpPMat, a: &Vec<VecZnx>, buf: &mut [u8]);
 
-    /// Returns the size of the stratch space necessary for [VectorMatrixProduct::vmp_apply_dft].
+    /// Returns the size of the stratch space necessary for [VmpPMatOps::vmp_apply_dft].
+    ///
+    /// # Arguments
+    ///
+    /// * `c_limbs`: number of limbs of the output [VecZnxDft].
+    /// * `a_limbs`: number of limbs of the input [VecZnx].
+    /// * `rows`: number of rows of the input [VmpPMat].
+    /// * `cols`: number of cols of the input [VmpPMat].
     fn vmp_apply_dft_tmp_bytes(
         &self,
         c_limbs: usize,
@@ -186,9 +186,8 @@ pub trait VectorMatrixProduct {
     ) -> usize;
 
     /// Applies the vector matrix product [VecZnxDft] x [VmpPMat].
-    /// The size of `buf` is given by [VectorMatrixProduct::vmp_apply_dft_to_dft_tmp_bytes].
     ///
-    /// A vector matrix product is equivalent to a sum of [ScalarVectorProduct::svp_apply_dft]
+    /// A vector matrix product is equivalent to a sum of [crate::SvpPPolOps::svp_apply_dft]
     /// where each [crate::Scalar] is a limb of the input [VecZnxDft] (equivalent to an [crate::SvpPPol])
     /// and each vector a [VecZnxDft] (row) of the [VmpPMat].
     ///
@@ -204,10 +203,16 @@ pub trait VectorMatrixProduct {
     /// ```
     /// where each element is a [VecZnxDft].
     ///
+    /// # Arguments
+    ///
+    /// * `c`: the output of the vector matrix product, as a [VecZnxDft].
+    /// * `a`: the left operand [VecZnx] of the vector matrix product.
+    /// * `b`: the right operand [VmpPMat] of the vector matrix product.
+    /// * `buf`: scratch space, the size can be obtained with [VmpPMatOps::vmp_apply_dft_tmp_bytes].
+    ///
     /// # Example
     /// ```
-    /// use base2k::{Module, VecZnx, VecZnxDft, VmpPMat, FFT64, Free};
-    /// use base2k::vmp::VectorMatrixProduct;
+    /// use base2k::{Module, VecZnx, VecZnxOps, VecZnxDft, VmpPMat, VmpPMatOps, FFT64, Free};
     ///
     /// let n = 1024;
     ///
@@ -233,7 +238,14 @@ pub trait VectorMatrixProduct {
     /// ```
     fn vmp_apply_dft(&self, c: &mut VecZnxDft, a: &VecZnx, b: &VmpPMat, buf: &mut [u8]);
 
-    /// Returns the size of the stratch space necessary for [VectorMatrixProduct::vmp_apply_dft_to_dft].
+    /// Returns the size of the stratch space necessary for [VmpPMatOps::vmp_apply_dft_to_dft].
+    ///
+    /// # Arguments
+    ///
+    /// * `c_limbs`: number of limbs of the output [VecZnxDft].
+    /// * `a_limbs`: number of limbs of the input [VecZnxDft].
+    /// * `rows`: number of rows of the input [VmpPMat].
+    /// * `cols`: number of cols of the input [VmpPMat].
     fn vmp_apply_dft_to_dft_tmp_bytes(
         &self,
         c_limbs: usize,
@@ -243,9 +255,9 @@ pub trait VectorMatrixProduct {
     ) -> usize;
 
     /// Applies the vector matrix product [VecZnxDft] x [VmpPMat].
-    /// The size of `buf` is given by [VectorMatrixProduct::vmp_apply_dft_to_dft_tmp_bytes].
+    /// The size of `buf` is given by [VmpPMatOps::vmp_apply_dft_to_dft_tmp_bytes].
     ///
-    /// A vector matrix product is equivalent to a sum of [ScalarVectorProduct::svp_apply_dft]
+    /// A vector matrix product is equivalent to a sum of [crate::SvpPPolOps::svp_apply_dft]
     /// where each [crate::Scalar] is a limb of the input [VecZnxDft] (equivalent to an [crate::SvpPPol])
     /// and each vector a [VecZnxDft] (row) of the [VmpPMat].
     ///
@@ -261,10 +273,16 @@ pub trait VectorMatrixProduct {
     /// ```
     /// where each element is a [VecZnxDft].
     ///
+    /// # Arguments
+    ///
+    /// * `c`: the output of the vector matrix product, as a [VecZnxDft].
+    /// * `a`: the left operand [VecZnxDft] of the vector matrix product.
+    /// * `b`: the right operand [VmpPMat] of the vector matrix product.
+    /// * `buf`: scratch space, the size can be obtained with [VmpPMatOps::vmp_apply_dft_to_dft_tmp_bytes].
+    ///
     /// # Example
     /// ```
-    /// use base2k::{Module, VecZnx, VecZnxDft, VmpPMat, FFT64, Free};
-    /// use base2k::vmp::VectorMatrixProduct;
+    /// use base2k::{Module, VecZnx, VecZnxDft, VmpPMat, VmpPMatOps, FFT64, Free};
     ///
     /// let n = 1024;
     ///
@@ -275,7 +293,7 @@ pub trait VectorMatrixProduct {
     /// let cols: usize = limbs + 1;
     /// let c_limbs: usize = cols;
     /// let a_limbs: usize = limbs;
-    /// let tmp_bytes: usize = module.vmp_apply_dft_tmp_bytes(c_limbs, a_limbs, rows, cols);
+    /// let tmp_bytes: usize = module.vmp_apply_dft_to_dft_tmp_bytes(c_limbs, a_limbs, rows, cols);
     ///
     /// let mut buf: Vec<u8> = vec![0; tmp_bytes];
     /// let mut vmp_pmat: VmpPMat = module.new_vmp_pmat(rows, cols);
@@ -292,9 +310,9 @@ pub trait VectorMatrixProduct {
     fn vmp_apply_dft_to_dft(&self, c: &mut VecZnxDft, a: &VecZnxDft, b: &VmpPMat, buf: &mut [u8]);
 
     /// Applies the vector matrix product [VecZnxDft] x [VmpPMat] in place.
-    /// The size of `buf` is given by [VectorMatrixProduct::vmp_apply_dft_to_dft_tmp_bytes].
+    /// The size of `buf` is given by [VmpPMatOps::vmp_apply_dft_to_dft_tmp_bytes].
     ///
-    /// A vector matrix product is equivalent to a sum of [ScalarVectorProduct::svp_apply_dft]
+    /// A vector matrix product is equivalent to a sum of [crate::SvpPPolOps::svp_apply_dft]
     /// where each [crate::Scalar] is a limb of the input [VecZnxDft] (equivalent to an [crate::SvpPPol])
     /// and each vector a [VecZnxDft] (row) of the [VmpPMat].
     ///
@@ -310,10 +328,15 @@ pub trait VectorMatrixProduct {
     /// ```
     /// where each element is a [VecZnxDft].
     ///
+    /// # Arguments
+    ///
+    /// * `b`: the input and output of the vector matrix product, as a [VecZnxDft].
+    /// * `a`: the right operand [VmpPMat] of the vector matrix product.
+    /// * `buf`: scratch space, the size can be obtained with [VmpPMatOps::vmp_apply_dft_to_dft_tmp_bytes].
+    ///
     /// # Example
     /// ```
-    /// use base2k::{Module, VecZnx, VecZnxDft, VmpPMat, FFT64, Free};
-    /// use base2k::vmp::VectorMatrixProduct;
+    /// use base2k::{Module, VecZnx, VecZnxOps, VecZnxDft, VmpPMat, VmpPMatOps, FFT64, Free};
     ///
     /// let n = 1024;
     ///
@@ -322,7 +345,7 @@ pub trait VectorMatrixProduct {
     ///
     /// let rows: usize = limbs;
     /// let cols: usize = limbs + 1;
-    /// let tmp_bytes: usize = module.vmp_apply_dft_tmp_bytes(limbs, limbs, rows, cols);
+    /// let tmp_bytes: usize = module.vmp_apply_dft_to_dft_tmp_bytes(limbs, limbs, rows, cols);
     ///
     /// let mut buf: Vec<u8> = vec![0; tmp_bytes];
     /// let a: VecZnx = module.new_vec_znx(limbs);
@@ -338,24 +361,25 @@ pub trait VectorMatrixProduct {
     fn vmp_apply_dft_to_dft_inplace(&self, b: &mut VecZnxDft, a: &VmpPMat, buf: &mut [u8]);
 }
 
-impl VectorMatrixProduct for Module {
+impl VmpPMatOps for Module {
     fn new_vmp_pmat(&self, rows: usize, cols: usize) -> VmpPMat {
         unsafe {
             VmpPMat {
-                data: new_vmp_pmat(self.0, rows as u64, cols as u64),
+                data: vmp::new_vmp_pmat(self.0, rows as u64, cols as u64),
                 rows,
                 cols,
                 n: self.n(),
             }
         }
     }
+
     fn vmp_prepare_contiguous_tmp_bytes(&self, rows: usize, cols: usize) -> usize {
-        unsafe { vmp_prepare_contiguous_tmp_bytes(self.0, rows as u64, cols as u64) as usize }
+        unsafe { vmp::vmp_prepare_contiguous_tmp_bytes(self.0, rows as u64, cols as u64) as usize }
     }
 
     fn vmp_prepare_contiguous(&self, b: &mut VmpPMat, a: &[i64], buf: &mut [u8]) {
         unsafe {
-            vmp_prepare_contiguous(
+            vmp::vmp_prepare_contiguous(
                 self.0,
                 b.data(),
                 a.as_ptr(),
@@ -402,7 +426,7 @@ impl VectorMatrixProduct for Module {
         cols: usize,
     ) -> usize {
         unsafe {
-            vmp_apply_dft_tmp_bytes(
+            vmp::vmp_apply_dft_tmp_bytes(
                 self.0,
                 c_limbs as u64,
                 a_limbs as u64,
@@ -414,7 +438,7 @@ impl VectorMatrixProduct for Module {
 
     fn vmp_apply_dft(&self, c: &mut VecZnxDft, a: &VecZnx, b: &VmpPMat, buf: &mut [u8]) {
         unsafe {
-            vmp_apply_dft(
+            vmp::vmp_apply_dft(
                 self.0,
                 c.0,
                 c.limbs() as u64,
@@ -437,7 +461,7 @@ impl VectorMatrixProduct for Module {
         cols: usize,
     ) -> usize {
         unsafe {
-            vmp_apply_dft_to_dft_tmp_bytes(
+            vmp::vmp_apply_dft_to_dft_tmp_bytes(
                 self.0,
                 c_limbs as u64,
                 a_limbs as u64,
@@ -449,7 +473,7 @@ impl VectorMatrixProduct for Module {
 
     fn vmp_apply_dft_to_dft(&self, c: &mut VecZnxDft, a: &VecZnxDft, b: &VmpPMat, buf: &mut [u8]) {
         unsafe {
-            vmp_apply_dft_to_dft(
+            vmp::vmp_apply_dft_to_dft(
                 self.0,
                 c.0,
                 c.limbs() as u64,
@@ -465,7 +489,7 @@ impl VectorMatrixProduct for Module {
 
     fn vmp_apply_dft_to_dft_inplace(&self, b: &mut VecZnxDft, a: &VmpPMat, buf: &mut [u8]) {
         unsafe {
-            vmp_apply_dft_to_dft(
+            vmp::vmp_apply_dft_to_dft(
                 self.0,
                 b.0,
                 b.limbs() as u64,
@@ -481,7 +505,7 @@ impl VectorMatrixProduct for Module {
 }
 
 /// A helper struture that stores a 3D matrix as a contiguous array.
-/// To be passed to [VectorMatrixProduct::vmp_prepare_contiguous].
+/// To be passed to [VmpPMatOps::vmp_prepare_contiguous].
 ///
 /// rows: index of the i-th base2K power.
 /// cols: index of the j-th limb of the i-th row.
@@ -497,6 +521,12 @@ pub struct Matrix3D<T> {
 
 impl<T: Default + Clone + std::marker::Copy> Matrix3D<T> {
     /// Allocates a new [Matrix3D] with the respective dimensions.
+    ///
+    /// # Arguments
+    ///
+    /// * `rows`: the number of rows of the matrix.
+    /// * `cols`: the number of cols of the matrix.
+    /// # `n`: the size of each entry of the matrix.
     ///
     /// # Example
     /// ```
@@ -521,6 +551,11 @@ impl<T: Default + Clone + std::marker::Copy> Matrix3D<T> {
     /// Returns a non-mutable reference to the entry (row, col) of the [Matrix3D].
     /// The returned array is of size n.
     ///
+    /// # Arguments
+    ///
+    /// * `row`: the index of the row.
+    /// * `col`: the index of the col.
+    ///
     /// # Example
     /// ```
     /// use base2k::Matrix3D;
@@ -541,6 +576,11 @@ impl<T: Default + Clone + std::marker::Copy> Matrix3D<T> {
 
     /// Returns a mutable reference of the array at the (row, col) entry of the [Matrix3D].
     /// The returned array is of size n.
+    ///
+    /// # Arguments
+    ///
+    /// * `row`: the index of the row.
+    /// * `col`: the index of the col.
     ///
     /// # Example
     /// ```
@@ -563,6 +603,11 @@ impl<T: Default + Clone + std::marker::Copy> Matrix3D<T> {
     /// Sets the entry \[row\] of the [Matrix3D].
     /// Typicall this is used to assign a [VecZnx] to the i-th row
     /// of the [Matrix3D].
+    ///
+    /// # Arguments
+    ///
+    /// * `row`: the index of the row.
+    /// * `a`: the data to encode onthe row.
     ///
     /// # Example
     /// ```

@@ -1,5 +1,7 @@
-use base2k::vmp::VectorMatrixProduct;
-use base2k::{Free, Matrix3D, Module, VecZnx, VecZnxBig, VecZnxDft, VmpPMat, FFT64};
+use base2k::{
+    Encoding, Free, Infos, Matrix3D, Module, VecZnx, VecZnxBig, VecZnxDft, VecZnxOps, VmpPMat,
+    VmpPMatOps, FFT64,
+};
 use std::cmp::min;
 
 fn main() {
@@ -24,7 +26,7 @@ fn main() {
     a_values[1] = (1 << log_base2k) + 1;
 
     let mut a: VecZnx = module.new_vec_znx(limbs);
-    a.from_i64(log_base2k, &a_values, 32, log_k);
+    a.encode_i64_vec(log_base2k, log_k, &a_values, 32);
     a.normalize(log_base2k, &mut buf);
 
     (0..a.limbs()).for_each(|i| println!("{}: {:?}", i, a.at(i)));
@@ -48,7 +50,7 @@ fn main() {
     module.vec_znx_big_normalize(log_base2k, &mut res, &c_big, &mut buf);
 
     let mut values_res: Vec<i64> = vec![i64::default(); n];
-    res.to_i64(log_base2k, &mut values_res, log_k);
+    res.decode_i64_vec(log_base2k, log_k, &mut values_res);
 
     (0..res.limbs()).for_each(|i| println!("{}: {:?}", i, res.at(i)));
 

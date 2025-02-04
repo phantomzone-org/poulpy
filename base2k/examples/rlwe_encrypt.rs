@@ -1,4 +1,7 @@
-use base2k::{Module, Scalar, SvpPPol, VecZnx, VecZnxBig, VecZnxDft, FFT64};
+use base2k::{
+    Encoding, Infos, Module, Sampling, Scalar, SvpPPol, SvpPPolOps, VecZnx, VecZnxBig, VecZnxDft,
+    VecZnxOps, FFT64,
+};
 use itertools::izip;
 use sampling::source::Source;
 
@@ -29,7 +32,7 @@ fn main() {
 
     // a <- Z_{2^prec}[X]/(X^{N}+1)
     let mut a: VecZnx = module.new_vec_znx(limbs);
-    a.fill_uniform(log_base2k, &mut source, limbs);
+    a.fill_uniform(log_base2k, limbs, &mut source);
 
     // Scratch space for DFT values
     let mut buf_dft: VecZnxDft = module.new_vec_znx_dft(a.limbs());
@@ -50,7 +53,7 @@ fn main() {
         .for_each(|x| *x = source.next_u64n(16, 15) as i64);
 
     // m
-    m.from_i64(log_base2k, &want, 4, log_scale);
+    m.encode_i64_vec(log_base2k, log_scale, &want, 4);
     m.normalize(log_base2k, &mut carry);
 
     // buf_big <- m - buf_big
@@ -59,7 +62,7 @@ fn main() {
     // b <- normalize(buf_big) + e
     let mut b: VecZnx = module.new_vec_znx(limbs);
     module.vec_znx_big_normalize(log_base2k, &mut b, &buf_big, &mut carry);
-    b.add_normal(log_base2k, &mut source, 3.2, 19.0, log_base2k * limbs);
+    b.add_normal(log_base2k, log_base2k * limbs, &mut source, 3.2, 19.0);
 
     //Decrypt
 
@@ -75,7 +78,7 @@ fn main() {
 
     // have = m * 2^{log_scale} + e
     let mut have: Vec<i64> = vec![i64::default(); n];
-    res.to_i64(log_base2k, &mut have, res.limbs() * log_base2k);
+    res.decode_i64_vec(log_base2k, res.limbs() * log_base2k, &mut have);
 
     let scale: f64 = (1 << (res.limbs() * log_base2k - log_scale)) as f64;
     izip!(want.iter(), have.iter())
