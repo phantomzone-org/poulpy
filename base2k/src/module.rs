@@ -1,5 +1,5 @@
 use crate::ffi::module::{delete_module_info, module_info_t, new_module_info, MODULE};
-use crate::GALOISGENERATOR;
+use crate::{Free, GALOISGENERATOR};
 
 pub type MODULETYPE = u8;
 pub const FFT64: u8 = 0;
@@ -53,8 +53,10 @@ impl Module {
 
         (gal_el as i64) * gen.signum()
     }
+}
 
-    pub fn delete(self) {
+impl Free for Module {
+    fn free(self) {
         unsafe { delete_module_info(self.0) }
         drop(self);
     }

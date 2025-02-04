@@ -31,13 +31,13 @@ pub mod vec_znx_dft;
 #[allow(unused_imports)]
 pub use vec_znx_dft::*;
 
-pub mod scalar_vector_product;
+pub mod svp;
 #[allow(unused_imports)]
-pub use scalar_vector_product::*;
+pub use svp::*;
 
-pub mod vector_matrix_product;
+pub mod vmp;
 #[allow(unused_imports)]
-pub use vector_matrix_product::*;
+pub use vmp::*;
 
 pub const GALOISGENERATOR: u64 = 5;
 
@@ -64,4 +64,11 @@ pub fn cast_u8_to_f64_slice(data: &mut [u8]) -> &[f64] {
     let ptr: *const f64 = data.as_mut_ptr() as *const f64;
     let len: usize = data.len() / std::mem::size_of::<f64>();
     unsafe { std::slice::from_raw_parts(ptr, len) }
+}
+
+/// This trait should be implemented by structs that point to
+/// memory allocated through C.
+pub trait Free {
+    // Frees the memory and self destructs.
+    fn free(self);
 }

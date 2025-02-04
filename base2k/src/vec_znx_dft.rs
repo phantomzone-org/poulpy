@@ -3,7 +3,7 @@ use crate::ffi::vec_znx_dft::{
     delete_vec_znx_dft, new_vec_znx_dft, vec_znx_dft_t, vec_znx_idft, vec_znx_idft_tmp_a,
     vec_znx_idft_tmp_bytes,
 };
-use crate::{Module, VecZnxBig};
+use crate::{Free, Module, VecZnxBig};
 
 pub struct VecZnxDft(pub *mut vec_znx_dft_t, pub usize);
 
@@ -14,8 +14,10 @@ impl VecZnxDft {
     pub fn limbs(&self) -> usize {
         self.1
     }
+}
 
-    pub fn delete(self) {
+impl Free for VecZnxDft {
+    fn free(self) {
         unsafe { delete_vec_znx_dft(self.0) };
         drop(self);
     }

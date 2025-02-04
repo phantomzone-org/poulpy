@@ -4,7 +4,7 @@ use crate::ffi::vec_znx_big::{
     vec_znx_bigcoeff_t,
 };
 use crate::ffi::vec_znx_dft::vec_znx_dft_t;
-
+use crate::Free;
 use crate::{Module, VecZnx, VecZnxDft};
 
 pub struct VecZnxBig(pub *mut vec_znx_bigcoeff_t, pub usize);
@@ -16,7 +16,10 @@ impl VecZnxBig {
     pub fn limbs(&self) -> usize {
         self.1
     }
-    pub fn delete(self) {
+}
+
+impl Free for VecZnxBig {
+    fn free(self) {
         unsafe {
             delete_vec_znx_big(self.0);
         }
@@ -139,7 +142,13 @@ impl Module {
     }
 
     // b <- normalize(a)
-    pub fn vec_znx_big_normalize(&self, b: &mut VecZnx, a: &VecZnxBig, tmp_bytes: &mut [u8]) {
+    pub fn vec_znx_big_normalize(
+        &self,
+        log_base2k: usize,
+        b: &mut VecZnx,
+        a: &VecZnxBig,
+        tmp_bytes: &mut [u8],
+    ) {
         let limbs: usize = b.limbs();
         assert!(
             b.limbs() >= limbs,
@@ -156,7 +165,7 @@ impl Module {
         unsafe {
             vec_znx_big_normalize_base2k(
                 self.0,
-                b.log_base2k as u64,
+                log_base2k as u64,
                 b.as_mut_ptr(),
                 limbs as u64,
                 b.n() as u64,
