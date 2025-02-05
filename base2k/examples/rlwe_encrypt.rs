@@ -53,7 +53,7 @@ fn main() {
         .for_each(|x| *x = source.next_u64n(16, 15) as i64);
 
     // m
-    m.encode_i64_vec(log_base2k, log_scale, &want, 4);
+    m.encode_vec_i64(log_base2k, log_scale, &want, 4);
     m.normalize(log_base2k, &mut carry);
 
     // buf_big <- m - buf_big
@@ -78,7 +78,7 @@ fn main() {
 
     // have = m * 2^{log_scale} + e
     let mut have: Vec<i64> = vec![i64::default(); n];
-    res.decode_i64_vec(log_base2k, res.limbs() * log_base2k, &mut have);
+    res.decode_vec_i64(log_base2k, res.limbs() * log_base2k, &mut have);
 
     let scale: f64 = (1 << (res.limbs() * log_base2k - log_scale)) as f64;
     izip!(want.iter(), have.iter())

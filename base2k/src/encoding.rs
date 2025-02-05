@@ -12,7 +12,7 @@ pub trait Encoding {
     /// * `log_k`: base two logarithm of the scaling of the data.
     /// * `data`: data to encode on the receiver.
     /// * `log_max`: base two logarithm of the infinity norm of the input data.
-    fn encode_i64_vec(&mut self, log_base2k: usize, log_k: usize, data: &[i64], log_max: usize);
+    fn encode_vec_i64(&mut self, log_base2k: usize, log_k: usize, data: &[i64], log_max: usize);
 
     /// decode a vector of i64 from the receiver.
     ///
@@ -21,7 +21,7 @@ pub trait Encoding {
     /// * `log_base2k`: base two logarithm decomposition of the receiver.
     /// * `log_k`: base two logarithm of the scaling of the data.
     /// * `data`: data to decode from the receiver.
-    fn decode_i64_vec(&self, log_base2k: usize, log_k: usize, data: &mut [i64]);
+    fn decode_vec_i64(&self, log_base2k: usize, log_k: usize, data: &mut [i64]);
 
     /// encodes a single i64 on the receiver at the given index.
     ///
@@ -32,7 +32,7 @@ pub trait Encoding {
     /// * `i`: index of the coefficient on which to encode the data.
     /// * `data`: data to encode on the receiver.
     /// * `log_max`: base two logarithm of the infinity norm of the input data.
-    fn encode_i64_coeff(
+    fn encode_coeff_i64(
         &mut self,
         log_base2k: usize,
         log_k: usize,
@@ -49,11 +49,11 @@ pub trait Encoding {
     /// * `log_k`: base two logarithm of the scaling of the data.
     /// * `i`: index of the coefficient to decode.
     /// * `data`: data to decode from the receiver.
-    fn decode_i64_coeff(&self, log_base2k: usize, log_k: usize, i: usize) -> i64;
+    fn decode_coeff_i64(&self, log_base2k: usize, log_k: usize, i: usize) -> i64;
 }
 
 impl Encoding for VecZnx {
-    fn encode_i64_vec(&mut self, log_base2k: usize, log_k: usize, data: &[i64], log_max: usize) {
+    fn encode_vec_i64(&mut self, log_base2k: usize, log_k: usize, data: &[i64], log_max: usize) {
         let limbs: usize = (log_k + log_base2k - 1) / log_base2k;
 
         assert!(limbs <= self.limbs(), "invalid argument log_k: (log_k + self.log_base2k - 1)/self.log_base2k={} > self.limbs()={}", limbs, self.limbs());
@@ -99,7 +99,7 @@ impl Encoding for VecZnx {
         }
     }
 
-    fn decode_i64_vec(&self, log_base2k: usize, log_k: usize, data: &mut [i64]) {
+    fn decode_vec_i64(&self, log_base2k: usize, log_k: usize, data: &mut [i64]) {
         let limbs: usize = (log_k + log_base2k - 1) / log_base2k;
         assert!(
             data.len() >= self.n,
@@ -123,7 +123,7 @@ impl Encoding for VecZnx {
         })
     }
 
-    fn encode_i64_coeff(
+    fn encode_coeff_i64(
         &mut self,
         log_base2k: usize,
         log_k: usize,
@@ -168,7 +168,7 @@ impl Encoding for VecZnx {
         }
     }
 
-    fn decode_i64_coeff(&self, log_base2k: usize, log_k: usize, i: usize) -> i64 {
+    fn decode_coeff_i64(&self, log_base2k: usize, log_k: usize, i: usize) -> i64 {
         let limbs: usize = (log_k + log_base2k - 1) / log_base2k;
         assert!(i < self.n());
         let mut res: i64 = self.data[i];
@@ -203,9 +203,9 @@ mod tests {
         have.iter_mut()
             .enumerate()
             .for_each(|(i, x)| *x = (i as i64) - (n as i64) / 2);
-        a.encode_i64_vec(log_base2k, log_k, &have, 10);
+        a.encode_vec_i64(log_base2k, log_k, &have, 10);
         let mut want = vec![i64::default(); n];
-        a.decode_i64_vec(log_base2k, log_k, &mut want);
+        a.decode_vec_i64(log_base2k, log_k, &mut want);
         izip!(want, have).for_each(|(a, b)| assert_eq!(a, b));
     }
 
@@ -223,14 +223,11 @@ mod tests {
                 .next_u64n(u64::MAX, u64::MAX)
                 .wrapping_sub(u64::MAX / 2 + 1) as i64;
         });
-        a.encode_i64_vec(log_base2k, log_k, &have, 63);
+        a.encode_vec_i64(log_base2k, log_k, &have, 63);
         //(0..a.limbs()).for_each(|i| println!("i:{} -> {:?}", i, a.at(i)));
         let mut want = vec![i64::default(); n];
         //(0..a.limbs()).for_each(|i| println!("i:{} -> {:?}", i, a.at(i)));
-        a.decode_i64_vec(log_base2k, log_k, &mut want);
+        a.decode_vec_i64(log_base2k, log_k, &mut want);
         izip!(want, have).for_each(|(a, b)| assert_eq!(a, b, "{} != {}", a, b));
     }
-
-    #[test]
-    fn test_normalize() {}
 }

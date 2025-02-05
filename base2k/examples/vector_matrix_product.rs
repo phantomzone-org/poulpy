@@ -26,7 +26,7 @@ fn main() {
     a_values[1] = (1 << log_base2k) + 1;
 
     let mut a: VecZnx = module.new_vec_znx(limbs);
-    a.encode_i64_vec(log_base2k, log_k, &a_values, 32);
+    a.encode_vec_i64(log_base2k, log_k, &a_values, 32);
     a.normalize(log_base2k, &mut buf);
 
     (0..a.limbs()).for_each(|i| println!("{}: {:?}", i, a.at(i)));
@@ -50,7 +50,7 @@ fn main() {
     module.vec_znx_big_normalize(log_base2k, &mut res, &c_big, &mut buf);
 
     let mut values_res: Vec<i64> = vec![i64::default(); n];
-    res.decode_i64_vec(log_base2k, log_k, &mut values_res);
+    res.decode_vec_i64(log_base2k, log_k, &mut values_res);
 
     (0..res.limbs()).for_each(|i| println!("{}: {:?}", i, res.at(i)));
 

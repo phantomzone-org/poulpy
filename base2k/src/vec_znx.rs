@@ -120,7 +120,7 @@ impl VecZnx {
     ///         .next_u64n(u64::MAX, u64::MAX)
     ///         .wrapping_sub(u64::MAX / 2 + 1) as i64;
     /// });
-    /// a.encode_i64_vec(log_base2k, log_k, &have, 63);
+    /// a.encode_vec_i64(log_base2k, log_k, &have, 63);
     /// a.normalize(log_base2k, &mut carry);
     ///
     /// // Ensures normalized values are in the range +/- 2^{log_base2k-1}
@@ -131,7 +131,7 @@ impl VecZnx {
     ///
     /// // Ensures reconstructed normalized values are equal to non-normalized values.
     /// let mut want = vec![i64::default(); n];
-    /// a.decode_i64_vec(log_base2k, log_k, &mut want);
+    /// a.decode_vec_i64(log_base2k, log_k, &mut want);
     /// izip!(want, have).for_each(|(a, b)| assert_eq!(a, b, "{} != {}", a, b));
     /// ```
     pub fn normalize(&mut self, log_base2k: usize, carry: &mut [u8]) {
