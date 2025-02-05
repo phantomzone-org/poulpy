@@ -1,5 +1,5 @@
 use crate::ffi::svp;
-use crate::{Free, Module, VecZnx, VecZnxDft};
+use crate::{Module, VecZnx, VecZnxDft};
 
 use crate::Infos;
 use rand::seq::SliceRandom;

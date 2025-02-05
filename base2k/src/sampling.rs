@@ -3,7 +3,7 @@ use rand_distr::{Distribution, Normal};
 use sampling::source::Source;
 
 pub trait Sampling {
-    /// Fills the first `limbs` limbs with uniform values in \[-2^{log_base2k}, 2^{log_base2k}\]
+    /// Fills the first `limbs` limbs with uniform values in \[-2^{log_base2k-1}, 2^{log_base2k-1}\]
     fn fill_uniform(&mut self, log_base2k: usize, limbs: usize, source: &mut Source);
 
     /// Adds vector sampled according to the provided distribution, scaled by 2^{-log_k} and bounded to \[-bound, bound\].
