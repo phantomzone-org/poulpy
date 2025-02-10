@@ -55,7 +55,31 @@ impl Parameters {
         self.log_p
     }
 
+    pub fn log_qp(&self) -> usize {
+        self.log_q + self.log_p
+    }
+
+    pub fn limbs_q(&self) -> usize {
+        (self.log_q + self.log_base2k - 1) / self.log_base2k
+    }
+
+    pub fn limbs_qp(&self) -> usize {
+        (self.log_q + self.log_p + self.log_base2k - 1) / self.log_base2k
+    }
+
     pub fn log_base2k(&self) -> usize {
         self.log_base2k
+    }
+
+    pub fn module(&self) -> &Module {
+        &self.module
+    }
+
+    pub fn xe(&self) -> f64 {
+        self.xe
+    }
+
+    pub fn xs(&self) -> usize {
+        self.xs
     }
 }

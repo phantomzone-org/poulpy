@@ -638,6 +638,7 @@ version = "0.1.0"
 dependencies = [
  "base2k",
  "rand_distr",
+ "sampling",
 ]
 
 [[package]]
