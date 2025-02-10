@@ -92,9 +92,5 @@ unsafe extern "C" {
 }
 
 unsafe extern "C" {
-    pub unsafe fn vmp_prepare_tmp_bytes(
-        module: *const MODULE,
-        nrows: u64,
-        ncols: u64,
-    ) -> u64;
+    pub unsafe fn vmp_prepare_tmp_bytes(module: *const MODULE, nrows: u64, ncols: u64) -> u64;
 }

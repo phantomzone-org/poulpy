@@ -408,26 +408,23 @@ pub trait VecZnxOps {
     fn vec_znx_automorphism_inplace(&self, k: i64, a: &mut VecZnx);
 
     /// Splits b into subrings and copies them them into a.
-    /// 
+    ///
     /// # Panics
-    /// 
+    ///
     /// This method requires that all [VecZnx] of b have the same ring degree
     /// and that b.n() * b.len() <= a.n()
     fn vec_znx_split(&self, b: &mut Vec<VecZnx>, a: &VecZnx, buf: &mut VecZnx);
 
-
     /// Merges the subrings a into b.
-    /// 
+    ///
     /// # Panics
-    /// 
+    ///
     /// This method requires that all [VecZnx] of a have the same ring degree
     /// and that a.n() * a.len() <= b.n()
     fn vec_znx_merge(&self, b: &mut VecZnx, a: &Vec<VecZnx>);
-
 }
 
 impl VecZnxOps for Module {
-
     fn new_vec_znx(&self, limbs: usize) -> VecZnx {
         VecZnx::new(self.n(), limbs)
     }
@@ -592,34 +589,48 @@ impl VecZnxOps for Module {
         }
     }
 
-    fn vec_znx_split(&self, b: &mut Vec<VecZnx>, a: &VecZnx, buf: &mut VecZnx){
+    fn vec_znx_split(&self, b: &mut Vec<VecZnx>, a: &VecZnx, buf: &mut VecZnx) {
         let (n_in, n_out) = (a.n(), b[0].n());
 
-        assert!(n_out < n_in, "invalid a: output ring degree should be smaller");
-        b[1..].iter().for_each(|bi|{
-            assert_eq!(bi.n(), n_out, "invalid input a: all VecZnx must have the same degree")
+        assert!(
+            n_out < n_in,
+            "invalid a: output ring degree should be smaller"
+        );
+        b[1..].iter().for_each(|bi| {
+            assert_eq!(
+                bi.n(),
+                n_out,
+                "invalid input a: all VecZnx must have the same degree"
+            )
         });
 
-        b.iter_mut().enumerate().for_each(|(i, bi)|{
-            if i == 0{
+        b.iter_mut().enumerate().for_each(|(i, bi)| {
+            if i == 0 {
                 a.switch_degree(bi);
                 self.vec_znx_rotate(-1, buf, a);
-            }else{
+            } else {
                 buf.switch_degree(bi);
                 self.vec_znx_rotate_inplace(-1, buf);
             }
         })
     }
 
-    fn vec_znx_merge(&self, b: &mut VecZnx, a: &Vec<VecZnx>){
+    fn vec_znx_merge(&self, b: &mut VecZnx, a: &Vec<VecZnx>) {
         let (n_in, n_out) = (b.n(), a[0].n());
 
-        assert!(n_out < n_in, "invalid a: output ring degree should be smaller");
-        a[1..].iter().for_each(|ai|{
-            assert_eq!(ai.n(), n_out, "invalid input a: all VecZnx must have the same degree")
+        assert!(
+            n_out < n_in,
+            "invalid a: output ring degree should be smaller"
+        );
+        a[1..].iter().for_each(|ai| {
+            assert_eq!(
+                ai.n(),
+                n_out,
+                "invalid input a: all VecZnx must have the same degree"
+            )
         });
 
-        a.iter().enumerate().for_each(|(i, ai)|{
+        a.iter().enumerate().for_each(|(i, ai)| {
             ai.switch_degree(b);
             self.vec_znx_rotate_inplace(-1, b);
         });

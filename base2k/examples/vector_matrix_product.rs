@@ -32,15 +32,14 @@ fn main() {
     a.print_limbs(a.limbs(), n);
     println!();
 
-    let mut vecznx: Vec<VecZnx>= Vec::new();
-    (0..rows).for_each(|_|{
+    let mut vecznx: Vec<VecZnx> = Vec::new();
+    (0..rows).for_each(|_| {
         vecznx.push(module.new_vec_znx(cols));
     });
 
-    (0..rows).for_each(|i|{
-        vecznx[i].data[i*n+1] = 1 as i64;
+    (0..rows).for_each(|i| {
+        vecznx[i].data[i * n + 1] = 1 as i64;
     });
-
 
     let mut vmp_pmat: VmpPMat = module.new_vmp_pmat(rows, cols);
     module.vmp_prepare_dblptr(&mut vmp_pmat, &vecznx, &mut buf);
@@ -57,7 +56,6 @@ fn main() {
     let mut values_res: Vec<i64> = vec![i64::default(); n];
     res.decode_vec_i64(log_base2k, log_k, &mut values_res);
 
-    
     res.print_limbs(res.limbs(), n);
 
     module.free();
@@ -66,7 +64,6 @@ fn main() {
 
     //println!("{:?}", values_res)
 }
-
 
 /*
 

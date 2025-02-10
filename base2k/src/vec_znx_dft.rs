@@ -1,10 +1,21 @@
 use crate::ffi::vec_znx_big;
 use crate::ffi::vec_znx_dft;
+use crate::ffi::vec_znx_dft::bytes_of_vec_znx_dft;
 use crate::{Module, VecZnxBig};
 
 pub struct VecZnxDft(pub *mut vec_znx_dft::vec_znx_dft_t, pub usize);
 
 impl VecZnxDft {
+    /// Casts a contiguous array of [u8] into as a [VecZnxDft].
+    /// User must ensure that data is properly alligned and that
+    /// the size of data is at least equal to [Module::bytes_of_vec_znx_dft].
+    pub fn from_bytes(&self, limbs: usize, data: &mut [u8]) -> VecZnxDft {
+        VecZnxDft(data.as_mut_ptr() as *mut vec_znx_dft::vec_znx_dft_t, limbs)
+    }
+
+    /// Cast a [VecZnxDft] into a [VecZnxBig].
+    /// The returned [VecZnxBig] shares the backing array
+    /// with the original [VecZnxDft].
     pub fn as_vec_znx_big(&mut self) -> VecZnxBig {
         VecZnxBig(self.0 as *mut vec_znx_big::vec_znx_bigcoeff_t, self.1)
     }
@@ -17,6 +28,10 @@ impl Module {
     // Allocates a vector Z[X]/(X^N+1) that stores normalized in the DFT space.
     pub fn new_vec_znx_dft(&self, limbs: usize) -> VecZnxDft {
         unsafe { VecZnxDft(vec_znx_dft::new_vec_znx_dft(self.0, limbs as u64), limbs) }
+    }
+
+    pub fn bytes_of_vec_znx_dft(&self, limbs: usize) -> usize {
+        unsafe { bytes_of_vec_znx_dft(self.0, limbs as u64) as usize }
     }
 
     // b <- IDFT(a), uses a as scratch space.

@@ -5,6 +5,16 @@ use crate::{Infos, Module, VecZnx, VecZnxDft};
 pub struct VecZnxBig(pub *mut vec_znx_big::vec_znx_bigcoeff_t, pub usize);
 
 impl VecZnxBig {
+    /// Casts a contiguous array of [u8] into as a [VecZnxDft].
+    /// User must ensure that data is properly alligned and that
+    /// the size of data is at least equal to [Module::bytes_of_vec_znx_big].
+    pub fn from_bytes(&self, limbs: usize, data: &mut [u8]) -> VecZnxBig {
+        VecZnxBig(
+            data.as_mut_ptr() as *mut vec_znx_big::vec_znx_bigcoeff_t,
+            limbs,
+        )
+    }
+
     pub fn as_vec_znx_dft(&mut self) -> VecZnxDft {
         VecZnxDft(self.0 as *mut vec_znx_dft::vec_znx_dft_t, self.1)
     }
@@ -17,6 +27,10 @@ impl Module {
     // Allocates a vector Z[X]/(X^N+1) that stores not normalized values.
     pub fn new_vec_znx_big(&self, limbs: usize) -> VecZnxBig {
         unsafe { VecZnxBig(vec_znx_big::new_vec_znx_big(self.0, limbs as u64), limbs) }
+    }
+
+    pub fn bytes_of_vec_znx_big(&self, limbs: usize) -> usize {
+        unsafe { vec_znx_big::bytes_of_vec_znx_big(self.0, limbs as u64) as usize }
     }
 
     // b <- b - a
