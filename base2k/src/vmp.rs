@@ -96,7 +96,7 @@ pub trait VmpPMatOps {
     ///
     /// * `rows`: number of rows of the [VmpPMat] used in [VmpPMatOps::vmp_prepare_contiguous].
     /// * `cols`: number of cols of the [VmpPMat] used in [VmpPMatOps::vmp_prepare_contiguous].
-    fn vmp_prepare_contiguous_tmp_bytes(&self, rows: usize, cols: usize) -> usize;
+    fn vmp_prepare_tmp_bytes(&self, rows: usize, cols: usize) -> usize;
 
     /// Prepares a [VmpPMat] from a contiguous array of [i64].
     /// The helper struct [Matrix3D] can be used to contruct and populate
@@ -106,7 +106,7 @@ pub trait VmpPMatOps {
     ///
     /// * `b`: [VmpPMat] on which the values are encoded.
     /// * `a`: the contiguous array of [i64] of the 3D matrix to encode on the [VmpPMat].
-    /// * `buf`: scratch space, the size of buf can be obtained with [VmpPMatOps::vmp_prepare_contiguous_tmp_bytes].
+    /// * `buf`: scratch space, the size of buf can be obtained with [VmpPMatOps::vmp_prepare_tmp_bytes].
     ///
     /// # Example
     /// ```
@@ -125,7 +125,7 @@ pub trait VmpPMatOps {
     ///    b_mat.at_mut(i, i)[1] = 1 as i64;
     /// });
     ///
-    /// let mut buf: Vec<u8> = vec![u8::default(); module.vmp_prepare_contiguous_tmp_bytes(rows, cols)];
+    /// let mut buf: Vec<u8> = vec![u8::default(); module.vmp_prepare_tmp_bytes(rows, cols)];
     ///
     /// let mut vmp_pmat: VmpPMat = module.new_vmp_pmat(rows, cols);
     /// module.vmp_prepare_contiguous(&mut vmp_pmat, &b_mat.data, &mut buf);
@@ -140,9 +140,9 @@ pub trait VmpPMatOps {
     ///
     /// * `b`: [VmpPMat] on which the values are encoded.
     /// * `a`: the vector of [VecZnx] to encode on the [VmpPMat].
-    /// * `buf`: scratch space, the size of buf can be obtained with [VmpPMatOps::vmp_prepare_contiguous_tmp_bytes].
+    /// * `buf`: scratch space, the size of buf can be obtained with [VmpPMatOps::vmp_prepare_tmp_bytes].
     ///
-    /// The size of buf can be obtained with [VmpPMatOps::vmp_prepare_contiguous_tmp_bytes].
+    /// The size of buf can be obtained with [VmpPMatOps::vmp_prepare_tmp_bytes].
     ///
     /// # Example
     /// ```
@@ -159,7 +159,7 @@ pub trait VmpPMatOps {
     ///     vecznx.push(module.new_vec_znx(cols));
     /// });
     ///
-    /// let mut buf: Vec<u8> = vec![u8::default(); module.vmp_prepare_contiguous_tmp_bytes(rows, cols)];
+    /// let mut buf: Vec<u8> = vec![u8::default(); module.vmp_prepare_tmp_bytes(rows, cols)];
     ///
     /// let mut vmp_pmat: VmpPMat = module.new_vmp_pmat(rows, cols);
     /// module.vmp_prepare_dblptr(&mut vmp_pmat, &vecznx, &mut buf);
@@ -373,8 +373,8 @@ impl VmpPMatOps for Module {
         }
     }
 
-    fn vmp_prepare_contiguous_tmp_bytes(&self, rows: usize, cols: usize) -> usize {
-        unsafe { vmp::vmp_prepare_contiguous_tmp_bytes(self.0, rows as u64, cols as u64) as usize }
+    fn vmp_prepare_tmp_bytes(&self, rows: usize, cols: usize) -> usize {
+        unsafe { vmp::vmp_prepare_tmp_bytes(self.0, rows as u64, cols as u64) as usize }
     }
 
     fn vmp_prepare_contiguous(&self, b: &mut VmpPMat, a: &[i64], buf: &mut [u8]) {
@@ -391,31 +391,17 @@ impl VmpPMatOps for Module {
     }
 
     fn vmp_prepare_dblptr(&self, b: &mut VmpPMat, a: &Vec<VecZnx>, buf: &mut [u8]) {
-        let rows: usize = b.rows();
-        let cols: usize = b.cols();
-
-        let mut mat: Matrix3D<i64> = Matrix3D::<i64>::new(rows, cols, self.n());
-
-        (0..min(rows, a.len())).for_each(|i| {
-            mat.set_row(i, &a[i].data);
-        });
-
-        self.vmp_prepare_contiguous(b, &mat.data, buf);
-
-        /*
-        NOT IMPLEMENTED IN SPQLIOS
-        let mut ptrs: Vec<*const i64> = a.iter().map(|v| v.data.as_ptr()).collect();
+        let ptrs: Vec<*const i64> = a.iter().map(|v| v.data.as_ptr()).collect();
         unsafe {
-            vmp_prepare_dblptr(
+            vmp::vmp_prepare_dblptr(
                 self.0,
                 b.data(),
-                ptrs.as_mut_ptr(),
+                ptrs.as_ptr(),
                 b.rows() as u64,
                 b.cols() as u64,
                 buf.as_mut_ptr(),
             );
         }
-        */
     }
 
     fn vmp_apply_dft_tmp_bytes(

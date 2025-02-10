@@ -17,7 +17,7 @@ fn main() {
     let cols: usize = limbs + 1;
 
     // Maximum size of the byte scratch needed
-    let tmp_bytes: usize = module.vmp_prepare_contiguous_tmp_bytes(rows, cols)
+    let tmp_bytes: usize = module.vmp_prepare_tmp_bytes(rows, cols)
         | module.vmp_apply_dft_tmp_bytes(limbs, limbs, rows, cols);
 
     let mut buf: Vec<u8> = vec![0; tmp_bytes];
@@ -29,16 +29,21 @@ fn main() {
     a.encode_vec_i64(log_base2k, log_k, &a_values, 32);
     a.normalize(log_base2k, &mut buf);
 
-    (0..a.limbs()).for_each(|i| println!("{}: {:?}", i, a.at(i)));
+    a.print_limbs(a.limbs(), n);
+    println!();
 
-    let mut b_mat: Matrix3D<i64> = Matrix3D::new(rows, cols, n);
-
-    (0..min(rows, cols)).for_each(|i| {
-        b_mat.at_mut(i, i)[1] = 1 as i64;
+    let mut vecznx: Vec<VecZnx>= Vec::new();
+    (0..rows).for_each(|_|{
+        vecznx.push(module.new_vec_znx(cols));
     });
 
+    (0..rows).for_each(|i|{
+        vecznx[i].data[i*n+1] = 1 as i64;
+    });
+
+
     let mut vmp_pmat: VmpPMat = module.new_vmp_pmat(rows, cols);
-    module.vmp_prepare_contiguous(&mut vmp_pmat, &b_mat.data, &mut buf);
+    module.vmp_prepare_dblptr(&mut vmp_pmat, &vecznx, &mut buf);
 
     let mut c_dft: VecZnxDft = module.new_vec_znx_dft(cols);
     module.vmp_apply_dft(&mut c_dft, &a, &vmp_pmat, &mut buf);
@@ -52,7 +57,8 @@ fn main() {
     let mut values_res: Vec<i64> = vec![i64::default(); n];
     res.decode_vec_i64(log_base2k, log_k, &mut values_res);
 
-    (0..res.limbs()).for_each(|i| println!("{}: {:?}", i, res.at(i)));
+    
+    res.print_limbs(res.limbs(), n);
 
     module.free();
     c_dft.free();
@@ -60,3 +66,48 @@ fn main() {
 
     //println!("{:?}", values_res)
 }
+
+
+/*
+
+use base2k::{
+    Encoding, Free, Infos, Matrix3D, Module, VecZnx, VecZnxBig, VecZnxDft, VecZnxOps, VmpPMat,
+    VmpPMatOps, FFT64,
+};
+use std::cmp::min;
+
+fn main() {
+    use base2k::{Module, FFT64, Matrix3D, VmpPMat, VmpPMatOps, VecZnx, VecZnxOps, Free};
+    use std::cmp::min;
+
+    let n: usize = 32;
+    let module: Module = Module::new::<FFT64>(n);
+    let rows: usize = 5;
+    let cols: usize = 6;
+
+    let mut vecznx: Vec<VecZnx>= Vec::new();
+    (0..rows).for_each(|_|{
+        vecznx.push(module.new_vec_znx(cols));
+    });
+
+    (0..rows).for_each(|i|{
+        vecznx[i].data[i*n] = 1 as i64;
+        vecznx[i].print_limbs(cols, n);
+    });
+
+    let mut buf: Vec<u8> = vec![u8::default(); module.vmp_prepare_tmp_bytes(rows, cols)];
+
+    let mut vmp_pmat: VmpPMat = module.new_vmp_pmat(rows, cols);
+
+    println!("123");
+
+    module.vmp_prepare_dblptr(&mut vmp_pmat, &vecznx, &mut buf);
+
+
+    module.vmp_apply_dft(c, a, b, buf);
+
+    vmp_pmat.free();
+    module.free();
+}
+
+*/
