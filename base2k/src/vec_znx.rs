@@ -21,19 +21,21 @@ impl VecZnx {
     pub fn new(n: usize, limbs: usize) -> Self {
         Self {
             n: n,
-            data: vec![i64::default(); Self::buffer_size(n, limbs)],
+            data: vec![i64::default(); n * limbs],
         }
     }
 
-    /// Returns the minimum size of the [i64] array required to assign a
-    /// new backend array to a [VecZnx] through [VecZnx::from_buffer].
-    pub fn buffer_size(n: usize, limbs: usize) -> usize {
-        n * limbs
+    /// Returns the minimum size of the [u8] array required to assign a
+    /// new backend array to a [VecZnx] through [VecZnx::from_bytes].
+    pub fn bytes(n: usize, limbs: usize) -> usize {
+        n * limbs * 8
     }
 
-    /// Assigns a new backing array to a [VecZnx].
-    pub fn from_buffer(&mut self, n: usize, limbs: usize, buf: &mut [i64]) {
-        let size = Self::buffer_size(n, limbs);
+    /// Returns a new [VecZnx] with the provided data as backing array.
+    /// User must ensure that data is properly alligned and that
+    /// the size of data is at least equal to [Module::bytes_of_vec_znx].
+    pub fn from_bytes(n: usize, limbs: usize, buf: &mut [u8]) -> VecZnx {
+        let size = Self::bytes(n, limbs);
         assert!(
             buf.len() >= size,
             "invalid buffer: buf.len()={} < self.buffer_size(n={}, limbs={})={}",
@@ -42,8 +44,11 @@ impl VecZnx {
             limbs,
             size
         );
-        self.n = n;
-        self.data = Vec::from(&buf[..size])
+
+        VecZnx {
+            n: n,
+            data: Vec::from(cast_mut_u8_to_mut_i64_slice(&mut buf[..size])),
+        }
     }
 
     /// Copies the coefficients of `a` on the receiver.
@@ -377,6 +382,10 @@ pub trait VecZnxOps {
     /// * `limbs`: the number of limbs.
     fn new_vec_znx(&self, limbs: usize) -> VecZnx;
 
+    /// Returns the minimum number of bytes necessary to allocate
+    /// a new [VecZnx] through [VecZnx::from_bytes].
+    fn bytes_of_vec_znx(&self, limbs: usize) -> usize;
+
     /// c <- a + b.
     fn vec_znx_add(&self, c: &mut VecZnx, a: &VecZnx, b: &VecZnx);
 
@@ -427,6 +436,10 @@ pub trait VecZnxOps {
 impl VecZnxOps for Module {
     fn new_vec_znx(&self, limbs: usize) -> VecZnx {
         VecZnx::new(self.n(), limbs)
+    }
+
+    fn bytes_of_vec_znx(&self, limbs: usize) -> usize {
+        self.n() * limbs * 8
     }
 
     // c <- a + b
@@ -630,7 +643,7 @@ impl VecZnxOps for Module {
             )
         });
 
-        a.iter().enumerate().for_each(|(i, ai)| {
+        a.iter().enumerate().for_each(|(_, ai)| {
             ai.switch_degree(b);
             self.vec_znx_rotate_inplace(-1, b);
         });

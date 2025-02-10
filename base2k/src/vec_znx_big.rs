@@ -5,10 +5,10 @@ use crate::{Infos, Module, VecZnx, VecZnxDft};
 pub struct VecZnxBig(pub *mut vec_znx_big::vec_znx_bigcoeff_t, pub usize);
 
 impl VecZnxBig {
-    /// Casts a contiguous array of [u8] into as a [VecZnxDft].
+    /// Returns a new [VecZnxBig] with the provided data as backing array.
     /// User must ensure that data is properly alligned and that
     /// the size of data is at least equal to [Module::bytes_of_vec_znx_big].
-    pub fn from_bytes(&self, limbs: usize, data: &mut [u8]) -> VecZnxBig {
+    pub fn from_bytes(limbs: usize, data: &mut [u8]) -> VecZnxBig {
         VecZnxBig(
             data.as_mut_ptr() as *mut vec_znx_big::vec_znx_bigcoeff_t,
             limbs,
@@ -29,6 +29,8 @@ impl Module {
         unsafe { VecZnxBig(vec_znx_big::new_vec_znx_big(self.0, limbs as u64), limbs) }
     }
 
+    /// Returns the minimum number of bytes necessary to allocate
+    /// a new [VecZnxBig] through [VecZnxBig::from_bytes].
     pub fn bytes_of_vec_znx_big(&self, limbs: usize) -> usize {
         unsafe { vec_znx_big::bytes_of_vec_znx_big(self.0, limbs as u64) as usize }
     }

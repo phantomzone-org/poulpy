@@ -68,6 +68,10 @@ impl SvpPPol {
         self.1
     }
 
+    pub fn from_bytes(size: usize, bytes: &mut [u8]) -> SvpPPol {
+        SvpPPol(bytes.as_mut_ptr() as *mut svp::svp_ppol_t, size)
+    }
+
     /// Returns the number of limbs of the [SvpPPol], which is always 1.
     pub fn limbs(&self) -> usize {
         1
@@ -75,11 +79,15 @@ impl SvpPPol {
 }
 
 pub trait SvpPPolOps {
-    /// Prepares a [crate::Scalar] for a [SvpPPolOps::svp_apply_dft].
-    fn svp_prepare(&self, svp_ppol: &mut SvpPPol, a: &Scalar);
-
     /// Allocates a new [SvpPPol].
     fn svp_new_ppol(&self) -> SvpPPol;
+
+    /// Returns the minimum number of bytes necessary to allocate
+    /// a new [SvpPPol] through [SvpPPol::from_bytes].
+    fn bytes_of_svp_ppol(&self) -> usize;
+
+    /// Prepares a [crate::Scalar] for a [SvpPPolOps::svp_apply_dft].
+    fn svp_prepare(&self, svp_ppol: &mut SvpPPol, a: &Scalar);
 
     /// Applies the [SvpPPol] x [VecZnxDft] product, where each limb of
     /// the [VecZnxDft] is multiplied with [SvpPPol].
@@ -87,12 +95,16 @@ pub trait SvpPPolOps {
 }
 
 impl SvpPPolOps for Module {
-    fn svp_prepare(&self, svp_ppol: &mut SvpPPol, a: &Scalar) {
-        unsafe { svp::svp_prepare(self.0, svp_ppol.0, a.as_ptr()) }
-    }
-
     fn svp_new_ppol(&self) -> SvpPPol {
         unsafe { SvpPPol(svp::new_svp_ppol(self.0), self.n()) }
+    }
+
+    fn bytes_of_svp_ppol(&self) -> usize {
+        unsafe { svp::bytes_of_svp_ppol(self.0) as usize }
+    }
+
+    fn svp_prepare(&self, svp_ppol: &mut SvpPPol, a: &Scalar) {
+        unsafe { svp::svp_prepare(self.0, svp_ppol.0, a.as_ptr()) }
     }
 
     fn svp_apply_dft(&self, c: &mut VecZnxDft, a: &SvpPPol, b: &VecZnx) {

@@ -1,8 +1,7 @@
 use base2k::{
-    Encoding, Free, Infos, Matrix3D, Module, VecZnx, VecZnxBig, VecZnxDft, VecZnxOps, VmpPMat,
-    VmpPMatOps, FFT64,
+    Encoding, Free, Infos, Module, VecZnx, VecZnxBig, VecZnxDft, VecZnxOps, VmpPMat, VmpPMatOps,
+    FFT64,
 };
-use std::cmp::min;
 
 fn main() {
     let log_n = 5;
