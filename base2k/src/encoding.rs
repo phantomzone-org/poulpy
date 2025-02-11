@@ -56,6 +56,8 @@ impl Encoding for VecZnx {
     fn encode_vec_i64(&mut self, log_base2k: usize, log_k: usize, data: &[i64], log_max: usize) {
         let limbs: usize = (log_k + log_base2k - 1) / log_base2k;
 
+        println!("limbs: {}", limbs);
+
         assert!(limbs <= self.limbs(), "invalid argument log_k: (log_k + self.log_base2k - 1)/self.log_base2k={} > self.limbs()={}", limbs, self.limbs());
 
         let size: usize = min(data.len(), self.n());
@@ -65,10 +67,10 @@ impl Encoding for VecZnx {
         // values on the last limb.
         // Else we decompose values base2k.
         if log_max + log_k_rem < 63 || log_k_rem == log_base2k {
-            (0..limbs - 1).for_each(|i| unsafe {
+            (0..self.limbs()).for_each(|i| unsafe {
                 znx_zero_i64_ref(size as u64, self.at_mut(i).as_mut_ptr());
             });
-            self.at_mut(self.limbs() - 1)[..size].copy_from_slice(&data[..size]);
+            self.at_mut(limbs - 1)[..size].copy_from_slice(&data[..size]);
         } else {
             let mask: i64 = (1 << log_base2k) - 1;
             let steps: usize = min(limbs, (log_max + log_base2k - 1) / log_base2k);

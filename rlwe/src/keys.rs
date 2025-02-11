@@ -1,44 +1,86 @@
+use crate::ciphertext::GadgetCiphertext;
 use crate::elem::Elem;
-use crate::encryptor::{encrypt_rlwe_sk, encrypt_rlwe_sk_tmp_bytes};
+use crate::encryptor::{encrypt_rlwe_sk_thread_safe, encrypt_rlwe_sk_tmp_bytes};
 use crate::parameters::Parameters;
-use base2k::{Module, Sampling, Scalar, SvpPPol, SvpPPolOps, VecZnx};
+use base2k::{Module, Scalar, SvpPPol, SvpPPolOps, VmpPMat, VmpPMatOps};
 use sampling::source::Source;
 
 pub struct SecretKey(pub Scalar);
 
 impl SecretKey {
-    pub fn new_ternary_prob(module: &Module, limbs: usize, prob: f64, source: &mut Source) -> Self {
-        let mut sk: Scalar = Scalar::new(module.n());
-        sk.fill_ternary_prob(prob, source);
-        SecretKey(sk)
+    pub fn new(params: &Module) -> Self {
+        SecretKey(Scalar::new(params.n()))
+    }
+
+    pub fn fill_ternary_prob(&mut self, prob: f64, source: &mut Source) {
+        self.0.fill_ternary_prob(prob, source);
+    }
+
+    pub fn fill_ternary_hw(&mut self, hw: usize, source: &mut Source) {
+        self.0.fill_ternary_hw(hw, source);
+    }
+
+    pub fn prepare(&self, module: &Module, sk_ppol: &mut SvpPPol) {
+        module.svp_prepare(sk_ppol, &self.0)
     }
 }
 
 pub struct PublicKey(pub Elem);
 
 impl PublicKey {
-    pub fn new(
-        params: &Parameters,
+    pub fn new(module: &Module, log_base2k: usize, log_q: usize) -> PublicKey {
+        PublicKey(Elem::new(module, log_base2k, log_q, 1, 0))
+    }
+
+    pub fn gen_thread_safe(
+        &mut self,
+        module: &Module,
         sk: &SvpPPol,
+        xe: f64,
         xa_source: &mut Source,
         xe_source: &mut Source,
         tmp_bytes: &mut [u8],
-    ) -> Self {
-        let mut pk: Elem = Elem::new(params.n(), params.log_base2k(), params.log_qp(), 1);
-        encrypt_rlwe_sk(
-            params.module(),
-            &mut pk,
+    ) {
+        encrypt_rlwe_sk_thread_safe(
+            module,
+            &mut self.0,
             None,
             sk,
             xa_source,
             xe_source,
-            params.xe(),
+            xe,
             tmp_bytes,
         );
-        PublicKey(pk)
     }
 
-    pub fn new_tmp_bytes(params: &Parameters) -> usize {
-        encrypt_rlwe_sk_tmp_bytes(params.module(), params.limbs_qp())
+    pub fn gen_thread_safe_tmp_bytes(module: &Module, log_base2k: usize, log_q: usize) -> usize {
+        encrypt_rlwe_sk_tmp_bytes(module, log_base2k, log_q)
+    }
+}
+
+pub struct SwitchingKey(GadgetCiphertext);
+
+impl SwitchingKey {
+    pub fn new(
+        module: &Module,
+        log_base2k: usize,
+        rows: usize,
+        log_q: usize,
+        log_scale: usize,
+    ) -> SwitchingKey {
+        SwitchingKey(GadgetCiphertext::new(
+            module, log_base2k, rows, log_q, log_scale,
+        ))
+    }
+
+    pub fn gen_thread_safe(
+        &mut self,
+        params: &mut Parameters,
+        sk_in: &SvpPPol,
+        sk_out: &SvpPPol,
+        xa_source: &mut Source,
+        xe_source: &mut Source,
+        tmp_bytes: &mut [u8],
+    ) {
     }
 }

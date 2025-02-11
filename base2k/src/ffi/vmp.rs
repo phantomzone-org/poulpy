@@ -92,5 +92,17 @@ unsafe extern "C" {
 }
 
 unsafe extern "C" {
+    pub unsafe fn vmp_prepare_row(
+        module: *const MODULE,
+        pmat: *mut VMP_PMAT,
+        row: *const i64,
+        row_i: u64,
+        nrows: u64,
+        ncols: u64,
+        tmp_space: *mut u8,
+    );
+}
+
+unsafe extern "C" {
     pub unsafe fn vmp_prepare_tmp_bytes(module: *const MODULE, nrows: u64, ncols: u64) -> u64;
 }

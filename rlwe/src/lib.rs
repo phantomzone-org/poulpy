@@ -1,6 +1,8 @@
 pub mod ciphertext;
+pub mod decryptor;
 pub mod elem;
 pub mod encryptor;
+pub mod evaluator;
 pub mod key_generator;
 pub mod keys;
 pub mod parameters;

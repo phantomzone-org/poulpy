@@ -117,23 +117,22 @@ impl Module {
     }
 
     // b <- b + a
-    pub fn vec_znx_big_add_small_inplace(&self, b: &mut VecZnxBig, a: &VecZnx) {
-        let limbs: usize = a.limbs();
+    pub fn vec_znx_big_add_small_inplace(&self, b: &mut VecZnxBig, a: &VecZnx, a_limbs: usize) {
         assert!(
-            b.limbs() >= limbs,
+            b.limbs() >= a_limbs,
             "invalid c_vector: b.limbs()={} < a.limbs()={}",
             b.limbs(),
-            limbs
+            a_limbs
         );
         unsafe {
             vec_znx_big::vec_znx_big_add_small(
                 self.0,
                 b.0,
-                limbs as u64,
+                a_limbs as u64,
                 b.0,
-                limbs as u64,
+                a_limbs as u64,
                 a.as_ptr(),
-                limbs as u64,
+                a_limbs as u64,
                 a.n() as u64,
             )
         }

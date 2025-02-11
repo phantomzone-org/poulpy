@@ -169,6 +169,38 @@ pub trait VmpPMatOps {
     /// ```
     fn vmp_prepare_dblptr(&self, b: &mut VmpPMat, a: &Vec<VecZnx>, buf: &mut [u8]);
 
+    /// Prepares the ith-row of [VmpPMat] from a vector of [VecZnx].
+    ///
+    /// # Arguments
+    ///
+    /// * `b`: [VmpPMat] on which the values are encoded.
+    /// * `a`: the vector of [VecZnx] to encode on the [VmpPMat].
+    /// * `row_i`: the index of the row to prepare.
+    /// * `buf`: scratch space, the size of buf can be obtained with [VmpPMatOps::vmp_prepare_tmp_bytes].
+    ///
+    /// The size of buf can be obtained with [VmpPMatOps::vmp_prepare_tmp_bytes].
+    /// /// # Example
+    /// ```
+    /// use base2k::{Module, FFT64, Matrix3D, VmpPMat, VmpPMatOps, VecZnx, VecZnxOps, Free};
+    /// use std::cmp::min;
+    ///
+    /// let n: usize = 1024;
+    /// let module: Module = Module::new::<FFT64>(n);
+    /// let rows: usize = 5;
+    /// let cols: usize = 6;
+    ///
+    /// let vecznx: module.new_vec_znx(cols);
+    ///
+    /// let mut buf: Vec<u8> = vec![u8::default(); module.vmp_prepare_tmp_bytes(rows, cols)];
+    ///
+    /// let mut vmp_pmat: VmpPMat = module.new_vmp_pmat(rows, cols);
+    /// module.vmp_prepare_row(&mut vmp_pmat, &vecznx, 0, &mut buf);
+    ///
+    /// vmp_pmat.free();
+    /// module.free();
+    /// ```
+    fn vmp_prepare_row(&self, b: &mut VmpPMat, a: &VecZnx, row_i: usize, tmp_bytes: &mut [u8]);
+
     /// Returns the size of the stratch space necessary for [VmpPMatOps::vmp_apply_dft].
     ///
     /// # Arguments
@@ -397,6 +429,20 @@ impl VmpPMatOps for Module {
                 self.0,
                 b.data(),
                 ptrs.as_ptr(),
+                b.rows() as u64,
+                b.cols() as u64,
+                buf.as_mut_ptr(),
+            );
+        }
+    }
+
+    fn vmp_prepare_row(&self, b: &mut VmpPMat, a: &VecZnx, row_i: usize, buf: &mut [u8]) {
+        unsafe {
+            vmp::vmp_prepare_row(
+                self.0,
+                b.data(),
+                a.data.as_ptr(),
+                row_i as u64,
                 b.rows() as u64,
                 b.cols() as u64,
                 buf.as_mut_ptr(),

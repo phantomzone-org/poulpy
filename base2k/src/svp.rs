@@ -91,7 +91,7 @@ pub trait SvpPPolOps {
 
     /// Applies the [SvpPPol] x [VecZnxDft] product, where each limb of
     /// the [VecZnxDft] is multiplied with [SvpPPol].
-    fn svp_apply_dft(&self, c: &mut VecZnxDft, a: &SvpPPol, b: &VecZnx);
+    fn svp_apply_dft(&self, c: &mut VecZnxDft, a: &SvpPPol, b: &VecZnx, b_limbs: usize);
 }
 
 impl SvpPPolOps for Module {
@@ -107,14 +107,13 @@ impl SvpPPolOps for Module {
         unsafe { svp::svp_prepare(self.0, svp_ppol.0, a.as_ptr()) }
     }
 
-    fn svp_apply_dft(&self, c: &mut VecZnxDft, a: &SvpPPol, b: &VecZnx) {
-        let limbs: u64 = b.limbs() as u64;
+    fn svp_apply_dft(&self, c: &mut VecZnxDft, a: &SvpPPol, b: &VecZnx, b_limbs: usize) {
         assert!(
-            c.limbs() as u64 >= limbs,
+            c.limbs() >= b_limbs,
             "invalid c_vector: c_vector.limbs()={} < b.limbs()={}",
             c.limbs(),
-            limbs
+            b_limbs
         );
-        unsafe { svp::svp_apply_dft(self.0, c.0, limbs, a.0, b.as_ptr(), limbs, b.n() as u64) }
+        unsafe { svp::svp_apply_dft(self.0, c.0, b_limbs as u64, a.0, b.as_ptr(), b_limbs as u64, b.n() as u64) }
     }
 }

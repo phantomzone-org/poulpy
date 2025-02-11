@@ -1,7 +1,7 @@
 use crate::ffi::vec_znx_big;
 use crate::ffi::vec_znx_dft;
 use crate::ffi::vec_znx_dft::bytes_of_vec_znx_dft;
-use crate::{Module, VecZnxBig};
+use crate::{Module, VecZnx, VecZnxBig};
 
 pub struct VecZnxDft(pub *mut vec_znx_dft::vec_znx_dft_t, pub usize);
 
@@ -30,6 +30,25 @@ impl Module {
         unsafe { VecZnxDft(vec_znx_dft::new_vec_znx_dft(self.0, limbs as u64), limbs) }
     }
 
+    /// Returns a new [VecZnxDft] with the provided bytes array as backing array.
+    ///
+    /// # Arguments
+    ///
+    /// * `limbs`: the number of limbs of the [VecZnxDft].
+    /// * `bytes`: a byte array of size at least [Module::bytes_of_vec_znx_dft].
+    ///
+    /// # Panics
+    /// If `bytes.len()` < [Module::bytes_of_vec_znx_dft].
+    pub fn new_vec_znx_from_bytes(&self, limbs: usize, bytes: &mut [u8]) -> VecZnxDft {
+        assert!(
+            bytes.len() >= self.bytes_of_vec_znx_dft(limbs),
+            "invalid bytes: bytes.len()={} < bytes_of_vec_znx_dft={}",
+            bytes.len(),
+            self.bytes_of_vec_znx_dft(limbs)
+        );
+        VecZnxDft::from_bytes(limbs, bytes)
+    }
+
     /// Returns the minimum number of bytes necessary to allocate
     /// a new [VecZnxDft] through [VecZnxDft::from_bytes].
     pub fn bytes_of_vec_znx_dft(&self, limbs: usize) -> usize {
@@ -50,6 +69,29 @@ impl Module {
     // Returns the size of the scratch space for [vec_znx_idft].
     pub fn vec_znx_idft_tmp_bytes(&self) -> usize {
         unsafe { vec_znx_dft::vec_znx_idft_tmp_bytes(self.0) as usize }
+    }
+
+    /// b <- DFT(a)
+    ///
+    /// # Panics
+    /// If b.limbs < a_limbs
+    pub fn vec_znx_dft(&self, b: &mut VecZnxDft, a: &VecZnx, a_limbs: usize) {
+        assert!(
+            b.limbs() >= a_limbs,
+            "invalid a_limbs: b.limbs()={} < a_limbs={}",
+            b.limbs(),
+            a_limbs
+        );
+        unsafe {
+            vec_znx_dft::vec_znx_dft(
+                self.0,
+                b.0,
+                a_limbs as u64,
+                a.as_ptr(),
+                a_limbs as u64,
+                a.n as u64,
+            )
+        }
     }
 
     // b <- IDFT(a), scratch space size obtained with [vec_znx_idft_tmp_bytes].
