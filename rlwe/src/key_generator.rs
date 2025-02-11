@@ -1,3 +1,4 @@
+use crate::encryptor::encrypt_grlwe_sk_thread_safe;
 use crate::keys::{PublicKey, SecretKey, SwitchingKey};
 use crate::parameters::Parameters;
 use base2k::SvpPPol;
@@ -38,16 +39,20 @@ impl KeyGenerator {
         pk
     }
 
-    pub fn gen_switching_key(
+    pub fn gen_switching_key_thread_safe(
         &self,
         params: &Parameters,
         sk_in: &SecretKey,
         sk_out: &SecretKey,
         rows: usize,
         log_q: usize,
+        tmp_bytes: &mut [u8],
     ) -> SwitchingKey {
-        let swk = SwitchingKey::new(params.module(), params.log_base2k(), rows, log_q, 0);
+        let swk: SwitchingKey = SwitchingKey::new(params.module(), params.log_base2k(), rows, log_q, 0);
 
+        let module: &base2k::Module = params.module();
+
+        encrypt_grlwe_sk_thread_safe(module, swk.0, &sk_in.0, sk_out, source_xa, source_xe, sigma, tmp_bytes);
         swk
     }
 }
