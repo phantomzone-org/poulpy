@@ -55,7 +55,7 @@ fn main() {
     let mut source_xe: Source = Source::new([1; 32]);
     let mut source_xa: Source = Source::new([2; 32]);
 
-    let mut sk_svp_ppol: base2k::SvpPPol = params.module().svp_new_ppol();
+    let mut sk_svp_ppol: base2k::SvpPPol = params.module().new_svp_ppol();
     params.module().svp_prepare(&mut sk_svp_ppol, &sk.0);
 
     params.encrypt_rlwe_sk_thread_safe(

@@ -20,7 +20,7 @@ pub struct EncryptorSk {
 
 impl EncryptorSk {
     pub fn new(params: &Parameters, sk: Option<&SecretKey>) -> Self {
-        let mut sk_svp_ppol: SvpPPol = params.module().svp_new_ppol();
+        let mut sk_svp_ppol: SvpPPol = params.module().new_svp_ppol();
         let mut initialized: bool = false;
         if let Some(sk) = sk {
             sk.prepare(params.module(), &mut sk_svp_ppol);

@@ -63,17 +63,10 @@ pub struct GadgetCiphertext {
     pub value: Vec<VmpPMat>,
     pub log_base2k: usize,
     pub log_q: usize,
-    pub log_scale: usize,
 }
 
 impl GadgetCiphertext {
-    pub fn new(
-        module: &Module,
-        log_base2k: usize,
-        rows: usize,
-        log_q: usize,
-        log_scale: usize,
-    ) -> Self {
+    pub fn new(module: &Module, log_base2k: usize, rows: usize, log_q: usize) -> Self {
         let cols: usize = (log_q + log_base2k - 1) / log_base2k;
         let mut value: Vec<VmpPMat> = Vec::new();
         (0..rows).for_each(|_| value.push(module.new_vmp_pmat(rows, cols)));
@@ -81,7 +74,6 @@ impl GadgetCiphertext {
             value,
             log_base2k,
             log_q,
-            log_scale,
         }
     }
 

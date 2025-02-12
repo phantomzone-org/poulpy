@@ -25,7 +25,7 @@ fn main() {
     s.fill_ternary_prob(0.5, &mut source);
 
     // Buffer to store s in the DFT domain
-    let mut s_ppol: SvpPPol = module.svp_new_ppol();
+    let mut s_ppol: SvpPPol = module.new_svp_ppol();
 
     // s_ppol <- DFT(s)
     module.svp_prepare(&mut s_ppol, &s);

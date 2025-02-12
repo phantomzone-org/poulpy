@@ -3,7 +3,9 @@ use rlwe::{
     ciphertext::Ciphertext,
     decryptor::{Decryptor, decrypt_rlwe_thread_safe_tmp_byte},
     encryptor::{EncryptorSk, encrypt_rlwe_sk_tmp_bytes},
-    keys::SecretKey,
+    evaluator::{gadget_product_inplace, gadget_product_tmp_bytes},
+    key_generator::{gen_switching_key_thread_safe, gen_switching_key_thread_safe_tmp_bytes},
+    keys::{SecretKey, SwitchingKey},
     parameters::{Parameters, ParametersLiteral},
     plaintext::Plaintext,
 };
@@ -13,7 +15,7 @@ fn main() {
     let params_lit: ParametersLiteral = ParametersLiteral {
         log_n: 10,
         log_q: 54,
-        log_p: 0,
+        log_p: 17,
         log_base2k: 17,
         log_scale: 20,
         xe: 3.2,
@@ -26,6 +28,20 @@ fn main() {
         0u8;
         params.decrypt_rlwe_thread_safe_tmp_byte(params.log_q())
             | params.encrypt_rlwe_sk_tmp_bytes(params.log_q())
+            | gen_switching_key_thread_safe_tmp_bytes(
+                params.module(),
+                params.log_base2k(),
+                params.limbs_q(),
+                params.log_q()
+            )
+            | gadget_product_tmp_bytes(
+                params.module(),
+                params.log_base2k(),
+                params.log_q(),
+                params.log_q(),
+                params.limbs_q(),
+                params.limbs_qp()
+            )
     ];
 
     let mut source: Source = Source::new([0; 32]);
@@ -54,22 +70,45 @@ fn main() {
 
     let mut ct: Ciphertext = params.new_ciphertext(params.log_q());
 
-    let mut source_xe: Source = Source::new(new_seed());
-    let mut source_xa: Source = Source::new(new_seed());
+    let mut source_xe: Source = Source::new([1; 32]);
+    let mut source_xa: Source = Source::new([2; 32]);
 
-    let mut sk_svp_ppol: base2k::SvpPPol = params.module().svp_new_ppol();
-    params.module().svp_prepare(&mut sk_svp_ppol, &sk0.0);
+    let mut sk0_svp_ppol: base2k::SvpPPol = params.module().new_svp_ppol();
+    params.module().svp_prepare(&mut sk0_svp_ppol, &sk0.0);
+
+    let mut sk1_svp_ppol: base2k::SvpPPol = params.module().new_svp_ppol();
+    params.module().svp_prepare(&mut sk1_svp_ppol, &sk1.0);
 
     params.encrypt_rlwe_sk_thread_safe(
         &mut ct,
         Some(&pt),
-        &sk_svp_ppol,
+        &sk0_svp_ppol,
         &mut source_xa,
         &mut source_xe,
         &mut tmp_bytes,
     );
 
-    params.decrypt_rlwe_thread_safe(&mut pt, &ct, &sk_svp_ppol, &mut tmp_bytes);
+    let mut swk: SwitchingKey = SwitchingKey::new(
+        params.module(),
+        params.log_base2k(),
+        params.limbs_q(),
+        params.log_qp(),
+    );
+
+    gen_switching_key_thread_safe(
+        params.module(),
+        &mut swk,
+        &sk0,
+        &sk1_svp_ppol,
+        &mut source_xa,
+        &mut source_xe,
+        params.xe(),
+        &mut tmp_bytes,
+    );
+
+    gadget_product_inplace(params.module(), &mut ct, &swk.0, &mut tmp_bytes);
+
+    params.decrypt_rlwe_thread_safe(&mut pt, &ct, &sk1_svp_ppol, &mut tmp_bytes);
 
     pt.0.value[0].print_limbs(pt.limbs(), 16);
 

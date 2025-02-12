@@ -80,7 +80,7 @@ impl SvpPPol {
 
 pub trait SvpPPolOps {
     /// Allocates a new [SvpPPol].
-    fn svp_new_ppol(&self) -> SvpPPol;
+    fn new_svp_ppol(&self) -> SvpPPol;
 
     /// Returns the minimum number of bytes necessary to allocate
     /// a new [SvpPPol] through [SvpPPol::from_bytes].
@@ -95,7 +95,7 @@ pub trait SvpPPolOps {
 }
 
 impl SvpPPolOps for Module {
-    fn svp_new_ppol(&self) -> SvpPPol {
+    fn new_svp_ppol(&self) -> SvpPPol {
         unsafe { SvpPPol(svp::new_svp_ppol(self.0), self.n()) }
     }
 

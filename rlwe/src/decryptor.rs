@@ -10,7 +10,7 @@ pub struct Decryptor {
 
 impl Decryptor {
     pub fn new(params: &Parameters, sk: &SecretKey) -> Self {
-        let mut sk_svp_ppol: SvpPPol = params.module().svp_new_ppol();
+        let mut sk_svp_ppol: SvpPPol = params.module().new_svp_ppol();
         sk.prepare(params.module(), &mut sk_svp_ppol);
         Self { sk: sk_svp_ppol }
     }

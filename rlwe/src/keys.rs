@@ -61,16 +61,8 @@ impl PublicKey {
 pub struct SwitchingKey(pub GadgetCiphertext);
 
 impl SwitchingKey {
-    pub fn new(
-        module: &Module,
-        log_base2k: usize,
-        rows: usize,
-        log_q: usize,
-        log_scale: usize,
-    ) -> SwitchingKey {
-        SwitchingKey(GadgetCiphertext::new(
-            module, log_base2k, rows, log_q, log_scale,
-        ))
+    pub fn new(module: &Module, log_base2k: usize, rows: usize, log_q: usize) -> SwitchingKey {
+        SwitchingKey(GadgetCiphertext::new(module, log_base2k, rows, log_q))
     }
 
     pub fn gen_thread_safe(
