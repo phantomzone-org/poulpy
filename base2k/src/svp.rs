@@ -114,6 +114,16 @@ impl SvpPPolOps for Module {
             c.limbs(),
             b_limbs
         );
-        unsafe { svp::svp_apply_dft(self.0, c.0, b_limbs as u64, a.0, b.as_ptr(), b_limbs as u64, b.n() as u64) }
+        unsafe {
+            svp::svp_apply_dft(
+                self.0,
+                c.0,
+                b_limbs as u64,
+                a.0,
+                b.as_ptr(),
+                b_limbs as u64,
+                b.n() as u64,
+            )
+        }
     }
 }

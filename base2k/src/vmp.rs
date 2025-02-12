@@ -189,7 +189,7 @@ pub trait VmpPMatOps {
     /// let rows: usize = 5;
     /// let cols: usize = 6;
     ///
-    /// let vecznx: module.new_vec_znx(cols);
+    /// let vecznx = module.new_vec_znx(cols);
     ///
     /// let mut buf: Vec<u8> = vec![u8::default(); module.vmp_prepare_tmp_bytes(rows, cols)];
     ///
