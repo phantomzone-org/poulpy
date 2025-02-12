@@ -90,6 +90,10 @@ impl Elem {
         assert!(i <= self.degree());
         &mut self.value[i]
     }
+
+    pub fn zero(&mut self){
+        self.value.iter_mut().for_each(|i| i.zero());
+    }
 }
 
 impl Parameters {

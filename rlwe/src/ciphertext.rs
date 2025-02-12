@@ -48,6 +48,10 @@ impl Ciphertext {
         self.0.log_scale
     }
 
+    pub fn zero(&mut self){
+        self.0.zero()
+    }
+
     pub fn as_plaintext(&self) -> Plaintext {
         unsafe { Plaintext(std::ptr::read(&self.0)) }
     }

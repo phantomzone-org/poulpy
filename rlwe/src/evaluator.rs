@@ -16,7 +16,7 @@ pub fn gadget_product_tmp_bytes(
         + 2 * module.bytes_of_vec_znx_dft(gct_cols)
 }
 
-pub fn gadget_product_inplace(
+pub fn gadget_product_inplace_thread_safe(
     module: &Module,
     a: &mut Ciphertext,
     b: &GadgetCiphertext,
@@ -26,11 +26,11 @@ pub fn gadget_product_inplace(
     // overwritten.
     unsafe {
         let a_ptr: *mut Ciphertext = a;
-        gadget_product(module, a, &*a_ptr, b, tmp_bytes)
+        gadget_product_thread_safe(module, a, &*a_ptr, b, tmp_bytes)
     }
 }
 
-pub fn gadget_product(
+pub fn gadget_product_thread_safe(
     module: &Module,
     res: &mut Ciphertext,
     a: &Ciphertext,
@@ -56,10 +56,10 @@ pub fn gadget_product(
     let mut res_dft: VecZnxDft = module.new_vec_znx_from_bytes(cols, tmp_bytes_res_dft);
     let mut res_big: VecZnxBig = res_dft.as_vec_znx_big();
 
-    // c1_dft <- DFT(b[1])
+    // c1_dft <- DFT(c1) [cols]
     module.vec_znx_dft(&mut c1_dft, a.at(1), a.limbs());
 
-    // res_dft <- DFT(c1) x GadgetCiphertext[0]
+    // res_dft <- sum[rows] DFT(c1)[cols] x GadgetCiphertext[0][cols]
     module.vmp_apply_dft_to_dft(&mut res_dft, &c1_dft, &b.value[0], tmp_bytes_vmp_apply_dft);
 
     // res_big <- IDFT(DFT(c1) x GadgetCiphertext[0])
