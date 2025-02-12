@@ -91,7 +91,7 @@ impl Elem {
         &mut self.value[i]
     }
 
-    pub fn zero(&mut self){
+    pub fn zero(&mut self) {
         self.value.iter_mut().for_each(|i| i.zero());
     }
 }

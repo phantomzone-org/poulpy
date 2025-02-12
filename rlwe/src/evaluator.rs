@@ -1,5 +1,8 @@
-use crate::ciphertext::{Ciphertext, GadgetCiphertext};
-use base2k::{Module, VecZnxBig, VecZnxDft, VmpPMatOps};
+use crate::{
+    ciphertext::{Ciphertext, GadgetCiphertext},
+    elem::Elem,
+};
+use base2k::{Infos, Module, VecZnx, VecZnxBig, VecZnxDft, VmpPMatOps};
 
 pub fn gadget_product_tmp_bytes(
     module: &Module,
@@ -16,34 +19,27 @@ pub fn gadget_product_tmp_bytes(
         + 2 * module.bytes_of_vec_znx_dft(gct_cols)
 }
 
-pub fn gadget_product_inplace_thread_safe(
-    module: &Module,
-    a: &mut Ciphertext,
-    b: &GadgetCiphertext,
-    tmp_bytes: &mut [u8],
-) {
-    // This is safe to do because the relevant values of a are copied to a buffer before being
-    // overwritten.
-    unsafe {
-        let a_ptr: *mut Ciphertext = a;
-        gadget_product_thread_safe(module, a, &*a_ptr, b, tmp_bytes)
-    }
-}
-
+/// Evaluates the gadget product res <- a x b.
+///
+/// # Arguments
+///
+/// * `module`: backend support for operations mod (X^N + 1)
+/// * `res`: an [Elem] to store (-cs + m * a + e, c) with res_ncols limbs.
+/// * `a`: a [VecZnx] of a_ncols limbs.
+/// * `b`: a [GadgetCiphertext] as a vector of (-Bs + m * 2^{-k} + E, B)
+///       containing b_nrows [VecZnx], each of b_ncols limbs.
+///
+/// # Computation
+///
+/// res = sum[min(a_ncols, b_nrows)] decomp(a, i) * (-B[i]s + m * 2^{-k*i} + E[i], B[i])
+///     = (cs + m * a + e, c) with min(res_limbs, b_cols) limbs.
 pub fn gadget_product_thread_safe(
     module: &Module,
-    res: &mut Ciphertext,
-    a: &Ciphertext,
+    res: &mut Elem,
+    a: &VecZnx,
     b: &GadgetCiphertext,
     tmp_bytes: &mut [u8],
 ) {
-    assert!(
-        a.log_base2k() == b.log_base2k(),
-        "invalid inputs: a.log_base2k={} != b.log_base2k={}",
-        a.log_base2k(),
-        b.log_base2k()
-    );
-
     let log_base2k: usize = b.log_base2k();
     let cols: usize = b.cols();
 
@@ -57,16 +53,13 @@ pub fn gadget_product_thread_safe(
     let mut res_big: VecZnxBig = res_dft.as_vec_znx_big();
 
     // c1_dft <- DFT(c1) [cols]
-    module.vec_znx_dft(&mut c1_dft, a.at(1), a.limbs());
+    module.vec_znx_dft(&mut c1_dft, a, a.limbs());
 
     // res_dft <- sum[rows] DFT(c1)[cols] x GadgetCiphertext[0][cols]
     module.vmp_apply_dft_to_dft(&mut res_dft, &c1_dft, &b.value[0], tmp_bytes_vmp_apply_dft);
 
     // res_big <- IDFT(DFT(c1) x GadgetCiphertext[0])
     module.vec_znx_idft_tmp_a(&mut res_big, &mut res_dft, cols);
-
-    // res_big <- c0 + c1_dft x GadgetCiphertext[0]
-    module.vec_znx_big_add_small_inplace(&mut res_big, a.at(0), cols);
 
     // res[0] = normalize(c0 + c1_dft x GadgetCiphertext[0])
     module.vec_znx_big_normalize(log_base2k, res.at_mut(0), &res_big, tmp_bytes_vmp_apply_dft);

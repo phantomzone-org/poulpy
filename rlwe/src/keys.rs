@@ -65,19 +65,19 @@ impl SwitchingKey {
         SwitchingKey(GadgetCiphertext::new(module, log_base2k, rows, log_q))
     }
 
-    pub fn n(&self) -> usize{
+    pub fn n(&self) -> usize {
         self.0.n()
     }
 
-    pub fn rows(&self) -> usize{
+    pub fn rows(&self) -> usize {
         self.0.rows()
     }
 
-    pub fn cols(&self) -> usize{
+    pub fn cols(&self) -> usize {
         self.0.cols()
     }
 
-    pub fn log_base2k(&self) -> usize{
+    pub fn log_base2k(&self) -> usize {
         self.0.log_base2k()
     }
 }

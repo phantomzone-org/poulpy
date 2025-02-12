@@ -71,7 +71,7 @@ fn main() {
     module.vec_znx_idft_tmp_a(&mut buf_big, &mut buf_dft, b.limbs());
 
     // buf_big <- a * s + b
-    module.vec_znx_big_add_small_inplace(&mut buf_big, &b, b.limbs());
+    module.vec_znx_big_add_small_inplace(&mut buf_big, &b);
 
     // res <- normalize(buf_big)
     module.vec_znx_big_normalize(log_base2k, &mut res, &buf_big, &mut carry);

@@ -175,7 +175,7 @@ pub fn encrypt_rlwe_sk_thread_safe(
     }
 
     // c0 <- -s x c1 + m + e
-    //c0.add_normal(log_base2k, log_q, source_xe, sigma, (sigma * 6.0).ceil());
+    c0.add_normal(log_base2k, log_q, source_xe, sigma, (sigma * 6.0).ceil());
 }
 
 pub fn encrypt_grlwe_sk_tmp_bytes(
@@ -245,6 +245,7 @@ pub fn encrypt_grlwe_sk_thread_safe(
         // Zeroes the ith-row of tmp_pt
         tmp_pt.0.value[0].at_mut(row_i).fill(0);
 
+        /*
         let mut res: Elem = Elem::new(module, log_base2k, log_q, 0, tmp_elem.log_scale);
 
         decrypt_rlwe_thread_safe(module, &mut res, &tmp_elem, sk, tmp_bytes_encrypt_sk);
@@ -252,6 +253,7 @@ pub fn encrypt_grlwe_sk_thread_safe(
         println!("row:{}", row_i);
         res.value[0].print_limbs(res.limbs(), 16);
         println!();
+         */
 
         // GRLWE[row_i][0] = -as + m * 2^{-i*log_base2k} + e*2^{-log_q}
         module.vmp_prepare_row(

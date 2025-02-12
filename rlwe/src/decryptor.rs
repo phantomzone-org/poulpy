@@ -1,5 +1,9 @@
 use crate::{
-    ciphertext::{Ciphertext, GadgetCiphertext}, elem::Elem, keys::SecretKey, parameters::Parameters, plaintext::Plaintext
+    ciphertext::{Ciphertext, GadgetCiphertext},
+    elem::Elem,
+    keys::SecretKey,
+    parameters::Parameters,
+    plaintext::Plaintext,
 };
 use base2k::{Module, SvpPPol, SvpPPolOps, VecZnxDft};
 use std::cmp::min;
@@ -46,26 +50,24 @@ pub fn decrypt_rlwe_thread_safe(
     sk: &SvpPPol,
     tmp_bytes: &mut [u8],
 ) {
-    let limbs: usize = min(res.limbs(), a.limbs());
-
     assert!(
-        tmp_bytes.len() >= decrypt_rlwe_thread_safe_tmp_byte(module, limbs),
+        tmp_bytes.len() >= decrypt_rlwe_thread_safe_tmp_byte(module, a.limbs()),
         "invalid tmp_bytes: tmp_bytes.len()={} < decrypt_rlwe_thread_safe_tmp_byte={}",
         tmp_bytes.len(),
-        decrypt_rlwe_thread_safe_tmp_byte(module, limbs)
+        decrypt_rlwe_thread_safe_tmp_byte(module, a.limbs())
     );
 
-    let res_dft_bytes: usize = module.bytes_of_vec_znx_dft(limbs);
+    let res_dft_bytes: usize = module.bytes_of_vec_znx_dft(a.limbs());
 
-    let mut res_dft: VecZnxDft = VecZnxDft::from_bytes(limbs, tmp_bytes);
+    let mut res_dft: VecZnxDft = VecZnxDft::from_bytes(a.limbs(), tmp_bytes);
     let mut res_big: base2k::VecZnxBig = res_dft.as_vec_znx_big();
 
     // res_dft <- DFT(ct[1]) * DFT(sk)
-    module.svp_apply_dft(&mut res_dft, sk, &a.value[1], limbs);
+    module.svp_apply_dft(&mut res_dft, sk, &a.value[1], a.limbs());
     // res_big <- ct[1] x sk
-    module.vec_znx_idft_tmp_a(&mut res_big, &mut res_dft, limbs);
+    module.vec_znx_idft_tmp_a(&mut res_big, &mut res_dft, a.limbs());
     // res_big <- ct[1] x sk + ct[0]
-    module.vec_znx_big_add_small_inplace(&mut res_big, &a.value[0], limbs);
+    module.vec_znx_big_add_small_inplace(&mut res_big, &a.value[0]);
     // res <- normalize(ct[1] x sk + ct[0])
     module.vec_znx_big_normalize(
         a.log_base2k(),

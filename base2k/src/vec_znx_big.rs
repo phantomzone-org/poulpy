@@ -37,20 +37,13 @@ impl Module {
 
     // b <- b - a
     pub fn vec_znx_big_sub_small_a_inplace(&self, b: &mut VecZnxBig, a: &VecZnx) {
-        let limbs: usize = a.limbs();
-        assert!(
-            b.limbs() >= limbs,
-            "invalid c_vector: b.limbs()={} < a.limbs()={}",
-            b.limbs(),
-            limbs
-        );
         unsafe {
             vec_znx_big::vec_znx_big_sub_small_a(
                 self.0,
                 b.0,
                 b.limbs() as u64,
                 a.as_ptr(),
-                limbs as u64,
+                a.limbs() as u64,
                 a.n() as u64,
                 b.0,
                 b.limbs() as u64,
@@ -60,26 +53,13 @@ impl Module {
 
     // c <- b - a
     pub fn vec_znx_big_sub_small_a(&self, c: &mut VecZnxBig, a: &VecZnx, b: &VecZnxBig) {
-        let limbs: usize = a.limbs();
-        assert!(
-            b.limbs() >= limbs,
-            "invalid c: b.limbs()={} < a.limbs()={}",
-            b.limbs(),
-            limbs
-        );
-        assert!(
-            c.limbs() >= limbs,
-            "invalid c: c.limbs()={} < a.limbs()={}",
-            c.limbs(),
-            limbs
-        );
         unsafe {
             vec_znx_big::vec_znx_big_sub_small_a(
                 self.0,
                 c.0,
                 c.limbs() as u64,
                 a.as_ptr(),
-                limbs as u64,
+                a.limbs() as u64,
                 a.n() as u64,
                 b.0,
                 b.limbs() as u64,
@@ -89,50 +69,31 @@ impl Module {
 
     // c <- b + a
     pub fn vec_znx_big_add_small(&self, c: &mut VecZnxBig, a: &VecZnx, b: &VecZnxBig) {
-        let limbs: usize = a.limbs();
-        assert!(
-            b.limbs() >= limbs,
-            "invalid c: b.limbs()={} < a.limbs()={}",
-            b.limbs(),
-            limbs
-        );
-        assert!(
-            c.limbs() >= limbs,
-            "invalid c: c.limbs()={} < a.limbs()={}",
-            c.limbs(),
-            limbs
-        );
         unsafe {
             vec_znx_big::vec_znx_big_add_small(
                 self.0,
                 c.0,
-                limbs as u64,
+                c.limbs() as u64,
                 b.0,
-                limbs as u64,
+                a.limbs() as u64,
                 a.as_ptr(),
-                limbs as u64,
+                b.limbs() as u64,
                 a.n() as u64,
             )
         }
     }
 
     // b <- b + a
-    pub fn vec_znx_big_add_small_inplace(&self, b: &mut VecZnxBig, a: &VecZnx, a_limbs: usize) {
-        assert!(
-            b.limbs() >= a_limbs,
-            "invalid c_vector: b.limbs()={} < a.limbs()={}",
-            b.limbs(),
-            a_limbs
-        );
+    pub fn vec_znx_big_add_small_inplace(&self, b: &mut VecZnxBig, a: &VecZnx) {
         unsafe {
             vec_znx_big::vec_znx_big_add_small(
                 self.0,
                 b.0,
-                a_limbs as u64,
+                b.limbs() as u64,
                 b.0,
-                a_limbs as u64,
+                a.limbs() as u64,
                 a.as_ptr(),
-                a_limbs as u64,
+                a.limbs() as u64,
                 a.n() as u64,
             )
         }
@@ -150,13 +111,6 @@ impl Module {
         a: &VecZnxBig,
         tmp_bytes: &mut [u8],
     ) {
-        let limbs: usize = b.limbs();
-        assert!(
-            b.limbs() >= limbs,
-            "invalid c_vector: b.limbs()={} < a.limbs()={}",
-            b.limbs(),
-            limbs
-        );
         assert!(
             tmp_bytes.len() >= self.vec_znx_big_normalize_tmp_bytes(),
             "invalid tmp_bytes: tmp_bytes.len()={} <= self.vec_znx_big_normalize_tmp_bytes()={}",
@@ -168,10 +122,10 @@ impl Module {
                 self.0,
                 log_base2k as u64,
                 b.as_mut_ptr(),
-                limbs as u64,
+                b.limbs() as u64,
                 b.n() as u64,
                 a.0,
-                limbs as u64,
+                a.limbs() as u64,
                 tmp_bytes.as_mut_ptr(),
             )
         }

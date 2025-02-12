@@ -64,7 +64,7 @@ impl Plaintext {
         self.0.log_scale()
     }
 
-    pub fn zero(&mut self){
+    pub fn zero(&mut self) {
         self.0.zero()
     }
 
