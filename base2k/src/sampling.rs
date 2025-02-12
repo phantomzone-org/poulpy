@@ -33,7 +33,7 @@ impl Sampling for VecZnx {
         let mask: u64 = base2k - 1;
         let base2k_half: i64 = (base2k >> 1) as i64;
 
-        let size: usize = self.n() * (limbs - 1);
+        let size: usize = self.n() * limbs;
 
         self.data[..size]
             .iter_mut()

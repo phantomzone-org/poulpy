@@ -8,8 +8,8 @@ use sampling::source::Source;
 pub struct SecretKey(pub Scalar);
 
 impl SecretKey {
-    pub fn new(params: &Module) -> Self {
-        SecretKey(Scalar::new(params.n()))
+    pub fn new(module: &Module) -> Self {
+        SecretKey(Scalar::new(module.n()))
     }
 
     pub fn fill_ternary_prob(&mut self, prob: f64, source: &mut Source) {
@@ -58,7 +58,7 @@ impl PublicKey {
     }
 }
 
-pub struct SwitchingKey(GadgetCiphertext);
+pub struct SwitchingKey(pub GadgetCiphertext);
 
 impl SwitchingKey {
     pub fn new(

@@ -145,28 +145,35 @@ pub fn encrypt_rlwe_sk_thread_safe(
     // c1 <- Z_{2^prec}[X]/(X^{N}+1)
     c1.fill_uniform(log_base2k, limbs, source_xa);
 
-    let bytes_of_vec_znx_dft = module.bytes_of_vec_znx_dft(limbs);
+    let bytes_of_vec_znx_dft: usize = module.bytes_of_vec_znx_dft(limbs);
 
     // Scratch space for DFT values
     let mut buf_dft: VecZnxDft =
         VecZnxDft::from_bytes(limbs, &mut tmp_bytes[..bytes_of_vec_znx_dft]);
 
-    // Applies buf_dft <- s * c1
+    // Applies buf_dft <- DFT(s) * DFT(c1)
     module.svp_apply_dft(&mut buf_dft, sk, c1, limbs);
 
     // Alias scratch space
     let mut buf_big: VecZnxBig = buf_dft.as_vec_znx_big();
 
-    if let Some(pt) = pt {
-        // buf_big <- m - buf_big
-        module.vec_znx_big_sub_small_a_inplace(&mut buf_big, pt.at(0));
-    };
+    // buf_big = s x c1
+    module.vec_znx_idft_tmp_a(&mut buf_big, &mut buf_dft, limbs);
 
     let carry: &mut [u8] = &mut tmp_bytes[bytes_of_vec_znx_dft..];
 
-    // c0 <- normalize(buf_big) + e
+    // c0 <- -s x c1 + m
     let c0: &mut VecZnx = ct.at_mut(0);
-    module.vec_znx_big_normalize(log_base2k, c0, &buf_big, carry);
+
+    if let Some(pt) = pt {
+        module.vec_znx_big_sub_small_a_inplace(&mut buf_big, pt.at(0));
+        module.vec_znx_big_normalize(log_base2k, c0, &buf_big, carry);
+    } else {
+        module.vec_znx_big_normalize(log_base2k, c0, &buf_big, carry);
+        module.vec_znx_negate_inplace(c0);
+    }
+
+    // c0 <- -s x c1 + m + e
     c0.add_normal(log_base2k, log_q, source_xe, sigma, (sigma * 6.0).ceil());
 }
 

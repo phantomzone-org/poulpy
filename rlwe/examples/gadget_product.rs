@@ -28,7 +28,13 @@ fn main() {
             | params.encrypt_rlwe_sk_tmp_bytes(params.log_q())
     ];
 
-    let sk: SecretKey = SecretKey::new(params.module());
+    let mut source: Source = Source::new([0; 32]);
+
+    let mut sk0: SecretKey = SecretKey::new(params.module());
+    let mut sk1: SecretKey = SecretKey::new(params.module());
+
+    sk0.fill_ternary_hw(params.xs(), &mut source);
+    sk1.fill_ternary_hw(params.xs(), &mut source);
 
     let mut want = vec![i64::default(); params.n()];
 
@@ -52,7 +58,7 @@ fn main() {
     let mut source_xa: Source = Source::new(new_seed());
 
     let mut sk_svp_ppol: base2k::SvpPPol = params.module().svp_new_ppol();
-    params.module().svp_prepare(&mut sk_svp_ppol, &sk.0);
+    params.module().svp_prepare(&mut sk_svp_ppol, &sk0.0);
 
     params.encrypt_rlwe_sk_thread_safe(
         &mut ct,

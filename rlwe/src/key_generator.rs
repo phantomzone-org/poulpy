@@ -1,7 +1,7 @@
-use crate::encryptor::encrypt_grlwe_sk_thread_safe;
+use crate::encryptor::{encrypt_grlwe_sk_thread_safe, encrypt_grlwe_sk_tmp_bytes};
 use crate::keys::{PublicKey, SecretKey, SwitchingKey};
 use crate::parameters::Parameters;
-use base2k::SvpPPol;
+use base2k::{Module, SvpPPol, SvpPPolOps};
 use sampling::source::Source;
 
 pub struct KeyGenerator {}
@@ -38,21 +38,28 @@ impl KeyGenerator {
         );
         pk
     }
+}
 
-    pub fn gen_switching_key_thread_safe(
-        &self,
-        params: &Parameters,
-        sk_in: &SecretKey,
-        sk_out: &SecretKey,
-        rows: usize,
-        log_q: usize,
-        tmp_bytes: &mut [u8],
-    ) -> SwitchingKey {
-        let swk: SwitchingKey = SwitchingKey::new(params.module(), params.log_base2k(), rows, log_q, 0);
+pub fn gen_switching_key_thread_safe_tmp_bytes(
+    module: &Module,
+    log_base2k: usize,
+    rows: usize,
+    log_q: usize,
+) -> usize {
+    encrypt_grlwe_sk_tmp_bytes(module, log_base2k, rows, log_q)
+}
 
-        let module: &base2k::Module = params.module();
-
-        encrypt_grlwe_sk_thread_safe(module, swk.0, &sk_in.0, sk_out, source_xa, source_xe, sigma, tmp_bytes);
-        swk
-    }
+pub fn gen_switching_key_thread_safe(
+    module: &Module,
+    swk: &mut SwitchingKey,
+    sk_in: &SecretKey,
+    sk_out: &SvpPPol,
+    source_xa: &mut Source,
+    source_xe: &mut Source,
+    sigma: f64,
+    tmp_bytes: &mut [u8],
+) {
+    encrypt_grlwe_sk_thread_safe(
+        module, &mut swk.0, &sk_in.0, sk_out, source_xa, source_xe, sigma, tmp_bytes,
+    );
 }
