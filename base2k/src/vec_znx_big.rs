@@ -75,9 +75,9 @@ impl Module {
                 c.0,
                 c.limbs() as u64,
                 b.0,
-                a.limbs() as u64,
-                a.as_ptr(),
                 b.limbs() as u64,
+                a.as_ptr(),
+                a.limbs() as u64,
                 a.n() as u64,
             )
         }
@@ -91,7 +91,7 @@ impl Module {
                 b.0,
                 b.limbs() as u64,
                 b.0,
-                a.limbs() as u64,
+                b.limbs() as u64,
                 a.as_ptr(),
                 a.limbs() as u64,
                 a.n() as u64,

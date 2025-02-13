@@ -1,4 +1,6 @@
-use base2k::{FFT64, Infos, Sampling, Scalar, SvpPPolOps, VecZnx, VecZnxBig, VecZnxDft, VecZnxOps};
+use base2k::{
+    Encoding, FFT64, Infos, Sampling, Scalar, SvpPPolOps, VecZnx, VecZnxBig, VecZnxDft, VecZnxOps,
+};
 use rlwe::{
     ciphertext::{Ciphertext, GadgetCiphertext},
     decryptor::{Decryptor, decrypt_rlwe_thread_safe, decrypt_rlwe_thread_safe_tmp_byte},
@@ -7,7 +9,7 @@ use rlwe::{
         EncryptorSk, encrypt_grlwe_sk_thread_safe, encrypt_grlwe_sk_tmp_bytes,
         encrypt_rlwe_sk_tmp_bytes,
     },
-    evaluator::{gadget_product_thread_safe, gadget_product_tmp_bytes},
+    evaluator::{gadget_product_inplace_thread_safe, gadget_product_tmp_bytes},
     key_generator::{gen_switching_key_thread_safe, gen_switching_key_thread_safe_tmp_bytes},
     keys::{SecretKey, SwitchingKey},
     parameters::{Parameters, ParametersLiteral},
@@ -56,9 +58,11 @@ fn main() {
 
     let mut source: Source = Source::new([3; 32]);
 
-    let mut sk: SecretKey = SecretKey::new(params.module());
+    let mut sk0: SecretKey = SecretKey::new(params.module());
+    let mut sk1: SecretKey = SecretKey::new(params.module());
 
-    sk.fill_ternary_hw(params.xs(), &mut source);
+    sk0.fill_ternary_hw(params.xs(), &mut source);
+    sk1.fill_ternary_hw(params.xs(), &mut source);
 
     let mut want = vec![i64::default(); params.n()];
 
@@ -71,8 +75,11 @@ fn main() {
     let mut source_xe: Source = Source::new([4; 32]);
     let mut source_xa: Source = Source::new([5; 32]);
 
-    let mut sk_svp_ppol: base2k::SvpPPol = params.module().new_svp_ppol();
-    params.module().svp_prepare(&mut sk_svp_ppol, &sk.0);
+    let mut sk0_svp_ppol: base2k::SvpPPol = params.module().new_svp_ppol();
+    params.module().svp_prepare(&mut sk0_svp_ppol, &sk0.0);
+
+    let mut sk1_svp_ppol: base2k::SvpPPol = params.module().new_svp_ppol();
+    params.module().svp_prepare(&mut sk1_svp_ppol, &sk1.0);
 
     let mut gadget_ct: GadgetCiphertext = GadgetCiphertext::new(
         params.module(),
@@ -81,67 +88,68 @@ fn main() {
         params.log_qp(),
     );
 
-    let mut m: Scalar = Scalar::new(params.n());
-    m.fill_ternary_prob(0.5, &mut source_xa);
-
     encrypt_grlwe_sk_thread_safe(
         params.module(),
         &mut gadget_ct,
-        &m,
-        &sk_svp_ppol,
+        &sk0.0,
+        &sk1_svp_ppol,
         &mut source_xa,
         &mut source_xe,
         params.xe(),
         &mut tmp_bytes,
     );
 
-    let mut res: Elem = Elem::new(params.module(), log_base2k, params.log_q(), 1, 0);
-    let mut a: VecZnx = VecZnx::new(params.module().n(), params.limbs_q());
-    a.fill_uniform(params.log_base2k(), a.limbs(), &mut source_xa);
-    gadget_product_thread_safe(params.module(), &mut res, &a, &gadget_ct, &mut tmp_bytes);
-
-    println!("a.limbs()={}", a.limbs());
-    println!("gadget_ct.rows()={}", gadget_ct.rows());
-    println!("gadget_ct.cols()={}", gadget_ct.cols());
-    println!("res.limbs()={}", res.limbs());
-    println!();
-
-    println!("a:");
-    a.print_limbs(a.limbs(), 16);
-    println!();
-
-    println!("m:");
-    println!("{:?}", &m.0[..16]);
-    println!();
-
-    let mut a_res: Elem = Elem::new(params.module(), params.log_base2k(), params.log_q(), 0, 0);
-
-    decrypt_rlwe_thread_safe(
+    let mut pt: Plaintext = Plaintext::new(
         params.module(),
-        &mut a_res,
-        &res,
-        &sk_svp_ppol,
+        params.log_base2k(),
+        params.log_q(),
+        params.log_scale(),
+    );
+
+    let mut want = vec![i64::default(); params.n()];
+    want.iter_mut().enumerate().for_each(|(i, x)| *x = i as i64);
+    pt.0.value[0].encode_vec_i64(log_base2k, log_k, &want, 32);
+    pt.0.value[0].normalize(log_base2k, &mut tmp_bytes);
+
+    let mut ct: Ciphertext = params.new_ciphertext(params.log_q());
+
+    params.encrypt_rlwe_sk_thread_safe(
+        &mut ct,
+        Some(&pt),
+        &sk0_svp_ppol,
+        &mut source_xa,
+        &mut source_xe,
         &mut tmp_bytes,
     );
 
-    let mut m_svp_ppol = params.module().new_svp_ppol();
-    params.module().svp_prepare(&mut m_svp_ppol, &m);
+    gadget_product_inplace_thread_safe::<true>(
+        params.module(),
+        &mut ct.0,
+        &gadget_ct,
+        &mut tmp_bytes,
+    );
 
-    let mut a_dft: VecZnxDft = params.module().new_vec_znx_dft(a.limbs());
-    let mut a_big: VecZnxBig = a_dft.as_vec_znx_big();
+    println!("ct.limbs()={}", ct.limbs());
+    println!("gadget_ct.rows()={}", gadget_ct.rows());
+    println!("gadget_ct.cols()={}", gadget_ct.cols());
+    println!("res.limbs()={}", ct.limbs());
+    println!();
 
-    params
-        .module()
-        .svp_apply_dft(&mut a_dft, &m_svp_ppol, &a, a.limbs());
-    params
-        .module()
-        .vec_znx_idft_tmp_a(&mut a_big, &mut a_dft, a.limbs());
-    params
-        .module()
-        .vec_znx_big_normalize(params.log_base2k(), &mut a, &a_big, &mut tmp_bytes);
+    decrypt_rlwe_thread_safe(
+        params.module(),
+        &mut pt.0,
+        &ct.0,
+        &sk1_svp_ppol,
+        &mut tmp_bytes,
+    );
 
-    params.module().vec_znx_sub_inplace(&mut a, &a_res.value[0]);
+    pt.0.value[0].print_limbs(pt.limbs(), 16);
 
-    println!("a*m - dec(a * GRLWE(m))");
-    a.print_limbs(a.limbs(), 16);
+    let mut have = vec![i64::default(); params.n()];
+
+    println!("pt: {}", log_k);
+    pt.0.value[0].decode_vec_i64(pt.log_base2k(), log_k, &mut have);
+
+    println!("want: {:?}", &want[..16]);
+    println!("have: {:?}", &have[..16]);
 }
