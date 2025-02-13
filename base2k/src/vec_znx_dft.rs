@@ -63,7 +63,7 @@ impl Module {
             b.limbs(),
             a_limbs
         );
-        unsafe { vec_znx_dft::vec_znx_idft_tmp_a(self.0, b.0, a_limbs as u64, a.0, a_limbs as u64) }
+        unsafe { vec_znx_dft::vec_znx_idft_tmp_a(self.0, b.0, b.limbs() as u64, a.0, a_limbs as u64) }
     }
 
     // Returns the size of the scratch space for [vec_znx_idft].
@@ -86,7 +86,7 @@ impl Module {
             vec_znx_dft::vec_znx_dft(
                 self.0,
                 b.0,
-                a_limbs as u64,
+                b.limbs() as u64,
                 a.as_ptr(),
                 a_limbs as u64,
                 a.n as u64,
@@ -97,21 +97,21 @@ impl Module {
     // b <- IDFT(a), scratch space size obtained with [vec_znx_idft_tmp_bytes].
     pub fn vec_znx_idft(
         &self,
-        b_vector: &mut VecZnxBig,
-        a_vector: &mut VecZnxDft,
+        b: &mut VecZnxBig,
+        a: &mut VecZnxDft,
         a_limbs: usize,
         tmp_bytes: &mut [u8],
     ) {
         assert!(
-            b_vector.limbs() >= a_limbs,
-            "invalid c_vector: b_vector.limbs()={} < a_limbs={}",
-            b_vector.limbs(),
+            b.limbs() >= a_limbs,
+            "invalid c_vector: b.limbs()={} < a_limbs={}",
+            b.limbs(),
             a_limbs
         );
         assert!(
-            a_vector.limbs() >= a_limbs,
-            "invalid c_vector: c_vector.limbs()={} < a_limbs={}",
-            a_vector.limbs(),
+            a.limbs() >= a_limbs,
+            "invalid c_vector: a.limbs()={} < a_limbs={}",
+            a.limbs(),
             a_limbs
         );
         assert!(
@@ -123,9 +123,9 @@ impl Module {
         unsafe {
             vec_znx_dft::vec_znx_idft(
                 self.0,
-                b_vector.0,
-                a_limbs as u64,
-                a_vector.0,
+                b.0,
+                a.limbs() as u64,
+                a.0,
                 a_limbs as u64,
                 tmp_bytes.as_mut_ptr(),
             )
