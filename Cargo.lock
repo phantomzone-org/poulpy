@@ -637,6 +637,7 @@ name = "rlwe"
 version = "0.1.0"
 dependencies = [
  "base2k",
+ "criterion",
  "rand_distr",
  "sampling",
 ]
