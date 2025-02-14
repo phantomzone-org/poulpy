@@ -11,13 +11,6 @@ pub trait VecZnxApi {
     /// Returns the minimum size of the [u8] array required to assign a
     /// new backend array to a [VecZnx] through [VecZnx::from_bytes].
     fn bytes_of(n: usize, limbs: usize) -> usize;
-    /// Returns a new struct implementing [VecZnxApi] with the provided data as backing array.
-    ///
-    /// The struct will take ownership of buf[..[VecZnx::bytes_of]]
-    ///
-    /// User must ensure that data is properly alligned and that
-    /// the size of data is at least equal to [Module::bytes_of_vec_znx].
-    fn from_bytes(n: usize, limbs: usize, bytes: &mut [u8]) -> impl VecZnxApi;
     fn as_ptr(&self) -> *const i64;
     fn as_mut_ptr(&mut self) -> *mut i64;
     fn at(&self, i: usize) -> &[i64];
@@ -38,12 +31,14 @@ pub struct VecZnxBorrow {
     pub data: *mut i64,
 }
 
-impl VecZnxApi for VecZnxBorrow {
-    fn bytes_of(n: usize, limbs: usize) -> usize {
-        bytes_of_vec_znx(n, limbs)
-    }
-
-    fn from_bytes(n: usize, limbs: usize, bytes: &mut [u8]) -> impl VecZnxApi {
+impl VecZnxBorrow {
+    /// Returns a new struct implementing [VecZnxApi] with the provided data as backing array.
+    ///
+    /// The struct will take ownership of buf[..[VecZnx::bytes_of]]
+    ///
+    /// User must ensure that data is properly alligned and that
+    /// the size of data is at least equal to [Module::bytes_of_vec_znx].
+    pub fn from_bytes(n: usize, limbs: usize, bytes: &mut [u8]) -> impl VecZnxApi {
         let size = Self::bytes_of(n, limbs);
         assert!(
             bytes.len() >= size,
@@ -58,6 +53,12 @@ impl VecZnxApi for VecZnxBorrow {
             limbs: limbs,
             data: cast_mut(&mut bytes[..size]).as_mut_ptr(),
         }
+    }
+}
+
+impl VecZnxApi for VecZnxBorrow {
+    fn bytes_of(n: usize, limbs: usize) -> usize {
+        bytes_of_vec_znx(n, limbs)
     }
 
     fn as_ptr(&self) -> *const i64 {
@@ -116,18 +117,14 @@ impl VecZnxApi for VecZnxBorrow {
     }
 }
 
-impl VecZnxApi for VecZnx {
-    fn bytes_of(n: usize, limbs: usize) -> usize {
-        bytes_of_vec_znx(n, limbs)
-    }
-
+impl VecZnx {
     /// Returns a new struct implementing [VecZnxApi] with the provided data as backing array.
     ///
     /// The struct will take ownership of buf[..[VecZnx::bytes_of]]
     ///
     /// User must ensure that data is properly alligned and that
     /// the size of data is at least equal to [Module::bytes_of_vec_znx].
-    fn from_bytes(n: usize, limbs: usize, buf: &mut [u8]) -> impl VecZnxApi {
+    pub fn from_bytes(n: usize, limbs: usize, buf: &mut [u8]) -> impl VecZnxApi {
         let size = Self::bytes_of(n, limbs);
         assert!(
             buf.len() >= size,
@@ -142,6 +139,12 @@ impl VecZnxApi for VecZnx {
             n: n,
             data: alias_mut_slice_to_vec(cast_mut(&mut buf[..size])),
         }
+    }
+}
+
+impl VecZnxApi for VecZnx {
+    fn bytes_of(n: usize, limbs: usize) -> usize {
+        bytes_of_vec_znx(n, limbs)
     }
 
     /// Returns a non-mutable pointer to the backing array of the [VecZnx].
