@@ -1,33 +1,51 @@
 use base2k::{
-    Encoding, FFT64, Infos, Module, Sampling, Scalar, SvpPPolOps, VecZnx, VecZnxBig, VecZnxDft,
-    VecZnxOps,
+    FFT64, Module, Sampling, SvpPPolOps, VecZnx, VecZnxApi, VecZnxBig, VecZnxDft, VecZnxDftOps,
+    VmpPMat, VmpPMatOps, alloc_aligned_u8,
 };
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use rlwe::{
     ciphertext::{Ciphertext, GadgetCiphertext},
-    decryptor::{Decryptor, decrypt_rlwe_thread_safe, decrypt_rlwe_thread_safe_tmp_byte},
     elem::Elem,
-    encryptor::{
-        EncryptorSk, encrypt_grlwe_sk_thread_safe, encrypt_grlwe_sk_tmp_bytes,
-        encrypt_rlwe_sk_tmp_bytes,
-    },
-    evaluator::{gadget_product_inplace_thread_safe, gadget_product_tmp_bytes},
-    key_generator::{gen_switching_key_thread_safe, gen_switching_key_thread_safe_tmp_bytes},
-    keys::{SecretKey, SwitchingKey},
+    encryptor::{encrypt_grlwe_sk_thread_safe, encrypt_grlwe_sk_tmp_bytes},
+    evaluator::gadget_product_tmp_bytes,
+    key_generator::gen_switching_key_thread_safe_tmp_bytes,
+    keys::SecretKey,
     parameters::{Parameters, ParametersLiteral},
-    plaintext::Plaintext,
 };
 use sampling::source::{Source, new_seed};
 
 fn gadget_product_inplace(c: &mut Criterion) {
     fn gadget_product<'a>(
         module: &'a Module,
-        elem: &'a mut Elem,
+        elem: &'a mut Elem<VecZnx>,
         gadget_ct: &'a GadgetCiphertext,
         tmp_bytes: &'a mut [u8],
     ) -> Box<dyn FnMut() + 'a> {
+        let factor: usize = 2;
+
+        let log_base2k: usize = 32;
+        let limbs: usize = 2;
+        let rows: usize = factor * limbs;
+        let cols: usize = factor * limbs + 1;
+
+        let pmat: VmpPMat = module.new_vmp_pmat(rows, cols);
+
+        let mut tmp_bytes: Vec<u8> =
+            alloc_aligned_u8(module.vmp_apply_dft_tmp_bytes(cols, rows, rows, cols), 64);
+
+        let mut a_dft: VecZnxDft = module.new_vec_znx_dft(rows);
+        let mut res_dft: VecZnxDft = module.new_vec_znx_dft(cols);
+        let mut res_big: VecZnxBig = res_dft.as_vec_znx_big();
+        let mut a: VecZnx = VecZnx::new(module.n(), rows);
+        let mut source = Source::new(new_seed());
+        module.fill_uniform(log_base2k, &mut a, limbs, &mut source);
+
         Box::new(move || {
-            gadget_product_inplace_thread_safe::<true>(module, elem, gadget_ct, tmp_bytes)
+            module.vec_znx_dft(&mut a_dft, &a, rows);
+            module.vmp_apply_dft_to_dft(&mut res_dft, &mut a_dft, &pmat, &mut tmp_bytes);
+            module.vec_znx_idft_tmp_a(&mut res_big, &mut res_dft, cols);
+
+            //gadget_product_inplace_thread_safe::<true>(module, elem, gadget_ct, tmp_bytes)
         })
     }
 
@@ -47,15 +65,14 @@ fn gadget_product_inplace(c: &mut Criterion) {
 
         let params: Parameters = Parameters::new::<FFT64>(&params_lit);
 
-        let mut tmp_bytes: Vec<u8> = vec![
-            0u8;
+        let mut tmp_bytes: Vec<u8> = alloc_aligned_u8(
             params.decrypt_rlwe_thread_safe_tmp_byte(params.log_q())
                 | params.encrypt_rlwe_sk_tmp_bytes(params.log_q())
                 | gen_switching_key_thread_safe_tmp_bytes(
                     params.module(),
                     params.log_base2k(),
                     params.limbs_q(),
-                    params.log_q()
+                    params.log_q(),
                 )
                 | gadget_product_tmp_bytes(
                     params.module(),
@@ -63,15 +80,16 @@ fn gadget_product_inplace(c: &mut Criterion) {
                     params.log_q(),
                     params.log_q(),
                     params.limbs_q(),
-                    params.log_qp()
+                    params.log_qp(),
                 )
                 | encrypt_grlwe_sk_tmp_bytes(
                     params.module(),
                     params.log_base2k(),
                     params.limbs_qp(),
-                    params.log_qp()
-                )
-        ];
+                    params.log_qp(),
+                ),
+            64,
+        );
 
         let mut source: Source = Source::new([3; 32]);
 

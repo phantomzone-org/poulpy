@@ -1,11 +1,13 @@
 use crate::{
-    ciphertext::{Ciphertext, GadgetCiphertext},
-    elem::Elem,
+    ciphertext::Ciphertext,
+    elem::{Elem, ElemBasics},
     keys::SecretKey,
     parameters::Parameters,
     plaintext::Plaintext,
 };
-use base2k::{Module, SvpPPol, SvpPPolOps, VecZnxDft};
+use base2k::{
+    Infos, VecZnx, Module, SvpPPol, SvpPPolOps, VecZnxApi, VecZnxBigOps, VecZnxDft, VecZnxDftOps,
+};
 use std::cmp::min;
 
 pub struct Decryptor {
@@ -34,7 +36,7 @@ impl Parameters {
 
     pub fn decrypt_rlwe_thread_safe(
         &self,
-        res: &mut Plaintext,
+        res: &mut Plaintext<VecZnx>,
         ct: &Ciphertext,
         sk: &SvpPPol,
         tmp_bytes: &mut [u8],
@@ -43,13 +45,15 @@ impl Parameters {
     }
 }
 
-pub fn decrypt_rlwe_thread_safe(
+pub fn decrypt_rlwe_thread_safe<T>(
     module: &Module,
-    res: &mut Elem,
-    a: &Elem,
+    res: &mut Elem<T>,
+    a: &Elem<T>,
     sk: &SvpPPol,
     tmp_bytes: &mut [u8],
-) {
+) where
+    T: VecZnxApi + Infos,
+{
     assert!(
         tmp_bytes.len() >= decrypt_rlwe_thread_safe_tmp_byte(module, a.limbs()),
         "invalid tmp_bytes: tmp_bytes.len()={} < decrypt_rlwe_thread_safe_tmp_byte={}",

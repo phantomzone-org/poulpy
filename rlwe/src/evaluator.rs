@@ -1,9 +1,11 @@
 use crate::{
-    ciphertext::{Ciphertext, GadgetCiphertext},
-    elem::Elem,
-    keys::SwitchingKey,
+    ciphertext::{Ciphertext, GadgetCiphertext, RGSWCiphertext},
+    elem::{Elem, ElemBasics},
 };
-use base2k::{Infos, Module, VecZnx, VecZnxBig, VecZnxDft, VecZnxOps, VmpPMatOps};
+use base2k::{
+    Infos, Module, VecZnx, VecZnxApi, VecZnxBig, VecZnxBigOps, VecZnxDft, VecZnxDftOps, VmpPMatOps,
+};
+use std::cmp::min;
 
 pub fn gadget_product_tmp_bytes(
     module: &Module,
@@ -20,15 +22,17 @@ pub fn gadget_product_tmp_bytes(
         + 2 * module.bytes_of_vec_znx_dft(gct_cols)
 }
 
-pub fn gadget_product_inplace_thread_safe<const OVERWRITE: bool>(
+pub fn gadget_product_inplace_thread_safe<const OVERWRITE: bool, T>(
     module: &Module,
-    res: &mut Elem,
+    res: &mut Elem<T>,
     b: &GadgetCiphertext,
     tmp_bytes: &mut [u8],
-) {
+) where
+    T: VecZnxApi + Infos,
+{
     unsafe {
-        let a_ptr: *const VecZnx = res.at(1) as *const VecZnx;
-        gadget_product_thread_safe::<OVERWRITE>(module, res, &*a_ptr, b, tmp_bytes);
+        let a_ptr: *const T = res.at(1) as *const T;
+        gadget_product_thread_safe::<OVERWRITE, T>(module, res, &*a_ptr, b, tmp_bytes);
     }
 }
 
@@ -46,54 +50,105 @@ pub fn gadget_product_inplace_thread_safe<const OVERWRITE: bool>(
 ///
 /// res = sum[min(a_ncols, b_nrows)] decomp(a, i) * (-B[i]s + m * 2^{-k*i} + E[i], B[i])
 ///     = (cs + m * a + e, c) with min(res_limbs, b_cols) limbs.
-pub fn gadget_product_thread_safe<const OVERWRITE: bool>(
+pub fn gadget_product_thread_safe<const OVERWRITE: bool, T>(
     module: &Module,
-    res: &mut Elem,
-    a: &VecZnx,
+    res: &mut Elem<T>,
+    a: &T,
     b: &GadgetCiphertext,
     tmp_bytes: &mut [u8],
-) {
+) where
+    T: VecZnxApi + Infos,
+{
     let log_base2k: usize = b.log_base2k();
+    let rows: usize = min(b.rows(), a.limbs());
     let cols: usize = b.cols();
 
-    let (tmp_bytes_vmp_apply_dft, tmp_bytes) =
-        tmp_bytes.split_at_mut(module.bytes_of_vec_znx_dft(cols));
+    let bytes_vmp_apply_dft: usize =
+        module.vmp_apply_dft_to_dft_tmp_bytes(cols, a.limbs(), rows, cols);
+    let bytes_vec_znx_dft: usize = module.bytes_of_vec_znx_dft(cols);
 
-    let (tmp_bytes_c1_dft, tmp_bytes_res_dft) = tmp_bytes.split_at_mut(tmp_bytes.len() >> 1);
+    let (tmp_bytes_vmp_apply_dft, tmp_bytes) = tmp_bytes.split_at_mut(bytes_vmp_apply_dft);
+    let (tmp_bytes_c1_dft, tmp_bytes_res_dft) = tmp_bytes.split_at_mut(bytes_vec_znx_dft);
 
-    let mut c1_dft: VecZnxDft = module.new_vec_znx_from_bytes(cols, tmp_bytes_c1_dft);
-    let mut res_dft: VecZnxDft = module.new_vec_znx_from_bytes(cols, tmp_bytes_res_dft);
+    let mut c1_dft: VecZnxDft = module.new_vec_znx_dft_from_bytes(cols, tmp_bytes_c1_dft);
+    let mut res_dft: VecZnxDft = module.new_vec_znx_dft_from_bytes(cols, tmp_bytes_res_dft);
     let mut res_big: VecZnxBig = res_dft.as_vec_znx_big();
 
-    // a_dft <- DFT(a) [cols]
+    // Alias c0 and c1 part of res_big
+    let (tmp_bytes_res_dft_c0, tmp_bytes_res_dft_c1) =
+        tmp_bytes_res_dft.split_at_mut(bytes_vec_znx_dft >> 1);
+    let res_big_c0: VecZnxBig = module.new_vec_znx_big_from_bytes(cols >> 1, tmp_bytes_res_dft_c0);
+    let mut res_big_c1: VecZnxBig =
+        module.new_vec_znx_big_from_bytes(cols >> 1, tmp_bytes_res_dft_c1);
+
+    // a_dft <- DFT(a)
     module.vec_znx_dft(&mut c1_dft, a, a.limbs());
 
-    // >>>>>>>> RES[0]
+    // (n x cols) <- (n x limbs=rows) x (rows x cols)
+    // res_dft[a * (G0|G1)] <- sum[rows] DFT(a) x (DFT(G0)|DFT(G1))
+    module.vmp_apply_dft_to_dft(&mut res_dft, &c1_dft, &b.value, tmp_bytes_vmp_apply_dft);
 
-    // res_dft <- sum[rows] DFT(a)[cols] x GadgetCiphertext[0][cols]
-    module.vmp_apply_dft_to_dft(&mut res_dft, &c1_dft, &b.value[0], tmp_bytes_vmp_apply_dft);
-
-    // res_big <- IDFT(DFT(a) x GadgetCiphertext[0])
+    // res_big[a * (G0|G1)] <- IDFT(res_dft[a * (G0|G1)])
     module.vec_znx_idft_tmp_a(&mut res_big, &mut res_dft, cols);
 
-    // res_big <- res[0] + a_dft x GadgetCiphertext[0]
+    // res_big <- res[0] + res_big[a*G0]
     module.vec_znx_big_add_small_inplace(&mut res_big, res.at(0));
-    module.vec_znx_big_normalize(log_base2k, res.at_mut(0), &res_big, tmp_bytes_vmp_apply_dft);
-
-    // >>>>>>>> RES[1]
-
-    // res_dft <- DFT(c1) x GadgetCiphertext[1]
-    module.vmp_apply_dft_to_dft(&mut res_dft, &c1_dft, &b.value[1], tmp_bytes_vmp_apply_dft);
-
-    // res_big <- IDFT(DFT(c1) x GadgetCiphertext[1])
-    module.vec_znx_idft_tmp_a(&mut res_big, &mut res_dft, cols);
+    module.vec_znx_big_normalize(log_base2k, res.at_mut(0), &res_big_c0, tmp_bytes_c1_dft);
 
     if OVERWRITE {
-        // res[1] = normalize(a_dft x GadgetCiphertext[1])
-        module.vec_znx_big_normalize(log_base2k, res.at_mut(1), &res_big, tmp_bytes_vmp_apply_dft);
+        // res[1] = normalize(res_big[a*G1])
+        module.vec_znx_big_normalize(log_base2k, res.at_mut(1), &res_big_c1, tmp_bytes_c1_dft);
     } else {
-        // res[1] = normalize(a_dft x GadgetCiphertext[1] + res[1])
-        module.vec_znx_big_add_small_inplace(&mut res_big, res.at(0));
-        module.vec_znx_big_normalize(log_base2k, res.at_mut(0), &res_big, tmp_bytes_vmp_apply_dft);
+        // res[1] = normalize(res_big[a*G1] + res[1])
+        module.vec_znx_big_add_small_inplace(&mut res_big_c1, res.at(1));
+        module.vec_znx_big_normalize(log_base2k, res.at_mut(1), &res_big_c1, tmp_bytes_c1_dft);
     }
+}
+
+pub fn rgsw_product_thread_safe<T>(
+    module: &Module,
+    res: &mut Elem<T>,
+    a: &Ciphertext,
+    b: &RGSWCiphertext,
+    tmp_bytes: &mut [u8],
+) where
+    T: VecZnxApi + Infos,
+{
+    let log_base2k: usize = b.log_base2k();
+    let rows: usize = a.limbs();
+    let cols: usize = b.cols();
+    let in_limbs = a.limbs();
+    let out_limbs: usize = a.limbs();
+
+    let bytes_of_vec_znx_dft = module.bytes_of_vec_znx_dft(cols);
+    let bytes_of_vmp_apply_dft_to_dft =
+        module.vmp_apply_dft_to_dft_tmp_bytes(out_limbs, in_limbs, rows, cols);
+
+    let (tmp_bytes_c0_dft, tmp_bytes) = tmp_bytes.split_at_mut(bytes_of_vec_znx_dft);
+    let (tmp_bytes_c1_dft, tmp_bytes) = tmp_bytes.split_at_mut(bytes_of_vec_znx_dft);
+    let (tmp_bytes_tmp_dft, tmp_bytes) = tmp_bytes.split_at_mut(bytes_of_vec_znx_dft);
+    let (tmp_bytes_r1_dft, tmp_bytes) = tmp_bytes.split_at_mut(bytes_of_vec_znx_dft);
+    let (tmp_bytes_r2_dft, tmp_bytes) = tmp_bytes.split_at_mut(bytes_of_vec_znx_dft);
+    let (bytes_of_vmp_apply_dft_to_dft, tmp_bytes) =
+        tmp_bytes.split_at_mut(bytes_of_vmp_apply_dft_to_dft);
+
+    let mut c0_dft: VecZnxDft = module.new_vec_znx_dft_from_bytes(cols, tmp_bytes_c0_dft);
+    let mut c1_dft: VecZnxDft = module.new_vec_znx_dft_from_bytes(cols, tmp_bytes_c1_dft);
+    let mut tmp_dft: VecZnxDft = module.new_vec_znx_dft_from_bytes(cols, tmp_bytes_tmp_dft);
+    let mut r1_dft: VecZnxDft = module.new_vec_znx_dft_from_bytes(cols, tmp_bytes_r1_dft);
+    let mut r2_dft: VecZnxDft = module.new_vec_znx_dft_from_bytes(cols, tmp_bytes_r2_dft);
+
+    // c0_dft <- DFT(a[0])
+    module.vec_znx_dft(&mut c0_dft, a.at(0), a.limbs());
+
+    // r_dft <- sum[rows] c0_dft[cols] x RGSW[0][cols]
+    module.vmp_apply_dft_to_dft(
+        &mut r1_dft,
+        &c1_dft,
+        &b.value,
+        bytes_of_vmp_apply_dft_to_dft,
+    );
+
+    // c1_dft <- DFT(a[1])
+    module.vec_znx_dft(&mut c1_dft, a.at(1), a.limbs());
 }

@@ -1,5 +1,6 @@
 use base2k::{
-    Encoding, FFT64, Infos, Sampling, Scalar, SvpPPolOps, VecZnx, VecZnxBig, VecZnxDft, VecZnxOps,
+    Encoding, FFT64, Infos, Sampling, Scalar, SvpPPolOps, VecZnx, VecZnxApi, VecZnxBig, VecZnxDft,
+    VecZnxOps,
 };
 use rlwe::{
     ciphertext::{Ciphertext, GadgetCiphertext},
@@ -19,13 +20,13 @@ use sampling::source::{Source, new_seed};
 
 fn main() {
     let params_lit: ParametersLiteral = ParametersLiteral {
-        log_n: 10,
+        log_n: 4,
         log_q: 68,
         log_p: 17,
         log_base2k: 17,
         log_scale: 20,
         xe: 3.2,
-        xs: 128,
+        xs: 8,
     };
 
     let params: Parameters = Parameters::new::<FFT64>(&params_lit);
@@ -99,7 +100,9 @@ fn main() {
         &mut tmp_bytes,
     );
 
-    let mut pt: Plaintext = Plaintext::new(
+    println!("DONE?");
+
+    let mut pt: Plaintext<VecZnx> = Plaintext::<VecZnx>::new(
         params.module(),
         params.log_base2k(),
         params.log_q(),
@@ -122,7 +125,7 @@ fn main() {
         &mut tmp_bytes,
     );
 
-    gadget_product_inplace_thread_safe::<true>(
+    gadget_product_inplace_thread_safe::<true, _>(
         params.module(),
         &mut ct.0,
         &gadget_ct,
@@ -145,7 +148,7 @@ fn main() {
 
     pt.0.value[0].print_limbs(pt.limbs(), 16);
 
-    let mut have = vec![i64::default(); params.n()];
+    let mut have: Vec<i64> = vec![i64::default(); params.n()];
 
     println!("pt: {}", log_k);
     pt.0.value[0].decode_vec_i64(pt.log_base2k(), log_k, &mut have);

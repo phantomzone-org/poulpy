@@ -1,7 +1,7 @@
 use crate::encryptor::{encrypt_grlwe_sk_thread_safe, encrypt_grlwe_sk_tmp_bytes};
 use crate::keys::{PublicKey, SecretKey, SwitchingKey};
 use crate::parameters::Parameters;
-use base2k::{Module, SvpPPol, SvpPPolOps};
+use base2k::{Module, SvpPPol};
 use sampling::source::Source;
 
 pub struct KeyGenerator {}

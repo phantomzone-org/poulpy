@@ -1,4 +1,4 @@
-use base2k::{Encoding, FFT64, SvpPPolOps};
+use base2k::{Encoding, FFT64, SvpPPolOps, VecZnxApi, VecZnx};
 use rlwe::{
     ciphertext::Ciphertext,
     decryptor::{Decryptor, decrypt_rlwe_thread_safe_tmp_byte},
@@ -37,7 +37,7 @@ fn main() {
 
     want.iter_mut().enumerate().for_each(|(i, x)| *x = i as i64);
 
-    let mut pt: Plaintext = params.new_plaintext(params.log_q());
+    let mut pt: Plaintext<VecZnx> = params.new_plaintext(params.log_q());
 
     let log_base2k = pt.log_base2k();
 

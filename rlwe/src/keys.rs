@@ -1,8 +1,7 @@
 use crate::ciphertext::GadgetCiphertext;
 use crate::elem::Elem;
 use crate::encryptor::{encrypt_rlwe_sk_thread_safe, encrypt_rlwe_sk_tmp_bytes};
-use crate::parameters::Parameters;
-use base2k::{Module, Scalar, SvpPPol, SvpPPolOps, VmpPMat, VmpPMatOps};
+use base2k::{Module, Scalar, SvpPPol, SvpPPolOps, VecZnx};
 use sampling::source::Source;
 
 pub struct SecretKey(pub Scalar);
@@ -25,7 +24,7 @@ impl SecretKey {
     }
 }
 
-pub struct PublicKey(pub Elem);
+pub struct PublicKey(pub Elem<VecZnx>);
 
 impl PublicKey {
     pub fn new(module: &Module, log_base2k: usize, log_q: usize) -> PublicKey {

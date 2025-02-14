@@ -1,9 +1,9 @@
-use crate::elem::Elem;
+use crate::elem::{Elem, ElemBasics};
 use crate::parameters::Parameters;
 use crate::plaintext::Plaintext;
-use base2k::{Module, VecZnx, VmpPMat, VmpPMatOps};
+use base2k::{Infos, Module, VecZnx, VecZnxApi, VmpPMat, VmpPMatOps};
 
-pub struct Ciphertext(pub Elem);
+pub struct Ciphertext(pub Elem<VecZnx>);
 
 impl Ciphertext {
     pub fn new(
@@ -32,11 +32,11 @@ impl Ciphertext {
         self.0.limbs()
     }
 
-    pub fn at(&self, i: usize) -> &VecZnx {
+    pub fn at(&self, i: usize) -> &(impl VecZnxApi + Infos) {
         self.0.at(i)
     }
 
-    pub fn at_mut(&mut self, i: usize) -> &mut VecZnx {
+    pub fn at_mut(&mut self, i: usize) -> &mut (impl VecZnxApi + Infos) {
         self.0.at_mut(i)
     }
 
@@ -52,7 +52,7 @@ impl Ciphertext {
         self.0.zero()
     }
 
-    pub fn as_plaintext(&self) -> Plaintext {
+    pub fn as_plaintext(&self) -> Plaintext<VecZnx> {
         unsafe { Plaintext(std::ptr::read(&self.0)) }
     }
 }
@@ -64,7 +64,7 @@ impl Parameters {
 }
 
 pub struct GadgetCiphertext {
-    pub value: Vec<VmpPMat>,
+    pub value: VmpPMat,
     pub log_base2k: usize,
     pub log_q: usize,
 }
@@ -72,29 +72,23 @@ pub struct GadgetCiphertext {
 impl GadgetCiphertext {
     pub fn new(module: &Module, log_base2k: usize, rows: usize, log_q: usize) -> Self {
         let cols: usize = (log_q + log_base2k - 1) / log_base2k;
-        let mut value: Vec<VmpPMat> = Vec::new();
-        (0..rows).for_each(|_| value.push(module.new_vmp_pmat(rows, cols)));
         Self {
-            value,
+            value: module.new_vmp_pmat(rows, cols * 2),
             log_base2k,
             log_q,
         }
     }
 
     pub fn n(&self) -> usize {
-        self.value[0].n
+        self.value.n
     }
 
     pub fn rows(&self) -> usize {
-        self.value[0].rows
+        self.value.rows
     }
 
     pub fn cols(&self) -> usize {
-        self.value[0].cols
-    }
-
-    pub fn degree(&self) -> usize {
-        self.value.len() - 1
+        self.value.cols
     }
 
     pub fn log_q(&self) -> usize {
@@ -107,8 +101,38 @@ impl GadgetCiphertext {
 }
 
 pub struct RGSWCiphertext {
-    pub value: [GadgetCiphertext; 2],
+    pub value: VmpPMat,
     pub log_base2k: usize,
     pub log_q: usize,
-    pub log_p: usize,
+}
+
+impl RGSWCiphertext {
+    pub fn new(module: &Module, log_base2k: usize, rows: usize, log_q: usize) -> Self {
+        let cols: usize = (log_q + log_base2k - 1) / log_base2k;
+        Self {
+            value: module.new_vmp_pmat(rows * 2, cols * 2),
+            log_base2k,
+            log_q,
+        }
+    }
+
+    pub fn n(&self) -> usize {
+        self.value.n
+    }
+
+    pub fn rows(&self) -> usize {
+        self.value.rows
+    }
+
+    pub fn cols(&self) -> usize {
+        self.value.cols
+    }
+
+    pub fn log_q(&self) -> usize {
+        self.log_q
+    }
+
+    pub fn log_base2k(&self) -> usize {
+        self.log_base2k
+    }
 }

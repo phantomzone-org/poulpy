@@ -1,14 +1,14 @@
 use crate::ciphertext::{Ciphertext, GadgetCiphertext};
-use crate::decryptor::decrypt_rlwe_thread_safe;
-use crate::elem::Elem;
+use crate::elem::{Elem, ElemBasics};
 use crate::keys::SecretKey;
 use crate::parameters::Parameters;
 use crate::plaintext::Plaintext;
-use base2k::ffi::znx::znx_zero_i64_ref;
 use base2k::sampling::Sampling;
 use base2k::{
-    Module, Scalar, SvpPPol, SvpPPolOps, VecZnx, VecZnxBig, VecZnxDft, VecZnxOps, VmpPMatOps,
+    cast_mut, Infos, VecZnxBorrow, Module, Scalar, SvpPPol, SvpPPolOps, VecZnx, VecZnxApi, VecZnxBig, VecZnxBigOps,
+    VecZnxDft, VecZnxDftOps, VecZnxOps, VmpPMatOps, alloc_aligned_u8, cast,
 };
+use rand_distr::num_traits::ops::bytes;
 use sampling::source::{Source, new_seed};
 
 pub struct EncryptorSk {
@@ -53,7 +53,7 @@ impl EncryptorSk {
         &mut self,
         params: &Parameters,
         ct: &mut Ciphertext,
-        pt: Option<&Plaintext>,
+        pt: Option<&Plaintext<VecZnx>>,
     ) {
         assert!(
             self.initialized == true,
@@ -73,7 +73,7 @@ impl EncryptorSk {
         &self,
         params: &Parameters,
         ct: &mut Ciphertext,
-        pt: Option<&Plaintext>,
+        pt: Option<&Plaintext<VecZnx>>,
         source_xa: &mut Source,
         source_xe: &mut Source,
         tmp_bytes: &mut [u8],
@@ -94,13 +94,13 @@ impl Parameters {
     pub fn encrypt_rlwe_sk_thread_safe(
         &self,
         ct: &mut Ciphertext,
-        pt: Option<&Plaintext>,
+        pt: Option<&Plaintext<VecZnx>>,
         sk: &SvpPPol,
         source_xa: &mut Source,
         source_xe: &mut Source,
         tmp_bytes: &mut [u8],
     ) {
-        encrypt_rlwe_sk_thread_safe(
+        encrypt_rlwe_sk_thread_safe::<VecZnx>(
             self.module(),
             &mut ct.0,
             pt.map(|pt| &pt.0),
@@ -118,16 +118,18 @@ pub fn encrypt_rlwe_sk_tmp_bytes(module: &Module, log_base2k: usize, log_q: usiz
         + module.vec_znx_big_normalize_tmp_bytes()
 }
 
-pub fn encrypt_rlwe_sk_thread_safe(
+pub fn encrypt_rlwe_sk_thread_safe<T>(
     module: &Module,
-    ct: &mut Elem,
-    pt: Option<&Elem>,
+    ct: &mut Elem<T>,
+    pt: Option<&Elem<T>>,
     sk: &SvpPPol,
     source_xa: &mut Source,
     source_xe: &mut Source,
     sigma: f64,
     tmp_bytes: &mut [u8],
-) {
+) where
+    T: VecZnxApi + Infos,
+{
     let limbs: usize = ct.limbs();
     let log_base2k: usize = ct.log_base2k();
     let log_q: usize = ct.log_q();
@@ -141,10 +143,10 @@ pub fn encrypt_rlwe_sk_thread_safe(
 
     let log_q: usize = ct.log_q();
     let log_base2k: usize = ct.log_base2k();
-    let c1: &mut VecZnx = ct.at_mut(1);
+    let c1: &mut T = ct.at_mut(1);
 
     // c1 <- Z_{2^prec}[X]/(X^{N}+1)
-    c1.fill_uniform(log_base2k, limbs, source_xa);
+    module.fill_uniform(log_base2k, c1, limbs, source_xa);
 
     let bytes_of_vec_znx_dft: usize = module.bytes_of_vec_znx_dft(limbs);
 
@@ -164,7 +166,7 @@ pub fn encrypt_rlwe_sk_thread_safe(
     let carry: &mut [u8] = &mut tmp_bytes[bytes_of_vec_znx_dft..];
 
     // c0 <- -s x c1 + m
-    let c0: &mut VecZnx = ct.at_mut(0);
+    let c0: &mut T = ct.at_mut(0);
 
     if let Some(pt) = pt {
         module.vec_znx_big_sub_small_a_inplace(&mut buf_big, pt.at(0));
@@ -175,7 +177,14 @@ pub fn encrypt_rlwe_sk_thread_safe(
     }
 
     // c0 <- -s x c1 + m + e
-    c0.add_normal(log_base2k, log_q, source_xe, sigma, (sigma * 6.0).ceil());
+    module.add_normal(
+        log_base2k,
+        c0,
+        log_q,
+        source_xe,
+        sigma,
+        (sigma * 6.0).ceil(),
+    );
 }
 
 pub fn encrypt_grlwe_sk_tmp_bytes(
@@ -185,10 +194,10 @@ pub fn encrypt_grlwe_sk_tmp_bytes(
     log_q: usize,
 ) -> usize {
     let cols = (log_q + log_base2k - 1) / log_base2k;
-    Elem::bytes_of(module, log_base2k, log_q, 1)
-        + Plaintext::bytes_of(module, log_base2k, log_q)
+    Elem::<VecZnx>::bytes_of(module, log_base2k, log_q, 1)
+        + Plaintext::<VecZnx>::bytes_of(module, log_base2k, log_q)
         + encrypt_rlwe_sk_tmp_bytes(module, log_base2k, log_q)
-        + module.vmp_prepare_tmp_bytes(rows, cols)
+        + module.vmp_prepare_tmp_bytes(rows, 2 * cols)
 }
 
 pub fn encrypt_grlwe_sk_thread_safe(
@@ -203,6 +212,7 @@ pub fn encrypt_grlwe_sk_thread_safe(
 ) {
     let rows: usize = ct.rows();
     let log_q: usize = ct.log_q();
+    let cols: usize = (log_q + ct.log_base2k() - 1) / ct.log_base2k();
     let log_base2k: usize = ct.log_base2k();
 
     let min_tmp_bytes_len = encrypt_grlwe_sk_tmp_bytes(module, log_base2k, rows, log_q);
@@ -214,23 +224,24 @@ pub fn encrypt_grlwe_sk_thread_safe(
         min_tmp_bytes_len
     );
 
-    let mut ptr: usize = 0;
-    let mut tmp_elem: Elem = Elem::from_bytes(module, log_base2k, ct.log_q(), 1, tmp_bytes);
-    let bytes_of_elem: usize = Elem::bytes_of(module, log_base2k, log_q, 1);
-    ptr += bytes_of_elem;
+    let bytes_of_elem: usize = Elem::<VecZnxBorrow>::bytes_of(module, log_base2k, log_q, 1);
+    let bytes_of_pt: usize = Plaintext::<VecZnx>::bytes_of(module, log_base2k, log_q);
+    let bytes_of_enc_sk: usize = encrypt_rlwe_sk_tmp_bytes(module, log_base2k, log_q);
+    let bytes_of_vmp_prepare_row: usize = module.vmp_prepare_tmp_bytes(rows, 2 * cols);
 
-    let mut tmp_pt: Plaintext =
-        Plaintext::from_bytes(module, log_base2k, log_q, &mut tmp_bytes[ptr..]);
-    ptr += Plaintext::bytes_of(module, log_base2k, log_q);
+    let (tmp_bytes_pt, tmp_bytes) = tmp_bytes.split_at_mut(bytes_of_pt);
+    let (tmp_bytes_enc_sk, tmp_bytes) = tmp_bytes.split_at_mut(bytes_of_enc_sk);
+    let (tmp_bytes_elem, tmp_bytes_vmp_prepare_row) = tmp_bytes.split_at_mut(bytes_of_elem);
 
-    let (tmp_bytes_encrypt_sk, tmp_bytes_vmp_prepare_row) =
-        tmp_bytes[ptr..].split_at_mut(encrypt_rlwe_sk_tmp_bytes(module, log_base2k, log_q));
+    let mut tmp_elem: Elem<VecZnxBorrow> = Elem::<VecZnxBorrow>::from_bytes(module, log_base2k, ct.log_q(), 1, tmp_bytes_elem);
+    let mut tmp_pt: Plaintext<VecZnxBorrow> = Plaintext::<VecZnxBorrow>::from_bytes(module, log_base2k, log_q, tmp_bytes_pt);
 
     (0..rows).for_each(|row_i| {
         // Sets the i-th row of the RLWE sample to m (i.e. m * 2^{-log_base2k*i})
-        tmp_pt.0.value[0].at_mut(row_i).copy_from_slice(&m.0);
+       tmp_pt.0.value[0].at_mut(row_i).copy_from_slice(&m.0);
 
         // Encrypts RLWE(m * 2^{-log_base2k*i})
+     
         encrypt_rlwe_sk_thread_safe(
             module,
             &mut tmp_elem,
@@ -239,36 +250,26 @@ pub fn encrypt_grlwe_sk_thread_safe(
             source_xa,
             source_xe,
             sigma,
-            tmp_bytes_encrypt_sk,
+            tmp_bytes_enc_sk,
         );
+  
 
         // Zeroes the ith-row of tmp_pt
         tmp_pt.0.value[0].at_mut(row_i).fill(0);
 
-        /*
-        let mut res: Elem = Elem::new(module, log_base2k, log_q, 0, tmp_elem.log_scale);
-
-        decrypt_rlwe_thread_safe(module, &mut res, &tmp_elem, sk, tmp_bytes_encrypt_sk);
-
-        println!("row:{}", row_i);
-        res.value[0].print_limbs(res.limbs(), 16);
+        println!("row:{}/{}", row_i, rows);
+        tmp_elem.at(0).print_limbs(tmp_elem.limbs(), tmp_elem.n());
+        tmp_elem.at(1).print_limbs(tmp_elem.limbs(), tmp_elem.n());
         println!();
-         */
+        println!(">>>");
 
-        // GRLWE[row_i][0] = -as + m * 2^{-i*log_base2k} + e*2^{-log_q}
+        // GRLWE[row_i][0||1] = [-as + m * 2^{-i*log_base2k} + e*2^{-log_q} || a]
         module.vmp_prepare_row(
-            &mut ct.value[0],
-            tmp_elem.at(0),
+            &mut ct.value,
+            cast_mut::<u8, i64>(tmp_bytes_elem),
             row_i,
             tmp_bytes_vmp_prepare_row,
         );
-
-        // GRLWE[row_i][1] = a
-        module.vmp_prepare_row(
-            &mut ct.value[1],
-            tmp_elem.at(1),
-            row_i,
-            tmp_bytes_vmp_prepare_row,
-        );
-    })
+    });
+    println!("DONE");
 }
