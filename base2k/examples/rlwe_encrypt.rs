@@ -32,7 +32,7 @@ fn main() {
 
     // a <- Z_{2^prec}[X]/(X^{N}+1)
     let mut a: VecZnx = module.new_vec_znx(limbs);
-    a.fill_uniform(log_base2k, limbs, &mut source);
+    module.fill_uniform(log_base2k, &mut a, limbs, &mut source);
 
     // Scratch space for DFT values
     let mut buf_dft: VecZnxDft = module.new_vec_znx_dft(a.limbs());
@@ -62,7 +62,14 @@ fn main() {
     // b <- normalize(buf_big) + e
     let mut b: VecZnx = module.new_vec_znx(limbs);
     module.vec_znx_big_normalize(log_base2k, &mut b, &buf_big, &mut carry);
-    b.add_normal(log_base2k, log_base2k * limbs, &mut source, 3.2, 19.0);
+    module.add_normal(
+        log_base2k,
+        &mut b,
+        log_base2k * limbs,
+        &mut source,
+        3.2,
+        19.0,
+    );
 
     //Decrypt
 

@@ -11,6 +11,8 @@ pub trait VecZnxApi {
     /// Returns the minimum size of the [u8] array required to assign a
     /// new backend array to a [VecZnx] through [VecZnx::from_bytes].
     fn bytes_of(n: usize, limbs: usize) -> usize;
+    fn raw(&self) -> &[i64];
+    fn raw_mut(&mut self) -> &mut [i64];
     fn as_ptr(&self) -> *const i64;
     fn as_mut_ptr(&mut self) -> *mut i64;
     fn at(&self, i: usize) -> &[i64];
@@ -69,12 +71,22 @@ impl VecZnxApi for VecZnxBorrow {
         self.data
     }
 
+    fn raw(&self) -> &[i64] {
+        unsafe { std::slice::from_raw_parts(self.data, self.n * self.limbs) }
+    }
+
+    fn raw_mut(&mut self) -> &mut [i64] {
+        unsafe { std::slice::from_raw_parts_mut(self.data, self.n * self.limbs) }
+    }
+
     fn at(&self, i: usize) -> &[i64] {
-        unsafe { std::slice::from_raw_parts(self.data.wrapping_add(self.n * i), self.n) }
+        let n: usize = self.n();
+        &self.raw()[n * i..n * (i + 1)]
     }
 
     fn at_mut(&mut self, i: usize) -> &mut [i64] {
-        unsafe { std::slice::from_raw_parts_mut(self.at_mut_ptr(i), self.n) }
+        let n: usize = self.n();
+        &mut self.raw_mut()[n * i..n * (i + 1)]
     }
 
     fn at_ptr(&self, i: usize) -> *const i64 {
@@ -147,6 +159,14 @@ impl VecZnxApi for VecZnx {
         bytes_of_vec_znx(n, limbs)
     }
 
+    fn raw(&self) -> &[i64] {
+        &self.data
+    }
+
+    fn raw_mut(&mut self) -> &mut [i64] {
+        &mut self.data
+    }
+
     /// Returns a non-mutable pointer to the backing array of the [VecZnx].
     fn as_ptr(&self) -> *const i64 {
         self.data.as_ptr()
@@ -159,12 +179,14 @@ impl VecZnxApi for VecZnx {
 
     /// Returns a non-mutable reference to the i-th limb of the [VecZnx].
     fn at(&self, i: usize) -> &[i64] {
-        &self.data[i * self.n..(i + 1) * self.n]
+        let n: usize = self.n();
+        &self.raw()[n * i..n * (i + 1)]
     }
 
     /// Returns a mutable reference to the i-th limb of the [VecZnx].
     fn at_mut(&mut self, i: usize) -> &mut [i64] {
-        &mut self.data[i * self.n..(i + 1) * self.n]
+        let n: usize = self.n();
+        &mut self.raw_mut()[n * i..n * (i + 1)]
     }
 
     /// Returns a non-mutable pointer to the i-th limb of the [VecZnx].
