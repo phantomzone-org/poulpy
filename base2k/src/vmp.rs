@@ -159,15 +159,17 @@ pub trait VmpPMatOps {
     ///     vecznx.push(module.new_vec_znx(cols));
     /// });
     ///
+    /// let dble: Vec<&[i64]> = vecznx.iter().map(|v| v.data.as_slice()).collect();
+    ///
     /// let mut buf: Vec<u8> = vec![u8::default(); module.vmp_prepare_tmp_bytes(rows, cols)];
     ///
     /// let mut vmp_pmat: VmpPMat = module.new_vmp_pmat(rows, cols);
-    /// module.vmp_prepare_dblptr(&mut vmp_pmat, &vecznx, &mut buf);
+    /// module.vmp_prepare_dblptr(&mut vmp_pmat, &dble, &mut buf);
     ///
     /// vmp_pmat.free();
     /// module.free();
     /// ```
-    fn vmp_prepare_dblptr(&self, b: &mut VmpPMat, a: &Vec<VecZnx>, buf: &mut [u8]);
+    fn vmp_prepare_dblptr(&self, b: &mut VmpPMat, a: &[&[i64]], buf: &mut [u8]);
 
     /// Prepares the ith-row of [VmpPMat] from a vector of [VecZnx].
     ///
@@ -189,7 +191,7 @@ pub trait VmpPMatOps {
     /// let rows: usize = 5;
     /// let cols: usize = 6;
     ///
-    /// let vecznx = module.new_vec_znx(cols);
+    /// let vecznx = vec![0i64; cols*n];
     ///
     /// let mut buf: Vec<u8> = vec![u8::default(); module.vmp_prepare_tmp_bytes(rows, cols)];
     ///
@@ -199,7 +201,7 @@ pub trait VmpPMatOps {
     /// vmp_pmat.free();
     /// module.free();
     /// ```
-    fn vmp_prepare_row(&self, b: &mut VmpPMat, a: &VecZnx, row_i: usize, tmp_bytes: &mut [u8]);
+    fn vmp_prepare_row(&self, b: &mut VmpPMat, a: &[i64], row_i: usize, tmp_bytes: &mut [u8]);
 
     /// Returns the size of the stratch space necessary for [VmpPMatOps::vmp_apply_dft].
     ///
@@ -422,8 +424,8 @@ impl VmpPMatOps for Module {
         }
     }
 
-    fn vmp_prepare_dblptr(&self, b: &mut VmpPMat, a: &Vec<VecZnx>, buf: &mut [u8]) {
-        let ptrs: Vec<*const i64> = a.iter().map(|v| v.data.as_ptr()).collect();
+    fn vmp_prepare_dblptr(&self, b: &mut VmpPMat, a: &[&[i64]], buf: &mut [u8]) {
+        let ptrs: Vec<*const i64> = a.iter().map(|v| v.as_ptr()).collect();
         unsafe {
             vmp::vmp_prepare_dblptr(
                 self.0,
@@ -436,12 +438,12 @@ impl VmpPMatOps for Module {
         }
     }
 
-    fn vmp_prepare_row(&self, b: &mut VmpPMat, a: &VecZnx, row_i: usize, buf: &mut [u8]) {
+    fn vmp_prepare_row(&self, b: &mut VmpPMat, a: &[i64], row_i: usize, buf: &mut [u8]) {
         unsafe {
             vmp::vmp_prepare_row(
                 self.0,
                 b.data(),
-                a.data.as_ptr(),
+                a.as_ptr(),
                 row_i as u64,
                 b.rows() as u64,
                 b.cols() as u64,

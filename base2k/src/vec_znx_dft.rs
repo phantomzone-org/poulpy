@@ -39,7 +39,7 @@ impl Module {
     ///
     /// # Panics
     /// If `bytes.len()` < [Module::bytes_of_vec_znx_dft].
-    pub fn new_vec_znx_from_bytes(&self, limbs: usize, bytes: &mut [u8]) -> VecZnxDft {
+    pub fn new_vec_znx_dft_from_bytes(&self, limbs: usize, bytes: &mut [u8]) -> VecZnxDft {
         assert!(
             bytes.len() >= self.bytes_of_vec_znx_dft(limbs),
             "invalid bytes: bytes.len()={} < bytes_of_vec_znx_dft={}",
@@ -63,7 +63,9 @@ impl Module {
             b.limbs(),
             a_limbs
         );
-        unsafe { vec_znx_dft::vec_znx_idft_tmp_a(self.0, b.0, b.limbs() as u64, a.0, a_limbs as u64) }
+        unsafe {
+            vec_znx_dft::vec_znx_idft_tmp_a(self.0, b.0, b.limbs() as u64, a.0, a_limbs as u64)
+        }
     }
 
     // Returns the size of the scratch space for [vec_znx_idft].

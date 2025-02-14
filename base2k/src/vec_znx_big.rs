@@ -29,6 +29,25 @@ impl Module {
         unsafe { VecZnxBig(vec_znx_big::new_vec_znx_big(self.0, limbs as u64), limbs) }
     }
 
+    /// Returns a new [VecZnxBig] with the provided bytes array as backing array.
+    ///
+    /// # Arguments
+    ///
+    /// * `limbs`: the number of limbs of the [VecZnxBig].
+    /// * `bytes`: a byte array of size at least [Module::bytes_of_vec_znx_big].
+    ///
+    /// # Panics
+    /// If `bytes.len()` < [Module::bytes_of_vec_znx_big].
+    pub fn new_vec_znx_big_from_bytes(&self, limbs: usize, bytes: &mut [u8]) -> VecZnxBig {
+        assert!(
+            bytes.len() >= self.bytes_of_vec_znx_big(limbs),
+            "invalid bytes: bytes.len()={} < bytes_of_vec_znx_dft={}",
+            bytes.len(),
+            self.bytes_of_vec_znx_big(limbs)
+        );
+        VecZnxBig::from_bytes(limbs, bytes)
+    }
+
     /// Returns the minimum number of bytes necessary to allocate
     /// a new [VecZnxBig] through [VecZnxBig::from_bytes].
     pub fn bytes_of_vec_znx_big(&self, limbs: usize) -> usize {
@@ -128,6 +147,42 @@ impl Module {
                 a.limbs() as u64,
                 tmp_bytes.as_mut_ptr(),
             )
+        }
+    }
+
+    pub fn vec_znx_big_range_normalize_base2k_tmp_bytes(&self) -> usize {
+        unsafe { vec_znx_big::vec_znx_big_range_normalize_base2k_tmp_bytes(self.0) as usize }
+    }
+
+    pub fn vec_znx_big_range_normalize_base2k(
+        &self,
+        log_base2k: usize,
+        res: &mut VecZnx,
+        a: &VecZnxBig,
+        a_range_begin: usize,
+        a_range_xend: usize,
+        a_range_step: usize,
+        tmp_bytes: &mut [u8],
+    ) {
+        assert!(
+            tmp_bytes.len() >= self.vec_znx_big_range_normalize_base2k_tmp_bytes(),
+            "invalid tmp_bytes: tmp_bytes.len()={} <= self.vec_znx_big_range_normalize_base2k_tmp_bytes()={}",
+            tmp_bytes.len(),
+            self.vec_znx_big_range_normalize_base2k_tmp_bytes()
+        );
+        unsafe {
+            vec_znx_big::vec_znx_big_range_normalize_base2k(
+                self.0,
+                log_base2k as u64,
+                res.as_mut_ptr(),
+                res.limbs() as u64,
+                res.n() as u64,
+                a.0,
+                a_range_begin as u64,
+                a_range_xend as u64,
+                a_range_step as u64,
+                tmp_bytes.as_mut_ptr(),
+            );
         }
     }
 

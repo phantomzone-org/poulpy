@@ -1,7 +1,7 @@
 use crate::ffi::svp;
-use crate::{Module, VecZnx, VecZnxDft};
+use crate::{alias_mut_slice_to_vec, Module, VecZnx, VecZnxDft};
 
-use crate::Infos;
+use crate::{alloc_aligned, cast_mut_u8_to_mut_i64_slice, Infos};
 use rand::seq::SliceRandom;
 use rand_core::RngCore;
 use rand_distr::{Distribution, WeightedIndex};
@@ -17,14 +17,18 @@ impl Module {
 
 impl Scalar {
     pub fn new(n: usize) -> Self {
-        Self(vec![i64::default(); Self::buffer_size(n)])
+        Self(alloc_aligned::<i64>(n, 64))
+    }
+
+    pub fn n(&self) -> usize {
+        self.0.len()
     }
 
     pub fn buffer_size(n: usize) -> usize {
         n
     }
 
-    pub fn from_buffer(&mut self, n: usize, buf: &[i64]) {
+    pub fn from_buffer(&mut self, n: usize, buf: &mut [u8]) {
         let size: usize = Self::buffer_size(n);
         assert!(
             buf.len() >= size,
@@ -33,7 +37,7 @@ impl Scalar {
             n,
             size
         );
-        self.0 = Vec::from(&buf[..size])
+        self.0 = alias_mut_slice_to_vec(cast_mut_u8_to_mut_i64_slice(&mut buf[..size]))
     }
 
     pub fn as_ptr(&self) -> *const i64 {
@@ -50,6 +54,7 @@ impl Scalar {
     }
 
     pub fn fill_ternary_hw(&mut self, hw: usize, source: &mut Source) {
+        assert!(hw <= self.n());
         self.0[..hw]
             .iter_mut()
             .for_each(|x: &mut i64| *x = (((source.next_u32() & 1) as i64) << 1) - 1);

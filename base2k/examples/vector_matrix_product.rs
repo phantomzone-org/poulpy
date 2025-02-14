@@ -40,8 +40,10 @@ fn main() {
         vecznx[i].data[i * n + 1] = 1 as i64;
     });
 
+    let dble: Vec<&[i64]> = vecznx.iter().map(|v| v.data.as_slice()).collect();
+
     let mut vmp_pmat: VmpPMat = module.new_vmp_pmat(rows, cols);
-    module.vmp_prepare_dblptr(&mut vmp_pmat, &vecznx, &mut buf);
+    module.vmp_prepare_dblptr(&mut vmp_pmat, &dble, &mut buf);
 
     let mut c_dft: VecZnxDft = module.new_vec_znx_dft(cols);
     module.vmp_apply_dft(&mut c_dft, &a, &vmp_pmat, &mut buf);

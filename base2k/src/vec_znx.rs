@@ -1,6 +1,7 @@
 use crate::cast_mut_u8_to_mut_i64_slice;
 use crate::ffi::vec_znx;
 use crate::ffi::znx;
+use crate::{alias_mut_slice_to_vec, alloc_aligned};
 use crate::{Infos, Module};
 use itertools::izip;
 use std::cmp::min;
@@ -21,7 +22,7 @@ impl VecZnx {
     pub fn new(n: usize, limbs: usize) -> Self {
         Self {
             n: n,
-            data: vec![i64::default(); n * limbs],
+            data: alloc_aligned::<i64>(n * limbs, 64),
         }
     }
 
@@ -47,7 +48,7 @@ impl VecZnx {
 
         VecZnx {
             n: n,
-            data: Vec::from(cast_mut_u8_to_mut_i64_slice(&mut buf[..size])),
+            data: alias_mut_slice_to_vec(cast_mut_u8_to_mut_i64_slice(&mut buf[..size])),
         }
     }
 
@@ -106,7 +107,7 @@ impl VecZnx {
     ///
     /// # Example
     /// ```
-    /// use base2k::{VecZnx, Encoding, Infos};
+    /// use base2k::{VecZnx, Encoding, Infos, alloc_aligned};
     /// use itertools::izip;
     /// use sampling::source::Source;
     ///
@@ -115,8 +116,8 @@ impl VecZnx {
     /// let limbs: usize = 5; // number of limbs (i.e. can store coeffs in the range +/- 2^{limbs * log_base2k - 1})
     /// let log_k: usize = limbs * log_base2k - 5;
     /// let mut a: VecZnx = VecZnx::new(n, limbs);
-    /// let mut carry: Vec<u8> = vec![u8::default(); a.n()<<3];
-    /// let mut have: Vec<i64> = vec![i64::default(); a.n()];
+    /// let mut carry: Vec<u8> = alloc_aligned::<u8>(a.n()<<3, 64);
+    /// let mut have: Vec<i64> = alloc_aligned::<i64>(a.n(), 64);
     /// let mut source = Source::new([1; 32]);
     ///
     /// // Populates the first limb of the of polynomials with random i64 values.
@@ -135,7 +136,7 @@ impl VecZnx {
     ///     .for_each(|x| assert!(x.abs() <= base_half, "|x|={} > 2^(k-1)={}", x, base_half));
     ///
     /// // Ensures reconstructed normalized values are equal to non-normalized values.
-    /// let mut want = vec![i64::default(); n];
+    /// let mut want = alloc_aligned::<i64>(a.n(), 64);
     /// a.decode_vec_i64(log_base2k, log_k, &mut want);
     /// izip!(want, have).for_each(|(a, b)| assert_eq!(a, b, "{} != {}", a, b));
     /// ```

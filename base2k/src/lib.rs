@@ -73,3 +73,51 @@ pub fn cast_u8_to_f64_slice(data: &mut [u8]) -> &[f64] {
     let len: usize = data.len() / std::mem::size_of::<f64>();
     unsafe { std::slice::from_raw_parts(ptr, len) }
 }
+
+use std::alloc::{alloc, Layout};
+
+pub fn alloc_aligned_u8(size: usize, align: usize) -> Vec<u8> {
+    assert_eq!(
+        align & (align - 1),
+        0,
+        "align={} must be a power of two",
+        align
+    );
+    assert_eq!(
+        (size * std::mem::size_of::<u8>()) % align,
+        0,
+        "size={} must be a multiple of align={}",
+        size,
+        align
+    );
+    unsafe {
+        let layout: Layout = Layout::from_size_align(size, align).expect("Invalid alignment");
+        let ptr: *mut u8 = alloc(layout);
+        if ptr.is_null() {
+            panic!("Memory allocation failed");
+        }
+        Vec::from_raw_parts(ptr, size, size)
+    }
+}
+
+pub fn alloc_aligned<T>(size: usize, align: usize) -> Vec<T> {
+    assert_eq!(
+        (size * std::mem::size_of::<T>()) % align,
+        0,
+        "size={} must be a multiple of align={}",
+        size,
+        align
+    );
+    let mut vec_u8: Vec<u8> = alloc_aligned_u8(std::mem::size_of::<T>() * size, align);
+    let ptr: *mut T = vec_u8.as_mut_ptr() as *mut T;
+    let len: usize = vec_u8.len() / std::mem::size_of::<T>();
+    let cap: usize = vec_u8.capacity() / std::mem::size_of::<T>();
+    std::mem::forget(vec_u8);
+    unsafe { Vec::from_raw_parts(ptr, len, cap) }
+}
+
+fn alias_mut_slice_to_vec<T>(slice: &mut [T]) -> Vec<T> {
+    let ptr = slice.as_mut_ptr();
+    let len = slice.len();
+    unsafe { Vec::from_raw_parts(ptr, len, len) }
+}
