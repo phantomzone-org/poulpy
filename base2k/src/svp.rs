@@ -1,7 +1,7 @@
 use crate::ffi::svp;
-use crate::{alias_mut_slice_to_vec, Module, VecZnx, VecZnxDft};
+use crate::{alias_mut_slice_to_vec, Module, VecZnxApi, VecZnxDft};
 
-use crate::{alloc_aligned, cast_mut_u8_to_mut_i64_slice, Infos};
+use crate::{alloc_aligned, cast, Infos};
 use rand::seq::SliceRandom;
 use rand_core::RngCore;
 use rand_distr::{Distribution, WeightedIndex};
@@ -37,7 +37,7 @@ impl Scalar {
             n,
             size
         );
-        self.0 = alias_mut_slice_to_vec(cast_mut_u8_to_mut_i64_slice(&mut buf[..size]))
+        self.0 = alias_mut_slice_to_vec(cast::<u8, i64>(&buf[..size]))
     }
 
     pub fn as_ptr(&self) -> *const i64 {
@@ -96,7 +96,13 @@ pub trait SvpPPolOps {
 
     /// Applies the [SvpPPol] x [VecZnxDft] product, where each limb of
     /// the [VecZnxDft] is multiplied with [SvpPPol].
-    fn svp_apply_dft(&self, c: &mut VecZnxDft, a: &SvpPPol, b: &VecZnx, b_limbs: usize);
+    fn svp_apply_dft<T: VecZnxApi + Infos>(
+        &self,
+        c: &mut VecZnxDft,
+        a: &SvpPPol,
+        b: &T,
+        b_limbs: usize,
+    );
 }
 
 impl SvpPPolOps for Module {
@@ -112,7 +118,13 @@ impl SvpPPolOps for Module {
         unsafe { svp::svp_prepare(self.0, svp_ppol.0, a.as_ptr()) }
     }
 
-    fn svp_apply_dft(&self, c: &mut VecZnxDft, a: &SvpPPol, b: &VecZnx, b_limbs: usize) {
+    fn svp_apply_dft<T: VecZnxApi + Infos>(
+        &self,
+        c: &mut VecZnxDft,
+        a: &SvpPPol,
+        b: &T,
+        b_limbs: usize,
+    ) {
         assert!(
             c.limbs() >= b_limbs,
             "invalid c_vector: c_vector.limbs()={} < b.limbs()={}",

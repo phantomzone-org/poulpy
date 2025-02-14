@@ -61,3 +61,26 @@ impl Free for Module {
         drop(self);
     }
 }
+
+pub trait Bytes {
+    /// Returns the minimum number of bytes necessary to allocate
+    /// a new [VecZnxBig] through [VecZnxBig::from_bytes].
+    fn bytes_of_vec_znx_big(&self, limbs: usize) -> usize;
+
+    /// Returns the minimum number of bytes necessary to allocate
+    /// a new [VecZnxDft] through [VecZnxDft::from_bytes].
+    fn vec_znx_idft_tmp_bytes(&self) -> usize;
+
+    /// Returns a new [VecZnxDft] with the provided bytes array as backing array.
+    ///
+    /// # Arguments
+    ///
+    /// * `limbs`: the number of limbs of the [VecZnxDft].
+    /// * `bytes`: a byte array of size at least [Module::bytes_of_vec_znx_dft].
+    ///
+    /// # Panics
+    /// If `bytes.len()` < [Module::bytes_of_vec_znx_dft].
+    fn bytes_of_vec_znx_dft(&self, limbs: usize) -> usize;
+
+    fn vec_znx_big_normalize_tmp_bytes(&self) -> usize;
+}

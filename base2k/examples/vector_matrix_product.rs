@@ -1,6 +1,6 @@
 use base2k::{
-    Encoding, Free, Infos, Module, VecZnx, VecZnxBig, VecZnxDft, VecZnxOps, VmpPMat, VmpPMatOps,
-    FFT64,
+    Encoding, Free, Infos, Module, VecZnx, VecZnxApi, VecZnxBig, VecZnxBigOps, VecZnxDft,
+    VecZnxDftOps, VecZnxOps, VmpPMat, VmpPMatOps, FFT64,
 };
 
 fn main() {
@@ -40,10 +40,8 @@ fn main() {
         vecznx[i].data[i * n + 1] = 1 as i64;
     });
 
-    let dble: Vec<&[i64]> = vecznx.iter().map(|v| v.data.as_slice()).collect();
-
     let mut vmp_pmat: VmpPMat = module.new_vmp_pmat(rows, cols);
-    module.vmp_prepare_dblptr(&mut vmp_pmat, &dble, &mut buf);
+    module.vmp_prepare_dblptr(&mut vmp_pmat, &vecznx, &mut buf);
 
     let mut c_dft: VecZnxDft = module.new_vec_znx_dft(cols);
     module.vmp_apply_dft(&mut c_dft, &a, &vmp_pmat, &mut buf);
@@ -65,47 +63,3 @@ fn main() {
 
     //println!("{:?}", values_res)
 }
-
-/*
-
-use base2k::{
-    Encoding, Free, Infos, Matrix3D, Module, VecZnx, VecZnxBig, VecZnxDft, VecZnxOps, VmpPMat,
-    VmpPMatOps, FFT64,
-};
-use std::cmp::min;
-
-fn main() {
-    use base2k::{Module, FFT64, Matrix3D, VmpPMat, VmpPMatOps, VecZnx, VecZnxOps, Free};
-    use std::cmp::min;
-
-    let n: usize = 32;
-    let module: Module = Module::new::<FFT64>(n);
-    let rows: usize = 5;
-    let cols: usize = 6;
-
-    let mut vecznx: Vec<VecZnx>= Vec::new();
-    (0..rows).for_each(|_|{
-        vecznx.push(module.new_vec_znx(cols));
-    });
-
-    (0..rows).for_each(|i|{
-        vecznx[i].data[i*n] = 1 as i64;
-        vecznx[i].print_limbs(cols, n);
-    });
-
-    let mut buf: Vec<u8> = vec![u8::default(); module.vmp_prepare_tmp_bytes(rows, cols)];
-
-    let mut vmp_pmat: VmpPMat = module.new_vmp_pmat(rows, cols);
-
-    println!("123");
-
-    module.vmp_prepare_dblptr(&mut vmp_pmat, &vecznx, &mut buf);
-
-
-    module.vmp_apply_dft(c, a, b, buf);
-
-    vmp_pmat.free();
-    module.free();
-}
-
-*/

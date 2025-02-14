@@ -1,5 +1,5 @@
 use crate::ffi::znx::znx_zero_i64_ref;
-use crate::{Infos, VecZnx};
+use crate::{Infos, VecZnx, VecZnxApi};
 use itertools::izip;
 use std::cmp::min;
 

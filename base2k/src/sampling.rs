@@ -1,4 +1,4 @@
-use crate::{Infos, VecZnx};
+use crate::{Infos, VecZnx, VecZnxApi};
 use rand_distr::{Distribution, Normal};
 use sampling::source::Source;
 

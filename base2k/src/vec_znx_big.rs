@@ -1,6 +1,6 @@
 use crate::ffi::vec_znx_big;
 use crate::ffi::vec_znx_dft;
-use crate::{Infos, Module, VecZnx, VecZnxDft};
+use crate::{Infos, Module, VecZnxApi, VecZnxDft};
 
 pub struct VecZnxBig(pub *mut vec_znx_big::vec_znx_bigcoeff_t, pub usize);
 
@@ -23,11 +23,9 @@ impl VecZnxBig {
     }
 }
 
-impl Module {
-    // Allocates a vector Z[X]/(X^N+1) that stores not normalized values.
-    pub fn new_vec_znx_big(&self, limbs: usize) -> VecZnxBig {
-        unsafe { VecZnxBig(vec_znx_big::new_vec_znx_big(self.0, limbs as u64), limbs) }
-    }
+pub trait VecZnxBigOps {
+    /// Allocates a vector Z[X]/(X^N+1) that stores not normalized values.
+    fn new_vec_znx_big(&self, limbs: usize) -> VecZnxBig;
 
     /// Returns a new [VecZnxBig] with the provided bytes array as backing array.
     ///
@@ -38,24 +36,78 @@ impl Module {
     ///
     /// # Panics
     /// If `bytes.len()` < [Module::bytes_of_vec_znx_big].
-    pub fn new_vec_znx_big_from_bytes(&self, limbs: usize, bytes: &mut [u8]) -> VecZnxBig {
+    fn new_vec_znx_big_from_bytes(&self, limbs: usize, bytes: &mut [u8]) -> VecZnxBig;
+
+    /// Returns the minimum number of bytes necessary to allocate
+    /// a new [VecZnxBig] through [VecZnxBig::from_bytes].
+    fn bytes_of_vec_znx_big(&self, limbs: usize) -> usize;
+
+    /// b <- b - a
+    fn vec_znx_big_sub_small_a_inplace<T: VecZnxApi + Infos>(&self, b: &mut VecZnxBig, a: &T);
+
+    /// c <- b - a
+    fn vec_znx_big_sub_small_a<T: VecZnxApi + Infos>(
+        &self,
+        c: &mut VecZnxBig,
+        a: &T,
+        b: &VecZnxBig,
+    );
+
+    /// c <- b + a
+    fn vec_znx_big_add_small<T: VecZnxApi + Infos>(&self, c: &mut VecZnxBig, a: &T, b: &VecZnxBig);
+
+    /// b <- b + a
+    fn vec_znx_big_add_small_inplace<T: VecZnxApi + Infos>(&self, b: &mut VecZnxBig, a: &T);
+
+    fn vec_znx_big_normalize_tmp_bytes(&self) -> usize;
+
+    /// b <- normalize(a)
+    fn vec_znx_big_normalize<T: VecZnxApi + Infos>(
+        &self,
+        log_base2k: usize,
+        b: &mut T,
+        a: &VecZnxBig,
+        tmp_bytes: &mut [u8],
+    );
+
+    fn vec_znx_big_range_normalize_base2k_tmp_bytes(&self) -> usize;
+
+    fn vec_znx_big_range_normalize_base2k<T: VecZnxApi + Infos>(
+        &self,
+        log_base2k: usize,
+        res: &mut T,
+        a: &VecZnxBig,
+        a_range_begin: usize,
+        a_range_xend: usize,
+        a_range_step: usize,
+        tmp_bytes: &mut [u8],
+    );
+
+    fn vec_znx_big_automorphism(&self, gal_el: i64, b: &mut VecZnxBig, a: &VecZnxBig);
+
+    fn vec_znx_big_automorphism_inplace(&self, gal_el: i64, a: &mut VecZnxBig);
+}
+
+impl VecZnxBigOps for Module {
+    fn new_vec_znx_big(&self, limbs: usize) -> VecZnxBig {
+        unsafe { VecZnxBig(vec_znx_big::new_vec_znx_big(self.0, limbs as u64), limbs) }
+    }
+
+    fn new_vec_znx_big_from_bytes(&self, limbs: usize, bytes: &mut [u8]) -> VecZnxBig {
         assert!(
-            bytes.len() >= self.bytes_of_vec_znx_big(limbs),
+            bytes.len() >= <Module as VecZnxBigOps>::bytes_of_vec_znx_big(self, limbs),
             "invalid bytes: bytes.len()={} < bytes_of_vec_znx_dft={}",
             bytes.len(),
-            self.bytes_of_vec_znx_big(limbs)
+            <Module as VecZnxBigOps>::bytes_of_vec_znx_big(self, limbs)
         );
         VecZnxBig::from_bytes(limbs, bytes)
     }
 
-    /// Returns the minimum number of bytes necessary to allocate
-    /// a new [VecZnxBig] through [VecZnxBig::from_bytes].
-    pub fn bytes_of_vec_znx_big(&self, limbs: usize) -> usize {
+    fn bytes_of_vec_znx_big(&self, limbs: usize) -> usize {
         unsafe { vec_znx_big::bytes_of_vec_znx_big(self.0, limbs as u64) as usize }
     }
 
-    // b <- b - a
-    pub fn vec_znx_big_sub_small_a_inplace(&self, b: &mut VecZnxBig, a: &VecZnx) {
+    fn vec_znx_big_sub_small_a_inplace<T: VecZnxApi + Infos>(&self, b: &mut VecZnxBig, a: &T) {
         unsafe {
             vec_znx_big::vec_znx_big_sub_small_a(
                 self.0,
@@ -70,8 +122,12 @@ impl Module {
         }
     }
 
-    // c <- b - a
-    pub fn vec_znx_big_sub_small_a(&self, c: &mut VecZnxBig, a: &VecZnx, b: &VecZnxBig) {
+    fn vec_znx_big_sub_small_a<T: VecZnxApi + Infos>(
+        &self,
+        c: &mut VecZnxBig,
+        a: &T,
+        b: &VecZnxBig,
+    ) {
         unsafe {
             vec_znx_big::vec_znx_big_sub_small_a(
                 self.0,
@@ -86,8 +142,7 @@ impl Module {
         }
     }
 
-    // c <- b + a
-    pub fn vec_znx_big_add_small(&self, c: &mut VecZnxBig, a: &VecZnx, b: &VecZnxBig) {
+    fn vec_znx_big_add_small<T: VecZnxApi + Infos>(&self, c: &mut VecZnxBig, a: &T, b: &VecZnxBig) {
         unsafe {
             vec_znx_big::vec_znx_big_add_small(
                 self.0,
@@ -102,8 +157,7 @@ impl Module {
         }
     }
 
-    // b <- b + a
-    pub fn vec_znx_big_add_small_inplace(&self, b: &mut VecZnxBig, a: &VecZnx) {
+    fn vec_znx_big_add_small_inplace<T: VecZnxApi + Infos>(&self, b: &mut VecZnxBig, a: &T) {
         unsafe {
             vec_znx_big::vec_znx_big_add_small(
                 self.0,
@@ -118,23 +172,22 @@ impl Module {
         }
     }
 
-    pub fn vec_znx_big_normalize_tmp_bytes(&self) -> usize {
+    fn vec_znx_big_normalize_tmp_bytes(&self) -> usize {
         unsafe { vec_znx_big::vec_znx_big_normalize_base2k_tmp_bytes(self.0) as usize }
     }
 
-    // b <- normalize(a)
-    pub fn vec_znx_big_normalize(
+    fn vec_znx_big_normalize<T: VecZnxApi + Infos>(
         &self,
         log_base2k: usize,
-        b: &mut VecZnx,
+        b: &mut T,
         a: &VecZnxBig,
         tmp_bytes: &mut [u8],
     ) {
         assert!(
-            tmp_bytes.len() >= self.vec_znx_big_normalize_tmp_bytes(),
+            tmp_bytes.len() >= <Module as VecZnxBigOps>::vec_znx_big_normalize_tmp_bytes(self),
             "invalid tmp_bytes: tmp_bytes.len()={} <= self.vec_znx_big_normalize_tmp_bytes()={}",
             tmp_bytes.len(),
-            self.vec_znx_big_normalize_tmp_bytes()
+            <Module as VecZnxBigOps>::vec_znx_big_normalize_tmp_bytes(self)
         );
         unsafe {
             vec_znx_big::vec_znx_big_normalize_base2k(
@@ -150,14 +203,14 @@ impl Module {
         }
     }
 
-    pub fn vec_znx_big_range_normalize_base2k_tmp_bytes(&self) -> usize {
+    fn vec_znx_big_range_normalize_base2k_tmp_bytes(&self) -> usize {
         unsafe { vec_znx_big::vec_znx_big_range_normalize_base2k_tmp_bytes(self.0) as usize }
     }
 
-    pub fn vec_znx_big_range_normalize_base2k(
+    fn vec_znx_big_range_normalize_base2k<T: VecZnxApi + Infos>(
         &self,
         log_base2k: usize,
-        res: &mut VecZnx,
+        res: &mut T,
         a: &VecZnxBig,
         a_range_begin: usize,
         a_range_xend: usize,
@@ -165,10 +218,10 @@ impl Module {
         tmp_bytes: &mut [u8],
     ) {
         assert!(
-            tmp_bytes.len() >= self.vec_znx_big_range_normalize_base2k_tmp_bytes(),
+            tmp_bytes.len() >= <Module as VecZnxBigOps>::vec_znx_big_range_normalize_base2k_tmp_bytes(self),
             "invalid tmp_bytes: tmp_bytes.len()={} <= self.vec_znx_big_range_normalize_base2k_tmp_bytes()={}",
             tmp_bytes.len(),
-            self.vec_znx_big_range_normalize_base2k_tmp_bytes()
+            <Module as VecZnxBigOps>::vec_znx_big_range_normalize_base2k_tmp_bytes(self)
         );
         unsafe {
             vec_znx_big::vec_znx_big_range_normalize_base2k(
@@ -186,7 +239,7 @@ impl Module {
         }
     }
 
-    pub fn vec_znx_big_automorphism(&self, gal_el: i64, b: &mut VecZnxBig, a: &VecZnxBig) {
+    fn vec_znx_big_automorphism(&self, gal_el: i64, b: &mut VecZnxBig, a: &VecZnxBig) {
         unsafe {
             vec_znx_big::vec_znx_big_automorphism(
                 self.0,
@@ -199,7 +252,7 @@ impl Module {
         }
     }
 
-    pub fn vec_znx_big_automorphism_inplace(&self, gal_el: i64, a: &mut VecZnxBig) {
+    fn vec_znx_big_automorphism_inplace(&self, gal_el: i64, a: &mut VecZnxBig) {
         unsafe {
             vec_znx_big::vec_znx_big_automorphism(
                 self.0,
