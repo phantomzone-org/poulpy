@@ -1,18 +1,15 @@
-use base2k::{
-    FFT64, Module, Sampling, SvpPPolOps, VecZnx, VecZnxBig, VecZnxDft, VecZnxDftOps, VmpPMat,
-    VmpPMatOps, alloc_aligned_u8,
-};
+use base2k::{FFT64, Module, SvpPPolOps, VecZnx, VmpPMat, alloc_aligned_u8};
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use rlwe::{
     ciphertext::{Ciphertext, new_gadget_ciphertext},
     elem::Elem,
     encryptor::{encrypt_grlwe_sk_thread_safe, encrypt_grlwe_sk_tmp_bytes},
-    evaluator::gadget_product_tmp_bytes,
+    evaluator::{gadget_product_inplace_thread_safe, gadget_product_tmp_bytes},
     key_generator::gen_switching_key_thread_safe_tmp_bytes,
     keys::SecretKey,
     parameters::{Parameters, ParametersLiteral},
 };
-use sampling::source::{Source, new_seed};
+use sampling::source::Source;
 
 fn gadget_product_inplace(c: &mut Criterion) {
     fn gadget_product<'a>(
@@ -21,31 +18,8 @@ fn gadget_product_inplace(c: &mut Criterion) {
         gadget_ct: &'a Ciphertext<VmpPMat>,
         tmp_bytes: &'a mut [u8],
     ) -> Box<dyn FnMut() + 'a> {
-        let factor: usize = 2;
-
-        let log_base2k: usize = 32;
-        let limbs: usize = 2;
-        let rows: usize = factor * limbs;
-        let cols: usize = factor * limbs + 1;
-
-        let pmat: VmpPMat = module.new_vmp_pmat(rows, cols);
-
-        let mut tmp_bytes: Vec<u8> =
-            alloc_aligned_u8(module.vmp_apply_dft_tmp_bytes(cols, rows, rows, cols), 64);
-
-        let mut a_dft: VecZnxDft = module.new_vec_znx_dft(rows);
-        let mut res_dft: VecZnxDft = module.new_vec_znx_dft(cols);
-        let mut res_big: VecZnxBig = res_dft.as_vec_znx_big();
-        let mut a: VecZnx = VecZnx::new(module.n(), rows);
-        let mut source = Source::new(new_seed());
-        module.fill_uniform(log_base2k, &mut a, limbs, &mut source);
-
         Box::new(move || {
-            module.vec_znx_dft(&mut a_dft, &a, rows);
-            module.vmp_apply_dft_to_dft(&mut res_dft, &mut a_dft, &pmat, &mut tmp_bytes);
-            module.vec_znx_idft_tmp_a(&mut res_big, &mut res_dft, cols);
-
-            //gadget_product_inplace_thread_safe::<true>(module, elem, gadget_ct, tmp_bytes)
+            gadget_product_inplace_thread_safe::<true, _>(module, elem, gadget_ct, tmp_bytes)
         })
     }
 
@@ -55,9 +29,9 @@ fn gadget_product_inplace(c: &mut Criterion) {
     for log_n in 10..11 {
         let params_lit: ParametersLiteral = ParametersLiteral {
             log_n: log_n,
-            log_q: 54,
+            log_q: 32,
             log_p: 0,
-            log_base2k: 7,
+            log_base2k: 16,
             log_scale: 20,
             xe: 3.2,
             xs: 128,
@@ -95,6 +69,8 @@ fn gadget_product_inplace(c: &mut Criterion) {
 
         let mut sk0: SecretKey = SecretKey::new(params.module());
         let mut sk1: SecretKey = SecretKey::new(params.module());
+        sk0.fill_ternary_hw(params.xs(), &mut source);
+        sk1.fill_ternary_hw(params.xs(), &mut source);
 
         let mut source_xe: Source = Source::new([4; 32]);
         let mut source_xa: Source = Source::new([5; 32]);

@@ -5,9 +5,7 @@ use crate::{
     parameters::Parameters,
     plaintext::Plaintext,
 };
-use base2k::{
-    Infos, Module, SvpPPol, SvpPPolOps, VecZnx, VecZnxApi, VecZnxBigOps, VecZnxDft, VecZnxDftOps,
-};
+use base2k::{Module, SvpPPol, SvpPPolOps, VecZnxBigOps, VecZnxDft, VecZnxDftOps};
 use std::cmp::min;
 
 pub struct Decryptor {
@@ -41,8 +39,8 @@ impl Parameters {
         sk: &SvpPPol,
         tmp_bytes: &mut [u8],
     ) where
-        T: VecZnxCommon,
-        Elem<T>: Infos + ElemVecZnx<T>,
+        T: VecZnxCommon<Owned = T>,
+        Elem<T>: ElemVecZnx<T>,
     {
         decrypt_rlwe_thread_safe(self.module(), &mut res.0, &ct.0, sk, tmp_bytes)
     }
@@ -55,8 +53,8 @@ pub fn decrypt_rlwe_thread_safe<T>(
     sk: &SvpPPol,
     tmp_bytes: &mut [u8],
 ) where
-    T: VecZnxCommon,
-    Elem<T>: Infos + ElemVecZnx<T>,
+    T: VecZnxCommon<Owned = T>,
+    Elem<T>: ElemVecZnx<T>,
 {
     let cols: usize = a.cols();
 

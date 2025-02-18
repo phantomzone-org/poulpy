@@ -1,7 +1,7 @@
 use crate::elem::{Elem, ElemVecZnx, VecZnxCommon};
 use crate::parameters::Parameters;
 use crate::plaintext::Plaintext;
-use base2k::{Infos, Module, VecZnx, VecZnxApi, VmpPMat};
+use base2k::{Infos, Module, VecZnx, VmpPMat};
 
 pub struct Ciphertext<T>(pub Elem<T>);
 
@@ -13,8 +13,20 @@ impl Ciphertext<VecZnx> {
 
 impl<T> Ciphertext<T>
 where
-    T: VecZnxCommon,
-    Elem<T>: Infos + ElemVecZnx<T>,
+    T: VecZnxCommon<Owned = T>,
+{
+    pub fn zero(&mut self) {
+        self.0.zero()
+    }
+
+    pub fn as_plaintext(&self) -> Plaintext<T> {
+        unsafe { Plaintext::<T>(std::ptr::read(&self.0)) }
+    }
+}
+
+impl<T> Ciphertext<T>
+where
+    T: Infos,
 {
     pub fn n(&self) -> usize {
         self.0.n()
@@ -47,14 +59,6 @@ where
     pub fn log_scale(&self) -> usize {
         self.0.log_scale
     }
-
-    pub fn zero(&mut self) {
-        self.0.zero()
-    }
-
-    pub fn as_plaintext(&self) -> Plaintext<T> {
-        unsafe { Plaintext::<T>(std::ptr::read(&self.0)) }
-    }
 }
 
 impl Parameters {
@@ -70,7 +74,7 @@ pub fn new_gadget_ciphertext(
     log_q: usize,
 ) -> Ciphertext<VmpPMat> {
     let cols: usize = (log_q + log_base2k - 1) / log_base2k;
-    let mut elem: Elem<VmpPMat> = Elem::<VmpPMat>::new(module, log_base2k, rows, 2 * cols);
+    let mut elem: Elem<VmpPMat> = Elem::<VmpPMat>::new(module, log_base2k, 1, rows, 2 * cols);
     elem.log_q = log_q;
     Ciphertext(elem)
 }
@@ -82,29 +86,7 @@ pub fn new_rgsw_ciphertext(
     log_q: usize,
 ) -> Ciphertext<VmpPMat> {
     let cols: usize = (log_q + log_base2k - 1) / log_base2k;
-    let mut elem: Elem<VmpPMat> = Elem::<VmpPMat>::new(module, log_base2k, 2 * rows, 2 * cols);
+    let mut elem: Elem<VmpPMat> = Elem::<VmpPMat>::new(module, log_base2k, 2, rows, 2 * cols);
     elem.log_q = log_q;
     Ciphertext(elem)
-}
-
-impl Ciphertext<VmpPMat> {
-    pub fn n(&self) -> usize {
-        self.0.n()
-    }
-
-    pub fn rows(&self) -> usize {
-        self.0.rows()
-    }
-
-    pub fn cols(&self) -> usize {
-        self.0.cols()
-    }
-
-    pub fn log_base2k(&self) -> usize {
-        self.0.log_base2k
-    }
-
-    pub fn log_q(&self) -> usize {
-        self.0.log_q
-    }
 }

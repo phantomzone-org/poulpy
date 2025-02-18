@@ -2,9 +2,7 @@ use crate::{
     ciphertext::Ciphertext,
     elem::{Elem, ElemVecZnx, VecZnxCommon},
 };
-use base2k::{
-    Infos, Module, VecZnxApi, VecZnxBig, VecZnxBigOps, VecZnxDft, VecZnxDftOps, VmpPMat, VmpPMatOps,
-};
+use base2k::{Module, VecZnxBig, VecZnxBigOps, VecZnxDft, VecZnxDftOps, VmpPMat, VmpPMatOps};
 use std::cmp::min;
 
 pub fn gadget_product_tmp_bytes(
@@ -22,14 +20,14 @@ pub fn gadget_product_tmp_bytes(
         + 2 * module.bytes_of_vec_znx_dft(gct_cols)
 }
 
-pub fn gadget_product_inplace_thread_safe<const OVERWRITE: bool, T: VecZnxApi<Owned = T> + Infos>(
+pub fn gadget_product_inplace_thread_safe<const OVERWRITE: bool, T>(
     module: &Module,
     res: &mut Elem<T>,
     b: &Ciphertext<VmpPMat>,
     tmp_bytes: &mut [u8],
 ) where
-    T: VecZnxCommon,
-    Elem<T>: Infos + ElemVecZnx<T>,
+    T: VecZnxCommon<Owned = T>,
+    Elem<T>: ElemVecZnx<T>,
 {
     unsafe {
         let a_ptr: *const T = res.at(1) as *const T;
@@ -51,15 +49,15 @@ pub fn gadget_product_inplace_thread_safe<const OVERWRITE: bool, T: VecZnxApi<Ow
 ///
 /// res = sum[min(a_ncols, b_nrows)] decomp(a, i) * (-B[i]s + m * 2^{-k*i} + E[i], B[i])
 ///     = (cs + m * a + e, c) with min(res_limbs, b_cols) limbs.
-pub fn gadget_product_thread_safe<const OVERWRITE: bool, T: VecZnxApi<Owned = T> + Infos>(
+pub fn gadget_product_thread_safe<const OVERWRITE: bool, T>(
     module: &Module,
     res: &mut Elem<T>,
     a: &T,
     b: &Ciphertext<VmpPMat>,
     tmp_bytes: &mut [u8],
 ) where
-    T: VecZnxCommon,
-    Elem<T>: Infos + ElemVecZnx<T>,
+    T: VecZnxCommon<Owned = T>,
+    Elem<T>: ElemVecZnx<T>,
 {
     let log_base2k: usize = b.log_base2k();
     let rows: usize = min(b.rows(), a.cols());
@@ -112,15 +110,15 @@ pub fn gadget_product_thread_safe<const OVERWRITE: bool, T: VecZnxApi<Owned = T>
     }
 }
 
-pub fn rgsw_product_thread_safe<T: VecZnxApi<Owned = T> + Infos>(
+pub fn rgsw_product_thread_safe<T>(
     module: &Module,
     res: &mut Elem<T>,
     a: &Ciphertext<T>,
     b: &Ciphertext<VmpPMat>,
     tmp_bytes: &mut [u8],
 ) where
-    T: VecZnxCommon,
-    Elem<T>: Infos + ElemVecZnx<T>,
+    T: VecZnxCommon<Owned = T>,
+    Elem<T>: ElemVecZnx<T>,
 {
     let log_base2k: usize = b.log_base2k();
     let rows: usize = min(b.rows(), a.cols());

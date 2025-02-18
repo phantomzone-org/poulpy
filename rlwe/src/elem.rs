@@ -3,12 +3,12 @@ use base2k::{Infos, Module, VecZnx, VecZnxApi, VecZnxBorrow, VecZnxOps, VmpPMat,
 use crate::parameters::Parameters;
 
 impl Parameters {
-    pub fn elem_from_bytes<T>(&self, log_q: usize, rows: usize, bytes: &mut [u8]) -> Elem<T>
+    pub fn elem_from_bytes<T>(&self, log_q: usize, size: usize, bytes: &mut [u8]) -> Elem<T>
     where
-        T: VecZnxCommon,
-        Elem<T>: Infos + ElemVecZnx<T>,
+        T: VecZnxCommon<Owned = T>,
+        Elem<T>: ElemVecZnx<T>,
     {
-        Elem::<T>::from_bytes(self.module(), self.log_base2k(), log_q, rows, bytes)
+        Elem::<T>::from_bytes(self.module(), self.log_base2k(), log_q, size, bytes)
     }
 }
 
@@ -23,47 +23,45 @@ pub trait VecZnxCommon: VecZnxApi + Infos {}
 impl VecZnxCommon for VecZnx {}
 impl VecZnxCommon for VecZnxBorrow {}
 
-pub trait ElemVecZnx<T: VecZnxCommon> {
+pub trait ElemVecZnx<T: VecZnxCommon<Owned = T>> {
     fn from_bytes(
         module: &Module,
         log_base2k: usize,
         log_q: usize,
-        rows: usize,
+        size: usize,
         bytes: &mut [u8],
     ) -> Elem<T>;
-    fn bytes_of(module: &Module, log_base2k: usize, log_q: usize, rows: usize) -> usize;
-    fn at(&self, i: usize) -> &T;
-    fn at_mut(&mut self, i: usize) -> &mut T;
+    fn bytes_of(module: &Module, log_base2k: usize, log_q: usize, size: usize) -> usize;
     fn zero(&mut self);
 }
 
 impl<T> ElemVecZnx<T> for Elem<T>
 where
     T: VecZnxCommon<Owned = T>,
-    Elem<T>: Infos,
 {
-    fn bytes_of(module: &Module, log_base2k: usize, log_q: usize, rows: usize) -> usize {
+    fn bytes_of(module: &Module, log_base2k: usize, log_q: usize, size: usize) -> usize {
         let cols = (log_q + log_base2k - 1) / log_base2k;
-        module.n() * cols * (rows + 1) * 8
+        module.n() * cols * size * 8
     }
 
     fn from_bytes(
         module: &Module,
         log_base2k: usize,
         log_q: usize,
-        rows: usize,
+        size: usize,
         bytes: &mut [u8],
     ) -> Elem<T> {
-        assert!(rows > 0);
+        assert!(size > 0);
         let n: usize = module.n();
-        assert!(bytes.len() >= Self::bytes_of(module, log_base2k, log_q, rows));
+        assert!(bytes.len() >= Self::bytes_of(module, log_base2k, log_q, size));
         let mut value: Vec<T> = Vec::new();
         let limbs: usize = (log_q + log_base2k - 1) / log_base2k;
-        let size = T::bytes_of(n, limbs);
+        let elem_size = T::bytes_of(n, limbs);
         let mut ptr: usize = 0;
-        (0..rows).for_each(|_| {
+        println!("{} {} {}", size, elem_size, bytes.len());
+        (0..size).for_each(|_| {
             value.push(T::from_bytes(n, limbs, &mut bytes[ptr..]));
-            ptr += size
+            ptr += elem_size
         });
         Self {
             value,
@@ -73,22 +71,32 @@ where
         }
     }
 
-    fn at(&self, i: usize) -> &T {
-        assert!(i < self.rows());
-        &self.value[i]
-    }
-
-    fn at_mut(&mut self, i: usize) -> &mut T {
-        assert!(i < self.rows());
-        &mut self.value[i]
-    }
-
     fn zero(&mut self) {
         self.value.iter_mut().for_each(|i| i.zero());
     }
 }
 
-impl<T> Elem<T> {
+impl<T: Infos> Elem<T> {
+    pub fn n(&self) -> usize {
+        self.value[0].n()
+    }
+
+    pub fn log_n(&self) -> usize {
+        self.value[0].log_n()
+    }
+
+    pub fn size(&self) -> usize {
+        self.value.len()
+    }
+
+    pub fn rows(&self) -> usize {
+        self.value[0].rows()
+    }
+
+    pub fn cols(&self) -> usize {
+        self.value[0].cols()
+    }
+
     pub fn log_base2k(&self) -> usize {
         self.log_base2k
     }
@@ -100,39 +108,15 @@ impl<T> Elem<T> {
     pub fn log_scale(&self) -> usize {
         self.log_scale
     }
-}
 
-impl Infos for Elem<VecZnx> {
-    fn n(&self) -> usize {
-        self.value[0].n()
-    }
-
-    fn log_n(&self) -> usize {
-        self.value[0].log_n()
+    pub fn at(&self, i: usize) -> &T {
+        assert!(i < self.size());
+        &self.value[i]
     }
 
-    fn rows(&self) -> usize {
-        self.value.len()
-    }
-    fn cols(&self) -> usize {
-        self.value[0].cols()
-    }
-}
-
-impl Infos for Elem<VecZnxBorrow> {
-    fn n(&self) -> usize {
-        self.value[0].n()
-    }
-
-    fn log_n(&self) -> usize {
-        self.value[0].log_n()
-    }
-
-    fn rows(&self) -> usize {
-        self.value.len()
-    }
-    fn cols(&self) -> usize {
-        self.value[0].cols()
+    pub fn at_mut(&mut self, i: usize) -> &mut T {
+        assert!(i < self.size());
+        &mut self.value[i]
     }
 }
 
@@ -151,30 +135,14 @@ impl Elem<VecZnx> {
     }
 }
 
-impl Infos for Elem<VmpPMat> {
-    fn n(&self) -> usize {
-        self.value[0].n()
-    }
-
-    fn log_n(&self) -> usize {
-        self.value[0].log_n()
-    }
-
-    fn rows(&self) -> usize {
-        self.value[0].rows()
-    }
-
-    fn cols(&self) -> usize {
-        self.value[0].cols()
-    }
-}
-
 impl Elem<VmpPMat> {
-    pub fn new(module: &Module, log_base2k: usize, rows: usize, cols: usize) -> Self {
+    pub fn new(module: &Module, log_base2k: usize, size: usize, rows: usize, cols: usize) -> Self {
         assert!(rows > 0);
         assert!(cols > 0);
+        let mut value: Vec<VmpPMat> = Vec::new();
+        (0..size).for_each(|_| value.push(module.new_vmp_pmat(rows, cols)));
         Self {
-            value: Vec::from([module.new_vmp_pmat(rows, cols); 1]),
+            value: value,
             log_q: 0,
             log_base2k: log_base2k,
             log_scale: 0,

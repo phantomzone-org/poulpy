@@ -5,8 +5,8 @@ use crate::parameters::Parameters;
 use crate::plaintext::Plaintext;
 use base2k::sampling::Sampling;
 use base2k::{
-    Infos, Module, Scalar, SvpPPol, SvpPPolOps, VecZnx, VecZnxApi, VecZnxBig, VecZnxBigOps,
-    VecZnxBorrow, VecZnxDft, VecZnxDftOps, VecZnxOps, VmpPMat, VmpPMatOps, cast_mut,
+    Module, Scalar, SvpPPol, SvpPPolOps, VecZnx, VecZnxApi, VecZnxBig, VecZnxBigOps, VecZnxBorrow,
+    VecZnxDft, VecZnxDftOps, VecZnxOps, VmpPMat, VmpPMatOps, cast_mut,
 };
 
 use sampling::source::{Source, new_seed};
@@ -55,8 +55,8 @@ impl EncryptorSk {
         ct: &mut Ciphertext<T>,
         pt: Option<&Plaintext<T>>,
     ) where
-        T: VecZnxCommon,
-        Elem<T>: Infos + ElemVecZnx<T>,
+        T: VecZnxCommon<Owned = T>,
+        Elem<T>: ElemVecZnx<T>,
     {
         assert!(
             self.initialized == true,
@@ -81,8 +81,8 @@ impl EncryptorSk {
         source_xe: &mut Source,
         tmp_bytes: &mut [u8],
     ) where
-        T: VecZnxCommon,
-        Elem<T>: Infos + ElemVecZnx<T>,
+        T: VecZnxCommon<Owned = T>,
+        Elem<T>: ElemVecZnx<T>,
     {
         assert!(
             self.initialized == true,
@@ -106,8 +106,8 @@ impl Parameters {
         source_xe: &mut Source,
         tmp_bytes: &mut [u8],
     ) where
-        T: VecZnxCommon,
-        Elem<T>: Infos + ElemVecZnx<T>,
+        T: VecZnxCommon<Owned = T>,
+        Elem<T>: ElemVecZnx<T>,
     {
         encrypt_rlwe_sk_thread_safe(
             self.module(),
@@ -137,8 +137,8 @@ pub fn encrypt_rlwe_sk_thread_safe<T>(
     sigma: f64,
     tmp_bytes: &mut [u8],
 ) where
-    T: VecZnxCommon,
-    Elem<T>: Infos + ElemVecZnx<T>,
+    T: VecZnxCommon<Owned = T>,
+    Elem<T>: ElemVecZnx<T>,
 {
     let cols: usize = ct.cols();
     let log_base2k: usize = ct.log_base2k();
