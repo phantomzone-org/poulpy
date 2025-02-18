@@ -58,7 +58,6 @@ where
         let limbs: usize = (log_q + log_base2k - 1) / log_base2k;
         let elem_size = T::bytes_of(n, limbs);
         let mut ptr: usize = 0;
-        println!("{} {} {}", size, elem_size, bytes.len());
         (0..size).for_each(|_| {
             value.push(T::from_bytes(n, limbs, &mut bytes[ptr..]));
             ptr += elem_size

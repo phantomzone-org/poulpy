@@ -3,7 +3,7 @@ use rlwe::{
     ciphertext::{Ciphertext, new_gadget_ciphertext},
     decryptor::decrypt_rlwe_thread_safe,
     encryptor::{encrypt_grlwe_sk_thread_safe, encrypt_grlwe_sk_tmp_bytes},
-    evaluator::{gadget_product_inplace_thread_safe, gadget_product_tmp_bytes},
+    evaluator::{gadget_product_inplace, gadget_product_tmp_bytes},
     key_generator::gen_switching_key_thread_safe_tmp_bytes,
     keys::SecretKey,
     parameters::{Parameters, ParametersLiteral},
@@ -112,12 +112,7 @@ fn main() {
         &mut tmp_bytes,
     );
 
-    gadget_product_inplace_thread_safe::<true, _>(
-        params.module(),
-        &mut ct.0,
-        &gadget_ct,
-        &mut tmp_bytes,
-    );
+    gadget_product_inplace::<true, _>(params.module(), &mut ct.0, &gadget_ct, &mut tmp_bytes);
 
     println!("ct.limbs()={}", ct.cols());
     println!("gadget_ct.rows()={}", gadget_ct.rows());

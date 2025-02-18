@@ -4,23 +4,21 @@ use rlwe::{
     ciphertext::{Ciphertext, new_gadget_ciphertext},
     elem::Elem,
     encryptor::{encrypt_grlwe_sk_thread_safe, encrypt_grlwe_sk_tmp_bytes},
-    evaluator::{gadget_product_inplace_thread_safe, gadget_product_tmp_bytes},
+    evaluator::{gadget_product_inplace, gadget_product_tmp_bytes},
     key_generator::gen_switching_key_thread_safe_tmp_bytes,
     keys::SecretKey,
     parameters::{Parameters, ParametersLiteral},
 };
 use sampling::source::Source;
 
-fn gadget_product_inplace(c: &mut Criterion) {
-    fn gadget_product<'a>(
+fn bench_gadget_product_inplace(c: &mut Criterion) {
+    fn runner<'a>(
         module: &'a Module,
         elem: &'a mut Elem<VecZnx>,
         gadget_ct: &'a Ciphertext<VmpPMat>,
         tmp_bytes: &'a mut [u8],
     ) -> Box<dyn FnMut() + 'a> {
-        Box::new(move || {
-            gadget_product_inplace_thread_safe::<true, _>(module, elem, gadget_ct, tmp_bytes)
-        })
+        Box::new(move || gadget_product_inplace::<true, _>(module, elem, gadget_ct, tmp_bytes))
     }
 
     let mut b: criterion::BenchmarkGroup<'_, criterion::measurement::WallTime> =
@@ -111,7 +109,7 @@ fn gadget_product_inplace(c: &mut Criterion) {
         );
 
         let runners: [(String, Box<dyn FnMut()>); 1] = [(format!("gadget_product"), {
-            gadget_product(params.module(), &mut ct.0, &gadget_ct, &mut tmp_bytes)
+            runner(params.module(), &mut ct.0, &gadget_ct, &mut tmp_bytes)
         })];
 
         for (name, mut runner) in runners {
@@ -123,5 +121,5 @@ fn gadget_product_inplace(c: &mut Criterion) {
     }
 }
 
-criterion_group!(benches, gadget_product_inplace);
+criterion_group!(benches, bench_gadget_product_inplace);
 criterion_main!(benches);
