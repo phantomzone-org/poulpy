@@ -31,6 +31,7 @@ pub use vmp::*;
 
 pub const GALOISGENERATOR: u64 = 5;
 
+#[allow(dead_code)]
 fn is_aligned<T>(ptr: *const T, align: usize) -> bool {
     (ptr as usize) % align == 0
 }

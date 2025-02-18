@@ -1,9 +1,9 @@
 use crate::{
-    ciphertext::{Ciphertext, GadgetCiphertext, RGSWCiphertext},
-    elem::{Elem, ElemBasics},
+    ciphertext::Ciphertext,
+    elem::{Elem, ElemVecZnx, VecZnxCommon},
 };
 use base2k::{
-    Infos, Module, VecZnx, VecZnxApi, VecZnxBig, VecZnxBigOps, VecZnxDft, VecZnxDftOps, VmpPMatOps,
+    Infos, Module, VecZnxApi, VecZnxBig, VecZnxBigOps, VecZnxDft, VecZnxDftOps, VmpPMat, VmpPMatOps,
 };
 use std::cmp::min;
 
@@ -22,13 +22,14 @@ pub fn gadget_product_tmp_bytes(
         + 2 * module.bytes_of_vec_znx_dft(gct_cols)
 }
 
-pub fn gadget_product_inplace_thread_safe<const OVERWRITE: bool, T>(
+pub fn gadget_product_inplace_thread_safe<const OVERWRITE: bool, T: VecZnxApi<Owned = T> + Infos>(
     module: &Module,
     res: &mut Elem<T>,
-    b: &GadgetCiphertext,
+    b: &Ciphertext<VmpPMat>,
     tmp_bytes: &mut [u8],
 ) where
-    T: VecZnxApi + Infos,
+    T: VecZnxCommon,
+    Elem<T>: Infos + ElemVecZnx<T>,
 {
     unsafe {
         let a_ptr: *const T = res.at(1) as *const T;
@@ -50,21 +51,22 @@ pub fn gadget_product_inplace_thread_safe<const OVERWRITE: bool, T>(
 ///
 /// res = sum[min(a_ncols, b_nrows)] decomp(a, i) * (-B[i]s + m * 2^{-k*i} + E[i], B[i])
 ///     = (cs + m * a + e, c) with min(res_limbs, b_cols) limbs.
-pub fn gadget_product_thread_safe<const OVERWRITE: bool, T>(
+pub fn gadget_product_thread_safe<const OVERWRITE: bool, T: VecZnxApi<Owned = T> + Infos>(
     module: &Module,
     res: &mut Elem<T>,
     a: &T,
-    b: &GadgetCiphertext,
+    b: &Ciphertext<VmpPMat>,
     tmp_bytes: &mut [u8],
 ) where
-    T: VecZnxApi + Infos,
+    T: VecZnxCommon,
+    Elem<T>: Infos + ElemVecZnx<T>,
 {
     let log_base2k: usize = b.log_base2k();
-    let rows: usize = min(b.rows(), a.limbs());
+    let rows: usize = min(b.rows(), a.cols());
     let cols: usize = b.cols();
 
     let bytes_vmp_apply_dft: usize =
-        module.vmp_apply_dft_to_dft_tmp_bytes(cols, a.limbs(), rows, cols);
+        module.vmp_apply_dft_to_dft_tmp_bytes(cols, a.cols(), rows, cols);
     let bytes_vec_znx_dft: usize = module.bytes_of_vec_znx_dft(cols);
 
     let (tmp_bytes_vmp_apply_dft, tmp_bytes) = tmp_bytes.split_at_mut(bytes_vmp_apply_dft);
@@ -82,11 +84,16 @@ pub fn gadget_product_thread_safe<const OVERWRITE: bool, T>(
         module.new_vec_znx_big_from_bytes(cols >> 1, tmp_bytes_res_dft_c1);
 
     // a_dft <- DFT(a)
-    module.vec_znx_dft(&mut c1_dft, a, a.limbs());
+    module.vec_znx_dft(&mut c1_dft, a, a.cols());
 
     // (n x cols) <- (n x limbs=rows) x (rows x cols)
     // res_dft[a * (G0|G1)] <- sum[rows] DFT(a) x (DFT(G0)|DFT(G1))
-    module.vmp_apply_dft_to_dft(&mut res_dft, &c1_dft, &b.value, tmp_bytes_vmp_apply_dft);
+    module.vmp_apply_dft_to_dft(
+        &mut res_dft,
+        &c1_dft,
+        &b.0.value[0],
+        tmp_bytes_vmp_apply_dft,
+    );
 
     // res_big[a * (G0|G1)] <- IDFT(res_dft[a * (G0|G1)])
     module.vec_znx_idft_tmp_a(&mut res_big, &mut res_dft, cols);
@@ -105,24 +112,25 @@ pub fn gadget_product_thread_safe<const OVERWRITE: bool, T>(
     }
 }
 
-pub fn rgsw_product_thread_safe<T>(
+pub fn rgsw_product_thread_safe<T: VecZnxApi<Owned = T> + Infos>(
     module: &Module,
     res: &mut Elem<T>,
-    a: &Ciphertext,
-    b: &RGSWCiphertext,
+    a: &Ciphertext<T>,
+    b: &Ciphertext<VmpPMat>,
     tmp_bytes: &mut [u8],
 ) where
-    T: VecZnxApi + Infos,
+    T: VecZnxCommon,
+    Elem<T>: Infos + ElemVecZnx<T>,
 {
     let log_base2k: usize = b.log_base2k();
-    let rows: usize = a.limbs();
+    let rows: usize = min(b.rows(), a.cols());
     let cols: usize = b.cols();
-    let in_limbs = a.limbs();
-    let out_limbs: usize = a.limbs();
+    let in_cols = a.cols();
+    let out_cols: usize = a.cols();
 
     let bytes_of_vec_znx_dft = module.bytes_of_vec_znx_dft(cols);
     let bytes_of_vmp_apply_dft_to_dft =
-        module.vmp_apply_dft_to_dft_tmp_bytes(out_limbs, in_limbs, rows, cols);
+        module.vmp_apply_dft_to_dft_tmp_bytes(out_cols, in_cols, rows, cols);
 
     let (tmp_bytes_c0_dft, tmp_bytes) = tmp_bytes.split_at_mut(bytes_of_vec_znx_dft);
     let (tmp_bytes_c1_dft, tmp_bytes) = tmp_bytes.split_at_mut(bytes_of_vec_znx_dft);
@@ -139,16 +147,16 @@ pub fn rgsw_product_thread_safe<T>(
     let mut r2_dft: VecZnxDft = module.new_vec_znx_dft_from_bytes(cols, tmp_bytes_r2_dft);
 
     // c0_dft <- DFT(a[0])
-    module.vec_znx_dft(&mut c0_dft, a.at(0), a.limbs());
+    module.vec_znx_dft(&mut c0_dft, a.at(0), in_cols);
 
     // r_dft <- sum[rows] c0_dft[cols] x RGSW[0][cols]
     module.vmp_apply_dft_to_dft(
         &mut r1_dft,
         &c1_dft,
-        &b.value,
+        &b.0.value[0],
         bytes_of_vmp_apply_dft_to_dft,
     );
 
     // c1_dft <- DFT(a[1])
-    module.vec_znx_dft(&mut c1_dft, a.at(1), a.limbs());
+    module.vec_znx_dft(&mut c1_dft, a.at(1), in_cols);
 }

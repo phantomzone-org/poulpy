@@ -1,22 +1,15 @@
-use base2k::{
-    Encoding, FFT64, Infos, Sampling, Scalar, SvpPPolOps, VecZnx, VecZnxApi, VecZnxBig, VecZnxDft,
-    VecZnxOps,
-};
+use base2k::{Encoding, FFT64, SvpPPolOps, VecZnx, VecZnxApi, VmpPMat};
 use rlwe::{
-    ciphertext::{Ciphertext, GadgetCiphertext},
-    decryptor::{Decryptor, decrypt_rlwe_thread_safe, decrypt_rlwe_thread_safe_tmp_byte},
-    elem::Elem,
-    encryptor::{
-        EncryptorSk, encrypt_grlwe_sk_thread_safe, encrypt_grlwe_sk_tmp_bytes,
-        encrypt_rlwe_sk_tmp_bytes,
-    },
+    ciphertext::{Ciphertext, new_gadget_ciphertext},
+    decryptor::decrypt_rlwe_thread_safe,
+    encryptor::{encrypt_grlwe_sk_thread_safe, encrypt_grlwe_sk_tmp_bytes},
     evaluator::{gadget_product_inplace_thread_safe, gadget_product_tmp_bytes},
-    key_generator::{gen_switching_key_thread_safe, gen_switching_key_thread_safe_tmp_bytes},
-    keys::{SecretKey, SwitchingKey},
+    key_generator::gen_switching_key_thread_safe_tmp_bytes,
+    keys::SecretKey,
     parameters::{Parameters, ParametersLiteral},
     plaintext::Plaintext,
 };
-use sampling::source::{Source, new_seed};
+use sampling::source::Source;
 
 fn main() {
     let params_lit: ParametersLiteral = ParametersLiteral {
@@ -82,7 +75,7 @@ fn main() {
     let mut sk1_svp_ppol: base2k::SvpPPol = params.module().new_svp_ppol();
     params.module().svp_prepare(&mut sk1_svp_ppol, &sk1.0);
 
-    let mut gadget_ct: GadgetCiphertext = GadgetCiphertext::new(
+    let mut gadget_ct: Ciphertext<VmpPMat> = new_gadget_ciphertext(
         params.module(),
         log_base2k,
         params.limbs_q(),
@@ -100,21 +93,15 @@ fn main() {
         &mut tmp_bytes,
     );
 
-    println!("DONE?");
-
-    let mut pt: Plaintext<VecZnx> = Plaintext::<VecZnx>::new(
-        params.module(),
-        params.log_base2k(),
-        params.log_q(),
-        params.log_scale(),
-    );
+    let mut pt: Plaintext<VecZnx> =
+        Plaintext::<VecZnx>::new(params.module(), params.log_base2k(), params.log_q());
 
     let mut want = vec![i64::default(); params.n()];
     want.iter_mut().enumerate().for_each(|(i, x)| *x = i as i64);
     pt.0.value[0].encode_vec_i64(log_base2k, log_k, &want, 32);
     pt.0.value[0].normalize(log_base2k, &mut tmp_bytes);
 
-    let mut ct: Ciphertext = params.new_ciphertext(params.log_q());
+    let mut ct: Ciphertext<VecZnx> = params.new_ciphertext(params.log_q());
 
     params.encrypt_rlwe_sk_thread_safe(
         &mut ct,
@@ -132,10 +119,10 @@ fn main() {
         &mut tmp_bytes,
     );
 
-    println!("ct.limbs()={}", ct.limbs());
+    println!("ct.limbs()={}", ct.cols());
     println!("gadget_ct.rows()={}", gadget_ct.rows());
     println!("gadget_ct.cols()={}", gadget_ct.cols());
-    println!("res.limbs()={}", ct.limbs());
+    println!("res.limbs()={}", ct.cols());
     println!();
 
     decrypt_rlwe_thread_safe(
@@ -146,7 +133,7 @@ fn main() {
         &mut tmp_bytes,
     );
 
-    pt.0.value[0].print_limbs(pt.limbs(), 16);
+    pt.0.value[0].print(pt.cols(), 16);
 
     let mut have: Vec<i64> = vec![i64::default(); params.n()];
 

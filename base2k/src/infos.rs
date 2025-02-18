@@ -7,10 +7,6 @@ pub trait Infos {
     /// Returns the base two logarithm of the ring dimension of the receiver.
     fn log_n(&self) -> usize;
 
-    /// Returns the number of limbs of the receiver.
-    /// This method is equivalent to [Infos::cols].
-    fn limbs(&self) -> usize;
-
     /// Returns the number of columns of the receiver.
     /// This method is equivalent to [Infos::limbs].
     fn cols(&self) -> usize;
@@ -28,11 +24,6 @@ impl Infos for VecZnx {
     /// Returns the [VecZnx] degree.
     fn n(&self) -> usize {
         self.n
-    }
-
-    /// Returns the number of limbs of the [VecZnx].
-    fn limbs(&self) -> usize {
-        self.data.len() / self.n
     }
 
     /// Returns the number of limbs of the [VecZnx].
@@ -58,11 +49,6 @@ impl Infos for VecZnxBorrow {
     }
 
     /// Returns the number of limbs of the [VecZnx].
-    fn limbs(&self) -> usize {
-        self.limbs
-    }
-
-    /// Returns the number of limbs of the [VecZnx].
     fn cols(&self) -> usize {
         self.limbs
     }
@@ -81,12 +67,6 @@ impl Infos for VmpPMat {
 
     fn log_n(&self) -> usize {
         (usize::BITS - (self.n() - 1).leading_zeros()) as _
-    }
-
-    /// Returns the number of limbs of each [VecZnxDft].
-    /// This method is equivalent to [Self::cols].
-    fn limbs(&self) -> usize {
-        self.cols
     }
 
     /// Returns the number of rows (i.e. of [VecZnxDft]) of the [VmpPMat]

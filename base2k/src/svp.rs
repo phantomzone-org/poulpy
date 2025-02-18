@@ -77,8 +77,8 @@ impl SvpPPol {
         SvpPPol(bytes.as_mut_ptr() as *mut svp::svp_ppol_t, size)
     }
 
-    /// Returns the number of limbs of the [SvpPPol], which is always 1.
-    pub fn limbs(&self) -> usize {
+    /// Returns the number of cols of the [SvpPPol], which is always 1.
+    pub fn cols(&self) -> usize {
         1
     }
 }
@@ -101,7 +101,7 @@ pub trait SvpPPolOps {
         c: &mut VecZnxDft,
         a: &SvpPPol,
         b: &T,
-        b_limbs: usize,
+        b_cols: usize,
     );
 }
 
@@ -123,22 +123,22 @@ impl SvpPPolOps for Module {
         c: &mut VecZnxDft,
         a: &SvpPPol,
         b: &T,
-        b_limbs: usize,
+        b_cols: usize,
     ) {
         assert!(
-            c.limbs() >= b_limbs,
-            "invalid c_vector: c_vector.limbs()={} < b.limbs()={}",
-            c.limbs(),
-            b_limbs
+            c.cols() >= b_cols,
+            "invalid c_vector: c_vector.cols()={} < b.cols()={}",
+            c.cols(),
+            b_cols
         );
         unsafe {
             svp::svp_apply_dft(
                 self.0,
                 c.0,
-                b_limbs as u64,
+                b_cols as u64,
                 a.0,
                 b.as_ptr(),
-                b_limbs as u64,
+                b_cols as u64,
                 b.n() as u64,
             )
         }

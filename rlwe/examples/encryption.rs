@@ -1,13 +1,11 @@
-use base2k::{Encoding, FFT64, SvpPPolOps, VecZnxApi, VecZnx};
+use base2k::{Encoding, FFT64, SvpPPolOps, VecZnx, VecZnxApi};
 use rlwe::{
     ciphertext::Ciphertext,
-    decryptor::{Decryptor, decrypt_rlwe_thread_safe_tmp_byte},
-    encryptor::{EncryptorSk, encrypt_rlwe_sk_tmp_bytes},
     keys::SecretKey,
     parameters::{Parameters, ParametersLiteral},
     plaintext::Plaintext,
 };
-use sampling::source::{Source, new_seed};
+use sampling::source::Source;
 
 fn main() {
     let params_lit: ParametersLiteral = ParametersLiteral {
@@ -30,8 +28,7 @@ fn main() {
 
     let mut source: Source = Source::new([0; 32]);
     let mut sk: SecretKey = SecretKey::new(params.module());
-    //sk.fill_ternary_hw(params.xs(), &mut source);
-    sk.0.0[0] = 1;
+    sk.fill_ternary_hw(params.xs(), &mut source);
 
     let mut want = vec![i64::default(); params.n()];
 
@@ -47,10 +44,10 @@ fn main() {
     pt.0.value[0].normalize(log_base2k, &mut tmp_bytes);
 
     println!("log_k: {}", log_k);
-    pt.0.value[0].print_limbs(pt.limbs(), 16);
+    pt.0.value[0].print(pt.cols(), 16);
     println!();
 
-    let mut ct: Ciphertext = params.new_ciphertext(params.log_q());
+    let mut ct: Ciphertext<VecZnx> = params.new_ciphertext(params.log_q());
 
     let mut source_xe: Source = Source::new([1; 32]);
     let mut source_xa: Source = Source::new([2; 32]);
@@ -69,7 +66,7 @@ fn main() {
 
     params.decrypt_rlwe_thread_safe(&mut pt, &ct, &sk_svp_ppol, &mut tmp_bytes);
 
-    pt.0.value[0].print_limbs(pt.limbs(), 16);
+    pt.0.value[0].print(pt.cols(), 16);
 
     let mut have = vec![i64::default(); params.n()];
 

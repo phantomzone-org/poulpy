@@ -1,10 +1,10 @@
 use base2k::{
-    FFT64, Module, Sampling, SvpPPolOps, VecZnx, VecZnxApi, VecZnxBig, VecZnxDft, VecZnxDftOps,
-    VmpPMat, VmpPMatOps, alloc_aligned_u8,
+    FFT64, Module, Sampling, SvpPPolOps, VecZnx, VecZnxBig, VecZnxDft, VecZnxDftOps, VmpPMat,
+    VmpPMatOps, alloc_aligned_u8,
 };
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use rlwe::{
-    ciphertext::{Ciphertext, GadgetCiphertext},
+    ciphertext::{Ciphertext, new_gadget_ciphertext},
     elem::Elem,
     encryptor::{encrypt_grlwe_sk_thread_safe, encrypt_grlwe_sk_tmp_bytes},
     evaluator::gadget_product_tmp_bytes,
@@ -18,7 +18,7 @@ fn gadget_product_inplace(c: &mut Criterion) {
     fn gadget_product<'a>(
         module: &'a Module,
         elem: &'a mut Elem<VecZnx>,
-        gadget_ct: &'a GadgetCiphertext,
+        gadget_ct: &'a Ciphertext<VmpPMat>,
         tmp_bytes: &'a mut [u8],
     ) -> Box<dyn FnMut() + 'a> {
         let factor: usize = 2;
@@ -105,7 +105,7 @@ fn gadget_product_inplace(c: &mut Criterion) {
         let mut sk1_svp_ppol: base2k::SvpPPol = params.module().new_svp_ppol();
         params.module().svp_prepare(&mut sk1_svp_ppol, &sk1.0);
 
-        let mut gadget_ct: GadgetCiphertext = GadgetCiphertext::new(
+        let mut gadget_ct: Ciphertext<VmpPMat> = new_gadget_ciphertext(
             params.module(),
             params.log_base2k(),
             params.limbs_q(),
@@ -123,7 +123,7 @@ fn gadget_product_inplace(c: &mut Criterion) {
             &mut tmp_bytes,
         );
 
-        let mut ct: Ciphertext = params.new_ciphertext(params.log_q());
+        let mut ct: Ciphertext<VecZnx> = params.new_ciphertext(params.log_q());
 
         params.encrypt_rlwe_sk_thread_safe(
             &mut ct,

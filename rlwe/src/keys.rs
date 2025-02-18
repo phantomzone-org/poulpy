@@ -1,7 +1,7 @@
-use crate::ciphertext::GadgetCiphertext;
+use crate::ciphertext::{Ciphertext, new_gadget_ciphertext};
 use crate::elem::Elem;
 use crate::encryptor::{encrypt_rlwe_sk_thread_safe, encrypt_rlwe_sk_tmp_bytes};
-use base2k::{Module, Scalar, SvpPPol, SvpPPolOps, VecZnx};
+use base2k::{Module, Scalar, SvpPPol, SvpPPolOps, VecZnx, VmpPMat};
 use sampling::source::Source;
 
 pub struct SecretKey(pub Scalar);
@@ -28,7 +28,7 @@ pub struct PublicKey(pub Elem<VecZnx>);
 
 impl PublicKey {
     pub fn new(module: &Module, log_base2k: usize, log_q: usize) -> PublicKey {
-        PublicKey(Elem::new(module, log_base2k, log_q, 1, 0))
+        PublicKey(Elem::<VecZnx>::new(module, log_base2k, log_q, 2))
     }
 
     pub fn gen_thread_safe(
@@ -57,11 +57,11 @@ impl PublicKey {
     }
 }
 
-pub struct SwitchingKey(pub GadgetCiphertext);
+pub struct SwitchingKey(pub Ciphertext<VmpPMat>);
 
 impl SwitchingKey {
     pub fn new(module: &Module, log_base2k: usize, rows: usize, log_q: usize) -> SwitchingKey {
-        SwitchingKey(GadgetCiphertext::new(module, log_base2k, rows, log_q))
+        SwitchingKey(new_gadget_ciphertext(module, log_base2k, rows, log_q))
     }
 
     pub fn n(&self) -> usize {

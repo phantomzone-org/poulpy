@@ -54,11 +54,10 @@ pub trait Encoding {
 
 impl Encoding for VecZnx {
     fn encode_vec_i64(&mut self, log_base2k: usize, log_k: usize, data: &[i64], log_max: usize) {
-        let limbs: usize = (log_k + log_base2k - 1) / log_base2k;
+        
+        let cols: usize = (log_k + log_base2k - 1) / log_base2k;
 
-        println!("limbs: {}", limbs);
-
-        assert!(limbs <= self.limbs(), "invalid argument log_k: (log_k + self.log_base2k - 1)/self.log_base2k={} > self.limbs()={}", limbs, self.limbs());
+        assert!(cols <= self.cols(), "invalid argument log_k: (log_k + self.log_base2k - 1)/self.log_base2k={} > self.cols()={}", cols, self.cols());
 
         let size: usize = min(data.len(), self.n());
         let log_k_rem: usize = log_base2k - (log_k % log_base2k);
@@ -67,19 +66,19 @@ impl Encoding for VecZnx {
         // values on the last limb.
         // Else we decompose values base2k.
         if log_max + log_k_rem < 63 || log_k_rem == log_base2k {
-            (0..self.limbs()).for_each(|i| unsafe {
+            (0..self.cols()).for_each(|i| unsafe {
                 znx_zero_i64_ref(size as u64, self.at_mut(i).as_mut_ptr());
             });
-            self.at_mut(limbs - 1)[..size].copy_from_slice(&data[..size]);
+            self.at_mut(cols - 1)[..size].copy_from_slice(&data[..size]);
         } else {
             let mask: i64 = (1 << log_base2k) - 1;
-            let steps: usize = min(limbs, (log_max + log_base2k - 1) / log_base2k);
+            let steps: usize = min(cols, (log_max + log_base2k - 1) / log_base2k);
 
             (0..steps).for_each(|i| unsafe {
                 znx_zero_i64_ref(size as u64, self.at_mut(i).as_mut_ptr());
             });
 
-            (limbs - steps..limbs)
+            (cols - steps..cols)
                 .rev()
                 .enumerate()
                 .for_each(|(i, i_rev)| {
@@ -91,9 +90,9 @@ impl Encoding for VecZnx {
 
         // Case where self.prec % self.k != 0.
         if log_k_rem != log_base2k {
-            let limbs = self.limbs();
-            let steps: usize = min(limbs, (log_max + log_base2k - 1) / log_base2k);
-            (limbs - steps..limbs).rev().for_each(|i| {
+            let cols = self.cols();
+            let steps: usize = min(cols, (log_max + log_base2k - 1) / log_base2k);
+            (cols - steps..cols).rev().for_each(|i| {
                 self.at_mut(i)[..size]
                     .iter_mut()
                     .for_each(|x| *x <<= log_k_rem);
@@ -102,7 +101,7 @@ impl Encoding for VecZnx {
     }
 
     fn decode_vec_i64(&self, log_base2k: usize, log_k: usize, data: &mut [i64]) {
-        let limbs: usize = (log_k + log_base2k - 1) / log_base2k;
+        let cols: usize = (log_k + log_base2k - 1) / log_base2k;
         assert!(
             data.len() >= self.n,
             "invalid data: data.len()={} < self.n()={}",
@@ -111,8 +110,8 @@ impl Encoding for VecZnx {
         );
         data.copy_from_slice(self.at(0));
         let rem: usize = log_base2k - (log_k % log_base2k);
-        (1..limbs).for_each(|i| {
-            if i == limbs - 1 && rem != log_base2k {
+        (1..cols).for_each(|i| {
+            if i == cols - 1 && rem != log_base2k {
                 let k_rem: usize = log_base2k - rem;
                 izip!(self.at(i).iter(), data.iter_mut()).for_each(|(x, y)| {
                     *y = (*y << k_rem) + (x >> rem);
@@ -134,25 +133,25 @@ impl Encoding for VecZnx {
         log_max: usize,
     ) {
         assert!(i < self.n());
-        let limbs: usize = (log_k + log_base2k - 1) / log_base2k;
-        assert!(limbs <= self.limbs(), "invalid argument log_k: (log_k + self.log_base2k - 1)/self.log_base2k={} > self.limbs()={}", limbs, self.limbs());
+        let cols: usize = (log_k + log_base2k - 1) / log_base2k;
+        assert!(cols <= self.cols(), "invalid argument log_k: (log_k + self.log_base2k - 1)/self.log_base2k={} > self.cols()={}", cols, self.cols());
         let log_k_rem: usize = log_base2k - (log_k % log_base2k);
-        let limbs = self.limbs();
+        let cols = self.cols();
 
         // If 2^{log_base2k} * 2^{log_k_rem} < 2^{63}-1, then we can simply copy
         // values on the last limb.
         // Else we decompose values base2k.
         if log_max + log_k_rem < 63 || log_k_rem == log_base2k {
-            (0..limbs - 1).for_each(|j| self.at_mut(j)[i] = 0);
+            (0..cols - 1).for_each(|j| self.at_mut(j)[i] = 0);
 
-            self.at_mut(self.limbs() - 1)[i] = value;
+            self.at_mut(self.cols() - 1)[i] = value;
         } else {
             let mask: i64 = (1 << log_base2k) - 1;
-            let steps: usize = min(limbs, (log_max + log_base2k - 1) / log_base2k);
+            let steps: usize = min(cols, (log_max + log_base2k - 1) / log_base2k);
 
-            (0..limbs - steps).for_each(|j| self.at_mut(j)[i] = 0);
+            (0..cols - steps).for_each(|j| self.at_mut(j)[i] = 0);
 
-            (limbs - steps..limbs)
+            (cols - steps..cols)
                 .rev()
                 .enumerate()
                 .for_each(|(j, j_rev)| {
@@ -162,22 +161,22 @@ impl Encoding for VecZnx {
 
         // Case where self.prec % self.k != 0.
         if log_k_rem != log_base2k {
-            let limbs = self.limbs();
-            let steps: usize = min(limbs, (log_max + log_base2k - 1) / log_base2k);
-            (limbs - steps..limbs).rev().for_each(|j| {
+            let cols = self.cols();
+            let steps: usize = min(cols, (log_max + log_base2k - 1) / log_base2k);
+            (cols - steps..cols).rev().for_each(|j| {
                 self.at_mut(j)[i] <<= log_k_rem;
             })
         }
     }
 
     fn decode_coeff_i64(&self, log_base2k: usize, log_k: usize, i: usize) -> i64 {
-        let limbs: usize = (log_k + log_base2k - 1) / log_base2k;
+        let cols: usize = (log_k + log_base2k - 1) / log_base2k;
         assert!(i < self.n());
         let mut res: i64 = self.data[i];
         let rem: usize = log_base2k - (log_k % log_base2k);
-        (1..limbs).for_each(|i| {
+        (1..cols).for_each(|i| {
             let x = self.data[i * self.n];
-            if i == limbs - 1 && rem != log_base2k {
+            if i == cols - 1 && rem != log_base2k {
                 let k_rem: usize = log_base2k - rem;
                 res = (res << k_rem) + (x >> rem);
             } else {
@@ -198,9 +197,9 @@ mod tests {
     fn test_set_get_i64_lo_norm() {
         let n: usize = 8;
         let log_base2k: usize = 17;
-        let limbs: usize = 5;
-        let log_k: usize = limbs * log_base2k - 5;
-        let mut a: VecZnx = VecZnx::new(n, limbs);
+        let cols: usize = 5;
+        let log_k: usize = cols * log_base2k - 5;
+        let mut a: VecZnx = VecZnx::new(n, cols);
         let mut have: Vec<i64> = vec![i64::default(); n];
         have.iter_mut()
             .enumerate()
@@ -215,9 +214,9 @@ mod tests {
     fn test_set_get_i64_hi_norm() {
         let n: usize = 8;
         let log_base2k: usize = 17;
-        let limbs: usize = 5;
-        let log_k: usize = limbs * log_base2k - 5;
-        let mut a: VecZnx = VecZnx::new(n, limbs);
+        let cols: usize = 5;
+        let log_k: usize = cols * log_base2k - 5;
+        let mut a: VecZnx = VecZnx::new(n, cols);
         let mut have: Vec<i64> = vec![i64::default(); n];
         let mut source = Source::new([1; 32]);
         have.iter_mut().for_each(|x| {
@@ -226,9 +225,9 @@ mod tests {
                 .wrapping_sub(u64::MAX / 2 + 1) as i64;
         });
         a.encode_vec_i64(log_base2k, log_k, &have, 63);
-        //(0..a.limbs()).for_each(|i| println!("i:{} -> {:?}", i, a.at(i)));
+        //(0..a.cols()).for_each(|i| println!("i:{} -> {:?}", i, a.at(i)));
         let mut want = vec![i64::default(); n];
-        //(0..a.limbs()).for_each(|i| println!("i:{} -> {:?}", i, a.at(i)));
+        //(0..a.cols()).for_each(|i| println!("i:{} -> {:?}", i, a.at(i)));
         a.decode_vec_i64(log_base2k, log_k, &mut want);
         izip!(want, have).for_each(|(a, b)| assert_eq!(a, b, "{} != {}", a, b));
     }
