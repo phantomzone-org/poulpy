@@ -54,7 +54,6 @@ pub trait Encoding {
 
 impl Encoding for VecZnx {
     fn encode_vec_i64(&mut self, log_base2k: usize, log_k: usize, data: &[i64], log_max: usize) {
-        
         let cols: usize = (log_k + log_base2k - 1) / log_base2k;
 
         assert!(cols <= self.cols(), "invalid argument log_k: (log_k + self.log_base2k - 1)/self.log_base2k={} > self.cols()={}", cols, self.cols());

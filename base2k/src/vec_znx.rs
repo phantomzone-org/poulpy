@@ -10,11 +10,11 @@ use std::cmp::min;
 pub trait VecZnxApi {
     type Owned: VecZnxApi + Infos;
 
-    fn from_bytes(n: usize, limbs: usize, bytes: &mut [u8]) -> Self::Owned;
+    fn from_bytes(n: usize, cols: usize, bytes: &mut [u8]) -> Self::Owned;
 
     /// Returns the minimum size of the [u8] array required to assign a
     /// new backend array.
-    fn bytes_of(n: usize, limbs: usize) -> usize;
+    fn bytes_of(n: usize, cols: usize) -> usize;
 
     /// Returns the backing array.
     fn raw(&self) -> &[i64];
@@ -28,16 +28,16 @@ pub trait VecZnxApi {
     /// Returns a mutable pointer to the backing array.
     fn as_mut_ptr(&mut self) -> *mut i64;
 
-    /// Returns a non-mutable reference to the i-th limb.
+    /// Returns a non-mutable reference to the i-th cols.
     fn at(&self, i: usize) -> &[i64];
 
-    /// Returns a mutable reference to the i-th limb .
+    /// Returns a mutable reference to the i-th cols .
     fn at_mut(&mut self, i: usize) -> &mut [i64];
 
-    /// Returns a non-mutable pointer to the i-th limb.
+    /// Returns a non-mutable pointer to the i-th cols.
     fn at_ptr(&self, i: usize) -> *const i64;
 
-    /// Returns a mutable pointer to the i-th limb.
+    /// Returns a mutable pointer to the i-th cols.
     fn at_mut_ptr(&mut self, i: usize) -> *mut i64;
 
     /// Zeroes the backing array.
@@ -50,11 +50,11 @@ pub trait VecZnxApi {
     ///
     /// * `log_base2k`: the base two logarithm of the coefficients decomposition.
     /// * `k`: the shift amount.
-    /// * `carry`: scratch space of size at least equal to self.n() * self.limbs() << 3.
+    /// * `carry`: scratch space of size at least equal to self.n() * self.cols() << 3.
     ///
     /// # Panics
     ///
-    /// The method will panic if carry.len() < self.n() * self.limbs() << 3.
+    /// The method will panic if carry.len() < self.n() * self.cols() << 3.
     fn rsh(&mut self, log_base2k: usize, k: usize, carry: &mut [u8]);
 
     /// If self.n() > a.n(): Extracts X^{i*self.n()/a.n()} -> X^{i}.
@@ -67,16 +67,16 @@ pub trait VecZnxApi {
     where
         Self: AsRef<T>;
 
-    fn print(&self, limbs: usize, n: usize);
+    fn print(&self, cols: usize, n: usize);
 }
 
-pub fn bytes_of_vec_znx(n: usize, limbs: usize) -> usize {
-    n * limbs * 8
+pub fn bytes_of_vec_znx(n: usize, cols: usize) -> usize {
+    n * cols * 8
 }
 
 pub struct VecZnxBorrow {
     pub n: usize,
-    pub limbs: usize,
+    pub cols: usize,
     pub data: *mut i64,
 }
 
@@ -89,25 +89,25 @@ impl VecZnxApi for VecZnxBorrow {
     ///
     /// User must ensure that data is properly alligned and that
     /// the size of data is at least equal to [VecZnx::bytes_of].
-    fn from_bytes(n: usize, limbs: usize, bytes: &mut [u8]) -> Self::Owned {
-        let size = Self::bytes_of(n, limbs);
+    fn from_bytes(n: usize, cols: usize, bytes: &mut [u8]) -> Self::Owned {
+        let size = Self::bytes_of(n, cols);
         assert!(
             bytes.len() >= size,
-            "invalid buffer: buf.len()={} < self.buffer_size(n={}, limbs={})={}",
+            "invalid buffer: buf.len()={} < self.buffer_size(n={}, cols={})={}",
             bytes.len(),
             n,
-            limbs,
+            cols,
             size
         );
         VecZnxBorrow {
             n: n,
-            limbs: limbs,
+            cols: cols,
             data: cast_mut(&mut bytes[..size]).as_mut_ptr(),
         }
     }
 
-    fn bytes_of(n: usize, limbs: usize) -> usize {
-        bytes_of_vec_znx(n, limbs)
+    fn bytes_of(n: usize, cols: usize) -> usize {
+        bytes_of_vec_znx(n, cols)
     }
 
     fn as_ptr(&self) -> *const i64 {
@@ -119,11 +119,11 @@ impl VecZnxApi for VecZnxBorrow {
     }
 
     fn raw(&self) -> &[i64] {
-        unsafe { std::slice::from_raw_parts(self.data, self.n * self.limbs) }
+        unsafe { std::slice::from_raw_parts(self.data, self.n * self.cols) }
     }
 
     fn raw_mut(&mut self) -> &mut [i64] {
-        unsafe { std::slice::from_raw_parts_mut(self.data, self.n * self.limbs) }
+        unsafe { std::slice::from_raw_parts_mut(self.data, self.n * self.cols) }
     }
 
     fn at(&self, i: usize) -> &[i64] {
@@ -146,7 +146,7 @@ impl VecZnxApi for VecZnxBorrow {
 
     fn zero(&mut self) {
         unsafe {
-            znx_zero_i64_ref((self.n * self.limbs) as u64, self.data);
+            znx_zero_i64_ref((self.n * self.cols) as u64, self.data);
         }
     }
 
@@ -165,8 +165,8 @@ impl VecZnxApi for VecZnxBorrow {
         switch_degree(a, self.as_ref());
     }
 
-    fn print(&self, limbs: usize, n: usize) {
-        (0..limbs).for_each(|i| println!("{}: {:?}", i, &self.at(i)[..n]))
+    fn print(&self, cols: usize, n: usize) {
+        (0..cols).for_each(|i| println!("{}: {:?}", i, &self.at(i)[..n]))
     }
 }
 
@@ -179,14 +179,14 @@ impl VecZnxApi for VecZnx {
     ///
     /// User must ensure that data is properly alligned and that
     /// the size of data is at least equal to [VecZnx::bytes_of].
-    fn from_bytes(n: usize, limbs: usize, buf: &mut [u8]) -> Self::Owned {
-        let size = Self::bytes_of(n, limbs);
+    fn from_bytes(n: usize, cols: usize, buf: &mut [u8]) -> Self::Owned {
+        let size = Self::bytes_of(n, cols);
         assert!(
             buf.len() >= size,
-            "invalid buffer: buf.len()={} < self.buffer_size(n={}, limbs={})={}",
+            "invalid buffer: buf.len()={} < self.buffer_size(n={}, cols={})={}",
             buf.len(),
             n,
-            limbs,
+            cols,
             size
         );
 
@@ -196,8 +196,8 @@ impl VecZnxApi for VecZnx {
         }
     }
 
-    fn bytes_of(n: usize, limbs: usize) -> usize {
-        bytes_of_vec_znx(n, limbs)
+    fn bytes_of(n: usize, cols: usize) -> usize {
+        bytes_of_vec_znx(n, cols)
     }
 
     fn raw(&self) -> &[i64] {
@@ -253,8 +253,8 @@ impl VecZnxApi for VecZnx {
         switch_degree(a, self.as_ref())
     }
 
-    fn print(&self, limbs: usize, n: usize) {
-        (0..limbs).for_each(|i| println!("{}: {:?}", i, &self.at(i)[..n]))
+    fn print(&self, cols: usize, n: usize) {
+        (0..cols).for_each(|i| println!("{}: {:?}", i, &self.at(i)[..n]))
     }
 }
 
@@ -265,16 +265,16 @@ impl VecZnxApi for VecZnx {
 pub struct VecZnx {
     /// Polynomial degree.
     pub n: usize,
-    /// Polynomial coefficients, as a contiguous array. Each limb is equally spaced by n.
+    /// Polynomial coefficients, as a contiguous array. Each col is equally spaced by n.
     pub data: Vec<i64>,
 }
 
 impl VecZnx {
-    /// Allocates a new [VecZnx] composed of #limbs polynomials of Z\[X\].
-    pub fn new(n: usize, limbs: usize) -> Self {
+    /// Allocates a new [VecZnx] composed of #cols polynomials of Z\[X\].
+    pub fn new(n: usize, cols: usize) -> Self {
         Self {
             n: n,
-            data: alloc_aligned::<i64>(n * limbs, 64),
+            data: alloc_aligned::<i64>(n * cols, 64),
         }
     }
 
@@ -321,9 +321,9 @@ pub fn switch_degree<T: VecZnxApi + Infos>(b: &mut T, a: &T) {
         b.zero();
     }
 
-    let limbs = min(a.cols(), b.cols());
+    let cols = min(a.cols(), b.cols());
 
-    (0..limbs).for_each(|i| {
+    (0..cols).for_each(|i| {
         izip!(
             a.at(i).iter().step_by(gap_in),
             b.at_mut(i).iter_mut().step_by(gap_out)
@@ -369,12 +369,12 @@ pub fn rsh<T: VecZnxApi + Infos>(log_base2k: usize, a: &mut T, k: usize, carry: 
         n
     );
 
-    let limbs: usize = a.cols();
-    let limbs_steps: usize = k / log_base2k;
+    let cols: usize = a.cols();
+    let cols_steps: usize = k / log_base2k;
 
-    a.raw_mut().rotate_right(n * limbs_steps);
+    a.raw_mut().rotate_right(n * cols_steps);
     unsafe {
-        znx::znx_zero_i64_ref((n * limbs_steps) as u64, a.as_mut_ptr());
+        znx::znx_zero_i64_ref((n * cols_steps) as u64, a.as_mut_ptr());
     }
 
     let k_rem = k % log_base2k;
@@ -389,7 +389,7 @@ pub fn rsh<T: VecZnxApi + Infos>(log_base2k: usize, a: &mut T, k: usize, carry: 
         let mask: i64 = (1 << k_rem) - 1;
         let log_base2k: usize = log_base2k;
 
-        (limbs_steps..limbs).for_each(|i| {
+        (cols_steps..cols).for_each(|i| {
             izip!(carry_i64.iter_mut(), a.at_mut(i).iter_mut()).for_each(|(ci, xi)| {
                 *xi += *ci << log_base2k;
                 *ci = *xi & mask;
@@ -404,12 +404,12 @@ pub trait VecZnxOps {
     ///
     /// # Arguments
     ///
-    /// * `limbs`: the number of limbs.
-    fn new_vec_znx(&self, limbs: usize) -> VecZnx;
+    /// * `cols`: the number of cols.
+    fn new_vec_znx(&self, cols: usize) -> VecZnx;
 
     /// Returns the minimum number of bytes necessary to allocate
     /// a new [VecZnx] through [VecZnx::from_bytes].
-    fn bytes_of_vec_znx(&self, limbs: usize) -> usize;
+    fn bytes_of_vec_znx(&self, cols: usize) -> usize;
 
     /// c <- a + b.
     fn vec_znx_add<T: VecZnxApi + Infos>(&self, c: &mut T, a: &T, b: &T);
@@ -436,10 +436,10 @@ pub trait VecZnxOps {
     fn vec_znx_rotate_inplace<T: VecZnxApi + Infos>(&self, k: i64, a: &mut T);
 
     /// b <- phi_k(a) where phi_k: X^i -> X^{i*k} (mod (X^{n} + 1))
-    fn vec_znx_automorphism<T: VecZnxApi + Infos>(&self, k: i64, b: &mut T, a: &T, a_limbs: usize);
+    fn vec_znx_automorphism<T: VecZnxApi + Infos>(&self, k: i64, b: &mut T, a: &T, a_cols: usize);
 
     /// a <- phi_k(a) where phi_k: X^i -> X^{i*k} (mod (X^{n} + 1))
-    fn vec_znx_automorphism_inplace<T: VecZnxApi + Infos>(&self, k: i64, a: &mut T, a_limbs: usize);
+    fn vec_znx_automorphism_inplace<T: VecZnxApi + Infos>(&self, k: i64, a: &mut T, a_cols: usize);
 
     /// Splits b into subrings and copies them them into a.
     ///
@@ -459,12 +459,12 @@ pub trait VecZnxOps {
 }
 
 impl VecZnxOps for Module {
-    fn new_vec_znx(&self, limbs: usize) -> VecZnx {
-        VecZnx::new(self.n(), limbs)
+    fn new_vec_znx(&self, cols: usize) -> VecZnx {
+        VecZnx::new(self.n(), cols)
     }
 
-    fn bytes_of_vec_znx(&self, limbs: usize) -> usize {
-        self.n() * limbs * 8
+    fn bytes_of_vec_znx(&self, cols: usize) -> usize {
+        self.n() * cols * 8
     }
 
     // c <- a + b
@@ -597,18 +597,18 @@ impl VecZnxOps for Module {
         }
     }
 
-    /// Maps X^i to X^{ik} mod X^{n}+1. The mapping is applied independently on each limbs.
+    /// Maps X^i to X^{ik} mod X^{n}+1. The mapping is applied independently on each cols.
     ///
     /// # Arguments
     ///
     /// * `a`: input.
     /// * `b`: output.
     /// * `k`: the power to which to map each coefficients.
-    /// * `limbs_a`: the number of limbs_a on which to apply the mapping.
+    /// * `a_cols`: the number of a_cols on which to apply the mapping.
     ///
     /// # Panics
     ///
-    /// The method will panic if the argument `limbs_a` is greater than `a.limbs()`.
+    /// The method will panic if the argument `a` is greater than `a.cols()`.
     ///
     /// # Example
     /// ```
@@ -621,23 +621,23 @@ impl VecZnxOps for Module {
     /// let mut b: VecZnx = module.new_vec_znx(2);
     /// let mut c: VecZnx = module.new_vec_znx(2);
     ///
-    /// (0..a.limbs()).for_each(|i|{
+    /// (0..a.cols()).for_each(|i|{
     ///     a.at_mut(i).iter_mut().enumerate().for_each(|(i, x)|{
     ///         *x = i as i64
     ///     })
     /// });
     ///
     /// module.vec_znx_automorphism(-1, &mut b, &a, 1); // X^i -> X^(-i)
-    /// let limb = c.at_mut(0);
-    /// (1..limb.len()).for_each(|i|{
-    ///     limb[n-i] = -(i as i64)
+    /// let col = c.at_mut(0);
+    /// (1..col.len()).for_each(|i|{
+    ///     col[n-i] = -(i as i64)
     /// });
     /// izip!(b.data.iter(), c.data.iter()).for_each(|(a, b)| assert_eq!(a, b, "{} != {}", a, b));
     /// ```
-    fn vec_znx_automorphism<T: VecZnxApi + Infos>(&self, k: i64, b: &mut T, a: &T, limbs_a: usize) {
+    fn vec_znx_automorphism<T: VecZnxApi + Infos>(&self, k: i64, b: &mut T, a: &T, a_cols: usize) {
         assert_eq!(a.n(), self.n());
         assert_eq!(b.n(), self.n());
-        assert!(a.cols() >= limbs_a);
+        assert!(a.cols() >= a_cols);
         unsafe {
             vec_znx::vec_znx_automorphism(
                 self.0,
@@ -646,23 +646,23 @@ impl VecZnxOps for Module {
                 b.cols() as u64,
                 b.n() as u64,
                 a.as_ptr(),
-                limbs_a as u64,
+                a_cols as u64,
                 a.n() as u64,
             );
         }
     }
 
-    /// Maps X^i to X^{ik} mod X^{n}+1. The mapping is applied independently on each limbs.
+    /// Maps X^i to X^{ik} mod X^{n}+1. The mapping is applied independently on each cols.
     ///
     /// # Arguments
     ///
     /// * `a`: input and output.
     /// * `k`: the power to which to map each coefficients.
-    /// * `limbs_a`: the number of limbs on which to apply the mapping.
+    /// * `a_cols`: the number of cols on which to apply the mapping.
     ///
     /// # Panics
     ///
-    /// The method will panic if the argument `limbs` is greater than `self.limbs()`.
+    /// The method will panic if the argument `cols` is greater than `self.cols()`.
     ///
     /// # Example
     /// ```
@@ -674,27 +674,22 @@ impl VecZnxOps for Module {
     /// let mut a: VecZnx = VecZnx::new(n, 2);
     /// let mut b: VecZnx = VecZnx::new(n, 2);
     ///
-    /// (0..a.limbs()).for_each(|i|{
+    /// (0..a.cols()).for_each(|i|{
     ///     a.at_mut(i).iter_mut().enumerate().for_each(|(i, x)|{
     ///         *x = i as i64
     ///     })
     /// });
     ///
     /// module.vec_znx_automorphism_inplace(-1, &mut a, 1); // X^i -> X^(-i)
-    /// let limb = b.at_mut(0);
-    /// (1..limb.len()).for_each(|i|{
-    ///     limb[n-i] = -(i as i64)
+    /// let col = b.at_mut(0);
+    /// (1..col.len()).for_each(|i|{
+    ///     col[n-i] = -(i as i64)
     /// });
     /// izip!(a.data.iter(), b.data.iter()).for_each(|(a, b)| assert_eq!(a, b, "{} != {}", a, b));
     /// ```
-    fn vec_znx_automorphism_inplace<T: VecZnxApi + Infos>(
-        &self,
-        k: i64,
-        a: &mut T,
-        limbs_a: usize,
-    ) {
+    fn vec_znx_automorphism_inplace<T: VecZnxApi + Infos>(&self, k: i64, a: &mut T, a_cols: usize) {
         assert_eq!(a.n(), self.n());
-        assert!(a.cols() >= limbs_a);
+        assert!(a.cols() >= a_cols);
         unsafe {
             vec_znx::vec_znx_automorphism(
                 self.0,
@@ -703,7 +698,7 @@ impl VecZnxOps for Module {
                 a.cols() as u64,
                 a.n() as u64,
                 a.as_ptr(),
-                limbs_a as u64,
+                a_cols as u64,
                 a.n() as u64,
             );
         }

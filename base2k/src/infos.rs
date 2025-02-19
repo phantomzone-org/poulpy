@@ -8,7 +8,7 @@ pub trait Infos {
     fn log_n(&self) -> usize;
 
     /// Returns the number of columns of the receiver.
-    /// This method is equivalent to [Infos::limbs].
+    /// This method is equivalent to [Infos::cols].
     fn cols(&self) -> usize;
 
     /// Returns the number of rows of the receiver.
@@ -26,12 +26,12 @@ impl Infos for VecZnx {
         self.n
     }
 
-    /// Returns the number of limbs of the [VecZnx].
+    /// Returns the number of cols of the [VecZnx].
     fn cols(&self) -> usize {
         self.data.len() / self.n
     }
 
-    /// Returns the number of limbs of the [VecZnx].
+    /// Returns the number of rows of the [VecZnx].
     fn rows(&self) -> usize {
         1
     }
@@ -48,12 +48,12 @@ impl Infos for VecZnxBorrow {
         self.n
     }
 
-    /// Returns the number of limbs of the [VecZnx].
+    /// Returns the number of cols of the [VecZnx].
     fn cols(&self) -> usize {
-        self.limbs
+        self.cols
     }
 
-    /// Returns the number of limbs of the [VecZnx].
+    /// Returns the number of rows of the [VecZnx].
     fn rows(&self) -> usize {
         1
     }
@@ -75,9 +75,9 @@ impl Infos for VmpPMat {
     }
 
     /// Returns the number of cols of the [VmpPMat].
-    /// The number of cols refers to the number of limbs  
+    /// The number of cols refers to the number of cols  
     /// of each [VecZnxDft].
-    /// This method is equivalent to [Self::limbs].
+    /// This method is equivalent to [Self::cols].
     fn cols(&self) -> usize {
         self.cols
     }
