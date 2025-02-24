@@ -75,45 +75,68 @@ where
     }
 }
 
-impl<T: Infos> Elem<T> {
-    pub fn n(&self) -> usize {
+pub trait ElemCommon<T> {
+    fn n(&self) -> usize;
+    fn log_n(&self) -> usize;
+    fn elem(&self) -> &Elem<T>;
+    fn elem_mut(&mut self) -> &mut Elem<T>;
+    fn size(&self) -> usize;
+    fn rows(&self) -> usize;
+    fn cols(&self) -> usize;
+    fn log_base2k(&self) -> usize;
+    fn log_q(&self) -> usize;
+    fn log_scale(&self) -> usize;
+    fn at(&self, i: usize) -> &T;
+    fn at_mut(&mut self, i: usize) -> &mut T;
+}
+
+impl<T: Infos> ElemCommon<T> for Elem<T> {
+    fn n(&self) -> usize {
         self.value[0].n()
     }
 
-    pub fn log_n(&self) -> usize {
+    fn log_n(&self) -> usize {
         self.value[0].log_n()
     }
 
-    pub fn size(&self) -> usize {
+    fn elem(&self) -> &Elem<T> {
+        self
+    }
+
+    fn elem_mut(&mut self) -> &mut Elem<T> {
+        self
+    }
+
+    fn size(&self) -> usize {
         self.value.len()
     }
 
-    pub fn rows(&self) -> usize {
+    fn rows(&self) -> usize {
         self.value[0].rows()
     }
 
-    pub fn cols(&self) -> usize {
+    fn cols(&self) -> usize {
         self.value[0].cols()
     }
 
-    pub fn log_base2k(&self) -> usize {
+    fn log_base2k(&self) -> usize {
         self.log_base2k
     }
 
-    pub fn log_q(&self) -> usize {
+    fn log_q(&self) -> usize {
         self.log_q
     }
 
-    pub fn log_scale(&self) -> usize {
+    fn log_scale(&self) -> usize {
         self.log_scale
     }
 
-    pub fn at(&self, i: usize) -> &T {
+    fn at(&self, i: usize) -> &T {
         assert!(i < self.size());
         &self.value[i]
     }
 
-    pub fn at_mut(&mut self, i: usize) -> &mut T {
+    fn at_mut(&mut self, i: usize) -> &mut T {
         assert!(i < self.size());
         &mut self.value[i]
     }

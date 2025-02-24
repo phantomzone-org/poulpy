@@ -1,6 +1,7 @@
 use crate::ffi::znx::znx_zero_i64_ref;
 use crate::{Infos, VecZnx, VecZnxApi};
 use itertools::izip;
+use rug::{Assign, Float};
 use std::cmp::min;
 
 pub trait Encoding {
@@ -22,6 +23,13 @@ pub trait Encoding {
     /// * `log_k`: base two logarithm of the scaling of the data.
     /// * `data`: data to decode from the receiver.
     fn decode_vec_i64(&self, log_base2k: usize, log_k: usize, data: &mut [i64]);
+
+    /// decode a vector of Float from the receiver.
+    ///
+    /// # Arguments
+    /// * `log_base2k`: base two logarithm decomposition of the receiver.
+    /// * `data`: data to decode from the receiver.
+    fn decode_vec_float(&self, log_base2k: usize, data: &mut [Float]);
 
     /// encodes a single i64 on the receiver at the given index.
     ///
@@ -121,6 +129,36 @@ impl Encoding for VecZnx {
                 });
             }
         })
+    }
+
+    fn decode_vec_float(&self, log_base2k: usize, data: &mut [Float]) {
+        let cols: usize = self.cols();
+        assert!(
+            data.len() >= self.n(),
+            "invalid data: data.len()={} < self.n()={}",
+            data.len(),
+            self.n()
+        );
+
+        let prec: u32 = (log_base2k * cols) as u32;
+
+        // 2^{log_base2k}
+        let base = Float::with_val(prec, (1 << log_base2k) as f64);
+
+        // y[i] = sum x[j][i] * 2^{-log_base2k*j}
+        (0..cols).for_each(|i| {
+            if i == 0 {
+                izip!(self.at(cols - i - 1).iter(), data.iter_mut()).for_each(|(x, y)| {
+                    y.assign(*x);
+                    *y /= &base;
+                });
+            } else {
+                izip!(self.at(cols - i - 1).iter(), data.iter_mut()).for_each(|(x, y)| {
+                    *y += Float::with_val(prec, *x);
+                    *y /= &base;
+                });
+            }
+        });
     }
 
     fn encode_coeff_i64(

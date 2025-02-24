@@ -1,6 +1,6 @@
 use crate::{
     ciphertext::Ciphertext,
-    elem::{Elem, ElemVecZnx, VecZnxCommon},
+    elem::{Elem, ElemCommon, VecZnxCommon},
     keys::SecretKey,
     parameters::Parameters,
     plaintext::Plaintext,
@@ -20,19 +20,19 @@ impl Decryptor {
     }
 }
 
-pub fn decrypt_rlwe_thread_safe_tmp_byte(module: &Module, limbs: usize) -> usize {
+pub fn decrypt_rlwe_tmp_byte(module: &Module, limbs: usize) -> usize {
     module.bytes_of_vec_znx_dft(limbs) + module.vec_znx_big_normalize_tmp_bytes()
 }
 
 impl Parameters {
-    pub fn decrypt_rlwe_thread_safe_tmp_byte(&self, log_q: usize) -> usize {
-        decrypt_rlwe_thread_safe_tmp_byte(
+    pub fn decrypt_rlwe_tmp_byte(&self, log_q: usize) -> usize {
+        decrypt_rlwe_tmp_byte(
             self.module(),
             (log_q + self.log_base2k() - 1) / self.log_base2k(),
         )
     }
 
-    pub fn decrypt_rlwe_thread_safe<T>(
+    pub fn decrypt_rlwe<T>(
         &self,
         res: &mut Plaintext<T>,
         ct: &Ciphertext<T>,
@@ -40,13 +40,13 @@ impl Parameters {
         tmp_bytes: &mut [u8],
     ) where
         T: VecZnxCommon<Owned = T>,
-        Elem<T>: ElemVecZnx<T>,
+        Elem<T>: ElemCommon<T>,
     {
-        decrypt_rlwe_thread_safe(self.module(), &mut res.0, &ct.0, sk, tmp_bytes)
+        decrypt_rlwe(self.module(), &mut res.0, &ct.0, sk, tmp_bytes)
     }
 }
 
-pub fn decrypt_rlwe_thread_safe<T>(
+pub fn decrypt_rlwe<T>(
     module: &Module,
     res: &mut Elem<T>,
     a: &Elem<T>,
@@ -54,15 +54,15 @@ pub fn decrypt_rlwe_thread_safe<T>(
     tmp_bytes: &mut [u8],
 ) where
     T: VecZnxCommon<Owned = T>,
-    Elem<T>: ElemVecZnx<T>,
+    Elem<T>: ElemCommon<T>,
 {
     let cols: usize = a.cols();
 
     assert!(
-        tmp_bytes.len() >= decrypt_rlwe_thread_safe_tmp_byte(module, cols),
-        "invalid tmp_bytes: tmp_bytes.len()={} < decrypt_rlwe_thread_safe_tmp_byte={}",
+        tmp_bytes.len() >= decrypt_rlwe_tmp_byte(module, cols),
+        "invalid tmp_bytes: tmp_bytes.len()={} < decrypt_rlwe_tmp_byte={}",
         tmp_bytes.len(),
-        decrypt_rlwe_thread_safe_tmp_byte(module, cols)
+        decrypt_rlwe_tmp_byte(module, cols)
     );
 
     let res_dft_bytes: usize = module.bytes_of_vec_znx_dft(cols);

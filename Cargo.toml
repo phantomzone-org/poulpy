@@ -3,6 +3,7 @@ members = ["base2k", "rlwe", "rns", "sampling", "utils"]
 
 
 [workspace.dependencies]
+rug = "1.27"
 rand = "0.8.4"
 rand_chacha = "0.3.1"
 rand_core = "0.6.4"

@@ -6,6 +6,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+rug = {workspace = true}
 criterion = {workspace = true}
 base2k = {path="../base2k"}
 sampling = {path="../sampling"}

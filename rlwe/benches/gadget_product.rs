@@ -1,10 +1,11 @@
+/*
 use base2k::{FFT64, Module, SvpPPolOps, VecZnx, VmpPMat, alloc_aligned_u8};
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use rlwe::{
     ciphertext::{Ciphertext, new_gadget_ciphertext},
-    elem::Elem,
-    encryptor::{encrypt_grlwe_sk_thread_safe, encrypt_grlwe_sk_tmp_bytes},
-    evaluator::{gadget_product_inplace, gadget_product_tmp_bytes},
+    elem::{Elem, ElemCommon},
+    encryptor::{encrypt_grlwe_sk, encrypt_grlwe_sk_tmp_bytes},
+    gadget_product::{gadget_product_core, gadget_product_tmp_bytes},
     key_generator::gen_switching_key_thread_safe_tmp_bytes,
     keys::SecretKey,
     parameters::{Parameters, ParametersLiteral},
@@ -18,7 +19,9 @@ fn bench_gadget_product_inplace(c: &mut Criterion) {
         gadget_ct: &'a Ciphertext<VmpPMat>,
         tmp_bytes: &'a mut [u8],
     ) -> Box<dyn FnMut() + 'a> {
-        Box::new(move || gadget_product_inplace::<true, _>(module, elem, gadget_ct, tmp_bytes))
+        Box::new(move || {
+            gadget_product_inplace::<true, _>(module, elem, gadget_ct, elem.cols() + 1, tmp_bytes)
+        })
     }
 
     let mut b: criterion::BenchmarkGroup<'_, criterion::measurement::WallTime> =
@@ -43,7 +46,7 @@ fn bench_gadget_product_inplace(c: &mut Criterion) {
                 | gen_switching_key_thread_safe_tmp_bytes(
                     params.module(),
                     params.log_base2k(),
-                    params.limbs_q(),
+                    params.cols_q(),
                     params.log_q(),
                 )
                 | gadget_product_tmp_bytes(
@@ -51,13 +54,13 @@ fn bench_gadget_product_inplace(c: &mut Criterion) {
                     params.log_base2k(),
                     params.log_q(),
                     params.log_q(),
-                    params.limbs_q(),
+                    params.cols_q(),
                     params.log_qp(),
                 )
                 | encrypt_grlwe_sk_tmp_bytes(
                     params.module(),
                     params.log_base2k(),
-                    params.limbs_qp(),
+                    params.cols_qp(),
                     params.log_qp(),
                 ),
             64,
@@ -82,7 +85,7 @@ fn bench_gadget_product_inplace(c: &mut Criterion) {
         let mut gadget_ct: Ciphertext<VmpPMat> = new_gadget_ciphertext(
             params.module(),
             params.log_base2k(),
-            params.limbs_q(),
+            params.cols_q(),
             params.log_qp(),
         );
 
@@ -123,3 +126,4 @@ fn bench_gadget_product_inplace(c: &mut Criterion) {
 
 criterion_group!(benches, bench_gadget_product_inplace);
 criterion_main!(benches);
+*/

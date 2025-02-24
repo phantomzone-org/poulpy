@@ -454,18 +454,18 @@ impl VmpPMatOps for Module {
 
     fn vmp_apply_dft_tmp_bytes(
         &self,
-        c_cols: usize,
+        res_cols: usize,
         a_cols: usize,
-        rows: usize,
-        cols: usize,
+        gct_rows: usize,
+        gct_cols: usize,
     ) -> usize {
         unsafe {
             vmp::vmp_apply_dft_tmp_bytes(
                 self.0,
-                c_cols as u64,
+                res_cols as u64,
                 a_cols as u64,
-                rows as u64,
-                cols as u64,
+                gct_rows as u64,
+                gct_cols as u64,
             ) as usize
         }
     }
@@ -495,18 +495,18 @@ impl VmpPMatOps for Module {
 
     fn vmp_apply_dft_to_dft_tmp_bytes(
         &self,
-        c_cols: usize,
+        res_cols: usize,
         a_cols: usize,
-        rows: usize,
-        cols: usize,
+        gct_rows: usize,
+        gct_cols: usize,
     ) -> usize {
         unsafe {
             vmp::vmp_apply_dft_to_dft_tmp_bytes(
                 self.0,
-                c_cols as u64,
+                res_cols as u64,
                 a_cols as u64,
-                rows as u64,
-                cols as u64,
+                gct_rows as u64,
+                gct_cols as u64,
             ) as usize
         }
     }

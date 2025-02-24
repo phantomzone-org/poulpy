@@ -1,4 +1,4 @@
-use crate::encryptor::{encrypt_grlwe_sk_thread_safe, encrypt_grlwe_sk_tmp_bytes};
+use crate::encryptor::{encrypt_grlwe_sk, encrypt_grlwe_sk_tmp_bytes};
 use crate::keys::{PublicKey, SecretKey, SwitchingKey};
 use crate::parameters::Parameters;
 use base2k::{Module, SvpPPol};
@@ -40,7 +40,7 @@ impl KeyGenerator {
     }
 }
 
-pub fn gen_switching_key_thread_safe_tmp_bytes(
+pub fn gen_switching_key_tmp_bytes(
     module: &Module,
     log_base2k: usize,
     rows: usize,
@@ -49,7 +49,7 @@ pub fn gen_switching_key_thread_safe_tmp_bytes(
     encrypt_grlwe_sk_tmp_bytes(module, log_base2k, rows, log_q)
 }
 
-pub fn gen_switching_key_thread_safe(
+pub fn gen_switching_key(
     module: &Module,
     swk: &mut SwitchingKey,
     sk_in: &SecretKey,
@@ -59,7 +59,7 @@ pub fn gen_switching_key_thread_safe(
     sigma: f64,
     tmp_bytes: &mut [u8],
 ) {
-    encrypt_grlwe_sk_thread_safe(
+    encrypt_grlwe_sk(
         module, &mut swk.0, &sk_in.0, sk_out, source_xa, source_xe, sigma, tmp_bytes,
     );
 }

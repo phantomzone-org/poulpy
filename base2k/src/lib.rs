@@ -12,6 +12,7 @@ pub mod free;
 pub mod infos;
 pub mod module;
 pub mod sampling;
+pub mod stats;
 pub mod svp;
 pub mod vec_znx;
 pub mod vec_znx_big;
@@ -23,6 +24,8 @@ pub use free::*;
 pub use infos::*;
 pub use module::*;
 pub use sampling::*;
+#[allow(unused_imports)]
+pub use stats::*;
 pub use svp::*;
 pub use vec_znx::*;
 pub use vec_znx_big::*;

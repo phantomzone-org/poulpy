@@ -1,5 +1,5 @@
 use crate::ciphertext::Ciphertext;
-use crate::elem::{Elem, ElemVecZnx, VecZnxCommon};
+use crate::elem::{Elem, ElemCommon, ElemVecZnx, VecZnxCommon};
 use crate::parameters::Parameters;
 use base2k::{Module, VecZnx};
 
@@ -46,43 +46,61 @@ where
         Self(Elem::<T>::from_bytes(module, log_base2k, log_q, 1, bytes))
     }
 
-    pub fn n(&self) -> usize {
+    pub fn as_ciphertext(&self) -> Ciphertext<T> {
+        unsafe { Ciphertext::<T>(std::ptr::read(&self.0)) }
+    }
+}
+
+impl<T> ElemCommon<T> for Plaintext<T>
+where
+    T: VecZnxCommon<Owned = T>,
+    Elem<T>: ElemVecZnx<T>,
+{
+    fn n(&self) -> usize {
         self.0.n()
     }
 
-    pub fn log_q(&self) -> usize {
+    fn log_n(&self) -> usize {
+        self.elem().log_n()
+    }
+
+    fn log_q(&self) -> usize {
         self.0.log_q
     }
 
-    pub fn rows(&self) -> usize {
+    fn elem(&self) -> &Elem<T> {
+        &self.0
+    }
+
+    fn elem_mut(&mut self) -> &mut Elem<T> {
+        &mut self.0
+    }
+
+    fn size(&self) -> usize {
+        self.elem().size()
+    }
+
+    fn rows(&self) -> usize {
         self.0.rows()
     }
 
-    pub fn cols(&self) -> usize {
+    fn cols(&self) -> usize {
         self.0.cols()
     }
 
-    pub fn at(&self, i: usize) -> &T {
+    fn at(&self, i: usize) -> &T {
         self.0.at(i)
     }
 
-    pub fn at_mut(&mut self, i: usize) -> &mut T {
+    fn at_mut(&mut self, i: usize) -> &mut T {
         self.0.at_mut(i)
     }
 
-    pub fn log_base2k(&self) -> usize {
+    fn log_base2k(&self) -> usize {
         self.0.log_base2k()
     }
 
-    pub fn log_scale(&self) -> usize {
+    fn log_scale(&self) -> usize {
         self.0.log_scale()
-    }
-
-    pub fn zero(&mut self) {
-        self.0.zero()
-    }
-
-    pub fn as_ciphertext(&self) -> Ciphertext<T> {
-        unsafe { Ciphertext::<T>(std::ptr::read(&self.0)) }
     }
 }

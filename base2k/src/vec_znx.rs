@@ -42,6 +42,9 @@ pub trait VecZnxApi {
 
     /// Zeroes the backing array.
     fn zero(&mut self);
+
+    /// Normalization: propagates carry and ensures each coefficients
+    /// falls into the range [-2^{K-1}, 2^{K-1}].
     fn normalize(&mut self, log_base2k: usize, carry: &mut [u8]);
 
     /// Right shifts the coefficients by k bits.

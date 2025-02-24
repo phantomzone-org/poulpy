@@ -1,6 +1,7 @@
 use base2k::{Encoding, FFT64, SvpPPolOps, VecZnx, VecZnxApi};
 use rlwe::{
     ciphertext::Ciphertext,
+    elem::ElemCommon,
     keys::SecretKey,
     parameters::{Parameters, ParametersLiteral},
     plaintext::Plaintext,
@@ -22,7 +23,7 @@ fn main() {
 
     let mut tmp_bytes: Vec<u8> = vec![
         0u8;
-        params.decrypt_rlwe_thread_safe_tmp_byte(params.log_q())
+        params.decrypt_rlwe_tmp_byte(params.log_q())
             | params.encrypt_rlwe_sk_tmp_bytes(params.log_q())
     ];
 
@@ -64,7 +65,7 @@ fn main() {
         &mut tmp_bytes,
     );
 
-    params.decrypt_rlwe_thread_safe(&mut pt, &ct, &sk_svp_ppol, &mut tmp_bytes);
+    params.decrypt_rlwe(&mut pt, &ct, &sk_svp_ppol, &mut tmp_bytes);
 
     pt.0.value[0].print(pt.cols(), 16);
 

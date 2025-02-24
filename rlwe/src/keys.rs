@@ -1,5 +1,5 @@
 use crate::ciphertext::{Ciphertext, new_gadget_ciphertext};
-use crate::elem::Elem;
+use crate::elem::{Elem, ElemCommon};
 use crate::encryptor::{encrypt_rlwe_sk_thread_safe, encrypt_rlwe_sk_tmp_bytes};
 use base2k::{Module, Scalar, SvpPPol, SvpPPolOps, VecZnx, VmpPMat};
 use sampling::source::Source;
