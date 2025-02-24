@@ -6,7 +6,7 @@ use crate::plaintext::Plaintext;
 use base2k::sampling::Sampling;
 use base2k::{
     Module, Scalar, SvpPPol, SvpPPolOps, VecZnx, VecZnxApi, VecZnxBig, VecZnxBigOps, VecZnxBorrow,
-    VecZnxDft, VecZnxDftOps, VecZnxOps, VmpPMat, VmpPMatOps,
+    VecZnxDft, VecZnxDftOps, VecZnxOps, VmpPMat, VmpPMatOps, cast_mut,
 };
 
 use sampling::source::{Source, new_seed};

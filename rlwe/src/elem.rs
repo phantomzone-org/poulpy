@@ -1,4 +1,4 @@
-use base2k::{Infos, Module, VecZnx, VecZnxApi, VecZnxBorrow, VecZnxOps, VmpPMat, VmpPMatOps};
+use base2k::{Infos, Module, VecZnx, VecZnxBorrow, VecZnxOps, VmpPMat, VmpPMatOps};
 
 use crate::parameters::Parameters;
 
@@ -19,7 +19,7 @@ pub struct Elem<T> {
     pub log_scale: usize,
 }
 
-pub trait VecZnxCommon: VecZnxApi + Infos {}
+pub trait VecZnxCommon: base2k::VecZnxCommon {}
 impl VecZnxCommon for VecZnx {}
 impl VecZnxCommon for VecZnxBorrow {}
 
