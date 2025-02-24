@@ -53,7 +53,7 @@ impl Parameters {
 ///
 /// res = sum[min(a_ncols, b_nrows)] decomp(a, i) * (-B[i]s + m * 2^{-k*i} + E[i], B[i])
 ///     = (cs + m * a + e, c) with min(res_cols, b_cols) cols.
-pub fn gadget_product_core<const OVERWRITE: bool, T>(
+pub fn gadget_product_core<T>(
     module: &Module,
     res_dft_0: &mut VecZnxDft,
     res_dft_1: &mut VecZnxDft,
@@ -108,7 +108,6 @@ mod test {
         VecZnxDftOps, VecZnxOps, VmpPMat,
     };
     use sampling::source::{Source, new_seed};
-    use std::cmp::min;
 
     #[test]
     fn test_gadget_product_core() {
@@ -232,7 +231,7 @@ mod test {
 
                 // res_dft_0 = DFT(gct_[0] * ct[1] = a * (-bs' + s + e) = -cs' + as + e')
                 // res_dft_1 = DFT(gct_[1] * ct[1] = a * b = c)
-                gadget_product_core::<true, _>(
+                gadget_product_core(
                     params.module(),
                     &mut res_dft_0,
                     &mut res_dft_1,
