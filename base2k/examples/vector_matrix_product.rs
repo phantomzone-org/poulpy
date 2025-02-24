@@ -1,6 +1,6 @@
 use base2k::{
     Encoding, Free, Infos, Module, VecZnx, VecZnxApi, VecZnxBig, VecZnxBigOps, VecZnxDft,
-    VecZnxDftOps, VecZnxOps, VmpPMat, VmpPMatOps, FFT64,
+    VecZnxDftOps, VecZnxOps, VecZnxVec, VmpPMat, VmpPMatOps, FFT64,
 };
 
 fn main() {
@@ -40,7 +40,7 @@ fn main() {
         vecznx[i].data[i * n + 1] = 1 as i64;
     });
 
-    let slices: Vec<&[i64]> = vecznx.iter().map(|v| v.data.as_slice()).collect();
+    let slices: Vec<&[i64]> = vecznx.dblptr();
 
     let mut vmp_pmat: VmpPMat = module.new_vmp_pmat(rows, cols);
     module.vmp_prepare_dblptr(&mut vmp_pmat, &slices, &mut buf);

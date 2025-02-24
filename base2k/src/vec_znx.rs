@@ -7,7 +7,22 @@ use crate::{Infos, Module};
 use itertools::izip;
 use std::cmp::min;
 
-pub trait VecZnxApi {
+pub trait VecZnxVec {
+    fn dblptr(&self) -> Vec<&[i64]>;
+    fn dblptr_mut(&mut self) -> Vec<&mut [i64]>;
+}
+
+impl<T: VecZnxApi + Infos> VecZnxVec for Vec<T> {
+    fn dblptr(&self) -> Vec<&[i64]> {
+        self.iter().map(|v| v.raw()).collect()
+    }
+
+    fn dblptr_mut(&mut self) -> Vec<&mut [i64]> {
+        self.iter_mut().map(|v| v.raw_mut()).collect()
+    }
+}
+
+pub trait VecZnxApi: AsRef<Self> + AsMut<Self> {
     type Owned: VecZnxApi + Infos;
 
     fn from_bytes(n: usize, cols: usize, bytes: &mut [u8]) -> Self::Owned;
@@ -15,6 +30,11 @@ pub trait VecZnxApi {
     /// Returns the minimum size of the [u8] array required to assign a
     /// new backend array.
     fn bytes_of(n: usize, cols: usize) -> usize;
+
+    /// Copy the data of a onto self.
+    fn copy_from<T: VecZnxApi + Infos>(&mut self, a: &T)
+    where
+        Self: AsMut<T>;
 
     /// Returns the backing array.
     fn raw(&self) -> &[i64];
@@ -83,6 +103,18 @@ pub struct VecZnxBorrow {
     pub data: *mut i64,
 }
 
+impl AsMut<VecZnxBorrow> for VecZnxBorrow {
+    fn as_mut(&mut self) -> &mut VecZnxBorrow {
+        self
+    }
+}
+
+impl AsRef<VecZnxBorrow> for VecZnxBorrow {
+    fn as_ref(&self) -> &VecZnxBorrow {
+        self
+    }
+}
+
 impl VecZnxApi for VecZnxBorrow {
     type Owned = VecZnxBorrow;
 
@@ -111,6 +143,13 @@ impl VecZnxApi for VecZnxBorrow {
 
     fn bytes_of(n: usize, cols: usize) -> usize {
         bytes_of_vec_znx(n, cols)
+    }
+
+    fn copy_from<T: VecZnxApi + Infos>(&mut self, a: &T)
+    where
+        Self: AsMut<T>,
+    {
+        copy_vec_znx_from::<T>(self.as_mut(), a);
     }
 
     fn as_ptr(&self) -> *const i64 {
@@ -203,6 +242,13 @@ impl VecZnxApi for VecZnx {
         bytes_of_vec_znx(n, cols)
     }
 
+    fn copy_from<T: VecZnxApi + Infos>(&mut self, a: &T)
+    where
+        Self: AsMut<T>,
+    {
+        copy_vec_znx_from(self.as_mut(), a);
+    }
+
     fn raw(&self) -> &[i64] {
         &self.data
     }
@@ -272,6 +318,27 @@ pub struct VecZnx {
     pub data: Vec<i64>,
 }
 
+impl AsMut<VecZnx> for VecZnx {
+    fn as_mut(&mut self) -> &mut VecZnx {
+        self
+    }
+}
+
+impl AsRef<VecZnx> for VecZnx {
+    fn as_ref(&self) -> &VecZnx {
+        self
+    }
+}
+
+/// Copies the coefficients of `a` on the receiver.
+/// Copy is done with the minimum size matching both backing arrays.
+pub fn copy_vec_znx_from<T: VecZnxApi + Infos>(b: &mut T, a: &T) {
+    let data_a: &[i64] = a.raw();
+    let data_b: &mut [i64] = b.raw_mut();
+    let size = min(data_b.len(), data_a.len());
+    data_b[..size].copy_from_slice(&data_a[..size])
+}
+
 impl VecZnx {
     /// Allocates a new [VecZnx] composed of #cols polynomials of Z\[X\].
     pub fn new(n: usize, cols: usize) -> Self {
@@ -279,13 +346,6 @@ impl VecZnx {
             n: n,
             data: alloc_aligned::<i64>(n * cols, 64),
         }
-    }
-
-    /// Copies the coefficients of `a` on the receiver.
-    /// Copy is done with the minimum size matching both backing arrays.
-    pub fn copy_from(&mut self, a: &VecZnx) {
-        let size = min(self.data.len(), a.data.len());
-        self.data[..size].copy_from_slice(&a.data[..size])
     }
 
     /// Truncates the precision of the [VecZnx] by k bits.

@@ -1,6 +1,6 @@
-use crate::{Infos, VecZnx, Encoding};
+use crate::{Encoding, Infos, VecZnx};
 use rug::float::Round;
-use rug::ops::{AddAssignRound, SubAssignRound, DivAssignRound};
+use rug::ops::{AddAssignRound, DivAssignRound, SubAssignRound};
 use rug::Float;
 
 impl VecZnx {
@@ -18,9 +18,7 @@ impl VecZnx {
             x.sub_assign_round(&avg, Round::Nearest);
         });
         let mut std: Float = Float::with_val(prec, 0);
-        data.iter().for_each(|x| {
-            std += x*x
-        });
+        data.iter().for_each(|x| std += x * x);
         std.div_assign_round(Float::with_val(prec, data.len()), Round::Nearest);
         std = std.sqrt();
         std.to_f64()
