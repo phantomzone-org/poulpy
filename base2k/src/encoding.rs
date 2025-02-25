@@ -127,7 +127,7 @@ fn encode_vec_i64<T: VecZnxCommon>(
 ) {
     let cols: usize = (log_k + log_base2k - 1) / log_base2k;
 
-    assert!(
+    debug_assert!(
         cols <= a.cols(),
         "invalid argument log_k: (log_k + a.log_base2k - 1)/a.log_base2k={} > a.cols()={}",
         cols,
@@ -177,7 +177,7 @@ fn encode_vec_i64<T: VecZnxCommon>(
 
 fn decode_vec_i64<T: VecZnxCommon>(a: &T, log_base2k: usize, log_k: usize, data: &mut [i64]) {
     let cols: usize = (log_k + log_base2k - 1) / log_base2k;
-    assert!(
+    debug_assert!(
         data.len() >= a.n(),
         "invalid data: data.len()={} < a.n()={}",
         data.len(),
@@ -201,7 +201,7 @@ fn decode_vec_i64<T: VecZnxCommon>(a: &T, log_base2k: usize, log_k: usize, data:
 
 fn decode_vec_float<T: VecZnxCommon>(a: &T, log_base2k: usize, data: &mut [Float]) {
     let cols: usize = a.cols();
-    assert!(
+    debug_assert!(
         data.len() >= a.n(),
         "invalid data: data.len()={} < a.n()={}",
         data.len(),
@@ -237,9 +237,9 @@ fn encode_coeff_i64<T: VecZnxCommon>(
     value: i64,
     log_max: usize,
 ) {
-    assert!(i < a.n());
+    debug_assert!(i < a.n());
     let cols: usize = (log_k + log_base2k - 1) / log_base2k;
-    assert!(
+    debug_assert!(
         cols <= a.cols(),
         "invalid argument log_k: (log_k + a.log_base2k - 1)/a.log_base2k={} > a.cols()={}",
         cols,
@@ -281,7 +281,7 @@ fn encode_coeff_i64<T: VecZnxCommon>(
 
 fn decode_coeff_i64<T: VecZnxCommon>(a: &T, log_base2k: usize, log_k: usize, i: usize) -> i64 {
     let cols: usize = (log_k + log_base2k - 1) / log_base2k;
-    assert!(i < a.n());
+    debug_assert!(i < a.n());
     let data: &[i64] = a.raw();
     let mut res: i64 = data[i];
     let rem: usize = log_base2k - (log_k % log_base2k);

@@ -1,6 +1,6 @@
 use crate::ffi::vec_znx_big;
 use crate::ffi::vec_znx_dft;
-use crate::{Infos, Module, VecZnxApi, VecZnxDft};
+use crate::{is_aligned, Infos, Module, VecZnxApi, VecZnxDft};
 
 pub struct VecZnxBig(pub *mut vec_znx_big::vec_znx_bigcoeff_t, pub usize);
 
@@ -9,6 +9,7 @@ impl VecZnxBig {
     /// User must ensure that data is properly alligned and that
     /// the size of data is at least equal to [Module::bytes_of_vec_znx_big].
     pub fn from_bytes(cols: usize, data: &mut [u8]) -> VecZnxBig {
+        debug_assert!(is_aligned(data.as_ptr()));
         VecZnxBig(
             data.as_mut_ptr() as *mut vec_znx_big::vec_znx_bigcoeff_t,
             cols,
@@ -94,12 +95,13 @@ impl VecZnxBigOps for Module {
     }
 
     fn new_vec_znx_big_from_bytes(&self, cols: usize, bytes: &mut [u8]) -> VecZnxBig {
-        assert!(
+        debug_assert!(
             bytes.len() >= <Module as VecZnxBigOps>::bytes_of_vec_znx_big(self, cols),
             "invalid bytes: bytes.len()={} < bytes_of_vec_znx_dft={}",
             bytes.len(),
             <Module as VecZnxBigOps>::bytes_of_vec_znx_big(self, cols)
         );
+        debug_assert!(is_aligned(bytes.as_ptr()));
         VecZnxBig::from_bytes(cols, bytes)
     }
 
@@ -189,6 +191,7 @@ impl VecZnxBigOps for Module {
             tmp_bytes.len(),
             <Module as VecZnxBigOps>::vec_znx_big_normalize_tmp_bytes(self)
         );
+        debug_assert!(is_aligned(tmp_bytes.as_ptr()));
         unsafe {
             vec_znx_big::vec_znx_big_normalize_base2k(
                 self.0,
@@ -223,6 +226,7 @@ impl VecZnxBigOps for Module {
             tmp_bytes.len(),
             <Module as VecZnxBigOps>::vec_znx_big_range_normalize_base2k_tmp_bytes(self)
         );
+        debug_assert!(is_aligned(tmp_bytes.as_ptr()));
         unsafe {
             vec_znx_big::vec_znx_big_range_normalize_base2k(
                 self.0,

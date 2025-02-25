@@ -1,5 +1,5 @@
-use crate::ffi::svp;
-use crate::{alias_mut_slice_to_vec, Module, VecZnxApi, VecZnxDft};
+use crate::ffi::svp::{self, bytes_of_svp_ppol};
+use crate::{alias_mut_slice_to_vec, is_aligned, Module, VecZnxApi, VecZnxDft};
 
 use crate::{alloc_aligned, cast, Infos};
 use rand::seq::SliceRandom;
@@ -17,7 +17,7 @@ impl Module {
 
 impl Scalar {
     pub fn new(n: usize) -> Self {
-        Self(alloc_aligned::<i64>(n, 64))
+        Self(alloc_aligned::<i64>(n))
     }
 
     pub fn n(&self) -> usize {
@@ -30,13 +30,14 @@ impl Scalar {
 
     pub fn from_buffer(&mut self, n: usize, buf: &mut [u8]) {
         let size: usize = Self::buffer_size(n);
-        assert!(
+        debug_assert!(
             buf.len() >= size,
             "invalid buffer: buf.len()={} < self.buffer_size(n={})={}",
             buf.len(),
             n,
             size
         );
+        debug_assert!(is_aligned(buf.as_ptr()));
         self.0 = alias_mut_slice_to_vec(cast::<u8, i64>(&buf[..size]))
     }
 
@@ -74,6 +75,8 @@ impl SvpPPol {
     }
 
     pub fn from_bytes(size: usize, bytes: &mut [u8]) -> SvpPPol {
+        debug_assert!(is_aligned(bytes.as_ptr()));
+        debug_assert!(bytes.len() << 3 >= size);
         SvpPPol(bytes.as_mut_ptr() as *mut svp::svp_ppol_t, size)
     }
 
@@ -125,7 +128,7 @@ impl SvpPPolOps for Module {
         b: &T,
         b_cols: usize,
     ) {
-        assert!(
+        debug_assert!(
             c.cols() >= b_cols,
             "invalid c_vector: c_vector.cols()={} < b.cols()={}",
             c.cols(),

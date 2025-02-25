@@ -33,10 +33,14 @@ pub use vec_znx_dft::*;
 pub use vmp::*;
 
 pub const GALOISGENERATOR: u64 = 5;
+pub const DEFAULTALIGN: usize = 64;
 
-#[allow(dead_code)]
-fn is_aligned<T>(ptr: *const T, align: usize) -> bool {
+fn is_aligned_custom<T>(ptr: *const T, align: usize) -> bool {
     (ptr as usize) % align == 0
+}
+
+fn is_aligned<T>(ptr: *const T) -> bool {
+    is_aligned_custom(ptr, DEFAULTALIGN)
 }
 
 pub fn cast<T, V>(data: &[T]) -> &[V] {
@@ -52,12 +56,15 @@ pub fn cast_mut<T, V>(data: &[T]) -> &mut [V] {
 }
 
 use std::alloc::{alloc, Layout};
+use std::ptr;
 
-pub fn alloc_aligned_u8(size: usize, align: usize) -> Vec<u8> {
-    assert_eq!(
-        align & (align - 1),
-        0,
-        "align={} must be a power of two",
+/// Allocates a block of bytes with a custom alignement.
+/// Alignement must be a power of two and size a multiple of the alignement.
+/// Allocated memory is initialized to zero.
+pub fn alloc_aligned_custom_u8(size: usize, align: usize) -> Vec<u8> {
+    assert!(
+        align.is_power_of_two(),
+        "Alignment must be a power of two but is {}",
         align
     );
     assert_eq!(
@@ -73,11 +80,28 @@ pub fn alloc_aligned_u8(size: usize, align: usize) -> Vec<u8> {
         if ptr.is_null() {
             panic!("Memory allocation failed");
         }
+        assert!(
+            is_aligned_custom(ptr, align),
+            "Memory allocation at {:p} is not aligned to {} bytes",
+            ptr,
+            align
+        );
+        // Init allocated memory to zero
+        ptr::write_bytes(ptr, 0, size);
         Vec::from_raw_parts(ptr, size, size)
     }
 }
 
-pub fn alloc_aligned<T>(size: usize, align: usize) -> Vec<T> {
+/// Allocates a block of bytes aligned with [DEFAULTALIGN].
+/// Size must be amultiple of [DEFAULTALIGN].
+/// /// Allocated memory is initialized to zero.
+pub fn alloc_aligned_u8(size: usize) -> Vec<u8> {
+    alloc_aligned_custom_u8(size, DEFAULTALIGN)
+}
+
+/// Allocates a block of T aligned with [DEFAULTALIGN].
+/// Size of T * size msut be a multiple of [DEFAULTALIGN].
+pub fn alloc_aligned_custom<T>(size: usize, align: usize) -> Vec<T> {
     assert_eq!(
         (size * std::mem::size_of::<T>()) % align,
         0,
@@ -85,12 +109,16 @@ pub fn alloc_aligned<T>(size: usize, align: usize) -> Vec<T> {
         size,
         align
     );
-    let mut vec_u8: Vec<u8> = alloc_aligned_u8(std::mem::size_of::<T>() * size, align);
+    let mut vec_u8: Vec<u8> = alloc_aligned_custom_u8(std::mem::size_of::<T>() * size, align);
     let ptr: *mut T = vec_u8.as_mut_ptr() as *mut T;
     let len: usize = vec_u8.len() / std::mem::size_of::<T>();
     let cap: usize = vec_u8.capacity() / std::mem::size_of::<T>();
     std::mem::forget(vec_u8);
     unsafe { Vec::from_raw_parts(ptr, len, cap) }
+}
+
+pub fn alloc_aligned<T>(size: usize) -> Vec<T> {
+    alloc_aligned_custom::<T>(size, DEFAULTALIGN)
 }
 
 fn alias_mut_slice_to_vec<T>(slice: &[T]) -> Vec<T> {
