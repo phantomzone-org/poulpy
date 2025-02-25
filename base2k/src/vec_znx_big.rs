@@ -1,6 +1,6 @@
 use crate::ffi::vec_znx_big;
 use crate::ffi::vec_znx_dft;
-use crate::{is_aligned, Infos, Module, VecZnxApi, VecZnxDft};
+use crate::{assert_alignement, Infos, Module, VecZnxApi, VecZnxDft};
 
 pub struct VecZnxBig(pub *mut vec_znx_big::vec_znx_bigcoeff_t, pub usize);
 
@@ -8,10 +8,13 @@ impl VecZnxBig {
     /// Returns a new [VecZnxBig] with the provided data as backing array.
     /// User must ensure that data is properly alligned and that
     /// the size of data is at least equal to [Module::bytes_of_vec_znx_big].
-    pub fn from_bytes(cols: usize, data: &mut [u8]) -> VecZnxBig {
-        debug_assert!(is_aligned(data.as_ptr()));
+    pub fn from_bytes(cols: usize, bytes: &mut [u8]) -> VecZnxBig {
+        #[cfg(debug_assertions)]
+        {
+            assert_alignement(bytes.as_ptr())
+        };
         VecZnxBig(
-            data.as_mut_ptr() as *mut vec_znx_big::vec_znx_bigcoeff_t,
+            bytes.as_mut_ptr() as *mut vec_znx_big::vec_znx_bigcoeff_t,
             cols,
         )
     }
@@ -101,7 +104,10 @@ impl VecZnxBigOps for Module {
             bytes.len(),
             <Module as VecZnxBigOps>::bytes_of_vec_znx_big(self, cols)
         );
-        debug_assert!(is_aligned(bytes.as_ptr()));
+        #[cfg(debug_assertions)]
+        {
+            assert_alignement(bytes.as_ptr())
+        }
         VecZnxBig::from_bytes(cols, bytes)
     }
 
@@ -185,13 +191,16 @@ impl VecZnxBigOps for Module {
         a: &VecZnxBig,
         tmp_bytes: &mut [u8],
     ) {
-        assert!(
+        debug_assert!(
             tmp_bytes.len() >= <Module as VecZnxBigOps>::vec_znx_big_normalize_tmp_bytes(self),
             "invalid tmp_bytes: tmp_bytes.len()={} <= self.vec_znx_big_normalize_tmp_bytes()={}",
             tmp_bytes.len(),
             <Module as VecZnxBigOps>::vec_znx_big_normalize_tmp_bytes(self)
         );
-        debug_assert!(is_aligned(tmp_bytes.as_ptr()));
+        #[cfg(debug_assertions)]
+        {
+            assert_alignement(tmp_bytes.as_ptr())
+        }
         unsafe {
             vec_znx_big::vec_znx_big_normalize_base2k(
                 self.0,
@@ -220,13 +229,16 @@ impl VecZnxBigOps for Module {
         a_range_step: usize,
         tmp_bytes: &mut [u8],
     ) {
-        assert!(
+        debug_assert!(
             tmp_bytes.len() >= <Module as VecZnxBigOps>::vec_znx_big_range_normalize_base2k_tmp_bytes(self),
             "invalid tmp_bytes: tmp_bytes.len()={} <= self.vec_znx_big_range_normalize_base2k_tmp_bytes()={}",
             tmp_bytes.len(),
             <Module as VecZnxBigOps>::vec_znx_big_range_normalize_base2k_tmp_bytes(self)
         );
-        debug_assert!(is_aligned(tmp_bytes.as_ptr()));
+        #[cfg(debug_assertions)]
+        {
+            assert_alignement(tmp_bytes.as_ptr())
+        }
         unsafe {
             vec_znx_big::vec_znx_big_range_normalize_base2k(
                 self.0,

@@ -35,12 +35,16 @@ pub use vmp::*;
 pub const GALOISGENERATOR: u64 = 5;
 pub const DEFAULTALIGN: usize = 64;
 
-fn is_aligned_custom<T>(ptr: *const T, align: usize) -> bool {
+pub fn is_aligned_custom<T>(ptr: *const T, align: usize) -> bool {
     (ptr as usize) % align == 0
 }
 
-fn is_aligned<T>(ptr: *const T) -> bool {
+pub fn is_aligned<T>(ptr: *const T) -> bool {
     is_aligned_custom(ptr, DEFAULTALIGN)
+}
+
+pub fn assert_alignement<T>(ptr: *const T) {
+    assert!(is_aligned(ptr), "invalid alignement: ensure passed bytes have been allocated with [alloc_aligned_u8] or [alloc_aligned]")
 }
 
 pub fn cast<T, V>(data: &[T]) -> &[V] {

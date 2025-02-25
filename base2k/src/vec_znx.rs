@@ -2,8 +2,7 @@ use crate::cast_mut;
 use crate::ffi::vec_znx;
 use crate::ffi::znx;
 use crate::ffi::znx::znx_zero_i64_ref;
-use crate::is_aligned;
-use crate::{alias_mut_slice_to_vec, alloc_aligned};
+use crate::{alias_mut_slice_to_vec, alloc_aligned, assert_alignement};
 use crate::{Infos, Module};
 use itertools::izip;
 use std::cmp::min;
@@ -137,7 +136,10 @@ impl VecZnxApi for VecZnxBorrow {
             cols,
             size
         );
-        debug_assert!(is_aligned(bytes.as_ptr()));
+        #[cfg(debug_assertions)]
+        {
+            assert_alignement(bytes.as_ptr())
+        }
         VecZnxBorrow {
             n: n,
             cols: cols,
@@ -237,7 +239,10 @@ impl VecZnxApi for VecZnx {
             cols,
             size
         );
-        debug_assert!(is_aligned(bytes.as_ptr()));
+        #[cfg(debug_assertions)]
+        {
+            assert_alignement(bytes.as_ptr())
+        }
         VecZnx {
             n: n,
             data: alias_mut_slice_to_vec(cast_mut(&mut bytes[..size])),
@@ -410,7 +415,10 @@ fn normalize<T: VecZnxCommon>(log_base2k: usize, a: &mut T, tmp_bytes: &mut [u8]
         tmp_bytes.len(),
         n
     );
-    debug_assert!(is_aligned(tmp_bytes.as_ptr()));
+    #[cfg(debug_assertions)]
+    {
+        assert_alignement(tmp_bytes.as_ptr())
+    }
 
     let carry_i64: &mut [i64] = cast_mut(tmp_bytes);
 
@@ -439,7 +447,10 @@ pub fn rsh<T: VecZnxCommon>(log_base2k: usize, a: &mut T, k: usize, tmp_bytes: &
         n
     );
 
-    debug_assert!(is_aligned(tmp_bytes.as_ptr()));
+    #[cfg(debug_assertions)]
+    {
+        assert_alignement(tmp_bytes.as_ptr())
+    }
 
     let cols: usize = a.cols();
     let cols_steps: usize = k / log_base2k;

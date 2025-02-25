@@ -105,7 +105,7 @@ mod test {
     };
     use base2k::{
         FFT64, Infos, Sampling, SvpPPolOps, VecZnx, VecZnxApi, VecZnxBig, VecZnxBigOps, VecZnxDft,
-        VecZnxDftOps, VecZnxOps, VmpPMat,
+        VecZnxDftOps, VecZnxOps, VmpPMat, alloc_aligned_u8,
     };
     use sampling::source::{Source, new_seed};
 
@@ -129,19 +129,17 @@ mod test {
         let params: Parameters = Parameters::new::<FFT64>(&params_lit);
 
         // scratch space
-        let mut tmp_bytes: Vec<u8> =
-            vec![
-                0u8;
-                params.decrypt_rlwe_tmp_byte(params.log_qp())
-                    | params.encrypt_rlwe_sk_tmp_bytes(params.log_qp())
-                    | params.gadget_product_tmp_bytes(
-                        params.log_qp(),
-                        params.log_qp(),
-                        params.cols_qp(),
-                        params.log_qp()
-                    )
-                    | params.encrypt_grlwe_sk_tmp_bytes(params.cols_qp(), params.log_qp())
-            ];
+        let mut tmp_bytes: Vec<u8> = alloc_aligned_u8(
+            params.decrypt_rlwe_tmp_byte(params.log_qp())
+                | params.encrypt_rlwe_sk_tmp_bytes(params.log_qp())
+                | params.gadget_product_tmp_bytes(
+                    params.log_qp(),
+                    params.log_qp(),
+                    params.cols_qp(),
+                    params.log_qp(),
+                )
+                | params.encrypt_grlwe_sk_tmp_bytes(params.cols_qp(), params.log_qp()),
+        );
 
         // Samplers for public and private randomness
         let mut source_xe: Source = Source::new(new_seed());

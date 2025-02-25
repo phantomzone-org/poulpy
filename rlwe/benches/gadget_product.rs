@@ -63,7 +63,6 @@ fn bench_gadget_product_inplace(c: &mut Criterion) {
                     params.cols_qp(),
                     params.log_qp(),
                 ),
-            64,
         );
 
         let mut source: Source = Source::new([3; 32]);

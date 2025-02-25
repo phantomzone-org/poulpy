@@ -1,7 +1,7 @@
 use crate::ffi::vec_znx_big;
 use crate::ffi::vec_znx_dft;
 use crate::ffi::vec_znx_dft::bytes_of_vec_znx_dft;
-use crate::{is_aligned, Infos, Module, VecZnxApi, VecZnxBig};
+use crate::{assert_alignement, Infos, Module, VecZnxApi, VecZnxBig};
 
 pub struct VecZnxDft(pub *mut vec_znx_dft::vec_znx_dft_t, pub usize);
 
@@ -10,7 +10,10 @@ impl VecZnxDft {
     /// User must ensure that data is properly alligned and that
     /// the size of data is at least equal to [Module::bytes_of_vec_znx_dft].
     pub fn from_bytes(cols: usize, tmp_bytes: &mut [u8]) -> VecZnxDft {
-        debug_assert!(is_aligned(tmp_bytes.as_ptr()));
+        #[cfg(debug_assertions)]
+        {
+            assert_alignement(tmp_bytes.as_ptr())
+        }
         VecZnxDft(
             tmp_bytes.as_mut_ptr() as *mut vec_znx_dft::vec_znx_dft_t,
             cols,
@@ -84,7 +87,10 @@ impl VecZnxDftOps for Module {
             tmp_bytes.len(),
             <Module as VecZnxDftOps>::bytes_of_vec_znx_dft(self, cols)
         );
-        debug_assert!(is_aligned(tmp_bytes.as_ptr()));
+        #[cfg(debug_assertions)]
+        {
+            assert_alignement(tmp_bytes.as_ptr())
+        }
         VecZnxDft::from_bytes(cols, tmp_bytes)
     }
 
@@ -157,7 +163,10 @@ impl VecZnxDftOps for Module {
             tmp_bytes.len(),
             <Module as VecZnxDftOps>::vec_znx_idft_tmp_bytes(self)
         );
-        debug_assert!(is_aligned(tmp_bytes.as_ptr()));
+        #[cfg(debug_assertions)]
+        {
+            assert_alignement(tmp_bytes.as_ptr())
+        }
         unsafe {
             vec_znx_dft::vec_znx_idft(
                 self.0,
