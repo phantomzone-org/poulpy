@@ -562,7 +562,7 @@ impl VecZnxOps for Module {
 
     fn vec_znx_normalize_tmp_bytes(&self) -> usize{
         unsafe{
-            vec_znx::vec_znx_normalize_tmp_bytes(self.0) as usize
+            vec_znx::vec_znx_normalize_base2k_tmp_bytes(self.0) as usize
         }   
     }
 
