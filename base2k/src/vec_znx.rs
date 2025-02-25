@@ -469,6 +469,7 @@ pub fn rsh<T: VecZnxCommon>(log_base2k: usize, a: &mut T, k: usize, carry: &mut 
 pub trait VecZnxCommon: VecZnxApi + Infos {}
 
 pub trait VecZnxOps {
+
     /// Allocates a new [VecZnx].
     ///
     /// # Arguments
@@ -479,6 +480,8 @@ pub trait VecZnxOps {
     /// Returns the minimum number of bytes necessary to allocate
     /// a new [VecZnx] through [VecZnx::from_bytes].
     fn bytes_of_vec_znx(&self, cols: usize) -> usize;
+
+    fn vec_znx_normalize_tmp_bytes(&self) -> usize;
 
     /// c <- a + b.
     fn vec_znx_add<A: VecZnxCommon, B: VecZnxCommon, C: VecZnxCommon>(
@@ -555,6 +558,12 @@ impl VecZnxOps for Module {
 
     fn bytes_of_vec_znx(&self, cols: usize) -> usize {
         self.n() * cols * 8
+    }
+
+    fn vec_znx_normalize_tmp_bytes(&self) -> usize{
+        unsafe{
+            vec_znx::vec_znx_normalize_tmp_bytes(self.0) as usize
+        }   
     }
 
     // c <- a + b

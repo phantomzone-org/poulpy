@@ -439,6 +439,7 @@ impl VmpPMatOps for Module {
     }
 
     fn vmp_prepare_row(&self, b: &mut VmpPMat, a: &[i64], row_i: usize, buf: &mut [u8]) {
+        debug_assert!(a.len() == b.cols() * self.n());
         unsafe {
             vmp::vmp_prepare_row(
                 self.0,
