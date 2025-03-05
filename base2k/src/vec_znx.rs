@@ -475,11 +475,16 @@ pub fn rsh<T: VecZnxCommon>(log_base2k: usize, a: &mut T, k: usize, tmp_bytes: &
         (cols_steps..cols).for_each(|i| {
             izip!(carry_i64.iter_mut(), a.at_mut(i).iter_mut()).for_each(|(ci, xi)| {
                 *xi += *ci << log_base2k;
-                *ci = *xi & mask;
-                *xi /= 1 << k_rem;
+                *ci = get_base_k_carry(*xi, k_rem);
+                *xi = (*xi-*ci)>>k_rem;
             });
         })
     }
+}
+
+#[inline(always)]
+fn get_base_k_carry(x: i64, k: usize) -> i64{
+    (x<<64-k) >> (64-k)
 }
 
 pub trait VecZnxCommon: VecZnxApi + Infos {}
