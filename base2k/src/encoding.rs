@@ -137,22 +137,18 @@ fn encode_vec_i64<T: VecZnxCommon>(
     let size: usize = min(data.len(), a.n());
     let log_k_rem: usize = log_base2k - (log_k % log_base2k);
 
+    (0..a.cols()).for_each(|i| unsafe {
+        znx_zero_i64_ref(size as u64, a.at_mut(i).as_mut_ptr());
+    });
+
     // If 2^{log_base2k} * 2^{k_rem} < 2^{63}-1, then we can simply copy
     // values on the last limb.
     // Else we decompose values base2k.
     if log_max + log_k_rem < 63 || log_k_rem == log_base2k {
-        (0..a.cols()).for_each(|i| unsafe {
-            znx_zero_i64_ref(size as u64, a.at_mut(i).as_mut_ptr());
-        });
         a.at_mut(cols - 1)[..size].copy_from_slice(&data[..size]);
     } else {
         let mask: i64 = (1 << log_base2k) - 1;
         let steps: usize = min(cols, (log_max + log_base2k - 1) / log_base2k);
-
-        (0..steps).for_each(|i| unsafe {
-            znx_zero_i64_ref(size as u64, a.at_mut(i).as_mut_ptr());
-        });
-
         (cols - steps..cols)
             .rev()
             .enumerate()
@@ -165,7 +161,6 @@ fn encode_vec_i64<T: VecZnxCommon>(
 
     // Case where self.prec % self.k != 0.
     if log_k_rem != log_base2k {
-        let cols = a.cols();
         let steps: usize = min(cols, (log_max + log_base2k - 1) / log_base2k);
         (cols - steps..cols).rev().for_each(|i| {
             a.at_mut(i)[..size]
@@ -246,21 +241,16 @@ fn encode_coeff_i64<T: VecZnxCommon>(
         a.cols()
     );
     let log_k_rem: usize = log_base2k - (log_k % log_base2k);
-    let cols = a.cols();
+    (0..a.cols()).for_each(|j| a.at_mut(j)[i] = 0);
 
     // If 2^{log_base2k} * 2^{log_k_rem} < 2^{63}-1, then we can simply copy
     // values on the last limb.
     // Else we decompose values base2k.
     if log_max + log_k_rem < 63 || log_k_rem == log_base2k {
-        (0..cols - 1).for_each(|j| a.at_mut(j)[i] = 0);
-
-        a.at_mut(a.cols() - 1)[i] = value;
+        a.at_mut(cols-1)[i] = value;
     } else {
         let mask: i64 = (1 << log_base2k) - 1;
         let steps: usize = min(cols, (log_max + log_base2k - 1) / log_base2k);
-
-        (0..cols - steps).for_each(|j| a.at_mut(j)[i] = 0);
-
         (cols - steps..cols)
             .rev()
             .enumerate()
@@ -271,7 +261,6 @@ fn encode_coeff_i64<T: VecZnxCommon>(
 
     // Case where prec % k != 0.
     if log_k_rem != log_base2k {
-        let cols = a.cols();
         let steps: usize = min(cols, (log_max + log_base2k - 1) / log_base2k);
         (cols - steps..cols).rev().for_each(|j| {
             a.at_mut(j)[i] <<= log_k_rem;
