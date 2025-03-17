@@ -1,26 +1,46 @@
 use crate::ffi::module::{delete_module_info, module_info_t, new_module_info, MODULE};
-use crate::{Free, GALOISGENERATOR};
+use crate::GALOISGENERATOR;
 
-pub type MODULETYPE = u8;
-pub const FFT64: u8 = 0;
-pub const NTT120: u8 = 1;
+#[derive(Copy, Clone)]
+#[repr(u8)]
+pub enum MODULETYPE {
+    FFT64,
+    NTT120,
+}
 
-pub struct Module(pub *mut MODULE, pub usize);
+pub struct Module {
+    pub ptr: *mut MODULE,
+    pub n: usize,
+    pub backend: MODULETYPE,
+}
 
 impl Module {
     // Instantiates a new module.
-    pub fn new<const MODULETYPE: MODULETYPE>(n: usize) -> Self {
+    pub fn new(n: usize, module_type: MODULETYPE) -> Self {
         unsafe {
-            let m: *mut module_info_t = new_module_info(n as u64, MODULETYPE as u32);
+            let module_type_u32: u32;
+            match module_type {
+                MODULETYPE::FFT64 => module_type_u32 = 0,
+                MODULETYPE::NTT120 => module_type_u32 = 1,
+            }
+            let m: *mut module_info_t = new_module_info(n as u64, module_type_u32);
             if m.is_null() {
                 panic!("Failed to create module.");
             }
-            Self(m, n)
+            Self {
+                ptr: m,
+                n: n,
+                backend: module_type,
+            }
         }
     }
 
+    pub fn backend(&self) -> MODULETYPE {
+        self.backend
+    }
+
     pub fn n(&self) -> usize {
-        self.1
+        self.n
     }
 
     pub fn log_n(&self) -> usize {
@@ -53,11 +73,9 @@ impl Module {
 
         (gal_el as i64) * gen.signum()
     }
-}
 
-impl Free for Module {
-    fn free(self) {
-        unsafe { delete_module_info(self.0) }
+    pub fn free(self) {
+        unsafe { delete_module_info(self.ptr) }
         drop(self);
     }
 }

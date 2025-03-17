@@ -1,9 +1,5 @@
-use crate::{
-    ciphertext::Ciphertext,
-    elem::{Elem, ElemCommon, ElemVecZnx, VecZnxCommon},
-    parameters::Parameters,
-};
-use base2k::{Module, VecZnxDft, VecZnxDftOps, VmpPMat, VmpPMatOps};
+use crate::{ciphertext::Ciphertext, elem::ElemCommon, parameters::Parameters};
+use base2k::{Module, VecZnx, VecZnxDft, VecZnxDftOps, VmpPMat, VmpPMatOps};
 use std::cmp::min;
 
 pub fn gadget_product_tmp_bytes(
@@ -53,19 +49,16 @@ impl Parameters {
 ///
 /// res = sum[min(a_ncols, b_nrows)] decomp(a, i) * (-B[i]s + m * 2^{-k*i} + E[i], B[i])
 ///     = (cs + m * a + e, c) with min(res_cols, b_cols) cols.
-pub fn gadget_product_core<T>(
+pub fn gadget_product_core(
     module: &Module,
     res_dft_0: &mut VecZnxDft,
     res_dft_1: &mut VecZnxDft,
-    a: &T,
+    a: &VecZnx,
     a_cols: usize,
     b: &Ciphertext<VmpPMat>,
     b_cols: usize,
     tmp_bytes: &mut [u8],
-) where
-    T: VecZnxCommon<Owned = T>,
-    Elem<T>: ElemVecZnx<T>,
-{
+) {
     assert!(b_cols <= b.cols());
     module.vec_znx_dft(res_dft_1, a, min(a_cols, b_cols));
     module.vmp_apply_dft_to_dft(res_dft_0, res_dft_1, b.at(0), tmp_bytes);
@@ -104,7 +97,7 @@ mod test {
         plaintext::Plaintext,
     };
     use base2k::{
-        FFT64, Infos, Sampling, SvpPPolOps, VecZnx, VecZnxApi, VecZnxBig, VecZnxBigOps, VecZnxDft,
+        Infos, MODULETYPE, Sampling, SvpPPolOps, VecZnx, VecZnxBig, VecZnxBigOps, VecZnxDft,
         VecZnxDftOps, VecZnxOps, VmpPMat, alloc_aligned_u8,
     };
     use sampling::source::{Source, new_seed};
@@ -117,6 +110,7 @@ mod test {
 
         // Basic parameters with enough limbs to test edge cases
         let params_lit: ParametersLiteral = ParametersLiteral {
+            backend: MODULETYPE::FFT64,
             log_n: 12,
             log_q: q_cols * log_base2k,
             log_p: p_cols * log_base2k,
@@ -126,7 +120,7 @@ mod test {
             xs: 1 << 11,
         };
 
-        let params: Parameters = Parameters::new::<FFT64>(&params_lit);
+        let params: Parameters = Parameters::new(&params_lit);
 
         // scratch space
         let mut tmp_bytes: Vec<u8> = alloc_aligned_u8(
@@ -213,8 +207,8 @@ mod test {
         );
 
         // Plaintext for decrypted output of gadget product
-        let mut pt: Plaintext<VecZnx> =
-            Plaintext::<VecZnx>::new(params.module(), params.log_base2k(), params.log_qp());
+        let mut pt: Plaintext =
+            Plaintext::new(params.module(), params.log_base2k(), params.log_qp());
 
         // Iterates over all possible cols values for input/output polynomials and gadget ciphertext.
 

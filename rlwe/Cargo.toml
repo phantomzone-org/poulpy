@@ -11,6 +11,7 @@ criterion = {workspace = true}
 base2k = {path="../base2k"}
 sampling = {path="../sampling"}
 rand_distr = {workspace = true}
+itertools = {workspace = true}
 
 [[bench]]
 name = "gadget_product"

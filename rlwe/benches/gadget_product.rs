@@ -1,5 +1,5 @@
 use base2k::{
-    FFT64, Infos, Module, Sampling, SvpPPolOps, VecZnx, VecZnxDft, VecZnxDftOps, VecZnxOps,
+    Infos, MODULETYPE, Module, Sampling, SvpPPolOps, VecZnx, VecZnxDft, VecZnxDftOps, VecZnxOps,
     VmpPMat, alloc_aligned_u8,
 };
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
@@ -36,6 +36,7 @@ fn bench_gadget_product_inplace(c: &mut Criterion) {
 
     for log_n in 10..11 {
         let params_lit: ParametersLiteral = ParametersLiteral {
+            backend: MODULETYPE::FFT64,
             log_n: log_n,
             log_q: 32,
             log_p: 0,
@@ -45,7 +46,7 @@ fn bench_gadget_product_inplace(c: &mut Criterion) {
             xs: 128,
         };
 
-        let params: Parameters = Parameters::new::<FFT64>(&params_lit);
+        let params: Parameters = Parameters::new(&params_lit);
 
         let mut tmp_bytes: Vec<u8> = alloc_aligned_u8(
             params.encrypt_rlwe_sk_tmp_bytes(params.log_q())
@@ -101,7 +102,7 @@ fn bench_gadget_product_inplace(c: &mut Criterion) {
 
         let mut ct: Ciphertext<VecZnx> = params.new_ciphertext(params.log_q());
 
-        params.encrypt_rlwe_sk_thread_safe(
+        params.encrypt_rlwe_sk(
             &mut ct,
             None,
             &sk0_svp_ppol,

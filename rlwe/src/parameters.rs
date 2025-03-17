@@ -1,6 +1,7 @@
 use base2k::module::{MODULETYPE, Module};
 
 pub struct ParametersLiteral {
+    pub backend: MODULETYPE,
     pub log_n: usize,
     pub log_q: usize,
     pub log_p: usize,
@@ -22,7 +23,7 @@ pub struct Parameters {
 }
 
 impl Parameters {
-    pub fn new<const MTYPE: MODULETYPE>(p: &ParametersLiteral) -> Self {
+    pub fn new(p: &ParametersLiteral) -> Self {
         assert!(
             p.log_n + 2 * p.log_base2k <= 53,
             "invalid parameters: p.log_n + 2*p.log_base2k > 53"
@@ -35,7 +36,7 @@ impl Parameters {
             log_base2k: p.log_base2k,
             xe: p.xe,
             xs: p.xs,
-            module: Module::new::<MTYPE>(1 << p.log_n),
+            module: Module::new(1 << p.log_n, p.backend),
         }
     }
 

@@ -1,20 +1,19 @@
 use crate::{
     ciphertext::Ciphertext,
-    elem::{Elem, ElemCommon, ElemVecZnx, VecZnxCommon},
+    elem::{Elem, ElemCommon, ElemVecZnx},
 };
-use base2k::{Module, VecZnxBig, VecZnxBigOps, VecZnxDft, VecZnxDftOps, VmpPMat, VmpPMatOps};
+use base2k::{
+    Module, VecZnx, VecZnxBig, VecZnxBigOps, VecZnxDft, VecZnxDftOps, VmpPMat, VmpPMatOps,
+};
 use std::cmp::min;
 
-pub fn rgsw_product<T>(
+pub fn rgsw_product(
     module: &Module,
-    _res: &mut Elem<T>,
-    a: &Ciphertext<T>,
+    _res: &mut Elem<VecZnx>,
+    a: &Ciphertext<VecZnx>,
     b: &Ciphertext<VmpPMat>,
     tmp_bytes: &mut [u8],
-) where
-    T: VecZnxCommon<Owned = T>,
-    Elem<T>: ElemVecZnx<T>,
-{
+) {
     let _log_base2k: usize = b.log_base2k();
     let rows: usize = min(b.rows(), a.cols());
     let cols: usize = b.cols();

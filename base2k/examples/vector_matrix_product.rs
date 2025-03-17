@@ -1,13 +1,13 @@
 use base2k::{
-    Encoding, Free, Infos, Module, VecZnx, VecZnxApi, VecZnxBig, VecZnxBigOps, VecZnxDft,
-    VecZnxDftOps, VecZnxOps, VecZnxVec, VmpPMat, VmpPMatOps, FFT64,
+    alloc_aligned, Encoding, Infos, Module, VecZnx, VecZnxBig, VecZnxBigOps, VecZnxDft,
+    VecZnxDftOps, VecZnxOps, VecZnxVec, VmpPMat, VmpPMatOps, MODULETYPE,
 };
 
 fn main() {
     let log_n: i32 = 5;
     let n: usize = 1 << log_n;
 
-    let module: Module = Module::new::<FFT64>(n);
+    let module: Module = Module::new(n, MODULETYPE::FFT64);
     let log_base2k: usize = 15;
     let cols: usize = 5;
     let log_k: usize = log_base2k * cols - 5;
@@ -19,7 +19,7 @@ fn main() {
     let tmp_bytes: usize = module.vmp_prepare_tmp_bytes(rows, cols)
         | module.vmp_apply_dft_tmp_bytes(cols, cols, rows, cols);
 
-    let mut buf: Vec<u8> = vec![0; tmp_bytes];
+    let mut buf: Vec<u8> = alloc_aligned(tmp_bytes);
 
     let mut a_values: Vec<i64> = vec![i64::default(); n];
     a_values[1] = (1 << log_base2k) + 1;
@@ -37,7 +37,7 @@ fn main() {
     });
 
     (0..rows).for_each(|i| {
-        vecznx[i].data[i * n + 1] = 1 as i64;
+        vecznx[i].raw_mut()[i * n + 1] = 1 as i64;
     });
 
     let slices: Vec<&[i64]> = vecznx.dblptr();
@@ -60,8 +60,6 @@ fn main() {
     res.print(res.cols(), n);
 
     module.free();
-    c_dft.free();
-    vmp_pmat.free();
 
-    //println!("{:?}", values_res)
+    println!("{:?}", values_res)
 }

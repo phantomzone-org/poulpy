@@ -1,29 +1,69 @@
-use crate::ffi::vec_znx_big;
-use crate::ffi::vec_znx_dft;
-use crate::{assert_alignement, Infos, Module, VecZnxApi, VecZnxDft};
+use crate::ffi::vec_znx_big::{self, vec_znx_bigcoeff_t};
+use crate::{alloc_aligned, assert_alignement, Infos, Module, VecZnx, VecZnxDft, MODULETYPE};
 
-pub struct VecZnxBig(pub *mut vec_znx_big::vec_znx_bigcoeff_t, pub usize);
+pub struct VecZnxBig {
+    pub data: Vec<u8>,
+    pub ptr: *mut u8,
+    pub n: usize,
+    pub cols: usize,
+    pub backend: MODULETYPE,
+}
 
 impl VecZnxBig {
     /// Returns a new [VecZnxBig] with the provided data as backing array.
     /// User must ensure that data is properly alligned and that
     /// the size of data is at least equal to [Module::bytes_of_vec_znx_big].
-    pub fn from_bytes(cols: usize, bytes: &mut [u8]) -> VecZnxBig {
+    pub fn from_bytes(module: &Module, cols: usize, bytes: &mut [u8]) -> Self {
         #[cfg(debug_assertions)]
         {
             assert_alignement(bytes.as_ptr())
         };
-        VecZnxBig(
-            bytes.as_mut_ptr() as *mut vec_znx_big::vec_znx_bigcoeff_t,
-            cols,
-        )
+        unsafe {
+            Self {
+                data: Vec::from_raw_parts(bytes.as_mut_ptr(), bytes.len(), bytes.len()),
+                ptr: bytes.as_mut_ptr(),
+                n: module.n(),
+                cols: cols,
+                backend: module.backend,
+            }
+        }
+    }
+
+    pub fn from_bytes_borrow(module: &Module, cols: usize, bytes: &mut [u8]) -> Self {
+        #[cfg(debug_assertions)]
+        {
+            assert_eq!(bytes.len(), module.bytes_of_vec_znx_big(cols));
+            assert_alignement(bytes.as_ptr());
+        }
+        Self {
+            data: Vec::new(),
+            ptr: bytes.as_mut_ptr(),
+            n: module.n(),
+            cols: cols,
+            backend: module.backend,
+        }
     }
 
     pub fn as_vec_znx_dft(&mut self) -> VecZnxDft {
-        VecZnxDft(self.0 as *mut vec_znx_dft::vec_znx_dft_t, self.1)
+        VecZnxDft {
+            data: Vec::new(),
+            ptr: self.ptr,
+            n: self.n,
+            cols: self.cols,
+            backend: self.backend,
+        }
     }
+
+    pub fn n(&self) -> usize {
+        self.n
+    }
+
     pub fn cols(&self) -> usize {
-        self.1
+        self.cols
+    }
+
+    pub fn backend(&self) -> MODULETYPE {
+        self.backend
     }
 }
 
@@ -47,39 +87,34 @@ pub trait VecZnxBigOps {
     fn bytes_of_vec_znx_big(&self, cols: usize) -> usize;
 
     /// b <- b - a
-    fn vec_znx_big_sub_small_a_inplace<T: VecZnxApi + Infos>(&self, b: &mut VecZnxBig, a: &T);
+    fn vec_znx_big_sub_small_a_inplace(&self, b: &mut VecZnxBig, a: &VecZnx);
 
     /// c <- b - a
-    fn vec_znx_big_sub_small_a<T: VecZnxApi + Infos>(
-        &self,
-        c: &mut VecZnxBig,
-        a: &T,
-        b: &VecZnxBig,
-    );
+    fn vec_znx_big_sub_small_a(&self, c: &mut VecZnxBig, a: &VecZnx, b: &VecZnxBig);
 
     /// c <- b + a
-    fn vec_znx_big_add_small<T: VecZnxApi + Infos>(&self, c: &mut VecZnxBig, a: &T, b: &VecZnxBig);
+    fn vec_znx_big_add_small(&self, c: &mut VecZnxBig, a: &VecZnx, b: &VecZnxBig);
 
     /// b <- b + a
-    fn vec_znx_big_add_small_inplace<T: VecZnxApi + Infos>(&self, b: &mut VecZnxBig, a: &T);
+    fn vec_znx_big_add_small_inplace(&self, b: &mut VecZnxBig, a: &VecZnx);
 
     fn vec_znx_big_normalize_tmp_bytes(&self) -> usize;
 
     /// b <- normalize(a)
-    fn vec_znx_big_normalize<T: VecZnxApi + Infos>(
+    fn vec_znx_big_normalize(
         &self,
         log_base2k: usize,
-        b: &mut T,
+        b: &mut VecZnx,
         a: &VecZnxBig,
         tmp_bytes: &mut [u8],
     );
 
     fn vec_znx_big_range_normalize_base2k_tmp_bytes(&self) -> usize;
 
-    fn vec_znx_big_range_normalize_base2k<T: VecZnxApi + Infos>(
+    fn vec_znx_big_range_normalize_base2k(
         &self,
         log_base2k: usize,
-        res: &mut T,
+        res: &mut VecZnx,
         a: &VecZnxBig,
         a_range_begin: usize,
         a_range_xend: usize,
@@ -94,7 +129,15 @@ pub trait VecZnxBigOps {
 
 impl VecZnxBigOps for Module {
     fn new_vec_znx_big(&self, cols: usize) -> VecZnxBig {
-        unsafe { VecZnxBig(vec_znx_big::new_vec_znx_big(self.0, cols as u64), cols) }
+        let mut data: Vec<u8> = alloc_aligned::<u8>(self.bytes_of_vec_znx_big(cols));
+        let ptr: *mut u8 = data.as_mut_ptr();
+        VecZnxBig {
+            data: data,
+            ptr: ptr,
+            n: self.n(),
+            cols: cols,
+            backend: self.backend(),
+        }
     }
 
     fn new_vec_znx_big_from_bytes(&self, cols: usize, bytes: &mut [u8]) -> VecZnxBig {
@@ -108,55 +151,50 @@ impl VecZnxBigOps for Module {
         {
             assert_alignement(bytes.as_ptr())
         }
-        VecZnxBig::from_bytes(cols, bytes)
+        VecZnxBig::from_bytes(self, cols, bytes)
     }
 
     fn bytes_of_vec_znx_big(&self, cols: usize) -> usize {
-        unsafe { vec_znx_big::bytes_of_vec_znx_big(self.0, cols as u64) as usize }
+        unsafe { vec_znx_big::bytes_of_vec_znx_big(self.ptr, cols as u64) as usize }
     }
 
-    fn vec_znx_big_sub_small_a_inplace<T: VecZnxApi + Infos>(&self, b: &mut VecZnxBig, a: &T) {
+    fn vec_znx_big_sub_small_a_inplace(&self, b: &mut VecZnxBig, a: &VecZnx) {
         unsafe {
             vec_znx_big::vec_znx_big_sub_small_a(
-                self.0,
-                b.0,
+                self.ptr,
+                b.ptr as *mut vec_znx_bigcoeff_t,
                 b.cols() as u64,
                 a.as_ptr(),
                 a.cols() as u64,
                 a.n() as u64,
-                b.0,
+                b.ptr as *mut vec_znx_bigcoeff_t,
                 b.cols() as u64,
             )
         }
     }
 
-    fn vec_znx_big_sub_small_a<T: VecZnxApi + Infos>(
-        &self,
-        c: &mut VecZnxBig,
-        a: &T,
-        b: &VecZnxBig,
-    ) {
+    fn vec_znx_big_sub_small_a(&self, c: &mut VecZnxBig, a: &VecZnx, b: &VecZnxBig) {
         unsafe {
             vec_znx_big::vec_znx_big_sub_small_a(
-                self.0,
-                c.0,
+                self.ptr,
+                c.ptr as *mut vec_znx_bigcoeff_t,
                 c.cols() as u64,
                 a.as_ptr(),
                 a.cols() as u64,
                 a.n() as u64,
-                b.0,
+                b.ptr as *mut vec_znx_bigcoeff_t,
                 b.cols() as u64,
             )
         }
     }
 
-    fn vec_znx_big_add_small<T: VecZnxApi + Infos>(&self, c: &mut VecZnxBig, a: &T, b: &VecZnxBig) {
+    fn vec_znx_big_add_small(&self, c: &mut VecZnxBig, a: &VecZnx, b: &VecZnxBig) {
         unsafe {
             vec_znx_big::vec_znx_big_add_small(
-                self.0,
-                c.0,
+                self.ptr,
+                c.ptr as *mut vec_znx_bigcoeff_t,
                 c.cols() as u64,
-                b.0,
+                b.ptr as *mut vec_znx_bigcoeff_t,
                 b.cols() as u64,
                 a.as_ptr(),
                 a.cols() as u64,
@@ -165,13 +203,13 @@ impl VecZnxBigOps for Module {
         }
     }
 
-    fn vec_znx_big_add_small_inplace<T: VecZnxApi + Infos>(&self, b: &mut VecZnxBig, a: &T) {
+    fn vec_znx_big_add_small_inplace(&self, b: &mut VecZnxBig, a: &VecZnx) {
         unsafe {
             vec_znx_big::vec_znx_big_add_small(
-                self.0,
-                b.0,
+                self.ptr,
+                b.ptr as *mut vec_znx_bigcoeff_t,
                 b.cols() as u64,
-                b.0,
+                b.ptr as *mut vec_znx_bigcoeff_t,
                 b.cols() as u64,
                 a.as_ptr(),
                 a.cols() as u64,
@@ -181,13 +219,13 @@ impl VecZnxBigOps for Module {
     }
 
     fn vec_znx_big_normalize_tmp_bytes(&self) -> usize {
-        unsafe { vec_znx_big::vec_znx_big_normalize_base2k_tmp_bytes(self.0) as usize }
+        unsafe { vec_znx_big::vec_znx_big_normalize_base2k_tmp_bytes(self.ptr) as usize }
     }
 
-    fn vec_znx_big_normalize<T: VecZnxApi + Infos>(
+    fn vec_znx_big_normalize(
         &self,
         log_base2k: usize,
-        b: &mut T,
+        b: &mut VecZnx,
         a: &VecZnxBig,
         tmp_bytes: &mut [u8],
     ) {
@@ -203,12 +241,12 @@ impl VecZnxBigOps for Module {
         }
         unsafe {
             vec_znx_big::vec_znx_big_normalize_base2k(
-                self.0,
+                self.ptr,
                 log_base2k as u64,
                 b.as_mut_ptr(),
                 b.cols() as u64,
                 b.n() as u64,
-                a.0,
+                a.ptr as *mut vec_znx_bigcoeff_t,
                 a.cols() as u64,
                 tmp_bytes.as_mut_ptr(),
             )
@@ -216,13 +254,13 @@ impl VecZnxBigOps for Module {
     }
 
     fn vec_znx_big_range_normalize_base2k_tmp_bytes(&self) -> usize {
-        unsafe { vec_znx_big::vec_znx_big_range_normalize_base2k_tmp_bytes(self.0) as usize }
+        unsafe { vec_znx_big::vec_znx_big_range_normalize_base2k_tmp_bytes(self.ptr) as usize }
     }
 
-    fn vec_znx_big_range_normalize_base2k<T: VecZnxApi + Infos>(
+    fn vec_znx_big_range_normalize_base2k(
         &self,
         log_base2k: usize,
-        res: &mut T,
+        res: &mut VecZnx,
         a: &VecZnxBig,
         a_range_begin: usize,
         a_range_xend: usize,
@@ -241,12 +279,12 @@ impl VecZnxBigOps for Module {
         }
         unsafe {
             vec_znx_big::vec_znx_big_range_normalize_base2k(
-                self.0,
+                self.ptr,
                 log_base2k as u64,
                 res.as_mut_ptr(),
                 res.cols() as u64,
                 res.n() as u64,
-                a.0,
+                a.ptr as *mut vec_znx_bigcoeff_t,
                 a_range_begin as u64,
                 a_range_xend as u64,
                 a_range_step as u64,
@@ -258,11 +296,11 @@ impl VecZnxBigOps for Module {
     fn vec_znx_big_automorphism(&self, gal_el: i64, b: &mut VecZnxBig, a: &VecZnxBig) {
         unsafe {
             vec_znx_big::vec_znx_big_automorphism(
-                self.0,
+                self.ptr,
                 gal_el,
-                b.0,
+                b.ptr as *mut vec_znx_bigcoeff_t,
                 b.cols() as u64,
-                a.0,
+                a.ptr as *mut vec_znx_bigcoeff_t,
                 a.cols() as u64,
             );
         }
@@ -271,11 +309,11 @@ impl VecZnxBigOps for Module {
     fn vec_znx_big_automorphism_inplace(&self, gal_el: i64, a: &mut VecZnxBig) {
         unsafe {
             vec_znx_big::vec_znx_big_automorphism(
-                self.0,
+                self.ptr,
                 gal_el,
-                a.0,
+                a.ptr as *mut vec_znx_bigcoeff_t,
                 a.cols() as u64,
-                a.0,
+                a.ptr as *mut vec_znx_bigcoeff_t,
                 a.cols() as u64,
             );
         }

@@ -8,7 +8,6 @@ pub mod encoding;
 )]
 // Other modules and exports
 pub mod ffi;
-pub mod free;
 pub mod infos;
 pub mod module;
 pub mod sampling;
@@ -20,7 +19,6 @@ pub mod vec_znx_dft;
 pub mod vmp;
 
 pub use encoding::*;
-pub use free::*;
 pub use infos::*;
 pub use module::*;
 pub use sampling::*;
@@ -123,12 +121,4 @@ pub fn alloc_aligned_custom<T>(size: usize, align: usize) -> Vec<T> {
 
 pub fn alloc_aligned<T>(size: usize) -> Vec<T> {
     alloc_aligned_custom::<T>(size, DEFAULTALIGN)
-}
-
-fn alias_mut_slice_to_vec<T>(slice: &[T]) -> Vec<T> {
-    unsafe {
-        let ptr: *mut T = slice.as_ptr() as *mut T;
-        let len: usize = slice.len();
-        Vec::from_raw_parts(ptr, len, len)
-    }
 }

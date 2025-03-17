@@ -1,16 +1,6 @@
-use base2k::{Infos, Module, VecZnx, VecZnxBorrow, VecZnxOps, VmpPMat, VmpPMatOps};
+use base2k::{Infos, Module, VecZnx, VecZnxOps, VmpPMat, VmpPMatOps};
 
 use crate::parameters::Parameters;
-
-impl Parameters {
-    pub fn elem_from_bytes<T>(&self, log_q: usize, size: usize, bytes: &mut [u8]) -> Elem<T>
-    where
-        T: VecZnxCommon<Owned = T>,
-        Elem<T>: ElemVecZnx<T>,
-    {
-        Elem::<T>::from_bytes(self.module(), self.log_base2k(), log_q, size, bytes)
-    }
-}
 
 pub struct Elem<T> {
     pub value: Vec<T>,
@@ -19,26 +9,26 @@ pub struct Elem<T> {
     pub log_scale: usize,
 }
 
-pub trait VecZnxCommon: base2k::VecZnxCommon {}
-impl VecZnxCommon for VecZnx {}
-impl VecZnxCommon for VecZnxBorrow {}
-
-pub trait ElemVecZnx<T: VecZnxCommon<Owned = T>> {
+pub trait ElemVecZnx {
     fn from_bytes(
         module: &Module,
         log_base2k: usize,
         log_q: usize,
         size: usize,
         bytes: &mut [u8],
-    ) -> Elem<T>;
+    ) -> Elem<VecZnx>;
+    fn from_bytes_borrow(
+        module: &Module,
+        log_base2k: usize,
+        log_q: usize,
+        size: usize,
+        bytes: &mut [u8],
+    ) -> Elem<VecZnx>;
     fn bytes_of(module: &Module, log_base2k: usize, log_q: usize, size: usize) -> usize;
     fn zero(&mut self);
 }
 
-impl<T> ElemVecZnx<T> for Elem<T>
-where
-    T: VecZnxCommon<Owned = T>,
-{
+impl ElemVecZnx for Elem<VecZnx> {
     fn bytes_of(module: &Module, log_base2k: usize, log_q: usize, size: usize) -> usize {
         let cols = (log_q + log_base2k - 1) / log_base2k;
         module.n() * cols * size * 8
@@ -50,16 +40,42 @@ where
         log_q: usize,
         size: usize,
         bytes: &mut [u8],
-    ) -> Elem<T> {
+    ) -> Elem<VecZnx> {
         assert!(size > 0);
         let n: usize = module.n();
         assert!(bytes.len() >= Self::bytes_of(module, log_base2k, log_q, size));
-        let mut value: Vec<T> = Vec::new();
+        let mut value: Vec<VecZnx> = Vec::new();
         let limbs: usize = (log_q + log_base2k - 1) / log_base2k;
-        let elem_size = T::bytes_of(n, limbs);
+        let elem_size = VecZnx::bytes_of(n, limbs);
         let mut ptr: usize = 0;
         (0..size).for_each(|_| {
-            value.push(T::from_bytes(n, limbs, &mut bytes[ptr..]));
+            value.push(VecZnx::from_bytes(n, limbs, &mut bytes[ptr..]));
+            ptr += elem_size
+        });
+        Self {
+            value,
+            log_q,
+            log_base2k,
+            log_scale: 0,
+        }
+    }
+
+    fn from_bytes_borrow(
+        module: &Module,
+        log_base2k: usize,
+        log_q: usize,
+        size: usize,
+        bytes: &mut [u8],
+    ) -> Elem<VecZnx> {
+        assert!(size > 0);
+        let n: usize = module.n();
+        assert!(bytes.len() >= Self::bytes_of(module, log_base2k, log_q, size));
+        let mut value: Vec<VecZnx> = Vec::new();
+        let limbs: usize = (log_q + log_base2k - 1) / log_base2k;
+        let elem_size = VecZnx::bytes_of(n, limbs);
+        let mut ptr: usize = 0;
+        (0..size).for_each(|_| {
+            value.push(VecZnx::from_bytes_borrow(n, limbs, &mut bytes[ptr..]));
             ptr += elem_size
         });
         Self {

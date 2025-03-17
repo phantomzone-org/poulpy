@@ -56,6 +56,7 @@
         "xlocnum": "cpp",
         "xloctime": "cpp",
         "xmemory": "cpp",
-        "xtr1common": "cpp"
+        "xtr1common": "cpp",
+        "vec_znx_arithmetic_private.h": "c"
     }
 }

@@ -1,13 +1,18 @@
 use crate::ffi::svp;
-use crate::{alias_mut_slice_to_vec, assert_alignement, Module, VecZnxApi, VecZnxDft};
+use crate::ffi::vec_znx_dft::vec_znx_dft_t;
+use crate::{assert_alignement, Module, VecZnx, VecZnxDft};
 
-use crate::{alloc_aligned, cast, Infos};
+use crate::{alloc_aligned, cast_mut, Infos};
 use rand::seq::SliceRandom;
 use rand_core::RngCore;
 use rand_distr::{Distribution, WeightedIndex};
 use sampling::source::Source;
 
-pub struct Scalar(pub Vec<i64>);
+pub struct Scalar {
+    pub n: usize,
+    pub data: Vec<i64>,
+    pub ptr: *mut i64,
+}
 
 impl Module {
     pub fn new_scalar(&self) -> Scalar {
@@ -17,52 +22,70 @@ impl Module {
 
 impl Scalar {
     pub fn new(n: usize) -> Self {
-        Self(alloc_aligned::<i64>(n))
+        let mut data: Vec<i64> = alloc_aligned::<i64>(n);
+        let ptr: *mut i64 = data.as_mut_ptr();
+        Self {
+            n: n,
+            data: data,
+            ptr: ptr,
+        }
     }
 
     pub fn n(&self) -> usize {
-        self.0.len()
+        self.n
     }
 
     pub fn buffer_size(n: usize) -> usize {
         n
     }
 
-    pub fn from_buffer(&mut self, n: usize, buf: &mut [u8]) {
+    pub fn from_buffer(&mut self, n: usize, bytes: &mut [u8]) -> Self {
         let size: usize = Self::buffer_size(n);
         debug_assert!(
-            buf.len() >= size,
-            "invalid buffer: buf.len()={} < self.buffer_size(n={})={}",
-            buf.len(),
+            bytes.len() == size,
+            "invalid buffer: bytes.len()={} < self.buffer_size(n={})={}",
+            bytes.len(),
             n,
             size
         );
         #[cfg(debug_assertions)]
         {
-            assert_alignement(buf.as_ptr())
+            assert_alignement(bytes.as_ptr())
         }
-        self.0 = alias_mut_slice_to_vec(cast::<u8, i64>(&buf[..size]))
+        unsafe {
+            let bytes_i64: &mut [i64] = cast_mut::<u8, i64>(bytes);
+            let ptr: *mut i64 = bytes_i64.as_mut_ptr();
+            Self {
+                n: n,
+                data: Vec::from_raw_parts(bytes_i64.as_mut_ptr(), bytes.len(), bytes.len()),
+                ptr: ptr,
+            }
+        }
     }
 
     pub fn as_ptr(&self) -> *const i64 {
-        self.0.as_ptr()
+        self.ptr
+    }
+
+    pub fn raw(&self) -> &[i64] {
+        unsafe { std::slice::from_raw_parts_mut(self.ptr, self.n) }
     }
 
     pub fn fill_ternary_prob(&mut self, prob: f64, source: &mut Source) {
         let choices: [i64; 3] = [-1, 0, 1];
         let weights: [f64; 3] = [prob / 2.0, 1.0 - prob, prob / 2.0];
         let dist: WeightedIndex<f64> = WeightedIndex::new(&weights).unwrap();
-        self.0
+        self.data
             .iter_mut()
             .for_each(|x: &mut i64| *x = choices[dist.sample(source)]);
     }
 
     pub fn fill_ternary_hw(&mut self, hw: usize, source: &mut Source) {
         assert!(hw <= self.n());
-        self.0[..hw]
+        self.data[..hw]
             .iter_mut()
             .for_each(|x: &mut i64| *x = (((source.next_u32() & 1) as i64) << 1) - 1);
-        self.0.shuffle(source);
+        self.data.shuffle(source);
     }
 }
 
@@ -105,35 +128,23 @@ pub trait SvpPPolOps {
 
     /// Applies the [SvpPPol] x [VecZnxDft] product, where each limb of
     /// the [VecZnxDft] is multiplied with [SvpPPol].
-    fn svp_apply_dft<T: VecZnxApi + Infos>(
-        &self,
-        c: &mut VecZnxDft,
-        a: &SvpPPol,
-        b: &T,
-        b_cols: usize,
-    );
+    fn svp_apply_dft(&self, c: &mut VecZnxDft, a: &SvpPPol, b: &VecZnx, b_cols: usize);
 }
 
 impl SvpPPolOps for Module {
     fn new_svp_ppol(&self) -> SvpPPol {
-        unsafe { SvpPPol(svp::new_svp_ppol(self.0), self.n()) }
+        unsafe { SvpPPol(svp::new_svp_ppol(self.ptr), self.n()) }
     }
 
     fn bytes_of_svp_ppol(&self) -> usize {
-        unsafe { svp::bytes_of_svp_ppol(self.0) as usize }
+        unsafe { svp::bytes_of_svp_ppol(self.ptr) as usize }
     }
 
     fn svp_prepare(&self, svp_ppol: &mut SvpPPol, a: &Scalar) {
-        unsafe { svp::svp_prepare(self.0, svp_ppol.0, a.as_ptr()) }
+        unsafe { svp::svp_prepare(self.ptr, svp_ppol.0, a.as_ptr()) }
     }
 
-    fn svp_apply_dft<T: VecZnxApi + Infos>(
-        &self,
-        c: &mut VecZnxDft,
-        a: &SvpPPol,
-        b: &T,
-        b_cols: usize,
-    ) {
+    fn svp_apply_dft(&self, c: &mut VecZnxDft, a: &SvpPPol, b: &VecZnx, b_cols: usize) {
         debug_assert!(
             c.cols() >= b_cols,
             "invalid c_vector: c_vector.cols()={} < b.cols()={}",
@@ -142,8 +153,8 @@ impl SvpPPolOps for Module {
         );
         unsafe {
             svp::svp_apply_dft(
-                self.0,
-                c.0,
+                self.ptr,
+                c.ptr as *mut vec_znx_dft_t,
                 b_cols as u64,
                 a.0,
                 b.as_ptr(),

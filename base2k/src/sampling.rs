@@ -1,16 +1,16 @@
-use crate::{Infos, Module, VecZnxApi};
+use crate::{Infos, Module, VecZnx};
 use rand_distr::{Distribution, Normal};
 use sampling::source::Source;
 
-pub trait Sampling<T: VecZnxApi + Infos> {
+pub trait Sampling {
     /// Fills the first `cols` cols with uniform values in \[-2^{log_base2k-1}, 2^{log_base2k-1}\]
-    fn fill_uniform(&self, log_base2k: usize, a: &mut T, cols: usize, source: &mut Source);
+    fn fill_uniform(&self, log_base2k: usize, a: &mut VecZnx, cols: usize, source: &mut Source);
 
     /// Adds vector sampled according to the provided distribution, scaled by 2^{-log_k} and bounded to \[-bound, bound\].
     fn add_dist_f64<D: Distribution<f64>>(
         &self,
         log_base2k: usize,
-        a: &mut T,
+        a: &mut VecZnx,
         log_k: usize,
         source: &mut Source,
         dist: D,
@@ -21,7 +21,7 @@ pub trait Sampling<T: VecZnxApi + Infos> {
     fn add_normal(
         &self,
         log_base2k: usize,
-        a: &mut T,
+        a: &mut VecZnx,
         log_k: usize,
         source: &mut Source,
         sigma: f64,
@@ -29,8 +29,8 @@ pub trait Sampling<T: VecZnxApi + Infos> {
     );
 }
 
-impl<T: VecZnxApi + Infos> Sampling<T> for Module {
-    fn fill_uniform(&self, log_base2k: usize, a: &mut T, cols: usize, source: &mut Source) {
+impl Sampling for Module {
+    fn fill_uniform(&self, log_base2k: usize, a: &mut VecZnx, cols: usize, source: &mut Source) {
         let base2k: u64 = 1 << log_base2k;
         let mask: u64 = base2k - 1;
         let base2k_half: i64 = (base2k >> 1) as i64;
@@ -43,7 +43,7 @@ impl<T: VecZnxApi + Infos> Sampling<T> for Module {
     fn add_dist_f64<D: Distribution<f64>>(
         &self,
         log_base2k: usize,
-        a: &mut T,
+        a: &mut VecZnx,
         log_k: usize,
         source: &mut Source,
         dist: D,
@@ -79,7 +79,7 @@ impl<T: VecZnxApi + Infos> Sampling<T> for Module {
     fn add_normal(
         &self,
         log_base2k: usize,
-        a: &mut T,
+        a: &mut VecZnx,
         log_k: usize,
         source: &mut Source,
         sigma: f64,

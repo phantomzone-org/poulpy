@@ -655,6 +655,7 @@ version = "0.1.0"
 dependencies = [
  "base2k",
  "criterion",
+ "itertools 0.14.0",
  "rand_distr",
  "rug",
  "sampling",

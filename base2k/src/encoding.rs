@@ -1,5 +1,5 @@
 use crate::ffi::znx::znx_zero_i64_ref;
-use crate::{VecZnx, VecZnxBorrow, VecZnxCommon};
+use crate::{Infos, VecZnx};
 use itertools::izip;
 use rug::{Assign, Float};
 use std::cmp::min;
@@ -89,42 +89,7 @@ impl Encoding for VecZnx {
     }
 }
 
-impl Encoding for VecZnxBorrow {
-    fn encode_vec_i64(&mut self, log_base2k: usize, log_k: usize, data: &[i64], log_max: usize) {
-        encode_vec_i64(self, log_base2k, log_k, data, log_max)
-    }
-
-    fn decode_vec_i64(&self, log_base2k: usize, log_k: usize, data: &mut [i64]) {
-        decode_vec_i64(self, log_base2k, log_k, data)
-    }
-
-    fn decode_vec_float(&self, log_base2k: usize, data: &mut [Float]) {
-        decode_vec_float(self, log_base2k, data)
-    }
-
-    fn encode_coeff_i64(
-        &mut self,
-        log_base2k: usize,
-        log_k: usize,
-        i: usize,
-        value: i64,
-        log_max: usize,
-    ) {
-        encode_coeff_i64(self, log_base2k, log_k, i, value, log_max)
-    }
-
-    fn decode_coeff_i64(&self, log_base2k: usize, log_k: usize, i: usize) -> i64 {
-        decode_coeff_i64(self, log_base2k, log_k, i)
-    }
-}
-
-fn encode_vec_i64<T: VecZnxCommon>(
-    a: &mut T,
-    log_base2k: usize,
-    log_k: usize,
-    data: &[i64],
-    log_max: usize,
-) {
+fn encode_vec_i64(a: &mut VecZnx, log_base2k: usize, log_k: usize, data: &[i64], log_max: usize) {
     let cols: usize = (log_k + log_base2k - 1) / log_base2k;
 
     debug_assert!(
@@ -170,7 +135,7 @@ fn encode_vec_i64<T: VecZnxCommon>(
     }
 }
 
-fn decode_vec_i64<T: VecZnxCommon>(a: &T, log_base2k: usize, log_k: usize, data: &mut [i64]) {
+fn decode_vec_i64(a: &VecZnx, log_base2k: usize, log_k: usize, data: &mut [i64]) {
     let cols: usize = (log_k + log_base2k - 1) / log_base2k;
     debug_assert!(
         data.len() >= a.n(),
@@ -194,7 +159,7 @@ fn decode_vec_i64<T: VecZnxCommon>(a: &T, log_base2k: usize, log_k: usize, data:
     })
 }
 
-fn decode_vec_float<T: VecZnxCommon>(a: &T, log_base2k: usize, data: &mut [Float]) {
+fn decode_vec_float(a: &VecZnx, log_base2k: usize, data: &mut [Float]) {
     let cols: usize = a.cols();
     debug_assert!(
         data.len() >= a.n(),
@@ -224,8 +189,8 @@ fn decode_vec_float<T: VecZnxCommon>(a: &T, log_base2k: usize, data: &mut [Float
     });
 }
 
-fn encode_coeff_i64<T: VecZnxCommon>(
-    a: &mut T,
+fn encode_coeff_i64(
+    a: &mut VecZnx,
     log_base2k: usize,
     log_k: usize,
     i: usize,
@@ -247,7 +212,7 @@ fn encode_coeff_i64<T: VecZnxCommon>(
     // values on the last limb.
     // Else we decompose values base2k.
     if log_max + log_k_rem < 63 || log_k_rem == log_base2k {
-        a.at_mut(cols-1)[i] = value;
+        a.at_mut(cols - 1)[i] = value;
     } else {
         let mask: i64 = (1 << log_base2k) - 1;
         let steps: usize = min(cols, (log_max + log_base2k - 1) / log_base2k);
@@ -268,7 +233,7 @@ fn encode_coeff_i64<T: VecZnxCommon>(
     }
 }
 
-fn decode_coeff_i64<T: VecZnxCommon>(a: &T, log_base2k: usize, log_k: usize, i: usize) -> i64 {
+fn decode_coeff_i64(a: &VecZnx, log_base2k: usize, log_k: usize, i: usize) -> i64 {
     let cols: usize = (log_k + log_base2k - 1) / log_base2k;
     debug_assert!(i < a.n());
     let data: &[i64] = a.raw();
