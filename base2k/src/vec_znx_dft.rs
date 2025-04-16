@@ -135,15 +135,28 @@ pub trait VecZnxDftOps {
     /// b <- IDFT(a), uses a as scratch space.
     fn vec_znx_idft_tmp_a(&self, b: &mut VecZnxBig, a: &mut VecZnxDft, a_cols: usize);
 
-    fn vec_znx_idft(
+    fn vec_znx_idft(&self, b: &mut VecZnxBig, a: &VecZnxDft, a_cols: usize, tmp_bytes: &mut [u8]);
+
+    fn vec_znx_dft(&self, b: &mut VecZnxDft, a: &VecZnx, a_cols: usize);
+
+    fn vec_znx_dft_automorphism(
         &self,
-        b: &mut VecZnxBig,
+        k: i64,
+        b: &mut VecZnxDft,
+        b_cols: usize,
         a: &VecZnxDft,
+        a_cols: usize,
+    );
+
+    fn vec_znx_dft_automorphism_inplace(
+        &self,
+        k: i64,
+        a: &mut VecZnxDft,
         a_cols: usize,
         tmp_bytes: &mut [u8],
     );
 
-    fn vec_znx_dft(&self, b: &mut VecZnxDft, a: &VecZnx, a_cols: usize);
+    fn vec_znx_dft_automorphism_tmp_bytes(&self, a_cols: usize) -> usize;
 }
 
 impl VecZnxDftOps for Module {
@@ -161,10 +174,10 @@ impl VecZnxDftOps for Module {
 
     fn new_vec_znx_dft_from_bytes(&self, cols: usize, tmp_bytes: &mut [u8]) -> VecZnxDft {
         debug_assert!(
-            tmp_bytes.len() >= <Module as VecZnxDftOps>::bytes_of_vec_znx_dft(self, cols),
+            tmp_bytes.len() >= Self::bytes_of_vec_znx_dft(self, cols),
             "invalid bytes: bytes.len()={} < bytes_of_vec_znx_dft={}",
             tmp_bytes.len(),
-            <Module as VecZnxDftOps>::bytes_of_vec_znx_dft(self, cols)
+            Self::bytes_of_vec_znx_dft(self, cols)
         );
         #[cfg(debug_assertions)]
         {
@@ -223,33 +236,27 @@ impl VecZnxDftOps for Module {
     }
 
     // b <- IDFT(a), scratch space size obtained with [vec_znx_idft_tmp_bytes].
-    fn vec_znx_idft(
-        &self,
-        b: &mut VecZnxBig,
-        a: &VecZnxDft,
-        a_cols: usize,
-        tmp_bytes: &mut [u8],
-    ) {
-        debug_assert!(
-            b.cols() >= a_cols,
-            "invalid c_vector: b.cols()={} < a_cols={}",
-            b.cols(),
-            a_cols
-        );
-        debug_assert!(
-            a.cols() >= a_cols,
-            "invalid c_vector: a.cols()={} < a_cols={}",
-            a.cols(),
-            a_cols
-        );
-        debug_assert!(
-            tmp_bytes.len() >= <Module as VecZnxDftOps>::vec_znx_idft_tmp_bytes(self),
-            "invalid tmp_bytes: tmp_bytes.len()={} < self.vec_znx_idft_tmp_bytes()={}",
-            tmp_bytes.len(),
-            <Module as VecZnxDftOps>::vec_znx_idft_tmp_bytes(self)
-        );
+    fn vec_znx_idft(&self, b: &mut VecZnxBig, a: &VecZnxDft, a_cols: usize, tmp_bytes: &mut [u8]) {
         #[cfg(debug_assertions)]
         {
+            assert!(
+                b.cols() >= a_cols,
+                "invalid c_vector: b.cols()={} < a_cols={}",
+                b.cols(),
+                a_cols
+            );
+            assert!(
+                a.cols() >= a_cols,
+                "invalid c_vector: a.cols()={} < a_cols={}",
+                a.cols(),
+                a_cols
+            );
+            assert!(
+                tmp_bytes.len() >= Self::vec_znx_idft_tmp_bytes(self),
+                "invalid tmp_bytes: tmp_bytes.len()={} < self.vec_znx_idft_tmp_bytes()={}",
+                tmp_bytes.len(),
+                Self::vec_znx_idft_tmp_bytes(self)
+            );
             assert_alignement(tmp_bytes.as_ptr())
         }
         unsafe {
@@ -262,5 +269,81 @@ impl VecZnxDftOps for Module {
                 tmp_bytes.as_mut_ptr(),
             )
         }
+    }
+
+    fn vec_znx_dft_automorphism(
+        &self,
+        k: i64,
+        b: &mut VecZnxDft,
+        b_cols: usize,
+        a: &VecZnxDft,
+        a_cols: usize,
+    ) {
+        #[cfg(debug_assertions)]
+        {
+            assert!(
+                b.cols() >= a_cols,
+                "invalid c_vector: b.cols()={} < a_cols={}",
+                b.cols(),
+                a_cols
+            );
+            assert!(
+                a.cols() >= a_cols,
+                "invalid c_vector: a.cols()={} < a_cols={}",
+                a.cols(),
+                a_cols
+            );
+        }
+        unsafe {
+            vec_znx_dft::vec_znx_dft_automorphism(
+                self.ptr,
+                k,
+                b.ptr as *mut vec_znx_dft_t,
+                b_cols as u64,
+                a.ptr as *const vec_znx_dft_t,
+                a_cols as u64,
+                [0u8; 0].as_mut_ptr(),
+            );
+        }
+    }
+
+    fn vec_znx_dft_automorphism_inplace(
+        &self,
+        k: i64,
+        a: &mut VecZnxDft,
+        a_cols: usize,
+        tmp_bytes: &mut [u8],
+    ) {
+        #[cfg(debug_assertions)]
+        {
+            assert!(
+                a.cols() >= a_cols,
+                "invalid c_vector: a.cols()={} < a_cols={}",
+                a.cols(),
+                a_cols
+            );
+            assert!(
+                tmp_bytes.len() >= Self::vec_znx_dft_automorphism_tmp_bytes(self, a_cols),
+                "invalid tmp_bytes: tmp_bytes.len()={} < self.vec_znx_dft_automorphism_tmp_bytes()={}",
+                tmp_bytes.len(),
+                Self::vec_znx_dft_automorphism_tmp_bytes(self, a_cols)
+            );
+            assert_alignement(tmp_bytes.as_ptr())
+        }
+        unsafe {
+            vec_znx_dft::vec_znx_dft_automorphism(
+                self.ptr,
+                k,
+                a.ptr as *mut vec_znx_dft_t,
+                a_cols as u64,
+                a.ptr as *const vec_znx_dft_t,
+                a_cols as u64,
+                tmp_bytes.as_mut_ptr(),
+            );
+        }
+    }
+
+    fn vec_znx_dft_automorphism_tmp_bytes(&self, a_cols: usize) -> usize {
+        unsafe { vec_znx_dft::vec_znx_dft_automorphism_tmp_bytes(self.ptr, a_cols as u64) as usize }
     }
 }
