@@ -3,7 +3,7 @@ use crate::GALOISGENERATOR;
 
 #[derive(Copy, Clone)]
 #[repr(u8)]
-pub enum MODULETYPE {
+pub enum BACKEND {
     FFT64,
     NTT120,
 }
@@ -11,17 +11,17 @@ pub enum MODULETYPE {
 pub struct Module {
     pub ptr: *mut MODULE,
     pub n: usize,
-    pub backend: MODULETYPE,
+    pub backend: BACKEND,
 }
 
 impl Module {
     // Instantiates a new module.
-    pub fn new(n: usize, module_type: MODULETYPE) -> Self {
+    pub fn new(n: usize, module_type: BACKEND) -> Self {
         unsafe {
             let module_type_u32: u32;
             match module_type {
-                MODULETYPE::FFT64 => module_type_u32 = 0,
-                MODULETYPE::NTT120 => module_type_u32 = 1,
+                BACKEND::FFT64 => module_type_u32 = 0,
+                BACKEND::NTT120 => module_type_u32 = 1,
             }
             let m: *mut module_info_t = new_module_info(n as u64, module_type_u32);
             if m.is_null() {
@@ -35,7 +35,7 @@ impl Module {
         }
     }
 
-    pub fn backend(&self) -> MODULETYPE {
+    pub fn backend(&self) -> BACKEND {
         self.backend
     }
 

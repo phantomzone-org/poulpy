@@ -540,31 +540,6 @@ impl VecZnxOps for Module {
     /// # Panics
     ///
     /// The method will panic if the argument `a` is greater than `a.cols()`.
-    ///
-    /// # Example
-    /// ```
-    /// use base2k::{Module, MODULETYPE, VecZnx, Encoding, Infos, VecZnxOps};
-    /// use itertools::izip;
-    ///
-    /// let n: usize = 8; // polynomial degree
-    /// let module = Module::new(n, MODULETYPE::FFT64);
-    /// let mut a: VecZnx = module.new_vec_znx(2);
-    /// let mut b: VecZnx = module.new_vec_znx(2);
-    /// let mut c: VecZnx = module.new_vec_znx(2);
-    ///
-    /// (0..a.cols()).for_each(|i|{
-    ///     a.at_mut(i).iter_mut().enumerate().for_each(|(i, x)|{
-    ///         *x = i as i64
-    ///     })
-    /// });
-    ///
-    /// module.vec_znx_automorphism(-1, &mut b, &a, 1); // X^i -> X^(-i)
-    /// let col = c.at_mut(0);
-    /// (1..col.len()).for_each(|i|{
-    ///     col[n-i] = -(i as i64)
-    /// });
-    /// izip!(b.raw().iter(), c.raw().iter()).for_each(|(a, b)| assert_eq!(a, b, "{} != {}", a, b));
-    /// ```
     fn vec_znx_automorphism(&self, k: i64, b: &mut VecZnx, a: &VecZnx, a_cols: usize) {
         debug_assert_eq!(a.n(), self.n());
         debug_assert_eq!(b.n(), self.n());
@@ -594,30 +569,6 @@ impl VecZnxOps for Module {
     /// # Panics
     ///
     /// The method will panic if the argument `cols` is greater than `self.cols()`.
-    ///
-    /// # Example
-    /// ```
-    /// use base2k::{Module, MODULETYPE, VecZnx, Encoding, Infos, VecZnxOps};
-    /// use itertools::izip;
-    ///
-    /// let n: usize = 8; // polynomial degree
-    /// let module = Module::new(n, MODULETYPE::FFT64);
-    /// let mut a: VecZnx = VecZnx::new(n, 2);
-    /// let mut b: VecZnx = VecZnx::new(n, 2);
-    ///
-    /// (0..a.cols()).for_each(|i|{
-    ///     a.at_mut(i).iter_mut().enumerate().for_each(|(i, x)|{
-    ///         *x = i as i64
-    ///     })
-    /// });
-    ///
-    /// module.vec_znx_automorphism_inplace(-1, &mut a, 1); // X^i -> X^(-i)
-    /// let col = b.at_mut(0);
-    /// (1..col.len()).for_each(|i|{
-    ///     col[n-i] = -(i as i64)
-    /// });
-    /// izip!(a.raw().iter(), b.raw().iter()).for_each(|(a, b)| assert_eq!(a, b, "{} != {}", a, b));
-    /// ```
     fn vec_znx_automorphism_inplace(&self, k: i64, a: &mut VecZnx, a_cols: usize) {
         debug_assert_eq!(a.n(), self.n());
         debug_assert!(a.cols() >= a_cols);

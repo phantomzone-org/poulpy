@@ -1,5 +1,5 @@
 use base2k::{
-    Infos, MODULETYPE, Module, Sampling, SvpPPolOps, VecZnx, VecZnxDft, VecZnxDftOps, VecZnxOps,
+    Infos, BACKEND, Module, Sampling, SvpPPolOps, VecZnx, VecZnxDft, VecZnxDftOps, VecZnxOps,
     VmpPMat, alloc_aligned_u8,
 };
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
@@ -36,7 +36,7 @@ fn bench_gadget_product_inplace(c: &mut Criterion) {
 
     for log_n in 10..11 {
         let params_lit: ParametersLiteral = ParametersLiteral {
-            backend: MODULETYPE::FFT64,
+            backend: BACKEND::FFT64,
             log_n: log_n,
             log_q: 32,
             log_p: 0,

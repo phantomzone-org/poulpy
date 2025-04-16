@@ -2,10 +2,10 @@ use crate::ffi::module::MODULE;
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
-pub struct vec_znx_bigcoeff_t {
+pub struct vec_znx_big_t {
     _unused: [u8; 0],
 }
-pub type VEC_ZNX_BIG = vec_znx_bigcoeff_t;
+pub type VEC_ZNX_BIG = vec_znx_big_t;
 
 unsafe extern "C" {
     pub fn bytes_of_vec_znx_big(module: *const MODULE, size: u64) -> u64;

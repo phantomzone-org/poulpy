@@ -97,7 +97,7 @@ mod test {
         plaintext::Plaintext,
     };
     use base2k::{
-        Infos, MODULETYPE, Sampling, SvpPPolOps, VecZnx, VecZnxBig, VecZnxBigOps, VecZnxDft,
+        Infos, BACKEND, Sampling, SvpPPolOps, VecZnx, VecZnxBig, VecZnxBigOps, VecZnxDft,
         VecZnxDftOps, VecZnxOps, VmpPMat, alloc_aligned_u8,
     };
     use sampling::source::{Source, new_seed};
@@ -110,7 +110,7 @@ mod test {
 
         // Basic parameters with enough limbs to test edge cases
         let params_lit: ParametersLiteral = ParametersLiteral {
-            backend: MODULETYPE::FFT64,
+            backend: BACKEND::FFT64,
             log_n: 12,
             log_q: q_cols * log_base2k,
             log_p: p_cols * log_base2k,

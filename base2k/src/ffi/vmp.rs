@@ -1,4 +1,5 @@
 use crate::ffi::module::MODULE;
+use crate::ffi::vec_znx_big::VEC_ZNX_BIG;
 use crate::ffi::vec_znx_dft::VEC_ZNX_DFT;
 
 #[repr(C)]
@@ -100,6 +101,39 @@ unsafe extern "C" {
         nrows: u64,
         ncols: u64,
         tmp_space: *mut u8,
+    );
+}
+
+unsafe extern "C" {
+    pub unsafe fn vmp_prepare_row_dft(
+        module: *const MODULE,
+        pmat: *mut VMP_PMAT,
+        row: *const VEC_ZNX_DFT,
+        row_i: u64,
+        nrows: u64,
+        ncols: u64,
+    );
+}
+
+unsafe extern "C" {
+    pub unsafe fn vmp_extract_row_dft(
+        module: *const MODULE,
+        res: *mut VEC_ZNX_DFT,
+        pmat: *const VMP_PMAT,
+        row_i: u64,
+        nrows: u64,
+        ncols: u64,
+    );
+}
+
+unsafe extern "C" {
+    pub unsafe fn vmp_extract_row(
+        module: *const MODULE,
+        res: *mut VEC_ZNX_BIG,
+        pmat: *const VMP_PMAT,
+        row_i: u64,
+        nrows: u64,
+        ncols: u64,
     );
 }
 

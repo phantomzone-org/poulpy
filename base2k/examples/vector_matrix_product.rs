@@ -1,13 +1,13 @@
 use base2k::{
     alloc_aligned, Encoding, Infos, Module, VecZnx, VecZnxBig, VecZnxBigOps, VecZnxDft,
-    VecZnxDftOps, VecZnxOps, VecZnxVec, VmpPMat, VmpPMatOps, MODULETYPE,
+    VecZnxDftOps, VecZnxOps, VecZnxVec, VmpPMat, VmpPMatOps, BACKEND,
 };
 
 fn main() {
     let log_n: i32 = 5;
     let n: usize = 1 << log_n;
 
-    let module: Module = Module::new(n, MODULETYPE::FFT64);
+    let module: Module = Module::new(n, BACKEND::FFT64);
     let log_base2k: usize = 15;
     let cols: usize = 5;
     let log_k: usize = log_base2k * cols - 5;

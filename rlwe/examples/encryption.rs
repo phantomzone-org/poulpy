@@ -10,7 +10,7 @@ use sampling::source::Source;
 
 fn main() {
     let params_lit: ParametersLiteral = ParametersLiteral {
-        backend: base2k::MODULETYPE::FFT64,
+        backend: base2k::BACKEND::FFT64,
         log_n: 10,
         log_q: 54,
         log_p: 0,

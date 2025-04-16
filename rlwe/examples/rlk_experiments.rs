@@ -12,7 +12,7 @@ use sampling::source::{Source, new_seed};
 
 fn main() {
     let n: usize = 32;
-    let module: Module = Module::new(n, base2k::MODULETYPE::FFT64);
+    let module: Module = Module::new(n, base2k::BACKEND::FFT64);
     let log_base2k: usize = 16;
     let log_k: usize = 32;
     let cols: usize = 4;

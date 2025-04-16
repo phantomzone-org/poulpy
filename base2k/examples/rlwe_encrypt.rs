@@ -1,6 +1,6 @@
 use base2k::{
     alloc_aligned, Encoding, Infos, Module, Sampling, Scalar, SvpPPol, SvpPPolOps, VecZnx,
-    VecZnxBig, VecZnxBigOps, VecZnxDft, VecZnxDftOps, VecZnxOps, MODULETYPE,
+    VecZnxBig, VecZnxBigOps, VecZnxDft, VecZnxDftOps, VecZnxOps, BACKEND,
 };
 use itertools::izip;
 use sampling::source::Source;
@@ -11,7 +11,7 @@ fn main() {
     let cols: usize = 3;
     let msg_cols: usize = 2;
     let log_scale: usize = msg_cols * log_base2k - 5;
-    let module: Module = Module::new(n, MODULETYPE::FFT64);
+    let module: Module = Module::new(n, BACKEND::FFT64);
 
     let mut carry: Vec<u8> = alloc_aligned(module.vec_znx_big_normalize_tmp_bytes());
 

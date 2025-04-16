@@ -57,6 +57,15 @@
         "xloctime": "cpp",
         "xmemory": "cpp",
         "xtr1common": "cpp",
-        "vec_znx_arithmetic_private.h": "c"
+        "vec_znx_arithmetic_private.h": "c",
+        "reim4_arithmetic.h": "c",
+        "array": "c",
+        "string_view": "c"
+    },
+    "github.copilot.enable": {
+        "*": false,
+        "plaintext": false,
+        "markdown": false,
+        "scminput": false
     }
 }

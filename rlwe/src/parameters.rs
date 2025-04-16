@@ -1,7 +1,7 @@
-use base2k::module::{MODULETYPE, Module};
+use base2k::module::{BACKEND, Module};
 
 pub struct ParametersLiteral {
-    pub backend: MODULETYPE,
+    pub backend: BACKEND,
     pub log_n: usize,
     pub log_q: usize,
     pub log_p: usize,
