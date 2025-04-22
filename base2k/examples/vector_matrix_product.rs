@@ -49,7 +49,7 @@ fn main() {
     module.vmp_apply_dft(&mut c_dft, &a, &vmp_pmat, &mut buf);
 
     let mut c_big: VecZnxBig = c_dft.as_vec_znx_big();
-    module.vec_znx_idft_tmp_a(&mut c_big, &mut c_dft, cols);
+    module.vec_znx_idft_tmp_a(&mut c_big, &mut c_dft);
 
     let mut res: VecZnx = module.new_vec_znx(cols);
     module.vec_znx_big_normalize(log_base2k, &mut res, &c_big, &mut buf);

@@ -1,5 +1,5 @@
 use base2k::{
-    Infos, BACKEND, Module, Sampling, SvpPPolOps, VecZnx, VecZnxDft, VecZnxDftOps, VecZnxOps,
+    BACKEND, Infos, Module, Sampling, SvpPPolOps, VecZnx, VecZnxDft, VecZnxDftOps, VecZnxOps,
     VmpPMat, alloc_aligned_u8,
 };
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
@@ -7,7 +7,7 @@ use rlwe::{
     ciphertext::{Ciphertext, new_gadget_ciphertext},
     elem::ElemCommon,
     encryptor::{encrypt_grlwe_sk, encrypt_grlwe_sk_tmp_bytes},
-    gadget_product::{gadget_product_core, gadget_product_tmp_bytes},
+    gadget_product::{gadget_product_core, gadget_product_core_tmp_bytes},
     keys::SecretKey,
     parameters::{Parameters, ParametersLiteral},
 };
@@ -50,7 +50,7 @@ fn bench_gadget_product_inplace(c: &mut Criterion) {
 
         let mut tmp_bytes: Vec<u8> = alloc_aligned_u8(
             params.encrypt_rlwe_sk_tmp_bytes(params.log_q())
-                | gadget_product_tmp_bytes(
+                | gadget_product_core_tmp_bytes(
                     params.module(),
                     params.log_base2k(),
                     params.log_q(),

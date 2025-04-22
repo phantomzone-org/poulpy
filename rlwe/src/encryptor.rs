@@ -153,13 +153,13 @@ pub fn encrypt_rlwe_sk(
     let mut buf_dft: VecZnxDft = VecZnxDft::from_bytes_borrow(module, cols, tmp_bytes_vec_znx_dft);
 
     // Applies buf_dft <- DFT(s) * DFT(c1)
-    module.svp_apply_dft(&mut buf_dft, sk, c1, cols);
+    module.svp_apply_dft(&mut buf_dft, sk, c1);
 
     // Alias scratch space
     let mut buf_big: VecZnxBig = buf_dft.as_vec_znx_big();
 
     // buf_big = s x c1
-    module.vec_znx_idft_tmp_a(&mut buf_big, &mut buf_dft, cols);
+    module.vec_znx_idft_tmp_a(&mut buf_big, &mut buf_dft);
 
     // c0 <- -s x c1 + m
     let c0: &mut VecZnx = ct.at_mut(0);

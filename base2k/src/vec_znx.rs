@@ -12,16 +12,16 @@ use std::cmp::min;
 #[derive(Clone)]
 pub struct VecZnx {
     /// Polynomial degree.
-    n: usize,
+    pub n: usize,
 
     /// Number of columns.
-    cols: usize,
+    pub cols: usize,
 
     /// Polynomial coefficients, as a contiguous array. Each col is equally spaced by n.
-    data: Vec<i64>,
+    pub data: Vec<i64>,
 
     /// Pointer to data (data can be enpty if [VecZnx] borrows space instead of owning it).
-    ptr: *mut i64,
+    pub ptr: *mut i64,
 }
 
 pub trait VecZnxVec {
@@ -363,10 +363,10 @@ pub trait VecZnxOps {
     fn vec_znx_rotate_inplace(&self, k: i64, a: &mut VecZnx);
 
     /// b <- phi_k(a) where phi_k: X^i -> X^{i*k} (mod (X^{n} + 1))
-    fn vec_znx_automorphism(&self, k: i64, b: &mut VecZnx, a: &VecZnx, a_cols: usize);
+    fn vec_znx_automorphism(&self, k: i64, b: &mut VecZnx, a: &VecZnx);
 
     /// a <- phi_k(a) where phi_k: X^i -> X^{i*k} (mod (X^{n} + 1))
-    fn vec_znx_automorphism_inplace(&self, k: i64, a: &mut VecZnx, a_cols: usize);
+    fn vec_znx_automorphism_inplace(&self, k: i64, a: &mut VecZnx);
 
     /// Splits b into subrings and copies them them into a.
     ///
@@ -540,10 +540,9 @@ impl VecZnxOps for Module {
     /// # Panics
     ///
     /// The method will panic if the argument `a` is greater than `a.cols()`.
-    fn vec_znx_automorphism(&self, k: i64, b: &mut VecZnx, a: &VecZnx, a_cols: usize) {
+    fn vec_znx_automorphism(&self, k: i64, b: &mut VecZnx, a: &VecZnx) {
         debug_assert_eq!(a.n(), self.n());
         debug_assert_eq!(b.n(), self.n());
-        debug_assert!(a.cols() >= a_cols);
         unsafe {
             vec_znx::vec_znx_automorphism(
                 self.ptr,
@@ -552,7 +551,7 @@ impl VecZnxOps for Module {
                 b.cols() as u64,
                 b.n() as u64,
                 a.as_ptr(),
-                a_cols as u64,
+                a.cols() as u64,
                 a.n() as u64,
             );
         }
@@ -569,9 +568,8 @@ impl VecZnxOps for Module {
     /// # Panics
     ///
     /// The method will panic if the argument `cols` is greater than `self.cols()`.
-    fn vec_znx_automorphism_inplace(&self, k: i64, a: &mut VecZnx, a_cols: usize) {
+    fn vec_znx_automorphism_inplace(&self, k: i64, a: &mut VecZnx) {
         debug_assert_eq!(a.n(), self.n());
-        debug_assert!(a.cols() >= a_cols);
         unsafe {
             vec_znx::vec_znx_automorphism(
                 self.ptr,
@@ -580,7 +578,7 @@ impl VecZnxOps for Module {
                 a.cols() as u64,
                 a.n() as u64,
                 a.as_ptr(),
-                a_cols as u64,
+                a.cols() as u64,
                 a.n() as u64,
             );
         }

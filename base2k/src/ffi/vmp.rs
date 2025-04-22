@@ -37,6 +37,21 @@ unsafe extern "C" {
 }
 
 unsafe extern "C" {
+    pub unsafe fn vmp_apply_dft_add(
+        module: *const MODULE,
+        res: *mut VEC_ZNX_DFT,
+        res_size: u64,
+        a: *const i64,
+        a_size: u64,
+        a_sl: u64,
+        pmat: *const VMP_PMAT,
+        nrows: u64,
+        ncols: u64,
+        tmp_space: *mut u8,
+    );
+}
+
+unsafe extern "C" {
     pub unsafe fn vmp_apply_dft_tmp_bytes(
         module: *const MODULE,
         res_size: u64,
@@ -48,6 +63,20 @@ unsafe extern "C" {
 
 unsafe extern "C" {
     pub unsafe fn vmp_apply_dft_to_dft(
+        module: *const MODULE,
+        res: *mut VEC_ZNX_DFT,
+        res_size: u64,
+        a_dft: *const VEC_ZNX_DFT,
+        a_size: u64,
+        pmat: *const VMP_PMAT,
+        nrows: u64,
+        ncols: u64,
+        tmp_space: *mut u8,
+    );
+}
+
+unsafe extern "C" {
+    pub unsafe fn vmp_apply_dft_to_dft_add(
         module: *const MODULE,
         res: *mut VEC_ZNX_DFT,
         res_size: u64,

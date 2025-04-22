@@ -16,6 +16,7 @@ impl VecZnxBig {
     pub fn from_bytes(module: &Module, cols: usize, bytes: &mut [u8]) -> Self {
         #[cfg(debug_assertions)]
         {
+            assert_eq!(bytes.len(), module.bytes_of_vec_znx_big(cols));
             assert_alignement(bytes.as_ptr())
         };
         unsafe {
@@ -54,14 +55,6 @@ impl VecZnxBig {
         }
     }
 
-    pub fn n(&self) -> usize {
-        self.n
-    }
-
-    pub fn cols(&self) -> usize {
-        self.cols
-    }
-
     pub fn backend(&self) -> BACKEND {
         self.backend
     }
@@ -77,11 +70,35 @@ impl VecZnxBig {
     }
 }
 
+impl Infos for VecZnxBig {
+    /// Returns the base 2 logarithm of the [VecZnx] degree.
+    fn log_n(&self) -> usize {
+        (usize::BITS - (self.n - 1).leading_zeros()) as _
+    }
+
+    /// Returns the [VecZnx] degree.
+    fn n(&self) -> usize {
+        self.n
+    }
+
+    /// Returns the number of cols of the [VecZnx].
+    fn cols(&self) -> usize {
+        self.cols
+    }
+
+    /// Returns the number of rows of the [VecZnx].
+    fn rows(&self) -> usize {
+        1
+    }
+}
+
 pub trait VecZnxBigOps {
     /// Allocates a vector Z[X]/(X^N+1) that stores not normalized values.
     fn new_vec_znx_big(&self, cols: usize) -> VecZnxBig;
 
     /// Returns a new [VecZnxBig] with the provided bytes array as backing array.
+    ///
+    /// Behavior: takes ownership of the backing array.
     ///
     /// # Arguments
     ///
@@ -91,6 +108,19 @@ pub trait VecZnxBigOps {
     /// # Panics
     /// If `bytes.len()` < [Module::bytes_of_vec_znx_big].
     fn new_vec_znx_big_from_bytes(&self, cols: usize, bytes: &mut [u8]) -> VecZnxBig;
+
+    /// Returns a new [VecZnxBig] with the provided bytes array as backing array.
+    ///
+    /// Behavior: the backing array is only borrowed.
+    ///
+    /// # Arguments
+    ///
+    /// * `cols`: the number of cols of the [VecZnxBig].
+    /// * `bytes`: a byte array of size at least [Module::bytes_of_vec_znx_big].
+    ///
+    /// # Panics
+    /// If `bytes.len()` < [Module::bytes_of_vec_znx_big].
+    fn new_vec_znx_big_from_bytes_borrow(&self, cols: usize, tmp_bytes: &mut [u8]) -> VecZnxBig;
 
     /// Returns the minimum number of bytes necessary to allocate
     /// a new [VecZnxBig] through [VecZnxBig::from_bytes].
@@ -151,17 +181,11 @@ impl VecZnxBigOps for Module {
     }
 
     fn new_vec_znx_big_from_bytes(&self, cols: usize, bytes: &mut [u8]) -> VecZnxBig {
-        debug_assert!(
-            bytes.len() >= <Module as VecZnxBigOps>::bytes_of_vec_znx_big(self, cols),
-            "invalid bytes: bytes.len()={} < bytes_of_vec_znx_dft={}",
-            bytes.len(),
-            <Module as VecZnxBigOps>::bytes_of_vec_znx_big(self, cols)
-        );
-        #[cfg(debug_assertions)]
-        {
-            assert_alignement(bytes.as_ptr())
-        }
         VecZnxBig::from_bytes(self, cols, bytes)
+    }
+
+    fn new_vec_znx_big_from_bytes_borrow(&self, cols: usize, tmp_bytes: &mut [u8]) -> VecZnxBig {
+        VecZnxBig::from_bytes_borrow(self, cols, tmp_bytes)
     }
 
     fn bytes_of_vec_znx_big(&self, cols: usize) -> usize {

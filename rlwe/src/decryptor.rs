@@ -62,14 +62,13 @@ pub fn decrypt_rlwe(
     let (tmp_bytes_vec_znx_dft, tmp_bytes_normalize) =
         tmp_bytes.split_at_mut(module.bytes_of_vec_znx_dft(cols));
 
-    let mut res_dft: VecZnxDft =
-        VecZnxDft::from_bytes_borrow(module, a.cols(), tmp_bytes_vec_znx_dft);
+    let mut res_dft: VecZnxDft = VecZnxDft::from_bytes_borrow(module, cols, tmp_bytes_vec_znx_dft);
     let mut res_big: base2k::VecZnxBig = res_dft.as_vec_znx_big();
 
     // res_dft <- DFT(ct[1]) * DFT(sk)
-    module.svp_apply_dft(&mut res_dft, sk, a.at(1), cols);
+    module.svp_apply_dft(&mut res_dft, sk, a.at(1));
     // res_big <- ct[1] x sk
-    module.vec_znx_idft_tmp_a(&mut res_big, &mut res_dft, cols);
+    module.vec_znx_idft_tmp_a(&mut res_big, &mut res_dft);
     // res_big <- ct[1] x sk + ct[0]
     module.vec_znx_big_add_small_inplace(&mut res_big, a.at(0));
     // res <- normalize(ct[1] x sk + ct[0])

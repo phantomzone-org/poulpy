@@ -1,8 +1,10 @@
 use crate::{ciphertext::Ciphertext, elem::ElemCommon, parameters::Parameters};
-use base2k::{Module, VecZnx, VecZnxDft, VecZnxDftOps, VmpPMat, VmpPMatOps};
+use base2k::{
+    Module, VecZnx, VecZnxBig, VecZnxBigOps, VecZnxDft, VecZnxDftOps, VmpPMat, VmpPMatOps,
+};
 use std::cmp::min;
 
-pub fn gadget_product_tmp_bytes(
+pub fn gadget_product_core_tmp_bytes(
     module: &Module,
     log_base2k: usize,
     res_log_q: usize,
@@ -24,7 +26,7 @@ impl Parameters {
         gct_rows: usize,
         gct_log_q: usize,
     ) -> usize {
-        gadget_product_tmp_bytes(
+        gadget_product_core_tmp_bytes(
             self.module(),
             self.log_base2k(),
             res_log_q,
@@ -35,54 +37,99 @@ impl Parameters {
     }
 }
 
-/// Evaluates the gadget product res <- a x b.
-///
-/// # Arguments
-///
-/// * `module`: backend support for operations mod (X^N + 1).
-/// * `res`: an [Elem] to store (-cs + m * a + e, c) with res_ncols cols.
-/// * `a`: a [VecZnx] of a_ncols cols.
-/// * `b`: a [Ciphertext<VmpPMat>] as a vector of (-Bs + m * 2^{-k} + E, B)
-///       containing b_nrows [VecZnx], each of b_ncols cols.
-///
-/// # Computation
-///
-/// res = sum[min(a_ncols, b_nrows)] decomp(a, i) * (-B[i]s + m * 2^{-k*i} + E[i], B[i])
-///     = (cs + m * a + e, c) with min(res_cols, b_cols) cols.
 pub fn gadget_product_core(
     module: &Module,
     res_dft_0: &mut VecZnxDft,
     res_dft_1: &mut VecZnxDft,
     a: &VecZnx,
-    a_cols: usize,
     b: &Ciphertext<VmpPMat>,
     b_cols: usize,
     tmp_bytes: &mut [u8],
 ) {
     assert!(b_cols <= b.cols());
-    module.vec_znx_dft(res_dft_1, a, min(a_cols, b_cols));
+    module.vec_znx_dft(res_dft_1, a);
     module.vmp_apply_dft_to_dft(res_dft_0, res_dft_1, b.at(0), tmp_bytes);
     module.vmp_apply_dft_to_dft_inplace(res_dft_1, b.at(1), tmp_bytes);
 }
 
-/*
-// res_big[a * (G0|G1)] <- IDFT(res_dft[a * (G0|G1)])
-module.vec_znx_idft_tmp_a(&mut res_big_0, &mut res_dft_0, b_cols);
-module.vec_znx_idft_tmp_a(&mut res_big_1, &mut res_dft_1, b_cols);
-
-// res_big <- res[0] + res_big[a*G0]
-module.vec_znx_big_add_small_inplace(&mut res_big_0, res.at(0));
-module.vec_znx_big_normalize(log_base2k, res.at_mut(0), &res_big_0, tmp_bytes_carry);
-
-if OVERWRITE {
-    // res[1] = normalize(res_big[a*G1])
-    module.vec_znx_big_normalize(log_base2k, res.at_mut(1), &res_big_1, tmp_bytes_carry);
-} else {
-    // res[1] = normalize(res_big[a*G1] + res[1])
-    module.vec_znx_big_add_small_inplace(&mut res_big_1, res.at(1));
-    module.vec_znx_big_normalize(log_base2k, res.at_mut(1), &res_big_1, tmp_bytes_carry);
+pub fn gadget_product_big_tmp_bytes(
+    module: &Module,
+    c_cols: usize,
+    a_cols: usize,
+    b_rows: usize,
+    b_cols: usize,
+) -> usize {
+    return module.vmp_apply_dft_to_dft_tmp_bytes(c_cols, a_cols, b_rows, b_cols)
+        + 2 * module.bytes_of_vec_znx_dft(min(c_cols, a_cols));
 }
-*/
+
+/// Evaluates the gadget product: c.at(i) = IDFT(<DFT(a.at(i)), b.at(i)>)
+///
+/// # Arguments
+///
+/// * `module`: backend support for operations mod (X^N + 1).
+/// * `c`: a [Ciphertext<VecZnxBig>] with cols_c cols.
+/// * `a`: a [Ciphertext<VecZnx>] with cols_a cols.
+/// * `b`: a [Ciphertext<VmpPMat>] with at least min(cols_c, cols_a) rows.
+pub fn gadget_product_big(
+    module: &Module,
+    c: &mut Ciphertext<VecZnxBig>,
+    a: &Ciphertext<VecZnx>,
+    b: &Ciphertext<VmpPMat>,
+    tmp_bytes: &mut [u8],
+) {
+    let cols: usize = min(c.cols(), a.cols());
+
+    let (tmp_bytes_b1_dft, tmp_bytes) = tmp_bytes.split_at_mut(module.bytes_of_vec_znx_dft(cols));
+    let (tmp_bytes_res_dft, tmp_bytes) = tmp_bytes.split_at_mut(module.bytes_of_vec_znx_dft(cols));
+
+    let mut a1_dft: VecZnxDft = module.new_vec_znx_dft_from_bytes_borrow(cols, tmp_bytes_b1_dft);
+    let mut res_dft: VecZnxDft = module.new_vec_znx_dft_from_bytes_borrow(cols, tmp_bytes_res_dft);
+
+    // a1_dft = DFT(a[1])
+    module.vec_znx_dft(&mut a1_dft, a.at(1));
+
+    // c[i] = IDFT(DFT(a[1]) * b[i])
+    (0..2).for_each(|i| {
+        module.vmp_apply_dft_to_dft(&mut res_dft, &a1_dft, b.at(i), tmp_bytes);
+        module.vec_znx_idft_tmp_a(c.at_mut(i), &mut res_dft);
+    })
+}
+
+/// Evaluates the gadget product: c.at(i) = NORMALIZE(IDFT(<DFT(a.at(i)), b.at(i)>)
+///
+/// # Arguments
+///
+/// * `module`: backend support for operations mod (X^N + 1).
+/// * `c`: a [Ciphertext<VecZnx>] with cols_c cols.
+/// * `a`: a [Ciphertext<VecZnx>] with cols_a cols.
+/// * `b`: a [Ciphertext<VmpPMat>] with at least min(cols_c, cols_a) rows.
+pub fn gadget_product(
+    module: &Module,
+    c: &mut Ciphertext<VecZnx>,
+    a: &Ciphertext<VecZnx>,
+    b: &Ciphertext<VmpPMat>,
+    tmp_bytes: &mut [u8],
+) {
+    let cols: usize = min(c.cols(), a.cols());
+
+    let (tmp_bytes_b1_dft, tmp_bytes) = tmp_bytes.split_at_mut(module.bytes_of_vec_znx_dft(cols));
+    let (tmp_bytes_res_dft, tmp_bytes) = tmp_bytes.split_at_mut(module.bytes_of_vec_znx_dft(cols));
+
+    let mut a1_dft: VecZnxDft = module.new_vec_znx_dft_from_bytes_borrow(cols, tmp_bytes_b1_dft);
+    let mut res_dft: VecZnxDft = module.new_vec_znx_dft_from_bytes_borrow(cols, tmp_bytes_res_dft);
+    let mut res_big: VecZnxBig = res_dft.as_vec_znx_big();
+
+    // a1_dft = DFT(a[1])
+    module.vec_znx_dft(&mut a1_dft, a.at(1));
+
+    // c[i] = IDFT(DFT(a[1]) * b[i])
+    (0..2).for_each(|i| {
+        module.vmp_apply_dft_to_dft(&mut res_dft, &a1_dft, b.at(i), tmp_bytes);
+        module.vec_znx_idft_tmp_a(&mut res_big, &mut res_dft);
+        module.vec_znx_big_normalize(c.log_base2k(), c.at_mut(i), &mut res_big, tmp_bytes);
+    })
+}
 
 #[cfg(test)]
 mod test {
@@ -97,7 +144,7 @@ mod test {
         plaintext::Plaintext,
     };
     use base2k::{
-        Infos, BACKEND, Sampling, SvpPPolOps, VecZnx, VecZnxBig, VecZnxBigOps, VecZnxDft,
+        BACKEND, Infos, Sampling, SvpPPolOps, VecZnx, VecZnxBig, VecZnxBigOps, VecZnxDft,
         VecZnxDftOps, VecZnxOps, VmpPMat, alloc_aligned_u8,
     };
     use sampling::source::{Source, new_seed};
@@ -125,7 +172,6 @@ mod test {
         // scratch space
         let mut tmp_bytes: Vec<u8> = alloc_aligned_u8(
             params.decrypt_rlwe_tmp_byte(params.log_qp())
-                | params.encrypt_rlwe_sk_tmp_bytes(params.log_qp())
                 | params.gadget_product_tmp_bytes(
                     params.log_qp(),
                     params.log_qp(),
@@ -193,12 +239,8 @@ mod test {
         let mut a_times_s: VecZnx = params.module().new_vec_znx(a.cols());
 
         // a * sk0
-        params
-            .module()
-            .svp_apply_dft(&mut a_dft, &sk0_svp_ppol, &a, a.cols());
-        params
-            .module()
-            .vec_znx_idft_tmp_a(&mut a_big, &mut a_dft, a.cols());
+        params.module().svp_apply_dft(&mut a_dft, &sk0_svp_ppol, &a);
+        params.module().vec_znx_idft_tmp_a(&mut a_big, &mut a_dft);
         params.module().vec_znx_big_normalize(
             params.log_base2k(),
             &mut a_times_s,
@@ -228,7 +270,6 @@ mod test {
                     &mut res_dft_0,
                     &mut res_dft_1,
                     &a,
-                    a_cols,
                     &gadget_ct,
                     b_cols,
                     &mut tmp_bytes,
@@ -237,11 +278,11 @@ mod test {
                 // res_big_0 = IDFT(res_dft_0)
                 params
                     .module()
-                    .vec_znx_idft_tmp_a(&mut res_big_0, &mut res_dft_0, b_cols);
+                    .vec_znx_idft_tmp_a(&mut res_big_0, &mut res_dft_0);
                 // res_big_1 = IDFT(res_dft_1);
                 params
                     .module()
-                    .vec_znx_idft_tmp_a(&mut res_big_1, &mut res_dft_1, b_cols);
+                    .vec_znx_idft_tmp_a(&mut res_big_1, &mut res_dft_1);
 
                 // res_big_0 = normalize(res_big_0)
                 params.module().vec_znx_big_normalize(

@@ -39,7 +39,7 @@ pub fn rgsw_product(
     let mut _r2_dft: VecZnxDft = module.new_vec_znx_dft_from_bytes(cols, tmp_bytes_r2_dft);
 
     // c0_dft <- DFT(a[0])
-    module.vec_znx_dft(&mut c0_dft, a.at(0), in_cols);
+    module.vec_znx_dft(&mut c0_dft, a.at(0));
 
     // r_dft <- sum[rows] c0_dft[cols] x RGSW[0][cols]
     module.vmp_apply_dft_to_dft(
@@ -50,5 +50,5 @@ pub fn rgsw_product(
     );
 
     // c1_dft <- DFT(a[1])
-    module.vec_znx_dft(&mut c1_dft, a.at(1), in_cols);
+    module.vec_znx_dft(&mut c1_dft, a.at(1));
 }

@@ -38,13 +38,13 @@ fn main() {
     let mut buf_dft: VecZnxDft = module.new_vec_znx_dft(a.cols());
 
     // Applies buf_dft <- s * a
-    module.svp_apply_dft(&mut buf_dft, &s_ppol, &a, a.cols());
+    module.svp_apply_dft(&mut buf_dft, &s_ppol, &a);
 
     // Alias scratch space
     let mut buf_big: VecZnxBig = buf_dft.as_vec_znx_big();
 
     // buf_big <- IDFT(buf_dft) (not normalized)
-    module.vec_znx_idft_tmp_a(&mut buf_big, &mut buf_dft, a.cols());
+    module.vec_znx_idft_tmp_a(&mut buf_big, &mut buf_dft);
 
     let mut m: VecZnx = module.new_vec_znx(msg_cols);
 
@@ -74,8 +74,8 @@ fn main() {
     //Decrypt
 
     // buf_big <- a * s
-    module.svp_apply_dft(&mut buf_dft, &s_ppol, &a, a.cols());
-    module.vec_znx_idft_tmp_a(&mut buf_big, &mut buf_dft, b.cols());
+    module.svp_apply_dft(&mut buf_dft, &s_ppol, &a);
+    module.vec_znx_idft_tmp_a(&mut buf_big, &mut buf_dft);
 
     // buf_big <- a * s + b
     module.vec_znx_big_add_small_inplace(&mut buf_big, &b);
