@@ -26,6 +26,7 @@ pub struct VmpPMat {
     /// The ring degree of each [VecZnxDft].      
     n: usize,
 
+    #[warn(dead_code)]
     backend: BACKEND,
 }
 

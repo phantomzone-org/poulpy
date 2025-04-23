@@ -347,8 +347,11 @@ pub trait VecZnxOps {
     /// c <- a - b.
     fn vec_znx_sub(&self, c: &mut VecZnx, a: &VecZnx, b: &VecZnx);
 
+    /// b <- a - b.
+    fn vec_znx_sub_ab_inplace(&self, b: &mut VecZnx, a: &VecZnx);
+
     /// b <- b - a.
-    fn vec_znx_sub_inplace(&self, b: &mut VecZnx, a: &VecZnx);
+    fn vec_znx_sub_ba_inplace(&self, b: &mut VecZnx, a: &VecZnx);
 
     /// b <- -a.
     fn vec_znx_negate(&self, b: &mut VecZnx, a: &VecZnx);
@@ -452,8 +455,8 @@ impl VecZnxOps for Module {
         }
     }
 
-    // b <- a + b
-    fn vec_znx_sub_inplace(&self, b: &mut VecZnx, a: &VecZnx) {
+    // b <- a - b
+    fn vec_znx_sub_ab_inplace(&self, b: &mut VecZnx, a: &VecZnx) {
         unsafe {
             vec_znx::vec_znx_sub(
                 self.ptr,
@@ -466,6 +469,24 @@ impl VecZnxOps for Module {
                 b.as_ptr(),
                 b.cols() as u64,
                 b.n() as u64,
+            )
+        }
+    }
+
+    // b <- b - a
+    fn vec_znx_sub_ba_inplace(&self, b: &mut VecZnx, a: &VecZnx) {
+        unsafe {
+            vec_znx::vec_znx_sub(
+                self.ptr,
+                b.as_mut_ptr(),
+                b.cols() as u64,
+                b.n() as u64,
+                b.as_ptr(),
+                b.cols() as u64,
+                b.n() as u64,
+                a.as_ptr(),
+                a.cols() as u64,
+                a.n() as u64,
             )
         }
     }

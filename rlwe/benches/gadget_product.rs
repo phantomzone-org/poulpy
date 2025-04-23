@@ -19,14 +19,13 @@ fn bench_gadget_product_inplace(c: &mut Criterion) {
         res_dft_0: &'a mut VecZnxDft,
         res_dft_1: &'a mut VecZnxDft,
         a: &'a VecZnx,
-        a_cols: usize,
         b: &'a Ciphertext<VmpPMat>,
         b_cols: usize,
         tmp_bytes: &'a mut [u8],
     ) -> Box<dyn FnMut() + 'a> {
         Box::new(move || {
             gadget_product_core(
-                module, res_dft_0, res_dft_1, a, a_cols, b, b_cols, tmp_bytes,
+                module, res_dft_0, res_dft_1, a, b, b_cols, tmp_bytes,
             );
         })
     }
@@ -119,7 +118,6 @@ fn bench_gadget_product_inplace(c: &mut Criterion) {
             .module()
             .fill_uniform(params.log_base2k(), &mut a, params.cols_q(), &mut source_xa);
 
-        let a_cols: usize = a.cols();
         let b_cols: usize = gadget_ct.cols();
 
         let runners: [(String, Box<dyn FnMut()>); 1] = [(format!("gadget_product"), {
@@ -128,7 +126,6 @@ fn bench_gadget_product_inplace(c: &mut Criterion) {
                 &mut res_dft_0,
                 &mut res_dft_1,
                 &mut a,
-                a_cols,
                 &gadget_ct,
                 b_cols,
                 &mut tmp_bytes,

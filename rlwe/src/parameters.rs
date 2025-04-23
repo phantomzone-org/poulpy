@@ -1,5 +1,7 @@
 use base2k::module::{BACKEND, Module};
 
+pub const DEFAULTSIGMA: f64 = 3.2;
+
 pub struct ParametersLiteral {
     pub backend: BACKEND,
     pub log_n: usize,

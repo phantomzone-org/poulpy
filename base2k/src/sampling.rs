@@ -63,7 +63,7 @@ impl Sampling for Module {
                 while dist_f64.abs() > bound {
                     dist_f64 = dist.sample(source)
                 }
-                *a += (dist_f64.round() as i64) << log_base2k_rem
+                *a += (dist_f64.round() as i64) << log_base2k_rem;
             });
         } else {
             a.at_mut(a.cols() - 1).iter_mut().for_each(|a| {

@@ -251,13 +251,10 @@ mod test {
         // Iterates over all possible cols values for input/output polynomials and gadget ciphertext.
 
         (1..a.cols() + 1).for_each(|a_cols| {
-
             let mut a_trunc: VecZnx = params.module().new_vec_znx(a_cols);
             a_trunc.copy_from(&a);
-            
+
             (1..gadget_ct.cols() + 1).for_each(|b_cols| {
-
-
                 let mut res_dft_0: VecZnxDft = params.module().new_vec_znx_dft(b_cols);
                 let mut res_dft_1: VecZnxDft = params.module().new_vec_znx_dft(b_cols);
                 let mut res_big_0: VecZnxBig = res_dft_0.as_vec_znx_big();
@@ -319,7 +316,7 @@ mod test {
                 // a * sk0 + e - a*sk0 = e
                 params
                     .module()
-                    .vec_znx_sub_inplace(pt.at_mut(0), &mut a_times_s);
+                    .vec_znx_sub_ab_inplace(pt.at_mut(0), &mut a_times_s);
                 pt.at_mut(0).normalize(log_base2k, &mut tmp_bytes);
 
                 //pt.at(0).print(pt.elem().cols(), 16);
@@ -347,8 +344,6 @@ mod test {
                 println!("noise_have: {}", noise_have);
 
                 //assert!(noise_have <= noise_pred + 1.0);
-
-                
             });
         });
     }

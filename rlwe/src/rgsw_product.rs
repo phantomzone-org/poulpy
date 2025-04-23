@@ -1,9 +1,9 @@
 use crate::{
     ciphertext::Ciphertext,
-    elem::{Elem, ElemCommon, ElemVecZnx},
+    elem::{Elem, ElemCommon},
 };
 use base2k::{
-    Module, VecZnx, VecZnxBig, VecZnxBigOps, VecZnxDft, VecZnxDftOps, VmpPMat, VmpPMatOps,
+    Module, VecZnx, VecZnxDft, VecZnxDftOps, VmpPMat, VmpPMatOps,
 };
 use std::cmp::min;
 

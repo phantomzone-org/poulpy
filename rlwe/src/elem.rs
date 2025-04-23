@@ -1,7 +1,5 @@
 use base2k::{Infos, Module, VecZnx, VecZnxOps, VmpPMat, VmpPMatOps};
 
-use crate::parameters::Parameters;
-
 pub struct Elem<T> {
     pub value: Vec<T>,
     pub log_base2k: usize,
