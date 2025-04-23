@@ -63,13 +63,9 @@ impl AutomorphismKey {
         sigma: f64,
         tmp_bytes: &mut [u8],
     ) -> Self {
-        Self::new_many_core(module, &vec![p], sk, log_base2k, rows, log_q, source_xa, source_xe, sigma, tmp_bytes).into_iter().next().unwrap()
-    }
-
-    pub fn new_many(module: &Module, p: &Vec<i64>, sk: &SecretKey, log_base2k: usize, rows: usize, log_q: usize, source_xa: &mut Source, source_xe: &mut Source, sigma: f64, tmp_bytes: &mut [u8]) -> HashMap<i64, AutomorphismKey>{
         Self::new_many_core(
             module,
-            p,
+            &vec![p],
             sk,
             log_base2k,
             rows,
@@ -80,12 +76,43 @@ impl AutomorphismKey {
             tmp_bytes,
         )
         .into_iter()
+        .next()
+        .unwrap()
+    }
+
+    pub fn new_many(
+        module: &Module,
+        p: &Vec<i64>,
+        sk: &SecretKey,
+        log_base2k: usize,
+        rows: usize,
+        log_q: usize,
+        source_xa: &mut Source,
+        source_xe: &mut Source,
+        sigma: f64,
+        tmp_bytes: &mut [u8],
+    ) -> HashMap<i64, AutomorphismKey> {
+        Self::new_many_core(
+            module, p, sk, log_base2k, rows, log_q, source_xa, source_xe, sigma, tmp_bytes,
+        )
+        .into_iter()
         .zip(p.iter().cloned())
         .map(|(key, pi)| (pi, key))
         .collect()
     }
 
-    fn new_many_core(module: &Module, p: &Vec<i64>, sk: &SecretKey, log_base2k: usize, rows: usize, log_q: usize, source_xa: &mut Source, source_xe: &mut Source, sigma: f64, tmp_bytes: &mut [u8]) -> Vec<Self>{
+    fn new_many_core(
+        module: &Module,
+        p: &Vec<i64>,
+        sk: &SecretKey,
+        log_base2k: usize,
+        rows: usize,
+        log_q: usize,
+        source_xa: &mut Source,
+        source_xe: &mut Source,
+        sigma: f64,
+        tmp_bytes: &mut [u8],
+    ) -> Vec<Self> {
         let (sk_auto_bytes, tmp_bytes) = tmp_bytes.split_at_mut(module.bytes_of_scalar());
         let (sk_out_bytes, tmp_bytes) = tmp_bytes.split_at_mut(module.bytes_of_svp_ppol());
 
@@ -93,19 +120,23 @@ impl AutomorphismKey {
         let mut sk_out: SvpPPol = module.new_svp_ppol_from_bytes_borrow(sk_out_bytes);
 
         let mut keys: Vec<AutomorphismKey> = Vec::new();
-    
-        p.iter().for_each(|pi|{
-            let mut value: Ciphertext<VmpPMat> = new_gadget_ciphertext(module, log_base2k, rows, log_q);
+
+        p.iter().for_each(|pi| {
+            let mut value: Ciphertext<VmpPMat> =
+                new_gadget_ciphertext(module, log_base2k, rows, log_q);
 
             let p_inv: i64 = module.galois_element_inv(*pi);
-    
+
             module.vec_znx_automorphism(p_inv, &mut sk_auto.as_vec_znx(), &sk.0.as_vec_znx());
             module.svp_prepare(&mut sk_out, &sk_auto);
             encrypt_grlwe_sk(
                 module, &mut value, &sk.0, &sk_out, source_xa, source_xe, sigma, tmp_bytes,
             );
 
-            keys.push(Self { value: value, p: *pi })
+            keys.push(Self {
+                value: value,
+                p: *pi,
+            })
         });
 
         keys
@@ -408,7 +439,7 @@ mod test {
         encrypt_rlwe_sk(
             module,
             &mut ct.elem_mut(),
-            Some(pt.elem()),
+            Some(pt.at(0)),
             &sk_svp_ppol,
             &mut source_xa,
             &mut source_xe,

@@ -24,9 +24,7 @@ fn bench_gadget_product_inplace(c: &mut Criterion) {
         tmp_bytes: &'a mut [u8],
     ) -> Box<dyn FnMut() + 'a> {
         Box::new(move || {
-            gadget_product_core(
-                module, res_dft_0, res_dft_1, a, b, b_cols, tmp_bytes,
-            );
+            gadget_product_core(module, res_dft_0, res_dft_1, a, b, b_cols, tmp_bytes);
         })
     }
 

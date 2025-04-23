@@ -90,6 +90,10 @@ impl Scalar {
     }
 
     pub fn raw(&self) -> &[i64] {
+        unsafe { std::slice::from_raw_parts(self.ptr, self.n) }
+    }
+
+    pub fn raw_mut(&self) -> &mut [i64] {
         unsafe { std::slice::from_raw_parts_mut(self.ptr, self.n) }
     }
 

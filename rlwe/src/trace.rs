@@ -1,13 +1,14 @@
-use crate::{automorphism::AutomorphismKey, ciphertext::Ciphertext, elem::ElemCommon, parameters::Parameters};
+use crate::{
+    automorphism::AutomorphismKey, ciphertext::Ciphertext, elem::ElemCommon, parameters::Parameters,
+};
 use base2k::{
-    Module, VecZnx, VecZnxBig, VecZnxBigOps, VecZnxDft, VecZnxDftOps, VmpPMatOps,
-    assert_alignement,
+    Module, VecZnx, VecZnxBig, VecZnxBigOps, VecZnxDft, VecZnxDftOps, VmpPMatOps, assert_alignement,
 };
 use std::collections::HashMap;
 
-pub fn trace_galois_elements(module: &Module) -> Vec<i64>{
+pub fn trace_galois_elements(module: &Module) -> Vec<i64> {
     let mut gal_els: Vec<i64> = Vec::new();
-    (0..module.log_n()).for_each(|i|{
+    (0..module.log_n()).for_each(|i| {
         if i == 0 {
             gal_els.push(-1);
         } else {
@@ -17,8 +18,8 @@ pub fn trace_galois_elements(module: &Module) -> Vec<i64>{
     gal_els
 }
 
-impl Parameters{
-    pub fn trace_tmp_bytes(&self, res_logq: usize, in_logq: usize, gct_logq: usize) -> usize{
+impl Parameters {
+    pub fn trace_tmp_bytes(&self, res_logq: usize, in_logq: usize, gct_logq: usize) -> usize {
         self.automorphism_tmp_bytes(res_logq, in_logq, gct_logq)
     }
 }
@@ -49,7 +50,8 @@ pub fn trace_inplace(
 
     if let Some((_, key)) = b.iter().next() {
         b_rows = key.value.rows();
-        #[cfg(debug_assertions)]{
+        #[cfg(debug_assertions)]
+        {
             println!("{} {}", b_cols, key.value.cols());
             assert!(b_cols <= key.value.cols())
         }
@@ -68,10 +70,12 @@ pub fn trace_inplace(
     let cols: usize = std::cmp::min(b_cols, a.cols());
 
     let (tmp_bytes_b1_dft, tmp_bytes) = tmp_bytes.split_at_mut(module.bytes_of_vec_znx_dft(cols));
-    let (tmp_bytes_res_dft, tmp_bytes) = tmp_bytes.split_at_mut(module.bytes_of_vec_znx_dft(b_cols));
+    let (tmp_bytes_res_dft, tmp_bytes) =
+        tmp_bytes.split_at_mut(module.bytes_of_vec_znx_dft(b_cols));
 
     let mut a1_dft: VecZnxDft = module.new_vec_znx_dft_from_bytes_borrow(cols, tmp_bytes_b1_dft);
-    let mut res_dft: VecZnxDft = module.new_vec_znx_dft_from_bytes_borrow(b_cols, tmp_bytes_res_dft);
+    let mut res_dft: VecZnxDft =
+        module.new_vec_znx_dft_from_bytes_borrow(b_cols, tmp_bytes_res_dft);
     let mut res_big: VecZnxBig = res_dft.as_vec_znx_big();
 
     let log_base2k: usize = a.log_base2k();
@@ -112,16 +116,20 @@ pub fn trace_inplace(
 
 #[cfg(test)]
 mod test {
+    use super::{trace_galois_elements, trace_inplace};
     use crate::{
-        automorphism::AutomorphismKey, ciphertext::{new_gadget_ciphertext, Ciphertext}, decryptor::decrypt_rlwe, elem::{Elem, ElemCommon, ElemVecZnx}, encryptor::{encrypt_grlwe_sk, encrypt_rlwe_sk}, gadget_product::gadget_product_core, keys::SecretKey, parameters::{Parameters, ParametersLiteral, DEFAULTSIGMA}, plaintext::Plaintext
+        automorphism::AutomorphismKey,
+        ciphertext::Ciphertext,
+        decryptor::decrypt_rlwe,
+        elem::ElemCommon,
+        encryptor::encrypt_rlwe_sk,
+        keys::SecretKey,
+        parameters::{DEFAULT_SIGMA, Parameters, ParametersLiteral},
+        plaintext::Plaintext,
     };
-    use base2k::{
-        BACKEND, Module, Infos, Sampling, SvpPPol, SvpPPolOps, VecZnx,
-        VecZnxDftOps, VecZnxOps, VmpPMat, alloc_aligned, Encoding,
-    };
+    use base2k::{BACKEND, Encoding, Module, SvpPPol, SvpPPolOps, VecZnx, alloc_aligned};
     use sampling::source::{Source, new_seed};
     use std::collections::HashMap;
-    use super::{trace_galois_elements, trace_inplace};
 
     #[test]
     fn test_trace_inplace() {
@@ -169,11 +177,24 @@ mod test {
 
         let gal_els: Vec<i64> = trace_galois_elements(module);
 
-        let auto_keys: HashMap<i64, AutomorphismKey> = AutomorphismKey::new_many(module, &gal_els, &sk, log_base2k, gct_rows, log_qp, &mut source_xa, &mut source_xe, DEFAULTSIGMA, &mut tmp_bytes);
+        let auto_keys: HashMap<i64, AutomorphismKey> = AutomorphismKey::new_many(
+            module,
+            &gal_els,
+            &sk,
+            log_base2k,
+            gct_rows,
+            log_qp,
+            &mut source_xa,
+            &mut source_xe,
+            DEFAULT_SIGMA,
+            &mut tmp_bytes,
+        );
 
         let mut data: Vec<i64> = vec![0i64; params.n()];
 
-        data.iter_mut().enumerate().for_each(|(i, x)| *x = 1+i as i64);
+        data.iter_mut()
+            .enumerate()
+            .for_each(|(i, x)| *x = 1 + i as i64);
 
         let log_k: usize = 2 * log_base2k;
 
@@ -190,7 +211,7 @@ mod test {
         encrypt_rlwe_sk(
             module,
             &mut ct.elem_mut(),
-            Some(pt.elem()),
+            Some(pt.at(0)),
             &sk_svp_ppol,
             &mut source_xa,
             &mut source_xe,
@@ -198,7 +219,16 @@ mod test {
             &mut tmp_bytes,
         );
 
-        trace_inplace(module, &mut ct, module.log_n()-2, module.log_n(), &auto_keys, gct_cols, & mut tmp_bytes);
+        trace_inplace(module, &mut ct, 0, 4, &auto_keys, gct_cols, &mut tmp_bytes);
+        trace_inplace(
+            module,
+            &mut ct,
+            4,
+            module.log_n(),
+            &auto_keys,
+            gct_cols,
+            &mut tmp_bytes,
+        );
 
         // pt = dec(auto(ct)) - auto(pt)
         decrypt_rlwe(
@@ -214,6 +244,5 @@ mod test {
         pt.at(0).decode_vec_i64(log_base2k, log_k, &mut data);
 
         println!("trace: {:?}", &data[..16]);
-
     }
 }
