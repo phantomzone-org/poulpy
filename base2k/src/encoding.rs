@@ -13,7 +13,7 @@ pub trait Encoding {
     /// * `log_base2k`: base two negative logarithm decomposition of the receiver.
     /// * `log_k`: base two negative logarithm of the scaling of the data.
     /// * `data`: data to encode on the receiver.
-    /// * `log_max`: base two negative logarithm of the infinity norm of the input data.
+    /// * `log_max`: base two logarithm of the infinity norm of the input data.
     fn encode_vec_i64(&mut self, poly_idx: usize, log_base2k: usize, log_k: usize, data: &[i64], log_max: usize);
 
     /// decode a vector of i64 from the receiver.
@@ -22,7 +22,7 @@ pub trait Encoding {
     ///
     /// * `poly_idx`: the index of the poly where to encode the data.
     /// * `log_base2k`: base two negative logarithm decomposition of the receiver.
-    /// * `log_k`: base two negative logarithm of the scaling of the data.
+    /// * `log_k`: base two logarithm of the scaling of the data.
     /// * `data`: data to decode from the receiver.
     fn decode_vec_i64(&self, poly_idx: usize, log_base2k: usize, log_k: usize, data: &mut [i64]);
 
@@ -43,7 +43,7 @@ pub trait Encoding {
     /// * `log_k`: base two negative logarithm of the scaling of the data.
     /// * `i`: index of the coefficient on which to encode the data.
     /// * `data`: data to encode on the receiver.
-    /// * `log_max`: base two negative logarithm of the infinity norm of the input data.
+    /// * `log_max`: base two logarithm of the infinity norm of the input data.
     fn encode_coeff_i64(&mut self, poly_idx: usize, log_base2k: usize, log_k: usize, i: usize, data: i64, log_max: usize);
 
     /// decode a single of i64 from the receiver at the given index.
