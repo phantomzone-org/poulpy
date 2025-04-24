@@ -317,7 +317,7 @@ mod tests {
 
         let cols: usize = 2;
         let log_base2k: usize = 17;
-        let mut a: VecZnx = module.new_vec_znx(cols);
+        let mut a: VecZnx = module.new_vec_znx(1, cols);
         let mut a_dft: VecZnxDft = module.new_vec_znx_dft(cols);
         let mut b_dft: VecZnxDft = module.new_vec_znx_dft(cols);
 

@@ -424,10 +424,10 @@ impl VmpPMatOps for Module {
     }
 
     fn vmp_prepare_row(&self, b: &mut VmpPMat, a: &[i64], row_i: usize, tmp_bytes: &mut [u8]) {
-        debug_assert_eq!(a.len(), b.cols() * self.n());
-        debug_assert!(tmp_bytes.len() >= self.vmp_prepare_tmp_bytes(b.rows(), b.cols()));
         #[cfg(debug_assertions)]
         {
+            assert_eq!(a.len(), b.cols() * self.n());
+            assert!(tmp_bytes.len() >= self.vmp_prepare_tmp_bytes(b.rows(), b.cols()));
             assert_alignement(tmp_bytes.as_ptr());
         }
         unsafe {
@@ -642,7 +642,7 @@ mod tests {
         let vpmat_rows: usize = 4;
         let vpmat_cols: usize = 5;
         let log_base2k: usize = 8;
-        let mut a: VecZnx = module.new_vec_znx(vpmat_cols);
+        let mut a: VecZnx = module.new_vec_znx(1, vpmat_cols);
         let mut a_dft: VecZnxDft = module.new_vec_znx_dft(vpmat_cols);
         let mut a_big: VecZnxBig = module.new_vec_znx_big(vpmat_cols);
         let mut b_big: VecZnxBig = module.new_vec_znx_big(vpmat_cols);

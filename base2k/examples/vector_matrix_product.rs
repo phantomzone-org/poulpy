@@ -1,6 +1,6 @@
 use base2k::{
-    BACKEND, Encoding, Infos, Module, VecZnx, VecZnxBig, VecZnxBigOps, VecZnxDft, VecZnxDftOps, VecZnxOps, VecZnxVec, VmpPMat,
-    VmpPMatOps, alloc_aligned,
+    BACKEND, Encoding, Infos, Module, VecZnx, VecZnxBig, VecZnxBigOps, VecZnxDft, VecZnxDftOps, VecZnxOps, VmpPMat, VmpPMatOps,
+    alloc_aligned,
 };
 
 fn main() {
@@ -23,26 +23,20 @@ fn main() {
     let mut a_values: Vec<i64> = vec![i64::default(); n];
     a_values[1] = (1 << log_base2k) + 1;
 
-    let mut a: VecZnx = module.new_vec_znx(cols);
-    a.encode_vec_i64(log_base2k, log_k, &a_values, 32);
+    let mut a: VecZnx = module.new_vec_znx(1, rows);
+    a.encode_vec_i64(0, log_base2k, log_k, &a_values, 32);
     a.normalize(log_base2k, &mut buf);
 
-    a.print(a.cols(), n);
+    a.print(0, a.cols(), n);
     println!();
 
-    let mut vecznx: Vec<VecZnx> = Vec::new();
-    (0..rows).for_each(|_| {
-        vecznx.push(module.new_vec_znx(cols));
-    });
-
-    (0..rows).for_each(|i| {
-        vecznx[i].raw_mut()[i * n + 1] = 1 as i64;
-    });
-
-    let slices: Vec<&[i64]> = vecznx.dblptr();
-
     let mut vmp_pmat: VmpPMat = module.new_vmp_pmat(rows, cols);
-    module.vmp_prepare_dblptr(&mut vmp_pmat, &slices, &mut buf);
+
+    (0..a.cols()).for_each(|row_i| {
+        let mut tmp: VecZnx = module.new_vec_znx(1, cols);
+        tmp.at_mut(row_i)[1] = 1 as i64;
+        module.vmp_prepare_row(&mut vmp_pmat, tmp.raw(), row_i, &mut buf);
+    });
 
     let mut c_dft: VecZnxDft = module.new_vec_znx_dft(cols);
     module.vmp_apply_dft(&mut c_dft, &a, &vmp_pmat, &mut buf);
@@ -50,13 +44,13 @@ fn main() {
     let mut c_big: VecZnxBig = c_dft.as_vec_znx_big();
     module.vec_znx_idft_tmp_a(&mut c_big, &mut c_dft);
 
-    let mut res: VecZnx = module.new_vec_znx(cols);
+    let mut res: VecZnx = module.new_vec_znx(1, rows);
     module.vec_znx_big_normalize(log_base2k, &mut res, &c_big, &mut buf);
 
     let mut values_res: Vec<i64> = vec![i64::default(); n];
-    res.decode_vec_i64(log_base2k, log_k, &mut values_res);
+    res.decode_vec_i64(0, log_base2k, log_k, &mut values_res);
 
-    res.print(res.cols(), n);
+    res.print(0, res.cols(), n);
 
     module.free();
 

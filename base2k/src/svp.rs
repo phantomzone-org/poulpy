@@ -117,6 +117,7 @@ impl Scalar {
     pub fn as_vec_znx(&self) -> VecZnx {
         VecZnx {
             n: self.n,
+            size: 1, // TODO REVIEW IF NEED TO ADD size TO SCALAR
             cols: 1,
             data: Vec::new(),
             ptr: self.ptr,
