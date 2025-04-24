@@ -1,6 +1,6 @@
 use rand_chacha::ChaCha8Rng;
 use rand_chacha::rand_core::SeedableRng;
-use rand_core::{OsRng, RngCore};
+use rand_core::{OsRng, RngCore, TryRngCore};
 
 const MAXF64: f64 = 9007199254740992.0;
 
@@ -10,7 +10,7 @@ pub struct Source {
 
 pub fn new_seed() -> [u8; 32] {
     let mut seed = [0u8; 32];
-    OsRng.fill_bytes(&mut seed);
+    OsRng.try_fill_bytes(&mut seed).unwrap();
     seed
 }
 
@@ -44,6 +44,10 @@ impl Source {
     pub fn next_f64(&mut self, min: f64, max: f64) -> f64 {
         min + ((self.next_u64() << 11 >> 11) as f64) / MAXF64 * (max - min)
     }
+
+    pub fn next_i64(&mut self) -> i64{
+        self.next_u64() as i64
+    }
 }
 
 impl RngCore for Source {
@@ -60,10 +64,5 @@ impl RngCore for Source {
     #[inline(always)]
     fn fill_bytes(&mut self, bytes: &mut [u8]) {
         self.source.fill_bytes(bytes)
-    }
-
-    #[inline(always)]
-    fn try_fill_bytes(&mut self, bytes: &mut [u8]) -> Result<(), rand_core::Error> {
-        self.source.try_fill_bytes(bytes)
     }
 }

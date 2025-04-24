@@ -5,7 +5,7 @@ use crate::{BACKEND, Module, VecZnx, VecZnxDft, assert_alignement};
 use crate::{Infos, alloc_aligned, cast_mut};
 use rand::seq::SliceRandom;
 use rand_core::RngCore;
-use rand_distr::{Distribution, WeightedIndex};
+use rand_distr::{Distribution, weighted::WeightedIndex};
 use sampling::source::Source;
 
 pub struct Scalar {
