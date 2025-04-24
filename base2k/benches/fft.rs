@@ -1,14 +1,9 @@
 use base2k::ffi::reim::*;
-use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
+use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use std::ffi::c_void;
 
 fn fft(c: &mut Criterion) {
-    fn forward<'a>(
-        m: u32,
-        log_bound: u32,
-        reim_fft_precomp: *mut reim_fft_precomp,
-        a: &'a [i64],
-    ) -> Box<dyn FnMut() + 'a> {
+    fn forward<'a>(m: u32, log_bound: u32, reim_fft_precomp: *mut reim_fft_precomp, a: &'a [i64]) -> Box<dyn FnMut() + 'a> {
         unsafe {
             let buf_a: *mut f64 = reim_fft_precomp_get_buffer(reim_fft_precomp, 0);
             reim_from_znx64_simple(m as u32, log_bound as u32, buf_a as *mut c_void, a.as_ptr());
@@ -16,12 +11,7 @@ fn fft(c: &mut Criterion) {
         }
     }
 
-    fn backward<'a>(
-        m: u32,
-        log_bound: u32,
-        reim_ifft_precomp: *mut reim_ifft_precomp,
-        a: &'a [i64],
-    ) -> Box<dyn FnMut() + 'a> {
+    fn backward<'a>(m: u32, log_bound: u32, reim_ifft_precomp: *mut reim_ifft_precomp, a: &'a [i64]) -> Box<dyn FnMut() + 'a> {
         Box::new(move || unsafe {
             let buf_a: *mut f64 = reim_ifft_precomp_get_buffer(reim_ifft_precomp, 0);
             reim_from_znx64_simple(m as u32, log_bound as u32, buf_a as *mut c_void, a.as_ptr());
@@ -29,8 +19,7 @@ fn fft(c: &mut Criterion) {
         })
     }
 
-    let mut b: criterion::BenchmarkGroup<'_, criterion::measurement::WallTime> =
-        c.benchmark_group("fft");
+    let mut b: criterion::BenchmarkGroup<'_, criterion::measurement::WallTime> = c.benchmark_group("fft");
 
     for log_n in 10..17 {
         let n: usize = 1 << log_n;

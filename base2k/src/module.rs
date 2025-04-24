@@ -1,5 +1,5 @@
-use crate::ffi::module::{delete_module_info, module_info_t, new_module_info, MODULE};
 use crate::GALOISGENERATOR;
+use crate::ffi::module::{MODULE, delete_module_info, module_info_t, new_module_info};
 
 #[derive(Copy, Clone)]
 #[repr(u8)]
@@ -56,8 +56,7 @@ impl Module {
         if gen == 0 {
             return 1;
         }
-        ((mod_exp_u64(GALOISGENERATOR, gen.abs() as usize) & (self.cyclotomic_order() - 1)) as i64)
-            * gen.signum()
+        ((mod_exp_u64(GALOISGENERATOR, gen.abs() as usize) & (self.cyclotomic_order() - 1)) as i64) * gen.signum()
     }
 
     // Returns gen^-1
@@ -65,8 +64,7 @@ impl Module {
         if gen == 0 {
             panic!("cannot invert 0")
         }
-        ((mod_exp_u64(gen.abs() as u64, (self.cyclotomic_order() - 1) as usize)
-            & (self.cyclotomic_order() - 1)) as i64)
+        ((mod_exp_u64(gen.abs() as u64, (self.cyclotomic_order() - 1) as usize) & (self.cyclotomic_order() - 1)) as i64)
             * gen.signum()
     }
 

@@ -1,7 +1,7 @@
 use crate::{Encoding, Infos, VecZnx};
+use rug::Float;
 use rug::float::Round;
 use rug::ops::{AddAssignRound, DivAssignRound, SubAssignRound};
-use rug::Float;
 
 impl VecZnx {
     pub fn std(&self, log_base2k: usize) -> f64 {

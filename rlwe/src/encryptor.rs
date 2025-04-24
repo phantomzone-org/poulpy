@@ -5,8 +5,8 @@ use crate::parameters::Parameters;
 use crate::plaintext::Plaintext;
 use base2k::sampling::Sampling;
 use base2k::{
-    Infos, Module, Scalar, SvpPPol, SvpPPolOps, VecZnx, VecZnxBig, VecZnxBigOps, VecZnxDft,
-    VecZnxDftOps, VecZnxOps, VmpPMat, VmpPMatOps,
+    Infos, Module, Scalar, SvpPPol, SvpPPolOps, VecZnx, VecZnxBig, VecZnxBigOps, VecZnxDft, VecZnxDftOps, VecZnxOps, VmpPMat,
+    VmpPMatOps,
 };
 
 use sampling::source::{Source, new_seed};
@@ -75,12 +75,7 @@ impl EncryptorSk {
         self.source_xe = Source::new(seed)
     }
 
-    pub fn encrypt_rlwe_sk(
-        &mut self,
-        params: &Parameters,
-        ct: &mut Ciphertext<VecZnx>,
-        pt: Option<&Plaintext>,
-    ) {
+    pub fn encrypt_rlwe_sk(&mut self, params: &Parameters, ct: &mut Ciphertext<VecZnx>, pt: Option<&Plaintext>) {
         assert!(
             self.initialized == true,
             "invalid call to [EncryptorSk.encrypt_rlwe_sk]: [EncryptorSk] has not been initialized with a [SecretKey]"
@@ -113,8 +108,7 @@ impl EncryptorSk {
 }
 
 pub fn encrypt_rlwe_sk_tmp_bytes(module: &Module, log_base2k: usize, log_q: usize) -> usize {
-    module.bytes_of_vec_znx_dft((log_q + log_base2k - 1) / log_base2k)
-        + module.vec_znx_big_normalize_tmp_bytes()
+    module.bytes_of_vec_znx_dft((log_q + log_base2k - 1) / log_base2k) + module.vec_znx_big_normalize_tmp_bytes()
 }
 pub fn encrypt_rlwe_sk(
     module: &Module,
@@ -157,8 +151,7 @@ fn encrypt_rlwe_sk_core<const PT_POS: u8>(
     // c1 <- Z_{2^prec}[X]/(X^{N}+1)
     module.fill_uniform(log_base2k, c1, cols, source_xa);
 
-    let (tmp_bytes_vec_znx_dft, tmp_bytes_normalize) =
-        tmp_bytes.split_at_mut(module.bytes_of_vec_znx_dft(cols));
+    let (tmp_bytes_vec_znx_dft, tmp_bytes_normalize) = tmp_bytes.split_at_mut(module.bytes_of_vec_znx_dft(cols));
 
     // Scratch space for DFT values
     let mut buf_dft: VecZnxDft = VecZnxDft::from_bytes_borrow(module, cols, tmp_bytes_vec_znx_dft);
@@ -214,12 +207,7 @@ impl Parameters {
     }
 }
 
-pub fn encrypt_grlwe_sk_tmp_bytes(
-    module: &Module,
-    log_base2k: usize,
-    rows: usize,
-    log_q: usize,
-) -> usize {
+pub fn encrypt_grlwe_sk_tmp_bytes(module: &Module, log_base2k: usize, rows: usize, log_q: usize) -> usize {
     let cols = (log_q + log_base2k - 1) / log_base2k;
     Elem::<VecZnx>::bytes_of(module, log_base2k, log_q, 2)
         + Plaintext::bytes_of(module, log_base2k, log_q)
@@ -260,12 +248,7 @@ impl Parameters {
     }
 }
 
-pub fn encrypt_rgsw_sk_tmp_bytes(
-    module: &Module,
-    log_base2k: usize,
-    rows: usize,
-    log_q: usize,
-) -> usize {
+pub fn encrypt_rgsw_sk_tmp_bytes(module: &Module, log_base2k: usize, rows: usize, log_q: usize) -> usize {
     let cols = (log_q + log_base2k - 1) / log_base2k;
     Elem::<VecZnx>::bytes_of(module, log_base2k, log_q, 2)
         + Plaintext::bytes_of(module, log_base2k, log_q)
@@ -347,10 +330,8 @@ fn encrypt_grlwe_sk_core<const PT_POS: u8>(
     let (tmp_bytes_enc_sk, tmp_bytes) = tmp_bytes.split_at_mut(bytes_of_enc_sk);
     let (tmp_bytes_elem, tmp_bytes_vmp_prepare_row) = tmp_bytes.split_at_mut(bytes_of_elem);
 
-    let mut tmp_elem: Elem<VecZnx> =
-        Elem::<VecZnx>::from_bytes_borrow(module, log_base2k, log_q, 2, tmp_bytes_elem);
-    let mut tmp_pt: Plaintext =
-        Plaintext::from_bytes_borrow(module, log_base2k, log_q, tmp_bytes_pt);
+    let mut tmp_elem: Elem<VecZnx> = Elem::<VecZnx>::from_bytes_borrow(module, log_base2k, log_q, 2, tmp_bytes_elem);
+    let mut tmp_pt: Plaintext = Plaintext::from_bytes_borrow(module, log_base2k, log_q, tmp_bytes_pt);
 
     (0..rows).for_each(|row_i| {
         // Sets the i-th row of the RLWE sample to m (i.e. m * 2^{-log_base2k*i})

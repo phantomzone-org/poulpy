@@ -1,6 +1,5 @@
 use base2k::{
-    BACKEND, Infos, Module, Sampling, SvpPPolOps, VecZnx, VecZnxDft, VecZnxDftOps, VecZnxOps,
-    VmpPMat, alloc_aligned_u8,
+    BACKEND, Infos, Module, Sampling, SvpPPolOps, VecZnx, VecZnxDft, VecZnxDftOps, VecZnxOps, VmpPMat, alloc_aligned_u8,
 };
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use rlwe::{
@@ -28,8 +27,7 @@ fn bench_gadget_product_inplace(c: &mut Criterion) {
         })
     }
 
-    let mut b: criterion::BenchmarkGroup<'_, criterion::measurement::WallTime> =
-        c.benchmark_group("gadget_product_inplace");
+    let mut b: criterion::BenchmarkGroup<'_, criterion::measurement::WallTime> = c.benchmark_group("gadget_product_inplace");
 
     for log_n in 10..11 {
         let params_lit: ParametersLiteral = ParametersLiteral {

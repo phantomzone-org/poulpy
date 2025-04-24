@@ -1,9 +1,5 @@
-use crate::{
-    automorphism::AutomorphismKey, ciphertext::Ciphertext, elem::ElemCommon, parameters::Parameters,
-};
-use base2k::{
-    Module, VecZnx, VecZnxBig, VecZnxBigOps, VecZnxDft, VecZnxDftOps, VmpPMatOps, assert_alignement,
-};
+use crate::{automorphism::AutomorphismKey, ciphertext::Ciphertext, elem::ElemCommon, parameters::Parameters};
+use base2k::{Module, VecZnx, VecZnxBig, VecZnxBigOps, VecZnxDft, VecZnxDftOps, VmpPMatOps, assert_alignement};
 use std::collections::HashMap;
 
 pub fn trace_galois_elements(module: &Module) -> Vec<i64> {
@@ -24,13 +20,7 @@ impl Parameters {
     }
 }
 
-pub fn trace_tmp_bytes(
-    module: &Module,
-    c_cols: usize,
-    a_cols: usize,
-    b_rows: usize,
-    b_cols: usize,
-) -> usize {
+pub fn trace_tmp_bytes(module: &Module, c_cols: usize, a_cols: usize, b_rows: usize, b_cols: usize) -> usize {
     return module.vmp_apply_dft_to_dft_tmp_bytes(c_cols, a_cols, b_rows, b_cols)
         + 2 * module.bytes_of_vec_znx_dft(std::cmp::min(c_cols, a_cols));
 }
@@ -70,12 +60,10 @@ pub fn trace_inplace(
     let cols: usize = std::cmp::min(b_cols, a.cols());
 
     let (tmp_bytes_b1_dft, tmp_bytes) = tmp_bytes.split_at_mut(module.bytes_of_vec_znx_dft(cols));
-    let (tmp_bytes_res_dft, tmp_bytes) =
-        tmp_bytes.split_at_mut(module.bytes_of_vec_znx_dft(b_cols));
+    let (tmp_bytes_res_dft, tmp_bytes) = tmp_bytes.split_at_mut(module.bytes_of_vec_znx_dft(b_cols));
 
     let mut a1_dft: VecZnxDft = module.new_vec_znx_dft_from_bytes_borrow(cols, tmp_bytes_b1_dft);
-    let mut res_dft: VecZnxDft =
-        module.new_vec_znx_dft_from_bytes_borrow(b_cols, tmp_bytes_res_dft);
+    let mut res_dft: VecZnxDft = module.new_vec_znx_dft_from_bytes_borrow(b_cols, tmp_bytes_res_dft);
     let mut res_big: VecZnxBig = res_dft.as_vec_znx_big();
 
     let log_base2k: usize = a.log_base2k();

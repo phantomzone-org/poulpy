@@ -1,6 +1,6 @@
 use base2k::{
-    alloc_aligned, Encoding, Infos, Module, VecZnx, VecZnxBig, VecZnxBigOps, VecZnxDft,
-    VecZnxDftOps, VecZnxOps, VecZnxVec, VmpPMat, VmpPMatOps, BACKEND,
+    BACKEND, Encoding, Infos, Module, VecZnx, VecZnxBig, VecZnxBigOps, VecZnxDft, VecZnxDftOps, VecZnxOps, VecZnxVec, VmpPMat,
+    VmpPMatOps, alloc_aligned,
 };
 
 fn main() {
@@ -16,8 +16,7 @@ fn main() {
     let cols: usize = cols + 1;
 
     // Maximum size of the byte scratch needed
-    let tmp_bytes: usize = module.vmp_prepare_tmp_bytes(rows, cols)
-        | module.vmp_apply_dft_tmp_bytes(cols, cols, rows, cols);
+    let tmp_bytes: usize = module.vmp_prepare_tmp_bytes(rows, cols) | module.vmp_apply_dft_tmp_bytes(cols, cols, rows, cols);
 
     let mut buf: Vec<u8> = alloc_aligned(tmp_bytes);
 

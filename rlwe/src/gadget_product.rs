@@ -1,7 +1,5 @@
 use crate::{ciphertext::Ciphertext, elem::ElemCommon, parameters::Parameters};
-use base2k::{
-    Module, VecZnx, VecZnxBig, VecZnxBigOps, VecZnxDft, VecZnxDftOps, VmpPMat, VmpPMatOps,
-};
+use base2k::{Module, VecZnx, VecZnxBig, VecZnxBigOps, VecZnxDft, VecZnxDftOps, VmpPMat, VmpPMatOps};
 use std::cmp::min;
 
 pub fn gadget_product_core_tmp_bytes(
@@ -19,13 +17,7 @@ pub fn gadget_product_core_tmp_bytes(
 }
 
 impl Parameters {
-    pub fn gadget_product_tmp_bytes(
-        &self,
-        res_log_q: usize,
-        in_log_q: usize,
-        gct_rows: usize,
-        gct_log_q: usize,
-    ) -> usize {
+    pub fn gadget_product_tmp_bytes(&self, res_log_q: usize, in_log_q: usize, gct_rows: usize, gct_log_q: usize) -> usize {
         gadget_product_core_tmp_bytes(
             self.module(),
             self.log_base2k(),
@@ -52,13 +44,7 @@ pub fn gadget_product_core(
     module.vmp_apply_dft_to_dft_inplace(res_dft_1, b.at(1), tmp_bytes);
 }
 
-pub fn gadget_product_big_tmp_bytes(
-    module: &Module,
-    c_cols: usize,
-    a_cols: usize,
-    b_rows: usize,
-    b_cols: usize,
-) -> usize {
+pub fn gadget_product_big_tmp_bytes(module: &Module, c_cols: usize, a_cols: usize, b_rows: usize, b_cols: usize) -> usize {
     return module.vmp_apply_dft_to_dft_tmp_bytes(c_cols, a_cols, b_rows, b_cols)
         + 2 * module.bytes_of_vec_znx_dft(min(c_cols, a_cols));
 }
@@ -144,8 +130,8 @@ mod test {
         plaintext::Plaintext,
     };
     use base2k::{
-        BACKEND, Infos, Sampling, SvpPPolOps, VecZnx, VecZnxBig, VecZnxBigOps, VecZnxDft,
-        VecZnxDftOps, VecZnxOps, VmpPMat, alloc_aligned_u8,
+        BACKEND, Infos, Sampling, SvpPPolOps, VecZnx, VecZnxBig, VecZnxBigOps, VecZnxDft, VecZnxDftOps, VecZnxOps, VmpPMat,
+        alloc_aligned_u8,
     };
     use sampling::source::{Source, new_seed};
 
@@ -226,8 +212,7 @@ mod test {
             .fill_uniform(log_base2k, &mut a, params.cols_q(), &mut source_xa);
 
         // res = g^-1(a) * gct
-        let mut elem_res: Elem<VecZnx> =
-            Elem::<VecZnx>::new(params.module(), log_base2k, params.log_qp(), 2);
+        let mut elem_res: Elem<VecZnx> = Elem::<VecZnx>::new(params.module(), log_base2k, params.log_qp(), 2);
 
         // Ideal output = a * s
         let mut a_dft: VecZnxDft = params.module().new_vec_znx_dft(a.cols());
@@ -237,16 +222,12 @@ mod test {
         // a * sk0
         params.module().svp_apply_dft(&mut a_dft, &sk0_svp_ppol, &a);
         params.module().vec_znx_idft_tmp_a(&mut a_big, &mut a_dft);
-        params.module().vec_znx_big_normalize(
-            params.log_base2k(),
-            &mut a_times_s,
-            &a_big,
-            &mut tmp_bytes,
-        );
+        params
+            .module()
+            .vec_znx_big_normalize(params.log_base2k(), &mut a_times_s, &a_big, &mut tmp_bytes);
 
         // Plaintext for decrypted output of gadget product
-        let mut pt: Plaintext =
-            Plaintext::new(params.module(), params.log_base2k(), params.log_qp());
+        let mut pt: Plaintext = Plaintext::new(params.module(), params.log_base2k(), params.log_qp());
 
         // Iterates over all possible cols values for input/output polynomials and gadget ciphertext.
 
@@ -263,7 +244,7 @@ mod test {
                 pt.elem_mut().zero();
                 elem_res.zero();
 
-                //let b_cols: usize = min(a_cols+1, gadget_ct.cols());
+                // let b_cols: usize = min(a_cols+1, gadget_ct.cols());
 
                 println!("a_cols: {} b_cols: {}", a_cols, b_cols);
 
@@ -289,20 +270,14 @@ mod test {
                     .vec_znx_idft_tmp_a(&mut res_big_1, &mut res_dft_1);
 
                 // res_big_0 = normalize(res_big_0)
-                params.module().vec_znx_big_normalize(
-                    log_base2k,
-                    elem_res.at_mut(0),
-                    &res_big_0,
-                    &mut tmp_bytes,
-                );
+                params
+                    .module()
+                    .vec_znx_big_normalize(log_base2k, elem_res.at_mut(0), &res_big_0, &mut tmp_bytes);
 
                 // res_big_1 = normalize(res_big_1)
-                params.module().vec_znx_big_normalize(
-                    log_base2k,
-                    elem_res.at_mut(1),
-                    &res_big_1,
-                    &mut tmp_bytes,
-                );
+                params
+                    .module()
+                    .vec_znx_big_normalize(log_base2k, elem_res.at_mut(1), &res_big_1, &mut tmp_bytes);
 
                 // <(-c*sk1 + a*sk0 + e, a), (1, sk1)> = a*sk0 + e
                 decrypt_rlwe(
@@ -319,7 +294,7 @@ mod test {
                     .vec_znx_sub_ab_inplace(pt.at_mut(0), &mut a_times_s);
                 pt.at_mut(0).normalize(log_base2k, &mut tmp_bytes);
 
-                //pt.at(0).print(pt.elem().cols(), 16);
+                // pt.at(0).print(pt.elem().cols(), 16);
 
                 let noise_have: f64 = pt.at(0).std(log_base2k).log2();
 
@@ -337,26 +312,19 @@ mod test {
 
                 println!("{} {} {} {}", var_msg, var_a_err, a_logq, b_logq);
 
-                let noise_pred: f64 =
-                    params.noise_grlwe_product(var_msg, var_a_err, a_logq, b_logq);
+                let noise_pred: f64 = params.noise_grlwe_product(var_msg, var_a_err, a_logq, b_logq);
 
                 println!("noise_pred: {}", noise_pred);
                 println!("noise_have: {}", noise_have);
 
-                //assert!(noise_have <= noise_pred + 1.0);
+                // assert!(noise_have <= noise_pred + 1.0);
             });
         });
     }
 }
 
 impl Parameters {
-    pub fn noise_grlwe_product(
-        &self,
-        var_msg: f64,
-        var_a_err: f64,
-        a_logq: usize,
-        b_logq: usize,
-    ) -> f64 {
+    pub fn noise_grlwe_product(&self, var_msg: f64, var_a_err: f64, a_logq: usize, b_logq: usize) -> f64 {
         let n: f64 = self.n() as f64;
         let var_xs: f64 = self.xs() as f64;
 
@@ -407,8 +375,7 @@ pub fn noise_grlwe_product(
 
     // lhs = a_cols * n * (var_base * var_gct_err_lhs + var_e_a * var_msg * p^2)
     // rhs = a_cols * n * var_base * var_gct_err_rhs * var_xs
-    let mut noise: f64 =
-        (a_cols as f64) * n * var_base * (var_gct_err_lhs + var_xs * var_gct_err_rhs);
+    let mut noise: f64 = (a_cols as f64) * n * var_base * (var_gct_err_lhs + var_xs * var_gct_err_rhs);
     noise += var_msg * var_a_err * a_scale * a_scale * n;
     noise = noise.sqrt();
     noise /= b_scale;

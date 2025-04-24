@@ -8,20 +8,8 @@ pub struct Elem<T> {
 }
 
 pub trait ElemVecZnx {
-    fn from_bytes(
-        module: &Module,
-        log_base2k: usize,
-        log_q: usize,
-        size: usize,
-        bytes: &mut [u8],
-    ) -> Elem<VecZnx>;
-    fn from_bytes_borrow(
-        module: &Module,
-        log_base2k: usize,
-        log_q: usize,
-        size: usize,
-        bytes: &mut [u8],
-    ) -> Elem<VecZnx>;
+    fn from_bytes(module: &Module, log_base2k: usize, log_q: usize, size: usize, bytes: &mut [u8]) -> Elem<VecZnx>;
+    fn from_bytes_borrow(module: &Module, log_base2k: usize, log_q: usize, size: usize, bytes: &mut [u8]) -> Elem<VecZnx>;
     fn bytes_of(module: &Module, log_base2k: usize, log_q: usize, size: usize) -> usize;
     fn zero(&mut self);
 }
@@ -32,13 +20,7 @@ impl ElemVecZnx for Elem<VecZnx> {
         module.n() * cols * size * 8
     }
 
-    fn from_bytes(
-        module: &Module,
-        log_base2k: usize,
-        log_q: usize,
-        size: usize,
-        bytes: &mut [u8],
-    ) -> Elem<VecZnx> {
+    fn from_bytes(module: &Module, log_base2k: usize, log_q: usize, size: usize, bytes: &mut [u8]) -> Elem<VecZnx> {
         assert!(size > 0);
         let n: usize = module.n();
         assert!(bytes.len() >= Self::bytes_of(module, log_base2k, log_q, size));
@@ -58,13 +40,7 @@ impl ElemVecZnx for Elem<VecZnx> {
         }
     }
 
-    fn from_bytes_borrow(
-        module: &Module,
-        log_base2k: usize,
-        log_q: usize,
-        size: usize,
-        bytes: &mut [u8],
-    ) -> Elem<VecZnx> {
+    fn from_bytes_borrow(module: &Module, log_base2k: usize, log_q: usize, size: usize, bytes: &mut [u8]) -> Elem<VecZnx> {
         assert!(size > 0);
         let n: usize = module.n();
         assert!(bytes.len() >= Self::bytes_of(module, log_base2k, log_q, size));

@@ -18,15 +18,7 @@ pub trait Sampling {
     );
 
     /// Adds a discrete normal vector scaled by 2^{-log_k} with the provided standard deviation and bounded to \[-bound, bound\].
-    fn add_normal(
-        &self,
-        log_base2k: usize,
-        a: &mut VecZnx,
-        log_k: usize,
-        source: &mut Source,
-        sigma: f64,
-        bound: f64,
-    );
+    fn add_normal(&self, log_base2k: usize, a: &mut VecZnx, log_k: usize, source: &mut Source, sigma: f64, bound: f64);
 }
 
 impl Sampling for Module {
@@ -76,15 +68,7 @@ impl Sampling for Module {
         }
     }
 
-    fn add_normal(
-        &self,
-        log_base2k: usize,
-        a: &mut VecZnx,
-        log_k: usize,
-        source: &mut Source,
-        sigma: f64,
-        bound: f64,
-    ) {
+    fn add_normal(&self, log_base2k: usize, a: &mut VecZnx, log_k: usize, source: &mut Source, sigma: f64, bound: f64) {
         self.add_dist_f64(
             log_base2k,
             a,

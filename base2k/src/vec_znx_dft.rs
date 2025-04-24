@@ -1,8 +1,8 @@
 use crate::ffi::vec_znx_big::vec_znx_big_t;
 use crate::ffi::vec_znx_dft;
 use crate::ffi::vec_znx_dft::{bytes_of_vec_znx_dft, vec_znx_dft_t};
-use crate::{alloc_aligned, VecZnx, DEFAULTALIGN};
-use crate::{assert_alignement, Infos, Module, VecZnxBig, BACKEND};
+use crate::{BACKEND, Infos, Module, VecZnxBig, assert_alignement};
+use crate::{DEFAULTALIGN, VecZnx, alloc_aligned};
 
 pub struct VecZnxDft {
     pub data: Vec<u8>,
@@ -307,11 +307,9 @@ impl VecZnxDftOps for Module {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        alloc_aligned, Module, Sampling, VecZnx, VecZnxDft, VecZnxDftOps, VecZnxOps, BACKEND,
-    };
+    use crate::{BACKEND, Module, Sampling, VecZnx, VecZnxDft, VecZnxDftOps, VecZnxOps, alloc_aligned};
     use itertools::izip;
-    use sampling::source::{new_seed, Source};
+    use sampling::source::{Source, new_seed};
 
     #[test]
     fn test_automorphism_dft() {

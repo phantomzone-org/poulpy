@@ -1,6 +1,6 @@
 use base2k::{
-    alloc_aligned, Encoding, Infos, Module, Sampling, Scalar, SvpPPol, SvpPPolOps, VecZnx,
-    VecZnxBig, VecZnxBigOps, VecZnxDft, VecZnxDftOps, VecZnxOps, BACKEND,
+    BACKEND, Encoding, Infos, Module, Sampling, Scalar, SvpPPol, SvpPPolOps, VecZnx, VecZnxBig, VecZnxBigOps, VecZnxDft,
+    VecZnxDftOps, VecZnxOps, alloc_aligned,
 };
 use itertools::izip;
 use sampling::source::Source;
@@ -71,7 +71,7 @@ fn main() {
         19.0,
     );
 
-    //Decrypt
+    // Decrypt
 
     // buf_big <- a * s
     module.svp_apply_dft(&mut buf_dft, &s_ppol, &a);

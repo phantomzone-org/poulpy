@@ -7,11 +7,7 @@ use sampling::source::Source;
 pub struct KeyGenerator {}
 
 impl KeyGenerator {
-    pub fn gen_secret_key_thread_safe(
-        &self,
-        params: &Parameters,
-        source: &mut Source,
-    ) -> SecretKey {
+    pub fn gen_secret_key_thread_safe(&self, params: &Parameters, source: &mut Source) -> SecretKey {
         let mut sk: SecretKey = SecretKey::new(params.module());
         sk.fill_ternary_hw(params.xs(), source);
         sk
@@ -26,8 +22,7 @@ impl KeyGenerator {
     ) -> PublicKey {
         let mut xa_source: Source = source.branch();
         let mut xe_source: Source = source.branch();
-        let mut pk: PublicKey =
-            PublicKey::new(params.module(), params.log_base2k(), params.log_qp());
+        let mut pk: PublicKey = PublicKey::new(params.module(), params.log_base2k(), params.log_qp());
         pk.gen_thread_safe(
             params.module(),
             sk_ppol,
@@ -40,12 +35,7 @@ impl KeyGenerator {
     }
 }
 
-pub fn gen_switching_key_tmp_bytes(
-    module: &Module,
-    log_base2k: usize,
-    rows: usize,
-    log_q: usize,
-) -> usize {
+pub fn gen_switching_key_tmp_bytes(module: &Module, log_base2k: usize, rows: usize, log_q: usize) -> usize {
     encrypt_grlwe_sk_tmp_bytes(module, log_base2k, rows, log_q)
 }
 

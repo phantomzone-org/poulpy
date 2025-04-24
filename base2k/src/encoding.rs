@@ -40,14 +40,7 @@ pub trait Encoding {
     /// * `i`: index of the coefficient on which to encode the data.
     /// * `data`: data to encode on the receiver.
     /// * `log_max`: base two logarithm of the infinity norm of the input data.
-    fn encode_coeff_i64(
-        &mut self,
-        log_base2k: usize,
-        log_k: usize,
-        i: usize,
-        data: i64,
-        log_max: usize,
-    );
+    fn encode_coeff_i64(&mut self, log_base2k: usize, log_k: usize, i: usize, data: i64, log_max: usize);
 
     /// decode a single of i64 from the receiver at the given index.
     ///
@@ -73,14 +66,7 @@ impl Encoding for VecZnx {
         decode_vec_float(self, log_base2k, data)
     }
 
-    fn encode_coeff_i64(
-        &mut self,
-        log_base2k: usize,
-        log_k: usize,
-        i: usize,
-        value: i64,
-        log_max: usize,
-    ) {
+    fn encode_coeff_i64(&mut self, log_base2k: usize, log_k: usize, i: usize, value: i64, log_max: usize) {
         encode_coeff_i64(self, log_base2k, log_k, i, value, log_max)
     }
 
@@ -119,8 +105,7 @@ fn encode_vec_i64(a: &mut VecZnx, log_base2k: usize, log_k: usize, data: &[i64],
             .enumerate()
             .for_each(|(i, i_rev)| {
                 let shift: usize = i * log_base2k;
-                izip!(a.at_mut(i_rev)[..size].iter_mut(), data[..size].iter())
-                    .for_each(|(y, x)| *y = (x >> shift) & mask);
+                izip!(a.at_mut(i_rev)[..size].iter_mut(), data[..size].iter()).for_each(|(y, x)| *y = (x >> shift) & mask);
             })
     }
 
@@ -189,14 +174,7 @@ fn decode_vec_float(a: &VecZnx, log_base2k: usize, data: &mut [Float]) {
     });
 }
 
-fn encode_coeff_i64(
-    a: &mut VecZnx,
-    log_base2k: usize,
-    log_k: usize,
-    i: usize,
-    value: i64,
-    log_max: usize,
-) {
+fn encode_coeff_i64(a: &mut VecZnx, log_base2k: usize, log_k: usize, i: usize, value: i64, log_max: usize) {
     debug_assert!(i < a.n());
     let cols: usize = (log_k + log_base2k - 1) / log_base2k;
     debug_assert!(

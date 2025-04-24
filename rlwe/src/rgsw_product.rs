@@ -1,17 +1,9 @@
 use crate::{ciphertext::Ciphertext, elem::ElemCommon, parameters::Parameters};
-use base2k::{
-    Module, VecZnx, VecZnxBig, VecZnxBigOps, VecZnxDft, VecZnxDftOps, VmpPMat, VmpPMatOps,
-    assert_alignement,
-};
+use base2k::{Module, VecZnx, VecZnxBig, VecZnxBigOps, VecZnxDft, VecZnxDftOps, VmpPMat, VmpPMatOps, assert_alignement};
 use std::cmp::min;
 
 impl Parameters {
-    pub fn rgsw_product_tmp_bytes(
-        &self,
-        res_logq: usize,
-        in_logq: usize,
-        gct_logq: usize,
-    ) -> usize {
+    pub fn rgsw_product_tmp_bytes(&self, res_logq: usize, in_logq: usize, gct_logq: usize) -> usize {
         rgsw_product_tmp_bytes(
             self.module(),
             self.log_base2k(),
@@ -21,13 +13,7 @@ impl Parameters {
         )
     }
 }
-pub fn rgsw_product_tmp_bytes(
-    module: &Module,
-    log_base2k: usize,
-    res_logq: usize,
-    in_logq: usize,
-    gct_logq: usize,
-) -> usize {
+pub fn rgsw_product_tmp_bytes(module: &Module, log_base2k: usize, res_logq: usize, in_logq: usize, gct_logq: usize) -> usize {
     let gct_cols: usize = (gct_logq + log_base2k - 1) / log_base2k;
     let in_cols: usize = (in_logq + log_base2k - 1) / log_base2k;
     let res_cols: usize = (res_logq + log_base2k - 1) / log_base2k;
@@ -50,26 +36,15 @@ pub fn rgsw_product(
         assert_eq!(c.size(), 2);
         assert_eq!(a.size(), 2);
         assert_eq!(b.size(), 4);
-        assert!(
-            tmp_bytes.len()
-                >= rgsw_product_tmp_bytes(
-                    module,
-                    c.cols(),
-                    a.cols(),
-                    min(b.rows(), a.cols()),
-                    b_cols
-                )
-        );
+        assert!(tmp_bytes.len() >= rgsw_product_tmp_bytes(module, c.cols(), a.cols(), min(b.rows(), a.cols()), b_cols));
         assert_alignement(tmp_bytes.as_ptr());
     }
 
-    let (tmp_bytes_ai_dft, tmp_bytes) =
-        tmp_bytes.split_at_mut(module.bytes_of_vec_znx_dft(a.cols()));
+    let (tmp_bytes_ai_dft, tmp_bytes) = tmp_bytes.split_at_mut(module.bytes_of_vec_znx_dft(a.cols()));
     let (tmp_bytes_c0_dft, tmp_bytes) = tmp_bytes.split_at_mut(module.bytes_of_vec_znx_dft(b_cols));
     let (tmp_bytes_c1_dft, tmp_bytes) = tmp_bytes.split_at_mut(module.bytes_of_vec_znx_dft(b_cols));
 
-    let mut ai_dft: VecZnxDft =
-        module.new_vec_znx_dft_from_bytes_borrow(a.cols(), tmp_bytes_ai_dft);
+    let mut ai_dft: VecZnxDft = module.new_vec_znx_dft_from_bytes_borrow(a.cols(), tmp_bytes_ai_dft);
     let mut c0_dft: VecZnxDft = module.new_vec_znx_dft_from_bytes_borrow(b_cols, tmp_bytes_c0_dft);
     let mut c1_dft: VecZnxDft = module.new_vec_znx_dft_from_bytes_borrow(b_cols, tmp_bytes_c1_dft);
 
@@ -103,26 +78,15 @@ pub fn rgsw_product_inplace(
         assert!(b_cols <= b.cols());
         assert_eq!(a.size(), 2);
         assert_eq!(b.size(), 4);
-        assert!(
-            tmp_bytes.len()
-                >= rgsw_product_tmp_bytes(
-                    module,
-                    a.cols(),
-                    a.cols(),
-                    min(b.rows(), a.cols()),
-                    b_cols
-                )
-        );
+        assert!(tmp_bytes.len() >= rgsw_product_tmp_bytes(module, a.cols(), a.cols(), min(b.rows(), a.cols()), b_cols));
         assert_alignement(tmp_bytes.as_ptr());
     }
 
-    let (tmp_bytes_ai_dft, tmp_bytes) =
-        tmp_bytes.split_at_mut(module.bytes_of_vec_znx_dft(a.cols()));
+    let (tmp_bytes_ai_dft, tmp_bytes) = tmp_bytes.split_at_mut(module.bytes_of_vec_znx_dft(a.cols()));
     let (tmp_bytes_c0_dft, tmp_bytes) = tmp_bytes.split_at_mut(module.bytes_of_vec_znx_dft(b_cols));
     let (tmp_bytes_c1_dft, tmp_bytes) = tmp_bytes.split_at_mut(module.bytes_of_vec_znx_dft(b_cols));
 
-    let mut ai_dft: VecZnxDft =
-        module.new_vec_znx_dft_from_bytes_borrow(a.cols(), tmp_bytes_ai_dft);
+    let mut ai_dft: VecZnxDft = module.new_vec_znx_dft_from_bytes_borrow(a.cols(), tmp_bytes_ai_dft);
     let mut c0_dft: VecZnxDft = module.new_vec_znx_dft_from_bytes_borrow(b_cols, tmp_bytes_c0_dft);
     let mut c1_dft: VecZnxDft = module.new_vec_znx_dft_from_bytes_borrow(b_cols, tmp_bytes_c1_dft);
 
@@ -156,10 +120,7 @@ mod test {
         plaintext::Plaintext,
         rgsw_product::rgsw_product_inplace,
     };
-    use base2k::{
-        BACKEND, Encoding, Module, Scalar, SvpPPol, SvpPPolOps, VecZnx, VecZnxOps, VmpPMat,
-        alloc_aligned,
-    };
+    use base2k::{BACKEND, Encoding, Module, Scalar, SvpPPol, SvpPPolOps, VecZnx, VecZnxOps, VmpPMat, alloc_aligned};
     use sampling::source::{Source, new_seed};
 
     #[test]
@@ -206,8 +167,7 @@ mod test {
         let mut sk_svp_ppol: SvpPPol = module.new_svp_ppol();
         module.svp_prepare(&mut sk_svp_ppol, &sk.0);
 
-        let mut ct_rgsw: Ciphertext<VmpPMat> =
-            new_rgsw_ciphertext(module, log_base2k, gct_rows, log_qp);
+        let mut ct_rgsw: Ciphertext<VmpPMat> = new_rgsw_ciphertext(module, log_base2k, gct_rows, log_qp);
 
         let k: i64 = 3;
 
@@ -260,7 +220,7 @@ mod test {
 
         module.vec_znx_sub_ba_inplace(pt.at_mut(0), pt_rotate.at(0));
 
-        //pt.at(0).print(pt.cols(), 16);
+        // pt.at(0).print(pt.cols(), 16);
 
         let noise_have: f64 = pt.at(0).std(log_base2k).log2();
 
@@ -268,8 +228,7 @@ mod test {
         let var_a0_err: f64 = params.xe() * params.xe();
         let var_a1_err: f64 = 1f64 / 12f64;
 
-        let noise_pred: f64 =
-            params.noise_rgsw_product(var_msg, var_a0_err, var_a1_err, ct.log_q(), ct_rgsw.log_q());
+        let noise_pred: f64 = params.noise_rgsw_product(var_msg, var_a0_err, var_a1_err, ct.log_q(), ct_rgsw.log_q());
 
         println!("noise_pred: {}", noise_pred);
         println!("noise_have: {}", noise_have);
@@ -279,14 +238,7 @@ mod test {
 }
 
 impl Parameters {
-    pub fn noise_rgsw_product(
-        &self,
-        var_msg: f64,
-        var_a0_err: f64,
-        var_a1_err: f64,
-        a_logq: usize,
-        b_logq: usize,
-    ) -> f64 {
+    pub fn noise_rgsw_product(&self, var_msg: f64, var_a0_err: f64, var_a1_err: f64, a_logq: usize, b_logq: usize) -> f64 {
         let n: f64 = self.n() as f64;
         let var_xs: f64 = self.xs() as f64;
 
@@ -339,8 +291,7 @@ pub fn noise_rgsw_product(
 
     // lhs = a_cols * n * (var_base * var_gct_err_lhs + var_e_a * var_msg * p^2)
     // rhs = a_cols * n * var_base * var_gct_err_rhs * var_xs
-    let mut noise: f64 =
-        2.0 * (a_cols as f64) * n * var_base * (var_gct_err_lhs + var_xs * var_gct_err_rhs);
+    let mut noise: f64 = 2.0 * (a_cols as f64) * n * var_base * (var_gct_err_lhs + var_xs * var_gct_err_rhs);
     noise += var_msg * var_a0_err * a_scale * a_scale * n;
     noise += var_msg * var_a1_err * a_scale * a_scale * n * var_xs;
     noise = noise.sqrt();

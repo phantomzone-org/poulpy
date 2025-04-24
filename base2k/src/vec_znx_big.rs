@@ -1,5 +1,5 @@
 use crate::ffi::vec_znx_big::{self, vec_znx_big_t};
-use crate::{alloc_aligned, assert_alignement, Infos, Module, VecZnx, VecZnxDft, BACKEND};
+use crate::{BACKEND, Infos, Module, VecZnx, VecZnxDft, alloc_aligned, assert_alignement};
 
 pub struct VecZnxBig {
     pub data: Vec<u8>,
@@ -141,13 +141,7 @@ pub trait VecZnxBigOps {
     fn vec_znx_big_normalize_tmp_bytes(&self) -> usize;
 
     /// b <- normalize(a)
-    fn vec_znx_big_normalize(
-        &self,
-        log_base2k: usize,
-        b: &mut VecZnx,
-        a: &VecZnxBig,
-        tmp_bytes: &mut [u8],
-    );
+    fn vec_znx_big_normalize(&self, log_base2k: usize, b: &mut VecZnx, a: &VecZnxBig, tmp_bytes: &mut [u8]);
 
     fn vec_znx_big_range_normalize_base2k_tmp_bytes(&self) -> usize;
 
@@ -256,13 +250,7 @@ impl VecZnxBigOps for Module {
         unsafe { vec_znx_big::vec_znx_big_normalize_base2k_tmp_bytes(self.ptr) as usize }
     }
 
-    fn vec_znx_big_normalize(
-        &self,
-        log_base2k: usize,
-        b: &mut VecZnx,
-        a: &VecZnxBig,
-        tmp_bytes: &mut [u8],
-    ) {
+    fn vec_znx_big_normalize(&self, log_base2k: usize, b: &mut VecZnx, a: &VecZnxBig, tmp_bytes: &mut [u8]) {
         debug_assert!(
             tmp_bytes.len() >= <Module as VecZnxBigOps>::vec_znx_big_normalize_tmp_bytes(self),
             "invalid tmp_bytes: tmp_bytes.len()={} <= self.vec_znx_big_normalize_tmp_bytes()={}",

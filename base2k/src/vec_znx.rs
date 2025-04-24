@@ -1,8 +1,8 @@
 use crate::cast_mut;
 use crate::ffi::vec_znx;
 use crate::ffi::znx;
-use crate::{alloc_aligned, assert_alignement};
 use crate::{Infos, Module};
+use crate::{alloc_aligned, assert_alignement};
 use itertools::izip;
 use std::cmp::min;
 

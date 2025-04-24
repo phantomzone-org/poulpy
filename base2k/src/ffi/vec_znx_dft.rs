@@ -44,14 +44,7 @@ unsafe extern "C" {
     );
 }
 unsafe extern "C" {
-    pub unsafe fn vec_znx_dft(
-        module: *const MODULE,
-        res: *mut VEC_ZNX_DFT,
-        res_size: u64,
-        a: *const i64,
-        a_size: u64,
-        a_sl: u64,
-    );
+    pub unsafe fn vec_znx_dft(module: *const MODULE, res: *mut VEC_ZNX_DFT, res_size: u64, a: *const i64, a_size: u64, a_sl: u64);
 }
 unsafe extern "C" {
     pub unsafe fn vec_znx_idft(
