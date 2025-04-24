@@ -9,7 +9,6 @@ use base2k::{Module, SvpPPol, SvpPPolOps, VecZnx, VecZnxBigOps, VecZnxDft, VecZn
 use std::cmp::min;
 
 pub struct Decryptor {
-    #[warn(dead_code)]
     sk: SvpPPol,
 }
 

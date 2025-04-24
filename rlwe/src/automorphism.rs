@@ -11,7 +11,7 @@ use base2k::{
     VmpPMatOps, assert_alignement,
 };
 use sampling::source::Source;
-use std::{cmp::min, collections::HashMap};
+use std::collections::HashMap;
 
 /// Stores DFT([-A*AUTO(s, -p) + 2^{-K*i}*s + E, A]) where AUTO(X, p): X^{i} -> X^{i*p}
 pub struct AutomorphismKey {
@@ -295,7 +295,7 @@ mod test {
         let mut pt: Plaintext = params.new_plaintext(log_q);
         let mut pt_auto: Plaintext = params.new_plaintext(log_q);
 
-        pt.at_mut(0).encode_vec_i64(log_base2k, log_k, &data, 32);
+        pt.at_mut(0).encode_vec_i64(0, log_base2k, log_k, &data, 32);
         module.vec_znx_automorphism(p, pt_auto.at_mut(0), pt.at(0));
 
         encrypt_rlwe_sk(
@@ -334,7 +334,7 @@ mod test {
 
         // pt.at(0).print(pt.cols(), 16);
 
-        let noise_have: f64 = pt.at(0).std(log_base2k).log2();
+        let noise_have: f64 = pt.at(0).std(0, log_base2k).log2();
 
         let var_msg: f64 = (params.xs() as f64) / params.n() as f64;
         let var_a_err: f64 = 1f64 / 12f64;

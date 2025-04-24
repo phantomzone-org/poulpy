@@ -193,7 +193,7 @@ mod test {
         let mut pt: Plaintext = params.new_plaintext(log_q);
         let mut pt_rotate: Plaintext = params.new_plaintext(log_q);
 
-        pt.at_mut(0).encode_vec_i64(log_base2k, log_k, &data, 32);
+        pt.at_mut(0).encode_vec_i64(0, log_base2k, log_k, &data, 32);
 
         module.vec_znx_rotate(k, pt_rotate.at_mut(0), pt.at_mut(0));
 
@@ -222,7 +222,7 @@ mod test {
 
         // pt.at(0).print(pt.cols(), 16);
 
-        let noise_have: f64 = pt.at(0).std(log_base2k).log2();
+        let noise_have: f64 = pt.at(0).std(0, log_base2k).log2();
 
         let var_msg: f64 = 1f64 / params.n() as f64; // X^{k}
         let var_a0_err: f64 = params.xe() * params.xe();

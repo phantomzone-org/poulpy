@@ -25,11 +25,11 @@ impl ElemVecZnx for Elem<VecZnx> {
         let n: usize = module.n();
         assert!(bytes.len() >= Self::bytes_of(module, log_base2k, log_q, size));
         let mut value: Vec<VecZnx> = Vec::new();
-        let limbs: usize = (log_q + log_base2k - 1) / log_base2k;
-        let elem_size = VecZnx::bytes_of(n, limbs);
+        let cols: usize = (log_q + log_base2k - 1) / log_base2k;
+        let elem_size = VecZnx::bytes_of(n, size, cols);
         let mut ptr: usize = 0;
         (0..size).for_each(|_| {
-            value.push(VecZnx::from_bytes(n, limbs, &mut bytes[ptr..]));
+            value.push(VecZnx::from_bytes(n, 1, cols, &mut bytes[ptr..]));
             ptr += elem_size
         });
         Self {
@@ -45,11 +45,11 @@ impl ElemVecZnx for Elem<VecZnx> {
         let n: usize = module.n();
         assert!(bytes.len() >= Self::bytes_of(module, log_base2k, log_q, size));
         let mut value: Vec<VecZnx> = Vec::new();
-        let limbs: usize = (log_q + log_base2k - 1) / log_base2k;
-        let elem_size = VecZnx::bytes_of(n, limbs);
+        let cols: usize = (log_q + log_base2k - 1) / log_base2k;
+        let elem_size = VecZnx::bytes_of(n, 1, cols);
         let mut ptr: usize = 0;
         (0..size).for_each(|_| {
-            value.push(VecZnx::from_bytes_borrow(n, limbs, &mut bytes[ptr..]));
+            value.push(VecZnx::from_bytes_borrow(n, 1, cols, &mut bytes[ptr..]));
             ptr += elem_size
         });
         Self {
@@ -135,9 +135,9 @@ impl<T: Infos> ElemCommon<T> for Elem<T> {
 impl Elem<VecZnx> {
     pub fn new(module: &Module, log_base2k: usize, log_q: usize, rows: usize) -> Self {
         assert!(rows > 0);
-        let limbs: usize = (log_q + log_base2k - 1) / log_base2k;
+        let cols: usize = (log_q + log_base2k - 1) / log_base2k;
         let mut value: Vec<VecZnx> = Vec::new();
-        (0..rows).for_each(|_| value.push(module.new_vec_znx(limbs)));
+        (0..rows).for_each(|_| value.push(module.new_vec_znx(1, cols)));
         Self {
             value,
             log_q,

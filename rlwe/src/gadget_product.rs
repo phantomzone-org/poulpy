@@ -206,7 +206,7 @@ mod test {
         // Intermediate buffers
 
         // Input polynopmial, uniformly distributed
-        let mut a: VecZnx = params.module().new_vec_znx(params.cols_q());
+        let mut a: VecZnx = params.module().new_vec_znx(1, params.cols_q());
         params
             .module()
             .fill_uniform(log_base2k, &mut a, params.cols_q(), &mut source_xa);
@@ -217,7 +217,7 @@ mod test {
         // Ideal output = a * s
         let mut a_dft: VecZnxDft = params.module().new_vec_znx_dft(a.cols());
         let mut a_big: VecZnxBig = a_dft.as_vec_znx_big();
-        let mut a_times_s: VecZnx = params.module().new_vec_znx(a.cols());
+        let mut a_times_s: VecZnx = params.module().new_vec_znx(1, a.cols());
 
         // a * sk0
         params.module().svp_apply_dft(&mut a_dft, &sk0_svp_ppol, &a);
@@ -232,7 +232,7 @@ mod test {
         // Iterates over all possible cols values for input/output polynomials and gadget ciphertext.
 
         (1..a.cols() + 1).for_each(|a_cols| {
-            let mut a_trunc: VecZnx = params.module().new_vec_znx(a_cols);
+            let mut a_trunc: VecZnx = params.module().new_vec_znx(1, a_cols);
             a_trunc.copy_from(&a);
 
             (1..gadget_ct.cols() + 1).for_each(|b_cols| {
@@ -296,7 +296,7 @@ mod test {
 
                 // pt.at(0).print(pt.elem().cols(), 16);
 
-                let noise_have: f64 = pt.at(0).std(log_base2k).log2();
+                let noise_have: f64 = pt.at(0).std(0, log_base2k).log2();
 
                 let var_a_err: f64;
 

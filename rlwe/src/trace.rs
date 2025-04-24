@@ -189,12 +189,12 @@ mod test {
         let mut ct: Ciphertext<VecZnx> = params.new_ciphertext(log_q);
         let mut pt: Plaintext = params.new_plaintext(log_q);
 
-        pt.at_mut(0).encode_vec_i64(log_base2k, log_k, &data, 32);
+        pt.at_mut(0).encode_vec_i64(0, log_base2k, log_k, &data, 32);
         pt.at_mut(0).normalize(log_base2k, &mut tmp_bytes);
 
-        pt.at(0).decode_vec_i64(log_base2k, log_k, &mut data);
+        pt.at(0).decode_vec_i64(0, log_base2k, log_k, &mut data);
 
-        pt.at(0).print(pt.cols(), 16);
+        pt.at(0).print(0, pt.cols(), 16);
 
         encrypt_rlwe_sk(
             module,
@@ -227,9 +227,9 @@ mod test {
             &mut tmp_bytes,
         );
 
-        pt.at(0).print(pt.cols(), 16);
+        pt.at(0).print(0, pt.cols(), 16);
 
-        pt.at(0).decode_vec_i64(log_base2k, log_k, &mut data);
+        pt.at(0).decode_vec_i64(0, log_base2k, log_k, &mut data);
 
         println!("trace: {:?}", &data[..16]);
     }

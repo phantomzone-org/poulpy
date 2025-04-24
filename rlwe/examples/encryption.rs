@@ -39,11 +39,11 @@ fn main() {
 
     let log_k: usize = params.log_q() - 20;
 
-    pt.0.value[0].encode_vec_i64(log_base2k, log_k, &want, 32);
+    pt.0.value[0].encode_vec_i64(0, log_base2k, log_k, &want, 32);
     pt.0.value[0].normalize(log_base2k, &mut tmp_bytes);
 
     println!("log_k: {}", log_k);
-    pt.0.value[0].print(pt.cols(), 16);
+    pt.0.value[0].print(0, pt.cols(), 16);
     println!();
 
     let mut ct: Ciphertext<VecZnx> = params.new_ciphertext(params.log_q());
@@ -64,12 +64,12 @@ fn main() {
     );
 
     params.decrypt_rlwe(&mut pt, &ct, &sk_svp_ppol, &mut tmp_bytes);
-    pt.0.value[0].print(pt.cols(), 16);
+    pt.0.value[0].print(0, pt.cols(), 16);
 
     let mut have = vec![i64::default(); params.n()];
 
     println!("pt: {}", log_k);
-    pt.0.value[0].decode_vec_i64(pt.log_base2k(), log_k, &mut have);
+    pt.0.value[0].decode_vec_i64(0, pt.log_base2k(), log_k, &mut have);
 
     println!("want: {:?}", &want[..16]);
     println!("have: {:?}", &have[..16]);
