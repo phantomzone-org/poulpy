@@ -64,24 +64,11 @@ unsafe extern "C" {
     pub unsafe fn rnx_mul_xp_minus_one_inplace(nn: u64, p: i64, res: *mut f64);
 }
 unsafe extern "C" {
-    pub unsafe fn znx_normalize(
-        nn: u64,
-        base_k: u64,
-        out: *mut i64,
-        carry_out: *mut i64,
-        in_: *const i64,
-        carry_in: *const i64,
-    );
+    pub unsafe fn znx_normalize(nn: u64, base_k: u64, out: *mut i64, carry_out: *mut i64, in_: *const i64, carry_in: *const i64);
 }
 
 unsafe extern "C" {
-    pub unsafe fn znx_small_single_product(
-        module: *const MODULE,
-        res: *mut i64,
-        a: *const i64,
-        b: *const i64,
-        tmp: *mut u8,
-    );
+    pub unsafe fn znx_small_single_product(module: *const MODULE, res: *mut i64, a: *const i64, b: *const i64, tmp: *mut u8);
 }
 
 unsafe extern "C" {

@@ -1,10 +1,13 @@
+pub mod automorphism;
 pub mod ciphertext;
 pub mod decryptor;
 pub mod elem;
 pub mod encryptor;
 pub mod gadget_product;
 pub mod key_generator;
+pub mod key_switching;
 pub mod keys;
 pub mod parameters;
 pub mod plaintext;
 pub mod rgsw_product;
+pub mod trace;

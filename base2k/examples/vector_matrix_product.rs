@@ -1,6 +1,6 @@
 use base2k::{
-    alloc_aligned, Encoding, Infos, Module, VecZnx, VecZnxBig, VecZnxBigOps, VecZnxDft,
-    VecZnxDftOps, VecZnxOps, VecZnxVec, VmpPMat, VmpPMatOps, BACKEND,
+    BACKEND, Encoding, Infos, Module, VecZnx, VecZnxBig, VecZnxBigOps, VecZnxDft, VecZnxDftOps, VecZnxOps, VecZnxVec, VmpPMat,
+    VmpPMatOps, alloc_aligned,
 };
 
 fn main() {
@@ -16,8 +16,7 @@ fn main() {
     let cols: usize = cols + 1;
 
     // Maximum size of the byte scratch needed
-    let tmp_bytes: usize = module.vmp_prepare_tmp_bytes(rows, cols)
-        | module.vmp_apply_dft_tmp_bytes(cols, cols, rows, cols);
+    let tmp_bytes: usize = module.vmp_prepare_tmp_bytes(rows, cols) | module.vmp_apply_dft_tmp_bytes(cols, cols, rows, cols);
 
     let mut buf: Vec<u8> = alloc_aligned(tmp_bytes);
 
@@ -49,7 +48,7 @@ fn main() {
     module.vmp_apply_dft(&mut c_dft, &a, &vmp_pmat, &mut buf);
 
     let mut c_big: VecZnxBig = c_dft.as_vec_znx_big();
-    module.vec_znx_idft_tmp_a(&mut c_big, &mut c_dft, cols);
+    module.vec_znx_idft_tmp_a(&mut c_big, &mut c_dft);
 
     let mut res: VecZnx = module.new_vec_znx(cols);
     module.vec_znx_big_normalize(log_base2k, &mut res, &c_big, &mut buf);

@@ -43,12 +43,7 @@ impl Plaintext {
         ))
     }
 
-    pub fn from_bytes_borrow(
-        module: &Module,
-        log_base2k: usize,
-        log_q: usize,
-        bytes: &mut [u8],
-    ) -> Self {
+    pub fn from_bytes_borrow(module: &Module, log_base2k: usize, log_q: usize, bytes: &mut [u8]) -> Self {
         Self(Elem::<VecZnx>::from_bytes_borrow(
             module, log_base2k, log_q, 1, bytes,
         ))

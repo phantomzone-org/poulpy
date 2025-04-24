@@ -22,10 +22,8 @@ fn main() {
 
     let params: Parameters = Parameters::new(&params_lit);
 
-    let mut tmp_bytes: Vec<u8> = alloc_aligned(
-        params.decrypt_rlwe_tmp_byte(params.log_q())
-            | params.encrypt_rlwe_sk_tmp_bytes(params.log_q()),
-    );
+    let mut tmp_bytes: Vec<u8> =
+        alloc_aligned(params.decrypt_rlwe_tmp_byte(params.log_q()) | params.encrypt_rlwe_sk_tmp_bytes(params.log_q()));
 
     let mut source: Source = Source::new([0; 32]);
     let mut sk: SecretKey = SecretKey::new(params.module());

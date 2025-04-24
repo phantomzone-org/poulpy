@@ -1,5 +1,5 @@
-use crate::ffi::module::{delete_module_info, module_info_t, new_module_info, MODULE};
 use crate::GALOISGENERATOR;
+use crate::ffi::module::{MODULE, delete_module_info, module_info_t, new_module_info};
 
 #[derive(Copy, Clone)]
 #[repr(u8)]
@@ -51,31 +51,39 @@ impl Module {
         (self.n() << 1) as _
     }
 
-    // GALOISGENERATOR^|gen| * sign(gen)
+    // Returns GALOISGENERATOR^|gen| * sign(gen)
     pub fn galois_element(&self, gen: i64) -> i64 {
         if gen == 0 {
             return 1;
         }
+        ((mod_exp_u64(GALOISGENERATOR, gen.abs() as usize) & (self.cyclotomic_order() - 1)) as i64) * gen.signum()
+    }
 
-        let mut gal_el: u64 = 1;
-        let mut gen_1_pow: u64 = GALOISGENERATOR;
-        let mut e: usize = gen.abs() as usize;
-        while e > 0 {
-            if e & 1 == 1 {
-                gal_el = gal_el.wrapping_mul(gen_1_pow);
-            }
-
-            gen_1_pow = gen_1_pow.wrapping_mul(gen_1_pow);
-            e >>= 1;
+    // Returns gen^-1
+    pub fn galois_element_inv(&self, gen: i64) -> i64 {
+        if gen == 0 {
+            panic!("cannot invert 0")
         }
-
-        gal_el &= self.cyclotomic_order() - 1;
-
-        (gal_el as i64) * gen.signum()
+        ((mod_exp_u64(gen.abs() as u64, (self.cyclotomic_order() - 1) as usize) & (self.cyclotomic_order() - 1)) as i64)
+            * gen.signum()
     }
 
     pub fn free(self) {
         unsafe { delete_module_info(self.ptr) }
         drop(self);
     }
+}
+
+fn mod_exp_u64(x: u64, e: usize) -> u64 {
+    let mut y: u64 = 1;
+    let mut x_pow: u64 = x;
+    let mut exp = e;
+    while exp > 0 {
+        if exp & 1 == 1 {
+            y = y.wrapping_mul(x_pow);
+        }
+        x_pow = x_pow.wrapping_mul(x_pow);
+        exp >>= 1;
+    }
+    y
 }

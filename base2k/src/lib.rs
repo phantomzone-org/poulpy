@@ -1,11 +1,5 @@
 pub mod encoding;
-#[allow(
-    non_camel_case_types,
-    non_snake_case,
-    non_upper_case_globals,
-    dead_code,
-    improper_ctypes
-)]
+#[allow(non_camel_case_types, non_snake_case, non_upper_case_globals, dead_code, improper_ctypes)]
 // Other modules and exports
 pub mod ffi;
 pub mod infos;
@@ -42,7 +36,10 @@ pub fn is_aligned<T>(ptr: *const T) -> bool {
 }
 
 pub fn assert_alignement<T>(ptr: *const T) {
-    assert!(is_aligned(ptr), "invalid alignement: ensure passed bytes have been allocated with [alloc_aligned_u8] or [alloc_aligned]")
+    assert!(
+        is_aligned(ptr),
+        "invalid alignement: ensure passed bytes have been allocated with [alloc_aligned_u8] or [alloc_aligned]"
+    )
 }
 
 pub fn cast<T, V>(data: &[T]) -> &[V] {
@@ -57,7 +54,7 @@ pub fn cast_mut<T, V>(data: &[T]) -> &mut [V] {
     unsafe { std::slice::from_raw_parts_mut(ptr, len) }
 }
 
-use std::alloc::{alloc, Layout};
+use std::alloc::{Layout, alloc};
 use std::ptr;
 
 /// Allocates a block of bytes with a custom alignement.

@@ -74,24 +74,14 @@ pub fn new_rlwe_ciphertext(module: &Module, log_base2k: usize, log_q: usize) -> 
     Ciphertext::<VecZnx>::new(module, log_base2k, log_q, rows)
 }
 
-pub fn new_gadget_ciphertext(
-    module: &Module,
-    log_base2k: usize,
-    rows: usize,
-    log_q: usize,
-) -> Ciphertext<VmpPMat> {
+pub fn new_gadget_ciphertext(module: &Module, log_base2k: usize, rows: usize, log_q: usize) -> Ciphertext<VmpPMat> {
     let cols: usize = (log_q + log_base2k - 1) / log_base2k;
     let mut elem: Elem<VmpPMat> = Elem::<VmpPMat>::new(module, log_base2k, 2, rows, cols);
     elem.log_q = log_q;
     Ciphertext(elem)
 }
 
-pub fn new_rgsw_ciphertext(
-    module: &Module,
-    log_base2k: usize,
-    rows: usize,
-    log_q: usize,
-) -> Ciphertext<VmpPMat> {
+pub fn new_rgsw_ciphertext(module: &Module, log_base2k: usize, rows: usize, log_q: usize) -> Ciphertext<VmpPMat> {
     let cols: usize = (log_q + log_base2k - 1) / log_base2k;
     let mut elem: Elem<VmpPMat> = Elem::<VmpPMat>::new(module, log_base2k, 4, rows, cols);
     elem.log_q = log_q;
