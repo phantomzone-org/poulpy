@@ -9,12 +9,12 @@ pub struct LAYOUT{
     cols: usize,
     /// Number of limbs per polynomial.
     size: usize,
-    /// Whether limbs are interleaved across rows.
+    /// Whether limbs are interleaved inside a row.
     ///
     /// For example, for (rows, cols, size) = (2, 2, 3):
     /// 
-    /// - `true`: layout is ((a0, b0, a1, b1), (c0, d0, c1, d1))
-    /// - `false`: layout is ((a0, a1, b0, b1), (c0, c1, d0, d1))
+    /// - `true`: layout is ((a0, b0, a1, b1, a2, b2), (c0, d0, c1, d1, c2, d2))
+    /// - `false`: layout is ((a0, a1, a2, b0, b1, b2), (c0, c1, c2, d0, d1, d2))
     interleaved : bool,
 }
 
