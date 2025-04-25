@@ -27,7 +27,7 @@ pub use vmp::*;
 pub const GALOISGENERATOR: u64 = 5;
 pub const DEFAULTALIGN: usize = 64;
 
-pub fn is_aligned_custom<T>(ptr: *const T, align: usize) -> bool {
+fn is_aligned_custom<T>(ptr: *const T, align: usize) -> bool {
     (ptr as usize) % align == 0
 }
 
@@ -54,13 +54,10 @@ pub fn cast_mut<T, V>(data: &[T]) -> &mut [V] {
     unsafe { std::slice::from_raw_parts_mut(ptr, len) }
 }
 
-use std::alloc::{Layout, alloc};
-use std::ptr;
-
 /// Allocates a block of bytes with a custom alignement.
 /// Alignement must be a power of two and size a multiple of the alignement.
 /// Allocated memory is initialized to zero.
-pub fn alloc_aligned_custom_u8(size: usize, align: usize) -> Vec<u8> {
+fn alloc_aligned_custom_u8(size: usize, align: usize) -> Vec<u8> {
     assert!(
         align.is_power_of_two(),
         "Alignment must be a power of two but is {}",
@@ -74,8 +71,8 @@ pub fn alloc_aligned_custom_u8(size: usize, align: usize) -> Vec<u8> {
         align
     );
     unsafe {
-        let layout: Layout = Layout::from_size_align(size, align).expect("Invalid alignment");
-        let ptr: *mut u8 = alloc(layout);
+        let layout: std::alloc::Layout = std::alloc::Layout::from_size_align(size, align).expect("Invalid alignment");
+        let ptr: *mut u8 = std::alloc::alloc(layout);
         if ptr.is_null() {
             panic!("Memory allocation failed");
         }
@@ -86,16 +83,9 @@ pub fn alloc_aligned_custom_u8(size: usize, align: usize) -> Vec<u8> {
             align
         );
         // Init allocated memory to zero
-        ptr::write_bytes(ptr, 0, size);
+        std::ptr::write_bytes(ptr, 0, size);
         Vec::from_raw_parts(ptr, size, size)
     }
-}
-
-/// Allocates a block of bytes aligned with [DEFAULTALIGN].
-/// Size must be amultiple of [DEFAULTALIGN].
-/// /// Allocated memory is initialized to zero.
-pub fn alloc_aligned_u8(size: usize) -> Vec<u8> {
-    alloc_aligned_custom_u8(size, DEFAULTALIGN)
 }
 
 /// Allocates a block of T aligned with [DEFAULTALIGN].

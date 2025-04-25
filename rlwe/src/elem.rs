@@ -1,4 +1,4 @@
-use base2k::{Infos, LAYOUT, Module, VecZnx, VecZnxOps, VmpPMat, VmpPMatOps};
+use base2k::{Infos, Layout, Module, VecZnx, VecZnxOps, VmpPMat, VmpPMatOps};
 
 pub struct Elem<T> {
     pub value: Vec<T>,
@@ -71,7 +71,7 @@ pub trait ElemCommon<T> {
     fn elem(&self) -> &Elem<T>;
     fn elem_mut(&mut self) -> &mut Elem<T>;
     fn size(&self) -> usize;
-    fn layout(&self) -> LAYOUT;
+    fn layout(&self) -> Layout;
     fn rows(&self) -> usize;
     fn cols(&self) -> usize;
     fn log_base2k(&self) -> usize;
@@ -102,7 +102,7 @@ impl<T: Infos> ElemCommon<T> for Elem<T> {
         self.value.len()
     }
 
-    fn layout(&self) -> LAYOUT {
+    fn layout(&self) -> Layout {
         self.value[0].layout()
     }
 

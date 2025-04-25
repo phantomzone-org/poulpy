@@ -1,6 +1,8 @@
+use std::marker::PhantomData;
+
 use crate::ffi::svp::{self, svp_ppol_t};
 use crate::ffi::vec_znx_dft::vec_znx_dft_t;
-use crate::{BACKEND, LAYOUT, Module, VecZnx, VecZnxDft, assert_alignement};
+use crate::{Backend, FFT64, Module, VecZnx, VecZnxDft, assert_alignement};
 
 use crate::{Infos, alloc_aligned, cast_mut};
 use rand::seq::SliceRandom;
@@ -14,7 +16,7 @@ pub struct Scalar {
     pub ptr: *mut i64,
 }
 
-impl Module {
+impl<B: Backend> Module<B> {
     pub fn new_scalar(&self) -> Scalar {
         Scalar::new(self.n())
     }
@@ -117,9 +119,8 @@ impl Scalar {
     pub fn as_vec_znx(&self) -> VecZnx {
         VecZnx {
             n: self.n,
-            size: 1, // TODO REVIEW IF NEED TO ADD size TO SCALAR
             cols: 1,
-            layout: LAYOUT::COL(1, 1),
+            limbs: 1,
             data: Vec::new(),
             ptr: self.ptr,
         }
@@ -132,7 +133,7 @@ pub trait ScalarOps {
     fn new_scalar_from_bytes(&self, bytes: &mut [u8]) -> Scalar;
     fn new_scalar_from_bytes_borrow(&self, tmp_bytes: &mut [u8]) -> Scalar;
 }
-impl ScalarOps for Module {
+impl<B: Backend> ScalarOps for Module<B> {
     fn bytes_of_scalar(&self) -> usize {
         Scalar::bytes_of(self.n())
     }
@@ -147,17 +148,17 @@ impl ScalarOps for Module {
     }
 }
 
-pub struct SvpPPol {
+pub struct SvpPPol<B: Backend> {
     pub n: usize,
     pub data: Vec<u8>,
     pub ptr: *mut u8,
-    pub backend: BACKEND,
+    _marker: PhantomData<B>,
 }
 
 /// A prepared [crate::Scalar] for [SvpPPolOps::svp_apply_dft].
 /// An [SvpPPol] an be seen as a [VecZnxDft] of one limb.
-impl SvpPPol {
-    pub fn new(module: &Module) -> Self {
+impl SvpPPol<FFT64> {
+    pub fn new(module: &Module<FFT64>) -> Self {
         module.new_svp_ppol()
     }
 
@@ -166,11 +167,11 @@ impl SvpPPol {
         self.n
     }
 
-    pub fn bytes_of(module: &Module) -> usize {
+    pub fn bytes_of(module: &Module<FFT64>) -> usize {
         module.bytes_of_svp_ppol()
     }
 
-    pub fn from_bytes(module: &Module, bytes: &mut [u8]) -> SvpPPol {
+    pub fn from_bytes(module: &Module<FFT64>, bytes: &mut [u8]) -> Self {
         #[cfg(debug_assertions)]
         {
             assert_alignement(bytes.as_ptr());
@@ -181,12 +182,12 @@ impl SvpPPol {
                 n: module.n(),
                 data: Vec::from_raw_parts(bytes.as_mut_ptr(), bytes.len(), bytes.len()),
                 ptr: bytes.as_mut_ptr(),
-                backend: module.backend(),
+                _marker: PhantomData,
             }
         }
     }
 
-    pub fn from_bytes_borrow(module: &Module, tmp_bytes: &mut [u8]) -> SvpPPol {
+    pub fn from_bytes_borrow(module: &Module<FFT64>, tmp_bytes: &mut [u8]) -> Self {
         #[cfg(debug_assertions)]
         {
             assert_alignement(tmp_bytes.as_ptr());
@@ -196,7 +197,7 @@ impl SvpPPol {
             n: module.n(),
             data: Vec::new(),
             ptr: tmp_bytes.as_mut_ptr(),
-            backend: module.backend(),
+            _marker: PhantomData,
         }
     }
 
@@ -206,9 +207,9 @@ impl SvpPPol {
     }
 }
 
-pub trait SvpPPolOps {
+pub trait SvpPPolOps<B: Backend> {
     /// Allocates a new [SvpPPol].
-    fn new_svp_ppol(&self) -> SvpPPol;
+    fn new_svp_ppol(&self) -> SvpPPol<B>;
 
     /// Returns the minimum number of bytes necessary to allocate
     /// a new [SvpPPol] through [SvpPPol::from_bytes] ro.
@@ -217,30 +218,30 @@ pub trait SvpPPolOps {
     /// Allocates a new [SvpPPol] from an array of bytes.
     /// The array of bytes is owned by the [SvpPPol].
     /// The method will panic if bytes.len() < [SvpPPolOps::bytes_of_svp_ppol]
-    fn new_svp_ppol_from_bytes(&self, bytes: &mut [u8]) -> SvpPPol;
+    fn new_svp_ppol_from_bytes(&self, bytes: &mut [u8]) -> SvpPPol<B>;
 
     /// Allocates a new [SvpPPol] from an array of bytes.
     /// The array of bytes is borrowed by the [SvpPPol].
     /// The method will panic if bytes.len() < [SvpPPolOps::bytes_of_svp_ppol]
-    fn new_svp_ppol_from_bytes_borrow(&self, tmp_bytes: &mut [u8]) -> SvpPPol;
+    fn new_svp_ppol_from_bytes_borrow(&self, tmp_bytes: &mut [u8]) -> SvpPPol<B>;
 
     /// Prepares a [crate::Scalar] for a [SvpPPolOps::svp_apply_dft].
-    fn svp_prepare(&self, svp_ppol: &mut SvpPPol, a: &Scalar);
+    fn svp_prepare(&self, svp_ppol: &mut SvpPPol<B>, a: &Scalar);
 
     /// Applies the [SvpPPol] x [VecZnxDft] product, where each limb of
     /// the [VecZnxDft] is multiplied with [SvpPPol].
-    fn svp_apply_dft(&self, c: &mut VecZnxDft, a: &SvpPPol, b: &VecZnx);
+    fn svp_apply_dft(&self, c: &mut VecZnxDft<B>, a: &SvpPPol<B>, b: &VecZnx);
 }
 
-impl SvpPPolOps for Module {
-    fn new_svp_ppol(&self) -> SvpPPol {
+impl SvpPPolOps<FFT64> for Module<FFT64> {
+    fn new_svp_ppol(&self) -> SvpPPol<FFT64> {
         let mut data: Vec<u8> = alloc_aligned::<u8>(self.bytes_of_svp_ppol());
         let ptr: *mut u8 = data.as_mut_ptr();
-        SvpPPol {
+        SvpPPol::<FFT64> {
             data: data,
             ptr: ptr,
             n: self.n(),
-            backend: self.backend(),
+            _marker: PhantomData,
         }
     }
 
@@ -248,19 +249,19 @@ impl SvpPPolOps for Module {
         unsafe { svp::bytes_of_svp_ppol(self.ptr) as usize }
     }
 
-    fn new_svp_ppol_from_bytes(&self, bytes: &mut [u8]) -> SvpPPol {
+    fn new_svp_ppol_from_bytes(&self, bytes: &mut [u8]) -> SvpPPol<FFT64> {
         SvpPPol::from_bytes(self, bytes)
     }
 
-    fn new_svp_ppol_from_bytes_borrow(&self, tmp_bytes: &mut [u8]) -> SvpPPol {
+    fn new_svp_ppol_from_bytes_borrow(&self, tmp_bytes: &mut [u8]) -> SvpPPol<FFT64> {
         SvpPPol::from_bytes_borrow(self, tmp_bytes)
     }
 
-    fn svp_prepare(&self, svp_ppol: &mut SvpPPol, a: &Scalar) {
+    fn svp_prepare(&self, svp_ppol: &mut SvpPPol<FFT64>, a: &Scalar) {
         unsafe { svp::svp_prepare(self.ptr, svp_ppol.ptr as *mut svp_ppol_t, a.as_ptr()) }
     }
 
-    fn svp_apply_dft(&self, c: &mut VecZnxDft, a: &SvpPPol, b: &VecZnx) {
+    fn svp_apply_dft(&self, c: &mut VecZnxDft<FFT64>, a: &SvpPPol<FFT64>, b: &VecZnx) {
         unsafe {
             svp::svp_apply_dft(
                 self.ptr,

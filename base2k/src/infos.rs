@@ -1,28 +1,4 @@
-#[derive(Copy, Clone)]
-#[repr(C)]
-pub struct LAYOUT{
-    /// Ring degree.
-    n: usize,
-    /// Number of logical rows in the layout.
-    rows: usize,
-    /// Number of polynomials per row.
-    cols: usize,
-    /// Number of limbs per polynomial.
-    size: usize,
-    /// Whether limbs are interleaved inside a row.
-    ///
-    /// For example, for (rows, cols, size) = (2, 2, 3):
-    /// 
-    /// - `true`: layout is ((a0, b0, a1, b1, a2, b2), (c0, d0, c1, d1, c2, d2))
-    /// - `false`: layout is ((a0, a1, a2, b0, b1, b2), (c0, c1, c2, d0, d1, d2))
-    interleaved : bool,
-}
-
 pub trait Infos {
-
-    /// Returns the full layout.
-    fn layout(&self) -> LAYOUT;
-
     /// Returns the ring degree of the polynomials.
     fn n(&self) -> usize;
 
@@ -36,8 +12,8 @@ pub trait Infos {
     fn cols(&self) -> usize;
 
     /// Returns the number of limbs per polynomial.
-    fn size(&self) -> usize;
+    fn limbs(&self) -> usize;
 
-    /// Whether limbs are interleaved across rows.
-    fn interleaved(&self) -> bool;
+    /// Returns the total number of small polynomials.
+    fn poly_count(&self) -> usize;
 }

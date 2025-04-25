@@ -1,7 +1,7 @@
 use crate::ciphertext::Ciphertext;
 use crate::elem::{Elem, ElemCommon, ElemVecZnx};
 use crate::parameters::Parameters;
-use base2k::{LAYOUT, Module, VecZnx};
+use base2k::{Layout, Module, VecZnx};
 
 pub struct Plaintext(pub Elem<VecZnx>);
 
@@ -79,7 +79,7 @@ impl ElemCommon<VecZnx> for Plaintext {
         self.elem().size()
     }
 
-    fn layout(&self) -> LAYOUT {
+    fn layout(&self) -> Layout {
         self.elem().layout()
     }
 

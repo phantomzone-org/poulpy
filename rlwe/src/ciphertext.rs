@@ -1,6 +1,6 @@
 use crate::elem::{Elem, ElemCommon};
 use crate::parameters::Parameters;
-use base2k::{Infos, LAYOUT, Module, VecZnx, VmpPMat};
+use base2k::{Infos, Layout, Module, VecZnx, VmpPMat};
 
 pub struct Ciphertext<T>(pub Elem<T>);
 
@@ -38,7 +38,7 @@ where
         self.elem().size()
     }
 
-    fn layout(&self) -> LAYOUT {
+    fn layout(&self) -> Layout {
         self.elem().layout()
     }
 
