@@ -34,7 +34,6 @@ pub enum LAYOUT {
     COL,
 }
 
-
 pub fn is_aligned_custom<T>(ptr: *const T, align: usize) -> bool {
     (ptr as usize) % align == 0
 }

@@ -104,8 +104,8 @@ fn bench_gadget_product_inplace(c: &mut Criterion) {
             &mut tmp_bytes,
         );
 
-        let mut res_dft_0: VecZnxDft = params.module().new_vec_znx_dft(gadget_ct.cols());
-        let mut res_dft_1: VecZnxDft = params.module().new_vec_znx_dft(gadget_ct.cols());
+        let mut res_dft_0: VecZnxDft = params.module().new_vec_znx_dft(1, gadget_ct.cols());
+        let mut res_dft_1: VecZnxDft = params.module().new_vec_znx_dft(1, gadget_ct.cols());
 
         let mut a: VecZnx = params.module().new_vec_znx(0, params.cols_q());
         params

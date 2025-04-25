@@ -1,6 +1,6 @@
 use crate::ffi::svp::{self, svp_ppol_t};
 use crate::ffi::vec_znx_dft::vec_znx_dft_t;
-use crate::{assert_alignement, Module, VecZnx, VecZnxDft, BACKEND, LAYOUT};
+use crate::{BACKEND, LAYOUT, Module, VecZnx, VecZnxDft, assert_alignement};
 
 use crate::{Infos, alloc_aligned, cast_mut};
 use rand::seq::SliceRandom;

@@ -261,7 +261,7 @@ fn decode_coeff_i64(a: &VecZnx, poly_idx: usize, log_base2k: usize, log_k: usize
 
 #[cfg(test)]
 mod tests {
-    use crate::{Encoding, VecZnx};
+    use crate::{Encoding, Infos, VecZnx};
     use itertools::izip;
     use sampling::source::Source;
 

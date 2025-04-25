@@ -18,8 +18,8 @@ pub fn rgsw_product_tmp_bytes(module: &Module, log_base2k: usize, res_logq: usiz
     let in_cols: usize = (in_logq + log_base2k - 1) / log_base2k;
     let res_cols: usize = (res_logq + log_base2k - 1) / log_base2k;
     return module.vmp_apply_dft_to_dft_tmp_bytes(res_cols, in_cols, in_cols, gct_cols)
-        + module.bytes_of_vec_znx_dft(std::cmp::min(res_cols, in_cols))
-        + 2 * module.bytes_of_vec_znx_dft(gct_cols);
+        + module.bytes_of_vec_znx_dft(1, std::cmp::min(res_cols, in_cols))
+        + 2 * module.bytes_of_vec_znx_dft(1, gct_cols);
 }
 
 pub fn rgsw_product(
@@ -40,13 +40,13 @@ pub fn rgsw_product(
         assert_alignement(tmp_bytes.as_ptr());
     }
 
-    let (tmp_bytes_ai_dft, tmp_bytes) = tmp_bytes.split_at_mut(module.bytes_of_vec_znx_dft(a.cols()));
-    let (tmp_bytes_c0_dft, tmp_bytes) = tmp_bytes.split_at_mut(module.bytes_of_vec_znx_dft(b_cols));
-    let (tmp_bytes_c1_dft, tmp_bytes) = tmp_bytes.split_at_mut(module.bytes_of_vec_znx_dft(b_cols));
+    let (tmp_bytes_ai_dft, tmp_bytes) = tmp_bytes.split_at_mut(module.bytes_of_vec_znx_dft(1, a.cols()));
+    let (tmp_bytes_c0_dft, tmp_bytes) = tmp_bytes.split_at_mut(module.bytes_of_vec_znx_dft(1, b_cols));
+    let (tmp_bytes_c1_dft, tmp_bytes) = tmp_bytes.split_at_mut(module.bytes_of_vec_znx_dft(1, b_cols));
 
-    let mut ai_dft: VecZnxDft = module.new_vec_znx_dft_from_bytes_borrow(a.cols(), tmp_bytes_ai_dft);
-    let mut c0_dft: VecZnxDft = module.new_vec_znx_dft_from_bytes_borrow(b_cols, tmp_bytes_c0_dft);
-    let mut c1_dft: VecZnxDft = module.new_vec_znx_dft_from_bytes_borrow(b_cols, tmp_bytes_c1_dft);
+    let mut ai_dft: VecZnxDft = module.new_vec_znx_dft_from_bytes_borrow(1, a.cols(), tmp_bytes_ai_dft);
+    let mut c0_dft: VecZnxDft = module.new_vec_znx_dft_from_bytes_borrow(1, b_cols, tmp_bytes_c0_dft);
+    let mut c1_dft: VecZnxDft = module.new_vec_znx_dft_from_bytes_borrow(1, b_cols, tmp_bytes_c1_dft);
 
     let mut c0_big: VecZnxBig = c0_dft.as_vec_znx_big();
     let mut c1_big: VecZnxBig = c1_dft.as_vec_znx_big();
@@ -82,13 +82,13 @@ pub fn rgsw_product_inplace(
         assert_alignement(tmp_bytes.as_ptr());
     }
 
-    let (tmp_bytes_ai_dft, tmp_bytes) = tmp_bytes.split_at_mut(module.bytes_of_vec_znx_dft(a.cols()));
-    let (tmp_bytes_c0_dft, tmp_bytes) = tmp_bytes.split_at_mut(module.bytes_of_vec_znx_dft(b_cols));
-    let (tmp_bytes_c1_dft, tmp_bytes) = tmp_bytes.split_at_mut(module.bytes_of_vec_znx_dft(b_cols));
+    let (tmp_bytes_ai_dft, tmp_bytes) = tmp_bytes.split_at_mut(module.bytes_of_vec_znx_dft(1, a.cols()));
+    let (tmp_bytes_c0_dft, tmp_bytes) = tmp_bytes.split_at_mut(module.bytes_of_vec_znx_dft(1, b_cols));
+    let (tmp_bytes_c1_dft, tmp_bytes) = tmp_bytes.split_at_mut(module.bytes_of_vec_znx_dft(1, b_cols));
 
-    let mut ai_dft: VecZnxDft = module.new_vec_znx_dft_from_bytes_borrow(a.cols(), tmp_bytes_ai_dft);
-    let mut c0_dft: VecZnxDft = module.new_vec_znx_dft_from_bytes_borrow(b_cols, tmp_bytes_c0_dft);
-    let mut c1_dft: VecZnxDft = module.new_vec_znx_dft_from_bytes_borrow(b_cols, tmp_bytes_c1_dft);
+    let mut ai_dft: VecZnxDft = module.new_vec_znx_dft_from_bytes_borrow(1, a.cols(), tmp_bytes_ai_dft);
+    let mut c0_dft: VecZnxDft = module.new_vec_znx_dft_from_bytes_borrow(1, b_cols, tmp_bytes_c0_dft);
+    let mut c1_dft: VecZnxDft = module.new_vec_znx_dft_from_bytes_borrow(1, b_cols, tmp_bytes_c1_dft);
 
     let mut c0_big: VecZnxBig = c0_dft.as_vec_znx_big();
     let mut c1_big: VecZnxBig = c1_dft.as_vec_znx_big();

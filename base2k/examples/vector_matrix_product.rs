@@ -30,7 +30,7 @@ fn main() {
     a.print(0, a.cols(), n);
     println!();
 
-    let mut vmp_pmat: VmpPMat = module.new_vmp_pmat(rows, cols);
+    let mut vmp_pmat: VmpPMat = module.new_vmp_pmat(1, rows, cols);
 
     (0..a.cols()).for_each(|row_i| {
         let mut tmp: VecZnx = module.new_vec_znx(1, cols);
@@ -38,7 +38,7 @@ fn main() {
         module.vmp_prepare_row(&mut vmp_pmat, tmp.raw(), row_i, &mut buf);
     });
 
-    let mut c_dft: VecZnxDft = module.new_vec_znx_dft(cols);
+    let mut c_dft: VecZnxDft = module.new_vec_znx_dft(1, cols);
     module.vmp_apply_dft(&mut c_dft, &a, &vmp_pmat, &mut buf);
 
     let mut c_big: VecZnxBig = c_dft.as_vec_znx_big();

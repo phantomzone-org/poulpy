@@ -46,7 +46,7 @@ pub fn gadget_product_core(
 
 pub fn gadget_product_big_tmp_bytes(module: &Module, c_cols: usize, a_cols: usize, b_rows: usize, b_cols: usize) -> usize {
     return module.vmp_apply_dft_to_dft_tmp_bytes(c_cols, a_cols, b_rows, b_cols)
-        + 2 * module.bytes_of_vec_znx_dft(min(c_cols, a_cols));
+        + 2 * module.bytes_of_vec_znx_dft(1, min(c_cols, a_cols));
 }
 
 /// Evaluates the gadget product: c.at(i) = IDFT(<DFT(a.at(i)), b.at(i)>)
@@ -66,11 +66,11 @@ pub fn gadget_product_big(
 ) {
     let cols: usize = min(c.cols(), a.cols());
 
-    let (tmp_bytes_b1_dft, tmp_bytes) = tmp_bytes.split_at_mut(module.bytes_of_vec_znx_dft(cols));
-    let (tmp_bytes_res_dft, tmp_bytes) = tmp_bytes.split_at_mut(module.bytes_of_vec_znx_dft(cols));
+    let (tmp_bytes_b1_dft, tmp_bytes) = tmp_bytes.split_at_mut(module.bytes_of_vec_znx_dft(1, cols));
+    let (tmp_bytes_res_dft, tmp_bytes) = tmp_bytes.split_at_mut(module.bytes_of_vec_znx_dft(1, cols));
 
-    let mut a1_dft: VecZnxDft = module.new_vec_znx_dft_from_bytes_borrow(cols, tmp_bytes_b1_dft);
-    let mut res_dft: VecZnxDft = module.new_vec_znx_dft_from_bytes_borrow(cols, tmp_bytes_res_dft);
+    let mut a1_dft: VecZnxDft = module.new_vec_znx_dft_from_bytes_borrow(1, cols, tmp_bytes_b1_dft);
+    let mut res_dft: VecZnxDft = module.new_vec_znx_dft_from_bytes_borrow(1, cols, tmp_bytes_res_dft);
 
     // a1_dft = DFT(a[1])
     module.vec_znx_dft(&mut a1_dft, a.at(1));
@@ -99,11 +99,11 @@ pub fn gadget_product(
 ) {
     let cols: usize = min(c.cols(), a.cols());
 
-    let (tmp_bytes_b1_dft, tmp_bytes) = tmp_bytes.split_at_mut(module.bytes_of_vec_znx_dft(cols));
-    let (tmp_bytes_res_dft, tmp_bytes) = tmp_bytes.split_at_mut(module.bytes_of_vec_znx_dft(cols));
+    let (tmp_bytes_b1_dft, tmp_bytes) = tmp_bytes.split_at_mut(module.bytes_of_vec_znx_dft(1, cols));
+    let (tmp_bytes_res_dft, tmp_bytes) = tmp_bytes.split_at_mut(module.bytes_of_vec_znx_dft(1, cols));
 
-    let mut a1_dft: VecZnxDft = module.new_vec_znx_dft_from_bytes_borrow(cols, tmp_bytes_b1_dft);
-    let mut res_dft: VecZnxDft = module.new_vec_znx_dft_from_bytes_borrow(cols, tmp_bytes_res_dft);
+    let mut a1_dft: VecZnxDft = module.new_vec_znx_dft_from_bytes_borrow(1, cols, tmp_bytes_b1_dft);
+    let mut res_dft: VecZnxDft = module.new_vec_znx_dft_from_bytes_borrow(1, cols, tmp_bytes_res_dft);
     let mut res_big: VecZnxBig = res_dft.as_vec_znx_big();
 
     // a1_dft = DFT(a[1])
@@ -215,7 +215,7 @@ mod test {
         let mut elem_res: Elem<VecZnx> = Elem::<VecZnx>::new(params.module(), log_base2k, params.log_qp(), 2);
 
         // Ideal output = a * s
-        let mut a_dft: VecZnxDft = params.module().new_vec_znx_dft(a.cols());
+        let mut a_dft: VecZnxDft = params.module().new_vec_znx_dft(1, a.cols());
         let mut a_big: VecZnxBig = a_dft.as_vec_znx_big();
         let mut a_times_s: VecZnx = params.module().new_vec_znx(1, a.cols());
 
@@ -236,8 +236,8 @@ mod test {
             a_trunc.copy_from(&a);
 
             (1..gadget_ct.cols() + 1).for_each(|b_cols| {
-                let mut res_dft_0: VecZnxDft = params.module().new_vec_znx_dft(b_cols);
-                let mut res_dft_1: VecZnxDft = params.module().new_vec_znx_dft(b_cols);
+                let mut res_dft_0: VecZnxDft = params.module().new_vec_znx_dft(1, b_cols);
+                let mut res_dft_1: VecZnxDft = params.module().new_vec_znx_dft(1, b_cols);
                 let mut res_big_0: VecZnxBig = res_dft_0.as_vec_znx_big();
                 let mut res_big_1: VecZnxBig = res_dft_1.as_vec_znx_big();
 

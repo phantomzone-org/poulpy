@@ -1,7 +1,7 @@
+use crate::LAYOUT;
 use crate::cast_mut;
 use crate::ffi::vec_znx;
 use crate::ffi::znx;
-use crate::LAYOUT;
 use crate::{Infos, Module};
 use crate::{alloc_aligned, assert_alignement};
 use itertools::izip;
@@ -97,11 +97,6 @@ impl VecZnx {
 
     pub fn borrowing(&self) -> bool {
         self.data.len() == 0
-    }
-
-    /// TODO: when SML refactoring is done, move this to the [Infos] trait.
-    pub fn size(&self) -> usize {
-        self.size
     }
 
     /// Total size is [VecZnx::n()] * [VecZnx::size()] * [VecZnx::cols()].
@@ -223,6 +218,14 @@ impl Infos for VecZnx {
     /// Returns the [VecZnx] degree.
     fn n(&self) -> usize {
         self.n
+    }
+
+    fn size(&self) -> usize {
+        self.size
+    }
+
+    fn layout(&self) -> LAYOUT {
+        self.layout
     }
 
     /// Returns the number of cols of the [VecZnx].

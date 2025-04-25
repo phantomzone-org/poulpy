@@ -20,8 +20,8 @@ impl Decryptor {
     }
 }
 
-pub fn decrypt_rlwe_tmp_byte(module: &Module, limbs: usize) -> usize {
-    module.bytes_of_vec_znx_dft(limbs) + module.vec_znx_big_normalize_tmp_bytes()
+pub fn decrypt_rlwe_tmp_byte(module: &Module, cols: usize) -> usize {
+    module.bytes_of_vec_znx_dft(1, cols) + module.vec_znx_big_normalize_tmp_bytes()
 }
 
 impl Parameters {
@@ -47,9 +47,9 @@ pub fn decrypt_rlwe(module: &Module, res: &mut Elem<VecZnx>, a: &Elem<VecZnx>, s
         decrypt_rlwe_tmp_byte(module, cols)
     );
 
-    let (tmp_bytes_vec_znx_dft, tmp_bytes_normalize) = tmp_bytes.split_at_mut(module.bytes_of_vec_znx_dft(cols));
+    let (tmp_bytes_vec_znx_dft, tmp_bytes_normalize) = tmp_bytes.split_at_mut(module.bytes_of_vec_znx_dft(1, cols));
 
-    let mut res_dft: VecZnxDft = VecZnxDft::from_bytes_borrow(module, cols, tmp_bytes_vec_znx_dft);
+    let mut res_dft: VecZnxDft = VecZnxDft::from_bytes_borrow(module, 1, cols, tmp_bytes_vec_znx_dft);
     let mut res_big: base2k::VecZnxBig = res_dft.as_vec_znx_big();
 
     // res_dft <- DFT(ct[1]) * DFT(sk)

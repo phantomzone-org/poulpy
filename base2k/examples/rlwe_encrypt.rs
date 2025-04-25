@@ -35,7 +35,7 @@ fn main() {
     module.fill_uniform(log_base2k, &mut a, cols, &mut source);
 
     // Scratch space for DFT values
-    let mut buf_dft: VecZnxDft = module.new_vec_znx_dft(a.cols());
+    let mut buf_dft: VecZnxDft = module.new_vec_znx_dft(1, a.cols());
 
     // Applies buf_dft <- s * a
     module.svp_apply_dft(&mut buf_dft, &s_ppol, &a);
