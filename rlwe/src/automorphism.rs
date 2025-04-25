@@ -11,7 +11,7 @@ use base2k::{
     VmpPMatOps, assert_alignement,
 };
 use sampling::source::Source;
-use std::{cmp::min, collections::HashMap};
+use std::collections::HashMap;
 
 /// Stores DFT([-A*AUTO(s, -p) + 2^{-K*i}*s + E, A]) where AUTO(X, p): X^{i} -> X^{i*p}
 pub struct AutomorphismKey {
@@ -152,7 +152,7 @@ pub fn automorphism(
 
 pub fn automorphism_inplace_tmp_bytes(module: &Module, c_cols: usize, a_cols: usize, b_rows: usize, b_cols: usize) -> usize {
     return module.vmp_apply_dft_to_dft_tmp_bytes(c_cols, a_cols, b_rows, b_cols)
-        + 2 * module.bytes_of_vec_znx_dft(std::cmp::min(c_cols, a_cols));
+        + 2 * module.bytes_of_vec_znx_dft(1, std::cmp::min(c_cols, a_cols));
 }
 
 pub fn automorphism_inplace(
@@ -184,11 +184,11 @@ pub fn automorphism_big(
         assert_alignement(tmp_bytes.as_ptr());
     }
 
-    let (tmp_bytes_b1_dft, tmp_bytes) = tmp_bytes.split_at_mut(module.bytes_of_vec_znx_dft(cols));
-    let (tmp_bytes_res_dft, tmp_bytes) = tmp_bytes.split_at_mut(module.bytes_of_vec_znx_dft(cols));
+    let (tmp_bytes_b1_dft, tmp_bytes) = tmp_bytes.split_at_mut(module.bytes_of_vec_znx_dft(1, cols));
+    let (tmp_bytes_res_dft, tmp_bytes) = tmp_bytes.split_at_mut(module.bytes_of_vec_znx_dft(1, cols));
 
-    let mut a1_dft: VecZnxDft = module.new_vec_znx_dft_from_bytes_borrow(cols, tmp_bytes_b1_dft);
-    let mut res_dft: VecZnxDft = module.new_vec_znx_dft_from_bytes_borrow(cols, tmp_bytes_res_dft);
+    let mut a1_dft: VecZnxDft = module.new_vec_znx_dft_from_bytes_borrow(1, cols, tmp_bytes_b1_dft);
+    let mut res_dft: VecZnxDft = module.new_vec_znx_dft_from_bytes_borrow(1, cols, tmp_bytes_res_dft);
 
     // a1_dft = DFT(a[1])
     module.vec_znx_dft(&mut a1_dft, a.at(1));
@@ -295,7 +295,7 @@ mod test {
         let mut pt: Plaintext = params.new_plaintext(log_q);
         let mut pt_auto: Plaintext = params.new_plaintext(log_q);
 
-        pt.at_mut(0).encode_vec_i64(log_base2k, log_k, &data, 32);
+        pt.at_mut(0).encode_vec_i64(0, log_base2k, log_k, &data, 32);
         module.vec_znx_automorphism(p, pt_auto.at_mut(0), pt.at(0));
 
         encrypt_rlwe_sk(
@@ -334,7 +334,7 @@ mod test {
 
         // pt.at(0).print(pt.cols(), 16);
 
-        let noise_have: f64 = pt.at(0).std(log_base2k).log2();
+        let noise_have: f64 = pt.at(0).std(0, log_base2k).log2();
 
         let var_msg: f64 = (params.xs() as f64) / params.n() as f64;
         let var_a_err: f64 = 1f64 / 12f64;

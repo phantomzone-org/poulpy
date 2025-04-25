@@ -1,11 +1,13 @@
 use crate::ffi::vec_znx_big::{self, vec_znx_big_t};
-use crate::{BACKEND, Infos, Module, VecZnx, VecZnxDft, alloc_aligned, assert_alignement};
+use crate::{BACKEND, Infos, LAYOUT, Module, VecZnx, VecZnxDft, alloc_aligned, assert_alignement};
 
 pub struct VecZnxBig {
     pub data: Vec<u8>,
     pub ptr: *mut u8,
     pub n: usize,
+    pub size: usize,
     pub cols: usize,
+    pub layout: LAYOUT,
     pub backend: BACKEND,
 }
 
@@ -13,10 +15,10 @@ impl VecZnxBig {
     /// Returns a new [VecZnxBig] with the provided data as backing array.
     /// User must ensure that data is properly alligned and that
     /// the size of data is at least equal to [Module::bytes_of_vec_znx_big].
-    pub fn from_bytes(module: &Module, cols: usize, bytes: &mut [u8]) -> Self {
+    pub fn from_bytes(module: &Module, size: usize, cols: usize, bytes: &mut [u8]) -> Self {
         #[cfg(debug_assertions)]
         {
-            assert_eq!(bytes.len(), module.bytes_of_vec_znx_big(cols));
+            assert_eq!(bytes.len(), module.bytes_of_vec_znx_big(size, cols));
             assert_alignement(bytes.as_ptr())
         };
         unsafe {
@@ -24,22 +26,26 @@ impl VecZnxBig {
                 data: Vec::from_raw_parts(bytes.as_mut_ptr(), bytes.len(), bytes.len()),
                 ptr: bytes.as_mut_ptr(),
                 n: module.n(),
+                size: size,
+                layout: LAYOUT::COL,
                 cols: cols,
                 backend: module.backend,
             }
         }
     }
 
-    pub fn from_bytes_borrow(module: &Module, cols: usize, bytes: &mut [u8]) -> Self {
+    pub fn from_bytes_borrow(module: &Module, size: usize, cols: usize, bytes: &mut [u8]) -> Self {
         #[cfg(debug_assertions)]
         {
-            assert_eq!(bytes.len(), module.bytes_of_vec_znx_big(cols));
+            assert_eq!(bytes.len(), module.bytes_of_vec_znx_big(size, cols));
             assert_alignement(bytes.as_ptr());
         }
         Self {
             data: Vec::new(),
             ptr: bytes.as_mut_ptr(),
             n: module.n(),
+            size: size,
+            layout: LAYOUT::COL,
             cols: cols,
             backend: module.backend,
         }
@@ -50,6 +56,8 @@ impl VecZnxBig {
             data: Vec::new(),
             ptr: self.ptr,
             n: self.n,
+            size: self.size,
+            layout: LAYOUT::COL,
             cols: self.cols,
             backend: self.backend,
         }
@@ -81,6 +89,14 @@ impl Infos for VecZnxBig {
         self.n
     }
 
+    fn size(&self) -> usize {
+        self.size
+    }
+
+    fn layout(&self) -> LAYOUT {
+        self.layout
+    }
+
     /// Returns the number of cols of the [VecZnx].
     fn cols(&self) -> usize {
         self.cols
@@ -94,7 +110,7 @@ impl Infos for VecZnxBig {
 
 pub trait VecZnxBigOps {
     /// Allocates a vector Z[X]/(X^N+1) that stores not normalized values.
-    fn new_vec_znx_big(&self, cols: usize) -> VecZnxBig;
+    fn new_vec_znx_big(&self, size: usize, cols: usize) -> VecZnxBig;
 
     /// Returns a new [VecZnxBig] with the provided bytes array as backing array.
     ///
@@ -107,7 +123,7 @@ pub trait VecZnxBigOps {
     ///
     /// # Panics
     /// If `bytes.len()` < [Module::bytes_of_vec_znx_big].
-    fn new_vec_znx_big_from_bytes(&self, cols: usize, bytes: &mut [u8]) -> VecZnxBig;
+    fn new_vec_znx_big_from_bytes(&self, size: usize, cols: usize, bytes: &mut [u8]) -> VecZnxBig;
 
     /// Returns a new [VecZnxBig] with the provided bytes array as backing array.
     ///
@@ -120,11 +136,11 @@ pub trait VecZnxBigOps {
     ///
     /// # Panics
     /// If `bytes.len()` < [Module::bytes_of_vec_znx_big].
-    fn new_vec_znx_big_from_bytes_borrow(&self, cols: usize, tmp_bytes: &mut [u8]) -> VecZnxBig;
+    fn new_vec_znx_big_from_bytes_borrow(&self, size: usize, cols: usize, tmp_bytes: &mut [u8]) -> VecZnxBig;
 
     /// Returns the minimum number of bytes necessary to allocate
     /// a new [VecZnxBig] through [VecZnxBig::from_bytes].
-    fn bytes_of_vec_znx_big(&self, cols: usize) -> usize;
+    fn bytes_of_vec_znx_big(&self, size: usize, cols: usize) -> usize;
 
     /// b <- b - a
     fn vec_znx_big_sub_small_a_inplace(&self, b: &mut VecZnxBig, a: &VecZnx);
@@ -162,28 +178,30 @@ pub trait VecZnxBigOps {
 }
 
 impl VecZnxBigOps for Module {
-    fn new_vec_znx_big(&self, cols: usize) -> VecZnxBig {
-        let mut data: Vec<u8> = alloc_aligned::<u8>(self.bytes_of_vec_znx_big(cols));
+    fn new_vec_znx_big(&self, size: usize, cols: usize) -> VecZnxBig {
+        let mut data: Vec<u8> = alloc_aligned::<u8>(self.bytes_of_vec_znx_big(size, cols));
         let ptr: *mut u8 = data.as_mut_ptr();
         VecZnxBig {
             data: data,
             ptr: ptr,
             n: self.n(),
+            size: size,
+            layout: LAYOUT::COL,
             cols: cols,
             backend: self.backend(),
         }
     }
 
-    fn new_vec_znx_big_from_bytes(&self, cols: usize, bytes: &mut [u8]) -> VecZnxBig {
-        VecZnxBig::from_bytes(self, cols, bytes)
+    fn new_vec_znx_big_from_bytes(&self, size: usize, cols: usize, bytes: &mut [u8]) -> VecZnxBig {
+        VecZnxBig::from_bytes(self, size, cols, bytes)
     }
 
-    fn new_vec_znx_big_from_bytes_borrow(&self, cols: usize, tmp_bytes: &mut [u8]) -> VecZnxBig {
-        VecZnxBig::from_bytes_borrow(self, cols, tmp_bytes)
+    fn new_vec_znx_big_from_bytes_borrow(&self, size: usize, cols: usize, tmp_bytes: &mut [u8]) -> VecZnxBig {
+        VecZnxBig::from_bytes_borrow(self, size, cols, tmp_bytes)
     }
 
-    fn bytes_of_vec_znx_big(&self, cols: usize) -> usize {
-        unsafe { vec_znx_big::bytes_of_vec_znx_big(self.ptr, cols as u64) as usize }
+    fn bytes_of_vec_znx_big(&self, size: usize, cols: usize) -> usize {
+        unsafe { vec_znx_big::bytes_of_vec_znx_big(self.ptr, cols as u64) as usize * size }
     }
 
     fn vec_znx_big_sub_small_a_inplace(&self, b: &mut VecZnxBig, a: &VecZnx) {

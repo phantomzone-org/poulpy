@@ -108,7 +108,7 @@ impl EncryptorSk {
 }
 
 pub fn encrypt_rlwe_sk_tmp_bytes(module: &Module, log_base2k: usize, log_q: usize) -> usize {
-    module.bytes_of_vec_znx_dft((log_q + log_base2k - 1) / log_base2k) + module.vec_znx_big_normalize_tmp_bytes()
+    module.bytes_of_vec_znx_dft(1, (log_q + log_base2k - 1) / log_base2k) + module.vec_znx_big_normalize_tmp_bytes()
 }
 pub fn encrypt_rlwe_sk(
     module: &Module,
@@ -151,10 +151,10 @@ fn encrypt_rlwe_sk_core<const PT_POS: u8>(
     // c1 <- Z_{2^prec}[X]/(X^{N}+1)
     module.fill_uniform(log_base2k, c1, cols, source_xa);
 
-    let (tmp_bytes_vec_znx_dft, tmp_bytes_normalize) = tmp_bytes.split_at_mut(module.bytes_of_vec_znx_dft(cols));
+    let (tmp_bytes_vec_znx_dft, tmp_bytes_normalize) = tmp_bytes.split_at_mut(module.bytes_of_vec_znx_dft(1, cols));
 
     // Scratch space for DFT values
-    let mut buf_dft: VecZnxDft = VecZnxDft::from_bytes_borrow(module, cols, tmp_bytes_vec_znx_dft);
+    let mut buf_dft: VecZnxDft = VecZnxDft::from_bytes_borrow(module, 1, cols, tmp_bytes_vec_znx_dft);
 
     // Applies buf_dft <- DFT(s) * DFT(c1)
     module.svp_apply_dft(&mut buf_dft, sk, c1);

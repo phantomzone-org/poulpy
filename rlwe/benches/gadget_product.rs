@@ -1,6 +1,4 @@
-use base2k::{
-    BACKEND, Infos, Module, Sampling, SvpPPolOps, VecZnx, VecZnxDft, VecZnxDftOps, VecZnxOps, VmpPMat, alloc_aligned_u8,
-};
+use base2k::{BACKEND, Module, Sampling, SvpPPolOps, VecZnx, VecZnxDft, VecZnxDftOps, VecZnxOps, VmpPMat, alloc_aligned_u8};
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use rlwe::{
     ciphertext::{Ciphertext, new_gadget_ciphertext},
@@ -106,10 +104,10 @@ fn bench_gadget_product_inplace(c: &mut Criterion) {
             &mut tmp_bytes,
         );
 
-        let mut res_dft_0: VecZnxDft = params.module().new_vec_znx_dft(gadget_ct.cols());
-        let mut res_dft_1: VecZnxDft = params.module().new_vec_znx_dft(gadget_ct.cols());
+        let mut res_dft_0: VecZnxDft = params.module().new_vec_znx_dft(1, gadget_ct.cols());
+        let mut res_dft_1: VecZnxDft = params.module().new_vec_znx_dft(1, gadget_ct.cols());
 
-        let mut a: VecZnx = params.module().new_vec_znx(params.cols_q());
+        let mut a: VecZnx = params.module().new_vec_znx(0, params.cols_q());
         params
             .module()
             .fill_uniform(params.log_base2k(), &mut a, params.cols_q(), &mut source_xa);

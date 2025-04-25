@@ -1,6 +1,6 @@
 use crate::ciphertext::Ciphertext;
 use crate::elem::ElemCommon;
-use base2k::{Module, VecZnx, VecZnxBig, VecZnxBigOps, VecZnxDft, VecZnxDftOps, VmpPMat, VmpPMatOps, assert_alignement};
+use base2k::{Module, VecZnx, VecZnxBigOps, VecZnxDftOps, VmpPMat, VmpPMatOps, assert_alignement};
 use std::cmp::min;
 
 pub fn key_switch_tmp_bytes(module: &Module, log_base2k: usize, res_logq: usize, in_logq: usize, gct_logq: usize) -> usize {
@@ -8,8 +8,8 @@ pub fn key_switch_tmp_bytes(module: &Module, log_base2k: usize, res_logq: usize,
     let in_cols: usize = (in_logq + log_base2k - 1) / log_base2k;
     let res_cols: usize = (res_logq + log_base2k - 1) / log_base2k;
     return module.vmp_apply_dft_to_dft_tmp_bytes(res_cols, in_cols, in_cols, gct_cols)
-        + module.bytes_of_vec_znx_dft(std::cmp::min(res_cols, in_cols))
-        + module.bytes_of_vec_znx_dft(gct_cols);
+        + module.bytes_of_vec_znx_dft(1, std::cmp::min(res_cols, in_cols))
+        + module.bytes_of_vec_znx_dft(1, gct_cols);
 }
 
 pub fn key_switch_rlwe(
@@ -54,11 +54,11 @@ fn key_switch_rlwe_core(
         assert_alignement(tmp_bytes.as_ptr());
     }
 
-    let (tmp_bytes_a1_dft, tmp_bytes) = tmp_bytes.split_at_mut(module.bytes_of_vec_znx_dft(cols));
-    let (tmp_bytes_res_dft, tmp_bytes) = tmp_bytes.split_at_mut(module.bytes_of_vec_znx_dft(b_cols));
+    let (tmp_bytes_a1_dft, tmp_bytes) = tmp_bytes.split_at_mut(module.bytes_of_vec_znx_dft(1, cols));
+    let (tmp_bytes_res_dft, tmp_bytes) = tmp_bytes.split_at_mut(module.bytes_of_vec_znx_dft(1, b_cols));
 
-    let mut a1_dft = module.new_vec_znx_dft_from_bytes_borrow(cols, tmp_bytes_a1_dft);
-    let mut res_dft = module.new_vec_znx_dft_from_bytes_borrow(b_cols, tmp_bytes_res_dft);
+    let mut a1_dft = module.new_vec_znx_dft_from_bytes_borrow(1, cols, tmp_bytes_a1_dft);
+    let mut res_dft = module.new_vec_znx_dft_from_bytes_borrow(1, b_cols, tmp_bytes_res_dft);
     let mut res_big = res_dft.as_vec_znx_big();
 
     module.vec_znx_dft(&mut a1_dft, a.at(1));

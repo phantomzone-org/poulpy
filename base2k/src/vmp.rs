@@ -1,7 +1,7 @@
 use crate::ffi::vec_znx_big::vec_znx_big_t;
 use crate::ffi::vec_znx_dft::vec_znx_dft_t;
 use crate::ffi::vmp::{self, vmp_pmat_t};
-use crate::{BACKEND, Infos, Module, VecZnx, VecZnxBig, VecZnxDft, alloc_aligned, assert_alignement};
+use crate::{BACKEND, Infos, LAYOUT, Module, VecZnx, VecZnxBig, VecZnxDft, alloc_aligned, assert_alignement};
 
 /// Vector Matrix Product Prepared Matrix: a vector of [VecZnx],
 /// stored as a 3D matrix in the DFT domain in a single contiguous array.
@@ -23,8 +23,11 @@ pub struct VmpPMat {
     cols: usize,
     /// The ring degree of each [VecZnxDft].      
     n: usize,
-
-    #[warn(dead_code)]
+    /// The number of stacked [VmpPMat], must be a square.
+    size: usize,
+    /// The memory layout of the stacked [VmpPMat].
+    layout: LAYOUT,
+    /// The backend fft or ntt.
     backend: BACKEND,
 }
 
@@ -36,6 +39,14 @@ impl Infos for VmpPMat {
 
     fn log_n(&self) -> usize {
         (usize::BITS - (self.n() - 1).leading_zeros()) as _
+    }
+
+    fn size(&self) -> usize {
+        self.size
+    }
+
+    fn layout(&self) -> LAYOUT {
+        self.layout
     }
 
     /// Returns the number of rows (i.e. of [VecZnxDft]) of the [VmpPMat]
@@ -120,12 +131,16 @@ impl VmpPMat {
             &self.raw::<T>()[blk * nrows * ncols * 8 + (col / 2) * (2 * nrows) * 8 + row * 2 * 8 + (col % 2) * 8..]
         }
     }
+
+    fn backend(&self) -> BACKEND {
+        self.backend
+    }
 }
 
 /// This trait implements methods for vector matrix product,
 /// that is, multiplying a [VecZnx] with a [VmpPMat].
 pub trait VmpPMatOps {
-    fn bytes_of_vmp_pmat(&self, rows: usize, cols: usize) -> usize;
+    fn bytes_of_vmp_pmat(&self, size: usize, rows: usize, cols: usize) -> usize;
 
     /// Allocates a new [VmpPMat] with the given number of rows and columns.
     ///
@@ -133,7 +148,7 @@ pub trait VmpPMatOps {
     ///
     /// * `rows`: number of rows (number of [VecZnxDft]).
     /// * `cols`: number of cols (number of cols of each [VecZnxDft]).
-    fn new_vmp_pmat(&self, rows: usize, cols: usize) -> VmpPMat;
+    fn new_vmp_pmat(&self, size: usize, rows: usize, cols: usize) -> VmpPMat;
 
     /// Returns the number of bytes needed as scratch space for [VmpPMatOps::vmp_prepare_contiguous].
     ///
@@ -360,17 +375,19 @@ pub trait VmpPMatOps {
 }
 
 impl VmpPMatOps for Module {
-    fn bytes_of_vmp_pmat(&self, rows: usize, cols: usize) -> usize {
-        unsafe { vmp::bytes_of_vmp_pmat(self.ptr, rows as u64, cols as u64) as usize }
+    fn bytes_of_vmp_pmat(&self, size: usize, rows: usize, cols: usize) -> usize {
+        unsafe { vmp::bytes_of_vmp_pmat(self.ptr, rows as u64, cols as u64) as usize * size }
     }
 
-    fn new_vmp_pmat(&self, rows: usize, cols: usize) -> VmpPMat {
-        let mut data: Vec<u8> = alloc_aligned::<u8>(self.bytes_of_vmp_pmat(rows, cols));
+    fn new_vmp_pmat(&self, size: usize, rows: usize, cols: usize) -> VmpPMat {
+        let mut data: Vec<u8> = alloc_aligned::<u8>(self.bytes_of_vmp_pmat(size, rows, cols));
         let ptr: *mut u8 = data.as_mut_ptr();
         VmpPMat {
             data: data,
             ptr: ptr,
             n: self.n(),
+            size: size,
+            layout: LAYOUT::COL,
             cols: cols,
             rows: rows,
             backend: self.backend(),
@@ -424,10 +441,10 @@ impl VmpPMatOps for Module {
     }
 
     fn vmp_prepare_row(&self, b: &mut VmpPMat, a: &[i64], row_i: usize, tmp_bytes: &mut [u8]) {
-        debug_assert_eq!(a.len(), b.cols() * self.n());
-        debug_assert!(tmp_bytes.len() >= self.vmp_prepare_tmp_bytes(b.rows(), b.cols()));
         #[cfg(debug_assertions)]
         {
+            assert_eq!(a.len(), b.cols() * self.n());
+            assert!(tmp_bytes.len() >= self.vmp_prepare_tmp_bytes(b.rows(), b.cols()));
             assert_alignement(tmp_bytes.as_ptr());
         }
         unsafe {
@@ -642,13 +659,13 @@ mod tests {
         let vpmat_rows: usize = 4;
         let vpmat_cols: usize = 5;
         let log_base2k: usize = 8;
-        let mut a: VecZnx = module.new_vec_znx(vpmat_cols);
-        let mut a_dft: VecZnxDft = module.new_vec_znx_dft(vpmat_cols);
-        let mut a_big: VecZnxBig = module.new_vec_znx_big(vpmat_cols);
-        let mut b_big: VecZnxBig = module.new_vec_znx_big(vpmat_cols);
-        let mut b_dft: VecZnxDft = module.new_vec_znx_dft(vpmat_cols);
-        let mut vmpmat_0: VmpPMat = module.new_vmp_pmat(vpmat_rows, vpmat_cols);
-        let mut vmpmat_1: VmpPMat = module.new_vmp_pmat(vpmat_rows, vpmat_cols);
+        let mut a: VecZnx = module.new_vec_znx(1, vpmat_cols);
+        let mut a_dft: VecZnxDft = module.new_vec_znx_dft(1, vpmat_cols);
+        let mut a_big: VecZnxBig = module.new_vec_znx_big(1, vpmat_cols);
+        let mut b_big: VecZnxBig = module.new_vec_znx_big(1, vpmat_cols);
+        let mut b_dft: VecZnxDft = module.new_vec_znx_dft(1, vpmat_cols);
+        let mut vmpmat_0: VmpPMat = module.new_vmp_pmat(1, vpmat_rows, vpmat_cols);
+        let mut vmpmat_1: VmpPMat = module.new_vmp_pmat(1, vpmat_rows, vpmat_cols);
 
         let mut tmp_bytes: Vec<u8> = alloc_aligned(module.vmp_prepare_tmp_bytes(vpmat_rows, vpmat_cols));
 

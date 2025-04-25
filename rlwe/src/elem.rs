@@ -1,4 +1,4 @@
-use base2k::{Infos, Module, VecZnx, VecZnxOps, VmpPMat, VmpPMatOps};
+use base2k::{Infos, LAYOUT, Module, VecZnx, VecZnxOps, VmpPMat, VmpPMatOps};
 
 pub struct Elem<T> {
     pub value: Vec<T>,
@@ -25,11 +25,11 @@ impl ElemVecZnx for Elem<VecZnx> {
         let n: usize = module.n();
         assert!(bytes.len() >= Self::bytes_of(module, log_base2k, log_q, size));
         let mut value: Vec<VecZnx> = Vec::new();
-        let limbs: usize = (log_q + log_base2k - 1) / log_base2k;
-        let elem_size = VecZnx::bytes_of(n, limbs);
+        let cols: usize = (log_q + log_base2k - 1) / log_base2k;
+        let elem_size = VecZnx::bytes_of(n, size, cols);
         let mut ptr: usize = 0;
         (0..size).for_each(|_| {
-            value.push(VecZnx::from_bytes(n, limbs, &mut bytes[ptr..]));
+            value.push(VecZnx::from_bytes(n, 1, cols, &mut bytes[ptr..]));
             ptr += elem_size
         });
         Self {
@@ -45,11 +45,11 @@ impl ElemVecZnx for Elem<VecZnx> {
         let n: usize = module.n();
         assert!(bytes.len() >= Self::bytes_of(module, log_base2k, log_q, size));
         let mut value: Vec<VecZnx> = Vec::new();
-        let limbs: usize = (log_q + log_base2k - 1) / log_base2k;
-        let elem_size = VecZnx::bytes_of(n, limbs);
+        let cols: usize = (log_q + log_base2k - 1) / log_base2k;
+        let elem_size = VecZnx::bytes_of(n, 1, cols);
         let mut ptr: usize = 0;
         (0..size).for_each(|_| {
-            value.push(VecZnx::from_bytes_borrow(n, limbs, &mut bytes[ptr..]));
+            value.push(VecZnx::from_bytes_borrow(n, 1, cols, &mut bytes[ptr..]));
             ptr += elem_size
         });
         Self {
@@ -71,6 +71,7 @@ pub trait ElemCommon<T> {
     fn elem(&self) -> &Elem<T>;
     fn elem_mut(&mut self) -> &mut Elem<T>;
     fn size(&self) -> usize;
+    fn layout(&self) -> LAYOUT;
     fn rows(&self) -> usize;
     fn cols(&self) -> usize;
     fn log_base2k(&self) -> usize;
@@ -99,6 +100,10 @@ impl<T: Infos> ElemCommon<T> for Elem<T> {
 
     fn size(&self) -> usize {
         self.value.len()
+    }
+
+    fn layout(&self) -> LAYOUT {
+        self.value[0].layout()
     }
 
     fn rows(&self) -> usize {
@@ -135,9 +140,9 @@ impl<T: Infos> ElemCommon<T> for Elem<T> {
 impl Elem<VecZnx> {
     pub fn new(module: &Module, log_base2k: usize, log_q: usize, rows: usize) -> Self {
         assert!(rows > 0);
-        let limbs: usize = (log_q + log_base2k - 1) / log_base2k;
+        let cols: usize = (log_q + log_base2k - 1) / log_base2k;
         let mut value: Vec<VecZnx> = Vec::new();
-        (0..rows).for_each(|_| value.push(module.new_vec_znx(limbs)));
+        (0..rows).for_each(|_| value.push(module.new_vec_znx(1, cols)));
         Self {
             value,
             log_q,
@@ -152,7 +157,7 @@ impl Elem<VmpPMat> {
         assert!(rows > 0);
         assert!(cols > 0);
         let mut value: Vec<VmpPMat> = Vec::new();
-        (0..size).for_each(|_| value.push(module.new_vmp_pmat(rows, cols)));
+        (0..size).for_each(|_| value.push(module.new_vmp_pmat(1, rows, cols)));
         Self {
             value: value,
             log_q: 0,

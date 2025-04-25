@@ -22,7 +22,7 @@ impl Parameters {
 
 pub fn trace_tmp_bytes(module: &Module, c_cols: usize, a_cols: usize, b_rows: usize, b_cols: usize) -> usize {
     return module.vmp_apply_dft_to_dft_tmp_bytes(c_cols, a_cols, b_rows, b_cols)
-        + 2 * module.bytes_of_vec_znx_dft(std::cmp::min(c_cols, a_cols));
+        + 2 * module.bytes_of_vec_znx_dft(1, std::cmp::min(c_cols, a_cols));
 }
 
 pub fn trace_inplace(
@@ -59,11 +59,11 @@ pub fn trace_inplace(
 
     let cols: usize = std::cmp::min(b_cols, a.cols());
 
-    let (tmp_bytes_b1_dft, tmp_bytes) = tmp_bytes.split_at_mut(module.bytes_of_vec_znx_dft(cols));
-    let (tmp_bytes_res_dft, tmp_bytes) = tmp_bytes.split_at_mut(module.bytes_of_vec_znx_dft(b_cols));
+    let (tmp_bytes_b1_dft, tmp_bytes) = tmp_bytes.split_at_mut(module.bytes_of_vec_znx_dft(1, cols));
+    let (tmp_bytes_res_dft, tmp_bytes) = tmp_bytes.split_at_mut(module.bytes_of_vec_znx_dft(1, b_cols));
 
-    let mut a1_dft: VecZnxDft = module.new_vec_znx_dft_from_bytes_borrow(cols, tmp_bytes_b1_dft);
-    let mut res_dft: VecZnxDft = module.new_vec_znx_dft_from_bytes_borrow(b_cols, tmp_bytes_res_dft);
+    let mut a1_dft: VecZnxDft = module.new_vec_znx_dft_from_bytes_borrow(1, cols, tmp_bytes_b1_dft);
+    let mut res_dft: VecZnxDft = module.new_vec_znx_dft_from_bytes_borrow(1, b_cols, tmp_bytes_res_dft);
     let mut res_big: VecZnxBig = res_dft.as_vec_znx_big();
 
     let log_base2k: usize = a.log_base2k();
@@ -189,12 +189,12 @@ mod test {
         let mut ct: Ciphertext<VecZnx> = params.new_ciphertext(log_q);
         let mut pt: Plaintext = params.new_plaintext(log_q);
 
-        pt.at_mut(0).encode_vec_i64(log_base2k, log_k, &data, 32);
+        pt.at_mut(0).encode_vec_i64(0, log_base2k, log_k, &data, 32);
         pt.at_mut(0).normalize(log_base2k, &mut tmp_bytes);
 
-        pt.at(0).decode_vec_i64(log_base2k, log_k, &mut data);
+        pt.at(0).decode_vec_i64(0, log_base2k, log_k, &mut data);
 
-        pt.at(0).print(pt.cols(), 16);
+        pt.at(0).print(0, pt.cols(), 16);
 
         encrypt_rlwe_sk(
             module,
@@ -227,9 +227,9 @@ mod test {
             &mut tmp_bytes,
         );
 
-        pt.at(0).print(pt.cols(), 16);
+        pt.at(0).print(0, pt.cols(), 16);
 
-        pt.at(0).decode_vec_i64(log_base2k, log_k, &mut data);
+        pt.at(0).decode_vec_i64(0, log_base2k, log_k, &mut data);
 
         println!("trace: {:?}", &data[..16]);
     }

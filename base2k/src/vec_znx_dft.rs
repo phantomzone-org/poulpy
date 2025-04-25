@@ -1,13 +1,15 @@
 use crate::ffi::vec_znx_big::vec_znx_big_t;
 use crate::ffi::vec_znx_dft;
 use crate::ffi::vec_znx_dft::{bytes_of_vec_znx_dft, vec_znx_dft_t};
-use crate::{BACKEND, Infos, Module, VecZnxBig, assert_alignement};
+use crate::{BACKEND, Infos, LAYOUT, Module, VecZnxBig, assert_alignement};
 use crate::{DEFAULTALIGN, VecZnx, alloc_aligned};
 
 pub struct VecZnxDft {
     pub data: Vec<u8>,
     pub ptr: *mut u8,
     pub n: usize,
+    pub size: usize,
+    pub layout: LAYOUT,
     pub cols: usize,
     pub backend: BACKEND,
 }
@@ -16,10 +18,10 @@ impl VecZnxDft {
     /// Returns a new [VecZnxDft] with the provided data as backing array.
     /// User must ensure that data is properly alligned and that
     /// the size of data is at least equal to [Module::bytes_of_vec_znx_dft].
-    pub fn from_bytes(module: &Module, cols: usize, bytes: &mut [u8]) -> VecZnxDft {
+    pub fn from_bytes(module: &Module, size: usize, cols: usize, bytes: &mut [u8]) -> VecZnxDft {
         #[cfg(debug_assertions)]
         {
-            assert_eq!(bytes.len(), module.bytes_of_vec_znx_dft(cols));
+            assert_eq!(bytes.len(), module.bytes_of_vec_znx_dft(size, cols));
             assert_alignement(bytes.as_ptr())
         }
         unsafe {
@@ -27,22 +29,26 @@ impl VecZnxDft {
                 data: Vec::from_raw_parts(bytes.as_mut_ptr(), bytes.len(), bytes.len()),
                 ptr: bytes.as_mut_ptr(),
                 n: module.n(),
+                size: size,
+                layout: LAYOUT::COL,
                 cols: cols,
                 backend: module.backend,
             }
         }
     }
 
-    pub fn from_bytes_borrow(module: &Module, cols: usize, bytes: &mut [u8]) -> VecZnxDft {
+    pub fn from_bytes_borrow(module: &Module, size: usize, cols: usize, bytes: &mut [u8]) -> VecZnxDft {
         #[cfg(debug_assertions)]
         {
-            assert_eq!(bytes.len(), module.bytes_of_vec_znx_dft(cols));
+            assert_eq!(bytes.len(), module.bytes_of_vec_znx_dft(size, cols));
             assert_alignement(bytes.as_ptr());
         }
         VecZnxDft {
             data: Vec::new(),
             ptr: bytes.as_mut_ptr(),
             n: module.n(),
+            size: size,
+            layout: LAYOUT::COL,
             cols: cols,
             backend: module.backend,
         }
@@ -56,6 +62,8 @@ impl VecZnxDft {
             data: Vec::new(),
             ptr: self.ptr,
             n: self.n,
+            layout: LAYOUT::COL,
+            size: self.size,
             cols: self.cols,
             backend: self.backend,
         }
@@ -105,6 +113,14 @@ impl Infos for VecZnxDft {
         self.n
     }
 
+    fn size(&self) -> usize {
+        self.size
+    }
+
+    fn layout(&self) -> LAYOUT {
+        self.layout
+    }
+
     /// Returns the number of cols of the [VecZnx].
     fn cols(&self) -> usize {
         self.cols
@@ -118,7 +134,7 @@ impl Infos for VecZnxDft {
 
 pub trait VecZnxDftOps {
     /// Allocates a vector Z[X]/(X^N+1) that stores normalized in the DFT space.
-    fn new_vec_znx_dft(&self, cols: usize) -> VecZnxDft;
+    fn new_vec_znx_dft(&self, size: usize, cols: usize) -> VecZnxDft;
 
     /// Returns a new [VecZnxDft] with the provided bytes array as backing array.
     ///
@@ -131,7 +147,7 @@ pub trait VecZnxDftOps {
     ///
     /// # Panics
     /// If `bytes.len()` < [Module::bytes_of_vec_znx_dft].
-    fn new_vec_znx_dft_from_bytes(&self, cols: usize, bytes: &mut [u8]) -> VecZnxDft;
+    fn new_vec_znx_dft_from_bytes(&self, size: usize, cols: usize, bytes: &mut [u8]) -> VecZnxDft;
 
     /// Returns a new [VecZnxDft] with the provided bytes array as backing array.
     ///
@@ -144,7 +160,7 @@ pub trait VecZnxDftOps {
     ///
     /// # Panics
     /// If `bytes.len()` < [Module::bytes_of_vec_znx_dft].
-    fn new_vec_znx_dft_from_bytes_borrow(&self, cols: usize, bytes: &mut [u8]) -> VecZnxDft;
+    fn new_vec_znx_dft_from_bytes_borrow(&self, size: usize, cols: usize, bytes: &mut [u8]) -> VecZnxDft;
 
     /// Returns a new [VecZnxDft] with the provided bytes array as backing array.
     ///
@@ -155,7 +171,7 @@ pub trait VecZnxDftOps {
     ///
     /// # Panics
     /// If `bytes.len()` < [Module::bytes_of_vec_znx_dft].
-    fn bytes_of_vec_znx_dft(&self, cols: usize) -> usize;
+    fn bytes_of_vec_znx_dft(&self, size: usize, cols: usize) -> usize;
 
     /// Returns the minimum number of bytes necessary to allocate
     /// a new [VecZnxDft] through [VecZnxDft::from_bytes].
@@ -176,28 +192,30 @@ pub trait VecZnxDftOps {
 }
 
 impl VecZnxDftOps for Module {
-    fn new_vec_znx_dft(&self, cols: usize) -> VecZnxDft {
-        let mut data: Vec<u8> = alloc_aligned::<u8>(self.bytes_of_vec_znx_dft(cols));
+    fn new_vec_znx_dft(&self, size: usize, cols: usize) -> VecZnxDft {
+        let mut data: Vec<u8> = alloc_aligned::<u8>(self.bytes_of_vec_znx_dft(size, cols));
         let ptr: *mut u8 = data.as_mut_ptr();
         VecZnxDft {
             data: data,
             ptr: ptr,
             n: self.n(),
+            size: size,
+            layout: LAYOUT::COL,
             cols: cols,
             backend: self.backend(),
         }
     }
 
-    fn new_vec_znx_dft_from_bytes(&self, cols: usize, tmp_bytes: &mut [u8]) -> VecZnxDft {
-        VecZnxDft::from_bytes(self, cols, tmp_bytes)
+    fn new_vec_znx_dft_from_bytes(&self, size: usize, cols: usize, tmp_bytes: &mut [u8]) -> VecZnxDft {
+        VecZnxDft::from_bytes(self, size, cols, tmp_bytes)
     }
 
-    fn new_vec_znx_dft_from_bytes_borrow(&self, cols: usize, tmp_bytes: &mut [u8]) -> VecZnxDft {
-        VecZnxDft::from_bytes_borrow(self, cols, tmp_bytes)
+    fn new_vec_znx_dft_from_bytes_borrow(&self, size: usize, cols: usize, tmp_bytes: &mut [u8]) -> VecZnxDft {
+        VecZnxDft::from_bytes_borrow(self, size, cols, tmp_bytes)
     }
 
-    fn bytes_of_vec_znx_dft(&self, cols: usize) -> usize {
-        unsafe { bytes_of_vec_znx_dft(self.ptr, cols as u64) as usize }
+    fn bytes_of_vec_znx_dft(&self, size: usize, cols: usize) -> usize {
+        unsafe { bytes_of_vec_znx_dft(self.ptr, cols as u64) as usize * size }
     }
 
     fn vec_znx_idft_tmp_a(&self, b: &mut VecZnxBig, a: &mut VecZnxDft) {
@@ -317,9 +335,9 @@ mod tests {
 
         let cols: usize = 2;
         let log_base2k: usize = 17;
-        let mut a: VecZnx = module.new_vec_znx(cols);
-        let mut a_dft: VecZnxDft = module.new_vec_znx_dft(cols);
-        let mut b_dft: VecZnxDft = module.new_vec_znx_dft(cols);
+        let mut a: VecZnx = module.new_vec_znx(1, cols);
+        let mut a_dft: VecZnxDft = module.new_vec_znx_dft(1, cols);
+        let mut b_dft: VecZnxDft = module.new_vec_znx_dft(1, cols);
 
         let mut source: Source = Source::new(new_seed());
         module.fill_uniform(log_base2k, &mut a, cols, &mut source);
