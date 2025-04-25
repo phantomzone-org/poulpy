@@ -113,10 +113,6 @@ impl Infos for VecZnxDft {
         self.n
     }
 
-    fn size(&self) -> usize {
-        self.size
-    }
-
     fn layout(&self) -> LAYOUT {
         self.layout
     }

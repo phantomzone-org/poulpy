@@ -119,7 +119,7 @@ impl Scalar {
             n: self.n,
             size: 1, // TODO REVIEW IF NEED TO ADD size TO SCALAR
             cols: 1,
-            layout: LAYOUT::COL,
+            layout: LAYOUT::COL(1, 1),
             data: Vec::new(),
             ptr: self.ptr,
         }

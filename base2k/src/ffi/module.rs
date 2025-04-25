@@ -3,8 +3,6 @@ pub struct module_info_t {
 }
 
 pub type module_type_t = ::std::os::raw::c_uint;
-pub const module_type_t_FFT64: module_type_t = 0;
-pub const module_type_t_NTT120: module_type_t = 1;
 pub use self::module_type_t as MODULE_TYPE;
 
 pub type MODULE = module_info_t;
