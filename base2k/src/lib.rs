@@ -27,6 +27,14 @@ pub use vmp::*;
 pub const GALOISGENERATOR: u64 = 5;
 pub const DEFAULTALIGN: usize = 64;
 
+#[derive(Copy, Clone)]
+#[repr(u8)]
+pub enum LAYOUT {
+    ROW,
+    COL,
+}
+
+
 pub fn is_aligned_custom<T>(ptr: *const T, align: usize) -> bool {
     (ptr as usize) % align == 0
 }

@@ -1,6 +1,6 @@
 use crate::ffi::svp::{self, svp_ppol_t};
 use crate::ffi::vec_znx_dft::vec_znx_dft_t;
-use crate::{BACKEND, Module, VecZnx, VecZnxDft, assert_alignement};
+use crate::{assert_alignement, Module, VecZnx, VecZnxDft, BACKEND, LAYOUT};
 
 use crate::{Infos, alloc_aligned, cast_mut};
 use rand::seq::SliceRandom;
@@ -119,6 +119,7 @@ impl Scalar {
             n: self.n,
             size: 1, // TODO REVIEW IF NEED TO ADD size TO SCALAR
             cols: 1,
+            layout: LAYOUT::COL,
             data: Vec::new(),
             ptr: self.ptr,
         }

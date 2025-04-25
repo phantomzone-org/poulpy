@@ -1,6 +1,7 @@
 use crate::cast_mut;
 use crate::ffi::vec_znx;
 use crate::ffi::znx;
+use crate::LAYOUT;
 use crate::{Infos, Module};
 use crate::{alloc_aligned, assert_alignement};
 use itertools::izip;
@@ -23,6 +24,9 @@ pub struct VecZnx {
 
     /// Stack size
     pub size: usize,
+
+    /// Stacking layout
+    pub layout: LAYOUT,
 
     /// Number of columns.
     pub cols: usize,
@@ -59,6 +63,7 @@ impl VecZnx {
                 n: n,
                 size: size,
                 cols: cols,
+                layout: LAYOUT::COL,
                 data: Vec::from_raw_parts(ptr, bytes.len(), bytes.len()),
                 ptr: ptr,
             }
@@ -76,6 +81,7 @@ impl VecZnx {
             n: n,
             size: size,
             cols: cols,
+            layout: LAYOUT::COL,
             data: Vec::new(),
             ptr: bytes.as_mut_ptr() as *mut i64,
         }
@@ -254,6 +260,7 @@ impl VecZnx {
         Self {
             n: n,
             size: size,
+            layout: LAYOUT::COL,
             cols: cols,
             data: data,
             ptr: ptr,
