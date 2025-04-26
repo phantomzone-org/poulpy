@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 
 use crate::ffi::svp::{self, svp_ppol_t};
 use crate::ffi::vec_znx_dft::vec_znx_dft_t;
-use crate::{Backend, FFT64, Module, VecZnx, VecZnxDft, assert_alignement};
+use crate::{Backend, FFT64, Module, VecZnx, VecZnxDft, VecZnxLayout, assert_alignement};
 
 use crate::{Infos, alloc_aligned, cast_mut};
 use rand::seq::SliceRandom;

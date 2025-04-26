@@ -1,6 +1,6 @@
 use base2k::{
     Encoding, FFT64, Infos, Module, Sampling, Scalar, SvpPPol, SvpPPolOps, VecZnx, VecZnxBig, VecZnxBigOps, VecZnxDft,
-    VecZnxDftOps, VecZnxOps, alloc_aligned,
+    VecZnxDftOps, VecZnxLayout, VecZnxOps, alloc_aligned,
 };
 use itertools::izip;
 use sampling::source::Source;

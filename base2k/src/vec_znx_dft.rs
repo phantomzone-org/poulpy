@@ -1,8 +1,8 @@
 use crate::ffi::vec_znx_big::vec_znx_big_t;
 use crate::ffi::vec_znx_dft;
 use crate::ffi::vec_znx_dft::{bytes_of_vec_znx_dft, vec_znx_dft_t};
-use crate::{Backend, FFT64, Infos, Module, VecZnxBig, assert_alignement};
-use crate::{DEFAULTALIGN, VecZnx, alloc_aligned};
+use crate::{Backend, FFT64, Infos, Module, VecZnxBig, VecZnxLayout, assert_alignement};
+use crate::{VecZnx, alloc_aligned};
 use std::marker::PhantomData;
 
 pub struct VecZnxDft<B: Backend> {
@@ -32,6 +32,11 @@ impl VecZnxDft<FFT64> {
             _marker: PhantomData,
         }
     }
+
+    fn bytes_of(module: &Module<FFT64>, cols: usize, limbs: usize) -> usize {
+        unsafe { bytes_of_vec_znx_dft(module.ptr, limbs as u64) as usize * cols }
+    }
+
     /// Returns a new [VecZnxDft] with the provided data as backing array.
     /// User must ensure that data is properly alligned and that
     /// the size of data is at least equal to [Module::bytes_of_vec_znx_dft].
@@ -87,72 +92,6 @@ impl VecZnxDft<FFT64> {
         }
     }
 
-    /// Returns a non-mutable pointer to the backedn slice of the receiver.
-    pub fn as_ptr(&self) -> *const f64 {
-        self.ptr as *const f64
-    }
-
-    /// Returns a mutable pointer to the backedn slice of the receiver.
-    pub fn as_mut_ptr(&mut self) -> *mut f64 {
-        self.ptr as *mut f64
-    }
-
-    pub fn raw(&self) -> &[f64] {
-        unsafe { &std::slice::from_raw_parts(self.as_ptr(), self.n() * self.poly_count()) }
-    }
-
-    pub fn raw_mut(&mut self) -> &mut [f64] {
-        let ptr: *mut f64 = self.ptr as *mut f64;
-        let size: usize = self.n() * self.poly_count();
-        unsafe { std::slice::from_raw_parts_mut(ptr, size) }
-    }
-
-    pub fn at_ptr(&self, i: usize, j: usize) -> *const f64 {
-        #[cfg(debug_assertions)]
-        {
-            assert!(i < self.cols());
-            assert!(j < self.limbs());
-        }
-        let offset: usize = self.n * (j * self.cols() + i);
-        self.as_ptr().wrapping_add(offset)
-    }
-
-    /// Returns a non-mutable reference to the i-th limb.
-    /// The returned array is of size [Self::n()] * [Self::cols()].
-    pub fn at_limb(&self, i: usize) -> &[f64] {
-        unsafe { std::slice::from_raw_parts(self.at_ptr(0, i), self.n * self.cols()) }
-    }
-
-    /// Returns a non-mutable reference to the (i, j)-th poly.
-    /// The returned array is of size [Self::n()].
-    pub fn at_poly(&self, i: usize, j: usize) -> &[f64] {
-        unsafe { std::slice::from_raw_parts(self.at_ptr(i, j), self.n) }
-    }
-
-    /// Returns a mutable pointer starting a the (i, j)-th small poly.
-    pub fn at_mut_ptr(&mut self, i: usize, j: usize) -> *mut f64 {
-        #[cfg(debug_assertions)]
-        {
-            assert!(i < self.cols());
-            assert!(j < self.limbs());
-        }
-
-        let offset: usize = self.n * (j * self.cols() + i);
-        self.as_mut_ptr().wrapping_add(offset)
-    }
-
-    /// Returns a mutable reference to the i-th limb.
-    /// The returned array is of size [Self::n()] * [Self::cols()].
-    pub fn at_limb_mut(&mut self, i: usize) -> &mut [f64] {
-        unsafe { std::slice::from_raw_parts_mut(self.at_mut_ptr(0, i), self.n * self.cols()) }
-    }
-
-    /// Returns a mutable reference to the (i, j)-th poly.
-    /// The returned array is of size [Self::n()].
-    pub fn at_poly_mut(&mut self, i: usize, j: usize) -> &mut [f64] {
-        unsafe { std::slice::from_raw_parts_mut(self.at_mut_ptr(i, j), self.n) }
-    }
-
     pub fn print(&self, n: usize) {
         (0..self.limbs()).for_each(|i| println!("{}: {:?}", i, &self.at_limb(i)[..n]));
     }
@@ -181,6 +120,18 @@ impl<B: Backend> Infos for VecZnxDft<B> {
 
     fn poly_count(&self) -> usize {
         self.cols * self.limbs
+    }
+}
+
+impl VecZnxLayout for VecZnxDft<FFT64> {
+    type Scalar = f64;
+
+    fn as_ptr(&self) -> *const Self::Scalar {
+        self.ptr as *const Self::Scalar
+    }
+
+    fn as_mut_ptr(&mut self) -> *mut Self::Scalar {
+        self.ptr as *mut Self::Scalar
     }
 }
 
@@ -257,7 +208,7 @@ impl VecZnxDftOps<FFT64> for Module<FFT64> {
     }
 
     fn bytes_of_vec_znx_dft(&self, cols: usize, limbs: usize) -> usize {
-        unsafe { bytes_of_vec_znx_dft(self.ptr, limbs as u64) as usize * cols }
+        VecZnxDft::bytes_of(&self, cols, limbs)
     }
 
     fn vec_znx_idft_tmp_a(&self, b: &mut VecZnxBig<FFT64>, a: &mut VecZnxDft<FFT64>) {
@@ -363,7 +314,7 @@ impl VecZnxDftOps<FFT64> for Module<FFT64> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{FFT64, Module, Sampling, VecZnx, VecZnxDft, VecZnxDftOps, VecZnxOps, alloc_aligned};
+    use crate::{FFT64, Module, Sampling, VecZnx, VecZnxDft, VecZnxDftOps, VecZnxLayout, VecZnxOps, alloc_aligned};
     use itertools::izip;
     use sampling::source::Source;
 

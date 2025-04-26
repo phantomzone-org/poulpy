@@ -1,6 +1,6 @@
 use base2k::{
-    Encoding, FFT64, Infos, Module, VecZnx, VecZnxBig, VecZnxBigOps, VecZnxDft, VecZnxDftOps, VecZnxOps, VmpPMat, VmpPMatOps,
-    alloc_aligned,
+    Encoding, FFT64, Infos, Module, VecZnx, VecZnxBig, VecZnxBigOps, VecZnxDft, VecZnxDftOps, VecZnxLayout, VecZnxOps, VmpPMat,
+    VmpPMatOps, alloc_aligned,
 };
 
 fn main() {

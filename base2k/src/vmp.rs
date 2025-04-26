@@ -1,7 +1,7 @@
 use crate::ffi::vec_znx_big::vec_znx_big_t;
 use crate::ffi::vec_znx_dft::vec_znx_dft_t;
 use crate::ffi::vmp::{self, vmp_pmat_t};
-use crate::{Backend, FFT64, Infos, Module, VecZnx, VecZnxBig, VecZnxDft, alloc_aligned, assert_alignement};
+use crate::{Backend, FFT64, Infos, Module, VecZnx, VecZnxBig, VecZnxDft, VecZnxLayout, alloc_aligned, assert_alignement};
 use std::marker::PhantomData;
 
 /// Vector Matrix Product Prepared Matrix: a vector of [VecZnx],
@@ -592,8 +592,8 @@ impl VmpPMatOps<FFT64> for Module<FFT64> {
 #[cfg(test)]
 mod tests {
     use crate::{
-        FFT64, Module, Sampling, VecZnx, VecZnxBig, VecZnxBigOps, VecZnxDft, VecZnxDftOps, VecZnxOps, VmpPMat, VmpPMatOps,
-        alloc_aligned,
+        FFT64, Module, Sampling, VecZnx, VecZnxBig, VecZnxBigOps, VecZnxDft, VecZnxDftOps, VecZnxLayout, VecZnxOps, VmpPMat,
+        VmpPMatOps, alloc_aligned,
     };
     use sampling::source::Source;
 

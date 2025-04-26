@@ -1,5 +1,5 @@
 use crate::ffi::znx::znx_zero_i64_ref;
-use crate::{Infos, VecZnx};
+use crate::{Infos, VecZnx, VecZnxLayout};
 use itertools::izip;
 use rug::{Assign, Float};
 use std::cmp::min;
@@ -262,7 +262,7 @@ fn decode_coeff_i64(a: &VecZnx, col_i: usize, log_base2k: usize, log_k: usize, i
 
 #[cfg(test)]
 mod tests {
-    use crate::{Encoding, Infos, VecZnx};
+    use crate::{Encoding, Infos, VecZnx, VecZnxLayout};
     use itertools::izip;
     use sampling::source::Source;
 

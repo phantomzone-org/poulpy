@@ -1,5 +1,5 @@
 use crate::ffi::vec_znx_big::{self, vec_znx_big_t};
-use crate::{Backend, FFT64, Infos, Module, VecZnx, VecZnxDft, alloc_aligned, assert_alignement};
+use crate::{Backend, FFT64, Infos, Module, VecZnx, VecZnxDft, VecZnxLayout, alloc_aligned, assert_alignement};
 use std::marker::PhantomData;
 
 pub struct VecZnxBig<B: Backend> {
@@ -12,7 +12,6 @@ pub struct VecZnxBig<B: Backend> {
 }
 
 impl VecZnxBig<FFT64> {
-
     pub fn new(module: &Module<FFT64>, cols: usize, limbs: usize) -> Self {
         #[cfg(debug_assertions)]
         {
@@ -83,72 +82,6 @@ impl VecZnxBig<FFT64> {
         }
     }
 
-    /// Returns a non-mutable pointer to the backedn slice of the receiver.
-    pub fn as_ptr(&self) -> *const i64 {
-        self.ptr as *const i64
-    }
-
-    /// Returns a mutable pointer to the backedn slice of the receiver.
-    pub fn as_mut_ptr(&mut self) -> *mut i64 {
-        self.ptr as *mut i64
-    }
-
-    pub fn raw(&self) -> &[i64] {
-        unsafe { &std::slice::from_raw_parts(self.as_ptr(), self.n() * self.poly_count()) }
-    }
-
-    pub fn raw_mut(&mut self) -> &mut [i64] {
-        let ptr: *mut i64 = self.ptr as *mut i64;
-        let size: usize = self.n() * self.poly_count();
-        unsafe { std::slice::from_raw_parts_mut(ptr, size) }
-    }
-
-    pub fn at_ptr(&self, i: usize, j: usize) -> *const i64 {
-        #[cfg(debug_assertions)]
-        {
-            assert!(i < self.cols());
-            assert!(j < self.limbs());
-        }
-        let offset: usize = self.n * (j * self.cols() + i);
-        self.as_ptr().wrapping_add(offset)
-    }
-
-    /// Returns a non-mutable reference to the i-th limb.
-    /// The returned array is of size [Self::n()] * [Self::cols()].
-    pub fn at_limb(&self, i: usize) -> &[i64] {
-        unsafe { std::slice::from_raw_parts(self.at_ptr(0, i), self.n * self.cols()) }
-    }
-
-    /// Returns a non-mutable reference to the (i, j)-th poly.
-    /// The returned array is of size [Self::n()].
-    pub fn at_poly(&self, i: usize, j: usize) -> &[i64] {
-        unsafe { std::slice::from_raw_parts(self.at_ptr(i, j), self.n) }
-    }
-
-    /// Returns a mutable pointer starting a the (i, j)-th small poly.
-    pub fn at_mut_ptr(&mut self, i: usize, j: usize) -> *mut i64 {
-        #[cfg(debug_assertions)]
-        {
-            assert!(i < self.cols());
-            assert!(j < self.limbs());
-        }
-
-        let offset: usize = self.n * (j * self.cols() + i);
-        self.as_mut_ptr().wrapping_add(offset)
-    }
-
-    /// Returns a mutable reference to the i-th limb.
-    /// The returned array is of size [Self::n()] * [Self::cols()].
-    pub fn at_limb_mut(&mut self, i: usize) -> &mut [i64] {
-        unsafe { std::slice::from_raw_parts_mut(self.at_mut_ptr(0, i), self.n * self.cols()) }
-    }
-
-    /// Returns a mutable reference to the (i, j)-th poly.
-    /// The returned array is of size [Self::n()].
-    pub fn at_poly_mut(&mut self, i: usize, j: usize) -> &mut [i64] {
-        unsafe { std::slice::from_raw_parts_mut(self.at_mut_ptr(i, j), self.n) }
-    }
-
     pub fn print(&self, n: usize) {
         (0..self.limbs()).for_each(|i| println!("{}: {:?}", i, &self.at_limb(i)[..n]));
     }
@@ -177,6 +110,18 @@ impl<B: Backend> Infos for VecZnxBig<B> {
 
     fn poly_count(&self) -> usize {
         self.cols * self.limbs
+    }
+}
+
+impl VecZnxLayout for VecZnxBig<FFT64> {
+    type Scalar = i64;
+
+    fn as_ptr(&self) -> *const Self::Scalar {
+        self.ptr as *const Self::Scalar
+    }
+
+    fn as_mut_ptr(&mut self) -> *mut Self::Scalar {
+        self.ptr as *mut Self::Scalar
     }
 }
 

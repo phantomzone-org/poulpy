@@ -1,8 +1,8 @@
+pub mod commons;
 pub mod encoding;
 #[allow(non_camel_case_types, non_snake_case, non_upper_case_globals, dead_code, improper_ctypes)]
 // Other modules and exports
 pub mod ffi;
-pub mod infos;
 pub mod module;
 pub mod sampling;
 pub mod stats;
@@ -12,8 +12,8 @@ pub mod vec_znx_big;
 pub mod vec_znx_dft;
 pub mod vmp;
 
+pub use commons::*;
 pub use encoding::*;
-pub use infos::*;
 pub use module::*;
 pub use sampling::*;
 #[allow(unused_imports)]
