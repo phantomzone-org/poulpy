@@ -16,6 +16,11 @@ pub struct VecZnxDft<B: Backend> {
 
 impl VecZnxDft<FFT64> {
     pub fn new(module: &Module<FFT64>, cols: usize, limbs: usize) -> Self {
+        #[cfg(debug_assertions)]
+        {
+            assert!(cols > 0);
+            assert!(limbs > 0);
+        }
         let mut data: Vec<u8> = alloc_aligned::<u8>(module.bytes_of_vec_znx_dft(cols, limbs));
         let ptr: *mut u8 = data.as_mut_ptr();
         Self {
