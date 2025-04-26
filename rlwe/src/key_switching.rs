@@ -1,6 +1,6 @@
 use crate::ciphertext::Ciphertext;
 use crate::elem::ElemCommon;
-use base2k::{Module, VecZnx, VecZnxBigOps, VecZnxDftOps, VmpPMat, VmpPMatOps, assert_alignement};
+use base2k::{Module, VecZnx, VecZnxBigOps, VecZnxDftOps, MatZnxDft, MatZnxDftOps, assert_alignement};
 use std::cmp::min;
 
 pub fn key_switch_tmp_bytes(module: &Module, log_base2k: usize, res_logq: usize, in_logq: usize, gct_logq: usize) -> usize {
@@ -16,7 +16,7 @@ pub fn key_switch_rlwe(
     module: &Module,
     c: &mut Ciphertext<VecZnx>,
     a: &Ciphertext<VecZnx>,
-    b: &Ciphertext<VmpPMat>,
+    b: &Ciphertext<MatZnxDft>,
     b_cols: usize,
     tmp_bytes: &mut [u8],
 ) {
@@ -26,7 +26,7 @@ pub fn key_switch_rlwe(
 pub fn key_switch_rlwe_inplace(
     module: &Module,
     a: &mut Ciphertext<VecZnx>,
-    b: &Ciphertext<VmpPMat>,
+    b: &Ciphertext<MatZnxDft>,
     b_cols: usize,
     tmp_bytes: &mut [u8],
 ) {
@@ -37,7 +37,7 @@ fn key_switch_rlwe_core(
     module: &Module,
     c: *mut Ciphertext<VecZnx>,
     a: *const Ciphertext<VecZnx>,
-    b: &Ciphertext<VmpPMat>,
+    b: &Ciphertext<MatZnxDft>,
     b_cols: usize,
     tmp_bytes: &mut [u8],
 ) {
@@ -74,6 +74,6 @@ fn key_switch_rlwe_core(
     module.vec_znx_big_normalize(c.log_base2k(), c.at_mut(1), &mut res_big, tmp_bytes);
 }
 
-pub fn key_switch_grlwe(module: &Module, c: &mut Ciphertext<VecZnx>, a: &Ciphertext<VecZnx>, b: &Ciphertext<VmpPMat>) {}
+pub fn key_switch_grlwe(module: &Module, c: &mut Ciphertext<VecZnx>, a: &Ciphertext<VecZnx>, b: &Ciphertext<MatZnxDft>) {}
 
-pub fn key_switch_rgsw(module: &Module, c: &mut Ciphertext<VecZnx>, a: &Ciphertext<VecZnx>, b: &Ciphertext<VmpPMat>) {}
+pub fn key_switch_rgsw(module: &Module, c: &mut Ciphertext<VecZnx>, a: &Ciphertext<VecZnx>, b: &Ciphertext<MatZnxDft>) {}

@@ -1,5 +1,5 @@
 use crate::{ciphertext::Ciphertext, elem::ElemCommon, parameters::Parameters};
-use base2k::{Module, VecZnx, VecZnxBig, VecZnxBigOps, VecZnxDft, VecZnxDftOps, VmpPMat, VmpPMatOps};
+use base2k::{Module, VecZnx, VecZnxBig, VecZnxBigOps, VecZnxDft, VecZnxDftOps, MatZnxDft, MatZnxDftOps};
 use std::cmp::min;
 
 pub fn gadget_product_core_tmp_bytes(
@@ -34,7 +34,7 @@ pub fn gadget_product_core(
     res_dft_0: &mut VecZnxDft,
     res_dft_1: &mut VecZnxDft,
     a: &VecZnx,
-    b: &Ciphertext<VmpPMat>,
+    b: &Ciphertext<MatZnxDft>,
     b_cols: usize,
     tmp_bytes: &mut [u8],
 ) {
@@ -61,7 +61,7 @@ pub fn gadget_product_big(
     module: &Module,
     c: &mut Ciphertext<VecZnxBig>,
     a: &Ciphertext<VecZnx>,
-    b: &Ciphertext<VmpPMat>,
+    b: &Ciphertext<MatZnxDft>,
     tmp_bytes: &mut [u8],
 ) {
     let cols: usize = min(c.cols(), a.cols());
@@ -94,7 +94,7 @@ pub fn gadget_product(
     module: &Module,
     c: &mut Ciphertext<VecZnx>,
     a: &Ciphertext<VecZnx>,
-    b: &Ciphertext<VmpPMat>,
+    b: &Ciphertext<MatZnxDft>,
     tmp_bytes: &mut [u8],
 ) {
     let cols: usize = min(c.cols(), a.cols());
@@ -130,7 +130,7 @@ mod test {
         plaintext::Plaintext,
     };
     use base2k::{
-        BACKEND, Infos, Sampling, SvpPPolOps, VecZnx, VecZnxBig, VecZnxBigOps, VecZnxDft, VecZnxDftOps, VecZnxOps, VmpPMat,
+        BACKEND, ZnxInfos, Sampling, ScalarZnxDftOps, VecZnx, VecZnxBig, VecZnxBigOps, VecZnxDft, VecZnxDftOps, VecZnxOps, MatZnxDft,
         alloc_aligned_u8,
     };
     use sampling::source::{Source, new_seed};
@@ -175,16 +175,16 @@ mod test {
         // Two secret keys
         let mut sk0: SecretKey = SecretKey::new(params.module());
         sk0.fill_ternary_hw(params.xs(), &mut source_xs);
-        let mut sk0_svp_ppol: base2k::SvpPPol = params.module().new_svp_ppol();
+        let mut sk0_svp_ppol: base2k::ScalarZnxDft = params.module().new_svp_ppol();
         params.module().svp_prepare(&mut sk0_svp_ppol, &sk0.0);
 
         let mut sk1: SecretKey = SecretKey::new(params.module());
         sk1.fill_ternary_hw(params.xs(), &mut source_xs);
-        let mut sk1_svp_ppol: base2k::SvpPPol = params.module().new_svp_ppol();
+        let mut sk1_svp_ppol: base2k::ScalarZnxDft = params.module().new_svp_ppol();
         params.module().svp_prepare(&mut sk1_svp_ppol, &sk1.0);
 
         // The gadget ciphertext
-        let mut gadget_ct: Ciphertext<VmpPMat> = new_gadget_ciphertext(
+        let mut gadget_ct: Ciphertext<MatZnxDft> = new_gadget_ciphertext(
             params.module(),
             log_base2k,
             params.cols_qp(),

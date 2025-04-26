@@ -1,7 +1,7 @@
 use crate::encryptor::{encrypt_grlwe_sk, encrypt_grlwe_sk_tmp_bytes};
 use crate::keys::{PublicKey, SecretKey, SwitchingKey};
 use crate::parameters::Parameters;
-use base2k::{Module, SvpPPol};
+use base2k::{Module, ScalarZnxDft};
 use sampling::source::Source;
 
 pub struct KeyGenerator {}
@@ -16,7 +16,7 @@ impl KeyGenerator {
     pub fn gen_public_key_thread_safe(
         &self,
         params: &Parameters,
-        sk_ppol: &SvpPPol,
+        sk_ppol: &ScalarZnxDft,
         source: &mut Source,
         tmp_bytes: &mut [u8],
     ) -> PublicKey {
@@ -43,7 +43,7 @@ pub fn gen_switching_key(
     module: &Module,
     swk: &mut SwitchingKey,
     sk_in: &SecretKey,
-    sk_out: &SvpPPol,
+    sk_out: &ScalarZnxDft,
     source_xa: &mut Source,
     source_xe: &mut Source,
     sigma: f64,

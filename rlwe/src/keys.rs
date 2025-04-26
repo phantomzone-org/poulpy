@@ -1,7 +1,7 @@
 use crate::ciphertext::{Ciphertext, new_gadget_ciphertext};
 use crate::elem::{Elem, ElemCommon};
 use crate::encryptor::{encrypt_rlwe_sk, encrypt_rlwe_sk_tmp_bytes};
-use base2k::{Module, Scalar, SvpPPol, SvpPPolOps, VecZnx, VmpPMat};
+use base2k::{Module, Scalar, ScalarZnxDft, ScalarZnxDftOps, VecZnx, MatZnxDft};
 use sampling::source::Source;
 
 pub struct SecretKey(pub Scalar);
@@ -19,7 +19,7 @@ impl SecretKey {
         self.0.fill_ternary_hw(hw, source);
     }
 
-    pub fn prepare(&self, module: &Module, sk_ppol: &mut SvpPPol) {
+    pub fn prepare(&self, module: &Module, sk_ppol: &mut ScalarZnxDft) {
         module.svp_prepare(sk_ppol, &self.0)
     }
 }
@@ -34,7 +34,7 @@ impl PublicKey {
     pub fn gen_thread_safe(
         &mut self,
         module: &Module,
-        sk: &SvpPPol,
+        sk: &ScalarZnxDft,
         xe: f64,
         xa_source: &mut Source,
         xe_source: &mut Source,
@@ -57,7 +57,7 @@ impl PublicKey {
     }
 }
 
-pub struct SwitchingKey(pub Ciphertext<VmpPMat>);
+pub struct SwitchingKey(pub Ciphertext<MatZnxDft>);
 
 impl SwitchingKey {
     pub fn new(module: &Module, log_base2k: usize, rows: usize, log_q: usize) -> SwitchingKey {

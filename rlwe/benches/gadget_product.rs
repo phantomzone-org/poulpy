@@ -1,4 +1,4 @@
-use base2k::{BACKEND, Module, Sampling, SvpPPolOps, VecZnx, VecZnxDft, VecZnxDftOps, VecZnxOps, VmpPMat, alloc_aligned_u8};
+use base2k::{BACKEND, Module, Sampling, ScalarZnxDftOps, VecZnx, VecZnxDft, VecZnxDftOps, VecZnxOps, MatZnxDft, alloc_aligned_u8};
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use rlwe::{
     ciphertext::{Ciphertext, new_gadget_ciphertext},
@@ -16,7 +16,7 @@ fn bench_gadget_product_inplace(c: &mut Criterion) {
         res_dft_0: &'a mut VecZnxDft,
         res_dft_1: &'a mut VecZnxDft,
         a: &'a VecZnx,
-        b: &'a Ciphertext<VmpPMat>,
+        b: &'a Ciphertext<MatZnxDft>,
         b_cols: usize,
         tmp_bytes: &'a mut [u8],
     ) -> Box<dyn FnMut() + 'a> {
@@ -69,13 +69,13 @@ fn bench_gadget_product_inplace(c: &mut Criterion) {
         let mut source_xe: Source = Source::new([4; 32]);
         let mut source_xa: Source = Source::new([5; 32]);
 
-        let mut sk0_svp_ppol: base2k::SvpPPol = params.module().new_svp_ppol();
+        let mut sk0_svp_ppol: base2k::ScalarZnxDft = params.module().new_svp_ppol();
         params.module().svp_prepare(&mut sk0_svp_ppol, &sk0.0);
 
-        let mut sk1_svp_ppol: base2k::SvpPPol = params.module().new_svp_ppol();
+        let mut sk1_svp_ppol: base2k::ScalarZnxDft = params.module().new_svp_ppol();
         params.module().svp_prepare(&mut sk1_svp_ppol, &sk1.0);
 
-        let mut gadget_ct: Ciphertext<VmpPMat> = new_gadget_ciphertext(
+        let mut gadget_ct: Ciphertext<MatZnxDft> = new_gadget_ciphertext(
             params.module(),
             params.log_base2k(),
             params.cols_q(),

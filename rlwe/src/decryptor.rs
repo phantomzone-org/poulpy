@@ -5,16 +5,16 @@ use crate::{
     parameters::Parameters,
     plaintext::Plaintext,
 };
-use base2k::{Module, SvpPPol, SvpPPolOps, VecZnx, VecZnxBigOps, VecZnxDft, VecZnxDftOps};
+use base2k::{Module, ScalarZnxDft, ScalarZnxDftOps, VecZnx, VecZnxBigOps, VecZnxDft, VecZnxDftOps};
 use std::cmp::min;
 
 pub struct Decryptor {
-    sk: SvpPPol,
+    sk: ScalarZnxDft,
 }
 
 impl Decryptor {
     pub fn new(params: &Parameters, sk: &SecretKey) -> Self {
-        let mut sk_svp_ppol: SvpPPol = params.module().new_svp_ppol();
+        let mut sk_svp_ppol: ScalarZnxDft = params.module().new_svp_ppol();
         sk.prepare(params.module(), &mut sk_svp_ppol);
         Self { sk: sk_svp_ppol }
     }
@@ -32,12 +32,12 @@ impl Parameters {
         )
     }
 
-    pub fn decrypt_rlwe(&self, res: &mut Plaintext, ct: &Ciphertext<VecZnx>, sk: &SvpPPol, tmp_bytes: &mut [u8]) {
+    pub fn decrypt_rlwe(&self, res: &mut Plaintext, ct: &Ciphertext<VecZnx>, sk: &ScalarZnxDft, tmp_bytes: &mut [u8]) {
         decrypt_rlwe(self.module(), &mut res.0, &ct.0, sk, tmp_bytes)
     }
 }
 
-pub fn decrypt_rlwe(module: &Module, res: &mut Elem<VecZnx>, a: &Elem<VecZnx>, sk: &SvpPPol, tmp_bytes: &mut [u8]) {
+pub fn decrypt_rlwe(module: &Module, res: &mut Elem<VecZnx>, a: &Elem<VecZnx>, sk: &ScalarZnxDft, tmp_bytes: &mut [u8]) {
     let cols: usize = a.cols();
 
     assert!(

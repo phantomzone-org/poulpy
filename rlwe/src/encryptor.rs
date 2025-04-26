@@ -5,8 +5,8 @@ use crate::parameters::Parameters;
 use crate::plaintext::Plaintext;
 use base2k::sampling::Sampling;
 use base2k::{
-    Infos, Module, Scalar, SvpPPol, SvpPPolOps, VecZnx, VecZnxBig, VecZnxBigOps, VecZnxDft, VecZnxDftOps, VecZnxOps, VmpPMat,
-    VmpPMatOps,
+    ZnxInfos, Module, Scalar, ScalarZnxDft, ScalarZnxDftOps, VecZnx, VecZnxBig, VecZnxBigOps, VecZnxDft, VecZnxDftOps, VecZnxOps, MatZnxDft,
+    MatZnxDftOps,
 };
 
 use sampling::source::{Source, new_seed};
@@ -19,7 +19,7 @@ impl Parameters {
         &self,
         ct: &mut Ciphertext<VecZnx>,
         pt: Option<&Plaintext>,
-        sk: &SvpPPol,
+        sk: &ScalarZnxDft,
         source_xa: &mut Source,
         source_xe: &mut Source,
         tmp_bytes: &mut [u8],
@@ -38,7 +38,7 @@ impl Parameters {
 }
 
 pub struct EncryptorSk {
-    sk: SvpPPol,
+    sk: ScalarZnxDft,
     source_xa: Source,
     source_xe: Source,
     initialized: bool,
@@ -47,7 +47,7 @@ pub struct EncryptorSk {
 
 impl EncryptorSk {
     pub fn new(params: &Parameters, sk: Option<&SecretKey>) -> Self {
-        let mut sk_svp_ppol: SvpPPol = params.module().new_svp_ppol();
+        let mut sk_svp_ppol: ScalarZnxDft = params.module().new_svp_ppol();
         let mut initialized: bool = false;
         if let Some(sk) = sk {
             sk.prepare(params.module(), &mut sk_svp_ppol);
@@ -114,7 +114,7 @@ pub fn encrypt_rlwe_sk(
     module: &Module,
     ct: &mut Elem<VecZnx>,
     pt: Option<&VecZnx>,
-    sk: &SvpPPol,
+    sk: &ScalarZnxDft,
     source_xa: &mut Source,
     source_xe: &mut Source,
     sigma: f64,
@@ -127,7 +127,7 @@ fn encrypt_rlwe_sk_core<const PT_POS: u8>(
     module: &Module,
     ct: &mut Elem<VecZnx>,
     pt: Option<&VecZnx>,
-    sk: &SvpPPol,
+    sk: &ScalarZnxDft,
     source_xa: &mut Source,
     source_xe: &mut Source,
     sigma: f64,
@@ -217,9 +217,9 @@ pub fn encrypt_grlwe_sk_tmp_bytes(module: &Module, log_base2k: usize, rows: usiz
 
 pub fn encrypt_grlwe_sk(
     module: &Module,
-    ct: &mut Ciphertext<VmpPMat>,
+    ct: &mut Ciphertext<MatZnxDft>,
     m: &Scalar,
-    sk: &SvpPPol,
+    sk: &ScalarZnxDft,
     source_xa: &mut Source,
     source_xe: &mut Source,
     sigma: f64,
@@ -258,9 +258,9 @@ pub fn encrypt_rgsw_sk_tmp_bytes(module: &Module, log_base2k: usize, rows: usize
 
 pub fn encrypt_rgsw_sk(
     module: &Module,
-    ct: &mut Ciphertext<VmpPMat>,
+    ct: &mut Ciphertext<MatZnxDft>,
     m: &Scalar,
-    sk: &SvpPPol,
+    sk: &ScalarZnxDft,
     source_xa: &mut Source,
     source_xe: &mut Source,
     sigma: f64,
@@ -302,10 +302,10 @@ pub fn encrypt_rgsw_sk(
 fn encrypt_grlwe_sk_core<const PT_POS: u8>(
     module: &Module,
     log_base2k: usize,
-    mut ct: [&mut VmpPMat; 2],
+    mut ct: [&mut MatZnxDft; 2],
     log_q: usize,
     m: &Scalar,
-    sk: &SvpPPol,
+    sk: &ScalarZnxDft,
     source_xa: &mut Source,
     source_xe: &mut Source,
     sigma: f64,

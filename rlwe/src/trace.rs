@@ -1,5 +1,5 @@
 use crate::{automorphism::AutomorphismKey, ciphertext::Ciphertext, elem::ElemCommon, parameters::Parameters};
-use base2k::{Module, VecZnx, VecZnxBig, VecZnxBigOps, VecZnxDft, VecZnxDftOps, VmpPMatOps, assert_alignement};
+use base2k::{Module, VecZnx, VecZnxBig, VecZnxBigOps, VecZnxDft, VecZnxDftOps, MatZnxDftOps, assert_alignement};
 use std::collections::HashMap;
 
 pub fn trace_galois_elements(module: &Module) -> Vec<i64> {
@@ -115,7 +115,7 @@ mod test {
         parameters::{DEFAULT_SIGMA, Parameters, ParametersLiteral},
         plaintext::Plaintext,
     };
-    use base2k::{BACKEND, Encoding, Module, SvpPPol, SvpPPolOps, VecZnx, alloc_aligned};
+    use base2k::{BACKEND, Encoding, Module, ScalarZnxDft, ScalarZnxDftOps, VecZnx, alloc_aligned};
     use sampling::source::{Source, new_seed};
     use std::collections::HashMap;
 
@@ -160,7 +160,7 @@ mod test {
 
         let mut sk: SecretKey = SecretKey::new(module);
         sk.fill_ternary_hw(params.xs(), &mut source_xs);
-        let mut sk_svp_ppol: SvpPPol = module.new_svp_ppol();
+        let mut sk_svp_ppol: ScalarZnxDft = module.new_svp_ppol();
         module.svp_prepare(&mut sk_svp_ppol, &sk.0);
 
         let gal_els: Vec<i64> = trace_galois_elements(module);

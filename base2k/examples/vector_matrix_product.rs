@@ -1,6 +1,6 @@
 use base2k::{
-    Encoding, FFT64, Infos, Module, VecZnx, VecZnxBig, VecZnxBigOps, VecZnxDft, VecZnxDftOps, VecZnxLayout, VecZnxOps, VmpPMat,
-    VmpPMatOps, alloc_aligned,
+    Encoding, FFT64, MatZnxDft, MatZnxDftOps, Module, VecZnx, VecZnxBig, VecZnxBigOps, VecZnxDft, VecZnxDftOps, VecZnxOps,
+    ZnxInfos, ZnxLayout, alloc_aligned,
 };
 
 fn main() {
@@ -31,16 +31,16 @@ fn main() {
     a.print(n);
     println!();
 
-    let mut vmp_pmat: VmpPMat<FFT64> = module.new_vmp_pmat(rows_mat, 1, limbs_mat);
+    let mut mat_znx_dft: MatZnxDft<FFT64> = module.new_mat_znx_dft(rows_mat, 1, limbs_mat);
 
     (0..a.limbs()).for_each(|row_i| {
         let mut tmp: VecZnx = module.new_vec_znx(1, limbs_mat);
         tmp.at_limb_mut(row_i)[1] = 1 as i64;
-        module.vmp_prepare_row(&mut vmp_pmat, tmp.raw(), row_i, &mut buf);
+        module.vmp_prepare_row(&mut mat_znx_dft, tmp.raw(), row_i, &mut buf);
     });
 
     let mut c_dft: VecZnxDft<FFT64> = module.new_vec_znx_dft(1, limbs_mat);
-    module.vmp_apply_dft(&mut c_dft, &a, &vmp_pmat, &mut buf);
+    module.vmp_apply_dft(&mut c_dft, &a, &mat_znx_dft, &mut buf);
 
     let mut c_big: VecZnxBig<FFT64> = c_dft.as_vec_znx_big();
     module.vec_znx_idft_tmp_a(&mut c_big, &mut c_dft);

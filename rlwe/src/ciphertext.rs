@@ -1,6 +1,6 @@
 use crate::elem::{Elem, ElemCommon};
 use crate::parameters::Parameters;
-use base2k::{Infos, Layout, Module, VecZnx, VmpPMat};
+use base2k::{ZnxInfos, Layout, Module, VecZnx, MatZnxDft};
 
 pub struct Ciphertext<T>(pub Elem<T>);
 
@@ -12,7 +12,7 @@ impl Parameters {
 
 impl<T> ElemCommon<T> for Ciphertext<T>
 where
-    T: Infos,
+    T: ZnxInfos,
 {
     fn n(&self) -> usize {
         self.elem().n()
@@ -78,16 +78,16 @@ pub fn new_rlwe_ciphertext(module: &Module, log_base2k: usize, log_q: usize) -> 
     Ciphertext::<VecZnx>::new(module, log_base2k, log_q, rows)
 }
 
-pub fn new_gadget_ciphertext(module: &Module, log_base2k: usize, rows: usize, log_q: usize) -> Ciphertext<VmpPMat> {
+pub fn new_gadget_ciphertext(module: &Module, log_base2k: usize, rows: usize, log_q: usize) -> Ciphertext<MatZnxDft> {
     let cols: usize = (log_q + log_base2k - 1) / log_base2k;
-    let mut elem: Elem<VmpPMat> = Elem::<VmpPMat>::new(module, log_base2k, 2, rows, cols);
+    let mut elem: Elem<MatZnxDft> = Elem::<MatZnxDft>::new(module, log_base2k, 2, rows, cols);
     elem.log_q = log_q;
     Ciphertext(elem)
 }
 
-pub fn new_rgsw_ciphertext(module: &Module, log_base2k: usize, rows: usize, log_q: usize) -> Ciphertext<VmpPMat> {
+pub fn new_rgsw_ciphertext(module: &Module, log_base2k: usize, rows: usize, log_q: usize) -> Ciphertext<MatZnxDft> {
     let cols: usize = (log_q + log_base2k - 1) / log_base2k;
-    let mut elem: Elem<VmpPMat> = Elem::<VmpPMat>::new(module, log_base2k, 4, rows, cols);
+    let mut elem: Elem<MatZnxDft> = Elem::<MatZnxDft>::new(module, log_base2k, 4, rows, cols);
     elem.log_q = log_q;
     Ciphertext(elem)
 }

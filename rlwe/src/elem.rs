@@ -1,4 +1,4 @@
-use base2k::{Infos, Layout, Module, VecZnx, VecZnxOps, VmpPMat, VmpPMatOps};
+use base2k::{ZnxInfos, Layout, Module, VecZnx, VecZnxOps, MatZnxDft, MatZnxDftOps};
 
 pub struct Elem<T> {
     pub value: Vec<T>,
@@ -81,7 +81,7 @@ pub trait ElemCommon<T> {
     fn at_mut(&mut self, i: usize) -> &mut T;
 }
 
-impl<T: Infos> ElemCommon<T> for Elem<T> {
+impl<T: ZnxInfos> ElemCommon<T> for Elem<T> {
     fn n(&self) -> usize {
         self.value[0].n()
     }
@@ -152,11 +152,11 @@ impl Elem<VecZnx> {
     }
 }
 
-impl Elem<VmpPMat> {
+impl Elem<MatZnxDft> {
     pub fn new(module: &Module, log_base2k: usize, size: usize, rows: usize, cols: usize) -> Self {
         assert!(rows > 0);
         assert!(cols > 0);
-        let mut value: Vec<VmpPMat> = Vec::new();
+        let mut value: Vec<MatZnxDft> = Vec::new();
         (0..size).for_each(|_| value.push(module.new_vmp_pmat(1, rows, cols)));
         Self {
             value: value,

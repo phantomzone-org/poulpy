@@ -1,4 +1,4 @@
-use crate::{Backend, Infos, Module, VecZnx, VecZnxLayout};
+use crate::{Backend, Module, VecZnx, ZnxInfos, ZnxLayout};
 use rand_distr::{Distribution, Normal};
 use sampling::source::Source;
 

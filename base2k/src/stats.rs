@@ -1,4 +1,4 @@
-use crate::{Encoding, Infos, VecZnx};
+use crate::{Encoding, VecZnx, ZnxInfos};
 use rug::Float;
 use rug::float::Round;
 use rug::ops::{AddAssignRound, DivAssignRound, SubAssignRound};

@@ -1,5 +1,5 @@
 use crate::ffi::znx::znx_zero_i64_ref;
-use crate::{Infos, VecZnx, VecZnxLayout};
+use crate::{VecZnx, ZnxInfos, ZnxLayout};
 use itertools::izip;
 use rug::{Assign, Float};
 use std::cmp::min;
@@ -262,17 +262,18 @@ fn decode_coeff_i64(a: &VecZnx, col_i: usize, log_base2k: usize, log_k: usize, i
 
 #[cfg(test)]
 mod tests {
-    use crate::{Encoding, Infos, VecZnx, VecZnxLayout};
+    use crate::{Encoding, FFT64, Module, VecZnx, ZnxBase, ZnxInfos, ZnxLayout};
     use itertools::izip;
     use sampling::source::Source;
 
     #[test]
     fn test_set_get_i64_lo_norm() {
         let n: usize = 8;
+        let module: Module<FFT64> = Module::<FFT64>::new(n);
         let log_base2k: usize = 17;
         let cols: usize = 5;
         let log_k: usize = cols * log_base2k - 5;
-        let mut a: VecZnx = VecZnx::new(n, 2, cols);
+        let mut a: VecZnx = VecZnx::new(&module, 2, cols);
         let mut source: Source = Source::new([0u8; 32]);
         let raw: &mut [i64] = a.raw_mut();
         raw.iter_mut().enumerate().for_each(|(i, x)| *x = i as i64);
@@ -290,10 +291,11 @@ mod tests {
     #[test]
     fn test_set_get_i64_hi_norm() {
         let n: usize = 8;
+        let module: Module<FFT64> = Module::<FFT64>::new(n);
         let log_base2k: usize = 17;
         let cols: usize = 5;
         let log_k: usize = cols * log_base2k - 5;
-        let mut a: VecZnx = VecZnx::new(n, 2, cols);
+        let mut a: VecZnx = VecZnx::new(&module, 2, cols);
         let mut source = Source::new([0u8; 32]);
         let raw: &mut [i64] = a.raw_mut();
         raw.iter_mut().enumerate().for_each(|(i, x)| *x = i as i64);

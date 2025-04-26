@@ -7,15 +7,15 @@ use crate::{
     parameters::Parameters,
 };
 use base2k::{
-    Module, Scalar, ScalarOps, SvpPPol, SvpPPolOps, VecZnx, VecZnxBig, VecZnxBigOps, VecZnxDft, VecZnxDftOps, VecZnxOps, VmpPMat,
-    VmpPMatOps, assert_alignement,
+    Module, Scalar, ScalarOps, ScalarZnxDft, ScalarZnxDftOps, VecZnx, VecZnxBig, VecZnxBigOps, VecZnxDft, VecZnxDftOps, VecZnxOps, MatZnxDft,
+    MatZnxDftOps, assert_alignement,
 };
 use sampling::source::Source;
 use std::collections::HashMap;
 
 /// Stores DFT([-A*AUTO(s, -p) + 2^{-K*i}*s + E, A]) where AUTO(X, p): X^{i} -> X^{i*p}
 pub struct AutomorphismKey {
-    pub value: Ciphertext<VmpPMat>,
+    pub value: Ciphertext<MatZnxDft>,
     pub p: i64,
 }
 
@@ -106,12 +106,12 @@ impl AutomorphismKey {
         let (sk_out_bytes, tmp_bytes) = tmp_bytes.split_at_mut(module.bytes_of_svp_ppol());
 
         let sk_auto: Scalar = module.new_scalar_from_bytes_borrow(sk_auto_bytes);
-        let mut sk_out: SvpPPol = module.new_svp_ppol_from_bytes_borrow(sk_out_bytes);
+        let mut sk_out: ScalarZnxDft = module.new_svp_ppol_from_bytes_borrow(sk_out_bytes);
 
         let mut keys: Vec<AutomorphismKey> = Vec::new();
 
         p.iter().for_each(|pi| {
-            let mut value: Ciphertext<VmpPMat> = new_gadget_ciphertext(module, log_base2k, rows, log_q);
+            let mut value: Ciphertext<MatZnxDft> = new_gadget_ciphertext(module, log_base2k, rows, log_q);
 
             let p_inv: i64 = module.galois_element_inv(*pi);
 
@@ -223,7 +223,7 @@ mod test {
         parameters::{Parameters, ParametersLiteral},
         plaintext::Plaintext,
     };
-    use base2k::{BACKEND, Encoding, Module, SvpPPol, SvpPPolOps, VecZnx, VecZnxOps, alloc_aligned};
+    use base2k::{BACKEND, Encoding, Module, ScalarZnxDft, ScalarZnxDftOps, VecZnx, VecZnxOps, alloc_aligned};
     use sampling::source::{Source, new_seed};
 
     #[test]
@@ -267,7 +267,7 @@ mod test {
 
         let mut sk: SecretKey = SecretKey::new(module);
         sk.fill_ternary_hw(params.xs(), &mut source_xs);
-        let mut sk_svp_ppol: SvpPPol = module.new_svp_ppol();
+        let mut sk_svp_ppol: ScalarZnxDft = module.new_svp_ppol();
         module.svp_prepare(&mut sk_svp_ppol, &sk.0);
 
         let p: i64 = -5;

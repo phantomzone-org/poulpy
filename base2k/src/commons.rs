@@ -1,4 +1,6 @@
-pub trait Infos {
+use crate::{Backend, Module};
+
+pub trait ZnxInfos {
     /// Returns the ring degree of the polynomials.
     fn n(&self) -> usize;
 
@@ -18,20 +20,34 @@ pub trait Infos {
     fn poly_count(&self) -> usize;
 }
 
-pub trait VecZnxLayout: Infos {
+pub trait ZnxBase<B: Backend> {
+    type Scalar;
+    fn new(module: &Module<B>, cols: usize, limbs: usize) -> Self;
+    fn from_bytes(module: &Module<B>, cols: usize, limbs: usize, bytes: &mut [u8]) -> Self;
+    fn from_bytes_borrow(module: &Module<B>, cols: usize, limbs: usize, bytes: &mut [u8]) -> Self;
+    fn bytes_of(module: &Module<B>, cols: usize, limbs: usize) -> usize;
+}
+
+pub trait ZnxLayout: ZnxInfos {
     type Scalar;
 
+    /// Returns a non-mutable pointer to the underlying coefficients array.
     fn as_ptr(&self) -> *const Self::Scalar;
+
+    /// Returns a mutable pointer to the underlying coefficients array.
     fn as_mut_ptr(&mut self) -> *mut Self::Scalar;
 
+    /// Returns a non-mutable reference to the entire underlying coefficient array.
     fn raw(&self) -> &[Self::Scalar] {
         unsafe { std::slice::from_raw_parts(self.as_ptr(), self.n() * self.poly_count()) }
     }
 
+    /// Returns a mutable reference to the entire underlying coefficient array.
     fn raw_mut(&mut self) -> &mut [Self::Scalar] {
         unsafe { std::slice::from_raw_parts_mut(self.as_mut_ptr(), self.n() * self.poly_count()) }
     }
 
+    /// Returns a non-mutable pointer starting at the (i, j)-th small polynomial.
     fn at_ptr(&self, i: usize, j: usize) -> *const Self::Scalar {
         #[cfg(debug_assertions)]
         {
@@ -42,6 +58,7 @@ pub trait VecZnxLayout: Infos {
         unsafe { self.as_ptr().add(offset) }
     }
 
+    /// Returns a mutable pointer starting at the (i, j)-th small polynomial.
     fn at_mut_ptr(&mut self, i: usize, j: usize) -> *mut Self::Scalar {
         #[cfg(debug_assertions)]
         {
@@ -52,18 +69,22 @@ pub trait VecZnxLayout: Infos {
         unsafe { self.as_mut_ptr().add(offset) }
     }
 
+    /// Returns non-mutable reference to the (i, j)-th small polynomial.
     fn at_poly(&self, i: usize, j: usize) -> &[Self::Scalar] {
         unsafe { std::slice::from_raw_parts(self.at_ptr(i, j), self.n()) }
     }
 
+    /// Returns mutable reference to the (i, j)-th small polynomial.
     fn at_poly_mut(&mut self, i: usize, j: usize) -> &mut [Self::Scalar] {
         unsafe { std::slice::from_raw_parts_mut(self.at_mut_ptr(i, j), self.n()) }
     }
 
+    /// Returns non-mutable reference to the i-th limb.
     fn at_limb(&self, j: usize) -> &[Self::Scalar] {
         unsafe { std::slice::from_raw_parts(self.at_ptr(0, j), self.n() * self.cols()) }
     }
 
+    /// Returns mutable reference to the i-th limb.
     fn at_limb_mut(&mut self, j: usize) -> &mut [Self::Scalar] {
         unsafe { std::slice::from_raw_parts_mut(self.at_mut_ptr(0, j), self.n() * self.cols()) }
     }

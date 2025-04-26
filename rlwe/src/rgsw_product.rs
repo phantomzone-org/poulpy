@@ -1,5 +1,5 @@
 use crate::{ciphertext::Ciphertext, elem::ElemCommon, parameters::Parameters};
-use base2k::{Module, VecZnx, VecZnxBig, VecZnxBigOps, VecZnxDft, VecZnxDftOps, VmpPMat, VmpPMatOps, assert_alignement};
+use base2k::{Module, VecZnx, VecZnxBig, VecZnxBigOps, VecZnxDft, VecZnxDftOps, MatZnxDft, MatZnxDftOps, assert_alignement};
 use std::cmp::min;
 
 impl Parameters {
@@ -26,7 +26,7 @@ pub fn rgsw_product(
     module: &Module,
     c: &mut Ciphertext<VecZnx>,
     a: &Ciphertext<VecZnx>,
-    b: &Ciphertext<VmpPMat>,
+    b: &Ciphertext<MatZnxDft>,
     b_cols: usize,
     tmp_bytes: &mut [u8],
 ) {
@@ -69,7 +69,7 @@ pub fn rgsw_product(
 pub fn rgsw_product_inplace(
     module: &Module,
     a: &mut Ciphertext<VecZnx>,
-    b: &Ciphertext<VmpPMat>,
+    b: &Ciphertext<MatZnxDft>,
     b_cols: usize,
     tmp_bytes: &mut [u8],
 ) {
@@ -120,7 +120,7 @@ mod test {
         plaintext::Plaintext,
         rgsw_product::rgsw_product_inplace,
     };
-    use base2k::{BACKEND, Encoding, Module, Scalar, SvpPPol, SvpPPolOps, VecZnx, VecZnxOps, VmpPMat, alloc_aligned};
+    use base2k::{BACKEND, Encoding, Module, Scalar, ScalarZnxDft, ScalarZnxDftOps, VecZnx, VecZnxOps, MatZnxDft, alloc_aligned};
     use sampling::source::{Source, new_seed};
 
     #[test]
@@ -164,10 +164,10 @@ mod test {
 
         let mut sk: SecretKey = SecretKey::new(module);
         sk.fill_ternary_hw(params.xs(), &mut source_xs);
-        let mut sk_svp_ppol: SvpPPol = module.new_svp_ppol();
+        let mut sk_svp_ppol: ScalarZnxDft = module.new_svp_ppol();
         module.svp_prepare(&mut sk_svp_ppol, &sk.0);
 
-        let mut ct_rgsw: Ciphertext<VmpPMat> = new_rgsw_ciphertext(module, log_base2k, gct_rows, log_qp);
+        let mut ct_rgsw: Ciphertext<MatZnxDft> = new_rgsw_ciphertext(module, log_base2k, gct_rows, log_qp);
 
         let k: i64 = 3;
 

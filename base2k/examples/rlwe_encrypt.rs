@@ -1,6 +1,6 @@
 use base2k::{
-    Encoding, FFT64, Infos, Module, Sampling, Scalar, SvpPPol, SvpPPolOps, VecZnx, VecZnxBig, VecZnxBigOps, VecZnxDft,
-    VecZnxDftOps, VecZnxLayout, VecZnxOps, alloc_aligned,
+    Encoding, FFT64, Module, Sampling, Scalar, ScalarZnxDft, ScalarZnxDftOps, VecZnx, VecZnxBig, VecZnxBigOps, VecZnxDft,
+    VecZnxDftOps, VecZnxOps, ZnxInfos, ZnxLayout, alloc_aligned,
 };
 use itertools::izip;
 use sampling::source::Source;
@@ -25,7 +25,7 @@ fn main() {
     s.fill_ternary_prob(0.5, &mut source);
 
     // Buffer to store s in the DFT domain
-    let mut s_ppol: SvpPPol<FFT64> = module.new_svp_ppol();
+    let mut s_ppol: ScalarZnxDft<FFT64> = module.new_svp_ppol();
 
     // s_ppol <- DFT(s)
     module.svp_prepare(&mut s_ppol, &s);
