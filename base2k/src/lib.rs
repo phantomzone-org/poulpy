@@ -106,6 +106,14 @@ pub fn alloc_aligned_custom<T>(size: usize, align: usize) -> Vec<T> {
     unsafe { Vec::from_raw_parts(ptr, len, cap) }
 }
 
+// Allocates an aligned of size equal to the smallest power of two equal or greater to `size` that is
+// at least as bit as DEFAULTALIGN / std::mem::size_of::<T>().
 pub fn alloc_aligned<T>(size: usize) -> Vec<T> {
-    alloc_aligned_custom::<T>(size, DEFAULTALIGN)
+    alloc_aligned_custom::<T>(
+        std::cmp::max(
+            size.next_power_of_two(),
+            DEFAULTALIGN / std::mem::size_of::<T>(),
+        ),
+        DEFAULTALIGN,
+    )
 }

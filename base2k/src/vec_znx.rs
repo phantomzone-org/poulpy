@@ -478,13 +478,13 @@ impl<B: Backend> VecZnxOps for Module<B> {
                 self.ptr,
                 c.as_mut_ptr(),
                 c.limbs() as u64,
-                (n * c.limbs()) as u64,
+                (n * c.cols()) as u64,
                 a.as_ptr(),
                 a.limbs() as u64,
-                (n * a.limbs()) as u64,
+                (n * a.cols()) as u64,
                 b.as_ptr(),
                 b.limbs() as u64,
-                (n * b.limbs()) as u64,
+                (n * b.cols()) as u64,
             )
         }
     }
@@ -502,13 +502,13 @@ impl<B: Backend> VecZnxOps for Module<B> {
                 self.ptr,
                 b.as_mut_ptr(),
                 b.limbs() as u64,
-                (n * b.limbs()) as u64,
+                (n * b.cols()) as u64,
                 a.as_ptr(),
                 a.limbs() as u64,
-                (n * a.limbs()) as u64,
+                (n * a.cols()) as u64,
                 b.as_ptr(),
                 b.limbs() as u64,
-                (n * b.limbs()) as u64,
+                (n * b.cols()) as u64,
             )
         }
     }
@@ -527,13 +527,13 @@ impl<B: Backend> VecZnxOps for Module<B> {
                 self.ptr,
                 c.as_mut_ptr(),
                 c.limbs() as u64,
-                (n * c.limbs()) as u64,
+                (n * c.cols()) as u64,
                 a.as_ptr(),
                 a.limbs() as u64,
-                (n * a.limbs()) as u64,
+                (n * a.cols()) as u64,
                 b.as_ptr(),
                 b.limbs() as u64,
-                (n * b.limbs()) as u64,
+                (n * b.cols()) as u64,
             )
         }
     }
@@ -551,13 +551,13 @@ impl<B: Backend> VecZnxOps for Module<B> {
                 self.ptr,
                 b.as_mut_ptr(),
                 b.limbs() as u64,
-                (n * b.limbs()) as u64,
+                (n * b.cols()) as u64,
                 a.as_ptr(),
                 a.limbs() as u64,
-                (n * a.limbs()) as u64,
+                (n * a.cols()) as u64,
                 b.as_ptr(),
                 b.limbs() as u64,
-                (n * b.limbs()) as u64,
+                (n * b.cols()) as u64,
             )
         }
     }
@@ -575,13 +575,13 @@ impl<B: Backend> VecZnxOps for Module<B> {
                 self.ptr,
                 b.as_mut_ptr(),
                 b.limbs() as u64,
-                (n * b.limbs()) as u64,
+                (n * b.cols()) as u64,
                 b.as_ptr(),
                 b.limbs() as u64,
-                (n * b.limbs()) as u64,
+                (n * b.cols()) as u64,
                 a.as_ptr(),
                 a.limbs() as u64,
-                (n * a.limbs()) as u64,
+                (n * a.cols()) as u64,
             )
         }
     }
@@ -598,10 +598,10 @@ impl<B: Backend> VecZnxOps for Module<B> {
                 self.ptr,
                 b.as_mut_ptr(),
                 b.limbs() as u64,
-                (n * b.limbs()) as u64,
+                (n * b.cols()) as u64,
                 a.as_ptr(),
                 a.limbs() as u64,
-                (n * a.limbs()) as u64,
+                (n * a.cols()) as u64,
             )
         }
     }
@@ -617,10 +617,10 @@ impl<B: Backend> VecZnxOps for Module<B> {
                 self.ptr,
                 a.as_mut_ptr(),
                 a.limbs() as u64,
-                (n * a.limbs()) as u64,
+                (n * a.cols()) as u64,
                 a.as_ptr(),
                 a.limbs() as u64,
-                (n * a.limbs()) as u64,
+                (n * a.cols()) as u64,
             )
         }
     }
@@ -638,10 +638,10 @@ impl<B: Backend> VecZnxOps for Module<B> {
                 k,
                 b.as_mut_ptr(),
                 b.limbs() as u64,
-                (n * b.limbs()) as u64,
+                (n * b.cols()) as u64,
                 a.as_ptr(),
                 a.limbs() as u64,
-                (n * a.limbs()) as u64,
+                (n * a.cols()) as u64,
             )
         }
     }
@@ -658,10 +658,10 @@ impl<B: Backend> VecZnxOps for Module<B> {
                 k,
                 a.as_mut_ptr(),
                 a.limbs() as u64,
-                (n * a.limbs()) as u64,
+                (n * a.cols()) as u64,
                 a.as_ptr(),
                 a.limbs() as u64,
-                (n * a.limbs()) as u64,
+                (n * a.cols()) as u64,
             )
         }
     }
@@ -691,10 +691,10 @@ impl<B: Backend> VecZnxOps for Module<B> {
                 k,
                 b.as_mut_ptr(),
                 b.limbs() as u64,
-                (n * b.limbs()) as u64,
+                (n * b.cols()) as u64,
                 a.as_ptr(),
                 a.limbs() as u64,
-                (n * a.limbs()) as u64,
+                (n * a.cols()) as u64,
             );
         }
     }
@@ -722,10 +722,10 @@ impl<B: Backend> VecZnxOps for Module<B> {
                 k,
                 a.as_mut_ptr(),
                 a.limbs() as u64,
-                (n * a.limbs()) as u64,
+                (n * a.cols()) as u64,
                 a.as_ptr(),
                 a.limbs() as u64,
-                (n * a.limbs()) as u64,
+                (n * a.cols()) as u64,
             );
         }
     }

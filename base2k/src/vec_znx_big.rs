@@ -73,7 +73,13 @@ impl VecZnxBig<FFT64> {
     // Prints the first `n` coefficients of each limb
     pub fn print(&self, n: usize) {
         let raw: &[i64] = self.raw();
-        (0..self.limbs()).for_each(|i| println!("{}: {:?}", i, &raw[i * self.n() * self.cols()..i * self.n() * self.cols()+n]))
+        (0..self.limbs()).for_each(|i| {
+            println!(
+                "{}: {:?}",
+                i,
+                &raw[i * self.n() * self.cols()..i * self.n() * self.cols() + n]
+            )
+        })
     }
 }
 

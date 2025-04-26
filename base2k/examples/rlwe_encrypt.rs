@@ -34,8 +34,6 @@ fn main() {
     let mut a: VecZnx = module.new_vec_znx(1, limbs);
     module.fill_uniform(log_base2k, &mut a, 0, limbs, &mut source);
 
-    
-
     // Scratch space for DFT values
     let mut buf_dft: VecZnxDft<FFT64> = module.new_vec_znx_dft(1, a.limbs());
 
@@ -92,8 +90,6 @@ fn main() {
 
     // res <- normalize(buf_big)
     module.vec_znx_big_normalize(log_base2k, &mut res, &buf_big, &mut carry);
-
-    
 
     // have = m * 2^{log_scale} + e
     let mut have: Vec<i64> = vec![i64::default(); n];
