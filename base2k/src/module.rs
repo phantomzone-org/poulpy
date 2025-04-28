@@ -65,21 +65,24 @@ impl<B: Backend> Module<B> {
         (self.n() << 1) as _
     }
 
-    // Returns GALOISGENERATOR^|gen| * sign(gen)
-    pub fn galois_element(&self, gen: i64) -> i64 {
-        if gen == 0 {
+    // Returns GALOISGENERATOR^|generator| * sign(generator)
+    pub fn galois_element(&self, generator: i64) -> i64 {
+        if generator == 0 {
             return 1;
         }
-        ((mod_exp_u64(GALOISGENERATOR, gen.abs() as usize) & (self.cyclotomic_order() - 1)) as i64) * gen.signum()
+        ((mod_exp_u64(GALOISGENERATOR, generator.abs() as usize) & (self.cyclotomic_order() - 1)) as i64) * generator.signum()
     }
 
     // Returns gen^-1
-    pub fn galois_element_inv(&self, gen: i64) -> i64 {
-        if gen == 0 {
+    pub fn galois_element_inv(&self, generator: i64) -> i64 {
+        if generator == 0 {
             panic!("cannot invert 0")
         }
-        ((mod_exp_u64(gen.abs() as u64, (self.cyclotomic_order() - 1) as usize) & (self.cyclotomic_order() - 1)) as i64)
-            * gen.signum()
+        ((mod_exp_u64(
+            generator.abs() as u64,
+            (self.cyclotomic_order() - 1) as usize,
+        ) & (self.cyclotomic_order() - 1)) as i64)
+            * generator.signum()
     }
 
     pub fn free(self) {
