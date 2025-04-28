@@ -10,7 +10,7 @@ pub trait Stats {
 
 impl Stats for VecZnx {
     fn std(&self, col_i: usize, log_base2k: usize) -> f64 {
-        let prec: u32 = (self.limbs() * log_base2k) as u32;
+        let prec: u32 = (self.size() * log_base2k) as u32;
         let mut data: Vec<Float> = (0..self.n()).map(|_| Float::with_val(prec, 0)).collect();
         self.decode_vec_float(col_i, log_base2k, &mut data);
         // std = sqrt(sum((xi - avg)^2) / n)

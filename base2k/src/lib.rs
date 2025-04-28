@@ -11,6 +11,7 @@ pub mod stats;
 pub mod vec_znx;
 pub mod vec_znx_big;
 pub mod vec_znx_dft;
+pub mod vec_znx_ops;
 
 pub use commons::*;
 pub use encoding::*;
@@ -23,6 +24,7 @@ pub use stats::*;
 pub use vec_znx::*;
 pub use vec_znx_big::*;
 pub use vec_znx_dft::*;
+pub use vec_znx_ops::*;
 
 pub const GALOISGENERATOR: u64 = 5;
 pub const DEFAULTALIGN: usize = 64;

@@ -120,7 +120,7 @@ impl Scalar {
         VecZnx {
             n: self.n,
             cols: 1,
-            limbs: 1,
+            size: 1,
             data: Vec::new(),
             ptr: self.ptr,
         }

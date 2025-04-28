@@ -33,7 +33,7 @@ fn main() {
 
     let mut mat_znx_dft: MatZnxDft<FFT64> = module.new_mat_znx_dft(rows_mat, 1, limbs_mat);
 
-    (0..a.limbs()).for_each(|row_i| {
+    (0..a.size()).for_each(|row_i| {
         let mut tmp: VecZnx = module.new_vec_znx(1, limbs_mat);
         tmp.at_limb_mut(row_i)[1] = 1 as i64;
         module.vmp_prepare_row(&mut mat_znx_dft, tmp.raw(), row_i, &mut buf);

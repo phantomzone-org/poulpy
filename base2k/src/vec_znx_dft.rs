@@ -10,44 +10,44 @@ pub struct VecZnxDft<B: Backend> {
     pub ptr: *mut u8,
     pub n: usize,
     pub cols: usize,
-    pub limbs: usize,
+    pub size: usize,
     pub _marker: PhantomData<B>,
 }
 
 impl<B: Backend> ZnxBase<B> for VecZnxDft<B> {
     type Scalar = u8;
 
-    fn new(module: &Module<B>, cols: usize, limbs: usize) -> Self {
+    fn new(module: &Module<B>, cols: usize, size: usize) -> Self {
         #[cfg(debug_assertions)]
         {
             assert!(cols > 0);
-            assert!(limbs > 0);
+            assert!(size > 0);
         }
-        let mut data: Vec<Self::Scalar> = alloc_aligned(Self::bytes_of(module, cols, limbs));
+        let mut data: Vec<Self::Scalar> = alloc_aligned(Self::bytes_of(module, cols, size));
         let ptr: *mut Self::Scalar = data.as_mut_ptr();
         Self {
             data: data,
             ptr: ptr,
             n: module.n(),
-            limbs: limbs,
+            size: size,
             cols: cols,
             _marker: PhantomData,
         }
     }
 
-    fn bytes_of(module: &Module<B>, cols: usize, limbs: usize) -> usize {
-        unsafe { bytes_of_vec_znx_dft(module.ptr, limbs as u64) as usize * cols }
+    fn bytes_of(module: &Module<B>, cols: usize, size: usize) -> usize {
+        unsafe { bytes_of_vec_znx_dft(module.ptr, size as u64) as usize * cols }
     }
 
     /// Returns a new [VecZnxDft] with the provided data as backing array.
     /// User must ensure that data is properly alligned and that
     /// the size of data is at least equal to [Module::bytes_of_vec_znx_dft].
-    fn from_bytes(module: &Module<B>, cols: usize, limbs: usize, bytes: &mut [Self::Scalar]) -> Self {
+    fn from_bytes(module: &Module<B>, cols: usize, size: usize, bytes: &mut [Self::Scalar]) -> Self {
         #[cfg(debug_assertions)]
         {
             assert!(cols > 0);
-            assert!(limbs > 0);
-            assert_eq!(bytes.len(), Self::bytes_of(module, cols, limbs));
+            assert!(size > 0);
+            assert_eq!(bytes.len(), Self::bytes_of(module, cols, size));
             assert_alignement(bytes.as_ptr())
         }
         unsafe {
@@ -56,18 +56,18 @@ impl<B: Backend> ZnxBase<B> for VecZnxDft<B> {
                 ptr: bytes.as_mut_ptr(),
                 n: module.n(),
                 cols: cols,
-                limbs: limbs,
+                size: size,
                 _marker: PhantomData,
             }
         }
     }
 
-    fn from_bytes_borrow(module: &Module<B>, cols: usize, limbs: usize, bytes: &mut [Self::Scalar]) -> Self {
+    fn from_bytes_borrow(module: &Module<B>, cols: usize, size: usize, bytes: &mut [Self::Scalar]) -> Self {
         #[cfg(debug_assertions)]
         {
             assert!(cols > 0);
-            assert!(limbs > 0);
-            assert_eq!(bytes.len(), Self::bytes_of(module, cols, limbs));
+            assert!(size > 0);
+            assert_eq!(bytes.len(), Self::bytes_of(module, cols, size));
             assert_alignement(bytes.as_ptr());
         }
         Self {
@@ -75,7 +75,7 @@ impl<B: Backend> ZnxBase<B> for VecZnxDft<B> {
             ptr: bytes.as_mut_ptr(),
             n: module.n(),
             cols: cols,
-            limbs: limbs,
+            size: size,
             _marker: PhantomData,
         }
     }
@@ -91,7 +91,7 @@ impl<B: Backend> VecZnxDft<B> {
             ptr: self.ptr,
             n: self.n,
             cols: self.cols,
-            limbs: self.limbs,
+            size: self.size,
             _marker: PhantomData,
         }
     }
@@ -102,10 +102,6 @@ impl<B: Backend> ZnxInfos for VecZnxDft<B> {
         self.n
     }
 
-    fn log_n(&self) -> usize {
-        (usize::BITS - (self.n() - 1).leading_zeros()) as _
-    }
-
     fn rows(&self) -> usize {
         1
     }
@@ -114,12 +110,8 @@ impl<B: Backend> ZnxInfos for VecZnxDft<B> {
         self.cols
     }
 
-    fn limbs(&self) -> usize {
-        self.limbs
-    }
-
-    fn poly_count(&self) -> usize {
-        self.cols * self.limbs
+    fn size(&self) -> usize {
+        self.size
     }
 }
 
@@ -137,13 +129,13 @@ impl ZnxLayout for VecZnxDft<FFT64> {
 
 impl VecZnxDft<FFT64> {
     pub fn print(&self, n: usize) {
-        (0..self.limbs()).for_each(|i| println!("{}: {:?}", i, &self.at_limb(i)[..n]));
+        (0..self.size()).for_each(|i| println!("{}: {:?}", i, &self.at_limb(i)[..n]));
     }
 }
 
 pub trait VecZnxDftOps<B: Backend> {
     /// Allocates a vector Z[X]/(X^N+1) that stores normalized in the DFT space.
-    fn new_vec_znx_dft(&self, cols: usize, limbs: usize) -> VecZnxDft<B>;
+    fn new_vec_znx_dft(&self, cols: usize, size: usize) -> VecZnxDft<B>;
 
     /// Returns a new [VecZnxDft] with the provided bytes array as backing array.
     ///
@@ -156,7 +148,7 @@ pub trait VecZnxDftOps<B: Backend> {
     ///
     /// # Panics
     /// If `bytes.len()` < [Module::bytes_of_vec_znx_dft].
-    fn new_vec_znx_dft_from_bytes(&self, cols: usize, limbs: usize, bytes: &mut [u8]) -> VecZnxDft<B>;
+    fn new_vec_znx_dft_from_bytes(&self, cols: usize, size: usize, bytes: &mut [u8]) -> VecZnxDft<B>;
 
     /// Returns a new [VecZnxDft] with the provided bytes array as backing array.
     ///
@@ -169,7 +161,7 @@ pub trait VecZnxDftOps<B: Backend> {
     ///
     /// # Panics
     /// If `bytes.len()` < [Module::bytes_of_vec_znx_dft].
-    fn new_vec_znx_dft_from_bytes_borrow(&self, cols: usize, limbs: usize, bytes: &mut [u8]) -> VecZnxDft<B>;
+    fn new_vec_znx_dft_from_bytes_borrow(&self, cols: usize, size: usize, bytes: &mut [u8]) -> VecZnxDft<B>;
 
     /// Returns a new [VecZnxDft] with the provided bytes array as backing array.
     ///
@@ -180,7 +172,7 @@ pub trait VecZnxDftOps<B: Backend> {
     ///
     /// # Panics
     /// If `bytes.len()` < [Module::bytes_of_vec_znx_dft].
-    fn bytes_of_vec_znx_dft(&self, cols: usize, limbs: usize) -> usize;
+    fn bytes_of_vec_znx_dft(&self, cols: usize, size: usize) -> usize;
 
     /// Returns the minimum number of bytes necessary to allocate
     /// a new [VecZnxDft] through [VecZnxDft::from_bytes].
@@ -201,20 +193,20 @@ pub trait VecZnxDftOps<B: Backend> {
 }
 
 impl VecZnxDftOps<FFT64> for Module<FFT64> {
-    fn new_vec_znx_dft(&self, cols: usize, limbs: usize) -> VecZnxDft<FFT64> {
-        VecZnxDft::<FFT64>::new(&self, cols, limbs)
+    fn new_vec_znx_dft(&self, cols: usize, size: usize) -> VecZnxDft<FFT64> {
+        VecZnxDft::<FFT64>::new(&self, cols, size)
     }
 
-    fn new_vec_znx_dft_from_bytes(&self, cols: usize, limbs: usize, tmp_bytes: &mut [u8]) -> VecZnxDft<FFT64> {
-        VecZnxDft::from_bytes(self, cols, limbs, tmp_bytes)
+    fn new_vec_znx_dft_from_bytes(&self, cols: usize, size: usize, tmp_bytes: &mut [u8]) -> VecZnxDft<FFT64> {
+        VecZnxDft::from_bytes(self, cols, size, tmp_bytes)
     }
 
-    fn new_vec_znx_dft_from_bytes_borrow(&self, cols: usize, limbs: usize, tmp_bytes: &mut [u8]) -> VecZnxDft<FFT64> {
-        VecZnxDft::from_bytes_borrow(self, cols, limbs, tmp_bytes)
+    fn new_vec_znx_dft_from_bytes_borrow(&self, cols: usize, size: usize, tmp_bytes: &mut [u8]) -> VecZnxDft<FFT64> {
+        VecZnxDft::from_bytes_borrow(self, cols, size, tmp_bytes)
     }
 
-    fn bytes_of_vec_znx_dft(&self, cols: usize, limbs: usize) -> usize {
-        VecZnxDft::bytes_of(&self, cols, limbs)
+    fn bytes_of_vec_znx_dft(&self, cols: usize, size: usize) -> usize {
+        VecZnxDft::bytes_of(&self, cols, size)
     }
 
     fn vec_znx_idft_tmp_a(&self, b: &mut VecZnxBig<FFT64>, a: &mut VecZnxDft<FFT64>) {
@@ -242,9 +234,9 @@ impl VecZnxDftOps<FFT64> for Module<FFT64> {
             vec_znx_dft::vec_znx_dft(
                 self.ptr,
                 b.ptr as *mut vec_znx_dft_t,
-                b.limbs() as u64,
+                b.size() as u64,
                 a.as_ptr(),
-                a.limbs() as u64,
+                a.size() as u64,
                 (a.n() * a.cols()) as u64,
             )
         }
@@ -329,14 +321,14 @@ mod tests {
         let n: usize = 8;
         let module: Module<FFT64> = Module::<FFT64>::new(n);
 
-        let limbs: usize = 2;
+        let size: usize = 2;
         let log_base2k: usize = 17;
-        let mut a: VecZnx = module.new_vec_znx(1, limbs);
-        let mut a_dft: VecZnxDft<FFT64> = module.new_vec_znx_dft(1, limbs);
-        let mut b_dft: VecZnxDft<FFT64> = module.new_vec_znx_dft(1, limbs);
+        let mut a: VecZnx = module.new_vec_znx(1, size);
+        let mut a_dft: VecZnxDft<FFT64> = module.new_vec_znx_dft(1, size);
+        let mut b_dft: VecZnxDft<FFT64> = module.new_vec_znx_dft(1, size);
 
         let mut source: Source = Source::new([0u8; 32]);
-        module.fill_uniform(log_base2k, &mut a, 0, limbs, &mut source);
+        module.fill_uniform(log_base2k, &mut a, 0, size, &mut source);
 
         let mut tmp_bytes: Vec<u8> = alloc_aligned(module.vec_znx_dft_automorphism_tmp_bytes());
 

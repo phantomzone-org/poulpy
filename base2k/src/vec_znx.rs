@@ -1,11 +1,10 @@
 use crate::Backend;
 use crate::ZnxBase;
 use crate::cast_mut;
-use crate::ffi::vec_znx;
 use crate::ffi::znx;
-use crate::{Module, ZnxInfos, ZnxLayout};
+use crate::switch_degree;
+use crate::{Module, ZnxBasics, ZnxInfos, ZnxLayout};
 use crate::{alloc_aligned, assert_alignement};
-use itertools::izip;
 use std::cmp::min;
 
 /// [VecZnx] represents collection of contiguously stacked vector of small norm polynomials of
@@ -26,8 +25,8 @@ pub struct VecZnx {
     /// The number of polynomials
     pub cols: usize,
 
-    /// The number of limbs per polynomial (a.k.a small polynomials).
-    pub limbs: usize,
+    /// The number of size per polynomial (a.k.a small polynomials).
+    pub size: usize,
 
     /// Polynomial coefficients, as a contiguous array. Each col is equally spaced by n.
     pub data: Vec<i64>,
@@ -41,10 +40,6 @@ impl ZnxInfos for VecZnx {
         self.n
     }
 
-    fn log_n(&self) -> usize {
-        (usize::BITS - (self.n() - 1).leading_zeros()) as _
-    }
-
     fn rows(&self) -> usize {
         1
     }
@@ -53,12 +48,8 @@ impl ZnxInfos for VecZnx {
         self.cols
     }
 
-    fn limbs(&self) -> usize {
-        self.limbs
-    }
-
-    fn poly_count(&self) -> usize {
-        self.cols * self.limbs
+    fn size(&self) -> usize {
+        self.size
     }
 }
 
@@ -73,6 +64,8 @@ impl ZnxLayout for VecZnx {
         self.ptr
     }
 }
+
+impl ZnxBasics for VecZnx {}
 
 /// Copies the coefficients of `a` on the receiver.
 /// Copy is done with the minimum size matching both backing arrays.
@@ -89,28 +82,28 @@ impl<B: Backend> ZnxBase<B> for VecZnx {
     type Scalar = i64;
 
     /// Allocates a new [VecZnx] composed of #size polynomials of Z\[X\].
-    fn new(module: &Module<B>, cols: usize, limbs: usize) -> Self {
+    fn new(module: &Module<B>, cols: usize, size: usize) -> Self {
         let n: usize = module.n();
         #[cfg(debug_assertions)]
         {
             assert!(n > 0);
             assert!(n & (n - 1) == 0);
             assert!(cols > 0);
-            assert!(limbs > 0);
+            assert!(size > 0);
         }
-        let mut data: Vec<i64> = alloc_aligned::<i64>(Self::bytes_of(module, cols, limbs));
+        let mut data: Vec<i64> = alloc_aligned::<i64>(Self::bytes_of(module, cols, size));
         let ptr: *mut i64 = data.as_mut_ptr();
         Self {
             n: n,
             cols: cols,
-            limbs: limbs,
+            size: size,
             data: data,
             ptr: ptr,
         }
     }
 
-    fn bytes_of(module: &Module<B>, cols: usize, limbs: usize) -> usize {
-        module.n() * cols * limbs * size_of::<i64>()
+    fn bytes_of(module: &Module<B>, cols: usize, size: usize) -> usize {
+        module.n() * cols * size * size_of::<i64>()
     }
 
     /// Returns a new struct implementing [VecZnx] with the provided data as backing array.
@@ -118,14 +111,14 @@ impl<B: Backend> ZnxBase<B> for VecZnx {
     /// The struct will take ownership of buf[..[Self::bytes_of]]
     ///
     /// User must ensure that data is properly alligned and that
-    /// the limbs of data is equal to [Self::bytes_of].
-    fn from_bytes(module: &Module<B>, cols: usize, limbs: usize, bytes: &mut [u8]) -> Self {
+    /// the size of data is equal to [Self::bytes_of].
+    fn from_bytes(module: &Module<B>, cols: usize, size: usize, bytes: &mut [u8]) -> Self {
         let n: usize = module.n();
         #[cfg(debug_assertions)]
         {
             assert!(cols > 0);
-            assert!(limbs > 0);
-            assert_eq!(bytes.len(), Self::bytes_of(module, cols, limbs));
+            assert!(size > 0);
+            assert_eq!(bytes.len(), Self::bytes_of(module, cols, size));
             assert_alignement(bytes.as_ptr());
         }
         unsafe {
@@ -134,25 +127,25 @@ impl<B: Backend> ZnxBase<B> for VecZnx {
             Self {
                 n: n,
                 cols: cols,
-                limbs: limbs,
+                size: size,
                 data: Vec::from_raw_parts(ptr, bytes.len(), bytes.len()),
                 ptr: ptr,
             }
         }
     }
 
-    fn from_bytes_borrow(module: &Module<B>, cols: usize, limbs: usize, bytes: &mut [u8]) -> Self {
+    fn from_bytes_borrow(module: &Module<B>, cols: usize, size: usize, bytes: &mut [u8]) -> Self {
         #[cfg(debug_assertions)]
         {
             assert!(cols > 0);
-            assert!(limbs > 0);
-            assert!(bytes.len() >= Self::bytes_of(module, cols, limbs));
+            assert!(size > 0);
+            assert!(bytes.len() >= Self::bytes_of(module, cols, size));
             assert_alignement(bytes.as_ptr());
         }
         Self {
             n: module.n(),
             cols: cols,
-            limbs: limbs,
+            size: size,
             data: Vec::new(),
             ptr: bytes.as_mut_ptr() as *mut i64,
         }
@@ -173,16 +166,16 @@ impl VecZnx {
 
         if !self.borrowing() {
             self.data
-                .truncate(self.n() * self.cols() * (self.limbs() - k / log_base2k));
+                .truncate(self.n() * self.cols() * (self.size() - k / log_base2k));
         }
 
-        self.limbs -= k / log_base2k;
+        self.size -= k / log_base2k;
 
         let k_rem: usize = k % log_base2k;
 
         if k_rem != 0 {
             let mask: i64 = ((1 << (log_base2k - k_rem - 1)) - 1) << k_rem;
-            self.at_limb_mut(self.limbs() - 1)
+            self.at_limb_mut(self.size() - 1)
                 .iter_mut()
                 .for_each(|x: &mut i64| *x &= mask)
         }
@@ -196,16 +189,8 @@ impl VecZnx {
         self.data.len() == 0
     }
 
-    pub fn zero(&mut self) {
-        unsafe { znx::znx_zero_i64_ref((self.n * self.poly_count()) as u64, self.ptr) }
-    }
-
     pub fn normalize(&mut self, log_base2k: usize, carry: &mut [u8]) {
         normalize(log_base2k, self, carry)
-    }
-
-    pub fn rsh(&mut self, log_base2k: usize, k: usize, carry: &mut [u8]) {
-        rsh(log_base2k, self, k, carry)
     }
 
     pub fn switch_degree(&self, a: &mut Self) {
@@ -214,34 +199,12 @@ impl VecZnx {
 
     // Prints the first `n` coefficients of each limb
     pub fn print(&self, n: usize) {
-        (0..self.limbs()).for_each(|i| println!("{}: {:?}", i, &self.at_limb(i)[..n]))
+        (0..self.size()).for_each(|i| println!("{}: {:?}", i, &self.at_limb(i)[..n]))
     }
 }
 
-pub fn switch_degree(b: &mut VecZnx, a: &VecZnx) {
-    let (n_in, n_out) = (a.n(), b.n());
-    let (gap_in, gap_out): (usize, usize);
-
-    if n_in > n_out {
-        (gap_in, gap_out) = (n_in / n_out, 1)
-    } else {
-        (gap_in, gap_out) = (1, n_out / n_in);
-        b.zero();
-    }
-
-    let limbs: usize = min(a.limbs(), b.limbs());
-
-    (0..limbs).for_each(|i| {
-        izip!(
-            a.at_limb(i).iter().step_by(gap_in),
-            b.at_limb_mut(i).iter_mut().step_by(gap_out)
-        )
-        .for_each(|(x_in, x_out)| *x_out = *x_in);
-    });
-}
-
-fn normalize_tmp_bytes(n: usize, limbs: usize) -> usize {
-    n * limbs * std::mem::size_of::<i64>()
+fn normalize_tmp_bytes(n: usize, size: usize) -> usize {
+    n * size * std::mem::size_of::<i64>()
 }
 
 fn normalize(log_base2k: usize, a: &mut VecZnx, tmp_bytes: &mut [u8]) {
@@ -264,7 +227,7 @@ fn normalize(log_base2k: usize, a: &mut VecZnx, tmp_bytes: &mut [u8]) {
 
     unsafe {
         znx::znx_zero_i64_ref(n as u64, carry_i64.as_mut_ptr());
-        (0..a.limbs()).rev().for_each(|i| {
+        (0..a.size()).rev().for_each(|i| {
             znx::znx_normalize(
                 (n * cols) as u64,
                 log_base2k as u64,
@@ -274,464 +237,5 @@ fn normalize(log_base2k: usize, a: &mut VecZnx, tmp_bytes: &mut [u8]) {
                 carry_i64.as_mut_ptr(),
             )
         });
-    }
-}
-
-pub fn rsh_tmp_bytes(n: usize, limbs: usize) -> usize {
-    n * limbs * std::mem::size_of::<i64>()
-}
-
-pub fn rsh(log_base2k: usize, a: &mut VecZnx, k: usize, tmp_bytes: &mut [u8]) {
-    let n: usize = a.n();
-    let limbs: usize = a.limbs();
-
-    #[cfg(debug_assertions)]
-    {
-        assert!(
-            tmp_bytes.len() >= rsh_tmp_bytes(n, limbs),
-            "invalid carry: carry.len()/8={} < rsh_tmp_bytes({}, {})",
-            tmp_bytes.len() >> 3,
-            n,
-            limbs,
-        );
-        assert_alignement(tmp_bytes.as_ptr());
-    }
-
-    let limbs: usize = a.limbs();
-    let size_steps: usize = k / log_base2k;
-
-    a.raw_mut().rotate_right(n * limbs * size_steps);
-    unsafe {
-        znx::znx_zero_i64_ref((n * limbs * size_steps) as u64, a.as_mut_ptr());
-    }
-
-    let k_rem = k % log_base2k;
-
-    if k_rem != 0 {
-        let carry_i64: &mut [i64] = cast_mut(tmp_bytes);
-
-        unsafe {
-            znx::znx_zero_i64_ref((n * limbs) as u64, carry_i64.as_mut_ptr());
-        }
-
-        let log_base2k: usize = log_base2k;
-
-        (size_steps..limbs).for_each(|i| {
-            izip!(carry_i64.iter_mut(), a.at_limb_mut(i).iter_mut()).for_each(|(ci, xi)| {
-                *xi += *ci << log_base2k;
-                *ci = get_base_k_carry(*xi, k_rem);
-                *xi = (*xi - *ci) >> k_rem;
-            });
-        })
-    }
-}
-
-#[inline(always)]
-fn get_base_k_carry(x: i64, k: usize) -> i64 {
-    (x << 64 - k) >> (64 - k)
-}
-
-pub trait VecZnxOps {
-    /// Allocates a new [VecZnx].
-    ///
-    /// # Arguments
-    ///
-    /// * `cols`: the number of polynomials.
-    /// * `limbs`: the number of limbs per polynomial (a.k.a small polynomials).
-    fn new_vec_znx(&self, cols: usize, limbs: usize) -> VecZnx;
-
-    fn new_vec_znx_from_bytes(&self, cols: usize, limbs: usize, bytes: &mut [u8]) -> VecZnx;
-    fn new_vec_znx_from_bytes_borrow(&self, cols: usize, limbs: usize, tmp_bytes: &mut [u8]) -> VecZnx;
-
-    /// Returns the minimum number of bytes necessary to allocate
-    /// a new [VecZnx] through [VecZnx::from_bytes].
-    fn bytes_of_vec_znx(&self, cols: usize, size: usize) -> usize;
-
-    fn vec_znx_normalize_tmp_bytes(&self, cols: usize) -> usize;
-
-    /// c <- a + b.
-    fn vec_znx_add(&self, c: &mut VecZnx, a: &VecZnx, b: &VecZnx);
-
-    /// b <- b + a.
-    fn vec_znx_add_inplace(&self, b: &mut VecZnx, a: &VecZnx);
-
-    /// c <- a - b.
-    fn vec_znx_sub(&self, c: &mut VecZnx, a: &VecZnx, b: &VecZnx);
-
-    /// b <- a - b.
-    fn vec_znx_sub_ab_inplace(&self, b: &mut VecZnx, a: &VecZnx);
-
-    /// b <- b - a.
-    fn vec_znx_sub_ba_inplace(&self, b: &mut VecZnx, a: &VecZnx);
-
-    /// b <- -a.
-    fn vec_znx_negate(&self, b: &mut VecZnx, a: &VecZnx);
-
-    /// b <- -b.
-    fn vec_znx_negate_inplace(&self, a: &mut VecZnx);
-
-    /// b <- a * X^k (mod X^{n} + 1)
-    fn vec_znx_rotate(&self, k: i64, b: &mut VecZnx, a: &VecZnx);
-
-    /// a <- a * X^k (mod X^{n} + 1)
-    fn vec_znx_rotate_inplace(&self, k: i64, a: &mut VecZnx);
-
-    /// b <- phi_k(a) where phi_k: X^i -> X^{i*k} (mod (X^{n} + 1))
-    fn vec_znx_automorphism(&self, k: i64, b: &mut VecZnx, a: &VecZnx);
-
-    /// a <- phi_k(a) where phi_k: X^i -> X^{i*k} (mod (X^{n} + 1))
-    fn vec_znx_automorphism_inplace(&self, k: i64, a: &mut VecZnx);
-
-    /// Splits b into subrings and copies them them into a.
-    ///
-    /// # Panics
-    ///
-    /// This method requires that all [VecZnx] of b have the same ring degree
-    /// and that b.n() * b.len() <= a.n()
-    fn vec_znx_split(&self, b: &mut Vec<VecZnx>, a: &VecZnx, buf: &mut VecZnx);
-
-    /// Merges the subrings a into b.
-    ///
-    /// # Panics
-    ///
-    /// This method requires that all [VecZnx] of a have the same ring degree
-    /// and that a.n() * a.len() <= b.n()
-    fn vec_znx_merge(&self, b: &mut VecZnx, a: &Vec<VecZnx>);
-}
-
-impl<B: Backend> VecZnxOps for Module<B> {
-    fn new_vec_znx(&self, cols: usize, limbs: usize) -> VecZnx {
-        VecZnx::new(self, cols, limbs)
-    }
-
-    fn bytes_of_vec_znx(&self, cols: usize, limbs: usize) -> usize {
-        VecZnx::bytes_of(self, cols, limbs)
-    }
-
-    fn new_vec_znx_from_bytes(&self, cols: usize, limbs: usize, bytes: &mut [u8]) -> VecZnx {
-        VecZnx::from_bytes(self, cols, limbs, bytes)
-    }
-
-    fn new_vec_znx_from_bytes_borrow(&self, cols: usize, limbs: usize, tmp_bytes: &mut [u8]) -> VecZnx {
-        VecZnx::from_bytes_borrow(self, cols, limbs, tmp_bytes)
-    }
-
-    fn vec_znx_normalize_tmp_bytes(&self, cols: usize) -> usize {
-        unsafe { vec_znx::vec_znx_normalize_base2k_tmp_bytes(self.ptr) as usize * cols }
-    }
-
-    // c <- a + b
-    fn vec_znx_add(&self, c: &mut VecZnx, a: &VecZnx, b: &VecZnx) {
-        let n: usize = self.n();
-        #[cfg(debug_assertions)]
-        {
-            assert_eq!(c.n(), n);
-            assert_eq!(a.n(), n);
-            assert_eq!(b.n(), n);
-        }
-        unsafe {
-            vec_znx::vec_znx_add(
-                self.ptr,
-                c.as_mut_ptr(),
-                c.limbs() as u64,
-                (n * c.cols()) as u64,
-                a.as_ptr(),
-                a.limbs() as u64,
-                (n * a.cols()) as u64,
-                b.as_ptr(),
-                b.limbs() as u64,
-                (n * b.cols()) as u64,
-            )
-        }
-    }
-
-    // b <- a + b
-    fn vec_znx_add_inplace(&self, b: &mut VecZnx, a: &VecZnx) {
-        let n: usize = self.n();
-        #[cfg(debug_assertions)]
-        {
-            assert_eq!(a.n(), n);
-            assert_eq!(b.n(), n);
-        }
-        unsafe {
-            vec_znx::vec_znx_add(
-                self.ptr,
-                b.as_mut_ptr(),
-                b.limbs() as u64,
-                (n * b.cols()) as u64,
-                a.as_ptr(),
-                a.limbs() as u64,
-                (n * a.cols()) as u64,
-                b.as_ptr(),
-                b.limbs() as u64,
-                (n * b.cols()) as u64,
-            )
-        }
-    }
-
-    // c <- a + b
-    fn vec_znx_sub(&self, c: &mut VecZnx, a: &VecZnx, b: &VecZnx) {
-        let n: usize = self.n();
-        #[cfg(debug_assertions)]
-        {
-            assert_eq!(c.n(), n);
-            assert_eq!(a.n(), n);
-            assert_eq!(b.n(), n);
-        }
-        unsafe {
-            vec_znx::vec_znx_sub(
-                self.ptr,
-                c.as_mut_ptr(),
-                c.limbs() as u64,
-                (n * c.cols()) as u64,
-                a.as_ptr(),
-                a.limbs() as u64,
-                (n * a.cols()) as u64,
-                b.as_ptr(),
-                b.limbs() as u64,
-                (n * b.cols()) as u64,
-            )
-        }
-    }
-
-    // b <- a - b
-    fn vec_znx_sub_ab_inplace(&self, b: &mut VecZnx, a: &VecZnx) {
-        let n: usize = self.n();
-        #[cfg(debug_assertions)]
-        {
-            assert_eq!(a.n(), n);
-            assert_eq!(b.n(), n);
-        }
-        unsafe {
-            vec_znx::vec_znx_sub(
-                self.ptr,
-                b.as_mut_ptr(),
-                b.limbs() as u64,
-                (n * b.cols()) as u64,
-                a.as_ptr(),
-                a.limbs() as u64,
-                (n * a.cols()) as u64,
-                b.as_ptr(),
-                b.limbs() as u64,
-                (n * b.cols()) as u64,
-            )
-        }
-    }
-
-    // b <- b - a
-    fn vec_znx_sub_ba_inplace(&self, b: &mut VecZnx, a: &VecZnx) {
-        let n: usize = self.n();
-        #[cfg(debug_assertions)]
-        {
-            assert_eq!(a.n(), n);
-            assert_eq!(b.n(), n);
-        }
-        unsafe {
-            vec_znx::vec_znx_sub(
-                self.ptr,
-                b.as_mut_ptr(),
-                b.limbs() as u64,
-                (n * b.cols()) as u64,
-                b.as_ptr(),
-                b.limbs() as u64,
-                (n * b.cols()) as u64,
-                a.as_ptr(),
-                a.limbs() as u64,
-                (n * a.cols()) as u64,
-            )
-        }
-    }
-
-    fn vec_znx_negate(&self, b: &mut VecZnx, a: &VecZnx) {
-        let n: usize = self.n();
-        #[cfg(debug_assertions)]
-        {
-            assert_eq!(a.n(), n);
-            assert_eq!(b.n(), n);
-        }
-        unsafe {
-            vec_znx::vec_znx_negate(
-                self.ptr,
-                b.as_mut_ptr(),
-                b.limbs() as u64,
-                (n * b.cols()) as u64,
-                a.as_ptr(),
-                a.limbs() as u64,
-                (n * a.cols()) as u64,
-            )
-        }
-    }
-
-    fn vec_znx_negate_inplace(&self, a: &mut VecZnx) {
-        let n: usize = self.n();
-        #[cfg(debug_assertions)]
-        {
-            assert_eq!(a.n(), n);
-        }
-        unsafe {
-            vec_znx::vec_znx_negate(
-                self.ptr,
-                a.as_mut_ptr(),
-                a.limbs() as u64,
-                (n * a.cols()) as u64,
-                a.as_ptr(),
-                a.limbs() as u64,
-                (n * a.cols()) as u64,
-            )
-        }
-    }
-
-    fn vec_znx_rotate(&self, k: i64, b: &mut VecZnx, a: &VecZnx) {
-        let n: usize = self.n();
-        #[cfg(debug_assertions)]
-        {
-            assert_eq!(a.n(), n);
-            assert_eq!(b.n(), n);
-        }
-        unsafe {
-            vec_znx::vec_znx_rotate(
-                self.ptr,
-                k,
-                b.as_mut_ptr(),
-                b.limbs() as u64,
-                (n * b.cols()) as u64,
-                a.as_ptr(),
-                a.limbs() as u64,
-                (n * a.cols()) as u64,
-            )
-        }
-    }
-
-    fn vec_znx_rotate_inplace(&self, k: i64, a: &mut VecZnx) {
-        let n: usize = self.n();
-        #[cfg(debug_assertions)]
-        {
-            assert_eq!(a.n(), n);
-        }
-        unsafe {
-            vec_znx::vec_znx_rotate(
-                self.ptr,
-                k,
-                a.as_mut_ptr(),
-                a.limbs() as u64,
-                (n * a.cols()) as u64,
-                a.as_ptr(),
-                a.limbs() as u64,
-                (n * a.cols()) as u64,
-            )
-        }
-    }
-
-    /// Maps X^i to X^{ik} mod X^{n}+1. The mapping is applied independently on each size.
-    ///
-    /// # Arguments
-    ///
-    /// * `a`: input.
-    /// * `b`: output.
-    /// * `k`: the power to which to map each coefficients.
-    /// * `a_size`: the number of a_size on which to apply the mapping.
-    ///
-    /// # Panics
-    ///
-    /// The method will panic if the argument `a` is greater than `a.limbs()`.
-    fn vec_znx_automorphism(&self, k: i64, b: &mut VecZnx, a: &VecZnx) {
-        let n: usize = self.n();
-        #[cfg(debug_assertions)]
-        {
-            assert_eq!(a.n(), n);
-            assert_eq!(b.n(), n);
-        }
-        unsafe {
-            vec_znx::vec_znx_automorphism(
-                self.ptr,
-                k,
-                b.as_mut_ptr(),
-                b.limbs() as u64,
-                (n * b.cols()) as u64,
-                a.as_ptr(),
-                a.limbs() as u64,
-                (n * a.cols()) as u64,
-            );
-        }
-    }
-
-    /// Maps X^i to X^{ik} mod X^{n}+1. The mapping is applied independently on each size.
-    ///
-    /// # Arguments
-    ///
-    /// * `a`: input and output.
-    /// * `k`: the power to which to map each coefficients.
-    /// * `a_size`: the number of size on which to apply the mapping.
-    ///
-    /// # Panics
-    ///
-    /// The method will panic if the argument `size` is greater than `self.limbs()`.
-    fn vec_znx_automorphism_inplace(&self, k: i64, a: &mut VecZnx) {
-        let n: usize = self.n();
-        #[cfg(debug_assertions)]
-        {
-            assert_eq!(a.n(), n);
-        }
-        unsafe {
-            vec_znx::vec_znx_automorphism(
-                self.ptr,
-                k,
-                a.as_mut_ptr(),
-                a.limbs() as u64,
-                (n * a.cols()) as u64,
-                a.as_ptr(),
-                a.limbs() as u64,
-                (n * a.cols()) as u64,
-            );
-        }
-    }
-
-    fn vec_znx_split(&self, b: &mut Vec<VecZnx>, a: &VecZnx, buf: &mut VecZnx) {
-        let (n_in, n_out) = (a.n(), b[0].n());
-
-        debug_assert!(
-            n_out < n_in,
-            "invalid a: output ring degree should be smaller"
-        );
-        b[1..].iter().for_each(|bi| {
-            debug_assert_eq!(
-                bi.n(),
-                n_out,
-                "invalid input a: all VecZnx must have the same degree"
-            )
-        });
-
-        b.iter_mut().enumerate().for_each(|(i, bi)| {
-            if i == 0 {
-                switch_degree(bi, a);
-                self.vec_znx_rotate(-1, buf, a);
-            } else {
-                switch_degree(bi, buf);
-                self.vec_znx_rotate_inplace(-1, buf);
-            }
-        })
-    }
-
-    fn vec_znx_merge(&self, b: &mut VecZnx, a: &Vec<VecZnx>) {
-        let (n_in, n_out) = (b.n(), a[0].n());
-
-        debug_assert!(
-            n_out < n_in,
-            "invalid a: output ring degree should be smaller"
-        );
-        a[1..].iter().for_each(|ai| {
-            debug_assert_eq!(
-                ai.n(),
-                n_out,
-                "invalid input a: all VecZnx must have the same degree"
-            )
-        });
-
-        a.iter().enumerate().for_each(|(_, ai)| {
-            switch_degree(b, ai);
-            self.vec_znx_rotate_inplace(-1, b);
-        });
-
-        self.vec_znx_rotate_inplace(a.len() as i64, b);
     }
 }

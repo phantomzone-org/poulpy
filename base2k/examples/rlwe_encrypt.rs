@@ -35,7 +35,7 @@ fn main() {
     module.fill_uniform(log_base2k, &mut a, 0, limbs, &mut source);
 
     // Scratch space for DFT values
-    let mut buf_dft: VecZnxDft<FFT64> = module.new_vec_znx_dft(1, a.limbs());
+    let mut buf_dft: VecZnxDft<FFT64> = module.new_vec_znx_dft(1, a.size());
 
     // Applies buf_dft <- s * a
     module.svp_apply_dft(&mut buf_dft, &s_ppol, &a);
@@ -93,9 +93,9 @@ fn main() {
 
     // have = m * 2^{log_scale} + e
     let mut have: Vec<i64> = vec![i64::default(); n];
-    res.decode_vec_i64(0, log_base2k, res.limbs() * log_base2k, &mut have);
+    res.decode_vec_i64(0, log_base2k, res.size() * log_base2k, &mut have);
 
-    let scale: f64 = (1 << (res.limbs() * log_base2k - log_scale)) as f64;
+    let scale: f64 = (1 << (res.size() * log_base2k - log_scale)) as f64;
     izip!(want.iter(), have.iter())
         .enumerate()
         .for_each(|(i, (a, b))| {
