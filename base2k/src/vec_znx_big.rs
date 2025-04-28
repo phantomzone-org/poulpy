@@ -1,5 +1,5 @@
 use crate::ffi::vec_znx_big::{self, vec_znx_big_t};
-use crate::{Backend, FFT64, Module, VecZnx, VecZnxDft, ZnxBase, ZnxInfos, ZnxLayout, alloc_aligned, assert_alignement};
+use crate::{Backend, FFT64, Module, VecZnx, ZnxBase, ZnxInfos, ZnxLayout, alloc_aligned, assert_alignement};
 use std::marker::PhantomData;
 
 pub struct VecZnxBig<B: Backend> {

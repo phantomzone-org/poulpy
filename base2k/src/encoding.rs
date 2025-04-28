@@ -271,9 +271,9 @@ mod tests {
         let n: usize = 8;
         let module: Module<FFT64> = Module::<FFT64>::new(n);
         let log_base2k: usize = 17;
-        let cols: usize = 5;
-        let log_k: usize = cols * log_base2k - 5;
-        let mut a: VecZnx = VecZnx::new(&module, 2, cols);
+        let limbs: usize = 5;
+        let log_k: usize = limbs * log_base2k - 5;
+        let mut a: VecZnx = VecZnx::new(&module, 2, limbs);
         let mut source: Source = Source::new([0u8; 32]);
         let raw: &mut [i64] = a.raw_mut();
         raw.iter_mut().enumerate().for_each(|(i, x)| *x = i as i64);
@@ -293,9 +293,9 @@ mod tests {
         let n: usize = 8;
         let module: Module<FFT64> = Module::<FFT64>::new(n);
         let log_base2k: usize = 17;
-        let cols: usize = 5;
-        let log_k: usize = cols * log_base2k - 5;
-        let mut a: VecZnx = VecZnx::new(&module, 2, cols);
+        let limbs: usize = 5;
+        let log_k: usize = limbs * log_base2k - 5;
+        let mut a: VecZnx = VecZnx::new(&module, 2, limbs);
         let mut source = Source::new([0u8; 32]);
         let raw: &mut [i64] = a.raw_mut();
         raw.iter_mut().enumerate().for_each(|(i, x)| *x = i as i64);
