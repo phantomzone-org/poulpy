@@ -19,7 +19,7 @@ impl<B: Backend> ZnxBase<B> for VecZnxBig<B> {
             assert!(cols > 0);
             assert!(size > 0);
         }
-        let mut data: Vec<Self::Scalar> = alloc_aligned::<u8>(Self::bytes_of(module, cols, size));
+        let mut data: Vec<Self::Scalar> = alloc_aligned(Self::bytes_of(module, cols, size));
         let ptr: *mut Self::Scalar = data.as_mut_ptr();
         Self {
             data: data,
@@ -124,7 +124,7 @@ pub trait VecZnxBigOps<B: Backend> {
     /// # Arguments
     ///
     /// * `cols`: the number of polynomials..
-    /// * `size`: the number of size (a.k.a small polynomials) per polynomial.
+    /// * `size`: the number of polynomials per column.
     /// * `bytes`: a byte array of size at least [Module::bytes_of_vec_znx_big].
     ///
     /// # Panics
@@ -138,7 +138,7 @@ pub trait VecZnxBigOps<B: Backend> {
     /// # Arguments
     ///
     /// * `cols`: the number of polynomials..
-    /// * `size`: the number of size (a.k.a small polynomials) per polynomial.
+    /// * `size`: the number of polynomials per column.
     /// * `bytes`: a byte array of size at least [Module::bytes_of_vec_znx_big].
     ///
     /// # Panics
@@ -149,39 +149,45 @@ pub trait VecZnxBigOps<B: Backend> {
     /// a new [VecZnxBig] through [VecZnxBig::from_bytes].
     fn bytes_of_vec_znx_big(&self, cols: usize, size: usize) -> usize;
 
-    /// b[VecZnxBig] <- b[VecZnxBig] - a[VecZnx]
-    ///
-    /// # Behavior
-    ///
-    /// [VecZnxBig] (3 cols and 4 size)
-    /// [a0, b0, c0] [a1, b1, c1] [a2, b2, c2] [a3, b3, c3]
-    /// -
-    /// [VecZnx] (2 cols and 3 size)
-    /// [d0, e0] [d1, e1] [d2, e2]
-    /// =
-    /// [a0-d0, b0-e0, c0] [a1-d1, b1-e1, c1] [a2-d2, b2-e2, c2] [a3, b3, c3]
+    /// Subtracts `a` to `b` and stores the result on `b`.
     fn vec_znx_big_sub_small_a_inplace(&self, b: &mut VecZnxBig<B>, a: &VecZnx);
 
-    /// c <- b - a
+    /// Subtracts `b` to `a` and stores the result on `c`.
     fn vec_znx_big_sub_small_a(&self, c: &mut VecZnxBig<B>, a: &VecZnx, b: &VecZnxBig<B>);
 
-    /// c <- b + a
+    /// Adds `a` to `b` and stores the result on `c`.
     fn vec_znx_big_add_small(&self, c: &mut VecZnxBig<B>, a: &VecZnx, b: &VecZnxBig<B>);
 
-    /// b <- b + a
+    /// Adds `a` to `b` and stores the result on `b`.
     fn vec_znx_big_add_small_inplace(&self, b: &mut VecZnxBig<B>, a: &VecZnx);
 
+    /// Returns the minimum number of bytes to apply [VecZnxBigOps::vec_znx_big_normalize].
     fn vec_znx_big_normalize_tmp_bytes(&self) -> usize;
 
-    /// b <- normalize(a)
+    /// Normalizes `a` and stores the result on `b`.
+    ///
+    /// # Arguments
+    ///
+    /// * `log_base2k`: normalization basis.
+    /// * `tmp_bytes`: scratch space of size at least [VecZnxBigOps::vec_znx_big_normalize].
     fn vec_znx_big_normalize(&self, log_base2k: usize, b: &mut VecZnx, a: &VecZnxBig<B>, tmp_bytes: &mut [u8]);
 
+    /// Returns the minimum number of bytes to apply [VecZnxBigOps::vec_znx_big_range_normalize_base2k].
     fn vec_znx_big_range_normalize_base2k_tmp_bytes(&self) -> usize;
 
+    /// Normalize `a`, taking into account column interleaving and stores the result on `b`.
+    ///
+    /// # Arguments
+    ///
+    /// * `log_base2k`: normalization basis.
+    /// * `a_range_begin`: column to start.
+    /// * `a_range_end`: column to end.
+    /// * `a_range_step`: column step size.
+    /// * `tmp_bytes`: scratch space of size at least [VecZnxBigOps::vec_znx_big_range_normalize_base2k_tmp_bytes].
     fn vec_znx_big_range_normalize_base2k(
         &self,
         log_base2k: usize,
-        res: &mut VecZnx,
+        b: &mut VecZnx,
         a: &VecZnxBig<B>,
         a_range_begin: usize,
         a_range_xend: usize,
@@ -189,9 +195,11 @@ pub trait VecZnxBigOps<B: Backend> {
         tmp_bytes: &mut [u8],
     );
 
-    fn vec_znx_big_automorphism(&self, gal_el: i64, b: &mut VecZnxBig<B>, a: &VecZnxBig<B>);
+    /// Applies the automorphism X^i -> X^ik on `a` and stores the result on `b`.
+    fn vec_znx_big_automorphism(&self, k: i64, b: &mut VecZnxBig<B>, a: &VecZnxBig<B>);
 
-    fn vec_znx_big_automorphism_inplace(&self, gal_el: i64, a: &mut VecZnxBig<B>);
+    /// Applies the automorphism X^i -> X^ik on `a` and stores the result on `a`.
+    fn vec_znx_big_automorphism_inplace(&self, k: i64, a: &mut VecZnxBig<B>);
 }
 
 impl VecZnxBigOps<FFT64> for Module<FFT64> {
@@ -211,13 +219,6 @@ impl VecZnxBigOps<FFT64> for Module<FFT64> {
         VecZnxBig::bytes_of(self, cols, size)
     }
 
-    /// [VecZnxBig] (3 cols and 4 size)
-    /// [a0, b0, c0] [a1, b1, c1] [a2, b2, c2] [a3, b3, c3]
-    /// -
-    /// [VecZnx] (2 cols and 3 size)
-    /// [d0, e0] [d1, e1] [d2, e2]
-    /// =
-    /// [a0-d0, b0-e0, c0] [a1-d1, b1-e1, c1] [a2-d2, b2-e2, c2] [a3, b3, c3]
     fn vec_znx_big_sub_small_a_inplace(&self, b: &mut VecZnxBig<FFT64>, a: &VecZnx) {
         unsafe {
             vec_znx_big::vec_znx_big_sub_small_a(
