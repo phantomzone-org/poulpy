@@ -341,7 +341,7 @@ mod tests {
         module.vec_znx_dft_automorphism_inplace(p, &mut a_dft, &mut tmp_bytes);
 
         // a <- AUTO(a)
-        module.vec_znx_automorphism_inplace(p, &mut a);
+        module.vec_znx_automorphism_inplace(p, &mut a, 0);
 
         // b_dft <- DFT(AUTO(a))
         module.vec_znx_dft(&mut b_dft, &a);

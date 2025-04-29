@@ -107,7 +107,7 @@ fn encode_vec_i64(a: &mut VecZnx, col_i: usize, log_base2k: usize, log_k: usize,
     // values on the last limb.
     // Else we decompose values base2k.
     if log_max + log_k_rem < 63 || log_k_rem == log_base2k {
-        a.at_poly_mut(col_i, size - 1)[..data_len].copy_from_slice(&data[..data_len]);
+        a.at_mut(col_i, size - 1)[..data_len].copy_from_slice(&data[..data_len]);
     } else {
         let mask: i64 = (1 << log_base2k) - 1;
         let steps: usize = min(size, (log_max + log_base2k - 1) / log_base2k);
@@ -116,7 +116,7 @@ fn encode_vec_i64(a: &mut VecZnx, col_i: usize, log_base2k: usize, log_k: usize,
             .enumerate()
             .for_each(|(i, i_rev)| {
                 let shift: usize = i * log_base2k;
-                izip!(a.at_poly_mut(col_i, i_rev).iter_mut(), data.iter()).for_each(|(y, x)| *y = (x >> shift) & mask);
+                izip!(a.at_mut(col_i, i_rev).iter_mut(), data.iter()).for_each(|(y, x)| *y = (x >> shift) & mask);
             })
     }
 
@@ -124,7 +124,7 @@ fn encode_vec_i64(a: &mut VecZnx, col_i: usize, log_base2k: usize, log_k: usize,
     if log_k_rem != log_base2k {
         let steps: usize = min(size, (log_max + log_base2k - 1) / log_base2k);
         (size - steps..size).rev().for_each(|i| {
-            a.at_poly_mut(col_i, i)[..data_len]
+            a.at_mut(col_i, i)[..data_len]
                 .iter_mut()
                 .for_each(|x| *x <<= log_k_rem);
         })
@@ -143,16 +143,16 @@ fn decode_vec_i64(a: &VecZnx, col_i: usize, log_base2k: usize, log_k: usize, dat
         );
         assert!(col_i < a.cols());
     }
-    data.copy_from_slice(a.at_poly(col_i, 0));
+    data.copy_from_slice(a.at(col_i, 0));
     let rem: usize = log_base2k - (log_k % log_base2k);
     (1..size).for_each(|i| {
         if i == size - 1 && rem != log_base2k {
             let k_rem: usize = log_base2k - rem;
-            izip!(a.at_poly(col_i, i).iter(), data.iter_mut()).for_each(|(x, y)| {
+            izip!(a.at(col_i, i).iter(), data.iter_mut()).for_each(|(x, y)| {
                 *y = (*y << k_rem) + (x >> rem);
             });
         } else {
-            izip!(a.at_poly(col_i, i).iter(), data.iter_mut()).for_each(|(x, y)| {
+            izip!(a.at(col_i, i).iter(), data.iter_mut()).for_each(|(x, y)| {
                 *y = (*y << log_base2k) + x;
             });
         }
@@ -180,12 +180,12 @@ fn decode_vec_float(a: &VecZnx, col_i: usize, log_base2k: usize, data: &mut [Flo
     // y[i] = sum x[j][i] * 2^{-log_base2k*j}
     (0..size).for_each(|i| {
         if i == 0 {
-            izip!(a.at_poly(col_i, size - i - 1).iter(), data.iter_mut()).for_each(|(x, y)| {
+            izip!(a.at(col_i, size - i - 1).iter(), data.iter_mut()).for_each(|(x, y)| {
                 y.assign(*x);
                 *y /= &base;
             });
         } else {
-            izip!(a.at_poly(col_i, size - i - 1).iter(), data.iter_mut()).for_each(|(x, y)| {
+            izip!(a.at(col_i, size - i - 1).iter(), data.iter_mut()).for_each(|(x, y)| {
                 *y += Float::with_val(prec, *x);
                 *y /= &base;
             });
@@ -209,13 +209,13 @@ fn encode_coeff_i64(a: &mut VecZnx, col_i: usize, log_base2k: usize, log_k: usiz
     }
 
     let log_k_rem: usize = log_base2k - (log_k % log_base2k);
-    (0..a.size()).for_each(|j| a.at_poly_mut(col_i, j)[i] = 0);
+    (0..a.size()).for_each(|j| a.at_mut(col_i, j)[i] = 0);
 
     // If 2^{log_base2k} * 2^{log_k_rem} < 2^{63}-1, then we can simply copy
     // values on the last limb.
     // Else we decompose values base2k.
     if log_max + log_k_rem < 63 || log_k_rem == log_base2k {
-        a.at_poly_mut(col_i, size - 1)[i] = value;
+        a.at_mut(col_i, size - 1)[i] = value;
     } else {
         let mask: i64 = (1 << log_base2k) - 1;
         let steps: usize = min(size, (log_max + log_base2k - 1) / log_base2k);
@@ -223,7 +223,7 @@ fn encode_coeff_i64(a: &mut VecZnx, col_i: usize, log_base2k: usize, log_k: usiz
             .rev()
             .enumerate()
             .for_each(|(j, j_rev)| {
-                a.at_poly_mut(col_i, j_rev)[i] = (value >> (j * log_base2k)) & mask;
+                a.at_mut(col_i, j_rev)[i] = (value >> (j * log_base2k)) & mask;
             })
     }
 
@@ -231,7 +231,7 @@ fn encode_coeff_i64(a: &mut VecZnx, col_i: usize, log_base2k: usize, log_k: usiz
     if log_k_rem != log_base2k {
         let steps: usize = min(size, (log_max + log_base2k - 1) / log_base2k);
         (size - steps..size).rev().for_each(|j| {
-            a.at_poly_mut(col_i, j)[i] <<= log_k_rem;
+            a.at_mut(col_i, j)[i] <<= log_k_rem;
         })
     }
 }
