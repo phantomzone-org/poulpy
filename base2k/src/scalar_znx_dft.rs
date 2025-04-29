@@ -230,7 +230,7 @@ pub trait ScalarZnxDftOps<B: Backend> {
 
     /// Applies the [SvpPPol] x [VecZnxDft] product, where each limb of
     /// the [VecZnxDft] is multiplied with [SvpPPol].
-    fn svp_apply_dft(&self, c: &mut VecZnxDft<B>, a: &ScalarZnxDft<B>, b: &VecZnx);
+    fn svp_apply_dft(&self, c: &mut VecZnxDft<B>, a: &ScalarZnxDft<B>, b: &VecZnx, b_col: usize);
 }
 
 impl ScalarZnxDftOps<FFT64> for Module<FFT64> {
@@ -261,16 +261,16 @@ impl ScalarZnxDftOps<FFT64> for Module<FFT64> {
         unsafe { svp::svp_prepare(self.ptr, svp_ppol.ptr as *mut svp_ppol_t, a.as_ptr()) }
     }
 
-    fn svp_apply_dft(&self, c: &mut VecZnxDft<FFT64>, a: &ScalarZnxDft<FFT64>, b: &VecZnx) {
+    fn svp_apply_dft(&self, c: &mut VecZnxDft<FFT64>, a: &ScalarZnxDft<FFT64>, b: &VecZnx, b_col: usize) {
         unsafe {
             svp::svp_apply_dft(
                 self.ptr,
                 c.ptr as *mut vec_znx_dft_t,
-                c.cols() as u64,
+                c.size() as u64,
                 a.ptr as *const svp_ppol_t,
-                b.as_ptr(),
-                b.cols() as u64,
-                b.n() as u64,
+                b.at_ptr(b_col, 0),
+                b.size() as u64,
+                b.sl() as u64,
             )
         }
     }

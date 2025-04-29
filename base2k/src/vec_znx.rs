@@ -193,8 +193,8 @@ impl VecZnx {
         normalize(log_base2k, self, carry)
     }
 
-    pub fn switch_degree(&self, a: &mut Self) {
-        switch_degree(a, self)
+    pub fn switch_degree(&self, col: usize, a: &mut Self, col_a: usize) {
+        switch_degree(a, col_a, self, col)
     }
 
     // Prints the first `n` coefficients of each limb

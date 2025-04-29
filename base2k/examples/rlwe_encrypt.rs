@@ -1,6 +1,6 @@
 use base2k::{
     Encoding, FFT64, Module, Sampling, Scalar, ScalarZnxDft, ScalarZnxDftOps, VecZnx, VecZnxBig, VecZnxBigOps, VecZnxDft,
-    VecZnxDftOps, VecZnxOps, ZnxInfos, ZnxLayout, alloc_aligned,
+    VecZnxDftOps, VecZnxOps, ZnxInfos, alloc_aligned,
 };
 use itertools::izip;
 use sampling::source::Source;
@@ -13,12 +13,10 @@ fn main() {
     let log_scale: usize = msg_size * log_base2k - 5;
     let module: Module<FFT64> = Module::<FFT64>::new(n);
 
-    let mut carry: Vec<u8> = alloc_aligned(module.vec_znx_big_normalize_tmp_bytes(1));
+    let mut carry: Vec<u8> = alloc_aligned(module.vec_znx_big_normalize_tmp_bytes(2));
 
     let seed: [u8; 32] = [0; 32];
     let mut source: Source = Source::new(seed);
-
-    let mut res: VecZnx = module.new_vec_znx(1, ct_size);
 
     // s <- Z_{-1, 0, 1}[X]/(X^{N}+1)
     let mut s: Scalar = Scalar::new(n);
@@ -30,47 +28,50 @@ fn main() {
     // s_ppol <- DFT(s)
     module.svp_prepare(&mut s_ppol, &s);
 
-    // a <- Z_{2^prec}[X]/(X^{N}+1)
-    let mut a: VecZnx = module.new_vec_znx(1, ct_size);
-    module.fill_uniform(log_base2k, &mut a, 0, ct_size, &mut source);
+    // ct = (c0, c1)
+    let mut ct: VecZnx = module.new_vec_znx(2, ct_size);
+
+    // Fill c1 with random values
+    module.fill_uniform(log_base2k, &mut ct, 1, ct_size, &mut source);
 
     // Scratch space for DFT values
-    let mut buf_dft: VecZnxDft<FFT64> = module.new_vec_znx_dft(1, a.size());
+    let mut buf_dft: VecZnxDft<FFT64> = module.new_vec_znx_dft(1, ct.size());
 
-    // Applies buf_dft <- s * a
-    module.svp_apply_dft(&mut buf_dft, &s_ppol, &a);
+    // Applies buf_dft <- s * c1
+    module.svp_apply_dft(
+        &mut buf_dft, // DFT(c1 * s)
+        &s_ppol,
+        &ct,
+        1, // c1
+    );
 
-    // Alias scratch space
+    // Alias scratch space (VecZnxDftis always at least as big as VecZnxBig)
     let mut buf_big: VecZnxBig<FFT64> = buf_dft.as_vec_znx_big();
 
-    // buf_big <- IDFT(buf_dft) (not normalized)
+    // BIG(c1 * s) <- IDFT(DFT(c1 * s)) (not normalized)
     module.vec_znx_idft_tmp_a(&mut buf_big, &mut buf_dft);
 
-    println!("{:?}", buf_big.raw());
-
+    // m <- (0)
     let mut m: VecZnx = module.new_vec_znx(1, msg_size);
-
     let mut want: Vec<i64> = vec![0; n];
     want.iter_mut()
         .for_each(|x| *x = source.next_u64n(16, 15) as i64);
-
-    // m
     m.encode_vec_i64(0, log_base2k, log_scale, &want, 4);
     m.normalize(log_base2k, &mut carry);
 
-    // buf_big <- m - buf_big
+    // m - BIG(c1 * s)
     module.vec_znx_big_sub_small_ab_inplace(&mut buf_big, &m);
 
-    println!("{:?}", buf_big.raw());
+    // c0 <- m - BIG(c1 * s)
+    module.vec_znx_big_normalize(log_base2k, &mut ct, &buf_big, &mut carry);
 
-    // b <- normalize(buf_big) + e
-    let mut b: VecZnx = module.new_vec_znx(1, ct_size);
-    module.vec_znx_big_normalize(log_base2k, &mut b, &buf_big, &mut carry);
-    b.print(n);
+    ct.print(ct.sl());
+
+    // (c0 + e, c1)
     module.add_normal(
         log_base2k,
-        &mut b,
-        0,
+        &mut ct,
+        0, // c0
         log_base2k * ct_size,
         &mut source,
         3.2,
@@ -79,16 +80,16 @@ fn main() {
 
     // Decrypt
 
-    // buf_big <- a * s
-    module.svp_apply_dft(&mut buf_dft, &s_ppol, &a);
+    // DFT(c1 * s)
+    module.svp_apply_dft(&mut buf_dft, &s_ppol, &ct, 1);
+    // BIG(c1 * s) = IDFT(DFT(c1 * s))
     module.vec_znx_idft_tmp_a(&mut buf_big, &mut buf_dft);
 
-    // buf_big <- a * s + b
-    module.vec_znx_big_add_small_inplace(&mut buf_big, &b);
+    // BIG(c1 * s) + c0
+    module.vec_znx_big_add_small_inplace(&mut buf_big, &ct);
 
-    println!("raw: {:?}", &buf_big.raw());
-
-    // res <- normalize(buf_big)
+    // m + e <- BIG(c1 * s + c0)
+    let mut res: VecZnx = module.new_vec_znx(1, ct_size);
     module.vec_znx_big_normalize(log_base2k, &mut res, &buf_big, &mut carry);
 
     // have = m * 2^{log_scale} + e

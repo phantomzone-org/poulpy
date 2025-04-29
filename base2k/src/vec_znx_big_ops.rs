@@ -232,9 +232,9 @@ impl VecZnxBigOps<FFT64> for Module<FFT64> {
         }
 
         let a_size: usize = a.size();
-        let b_size: usize = b.sl();
-        let a_sl: usize = a.size();
-        let b_sl: usize = a.sl();
+        let b_size: usize = b.size();
+        let a_sl: usize = a.sl();
+        let b_sl: usize = b.sl();
         let a_cols: usize = a.cols();
         let b_cols: usize = b.cols();
         let min_cols: usize = min(a_cols, b_cols);

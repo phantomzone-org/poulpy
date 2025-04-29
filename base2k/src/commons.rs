@@ -81,12 +81,12 @@ pub trait ZnxLayout: ZnxInfos {
     }
 
     /// Returns non-mutable reference to the (i, j)-th small polynomial.
-    fn at_poly(&self, i: usize, j: usize) -> &[Self::Scalar] {
+    fn at(&self, i: usize, j: usize) -> &[Self::Scalar] {
         unsafe { std::slice::from_raw_parts(self.at_ptr(i, j), self.n()) }
     }
 
     /// Returns mutable reference to the (i, j)-th small polynomial.
-    fn at_poly_mut(&mut self, i: usize, j: usize) -> &mut [Self::Scalar] {
+    fn at_mut(&mut self, i: usize, j: usize) -> &mut [Self::Scalar] {
         unsafe { std::slice::from_raw_parts_mut(self.at_mut_ptr(i, j), self.n()) }
     }
 
@@ -219,7 +219,7 @@ pub fn rsh_tmp_bytes<T: IntegerType>(n: usize, cols: usize) -> usize {
     n * cols * std::mem::size_of::<T>()
 }
 
-pub fn switch_degree<T: ZnxLayout + ZnxBasics>(b: &mut T, a: &T)
+pub fn switch_degree<T: ZnxLayout + ZnxBasics>(b: &mut T, col_b: usize, a: &T, col_a: usize)
 where
     <T as ZnxLayout>::Scalar: IntegerType,
 {
@@ -237,8 +237,8 @@ where
 
     (0..size).for_each(|i| {
         izip!(
-            a.at_limb(i).iter().step_by(gap_in),
-            b.at_limb_mut(i).iter_mut().step_by(gap_out)
+            a.at(col_a, i).iter().step_by(gap_in),
+            b.at_mut(col_b, i).iter_mut().step_by(gap_out)
         )
         .for_each(|(x_in, x_out)| *x_out = *x_in);
     });
