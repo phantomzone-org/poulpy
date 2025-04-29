@@ -46,7 +46,7 @@ fn main() {
     module.vec_znx_idft_tmp_a(&mut c_big, &mut c_dft);
 
     let mut res: VecZnx = module.new_vec_znx(1, limbs_vec);
-    module.vec_znx_big_normalize(log_base2k, &mut res, &c_big, &mut buf);
+    module.vec_znx_big_normalize(log_base2k, &mut res, 0, &c_big, 0, &mut buf);
 
     let mut values_res: Vec<i64> = vec![i64::default(); n];
     res.decode_vec_i64(0, log_base2k, log_k, &mut values_res);
