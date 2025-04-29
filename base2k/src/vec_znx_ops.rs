@@ -8,49 +8,72 @@ pub trait VecZnxOps {
     /// # Arguments
     ///
     /// * `cols`: the number of polynomials.
-    /// * `size`: the number of size per polynomial (a.k.a small polynomials).
+    /// * `size`: the number small polynomials per column.
     fn new_vec_znx(&self, cols: usize, size: usize) -> VecZnx;
 
+    /// Instantiates a new [VecZnx] from a slice of bytes.
+    /// The returned [VecZnx] takes ownership of the slice of bytes.
+    ///
+    /// # Arguments
+    ///
+    /// * `cols`: the number of polynomials.
+    /// * `size`: the number small polynomials per column.
+    ///
+    /// # Panic
+    /// Requires the slice of bytes to be equal to [VecZnxOps::bytes_of_vec_znx].
     fn new_vec_znx_from_bytes(&self, cols: usize, size: usize, bytes: &mut [u8]) -> VecZnx;
+
+    /// Instantiates a new [VecZnx] from a slice of bytes.
+    /// The returned [VecZnx] does take ownership of the slice of bytes.
+    ///
+    /// # Arguments
+    ///
+    /// * `cols`: the number of polynomials.
+    /// * `size`: the number small polynomials per column.
+    ///
+    /// # Panic
+    /// Requires the slice of bytes to be equal to [VecZnxOps::bytes_of_vec_znx].
     fn new_vec_znx_from_bytes_borrow(&self, cols: usize, size: usize, tmp_bytes: &mut [u8]) -> VecZnx;
 
-    /// Returns the minimum number of bytes necessary to allocate
-    /// a new [VecZnx] through [VecZnx::from_bytes].
+    /// Returns the number of bytes necessary to allocate
+    /// a new [VecZnx] through [VecZnxOps::new_vec_znx_from_bytes]
+    /// or [VecZnxOps::new_vec_znx_from_bytes_borrow].
     fn bytes_of_vec_znx(&self, cols: usize, size: usize) -> usize;
 
+    /// Returns the minimum number of bytes necessary for normalization.
     fn vec_znx_normalize_tmp_bytes(&self, cols: usize) -> usize;
 
-    /// c <- a + b.
+    /// Adds `a` to `b` and write the result on `c`.
     fn vec_znx_add(&self, c: &mut VecZnx, a: &VecZnx, b: &VecZnx);
 
-    /// b <- b + a.
+    /// Adds `a` to `b` and write the result on `b`.
     fn vec_znx_add_inplace(&self, b: &mut VecZnx, a: &VecZnx);
 
-    /// c <- a - b.
+    /// Subtracts `b` to `a` and write the result on `c`.
     fn vec_znx_sub(&self, c: &mut VecZnx, a: &VecZnx, b: &VecZnx);
 
-    /// b <- a - b.
+    /// Subtracts `a` to `b` and write the result on `b`.
     fn vec_znx_sub_ab_inplace(&self, b: &mut VecZnx, a: &VecZnx);
 
-    /// b <- b - a.
+    /// Subtracts `b` to `a` and write the result on `b`.
     fn vec_znx_sub_ba_inplace(&self, b: &mut VecZnx, a: &VecZnx);
 
-    /// b <- -a.
+    // Negates `a` and stores the result on `b`.
     fn vec_znx_negate(&self, b: &mut VecZnx, a: &VecZnx);
 
-    /// b <- -b.
+    /// Negages `a` and stores the result on `a`.
     fn vec_znx_negate_inplace(&self, a: &mut VecZnx);
 
-    /// b <- a * X^k (mod X^{n} + 1)
+    /// Multiplies `a` by X^k and stores the result on `b`.
     fn vec_znx_rotate(&self, k: i64, b: &mut VecZnx, a: &VecZnx);
 
-    /// a <- a * X^k (mod X^{n} + 1)
+    /// Multiplies `a` by X^k and stores the result on `a`.
     fn vec_znx_rotate_inplace(&self, k: i64, a: &mut VecZnx);
 
-    /// b <- phi_k(a) where phi_k: X^i -> X^{i*k} (mod (X^{n} + 1))
+    /// Applies the automorphism X^i -> X^ik on `a` and stores the result on `b`.
     fn vec_znx_automorphism(&self, k: i64, b: &mut VecZnx, a: &VecZnx);
 
-    /// a <- phi_k(a) where phi_k: X^i -> X^{i*k} (mod (X^{n} + 1))
+    /// Applies the automorphism X^i -> X^ik on `a` and stores the result on `a`.
     fn vec_znx_automorphism_inplace(&self, k: i64, a: &mut VecZnx);
 
     /// Splits b into subrings and copies them them into a.
@@ -179,18 +202,6 @@ impl<B: Backend> VecZnxOps for Module<B> {
         }
     }
 
-    /// Maps X^i to X^{ik} mod X^{n}+1. The mapping is applied independently on each size.
-    ///
-    /// # Arguments
-    ///
-    /// * `a`: input.
-    /// * `b`: output.
-    /// * `k`: the power to which to map each coefficients.
-    /// * `a_size`: the number of a_size on which to apply the mapping.
-    ///
-    /// # Panics
-    ///
-    /// The method will panic if the argument `a` is greater than `a.size()`.
     fn vec_znx_automorphism(&self, k: i64, b: &mut VecZnx, a: &VecZnx) {
         let op = ffi_binary_op_factory_type_1(
             self.ptr,
@@ -204,17 +215,6 @@ impl<B: Backend> VecZnxOps for Module<B> {
         vec_znx_apply_unary_op::<B>(self, b, a, op);
     }
 
-    /// Maps X^i to X^{ik} mod X^{n}+1. The mapping is applied independently on each size.
-    ///
-    /// # Arguments
-    ///
-    /// * `a`: input and output.
-    /// * `k`: the power to which to map each coefficients.
-    /// * `a_size`: the number of size on which to apply the mapping.
-    ///
-    /// # Panics
-    ///
-    /// The method will panic if the argument `size` is greater than `self.size()`.
     fn vec_znx_automorphism_inplace(&self, k: i64, a: &mut VecZnx) {
         unsafe {
             let a_ptr: *mut VecZnx = a as *mut VecZnx;
@@ -357,14 +357,11 @@ pub fn vec_znx_apply_binary_op<B: Backend, const NEGATE: bool>(
         assert_eq!(c.n(), module.n());
         assert_ne!(a.as_ptr(), b.as_ptr());
     }
-
     let a_cols: usize = a.cols();
     let b_cols: usize = b.cols();
     let c_cols: usize = c.cols();
-
     let min_ab_cols: usize = min(a_cols, b_cols);
     let min_cols: usize = min(c_cols, min_ab_cols);
-
     // Applies over shared cols between (a, b, c)
     (0..min_cols).for_each(|i| op(c.at_poly_mut(i, 0), a.at_poly(i, 0), b.at_poly(i, 0)));
     // Copies/Negates/Zeroes the remaining cols if op is not inplace.
@@ -620,25 +617,30 @@ mod tests {
                     let min_cols: usize = min(*c_cols, min_ab_cols);
                     let min_size: usize = min(c_size, min(a_size, b_size));
 
+                    // Allocats a and populates with random values.
                     let mut a: VecZnx = module.new_vec_znx(*a_cols, a_size);
                     (0..*a_cols).for_each(|i| {
                         module.fill_uniform(3, &mut a, i, a_size, &mut source);
                     });
 
+                    // Allocats b and populates with random values.
                     let mut b: VecZnx = module.new_vec_znx(*b_cols, b_size);
                     (0..*b_cols).for_each(|i| {
                         module.fill_uniform(3, &mut b, i, b_size, &mut source);
                     });
 
+                    // Allocats c and populates with random values.
                     let mut c_have: VecZnx = module.new_vec_znx(*c_cols, c_size);
                     (0..c_have.cols()).for_each(|i| {
                         module.fill_uniform(3, &mut c_have, i, c_size, &mut source);
                     });
 
+                    // Applies the function to test
                     func_have(&mut c_have, &a, &b);
 
                     let mut c_want: VecZnx = module.new_vec_znx(*c_cols, c_size);
 
+                    // Applies the reference function and expected behavior.
                     // Adds with the minimum matching columns
                     (0..min_cols).for_each(|i| {
                         // Adds with th eminimum matching size
@@ -687,11 +689,13 @@ mod tests {
                 let min_cols: usize = min(*b_cols, *a_cols);
                 let min_size: usize = min(b_size, a_size);
 
+                // Allocats a and populates with random values.
                 let mut a: VecZnx = module.new_vec_znx(*a_cols, a_size);
                 (0..*a_cols).for_each(|i| {
                     module.fill_uniform(3, &mut a, i, a_size, &mut source);
                 });
 
+                // Allocats b and populates with random values.
                 let mut b_have: VecZnx = module.new_vec_znx(*b_cols, b_size);
                 (0..*b_cols).for_each(|i| {
                     module.fill_uniform(3, &mut b_have, i, b_size, &mut source);
@@ -700,8 +704,10 @@ mod tests {
                 let mut b_want: VecZnx = module.new_vec_znx(*b_cols, b_size);
                 b_want.raw_mut().copy_from_slice(b_have.raw());
 
+                // Applies the function to test.
                 func_have(&mut b_have, &a);
 
+                // Applies the reference function and expected behavior.
                 // Applies with the minimum matching columns
                 (0..min_cols).for_each(|i| {
                     // Adds with th eminimum matching size
@@ -732,11 +738,13 @@ mod tests {
                 let min_cols: usize = min(*b_cols, *a_cols);
                 let min_size: usize = min(b_size, a_size);
 
+                // Allocats a and populates with random values.
                 let mut a: VecZnx = module.new_vec_znx(*a_cols, a_size);
                 (0..a.cols()).for_each(|i| {
                     module.fill_uniform(3, &mut a, i, a_size, &mut source);
                 });
 
+                // Allocats b and populates with random values.
                 let mut b_have: VecZnx = module.new_vec_znx(*b_cols, b_size);
                 (0..b_have.cols()).for_each(|i| {
                     module.fill_uniform(3, &mut b_have, i, b_size, &mut source);
@@ -744,8 +752,10 @@ mod tests {
 
                 let mut b_want: VecZnx = module.new_vec_znx(*b_cols, b_size);
 
+                // Applies the function to test.
                 func_have(&mut b_have, &a);
 
+                // Applies the reference function and expected behavior.
                 // Applies on the minimum matching columns
                 (0..min_cols).for_each(|i| {
                     // Applies on the minimum matching size
@@ -778,11 +788,14 @@ mod tests {
                 module.fill_uniform(3, &mut a_have, i, a_size, &mut source);
             });
 
+            // Allocats a and populates with random values.
             let mut a_want: VecZnx = module.new_vec_znx(*a_cols, a_size);
             a_have.raw_mut().copy_from_slice(a_want.raw());
 
+            // Applies the function to test.
             func_have(&mut a_have);
 
+            // Applies the reference function and expected behavior.
             // Applies on the minimum matching columns
             (0..*a_cols).for_each(|i| {
                 // Applies on the minimum matching size
