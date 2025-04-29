@@ -8,17 +8,17 @@ use sampling::source::Source;
 fn main() {
     let n: usize = 16;
     let log_base2k: usize = 18;
-    let limbs: usize = 3;
-    let msg_cols: usize = 2;
-    let log_scale: usize = msg_cols * log_base2k - 5;
+    let ct_size: usize = 3;
+    let msg_size: usize = 2;
+    let log_scale: usize = msg_size * log_base2k - 5;
     let module: Module<FFT64> = Module::<FFT64>::new(n);
 
-    let mut carry: Vec<u8> = alloc_aligned(module.vec_znx_big_normalize_tmp_bytes());
+    let mut carry: Vec<u8> = alloc_aligned(module.vec_znx_big_normalize_tmp_bytes(1));
 
     let seed: [u8; 32] = [0; 32];
     let mut source: Source = Source::new(seed);
 
-    let mut res: VecZnx = module.new_vec_znx(1, limbs);
+    let mut res: VecZnx = module.new_vec_znx(1, ct_size);
 
     // s <- Z_{-1, 0, 1}[X]/(X^{N}+1)
     let mut s: Scalar = Scalar::new(n);
@@ -31,8 +31,8 @@ fn main() {
     module.svp_prepare(&mut s_ppol, &s);
 
     // a <- Z_{2^prec}[X]/(X^{N}+1)
-    let mut a: VecZnx = module.new_vec_znx(1, limbs);
-    module.fill_uniform(log_base2k, &mut a, 0, limbs, &mut source);
+    let mut a: VecZnx = module.new_vec_znx(1, ct_size);
+    module.fill_uniform(log_base2k, &mut a, 0, ct_size, &mut source);
 
     // Scratch space for DFT values
     let mut buf_dft: VecZnxDft<FFT64> = module.new_vec_znx_dft(1, a.size());
@@ -48,7 +48,7 @@ fn main() {
 
     println!("{:?}", buf_big.raw());
 
-    let mut m: VecZnx = module.new_vec_znx(1, msg_cols);
+    let mut m: VecZnx = module.new_vec_znx(1, msg_size);
 
     let mut want: Vec<i64> = vec![0; n];
     want.iter_mut()
@@ -64,14 +64,14 @@ fn main() {
     println!("{:?}", buf_big.raw());
 
     // b <- normalize(buf_big) + e
-    let mut b: VecZnx = module.new_vec_znx(1, limbs);
+    let mut b: VecZnx = module.new_vec_znx(1, ct_size);
     module.vec_znx_big_normalize(log_base2k, &mut b, &buf_big, &mut carry);
     b.print(n);
     module.add_normal(
         log_base2k,
         &mut b,
         0,
-        log_base2k * limbs,
+        log_base2k * ct_size,
         &mut source,
         3.2,
         19.0,

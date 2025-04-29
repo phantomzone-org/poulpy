@@ -1,7 +1,9 @@
+use std::cmp::min;
+
 use crate::ffi::module::MODULE;
 use crate::ffi::vec_znx;
 use crate::internals::{apply_binary_op, apply_unary_op, ffi_binary_op_factory_type_0, ffi_binary_op_factory_type_1};
-use crate::{Backend, Module, VecZnx, ZnxBase, ZnxInfos, switch_degree};
+use crate::{Backend, Module, VecZnx, ZnxBase, ZnxBasics, ZnxInfos, ZnxLayout, assert_alignement, switch_degree};
 pub trait VecZnxOps {
     /// Allocates a new [VecZnx].
     ///
@@ -42,6 +44,12 @@ pub trait VecZnxOps {
 
     /// Returns the minimum number of bytes necessary for normalization.
     fn vec_znx_normalize_tmp_bytes(&self, cols: usize) -> usize;
+
+    /// Normalizes `a` and stores the result into `b`.
+    fn vec_znx_normalize(&self, log_base2k: usize, b: &mut VecZnx, a: &VecZnx, tmp_bytes: &mut [u8]);
+
+    /// Normalizes `a` and stores the result into `a`.
+    fn vec_znx_normalize_inplace(&self, log_base2k: usize, a: &mut VecZnx, tmp_bytes: &mut [u8]);
 
     /// Adds `a` to `b` and write the result on `c`.
     fn vec_znx_add(&self, c: &mut VecZnx, a: &VecZnx, b: &VecZnx);
@@ -112,6 +120,44 @@ impl<B: Backend> VecZnxOps for Module<B> {
 
     fn vec_znx_normalize_tmp_bytes(&self, cols: usize) -> usize {
         unsafe { vec_znx::vec_znx_normalize_base2k_tmp_bytes(self.ptr) as usize * cols }
+    }
+
+    fn vec_znx_normalize(&self, log_base2k: usize, b: &mut VecZnx, a: &VecZnx, tmp_bytes: &mut [u8]) {
+        #[cfg(debug_assertions)]
+        {
+            assert!(tmp_bytes.len() >= Self::vec_znx_normalize_tmp_bytes(&self, a.cols()));
+            assert_alignement(tmp_bytes.as_ptr());
+        }
+
+        let a_size: usize = a.size();
+        let b_size: usize = b.sl();
+        let a_sl: usize = a.size();
+        let b_sl: usize = a.sl();
+        let a_cols: usize = a.cols();
+        let b_cols: usize = b.cols();
+        let min_cols: usize = min(a_cols, b_cols);
+        (0..min_cols).for_each(|i| unsafe {
+            vec_znx::vec_znx_normalize_base2k(
+                self.ptr,
+                log_base2k as u64,
+                b.at_mut_ptr(i, 0),
+                b_size as u64,
+                b_sl as u64,
+                a.at_ptr(i, 0),
+                a_size as u64,
+                a_sl as u64,
+                tmp_bytes.as_mut_ptr(),
+            );
+        });
+
+        (min_cols..b_cols).for_each(|i| (0..b_size).for_each(|j| b.zero_at(i, j)));
+    }
+
+    fn vec_znx_normalize_inplace(&self, log_base2k: usize, a: &mut VecZnx, tmp_bytes: &mut [u8]) {
+        unsafe {
+            let a_ptr: *mut VecZnx = a as *mut VecZnx;
+            Self::vec_znx_normalize(self, log_base2k, &mut *a_ptr, &*a_ptr, tmp_bytes);
+        }
     }
 
     fn vec_znx_add(&self, c: &mut VecZnx, a: &VecZnx, b: &VecZnx) {

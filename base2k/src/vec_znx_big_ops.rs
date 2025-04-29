@@ -1,7 +1,8 @@
-use crate::ffi::vec_znx_big::vec_znx_big_t;
-use crate::ffi::{vec_znx, vec_znx_big};
-use crate::internals::{apply_binary_op, ffi_ternary_op_factory};
-use crate::{Backend, FFT64, Module, VecZnx, VecZnxBig, ZnxBase, ZnxInfos, ZnxLayout, assert_alignement};
+use std::cmp::min;
+
+use crate::ffi::vec_znx;
+use crate::internals::{apply_binary_op, apply_unary_op, ffi_binary_op_factory_type_1, ffi_ternary_op_factory};
+use crate::{Backend, FFT64, Module, VecZnx, VecZnxBig, VecZnxOps, ZnxBase, ZnxBasics, ZnxInfos, ZnxLayout, assert_alignement};
 
 pub trait VecZnxBigOps<B: Backend> {
     /// Allocates a vector Z[X]/(X^N+1) that stores not normalized values.
@@ -73,7 +74,7 @@ pub trait VecZnxBigOps<B: Backend> {
     fn vec_znx_big_sub_small_ba_inplace(&self, b: &mut VecZnxBig<B>, a: &VecZnx);
 
     /// Returns the minimum number of bytes to apply [VecZnxBigOps::vec_znx_big_normalize].
-    fn vec_znx_big_normalize_tmp_bytes(&self) -> usize;
+    fn vec_znx_big_normalize_tmp_bytes(&self, cols: usize) -> usize;
 
     /// Normalizes `a` and stores the result on `b`.
     ///
@@ -82,29 +83,6 @@ pub trait VecZnxBigOps<B: Backend> {
     /// * `log_base2k`: normalization basis.
     /// * `tmp_bytes`: scratch space of size at least [VecZnxBigOps::vec_znx_big_normalize].
     fn vec_znx_big_normalize(&self, log_base2k: usize, b: &mut VecZnx, a: &VecZnxBig<B>, tmp_bytes: &mut [u8]);
-
-    /// Returns the minimum number of bytes to apply [VecZnxBigOps::vec_znx_big_range_normalize_base2k].
-    fn vec_znx_big_range_normalize_base2k_tmp_bytes(&self) -> usize;
-
-    /// Normalize `a`, taking into account column interleaving and stores the result on `b`.
-    ///
-    /// # Arguments
-    ///
-    /// * `log_base2k`: normalization basis.
-    /// * `a_range_begin`: column to start.
-    /// * `a_range_end`: column to end.
-    /// * `a_range_step`: column step size.
-    /// * `tmp_bytes`: scratch space of size at least [VecZnxBigOps::vec_znx_big_range_normalize_base2k_tmp_bytes].
-    fn vec_znx_big_range_normalize_base2k(
-        &self,
-        log_base2k: usize,
-        b: &mut VecZnx,
-        a: &VecZnxBig<B>,
-        a_range_begin: usize,
-        a_range_xend: usize,
-        a_range_step: usize,
-        tmp_bytes: &mut [u8],
-    );
 
     /// Applies the automorphism X^i -> X^ik on `a` and stores the result on `b`.
     fn vec_znx_big_automorphism(&self, k: i64, b: &mut VecZnxBig<B>, a: &VecZnxBig<B>);
@@ -242,98 +220,58 @@ impl VecZnxBigOps<FFT64> for Module<FFT64> {
         }
     }
 
-    fn vec_znx_big_normalize_tmp_bytes(&self) -> usize {
-        unsafe { vec_znx_big::vec_znx_big_normalize_base2k_tmp_bytes(self.ptr) as usize }
+    fn vec_znx_big_normalize_tmp_bytes(&self, cols: usize) -> usize {
+        Self::vec_znx_normalize_tmp_bytes(self, cols)
     }
 
     fn vec_znx_big_normalize(&self, log_base2k: usize, b: &mut VecZnx, a: &VecZnxBig<FFT64>, tmp_bytes: &mut [u8]) {
-        debug_assert!(
-            tmp_bytes.len() >= Self::vec_znx_big_normalize_tmp_bytes(self),
-            "invalid tmp_bytes: tmp_bytes.len()={} <= self.vec_znx_big_normalize_tmp_bytes()={}",
-            tmp_bytes.len(),
-            Self::vec_znx_big_normalize_tmp_bytes(self)
-        );
         #[cfg(debug_assertions)]
         {
-            assert_alignement(tmp_bytes.as_ptr())
+            assert!(tmp_bytes.len() >= Self::vec_znx_big_normalize_tmp_bytes(&self, a.cols()));
+            assert_alignement(tmp_bytes.as_ptr());
         }
-        unsafe {
-            vec_znx_big::vec_znx_big_normalize_base2k(
+
+        let a_size: usize = a.size();
+        let b_size: usize = b.sl();
+        let a_sl: usize = a.size();
+        let b_sl: usize = a.sl();
+        let a_cols: usize = a.cols();
+        let b_cols: usize = b.cols();
+        let min_cols: usize = min(a_cols, b_cols);
+        (0..min_cols).for_each(|i| unsafe {
+            vec_znx::vec_znx_normalize_base2k(
                 self.ptr,
                 log_base2k as u64,
-                b.as_mut_ptr(),
-                b.size() as u64,
-                b.n() as u64,
-                a.ptr as *mut vec_znx_big_t,
-                a.size() as u64,
+                b.at_mut_ptr(i, 0),
+                b_size as u64,
+                b_sl as u64,
+                a.at_ptr(i, 0),
+                a_size as u64,
+                a_sl as u64,
                 tmp_bytes.as_mut_ptr(),
-            )
-        }
+            );
+        });
+
+        (min_cols..b_cols).for_each(|i| (0..b_size).for_each(|j| b.zero_at(i, j)));
     }
 
-    fn vec_znx_big_range_normalize_base2k_tmp_bytes(&self) -> usize {
-        unsafe { vec_znx_big::vec_znx_big_range_normalize_base2k_tmp_bytes(self.ptr) as usize }
-    }
-
-    fn vec_znx_big_range_normalize_base2k(
-        &self,
-        log_base2k: usize,
-        res: &mut VecZnx,
-        a: &VecZnxBig<FFT64>,
-        a_range_begin: usize,
-        a_range_xend: usize,
-        a_range_step: usize,
-        tmp_bytes: &mut [u8],
-    ) {
-        debug_assert!(
-            tmp_bytes.len() >= Self::vec_znx_big_range_normalize_base2k_tmp_bytes(self),
-            "invalid tmp_bytes: tmp_bytes.len()={} <= self.vec_znx_big_range_normalize_base2k_tmp_bytes()={}",
-            tmp_bytes.len(),
-            Self::vec_znx_big_range_normalize_base2k_tmp_bytes(self)
+    fn vec_znx_big_automorphism(&self, k: i64, b: &mut VecZnxBig<FFT64>, a: &VecZnxBig<FFT64>) {
+        let op = ffi_binary_op_factory_type_1(
+            self.ptr,
+            k,
+            b.size(),
+            b.sl(),
+            a.size(),
+            a.sl(),
+            vec_znx::vec_znx_automorphism,
         );
-        #[cfg(debug_assertions)]
-        {
-            assert_alignement(tmp_bytes.as_ptr())
-        }
-        unsafe {
-            vec_znx_big::vec_znx_big_range_normalize_base2k(
-                self.ptr,
-                log_base2k as u64,
-                res.as_mut_ptr(),
-                res.size() as u64,
-                res.n() as u64,
-                a.ptr as *mut vec_znx_big_t,
-                a_range_begin as u64,
-                a_range_xend as u64,
-                a_range_step as u64,
-                tmp_bytes.as_mut_ptr(),
-            );
-        }
+        apply_unary_op::<FFT64, VecZnxBig<FFT64>>(self, b, a, op);
     }
 
-    fn vec_znx_big_automorphism(&self, gal_el: i64, b: &mut VecZnxBig<FFT64>, a: &VecZnxBig<FFT64>) {
+    fn vec_znx_big_automorphism_inplace(&self, k: i64, a: &mut VecZnxBig<FFT64>) {
         unsafe {
-            vec_znx_big::vec_znx_big_automorphism(
-                self.ptr,
-                gal_el,
-                b.ptr as *mut vec_znx_big_t,
-                b.poly_count() as u64,
-                a.ptr as *mut vec_znx_big_t,
-                a.poly_count() as u64,
-            );
-        }
-    }
-
-    fn vec_znx_big_automorphism_inplace(&self, gal_el: i64, a: &mut VecZnxBig<FFT64>) {
-        unsafe {
-            vec_znx_big::vec_znx_big_automorphism(
-                self.ptr,
-                gal_el,
-                a.ptr as *mut vec_znx_big_t,
-                a.poly_count() as u64,
-                a.ptr as *mut vec_znx_big_t,
-                a.poly_count() as u64,
-            );
+            let a_ptr: *mut VecZnxBig<FFT64> = a as *mut VecZnxBig<FFT64>;
+            Self::vec_znx_big_automorphism(self, k, &mut *a_ptr, &*a_ptr);
         }
     }
 }
