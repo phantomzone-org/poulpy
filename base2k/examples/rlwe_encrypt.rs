@@ -59,7 +59,7 @@ fn main() {
     m.normalize(log_base2k, &mut carry);
 
     // buf_big <- m - buf_big
-    module.vec_znx_big_sub_small_a_inplace(&mut buf_big, &m);
+    module.vec_znx_big_sub_small_ab_inplace(&mut buf_big, &m);
 
     println!("{:?}", buf_big.raw());
 

@@ -3,6 +3,7 @@ pub mod encoding;
 #[allow(non_camel_case_types, non_snake_case, non_upper_case_globals, dead_code, improper_ctypes)]
 // Other modules and exports
 pub mod ffi;
+mod internals;
 pub mod mat_znx_dft;
 pub mod module;
 pub mod sampling;
@@ -10,6 +11,7 @@ pub mod scalar_znx_dft;
 pub mod stats;
 pub mod vec_znx;
 pub mod vec_znx_big;
+pub mod vec_znx_big_ops;
 pub mod vec_znx_dft;
 pub mod vec_znx_ops;
 
@@ -23,6 +25,7 @@ pub use scalar_znx_dft::*;
 pub use stats::*;
 pub use vec_znx::*;
 pub use vec_znx_big::*;
+pub use vec_znx_big_ops::*;
 pub use vec_znx_dft::*;
 pub use vec_znx_ops::*;
 

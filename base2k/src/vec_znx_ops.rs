@@ -1,7 +1,7 @@
 use crate::ffi::module::MODULE;
 use crate::ffi::vec_znx;
-use crate::{apply_binary_op, apply_unary_op, switch_degree, znx_post_process_ternary_op, Backend, Module, VecZnx, ZnxBase, ZnxBasics, ZnxInfos, ZnxLayout};
-use std::cmp::min;
+use crate::internals::{apply_binary_op, apply_unary_op, ffi_binary_op_factory_type_0, ffi_binary_op_factory_type_1};
+use crate::{Backend, Module, VecZnx, ZnxBase, ZnxInfos, switch_degree};
 pub trait VecZnxOps {
     /// Allocates a new [VecZnx].
     ///
@@ -125,7 +125,7 @@ impl<B: Backend> VecZnxOps for Module<B> {
             b.sl(),
             vec_znx::vec_znx_add,
         );
-        apply_binary_op::<B, VecZnx, false>(self, c, a, b, op);
+        apply_binary_op::<B, VecZnx, VecZnx, VecZnx, false>(self, c, a, b, op);
     }
 
     fn vec_znx_add_inplace(&self, b: &mut VecZnx, a: &VecZnx) {
@@ -146,7 +146,7 @@ impl<B: Backend> VecZnxOps for Module<B> {
             b.sl(),
             vec_znx::vec_znx_sub,
         );
-        apply_binary_op::<B, VecZnx, true>(self, c, a, b, op);
+        apply_binary_op::<B, VecZnx, VecZnx, VecZnx, true>(self, c, a, b, op);
     }
 
     fn vec_znx_sub_ab_inplace(&self, b: &mut VecZnx, a: &VecZnx) {
@@ -298,56 +298,11 @@ fn ffi_ternary_op_factory(
     }
 }
 
-fn ffi_binary_op_factory_type_0(
-    module_ptr: *const MODULE,
-    b_size: usize,
-    b_sl: usize,
-    a_size: usize,
-    a_sl: usize,
-    op_fn: unsafe extern "C" fn(*const MODULE, *mut i64, u64, u64, *const i64, u64, u64),
-) -> impl Fn(&mut [i64], &[i64]) {
-    move |bv: &mut [i64], av: &[i64]| unsafe {
-        op_fn(
-            module_ptr,
-            bv.as_mut_ptr(),
-            b_size as u64,
-            b_sl as u64,
-            av.as_ptr(),
-            a_size as u64,
-            a_sl as u64,
-        )
-    }
-}
-
-fn ffi_binary_op_factory_type_1(
-    module_ptr: *const MODULE,
-    k: i64,
-    b_size: usize,
-    b_sl: usize,
-    a_size: usize,
-    a_sl: usize,
-    op_fn: unsafe extern "C" fn(*const MODULE, i64, *mut i64, u64, u64, *const i64, u64, u64),
-) -> impl Fn(&mut [i64], &[i64]) {
-    move |bv: &mut [i64], av: &[i64]| unsafe {
-        op_fn(
-            module_ptr,
-            k,
-            bv.as_mut_ptr(),
-            b_size as u64,
-            b_sl as u64,
-            av.as_ptr(),
-            a_size as u64,
-            a_sl as u64,
-        )
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use crate::{
-        Backend, FFT64, Module, Sampling, VecZnx, VecZnxOps, ZnxBasics, ZnxInfos, ZnxLayout, ffi::vec_znx,
-        znx_post_process_ternary_op,
-    };
+    use crate::internals::znx_post_process_ternary_op;
+    use crate::{Backend, FFT64, Module, Sampling, VecZnx, VecZnxOps, ZnxBasics, ZnxInfos, ZnxLayout, ffi::vec_znx};
+
     use itertools::izip;
     use sampling::source::Source;
     use std::cmp::min;
@@ -623,7 +578,7 @@ mod tests {
                         }
                     });
 
-                    znx_post_process_ternary_op::<_, NEGATE>(&mut c_want, &a, &b);
+                    znx_post_process_ternary_op::<VecZnx, VecZnx, VecZnx, NEGATE>(&mut c_want, &a, &b);
 
                     assert_eq!(c_have.raw(), c_want.raw());
                 });
