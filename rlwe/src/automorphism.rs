@@ -20,7 +20,7 @@ pub struct AutomorphismKey {
 }
 
 pub fn automorphis_key_new_tmp_bytes(module: &Module, log_base2k: usize, rows: usize, log_q: usize) -> usize {
-    module.bytes_of_scalar() + module.bytes_of_svp_ppol() + encrypt_grlwe_sk_tmp_bytes(module, log_base2k, rows, log_q)
+    module.bytes_of_scalar() + module.bytes_of_scalar_znx_dft() + encrypt_grlwe_sk_tmp_bytes(module, log_base2k, rows, log_q)
 }
 
 impl Parameters {
@@ -103,10 +103,10 @@ impl AutomorphismKey {
         tmp_bytes: &mut [u8],
     ) -> Vec<Self> {
         let (sk_auto_bytes, tmp_bytes) = tmp_bytes.split_at_mut(module.bytes_of_scalar());
-        let (sk_out_bytes, tmp_bytes) = tmp_bytes.split_at_mut(module.bytes_of_svp_ppol());
+        let (sk_out_bytes, tmp_bytes) = tmp_bytes.split_at_mut(module.bytes_of_scalar_znx_dft());
 
         let sk_auto: Scalar = module.new_scalar_from_bytes_borrow(sk_auto_bytes);
-        let mut sk_out: ScalarZnxDft = module.new_svp_ppol_from_bytes_borrow(sk_out_bytes);
+        let mut sk_out: ScalarZnxDft = module.new_scalar_znx_dft_from_bytes_borrow(sk_out_bytes);
 
         let mut keys: Vec<AutomorphismKey> = Vec::new();
 
@@ -116,7 +116,7 @@ impl AutomorphismKey {
             let p_inv: i64 = module.galois_element_inv(*pi);
 
             module.vec_znx_automorphism(p_inv, &mut sk_auto.as_vec_znx(), &sk.0.as_vec_znx());
-            module.svp_prepare(&mut sk_out, &sk_auto);
+            module.scalar_znx_dft_prepare(&mut sk_out, &sk_auto);
             encrypt_grlwe_sk(
                 module, &mut value, &sk.0, &sk_out, source_xa, source_xe, sigma, tmp_bytes,
             );

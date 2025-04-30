@@ -1,4 +1,3 @@
-pub mod commons;
 pub mod encoding;
 #[allow(non_camel_case_types, non_snake_case, non_upper_case_globals, dead_code, improper_ctypes)]
 // Other modules and exports
@@ -12,9 +11,10 @@ pub mod vec_znx;
 pub mod vec_znx_big;
 pub mod vec_znx_big_ops;
 pub mod vec_znx_dft;
+pub mod vec_znx_dft_ops;
 pub mod vec_znx_ops;
+pub mod znx_base;
 
-pub use commons::*;
 pub use encoding::*;
 pub use mat_znx_dft::*;
 pub use module::*;
@@ -26,7 +26,9 @@ pub use vec_znx::*;
 pub use vec_znx_big::*;
 pub use vec_znx_big_ops::*;
 pub use vec_znx_dft::*;
+pub use vec_znx_dft_ops::*;
 pub use vec_znx_ops::*;
+pub use znx_base::*;
 
 pub const GALOISGENERATOR: u64 = 5;
 pub const DEFAULTALIGN: usize = 64;
@@ -110,14 +112,8 @@ pub fn alloc_aligned_custom<T>(size: usize, align: usize) -> Vec<T> {
     unsafe { Vec::from_raw_parts(ptr, len, cap) }
 }
 
-// Allocates an aligned of size equal to the smallest power of two equal or greater to `size` that is
-// at least as bit as DEFAULTALIGN / std::mem::size_of::<T>().
+/// Allocates an aligned of size equal to the smallest multiple
+/// of [DEFAULTALIGN] that is equal or greater to `size`.
 pub fn alloc_aligned<T>(size: usize) -> Vec<T> {
-    alloc_aligned_custom::<T>(
-        std::cmp::max(
-            size.next_power_of_two(),
-            DEFAULTALIGN / std::mem::size_of::<T>(),
-        ),
-        DEFAULTALIGN,
-    )
+    alloc_aligned_custom::<T>(size + (size % DEFAULTALIGN), DEFAULTALIGN)
 }

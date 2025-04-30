@@ -20,7 +20,7 @@ impl SecretKey {
     }
 
     pub fn prepare(&self, module: &Module, sk_ppol: &mut ScalarZnxDft) {
-        module.svp_prepare(sk_ppol, &self.0)
+        module.scalar_znx_dft_prepare(sk_ppol, &self.0)
     }
 }
 

@@ -1,4 +1,4 @@
-use crate::{Backend, Module, VecZnx, ZnxLayout};
+use crate::{Backend, Module, VecZnx, znx_base::ZnxLayout};
 use rand_distr::{Distribution, Normal};
 use sampling::source::Source;
 
@@ -106,7 +106,7 @@ impl<B: Backend> Sampling for Module<B> {
 #[cfg(test)]
 mod tests {
     use super::Sampling;
-    use crate::{FFT64, Module, Stats, VecZnx, ZnxBase, ZnxLayout};
+    use crate::{FFT64, Module, Stats, VecZnx, VecZnxOps, znx_base::ZnxLayout};
     use sampling::source::Source;
 
     #[test]
@@ -120,7 +120,7 @@ mod tests {
         let zero: Vec<i64> = vec![0; n];
         let one_12_sqrt: f64 = 0.28867513459481287;
         (0..cols).for_each(|col_i| {
-            let mut a: VecZnx = VecZnx::new(&module, cols, size);
+            let mut a: VecZnx = module.new_vec_znx(cols, size);
             module.fill_uniform(log_base2k, &mut a, col_i, size, &mut source);
             (0..cols).for_each(|col_j| {
                 if col_j != col_i {
@@ -154,7 +154,7 @@ mod tests {
         let zero: Vec<i64> = vec![0; n];
         let k_f64: f64 = (1u64 << log_k as u64) as f64;
         (0..cols).for_each(|col_i| {
-            let mut a: VecZnx = VecZnx::new(&module, cols, size);
+            let mut a: VecZnx = module.new_vec_znx(cols, size);
             module.add_normal(log_base2k, &mut a, col_i, log_k, &mut source, sigma, bound);
             (0..cols).for_each(|col_j| {
                 if col_j != col_i {

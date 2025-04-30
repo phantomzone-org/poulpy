@@ -1,5 +1,6 @@
 use crate::ffi::vec_znx;
-use crate::{Backend, Module, VecZnx, ZnxBase, ZnxInfos, ZnxLayout, assert_alignement, switch_degree};
+use crate::znx_base::{ZnxAlloc, ZnxInfos, ZnxLayout, ZnxSliceSize, switch_degree};
+use crate::{Backend, Module, VEC_ZNX_ROWS, VecZnx, assert_alignement};
 pub trait VecZnxOps {
     /// Allocates a new [VecZnx].
     ///
@@ -19,7 +20,7 @@ pub trait VecZnxOps {
     ///
     /// # Panic
     /// Requires the slice of bytes to be equal to [VecZnxOps::bytes_of_vec_znx].
-    fn new_vec_znx_from_bytes(&self, cols: usize, size: usize, bytes: &mut [u8]) -> VecZnx;
+    fn new_vec_znx_from_bytes(&self, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnx;
 
     /// Instantiates a new [VecZnx] from a slice of bytes.
     /// The returned [VecZnx] does take ownership of the slice of bytes.
@@ -107,19 +108,19 @@ pub trait VecZnxOps {
 
 impl<B: Backend> VecZnxOps for Module<B> {
     fn new_vec_znx(&self, cols: usize, size: usize) -> VecZnx {
-        VecZnx::new(self, cols, size)
+        VecZnx::new(self, VEC_ZNX_ROWS, cols, size)
     }
 
     fn bytes_of_vec_znx(&self, cols: usize, size: usize) -> usize {
-        VecZnx::bytes_of(self, cols, size)
+        VecZnx::bytes_of(self, VEC_ZNX_ROWS, cols, size)
     }
 
-    fn new_vec_znx_from_bytes(&self, cols: usize, size: usize, bytes: &mut [u8]) -> VecZnx {
-        VecZnx::from_bytes(self, cols, size, bytes)
+    fn new_vec_znx_from_bytes(&self, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnx {
+        VecZnx::from_bytes(self, VEC_ZNX_ROWS, cols, size, bytes)
     }
 
     fn new_vec_znx_from_bytes_borrow(&self, cols: usize, size: usize, tmp_bytes: &mut [u8]) -> VecZnx {
-        VecZnx::from_bytes_borrow(self, cols, size, tmp_bytes)
+        VecZnx::from_bytes_borrow(self, VEC_ZNX_ROWS, cols, size, tmp_bytes)
     }
 
     fn vec_znx_normalize_tmp_bytes(&self) -> usize {

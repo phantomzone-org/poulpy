@@ -23,10 +23,10 @@ fn main() {
     s.fill_ternary_prob(0.5, &mut source);
 
     // Buffer to store s in the DFT domain
-    let mut s_ppol: ScalarZnxDft<FFT64> = module.new_svp_ppol();
+    let mut s_dft: ScalarZnxDft<FFT64> = module.new_scalar_znx_dft();
 
-    // s_ppol <- DFT(s)
-    module.svp_prepare(&mut s_ppol, &s);
+    // s_dft <- DFT(s)
+    module.svp_prepare(&mut s_dft, &s);
 
     // Allocates a VecZnx with two columns: ct=(0, 0)
     let mut ct: VecZnx = module.new_vec_znx(
@@ -46,16 +46,17 @@ fn main() {
     // Applies DFT(ct[1]) * DFT(s)
     module.svp_apply_dft(
         &mut buf_dft, // DFT(ct[1] * s)
-        &s_ppol,      // DFT(s)
+        0,            // Selects the first column of res
+        &s_dft,       // DFT(s)
         &ct,
         1, // Selects the second column of ct
     );
 
     // Alias scratch space (VecZnxDft<B> is always at least as big as VecZnxBig<B>)
-    let mut buf_big: VecZnxBig<FFT64> = buf_dft.as_vec_znx_big();
+    let mut buf_big: VecZnxBig<FFT64> = buf_dft.alias_as_vec_znx_big();
 
     // BIG(ct[1] * s) <- IDFT(DFT(ct[1] * s)) (not normalized)
-    module.vec_znx_idft_tmp_a(&mut buf_big, &mut buf_dft);
+    module.vec_znx_idft_tmp_a(&mut buf_big, 0, &mut buf_dft, 0);
 
     // Creates a plaintext: VecZnx with 1 column
     let mut m: VecZnx = module.new_vec_znx(
@@ -103,13 +104,14 @@ fn main() {
     // DFT(ct[1] * s)
     module.svp_apply_dft(
         &mut buf_dft,
-        &s_ppol,
+        0, // Selects the first column of res.
+        &s_dft,
         &ct,
         1, // Selects the second column of ct (ct[1])
     );
 
     // BIG(c1 * s) = IDFT(DFT(c1 * s))
-    module.vec_znx_idft_tmp_a(&mut buf_big, &mut buf_dft);
+    module.vec_znx_idft_tmp_a(&mut buf_big, 0, &mut buf_dft, 0);
 
     // BIG(c1 * s) + ct[0]
     module.vec_znx_big_add_small_inplace(&mut buf_big, 0, &ct, 0);

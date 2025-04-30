@@ -1,114 +1,70 @@
 use crate::ffi::vec_znx_big;
-use crate::{Backend, FFT64, Module, ZnxBase, ZnxBasics, ZnxInfos, ZnxLayout, alloc_aligned, assert_alignement};
+use crate::znx_base::{GetZnxBase, ZnxAlloc, ZnxBase, ZnxBasics, ZnxInfos, ZnxLayout, ZnxSliceSize};
+use crate::{Backend, FFT64, Module, NTT120};
 use std::marker::PhantomData;
 
+const VEC_ZNX_BIG_ROWS: usize = 1;
+
 pub struct VecZnxBig<B: Backend> {
-    pub data: Vec<u8>,
-    pub ptr: *mut u8,
-    pub n: usize,
-    pub cols: usize,
-    pub size: usize,
+    pub inner: ZnxBase,
     pub _marker: PhantomData<B>,
 }
 
-impl ZnxBasics for VecZnxBig<FFT64> {}
-
-impl<B: Backend> ZnxBase<B> for VecZnxBig<B> {
-    type Scalar = u8;
-
-    fn new(module: &Module<B>, cols: usize, size: usize) -> Self {
-        #[cfg(debug_assertions)]
-        {
-            assert!(cols > 0);
-            assert!(size > 0);
-        }
-        let mut data: Vec<Self::Scalar> = alloc_aligned(Self::bytes_of(module, cols, size));
-        let ptr: *mut Self::Scalar = data.as_mut_ptr();
-        Self {
-            data: data,
-            ptr: ptr,
-            n: module.n(),
-            cols: cols,
-            size: size,
-            _marker: PhantomData,
-        }
+impl<B: Backend> GetZnxBase for VecZnxBig<B> {
+    fn znx(&self) -> &ZnxBase {
+        &self.inner
     }
 
-    fn bytes_of(module: &Module<B>, cols: usize, size: usize) -> usize {
-        unsafe { vec_znx_big::bytes_of_vec_znx_big(module.ptr, size as u64) as usize * cols }
-    }
-
-    /// Returns a new [VecZnxBig] with the provided data as backing array.
-    /// User must ensure that data is properly alligned and that
-    /// the size of data is at least equal to [Module::bytes_of_vec_znx_big].
-    fn from_bytes(module: &Module<B>, cols: usize, size: usize, bytes: &mut [Self::Scalar]) -> Self {
-        #[cfg(debug_assertions)]
-        {
-            assert!(cols > 0);
-            assert!(size > 0);
-            assert_eq!(bytes.len(), Self::bytes_of(module, cols, size));
-            assert_alignement(bytes.as_ptr())
-        };
-        unsafe {
-            Self {
-                data: Vec::from_raw_parts(bytes.as_mut_ptr(), bytes.len(), bytes.len()),
-                ptr: bytes.as_mut_ptr(),
-                n: module.n(),
-                cols: cols,
-                size: size,
-                _marker: PhantomData,
-            }
-        }
-    }
-
-    fn from_bytes_borrow(module: &Module<B>, cols: usize, size: usize, bytes: &mut [Self::Scalar]) -> Self {
-        #[cfg(debug_assertions)]
-        {
-            assert!(cols > 0);
-            assert!(size > 0);
-            assert_eq!(bytes.len(), Self::bytes_of(module, cols, size));
-            assert_alignement(bytes.as_ptr());
-        }
-        Self {
-            data: Vec::new(),
-            ptr: bytes.as_mut_ptr(),
-            n: module.n(),
-            cols: cols,
-            size: size,
-            _marker: PhantomData,
-        }
+    fn znx_mut(&mut self) -> &mut ZnxBase {
+        &mut self.inner
     }
 }
 
-impl<B: Backend> ZnxInfos for VecZnxBig<B> {
-    fn n(&self) -> usize {
-        self.n
+impl<B: Backend> ZnxInfos for VecZnxBig<B> {}
+
+impl<B: Backend> ZnxAlloc<B> for VecZnxBig<B> {
+    type Scalar = u8;
+
+    fn from_bytes_borrow(module: &Module<B>, _rows: usize, cols: usize, size: usize, bytes: &mut [u8]) -> Self {
+        VecZnxBig {
+            inner: ZnxBase::from_bytes_borrow(module.n(), VEC_ZNX_BIG_ROWS, cols, size, bytes),
+            _marker: PhantomData,
+        }
     }
 
-    fn cols(&self) -> usize {
-        self.cols
-    }
-
-    fn rows(&self) -> usize {
-        1
-    }
-
-    fn size(&self) -> usize {
-        self.size
+    fn bytes_of(module: &Module<B>, _rows: usize, cols: usize, size: usize) -> usize {
+        debug_assert_eq!(
+            _rows, VEC_ZNX_BIG_ROWS,
+            "rows != {} not supported for VecZnxBig",
+            VEC_ZNX_BIG_ROWS
+        );
+        unsafe { vec_znx_big::bytes_of_vec_znx_big(module.ptr, size as u64) as usize * cols }
     }
 }
 
 impl ZnxLayout for VecZnxBig<FFT64> {
     type Scalar = i64;
+}
 
-    fn as_ptr(&self) -> *const Self::Scalar {
-        self.ptr as *const Self::Scalar
-    }
+impl ZnxLayout for VecZnxBig<NTT120> {
+    type Scalar = i128;
+}
 
-    fn as_mut_ptr(&mut self) -> *mut Self::Scalar {
-        self.ptr as *mut Self::Scalar
+impl ZnxBasics for VecZnxBig<FFT64> {}
+
+impl ZnxSliceSize for VecZnxBig<FFT64> {
+    fn sl(&self) -> usize {
+        self.n()
     }
 }
+
+impl ZnxSliceSize for VecZnxBig<NTT120> {
+    fn sl(&self) -> usize {
+        self.n() * 4
+    }
+}
+
+impl ZnxBasics for VecZnxBig<NTT120> {}
 
 impl VecZnxBig<FFT64> {
     pub fn print(&self, n: usize) {

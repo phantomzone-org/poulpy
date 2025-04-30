@@ -1,5 +1,6 @@
 use crate::ffi::znx::znx_zero_i64_ref;
-use crate::{VecZnx, ZnxInfos, ZnxLayout};
+use crate::znx_base::ZnxLayout;
+use crate::{VecZnx, znx_base::ZnxInfos};
 use itertools::izip;
 use rug::{Assign, Float};
 use std::cmp::min;
@@ -262,7 +263,10 @@ fn decode_coeff_i64(a: &VecZnx, col_i: usize, log_base2k: usize, log_k: usize, i
 
 #[cfg(test)]
 mod tests {
-    use crate::{Encoding, FFT64, Module, VecZnx, ZnxBase, ZnxInfos, ZnxLayout};
+    use crate::{
+        Encoding, FFT64, Module, VecZnx, VecZnxOps,
+        znx_base::{ZnxInfos, ZnxLayout},
+    };
     use itertools::izip;
     use sampling::source::Source;
 
@@ -273,7 +277,7 @@ mod tests {
         let log_base2k: usize = 17;
         let size: usize = 5;
         let log_k: usize = size * log_base2k - 5;
-        let mut a: VecZnx = VecZnx::new(&module, 2, size);
+        let mut a: VecZnx = module.new_vec_znx(2, size);
         let mut source: Source = Source::new([0u8; 32]);
         let raw: &mut [i64] = a.raw_mut();
         raw.iter_mut().enumerate().for_each(|(i, x)| *x = i as i64);
@@ -295,7 +299,7 @@ mod tests {
         let log_base2k: usize = 17;
         let size: usize = 5;
         let log_k: usize = size * log_base2k - 5;
-        let mut a: VecZnx = VecZnx::new(&module, 2, size);
+        let mut a: VecZnx = module.new_vec_znx(2, size);
         let mut source = Source::new([0u8; 32]);
         let raw: &mut [i64] = a.raw_mut();
         raw.iter_mut().enumerate().for_each(|(i, x)| *x = i as i64);

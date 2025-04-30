@@ -2,9 +2,8 @@ use std::marker::PhantomData;
 
 use crate::ffi::svp::{self, svp_ppol_t};
 use crate::ffi::vec_znx_dft::vec_znx_dft_t;
-use crate::{Backend, FFT64, Module, VecZnx, VecZnxDft, ZnxLayout, assert_alignement};
-
-use crate::{ZnxInfos, alloc_aligned, cast_mut};
+use crate::znx_base::{ZnxBase, ZnxInfos, ZnxLayout, ZnxSliceSize};
+use crate::{Backend, FFT64, Module, VecZnx, VecZnxDft, alloc_aligned, assert_alignement, cast_mut};
 use rand::seq::SliceRandom;
 use rand_core::RngCore;
 use rand_distr::{Distribution, weighted::WeightedIndex};
@@ -118,11 +117,14 @@ impl Scalar {
 
     pub fn as_vec_znx(&self) -> VecZnx {
         VecZnx {
-            n: self.n,
-            cols: 1,
-            size: 1,
-            data: Vec::new(),
-            ptr: self.ptr,
+            inner: ZnxBase {
+                n: self.n,
+                rows: 1,
+                cols: 1,
+                size: 1,
+                data: Vec::new(),
+                ptr: self.ptr as *mut u8,
+            },
         }
     }
 }
@@ -159,7 +161,7 @@ pub struct ScalarZnxDft<B: Backend> {
 /// An [SvpPPol] an be seen as a [VecZnxDft] of one limb.
 impl ScalarZnxDft<FFT64> {
     pub fn new(module: &Module<FFT64>) -> Self {
-        module.new_svp_ppol()
+        module.new_scalar_znx_dft()
     }
 
     /// Returns the ring degree of the [SvpPPol].
@@ -168,14 +170,14 @@ impl ScalarZnxDft<FFT64> {
     }
 
     pub fn bytes_of(module: &Module<FFT64>) -> usize {
-        module.bytes_of_svp_ppol()
+        module.bytes_of_scalar_znx_dft()
     }
 
     pub fn from_bytes(module: &Module<FFT64>, bytes: &mut [u8]) -> Self {
         #[cfg(debug_assertions)]
         {
             assert_alignement(bytes.as_ptr());
-            assert_eq!(bytes.len(), module.bytes_of_svp_ppol());
+            assert_eq!(bytes.len(), module.bytes_of_scalar_znx_dft());
         }
         unsafe {
             Self {
@@ -191,7 +193,7 @@ impl ScalarZnxDft<FFT64> {
         #[cfg(debug_assertions)]
         {
             assert_alignement(tmp_bytes.as_ptr());
-            assert_eq!(tmp_bytes.len(), module.bytes_of_svp_ppol());
+            assert_eq!(tmp_bytes.len(), module.bytes_of_scalar_znx_dft());
         }
         Self {
             n: module.n(),
@@ -209,33 +211,33 @@ impl ScalarZnxDft<FFT64> {
 
 pub trait ScalarZnxDftOps<B: Backend> {
     /// Allocates a new [SvpPPol].
-    fn new_svp_ppol(&self) -> ScalarZnxDft<B>;
+    fn new_scalar_znx_dft(&self) -> ScalarZnxDft<B>;
 
     /// Returns the minimum number of bytes necessary to allocate
     /// a new [SvpPPol] through [SvpPPol::from_bytes] ro.
-    fn bytes_of_svp_ppol(&self) -> usize;
+    fn bytes_of_scalar_znx_dft(&self) -> usize;
 
     /// Allocates a new [SvpPPol] from an array of bytes.
     /// The array of bytes is owned by the [SvpPPol].
     /// The method will panic if bytes.len() < [SvpPPolOps::bytes_of_svp_ppol]
-    fn new_svp_ppol_from_bytes(&self, bytes: &mut [u8]) -> ScalarZnxDft<B>;
+    fn new_scalar_znx_dft_from_bytes(&self, bytes: &mut [u8]) -> ScalarZnxDft<B>;
 
     /// Allocates a new [SvpPPol] from an array of bytes.
     /// The array of bytes is borrowed by the [SvpPPol].
     /// The method will panic if bytes.len() < [SvpPPolOps::bytes_of_svp_ppol]
-    fn new_svp_ppol_from_bytes_borrow(&self, tmp_bytes: &mut [u8]) -> ScalarZnxDft<B>;
+    fn new_scalar_znx_dft_from_bytes_borrow(&self, tmp_bytes: &mut [u8]) -> ScalarZnxDft<B>;
 
     /// Prepares a [crate::Scalar] for a [SvpPPolOps::svp_apply_dft].
     fn svp_prepare(&self, svp_ppol: &mut ScalarZnxDft<B>, a: &Scalar);
 
     /// Applies the [SvpPPol] x [VecZnxDft] product, where each limb of
     /// the [VecZnxDft] is multiplied with [SvpPPol].
-    fn svp_apply_dft(&self, c: &mut VecZnxDft<B>, a: &ScalarZnxDft<B>, b: &VecZnx, b_col: usize);
+    fn svp_apply_dft(&self, res: &mut VecZnxDft<B>, res_col: usize, a: &ScalarZnxDft<B>, b: &VecZnx, b_col: usize);
 }
 
 impl ScalarZnxDftOps<FFT64> for Module<FFT64> {
-    fn new_svp_ppol(&self) -> ScalarZnxDft<FFT64> {
-        let mut data: Vec<u8> = alloc_aligned::<u8>(self.bytes_of_svp_ppol());
+    fn new_scalar_znx_dft(&self) -> ScalarZnxDft<FFT64> {
+        let mut data: Vec<u8> = alloc_aligned::<u8>(self.bytes_of_scalar_znx_dft());
         let ptr: *mut u8 = data.as_mut_ptr();
         ScalarZnxDft::<FFT64> {
             data: data,
@@ -245,28 +247,28 @@ impl ScalarZnxDftOps<FFT64> for Module<FFT64> {
         }
     }
 
-    fn bytes_of_svp_ppol(&self) -> usize {
+    fn bytes_of_scalar_znx_dft(&self) -> usize {
         unsafe { svp::bytes_of_svp_ppol(self.ptr) as usize }
     }
 
-    fn new_svp_ppol_from_bytes(&self, bytes: &mut [u8]) -> ScalarZnxDft<FFT64> {
+    fn new_scalar_znx_dft_from_bytes(&self, bytes: &mut [u8]) -> ScalarZnxDft<FFT64> {
         ScalarZnxDft::from_bytes(self, bytes)
     }
 
-    fn new_svp_ppol_from_bytes_borrow(&self, tmp_bytes: &mut [u8]) -> ScalarZnxDft<FFT64> {
+    fn new_scalar_znx_dft_from_bytes_borrow(&self, tmp_bytes: &mut [u8]) -> ScalarZnxDft<FFT64> {
         ScalarZnxDft::from_bytes_borrow(self, tmp_bytes)
     }
 
-    fn svp_prepare(&self, svp_ppol: &mut ScalarZnxDft<FFT64>, a: &Scalar) {
-        unsafe { svp::svp_prepare(self.ptr, svp_ppol.ptr as *mut svp_ppol_t, a.as_ptr()) }
+    fn svp_prepare(&self, res: &mut ScalarZnxDft<FFT64>, a: &Scalar) {
+        unsafe { svp::svp_prepare(self.ptr, res.ptr as *mut svp_ppol_t, a.as_ptr()) }
     }
 
-    fn svp_apply_dft(&self, c: &mut VecZnxDft<FFT64>, a: &ScalarZnxDft<FFT64>, b: &VecZnx, b_col: usize) {
+    fn svp_apply_dft(&self, res: &mut VecZnxDft<FFT64>, res_col: usize, a: &ScalarZnxDft<FFT64>, b: &VecZnx, b_col: usize) {
         unsafe {
             svp::svp_apply_dft(
                 self.ptr,
-                c.ptr as *mut vec_znx_dft_t,
-                c.size() as u64,
+                res.at_mut_ptr(res_col, 0) as *mut vec_znx_dft_t,
+                res.size() as u64,
                 a.ptr as *const svp_ppol_t,
                 b.at_ptr(b_col, 0),
                 b.size() as u64,

@@ -1,10 +1,37 @@
-use crate::{Backend, Module, assert_alignement, cast_mut};
+use crate::{Backend, Module, alloc_aligned, assert_alignement, cast_mut};
 use itertools::izip;
 use std::cmp::min;
 
-pub trait ZnxInfos {
+pub struct ZnxBase {
+    /// The ring degree
+    pub n: usize,
+
+    /// The number of rows (in the third dimension)
+    pub rows: usize,
+
+    /// The number of polynomials
+    pub cols: usize,
+
+    /// The number of size per polynomial (a.k.a small polynomials).
+    pub size: usize,
+
+    /// Polynomial coefficients, as a contiguous array. Each col is equally spaced by n.
+    pub data: Vec<u8>,
+
+    /// Pointer to data (data can be enpty if [VecZnx] borrows space instead of owning it).
+    pub ptr: *mut u8,
+}
+
+pub trait GetZnxBase {
+    fn znx(&self) -> &ZnxBase;
+    fn znx_mut(&mut self) -> &mut ZnxBase;
+}
+
+pub trait ZnxInfos: GetZnxBase {
     /// Returns the ring degree of the polynomials.
-    fn n(&self) -> usize;
+    fn n(&self) -> usize {
+        self.znx().n
+    }
 
     /// Returns the base two logarithm of the ring dimension of the polynomials.
     fn log_n(&self) -> usize {
@@ -12,41 +39,104 @@ pub trait ZnxInfos {
     }
 
     /// Returns the number of rows.
-    fn rows(&self) -> usize;
-
+    fn rows(&self) -> usize {
+        self.znx().rows
+    }
     /// Returns the number of polynomials in each row.
-    fn cols(&self) -> usize;
+    fn cols(&self) -> usize {
+        self.znx().cols
+    }
 
     /// Returns the number of size per polynomial.
-    fn size(&self) -> usize;
+    fn size(&self) -> usize {
+        self.znx().size
+    }
+
+    fn data(&self) -> &[u8] {
+        &self.znx().data
+    }
+
+    fn ptr(&self) -> *mut u8 {
+        self.znx().ptr
+    }
 
     /// Returns the total number of small polynomials.
     fn poly_count(&self) -> usize {
         self.rows() * self.cols() * self.size()
     }
+}
 
+pub trait ZnxSliceSize {
     /// Returns the slice size, which is the offset between
     /// two size of the same column.
-    fn sl(&self) -> usize {
-        self.n() * self.cols()
+    fn sl(&self) -> usize;
+}
+
+impl ZnxBase {
+    pub fn from_bytes(n: usize, rows: usize, cols: usize, size: usize, mut bytes: Vec<u8>) -> Self {
+        let mut res: Self = Self::from_bytes_borrow(n, rows, cols, size, &mut bytes);
+        res.data = bytes;
+        res
+    }
+
+    pub fn from_bytes_borrow(n: usize, rows: usize, cols: usize, size: usize, bytes: &mut [u8]) -> Self {
+        #[cfg(debug_assertions)]
+        {
+            assert_eq!(n & (n - 1), 0, "n must be a power of two");
+            assert!(n > 0, "n must be greater than 0");
+            assert!(rows > 0, "rows must be greater than 0");
+            assert!(cols > 0, "cols must be greater than 0");
+            assert!(size > 0, "size must be greater than 0");
+        }
+        Self {
+            n: n,
+            rows: rows,
+            cols: cols,
+            size: size,
+            data: Vec::new(),
+            ptr: bytes.as_mut_ptr(),
+        }
     }
 }
 
-pub trait ZnxBase<B: Backend> {
+pub trait ZnxAlloc<B: Backend>
+where
+    Self: Sized + ZnxInfos,
+{
     type Scalar;
-    fn new(module: &Module<B>, cols: usize, size: usize) -> Self;
-    fn from_bytes(module: &Module<B>, cols: usize, size: usize, bytes: &mut [u8]) -> Self;
-    fn from_bytes_borrow(module: &Module<B>, cols: usize, size: usize, bytes: &mut [u8]) -> Self;
-    fn bytes_of(module: &Module<B>, cols: usize, size: usize) -> usize;
+    fn new(module: &Module<B>, rows: usize, cols: usize, size: usize) -> Self {
+        let bytes: Vec<u8> = alloc_aligned::<u8>(Self::bytes_of(module, rows, cols, size));
+        Self::from_bytes(module, rows, cols, size, bytes)
+    }
+
+    fn from_bytes(module: &Module<B>, rows: usize, cols: usize, size: usize, mut bytes: Vec<u8>) -> Self {
+        let mut res: Self = Self::from_bytes_borrow(module, rows, cols, size, &mut bytes);
+        res.znx_mut().data = bytes;
+        res
+    }
+
+    fn from_bytes_borrow(module: &Module<B>, rows: usize, cols: usize, size: usize, bytes: &mut [u8]) -> Self;
+
+    fn bytes_of(module: &Module<B>, rows: usize, cols: usize, size: usize) -> usize;
 }
+
 pub trait ZnxLayout: ZnxInfos {
     type Scalar;
 
+    /// Returns true if the receiver is only borrowing the data.
+    fn borrowing(&self) -> bool {
+        self.znx().data.len() == 0
+    }
+
     /// Returns a non-mutable pointer to the underlying coefficients array.
-    fn as_ptr(&self) -> *const Self::Scalar;
+    fn as_ptr(&self) -> *const Self::Scalar {
+        self.znx().ptr as *const Self::Scalar
+    }
 
     /// Returns a mutable pointer to the underlying coefficients array.
-    fn as_mut_ptr(&mut self) -> *mut Self::Scalar;
+    fn as_mut_ptr(&mut self) -> *mut Self::Scalar {
+        self.znx_mut().ptr as *mut Self::Scalar
+    }
 
     /// Returns a non-mutable reference to the entire underlying coefficient array.
     fn raw(&self) -> &[Self::Scalar] {

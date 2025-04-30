@@ -42,8 +42,8 @@ fn main() {
     let mut c_dft: VecZnxDft<FFT64> = module.new_vec_znx_dft(1, limbs_mat);
     module.vmp_apply_dft(&mut c_dft, &a, &mat_znx_dft, &mut buf);
 
-    let mut c_big: VecZnxBig<FFT64> = c_dft.as_vec_znx_big();
-    module.vec_znx_idft_tmp_a(&mut c_big, &mut c_dft);
+    let mut c_big: VecZnxBig<FFT64> = c_dft.alias_as_vec_znx_big();
+    module.vec_znx_idft_tmp_a(&mut c_big, 0, &mut c_dft, 0);
 
     let mut res: VecZnx = module.new_vec_znx(1, limbs_vec);
     module.vec_znx_big_normalize(log_base2k, &mut res, 0, &c_big, 0, &mut buf);
