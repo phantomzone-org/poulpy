@@ -1,6 +1,6 @@
 use base2k::{
-    Encoding, FFT64, Module, Sampling, Scalar, ScalarZnxDft, ScalarZnxDftOps, VecZnx, VecZnxBig, VecZnxBigOps, VecZnxDft,
-    VecZnxDftOps, VecZnxOps, ZnxInfos, alloc_aligned,
+    Encoding, FFT64, Module, Sampling, Scalar, ScalarOps, ScalarZnxDft, ScalarZnxDftOps, VecZnx, VecZnxBig, VecZnxBigOps,
+    VecZnxDft, VecZnxDftOps, VecZnxOps, ZnxInfos, alloc_aligned,
 };
 use itertools::izip;
 use sampling::source::Source;
@@ -19,14 +19,14 @@ fn main() {
     let mut source: Source = Source::new(seed);
 
     // s <- Z_{-1, 0, 1}[X]/(X^{N}+1)
-    let mut s: Scalar = Scalar::new(n);
-    s.fill_ternary_prob(0.5, &mut source);
+    let mut s: Scalar = module.new_scalar(1);
+    s.fill_ternary_prob(0, 0.5, &mut source);
 
     // Buffer to store s in the DFT domain
-    let mut s_dft: ScalarZnxDft<FFT64> = module.new_scalar_znx_dft();
+    let mut s_dft: ScalarZnxDft<FFT64> = module.new_scalar_znx_dft(s.cols());
 
     // s_dft <- DFT(s)
-    module.svp_prepare(&mut s_dft, &s);
+    module.svp_prepare(&mut s_dft, 0, &s, 0);
 
     // Allocates a VecZnx with two columns: ct=(0, 0)
     let mut ct: VecZnx = module.new_vec_znx(
@@ -48,6 +48,7 @@ fn main() {
         &mut buf_dft, // DFT(ct[1] * s)
         0,            // Selects the first column of res
         &s_dft,       // DFT(s)
+        0,            // Selects the first column of s_dft
         &ct,
         1, // Selects the second column of ct
     );
@@ -106,6 +107,7 @@ fn main() {
         &mut buf_dft,
         0, // Selects the first column of res.
         &s_dft,
+        0,
         &ct,
         1, // Selects the second column of ct (ct[1])
     );

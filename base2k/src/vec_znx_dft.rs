@@ -26,7 +26,7 @@ impl<B: Backend> ZnxAlloc<B> for VecZnxDft<B> {
     type Scalar = u8;
 
     fn from_bytes_borrow(module: &Module<B>, _rows: usize, cols: usize, size: usize, bytes: &mut [u8]) -> Self {
-        VecZnxDft {
+        Self {
             inner: ZnxBase::from_bytes_borrow(module.n(), VEC_ZNX_DFT_ROWS, cols, size, bytes),
             _marker: PhantomData,
         }
