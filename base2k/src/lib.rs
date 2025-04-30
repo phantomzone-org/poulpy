@@ -21,10 +21,8 @@ pub use encoding::*;
 pub use mat_znx_dft::*;
 pub use module::*;
 pub use sampling::*;
-#[allow(unused_imports)]
 pub use scalar_znx::*;
 pub use scalar_znx_dft::*;
-#[allow(unused_imports)]
 pub use scalar_znx_dft_ops::*;
 pub use stats::*;
 pub use vec_znx::*;
