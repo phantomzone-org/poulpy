@@ -28,6 +28,7 @@ impl<B: Backend> ZnxAlloc<B> for ScalarZnxDft<B> {
     type Scalar = u8;
 
     fn from_bytes_borrow(module: &Module<B>, _rows: usize, cols: usize, _size: usize, bytes: &mut [u8]) -> Self {
+        debug_assert_eq!(bytes.len(), Self::bytes_of(module, _rows, cols, _size));
         Self {
             inner: ZnxBase::from_bytes_borrow(
                 module.n(),
@@ -61,6 +62,6 @@ impl ZnxLayout for ScalarZnxDft<FFT64> {
 
 impl ZnxSliceSize for ScalarZnxDft<FFT64> {
     fn sl(&self) -> usize {
-        self.n()
+        self.n() * self.cols()
     }
 }

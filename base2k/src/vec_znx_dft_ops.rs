@@ -4,7 +4,8 @@ use crate::znx_base::ZnxAlloc;
 use crate::znx_base::ZnxInfos;
 use crate::znx_base::ZnxLayout;
 use crate::znx_base::ZnxSliceSize;
-use crate::{Backend, FFT64, Module, VecZnx, VecZnxBig, VecZnxDft, assert_alignement};
+use crate::{Backend, FFT64, Module, VecZnx, VecZnxBig, VecZnxDft, ZnxZero, assert_alignement};
+use std::cmp::min;
 
 pub trait VecZnxDftOps<B: Backend> {
     /// Allocates a vector Z[X]/(X^N+1) that stores normalized in the DFT space.
@@ -77,19 +78,21 @@ impl VecZnxDftOps<FFT64> for Module<FFT64> {
     }
 
     fn vec_znx_idft_tmp_a(&self, res: &mut VecZnxBig<FFT64>, res_col: usize, a: &mut VecZnxDft<FFT64>, a_col: usize) {
-        #[cfg(debug_assertions)]
-        {
-            assert_eq!(res.poly_count(), a.poly_count());
-        }
+        let min_size: usize = min(res.size(), a.size());
 
         unsafe {
-            vec_znx_dft::vec_znx_idft_tmp_a(
-                self.ptr,
-                res.at_mut_ptr(res_col * res.size(), 0) as *mut vec_znx_big::vec_znx_big_t,
-                res.size() as u64,
-                a.at_ptr(a_col * a.size(), 0) as *mut vec_znx_dft::vec_znx_dft_t,
-                a.size() as u64,
-            )
+            (0..min_size).for_each(|j| {
+                vec_znx_dft::vec_znx_idft_tmp_a(
+                    self.ptr,
+                    res.at_mut_ptr(res_col, j) as *mut vec_znx_big::vec_znx_big_t,
+                    1 as u64,
+                    a.at_ptr(a_col, j) as *mut vec_znx_dft::vec_znx_dft_t,
+                    1 as u64,
+                )
+            });
+            (min_size..res.size()).for_each(|j| {
+                res.zero_at(res_col, j);
+            })
         }
     }
 
@@ -102,15 +105,22 @@ impl VecZnxDftOps<FFT64> for Module<FFT64> {
     /// # Panics
     /// If b.cols < a_cols
     fn vec_znx_dft(&self, res: &mut VecZnxDft<FFT64>, res_col: usize, a: &VecZnx, a_col: usize) {
+        let min_size: usize = min(res.size(), a.size());
+
         unsafe {
-            vec_znx_dft::vec_znx_dft(
-                self.ptr,
-                res.at_mut_ptr(res_col * res.size(), 0) as *mut vec_znx_dft::vec_znx_dft_t,
-                res.size() as u64,
-                a.at_ptr(a_col, 0),
-                a.size() as u64,
-                a.sl() as u64,
-            )
+            (0..min_size).for_each(|j| {
+                vec_znx_dft::vec_znx_dft(
+                    self.ptr,
+                    res.at_mut_ptr(res_col, j) as *mut vec_znx_dft::vec_znx_dft_t,
+                    1 as u64,
+                    a.at_ptr(a_col, j),
+                    1 as u64,
+                    a.sl() as u64,
+                )
+            });
+            (min_size..res.size()).for_each(|j| {
+                res.zero_at(res_col, j);
+            });
         }
     }
 
@@ -126,15 +136,23 @@ impl VecZnxDftOps<FFT64> for Module<FFT64> {
             );
             assert_alignement(tmp_bytes.as_ptr())
         }
+
+        let min_size: usize = min(res.size(), a.size());
+
         unsafe {
-            vec_znx_dft::vec_znx_idft(
-                self.ptr,
-                res.at_mut_ptr(res_col * res.size(), 0) as *mut vec_znx_big::vec_znx_big_t,
-                res.size() as u64,
-                a.at_ptr(a_col * res.size(), 0) as *const vec_znx_dft::vec_znx_dft_t,
-                a.size() as u64,
-                tmp_bytes.as_mut_ptr(),
-            )
+            (0..min_size).for_each(|j| {
+                vec_znx_dft::vec_znx_idft(
+                    self.ptr,
+                    res.at_mut_ptr(res_col, j) as *mut vec_znx_big::vec_znx_big_t,
+                    1 as u64,
+                    a.at_ptr(a_col, j) as *const vec_znx_dft::vec_znx_dft_t,
+                    1 as u64,
+                    tmp_bytes.as_mut_ptr(),
+                )
+            });
+            (min_size..res.size()).for_each(|j| {
+                res.zero_at(res_col, j);
+            });
         }
     }
 }

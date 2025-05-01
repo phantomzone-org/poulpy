@@ -1,5 +1,5 @@
 use crate::ffi::vec_znx_big;
-use crate::znx_base::{GetZnxBase, ZnxAlloc, ZnxBase, ZnxBasics, ZnxInfos, ZnxLayout, ZnxSliceSize};
+use crate::znx_base::{GetZnxBase, ZnxAlloc, ZnxBase, ZnxInfos, ZnxLayout, ZnxSliceSize, ZnxZero};
 use crate::{Backend, FFT64, Module, NTT120};
 use std::marker::PhantomData;
 
@@ -26,6 +26,7 @@ impl<B: Backend> ZnxAlloc<B> for VecZnxBig<B> {
     type Scalar = u8;
 
     fn from_bytes_borrow(module: &Module<B>, _rows: usize, cols: usize, size: usize, bytes: &mut [u8]) -> Self {
+        debug_assert_eq!(bytes.len(), Self::bytes_of(module, _rows, cols, size));
         VecZnxBig {
             inner: ZnxBase::from_bytes_borrow(module.n(), VEC_ZNX_BIG_ROWS, cols, size, bytes),
             _marker: PhantomData,
@@ -50,24 +51,24 @@ impl ZnxLayout for VecZnxBig<NTT120> {
     type Scalar = i128;
 }
 
-impl ZnxBasics for VecZnxBig<FFT64> {}
+impl ZnxZero for VecZnxBig<FFT64> {}
 
 impl ZnxSliceSize for VecZnxBig<FFT64> {
     fn sl(&self) -> usize {
-        self.n()
+        self.n() * self.cols()
     }
 }
 
 impl ZnxSliceSize for VecZnxBig<NTT120> {
     fn sl(&self) -> usize {
-        self.n() * 4
+        self.n() * 4 * self.cols()
     }
 }
 
-impl ZnxBasics for VecZnxBig<NTT120> {}
+impl ZnxZero for VecZnxBig<NTT120> {}
 
 impl VecZnxBig<FFT64> {
-    pub fn print(&self, n: usize) {
-        (0..self.size()).for_each(|i| println!("{}: {:?}", i, &self.at_limb(i)[..n]));
+    pub fn print(&self, n: usize, col: usize) {
+        (0..self.size()).for_each(|i| println!("{}: {:?}", i, &self.at(col, i)[..n]));
     }
 }

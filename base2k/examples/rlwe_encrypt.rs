@@ -13,7 +13,8 @@ fn main() {
     let log_scale: usize = msg_size * log_base2k - 5;
     let module: Module<FFT64> = Module::<FFT64>::new(n);
 
-    let mut carry: Vec<u8> = alloc_aligned(module.vec_znx_big_normalize_tmp_bytes());
+    let mut tmp_bytes_norm: Vec<u8> = alloc_aligned(module.vec_znx_big_normalize_tmp_bytes());
+    let mut tmp_bytes_dft = alloc_aligned(module.bytes_of_vec_znx_dft(1, ct_size));
 
     let seed: [u8; 32] = [0; 32];
     let mut source: Source = Source::new(seed);
@@ -38,9 +39,10 @@ fn main() {
     module.fill_uniform(log_base2k, &mut ct, 1, ct_size, &mut source);
 
     // Scratch space for DFT values
-    let mut buf_dft: VecZnxDft<FFT64> = module.new_vec_znx_dft(
+    let mut buf_dft: VecZnxDft<FFT64> = module.new_vec_znx_dft_from_bytes_borrow(
         1,         // Number of columns
         ct.size(), // Number of polynomials per column
+        &mut tmp_bytes_dft,
     );
 
     // Applies DFT(ct[1]) * DFT(s)
@@ -68,7 +70,7 @@ fn main() {
     want.iter_mut()
         .for_each(|x| *x = source.next_u64n(16, 15) as i64);
     m.encode_vec_i64(0, log_base2k, log_scale, &want, 4);
-    m.normalize(log_base2k, &mut carry);
+    m.normalize(log_base2k, 0, &mut tmp_bytes_norm);
 
     // m - BIG(ct[1] * s)
     module.vec_znx_big_sub_small_a_inplace(
@@ -81,9 +83,12 @@ fn main() {
     // Normalizes back to VecZnx
     // ct[0] <- m - BIG(c1 * s)
     module.vec_znx_big_normalize(
-        log_base2k, &mut ct, 0, // Selects the first column of ct (ct[0])
-        &buf_big, 0, // Selects the first column of buf_big
-        &mut carry,
+        log_base2k,
+        &mut ct,
+        0, // Selects the first column of ct (ct[0])
+        &buf_big,
+        0, // Selects the first column of buf_big
+        &mut tmp_bytes_norm,
     );
 
     // Add noise to ct[0]
@@ -120,7 +125,7 @@ fn main() {
 
     // m + e <- BIG(ct[1] * s + ct[0])
     let mut res: VecZnx = module.new_vec_znx(1, ct_size);
-    module.vec_znx_big_normalize(log_base2k, &mut res, 0, &buf_big, 0, &mut carry);
+    module.vec_znx_big_normalize(log_base2k, &mut res, 0, &buf_big, 0, &mut tmp_bytes_norm);
 
     // have = m * 2^{log_scale} + e
     let mut have: Vec<i64> = vec![i64::default(); n];

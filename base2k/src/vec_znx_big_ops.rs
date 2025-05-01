@@ -1,4 +1,4 @@
-use crate::ffi::vec_znx_big::{self, vec_znx_big_t};
+use crate::ffi::vec_znx;
 use crate::znx_base::{ZnxAlloc, ZnxInfos, ZnxLayout, ZnxSliceSize};
 use crate::{Backend, FFT64, Module, VecZnx, VecZnxBig, VecZnxOps, assert_alignement};
 
@@ -171,14 +171,17 @@ impl VecZnxBigOps<FFT64> for Module<FFT64> {
             assert_ne!(a.as_ptr(), b.as_ptr());
         }
         unsafe {
-            vec_znx_big::vec_znx_big_add(
+            vec_znx::vec_znx_add(
                 self.ptr,
-                res.at_mut_ptr(res_col * res.size(), 0) as *mut vec_znx_big_t,
+                res.at_mut_ptr(res_col, 0),
                 res.size() as u64,
-                a.at_ptr(a_col * res.size(), 0) as *const vec_znx_big_t,
+                res.sl() as u64,
+                a.at_ptr(a_col, 0),
                 a.size() as u64,
-                b.at_ptr(b_col * res.size(), 0) as *const vec_znx_big_t,
+                a.sl() as u64,
+                b.at_ptr(b_col, 0),
                 b.size() as u64,
+                b.sl() as u64,
             )
         }
     }
@@ -207,14 +210,17 @@ impl VecZnxBigOps<FFT64> for Module<FFT64> {
             assert_ne!(a.as_ptr(), b.as_ptr());
         }
         unsafe {
-            vec_znx_big::vec_znx_big_sub(
+            vec_znx::vec_znx_sub(
                 self.ptr,
-                res.at_mut_ptr(res_col * res.size(), 0) as *mut vec_znx_big_t,
+                res.at_mut_ptr(res_col, 0),
                 res.size() as u64,
-                a.at_ptr(a_col * res.size(), 0) as *const vec_znx_big_t,
+                res.sl() as u64,
+                a.at_ptr(a_col, 0),
                 a.size() as u64,
-                b.at_ptr(b_col * res.size(), 0) as *const vec_znx_big_t,
+                a.sl() as u64,
+                b.at_ptr(b_col, 0),
                 b.size() as u64,
+                b.sl() as u64,
             )
         }
     }
@@ -250,12 +256,14 @@ impl VecZnxBigOps<FFT64> for Module<FFT64> {
             assert_ne!(a.as_ptr(), b.as_ptr());
         }
         unsafe {
-            vec_znx_big::vec_znx_big_sub_small_b(
+            vec_znx::vec_znx_sub(
                 self.ptr,
-                res.at_mut_ptr(res_col * res.size(), 0) as *mut vec_znx_big_t,
+                res.at_mut_ptr(res_col, 0),
                 res.size() as u64,
-                a.at_ptr(a_col * a.size(), 0) as *const vec_znx_big_t,
+                res.sl() as u64,
+                a.at_ptr(a_col, 0),
                 a.size() as u64,
+                a.sl() as u64,
                 b.at_ptr(b_col, 0),
                 b.size() as u64,
                 b.sl() as u64,
@@ -287,15 +295,17 @@ impl VecZnxBigOps<FFT64> for Module<FFT64> {
             assert_ne!(a.as_ptr(), b.as_ptr());
         }
         unsafe {
-            vec_znx_big::vec_znx_big_sub_small_a(
+            vec_znx::vec_znx_sub(
                 self.ptr,
-                res.at_mut_ptr(res_col * res.size(), 0) as *mut vec_znx_big_t,
+                res.at_mut_ptr(res_col, 0),
                 res.size() as u64,
+                res.sl() as u64,
                 a.at_ptr(a_col, 0),
                 a.size() as u64,
                 a.sl() as u64,
-                b.at_ptr(b_col * b.size(), 0) as *const vec_znx_big_t,
+                b.at_ptr(b_col, 0),
                 b.size() as u64,
+                b.sl() as u64,
             )
         }
     }
@@ -324,12 +334,14 @@ impl VecZnxBigOps<FFT64> for Module<FFT64> {
             assert_ne!(a.as_ptr(), b.as_ptr());
         }
         unsafe {
-            vec_znx_big::vec_znx_big_add_small(
+            vec_znx::vec_znx_add(
                 self.ptr,
-                res.at_mut_ptr(res_col * res.size(), 0) as *mut vec_znx_big_t,
+                res.at_mut_ptr(res_col, 0),
                 res.size() as u64,
-                a.at_ptr(a_col * a.size(), 0) as *const vec_znx_big_t,
+                res.sl() as u64,
+                a.at_ptr(a_col, 0),
                 a.size() as u64,
+                a.sl() as u64,
                 b.at_ptr(b_col, 0),
                 b.size() as u64,
                 b.sl() as u64,
@@ -365,14 +377,15 @@ impl VecZnxBigOps<FFT64> for Module<FFT64> {
             assert_alignement(tmp_bytes.as_ptr());
         }
         unsafe {
-            vec_znx_big::vec_znx_big_normalize_base2k(
+            vec_znx::vec_znx_normalize_base2k(
                 self.ptr,
                 log_base2k as u64,
                 res.at_mut_ptr(res_col, 0),
                 res.size() as u64,
                 res.sl() as u64,
-                a.at_ptr(a_col * a.size(), 0) as *const vec_znx_big_t,
+                a.at_ptr(a_col, 0),
                 a.size() as u64,
+                a.sl() as u64,
                 tmp_bytes.as_mut_ptr(),
             );
         }
@@ -385,13 +398,15 @@ impl VecZnxBigOps<FFT64> for Module<FFT64> {
             assert_eq!(res.n(), self.n());
         }
         unsafe {
-            vec_znx_big::vec_znx_big_automorphism(
+            vec_znx::vec_znx_automorphism(
                 self.ptr,
                 k,
-                res.at_mut_ptr(res_col * res.size(), 0) as *mut vec_znx_big_t,
+                res.at_mut_ptr(res_col, 0),
                 res.size() as u64,
-                a.at_ptr(a_col * a.size(), 0) as *const vec_znx_big_t,
+                res.sl() as u64,
+                a.at_ptr(a_col, 0),
                 a.size() as u64,
+                a.sl() as u64,
             )
         }
     }

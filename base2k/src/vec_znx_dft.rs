@@ -1,5 +1,5 @@
 use crate::ffi::vec_znx_dft;
-use crate::znx_base::{GetZnxBase, ZnxAlloc, ZnxBase, ZnxInfos, ZnxLayout, ZnxSliceSize};
+use crate::znx_base::{GetZnxBase, ZnxAlloc, ZnxBase, ZnxInfos, ZnxLayout, ZnxSliceSize, ZnxZero};
 use crate::{Backend, FFT64, Module, VecZnxBig};
 use std::marker::PhantomData;
 
@@ -26,6 +26,7 @@ impl<B: Backend> ZnxAlloc<B> for VecZnxDft<B> {
     type Scalar = u8;
 
     fn from_bytes_borrow(module: &Module<B>, _rows: usize, cols: usize, size: usize, bytes: &mut [u8]) -> Self {
+        debug_assert_eq!(bytes.len(), Self::bytes_of(module, _rows, cols, size));
         Self {
             inner: ZnxBase::from_bytes_borrow(module.n(), VEC_ZNX_DFT_ROWS, cols, size, bytes),
             _marker: PhantomData,
@@ -46,6 +47,8 @@ impl ZnxLayout for VecZnxDft<FFT64> {
     type Scalar = f64;
 }
 
+impl ZnxZero for VecZnxDft<FFT64> {}
+
 impl ZnxSliceSize for VecZnxDft<FFT64> {
     fn sl(&self) -> usize {
         self.n()
@@ -53,8 +56,8 @@ impl ZnxSliceSize for VecZnxDft<FFT64> {
 }
 
 impl VecZnxDft<FFT64> {
-    pub fn print(&self, n: usize) {
-        (0..self.size()).for_each(|i| println!("{}: {:?}", i, &self.at_limb(i)[..n]));
+    pub fn print(&self, n: usize, col: usize) {
+        (0..self.size()).for_each(|i| println!("{}: {:?}", i, &self.at(col, i)[..n]));
     }
 }
 
@@ -63,6 +66,10 @@ impl<B: Backend> VecZnxDft<B> {
     /// The returned [VecZnxBig] shares the backing array
     /// with the original [VecZnxDft].
     pub fn alias_as_vec_znx_big(&mut self) -> VecZnxBig<B> {
+        assert!(
+            self.data().len() == 0,
+            "cannot alias VecZnxDft into VecZnxBig if it owns the data"
+        );
         VecZnxBig::<B> {
             inner: ZnxBase {
                 data: Vec::new(),
