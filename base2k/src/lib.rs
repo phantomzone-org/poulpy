@@ -3,6 +3,7 @@ pub mod encoding;
 // Other modules and exports
 pub mod ffi;
 pub mod mat_znx_dft;
+pub mod mat_znx_dft_ops;
 pub mod module;
 pub mod sampling;
 pub mod scalar_znx;
@@ -19,6 +20,7 @@ pub mod znx_base;
 
 pub use encoding::*;
 pub use mat_znx_dft::*;
+pub use mat_znx_dft_ops::*;
 pub use module::*;
 pub use sampling::*;
 pub use scalar_znx::*;
