@@ -1,14 +1,15 @@
 use crate::ffi::vec_znx;
-use crate::znx_base::{ZnxAlloc, ZnxInfos, ZnxLayout, ZnxSliceSize, switch_degree};
-use crate::{Backend, Module, VEC_ZNX_ROWS, VecZnx, assert_alignement};
-pub trait VecZnxOps {
+use crate::znx_base::{ZnxInfos, switch_degree};
+use crate::{Backend, Module, VecZnx, VecZnxOwned, ZnxView, ZnxViewMut, assert_alignement};
+
+pub trait VecZnxAlloc {
     /// Allocates a new [VecZnx].
     ///
     /// # Arguments
     ///
     /// * `cols`: the number of polynomials.
     /// * `size`: the number small polynomials per column.
-    fn new_vec_znx(&self, cols: usize, size: usize) -> VecZnx;
+    fn new_vec_znx(&self, cols: usize, size: usize) -> VecZnxOwned;
 
     /// Instantiates a new [VecZnx] from a slice of bytes.
     /// The returned [VecZnx] takes ownership of the slice of bytes.
@@ -20,25 +21,28 @@ pub trait VecZnxOps {
     ///
     /// # Panic
     /// Requires the slice of bytes to be equal to [VecZnxOps::bytes_of_vec_znx].
-    fn new_vec_znx_from_bytes(&self, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnx;
+    fn new_vec_znx_from_bytes(&self, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxOwned;
 
-    /// Instantiates a new [VecZnx] from a slice of bytes.
-    /// The returned [VecZnx] does take ownership of the slice of bytes.
-    ///
-    /// # Arguments
-    ///
-    /// * `cols`: the number of polynomials.
-    /// * `size`: the number small polynomials per column.
-    ///
-    /// # Panic
-    /// Requires the slice of bytes to be equal to [VecZnxOps::bytes_of_vec_znx].
-    fn new_vec_znx_from_bytes_borrow(&self, cols: usize, size: usize, tmp_bytes: &mut [u8]) -> VecZnx;
+    // /// Instantiates a new [VecZnx] from a slice of bytes.
+    // /// The returned [VecZnx] does take ownership of the slice of bytes.
+    // ///
+    // /// # Arguments
+    // ///
+    // /// * `cols`: the number of polynomials.
+    // /// * `size`: the number small polynomials per column.
+    // ///
+    // /// # Panic
+    // /// Requires the slice of bytes to be equal to [VecZnxOps::bytes_of_vec_znx].
+    // fn new_vec_znx_from_bytes_borrow(&self, cols: usize, size: usize, tmp_bytes: &mut [u8]) -> VecZnx;
+    // (Jay)TODO
 
     /// Returns the number of bytes necessary to allocate
     /// a new [VecZnx] through [VecZnxOps::new_vec_znx_from_bytes]
     /// or [VecZnxOps::new_vec_znx_from_bytes_borrow].
     fn bytes_of_vec_znx(&self, cols: usize, size: usize) -> usize;
+}
 
+pub trait VecZnxOps<DataMut, Data> {
     /// Returns the minimum number of bytes necessary for normalization.
     fn vec_znx_normalize_tmp_bytes(&self) -> usize;
 
@@ -46,48 +50,64 @@ pub trait VecZnxOps {
     fn vec_znx_normalize(
         &self,
         log_base2k: usize,
-        res: &mut VecZnx,
+        res: &mut VecZnx<DataMut>,
         res_col: usize,
-        a: &VecZnx,
+        a: &VecZnx<Data>,
         a_col: usize,
         tmp_bytes: &mut [u8],
     );
 
     /// Normalizes the selected column of `a`.
-    fn vec_znx_normalize_inplace(&self, log_base2k: usize, a: &mut VecZnx, a_col: usize, tmp_bytes: &mut [u8]);
+    fn vec_znx_normalize_inplace(&self, log_base2k: usize, a: &mut VecZnx<DataMut>, a_col: usize, tmp_bytes: &mut [u8]);
 
-    /// Adds the selected column of `a` to the selected column of `b` and write the result on the selected column of `c`.
-    fn vec_znx_add(&self, res: &mut VecZnx, res_col: usize, a: &VecZnx, a_col: usize, b: &VecZnx, b_col: usize);
+    /// Adds the selected column of `a` to the selected column of `b` and writes the result on the selected column of `res`.
+    fn vec_znx_add(
+        &self,
+        res: &mut VecZnx<DataMut>,
+        res_col: usize,
+        a: &VecZnx<Data>,
+        a_col: usize,
+        b: &VecZnx<Data>,
+        b_col: usize,
+    );
 
-    /// Adds the selected column of `a` to the selected column of `b` and write the result on the selected column of `res`.
-    fn vec_znx_add_inplace(&self, res: &mut VecZnx, res_col: usize, a: &VecZnx, a_col: usize);
+    /// Adds the selected column of `a` to the selected column of `b` and writes the result on the selected column of `res`.
+    fn vec_znx_add_inplace(&self, res: &mut VecZnx<DataMut>, res_col: usize, a: &VecZnx<Data>, a_col: usize);
 
-    /// Subtracts the selected column of `b` to the selected column of `a` and write the result on the selected column of `res`.
-    fn vec_znx_sub(&self, res: &mut VecZnx, res_col: usize, a: &VecZnx, a_col: usize, b: &VecZnx, b_col: usize);
+    /// Subtracts the selected column of `b` from the selected column of `a` and writes the result on the selected column of `res`.
+    fn vec_znx_sub(
+        &self,
+        res: &mut VecZnx<DataMut>,
+        res_col: usize,
+        a: &VecZnx<Data>,
+        a_col: usize,
+        b: &VecZnx<Data>,
+        b_col: usize,
+    );
 
-    /// Subtracts the selected column of `a` to the selected column of `res`.
-    fn vec_znx_sub_ab_inplace(&self, res: &mut VecZnx, res_col: usize, a: &VecZnx, a_col: usize);
+    /// Subtracts the selected column of `a` from the selected column of `res` inplace.
+    fn vec_znx_sub_ab_inplace(&self, res: &mut VecZnx<DataMut>, res_col: usize, a: &VecZnx<Data>, a_col: usize);
 
-    /// Subtracts the selected column of `a` to the selected column of `res` and negates the selected column of `res`.
-    fn vec_znx_sub_ba_inplace(&self, res: &mut VecZnx, res_col: usize, a: &VecZnx, a_col: usize);
+    // /// Subtracts the selected column of `a` from the selected column of `res` and negates the selected column of `res`.
+    // fn vec_znx_sub_ba_inplace(&self, res: &mut VecZnx<DataMut>, res_col: usize, a: &VecZnx<Data>, a_col: usize);
 
-    // Negates the selected column of `a` and stores the result on the selected column of `res`.
-    fn vec_znx_negate(&self, res: &mut VecZnx, res_col: usize, a: &VecZnx, a_col: usize);
+    // Negates the selected column of `a` and stores the result in `res_col` of `res`.
+    fn vec_znx_negate(&self, res: &mut VecZnx<DataMut>, res_col: usize, a: &VecZnx<Data>, a_col: usize);
 
     /// Negates the selected column of `a`.
-    fn vec_znx_negate_inplace(&self, a: &mut VecZnx, a_col: usize);
+    fn vec_znx_negate_inplace(&self, a: &mut VecZnx<DataMut>, a_col: usize);
 
-    /// Multiplies the selected column of `a` by X^k and stores the result on the selected column of `res`.
-    fn vec_znx_rotate(&self, k: i64, res: &mut VecZnx, res_col: usize, a: &VecZnx, a_col: usize);
+    /// Multiplies the selected column of `a` by X^k and stores the result in `res_col` of `res`.
+    fn vec_znx_rotate(&self, k: i64, res: &mut VecZnx<DataMut>, res_col: usize, a: &VecZnx<Data>, a_col: usize);
 
     /// Multiplies the selected column of `a` by X^k.
-    fn vec_znx_rotate_inplace(&self, k: i64, a: &mut VecZnx, a_col: usize);
+    fn vec_znx_rotate_inplace(&self, k: i64, a: &mut VecZnx<DataMut>, a_col: usize);
 
-    /// Applies the automorphism X^i -> X^ik on the selected column of `a` and stores the result on the selected column of `res`.
-    fn vec_znx_automorphism(&self, k: i64, res: &mut VecZnx, res_col: usize, a: &VecZnx, a_col: usize);
+    /// Applies the automorphism X^i -> X^ik on the selected column of `a` and stores the result in `res_col` column of `res`.
+    fn vec_znx_automorphism(&self, k: i64, res: &mut VecZnx<DataMut>, res_col: usize, a: &VecZnx<Data>, a_col: usize);
 
     /// Applies the automorphism X^i -> X^ik on the selected column of `a`.
-    fn vec_znx_automorphism_inplace(&self, k: i64, a: &mut VecZnx, a_col: usize);
+    fn vec_znx_automorphism_inplace(&self, k: i64, a: &mut VecZnx<DataMut>, a_col: usize);
 
     /// Splits the selected columns of `b` into subrings and copies them them into the selected column of `res`.
     ///
@@ -95,7 +115,14 @@ pub trait VecZnxOps {
     ///
     /// This method requires that all [VecZnx] of b have the same ring degree
     /// and that b.n() * b.len() <= a.n()
-    fn vec_znx_split(&self, res: &mut Vec<VecZnx>, res_col: usize, a: &VecZnx, a_col: usize, buf: &mut VecZnx);
+    fn vec_znx_split(
+        &self,
+        res: &mut Vec<VecZnx<DataMut>>,
+        res_col: usize,
+        a: &VecZnx<Data>,
+        a_col: usize,
+        buf: &mut VecZnx<DataMut>,
+    );
 
     /// Merges the subrings of the selected column of `a` into the selected column of `res`.
     ///
@@ -103,26 +130,29 @@ pub trait VecZnxOps {
     ///
     /// This method requires that all [VecZnx] of a have the same ring degree
     /// and that a.n() * a.len() <= b.n()
-    fn vec_znx_merge(&self, res: &mut VecZnx, res_col: usize, a: &Vec<VecZnx>, a_col: usize);
+    fn vec_znx_merge(&self, res: &mut VecZnx<DataMut>, res_col: usize, a: &Vec<VecZnx<Data>>, a_col: usize);
 }
 
-impl<B: Backend> VecZnxOps for Module<B> {
-    fn new_vec_znx(&self, cols: usize, size: usize) -> VecZnx {
-        VecZnx::new(self, VEC_ZNX_ROWS, cols, size)
+impl<B: Backend> VecZnxAlloc for Module<B> {
+    //(Jay)TODO: One must define the Scalar generic param here.
+    fn new_vec_znx(&self, cols: usize, size: usize) -> VecZnxOwned {
+        VecZnxOwned::new(self.n(), cols, size)
     }
 
     fn bytes_of_vec_znx(&self, cols: usize, size: usize) -> usize {
-        VecZnx::bytes_of(self, VEC_ZNX_ROWS, cols, size)
+        VecZnxOwned::bytes_of(self.n(), cols, size)
     }
 
-    fn new_vec_znx_from_bytes(&self, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnx {
-        VecZnx::from_bytes(self, VEC_ZNX_ROWS, cols, size, bytes)
+    fn new_vec_znx_from_bytes(&self, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxOwned {
+        VecZnxOwned::new_from_bytes(self.n(), cols, size, bytes)
     }
+}
 
-    fn new_vec_znx_from_bytes_borrow(&self, cols: usize, size: usize, tmp_bytes: &mut [u8]) -> VecZnx {
-        VecZnx::from_bytes_borrow(self, VEC_ZNX_ROWS, cols, size, tmp_bytes)
-    }
-
+impl<B: Backend, DataMut, Data> VecZnxOps<DataMut, Data> for Module<B>
+where
+    Data: AsRef<[u8]>,
+    DataMut: AsRef<[u8]> + AsMut<[u8]>,
+{
     fn vec_znx_normalize_tmp_bytes(&self) -> usize {
         unsafe { vec_znx::vec_znx_normalize_base2k_tmp_bytes(self.ptr) as usize }
     }
@@ -130,9 +160,9 @@ impl<B: Backend> VecZnxOps for Module<B> {
     fn vec_znx_normalize(
         &self,
         log_base2k: usize,
-        res: &mut VecZnx,
+        res: &mut VecZnx<DataMut>,
         res_col: usize,
-        a: &VecZnx,
+        a: &VecZnx<Data>,
         a_col: usize,
         tmp_bytes: &mut [u8],
     ) {
@@ -158,7 +188,7 @@ impl<B: Backend> VecZnxOps for Module<B> {
         }
     }
 
-    fn vec_znx_normalize_inplace(&self, log_base2k: usize, a: &mut VecZnx, a_col: usize, tmp_bytes: &mut [u8]) {
+    fn vec_znx_normalize_inplace(&self, log_base2k: usize, a: &mut VecZnx<DataMut>, a_col: usize, tmp_bytes: &mut [u8]) {
         unsafe {
             let a_ptr: *mut VecZnx = a as *mut VecZnx;
             Self::vec_znx_normalize(
@@ -173,7 +203,15 @@ impl<B: Backend> VecZnxOps for Module<B> {
         }
     }
 
-    fn vec_znx_add(&self, res: &mut VecZnx, res_col: usize, a: &VecZnx, a_col: usize, b: &VecZnx, b_col: usize) {
+    fn vec_znx_add(
+        &self,
+        res: &mut VecZnx<DataMut>,
+        res_col: usize,
+        a: &VecZnx<Data>,
+        a_col: usize,
+        b: &VecZnx<Data>,
+        b_col: usize,
+    ) {
         #[cfg(debug_assertions)]
         {
             assert_eq!(a.n(), self.n());
@@ -197,14 +235,21 @@ impl<B: Backend> VecZnxOps for Module<B> {
         }
     }
 
-    fn vec_znx_add_inplace(&self, res: &mut VecZnx, res_col: usize, a: &VecZnx, a_col: usize) {
+    fn vec_znx_add_inplace(&self, res: &mut VecZnx<DataMut>, res_col: usize, a: &VecZnx<Data>, a_col: usize) {
         unsafe {
-            let res_ptr: *mut VecZnx = res as *mut VecZnx;
-            Self::vec_znx_add(self, &mut *res_ptr, res_col, a, a_col, &*res_ptr, res_col);
+            Self::vec_znx_add(&self, res, res_col, a, a_col, res, res_col);
         }
     }
 
-    fn vec_znx_sub(&self, res: &mut VecZnx, res_col: usize, a: &VecZnx, a_col: usize, b: &VecZnx, b_col: usize) {
+    fn vec_znx_sub(
+        &self,
+        res: &mut VecZnx<DataMut>,
+        res_col: usize,
+        a: &VecZnx<Data>,
+        a_col: usize,
+        b: &VecZnx<Data>,
+        b_col: usize,
+    ) {
         #[cfg(debug_assertions)]
         {
             assert_eq!(a.n(), self.n());
@@ -228,21 +273,21 @@ impl<B: Backend> VecZnxOps for Module<B> {
         }
     }
 
-    fn vec_znx_sub_ab_inplace(&self, res: &mut VecZnx, res_col: usize, a: &VecZnx, a_col: usize) {
+    fn vec_znx_sub_ab_inplace(&self, res: &mut VecZnx<DataMut>, res_col: usize, a: &VecZnx<Data>, a_col: usize) {
         unsafe {
             let res_ptr: *mut VecZnx = res as *mut VecZnx;
-            Self::vec_znx_sub(self, &mut *res_ptr, res_col, a, a_col, &*res_ptr, res_col);
+            Self::vec_znx_sub(self, res, res_col, a, a_col, res, res_col);
         }
     }
 
-    fn vec_znx_sub_ba_inplace(&self, res: &mut VecZnx, res_col: usize, a: &VecZnx, a_col: usize) {
-        unsafe {
-            let res_ptr: *mut VecZnx = res as *mut VecZnx;
-            Self::vec_znx_sub(self, &mut *res_ptr, res_col, &*res_ptr, res_col, a, a_col);
-        }
-    }
+    // fn vec_znx_sub_ba_inplace(&self, res: &mut VecZnx, res_col: usize, a: &VecZnx, a_col: usize) {
+    //     unsafe {
+    //         let res_ptr: *mut VecZnx = res as *mut VecZnx;
+    //         Self::vec_znx_sub(self, &mut *res_ptr, res_col, &*res_ptr, res_col, a, a_col);
+    //     }
+    // }
 
-    fn vec_znx_negate(&self, res: &mut VecZnx, res_col: usize, a: &VecZnx, a_col: usize) {
+    fn vec_znx_negate(&self, res: &mut VecZnx<DataMut>, res_col: usize, a: &VecZnx<Data>, a_col: usize) {
         #[cfg(debug_assertions)]
         {
             assert_eq!(a.n(), self.n());
@@ -261,14 +306,13 @@ impl<B: Backend> VecZnxOps for Module<B> {
         }
     }
 
-    fn vec_znx_negate_inplace(&self, a: &mut VecZnx, a_col: usize) {
+    fn vec_znx_negate_inplace(&self, a: &mut VecZnx<DataMut>, a_col: usize) {
         unsafe {
-            let a_ptr: *mut VecZnx = a as *mut VecZnx;
-            Self::vec_znx_negate(self, &mut *a_ptr, a_col, &*a_ptr, a_col);
+            Self::vec_znx_negate(self, a, a_col, a, a_col);
         }
     }
 
-    fn vec_znx_rotate(&self, k: i64, res: &mut VecZnx, res_col: usize, a: &VecZnx, a_col: usize) {
+    fn vec_znx_rotate(&self, k: i64, res: &mut VecZnx<DataMut>, res_col: usize, a: &VecZnx<Data>, a_col: usize) {
         #[cfg(debug_assertions)]
         {
             assert_eq!(a.n(), self.n());
@@ -288,14 +332,13 @@ impl<B: Backend> VecZnxOps for Module<B> {
         }
     }
 
-    fn vec_znx_rotate_inplace(&self, k: i64, a: &mut VecZnx, a_col: usize) {
+    fn vec_znx_rotate_inplace(&self, k: i64, a: &mut VecZnx<DataMut>, a_col: usize) {
         unsafe {
-            let a_ptr: *mut VecZnx = a as *mut VecZnx;
-            Self::vec_znx_rotate(self, k, &mut *a_ptr, a_col, &*a_ptr, a_col);
+            Self::vec_znx_rotate(self, k, a, a_col, a, a_col);
         }
     }
 
-    fn vec_znx_automorphism(&self, k: i64, res: &mut VecZnx, res_col: usize, a: &VecZnx, a_col: usize) {
+    fn vec_znx_automorphism(&self, k: i64, res: &mut VecZnx<DataMut>, res_col: usize, a: &VecZnx<Data>, a_col: usize) {
         #[cfg(debug_assertions)]
         {
             assert_eq!(a.n(), self.n());
@@ -315,14 +358,20 @@ impl<B: Backend> VecZnxOps for Module<B> {
         }
     }
 
-    fn vec_znx_automorphism_inplace(&self, k: i64, a: &mut VecZnx, a_col: usize) {
+    fn vec_znx_automorphism_inplace(&self, k: i64, a: &mut VecZnx<DataMut>, a_col: usize) {
         unsafe {
-            let a_ptr: *mut VecZnx = a as *mut VecZnx;
-            Self::vec_znx_automorphism(self, k, &mut *a_ptr, a_col, &*a_ptr, a_col);
+            Self::vec_znx_automorphism(self, k, a, a_col, a, a_col);
         }
     }
 
-    fn vec_znx_split(&self, res: &mut Vec<VecZnx>, res_col: usize, a: &VecZnx, a_col: usize, buf: &mut VecZnx) {
+    fn vec_znx_split(
+        &self,
+        res: &mut Vec<VecZnx<DataMut>>,
+        res_col: usize,
+        a: &VecZnx<Data>,
+        a_col: usize,
+        buf: &mut VecZnx<DataMut>,
+    ) {
         let (n_in, n_out) = (a.n(), res[0].n());
 
         debug_assert!(
@@ -348,7 +397,7 @@ impl<B: Backend> VecZnxOps for Module<B> {
         })
     }
 
-    fn vec_znx_merge(&self, res: &mut VecZnx, res_col: usize, a: &Vec<VecZnx>, a_col: usize) {
+    fn vec_znx_merge(&self, res: &mut VecZnx<DataMut>, res_col: usize, a: &Vec<VecZnx<Data>>, a_col: usize) {
         let (n_in, n_out) = (res.n(), a[0].n());
 
         debug_assert!(

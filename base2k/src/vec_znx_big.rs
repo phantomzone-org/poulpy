@@ -1,74 +1,91 @@
 use crate::ffi::vec_znx_big;
-use crate::znx_base::{GetZnxBase, ZnxAlloc, ZnxBase, ZnxInfos, ZnxLayout, ZnxSliceSize, ZnxZero};
-use crate::{Backend, FFT64, Module, NTT120};
+use crate::znx_base::{GetZnxBase, ZnxAlloc, ZnxBase, ZnxInfos, ZnxView};
+use crate::{Backend, DataView, DataViewMut, FFT64, Module, alloc_aligned};
 use std::marker::PhantomData;
 
 const VEC_ZNX_BIG_ROWS: usize = 1;
 
-pub struct VecZnxBig<B: Backend> {
-    pub inner: ZnxBase,
-    pub _marker: PhantomData<B>,
+/// VecZnxBig is Backend dependent, denoted with backend generic `B`
+pub struct VecZnxBig<D, B> {
+    data: D,
+    n: usize,
+    cols: usize,
+    size: usize,
+    _phantom: PhantomData<B>,
 }
 
-impl<B: Backend> GetZnxBase for VecZnxBig<B> {
-    fn znx(&self) -> &ZnxBase {
-        &self.inner
+impl<D, B> ZnxInfos for VecZnxBig<D, B> {
+    fn cols(&self) -> usize {
+        self.cols
     }
 
-    fn znx_mut(&mut self) -> &mut ZnxBase {
-        &mut self.inner
-    }
-}
-
-impl<B: Backend> ZnxInfos for VecZnxBig<B> {}
-
-impl<B: Backend> ZnxAlloc<B> for VecZnxBig<B> {
-    type Scalar = u8;
-
-    fn from_bytes_borrow(module: &Module<B>, _rows: usize, cols: usize, size: usize, bytes: &mut [u8]) -> Self {
-        debug_assert_eq!(bytes.len(), Self::bytes_of(module, _rows, cols, size));
-        VecZnxBig {
-            inner: ZnxBase::from_bytes_borrow(module.n(), VEC_ZNX_BIG_ROWS, cols, size, bytes),
-            _marker: PhantomData,
-        }
+    fn rows(&self) -> usize {
+        1
     }
 
-    fn bytes_of(module: &Module<B>, _rows: usize, cols: usize, size: usize) -> usize {
-        debug_assert_eq!(
-            _rows, VEC_ZNX_BIG_ROWS,
-            "rows != {} not supported for VecZnxBig",
-            VEC_ZNX_BIG_ROWS
-        );
-        unsafe { vec_znx_big::bytes_of_vec_znx_big(module.ptr, size as u64) as usize * cols }
+    fn n(&self) -> usize {
+        self.n
+    }
+
+    fn size(&self) -> usize {
+        self.size
+    }
+
+    fn sl(&self) -> usize {
+        self.cols() * self.n()
     }
 }
 
-impl ZnxLayout for VecZnxBig<FFT64> {
+impl<D, B> DataView for VecZnxBig<D, B> {
+    type D = D;
+    fn data(&self) -> &Self::D {
+        &self.data
+    }
+}
+
+impl<D, B> DataViewMut for VecZnxBig<D, B> {
+    fn data_mut(&self) -> &mut Self::D {
+        &mut self.data
+    }
+}
+
+impl<D: AsRef<[u8]>> ZnxView for VecZnxBig<D, FFT64> {
     type Scalar = i64;
 }
 
-impl ZnxLayout for VecZnxBig<NTT120> {
-    type Scalar = i128;
-}
+impl<D: From<Vec<u8>>, B: Backend> VecZnxBig<D, B> {
+    pub(crate) fn bytes_of(module: &Module<B>, cols: usize, size: usize) -> usize {
+        unsafe { vec_znx_big::bytes_of_vec_znx_big(module.ptr, size as u64) as usize * cols }
+    }
 
-impl ZnxZero for VecZnxBig<FFT64> {}
+    pub(crate) fn new(module: &Module<B>, cols: usize, size: usize) -> Self {
+        let data = alloc_aligned::<u8>(Self::bytes_of(module, cols, size));
+        Self {
+            data: data.into(),
+            n: module.n(),
+            cols,
+            size,
+            _phantom: PhantomData,
+        }
+    }
 
-impl ZnxSliceSize for VecZnxBig<FFT64> {
-    fn sl(&self) -> usize {
-        self.n() * self.cols()
+    pub(crate) fn new_from_bytes(module: &Module<B>, cols: usize, size: usize, bytes: impl Into<Vec<u8>>) -> Self {
+        let data: Vec<u8> = bytes.into();
+        assert!(data.len() == Self::bytes_of(module, cols, size));
+        Self {
+            data: data.into(),
+            n: module.n(),
+            cols,
+            size,
+            _phantom: PhantomData,
+        }
     }
 }
 
-impl ZnxSliceSize for VecZnxBig<NTT120> {
-    fn sl(&self) -> usize {
-        self.n() * 4 * self.cols()
-    }
-}
+pub type VecZnxBigOwned<B> = VecZnxBig<Vec<u8>, B>;
 
-impl ZnxZero for VecZnxBig<NTT120> {}
-
-impl VecZnxBig<FFT64> {
-    pub fn print(&self, n: usize, col: usize) {
-        (0..self.size()).for_each(|i| println!("{}: {:?}", i, &self.at(col, i)[..n]));
-    }
-}
+// impl VecZnxBig<FFT64> {
+//     pub fn print(&self, n: usize, col: usize) {
+//         (0..self.size()).for_each(|i| println!("{}: {:?}", i, &self.at(col, i)[..n]));
+//     }
+// }

@@ -1,85 +1,135 @@
-use crate::ffi::vec_znx_dft;
-use crate::znx_base::{GetZnxBase, ZnxAlloc, ZnxBase, ZnxInfos, ZnxLayout, ZnxSliceSize, ZnxZero};
-use crate::{Backend, FFT64, Module, VecZnxBig};
 use std::marker::PhantomData;
+
+use crate::ffi::vec_znx_dft;
+use crate::znx_base::{ZnxAlloc, ZnxInfos};
+use crate::{Backend, DataView, DataViewMut, FFT64, Module, ZnxView, alloc_aligned};
 
 const VEC_ZNX_DFT_ROWS: usize = 1;
 
-pub struct VecZnxDft<B: Backend> {
-    inner: ZnxBase,
-    pub _marker: PhantomData<B>,
+pub struct VecZnxDft<D, B> {
+    data: D,
+    n: usize,
+    cols: usize,
+    size: usize,
+    _phantom: PhantomData<B>,
 }
 
-impl<B: Backend> GetZnxBase for VecZnxDft<B> {
-    fn znx(&self) -> &ZnxBase {
-        &self.inner
+impl<D, B> ZnxInfos for VecZnxDft<D, B> {
+    fn cols(&self) -> usize {
+        self.cols
     }
 
-    fn znx_mut(&mut self) -> &mut ZnxBase {
-        &mut self.inner
-    }
-}
-
-impl<B: Backend> ZnxInfos for VecZnxDft<B> {}
-
-impl<B: Backend> ZnxAlloc<B> for VecZnxDft<B> {
-    type Scalar = u8;
-
-    fn from_bytes_borrow(module: &Module<B>, _rows: usize, cols: usize, size: usize, bytes: &mut [u8]) -> Self {
-        debug_assert_eq!(bytes.len(), Self::bytes_of(module, _rows, cols, size));
-        Self {
-            inner: ZnxBase::from_bytes_borrow(module.n(), VEC_ZNX_DFT_ROWS, cols, size, bytes),
-            _marker: PhantomData,
-        }
+    fn rows(&self) -> usize {
+        1
     }
 
-    fn bytes_of(module: &Module<B>, _rows: usize, cols: usize, size: usize) -> usize {
-        debug_assert_eq!(
-            _rows, VEC_ZNX_DFT_ROWS,
-            "rows != {} not supported for VecZnxDft",
-            VEC_ZNX_DFT_ROWS
-        );
-        unsafe { vec_znx_dft::bytes_of_vec_znx_dft(module.ptr, size as u64) as usize * cols }
+    fn n(&self) -> usize {
+        self.n
+    }
+
+    fn size(&self) -> usize {
+        self.size
+    }
+
+    fn sl(&self) -> usize {
+        self.cols() * self.n()
     }
 }
 
-impl ZnxLayout for VecZnxDft<FFT64> {
+impl<D, B> DataView for VecZnxDft<D, B> {
+    type D = D;
+    fn data(&self) -> &Self::D {
+        &self.data
+    }
+}
+
+impl<D, B> DataViewMut for VecZnxDft<D, B> {
+    fn data_mut(&self) -> &mut Self::D {
+        &mut self.data
+    }
+}
+
+impl<D: AsRef<[u8]>> ZnxView for VecZnxDft<D, FFT64> {
     type Scalar = f64;
 }
 
-impl ZnxZero for VecZnxDft<FFT64> {}
-
-impl ZnxSliceSize for VecZnxDft<FFT64> {
-    fn sl(&self) -> usize {
-        self.n()
+impl<D: From<Vec<u8>>, B: Backend> VecZnxDft<D, B> {
+    pub(crate) fn bytes_of(module: &Module<B>, cols: usize, size: usize) -> usize {
+        unsafe { vec_znx_dft::bytes_of_vec_znx_dft(module.ptr, size as u64) as usize * cols }
     }
-}
 
-impl VecZnxDft<FFT64> {
-    pub fn print(&self, n: usize, col: usize) {
-        (0..self.size()).for_each(|i| println!("{}: {:?}", i, &self.at(col, i)[..n]));
+    pub(crate) fn new(module: &Module<B>, cols: usize, size: usize) -> Self {
+        let data = alloc_aligned::<u8>(Self::bytes_of(module, cols, size));
+        Self {
+            data: data.into(),
+            n: module.n(),
+            cols,
+            size,
+            _phantom: PhantomData,
+        }
     }
-}
 
-impl<B: Backend> VecZnxDft<B> {
-    /// Cast a [VecZnxDft] into a [VecZnxBig].
-    /// The returned [VecZnxBig] shares the backing array
-    /// with the original [VecZnxDft].
-    pub fn alias_as_vec_znx_big(&mut self) -> VecZnxBig<B> {
-        assert!(
-            self.data().len() == 0,
-            "cannot alias VecZnxDft into VecZnxBig if it owns the data"
-        );
-        VecZnxBig::<B> {
-            inner: ZnxBase {
-                data: Vec::new(),
-                ptr: self.ptr(),
-                n: self.n(),
-                rows: self.rows(),
-                cols: self.cols(),
-                size: self.size(),
-            },
-            _marker: PhantomData,
+    pub(crate) fn new_from_bytes(module: &Module<B>, cols: usize, size: usize, bytes: impl Into<Vec<u8>>) -> Self {
+        let data: Vec<u8> = bytes.into();
+        assert!(data.len() == Self::bytes_of(module, cols, size));
+        Self {
+            data: data.into(),
+            n: module.n(),
+            cols,
+            size,
+            _phantom: PhantomData,
         }
     }
 }
+
+pub type VecZnxDftOwned<B> = VecZnxDft<Vec<u8>, B>;
+
+// impl<B: Backend> ZnxAlloc<B> for VecZnxDft<B> {
+//     type Scalar = u8;
+
+//     fn from_bytes_borrow(module: &Module<B>, _rows: usize, cols: usize, size: usize, bytes: &mut [u8]) -> Self {
+//         debug_assert_eq!(bytes.len(), Self::bytes_of(module, _rows, cols, size));
+//         Self {
+//             inner: ZnxBase::from_bytes_borrow(module.n(), VEC_ZNX_DFT_ROWS, cols, size, bytes),
+//             _marker: PhantomData,
+//         }
+//     }
+
+//     fn bytes_of(module: &Module<B>, _rows: usize, cols: usize, size: usize) -> usize {
+//         debug_assert_eq!(
+//             _rows, VEC_ZNX_DFT_ROWS,
+//             "rows != {} not supported for VecZnxDft",
+//             VEC_ZNX_DFT_ROWS
+//         );
+//         unsafe { vec_znx_dft::bytes_of_vec_znx_dft(module.ptr, size as u64) as usize * cols }
+//     }
+// }
+
+// impl VecZnxDft<FFT64> {
+//     pub fn print(&self, n: usize, col: usize) {
+//         (0..self.size()).for_each(|i| println!("{}: {:?}", i, &self.at(col, i)[..n]));
+//     }
+// }
+
+// impl<B: Backend> VecZnxDft<B> {
+//     /// Cast a [VecZnxDft] into a [VecZnxBig].
+//     /// The returned [VecZnxBig] shares the backing array
+//     /// with the original [VecZnxDft].
+//     pub fn alias_as_vec_znx_big(&mut self) -> VecZnxBig<B> {
+//         assert!(
+//             self.data().len() == 0,
+//             "cannot alias VecZnxDft into VecZnxBig if it owns the data"
+//         );
+//         VecZnxBig::<B> {
+//             inner: ZnxBase {
+//                 data: Vec::new(),
+//                 ptr: self.ptr(),
+//                 n: self.n(),
+//                 rows: self.rows(),
+//                 cols: self.cols(),
+//                 size: self.size(),
+//             },
+//             _marker: PhantomData,
+//         }
+//     }
+// }
