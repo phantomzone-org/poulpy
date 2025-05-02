@@ -1,4 +1,4 @@
-use crate::{Backend, Module, VecZnx, znx_base::ZnxLayout};
+use crate::{Backend, Module, VecZnx, znx_base::ZnxView};
 use rand_distr::{Distribution, Normal};
 use sampling::source::Source;
 
@@ -106,7 +106,7 @@ impl<B: Backend> Sampling for Module<B> {
 #[cfg(test)]
 mod tests {
     use super::Sampling;
-    use crate::{FFT64, Module, Stats, VecZnx, VecZnxOps, znx_base::ZnxLayout};
+    use crate::{FFT64, Module, Stats, VecZnx, VecZnxOps, znx_base::ZnxView};
     use sampling::source::Source;
 
     #[test]

@@ -31,28 +31,13 @@ impl Backend for NTT120 {
     }
 }
 
-pub struct Module<B: Backend> {
+pub struct Module<B> {
     pub ptr: *mut MODULE,
     pub n: usize,
     _marker: PhantomData<B>,
 }
 
-impl<B: Backend> Module<B> {
-    // Instantiates a new module.
-    pub fn new(n: usize) -> Self {
-        unsafe {
-            let m: *mut module_info_t = new_module_info(n as u64, B::module_type());
-            if m.is_null() {
-                panic!("Failed to create module.");
-            }
-            Self {
-                ptr: m,
-                n: n,
-                _marker: PhantomData,
-            }
-        }
-    }
-
+impl<B> Module<B> {
     pub fn n(&self) -> usize {
         self.n
     }
@@ -83,6 +68,23 @@ impl<B: Backend> Module<B> {
             (self.cyclotomic_order() - 1) as usize,
         ) & (self.cyclotomic_order() - 1)) as i64)
             * generator.signum()
+    }
+}
+
+impl<B: Backend> Module<B> {
+    // Instantiates a new module.
+    pub fn new(n: usize) -> Self {
+        unsafe {
+            let m: *mut module_info_t = new_module_info(n as u64, B::module_type());
+            if m.is_null() {
+                panic!("Failed to create module.");
+            }
+            Self {
+                ptr: m,
+                n: n,
+                _marker: PhantomData,
+            }
+        }
     }
 
     pub fn free(self) {
