@@ -17,7 +17,7 @@ pub fn rgsw_product_tmp_bytes(module: &Module, log_base2k: usize, res_logq: usiz
     let gct_cols: usize = (gct_logq + log_base2k - 1) / log_base2k;
     let in_cols: usize = (in_logq + log_base2k - 1) / log_base2k;
     let res_cols: usize = (res_logq + log_base2k - 1) / log_base2k;
-    return module.vmp_apply_dft_to_dft_tmp_bytes(res_cols, in_cols, in_cols, gct_cols)
+    return module.vmp_apply_tmp_bytes(res_cols, in_cols, in_cols, gct_cols)
         + module.bytes_of_vec_znx_dft(1, std::cmp::min(res_cols, in_cols))
         + 2 * module.bytes_of_vec_znx_dft(1, gct_cols);
 }

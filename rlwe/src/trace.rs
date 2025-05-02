@@ -21,7 +21,7 @@ impl Parameters {
 }
 
 pub fn trace_tmp_bytes(module: &Module, c_cols: usize, a_cols: usize, b_rows: usize, b_cols: usize) -> usize {
-    return module.vmp_apply_dft_to_dft_tmp_bytes(c_cols, a_cols, b_rows, b_cols)
+    return module.vmp_apply_tmp_bytes(c_cols, a_cols, b_rows, b_cols)
         + 2 * module.bytes_of_vec_znx_dft(1, std::cmp::min(c_cols, a_cols));
 }
 

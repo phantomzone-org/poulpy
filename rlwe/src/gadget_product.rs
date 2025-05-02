@@ -13,7 +13,7 @@ pub fn gadget_product_core_tmp_bytes(
     let gct_cols: usize = (gct_log_q + log_base2k - 1) / log_base2k;
     let in_cols: usize = (in_log_q + log_base2k - 1) / log_base2k;
     let out_cols: usize = (res_log_q + log_base2k - 1) / log_base2k;
-    module.vmp_apply_dft_to_dft_tmp_bytes(out_cols, in_cols, gct_rows, gct_cols)
+    module.vmp_apply_tmp_bytes(out_cols, in_cols, gct_rows, gct_cols)
 }
 
 impl Parameters {
@@ -45,7 +45,7 @@ pub fn gadget_product_core(
 }
 
 pub fn gadget_product_big_tmp_bytes(module: &Module, c_cols: usize, a_cols: usize, b_rows: usize, b_cols: usize) -> usize {
-    return module.vmp_apply_dft_to_dft_tmp_bytes(c_cols, a_cols, b_rows, b_cols)
+    return module.vmp_apply_tmp_bytes(c_cols, a_cols, b_rows, b_cols)
         + 2 * module.bytes_of_vec_znx_dft(1, min(c_cols, a_cols));
 }
 
