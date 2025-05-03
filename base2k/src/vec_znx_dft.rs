@@ -1,11 +1,12 @@
 use std::marker::PhantomData;
 
 use crate::ffi::vec_znx_dft;
-use crate::znx_base::{ZnxAlloc, ZnxInfos};
+use crate::znx_base::ZnxInfos;
 use crate::{Backend, DataView, DataViewMut, FFT64, Module, ZnxView, alloc_aligned};
 
 const VEC_ZNX_DFT_ROWS: usize = 1;
 
+// VecZnxDft is `Backend` dependent denoted with generic `B`
 pub struct VecZnxDft<D, B> {
     data: D,
     n: usize,
@@ -44,7 +45,7 @@ impl<D, B> DataView for VecZnxDft<D, B> {
 }
 
 impl<D, B> DataViewMut for VecZnxDft<D, B> {
-    fn data_mut(&self) -> &mut Self::D {
+    fn data_mut(&mut self) -> &mut Self::D {
         &mut self.data
     }
 }
@@ -83,6 +84,18 @@ impl<D: From<Vec<u8>>, B: Backend> VecZnxDft<D, B> {
 }
 
 pub type VecZnxDftOwned<B> = VecZnxDft<Vec<u8>, B>;
+
+impl<'a, D: ?Sized, B> VecZnxDft<&'a mut D, B> {
+    pub(crate) fn from_mut_slice(data: &'a mut D, n: usize, cols: usize, size: usize) -> Self {
+        Self {
+            data,
+            n,
+            cols,
+            size,
+            _phantom: PhantomData,
+        }
+    }
+}
 
 // impl<B: Backend> ZnxAlloc<B> for VecZnxDft<B> {
 //     type Scalar = u8;

@@ -1,20 +1,19 @@
 use crate::ffi::vec_znx_dft::vec_znx_dft_t;
 use crate::ffi::vmp;
-use crate::znx_base::{ZnxInfos, ZnxLayout};
+use crate::znx_base::{ZnxInfos, ZnxView, ZnxViewMut};
 use crate::{
-    Backend, FFT64, MatZnxDft, Module, VecZnx, VecZnxBig, VecZnxBigOps, VecZnxDft, VecZnxDftOps, assert_alignement, is_aligned,
+    Backend, FFT64, MatZnxDft, MatZnxDftAllocOwned, Module, ScratchSpace, VecZnx, VecZnxBig, VecZnxBigOps, VecZnxDft,
+    VecZnxDftAlloc, VecZnxDftOps, assert_alignement, is_aligned,
 };
 
-/// This trait implements methods for vector matrix product,
-/// that is, multiplying a [VecZnx] with a [MatZnxDft].
-pub trait MatZnxDftOps<B: Backend> {
+pub trait MatZnxDftAlloc<B> {
     /// Allocates a new [MatZnxDft] with the given number of rows and columns.
     ///
     /// # Arguments
     ///
     /// * `rows`: number of rows (number of [VecZnxDft]).
     /// * `size`: number of size (number of size of each [VecZnxDft]).
-    fn new_mat_znx_dft(&self, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> MatZnxDft<B>;
+    fn new_mat_znx_dft(&self, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> MatZnxDftAllocOwned<B>;
 
     fn bytes_of_mat_znx_dft(&self, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize;
 
@@ -25,17 +24,21 @@ pub trait MatZnxDftOps<B: Backend> {
         cols_out: usize,
         size: usize,
         bytes: Vec<u8>,
-    ) -> MatZnxDft<FFT64>;
+    ) -> MatZnxDftAllocOwned<B>;
 
-    fn new_mat_znx_dft_from_bytes_borrow(
-        &self,
-        rows: usize,
-        cols_in: usize,
-        cols_out: usize,
-        size: usize,
-        bytes: &mut [u8],
-    ) -> MatZnxDft<FFT64>;
+    // fn new_mat_znx_dft_from_bytes_borrow(
+    //     &self,
+    //     rows: usize,
+    //     cols_in: usize,
+    //     cols_out: usize,
+    //     size: usize,
+    //     bytes: &mut [u8],
+    // ) -> MatZnxDft<FFT64>;
+}
 
+/// This trait implements methods for vector matrix product,
+/// that is, multiplying a [VecZnx] with a [MatZnxDft].
+pub trait MatZnxDftOps<DataMut, Data, B: Backend> {
     /// Returns the of bytes needed as scratch space for [MatZnxDftOps::vmp_prepare_row]
     fn vmp_prepare_row_tmp_bytes(&self, cols_out: usize, size: usize) -> usize;
 
@@ -49,7 +52,14 @@ pub trait MatZnxDftOps<B: Backend> {
     /// * `buf`: scratch space, the size of buf can be obtained with [MatZnxDftOps::vmp_prepare_tmp_bytes].
     ///
     /// The size of buf can be obtained with [MatZnxDftOps::vmp_prepare_tmp_bytes].
-    fn vmp_prepare_row(&self, b: &mut MatZnxDft<B>, b_row: usize, b_col_in: usize, a: &VecZnx, tmp_bytes: &mut [u8]);
+    fn vmp_prepare_row(
+        &self,
+        b: &mut MatZnxDft<DataMut, B>,
+        b_row: usize,
+        b_col_in: usize,
+        a: &VecZnx<Data>,
+        scratch: &mut ScratchSpace,
+    );
 
     /// Returns the of bytes needed as scratch space for [MatZnxDftOps::vmp_extract_row]
     fn vmp_extract_row_tmp_bytes(&self, cols_out: usize, size: usize) -> usize;
@@ -64,11 +74,11 @@ pub trait MatZnxDftOps<B: Backend> {
     fn vmp_extract_row(
         &self,
         log_base2k: usize,
-        b: &mut VecZnx,
-        a: &MatZnxDft<B>,
+        b: &mut VecZnx<DataMut>,
+        a: &MatZnxDft<Data, B>,
         b_row: usize,
         b_col_in: usize,
-        tmp_bytes: &mut [u8],
+        scratch: &mut ScratchSpace,
     );
 
     /// Prepares the ith-row of [MatZnxDft] from a [VecZnxDft].
@@ -80,7 +90,7 @@ pub trait MatZnxDftOps<B: Backend> {
     /// * `row_i`: the index of the row to prepare.
     ///
     /// The size of buf can be obtained with [MatZnxDftOps::vmp_prepare_tmp_bytes].
-    fn vmp_prepare_row_dft(&self, b: &mut MatZnxDft<B>, b_row: usize, b_col_in: usize, a: &VecZnxDft<B>);
+    fn vmp_prepare_row_dft(&self, b: &mut MatZnxDft<DataMut, B>, b_row: usize, b_col_in: usize, a: &VecZnxDft<Data, B>);
 
     /// Extracts the ith-row of [MatZnxDft] into a [VecZnxDft].
     ///
@@ -89,7 +99,7 @@ pub trait MatZnxDftOps<B: Backend> {
     /// * `b`: the [VecZnxDft] to on which to extract the row of the [MatZnxDft].
     /// * `a`: [MatZnxDft] on which the values are encoded.
     /// * `row_i`: the index of the row to extract.
-    fn vmp_extract_row_dft(&self, b: &mut VecZnxDft<B>, a: &MatZnxDft<B>, a_row: usize, a_col_in: usize);
+    fn vmp_extract_row_dft(&self, b: &mut VecZnxDft<DataMut, B>, a: &MatZnxDft<Data, B>, a_row: usize, a_col_in: usize);
 
     /// Returns the size of the stratch space necessary for [MatZnxDftOps::vmp_apply_dft].
     ///
@@ -133,7 +143,7 @@ pub trait MatZnxDftOps<B: Backend> {
     /// * `a`: the left operand [VecZnx] of the vector matrix product.
     /// * `b`: the right operand [MatZnxDft] of the vector matrix product.
     /// * `buf`: scratch space, the size can be obtained with [MatZnxDftOps::vmp_apply_dft_tmp_bytes].
-    fn vmp_apply_dft(&self, c: &mut VecZnxDft<B>, a: &VecZnx, b: &MatZnxDft<B>, buf: &mut [u8]);
+    fn vmp_apply_dft(&self, c: &mut VecZnxDft<DataMut, B>, a: &VecZnx<Data>, b: &MatZnxDft<Data, B>, scratch: &mut ScratchSpace);
 
     /// Returns the size of the stratch space necessary for [MatZnxDftOps::vmp_apply_dft_to_dft].
     ///
@@ -180,16 +190,22 @@ pub trait MatZnxDftOps<B: Backend> {
     /// * `a`: the left operand [VecZnxDft] of the vector matrix product.
     /// * `b`: the right operand [MatZnxDft] of the vector matrix product.
     /// * `buf`: scratch space, the size can be obtained with [MatZnxDftOps::vmp_apply_dft_to_dft_tmp_bytes].
-    fn vmp_apply_dft_to_dft(&self, c: &mut VecZnxDft<B>, a: &VecZnxDft<B>, b: &MatZnxDft<B>, buf: &mut [u8]);
+    fn vmp_apply_dft_to_dft(
+        &self,
+        c: &mut VecZnxDft<DataMut, B>,
+        a: &VecZnxDft<Data, B>,
+        b: &MatZnxDft<Data, B>,
+        scratch: &mut ScratchSpace,
+    );
 }
 
-impl MatZnxDftOps<FFT64> for Module<FFT64> {
-    fn new_mat_znx_dft(&self, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> MatZnxDft<FFT64> {
-        MatZnxDft::<FFT64>::new(self, rows, cols_in, cols_out, size)
+impl<B: Backend> MatZnxDftAlloc<B> for Module<B> {
+    fn bytes_of_mat_znx_dft(&self, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize {
+        MatZnxDftAllocOwned::bytes_of(self, rows, cols_in, cols_out, size)
     }
 
-    fn bytes_of_mat_znx_dft(&self, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize {
-        MatZnxDft::<FFT64>::bytes_of(self, rows, cols_in, cols_out, size)
+    fn new_mat_znx_dft(&self, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> MatZnxDftAllocOwned<B> {
+        MatZnxDftAllocOwned::new(self, rows, cols_in, cols_out, size)
     }
 
     fn new_mat_znx_dft_from_bytes(
@@ -199,26 +215,28 @@ impl MatZnxDftOps<FFT64> for Module<FFT64> {
         cols_out: usize,
         size: usize,
         bytes: Vec<u8>,
-    ) -> MatZnxDft<FFT64> {
-        MatZnxDft::<FFT64>::from_bytes(self, rows, cols_in, cols_out, size, bytes)
+    ) -> MatZnxDftAllocOwned<B> {
+        MatZnxDftAllocOwned::new_from_bytes(self, rows, cols_in, cols_out, size, bytes)
     }
+}
 
-    fn new_mat_znx_dft_from_bytes_borrow(
-        &self,
-        rows: usize,
-        cols_in: usize,
-        cols_out: usize,
-        size: usize,
-        bytes: &mut [u8],
-    ) -> MatZnxDft<FFT64> {
-        MatZnxDft::<FFT64>::from_bytes_borrow(self, rows, cols_in, cols_out, size, bytes)
-    }
-
+impl<DataMut, Data> MatZnxDftOps<DataMut, Data, FFT64> for Module<FFT64>
+where
+    DataMut: AsMut<[u8]> + AsRef<[u8]>,
+    Data: AsRef<[u8]>,
+{
     fn vmp_prepare_row_tmp_bytes(&self, cols_out: usize, size: usize) -> usize {
-        self.bytes_of_vec_znx_dft(cols_out, size)
+        <Self as VecZnxDftAlloc<FFT64>>::bytes_of_vec_znx_dft(self, cols_out, size)
     }
 
-    fn vmp_prepare_row(&self, b: &mut MatZnxDft<FFT64>, b_row: usize, b_col_in: usize, a: &VecZnx, tmp_bytes: &mut [u8]) {
+    fn vmp_prepare_row(
+        &self,
+        b: &mut MatZnxDft<DataMut, FFT64>,
+        b_row: usize,
+        b_col_in: usize,
+        a: &VecZnx<Data>,
+        scratch: &mut ScratchSpace,
+    ) {
         #[cfg(debug_assertions)]
         {
             assert_eq!(b.n(), self.n());
@@ -249,33 +267,36 @@ impl MatZnxDftOps<FFT64> for Module<FFT64> {
                 b.size(),
                 a.size()
             );
-            assert!(tmp_bytes.len() >= self.vmp_prepare_row_tmp_bytes(a.cols(), a.size()));
-            assert!(is_aligned(tmp_bytes.as_ptr()))
+            // assert!(
+            //     tmp_bytes.len()
+            //         >= <Self as MatZnxDftOps<DataMut, Data, FFT64>>::vmp_prepare_row_tmp_bytes(self, a.cols(), a.size())
+            // );
+            // assert!(is_aligned(tmp_bytes.as_ptr()))
         }
 
         let cols_out: usize = a.cols();
         let a_size: usize = a.size();
 
-        let (tmp_bytes_a_dft, _) = tmp_bytes.split_at_mut(self.bytes_of_vec_znx_dft(cols_out, a_size));
-
-        let mut a_dft: VecZnxDft<FFT64> = self.new_vec_znx_dft_from_bytes_borrow(cols_out, a_size, tmp_bytes_a_dft);
+        // let (tmp_bytes_a_dft, _) = tmp_bytes.split_at_mut(self.bytes_of_vec_znx_dft(cols_out, a_size));
+        let mut a_dft = scratch.tmp_vec_znx_dft::<DataMut, _>(self.n(), cols_out, a_size);
         (0..cols_out).for_each(|i| self.vec_znx_dft(&mut a_dft, i, &a, i));
 
         Self::vmp_prepare_row_dft(&self, b, b_row, b_col_in, &a_dft);
     }
 
     fn vmp_extract_row_tmp_bytes(&self, cols_out: usize, size: usize) -> usize {
-        self.bytes_of_vec_znx_dft(cols_out, size) + self.vec_znx_big_normalize_tmp_bytes()
+        self.bytes_of_vec_znx_dft(cols_out, size)
+            + <Self as VecZnxBigOps<DataMut, Data, FFT64>>::vec_znx_big_normalize_tmp_bytes(self)
     }
 
     fn vmp_extract_row(
         &self,
         log_base2k: usize,
-        b: &mut VecZnx,
-        a: &MatZnxDft<FFT64>,
+        b: &mut VecZnx<DataMut>,
+        a: &MatZnxDft<Data, FFT64>,
         a_row: usize,
         a_col_in: usize,
-        tmp_bytes: &mut [u8],
+        scratch: &mut ScratchSpace,
     ) {
         #[cfg(debug_assertions)]
         {
@@ -307,24 +328,24 @@ impl MatZnxDftOps<FFT64> for Module<FFT64> {
                 b.size(),
                 a.size()
             );
-            assert!(tmp_bytes.len() >= self.vmp_extract_row_tmp_bytes(a.cols(), a.size()));
-            assert!(is_aligned(tmp_bytes.as_ptr()))
+            // assert!(tmp_bytes.len() >= self.vmp_extract_row_tmp_bytes(a.cols(), a.size()));
+            // assert!(is_aligned(tmp_bytes.as_ptr()))
         }
 
         let cols_out: usize = b.cols();
         let size: usize = b.size();
 
-        let (bytes_a_dft, tmp_bytes) = tmp_bytes.split_at_mut(self.bytes_of_vec_znx_dft(cols_out, size));
-        let mut b_dft: VecZnxDft<FFT64> = self.new_vec_znx_dft_from_bytes_borrow(cols_out, size, bytes_a_dft);
+        // let (bytes_a_dft, tmp_bytes) = tmp_bytes.split_at_mut(self.bytes_of_vec_znx_dft(cols_out, size));
+        let mut b_dft = scratch.tmp_vec_znx_dft::<DataMut, _>(self.n(), cols_out, size);
         Self::vmp_extract_row_dft(&self, &mut b_dft, a, a_row, a_col_in);
-        let mut b_big: VecZnxBig<FFT64> = b_dft.alias_as_vec_znx_big();
+        let mut b_big = scratch.tmp_vec_znx_big(self.n(), cols_out, size);
         (0..cols_out).for_each(|i| {
-            self.vec_znx_idft_tmp_a(&mut b_big, i, &mut b_dft, i);
-            self.vec_znx_big_normalize(log_base2k, b, i, &b_big, i, tmp_bytes);
+            <Self as VecZnxDftOps<DataMut, Data, FFT64>>::vec_znx_idft_tmp_a(self, &mut b_big, i, &mut b_dft, i);
+            self.vec_znx_big_normalize(log_base2k, b, i, &b_big, i, scratch);
         });
     }
 
-    fn vmp_prepare_row_dft(&self, b: &mut MatZnxDft<FFT64>, b_row: usize, b_col_in: usize, a: &VecZnxDft<FFT64>) {
+    fn vmp_prepare_row_dft(&self, b: &mut MatZnxDft<DataMut, FFT64>, b_row: usize, b_col_in: usize, a: &VecZnxDft<Data, FFT64>) {
         #[cfg(debug_assertions)]
         {
             assert_eq!(b.n(), self.n());
@@ -369,7 +390,7 @@ impl MatZnxDftOps<FFT64> for Module<FFT64> {
         }
     }
 
-    fn vmp_extract_row_dft(&self, b: &mut VecZnxDft<FFT64>, a: &MatZnxDft<FFT64>, a_row: usize, a_col_in: usize) {
+    fn vmp_extract_row_dft(&self, b: &mut VecZnxDft<DataMut, FFT64>, a: &MatZnxDft<Data, FFT64>, a_row: usize, a_col_in: usize) {
         #[cfg(debug_assertions)]
         {
             assert_eq!(b.n(), self.n());
@@ -433,18 +454,13 @@ impl MatZnxDftOps<FFT64> for Module<FFT64> {
         }
     }
 
-    fn vmp_apply_dft(&self, c: &mut VecZnxDft<FFT64>, a: &VecZnx, b: &MatZnxDft<FFT64>, tmp_bytes: &mut [u8]) {
-        debug_assert!(
-            tmp_bytes.len()
-                >= self.vmp_apply_dft_tmp_bytes(
-                    c.size(),
-                    a.size(),
-                    b.rows(),
-                    b.cols_in(),
-                    b.cols_out(),
-                    b.size()
-                )
-        );
+    fn vmp_apply_dft(
+        &self,
+        c: &mut VecZnxDft<DataMut, FFT64>,
+        a: &VecZnx<Data>,
+        b: &MatZnxDft<Data, FFT64>,
+        scratch: &mut ScratchSpace,
+    ) {
         #[cfg(debug_assertions)]
         {
             assert_eq!(c.n(), self.n());
@@ -464,18 +480,18 @@ impl MatZnxDftOps<FFT64> for Module<FFT64> {
                 a.cols(),
                 b.cols_in()
             );
-            assert!(
-                tmp_bytes.len()
-                    >= self.vmp_apply_dft_tmp_bytes(
-                        c.size(),
-                        a.size(),
-                        b.rows(),
-                        b.cols_in(),
-                        b.cols_out(),
-                        b.size()
-                    )
-            );
-            assert_alignement(tmp_bytes.as_ptr());
+            // assert!(
+            //     tmp_bytes.len()
+            //         >= self.vmp_apply_dft_tmp_bytes(
+            //             c.size(),
+            //             a.size(),
+            //             b.rows(),
+            //             b.cols_in(),
+            //             b.cols_out(),
+            //             b.size()
+            //         )
+            // );
+            // assert_alignement(tmp_bytes.as_ptr());
         }
         unsafe {
             vmp::vmp_apply_dft(
@@ -488,7 +504,7 @@ impl MatZnxDftOps<FFT64> for Module<FFT64> {
                 b.as_ptr() as *const vmp::vmp_pmat_t,
                 (b.rows() * b.cols_in()) as u64,
                 (b.size() * b.cols_out()) as u64,
-                tmp_bytes.as_mut_ptr(),
+                scratch.vmp_apply_dft_tmp_bytes(self).as_mut_ptr(),
             )
         }
     }
@@ -515,7 +531,13 @@ impl MatZnxDftOps<FFT64> for Module<FFT64> {
         }
     }
 
-    fn vmp_apply_dft_to_dft(&self, c: &mut VecZnxDft<FFT64>, a: &VecZnxDft<FFT64>, b: &MatZnxDft<FFT64>, tmp_bytes: &mut [u8]) {
+    fn vmp_apply_dft_to_dft(
+        &self,
+        c: &mut VecZnxDft<DataMut, FFT64>,
+        a: &VecZnxDft<Data, FFT64>,
+        b: &MatZnxDft<Data, FFT64>,
+        scratch: &mut ScratchSpace,
+    ) {
         #[cfg(debug_assertions)]
         {
             assert_eq!(c.n(), self.n());
@@ -535,20 +557,20 @@ impl MatZnxDftOps<FFT64> for Module<FFT64> {
                 a.cols(),
                 b.cols_in()
             );
-            assert!(
-                tmp_bytes.len()
-                    >= self.vmp_apply_dft_to_dft_tmp_bytes(
-                        c.cols(),
-                        c.size(),
-                        a.cols(),
-                        a.size(),
-                        b.rows(),
-                        b.cols_in(),
-                        b.cols_out(),
-                        b.size()
-                    )
-            );
-            assert_alignement(tmp_bytes.as_ptr());
+            // assert!(
+            //     tmp_bytes.len()
+            //         >= self.vmp_apply_dft_to_dft_tmp_bytes(
+            //             c.cols(),
+            //             c.size(),
+            //             a.cols(),
+            //             a.size(),
+            //             b.rows(),
+            //             b.cols_in(),
+            //             b.cols_out(),
+            //             b.size()
+            //         )
+            // );
+            // assert_alignement(tmp_bytes.as_ptr());
         }
         unsafe {
             vmp::vmp_apply_dft_to_dft(
@@ -560,7 +582,7 @@ impl MatZnxDftOps<FFT64> for Module<FFT64> {
                 b.as_ptr() as *const vmp::vmp_pmat_t,
                 b.rows() as u64,
                 (b.size() * b.cols()) as u64,
-                tmp_bytes.as_mut_ptr(),
+                scratch.vmp_apply_dft_to_dft_tmp_bytes(self).as_mut_ptr(),
             )
         }
     }
@@ -568,9 +590,12 @@ impl MatZnxDftOps<FFT64> for Module<FFT64> {
 
 #[cfg(test)]
 mod tests {
+    use crate::mat_znx_dft_ops::*;
+    use crate::vec_znx_big_ops::*;
+    use crate::vec_znx_dft_ops::*;
+    use crate::vec_znx_ops::*;
     use crate::{
-        FFT64, MatZnxDft, MatZnxDftOps, Module, Sampling, VecZnx, VecZnxBig, VecZnxBigOps, VecZnxDft, VecZnxDftOps, VecZnxOps,
-        alloc_aligned, znx_base::ZnxLayout,
+        FFT64, MatZnxDft, MatZnxDftOps, Module, Sampling, VecZnx, VecZnxBig, VecZnxBigOps, VecZnxDft, VecZnxDftOps, alloc_aligned,
     };
     use sampling::source::Source;
 
@@ -582,16 +607,19 @@ mod tests {
         let mat_cols_in: usize = 2;
         let mat_cols_out: usize = 2;
         let mat_size: usize = 5;
-        let mut a: VecZnx = module.new_vec_znx(mat_cols_out, mat_size);
-        let mut b: VecZnx = module.new_vec_znx(mat_cols_out, mat_size);
-        let mut a_dft: VecZnxDft<FFT64> = module.new_vec_znx_dft(mat_cols_out, mat_size);
-        let mut a_big: VecZnxBig<FFT64> = module.new_vec_znx_big(mat_cols_out, mat_size);
-        let mut b_dft: VecZnxDft<FFT64> = module.new_vec_znx_dft(mat_cols_out, mat_size);
-        let mut vmpmat_0: MatZnxDft<FFT64> = module.new_mat_znx_dft(mat_rows, mat_cols_in, mat_cols_out, mat_size);
-        let mut vmpmat_1: MatZnxDft<FFT64> = module.new_mat_znx_dft(mat_rows, mat_cols_in, mat_cols_out, mat_size);
+        let mut a: VecZnx<_> = module.new_vec_znx(mat_cols_out, mat_size);
+        let mut b: VecZnx<_> = module.new_vec_znx(mat_cols_out, mat_size);
+        let mut a_dft: VecZnxDft<_, FFT64> = module.new_vec_znx_dft(mat_cols_out, mat_size);
+        let mut a_big: VecZnxBig<_, FFT64> = module.new_vec_znx_big(mat_cols_out, mat_size);
+        let mut b_dft: VecZnxDft<_, FFT64> = module.new_vec_znx_dft(mat_cols_out, mat_size);
+        let mut vmpmat_0: MatZnxDft<_, FFT64> = module.new_mat_znx_dft(mat_rows, mat_cols_in, mat_cols_out, mat_size);
+        let mut vmpmat_1: MatZnxDft<_, FFT64> = module.new_mat_znx_dft(mat_rows, mat_cols_in, mat_cols_out, mat_size);
 
+        // let mut tmp_bytes: Vec<u8> =
+        // alloc_aligned(module.vmp_prepare_row_tmp_bytes(mat_cols_out, mat_size) | module.vec_znx_big_normalize_tmp_bytes());
+        let mut scratch = ScratchSpace {};
         let mut tmp_bytes: Vec<u8> =
-            alloc_aligned(module.vmp_prepare_row_tmp_bytes(mat_cols_out, mat_size) | module.vec_znx_big_normalize_tmp_bytes());
+            alloc_aligned::<u8>(<Module<FFT64> as VecZnxDftOps<Vec<u8>, Vec<u8>, _>>::vec_znx_idft_tmp_bytes(&module));
 
         for col_in in 0..mat_cols_in {
             for row_i in 0..mat_rows {
@@ -602,7 +630,7 @@ mod tests {
                     module.vec_znx_dft(&mut a_dft, col_out, &a, col_out);
                 });
 
-                module.vmp_prepare_row(&mut vmpmat_0, row_i, col_in, &a, &mut tmp_bytes);
+                module.vmp_prepare_row(&mut vmpmat_0, row_i, col_in, &a, &mut scratch);
 
                 // Checks that prepare(mat_znx_dft, a) = prepare_dft(mat_znx_dft, a_dft)
                 module.vmp_prepare_row_dft(&mut vmpmat_1, row_i, col_in, &a_dft);
@@ -613,11 +641,11 @@ mod tests {
                 assert_eq!(a_dft.raw(), b_dft.raw());
 
                 // Checks that a_big = extract(prepare_dft(mat_znx_dft, a_dft), b_big)
-                module.vmp_extract_row(log_base2k, &mut b, &vmpmat_0, row_i, col_in, &mut tmp_bytes);
+                module.vmp_extract_row(log_base2k, &mut b, &vmpmat_0, row_i, col_in, &mut scratch);
 
                 (0..mat_cols_out).for_each(|col_out| {
                     module.vec_znx_idft(&mut a_big, col_out, &a_dft, col_out, &mut tmp_bytes);
-                    module.vec_znx_big_normalize(log_base2k, &mut a, col_out, &a_big, col_out, &mut tmp_bytes);
+                    module.vec_znx_big_normalize(log_base2k, &mut a, col_out, &a_big, col_out, &mut scratch);
                 });
 
                 assert_eq!(a.raw(), b.raw());

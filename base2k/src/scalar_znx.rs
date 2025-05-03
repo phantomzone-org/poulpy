@@ -1,64 +1,59 @@
-use crate::znx_base::{ZnxAlloc, ZnxBase, ZnxInfos, ZnxLayout, ZnxSliceSize};
-use crate::{Backend, GetZnxBase, Module, VecZnx};
+use crate::znx_base::ZnxInfos;
+use crate::{Backend, DataView, DataViewMut, Module, ZnxView, ZnxViewMut, alloc_aligned};
 use rand::seq::SliceRandom;
 use rand_core::RngCore;
 use rand_distr::{Distribution, weighted::WeightedIndex};
 use sampling::source::Source;
 
-pub const SCALAR_ZNX_ROWS: usize = 1;
-pub const SCALAR_ZNX_SIZE: usize = 1;
+// pub const SCALAR_ZNX_ROWS: usize = 1;
+// pub const SCALAR_ZNX_SIZE: usize = 1;
 
-pub struct Scalar {
-    pub inner: ZnxBase,
+pub struct Scalar<D> {
+    data: D,
+    n: usize,
+    cols: usize,
 }
 
-impl GetZnxBase for Scalar {
-    fn znx(&self) -> &ZnxBase {
-        &self.inner
+impl<D> ZnxInfos for Scalar<D> {
+    fn cols(&self) -> usize {
+        self.cols
     }
 
-    fn znx_mut(&mut self) -> &mut ZnxBase {
-        &mut self.inner
-    }
-}
-
-impl ZnxInfos for Scalar {}
-
-impl<B: Backend> ZnxAlloc<B> for Scalar {
-    type Scalar = i64;
-
-    fn from_bytes_borrow(module: &Module<B>, _rows: usize, cols: usize, _size: usize, bytes: &mut [u8]) -> Self {
-        Self {
-            inner: ZnxBase::from_bytes_borrow(module.n(), SCALAR_ZNX_ROWS, cols, SCALAR_ZNX_SIZE, bytes),
-        }
+    fn rows(&self) -> usize {
+        1
     }
 
-    fn bytes_of(module: &Module<B>, _rows: usize, cols: usize, _size: usize) -> usize {
-        debug_assert_eq!(
-            _rows, SCALAR_ZNX_ROWS,
-            "rows != {} not supported for Scalar",
-            SCALAR_ZNX_ROWS
-        );
-        debug_assert_eq!(
-            _size, SCALAR_ZNX_SIZE,
-            "rows != {} not supported for Scalar",
-            SCALAR_ZNX_SIZE
-        );
-        module.n() * cols * std::mem::size_of::<self::Scalar>()
+    fn n(&self) -> usize {
+        self.n
     }
-}
 
-impl ZnxLayout for Scalar {
-    type Scalar = i64;
-}
+    fn size(&self) -> usize {
+        1
+    }
 
-impl ZnxSliceSize for Scalar {
     fn sl(&self) -> usize {
         self.n()
     }
 }
 
-impl Scalar {
+impl<D> DataView for Scalar<D> {
+    type D = D;
+    fn data(&self) -> &Self::D {
+        &self.data
+    }
+}
+
+impl<D> DataViewMut for Scalar<D> {
+    fn data_mut(&mut self) -> &mut Self::D {
+        &mut self.data
+    }
+}
+
+impl<D: AsRef<[u8]>> ZnxView for Scalar<D> {
+    type Scalar = i64;
+}
+
+impl<D: AsMut<[u8]> + AsRef<[u8]>> Scalar<D> {
     pub fn fill_ternary_prob(&mut self, col: usize, prob: f64, source: &mut Source) {
         let choices: [i64; 3] = [-1, 0, 1];
         let weights: [f64; 3] = [prob / 2.0, 1.0 - prob, prob / 2.0];
@@ -76,38 +71,89 @@ impl Scalar {
         self.at_mut(col, 0).shuffle(source);
     }
 
-    pub fn alias_as_vec_znx(&self) -> VecZnx {
-        VecZnx {
-            inner: ZnxBase {
-                n: self.n(),
-                rows: 1,
-                cols: 1,
-                size: 1,
-                data: Vec::new(),
-                ptr: self.ptr() as *mut u8,
-            },
+    // pub fn alias_as_vec_znx(&self) -> VecZnx {
+    //     VecZnx {
+    //         inner: ZnxBase {
+    //             n: self.n(),
+    //             rows: 1,
+    //             cols: 1,
+    //             size: 1,
+    //             data: Vec::new(),
+    //             ptr: self.ptr() as *mut u8,
+    //         },
+    //     }
+    // }
+}
+
+impl<D: From<Vec<u8>>> Scalar<D> {
+    pub(crate) fn bytes_of<S: Sized>(n: usize, cols: usize) -> usize {
+        n * cols * size_of::<S>()
+    }
+
+    pub(crate) fn new<S: Sized>(n: usize, cols: usize) -> Self {
+        let data = alloc_aligned::<u8>(Self::bytes_of::<S>(n, cols));
+        Self {
+            data: data.into(),
+            n,
+            cols,
+        }
+    }
+
+    pub(crate) fn new_from_bytes<S: Sized>(n: usize, cols: usize, bytes: impl Into<Vec<u8>>) -> Self {
+        let data: Vec<u8> = bytes.into();
+        assert!(data.len() == Self::bytes_of::<S>(n, cols));
+        Self {
+            data: data.into(),
+            n,
+            cols,
         }
     }
 }
 
-pub trait ScalarOps {
+pub type ScalarOwned = Scalar<Vec<u8>>;
+
+pub trait ScalarAlloc {
     fn bytes_of_scalar(&self, cols: usize) -> usize;
-    fn new_scalar(&self, cols: usize) -> Scalar;
-    fn new_scalar_from_bytes(&self, cols: usize, bytes: Vec<u8>) -> Scalar;
-    fn new_scalar_from_bytes_borrow(&self, cols: usize, bytes: &mut [u8]) -> Scalar;
+    fn new_scalar(&self, cols: usize) -> ScalarOwned;
+    fn new_scalar_from_bytes(&self, cols: usize, bytes: Vec<u8>) -> ScalarOwned;
+    // fn new_scalar_from_bytes_borrow(&self, cols: usize, bytes: &mut [u8]) -> Scalar;
 }
 
-impl<B: Backend> ScalarOps for Module<B> {
+impl<B: Backend> ScalarAlloc for Module<B> {
     fn bytes_of_scalar(&self, cols: usize) -> usize {
-        Scalar::bytes_of(self, SCALAR_ZNX_ROWS, cols, SCALAR_ZNX_SIZE)
+        ScalarOwned::bytes_of::<i64>(self.n(), cols)
     }
-    fn new_scalar(&self, cols: usize) -> Scalar {
-        Scalar::new(self, SCALAR_ZNX_ROWS, cols, SCALAR_ZNX_SIZE)
+    fn new_scalar(&self, cols: usize) -> ScalarOwned {
+        ScalarOwned::new::<i64>(self.n(), cols)
     }
-    fn new_scalar_from_bytes(&self, cols: usize, bytes: Vec<u8>) -> Scalar {
-        Scalar::from_bytes(self, SCALAR_ZNX_ROWS, cols, SCALAR_ZNX_SIZE, bytes)
+    fn new_scalar_from_bytes(&self, cols: usize, bytes: Vec<u8>) -> ScalarOwned {
+        ScalarOwned::new_from_bytes::<i64>(self.n(), cols, bytes)
     }
-    fn new_scalar_from_bytes_borrow(&self, cols: usize, bytes: &mut [u8]) -> Scalar {
-        Scalar::from_bytes_borrow(self, SCALAR_ZNX_ROWS, cols, SCALAR_ZNX_SIZE, bytes)
-    }
+    // fn new_scalar_from_bytes_borrow(&self, cols: usize, bytes: &mut [u8]) -> Scalar {
+    //     Scalar::from_bytes_borrow(self, SCALAR_ZNX_ROWS, cols, SCALAR_ZNX_SIZE, bytes)
+    // }
 }
+
+// impl<B: Backend> ZnxAlloc<B> for Scalar {
+//     type Scalar = i64;
+
+//     fn from_bytes_borrow(module: &Module<B>, _rows: usize, cols: usize, _size: usize, bytes: &mut [u8]) -> Self {
+//         Self {
+//             inner: ZnxBase::from_bytes_borrow(module.n(), SCALAR_ZNX_ROWS, cols, SCALAR_ZNX_SIZE, bytes),
+//         }
+//     }
+
+//     fn bytes_of(module: &Module<B>, _rows: usize, cols: usize, _size: usize) -> usize {
+//         debug_assert_eq!(
+//             _rows, SCALAR_ZNX_ROWS,
+//             "rows != {} not supported for Scalar",
+//             SCALAR_ZNX_ROWS
+//         );
+//         debug_assert_eq!(
+//             _size, SCALAR_ZNX_SIZE,
+//             "rows != {} not supported for Scalar",
+//             SCALAR_ZNX_SIZE
+//         );
+//         module.n() * cols * std::mem::size_of::<self::Scalar>()
+//     }
+// }

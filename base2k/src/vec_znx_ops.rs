@@ -86,10 +86,14 @@ pub trait VecZnxOps<DataMut, Data> {
     );
 
     /// Subtracts the selected column of `a` from the selected column of `res` inplace.
+    ///
+    /// res[res_col] -= a[a_col]
     fn vec_znx_sub_ab_inplace(&self, res: &mut VecZnx<DataMut>, res_col: usize, a: &VecZnx<Data>, a_col: usize);
 
-    // /// Subtracts the selected column of `a` from the selected column of `res` and negates the selected column of `res`.
-    // fn vec_znx_sub_ba_inplace(&self, res: &mut VecZnx<DataMut>, res_col: usize, a: &VecZnx<Data>, a_col: usize);
+    /// Subtracts the selected column of `res` from the selected column of `a` and inplace mutates `res`
+    ///
+    /// res[res_col] = a[a_col] - res[res_col]
+    fn vec_znx_sub_ba_inplace(&self, res: &mut VecZnx<DataMut>, res_col: usize, a: &VecZnx<Data>, a_col: usize);
 
     // Negates the selected column of `a` and stores the result in `res_col` of `res`.
     fn vec_znx_negate(&self, res: &mut VecZnx<DataMut>, res_col: usize, a: &VecZnx<Data>, a_col: usize);
@@ -136,15 +140,15 @@ pub trait VecZnxOps<DataMut, Data> {
 impl<B: Backend> VecZnxAlloc for Module<B> {
     //(Jay)TODO: One must define the Scalar generic param here.
     fn new_vec_znx(&self, cols: usize, size: usize) -> VecZnxOwned {
-        VecZnxOwned::new(self.n(), cols, size)
+        VecZnxOwned::new::<i64>(self.n(), cols, size)
     }
 
     fn bytes_of_vec_znx(&self, cols: usize, size: usize) -> usize {
-        VecZnxOwned::bytes_of(self.n(), cols, size)
+        VecZnxOwned::bytes_of::<i64>(self.n(), cols, size)
     }
 
     fn new_vec_znx_from_bytes(&self, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxOwned {
-        VecZnxOwned::new_from_bytes(self.n(), cols, size, bytes)
+        VecZnxOwned::new_from_bytes::<i64>(self.n(), cols, size, bytes)
     }
 }
 
@@ -170,7 +174,7 @@ where
         {
             assert_eq!(a.n(), self.n());
             assert_eq!(res.n(), self.n());
-            assert!(tmp_bytes.len() >= Self::vec_znx_normalize_tmp_bytes(&self));
+            assert!(tmp_bytes.len() >= <Self as VecZnxOps<DataMut, Data>>::vec_znx_normalize_tmp_bytes(&self));
             assert_alignement(tmp_bytes.as_ptr());
         }
         unsafe {
@@ -190,16 +194,8 @@ where
 
     fn vec_znx_normalize_inplace(&self, log_base2k: usize, a: &mut VecZnx<DataMut>, a_col: usize, tmp_bytes: &mut [u8]) {
         unsafe {
-            let a_ptr: *mut VecZnx = a as *mut VecZnx;
-            Self::vec_znx_normalize(
-                self,
-                log_base2k,
-                &mut *a_ptr,
-                a_col,
-                &*a_ptr,
-                a_col,
-                tmp_bytes,
-            );
+            let a_ptr: *const VecZnx<_> = a;
+            Self::vec_znx_normalize(self, log_base2k, a, a_col, &*a_ptr, a_col, tmp_bytes);
         }
     }
 
@@ -236,8 +232,24 @@ where
     }
 
     fn vec_znx_add_inplace(&self, res: &mut VecZnx<DataMut>, res_col: usize, a: &VecZnx<Data>, a_col: usize) {
+        #[cfg(debug_assertions)]
+        {
+            assert_eq!(a.n(), self.n());
+            assert_eq!(res.n(), self.n());
+        }
         unsafe {
-            Self::vec_znx_add(&self, res, res_col, a, a_col, res, res_col);
+            vec_znx::vec_znx_add(
+                self.ptr,
+                res.at_mut_ptr(res_col, 0),
+                res.size() as u64,
+                res.sl() as u64,
+                a.at_ptr(a_col, 0),
+                a.size() as u64,
+                a.sl() as u64,
+                res.at_ptr(res_col, 0),
+                res.size() as u64,
+                res.sl() as u64,
+            )
         }
     }
 
@@ -274,18 +286,48 @@ where
     }
 
     fn vec_znx_sub_ab_inplace(&self, res: &mut VecZnx<DataMut>, res_col: usize, a: &VecZnx<Data>, a_col: usize) {
+        #[cfg(debug_assertions)]
+        {
+            assert_eq!(a.n(), self.n());
+            assert_eq!(res.n(), self.n());
+        }
         unsafe {
-            let res_ptr: *mut VecZnx = res as *mut VecZnx;
-            Self::vec_znx_sub(self, res, res_col, a, a_col, res, res_col);
+            vec_znx::vec_znx_sub(
+                self.ptr,
+                res.at_mut_ptr(res_col, 0),
+                res.size() as u64,
+                res.sl() as u64,
+                res.at_ptr(res_col, 0),
+                res.size() as u64,
+                res.sl() as u64,
+                a.at_ptr(a_col, 0),
+                a.size() as u64,
+                a.sl() as u64,
+            )
         }
     }
 
-    // fn vec_znx_sub_ba_inplace(&self, res: &mut VecZnx, res_col: usize, a: &VecZnx, a_col: usize) {
-    //     unsafe {
-    //         let res_ptr: *mut VecZnx = res as *mut VecZnx;
-    //         Self::vec_znx_sub(self, &mut *res_ptr, res_col, &*res_ptr, res_col, a, a_col);
-    //     }
-    // }
+    fn vec_znx_sub_ba_inplace(&self, res: &mut VecZnx<DataMut>, res_col: usize, a: &VecZnx<Data>, a_col: usize) {
+        #[cfg(debug_assertions)]
+        {
+            assert_eq!(a.n(), self.n());
+            assert_eq!(res.n(), self.n());
+        }
+        unsafe {
+            vec_znx::vec_znx_sub(
+                self.ptr,
+                res.at_mut_ptr(res_col, 0),
+                res.size() as u64,
+                res.sl() as u64,
+                a.at_ptr(a_col, 0),
+                a.size() as u64,
+                a.sl() as u64,
+                res.at_ptr(res_col, 0),
+                res.size() as u64,
+                res.sl() as u64,
+            )
+        }
+    }
 
     fn vec_znx_negate(&self, res: &mut VecZnx<DataMut>, res_col: usize, a: &VecZnx<Data>, a_col: usize) {
         #[cfg(debug_assertions)]
@@ -308,7 +350,8 @@ where
 
     fn vec_znx_negate_inplace(&self, a: &mut VecZnx<DataMut>, a_col: usize) {
         unsafe {
-            Self::vec_znx_negate(self, a, a_col, a, a_col);
+            let a_ref: *const VecZnx<_> = a;
+            Self::vec_znx_negate(self, a, a_col, a_ref.as_ref().unwrap(), a_col);
         }
     }
 
@@ -333,8 +376,21 @@ where
     }
 
     fn vec_znx_rotate_inplace(&self, k: i64, a: &mut VecZnx<DataMut>, a_col: usize) {
+        #[cfg(debug_assertions)]
+        {
+            assert_eq!(a.n(), self.n());
+        }
         unsafe {
-            Self::vec_znx_rotate(self, k, a, a_col, a, a_col);
+            vec_znx::vec_znx_rotate(
+                self.ptr,
+                k,
+                a.at_mut_ptr(a_col, 0),
+                a.size() as u64,
+                a.sl() as u64,
+                a.at_ptr(a_col, 0),
+                a.size() as u64,
+                a.sl() as u64,
+            )
         }
     }
 
@@ -359,8 +415,21 @@ where
     }
 
     fn vec_znx_automorphism_inplace(&self, k: i64, a: &mut VecZnx<DataMut>, a_col: usize) {
+        #[cfg(debug_assertions)]
+        {
+            assert_eq!(a.n(), self.n());
+        }
         unsafe {
-            Self::vec_znx_automorphism(self, k, a, a_col, a, a_col);
+            vec_znx::vec_znx_automorphism(
+                self.ptr,
+                k,
+                a.at_mut_ptr(a_col, 0),
+                a.size() as u64,
+                a.sl() as u64,
+                a.at_ptr(a_col, 0),
+                a.size() as u64,
+                a.sl() as u64,
+            )
         }
     }
 
@@ -392,7 +461,7 @@ where
                 self.vec_znx_rotate(-1, buf, 0, a, a_col);
             } else {
                 switch_degree(bi, res_col, buf, a_col);
-                self.vec_znx_rotate_inplace(-1, buf, a_col);
+                <Self as VecZnxOps<DataMut, Data>>::vec_znx_rotate_inplace(self, -1, buf, a_col);
             }
         })
     }
@@ -414,9 +483,9 @@ where
 
         a.iter().enumerate().for_each(|(_, ai)| {
             switch_degree(res, res_col, ai, a_col);
-            self.vec_znx_rotate_inplace(-1, res, res_col);
+            <Self as VecZnxOps<DataMut, Data>>::vec_znx_rotate_inplace(self, -1, res, res_col);
         });
 
-        self.vec_znx_rotate_inplace(a.len() as i64, res, res_col);
+        <Self as VecZnxOps<DataMut, Data>>::vec_znx_rotate_inplace(self, a.len() as i64, res, res_col);
     }
 }

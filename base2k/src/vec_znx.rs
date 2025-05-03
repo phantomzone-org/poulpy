@@ -1,13 +1,10 @@
-use crate::Backend;
 use crate::DataView;
 use crate::DataViewMut;
-use crate::Module;
-use crate::ZnxView;
 use crate::alloc_aligned;
 use crate::assert_alignement;
 use crate::cast_mut;
 use crate::ffi::znx;
-use crate::znx_base::{GetZnxBase, ZnxAlloc, ZnxBase, ZnxInfos, ZnxRsh, ZnxZero, switch_degree};
+use crate::znx_base::{ZnxInfos, ZnxView, ZnxViewMut, switch_degree};
 use std::{cmp::min, fmt};
 
 // pub const VEC_ZNX_ROWS: usize = 1;
@@ -59,7 +56,7 @@ impl<D> DataView for VecZnx<D> {
 }
 
 impl<D> DataViewMut for VecZnx<D> {
-    fn data_mut(&self) -> &mut Self::D {
+    fn data_mut(&mut self) -> &mut Self::D {
         &mut self.data
     }
 }
@@ -84,7 +81,7 @@ impl<D: AsMut<[u8]> + AsRef<[u8]>> VecZnx<D> {
             return;
         }
 
-        self.inner.size -= k / log_base2k;
+        self.size -= k / log_base2k;
 
         let k_rem: usize = k % log_base2k;
 
@@ -97,7 +94,7 @@ impl<D: AsMut<[u8]> + AsRef<[u8]>> VecZnx<D> {
     }
 
     /// Switches degree of from `a.n()` to `self.n()` into `self`
-    pub fn switch_degree<Data: AsRef<[u8]>>(&mut self, col: usize, a: &Data, col_a: usize) {
+    pub fn switch_degree<Data: AsRef<[u8]>>(&mut self, col: usize, a: &VecZnx<Data>, col_a: usize) {
         switch_degree(self, col_a, a, col)
     }
 
@@ -161,7 +158,7 @@ fn normalize_tmp_bytes(n: usize) -> usize {
     n * std::mem::size_of::<i64>()
 }
 
-fn normalize<D: AsMut<[u8]>>(log_base2k: usize, a: &mut VecZnx<D>, a_col: usize, tmp_bytes: &mut [u8]) {
+fn normalize<D: AsMut<[u8]> + AsRef<[u8]>>(log_base2k: usize, a: &mut VecZnx<D>, a_col: usize, tmp_bytes: &mut [u8]) {
     let n: usize = a.n();
 
     debug_assert!(

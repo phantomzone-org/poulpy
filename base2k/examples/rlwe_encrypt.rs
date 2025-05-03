@@ -1,5 +1,5 @@
 use base2k::{
-    Encoding, FFT64, Module, Sampling, Scalar, ScalarOps, ScalarZnxDft, ScalarZnxDftOps, VecZnx, VecZnxBig, VecZnxBigOps,
+    Encoding, FFT64, Module, Sampling, Scalar, ScalarAlloc, ScalarZnxDft, ScalarZnxDftOps, VecZnx, VecZnxBig, VecZnxBigOps,
     VecZnxDft, VecZnxDftOps, VecZnxOps, ZnxInfos, alloc_aligned,
 };
 use itertools::izip;

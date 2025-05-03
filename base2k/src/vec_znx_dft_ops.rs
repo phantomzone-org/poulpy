@@ -1,7 +1,5 @@
 use crate::VecZnxDftOwned;
-use crate::ffi::vec_znx_big;
-use crate::ffi::vec_znx_dft;
-use crate::znx_base::ZnxAlloc;
+use crate::ffi::{vec_znx_big, vec_znx_dft};
 use crate::znx_base::ZnxInfos;
 use crate::{FFT64, Module, VecZnx, VecZnxBig, VecZnxDft, ZnxView, ZnxViewMut, ZnxZero, assert_alignement};
 use std::cmp::min;
@@ -82,7 +80,7 @@ impl VecZnxDftAlloc<FFT64> for Module<FFT64> {
     // }
 
     fn bytes_of_vec_znx_dft(&self, cols: usize, size: usize) -> usize {
-        VecZnxDft::bytes_of(&self, cols, size)
+        VecZnxDftOwned::bytes_of(&self, cols, size)
     }
 }
 
@@ -156,10 +154,10 @@ where
         #[cfg(debug_assertions)]
         {
             assert!(
-                tmp_bytes.len() >= Self::vec_znx_idft_tmp_bytes(self),
+                tmp_bytes.len() >= <Self as VecZnxDftOps<DataMut, DataMut, FFT64>>::vec_znx_idft_tmp_bytes(self),
                 "invalid tmp_bytes: tmp_bytes.len()={} < self.vec_znx_idft_tmp_bytes()={}",
                 tmp_bytes.len(),
-                Self::vec_znx_idft_tmp_bytes(self)
+                <Self as VecZnxDftOps<DataMut, DataMut, FFT64>>::vec_znx_idft_tmp_bytes(self)
             );
             assert_alignement(tmp_bytes.as_ptr())
         }

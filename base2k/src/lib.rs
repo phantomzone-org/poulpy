@@ -125,3 +125,29 @@ pub fn alloc_aligned<T>(size: usize) -> Vec<T> {
         DEFAULTALIGN,
     )
 }
+
+pub(crate) struct ScratchSpace {
+    // data: D,
+}
+
+impl ScratchSpace {
+    fn tmp_vec_znx_dft<D, B>(&mut self, n: usize, cols: usize, size: usize) -> VecZnxDft<D, B> {
+        todo!()
+    }
+
+    fn tmp_vec_znx_big<D, B>(&mut self, n: usize, cols: usize, size: usize) -> VecZnxBig<D, B> {
+        todo!()
+    }
+
+    fn vec_znx_big_normalize_tmp_bytes<B: Backend>(&mut self, module: &Module<B>) -> &mut [u8] {
+        todo!()
+    }
+
+    fn vmp_apply_dft_tmp_bytes<B: Backend>(&mut self, module: &Module<B>) -> &mut [u8] {
+        todo!()
+    }
+
+    fn vmp_apply_dft_to_dft_tmp_bytes<B: Backend>(&mut self, module: &Module<B>) -> &mut [u8] {
+        todo!()
+    }
+}

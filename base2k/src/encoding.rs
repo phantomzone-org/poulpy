@@ -1,5 +1,5 @@
 use crate::ffi::znx::znx_zero_i64_ref;
-use crate::znx_base::ZnxLayout;
+use crate::znx_base::{ZnxView, ZnxViewMut};
 use crate::{VecZnx, znx_base::ZnxInfos};
 use itertools::izip;
 use rug::{Assign, Float};
@@ -59,7 +59,7 @@ pub trait Encoding {
     fn decode_coeff_i64(&self, col_i: usize, log_base2k: usize, log_k: usize, i: usize) -> i64;
 }
 
-impl Encoding for VecZnx {
+impl<D: AsMut<[u8]> + AsRef<[u8]>> Encoding for VecZnx<D> {
     fn encode_vec_i64(&mut self, col_i: usize, log_base2k: usize, log_k: usize, data: &[i64], log_max: usize) {
         encode_vec_i64(self, col_i, log_base2k, log_k, data, log_max)
     }
@@ -81,7 +81,14 @@ impl Encoding for VecZnx {
     }
 }
 
-fn encode_vec_i64(a: &mut VecZnx, col_i: usize, log_base2k: usize, log_k: usize, data: &[i64], log_max: usize) {
+fn encode_vec_i64<D: AsMut<[u8]> + AsRef<[u8]>>(
+    a: &mut VecZnx<D>,
+    col_i: usize,
+    log_base2k: usize,
+    log_k: usize,
+    data: &[i64],
+    log_max: usize,
+) {
     let size: usize = (log_k + log_base2k - 1) / log_base2k;
 
     #[cfg(debug_assertions)]
@@ -132,7 +139,7 @@ fn encode_vec_i64(a: &mut VecZnx, col_i: usize, log_base2k: usize, log_k: usize,
     }
 }
 
-fn decode_vec_i64(a: &VecZnx, col_i: usize, log_base2k: usize, log_k: usize, data: &mut [i64]) {
+fn decode_vec_i64<D: AsMut<[u8]> + AsRef<[u8]>>(a: &VecZnx<D>, col_i: usize, log_base2k: usize, log_k: usize, data: &mut [i64]) {
     let size: usize = (log_k + log_base2k - 1) / log_base2k;
     #[cfg(debug_assertions)]
     {
@@ -160,7 +167,7 @@ fn decode_vec_i64(a: &VecZnx, col_i: usize, log_base2k: usize, log_k: usize, dat
     })
 }
 
-fn decode_vec_float(a: &VecZnx, col_i: usize, log_base2k: usize, data: &mut [Float]) {
+fn decode_vec_float<D: AsMut<[u8]> + AsRef<[u8]>>(a: &VecZnx<D>, col_i: usize, log_base2k: usize, data: &mut [Float]) {
     let size: usize = a.size();
     #[cfg(debug_assertions)]
     {
@@ -194,7 +201,15 @@ fn decode_vec_float(a: &VecZnx, col_i: usize, log_base2k: usize, data: &mut [Flo
     });
 }
 
-fn encode_coeff_i64(a: &mut VecZnx, col_i: usize, log_base2k: usize, log_k: usize, i: usize, value: i64, log_max: usize) {
+fn encode_coeff_i64<D: AsMut<[u8]> + AsRef<[u8]>>(
+    a: &mut VecZnx<D>,
+    col_i: usize,
+    log_base2k: usize,
+    log_k: usize,
+    i: usize,
+    value: i64,
+    log_max: usize,
+) {
     let size: usize = (log_k + log_base2k - 1) / log_base2k;
 
     #[cfg(debug_assertions)]
@@ -237,7 +252,7 @@ fn encode_coeff_i64(a: &mut VecZnx, col_i: usize, log_base2k: usize, log_k: usiz
     }
 }
 
-fn decode_coeff_i64(a: &VecZnx, col_i: usize, log_base2k: usize, log_k: usize, i: usize) -> i64 {
+fn decode_coeff_i64<D: AsMut<[u8]> + AsRef<[u8]>>(a: &VecZnx<D>, col_i: usize, log_base2k: usize, log_k: usize, i: usize) -> i64 {
     #[cfg(debug_assertions)]
     {
         assert!(i < a.n());
@@ -263,10 +278,9 @@ fn decode_coeff_i64(a: &VecZnx, col_i: usize, log_base2k: usize, log_k: usize, i
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        Encoding, FFT64, Module, VecZnx, VecZnxOps,
-        znx_base::{ZnxInfos, ZnxLayout},
-    };
+    use crate::vec_znx_ops::*;
+    use crate::znx_base::*;
+    use crate::{Encoding, FFT64, Module, VecZnx, znx_base::ZnxInfos};
     use itertools::izip;
     use sampling::source::Source;
 
@@ -277,7 +291,7 @@ mod tests {
         let log_base2k: usize = 17;
         let size: usize = 5;
         let log_k: usize = size * log_base2k - 5;
-        let mut a: VecZnx = module.new_vec_znx(2, size);
+        let mut a: VecZnx<_> = module.new_vec_znx(2, size);
         let mut source: Source = Source::new([0u8; 32]);
         let raw: &mut [i64] = a.raw_mut();
         raw.iter_mut().enumerate().for_each(|(i, x)| *x = i as i64);
@@ -299,7 +313,7 @@ mod tests {
         let log_base2k: usize = 17;
         let size: usize = 5;
         let log_k: usize = size * log_base2k - 5;
-        let mut a: VecZnx = module.new_vec_znx(2, size);
+        let mut a: VecZnx<_> = module.new_vec_znx(2, size);
         let mut source = Source::new([0u8; 32]);
         let raw: &mut [i64] = a.raw_mut();
         raw.iter_mut().enumerate().for_each(|(i, x)| *x = i as i64);

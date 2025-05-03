@@ -33,7 +33,7 @@ impl Backend for NTT120 {
 
 pub struct Module<B: Backend> {
     pub ptr: *mut MODULE,
-    pub n: usize,
+    n: usize,
     _marker: PhantomData<B>,
 }
 

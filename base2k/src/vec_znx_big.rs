@@ -1,11 +1,11 @@
 use crate::ffi::vec_znx_big;
-use crate::znx_base::{GetZnxBase, ZnxAlloc, ZnxBase, ZnxInfos, ZnxView};
+use crate::znx_base::{ZnxInfos, ZnxView};
 use crate::{Backend, DataView, DataViewMut, FFT64, Module, alloc_aligned};
 use std::marker::PhantomData;
 
 const VEC_ZNX_BIG_ROWS: usize = 1;
 
-/// VecZnxBig is Backend dependent, denoted with backend generic `B`
+/// VecZnxBig is `Backend` dependent, denoted with backend generic `B`
 pub struct VecZnxBig<D, B> {
     data: D,
     n: usize,
@@ -44,7 +44,7 @@ impl<D, B> DataView for VecZnxBig<D, B> {
 }
 
 impl<D, B> DataViewMut for VecZnxBig<D, B> {
-    fn data_mut(&self) -> &mut Self::D {
+    fn data_mut(&mut self) -> &mut Self::D {
         &mut self.data
     }
 }

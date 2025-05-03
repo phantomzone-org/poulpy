@@ -7,8 +7,8 @@ use crate::{
     parameters::Parameters,
 };
 use base2k::{
-    Module, Scalar, ScalarOps, ScalarZnxDft, ScalarZnxDftOps, VecZnx, VecZnxBig, VecZnxBigOps, VecZnxDft, VecZnxDftOps, VecZnxOps, MatZnxDft,
-    MatZnxDftOps, assert_alignement,
+    MatZnxDft, MatZnxDftOps, Module, Scalar, ScalarAlloc, ScalarZnxDft, ScalarZnxDftOps, VecZnx, VecZnxBig, VecZnxBigOps,
+    VecZnxDft, VecZnxDftOps, VecZnxOps, assert_alignement,
 };
 use sampling::source::Source;
 use std::collections::HashMap;
