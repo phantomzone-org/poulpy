@@ -1,6 +1,6 @@
 use base2k::{
-    Encoding, FFT64, Module, Sampling, Scalar, ScalarAlloc, ScalarZnxDft, ScalarZnxDftOps, VecZnx, VecZnxBig, VecZnxBigOps,
-    VecZnxDft, VecZnxDftOps, VecZnxOps, ZnxInfos, alloc_aligned,
+    Encoding, FFT64, Module, Sampling, ScalarAlloc, ScalarZnxDftAlloc, ScalarZnxDftOps, ScratchOwned, VecZnxAlloc, VecZnxBigOps,
+    VecZnxBigScratch, VecZnxDftAlloc, VecZnxDftOps, ZnxInfos,
 };
 use itertools::izip;
 use sampling::source::Source;
@@ -13,24 +13,24 @@ fn main() {
     let log_scale: usize = msg_size * log_base2k - 5;
     let module: Module<FFT64> = Module::<FFT64>::new(n);
 
-    let mut tmp_bytes_norm: Vec<u8> = alloc_aligned(module.vec_znx_big_normalize_tmp_bytes());
-    let mut tmp_bytes_dft = alloc_aligned(module.bytes_of_vec_znx_dft(1, ct_size));
+    let mut scratch =
+        ScratchOwned::new((2 * module.bytes_of_vec_znx_dft(1, ct_size)) + 2 * module.vec_znx_big_normalize_tmp_bytes());
 
     let seed: [u8; 32] = [0; 32];
     let mut source: Source = Source::new(seed);
 
     // s <- Z_{-1, 0, 1}[X]/(X^{N}+1)
-    let mut s: Scalar = module.new_scalar(1);
+    let mut s = module.new_scalar(1);
     s.fill_ternary_prob(0, 0.5, &mut source);
 
     // Buffer to store s in the DFT domain
-    let mut s_dft: ScalarZnxDft<FFT64> = module.new_scalar_znx_dft(s.cols());
+    let mut s_dft = module.new_scalar_znx_dft(s.cols());
 
     // s_dft <- DFT(s)
     module.svp_prepare(&mut s_dft, 0, &s, 0);
 
     // Allocates a VecZnx with two columns: ct=(0, 0)
-    let mut ct: VecZnx = module.new_vec_znx(
+    let mut ct = module.new_vec_znx(
         2,       // Number of columns
         ct_size, // Number of small poly per column
     );
@@ -39,11 +39,8 @@ fn main() {
     module.fill_uniform(log_base2k, &mut ct, 1, ct_size, &mut source);
 
     // Scratch space for DFT values
-    let mut buf_dft: VecZnxDft<FFT64> = module.new_vec_znx_dft_from_bytes_borrow(
-        1,         // Number of columns
-        ct.size(), // Number of polynomials per column
-        &mut tmp_bytes_dft,
-    );
+    let scratch = scratch.borrow();
+    let (mut buf_dft, scratch) = scratch.tmp_vec_znx_dft(&module, 1, ct_size);
 
     // Applies DFT(ct[1]) * DFT(s)
     module.svp_apply_dft(
@@ -56,13 +53,14 @@ fn main() {
     );
 
     // Alias scratch space (VecZnxDft<B> is always at least as big as VecZnxBig<B>)
-    let mut buf_big: VecZnxBig<FFT64> = buf_dft.alias_as_vec_znx_big();
+    let (mut buf_big, scratch) = scratch.tmp_vec_znx_big(&module, 1, ct_size);
 
     // BIG(ct[1] * s) <- IDFT(DFT(ct[1] * s)) (not normalized)
-    module.vec_znx_idft_tmp_a(&mut buf_big, 0, &mut buf_dft, 0);
+    // Note: Since `vec_znx_idft_tmp_a` takes no argument for generic `Data` a full qualified path seems necessary
+    <Module<_> as VecZnxDftOps<_, &[u8], _>>::vec_znx_idft_tmp_a(&module, &mut buf_big, 0, &mut buf_dft, 0);
 
     // Creates a plaintext: VecZnx with 1 column
-    let mut m: VecZnx = module.new_vec_znx(
+    let mut m = module.new_vec_znx(
         1,        // Number of columns
         msg_size, // Number of small polynomials
     );
@@ -70,10 +68,11 @@ fn main() {
     want.iter_mut()
         .for_each(|x| *x = source.next_u64n(16, 15) as i64);
     m.encode_vec_i64(0, log_base2k, log_scale, &want, 4);
-    m.normalize(log_base2k, 0, &mut tmp_bytes_norm);
+    let (tmp_bytes_norm, scratch) = scratch.tmp_scalar_slice(n * std::mem::size_of::<i64>());
+    m.normalize(log_base2k, 0, tmp_bytes_norm);
 
     // m - BIG(ct[1] * s)
-    module.vec_znx_big_sub_small_a_inplace(
+    module.vec_znx_big_sub_small_b_inplace(
         &mut buf_big,
         0, // Selects the first column of the receiver
         &m,
@@ -83,12 +82,9 @@ fn main() {
     // Normalizes back to VecZnx
     // ct[0] <- m - BIG(c1 * s)
     module.vec_znx_big_normalize(
-        log_base2k,
-        &mut ct,
-        0, // Selects the first column of ct (ct[0])
-        &buf_big,
-        0, // Selects the first column of buf_big
-        &mut tmp_bytes_norm,
+        log_base2k, &mut ct, 0, // Selects the first column of ct (ct[0])
+        &buf_big, 0, // Selects the first column of buf_big
+        scratch,
     );
 
     // Add noise to ct[0]
@@ -118,14 +114,14 @@ fn main() {
     );
 
     // BIG(c1 * s) = IDFT(DFT(c1 * s))
-    module.vec_znx_idft_tmp_a(&mut buf_big, 0, &mut buf_dft, 0);
+    <Module<_> as VecZnxDftOps<_, &[u8], _>>::vec_znx_idft_tmp_a(&module, &mut buf_big, 0, &mut buf_dft, 0);
 
     // BIG(c1 * s) + ct[0]
     module.vec_znx_big_add_small_inplace(&mut buf_big, 0, &ct, 0);
 
     // m + e <- BIG(ct[1] * s + ct[0])
-    let mut res: VecZnx = module.new_vec_znx(1, ct_size);
-    module.vec_znx_big_normalize(log_base2k, &mut res, 0, &buf_big, 0, &mut tmp_bytes_norm);
+    let mut res = module.new_vec_znx(1, ct_size);
+    module.vec_znx_big_normalize(log_base2k, &mut res, 0, &buf_big, 0, scratch);
 
     // have = m * 2^{log_scale} + e
     let mut have: Vec<i64> = vec![i64::default(); n];
@@ -136,5 +132,7 @@ fn main() {
         .enumerate()
         .for_each(|(i, (a, b))| {
             println!("{}: {} {}", i, a, (*b as f64) / scale);
-        })
+        });
+
+    module.free();
 }

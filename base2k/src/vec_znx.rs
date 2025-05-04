@@ -217,7 +217,7 @@ pub type VecZnxMut<'a> = VecZnx<&'a mut [u8]>;
 pub type VecZnxRef<'a> = VecZnx<&'a [u8]>;
 
 impl VecZnx<Vec<u8>> {
-    pub(crate) fn to_mut(&mut self) -> VecZnx<&mut [u8]> {
+    pub fn to_mut(&mut self) -> VecZnx<&mut [u8]> {
         VecZnx {
             data: self.data.as_mut_slice(),
             n: self.n,
@@ -226,9 +226,20 @@ impl VecZnx<Vec<u8>> {
         }
     }
 
-    pub(crate) fn to_ref(&self) -> VecZnx<&[u8]> {
+    pub fn to_ref(&self) -> VecZnx<&[u8]> {
         VecZnx {
             data: self.data.as_slice(),
+            n: self.n,
+            cols: self.cols,
+            size: self.size,
+        }
+    }
+}
+
+impl VecZnx<&mut [u8]> {
+    pub fn to_ref(&self) -> VecZnx<&[u8]> {
+        VecZnx {
+            data: &self.data,
             n: self.n,
             cols: self.cols,
             size: self.size,

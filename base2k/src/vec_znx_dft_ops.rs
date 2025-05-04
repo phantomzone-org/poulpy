@@ -22,19 +22,6 @@ pub trait VecZnxDftAlloc<B> {
     /// If `bytes.len()` < [Module::bytes_of_vec_znx_dft].
     fn new_vec_znx_dft_from_bytes(&self, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxDftOwned<B>;
 
-    // /// Returns a new [VecZnxDft] with the provided bytes array as backing array.
-    // ///
-    // /// Behavior: the backing array is only borrowed.
-    // ///
-    // /// # Arguments
-    // ///
-    // /// * `cols`: the number of cols of the [VecZnxDft].
-    // /// * `bytes`: a byte array of size at least [Module::bytes_of_vec_znx_dft].
-    // ///
-    // /// # Panics
-    // /// If `bytes.len()` < [Module::bytes_of_vec_znx_dft].
-    // fn new_vec_znx_dft_from_bytes_borrow(&self, cols: usize, size: usize, bytes: &mut [u8]) -> VecZnxDft<B>;
-
     /// Returns a new [VecZnxDft] with the provided bytes array as backing array.
     ///
     /// # Arguments

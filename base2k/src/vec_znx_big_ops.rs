@@ -1,9 +1,6 @@
 use crate::ffi::vec_znx;
 use crate::znx_base::{ZnxInfos, ZnxView, ZnxViewMut};
-use crate::{
-    Backend, DataView, FFT64, Module, ScratchBorr, VecZnx, VecZnxBig, VecZnxBigOwned, VecZnxScratch, assert_alignement,
-    bytes_of_vec_znx_big,
-};
+use crate::{Backend, FFT64, Module, Scratch, VecZnx, VecZnxBig, VecZnxBigOwned, VecZnxScratch, bytes_of_vec_znx_big};
 
 pub trait VecZnxBigAlloc<B> {
     /// Allocates a vector Z[X]/(X^N+1) that stores not normalized values.
@@ -129,7 +126,7 @@ pub trait VecZnxBigOps<DataMut, Data, B> {
         res_col: usize,
         a: &VecZnxBig<Data, B>,
         a_col: usize,
-        scratch: &mut ScratchBorr,
+        scratch: &mut Scratch,
     );
 
     /// Applies the automorphism X^i -> X^ik on `a` and stores the result on `b`.
@@ -503,7 +500,7 @@ where
         res_col: usize,
         a: &VecZnxBig<Data, FFT64>,
         a_col: usize,
-        scratch: &mut ScratchBorr,
+        scratch: &mut Scratch,
     ) {
         #[cfg(debug_assertions)]
         {

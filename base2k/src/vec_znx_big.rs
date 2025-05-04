@@ -3,7 +3,7 @@ use crate::znx_base::{ZnxInfos, ZnxView};
 use crate::{Backend, DataView, DataViewMut, FFT64, Module, alloc_aligned};
 use std::marker::PhantomData;
 
-const VEC_ZNX_BIG_ROWS: usize = 1;
+// const VEC_ZNX_BIG_ROWS: usize = 1;
 
 /// VecZnxBig is `Backend` dependent, denoted with backend generic `B`
 pub struct VecZnxBig<D, B> {
@@ -97,7 +97,7 @@ impl<D, B> VecZnxBig<D, B> {
 pub type VecZnxBigOwned<B> = VecZnxBig<Vec<u8>, B>;
 
 impl<B> VecZnxBig<Vec<u8>, B> {
-    pub(crate) fn to_mut(&mut self) -> VecZnxBig<&mut [u8], B> {
+    pub fn to_mut(&mut self) -> VecZnxBig<&mut [u8], B> {
         VecZnxBig {
             data: self.data.as_mut_slice(),
             n: self.n,
@@ -107,7 +107,7 @@ impl<B> VecZnxBig<Vec<u8>, B> {
         }
     }
 
-    pub(crate) fn to_ref(&self) -> VecZnxBig<&[u8], B> {
+    pub fn to_ref(&self) -> VecZnxBig<&[u8], B> {
         VecZnxBig {
             data: self.data.as_slice(),
             n: self.n,
@@ -117,9 +117,3 @@ impl<B> VecZnxBig<Vec<u8>, B> {
         }
     }
 }
-
-// impl VecZnxBig<FFT64> {
-//     pub fn print(&self, n: usize, col: usize) {
-//         (0..self.size()).for_each(|i| println!("{}: {:?}", i, &self.at(col, i)[..n]));
-//     }
-// }

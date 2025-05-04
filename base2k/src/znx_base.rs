@@ -1,4 +1,5 @@
 use itertools::izip;
+use rand_distr::num_traits::Zero;
 use std::cmp::min;
 
 pub trait ZnxInfos {
@@ -157,7 +158,7 @@ pub fn switch_degree<S: Copy, DMut: ZnxViewMut<Scalar = S> + ZnxZero, D: ZnxView
 
 use std::ops::{Add, AddAssign, Div, Mul, Neg, Shl, Shr, Sub};
 
-use crate::{ScratchBorr, cast_mut};
+use crate::Scratch;
 pub trait Integer:
     Copy
     + Default
@@ -183,31 +184,14 @@ impl Integer for i128 {
     const BITS: u32 = 128;
 }
 
-// (Jay)TODO: implement rsh for VecZnx, VecZnxBig
-// pub trait ZnxRsh: ZnxZero {
-//     fn rsh(&mut self, k: usize, log_base2k: usize, col: usize, carry: &mut [u8]) {
-//         rsh(k, log_base2k, self, col, carry)
-//     }
-// }
-pub fn rsh<V: ZnxZero>(k: usize, log_base2k: usize, a: &mut V, a_col: usize, scratch: &mut ScratchBorr)
+//(Jay)Note: `rsh` impl. ignores the column
+pub fn rsh<V: ZnxZero>(k: usize, log_base2k: usize, a: &mut V, _a_col: usize, scratch: &mut Scratch)
 where
-    V::Scalar: From<usize> + Integer,
+    V::Scalar: From<usize> + Integer + Zero,
 {
     let n: usize = a.n();
-    let size: usize = a.size();
+    let _size: usize = a.size();
     let cols: usize = a.cols();
-
-    // #[cfg(debug_assertions)]
-    // {
-    //     assert!(
-    //         tmp_bytes.len() >= rsh_tmp_bytes::<V::Scalar>(n),
-    //         "invalid carry: carry.len()/size_ofSelf::Scalar={} < rsh_tmp_bytes({}, {})",
-    //         tmp_bytes.len() / size_of::<V::Scalar>(),
-    //         n,
-    //         size,
-    //     );
-    //     assert_alignement(tmp_bytes.as_ptr());
-    // }
 
     let size: usize = a.size();
     let steps: usize = k / log_base2k;
@@ -240,7 +224,7 @@ where
                     *xi = (*xi - *ci) >> k_rem_t;
                 });
             });
-            //TODO:  ZERO CARRYcarry
+            carry.iter_mut().for_each(|r| *r = V::Scalar::zero());
         })
     }
 }

@@ -23,19 +23,6 @@ pub trait VecZnxAlloc {
     /// Requires the slice of bytes to be equal to [VecZnxOps::bytes_of_vec_znx].
     fn new_vec_znx_from_bytes(&self, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxOwned;
 
-    // /// Instantiates a new [VecZnx] from a slice of bytes.
-    // /// The returned [VecZnx] does take ownership of the slice of bytes.
-    // ///
-    // /// # Arguments
-    // ///
-    // /// * `cols`: the number of polynomials.
-    // /// * `size`: the number small polynomials per column.
-    // ///
-    // /// # Panic
-    // /// Requires the slice of bytes to be equal to [VecZnxOps::bytes_of_vec_znx].
-    // fn new_vec_znx_from_bytes_borrow(&self, cols: usize, size: usize, tmp_bytes: &mut [u8]) -> VecZnx;
-    // (Jay)TODO
-
     /// Returns the number of bytes necessary to allocate
     /// a new [VecZnx] through [VecZnxOps::new_vec_znx_from_bytes]
     /// or [VecZnxOps::new_vec_znx_from_bytes_borrow].
@@ -140,7 +127,6 @@ pub trait VecZnxScratch {
 }
 
 impl<B: Backend> VecZnxAlloc for Module<B> {
-    //(Jay)TODO: One must define the Scalar generic param here.
     fn new_vec_znx(&self, cols: usize, size: usize) -> VecZnxOwned {
         VecZnxOwned::new::<i64>(self.n(), cols, size)
     }
