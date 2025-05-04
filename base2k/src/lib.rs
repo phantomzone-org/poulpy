@@ -18,10 +18,17 @@ pub mod vec_znx_dft_ops;
 pub mod vec_znx_ops;
 pub mod znx_base;
 
+use std::{
+    any::type_name,
+    ops::{DerefMut, Sub},
+};
+
 pub use encoding::*;
 pub use mat_znx_dft::*;
 pub use mat_znx_dft_ops::*;
 pub use module::*;
+use rand_core::le;
+use rand_distr::num_traits::sign;
 pub use sampling::*;
 pub use scalar_znx::*;
 pub use scalar_znx_dft::*;
@@ -126,28 +133,177 @@ pub fn alloc_aligned<T>(size: usize) -> Vec<T> {
     )
 }
 
-pub(crate) struct ScratchSpace {
-    // data: D,
-}
+pub struct ScratchOwned(Vec<u8>);
 
-impl ScratchSpace {
-    fn tmp_vec_znx_dft<D, B>(&mut self, n: usize, cols: usize, size: usize) -> VecZnxDft<D, B> {
-        todo!()
+impl ScratchOwned {
+    pub fn new(byte_count: usize) -> Self {
+        let data: Vec<u8> = alloc_aligned(byte_count);
+        Self(data)
     }
 
-    fn tmp_vec_znx_big<D, B>(&mut self, n: usize, cols: usize, size: usize) -> VecZnxBig<D, B> {
-        todo!()
-    }
-
-    fn vec_znx_big_normalize_tmp_bytes<B: Backend>(&mut self, module: &Module<B>) -> &mut [u8] {
-        todo!()
-    }
-
-    fn vmp_apply_dft_tmp_bytes<B: Backend>(&mut self, module: &Module<B>) -> &mut [u8] {
-        todo!()
-    }
-
-    fn vmp_apply_dft_to_dft_tmp_bytes<B: Backend>(&mut self, module: &Module<B>) -> &mut [u8] {
-        todo!()
+    pub fn borrow(&mut self) -> &mut ScratchBorr {
+        ScratchBorr::new(&mut self.0)
     }
 }
+
+pub struct ScratchBorr {
+    data: [u8],
+}
+
+impl ScratchBorr {
+    fn new(data: &mut [u8]) -> &mut Self {
+        unsafe { &mut *(data as *mut [u8] as *mut Self) }
+    }
+
+    fn take_slice_aligned(data: &mut [u8], take_len: usize) -> (&mut [u8], &mut [u8]) {
+        let ptr = data.as_mut_ptr();
+        let self_len = data.len();
+
+        let aligned_offset = ptr.align_offset(DEFAULTALIGN);
+        let aligned_len = self_len.saturating_sub(aligned_offset);
+
+        if let Some(rem_len) = aligned_len.checked_sub(take_len) {
+            unsafe {
+                let rem_ptr = ptr.add(aligned_offset).add(take_len);
+                let rem_slice = &mut *std::ptr::slice_from_raw_parts_mut(rem_ptr, rem_len);
+
+                let take_slice = &mut *std::ptr::slice_from_raw_parts_mut(ptr.add(aligned_offset), take_len);
+
+                return (take_slice, rem_slice);
+            }
+        } else {
+            panic!(
+                "Attempted to take {} from scratch with {} aligned bytes left",
+                take_len,
+                take_len,
+                // type_name::<T>(),
+                // aligned_len
+            );
+        }
+    }
+
+    fn tmp_scalar_slice<T>(&mut self, len: usize) -> (&mut [T], &mut Self) {
+        let (take_slice, rem_slice) = Self::take_slice_aligned(&mut self.data, len * std::mem::size_of::<T>());
+
+        unsafe {
+            (
+                &mut *(std::ptr::slice_from_raw_parts_mut(take_slice.as_mut_ptr() as *mut T, len)),
+                Self::new(rem_slice),
+            )
+        }
+    }
+
+    fn tmp_vec_znx_dft<B: Backend>(
+        &mut self,
+        module: &Module<B>,
+        cols: usize,
+        size: usize,
+    ) -> (VecZnxDft<&mut [u8], B>, &mut Self) {
+        let (take_slice, rem_slice) = Self::take_slice_aligned(&mut self.data, bytes_of_vec_znx_dft(module, cols, size));
+
+        (
+            VecZnxDft::from_data(take_slice, module.n(), cols, size),
+            Self::new(rem_slice),
+        )
+    }
+
+    fn tmp_vec_znx_big<D: for<'a> From<&'a mut [u8]>, B: Backend>(
+        &mut self,
+        module: &Module<B>,
+        cols: usize,
+        size: usize,
+    ) -> (VecZnxBig<D, B>, &mut Self) {
+        let (take_slice, rem_slice) = Self::take_slice_aligned(&mut self.data, bytes_of_vec_znx_big(module, cols, size));
+
+        (
+            VecZnxBig::from_data(D::from(take_slice), module.n(), cols, size),
+            Self::new(rem_slice),
+        )
+    }
+}
+
+// pub struct ScratchBorrowed<'a> {
+//     data: &'a mut [u8],
+// }
+
+// impl<'a> ScratchBorrowed<'a> {
+//     fn take_slice<T>(&mut self, take_len: usize) -> (&mut [T], ScratchBorrowed<'_>) {
+//         let ptr = self.data.as_mut_ptr();
+//         let self_len = self.data.len();
+
+//         //TODO(Jay): print the offset sometimes, just to check
+//         let aligned_offset = ptr.align_offset(DEFAULTALIGN);
+//         let aligned_len = self_len.saturating_sub(aligned_offset);
+
+//         let take_len_bytes = take_len * std::mem::size_of::<T>();
+
+//         if let Some(rem_len) = aligned_len.checked_sub(take_len_bytes) {
+//             unsafe {
+//                 let rem_ptr = ptr.add(aligned_offset).add(take_len_bytes);
+//                 let rem_slice = &mut *std::ptr::slice_from_raw_parts_mut(rem_ptr, rem_len);
+
+//                 let take_slice = &mut *std::ptr::slice_from_raw_parts_mut(ptr.add(aligned_offset) as *mut T, take_len_bytes);
+
+//                 return (take_slice, ScratchBorrowed { data: rem_slice });
+//             }
+//         } else {
+//             panic!(
+//                 "Attempted to take {} (={} elements of {}) from scratch with {} aligned bytes left",
+//                 take_len_bytes,
+//                 take_len,
+//                 type_name::<T>(),
+//                 aligned_len
+//             );
+//         }
+//     }
+
+//     fn reborrow(&mut self) -> ScratchBorrowed<'a> {
+//         //(Jay)TODO: `data: &mut *self.data` does not work because liftime of &mut self is different from 'a.
+//         // But it feels that there should be a simpler impl. than the one below
+//         Self {
+//             data: unsafe { &mut *std::ptr::slice_from_raw_parts_mut(self.data.as_mut_ptr(), self.data.len()) },
+//         }
+//     }
+
+//     fn tmp_vec_znx_dft<B: Backend>(&mut self, module: &Module<B>, cols: usize, size: usize) -> (VecZnxDft<&mut [u8], B>, Self) {
+//         let (data, re_scratch) = self.take_slice::<u8>(vec_znx_dft::bytes_of_vec_znx_dft(module, cols, size));
+//         (
+//             VecZnxDft::from_data(data, module.n(), cols, size),
+//             re_scratch,
+//         )
+//     }
+
+//     pub(crate) fn len(&self) -> usize {
+//         self.data.len()
+//     }
+// }
+
+// pub trait Scratch<D> {
+//     fn tmp_vec_znx_dft<B: Backend>(&mut self, module: &Module<B>, cols: usize, size: usize) -> (D, &mut Self);
+// }
+
+// impl<'a> Scratch<&'a mut [u8]> for ScratchBorr {
+//     fn tmp_vec_znx_dft<B: Backend>(&mut self, module: &Module<B>, cols: usize, size: usize) -> (&'a mut [u8], &mut Self) {
+//         let (data, rem_scratch) = self.tmp_scalar_slice(vec_znx_dft::bytes_of_vec_znx_dft(module, cols, size));
+//         (
+//             data
+//             rem_scratch,
+//         )
+//     }
+
+//     // fn tmp_vec_znx_big<B: Backend>(&mut self, module: &Module<B>, cols: usize, size: usize) -> (VecZnxBig<&mut [u8], B>, Self) {
+//     //     // let (data, re_scratch) = self.take_slice(vec_znx_big::bytes_of_vec_znx_big(module, cols, size));
+//     //     // (
+//     //     //     VecZnxBig::from_data(data, module.n(), cols, size),
+//     //     //     re_scratch,
+//     //     // )
+//     // }
+
+//     // fn scalar_slice<T>(&mut self, len: usize) -> (&mut [T], Self) {
+//     //     self.take_slice::<T>(len)
+//     // }
+
+//     // fn reborrow(&mut self) -> Self {
+//     //     self.reborrow()
+//     // }
+// }

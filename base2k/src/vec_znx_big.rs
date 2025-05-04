@@ -53,13 +53,13 @@ impl<D: AsRef<[u8]>> ZnxView for VecZnxBig<D, FFT64> {
     type Scalar = i64;
 }
 
-impl<D: From<Vec<u8>>, B: Backend> VecZnxBig<D, B> {
-    pub(crate) fn bytes_of(module: &Module<B>, cols: usize, size: usize) -> usize {
-        unsafe { vec_znx_big::bytes_of_vec_znx_big(module.ptr, size as u64) as usize * cols }
-    }
+pub(crate) fn bytes_of_vec_znx_big<B: Backend>(module: &Module<B>, cols: usize, size: usize) -> usize {
+    unsafe { vec_znx_big::bytes_of_vec_znx_big(module.ptr, size as u64) as usize * cols }
+}
 
+impl<D: From<Vec<u8>>, B: Backend> VecZnxBig<D, B> {
     pub(crate) fn new(module: &Module<B>, cols: usize, size: usize) -> Self {
-        let data = alloc_aligned::<u8>(Self::bytes_of(module, cols, size));
+        let data = alloc_aligned::<u8>(bytes_of_vec_znx_big(module, cols, size));
         Self {
             data: data.into(),
             n: module.n(),
@@ -71,7 +71,7 @@ impl<D: From<Vec<u8>>, B: Backend> VecZnxBig<D, B> {
 
     pub(crate) fn new_from_bytes(module: &Module<B>, cols: usize, size: usize, bytes: impl Into<Vec<u8>>) -> Self {
         let data: Vec<u8> = bytes.into();
-        assert!(data.len() == Self::bytes_of(module, cols, size));
+        assert!(data.len() == bytes_of_vec_znx_big(module, cols, size));
         Self {
             data: data.into(),
             n: module.n(),
@@ -82,7 +82,41 @@ impl<D: From<Vec<u8>>, B: Backend> VecZnxBig<D, B> {
     }
 }
 
+impl<D, B> VecZnxBig<D, B> {
+    pub(crate) fn from_data(data: D, n: usize, cols: usize, size: usize) -> Self {
+        Self {
+            data,
+            n,
+            cols,
+            size,
+            _phantom: PhantomData,
+        }
+    }
+}
+
 pub type VecZnxBigOwned<B> = VecZnxBig<Vec<u8>, B>;
+
+impl<B> VecZnxBig<Vec<u8>, B> {
+    pub(crate) fn to_mut(&mut self) -> VecZnxBig<&mut [u8], B> {
+        VecZnxBig {
+            data: self.data.as_mut_slice(),
+            n: self.n,
+            cols: self.cols,
+            size: self.size,
+            _phantom: PhantomData,
+        }
+    }
+
+    pub(crate) fn to_ref(&self) -> VecZnxBig<&[u8], B> {
+        VecZnxBig {
+            data: self.data.as_slice(),
+            n: self.n,
+            cols: self.cols,
+            size: self.size,
+            _phantom: PhantomData,
+        }
+    }
+}
 
 // impl VecZnxBig<FFT64> {
 //     pub fn print(&self, n: usize, col: usize) {

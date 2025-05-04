@@ -54,13 +54,13 @@ impl<D: AsRef<[u8]>> ZnxView for VecZnxDft<D, FFT64> {
     type Scalar = f64;
 }
 
-impl<D: From<Vec<u8>>, B: Backend> VecZnxDft<D, B> {
-    pub(crate) fn bytes_of(module: &Module<B>, cols: usize, size: usize) -> usize {
-        unsafe { vec_znx_dft::bytes_of_vec_znx_dft(module.ptr, size as u64) as usize * cols }
-    }
+pub(crate) fn bytes_of_vec_znx_dft<B: Backend>(module: &Module<B>, cols: usize, size: usize) -> usize {
+    unsafe { vec_znx_dft::bytes_of_vec_znx_dft(module.ptr, size as u64) as usize * cols }
+}
 
+impl<D: From<Vec<u8>>, B: Backend> VecZnxDft<D, B> {
     pub(crate) fn new(module: &Module<B>, cols: usize, size: usize) -> Self {
-        let data = alloc_aligned::<u8>(Self::bytes_of(module, cols, size));
+        let data = alloc_aligned::<u8>(bytes_of_vec_znx_dft(module, cols, size));
         Self {
             data: data.into(),
             n: module.n(),
@@ -72,7 +72,7 @@ impl<D: From<Vec<u8>>, B: Backend> VecZnxDft<D, B> {
 
     pub(crate) fn new_from_bytes(module: &Module<B>, cols: usize, size: usize, bytes: impl Into<Vec<u8>>) -> Self {
         let data: Vec<u8> = bytes.into();
-        assert!(data.len() == Self::bytes_of(module, cols, size));
+        assert!(data.len() == bytes_of_vec_znx_dft(module, cols, size));
         Self {
             data: data.into(),
             n: module.n(),
@@ -85,8 +85,8 @@ impl<D: From<Vec<u8>>, B: Backend> VecZnxDft<D, B> {
 
 pub type VecZnxDftOwned<B> = VecZnxDft<Vec<u8>, B>;
 
-impl<'a, D: ?Sized, B> VecZnxDft<&'a mut D, B> {
-    pub(crate) fn from_mut_slice(data: &'a mut D, n: usize, cols: usize, size: usize) -> Self {
+impl<D, B> VecZnxDft<D, B> {
+    pub(crate) fn from_data(data: D, n: usize, cols: usize, size: usize) -> Self {
         Self {
             data,
             n,

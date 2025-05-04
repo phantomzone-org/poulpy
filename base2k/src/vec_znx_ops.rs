@@ -43,9 +43,6 @@ pub trait VecZnxAlloc {
 }
 
 pub trait VecZnxOps<DataMut, Data> {
-    /// Returns the minimum number of bytes necessary for normalization.
-    fn vec_znx_normalize_tmp_bytes(&self) -> usize;
-
     /// Normalizes the selected column of `a` and stores the result into the selected column of `res`.
     fn vec_znx_normalize(
         &self,
@@ -137,6 +134,11 @@ pub trait VecZnxOps<DataMut, Data> {
     fn vec_znx_merge(&self, res: &mut VecZnx<DataMut>, res_col: usize, a: &Vec<VecZnx<Data>>, a_col: usize);
 }
 
+pub trait VecZnxScratch {
+    /// Returns the minimum number of bytes necessary for normalization.
+    fn vec_znx_normalize_tmp_bytes(&self) -> usize;
+}
+
 impl<B: Backend> VecZnxAlloc for Module<B> {
     //(Jay)TODO: One must define the Scalar generic param here.
     fn new_vec_znx(&self, cols: usize, size: usize) -> VecZnxOwned {
@@ -157,10 +159,6 @@ where
     Data: AsRef<[u8]>,
     DataMut: AsRef<[u8]> + AsMut<[u8]>,
 {
-    fn vec_znx_normalize_tmp_bytes(&self) -> usize {
-        unsafe { vec_znx::vec_znx_normalize_base2k_tmp_bytes(self.ptr) as usize }
-    }
-
     fn vec_znx_normalize(
         &self,
         log_base2k: usize,
@@ -174,7 +172,7 @@ where
         {
             assert_eq!(a.n(), self.n());
             assert_eq!(res.n(), self.n());
-            assert!(tmp_bytes.len() >= <Self as VecZnxOps<DataMut, Data>>::vec_znx_normalize_tmp_bytes(&self));
+            assert!(tmp_bytes.len() >= <Self as VecZnxScratch>::vec_znx_normalize_tmp_bytes(&self));
             assert_alignement(tmp_bytes.as_ptr());
         }
         unsafe {
@@ -487,5 +485,11 @@ where
         });
 
         <Self as VecZnxOps<DataMut, Data>>::vec_znx_rotate_inplace(self, a.len() as i64, res, res_col);
+    }
+}
+
+impl<B: Backend> VecZnxScratch for Module<B> {
+    fn vec_znx_normalize_tmp_bytes(&self) -> usize {
+        unsafe { vec_znx::vec_znx_normalize_base2k_tmp_bytes(self.ptr) as usize }
     }
 }

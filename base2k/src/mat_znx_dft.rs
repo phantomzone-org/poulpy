@@ -1,4 +1,4 @@
-use crate::znx_base::{GetZnxBase, ZnxBase, ZnxInfos};
+use crate::znx_base::ZnxInfos;
 use crate::{Backend, DataView, DataViewMut, FFT64, Module, ZnxView, alloc_aligned};
 use std::marker::PhantomData;
 
@@ -111,26 +111,6 @@ impl<D: From<Vec<u8>>, B: Backend> MatZnxDft<D, B> {
             _marker: PhantomData,
         }
     }
-
-    // pub fn from_bytes_borrow(
-    //     module: &Module<B>,
-    //     rows: usize,
-    //     cols_in: usize,
-    //     cols_out: usize,
-    //     size: usize,
-    //     bytes: &mut [u8],
-    // ) -> Self {
-    //     debug_assert_eq!(
-    //         bytes.len(),
-    //         Self::bytes_of(module, rows, cols_in, cols_out, size)
-    //     );
-    //     Self {
-    //         inner: ZnxBase::from_bytes_borrow(module.n(), rows, cols_out, size, bytes),
-    //         cols_in: cols_in,
-    //         cols_out: cols_out,
-    //         _marker: PhantomData,
-    //     }
-    // }
 }
 
 impl<D: AsRef<[u8]>> MatZnxDft<D, FFT64> {
@@ -170,3 +150,29 @@ impl<D: AsRef<[u8]>> MatZnxDft<D, FFT64> {
 }
 
 pub type MatZnxDftAllocOwned<B> = MatZnxDft<Vec<u8>, B>;
+
+impl<B> MatZnxDft<Vec<u8>, B> {
+    pub fn to_mut(&mut self) -> MatZnxDft<&mut [u8], B> {
+        MatZnxDft {
+            data: self.data.as_mut_slice(),
+            n: self.n,
+            size: self.size,
+            rows: self.rows,
+            cols_in: self.cols_in,
+            cols_out: self.cols_out,
+            _marker: PhantomData,
+        }
+    }
+
+    pub fn to_ref(&self) -> MatZnxDft<&[u8], B> {
+        MatZnxDft {
+            data: self.data.as_slice(),
+            n: self.n,
+            size: self.size,
+            rows: self.rows,
+            cols_in: self.cols_in,
+            cols_out: self.cols_out,
+            _marker: PhantomData,
+        }
+    }
+}

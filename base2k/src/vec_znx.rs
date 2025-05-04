@@ -97,11 +97,6 @@ impl<D: AsMut<[u8]> + AsRef<[u8]>> VecZnx<D> {
     pub fn switch_degree<Data: AsRef<[u8]>>(&mut self, col: usize, a: &VecZnx<Data>, col_a: usize) {
         switch_degree(self, col_a, a, col)
     }
-
-    // Prints the first `n` coefficients of each limb
-    // pub fn print(&self, n: usize, col: usize) {
-    //     (0..self.size()).for_each(|j| println!("{}: {:?}", j, &self.at(col, j)[..n]));
-    // }
 }
 
 impl<D: From<Vec<u8>>> VecZnx<D> {
@@ -131,8 +126,6 @@ impl<D: From<Vec<u8>>> VecZnx<D> {
     }
 }
 
-//(Jay)TODO: Impl. truncate pow2 for Owned Vector
-
 /// Copies the coefficients of `a` on the receiver.
 /// Copy is done with the minimum size matching both backing arrays.
 /// Panics if the cols do not match.
@@ -147,12 +140,6 @@ where
     let size = min(data_b.len(), data_a.len());
     data_b[..size].copy_from_slice(&data_a[..size])
 }
-
-// if !self.borrowing() {
-//     self.inner
-//         .data
-//         .truncate(self.n() * self.cols() * (self.size() - k / log_base2k));
-// }
 
 fn normalize_tmp_bytes(n: usize) -> usize {
     n * std::mem::size_of::<i64>()
@@ -189,26 +176,6 @@ fn normalize<D: AsMut<[u8]> + AsRef<[u8]>>(log_base2k: usize, a: &mut VecZnx<D>,
         });
     }
 }
-
-// impl<B: Backend> ZnxAlloc<B> for VecZnx {
-//     type Scalar = i64;
-
-//     fn from_bytes_borrow(module: &Module<B>, _rows: usize, cols: usize, size: usize, bytes: &mut [u8]) -> VecZnx {
-//         debug_assert_eq!(bytes.len(), Self::bytes_of(module, _rows, cols, size));
-//         VecZnx {
-//             inner: ZnxBase::from_bytes_borrow(module.n(), VEC_ZNX_ROWS, cols, size, bytes),
-//         }
-//     }
-
-//     fn bytes_of(module: &Module<B>, _rows: usize, cols: usize, size: usize) -> usize {
-//         debug_assert_eq!(
-//             _rows, VEC_ZNX_ROWS,
-//             "rows != {} not supported for VecZnx",
-//             VEC_ZNX_ROWS
-//         );
-//         module.n() * cols * size * size_of::<Self::Scalar>()
-//     }
-// }
 
 impl<D: AsRef<[u8]>> fmt::Display for VecZnx<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -248,3 +215,23 @@ impl<D: AsRef<[u8]>> fmt::Display for VecZnx<D> {
 pub type VecZnxOwned = VecZnx<Vec<u8>>;
 pub type VecZnxMut<'a> = VecZnx<&'a mut [u8]>;
 pub type VecZnxRef<'a> = VecZnx<&'a [u8]>;
+
+impl VecZnx<Vec<u8>> {
+    pub(crate) fn to_mut(&mut self) -> VecZnx<&mut [u8]> {
+        VecZnx {
+            data: self.data.as_mut_slice(),
+            n: self.n,
+            cols: self.cols,
+            size: self.size,
+        }
+    }
+
+    pub(crate) fn to_ref(&self) -> VecZnx<&[u8]> {
+        VecZnx {
+            data: self.data.as_slice(),
+            n: self.n,
+            cols: self.cols,
+            size: self.size,
+        }
+    }
+}

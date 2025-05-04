@@ -1,6 +1,7 @@
-use crate::VecZnxDftOwned;
 use crate::ffi::{vec_znx_big, vec_znx_dft};
+use crate::vec_znx_dft::bytes_of_vec_znx_dft;
 use crate::znx_base::ZnxInfos;
+use crate::{Backend, VecZnxDftOwned};
 use crate::{FFT64, Module, VecZnx, VecZnxBig, VecZnxDft, ZnxView, ZnxViewMut, ZnxZero, assert_alignement};
 use std::cmp::min;
 
@@ -66,12 +67,12 @@ pub trait VecZnxDftOps<DataMut, Data, B> {
     fn vec_znx_dft(&self, res: &mut VecZnxDft<DataMut, B>, res_col: usize, a: &VecZnx<Data>, a_col: usize);
 }
 
-impl VecZnxDftAlloc<FFT64> for Module<FFT64> {
-    fn new_vec_znx_dft(&self, cols: usize, size: usize) -> VecZnxDftOwned<FFT64> {
+impl<B: Backend> VecZnxDftAlloc<B> for Module<B> {
+    fn new_vec_znx_dft(&self, cols: usize, size: usize) -> VecZnxDftOwned<B> {
         VecZnxDftOwned::new(&self, cols, size)
     }
 
-    fn new_vec_znx_dft_from_bytes(&self, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxDftOwned<FFT64> {
+    fn new_vec_znx_dft_from_bytes(&self, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxDftOwned<B> {
         VecZnxDftOwned::new_from_bytes(self, cols, size, bytes)
     }
 
@@ -80,7 +81,7 @@ impl VecZnxDftAlloc<FFT64> for Module<FFT64> {
     // }
 
     fn bytes_of_vec_znx_dft(&self, cols: usize, size: usize) -> usize {
-        VecZnxDftOwned::bytes_of(&self, cols, size)
+        bytes_of_vec_znx_dft(self, cols, size)
     }
 }
 

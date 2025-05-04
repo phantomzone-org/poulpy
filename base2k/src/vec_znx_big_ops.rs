@@ -1,6 +1,9 @@
 use crate::ffi::vec_znx;
 use crate::znx_base::{ZnxInfos, ZnxView, ZnxViewMut};
-use crate::{Backend, DataView, FFT64, Module, ScratchSpace, VecZnx, VecZnxBig, VecZnxBigOwned, VecZnxOps, assert_alignement};
+use crate::{
+    Backend, DataView, FFT64, Module, ScratchBorr, VecZnx, VecZnxBig, VecZnxBigOwned, VecZnxScratch, assert_alignement,
+    bytes_of_vec_znx_big,
+};
 
 pub trait VecZnxBigAlloc<B> {
     /// Allocates a vector Z[X]/(X^N+1) that stores not normalized values.
@@ -113,9 +116,6 @@ pub trait VecZnxBigOps<DataMut, Data, B> {
     /// Subtracts `res` from `a` and stores the result on `res`.
     fn vec_znx_big_sub_small_b_inplace(&self, res: &mut VecZnxBig<DataMut, B>, res_col: usize, a: &VecZnx<Data>, a_col: usize);
 
-    /// Returns the minimum number of bytes to apply [VecZnxBigOps::vec_znx_big_normalize].
-    fn vec_znx_big_normalize_tmp_bytes(&self) -> usize;
-
     /// Normalizes `a` and stores the result on `b`.
     ///
     /// # Arguments
@@ -129,7 +129,7 @@ pub trait VecZnxBigOps<DataMut, Data, B> {
         res_col: usize,
         a: &VecZnxBig<Data, B>,
         a_col: usize,
-        scratch: &mut ScratchSpace,
+        scratch: &mut ScratchBorr,
     );
 
     /// Applies the automorphism X^i -> X^ik on `a` and stores the result on `b`.
@@ -146,6 +146,11 @@ pub trait VecZnxBigOps<DataMut, Data, B> {
     fn vec_znx_big_automorphism_inplace(&self, k: i64, a: &mut VecZnxBig<DataMut, B>, a_col: usize);
 }
 
+pub trait VecZnxBigScratch {
+    /// Returns the minimum number of bytes to apply [VecZnxBigOps::vec_znx_big_normalize].
+    fn vec_znx_big_normalize_tmp_bytes(&self) -> usize;
+}
+
 impl VecZnxBigAlloc<FFT64> for Module<FFT64> {
     fn new_vec_znx_big(&self, cols: usize, size: usize) -> VecZnxBigOwned<FFT64> {
         VecZnxBig::new(self, cols, size)
@@ -160,7 +165,7 @@ impl VecZnxBigAlloc<FFT64> for Module<FFT64> {
     // }
 
     fn bytes_of_vec_znx_big(&self, cols: usize, size: usize) -> usize {
-        VecZnxBigOwned::bytes_of(self, cols, size)
+        bytes_of_vec_znx_big(self, cols, size)
     }
 }
 
@@ -491,10 +496,6 @@ where
         }
     }
 
-    fn vec_znx_big_normalize_tmp_bytes(&self) -> usize {
-        <Self as VecZnxOps<DataMut, Data>>::vec_znx_normalize_tmp_bytes(self)
-    }
-
     fn vec_znx_big_normalize(
         &self,
         log_base2k: usize,
@@ -502,7 +503,7 @@ where
         res_col: usize,
         a: &VecZnxBig<Data, FFT64>,
         a_col: usize,
-        scratch: &mut ScratchSpace,
+        scratch: &mut ScratchBorr,
     ) {
         #[cfg(debug_assertions)]
         {
@@ -513,6 +514,10 @@ where
             // assert!(tmp_bytes.len() >= <Self as VecZnxOps<DataMut, Data>>::vec_znx_normalize_tmp_bytes(&self));
             // assert_alignement(tmp_bytes.as_ptr());
         }
+
+        let (tmp_bytes, _) = scratch.tmp_scalar_slice(<Self as VecZnxBigScratch>::vec_znx_big_normalize_tmp_bytes(
+            &self,
+        ));
         unsafe {
             vec_znx::vec_znx_normalize_base2k(
                 self.ptr,
@@ -523,7 +528,7 @@ where
                 a.at_ptr(a_col, 0),
                 a.size() as u64,
                 a.sl() as u64,
-                scratch.vec_znx_big_normalize_tmp_bytes(self).as_mut_ptr(),
+                tmp_bytes.as_mut_ptr(),
             );
         }
     }
@@ -572,5 +577,11 @@ where
                 a.sl() as u64,
             )
         }
+    }
+}
+
+impl<B: Backend> VecZnxBigScratch for Module<B> {
+    fn vec_znx_big_normalize_tmp_bytes(&self) -> usize {
+        <Self as VecZnxScratch>::vec_znx_normalize_tmp_bytes(self)
     }
 }
