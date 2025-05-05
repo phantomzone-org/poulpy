@@ -2,19 +2,16 @@ use std::marker::PhantomData;
 
 use crate::ffi::svp;
 use crate::znx_base::ZnxInfos;
-use crate::{Backend, DataView, DataViewMut, FFT64, Module, ZnxView, alloc_aligned};
+use crate::{Backend, DataView, DataViewMut, FFT64, Module, ZnxSliceSize, ZnxView, alloc_aligned};
 
-pub const SCALAR_ZNX_DFT_ROWS: usize = 1;
-pub const SCALAR_ZNX_DFT_SIZE: usize = 1;
-
-pub struct ScalarZnxDft<D, B> {
+pub struct ScalarZnxDft<D, B: Backend> {
     data: D,
     n: usize,
     cols: usize,
     _phantom: PhantomData<B>,
 }
 
-impl<D, B> ZnxInfos for ScalarZnxDft<D, B> {
+impl<D, B: Backend> ZnxInfos for ScalarZnxDft<D, B> {
     fn cols(&self) -> usize {
         self.cols
     }
@@ -30,20 +27,22 @@ impl<D, B> ZnxInfos for ScalarZnxDft<D, B> {
     fn size(&self) -> usize {
         1
     }
+}
 
+impl<D> ZnxSliceSize for ScalarZnxDft<D, FFT64> {
     fn sl(&self) -> usize {
         self.n()
     }
 }
 
-impl<D, B> DataView for ScalarZnxDft<D, B> {
+impl<D, B: Backend> DataView for ScalarZnxDft<D, B> {
     type D = D;
     fn data(&self) -> &Self::D {
         &self.data
     }
 }
 
-impl<D, B> DataViewMut for ScalarZnxDft<D, B> {
+impl<D, B: Backend> DataViewMut for ScalarZnxDft<D, B> {
     fn data_mut(&mut self) -> &mut Self::D {
         &mut self.data
     }
@@ -78,20 +77,69 @@ impl<D: From<Vec<u8>>, B: Backend> ScalarZnxDft<D, B> {
             _phantom: PhantomData,
         }
     }
-
-    // fn from_bytes_borrow(module: &Module<B>, _rows: usize, cols: usize, _size: usize, bytes: &mut [u8]) -> Self {
-    //     debug_assert_eq!(bytes.len(), Self::bytes_of(module, _rows, cols, _size));
-    //     Self {
-    //         inner: ZnxBase::from_bytes_borrow(
-    //             module.n(),
-    //             SCALAR_ZNX_DFT_ROWS,
-    //             cols,
-    //             SCALAR_ZNX_DFT_SIZE,
-    //             bytes,
-    //         ),
-    //         _phantom: PhantomData,
-    //     }
-    // }
 }
 
 pub type ScalarZnxDftOwned<B> = ScalarZnxDft<Vec<u8>, B>;
+
+pub trait ScalarZnxDftToRef<B: Backend> {
+    fn to_ref(&self) -> ScalarZnxDft<&[u8], B>;
+}
+
+pub trait ScalarZnxDftToMut<B: Backend> {
+    fn to_mut(&mut self) -> ScalarZnxDft<&mut [u8], B>;
+}
+
+impl<B: Backend> ScalarZnxDftToMut<B> for ScalarZnxDft<Vec<u8>, B> {
+    fn to_mut(&mut self) -> ScalarZnxDft<&mut [u8], B> {
+        ScalarZnxDft {
+            data: self.data.as_mut_slice(),
+            n: self.n,
+            cols: self.cols,
+            _phantom: PhantomData,
+        }
+    }
+}
+
+impl<B: Backend> ScalarZnxDftToRef<B> for ScalarZnxDft<Vec<u8>, B> {
+    fn to_ref(&self) -> ScalarZnxDft<&[u8], B> {
+        ScalarZnxDft {
+            data: self.data.as_slice(),
+            n: self.n,
+            cols: self.cols,
+            _phantom: PhantomData,
+        }
+    }
+}
+
+impl<B: Backend> ScalarZnxDftToMut<B> for ScalarZnxDft<&mut [u8], B> {
+    fn to_mut(&mut self) -> ScalarZnxDft<&mut [u8], B> {
+        ScalarZnxDft {
+            data: self.data,
+            n: self.n,
+            cols: self.cols,
+            _phantom: PhantomData,
+        }
+    }
+}
+
+impl<B: Backend> ScalarZnxDftToRef<B> for ScalarZnxDft<&mut [u8], B> {
+    fn to_ref(&self) -> ScalarZnxDft<&[u8], B> {
+        ScalarZnxDft {
+            data: self.data,
+            n: self.n,
+            cols: self.cols,
+            _phantom: PhantomData,
+        }
+    }
+}
+
+impl<B: Backend> ScalarZnxDftToRef<B> for ScalarZnxDft<&[u8], B> {
+    fn to_ref(&self) -> ScalarZnxDft<&[u8], B> {
+        ScalarZnxDft {
+            data: self.data,
+            n: self.n,
+            cols: self.cols,
+            _phantom: PhantomData,
+        }
+    }
+}

@@ -215,4 +215,12 @@ impl Scratch {
             Self::new(rem_slice),
         )
     }
+
+    pub fn tmp_vec_znx<B: Backend>(&mut self, module: &Module<B>, cols: usize, size: usize) -> (VecZnx<&mut [u8]>, &mut Self) {
+        let (take_slice, rem_slice) = Self::take_slice_aligned(&mut self.data, module.bytes_of_vec_znx(cols, size));
+        (
+            VecZnx::from_data(take_slice, module.n(), cols, size),
+            Self::new(rem_slice),
+        )
+    }
 }

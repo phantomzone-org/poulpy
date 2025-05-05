@@ -1,13 +1,12 @@
 use crate::DataView;
 use crate::DataViewMut;
+use crate::ZnxSliceSize;
 use crate::alloc_aligned;
 use crate::assert_alignement;
 use crate::cast_mut;
 use crate::ffi::znx;
-use crate::znx_base::{ZnxInfos, ZnxView, ZnxViewMut, switch_degree};
+use crate::znx_base::{ZnxInfos, ZnxView, ZnxViewMut};
 use std::{cmp::min, fmt};
-
-// pub const VEC_ZNX_ROWS: usize = 1;
 
 /// [VecZnx] represents collection of contiguously stacked vector of small norm polynomials of
 /// Zn\[X\] with [i64] coefficients.
@@ -20,7 +19,7 @@ use std::{cmp::min, fmt};
 /// layout is: `[a0, b0, c0, a1, b1, c1, a2, b2, c2, a3, b3, c3]`, where ai, bi, ci
 /// are small polynomials of Zn\[X\].
 pub struct VecZnx<D> {
-    data: D,
+    pub data: D,
     n: usize,
     cols: usize,
     size: usize,
@@ -42,9 +41,11 @@ impl<D> ZnxInfos for VecZnx<D> {
     fn size(&self) -> usize {
         self.size
     }
+}
 
+impl<D> ZnxSliceSize for VecZnx<D> {
     fn sl(&self) -> usize {
-        self.cols() * self.n()
+        self.n() * self.cols()
     }
 }
 
@@ -66,10 +67,6 @@ impl<D: AsRef<[u8]>> ZnxView for VecZnx<D> {
 }
 
 impl<D: AsMut<[u8]> + AsRef<[u8]>> VecZnx<D> {
-    pub fn normalize(&mut self, log_base2k: usize, col: usize, carry: &mut [u8]) {
-        normalize(log_base2k, self, col, carry)
-    }
-
     /// Truncates the precision of the [VecZnx] by k bits.
     ///
     /// # Arguments
@@ -91,11 +88,6 @@ impl<D: AsMut<[u8]> + AsRef<[u8]>> VecZnx<D> {
                 .iter_mut()
                 .for_each(|x: &mut i64| *x &= mask)
         }
-    }
-
-    /// Switches degree of from `a.n()` to `self.n()` into `self`
-    pub fn switch_degree<Data: AsRef<[u8]>>(&mut self, col: usize, a: &VecZnx<Data>, col_a: usize) {
-        switch_degree(self, col_a, a, col)
     }
 }
 
@@ -126,6 +118,17 @@ impl<D: From<Vec<u8>>> VecZnx<D> {
     }
 }
 
+impl<D> VecZnx<D> {
+    pub(crate) fn from_data(data: D, n: usize, cols: usize, size: usize) -> Self {
+        Self {
+            data,
+            n,
+            cols,
+            size,
+        }
+    }
+}
+
 /// Copies the coefficients of `a` on the receiver.
 /// Copy is done with the minimum size matching both backing arrays.
 /// Panics if the cols do not match.
@@ -141,10 +144,12 @@ where
     data_b[..size].copy_from_slice(&data_a[..size])
 }
 
+#[allow(dead_code)]
 fn normalize_tmp_bytes(n: usize) -> usize {
     n * std::mem::size_of::<i64>()
 }
 
+#[allow(dead_code)]
 fn normalize<D: AsMut<[u8]> + AsRef<[u8]>>(log_base2k: usize, a: &mut VecZnx<D>, a_col: usize, tmp_bytes: &mut [u8]) {
     let n: usize = a.n();
 
@@ -216,8 +221,16 @@ pub type VecZnxOwned = VecZnx<Vec<u8>>;
 pub type VecZnxMut<'a> = VecZnx<&'a mut [u8]>;
 pub type VecZnxRef<'a> = VecZnx<&'a [u8]>;
 
-impl VecZnx<Vec<u8>> {
-    pub fn to_mut(&mut self) -> VecZnx<&mut [u8]> {
+pub trait VecZnxToRef {
+    fn to_ref(&self) -> VecZnx<&[u8]>;
+}
+
+pub trait VecZnxToMut {
+    fn to_mut(&mut self) -> VecZnx<&mut [u8]>;
+}
+
+impl VecZnxToMut for VecZnx<Vec<u8>> {
+    fn to_mut(&mut self) -> VecZnx<&mut [u8]> {
         VecZnx {
             data: self.data.as_mut_slice(),
             n: self.n,
@@ -225,8 +238,10 @@ impl VecZnx<Vec<u8>> {
             size: self.size,
         }
     }
+}
 
-    pub fn to_ref(&self) -> VecZnx<&[u8]> {
+impl VecZnxToRef for VecZnx<Vec<u8>> {
+    fn to_ref(&self) -> VecZnx<&[u8]> {
         VecZnx {
             data: self.data.as_slice(),
             n: self.n,
@@ -236,10 +251,32 @@ impl VecZnx<Vec<u8>> {
     }
 }
 
-impl VecZnx<&mut [u8]> {
-    pub fn to_ref(&self) -> VecZnx<&[u8]> {
+impl VecZnxToMut for VecZnx<&mut [u8]> {
+    fn to_mut(&mut self) -> VecZnx<&mut [u8]> {
         VecZnx {
-            data: &self.data,
+            data: self.data,
+            n: self.n,
+            cols: self.cols,
+            size: self.size,
+        }
+    }
+}
+
+impl VecZnxToRef for VecZnx<&mut [u8]> {
+    fn to_ref(&self) -> VecZnx<&[u8]> {
+        VecZnx {
+            data: self.data,
+            n: self.n,
+            cols: self.cols,
+            size: self.size,
+        }
+    }
+}
+
+impl VecZnxToRef for VecZnx<&[u8]> {
+    fn to_ref(&self) -> VecZnx<&[u8]> {
+        VecZnx {
+            data: self.data,
             n: self.n,
             cols: self.cols,
             size: self.size,

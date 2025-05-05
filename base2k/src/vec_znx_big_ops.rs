@@ -1,8 +1,11 @@
 use crate::ffi::vec_znx;
 use crate::znx_base::{ZnxInfos, ZnxView, ZnxViewMut};
-use crate::{Backend, FFT64, Module, Scratch, VecZnx, VecZnxBig, VecZnxBigOwned, VecZnxScratch, bytes_of_vec_znx_big};
+use crate::{
+    Backend, FFT64, Module, Scratch, VecZnx, VecZnxBig, VecZnxBigOwned, VecZnxBigToMut, VecZnxBigToRef, VecZnxScratch,
+    VecZnxToMut, VecZnxToRef, ZnxSliceSize, bytes_of_vec_znx_big,
+};
 
-pub trait VecZnxBigAlloc<B> {
+pub trait VecZnxBigAlloc<B: Backend> {
     /// Allocates a vector Z[X]/(X^N+1) that stores not normalized values.
     fn new_vec_znx_big(&self, cols: usize, size: usize) -> VecZnxBigOwned<B>;
 
@@ -39,79 +42,77 @@ pub trait VecZnxBigAlloc<B> {
     fn bytes_of_vec_znx_big(&self, cols: usize, size: usize) -> usize;
 }
 
-pub trait VecZnxBigOps<DataMut, Data, B> {
+pub trait VecZnxBigOps<BACKEND: Backend> {
     /// Adds `a` to `b` and stores the result on `c`.
-    fn vec_znx_big_add(
-        &self,
-        res: &mut VecZnxBig<DataMut, B>,
-        res_col: usize,
-        a: &VecZnxBig<Data, B>,
-        a_col: usize,
-        b: &VecZnxBig<Data, B>,
-        b_col: usize,
-    );
+    fn vec_znx_big_add<R, A, B>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
+    where
+        R: VecZnxBigToMut<BACKEND>,
+        A: VecZnxBigToRef<BACKEND>,
+        B: VecZnxBigToRef<BACKEND>;
 
     /// Adds `a` to `b` and stores the result on `b`.
-    fn vec_znx_big_add_inplace(&self, res: &mut VecZnxBig<DataMut, B>, res_col: usize, a: &VecZnxBig<Data, B>, a_col: usize);
+    fn vec_znx_big_add_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    where
+        R: VecZnxBigToMut<BACKEND>,
+        A: VecZnxBigToRef<BACKEND>;
 
     /// Adds `a` to `b` and stores the result on `c`.
-    fn vec_znx_big_add_small(
-        &self,
-        res: &mut VecZnxBig<DataMut, B>,
-        res_col: usize,
-        a: &VecZnxBig<Data, B>,
-        a_col: usize,
-        b: &VecZnx<Data>,
-        b_col: usize,
-    );
+    fn vec_znx_big_add_small<R, A, B>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
+    where
+        R: VecZnxBigToMut<BACKEND>,
+        A: VecZnxBigToRef<BACKEND>,
+        B: VecZnxToRef;
 
     /// Adds `a` to `b` and stores the result on `b`.
-    fn vec_znx_big_add_small_inplace(&self, res: &mut VecZnxBig<DataMut, B>, res_col: usize, a: &VecZnx<Data>, a_col: usize);
+    fn vec_znx_big_add_small_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    where
+        R: VecZnxBigToMut<BACKEND>,
+        A: VecZnxToRef;
 
     /// Subtracts `a` to `b` and stores the result on `c`.
-    fn vec_znx_big_sub(
-        &self,
-        res: &mut VecZnxBig<DataMut, B>,
-        res_col: usize,
-        a: &VecZnxBig<Data, B>,
-        a_col: usize,
-        b: &VecZnxBig<Data, B>,
-        b_col: usize,
-    );
+    fn vec_znx_big_sub<R, A, B>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
+    where
+        R: VecZnxBigToMut<BACKEND>,
+        A: VecZnxBigToRef<BACKEND>,
+        B: VecZnxBigToRef<BACKEND>;
 
     /// Subtracts `a` from `b` and stores the result on `b`.
-    fn vec_znx_big_sub_ab_inplace(&self, res: &mut VecZnxBig<DataMut, B>, res_col: usize, a: &VecZnxBig<Data, B>, a_col: usize);
+    fn vec_znx_big_sub_ab_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    where
+        R: VecZnxBigToMut<BACKEND>,
+        A: VecZnxBigToRef<BACKEND>;
 
     /// Subtracts `b` from `a` and stores the result on `b`.
-    fn vec_znx_big_sub_ba_inplace(&self, res: &mut VecZnxBig<DataMut, B>, res_col: usize, a: &VecZnxBig<Data, B>, a_col: usize);
+    fn vec_znx_big_sub_ba_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    where
+        R: VecZnxBigToMut<BACKEND>,
+        A: VecZnxBigToRef<BACKEND>;
 
     /// Subtracts `b` from `a` and stores the result on `c`.
-    fn vec_znx_big_sub_small_a(
-        &self,
-        res: &mut VecZnxBig<DataMut, B>,
-        res_col: usize,
-        a: &VecZnx<Data>,
-        a_col: usize,
-        b: &VecZnxBig<Data, B>,
-        b_col: usize,
-    );
+    fn vec_znx_big_sub_small_a<R, A, B>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
+    where
+        R: VecZnxBigToMut<BACKEND>,
+        A: VecZnxToRef,
+        B: VecZnxBigToRef<BACKEND>;
 
     /// Subtracts `a` from `res` and stores the result on `res`.
-    fn vec_znx_big_sub_small_a_inplace(&self, res: &mut VecZnxBig<DataMut, B>, res_col: usize, a: &VecZnx<Data>, a_col: usize);
+    fn vec_znx_big_sub_small_a_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    where
+        R: VecZnxBigToMut<BACKEND>,
+        A: VecZnxToRef;
 
     /// Subtracts `b` from `a` and stores the result on `c`.
-    fn vec_znx_big_sub_small_b(
-        &self,
-        res: &mut VecZnxBig<DataMut, B>,
-        res_col: usize,
-        a: &VecZnxBig<Data, B>,
-        a_col: usize,
-        b: &VecZnx<Data>,
-        b_col: usize,
-    );
+    fn vec_znx_big_sub_small_b<R, A, B>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
+    where
+        R: VecZnxBigToMut<BACKEND>,
+        A: VecZnxBigToRef<BACKEND>,
+        B: VecZnxToRef;
 
     /// Subtracts `res` from `a` and stores the result on `res`.
-    fn vec_znx_big_sub_small_b_inplace(&self, res: &mut VecZnxBig<DataMut, B>, res_col: usize, a: &VecZnx<Data>, a_col: usize);
+    fn vec_znx_big_sub_small_b_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    where
+        R: VecZnxBigToMut<BACKEND>,
+        A: VecZnxToRef;
 
     /// Normalizes `a` and stores the result on `b`.
     ///
@@ -119,28 +120,28 @@ pub trait VecZnxBigOps<DataMut, Data, B> {
     ///
     /// * `log_base2k`: normalization basis.
     /// * `tmp_bytes`: scratch space of size at least [VecZnxBigOps::vec_znx_big_normalize].
-    fn vec_znx_big_normalize(
+    fn vec_znx_big_normalize<R, A>(
         &self,
         log_base2k: usize,
-        res: &mut VecZnx<DataMut>,
+        res: &mut R,
         res_col: usize,
-        a: &VecZnxBig<Data, B>,
+        a: &A,
         a_col: usize,
         scratch: &mut Scratch,
-    );
+    ) where
+        R: VecZnxToMut,
+        A: VecZnxBigToRef<BACKEND>;
 
     /// Applies the automorphism X^i -> X^ik on `a` and stores the result on `b`.
-    fn vec_znx_big_automorphism(
-        &self,
-        k: i64,
-        res: &mut VecZnxBig<DataMut, B>,
-        res_col: usize,
-        a: &VecZnxBig<Data, B>,
-        a_col: usize,
-    );
+    fn vec_znx_big_automorphism<R, A>(&self, k: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    where
+        R: VecZnxBigToMut<BACKEND>,
+        A: VecZnxBigToRef<BACKEND>;
 
     /// Applies the automorphism X^i -> X^ik on `a` and stores the result on `a`.
-    fn vec_znx_big_automorphism_inplace(&self, k: i64, a: &mut VecZnxBig<DataMut, B>, a_col: usize);
+    fn vec_znx_big_automorphism_inplace<A>(&self, k: i64, a: &mut A, a_col: usize)
+    where
+        A: VecZnxBigToMut<BACKEND>;
 }
 
 pub trait VecZnxBigScratch {
@@ -157,29 +158,22 @@ impl VecZnxBigAlloc<FFT64> for Module<FFT64> {
         VecZnxBig::new_from_bytes(self, cols, size, bytes)
     }
 
-    // fn new_vec_znx_big_from_bytes_borrow(&self, cols: usize, size: usize, tmp_bytes: &mut [u8]) -> VecZnxBig<FFT64> {
-    // VecZnxBig::from_bytes_borrow(self, 1, cols, size, tmp_bytes)
-    // }
-
     fn bytes_of_vec_znx_big(&self, cols: usize, size: usize) -> usize {
         bytes_of_vec_znx_big(self, cols, size)
     }
 }
 
-impl<DataMut, Data> VecZnxBigOps<DataMut, Data, FFT64> for Module<FFT64>
-where
-    DataMut: AsMut<[u8]> + AsRef<[u8]>,
-    Data: AsRef<[u8]>,
-{
-    fn vec_znx_big_add(
-        &self,
-        res: &mut VecZnxBig<DataMut, FFT64>,
-        res_col: usize,
-        a: &VecZnxBig<Data, FFT64>,
-        a_col: usize,
-        b: &VecZnxBig<Data, FFT64>,
-        b_col: usize,
-    ) {
+impl VecZnxBigOps<FFT64> for Module<FFT64> {
+    fn vec_znx_big_add<R, A, B>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
+    where
+        R: VecZnxBigToMut<FFT64>,
+        A: VecZnxBigToRef<FFT64>,
+        B: VecZnxBigToRef<FFT64>,
+    {
+        let a: VecZnxBig<&[u8], FFT64> = a.to_ref();
+        let b: VecZnxBig<&[u8], FFT64> = b.to_ref();
+        let mut res: VecZnxBig<&mut [u8], FFT64> = res.to_mut();
+
         #[cfg(debug_assertions)]
         {
             assert_eq!(a.n(), self.n());
@@ -203,13 +197,14 @@ where
         }
     }
 
-    fn vec_znx_big_add_inplace(
-        &self,
-        res: &mut VecZnxBig<DataMut, FFT64>,
-        res_col: usize,
-        a: &VecZnxBig<Data, FFT64>,
-        a_col: usize,
-    ) {
+    fn vec_znx_big_add_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    where
+        R: VecZnxBigToMut<FFT64>,
+        A: VecZnxBigToRef<FFT64>,
+    {
+        let a: VecZnxBig<&[u8], FFT64> = a.to_ref();
+        let mut res: VecZnxBig<&mut [u8], FFT64> = res.to_mut();
+
         #[cfg(debug_assertions)]
         {
             assert_eq!(a.n(), self.n());
@@ -231,15 +226,16 @@ where
         }
     }
 
-    fn vec_znx_big_sub(
-        &self,
-        res: &mut VecZnxBig<DataMut, FFT64>,
-        res_col: usize,
-        a: &VecZnxBig<Data, FFT64>,
-        a_col: usize,
-        b: &VecZnxBig<Data, FFT64>,
-        b_col: usize,
-    ) {
+    fn vec_znx_big_sub<R, A, B>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
+    where
+        R: VecZnxBigToMut<FFT64>,
+        A: VecZnxBigToRef<FFT64>,
+        B: VecZnxBigToRef<FFT64>,
+    {
+        let a: VecZnxBig<&[u8], FFT64> = a.to_ref();
+        let b: VecZnxBig<&[u8], FFT64> = b.to_ref();
+        let mut res: VecZnxBig<&mut [u8], FFT64> = res.to_mut();
+
         #[cfg(debug_assertions)]
         {
             assert_eq!(a.n(), self.n());
@@ -263,13 +259,14 @@ where
         }
     }
 
-    fn vec_znx_big_sub_ab_inplace(
-        &self,
-        res: &mut VecZnxBig<DataMut, FFT64>,
-        res_col: usize,
-        a: &VecZnxBig<Data, FFT64>,
-        a_col: usize,
-    ) {
+    fn vec_znx_big_sub_ab_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    where
+        R: VecZnxBigToMut<FFT64>,
+        A: VecZnxBigToRef<FFT64>,
+    {
+        let a: VecZnxBig<&[u8], FFT64> = a.to_ref();
+        let mut res: VecZnxBig<&mut [u8], FFT64> = res.to_mut();
+
         #[cfg(debug_assertions)]
         {
             assert_eq!(a.n(), self.n());
@@ -291,13 +288,14 @@ where
         }
     }
 
-    fn vec_znx_big_sub_ba_inplace(
-        &self,
-        res: &mut VecZnxBig<DataMut, FFT64>,
-        res_col: usize,
-        a: &VecZnxBig<Data, FFT64>,
-        a_col: usize,
-    ) {
+    fn vec_znx_big_sub_ba_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    where
+        R: VecZnxBigToMut<FFT64>,
+        A: VecZnxBigToRef<FFT64>,
+    {
+        let a: VecZnxBig<&[u8], FFT64> = a.to_ref();
+        let mut res: VecZnxBig<&mut [u8], FFT64> = res.to_mut();
+
         #[cfg(debug_assertions)]
         {
             assert_eq!(a.n(), self.n());
@@ -319,15 +317,16 @@ where
         }
     }
 
-    fn vec_znx_big_sub_small_b(
-        &self,
-        res: &mut VecZnxBig<DataMut, FFT64>,
-        res_col: usize,
-        a: &VecZnxBig<Data, FFT64>,
-        a_col: usize,
-        b: &VecZnx<Data>,
-        b_col: usize,
-    ) {
+    fn vec_znx_big_sub_small_b<R, A, B>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
+    where
+        R: VecZnxBigToMut<FFT64>,
+        A: VecZnxBigToRef<FFT64>,
+        B: VecZnxToRef,
+    {
+        let a: VecZnxBig<&[u8], FFT64> = a.to_ref();
+        let b: VecZnx<&[u8]> = b.to_ref();
+        let mut res: VecZnxBig<&mut [u8], FFT64> = res.to_mut();
+
         #[cfg(debug_assertions)]
         {
             assert_eq!(a.n(), self.n());
@@ -351,13 +350,14 @@ where
         }
     }
 
-    fn vec_znx_big_sub_small_b_inplace(
-        &self,
-        res: &mut VecZnxBig<DataMut, FFT64>,
-        res_col: usize,
-        a: &VecZnx<Data>,
-        a_col: usize,
-    ) {
+    fn vec_znx_big_sub_small_b_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    where
+        R: VecZnxBigToMut<FFT64>,
+        A: VecZnxToRef,
+    {
+        let a: VecZnx<&[u8]> = a.to_ref();
+        let mut res: VecZnxBig<&mut [u8], FFT64> = res.to_mut();
+
         #[cfg(debug_assertions)]
         {
             assert_eq!(a.n(), self.n());
@@ -379,15 +379,16 @@ where
         }
     }
 
-    fn vec_znx_big_sub_small_a(
-        &self,
-        res: &mut VecZnxBig<DataMut, FFT64>,
-        res_col: usize,
-        a: &VecZnx<Data>,
-        a_col: usize,
-        b: &VecZnxBig<Data, FFT64>,
-        b_col: usize,
-    ) {
+    fn vec_znx_big_sub_small_a<R, A, B>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
+    where
+        R: VecZnxBigToMut<FFT64>,
+        A: VecZnxToRef,
+        B: VecZnxBigToRef<FFT64>,
+    {
+        let a: VecZnx<&[u8]> = a.to_ref();
+        let b: VecZnxBig<&[u8], FFT64> = b.to_ref();
+        let mut res: VecZnxBig<&mut [u8], FFT64> = res.to_mut();
+
         #[cfg(debug_assertions)]
         {
             assert_eq!(a.n(), self.n());
@@ -411,13 +412,14 @@ where
         }
     }
 
-    fn vec_znx_big_sub_small_a_inplace(
-        &self,
-        res: &mut VecZnxBig<DataMut, FFT64>,
-        res_col: usize,
-        a: &VecZnx<Data>,
-        a_col: usize,
-    ) {
+    fn vec_znx_big_sub_small_a_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    where
+        R: VecZnxBigToMut<FFT64>,
+        A: VecZnxToRef,
+    {
+        let a: VecZnx<&[u8]> = a.to_ref();
+        let mut res: VecZnxBig<&mut [u8], FFT64> = res.to_mut();
+
         #[cfg(debug_assertions)]
         {
             assert_eq!(a.n(), self.n());
@@ -439,15 +441,16 @@ where
         }
     }
 
-    fn vec_znx_big_add_small(
-        &self,
-        res: &mut VecZnxBig<DataMut, FFT64>,
-        res_col: usize,
-        a: &VecZnxBig<Data, FFT64>,
-        a_col: usize,
-        b: &VecZnx<Data>,
-        b_col: usize,
-    ) {
+    fn vec_znx_big_add_small<R, A, B>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
+    where
+        R: VecZnxBigToMut<FFT64>,
+        A: VecZnxBigToRef<FFT64>,
+        B: VecZnxToRef,
+    {
+        let a: VecZnxBig<&[u8], FFT64> = a.to_ref();
+        let b: VecZnx<&[u8]> = b.to_ref();
+        let mut res: VecZnxBig<&mut [u8], FFT64> = res.to_mut();
+
         #[cfg(debug_assertions)]
         {
             assert_eq!(a.n(), self.n());
@@ -471,7 +474,14 @@ where
         }
     }
 
-    fn vec_znx_big_add_small_inplace(&self, res: &mut VecZnxBig<DataMut, FFT64>, res_col: usize, a: &VecZnx<Data>, a_col: usize) {
+    fn vec_znx_big_add_small_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    where
+        R: VecZnxBigToMut<FFT64>,
+        A: VecZnxToRef,
+    {
+        let a: VecZnx<&[u8]> = a.to_ref();
+        let mut res: VecZnxBig<&mut [u8], FFT64> = res.to_mut();
+
         #[cfg(debug_assertions)]
         {
             assert_eq!(a.n(), self.n());
@@ -493,22 +503,28 @@ where
         }
     }
 
-    fn vec_znx_big_normalize(
+    fn vec_znx_big_normalize<R, A>(
         &self,
         log_base2k: usize,
-        res: &mut VecZnx<DataMut>,
+        res: &mut R,
         res_col: usize,
-        a: &VecZnxBig<Data, FFT64>,
+        a: &A,
         a_col: usize,
         scratch: &mut Scratch,
-    ) {
+    ) where
+        R: VecZnxToMut,
+        A: VecZnxBigToRef<FFT64>,
+    {
+        let a: VecZnxBig<&[u8], FFT64> = a.to_ref();
+        let mut res: VecZnx<&mut [u8]> = res.to_mut();
+
         #[cfg(debug_assertions)]
         {
             assert_eq!(a.n(), self.n());
             assert_eq!(res.n(), self.n());
             //(Jay)Note: This is calling VezZnxOps::vec_znx_normalize_tmp_bytes and not VecZnxBigOps::vec_znx_big_normalize_tmp_bytes.
             // In the FFT backend the tmp sizes are same but will be different in the NTT backend
-            // assert!(tmp_bytes.len() >= <Self as VecZnxOps<DataMut, Data>>::vec_znx_normalize_tmp_bytes(&self));
+            // assert!(tmp_bytes.len() >= <Self as VecZnxOps<&mut [u8], & [u8]>>::vec_znx_normalize_tmp_bytes(&self));
             // assert_alignement(tmp_bytes.as_ptr());
         }
 
@@ -530,14 +546,14 @@ where
         }
     }
 
-    fn vec_znx_big_automorphism(
-        &self,
-        k: i64,
-        res: &mut VecZnxBig<DataMut, FFT64>,
-        res_col: usize,
-        a: &VecZnxBig<Data, FFT64>,
-        a_col: usize,
-    ) {
+    fn vec_znx_big_automorphism<R, A>(&self, k: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    where
+        R: VecZnxBigToMut<FFT64>,
+        A: VecZnxBigToRef<FFT64>,
+    {
+        let a: VecZnxBig<&[u8], FFT64> = a.to_ref();
+        let mut res: VecZnxBig<&mut [u8], FFT64> = res.to_mut();
+
         #[cfg(debug_assertions)]
         {
             assert_eq!(a.n(), self.n());
@@ -557,7 +573,12 @@ where
         }
     }
 
-    fn vec_znx_big_automorphism_inplace(&self, k: i64, a: &mut VecZnxBig<DataMut, FFT64>, a_col: usize) {
+    fn vec_znx_big_automorphism_inplace<A>(&self, k: i64, a: &mut A, a_col: usize)
+    where
+        A: VecZnxBigToMut<FFT64>,
+    {
+        let mut a: VecZnxBig<&mut [u8], FFT64> = a.to_mut();
+
         #[cfg(debug_assertions)]
         {
             assert_eq!(a.n(), self.n());

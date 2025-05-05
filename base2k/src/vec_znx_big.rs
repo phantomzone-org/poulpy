@@ -1,12 +1,9 @@
 use crate::ffi::vec_znx_big;
 use crate::znx_base::{ZnxInfos, ZnxView};
-use crate::{Backend, DataView, DataViewMut, FFT64, Module, alloc_aligned};
+use crate::{Backend, DataView, DataViewMut, FFT64, Module, ZnxSliceSize, alloc_aligned};
 use std::marker::PhantomData;
 
-// const VEC_ZNX_BIG_ROWS: usize = 1;
-
-/// VecZnxBig is `Backend` dependent, denoted with backend generic `B`
-pub struct VecZnxBig<D, B> {
+pub struct VecZnxBig<D, B: Backend> {
     data: D,
     n: usize,
     cols: usize,
@@ -14,7 +11,7 @@ pub struct VecZnxBig<D, B> {
     _phantom: PhantomData<B>,
 }
 
-impl<D, B> ZnxInfos for VecZnxBig<D, B> {
+impl<D, B: Backend> ZnxInfos for VecZnxBig<D, B> {
     fn cols(&self) -> usize {
         self.cols
     }
@@ -30,20 +27,22 @@ impl<D, B> ZnxInfos for VecZnxBig<D, B> {
     fn size(&self) -> usize {
         self.size
     }
+}
 
+impl<D> ZnxSliceSize for VecZnxBig<D, FFT64> {
     fn sl(&self) -> usize {
-        self.cols() * self.n()
+        self.n() * self.cols()
     }
 }
 
-impl<D, B> DataView for VecZnxBig<D, B> {
+impl<D, B: Backend> DataView for VecZnxBig<D, B> {
     type D = D;
     fn data(&self) -> &Self::D {
         &self.data
     }
 }
 
-impl<D, B> DataViewMut for VecZnxBig<D, B> {
+impl<D, B: Backend> DataViewMut for VecZnxBig<D, B> {
     fn data_mut(&mut self) -> &mut Self::D {
         &mut self.data
     }
@@ -82,7 +81,7 @@ impl<D: From<Vec<u8>>, B: Backend> VecZnxBig<D, B> {
     }
 }
 
-impl<D, B> VecZnxBig<D, B> {
+impl<D, B: Backend> VecZnxBig<D, B> {
     pub(crate) fn from_data(data: D, n: usize, cols: usize, size: usize) -> Self {
         Self {
             data,
@@ -96,8 +95,16 @@ impl<D, B> VecZnxBig<D, B> {
 
 pub type VecZnxBigOwned<B> = VecZnxBig<Vec<u8>, B>;
 
-impl<B> VecZnxBig<Vec<u8>, B> {
-    pub fn to_mut(&mut self) -> VecZnxBig<&mut [u8], B> {
+pub trait VecZnxBigToRef<B: Backend> {
+    fn to_ref(&self) -> VecZnxBig<&[u8], B>;
+}
+
+pub trait VecZnxBigToMut<B: Backend> {
+    fn to_mut(&mut self) -> VecZnxBig<&mut [u8], B>;
+}
+
+impl<B: Backend> VecZnxBigToMut<B> for VecZnxBig<Vec<u8>, B> {
+    fn to_mut(&mut self) -> VecZnxBig<&mut [u8], B> {
         VecZnxBig {
             data: self.data.as_mut_slice(),
             n: self.n,
@@ -106,10 +113,48 @@ impl<B> VecZnxBig<Vec<u8>, B> {
             _phantom: PhantomData,
         }
     }
+}
 
-    pub fn to_ref(&self) -> VecZnxBig<&[u8], B> {
+impl<B: Backend> VecZnxBigToRef<B> for VecZnxBig<Vec<u8>, B> {
+    fn to_ref(&self) -> VecZnxBig<&[u8], B> {
         VecZnxBig {
             data: self.data.as_slice(),
+            n: self.n,
+            cols: self.cols,
+            size: self.size,
+            _phantom: PhantomData,
+        }
+    }
+}
+
+impl<B: Backend> VecZnxBigToMut<B> for VecZnxBig<&mut [u8], B> {
+    fn to_mut(&mut self) -> VecZnxBig<&mut [u8], B> {
+        VecZnxBig {
+            data: self.data,
+            n: self.n,
+            cols: self.cols,
+            size: self.size,
+            _phantom: PhantomData,
+        }
+    }
+}
+
+impl<B: Backend> VecZnxBigToRef<B> for VecZnxBig<&mut [u8], B> {
+    fn to_ref(&self) -> VecZnxBig<&[u8], B> {
+        VecZnxBig {
+            data: self.data,
+            n: self.n,
+            cols: self.cols,
+            size: self.size,
+            _phantom: PhantomData,
+        }
+    }
+}
+
+impl<B: Backend> VecZnxBigToRef<B> for VecZnxBig<&[u8], B> {
+    fn to_ref(&self) -> VecZnxBig<&[u8], B> {
+        VecZnxBig {
+            data: self.data,
             n: self.n,
             cols: self.cols,
             size: self.size,

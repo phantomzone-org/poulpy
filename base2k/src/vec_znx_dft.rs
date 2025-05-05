@@ -2,12 +2,9 @@ use std::marker::PhantomData;
 
 use crate::ffi::vec_znx_dft;
 use crate::znx_base::ZnxInfos;
-use crate::{Backend, DataView, DataViewMut, FFT64, Module, ZnxView, alloc_aligned};
+use crate::{Backend, DataView, DataViewMut, FFT64, Module, ZnxSliceSize, ZnxView, alloc_aligned};
 
-// const VEC_ZNX_DFT_ROWS: usize = 1;
-
-// VecZnxDft is `Backend` dependent denoted with generic `B`
-pub struct VecZnxDft<D, B> {
+pub struct VecZnxDft<D, B: Backend> {
     data: D,
     n: usize,
     cols: usize,
@@ -15,7 +12,7 @@ pub struct VecZnxDft<D, B> {
     _phantom: PhantomData<B>,
 }
 
-impl<D, B> ZnxInfos for VecZnxDft<D, B> {
+impl<D, B: Backend> ZnxInfos for VecZnxDft<D, B> {
     fn cols(&self) -> usize {
         self.cols
     }
@@ -31,20 +28,22 @@ impl<D, B> ZnxInfos for VecZnxDft<D, B> {
     fn size(&self) -> usize {
         self.size
     }
+}
 
+impl<D> ZnxSliceSize for VecZnxDft<D, FFT64> {
     fn sl(&self) -> usize {
-        self.cols() * self.n()
+        self.n() * self.cols()
     }
 }
 
-impl<D, B> DataView for VecZnxDft<D, B> {
+impl<D, B: Backend> DataView for VecZnxDft<D, B> {
     type D = D;
     fn data(&self) -> &Self::D {
         &self.data
     }
 }
 
-impl<D, B> DataViewMut for VecZnxDft<D, B> {
+impl<D, B: Backend> DataViewMut for VecZnxDft<D, B> {
     fn data_mut(&mut self) -> &mut Self::D {
         &mut self.data
     }
@@ -85,7 +84,7 @@ impl<D: From<Vec<u8>>, B: Backend> VecZnxDft<D, B> {
 
 pub type VecZnxDftOwned<B> = VecZnxDft<Vec<u8>, B>;
 
-impl<D, B> VecZnxDft<D, B> {
+impl<D, B: Backend> VecZnxDft<D, B> {
     pub(crate) fn from_data(data: D, n: usize, cols: usize, size: usize) -> Self {
         Self {
             data,
@@ -97,8 +96,16 @@ impl<D, B> VecZnxDft<D, B> {
     }
 }
 
-impl<B> VecZnxDft<Vec<u8>, B> {
-    pub fn to_mut(&mut self) -> VecZnxDft<&mut [u8], B> {
+pub trait VecZnxDftToRef<B: Backend> {
+    fn to_ref(&self) -> VecZnxDft<&[u8], B>;
+}
+
+pub trait VecZnxDftToMut<B: Backend> {
+    fn to_mut(&mut self) -> VecZnxDft<&mut [u8], B>;
+}
+
+impl<B: Backend> VecZnxDftToMut<B> for VecZnxDft<Vec<u8>, B> {
+    fn to_mut(&mut self) -> VecZnxDft<&mut [u8], B> {
         VecZnxDft {
             data: self.data.as_mut_slice(),
             n: self.n,
@@ -107,8 +114,10 @@ impl<B> VecZnxDft<Vec<u8>, B> {
             _phantom: PhantomData,
         }
     }
+}
 
-    pub fn to_ref(&self) -> VecZnxDft<&[u8], B> {
+impl<B: Backend> VecZnxDftToRef<B> for VecZnxDft<Vec<u8>, B> {
+    fn to_ref(&self) -> VecZnxDft<&[u8], B> {
         VecZnxDft {
             data: self.data.as_slice(),
             n: self.n,
@@ -119,10 +128,34 @@ impl<B> VecZnxDft<Vec<u8>, B> {
     }
 }
 
-impl<B> VecZnxDft<&mut [u8], B> {
-    pub fn to_ref(&self) -> VecZnxDft<&[u8], B> {
+impl<B: Backend> VecZnxDftToMut<B> for VecZnxDft<&mut [u8], B> {
+    fn to_mut(&mut self) -> VecZnxDft<&mut [u8], B> {
         VecZnxDft {
-            data: &self.data,
+            data: self.data,
+            n: self.n,
+            cols: self.cols,
+            size: self.size,
+            _phantom: PhantomData,
+        }
+    }
+}
+
+impl<B: Backend> VecZnxDftToRef<B> for VecZnxDft<&mut [u8], B> {
+    fn to_ref(&self) -> VecZnxDft<&[u8], B> {
+        VecZnxDft {
+            data: self.data,
+            n: self.n,
+            cols: self.cols,
+            size: self.size,
+            _phantom: PhantomData,
+        }
+    }
+}
+
+impl<B: Backend> VecZnxDftToRef<B> for VecZnxDft<&[u8], B> {
+    fn to_ref(&self) -> VecZnxDft<&[u8], B> {
+        VecZnxDft {
+            data: self.data,
             n: self.n,
             cols: self.cols,
             size: self.size,

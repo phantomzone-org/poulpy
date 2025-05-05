@@ -1,6 +1,5 @@
 use itertools::izip;
 use rand_distr::num_traits::Zero;
-use std::cmp::min;
 
 pub trait ZnxInfos {
     /// Returns the ring degree of the polynomials.
@@ -24,7 +23,9 @@ pub trait ZnxInfos {
     fn poly_count(&self) -> usize {
         self.rows() * self.cols() * self.size()
     }
+}
 
+pub trait ZnxSliceSize {
     /// Returns the slice size, which is the offset between
     /// two size of the same column.
     fn sl(&self) -> usize;
@@ -128,33 +129,6 @@ where
 // Blanket implementations
 impl<T> ZnxZero for T where T: ZnxViewMut {}
 // impl<T> ZnxRsh for T where T: ZnxZero {}
-
-pub fn switch_degree<S: Copy, DMut: ZnxViewMut<Scalar = S> + ZnxZero, D: ZnxView<Scalar = S>>(
-    b: &mut DMut,
-    col_b: usize,
-    a: &D,
-    col_a: usize,
-) {
-    let (n_in, n_out) = (a.n(), b.n());
-    let (gap_in, gap_out): (usize, usize);
-
-    if n_in > n_out {
-        (gap_in, gap_out) = (n_in / n_out, 1)
-    } else {
-        (gap_in, gap_out) = (1, n_out / n_in);
-        b.zero();
-    }
-
-    let size: usize = min(a.size(), b.size());
-
-    (0..size).for_each(|i| {
-        izip!(
-            a.at(col_a, i).iter().step_by(gap_in),
-            b.at_mut(col_b, i).iter_mut().step_by(gap_out)
-        )
-        .for_each(|(x_in, x_out)| *x_out = *x_in);
-    });
-}
 
 use std::ops::{Add, AddAssign, Div, Mul, Neg, Shl, Shr, Sub};
 
