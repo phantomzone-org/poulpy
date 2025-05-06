@@ -1,4 +1,4 @@
-use base2k::{Backend, FFT64, MatZnxDft, MatZnxDftAlloc, Module, VecZnx, VecZnxAlloc};
+use base2k::{Backend, FFT64, MatZnxDft, MatZnxDftAlloc, Module, VecZnx, VecZnxAlloc, VecZnxDft, VecZnxDftAlloc};
 
 pub struct Ciphertext<T> {
     data: T,
@@ -48,7 +48,12 @@ impl<T> Plaintext<T> {
     }
 }
 
-pub(crate) type CipherVecZnx<C> = Ciphertext<VecZnx<C>>;
+pub(crate) type CtVecZnx<C> = Ciphertext<VecZnx<C>>;
+pub(crate) type CtVecZnxDft<C, B: Backend> = Ciphertext<VecZnxDft<C, B>>;
+pub(crate) type CtMatZnxDft<C, B: Backend> = Ciphertext<MatZnxDft<C, B>>;
+pub(crate) type PtVecZnx<C> = Plaintext<VecZnx<C>>;
+pub(crate) type PtVecZnxDft<C, B: Backend> = Plaintext<VecZnxDft<C, B>>;
+pub(crate) type PtMatZnxDft<C, B: Backend> = Plaintext<MatZnxDft<C, B>>;
 
 impl Ciphertext<VecZnx<Vec<u8>>> {
     pub fn new<B: Backend>(module: &Module<B>, log_base2k: usize, log_q: usize, cols: usize) -> Self {
@@ -64,6 +69,16 @@ impl Plaintext<VecZnx<Vec<u8>>> {
     pub fn new<B: Backend>(module: &Module<B>, log_base2k: usize, log_q: usize) -> Self {
         Self {
             data: module.new_vec_znx(1, derive_size(log_base2k, log_q)),
+            log_base2k: log_base2k,
+            log_q: log_q,
+        }
+    }
+}
+
+impl<B: Backend> Ciphertext<VecZnxDft<Vec<u8>, B>> {
+    pub fn new(module: &Module<B>, log_base2k: usize, log_q: usize, cols: usize) -> Self {
+        Self {
+            data: module.new_vec_znx_dft(cols, derive_size(log_base2k, log_q)),
             log_base2k: log_base2k,
             log_q: log_q,
         }

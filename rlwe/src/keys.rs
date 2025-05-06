@@ -15,7 +15,7 @@ impl<T> SecretKey<T> {
         &self.data
     }
 
-    pub fn data_mut(&self) -> &mut T {
+    pub fn data_mut(&mut self) -> &mut T {
         &mut self.data
     }
 }
