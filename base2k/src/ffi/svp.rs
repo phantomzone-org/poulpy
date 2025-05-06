@@ -33,3 +33,14 @@ unsafe extern "C" {
         a_sl: u64,
     );
 }
+
+unsafe extern "C" {
+    pub unsafe fn svp_apply_dft_to_dft(
+        module: *const MODULE,
+        res: *const VEC_ZNX_DFT,
+        res_size: u64,
+        ppol: *const SVP_PPOL,
+        a: *const VEC_ZNX_DFT,
+        a_size: u64,
+    );
+}

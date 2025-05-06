@@ -40,14 +40,14 @@ fn main() {
 
     let mut buf_dft: VecZnxDft<Vec<u8>, FFT64> = module.new_vec_znx_dft(1, ct_size);
 
+    module.vec_znx_dft(&mut buf_dft, 0, &ct, 1);
+
     // Applies DFT(ct[1]) * DFT(s)
-    module.svp_apply(
+    module.svp_apply_dft_inplace(
         &mut buf_dft, // DFT(ct[1] * s)
         0,            // Selects the first column of res
         &s_dft,       // DFT(s)
         0,            // Selects the first column of s_dft
-        &ct,
-        1, // Selects the second column of ct
     );
 
     // Alias scratch space (VecZnxDft<B> is always at least as big as VecZnxBig<B>)
