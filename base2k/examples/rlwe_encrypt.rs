@@ -43,7 +43,7 @@ fn main() {
     module.vec_znx_dft(&mut buf_dft, 0, &ct, 1);
 
     // Applies DFT(ct[1]) * DFT(s)
-    module.svp_apply_dft_inplace(
+    module.svp_apply_inplace(
         &mut buf_dft, // DFT(ct[1] * s)
         0,            // Selects the first column of res
         &s_dft,       // DFT(s)
@@ -102,13 +102,12 @@ fn main() {
     // Decryption
 
     // DFT(ct[1] * s)
-    module.svp_apply(
+    module.vec_znx_dft(&mut buf_dft, 0, &ct, 1);
+    module.svp_apply_inplace(
         &mut buf_dft,
         0, // Selects the first column of res.
         &s_dft,
         0,
-        &ct,
-        1, // Selects the second column of ct (ct[1])
     );
 
     // BIG(c1 * s) = IDFT(DFT(c1 * s))
