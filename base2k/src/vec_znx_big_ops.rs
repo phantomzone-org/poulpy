@@ -149,12 +149,12 @@ pub trait VecZnxBigScratch {
     fn vec_znx_big_normalize_tmp_bytes(&self) -> usize;
 }
 
-impl VecZnxBigAlloc<FFT64> for Module<FFT64> {
-    fn new_vec_znx_big(&self, cols: usize, size: usize) -> VecZnxBigOwned<FFT64> {
+impl<B: Backend> VecZnxBigAlloc<B> for Module<B> {
+    fn new_vec_znx_big(&self, cols: usize, size: usize) -> VecZnxBigOwned<B> {
         VecZnxBig::new(self, cols, size)
     }
 
-    fn new_vec_znx_big_from_bytes(&self, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxBigOwned<FFT64> {
+    fn new_vec_znx_big_from_bytes(&self, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxBigOwned<B> {
         VecZnxBig::new_from_bytes(self, cols, size, bytes)
     }
 
