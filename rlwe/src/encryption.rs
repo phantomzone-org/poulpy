@@ -1,15 +1,12 @@
 use base2k::{
     AddNormal, Backend, FFT64, FillUniform, Module, ScalarZnxDftOps, ScalarZnxDftToRef, Scratch, VecZnx, VecZnxAlloc,
-    VecZnxBigAlloc, VecZnxBigOps, VecZnxBigScratch, VecZnxDft, VecZnxDftAlloc, VecZnxDftOps, VecZnxDftToMut, VecZnxDftToRef,
-    VecZnxToMut, VecZnxToRef, ZnxInfos,
+    VecZnxBigAlloc, VecZnxBigOps, VecZnxBigScratch, VecZnxDft, VecZnxDftAlloc, VecZnxDftOps, VecZnxDftToMut, VecZnxToMut,
+    VecZnxToRef, ZnxInfos,
 };
 
 use sampling::source::Source;
 
-use crate::{
-    elem::{CtVecZnx, CtVecZnxDft, PtVecZnx},
-    keys::SecretKey,
-};
+use crate::{elem::Infos, keys::SecretKey};
 
 pub trait EncryptSk<B: Backend, D, P> {
     fn encrypt<S>(
@@ -30,15 +27,15 @@ pub trait EncryptSk<B: Backend, D, P> {
     }
 }
 
-impl<C, P> EncryptSk<FFT64, CtVecZnx<C>, PtVecZnx<P>> for CtVecZnx<C>
+impl<C, P> EncryptSk<FFT64, C, P> for C
 where
-    VecZnx<C>: VecZnxToMut + VecZnxToRef,
-    VecZnx<P>: VecZnxToRef,
+    C: VecZnxToMut + ZnxInfos + Infos<C>,
+    P: VecZnxToRef,
 {
     fn encrypt<S>(
         module: &Module<FFT64>,
-        ct: &mut CtVecZnx<C>,
-        pt: Option<&PtVecZnx<P>>,
+        ct: &mut C,
+        pt: Option<&P>,
         sk: &SecretKey<S>,
         source_xa: &mut Source,
         source_xe: &mut Source,
@@ -50,7 +47,7 @@ where
     {
         let log_base2k: usize = ct.log_base2k();
         let log_q: usize = ct.log_q();
-        let mut ct_mut: VecZnx<&mut [u8]> = ct.data_mut().to_mut();
+        let mut ct_mut: VecZnx<&mut [u8]> = ct.to_mut();
         let size: usize = ct_mut.size();
 
         // c1 = a
@@ -71,7 +68,7 @@ where
 
         // c0_big = m - c0_big
         if let Some(pt) = pt {
-            module.vec_znx_big_sub_small_b_inplace(&mut c0_big, 0, &pt.data().to_ref(), 0);
+            module.vec_znx_big_sub_small_b_inplace(&mut c0_big, 0, pt, 0);
         }
         // c0_big += e
         c0_big.add_normal(log_base2k, 0, log_q, source_xe, sigma, bound);
@@ -102,13 +99,13 @@ pub trait EncryptZeroSk<B: Backend, D> {
     }
 }
 
-impl<C> EncryptZeroSk<FFT64, CtVecZnxDft<C, FFT64>> for CtVecZnxDft<C, FFT64>
+impl<C> EncryptZeroSk<FFT64, C> for C
 where
-    VecZnxDft<C, FFT64>: VecZnxDftToMut<FFT64> + VecZnxDftToRef<FFT64>,
+    C: VecZnxDftToMut<FFT64> + ZnxInfos + Infos<C>,
 {
     fn encrypt_zero<S>(
         module: &Module<FFT64>,
-        ct: &mut CtVecZnxDft<C, FFT64>,
+        ct: &mut C,
         sk: &SecretKey<S>,
         source_xa: &mut Source,
         source_xe: &mut Source,
@@ -120,7 +117,7 @@ where
     {
         let log_base2k: usize = ct.log_base2k();
         let log_q: usize = ct.log_q();
-        let mut ct_mut: VecZnxDft<&mut [u8], FFT64> = ct.data_mut().to_mut();
+        let mut ct_mut: VecZnxDft<&mut [u8], FFT64> = ct.to_mut();
         let size: usize = ct_mut.size();
 
         // ct[1] = DFT(a)

@@ -1,5 +1,5 @@
 use base2k::{
-    Backend, FFT64, Module, Scalar, ScalarAlloc, ScalarZnxDft, ScalarZnxDftOps, ScalarZnxDftToMut, Scratch, VecZnx, VecZnxDft,
+    Backend, FFT64, Module, Scalar, ScalarAlloc, ScalarZnxDft, ScalarZnxDftOps, ScalarZnxDftToMut, Scratch, VecZnxDft,
     VecZnxDftAlloc, VecZnxDftToMut,
 };
 use sampling::source::Source;
@@ -56,7 +56,7 @@ impl<B: Backend> PublicKey<Vec<u8>, B> {
 }
 
 impl<B: Backend, D: VecZnxDftToMut<B>> PublicKey<D, B> {
-    pub fn generate<S>(&mut self, module: &Module<B>, sk: &SecretKey<ScalarZnxDft<S, B>>)
+    pub fn generate<S>(&mut self, module: &Module<B>, sk: &SecretKey<ScalarZnxDft<S, B>>, scratch: &mut Scratch)
     where
         ScalarZnxDft<S, B>: ScalarZnxDftToMut<B>,
     {
