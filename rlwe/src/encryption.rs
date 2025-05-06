@@ -1,5 +1,6 @@
 use base2k::{
-    AddNormal, Backend, FillUniform, Module, VecZnxDftOps, ScalarZnxDftOps, ScalarZnxDftToRef, VecZnxBigOps, Scratch, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, FFT64
+    AddNormal, Backend, FFT64, FillUniform, Module, ScalarZnxDftOps, ScalarZnxDftToRef, Scratch, VecZnx, VecZnxBigAlloc,
+    VecZnxBigOps, VecZnxBigScratch, VecZnxDftAlloc, VecZnxDftOps, VecZnxToMut, VecZnxToRef, ZnxInfos,
 };
 
 use sampling::source::Source;
@@ -23,6 +24,10 @@ pub trait EncryptSk<B: Backend, D> {
     ) where
         P: VecZnxToRef,
         S: ScalarZnxDftToRef<B>;
+
+    fn encrypt_tmp_bytes(module: &Module<B>, size: usize) -> usize {
+        (module.vec_znx_big_normalize_tmp_bytes() | module.bytes_of_vec_znx_dft(1, size)) + module.bytes_of_vec_znx_big(1, size)
+    }
 }
 
 impl<C> EncryptSk<FFT64, CipherVecZnx<C>> for CipherVecZnx<C>
