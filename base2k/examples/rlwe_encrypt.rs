@@ -1,7 +1,7 @@
 use base2k::{
-    Encoding, FFT64, Module, Sampling, Scalar, ScalarAlloc, ScalarZnxDft, ScalarZnxDftAlloc, ScalarZnxDftOps, ScratchOwned,
-    VecZnx, VecZnxAlloc, VecZnxBig, VecZnxBigAlloc, VecZnxBigOps, VecZnxBigScratch, VecZnxDft, VecZnxDftAlloc, VecZnxDftOps,
-    VecZnxOps, ZnxInfos,
+    AddNormal, Encoding, FFT64, FillUniform, Module, Scalar, ScalarAlloc, ScalarZnxDft, ScalarZnxDftAlloc, ScalarZnxDftOps,
+    ScratchOwned, VecZnx, VecZnxAlloc, VecZnxBig, VecZnxBigAlloc, VecZnxBigOps, VecZnxBigScratch, VecZnxDft, VecZnxDftAlloc,
+    VecZnxDftOps, VecZnxOps, ZnxInfos,
 };
 use itertools::izip;
 use sampling::source::Source;
@@ -36,7 +36,7 @@ fn main() {
     );
 
     // Fill the second column with random values: ct = (0, a)
-    module.fill_uniform(log_base2k, &mut ct, 1, ct_size, &mut source);
+    ct.fill_uniform(log_base2k, 1, ct_size, &mut source);
 
     let mut buf_dft: VecZnxDft<Vec<u8>, FFT64> = module.new_vec_znx_dft(1, ct_size);
 
@@ -88,9 +88,8 @@ fn main() {
 
     // Add noise to ct[0]
     // ct[0] <- ct[0] + e
-    module.add_normal(
+    ct.add_normal(
         log_base2k,
-        &mut ct,
         0,                    // Selects the first column of ct (ct[0])
         log_base2k * ct_size, // Scaling of the noise: 2^{-log_base2k * limbs}
         &mut source,

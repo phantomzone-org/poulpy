@@ -151,7 +151,7 @@ impl<D: AsRef<[u8]>> MatZnxDft<D, FFT64> {
     }
 }
 
-pub type MatZnxDftAllocOwned<B> = MatZnxDft<Vec<u8>, B>;
+pub type MatZnxDftOwned<B> = MatZnxDft<Vec<u8>, B>;
 
 pub trait MatZnxDftToRef<B: Backend> {
     fn to_ref(&self) -> MatZnxDft<&[u8], B>;
