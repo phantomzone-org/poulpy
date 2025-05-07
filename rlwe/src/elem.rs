@@ -154,9 +154,9 @@ pub struct RLWECtDft<C, B: Backend> {
 }
 
 impl<B: Backend> RLWECtDft<Vec<u8>, B> {
-    pub fn new(module: &Module<B>, log_base2k: usize, log_k: usize) -> Self {
+    pub fn new(module: &Module<B>, log_base2k: usize, log_k: usize, cols: usize) -> Self {
         Self {
-            data: module.new_vec_znx_dft(1, derive_size(log_base2k, log_k)),
+            data: module.new_vec_znx_dft(cols, derive_size(log_base2k, log_k)),
             log_base2k: log_base2k,
             log_k: log_k,
         }
