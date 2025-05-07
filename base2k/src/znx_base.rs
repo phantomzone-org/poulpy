@@ -107,21 +107,13 @@ where
 {
     fn zero(&mut self) {
         unsafe {
-            std::ptr::write_bytes(
-                self.as_mut_ptr(),
-                0,
-                self.n() * self.poly_count(),
-            );
+            std::ptr::write_bytes(self.as_mut_ptr(), 0, self.n() * self.poly_count());
         }
     }
 
     fn zero_at(&mut self, i: usize, j: usize) {
         unsafe {
-            std::ptr::write_bytes(
-                self.at_mut_ptr(i, j),
-                0,
-                self.n(),
-            );
+            std::ptr::write_bytes(self.at_mut_ptr(i, j), 0, self.n());
         }
     }
 }

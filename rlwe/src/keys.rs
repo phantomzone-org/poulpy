@@ -1,31 +1,27 @@
 use base2k::{
-    Backend, Module, Scalar, ScalarAlloc, ScalarZnxDft, ScalarZnxDftAlloc, ScalarZnxDftOps, ScalarZnxDftToMut, Scratch, VecZnxDft, VecZnxDftAlloc, VecZnxDftToMut, ZnxInfos, FFT64
+    Backend, FFT64, Module, ScalarZnx, ScalarZnxAlloc, ScalarZnxDft, ScalarZnxDftAlloc, ScalarZnxDftOps, ScalarZnxDftToMut,
+    ScalarZnxDftToRef, ScalarZnxToMut, ScalarZnxToRef, Scratch, VecZnxDft, VecZnxDftAlloc, VecZnxDftToMut,
 };
 use sampling::source::Source;
 
 use crate::elem::derive_size;
 
 pub struct SecretKey<T> {
-    data: T,
+    pub data: ScalarZnx<T>,
 }
 
-impl<T> SecretKey<T> {
-    pub fn data(&self) -> &T {
-        &self.data
-    }
-
-    pub fn data_mut(&mut self) -> &mut T {
-        &mut self.data
-    }
-}
-
-impl SecretKey<Scalar<Vec<u8>>> {
+impl SecretKey<Vec<u8>> {
     pub fn new<B: Backend>(module: &Module<B>) -> Self {
         Self {
             data: module.new_scalar(1),
         }
     }
+}
 
+impl<S> SecretKey<S>
+where
+    S: AsMut<[u8]> + AsRef<[u8]>,
+{
     pub fn fill_ternary_prob(&mut self, prob: f64, source: &mut Source) {
         self.data.fill_ternary_prob(0, prob, source);
     }
@@ -33,27 +29,66 @@ impl SecretKey<Scalar<Vec<u8>>> {
     pub fn fill_ternary_hw(&mut self, hw: usize, source: &mut Source) {
         self.data.fill_ternary_hw(0, hw, source);
     }
+}
 
-    pub fn svp_prepare<D>(&self, module: &Module<FFT64>, sk_prep: &mut SecretKey<ScalarZnxDft<D, FFT64>>)
-    where
-        ScalarZnxDft<D, base2k::FFT64>: ScalarZnxDftToMut<base2k::FFT64>,
-    {
-        module.svp_prepare(&mut sk_prep.data, 0, &self.data, 0)
+impl<C> ScalarZnxToMut for SecretKey<C>
+where
+    ScalarZnx<C>: ScalarZnxToMut,
+{
+    fn to_mut(&mut self) -> ScalarZnx<&mut [u8]> {
+        self.data.to_mut()
     }
 }
 
-type SecretKeyPrep<C, B> = SecretKey<ScalarZnxDft<C, B>>;
+impl<C> ScalarZnxToRef for SecretKey<C>
+where
+    ScalarZnx<C>: ScalarZnxToRef,
+{
+    fn to_ref(&self) -> ScalarZnx<&[u8]> {
+        self.data.to_ref()
+    }
+}
 
-impl<B: Backend> SecretKey<ScalarZnxDft<Vec<u8>, B>> {
-    pub fn new(module: &Module<B>) -> Self{
-        Self{
-            data: module.new_scalar_znx_dft(1)
+pub struct SecretKeyDft<T, B: Backend> {
+    pub data: ScalarZnxDft<T, B>,
+}
+
+impl<B: Backend> SecretKeyDft<Vec<u8>, B> {
+    pub fn new(module: &Module<B>) -> Self {
+        Self {
+            data: module.new_scalar_znx_dft(1),
         }
+    }
+
+    pub fn dft<S>(&mut self, module: &Module<FFT64>, sk: &SecretKey<S>)
+    where
+        SecretKeyDft<Vec<u8>, B>: ScalarZnxDftToMut<base2k::FFT64>,
+        SecretKey<S>: ScalarZnxToRef,
+    {
+        module.svp_prepare(self, 0, sk, 0)
+    }
+}
+
+impl<C, B: Backend> ScalarZnxDftToMut<B> for SecretKeyDft<C, B>
+where
+    ScalarZnxDft<C, B>: ScalarZnxDftToMut<B>,
+{
+    fn to_mut(&mut self) -> ScalarZnxDft<&mut [u8], B> {
+        self.data.to_mut()
+    }
+}
+
+impl<C, B: Backend> ScalarZnxDftToRef<B> for SecretKeyDft<C, B>
+where
+    ScalarZnxDft<C, B>: ScalarZnxDftToRef<B>,
+{
+    fn to_ref(&self) -> ScalarZnxDft<&[u8], B> {
+        self.data.to_ref()
     }
 }
 
 pub struct PublicKey<D, B: Backend> {
-    data: VecZnxDft<D, B>,
+    pub data: VecZnxDft<D, B>,
 }
 
 impl<B: Backend> PublicKey<Vec<u8>, B> {

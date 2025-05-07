@@ -1,6 +1,6 @@
 use base2k::{
-    Backend, DataView, DataViewMut, MatZnxDft, MatZnxDftAlloc, MatZnxDftToMut, MatZnxDftToRef, Module, ScalarZnxDftToRef, VecZnx,
-    VecZnxAlloc, VecZnxDft, VecZnxDftAlloc, VecZnxDftToMut, VecZnxDftToRef, VecZnxToMut, VecZnxToRef, ZnxInfos,
+    Backend, Module, VecZnx, VecZnxAlloc, VecZnxDft, VecZnxDftAlloc, VecZnxDftToMut, VecZnxDftToRef, VecZnxToMut, VecZnxToRef,
+    ZnxInfos,
 };
 
 pub trait Infos {
@@ -31,7 +31,7 @@ pub trait Infos {
     /// Returns the number of size per polynomial.
     fn size(&self) -> usize {
         let size: usize = self.inner().size();
-        debug_assert_eq!(size, derive_size(self.log_base2k(), self.log_q()));
+        debug_assert_eq!(size, derive_size(self.log_base2k(), self.log_k()));
         size
     }
 
@@ -43,18 +43,18 @@ pub trait Infos {
     /// Returns the base 2 logarithm of the ciphertext base.
     fn log_base2k(&self) -> usize;
 
-    /// Returns the base 2 logarithm of the ciphertext modulus.
-    fn log_q(&self) -> usize;
+    /// Returns the bit precision of the ciphertext.
+    fn log_k(&self) -> usize;
 }
 
-pub struct RLWECt<C>{
-    data: VecZnx<C>,
-    log_base2k: usize,
-    log_q: usize,
+pub struct RLWECt<C> {
+    pub data: VecZnx<C>,
+    pub log_base2k: usize,
+    pub log_k: usize,
 }
 
-impl<T: ZnxInfos> Infos for RLWECt<T> {
-    type Inner = T;
+impl<T> Infos for RLWECt<T> {
+    type Inner = VecZnx<T>;
 
     fn inner(&self) -> &Self::Inner {
         &self.data
@@ -64,32 +64,37 @@ impl<T: ZnxInfos> Infos for RLWECt<T> {
         self.log_base2k
     }
 
-    fn log_q(&self) -> usize {
-        self.log_q
+    fn log_k(&self) -> usize {
+        self.log_k
     }
 }
 
-impl<D> DataView for Ciphertext<D> {
-    type D = D;
-    fn data(&self) -> &Self::D {
-        &self.data
+impl<C> VecZnxToMut for RLWECt<C>
+where
+    VecZnx<C>: VecZnxToMut,
+{
+    fn to_mut(&mut self) -> VecZnx<&mut [u8]> {
+        self.data.to_mut()
     }
 }
 
-impl<D> DataViewMut for Ciphertext<D> {
-    fn data_mut(&mut self) -> &mut Self::D {
-        &mut self.data
+impl<C> VecZnxToRef for RLWECt<C>
+where
+    VecZnx<C>: VecZnxToRef,
+{
+    fn to_ref(&self) -> VecZnx<&[u8]> {
+        self.data.to_ref()
     }
 }
 
-pub struct Plaintext<T> {
-    data: T,
-    log_base2k: usize,
-    log_q: usize,
+pub struct RLWEPt<C> {
+    pub data: VecZnx<C>,
+    pub log_base2k: usize,
+    pub log_k: usize,
 }
 
-impl<T: ZnxInfos> Infos for Plaintext<T> {
-    type Inner = T;
+impl<T> Infos for RLWEPt<T> {
+    type Inner = VecZnx<T>;
 
     fn inner(&self) -> &Self::Inner {
         &self.data
@@ -99,140 +104,99 @@ impl<T: ZnxInfos> Infos for Plaintext<T> {
         self.log_base2k
     }
 
-    fn log_q(&self) -> usize {
-        self.log_q
+    fn log_k(&self) -> usize {
+        self.log_k
     }
 }
 
-impl<T> Plaintext<T> {
-    pub fn data(&self) -> &T {
+impl<C> VecZnxToMut for RLWEPt<C>
+where
+    VecZnx<C>: VecZnxToMut,
+{
+    fn to_mut(&mut self) -> VecZnx<&mut [u8]> {
+        self.data.to_mut()
+    }
+}
+
+impl<C> VecZnxToRef for RLWEPt<C>
+where
+    VecZnx<C>: VecZnxToRef,
+{
+    fn to_ref(&self) -> VecZnx<&[u8]> {
+        self.data.to_ref()
+    }
+}
+
+impl RLWECt<Vec<u8>> {
+    pub fn new<B: Backend>(module: &Module<B>, log_base2k: usize, log_k: usize, cols: usize) -> Self {
+        Self {
+            data: module.new_vec_znx(cols, derive_size(log_base2k, log_k)),
+            log_base2k: log_base2k,
+            log_k: log_k,
+        }
+    }
+}
+
+impl RLWEPt<Vec<u8>> {
+    pub fn new<B: Backend>(module: &Module<B>, log_base2k: usize, log_k: usize) -> Self {
+        Self {
+            data: module.new_vec_znx(1, derive_size(log_base2k, log_k)),
+            log_base2k: log_base2k,
+            log_k: log_k,
+        }
+    }
+}
+
+pub struct RLWECtDft<C, B: Backend> {
+    pub data: VecZnxDft<C, B>,
+    pub log_base2k: usize,
+    pub log_k: usize,
+}
+
+impl<B: Backend> RLWECtDft<Vec<u8>, B> {
+    pub fn new(module: &Module<B>, log_base2k: usize, log_k: usize) -> Self {
+        Self {
+            data: module.new_vec_znx_dft(1, derive_size(log_base2k, log_k)),
+            log_base2k: log_base2k,
+            log_k: log_k,
+        }
+    }
+}
+
+impl<T, B: Backend> Infos for RLWECtDft<T, B> {
+    type Inner = VecZnxDft<T, B>;
+
+    fn inner(&self) -> &Self::Inner {
         &self.data
     }
 
-    pub fn data_mut(&mut self) -> &mut T {
-        &mut self.data
+    fn log_base2k(&self) -> usize {
+        self.log_base2k
+    }
+
+    fn log_k(&self) -> usize {
+        self.log_k
     }
 }
 
-pub(crate) type CtVecZnx<C> = Ciphertext<VecZnx<C>>;
-pub(crate) type CtVecZnxDft<C, B: Backend> = Ciphertext<VecZnxDft<C, B>>;
-pub(crate) type CtMatZnxDft<C, B: Backend> = Ciphertext<MatZnxDft<C, B>>;
-pub(crate) type PtVecZnx<C> = Plaintext<VecZnx<C>>;
-pub(crate) type PtVecZnxDft<C, B: Backend> = Plaintext<VecZnxDft<C, B>>;
-pub(crate) type PtMatZnxDft<C, B: Backend> = Plaintext<MatZnxDft<C, B>>;
-
-impl<D> VecZnxToMut for Ciphertext<D>
+impl<C, B: Backend> VecZnxDftToMut<B> for RLWECtDft<C, B>
 where
-    D: VecZnxToMut,
-{
-    fn to_mut(&mut self) -> VecZnx<&mut [u8]> {
-        self.data_mut().to_mut()
-    }
-}
-
-impl<D> VecZnxToRef for Ciphertext<D>
-where
-    D: VecZnxToRef,
-{
-    fn to_ref(&self) -> VecZnx<&[u8]> {
-        self.data().to_ref()
-    }
-}
-
-impl Ciphertext<VecZnx<Vec<u8>>> {
-    pub fn new<B: Backend>(module: &Module<B>, log_base2k: usize, log_q: usize, cols: usize) -> Self {
-        Self {
-            data: module.new_vec_znx(cols, derive_size(log_base2k, log_q)),
-            log_base2k: log_base2k,
-            log_q: log_q,
-        }
-    }
-}
-
-impl<D> VecZnxToMut for Plaintext<D>
-where
-    D: VecZnxToMut,
-{
-    fn to_mut(&mut self) -> VecZnx<&mut [u8]> {
-        self.data_mut().to_mut()
-    }
-}
-
-impl<D> VecZnxToRef for Plaintext<D>
-where
-    D: VecZnxToRef,
-{
-    fn to_ref(&self) -> VecZnx<&[u8]> {
-        self.data().to_ref()
-    }
-}
-
-impl Plaintext<VecZnx<Vec<u8>>> {
-    pub fn new<B: Backend>(module: &Module<B>, log_base2k: usize, log_q: usize) -> Self {
-        Self {
-            data: module.new_vec_znx(1, derive_size(log_base2k, log_q)),
-            log_base2k: log_base2k,
-            log_q: log_q,
-        }
-    }
-}
-
-impl<D, B: Backend> VecZnxDftToMut<B> for Ciphertext<D>
-where
-    D: VecZnxDftToMut<B>,
+    VecZnxDft<C, B>: VecZnxDftToMut<B>,
 {
     fn to_mut(&mut self) -> VecZnxDft<&mut [u8], B> {
-        self.data_mut().to_mut()
+        self.data.to_mut()
     }
 }
 
-impl<D, B: Backend> VecZnxDftToRef<B> for Ciphertext<D>
+impl<C, B: Backend> VecZnxDftToRef<B> for RLWECtDft<C, B>
 where
-    D: VecZnxDftToRef<B>,
+    VecZnxDft<C, B>: VecZnxDftToRef<B>,
 {
     fn to_ref(&self) -> VecZnxDft<&[u8], B> {
-        self.data().to_ref()
+        self.data.to_ref()
     }
 }
 
-impl<B: Backend> Ciphertext<VecZnxDft<Vec<u8>, B>> {
-    pub fn new(module: &Module<B>, log_base2k: usize, log_q: usize, cols: usize) -> Self {
-        Self {
-            data: module.new_vec_znx_dft(cols, derive_size(log_base2k, log_q)),
-            log_base2k: log_base2k,
-            log_q: log_q,
-        }
-    }
-}
-
-impl<D, B: Backend> MatZnxDftToMut<B> for Ciphertext<D>
-where
-    D: MatZnxDftToMut<B>,
-{
-    fn to_mut(&mut self) -> MatZnxDft<&mut [u8], B> {
-        self.data_mut().to_mut()
-    }
-}
-
-impl<D, B: Backend> MatZnxDftToRef<B> for Ciphertext<D>
-where
-    D: MatZnxDftToRef<B>,
-{
-    fn to_ref(&self) -> MatZnxDft<&[u8], B> {
-        self.data().to_ref()
-    }
-}
-
-impl<B: Backend> Ciphertext<MatZnxDft<Vec<u8>, B>> {
-    pub fn new(module: &Module<B>, log_base2k: usize, rows: usize, cols_in: usize, cols_out: usize, log_q: usize) -> Self {
-        Self {
-            data: module.new_mat_znx_dft(rows, cols_in, cols_out, derive_size(log_base2k, log_q)),
-            log_base2k: log_base2k,
-            log_q: log_q,
-        }
-    }
-}
-
-pub(crate) fn derive_size(log_base2k: usize, log_q: usize) -> usize {
-    (log_q + log_base2k - 1) / log_base2k
+pub(crate) fn derive_size(log_base2k: usize, log_k: usize) -> usize {
+    (log_k + log_base2k - 1) / log_base2k
 }

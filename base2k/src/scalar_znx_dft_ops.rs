@@ -2,8 +2,8 @@ use crate::ffi::svp;
 use crate::ffi::vec_znx_dft::vec_znx_dft_t;
 use crate::znx_base::{ZnxInfos, ZnxView, ZnxViewMut};
 use crate::{
-    Backend, FFT64, Module, ScalarZnxToRef, ScalarZnxDft, ScalarZnxDftOwned, ScalarZnxDftToMut, ScalarZnxDftToRef,
-    VecZnxDft, VecZnxDftToMut, VecZnxDftToRef,
+    Backend, FFT64, Module, ScalarZnxDft, ScalarZnxDftOwned, ScalarZnxDftToMut, ScalarZnxDftToRef, ScalarZnxToRef, VecZnxDft,
+    VecZnxDftToMut, VecZnxDftToRef,
 };
 
 pub trait ScalarZnxDftAlloc<B: Backend> {
