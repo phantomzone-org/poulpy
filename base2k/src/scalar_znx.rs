@@ -5,13 +5,13 @@ use rand_core::RngCore;
 use rand_distr::{Distribution, weighted::WeightedIndex};
 use sampling::source::Source;
 
-pub struct Scalar<D> {
+pub struct ScalarZnx<D> {
     data: D,
     n: usize,
     cols: usize,
 }
 
-impl<D> ZnxInfos for Scalar<D> {
+impl<D> ZnxInfos for ScalarZnx<D> {
     fn cols(&self) -> usize {
         self.cols
     }
@@ -29,30 +29,30 @@ impl<D> ZnxInfos for Scalar<D> {
     }
 }
 
-impl<D> ZnxSliceSize for Scalar<D> {
+impl<D> ZnxSliceSize for ScalarZnx<D> {
     fn sl(&self) -> usize {
         self.n()
     }
 }
 
-impl<D> DataView for Scalar<D> {
+impl<D> DataView for ScalarZnx<D> {
     type D = D;
     fn data(&self) -> &Self::D {
         &self.data
     }
 }
 
-impl<D> DataViewMut for Scalar<D> {
+impl<D> DataViewMut for ScalarZnx<D> {
     fn data_mut(&mut self) -> &mut Self::D {
         &mut self.data
     }
 }
 
-impl<D: AsRef<[u8]>> ZnxView for Scalar<D> {
+impl<D: AsRef<[u8]>> ZnxView for ScalarZnx<D> {
     type Scalar = i64;
 }
 
-impl<D: AsMut<[u8]> + AsRef<[u8]>> Scalar<D> {
+impl<D: AsMut<[u8]> + AsRef<[u8]>> ScalarZnx<D> {
     pub fn fill_ternary_prob(&mut self, col: usize, prob: f64, source: &mut Source) {
         let choices: [i64; 3] = [-1, 0, 1];
         let weights: [f64; 3] = [prob / 2.0, 1.0 - prob, prob / 2.0];
@@ -71,7 +71,7 @@ impl<D: AsMut<[u8]> + AsRef<[u8]>> Scalar<D> {
     }
 }
 
-impl<D: From<Vec<u8>>> Scalar<D> {
+impl<D: From<Vec<u8>>> ScalarZnx<D> {
     pub(crate) fn bytes_of<S: Sized>(n: usize, cols: usize) -> usize {
         n * cols * size_of::<S>()
     }
@@ -96,37 +96,37 @@ impl<D: From<Vec<u8>>> Scalar<D> {
     }
 }
 
-pub type ScalarOwned = Scalar<Vec<u8>>;
+pub type ScalarZnxOwned = ScalarZnx<Vec<u8>>;
 
-pub trait ScalarAlloc {
+pub trait ScalarZnxAlloc {
     fn bytes_of_scalar(&self, cols: usize) -> usize;
-    fn new_scalar(&self, cols: usize) -> ScalarOwned;
-    fn new_scalar_from_bytes(&self, cols: usize, bytes: Vec<u8>) -> ScalarOwned;
+    fn new_scalar(&self, cols: usize) -> ScalarZnxOwned;
+    fn new_scalar_from_bytes(&self, cols: usize, bytes: Vec<u8>) -> ScalarZnxOwned;
 }
 
-impl<B: Backend> ScalarAlloc for Module<B> {
+impl<B: Backend> ScalarZnxAlloc for Module<B> {
     fn bytes_of_scalar(&self, cols: usize) -> usize {
-        ScalarOwned::bytes_of::<i64>(self.n(), cols)
+        ScalarZnxOwned::bytes_of::<i64>(self.n(), cols)
     }
-    fn new_scalar(&self, cols: usize) -> ScalarOwned {
-        ScalarOwned::new::<i64>(self.n(), cols)
+    fn new_scalar(&self, cols: usize) -> ScalarZnxOwned {
+        ScalarZnxOwned::new::<i64>(self.n(), cols)
     }
-    fn new_scalar_from_bytes(&self, cols: usize, bytes: Vec<u8>) -> ScalarOwned {
-        ScalarOwned::new_from_bytes::<i64>(self.n(), cols, bytes)
+    fn new_scalar_from_bytes(&self, cols: usize, bytes: Vec<u8>) -> ScalarZnxOwned {
+        ScalarZnxOwned::new_from_bytes::<i64>(self.n(), cols, bytes)
     }
 }
 
-pub trait ScalarToRef {
-    fn to_ref(&self) -> Scalar<&[u8]>;
+pub trait ScalarZnxToRef {
+    fn to_ref(&self) -> ScalarZnx<&[u8]>;
 }
 
-pub trait ScalarToMut {
-    fn to_mut(&mut self) -> Scalar<&mut [u8]>;
+pub trait ScalarZnxToMut {
+    fn to_mut(&mut self) -> ScalarZnx<&mut [u8]>;
 }
 
-impl ScalarToMut for Scalar<Vec<u8>> {
-    fn to_mut(&mut self) -> Scalar<&mut [u8]> {
-        Scalar {
+impl ScalarZnxToMut for ScalarZnx<Vec<u8>> {
+    fn to_mut(&mut self) -> ScalarZnx<&mut [u8]> {
+        ScalarZnx {
             data: self.data.as_mut_slice(),
             n: self.n,
             cols: self.cols,
@@ -134,9 +134,9 @@ impl ScalarToMut for Scalar<Vec<u8>> {
     }
 }
 
-impl ScalarToRef for Scalar<Vec<u8>> {
-    fn to_ref(&self) -> Scalar<&[u8]> {
-        Scalar {
+impl ScalarZnxToRef for ScalarZnx<Vec<u8>> {
+    fn to_ref(&self) -> ScalarZnx<&[u8]> {
+        ScalarZnx {
             data: self.data.as_slice(),
             n: self.n,
             cols: self.cols,
@@ -144,9 +144,9 @@ impl ScalarToRef for Scalar<Vec<u8>> {
     }
 }
 
-impl ScalarToMut for Scalar<&mut [u8]> {
-    fn to_mut(&mut self) -> Scalar<&mut [u8]> {
-        Scalar {
+impl ScalarZnxToMut for ScalarZnx<&mut [u8]> {
+    fn to_mut(&mut self) -> ScalarZnx<&mut [u8]> {
+        ScalarZnx {
             data: self.data,
             n: self.n,
             cols: self.cols,
@@ -154,9 +154,9 @@ impl ScalarToMut for Scalar<&mut [u8]> {
     }
 }
 
-impl ScalarToRef for Scalar<&mut [u8]> {
-    fn to_ref(&self) -> Scalar<&[u8]> {
-        Scalar {
+impl ScalarZnxToRef for ScalarZnx<&mut [u8]> {
+    fn to_ref(&self) -> ScalarZnx<&[u8]> {
+        ScalarZnx {
             data: self.data,
             n: self.n,
             cols: self.cols,
@@ -164,9 +164,9 @@ impl ScalarToRef for Scalar<&mut [u8]> {
     }
 }
 
-impl ScalarToRef for Scalar<&[u8]> {
-    fn to_ref(&self) -> Scalar<&[u8]> {
-        Scalar {
+impl ScalarZnxToRef for ScalarZnx<&[u8]> {
+    fn to_ref(&self) -> ScalarZnx<&[u8]> {
+        ScalarZnx {
             data: self.data,
             n: self.n,
             cols: self.cols,

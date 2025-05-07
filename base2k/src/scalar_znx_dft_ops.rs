@@ -2,7 +2,7 @@ use crate::ffi::svp;
 use crate::ffi::vec_znx_dft::vec_znx_dft_t;
 use crate::znx_base::{ZnxInfos, ZnxView, ZnxViewMut};
 use crate::{
-    Backend, FFT64, Module, ScalarToRef, ScalarZnxDft, ScalarZnxDftOwned, ScalarZnxDftToMut, ScalarZnxDftToRef,
+    Backend, FFT64, Module, ScalarZnxToRef, ScalarZnxDft, ScalarZnxDftOwned, ScalarZnxDftToMut, ScalarZnxDftToRef,
     VecZnxDft, VecZnxDftToMut, VecZnxDftToRef,
 };
 
@@ -16,7 +16,7 @@ pub trait ScalarZnxDftOps<BACKEND: Backend> {
     fn svp_prepare<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: ScalarZnxDftToMut<BACKEND>,
-        A: ScalarToRef;
+        A: ScalarZnxToRef;
     fn svp_apply<R, A, B>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
     where
         R: VecZnxDftToMut<BACKEND>,
@@ -46,7 +46,7 @@ impl ScalarZnxDftOps<FFT64> for Module<FFT64> {
     fn svp_prepare<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: ScalarZnxDftToMut<FFT64>,
-        A: ScalarToRef,
+        A: ScalarZnxToRef,
     {
         unsafe {
             svp::svp_prepare(
