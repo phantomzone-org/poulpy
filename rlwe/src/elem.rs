@@ -1,13 +1,12 @@
 use base2k::{
-    Backend, DataView, DataViewMut, MatZnxDft, MatZnxDftAlloc, MatZnxDftToMut, MatZnxDftToRef, Module, VecZnx, VecZnxAlloc,
-    VecZnxDft, VecZnxDftAlloc, VecZnxDftToMut, VecZnxDftToRef, VecZnxToMut, VecZnxToRef, ZnxInfos,
+    Backend, DataView, DataViewMut, MatZnxDft, MatZnxDftAlloc, MatZnxDftToMut, MatZnxDftToRef, Module, ScalarZnxDftToRef, VecZnx,
+    VecZnxAlloc, VecZnxDft, VecZnxDftAlloc, VecZnxDftToMut, VecZnxDftToRef, VecZnxToMut, VecZnxToRef, ZnxInfos,
 };
 
-pub trait Infos<T>
-where
-    T: ZnxInfos,
-{
-    fn inner(&self) -> &T;
+pub trait Infos {
+    type Inner: ZnxInfos;
+
+    fn inner(&self) -> &Self::Inner;
 
     /// Returns the ring degree of the polynomials.
     fn n(&self) -> usize {
@@ -48,17 +47,16 @@ where
     fn log_q(&self) -> usize;
 }
 
-pub struct Ciphertext<T> {
-    data: T,
+pub struct RLWECt<C>{
+    data: VecZnx<C>,
     log_base2k: usize,
     log_q: usize,
 }
 
-impl<T> Infos<T> for Ciphertext<T>
-where
-    T: ZnxInfos,
-{
-    fn inner(&self) -> &T {
+impl<T: ZnxInfos> Infos for RLWECt<T> {
+    type Inner = T;
+
+    fn inner(&self) -> &Self::Inner {
         &self.data
     }
 
@@ -90,11 +88,10 @@ pub struct Plaintext<T> {
     log_q: usize,
 }
 
-impl<T> Infos<T> for Plaintext<T>
-where
-    T: ZnxInfos,
-{
-    fn inner(&self) -> &T {
+impl<T: ZnxInfos> Infos for Plaintext<T> {
+    type Inner = T;
+
+    fn inner(&self) -> &Self::Inner {
         &self.data
     }
 

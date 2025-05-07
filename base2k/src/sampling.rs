@@ -297,8 +297,6 @@ where
 
 #[cfg(test)]
 mod tests {
-    use std::fmt::Display;
-
     use super::{AddNormal, FillUniform};
     use crate::vec_znx_ops::*;
     use crate::znx_base::*;

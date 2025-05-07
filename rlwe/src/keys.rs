@@ -1,6 +1,5 @@
 use base2k::{
-    Backend, FFT64, Module, Scalar, ScalarAlloc, ScalarZnxDft, ScalarZnxDftOps, ScalarZnxDftToMut, Scratch, VecZnxDft,
-    VecZnxDftAlloc, VecZnxDftToMut,
+    Backend, Module, Scalar, ScalarAlloc, ScalarZnxDft, ScalarZnxDftAlloc, ScalarZnxDftOps, ScalarZnxDftToMut, Scratch, VecZnxDft, VecZnxDftAlloc, VecZnxDftToMut, ZnxInfos, FFT64
 };
 use sampling::source::Source;
 
@@ -40,6 +39,16 @@ impl SecretKey<Scalar<Vec<u8>>> {
         ScalarZnxDft<D, base2k::FFT64>: ScalarZnxDftToMut<base2k::FFT64>,
     {
         module.svp_prepare(&mut sk_prep.data, 0, &self.data, 0)
+    }
+}
+
+type SecretKeyPrep<C, B> = SecretKey<ScalarZnxDft<C, B>>;
+
+impl<B: Backend> SecretKey<ScalarZnxDft<Vec<u8>, B>> {
+    pub fn new(module: &Module<B>) -> Self{
+        Self{
+            data: module.new_scalar_znx_dft(1)
+        }
     }
 }
 
