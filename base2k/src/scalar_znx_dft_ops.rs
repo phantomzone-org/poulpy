@@ -71,9 +71,11 @@ impl ScalarZnxDftOps<FFT64> for Module<FFT64> {
                 self.ptr,
                 res.at_mut_ptr(res_col, 0) as *mut vec_znx_dft_t,
                 res.size() as u64,
+                res.cols() as u64,
                 a.at_ptr(a_col, 0) as *const svp::svp_ppol_t,
                 b.at_ptr(b_col, 0) as *const vec_znx_dft_t,
                 b.size() as u64,
+                b.cols() as u64,
             )
         }
     }
@@ -90,9 +92,11 @@ impl ScalarZnxDftOps<FFT64> for Module<FFT64> {
                 self.ptr,
                 res.at_mut_ptr(res_col, 0) as *mut vec_znx_dft_t,
                 res.size() as u64,
+                res.cols() as u64,
                 a.at_ptr(a_col, 0) as *const svp::svp_ppol_t,
                 res.at_ptr(res_col, 0) as *const vec_znx_dft_t,
                 res.size() as u64,
+                res.cols() as u64,
             )
         }
     }

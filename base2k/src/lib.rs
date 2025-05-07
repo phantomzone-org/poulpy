@@ -177,7 +177,7 @@ impl Scratch {
         }
     }
 
-    pub fn tmp_scalar_slice<T>(&mut self, len: usize) -> (&mut [T], &mut Self) {
+    pub fn tmp_slice<T>(&mut self, len: usize) -> (&mut [T], &mut Self) {
         let (take_slice, rem_slice) = Self::take_slice_aligned(&mut self.data, len * std::mem::size_of::<T>());
 
         unsafe {
@@ -186,6 +186,24 @@ impl Scratch {
                 Self::new(rem_slice),
             )
         }
+    }
+
+    pub fn tmp_scalar<B: Backend>(&mut self, module: &Module<B>, cols: usize) -> (ScalarZnx<&mut [u8]>, &mut Self) {
+        let (take_slice, rem_slice) = Self::take_slice_aligned(&mut self.data, bytes_of_scalar_znx(module, cols));
+
+        (
+            ScalarZnx::from_data(take_slice, module.n(), cols),
+            Self::new(rem_slice),
+        )
+    }
+
+    pub fn tmp_scalar_dft<B: Backend>(&mut self, module: &Module<B>, cols: usize) -> (ScalarZnxDft<&mut [u8], B>, &mut Self) {
+        let (take_slice, rem_slice) = Self::take_slice_aligned(&mut self.data, bytes_of_scalar_znx_dft(module, cols));
+
+        (
+            ScalarZnxDft::from_data(take_slice, module.n(), cols),
+            Self::new(rem_slice),
+        )
     }
 
     pub fn tmp_vec_znx_dft<B: Backend>(

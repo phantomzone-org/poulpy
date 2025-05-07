@@ -528,7 +528,7 @@ impl VecZnxBigOps<FFT64> for Module<FFT64> {
             // assert_alignement(tmp_bytes.as_ptr());
         }
 
-        let (tmp_bytes, _) = scratch.tmp_scalar_slice(<Self as VecZnxBigScratch>::vec_znx_big_normalize_tmp_bytes(
+        let (tmp_bytes, _) = scratch.tmp_slice(<Self as VecZnxBigScratch>::vec_znx_big_normalize_tmp_bytes(
             &self,
         ));
         unsafe {

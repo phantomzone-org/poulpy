@@ -171,7 +171,7 @@ where
     let k_rem: usize = k % log_base2k;
 
     if k_rem != 0 {
-        let (carry, _) = scratch.tmp_scalar_slice::<V::Scalar>(rsh_tmp_bytes::<V::Scalar>(n));
+        let (carry, _) = scratch.tmp_slice::<V::Scalar>(rsh_tmp_bytes::<V::Scalar>(n));
 
         unsafe {
             std::ptr::write_bytes(carry.as_mut_ptr(), 0, n * size_of::<V::Scalar>());

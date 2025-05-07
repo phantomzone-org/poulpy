@@ -98,21 +98,31 @@ impl<D: From<Vec<u8>>> ScalarZnx<D> {
 
 pub type ScalarZnxOwned = ScalarZnx<Vec<u8>>;
 
+pub(crate) fn bytes_of_scalar_znx<B: Backend>(module: &Module<B>, cols: usize) -> usize {
+    ScalarZnxOwned::bytes_of::<i64>(module.n(), cols)
+}
+
 pub trait ScalarZnxAlloc {
-    fn bytes_of_scalar(&self, cols: usize) -> usize;
-    fn new_scalar(&self, cols: usize) -> ScalarZnxOwned;
-    fn new_scalar_from_bytes(&self, cols: usize, bytes: Vec<u8>) -> ScalarZnxOwned;
+    fn bytes_of_scalar_znx(&self, cols: usize) -> usize;
+    fn new_scalar_znx(&self, cols: usize) -> ScalarZnxOwned;
+    fn new_scalar_znx_from_bytes(&self, cols: usize, bytes: Vec<u8>) -> ScalarZnxOwned;
 }
 
 impl<B: Backend> ScalarZnxAlloc for Module<B> {
-    fn bytes_of_scalar(&self, cols: usize) -> usize {
+    fn bytes_of_scalar_znx(&self, cols: usize) -> usize {
         ScalarZnxOwned::bytes_of::<i64>(self.n(), cols)
     }
-    fn new_scalar(&self, cols: usize) -> ScalarZnxOwned {
+    fn new_scalar_znx(&self, cols: usize) -> ScalarZnxOwned {
         ScalarZnxOwned::new::<i64>(self.n(), cols)
     }
-    fn new_scalar_from_bytes(&self, cols: usize, bytes: Vec<u8>) -> ScalarZnxOwned {
+    fn new_scalar_znx_from_bytes(&self, cols: usize, bytes: Vec<u8>) -> ScalarZnxOwned {
         ScalarZnxOwned::new_from_bytes::<i64>(self.n(), cols, bytes)
+    }
+}
+
+impl<D> ScalarZnx<D> {
+    pub(crate) fn from_data(data: D, n: usize, cols: usize) -> Self {
+        Self { data, n, cols }
     }
 }
 

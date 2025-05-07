@@ -52,6 +52,10 @@ impl<D: AsRef<[u8]>> ZnxView for ScalarZnxDft<D, FFT64> {
     type Scalar = f64;
 }
 
+pub(crate) fn bytes_of_scalar_znx_dft<B: Backend>(module: &Module<B>, cols: usize) -> usize {
+    ScalarZnxDftOwned::bytes_of(module, cols)
+}
+
 impl<D: From<Vec<u8>>, B: Backend> ScalarZnxDft<D, B> {
     pub(crate) fn bytes_of(module: &Module<B>, cols: usize) -> usize {
         unsafe { svp::bytes_of_svp_ppol(module.ptr) as usize * cols }
@@ -73,6 +77,17 @@ impl<D: From<Vec<u8>>, B: Backend> ScalarZnxDft<D, B> {
         Self {
             data: data.into(),
             n: module.n(),
+            cols,
+            _phantom: PhantomData,
+        }
+    }
+}
+
+impl<D, B: Backend> ScalarZnxDft<D, B> {
+    pub(crate) fn from_data(data: D, n: usize, cols: usize) -> Self {
+        Self {
+            data,
+            n,
             cols,
             _phantom: PhantomData,
         }

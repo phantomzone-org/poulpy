@@ -175,7 +175,7 @@ impl<BACKEND: Backend> VecZnxOps for Module<BACKEND> {
             assert_eq!(res.n(), self.n());
         }
 
-        let (tmp_bytes, _) = scratch.tmp_scalar_slice(self.vec_znx_normalize_tmp_bytes());
+        let (tmp_bytes, _) = scratch.tmp_slice(self.vec_znx_normalize_tmp_bytes());
 
         unsafe {
             vec_znx::vec_znx_normalize_base2k(
@@ -203,7 +203,7 @@ impl<BACKEND: Backend> VecZnxOps for Module<BACKEND> {
             assert_eq!(a.n(), self.n());
         }
 
-        let (tmp_bytes, _) = scratch.tmp_scalar_slice(self.vec_znx_normalize_tmp_bytes());
+        let (tmp_bytes, _) = scratch.tmp_slice(self.vec_znx_normalize_tmp_bytes());
 
         unsafe {
             vec_znx::vec_znx_normalize_base2k(

@@ -279,7 +279,7 @@ impl MatZnxDftOps<FFT64> for Module<FFT64> {
             );
         }
 
-        let (tmp_bytes, _) = scratch.tmp_scalar_slice(self.vmp_apply_tmp_bytes(
+        let (tmp_bytes, _) = scratch.tmp_slice(self.vmp_apply_tmp_bytes(
             res.size(),
             a.size(),
             b.rows(),

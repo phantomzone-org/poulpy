@@ -141,7 +141,7 @@ impl VecZnxDftOps<FFT64> for Module<FFT64> {
         let mut res_mut = res.to_mut();
         let a_ref = a.to_ref();
 
-        let (tmp_bytes, _) = scratch.tmp_scalar_slice(self.vec_znx_idft_tmp_bytes());
+        let (tmp_bytes, _) = scratch.tmp_slice(self.vec_znx_idft_tmp_bytes());
 
         let min_size: usize = min(res_mut.size(), a_ref.size());
 
