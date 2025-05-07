@@ -110,7 +110,7 @@ where
             std::ptr::write_bytes(
                 self.as_mut_ptr(),
                 0,
-                self.n() * size_of::<Self::Scalar>() * self.poly_count(),
+                self.n() * self.poly_count(),
             );
         }
     }
@@ -120,7 +120,7 @@ where
             std::ptr::write_bytes(
                 self.at_mut_ptr(i, j),
                 0,
-                self.n() * size_of::<Self::Scalar>(),
+                self.n(),
             );
         }
     }
@@ -128,7 +128,6 @@ where
 
 // Blanket implementations
 impl<T> ZnxZero for T where T: ZnxViewMut {}
-// impl<T> ZnxRsh for T where T: ZnxZero {}
 
 use std::ops::{Add, AddAssign, Div, Mul, Neg, Shl, Shr, Sub};
 
