@@ -1,8 +1,8 @@
 use crate::ffi::vec_znx_big;
 use crate::znx_base::{ZnxInfos, ZnxView};
 use crate::{Backend, DataView, DataViewMut, FFT64, Module, ZnxSliceSize, alloc_aligned};
+use std::fmt;
 use std::marker::PhantomData;
-use std::{cmp::min, fmt};
 
 pub struct VecZnxBig<D, B: Backend> {
     data: D,
@@ -168,7 +168,7 @@ impl<D: AsRef<[u8]>> fmt::Display for VecZnxBig<D, FFT64> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(
             f,
-            "VecZnx(n={}, cols={}, size={})",
+            "VecZnxBig(n={}, cols={}, size={})",
             self.n, self.cols, self.size
         )?;
 

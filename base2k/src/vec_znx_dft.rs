@@ -3,6 +3,7 @@ use std::marker::PhantomData;
 use crate::ffi::vec_znx_dft;
 use crate::znx_base::ZnxInfos;
 use crate::{Backend, DataView, DataViewMut, FFT64, Module, ZnxSliceSize, ZnxView, alloc_aligned};
+use std::fmt;
 
 pub struct VecZnxDft<D, B: Backend> {
     data: D,
@@ -161,5 +162,40 @@ impl<B: Backend> VecZnxDftToRef<B> for VecZnxDft<&[u8], B> {
             size: self.size,
             _phantom: PhantomData,
         }
+    }
+}
+
+impl<D: AsRef<[u8]>> fmt::Display for VecZnxDft<D, FFT64> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(
+            f,
+            "VecZnxDft(n={}, cols={}, size={})",
+            self.n, self.cols, self.size
+        )?;
+
+        for col in 0..self.cols {
+            writeln!(f, "Column {}:", col)?;
+            for size in 0..self.size {
+                let coeffs = self.at(col, size);
+                write!(f, "  Size {}: [", size)?;
+
+                let max_show = 100;
+                let show_count = coeffs.len().min(max_show);
+
+                for (i, &coeff) in coeffs.iter().take(show_count).enumerate() {
+                    if i > 0 {
+                        write!(f, ", ")?;
+                    }
+                    write!(f, "{}", coeff)?;
+                }
+
+                if coeffs.len() > max_show {
+                    write!(f, ", ... ({} more)", coeffs.len() - max_show)?;
+                }
+
+                writeln!(f, "]")?;
+            }
+        }
+        Ok(())
     }
 }

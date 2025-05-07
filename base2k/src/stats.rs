@@ -1,5 +1,5 @@
 use crate::znx_base::ZnxInfos;
-use crate::{Encoding, VecZnx};
+use crate::{Decoding, VecZnx};
 use rug::Float;
 use rug::float::Round;
 use rug::ops::{AddAssignRound, DivAssignRound, SubAssignRound};
@@ -9,7 +9,7 @@ pub trait Stats {
     fn std(&self, col_i: usize, log_base2k: usize) -> f64;
 }
 
-impl<D: AsMut<[u8]> + AsRef<[u8]>> Stats for VecZnx<D> {
+impl<D: AsRef<[u8]>> Stats for VecZnx<D> {
     fn std(&self, col_i: usize, log_base2k: usize) -> f64 {
         let prec: u32 = (self.size() * log_base2k) as u32;
         let mut data: Vec<Float> = (0..self.n()).map(|_| Float::with_val(prec, 0)).collect();

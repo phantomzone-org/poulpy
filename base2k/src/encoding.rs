@@ -17,6 +17,20 @@ pub trait Encoding {
     /// * `log_max`: base two logarithm of the infinity norm of the input data.
     fn encode_vec_i64(&mut self, col_i: usize, log_base2k: usize, log_k: usize, data: &[i64], log_max: usize);
 
+    /// encodes a single i64 on the receiver at the given index.
+    ///
+    /// # Arguments
+    ///
+    /// * `col_i`: the index of the poly where to encode the data.
+    /// * `log_base2k`: base two negative logarithm decomposition of the receiver.
+    /// * `log_k`: base two negative logarithm of the scaling of the data.
+    /// * `i`: index of the coefficient on which to encode the data.
+    /// * `data`: data to encode on the receiver.
+    /// * `log_max`: base two logarithm of the infinity norm of the input data.
+    fn encode_coeff_i64(&mut self, col_i: usize, log_base2k: usize, log_k: usize, i: usize, data: i64, log_max: usize);
+}
+
+pub trait Decoding {
     /// decode a vector of i64 from the receiver.
     ///
     /// # Arguments
@@ -35,18 +49,6 @@ pub trait Encoding {
     /// * `data`: data to decode from the receiver.
     fn decode_vec_float(&self, col_i: usize, log_base2k: usize, data: &mut [Float]);
 
-    /// encodes a single i64 on the receiver at the given index.
-    ///
-    /// # Arguments
-    ///
-    /// * `col_i`: the index of the poly where to encode the data.
-    /// * `log_base2k`: base two negative logarithm decomposition of the receiver.
-    /// * `log_k`: base two negative logarithm of the scaling of the data.
-    /// * `i`: index of the coefficient on which to encode the data.
-    /// * `data`: data to encode on the receiver.
-    /// * `log_max`: base two logarithm of the infinity norm of the input data.
-    fn encode_coeff_i64(&mut self, col_i: usize, log_base2k: usize, log_k: usize, i: usize, data: i64, log_max: usize);
-
     /// decode a single of i64 from the receiver at the given index.
     ///
     /// # Arguments
@@ -64,16 +66,18 @@ impl<D: AsMut<[u8]> + AsRef<[u8]>> Encoding for VecZnx<D> {
         encode_vec_i64(self, col_i, log_base2k, log_k, data, log_max)
     }
 
+    fn encode_coeff_i64(&mut self, col_i: usize, log_base2k: usize, log_k: usize, i: usize, value: i64, log_max: usize) {
+        encode_coeff_i64(self, col_i, log_base2k, log_k, i, value, log_max)
+    }
+}
+
+impl<D: AsRef<[u8]>> Decoding for VecZnx<D> {
     fn decode_vec_i64(&self, col_i: usize, log_base2k: usize, log_k: usize, data: &mut [i64]) {
         decode_vec_i64(self, col_i, log_base2k, log_k, data)
     }
 
     fn decode_vec_float(&self, col_i: usize, log_base2k: usize, data: &mut [Float]) {
         decode_vec_float(self, col_i, log_base2k, data)
-    }
-
-    fn encode_coeff_i64(&mut self, col_i: usize, log_base2k: usize, log_k: usize, i: usize, value: i64, log_max: usize) {
-        encode_coeff_i64(self, col_i, log_base2k, log_k, i, value, log_max)
     }
 
     fn decode_coeff_i64(&self, col_i: usize, log_base2k: usize, log_k: usize, i: usize) -> i64 {
@@ -139,7 +143,7 @@ fn encode_vec_i64<D: AsMut<[u8]> + AsRef<[u8]>>(
     }
 }
 
-fn decode_vec_i64<D: AsMut<[u8]> + AsRef<[u8]>>(a: &VecZnx<D>, col_i: usize, log_base2k: usize, log_k: usize, data: &mut [i64]) {
+fn decode_vec_i64<D: AsRef<[u8]>>(a: &VecZnx<D>, col_i: usize, log_base2k: usize, log_k: usize, data: &mut [i64]) {
     let size: usize = (log_k + log_base2k - 1) / log_base2k;
     #[cfg(debug_assertions)]
     {
@@ -167,7 +171,7 @@ fn decode_vec_i64<D: AsMut<[u8]> + AsRef<[u8]>>(a: &VecZnx<D>, col_i: usize, log
     })
 }
 
-fn decode_vec_float<D: AsMut<[u8]> + AsRef<[u8]>>(a: &VecZnx<D>, col_i: usize, log_base2k: usize, data: &mut [Float]) {
+fn decode_vec_float<D: AsRef<[u8]>>(a: &VecZnx<D>, col_i: usize, log_base2k: usize, data: &mut [Float]) {
     let size: usize = a.size();
     #[cfg(debug_assertions)]
     {
@@ -252,7 +256,7 @@ fn encode_coeff_i64<D: AsMut<[u8]> + AsRef<[u8]>>(
     }
 }
 
-fn decode_coeff_i64<D: AsMut<[u8]> + AsRef<[u8]>>(a: &VecZnx<D>, col_i: usize, log_base2k: usize, log_k: usize, i: usize) -> i64 {
+fn decode_coeff_i64<D: AsRef<[u8]>>(a: &VecZnx<D>, col_i: usize, log_base2k: usize, log_k: usize, i: usize) -> i64 {
     #[cfg(debug_assertions)]
     {
         assert!(i < a.n());
@@ -280,7 +284,7 @@ fn decode_coeff_i64<D: AsMut<[u8]> + AsRef<[u8]>>(a: &VecZnx<D>, col_i: usize, l
 mod tests {
     use crate::vec_znx_ops::*;
     use crate::znx_base::*;
-    use crate::{Encoding, FFT64, Module, VecZnx, znx_base::ZnxInfos};
+    use crate::{Decoding, Encoding, FFT64, Module, VecZnx, znx_base::ZnxInfos};
     use itertools::izip;
     use sampling::source::Source;
 

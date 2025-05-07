@@ -80,7 +80,7 @@ where
         );
 
         let limb: usize = (log_k + log_base2k - 1) / log_base2k - 1;
-        let log_base2k_rem: usize = log_k % log_base2k;
+        let log_base2k_rem: usize = (limb + 1) * log_base2k - log_k;
 
         if log_base2k_rem != 0 {
             a.at_mut(col_i, limb).iter_mut().for_each(|a| {
@@ -123,7 +123,7 @@ where
         );
 
         let limb: usize = (log_k + log_base2k - 1) / log_base2k - 1;
-        let log_base2k_rem: usize = log_k % log_base2k;
+        let log_base2k_rem: usize = (limb + 1) * log_base2k - log_k;
 
         if log_base2k_rem != 0 {
             a.at_mut(col_i, limb).iter_mut().for_each(|a| {
@@ -198,7 +198,7 @@ where
         );
 
         let limb: usize = (log_k + log_base2k - 1) / log_base2k - 1;
-        let log_base2k_rem: usize = log_k % log_base2k;
+        let log_base2k_rem: usize = (limb + 1) * log_base2k - log_k;
 
         if log_base2k_rem != 0 {
             a.at_mut(col_i, limb).iter_mut().for_each(|a| {
@@ -241,7 +241,7 @@ where
         );
 
         let limb: usize = (log_k + log_base2k - 1) / log_base2k - 1;
-        let log_base2k_rem: usize = log_k % log_base2k;
+        let log_base2k_rem: usize = (limb + 1) * log_base2k - log_k;
 
         if log_base2k_rem != 0 {
             a.at_mut(col_i, limb).iter_mut().for_each(|a| {
