@@ -1,20 +1,180 @@
-use std::cmp::min;
-
 use base2k::{
     AddNormal, Backend, FFT64, FillUniform, Module, ScalarZnxAlloc, ScalarZnxDft, ScalarZnxDftAlloc, ScalarZnxDftOps,
     ScalarZnxDftToRef, Scratch, VecZnx, VecZnxAlloc, VecZnxBigAlloc, VecZnxBigOps, VecZnxBigScratch, VecZnxDft, VecZnxDftAlloc,
     VecZnxDftOps, VecZnxDftToMut, VecZnxDftToRef, VecZnxOps, VecZnxToMut, VecZnxToRef,
 };
-
 use sampling::source::Source;
 
 use crate::{
-    elem::{Infos, RLWECt, RLWECtDft, RLWEPt},
+    elem::Infos,
     keys::{PublicKey, SecretDistribution, SecretKeyDft},
+    utils::derive_size,
 };
 
-pub fn encrypt_rlwe_sk_scratch_bytes<B: Backend>(module: &Module<B>, size: usize) -> usize {
-    (module.vec_znx_big_normalize_tmp_bytes() | module.bytes_of_vec_znx_dft(1, size)) + module.bytes_of_vec_znx_big(1, size)
+pub struct RLWECt<C> {
+    pub data: VecZnx<C>,
+    pub log_base2k: usize,
+    pub log_k: usize,
+}
+
+impl RLWECt<Vec<u8>> {
+    pub fn new<B: Backend>(module: &Module<B>, log_base2k: usize, log_k: usize, cols: usize) -> Self {
+        Self {
+            data: module.new_vec_znx(cols, derive_size(log_base2k, log_k)),
+            log_base2k: log_base2k,
+            log_k: log_k,
+        }
+    }
+}
+
+impl<T> Infos for RLWECt<T> {
+    type Inner = VecZnx<T>;
+
+    fn inner(&self) -> &Self::Inner {
+        &self.data
+    }
+
+    fn log_base2k(&self) -> usize {
+        self.log_base2k
+    }
+
+    fn log_k(&self) -> usize {
+        self.log_k
+    }
+}
+
+impl<C> VecZnxToMut for RLWECt<C>
+where
+    VecZnx<C>: VecZnxToMut,
+{
+    fn to_mut(&mut self) -> VecZnx<&mut [u8]> {
+        self.data.to_mut()
+    }
+}
+
+impl<C> VecZnxToRef for RLWECt<C>
+where
+    VecZnx<C>: VecZnxToRef,
+{
+    fn to_ref(&self) -> VecZnx<&[u8]> {
+        self.data.to_ref()
+    }
+}
+
+pub struct RLWEPt<C> {
+    pub data: VecZnx<C>,
+    pub log_base2k: usize,
+    pub log_k: usize,
+}
+
+impl<T> Infos for RLWEPt<T> {
+    type Inner = VecZnx<T>;
+
+    fn inner(&self) -> &Self::Inner {
+        &self.data
+    }
+
+    fn log_base2k(&self) -> usize {
+        self.log_base2k
+    }
+
+    fn log_k(&self) -> usize {
+        self.log_k
+    }
+}
+
+impl<C> VecZnxToMut for RLWEPt<C>
+where
+    VecZnx<C>: VecZnxToMut,
+{
+    fn to_mut(&mut self) -> VecZnx<&mut [u8]> {
+        self.data.to_mut()
+    }
+}
+
+impl<C> VecZnxToRef for RLWEPt<C>
+where
+    VecZnx<C>: VecZnxToRef,
+{
+    fn to_ref(&self) -> VecZnx<&[u8]> {
+        self.data.to_ref()
+    }
+}
+
+impl RLWEPt<Vec<u8>> {
+    pub fn new<B: Backend>(module: &Module<B>, log_base2k: usize, log_k: usize) -> Self {
+        Self {
+            data: module.new_vec_znx(1, derive_size(log_base2k, log_k)),
+            log_base2k: log_base2k,
+            log_k: log_k,
+        }
+    }
+}
+
+pub struct RLWECtDft<C, B: Backend> {
+    pub data: VecZnxDft<C, B>,
+    pub log_base2k: usize,
+    pub log_k: usize,
+}
+
+impl<B: Backend> RLWECtDft<Vec<u8>, B> {
+    pub fn new(module: &Module<B>, log_base2k: usize, log_k: usize, cols: usize) -> Self {
+        Self {
+            data: module.new_vec_znx_dft(cols, derive_size(log_base2k, log_k)),
+            log_base2k: log_base2k,
+            log_k: log_k,
+        }
+    }
+}
+
+impl<T, B: Backend> Infos for RLWECtDft<T, B> {
+    type Inner = VecZnxDft<T, B>;
+
+    fn inner(&self) -> &Self::Inner {
+        &self.data
+    }
+
+    fn log_base2k(&self) -> usize {
+        self.log_base2k
+    }
+
+    fn log_k(&self) -> usize {
+        self.log_k
+    }
+}
+
+impl<C, B: Backend> VecZnxDftToMut<B> for RLWECtDft<C, B>
+where
+    VecZnxDft<C, B>: VecZnxDftToMut<B>,
+{
+    fn to_mut(&mut self) -> VecZnxDft<&mut [u8], B> {
+        self.data.to_mut()
+    }
+}
+
+impl<C, B: Backend> VecZnxDftToRef<B> for RLWECtDft<C, B>
+where
+    VecZnxDft<C, B>: VecZnxDftToRef<B>,
+{
+    fn to_ref(&self) -> VecZnxDft<&[u8], B> {
+        self.data.to_ref()
+    }
+}
+
+impl RLWECt<Vec<u8>> {
+    pub fn encrypt_sk_scratch_bytes<B: Backend>(module: &Module<B>, size: usize) -> usize {
+        (module.vec_znx_big_normalize_tmp_bytes() | module.bytes_of_vec_znx_dft(1, size)) + module.bytes_of_vec_znx_big(1, size)
+    }
+
+    pub fn encrypt_pk_scratch_bytes<B: Backend>(module: &Module<B>, pk_size: usize) -> usize {
+        ((module.bytes_of_vec_znx_dft(1, pk_size) + module.bytes_of_vec_znx_big(1, pk_size)) | module.bytes_of_scalar_znx(1))
+            + module.bytes_of_scalar_znx_dft(1)
+            + module.vec_znx_big_normalize_tmp_bytes()
+    }
+
+    pub fn decrypt_scratch_bytes<B: Backend>(module: &Module<B>, size: usize) -> usize {
+        (module.vec_znx_big_normalize_tmp_bytes() | module.bytes_of_vec_znx_dft(1, size)) + module.bytes_of_vec_znx_big(1, size)
+    }
 }
 
 pub fn encrypt_rlwe_sk<C, P, S>(
@@ -94,11 +254,7 @@ pub fn decrypt_rlwe<P, C, S>(
     module.vec_znx_big_normalize(ct.log_base2k(), pt, 0, &mut c0_big, 0, scratch_1);
 
     pt.log_base2k = ct.log_base2k();
-    pt.log_k = min(pt.log_k(), ct.log_k());
-}
-
-pub fn decrypt_rlwe_scratch_bytes<B: Backend>(module: &Module<B>, size: usize) -> usize {
-    (module.vec_znx_big_normalize_tmp_bytes() | module.bytes_of_vec_znx_dft(1, size)) + module.bytes_of_vec_znx_big(1, size)
+    pt.log_k = pt.log_k().min(ct.log_k());
 }
 
 impl<C> RLWECt<C> {
@@ -207,11 +363,20 @@ pub(crate) fn encrypt_zero_rlwe_dft_sk<C, S>(
     module.vec_znx_dft(ct, 0, &tmp_znx, 0);
 }
 
-pub(crate) fn encrypt_zero_rlwe_dft_scratch_bytes(module: &Module<FFT64>, size: usize) -> usize {
-    (module.bytes_of_vec_znx(1, size) | module.bytes_of_vec_znx_dft(1, size))
-        + module.bytes_of_vec_znx_big(1, size)
-        + module.bytes_of_vec_znx(1, size)
-        + module.vec_znx_big_normalize_tmp_bytes()
+impl RLWECtDft<Vec<u8>, FFT64> {
+    pub fn encrypt_zero_sk_scratch_bytes(module: &Module<FFT64>, size: usize) -> usize {
+        (module.bytes_of_vec_znx(1, size) | module.bytes_of_vec_znx_dft(1, size))
+            + module.bytes_of_vec_znx_big(1, size)
+            + module.bytes_of_vec_znx(1, size)
+            + module.vec_znx_big_normalize_tmp_bytes()
+    }
+
+    pub fn decrypt_scratch_bytes(module: &Module<FFT64>, size: usize) -> usize {
+        (module.vec_znx_big_normalize_tmp_bytes()
+            | module.bytes_of_vec_znx_dft(1, size)
+            | (module.bytes_of_vec_znx_big(1, size) + module.vec_znx_idft_tmp_bytes()))
+            + module.bytes_of_vec_znx_big(1, size)
+    }
 }
 
 pub fn decrypt_rlwe_dft<P, C, S>(
@@ -246,14 +411,7 @@ pub fn decrypt_rlwe_dft<P, C, S>(
     module.vec_znx_big_normalize(ct.log_base2k(), pt, 0, &mut c0_big, 0, scratch_1);
 
     pt.log_base2k = ct.log_base2k();
-    pt.log_k = min(pt.log_k(), ct.log_k());
-}
-
-pub fn decrypt_rlwe_dft_scratch_bytes(module: &Module<FFT64>, size: usize) -> usize {
-    (module.vec_znx_big_normalize_tmp_bytes()
-        | module.bytes_of_vec_znx_dft(1, size)
-        | (module.bytes_of_vec_znx_big(1, size) + module.vec_znx_idft_tmp_bytes()))
-        + module.bytes_of_vec_znx_big(1, size)
+    pt.log_k = pt.log_k().min(ct.log_k());
 }
 
 impl<C> RLWECtDft<C, FFT64> {
@@ -288,12 +446,6 @@ impl<C> RLWECtDft<C, FFT64> {
     {
         decrypt_rlwe_dft(module, pt, self, sk_dft, scratch);
     }
-}
-
-pub fn encrypt_rlwe_pk_scratch_bytes<B: Backend>(module: &Module<B>, pk_size: usize) -> usize {
-    ((module.bytes_of_vec_znx_dft(1, pk_size) + module.bytes_of_vec_znx_big(1, pk_size)) | module.bytes_of_scalar_znx(1))
-        + module.bytes_of_scalar_znx_dft(1)
-        + module.vec_znx_big_normalize_tmp_bytes()
 }
 
 pub(crate) fn encrypt_rlwe_pk<C, P, S>(
@@ -369,12 +521,9 @@ mod tests {
     use sampling::source::Source;
 
     use crate::{
-        elem::{Infos, RLWECt, RLWECtDft, RLWEPt},
-        encryption::{decrypt_rlwe_dft_scratch_bytes, encrypt_zero_rlwe_dft_scratch_bytes},
+        elem_rlwe::{Infos, RLWECt, RLWECtDft, RLWEPt},
         keys::{PublicKey, SecretKey, SecretKeyDft},
     };
-
-    use super::{decrypt_rlwe_scratch_bytes, encrypt_rlwe_pk_scratch_bytes, encrypt_rlwe_sk_scratch_bytes};
 
     #[test]
     fn encrypt_sk_vec_znx_fft64() {
@@ -393,8 +542,9 @@ mod tests {
         let mut source_xe: Source = Source::new([0u8; 32]);
         let mut source_xa: Source = Source::new([0u8; 32]);
 
-        let mut scratch: ScratchOwned =
-            ScratchOwned::new(encrypt_rlwe_sk_scratch_bytes(&module, ct.size()) | decrypt_rlwe_scratch_bytes(&module, ct.size()));
+        let mut scratch: ScratchOwned = ScratchOwned::new(
+            RLWECt::encrypt_sk_scratch_bytes(&module, ct.size()) | RLWECt::decrypt_scratch_bytes(&module, ct.size()),
+        );
 
         let mut sk: SecretKey<Vec<u8>> = SecretKey::new(&module);
         sk.fill_ternary_prob(0.5, &mut source_xs);
@@ -469,9 +619,8 @@ mod tests {
         let mut ct_dft: RLWECtDft<Vec<u8>, FFT64> = RLWECtDft::new(&module, log_base2k, log_k_ct, 2);
 
         let mut scratch: ScratchOwned = ScratchOwned::new(
-            encrypt_rlwe_sk_scratch_bytes(&module, ct_dft.size())
-                | decrypt_rlwe_dft_scratch_bytes(&module, ct_dft.size())
-                | encrypt_zero_rlwe_dft_scratch_bytes(&module, ct_dft.size()),
+            RLWECtDft::decrypt_scratch_bytes(&module, ct_dft.size())
+                | RLWECtDft::encrypt_zero_sk_scratch_bytes(&module, ct_dft.size()),
         );
 
         ct_dft.encrypt_zero_sk(
@@ -523,9 +672,9 @@ mod tests {
         );
 
         let mut scratch: ScratchOwned = ScratchOwned::new(
-            encrypt_rlwe_sk_scratch_bytes(&module, ct.size())
-                | decrypt_rlwe_scratch_bytes(&module, ct.size())
-                | encrypt_rlwe_pk_scratch_bytes(&module, pk.size()),
+            RLWECt::encrypt_sk_scratch_bytes(&module, ct.size())
+                | RLWECt::decrypt_scratch_bytes(&module, ct.size())
+                | RLWECt::encrypt_pk_scratch_bytes(&module, pk.size()),
         );
 
         let mut data_want: Vec<i64> = vec![0i64; module.n()];

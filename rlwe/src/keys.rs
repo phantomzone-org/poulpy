@@ -4,10 +4,7 @@ use base2k::{
 };
 use sampling::source::Source;
 
-use crate::{
-    elem::{Infos, RLWECtDft},
-    encryption::encrypt_zero_rlwe_dft_scratch_bytes,
-};
+use crate::{elem::Infos, elem_rlwe::RLWECtDft};
 
 #[derive(Clone, Copy, Debug)]
 pub enum SecretDistribution {
@@ -182,7 +179,10 @@ impl<C> PublicKey<C, FFT64> {
         }
 
         // Its ok to allocate scratch space here since pk is usually generated only once.
-        let mut scratch: ScratchOwned = ScratchOwned::new(encrypt_zero_rlwe_dft_scratch_bytes(module, self.size()));
+        let mut scratch: ScratchOwned = ScratchOwned::new(RLWECtDft::encrypt_zero_sk_scratch_bytes(
+            module,
+            self.size(),
+        ));
         self.data.encrypt_zero_sk(
             module,
             sk_dft,
