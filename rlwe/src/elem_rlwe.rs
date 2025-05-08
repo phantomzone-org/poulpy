@@ -181,7 +181,7 @@ pub fn encrypt_rlwe_sk<C, P, S>(
     module: &Module<FFT64>,
     ct: &mut RLWECt<C>,
     pt: Option<&RLWEPt<P>>,
-    sk: &SecretKeyDft<S, FFT64>,
+    sk_dft: &SecretKeyDft<S, FFT64>,
     source_xa: &mut Source,
     source_xe: &mut Source,
     sigma: f64,
@@ -206,7 +206,7 @@ pub fn encrypt_rlwe_sk<C, P, S>(
         module.vec_znx_dft(&mut c0_dft, 0, ct, 1);
 
         // c0_dft = DFT(a) * DFT(s)
-        module.svp_apply_inplace(&mut c0_dft, 0, sk, 0);
+        module.svp_apply_inplace(&mut c0_dft, 0, sk_dft, 0);
 
         // c0_big = IDFT(c0_dft)
         module.vec_znx_idft_tmp_a(&mut c0_big, 0, &mut c0_dft, 0);
@@ -227,7 +227,7 @@ pub fn decrypt_rlwe<P, C, S>(
     module: &Module<FFT64>,
     pt: &mut RLWEPt<P>,
     ct: &RLWECt<C>,
-    sk: &SecretKeyDft<S, FFT64>,
+    sk_dft: &SecretKeyDft<S, FFT64>,
     scratch: &mut Scratch,
 ) where
     VecZnx<P>: VecZnxToMut + VecZnxToRef,
@@ -241,7 +241,7 @@ pub fn decrypt_rlwe<P, C, S>(
         module.vec_znx_dft(&mut c0_dft, 0, ct, 1);
 
         // c0_dft = DFT(a) * DFT(s)
-        module.svp_apply_inplace(&mut c0_dft, 0, sk, 0);
+        module.svp_apply_inplace(&mut c0_dft, 0, sk_dft, 0);
 
         // c0_big = IDFT(c0_dft)
         module.vec_znx_idft_tmp_a(&mut c0_big, 0, &mut c0_dft, 0);
@@ -262,7 +262,7 @@ impl<C> RLWECt<C> {
         &mut self,
         module: &Module<FFT64>,
         pt: Option<&RLWEPt<P>>,
-        sk: &SecretKeyDft<S, FFT64>,
+        sk_dft: &SecretKeyDft<S, FFT64>,
         source_xa: &mut Source,
         source_xe: &mut Source,
         sigma: f64,
@@ -274,17 +274,22 @@ impl<C> RLWECt<C> {
         ScalarZnxDft<S, FFT64>: ScalarZnxDftToRef<FFT64>,
     {
         encrypt_rlwe_sk(
-            module, self, pt, sk, source_xa, source_xe, sigma, bound, scratch,
+            module, self, pt, sk_dft, source_xa, source_xe, sigma, bound, scratch,
         )
     }
 
-    pub fn decrypt<P, S>(&self, module: &Module<FFT64>, pt: &mut RLWEPt<P>, sk: &SecretKeyDft<S, FFT64>, scratch: &mut Scratch)
-    where
+    pub fn decrypt<P, S>(
+        &self,
+        module: &Module<FFT64>,
+        pt: &mut RLWEPt<P>,
+        sk_dft: &SecretKeyDft<S, FFT64>,
+        scratch: &mut Scratch,
+    ) where
         VecZnx<P>: VecZnxToMut + VecZnxToRef,
         VecZnx<C>: VecZnxToRef,
         ScalarZnxDft<S, FFT64>: ScalarZnxDftToRef<FFT64>,
     {
-        decrypt_rlwe(module, pt, self, sk, scratch);
+        decrypt_rlwe(module, pt, self, sk_dft, scratch);
     }
 
     pub fn encrypt_pk<P, S>(
@@ -526,7 +531,7 @@ mod tests {
     };
 
     #[test]
-    fn encrypt_sk_vec_znx_fft64() {
+    fn encrypt_sk_fft64() {
         let module: Module<FFT64> = Module::<FFT64>::new(32);
         let log_base2k: usize = 8;
         let log_k_ct: usize = 54;
@@ -597,7 +602,7 @@ mod tests {
     }
 
     #[test]
-    fn encrypt_zero_rlwe_dft_sk_fft64() {
+    fn encrypt_zero_sk_fft64() {
         let module: Module<FFT64> = Module::<FFT64>::new(1024);
         let log_base2k: usize = 8;
         let log_k_ct: usize = 55;
@@ -639,7 +644,7 @@ mod tests {
     }
 
     #[test]
-    fn encrypt_pk_vec_znx_fft64() {
+    fn encrypt_pk_fft64() {
         let module: Module<FFT64> = Module::<FFT64>::new(32);
         let log_base2k: usize = 8;
         let log_k_ct: usize = 54;
