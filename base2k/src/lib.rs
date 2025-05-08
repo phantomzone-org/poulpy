@@ -150,19 +150,27 @@ impl Scratch {
         unsafe { &mut *(data as *mut [u8] as *mut Self) }
     }
 
-    fn take_slice_aligned(data: &mut [u8], take_len: usize) -> (&mut [u8], &mut [u8]) {
-        let ptr = data.as_mut_ptr();
-        let self_len = data.len();
+    #[allow(dead_code)]
+    fn available(&self) -> usize {
+        let ptr: *const u8 = self.data.as_ptr();
+        let self_len: usize = self.data.len();
+        let aligned_offset: usize = ptr.align_offset(DEFAULTALIGN);
+        self_len.saturating_sub(aligned_offset)
+    }
 
-        let aligned_offset = ptr.align_offset(DEFAULTALIGN);
-        let aligned_len = self_len.saturating_sub(aligned_offset);
+    fn take_slice_aligned(data: &mut [u8], take_len: usize) -> (&mut [u8], &mut [u8]) {
+        let ptr: *mut u8 = data.as_mut_ptr();
+        let self_len: usize = data.len();
+
+        let aligned_offset: usize = ptr.align_offset(DEFAULTALIGN);
+        let aligned_len: usize = self_len.saturating_sub(aligned_offset);
 
         if let Some(rem_len) = aligned_len.checked_sub(take_len) {
             unsafe {
-                let rem_ptr = ptr.add(aligned_offset).add(take_len);
-                let rem_slice = &mut *std::ptr::slice_from_raw_parts_mut(rem_ptr, rem_len);
+                let rem_ptr: *mut u8 = ptr.add(aligned_offset).add(take_len);
+                let rem_slice: &mut [u8] = &mut *std::ptr::slice_from_raw_parts_mut(rem_ptr, rem_len);
 
-                let take_slice = &mut *std::ptr::slice_from_raw_parts_mut(ptr.add(aligned_offset), take_len);
+                let take_slice: &mut [u8] = &mut *std::ptr::slice_from_raw_parts_mut(ptr.add(aligned_offset), take_len);
 
                 return (take_slice, rem_slice);
             }

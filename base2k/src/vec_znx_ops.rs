@@ -1,6 +1,7 @@
 use crate::ffi::vec_znx;
 use crate::{
-    Backend, Module, Scratch, VecZnx, VecZnxOwned, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero,
+    Backend, Module, ScalarZnxToRef, Scratch, VecZnx, VecZnxOwned, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxSliceSize, ZnxView,
+    ZnxViewMut, ZnxZero,
 };
 use itertools::izip;
 use std::cmp::min;
@@ -51,11 +52,17 @@ pub trait VecZnxOps {
         A: VecZnxToRef,
         B: VecZnxToRef;
 
-    /// Adds the selected column of `a` to the selected column of `b` and writes the result on the selected column of `res`.
+    /// Adds the selected column of `a` to the selected column of `res` and writes the result on the selected column of `res`.
     fn vec_znx_add_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxToMut,
         A: VecZnxToRef;
+
+    /// Adds the selected column of `a` on the selected column and limb of `res`.
+    fn vec_znx_add_scalar_inplace<R, A>(&self, res: &mut R, res_col: usize, res_limb: usize, a: &A, b_col: usize)
+    where
+        R: VecZnxToMut,
+        A: ScalarZnxToRef;
 
     /// Subtracts the selected column of `b` from the selected column of `a` and writes the result on the selected column of `res`.
     fn vec_znx_sub<R, A, B>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
@@ -79,6 +86,12 @@ pub trait VecZnxOps {
     where
         R: VecZnxToMut,
         A: VecZnxToRef;
+
+    /// Subtracts the selected column of `a` on the selected column and limb of `res`.
+    fn vec_znx_sub_scalar_inplace<R, A>(&self, res: &mut R, res_col: usize, res_limb: usize, a: &A, b_col: usize)
+    where
+        R: VecZnxToMut,
+        A: ScalarZnxToRef;
 
     // Negates the selected column of `a` and stores the result in `res_col` of `res`.
     fn vec_znx_negate<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
@@ -282,6 +295,36 @@ impl<BACKEND: Backend> VecZnxOps for Module<BACKEND> {
         }
     }
 
+    fn vec_znx_add_scalar_inplace<R, A>(&self, res: &mut R, res_col: usize, res_limb: usize, a: &A, a_col: usize)
+    where
+        R: VecZnxToMut,
+        A: ScalarZnxToRef,
+    {
+        let mut res: VecZnx<&mut [u8]> = res.to_mut();
+        let a: crate::ScalarZnx<&[u8]> = a.to_ref();
+
+        #[cfg(debug_assertions)]
+        {
+            assert_eq!(a.n(), self.n());
+            assert_eq!(res.n(), self.n());
+        }
+
+        unsafe {
+            vec_znx::vec_znx_add(
+                self.ptr,
+                res.at_mut_ptr(res_col, res_limb),
+                1 as u64,
+                res.sl() as u64,
+                a.at_ptr(a_col, 0),
+                a.size() as u64,
+                a.sl() as u64,
+                res.at_ptr(res_col, res_limb),
+                1 as u64,
+                res.sl() as u64,
+            )
+        }
+    }
+
     fn vec_znx_sub<R, A, B>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
     where
         R: VecZnxToMut,
@@ -311,6 +354,36 @@ impl<BACKEND: Backend> VecZnxOps for Module<BACKEND> {
                 b.at_ptr(b_col, 0),
                 b.size() as u64,
                 b.sl() as u64,
+            )
+        }
+    }
+
+    fn vec_znx_sub_scalar_inplace<R, A>(&self, res: &mut R, res_col: usize, res_limb: usize, a: &A, a_col: usize)
+    where
+        R: VecZnxToMut,
+        A: ScalarZnxToRef,
+    {
+        let mut res: VecZnx<&mut [u8]> = res.to_mut();
+        let a: crate::ScalarZnx<&[u8]> = a.to_ref();
+
+        #[cfg(debug_assertions)]
+        {
+            assert_eq!(a.n(), self.n());
+            assert_eq!(res.n(), self.n());
+        }
+
+        unsafe {
+            vec_znx::vec_znx_sub(
+                self.ptr,
+                res.at_mut_ptr(res_col, res_limb),
+                1 as u64,
+                res.sl() as u64,
+                a.at_ptr(a_col, 0),
+                a.size() as u64,
+                a.sl() as u64,
+                res.at_ptr(res_col, res_limb),
+                1 as u64,
+                res.sl() as u64,
             )
         }
     }
