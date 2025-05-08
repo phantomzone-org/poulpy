@@ -1,6 +1,6 @@
 use crate::ffi::vec_znx_big;
 use crate::znx_base::{ZnxInfos, ZnxView};
-use crate::{Backend, DataView, DataViewMut, FFT64, Module, ZnxSliceSize, alloc_aligned};
+use crate::{Backend, DataView, DataViewMut, FFT64, Module, VecZnxDft, ZnxSliceSize, alloc_aligned};
 use std::fmt;
 use std::marker::PhantomData;
 

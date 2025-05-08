@@ -1,7 +1,10 @@
 use crate::ffi::{vec_znx_big, vec_znx_dft};
 use crate::vec_znx_dft::bytes_of_vec_znx_dft;
 use crate::znx_base::ZnxInfos;
-use crate::{Backend, Scratch, VecZnxBigToMut, VecZnxDftOwned, VecZnxDftToMut, VecZnxDftToRef, VecZnxToRef, ZnxSliceSize};
+use crate::{
+    Backend, Scratch, VecZnxBig, VecZnxBigToMut, VecZnxDft, VecZnxDftOwned, VecZnxDftToMut, VecZnxDftToRef, VecZnxToRef,
+    ZnxSliceSize,
+};
 use crate::{FFT64, Module, ZnxView, ZnxViewMut, ZnxZero};
 use std::cmp::min;
 
@@ -44,6 +47,9 @@ pub trait VecZnxDftOps<B: Backend> {
     where
         R: VecZnxBigToMut<B>,
         A: VecZnxDftToMut<B>;
+    fn vec_znx_idft_consume<D>(&self, a: VecZnxDft<D, B>, a_cols: usize) -> VecZnxBig<D, FFT64>
+    where
+        VecZnxDft<D, FFT64>: VecZnxDftToMut<FFT64>;
 
     fn vec_znx_idft<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch)
     where
@@ -94,6 +100,27 @@ impl VecZnxDftOps<FFT64> for Module<FFT64> {
             (min_size..res_mut.size()).for_each(|j| {
                 res_mut.zero_at(res_col, j);
             })
+        }
+    }
+
+    fn vec_znx_idft_consume<D>(&self, mut a: VecZnxDft<D, FFT64>, a_col: usize) -> VecZnxBig<D, FFT64>
+    where
+        VecZnxDft<D, FFT64>: VecZnxDftToMut<FFT64>,
+    {
+        let mut a_mut: VecZnxDft<&mut [u8], FFT64> = a.to_mut();
+
+        unsafe {
+            (0..a_mut.size()).for_each(|j| {
+                vec_znx_dft::vec_znx_idft_tmp_a(
+                    self.ptr,
+                    a_mut.at_mut_ptr(a_col, j) as *mut vec_znx_big::vec_znx_big_t,
+                    1 as u64,
+                    a_mut.at_mut_ptr(a_col, j) as *mut vec_znx_dft::vec_znx_dft_t,
+                    1 as u64,
+                )
+            });
+
+            a.into_big()
         }
     }
 

@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 
 use crate::ffi::vec_znx_dft;
 use crate::znx_base::ZnxInfos;
-use crate::{Backend, DataView, DataViewMut, FFT64, Module, ZnxSliceSize, ZnxView, alloc_aligned};
+use crate::{Backend, DataView, DataViewMut, FFT64, Module, VecZnxBig, ZnxSliceSize, ZnxView, alloc_aligned};
 use std::fmt;
 
 pub struct VecZnxDft<D, B: Backend> {
@@ -11,6 +11,12 @@ pub struct VecZnxDft<D, B: Backend> {
     cols: usize,
     size: usize,
     _phantom: PhantomData<B>,
+}
+
+impl<D, B: Backend> VecZnxDft<D, B> {
+    pub fn into_big(self) -> VecZnxBig<D, B> {
+        VecZnxBig::<D, B>::from_data(self.data, self.n, self.cols, self.size)
+    }
 }
 
 impl<D, B: Backend> ZnxInfos for VecZnxDft<D, B> {
