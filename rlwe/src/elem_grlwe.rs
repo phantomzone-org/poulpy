@@ -91,7 +91,7 @@ pub fn encrypt_grlwe_sk<C, P, S>(
     module: &Module<FFT64>,
     ct: &mut GRLWECt<C, FFT64>,
     pt: &ScalarZnx<P>,
-    sk: &SecretKeyDft<S, FFT64>,
+    sk_dft: &SecretKeyDft<S, FFT64>,
     source_xa: &mut Source,
     source_xe: &mut Source,
     sigma: f64,
@@ -131,7 +131,7 @@ pub fn encrypt_grlwe_sk<C, P, S>(
         vec_znx_ct.encrypt_sk(
             module,
             Some(&vec_znx_pt),
-            sk,
+            sk_dft,
             source_xa,
             source_xe,
             sigma,
@@ -186,7 +186,7 @@ mod tests {
     use super::GRLWECt;
 
     #[test]
-    fn encrypt_sk_vec_znx_fft64() {
+    fn encrypt_sk_fft64() {
         let module: Module<FFT64> = Module::<FFT64>::new(2048);
         let log_base2k: usize = 8;
         let log_k_ct: usize = 54;
@@ -233,7 +233,7 @@ mod tests {
             ct_rlwe_dft.decrypt(&module, &mut pt, &sk_dft, scratch.borrow());
             module.vec_znx_sub_scalar_inplace(&mut pt, 0, row_i, &pt_scalar, 0);
             let std_pt: f64 = pt.data.std(0, log_base2k) * (log_k_ct as f64).exp2();
-            assert!((sigma - std_pt) <= 0.2, "{} {}", sigma, std_pt);
+            assert!((sigma - std_pt).abs() <= 0.2, "{} {}", sigma, std_pt);
         });
 
         module.free();

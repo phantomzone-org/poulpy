@@ -1,5 +1,5 @@
 use crate::znx_base::ZnxInfos;
-use crate::{Backend, DataView, DataViewMut, Module, ZnxSliceSize, ZnxView, ZnxViewMut, alloc_aligned};
+use crate::{alloc_aligned, Backend, DataView, DataViewMut, Module, VecZnx, VecZnxToMut, VecZnxToRef, ZnxSliceSize, ZnxView, ZnxViewMut};
 use rand::seq::SliceRandom;
 use rand_core::RngCore;
 use rand_distr::{Distribution, weighted::WeightedIndex};
@@ -144,12 +144,34 @@ impl ScalarZnxToMut for ScalarZnx<Vec<u8>> {
     }
 }
 
+impl VecZnxToMut for ScalarZnx<Vec<u8>>{
+    fn to_mut(&mut self) -> VecZnx<&mut [u8]> {
+        VecZnx {
+            data: self.data.as_mut_slice(),
+            n: self.n,
+            cols: self.cols,
+            size: 1,
+        }
+    }
+}
+
 impl ScalarZnxToRef for ScalarZnx<Vec<u8>> {
     fn to_ref(&self) -> ScalarZnx<&[u8]> {
         ScalarZnx {
             data: self.data.as_slice(),
             n: self.n,
             cols: self.cols,
+        }
+    }
+}
+
+impl VecZnxToRef for ScalarZnx<Vec<u8>>{
+    fn to_ref(&self) -> VecZnx<&[u8]> {
+        VecZnx {
+            data: self.data.as_slice(),
+            n: self.n,
+            cols: self.cols,
+            size: 1,
         }
     }
 }
@@ -164,6 +186,17 @@ impl ScalarZnxToMut for ScalarZnx<&mut [u8]> {
     }
 }
 
+impl VecZnxToMut for ScalarZnx<&mut [u8]> {
+    fn to_mut(&mut self) -> VecZnx<&mut [u8]> {
+        VecZnx {
+            data: self.data,
+            n: self.n,
+            cols: self.cols,
+            size: 1,
+        }
+    }
+}
+
 impl ScalarZnxToRef for ScalarZnx<&mut [u8]> {
     fn to_ref(&self) -> ScalarZnx<&[u8]> {
         ScalarZnx {
@@ -174,12 +207,34 @@ impl ScalarZnxToRef for ScalarZnx<&mut [u8]> {
     }
 }
 
+impl VecZnxToRef for ScalarZnx<&mut [u8]> {
+    fn to_ref(&self) -> VecZnx<&[u8]> {
+        VecZnx {
+            data: self.data,
+            n: self.n,
+            cols: self.cols,
+            size: 1,
+        }
+    }
+}
+
 impl ScalarZnxToRef for ScalarZnx<&[u8]> {
     fn to_ref(&self) -> ScalarZnx<&[u8]> {
         ScalarZnx {
             data: self.data,
             n: self.n,
             cols: self.cols,
+        }
+    }
+}
+
+impl VecZnxToRef for ScalarZnx<&[u8]> {
+    fn to_ref(&self) -> VecZnx<&[u8]> {
+        VecZnx {
+            data: self.data,
+            n: self.n,
+            cols: self.cols,
+            size: 1,
         }
     }
 }

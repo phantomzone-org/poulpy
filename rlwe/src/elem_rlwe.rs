@@ -180,7 +180,7 @@ impl RLWECt<Vec<u8>> {
 pub fn encrypt_rlwe_sk<C, P, S>(
     module: &Module<FFT64>,
     ct: &mut RLWECt<C>,
-    pt: Option<&RLWEPt<P>>,
+    pt: Option<(&RLWEPt<P>, usize)>,
     sk_dft: &SecretKeyDft<S, FFT64>,
     source_xa: &mut Source,
     source_xe: &mut Source,
@@ -213,8 +213,18 @@ pub fn encrypt_rlwe_sk<C, P, S>(
     }
 
     // c0_big = m - c0_big
-    if let Some(pt) = pt {
-        module.vec_znx_big_sub_small_b_inplace(&mut c0_big, 0, pt, 0);
+    if let Some((pt, col)) = pt {
+        match col {
+            0 => module.vec_znx_big_sub_small_b_inplace(&mut c0_big, 0, pt, 0),
+            1 => {
+                module.vec_znx_big_negate_inplace(&mut c0_big, 0);
+                module.vec_znx_add_inplace(ct, 1, pt, 0);
+                module.vec_znx_normalize_inplace(log_base2k, ct, 1, scratch_1);
+            }
+            _ => panic!("invalid target column: {}", col),
+        }
+    } else {
+        module.vec_znx_big_negate_inplace(&mut c0_big, 0);
     }
     // c0_big += e
     c0_big.add_normal(log_base2k, 0, log_k, source_xe, sigma, bound);
@@ -273,9 +283,23 @@ impl<C> RLWECt<C> {
         VecZnx<P>: VecZnxToRef,
         ScalarZnxDft<S, FFT64>: ScalarZnxDftToRef<FFT64>,
     {
-        encrypt_rlwe_sk(
-            module, self, pt, sk_dft, source_xa, source_xe, sigma, bound, scratch,
-        )
+        if let Some(pt) = pt {
+            encrypt_rlwe_sk(
+                module,
+                self,
+                Some((pt, 0)),
+                sk_dft,
+                source_xa,
+                source_xe,
+                sigma,
+                bound,
+                scratch,
+            )
+        } else {
+            encrypt_rlwe_sk::<C, P, S>(
+                module, self, None, sk_dft, source_xa, source_xe, sigma, bound, scratch,
+            )
+        }
     }
 
     pub fn decrypt<P, S>(
@@ -483,10 +507,10 @@ pub(crate) fn encrypt_rlwe_pk<C, P, S>(
     let size_pk: usize = pk.size();
 
     // Generates u according to the underlying secret distribution.
-    let (mut u_dft, scratch_1) = scratch.tmp_scalar_dft(module, 1);
+    let (mut u_dft, scratch_1) = scratch.tmp_scalar_znx_dft(module, 1);
 
     {
-        let (mut u, _) = scratch_1.tmp_scalar(module, 1);
+        let (mut u, _) = scratch_1.tmp_scalar_znx(module, 1);
         match pk.dist {
             SecretDistribution::NONE => panic!(
                 "invalid public key: SecretDistribution::NONE, ensure it has been correctly intialized through Self::generate"

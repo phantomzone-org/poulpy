@@ -20,9 +20,9 @@ use std::{cmp::min, fmt};
 /// are small polynomials of Zn\[X\].
 pub struct VecZnx<D> {
     pub data: D,
-    n: usize,
-    cols: usize,
-    size: usize,
+    pub n: usize,
+    pub cols: usize,
+    pub size: usize,
 }
 
 impl<D> ZnxInfos for VecZnx<D> {

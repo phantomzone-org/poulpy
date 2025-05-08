@@ -114,6 +114,9 @@ pub trait VecZnxBigOps<BACKEND: Backend> {
         R: VecZnxBigToMut<BACKEND>,
         A: VecZnxToRef;
 
+    /// Negates `a` inplace.
+    fn vec_znx_big_negate_inplace<A>(&self, a: &mut A, a_col: usize) where A: VecZnxBigToMut<BACKEND>;
+
     /// Normalizes `a` and stores the result on `b`.
     ///
     /// # Arguments
@@ -497,6 +500,25 @@ impl VecZnxBigOps<FFT64> for Module<FFT64> {
                 res.size() as u64,
                 res.sl() as u64,
                 a.at_ptr(a_col, 0),
+                a.size() as u64,
+                a.sl() as u64,
+            )
+        }
+    }
+
+    fn vec_znx_big_negate_inplace<A>(&self, a: &mut A, res_col: usize) where A: VecZnxBigToMut<FFT64> {
+        let mut a: VecZnxBig<&mut [u8], FFT64> = a.to_mut();
+        #[cfg(debug_assertions)]
+        {
+            assert_eq!(a.n(), self.n());
+        }
+        unsafe {
+            vec_znx::vec_znx_negate(
+                self.ptr,
+                a.at_mut_ptr(res_col, 0),
+                a.size() as u64,
+                a.sl() as u64,
+                a.at_ptr(res_col, 0),
                 a.size() as u64,
                 a.sl() as u64,
             )
