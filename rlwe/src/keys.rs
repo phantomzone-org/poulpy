@@ -1,6 +1,7 @@
 use base2k::{
     Backend, FFT64, Module, ScalarZnx, ScalarZnxAlloc, ScalarZnxDft, ScalarZnxDftAlloc, ScalarZnxDftOps, ScalarZnxDftToMut,
     ScalarZnxDftToRef, ScalarZnxToMut, ScalarZnxToRef, ScratchOwned, VecZnxDft, VecZnxDftToMut, VecZnxDftToRef, ZnxInfos,
+    ZnxZero,
 };
 use sampling::source::Source;
 
@@ -10,6 +11,7 @@ use crate::{elem::Infos, elem_rlwe::RLWECtDft};
 pub enum SecretDistribution {
     TernaryFixed(usize), // Ternary with fixed Hamming weight
     TernaryProb(f64),    // Ternary with probabilistic Hamming weight
+    ZERO,                // Debug mod
     NONE,
 }
 
@@ -39,6 +41,11 @@ where
     pub fn fill_ternary_hw(&mut self, hw: usize, source: &mut Source) {
         self.data.fill_ternary_hw(0, hw, source);
         self.dist = SecretDistribution::TernaryFixed(hw);
+    }
+
+    pub fn fill_zero(&mut self) {
+        self.data.zero();
+        self.dist = SecretDistribution::ZERO;
     }
 }
 
@@ -117,7 +124,7 @@ pub struct PublicKey<D, B: Backend> {
 impl<B: Backend> PublicKey<Vec<u8>, B> {
     pub fn new(module: &Module<B>, log_base2k: usize, log_k: usize) -> Self {
         Self {
-            data: RLWECtDft::new(module, log_base2k, log_k, 2),
+            data: RLWECtDft::new(module, log_base2k, log_k),
             dist: SecretDistribution::NONE,
         }
     }
@@ -179,7 +186,7 @@ impl<C> PublicKey<C, FFT64> {
         }
 
         // Its ok to allocate scratch space here since pk is usually generated only once.
-        let mut scratch: ScratchOwned = ScratchOwned::new(RLWECtDft::encrypt_zero_sk_scratch_bytes(
+        let mut scratch: ScratchOwned = ScratchOwned::new(RLWECtDft::encrypt_zero_sk_scratch_space(
             module,
             self.size(),
         ));

@@ -1,5 +1,7 @@
 use crate::znx_base::ZnxInfos;
-use crate::{alloc_aligned, Backend, DataView, DataViewMut, Module, VecZnx, VecZnxToMut, VecZnxToRef, ZnxSliceSize, ZnxView, ZnxViewMut};
+use crate::{
+    Backend, DataView, DataViewMut, Module, VecZnx, VecZnxToMut, VecZnxToRef, ZnxSliceSize, ZnxView, ZnxViewMut, alloc_aligned,
+};
 use rand::seq::SliceRandom;
 use rand_core::RngCore;
 use rand_distr::{Distribution, weighted::WeightedIndex};
@@ -144,7 +146,7 @@ impl ScalarZnxToMut for ScalarZnx<Vec<u8>> {
     }
 }
 
-impl VecZnxToMut for ScalarZnx<Vec<u8>>{
+impl VecZnxToMut for ScalarZnx<Vec<u8>> {
     fn to_mut(&mut self) -> VecZnx<&mut [u8]> {
         VecZnx {
             data: self.data.as_mut_slice(),
@@ -165,7 +167,7 @@ impl ScalarZnxToRef for ScalarZnx<Vec<u8>> {
     }
 }
 
-impl VecZnxToRef for ScalarZnx<Vec<u8>>{
+impl VecZnxToRef for ScalarZnx<Vec<u8>> {
     fn to_ref(&self) -> VecZnx<&[u8]> {
         VecZnx {
             data: self.data.as_slice(),

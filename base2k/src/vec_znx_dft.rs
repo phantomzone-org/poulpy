@@ -2,7 +2,9 @@ use std::marker::PhantomData;
 
 use crate::ffi::vec_znx_dft;
 use crate::znx_base::ZnxInfos;
-use crate::{Backend, DataView, DataViewMut, FFT64, Module, VecZnxBig, ZnxSliceSize, ZnxView, alloc_aligned};
+use crate::{
+    Backend, DataView, DataViewMut, FFT64, Module, VecZnxBig, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero, alloc_aligned,
+};
 use std::fmt;
 
 pub struct VecZnxDft<D, B: Backend> {
@@ -86,6 +88,39 @@ impl<D: From<Vec<u8>>, B: Backend> VecZnxDft<D, B> {
             size,
             _phantom: PhantomData,
         }
+    }
+}
+
+impl<D> VecZnxDft<D, FFT64>
+where
+    VecZnxDft<D, FFT64>: VecZnxDftToMut<FFT64> + ZnxInfos,
+{
+    /// Extracts the a_col-th column of 'a' and stores it on the self_col-th column [Self].
+    pub fn extract_column<C>(&mut self, self_col: usize, a: &VecZnxDft<C, FFT64>, a_col: usize)
+    where
+        VecZnxDft<C, FFT64>: VecZnxDftToRef<FFT64> + ZnxInfos,
+    {
+        #[cfg(debug_assertions)]
+        {
+            assert!(self_col < self.cols());
+            assert!(a_col < a.cols());
+        }
+
+        let min_size: usize = self.size.min(a.size());
+        let max_size: usize = self.size;
+
+        let mut self_mut: VecZnxDft<&mut [u8], FFT64> = self.to_mut();
+        let a_ref: VecZnxDft<&[u8], FFT64> = a.to_ref();
+
+        (0..min_size).for_each(|i: usize| {
+            self_mut
+                .at_mut(self_col, i)
+                .copy_from_slice(a_ref.at(a_col, i));
+        });
+
+        (min_size..max_size).for_each(|i| {
+            self_mut.zero_at(self_col, i);
+        });
     }
 }
 

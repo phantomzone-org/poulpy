@@ -101,25 +101,25 @@ pub trait ZnxViewMut: ZnxView + DataViewMut<D: AsMut<[u8]>> {
 //(Jay)Note: Can't provide blanket impl. of ZnxView because Scalar is not known
 impl<T> ZnxViewMut for T where T: ZnxView + DataViewMut<D: AsMut<[u8]>> {}
 
-pub trait ZnxZero: ZnxViewMut
+pub trait ZnxZero: ZnxViewMut + ZnxSliceSize
 where
     Self: Sized,
 {
     fn zero(&mut self) {
         unsafe {
-            std::ptr::write_bytes(self.as_mut_ptr(), 0, self.n() * self.poly_count());
+            std::ptr::write_bytes(self.as_mut_ptr(), 0, self.sl() * self.poly_count());
         }
     }
 
     fn zero_at(&mut self, i: usize, j: usize) {
         unsafe {
-            std::ptr::write_bytes(self.at_mut_ptr(i, j), 0, self.n());
+            std::ptr::write_bytes(self.at_mut_ptr(i, j), 0, self.sl());
         }
     }
 }
 
 // Blanket implementations
-impl<T> ZnxZero for T where T: ZnxViewMut {}
+impl<T> ZnxZero for T where T: ZnxViewMut + ZnxSliceSize {} // WARNING should not work for mat_znx_dft but it does
 
 use std::ops::{Add, AddAssign, Div, Mul, Neg, Shl, Shr, Sub};
 

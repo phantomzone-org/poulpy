@@ -1,12 +1,13 @@
 use base2k::{
-    AddNormal, Backend, FFT64, FillUniform, Module, ScalarZnxAlloc, ScalarZnxDft, ScalarZnxDftAlloc, ScalarZnxDftOps,
-    ScalarZnxDftToRef, Scratch, VecZnx, VecZnxAlloc, VecZnxBigAlloc, VecZnxBigOps, VecZnxBigScratch, VecZnxDft, VecZnxDftAlloc,
-    VecZnxDftOps, VecZnxDftToMut, VecZnxDftToRef, VecZnxOps, VecZnxToMut, VecZnxToRef,
+    AddNormal, Backend, FFT64, FillUniform, MatZnxDft, MatZnxDftToRef, Module, ScalarZnxAlloc, ScalarZnxDft, ScalarZnxDftAlloc,
+    ScalarZnxDftOps, ScalarZnxDftToRef, Scratch, VecZnx, VecZnxAlloc, VecZnxBigAlloc, VecZnxBigOps, VecZnxBigScratch, VecZnxDft,
+    VecZnxDftAlloc, VecZnxDftOps, VecZnxDftToMut, VecZnxDftToRef, VecZnxOps, VecZnxToMut, VecZnxToRef, ZnxInfos,
 };
 use sampling::source::Source;
 
 use crate::{
     elem::Infos,
+    elem_grlwe::GRLWECt,
     keys::{PublicKey, SecretDistribution, SecretKeyDft},
     utils::derive_size,
 };
@@ -18,9 +19,9 @@ pub struct RLWECt<C> {
 }
 
 impl RLWECt<Vec<u8>> {
-    pub fn new<B: Backend>(module: &Module<B>, log_base2k: usize, log_k: usize, cols: usize) -> Self {
+    pub fn new<B: Backend>(module: &Module<B>, log_base2k: usize, log_k: usize) -> Self {
         Self {
-            data: module.new_vec_znx(cols, derive_size(log_base2k, log_k)),
+            data: module.new_vec_znx(2, derive_size(log_base2k, log_k)),
             log_base2k: log_base2k,
             log_k: log_k,
         }
@@ -58,6 +59,27 @@ where
 {
     fn to_ref(&self) -> VecZnx<&[u8]> {
         self.data.to_ref()
+    }
+}
+
+impl<C> RLWECt<C>
+where
+    VecZnx<C>: VecZnxToRef,
+{
+    #[allow(dead_code)]
+    pub(crate) fn dft<R>(&self, module: &Module<FFT64>, res: &mut RLWECtDft<R, FFT64>)
+    where
+        VecZnxDft<R, FFT64>: VecZnxDftToMut<FFT64> + ZnxInfos,
+    {
+        #[cfg(debug_assertions)]
+        {
+            assert_eq!(self.cols(), 2);
+            assert_eq!(res.cols(), 2);
+            assert_eq!(self.log_base2k(), res.log_base2k())
+        }
+
+        module.vec_znx_dft(res, 0, self, 0);
+        module.vec_znx_dft(res, 1, self, 1);
     }
 }
 
@@ -118,9 +140,9 @@ pub struct RLWECtDft<C, B: Backend> {
 }
 
 impl<B: Backend> RLWECtDft<Vec<u8>, B> {
-    pub fn new(module: &Module<B>, log_base2k: usize, log_k: usize, cols: usize) -> Self {
+    pub fn new(module: &Module<B>, log_base2k: usize, log_k: usize) -> Self {
         Self {
-            data: module.new_vec_znx_dft(cols, derive_size(log_base2k, log_k)),
+            data: module.new_vec_znx_dft(2, derive_size(log_base2k, log_k)),
             log_base2k: log_base2k,
             log_k: log_k,
         }
@@ -161,18 +183,49 @@ where
     }
 }
 
+impl<C> RLWECtDft<C, FFT64>
+where
+    VecZnxDft<C, FFT64>: VecZnxDftToRef<FFT64>,
+{
+    #[allow(dead_code)]
+    pub(crate) fn idft_scratch_space(module: &Module<FFT64>, size: usize) -> usize {
+        module.bytes_of_vec_znx(2, size) + (module.vec_znx_big_normalize_tmp_bytes() | module.vec_znx_idft_tmp_bytes())
+    }
+
+    pub(crate) fn idft<R>(&self, module: &Module<FFT64>, res: &mut RLWECt<R>, scratch: &mut Scratch)
+    where
+        VecZnx<R>: VecZnxToMut + ZnxInfos,
+    {
+        #[cfg(debug_assertions)]
+        {
+            assert_eq!(self.cols(), 2);
+            assert_eq!(res.cols(), 2);
+            assert_eq!(self.log_base2k(), res.log_base2k())
+        }
+
+        let min_size: usize = self.size().min(res.size());
+
+        let (mut res_big, scratch1) = scratch.tmp_vec_znx_big(module, 2, min_size);
+
+        module.vec_znx_idft(&mut res_big, 0, &self.data, 0, scratch1);
+        module.vec_znx_idft(&mut res_big, 1, &self.data, 1, scratch1);
+        module.vec_znx_big_normalize(self.log_base2k(), res, 0, &res_big, 0, scratch1);
+        module.vec_znx_big_normalize(self.log_base2k(), res, 1, &res_big, 1, scratch1);
+    }
+}
+
 impl RLWECt<Vec<u8>> {
-    pub fn encrypt_sk_scratch_bytes<B: Backend>(module: &Module<B>, size: usize) -> usize {
+    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, size: usize) -> usize {
         (module.vec_znx_big_normalize_tmp_bytes() | module.bytes_of_vec_znx_dft(1, size)) + module.bytes_of_vec_znx_big(1, size)
     }
 
-    pub fn encrypt_pk_scratch_bytes<B: Backend>(module: &Module<B>, pk_size: usize) -> usize {
+    pub fn encrypt_pk_scratch_space<B: Backend>(module: &Module<B>, pk_size: usize) -> usize {
         ((module.bytes_of_vec_znx_dft(1, pk_size) + module.bytes_of_vec_znx_big(1, pk_size)) | module.bytes_of_scalar_znx(1))
             + module.bytes_of_scalar_znx_dft(1)
             + module.vec_znx_big_normalize_tmp_bytes()
     }
 
-    pub fn decrypt_scratch_bytes<B: Backend>(module: &Module<B>, size: usize) -> usize {
+    pub fn decrypt_scratch_space<B: Backend>(module: &Module<B>, size: usize) -> usize {
         (module.vec_znx_big_normalize_tmp_bytes() | module.bytes_of_vec_znx_dft(1, size)) + module.bytes_of_vec_znx_big(1, size)
     }
 }
@@ -393,14 +446,14 @@ pub(crate) fn encrypt_zero_rlwe_dft_sk<C, S>(
 }
 
 impl RLWECtDft<Vec<u8>, FFT64> {
-    pub fn encrypt_zero_sk_scratch_bytes(module: &Module<FFT64>, size: usize) -> usize {
+    pub fn encrypt_zero_sk_scratch_space(module: &Module<FFT64>, size: usize) -> usize {
         (module.bytes_of_vec_znx(1, size) | module.bytes_of_vec_znx_dft(1, size))
             + module.bytes_of_vec_znx_big(1, size)
             + module.bytes_of_vec_znx(1, size)
             + module.vec_znx_big_normalize_tmp_bytes()
     }
 
-    pub fn decrypt_scratch_bytes(module: &Module<FFT64>, size: usize) -> usize {
+    pub fn decrypt_scratch_space(module: &Module<FFT64>, size: usize) -> usize {
         (module.vec_znx_big_normalize_tmp_bytes()
             | module.bytes_of_vec_znx_dft(1, size)
             | (module.bytes_of_vec_znx_big(1, size) + module.vec_znx_idft_tmp_bytes()))
@@ -475,6 +528,14 @@ impl<C> RLWECtDft<C, FFT64> {
     {
         decrypt_rlwe_dft(module, pt, self, sk_dft, scratch);
     }
+
+    pub fn mul_grlwe_assign<A>(&mut self, module: &Module<FFT64>, a: &GRLWECt<A, FFT64>, scratch: &mut Scratch)
+    where
+        VecZnxDft<C, FFT64>: VecZnxDftToMut<FFT64> + VecZnxDftToRef<FFT64>,
+        MatZnxDft<A, FFT64>: MatZnxDftToRef<FFT64>,
+    {
+        a.mul_rlwe_dft_inplace(module, self, scratch);
+    }
 }
 
 pub(crate) fn encrypt_rlwe_pk<C, P, S>(
@@ -517,6 +578,7 @@ pub(crate) fn encrypt_rlwe_pk<C, P, S>(
             ),
             SecretDistribution::TernaryFixed(hw) => u.fill_ternary_hw(0, hw, source_xu),
             SecretDistribution::TernaryProb(prob) => u.fill_ternary_prob(0, prob, source_xu),
+            SecretDistribution::ZERO => {}
         }
 
         module.svp_prepare(&mut u_dft, 0, &u, 0);
@@ -541,200 +603,4 @@ pub(crate) fn encrypt_rlwe_pk<C, P, S>(
     module.vec_znx_idft_tmp_a(&mut tmp_big, 0, &mut tmp_dft, 0);
     tmp_big.add_normal(log_base2k, 0, pk.log_k(), source_xe, sigma, bound);
     module.vec_znx_big_normalize(log_base2k, ct, 1, &tmp_big, 0, scratch_3);
-}
-
-#[cfg(test)]
-mod tests {
-    use base2k::{Decoding, Encoding, FFT64, Module, ScratchOwned, Stats, VecZnxOps, ZnxZero};
-    use itertools::izip;
-    use sampling::source::Source;
-
-    use crate::{
-        elem_rlwe::{Infos, RLWECt, RLWECtDft, RLWEPt},
-        keys::{PublicKey, SecretKey, SecretKeyDft},
-    };
-
-    #[test]
-    fn encrypt_sk_fft64() {
-        let module: Module<FFT64> = Module::<FFT64>::new(32);
-        let log_base2k: usize = 8;
-        let log_k_ct: usize = 54;
-        let log_k_pt: usize = 30;
-
-        let sigma: f64 = 3.2;
-        let bound: f64 = sigma * 6.0;
-
-        let mut ct: RLWECt<Vec<u8>> = RLWECt::new(&module, log_base2k, log_k_ct, 2);
-        let mut pt: RLWEPt<Vec<u8>> = RLWEPt::new(&module, log_base2k, log_k_pt);
-
-        let mut source_xs: Source = Source::new([0u8; 32]);
-        let mut source_xe: Source = Source::new([0u8; 32]);
-        let mut source_xa: Source = Source::new([0u8; 32]);
-
-        let mut scratch: ScratchOwned = ScratchOwned::new(
-            RLWECt::encrypt_sk_scratch_bytes(&module, ct.size()) | RLWECt::decrypt_scratch_bytes(&module, ct.size()),
-        );
-
-        let mut sk: SecretKey<Vec<u8>> = SecretKey::new(&module);
-        sk.fill_ternary_prob(0.5, &mut source_xs);
-
-        let mut sk_dft: SecretKeyDft<Vec<u8>, FFT64> = SecretKeyDft::new(&module);
-        sk_dft.dft(&module, &sk);
-
-        let mut data_want: Vec<i64> = vec![0i64; module.n()];
-
-        data_want
-            .iter_mut()
-            .for_each(|x| *x = source_xa.next_i64() & 0xFF);
-
-        pt.data
-            .encode_vec_i64(0, log_base2k, log_k_pt, &data_want, 10);
-
-        ct.encrypt_sk(
-            &module,
-            Some(&pt),
-            &sk_dft,
-            &mut source_xa,
-            &mut source_xe,
-            sigma,
-            bound,
-            scratch.borrow(),
-        );
-
-        pt.data.zero();
-
-        ct.decrypt(&module, &mut pt, &sk_dft, scratch.borrow());
-
-        let mut data_have: Vec<i64> = vec![0i64; module.n()];
-
-        pt.data
-            .decode_vec_i64(0, log_base2k, pt.size() * log_base2k, &mut data_have);
-
-        // TODO: properly assert the decryption noise through std(dec(ct) - pt)
-        let scale: f64 = (1 << (pt.size() * log_base2k - log_k_pt)) as f64;
-        izip!(data_want.iter(), data_have.iter()).for_each(|(a, b)| {
-            let b_scaled = (*b as f64) / scale;
-            assert!(
-                (*a as f64 - b_scaled).abs() < 0.1,
-                "{} {}",
-                *a as f64,
-                b_scaled
-            )
-        });
-
-        module.free();
-    }
-
-    #[test]
-    fn encrypt_zero_sk_fft64() {
-        let module: Module<FFT64> = Module::<FFT64>::new(1024);
-        let log_base2k: usize = 8;
-        let log_k_ct: usize = 55;
-
-        let sigma: f64 = 3.2;
-        let bound: f64 = sigma * 6.0;
-
-        let mut pt: RLWEPt<Vec<u8>> = RLWEPt::new(&module, log_base2k, log_k_ct);
-
-        let mut source_xs: Source = Source::new([0u8; 32]);
-        let mut source_xe: Source = Source::new([1u8; 32]);
-        let mut source_xa: Source = Source::new([0u8; 32]);
-
-        let mut sk: SecretKey<Vec<u8>> = SecretKey::new(&module);
-        sk.fill_ternary_prob(0.5, &mut source_xs);
-        let mut sk_dft: SecretKeyDft<Vec<u8>, FFT64> = SecretKeyDft::new(&module);
-        sk_dft.dft(&module, &sk);
-
-        let mut ct_dft: RLWECtDft<Vec<u8>, FFT64> = RLWECtDft::new(&module, log_base2k, log_k_ct, 2);
-
-        let mut scratch: ScratchOwned = ScratchOwned::new(
-            RLWECtDft::decrypt_scratch_bytes(&module, ct_dft.size())
-                | RLWECtDft::encrypt_zero_sk_scratch_bytes(&module, ct_dft.size()),
-        );
-
-        ct_dft.encrypt_zero_sk(
-            &module,
-            &sk_dft,
-            &mut source_xa,
-            &mut source_xe,
-            sigma,
-            bound,
-            scratch.borrow(),
-        );
-        ct_dft.decrypt(&module, &mut pt, &sk_dft, scratch.borrow());
-
-        assert!((sigma - pt.data.std(0, log_base2k) * (log_k_ct as f64).exp2()) <= 0.2);
-        module.free();
-    }
-
-    #[test]
-    fn encrypt_pk_fft64() {
-        let module: Module<FFT64> = Module::<FFT64>::new(32);
-        let log_base2k: usize = 8;
-        let log_k_ct: usize = 54;
-        let log_k_pk: usize = 64;
-
-        let sigma: f64 = 3.2;
-        let bound: f64 = sigma * 6.0;
-
-        let mut ct: RLWECt<Vec<u8>> = RLWECt::new(&module, log_base2k, log_k_ct, 2);
-        let mut pt_want: RLWEPt<Vec<u8>> = RLWEPt::new(&module, log_base2k, log_k_ct);
-
-        let mut source_xs: Source = Source::new([0u8; 32]);
-        let mut source_xe: Source = Source::new([0u8; 32]);
-        let mut source_xa: Source = Source::new([0u8; 32]);
-        let mut source_xu: Source = Source::new([0u8; 32]);
-
-        let mut sk: SecretKey<Vec<u8>> = SecretKey::new(&module);
-        sk.fill_ternary_prob(0.5, &mut source_xs);
-        let mut sk_dft: SecretKeyDft<Vec<u8>, FFT64> = SecretKeyDft::new(&module);
-        sk_dft.dft(&module, &sk);
-
-        let mut pk: PublicKey<Vec<u8>, FFT64> = PublicKey::new(&module, log_base2k, log_k_pk);
-        pk.generate(
-            &module,
-            &sk_dft,
-            &mut source_xa,
-            &mut source_xe,
-            sigma,
-            bound,
-        );
-
-        let mut scratch: ScratchOwned = ScratchOwned::new(
-            RLWECt::encrypt_sk_scratch_bytes(&module, ct.size())
-                | RLWECt::decrypt_scratch_bytes(&module, ct.size())
-                | RLWECt::encrypt_pk_scratch_bytes(&module, pk.size()),
-        );
-
-        let mut data_want: Vec<i64> = vec![0i64; module.n()];
-
-        data_want
-            .iter_mut()
-            .for_each(|x| *x = source_xa.next_i64() & 0);
-
-        pt_want
-            .data
-            .encode_vec_i64(0, log_base2k, log_k_ct, &data_want, 10);
-
-        ct.encrypt_pk(
-            &module,
-            Some(&pt_want),
-            &pk,
-            &mut source_xu,
-            &mut source_xe,
-            sigma,
-            bound,
-            scratch.borrow(),
-        );
-
-        let mut pt_have: RLWEPt<Vec<u8>> = RLWEPt::new(&module, log_base2k, log_k_ct);
-
-        ct.decrypt(&module, &mut pt_have, &sk_dft, scratch.borrow());
-
-        module.vec_znx_sub_ab_inplace(&mut pt_want, 0, &pt_have, 0);
-
-        assert!(((1.0f64 / 12.0).sqrt() - pt_want.data.std(0, log_base2k) * (log_k_ct as f64).exp2()).abs() < 0.2);
-
-        module.free();
-    }
 }

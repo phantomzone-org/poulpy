@@ -47,7 +47,9 @@ pub trait VecZnxDftOps<B: Backend> {
     where
         R: VecZnxBigToMut<B>,
         A: VecZnxDftToMut<B>;
-    fn vec_znx_idft_consume<D>(&self, a: VecZnxDft<D, B>, a_cols: usize) -> VecZnxBig<D, FFT64>
+
+    /// Consumes a to return IDFT(a) in big coeff space.
+    fn vec_znx_idft_consume<D>(&self, a: VecZnxDft<D, B>) -> VecZnxBig<D, FFT64>
     where
         VecZnxDft<D, FFT64>: VecZnxDftToMut<FFT64>;
 
@@ -103,25 +105,28 @@ impl VecZnxDftOps<FFT64> for Module<FFT64> {
         }
     }
 
-    fn vec_znx_idft_consume<D>(&self, mut a: VecZnxDft<D, FFT64>, a_col: usize) -> VecZnxBig<D, FFT64>
+    fn vec_znx_idft_consume<D>(&self, mut a: VecZnxDft<D, FFT64>) -> VecZnxBig<D, FFT64>
     where
         VecZnxDft<D, FFT64>: VecZnxDftToMut<FFT64>,
     {
         let mut a_mut: VecZnxDft<&mut [u8], FFT64> = a.to_mut();
 
         unsafe {
+            // Rev col and rows because ZnxDft.sl() >= ZnxBig.sl()
             (0..a_mut.size()).for_each(|j| {
-                vec_znx_dft::vec_znx_idft_tmp_a(
-                    self.ptr,
-                    a_mut.at_mut_ptr(a_col, j) as *mut vec_znx_big::vec_znx_big_t,
-                    1 as u64,
-                    a_mut.at_mut_ptr(a_col, j) as *mut vec_znx_dft::vec_znx_dft_t,
-                    1 as u64,
-                )
+                (0..a_mut.cols()).for_each(|i| {
+                    vec_znx_dft::vec_znx_idft_tmp_a(
+                        self.ptr,
+                        a_mut.at_mut_ptr(i, j) as *mut vec_znx_big::vec_znx_big_t,
+                        1 as u64,
+                        a_mut.at_mut_ptr(i, j) as *mut vec_znx_dft::vec_znx_dft_t,
+                        1 as u64,
+                    )
+                });
             });
-
-            a.into_big()
         }
+
+        a.into_big()
     }
 
     fn vec_znx_idft_tmp_bytes(&self) -> usize {
