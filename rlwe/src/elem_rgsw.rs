@@ -81,6 +81,33 @@ impl RGSWCt<Vec<u8>, FFT64> {
     pub fn mul_rlwe_inplace_scratch_space(module: &Module<FFT64>, res_size: usize, rgsw_size: usize) -> usize {
         Self::mul_rlwe_scratch_space(module, res_size, res_size, rgsw_size)
     }
+
+    pub fn mul_rlwe_dft_scratch_space(module: &Module<FFT64>, res_size: usize, a_size: usize, grlwe_size: usize) -> usize {
+        (Self::mul_rlwe_scratch_space(module, res_size, a_size, grlwe_size) | module.vec_znx_idft_tmp_bytes())
+            + module.bytes_of_vec_znx(2, a_size)
+            + module.bytes_of_vec_znx(2, res_size)
+    }
+
+    pub fn mul_rlwe_dft_inplace_scratch_space(module: &Module<FFT64>, res_size: usize, grlwe_size: usize) -> usize {
+        (Self::mul_rlwe_inplace_scratch_space(module, res_size, grlwe_size) | module.vec_znx_idft_tmp_bytes())
+            + module.bytes_of_vec_znx(2, res_size)
+    }
+
+    pub fn mul_grlwe_scratch_space(module: &Module<FFT64>, res_size: usize, a_size: usize, grlwe_size: usize) -> usize {
+        Self::mul_rlwe_dft_inplace_scratch_space(module, res_size, grlwe_size) + module.bytes_of_vec_znx_dft(2, a_size)
+    }
+
+    pub fn mul_grlwe_inplace_scratch_space(module: &Module<FFT64>, res_size: usize, a_size: usize, grlwe_size: usize) -> usize {
+        Self::mul_rlwe_dft_inplace_scratch_space(module, res_size, grlwe_size) + module.bytes_of_vec_znx_dft(2, a_size)
+    }
+
+    pub fn mul_rgsw_scratch_space(module: &Module<FFT64>, res_size: usize, a_size: usize, grlwe_size: usize) -> usize {
+        Self::mul_rlwe_dft_inplace_scratch_space(module, res_size, grlwe_size) + module.bytes_of_vec_znx_dft(2, a_size)
+    }
+
+    pub fn mul_rgsw_inplace_scratch_space(module: &Module<FFT64>, res_size: usize, a_size: usize, grlwe_size: usize) -> usize {
+        Self::mul_rlwe_dft_inplace_scratch_space(module, res_size, grlwe_size) + module.bytes_of_vec_znx_dft(2, a_size)
+    }
 }
 
 impl<C> RGSWCt<C, FFT64>
