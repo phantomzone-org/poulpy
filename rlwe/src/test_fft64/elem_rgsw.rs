@@ -7,7 +7,7 @@ mod tests {
     use sampling::source::Source;
 
     use crate::{
-        elem::Infos,
+        elem::{GetRow, Infos},
         elem_rgsw::RGSWCt,
         elem_rlwe::{RLWECt, RLWECtDft, RLWEPt},
         keys::{SecretKey, SecretKeyDft},
@@ -117,9 +117,9 @@ mod tests {
 
         pt_want.to_mut().at_mut(0, 0)[1] = 1;
 
-        let r: usize = 1;
+        let k: usize = 1;
 
-        pt_rgsw.raw_mut()[r] = 1; // X^{r}
+        pt_rgsw.raw_mut()[k] = 1; // X^{k}
 
         let mut scratch: ScratchOwned = ScratchOwned::new(
             RGSWCt::encrypt_sk_scratch_space(&module, ct_rgsw.size())
@@ -165,7 +165,7 @@ mod tests {
 
         ct_rlwe_out.decrypt(&module, &mut pt_have, &sk_dft, scratch.borrow());
 
-        module.vec_znx_rotate_inplace(r as i64, &mut pt_want, 0);
+        module.vec_znx_rotate_inplace(k as i64, &mut pt_want, 0);
 
         module.vec_znx_sub_ab_inplace(&mut pt_have, 0, &pt_want, 0);
 
