@@ -194,7 +194,7 @@ where
 
     pub(crate) fn idft<R>(&self, module: &Module<FFT64>, res: &mut RLWECt<R>, scratch: &mut Scratch)
     where
-        VecZnx<R>: VecZnxToMut + ZnxInfos,
+        VecZnx<R>: VecZnxToMut,
     {
         #[cfg(debug_assertions)]
         {

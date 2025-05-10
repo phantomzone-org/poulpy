@@ -1,7 +1,8 @@
 #[cfg(test)]
 mod tests {
     use base2k::{
-        FillUniform, Module, ScalarZnx, ScalarZnxAlloc, ScalarZnxDftOps, ScratchOwned, Stats, VecZnxBig, VecZnxBigAlloc, VecZnxBigOps, VecZnxDft, VecZnxDftAlloc, VecZnxDftOps, VecZnxOps, VecZnxToMut, VecZnxToRef, ZnxView, ZnxViewMut, ZnxZero, FFT64
+        FFT64, Module, ScalarZnx, ScalarZnxAlloc, ScalarZnxDftOps, ScratchOwned, Stats, VecZnxBig, VecZnxBigAlloc, VecZnxBigOps,
+        VecZnxDft, VecZnxDftAlloc, VecZnxDftOps, VecZnxOps, VecZnxToMut, ZnxViewMut, ZnxZero,
     };
     use sampling::source::Source;
 
@@ -9,7 +10,8 @@ mod tests {
         elem::Infos,
         elem_rgsw::RGSWCt,
         elem_rlwe::{RLWECt, RLWECtDft, RLWEPt},
-        keys::{SecretKey, SecretKeyDft}, test_fft64::elem_rgsw::noise_rgsw_rlwe_product,
+        keys::{SecretKey, SecretKeyDft},
+        test_fft64::elem_rgsw::noise_rgsw_rlwe_product,
     };
 
     #[test]
@@ -87,7 +89,7 @@ mod tests {
 
     #[test]
     fn mul_rlwe() {
-        let module: Module<FFT64> = Module::<FFT64>::new(32);
+        let module: Module<FFT64> = Module::<FFT64>::new(2048);
         let log_base2k: usize = 12;
         let log_k_grlwe: usize = 60;
         let log_k_rlwe_in: usize = 45;
@@ -109,13 +111,15 @@ mod tests {
         let mut source_xa: Source = Source::new([0u8; 32]);
 
         // Random input plaintext
-        //pt_want
+        // pt_want
         //    .data
         //    .fill_uniform(log_base2k, 0, pt_want.size(), &mut source_xa);
 
-        pt_want.to_mut().at_mut(0, 0)[0] = 1;
+        pt_want.to_mut().at_mut(0, 0)[1] = 1;
 
-        pt_rgsw.raw_mut()[1] = 1; // X^{1}
+        let r: usize = 1;
+
+        pt_rgsw.raw_mut()[r] = 1; // X^{r}
 
         let mut scratch: ScratchOwned = ScratchOwned::new(
             RGSWCt::encrypt_sk_scratch_space(&module, ct_rgsw.size())
@@ -161,22 +165,28 @@ mod tests {
 
         ct_rlwe_out.decrypt(&module, &mut pt_have, &sk_dft, scratch.borrow());
 
+        module.vec_znx_rotate_inplace(r as i64, &mut pt_want, 0);
+
         module.vec_znx_sub_ab_inplace(&mut pt_have, 0, &pt_want, 0);
 
-
-        println!("{}", pt_want.data);
-        println!("{}", pt_have.data);
-
         let noise_have: f64 = pt_have.data.std(0, log_base2k).log2();
+
+        let var_gct_err_lhs: f64 = sigma * sigma;
+        let var_gct_err_rhs: f64 = 0f64;
+
+        let var_msg: f64 = 1f64 / module.n() as f64; // X^{k}
+        let var_a0_err: f64 = sigma * sigma;
+        let var_a1_err: f64 = 1f64 / 12f64;
+
         let noise_want: f64 = noise_rgsw_rlwe_product(
             module.n() as f64,
             log_base2k,
             0.5,
-            0.5,
-            0f64,
-            0f64,
-            sigma * sigma,
-            0f64,
+            var_msg,
+            var_a0_err,
+            var_a1_err,
+            var_gct_err_lhs,
+            var_gct_err_rhs,
             log_k_rlwe_in,
             log_k_grlwe,
         );
