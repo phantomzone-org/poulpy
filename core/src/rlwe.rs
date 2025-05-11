@@ -6,9 +6,10 @@ use base2k::{
 use sampling::source::Source;
 
 use crate::{
-    elem::Infos,
+    elem::{FromProdBy, FromProdByScratchSpace, Infos, MatZnxDftProducts, ProdBy, ProdByScratchSpace},
     grlwe::GRLWECt,
     keys::{PublicKey, SecretDistribution, SecretKeyDft},
+    rgsw::RGSWCt,
     utils::derive_size,
 };
 
@@ -83,134 +84,70 @@ where
     }
 }
 
-pub struct RLWEPt<C> {
-    pub data: VecZnx<C>,
-    pub log_base2k: usize,
-    pub log_k: usize,
-}
-
-impl<T> Infos for RLWEPt<T> {
-    type Inner = VecZnx<T>;
-
-    fn inner(&self) -> &Self::Inner {
-        &self.data
+impl ProdByScratchSpace for RLWECt<Vec<u8>> {
+    fn prod_by_grlwe_scratch_space(module: &Module<FFT64>, lhs: usize, rhs: usize) -> usize {
+        <GRLWECt<Vec<u8>, FFT64> as MatZnxDftProducts<GRLWECt<Vec<u8>, FFT64>, Vec<u8>>>::mul_rlwe_inplace_scratch_space(
+            module, lhs, rhs,
+        )
     }
 
-    fn log_base2k(&self) -> usize {
-        self.log_base2k
-    }
-
-    fn log_k(&self) -> usize {
-        self.log_k
+    fn prod_by_rgsw_scratch_space(module: &Module<FFT64>, lhs: usize, rhs: usize) -> usize {
+        <RGSWCt<Vec<u8>, FFT64> as MatZnxDftProducts<RGSWCt<Vec<u8>, FFT64>, Vec<u8>>>::mul_rlwe_inplace_scratch_space(
+            module, lhs, rhs,
+        )
     }
 }
 
-impl<C> VecZnxToMut for RLWEPt<C>
+impl FromProdByScratchSpace for RLWECt<Vec<u8>> {
+    fn from_prod_by_grlwe_scratch_space(module: &Module<FFT64>, res_size: usize, lhs: usize, rhs: usize) -> usize {
+        <GRLWECt<Vec<u8>, FFT64> as MatZnxDftProducts<GRLWECt<Vec<u8>, FFT64>, Vec<u8>>>::mul_rlwe_scratch_space(
+            module, res_size, lhs, rhs,
+        )
+    }
+
+    fn from_prod_by_rgsw_scratch_space(module: &Module<FFT64>, res_size: usize, lhs: usize, rhs: usize) -> usize {
+        <RGSWCt<Vec<u8>, FFT64> as MatZnxDftProducts<RGSWCt<Vec<u8>, FFT64>, Vec<u8>>>::mul_rlwe_scratch_space(
+            module, res_size, lhs, rhs,
+        )
+    }
+}
+
+impl<MUT> ProdBy<RLWECt<MUT>> for RLWECt<MUT>
 where
-    VecZnx<C>: VecZnxToMut,
+    VecZnx<MUT>: VecZnxToMut + VecZnxToRef,
 {
-    fn to_mut(&mut self) -> VecZnx<&mut [u8]> {
-        self.data.to_mut()
-    }
-}
-
-impl<C> VecZnxToRef for RLWEPt<C>
-where
-    VecZnx<C>: VecZnxToRef,
-{
-    fn to_ref(&self) -> VecZnx<&[u8]> {
-        self.data.to_ref()
-    }
-}
-
-impl RLWEPt<Vec<u8>> {
-    pub fn new<B: Backend>(module: &Module<B>, log_base2k: usize, log_k: usize) -> Self {
-        Self {
-            data: module.new_vec_znx(1, derive_size(log_base2k, log_k)),
-            log_base2k: log_base2k,
-            log_k: log_k,
-        }
-    }
-}
-
-pub struct RLWECtDft<C, B: Backend> {
-    pub data: VecZnxDft<C, B>,
-    pub log_base2k: usize,
-    pub log_k: usize,
-}
-
-impl<B: Backend> RLWECtDft<Vec<u8>, B> {
-    pub fn new(module: &Module<B>, log_base2k: usize, log_k: usize) -> Self {
-        Self {
-            data: module.new_vec_znx_dft(2, derive_size(log_base2k, log_k)),
-            log_base2k: log_base2k,
-            log_k: log_k,
-        }
-    }
-}
-
-impl<T, B: Backend> Infos for RLWECtDft<T, B> {
-    type Inner = VecZnxDft<T, B>;
-
-    fn inner(&self) -> &Self::Inner {
-        &self.data
-    }
-
-    fn log_base2k(&self) -> usize {
-        self.log_base2k
-    }
-
-    fn log_k(&self) -> usize {
-        self.log_k
-    }
-}
-
-impl<C, B: Backend> VecZnxDftToMut<B> for RLWECtDft<C, B>
-where
-    VecZnxDft<C, B>: VecZnxDftToMut<B>,
-{
-    fn to_mut(&mut self) -> VecZnxDft<&mut [u8], B> {
-        self.data.to_mut()
-    }
-}
-
-impl<C, B: Backend> VecZnxDftToRef<B> for RLWECtDft<C, B>
-where
-    VecZnxDft<C, B>: VecZnxDftToRef<B>,
-{
-    fn to_ref(&self) -> VecZnxDft<&[u8], B> {
-        self.data.to_ref()
-    }
-}
-
-impl<C> RLWECtDft<C, FFT64>
-where
-    VecZnxDft<C, FFT64>: VecZnxDftToRef<FFT64>,
-{
-    #[allow(dead_code)]
-    pub(crate) fn idft_scratch_space(module: &Module<FFT64>, size: usize) -> usize {
-        module.bytes_of_vec_znx(2, size) + (module.vec_znx_big_normalize_tmp_bytes() | module.vec_znx_idft_tmp_bytes())
-    }
-
-    pub(crate) fn idft<R>(&self, module: &Module<FFT64>, res: &mut RLWECt<R>, scratch: &mut Scratch)
+    fn prod_by_grlwe<R>(&mut self, module: &Module<FFT64>, rhs: &GRLWECt<R, FFT64>, scratch: &mut Scratch)
     where
-        VecZnx<R>: VecZnxToMut,
+        MatZnxDft<R, FFT64>: MatZnxDftToRef<FFT64>,
     {
-        #[cfg(debug_assertions)]
-        {
-            assert_eq!(self.cols(), 2);
-            assert_eq!(res.cols(), 2);
-            assert_eq!(self.log_base2k(), res.log_base2k())
-        }
+        rhs.mul_rlwe_inplace(module, self, scratch);
+    }
 
-        let min_size: usize = self.size().min(res.size());
+    fn prod_by_rgsw<R>(&mut self, module: &Module<FFT64>, rhs: &RGSWCt<R, FFT64>, scratch: &mut Scratch)
+    where
+        MatZnxDft<R, FFT64>: MatZnxDftToRef<FFT64>,
+    {
+        rhs.mul_rlwe_inplace(module, self, scratch);
+    }
+}
 
-        let (mut res_big, scratch1) = scratch.tmp_vec_znx_big(module, 2, min_size);
+impl<MUT, REF> FromProdBy<RLWECt<MUT>, RLWECt<REF>> for RLWECt<MUT>
+where
+    VecZnx<MUT>: VecZnxToMut + VecZnxToRef,
+    VecZnx<REF>: VecZnxToRef,
+{
+    fn from_prod_by_grlwe<R>(&mut self, module: &Module<FFT64>, lhs: &RLWECt<REF>, rhs: &GRLWECt<R, FFT64>, scratch: &mut Scratch)
+    where
+        MatZnxDft<R, FFT64>: MatZnxDftToRef<FFT64>,
+    {
+        rhs.mul_rlwe(module, self, lhs, scratch);
+    }
 
-        module.vec_znx_idft(&mut res_big, 0, &self.data, 0, scratch1);
-        module.vec_znx_idft(&mut res_big, 1, &self.data, 1, scratch1);
-        module.vec_znx_big_normalize(self.log_base2k(), res, 0, &res_big, 0, scratch1);
-        module.vec_znx_big_normalize(self.log_base2k(), res, 1, &res_big, 1, scratch1);
+    fn from_prod_by_rgsw<R>(&mut self, module: &Module<FFT64>, lhs: &RLWECt<REF>, rhs: &RGSWCt<R, FFT64>, scratch: &mut Scratch)
+    where
+        MatZnxDft<R, FFT64>: MatZnxDftToRef<FFT64>,
+    {
+        rhs.mul_rlwe(module, self, lhs, scratch);
     }
 }
 
@@ -390,6 +327,204 @@ impl<C> RLWECt<C> {
     }
 }
 
+pub(crate) fn encrypt_rlwe_pk<C, P, S>(
+    module: &Module<FFT64>,
+    ct: &mut RLWECt<C>,
+    pt: Option<&RLWEPt<P>>,
+    pk: &PublicKey<S, FFT64>,
+    source_xu: &mut Source,
+    source_xe: &mut Source,
+    sigma: f64,
+    bound: f64,
+    scratch: &mut Scratch,
+) where
+    VecZnx<C>: VecZnxToMut + VecZnxToRef,
+    VecZnx<P>: VecZnxToRef,
+    VecZnxDft<S, FFT64>: VecZnxDftToRef<FFT64>,
+{
+    #[cfg(debug_assertions)]
+    {
+        assert_eq!(ct.log_base2k(), pk.log_base2k());
+        assert_eq!(ct.n(), module.n());
+        assert_eq!(pk.n(), module.n());
+        if let Some(pt) = pt {
+            assert_eq!(pt.log_base2k(), pk.log_base2k());
+            assert_eq!(pt.n(), module.n());
+        }
+    }
+
+    let log_base2k: usize = pk.log_base2k();
+    let size_pk: usize = pk.size();
+
+    // Generates u according to the underlying secret distribution.
+    let (mut u_dft, scratch_1) = scratch.tmp_scalar_znx_dft(module, 1);
+
+    {
+        let (mut u, _) = scratch_1.tmp_scalar_znx(module, 1);
+        match pk.dist {
+            SecretDistribution::NONE => panic!(
+                "invalid public key: SecretDistribution::NONE, ensure it has been correctly intialized through Self::generate"
+            ),
+            SecretDistribution::TernaryFixed(hw) => u.fill_ternary_hw(0, hw, source_xu),
+            SecretDistribution::TernaryProb(prob) => u.fill_ternary_prob(0, prob, source_xu),
+            SecretDistribution::ZERO => {}
+        }
+
+        module.svp_prepare(&mut u_dft, 0, &u, 0);
+    }
+
+    let (mut tmp_big, scratch_2) = scratch_1.tmp_vec_znx_big(module, 1, size_pk); // TODO optimize size (e.g. when encrypting at low homomorphic capacity)
+    let (mut tmp_dft, scratch_3) = scratch_2.tmp_vec_znx_dft(module, 1, size_pk); // TODO optimize size (e.g. when encrypting at low homomorphic capacity)
+
+    // ct[0] = pk[0] * u + m + e0
+    module.svp_apply(&mut tmp_dft, 0, &u_dft, 0, pk, 0);
+    module.vec_znx_idft_tmp_a(&mut tmp_big, 0, &mut tmp_dft, 0);
+    tmp_big.add_normal(log_base2k, 0, pk.log_k(), source_xe, sigma, bound);
+
+    if let Some(pt) = pt {
+        module.vec_znx_big_add_small_inplace(&mut tmp_big, 0, pt, 0);
+    }
+
+    module.vec_znx_big_normalize(log_base2k, ct, 0, &tmp_big, 0, scratch_3);
+
+    // ct[1] = pk[1] * u + e1
+    module.svp_apply(&mut tmp_dft, 0, &u_dft, 0, pk, 1);
+    module.vec_znx_idft_tmp_a(&mut tmp_big, 0, &mut tmp_dft, 0);
+    tmp_big.add_normal(log_base2k, 0, pk.log_k(), source_xe, sigma, bound);
+    module.vec_znx_big_normalize(log_base2k, ct, 1, &tmp_big, 0, scratch_3);
+}
+
+pub struct RLWEPt<C> {
+    pub data: VecZnx<C>,
+    pub log_base2k: usize,
+    pub log_k: usize,
+}
+
+impl<T> Infos for RLWEPt<T> {
+    type Inner = VecZnx<T>;
+
+    fn inner(&self) -> &Self::Inner {
+        &self.data
+    }
+
+    fn log_base2k(&self) -> usize {
+        self.log_base2k
+    }
+
+    fn log_k(&self) -> usize {
+        self.log_k
+    }
+}
+
+impl<C> VecZnxToMut for RLWEPt<C>
+where
+    VecZnx<C>: VecZnxToMut,
+{
+    fn to_mut(&mut self) -> VecZnx<&mut [u8]> {
+        self.data.to_mut()
+    }
+}
+
+impl<C> VecZnxToRef for RLWEPt<C>
+where
+    VecZnx<C>: VecZnxToRef,
+{
+    fn to_ref(&self) -> VecZnx<&[u8]> {
+        self.data.to_ref()
+    }
+}
+
+impl RLWEPt<Vec<u8>> {
+    pub fn new<B: Backend>(module: &Module<B>, log_base2k: usize, log_k: usize) -> Self {
+        Self {
+            data: module.new_vec_znx(1, derive_size(log_base2k, log_k)),
+            log_base2k: log_base2k,
+            log_k: log_k,
+        }
+    }
+}
+
+pub struct RLWECtDft<C, B: Backend> {
+    pub data: VecZnxDft<C, B>,
+    pub log_base2k: usize,
+    pub log_k: usize,
+}
+
+impl<B: Backend> RLWECtDft<Vec<u8>, B> {
+    pub fn new(module: &Module<B>, log_base2k: usize, log_k: usize) -> Self {
+        Self {
+            data: module.new_vec_znx_dft(2, derive_size(log_base2k, log_k)),
+            log_base2k: log_base2k,
+            log_k: log_k,
+        }
+    }
+}
+
+impl<T, B: Backend> Infos for RLWECtDft<T, B> {
+    type Inner = VecZnxDft<T, B>;
+
+    fn inner(&self) -> &Self::Inner {
+        &self.data
+    }
+
+    fn log_base2k(&self) -> usize {
+        self.log_base2k
+    }
+
+    fn log_k(&self) -> usize {
+        self.log_k
+    }
+}
+
+impl<C, B: Backend> VecZnxDftToMut<B> for RLWECtDft<C, B>
+where
+    VecZnxDft<C, B>: VecZnxDftToMut<B>,
+{
+    fn to_mut(&mut self) -> VecZnxDft<&mut [u8], B> {
+        self.data.to_mut()
+    }
+}
+
+impl<C, B: Backend> VecZnxDftToRef<B> for RLWECtDft<C, B>
+where
+    VecZnxDft<C, B>: VecZnxDftToRef<B>,
+{
+    fn to_ref(&self) -> VecZnxDft<&[u8], B> {
+        self.data.to_ref()
+    }
+}
+
+impl<C> RLWECtDft<C, FFT64>
+where
+    VecZnxDft<C, FFT64>: VecZnxDftToRef<FFT64>,
+{
+    #[allow(dead_code)]
+    pub(crate) fn idft_scratch_space(module: &Module<FFT64>, size: usize) -> usize {
+        module.bytes_of_vec_znx(2, size) + (module.vec_znx_big_normalize_tmp_bytes() | module.vec_znx_idft_tmp_bytes())
+    }
+
+    pub(crate) fn idft<R>(&self, module: &Module<FFT64>, res: &mut RLWECt<R>, scratch: &mut Scratch)
+    where
+        VecZnx<R>: VecZnxToMut,
+    {
+        #[cfg(debug_assertions)]
+        {
+            assert_eq!(self.cols(), 2);
+            assert_eq!(res.cols(), 2);
+            assert_eq!(self.log_base2k(), res.log_base2k())
+        }
+
+        let min_size: usize = self.size().min(res.size());
+
+        let (mut res_big, scratch1) = scratch.tmp_vec_znx_big(module, 2, min_size);
+
+        module.vec_znx_idft(&mut res_big, 0, &self.data, 0, scratch1);
+        module.vec_znx_idft(&mut res_big, 1, &self.data, 1, scratch1);
+        module.vec_znx_big_normalize(self.log_base2k(), res, 0, &res_big, 0, scratch1);
+        module.vec_znx_big_normalize(self.log_base2k(), res, 1, &res_big, 1, scratch1);
+    }
+}
+
 pub(crate) fn encrypt_zero_rlwe_dft_sk<C, S>(
     module: &Module<FFT64>,
     ct: &mut RLWECtDft<C, FFT64>,
@@ -528,79 +663,81 @@ impl<C> RLWECtDft<C, FFT64> {
     {
         decrypt_rlwe_dft(module, pt, self, sk_dft, scratch);
     }
+}
 
-    pub fn mul_grlwe_assign<A>(&mut self, module: &Module<FFT64>, a: &GRLWECt<A, FFT64>, scratch: &mut Scratch)
-    where
-        VecZnxDft<C, FFT64>: VecZnxDftToMut<FFT64> + VecZnxDftToRef<FFT64>,
-        MatZnxDft<A, FFT64>: MatZnxDftToRef<FFT64>,
-    {
-        a.mul_rlwe_dft_inplace(module, self, scratch);
+impl ProdByScratchSpace for RLWECtDft<Vec<u8>, FFT64> {
+    fn prod_by_grlwe_scratch_space(module: &Module<FFT64>, lhs: usize, rhs: usize) -> usize {
+        <GRLWECt<Vec<u8>, FFT64> as MatZnxDftProducts<GRLWECt<Vec<u8>, FFT64>, Vec<u8>>>::mul_rlwe_dft_inplace_scratch_space(
+            module, lhs, rhs,
+        )
+    }
+
+    fn prod_by_rgsw_scratch_space(module: &Module<FFT64>, lhs: usize, rhs: usize) -> usize {
+        <RGSWCt<Vec<u8>, FFT64> as MatZnxDftProducts<RGSWCt<Vec<u8>, FFT64>, Vec<u8>>>::mul_rlwe_dft_inplace_scratch_space(
+            module, lhs, rhs,
+        )
     }
 }
 
-pub(crate) fn encrypt_rlwe_pk<C, P, S>(
-    module: &Module<FFT64>,
-    ct: &mut RLWECt<C>,
-    pt: Option<&RLWEPt<P>>,
-    pk: &PublicKey<S, FFT64>,
-    source_xu: &mut Source,
-    source_xe: &mut Source,
-    sigma: f64,
-    bound: f64,
-    scratch: &mut Scratch,
-) where
-    VecZnx<C>: VecZnxToMut + VecZnxToRef,
-    VecZnx<P>: VecZnxToRef,
-    VecZnxDft<S, FFT64>: VecZnxDftToRef<FFT64>,
+impl FromProdByScratchSpace for RLWECtDft<Vec<u8>, FFT64> {
+    fn from_prod_by_grlwe_scratch_space(module: &Module<FFT64>, res_size: usize, lhs: usize, rhs: usize) -> usize {
+        <GRLWECt<Vec<u8>, FFT64> as MatZnxDftProducts<GRLWECt<Vec<u8>, FFT64>, Vec<u8>>>::mul_rlwe_dft_scratch_space(
+            module, res_size, lhs, rhs,
+        )
+    }
+
+    fn from_prod_by_rgsw_scratch_space(module: &Module<FFT64>, res_size: usize, lhs: usize, rhs: usize) -> usize {
+        <RGSWCt<Vec<u8>, FFT64> as MatZnxDftProducts<RGSWCt<Vec<u8>, FFT64>, Vec<u8>>>::mul_rlwe_dft_scratch_space(
+            module, res_size, lhs, rhs,
+        )
+    }
+}
+
+impl<MUT> ProdBy<RLWECtDft<MUT, FFT64>> for RLWECtDft<MUT, FFT64>
+where
+    VecZnxDft<MUT, FFT64>: VecZnxDftToMut<FFT64> + VecZnxDftToRef<FFT64>,
 {
-    #[cfg(debug_assertions)]
+    fn prod_by_grlwe<R>(&mut self, module: &Module<FFT64>, rhs: &GRLWECt<R, FFT64>, scratch: &mut Scratch)
+    where
+        MatZnxDft<R, FFT64>: MatZnxDftToRef<FFT64>,
     {
-        assert_eq!(ct.log_base2k(), pk.log_base2k());
-        assert_eq!(ct.n(), module.n());
-        assert_eq!(pk.n(), module.n());
-        if let Some(pt) = pt {
-            assert_eq!(pt.log_base2k(), pk.log_base2k());
-            assert_eq!(pt.n(), module.n());
-        }
+        rhs.mul_rlwe_dft_inplace(module, self, scratch);
     }
 
-    let log_base2k: usize = pk.log_base2k();
-    let size_pk: usize = pk.size();
-
-    // Generates u according to the underlying secret distribution.
-    let (mut u_dft, scratch_1) = scratch.tmp_scalar_znx_dft(module, 1);
-
+    fn prod_by_rgsw<R>(&mut self, module: &Module<FFT64>, rhs: &RGSWCt<R, FFT64>, scratch: &mut Scratch)
+    where
+        MatZnxDft<R, FFT64>: MatZnxDftToRef<FFT64>,
     {
-        let (mut u, _) = scratch_1.tmp_scalar_znx(module, 1);
-        match pk.dist {
-            SecretDistribution::NONE => panic!(
-                "invalid public key: SecretDistribution::NONE, ensure it has been correctly intialized through Self::generate"
-            ),
-            SecretDistribution::TernaryFixed(hw) => u.fill_ternary_hw(0, hw, source_xu),
-            SecretDistribution::TernaryProb(prob) => u.fill_ternary_prob(0, prob, source_xu),
-            SecretDistribution::ZERO => {}
-        }
+        rhs.mul_rlwe_dft_inplace(module, self, scratch);
+    }
+}
 
-        module.svp_prepare(&mut u_dft, 0, &u, 0);
+impl<MUT, REF> FromProdBy<RLWECtDft<MUT, FFT64>, RLWECtDft<REF, FFT64>> for RLWECtDft<MUT, FFT64>
+where
+    VecZnxDft<MUT, FFT64>: VecZnxDftToMut<FFT64> + VecZnxDftToRef<FFT64>,
+    VecZnxDft<REF, FFT64>: VecZnxDftToRef<FFT64>,
+{
+    fn from_prod_by_grlwe<R>(
+        &mut self,
+        module: &Module<FFT64>,
+        lhs: &RLWECtDft<REF, FFT64>,
+        rhs: &GRLWECt<R, FFT64>,
+        scratch: &mut Scratch,
+    ) where
+        MatZnxDft<R, FFT64>: MatZnxDftToRef<FFT64>,
+    {
+        rhs.mul_rlwe_dft(module, self, lhs, scratch);
     }
 
-    let (mut tmp_big, scratch_2) = scratch_1.tmp_vec_znx_big(module, 1, size_pk); // TODO optimize size (e.g. when encrypting at low homomorphic capacity)
-    let (mut tmp_dft, scratch_3) = scratch_2.tmp_vec_znx_dft(module, 1, size_pk); // TODO optimize size (e.g. when encrypting at low homomorphic capacity)
-
-    // ct[0] = pk[0] * u + m + e0
-    module.svp_apply(&mut tmp_dft, 0, &u_dft, 0, pk, 0);
-    module.vec_znx_idft_tmp_a(&mut tmp_big, 0, &mut tmp_dft, 0);
-    tmp_big.add_normal(log_base2k, 0, pk.log_k(), source_xe, sigma, bound);
-
-    if let Some(pt) = pt {
-        module.vec_znx_big_add_small_inplace(&mut tmp_big, 0, pt, 0);
+    fn from_prod_by_rgsw<R>(
+        &mut self,
+        module: &Module<FFT64>,
+        lhs: &RLWECtDft<REF, FFT64>,
+        rhs: &RGSWCt<R, FFT64>,
+        scratch: &mut Scratch,
+    ) where
+        MatZnxDft<R, FFT64>: MatZnxDftToRef<FFT64>,
+    {
+        rhs.mul_rlwe_dft(module, self, lhs, scratch);
     }
-
-    module.vec_znx_big_normalize(log_base2k, ct, 0, &tmp_big, 0, scratch_3);
-
-    // ct[1] = pk[1] * u + e1
-    module.svp_apply(&mut tmp_dft, 0, &u_dft, 0, pk, 1);
-    module.vec_znx_idft_tmp_a(&mut tmp_big, 0, &mut tmp_dft, 0);
-    tmp_big.add_normal(log_base2k, 0, pk.log_k(), source_xe, sigma, bound);
-    module.vec_znx_big_normalize(log_base2k, ct, 1, &tmp_big, 0, scratch_3);
 }
