@@ -8,10 +8,10 @@ mod tests {
 
     use crate::{
         elem::{GetRow, Infos},
-        elem_rgsw::RGSWCt,
-        elem_rlwe::{RLWECt, RLWECtDft, RLWEPt},
         keys::{SecretKey, SecretKeyDft},
-        test_fft64::elem_rgsw::noise_rgsw_rlwe_product,
+        rgsw::RGSWCt,
+        rlwe::{RLWECt, RLWECtDft, RLWEPt},
+        test_fft64::rgsw::noise_rgsw_rlwe_product,
     };
 
     #[test]

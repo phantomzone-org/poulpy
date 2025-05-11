@@ -7,7 +7,7 @@ use sampling::source::Source;
 
 use crate::{
     elem::Infos,
-    elem_grlwe::GRLWECt,
+    grlwe::GRLWECt,
     keys::{PublicKey, SecretDistribution, SecretKeyDft},
     utils::derive_size,
 };

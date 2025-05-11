@@ -1,5 +1,5 @@
 [workspace]
-members = ["base2k", "rlwe", "sampling", "utils"]
+members = ["base2k", "core", "sampling", "utils"]
 resolver = "3"
 
 [workspace.dependencies]

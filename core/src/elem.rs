@@ -4,8 +4,8 @@ use base2k::{
 };
 
 use crate::{
-    elem_grlwe::GRLWECt,
-    elem_rlwe::{RLWECt, RLWECtDft},
+    grlwe::GRLWECt,
+    rlwe::{RLWECt, RLWECtDft},
     utils::derive_size,
 };
 

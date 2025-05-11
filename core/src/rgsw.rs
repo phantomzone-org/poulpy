@@ -8,9 +8,9 @@ use sampling::source::Source;
 
 use crate::{
     elem::{GetRow, Infos, MatZnxDftProducts, SetRow},
-    elem_grlwe::GRLWECt,
-    elem_rlwe::{RLWECt, RLWECtDft, RLWEPt, encrypt_rlwe_sk},
+    grlwe::GRLWECt,
     keys::SecretKeyDft,
+    rlwe::{RLWECt, RLWECtDft, RLWEPt, encrypt_rlwe_sk},
     utils::derive_size,
 };
 

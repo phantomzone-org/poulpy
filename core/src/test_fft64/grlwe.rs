@@ -1,15 +1,15 @@
 #[cfg(test)]
 
-mod test {
+mod tests {
     use base2k::{FFT64, FillUniform, Module, ScalarZnx, ScalarZnxAlloc, ScratchOwned, Stats, VecZnxOps};
     use sampling::source::Source;
 
     use crate::{
         elem::Infos,
-        elem_grlwe::GRLWECt,
-        elem_rlwe::{RLWECt, RLWECtDft, RLWEPt},
+        grlwe::GRLWECt,
         keys::{SecretKey, SecretKeyDft},
-        test_fft64::elem_grlwe::noise_grlwe_rlwe_product,
+        rlwe::{RLWECt, RLWECtDft, RLWEPt},
+        test_fft64::grlwe::noise_grlwe_rlwe_product,
     };
 
     #[test]

@@ -5,7 +5,7 @@ use base2k::{
 };
 use sampling::source::Source;
 
-use crate::{elem::Infos, elem_rlwe::RLWECtDft};
+use crate::{elem::Infos, rlwe::RLWECtDft};
 
 #[derive(Clone, Copy, Debug)]
 pub enum SecretDistribution {

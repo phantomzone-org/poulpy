@@ -6,8 +6,8 @@ mod tests {
 
     use crate::{
         elem::Infos,
-        elem_rlwe::{RLWECt, RLWECtDft, RLWEPt},
         keys::{PublicKey, SecretKey, SecretKeyDft},
+        rlwe::{RLWECt, RLWECtDft, RLWEPt},
     };
 
     #[test]
