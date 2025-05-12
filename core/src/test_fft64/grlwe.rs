@@ -1,15 +1,16 @@
 #[cfg(test)]
 
 mod tests {
-    use base2k::{FFT64, Module, ScalarZnx, ScalarZnxAlloc, ScratchOwned, Stats, VecZnxOps};
+    use base2k::{FFT64, Module, ScalarZnx, ScalarZnxAlloc, ScratchOwned, Stats, VecZnxOps, ZnxViewMut};
     use sampling::source::Source;
 
     use crate::{
         elem::{FromProdBy, FromProdByScratchSpace, Infos, ProdBy, ProdByScratchSpace},
         grlwe::GRLWECt,
         keys::{SecretKey, SecretKeyDft},
+        rgsw::RGSWCt,
         rlwe::{RLWECtDft, RLWEPt},
-        test_fft64::grlwe::noise_grlwe_rlwe_product,
+        test_fft64::{grlwe::noise_grlwe_rlwe_product, rgsw::noise_rgsw_rlwe_product},
     };
 
     #[test]
@@ -259,6 +260,228 @@ mod tests {
                 0f64,
                 sigma * sigma,
                 0f64,
+                log_k_grlwe,
+                log_k_grlwe,
+            );
+
+            assert!(
+                (noise_have - noise_want).abs() <= 0.1,
+                "{} {}",
+                noise_have,
+                noise_want
+            );
+        });
+
+        module.free();
+    }
+
+    #[test]
+    fn from_prod_by_rgsw() {
+        let module: Module<FFT64> = Module::<FFT64>::new(2048);
+        let log_base2k: usize = 12;
+        let log_k_grlwe: usize = 60;
+        let rows: usize = (log_k_grlwe + log_base2k - 1) / log_base2k;
+
+        let sigma: f64 = 3.2;
+        let bound: f64 = sigma * 6.0;
+
+        let mut ct_grlwe_in: GRLWECt<Vec<u8>, FFT64> = GRLWECt::new(&module, log_base2k, log_k_grlwe, rows);
+        let mut ct_grlwe_out: GRLWECt<Vec<u8>, FFT64> = GRLWECt::new(&module, log_base2k, log_k_grlwe, rows);
+        let mut ct_rgsw: RGSWCt<Vec<u8>, FFT64> = RGSWCt::new(&module, log_base2k, log_k_grlwe, rows);
+
+        let mut pt_rgsw: ScalarZnx<Vec<u8>> = module.new_scalar_znx(1);
+        let mut pt_grlwe: ScalarZnx<Vec<u8>> = module.new_scalar_znx(1);
+
+        let mut source_xs: Source = Source::new([0u8; 32]);
+        let mut source_xe: Source = Source::new([0u8; 32]);
+        let mut source_xa: Source = Source::new([0u8; 32]);
+
+        let mut scratch: ScratchOwned = ScratchOwned::new(
+            GRLWECt::encrypt_sk_scratch_space(&module, ct_grlwe_in.size())
+                | RLWECtDft::decrypt_scratch_space(&module, ct_grlwe_out.size())
+                | GRLWECt::from_prod_by_rgsw_scratch_space(
+                    &module,
+                    ct_grlwe_out.size(),
+                    ct_grlwe_in.size(),
+                    ct_rgsw.size(),
+                )
+                | RGSWCt::encrypt_sk_scratch_space(&module, ct_rgsw.size()),
+        );
+
+        let k: usize = 1;
+
+        pt_rgsw.raw_mut()[k] = 1; // X^{k}
+
+        pt_grlwe.fill_ternary_prob(0, 0.5, &mut source_xs);
+
+        let mut sk: SecretKey<Vec<u8>> = SecretKey::new(&module);
+        sk.fill_ternary_prob(0.5, &mut source_xs);
+
+        let mut sk_dft: SecretKeyDft<Vec<u8>, FFT64> = SecretKeyDft::new(&module);
+        sk_dft.dft(&module, &sk);
+
+        // GRLWE_{s1}(s0) = s0 -> s1
+        ct_grlwe_in.encrypt_sk(
+            &module,
+            &pt_grlwe,
+            &sk_dft,
+            &mut source_xa,
+            &mut source_xe,
+            sigma,
+            bound,
+            scratch.borrow(),
+        );
+
+        ct_rgsw.encrypt_sk(
+            &module,
+            &pt_rgsw,
+            &sk_dft,
+            &mut source_xa,
+            &mut source_xe,
+            sigma,
+            bound,
+            scratch.borrow(),
+        );
+
+        // GRLWE_(m) (x) RGSW_(X^k) = GRLWE_(m * X^k)
+        ct_grlwe_out.from_prod_by_rgsw(&module, &ct_grlwe_in, &ct_rgsw, scratch.borrow());
+
+        let mut ct_rlwe_dft_s0s2: RLWECtDft<Vec<u8>, FFT64> = RLWECtDft::new(&module, log_base2k, log_k_grlwe);
+        let mut pt: RLWEPt<Vec<u8>> = RLWEPt::new(&module, log_base2k, log_k_grlwe);
+
+        module.vec_znx_rotate_inplace(k as i64, &mut pt_grlwe, 0);
+
+        (0..ct_grlwe_out.rows()).for_each(|row_i| {
+            ct_grlwe_out.get_row(&module, row_i, &mut ct_rlwe_dft_s0s2);
+            ct_rlwe_dft_s0s2.decrypt(&module, &mut pt, &sk_dft, scratch.borrow());
+            module.vec_znx_sub_scalar_inplace(&mut pt, 0, row_i, &pt_grlwe, 0);
+
+            let noise_have: f64 = pt.data.std(0, log_base2k).log2();
+
+            let var_gct_err_lhs: f64 = sigma * sigma;
+            let var_gct_err_rhs: f64 = 0f64;
+
+            let var_msg: f64 = 1f64 / module.n() as f64; // X^{k}
+            let var_a0_err: f64 = sigma * sigma;
+            let var_a1_err: f64 = 1f64 / 12f64;
+
+            let noise_want: f64 = noise_rgsw_rlwe_product(
+                module.n() as f64,
+                log_base2k,
+                0.5,
+                var_msg,
+                var_a0_err,
+                var_a1_err,
+                var_gct_err_lhs,
+                var_gct_err_rhs,
+                log_k_grlwe,
+                log_k_grlwe,
+            );
+
+            assert!(
+                (noise_have - noise_want).abs() <= 0.1,
+                "{} {}",
+                noise_have,
+                noise_want
+            );
+        });
+
+        module.free();
+    }
+
+    #[test]
+    fn prod_by_rgsw() {
+        let module: Module<FFT64> = Module::<FFT64>::new(2048);
+        let log_base2k: usize = 12;
+        let log_k_grlwe: usize = 60;
+        let rows: usize = (log_k_grlwe + log_base2k - 1) / log_base2k;
+
+        let sigma: f64 = 3.2;
+        let bound: f64 = sigma * 6.0;
+
+        let mut ct_grlwe: GRLWECt<Vec<u8>, FFT64> = GRLWECt::new(&module, log_base2k, log_k_grlwe, rows);
+        let mut ct_rgsw: RGSWCt<Vec<u8>, FFT64> = RGSWCt::new(&module, log_base2k, log_k_grlwe, rows);
+
+        let mut pt_rgsw: ScalarZnx<Vec<u8>> = module.new_scalar_znx(1);
+        let mut pt_grlwe: ScalarZnx<Vec<u8>> = module.new_scalar_znx(1);
+
+        let mut source_xs: Source = Source::new([0u8; 32]);
+        let mut source_xe: Source = Source::new([0u8; 32]);
+        let mut source_xa: Source = Source::new([0u8; 32]);
+
+        let mut scratch: ScratchOwned = ScratchOwned::new(
+            GRLWECt::encrypt_sk_scratch_space(&module, ct_grlwe.size())
+                | RLWECtDft::decrypt_scratch_space(&module, ct_grlwe.size())
+                | GRLWECt::prod_by_rgsw_scratch_space(&module, ct_grlwe.size(), ct_rgsw.size())
+                | RGSWCt::encrypt_sk_scratch_space(&module, ct_rgsw.size()),
+        );
+
+        let k: usize = 1;
+
+        pt_rgsw.raw_mut()[k] = 1; // X^{k}
+
+        pt_grlwe.fill_ternary_prob(0, 0.5, &mut source_xs);
+
+        let mut sk: SecretKey<Vec<u8>> = SecretKey::new(&module);
+        sk.fill_ternary_prob(0.5, &mut source_xs);
+
+        let mut sk_dft: SecretKeyDft<Vec<u8>, FFT64> = SecretKeyDft::new(&module);
+        sk_dft.dft(&module, &sk);
+
+        // GRLWE_{s1}(s0) = s0 -> s1
+        ct_grlwe.encrypt_sk(
+            &module,
+            &pt_grlwe,
+            &sk_dft,
+            &mut source_xa,
+            &mut source_xe,
+            sigma,
+            bound,
+            scratch.borrow(),
+        );
+
+        ct_rgsw.encrypt_sk(
+            &module,
+            &pt_rgsw,
+            &sk_dft,
+            &mut source_xa,
+            &mut source_xe,
+            sigma,
+            bound,
+            scratch.borrow(),
+        );
+
+        // GRLWE_(m) (x) RGSW_(X^k) = GRLWE_(m * X^k)
+        ct_grlwe.prod_by_rgsw(&module, &ct_rgsw, scratch.borrow());
+
+        let mut ct_rlwe_dft_s0s2: RLWECtDft<Vec<u8>, FFT64> = RLWECtDft::new(&module, log_base2k, log_k_grlwe);
+        let mut pt: RLWEPt<Vec<u8>> = RLWEPt::new(&module, log_base2k, log_k_grlwe);
+
+        module.vec_znx_rotate_inplace(k as i64, &mut pt_grlwe, 0);
+
+        (0..ct_grlwe.rows()).for_each(|row_i| {
+            ct_grlwe.get_row(&module, row_i, &mut ct_rlwe_dft_s0s2);
+            ct_rlwe_dft_s0s2.decrypt(&module, &mut pt, &sk_dft, scratch.borrow());
+            module.vec_znx_sub_scalar_inplace(&mut pt, 0, row_i, &pt_grlwe, 0);
+
+            let noise_have: f64 = pt.data.std(0, log_base2k).log2();
+
+            let var_gct_err_lhs: f64 = sigma * sigma;
+            let var_gct_err_rhs: f64 = 0f64;
+
+            let var_msg: f64 = 1f64 / module.n() as f64; // X^{k}
+            let var_a0_err: f64 = sigma * sigma;
+            let var_a1_err: f64 = 1f64 / 12f64;
+
+            let noise_want: f64 = noise_rgsw_rlwe_product(
+                module.n() as f64,
+                log_base2k,
+                0.5,
+                var_msg,
+                var_a0_err,
+                var_a1_err,
+                var_gct_err_lhs,
+                var_gct_err_rhs,
                 log_k_grlwe,
                 log_k_grlwe,
             );

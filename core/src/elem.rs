@@ -231,7 +231,7 @@ where
         let min_rows: usize = res.rows().min(a.rows());
 
         (0..res.rows()).for_each(|row_i| {
-            (0..self.cols()).for_each(|col_j| {
+            (0..res.cols()).for_each(|col_j| {
                 a.get_row(module, row_i, col_j, &mut tmp_row);
                 self.mul_rlwe_dft_inplace(module, &mut tmp_row, scratch1);
                 res.set_row(module, row_i, col_j, &tmp_row);
@@ -260,7 +260,7 @@ where
         };
 
         (0..res.rows()).for_each(|row_i| {
-            (0..self.cols()).for_each(|col_j| {
+            (0..res.cols()).for_each(|col_j| {
                 res.get_row(module, row_i, col_j, &mut tmp_row);
                 self.mul_rlwe_dft_inplace(module, &mut tmp_row, scratch1);
                 res.set_row(module, row_i, col_j, &tmp_row);
