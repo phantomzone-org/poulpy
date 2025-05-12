@@ -7,7 +7,10 @@ use base2k::{
 use sampling::source::Source;
 
 use crate::{
-    elem::{FromProdBy, FromProdByScratchSpace, GetRow, Infos, MatZnxDftProducts, ProdBy, ProdByScratchSpace, SetRow},
+    elem::{
+        GetRow, Infos, MatRLWEProduct, MatRLWEProductScratchSpace, ProdInplace, ProdInplaceScratchSpace, ProdScratchSpace,
+        Product, SetRow,
+    },
     keys::SecretKeyDft,
     rgsw::RGSWCt,
     rlwe::{RLWECt, RLWECtDft, RLWEPt},
@@ -27,18 +30,6 @@ impl<B: Backend> GRLWECt<Vec<u8>, B> {
             log_base2k: log_base2k,
             log_k: log_k,
         }
-    }
-}
-
-impl<C> GRLWECt<C, FFT64>
-where
-    MatZnxDft<C, FFT64>: MatZnxDftToRef<FFT64>,
-{
-    pub fn get_row<R>(&self, module: &Module<FFT64>, row_i: usize, res: &mut RLWECtDft<R, FFT64>)
-    where
-        VecZnxDft<R, FFT64>: VecZnxDftToMut<FFT64>,
-    {
-        module.vmp_extract_row(res, self, row_i, 0);
     }
 }
 
@@ -202,18 +193,20 @@ where
     }
 }
 
-impl<C> MatZnxDftProducts<GRLWECt<C, FFT64>, C> for GRLWECt<C, FFT64>
-where
-    MatZnxDft<C, FFT64>: MatZnxDftToRef<FFT64> + ZnxInfos,
-{
-    fn mul_rlwe_scratch_space(module: &Module<FFT64>, res_size: usize, a_size: usize, grlwe_size: usize) -> usize {
+impl MatRLWEProductScratchSpace for GRLWECt<Vec<u8>, FFT64> {
+    fn prod_with_rlwe_scratch_space(module: &Module<FFT64>, res_size: usize, a_size: usize, grlwe_size: usize) -> usize {
         module.bytes_of_vec_znx_dft(2, grlwe_size)
             + (module.vec_znx_big_normalize_tmp_bytes()
                 | (module.vmp_apply_tmp_bytes(res_size, a_size, a_size, 1, 2, grlwe_size)
                     + module.bytes_of_vec_znx_dft(1, a_size)))
     }
+}
 
-    fn mul_rlwe<R, A>(&self, module: &Module<FFT64>, res: &mut RLWECt<R>, a: &RLWECt<A>, scratch: &mut Scratch)
+impl<C> MatRLWEProduct for GRLWECt<C, FFT64>
+where
+    MatZnxDft<C, FFT64>: MatZnxDftToRef<FFT64> + ZnxInfos,
+{
+    fn prod_with_rlwe<R, A>(&self, module: &Module<FFT64>, res: &mut RLWECt<R>, a: &RLWECt<A>, scratch: &mut Scratch)
     where
         MatZnxDft<C, FFT64>: MatZnxDftToRef<FFT64>,
         VecZnx<R>: VecZnxToMut,
@@ -247,79 +240,52 @@ where
     }
 }
 
-impl ProdByScratchSpace for GRLWECt<Vec<u8>, FFT64> {
-    fn prod_by_grlwe_scratch_space(module: &Module<FFT64>, lhs: usize, rhs: usize) -> usize {
-        <GRLWECt<Vec<u8>, FFT64> as MatZnxDftProducts<GRLWECt<Vec<u8>, FFT64>, Vec<u8>>>::mul_mat_rlwe_inplace_scratch_space(
-            module, lhs, rhs,
-        )
+impl ProdInplaceScratchSpace for GRLWECt<Vec<u8>, FFT64> {
+    fn prod_by_grlwe_inplace_scratch_space(module: &Module<FFT64>, lhs: usize, rhs: usize) -> usize {
+        <GRLWECt<Vec<u8>, FFT64> as MatRLWEProductScratchSpace>::prod_with_mat_rlwe_inplace_scratch_space(module, lhs, rhs)
     }
 
-    fn prod_by_rgsw_scratch_space(module: &Module<FFT64>, lhs: usize, rhs: usize) -> usize {
-        <RGSWCt<Vec<u8>, FFT64> as MatZnxDftProducts<RGSWCt<Vec<u8>, FFT64>, Vec<u8>>>::mul_mat_rlwe_inplace_scratch_space(
-            module, lhs, rhs,
-        )
+    fn prod_by_rgsw_inplace_scratch_space(module: &Module<FFT64>, lhs: usize, rhs: usize) -> usize {
+        <RGSWCt<Vec<u8>, FFT64> as MatRLWEProductScratchSpace>::prod_with_mat_rlwe_inplace_scratch_space(module, lhs, rhs)
     }
 }
 
-impl FromProdByScratchSpace for GRLWECt<Vec<u8>, FFT64> {
-    fn from_prod_by_grlwe_scratch_space(module: &Module<FFT64>, res_size: usize, lhs: usize, rhs: usize) -> usize {
-        <GRLWECt<Vec<u8>, FFT64> as MatZnxDftProducts<GRLWECt<Vec<u8>, FFT64>, Vec<u8>>>::mul_mat_rlwe_scratch_space(
-            module, res_size, lhs, rhs,
-        )
+impl ProdScratchSpace for GRLWECt<Vec<u8>, FFT64> {
+    fn prod_by_grlwe_scratch_space(module: &Module<FFT64>, res_size: usize, lhs: usize, rhs: usize) -> usize {
+        <GRLWECt<Vec<u8>, FFT64> as MatRLWEProductScratchSpace>::prod_with_mat_rlwe_scratch_space(module, res_size, lhs, rhs)
     }
 
-    fn from_prod_by_rgsw_scratch_space(module: &Module<FFT64>, res_size: usize, lhs: usize, rhs: usize) -> usize {
-        <RGSWCt<Vec<u8>, FFT64> as MatZnxDftProducts<RGSWCt<Vec<u8>, FFT64>, Vec<u8>>>::mul_mat_rlwe_scratch_space(
-            module, res_size, lhs, rhs,
-        )
+    fn prod_by_rgsw_scratch_space(module: &Module<FFT64>, res_size: usize, lhs: usize, rhs: usize) -> usize {
+        <RGSWCt<Vec<u8>, FFT64> as MatRLWEProductScratchSpace>::prod_with_mat_rlwe_scratch_space(module, res_size, lhs, rhs)
     }
 }
 
-impl<MUT> ProdBy<GRLWECt<MUT, FFT64>> for GRLWECt<MUT, FFT64>
+impl<MUT, REF> ProdInplace<MUT, REF> for GRLWECt<MUT, FFT64>
 where
     GRLWECt<MUT, FFT64>: GetRow<FFT64> + SetRow<FFT64> + Infos,
+    MatZnxDft<REF, FFT64>: MatZnxDftToRef<FFT64>,
 {
-    fn prod_by_grlwe<R>(&mut self, module: &Module<FFT64>, rhs: &GRLWECt<R, FFT64>, scratch: &mut Scratch)
-    where
-        MatZnxDft<R, FFT64>: MatZnxDftToRef<FFT64>,
-    {
-        rhs.mul_mat_rlwe_inplace(module, self, scratch);
+    fn prod_by_grlwe_inplace(&mut self, module: &Module<FFT64>, rhs: &GRLWECt<REF, FFT64>, scratch: &mut Scratch) {
+        rhs.prod_with_mat_rlwe_inplace(module, self, scratch);
     }
 
-    fn prod_by_rgsw<R>(&mut self, module: &Module<FFT64>, rhs: &RGSWCt<R, FFT64>, scratch: &mut Scratch)
-    where
-        MatZnxDft<R, FFT64>: MatZnxDftToRef<FFT64>,
-    {
-        rhs.mul_mat_rlwe_inplace(module, self, scratch);
+    fn prod_by_rgsw_inplace(&mut self, module: &Module<FFT64>, rhs: &RGSWCt<REF, FFT64>, scratch: &mut Scratch) {
+        rhs.prod_with_mat_rlwe_inplace(module, self, scratch);
     }
 }
 
-impl<MUT, REF> FromProdBy<GRLWECt<MUT, FFT64>, GRLWECt<REF, FFT64>> for GRLWECt<MUT, FFT64>
+impl<MUT, REF> Product<MUT, REF> for GRLWECt<MUT, FFT64>
 where
-    GRLWECt<MUT, FFT64>: GetRow<FFT64> + SetRow<FFT64> + Infos,
-    GRLWECt<REF, FFT64>: GetRow<FFT64> + Infos,
+    MatZnxDft<MUT, FFT64>: MatZnxDftToRef<FFT64> + MatZnxDftToMut<FFT64>,
+    MatZnxDft<REF, FFT64>: MatZnxDftToRef<FFT64>,
 {
-    fn from_prod_by_grlwe<R>(
-        &mut self,
-        module: &Module<FFT64>,
-        lhs: &GRLWECt<REF, FFT64>,
-        rhs: &GRLWECt<R, FFT64>,
-        scratch: &mut Scratch,
-    ) where
-        MatZnxDft<R, FFT64>: MatZnxDftToRef<FFT64>,
-    {
-        rhs.mul_mat_rlwe(module, self, lhs, scratch);
+    type Lhs = GRLWECt<REF, FFT64>;
+
+    fn prod_by_grlwe(&mut self, module: &Module<FFT64>, lhs: &Self::Lhs, rhs: &GRLWECt<REF, FFT64>, scratch: &mut Scratch) {
+        rhs.prod_with_mat_rlwe(module, self, lhs, scratch);
     }
 
-    fn from_prod_by_rgsw<R>(
-        &mut self,
-        module: &Module<FFT64>,
-        lhs: &GRLWECt<REF, FFT64>,
-        rhs: &RGSWCt<R, FFT64>,
-        scratch: &mut Scratch,
-    ) where
-        MatZnxDft<R, FFT64>: MatZnxDftToRef<FFT64>,
-    {
-        rhs.mul_mat_rlwe(module, self, lhs, scratch);
+    fn prod_by_rgsw(&mut self, module: &Module<FFT64>, lhs: &Self::Lhs, rhs: &RGSWCt<REF, FFT64>, scratch: &mut Scratch) {
+        rhs.prod_with_mat_rlwe(module, self, lhs, scratch);
     }
 }
