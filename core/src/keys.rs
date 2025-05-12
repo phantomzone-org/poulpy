@@ -5,7 +5,7 @@ use base2k::{
 };
 use sampling::source::Source;
 
-use crate::{elem::Infos, rlwe::RLWECtDft};
+use crate::{elem::Infos, glwe::GLWECiphertextFourier};
 
 #[derive(Clone, Copy, Debug)]
 pub enum SecretDistribution {
@@ -67,12 +67,12 @@ where
     }
 }
 
-pub struct SecretKeyDft<T, B: Backend> {
+pub struct SecretKeyFourier<T, B: Backend> {
     pub data: ScalarZnxDft<T, B>,
     pub dist: SecretDistribution,
 }
 
-impl<B: Backend> SecretKeyDft<Vec<u8>, B> {
+impl<B: Backend> SecretKeyFourier<Vec<u8>, B> {
     pub fn new(module: &Module<B>) -> Self {
         Self {
             data: module.new_scalar_znx_dft(1),
@@ -82,7 +82,7 @@ impl<B: Backend> SecretKeyDft<Vec<u8>, B> {
 
     pub fn dft<S>(&mut self, module: &Module<FFT64>, sk: &SecretKey<S>)
     where
-        SecretKeyDft<Vec<u8>, B>: ScalarZnxDftToMut<base2k::FFT64>,
+        SecretKeyFourier<Vec<u8>, B>: ScalarZnxDftToMut<base2k::FFT64>,
         SecretKey<S>: ScalarZnxToRef,
     {
         #[cfg(debug_assertions)]
@@ -98,7 +98,7 @@ impl<B: Backend> SecretKeyDft<Vec<u8>, B> {
     }
 }
 
-impl<C, B: Backend> ScalarZnxDftToMut<B> for SecretKeyDft<C, B>
+impl<C, B: Backend> ScalarZnxDftToMut<B> for SecretKeyFourier<C, B>
 where
     ScalarZnxDft<C, B>: ScalarZnxDftToMut<B>,
 {
@@ -107,7 +107,7 @@ where
     }
 }
 
-impl<C, B: Backend> ScalarZnxDftToRef<B> for SecretKeyDft<C, B>
+impl<C, B: Backend> ScalarZnxDftToRef<B> for SecretKeyFourier<C, B>
 where
     ScalarZnxDft<C, B>: ScalarZnxDftToRef<B>,
 {
@@ -117,14 +117,14 @@ where
 }
 
 pub struct PublicKey<D, B: Backend> {
-    pub data: RLWECtDft<D, B>,
+    pub data: GLWECiphertextFourier<D, B>,
     pub dist: SecretDistribution,
 }
 
 impl<B: Backend> PublicKey<Vec<u8>, B> {
     pub fn new(module: &Module<B>, log_base2k: usize, log_k: usize) -> Self {
         Self {
-            data: RLWECtDft::new(module, log_base2k, log_k),
+            data: GLWECiphertextFourier::new(module, log_base2k, log_k),
             dist: SecretDistribution::NONE,
         }
     }
@@ -137,11 +137,11 @@ impl<T, B: Backend> Infos for PublicKey<T, B> {
         &self.data.data
     }
 
-    fn log_base2k(&self) -> usize {
+    fn basek(&self) -> usize {
         self.data.log_base2k
     }
 
-    fn log_k(&self) -> usize {
+    fn k(&self) -> usize {
         self.data.log_k
     }
 }
@@ -168,7 +168,7 @@ impl<C> PublicKey<C, FFT64> {
     pub fn generate<S>(
         &mut self,
         module: &Module<FFT64>,
-        sk_dft: &SecretKeyDft<S, FFT64>,
+        sk_dft: &SecretKeyFourier<S, FFT64>,
         source_xa: &mut Source,
         source_xe: &mut Source,
         sigma: f64,
@@ -186,7 +186,7 @@ impl<C> PublicKey<C, FFT64> {
         }
 
         // Its ok to allocate scratch space here since pk is usually generated only once.
-        let mut scratch: ScratchOwned = ScratchOwned::new(RLWECtDft::encrypt_zero_sk_scratch_space(
+        let mut scratch: ScratchOwned = ScratchOwned::new(GLWECiphertextFourier::encrypt_zero_sk_scratch_space(
             module,
             self.size(),
         ));

@@ -10,3 +10,11 @@ base2k = {path="../base2k"}
 sampling = {path="../sampling"}
 rand_distr = {workspace = true}
 itertools = {workspace = true}
+
+[[bench]]
+name = "external_product_glwe_fft64"
+harness = false
+
+[[bench]]
+name = "keyswitch_glwe_fft64"
+harness = false

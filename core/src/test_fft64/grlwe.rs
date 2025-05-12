@@ -2,11 +2,15 @@ use base2k::{FFT64, Module, ScalarZnx, ScalarZnxAlloc, ScratchOwned, Stats, VecZ
 use sampling::source::Source;
 
 use crate::{
-    elem::{GetRow, Infos, ProdInplace, ProdInplaceScratchSpace, ProdScratchSpace, Product},
-    grlwe::GRLWECt,
-    keys::{SecretKey, SecretKeyDft},
-    rgsw::RGSWCt,
-    rlwe::{RLWECtDft, RLWEPt},
+    elem::{GetRow, Infos},
+    external_product::{
+        ExternalProduct, ExternalProductInplace, ExternalProductInplaceScratchSpace, ExternalProductScratchSpace,
+    },
+    ggsw::GGSWCiphertext,
+    glwe::{GLWECiphertextFourier, GLWEPlaintext},
+    keys::{SecretKey, SecretKeyFourier},
+    keyswitch::{KeySwitch, KeySwitchInplace, KeySwitchInplaceScratchSpace, KeySwitchScratchSpace},
+    keyswitch_key::GLWEKeySwitchKey,
     test_fft64::rgsw::noise_rgsw_product,
 };
 
@@ -20,8 +24,8 @@ fn encrypt_sk() {
     let sigma: f64 = 3.2;
     let bound: f64 = sigma * 6.0;
 
-    let mut ct: GRLWECt<Vec<u8>, FFT64> = GRLWECt::new(&module, log_base2k, log_k_ct, rows);
-    let mut pt: RLWEPt<Vec<u8>> = RLWEPt::new(&module, log_base2k, log_k_ct);
+    let mut ct: GLWEKeySwitchKey<Vec<u8>, FFT64> = GLWEKeySwitchKey::new(&module, log_base2k, log_k_ct, rows);
+    let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::new(&module, log_base2k, log_k_ct);
     let mut pt_scalar: ScalarZnx<Vec<u8>> = module.new_scalar_znx(1);
 
     let mut source_xs: Source = Source::new([0u8; 32]);
@@ -31,13 +35,14 @@ fn encrypt_sk() {
     pt_scalar.fill_ternary_hw(0, module.n(), &mut source_xs);
 
     let mut scratch: ScratchOwned = ScratchOwned::new(
-        GRLWECt::encrypt_sk_scratch_space(&module, ct.size()) | RLWECtDft::decrypt_scratch_space(&module, ct.size()),
+        GLWEKeySwitchKey::encrypt_sk_scratch_space(&module, ct.size())
+            | GLWECiphertextFourier::decrypt_scratch_space(&module, ct.size()),
     );
 
     let mut sk: SecretKey<Vec<u8>> = SecretKey::new(&module);
     sk.fill_ternary_prob(0.5, &mut source_xs);
 
-    let mut sk_dft: SecretKeyDft<Vec<u8>, FFT64> = SecretKeyDft::new(&module);
+    let mut sk_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::new(&module);
     sk_dft.dft(&module, &sk);
 
     ct.encrypt_sk(
@@ -51,7 +56,7 @@ fn encrypt_sk() {
         scratch.borrow(),
     );
 
-    let mut ct_rlwe_dft: RLWECtDft<Vec<u8>, FFT64> = RLWECtDft::new(&module, log_base2k, log_k_ct);
+    let mut ct_rlwe_dft: GLWECiphertextFourier<Vec<u8>, FFT64> = GLWECiphertextFourier::new(&module, log_base2k, log_k_ct);
 
     (0..ct.rows()).for_each(|row_i| {
         ct.get_row(&module, row_i, 0, &mut ct_rlwe_dft);
@@ -60,12 +65,10 @@ fn encrypt_sk() {
         let std_pt: f64 = pt.data.std(0, log_base2k) * (log_k_ct as f64).exp2();
         assert!((sigma - std_pt).abs() <= 0.2, "{} {}", sigma, std_pt);
     });
-
-    module.free();
 }
 
 #[test]
-fn from_prod_by_grlwe() {
+fn keyswitch() {
     let module: Module<FFT64> = Module::<FFT64>::new(2048);
     let log_base2k: usize = 12;
     let log_k_grlwe: usize = 60;
@@ -74,18 +77,18 @@ fn from_prod_by_grlwe() {
     let sigma: f64 = 3.2;
     let bound: f64 = sigma * 6.0;
 
-    let mut ct_grlwe_s0s1: GRLWECt<Vec<u8>, FFT64> = GRLWECt::new(&module, log_base2k, log_k_grlwe, rows);
-    let mut ct_grlwe_s1s2: GRLWECt<Vec<u8>, FFT64> = GRLWECt::new(&module, log_base2k, log_k_grlwe, rows);
-    let mut ct_grlwe_s0s2: GRLWECt<Vec<u8>, FFT64> = GRLWECt::new(&module, log_base2k, log_k_grlwe, rows);
+    let mut ct_grlwe_s0s1: GLWEKeySwitchKey<Vec<u8>, FFT64> = GLWEKeySwitchKey::new(&module, log_base2k, log_k_grlwe, rows);
+    let mut ct_grlwe_s1s2: GLWEKeySwitchKey<Vec<u8>, FFT64> = GLWEKeySwitchKey::new(&module, log_base2k, log_k_grlwe, rows);
+    let mut ct_grlwe_s0s2: GLWEKeySwitchKey<Vec<u8>, FFT64> = GLWEKeySwitchKey::new(&module, log_base2k, log_k_grlwe, rows);
 
     let mut source_xs: Source = Source::new([0u8; 32]);
     let mut source_xe: Source = Source::new([0u8; 32]);
     let mut source_xa: Source = Source::new([0u8; 32]);
 
     let mut scratch: ScratchOwned = ScratchOwned::new(
-        GRLWECt::encrypt_sk_scratch_space(&module, ct_grlwe_s0s1.size())
-            | RLWECtDft::decrypt_scratch_space(&module, ct_grlwe_s0s2.size())
-            | GRLWECt::prod_by_grlwe_scratch_space(
+        GLWEKeySwitchKey::encrypt_sk_scratch_space(&module, ct_grlwe_s0s1.size())
+            | GLWECiphertextFourier::decrypt_scratch_space(&module, ct_grlwe_s0s2.size())
+            | GLWEKeySwitchKey::keyswitch_scratch_space(
                 &module,
                 ct_grlwe_s0s2.size(),
                 ct_grlwe_s0s1.size(),
@@ -96,19 +99,19 @@ fn from_prod_by_grlwe() {
     let mut sk0: SecretKey<Vec<u8>> = SecretKey::new(&module);
     sk0.fill_ternary_prob(0.5, &mut source_xs);
 
-    let mut sk0_dft: SecretKeyDft<Vec<u8>, FFT64> = SecretKeyDft::new(&module);
+    let mut sk0_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::new(&module);
     sk0_dft.dft(&module, &sk0);
 
     let mut sk1: SecretKey<Vec<u8>> = SecretKey::new(&module);
     sk1.fill_ternary_prob(0.5, &mut source_xs);
 
-    let mut sk1_dft: SecretKeyDft<Vec<u8>, FFT64> = SecretKeyDft::new(&module);
+    let mut sk1_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::new(&module);
     sk1_dft.dft(&module, &sk1);
 
     let mut sk2: SecretKey<Vec<u8>> = SecretKey::new(&module);
     sk2.fill_ternary_prob(0.5, &mut source_xs);
 
-    let mut sk2_dft: SecretKeyDft<Vec<u8>, FFT64> = SecretKeyDft::new(&module);
+    let mut sk2_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::new(&module);
     sk2_dft.dft(&module, &sk2);
 
     // GRLWE_{s1}(s0) = s0 -> s1
@@ -136,10 +139,11 @@ fn from_prod_by_grlwe() {
     );
 
     // GRLWE_{s1}(s0) (x) GRLWE_{s2}(s1) = GRLWE_{s2}(s0)
-    ct_grlwe_s0s2.prod_by_grlwe(&module, &ct_grlwe_s0s1, &ct_grlwe_s1s2, scratch.borrow());
+    ct_grlwe_s0s2.keyswitch(&module, &ct_grlwe_s0s1, &ct_grlwe_s1s2, scratch.borrow());
 
-    let mut ct_rlwe_dft_s0s2: RLWECtDft<Vec<u8>, FFT64> = RLWECtDft::new(&module, log_base2k, log_k_grlwe);
-    let mut pt: RLWEPt<Vec<u8>> = RLWEPt::new(&module, log_base2k, log_k_grlwe);
+    let mut ct_rlwe_dft_s0s2: GLWECiphertextFourier<Vec<u8>, FFT64> =
+        GLWECiphertextFourier::new(&module, log_base2k, log_k_grlwe);
+    let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::new(&module, log_base2k, log_k_grlwe);
 
     (0..ct_grlwe_s0s2.rows()).for_each(|row_i| {
         ct_grlwe_s0s2.get_row(&module, row_i, 0, &mut ct_rlwe_dft_s0s2);
@@ -166,12 +170,10 @@ fn from_prod_by_grlwe() {
             noise_want
         );
     });
-
-    module.free();
 }
 
 #[test]
-fn prod_by_grlwe() {
+fn keyswitch_inplace() {
     let module: Module<FFT64> = Module::<FFT64>::new(2048);
     let log_base2k: usize = 12;
     let log_k_grlwe: usize = 60;
@@ -180,35 +182,35 @@ fn prod_by_grlwe() {
     let sigma: f64 = 3.2;
     let bound: f64 = sigma * 6.0;
 
-    let mut ct_grlwe_s0s1: GRLWECt<Vec<u8>, FFT64> = GRLWECt::new(&module, log_base2k, log_k_grlwe, rows);
-    let mut ct_grlwe_s1s2: GRLWECt<Vec<u8>, FFT64> = GRLWECt::new(&module, log_base2k, log_k_grlwe, rows);
+    let mut ct_grlwe_s0s1: GLWEKeySwitchKey<Vec<u8>, FFT64> = GLWEKeySwitchKey::new(&module, log_base2k, log_k_grlwe, rows);
+    let mut ct_grlwe_s1s2: GLWEKeySwitchKey<Vec<u8>, FFT64> = GLWEKeySwitchKey::new(&module, log_base2k, log_k_grlwe, rows);
 
     let mut source_xs: Source = Source::new([0u8; 32]);
     let mut source_xe: Source = Source::new([0u8; 32]);
     let mut source_xa: Source = Source::new([0u8; 32]);
 
     let mut scratch: ScratchOwned = ScratchOwned::new(
-        GRLWECt::encrypt_sk_scratch_space(&module, ct_grlwe_s0s1.size())
-            | RLWECtDft::decrypt_scratch_space(&module, ct_grlwe_s0s1.size())
-            | GRLWECt::prod_by_grlwe_inplace_scratch_space(&module, ct_grlwe_s0s1.size(), ct_grlwe_s1s2.size()),
+        GLWEKeySwitchKey::encrypt_sk_scratch_space(&module, ct_grlwe_s0s1.size())
+            | GLWECiphertextFourier::decrypt_scratch_space(&module, ct_grlwe_s0s1.size())
+            | GLWEKeySwitchKey::keyswitch_inplace_scratch_space(&module, ct_grlwe_s0s1.size(), ct_grlwe_s1s2.size()),
     );
 
     let mut sk0: SecretKey<Vec<u8>> = SecretKey::new(&module);
     sk0.fill_ternary_prob(0.5, &mut source_xs);
 
-    let mut sk0_dft: SecretKeyDft<Vec<u8>, FFT64> = SecretKeyDft::new(&module);
+    let mut sk0_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::new(&module);
     sk0_dft.dft(&module, &sk0);
 
     let mut sk1: SecretKey<Vec<u8>> = SecretKey::new(&module);
     sk1.fill_ternary_prob(0.5, &mut source_xs);
 
-    let mut sk1_dft: SecretKeyDft<Vec<u8>, FFT64> = SecretKeyDft::new(&module);
+    let mut sk1_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::new(&module);
     sk1_dft.dft(&module, &sk1);
 
     let mut sk2: SecretKey<Vec<u8>> = SecretKey::new(&module);
     sk2.fill_ternary_prob(0.5, &mut source_xs);
 
-    let mut sk2_dft: SecretKeyDft<Vec<u8>, FFT64> = SecretKeyDft::new(&module);
+    let mut sk2_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::new(&module);
     sk2_dft.dft(&module, &sk2);
 
     // GRLWE_{s1}(s0) = s0 -> s1
@@ -236,12 +238,13 @@ fn prod_by_grlwe() {
     );
 
     // GRLWE_{s1}(s0) (x) GRLWE_{s2}(s1) = GRLWE_{s2}(s0)
-    ct_grlwe_s0s1.prod_by_grlwe_inplace(&module, &ct_grlwe_s1s2, scratch.borrow());
+    ct_grlwe_s0s1.keyswitch_inplace(&module, &ct_grlwe_s1s2, scratch.borrow());
 
-    let ct_grlwe_s0s2: GRLWECt<Vec<u8>, FFT64> = ct_grlwe_s0s1;
+    let ct_grlwe_s0s2: GLWEKeySwitchKey<Vec<u8>, FFT64> = ct_grlwe_s0s1;
 
-    let mut ct_rlwe_dft_s0s2: RLWECtDft<Vec<u8>, FFT64> = RLWECtDft::new(&module, log_base2k, log_k_grlwe);
-    let mut pt: RLWEPt<Vec<u8>> = RLWEPt::new(&module, log_base2k, log_k_grlwe);
+    let mut ct_rlwe_dft_s0s2: GLWECiphertextFourier<Vec<u8>, FFT64> =
+        GLWECiphertextFourier::new(&module, log_base2k, log_k_grlwe);
+    let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::new(&module, log_base2k, log_k_grlwe);
 
     (0..ct_grlwe_s0s2.rows()).for_each(|row_i| {
         ct_grlwe_s0s2.get_row(&module, row_i, 0, &mut ct_rlwe_dft_s0s2);
@@ -268,12 +271,10 @@ fn prod_by_grlwe() {
             noise_want
         );
     });
-
-    module.free();
 }
 
 #[test]
-fn from_prod_by_rgsw() {
+fn external_product() {
     let module: Module<FFT64> = Module::<FFT64>::new(2048);
     let log_base2k: usize = 12;
     let log_k_grlwe: usize = 60;
@@ -282,9 +283,9 @@ fn from_prod_by_rgsw() {
     let sigma: f64 = 3.2;
     let bound: f64 = sigma * 6.0;
 
-    let mut ct_grlwe_in: GRLWECt<Vec<u8>, FFT64> = GRLWECt::new(&module, log_base2k, log_k_grlwe, rows);
-    let mut ct_grlwe_out: GRLWECt<Vec<u8>, FFT64> = GRLWECt::new(&module, log_base2k, log_k_grlwe, rows);
-    let mut ct_rgsw: RGSWCt<Vec<u8>, FFT64> = RGSWCt::new(&module, log_base2k, log_k_grlwe, rows);
+    let mut ct_grlwe_in: GLWEKeySwitchKey<Vec<u8>, FFT64> = GLWEKeySwitchKey::new(&module, log_base2k, log_k_grlwe, rows);
+    let mut ct_grlwe_out: GLWEKeySwitchKey<Vec<u8>, FFT64> = GLWEKeySwitchKey::new(&module, log_base2k, log_k_grlwe, rows);
+    let mut ct_rgsw: GGSWCiphertext<Vec<u8>, FFT64> = GGSWCiphertext::new(&module, log_base2k, log_k_grlwe, rows);
 
     let mut pt_rgsw: ScalarZnx<Vec<u8>> = module.new_scalar_znx(1);
     let mut pt_grlwe: ScalarZnx<Vec<u8>> = module.new_scalar_znx(1);
@@ -294,15 +295,15 @@ fn from_prod_by_rgsw() {
     let mut source_xa: Source = Source::new([0u8; 32]);
 
     let mut scratch: ScratchOwned = ScratchOwned::new(
-        GRLWECt::encrypt_sk_scratch_space(&module, ct_grlwe_in.size())
-            | RLWECtDft::decrypt_scratch_space(&module, ct_grlwe_out.size())
-            | GRLWECt::prod_by_rgsw_scratch_space(
+        GLWEKeySwitchKey::encrypt_sk_scratch_space(&module, ct_grlwe_in.size())
+            | GLWECiphertextFourier::decrypt_scratch_space(&module, ct_grlwe_out.size())
+            | GLWEKeySwitchKey::external_product_scratch_space(
                 &module,
                 ct_grlwe_out.size(),
                 ct_grlwe_in.size(),
                 ct_rgsw.size(),
             )
-            | RGSWCt::encrypt_sk_scratch_space(&module, ct_rgsw.size()),
+            | GGSWCiphertext::encrypt_sk_scratch_space(&module, ct_rgsw.size()),
     );
 
     let k: usize = 1;
@@ -314,7 +315,7 @@ fn from_prod_by_rgsw() {
     let mut sk: SecretKey<Vec<u8>> = SecretKey::new(&module);
     sk.fill_ternary_prob(0.5, &mut source_xs);
 
-    let mut sk_dft: SecretKeyDft<Vec<u8>, FFT64> = SecretKeyDft::new(&module);
+    let mut sk_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::new(&module);
     sk_dft.dft(&module, &sk);
 
     // GRLWE_{s1}(s0) = s0 -> s1
@@ -341,10 +342,11 @@ fn from_prod_by_rgsw() {
     );
 
     // GRLWE_(m) (x) RGSW_(X^k) = GRLWE_(m * X^k)
-    ct_grlwe_out.prod_by_rgsw(&module, &ct_grlwe_in, &ct_rgsw, scratch.borrow());
+    ct_grlwe_out.external_product(&module, &ct_grlwe_in, &ct_rgsw, scratch.borrow());
 
-    let mut ct_rlwe_dft_s0s2: RLWECtDft<Vec<u8>, FFT64> = RLWECtDft::new(&module, log_base2k, log_k_grlwe);
-    let mut pt: RLWEPt<Vec<u8>> = RLWEPt::new(&module, log_base2k, log_k_grlwe);
+    let mut ct_rlwe_dft_s0s2: GLWECiphertextFourier<Vec<u8>, FFT64> =
+        GLWECiphertextFourier::new(&module, log_base2k, log_k_grlwe);
+    let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::new(&module, log_base2k, log_k_grlwe);
 
     module.vec_znx_rotate_inplace(k as i64, &mut pt_grlwe, 0);
 
@@ -382,12 +384,10 @@ fn from_prod_by_rgsw() {
             noise_want
         );
     });
-
-    module.free();
 }
 
 #[test]
-fn prod_by_rgsw() {
+fn external_product_inplace() {
     let module: Module<FFT64> = Module::<FFT64>::new(2048);
     let log_base2k: usize = 12;
     let log_k_grlwe: usize = 60;
@@ -396,8 +396,8 @@ fn prod_by_rgsw() {
     let sigma: f64 = 3.2;
     let bound: f64 = sigma * 6.0;
 
-    let mut ct_grlwe: GRLWECt<Vec<u8>, FFT64> = GRLWECt::new(&module, log_base2k, log_k_grlwe, rows);
-    let mut ct_rgsw: RGSWCt<Vec<u8>, FFT64> = RGSWCt::new(&module, log_base2k, log_k_grlwe, rows);
+    let mut ct_grlwe: GLWEKeySwitchKey<Vec<u8>, FFT64> = GLWEKeySwitchKey::new(&module, log_base2k, log_k_grlwe, rows);
+    let mut ct_rgsw: GGSWCiphertext<Vec<u8>, FFT64> = GGSWCiphertext::new(&module, log_base2k, log_k_grlwe, rows);
 
     let mut pt_rgsw: ScalarZnx<Vec<u8>> = module.new_scalar_znx(1);
     let mut pt_grlwe: ScalarZnx<Vec<u8>> = module.new_scalar_znx(1);
@@ -407,10 +407,10 @@ fn prod_by_rgsw() {
     let mut source_xa: Source = Source::new([0u8; 32]);
 
     let mut scratch: ScratchOwned = ScratchOwned::new(
-        GRLWECt::encrypt_sk_scratch_space(&module, ct_grlwe.size())
-            | RLWECtDft::decrypt_scratch_space(&module, ct_grlwe.size())
-            | GRLWECt::prod_by_rgsw_inplace_scratch_space(&module, ct_grlwe.size(), ct_rgsw.size())
-            | RGSWCt::encrypt_sk_scratch_space(&module, ct_rgsw.size()),
+        GLWEKeySwitchKey::encrypt_sk_scratch_space(&module, ct_grlwe.size())
+            | GLWECiphertextFourier::decrypt_scratch_space(&module, ct_grlwe.size())
+            | GLWEKeySwitchKey::external_product_inplace_scratch_space(&module, ct_grlwe.size(), ct_rgsw.size())
+            | GGSWCiphertext::encrypt_sk_scratch_space(&module, ct_rgsw.size()),
     );
 
     let k: usize = 1;
@@ -422,7 +422,7 @@ fn prod_by_rgsw() {
     let mut sk: SecretKey<Vec<u8>> = SecretKey::new(&module);
     sk.fill_ternary_prob(0.5, &mut source_xs);
 
-    let mut sk_dft: SecretKeyDft<Vec<u8>, FFT64> = SecretKeyDft::new(&module);
+    let mut sk_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::new(&module);
     sk_dft.dft(&module, &sk);
 
     // GRLWE_{s1}(s0) = s0 -> s1
@@ -449,10 +449,11 @@ fn prod_by_rgsw() {
     );
 
     // GRLWE_(m) (x) RGSW_(X^k) = GRLWE_(m * X^k)
-    ct_grlwe.prod_by_rgsw_inplace(&module, &ct_rgsw, scratch.borrow());
+    ct_grlwe.external_product_inplace(&module, &ct_rgsw, scratch.borrow());
 
-    let mut ct_rlwe_dft_s0s2: RLWECtDft<Vec<u8>, FFT64> = RLWECtDft::new(&module, log_base2k, log_k_grlwe);
-    let mut pt: RLWEPt<Vec<u8>> = RLWEPt::new(&module, log_base2k, log_k_grlwe);
+    let mut ct_rlwe_dft_s0s2: GLWECiphertextFourier<Vec<u8>, FFT64> =
+        GLWECiphertextFourier::new(&module, log_base2k, log_k_grlwe);
+    let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::new(&module, log_base2k, log_k_grlwe);
 
     module.vec_znx_rotate_inplace(k as i64, &mut pt_grlwe, 0);
 
@@ -490,8 +491,6 @@ fn prod_by_rgsw() {
             noise_want
         );
     });
-
-    module.free();
 }
 
 pub(crate) fn noise_grlwe_rlwe_product(

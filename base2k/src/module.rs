@@ -84,10 +84,11 @@ impl<B: Backend> Module<B> {
         ) & (self.cyclotomic_order() - 1)) as i64)
             * generator.signum()
     }
+}
 
-    pub fn free(self) {
-        unsafe { delete_module_info(self.ptr) }
-        drop(self);
+impl<B: Backend> Drop for Module<B> {
+    fn drop(&mut self) {
+         unsafe { delete_module_info(self.ptr) }
     }
 }
 
