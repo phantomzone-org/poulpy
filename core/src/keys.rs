@@ -5,7 +5,7 @@ use base2k::{
 };
 use sampling::source::Source;
 
-use crate::{elem::Infos, glwe::GLWECiphertextFourier};
+use crate::{elem::Infos, glwe_ciphertext_fourier::GLWECiphertextFourier};
 
 #[derive(Clone, Copy, Debug)]
 pub enum SecretDistribution {
@@ -21,11 +21,25 @@ pub struct SecretKey<T> {
 }
 
 impl SecretKey<Vec<u8>> {
-    pub fn new<B: Backend>(module: &Module<B>) -> Self {
+    pub fn new<B: Backend>(module: &Module<B>, rank: usize) -> Self {
         Self {
-            data: module.new_scalar_znx(1),
+            data: module.new_scalar_znx(rank),
             dist: SecretDistribution::NONE,
         }
+    }
+}
+
+impl<DataSelf> SecretKey<DataSelf> {
+    pub fn n(&self) -> usize {
+        self.data.n()
+    }
+
+    pub fn log_n(&self) -> usize {
+        self.data.log_n()
+    }
+
+    pub fn rank(&self) -> usize {
+        self.data.cols()
     }
 }
 
@@ -34,12 +48,16 @@ where
     S: AsMut<[u8]> + AsRef<[u8]>,
 {
     pub fn fill_ternary_prob(&mut self, prob: f64, source: &mut Source) {
-        self.data.fill_ternary_prob(0, prob, source);
+        (0..self.rank()).for_each(|i| {
+            self.data.fill_ternary_prob(i, prob, source);
+        });
         self.dist = SecretDistribution::TernaryProb(prob);
     }
 
     pub fn fill_ternary_hw(&mut self, hw: usize, source: &mut Source) {
-        self.data.fill_ternary_hw(0, hw, source);
+        (0..self.rank()).for_each(|i| {
+            self.data.fill_ternary_hw(i, hw, source);
+        });
         self.dist = SecretDistribution::TernaryFixed(hw);
     }
 
@@ -72,10 +90,24 @@ pub struct SecretKeyFourier<T, B: Backend> {
     pub dist: SecretDistribution,
 }
 
+impl<DataSelf, B: Backend> SecretKeyFourier<DataSelf, B> {
+    pub fn n(&self) -> usize {
+        self.data.n()
+    }
+
+    pub fn log_n(&self) -> usize {
+        self.data.log_n()
+    }
+
+    pub fn rank(&self) -> usize {
+        self.data.cols()
+    }
+}
+
 impl<B: Backend> SecretKeyFourier<Vec<u8>, B> {
-    pub fn new(module: &Module<B>) -> Self {
+    pub fn new(module: &Module<B>, rank: usize) -> Self {
         Self {
-            data: module.new_scalar_znx_dft(1),
+            data: module.new_scalar_znx_dft(rank),
             dist: SecretDistribution::NONE,
         }
     }
@@ -91,9 +123,15 @@ impl<B: Backend> SecretKeyFourier<Vec<u8>, B> {
                 SecretDistribution::NONE => panic!("invalid sk: SecretDistribution::NONE"),
                 _ => {}
             }
+
+            assert_eq!(self.n(), module.n());
+            assert_eq!(sk.n(), module.n());
+            assert_eq!(self.rank(), sk.rank());
         }
 
-        module.svp_prepare(self, 0, sk, 0);
+        (0..self.rank()).for_each(|i| {
+            module.svp_prepare(self, i, sk, i);
+        });
         self.dist = sk.dist;
     }
 }
@@ -116,21 +154,21 @@ where
     }
 }
 
-pub struct PublicKey<D, B: Backend> {
+pub struct GLWEPublicKey<D, B: Backend> {
     pub data: GLWECiphertextFourier<D, B>,
     pub dist: SecretDistribution,
 }
 
-impl<B: Backend> PublicKey<Vec<u8>, B> {
-    pub fn new(module: &Module<B>, log_base2k: usize, log_k: usize) -> Self {
+impl<B: Backend> GLWEPublicKey<Vec<u8>, B> {
+    pub fn new(module: &Module<B>, log_base2k: usize, log_k: usize, rank: usize) -> Self {
         Self {
-            data: GLWECiphertextFourier::new(module, log_base2k, log_k),
+            data: GLWECiphertextFourier::new(module, log_base2k, log_k, rank),
             dist: SecretDistribution::NONE,
         }
     }
 }
 
-impl<T, B: Backend> Infos for PublicKey<T, B> {
+impl<T, B: Backend> Infos for GLWEPublicKey<T, B> {
     type Inner = VecZnxDft<T, B>;
 
     fn inner(&self) -> &Self::Inner {
@@ -138,15 +176,21 @@ impl<T, B: Backend> Infos for PublicKey<T, B> {
     }
 
     fn basek(&self) -> usize {
-        self.data.log_base2k
+        self.data.basek
     }
 
     fn k(&self) -> usize {
-        self.data.log_k
+        self.data.k
     }
 }
 
-impl<C, B: Backend> VecZnxDftToMut<B> for PublicKey<C, B>
+impl<T, B: Backend> GLWEPublicKey<T, B> {
+    pub fn rank(&self) -> usize {
+        self.cols() - 1
+    }
+}
+
+impl<C, B: Backend> VecZnxDftToMut<B> for GLWEPublicKey<C, B>
 where
     VecZnxDft<C, B>: VecZnxDftToMut<B>,
 {
@@ -155,7 +199,7 @@ where
     }
 }
 
-impl<C, B: Backend> VecZnxDftToRef<B> for PublicKey<C, B>
+impl<C, B: Backend> VecZnxDftToRef<B> for GLWEPublicKey<C, B>
 where
     VecZnxDft<C, B>: VecZnxDftToRef<B>,
 {
@@ -164,7 +208,7 @@ where
     }
 }
 
-impl<C> PublicKey<C, FFT64> {
+impl<C> GLWEPublicKey<C, FFT64> {
     pub fn generate<S>(
         &mut self,
         module: &Module<FFT64>,
@@ -186,8 +230,9 @@ impl<C> PublicKey<C, FFT64> {
         }
 
         // Its ok to allocate scratch space here since pk is usually generated only once.
-        let mut scratch: ScratchOwned = ScratchOwned::new(GLWECiphertextFourier::encrypt_zero_sk_scratch_space(
+        let mut scratch: ScratchOwned = ScratchOwned::new(GLWECiphertextFourier::encrypt_sk_scratch_space(
             module,
+            self.rank(),
             self.size(),
         ));
         self.data.encrypt_zero_sk(

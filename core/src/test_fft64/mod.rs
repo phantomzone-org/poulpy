@@ -1,4 +1,4 @@
-mod grlwe;
-mod rgsw;
-mod rlwe;
-mod rlwe_dft;
+mod gglwe;
+mod ggsw;
+mod glwe;
+mod glwe_fourier;

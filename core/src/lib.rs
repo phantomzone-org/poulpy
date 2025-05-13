@@ -1,10 +1,10 @@
 pub mod elem;
-pub mod encryption;
-pub mod external_product;
-pub mod ggsw;
-pub mod glwe;
+pub mod gglwe_ciphertext;
+pub mod ggsw_ciphertext;
+pub mod glwe_ciphertext;
+pub mod glwe_ciphertext_fourier;
+pub mod glwe_plaintext;
 pub mod keys;
-pub mod keyswitch;
 pub mod keyswitch_key;
 #[cfg(test)]
 mod test_fft64;

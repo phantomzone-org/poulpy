@@ -1,6 +1,6 @@
 use base2k::{Backend, Module, VecZnxDft, VecZnxDftToMut, VecZnxDftToRef, ZnxInfos};
 
-use crate::{glwe::GLWECiphertextFourier, utils::derive_size};
+use crate::{glwe_ciphertext_fourier::GLWECiphertextFourier, utils::derive_size};
 
 pub trait Infos {
     type Inner: ZnxInfos;
@@ -23,7 +23,7 @@ pub trait Infos {
     }
 
     /// Returns the number of polynomials in each row.
-    fn rank(&self) -> usize {
+    fn cols(&self) -> usize {
         self.inner().cols()
     }
 
@@ -36,7 +36,7 @@ pub trait Infos {
 
     /// Returns the total number of small polynomials.
     fn poly_count(&self) -> usize {
-        self.rows() * self.rank() * self.size()
+        self.rows() * self.cols() * self.size()
     }
 
     /// Returns the base 2 logarithm of the ciphertext base.

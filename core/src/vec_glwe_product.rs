@@ -5,7 +5,8 @@ use base2k::{
 
 use crate::{
     elem::{GetRow, Infos, SetRow},
-    glwe::{GLWECiphertext, GLWECiphertextFourier},
+    glwe_ciphertext::GLWECiphertext,
+    glwe_ciphertext_fourier::GLWECiphertextFourier,
 };
 
 pub(crate) trait VecGLWEProductScratchSpace {
@@ -81,8 +82,8 @@ pub(crate) trait VecGLWEProduct: Infos {
 
         let mut a_idft: GLWECiphertext<&mut [u8]> = GLWECiphertext::<&mut [u8]> {
             data: a_data,
-            log_base2k: a.basek(),
-            log_k: a.k(),
+            basek: a.basek(),
+            k: a.k(),
         };
 
         a.idft(module, &mut a_idft, scratch_1);
@@ -91,8 +92,8 @@ pub(crate) trait VecGLWEProduct: Infos {
 
         let mut res_idft: GLWECiphertext<&mut [u8]> = GLWECiphertext::<&mut [u8]> {
             data: res_data,
-            log_base2k: res.basek(),
-            log_k: res.k(),
+            basek: res.basek(),
+            k: res.k(),
         };
 
         self.prod_with_glwe(module, &mut res_idft, &a_idft, scratch_2);
@@ -122,8 +123,8 @@ pub(crate) trait VecGLWEProduct: Infos {
 
         let mut res_idft: GLWECiphertext<&mut [u8]> = GLWECiphertext::<&mut [u8]> {
             data: res_data,
-            log_base2k: res.basek(),
-            log_k: res.k(),
+            basek: res.basek(),
+            k: res.k(),
         };
 
         res.idft(module, &mut res_idft, scratch_1);
@@ -143,22 +144,22 @@ pub(crate) trait VecGLWEProduct: Infos {
 
         let mut tmp_a_row: GLWECiphertextFourier<&mut [u8], FFT64> = GLWECiphertextFourier::<&mut [u8], FFT64> {
             data: tmp_row_data,
-            log_base2k: a.basek(),
-            log_k: a.k(),
+            basek: a.basek(),
+            k: a.k(),
         };
 
         let (tmp_res_data, scratch2) = scratch1.tmp_vec_znx_dft(module, 2, res.size());
 
         let mut tmp_res_row: GLWECiphertextFourier<&mut [u8], FFT64> = GLWECiphertextFourier::<&mut [u8], FFT64> {
             data: tmp_res_data,
-            log_base2k: res.basek(),
-            log_k: res.k(),
+            basek: res.basek(),
+            k: res.k(),
         };
 
         let min_rows: usize = res.rows().min(a.rows());
 
         (0..res.rows()).for_each(|row_i| {
-            (0..res.rank()).for_each(|col_j| {
+            (0..res.cols()).for_each(|col_j| {
                 a.get_row(module, row_i, col_j, &mut tmp_a_row);
                 self.prod_with_glwe_fourier(module, &mut tmp_res_row, &tmp_a_row, scratch2);
                 res.set_row(module, row_i, col_j, &tmp_res_row);
@@ -168,7 +169,7 @@ pub(crate) trait VecGLWEProduct: Infos {
         tmp_res_row.data.zero();
 
         (min_rows..res.rows()).for_each(|row_i| {
-            (0..self.rank()).for_each(|col_j| {
+            (0..self.cols()).for_each(|col_j| {
                 res.set_row(module, row_i, col_j, &tmp_res_row);
             });
         });
@@ -182,12 +183,12 @@ pub(crate) trait VecGLWEProduct: Infos {
 
         let mut tmp_row: GLWECiphertextFourier<&mut [u8], FFT64> = GLWECiphertextFourier::<&mut [u8], FFT64> {
             data: tmp_row_data,
-            log_base2k: res.basek(),
-            log_k: res.k(),
+            basek: res.basek(),
+            k: res.k(),
         };
 
         (0..res.rows()).for_each(|row_i| {
-            (0..res.rank()).for_each(|col_j| {
+            (0..res.cols()).for_each(|col_j| {
                 res.get_row(module, row_i, col_j, &mut tmp_row);
                 self.prod_with_glwe_fourier_inplace(module, &mut tmp_row, scratch1);
                 res.set_row(module, row_i, col_j, &tmp_row);

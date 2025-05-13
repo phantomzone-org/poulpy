@@ -60,11 +60,11 @@ impl<D: AsRef<[u8]>> ZnxView for MatZnxDft<D, FFT64> {
 }
 
 impl<D, B: Backend> MatZnxDft<D, B> {
-    pub(crate) fn cols_in(&self) -> usize {
+    pub fn cols_in(&self) -> usize {
         self.cols_in
     }
 
-    pub(crate) fn cols_out(&self) -> usize {
+    pub fn cols_out(&self) -> usize {
         self.cols_out
     }
 }

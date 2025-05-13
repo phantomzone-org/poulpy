@@ -6,7 +6,7 @@ use rlwe::{
     external_product::{
         ExternalProduct, ExternalProductInplace, ExternalProductInplaceScratchSpace, ExternalProductScratchSpace,
     },
-    ggsw::GGSWCiphertext,
+    ggsw_ciphertext::GGSWCiphertext,
     glwe::GLWECiphertext,
     keys::{SecretKey, SecretKeyFourier},
 };
