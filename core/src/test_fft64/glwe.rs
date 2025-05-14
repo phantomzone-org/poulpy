@@ -17,21 +17,30 @@ use crate::{
 };
 
 #[test]
-fn encrypt_sk_rank_1() {
-    encrypt_sk(11, 8, 54, 30, 3.2, 1);
+fn encrypt_sk() {
+    (1..4).for_each(|rank| {
+        println!("test encrypt_sk rank: {}", rank);
+        test_encrypt_sk(11, 8, 54, 30, 3.2, rank);
+    });
 }
 
 #[test]
-fn encrypt_sk_rank_2() {
-    encrypt_sk(5, 8, 54, 30, 3.2, 2);
+fn encrypt_zero_sk() {
+    (1..4).for_each(|rank| {
+        println!("test encrypt_zero_sk rank: {}", rank);
+        test_encrypt_zero_sk(11, 8, 64, 3.2, rank);
+    });
 }
 
 #[test]
-fn encrypt_sk_rank_3() {
-    encrypt_sk(11, 8, 54, 30, 3.2, 3);
+fn encrypt_pk() {
+    (1..4).for_each(|rank| {
+        println!("test encrypt_pk rank: {}", rank);
+        test_encrypt_pk(11, 8, 64, 64, 3.2, rank)
+    });
 }
 
-fn encrypt_sk(log_n: usize, basek: usize, k_ct: usize, k_pt: usize, sigma: f64, rank: usize) {
+fn test_encrypt_sk(log_n: usize, basek: usize, k_ct: usize, k_pt: usize, sigma: f64, rank: usize) {
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
 
     let mut ct: GLWECiphertext<Vec<u8>> = GLWECiphertext::new(&module, basek, k_ct, rank);
@@ -92,14 +101,8 @@ fn encrypt_sk(log_n: usize, basek: usize, k_ct: usize, k_pt: usize, sigma: f64, 
     });
 }
 
-#[test]
-fn encrypt_zero_sk() {
-    let module: Module<FFT64> = Module::<FFT64>::new(1024);
-    let basek: usize = 8;
-    let k_ct: usize = 55;
-    let rank: usize = 1;
-
-    let sigma: f64 = 3.2;
+fn test_encrypt_zero_sk(log_n: usize, basek: usize, k_ct: usize, sigma: f64, rank: usize) {
+    let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
 
     let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::new(&module, basek, k_ct);
 
@@ -132,15 +135,8 @@ fn encrypt_zero_sk() {
     assert!((sigma - pt.data.std(0, basek) * (k_ct as f64).exp2()) <= 0.2);
 }
 
-#[test]
-fn encrypt_pk() {
-    let module: Module<FFT64> = Module::<FFT64>::new(32);
-    let basek: usize = 8;
-    let k_ct: usize = 54;
-    let log_k_pk: usize = 64;
-    let rank: usize = 1;
-
-    let sigma: f64 = 3.2;
+fn test_encrypt_pk(log_n: usize, basek: usize, k_ct: usize, k_pk: usize, sigma: f64, rank: usize) {
+    let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
 
     let mut ct: GLWECiphertext<Vec<u8>> = GLWECiphertext::new(&module, basek, k_ct, rank);
     let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::new(&module, basek, k_ct);
@@ -155,7 +151,7 @@ fn encrypt_pk() {
     let mut sk_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::new(&module, rank);
     sk_dft.dft(&module, &sk);
 
-    let mut pk: GLWEPublicKey<Vec<u8>, FFT64> = GLWEPublicKey::new(&module, basek, log_k_pk, rank);
+    let mut pk: GLWEPublicKey<Vec<u8>, FFT64> = GLWEPublicKey::new(&module, basek, k_pk, rank);
     pk.generate(&module, &sk_dft, &mut source_xa, &mut source_xe, sigma);
 
     let mut scratch: ScratchOwned = ScratchOwned::new(
@@ -188,7 +184,15 @@ fn encrypt_pk() {
 
     module.vec_znx_sub_ab_inplace(&mut pt_want, 0, &pt_have, 0);
 
-    assert!(((1.0f64 / 12.0).sqrt() - pt_want.data.std(0, basek) * (k_ct as f64).exp2()).abs() < 0.2);
+    let noise_have: f64 = pt_want.data.std(0, basek).log2();
+    let noise_want: f64 = ((((rank as f64) + 1.0) * module.n() as f64 * 0.5 * sigma * sigma).sqrt()).log2() - (k_ct as f64);
+
+    assert!(
+        (noise_have - noise_want).abs() < 0.2,
+        "{} {}",
+        noise_have,
+        noise_want
+    );
 }
 
 #[test]
