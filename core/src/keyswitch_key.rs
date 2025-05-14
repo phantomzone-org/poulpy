@@ -9,7 +9,7 @@ use crate::{
     gglwe_ciphertext::GGLWECiphertext,
     ggsw_ciphertext::GGSWCiphertext,
     glwe_ciphertext_fourier::GLWECiphertextFourier,
-    keys::SecretKeyFourier,
+    keys::{SecretKey, SecretKeyFourier},
     vec_glwe_product::{VecGLWEProduct, VecGLWEProductScratchSpace},
 };
 
@@ -103,46 +103,60 @@ impl<DataSelf> GLWESwitchingKey<DataSelf, FFT64>
 where
     MatZnxDft<DataSelf, FFT64>: MatZnxDftToMut<FFT64> + MatZnxDftToRef<FFT64>,
 {
-    pub fn encrypt_sk<DataPt, DataSk>(
+    pub fn encrypt_sk<DataSkIn, DataSkOut>(
         &mut self,
         module: &Module<FFT64>,
-        pt: &ScalarZnx<DataPt>,
-        sk_dft: &SecretKeyFourier<DataSk, FFT64>,
+        sk_in: &SecretKey<DataSkIn>,
+        sk_out_dft: &SecretKeyFourier<DataSkOut, FFT64>,
         source_xa: &mut Source,
         source_xe: &mut Source,
         sigma: f64,
         scratch: &mut Scratch,
     ) where
-        ScalarZnx<DataPt>: ScalarZnxToRef,
-        ScalarZnxDft<DataSk, FFT64>: ScalarZnxDftToRef<FFT64>,
+        ScalarZnx<DataSkIn>: ScalarZnxToRef,
+        ScalarZnxDft<DataSkOut, FFT64>: ScalarZnxDftToRef<FFT64>,
     {
-        self.0
-            .encrypt_sk(module, pt, sk_dft, source_xa, source_xe, sigma, scratch);
+        self.0.encrypt_sk(
+            module,
+            &sk_in.data,
+            sk_out_dft,
+            source_xa,
+            source_xe,
+            sigma,
+            scratch,
+        );
     }
 }
 
 impl GLWESwitchingKey<Vec<u8>, FFT64> {
-    pub fn keyswitch_scratch_space(module: &Module<FFT64>, res_size: usize, lhs: usize, rhs: usize) -> usize {
+    pub fn keyswitch_scratch_space(
+        module: &Module<FFT64>,
+        res_size: usize,
+        lhs: usize,
+        rhs: usize,
+        rank_in: usize,
+        rank_out: usize,
+    ) -> usize {
         <GGLWECiphertext<Vec<u8>, FFT64> as VecGLWEProductScratchSpace>::prod_with_vec_glwe_scratch_space(
-            module, res_size, lhs, rhs,
+            module, res_size, lhs, rhs, rank_in, rank_out,
         )
     }
 
-    pub fn keyswitch_inplace_scratch_space(module: &Module<FFT64>, res_size: usize, rhs: usize) -> usize {
+    pub fn keyswitch_inplace_scratch_space(module: &Module<FFT64>, res_size: usize, rhs: usize, rank: usize) -> usize {
         <GGLWECiphertext<Vec<u8>, FFT64> as VecGLWEProductScratchSpace>::prod_with_vec_glwe_inplace_scratch_space(
-            module, res_size, rhs,
+            module, res_size, rhs, rank,
         )
     }
 
-    pub fn external_product_scratch_space(module: &Module<FFT64>, res_size: usize, lhs: usize, rhs: usize) -> usize {
+    pub fn external_product_scratch_space(module: &Module<FFT64>, res_size: usize, lhs: usize, rhs: usize, rank: usize) -> usize {
         <GGSWCiphertext<Vec<u8>, FFT64> as VecGLWEProductScratchSpace>::prod_with_vec_glwe_scratch_space(
-            module, res_size, lhs, rhs,
+            module, res_size, lhs, rhs, rank, rank,
         )
     }
 
-    pub fn external_product_inplace_scratch_space(module: &Module<FFT64>, res_size: usize, rhs: usize) -> usize {
+    pub fn external_product_inplace_scratch_space(module: &Module<FFT64>, res_size: usize, rhs: usize, rank: usize) -> usize {
         <GGSWCiphertext<Vec<u8>, FFT64> as VecGLWEProductScratchSpace>::prod_with_glwe_inplace_scratch_space(
-            module, res_size, rhs,
+            module, res_size, rhs, rank,
         )
     }
 }

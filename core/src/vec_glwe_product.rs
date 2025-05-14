@@ -10,31 +10,53 @@ use crate::{
 };
 
 pub(crate) trait VecGLWEProductScratchSpace {
-    fn prod_with_glwe_scratch_space(module: &Module<FFT64>, res_size: usize, lhs: usize, rhs: usize) -> usize;
+    fn prod_with_glwe_scratch_space(
+        module: &Module<FFT64>,
+        res_size: usize,
+        lhs: usize,
+        rhs: usize,
+        rank_in: usize,
+        rank_out: usize,
+    ) -> usize;
 
-    fn prod_with_glwe_inplace_scratch_space(module: &Module<FFT64>, res_size: usize, rhs: usize) -> usize {
-        Self::prod_with_glwe_scratch_space(module, res_size, res_size, rhs)
+    fn prod_with_glwe_inplace_scratch_space(module: &Module<FFT64>, res_size: usize, rhs: usize, rank: usize) -> usize {
+        Self::prod_with_glwe_scratch_space(module, res_size, res_size, rhs, rank, rank)
     }
 
-    fn prod_with_glwe_dft_scratch_space(module: &Module<FFT64>, res_size: usize, lhs: usize, rhs: usize) -> usize {
-        (Self::prod_with_glwe_scratch_space(module, res_size, lhs, rhs) | module.vec_znx_idft_tmp_bytes())
-            + module.bytes_of_vec_znx(2, lhs)
-            + module.bytes_of_vec_znx(2, res_size)
+    fn prod_with_glwe_dft_scratch_space(
+        module: &Module<FFT64>,
+        res_size: usize,
+        lhs: usize,
+        rhs: usize,
+        rank_in: usize,
+        rank_out: usize,
+    ) -> usize {
+        (Self::prod_with_glwe_scratch_space(module, res_size, lhs, rhs, rank_in, rank_out) | module.vec_znx_idft_tmp_bytes())
+            + module.bytes_of_vec_znx(rank_in, lhs)
+            + module.bytes_of_vec_znx(rank_out, res_size)
     }
 
-    fn prod_with_glwe_dft_inplace_scratch_space(module: &Module<FFT64>, res_size: usize, rhs: usize) -> usize {
-        (Self::prod_with_glwe_inplace_scratch_space(module, res_size, rhs) | module.vec_znx_idft_tmp_bytes())
-            + module.bytes_of_vec_znx(2, res_size)
+    fn prod_with_glwe_dft_inplace_scratch_space(module: &Module<FFT64>, res_size: usize, rhs: usize, rank: usize) -> usize {
+        (Self::prod_with_glwe_inplace_scratch_space(module, res_size, rhs, rank) | module.vec_znx_idft_tmp_bytes())
+            + module.bytes_of_vec_znx(rank + 1, res_size)
     }
 
-    fn prod_with_vec_glwe_scratch_space(module: &Module<FFT64>, res_size: usize, lhs: usize, rhs: usize) -> usize {
-        Self::prod_with_glwe_dft_scratch_space(module, res_size, lhs, rhs)
-            + module.bytes_of_vec_znx_dft(2, lhs)
-            + module.bytes_of_vec_znx_dft(2, res_size)
+    fn prod_with_vec_glwe_scratch_space(
+        module: &Module<FFT64>,
+        res_size: usize,
+        lhs: usize,
+        rhs: usize,
+        rank_in: usize,
+        rank_out: usize,
+    ) -> usize {
+        Self::prod_with_glwe_dft_scratch_space(module, res_size, lhs, rhs, rank_in, rank_out)
+            + module.bytes_of_vec_znx_dft(rank_in + 1, lhs)
+            + module.bytes_of_vec_znx_dft(rank_out + 1, res_size)
     }
 
-    fn prod_with_vec_glwe_inplace_scratch_space(module: &Module<FFT64>, res_size: usize, rhs: usize) -> usize {
-        Self::prod_with_glwe_dft_inplace_scratch_space(module, res_size, rhs) + module.bytes_of_vec_znx_dft(2, res_size)
+    fn prod_with_vec_glwe_inplace_scratch_space(module: &Module<FFT64>, res_size: usize, rhs: usize, rank: usize) -> usize {
+        Self::prod_with_glwe_dft_inplace_scratch_space(module, res_size, rhs, rank)
+            + module.bytes_of_vec_znx_dft(rank + 1, res_size)
     }
 }
 
@@ -78,7 +100,7 @@ pub(crate) trait VecGLWEProduct: Infos {
             assert_eq!(res.n(), module.n());
         }
 
-        let (a_data, scratch_1) = scratch.tmp_vec_znx(module, 2, a.size());
+        let (a_data, scratch_1) = scratch.tmp_vec_znx(module, a.rank() + 1, a.size());
 
         let mut a_idft: GLWECiphertext<&mut [u8]> = GLWECiphertext::<&mut [u8]> {
             data: a_data,
@@ -88,7 +110,7 @@ pub(crate) trait VecGLWEProduct: Infos {
 
         a.idft(module, &mut a_idft, scratch_1);
 
-        let (res_data, scratch_2) = scratch_1.tmp_vec_znx(module, 2, res.size());
+        let (res_data, scratch_2) = scratch_1.tmp_vec_znx(module, res.rank() + 1, res.size());
 
         let mut res_idft: GLWECiphertext<&mut [u8]> = GLWECiphertext::<&mut [u8]> {
             data: res_data,
@@ -98,8 +120,7 @@ pub(crate) trait VecGLWEProduct: Infos {
 
         self.prod_with_glwe(module, &mut res_idft, &a_idft, scratch_2);
 
-        module.vec_znx_dft(res, 0, &res_idft, 0);
-        module.vec_znx_dft(res, 1, &res_idft, 1);
+        res_idft.dft(module, res);
     }
 
     fn prod_with_glwe_fourier_inplace<MUT>(
@@ -119,7 +140,7 @@ pub(crate) trait VecGLWEProduct: Infos {
             assert_eq!(res.n(), module.n());
         }
 
-        let (res_data, scratch_1) = scratch.tmp_vec_znx(module, 2, res.size());
+        let (res_data, scratch_1) = scratch.tmp_vec_znx(module, res.rank() + 1, res.size());
 
         let mut res_idft: GLWECiphertext<&mut [u8]> = GLWECiphertext::<&mut [u8]> {
             data: res_data,
@@ -131,8 +152,7 @@ pub(crate) trait VecGLWEProduct: Infos {
 
         self.prod_with_glwe_inplace(module, &mut res_idft, scratch_1);
 
-        module.vec_znx_dft(res, 0, &res_idft, 0);
-        module.vec_znx_dft(res, 1, &res_idft, 1);
+        res_idft.dft(module, res);
     }
 
     fn prod_with_vec_glwe<RES, LHS>(&self, module: &Module<FFT64>, res: &mut RES, a: &LHS, scratch: &mut Scratch)
@@ -140,7 +160,7 @@ pub(crate) trait VecGLWEProduct: Infos {
         LHS: GetRow<FFT64> + Infos,
         RES: SetRow<FFT64> + Infos,
     {
-        let (tmp_row_data, scratch1) = scratch.tmp_vec_znx_dft(module, 2, a.size());
+        let (tmp_row_data, scratch1) = scratch.tmp_vec_znx_dft(module, a.cols(), a.size());
 
         let mut tmp_a_row: GLWECiphertextFourier<&mut [u8], FFT64> = GLWECiphertextFourier::<&mut [u8], FFT64> {
             data: tmp_row_data,
@@ -148,7 +168,7 @@ pub(crate) trait VecGLWEProduct: Infos {
             k: a.k(),
         };
 
-        let (tmp_res_data, scratch2) = scratch1.tmp_vec_znx_dft(module, 2, res.size());
+        let (tmp_res_data, scratch2) = scratch1.tmp_vec_znx_dft(module, res.cols(), res.size());
 
         let mut tmp_res_row: GLWECiphertextFourier<&mut [u8], FFT64> = GLWECiphertextFourier::<&mut [u8], FFT64> {
             data: tmp_res_data,
@@ -179,7 +199,7 @@ pub(crate) trait VecGLWEProduct: Infos {
     where
         RES: GetRow<FFT64> + SetRow<FFT64> + Infos,
     {
-        let (tmp_row_data, scratch1) = scratch.tmp_vec_znx_dft(module, 2, res.size());
+        let (tmp_row_data, scratch1) = scratch.tmp_vec_znx_dft(module, res.cols(), res.size());
 
         let mut tmp_row: GLWECiphertextFourier<&mut [u8], FFT64> = GLWECiphertextFourier::<&mut [u8], FFT64> {
             data: tmp_row_data,

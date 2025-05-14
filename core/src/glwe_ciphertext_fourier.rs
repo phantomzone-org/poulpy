@@ -90,23 +90,34 @@ impl GLWECiphertextFourier<Vec<u8>, FFT64> {
             + module.bytes_of_vec_znx_big(1, ct_size)
     }
 
-    pub fn keyswitch_scratch_space(module: &Module<FFT64>, res_size: usize, lhs: usize, rhs: usize) -> usize {
-        <GGLWECiphertext<Vec<u8>, FFT64> as VecGLWEProductScratchSpace>::prod_with_glwe_scratch_space(module, res_size, lhs, rhs)
-    }
-
-    pub fn keyswitch_inplace_scratch_space(module: &Module<FFT64>, res_size: usize, rhs: usize) -> usize {
-        <GGLWECiphertext<Vec<u8>, FFT64> as VecGLWEProductScratchSpace>::prod_with_glwe_inplace_scratch_space(
-            module, res_size, rhs,
+    pub fn keyswitch_scratch_space(
+        module: &Module<FFT64>,
+        res_size: usize,
+        lhs: usize,
+        rhs: usize,
+        rank_in: usize,
+        rank_out: usize,
+    ) -> usize {
+        <GGLWECiphertext<Vec<u8>, FFT64> as VecGLWEProductScratchSpace>::prod_with_glwe_scratch_space(
+            module, res_size, lhs, rhs, rank_in, rank_out,
         )
     }
 
-    pub fn external_product_scratch_space(module: &Module<FFT64>, res_size: usize, lhs: usize, rhs: usize) -> usize {
-        <GGSWCiphertext<Vec<u8>, FFT64> as VecGLWEProductScratchSpace>::prod_with_glwe_scratch_space(module, res_size, lhs, rhs)
+    pub fn keyswitch_inplace_scratch_space(module: &Module<FFT64>, res_size: usize, rhs: usize, rank: usize) -> usize {
+        <GGLWECiphertext<Vec<u8>, FFT64> as VecGLWEProductScratchSpace>::prod_with_glwe_inplace_scratch_space(
+            module, res_size, rhs, rank,
+        )
     }
 
-    pub fn external_product_inplace_scratch_space(module: &Module<FFT64>, res_size: usize, rhs: usize) -> usize {
+    pub fn external_product_scratch_space(module: &Module<FFT64>, res_size: usize, lhs: usize, rhs: usize, rank: usize) -> usize {
+        <GGSWCiphertext<Vec<u8>, FFT64> as VecGLWEProductScratchSpace>::prod_with_glwe_scratch_space(
+            module, res_size, lhs, rhs, rank, rank,
+        )
+    }
+
+    pub fn external_product_inplace_scratch_space(module: &Module<FFT64>, res_size: usize, rhs: usize, rank: usize) -> usize {
         <GGSWCiphertext<Vec<u8>, FFT64> as VecGLWEProductScratchSpace>::prod_with_glwe_inplace_scratch_space(
-            module, res_size, rhs,
+            module, res_size, rhs, rank,
         )
     }
 }
