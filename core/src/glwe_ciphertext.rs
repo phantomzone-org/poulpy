@@ -435,17 +435,30 @@ where
         VecZnx<DataPt>: VecZnxToMut,
         ScalarZnxDft<DataSk, FFT64>: ScalarZnxDftToRef<FFT64>,
     {
+        #[cfg(debug_assertions)]
+        {
+            assert_eq!(self.rank(), sk_dft.rank());
+            assert_eq!(self.n(), module.n());
+            assert_eq!(pt.n(), module.n());
+            assert_eq!(sk_dft.n(), module.n());
+        }
+
+        let cols: usize = self.rank() + 1;
+
         let (mut c0_big, scratch_1) = scratch.tmp_vec_znx_big(module, 1, self.size()); // TODO optimize size when pt << ct
+        c0_big.zero();
 
         {
-            let (mut c0_dft, _) = scratch_1.tmp_vec_znx_dft(module, 1, self.size()); // TODO optimize size when pt << ct
-            module.vec_znx_dft(&mut c0_dft, 0, self, 1);
+            (1..cols).for_each(|i| {
+                // ci_dft = DFT(a[i]) * DFT(s[i])
+                let (mut ci_dft, _) = scratch_1.tmp_vec_znx_dft(module, 1, self.size()); // TODO optimize size when pt << ct
+                module.vec_znx_dft(&mut ci_dft, 0, self, i);
+                module.svp_apply_inplace(&mut ci_dft, 0, sk_dft, i - 1);
+                let ci_big = module.vec_znx_idft_consume(ci_dft);
 
-            // c0_dft = DFT(a) * DFT(s)
-            module.svp_apply_inplace(&mut c0_dft, 0, sk_dft, 0);
-
-            // c0_big = IDFT(c0_dft)
-            module.vec_znx_idft_tmp_a(&mut c0_big, 0, &mut c0_dft, 0);
+                // c0_big += a[i] * s[i]
+                module.vec_znx_big_add_inplace(&mut c0_big, 0, &ci_big, 0);
+            });
         }
 
         // c0_big = (a * s) + (-a * s + m + e) = BIG(m + e)
