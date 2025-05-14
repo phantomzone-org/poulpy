@@ -97,12 +97,12 @@ where
 }
 
 impl GLWECiphertext<Vec<u8>> {
-    pub fn encrypt_sk_scratch_space(module: &Module<FFT64>, _rank: usize, ct_size: usize) -> usize {
+    pub fn encrypt_sk_scratch_space(module: &Module<FFT64>, ct_size: usize) -> usize {
         module.vec_znx_big_normalize_tmp_bytes()
             + module.bytes_of_vec_znx_dft(1, ct_size)
             + module.bytes_of_vec_znx_big(1, ct_size)
     }
-    pub fn encrypt_pk_scratch_space(module: &Module<FFT64>, _rank: usize, pk_size: usize) -> usize {
+    pub fn encrypt_pk_scratch_space(module: &Module<FFT64>, pk_size: usize) -> usize {
         ((module.bytes_of_vec_znx_dft(1, pk_size) + module.bytes_of_vec_znx_big(1, pk_size)) | module.bytes_of_scalar_znx(1))
             + module.bytes_of_scalar_znx_dft(1)
             + module.vec_znx_big_normalize_tmp_bytes()

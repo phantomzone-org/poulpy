@@ -80,7 +80,7 @@ impl GLWECiphertextFourier<Vec<u8>, FFT64> {
     }
 
     pub fn encrypt_sk_scratch_space(module: &Module<FFT64>, rank: usize, ct_size: usize) -> usize {
-        module.bytes_of_vec_znx(rank + 1, ct_size) + GLWECiphertext::encrypt_sk_scratch_space(module, rank, ct_size)
+        module.bytes_of_vec_znx(rank + 1, ct_size) + GLWECiphertext::encrypt_sk_scratch_space(module, ct_size)
     }
 
     pub fn decrypt_scratch_space(module: &Module<FFT64>, ct_size: usize) -> usize {

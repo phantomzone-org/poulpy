@@ -82,7 +82,7 @@ where
 
 impl GGLWECiphertext<Vec<u8>, FFT64> {
     pub fn encrypt_sk_scratch_space(module: &Module<FFT64>, rank: usize, size: usize) -> usize {
-        GLWECiphertext::encrypt_sk_scratch_space(module, rank, size)
+        GLWECiphertext::encrypt_sk_scratch_space(module, size)
             + module.bytes_of_vec_znx(rank + 1, size)
             + module.bytes_of_vec_znx(1, size)
             + module.bytes_of_vec_znx_dft(rank + 1, size)
