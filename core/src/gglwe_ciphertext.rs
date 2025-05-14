@@ -97,7 +97,6 @@ where
         source_xa: &mut Source,
         source_xe: &mut Source,
         sigma: f64,
-        bound: f64,
         scratch: &mut Scratch,
     ) where
         ScalarZnx<DataPt>: ScalarZnxToRef,
@@ -153,7 +152,6 @@ where
                 source_xa,
                 source_xe,
                 sigma,
-                bound,
                 scratch_3,
             );
 

@@ -23,7 +23,6 @@ fn encrypt_sk() {
     let rank: usize = 1;
 
     let sigma: f64 = 3.2;
-    let bound: f64 = sigma * 6.0;
 
     let mut ct: GGSWCiphertext<Vec<u8>, FFT64> = GGSWCiphertext::new(&module, log_base2k, log_k_ct, rows, rank);
     let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::new(&module, log_base2k, log_k_ct);
@@ -54,7 +53,6 @@ fn encrypt_sk() {
         &mut source_xa,
         &mut source_xe,
         sigma,
-        bound,
         scratch.borrow(),
     );
 
@@ -99,7 +97,6 @@ fn keyswitch() {
     let rank: usize = 1;
 
     let sigma: f64 = 3.2;
-    let bound: f64 = sigma * 6.0;
 
     let mut ct_grlwe: GLWESwitchingKey<Vec<u8>, FFT64> =
         GLWESwitchingKey::new(&module, log_base2k, log_k_grlwe, rows, rank, rank);
@@ -145,7 +142,6 @@ fn keyswitch() {
         &mut source_xa,
         &mut source_xe,
         sigma,
-        bound,
         scratch.borrow(),
     );
 
@@ -156,7 +152,6 @@ fn keyswitch() {
         &mut source_xa,
         &mut source_xe,
         sigma,
-        bound,
         scratch.borrow(),
     );
 
@@ -220,7 +215,6 @@ fn keyswitch_inplace() {
     let rank: usize = 1;
 
     let sigma: f64 = 3.2;
-    let bound: f64 = sigma * 6.0;
 
     let mut ct_grlwe: GLWESwitchingKey<Vec<u8>, FFT64> =
         GLWESwitchingKey::new(&module, log_base2k, log_k_grlwe, rows, rank, rank);
@@ -260,7 +254,6 @@ fn keyswitch_inplace() {
         &mut source_xa,
         &mut source_xe,
         sigma,
-        bound,
         scratch.borrow(),
     );
 
@@ -271,7 +264,6 @@ fn keyswitch_inplace() {
         &mut source_xa,
         &mut source_xe,
         sigma,
-        bound,
         scratch.borrow(),
     );
 
@@ -336,7 +328,6 @@ fn external_product() {
     let rank: usize = 1;
 
     let sigma: f64 = 3.2;
-    let bound: f64 = sigma * 6.0;
 
     let mut ct_rgsw_rhs: GGSWCiphertext<Vec<u8>, FFT64> = GGSWCiphertext::new(&module, log_base2k, log_k_rgsw_rhs, rows, rank);
     let mut ct_rgsw_lhs_in: GGSWCiphertext<Vec<u8>, FFT64> =
@@ -382,7 +373,6 @@ fn external_product() {
         &mut source_xa,
         &mut source_xe,
         sigma,
-        bound,
         scratch.borrow(),
     );
 
@@ -393,7 +383,6 @@ fn external_product() {
         &mut source_xa,
         &mut source_xe,
         sigma,
-        bound,
         scratch.borrow(),
     );
 
@@ -468,7 +457,6 @@ fn external_product_inplace() {
     let rank: usize = 1;
 
     let sigma: f64 = 3.2;
-    let bound: f64 = sigma * 6.0;
 
     let mut ct_rgsw_rhs: GGSWCiphertext<Vec<u8>, FFT64> = GGSWCiphertext::new(&module, log_base2k, log_k_rgsw_rhs, rows, rank);
     let mut ct_rgsw_lhs: GGSWCiphertext<Vec<u8>, FFT64> = GGSWCiphertext::new(&module, log_base2k, log_k_rgsw_lhs, rows, rank);
@@ -506,7 +494,6 @@ fn external_product_inplace() {
         &mut source_xa,
         &mut source_xe,
         sigma,
-        bound,
         scratch.borrow(),
     );
 
@@ -517,7 +504,6 @@ fn external_product_inplace() {
         &mut source_xa,
         &mut source_xe,
         sigma,
-        bound,
         scratch.borrow(),
     );
 

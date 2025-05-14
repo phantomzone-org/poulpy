@@ -21,7 +21,6 @@ fn encrypt_sk() {
     let rank_out: usize = 1;
 
     let sigma: f64 = 3.2;
-    let bound: f64 = sigma * 6.0;
 
     let mut ct: GLWESwitchingKey<Vec<u8>, FFT64> = GLWESwitchingKey::new(&module, log_base2k, log_k_ct, rows, rank, rank_out);
     let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::new(&module, log_base2k, log_k_ct);
@@ -52,7 +51,6 @@ fn encrypt_sk() {
         &mut source_xa,
         &mut source_xe,
         sigma,
-        bound,
         scratch.borrow(),
     );
 
@@ -77,7 +75,6 @@ fn keyswitch() {
     let rank: usize = 1;
 
     let sigma: f64 = 3.2;
-    let bound: f64 = sigma * 6.0;
 
     let mut ct_grlwe_s0s1: GLWESwitchingKey<Vec<u8>, FFT64> =
         GLWESwitchingKey::new(&module, log_base2k, log_k_grlwe, rows, rank, rank);
@@ -127,7 +124,6 @@ fn keyswitch() {
         &mut source_xa,
         &mut source_xe,
         sigma,
-        bound,
         scratch.borrow(),
     );
 
@@ -139,7 +135,6 @@ fn keyswitch() {
         &mut source_xa,
         &mut source_xe,
         sigma,
-        bound,
         scratch.borrow(),
     );
 
@@ -188,7 +183,6 @@ fn keyswitch_inplace() {
     let rank_out: usize = 1;
 
     let sigma: f64 = 3.2;
-    let bound: f64 = sigma * 6.0;
 
     let mut ct_grlwe_s0s1: GLWESwitchingKey<Vec<u8>, FFT64> =
         GLWESwitchingKey::new(&module, log_base2k, log_k_grlwe, rows, rank, rank_out);
@@ -231,7 +225,6 @@ fn keyswitch_inplace() {
         &mut source_xa,
         &mut source_xe,
         sigma,
-        bound,
         scratch.borrow(),
     );
 
@@ -243,7 +236,6 @@ fn keyswitch_inplace() {
         &mut source_xa,
         &mut source_xe,
         sigma,
-        bound,
         scratch.borrow(),
     );
 
@@ -294,7 +286,6 @@ fn external_product() {
     let rank_out: usize = 1;
 
     let sigma: f64 = 3.2;
-    let bound: f64 = sigma * 6.0;
 
     let mut ct_grlwe_in: GLWESwitchingKey<Vec<u8>, FFT64> =
         GLWESwitchingKey::new(&module, log_base2k, log_k_grlwe, rows, rank, rank_out);
@@ -341,7 +332,6 @@ fn external_product() {
         &mut source_xa,
         &mut source_xe,
         sigma,
-        bound,
         scratch.borrow(),
     );
 
@@ -352,7 +342,6 @@ fn external_product() {
         &mut source_xa,
         &mut source_xe,
         sigma,
-        bound,
         scratch.borrow(),
     );
 
@@ -408,11 +397,10 @@ fn external_product_inplace() {
     let log_k_grlwe: usize = 60;
     let rows: usize = (log_k_grlwe + log_base2k - 1) / log_base2k;
 
-    let rank = 1;
-    let rank_out = 1;
+    let rank: usize = 1;
+    let rank_out: usize = 1;
 
     let sigma: f64 = 3.2;
-    let bound: f64 = sigma * 6.0;
 
     let mut ct_grlwe: GLWESwitchingKey<Vec<u8>, FFT64> =
         GLWESwitchingKey::new(&module, log_base2k, log_k_grlwe, rows, rank, rank_out);
@@ -452,7 +440,6 @@ fn external_product_inplace() {
         &mut source_xa,
         &mut source_xe,
         sigma,
-        bound,
         scratch.borrow(),
     );
 
@@ -463,7 +450,6 @@ fn external_product_inplace() {
         &mut source_xa,
         &mut source_xe,
         sigma,
-        bound,
         scratch.borrow(),
     );
 

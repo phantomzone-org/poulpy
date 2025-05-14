@@ -10,3 +10,5 @@ pub mod keyswitch_key;
 mod test_fft64;
 mod utils;
 pub mod vec_glwe_product;
+
+pub(crate) const SIX_SIGMA: f64 = 6.0;

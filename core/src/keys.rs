@@ -216,7 +216,6 @@ impl<C> GLWEPublicKey<C, FFT64> {
         source_xa: &mut Source,
         source_xe: &mut Source,
         sigma: f64,
-        bound: f64,
     ) where
         VecZnxDft<C, FFT64>: VecZnxDftToMut<FFT64> + VecZnxDftToRef<FFT64>,
         ScalarZnxDft<S, FFT64>: ScalarZnxDftToRef<FFT64> + ZnxInfos,
@@ -241,7 +240,6 @@ impl<C> GLWEPublicKey<C, FFT64> {
             source_xa,
             source_xe,
             sigma,
-            bound,
             scratch.borrow(),
         );
         self.dist = sk_dft.dist;

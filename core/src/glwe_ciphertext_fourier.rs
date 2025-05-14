@@ -122,7 +122,6 @@ where
         source_xa: &mut Source,
         source_xe: &mut Source,
         sigma: f64,
-        bound: f64,
         scratch: &mut Scratch,
     ) where
         ScalarZnxDft<DataSk, FFT64>: ScalarZnxDftToRef<FFT64>,
@@ -133,9 +132,7 @@ where
             basek: self.basek,
             k: self.k,
         };
-        ct_idft.encrypt_zero_sk(
-            module, sk_dft, source_xa, source_xe, sigma, bound, scratch_1,
-        );
+        ct_idft.encrypt_zero_sk(module, sk_dft, source_xa, source_xe, sigma, scratch_1);
 
         ct_idft.dft(module, self);
     }

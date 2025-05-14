@@ -111,15 +111,13 @@ where
         source_xa: &mut Source,
         source_xe: &mut Source,
         sigma: f64,
-        bound: f64,
         scratch: &mut Scratch,
     ) where
         ScalarZnx<DataPt>: ScalarZnxToRef,
         ScalarZnxDft<DataSk, FFT64>: ScalarZnxDftToRef<FFT64>,
     {
-        self.0.encrypt_sk(
-            module, pt, sk_dft, source_xa, source_xe, sigma, bound, scratch,
-        );
+        self.0
+            .encrypt_sk(module, pt, sk_dft, source_xa, source_xe, sigma, scratch);
     }
 }
 

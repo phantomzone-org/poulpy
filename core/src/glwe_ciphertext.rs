@@ -7,6 +7,7 @@ use base2k::{
 use sampling::source::Source;
 
 use crate::{
+    SIX_SIGMA,
     elem::Infos,
     gglwe_ciphertext::GGLWECiphertext,
     ggsw_ciphertext::GGSWCiphertext,
@@ -145,7 +146,6 @@ where
         source_xa: &mut Source,
         source_xe: &mut Source,
         sigma: f64,
-        bound: f64,
         scratch: &mut Scratch,
     ) where
         VecZnx<DataPt>: VecZnxToRef,
@@ -158,7 +158,6 @@ where
             source_xa,
             source_xe,
             sigma,
-            bound,
             scratch,
         );
     }
@@ -170,14 +169,11 @@ where
         source_xa: &mut Source,
         source_xe: &mut Source,
         sigma: f64,
-        bound: f64,
         scratch: &mut Scratch,
     ) where
         ScalarZnxDft<DataSk, FFT64>: ScalarZnxDftToRef<FFT64>,
     {
-        self.encrypt_sk_private(
-            module, None, sk_dft, source_xa, source_xe, sigma, bound, scratch,
-        );
+        self.encrypt_sk_private(module, None, sk_dft, source_xa, source_xe, sigma, scratch);
     }
 
     pub fn encrypt_pk<DataPt, DataPk>(
@@ -188,7 +184,6 @@ where
         source_xu: &mut Source,
         source_xe: &mut Source,
         sigma: f64,
-        bound: f64,
         scratch: &mut Scratch,
     ) where
         VecZnx<DataPt>: VecZnxToRef,
@@ -201,7 +196,6 @@ where
             source_xu,
             source_xe,
             sigma,
-            bound,
             scratch,
         );
     }
@@ -213,14 +207,11 @@ where
         source_xu: &mut Source,
         source_xe: &mut Source,
         sigma: f64,
-        bound: f64,
         scratch: &mut Scratch,
     ) where
         VecZnxDft<DataPk, FFT64>: VecZnxDftToRef<FFT64>,
     {
-        self.encrypt_pk_private(
-            module, None, pk, source_xu, source_xe, sigma, bound, scratch,
-        );
+        self.encrypt_pk_private(module, None, pk, source_xu, source_xe, sigma, scratch);
     }
 
     pub fn keyswitch<DataLhs, DataRhs>(
@@ -279,7 +270,6 @@ where
         source_xa: &mut Source,
         source_xe: &mut Source,
         sigma: f64,
-        bound: f64,
         scratch: &mut Scratch,
     ) where
         VecZnx<DataPt>: VecZnxToRef,
@@ -335,7 +325,7 @@ where
         }
 
         // c[0] += e
-        c0_big.add_normal(log_base2k, 0, log_k, source_xe, sigma, bound);
+        c0_big.add_normal(log_base2k, 0, log_k, source_xe, sigma, sigma * SIX_SIGMA);
 
         // c[0] += m if col = 0
         if let Some((pt, col)) = pt {
@@ -356,7 +346,6 @@ where
         source_xu: &mut Source,
         source_xe: &mut Source,
         sigma: f64,
-        bound: f64,
         scratch: &mut Scratch,
     ) where
         VecZnx<DataPt>: VecZnxToRef,
@@ -406,7 +395,7 @@ where
             let mut ci_big = module.vec_znx_idft_consume(ci_dft);
 
             // ci_big = u * pk[i] + e
-            ci_big.add_normal(log_base2k, 0, pk.k(), source_xe, sigma, bound);
+            ci_big.add_normal(log_base2k, 0, pk.k(), source_xe, sigma, sigma * SIX_SIGMA);
 
             // ci_big = u * pk[i] + e + m (if col = i)
             if let Some((pt, col)) = pt {

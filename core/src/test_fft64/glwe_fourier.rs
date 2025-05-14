@@ -23,7 +23,6 @@ fn keyswitch() {
     let rank: usize = 1;
 
     let sigma: f64 = 3.2;
-    let bound: f64 = sigma * 6.0;
 
     let mut ct_grlwe: GLWESwitchingKey<Vec<u8>, FFT64> =
         GLWESwitchingKey::new(&module, log_base2k, log_k_grlwe, rows, rank, rank);
@@ -76,7 +75,6 @@ fn keyswitch() {
         &mut source_xa,
         &mut source_xe,
         sigma,
-        bound,
         scratch.borrow(),
     );
 
@@ -87,7 +85,6 @@ fn keyswitch() {
         &mut source_xa,
         &mut source_xe,
         sigma,
-        bound,
         scratch.borrow(),
     );
 
@@ -130,7 +127,6 @@ fn keyswich_inplace() {
     let rank: usize = 1;
 
     let sigma: f64 = 3.2;
-    let bound: f64 = sigma * 6.0;
 
     let mut ct_grlwe: GLWESwitchingKey<Vec<u8>, FFT64> =
         GLWESwitchingKey::new(&module, log_base2k, log_k_grlwe, rows, rank, rank);
@@ -175,7 +171,6 @@ fn keyswich_inplace() {
         &mut source_xa,
         &mut source_xe,
         sigma,
-        bound,
         scratch.borrow(),
     );
 
@@ -186,7 +181,6 @@ fn keyswich_inplace() {
         &mut source_xa,
         &mut source_xe,
         sigma,
-        bound,
         scratch.borrow(),
     );
 
@@ -230,7 +224,6 @@ fn external_product() {
     let rank: usize = 1;
 
     let sigma: f64 = 3.2;
-    let bound: f64 = sigma * 6.0;
 
     let mut ct_rgsw: GGSWCiphertext<Vec<u8>, FFT64> = GGSWCiphertext::new(&module, log_base2k, log_k_grlwe, rows, rank);
     let mut ct_rlwe_in: GLWECiphertext<Vec<u8>> = GLWECiphertext::new(&module, log_base2k, log_k_rlwe_in, rank);
@@ -283,7 +276,6 @@ fn external_product() {
         &mut source_xa,
         &mut source_xe,
         sigma,
-        bound,
         scratch.borrow(),
     );
 
@@ -294,7 +286,6 @@ fn external_product() {
         &mut source_xa,
         &mut source_xe,
         sigma,
-        bound,
         scratch.borrow(),
     );
 
@@ -349,7 +340,6 @@ fn external_product_inplace() {
     let rank: usize = 1;
 
     let sigma: f64 = 3.2;
-    let bound: f64 = sigma * 6.0;
 
     let mut ct_rgsw: GGSWCiphertext<Vec<u8>, FFT64> = GGSWCiphertext::new(&module, log_base2k, log_k_grlwe, rows, rank);
     let mut ct_rlwe: GLWECiphertext<Vec<u8>> = GLWECiphertext::new(&module, log_base2k, log_k_rlwe_in, rank);
@@ -394,7 +384,6 @@ fn external_product_inplace() {
         &mut source_xa,
         &mut source_xe,
         sigma,
-        bound,
         scratch.borrow(),
     );
 
@@ -405,7 +394,6 @@ fn external_product_inplace() {
         &mut source_xa,
         &mut source_xe,
         sigma,
-        bound,
         scratch.borrow(),
     );
 
