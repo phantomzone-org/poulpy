@@ -576,6 +576,7 @@ pub(crate) fn noise_rgsw_product(
     var_a1_err: f64,
     var_gct_err_lhs: f64,
     var_gct_err_rhs: f64,
+    rank: f64,
     a_logq: usize,
     b_logq: usize,
 ) -> f64 {
@@ -590,9 +591,9 @@ pub(crate) fn noise_rgsw_product(
 
     // lhs = a_cols * n * (var_base * var_gct_err_lhs + var_e_a * var_msg * p^2)
     // rhs = a_cols * n * var_base * var_gct_err_rhs * var_xs
-    let mut noise: f64 = 2.0 * (a_cols as f64) * n * var_base * (var_gct_err_lhs + var_xs * var_gct_err_rhs);
+    let mut noise: f64 = (rank + 1.0) * (a_cols as f64) * n * var_base * (var_gct_err_lhs + var_xs * var_gct_err_rhs);
     noise += var_msg * var_a0_err * a_scale * a_scale * n;
-    noise += var_msg * var_a1_err * a_scale * a_scale * n * var_xs;
+    noise += var_msg * var_a1_err * a_scale * a_scale * n * var_xs * rank;
     noise = noise.sqrt();
     noise /= b_scale;
     noise.log2().min(-1.0) // max noise is [-2^{-1}, 2^{-1}]
