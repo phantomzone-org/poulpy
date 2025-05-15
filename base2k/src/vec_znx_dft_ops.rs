@@ -42,8 +42,13 @@ pub trait VecZnxDftOps<B: Backend> {
     /// a new [VecZnxDft] through [VecZnxDft::from_bytes].
     fn vec_znx_idft_tmp_bytes(&self) -> usize;
 
+    fn vec_znx_dft_copy<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    where
+        R: VecZnxDftToMut<B>,
+        A: VecZnxDftToRef<B>;
+
     /// b <- IDFT(a), uses a as scratch space.
-    fn vec_znx_idft_tmp_a<R, A>(&self, res: &mut R, res_col: usize, a: &mut A, a_cols: usize)
+    fn vec_znx_idft_tmp_a<R, A>(&self, res: &mut R, res_col: usize, a: &mut A, a_col: usize)
     where
         R: VecZnxBigToMut<B>,
         A: VecZnxDftToMut<B>;
@@ -79,13 +84,33 @@ impl<B: Backend> VecZnxDftAlloc<B> for Module<B> {
 }
 
 impl VecZnxDftOps<FFT64> for Module<FFT64> {
+    fn vec_znx_dft_copy<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    where
+        R: VecZnxDftToMut<FFT64>,
+        A: VecZnxDftToRef<FFT64>,
+    {
+        let mut res_mut: VecZnxDft<&mut [u8], FFT64> = res.to_mut();
+        let a_ref: VecZnxDft<&[u8], FFT64> = a.to_ref();
+
+        let min_size: usize = min(res_mut.size(), a_ref.size());
+
+        (0..min_size).for_each(|j| {
+            res_mut
+                .at_mut(res_col, j)
+                .copy_from_slice(a_ref.at(a_col, j));
+        });
+        (min_size..res_mut.size()).for_each(|j| {
+            res_mut.zero_at(res_col, j);
+        })
+    }
+
     fn vec_znx_idft_tmp_a<R, A>(&self, res: &mut R, res_col: usize, a: &mut A, a_col: usize)
     where
         R: VecZnxBigToMut<FFT64>,
         A: VecZnxDftToMut<FFT64>,
     {
-        let mut res_mut = res.to_mut();
-        let mut a_mut = a.to_mut();
+        let mut res_mut: VecZnxBig<&mut [u8], FFT64> = res.to_mut();
+        let mut a_mut: VecZnxDft<&mut [u8], FFT64> = a.to_mut();
 
         let min_size: usize = min(res_mut.size(), a_mut.size());
 
@@ -136,14 +161,14 @@ impl VecZnxDftOps<FFT64> for Module<FFT64> {
     /// b <- DFT(a)
     ///
     /// # Panics
-    /// If b.cols < a_cols
+    /// If b.cols < a_col
     fn vec_znx_dft<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxDftToMut<FFT64>,
         A: VecZnxToRef,
     {
-        let mut res_mut = res.to_mut();
-        let a_ref = a.to_ref();
+        let mut res_mut: VecZnxDft<&mut [u8], FFT64> = res.to_mut();
+        let a_ref: crate::VecZnx<&[u8]> = a.to_ref();
 
         let min_size: usize = min(res_mut.size(), a_ref.size());
 
@@ -170,8 +195,8 @@ impl VecZnxDftOps<FFT64> for Module<FFT64> {
         R: VecZnxBigToMut<FFT64>,
         A: VecZnxDftToRef<FFT64>,
     {
-        let mut res_mut = res.to_mut();
-        let a_ref = a.to_ref();
+        let mut res_mut: VecZnxBig<&mut [u8], FFT64> = res.to_mut();
+        let a_ref: VecZnxDft<&[u8], FFT64> = a.to_ref();
 
         let (tmp_bytes, _) = scratch.tmp_slice(self.vec_znx_idft_tmp_bytes());
 

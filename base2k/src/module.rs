@@ -88,7 +88,7 @@ impl<B: Backend> Module<B> {
 
 impl<B: Backend> Drop for Module<B> {
     fn drop(&mut self) {
-         unsafe { delete_module_info(self.ptr) }
+        unsafe { delete_module_info(self.ptr) }
     }
 }
 

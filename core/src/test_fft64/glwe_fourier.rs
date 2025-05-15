@@ -6,7 +6,7 @@ use crate::{
     glwe_plaintext::GLWEPlaintext,
     keys::{SecretKey, SecretKeyFourier},
     keyswitch_key::GLWESwitchingKey,
-    test_fft64::{gglwe::noise_gglwe_product, ggsw::noise_ggsw_gglwe_product},
+    test_fft64::{gglwe::noise_gglwe_product, ggsw::noise_ggsw_product},
 };
 use base2k::{FFT64, FillUniform, Module, ScalarZnx, ScalarZnxAlloc, ScratchOwned, Stats, VecZnxOps, VecZnxToMut, ZnxViewMut};
 use sampling::source::Source;
@@ -322,7 +322,7 @@ fn test_external_product(log_n: usize, basek: usize, k_ggsw: usize, k_ct_in: usi
     let var_a0_err: f64 = sigma * sigma;
     let var_a1_err: f64 = 1f64 / 12f64;
 
-    let noise_want: f64 = noise_ggsw_gglwe_product(
+    let noise_want: f64 = noise_ggsw_product(
         module.n() as f64,
         basek,
         0.5,
@@ -422,7 +422,7 @@ fn test_external_product_inplace(log_n: usize, basek: usize, k_ggsw: usize, k_ct
     let var_a0_err: f64 = sigma * sigma;
     let var_a1_err: f64 = 1f64 / 12f64;
 
-    let noise_want: f64 = noise_ggsw_gglwe_product(
+    let noise_want: f64 = noise_ggsw_product(
         module.n() as f64,
         basek,
         0.5,

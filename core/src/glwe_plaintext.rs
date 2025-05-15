@@ -43,10 +43,10 @@ where
 }
 
 impl GLWEPlaintext<Vec<u8>> {
-    pub fn new<B: Backend>(module: &Module<B>, base2k: usize, k: usize) -> Self {
+    pub fn new<B: Backend>(module: &Module<B>, basek: usize, k: usize) -> Self {
         Self {
-            data: module.new_vec_znx(1, derive_size(base2k, k)),
-            basek: base2k,
+            data: module.new_vec_znx(1, derive_size(basek, k)),
+            basek: basek,
             k,
         }
     }
