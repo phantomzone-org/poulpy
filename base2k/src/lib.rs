@@ -150,8 +150,7 @@ impl Scratch {
         unsafe { &mut *(data as *mut [u8] as *mut Self) }
     }
 
-    #[allow(dead_code)]
-    fn available(&self) -> usize {
+    pub fn available(&self) -> usize {
         let ptr: *const u8 = self.data.as_ptr();
         let self_len: usize = self.data.len();
         let aligned_offset: usize = ptr.align_offset(DEFAULTALIGN);

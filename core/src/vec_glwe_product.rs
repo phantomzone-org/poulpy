@@ -23,7 +23,7 @@ pub(crate) trait VecGLWEProductScratchSpace {
         Self::prod_with_glwe_scratch_space(module, res_size, res_size, rhs, rank, rank)
     }
 
-    fn prod_with_glwe_dft_scratch_space(
+    fn prod_with_glwe_fourier_scratch_space(
         module: &Module<FFT64>,
         res_size: usize,
         lhs: usize,
@@ -32,11 +32,11 @@ pub(crate) trait VecGLWEProductScratchSpace {
         rank_out: usize,
     ) -> usize {
         (Self::prod_with_glwe_scratch_space(module, res_size, lhs, rhs, rank_in, rank_out) | module.vec_znx_idft_tmp_bytes())
-            + module.bytes_of_vec_znx(rank_in, lhs)
-            + module.bytes_of_vec_znx(rank_out, res_size)
+            + module.bytes_of_vec_znx(rank_in + 1, lhs)
+            + module.bytes_of_vec_znx(rank_out + 1, res_size)
     }
 
-    fn prod_with_glwe_dft_inplace_scratch_space(module: &Module<FFT64>, res_size: usize, rhs: usize, rank: usize) -> usize {
+    fn prod_with_glwe_fourier_inplace_scratch_space(module: &Module<FFT64>, res_size: usize, rhs: usize, rank: usize) -> usize {
         (Self::prod_with_glwe_inplace_scratch_space(module, res_size, rhs, rank) | module.vec_znx_idft_tmp_bytes())
             + module.bytes_of_vec_znx(rank + 1, res_size)
     }
@@ -49,13 +49,13 @@ pub(crate) trait VecGLWEProductScratchSpace {
         rank_in: usize,
         rank_out: usize,
     ) -> usize {
-        Self::prod_with_glwe_dft_scratch_space(module, res_size, lhs, rhs, rank_in, rank_out)
+        Self::prod_with_glwe_fourier_scratch_space(module, res_size, lhs, rhs, rank_in, rank_out)
             + module.bytes_of_vec_znx_dft(rank_in + 1, lhs)
             + module.bytes_of_vec_znx_dft(rank_out + 1, res_size)
     }
 
     fn prod_with_vec_glwe_inplace_scratch_space(module: &Module<FFT64>, res_size: usize, rhs: usize, rank: usize) -> usize {
-        Self::prod_with_glwe_dft_inplace_scratch_space(module, res_size, rhs, rank)
+        Self::prod_with_glwe_fourier_inplace_scratch_space(module, res_size, rhs, rank)
             + module.bytes_of_vec_znx_dft(rank + 1, res_size)
     }
 }

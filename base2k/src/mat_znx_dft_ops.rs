@@ -337,8 +337,6 @@ mod tests {
                 assert_eq!(a_dft.raw(), b_dft.raw());
             }
         }
-
-        module.free();
     }
 
     #[test]
@@ -425,7 +423,5 @@ mod tests {
                 });
             });
         });
-
-        module.free();
     }
 }

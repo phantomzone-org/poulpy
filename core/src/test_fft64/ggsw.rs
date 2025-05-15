@@ -567,7 +567,7 @@
 // });
 // });
 // }
-pub(crate) fn noise_rgsw_product(
+pub(crate) fn noise_ggsw_gglwe_product(
     n: f64,
     log_base2k: usize,
     var_xs: f64,

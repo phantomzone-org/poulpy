@@ -13,7 +13,7 @@ use crate::{
     glwe_plaintext::GLWEPlaintext,
     keys::{GLWEPublicKey, SecretKey, SecretKeyFourier},
     keyswitch_key::GLWESwitchingKey,
-    test_fft64::{gglwe::noise_gglwe_product, ggsw::noise_rgsw_product},
+    test_fft64::{gglwe::noise_gglwe_product, ggsw::noise_ggsw_gglwe_product},
 };
 
 #[test]
@@ -55,6 +55,22 @@ fn keyswitch_inplace() {
     (1..4).for_each(|rank| {
         println!("test keyswitch_inplace rank: {}", rank);
         test_keyswitch_inplace(12, 12, 60, 45, rank, 3.2);
+    });
+}
+
+#[test]
+fn external_product() {
+    (1..4).for_each(|rank| {
+        println!("test external_product rank: {}", rank);
+        test_external_product(12, 12, 60, 45, 60, rank, 3.2);
+    });
+}
+
+#[test]
+fn external_product_inplace() {
+    (1..4).for_each(|rank| {
+        println!("test external_product rank: {}", rank);
+        test_external_product_inplace(12, 15, 60, 60, rank, 3.2);
     });
 }
 
@@ -399,14 +415,6 @@ fn test_keyswitch_inplace(log_n: usize, basek: usize, k_ksk: usize, k_ct: usize,
     );
 }
 
-#[test]
-fn external_product() {
-    (1..4).for_each(|rank| {
-        println!("test external_product rank: {}", rank);
-        test_external_product(12, 12, 60, 45, 60, rank, 3.2);
-    });
-}
-
 fn test_external_product(log_n: usize, basek: usize, k_ggsw: usize, k_ct_in: usize, k_ct_out: usize, rank: usize, sigma: f64) {
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
 
@@ -490,7 +498,7 @@ fn test_external_product(log_n: usize, basek: usize, k_ggsw: usize, k_ct_in: usi
     let var_a0_err: f64 = sigma * sigma;
     let var_a1_err: f64 = 1f64 / 12f64;
 
-    let noise_want: f64 = noise_rgsw_product(
+    let noise_want: f64 = noise_ggsw_gglwe_product(
         module.n() as f64,
         basek,
         0.5,
@@ -510,14 +518,6 @@ fn test_external_product(log_n: usize, basek: usize, k_ggsw: usize, k_ct_in: usi
         noise_have,
         noise_want
     );
-}
-
-#[test]
-fn external_product_inplace() {
-    (1..4).for_each(|rank| {
-        println!("test external_product rank: {}", rank);
-        test_external_product_inplace(12, 15, 60, 60, rank, 3.2);
-    });
 }
 
 fn test_external_product_inplace(log_n: usize, basek: usize, k_ggsw: usize, k_ct: usize, rank: usize, sigma: f64) {
@@ -595,7 +595,7 @@ fn test_external_product_inplace(log_n: usize, basek: usize, k_ggsw: usize, k_ct
     let var_a0_err: f64 = sigma * sigma;
     let var_a1_err: f64 = 1f64 / 12f64;
 
-    let noise_want: f64 = noise_rgsw_product(
+    let noise_want: f64 = noise_ggsw_gglwe_product(
         module.n() as f64,
         basek,
         0.5,

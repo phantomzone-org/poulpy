@@ -130,6 +130,4 @@ fn main() {
         .for_each(|(i, (a, b))| {
             println!("{}: {} {}", i, a, (*b as f64) / scale);
         });
-
-    module.free();
 }

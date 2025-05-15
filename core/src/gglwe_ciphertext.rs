@@ -255,6 +255,17 @@ where
             assert_eq!(self.n(), module.n());
             assert_eq!(res.n(), module.n());
             assert_eq!(a.n(), module.n());
+            assert!(
+                scratch.available()
+                    >= GGLWECiphertext::prod_with_glwe_scratch_space(
+                        module,
+                        res.size(),
+                        a.size(),
+                        self.size(),
+                        self.rank_in(),
+                        self.rank_out()
+                    )
+            );
         }
 
         let cols_in: usize = self.rank_in();
