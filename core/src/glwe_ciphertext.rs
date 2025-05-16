@@ -8,6 +8,7 @@ use sampling::source::Source;
 
 use crate::{
     SIX_SIGMA,
+    automorphism::AutomorphismKey,
     elem::Infos,
     ggsw_ciphertext::GGSWCiphertext,
     glwe_ciphertext_fourier::GLWECiphertextFourier,
@@ -137,21 +138,40 @@ impl GLWECiphertext<Vec<u8>> {
         GLWECiphertext::keyswitch_scratch_space(module, out_size, out_rank, out_size, out_rank, ksk_size)
     }
 
+    pub fn automorphism_scratch_space(
+        module: &Module<FFT64>,
+        out_size: usize,
+        out_rank: usize,
+        in_size: usize,
+        autokey_size: usize,
+    ) -> usize {
+        GLWECiphertext::keyswitch_scratch_space(module, out_size, out_rank, in_size, out_rank, autokey_size)
+    }
+
+    pub fn automorphism_inplace_scratch_space(
+        module: &Module<FFT64>,
+        out_size: usize,
+        out_rank: usize,
+        autokey_size: usize,
+    ) -> usize {
+        GLWECiphertext::keyswitch_scratch_space(module, out_size, out_rank, out_size, out_rank, autokey_size)
+    }
+
     pub fn external_product_scratch_space(
         module: &Module<FFT64>,
         out_size: usize,
+        out_rank: usize,
         in_size: usize,
         ggsw_size: usize,
-        rank: usize,
     ) -> usize {
-        let res_dft: usize = module.bytes_of_vec_znx_dft(rank + 1, ggsw_size);
-        let vmp: usize = module.bytes_of_vec_znx_dft(rank + 1, in_size)
+        let res_dft: usize = module.bytes_of_vec_znx_dft(out_rank + 1, ggsw_size);
+        let vmp: usize = module.bytes_of_vec_znx_dft(out_rank + 1, in_size)
             + module.vmp_apply_tmp_bytes(
                 out_size,
                 in_size,
-                in_size,  // rows
-                rank + 1, // cols in
-                rank + 1, // cols out
+                in_size,      // rows
+                out_rank + 1, // cols in
+                out_rank + 1, // cols out
                 ggsw_size,
             );
         let normalize: usize = module.vec_znx_big_normalize_tmp_bytes();
@@ -159,8 +179,13 @@ impl GLWECiphertext<Vec<u8>> {
         res_dft + (vmp | normalize)
     }
 
-    pub fn external_product_inplace_scratch_space(module: &Module<FFT64>, res_size: usize, rhs: usize, rank: usize) -> usize {
-        GLWECiphertext::external_product_scratch_space(module, res_size, res_size, rhs, rank)
+    pub fn external_product_inplace_scratch_space(
+        module: &Module<FFT64>,
+        out_size: usize,
+        out_rank: usize,
+        ggsw_size: usize,
+    ) -> usize {
+        GLWECiphertext::external_product_scratch_space(module, out_size, out_rank, out_size, ggsw_size)
     }
 }
 
@@ -242,6 +267,36 @@ where
         VecZnxDft<DataPk, FFT64>: VecZnxDftToRef<FFT64>,
     {
         self.encrypt_pk_private(module, None, pk, source_xu, source_xe, sigma, scratch);
+    }
+
+    pub fn automorphism<DataLhs, DataRhs>(
+        &mut self,
+        module: &Module<FFT64>,
+        lhs: &GLWECiphertext<DataLhs>,
+        rhs: &AutomorphismKey<DataRhs, FFT64>,
+        scratch: &mut Scratch,
+    ) where
+        VecZnx<DataLhs>: VecZnxToRef,
+        MatZnxDft<DataRhs, FFT64>: MatZnxDftToRef<FFT64>,
+    {
+        self.keyswitch(module, lhs, &rhs.key, scratch);
+        //(0..self.rank() + 1).for_each(|i| {
+        //    module.vec_znx_automorphism_inplace(rhs.p(), self, i);
+        //})
+    }
+
+    pub fn automorphism_inplace<DataRhs>(
+        &mut self,
+        module: &Module<FFT64>,
+        rhs: &AutomorphismKey<DataRhs, FFT64>,
+        scratch: &mut Scratch,
+    ) where
+        MatZnxDft<DataRhs, FFT64>: MatZnxDftToRef<FFT64>,
+    {
+        self.keyswitch_inplace(module, &rhs.key, scratch);
+        (0..self.rank() + 1).for_each(|i| {
+            module.vec_znx_automorphism_inplace(rhs.p(), self, i);
+        })
     }
 
     pub fn keyswitch<DataLhs, DataRhs>(

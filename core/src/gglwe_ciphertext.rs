@@ -21,10 +21,10 @@ pub struct GGLWECiphertext<C, B: Backend> {
 }
 
 impl<B: Backend> GGLWECiphertext<Vec<u8>, B> {
-    pub fn new(module: &Module<B>, base2k: usize, k: usize, rows: usize, rank_in: usize, rank_out: usize) -> Self {
+    pub fn new(module: &Module<B>, basek: usize, k: usize, rows: usize, rank_in: usize, rank_out: usize) -> Self {
         Self {
-            data: module.new_mat_znx_dft(rows, rank_in, rank_out + 1, derive_size(base2k, k)),
-            basek: base2k,
+            data: module.new_mat_znx_dft(rows, rank_in, rank_out + 1, derive_size(basek, k)),
+            basek: basek,
             k,
         }
     }
@@ -161,6 +161,7 @@ where
         (0..cols_in).for_each(|col_i| {
             (0..rows).for_each(|row_i| {
                 // Adds the scalar_znx_pt to the i-th limb of the vec_znx_pt
+                vec_znx_pt.data.zero(); // zeroes for next iteration
                 module.vec_znx_add_scalar_inplace(&mut vec_znx_pt, 0, row_i, pt, col_i); // Selects the i-th
                 module.vec_znx_normalize_inplace(basek, &mut vec_znx_pt, 0, scratch_3);
 
@@ -174,8 +175,6 @@ where
                     sigma,
                     scratch_3,
                 );
-
-                vec_znx_pt.data.zero(); // zeroes for next iteration
 
                 // Switch vec_znx_ct into DFT domain
                 vec_znx_ct.dft(module, &mut vec_znx_ct_dft);

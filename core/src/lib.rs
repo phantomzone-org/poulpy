@@ -1,3 +1,4 @@
+pub mod automorphism;
 pub mod elem;
 pub mod gglwe_ciphertext;
 pub mod ggsw_ciphertext;
