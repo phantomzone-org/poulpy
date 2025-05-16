@@ -78,10 +78,6 @@ where
     where
         VecZnxDft<R, FFT64>: VecZnxDftToMut<FFT64>,
     {
-        #[cfg(debug_assertions)]
-        {
-            assert_eq!(col_j, 0);
-        }
         module.vmp_extract_row(res, self, row_i, col_j);
     }
 }
@@ -94,10 +90,6 @@ where
     where
         VecZnxDft<R, FFT64>: VecZnxDftToRef<FFT64>,
     {
-        #[cfg(debug_assertions)]
-        {
-            assert_eq!(col_j, 0);
-        }
         module.vmp_prepare_row(self, row_i, col_j, a);
     }
 }

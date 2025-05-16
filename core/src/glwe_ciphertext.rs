@@ -119,16 +119,18 @@ impl GLWECiphertext<Vec<u8>> {
         in_rank: usize,
         ksk_size: usize,
     ) -> usize {
-        module.bytes_of_vec_znx_dft(out_rank + 1, ksk_size)
-            + (module.vec_znx_big_normalize_tmp_bytes()
-                | (module.vmp_apply_tmp_bytes(
-                    out_size,
-                    in_size,
-                    in_size,
-                    in_rank + 1,
-                    out_rank + 1,
-                    ksk_size,
-                ) + module.bytes_of_vec_znx_dft(in_size, in_size)))
+        let res_dft: usize = module.bytes_of_vec_znx_dft(out_rank + 1, ksk_size);
+        let vmp: usize = module.vmp_apply_tmp_bytes(
+            out_size,
+            in_size,
+            in_size,
+            in_rank + 1,
+            out_rank + 1,
+            ksk_size,
+        ) + module.bytes_of_vec_znx_dft(in_rank, in_size);
+        let normalize: usize = module.vec_znx_big_normalize_tmp_bytes();
+
+        return res_dft + (vmp | normalize);
     }
 
     pub fn keyswitch_inplace_scratch_space(module: &Module<FFT64>, out_size: usize, out_rank: usize, ksk_size: usize) -> usize {
@@ -142,17 +144,19 @@ impl GLWECiphertext<Vec<u8>> {
         ggsw_size: usize,
         rank: usize,
     ) -> usize {
-        module.bytes_of_vec_znx_dft(rank + 1, ggsw_size)
-            + ((module.bytes_of_vec_znx_dft(rank + 1, in_size)
-                + module.vmp_apply_tmp_bytes(
-                    out_size,
-                    in_size,
-                    in_size,  // rows
-                    rank + 1, // cols in
-                    rank + 1, // cols out
-                    ggsw_size,
-                ))
-                | module.vec_znx_big_normalize_tmp_bytes())
+        let res_dft: usize = module.bytes_of_vec_znx_dft(rank + 1, ggsw_size);
+        let vmp: usize = module.bytes_of_vec_znx_dft(rank + 1, in_size)
+            + module.vmp_apply_tmp_bytes(
+                out_size,
+                in_size,
+                in_size,  // rows
+                rank + 1, // cols in
+                rank + 1, // cols out
+                ggsw_size,
+            );
+        let normalize: usize = module.vec_znx_big_normalize_tmp_bytes();
+
+        res_dft + (vmp | normalize)
     }
 
     pub fn external_product_inplace_scratch_space(module: &Module<FFT64>, res_size: usize, rhs: usize, rank: usize) -> usize {

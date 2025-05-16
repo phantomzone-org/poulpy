@@ -84,10 +84,10 @@ fn test_keyswitch(
             | GLWECiphertextFourier::keyswitch_scratch_space(
                 &module,
                 ct_glwe_out.size(),
-                ct_glwe_in.size(),
-                ksk.size(),
-                rank_in,
                 rank_out,
+                ct_glwe_in.size(),
+                rank_in,
+                ksk.size(),
             ),
     );
 

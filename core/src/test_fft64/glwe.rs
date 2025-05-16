@@ -263,10 +263,10 @@ fn test_keyswitch(
             | GLWECiphertext::keyswitch_scratch_space(
                 &module,
                 ct_out.size(),
-                ct_in.size(),
-                ksk.size(),
-                rank_in,
                 rank_out,
+                ct_in.size(),
+                rank_in,
+                ksk.size(),
             ),
     );
 
@@ -352,7 +352,7 @@ fn test_keyswitch_inplace(log_n: usize, basek: usize, k_ksk: usize, k_ct: usize,
         GLWESwitchingKey::encrypt_sk_scratch_space(&module, rank, ct_grlwe.size())
             | GLWECiphertext::decrypt_scratch_space(&module, ct_rlwe.size())
             | GLWECiphertext::encrypt_sk_scratch_space(&module, ct_rlwe.size())
-            | GLWECiphertext::keyswitch_inplace_scratch_space(&module, ct_rlwe.size(), ct_grlwe.size(), rank),
+            | GLWECiphertext::keyswitch_inplace_scratch_space(&module, ct_rlwe.size(), rank, ct_grlwe.size()),
     );
 
     let mut sk0: SecretKey<Vec<u8>> = SecretKey::new(&module, rank);
