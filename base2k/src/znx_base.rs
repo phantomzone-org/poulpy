@@ -113,7 +113,7 @@ where
 
     fn zero_at(&mut self, i: usize, j: usize) {
         unsafe {
-            std::ptr::write_bytes(self.at_mut_ptr(i, j), 0, self.sl());
+            std::ptr::write_bytes(self.at_mut_ptr(i, j), 0, self.n());
         }
     }
 }
