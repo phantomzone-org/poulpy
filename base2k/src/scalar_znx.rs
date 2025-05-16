@@ -130,7 +130,7 @@ pub trait ScalarZnxOps {
         A: ScalarZnxToRef;
 
     /// Applies the automorphism X^i -> X^ik on the selected column of `a`.
-    fn vec_znx_automorphism_inplace<A>(&self, k: i64, a: &mut A, a_col: usize)
+    fn scalar_znx_automorphism_inplace<A>(&self, k: i64, a: &mut A, a_col: usize)
     where
         A: ScalarZnxToMut;
 }
@@ -162,7 +162,7 @@ impl<B: Backend> ScalarZnxOps for Module<B> {
         }
     }
 
-    fn vec_znx_automorphism_inplace<A>(&self, k: i64, a: &mut A, a_col: usize)
+    fn scalar_znx_automorphism_inplace<A>(&self, k: i64, a: &mut A, a_col: usize)
     where
         A: ScalarZnxToMut,
     {

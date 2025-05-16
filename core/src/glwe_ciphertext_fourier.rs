@@ -174,60 +174,21 @@ where
         VecZnxDft<DataLhs, FFT64>: VecZnxDftToRef<FFT64>,
         MatZnxDft<DataRhs, FFT64>: MatZnxDftToRef<FFT64>,
     {
-        let basek: usize = self.basek();
-
-        #[cfg(debug_assertions)]
-        {
-            assert_eq!(lhs.rank(), rhs.rank_in());
-            assert_eq!(self.rank(), rhs.rank_out());
-            assert_eq!(self.basek(), basek);
-            assert_eq!(lhs.basek(), basek);
-            assert_eq!(rhs.n(), module.n());
-            assert_eq!(self.n(), module.n());
-            assert_eq!(lhs.n(), module.n());
-            assert!(
-                scratch.available()
-                    >= GLWECiphertextFourier::keyswitch_scratch_space(
-                        module,
-                        self.size(),
-                        self.rank(),
-                        lhs.size(),
-                        lhs.rank(),
-                        rhs.size(),
-                    )
-            );
-        }
-
-        let cols_in: usize = rhs.rank_in();
         let cols_out: usize = rhs.rank_out() + 1;
 
-        // Buffer of the result of VMP in DFT
-        let (mut res_dft, scratch1) = scratch.tmp_vec_znx_dft(module, cols_out, rhs.size()); // Todo optimise
-
-        {
-            // Applies VMP
-            let (mut ai_dft, scratch2) = scratch1.tmp_vec_znx_dft(module, cols_in, lhs.size());
-            (0..cols_in).for_each(|col_i| {
-                module.vec_znx_dft_copy(&mut ai_dft, col_i, lhs, col_i + 1);
-            });
-            module.vmp_apply(&mut res_dft, &ai_dft, rhs, scratch2);
-        }
-
-        // Switches result of VMP outside of DFT
-        let mut res_big: VecZnxBig<&mut [u8], FFT64> = module.vec_znx_idft_consume::<&mut [u8]>(res_dft);
-
-        {
-            // Switches lhs 0-th outside of DFT domain and adds on
-            let (mut a0_big, scratch2) = scratch1.tmp_vec_znx_big(module, 1, lhs.size());
-            module.vec_znx_idft(&mut a0_big, 0, lhs, 0, scratch2);
-            module.vec_znx_big_add_inplace(&mut res_big, 0, &a0_big, 0);
-        }
-
         // Space fr normalized VMP result outside of DFT domain
-        let (mut res_small, scratch2) = scratch1.tmp_vec_znx(module, cols_out, lhs.size());
+        let (res_idft_data, scratch1) = scratch.tmp_vec_znx(module, cols_out, lhs.size());
+
+        let mut res_idft: GLWECiphertext<&mut [u8]> = GLWECiphertext::<&mut [u8]> {
+            data: res_idft_data,
+            basek: self.basek,
+            k: self.k,
+        };
+
+        res_idft.keyswitch_from_fourier(module, self, rhs, scratch1);
+
         (0..cols_out).for_each(|i| {
-            module.vec_znx_big_normalize(basek, &mut res_small, i, &res_big, i, scratch2);
-            module.vec_znx_dft(self, i, &res_small, i);
+            module.vec_znx_dft(self, i, &res_idft, i);
         });
     }
 
