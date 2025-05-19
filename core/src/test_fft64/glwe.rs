@@ -448,18 +448,9 @@ fn test_automorphism(
     let mut source_xa: Source = Source::new([0u8; 32]);
 
     // Random input plaintext
-    // pt_want
-    // .data
-    // .fill_uniform(basek, 0, pt_want.size(), &mut source_xa);
-
     pt_want
-        .to_mut()
-        .at_mut(0, 1)
-        .iter_mut()
-        .enumerate()
-        .for_each(|(i, x)| {
-            *x = i as i64;
-        });
+        .data
+        .fill_uniform(basek, 0, pt_want.size(), &mut source_xa);
 
     let mut scratch: ScratchOwned = ScratchOwned::new(
         GLWESwitchingKey::encrypt_sk_scratch_space(&module, rank, autokey.size())
@@ -513,6 +504,103 @@ fn test_automorphism(
         0f64,
         rank as f64,
         k_ct_in,
+        k_autokey,
+    );
+
+    assert!(
+        (noise_have - noise_want).abs() <= 0.1,
+        "{} {}",
+        noise_have,
+        noise_want
+    );
+}
+
+#[test]
+fn automorphism_inplace() {
+    (1..4).for_each(|rank| {
+        println!("test automorphism_inplace rank: {}", rank);
+        test_automorphism_inplace(12, 12, 1, 60, 60, rank, 3.2);
+    });
+}
+
+fn test_automorphism_inplace(
+    log_n: usize,
+    basek: usize,
+    p: i64,
+    k_autokey: usize,
+    k_ct: usize,
+    rank: usize,
+    sigma: f64,
+) {
+    let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
+    let rows: usize = (k_ct + basek - 1) / basek;
+
+    let mut autokey: AutomorphismKey<Vec<u8>, FFT64> = AutomorphismKey::new(&module, basek, p, k_autokey, rows, rank);
+    let mut ct: GLWECiphertext<Vec<u8>> = GLWECiphertext::new(&module, basek, k_ct, rank);
+    let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::new(&module, basek, k_ct);
+    let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::new(&module, basek, k_ct);
+
+    let mut source_xs: Source = Source::new([0u8; 32]);
+    let mut source_xe: Source = Source::new([0u8; 32]);
+    let mut source_xa: Source = Source::new([0u8; 32]);
+
+    // Random input plaintext
+    pt_want
+        .data
+        .fill_uniform(basek, 0, pt_want.size(), &mut source_xa);
+
+    let mut scratch: ScratchOwned = ScratchOwned::new(
+        GLWESwitchingKey::encrypt_sk_scratch_space(&module, rank, autokey.size())
+            | GLWECiphertext::decrypt_scratch_space(&module, ct.size())
+            | GLWECiphertext::encrypt_sk_scratch_space(&module, ct.size())
+            | GLWECiphertext::automorphism_inplace_scratch_space(&module, ct.size(), rank, autokey.size()),
+    );
+
+    let mut sk: SecretKey<Vec<u8>> = SecretKey::new(&module, rank);
+    sk.fill_ternary_prob(0.5, &mut source_xs);
+
+    let mut sk_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::new(&module, rank);
+    sk_dft.dft(&module, &sk);
+
+    autokey.encrypt_sk(
+        &module,
+        p,
+        &sk,
+        &mut source_xa,
+        &mut source_xe,
+        sigma,
+        scratch.borrow(),
+    );
+
+    ct.encrypt_sk(
+        &module,
+        &pt_want,
+        &sk_dft,
+        &mut source_xa,
+        &mut source_xe,
+        sigma,
+        scratch.borrow(),
+    );
+
+    ct.automorphism_inplace(&module, &autokey, scratch.borrow());
+
+    ct.decrypt(&module, &mut pt_have, &sk_dft, scratch.borrow());
+
+    module.vec_znx_automorphism_inplace(p, &mut pt_want, 0);
+
+    module.vec_znx_sub_ab_inplace(&mut pt_have, 0, &pt_want, 0);
+
+    let noise_have: f64 = pt_have.data.std(0, basek).log2();
+    let noise_want: f64 = noise_gglwe_product(
+        module.n() as f64,
+        basek,
+        0.5,
+        0.5,
+        0f64,
+        sigma * sigma,
+        0f64,
+        rank as f64,
+        k_ct,
         k_autokey,
     );
 
