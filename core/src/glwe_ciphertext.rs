@@ -294,9 +294,9 @@ where
         MatZnxDft<DataRhs, FFT64>: MatZnxDftToRef<FFT64>,
     {
         self.keyswitch(module, lhs, &rhs.key, scratch);
-        //(0..self.rank() + 1).for_each(|i| {
-        //    module.vec_znx_automorphism_inplace(rhs.p(), self, i);
-        //})
+        (0..self.rank() + 1).for_each(|i| {
+            module.vec_znx_automorphism_inplace(rhs.p(), self, i);
+        })
     }
 
     pub fn automorphism_inplace<DataRhs>(

@@ -1,4 +1,4 @@
-use base2k::{FFT64, Module, ScalarZnxOps, ScalarZnxToRef, ScratchOwned, Stats, VecZnxOps, ZnxView};
+use base2k::{FFT64, Module, ScalarZnxOps, ScratchOwned, Stats, VecZnxOps};
 use sampling::source::Source;
 
 use crate::{

@@ -142,6 +142,10 @@ impl AutomorphismKey<Vec<u8>, FFT64> {
         tmp_dft + tmp_idft + idft + keyswitch
     }
 
+    pub fn automorphism_inplace_scratch_space(module: &Module<FFT64>, out_size: usize, ksk_size: usize, rank: usize) -> usize {
+        AutomorphismKey::automorphism_scratch_space(module, out_size, out_size, ksk_size, rank)
+    }
+
     pub fn external_product_scratch_space(
         module: &Module<FFT64>,
         out_size: usize,
@@ -316,6 +320,20 @@ where
         });
 
         self.p = (lhs.p * rhs.p) % (module.cyclotomic_order() as i64);
+    }
+
+    pub fn automorphism_inplace<DataRhs>(
+        &mut self,
+        module: &Module<FFT64>,
+        rhs: &AutomorphismKey<DataRhs, FFT64>,
+        scratch: &mut Scratch,
+    ) where
+        MatZnxDft<DataRhs, FFT64>: MatZnxDftToRef<FFT64>,
+    {
+        unsafe {
+            let self_ptr: *mut AutomorphismKey<DataSelf, FFT64> = self as *mut AutomorphismKey<DataSelf, FFT64>;
+            self.automorphism(&module, &*self_ptr, rhs, scratch);
+        }
     }
 
     pub fn keyswitch<DataLhs, DataRhs>(

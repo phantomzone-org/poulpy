@@ -1,6 +1,6 @@
 use base2k::{
     Decoding, Encoding, FFT64, FillUniform, Module, ScalarZnx, ScalarZnxAlloc, ScratchOwned, Stats, VecZnxOps, VecZnxToMut,
-    ZnxViewMut, ZnxZero,
+    ZnxView, ZnxViewMut, ZnxZero,
 };
 use itertools::izip;
 use sampling::source::Source;
@@ -420,7 +420,7 @@ fn test_keyswitch_inplace(log_n: usize, basek: usize, k_ksk: usize, k_ct: usize,
 fn automorphism() {
     (1..4).for_each(|rank| {
         println!("test automorphism rank: {}", rank);
-        test_automorphism(12, 12, 1, 60, 45, 60, rank, 3.2);
+        test_automorphism(12, 12, -5, 60, 45, 60, rank, 3.2);
     });
 }
 
@@ -447,7 +447,6 @@ fn test_automorphism(
     let mut source_xe: Source = Source::new([0u8; 32]);
     let mut source_xa: Source = Source::new([0u8; 32]);
 
-    // Random input plaintext
     pt_want
         .data
         .fill_uniform(basek, 0, pt_want.size(), &mut source_xa);
@@ -486,14 +485,15 @@ fn test_automorphism(
     );
 
     ct_out.automorphism(&module, &ct_in, &autokey, scratch.borrow());
-
     ct_out.decrypt(&module, &mut pt_have, &sk_dft, scratch.borrow());
-
     module.vec_znx_automorphism_inplace(p, &mut pt_want, 0);
-
     module.vec_znx_sub_ab_inplace(&mut pt_have, 0, &pt_want, 0);
+    module.vec_znx_normalize_inplace(basek, &mut pt_have, 0, scratch.borrow());
 
     let noise_have: f64 = pt_have.data.std(0, basek).log2();
+
+    println!("{}", noise_have);
+
     let noise_want: f64 = noise_gglwe_product(
         module.n() as f64,
         basek,
@@ -519,7 +519,7 @@ fn test_automorphism(
 fn automorphism_inplace() {
     (1..4).for_each(|rank| {
         println!("test automorphism_inplace rank: {}", rank);
-        test_automorphism_inplace(12, 12, 1, 60, 60, rank, 3.2);
+        test_automorphism_inplace(12, 12, -5, 60, 60, rank, 3.2);
     });
 }
 
@@ -575,12 +575,10 @@ fn test_automorphism_inplace(log_n: usize, basek: usize, p: i64, k_autokey: usiz
     );
 
     ct.automorphism_inplace(&module, &autokey, scratch.borrow());
-
     ct.decrypt(&module, &mut pt_have, &sk_dft, scratch.borrow());
-
     module.vec_znx_automorphism_inplace(p, &mut pt_want, 0);
-
     module.vec_znx_sub_ab_inplace(&mut pt_have, 0, &pt_want, 0);
+    module.vec_znx_normalize_inplace(basek, &mut pt_have, 0, scratch.borrow());
 
     let noise_have: f64 = pt_have.data.std(0, basek).log2();
     let noise_want: f64 = noise_gglwe_product(
