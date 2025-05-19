@@ -149,6 +149,8 @@ where
         };
 
         (0..self.rows()).for_each(|row_j| {
+            vec_znx_pt.data.zero();
+
             // Adds the scalar_znx_pt to the i-th limb of the vec_znx_pt
             module.vec_znx_add_scalar_inplace(&mut vec_znx_pt, 0, row_j, pt, 0);
             module.vec_znx_normalize_inplace(basek, &mut vec_znx_pt, 0, scrach_2);
@@ -177,8 +179,6 @@ where
                     module.vmp_prepare_row(self, row_j, col_i, &vec_znx_dft_ct);
                 }
             });
-
-            vec_znx_pt.data.zero(); // zeroes for next iteration
         });
     }
 

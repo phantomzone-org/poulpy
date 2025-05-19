@@ -91,22 +91,8 @@ impl GLWECiphertextFourier<Vec<u8>, FFT64> {
         in_rank: usize,
         ksk_size: usize,
     ) -> usize {
-        let res_dft: usize = module.bytes_of_vec_znx_dft(out_rank + 1, out_size);
-
-        let vmp = module.bytes_of_vec_znx_dft(in_rank, in_size)
-            + module.vmp_apply_tmp_bytes(
-                out_size,
-                in_size,
-                in_size,
-                in_rank + 1,
-                out_rank + 1,
-                ksk_size,
-            );
-        let res_small: usize = module.bytes_of_vec_znx(out_rank + 1, out_size);
-        let add_a0: usize = module.bytes_of_vec_znx_big(1, in_size) + module.vec_znx_idft_tmp_bytes();
-        let normalize: usize = module.vec_znx_big_normalize_tmp_bytes();
-
-        res_dft + (vmp | add_a0 | (res_small + normalize))
+        module.bytes_of_vec_znx(out_rank + 1, out_size)
+            + GLWECiphertext::keyswitch_from_fourier_scratch_space(module, out_size, out_rank, in_size, in_rank, ksk_size)
     }
 
     pub fn keyswitch_inplace_scratch_space(module: &Module<FFT64>, out_size: usize, out_rank: usize, ksk_size: usize) -> usize {
@@ -181,11 +167,11 @@ where
 
         let mut res_idft: GLWECiphertext<&mut [u8]> = GLWECiphertext::<&mut [u8]> {
             data: res_idft_data,
-            basek: self.basek,
-            k: self.k,
+            basek: lhs.basek,
+            k: lhs.k,
         };
 
-        res_idft.keyswitch_from_fourier(module, self, rhs, scratch1);
+        res_idft.keyswitch_from_fourier(module, lhs, rhs, scratch1);
 
         (0..cols_out).for_each(|i| {
             module.vec_znx_dft(self, i, &res_idft, i);

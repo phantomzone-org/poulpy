@@ -121,17 +121,31 @@ impl GLWECiphertext<Vec<u8>> {
         ksk_size: usize,
     ) -> usize {
         let res_dft: usize = module.bytes_of_vec_znx_dft(out_rank + 1, ksk_size);
-        let vmp: usize = module.vmp_apply_tmp_bytes(
-            out_size,
-            in_size,
-            in_size,
-            in_rank + 1,
-            out_rank + 1,
-            ksk_size,
-        ) + module.bytes_of_vec_znx_dft(in_rank, in_size);
+        let vmp: usize = module.vmp_apply_tmp_bytes(out_size, in_size, in_size, in_rank, out_rank + 1, ksk_size)
+            + module.bytes_of_vec_znx_dft(in_rank, in_size);
         let normalize: usize = module.vec_znx_big_normalize_tmp_bytes();
 
         return res_dft + (vmp | normalize);
+    }
+
+    pub fn keyswitch_from_fourier_scratch_space(
+        module: &Module<FFT64>,
+        out_size: usize,
+        out_rank: usize,
+        in_size: usize,
+        in_rank: usize,
+        ksk_size: usize,
+    ) -> usize {
+        let res_dft = module.bytes_of_vec_znx_dft(out_rank + 1, ksk_size);
+
+        let vmp: usize = module.vmp_apply_tmp_bytes(out_size, in_size, in_size, in_rank, out_rank + 1, ksk_size)
+            + module.bytes_of_vec_znx_dft(in_rank, in_size);
+
+        let a0_big: usize = module.bytes_of_vec_znx_big(1, in_size) + module.vec_znx_idft_tmp_bytes();
+
+        let norm: usize = module.vec_znx_big_normalize_tmp_bytes();
+
+        res_dft + (vmp | a0_big | norm)
     }
 
     pub fn keyswitch_inplace_scratch_space(module: &Module<FFT64>, out_size: usize, out_rank: usize, ksk_size: usize) -> usize {
@@ -322,7 +336,7 @@ where
             assert_eq!(lhs.n(), module.n());
             assert!(
                 scratch.available()
-                    >= GLWECiphertextFourier::keyswitch_scratch_space(
+                    >= GLWECiphertext::keyswitch_from_fourier_scratch_space(
                         module,
                         self.size(),
                         self.rank(),
