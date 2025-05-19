@@ -1,6 +1,7 @@
 use base2k::{
     Backend, FFT64, MatZnxDft, MatZnxDftOps, MatZnxDftToMut, MatZnxDftToRef, Module, ScalarZnx, ScalarZnxDftOps, ScalarZnxOps,
-    ScalarZnxToRef, Scratch, VecZnx, VecZnxDft, VecZnxDftOps, VecZnxDftToMut, VecZnxDftToRef, VecZnxOps, ZnxZero,
+    ScalarZnxToRef, Scratch, VecZnx, VecZnxBigAlloc, VecZnxDft, VecZnxDftAlloc, VecZnxDftOps, VecZnxDftToMut, VecZnxDftToRef,
+    VecZnxOps, ZnxZero,
 };
 use sampling::source::Source;
 
@@ -20,10 +21,10 @@ pub struct AutomorphismKey<Data, B: Backend> {
 }
 
 impl AutomorphismKey<Vec<u8>, FFT64> {
-    pub fn new(module: &Module<FFT64>, basek: usize, p: i64, k: usize, rows: usize, rank: usize) -> Self {
+    pub fn new(module: &Module<FFT64>, basek: usize, k: usize, rows: usize, rank: usize) -> Self {
         AutomorphismKey {
             key: GLWESwitchingKey::new(module, basek, k, rows, rank, rank),
-            p: p,
+            p: 0,
         }
     }
 }
@@ -125,6 +126,20 @@ impl AutomorphismKey<Vec<u8>, FFT64> {
 
     pub fn keyswitch_inplace_scratch_space(module: &Module<FFT64>, out_size: usize, out_rank: usize, ksk_size: usize) -> usize {
         GLWESwitchingKey::keyswitch_inplace_scratch_space(module, out_size, out_rank, ksk_size)
+    }
+
+    pub fn automorphism_scratch_space(
+        module: &Module<FFT64>,
+        out_size: usize,
+        in_size: usize,
+        ksk_size: usize,
+        rank: usize,
+    ) -> usize {
+        let tmp_dft: usize = module.bytes_of_vec_znx_dft(rank + 1, in_size);
+        let tmp_idft: usize = module.bytes_of_vec_znx_big(rank + 1, out_size);
+        let idft: usize = module.vec_znx_idft_tmp_bytes();
+        let keyswitch: usize = GLWECiphertext::keyswitch_inplace_scratch_space(module, out_size, rank, ksk_size);
+        tmp_dft + tmp_idft + idft + keyswitch
     }
 
     pub fn external_product_scratch_space(
@@ -267,7 +282,7 @@ where
 
                 // Reverts the automorphis key from (-pi^{-1}_{k}(s)a + s, a) to (-sa + pi_{k}(s), a)
                 (0..cols_out).for_each(|i| {
-                    module.vec_znx_automorphism_inplace(self.p(), &mut tmp_idft_small_data, i);
+                    module.vec_znx_automorphism_inplace(lhs.p(), &mut tmp_idft_small_data, i);
                 });
 
                 // Wraps into ciphertext
@@ -283,7 +298,7 @@ where
                 // Applies back the automorphism X^{k}: (-pi^{-1}_{k'}(s)a + pi_{k}(s), a) -> (-pi^{-1}_{k'+k}(s)a + s, a)
                 // and switches back to DFT domain
                 (0..self.rank_out() + 1).for_each(|i| {
-                    module.vec_znx_automorphism_inplace(rhs.p(), &mut tmp_idft, i);
+                    module.vec_znx_automorphism_inplace(lhs.p(), &mut tmp_idft, i);
                     module.vec_znx_dft(&mut tmp_dft, i, &tmp_idft, i);
                 });
 
@@ -299,6 +314,8 @@ where
                 self.set_row(module, row_i, col_j, &tmp_dft);
             });
         });
+
+        self.p = (lhs.p * rhs.p) % (module.cyclotomic_order() as i64);
     }
 
     pub fn keyswitch<DataLhs, DataRhs>(

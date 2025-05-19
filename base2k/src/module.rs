@@ -74,15 +74,15 @@ impl<B: Backend> Module<B> {
     }
 
     // Returns gen^-1
-    pub fn galois_element_inv(&self, generator: i64) -> i64 {
-        if generator == 0 {
+    pub fn galois_element_inv(&self, gal_el: i64) -> i64 {
+        if gal_el == 0 {
             panic!("cannot invert 0")
         }
         ((mod_exp_u64(
-            generator.abs() as u64,
+            gal_el.abs() as u64,
             (self.cyclotomic_order() - 1) as usize,
         ) & (self.cyclotomic_order() - 1)) as i64)
-            * generator.signum()
+            * gal_el.signum()
     }
 }
 

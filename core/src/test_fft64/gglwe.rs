@@ -405,6 +405,19 @@ fn test_external_product(log_n: usize, basek: usize, k: usize, sigma: f64, rank_
     // gglwe_(m) (x) RGSW_(X^k) = gglwe_(m * X^k)
     ct_gglwe_out.external_product(&module, &ct_gglwe_in, &ct_rgsw, scratch.borrow());
 
+    scratch = ScratchOwned::new(
+        GLWESwitchingKey::encrypt_sk_scratch_space(&module, rank_out, ct_gglwe_in.size())
+            | GLWECiphertextFourier::decrypt_scratch_space(&module, ct_gglwe_out.size())
+            | GLWESwitchingKey::external_product_scratch_space(
+                &module,
+                ct_gglwe_out.size(),
+                ct_gglwe_in.size(),
+                ct_rgsw.size(),
+                rank_out,
+            )
+            | GGSWCiphertext::encrypt_sk_scratch_space(&module, rank_out, ct_rgsw.size()),
+    );
+
     let mut ct_glwe_dft: GLWECiphertextFourier<Vec<u8>, FFT64> = GLWECiphertextFourier::new(&module, basek, k, rank_out);
     let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::new(&module, basek, k);
 

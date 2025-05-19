@@ -437,7 +437,7 @@ fn test_automorphism(
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
     let rows: usize = (k_ct_in + basek - 1) / basek;
 
-    let mut autokey: AutomorphismKey<Vec<u8>, FFT64> = AutomorphismKey::new(&module, basek, p, k_autokey, rows, rank);
+    let mut autokey: AutomorphismKey<Vec<u8>, FFT64> = AutomorphismKey::new(&module, basek, k_autokey, rows, rank);
     let mut ct_in: GLWECiphertext<Vec<u8>> = GLWECiphertext::new(&module, basek, k_ct_in, rank);
     let mut ct_out: GLWECiphertext<Vec<u8>> = GLWECiphertext::new(&module, basek, k_ct_out, rank);
     let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::new(&module, basek, k_ct_in);
@@ -523,19 +523,11 @@ fn automorphism_inplace() {
     });
 }
 
-fn test_automorphism_inplace(
-    log_n: usize,
-    basek: usize,
-    p: i64,
-    k_autokey: usize,
-    k_ct: usize,
-    rank: usize,
-    sigma: f64,
-) {
+fn test_automorphism_inplace(log_n: usize, basek: usize, p: i64, k_autokey: usize, k_ct: usize, rank: usize, sigma: f64) {
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
     let rows: usize = (k_ct + basek - 1) / basek;
 
-    let mut autokey: AutomorphismKey<Vec<u8>, FFT64> = AutomorphismKey::new(&module, basek, p, k_autokey, rows, rank);
+    let mut autokey: AutomorphismKey<Vec<u8>, FFT64> = AutomorphismKey::new(&module, basek, k_autokey, rows, rank);
     let mut ct: GLWECiphertext<Vec<u8>> = GLWECiphertext::new(&module, basek, k_ct, rank);
     let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::new(&module, basek, k_ct);
     let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::new(&module, basek, k_ct);

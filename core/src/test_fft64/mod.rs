@@ -1,3 +1,4 @@
+mod automorphism_key;
 mod gglwe;
 mod ggsw;
 mod glwe;
