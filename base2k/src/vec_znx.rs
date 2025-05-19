@@ -1,5 +1,6 @@
 use crate::DataView;
 use crate::DataViewMut;
+use crate::ScalarZnx;
 use crate::ZnxSliceSize;
 use crate::ZnxZero;
 use crate::alloc_aligned;
@@ -126,6 +127,15 @@ impl<D> VecZnx<D> {
             n,
             cols,
             size,
+        }
+    }
+
+    pub fn to_scalar_znx(self) -> ScalarZnx<D>{
+        debug_assert_eq!(self.size, 1, "cannot convert VecZnx to ScalarZnx if cols: {} != 1", self.cols);
+        ScalarZnx{
+            data: self.data,
+            n: self.n,
+            cols: self.cols,
         }
     }
 }

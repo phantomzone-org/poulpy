@@ -8,11 +8,11 @@ use crate::{
 use std::fmt;
 
 pub struct VecZnxDft<D, B: Backend> {
-    data: D,
-    n: usize,
-    cols: usize,
-    size: usize,
-    _phantom: PhantomData<B>,
+    pub(crate) data: D,
+    pub(crate) n: usize,
+    pub(crate) cols: usize,
+    pub(crate) size: usize,
+    pub(crate) _phantom: PhantomData<B>,
 }
 
 impl<D, B: Backend> VecZnxDft<D, B> {

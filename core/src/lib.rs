@@ -7,6 +7,7 @@ pub mod glwe_ciphertext_fourier;
 pub mod glwe_plaintext;
 pub mod keys;
 pub mod keyswitch_key;
+pub mod tensor_key;
 #[cfg(test)]
 mod test_fft64;
 mod utils;

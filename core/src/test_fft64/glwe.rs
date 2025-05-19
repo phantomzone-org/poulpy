@@ -1,6 +1,6 @@
 use base2k::{
     Decoding, Encoding, FFT64, FillUniform, Module, ScalarZnx, ScalarZnxAlloc, ScratchOwned, Stats, VecZnxOps, VecZnxToMut,
-    ZnxView, ZnxViewMut, ZnxZero,
+    ZnxViewMut, ZnxZero,
 };
 use itertools::izip;
 use sampling::source::Source;
@@ -72,6 +72,22 @@ fn external_product_inplace() {
     (1..4).for_each(|rank| {
         println!("test external_product rank: {}", rank);
         test_external_product_inplace(12, 15, 60, 60, rank, 3.2);
+    });
+}
+
+#[test]
+fn automorphism_inplace() {
+    (1..4).for_each(|rank| {
+        println!("test automorphism_inplace rank: {}", rank);
+        test_automorphism_inplace(12, 12, -5, 60, 60, rank, 3.2);
+    });
+}
+
+#[test]
+fn automorphism() {
+    (1..4).for_each(|rank| {
+        println!("test automorphism rank: {}", rank);
+        test_automorphism(12, 12, -5, 60, 45, 60, rank, 3.2);
     });
 }
 
@@ -416,14 +432,6 @@ fn test_keyswitch_inplace(log_n: usize, basek: usize, k_ksk: usize, k_ct: usize,
     );
 }
 
-#[test]
-fn automorphism() {
-    (1..4).for_each(|rank| {
-        println!("test automorphism rank: {}", rank);
-        test_automorphism(12, 12, -5, 60, 45, 60, rank, 3.2);
-    });
-}
-
 fn test_automorphism(
     log_n: usize,
     basek: usize,
@@ -513,14 +521,6 @@ fn test_automorphism(
         noise_have,
         noise_want
     );
-}
-
-#[test]
-fn automorphism_inplace() {
-    (1..4).for_each(|rank| {
-        println!("test automorphism_inplace rank: {}", rank);
-        test_automorphism_inplace(12, 12, -5, 60, 60, rank, 3.2);
-    });
 }
 
 fn test_automorphism_inplace(log_n: usize, basek: usize, p: i64, k_autokey: usize, k_ct: usize, rank: usize, sigma: f64) {

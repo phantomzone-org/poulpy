@@ -9,9 +9,9 @@ use rand_distr::{Distribution, weighted::WeightedIndex};
 use sampling::source::Source;
 
 pub struct ScalarZnx<D> {
-    data: D,
-    n: usize,
-    cols: usize,
+    pub(crate) data: D,
+    pub(crate) n: usize,
+    pub(crate) cols: usize,
 }
 
 impl<D> ZnxInfos for ScalarZnx<D> {
