@@ -12,6 +12,8 @@ use crate::{
     glwe_plaintext::GLWEPlaintext,
     keys::{SecretKey, SecretKeyFourier},
     keyswitch_key::GLWESwitchingKey,
+    tensor_key::TensorKey,
+    test_fft64::gglwe::noise_gglwe_product,
 };
 
 #[test]
@@ -99,6 +101,139 @@ fn test_encrypt_sk(log_n: usize, basek: usize, k_ggsw: usize, sigma: f64, rank: 
 
             let std_pt: f64 = pt_have.data.std(0, basek) * (k_ggsw as f64).exp2();
             assert!((sigma - std_pt).abs() <= 0.2, "{} {}", sigma, std_pt);
+
+            pt_want.data.zero();
+        });
+    });
+}
+
+#[test]
+fn keyswitch() {
+    (1..4).for_each(|rank| {
+        println!("test keyswitch rank: {}", rank);
+        test_keyswitch(12, 15, 60, rank, 3.2);
+    });
+}
+
+fn test_keyswitch(log_n: usize, basek: usize, k: usize, rank: usize, sigma: f64) {
+    let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
+    let rows: usize = (k + basek - 1) / basek;
+
+    let mut ct_in: GGSWCiphertext<Vec<u8>, FFT64> = GGSWCiphertext::new(&module, basek, k, rows, rank);
+    let mut ct_out: GGSWCiphertext<Vec<u8>, FFT64> = GGSWCiphertext::new(&module, basek, k, rows, rank);
+    let mut tsk: TensorKey<Vec<u8>, FFT64> = TensorKey::new(&module, basek, k, rows, rank);
+    let mut ksk: GLWESwitchingKey<Vec<u8>, FFT64> = GLWESwitchingKey::new(&module, basek, k, rows, rank, rank);
+    let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::new(&module, basek, k);
+    let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::new(&module, basek, k);
+    let mut pt_scalar: ScalarZnx<Vec<u8>> = module.new_scalar_znx(1);
+
+    let mut source_xs: Source = Source::new([0u8; 32]);
+    let mut source_xe: Source = Source::new([0u8; 32]);
+    let mut source_xa: Source = Source::new([0u8; 32]);
+
+    let mut scratch: ScratchOwned = ScratchOwned::new(
+        GGSWCiphertext::encrypt_sk_scratch_space(&module, rank, ct_in.size())
+            | GLWECiphertextFourier::decrypt_scratch_space(&module, ct_out.size())
+            | GLWESwitchingKey::encrypt_sk_scratch_space(&module, rank, ksk.size())
+            | TensorKey::encrypt_sk_scratch_space(&module, rank, ksk.size())
+            | GGSWCiphertext::keyswitch_scratch_space(
+                &module,
+                ct_out.size(),
+                ct_in.size(),
+                ksk.size(),
+                tsk.size(),
+                rank,
+            ),
+    );
+
+    let mut sk_in: SecretKey<Vec<u8>> = SecretKey::new(&module, rank);
+    sk_in.fill_ternary_prob(0.5, &mut source_xs);
+
+    let mut sk_in_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::new(&module, rank);
+    sk_in_dft.dft(&module, &sk_in);
+
+    let mut sk_out: SecretKey<Vec<u8>> = SecretKey::new(&module, rank);
+    sk_out.fill_ternary_prob(0.5, &mut source_xs);
+
+    let mut sk_out_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::new(&module, rank);
+    sk_out_dft.dft(&module, &sk_out);
+
+    ksk.encrypt_sk(
+        &module,
+        &sk_in,
+        &sk_out_dft,
+        &mut source_xa,
+        &mut source_xe,
+        sigma,
+        scratch.borrow(),
+    );
+    tsk.encrypt_sk(
+        &module,
+        &sk_out_dft,
+        &mut source_xa,
+        &mut source_xe,
+        sigma,
+        scratch.borrow(),
+    );
+
+    pt_scalar.fill_ternary_hw(0, module.n(), &mut source_xs);
+
+    ct_in.encrypt_sk(
+        &module,
+        &pt_scalar,
+        &sk_in_dft,
+        &mut source_xa,
+        &mut source_xe,
+        sigma,
+        scratch.borrow(),
+    );
+
+    ct_out.keyswitch(&module, &ct_in, &ksk, &tsk, scratch.borrow());
+
+    let mut ct_glwe_fourier: GLWECiphertextFourier<Vec<u8>, FFT64> = GLWECiphertextFourier::new(&module, basek, k, rank);
+    let mut pt_dft: VecZnxDft<Vec<u8>, FFT64> = module.new_vec_znx_dft(1, ct_out.size());
+    let mut pt_big: VecZnxBig<Vec<u8>, FFT64> = module.new_vec_znx_big(1, ct_out.size());
+
+    (0..ct_out.rank() + 1).for_each(|col_j| {
+        (0..ct_out.rows()).for_each(|row_i| {
+            module.vec_znx_add_scalar_inplace(&mut pt_want, 0, row_i, &pt_scalar, 0);
+
+            // mul with sk[col_j-1]
+            if col_j > 0 {
+                module.vec_znx_dft(&mut pt_dft, 0, &pt_want, 0);
+                module.svp_apply_inplace(&mut pt_dft, 0, &sk_out_dft, col_j - 1);
+                module.vec_znx_idft_tmp_a(&mut pt_big, 0, &mut pt_dft, 0);
+                module.vec_znx_big_normalize(basek, &mut pt_want, 0, &pt_big, 0, scratch.borrow());
+            }
+
+            ct_out.get_row(&module, row_i, col_j, &mut ct_glwe_fourier);
+
+            ct_glwe_fourier.decrypt(&module, &mut pt_have, &sk_out_dft, scratch.borrow());
+
+            module.vec_znx_sub_ab_inplace(&mut pt_have, 0, &pt_want, 0);
+
+            let noise_have: f64 = pt_have.data.std(0, basek).log2();
+            let noise_want: f64 = noise_gglwe_product(
+                module.n() as f64,
+                basek,
+                0.5,
+                0.5,
+                0f64,
+                sigma * sigma,
+                0f64,
+                rank as f64,
+                k,
+                k,
+            );
+
+            println!("{} {}", noise_have, noise_want);
+
+            // assert!(
+            // (noise_have - noise_want).abs() <= 0.1,
+            // "{} {}",
+            // noise_have,
+            // noise_want
+            // );
 
             pt_want.data.zero();
         });
