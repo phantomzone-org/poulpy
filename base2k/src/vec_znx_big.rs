@@ -1,6 +1,6 @@
 use crate::ffi::vec_znx_big;
 use crate::znx_base::{ZnxInfos, ZnxView};
-use crate::{alloc_aligned, Backend, DataView, DataViewMut, Module, VecZnx, ZnxSliceSize, ZnxViewMut, ZnxZero, FFT64};
+use crate::{Backend, DataView, DataViewMut, FFT64, Module, VecZnx, ZnxSliceSize, ZnxViewMut, ZnxZero, alloc_aligned};
 use std::fmt;
 use std::marker::PhantomData;
 
@@ -97,11 +97,11 @@ impl<D, B: Backend> VecZnxBig<D, B> {
 impl<D> VecZnxBig<D, FFT64>
 where
     VecZnxBig<D, FFT64>: VecZnxBigToMut<FFT64> + ZnxInfos,
-{   
-    // Consumes the VecZnxBig to return a VecZnx. 
+{
+    // Consumes the VecZnxBig to return a VecZnx.
     // Useful when no normalization is needed.
-    pub fn to_vec_znx_small(self) -> VecZnx<D>{
-        VecZnx{
+    pub fn to_vec_znx_small(self) -> VecZnx<D> {
+        VecZnx {
             data: self.data,
             n: self.n,
             cols: self.cols,

@@ -2,7 +2,10 @@ use std::marker::PhantomData;
 
 use crate::ffi::svp;
 use crate::znx_base::ZnxInfos;
-use crate::{alloc_aligned, Backend, DataView, DataViewMut, Module, VecZnxDft, VecZnxDftToMut, VecZnxDftToRef, ZnxSliceSize, ZnxView, FFT64};
+use crate::{
+    Backend, DataView, DataViewMut, FFT64, Module, VecZnxDft, VecZnxDftToMut, VecZnxDftToRef, ZnxSliceSize, ZnxView,
+    alloc_aligned,
+};
 
 pub struct ScalarZnxDft<D, B: Backend> {
     data: D,
@@ -93,8 +96,8 @@ impl<D, B: Backend> ScalarZnxDft<D, B> {
         }
     }
 
-    pub fn as_vec_znx_dft(self) -> VecZnxDft<D, B>{
-        VecZnxDft{
+    pub fn as_vec_znx_dft(self) -> VecZnxDft<D, B> {
+        VecZnxDft {
             data: self.data,
             n: self.n,
             cols: self.cols,

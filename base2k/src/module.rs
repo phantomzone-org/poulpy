@@ -78,10 +78,7 @@ impl<B: Backend> Module<B> {
         if gal_el == 0 {
             panic!("cannot invert 0")
         }
-        ((mod_exp_u64(
-            gal_el.abs() as u64,
-            (self.cyclotomic_order() - 1) as usize,
-        ) & (self.cyclotomic_order() - 1)) as i64)
+        ((mod_exp_u64(gal_el.abs() as u64, (self.cyclotomic_order() - 1) as usize) & (self.cyclotomic_order() - 1)) as i64)
             * gal_el.signum()
     }
 }

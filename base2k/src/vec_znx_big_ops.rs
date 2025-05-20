@@ -147,7 +147,6 @@ pub trait VecZnxBigOps<BACKEND: Backend> {
     fn vec_znx_big_automorphism_inplace<A>(&self, k: i64, a: &mut A, a_col: usize)
     where
         A: VecZnxBigToMut<BACKEND>;
-
 }
 
 pub trait VecZnxBigScratch {
@@ -170,7 +169,6 @@ impl<B: Backend> VecZnxBigAlloc<B> for Module<B> {
 }
 
 impl VecZnxBigOps<FFT64> for Module<FFT64> {
-
     fn vec_znx_big_add<R, A, B>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
     where
         R: VecZnxBigToMut<FFT64>,

@@ -574,7 +574,11 @@ impl<BACKEND: Backend> VecZnxOps for Module<BACKEND> {
         #[cfg(debug_assertions)]
         {
             assert_eq!(a.n(), self.n());
-            assert!(k & 1 != 0, "invalid galois element: must be odd but is {}", k);
+            assert!(
+                k & 1 != 0,
+                "invalid galois element: must be odd but is {}",
+                k
+            );
         }
         unsafe {
             vec_znx::vec_znx_automorphism(

@@ -130,9 +130,13 @@ impl<D> VecZnx<D> {
         }
     }
 
-    pub fn to_scalar_znx(self) -> ScalarZnx<D>{
-        debug_assert_eq!(self.size, 1, "cannot convert VecZnx to ScalarZnx if cols: {} != 1", self.cols);
-        ScalarZnx{
+    pub fn to_scalar_znx(self) -> ScalarZnx<D> {
+        debug_assert_eq!(
+            self.size, 1,
+            "cannot convert VecZnx to ScalarZnx if cols: {} != 1",
+            self.cols
+        );
+        ScalarZnx {
             data: self.data,
             n: self.n,
             cols: self.cols,
@@ -198,9 +202,9 @@ where
     VecZnx<D>: VecZnxToMut + ZnxInfos,
 {
     /// Extracts the a_col-th column of 'a' and stores it on the self_col-th column [Self].
-    pub fn extract_column<C>(&mut self, self_col: usize, a: &VecZnx<C>, a_col: usize)
+    pub fn extract_column<R>(&mut self, self_col: usize, a: &R, a_col: usize)
     where
-        VecZnx<C>: VecZnxToRef + ZnxInfos,
+        R: VecZnxToRef + ZnxInfos,
     {
         #[cfg(debug_assertions)]
         {
