@@ -13,8 +13,10 @@ use crate::{
     keys::{SecretKey, SecretKeyFourier},
     keyswitch_key::GLWESwitchingKey,
     tensor_key::TensorKey,
-    test_fft64::gglwe::noise_gglwe_product,
+    test_fft64::gglwe::log2_std_noise_gglwe_product,
 };
+
+use super::gglwe::var_noise_gglwe_product;
 
 #[test]
 fn encrypt_sk() {
@@ -146,14 +148,16 @@ fn test_keyswitch(log_n: usize, basek: usize, k: usize, rank: usize, sigma: f64)
             ),
     );
 
+    let var_xs: f64 = 0.5;
+
     let mut sk_in: SecretKey<Vec<u8>> = SecretKey::new(&module, rank);
-    sk_in.fill_ternary_prob(0.5, &mut source_xs);
+    sk_in.fill_ternary_prob(var_xs, &mut source_xs);
 
     let mut sk_in_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::new(&module, rank);
     sk_in_dft.dft(&module, &sk_in);
 
     let mut sk_out: SecretKey<Vec<u8>> = SecretKey::new(&module, rank);
-    sk_out.fill_ternary_prob(0.5, &mut source_xs);
+    sk_out.fill_ternary_prob(var_xs, &mut source_xs);
 
     let mut sk_out_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::new(&module, rank);
     sk_out_dft.dft(&module, &sk_out);
@@ -213,11 +217,11 @@ fn test_keyswitch(log_n: usize, basek: usize, k: usize, rank: usize, sigma: f64)
             module.vec_znx_sub_ab_inplace(&mut pt_have, 0, &pt_want, 0);
 
             let noise_have: f64 = pt_have.data.std(0, basek).log2();
-            let noise_want: f64 = noise_gglwe_product(
+            let noise_want: f64 = noise_ggsw_keyswitch(
                 module.n() as f64,
                 basek,
-                0.5,
-                0.5,
+                col_j,
+                var_xs,
                 0f64,
                 sigma * sigma,
                 0f64,
@@ -226,18 +230,65 @@ fn test_keyswitch(log_n: usize, basek: usize, k: usize, rank: usize, sigma: f64)
                 k,
             );
 
-            println!("{} {}", noise_have, noise_want);
-
-            // assert!(
-            // (noise_have - noise_want).abs() <= 0.1,
-            // "{} {}",
-            // noise_have,
-            // noise_want
-            // );
+            assert!(
+                (noise_have - noise_want).abs() <= 0.1,
+                "{} {}",
+                noise_have,
+                noise_want
+            );
 
             pt_want.data.zero();
         });
     });
+}
+
+pub(crate) fn noise_ggsw_keyswitch(
+    n: f64,
+    basek: usize,
+    col: usize,
+    var_xs: f64,
+    var_a_err: f64,
+    var_gct_err_lhs: f64,
+    var_gct_err_rhs: f64,
+    rank: f64,
+    a_logq: usize,
+    b_logq: usize,
+) -> f64 {
+    let var_si_x_sj: f64 = n * var_xs * var_xs;
+
+    // Initial KS for col = 0
+    let mut noise: f64 = var_noise_gglwe_product(
+        n,
+        basek,
+        var_xs,
+        var_xs,
+        var_a_err,
+        var_gct_err_lhs,
+        var_gct_err_rhs,
+        rank,
+        a_logq,
+        b_logq,
+    );
+
+    // Other GGSW reconstruction for col > 0
+    if col > 0 {
+        noise += var_noise_gglwe_product(
+            n,
+            basek,
+            var_xs,
+            var_si_x_sj,
+            var_a_err + 1f64 / 12.0,
+            var_gct_err_lhs,
+            var_gct_err_rhs,
+            rank,
+            a_logq,
+            b_logq,
+        );
+        noise += n * noise * var_xs * 0.5;
+    }
+
+    noise = noise.sqrt();
+    noise.log2().min(-1.0) // max noise is [-2^{-1}, 2^{-1}]
 }
 
 // fn test_automorphism(p: i64, log_n: usize, basek: usize, k: usize, rank: usize, sigma: f64) {

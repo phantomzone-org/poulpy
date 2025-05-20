@@ -6,7 +6,7 @@ use crate::{
     glwe_plaintext::GLWEPlaintext,
     keys::{SecretKey, SecretKeyFourier},
     keyswitch_key::GLWESwitchingKey,
-    test_fft64::{gglwe::noise_gglwe_product, ggsw::noise_ggsw_product},
+    test_fft64::{gglwe::log2_std_noise_gglwe_product, ggsw::noise_ggsw_product},
 };
 use base2k::{FFT64, FillUniform, Module, ScalarZnx, ScalarZnxAlloc, ScratchOwned, Stats, VecZnxOps, VecZnxToMut, ZnxViewMut};
 use sampling::source::Source;
@@ -132,7 +132,7 @@ fn test_keyswitch(
     module.vec_znx_sub_ab_inplace(&mut pt_have, 0, &pt_want, 0);
 
     let noise_have: f64 = pt_have.data.std(0, basek).log2();
-    let noise_want: f64 = noise_gglwe_product(
+    let noise_want: f64 = log2_std_noise_gglwe_product(
         module.n() as f64,
         basek,
         0.5,
@@ -220,7 +220,7 @@ fn test_keyswitch_inplace(log_n: usize, basek: usize, k_ksk: usize, k_ct: usize,
     module.vec_znx_sub_ab_inplace(&mut pt_have, 0, &pt_want, 0);
 
     let noise_have: f64 = pt_have.data.std(0, basek).log2();
-    let noise_want: f64 = noise_gglwe_product(
+    let noise_want: f64 = log2_std_noise_gglwe_product(
         module.n() as f64,
         basek,
         0.5,

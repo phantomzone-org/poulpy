@@ -212,7 +212,7 @@ fn test_key_switch(
             module.vec_znx_sub_scalar_inplace(&mut pt, 0, row_i, &sk0, col_i);
 
             let noise_have: f64 = pt.data.std(0, basek).log2();
-            let noise_want: f64 = noise_gglwe_product(
+            let noise_want: f64 = log2_std_noise_gglwe_product(
                 module.n() as f64,
                 basek,
                 0.5,
@@ -314,7 +314,7 @@ fn test_key_switch_inplace(log_n: usize, basek: usize, k_ksk: usize, sigma: f64,
             module.vec_znx_sub_scalar_inplace(&mut pt, 0, row_i, &sk0, col_i);
 
             let noise_have: f64 = pt.data.std(0, basek).log2();
-            let noise_want: f64 = noise_gglwe_product(
+            let noise_want: f64 = log2_std_noise_gglwe_product(
                 module.n() as f64,
                 basek,
                 0.5,
@@ -571,7 +571,7 @@ fn test_external_product_inplace(log_n: usize, basek: usize, k: usize, sigma: f6
     });
 }
 
-pub(crate) fn noise_gglwe_product(
+pub(crate) fn var_noise_gglwe_product(
     n: f64,
     basek: usize,
     var_xs: f64,
@@ -597,7 +597,34 @@ pub(crate) fn noise_gglwe_product(
     let mut noise: f64 = (a_cols as f64) * n * var_base * (var_gct_err_lhs + var_xs * var_gct_err_rhs);
     noise += var_msg * var_a_err * a_scale * a_scale * n;
     noise *= rank_in;
+    noise /= b_scale * b_scale;
+    noise
+}
+
+pub(crate) fn log2_std_noise_gglwe_product(
+    n: f64,
+    basek: usize,
+    var_xs: f64,
+    var_msg: f64,
+    var_a_err: f64,
+    var_gct_err_lhs: f64,
+    var_gct_err_rhs: f64,
+    rank_in: f64,
+    a_logq: usize,
+    b_logq: usize,
+) -> f64 {
+    let mut noise: f64 = var_noise_gglwe_product(
+        n,
+        basek,
+        var_xs,
+        var_msg,
+        var_a_err,
+        var_gct_err_lhs,
+        var_gct_err_rhs,
+        rank_in,
+        a_logq,
+        b_logq,
+    );
     noise = noise.sqrt();
-    noise /= b_scale;
     noise.log2().min(-1.0) // max noise is [-2^{-1}, 2^{-1}]
 }

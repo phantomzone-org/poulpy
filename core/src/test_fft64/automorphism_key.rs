@@ -7,7 +7,7 @@ use crate::{
     glwe_ciphertext_fourier::GLWECiphertextFourier,
     glwe_plaintext::GLWEPlaintext,
     keys::{SecretKey, SecretKeyFourier},
-    test_fft64::gglwe::noise_gglwe_product,
+    test_fft64::gglwe::log2_std_noise_gglwe_product,
 };
 
 #[test]
@@ -101,7 +101,7 @@ fn test_automorphism(p0: i64, p1: i64, log_n: usize, basek: usize, k_ksk: usize,
             module.vec_znx_sub_scalar_inplace(&mut pt, 0, row_i, &sk, col_i);
 
             let noise_have: f64 = pt.data.std(0, basek).log2();
-            let noise_want: f64 = noise_gglwe_product(
+            let noise_want: f64 = log2_std_noise_gglwe_product(
                 module.n() as f64,
                 basek,
                 0.5,
@@ -192,7 +192,7 @@ fn test_automorphism_inplace(p0: i64, p1: i64, log_n: usize, basek: usize, k_ksk
             module.vec_znx_sub_scalar_inplace(&mut pt, 0, row_i, &sk, col_i);
 
             let noise_have: f64 = pt.data.std(0, basek).log2();
-            let noise_want: f64 = noise_gglwe_product(
+            let noise_want: f64 = log2_std_noise_gglwe_product(
                 module.n() as f64,
                 basek,
                 0.5,
