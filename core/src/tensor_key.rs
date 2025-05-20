@@ -105,15 +105,6 @@ where
         })
     }
 
-    // Returns a reference to GLWESwitchingKey_{s}(s[i] * s[j])
-    pub fn at(&self, mut i: usize, mut j: usize) -> &GLWESwitchingKey<DataSelf, FFT64> {
-        if i > j {
-            std::mem::swap(&mut i, &mut j);
-        };
-        let rank: usize = self.rank();
-        &self.keys[i * rank + j - (i * (i + 1) / 2)]
-    }
-
     // Returns a mutable reference to GLWESwitchingKey_{s}(s[i] * s[j])
     pub fn at_mut(&mut self, mut i: usize, mut j: usize) -> &mut GLWESwitchingKey<DataSelf, FFT64> {
         if i > j {
@@ -121,5 +112,19 @@ where
         };
         let rank: usize = self.rank();
         &mut self.keys[i * rank + j - (i * (i + 1) / 2)]
+    }
+}
+
+impl<DataSelf> TensorKey<DataSelf, FFT64>
+where
+    MatZnxDft<DataSelf, FFT64>: MatZnxDftToRef<FFT64>,
+{
+    // Returns a reference to GLWESwitchingKey_{s}(s[i] * s[j])
+    pub fn at(&self, mut i: usize, mut j: usize) -> &GLWESwitchingKey<DataSelf, FFT64> {
+        if i > j {
+            std::mem::swap(&mut i, &mut j);
+        };
+        let rank: usize = self.rank();
+        &self.keys[i * rank + j - (i * (i + 1) / 2)]
     }
 }

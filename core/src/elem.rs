@@ -1,6 +1,6 @@
-use base2k::{Backend, Module, VecZnxDft, VecZnxDftToMut, VecZnxDftToRef, ZnxInfos};
+use base2k::{Backend, Module, VecZnxDftToMut, VecZnxDftToRef, ZnxInfos};
 
-use crate::{glwe_ciphertext_fourier::GLWECiphertextFourier, utils::derive_size};
+use crate::utils::derive_size;
 
 pub trait Infos {
     type Inner: ZnxInfos;
@@ -47,13 +47,13 @@ pub trait Infos {
 }
 
 pub trait GetRow<B: Backend> {
-    fn get_row<R>(&self, module: &Module<B>, row_i: usize, col_j: usize, res: &mut GLWECiphertextFourier<R, B>)
+    fn get_row<R>(&self, module: &Module<B>, row_i: usize, col_j: usize, res: &mut R)
     where
-        VecZnxDft<R, B>: VecZnxDftToMut<B>;
+        R: VecZnxDftToMut<B>;
 }
 
 pub trait SetRow<B: Backend> {
-    fn set_row<A>(&mut self, module: &Module<B>, row_i: usize, col_j: usize, a: &GLWECiphertextFourier<A, B>)
+    fn set_row<R>(&mut self, module: &Module<B>, row_i: usize, col_j: usize, a: &R)
     where
-        VecZnxDft<A, B>: VecZnxDftToRef<B>;
+        R: VecZnxDftToRef<B>;
 }

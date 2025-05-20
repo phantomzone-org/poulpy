@@ -1,7 +1,7 @@
 use base2k::{
     Backend, FFT64, MatZnxDft, MatZnxDftAlloc, MatZnxDftOps, MatZnxDftToMut, MatZnxDftToRef, Module, ScalarZnx, ScalarZnxDft,
-    ScalarZnxDftToRef, ScalarZnxToRef, Scratch, VecZnxAlloc, VecZnxDft, VecZnxDftAlloc, VecZnxDftToMut, VecZnxDftToRef,
-    VecZnxOps, ZnxInfos, ZnxZero,
+    ScalarZnxDftToRef, ScalarZnxToRef, Scratch, VecZnxAlloc, VecZnxDftAlloc, VecZnxDftToMut, VecZnxDftToRef, VecZnxOps, ZnxInfos,
+    ZnxZero,
 };
 use sampling::source::Source;
 
@@ -190,9 +190,9 @@ impl<C> GetRow<FFT64> for GGLWECiphertext<C, FFT64>
 where
     MatZnxDft<C, FFT64>: MatZnxDftToRef<FFT64>,
 {
-    fn get_row<R>(&self, module: &Module<FFT64>, row_i: usize, col_j: usize, res: &mut GLWECiphertextFourier<R, FFT64>)
+    fn get_row<R>(&self, module: &Module<FFT64>, row_i: usize, col_j: usize, res: &mut R)
     where
-        VecZnxDft<R, FFT64>: VecZnxDftToMut<FFT64>,
+        R: VecZnxDftToMut<FFT64>,
     {
         module.vmp_extract_row(res, self, row_i, col_j);
     }
@@ -202,9 +202,9 @@ impl<C> SetRow<FFT64> for GGLWECiphertext<C, FFT64>
 where
     MatZnxDft<C, FFT64>: MatZnxDftToMut<FFT64>,
 {
-    fn set_row<R>(&mut self, module: &Module<FFT64>, row_i: usize, col_j: usize, a: &GLWECiphertextFourier<R, FFT64>)
+    fn set_row<R>(&mut self, module: &Module<FFT64>, row_i: usize, col_j: usize, a: &R)
     where
-        VecZnxDft<R, FFT64>: VecZnxDftToRef<FFT64>,
+        R: VecZnxDftToRef<FFT64>,
     {
         module.vmp_prepare_row(self, row_i, col_j, a);
     }
