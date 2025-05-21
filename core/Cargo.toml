@@ -1,5 +1,3 @@
-cargo-features = ["edition2024"]
-
 [package]
 name = "rlwe"
 version = "0.1.0"
@@ -14,5 +12,9 @@ rand_distr = {workspace = true}
 itertools = {workspace = true}
 
 [[bench]]
-name = "gadget_product"
+name = "external_product_glwe_fft64"
+harness = false
+
+[[bench]]
+name = "keyswitch_glwe_fft64"
 harness = false

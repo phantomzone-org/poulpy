@@ -8,17 +8,17 @@ pub struct vec_znx_big_t {
 pub type VEC_ZNX_BIG = vec_znx_big_t;
 
 unsafe extern "C" {
-    pub fn bytes_of_vec_znx_big(module: *const MODULE, size: u64) -> u64;
+    pub unsafe fn bytes_of_vec_znx_big(module: *const MODULE, size: u64) -> u64;
 }
 unsafe extern "C" {
-    pub fn new_vec_znx_big(module: *const MODULE, size: u64) -> *mut VEC_ZNX_BIG;
+    pub unsafe fn new_vec_znx_big(module: *const MODULE, size: u64) -> *mut VEC_ZNX_BIG;
 }
 unsafe extern "C" {
-    pub fn delete_vec_znx_big(res: *mut VEC_ZNX_BIG);
+    pub unsafe fn delete_vec_znx_big(res: *mut VEC_ZNX_BIG);
 }
 
 unsafe extern "C" {
-    pub fn vec_znx_big_add(
+    pub unsafe fn vec_znx_big_add(
         module: *const MODULE,
         res: *mut VEC_ZNX_BIG,
         res_size: u64,
@@ -29,7 +29,7 @@ unsafe extern "C" {
     );
 }
 unsafe extern "C" {
-    pub fn vec_znx_big_add_small(
+    pub unsafe fn vec_znx_big_add_small(
         module: *const MODULE,
         res: *mut VEC_ZNX_BIG,
         res_size: u64,
@@ -41,7 +41,7 @@ unsafe extern "C" {
     );
 }
 unsafe extern "C" {
-    pub fn vec_znx_big_add_small2(
+    pub unsafe fn vec_znx_big_add_small2(
         module: *const MODULE,
         res: *mut VEC_ZNX_BIG,
         res_size: u64,
@@ -54,7 +54,7 @@ unsafe extern "C" {
     );
 }
 unsafe extern "C" {
-    pub fn vec_znx_big_sub(
+    pub unsafe fn vec_znx_big_sub(
         module: *const MODULE,
         res: *mut VEC_ZNX_BIG,
         res_size: u64,
@@ -65,7 +65,7 @@ unsafe extern "C" {
     );
 }
 unsafe extern "C" {
-    pub fn vec_znx_big_sub_small_b(
+    pub unsafe fn vec_znx_big_sub_small_b(
         module: *const MODULE,
         res: *mut VEC_ZNX_BIG,
         res_size: u64,
@@ -77,7 +77,7 @@ unsafe extern "C" {
     );
 }
 unsafe extern "C" {
-    pub fn vec_znx_big_sub_small_a(
+    pub unsafe fn vec_znx_big_sub_small_a(
         module: *const MODULE,
         res: *mut VEC_ZNX_BIG,
         res_size: u64,
@@ -89,7 +89,7 @@ unsafe extern "C" {
     );
 }
 unsafe extern "C" {
-    pub fn vec_znx_big_sub_small2(
+    pub unsafe fn vec_znx_big_sub_small2(
         module: *const MODULE,
         res: *mut VEC_ZNX_BIG,
         res_size: u64,
@@ -101,8 +101,13 @@ unsafe extern "C" {
         b_sl: u64,
     );
 }
+
 unsafe extern "C" {
-    pub fn vec_znx_big_normalize_base2k(
+    pub unsafe fn vec_znx_big_normalize_base2k_tmp_bytes(module: *const MODULE) -> u64;
+}
+
+unsafe extern "C" {
+    pub unsafe fn vec_znx_big_normalize_base2k(
         module: *const MODULE,
         log2_base2k: u64,
         res: *mut i64,
@@ -113,34 +118,9 @@ unsafe extern "C" {
         tmp_space: *mut u8,
     );
 }
-unsafe extern "C" {
-    pub fn vec_znx_big_normalize_base2k_tmp_bytes(module: *const MODULE) -> u64;
-}
 
 unsafe extern "C" {
-    pub fn vec_znx_big_automorphism(
-        module: *const MODULE,
-        p: i64,
-        res: *mut VEC_ZNX_BIG,
-        res_size: u64,
-        a: *const VEC_ZNX_BIG,
-        a_size: u64,
-    );
-}
-
-unsafe extern "C" {
-    pub fn vec_znx_big_rotate(
-        module: *const MODULE,
-        p: i64,
-        res: *mut VEC_ZNX_BIG,
-        res_size: u64,
-        a: *const VEC_ZNX_BIG,
-        a_size: u64,
-    );
-}
-
-unsafe extern "C" {
-    pub fn vec_znx_big_range_normalize_base2k(
+    pub unsafe fn vec_znx_big_range_normalize_base2k(
         module: *const MODULE,
         log2_base2k: u64,
         res: *mut i64,
@@ -153,6 +133,29 @@ unsafe extern "C" {
         tmp_space: *mut u8,
     );
 }
+
 unsafe extern "C" {
-    pub fn vec_znx_big_range_normalize_base2k_tmp_bytes(module: *const MODULE) -> u64;
+    pub unsafe fn vec_znx_big_range_normalize_base2k_tmp_bytes(module: *const MODULE) -> u64;
+}
+
+unsafe extern "C" {
+    pub unsafe fn vec_znx_big_automorphism(
+        module: *const MODULE,
+        p: i64,
+        res: *mut VEC_ZNX_BIG,
+        res_size: u64,
+        a: *const VEC_ZNX_BIG,
+        a_size: u64,
+    );
+}
+
+unsafe extern "C" {
+    pub unsafe fn vec_znx_big_rotate(
+        module: *const MODULE,
+        p: i64,
+        res: *mut VEC_ZNX_BIG,
+        res_size: u64,
+        a: *const VEC_ZNX_BIG,
+        a_size: u64,
+    );
 }
