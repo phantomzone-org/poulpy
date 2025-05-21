@@ -124,6 +124,16 @@ impl GGSWCiphertext<Vec<u8>, FFT64> {
         res_znx + ci_dft + (ks | expand_rows | res_dft)
     }
 
+    pub fn keyswitch_inplace_scratch_space(
+        module: &Module<FFT64>,
+        out_size: usize,
+        ksk_size: usize,
+        tensor_key_size: usize,
+        rank: usize,
+    ) -> usize {
+        GGSWCiphertext::keyswitch_scratch_space(module, out_size, out_size, ksk_size, tensor_key_size, rank)
+    }
+
     pub fn automorphism_scratch_space(
         module: &Module<FFT64>,
         out_size: usize,
@@ -136,6 +146,23 @@ impl GGSWCiphertext<Vec<u8>, FFT64> {
             module,
             out_size,
             in_size,
+            auto_key_size,
+            tensor_key_size,
+            rank,
+        )
+    }
+
+    pub fn automorphism_inplace_scratch_space(
+        module: &Module<FFT64>,
+        out_size: usize,
+        auto_key_size: usize,
+        tensor_key_size: usize,
+        rank: usize,
+    ) -> usize {
+        GGSWCiphertext::automorphism_scratch_space(
+            module,
+            out_size,
+            out_size,
             auto_key_size,
             tensor_key_size,
             rank,
@@ -389,6 +416,22 @@ where
         })
     }
 
+    pub fn keyswitch_inplace<DataKsk, DataTsk>(
+        &mut self,
+        module: &Module<FFT64>,
+        ksk: &GLWESwitchingKey<DataKsk, FFT64>,
+        tsk: &TensorKey<DataTsk, FFT64>,
+        scratch: &mut Scratch,
+    ) where
+        MatZnxDft<DataKsk, FFT64>: MatZnxDftToRef<FFT64>,
+        MatZnxDft<DataTsk, FFT64>: MatZnxDftToRef<FFT64>,
+    {
+        unsafe {
+            let self_ptr: *mut GGSWCiphertext<DataSelf, FFT64> = self as *mut GGSWCiphertext<DataSelf, FFT64>;
+            self.keyswitch(module, &*self_ptr, ksk, tsk, scratch);
+        }
+    }
+
     pub fn automorphism<DataLhs, DataAk, DataTsk>(
         &mut self,
         module: &Module<FFT64>,
@@ -468,6 +511,22 @@ where
                 self.set_row(module, row_i, col_j, &res_dft);
             })
         })
+    }
+
+    pub fn automorphism_inplace<DataKsk, DataTsk>(
+        &mut self,
+        module: &Module<FFT64>,
+        auto_key: &AutomorphismKey<DataKsk, FFT64>,
+        tensor_key: &TensorKey<DataTsk, FFT64>,
+        scratch: &mut Scratch,
+    ) where
+        MatZnxDft<DataKsk, FFT64>: MatZnxDftToRef<FFT64>,
+        MatZnxDft<DataTsk, FFT64>: MatZnxDftToRef<FFT64>,
+    {
+        unsafe {
+            let self_ptr: *mut GGSWCiphertext<DataSelf, FFT64> = self as *mut GGSWCiphertext<DataSelf, FFT64>;
+            self.automorphism(module, &*self_ptr, auto_key, tensor_key, scratch);
+        }
     }
 
     pub fn external_product<DataLhs, DataRhs>(
