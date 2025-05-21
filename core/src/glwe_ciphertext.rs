@@ -141,11 +141,9 @@ impl GLWECiphertext<Vec<u8>> {
         let vmp: usize = module.vmp_apply_tmp_bytes(out_size, in_size, in_size, in_rank, out_rank + 1, ksk_size)
             + module.bytes_of_vec_znx_dft(in_rank, in_size);
 
-        let a0_big: usize = module.bytes_of_vec_znx_big(1, in_size) + module.vec_znx_idft_tmp_bytes();
-
         let norm: usize = module.vec_znx_big_normalize_tmp_bytes();
 
-        res_dft + (vmp | a0_big | norm)
+        res_dft + (vmp | norm)
     }
 
     pub fn keyswitch_inplace_scratch_space(module: &Module<FFT64>, out_size: usize, out_rank: usize, ksk_size: usize) -> usize {
@@ -362,15 +360,10 @@ where
             module.vmp_apply(&mut res_dft, &ai_dft, rhs, scratch2);
         }
 
-        // Switches result of VMP outside of DFT
-        let mut res_big: VecZnxBig<&mut [u8], FFT64> = module.vec_znx_idft_consume::<&mut [u8]>(res_dft);
+        module.vec_znx_dft_add_inplace(&mut res_dft, 0, lhs, 0);
 
-        {
-            // Switches lhs 0-th outside of DFT domain and adds on
-            let (mut a0_big, scratch2) = scratch1.tmp_vec_znx_big(module, 1, lhs.size());
-            module.vec_znx_idft(&mut a0_big, 0, lhs, 0, scratch2);
-            module.vec_znx_big_add_inplace(&mut res_big, 0, &a0_big, 0);
-        }
+        // Switches result of VMP outside of DFT
+        let res_big: VecZnxBig<&mut [u8], FFT64> = module.vec_znx_idft_consume::<&mut [u8]>(res_dft);
 
         (0..cols_out).for_each(|i| {
             module.vec_znx_big_normalize(basek, self, i, &res_big, i, scratch1);

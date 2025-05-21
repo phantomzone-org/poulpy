@@ -352,12 +352,12 @@ where
     pub fn keyswitch_inplace<DataRhs>(
         &mut self,
         module: &Module<FFT64>,
-        rhs: &AutomorphismKey<DataRhs, FFT64>,
+        rhs: &GLWESwitchingKey<DataRhs, FFT64>,
         scratch: &mut base2k::Scratch,
     ) where
         MatZnxDft<DataRhs, FFT64>: MatZnxDftToRef<FFT64>,
     {
-        self.key.keyswitch_inplace(module, &rhs.key, scratch);
+        self.key.keyswitch_inplace(module, &rhs, scratch);
     }
 
     pub fn external_product<DataLhs, DataRhs>(

@@ -148,9 +148,6 @@ impl VecZnxDftOps<FFT64> for Module<FFT64> {
                 );
             });
         }
-        (min_size..res_mut.size()).for_each(|j| {
-            res_mut.zero_at(res_col, j);
-        })
     }
 
     fn vec_znx_dft_copy<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
