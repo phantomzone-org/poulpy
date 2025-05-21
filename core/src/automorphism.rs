@@ -1,4 +1,4 @@
-use base2k::{
+use backend::{
     Backend, FFT64, MatZnxDft, MatZnxDftOps, MatZnxDftToMut, MatZnxDftToRef, Module, ScalarZnx, ScalarZnxDftOps, ScalarZnxOps,
     ScalarZnxToRef, Scratch, VecZnx, VecZnxBigAlloc, VecZnxDftAlloc, VecZnxDftOps, VecZnxDftToMut, VecZnxDftToRef, VecZnxOps,
     ZnxZero,
@@ -21,9 +21,9 @@ pub struct AutomorphismKey<Data, B: Backend> {
 }
 
 impl AutomorphismKey<Vec<u8>, FFT64> {
-    pub fn new(module: &Module<FFT64>, basek: usize, k: usize, rows: usize, rank: usize) -> Self {
+    pub fn alloc(module: &Module<FFT64>, basek: usize, k: usize, rows: usize, rank: usize) -> Self {
         AutomorphismKey {
-            key: GLWESwitchingKey::new(module, basek, k, rows, rank, rank),
+            key: GLWESwitchingKey::alloc(module, basek, k, rows, rank, rank),
             p: 0,
         }
     }
@@ -106,12 +106,12 @@ where
 }
 
 impl AutomorphismKey<Vec<u8>, FFT64> {
-    pub fn encrypt_sk_scratch_space(module: &Module<FFT64>, rank: usize, size: usize) -> usize {
-        GGLWECiphertext::encrypt_sk_scratch_space(module, rank, size)
+    pub fn generate_from_sk_scratch_space(module: &Module<FFT64>, rank: usize, size: usize) -> usize {
+        GGLWECiphertext::generate_from_sk_scratch_space(module, rank, size)
     }
 
-    pub fn encrypt_pk_scratch_space(module: &Module<FFT64>, rank: usize, pk_size: usize) -> usize {
-        GGLWECiphertext::encrypt_pk_scratch_space(module, rank, pk_size)
+    pub fn generate_from_pk_scratch_space(module: &Module<FFT64>, rank: usize, pk_size: usize) -> usize {
+        GGLWECiphertext::generate_from_pk_scratch_space(module, rank, pk_size)
     }
 
     pub fn keyswitch_scratch_space(
@@ -170,7 +170,7 @@ impl<DataSelf> AutomorphismKey<DataSelf, FFT64>
 where
     MatZnxDft<DataSelf, FFT64>: MatZnxDftToMut<FFT64> + MatZnxDftToRef<FFT64>,
 {
-    pub fn encrypt_sk<DataSk>(
+    pub fn generate_from_sk<DataSk>(
         &mut self,
         module: &Module<FFT64>,
         p: i64,
@@ -228,7 +228,7 @@ where
         module: &Module<FFT64>,
         lhs: &AutomorphismKey<DataLhs, FFT64>,
         rhs: &AutomorphismKey<DataRhs, FFT64>,
-        scratch: &mut base2k::Scratch,
+        scratch: &mut Scratch,
     ) where
         MatZnxDft<DataLhs, FFT64>: MatZnxDftToRef<FFT64>,
         MatZnxDft<DataRhs, FFT64>: MatZnxDftToRef<FFT64>,
@@ -341,7 +341,7 @@ where
         module: &Module<FFT64>,
         lhs: &AutomorphismKey<DataLhs, FFT64>,
         rhs: &GLWESwitchingKey<DataRhs, FFT64>,
-        scratch: &mut base2k::Scratch,
+        scratch: &mut Scratch,
     ) where
         MatZnxDft<DataLhs, FFT64>: MatZnxDftToRef<FFT64>,
         MatZnxDft<DataRhs, FFT64>: MatZnxDftToRef<FFT64>,
@@ -352,12 +352,12 @@ where
     pub fn keyswitch_inplace<DataRhs>(
         &mut self,
         module: &Module<FFT64>,
-        rhs: &GLWESwitchingKey<DataRhs, FFT64>,
-        scratch: &mut base2k::Scratch,
+        rhs: &AutomorphismKey<DataRhs, FFT64>,
+        scratch: &mut Scratch,
     ) where
         MatZnxDft<DataRhs, FFT64>: MatZnxDftToRef<FFT64>,
     {
-        self.key.keyswitch_inplace(module, &rhs, scratch);
+        self.key.keyswitch_inplace(module, &rhs.key, scratch);
     }
 
     pub fn external_product<DataLhs, DataRhs>(

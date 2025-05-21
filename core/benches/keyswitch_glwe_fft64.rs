@@ -1,4 +1,4 @@
-use base2k::{FFT64, Module, ScratchOwned};
+use backend::{FFT64, Module, ScratchOwned};
 use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
 use rlwe::{
     elem::Infos,
@@ -34,9 +34,9 @@ fn bench_keyswitch_glwe_fft64(c: &mut Criterion) {
         let rows: usize = (p.k_ct_in + p.basek - 1) / p.basek;
         let sigma: f64 = 3.2;
 
-        let mut ksk: GLWESwitchingKey<Vec<u8>, FFT64> = GLWESwitchingKey::new(&module, basek, k_grlwe, rows, rank_in, rank_out);
-        let mut ct_in: GLWECiphertext<Vec<u8>> = GLWECiphertext::new(&module, basek, k_rlwe_in, rank_in);
-        let mut ct_out: GLWECiphertext<Vec<u8>> = GLWECiphertext::new(&module, basek, k_rlwe_out, rank_out);
+        let mut ksk: GLWESwitchingKey<Vec<u8>, FFT64> = GLWESwitchingKey::alloc(&module, basek, k_grlwe, rows, rank_in, rank_out);
+        let mut ct_in: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_rlwe_in, rank_in);
+        let mut ct_out: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_rlwe_out, rank_out);
 
         let mut scratch = ScratchOwned::new(
             GLWESwitchingKey::encrypt_sk_scratch_space(&module, rank_out, ksk.size())
@@ -55,14 +55,14 @@ fn bench_keyswitch_glwe_fft64(c: &mut Criterion) {
         let mut source_xe = Source::new([0u8; 32]);
         let mut source_xa = Source::new([0u8; 32]);
 
-        let mut sk_in: SecretKey<Vec<u8>> = SecretKey::new(&module, rank_in);
+        let mut sk_in: SecretKey<Vec<u8>> = SecretKey::alloc(&module, rank_in);
         sk_in.fill_ternary_prob(0.5, &mut source_xs);
-        let mut sk_in_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::new(&module, rank_in);
+        let mut sk_in_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::alloc(&module, rank_in);
         sk_in_dft.dft(&module, &sk_in);
 
-        let mut sk_out: SecretKey<Vec<u8>> = SecretKey::new(&module, rank_out);
+        let mut sk_out: SecretKey<Vec<u8>> = SecretKey::alloc(&module, rank_out);
         sk_out.fill_ternary_prob(0.5, &mut source_xs);
-        let mut sk_out_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::new(&module, rank_out);
+        let mut sk_out_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::alloc(&module, rank_out);
         sk_out_dft.dft(&module, &sk_out);
 
         ksk.encrypt_sk(
@@ -135,8 +135,8 @@ fn bench_keyswitch_glwe_inplace_fft64(c: &mut Criterion) {
         let rows: usize = (p.k_ct + p.basek - 1) / p.basek;
         let sigma: f64 = 3.2;
 
-        let mut ksk: GLWESwitchingKey<Vec<u8>, FFT64> = GLWESwitchingKey::new(&module, basek, k_ksk, rows, rank, rank);
-        let mut ct: GLWECiphertext<Vec<u8>> = GLWECiphertext::new(&module, basek, k_ct, rank);
+        let mut ksk: GLWESwitchingKey<Vec<u8>, FFT64> = GLWESwitchingKey::alloc(&module, basek, k_ksk, rows, rank, rank);
+        let mut ct: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_ct, rank);
 
         let mut scratch = ScratchOwned::new(
             GLWESwitchingKey::encrypt_sk_scratch_space(&module, rank, ksk.size())
@@ -148,14 +148,14 @@ fn bench_keyswitch_glwe_inplace_fft64(c: &mut Criterion) {
         let mut source_xe: Source = Source::new([0u8; 32]);
         let mut source_xa: Source = Source::new([0u8; 32]);
 
-        let mut sk_in: SecretKey<Vec<u8>> = SecretKey::new(&module, rank);
+        let mut sk_in: SecretKey<Vec<u8>> = SecretKey::alloc(&module, rank);
         sk_in.fill_ternary_prob(0.5, &mut source_xs);
-        let mut sk_in_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::new(&module, rank);
+        let mut sk_in_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::alloc(&module, rank);
         sk_in_dft.dft(&module, &sk_in);
 
-        let mut sk_out: SecretKey<Vec<u8>> = SecretKey::new(&module, rank);
+        let mut sk_out: SecretKey<Vec<u8>> = SecretKey::alloc(&module, rank);
         sk_out.fill_ternary_prob(0.5, &mut source_xs);
-        let mut sk_out_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::new(&module, rank);
+        let mut sk_out_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::alloc(&module, rank);
         sk_out_dft.dft(&module, &sk_out);
 
         ksk.encrypt_sk(

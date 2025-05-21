@@ -10,6 +10,7 @@ pub mod keyswitch_key;
 pub mod tensor_key;
 #[cfg(test)]
 mod test_fft64;
+pub mod trace;
 mod utils;
 
 pub(crate) const SIX_SIGMA: f64 = 6.0;

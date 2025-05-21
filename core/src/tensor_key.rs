@@ -1,4 +1,4 @@
-use base2k::{
+use backend::{
     Backend, FFT64, MatZnxDft, MatZnxDftToMut, MatZnxDftToRef, Module, ScalarZnx, ScalarZnxDft, ScalarZnxDftAlloc,
     ScalarZnxDftOps, ScalarZnxDftToRef, Scratch, VecZnxDftOps, VecZnxDftToRef,
 };
@@ -15,11 +15,11 @@ pub struct TensorKey<C, B: Backend> {
 }
 
 impl TensorKey<Vec<u8>, FFT64> {
-    pub fn new(module: &Module<FFT64>, basek: usize, k: usize, rows: usize, rank: usize) -> Self {
+    pub fn alloc(module: &Module<FFT64>, basek: usize, k: usize, rows: usize, rank: usize) -> Self {
         let mut keys: Vec<GLWESwitchingKey<Vec<u8>, FFT64>> = Vec::new();
         let pairs: usize = ((rank + 1) * rank) >> 1;
         (0..pairs).for_each(|_| {
-            keys.push(GLWESwitchingKey::new(module, basek, k, rows, 1, rank));
+            keys.push(GLWESwitchingKey::alloc(module, basek, k, rows, 1, rank));
         });
         Self { keys: keys }
     }

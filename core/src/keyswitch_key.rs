@@ -1,4 +1,4 @@
-use base2k::{
+use backend::{
     Backend, FFT64, MatZnxDft, MatZnxDftOps, MatZnxDftToMut, MatZnxDftToRef, Module, ScalarZnx, ScalarZnxDft, ScalarZnxDftToRef,
     ScalarZnxToRef, Scratch, VecZnxDftAlloc, VecZnxDftToMut, VecZnxDftToRef, ZnxZero,
 };
@@ -15,8 +15,8 @@ use crate::{
 pub struct GLWESwitchingKey<Data, B: Backend>(pub(crate) GGLWECiphertext<Data, B>);
 
 impl GLWESwitchingKey<Vec<u8>, FFT64> {
-    pub fn new(module: &Module<FFT64>, basek: usize, k: usize, rows: usize, rank_in: usize, rank_out: usize) -> Self {
-        GLWESwitchingKey(GGLWECiphertext::new(
+    pub fn alloc(module: &Module<FFT64>, basek: usize, k: usize, rows: usize, rank_in: usize, rank_out: usize) -> Self {
+        GLWESwitchingKey(GGLWECiphertext::alloc(
             module, basek, k, rows, rank_in, rank_out,
         ))
     }
@@ -96,11 +96,11 @@ where
 
 impl GLWESwitchingKey<Vec<u8>, FFT64> {
     pub fn encrypt_sk_scratch_space(module: &Module<FFT64>, rank: usize, size: usize) -> usize {
-        GGLWECiphertext::encrypt_sk_scratch_space(module, rank, size)
+        GGLWECiphertext::generate_from_sk_scratch_space(module, rank, size)
     }
 
     pub fn encrypt_pk_scratch_space(module: &Module<FFT64>, rank: usize, pk_size: usize) -> usize {
-        GGLWECiphertext::encrypt_pk_scratch_space(module, rank, pk_size)
+        GGLWECiphertext::generate_from_pk_scratch_space(module, rank, pk_size)
     }
 
     pub fn keyswitch_scratch_space(
@@ -164,7 +164,7 @@ where
         ScalarZnx<DataSkIn>: ScalarZnxToRef,
         ScalarZnxDft<DataSkOut, FFT64>: ScalarZnxDftToRef<FFT64>,
     {
-        self.0.encrypt_sk(
+        self.0.generate_from_sk(
             module,
             &sk_in.data,
             sk_out_dft,
@@ -180,7 +180,7 @@ where
         module: &Module<FFT64>,
         lhs: &GLWESwitchingKey<DataLhs, FFT64>,
         rhs: &GLWESwitchingKey<DataRhs, FFT64>,
-        scratch: &mut base2k::Scratch,
+        scratch: &mut Scratch,
     ) where
         MatZnxDft<DataLhs, FFT64>: MatZnxDftToRef<FFT64>,
         MatZnxDft<DataRhs, FFT64>: MatZnxDftToRef<FFT64>,
@@ -247,7 +247,7 @@ where
         &mut self,
         module: &Module<FFT64>,
         rhs: &GLWESwitchingKey<DataRhs, FFT64>,
-        scratch: &mut base2k::Scratch,
+        scratch: &mut Scratch,
     ) where
         MatZnxDft<DataRhs, FFT64>: MatZnxDftToRef<FFT64>,
     {

@@ -1,8 +1,8 @@
-use base2k::{
+use backend::{
     AddNormal, Backend, FFT64, FillUniform, MatZnxDft, MatZnxDftOps, MatZnxDftScratch, MatZnxDftToRef, Module, ScalarZnxAlloc,
     ScalarZnxDft, ScalarZnxDftAlloc, ScalarZnxDftOps, ScalarZnxDftToRef, Scratch, VecZnx, VecZnxAlloc, VecZnxBig, VecZnxBigAlloc,
     VecZnxBigOps, VecZnxBigScratch, VecZnxDft, VecZnxDftAlloc, VecZnxDftOps, VecZnxDftToMut, VecZnxDftToRef, VecZnxOps,
-    VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxZero,
+    VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxZero, copy_vec_znx_from,
 };
 use sampling::source::Source;
 
@@ -25,7 +25,7 @@ pub struct GLWECiphertext<C> {
 }
 
 impl GLWECiphertext<Vec<u8>> {
-    pub fn new<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank: usize) -> Self {
+    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank: usize) -> Self {
         Self {
             data: module.new_vec_znx(rank + 1, derive_size(basek, k)),
             basek,
@@ -281,6 +281,21 @@ where
         self.encrypt_pk_private(module, None, pk, source_xu, source_xe, sigma, scratch);
     }
 
+    pub fn copy<DataOther>(&mut self, other: &GLWECiphertext<DataOther>)
+    where
+        VecZnx<DataOther>: VecZnxToRef,
+    {
+        copy_vec_znx_from(&mut self.data.to_mut(), &other.to_ref());
+        self.k = other.k;
+        self.basek = other.basek;
+    }
+
+    pub fn rsh(&mut self, k: usize, scratch: &mut Scratch) {
+        let basek: usize = self.basek();
+        let mut self_mut: VecZnx<&mut [u8]> = self.data.to_mut();
+        self_mut.rsh(basek, k, scratch);
+    }
+
     pub fn automorphism<DataLhs, DataRhs>(
         &mut self,
         module: &Module<FFT64>,
@@ -309,6 +324,33 @@ where
         (0..self.rank() + 1).for_each(|i| {
             module.vec_znx_automorphism_inplace(rhs.p(), self, i);
         })
+    }
+
+    pub fn automorphism_add<DataLhs, DataRhs>(
+        &mut self,
+        module: &Module<FFT64>,
+        lhs: &GLWECiphertext<DataLhs>,
+        rhs: &AutomorphismKey<DataRhs, FFT64>,
+        scratch: &mut Scratch,
+    ) where
+        VecZnx<DataLhs>: VecZnxToRef,
+        MatZnxDft<DataRhs, FFT64>: MatZnxDftToRef<FFT64>,
+    {
+        Self::keyswitch_private(self, true, rhs.p(), module, lhs, &rhs.key, scratch);
+    }
+
+    pub fn automorphism_add_inplace<DataRhs>(
+        &mut self,
+        module: &Module<FFT64>,
+        rhs: &AutomorphismKey<DataRhs, FFT64>,
+        scratch: &mut Scratch,
+    ) where
+        MatZnxDft<DataRhs, FFT64>: MatZnxDftToRef<FFT64>,
+    {
+        unsafe {
+            let self_ptr: *mut GLWECiphertext<DataSelf> = self as *mut GLWECiphertext<DataSelf>;
+            Self::keyswitch_private(self, true, rhs.p(), module, &*self_ptr, &rhs.key, scratch);
+        }
     }
 
     pub(crate) fn keyswitch_from_fourier<DataLhs, DataRhs>(
@@ -380,6 +422,21 @@ where
         VecZnx<DataLhs>: VecZnxToRef,
         MatZnxDft<DataRhs, FFT64>: MatZnxDftToRef<FFT64>,
     {
+        Self::keyswitch_private(self, false, 0, module, lhs, rhs, scratch);
+    }
+
+    pub(crate) fn keyswitch_private<DataLhs, DataRhs>(
+        &mut self,
+        add_self: bool,
+        apply_auto: i64,
+        module: &Module<FFT64>,
+        lhs: &GLWECiphertext<DataLhs>,
+        rhs: &GLWESwitchingKey<DataRhs, FFT64>,
+        scratch: &mut Scratch,
+    ) where
+        VecZnx<DataLhs>: VecZnxToRef,
+        MatZnxDft<DataRhs, FFT64>: MatZnxDftToRef<FFT64>,
+    {
         let basek: usize = self.basek();
 
         #[cfg(debug_assertions)]
@@ -422,6 +479,13 @@ where
         module.vec_znx_big_add_small_inplace(&mut res_big, 0, lhs, 0);
 
         (0..cols_out).for_each(|i| {
+            if apply_auto != 0 {
+                module.vec_znx_big_automorphism_inplace(apply_auto, &mut res_big, i);
+            }
+
+            if add_self {
+                module.vec_znx_big_add_small_inplace(&mut res_big, i, lhs, i);
+            }
             module.vec_znx_big_normalize(basek, self, i, &res_big, i, scratch1);
         });
     }
@@ -520,8 +584,8 @@ where
             }
         }
 
-        let log_base2k: usize = self.basek();
-        let log_k: usize = self.k();
+        let basek: usize = self.basek();
+        let k: usize = self.k();
         let size: usize = self.size();
         let cols: usize = self.rank() + 1;
 
@@ -535,7 +599,7 @@ where
                 let (mut ci_dft, scratch_2) = scratch_1.tmp_vec_znx_dft(module, 1, size);
 
                 // c[i] = uniform
-                self.data.fill_uniform(log_base2k, i, size, source_xa);
+                self.data.fill_uniform(basek, i, size, source_xa);
 
                 // c[i] = norm(IDFT(DFT(c[i]) * DFT(s[i])))
                 module.vec_znx_dft(&mut ci_dft, 0, self, i);
@@ -543,7 +607,7 @@ where
                 let ci_big: VecZnxBig<&mut [u8], FFT64> = module.vec_znx_idft_consume(ci_dft);
 
                 // use c[0] as buffer, which is overwritten later by the normalization step
-                module.vec_znx_big_normalize(log_base2k, self, 0, &ci_big, 0, scratch_2);
+                module.vec_znx_big_normalize(basek, self, 0, &ci_big, 0, scratch_2);
 
                 // c0_tmp = -c[i] * s[i] (use c[0] as buffer)
                 module.vec_znx_sub_ab_inplace(&mut c0_big, 0, self, 0);
@@ -552,14 +616,14 @@ where
                 if let Some((pt, col)) = pt {
                     if i == col {
                         module.vec_znx_add_inplace(self, i, pt, 0);
-                        module.vec_znx_normalize_inplace(log_base2k, self, i, scratch_2);
+                        module.vec_znx_normalize_inplace(basek, self, i, scratch_2);
                     }
                 }
             });
         }
 
         // c[0] += e
-        c0_big.add_normal(log_base2k, 0, log_k, source_xe, sigma, sigma * SIX_SIGMA);
+        c0_big.add_normal(basek, 0, k, source_xe, sigma, sigma * SIX_SIGMA);
 
         // c[0] += m if col = 0
         if let Some((pt, col)) = pt {
@@ -569,7 +633,7 @@ where
         }
 
         // c[0] = norm(c[0])
-        module.vec_znx_normalize(log_base2k, self, 0, &c0_big, 0, scratch_1);
+        module.vec_znx_normalize(basek, self, 0, &c0_big, 0, scratch_1);
     }
 
     pub(crate) fn encrypt_pk_private<DataPt, DataPk>(
@@ -597,7 +661,7 @@ where
             }
         }
 
-        let log_base2k: usize = pk.basek();
+        let basek: usize = pk.basek();
         let size_pk: usize = pk.size();
         let cols: usize = self.rank() + 1;
 
@@ -629,7 +693,7 @@ where
             let mut ci_big = module.vec_znx_idft_consume(ci_dft);
 
             // ci_big = u * pk[i] + e
-            ci_big.add_normal(log_base2k, 0, pk.k(), source_xe, sigma, sigma * SIX_SIGMA);
+            ci_big.add_normal(basek, 0, pk.k(), source_xe, sigma, sigma * SIX_SIGMA);
 
             // ci_big = u * pk[i] + e + m (if col = i)
             if let Some((pt, col)) = pt {
@@ -639,7 +703,7 @@ where
             }
 
             // ct[i] = norm(ci_big)
-            module.vec_znx_big_normalize(log_base2k, self, i, &ci_big, 0, scratch_2);
+            module.vec_znx_big_normalize(basek, self, i, &ci_big, 0, scratch_2);
         });
     }
 }

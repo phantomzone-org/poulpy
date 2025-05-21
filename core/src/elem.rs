@@ -1,4 +1,4 @@
-use base2k::{Backend, Module, VecZnxDftToMut, VecZnxDftToRef, ZnxInfos};
+use backend::{Backend, Module, VecZnxDftToMut, VecZnxDftToRef, ZnxInfos};
 
 use crate::utils::derive_size;
 

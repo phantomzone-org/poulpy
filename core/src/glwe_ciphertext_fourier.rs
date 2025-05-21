@@ -1,4 +1,4 @@
-use base2k::{
+use backend::{
     Backend, FFT64, MatZnxDft, MatZnxDftOps, MatZnxDftScratch, MatZnxDftToRef, Module, ScalarZnxDft, ScalarZnxDftOps,
     ScalarZnxDftToRef, Scratch, VecZnx, VecZnxAlloc, VecZnxBig, VecZnxBigAlloc, VecZnxBigOps, VecZnxBigScratch, VecZnxDft,
     VecZnxDftAlloc, VecZnxDftOps, VecZnxDftToMut, VecZnxDftToRef, VecZnxToMut, VecZnxToRef, ZnxZero,
@@ -17,7 +17,7 @@ pub struct GLWECiphertextFourier<C, B: Backend> {
 }
 
 impl<B: Backend> GLWECiphertextFourier<Vec<u8>, B> {
-    pub fn new(module: &Module<B>, basek: usize, k: usize, rank: usize) -> Self {
+    pub fn alloc(module: &Module<B>, basek: usize, k: usize, rank: usize) -> Self {
         Self {
             data: module.new_vec_znx_dft(rank + 1, derive_size(basek, k)),
             basek: basek,

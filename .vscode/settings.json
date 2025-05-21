@@ -1,5 +1,5 @@
 {
-    "cmake.sourceDirectory": "C:/Users/boss_/go/src/github.com/gausslabs/fhe/base2k/spqlios-arithmetic",
+    "cmake.sourceDirectory": "C:/Users/boss_/go/src/github.com/gausslabs/poulpy/backend/spqlios-arithmetic",
     "files.associations": {
         "vector": "cpp",
         "xstring": "cpp",

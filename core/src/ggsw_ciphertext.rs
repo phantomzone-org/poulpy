@@ -1,4 +1,4 @@
-use base2k::{
+use backend::{
     Backend, FFT64, MatZnxDft, MatZnxDftAlloc, MatZnxDftOps, MatZnxDftScratch, MatZnxDftToMut, MatZnxDftToRef, Module, ScalarZnx,
     ScalarZnxDft, ScalarZnxDftToRef, ScalarZnxToRef, Scratch, VecZnx, VecZnxAlloc, VecZnxBigAlloc, VecZnxBigOps,
     VecZnxBigScratch, VecZnxDft, VecZnxDftAlloc, VecZnxDftOps, VecZnxDftToMut, VecZnxDftToRef, VecZnxOps, VecZnxToMut,
@@ -25,7 +25,7 @@ pub struct GGSWCiphertext<C, B: Backend> {
 }
 
 impl<B: Backend> GGSWCiphertext<Vec<u8>, B> {
-    pub fn new(module: &Module<B>, basek: usize, k: usize, rows: usize, rank: usize) -> Self {
+    pub fn alloc(module: &Module<B>, basek: usize, k: usize, rows: usize, rank: usize) -> Self {
         Self {
             data: module.new_mat_znx_dft(rows, rank + 1, rank + 1, derive_size(basek, k)),
             basek: basek,

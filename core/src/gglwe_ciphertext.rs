@@ -1,4 +1,4 @@
-use base2k::{
+use backend::{
     Backend, FFT64, MatZnxDft, MatZnxDftAlloc, MatZnxDftOps, MatZnxDftToMut, MatZnxDftToRef, Module, ScalarZnx, ScalarZnxDft,
     ScalarZnxDftToRef, ScalarZnxToRef, Scratch, VecZnxAlloc, VecZnxDftAlloc, VecZnxDftToMut, VecZnxDftToRef, VecZnxOps, ZnxInfos,
     ZnxZero,
@@ -21,7 +21,7 @@ pub struct GGLWECiphertext<C, B: Backend> {
 }
 
 impl<B: Backend> GGLWECiphertext<Vec<u8>, B> {
-    pub fn new(module: &Module<B>, basek: usize, k: usize, rows: usize, rank_in: usize, rank_out: usize) -> Self {
+    pub fn alloc(module: &Module<B>, basek: usize, k: usize, rows: usize, rank_in: usize, rank_out: usize) -> Self {
         Self {
             data: module.new_mat_znx_dft(rows, rank_in, rank_out + 1, derive_size(basek, k)),
             basek: basek,
@@ -79,14 +79,14 @@ where
 }
 
 impl GGLWECiphertext<Vec<u8>, FFT64> {
-    pub fn encrypt_sk_scratch_space(module: &Module<FFT64>, rank: usize, size: usize) -> usize {
+    pub fn generate_from_sk_scratch_space(module: &Module<FFT64>, rank: usize, size: usize) -> usize {
         GLWECiphertext::encrypt_sk_scratch_space(module, size)
             + module.bytes_of_vec_znx(rank + 1, size)
             + module.bytes_of_vec_znx(1, size)
             + module.bytes_of_vec_znx_dft(rank + 1, size)
     }
 
-    pub fn encrypt_pk_scratch_space(_module: &Module<FFT64>, _rank: usize, _pk_size: usize) -> usize {
+    pub fn generate_from_pk_scratch_space(_module: &Module<FFT64>, _rank: usize, _pk_size: usize) -> usize {
         unimplemented!()
     }
 }
@@ -95,7 +95,7 @@ impl<DataSelf> GGLWECiphertext<DataSelf, FFT64>
 where
     MatZnxDft<DataSelf, FFT64>: MatZnxDftToMut<FFT64> + ZnxInfos,
 {
-    pub fn encrypt_sk<DataPt, DataSk>(
+    pub fn generate_from_sk<DataPt, DataSk>(
         &mut self,
         module: &Module<FFT64>,
         pt: &ScalarZnx<DataPt>,

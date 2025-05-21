@@ -1,4 +1,4 @@
-use base2k::{Backend, Module, VecZnx, VecZnxAlloc, VecZnxToMut, VecZnxToRef};
+use backend::{Backend, Module, VecZnx, VecZnxAlloc, VecZnxToMut, VecZnxToRef};
 
 use crate::{elem::Infos, utils::derive_size};
 
@@ -43,7 +43,7 @@ where
 }
 
 impl GLWEPlaintext<Vec<u8>> {
-    pub fn new<B: Backend>(module: &Module<B>, basek: usize, k: usize) -> Self {
+    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize) -> Self {
         Self {
             data: module.new_vec_znx(1, derive_size(basek, k)),
             basek: basek,

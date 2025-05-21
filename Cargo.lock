@@ -36,7 +36,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7b7e4c2464d97fe331d41de9d5db0def0a96f4d823b8b32a2efd503578988973"
 
 [[package]]
-name = "base2k"
+name = "backend"
 version = "0.1.0"
 dependencies = [
  "criterion",
@@ -130,6 +130,18 @@ name = "clap_lex"
 version = "0.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f46ad14479a25103f283c0f10005961cf086d8dc42205bb44c46ac563475dca6"
+
+[[package]]
+name = "core"
+version = "0.1.0"
+dependencies = [
+ "backend",
+ "criterion",
+ "itertools 0.14.0",
+ "rand_distr",
+ "rug",
+ "sampling",
+]
 
 [[package]]
 name = "criterion"
@@ -487,18 +499,6 @@ name = "regex-syntax"
 version = "0.8.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2b15c43186be67a4fd63bee50d0303afffcef381492ebe2c5d87f324e1b8815c"
-
-[[package]]
-name = "rlwe"
-version = "0.1.0"
-dependencies = [
- "base2k",
- "criterion",
- "itertools 0.14.0",
- "rand_distr",
- "rug",
- "sampling",
-]
 
 [[package]]
 name = "rug"

@@ -1,4 +1,4 @@
-use base2k::{
+use backend::{
     Backend, FFT64, Module, ScalarZnx, ScalarZnxAlloc, ScalarZnxDft, ScalarZnxDftAlloc, ScalarZnxDftOps, ScalarZnxDftToMut,
     ScalarZnxDftToRef, ScalarZnxToMut, ScalarZnxToRef, ScratchOwned, VecZnxDft, VecZnxDftToMut, VecZnxDftToRef, ZnxInfos,
     ZnxZero,
@@ -21,7 +21,7 @@ pub struct SecretKey<T> {
 }
 
 impl SecretKey<Vec<u8>> {
-    pub fn new<B: Backend>(module: &Module<B>, rank: usize) -> Self {
+    pub fn alloc<B: Backend>(module: &Module<B>, rank: usize) -> Self {
         Self {
             data: module.new_scalar_znx(rank),
             dist: SecretDistribution::NONE,
@@ -105,7 +105,7 @@ impl<DataSelf, B: Backend> SecretKeyFourier<DataSelf, B> {
 }
 
 impl<B: Backend> SecretKeyFourier<Vec<u8>, B> {
-    pub fn new(module: &Module<B>, rank: usize) -> Self {
+    pub fn alloc(module: &Module<B>, rank: usize) -> Self {
         Self {
             data: module.new_scalar_znx_dft(rank),
             dist: SecretDistribution::NONE,
@@ -114,7 +114,7 @@ impl<B: Backend> SecretKeyFourier<Vec<u8>, B> {
 
     pub fn dft<S>(&mut self, module: &Module<FFT64>, sk: &SecretKey<S>)
     where
-        SecretKeyFourier<Vec<u8>, B>: ScalarZnxDftToMut<base2k::FFT64>,
+        SecretKeyFourier<Vec<u8>, B>: ScalarZnxDftToMut<FFT64>,
         SecretKey<S>: ScalarZnxToRef,
     {
         #[cfg(debug_assertions)]
@@ -160,9 +160,9 @@ pub struct GLWEPublicKey<D, B: Backend> {
 }
 
 impl<B: Backend> GLWEPublicKey<Vec<u8>, B> {
-    pub fn new(module: &Module<B>, log_base2k: usize, log_k: usize, rank: usize) -> Self {
+    pub fn alloc(module: &Module<B>, basek: usize, k: usize, rank: usize) -> Self {
         Self {
-            data: GLWECiphertextFourier::new(module, log_base2k, log_k, rank),
+            data: GLWECiphertextFourier::alloc(module, basek, k, rank),
             dist: SecretDistribution::NONE,
         }
     }
@@ -209,7 +209,7 @@ where
 }
 
 impl<C> GLWEPublicKey<C, FFT64> {
-    pub fn generate<S>(
+    pub fn generate_from_sk<S>(
         &mut self,
         module: &Module<FFT64>,
         sk_dft: &SecretKeyFourier<S, FFT64>,

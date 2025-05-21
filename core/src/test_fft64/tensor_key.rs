@@ -1,4 +1,4 @@
-use base2k::{FFT64, Module, ScalarZnx, ScalarZnxDftAlloc, ScalarZnxDftOps, ScratchOwned, Stats, VecZnxDftOps, VecZnxOps};
+use backend::{Module, ScalarZnx, ScalarZnxDft, ScalarZnxDftAlloc, ScalarZnxDftOps, ScratchOwned, Stats, VecZnxDftOps, VecZnxOps, FFT64};
 use sampling::source::Source;
 
 use crate::{
@@ -22,7 +22,7 @@ fn test_encrypt_sk(log_n: usize, basek: usize, k: usize, sigma: f64, rank: usize
 
     let rows: usize = (k + basek - 1) / basek;
 
-    let mut tensor_key: TensorKey<Vec<u8>, FFT64> = TensorKey::new(&module, basek, k, rows, rank);
+    let mut tensor_key: TensorKey<Vec<u8>, FFT64> = TensorKey::alloc(&module, basek, k, rows, rank);
 
     let mut source_xs: Source = Source::new([0u8; 32]);
     let mut source_xe: Source = Source::new([0u8; 32]);
@@ -34,10 +34,10 @@ fn test_encrypt_sk(log_n: usize, basek: usize, k: usize, sigma: f64, rank: usize
         tensor_key.size(),
     ));
 
-    let mut sk: SecretKey<Vec<u8>> = SecretKey::new(&module, rank);
+    let mut sk: SecretKey<Vec<u8>> = SecretKey::alloc(&module, rank);
     sk.fill_ternary_prob(0.5, &mut source_xs);
 
-    let mut sk_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::new(&module, rank);
+    let mut sk_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::alloc(&module, rank);
     sk_dft.dft(&module, &sk);
 
     tensor_key.encrypt_sk(
@@ -49,12 +49,12 @@ fn test_encrypt_sk(log_n: usize, basek: usize, k: usize, sigma: f64, rank: usize
         scratch.borrow(),
     );
 
-    let mut ct_glwe_fourier: GLWECiphertextFourier<Vec<u8>, FFT64> = GLWECiphertextFourier::new(&module, basek, k, rank);
-    let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::new(&module, basek, k);
+    let mut ct_glwe_fourier: GLWECiphertextFourier<Vec<u8>, FFT64> = GLWECiphertextFourier::alloc(&module, basek, k, rank);
+    let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k);
 
     (0..rank).for_each(|i| {
         (0..rank).for_each(|j| {
-            let mut sk_ij_dft: base2k::ScalarZnxDft<Vec<u8>, FFT64> = module.new_scalar_znx_dft(1);
+            let mut sk_ij_dft: ScalarZnxDft<Vec<u8>, FFT64> = module.new_scalar_znx_dft(1);
             module.svp_apply(&mut sk_ij_dft, 0, &sk_dft.data, i, &sk_dft.data, j);
             let sk_ij: ScalarZnx<Vec<u8>> = module
                 .vec_znx_idft_consume(sk_ij_dft.as_vec_znx_dft())
