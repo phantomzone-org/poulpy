@@ -313,7 +313,7 @@ pub trait VecZnxToRef {
     fn to_ref(&self) -> VecZnx<&[u8]>;
 }
 
-pub trait VecZnxToMut {
+pub trait VecZnxToMut: VecZnxToRef {
     fn to_mut(&mut self) -> VecZnx<&mut [u8]>;
 }
 

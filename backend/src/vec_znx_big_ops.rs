@@ -125,15 +125,8 @@ pub trait VecZnxBigOps<BACKEND: Backend> {
     ///
     /// * `basek`: normalization basis.
     /// * `tmp_bytes`: scratch space of size at least [VecZnxBigOps::vec_znx_big_normalize].
-    fn vec_znx_big_normalize<R, A>(
-        &self,
-        basek: usize,
-        res: &mut R,
-        res_col: usize,
-        a: &A,
-        a_col: usize,
-        scratch: &mut Scratch,
-    ) where
+    fn vec_znx_big_normalize<R, A>(&self, basek: usize, res: &mut R, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch)
+    where
         R: VecZnxToMut,
         A: VecZnxBigToRef<BACKEND>;
 
@@ -530,15 +523,8 @@ impl VecZnxBigOps<FFT64> for Module<FFT64> {
         }
     }
 
-    fn vec_znx_big_normalize<R, A>(
-        &self,
-        basek: usize,
-        res: &mut R,
-        res_col: usize,
-        a: &A,
-        a_col: usize,
-        scratch: &mut Scratch,
-    ) where
+    fn vec_znx_big_normalize<R, A>(&self, basek: usize, res: &mut R, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch)
+    where
         R: VecZnxToMut,
         A: VecZnxBigToRef<FFT64>,
     {

@@ -4,6 +4,7 @@ pub mod gglwe_ciphertext;
 pub mod ggsw_ciphertext;
 pub mod glwe_ciphertext;
 pub mod glwe_ciphertext_fourier;
+pub mod glwe_ops;
 pub mod glwe_plaintext;
 pub mod keys;
 pub mod keyswitch_key;

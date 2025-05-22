@@ -217,7 +217,7 @@ impl<C> GLWEPublicKey<C, FFT64> {
         source_xe: &mut Source,
         sigma: f64,
     ) where
-        VecZnxDft<C, FFT64>: VecZnxDftToMut<FFT64> + VecZnxDftToRef<FFT64>,
+        VecZnxDft<C, FFT64>: VecZnxDftToMut<FFT64>,
         ScalarZnxDft<S, FFT64>: ScalarZnxDftToRef<FFT64> + ZnxInfos,
     {
         #[cfg(debug_assertions)]

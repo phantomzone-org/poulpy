@@ -61,7 +61,8 @@ fn test_keyswitch(
 
     let mut ksk: GLWESwitchingKey<Vec<u8>, FFT64> = GLWESwitchingKey::alloc(&module, basek, k_ksk, rows, rank_in, rank_out);
     let mut ct_glwe_in: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_ct_in, rank_in);
-    let mut ct_glwe_dft_in: GLWECiphertextFourier<Vec<u8>, FFT64> = GLWECiphertextFourier::alloc(&module, basek, k_ct_in, rank_in);
+    let mut ct_glwe_dft_in: GLWECiphertextFourier<Vec<u8>, FFT64> =
+        GLWECiphertextFourier::alloc(&module, basek, k_ct_in, rank_in);
     let mut ct_glwe_out: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_ct_out, rank_out);
     let mut ct_glwe_dft_out: GLWECiphertextFourier<Vec<u8>, FFT64> =
         GLWECiphertextFourier::alloc(&module, basek, k_ct_out, rank_out);

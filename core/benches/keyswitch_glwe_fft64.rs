@@ -1,11 +1,11 @@
 use backend::{FFT64, Module, ScratchOwned};
-use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
 use core::{
     elem::Infos,
     glwe_ciphertext::GLWECiphertext,
     keys::{SecretKey, SecretKeyFourier},
     keyswitch_key::GLWESwitchingKey,
 };
+use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
 use sampling::source::Source;
 
 fn bench_keyswitch_glwe_fft64(c: &mut Criterion) {

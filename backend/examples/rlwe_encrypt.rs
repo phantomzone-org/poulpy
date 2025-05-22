@@ -90,7 +90,7 @@ fn main() {
     // ct[0] <- ct[0] + e
     ct.add_normal(
         basek,
-        0,                    // Selects the first column of ct (ct[0])
+        0,               // Selects the first column of ct (ct[0])
         basek * ct_size, // Scaling of the noise: 2^{-basek * limbs}
         &mut source,
         3.2,  // Standard deviation

@@ -168,7 +168,7 @@ impl AutomorphismKey<Vec<u8>, FFT64> {
 
 impl<DataSelf> AutomorphismKey<DataSelf, FFT64>
 where
-    MatZnxDft<DataSelf, FFT64>: MatZnxDftToMut<FFT64> + MatZnxDftToRef<FFT64>,
+    MatZnxDft<DataSelf, FFT64>: MatZnxDftToMut<FFT64>,
 {
     pub fn generate_from_sk<DataSk>(
         &mut self,
@@ -221,7 +221,7 @@ where
 
 impl<DataSelf> AutomorphismKey<DataSelf, FFT64>
 where
-    MatZnxDft<DataSelf, FFT64>: MatZnxDftToMut<FFT64> + MatZnxDftToRef<FFT64>,
+    MatZnxDft<DataSelf, FFT64>: MatZnxDftToMut<FFT64>,
 {
     pub fn automorphism<DataLhs, DataRhs>(
         &mut self,

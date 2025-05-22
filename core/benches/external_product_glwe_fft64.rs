@@ -1,11 +1,11 @@
-use backend::{Module, ScalarZnx, ScalarZnxAlloc, ScratchOwned, FFT64};
-use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
+use backend::{FFT64, Module, ScalarZnx, ScalarZnxAlloc, ScratchOwned};
 use core::{
     elem::Infos,
     ggsw_ciphertext::GGSWCiphertext,
     glwe_ciphertext::GLWECiphertext,
     keys::{SecretKey, SecretKeyFourier},
 };
+use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
 use sampling::source::Source;
 
 fn bench_external_product_glwe_fft64(c: &mut Criterion) {

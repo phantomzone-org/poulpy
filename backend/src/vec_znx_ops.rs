@@ -152,6 +152,11 @@ pub trait VecZnxOps {
     where
         R: VecZnxToMut,
         A: VecZnxToRef;
+
+    fn vec_znx_copy<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    where
+        R: VecZnxToMut,
+        A: VecZnxToRef;
 }
 
 pub trait VecZnxScratch {
@@ -174,6 +179,26 @@ impl<B: Backend> VecZnxAlloc for Module<B> {
 }
 
 impl<BACKEND: Backend> VecZnxOps for Module<BACKEND> {
+    fn vec_znx_copy<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    where
+        R: VecZnxToMut,
+        A: VecZnxToRef,
+    {
+        let mut res_mut: VecZnx<&mut [u8]> = res.to_mut();
+        let a_ref: VecZnx<&[u8]> = a.to_ref();
+
+        let min_size: usize = min(res_mut.size(), a_ref.size());
+
+        (0..min_size).for_each(|j| {
+            res_mut
+                .at_mut(res_col, j)
+                .copy_from_slice(a_ref.at(a_col, j));
+        });
+        (min_size..res_mut.size()).for_each(|j| {
+            res_mut.zero_at(res_col, j);
+        })
+    }
+
     fn vec_znx_normalize<R, A>(&self, basek: usize, res: &mut R, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch)
     where
         R: VecZnxToMut,

@@ -2,16 +2,17 @@ use backend::{
     AddNormal, Backend, FFT64, FillUniform, MatZnxDft, MatZnxDftOps, MatZnxDftScratch, MatZnxDftToRef, Module, ScalarZnxAlloc,
     ScalarZnxDft, ScalarZnxDftAlloc, ScalarZnxDftOps, ScalarZnxDftToRef, Scratch, VecZnx, VecZnxAlloc, VecZnxBig, VecZnxBigAlloc,
     VecZnxBigOps, VecZnxBigScratch, VecZnxDft, VecZnxDftAlloc, VecZnxDftOps, VecZnxDftToMut, VecZnxDftToRef, VecZnxOps,
-    VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxZero, copy_vec_znx_from,
+    VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxZero,
 };
 use sampling::source::Source;
 
 use crate::{
     SIX_SIGMA,
     automorphism::AutomorphismKey,
-    elem::Infos,
+    elem::{Infos, SetMetaData},
     ggsw_ciphertext::GGSWCiphertext,
     glwe_ciphertext_fourier::GLWECiphertextFourier,
+    glwe_ops::GLWEOps,
     glwe_plaintext::GLWEPlaintext,
     keys::{GLWEPublicKey, SecretDistribution, SecretKeyFourier},
     keyswitch_key::GLWESwitchingKey,
@@ -201,9 +202,24 @@ impl GLWECiphertext<Vec<u8>> {
     }
 }
 
+impl<DataSelf> SetMetaData for GLWECiphertext<DataSelf>
+where
+    VecZnx<DataSelf>: VecZnxToMut,
+{
+    fn set_k(&mut self, k: usize) {
+        self.k = k
+    }
+
+    fn set_basek(&mut self, basek: usize) {
+        self.basek = basek
+    }
+}
+
+impl<DataSelf> GLWEOps<FFT64> for GLWECiphertext<DataSelf> where VecZnx<DataSelf>: VecZnxToMut {}
+
 impl<DataSelf> GLWECiphertext<DataSelf>
 where
-    VecZnx<DataSelf>: VecZnxToMut + VecZnxToRef,
+    VecZnx<DataSelf>: VecZnxToMut,
 {
     pub fn encrypt_sk<DataPt, DataSk>(
         &mut self,
@@ -279,21 +295,6 @@ where
         VecZnxDft<DataPk, FFT64>: VecZnxDftToRef<FFT64>,
     {
         self.encrypt_pk_private(module, None, pk, source_xu, source_xe, sigma, scratch);
-    }
-
-    pub fn copy<DataOther>(&mut self, other: &GLWECiphertext<DataOther>)
-    where
-        VecZnx<DataOther>: VecZnxToRef,
-    {
-        copy_vec_znx_from(&mut self.data.to_mut(), &other.to_ref());
-        self.k = other.k;
-        self.basek = other.basek;
-    }
-
-    pub fn rsh(&mut self, k: usize, scratch: &mut Scratch) {
-        let basek: usize = self.basek();
-        let mut self_mut: VecZnx<&mut [u8]> = self.data.to_mut();
-        self_mut.rsh(basek, k, scratch);
     }
 
     pub fn automorphism<DataLhs, DataRhs>(

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use backend::{FFT64, MatZnxDft, MatZnxDftToRef, Module, Scratch, VecZnx, VecZnxToMut, VecZnxToRef};
 
-use crate::{automorphism::AutomorphismKey, glwe_ciphertext::GLWECiphertext};
+use crate::{automorphism::AutomorphismKey, glwe_ciphertext::GLWECiphertext, glwe_ops::GLWEOps};
 
 impl GLWECiphertext<Vec<u8>> {
     pub fn trace_galois_elements(module: &Module<FFT64>) -> Vec<i64> {
@@ -34,7 +34,7 @@ impl GLWECiphertext<Vec<u8>> {
 
 impl<DataSelf> GLWECiphertext<DataSelf>
 where
-    VecZnx<DataSelf>: VecZnxToMut + VecZnxToRef,
+    VecZnx<DataSelf>: VecZnxToMut,
 {
     pub fn trace<DataLhs, DataAK>(
         &mut self,
@@ -48,7 +48,7 @@ where
         VecZnx<DataLhs>: VecZnxToRef,
         MatZnxDft<DataAK, FFT64>: MatZnxDftToRef<FFT64>,
     {
-        self.copy(lhs);
+        self.copy(module, lhs);
         self.trace_inplace(module, start, end, auto_keys, scratch);
     }
 

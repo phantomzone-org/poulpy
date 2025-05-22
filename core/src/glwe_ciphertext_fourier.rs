@@ -1,7 +1,7 @@
 use backend::{
     Backend, FFT64, MatZnxDft, MatZnxDftOps, MatZnxDftScratch, MatZnxDftToRef, Module, ScalarZnxDft, ScalarZnxDftOps,
     ScalarZnxDftToRef, Scratch, VecZnx, VecZnxAlloc, VecZnxBig, VecZnxBigAlloc, VecZnxBigOps, VecZnxBigScratch, VecZnxDft,
-    VecZnxDftAlloc, VecZnxDftOps, VecZnxDftToMut, VecZnxDftToRef, VecZnxToMut, VecZnxToRef, ZnxZero,
+    VecZnxDftAlloc, VecZnxDftOps, VecZnxDftToMut, VecZnxDftToRef, VecZnxToMut, ZnxZero,
 };
 use sampling::source::Source;
 
@@ -126,7 +126,7 @@ impl GLWECiphertextFourier<Vec<u8>, FFT64> {
 
 impl<DataSelf> GLWECiphertextFourier<DataSelf, FFT64>
 where
-    VecZnxDft<DataSelf, FFT64>: VecZnxDftToMut<FFT64> + VecZnxDftToRef<FFT64>,
+    VecZnxDft<DataSelf, FFT64>: VecZnxDftToMut<FFT64>,
 {
     pub fn encrypt_zero_sk<DataSk>(
         &mut self,
@@ -261,7 +261,7 @@ where
         sk_dft: &SecretKeyFourier<DataSk, FFT64>,
         scratch: &mut Scratch,
     ) where
-        VecZnx<DataPt>: VecZnxToMut + VecZnxToRef,
+        VecZnx<DataPt>: VecZnxToMut,
         ScalarZnxDft<DataSk, FFT64>: ScalarZnxDftToRef<FFT64>,
     {
         #[cfg(debug_assertions)]

@@ -142,7 +142,7 @@ pub trait VecZnxDftToRef<B: Backend> {
     fn to_ref(&self) -> VecZnxDft<&[u8], B>;
 }
 
-pub trait VecZnxDftToMut<B: Backend> {
+pub trait VecZnxDftToMut<B: Backend>: VecZnxDftToRef<B> {
     fn to_mut(&mut self) -> VecZnxDft<&mut [u8], B>;
 }
 

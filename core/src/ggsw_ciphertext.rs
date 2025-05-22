@@ -1,8 +1,8 @@
 use backend::{
     Backend, FFT64, MatZnxDft, MatZnxDftAlloc, MatZnxDftOps, MatZnxDftScratch, MatZnxDftToMut, MatZnxDftToRef, Module, ScalarZnx,
     ScalarZnxDft, ScalarZnxDftToRef, ScalarZnxToRef, Scratch, VecZnx, VecZnxAlloc, VecZnxBigAlloc, VecZnxBigOps,
-    VecZnxBigScratch, VecZnxDft, VecZnxDftAlloc, VecZnxDftOps, VecZnxDftToMut, VecZnxDftToRef, VecZnxOps, VecZnxToMut,
-    VecZnxToRef, ZnxInfos, ZnxZero,
+    VecZnxBigScratch, VecZnxDft, VecZnxDftAlloc, VecZnxDftOps, VecZnxDftToMut, VecZnxDftToRef, VecZnxOps, VecZnxToMut, ZnxInfos,
+    ZnxZero,
 };
 use sampling::source::Source;
 
@@ -196,7 +196,7 @@ impl GGSWCiphertext<Vec<u8>, FFT64> {
 
 impl<DataSelf> GGSWCiphertext<DataSelf, FFT64>
 where
-    MatZnxDft<DataSelf, FFT64>: MatZnxDftToMut<FFT64> + MatZnxDftToRef<FFT64>,
+    MatZnxDft<DataSelf, FFT64>: MatZnxDftToMut<FFT64>,
 {
     pub fn encrypt_sk<DataPt, DataSk>(
         &mut self,
@@ -639,7 +639,7 @@ where
         ksk: &GLWESwitchingKey<DataKsk, FFT64>,
         scratch: &mut Scratch,
     ) where
-        VecZnx<DataRes>: VecZnxToMut + VecZnxToRef,
+        VecZnx<DataRes>: VecZnxToMut,
         MatZnxDft<DataKsk, FFT64>: MatZnxDftToRef<FFT64>,
     {
         #[cfg(debug_assertions)]

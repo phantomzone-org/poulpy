@@ -1,4 +1,6 @@
-use backend::{Module, ScalarZnx, ScalarZnxDft, ScalarZnxDftAlloc, ScalarZnxDftOps, ScratchOwned, Stats, VecZnxDftOps, VecZnxOps, FFT64};
+use backend::{
+    FFT64, Module, ScalarZnx, ScalarZnxDft, ScalarZnxDftAlloc, ScalarZnxDftOps, ScratchOwned, Stats, VecZnxDftOps, VecZnxOps,
+};
 use sampling::source::Source;
 
 use crate::{

@@ -110,7 +110,8 @@ fn test_encrypt_sk(log_n: usize, basek: usize, k_ksk: usize, sigma: f64, rank_in
         scratch.borrow(),
     );
 
-    let mut ct_glwe_fourier: GLWECiphertextFourier<Vec<u8>, FFT64> = GLWECiphertextFourier::alloc(&module, basek, k_ksk, rank_out);
+    let mut ct_glwe_fourier: GLWECiphertextFourier<Vec<u8>, FFT64> =
+        GLWECiphertextFourier::alloc(&module, basek, k_ksk, rank_out);
 
     (0..ksk.rank_in()).for_each(|col_i| {
         (0..ksk.rows()).for_each(|row_i| {
@@ -202,7 +203,8 @@ fn test_key_switch(
     // gglwe_{s1}(s0) (x) gglwe_{s2}(s1) = gglwe_{s2}(s0)
     ct_gglwe_s0s2.keyswitch(&module, &ct_gglwe_s0s1, &ct_gglwe_s1s2, scratch.borrow());
 
-    let mut ct_glwe_dft: GLWECiphertextFourier<Vec<u8>, FFT64> = GLWECiphertextFourier::alloc(&module, basek, k_ksk, rank_out_s1s2);
+    let mut ct_glwe_dft: GLWECiphertextFourier<Vec<u8>, FFT64> =
+        GLWECiphertextFourier::alloc(&module, basek, k_ksk, rank_out_s1s2);
     let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_ksk);
 
     (0..ct_gglwe_s0s2.rank_in()).for_each(|col_i| {
@@ -304,7 +306,8 @@ fn test_key_switch_inplace(log_n: usize, basek: usize, k_ksk: usize, sigma: f64,
 
     let ct_gglwe_s0s2: GLWESwitchingKey<Vec<u8>, FFT64> = ct_gglwe_s0s1;
 
-    let mut ct_glwe_dft: GLWECiphertextFourier<Vec<u8>, FFT64> = GLWECiphertextFourier::alloc(&module, basek, k_ksk, rank_out_s0s1);
+    let mut ct_glwe_dft: GLWECiphertextFourier<Vec<u8>, FFT64> =
+        GLWECiphertextFourier::alloc(&module, basek, k_ksk, rank_out_s0s1);
     let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_ksk);
 
     (0..ct_gglwe_s0s2.rank_in()).for_each(|col_i| {

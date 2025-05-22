@@ -27,6 +27,10 @@ pub trait Infos {
         self.inner().cols()
     }
 
+    fn rank(&self) -> usize {
+        self.cols() - 1
+    }
+
     /// Returns the number of size per polynomial.
     fn size(&self) -> usize {
         let size: usize = self.inner().size();
@@ -44,6 +48,11 @@ pub trait Infos {
 
     /// Returns the bit precision of the ciphertext.
     fn k(&self) -> usize;
+}
+
+pub trait SetMetaData {
+    fn set_basek(&mut self, basek: usize);
+    fn set_k(&mut self, k: usize);
 }
 
 pub trait GetRow<B: Backend> {

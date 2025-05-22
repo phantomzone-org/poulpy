@@ -157,7 +157,7 @@ pub trait MatZnxDftToRef<B: Backend> {
     fn to_ref(&self) -> MatZnxDft<&[u8], B>;
 }
 
-pub trait MatZnxDftToMut<B: Backend> {
+pub trait MatZnxDftToMut<B: Backend>: MatZnxDftToRef<B> {
     fn to_mut(&mut self) -> MatZnxDft<&mut [u8], B>;
 }
 
