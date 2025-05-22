@@ -1,6 +1,6 @@
 use backend::{Module, ScalarZnx, ScalarZnxAlloc, ScratchOwned, FFT64};
 use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
-use rlwe::{
+use core::{
     elem::Infos,
     ggsw_ciphertext::GGSWCiphertext,
     glwe_ciphertext::GLWECiphertext,

@@ -1,6 +1,6 @@
 use backend::{FFT64, Module, ScratchOwned};
 use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
-use rlwe::{
+use core::{
     elem::Infos,
     glwe_ciphertext::GLWECiphertext,
     keys::{SecretKey, SecretKeyFourier},
