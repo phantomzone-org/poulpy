@@ -1,12 +1,16 @@
-use backend::{Backend, Module, Scratch, VecZnx, VecZnxOps, VecZnxToMut, VecZnxToRef, ZnxZero};
+use backend::{FFT64, Module, Scratch, VecZnx, VecZnxOps, VecZnxToMut, VecZnxToRef, ZnxZero};
 
-use crate::elem::{Infos, SetMetaData};
+use crate::{
+    elem::{Infos, SetMetaData},
+    glwe_ciphertext::GLWECiphertext,
+};
 
-pub trait GLWEOps<BACKEND: Backend>
+impl<DataSelf> GLWECiphertext<DataSelf>
 where
-    Self: Sized + VecZnxToMut + SetMetaData + Infos,
+    Self: Infos,
+    VecZnx<DataSelf>: VecZnxToMut,
 {
-    fn add<A, B>(&mut self, module: &Module<BACKEND>, a: &A, b: &B)
+    pub fn add<A, B>(&mut self, module: &Module<FFT64>, a: &A, b: &B)
     where
         A: VecZnxToRef + Infos,
         B: VecZnxToRef + Infos,
@@ -50,7 +54,7 @@ where
         self.set_k(a.k().max(b.k()));
     }
 
-    fn add_inplace<A>(&mut self, module: &Module<BACKEND>, a: &A)
+    pub fn add_inplace<A>(&mut self, module: &Module<FFT64>, a: &A)
     where
         A: VecZnxToRef + Infos,
     {
@@ -69,7 +73,7 @@ where
         self.set_k(a.k().max(self.k()));
     }
 
-    fn sub<A, B>(&mut self, module: &Module<BACKEND>, a: &A, b: &B)
+    pub fn sub<A, B>(&mut self, module: &Module<FFT64>, a: &A, b: &B)
     where
         A: VecZnxToRef + Infos,
         B: VecZnxToRef + Infos,
@@ -114,7 +118,7 @@ where
         self.set_k(a.k().max(b.k()));
     }
 
-    fn sub_inplace_ab<A>(&mut self, module: &Module<BACKEND>, a: &A)
+    pub fn sub_inplace_ab<A>(&mut self, module: &Module<FFT64>, a: &A)
     where
         A: VecZnxToRef + Infos,
     {
@@ -133,7 +137,7 @@ where
         self.set_k(a.k().max(self.k()));
     }
 
-    fn sub_inplace_ba<A>(&mut self, module: &Module<BACKEND>, a: &A)
+    pub fn sub_inplace_ba<A>(&mut self, module: &Module<FFT64>, a: &A)
     where
         A: VecZnxToRef + Infos,
     {
@@ -152,7 +156,7 @@ where
         self.set_k(a.k().max(self.k()));
     }
 
-    fn rotate<A>(&mut self, module: &Module<BACKEND>, k: i64, a: &A)
+    pub fn rotate<A>(&mut self, module: &Module<FFT64>, k: i64, a: &A)
     where
         A: VecZnxToRef + Infos,
     {
@@ -160,7 +164,6 @@ where
         {
             assert_eq!(a.n(), module.n());
             assert_eq!(self.n(), module.n());
-            assert_eq!(self.basek(), a.basek());
             assert_eq!(self.rank(), a.rank())
         }
 
@@ -168,10 +171,11 @@ where
             module.vec_znx_rotate(k, self, i, a, i);
         });
 
+        self.set_basek(a.basek());
         self.set_k(a.k());
     }
 
-    fn rotate_inplace<A>(&mut self, module: &Module<BACKEND>, k: i64)
+    pub fn rotate_inplace<A>(&mut self, module: &Module<FFT64>, k: i64)
     where
         A: VecZnxToRef + Infos,
     {
@@ -185,7 +189,7 @@ where
         });
     }
 
-    fn copy<A>(&mut self, module: &Module<BACKEND>, a: &A)
+    pub fn copy<A>(&mut self, module: &Module<FFT64>, a: &A)
     where
         A: VecZnxToRef + Infos,
     {
@@ -193,11 +197,10 @@ where
         {
             assert_eq!(self.n(), module.n());
             assert_eq!(a.n(), module.n());
+            assert_eq!(self.rank(), a.rank());
         }
 
-        let cols: usize = self.rank().min(a.rank()) + 1;
-
-        (0..cols).for_each(|i| {
+        (0..self.rank() + 1).for_each(|i| {
             module.vec_znx_copy(self, i, a, i);
         });
 
@@ -205,9 +208,37 @@ where
         self.set_basek(a.basek());
     }
 
-    fn rsh(&mut self, k: usize, scratch: &mut Scratch) {
+    pub fn rsh(&mut self, k: usize, scratch: &mut Scratch) {
         let basek: usize = self.basek();
         let mut self_mut: VecZnx<&mut [u8]> = self.to_mut();
         self_mut.rsh(basek, k, scratch);
+    }
+
+    pub fn normalize<A>(&mut self, module: &Module<FFT64>, a: &A, scratch: &mut Scratch)
+    where
+        A: VecZnxToMut + Infos,
+    {
+        #[cfg(debug_assertions)]
+        {
+            assert_eq!(self.n(), module.n());
+            assert_eq!(a.n(), module.n());
+            assert_eq!(self.rank(), a.rank());
+        }
+
+        (0..self.rank() + 1).for_each(|i| {
+            module.vec_znx_normalize(a.basek(), self, i, a, i, scratch);
+        });
+        self.set_basek(a.basek());
+        self.set_k(a.k());
+    }
+
+    pub fn normalize_inplace(&mut self, module: &Module<FFT64>, scratch: &mut Scratch) {
+        #[cfg(debug_assertions)]
+        {
+            assert_eq!(self.n(), module.n());
+        }
+        (0..self.rank() + 1).for_each(|i| {
+            module.vec_znx_normalize_inplace(self.basek(), self, i, scratch);
+        });
     }
 }

@@ -12,7 +12,6 @@ use crate::{
     elem::{Infos, SetMetaData},
     ggsw_ciphertext::GGSWCiphertext,
     glwe_ciphertext_fourier::GLWECiphertextFourier,
-    glwe_ops::GLWEOps,
     glwe_plaintext::GLWEPlaintext,
     keys::{GLWEPublicKey, SecretDistribution, SecretKeyFourier},
     keyswitch_key::GLWESwitchingKey,
@@ -214,8 +213,6 @@ where
         self.basek = basek
     }
 }
-
-impl<DataSelf> GLWEOps<FFT64> for GLWECiphertext<DataSelf> where VecZnx<DataSelf>: VecZnxToMut {}
 
 impl<DataSelf> GLWECiphertext<DataSelf>
 where
@@ -713,6 +710,14 @@ impl<DataSelf> GLWECiphertext<DataSelf>
 where
     VecZnx<DataSelf>: VecZnxToRef,
 {
+    pub fn clone(&self) -> GLWECiphertext<Vec<u8>> {
+        GLWECiphertext {
+            data: self.data.clone(),
+            basek: self.basek(),
+            k: self.k(),
+        }
+    }
+
     pub fn decrypt<DataPt, DataSk>(
         &self,
         module: &Module<FFT64>,

@@ -371,3 +371,19 @@ impl VecZnxToRef for VecZnx<&[u8]> {
         }
     }
 }
+
+impl<DataSelf> VecZnx<DataSelf>
+where
+    VecZnx<DataSelf>: VecZnxToRef,
+{
+    pub fn clone(&self) -> VecZnx<Vec<u8>> {
+        let self_ref: VecZnx<&[u8]> = self.to_ref();
+
+        VecZnx {
+            data: self_ref.data.to_vec(),
+            n: self_ref.n,
+            cols: self_ref.cols,
+            size: self_ref.size,
+        }
+    }
+}
