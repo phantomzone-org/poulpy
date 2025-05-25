@@ -334,7 +334,7 @@ where
         VecZnx<DataLhs>: VecZnxToRef,
         MatZnxDft<DataRhs, FFT64>: MatZnxDftToRef<FFT64>,
     {
-        Self::keyswitch_private(self, true, rhs.p(), module, lhs, &rhs.key, scratch);
+        Self::keyswitch_private::<_, _, 1>(self, rhs.p(), module, lhs, &rhs.key, scratch);
     }
 
     pub fn automorphism_add_inplace<DataRhs>(
@@ -347,7 +347,61 @@ where
     {
         unsafe {
             let self_ptr: *mut GLWECiphertext<DataSelf> = self as *mut GLWECiphertext<DataSelf>;
-            Self::keyswitch_private(self, true, rhs.p(), module, &*self_ptr, &rhs.key, scratch);
+            Self::keyswitch_private::<_, _, 1>(self, rhs.p(), module, &*self_ptr, &rhs.key, scratch);
+        }
+    }
+
+    pub fn automorphism_sub_ab<DataLhs, DataRhs>(
+        &mut self,
+        module: &Module<FFT64>,
+        lhs: &GLWECiphertext<DataLhs>,
+        rhs: &AutomorphismKey<DataRhs, FFT64>,
+        scratch: &mut Scratch,
+    ) where
+        VecZnx<DataLhs>: VecZnxToRef,
+        MatZnxDft<DataRhs, FFT64>: MatZnxDftToRef<FFT64>,
+    {
+        Self::keyswitch_private::<_, _, 2>(self, rhs.p(), module, lhs, &rhs.key, scratch);
+    }
+
+    pub fn automorphism_sub_ab_inplace<DataRhs>(
+        &mut self,
+        module: &Module<FFT64>,
+        rhs: &AutomorphismKey<DataRhs, FFT64>,
+        scratch: &mut Scratch,
+    ) where
+        MatZnxDft<DataRhs, FFT64>: MatZnxDftToRef<FFT64>,
+    {
+        unsafe {
+            let self_ptr: *mut GLWECiphertext<DataSelf> = self as *mut GLWECiphertext<DataSelf>;
+            Self::keyswitch_private::<_, _, 2>(self, rhs.p(), module, &*self_ptr, &rhs.key, scratch);
+        }
+    }
+
+    pub fn automorphism_sub_ba<DataLhs, DataRhs>(
+        &mut self,
+        module: &Module<FFT64>,
+        lhs: &GLWECiphertext<DataLhs>,
+        rhs: &AutomorphismKey<DataRhs, FFT64>,
+        scratch: &mut Scratch,
+    ) where
+        VecZnx<DataLhs>: VecZnxToRef,
+        MatZnxDft<DataRhs, FFT64>: MatZnxDftToRef<FFT64>,
+    {
+        Self::keyswitch_private::<_, _, 3>(self, rhs.p(), module, lhs, &rhs.key, scratch);
+    }
+
+    pub fn automorphism_sub_ba_inplace<DataRhs>(
+        &mut self,
+        module: &Module<FFT64>,
+        rhs: &AutomorphismKey<DataRhs, FFT64>,
+        scratch: &mut Scratch,
+    ) where
+        MatZnxDft<DataRhs, FFT64>: MatZnxDftToRef<FFT64>,
+    {
+        unsafe {
+            let self_ptr: *mut GLWECiphertext<DataSelf> = self as *mut GLWECiphertext<DataSelf>;
+            Self::keyswitch_private::<_, _, 3>(self, rhs.p(), module, &*self_ptr, &rhs.key, scratch);
         }
     }
 
@@ -420,12 +474,11 @@ where
         VecZnx<DataLhs>: VecZnxToRef,
         MatZnxDft<DataRhs, FFT64>: MatZnxDftToRef<FFT64>,
     {
-        Self::keyswitch_private(self, false, 0, module, lhs, rhs, scratch);
+        Self::keyswitch_private::<_, _, 0>(self, 0, module, lhs, rhs, scratch);
     }
 
-    pub(crate) fn keyswitch_private<DataLhs, DataRhs>(
+    pub(crate) fn keyswitch_private<DataLhs, DataRhs, const OP: u8>(
         &mut self,
-        add_self: bool,
         apply_auto: i64,
         module: &Module<FFT64>,
         lhs: &GLWECiphertext<DataLhs>,
@@ -481,8 +534,11 @@ where
                 module.vec_znx_big_automorphism_inplace(apply_auto, &mut res_big, i);
             }
 
-            if add_self {
-                module.vec_znx_big_add_small_inplace(&mut res_big, i, lhs, i);
+            match OP{
+                1=> module.vec_znx_big_add_small_inplace(&mut res_big, i, lhs, i),
+                2=> module.vec_znx_big_sub_small_a_inplace(&mut res_big, i, lhs, i),
+                3=> module.vec_znx_big_sub_small_b_inplace(&mut res_big, i, lhs, i),
+                _=>{},
             }
             module.vec_znx_big_normalize(basek, self, i, &res_big, i, scratch1);
         });

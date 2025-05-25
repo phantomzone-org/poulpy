@@ -175,10 +175,7 @@ where
         self.set_k(a.k());
     }
 
-    pub fn rotate_inplace<A>(&mut self, module: &Module<FFT64>, k: i64)
-    where
-        A: VecZnxToRef + Infos,
-    {
+    pub fn rotate_inplace(&mut self, module: &Module<FFT64>, k: i64){
         #[cfg(debug_assertions)]
         {
             assert_eq!(self.n(), module.n());
@@ -240,5 +237,11 @@ where
         (0..self.rank() + 1).for_each(|i| {
             module.vec_znx_normalize_inplace(self.basek(), self, i, scratch);
         });
+    }
+}
+
+impl GLWECiphertext<Vec<u8>>{
+    pub fn rsh_scratch_space(module: &Module<FFT64>) -> usize{
+        VecZnx::rsh_scratch_space(module.n())
     }
 }

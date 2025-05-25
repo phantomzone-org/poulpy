@@ -71,7 +71,7 @@ impl<D: AsRef<[u8]>> ZnxView for VecZnx<D> {
     type Scalar = i64;
 }
 
-impl<D: AsRef<[u8]>> VecZnx<D> {
+impl VecZnx<Vec<u8>> {
     pub fn rsh_scratch_space(n: usize) -> usize {
         n * std::mem::size_of::<i64>()
     }

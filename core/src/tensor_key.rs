@@ -56,7 +56,7 @@ impl<T, B: Backend> TensorKey<T, B> {
 }
 
 impl TensorKey<Vec<u8>, FFT64> {
-    pub fn encrypt_sk_scratch_space(module: &Module<FFT64>, rank: usize, size: usize) -> usize {
+    pub fn generate_from_sk_scratch_space(module: &Module<FFT64>, rank: usize, size: usize) -> usize {
         module.bytes_of_scalar_znx_dft(1) + GLWESwitchingKey::encrypt_sk_scratch_space(module, rank, size)
     }
 }
@@ -65,7 +65,7 @@ impl<DataSelf> TensorKey<DataSelf, FFT64>
 where
     MatZnxDft<DataSelf, FFT64>: MatZnxDftToMut<FFT64>,
 {
-    pub fn encrypt_sk<DataSk>(
+    pub fn generate_from_sk<DataSk>(
         &mut self,
         module: &Module<FFT64>,
         sk_dft: &SecretKeyFourier<DataSk, FFT64>,

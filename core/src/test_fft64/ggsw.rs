@@ -160,7 +160,7 @@ fn test_keyswitch(log_n: usize, basek: usize, k: usize, rank: usize, sigma: f64)
         GGSWCiphertext::encrypt_sk_scratch_space(&module, rank, ct_in.size())
             | GLWECiphertextFourier::decrypt_scratch_space(&module, ct_out.size())
             | GLWESwitchingKey::encrypt_sk_scratch_space(&module, rank, ksk.size())
-            | TensorKey::encrypt_sk_scratch_space(&module, rank, ksk.size())
+            | TensorKey::generate_from_sk_scratch_space(&module, rank, ksk.size())
             | GGSWCiphertext::keyswitch_scratch_space(
                 &module,
                 ct_out.size(),
@@ -194,7 +194,7 @@ fn test_keyswitch(log_n: usize, basek: usize, k: usize, rank: usize, sigma: f64)
         sigma,
         scratch.borrow(),
     );
-    tsk.encrypt_sk(
+    tsk.generate_from_sk(
         &module,
         &sk_out_dft,
         &mut source_xa,
@@ -286,7 +286,7 @@ fn test_keyswitch_inplace(log_n: usize, basek: usize, k: usize, rank: usize, sig
         GGSWCiphertext::encrypt_sk_scratch_space(&module, rank, ct.size())
             | GLWECiphertextFourier::decrypt_scratch_space(&module, ct.size())
             | GLWESwitchingKey::encrypt_sk_scratch_space(&module, rank, ksk.size())
-            | TensorKey::encrypt_sk_scratch_space(&module, rank, ksk.size())
+            | TensorKey::generate_from_sk_scratch_space(&module, rank, ksk.size())
             | GGSWCiphertext::keyswitch_inplace_scratch_space(&module, ct.size(), ksk.size(), tsk.size(), rank),
     );
 
@@ -313,7 +313,7 @@ fn test_keyswitch_inplace(log_n: usize, basek: usize, k: usize, rank: usize, sig
         sigma,
         scratch.borrow(),
     );
-    tsk.encrypt_sk(
+    tsk.generate_from_sk(
         &module,
         &sk_out_dft,
         &mut source_xa,
@@ -455,7 +455,7 @@ fn test_automorphism(p: i64, log_n: usize, basek: usize, k: usize, rank: usize, 
         GGSWCiphertext::encrypt_sk_scratch_space(&module, rank, ct_in.size())
             | GLWECiphertextFourier::decrypt_scratch_space(&module, ct_out.size())
             | AutomorphismKey::generate_from_sk_scratch_space(&module, rank, auto_key.size())
-            | TensorKey::encrypt_sk_scratch_space(&module, rank, tensor_key.size())
+            | TensorKey::generate_from_sk_scratch_space(&module, rank, tensor_key.size())
             | GGSWCiphertext::automorphism_scratch_space(
                 &module,
                 ct_out.size(),
@@ -483,7 +483,7 @@ fn test_automorphism(p: i64, log_n: usize, basek: usize, k: usize, rank: usize, 
         sigma,
         scratch.borrow(),
     );
-    tensor_key.encrypt_sk(
+    tensor_key.generate_from_sk(
         &module,
         &sk_dft,
         &mut source_xa,
@@ -575,7 +575,7 @@ fn test_automorphism_inplace(p: i64, log_n: usize, basek: usize, k: usize, rank:
         GGSWCiphertext::encrypt_sk_scratch_space(&module, rank, ct.size())
             | GLWECiphertextFourier::decrypt_scratch_space(&module, ct.size())
             | AutomorphismKey::generate_from_sk_scratch_space(&module, rank, auto_key.size())
-            | TensorKey::encrypt_sk_scratch_space(&module, rank, tensor_key.size())
+            | TensorKey::generate_from_sk_scratch_space(&module, rank, tensor_key.size())
             | GGSWCiphertext::automorphism_inplace_scratch_space(&module, ct.size(), auto_key.size(), tensor_key.size(), rank),
     );
 
@@ -596,7 +596,7 @@ fn test_automorphism_inplace(p: i64, log_n: usize, basek: usize, k: usize, rank:
         sigma,
         scratch.borrow(),
     );
-    tensor_key.encrypt_sk(
+    tensor_key.generate_from_sk(
         &module,
         &sk_dft,
         &mut source_xa,

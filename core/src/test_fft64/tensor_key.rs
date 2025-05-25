@@ -30,7 +30,7 @@ fn test_encrypt_sk(log_n: usize, basek: usize, k: usize, sigma: f64, rank: usize
     let mut source_xe: Source = Source::new([0u8; 32]);
     let mut source_xa: Source = Source::new([0u8; 32]);
 
-    let mut scratch: ScratchOwned = ScratchOwned::new(TensorKey::encrypt_sk_scratch_space(
+    let mut scratch: ScratchOwned = ScratchOwned::new(TensorKey::generate_from_sk_scratch_space(
         &module,
         rank,
         tensor_key.size(),
@@ -40,7 +40,7 @@ fn test_encrypt_sk(log_n: usize, basek: usize, k: usize, sigma: f64, rank: usize
     sk.fill_ternary_prob(0.5, &mut source_xs);
 
     let mut sk_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::alloc(&module, rank);
-    sk_dft.dft(&module, &sk);
+    sk_dft.dft(generate_from_sksk);
 
     tensor_key.encrypt_sk(
         &module,
