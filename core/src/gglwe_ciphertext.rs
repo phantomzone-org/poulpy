@@ -1,7 +1,7 @@
 use backend::{
     Backend, FFT64, MatZnxDft, MatZnxDftAlloc, MatZnxDftOps, MatZnxDftToMut, MatZnxDftToRef, Module, ScalarZnx, ScalarZnxDft,
-    ScalarZnxDftToRef, ScalarZnxToRef, Scratch, VecZnxAlloc, VecZnxBigScratch, VecZnxDftAlloc, VecZnxDftToMut, VecZnxDftToRef,
-    VecZnxOps, ZnxInfos, ZnxZero,
+    ScalarZnxDftToRef, ScalarZnxToRef, Scratch, VecZnxAlloc, VecZnxDftAlloc, VecZnxDftToMut, VecZnxDftToRef, VecZnxOps, ZnxInfos,
+    ZnxZero,
 };
 use sampling::source::Source;
 

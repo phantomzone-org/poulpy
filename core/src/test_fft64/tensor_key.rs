@@ -40,9 +40,9 @@ fn test_encrypt_sk(log_n: usize, basek: usize, k: usize, sigma: f64, rank: usize
     sk.fill_ternary_prob(0.5, &mut source_xs);
 
     let mut sk_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::alloc(&module, rank);
-    sk_dft.dft(generate_from_sksk);
+    sk_dft.dft(&module, &sk);
 
-    tensor_key.encrypt_sk(
+    tensor_key.generate_from_sk(
         &module,
         &sk_dft,
         &mut source_xa,
