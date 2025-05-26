@@ -17,7 +17,7 @@ pub struct TensorKey<C, B: Backend> {
 impl TensorKey<Vec<u8>, FFT64> {
     pub fn alloc(module: &Module<FFT64>, basek: usize, k: usize, rows: usize, rank: usize) -> Self {
         let mut keys: Vec<GLWESwitchingKey<Vec<u8>, FFT64>> = Vec::new();
-        let pairs: usize = ((rank + 1) * rank) >> 1;
+        let pairs: usize = (((rank + 1) * rank) >> 1).max(1);
         (0..pairs).for_each(|_| {
             keys.push(GLWESwitchingKey::alloc(module, basek, k, rows, 1, rank));
         });

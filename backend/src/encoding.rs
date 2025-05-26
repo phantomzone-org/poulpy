@@ -267,7 +267,7 @@ fn decode_coeff_i64<D: AsRef<[u8]>>(a: &VecZnx<D>, col_i: usize, basek: usize, k
     let data: &[i64] = a.raw();
     let mut res: i64 = data[i];
     let rem: usize = basek - (k % basek);
-    let slice_size: usize = a.n() * a.size();
+    let slice_size: usize = a.n() * a.cols();
     (1..size).for_each(|i| {
         let x: i64 = data[i * slice_size];
         if i == size - 1 && rem != basek {
