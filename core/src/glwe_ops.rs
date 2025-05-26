@@ -175,7 +175,7 @@ where
         self.set_k(a.k());
     }
 
-    pub fn rotate_inplace(&mut self, module: &Module<FFT64>, k: i64){
+    pub fn rotate_inplace(&mut self, module: &Module<FFT64>, k: i64) {
         #[cfg(debug_assertions)]
         {
             assert_eq!(self.n(), module.n());
@@ -240,8 +240,8 @@ where
     }
 }
 
-impl GLWECiphertext<Vec<u8>>{
-    pub fn rsh_scratch_space(module: &Module<FFT64>) -> usize{
+impl GLWECiphertext<Vec<u8>> {
+    pub fn rsh_scratch_space(module: &Module<FFT64>) -> usize {
         VecZnx::rsh_scratch_space(module.n())
     }
 }

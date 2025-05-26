@@ -1,7 +1,7 @@
 use backend::{
     Backend, FFT64, MatZnxDft, MatZnxDftAlloc, MatZnxDftOps, MatZnxDftToMut, MatZnxDftToRef, Module, ScalarZnx, ScalarZnxDft,
-    ScalarZnxDftToRef, ScalarZnxToRef, Scratch, VecZnxAlloc, VecZnxDftAlloc, VecZnxDftToMut, VecZnxDftToRef, VecZnxOps, ZnxInfos,
-    ZnxZero,
+    ScalarZnxDftToRef, ScalarZnxToRef, Scratch, VecZnxAlloc, VecZnxBigScratch, VecZnxDftAlloc, VecZnxDftToMut, VecZnxDftToRef,
+    VecZnxOps, ZnxInfos, ZnxZero,
 };
 use sampling::source::Source;
 
@@ -115,6 +115,15 @@ where
             assert_eq!(self.n(), module.n());
             assert_eq!(sk_dft.n(), module.n());
             assert_eq!(pt.n(), module.n());
+            assert!(
+                scratch.available() >= GGLWECiphertext::generate_from_sk_scratch_space(module, self.rank(), self.size()),
+                "scratch.available: {} < GGLWECiphertext::generate_from_sk_scratch_space(module, self.rank()={}, \
+                 self.size()={}): {}",
+                scratch.available(),
+                self.rank(),
+                self.size(),
+                GGLWECiphertext::generate_from_sk_scratch_space(module, self.rank(), self.size())
+            )
         }
 
         let rows: usize = self.rows();

@@ -97,9 +97,7 @@ where
 
 impl GLWECiphertext<Vec<u8>> {
     pub fn encrypt_sk_scratch_space(module: &Module<FFT64>, ct_size: usize) -> usize {
-        module.vec_znx_big_normalize_tmp_bytes()
-            + module.bytes_of_vec_znx_dft(1, ct_size)
-            + module.bytes_of_vec_znx_big(1, ct_size)
+        module.vec_znx_big_normalize_tmp_bytes() + module.bytes_of_vec_znx_dft(1, ct_size) + module.bytes_of_vec_znx(1, ct_size)
     }
     pub fn encrypt_pk_scratch_space(module: &Module<FFT64>, pk_size: usize) -> usize {
         ((module.bytes_of_vec_znx_dft(1, pk_size) + module.bytes_of_vec_znx_big(1, pk_size)) | module.bytes_of_scalar_znx(1))
@@ -534,11 +532,11 @@ where
                 module.vec_znx_big_automorphism_inplace(apply_auto, &mut res_big, i);
             }
 
-            match OP{
-                1=> module.vec_znx_big_add_small_inplace(&mut res_big, i, lhs, i),
-                2=> module.vec_znx_big_sub_small_a_inplace(&mut res_big, i, lhs, i),
-                3=> module.vec_znx_big_sub_small_b_inplace(&mut res_big, i, lhs, i),
-                _=>{},
+            match OP {
+                1 => module.vec_znx_big_add_small_inplace(&mut res_big, i, lhs, i),
+                2 => module.vec_znx_big_sub_small_a_inplace(&mut res_big, i, lhs, i),
+                3 => module.vec_znx_big_sub_small_b_inplace(&mut res_big, i, lhs, i),
+                _ => {}
             }
             module.vec_znx_big_normalize(basek, self, i, &res_big, i, scratch1);
         });
@@ -636,6 +634,12 @@ where
                 assert_eq!(pt.n(), module.n());
                 assert!(col < self.rank() + 1);
             }
+            assert!(
+                scratch.available() >= GLWECiphertext::encrypt_sk_scratch_space(module, self.size()),
+                "scratch.available(): {} < GLWECiphertext::encrypt_sk_scratch_space: {}",
+                scratch.available(),
+                GLWECiphertext::encrypt_sk_scratch_space(module, self.size())
+            )
         }
 
         let basek: usize = self.basek();

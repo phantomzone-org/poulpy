@@ -1,7 +1,7 @@
 use backend::{
-    Backend, FFT64, MatZnxDft, MatZnxDftOps, MatZnxDftToMut, MatZnxDftToRef, Module, ScalarZnx, ScalarZnxDftOps, ScalarZnxOps,
-    ScalarZnxToRef, Scratch, VecZnx, VecZnxBigAlloc, VecZnxDftAlloc, VecZnxDftOps, VecZnxDftToMut, VecZnxDftToRef, VecZnxOps,
-    ZnxZero,
+    Backend, FFT64, MatZnxDft, MatZnxDftOps, MatZnxDftToMut, MatZnxDftToRef, Module, ScalarZnx, ScalarZnxDftAlloc,
+    ScalarZnxDftOps, ScalarZnxOps, ScalarZnxToRef, Scratch, VecZnx, VecZnxBigAlloc, VecZnxDftAlloc, VecZnxDftOps, VecZnxDftToMut,
+    VecZnxDftToRef, VecZnxOps, ZnxZero,
 };
 use sampling::source::Source;
 
@@ -107,7 +107,7 @@ where
 
 impl AutomorphismKey<Vec<u8>, FFT64> {
     pub fn generate_from_sk_scratch_space(module: &Module<FFT64>, rank: usize, size: usize) -> usize {
-        GGLWECiphertext::generate_from_sk_scratch_space(module, rank, size)
+        GGLWECiphertext::generate_from_sk_scratch_space(module, rank, size) + module.bytes_of_scalar_znx_dft(rank)
     }
 
     pub fn generate_from_pk_scratch_space(module: &Module<FFT64>, rank: usize, pk_size: usize) -> usize {
@@ -188,6 +188,15 @@ where
             assert_eq!(sk.n(), module.n());
             assert_eq!(self.rank_out(), self.rank_in());
             assert_eq!(sk.rank(), self.rank());
+            assert!(
+                scratch.available() >= AutomorphismKey::generate_from_sk_scratch_space(module, self.rank(), self.size()),
+                "scratch.available(): {} < AutomorphismKey::generate_from_sk_scratch_space(module, self.rank()={}, \
+                 self.size()={}): {}",
+                scratch.available(),
+                self.rank(),
+                self.size(),
+                AutomorphismKey::generate_from_sk_scratch_space(module, self.rank(), self.size())
+            )
         }
 
         let (sk_out_dft_data, scratch_1) = scratch.tmp_scalar_znx_dft(module, sk.rank());
