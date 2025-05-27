@@ -237,14 +237,15 @@ fn normalize<D: AsMut<[u8]> + AsRef<[u8]>>(basek: usize, a: &mut VecZnx<D>, a_co
     }
 }
 
-impl<D> VecZnx<D>
+impl<D: AsMut<[u8]> + AsRef<[u8]>> VecZnx<D>
 where
     VecZnx<D>: VecZnxToMut + ZnxInfos,
 {
     /// Extracts the a_col-th column of 'a' and stores it on the self_col-th column [Self].
-    pub fn extract_column<R>(&mut self, self_col: usize, a: &R, a_col: usize)
+    pub fn extract_column<R>(&mut self, self_col: usize, a: &VecZnx<R>, a_col: usize)
     where
-        R: VecZnxToRef + ZnxInfos,
+        R: AsRef<[u8]>,
+        VecZnx<R>: VecZnxToRef + ZnxInfos,
     {
         #[cfg(debug_assertions)]
         {
@@ -313,72 +314,41 @@ pub trait VecZnxToRef {
     fn to_ref(&self) -> VecZnx<&[u8]>;
 }
 
-pub trait VecZnxToMut: VecZnxToRef {
+impl<D> VecZnxToRef for VecZnx<D>
+where
+    D: AsRef<[u8]>,
+{
+    fn to_ref(&self) -> VecZnx<&[u8]> {
+        VecZnx {
+            data: self.data.as_ref(),
+            n: self.n,
+            cols: self.cols,
+            size: self.size,
+        }
+    }
+}
+
+pub trait VecZnxToMut {
     fn to_mut(&mut self) -> VecZnx<&mut [u8]>;
 }
 
-impl VecZnxToMut for VecZnx<Vec<u8>> {
-    fn to_mut(&mut self) -> VecZnx<&mut [u8]> {
-        VecZnx {
-            data: self.data.as_mut_slice(),
-            n: self.n,
-            cols: self.cols,
-            size: self.size,
-        }
-    }
-}
-
-impl VecZnxToRef for VecZnx<Vec<u8>> {
-    fn to_ref(&self) -> VecZnx<&[u8]> {
-        VecZnx {
-            data: self.data.as_slice(),
-            n: self.n,
-            cols: self.cols,
-            size: self.size,
-        }
-    }
-}
-
-impl VecZnxToMut for VecZnx<&mut [u8]> {
-    fn to_mut(&mut self) -> VecZnx<&mut [u8]> {
-        VecZnx {
-            data: self.data,
-            n: self.n,
-            cols: self.cols,
-            size: self.size,
-        }
-    }
-}
-
-impl VecZnxToRef for VecZnx<&mut [u8]> {
-    fn to_ref(&self) -> VecZnx<&[u8]> {
-        VecZnx {
-            data: self.data,
-            n: self.n,
-            cols: self.cols,
-            size: self.size,
-        }
-    }
-}
-
-impl VecZnxToRef for VecZnx<&[u8]> {
-    fn to_ref(&self) -> VecZnx<&[u8]> {
-        VecZnx {
-            data: self.data,
-            n: self.n,
-            cols: self.cols,
-            size: self.size,
-        }
-    }
-}
-
-impl<DataSelf> VecZnx<DataSelf>
+impl<D> VecZnxToMut for VecZnx<D>
 where
-    VecZnx<DataSelf>: VecZnxToRef,
+    D: AsRef<[u8]> + AsMut<[u8]>,
 {
+    fn to_mut(&mut self) -> VecZnx<&mut [u8]> {
+        VecZnx {
+            data: self.data.as_mut(),
+            n: self.n,
+            cols: self.cols,
+            size: self.size,
+        }
+    }
+}
+
+impl<DataSelf: AsRef<[u8]>> VecZnx<DataSelf> {
     pub fn clone(&self) -> VecZnx<Vec<u8>> {
         let self_ref: VecZnx<&[u8]> = self.to_ref();
-
         VecZnx {
             data: self_ref.data.to_vec(),
             n: self_ref.n,

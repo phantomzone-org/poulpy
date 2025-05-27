@@ -128,7 +128,7 @@ pub trait VecZnxBigOps<BACKEND: Backend> {
     fn vec_znx_big_normalize<R, A>(&self, basek: usize, res: &mut R, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch)
     where
         R: VecZnxToMut,
-        A: VecZnxBigToRef<BACKEND>;
+        A: VecZnxBigToRef<FFT64>;
 
     /// Applies the automorphism X^i -> X^ik on `a` and stores the result on `b`.
     fn vec_znx_big_automorphism<R, A>(&self, k: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
@@ -501,7 +501,7 @@ impl VecZnxBigOps<FFT64> for Module<FFT64> {
         }
     }
 
-    fn vec_znx_big_negate_inplace<A>(&self, a: &mut A, res_col: usize)
+    fn vec_znx_big_negate_inplace<A>(&self, a: &mut A, a_col: usize)
     where
         A: VecZnxBigToMut<FFT64>,
     {
@@ -513,10 +513,10 @@ impl VecZnxBigOps<FFT64> for Module<FFT64> {
         unsafe {
             vec_znx::vec_znx_negate(
                 self.ptr,
-                a.at_mut_ptr(res_col, 0),
+                a.at_mut_ptr(a_col, 0),
                 a.size() as u64,
                 a.sl() as u64,
-                a.at_ptr(res_col, 0),
+                a.at_ptr(a_col, 0),
                 a.size() as u64,
                 a.sl() as u64,
             )

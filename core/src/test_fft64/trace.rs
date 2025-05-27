@@ -91,8 +91,8 @@ fn test_trace_inplace(log_n: usize, basek: usize, k: usize, sigma: f64, rank: us
 
     ct.decrypt(&module, &mut pt_have, &sk_dft, scratch.borrow());
 
-    module.vec_znx_sub_ab_inplace(&mut pt_want, 0, &pt_have, 0);
-    module.vec_znx_normalize_inplace(basek, &mut pt_want, 0, scratch.borrow());
+    module.vec_znx_sub_ab_inplace(&mut pt_want.data, 0, &pt_have.data, 0);
+    module.vec_znx_normalize_inplace(basek, &mut pt_want.data, 0, scratch.borrow());
 
     let noise_have = pt_want.data.std(0, basek).log2();
 

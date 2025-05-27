@@ -1,4 +1,4 @@
-use backend::{Backend, Module, VecZnx, VecZnxAlloc, VecZnxToMut, VecZnxToRef};
+use backend::{Backend, Module, VecZnx, VecZnxAlloc};
 
 use crate::{elem::Infos, utils::derive_size};
 
@@ -21,24 +21,6 @@ impl<T> Infos for GLWEPlaintext<T> {
 
     fn k(&self) -> usize {
         self.k
-    }
-}
-
-impl<C> VecZnxToMut for GLWEPlaintext<C>
-where
-    VecZnx<C>: VecZnxToMut,
-{
-    fn to_mut(&mut self) -> VecZnx<&mut [u8]> {
-        self.data.to_mut()
-    }
-}
-
-impl<C> VecZnxToRef for GLWEPlaintext<C>
-where
-    VecZnx<C>: VecZnxToRef,
-{
-    fn to_ref(&self) -> VecZnx<&[u8]> {
-        self.data.to_ref()
     }
 }
 

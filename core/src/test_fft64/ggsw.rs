@@ -116,21 +116,21 @@ fn test_encrypt_sk(log_n: usize, basek: usize, k_ggsw: usize, sigma: f64, rank: 
 
     (0..ct.rank() + 1).for_each(|col_j| {
         (0..ct.rows()).for_each(|row_i| {
-            module.vec_znx_add_scalar_inplace(&mut pt_want, 0, row_i, &pt_scalar, 0);
+            module.vec_znx_add_scalar_inplace(&mut pt_want.data, 0, row_i, &pt_scalar, 0);
 
             // mul with sk[col_j-1]
             if col_j > 0 {
-                module.vec_znx_dft(&mut pt_dft, 0, &pt_want, 0);
-                module.svp_apply_inplace(&mut pt_dft, 0, &sk_dft, col_j - 1);
+                module.vec_znx_dft(&mut pt_dft, 0, &pt_want.data, 0);
+                module.svp_apply_inplace(&mut pt_dft, 0, &sk_dft.data, col_j - 1);
                 module.vec_znx_idft_tmp_a(&mut pt_big, 0, &mut pt_dft, 0);
-                module.vec_znx_big_normalize(basek, &mut pt_want, 0, &pt_big, 0, scratch.borrow());
+                module.vec_znx_big_normalize(basek, &mut pt_want.data, 0, &pt_big, 0, scratch.borrow());
             }
 
             ct.get_row(&module, row_i, col_j, &mut ct_glwe_fourier);
 
             ct_glwe_fourier.decrypt(&module, &mut pt_have, &sk_dft, scratch.borrow());
 
-            module.vec_znx_sub_ab_inplace(&mut pt_have, 0, &pt_want, 0);
+            module.vec_znx_sub_ab_inplace(&mut pt_have.data, 0, &pt_want.data, 0);
 
             let std_pt: f64 = pt_have.data.std(0, basek) * (k_ggsw as f64).exp2();
             assert!((sigma - std_pt).abs() <= 0.2, "{} {}", sigma, std_pt);
@@ -185,7 +185,7 @@ fn test_keyswitch(log_n: usize, basek: usize, k: usize, rank: usize, sigma: f64)
     let mut sk_out_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::alloc(&module, rank);
     sk_out_dft.dft(&module, &sk_out);
 
-    ksk.encrypt_sk(
+    ksk.generate_from_sk(
         &module,
         &sk_in,
         &sk_out_dft,
@@ -223,21 +223,21 @@ fn test_keyswitch(log_n: usize, basek: usize, k: usize, rank: usize, sigma: f64)
 
     (0..ct_out.rank() + 1).for_each(|col_j| {
         (0..ct_out.rows()).for_each(|row_i| {
-            module.vec_znx_add_scalar_inplace(&mut pt_want, 0, row_i, &pt_scalar, 0);
+            module.vec_znx_add_scalar_inplace(&mut pt_want.data, 0, row_i, &pt_scalar, 0);
 
             // mul with sk[col_j-1]
             if col_j > 0 {
-                module.vec_znx_dft(&mut pt_dft, 0, &pt_want, 0);
-                module.svp_apply_inplace(&mut pt_dft, 0, &sk_out_dft, col_j - 1);
+                module.vec_znx_dft(&mut pt_dft, 0, &pt_want.data, 0);
+                module.svp_apply_inplace(&mut pt_dft, 0, &sk_out_dft.data, col_j - 1);
                 module.vec_znx_idft_tmp_a(&mut pt_big, 0, &mut pt_dft, 0);
-                module.vec_znx_big_normalize(basek, &mut pt_want, 0, &pt_big, 0, scratch.borrow());
+                module.vec_znx_big_normalize(basek, &mut pt_want.data, 0, &pt_big, 0, scratch.borrow());
             }
 
             ct_out.get_row(&module, row_i, col_j, &mut ct_glwe_fourier);
 
             ct_glwe_fourier.decrypt(&module, &mut pt_have, &sk_out_dft, scratch.borrow());
 
-            module.vec_znx_sub_ab_inplace(&mut pt_have, 0, &pt_want, 0);
+            module.vec_znx_sub_ab_inplace(&mut pt_have.data, 0, &pt_want.data, 0);
 
             let noise_have: f64 = pt_have.data.std(0, basek).log2();
             let noise_want: f64 = noise_ggsw_keyswitch(
@@ -304,7 +304,7 @@ fn test_keyswitch_inplace(log_n: usize, basek: usize, k: usize, rank: usize, sig
     let mut sk_out_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::alloc(&module, rank);
     sk_out_dft.dft(&module, &sk_out);
 
-    ksk.encrypt_sk(
+    ksk.generate_from_sk(
         &module,
         &sk_in,
         &sk_out_dft,
@@ -342,21 +342,21 @@ fn test_keyswitch_inplace(log_n: usize, basek: usize, k: usize, rank: usize, sig
 
     (0..ct.rank() + 1).for_each(|col_j| {
         (0..ct.rows()).for_each(|row_i| {
-            module.vec_znx_add_scalar_inplace(&mut pt_want, 0, row_i, &pt_scalar, 0);
+            module.vec_znx_add_scalar_inplace(&mut pt_want.data, 0, row_i, &pt_scalar, 0);
 
             // mul with sk[col_j-1]
             if col_j > 0 {
-                module.vec_znx_dft(&mut pt_dft, 0, &pt_want, 0);
-                module.svp_apply_inplace(&mut pt_dft, 0, &sk_out_dft, col_j - 1);
+                module.vec_znx_dft(&mut pt_dft, 0, &pt_want.data, 0);
+                module.svp_apply_inplace(&mut pt_dft, 0, &sk_out_dft.data, col_j - 1);
                 module.vec_znx_idft_tmp_a(&mut pt_big, 0, &mut pt_dft, 0);
-                module.vec_znx_big_normalize(basek, &mut pt_want, 0, &pt_big, 0, scratch.borrow());
+                module.vec_znx_big_normalize(basek, &mut pt_want.data, 0, &pt_big, 0, scratch.borrow());
             }
 
             ct.get_row(&module, row_i, col_j, &mut ct_glwe_fourier);
 
             ct_glwe_fourier.decrypt(&module, &mut pt_have, &sk_out_dft, scratch.borrow());
 
-            module.vec_znx_sub_ab_inplace(&mut pt_have, 0, &pt_want, 0);
+            module.vec_znx_sub_ab_inplace(&mut pt_have.data, 0, &pt_want.data, 0);
 
             let noise_have: f64 = pt_have.data.std(0, basek).log2();
             let noise_want: f64 = noise_ggsw_keyswitch(
@@ -514,21 +514,21 @@ fn test_automorphism(p: i64, log_n: usize, basek: usize, k: usize, rank: usize, 
 
     (0..ct_out.rank() + 1).for_each(|col_j| {
         (0..ct_out.rows()).for_each(|row_i| {
-            module.vec_znx_add_scalar_inplace(&mut pt_want, 0, row_i, &pt_scalar, 0);
+            module.vec_znx_add_scalar_inplace(&mut pt_want.data, 0, row_i, &pt_scalar, 0);
 
             // mul with sk[col_j-1]
             if col_j > 0 {
-                module.vec_znx_dft(&mut pt_dft, 0, &pt_want, 0);
-                module.svp_apply_inplace(&mut pt_dft, 0, &sk_dft, col_j - 1);
+                module.vec_znx_dft(&mut pt_dft, 0, &pt_want.data, 0);
+                module.svp_apply_inplace(&mut pt_dft, 0, &sk_dft.data, col_j - 1);
                 module.vec_znx_idft_tmp_a(&mut pt_big, 0, &mut pt_dft, 0);
-                module.vec_znx_big_normalize(basek, &mut pt_want, 0, &pt_big, 0, scratch.borrow());
+                module.vec_znx_big_normalize(basek, &mut pt_want.data, 0, &pt_big, 0, scratch.borrow());
             }
 
             ct_out.get_row(&module, row_i, col_j, &mut ct_glwe_fourier);
 
             ct_glwe_fourier.decrypt(&module, &mut pt_have, &sk_dft, scratch.borrow());
 
-            module.vec_znx_sub_ab_inplace(&mut pt_have, 0, &pt_want, 0);
+            module.vec_znx_sub_ab_inplace(&mut pt_have.data, 0, &pt_want.data, 0);
 
             let noise_have: f64 = pt_have.data.std(0, basek).log2();
             let noise_want: f64 = noise_ggsw_keyswitch(
@@ -627,21 +627,21 @@ fn test_automorphism_inplace(p: i64, log_n: usize, basek: usize, k: usize, rank:
 
     (0..ct.rank() + 1).for_each(|col_j| {
         (0..ct.rows()).for_each(|row_i| {
-            module.vec_znx_add_scalar_inplace(&mut pt_want, 0, row_i, &pt_scalar, 0);
+            module.vec_znx_add_scalar_inplace(&mut pt_want.data, 0, row_i, &pt_scalar, 0);
 
             // mul with sk[col_j-1]
             if col_j > 0 {
-                module.vec_znx_dft(&mut pt_dft, 0, &pt_want, 0);
-                module.svp_apply_inplace(&mut pt_dft, 0, &sk_dft, col_j - 1);
+                module.vec_znx_dft(&mut pt_dft, 0, &pt_want.data, 0);
+                module.svp_apply_inplace(&mut pt_dft, 0, &sk_dft.data, col_j - 1);
                 module.vec_znx_idft_tmp_a(&mut pt_big, 0, &mut pt_dft, 0);
-                module.vec_znx_big_normalize(basek, &mut pt_want, 0, &pt_big, 0, scratch.borrow());
+                module.vec_znx_big_normalize(basek, &mut pt_want.data, 0, &pt_big, 0, scratch.borrow());
             }
 
             ct.get_row(&module, row_i, col_j, &mut ct_glwe_fourier);
 
             ct_glwe_fourier.decrypt(&module, &mut pt_have, &sk_dft, scratch.borrow());
 
-            module.vec_znx_sub_ab_inplace(&mut pt_have, 0, &pt_want, 0);
+            module.vec_znx_sub_ab_inplace(&mut pt_have.data, 0, &pt_want.data, 0);
 
             let noise_have: f64 = pt_have.data.std(0, basek).log2();
             let noise_want: f64 = noise_ggsw_keyswitch(
@@ -740,19 +740,19 @@ fn test_external_product(log_n: usize, basek: usize, k_ggsw: usize, rank: usize,
 
     (0..ct_ggsw_lhs_out.rank() + 1).for_each(|col_j| {
         (0..ct_ggsw_lhs_out.rows()).for_each(|row_i| {
-            module.vec_znx_add_scalar_inplace(&mut pt_want, 0, row_i, &pt_ggsw_lhs, 0);
+            module.vec_znx_add_scalar_inplace(&mut pt_want.data, 0, row_i, &pt_ggsw_lhs, 0);
 
             if col_j > 0 {
-                module.vec_znx_dft(&mut pt_dft, 0, &pt_want, 0);
-                module.svp_apply_inplace(&mut pt_dft, 0, &sk_dft, col_j - 1);
+                module.vec_znx_dft(&mut pt_dft, 0, &pt_want.data, 0);
+                module.svp_apply_inplace(&mut pt_dft, 0, &sk_dft.data, col_j - 1);
                 module.vec_znx_idft_tmp_a(&mut pt_big, 0, &mut pt_dft, 0);
-                module.vec_znx_big_normalize(basek, &mut pt_want, 0, &pt_big, 0, scratch.borrow());
+                module.vec_znx_big_normalize(basek, &mut pt_want.data, 0, &pt_big, 0, scratch.borrow());
             }
 
             ct_ggsw_lhs_out.get_row(&module, row_i, col_j, &mut ct_glwe_fourier);
             ct_glwe_fourier.decrypt(&module, &mut pt, &sk_dft, scratch.borrow());
 
-            module.vec_znx_sub_ab_inplace(&mut pt, 0, &pt_want, 0);
+            module.vec_znx_sub_ab_inplace(&mut pt.data, 0, &pt_want.data, 0);
 
             let noise_have: f64 = pt.data.std(0, basek).log2();
 
@@ -853,19 +853,19 @@ fn test_external_product_inplace(log_n: usize, basek: usize, k_ggsw: usize, rank
 
     (0..ct_ggsw_lhs.rank() + 1).for_each(|col_j| {
         (0..ct_ggsw_lhs.rows()).for_each(|row_i| {
-            module.vec_znx_add_scalar_inplace(&mut pt_want, 0, row_i, &pt_ggsw_lhs, 0);
+            module.vec_znx_add_scalar_inplace(&mut pt_want.data, 0, row_i, &pt_ggsw_lhs, 0);
 
             if col_j > 0 {
-                module.vec_znx_dft(&mut pt_dft, 0, &pt_want, 0);
-                module.svp_apply_inplace(&mut pt_dft, 0, &sk_dft, col_j - 1);
+                module.vec_znx_dft(&mut pt_dft, 0, &pt_want.data, 0);
+                module.svp_apply_inplace(&mut pt_dft, 0, &sk_dft.data, col_j - 1);
                 module.vec_znx_idft_tmp_a(&mut pt_big, 0, &mut pt_dft, 0);
-                module.vec_znx_big_normalize(basek, &mut pt_want, 0, &pt_big, 0, scratch.borrow());
+                module.vec_znx_big_normalize(basek, &mut pt_want.data, 0, &pt_big, 0, scratch.borrow());
             }
 
             ct_ggsw_lhs.get_row(&module, row_i, col_j, &mut ct_glwe_fourier);
             ct_glwe_fourier.decrypt(&module, &mut pt, &sk_dft, scratch.borrow());
 
-            module.vec_znx_sub_ab_inplace(&mut pt, 0, &pt_want, 0);
+            module.vec_znx_sub_ab_inplace(&mut pt.data, 0, &pt_want.data, 0);
 
             let noise_have: f64 = pt.data.std(0, basek).log2();
 

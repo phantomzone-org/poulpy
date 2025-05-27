@@ -42,7 +42,7 @@ pub trait AddNormal {
     fn add_normal(&mut self, basek: usize, col_i: usize, k: usize, source: &mut Source, sigma: f64, bound: f64);
 }
 
-impl<T> FillUniform for VecZnx<T>
+impl<T: AsMut<[u8]> + AsRef<[u8]>> FillUniform for VecZnx<T>
 where
     VecZnx<T>: VecZnxToMut,
 {
@@ -59,7 +59,7 @@ where
     }
 }
 
-impl<T> FillDistF64 for VecZnx<T>
+impl<T: AsMut<[u8]> + AsRef<[u8]>> FillDistF64 for VecZnx<T>
 where
     VecZnx<T>: VecZnxToMut,
 {
@@ -102,7 +102,7 @@ where
     }
 }
 
-impl<T> AddDistF64 for VecZnx<T>
+impl<T: AsMut<[u8]> + AsRef<[u8]>> AddDistF64 for VecZnx<T>
 where
     VecZnx<T>: VecZnxToMut,
 {
@@ -145,7 +145,7 @@ where
     }
 }
 
-impl<T> FillNormal for VecZnx<T>
+impl<T: AsMut<[u8]> + AsRef<[u8]>> FillNormal for VecZnx<T>
 where
     VecZnx<T>: VecZnxToMut,
 {
@@ -161,7 +161,7 @@ where
     }
 }
 
-impl<T> AddNormal for VecZnx<T>
+impl<T: AsMut<[u8]> + AsRef<[u8]>> AddNormal for VecZnx<T>
 where
     VecZnx<T>: VecZnxToMut,
 {
@@ -177,7 +177,7 @@ where
     }
 }
 
-impl<T> FillDistF64 for VecZnxBig<T, FFT64>
+impl<T: AsMut<[u8]> + AsRef<[u8]>> FillDistF64 for VecZnxBig<T, FFT64>
 where
     VecZnxBig<T, FFT64>: VecZnxBigToMut<FFT64>,
 {
@@ -220,7 +220,7 @@ where
     }
 }
 
-impl<T> AddDistF64 for VecZnxBig<T, FFT64>
+impl<T: AsMut<[u8]> + AsRef<[u8]>> AddDistF64 for VecZnxBig<T, FFT64>
 where
     VecZnxBig<T, FFT64>: VecZnxBigToMut<FFT64>,
 {
@@ -263,7 +263,7 @@ where
     }
 }
 
-impl<T> FillNormal for VecZnxBig<T, FFT64>
+impl<T: AsMut<[u8]> + AsRef<[u8]>> FillNormal for VecZnxBig<T, FFT64>
 where
     VecZnxBig<T, FFT64>: VecZnxBigToMut<FFT64>,
 {
@@ -279,7 +279,7 @@ where
     }
 }
 
-impl<T> AddNormal for VecZnxBig<T, FFT64>
+impl<T: AsMut<[u8]> + AsRef<[u8]>> AddNormal for VecZnxBig<T, FFT64>
 where
     VecZnxBig<T, FFT64>: VecZnxBigToMut<FFT64>,
 {

@@ -17,11 +17,13 @@ pub trait ScalarZnxDftOps<BACKEND: Backend> {
     where
         R: ScalarZnxDftToMut<BACKEND>,
         A: ScalarZnxToRef;
+
     fn svp_apply<R, A, B>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
     where
         R: VecZnxDftToMut<BACKEND>,
         A: ScalarZnxDftToRef<BACKEND>,
-        B: VecZnxDftToRef<FFT64>;
+        B: VecZnxDftToRef<BACKEND>;
+
     fn svp_apply_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxDftToMut<BACKEND>,

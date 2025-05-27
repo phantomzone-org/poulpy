@@ -1,7 +1,4 @@
-use backend::{
-    Backend, FFT64, MatZnxDft, MatZnxDftToMut, MatZnxDftToRef, Module, ScalarZnx, ScalarZnxDft, ScalarZnxDftAlloc,
-    ScalarZnxDftOps, ScalarZnxDftToRef, Scratch, VecZnxDftOps, VecZnxDftToRef,
-};
+use backend::{Backend, FFT64, MatZnxDft, Module, ScalarZnx, ScalarZnxDftAlloc, ScalarZnxDftOps, Scratch, VecZnxDftOps};
 use sampling::source::Source;
 
 use crate::{
@@ -61,11 +58,8 @@ impl TensorKey<Vec<u8>, FFT64> {
     }
 }
 
-impl<DataSelf> TensorKey<DataSelf, FFT64>
-where
-    MatZnxDft<DataSelf, FFT64>: MatZnxDftToMut<FFT64>,
-{
-    pub fn generate_from_sk<DataSk>(
+impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> TensorKey<DataSelf, FFT64> {
+    pub fn generate_from_sk<DataSk: AsRef<[u8]>>(
         &mut self,
         module: &Module<FFT64>,
         sk_dft: &SecretKeyFourier<DataSk, FFT64>,
@@ -73,9 +67,7 @@ where
         source_xe: &mut Source,
         sigma: f64,
         scratch: &mut Scratch,
-    ) where
-        ScalarZnxDft<DataSk, FFT64>: VecZnxDftToRef<FFT64> + ScalarZnxDftToRef<FFT64>,
-    {
+    ) {
         #[cfg(debug_assertions)]
         {
             assert_eq!(self.rank(), sk_dft.rank());
@@ -98,7 +90,7 @@ where
                     dist: sk_dft.dist,
                 };
 
-                self.at_mut(i, j).encrypt_sk(
+                self.at_mut(i, j).generate_from_sk(
                     module, &sk_ij, sk_dft, source_xa, source_xe, sigma, scratch1,
                 );
             });
@@ -115,10 +107,7 @@ where
     }
 }
 
-impl<DataSelf> TensorKey<DataSelf, FFT64>
-where
-    MatZnxDft<DataSelf, FFT64>: MatZnxDftToRef<FFT64>,
-{
+impl<DataSelf: AsRef<[u8]>> TensorKey<DataSelf, FFT64> {
     // Returns a reference to GLWESwitchingKey_{s}(s[i] * s[j])
     pub fn at(&self, mut i: usize, mut j: usize) -> &GLWESwitchingKey<DataSelf, FFT64> {
         if i > j {

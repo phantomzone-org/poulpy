@@ -100,7 +100,7 @@ fn test_encrypt_sk(log_n: usize, basek: usize, k_ksk: usize, sigma: f64, rank_in
     let mut sk_out_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::alloc(&module, rank_out);
     sk_out_dft.dft(&module, &sk_out);
 
-    ksk.encrypt_sk(
+    ksk.generate_from_sk(
         &module,
         &sk_in,
         &sk_out_dft,
@@ -117,7 +117,7 @@ fn test_encrypt_sk(log_n: usize, basek: usize, k_ksk: usize, sigma: f64, rank_in
         (0..ksk.rows()).for_each(|row_i| {
             ksk.get_row(&module, row_i, col_i, &mut ct_glwe_fourier);
             ct_glwe_fourier.decrypt(&module, &mut pt, &sk_out_dft, scratch.borrow());
-            module.vec_znx_sub_scalar_inplace(&mut pt, 0, row_i, &sk_in, col_i);
+            module.vec_znx_sub_scalar_inplace(&mut pt.data, 0, row_i, &sk_in.data, col_i);
             let std_pt: f64 = pt.data.std(0, basek) * (k_ksk as f64).exp2();
             assert!((sigma - std_pt).abs() <= 0.2, "{} {}", sigma, std_pt);
         });
@@ -179,7 +179,7 @@ fn test_key_switch(
     sk2_dft.dft(&module, &sk2);
 
     // gglwe_{s1}(s0) = s0 -> s1
-    ct_gglwe_s0s1.encrypt_sk(
+    ct_gglwe_s0s1.generate_from_sk(
         &module,
         &sk0,
         &sk1_dft,
@@ -190,7 +190,7 @@ fn test_key_switch(
     );
 
     // gglwe_{s2}(s1) -> s1 -> s2
-    ct_gglwe_s1s2.encrypt_sk(
+    ct_gglwe_s1s2.generate_from_sk(
         &module,
         &sk1,
         &sk2_dft,
@@ -211,7 +211,7 @@ fn test_key_switch(
         (0..ct_gglwe_s0s2.rows()).for_each(|row_i| {
             ct_gglwe_s0s2.get_row(&module, row_i, col_i, &mut ct_glwe_dft);
             ct_glwe_dft.decrypt(&module, &mut pt, &sk2_dft, scratch.borrow());
-            module.vec_znx_sub_scalar_inplace(&mut pt, 0, row_i, &sk0, col_i);
+            module.vec_znx_sub_scalar_inplace(&mut pt.data, 0, row_i, &sk0.data, col_i);
 
             let noise_have: f64 = pt.data.std(0, basek).log2();
             let noise_want: f64 = log2_std_noise_gglwe_product(
@@ -280,7 +280,7 @@ fn test_key_switch_inplace(log_n: usize, basek: usize, k_ksk: usize, sigma: f64,
     sk2_dft.dft(&module, &sk2);
 
     // gglwe_{s1}(s0) = s0 -> s1
-    ct_gglwe_s0s1.encrypt_sk(
+    ct_gglwe_s0s1.generate_from_sk(
         &module,
         &sk0,
         &sk1_dft,
@@ -291,7 +291,7 @@ fn test_key_switch_inplace(log_n: usize, basek: usize, k_ksk: usize, sigma: f64,
     );
 
     // gglwe_{s2}(s1) -> s1 -> s2
-    ct_gglwe_s1s2.encrypt_sk(
+    ct_gglwe_s1s2.generate_from_sk(
         &module,
         &sk1,
         &sk2_dft,
@@ -314,7 +314,7 @@ fn test_key_switch_inplace(log_n: usize, basek: usize, k_ksk: usize, sigma: f64,
         (0..ct_gglwe_s0s2.rows()).for_each(|row_i| {
             ct_gglwe_s0s2.get_row(&module, row_i, col_i, &mut ct_glwe_dft);
             ct_glwe_dft.decrypt(&module, &mut pt, &sk2_dft, scratch.borrow());
-            module.vec_znx_sub_scalar_inplace(&mut pt, 0, row_i, &sk0, col_i);
+            module.vec_znx_sub_scalar_inplace(&mut pt.data, 0, row_i, &sk0.data, col_i);
 
             let noise_have: f64 = pt.data.std(0, basek).log2();
             let noise_want: f64 = log2_std_noise_gglwe_product(
@@ -385,7 +385,7 @@ fn test_external_product(log_n: usize, basek: usize, k: usize, sigma: f64, rank_
     sk_out_dft.dft(&module, &sk_out);
 
     // gglwe_{s1}(s0) = s0 -> s1
-    ct_gglwe_in.encrypt_sk(
+    ct_gglwe_in.generate_from_sk(
         &module,
         &sk_in,
         &sk_out_dft,
@@ -432,7 +432,7 @@ fn test_external_product(log_n: usize, basek: usize, k: usize, sigma: f64, rank_
         (0..ct_gglwe_out.rows()).for_each(|row_i| {
             ct_gglwe_out.get_row(&module, row_i, col_i, &mut ct_glwe_dft);
             ct_glwe_dft.decrypt(&module, &mut pt, &sk_out_dft, scratch.borrow());
-            module.vec_znx_sub_scalar_inplace(&mut pt, 0, row_i, &sk_in, col_i);
+            module.vec_znx_sub_scalar_inplace(&mut pt.data, 0, row_i, &sk_in.data, col_i);
 
             let noise_have: f64 = pt.data.std(0, basek).log2();
 
@@ -505,7 +505,7 @@ fn test_external_product_inplace(log_n: usize, basek: usize, k: usize, sigma: f6
     sk_out_dft.dft(&module, &sk_out);
 
     // gglwe_{s1}(s0) = s0 -> s1
-    ct_gglwe.encrypt_sk(
+    ct_gglwe.generate_from_sk(
         &module,
         &sk_in,
         &sk_out_dft,
@@ -539,7 +539,7 @@ fn test_external_product_inplace(log_n: usize, basek: usize, k: usize, sigma: f6
         (0..ct_gglwe.rows()).for_each(|row_i| {
             ct_gglwe.get_row(&module, row_i, col_i, &mut ct_glwe_dft);
             ct_glwe_dft.decrypt(&module, &mut pt, &sk_out_dft, scratch.borrow());
-            module.vec_znx_sub_scalar_inplace(&mut pt, 0, row_i, &sk_in, col_i);
+            module.vec_znx_sub_scalar_inplace(&mut pt.data, 0, row_i, &sk_in.data, col_i);
 
             let noise_have: f64 = pt.data.std(0, basek).log2();
 

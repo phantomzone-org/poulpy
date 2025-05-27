@@ -8,7 +8,7 @@ use crate::{
     keyswitch_key::GLWESwitchingKey,
     test_fft64::{gglwe::log2_std_noise_gglwe_product, ggsw::noise_ggsw_product},
 };
-use backend::{FFT64, FillUniform, Module, ScalarZnx, ScalarZnxAlloc, ScratchOwned, Stats, VecZnxOps, VecZnxToMut, ZnxViewMut};
+use backend::{FFT64, FillUniform, Module, ScalarZnx, ScalarZnxAlloc, ScratchOwned, Stats, VecZnxOps, ZnxViewMut};
 use sampling::source::Source;
 
 #[test]
@@ -104,7 +104,7 @@ fn test_keyswitch(
     let mut sk_out_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::alloc(&module, rank_out);
     sk_out_dft.dft(&module, &sk_out);
 
-    ksk.encrypt_sk(
+    ksk.generate_from_sk(
         &module,
         &sk_in,
         &sk_out_dft,
@@ -130,7 +130,7 @@ fn test_keyswitch(
 
     ct_glwe_out.decrypt(&module, &mut pt_have, &sk_out_dft, scratch.borrow());
 
-    module.vec_znx_sub_ab_inplace(&mut pt_have, 0, &pt_want, 0);
+    module.vec_znx_sub_ab_inplace(&mut pt_have.data, 0, &pt_want.data, 0);
 
     let noise_have: f64 = pt_have.data.std(0, basek).log2();
     let noise_want: f64 = log2_std_noise_gglwe_product(
@@ -192,7 +192,7 @@ fn test_keyswitch_inplace(log_n: usize, basek: usize, k_ksk: usize, k_ct: usize,
     let mut sk_out_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::alloc(&module, rank);
     sk_out_dft.dft(&module, &sk_out);
 
-    ksk.encrypt_sk(
+    ksk.generate_from_sk(
         &module,
         &sk_in,
         &sk_out_dft,
@@ -218,7 +218,7 @@ fn test_keyswitch_inplace(log_n: usize, basek: usize, k_ksk: usize, k_ct: usize,
 
     ct_glwe.decrypt(&module, &mut pt_have, &sk_out_dft, scratch.borrow());
 
-    module.vec_znx_sub_ab_inplace(&mut pt_have, 0, &pt_want, 0);
+    module.vec_znx_sub_ab_inplace(&mut pt_have.data, 0, &pt_want.data, 0);
 
     let noise_have: f64 = pt_have.data.std(0, basek).log2();
     let noise_want: f64 = log2_std_noise_gglwe_product(
@@ -265,7 +265,7 @@ fn test_external_product(log_n: usize, basek: usize, k_ggsw: usize, k_ct_in: usi
         .data
         .fill_uniform(basek, 0, pt_want.size(), &mut source_xa);
 
-    pt_want.to_mut().at_mut(0, 0)[1] = 1;
+    pt_want.data.at_mut(0, 0)[1] = 1;
 
     let k: usize = 1;
 
@@ -310,9 +310,9 @@ fn test_external_product(log_n: usize, basek: usize, k_ggsw: usize, k_ct_in: usi
 
     ct_out.decrypt(&module, &mut pt_have, &sk_dft, scratch.borrow());
 
-    module.vec_znx_rotate_inplace(k as i64, &mut pt_want, 0);
+    module.vec_znx_rotate_inplace(k as i64, &mut pt_want.data, 0);
 
-    module.vec_znx_sub_ab_inplace(&mut pt_have, 0, &pt_want, 0);
+    module.vec_znx_sub_ab_inplace(&mut pt_have.data, 0, &pt_want.data, 0);
 
     let noise_have: f64 = pt_have.data.std(0, basek).log2();
 
@@ -365,7 +365,7 @@ fn test_external_product_inplace(log_n: usize, basek: usize, k_ggsw: usize, k_ct
         .data
         .fill_uniform(basek, 0, pt_want.size(), &mut source_xa);
 
-    pt_want.to_mut().at_mut(0, 0)[1] = 1;
+    pt_want.data.at_mut(0, 0)[1] = 1;
 
     let k: usize = 1;
 
@@ -410,9 +410,9 @@ fn test_external_product_inplace(log_n: usize, basek: usize, k_ggsw: usize, k_ct
 
     ct.decrypt(&module, &mut pt_have, &sk_dft, scratch.borrow());
 
-    module.vec_znx_rotate_inplace(k as i64, &mut pt_want, 0);
+    module.vec_znx_rotate_inplace(k as i64, &mut pt_want.data, 0);
 
-    module.vec_znx_sub_ab_inplace(&mut pt_have, 0, &pt_want, 0);
+    module.vec_znx_sub_ab_inplace(&mut pt_have.data, 0, &pt_want.data, 0);
 
     let noise_have: f64 = pt_have.data.std(0, basek).log2();
 

@@ -5,8 +5,9 @@ use core::{
     glwe_ciphertext::GLWECiphertext,
     keys::{SecretKey, SecretKeyFourier},
 };
-use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
+use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use sampling::source::Source;
+use std::hint::black_box;
 
 fn bench_external_product_glwe_fft64(c: &mut Criterion) {
     let mut group = c.benchmark_group("external_product_glwe_fft64");

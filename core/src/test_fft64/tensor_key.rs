@@ -69,7 +69,7 @@ fn test_encrypt_sk(log_n: usize, basek: usize, k: usize, sigma: f64, rank: usize
                         .at(i, j)
                         .get_row(&module, row_i, col_i, &mut ct_glwe_fourier);
                     ct_glwe_fourier.decrypt(&module, &mut pt, &sk_dft, scratch.borrow());
-                    module.vec_znx_sub_scalar_inplace(&mut pt, 0, row_i, &sk_ij, col_i);
+                    module.vec_znx_sub_scalar_inplace(&mut pt.data, 0, row_i, &sk_ij, col_i);
                     let std_pt: f64 = pt.data.std(0, basek) * (k as f64).exp2();
                     assert!((sigma - std_pt).abs() <= 0.2, "{} {}", sigma, std_pt);
                 });

@@ -2,7 +2,7 @@ use crate::ffi::vec_znx_dft::vec_znx_dft_t;
 use crate::ffi::vmp;
 use crate::znx_base::{ZnxInfos, ZnxView, ZnxViewMut};
 use crate::{
-    Backend, FFT64, MatZnxDft, MatZnxDftOwned, MatZnxDftToMut, MatZnxDftToRef, Module, Scratch, VecZnxDft, VecZnxDftToMut,
+    Backend, FFT64, MatZnxDft, MatZnxDftOwned, MatZnxToMut, MatZnxToRef, Module, Scratch, VecZnxDft, VecZnxDftToMut,
     VecZnxDftToRef,
 };
 
@@ -47,27 +47,27 @@ pub trait MatZnxDftOps<BACKEND: Backend> {
     ///
     /// # Arguments
     ///
-    /// * `b`: [MatZnxDft] on which the values are encoded.
+    /// * `res`: [MatZnxDft] on which the values are encoded.
     /// * `a`: the [VecZnxDft] to encode on the [MatZnxDft].
     /// * `row_i`: the index of the row to prepare.
     ///
     /// The size of buf can be obtained with [MatZnxDftOps::vmp_prepare_tmp_bytes].
     fn vmp_prepare_row<R, A>(&self, res: &mut R, res_row: usize, res_col_in: usize, a: &A)
     where
-        R: MatZnxDftToMut<BACKEND>,
-        A: VecZnxDftToRef<BACKEND>;
+        R: MatZnxToMut<FFT64>,
+        A: VecZnxDftToRef<FFT64>;
 
     /// Extracts the ith-row of [MatZnxDft] into a [VecZnxDft].
     ///
     /// # Arguments
     ///
-    /// * `b`: the [VecZnxDft] to on which to extract the row of the [MatZnxDft].
+    /// * `res`: the [VecZnxDft] to on which to extract the row of the [MatZnxDft].
     /// * `a`: [MatZnxDft] on which the values are encoded.
     /// * `row_i`: the index of the row to extract.
     fn vmp_extract_row<R, A>(&self, res: &mut R, a: &A, a_row: usize, a_col_in: usize)
     where
-        R: VecZnxDftToMut<BACKEND>,
-        A: MatZnxDftToRef<BACKEND>;
+        R: VecZnxDftToMut<FFT64>,
+        A: MatZnxToRef<FFT64>;
 
     /// Applies the vector matrix product [VecZnxDft] x [MatZnxDft].
     /// The size of `buf` is given by [MatZnxDftOps::vmp_apply_dft_to_dft_tmp_bytes].
@@ -96,16 +96,16 @@ pub trait MatZnxDftOps<BACKEND: Backend> {
     /// * `buf`: scratch space, the size can be obtained with [MatZnxDftOps::vmp_apply_dft_to_dft_tmp_bytes].
     fn vmp_apply<R, A, B>(&self, res: &mut R, a: &A, b: &B, scratch: &mut Scratch)
     where
-        R: VecZnxDftToMut<BACKEND>,
-        A: VecZnxDftToRef<BACKEND>,
-        B: MatZnxDftToRef<BACKEND>;
+        R: VecZnxDftToMut<FFT64>,
+        A: VecZnxDftToRef<FFT64>,
+        B: MatZnxToRef<FFT64>;
 
     // Same as [MatZnxDftOps::vmp_apply] except result is added on R instead of overwritting R.
     fn vmp_apply_add<R, A, B>(&self, res: &mut R, a: &A, b: &B, scratch: &mut Scratch)
     where
-        R: VecZnxDftToMut<BACKEND>,
-        A: VecZnxDftToRef<BACKEND>,
-        B: MatZnxDftToRef<BACKEND>;
+        R: VecZnxDftToMut<FFT64>,
+        A: VecZnxDftToRef<FFT64>,
+        B: MatZnxToRef<FFT64>;
 }
 
 impl<B: Backend> MatZnxDftAlloc<B> for Module<B> {
@@ -154,10 +154,10 @@ impl<BACKEND: Backend> MatZnxDftScratch for Module<BACKEND> {
 impl MatZnxDftOps<FFT64> for Module<FFT64> {
     fn vmp_prepare_row<R, A>(&self, res: &mut R, res_row: usize, res_col_in: usize, a: &A)
     where
-        R: MatZnxDftToMut<FFT64>,
+        R: MatZnxToMut<FFT64>,
         A: VecZnxDftToRef<FFT64>,
     {
-        let mut res: MatZnxDft<&mut [u8], _> = res.to_mut();
+        let mut res: MatZnxDft<&mut [u8], FFT64> = res.to_mut();
         let a: VecZnxDft<&[u8], _> = a.to_ref();
 
         #[cfg(debug_assertions)]
@@ -207,9 +207,9 @@ impl MatZnxDftOps<FFT64> for Module<FFT64> {
     fn vmp_extract_row<R, A>(&self, res: &mut R, a: &A, a_row: usize, a_col_in: usize)
     where
         R: VecZnxDftToMut<FFT64>,
-        A: MatZnxDftToRef<FFT64>,
+        A: MatZnxToRef<FFT64>,
     {
-        let mut res: VecZnxDft<&mut [u8], _> = res.to_mut();
+        let mut res: VecZnxDft<&mut [u8], FFT64> = res.to_mut();
         let a: MatZnxDft<&[u8], _> = a.to_ref();
 
         #[cfg(debug_assertions)]
@@ -259,7 +259,7 @@ impl MatZnxDftOps<FFT64> for Module<FFT64> {
     where
         R: VecZnxDftToMut<FFT64>,
         A: VecZnxDftToRef<FFT64>,
-        B: MatZnxDftToRef<FFT64>,
+        B: MatZnxToRef<FFT64>,
     {
         let mut res: VecZnxDft<&mut [u8], _> = res.to_mut();
         let a: VecZnxDft<&[u8], _> = a.to_ref();
@@ -313,7 +313,7 @@ impl MatZnxDftOps<FFT64> for Module<FFT64> {
     where
         R: VecZnxDftToMut<FFT64>,
         A: VecZnxDftToRef<FFT64>,
-        B: MatZnxDftToRef<FFT64>,
+        B: MatZnxToRef<FFT64>,
     {
         let mut res: VecZnxDft<&mut [u8], _> = res.to_mut();
         let a: VecZnxDft<&[u8], _> = a.to_ref();

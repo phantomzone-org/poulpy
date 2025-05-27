@@ -152,81 +152,49 @@ impl<D: AsRef<[u8]>> MatZnxDft<D, FFT64> {
 }
 
 pub type MatZnxDftOwned<B> = MatZnxDft<Vec<u8>, B>;
+pub type MatZnxDftMut<'a, B> = MatZnxDft<&'a mut [u8], B>;
+pub type MatZnxDftRef<'a, B> = MatZnxDft<&'a [u8], B>;
 
-pub trait MatZnxDftToRef<B: Backend> {
+pub trait MatZnxToRef<B: Backend> {
     fn to_ref(&self) -> MatZnxDft<&[u8], B>;
 }
 
-pub trait MatZnxDftToMut<B: Backend>: MatZnxDftToRef<B> {
+impl<D, B: Backend> MatZnxToRef<B> for MatZnxDft<D, B>
+where
+    D: AsRef<[u8]>,
+    B: Backend,
+{
+    fn to_ref(&self) -> MatZnxDft<&[u8], B> {
+        MatZnxDft {
+            data: self.data.as_ref(),
+            n: self.n,
+            rows: self.rows,
+            cols_in: self.cols_in,
+            cols_out: self.cols_out,
+            size: self.size,
+            _phantom: std::marker::PhantomData,
+        }
+    }
+}
+
+pub trait MatZnxToMut<B: Backend> {
     fn to_mut(&mut self) -> MatZnxDft<&mut [u8], B>;
 }
 
-impl<B: Backend> MatZnxDftToMut<B> for MatZnxDft<Vec<u8>, B> {
+impl<D, B: Backend> MatZnxToMut<B> for MatZnxDft<D, B>
+where
+    D: AsRef<[u8]> + AsMut<[u8]>,
+    B: Backend,
+{
     fn to_mut(&mut self) -> MatZnxDft<&mut [u8], B> {
         MatZnxDft {
-            data: self.data.as_mut_slice(),
+            data: self.data.as_mut(),
             n: self.n,
             rows: self.rows,
             cols_in: self.cols_in,
             cols_out: self.cols_out,
             size: self.size,
-            _phantom: PhantomData,
-        }
-    }
-}
-
-impl<B: Backend> MatZnxDftToRef<B> for MatZnxDft<Vec<u8>, B> {
-    fn to_ref(&self) -> MatZnxDft<&[u8], B> {
-        MatZnxDft {
-            data: self.data.as_slice(),
-            n: self.n,
-            rows: self.rows,
-            cols_in: self.cols_in,
-            cols_out: self.cols_out,
-            size: self.size,
-            _phantom: PhantomData,
-        }
-    }
-}
-
-impl<B: Backend> MatZnxDftToMut<B> for MatZnxDft<&mut [u8], B> {
-    fn to_mut(&mut self) -> MatZnxDft<&mut [u8], B> {
-        MatZnxDft {
-            data: self.data,
-            n: self.n,
-            rows: self.rows,
-            cols_in: self.cols_in,
-            cols_out: self.cols_out,
-            size: self.size,
-            _phantom: PhantomData,
-        }
-    }
-}
-
-impl<B: Backend> MatZnxDftToRef<B> for MatZnxDft<&mut [u8], B> {
-    fn to_ref(&self) -> MatZnxDft<&[u8], B> {
-        MatZnxDft {
-            data: self.data,
-            n: self.n,
-            rows: self.rows,
-            cols_in: self.cols_in,
-            cols_out: self.cols_out,
-            size: self.size,
-            _phantom: PhantomData,
-        }
-    }
-}
-
-impl<B: Backend> MatZnxDftToRef<B> for MatZnxDft<&[u8], B> {
-    fn to_ref(&self) -> MatZnxDft<&[u8], B> {
-        MatZnxDft {
-            data: self.data,
-            n: self.n,
-            rows: self.rows,
-            cols_in: self.cols_in,
-            cols_out: self.cols_out,
-            size: self.size,
-            _phantom: PhantomData,
+            _phantom: std::marker::PhantomData,
         }
     }
 }

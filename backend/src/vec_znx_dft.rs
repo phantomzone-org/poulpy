@@ -91,14 +91,14 @@ impl<D: From<Vec<u8>>, B: Backend> VecZnxDft<D, B> {
     }
 }
 
-impl<D> VecZnxDft<D, FFT64>
+impl<D: AsMut<[u8]> + AsRef<[u8]>> VecZnxDft<D, FFT64>
 where
-    VecZnxDft<D, FFT64>: VecZnxDftToMut<FFT64> + ZnxInfos,
+    VecZnxDft<D, FFT64>: VecZnxDftToMut<FFT64>,
 {
     /// Extracts the a_col-th column of 'a' and stores it on the self_col-th column [Self].
-    pub fn extract_column<C>(&mut self, self_col: usize, a: &VecZnxDft<C, FFT64>, a_col: usize)
+    pub fn extract_column<C: AsRef<[u8]>>(&mut self, self_col: usize, a: &VecZnxDft<C, FFT64>, a_col: usize)
     where
-        VecZnxDft<C, FFT64>: VecZnxDftToRef<FFT64> + ZnxInfos,
+        VecZnxDft<C, FFT64>: VecZnxDftToRef<FFT64>,
     {
         #[cfg(debug_assertions)]
         {
@@ -142,66 +142,38 @@ pub trait VecZnxDftToRef<B: Backend> {
     fn to_ref(&self) -> VecZnxDft<&[u8], B>;
 }
 
-pub trait VecZnxDftToMut<B: Backend>: VecZnxDftToRef<B> {
+impl<D, B: Backend> VecZnxDftToRef<B> for VecZnxDft<D, B>
+where
+    D: AsRef<[u8]>,
+    B: Backend,
+{
+    fn to_ref(&self) -> VecZnxDft<&[u8], B> {
+        VecZnxDft {
+            data: self.data.as_ref(),
+            n: self.n,
+            cols: self.cols,
+            size: self.size,
+            _phantom: std::marker::PhantomData,
+        }
+    }
+}
+
+pub trait VecZnxDftToMut<B: Backend> {
     fn to_mut(&mut self) -> VecZnxDft<&mut [u8], B>;
 }
 
-impl<B: Backend> VecZnxDftToMut<B> for VecZnxDft<Vec<u8>, B> {
+impl<D, B: Backend> VecZnxDftToMut<B> for VecZnxDft<D, B>
+where
+    D: AsRef<[u8]> + AsMut<[u8]>,
+    B: Backend,
+{
     fn to_mut(&mut self) -> VecZnxDft<&mut [u8], B> {
         VecZnxDft {
-            data: self.data.as_mut_slice(),
+            data: self.data.as_mut(),
             n: self.n,
             cols: self.cols,
             size: self.size,
-            _phantom: PhantomData,
-        }
-    }
-}
-
-impl<B: Backend> VecZnxDftToRef<B> for VecZnxDft<Vec<u8>, B> {
-    fn to_ref(&self) -> VecZnxDft<&[u8], B> {
-        VecZnxDft {
-            data: self.data.as_slice(),
-            n: self.n,
-            cols: self.cols,
-            size: self.size,
-            _phantom: PhantomData,
-        }
-    }
-}
-
-impl<B: Backend> VecZnxDftToMut<B> for VecZnxDft<&mut [u8], B> {
-    fn to_mut(&mut self) -> VecZnxDft<&mut [u8], B> {
-        VecZnxDft {
-            data: self.data,
-            n: self.n,
-            cols: self.cols,
-            size: self.size,
-            _phantom: PhantomData,
-        }
-    }
-}
-
-impl<B: Backend> VecZnxDftToRef<B> for VecZnxDft<&mut [u8], B> {
-    fn to_ref(&self) -> VecZnxDft<&[u8], B> {
-        VecZnxDft {
-            data: self.data,
-            n: self.n,
-            cols: self.cols,
-            size: self.size,
-            _phantom: PhantomData,
-        }
-    }
-}
-
-impl<B: Backend> VecZnxDftToRef<B> for VecZnxDft<&[u8], B> {
-    fn to_ref(&self) -> VecZnxDft<&[u8], B> {
-        VecZnxDft {
-            data: self.data,
-            n: self.n,
-            cols: self.cols,
-            size: self.size,
-            _phantom: PhantomData,
+            _phantom: std::marker::PhantomData,
         }
     }
 }

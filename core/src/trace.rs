@@ -1,8 +1,13 @@
 use std::collections::HashMap;
 
-use backend::{FFT64, MatZnxDft, MatZnxDftToRef, Module, Scratch, VecZnx, VecZnxToMut, VecZnxToRef};
+use backend::{FFT64, Module, Scratch};
 
-use crate::{automorphism::AutomorphismKey, glwe_ciphertext::GLWECiphertext};
+use crate::{
+    automorphism::AutomorphismKey,
+    elem::{Infos, SetMetaData},
+    glwe_ciphertext::{GLWECiphertext, GLWECiphertextToMut, GLWECiphertextToRef},
+    glwe_ops::GLWEOps,
+};
 
 impl GLWECiphertext<Vec<u8>> {
     pub fn trace_galois_elements(module: &Module<FFT64>) -> Vec<i64> {
@@ -32,11 +37,11 @@ impl GLWECiphertext<Vec<u8>> {
     }
 }
 
-impl<DataSelf> GLWECiphertext<DataSelf>
+impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf>
 where
-    VecZnx<DataSelf>: VecZnxToMut,
+    GLWECiphertext<DataSelf>: GLWECiphertextToMut + Infos + SetMetaData,
 {
-    pub fn trace<DataLhs, DataAK>(
+    pub fn trace<DataLhs: AsRef<[u8]>, DataAK: AsRef<[u8]>>(
         &mut self,
         module: &Module<FFT64>,
         start: usize,
@@ -45,23 +50,20 @@ where
         auto_keys: &HashMap<i64, AutomorphismKey<DataAK, FFT64>>,
         scratch: &mut Scratch,
     ) where
-        VecZnx<DataLhs>: VecZnxToRef,
-        MatZnxDft<DataAK, FFT64>: MatZnxDftToRef<FFT64>,
+        GLWECiphertext<DataLhs>: GLWECiphertextToRef + Infos,
     {
         self.copy(module, lhs);
         self.trace_inplace(module, start, end, auto_keys, scratch);
     }
 
-    pub fn trace_inplace<DataAK>(
+    pub fn trace_inplace<DataAK: AsRef<[u8]>>(
         &mut self,
         module: &Module<FFT64>,
         start: usize,
         end: usize,
         auto_keys: &HashMap<i64, AutomorphismKey<DataAK, FFT64>>,
         scratch: &mut Scratch,
-    ) where
-        MatZnxDft<DataAK, FFT64>: MatZnxDftToRef<FFT64>,
-    {
+    ) {
         (start..end).for_each(|i| {
             self.rsh(1, scratch);
 

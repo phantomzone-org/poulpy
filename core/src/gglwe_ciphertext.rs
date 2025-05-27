@@ -1,7 +1,6 @@
 use backend::{
-    Backend, FFT64, MatZnxDft, MatZnxDftAlloc, MatZnxDftOps, MatZnxDftToMut, MatZnxDftToRef, Module, ScalarZnx, ScalarZnxDft,
-    ScalarZnxDftToRef, ScalarZnxToRef, Scratch, VecZnxAlloc, VecZnxDftAlloc, VecZnxDftToMut, VecZnxDftToRef, VecZnxOps, ZnxInfos,
-    ZnxZero,
+    Backend, FFT64, MatZnxDft, MatZnxDftAlloc, MatZnxDftOps, Module, ScalarZnx, Scratch, VecZnxAlloc, VecZnxDftAlloc, VecZnxOps,
+    ZnxInfos, ZnxZero,
 };
 use sampling::source::Source;
 
@@ -60,24 +59,6 @@ impl<T, B: Backend> GGLWECiphertext<T, B> {
     }
 }
 
-impl<C, B: Backend> MatZnxDftToMut<B> for GGLWECiphertext<C, B>
-where
-    MatZnxDft<C, B>: MatZnxDftToMut<B>,
-{
-    fn to_mut(&mut self) -> MatZnxDft<&mut [u8], B> {
-        self.data.to_mut()
-    }
-}
-
-impl<C, B: Backend> MatZnxDftToRef<B> for GGLWECiphertext<C, B>
-where
-    MatZnxDft<C, B>: MatZnxDftToRef<B>,
-{
-    fn to_ref(&self) -> MatZnxDft<&[u8], B> {
-        self.data.to_ref()
-    }
-}
-
 impl GGLWECiphertext<Vec<u8>, FFT64> {
     pub fn generate_from_sk_scratch_space(module: &Module<FFT64>, rank: usize, size: usize) -> usize {
         GLWECiphertext::encrypt_sk_scratch_space(module, size)
@@ -91,11 +72,8 @@ impl GGLWECiphertext<Vec<u8>, FFT64> {
     }
 }
 
-impl<DataSelf> GGLWECiphertext<DataSelf, FFT64>
-where
-    MatZnxDft<DataSelf, FFT64>: MatZnxDftToMut<FFT64> + ZnxInfos,
-{
-    pub fn generate_from_sk<DataPt, DataSk>(
+impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGLWECiphertext<DataSelf, FFT64> {
+    pub fn encrypt_sk<DataPt: AsRef<[u8]>, DataSk: AsRef<[u8]>>(
         &mut self,
         module: &Module<FFT64>,
         pt: &ScalarZnx<DataPt>,
@@ -104,10 +82,7 @@ where
         source_xe: &mut Source,
         sigma: f64,
         scratch: &mut Scratch,
-    ) where
-        ScalarZnx<DataPt>: ScalarZnxToRef,
-        ScalarZnxDft<DataSk, FFT64>: ScalarZnxDftToRef<FFT64>,
-    {
+    ) {
         #[cfg(debug_assertions)]
         {
             assert_eq!(self.rank_in(), pt.cols());
@@ -171,8 +146,8 @@ where
             (0..rows).for_each(|row_i| {
                 // Adds the scalar_znx_pt to the i-th limb of the vec_znx_pt
                 vec_znx_pt.data.zero(); // zeroes for next iteration
-                module.vec_znx_add_scalar_inplace(&mut vec_znx_pt, 0, row_i, pt, col_i); // Selects the i-th
-                module.vec_znx_normalize_inplace(basek, &mut vec_znx_pt, 0, scratch_3);
+                module.vec_znx_add_scalar_inplace(&mut vec_znx_pt.data, 0, row_i, pt, col_i); // Selects the i-th
+                module.vec_znx_normalize_inplace(basek, &mut vec_znx_pt.data, 0, scratch_3);
 
                 // rlwe encrypt of vec_znx_pt into vec_znx_ct
                 vec_znx_ct.encrypt_sk(
@@ -189,32 +164,32 @@ where
                 vec_znx_ct.dft(module, &mut vec_znx_ct_dft);
 
                 // Stores vec_znx_dft_ct into thw i-th row of the MatZnxDft
-                module.vmp_prepare_row(self, row_i, col_i, &vec_znx_ct_dft);
+                module.vmp_prepare_row(&mut self.data, row_i, col_i, &vec_znx_ct_dft.data);
             });
         });
     }
 }
 
-impl<C> GetRow<FFT64> for GGLWECiphertext<C, FFT64>
-where
-    MatZnxDft<C, FFT64>: MatZnxDftToRef<FFT64>,
-{
-    fn get_row<R>(&self, module: &Module<FFT64>, row_i: usize, col_j: usize, res: &mut R)
-    where
-        R: VecZnxDftToMut<FFT64>,
-    {
-        module.vmp_extract_row(res, self, row_i, col_j);
+impl<C: AsRef<[u8]>> GetRow<FFT64> for GGLWECiphertext<C, FFT64> {
+    fn get_row<R: AsMut<[u8]> + AsRef<[u8]>>(
+        &self,
+        module: &Module<FFT64>,
+        row_i: usize,
+        col_j: usize,
+        res: &mut GLWECiphertextFourier<R, FFT64>,
+    ) {
+        module.vmp_extract_row(&mut res.data, &self.data, row_i, col_j);
     }
 }
 
-impl<C> SetRow<FFT64> for GGLWECiphertext<C, FFT64>
-where
-    MatZnxDft<C, FFT64>: MatZnxDftToMut<FFT64>,
-{
-    fn set_row<R>(&mut self, module: &Module<FFT64>, row_i: usize, col_j: usize, a: &R)
-    where
-        R: VecZnxDftToRef<FFT64>,
-    {
-        module.vmp_prepare_row(self, row_i, col_j, a);
+impl<C: AsMut<[u8]> + AsRef<[u8]>> SetRow<FFT64> for GGLWECiphertext<C, FFT64> {
+    fn set_row<R: AsRef<[u8]>>(
+        &mut self,
+        module: &Module<FFT64>,
+        row_i: usize,
+        col_j: usize,
+        a: &GLWECiphertextFourier<R, FFT64>,
+    ) {
+        module.vmp_prepare_row(&mut self.data, row_i, col_j, &a.data);
     }
 }

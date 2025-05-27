@@ -5,8 +5,9 @@ use core::{
     keys::{SecretKey, SecretKeyFourier},
     keyswitch_key::GLWESwitchingKey,
 };
-use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
+use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use sampling::source::Source;
+use std::hint::black_box;
 
 fn bench_keyswitch_glwe_fft64(c: &mut Criterion) {
     let mut group = c.benchmark_group("keyswitch_glwe_fft64");
@@ -65,7 +66,7 @@ fn bench_keyswitch_glwe_fft64(c: &mut Criterion) {
         let mut sk_out_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::alloc(&module, rank_out);
         sk_out_dft.dft(&module, &sk_out);
 
-        ksk.encrypt_sk(
+        ksk.generate_from_sk(
             &module,
             &sk_in,
             &sk_out_dft,
@@ -158,7 +159,7 @@ fn bench_keyswitch_glwe_inplace_fft64(c: &mut Criterion) {
         let mut sk_out_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::alloc(&module, rank);
         sk_out_dft.dft(&module, &sk_out);
 
-        ksk.encrypt_sk(
+        ksk.generate_from_sk(
             &module,
             &sk_in,
             &sk_out_dft,

@@ -94,7 +94,7 @@ impl<D, B: Backend> VecZnxBig<D, B> {
     }
 }
 
-impl<D> VecZnxBig<D, FFT64>
+impl<D: AsMut<[u8]> + AsRef<[u8]>> VecZnxBig<D, FFT64>
 where
     VecZnxBig<D, FFT64>: VecZnxBigToMut<FFT64> + ZnxInfos,
 {
@@ -110,9 +110,9 @@ where
     }
 
     /// Extracts the a_col-th column of 'a' and stores it on the self_col-th column [Self].
-    pub fn extract_column<C>(&mut self, self_col: usize, a: &VecZnxBig<C, FFT64>, a_col: usize)
+    pub fn extract_column<C>(&mut self, self_col: usize, a: &C, a_col: usize)
     where
-        VecZnxBig<C, FFT64>: VecZnxBigToRef<FFT64> + ZnxInfos,
+        C: VecZnxBigToRef<FFT64> + ZnxInfos,
     {
         #[cfg(debug_assertions)]
         {
@@ -144,66 +144,38 @@ pub trait VecZnxBigToRef<B: Backend> {
     fn to_ref(&self) -> VecZnxBig<&[u8], B>;
 }
 
+impl<D, B: Backend> VecZnxBigToRef<B> for VecZnxBig<D, B>
+where
+    D: AsRef<[u8]>,
+    B: Backend,
+{
+    fn to_ref(&self) -> VecZnxBig<&[u8], B> {
+        VecZnxBig {
+            data: self.data.as_ref(),
+            n: self.n,
+            cols: self.cols,
+            size: self.size,
+            _phantom: std::marker::PhantomData,
+        }
+    }
+}
+
 pub trait VecZnxBigToMut<B: Backend> {
     fn to_mut(&mut self) -> VecZnxBig<&mut [u8], B>;
 }
 
-impl<B: Backend> VecZnxBigToMut<B> for VecZnxBig<Vec<u8>, B> {
+impl<D, B: Backend> VecZnxBigToMut<B> for VecZnxBig<D, B>
+where
+    D: AsRef<[u8]> + AsMut<[u8]>,
+    B: Backend,
+{
     fn to_mut(&mut self) -> VecZnxBig<&mut [u8], B> {
         VecZnxBig {
-            data: self.data.as_mut_slice(),
+            data: self.data.as_mut(),
             n: self.n,
             cols: self.cols,
             size: self.size,
-            _phantom: PhantomData,
-        }
-    }
-}
-
-impl<B: Backend> VecZnxBigToRef<B> for VecZnxBig<Vec<u8>, B> {
-    fn to_ref(&self) -> VecZnxBig<&[u8], B> {
-        VecZnxBig {
-            data: self.data.as_slice(),
-            n: self.n,
-            cols: self.cols,
-            size: self.size,
-            _phantom: PhantomData,
-        }
-    }
-}
-
-impl<B: Backend> VecZnxBigToMut<B> for VecZnxBig<&mut [u8], B> {
-    fn to_mut(&mut self) -> VecZnxBig<&mut [u8], B> {
-        VecZnxBig {
-            data: self.data,
-            n: self.n,
-            cols: self.cols,
-            size: self.size,
-            _phantom: PhantomData,
-        }
-    }
-}
-
-impl<B: Backend> VecZnxBigToRef<B> for VecZnxBig<&mut [u8], B> {
-    fn to_ref(&self) -> VecZnxBig<&[u8], B> {
-        VecZnxBig {
-            data: self.data,
-            n: self.n,
-            cols: self.cols,
-            size: self.size,
-            _phantom: PhantomData,
-        }
-    }
-}
-
-impl<B: Backend> VecZnxBigToRef<B> for VecZnxBig<&[u8], B> {
-    fn to_ref(&self) -> VecZnxBig<&[u8], B> {
-        VecZnxBig {
-            data: self.data,
-            n: self.n,
-            cols: self.cols,
-            size: self.size,
-            _phantom: PhantomData,
+            _phantom: std::marker::PhantomData,
         }
     }
 }

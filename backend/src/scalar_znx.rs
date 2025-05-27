@@ -196,108 +196,57 @@ pub trait ScalarZnxToRef {
     fn to_ref(&self) -> ScalarZnx<&[u8]>;
 }
 
+impl<D> ScalarZnxToRef for ScalarZnx<D>
+where
+    D: AsRef<[u8]>,
+{
+    fn to_ref(&self) -> ScalarZnx<&[u8]> {
+        ScalarZnx {
+            data: self.data.as_ref(),
+            n: self.n,
+            cols: self.cols,
+        }
+    }
+}
+
 pub trait ScalarZnxToMut {
     fn to_mut(&mut self) -> ScalarZnx<&mut [u8]>;
 }
 
-impl ScalarZnxToMut for ScalarZnx<Vec<u8>> {
+impl<D> ScalarZnxToMut for ScalarZnx<D>
+where
+    D: AsRef<[u8]> + AsMut<[u8]>,
+{
     fn to_mut(&mut self) -> ScalarZnx<&mut [u8]> {
         ScalarZnx {
-            data: self.data.as_mut_slice(),
+            data: self.data.as_mut(),
             n: self.n,
             cols: self.cols,
         }
     }
 }
 
-impl VecZnxToMut for ScalarZnx<Vec<u8>> {
+impl<D> VecZnxToRef for ScalarZnx<D>
+where
+    D: AsRef<[u8]>,
+{
+    fn to_ref(&self) -> VecZnx<&[u8]> {
+        VecZnx {
+            data: self.data.as_ref(),
+            n: self.n,
+            cols: self.cols,
+            size: 1,
+        }
+    }
+}
+
+impl<D> VecZnxToMut for ScalarZnx<D>
+where
+    D: AsRef<[u8]> + AsMut<[u8]>,
+{
     fn to_mut(&mut self) -> VecZnx<&mut [u8]> {
         VecZnx {
-            data: self.data.as_mut_slice(),
-            n: self.n,
-            cols: self.cols,
-            size: 1,
-        }
-    }
-}
-
-impl ScalarZnxToRef for ScalarZnx<Vec<u8>> {
-    fn to_ref(&self) -> ScalarZnx<&[u8]> {
-        ScalarZnx {
-            data: self.data.as_slice(),
-            n: self.n,
-            cols: self.cols,
-        }
-    }
-}
-
-impl VecZnxToRef for ScalarZnx<Vec<u8>> {
-    fn to_ref(&self) -> VecZnx<&[u8]> {
-        VecZnx {
-            data: self.data.as_slice(),
-            n: self.n,
-            cols: self.cols,
-            size: 1,
-        }
-    }
-}
-
-impl ScalarZnxToMut for ScalarZnx<&mut [u8]> {
-    fn to_mut(&mut self) -> ScalarZnx<&mut [u8]> {
-        ScalarZnx {
-            data: self.data,
-            n: self.n,
-            cols: self.cols,
-        }
-    }
-}
-
-impl VecZnxToMut for ScalarZnx<&mut [u8]> {
-    fn to_mut(&mut self) -> VecZnx<&mut [u8]> {
-        VecZnx {
-            data: self.data,
-            n: self.n,
-            cols: self.cols,
-            size: 1,
-        }
-    }
-}
-
-impl ScalarZnxToRef for ScalarZnx<&mut [u8]> {
-    fn to_ref(&self) -> ScalarZnx<&[u8]> {
-        ScalarZnx {
-            data: self.data,
-            n: self.n,
-            cols: self.cols,
-        }
-    }
-}
-
-impl VecZnxToRef for ScalarZnx<&mut [u8]> {
-    fn to_ref(&self) -> VecZnx<&[u8]> {
-        VecZnx {
-            data: self.data,
-            n: self.n,
-            cols: self.cols,
-            size: 1,
-        }
-    }
-}
-
-impl ScalarZnxToRef for ScalarZnx<&[u8]> {
-    fn to_ref(&self) -> ScalarZnx<&[u8]> {
-        ScalarZnx {
-            data: self.data,
-            n: self.n,
-            cols: self.cols,
-        }
-    }
-}
-
-impl VecZnxToRef for ScalarZnx<&[u8]> {
-    fn to_ref(&self) -> VecZnx<&[u8]> {
-        VecZnx {
-            data: self.data,
+            data: self.data.as_mut(),
             n: self.n,
             cols: self.cols,
             size: 1,
