@@ -198,3 +198,17 @@ where
         }
     }
 }
+
+impl<D, B: Backend> MatZnxDft<D, B> {
+    pub(crate) fn from_data(data: D, n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> Self {
+        Self {
+            data,
+            n,
+            rows,
+            cols_in,
+            cols_out,
+            size,
+            _phantom: PhantomData,
+        }
+    }
+}

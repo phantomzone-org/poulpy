@@ -248,4 +248,22 @@ impl Scratch {
             Self::new(rem_slice),
         )
     }
+
+    pub fn tmp_mat_znx_dft<B: Backend>(
+        &mut self,
+        module: &Module<B>,
+        rows: usize,
+        cols_in: usize,
+        cols_out: usize,
+        size: usize,
+    ) -> (MatZnxDft<&mut [u8], B>, &mut Self) {
+        let (take_slice, rem_slice) = Self::take_slice_aligned(
+            &mut self.data,
+            module.bytes_of_mat_znx_dft(rows, cols_in, cols_out, size),
+        );
+        (
+            MatZnxDft::from_data(take_slice, module.n(), rows, cols_in, cols_out, size),
+            Self::new(rem_slice),
+        )
+    }
 }
