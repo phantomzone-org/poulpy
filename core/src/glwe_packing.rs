@@ -1,4 +1,4 @@
-use crate::{automorphism::AutomorphismKey, elem::Infos, glwe_ciphertext::GLWECiphertext, glwe_ops::GLWEOps};
+use crate::{ScratchCore, automorphism::AutomorphismKey, elem::Infos, glwe_ciphertext::GLWECiphertext, glwe_ops::GLWEOps};
 use std::collections::HashMap;
 
 use backend::{FFT64, Module, Scratch, VecZnxAlloc};
@@ -223,8 +223,6 @@ fn combine<D: AsRef<[u8]>, DataAK: AsRef<[u8]>>(
     let basek: usize = a.basek();
     let k: usize = a.k();
     let rank: usize = a.rank();
-    let cols: usize = rank + 1;
-    let size: usize = a.size();
 
     let gal_el: i64;
 
@@ -245,20 +243,9 @@ fn combine<D: AsRef<[u8]>, DataAK: AsRef<[u8]>>(
         a.rsh(1, scratch);
 
         if let Some(b) = b {
-            let (tmp_b_data, scratch_1) = scratch.tmp_vec_znx(module, cols, size);
-            let mut tmp_b: GLWECiphertext<&mut [u8]> = GLWECiphertext {
-                data: tmp_b_data,
-                k: k,
-                basek: basek,
-            };
-
+            let (mut tmp_b, scratch_1) = scratch.tmp_glwe_ct(module, basek, k, rank);
             {
-                let (tmp_a_data, scratch_2) = scratch_1.tmp_vec_znx(module, cols, size);
-                let mut tmp_a: GLWECiphertext<&mut [u8]> = GLWECiphertext {
-                    data: tmp_a_data,
-                    k: k,
-                    basek: basek,
-                };
+                let (mut tmp_a, scratch_2) = scratch_1.tmp_glwe_ct(module, basek, k, rank); //TODO can we skip tmp_a by reordering X^k ? 
 
                 // tmp_a = b * X^t
                 tmp_a.rotate(module, 1 << (log_n - i - 1), b);
@@ -294,13 +281,7 @@ fn combine<D: AsRef<[u8]>, DataAK: AsRef<[u8]>>(
         }
     } else {
         if let Some(b) = b {
-            let (tmp_b_data, scratch_1) = scratch.tmp_vec_znx(module, cols, size);
-            let mut tmp_b: GLWECiphertext<&mut [u8]> = GLWECiphertext {
-                data: tmp_b_data,
-                k: k,
-                basek: basek,
-            };
-
+            let (mut tmp_b, scratch_1) = scratch.tmp_glwe_ct(module, basek, k, rank);
             tmp_b.rotate(module, 1 << (log_n - i - 1), b);
             tmp_b.rsh(1, scratch_1);
 

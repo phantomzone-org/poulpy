@@ -1,6 +1,6 @@
 use backend::{Backend, Module, ZnxInfos};
 
-use crate::{glwe_ciphertext_fourier::GLWECiphertextFourier, utils::derive_size};
+use crate::{GLWECiphertextFourier, derive_size};
 
 pub trait Infos {
     type Inner: ZnxInfos;

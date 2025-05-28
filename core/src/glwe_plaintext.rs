@@ -1,4 +1,4 @@
-use backend::{Backend, Module, VecZnx, VecZnxAlloc, VecZnxToMut, VecZnxToRef};
+use backend::{Backend, FFT64, Module, VecZnx, VecZnxAlloc, VecZnxToMut, VecZnxToRef};
 
 use crate::{
     elem::{Infos, SetMetaData},
@@ -46,6 +46,10 @@ impl GLWEPlaintext<Vec<u8>> {
             basek: basek,
             k,
         }
+    }
+
+    pub fn byte_of(module: &Module<FFT64>, basek: usize, k: usize) -> usize {
+        module.bytes_of_vec_znx(1, derive_size(basek, k))
     }
 }
 

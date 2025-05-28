@@ -2,6 +2,7 @@ use backend::{Backend, FFT64, MatZnxDft, MatZnxDftOps, Module, Scratch, VecZnxDf
 use sampling::source::Source;
 
 use crate::{
+    ScratchCore,
     elem::{GetRow, Infos, SetRow},
     gglwe_ciphertext::GGLWECiphertext,
     ggsw_ciphertext::GGSWCiphertext,
@@ -184,21 +185,8 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<DataSelf, FFT64> {
             );
         }
 
-        let (tmp_in_data, scratch1) = scratch.tmp_vec_znx_dft(module, lhs.rank_out() + 1, lhs.size());
-
-        let mut tmp_in: GLWECiphertextFourier<&mut [u8], FFT64> = GLWECiphertextFourier::<&mut [u8], FFT64> {
-            data: tmp_in_data,
-            basek: lhs.basek(),
-            k: lhs.k(),
-        };
-
-        let (tmp_out_data, scratch2) = scratch1.tmp_vec_znx_dft(module, self.rank_out() + 1, self.size());
-
-        let mut tmp_out: GLWECiphertextFourier<&mut [u8], FFT64> = GLWECiphertextFourier::<&mut [u8], FFT64> {
-            data: tmp_out_data,
-            basek: self.basek(),
-            k: self.k(),
-        };
+        let (mut tmp_in, scratch1) = scratch.tmp_glwe_fourier(module, lhs.basek(), lhs.k(), lhs.rank());
+        let (mut tmp_out, scratch2) = scratch1.tmp_glwe_fourier(module, self.basek(), self.k(), self.rank());
 
         (0..self.rank_in()).for_each(|col_i| {
             (0..self.rows()).for_each(|row_j| {
@@ -234,13 +222,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<DataSelf, FFT64> {
             );
         }
 
-        let (tmp_data, scratch1) = scratch.tmp_vec_znx_dft(module, self.rank_out() + 1, self.size());
-
-        let mut tmp: GLWECiphertextFourier<&mut [u8], FFT64> = GLWECiphertextFourier::<&mut [u8], FFT64> {
-            data: tmp_data,
-            basek: self.basek(),
-            k: self.k(),
-        };
+        let (mut tmp, scratch1) = scratch.tmp_glwe_fourier(module, self.basek(), self.k(), self.rank());
 
         (0..self.rank_in()).for_each(|col_i| {
             (0..self.rows()).for_each(|row_j| {
@@ -283,21 +265,8 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<DataSelf, FFT64> {
             );
         }
 
-        let (tmp_in_data, scratch1) = scratch.tmp_vec_znx_dft(module, lhs.rank_out() + 1, lhs.size());
-
-        let mut tmp_in: GLWECiphertextFourier<&mut [u8], FFT64> = GLWECiphertextFourier::<&mut [u8], FFT64> {
-            data: tmp_in_data,
-            basek: lhs.basek(),
-            k: lhs.k(),
-        };
-
-        let (tmp_out_data, scratch2) = scratch1.tmp_vec_znx_dft(module, self.rank_out() + 1, self.size());
-
-        let mut tmp_out: GLWECiphertextFourier<&mut [u8], FFT64> = GLWECiphertextFourier::<&mut [u8], FFT64> {
-            data: tmp_out_data,
-            basek: self.basek(),
-            k: self.k(),
-        };
+        let (mut tmp_in, scratch1) = scratch.tmp_glwe_fourier(module, lhs.basek(), lhs.k(), lhs.rank());
+        let (mut tmp_out, scratch2) = scratch1.tmp_glwe_fourier(module, self.basek(), self.k(), self.rank());
 
         (0..self.rank_in()).for_each(|col_i| {
             (0..self.rows()).for_each(|row_j| {
@@ -333,13 +302,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<DataSelf, FFT64> {
             );
         }
 
-        let (tmp_data, scratch1) = scratch.tmp_vec_znx_dft(module, self.rank_out() + 1, self.size());
-
-        let mut tmp: GLWECiphertextFourier<&mut [u8], FFT64> = GLWECiphertextFourier::<&mut [u8], FFT64> {
-            data: tmp_data,
-            basek: self.basek(),
-            k: self.k(),
-        };
+        let (mut tmp, scratch1) = scratch.tmp_glwe_fourier(module, self.basek(), self.k(), self.rank());
 
         (0..self.rank_in()).for_each(|col_i| {
             (0..self.rows()).for_each(|row_j| {

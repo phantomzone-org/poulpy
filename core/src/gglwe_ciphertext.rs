@@ -4,14 +4,7 @@ use backend::{
 };
 use sampling::source::Source;
 
-use crate::{
-    elem::{GetRow, Infos, SetRow},
-    glwe_ciphertext::GLWECiphertext,
-    glwe_ciphertext_fourier::GLWECiphertextFourier,
-    glwe_plaintext::GLWEPlaintext,
-    keys::SecretKeyFourier,
-    utils::derive_size,
-};
+use crate::{GLWECiphertext, GLWECiphertextFourier, GLWEPlaintext, GetRow, Infos, SecretKeyFourier, SetRow, derive_size};
 
 pub struct GGLWECiphertext<C, B: Backend> {
     pub(crate) data: MatZnxDft<C, B>,

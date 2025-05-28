@@ -6,11 +6,11 @@ use backend::{
 use sampling::source::Source;
 
 use crate::{
+    ScratchCore,
     automorphism::AutomorphismKey,
     elem::{GetRow, Infos, SetRow},
     glwe_ciphertext::GLWECiphertext,
     glwe_ciphertext_fourier::GLWECiphertextFourier,
-    glwe_plaintext::GLWEPlaintext,
     keys::SecretKeyFourier,
     keyswitch_key::GLWESwitchingKey,
     tensor_key::TensorKey,
@@ -198,55 +198,38 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf, FFT64> {
             assert_eq!(sk_dft.n(), module.n());
         }
 
-        let size: usize = self.size();
         let basek: usize = self.basek();
         let k: usize = self.k();
-        let cols: usize = self.rank() + 1;
+        let rank: usize = self.rank();
 
-        let (tmp_znx_pt, scratch_1) = scratch.tmp_vec_znx(module, 1, size);
-        let (tmp_znx_ct, scrach_2) = scratch_1.tmp_vec_znx(module, cols, size);
-
-        let mut vec_znx_pt: GLWEPlaintext<&mut [u8]> = GLWEPlaintext {
-            data: tmp_znx_pt,
-            basek: basek,
-            k: k,
-        };
-
-        let mut vec_znx_ct: GLWECiphertext<&mut [u8]> = GLWECiphertext {
-            data: tmp_znx_ct,
-            basek: basek,
-            k,
-        };
+        let (mut tmp_pt, scratch1) = scratch.tmp_glwe_pt(module, basek, k);
+        let (mut tmp_ct, scratch2) = scratch1.tmp_glwe_ct(module, basek, k, rank);
 
         (0..self.rows()).for_each(|row_i| {
-            vec_znx_pt.data.zero();
+            tmp_pt.data.zero();
 
             // Adds the scalar_znx_pt to the i-th limb of the vec_znx_pt
-            module.vec_znx_add_scalar_inplace(&mut vec_znx_pt.data, 0, row_i, pt, 0);
-            module.vec_znx_normalize_inplace(basek, &mut vec_znx_pt.data, 0, scrach_2);
+            module.vec_znx_add_scalar_inplace(&mut tmp_pt.data, 0, row_i, pt, 0);
+            module.vec_znx_normalize_inplace(basek, &mut tmp_pt.data, 0, scratch2);
 
-            (0..cols).for_each(|col_j| {
+            (0..rank + 1).for_each(|col_j| {
                 // rlwe encrypt of vec_znx_pt into vec_znx_ct
 
-                vec_znx_ct.encrypt_sk_private(
+                tmp_ct.encrypt_sk_private(
                     module,
-                    Some((&vec_znx_pt, col_j)),
+                    Some((&tmp_pt, col_j)),
                     sk_dft,
                     source_xa,
                     source_xe,
                     sigma,
-                    scrach_2,
+                    scratch2,
                 );
 
                 // Switch vec_znx_ct into DFT domain
                 {
-                    let (mut vec_znx_dft_ct, _) = scrach_2.tmp_vec_znx_dft(module, cols, size);
-
-                    (0..cols).for_each(|i| {
-                        module.vec_znx_dft(&mut vec_znx_dft_ct, i, &vec_znx_ct.data, i);
-                    });
-
-                    module.vmp_prepare_row(&mut self.data, row_i, col_j, &vec_znx_dft_ct);
+                    let (mut tmp_ct_dft, _) = scratch2.tmp_glwe_fourier(module, basek, k, rank);
+                    tmp_ct.dft(module, &mut tmp_ct_dft);
+                    self.set_row(module, row_i, col_j, &tmp_ct_dft);
                 }
             });
         });
@@ -349,26 +332,22 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf, FFT64> {
         tsk: &TensorKey<DataTsk, FFT64>,
         scratch: &mut Scratch,
     ) {
-        let cols: usize = self.rank() + 1;
+        let rank: usize = self.rank();
+        let cols: usize = rank + 1;
+        let basek: usize = self.basek();
 
-        let (res_data, scratch1) = scratch.tmp_vec_znx(&module, cols, self.size());
-        let mut res: GLWECiphertext<&mut [u8]> = GLWECiphertext::<&mut [u8]> {
-            data: res_data,
-            basek: self.basek(),
-            k: self.k(),
-        };
-
+        let (mut tmp_res, scratch1) = scratch.tmp_glwe_ct(module, basek, self.k(), rank);
         let (mut ci_dft, scratch2) = scratch1.tmp_vec_znx_dft(module, cols, lhs.size());
 
         // Keyswitch the j-th row of the col 0
         (0..lhs.rows()).for_each(|row_i| {
             // Key-switch column 0, i.e.
             // col 0: (-(a0s0 + a1s1 + a2s2) + M[i], a0, a1, a2) -> (-(a0s0' + a1s1' + a2s2') + M[i], a0, a1, a2)
-            lhs.keyswitch_internal_col0(module, row_i, &mut res, ksk, scratch2);
+            lhs.keyswitch_internal_col0(module, row_i, &mut tmp_res, ksk, scratch2);
 
             // Isolates DFT(a[i])
             (0..cols).for_each(|col_i| {
-                module.vec_znx_dft(&mut ci_dft, col_i, &res.data, col_i);
+                module.vec_znx_dft(&mut ci_dft, col_i, &tmp_res.data, col_i);
             });
 
             module.vmp_prepare_row(&mut self.data, row_i, 0, &ci_dft);
@@ -379,14 +358,10 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf, FFT64> {
             // col 2: (-(c0s0' + c1s1' + c2s2')    , c0       , c1 + M[i], c2       )
             // col 3: (-(d0s0' + d1s1' + d2s2')    , d0       , d1       , d2 + M[i])
             (1..cols).for_each(|col_j| {
-                self.expand_row(module, col_j, &mut res.data, &ci_dft, tsk, scratch2);
-
-                let (mut res_dft, _) = scratch2.tmp_vec_znx_dft(module, cols, self.size());
-                (0..cols).for_each(|i| {
-                    module.vec_znx_dft(&mut res_dft, i, &res.data, i);
-                });
-
-                module.vmp_prepare_row(&mut self.data, row_i, col_j, &res_dft);
+                self.expand_row(module, col_j, &mut tmp_res.data, &ci_dft, tsk, scratch2);
+                let (mut tmp_res_dft, _) = scratch2.tmp_glwe_fourier(module, basek, self.k(), rank);
+                tmp_res.dft(module, &mut tmp_res_dft);
+                self.set_row(module, row_i, col_j, &tmp_res_dft);
             });
         })
     }
@@ -448,28 +423,24 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf, FFT64> {
             )
         };
 
-        let cols: usize = self.rank() + 1;
+        let rank: usize = self.rank();
+        let cols: usize = rank + 1;
+        let basek: usize = self.basek();
 
-        let (res_data, scratch1) = scratch.tmp_vec_znx(&module, cols, self.size());
-        let mut res: GLWECiphertext<&mut [u8]> = GLWECiphertext::<&mut [u8]> {
-            data: res_data,
-            basek: self.basek(),
-            k: self.k(),
-        };
-
-        let (mut ci_dft, scratch2) = scratch1.tmp_vec_znx_dft(module, cols, self.size());
+        let (mut tmp_res, scratch1) = scratch.tmp_glwe_ct(module, basek, self.k(), rank);
+        let (mut ci_dft, scratch2) = scratch1.tmp_vec_znx_dft(module, cols, lhs.size());
 
         // Keyswitch the j-th row of the col 0
         (0..lhs.rows()).for_each(|row_i| {
             // Key-switch column 0, i.e.
             // col 0: (-(a0s0 + a1s1 + a2s2) + M[i], a0, a1, a2) -> (-(a0pi^-1(s0) + a1pi^-1(s1) + a2pi^-1(s2)) + M[i], a0, a1, a2)
-            lhs.keyswitch_internal_col0(module, row_i, &mut res, &auto_key.key, scratch2);
+            lhs.keyswitch_internal_col0(module, row_i, &mut tmp_res, &auto_key.key, scratch2);
 
             // Isolates DFT(AUTO(a[i]))
             (0..cols).for_each(|col_i| {
                 // (-(a0pi^-1(s0) + a1pi^-1(s1) + a2pi^-1(s2)) + M[i], a0, a1, a2) -> (-(a0s0 + a1s1 + a2s2) + pi(M[i]), a0, a1, a2)
-                module.vec_znx_automorphism_inplace(auto_key.p(), &mut res.data, col_i);
-                module.vec_znx_dft(&mut ci_dft, col_i, &res.data, col_i);
+                module.vec_znx_automorphism_inplace(auto_key.p(), &mut tmp_res.data, col_i);
+                module.vec_znx_dft(&mut ci_dft, col_i, &tmp_res.data, col_i);
             });
 
             module.vmp_prepare_row(&mut self.data, row_i, 0, &ci_dft);
@@ -480,14 +451,17 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf, FFT64> {
             // col 2: (-(c0s0 + c1s1 + c2s2)    , c0           , c1 + pi(M[i]), c2           )
             // col 3: (-(d0s0 + d1s1 + d2s2)    , d0           , d1           , d2 + pi(M[i]))
             (1..cols).for_each(|col_j| {
-                self.expand_row(module, col_j, &mut res.data, &ci_dft, tensor_key, scratch2);
-
-                let (mut res_dft, _) = scratch2.tmp_vec_znx_dft(module, cols, self.size());
-                (0..cols).for_each(|i| {
-                    module.vec_znx_dft(&mut res_dft, i, &res.data, i);
-                });
-
-                module.vmp_prepare_row(&mut self.data, row_i, col_j, &res_dft);
+                self.expand_row(
+                    module,
+                    col_j,
+                    &mut tmp_res.data,
+                    &ci_dft,
+                    tensor_key,
+                    scratch2,
+                );
+                let (mut tmp_res_dft, _) = scratch2.tmp_glwe_fourier(module, basek, self.k(), rank);
+                tmp_res.dft(module, &mut tmp_res_dft);
+                self.set_row(module, row_i, col_j, &tmp_res_dft);
             });
         })
     }
@@ -530,35 +504,22 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf, FFT64> {
             );
         }
 
-        let (tmp_in_data, scratch1) = scratch.tmp_vec_znx_dft(module, lhs.rank() + 1, lhs.size());
-
-        let mut tmp_in: GLWECiphertextFourier<&mut [u8], FFT64> = GLWECiphertextFourier::<&mut [u8], FFT64> {
-            data: tmp_in_data,
-            basek: lhs.basek(),
-            k: lhs.k(),
-        };
-
-        let (tmp_out_data, scratch2) = scratch1.tmp_vec_znx_dft(module, self.rank() + 1, self.size());
-
-        let mut tmp_out: GLWECiphertextFourier<&mut [u8], FFT64> = GLWECiphertextFourier::<&mut [u8], FFT64> {
-            data: tmp_out_data,
-            basek: self.basek(),
-            k: self.k(),
-        };
+        let (mut tmp_ct_in, scratch1) = scratch.tmp_glwe_fourier(module, lhs.basek(), lhs.k(), lhs.rank());
+        let (mut tmp_ct_out, scratch2) = scratch1.tmp_glwe_fourier(module, self.basek(), self.k(), self.rank());
 
         (0..self.rank() + 1).for_each(|col_i| {
             (0..self.rows()).for_each(|row_j| {
-                lhs.get_row(module, row_j, col_i, &mut tmp_in);
-                tmp_out.external_product(module, &tmp_in, rhs, scratch2);
-                self.set_row(module, row_j, col_i, &tmp_out);
+                lhs.get_row(module, row_j, col_i, &mut tmp_ct_in);
+                tmp_ct_out.external_product(module, &tmp_ct_in, rhs, scratch2);
+                self.set_row(module, row_j, col_i, &tmp_ct_out);
             });
         });
 
-        tmp_out.data.zero();
+        tmp_ct_out.data.zero();
 
         (self.rows().min(lhs.rows())..self.rows()).for_each(|row_i| {
             (0..self.rank() + 1).for_each(|col_j| {
-                self.set_row(module, row_i, col_j, &tmp_out);
+                self.set_row(module, row_i, col_j, &tmp_ct_out);
             });
         });
     }
@@ -580,19 +541,13 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf, FFT64> {
             );
         }
 
-        let (tmp_data, scratch1) = scratch.tmp_vec_znx_dft(module, self.rank() + 1, self.size());
-
-        let mut tmp: GLWECiphertextFourier<&mut [u8], FFT64> = GLWECiphertextFourier::<&mut [u8], FFT64> {
-            data: tmp_data,
-            basek: self.basek(),
-            k: self.k(),
-        };
+        let (mut tmp_ct, scratch1) = scratch.tmp_glwe_fourier(module, self.basek(), self.k(), self.rank());
 
         (0..self.rank() + 1).for_each(|col_i| {
             (0..self.rows()).for_each(|row_j| {
-                self.get_row(module, row_j, col_i, &mut tmp);
-                tmp.external_product_inplace(module, rhs, scratch1);
-                self.set_row(module, row_j, col_i, &tmp);
+                self.get_row(module, row_j, col_i, &mut tmp_ct);
+                tmp_ct.external_product_inplace(module, rhs, scratch1);
+                self.set_row(module, row_j, col_i, &tmp_ct);
             });
         });
     }
@@ -622,15 +577,9 @@ impl<DataSelf: AsRef<[u8]>> GGSWCiphertext<DataSelf, FFT64> {
                     )
             )
         }
-
-        let (tmp_dft_in_data, scratch2) = scratch.tmp_vec_znx_dft(module, self.rank() + 1, self.size());
-        let mut tmp_dft_in: GLWECiphertextFourier<&mut [u8], FFT64> = GLWECiphertextFourier::<&mut [u8], FFT64> {
-            data: tmp_dft_in_data,
-            basek: self.basek(),
-            k: self.k(),
-        };
-        self.get_row(module, row_i, 0, &mut tmp_dft_in);
-        res.keyswitch_from_fourier(module, &tmp_dft_in, ksk, scratch2);
+        let (mut tmp_dft_dft, scratch1) = scratch.tmp_glwe_fourier(module, self.basek(), self.k(), self.rank());
+        self.get_row(module, row_i, 0, &mut tmp_dft_dft);
+        res.keyswitch_from_fourier(module, &tmp_dft_dft, ksk, scratch1);
     }
 }
 

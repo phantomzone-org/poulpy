@@ -5,13 +5,8 @@ use backend::{
 use sampling::source::Source;
 
 use crate::{
-    elem::{GetRow, Infos, SetRow},
-    gglwe_ciphertext::GGLWECiphertext,
-    ggsw_ciphertext::GGSWCiphertext,
-    glwe_ciphertext::GLWECiphertext,
-    glwe_ciphertext_fourier::GLWECiphertextFourier,
-    keys::{SecretKey, SecretKeyFourier},
-    keyswitch_key::GLWESwitchingKey,
+    GGLWECiphertext, GGSWCiphertext, GLWECiphertext, GLWECiphertextFourier, GLWESwitchingKey, GetRow, Infos, ScratchCore,
+    SecretKey, SetRow,
 };
 
 pub struct AutomorphismKey<Data, B: Backend> {
@@ -179,12 +174,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> AutomorphismKey<DataSelf, FFT64> {
             )
         }
 
-        let (sk_out_dft_data, scratch_1) = scratch.tmp_scalar_znx_dft(module, sk.rank());
-
-        let mut sk_out_dft: SecretKeyFourier<&mut [u8], FFT64> = SecretKeyFourier {
-            data: sk_out_dft_data,
-            dist: sk.dist,
-        };
+        let (mut sk_out_dft, scratch_1) = scratch.tmp_sk_fourier(module, sk.rank());
 
         {
             (0..self.rank()).for_each(|i| {
@@ -249,13 +239,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> AutomorphismKey<DataSelf, FFT64> {
 
         let cols_out: usize = rhs.rank_out() + 1;
 
-        let (tmp_dft_data, scratch1) = scratch.tmp_vec_znx_dft(module, cols_out, lhs.size());
-
-        let mut tmp_dft: GLWECiphertextFourier<&mut [u8], FFT64> = GLWECiphertextFourier::<&mut [u8], FFT64> {
-            data: tmp_dft_data,
-            basek: lhs.basek(),
-            k: lhs.k(),
-        };
+        let (mut tmp_dft, scratch1) = scratch.tmp_glwe_fourier(module, lhs.basek(), lhs.k(), lhs.rank());
 
         (0..self.rank_in()).for_each(|col_i| {
             (0..self.rows()).for_each(|row_j| {

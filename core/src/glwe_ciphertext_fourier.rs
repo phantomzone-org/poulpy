@@ -5,7 +5,7 @@ use backend::{
 use sampling::source::Source;
 
 use crate::{
-    elem::Infos, ggsw_ciphertext::GGSWCiphertext, glwe_ciphertext::GLWECiphertext, glwe_plaintext::GLWEPlaintext,
+    ScratchCore, elem::Infos, ggsw_ciphertext::GGSWCiphertext, glwe_ciphertext::GLWECiphertext, glwe_plaintext::GLWEPlaintext,
     keys::SecretKeyFourier, keyswitch_key::GLWESwitchingKey, utils::derive_size,
 };
 
@@ -119,15 +119,9 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWECiphertextFourier<DataSelf, FFT64>
         sigma: f64,
         scratch: &mut Scratch,
     ) {
-        let (vec_znx_tmp, scratch_1) = scratch.tmp_vec_znx(module, self.rank() + 1, self.size());
-        let mut ct_idft = GLWECiphertext {
-            data: vec_znx_tmp,
-            basek: self.basek,
-            k: self.k,
-        };
-        ct_idft.encrypt_zero_sk(module, sk_dft, source_xa, source_xe, sigma, scratch_1);
-
-        ct_idft.dft(module, self);
+        let (mut tmp_ct, scratch1) = scratch.tmp_glwe_ct(module, self.basek(), self.k(), self.rank());
+        tmp_ct.encrypt_zero_sk(module, sk_dft, source_xa, source_xe, sigma, scratch1);
+        tmp_ct.dft(module, self);
     }
 
     pub fn keyswitch<DataLhs: AsRef<[u8]>, DataRhs: AsRef<[u8]>>(
@@ -137,22 +131,9 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWECiphertextFourier<DataSelf, FFT64>
         rhs: &GLWESwitchingKey<DataRhs, FFT64>,
         scratch: &mut Scratch,
     ) {
-        let cols_out: usize = rhs.rank_out() + 1;
-
-        // Space fr normalized VMP result outside of DFT domain
-        let (res_idft_data, scratch1) = scratch.tmp_vec_znx(module, cols_out, lhs.size());
-
-        let mut res_idft: GLWECiphertext<&mut [u8]> = GLWECiphertext::<&mut [u8]> {
-            data: res_idft_data,
-            basek: lhs.basek,
-            k: lhs.k,
-        };
-
-        res_idft.keyswitch_from_fourier(module, lhs, rhs, scratch1);
-
-        (0..cols_out).for_each(|i| {
-            module.vec_znx_dft(&mut self.data, i, &res_idft.data, i);
-        });
+        let (mut tmp_ct, scratch1) = scratch.tmp_glwe_ct(module, self.basek(), self.k(), self.rank());
+        tmp_ct.keyswitch_from_fourier(module, lhs, rhs, scratch1);
+        tmp_ct.dft(module, self);
     }
 
     pub fn keyswitch_inplace<DataRhs: AsRef<[u8]>>(

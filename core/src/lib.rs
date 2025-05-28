@@ -38,7 +38,8 @@ use utils::derive_size;
 pub(crate) const SIX_SIGMA: f64 = 6.0;
 
 pub trait ScratchCore<B: Backend> {
-    fn tmp_glwe(&mut self, module: &Module<B>, basek: usize, k: usize, rank: usize) -> (GLWECiphertext<&mut [u8]>, &mut Self);
+    fn tmp_glwe_ct(&mut self, module: &Module<B>, basek: usize, k: usize, rank: usize) -> (GLWECiphertext<&mut [u8]>, &mut Self);
+    fn tmp_glwe_pt(&mut self, module: &Module<B>, basek: usize, k: usize) -> (GLWEPlaintext<&mut [u8]>, &mut Self);
     fn tmp_gglwe(
         &mut self,
         module: &Module<B>,
@@ -100,7 +101,7 @@ pub trait ScratchCore<B: Backend> {
 }
 
 impl ScratchCore<FFT64> for Scratch {
-    fn tmp_glwe(
+    fn tmp_glwe_ct(
         &mut self,
         module: &Module<FFT64>,
         basek: usize,
@@ -109,6 +110,11 @@ impl ScratchCore<FFT64> for Scratch {
     ) -> (GLWECiphertext<&mut [u8]>, &mut Self) {
         let (data, scratch) = self.tmp_vec_znx(module, rank + 1, derive_size(basek, k));
         (GLWECiphertext { data, basek, k }, scratch)
+    }
+
+    fn tmp_glwe_pt(&mut self, module: &Module<FFT64>, basek: usize, k: usize) -> (GLWEPlaintext<&mut [u8]>, &mut Self) {
+        let (data, scratch) = self.tmp_vec_znx(module, 1, derive_size(basek, k));
+        (GLWEPlaintext { data, basek, k }, scratch)
     }
 
     fn tmp_gglwe(
@@ -190,7 +196,7 @@ impl ScratchCore<FFT64> for Scratch {
     }
 
     fn tmp_sk_fourier(&mut self, module: &Module<FFT64>, rank: usize) -> (SecretKeyFourier<&mut [u8], FFT64>, &mut Self) {
-        let (data, scratch) = self.tmp_scalar_znx_dft(module, rank + 1);
+        let (data, scratch) = self.tmp_scalar_znx_dft(module, rank);
         (
             SecretKeyFourier {
                 data,
