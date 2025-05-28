@@ -180,9 +180,11 @@ impl<C: AsRef<[u8]> + AsMut<[u8]>> GLWEPublicKey<C, FFT64> {
         // Its ok to allocate scratch space here since pk is usually generated only once.
         let mut scratch: ScratchOwned = ScratchOwned::new(GLWECiphertextFourier::encrypt_sk_scratch_space(
             module,
+            self.basek(),
+            self.k(),
             self.rank(),
-            self.size(),
         ));
+
         self.data.encrypt_zero_sk(
             module,
             sk_dft,

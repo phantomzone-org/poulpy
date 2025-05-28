@@ -43,10 +43,10 @@ fn encrypt_pk() {
 
 #[test]
 fn keyswitch() {
-    (1..4).for_each(|rank_in| {
-        (1..4).for_each(|rank_out| {
-            println!("test keyswitch rank_in: {} rank_out: {}", rank_in, rank_out);
-            test_keyswitch(12, 12, 60, 45, 60, rank_in, rank_out, 3.2);
+    (1..4).for_each(|in_rank| {
+        (1..4).for_each(|out_rank| {
+            println!("test keyswitch in_rank: {} out_rank: {}", in_rank, out_rank);
+            test_keyswitch(12, 12, 60, 45, 60, in_rank, out_rank, 3.2);
         });
     });
 }
@@ -91,10 +91,10 @@ fn automorphism() {
     });
 }
 
-fn test_encrypt_sk(log_n: usize, basek: usize, k_ct: usize, k_pt: usize, sigma: f64, rank: usize) {
+fn test_encrypt_sk(log_n: usize, basek: usize, ct_k: usize, k_pt: usize, sigma: f64, rank: usize) {
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
 
-    let mut ct: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_ct, rank);
+    let mut ct: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, ct_k, rank);
     let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_pt);
 
     let mut source_xs: Source = Source::new([0u8; 32]);
@@ -102,7 +102,8 @@ fn test_encrypt_sk(log_n: usize, basek: usize, k_ct: usize, k_pt: usize, sigma: 
     let mut source_xa: Source = Source::new([0u8; 32]);
 
     let mut scratch: ScratchOwned = ScratchOwned::new(
-        GLWECiphertext::encrypt_sk_scratch_space(&module, ct.size()) | GLWECiphertext::decrypt_scratch_space(&module, ct.size()),
+        GLWECiphertext::encrypt_sk_scratch_space(&module, basek, ct.k())
+            | GLWECiphertext::decrypt_scratch_space(&module, basek, ct.k()),
     );
 
     let mut sk: SecretKey<Vec<u8>> = SecretKey::alloc(&module, rank);
@@ -151,10 +152,10 @@ fn test_encrypt_sk(log_n: usize, basek: usize, k_ct: usize, k_pt: usize, sigma: 
     });
 }
 
-fn test_encrypt_zero_sk(log_n: usize, basek: usize, k_ct: usize, sigma: f64, rank: usize) {
+fn test_encrypt_zero_sk(log_n: usize, basek: usize, ct_k: usize, sigma: f64, rank: usize) {
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
 
-    let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_ct);
+    let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, ct_k);
 
     let mut source_xs: Source = Source::new([0u8; 32]);
     let mut source_xe: Source = Source::new([1u8; 32]);
@@ -165,11 +166,11 @@ fn test_encrypt_zero_sk(log_n: usize, basek: usize, k_ct: usize, sigma: f64, ran
     let mut sk_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::alloc(&module, rank);
     sk_dft.dft(&module, &sk);
 
-    let mut ct_dft: GLWECiphertextFourier<Vec<u8>, FFT64> = GLWECiphertextFourier::alloc(&module, basek, k_ct, rank);
+    let mut ct_dft: GLWECiphertextFourier<Vec<u8>, FFT64> = GLWECiphertextFourier::alloc(&module, basek, ct_k, rank);
 
     let mut scratch: ScratchOwned = ScratchOwned::new(
-        GLWECiphertextFourier::decrypt_scratch_space(&module, ct_dft.size())
-            | GLWECiphertextFourier::encrypt_sk_scratch_space(&module, rank, ct_dft.size()),
+        GLWECiphertextFourier::decrypt_scratch_space(&module, basek, ct_k)
+            | GLWECiphertextFourier::encrypt_sk_scratch_space(&module, basek, ct_k, rank),
     );
 
     ct_dft.encrypt_zero_sk(
@@ -182,14 +183,14 @@ fn test_encrypt_zero_sk(log_n: usize, basek: usize, k_ct: usize, sigma: f64, ran
     );
     ct_dft.decrypt(&module, &mut pt, &sk_dft, scratch.borrow());
 
-    assert!((sigma - pt.data.std(0, basek) * (k_ct as f64).exp2()) <= 0.2);
+    assert!((sigma - pt.data.std(0, basek) * (ct_k as f64).exp2()) <= 0.2);
 }
 
-fn test_encrypt_pk(log_n: usize, basek: usize, k_ct: usize, k_pk: usize, sigma: f64, rank: usize) {
+fn test_encrypt_pk(log_n: usize, basek: usize, ct_k: usize, k_pk: usize, sigma: f64, rank: usize) {
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
 
-    let mut ct: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_ct, rank);
-    let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_ct);
+    let mut ct: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, ct_k, rank);
+    let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, ct_k);
 
     let mut source_xs: Source = Source::new([0u8; 32]);
     let mut source_xe: Source = Source::new([0u8; 32]);
@@ -205,9 +206,9 @@ fn test_encrypt_pk(log_n: usize, basek: usize, k_ct: usize, k_pk: usize, sigma: 
     pk.generate_from_sk(&module, &sk_dft, &mut source_xa, &mut source_xe, sigma);
 
     let mut scratch: ScratchOwned = ScratchOwned::new(
-        GLWECiphertext::encrypt_sk_scratch_space(&module, ct.size())
-            | GLWECiphertext::decrypt_scratch_space(&module, ct.size())
-            | GLWECiphertext::encrypt_pk_scratch_space(&module, pk.size()),
+        GLWECiphertext::encrypt_sk_scratch_space(&module, basek, ct.k())
+            | GLWECiphertext::decrypt_scratch_space(&module, basek, ct.k())
+            | GLWECiphertext::encrypt_pk_scratch_space(&module, basek, pk.k()),
     );
 
     let mut data_want: Vec<i64> = vec![0i64; module.n()];
@@ -216,7 +217,7 @@ fn test_encrypt_pk(log_n: usize, basek: usize, k_ct: usize, k_pk: usize, sigma: 
         .iter_mut()
         .for_each(|x| *x = source_xa.next_i64() & 0);
 
-    pt_want.data.encode_vec_i64(0, basek, k_ct, &data_want, 10);
+    pt_want.data.encode_vec_i64(0, basek, ct_k, &data_want, 10);
 
     ct.encrypt_pk(
         &module,
@@ -228,14 +229,14 @@ fn test_encrypt_pk(log_n: usize, basek: usize, k_ct: usize, k_pk: usize, sigma: 
         scratch.borrow(),
     );
 
-    let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_ct);
+    let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, ct_k);
 
     ct.decrypt(&module, &mut pt_have, &sk_dft, scratch.borrow());
 
     module.vec_znx_sub_ab_inplace(&mut pt_want.data, 0, &pt_have.data, 0);
 
     let noise_have: f64 = pt_want.data.std(0, basek).log2();
-    let noise_want: f64 = ((((rank as f64) + 1.0) * module.n() as f64 * 0.5 * sigma * sigma).sqrt()).log2() - (k_ct as f64);
+    let noise_want: f64 = ((((rank as f64) + 1.0) * module.n() as f64 * 0.5 * sigma * sigma).sqrt()).log2() - (ct_k as f64);
 
     assert!(
         (noise_have - noise_want).abs() < 0.2,
@@ -249,20 +250,20 @@ fn test_keyswitch(
     log_n: usize,
     basek: usize,
     k_keyswitch: usize,
-    k_ct_in: usize,
-    k_ct_out: usize,
-    rank_in: usize,
-    rank_out: usize,
+    ct_k_in: usize,
+    ct_k_out: usize,
+    in_rank: usize,
+    out_rank: usize,
     sigma: f64,
 ) {
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
-    let rows: usize = (k_ct_in + basek - 1) / basek;
+    let rows: usize = (ct_k_in + basek - 1) / basek;
 
-    let mut ksk: GLWESwitchingKey<Vec<u8>, FFT64> = GLWESwitchingKey::alloc(&module, basek, k_keyswitch, rows, rank_in, rank_out);
-    let mut ct_in: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_ct_in, rank_in);
-    let mut ct_out: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_ct_out, rank_out);
-    let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_ct_in);
-    let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_ct_out);
+    let mut ksk: GLWESwitchingKey<Vec<u8>, FFT64> = GLWESwitchingKey::alloc(&module, basek, k_keyswitch, rows, in_rank, out_rank);
+    let mut ct_in: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, ct_k_in, in_rank);
+    let mut ct_out: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, ct_k_out, out_rank);
+    let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, ct_k_in);
+    let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, ct_k_out);
 
     let mut source_xs: Source = Source::new([0u8; 32]);
     let mut source_xe: Source = Source::new([0u8; 32]);
@@ -274,29 +275,30 @@ fn test_keyswitch(
         .fill_uniform(basek, 0, pt_want.size(), &mut source_xa);
 
     let mut scratch: ScratchOwned = ScratchOwned::new(
-        GLWESwitchingKey::encrypt_sk_scratch_space(&module, rank_in, ksk.size())
-            | GLWECiphertext::decrypt_scratch_space(&module, ct_out.size())
-            | GLWECiphertext::encrypt_sk_scratch_space(&module, ct_in.size())
+        GLWESwitchingKey::encrypt_sk_scratch_space(&module, basek, ksk.k(), out_rank)
+            | GLWECiphertext::decrypt_scratch_space(&module, basek, ct_out.k())
+            | GLWECiphertext::encrypt_sk_scratch_space(&module, basek, ct_in.k())
             | GLWECiphertext::keyswitch_scratch_space(
                 &module,
-                ct_out.size(),
-                rank_out,
-                ct_in.size(),
-                rank_in,
-                ksk.size(),
+                basek,
+                ct_out.k(),
+                out_rank,
+                ct_in.k(),
+                in_rank,
+                ksk.k(),
             ),
     );
 
-    let mut sk_in: SecretKey<Vec<u8>> = SecretKey::alloc(&module, rank_in);
+    let mut sk_in: SecretKey<Vec<u8>> = SecretKey::alloc(&module, in_rank);
     sk_in.fill_ternary_prob(0.5, &mut source_xs);
 
-    let mut sk_in_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::alloc(&module, rank_in);
+    let mut sk_in_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::alloc(&module, in_rank);
     sk_in_dft.dft(&module, &sk_in);
 
-    let mut sk_out: SecretKey<Vec<u8>> = SecretKey::alloc(&module, rank_out);
+    let mut sk_out: SecretKey<Vec<u8>> = SecretKey::alloc(&module, out_rank);
     sk_out.fill_ternary_prob(0.5, &mut source_xs);
 
-    let mut sk_out_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::alloc(&module, rank_out);
+    let mut sk_out_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::alloc(&module, out_rank);
     sk_out_dft.dft(&module, &sk_out);
 
     ksk.generate_from_sk(
@@ -334,8 +336,8 @@ fn test_keyswitch(
         0f64,
         sigma * sigma,
         0f64,
-        rank_in as f64,
-        k_ct_in,
+        in_rank as f64,
+        ct_k_in,
         k_keyswitch,
     );
 
@@ -347,14 +349,14 @@ fn test_keyswitch(
     );
 }
 
-fn test_keyswitch_inplace(log_n: usize, basek: usize, k_ksk: usize, k_ct: usize, rank: usize, sigma: f64) {
+fn test_keyswitch_inplace(log_n: usize, basek: usize, k_ksk: usize, ct_k: usize, rank: usize, sigma: f64) {
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
-    let rows: usize = (k_ct + basek - 1) / basek;
+    let rows: usize = (ct_k + basek - 1) / basek;
 
     let mut ct_grlwe: GLWESwitchingKey<Vec<u8>, FFT64> = GLWESwitchingKey::alloc(&module, basek, k_ksk, rows, rank, rank);
-    let mut ct_rlwe: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_ct, rank);
-    let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_ct);
-    let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_ct);
+    let mut ct_glwe: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, ct_k, rank);
+    let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, ct_k);
+    let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, ct_k);
 
     let mut source_xs: Source = Source::new([0u8; 32]);
     let mut source_xe: Source = Source::new([0u8; 32]);
@@ -366,10 +368,10 @@ fn test_keyswitch_inplace(log_n: usize, basek: usize, k_ksk: usize, k_ct: usize,
         .fill_uniform(basek, 0, pt_want.size(), &mut source_xa);
 
     let mut scratch: ScratchOwned = ScratchOwned::new(
-        GLWESwitchingKey::encrypt_sk_scratch_space(&module, rank, ct_grlwe.size())
-            | GLWECiphertext::decrypt_scratch_space(&module, ct_rlwe.size())
-            | GLWECiphertext::encrypt_sk_scratch_space(&module, ct_rlwe.size())
-            | GLWECiphertext::keyswitch_inplace_scratch_space(&module, ct_rlwe.size(), rank, ct_grlwe.size()),
+        GLWESwitchingKey::encrypt_sk_scratch_space(&module, basek, ct_grlwe.k(), rank)
+            | GLWECiphertext::decrypt_scratch_space(&module, basek, ct_glwe.k())
+            | GLWECiphertext::encrypt_sk_scratch_space(&module, basek, ct_glwe.k())
+            | GLWECiphertext::keyswitch_inplace_scratch_space(&module, basek, ct_glwe.k(), rank, ct_grlwe.k()),
     );
 
     let mut sk0: SecretKey<Vec<u8>> = SecretKey::alloc(&module, rank);
@@ -394,7 +396,7 @@ fn test_keyswitch_inplace(log_n: usize, basek: usize, k_ksk: usize, k_ct: usize,
         scratch.borrow(),
     );
 
-    ct_rlwe.encrypt_sk(
+    ct_glwe.encrypt_sk(
         &module,
         &pt_want,
         &sk0_dft,
@@ -404,9 +406,9 @@ fn test_keyswitch_inplace(log_n: usize, basek: usize, k_ksk: usize, k_ct: usize,
         scratch.borrow(),
     );
 
-    ct_rlwe.keyswitch_inplace(&module, &ct_grlwe, scratch.borrow());
+    ct_glwe.keyswitch_inplace(&module, &ct_grlwe, scratch.borrow());
 
-    ct_rlwe.decrypt(&module, &mut pt_have, &sk1_dft, scratch.borrow());
+    ct_glwe.decrypt(&module, &mut pt_have, &sk1_dft, scratch.borrow());
 
     module.vec_znx_sub_ab_inplace(&mut pt_have.data, 0, &pt_want.data, 0);
 
@@ -420,7 +422,7 @@ fn test_keyswitch_inplace(log_n: usize, basek: usize, k_ksk: usize, k_ct: usize,
         sigma * sigma,
         0f64,
         rank as f64,
-        k_ct,
+        ct_k,
         k_ksk,
     );
 
@@ -437,19 +439,19 @@ fn test_automorphism(
     basek: usize,
     p: i64,
     k_autokey: usize,
-    k_ct_in: usize,
-    k_ct_out: usize,
+    ct_k_in: usize,
+    ct_k_out: usize,
     rank: usize,
     sigma: f64,
 ) {
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
-    let rows: usize = (k_ct_in + basek - 1) / basek;
+    let rows: usize = (ct_k_in + basek - 1) / basek;
 
     let mut autokey: AutomorphismKey<Vec<u8>, FFT64> = AutomorphismKey::alloc(&module, basek, k_autokey, rows, rank);
-    let mut ct_in: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_ct_in, rank);
-    let mut ct_out: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_ct_out, rank);
-    let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_ct_in);
-    let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_ct_out);
+    let mut ct_in: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, ct_k_in, rank);
+    let mut ct_out: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, ct_k_out, rank);
+    let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, ct_k_in);
+    let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, ct_k_out);
 
     let mut source_xs: Source = Source::new([0u8; 32]);
     let mut source_xe: Source = Source::new([0u8; 32]);
@@ -460,10 +462,10 @@ fn test_automorphism(
         .fill_uniform(basek, 0, pt_want.size(), &mut source_xa);
 
     let mut scratch: ScratchOwned = ScratchOwned::new(
-        GLWESwitchingKey::encrypt_sk_scratch_space(&module, rank, autokey.size())
-            | GLWECiphertext::decrypt_scratch_space(&module, ct_out.size())
-            | GLWECiphertext::encrypt_sk_scratch_space(&module, ct_in.size())
-            | GLWECiphertext::automorphism_scratch_space(&module, ct_out.size(), rank, ct_in.size(), autokey.size()),
+        GLWESwitchingKey::encrypt_sk_scratch_space(&module, basek, autokey.k(), rank)
+            | GLWECiphertext::decrypt_scratch_space(&module, basek, ct_out.k())
+            | GLWECiphertext::encrypt_sk_scratch_space(&module, basek, ct_in.k())
+            | GLWECiphertext::automorphism_scratch_space(&module, basek, ct_out.k(), ct_in.k(), autokey.k(), rank),
     );
 
     let mut sk: SecretKey<Vec<u8>> = SecretKey::alloc(&module, rank);
@@ -511,7 +513,7 @@ fn test_automorphism(
         sigma * sigma,
         0f64,
         rank as f64,
-        k_ct_in,
+        ct_k_in,
         k_autokey,
     );
 
@@ -523,14 +525,14 @@ fn test_automorphism(
     );
 }
 
-fn test_automorphism_inplace(log_n: usize, basek: usize, p: i64, k_autokey: usize, k_ct: usize, rank: usize, sigma: f64) {
+fn test_automorphism_inplace(log_n: usize, basek: usize, p: i64, k_autokey: usize, ct_k: usize, rank: usize, sigma: f64) {
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
-    let rows: usize = (k_ct + basek - 1) / basek;
+    let rows: usize = (ct_k + basek - 1) / basek;
 
     let mut autokey: AutomorphismKey<Vec<u8>, FFT64> = AutomorphismKey::alloc(&module, basek, k_autokey, rows, rank);
-    let mut ct: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_ct, rank);
-    let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_ct);
-    let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_ct);
+    let mut ct: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, ct_k, rank);
+    let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, ct_k);
+    let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, ct_k);
 
     let mut source_xs: Source = Source::new([0u8; 32]);
     let mut source_xe: Source = Source::new([0u8; 32]);
@@ -542,10 +544,10 @@ fn test_automorphism_inplace(log_n: usize, basek: usize, p: i64, k_autokey: usiz
         .fill_uniform(basek, 0, pt_want.size(), &mut source_xa);
 
     let mut scratch: ScratchOwned = ScratchOwned::new(
-        GLWESwitchingKey::encrypt_sk_scratch_space(&module, rank, autokey.size())
-            | GLWECiphertext::decrypt_scratch_space(&module, ct.size())
-            | GLWECiphertext::encrypt_sk_scratch_space(&module, ct.size())
-            | GLWECiphertext::automorphism_inplace_scratch_space(&module, ct.size(), rank, autokey.size()),
+        GLWESwitchingKey::encrypt_sk_scratch_space(&module, basek, autokey.k(), rank)
+            | GLWECiphertext::decrypt_scratch_space(&module, basek, ct.k())
+            | GLWECiphertext::encrypt_sk_scratch_space(&module, basek, ct.k())
+            | GLWECiphertext::automorphism_inplace_scratch_space(&module, basek, ct.k(), autokey.k(), rank),
     );
 
     let mut sk: SecretKey<Vec<u8>> = SecretKey::alloc(&module, rank);
@@ -590,7 +592,7 @@ fn test_automorphism_inplace(log_n: usize, basek: usize, p: i64, k_autokey: usiz
         sigma * sigma,
         0f64,
         rank as f64,
-        k_ct,
+        ct_k,
         k_autokey,
     );
 
@@ -602,17 +604,17 @@ fn test_automorphism_inplace(log_n: usize, basek: usize, p: i64, k_autokey: usiz
     );
 }
 
-fn test_external_product(log_n: usize, basek: usize, k_ggsw: usize, k_ct_in: usize, k_ct_out: usize, rank: usize, sigma: f64) {
+fn test_external_product(log_n: usize, basek: usize, k_ggsw: usize, ct_k_in: usize, ct_k_out: usize, rank: usize, sigma: f64) {
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
 
-    let rows: usize = (k_ct_in + basek - 1) / basek;
+    let rows: usize = (ct_k_in + basek - 1) / basek;
 
-    let mut ct_rgsw: GGSWCiphertext<Vec<u8>, FFT64> = GGSWCiphertext::alloc(&module, basek, k_ggsw, rows, rank);
-    let mut ct_rlwe_in: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_ct_in, rank);
-    let mut ct_rlwe_out: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_ct_out, rank);
+    let mut ct_ggsw: GGSWCiphertext<Vec<u8>, FFT64> = GGSWCiphertext::alloc(&module, basek, k_ggsw, rows, rank);
+    let mut ct_glwe_in: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, ct_k_in, rank);
+    let mut ct_glwe_out: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, ct_k_out, rank);
     let mut pt_rgsw: ScalarZnx<Vec<u8>> = module.new_scalar_znx(1);
-    let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_ct_in);
-    let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_ct_out);
+    let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, ct_k_in);
+    let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, ct_k_out);
 
     let mut source_xs: Source = Source::new([0u8; 32]);
     let mut source_xe: Source = Source::new([0u8; 32]);
@@ -630,14 +632,15 @@ fn test_external_product(log_n: usize, basek: usize, k_ggsw: usize, k_ct_in: usi
     pt_rgsw.raw_mut()[k] = 1; // X^{k}
 
     let mut scratch: ScratchOwned = ScratchOwned::new(
-        GGSWCiphertext::encrypt_sk_scratch_space(&module, rank, ct_rgsw.size())
-            | GLWECiphertext::decrypt_scratch_space(&module, ct_rlwe_out.size())
-            | GLWECiphertext::encrypt_sk_scratch_space(&module, ct_rlwe_in.size())
+        GGSWCiphertext::encrypt_sk_scratch_space(&module, basek, ct_ggsw.k(), rank)
+            | GLWECiphertext::decrypt_scratch_space(&module, basek, ct_glwe_out.k())
+            | GLWECiphertext::encrypt_sk_scratch_space(&module, basek, ct_glwe_in.k())
             | GLWECiphertext::external_product_scratch_space(
                 &module,
-                ct_rlwe_out.size(),
-                ct_rlwe_in.size(),
-                ct_rgsw.size(),
+                basek,
+                ct_glwe_out.k(),
+                ct_glwe_in.k(),
+                ct_ggsw.k(),
                 rank,
             ),
     );
@@ -648,7 +651,7 @@ fn test_external_product(log_n: usize, basek: usize, k_ggsw: usize, k_ct_in: usi
     let mut sk_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::alloc(&module, rank);
     sk_dft.dft(&module, &sk);
 
-    ct_rgsw.encrypt_sk(
+    ct_ggsw.encrypt_sk(
         &module,
         &pt_rgsw,
         &sk_dft,
@@ -658,7 +661,7 @@ fn test_external_product(log_n: usize, basek: usize, k_ggsw: usize, k_ct_in: usi
         scratch.borrow(),
     );
 
-    ct_rlwe_in.encrypt_sk(
+    ct_glwe_in.encrypt_sk(
         &module,
         &pt_want,
         &sk_dft,
@@ -668,9 +671,9 @@ fn test_external_product(log_n: usize, basek: usize, k_ggsw: usize, k_ct_in: usi
         scratch.borrow(),
     );
 
-    ct_rlwe_out.external_product(&module, &ct_rlwe_in, &ct_rgsw, scratch.borrow());
+    ct_glwe_out.external_product(&module, &ct_glwe_in, &ct_ggsw, scratch.borrow());
 
-    ct_rlwe_out.decrypt(&module, &mut pt_have, &sk_dft, scratch.borrow());
+    ct_glwe_out.decrypt(&module, &mut pt_have, &sk_dft, scratch.borrow());
 
     module.vec_znx_rotate_inplace(k as i64, &mut pt_want.data, 0);
 
@@ -695,7 +698,7 @@ fn test_external_product(log_n: usize, basek: usize, k_ggsw: usize, k_ct_in: usi
         var_gct_err_lhs,
         var_gct_err_rhs,
         rank as f64,
-        k_ct_in,
+        ct_k_in,
         k_ggsw,
     );
 
@@ -707,15 +710,15 @@ fn test_external_product(log_n: usize, basek: usize, k_ggsw: usize, k_ct_in: usi
     );
 }
 
-fn test_external_product_inplace(log_n: usize, basek: usize, k_ggsw: usize, k_ct: usize, rank: usize, sigma: f64) {
+fn test_external_product_inplace(log_n: usize, basek: usize, k_ggsw: usize, ct_k: usize, rank: usize, sigma: f64) {
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
-    let rows: usize = (k_ct + basek - 1) / basek;
+    let rows: usize = (ct_k + basek - 1) / basek;
 
-    let mut ct_rgsw: GGSWCiphertext<Vec<u8>, FFT64> = GGSWCiphertext::alloc(&module, basek, k_ggsw, rows, rank);
-    let mut ct_rlwe: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_ct, rank);
+    let mut ct_ggsw: GGSWCiphertext<Vec<u8>, FFT64> = GGSWCiphertext::alloc(&module, basek, k_ggsw, rows, rank);
+    let mut ct_glwe: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, ct_k, rank);
     let mut pt_rgsw: ScalarZnx<Vec<u8>> = module.new_scalar_znx(1);
-    let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_ct);
-    let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_ct);
+    let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, ct_k);
+    let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, ct_k);
 
     let mut source_xs: Source = Source::new([0u8; 32]);
     let mut source_xe: Source = Source::new([0u8; 32]);
@@ -733,10 +736,10 @@ fn test_external_product_inplace(log_n: usize, basek: usize, k_ggsw: usize, k_ct
     pt_rgsw.raw_mut()[k] = 1; // X^{k}
 
     let mut scratch: ScratchOwned = ScratchOwned::new(
-        GGSWCiphertext::encrypt_sk_scratch_space(&module, rank, ct_rgsw.size())
-            | GLWECiphertext::decrypt_scratch_space(&module, ct_rlwe.size())
-            | GLWECiphertext::encrypt_sk_scratch_space(&module, ct_rlwe.size())
-            | GLWECiphertext::external_product_inplace_scratch_space(&module, ct_rlwe.size(), ct_rgsw.size(), rank),
+        GGSWCiphertext::encrypt_sk_scratch_space(&module, basek, ct_ggsw.k(), rank)
+            | GLWECiphertext::decrypt_scratch_space(&module, basek, ct_glwe.k())
+            | GLWECiphertext::encrypt_sk_scratch_space(&module, basek, ct_glwe.k())
+            | GLWECiphertext::external_product_inplace_scratch_space(&module, basek, ct_glwe.k(), ct_ggsw.k(), rank),
     );
 
     let mut sk: SecretKey<Vec<u8>> = SecretKey::alloc(&module, rank);
@@ -745,7 +748,7 @@ fn test_external_product_inplace(log_n: usize, basek: usize, k_ggsw: usize, k_ct
     let mut sk_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::alloc(&module, rank);
     sk_dft.dft(&module, &sk);
 
-    ct_rgsw.encrypt_sk(
+    ct_ggsw.encrypt_sk(
         &module,
         &pt_rgsw,
         &sk_dft,
@@ -755,7 +758,7 @@ fn test_external_product_inplace(log_n: usize, basek: usize, k_ggsw: usize, k_ct
         scratch.borrow(),
     );
 
-    ct_rlwe.encrypt_sk(
+    ct_glwe.encrypt_sk(
         &module,
         &pt_want,
         &sk_dft,
@@ -765,9 +768,9 @@ fn test_external_product_inplace(log_n: usize, basek: usize, k_ggsw: usize, k_ct
         scratch.borrow(),
     );
 
-    ct_rlwe.external_product_inplace(&module, &ct_rgsw, scratch.borrow());
+    ct_glwe.external_product_inplace(&module, &ct_ggsw, scratch.borrow());
 
-    ct_rlwe.decrypt(&module, &mut pt_have, &sk_dft, scratch.borrow());
+    ct_glwe.decrypt(&module, &mut pt_have, &sk_dft, scratch.borrow());
 
     module.vec_znx_rotate_inplace(k as i64, &mut pt_want.data, 0);
 
@@ -792,7 +795,7 @@ fn test_external_product_inplace(log_n: usize, basek: usize, k_ggsw: usize, k_ct
         var_gct_err_lhs,
         var_gct_err_rhs,
         rank as f64,
-        k_ct,
+        ct_k,
         k_ggsw,
     );
 

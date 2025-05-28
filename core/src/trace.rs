@@ -24,16 +24,17 @@ impl GLWECiphertext<Vec<u8>> {
 
     pub fn trace_scratch_space(
         module: &Module<FFT64>,
-        out_size: usize,
-        in_size: usize,
-        autokey_size: usize,
+        basek: usize,
+        out_k: usize,
+        in_k: usize,
+        atk_k: usize,
         rank: usize,
     ) -> usize {
-        Self::automorphism_inplace_scratch_space(module, out_size.max(in_size), rank, autokey_size)
+        Self::automorphism_inplace_scratch_space(module, basek, out_k.min(in_k), atk_k, rank)
     }
 
-    pub fn trace_inplace_scratch_space(module: &Module<FFT64>, out_size: usize, autokey_size: usize, rank: usize) -> usize {
-        Self::automorphism_inplace_scratch_space(module, out_size, rank, autokey_size)
+    pub fn trace_inplace_scratch_space(module: &Module<FFT64>, basek: usize, out_k: usize, atk_k: usize, rank: usize) -> usize {
+        Self::automorphism_inplace_scratch_space(module, basek, out_k, atk_k, rank)
     }
 }
 

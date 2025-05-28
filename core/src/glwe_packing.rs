@@ -1,7 +1,7 @@
 use crate::{ScratchCore, automorphism::AutomorphismKey, elem::Infos, glwe_ciphertext::GLWECiphertext, glwe_ops::GLWEOps};
 use std::collections::HashMap;
 
-use backend::{FFT64, Module, Scratch, VecZnxAlloc};
+use backend::{FFT64, Module, Scratch};
 
 /// [StreamPacker] enables only the fly GLWE packing
 /// with constant memory of Log(N) ciphertexts.
@@ -74,8 +74,8 @@ impl StreamPacker {
     }
 
     /// Number of scratch space bytes required to call [Self::add].
-    pub fn scratch_space(module: &Module<FFT64>, ct_size: usize, autokey_size: usize, rank: usize) -> usize {
-        pack_core_scratch_space(module, ct_size, autokey_size, rank)
+    pub fn scratch_space(module: &Module<FFT64>, basek: usize, ct_k: usize, atk_k: usize, rank: usize) -> usize {
+        pack_core_scratch_space(module, basek, ct_k, atk_k, rank)
     }
 
     pub fn galois_elements(module: &Module<FFT64>) -> Vec<i64> {
@@ -142,8 +142,8 @@ impl StreamPacker {
     }
 }
 
-fn pack_core_scratch_space(module: &Module<FFT64>, ct_size: usize, autokey_size: usize, rank: usize) -> usize {
-    combine_scratch_space(module, ct_size, autokey_size, rank)
+fn pack_core_scratch_space(module: &Module<FFT64>, basek: usize, ct_k: usize, atk_k: usize, rank: usize) -> usize {
+    combine_scratch_space(module, basek, ct_k, atk_k, rank)
 }
 
 fn pack_core<D: AsRef<[u8]>, DataAK: AsRef<[u8]>>(
@@ -203,10 +203,10 @@ fn pack_core<D: AsRef<[u8]>, DataAK: AsRef<[u8]>>(
     }
 }
 
-fn combine_scratch_space(module: &Module<FFT64>, ct_size: usize, autokey_size: usize, rank: usize) -> usize {
-    2 * module.bytes_of_vec_znx(rank + 1, ct_size)
+fn combine_scratch_space(module: &Module<FFT64>, basek: usize, ct_k: usize, atk_k: usize, rank: usize) -> usize {
+    GLWECiphertext::bytes_of(module, basek, ct_k, rank)
         + (GLWECiphertext::rsh_scratch_space(module)
-            | GLWECiphertext::automorphism_scratch_space(module, ct_size, rank, ct_size, autokey_size))
+            | GLWECiphertext::automorphism_scratch_space(module, basek, ct_k, ct_k, atk_k, rank))
 }
 
 /// [combine] merges two ciphertexts together.
@@ -232,46 +232,52 @@ fn combine<D: AsRef<[u8]>, DataAK: AsRef<[u8]>>(
         gal_el = module.galois_element(1 << (i - 1))
     }
 
-    // Goal is to evaluate: a = a + b*X^t + phi(a - b*X^t))           X^t(a*X^-t + b - phi(a*X^-t + b))
-    // Different cases for wether a and/or b are zero.
-    if acc.value {
-        // Implicite RSH without modulus switch, introduces extra I(X) * Q/2 on decryption.
-        // Necessary so that the scaling of the plaintext remains constant.
-        // It however is ok to do so here because coefficients are eventually
-        // either mapped to garbage or twice their value which vanishes I(X)
-        // since 2*(I(X) * Q/2) = I(X) * Q = 0 mod Q.
-        a.rsh(1, scratch);
+    let t: i64 = 1 << (log_n - i - 1);
 
+    // Goal is to evaluate: a = a + b*X^t + phi(a - b*X^t))
+    // We also use the identity: AUTO(a * X^t, g) = -X^t * AUTO(a, g)
+    // where t = 2^(log_n - i - 1) and g = 5^{2^(i - 1)}
+    // Different cases for wether a and/or b are zero.
+    //
+    // Implicite RSH without modulus switch, introduces extra I(X) * Q/2 on decryption.
+    // Necessary so that the scaling of the plaintext remains constant.
+    // It however is ok to do so here because coefficients are eventually
+    // either mapped to garbage or twice their value which vanishes I(X)
+    // since 2*(I(X) * Q/2) = I(X) * Q = 0 mod Q.
+    if acc.value {
         if let Some(b) = b {
             let (mut tmp_b, scratch_1) = scratch.tmp_glwe_ct(module, basek, k, rank);
-            {
-                let (mut tmp_a, scratch_2) = scratch_1.tmp_glwe_ct(module, basek, k, rank); //TODO can we skip tmp_a by reordering X^k ? 
 
-                // tmp_a = b * X^t
-                tmp_a.rotate(module, 1 << (log_n - i - 1), b);
+            // a = a * X^-t
+            a.rotate_inplace(module, -t);
 
-                // tmp_a >>= 1
-                tmp_a.rsh(1, scratch_2);
+            // tmp_b = a * X^-t - b
+            tmp_b.sub(module, a, b);
+            tmp_b.rsh(1, scratch_1);
 
-                // tmp_b = a - b*X^t
-                tmp_b.sub(module, a, &tmp_a);
-                tmp_b.normalize_inplace(module, scratch_2);
+            // a = a * X^-t + b
+            a.add_inplace(module, b);
+            a.rsh(1, scratch_1);
 
-                // a = a + b * X^t
-                a.add_inplace(module, &tmp_a);
-            }
+            tmp_b.normalize_inplace(module, scratch_1);
 
-            // tmp_b = phi(a - b * X^t)
+            // tmp_b = phi(a * X^-t - b)
             if let Some(key) = auto_keys.get(&gal_el) {
                 tmp_b.automorphism_inplace(module, key, scratch_1);
             } else {
                 panic!("auto_key[{}] not found", gal_el);
             }
 
-            // a = a + b*X^t + phi(a - b*X^t))
-            a.add_inplace(module, &tmp_b);
+            // a = a * X^-t + b - phi(a * X^-t - b)
+            a.sub_inplace_ab(module, &tmp_b);
             a.normalize_inplace(module, scratch_1);
+
+            // a = a + b * X^t - phi(a * X^-t - b) * X^t
+            //   = a + b * X^t - phi(a * X^-t - b) * - phi(X^t)
+            //   = a + b * X^t + phi(a - b * X^t)
+            a.rotate_inplace(module, t);
         } else {
+            a.rsh(1, scratch);
             // a = a + phi(a)
             if let Some(key) = auto_keys.get(&gal_el) {
                 a.automorphism_add_inplace(module, key, scratch);

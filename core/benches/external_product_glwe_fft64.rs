@@ -33,19 +33,20 @@ fn bench_external_product_glwe_fft64(c: &mut Criterion) {
         let rows: usize = (p.k_ct_in + p.basek - 1) / p.basek;
         let sigma: f64 = 3.2;
 
-        let mut ct_rgsw: GGSWCiphertext<Vec<u8>, FFT64> = GGSWCiphertext::alloc(&module, basek, k_ggsw, rows, rank);
-        let mut ct_rlwe_in: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_ct_in, rank);
-        let mut ct_rlwe_out: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_ct_out, rank);
+        let mut ct_ggsw: GGSWCiphertext<Vec<u8>, FFT64> = GGSWCiphertext::alloc(&module, basek, k_ggsw, rows, rank);
+        let mut ct_glwe_in: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_ct_in, rank);
+        let mut ct_glwe_out: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_ct_out, rank);
         let pt_rgsw: ScalarZnx<Vec<u8>> = module.new_scalar_znx(1);
 
         let mut scratch = ScratchOwned::new(
-            GGSWCiphertext::encrypt_sk_scratch_space(&module, rank, ct_rgsw.size())
-                | GLWECiphertext::encrypt_sk_scratch_space(&module, ct_rlwe_in.size())
+            GGSWCiphertext::encrypt_sk_scratch_space(&module, basek, ct_ggsw.k(), rank)
+                | GLWECiphertext::encrypt_sk_scratch_space(&module, basek, ct_glwe_in.k())
                 | GLWECiphertext::external_product_scratch_space(
                     &module,
-                    ct_rlwe_out.size(),
-                    ct_rlwe_in.size(),
-                    ct_rgsw.size(),
+                    basek,
+                    ct_glwe_out.k(),
+                    ct_glwe_in.k(),
+                    ct_ggsw.k(),
                     rank,
                 ),
         );
@@ -59,7 +60,7 @@ fn bench_external_product_glwe_fft64(c: &mut Criterion) {
         let mut sk_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::alloc(&module, rank);
         sk_dft.dft(&module, &sk);
 
-        ct_rgsw.encrypt_sk(
+        ct_ggsw.encrypt_sk(
             &module,
             &pt_rgsw,
             &sk_dft,
@@ -69,7 +70,7 @@ fn bench_external_product_glwe_fft64(c: &mut Criterion) {
             scratch.borrow(),
         );
 
-        ct_rlwe_in.encrypt_zero_sk(
+        ct_glwe_in.encrypt_zero_sk(
             &module,
             &sk_dft,
             &mut source_xa,
@@ -79,10 +80,10 @@ fn bench_external_product_glwe_fft64(c: &mut Criterion) {
         );
 
         move || {
-            ct_rlwe_out.external_product(
+            ct_glwe_out.external_product(
                 black_box(&module),
-                black_box(&ct_rlwe_in),
-                black_box(&ct_rgsw),
+                black_box(&ct_glwe_in),
+                black_box(&ct_ggsw),
                 black_box(scratch.borrow()),
             );
         }
@@ -128,14 +129,14 @@ fn bench_external_product_glwe_inplace_fft64(c: &mut Criterion) {
         let rows: usize = (p.k_ct + p.basek - 1) / p.basek;
         let sigma: f64 = 3.2;
 
-        let mut ct_rgsw: GGSWCiphertext<Vec<u8>, FFT64> = GGSWCiphertext::alloc(&module, basek, k_ggsw, rows, rank);
-        let mut ct_rlwe: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_glwe, rank);
+        let mut ct_ggsw: GGSWCiphertext<Vec<u8>, FFT64> = GGSWCiphertext::alloc(&module, basek, k_ggsw, rows, rank);
+        let mut ct_glwe: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_glwe, rank);
         let pt_rgsw: ScalarZnx<Vec<u8>> = module.new_scalar_znx(1);
 
         let mut scratch = ScratchOwned::new(
-            GGSWCiphertext::encrypt_sk_scratch_space(&module, rank, ct_rgsw.size())
-                | GLWECiphertext::encrypt_sk_scratch_space(&module, ct_rlwe.size())
-                | GLWECiphertext::external_product_inplace_scratch_space(&module, ct_rlwe.size(), ct_rgsw.size(), rank),
+            GGSWCiphertext::encrypt_sk_scratch_space(&module, basek, ct_ggsw.k(), rank)
+                | GLWECiphertext::encrypt_sk_scratch_space(&module, basek, ct_glwe.k())
+                | GLWECiphertext::external_product_inplace_scratch_space(&module, basek, ct_glwe.k(), ct_ggsw.k(), rank),
         );
 
         let mut source_xs = Source::new([0u8; 32]);
@@ -147,7 +148,7 @@ fn bench_external_product_glwe_inplace_fft64(c: &mut Criterion) {
         let mut sk_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::alloc(&module, rank);
         sk_dft.dft(&module, &sk);
 
-        ct_rgsw.encrypt_sk(
+        ct_ggsw.encrypt_sk(
             &module,
             &pt_rgsw,
             &sk_dft,
@@ -157,7 +158,7 @@ fn bench_external_product_glwe_inplace_fft64(c: &mut Criterion) {
             scratch.borrow(),
         );
 
-        ct_rlwe.encrypt_zero_sk(
+        ct_glwe.encrypt_zero_sk(
             &module,
             &sk_dft,
             &mut source_xa,
@@ -169,9 +170,9 @@ fn bench_external_product_glwe_inplace_fft64(c: &mut Criterion) {
         move || {
             let scratch_borrow = scratch.borrow();
             (0..687).for_each(|_| {
-                ct_rlwe.external_product_inplace(
+                ct_glwe.external_product_inplace(
                     black_box(&module),
-                    black_box(&ct_rgsw),
+                    black_box(&ct_ggsw),
                     black_box(scratch_borrow),
                 );
             });

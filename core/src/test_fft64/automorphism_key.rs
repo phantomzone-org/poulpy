@@ -39,15 +39,9 @@ fn test_automorphism(p0: i64, p1: i64, log_n: usize, basek: usize, k_ksk: usize,
     let mut source_xa: Source = Source::new([0u8; 32]);
 
     let mut scratch: ScratchOwned = ScratchOwned::new(
-        AutomorphismKey::generate_from_sk_scratch_space(&module, rank, auto_key_in.size())
-            | GLWECiphertextFourier::decrypt_scratch_space(&module, auto_key_out.size())
-            | AutomorphismKey::automorphism_scratch_space(
-                &module,
-                auto_key_out.size(),
-                auto_key_in.size(),
-                auto_key_apply.size(),
-                rank,
-            ),
+        AutomorphismKey::generate_from_sk_scratch_space(&module, basek, k_ksk, rank)
+            | GLWECiphertextFourier::decrypt_scratch_space(&module, basek, k_ksk)
+            | AutomorphismKey::automorphism_scratch_space(&module, basek, k_ksk, k_ksk, k_ksk, rank),
     );
 
     let mut sk: SecretKey<Vec<u8>> = SecretKey::alloc(&module, rank);
@@ -132,7 +126,7 @@ fn test_automorphism(p0: i64, p1: i64, log_n: usize, basek: usize, k_ksk: usize,
 
 fn test_automorphism_inplace(p0: i64, p1: i64, log_n: usize, basek: usize, k_ksk: usize, sigma: f64, rank: usize) {
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
-    let rows = (k_ksk + basek - 1) / basek;
+    let rows: usize = (k_ksk + basek - 1) / basek;
 
     let mut auto_key: AutomorphismKey<Vec<u8>, FFT64> = AutomorphismKey::alloc(&module, basek, k_ksk, rows, rank);
     let mut auto_key_apply: AutomorphismKey<Vec<u8>, FFT64> = AutomorphismKey::alloc(&module, basek, k_ksk, rows, rank);
@@ -142,9 +136,9 @@ fn test_automorphism_inplace(p0: i64, p1: i64, log_n: usize, basek: usize, k_ksk
     let mut source_xa: Source = Source::new([0u8; 32]);
 
     let mut scratch: ScratchOwned = ScratchOwned::new(
-        AutomorphismKey::generate_from_sk_scratch_space(&module, rank, auto_key.size())
-            | GLWECiphertextFourier::decrypt_scratch_space(&module, auto_key.size())
-            | AutomorphismKey::automorphism_inplace_scratch_space(&module, auto_key.size(), auto_key_apply.size(), rank),
+        AutomorphismKey::generate_from_sk_scratch_space(&module, basek, k_ksk, rank)
+            | GLWECiphertextFourier::decrypt_scratch_space(&module, basek, k_ksk)
+            | AutomorphismKey::automorphism_inplace_scratch_space(&module, basek, k_ksk, k_ksk, rank),
     );
 
     let mut sk: SecretKey<Vec<u8>> = SecretKey::alloc(&module, rank);

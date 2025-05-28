@@ -36,10 +36,10 @@ fn test_trace_inplace(log_n: usize, basek: usize, k: usize, sigma: f64, rank: us
     let mut source_xa: Source = Source::new([0u8; 32]);
 
     let mut scratch: ScratchOwned = ScratchOwned::new(
-        GLWECiphertext::encrypt_sk_scratch_space(&module, ct.size())
-            | GLWECiphertext::decrypt_scratch_space(&module, ct.size())
-            | AutomorphismKey::generate_from_sk_scratch_space(&module, rank, k_autokey)
-            | GLWECiphertext::trace_inplace_scratch_space(&module, ct.size(), k_autokey, rank),
+        GLWECiphertext::encrypt_sk_scratch_space(&module, basek, ct.k())
+            | GLWECiphertext::decrypt_scratch_space(&module, basek, ct.k())
+            | AutomorphismKey::generate_from_sk_scratch_space(&module, basek, k_autokey, rank)
+            | GLWECiphertext::trace_inplace_scratch_space(&module, basek, ct.k(), k_autokey, rank),
     );
 
     let mut sk: SecretKey<Vec<u8>> = SecretKey::alloc(&module, rank);

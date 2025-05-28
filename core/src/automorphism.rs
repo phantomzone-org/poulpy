@@ -1,6 +1,6 @@
 use backend::{
     Backend, FFT64, MatZnxDft, MatZnxDftOps, Module, ScalarZnxDftAlloc, ScalarZnxDftOps, ScalarZnxOps, Scratch, VecZnx,
-    VecZnxBigAlloc, VecZnxDftAlloc, VecZnxDftOps, VecZnxOps, ZnxZero,
+    VecZnxDftOps, VecZnxOps, ZnxZero,
 };
 use sampling::source::Source;
 
@@ -86,63 +86,79 @@ impl<C: AsMut<[u8]> + AsRef<[u8]>> SetRow<FFT64> for AutomorphismKey<C, FFT64> {
 }
 
 impl AutomorphismKey<Vec<u8>, FFT64> {
-    pub fn generate_from_sk_scratch_space(module: &Module<FFT64>, rank: usize, size: usize) -> usize {
-        GGLWECiphertext::generate_from_sk_scratch_space(module, rank, size) + module.bytes_of_scalar_znx_dft(rank)
+    pub fn generate_from_sk_scratch_space(module: &Module<FFT64>, basek: usize, k: usize, rank: usize) -> usize {
+        GGLWECiphertext::generate_from_sk_scratch_space(module, basek, k, rank) + module.bytes_of_scalar_znx_dft(rank)
     }
 
-    pub fn generate_from_pk_scratch_space(module: &Module<FFT64>, rank: usize, pk_size: usize) -> usize {
-        GGLWECiphertext::generate_from_pk_scratch_space(module, rank, pk_size)
+    pub fn generate_from_pk_scratch_space(module: &Module<FFT64>, _basek: usize, _k: usize, _rank: usize) -> usize {
+        GGLWECiphertext::generate_from_pk_scratch_space(module, _basek, _k, _rank)
     }
 
     pub fn keyswitch_scratch_space(
         module: &Module<FFT64>,
-        out_size: usize,
-        in_size: usize,
-        ksk_size: usize,
+        basek: usize,
+        out_k: usize,
+        in_k: usize,
+        ksk_k: usize,
         rank: usize,
     ) -> usize {
-        GLWESwitchingKey::keyswitch_scratch_space(module, out_size, rank, in_size, rank, ksk_size)
+        GLWESwitchingKey::keyswitch_scratch_space(module, basek, out_k, rank, in_k, rank, ksk_k)
     }
 
-    pub fn keyswitch_inplace_scratch_space(module: &Module<FFT64>, out_size: usize, out_rank: usize, ksk_size: usize) -> usize {
-        GLWESwitchingKey::keyswitch_inplace_scratch_space(module, out_size, out_rank, ksk_size)
+    pub fn keyswitch_inplace_scratch_space(
+        module: &Module<FFT64>,
+        basek: usize,
+        out_k: usize,
+        out_rank: usize,
+        ksk_k: usize,
+    ) -> usize {
+        GLWESwitchingKey::keyswitch_inplace_scratch_space(module, basek, out_k, out_rank, ksk_k)
     }
 
     pub fn automorphism_scratch_space(
         module: &Module<FFT64>,
-        out_size: usize,
-        in_size: usize,
-        ksk_size: usize,
+        basek: usize,
+        out_k: usize,
+        in_k: usize,
+        atk_k: usize,
         rank: usize,
     ) -> usize {
-        let tmp_dft: usize = module.bytes_of_vec_znx_dft(rank + 1, in_size);
-        let tmp_idft: usize = module.bytes_of_vec_znx_big(rank + 1, out_size);
+        let tmp_dft: usize = GLWECiphertextFourier::bytes_of(module, basek, in_k, rank);
+        let tmp_idft: usize = GLWECiphertextFourier::bytes_of(module, basek, out_k, rank);
         let idft: usize = module.vec_znx_idft_tmp_bytes();
-        let keyswitch: usize = GLWECiphertext::keyswitch_inplace_scratch_space(module, out_size, rank, ksk_size);
+        let keyswitch: usize = GLWECiphertext::keyswitch_inplace_scratch_space(module, basek, out_k, rank, atk_k);
         tmp_dft + tmp_idft + idft + keyswitch
     }
 
-    pub fn automorphism_inplace_scratch_space(module: &Module<FFT64>, out_size: usize, ksk_size: usize, rank: usize) -> usize {
-        AutomorphismKey::automorphism_scratch_space(module, out_size, out_size, ksk_size, rank)
+    pub fn automorphism_inplace_scratch_space(
+        module: &Module<FFT64>,
+        basek: usize,
+        out_k: usize,
+        ksk_k: usize,
+        rank: usize,
+    ) -> usize {
+        AutomorphismKey::automorphism_scratch_space(module, basek, out_k, out_k, ksk_k, rank)
     }
 
     pub fn external_product_scratch_space(
         module: &Module<FFT64>,
-        out_size: usize,
-        in_size: usize,
-        ggsw_size: usize,
+        basek: usize,
+        out_k: usize,
+        in_k: usize,
+        ggsw_k: usize,
         rank: usize,
     ) -> usize {
-        GLWESwitchingKey::external_product_scratch_space(module, out_size, in_size, ggsw_size, rank)
+        GLWESwitchingKey::external_product_scratch_space(module, basek, out_k, in_k, ggsw_k, rank)
     }
 
     pub fn external_product_inplace_scratch_space(
         module: &Module<FFT64>,
-        out_size: usize,
-        ggsw_size: usize,
+        basek: usize,
+        out_k: usize,
+        ggsw_k: usize,
         rank: usize,
     ) -> usize {
-        GLWESwitchingKey::external_product_inplace_scratch_space(module, out_size, ggsw_size, rank)
+        GLWESwitchingKey::external_product_inplace_scratch_space(module, basek, out_k, ggsw_k, rank)
     }
 }
 
@@ -164,13 +180,14 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> AutomorphismKey<DataSelf, FFT64> {
             assert_eq!(self.rank_out(), self.rank_in());
             assert_eq!(sk.rank(), self.rank());
             assert!(
-                scratch.available() >= AutomorphismKey::generate_from_sk_scratch_space(module, self.rank(), self.size()),
+                scratch.available()
+                    >= AutomorphismKey::generate_from_sk_scratch_space(module, self.basek(), self.k(), self.rank()),
                 "scratch.available(): {} < AutomorphismKey::generate_from_sk_scratch_space(module, self.rank()={}, \
                  self.size()={}): {}",
                 scratch.available(),
                 self.rank(),
                 self.size(),
-                AutomorphismKey::generate_from_sk_scratch_space(module, self.rank(), self.size())
+                AutomorphismKey::generate_from_sk_scratch_space(module, self.basek(), self.k(), self.rank())
             )
         }
 

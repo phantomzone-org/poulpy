@@ -57,14 +57,15 @@ impl<T, B: Backend> GGLWECiphertext<T, B> {
 }
 
 impl GGLWECiphertext<Vec<u8>, FFT64> {
-    pub fn generate_from_sk_scratch_space(module: &Module<FFT64>, rank: usize, size: usize) -> usize {
-        GLWECiphertext::encrypt_sk_scratch_space(module, size)
+    pub fn generate_from_sk_scratch_space(module: &Module<FFT64>, basek: usize, k: usize, rank: usize) -> usize {
+        let size = derive_size(basek, k);
+        GLWECiphertext::encrypt_sk_scratch_space(module, basek, k)
             + module.bytes_of_vec_znx(rank + 1, size)
             + module.bytes_of_vec_znx(1, size)
             + module.bytes_of_vec_znx_dft(rank + 1, size)
     }
 
-    pub fn generate_from_pk_scratch_space(_module: &Module<FFT64>, _rank: usize, _pk_size: usize) -> usize {
+    pub fn generate_from_pk_scratch_space(_module: &Module<FFT64>, _basek: usize, _k: usize, _rank: usize) -> usize {
         unimplemented!()
     }
 }
@@ -88,13 +89,14 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGLWECiphertext<DataSelf, FFT64> {
             assert_eq!(sk_dft.n(), module.n());
             assert_eq!(pt.n(), module.n());
             assert!(
-                scratch.available() >= GGLWECiphertext::generate_from_sk_scratch_space(module, self.rank(), self.size()),
+                scratch.available()
+                    >= GGLWECiphertext::generate_from_sk_scratch_space(module, self.basek(), self.k(), self.rank()),
                 "scratch.available: {} < GGLWECiphertext::generate_from_sk_scratch_space(module, self.rank()={}, \
                  self.size()={}): {}",
                 scratch.available(),
                 self.rank(),
                 self.size(),
-                GGLWECiphertext::generate_from_sk_scratch_space(module, self.rank(), self.size())
+                GGLWECiphertext::generate_from_sk_scratch_space(module, self.basek(), self.k(), self.rank())
             )
         }
 

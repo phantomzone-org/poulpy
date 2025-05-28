@@ -58,8 +58,8 @@ impl<T, B: Backend> TensorKey<T, B> {
 }
 
 impl TensorKey<Vec<u8>, FFT64> {
-    pub fn generate_from_sk_scratch_space(module: &Module<FFT64>, rank: usize, size: usize) -> usize {
-        module.bytes_of_scalar_znx_dft(1) + GLWESwitchingKey::encrypt_sk_scratch_space(module, rank, size)
+    pub fn generate_from_sk_scratch_space(module: &Module<FFT64>, basek: usize, k: usize, rank: usize) -> usize {
+        module.bytes_of_scalar_znx_dft(1) + GLWESwitchingKey::encrypt_sk_scratch_space(module, basek, k, rank)
     }
 }
 

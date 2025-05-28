@@ -76,106 +76,117 @@ impl<C: AsRef<[u8]>> GLWECiphertext<C> {
 }
 
 impl GLWECiphertext<Vec<u8>> {
-    pub fn encrypt_sk_scratch_space(module: &Module<FFT64>, ct_size: usize) -> usize {
-        module.vec_znx_big_normalize_tmp_bytes() + module.bytes_of_vec_znx_dft(1, ct_size) + module.bytes_of_vec_znx(1, ct_size)
+    pub fn encrypt_sk_scratch_space(module: &Module<FFT64>, basek: usize, k: usize) -> usize {
+        let size: usize = derive_size(basek, k);
+        module.vec_znx_big_normalize_tmp_bytes() + module.bytes_of_vec_znx_dft(1, size) + module.bytes_of_vec_znx(1, size)
     }
-    pub fn encrypt_pk_scratch_space(module: &Module<FFT64>, pk_size: usize) -> usize {
-        ((module.bytes_of_vec_znx_dft(1, pk_size) + module.bytes_of_vec_znx_big(1, pk_size)) | module.bytes_of_scalar_znx(1))
+    pub fn encrypt_pk_scratch_space(module: &Module<FFT64>, basek: usize, k: usize) -> usize {
+        let size: usize = derive_size(basek, k);
+        ((module.bytes_of_vec_znx_dft(1, size) + module.bytes_of_vec_znx_big(1, size)) | module.bytes_of_scalar_znx(1))
             + module.bytes_of_scalar_znx_dft(1)
             + module.vec_znx_big_normalize_tmp_bytes()
     }
 
-    pub fn decrypt_scratch_space(module: &Module<FFT64>, ct_size: usize) -> usize {
-        (module.vec_znx_big_normalize_tmp_bytes() | module.bytes_of_vec_znx_dft(1, ct_size))
-            + module.bytes_of_vec_znx_big(1, ct_size)
+    pub fn decrypt_scratch_space(module: &Module<FFT64>, basek: usize, k: usize) -> usize {
+        let size: usize = derive_size(basek, k);
+        (module.vec_znx_big_normalize_tmp_bytes() | module.bytes_of_vec_znx_dft(1, size)) + module.bytes_of_vec_znx_big(1, size)
     }
 
     pub fn keyswitch_scratch_space(
         module: &Module<FFT64>,
-        out_size: usize,
+        basek: usize,
+        out_k: usize,
         out_rank: usize,
-        in_size: usize,
+        in_k: usize,
         in_rank: usize,
-        ksk_size: usize,
+        ksk_k: usize,
     ) -> usize {
-        let res_dft: usize = module.bytes_of_vec_znx_dft(out_rank + 1, ksk_size);
+        let res_dft: usize = GLWECiphertextFourier::bytes_of(module, basek, out_k, out_rank);
+        let in_size: usize = derive_size(basek, in_k);
+        let out_size: usize = derive_size(basek, out_k);
+        let ksk_size: usize = derive_size(basek, ksk_k);
         let vmp: usize = module.vmp_apply_tmp_bytes(out_size, in_size, in_size, in_rank, out_rank + 1, ksk_size)
             + module.bytes_of_vec_znx_dft(in_rank, in_size);
         let normalize: usize = module.vec_znx_big_normalize_tmp_bytes();
-
         return res_dft + (vmp | normalize);
     }
 
     pub fn keyswitch_from_fourier_scratch_space(
         module: &Module<FFT64>,
-        out_size: usize,
+        basek: usize,
+        out_k: usize,
         out_rank: usize,
-        in_size: usize,
+        in_k: usize,
         in_rank: usize,
-        ksk_size: usize,
+        ksk_k: usize,
     ) -> usize {
-        let res_dft = module.bytes_of_vec_znx_dft(out_rank + 1, ksk_size);
-
-        let vmp: usize = module.vmp_apply_tmp_bytes(out_size, in_size, in_size, in_rank, out_rank + 1, ksk_size)
-            + module.bytes_of_vec_znx_dft(in_rank, in_size);
-
-        let norm: usize = module.vec_znx_big_normalize_tmp_bytes();
-
-        res_dft + (vmp | norm)
+        Self::keyswitch_scratch_space(module, basek, out_k, out_rank, in_k, in_rank, ksk_k)
     }
 
-    pub fn keyswitch_inplace_scratch_space(module: &Module<FFT64>, out_size: usize, out_rank: usize, ksk_size: usize) -> usize {
-        GLWECiphertext::keyswitch_scratch_space(module, out_size, out_rank, out_size, out_rank, ksk_size)
+    pub fn keyswitch_inplace_scratch_space(
+        module: &Module<FFT64>,
+        basek: usize,
+        out_k: usize,
+        out_rank: usize,
+        ksk_k: usize,
+    ) -> usize {
+        Self::keyswitch_scratch_space(module, basek, out_k, out_rank, out_k, out_rank, ksk_k)
     }
 
     pub fn automorphism_scratch_space(
         module: &Module<FFT64>,
-        out_size: usize,
-        out_rank: usize,
-        in_size: usize,
-        autokey_size: usize,
+        basek: usize,
+        out_k: usize,
+        in_k: usize,
+        atk_k: usize,
+        rank: usize,
     ) -> usize {
-        GLWECiphertext::keyswitch_scratch_space(module, out_size, out_rank, in_size, out_rank, autokey_size)
+        Self::keyswitch_scratch_space(module, basek, out_k, rank, in_k, rank, atk_k)
     }
 
     pub fn automorphism_inplace_scratch_space(
         module: &Module<FFT64>,
-        out_size: usize,
-        out_rank: usize,
-        autokey_size: usize,
+        basek: usize,
+        out_k: usize,
+        atk_k: usize,
+        rank: usize,
     ) -> usize {
-        GLWECiphertext::keyswitch_scratch_space(module, out_size, out_rank, out_size, out_rank, autokey_size)
+        Self::keyswitch_scratch_space(module, basek, out_k, rank, out_k, rank, atk_k)
     }
 
     pub fn external_product_scratch_space(
         module: &Module<FFT64>,
-        out_size: usize,
-        out_rank: usize,
-        in_size: usize,
-        ggsw_size: usize,
+        basek: usize,
+        out_k: usize,
+        in_k: usize,
+        ggsw_k: usize,
+        rank: usize,
     ) -> usize {
-        let res_dft: usize = module.bytes_of_vec_znx_dft(out_rank + 1, ggsw_size);
-        let vmp: usize = module.bytes_of_vec_znx_dft(out_rank + 1, in_size)
+        let res_dft: usize = GLWECiphertextFourier::bytes_of(module, basek, out_k, rank);
+        let in_size: usize = derive_size(basek, in_k);
+        let out_size: usize = derive_size(basek, out_k);
+        let ggsw_size: usize = derive_size(basek, ggsw_k);
+        let vmp: usize = module.bytes_of_vec_znx_dft(rank + 1, in_size)
             + module.vmp_apply_tmp_bytes(
                 out_size,
                 in_size,
-                in_size,      // rows
-                out_rank + 1, // cols in
-                out_rank + 1, // cols out
+                in_size,  // rows
+                rank + 1, // cols in
+                rank + 1, // cols out
                 ggsw_size,
             );
         let normalize: usize = module.vec_znx_big_normalize_tmp_bytes();
-
         res_dft + (vmp | normalize)
     }
 
     pub fn external_product_inplace_scratch_space(
         module: &Module<FFT64>,
-        out_size: usize,
-        out_rank: usize,
-        ggsw_size: usize,
+        basek: usize,
+        out_k: usize,
+        ggsw_k: usize,
+        rank: usize,
     ) -> usize {
-        GLWECiphertext::external_product_scratch_space(module, out_size, out_rank, out_size, ggsw_size)
+        Self::external_product_scratch_space(module, basek, out_k, out_k, ggsw_k, rank)
     }
 }
 
@@ -385,11 +396,12 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
                 scratch.available()
                     >= GLWECiphertext::keyswitch_from_fourier_scratch_space(
                         module,
-                        self.size(),
+                        self.basek(),
+                        self.k(),
                         self.rank(),
-                        lhs.size(),
+                        lhs.k(),
                         lhs.rank(),
-                        rhs.size(),
+                        rhs.k(),
                     )
             );
         }
@@ -452,11 +464,12 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
                 scratch.available()
                     >= GLWECiphertext::keyswitch_scratch_space(
                         module,
-                        self.size(),
+                        self.basek(),
+                        self.k(),
                         self.rank(),
-                        lhs.size(),
+                        lhs.k(),
                         lhs.rank(),
-                        rhs.size(),
+                        rhs.k(),
                     )
             );
         }
@@ -576,10 +589,10 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
                 assert!(col < self.rank() + 1);
             }
             assert!(
-                scratch.available() >= GLWECiphertext::encrypt_sk_scratch_space(module, self.size()),
+                scratch.available() >= GLWECiphertext::encrypt_sk_scratch_space(module, self.basek(), self.k()),
                 "scratch.available(): {} < GLWECiphertext::encrypt_sk_scratch_space: {}",
                 scratch.available(),
-                GLWECiphertext::encrypt_sk_scratch_space(module, self.size())
+                GLWECiphertext::encrypt_sk_scratch_space(module, self.basek(), self.k())
             )
         }
 

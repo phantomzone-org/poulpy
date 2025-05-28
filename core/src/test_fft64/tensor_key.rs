@@ -32,8 +32,9 @@ fn test_encrypt_sk(log_n: usize, basek: usize, k: usize, sigma: f64, rank: usize
 
     let mut scratch: ScratchOwned = ScratchOwned::new(TensorKey::generate_from_sk_scratch_space(
         &module,
+        basek,
+        tensor_key.k(),
         rank,
-        tensor_key.size(),
     ));
 
     let mut sk: SecretKey<Vec<u8>> = SecretKey::alloc(&module, rank);
