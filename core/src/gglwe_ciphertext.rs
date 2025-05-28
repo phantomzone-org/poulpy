@@ -27,6 +27,10 @@ impl<B: Backend> GGLWECiphertext<Vec<u8>, B> {
             k,
         }
     }
+
+    pub fn bytes_of(module: &Module<FFT64>, basek: usize, k: usize, rows: usize, rank_in: usize, rank_out: usize) -> usize {
+        module.bytes_of_mat_znx_dft(rows, rank_in, rank_out + 1, derive_size(basek, k))
+    }
 }
 
 impl<T, B: Backend> Infos for GGLWECiphertext<T, B> {

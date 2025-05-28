@@ -32,6 +32,10 @@ impl GLWECiphertext<Vec<u8>> {
             k,
         }
     }
+
+    pub fn bytes_of(module: &Module<FFT64>, basek: usize, k: usize, rank: usize) -> usize {
+        module.bytes_of_vec_znx(rank + 1, derive_size(basek, k))
+    }
 }
 
 impl<T> Infos for GLWECiphertext<T> {

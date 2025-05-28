@@ -26,6 +26,10 @@ impl SecretKey<Vec<u8>> {
             dist: SecretDistribution::NONE,
         }
     }
+
+    pub fn bytes_of(module: &Module<FFT64>, rank: usize) -> usize {
+        module.bytes_of_scalar_znx(rank + 1)
+    }
 }
 
 impl<DataSelf> SecretKey<DataSelf> {
@@ -89,6 +93,10 @@ impl<B: Backend> SecretKeyFourier<Vec<u8>, B> {
             dist: SecretDistribution::NONE,
         }
     }
+
+    pub fn bytes_of(module: &Module<B>, rank: usize) -> usize {
+        module.bytes_of_scalar_znx_dft(rank + 1)
+    }
 }
 
 impl<D: AsRef<[u8]> + AsMut<[u8]>> SecretKeyFourier<D, FFT64> {
@@ -123,6 +131,10 @@ impl<B: Backend> GLWEPublicKey<Vec<u8>, B> {
             data: GLWECiphertextFourier::alloc(module, basek, k, rank),
             dist: SecretDistribution::NONE,
         }
+    }
+
+    pub fn bytes_of(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize {
+        GLWECiphertextFourier::<Vec<u8>, B>::bytes_of(module, basek, k, rank)
     }
 }
 

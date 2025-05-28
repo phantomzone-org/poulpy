@@ -31,6 +31,10 @@ impl<B: Backend> GGSWCiphertext<Vec<u8>, B> {
             k: k,
         }
     }
+
+    pub fn bytes_of(module: &Module<FFT64>, basek: usize, k: usize, rows: usize, rank: usize) -> usize {
+        module.bytes_of_mat_znx_dft(rows, rank + 1, rank + 1, derive_size(basek, k))
+    }
 }
 
 impl<T, B: Backend> Infos for GGSWCiphertext<T, B> {

@@ -20,6 +20,11 @@ impl TensorKey<Vec<u8>, FFT64> {
         });
         Self { keys: keys }
     }
+
+    pub fn bytes_of(module: &Module<FFT64>, basek: usize, k: usize, rows: usize, rank: usize) -> usize {
+        let pairs: usize = (((rank + 1) * rank) >> 1).max(1);
+        pairs * GLWESwitchingKey::<Vec<u8>, FFT64>::bytes_of(module, basek, k, rows, 1, rank)
+    }
 }
 
 impl<T, B: Backend> Infos for TensorKey<T, B> {

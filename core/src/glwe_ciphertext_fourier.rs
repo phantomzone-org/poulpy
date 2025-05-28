@@ -23,6 +23,10 @@ impl<B: Backend> GLWECiphertextFourier<Vec<u8>, B> {
             k: k,
         }
     }
+
+    pub fn bytes_of(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize {
+        module.bytes_of_vec_znx_dft(rank + 1, derive_size(basek, k))
+    }
 }
 
 impl<T, B: Backend> Infos for GLWECiphertextFourier<T, B> {

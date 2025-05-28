@@ -17,6 +17,10 @@ impl GLWESwitchingKey<Vec<u8>, FFT64> {
             module, basek, k, rows, rank_in, rank_out,
         ))
     }
+
+    pub fn bytes_of(module: &Module<FFT64>, basek: usize, k: usize, rows: usize, rank_in: usize, rank_out: usize) -> usize {
+        GGLWECiphertext::<Vec<u8>, FFT64>::bytes_of(module, basek, k, rows, rank_in, rank_out)
+    }
 }
 
 impl<T, B: Backend> Infos for GLWESwitchingKey<T, B> {
