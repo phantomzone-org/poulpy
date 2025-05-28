@@ -7,7 +7,7 @@ use sampling::source::Source;
 use crate::{elem::Infos, glwe_ciphertext_fourier::GLWECiphertextFourier};
 
 #[derive(Clone, Copy, Debug)]
-pub enum SecretDistribution {
+pub(crate) enum SecretDistribution {
     TernaryFixed(usize), // Ternary with fixed Hamming weight
     TernaryProb(f64),    // Ternary with probabilistic Hamming weight
     ZERO,                // Debug mod
@@ -15,8 +15,8 @@ pub enum SecretDistribution {
 }
 
 pub struct SecretKey<T> {
-    pub data: ScalarZnx<T>,
-    pub dist: SecretDistribution,
+    pub(crate) data: ScalarZnx<T>,
+    pub(crate) dist: SecretDistribution,
 }
 
 impl SecretKey<Vec<u8>> {
@@ -64,8 +64,8 @@ impl<S: AsMut<[u8]> + AsRef<[u8]>> SecretKey<S> {
 }
 
 pub struct SecretKeyFourier<T, B: Backend> {
-    pub data: ScalarZnxDft<T, B>,
-    pub dist: SecretDistribution,
+    pub(crate) data: ScalarZnxDft<T, B>,
+    pub(crate) dist: SecretDistribution,
 }
 
 impl<DataSelf, B: Backend> SecretKeyFourier<DataSelf, B> {
@@ -113,8 +113,8 @@ impl<D: AsRef<[u8]> + AsMut<[u8]>> SecretKeyFourier<D, FFT64> {
 }
 
 pub struct GLWEPublicKey<D, B: Backend> {
-    pub data: GLWECiphertextFourier<D, B>,
-    pub dist: SecretDistribution,
+    pub(crate) data: GLWECiphertextFourier<D, B>,
+    pub(crate) dist: SecretDistribution,
 }
 
 impl<B: Backend> GLWEPublicKey<Vec<u8>, B> {
