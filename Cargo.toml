@@ -1,5 +1,5 @@
 [workspace]
-members = ["base2k", "core", "sampling", "utils"]
+members = ["backend", "core", "sampling", "utils"]
 resolver = "3"
 
 [workspace.dependencies]
@@ -9,4 +9,4 @@ rand_chacha = "0.9.0"
 rand_core = "0.9.3"
 rand_distr = "0.5.1"
 itertools = "0.14.0"
-criterion = "0.5.1"
+criterion = "0.6.0"

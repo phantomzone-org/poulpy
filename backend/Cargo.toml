@@ -1,0 +1,18 @@
+[package]
+name = "backend"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+rug = {workspace = true}
+criterion = {workspace = true}
+itertools = {workspace = true}
+rand = {workspace = true}
+rand_distr = {workspace = true}
+rand_core = {workspace = true}
+sampling = { path = "../sampling" }
+utils = { path = "../utils" }
+
+[[bench]]
+name = "fft"
+harness = false

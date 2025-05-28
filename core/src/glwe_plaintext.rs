@@ -1,6 +1,6 @@
-use base2k::{Backend, Module, VecZnx, VecZnxAlloc, VecZnxToMut, VecZnxToRef};
+use backend::{Backend, Module, VecZnx, VecZnxAlloc, VecZnxToMut, VecZnxToRef};
 
-use crate::{elem::Infos, utils::derive_size};
+use crate::{elem::{Infos, SetMetaData}, glwe_ciphertext::{GLWECiphertext, GLWECiphertextToMut, GLWECiphertextToRef}, glwe_ops::GLWEOps, utils::derive_size};
 
 pub struct GLWEPlaintext<C> {
     pub data: VecZnx<C>,
@@ -24,30 +24,49 @@ impl<T> Infos for GLWEPlaintext<T> {
     }
 }
 
-impl<C> VecZnxToMut for GLWEPlaintext<C>
-where
-    VecZnx<C>: VecZnxToMut,
-{
-    fn to_mut(&mut self) -> VecZnx<&mut [u8]> {
-        self.data.to_mut()
+impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> SetMetaData for GLWEPlaintext<DataSelf> {
+    fn set_k(&mut self, k: usize) {
+        self.k = k
     }
-}
 
-impl<C> VecZnxToRef for GLWEPlaintext<C>
-where
-    VecZnx<C>: VecZnxToRef,
-{
-    fn to_ref(&self) -> VecZnx<&[u8]> {
-        self.data.to_ref()
+    fn set_basek(&mut self, basek: usize) {
+        self.basek = basek
     }
 }
 
 impl GLWEPlaintext<Vec<u8>> {
-    pub fn new<B: Backend>(module: &Module<B>, basek: usize, k: usize) -> Self {
+    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize) -> Self {
         Self {
             data: module.new_vec_znx(1, derive_size(basek, k)),
             basek: basek,
             k,
         }
     }
+}
+
+impl<D: AsRef<[u8]>> GLWECiphertextToRef for GLWEPlaintext<D> {
+    fn to_ref(&self) -> GLWECiphertext<&[u8]> {
+        GLWECiphertext {
+            data: self.data.to_ref(),
+            basek: self.basek,
+            k: self.k,
+        }
+    }
+}
+
+impl<D: AsMut<[u8]> + AsRef<[u8]>> GLWECiphertextToMut for GLWEPlaintext<D> {
+    fn to_mut(&mut self) -> GLWECiphertext<&mut [u8]> {
+        GLWECiphertext {
+            data: self.data.to_mut(),
+            basek: self.basek,
+            k: self.k,
+        }
+    }
+}
+
+impl<D> GLWEOps for GLWEPlaintext<D>
+where
+    D: AsRef<[u8]> + AsMut<[u8]>,
+    GLWEPlaintext<D>: GLWECiphertextToMut + Infos + SetMetaData,
+{
 }

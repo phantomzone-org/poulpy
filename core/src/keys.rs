@@ -1,7 +1,6 @@
-use base2k::{
-    Backend, FFT64, Module, ScalarZnx, ScalarZnxAlloc, ScalarZnxDft, ScalarZnxDftAlloc, ScalarZnxDftOps, ScalarZnxDftToMut,
-    ScalarZnxDftToRef, ScalarZnxToMut, ScalarZnxToRef, ScratchOwned, VecZnxDft, VecZnxDftToMut, VecZnxDftToRef, ZnxInfos,
-    ZnxZero,
+use backend::{
+    Backend, FFT64, Module, ScalarZnx, ScalarZnxAlloc, ScalarZnxDft, ScalarZnxDftAlloc, ScalarZnxDftOps, ScratchOwned, VecZnxDft,
+    ZnxInfos, ZnxZero,
 };
 use sampling::source::Source;
 
@@ -21,7 +20,7 @@ pub struct SecretKey<T> {
 }
 
 impl SecretKey<Vec<u8>> {
-    pub fn new<B: Backend>(module: &Module<B>, rank: usize) -> Self {
+    pub fn alloc<B: Backend>(module: &Module<B>, rank: usize) -> Self {
         Self {
             data: module.new_scalar_znx(rank),
             dist: SecretDistribution::NONE,
@@ -43,10 +42,7 @@ impl<DataSelf> SecretKey<DataSelf> {
     }
 }
 
-impl<S> SecretKey<S>
-where
-    S: AsMut<[u8]> + AsRef<[u8]>,
-{
+impl<S: AsMut<[u8]> + AsRef<[u8]>> SecretKey<S> {
     pub fn fill_ternary_prob(&mut self, prob: f64, source: &mut Source) {
         (0..self.rank()).for_each(|i| {
             self.data.fill_ternary_prob(i, prob, source);
@@ -64,24 +60,6 @@ where
     pub fn fill_zero(&mut self) {
         self.data.zero();
         self.dist = SecretDistribution::ZERO;
-    }
-}
-
-impl<C> ScalarZnxToMut for SecretKey<C>
-where
-    ScalarZnx<C>: ScalarZnxToMut,
-{
-    fn to_mut(&mut self) -> ScalarZnx<&mut [u8]> {
-        self.data.to_mut()
-    }
-}
-
-impl<C> ScalarZnxToRef for SecretKey<C>
-where
-    ScalarZnx<C>: ScalarZnxToRef,
-{
-    fn to_ref(&self) -> ScalarZnx<&[u8]> {
-        self.data.to_ref()
     }
 }
 
@@ -105,18 +83,16 @@ impl<DataSelf, B: Backend> SecretKeyFourier<DataSelf, B> {
 }
 
 impl<B: Backend> SecretKeyFourier<Vec<u8>, B> {
-    pub fn new(module: &Module<B>, rank: usize) -> Self {
+    pub fn alloc(module: &Module<B>, rank: usize) -> Self {
         Self {
             data: module.new_scalar_znx_dft(rank),
             dist: SecretDistribution::NONE,
         }
     }
+}
 
-    pub fn dft<S>(&mut self, module: &Module<FFT64>, sk: &SecretKey<S>)
-    where
-        SecretKeyFourier<Vec<u8>, B>: ScalarZnxDftToMut<base2k::FFT64>,
-        SecretKey<S>: ScalarZnxToRef,
-    {
+impl<D: AsRef<[u8]> + AsMut<[u8]>> SecretKeyFourier<D, FFT64> {
+    pub fn dft<S: AsRef<[u8]>>(&mut self, module: &Module<FFT64>, sk: &SecretKey<S>) {
         #[cfg(debug_assertions)]
         {
             match sk.dist {
@@ -130,27 +106,9 @@ impl<B: Backend> SecretKeyFourier<Vec<u8>, B> {
         }
 
         (0..self.rank()).for_each(|i| {
-            module.svp_prepare(self, i, sk, i);
+            module.svp_prepare(&mut self.data, i, &sk.data, i);
         });
         self.dist = sk.dist;
-    }
-}
-
-impl<C, B: Backend> ScalarZnxDftToMut<B> for SecretKeyFourier<C, B>
-where
-    ScalarZnxDft<C, B>: ScalarZnxDftToMut<B>,
-{
-    fn to_mut(&mut self) -> ScalarZnxDft<&mut [u8], B> {
-        self.data.to_mut()
-    }
-}
-
-impl<C, B: Backend> ScalarZnxDftToRef<B> for SecretKeyFourier<C, B>
-where
-    ScalarZnxDft<C, B>: ScalarZnxDftToRef<B>,
-{
-    fn to_ref(&self) -> ScalarZnxDft<&[u8], B> {
-        self.data.to_ref()
     }
 }
 
@@ -160,9 +118,9 @@ pub struct GLWEPublicKey<D, B: Backend> {
 }
 
 impl<B: Backend> GLWEPublicKey<Vec<u8>, B> {
-    pub fn new(module: &Module<B>, log_base2k: usize, log_k: usize, rank: usize) -> Self {
+    pub fn alloc(module: &Module<B>, basek: usize, k: usize, rank: usize) -> Self {
         Self {
-            data: GLWECiphertextFourier::new(module, log_base2k, log_k, rank),
+            data: GLWECiphertextFourier::alloc(module, basek, k, rank),
             dist: SecretDistribution::NONE,
         }
     }
@@ -190,36 +148,15 @@ impl<T, B: Backend> GLWEPublicKey<T, B> {
     }
 }
 
-impl<C, B: Backend> VecZnxDftToMut<B> for GLWEPublicKey<C, B>
-where
-    VecZnxDft<C, B>: VecZnxDftToMut<B>,
-{
-    fn to_mut(&mut self) -> VecZnxDft<&mut [u8], B> {
-        self.data.to_mut()
-    }
-}
-
-impl<C, B: Backend> VecZnxDftToRef<B> for GLWEPublicKey<C, B>
-where
-    VecZnxDft<C, B>: VecZnxDftToRef<B>,
-{
-    fn to_ref(&self) -> VecZnxDft<&[u8], B> {
-        self.data.to_ref()
-    }
-}
-
-impl<C> GLWEPublicKey<C, FFT64> {
-    pub fn generate<S>(
+impl<C: AsRef<[u8]> + AsMut<[u8]>> GLWEPublicKey<C, FFT64> {
+    pub fn generate_from_sk<S: AsRef<[u8]>>(
         &mut self,
         module: &Module<FFT64>,
         sk_dft: &SecretKeyFourier<S, FFT64>,
         source_xa: &mut Source,
         source_xe: &mut Source,
         sigma: f64,
-    ) where
-        VecZnxDft<C, FFT64>: VecZnxDftToMut<FFT64> + VecZnxDftToRef<FFT64>,
-        ScalarZnxDft<S, FFT64>: ScalarZnxDftToRef<FFT64> + ZnxInfos,
-    {
+    ) {
         #[cfg(debug_assertions)]
         {
             match sk_dft.dist {

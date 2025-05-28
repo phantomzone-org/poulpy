@@ -1,7 +1,4 @@
-use base2k::{
-    Backend, FFT64, MatZnxDft, MatZnxDftOps, MatZnxDftToMut, MatZnxDftToRef, Module, ScalarZnx, ScalarZnxDft, ScalarZnxDftToRef,
-    ScalarZnxToRef, Scratch, VecZnxDftAlloc, VecZnxDftToMut, VecZnxDftToRef, ZnxZero,
-};
+use backend::{Backend, FFT64, MatZnxDft, MatZnxDftOps, Module, Scratch, VecZnxDftAlloc, ZnxZero};
 use sampling::source::Source;
 
 use crate::{
@@ -15,8 +12,8 @@ use crate::{
 pub struct GLWESwitchingKey<Data, B: Backend>(pub(crate) GGLWECiphertext<Data, B>);
 
 impl GLWESwitchingKey<Vec<u8>, FFT64> {
-    pub fn new(module: &Module<FFT64>, basek: usize, k: usize, rows: usize, rank_in: usize, rank_out: usize) -> Self {
-        GLWESwitchingKey(GGLWECiphertext::new(
+    pub fn alloc(module: &Module<FFT64>, basek: usize, k: usize, rows: usize, rank_in: usize, rank_out: usize) -> Self {
+        GLWESwitchingKey(GGLWECiphertext::alloc(
             module, basek, k, rows, rank_in, rank_out,
         ))
     }
@@ -52,55 +49,37 @@ impl<T, B: Backend> GLWESwitchingKey<T, B> {
     }
 }
 
-impl<DataSelf, B: Backend> MatZnxDftToMut<B> for GLWESwitchingKey<DataSelf, B>
-where
-    MatZnxDft<DataSelf, B>: MatZnxDftToMut<B>,
-{
-    fn to_mut(&mut self) -> MatZnxDft<&mut [u8], B> {
-        self.0.data.to_mut()
+impl<C: AsRef<[u8]>> GetRow<FFT64> for GLWESwitchingKey<C, FFT64> {
+    fn get_row<R: AsMut<[u8]> + AsRef<[u8]>>(
+        &self,
+        module: &Module<FFT64>,
+        row_i: usize,
+        col_j: usize,
+        res: &mut GLWECiphertextFourier<R, FFT64>,
+    ) {
+        module.vmp_extract_row(&mut res.data, &self.0.data, row_i, col_j);
     }
 }
 
-impl<DataSelf, B: Backend> MatZnxDftToRef<B> for GLWESwitchingKey<DataSelf, B>
-where
-    MatZnxDft<DataSelf, B>: MatZnxDftToRef<B>,
-{
-    fn to_ref(&self) -> MatZnxDft<&[u8], B> {
-        self.0.data.to_ref()
-    }
-}
-
-impl<C> GetRow<FFT64> for GLWESwitchingKey<C, FFT64>
-where
-    MatZnxDft<C, FFT64>: MatZnxDftToRef<FFT64>,
-{
-    fn get_row<R>(&self, module: &Module<FFT64>, row_i: usize, col_j: usize, res: &mut R)
-    where
-        R: VecZnxDftToMut<FFT64>,
-    {
-        module.vmp_extract_row(res, self, row_i, col_j);
-    }
-}
-
-impl<C> SetRow<FFT64> for GLWESwitchingKey<C, FFT64>
-where
-    MatZnxDft<C, FFT64>: MatZnxDftToMut<FFT64>,
-{
-    fn set_row<R>(&mut self, module: &Module<FFT64>, row_i: usize, col_j: usize, a: &R)
-    where
-        R: VecZnxDftToRef<FFT64>,
-    {
-        module.vmp_prepare_row(self, row_i, col_j, a);
+impl<C: AsMut<[u8]> + AsRef<[u8]>> SetRow<FFT64> for GLWESwitchingKey<C, FFT64> {
+    fn set_row<R: AsRef<[u8]>>(
+        &mut self,
+        module: &Module<FFT64>,
+        row_i: usize,
+        col_j: usize,
+        a: &GLWECiphertextFourier<R, FFT64>,
+    ) {
+        module.vmp_prepare_row(&mut self.0.data, row_i, col_j, &a.data);
     }
 }
 
 impl GLWESwitchingKey<Vec<u8>, FFT64> {
     pub fn encrypt_sk_scratch_space(module: &Module<FFT64>, rank: usize, size: usize) -> usize {
-        GGLWECiphertext::encrypt_sk_scratch_space(module, rank, size)
+        GGLWECiphertext::generate_from_sk_scratch_space(module, rank, size)
     }
 
     pub fn encrypt_pk_scratch_space(module: &Module<FFT64>, rank: usize, pk_size: usize) -> usize {
-        GGLWECiphertext::encrypt_pk_scratch_space(module, rank, pk_size)
+        GGLWECiphertext::generate_from_pk_scratch_space(module, rank, pk_size)
     }
 
     pub fn keyswitch_scratch_space(
@@ -147,11 +126,8 @@ impl GLWESwitchingKey<Vec<u8>, FFT64> {
         tmp + ggsw
     }
 }
-impl<DataSelf> GLWESwitchingKey<DataSelf, FFT64>
-where
-    MatZnxDft<DataSelf, FFT64>: MatZnxDftToMut<FFT64> + MatZnxDftToRef<FFT64>,
-{
-    pub fn encrypt_sk<DataSkIn, DataSkOut>(
+impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<DataSelf, FFT64> {
+    pub fn generate_from_sk<DataSkIn: AsRef<[u8]>, DataSkOut: AsRef<[u8]>>(
         &mut self,
         module: &Module<FFT64>,
         sk_in: &SecretKey<DataSkIn>,
@@ -160,10 +136,7 @@ where
         source_xe: &mut Source,
         sigma: f64,
         scratch: &mut Scratch,
-    ) where
-        ScalarZnx<DataSkIn>: ScalarZnxToRef,
-        ScalarZnxDft<DataSkOut, FFT64>: ScalarZnxDftToRef<FFT64>,
-    {
+    ) {
         self.0.encrypt_sk(
             module,
             &sk_in.data,
@@ -175,16 +148,13 @@ where
         );
     }
 
-    pub fn keyswitch<DataLhs, DataRhs>(
+    pub fn keyswitch<DataLhs: AsRef<[u8]>, DataRhs: AsRef<[u8]>>(
         &mut self,
         module: &Module<FFT64>,
         lhs: &GLWESwitchingKey<DataLhs, FFT64>,
         rhs: &GLWESwitchingKey<DataRhs, FFT64>,
-        scratch: &mut base2k::Scratch,
-    ) where
-        MatZnxDft<DataLhs, FFT64>: MatZnxDftToRef<FFT64>,
-        MatZnxDft<DataRhs, FFT64>: MatZnxDftToRef<FFT64>,
-    {
+        scratch: &mut Scratch,
+    ) {
         #[cfg(debug_assertions)]
         {
             assert_eq!(
@@ -243,14 +213,12 @@ where
         });
     }
 
-    pub fn keyswitch_inplace<DataRhs>(
+    pub fn keyswitch_inplace<DataRhs: AsRef<[u8]>>(
         &mut self,
         module: &Module<FFT64>,
         rhs: &GLWESwitchingKey<DataRhs, FFT64>,
-        scratch: &mut base2k::Scratch,
-    ) where
-        MatZnxDft<DataRhs, FFT64>: MatZnxDftToRef<FFT64>,
-    {
+        scratch: &mut Scratch,
+    ) {
         #[cfg(debug_assertions)]
         {
             assert_eq!(
@@ -279,16 +247,13 @@ where
         });
     }
 
-    pub fn external_product<DataLhs, DataRhs>(
+    pub fn external_product<DataLhs: AsRef<[u8]>, DataRhs: AsRef<[u8]>>(
         &mut self,
         module: &Module<FFT64>,
         lhs: &GLWESwitchingKey<DataLhs, FFT64>,
         rhs: &GGSWCiphertext<DataRhs, FFT64>,
         scratch: &mut Scratch,
-    ) where
-        MatZnxDft<DataLhs, FFT64>: MatZnxDftToRef<FFT64>,
-        MatZnxDft<DataRhs, FFT64>: MatZnxDftToRef<FFT64>,
-    {
+    ) {
         #[cfg(debug_assertions)]
         {
             assert_eq!(
@@ -347,14 +312,12 @@ where
         });
     }
 
-    pub fn external_product_inplace<DataRhs>(
+    pub fn external_product_inplace<DataRhs: AsRef<[u8]>>(
         &mut self,
         module: &Module<FFT64>,
         rhs: &GGSWCiphertext<DataRhs, FFT64>,
         scratch: &mut Scratch,
-    ) where
-        MatZnxDft<DataRhs, FFT64>: MatZnxDftToRef<FFT64>,
-    {
+    ) {
         #[cfg(debug_assertions)]
         {
             assert_eq!(

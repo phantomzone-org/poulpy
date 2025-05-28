@@ -1,6 +1,6 @@
-use base2k::{Backend, Module, VecZnxDftToMut, VecZnxDftToRef, ZnxInfos};
+use backend::{Backend, Module, ZnxInfos};
 
-use crate::utils::derive_size;
+use crate::{glwe_ciphertext_fourier::GLWECiphertextFourier, utils::derive_size};
 
 pub trait Infos {
     type Inner: ZnxInfos;
@@ -27,6 +27,10 @@ pub trait Infos {
         self.inner().cols()
     }
 
+    fn rank(&self) -> usize {
+        self.cols() - 1
+    }
+
     /// Returns the number of size per polynomial.
     fn size(&self) -> usize {
         let size: usize = self.inner().size();
@@ -46,14 +50,19 @@ pub trait Infos {
     fn k(&self) -> usize;
 }
 
+pub trait SetMetaData {
+    fn set_basek(&mut self, basek: usize);
+    fn set_k(&mut self, k: usize);
+}
+
 pub trait GetRow<B: Backend> {
-    fn get_row<R>(&self, module: &Module<B>, row_i: usize, col_j: usize, res: &mut R)
+    fn get_row<R>(&self, module: &Module<B>, row_i: usize, col_j: usize, res: &mut GLWECiphertextFourier<R, B>)
     where
-        R: VecZnxDftToMut<B>;
+        R: AsMut<[u8]> + AsRef<[u8]>;
 }
 
 pub trait SetRow<B: Backend> {
-    fn set_row<R>(&mut self, module: &Module<B>, row_i: usize, col_j: usize, a: &R)
+    fn set_row<R>(&mut self, module: &Module<B>, row_i: usize, col_j: usize, a: &GLWECiphertextFourier<R, B>)
     where
-        R: VecZnxDftToRef<B>;
+        R: AsRef<[u8]>;
 }
