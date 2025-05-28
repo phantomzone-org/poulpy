@@ -1,17 +1,47 @@
 use crate::GALOISGENERATOR;
 use crate::ffi::module::{MODULE, delete_module_info, module_info_t, new_module_info};
+use std::fmt;
 use std::marker::PhantomData;
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(u8)]
 pub enum BACKEND {
     FFT64,
     NTT120,
 }
 
-pub trait Backend {
+pub type ModuleKey = (BACKEND, u64);
+
+pub enum ModuleInfos{
+    FFT64(Module<FFT64>),
+    NTT120(Module<NTT120>),
+}
+
+impl fmt::Debug for ModuleInfos {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ModuleInfos::FFT64(_) => write!(f, "ModuleInfos::FFT(<Module<FFT64>>"),
+            ModuleInfos::NTT120(_) => write!(f, "ModuleInfos::NTT(<Module<NTT120>>"),
+        }
+    }
+}
+
+
+impl ModuleInfos{
+    pub fn fft64(n: usize) -> Self{
+        ModuleInfos::FFT64(Module::<FFT64>::new(n))
+    }
+
+    pub fn ntt120(n: usize) -> Self{
+        ModuleInfos::FFT64(Module::<FFT64>::new(n))
+    }
+}
+
+
+pub trait Backend: Sized {
     const KIND: BACKEND;
     fn module_type() -> u32;
+    fn extract(info: &ModuleInfos) -> Option<&Module<Self>>;
 }
 
 pub struct FFT64;
@@ -22,6 +52,13 @@ impl Backend for FFT64 {
     fn module_type() -> u32 {
         0
     }
+
+    fn extract(info: &ModuleInfos) -> Option<&Module<Self>> {
+        match info {
+            ModuleInfos::FFT64(m) => Some(m),
+            _ => None,
+        }
+    }
 }
 
 impl Backend for NTT120 {
@@ -29,10 +66,20 @@ impl Backend for NTT120 {
     fn module_type() -> u32 {
         1
     }
+
+    fn extract(info: &ModuleInfos) -> Option<&Module<Self>> {
+        match info {
+            ModuleInfos::NTT120(m) => Some(m),
+            _ => None,
+        }
+    }
 }
 
+unsafe impl<B: Backend> Send for Module<B> {}
+unsafe impl<B: Backend> Sync for Module<B> {}
+
 pub struct Module<B: Backend> {
-    pub ptr: *mut MODULE,
+    pub ptr: *const MODULE,
     n: usize,
     _marker: PhantomData<B>,
 }
@@ -41,7 +88,7 @@ impl<B: Backend> Module<B> {
     // Instantiates a new module.
     pub fn new(n: usize) -> Self {
         unsafe {
-            let m: *mut module_info_t = new_module_info(n as u64, B::module_type());
+            let m: *const module_info_t = new_module_info(n as u64, B::module_type());
             if m.is_null() {
                 panic!("Failed to create module.");
             }

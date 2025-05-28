@@ -10,6 +10,7 @@ backend = {path="../backend"}
 sampling = {path="../sampling"}
 rand_distr = {workspace = true}
 itertools = {workspace = true}
+once_cell = "1.21.3"
 
 [[bench]]
 name = "external_product_glwe_fft64"
