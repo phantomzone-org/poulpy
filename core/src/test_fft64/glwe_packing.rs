@@ -1,11 +1,4 @@
-use crate::{
-    automorphism::AutomorphismKey,
-    glwe_ciphertext::GLWECiphertext,
-    glwe_ops::GLWEOps,
-    glwe_packing::StreamPacker,
-    glwe_plaintext::GLWEPlaintext,
-    keys::{SecretKey, SecretKeyFourier},
-};
+use crate::{AutomorphismKey, GLWECiphertext, GLWEOps, GLWEPlaintext, GLWESecret, StreamPacker};
 use std::collections::HashMap;
 
 use backend::{Encoding, FFT64, Module, ScratchOwned, Stats};
@@ -35,11 +28,8 @@ fn packing() {
             | StreamPacker::scratch_space(&module, basek, ct_k, atk_k, rank),
     );
 
-    let mut sk: SecretKey<Vec<u8>> = SecretKey::alloc(&module, rank);
-    sk.fill_ternary_prob(0.5, &mut source_xs);
-
-    let mut sk_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::alloc(&module, rank);
-    sk_dft.dft(&module, &sk);
+    let mut sk: GLWESecret<Vec<u8>, FFT64> = GLWESecret::alloc(&module, rank);
+    sk.fill_ternary_prob(&module, 0.5, &mut source_xs);
 
     let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, ct_k);
     let mut data: Vec<i64> = vec![0i64; module.n()];
@@ -74,7 +64,7 @@ fn packing() {
     ct.encrypt_sk(
         &module,
         &pt,
-        &sk_dft,
+        &sk,
         &mut source_xa,
         &mut source_xe,
         sigma,
@@ -87,7 +77,7 @@ fn packing() {
         ct.encrypt_sk(
             &module,
             &pt,
-            &sk_dft,
+            &sk,
             &mut source_xa,
             &mut source_xe,
             sigma,
@@ -123,7 +113,7 @@ fn packing() {
         });
         pt_want.data.encode_vec_i64(0, basek, pt_k, &data, 32);
 
-        res_i.decrypt(&module, &mut pt, &sk_dft, scratch.borrow());
+        res_i.decrypt(&module, &mut pt, &sk, scratch.borrow());
 
         if i & 1 == 0 {
             pt.sub_inplace_ab(&module, &pt_want);

@@ -2,8 +2,8 @@ use crate::ffi::svp;
 use crate::ffi::vec_znx_dft::vec_znx_dft_t;
 use crate::znx_base::{ZnxInfos, ZnxView, ZnxViewMut};
 use crate::{
-    Backend, FFT64, Module, ScalarZnxDft, ScalarZnxDftOwned, ScalarZnxDftToMut, ScalarZnxDftToRef, ScalarZnxToRef, VecZnxDft,
-    VecZnxDftToMut, VecZnxDftToRef,
+    Backend, FFT64, Module, ScalarZnx, ScalarZnxDft, ScalarZnxDftOwned, ScalarZnxDftToMut, ScalarZnxDftToRef, ScalarZnxToMut,
+    ScalarZnxToRef, Scratch, VecZnxDft, VecZnxDftOps, VecZnxDftToMut, VecZnxDftToRef, VecZnxOps,
 };
 
 pub trait ScalarZnxDftAlloc<B: Backend> {
@@ -28,6 +28,11 @@ pub trait ScalarZnxDftOps<BACKEND: Backend> {
     where
         R: VecZnxDftToMut<BACKEND>,
         A: ScalarZnxDftToRef<BACKEND>;
+
+    fn svp_idft<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch)
+    where
+        R: ScalarZnxToMut,
+        A: ScalarZnxDftToRef<BACKEND>;
 }
 
 impl<B: Backend> ScalarZnxDftAlloc<B> for Module<B> {
@@ -45,6 +50,18 @@ impl<B: Backend> ScalarZnxDftAlloc<B> for Module<B> {
 }
 
 impl ScalarZnxDftOps<FFT64> for Module<FFT64> {
+    fn svp_idft<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch)
+    where
+        R: ScalarZnxToMut,
+        A: ScalarZnxDftToRef<FFT64>,
+    {
+        let res_mut: &mut ScalarZnx<&mut [u8]> = &mut res.to_mut();
+        let a_ref: &ScalarZnxDft<&[u8], FFT64> = &a.to_ref();
+        let (mut vec_znx_big, scratch1) = scratch.tmp_vec_znx_big(self, 1, 1);
+        self.vec_znx_idft(&mut vec_znx_big, 0, a_ref, a_col, scratch1);
+        self.vec_znx_copy(res_mut, res_col, &vec_znx_big.to_vec_znx_small(), 0);
+    }
+
     fn svp_prepare<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: ScalarZnxDftToMut<FFT64>,

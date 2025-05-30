@@ -1,14 +1,7 @@
 use backend::{Backend, FFT64, MatZnxDft, MatZnxDftOps, Module, Scratch, ZnxZero};
 use sampling::source::Source;
 
-use crate::{
-    ScratchCore,
-    elem::{GetRow, Infos, SetRow},
-    gglwe_ciphertext::GGLWECiphertext,
-    ggsw_ciphertext::GGSWCiphertext,
-    glwe_ciphertext_fourier::GLWECiphertextFourier,
-    keys::{SecretKey, SecretKeyFourier},
-};
+use crate::{GGLWECiphertext, GGSWCiphertext, GLWECiphertextFourier, GLWESecret, GetRow, Infos, ScratchCore, SetRow};
 
 pub struct GLWESwitchingKey<Data, B: Backend>(pub(crate) GGLWECiphertext<Data, B>);
 
@@ -144,8 +137,8 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<DataSelf, FFT64> {
     pub fn generate_from_sk<DataSkIn: AsRef<[u8]>, DataSkOut: AsRef<[u8]>>(
         &mut self,
         module: &Module<FFT64>,
-        sk_in: &SecretKey<DataSkIn>,
-        sk_out_dft: &SecretKeyFourier<DataSkOut, FFT64>,
+        sk_in: &GLWESecret<DataSkIn, FFT64>,
+        sk_out: &GLWESecret<DataSkOut, FFT64>,
         source_xa: &mut Source,
         source_xe: &mut Source,
         sigma: f64,
@@ -154,7 +147,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<DataSelf, FFT64> {
         self.0.encrypt_sk(
             module,
             &sk_in.data,
-            sk_out_dft,
+            sk_out,
             source_xa,
             source_xe,
             sigma,
