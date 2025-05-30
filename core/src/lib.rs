@@ -4,10 +4,10 @@ pub mod gglwe_ciphertext;
 pub mod ggsw_ciphertext;
 pub mod glwe_ciphertext;
 pub mod glwe_ciphertext_fourier;
+pub mod glwe_keys;
 pub mod glwe_ops;
 pub mod glwe_packing;
 pub mod glwe_plaintext;
-pub mod keys;
 pub mod keyswitch_key;
 pub mod tensor_key;
 #[cfg(test)]
@@ -24,10 +24,10 @@ pub use gglwe_ciphertext::*;
 pub use ggsw_ciphertext::*;
 pub use glwe_ciphertext::*;
 pub use glwe_ciphertext_fourier::*;
+pub use glwe_keys::*;
 pub use glwe_ops::*;
 pub use glwe_packing::*;
 pub use glwe_plaintext::*;
-pub use keys::*;
 pub use keyswitch_key::*;
 pub use tensor_key::*;
 
@@ -64,8 +64,7 @@ pub trait ScratchCore<B: Backend> {
         k: usize,
         rank: usize,
     ) -> (GLWECiphertextFourier<&mut [u8], B>, &mut Self);
-    fn tmp_sk(&mut self, module: &Module<B>, rank: usize) -> (SecretKey<&mut [u8]>, &mut Self);
-    fn tmp_sk_fourier(&mut self, module: &Module<B>, rank: usize) -> (SecretKeyFourier<&mut [u8], B>, &mut Self);
+    fn tmp_sk(&mut self, module: &Module<B>, rank: usize) -> (GLWESecret<&mut [u8], B>, &mut Self);
     fn tmp_glwe_pk(
         &mut self,
         module: &Module<B>,
@@ -184,25 +183,16 @@ impl ScratchCore<FFT64> for Scratch {
         )
     }
 
-    fn tmp_sk(&mut self, module: &Module<FFT64>, rank: usize) -> (SecretKey<&mut [u8]>, &mut Self) {
-        let (data, scratch) = self.tmp_scalar_znx(module, rank + 1);
+    fn tmp_sk(&mut self, module: &Module<FFT64>, rank: usize) -> (GLWESecret<&mut [u8], FFT64>, &mut Self) {
+        let (data, scratch) = self.tmp_scalar_znx(module, rank);
+        let (data_fourier, scratch1) = scratch.tmp_scalar_znx_dft(module, rank);
         (
-            SecretKey {
+            GLWESecret {
                 data,
+                data_fourier,
                 dist: SecretDistribution::NONE,
             },
-            scratch,
-        )
-    }
-
-    fn tmp_sk_fourier(&mut self, module: &Module<FFT64>, rank: usize) -> (SecretKeyFourier<&mut [u8], FFT64>, &mut Self) {
-        let (data, scratch) = self.tmp_scalar_znx_dft(module, rank);
-        (
-            SecretKeyFourier {
-                data,
-                dist: SecretDistribution::NONE,
-            },
-            scratch,
+            scratch1,
         )
     }
 

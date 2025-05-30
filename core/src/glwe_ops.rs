@@ -1,9 +1,6 @@
 use backend::{FFT64, Module, Scratch, VecZnx, VecZnxOps, ZnxZero};
 
-use crate::{
-    elem::{Infos, SetMetaData},
-    glwe_ciphertext::{GLWECiphertext, GLWECiphertextToMut, GLWECiphertextToRef},
-};
+use crate::{GLWECiphertext, GLWECiphertextToMut, GLWECiphertextToRef, Infos, SetMetaData};
 
 pub trait GLWEOps: GLWECiphertextToMut + Infos + SetMetaData {
     fn add<A, B>(&mut self, module: &Module<FFT64>, a: &A, b: &B)

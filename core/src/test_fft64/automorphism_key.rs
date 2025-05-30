@@ -2,11 +2,7 @@ use backend::{FFT64, Module, ScalarZnxOps, ScratchOwned, Stats, VecZnxOps};
 use sampling::source::Source;
 
 use crate::{
-    automorphism::AutomorphismKey,
-    elem::{GetRow, Infos},
-    glwe_ciphertext_fourier::GLWECiphertextFourier,
-    glwe_plaintext::GLWEPlaintext,
-    keys::{SecretKey, SecretKeyFourier},
+    AutomorphismKey, GLWECiphertextFourier, GLWEPlaintext, GLWESecret, GetRow, Infos,
     test_fft64::gglwe::log2_std_noise_gglwe_product,
 };
 
@@ -44,11 +40,8 @@ fn test_automorphism(p0: i64, p1: i64, log_n: usize, basek: usize, k_ksk: usize,
             | AutomorphismKey::automorphism_scratch_space(&module, basek, k_ksk, k_ksk, k_ksk, rank),
     );
 
-    let mut sk: SecretKey<Vec<u8>> = SecretKey::alloc(&module, rank);
-    sk.fill_ternary_prob(0.5, &mut source_xs);
-
-    let mut sk_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::alloc(&module, rank);
-    sk_dft.dft(&module, &sk);
+    let mut sk: GLWESecret<Vec<u8>, FFT64> = GLWESecret::alloc(&module, rank);
+    sk.fill_ternary_prob(&module, 0.5, &mut source_xs);
 
     // gglwe_{s1}(s0) = s0 -> s1
     auto_key_in.generate_from_sk(
@@ -78,7 +71,7 @@ fn test_automorphism(p0: i64, p1: i64, log_n: usize, basek: usize, k_ksk: usize,
     let mut ct_glwe_dft: GLWECiphertextFourier<Vec<u8>, FFT64> = GLWECiphertextFourier::alloc(&module, basek, k_ksk, rank);
     let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_ksk);
 
-    let mut sk_auto: SecretKey<Vec<u8>> = SecretKey::alloc(&module, rank);
+    let mut sk_auto: GLWESecret<Vec<u8>, FFT64> = GLWESecret::alloc(&module, rank);
     sk_auto.fill_zero(); // Necessary to avoid panic of unfilled sk
     (0..rank).for_each(|i| {
         module.scalar_znx_automorphism(
@@ -90,14 +83,13 @@ fn test_automorphism(p0: i64, p1: i64, log_n: usize, basek: usize, k_ksk: usize,
         );
     });
 
-    let mut sk_auto_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::alloc(&module, rank);
-    sk_auto_dft.dft(&module, &sk_auto);
+    sk_auto.prep_fourier(&module);
 
     (0..auto_key_out.rank_in()).for_each(|col_i| {
         (0..auto_key_out.rows()).for_each(|row_i| {
             auto_key_out.get_row(&module, row_i, col_i, &mut ct_glwe_dft);
 
-            ct_glwe_dft.decrypt(&module, &mut pt, &sk_auto_dft, scratch.borrow());
+            ct_glwe_dft.decrypt(&module, &mut pt, &sk_auto, scratch.borrow());
             module.vec_znx_sub_scalar_inplace(&mut pt.data, 0, row_i, &sk.data, col_i);
 
             let noise_have: f64 = pt.data.std(0, basek).log2();
@@ -141,11 +133,8 @@ fn test_automorphism_inplace(p0: i64, p1: i64, log_n: usize, basek: usize, k_ksk
             | AutomorphismKey::automorphism_inplace_scratch_space(&module, basek, k_ksk, k_ksk, rank),
     );
 
-    let mut sk: SecretKey<Vec<u8>> = SecretKey::alloc(&module, rank);
-    sk.fill_ternary_prob(0.5, &mut source_xs);
-
-    let mut sk_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::alloc(&module, rank);
-    sk_dft.dft(&module, &sk);
+    let mut sk: GLWESecret<Vec<u8>, FFT64> = GLWESecret::alloc(&module, rank);
+    sk.fill_ternary_prob(&module, 0.5, &mut source_xs);
 
     // gglwe_{s1}(s0) = s0 -> s1
     auto_key.generate_from_sk(
@@ -175,7 +164,7 @@ fn test_automorphism_inplace(p0: i64, p1: i64, log_n: usize, basek: usize, k_ksk
     let mut ct_glwe_dft: GLWECiphertextFourier<Vec<u8>, FFT64> = GLWECiphertextFourier::alloc(&module, basek, k_ksk, rank);
     let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_ksk);
 
-    let mut sk_auto: SecretKey<Vec<u8>> = SecretKey::alloc(&module, rank);
+    let mut sk_auto: GLWESecret<Vec<u8>, FFT64> = GLWESecret::alloc(&module, rank);
     sk_auto.fill_zero(); // Necessary to avoid panic of unfilled sk
     (0..rank).for_each(|i| {
         module.scalar_znx_automorphism(
@@ -187,14 +176,13 @@ fn test_automorphism_inplace(p0: i64, p1: i64, log_n: usize, basek: usize, k_ksk
         );
     });
 
-    let mut sk_auto_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::alloc(&module, rank);
-    sk_auto_dft.dft(&module, &sk_auto);
+    sk_auto.prep_fourier(&module);
 
     (0..auto_key.rank_in()).for_each(|col_i| {
         (0..auto_key.rows()).for_each(|row_i| {
             auto_key.get_row(&module, row_i, col_i, &mut ct_glwe_dft);
 
-            ct_glwe_dft.decrypt(&module, &mut pt, &sk_auto_dft, scratch.borrow());
+            ct_glwe_dft.decrypt(&module, &mut pt, &sk_auto, scratch.borrow());
             module.vec_znx_sub_scalar_inplace(&mut pt.data, 0, row_i, &sk.data, col_i);
 
             let noise_have: f64 = pt.data.std(0, basek).log2();

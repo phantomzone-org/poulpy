@@ -6,13 +6,8 @@ use itertools::izip;
 use sampling::source::Source;
 
 use crate::{
+    GGSWCiphertext, GLWECiphertext, GLWECiphertextFourier, GLWEPlaintext, GLWEPublicKey, GLWESecret, Infos,
     automorphism::AutomorphismKey,
-    elem::Infos,
-    ggsw_ciphertext::GGSWCiphertext,
-    glwe_ciphertext::GLWECiphertext,
-    glwe_ciphertext_fourier::GLWECiphertextFourier,
-    glwe_plaintext::GLWEPlaintext,
-    keys::{GLWEPublicKey, SecretKey, SecretKeyFourier},
     keyswitch_key::GLWESwitchingKey,
     test_fft64::{gglwe::log2_std_noise_gglwe_product, ggsw::noise_ggsw_product},
 };
@@ -106,11 +101,8 @@ fn test_encrypt_sk(log_n: usize, basek: usize, ct_k: usize, k_pt: usize, sigma: 
             | GLWECiphertext::decrypt_scratch_space(&module, basek, ct.k()),
     );
 
-    let mut sk: SecretKey<Vec<u8>> = SecretKey::alloc(&module, rank);
-    sk.fill_ternary_prob(0.5, &mut source_xs);
-
-    let mut sk_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::alloc(&module, rank);
-    sk_dft.dft(&module, &sk);
+    let mut sk: GLWESecret<Vec<u8>, FFT64> = GLWESecret::alloc(&module, rank);
+    sk.fill_ternary_prob(&module, 0.5, &mut source_xs);
 
     let mut data_want: Vec<i64> = vec![0i64; module.n()];
 
@@ -123,7 +115,7 @@ fn test_encrypt_sk(log_n: usize, basek: usize, ct_k: usize, k_pt: usize, sigma: 
     ct.encrypt_sk(
         &module,
         &pt,
-        &sk_dft,
+        &sk,
         &mut source_xa,
         &mut source_xe,
         sigma,
@@ -132,7 +124,7 @@ fn test_encrypt_sk(log_n: usize, basek: usize, ct_k: usize, k_pt: usize, sigma: 
 
     pt.data.zero();
 
-    ct.decrypt(&module, &mut pt, &sk_dft, scratch.borrow());
+    ct.decrypt(&module, &mut pt, &sk, scratch.borrow());
 
     let mut data_have: Vec<i64> = vec![0i64; module.n()];
 
@@ -161,10 +153,8 @@ fn test_encrypt_zero_sk(log_n: usize, basek: usize, ct_k: usize, sigma: f64, ran
     let mut source_xe: Source = Source::new([1u8; 32]);
     let mut source_xa: Source = Source::new([0u8; 32]);
 
-    let mut sk: SecretKey<Vec<u8>> = SecretKey::alloc(&module, rank);
-    sk.fill_ternary_prob(0.5, &mut source_xs);
-    let mut sk_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::alloc(&module, rank);
-    sk_dft.dft(&module, &sk);
+    let mut sk: GLWESecret<Vec<u8>, FFT64> = GLWESecret::alloc(&module, rank);
+    sk.fill_ternary_prob(&module, 0.5, &mut source_xs);
 
     let mut ct_dft: GLWECiphertextFourier<Vec<u8>, FFT64> = GLWECiphertextFourier::alloc(&module, basek, ct_k, rank);
 
@@ -175,13 +165,13 @@ fn test_encrypt_zero_sk(log_n: usize, basek: usize, ct_k: usize, sigma: f64, ran
 
     ct_dft.encrypt_zero_sk(
         &module,
-        &sk_dft,
+        &sk,
         &mut source_xa,
         &mut source_xe,
         sigma,
         scratch.borrow(),
     );
-    ct_dft.decrypt(&module, &mut pt, &sk_dft, scratch.borrow());
+    ct_dft.decrypt(&module, &mut pt, &sk, scratch.borrow());
 
     assert!((sigma - pt.data.std(0, basek) * (ct_k as f64).exp2()) <= 0.2);
 }
@@ -197,13 +187,11 @@ fn test_encrypt_pk(log_n: usize, basek: usize, ct_k: usize, k_pk: usize, sigma: 
     let mut source_xa: Source = Source::new([0u8; 32]);
     let mut source_xu: Source = Source::new([0u8; 32]);
 
-    let mut sk: SecretKey<Vec<u8>> = SecretKey::alloc(&module, rank);
-    sk.fill_ternary_prob(0.5, &mut source_xs);
-    let mut sk_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::alloc(&module, rank);
-    sk_dft.dft(&module, &sk);
+    let mut sk: GLWESecret<Vec<u8>, FFT64> = GLWESecret::alloc(&module, rank);
+    sk.fill_ternary_prob(&module, 0.5, &mut source_xs);
 
     let mut pk: GLWEPublicKey<Vec<u8>, FFT64> = GLWEPublicKey::alloc(&module, basek, k_pk, rank);
-    pk.generate_from_sk(&module, &sk_dft, &mut source_xa, &mut source_xe, sigma);
+    pk.generate_from_sk(&module, &sk, &mut source_xa, &mut source_xe, sigma);
 
     let mut scratch: ScratchOwned = ScratchOwned::new(
         GLWECiphertext::encrypt_sk_scratch_space(&module, basek, ct.k())
@@ -231,7 +219,7 @@ fn test_encrypt_pk(log_n: usize, basek: usize, ct_k: usize, k_pk: usize, sigma: 
 
     let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, ct_k);
 
-    ct.decrypt(&module, &mut pt_have, &sk_dft, scratch.borrow());
+    ct.decrypt(&module, &mut pt_have, &sk, scratch.borrow());
 
     module.vec_znx_sub_ab_inplace(&mut pt_want.data, 0, &pt_have.data, 0);
 
@@ -289,22 +277,16 @@ fn test_keyswitch(
             ),
     );
 
-    let mut sk_in: SecretKey<Vec<u8>> = SecretKey::alloc(&module, in_rank);
-    sk_in.fill_ternary_prob(0.5, &mut source_xs);
+    let mut sk_in: GLWESecret<Vec<u8>, FFT64> = GLWESecret::alloc(&module, in_rank);
+    sk_in.fill_ternary_prob(&module, 0.5, &mut source_xs);
 
-    let mut sk_in_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::alloc(&module, in_rank);
-    sk_in_dft.dft(&module, &sk_in);
-
-    let mut sk_out: SecretKey<Vec<u8>> = SecretKey::alloc(&module, out_rank);
-    sk_out.fill_ternary_prob(0.5, &mut source_xs);
-
-    let mut sk_out_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::alloc(&module, out_rank);
-    sk_out_dft.dft(&module, &sk_out);
+    let mut sk_out: GLWESecret<Vec<u8>, FFT64> = GLWESecret::alloc(&module, out_rank);
+    sk_out.fill_ternary_prob(&module, 0.5, &mut source_xs);
 
     ksk.generate_from_sk(
         &module,
         &sk_in,
-        &sk_out_dft,
+        &sk_out,
         &mut source_xa,
         &mut source_xe,
         sigma,
@@ -314,7 +296,7 @@ fn test_keyswitch(
     ct_in.encrypt_sk(
         &module,
         &pt_want,
-        &sk_in_dft,
+        &sk_in,
         &mut source_xa,
         &mut source_xe,
         sigma,
@@ -323,7 +305,7 @@ fn test_keyswitch(
 
     ct_out.keyswitch(&module, &ct_in, &ksk, scratch.borrow());
 
-    ct_out.decrypt(&module, &mut pt_have, &sk_out_dft, scratch.borrow());
+    ct_out.decrypt(&module, &mut pt_have, &sk_out, scratch.borrow());
 
     module.vec_znx_sub_ab_inplace(&mut pt_have.data, 0, &pt_want.data, 0);
 
@@ -374,22 +356,16 @@ fn test_keyswitch_inplace(log_n: usize, basek: usize, k_ksk: usize, ct_k: usize,
             | GLWECiphertext::keyswitch_inplace_scratch_space(&module, basek, ct_glwe.k(), rank, ct_grlwe.k()),
     );
 
-    let mut sk0: SecretKey<Vec<u8>> = SecretKey::alloc(&module, rank);
-    sk0.fill_ternary_prob(0.5, &mut source_xs);
+    let mut sk0: GLWESecret<Vec<u8>, FFT64> = GLWESecret::alloc(&module, rank);
+    sk0.fill_ternary_prob(&module, 0.5, &mut source_xs);
 
-    let mut sk0_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::alloc(&module, rank);
-    sk0_dft.dft(&module, &sk0);
-
-    let mut sk1: SecretKey<Vec<u8>> = SecretKey::alloc(&module, rank);
-    sk1.fill_ternary_prob(0.5, &mut source_xs);
-
-    let mut sk1_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::alloc(&module, rank);
-    sk1_dft.dft(&module, &sk1);
+    let mut sk1: GLWESecret<Vec<u8>, FFT64> = GLWESecret::alloc(&module, rank);
+    sk1.fill_ternary_prob(&module, 0.5, &mut source_xs);
 
     ct_grlwe.generate_from_sk(
         &module,
         &sk0,
-        &sk1_dft,
+        &sk1,
         &mut source_xa,
         &mut source_xe,
         sigma,
@@ -399,7 +375,7 @@ fn test_keyswitch_inplace(log_n: usize, basek: usize, k_ksk: usize, ct_k: usize,
     ct_glwe.encrypt_sk(
         &module,
         &pt_want,
-        &sk0_dft,
+        &sk0,
         &mut source_xa,
         &mut source_xe,
         sigma,
@@ -408,7 +384,7 @@ fn test_keyswitch_inplace(log_n: usize, basek: usize, k_ksk: usize, ct_k: usize,
 
     ct_glwe.keyswitch_inplace(&module, &ct_grlwe, scratch.borrow());
 
-    ct_glwe.decrypt(&module, &mut pt_have, &sk1_dft, scratch.borrow());
+    ct_glwe.decrypt(&module, &mut pt_have, &sk1, scratch.borrow());
 
     module.vec_znx_sub_ab_inplace(&mut pt_have.data, 0, &pt_want.data, 0);
 
@@ -462,17 +438,14 @@ fn test_automorphism(
         .fill_uniform(basek, 0, pt_want.size(), &mut source_xa);
 
     let mut scratch: ScratchOwned = ScratchOwned::new(
-        GLWESwitchingKey::encrypt_sk_scratch_space(&module, basek, autokey.k(), rank)
+        AutomorphismKey::generate_from_sk_scratch_space(&module, basek, autokey.k(), rank)
             | GLWECiphertext::decrypt_scratch_space(&module, basek, ct_out.k())
             | GLWECiphertext::encrypt_sk_scratch_space(&module, basek, ct_in.k())
             | GLWECiphertext::automorphism_scratch_space(&module, basek, ct_out.k(), ct_in.k(), autokey.k(), rank),
     );
 
-    let mut sk: SecretKey<Vec<u8>> = SecretKey::alloc(&module, rank);
-    sk.fill_ternary_prob(0.5, &mut source_xs);
-
-    let mut sk_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::alloc(&module, rank);
-    sk_dft.dft(&module, &sk);
+    let mut sk: GLWESecret<Vec<u8>, FFT64> = GLWESecret::alloc(&module, rank);
+    sk.fill_ternary_prob(&module, 0.5, &mut source_xs);
 
     autokey.generate_from_sk(
         &module,
@@ -487,7 +460,7 @@ fn test_automorphism(
     ct_in.encrypt_sk(
         &module,
         &pt_want,
-        &sk_dft,
+        &sk,
         &mut source_xa,
         &mut source_xe,
         sigma,
@@ -495,7 +468,7 @@ fn test_automorphism(
     );
 
     ct_out.automorphism(&module, &ct_in, &autokey, scratch.borrow());
-    ct_out.decrypt(&module, &mut pt_have, &sk_dft, scratch.borrow());
+    ct_out.decrypt(&module, &mut pt_have, &sk, scratch.borrow());
     module.vec_znx_automorphism_inplace(p, &mut pt_want.data, 0);
     module.vec_znx_sub_ab_inplace(&mut pt_have.data, 0, &pt_want.data, 0);
     module.vec_znx_normalize_inplace(basek, &mut pt_have.data, 0, scratch.borrow());
@@ -544,17 +517,14 @@ fn test_automorphism_inplace(log_n: usize, basek: usize, p: i64, k_autokey: usiz
         .fill_uniform(basek, 0, pt_want.size(), &mut source_xa);
 
     let mut scratch: ScratchOwned = ScratchOwned::new(
-        GLWESwitchingKey::encrypt_sk_scratch_space(&module, basek, autokey.k(), rank)
+        AutomorphismKey::generate_from_sk_scratch_space(&module, basek, autokey.k(), rank)
             | GLWECiphertext::decrypt_scratch_space(&module, basek, ct.k())
             | GLWECiphertext::encrypt_sk_scratch_space(&module, basek, ct.k())
             | GLWECiphertext::automorphism_inplace_scratch_space(&module, basek, ct.k(), autokey.k(), rank),
     );
 
-    let mut sk: SecretKey<Vec<u8>> = SecretKey::alloc(&module, rank);
-    sk.fill_ternary_prob(0.5, &mut source_xs);
-
-    let mut sk_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::alloc(&module, rank);
-    sk_dft.dft(&module, &sk);
+    let mut sk: GLWESecret<Vec<u8>, FFT64> = GLWESecret::alloc(&module, rank);
+    sk.fill_ternary_prob(&module, 0.5, &mut source_xs);
 
     autokey.generate_from_sk(
         &module,
@@ -569,7 +539,7 @@ fn test_automorphism_inplace(log_n: usize, basek: usize, p: i64, k_autokey: usiz
     ct.encrypt_sk(
         &module,
         &pt_want,
-        &sk_dft,
+        &sk,
         &mut source_xa,
         &mut source_xe,
         sigma,
@@ -577,7 +547,7 @@ fn test_automorphism_inplace(log_n: usize, basek: usize, p: i64, k_autokey: usiz
     );
 
     ct.automorphism_inplace(&module, &autokey, scratch.borrow());
-    ct.decrypt(&module, &mut pt_have, &sk_dft, scratch.borrow());
+    ct.decrypt(&module, &mut pt_have, &sk, scratch.borrow());
     module.vec_znx_automorphism_inplace(p, &mut pt_want.data, 0);
     module.vec_znx_sub_ab_inplace(&mut pt_have.data, 0, &pt_want.data, 0);
     module.vec_znx_normalize_inplace(basek, &mut pt_have.data, 0, scratch.borrow());
@@ -645,16 +615,13 @@ fn test_external_product(log_n: usize, basek: usize, k_ggsw: usize, ct_k_in: usi
             ),
     );
 
-    let mut sk: SecretKey<Vec<u8>> = SecretKey::alloc(&module, rank);
-    sk.fill_ternary_prob(0.5, &mut source_xs);
-
-    let mut sk_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::alloc(&module, rank);
-    sk_dft.dft(&module, &sk);
+    let mut sk: GLWESecret<Vec<u8>, FFT64> = GLWESecret::alloc(&module, rank);
+    sk.fill_ternary_prob(&module, 0.5, &mut source_xs);
 
     ct_ggsw.encrypt_sk(
         &module,
         &pt_rgsw,
-        &sk_dft,
+        &sk,
         &mut source_xa,
         &mut source_xe,
         sigma,
@@ -664,7 +631,7 @@ fn test_external_product(log_n: usize, basek: usize, k_ggsw: usize, ct_k_in: usi
     ct_glwe_in.encrypt_sk(
         &module,
         &pt_want,
-        &sk_dft,
+        &sk,
         &mut source_xa,
         &mut source_xe,
         sigma,
@@ -673,7 +640,7 @@ fn test_external_product(log_n: usize, basek: usize, k_ggsw: usize, ct_k_in: usi
 
     ct_glwe_out.external_product(&module, &ct_glwe_in, &ct_ggsw, scratch.borrow());
 
-    ct_glwe_out.decrypt(&module, &mut pt_have, &sk_dft, scratch.borrow());
+    ct_glwe_out.decrypt(&module, &mut pt_have, &sk, scratch.borrow());
 
     module.vec_znx_rotate_inplace(k as i64, &mut pt_want.data, 0);
 
@@ -742,16 +709,13 @@ fn test_external_product_inplace(log_n: usize, basek: usize, k_ggsw: usize, ct_k
             | GLWECiphertext::external_product_inplace_scratch_space(&module, basek, ct_glwe.k(), ct_ggsw.k(), rank),
     );
 
-    let mut sk: SecretKey<Vec<u8>> = SecretKey::alloc(&module, rank);
-    sk.fill_ternary_prob(0.5, &mut source_xs);
-
-    let mut sk_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::alloc(&module, rank);
-    sk_dft.dft(&module, &sk);
+    let mut sk: GLWESecret<Vec<u8>, FFT64> = GLWESecret::alloc(&module, rank);
+    sk.fill_ternary_prob(&module, 0.5, &mut source_xs);
 
     ct_ggsw.encrypt_sk(
         &module,
         &pt_rgsw,
-        &sk_dft,
+        &sk,
         &mut source_xa,
         &mut source_xe,
         sigma,
@@ -761,7 +725,7 @@ fn test_external_product_inplace(log_n: usize, basek: usize, k_ggsw: usize, ct_k
     ct_glwe.encrypt_sk(
         &module,
         &pt_want,
-        &sk_dft,
+        &sk,
         &mut source_xa,
         &mut source_xe,
         sigma,
@@ -770,7 +734,7 @@ fn test_external_product_inplace(log_n: usize, basek: usize, k_ggsw: usize, ct_k
 
     ct_glwe.external_product_inplace(&module, &ct_ggsw, scratch.borrow());
 
-    ct_glwe.decrypt(&module, &mut pt_have, &sk_dft, scratch.borrow());
+    ct_glwe.decrypt(&module, &mut pt_have, &sk, scratch.borrow());
 
     module.vec_znx_rotate_inplace(k as i64, &mut pt_want.data, 0);
 

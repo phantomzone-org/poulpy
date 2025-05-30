@@ -4,10 +4,7 @@ use backend::{
 };
 use sampling::source::Source;
 
-use crate::{
-    ScratchCore, elem::Infos, ggsw_ciphertext::GGSWCiphertext, glwe_ciphertext::GLWECiphertext, glwe_plaintext::GLWEPlaintext,
-    keys::SecretKeyFourier, keyswitch_key::GLWESwitchingKey, utils::derive_size,
-};
+use crate::{GGSWCiphertext, GLWECiphertext, GLWEPlaintext, GLWESecret, GLWESwitchingKey, Infos, ScratchCore, derive_size};
 
 pub struct GLWECiphertextFourier<C, B: Backend> {
     pub data: VecZnxDft<C, B>,
@@ -126,14 +123,14 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWECiphertextFourier<DataSelf, FFT64>
     pub fn encrypt_zero_sk<DataSk: AsRef<[u8]>>(
         &mut self,
         module: &Module<FFT64>,
-        sk_dft: &SecretKeyFourier<DataSk, FFT64>,
+        sk: &GLWESecret<DataSk, FFT64>,
         source_xa: &mut Source,
         source_xe: &mut Source,
         sigma: f64,
         scratch: &mut Scratch,
     ) {
         let (mut tmp_ct, scratch1) = scratch.tmp_glwe_ct(module, self.basek(), self.k(), self.rank());
-        tmp_ct.encrypt_zero_sk(module, sk_dft, source_xa, source_xe, sigma, scratch1);
+        tmp_ct.encrypt_zero_sk(module, sk, source_xa, source_xe, sigma, scratch1);
         tmp_ct.dft(module, self);
     }
 
@@ -219,15 +216,15 @@ impl<DataSelf: AsRef<[u8]>> GLWECiphertextFourier<DataSelf, FFT64> {
         &self,
         module: &Module<FFT64>,
         pt: &mut GLWEPlaintext<DataPt>,
-        sk_dft: &SecretKeyFourier<DataSk, FFT64>,
+        sk: &GLWESecret<DataSk, FFT64>,
         scratch: &mut Scratch,
     ) {
         #[cfg(debug_assertions)]
         {
-            assert_eq!(self.rank(), sk_dft.rank());
+            assert_eq!(self.rank(), sk.rank());
             assert_eq!(self.n(), module.n());
             assert_eq!(pt.n(), module.n());
-            assert_eq!(sk_dft.n(), module.n());
+            assert_eq!(sk.n(), module.n());
         }
 
         let cols = self.rank() + 1;
@@ -238,7 +235,7 @@ impl<DataSelf: AsRef<[u8]>> GLWECiphertextFourier<DataSelf, FFT64> {
         {
             (1..cols).for_each(|i| {
                 let (mut ci_dft, _) = scratch_1.tmp_vec_znx_dft(module, 1, self.size()); // TODO optimize size when pt << ct
-                module.svp_apply(&mut ci_dft, 0, &sk_dft.data, i - 1, &self.data, i);
+                module.svp_apply(&mut ci_dft, 0, &sk.data_fourier, i - 1, &self.data, i);
                 let ci_big: VecZnxBig<&mut [u8], FFT64> = module.vec_znx_idft_consume(ci_dft);
                 module.vec_znx_big_add_inplace(&mut pt_big, 0, &ci_big, 0);
             });

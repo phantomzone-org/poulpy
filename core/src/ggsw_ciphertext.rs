@@ -6,15 +6,8 @@ use backend::{
 use sampling::source::Source;
 
 use crate::{
-    ScratchCore,
-    automorphism::AutomorphismKey,
-    elem::{GetRow, Infos, SetRow},
-    glwe_ciphertext::GLWECiphertext,
-    glwe_ciphertext_fourier::GLWECiphertextFourier,
-    keys::SecretKeyFourier,
-    keyswitch_key::GLWESwitchingKey,
-    tensor_key::TensorKey,
-    utils::derive_size,
+    AutomorphismKey, GLWECiphertext, GLWECiphertextFourier, GLWESecret, GLWESwitchingKey, GetRow, Infos, ScratchCore, SetRow,
+    TensorKey, derive_size,
 };
 
 pub struct GGSWCiphertext<C, B: Backend> {
@@ -189,7 +182,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf, FFT64> {
         &mut self,
         module: &Module<FFT64>,
         pt: &ScalarZnx<DataPt>,
-        sk_dft: &SecretKeyFourier<DataSk, FFT64>,
+        sk: &GLWESecret<DataSk, FFT64>,
         source_xa: &mut Source,
         source_xe: &mut Source,
         sigma: f64,
@@ -197,10 +190,10 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf, FFT64> {
     ) {
         #[cfg(debug_assertions)]
         {
-            assert_eq!(self.rank(), sk_dft.rank());
+            assert_eq!(self.rank(), sk.rank());
             assert_eq!(self.n(), module.n());
             assert_eq!(pt.n(), module.n());
-            assert_eq!(sk_dft.n(), module.n());
+            assert_eq!(sk.n(), module.n());
         }
 
         let basek: usize = self.basek();
@@ -223,7 +216,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf, FFT64> {
                 tmp_ct.encrypt_sk_private(
                     module,
                     Some((&tmp_pt, col_j)),
-                    sk_dft,
+                    sk,
                     source_xa,
                     source_xe,
                     sigma,

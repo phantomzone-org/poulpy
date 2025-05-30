@@ -6,16 +6,8 @@ use backend::{
 use sampling::source::Source;
 
 use crate::{
-    SIX_SIGMA,
-    automorphism::AutomorphismKey,
-    elem::{Infos, SetMetaData},
-    ggsw_ciphertext::GGSWCiphertext,
-    glwe_ciphertext_fourier::GLWECiphertextFourier,
-    glwe_ops::GLWEOps,
-    glwe_plaintext::GLWEPlaintext,
-    keys::{GLWEPublicKey, SecretDistribution, SecretKeyFourier},
-    keyswitch_key::GLWESwitchingKey,
-    utils::derive_size,
+    AutomorphismKey, GGSWCiphertext, GLWECiphertextFourier, GLWEOps, GLWEPlaintext, GLWEPublicKey, GLWESecret, GLWESwitchingKey,
+    Infos, SIX_SIGMA, SecretDistribution, SetMetaData, derive_size,
 };
 
 pub struct GLWECiphertext<C> {
@@ -205,7 +197,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         &mut self,
         module: &Module<FFT64>,
         pt: &GLWEPlaintext<DataPt>,
-        sk_dft: &SecretKeyFourier<DataSk, FFT64>,
+        sk: &GLWESecret<DataSk, FFT64>,
         source_xa: &mut Source,
         source_xe: &mut Source,
         sigma: f64,
@@ -214,7 +206,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         self.encrypt_sk_private(
             module,
             Some((pt, 0)),
-            sk_dft,
+            sk,
             source_xa,
             source_xe,
             sigma,
@@ -225,7 +217,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
     pub fn encrypt_zero_sk<DataSk: AsRef<[u8]>>(
         &mut self,
         module: &Module<FFT64>,
-        sk_dft: &SecretKeyFourier<DataSk, FFT64>,
+        sk: &GLWESecret<DataSk, FFT64>,
         source_xa: &mut Source,
         source_xe: &mut Source,
         sigma: f64,
@@ -234,7 +226,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         self.encrypt_sk_private(
             module,
             None::<(&GLWEPlaintext<Vec<u8>>, usize)>,
-            sk_dft,
+            sk,
             source_xa,
             source_xe,
             sigma,
@@ -573,7 +565,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         &mut self,
         module: &Module<FFT64>,
         pt: Option<(&GLWEPlaintext<DataPt>, usize)>,
-        sk_dft: &SecretKeyFourier<DataSk, FFT64>,
+        sk: &GLWESecret<DataSk, FFT64>,
         source_xa: &mut Source,
         source_xe: &mut Source,
         sigma: f64,
@@ -581,8 +573,8 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
     ) {
         #[cfg(debug_assertions)]
         {
-            assert_eq!(self.rank(), sk_dft.rank());
-            assert_eq!(sk_dft.n(), module.n());
+            assert_eq!(self.rank(), sk.rank());
+            assert_eq!(sk.n(), module.n());
             assert_eq!(self.n(), module.n());
             if let Some((pt, col)) = pt {
                 assert_eq!(pt.n(), module.n());
@@ -615,7 +607,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
 
                 // c[i] = norm(IDFT(DFT(c[i]) * DFT(s[i])))
                 module.vec_znx_dft(&mut ci_dft, 0, &self.data, i);
-                module.svp_apply_inplace(&mut ci_dft, 0, &sk_dft.data, i - 1);
+                module.svp_apply_inplace(&mut ci_dft, 0, &sk.data_fourier, i - 1);
                 let ci_big: VecZnxBig<&mut [u8], FFT64> = module.vec_znx_idft_consume(ci_dft);
 
                 // use c[0] as buffer, which is overwritten later by the normalization step
@@ -730,15 +722,15 @@ impl<DataSelf: AsRef<[u8]>> GLWECiphertext<DataSelf> {
         &self,
         module: &Module<FFT64>,
         pt: &mut GLWEPlaintext<DataPt>,
-        sk_dft: &SecretKeyFourier<DataSk, FFT64>,
+        sk: &GLWESecret<DataSk, FFT64>,
         scratch: &mut Scratch,
     ) {
         #[cfg(debug_assertions)]
         {
-            assert_eq!(self.rank(), sk_dft.rank());
+            assert_eq!(self.rank(), sk.rank());
             assert_eq!(self.n(), module.n());
             assert_eq!(pt.n(), module.n());
-            assert_eq!(sk_dft.n(), module.n());
+            assert_eq!(sk.n(), module.n());
         }
 
         let cols: usize = self.rank() + 1;
@@ -751,7 +743,7 @@ impl<DataSelf: AsRef<[u8]>> GLWECiphertext<DataSelf> {
                 // ci_dft = DFT(a[i]) * DFT(s[i])
                 let (mut ci_dft, _) = scratch_1.tmp_vec_znx_dft(module, 1, self.size()); // TODO optimize size when pt << ct
                 module.vec_znx_dft(&mut ci_dft, 0, &self.data, i);
-                module.svp_apply_inplace(&mut ci_dft, 0, &sk_dft.data, i - 1);
+                module.svp_apply_inplace(&mut ci_dft, 0, &sk.data_fourier, i - 1);
                 let ci_big = module.vec_znx_idft_consume(ci_dft);
 
                 // c0_big += a[i] * s[i]

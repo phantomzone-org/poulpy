@@ -1,15 +1,7 @@
-use backend::{
-    FFT64, Module, ScalarZnx, ScalarZnxDft, ScalarZnxDftAlloc, ScalarZnxDftOps, ScratchOwned, Stats, VecZnxDftOps, VecZnxOps,
-};
+use backend::{FFT64, Module, ScalarZnxDftOps, ScratchOwned, Stats, VecZnxOps};
 use sampling::source::Source;
 
-use crate::{
-    elem::{GetRow, Infos},
-    glwe_ciphertext_fourier::GLWECiphertextFourier,
-    glwe_plaintext::GLWEPlaintext,
-    keys::{SecretKey, SecretKeyFourier},
-    tensor_key::TensorKey,
-};
+use crate::{GLWECiphertextFourier, GLWEPlaintext, GLWESecret, GetRow, Infos, TensorKey};
 
 #[test]
 fn encrypt_sk() {
@@ -37,15 +29,12 @@ fn test_encrypt_sk(log_n: usize, basek: usize, k: usize, sigma: f64, rank: usize
         rank,
     ));
 
-    let mut sk: SecretKey<Vec<u8>> = SecretKey::alloc(&module, rank);
-    sk.fill_ternary_prob(0.5, &mut source_xs);
-
-    let mut sk_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::alloc(&module, rank);
-    sk_dft.dft(&module, &sk);
+    let mut sk: GLWESecret<Vec<u8>, FFT64> = GLWESecret::alloc(&module, rank);
+    sk.fill_ternary_prob(&module, 0.5, &mut source_xs);
 
     tensor_key.generate_from_sk(
         &module,
-        &sk_dft,
+        &sk,
         &mut source_xa,
         &mut source_xe,
         sigma,
@@ -55,22 +44,26 @@ fn test_encrypt_sk(log_n: usize, basek: usize, k: usize, sigma: f64, rank: usize
     let mut ct_glwe_fourier: GLWECiphertextFourier<Vec<u8>, FFT64> = GLWECiphertextFourier::alloc(&module, basek, k, rank);
     let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k);
 
+    let mut sk_ij = GLWESecret::alloc(&module, 1);
+
     (0..rank).for_each(|i| {
         (0..rank).for_each(|j| {
-            let mut sk_ij_dft: ScalarZnxDft<Vec<u8>, FFT64> = module.new_scalar_znx_dft(1);
-            module.svp_apply(&mut sk_ij_dft, 0, &sk_dft.data, i, &sk_dft.data, j);
-            let sk_ij: ScalarZnx<Vec<u8>> = module
-                .vec_znx_idft_consume(sk_ij_dft.as_vec_znx_dft())
-                .to_vec_znx_small()
-                .to_scalar_znx();
-
+            module.svp_apply(
+                &mut sk_ij.data_fourier,
+                0,
+                &sk.data_fourier,
+                i,
+                &sk.data_fourier,
+                j,
+            );
+            module.svp_idft(&mut sk_ij.data, 0, &sk_ij.data_fourier, 0, scratch.borrow());
             (0..tensor_key.rank_in()).for_each(|col_i| {
                 (0..tensor_key.rows()).for_each(|row_i| {
                     tensor_key
                         .at(i, j)
                         .get_row(&module, row_i, col_i, &mut ct_glwe_fourier);
-                    ct_glwe_fourier.decrypt(&module, &mut pt, &sk_dft, scratch.borrow());
-                    module.vec_znx_sub_scalar_inplace(&mut pt.data, 0, row_i, &sk_ij, col_i);
+                    ct_glwe_fourier.decrypt(&module, &mut pt, &sk, scratch.borrow());
+                    module.vec_znx_sub_scalar_inplace(&mut pt.data, 0, row_i, &sk_ij.data, col_i);
                     let std_pt: f64 = pt.data.std(0, basek) * (k as f64).exp2();
                     assert!((sigma - std_pt).abs() <= 0.2, "{} {}", sigma, std_pt);
                 });

@@ -1,12 +1,9 @@
-use backend::{
-    Backend, FFT64, MatZnxDft, MatZnxDftOps, Module, ScalarZnxDftAlloc, ScalarZnxDftOps, ScalarZnxOps, Scratch, VecZnx,
-    VecZnxDftOps, VecZnxOps, ZnxZero,
-};
+use backend::{Backend, FFT64, MatZnxDft, MatZnxDftOps, Module, ScalarZnxOps, Scratch, VecZnx, VecZnxDftOps, VecZnxOps, ZnxZero};
 use sampling::source::Source;
 
 use crate::{
-    GGLWECiphertext, GGSWCiphertext, GLWECiphertext, GLWECiphertextFourier, GLWESwitchingKey, GetRow, Infos, ScratchCore,
-    SecretKey, SetRow,
+    GGLWECiphertext, GGSWCiphertext, GLWECiphertext, GLWECiphertextFourier, GLWESecret, GLWESwitchingKey, GetRow, Infos,
+    ScratchCore, SetRow,
 };
 
 pub struct AutomorphismKey<Data, B: Backend> {
@@ -87,7 +84,7 @@ impl<C: AsMut<[u8]> + AsRef<[u8]>> SetRow<FFT64> for AutomorphismKey<C, FFT64> {
 
 impl AutomorphismKey<Vec<u8>, FFT64> {
     pub fn generate_from_sk_scratch_space(module: &Module<FFT64>, basek: usize, k: usize, rank: usize) -> usize {
-        GGLWECiphertext::generate_from_sk_scratch_space(module, basek, k, rank) + module.bytes_of_scalar_znx_dft(rank)
+        GGLWECiphertext::generate_from_sk_scratch_space(module, basek, k, rank) + GLWESecret::bytes_of(module, rank)
     }
 
     pub fn generate_from_pk_scratch_space(module: &Module<FFT64>, _basek: usize, _k: usize, _rank: usize) -> usize {
@@ -167,7 +164,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> AutomorphismKey<DataSelf, FFT64> {
         &mut self,
         module: &Module<FFT64>,
         p: i64,
-        sk: &SecretKey<DataSk>,
+        sk: &GLWESecret<DataSk, FFT64>,
         source_xa: &mut Source,
         source_xe: &mut Source,
         sigma: f64,
@@ -191,31 +188,21 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> AutomorphismKey<DataSelf, FFT64> {
             )
         }
 
-        let (mut sk_out_dft, scratch_1) = scratch.tmp_sk_fourier(module, sk.rank());
+        let (mut sk_out, scratch_1) = scratch.tmp_sk(module, sk.rank());
+        (0..self.rank()).for_each(|i| {
+            module.scalar_znx_automorphism(
+                module.galois_element_inv(p),
+                &mut sk_out.data,
+                i,
+                &sk.data,
+                i,
+            );
+        });
 
-        {
-            (0..self.rank()).for_each(|i| {
-                let (mut sk_inv_auto, _) = scratch_1.tmp_scalar_znx(module, 1);
-                module.scalar_znx_automorphism(
-                    module.galois_element_inv(p),
-                    &mut sk_inv_auto,
-                    0,
-                    &sk.data,
-                    i,
-                );
-                module.svp_prepare(&mut sk_out_dft.data, i, &sk_inv_auto, 0);
-            });
-        }
+        sk_out.prep_fourier(module);
 
-        self.key.generate_from_sk(
-            module,
-            &sk,
-            &sk_out_dft,
-            source_xa,
-            source_xe,
-            sigma,
-            scratch_1,
-        );
+        self.key
+            .generate_from_sk(module, &sk, &sk_out, source_xa, source_xe, sigma, scratch_1);
 
         self.p = p;
     }

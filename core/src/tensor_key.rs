@@ -1,11 +1,7 @@
-use backend::{Backend, FFT64, MatZnxDft, Module, ScalarZnx, ScalarZnxDftAlloc, ScalarZnxDftOps, Scratch, VecZnxDftOps};
+use backend::{Backend, FFT64, MatZnxDft, Module, ScalarZnxDftOps, Scratch};
 use sampling::source::Source;
 
-use crate::{
-    elem::Infos,
-    keys::{SecretKey, SecretKeyFourier},
-    keyswitch_key::GLWESwitchingKey,
-};
+use crate::{GLWESecret, GLWESwitchingKey, Infos, ScratchCore};
 
 pub struct TensorKey<C, B: Backend> {
     pub(crate) keys: Vec<GLWESwitchingKey<C, B>>,
@@ -59,7 +55,7 @@ impl<T, B: Backend> TensorKey<T, B> {
 
 impl TensorKey<Vec<u8>, FFT64> {
     pub fn generate_from_sk_scratch_space(module: &Module<FFT64>, basek: usize, k: usize, rank: usize) -> usize {
-        module.bytes_of_scalar_znx_dft(1) + GLWESwitchingKey::encrypt_sk_scratch_space(module, basek, k, rank)
+        GLWESecret::bytes_of(module, 1) + GLWESwitchingKey::encrypt_sk_scratch_space(module, basek, k, rank)
     }
 }
 
@@ -67,7 +63,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> TensorKey<DataSelf, FFT64> {
     pub fn generate_from_sk<DataSk: AsRef<[u8]>>(
         &mut self,
         module: &Module<FFT64>,
-        sk_dft: &SecretKeyFourier<DataSk, FFT64>,
+        sk: &GLWESecret<DataSk, FFT64>,
         source_xa: &mut Source,
         source_xe: &mut Source,
         sigma: f64,
@@ -75,29 +71,28 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> TensorKey<DataSelf, FFT64> {
     ) {
         #[cfg(debug_assertions)]
         {
-            assert_eq!(self.rank(), sk_dft.rank());
+            assert_eq!(self.rank(), sk.rank());
             assert_eq!(self.n(), module.n());
-            assert_eq!(sk_dft.n(), module.n());
+            assert_eq!(sk.n(), module.n());
         }
 
         let rank: usize = self.rank();
 
+        let (mut sk_ij, scratch1) = scratch.tmp_sk(module, 1);
+
         (0..rank).for_each(|i| {
             (i..rank).for_each(|j| {
-                let (mut sk_ij_dft, scratch1) = scratch.tmp_scalar_znx_dft(module, 1);
-                module.svp_apply(&mut sk_ij_dft, 0, &sk_dft.data, i, &sk_dft.data, j);
-                let sk_ij: ScalarZnx<&mut [u8]> = module
-                    .vec_znx_idft_consume(sk_ij_dft.as_vec_znx_dft())
-                    .to_vec_znx_small()
-                    .to_scalar_znx();
-                let sk_ij: SecretKey<&mut [u8]> = SecretKey {
-                    data: sk_ij,
-                    dist: sk_dft.dist,
-                };
-
-                self.at_mut(i, j).generate_from_sk(
-                    module, &sk_ij, sk_dft, source_xa, source_xe, sigma, scratch1,
+                module.svp_apply(
+                    &mut sk_ij.data_fourier,
+                    0,
+                    &sk.data_fourier,
+                    i,
+                    &sk.data_fourier,
+                    j,
                 );
+                module.svp_idft(&mut sk_ij.data, 0, &sk_ij.data_fourier, 0, scratch1);
+                self.at_mut(i, j)
+                    .generate_from_sk(module, &sk_ij, sk, source_xa, source_xe, sigma, scratch1);
             });
         })
     }
