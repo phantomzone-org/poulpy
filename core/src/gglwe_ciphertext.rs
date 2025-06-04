@@ -4,7 +4,7 @@ use backend::{
 };
 use sampling::source::Source;
 
-use crate::{GLWECiphertext, GLWECiphertextFourier, GLWEPlaintext, GetRow, Infos, SecretKeyFourier, SetRow, derive_size};
+use crate::{GLWECiphertext, GLWECiphertextFourier, GLWESecret, GetRow, Infos, ScratchCore, SetRow, derive_size};
 
 pub struct GGLWECiphertext<C, B: Backend> {
     pub(crate) data: MatZnxDft<C, B>,
@@ -75,7 +75,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGLWECiphertext<DataSelf, FFT64> {
         &mut self,
         module: &Module<FFT64>,
         pt: &ScalarZnx<DataPt>,
-        sk_dft: &SecretKeyFourier<DataSk, FFT64>,
+        sk: &GLWESecret<DataSk, FFT64>,
         source_xa: &mut Source,
         source_xe: &mut Source,
         sigma: f64,
@@ -84,9 +84,9 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGLWECiphertext<DataSelf, FFT64> {
         #[cfg(debug_assertions)]
         {
             assert_eq!(self.rank_in(), pt.cols());
-            assert_eq!(self.rank_out(), sk_dft.rank());
+            assert_eq!(self.rank_out(), sk.rank());
             assert_eq!(self.n(), module.n());
-            assert_eq!(sk_dft.n(), module.n());
+            assert_eq!(sk.n(), module.n());
             assert_eq!(pt.n(), module.n());
             assert!(
                 scratch.available()
@@ -101,34 +101,14 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGLWECiphertext<DataSelf, FFT64> {
         }
 
         let rows: usize = self.rows();
-        let size: usize = self.size();
         let basek: usize = self.basek();
         let k: usize = self.k();
+        let rank_in: usize = self.rank_in();
+        let rank_out: usize = self.rank_out();
 
-        let cols_in: usize = self.rank_in();
-        let cols_out: usize = self.rank_out() + 1;
-
-        let (tmp_znx_pt, scrach_1) = scratch.tmp_vec_znx(module, 1, size);
-        let (tmp_znx_ct, scrach_2) = scrach_1.tmp_vec_znx(module, cols_out, size);
-        let (tmp_znx_dft_ct, scratch_3) = scrach_2.tmp_vec_znx_dft(module, cols_out, size);
-
-        let mut vec_znx_pt: GLWEPlaintext<&mut [u8]> = GLWEPlaintext {
-            data: tmp_znx_pt,
-            basek,
-            k,
-        };
-
-        let mut vec_znx_ct: GLWECiphertext<&mut [u8]> = GLWECiphertext {
-            data: tmp_znx_ct,
-            basek,
-            k,
-        };
-
-        let mut vec_znx_ct_dft: GLWECiphertextFourier<&mut [u8], FFT64> = GLWECiphertextFourier {
-            data: tmp_znx_dft_ct,
-            basek,
-            k,
-        };
+        let (mut tmp_pt, scrach_1) = scratch.tmp_glwe_pt(module, basek, k);
+        let (mut tmp_ct, scrach_2) = scrach_1.tmp_glwe_ct(module, basek, k, rank_out);
+        let (mut tmp_ct_dft, scratch_3) = scrach_2.tmp_glwe_fourier(module, basek, k, rank_out);
 
         // For each input column (i.e. rank) produces a GGLWE ciphertext of rank_out+1 columns
         //
@@ -141,29 +121,21 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGLWECiphertext<DataSelf, FFT64> {
         //
         // (-(a*s) + s0, a)
         // (-(b*s) + s1, b)
-        (0..cols_in).for_each(|col_i| {
+        (0..rank_in).for_each(|col_i| {
             (0..rows).for_each(|row_i| {
                 // Adds the scalar_znx_pt to the i-th limb of the vec_znx_pt
-                vec_znx_pt.data.zero(); // zeroes for next iteration
-                module.vec_znx_add_scalar_inplace(&mut vec_znx_pt.data, 0, row_i, pt, col_i); // Selects the i-th
-                module.vec_znx_normalize_inplace(basek, &mut vec_znx_pt.data, 0, scratch_3);
+                tmp_pt.data.zero(); // zeroes for next iteration
+                module.vec_znx_add_scalar_inplace(&mut tmp_pt.data, 0, row_i, pt, col_i); // Selects the i-th
+                module.vec_znx_normalize_inplace(basek, &mut tmp_pt.data, 0, scratch_3);
 
                 // rlwe encrypt of vec_znx_pt into vec_znx_ct
-                vec_znx_ct.encrypt_sk(
-                    module,
-                    &vec_znx_pt,
-                    sk_dft,
-                    source_xa,
-                    source_xe,
-                    sigma,
-                    scratch_3,
-                );
+                tmp_ct.encrypt_sk(module, &tmp_pt, sk, source_xa, source_xe, sigma, scratch_3);
 
                 // Switch vec_znx_ct into DFT domain
-                vec_znx_ct.dft(module, &mut vec_znx_ct_dft);
+                tmp_ct.dft(module, &mut tmp_ct_dft);
 
                 // Stores vec_znx_dft_ct into thw i-th row of the MatZnxDft
-                module.vmp_prepare_row(&mut self.data, row_i, col_i, &vec_znx_ct_dft.data);
+                self.set_row(module, row_i, col_i, &tmp_ct_dft);
             });
         });
     }

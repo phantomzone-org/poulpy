@@ -1,10 +1,5 @@
 use backend::{FFT64, Module, ScalarZnx, ScalarZnxAlloc, ScratchOwned};
-use core::{
-    elem::Infos,
-    ggsw_ciphertext::GGSWCiphertext,
-    glwe_ciphertext::GLWECiphertext,
-    keys::{SecretKey, SecretKeyFourier},
-};
+use core::{GGSWCiphertext, GLWECiphertext, GLWESecret, Infos};
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use sampling::source::Source;
 use std::hint::black_box;
@@ -55,15 +50,13 @@ fn bench_external_product_glwe_fft64(c: &mut Criterion) {
         let mut source_xe = Source::new([0u8; 32]);
         let mut source_xa = Source::new([0u8; 32]);
 
-        let mut sk: SecretKey<Vec<u8>> = SecretKey::alloc(&module, rank);
-        sk.fill_ternary_prob(0.5, &mut source_xs);
-        let mut sk_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::alloc(&module, rank);
-        sk_dft.dft(&module, &sk);
+        let mut sk: GLWESecret<Vec<u8>, FFT64> = GLWESecret::alloc(&module, rank);
+        sk.fill_ternary_prob(&module, 0.5, &mut source_xs);
 
         ct_ggsw.encrypt_sk(
             &module,
             &pt_rgsw,
-            &sk_dft,
+            &sk,
             &mut source_xa,
             &mut source_xe,
             sigma,
@@ -72,7 +65,7 @@ fn bench_external_product_glwe_fft64(c: &mut Criterion) {
 
         ct_glwe_in.encrypt_zero_sk(
             &module,
-            &sk_dft,
+            &sk,
             &mut source_xa,
             &mut source_xe,
             sigma,
@@ -143,15 +136,13 @@ fn bench_external_product_glwe_inplace_fft64(c: &mut Criterion) {
         let mut source_xe = Source::new([0u8; 32]);
         let mut source_xa = Source::new([0u8; 32]);
 
-        let mut sk: SecretKey<Vec<u8>> = SecretKey::alloc(&module, rank);
-        sk.fill_ternary_prob(0.5, &mut source_xs);
-        let mut sk_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::alloc(&module, rank);
-        sk_dft.dft(&module, &sk);
+        let mut sk: GLWESecret<Vec<u8>, FFT64> = GLWESecret::alloc(&module, rank);
+        sk.fill_ternary_prob(&module, 0.5, &mut source_xs);
 
         ct_ggsw.encrypt_sk(
             &module,
             &pt_rgsw,
-            &sk_dft,
+            &sk,
             &mut source_xa,
             &mut source_xe,
             sigma,
@@ -160,7 +151,7 @@ fn bench_external_product_glwe_inplace_fft64(c: &mut Criterion) {
 
         ct_glwe.encrypt_zero_sk(
             &module,
-            &sk_dft,
+            &sk,
             &mut source_xa,
             &mut source_xe,
             sigma,

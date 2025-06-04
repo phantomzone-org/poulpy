@@ -1,10 +1,5 @@
 use backend::{FFT64, Module, ScratchOwned};
-use core::{
-    elem::Infos,
-    glwe_ciphertext::GLWECiphertext,
-    keys::{SecretKey, SecretKeyFourier},
-    keyswitch_key::GLWESwitchingKey,
-};
+use core::{GLWECiphertext, GLWESecret, GLWESwitchingKey, Infos};
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use sampling::source::Source;
 use std::hint::black_box;
@@ -57,20 +52,16 @@ fn bench_keyswitch_glwe_fft64(c: &mut Criterion) {
         let mut source_xe = Source::new([0u8; 32]);
         let mut source_xa = Source::new([0u8; 32]);
 
-        let mut sk_in: SecretKey<Vec<u8>> = SecretKey::alloc(&module, rank_in);
-        sk_in.fill_ternary_prob(0.5, &mut source_xs);
-        let mut sk_in_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::alloc(&module, rank_in);
-        sk_in_dft.dft(&module, &sk_in);
+        let mut sk_in: GLWESecret<Vec<u8>, FFT64> = GLWESecret::alloc(&module, rank_in);
+        sk_in.fill_ternary_prob(&module, 0.5, &mut source_xs);
 
-        let mut sk_out: SecretKey<Vec<u8>> = SecretKey::alloc(&module, rank_out);
-        sk_out.fill_ternary_prob(0.5, &mut source_xs);
-        let mut sk_out_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::alloc(&module, rank_out);
-        sk_out_dft.dft(&module, &sk_out);
+        let mut sk_out: GLWESecret<Vec<u8>, FFT64> = GLWESecret::alloc(&module, rank_out);
+        sk_out.fill_ternary_prob(&module, 0.5, &mut source_xs);
 
         ksk.generate_from_sk(
             &module,
             &sk_in,
-            &sk_out_dft,
+            &sk_out,
             &mut source_xa,
             &mut source_xe,
             sigma,
@@ -79,7 +70,7 @@ fn bench_keyswitch_glwe_fft64(c: &mut Criterion) {
 
         ct_in.encrypt_zero_sk(
             &module,
-            &sk_in_dft,
+            &sk_in,
             &mut source_xa,
             &mut source_xe,
             sigma,
@@ -150,20 +141,16 @@ fn bench_keyswitch_glwe_inplace_fft64(c: &mut Criterion) {
         let mut source_xe: Source = Source::new([0u8; 32]);
         let mut source_xa: Source = Source::new([0u8; 32]);
 
-        let mut sk_in: SecretKey<Vec<u8>> = SecretKey::alloc(&module, rank);
-        sk_in.fill_ternary_prob(0.5, &mut source_xs);
-        let mut sk_in_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::alloc(&module, rank);
-        sk_in_dft.dft(&module, &sk_in);
+        let mut sk_in: GLWESecret<Vec<u8>, FFT64> = GLWESecret::alloc(&module, rank);
+        sk_in.fill_ternary_prob(&&module, 0.5, &mut source_xs);
 
-        let mut sk_out: SecretKey<Vec<u8>> = SecretKey::alloc(&module, rank);
-        sk_out.fill_ternary_prob(0.5, &mut source_xs);
-        let mut sk_out_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::alloc(&module, rank);
-        sk_out_dft.dft(&module, &sk_out);
+        let mut sk_out: GLWESecret<Vec<u8>, FFT64> = GLWESecret::alloc(&module, rank);
+        sk_out.fill_ternary_prob(&&module, 0.5, &mut source_xs);
 
         ksk.generate_from_sk(
             &module,
             &sk_in,
-            &sk_out_dft,
+            &sk_out,
             &mut source_xa,
             &mut source_xe,
             sigma,
@@ -172,7 +159,7 @@ fn bench_keyswitch_glwe_inplace_fft64(c: &mut Criterion) {
 
         ct.encrypt_zero_sk(
             &module,
-            &sk_in_dft,
+            &sk_in,
             &mut source_xa,
             &mut source_xe,
             sigma,

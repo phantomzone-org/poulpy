@@ -4,7 +4,7 @@ use backend::{
 };
 use sampling::source::Source;
 
-use crate::{elem::Infos, glwe_ciphertext_fourier::GLWECiphertextFourier};
+use crate::{GLWECiphertextFourier, Infos};
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) enum SecretDistribution {
@@ -14,25 +14,27 @@ pub(crate) enum SecretDistribution {
     NONE,
 }
 
-pub struct SecretKey<T> {
+pub struct GLWESecret<T, B: Backend> {
     pub(crate) data: ScalarZnx<T>,
+    pub(crate) data_fourier: ScalarZnxDft<T, B>,
     pub(crate) dist: SecretDistribution,
 }
 
-impl SecretKey<Vec<u8>> {
-    pub fn alloc<B: Backend>(module: &Module<B>, rank: usize) -> Self {
+impl<B: Backend> GLWESecret<Vec<u8>, B> {
+    pub fn alloc(module: &Module<B>, rank: usize) -> Self {
         Self {
             data: module.new_scalar_znx(rank),
+            data_fourier: module.new_scalar_znx_dft(rank),
             dist: SecretDistribution::NONE,
         }
     }
 
-    pub fn bytes_of(module: &Module<FFT64>, rank: usize) -> usize {
-        module.bytes_of_scalar_znx(rank + 1)
+    pub fn bytes_of(module: &Module<B>, rank: usize) -> usize {
+        module.bytes_of_scalar_znx(rank) + module.bytes_of_scalar_znx_dft(rank)
     }
 }
 
-impl<DataSelf> SecretKey<DataSelf> {
+impl<DataSelf, B: Backend> GLWESecret<DataSelf, B> {
     pub fn n(&self) -> usize {
         self.data.n()
     }
@@ -46,18 +48,20 @@ impl<DataSelf> SecretKey<DataSelf> {
     }
 }
 
-impl<S: AsMut<[u8]> + AsRef<[u8]>> SecretKey<S> {
-    pub fn fill_ternary_prob(&mut self, prob: f64, source: &mut Source) {
+impl<S: AsMut<[u8]> + AsRef<[u8]>> GLWESecret<S, FFT64> {
+    pub fn fill_ternary_prob(&mut self, module: &Module<FFT64>, prob: f64, source: &mut Source) {
         (0..self.rank()).for_each(|i| {
             self.data.fill_ternary_prob(i, prob, source);
         });
+        self.prep_fourier(module);
         self.dist = SecretDistribution::TernaryProb(prob);
     }
 
-    pub fn fill_ternary_hw(&mut self, hw: usize, source: &mut Source) {
+    pub fn fill_ternary_hw(&mut self, module: &Module<FFT64>, hw: usize, source: &mut Source) {
         (0..self.rank()).for_each(|i| {
             self.data.fill_ternary_hw(i, hw, source);
         });
+        self.prep_fourier(module);
         self.dist = SecretDistribution::TernaryFixed(hw);
     }
 
@@ -65,58 +69,11 @@ impl<S: AsMut<[u8]> + AsRef<[u8]>> SecretKey<S> {
         self.data.zero();
         self.dist = SecretDistribution::ZERO;
     }
-}
 
-pub struct SecretKeyFourier<T, B: Backend> {
-    pub(crate) data: ScalarZnxDft<T, B>,
-    pub(crate) dist: SecretDistribution,
-}
-
-impl<DataSelf, B: Backend> SecretKeyFourier<DataSelf, B> {
-    pub fn n(&self) -> usize {
-        self.data.n()
-    }
-
-    pub fn log_n(&self) -> usize {
-        self.data.log_n()
-    }
-
-    pub fn rank(&self) -> usize {
-        self.data.cols()
-    }
-}
-
-impl<B: Backend> SecretKeyFourier<Vec<u8>, B> {
-    pub fn alloc(module: &Module<B>, rank: usize) -> Self {
-        Self {
-            data: module.new_scalar_znx_dft(rank),
-            dist: SecretDistribution::NONE,
-        }
-    }
-
-    pub fn bytes_of(module: &Module<B>, rank: usize) -> usize {
-        module.bytes_of_scalar_znx_dft(rank + 1)
-    }
-}
-
-impl<D: AsRef<[u8]> + AsMut<[u8]>> SecretKeyFourier<D, FFT64> {
-    pub fn dft<S: AsRef<[u8]>>(&mut self, module: &Module<FFT64>, sk: &SecretKey<S>) {
-        #[cfg(debug_assertions)]
-        {
-            match sk.dist {
-                SecretDistribution::NONE => panic!("invalid sk: SecretDistribution::NONE"),
-                _ => {}
-            }
-
-            assert_eq!(self.n(), module.n());
-            assert_eq!(sk.n(), module.n());
-            assert_eq!(self.rank(), sk.rank());
-        }
-
+    pub(crate) fn prep_fourier(&mut self, module: &Module<FFT64>) {
         (0..self.rank()).for_each(|i| {
-            module.svp_prepare(&mut self.data, i, &sk.data, i);
+            module.svp_prepare(&mut self.data_fourier, i, &self.data, i);
         });
-        self.dist = sk.dist;
     }
 }
 
@@ -164,15 +121,15 @@ impl<C: AsRef<[u8]> + AsMut<[u8]>> GLWEPublicKey<C, FFT64> {
     pub fn generate_from_sk<S: AsRef<[u8]>>(
         &mut self,
         module: &Module<FFT64>,
-        sk_dft: &SecretKeyFourier<S, FFT64>,
+        sk: &GLWESecret<S, FFT64>,
         source_xa: &mut Source,
         source_xe: &mut Source,
         sigma: f64,
     ) {
         #[cfg(debug_assertions)]
         {
-            match sk_dft.dist {
-                SecretDistribution::NONE => panic!("invalid sk_dft: SecretDistribution::NONE"),
+            match sk.dist {
+                SecretDistribution::NONE => panic!("invalid sk: SecretDistribution::NONE"),
                 _ => {}
             }
         }
@@ -185,14 +142,8 @@ impl<C: AsRef<[u8]> + AsMut<[u8]>> GLWEPublicKey<C, FFT64> {
             self.rank(),
         ));
 
-        self.data.encrypt_zero_sk(
-            module,
-            sk_dft,
-            source_xa,
-            source_xe,
-            sigma,
-            scratch.borrow(),
-        );
-        self.dist = sk_dft.dist;
+        self.data
+            .encrypt_zero_sk(module, sk, source_xa, source_xe, sigma, scratch.borrow());
+        self.dist = sk.dist;
     }
 }

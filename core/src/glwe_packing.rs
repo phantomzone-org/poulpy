@@ -1,4 +1,4 @@
-use crate::{ScratchCore, automorphism::AutomorphismKey, elem::Infos, glwe_ciphertext::GLWECiphertext, glwe_ops::GLWEOps};
+use crate::{AutomorphismKey, GLWECiphertext, GLWEOps, Infos, ScratchCore};
 use std::collections::HashMap;
 
 use backend::{FFT64, Module, Scratch};

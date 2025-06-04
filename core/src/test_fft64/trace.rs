@@ -3,14 +3,7 @@ use std::collections::HashMap;
 use backend::{FFT64, FillUniform, Module, ScratchOwned, Stats, VecZnxOps, ZnxView, ZnxViewMut};
 use sampling::source::Source;
 
-use crate::{
-    automorphism::AutomorphismKey,
-    elem::Infos,
-    glwe_ciphertext::GLWECiphertext,
-    glwe_plaintext::GLWEPlaintext,
-    keys::{SecretKey, SecretKeyFourier},
-    test_fft64::gglwe::var_noise_gglwe_product,
-};
+use crate::{AutomorphismKey, GLWECiphertext, GLWEPlaintext, GLWESecret, Infos, test_fft64::gglwe::var_noise_gglwe_product};
 
 #[test]
 fn trace_inplace() {
@@ -42,11 +35,8 @@ fn test_trace_inplace(log_n: usize, basek: usize, k: usize, sigma: f64, rank: us
             | GLWECiphertext::trace_inplace_scratch_space(&module, basek, ct.k(), k_autokey, rank),
     );
 
-    let mut sk: SecretKey<Vec<u8>> = SecretKey::alloc(&module, rank);
-    sk.fill_ternary_prob(0.5, &mut source_xs);
-
-    let mut sk_dft: SecretKeyFourier<Vec<u8>, FFT64> = SecretKeyFourier::alloc(&module, rank);
-    sk_dft.dft(&module, &sk);
+    let mut sk: GLWESecret<Vec<u8>, FFT64> = GLWESecret::alloc(&module, rank);
+    sk.fill_ternary_prob(&&module, 0.5, &mut source_xs);
 
     let mut data_want: Vec<i64> = vec![0i64; module.n()];
 
@@ -61,7 +51,7 @@ fn test_trace_inplace(log_n: usize, basek: usize, k: usize, sigma: f64, rank: us
     ct.encrypt_sk(
         &module,
         &pt_have,
-        &sk_dft,
+        &sk,
         &mut source_xa,
         &mut source_xe,
         sigma,
@@ -89,7 +79,7 @@ fn test_trace_inplace(log_n: usize, basek: usize, k: usize, sigma: f64, rank: us
 
     (0..pt_want.size()).for_each(|i| pt_want.data.at_mut(0, i)[0] = pt_have.data.at(0, i)[0]);
 
-    ct.decrypt(&module, &mut pt_have, &sk_dft, scratch.borrow());
+    ct.decrypt(&module, &mut pt_have, &sk, scratch.borrow());
 
     module.vec_znx_sub_ab_inplace(&mut pt_want.data, 0, &pt_have.data, 0);
     module.vec_znx_normalize_inplace(basek, &mut pt_want.data, 0, scratch.borrow());
