@@ -12,15 +12,15 @@ pub struct AutomorphismKey<Data, B: Backend> {
 }
 
 impl AutomorphismKey<Vec<u8>, FFT64> {
-    pub fn alloc(module: &Module<FFT64>, basek: usize, k: usize, rows: usize, rank: usize) -> Self {
+    pub fn alloc(module: &Module<FFT64>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self {
         AutomorphismKey {
-            key: GLWESwitchingKey::alloc(module, basek, k, rows, rank, rank),
+            key: GLWESwitchingKey::alloc(module, basek, k, rows, digits, rank, rank),
             p: 0,
         }
     }
 
-    pub fn bytes_of(module: &Module<FFT64>, basek: usize, k: usize, rows: usize, rank: usize) -> usize {
-        GLWESwitchingKey::<Vec<u8>, FFT64>::bytes_of(module, basek, k, rows, rank, rank)
+    pub fn bytes_of(module: &Module<FFT64>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize {
+        GLWESwitchingKey::<Vec<u8>, FFT64>::bytes_of(module, basek, k, rows, digits,rank, rank)
     }
 }
 
@@ -43,6 +43,10 @@ impl<T, B: Backend> Infos for AutomorphismKey<T, B> {
 impl<T, B: Backend> AutomorphismKey<T, B> {
     pub fn p(&self) -> i64 {
         self.p
+    }
+
+    pub fn digits(&self) -> usize {
+        self.key.digits()
     }
 
     pub fn rank(&self) -> usize {

@@ -6,14 +6,14 @@ use crate::{GGLWECiphertext, GGSWCiphertext, GLWECiphertextFourier, GLWESecret, 
 pub struct GLWESwitchingKey<Data, B: Backend>(pub(crate) GGLWECiphertext<Data, B>);
 
 impl GLWESwitchingKey<Vec<u8>, FFT64> {
-    pub fn alloc(module: &Module<FFT64>, basek: usize, k: usize, rows: usize, rank_in: usize, rank_out: usize) -> Self {
+    pub fn alloc(module: &Module<FFT64>, basek: usize, k: usize, rows: usize, digits: usize, rank_in: usize, rank_out: usize) -> Self {
         GLWESwitchingKey(GGLWECiphertext::alloc(
-            module, basek, k, rows, rank_in, rank_out,
+            module, basek, k, rows, digits, rank_in, rank_out,
         ))
     }
 
-    pub fn bytes_of(module: &Module<FFT64>, basek: usize, k: usize, rows: usize, rank_in: usize, rank_out: usize) -> usize {
-        GGLWECiphertext::<Vec<u8>, FFT64>::bytes_of(module, basek, k, rows, rank_in, rank_out)
+    pub fn bytes_of(module: &Module<FFT64>, basek: usize, k: usize, rows: usize, digits: usize, rank_in: usize, rank_out: usize) -> usize {
+        GGLWECiphertext::<Vec<u8>, FFT64>::bytes_of(module, basek, k, rows, digits, rank_in, rank_out)
     }
 }
 
@@ -44,6 +44,10 @@ impl<T, B: Backend> GLWESwitchingKey<T, B> {
 
     pub fn rank_out(&self) -> usize {
         self.0.data.cols_out() - 1
+    }
+
+    pub fn digits(&self) -> usize {
+        self.0.digits()
     }
 }
 

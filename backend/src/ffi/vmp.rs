@@ -47,6 +47,7 @@ unsafe extern "C" {
         pmat: *const VMP_PMAT,
         nrows: u64,
         ncols: u64,
+        pmat_scale: u64,
         tmp_space: *mut u8,
     );
 }
@@ -79,6 +80,7 @@ unsafe extern "C" {
         pmat: *const VMP_PMAT,
         nrows: u64,
         ncols: u64,
+        pmat_scale: u64,
         tmp_space: *mut u8,
     );
 }
