@@ -40,7 +40,7 @@ fn main() {
 
     let mut buf_dft: VecZnxDft<Vec<u8>, FFT64> = module.new_vec_znx_dft(1, ct_size);
 
-    module.vec_znx_dft(&mut buf_dft, 0, &ct, 1);
+    module.vec_znx_dft(1, 0, &mut buf_dft, 0, &ct, 1);
 
     // Applies DFT(ct[1]) * DFT(s)
     module.svp_apply_inplace(
@@ -102,7 +102,7 @@ fn main() {
     // Decryption
 
     // DFT(ct[1] * s)
-    module.vec_znx_dft(&mut buf_dft, 0, &ct, 1);
+    module.vec_znx_dft(1, 0, &mut buf_dft, 0, &ct, 1);
     module.svp_apply_inplace(
         &mut buf_dft,
         0, // Selects the first column of res.

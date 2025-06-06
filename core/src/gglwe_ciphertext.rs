@@ -14,17 +14,65 @@ pub struct GGLWECiphertext<C, B: Backend> {
 }
 
 impl<B: Backend> GGLWECiphertext<Vec<u8>, B> {
-    pub fn alloc(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank_in: usize, rank_out: usize) -> Self {
+    pub fn alloc(
+        module: &Module<B>,
+        basek: usize,
+        k: usize,
+        rows: usize,
+        digits: usize,
+        rank_in: usize,
+        rank_out: usize,
+    ) -> Self {
+        let size: usize = div_ceil(k, basek);
+        debug_assert!(
+            size > digits,
+            "invalid gglwe: ceil(k/basek): {} <= digits: {}",
+            size,
+            digits
+        );
+
+        assert!(
+            rows * digits <= size,
+            "invalid gglwe: rows: {} * digits:{} > ceil(k/basek): {}",
+            rows,
+            digits,
+            size
+        );
+
         Self {
-            data: module.new_mat_znx_dft(div_ceil(rows, digits), rank_in, rank_out + 1, div_ceil(basek, k)),
+            data: module.new_mat_znx_dft(rows, rank_in, rank_out + 1, size),
             basek: basek,
             k,
             digits,
         }
     }
 
-    pub fn bytes_of(module: &Module<FFT64>, basek: usize, k: usize, rows: usize, digits: usize, rank_in: usize, rank_out: usize) -> usize {
-        module.bytes_of_mat_znx_dft(div_ceil(rows, digits), rank_in, rank_out + 1, div_ceil(basek, k))
+    pub fn bytes_of(
+        module: &Module<FFT64>,
+        basek: usize,
+        k: usize,
+        rows: usize,
+        digits: usize,
+        rank_in: usize,
+        rank_out: usize,
+    ) -> usize {
+        let size: usize = div_ceil(k, basek);
+        debug_assert!(
+            size > digits,
+            "invalid gglwe: ceil(k/basek): {} <= digits: {}",
+            size,
+            digits
+        );
+
+        assert!(
+            rows * digits <= size,
+            "invalid gglwe: rows: {} * digits:{} > ceil(k/basek): {}",
+            rows,
+            digits,
+            size
+        );
+
+        module.bytes_of_mat_znx_dft(rows, rank_in, rank_out + 1, rows)
     }
 }
 
@@ -49,7 +97,7 @@ impl<T, B: Backend> GGLWECiphertext<T, B> {
         self.data.cols_out() - 1
     }
 
-    pub fn digits(&self) -> usize{
+    pub fn digits(&self) -> usize {
         self.digits
     }
 
@@ -64,7 +112,7 @@ impl<T, B: Backend> GGLWECiphertext<T, B> {
 
 impl GGLWECiphertext<Vec<u8>, FFT64> {
     pub fn generate_from_sk_scratch_space(module: &Module<FFT64>, basek: usize, k: usize, rank: usize) -> usize {
-        let size = div_ceil(basek, k);
+        let size = div_ceil(k, basek);
         GLWECiphertext::encrypt_sk_scratch_space(module, basek, k)
             + module.bytes_of_vec_znx(rank + 1, size)
             + module.bytes_of_vec_znx(1, size)
@@ -103,7 +151,16 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGLWECiphertext<DataSelf, FFT64> {
                 self.rank(),
                 self.size(),
                 GGLWECiphertext::generate_from_sk_scratch_space(module, self.basek(), self.k(), self.rank())
-            )
+            );
+            assert!(
+                self.rows() * self.digits() * self.basek() <= self.k(),
+                "self.rows() : {} * self.digits() : {} * self.basek() : {} = {} >= self.k() = {}",
+                self.rows(),
+                self.digits(),
+                self.basek(),
+                self.rows() * self.digits() * self.basek(),
+                self.k()
+            );
         }
 
         let rows: usize = self.rows();
@@ -132,7 +189,13 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGLWECiphertext<DataSelf, FFT64> {
             (0..rows).for_each(|row_i| {
                 // Adds the scalar_znx_pt to the i-th limb of the vec_znx_pt
                 tmp_pt.data.zero(); // zeroes for next iteration
-                module.vec_znx_add_scalar_inplace(&mut tmp_pt.data, 0, row_i * digits, pt, col_i);
+                module.vec_znx_add_scalar_inplace(
+                    &mut tmp_pt.data,
+                    0,
+                    (digits - 1) + row_i * digits,
+                    pt,
+                    col_i,
+                );
                 module.vec_znx_normalize_inplace(basek, &mut tmp_pt.data, 0, scratch_3);
 
                 // rlwe encrypt of vec_znx_pt into vec_znx_ct

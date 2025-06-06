@@ -34,7 +34,7 @@ pub trait Infos {
     /// Returns the number of size per polynomial.
     fn size(&self) -> usize {
         let size: usize = self.inner().size();
-        debug_assert_eq!(size, div_ceil(self.basek(), self.k()));
+        debug_assert_eq!(size, div_ceil(self.k(), self.basek()));
         size
     }
 
