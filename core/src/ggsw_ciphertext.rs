@@ -20,7 +20,12 @@ pub struct GGSWCiphertext<C, B: Backend> {
 impl<B: Backend> GGSWCiphertext<Vec<u8>, B> {
     pub fn alloc(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self {
         Self {
-            data: module.new_mat_znx_dft(div_ceil(rows, digits), rank + 1, rank + 1, div_ceil(basek, k)),
+            data: module.new_mat_znx_dft(
+                div_ceil(rows, digits),
+                rank + 1,
+                rank + 1,
+                div_ceil(k, basek),
+            ),
             basek,
             k: k,
             digits,
@@ -28,7 +33,12 @@ impl<B: Backend> GGSWCiphertext<Vec<u8>, B> {
     }
 
     pub fn bytes_of(module: &Module<FFT64>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize {
-        module.bytes_of_mat_znx_dft(div_ceil(rows, digits), rank + 1, rank + 1, div_ceil(basek, k))
+        module.bytes_of_mat_znx_dft(
+            div_ceil(rows, digits),
+            rank + 1,
+            rank + 1,
+            div_ceil(k, basek),
+        )
     }
 }
 
@@ -60,7 +70,7 @@ impl<T, B: Backend> GGSWCiphertext<T, B> {
 
 impl GGSWCiphertext<Vec<u8>, FFT64> {
     pub fn encrypt_sk_scratch_space(module: &Module<FFT64>, basek: usize, k: usize, rank: usize) -> usize {
-        let size = div_ceil(basek, k);
+        let size = div_ceil(k, basek);
         GLWECiphertext::encrypt_sk_scratch_space(module, basek, k)
             + module.bytes_of_vec_znx(rank + 1, size)
             + module.bytes_of_vec_znx(1, size)
@@ -74,8 +84,8 @@ impl GGSWCiphertext<Vec<u8>, FFT64> {
         tsk_k: usize,
         rank: usize,
     ) -> usize {
-        let tsk_size: usize = div_ceil(basek, tsk_k);
-        let self_size: usize = div_ceil(basek, self_k);
+        let tsk_size: usize = div_ceil(tsk_k, basek);
+        let self_size: usize = div_ceil(self_k, basek);
         let tmp_dft_i: usize = module.bytes_of_vec_znx_dft(rank + 1, tsk_size);
         let tmp_dft_col_data: usize = module.bytes_of_vec_znx_dft(1, self_size);
         let vmp: usize = tmp_dft_col_data + module.vmp_apply_tmp_bytes(self_size, self_size, self_size, rank, rank, tsk_size);
@@ -93,7 +103,7 @@ impl GGSWCiphertext<Vec<u8>, FFT64> {
         rank: usize,
     ) -> usize {
         GLWECiphertext::keyswitch_from_fourier_scratch_space(module, basek, out_k, rank, in_k, rank, ksk_k)
-            + module.bytes_of_vec_znx_dft(rank + 1, div_ceil(basek, in_k))
+            + module.bytes_of_vec_znx_dft(rank + 1, div_ceil(in_k, basek))
     }
 
     pub fn keyswitch_scratch_space(
@@ -105,7 +115,7 @@ impl GGSWCiphertext<Vec<u8>, FFT64> {
         tsk_k: usize,
         rank: usize,
     ) -> usize {
-        let out_size: usize = div_ceil(basek, out_k);
+        let out_size: usize = div_ceil(out_k, basek);
 
         let res_znx: usize = module.bytes_of_vec_znx(rank + 1, out_size);
         let ci_dft: usize = module.bytes_of_vec_znx_dft(rank + 1, out_size);
@@ -136,7 +146,7 @@ impl GGSWCiphertext<Vec<u8>, FFT64> {
         rank: usize,
     ) -> usize {
         let cols: usize = rank + 1;
-        let out_size: usize = div_ceil(basek, out_k);
+        let out_size: usize = div_ceil(out_k, basek);
         let res: usize = module.bytes_of_vec_znx(cols, out_size);
         let res_dft: usize = module.bytes_of_vec_znx_dft(cols, out_size);
         let ci_dft: usize = module.bytes_of_vec_znx_dft(cols, out_size);
@@ -308,6 +318,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf, FFT64> {
                         &mut tmp_dft_i,
                         &tmp_dft_col_data,
                         &tsk.at(col_i - 1, col_j - 1).0.data, // Selects Enc(s[i]s[j])
+                        0,
                         scratch2,
                     );
                 }

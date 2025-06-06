@@ -23,11 +23,21 @@ use std::{cmp::min, fmt};
 /// Given 3 polynomials (a, b, c) of Zn\[X\], each with 4 columns, then the memory
 /// layout is: `[a0, b0, c0, a1, b1, c1, a2, b2, c2, a3, b3, c3]`, where ai, bi, ci
 /// are small polynomials of Zn\[X\].
+#[derive(PartialEq, Eq)]
 pub struct VecZnx<D> {
     pub data: D,
     pub n: usize,
     pub cols: usize,
     pub size: usize,
+}
+
+impl<D> fmt::Debug for VecZnx<D>
+where
+    D: AsRef<[u8]>,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self)
+    }
 }
 
 impl<D> ZnxInfos for VecZnx<D> {

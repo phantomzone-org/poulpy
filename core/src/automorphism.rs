@@ -20,7 +20,7 @@ impl AutomorphismKey<Vec<u8>, FFT64> {
     }
 
     pub fn bytes_of(module: &Module<FFT64>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize {
-        GLWESwitchingKey::<Vec<u8>, FFT64>::bytes_of(module, basek, k, rows, digits,rank, rank)
+        GLWESwitchingKey::<Vec<u8>, FFT64>::bytes_of(module, basek, k, rows, digits, rank, rank)
     }
 }
 

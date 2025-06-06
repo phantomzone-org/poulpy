@@ -1,7 +1,7 @@
 use backend::{
     AddNormal, Backend, FFT64, FillUniform, MatZnxDftOps, MatZnxDftScratch, Module, ScalarZnxAlloc, ScalarZnxDftAlloc,
     ScalarZnxDftOps, Scratch, VecZnx, VecZnxAlloc, VecZnxBig, VecZnxBigAlloc, VecZnxBigOps, VecZnxBigScratch, VecZnxDftAlloc,
-    VecZnxDftOps, VecZnxOps, VecZnxToMut, VecZnxToRef, ZnxZero,
+    VecZnxDftOps, VecZnxOps, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxZero,
 };
 use sampling::source::Source;
 
@@ -19,14 +19,14 @@ pub struct GLWECiphertext<C> {
 impl GLWECiphertext<Vec<u8>> {
     pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank: usize) -> Self {
         Self {
-            data: module.new_vec_znx(rank + 1, div_ceil(basek, k)),
+            data: module.new_vec_znx(rank + 1, div_ceil(k, basek)),
             basek,
             k,
         }
     }
 
     pub fn bytes_of(module: &Module<FFT64>, basek: usize, k: usize, rank: usize) -> usize {
-        module.bytes_of_vec_znx(rank + 1, div_ceil(basek, k))
+        module.bytes_of_vec_znx(rank + 1, div_ceil(k, basek))
     }
 }
 
@@ -69,18 +69,18 @@ impl<C: AsRef<[u8]>> GLWECiphertext<C> {
 
 impl GLWECiphertext<Vec<u8>> {
     pub fn encrypt_sk_scratch_space(module: &Module<FFT64>, basek: usize, k: usize) -> usize {
-        let size: usize = div_ceil(basek, k);
+        let size: usize = div_ceil(k, basek);
         module.vec_znx_big_normalize_tmp_bytes() + module.bytes_of_vec_znx_dft(1, size) + module.bytes_of_vec_znx(1, size)
     }
     pub fn encrypt_pk_scratch_space(module: &Module<FFT64>, basek: usize, k: usize) -> usize {
-        let size: usize = div_ceil(basek, k);
+        let size: usize = div_ceil(k, basek);
         ((module.bytes_of_vec_znx_dft(1, size) + module.bytes_of_vec_znx_big(1, size)) | module.bytes_of_scalar_znx(1))
             + module.bytes_of_scalar_znx_dft(1)
             + module.vec_znx_big_normalize_tmp_bytes()
     }
 
     pub fn decrypt_scratch_space(module: &Module<FFT64>, basek: usize, k: usize) -> usize {
-        let size: usize = div_ceil(basek, k);
+        let size: usize = div_ceil(k, basek);
         (module.vec_znx_big_normalize_tmp_bytes() | module.bytes_of_vec_znx_dft(1, size)) + module.bytes_of_vec_znx_big(1, size)
     }
 
@@ -94,9 +94,9 @@ impl GLWECiphertext<Vec<u8>> {
         ksk_k: usize,
     ) -> usize {
         let res_dft: usize = GLWECiphertextFourier::bytes_of(module, basek, out_k, out_rank);
-        let in_size: usize = div_ceil(basek, in_k);
-        let out_size: usize = div_ceil(basek, out_k);
-        let ksk_size: usize = div_ceil(basek, ksk_k);
+        let in_size: usize = div_ceil(in_k, basek);
+        let out_size: usize = div_ceil(out_k, basek);
+        let ksk_size: usize = div_ceil(ksk_k, basek);
         let vmp: usize = module.vmp_apply_tmp_bytes(out_size, in_size, in_size, in_rank, out_rank + 1, ksk_size)
             + module.bytes_of_vec_znx_dft(in_rank, in_size);
         let normalize: usize = module.vec_znx_big_normalize_tmp_bytes();
@@ -155,9 +155,9 @@ impl GLWECiphertext<Vec<u8>> {
         rank: usize,
     ) -> usize {
         let res_dft: usize = GLWECiphertextFourier::bytes_of(module, basek, out_k, rank);
-        let in_size: usize = div_ceil(basek, in_k);
-        let out_size: usize = div_ceil(basek, out_k);
-        let ggsw_size: usize = div_ceil(basek, ggsw_k);
+        let in_size: usize = div_ceil(in_k, basek);
+        let out_size: usize = div_ceil(out_k, basek);
+        let ggsw_size: usize = div_ceil(ggsw_k, basek);
         let vmp: usize = module.bytes_of_vec_znx_dft(rank + 1, in_size)
             + module.vmp_apply_tmp_bytes(
                 out_size,
@@ -472,11 +472,29 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         let (mut res_dft, scratch1) = scratch.tmp_vec_znx_dft(module, cols_out, rhs.size()); // Todo optimise
 
         {
-            let (mut ai_dft, scratch2) = scratch1.tmp_vec_znx_dft(module, cols_in, lhs.size());
-            (0..cols_in).for_each(|col_i| {
-                module.vec_znx_dft(&mut ai_dft, col_i, &lhs.data, col_i + 1);
+            let digits = rhs.digits();
+
+            (0..digits).for_each(|di| {
+                // (lhs.size() + di) / digits = (a - (digit - di - 1) + digit - 1) / digits
+                let (mut ai_dft, scratch2) = scratch1.tmp_vec_znx_dft(module, cols_in, (lhs.size() + di) / digits);
+
+                (0..cols_in).for_each(|col_i| {
+                    module.vec_znx_dft_collect(
+                        digits - 1 - di,
+                        digits,
+                        &mut ai_dft,
+                        col_i,
+                        &lhs.data,
+                        col_i + 1,
+                    );
+                });
+
+                if di == 0 {
+                    module.vmp_apply(&mut res_dft, &ai_dft, &rhs.0.data, scratch2);
+                } else {
+                    module.vmp_apply_add(&mut res_dft, &ai_dft, &rhs.0.data, di, scratch2);
+                }
             });
-            module.vmp_apply(&mut res_dft, &ai_dft, &rhs.0.data, scratch2);
         }
 
         let mut res_big: VecZnxBig<&mut [u8], FFT64> = module.vec_znx_idft_consume(res_dft);

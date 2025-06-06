@@ -15,14 +15,14 @@ pub struct GLWECiphertextFourier<C, B: Backend> {
 impl<B: Backend> GLWECiphertextFourier<Vec<u8>, B> {
     pub fn alloc(module: &Module<B>, basek: usize, k: usize, rank: usize) -> Self {
         Self {
-            data: module.new_vec_znx_dft(rank + 1, div_ceil(basek, k)),
+            data: module.new_vec_znx_dft(rank + 1, div_ceil(k, basek)),
             basek: basek,
             k: k,
         }
     }
 
     pub fn bytes_of(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize {
-        module.bytes_of_vec_znx_dft(rank + 1, div_ceil(basek, k))
+        module.bytes_of_vec_znx_dft(rank + 1, div_ceil(k, basek))
     }
 }
 
@@ -51,16 +51,16 @@ impl<T, B: Backend> GLWECiphertextFourier<T, B> {
 impl GLWECiphertextFourier<Vec<u8>, FFT64> {
     #[allow(dead_code)]
     pub(crate) fn idft_scratch_space(module: &Module<FFT64>, basek: usize, k: usize) -> usize {
-        module.bytes_of_vec_znx(1, div_ceil(basek, k))
+        module.bytes_of_vec_znx(1, div_ceil(k, basek))
             + (module.vec_znx_big_normalize_tmp_bytes() | module.vec_znx_idft_tmp_bytes())
     }
 
     pub fn encrypt_sk_scratch_space(module: &Module<FFT64>, basek: usize, k: usize, rank: usize) -> usize {
-        module.bytes_of_vec_znx(rank + 1, div_ceil(basek, k)) + GLWECiphertext::encrypt_sk_scratch_space(module, basek, k)
+        module.bytes_of_vec_znx(rank + 1, div_ceil(k, basek)) + GLWECiphertext::encrypt_sk_scratch_space(module, basek, k)
     }
 
     pub fn decrypt_scratch_space(module: &Module<FFT64>, basek: usize, k: usize) -> usize {
-        let size: usize = div_ceil(basek, k);
+        let size: usize = div_ceil(k, basek);
         (module.vec_znx_big_normalize_tmp_bytes()
             | module.bytes_of_vec_znx_dft(1, size)
             | (module.bytes_of_vec_znx_big(1, size) + module.vec_znx_idft_tmp_bytes()))
@@ -99,9 +99,9 @@ impl GLWECiphertextFourier<Vec<u8>, FFT64> {
         rank: usize,
     ) -> usize {
         let res_dft: usize = GLWECiphertextFourier::bytes_of(module, basek, out_k, rank);
-        let out_size: usize = div_ceil(basek, out_k);
-        let in_size: usize = div_ceil(basek, in_k);
-        let ggsw_size: usize = div_ceil(basek, ggsw_k);
+        let out_size: usize = div_ceil(out_k, basek);
+        let in_size: usize = div_ceil(in_k, basek);
+        let ggsw_size: usize = div_ceil(ggsw_k, basek);
         let vmp: usize = module.vmp_apply_tmp_bytes(out_size, in_size, in_size, rank + 1, rank + 1, ggsw_size);
         let res_small: usize = GLWECiphertext::bytes_of(module, basek, out_k, rank);
         let normalize: usize = module.vec_znx_big_normalize_tmp_bytes();

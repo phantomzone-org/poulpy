@@ -78,6 +78,11 @@ pub trait VecZnxDftOps<B: Backend> {
     where
         R: VecZnxDftToMut<B>,
         A: VecZnxToRef;
+
+    fn vec_znx_dft_collect<R, A>(&self, offset: usize, k: usize, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    where
+        R: VecZnxDftToMut<FFT64>,
+        A: VecZnxToRef;
 }
 
 impl<B: Backend> VecZnxDftAlloc<B> for Module<B> {
@@ -250,6 +255,34 @@ impl VecZnxDftOps<FFT64> for Module<FFT64> {
                 )
             });
             (min_size..res_mut.size()).for_each(|j| {
+                res_mut.zero_at(res_col, j);
+            });
+        }
+    }
+
+    fn vec_znx_dft_collect<R, A>(&self, offset: usize, k: usize, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    where
+        R: VecZnxDftToMut<FFT64>,
+        A: VecZnxToRef,
+    {
+        let mut res_mut: VecZnxDft<&mut [u8], FFT64> = res.to_mut();
+        let a_ref: crate::VecZnx<&[u8]> = a.to_ref();
+        let steps: usize = (a_ref.size() + k - 1) / k;
+        let min_steps: usize = min(res_mut.size(), steps);
+        unsafe {
+            (0..min_steps).for_each(|j| {
+                if offset + j * k < a_ref.size() {
+                    vec_znx_dft::vec_znx_dft(
+                        self.ptr,
+                        res_mut.at_mut_ptr(res_col, j) as *mut vec_znx_dft::vec_znx_dft_t,
+                        1 as u64,
+                        a_ref.at_ptr(a_col, offset + j * k),
+                        1 as u64,
+                        a_ref.sl() as u64,
+                    )
+                }
+            });
+            (min_steps..res_mut.size()).for_each(|j| {
                 res_mut.zero_at(res_col, j);
             });
         }
