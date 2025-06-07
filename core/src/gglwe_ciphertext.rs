@@ -23,13 +23,24 @@ impl<B: Backend> GGLWECiphertext<Vec<u8>, B> {
         rank_in: usize,
         rank_out: usize,
     ) -> Self {
+        let size: usize = div_ceil(k, basek);
+        debug_assert!(
+            size > digits,
+            "invalid gglwe: ceil(k/basek): {} <= digits: {}",
+            size,
+            digits
+        );
+
+        assert!(
+            rows * digits <= size,
+            "invalid gglwe: rows: {} * digits:{} > ceil(k/basek): {}",
+            rows,
+            digits,
+            size
+        );
+
         Self {
-            data: module.new_mat_znx_dft(
-                div_ceil(rows, digits),
-                rank_in,
-                rank_out + 1,
-                div_ceil(k, basek),
-            ),
+            data: module.new_mat_znx_dft(rows, rank_in, rank_out + 1, size),
             basek: basek,
             k,
             digits,
@@ -45,12 +56,23 @@ impl<B: Backend> GGLWECiphertext<Vec<u8>, B> {
         rank_in: usize,
         rank_out: usize,
     ) -> usize {
-        module.bytes_of_mat_znx_dft(
-            div_ceil(rows, digits),
-            rank_in,
-            rank_out + 1,
-            div_ceil(k, basek),
-        )
+        let size: usize = div_ceil(k, basek);
+        debug_assert!(
+            size > digits,
+            "invalid gglwe: ceil(k/basek): {} <= digits: {}",
+            size,
+            digits
+        );
+
+        assert!(
+            rows * digits <= size,
+            "invalid gglwe: rows: {} * digits:{} > ceil(k/basek): {}",
+            rows,
+            digits,
+            size
+        );
+
+        module.bytes_of_mat_znx_dft(rows, rank_in, rank_out + 1, rows)
     }
 }
 

@@ -103,59 +103,59 @@ impl GLWESwitchingKey<Vec<u8>, FFT64> {
     pub fn keyswitch_scratch_space(
         module: &Module<FFT64>,
         basek: usize,
-        out_k: usize,
-        in_k: usize,
-        ksk_k: usize,
+        k_out: usize,
+        k_in: usize,
+        k_ksk: usize,
         digits: usize,
-        in_rank: usize,
-        out_rank: usize,
+        rank_in: usize,
+        rank_out: usize,
     ) -> usize {
-        let tmp_in: usize = GLWECiphertextFourier::bytes_of(module, basek, in_k, in_rank);
-        let tmp_out: usize = GLWECiphertextFourier::bytes_of(module, basek, out_k, out_rank);
+        let tmp_in: usize = GLWECiphertextFourier::bytes_of(module, basek, k_in, rank_in);
+        let tmp_out: usize = GLWECiphertextFourier::bytes_of(module, basek, k_out, rank_out);
         let ksk: usize =
-            GLWECiphertextFourier::keyswitch_scratch_space(module, basek, out_k, in_k, ksk_k, digits, in_rank, out_rank);
+            GLWECiphertextFourier::keyswitch_scratch_space(module, basek, k_out, k_in, k_ksk, digits, rank_in, rank_out);
         tmp_in + tmp_out + ksk
     }
 
     pub fn keyswitch_inplace_scratch_space(
         module: &Module<FFT64>,
         basek: usize,
-        out_k: usize,
-        ksk_k: usize,
+        k_out: usize,
+        k_ksk: usize,
         digits: usize,
         rank: usize,
     ) -> usize {
-        let tmp: usize = GLWECiphertextFourier::bytes_of(module, basek, out_k, rank);
-        let ksk: usize = GLWECiphertextFourier::keyswitch_inplace_scratch_space(module, basek, out_k, ksk_k, digits, rank);
+        let tmp: usize = GLWECiphertextFourier::bytes_of(module, basek, k_out, rank);
+        let ksk: usize = GLWECiphertextFourier::keyswitch_inplace_scratch_space(module, basek, k_out, k_ksk, digits, rank);
         tmp + ksk
     }
 
     pub fn external_product_scratch_space(
         module: &Module<FFT64>,
         basek: usize,
-        out_k: usize,
-        in_k: usize,
-        ggsw_k: usize,
+        k_out: usize,
+        k_in: usize,
+        k_ggsw: usize,
         digits: usize,
         rank: usize,
     ) -> usize {
-        let tmp_in: usize = GLWECiphertextFourier::bytes_of(module, basek, in_k, rank);
-        let tmp_out: usize = GLWECiphertextFourier::bytes_of(module, basek, out_k, rank);
-        let ggsw: usize = GLWECiphertextFourier::external_product_scratch_space(module, basek, out_k, in_k, ggsw_k, digits, rank);
+        let tmp_in: usize = GLWECiphertextFourier::bytes_of(module, basek, k_in, rank);
+        let tmp_out: usize = GLWECiphertextFourier::bytes_of(module, basek, k_out, rank);
+        let ggsw: usize = GLWECiphertextFourier::external_product_scratch_space(module, basek, k_out, k_in, k_ggsw, digits, rank);
         tmp_in + tmp_out + ggsw
     }
 
     pub fn external_product_inplace_scratch_space(
         module: &Module<FFT64>,
         basek: usize,
-        out_k: usize,
-        ggsw_k: usize,
+        k_out: usize,
+        k_ggsw: usize,
         digits: usize,
         rank: usize,
     ) -> usize {
-        let tmp: usize = GLWECiphertextFourier::bytes_of(module, basek, out_k, rank);
+        let tmp: usize = GLWECiphertextFourier::bytes_of(module, basek, k_out, rank);
         let ggsw: usize =
-            GLWECiphertextFourier::external_product_inplace_scratch_space(module, basek, out_k, ggsw_k, digits, rank);
+            GLWECiphertextFourier::external_product_inplace_scratch_space(module, basek, k_out, k_ggsw, digits, rank);
         tmp + ggsw
     }
 }
@@ -331,7 +331,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<DataSelf, FFT64> {
         }
 
         let (mut tmp, scratch1) = scratch.tmp_glwe_fourier(module, self.basek(), self.k(), self.rank());
-
+        println!("tmp: {}", tmp.size());
         (0..self.rank_in()).for_each(|col_i| {
             (0..self.rows()).for_each(|row_j| {
                 self.get_row(module, row_j, col_i, &mut tmp);

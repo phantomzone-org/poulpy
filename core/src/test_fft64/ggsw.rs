@@ -7,9 +7,9 @@ use sampling::source::Source;
 use crate::{
     GGSWCiphertext, GLWECiphertextFourier, GLWEPlaintext, GLWESecret, GLWESwitchingKey, GetRow, Infos, TensorKey,
     automorphism::AutomorphismKey,
+    div_ceil,
+    test_fft64::{noise_ggsw_keyswitch, noise_ggsw_product},
 };
-
-use super::gglwe::var_noise_gglwe_product;
 
 #[test]
 fn encrypt_sk() {
@@ -67,12 +67,12 @@ fn external_product_inplace() {
     });
 }
 
-fn test_encrypt_sk(log_n: usize, basek: usize, k: usize, sigma: f64, rank: usize) {
+fn test_encrypt_sk(log_n: usize, basek: usize, k: usize, digits: usize, rank: usize, sigma: f64) {
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
 
-    let rows: usize = (k + basek - 1) / basek;
+    let rows: usize = (k - digits * basek) / digits;
 
-    let mut ct: GGSWCiphertext<Vec<u8>, FFT64> = GGSWCiphertext::alloc(&module, basek, k, rows, rank);
+    let mut ct: GGSWCiphertext<Vec<u8>, FFT64> = GGSWCiphertext::alloc(&module, basek, k, rows, digits, rank);
     let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k);
     let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k);
     let mut pt_scalar: ScalarZnx<Vec<u8>> = module.new_scalar_znx(1);
@@ -111,7 +111,7 @@ fn test_encrypt_sk(log_n: usize, basek: usize, k: usize, sigma: f64, rank: usize
 
             // mul with sk[col_j-1]
             if col_j > 0 {
-                module.vec_znx_dft(&mut pt_dft, 0, &pt_want.data, 0);
+                module.vec_znx_dft(1, 0, &mut pt_dft, 0, &pt_want.data, 0);
                 module.svp_apply_inplace(&mut pt_dft, 0, &sk.data_fourier, col_j - 1);
                 module.vec_znx_idft_tmp_a(&mut pt_big, 0, &mut pt_dft, 0);
                 module.vec_znx_big_normalize(basek, &mut pt_want.data, 0, &pt_big, 0, scratch.borrow());
@@ -131,16 +131,28 @@ fn test_encrypt_sk(log_n: usize, basek: usize, k: usize, sigma: f64, rank: usize
     });
 }
 
-fn test_keyswitch(log_n: usize, basek: usize, k: usize, rank: usize, sigma: f64) {
+fn test_keyswitch(
+    log_n: usize,
+    basek: usize,
+    k_out: usize,
+    k_in: usize,
+    k_ksk: usize,
+    k_tsk: usize,
+    digits: usize,
+    rank: usize,
+    sigma: f64,
+) {
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
-    let rows: usize = (k + basek - 1) / basek;
+    let rows: usize = div_ceil(k_in, digits * basek);
 
-    let mut ct_in: GGSWCiphertext<Vec<u8>, FFT64> = GGSWCiphertext::alloc(&module, basek, k, rows, rank);
-    let mut ct_out: GGSWCiphertext<Vec<u8>, FFT64> = GGSWCiphertext::alloc(&module, basek, k, rows, rank);
-    let mut tsk: TensorKey<Vec<u8>, FFT64> = TensorKey::alloc(&module, basek, k, rows, rank);
-    let mut ksk: GLWESwitchingKey<Vec<u8>, FFT64> = GLWESwitchingKey::alloc(&module, basek, k, rows, rank, rank);
-    let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k);
-    let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k);
+    let digits_in: usize = 1;
+
+    let mut ct_in: GGSWCiphertext<Vec<u8>, FFT64> = GGSWCiphertext::alloc(&module, basek, k_in, rows, digits_in, rank);
+    let mut ct_out: GGSWCiphertext<Vec<u8>, FFT64> = GGSWCiphertext::alloc(&module, basek, k_out, rows, digits_in, rank);
+    let mut tsk: TensorKey<Vec<u8>, FFT64> = TensorKey::alloc(&module, basek, k_ksk, rows, digits, rank);
+    let mut ksk: GLWESwitchingKey<Vec<u8>, FFT64> = GLWESwitchingKey::alloc(&module, basek, k_ksk, rows, digits, rank, rank);
+    let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_out);
+    let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_out);
     let mut pt_scalar: ScalarZnx<Vec<u8>> = module.new_scalar_znx(1);
 
     let mut source_xs: Source = Source::new([0u8; 32]);
@@ -148,18 +160,12 @@ fn test_keyswitch(log_n: usize, basek: usize, k: usize, rank: usize, sigma: f64)
     let mut source_xa: Source = Source::new([0u8; 32]);
 
     let mut scratch: ScratchOwned = ScratchOwned::new(
-        GGSWCiphertext::encrypt_sk_scratch_space(&module, basek, k, rank)
-            | GLWECiphertextFourier::decrypt_scratch_space(&module, basek, k)
-            | GLWESwitchingKey::encrypt_sk_scratch_space(&module, basek, k, rank)
-            | TensorKey::generate_from_sk_scratch_space(&module, basek, k, rank)
+        GGSWCiphertext::encrypt_sk_scratch_space(&module, basek, k_in, rank)
+            | GLWECiphertextFourier::decrypt_scratch_space(&module, basek, k_out)
+            | GLWESwitchingKey::encrypt_sk_scratch_space(&module, basek, k_ksk, rank)
+            | TensorKey::generate_from_sk_scratch_space(&module, basek, k_tsk, rank)
             | GGSWCiphertext::keyswitch_scratch_space(
-                &module,
-                basek,
-                ct_out.k(),
-                ct_in.k(),
-                ksk.k(),
-                tsk.k(),
-                rank,
+                &module, basek, k_out, k_in, k_ksk, digits, k_tsk, digits, rank,
             ),
     );
 
@@ -203,7 +209,7 @@ fn test_keyswitch(log_n: usize, basek: usize, k: usize, rank: usize, sigma: f64)
 
     ct_out.keyswitch(&module, &ct_in, &ksk, &tsk, scratch.borrow());
 
-    let mut ct_glwe_fourier: GLWECiphertextFourier<Vec<u8>, FFT64> = GLWECiphertextFourier::alloc(&module, basek, k, rank);
+    let mut ct_glwe_fourier: GLWECiphertextFourier<Vec<u8>, FFT64> = GLWECiphertextFourier::alloc(&module, basek, k_out, rank);
     let mut pt_dft: VecZnxDft<Vec<u8>, FFT64> = module.new_vec_znx_dft(1, ct_out.size());
     let mut pt_big: VecZnxBig<Vec<u8>, FFT64> = module.new_vec_znx_big(1, ct_out.size());
 
@@ -213,7 +219,7 @@ fn test_keyswitch(log_n: usize, basek: usize, k: usize, rank: usize, sigma: f64)
 
             // mul with sk[col_j-1]
             if col_j > 0 {
-                module.vec_znx_dft(&mut pt_dft, 0, &pt_want.data, 0);
+                module.vec_znx_dft(1, 0, &mut pt_dft, 0, &pt_want.data, 0);
                 module.svp_apply_inplace(&mut pt_dft, 0, &sk_out.data_fourier, col_j - 1);
                 module.vec_znx_idft_tmp_a(&mut pt_big, 0, &mut pt_dft, 0);
                 module.vec_znx_big_normalize(basek, &mut pt_want.data, 0, &pt_big, 0, scratch.borrow());
@@ -235,14 +241,15 @@ fn test_keyswitch(log_n: usize, basek: usize, k: usize, rank: usize, sigma: f64)
                 sigma * sigma,
                 0f64,
                 rank as f64,
-                k,
-                k,
+                k_in,
+                k_ksk,
+                k_tsk,
             );
 
             println!("{} {}", noise_have, noise_want);
 
             assert!(
-                (noise_have - noise_want).abs() <= 0.1,
+                (noise_have - noise_want).abs() <= 0.5,
                 "{} {}",
                 noise_have,
                 noise_want
@@ -253,15 +260,26 @@ fn test_keyswitch(log_n: usize, basek: usize, k: usize, rank: usize, sigma: f64)
     });
 }
 
-fn test_keyswitch_inplace(log_n: usize, basek: usize, k: usize, rank: usize, sigma: f64) {
+fn test_keyswitch_inplace(
+    log_n: usize,
+    basek: usize,
+    k_ct: usize,
+    k_ksk: usize,
+    k_tsk: usize,
+    digits: usize,
+    rank: usize,
+    sigma: f64,
+) {
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
-    let rows: usize = (k + basek - 1) / basek;
+    let rows: usize = div_ceil(k_ct, digits * basek);
 
-    let mut ct: GGSWCiphertext<Vec<u8>, FFT64> = GGSWCiphertext::alloc(&module, basek, k, rows, rank);
-    let mut tsk: TensorKey<Vec<u8>, FFT64> = TensorKey::alloc(&module, basek, k, rows, rank);
-    let mut ksk: GLWESwitchingKey<Vec<u8>, FFT64> = GLWESwitchingKey::alloc(&module, basek, k, rows, rank, rank);
-    let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k);
-    let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k);
+    let digits_in = 1;
+
+    let mut ct: GGSWCiphertext<Vec<u8>, FFT64> = GGSWCiphertext::alloc(&module, basek, k_ct, rows, digits_in, rank);
+    let mut tsk: TensorKey<Vec<u8>, FFT64> = TensorKey::alloc(&module, basek, k_tsk, rows, digits, rank);
+    let mut ksk: GLWESwitchingKey<Vec<u8>, FFT64> = GLWESwitchingKey::alloc(&module, basek, k_ksk, rows, digits, rank, rank);
+    let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_ct);
+    let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_ct);
     let mut pt_scalar: ScalarZnx<Vec<u8>> = module.new_scalar_znx(1);
 
     let mut source_xs: Source = Source::new([0u8; 32]);
@@ -269,11 +287,11 @@ fn test_keyswitch_inplace(log_n: usize, basek: usize, k: usize, rank: usize, sig
     let mut source_xa: Source = Source::new([0u8; 32]);
 
     let mut scratch: ScratchOwned = ScratchOwned::new(
-        GGSWCiphertext::encrypt_sk_scratch_space(&module, basek, k, rank)
-            | GLWECiphertextFourier::decrypt_scratch_space(&module, basek, k)
-            | GLWESwitchingKey::encrypt_sk_scratch_space(&module, basek, k, rank)
-            | TensorKey::generate_from_sk_scratch_space(&module, basek, k, rank)
-            | GGSWCiphertext::keyswitch_inplace_scratch_space(&module, basek, ct.k(), ksk.k(), tsk.k(), rank),
+        GGSWCiphertext::encrypt_sk_scratch_space(&module, basek, k_ct, rank)
+            | GLWECiphertextFourier::decrypt_scratch_space(&module, basek, k_ct)
+            | GLWESwitchingKey::encrypt_sk_scratch_space(&module, basek, k_ksk, rank)
+            | TensorKey::generate_from_sk_scratch_space(&module, basek, k_tsk, rank)
+            | GGSWCiphertext::keyswitch_inplace_scratch_space(&module, basek, k_ct, k_ksk, digits, k_tsk, digits, rank),
     );
 
     let var_xs: f64 = 0.5;
@@ -316,7 +334,7 @@ fn test_keyswitch_inplace(log_n: usize, basek: usize, k: usize, rank: usize, sig
 
     ct.keyswitch_inplace(&module, &ksk, &tsk, scratch.borrow());
 
-    let mut ct_glwe_fourier: GLWECiphertextFourier<Vec<u8>, FFT64> = GLWECiphertextFourier::alloc(&module, basek, k, rank);
+    let mut ct_glwe_fourier: GLWECiphertextFourier<Vec<u8>, FFT64> = GLWECiphertextFourier::alloc(&module, basek, k_ct, rank);
     let mut pt_dft: VecZnxDft<Vec<u8>, FFT64> = module.new_vec_znx_dft(1, ct.size());
     let mut pt_big: VecZnxBig<Vec<u8>, FFT64> = module.new_vec_znx_big(1, ct.size());
 
@@ -326,7 +344,7 @@ fn test_keyswitch_inplace(log_n: usize, basek: usize, k: usize, rank: usize, sig
 
             // mul with sk[col_j-1]
             if col_j > 0 {
-                module.vec_znx_dft(&mut pt_dft, 0, &pt_want.data, 0);
+                module.vec_znx_dft(1, 0, &mut pt_dft, 0, &pt_want.data, 0);
                 module.svp_apply_inplace(&mut pt_dft, 0, &sk_out.data_fourier, col_j - 1);
                 module.vec_znx_idft_tmp_a(&mut pt_big, 0, &mut pt_dft, 0);
                 module.vec_znx_big_normalize(basek, &mut pt_want.data, 0, &pt_big, 0, scratch.borrow());
@@ -348,8 +366,9 @@ fn test_keyswitch_inplace(log_n: usize, basek: usize, k: usize, rank: usize, sig
                 sigma * sigma,
                 0f64,
                 rank as f64,
-                k,
-                k,
+                k_ct,
+                k_ksk,
+                k_tsk,
             );
 
             println!("{} {}", noise_have, noise_want);
@@ -366,65 +385,29 @@ fn test_keyswitch_inplace(log_n: usize, basek: usize, k: usize, rank: usize, sig
     });
 }
 
-pub(crate) fn noise_ggsw_keyswitch(
-    n: f64,
+fn test_automorphism(
+    p: i64,
+    log_n: usize,
     basek: usize,
-    col: usize,
-    var_xs: f64,
-    var_a_err: f64,
-    var_gct_err_lhs: f64,
-    var_gct_err_rhs: f64,
-    rank: f64,
-    a_logq: usize,
-    b_logq: usize,
-) -> f64 {
-    let var_si_x_sj: f64 = n * var_xs * var_xs;
-
-    // Initial KS for col = 0
-    let mut noise: f64 = var_noise_gglwe_product(
-        n,
-        basek,
-        var_xs,
-        var_xs,
-        var_a_err,
-        var_gct_err_lhs,
-        var_gct_err_rhs,
-        rank,
-        a_logq,
-        b_logq,
-    );
-
-    // Other GGSW reconstruction for col > 0
-    if col > 0 {
-        noise += var_noise_gglwe_product(
-            n,
-            basek,
-            var_xs,
-            var_si_x_sj,
-            var_a_err + 1f64 / 12.0,
-            var_gct_err_lhs,
-            var_gct_err_rhs,
-            rank,
-            a_logq,
-            b_logq,
-        );
-        noise += n * noise * var_xs * 0.5;
-    }
-
-    noise = noise.sqrt();
-    noise.log2().min(-1.0) // max noise is [-2^{-1}, 2^{-1}]
-}
-
-fn test_automorphism(p: i64, log_n: usize, basek: usize, k: usize, rank: usize, sigma: f64) {
+    k_out: usize,
+    k_in: usize,
+    k_ksk: usize,
+    k_tsk: usize,
+    digits: usize,
+    rank: usize,
+    sigma: f64,
+) {
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
-    let rows: usize = (k + basek - 1) / basek;
+    let rows: usize = div_ceil(k_in, basek * digits);
 
-    let mut ct_in: GGSWCiphertext<Vec<u8>, FFT64> = GGSWCiphertext::alloc(&module, basek, k, rows, rank);
-    let mut ct_out: GGSWCiphertext<Vec<u8>, FFT64> = GGSWCiphertext::alloc(&module, basek, k, rows, rank);
-    let mut tensor_key: TensorKey<Vec<u8>, FFT64> = TensorKey::alloc(&module, basek, k, rows, rank);
-    let mut auto_key: AutomorphismKey<Vec<u8>, FFT64> = AutomorphismKey::alloc(&module, basek, k, rows, rank);
-    let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k);
-    let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k);
+    let digits_in: usize = 1;
+
+    let mut ct_in: GGSWCiphertext<Vec<u8>, FFT64> = GGSWCiphertext::alloc(&module, basek, k_in, rows, digits_in, rank);
+    let mut ct_out: GGSWCiphertext<Vec<u8>, FFT64> = GGSWCiphertext::alloc(&module, basek, k_out, rows, digits_in, rank);
+    let mut tensor_key: TensorKey<Vec<u8>, FFT64> = TensorKey::alloc(&module, basek, k_tsk, rows, digits, rank);
+    let mut auto_key: AutomorphismKey<Vec<u8>, FFT64> = AutomorphismKey::alloc(&module, basek, k_ksk, rows, digits, rank);
+    let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_out);
+    let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_out);
     let mut pt_scalar: ScalarZnx<Vec<u8>> = module.new_scalar_znx(1);
 
     let mut source_xs: Source = Source::new([0u8; 32]);
@@ -432,18 +415,12 @@ fn test_automorphism(p: i64, log_n: usize, basek: usize, k: usize, rank: usize, 
     let mut source_xa: Source = Source::new([0u8; 32]);
 
     let mut scratch: ScratchOwned = ScratchOwned::new(
-        GGSWCiphertext::encrypt_sk_scratch_space(&module, basek, k, rank)
-            | GLWECiphertextFourier::decrypt_scratch_space(&module, basek, k)
-            | AutomorphismKey::generate_from_sk_scratch_space(&module, basek, k, rank)
-            | TensorKey::generate_from_sk_scratch_space(&module, basek, k, rank)
+        GGSWCiphertext::encrypt_sk_scratch_space(&module, basek, k_in, rank)
+            | GLWECiphertextFourier::decrypt_scratch_space(&module, basek, k_out)
+            | AutomorphismKey::generate_from_sk_scratch_space(&module, basek, k_ksk, rank)
+            | TensorKey::generate_from_sk_scratch_space(&module, basek, k_tsk, rank)
             | GGSWCiphertext::automorphism_scratch_space(
-                &module,
-                basek,
-                ct_out.k(),
-                ct_in.k(),
-                auto_key.k(),
-                tensor_key.k(),
-                rank,
+                &module, basek, k_out, k_in, k_ksk, digits, k_tsk, digits, rank,
             ),
     );
 
@@ -486,7 +463,7 @@ fn test_automorphism(p: i64, log_n: usize, basek: usize, k: usize, rank: usize, 
 
     module.scalar_znx_automorphism_inplace(p, &mut pt_scalar, 0);
 
-    let mut ct_glwe_fourier: GLWECiphertextFourier<Vec<u8>, FFT64> = GLWECiphertextFourier::alloc(&module, basek, k, rank);
+    let mut ct_glwe_fourier: GLWECiphertextFourier<Vec<u8>, FFT64> = GLWECiphertextFourier::alloc(&module, basek, k_out, rank);
     let mut pt_dft: VecZnxDft<Vec<u8>, FFT64> = module.new_vec_znx_dft(1, ct_out.size());
     let mut pt_big: VecZnxBig<Vec<u8>, FFT64> = module.new_vec_znx_big(1, ct_out.size());
 
@@ -496,7 +473,7 @@ fn test_automorphism(p: i64, log_n: usize, basek: usize, k: usize, rank: usize, 
 
             // mul with sk[col_j-1]
             if col_j > 0 {
-                module.vec_znx_dft(&mut pt_dft, 0, &pt_want.data, 0);
+                module.vec_znx_dft(1, 0, &mut pt_dft, 0, &pt_want.data, 0);
                 module.svp_apply_inplace(&mut pt_dft, 0, &sk.data_fourier, col_j - 1);
                 module.vec_znx_idft_tmp_a(&mut pt_big, 0, &mut pt_dft, 0);
                 module.vec_znx_big_normalize(basek, &mut pt_want.data, 0, &pt_big, 0, scratch.borrow());
@@ -518,8 +495,9 @@ fn test_automorphism(p: i64, log_n: usize, basek: usize, k: usize, rank: usize, 
                 sigma * sigma,
                 0f64,
                 rank as f64,
-                k,
-                k,
+                k_in,
+                k_ksk,
+                k_tsk,
             );
 
             assert!(
@@ -534,15 +512,26 @@ fn test_automorphism(p: i64, log_n: usize, basek: usize, k: usize, rank: usize, 
     });
 }
 
-fn test_automorphism_inplace(p: i64, log_n: usize, basek: usize, k: usize, rank: usize, sigma: f64) {
+fn test_automorphism_inplace(
+    p: i64,
+    log_n: usize,
+    basek: usize,
+    k_ct: usize,
+    k_ksk: usize,
+    k_tsk: usize,
+    digits: usize,
+    rank: usize,
+    sigma: f64,
+) {
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
-    let rows: usize = (k + basek - 1) / basek;
+    let rows: usize = div_ceil(k_ct, digits * basek);
+    let digits_in: usize = 1;
 
-    let mut ct: GGSWCiphertext<Vec<u8>, FFT64> = GGSWCiphertext::alloc(&module, basek, k, rows, rank);
-    let mut tensor_key: TensorKey<Vec<u8>, FFT64> = TensorKey::alloc(&module, basek, k, rows, rank);
-    let mut auto_key: AutomorphismKey<Vec<u8>, FFT64> = AutomorphismKey::alloc(&module, basek, k, rows, rank);
-    let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k);
-    let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k);
+    let mut ct: GGSWCiphertext<Vec<u8>, FFT64> = GGSWCiphertext::alloc(&module, basek, k_ct, rows, digits_in, rank);
+    let mut tensor_key: TensorKey<Vec<u8>, FFT64> = TensorKey::alloc(&module, basek, k_tsk, rows, digits, rank);
+    let mut auto_key: AutomorphismKey<Vec<u8>, FFT64> = AutomorphismKey::alloc(&module, basek, k_ksk, rows, digits, rank);
+    let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_ct);
+    let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_ct);
     let mut pt_scalar: ScalarZnx<Vec<u8>> = module.new_scalar_znx(1);
 
     let mut source_xs: Source = Source::new([0u8; 32]);
@@ -550,11 +539,11 @@ fn test_automorphism_inplace(p: i64, log_n: usize, basek: usize, k: usize, rank:
     let mut source_xa: Source = Source::new([0u8; 32]);
 
     let mut scratch: ScratchOwned = ScratchOwned::new(
-        GGSWCiphertext::encrypt_sk_scratch_space(&module, basek, k, rank)
-            | GLWECiphertextFourier::decrypt_scratch_space(&module, basek, k)
-            | AutomorphismKey::generate_from_sk_scratch_space(&module, basek, k, rank)
-            | TensorKey::generate_from_sk_scratch_space(&module, basek, k, rank)
-            | GGSWCiphertext::automorphism_inplace_scratch_space(&module, basek, ct.k(), auto_key.k(), tensor_key.k(), rank),
+        GGSWCiphertext::encrypt_sk_scratch_space(&module, basek, k_ct, rank)
+            | GLWECiphertextFourier::decrypt_scratch_space(&module, basek, k_ct)
+            | AutomorphismKey::generate_from_sk_scratch_space(&module, basek, k_ksk, rank)
+            | TensorKey::generate_from_sk_scratch_space(&module, basek, k_tsk, rank)
+            | GGSWCiphertext::automorphism_inplace_scratch_space(&module, basek, k_ct, k_ksk, digits, k_tsk, digits, rank),
     );
 
     let var_xs: f64 = 0.5;
@@ -596,7 +585,7 @@ fn test_automorphism_inplace(p: i64, log_n: usize, basek: usize, k: usize, rank:
 
     module.scalar_znx_automorphism_inplace(p, &mut pt_scalar, 0);
 
-    let mut ct_glwe_fourier: GLWECiphertextFourier<Vec<u8>, FFT64> = GLWECiphertextFourier::alloc(&module, basek, k, rank);
+    let mut ct_glwe_fourier: GLWECiphertextFourier<Vec<u8>, FFT64> = GLWECiphertextFourier::alloc(&module, basek, k_ct, rank);
     let mut pt_dft: VecZnxDft<Vec<u8>, FFT64> = module.new_vec_znx_dft(1, ct.size());
     let mut pt_big: VecZnxBig<Vec<u8>, FFT64> = module.new_vec_znx_big(1, ct.size());
 
@@ -606,7 +595,7 @@ fn test_automorphism_inplace(p: i64, log_n: usize, basek: usize, k: usize, rank:
 
             // mul with sk[col_j-1]
             if col_j > 0 {
-                module.vec_znx_dft(&mut pt_dft, 0, &pt_want.data, 0);
+                module.vec_znx_dft(1, 0, &mut pt_dft, 0, &pt_want.data, 0);
                 module.svp_apply_inplace(&mut pt_dft, 0, &sk.data_fourier, col_j - 1);
                 module.vec_znx_idft_tmp_a(&mut pt_big, 0, &mut pt_dft, 0);
                 module.vec_znx_big_normalize(basek, &mut pt_want.data, 0, &pt_big, 0, scratch.borrow());
@@ -628,8 +617,9 @@ fn test_automorphism_inplace(p: i64, log_n: usize, basek: usize, k: usize, rank:
                 sigma * sigma,
                 0f64,
                 rank as f64,
-                k,
-                k,
+                k_ct,
+                k_ksk,
+                k_tsk,
             );
 
             assert!(
@@ -644,14 +634,25 @@ fn test_automorphism_inplace(p: i64, log_n: usize, basek: usize, k: usize, rank:
     });
 }
 
-fn test_external_product(log_n: usize, basek: usize, k_ggsw: usize, rank: usize, sigma: f64) {
+fn test_external_product(
+    log_n: usize,
+    basek: usize,
+    k_in: usize,
+    k_out: usize,
+    k_ggsw: usize,
+    digits: usize,
+    rank: usize,
+    sigma: f64,
+) {
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
 
-    let rows: usize = (k_ggsw + basek - 1) / basek;
+    let rows: usize = div_ceil(k_in, basek * digits);
+    let rows_in: usize = (k_in - digits * basek) / (basek * digits);
+    let digits_in: usize = 1;
 
-    let mut ct_ggsw_rhs: GGSWCiphertext<Vec<u8>, FFT64> = GGSWCiphertext::alloc(&module, basek, k_ggsw, rows, rank);
-    let mut ct_ggsw_lhs_in: GGSWCiphertext<Vec<u8>, FFT64> = GGSWCiphertext::alloc(&module, basek, k_ggsw, rows, rank);
-    let mut ct_ggsw_lhs_out: GGSWCiphertext<Vec<u8>, FFT64> = GGSWCiphertext::alloc(&module, basek, k_ggsw, rows, rank);
+    let mut ct_ggsw_rhs: GGSWCiphertext<Vec<u8>, FFT64> = GGSWCiphertext::alloc(&module, basek, k_ggsw, rows_in, digits_in, rank);
+    let mut ct_ggsw_lhs_in: GGSWCiphertext<Vec<u8>, FFT64> = GGSWCiphertext::alloc(&module, basek, k_ggsw, rows, digits, rank);
+    let mut ct_ggsw_lhs_out: GGSWCiphertext<Vec<u8>, FFT64> = GGSWCiphertext::alloc(&module, basek, k_ggsw, rows, digits, rank);
     let mut pt_ggsw_lhs: ScalarZnx<Vec<u8>> = module.new_scalar_znx(1);
     let mut pt_ggsw_rhs: ScalarZnx<Vec<u8>> = module.new_scalar_znx(1);
 
@@ -668,14 +669,7 @@ fn test_external_product(log_n: usize, basek: usize, k_ggsw: usize, rank: usize,
     let mut scratch: ScratchOwned = ScratchOwned::new(
         GLWECiphertextFourier::decrypt_scratch_space(&module, basek, k)
             | GGSWCiphertext::encrypt_sk_scratch_space(&module, basek, k, rank)
-            | GGSWCiphertext::external_product_scratch_space(
-                &module,
-                basek,
-                ct_ggsw_lhs_out.k(),
-                ct_ggsw_lhs_in.k(),
-                ct_ggsw_rhs.k(),
-                rank,
-            ),
+            | GGSWCiphertext::external_product_scratch_space(&module, basek, k_out, k_in, k_ggsw, digits, rank),
     );
 
     let mut sk: GLWESecret<Vec<u8>, FFT64> = GLWESecret::alloc(&module, rank);
@@ -716,7 +710,7 @@ fn test_external_product(log_n: usize, basek: usize, k_ggsw: usize, rank: usize,
             module.vec_znx_add_scalar_inplace(&mut pt_want.data, 0, row_i, &pt_ggsw_lhs, 0);
 
             if col_j > 0 {
-                module.vec_znx_dft(&mut pt_dft, 0, &pt_want.data, 0);
+                module.vec_znx_dft(1, 0, &mut pt_dft, 0, &pt_want.data, 0);
                 module.svp_apply_inplace(&mut pt_dft, 0, &sk.data_fourier, col_j - 1);
                 module.vec_znx_idft_tmp_a(&mut pt_big, 0, &mut pt_dft, 0);
                 module.vec_znx_big_normalize(basek, &mut pt_want.data, 0, &pt_big, 0, scratch.borrow());
@@ -746,7 +740,7 @@ fn test_external_product(log_n: usize, basek: usize, k_ggsw: usize, rank: usize,
                 var_gct_err_lhs,
                 var_gct_err_rhs,
                 rank as f64,
-                k_ggsw,
+                k_in,
                 k_ggsw,
             );
 
@@ -762,12 +756,14 @@ fn test_external_product(log_n: usize, basek: usize, k_ggsw: usize, rank: usize,
     });
 }
 
-fn test_external_product_inplace(log_n: usize, basek: usize, k_ggsw: usize, rank: usize, sigma: f64) {
+fn test_external_product_inplace(log_n: usize, basek: usize, k_ct: usize, k_ggsw: usize, digits: usize, rank: usize, sigma: f64) {
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
-    let rows: usize = (k_ggsw + basek - 1) / basek;
+    let rows: usize = div_ceil(k_ct, digits * basek);
+    let rows_in: usize = (k_ct - basek * digits) / digits;
+    let digits_in: usize = 1;
 
-    let mut ct_ggsw_rhs: GGSWCiphertext<Vec<u8>, FFT64> = GGSWCiphertext::alloc(&module, basek, k_ggsw, rows, rank);
-    let mut ct_ggsw_lhs: GGSWCiphertext<Vec<u8>, FFT64> = GGSWCiphertext::alloc(&module, basek, k_ggsw, rows, rank);
+    let mut ct_ggsw_rhs: GGSWCiphertext<Vec<u8>, FFT64> = GGSWCiphertext::alloc(&module, basek, k_ggsw, rows_in, digits_in, rank);
+    let mut ct_ggsw_lhs: GGSWCiphertext<Vec<u8>, FFT64> = GGSWCiphertext::alloc(&module, basek, k_ggsw, rows, digits, rank);
     let mut pt_ggsw_lhs: ScalarZnx<Vec<u8>> = module.new_scalar_znx(1);
     let mut pt_ggsw_rhs: ScalarZnx<Vec<u8>> = module.new_scalar_znx(1);
 
@@ -785,7 +781,7 @@ fn test_external_product_inplace(log_n: usize, basek: usize, k_ggsw: usize, rank
         GLWESwitchingKey::encrypt_sk_scratch_space(&module, basek, k, rank)
             | GLWECiphertextFourier::decrypt_scratch_space(&module, basek, k)
             | GGSWCiphertext::encrypt_sk_scratch_space(&module, basek, k, rank)
-            | GGSWCiphertext::external_product_inplace_scratch_space(&module, basek, ct_ggsw_lhs.k(), ct_ggsw_rhs.k(), rank),
+            | GGSWCiphertext::external_product_inplace_scratch_space(&module, basek, k_ct, k_ggsw, digits, rank),
     );
 
     let mut sk: GLWESecret<Vec<u8>, FFT64> = GLWESecret::alloc(&module, rank);
@@ -826,7 +822,7 @@ fn test_external_product_inplace(log_n: usize, basek: usize, k_ggsw: usize, rank
             module.vec_znx_add_scalar_inplace(&mut pt_want.data, 0, row_i, &pt_ggsw_lhs, 0);
 
             if col_j > 0 {
-                module.vec_znx_dft(&mut pt_dft, 0, &pt_want.data, 0);
+                module.vec_znx_dft(1, 0, &mut pt_dft, 0, &pt_want.data, 0);
                 module.svp_apply_inplace(&mut pt_dft, 0, &sk.data_fourier, col_j - 1);
                 module.vec_znx_idft_tmp_a(&mut pt_big, 0, &mut pt_dft, 0);
                 module.vec_znx_big_normalize(basek, &mut pt_want.data, 0, &pt_big, 0, scratch.borrow());

@@ -87,19 +87,19 @@ impl GLWECiphertext<Vec<u8>> {
     pub fn keyswitch_scratch_space(
         module: &Module<FFT64>,
         basek: usize,
-        out_k: usize,
-        in_k: usize,
-        ksk_k: usize,
+        k_out: usize,
+        k_in: usize,
+        k_ksk: usize,
         digits: usize,
-        in_rank: usize,
-        out_rank: usize,
+        rank_in: usize,
+        rank_out: usize,
     ) -> usize {
-        let res_dft: usize = GLWECiphertextFourier::bytes_of(module, basek, out_k, out_rank);
-        let in_size: usize = div_ceil(div_ceil(in_k, basek), digits);
-        let out_size: usize = div_ceil(out_k, basek);
-        let ksk_size: usize = div_ceil(ksk_k, basek);
-        let vmp: usize = module.vmp_apply_tmp_bytes(out_size, in_size, in_size, in_rank, out_rank + 1, ksk_size)
-            + module.bytes_of_vec_znx_dft(in_rank, in_size);
+        let res_dft: usize = GLWECiphertextFourier::bytes_of(module, basek, k_out, rank_out);
+        let in_size: usize = div_ceil(div_ceil(k_in, basek), digits);
+        let out_size: usize = div_ceil(k_out, basek);
+        let ksk_size: usize = div_ceil(k_ksk, basek);
+        let vmp: usize = module.vmp_apply_tmp_bytes(out_size, in_size, in_size, rank_in, rank_out + 1, ksk_size)
+            + module.bytes_of_vec_znx_dft(rank_in, in_size);
         let normalize: usize = module.vec_znx_big_normalize_tmp_bytes();
         return res_dft + (vmp | normalize);
     }
@@ -107,62 +107,62 @@ impl GLWECiphertext<Vec<u8>> {
     pub fn keyswitch_from_fourier_scratch_space(
         module: &Module<FFT64>,
         basek: usize,
-        out_k: usize,
-        in_k: usize,
-        ksk_k: usize,
+        k_out: usize,
+        k_in: usize,
+        k_ksk: usize,
         digits: usize,
-        in_rank: usize,
-        out_rank: usize,
+        rank_in: usize,
+        rank_out: usize,
     ) -> usize {
-        Self::keyswitch_scratch_space(module, basek, out_k, in_k, ksk_k, digits, in_rank, out_rank)
+        Self::keyswitch_scratch_space(module, basek, k_out, k_in, k_ksk, digits, rank_in, rank_out)
     }
 
     pub fn keyswitch_inplace_scratch_space(
         module: &Module<FFT64>,
         basek: usize,
-        out_k: usize,
-        ksk_k: usize,
+        k_out: usize,
+        k_ksk: usize,
         digits: usize,
         rank: usize,
     ) -> usize {
-        Self::keyswitch_scratch_space(module, basek, out_k, out_k, ksk_k, digits, rank, rank)
+        Self::keyswitch_scratch_space(module, basek, k_out, k_out, k_ksk, digits, rank, rank)
     }
 
     pub fn automorphism_scratch_space(
         module: &Module<FFT64>,
         basek: usize,
-        out_k: usize,
-        in_k: usize,
-        ksk_k: usize,
+        k_out: usize,
+        k_in: usize,
+        k_ksk: usize,
         digits: usize,
         rank: usize,
     ) -> usize {
-        Self::keyswitch_scratch_space(module, basek, out_k, in_k, ksk_k, digits, rank, rank)
+        Self::keyswitch_scratch_space(module, basek, k_out, k_in, k_ksk, digits, rank, rank)
     }
 
     pub fn automorphism_inplace_scratch_space(
         module: &Module<FFT64>,
         basek: usize,
-        out_k: usize,
-        ksk_k: usize,
+        k_out: usize,
+        k_ksk: usize,
         digits: usize,
         rank: usize,
     ) -> usize {
-        Self::keyswitch_inplace_scratch_space(module, basek, out_k, ksk_k, digits, rank)
+        Self::keyswitch_inplace_scratch_space(module, basek, k_out, k_ksk, digits, rank)
     }
 
     pub fn external_product_scratch_space(
         module: &Module<FFT64>,
         basek: usize,
-        out_k: usize,
-        in_k: usize,
+        k_out: usize,
+        k_in: usize,
         ggsw_k: usize,
         digits: usize,
         rank: usize,
     ) -> usize {
-        let res_dft: usize = GLWECiphertextFourier::bytes_of(module, basek, out_k, rank);
-        let in_size: usize = div_ceil(div_ceil(in_k, basek), digits);
-        let out_size: usize = div_ceil(out_k, basek);
+        let res_dft: usize = GLWECiphertextFourier::bytes_of(module, basek, k_out, rank);
+        let in_size: usize = div_ceil(div_ceil(k_in, basek), digits);
+        let out_size: usize = div_ceil(k_out, basek);
         let ggsw_size: usize = div_ceil(ggsw_k, basek);
         let vmp: usize = module.bytes_of_vec_znx_dft(rank + 1, in_size)
             + module.vmp_apply_tmp_bytes(
@@ -180,12 +180,12 @@ impl GLWECiphertext<Vec<u8>> {
     pub fn external_product_inplace_scratch_space(
         module: &Module<FFT64>,
         basek: usize,
-        out_k: usize,
+        k_out: usize,
         ggsw_k: usize,
         digits: usize,
         rank: usize,
     ) -> usize {
-        Self::external_product_scratch_space(module, basek, out_k, out_k, ggsw_k, digits, rank)
+        Self::external_product_scratch_space(module, basek, k_out, k_out, ggsw_k, digits, rank)
     }
 }
 
