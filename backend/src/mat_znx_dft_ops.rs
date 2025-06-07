@@ -393,7 +393,7 @@ mod tests {
                 let mut source: Source = Source::new([0u8; 32]);
                 (0..mat_cols_out).for_each(|col_out| {
                     a.fill_uniform(basek, col_out, mat_size, &mut source);
-                    module.vec_znx_dft(&mut a_dft, col_out, &a, col_out);
+                    module.vec_znx_dft(1, 0, &mut a_dft, col_out, &a, col_out);
                 });
                 module.vmp_prepare_row(&mut mat, row_i, col_in, &a_dft);
                 module.vmp_extract_row(&mut b_dft, &mat, row_i, col_in);
@@ -453,7 +453,7 @@ mod tests {
                         (0..mat_cols_out).for_each(|col_out_i| {
                             let idx = 1 + col_in_i * mat_cols_out + col_out_i;
                             tmp.at_mut(col_out_i, row_i)[idx] = 1 as i64; // X^{idx}
-                            module.vec_znx_dft(&mut c_dft, col_out_i, &tmp, col_out_i);
+                            module.vec_znx_dft(1, 0, &mut c_dft, col_out_i, &tmp, col_out_i);
                             tmp.at_mut(col_out_i, row_i)[idx] = 0 as i64;
                         });
                         module.vmp_prepare_row(&mut mat_znx_dft, row_i, col_in_i, &c_dft);
@@ -462,7 +462,7 @@ mod tests {
 
                 let mut a_dft: VecZnxDft<Vec<u8>, FFT64> = module.new_vec_znx_dft(a_cols, a_size);
                 (0..a_cols).for_each(|i| {
-                    module.vec_znx_dft(&mut a_dft, i, &a, i);
+                    module.vec_znx_dft(1, 0, &mut a_dft, i, &a, i);
                 });
 
                 module.vmp_apply(&mut c_dft, &a_dft, &mat_znx_dft, scratch.borrow());
@@ -497,12 +497,11 @@ mod tests {
         let a_size: usize = 5;
         let mat_size: usize = 5;
         let res_size: usize = a_size;
-        let mut source: Source = Source::new([0u8;32]);
+        let mut source: Source = Source::new([0u8; 32]);
 
         [1, 2].iter().for_each(|in_cols| {
             [1, 2].iter().for_each(|out_cols| {
                 (0..res_size).for_each(|shift| {
-
                     let a_cols: usize = *in_cols;
                     let res_cols: usize = *out_cols;
 
@@ -541,7 +540,7 @@ mod tests {
                             (0..mat_cols_out).for_each(|col_out_i| {
                                 let idx: usize = 1 + col_in_i * mat_cols_out + col_out_i;
                                 tmp.at_mut(col_out_i, row_i)[idx] = 1 as i64; // X^{idx}
-                                module.vec_znx_dft(&mut c_dft, col_out_i, &tmp, col_out_i);
+                                module.vec_znx_dft(1, 0, &mut c_dft, col_out_i, &tmp, col_out_i);
                                 tmp.at_mut(col_out_i, row_i)[idx] = 0 as i64;
                             });
                             module.vmp_prepare_row(&mut mat_znx_dft, row_i, col_in_i, &c_dft);
@@ -550,12 +549,12 @@ mod tests {
 
                     let mut a_dft: VecZnxDft<Vec<u8>, FFT64> = module.new_vec_znx_dft(a_cols, a_size);
                     (0..a_cols).for_each(|i| {
-                        module.vec_znx_dft(&mut a_dft, i, &a, i);
+                        module.vec_znx_dft(1, 0, &mut a_dft, i, &a, i);
                     });
 
                     c_dft.zero();
                     (0..c_dft.cols()).for_each(|i| {
-                        module.vec_znx_dft(&mut c_dft, i, &a, 0);
+                        module.vec_znx_dft(1, 0, &mut c_dft, i, &a, 0);
                     });
 
                     module.vmp_apply_add(&mut c_dft, &a_dft, &mat_znx_dft, shift, scratch.borrow());
@@ -591,7 +590,7 @@ mod tests {
         });
     }
 
-       #[test]
+    #[test]
     fn vmp_apply_digits() {
         let log_n: i32 = 4;
         let n: usize = 1 << log_n;
@@ -601,12 +600,11 @@ mod tests {
         let a_size: usize = 6;
         let mat_size: usize = 6;
         let res_size: usize = a_size;
-        
+
         [1, 2].iter().for_each(|in_cols| {
             [1, 2].iter().for_each(|out_cols| {
                 [1, 3, 6].iter().for_each(|digits| {
-
-                    let mut source: Source = Source::new([0u8;32]);
+                    let mut source: Source = Source::new([0u8; 32]);
 
                     let a_cols: usize = *in_cols;
                     let res_cols: usize = *out_cols;
@@ -632,7 +630,6 @@ mod tests {
                         a.fill_uniform(basek, col_i, a.size(), &mut source);
                     });
 
-
                     let mut mat_znx_dft: MatZnxDft<Vec<u8>, FFT64> =
                         module.new_mat_znx_dft(mat_rows, mat_cols_in, mat_cols_out, mat_size);
 
@@ -650,9 +647,9 @@ mod tests {
                         (0..mat_cols_in).for_each(|col_in_i| {
                             (0..mat_cols_out).for_each(|col_out_i| {
                                 let idx: usize = shift + col_in_i * mat_cols_out + col_out_i;
-                                let limb: usize = (digits-1) + row_i*digits;
+                                let limb: usize = (digits - 1) + row_i * digits;
                                 tmp.at_mut(col_out_i, limb)[idx] = 1 as i64; // X^{idx}
-                                module.vec_znx_dft(&mut c_dft, col_out_i, &tmp, col_out_i);
+                                module.vec_znx_dft(1, 0, &mut c_dft, col_out_i, &tmp, col_out_i);
                                 tmp.at_mut(col_out_i, limb)[idx] = 0 as i64;
                             });
                             module.vmp_prepare_row(&mut mat_znx_dft, row_i, col_in_i, &c_dft);
@@ -661,14 +658,14 @@ mod tests {
 
                     let mut a_dft: VecZnxDft<Vec<u8>, FFT64> = module.new_vec_znx_dft(a_cols, (a_size + digits - 1) / digits);
 
-                    (0..*digits).for_each(|di|{
-                        (0..a_cols).for_each(|col_i|{
-                            module.vec_znx_dft_collect(digits - 1 - di, *digits, &mut a_dft, col_i, &a, col_i);
+                    (0..*digits).for_each(|di| {
+                        (0..a_cols).for_each(|col_i| {
+                            module.vec_znx_dft(digits - 1 - di, *digits, &mut a_dft, col_i, &a, col_i);
                         });
 
-                        if di == 0{
+                        if di == 0 {
                             module.vmp_apply(&mut c_dft, &a_dft, &mat_znx_dft, scratch.borrow());
-                        }else{
+                        } else {
                             module.vmp_apply_add(&mut c_dft, &a_dft, &mat_znx_dft, di, scratch.borrow());
                         }
                     });
@@ -679,21 +676,23 @@ mod tests {
                         module.vec_znx_big_normalize(basek, &mut res_have, i, &c_big, i, scratch.borrow());
                     });
 
-                    
-            
                     let mut res_want: VecZnx<Vec<u8>> = module.new_vec_znx(res_cols, mat_size);
-                    let mut tmp : VecZnx<Vec<u8>> = module.new_vec_znx(res_cols, mat_size);
-                    (0..res_cols).for_each(|col_i|{
-                        (0..a_cols).for_each(|j|{
-                            module.vec_znx_rotate((col_i + j * mat_cols_out+shift) as i64, &mut tmp, 0, &a, j);
+                    let mut tmp: VecZnx<Vec<u8>> = module.new_vec_znx(res_cols, mat_size);
+                    (0..res_cols).for_each(|col_i| {
+                        (0..a_cols).for_each(|j| {
+                            module.vec_znx_rotate(
+                                (col_i + j * mat_cols_out + shift) as i64,
+                                &mut tmp,
+                                0,
+                                &a,
+                                j,
+                            );
                             module.vec_znx_add_inplace(&mut res_want, col_i, &tmp, 0);
                         });
                         module.vec_znx_normalize_inplace(basek, &mut res_want, col_i, scratch.borrow());
                     });
 
-
                     assert_eq!(res_have, res_want)
-
                 });
             });
         });

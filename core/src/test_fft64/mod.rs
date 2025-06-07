@@ -2,10 +2,10 @@
 // mod gglwe;
 // mod ggsw;
 mod glwe;
-// mod glwe_fourier;
-// mod glwe_packing;
-// mod tensor_key;
-// mod trace;
+mod glwe_fourier;
+mod glwe_packing;
+mod tensor_key;
+mod trace;
 
 pub(crate) fn var_noise_gglwe_product(
     n: f64,
@@ -22,8 +22,8 @@ pub(crate) fn var_noise_gglwe_product(
     let a_logq: usize = a_logq.min(b_logq);
     let a_cols: usize = (a_logq + basek - 1) / basek;
 
-    let b_scale = 2.0f64.powi(b_logq as i32);
-    let a_scale: f64 = 2.0f64.powi((b_logq - a_logq) as i32);
+    let b_scale: f64 = (b_logq as f64).exp2();
+    let a_scale: f64 = ((b_logq - a_logq) as f64).exp2();
 
     let base: f64 = (basek as f64).exp2();
     let var_base: f64 = base * base / 12f64;
@@ -81,10 +81,10 @@ pub(crate) fn noise_ggsw_product(
     let a_logq: usize = a_logq.min(b_logq);
     let a_cols: usize = (a_logq + basek - 1) / basek;
 
-    let b_scale = 2.0f64.powi(b_logq as i32);
-    let a_scale: f64 = 2.0f64.powi((b_logq - a_logq) as i32);
+    let b_scale: f64 = (b_logq as f64).exp2();
+    let a_scale: f64 = ((b_logq - a_logq) as f64).exp2();
 
-    let base: f64 = (1 << (basek)) as f64;
+    let base: f64 = (basek as f64).exp2();
     let var_base: f64 = base * base / 12f64;
 
     // lhs = a_cols * n * (var_base * var_gct_err_lhs + var_e_a * var_msg * p^2)

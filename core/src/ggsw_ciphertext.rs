@@ -82,6 +82,7 @@ impl GGSWCiphertext<Vec<u8>, FFT64> {
         basek: usize,
         self_k: usize,
         tsk_k: usize,
+        digits: usize,
         rank: usize,
     ) -> usize {
         let tsk_size: usize = div_ceil(tsk_k, basek);
@@ -100,9 +101,10 @@ impl GGSWCiphertext<Vec<u8>, FFT64> {
         out_k: usize,
         in_k: usize,
         ksk_k: usize,
+        digits: usize,
         rank: usize,
     ) -> usize {
-        GLWECiphertext::keyswitch_from_fourier_scratch_space(module, basek, out_k, rank, in_k, rank, ksk_k)
+        GLWECiphertext::keyswitch_from_fourier_scratch_space(module, basek, out_k, in_k, ksk_k, digits, rank, rank)
             + module.bytes_of_vec_znx_dft(rank + 1, div_ceil(in_k, basek))
     }
 
@@ -112,15 +114,18 @@ impl GGSWCiphertext<Vec<u8>, FFT64> {
         out_k: usize,
         in_k: usize,
         ksk_k: usize,
+        ksk_digits: usize,
         tsk_k: usize,
+        tsk_digits: usize,
         rank: usize,
     ) -> usize {
         let out_size: usize = div_ceil(out_k, basek);
 
         let res_znx: usize = module.bytes_of_vec_znx(rank + 1, out_size);
         let ci_dft: usize = module.bytes_of_vec_znx_dft(rank + 1, out_size);
-        let ks: usize = GGSWCiphertext::keyswitch_internal_col0_scratch_space(module, basek, out_k, in_k, ksk_k, rank);
-        let expand_rows: usize = GGSWCiphertext::expand_row_scratch_space(module, basek, out_k, tsk_k, rank);
+        let ks: usize =
+            GGSWCiphertext::keyswitch_internal_col0_scratch_space(module, basek, out_k, in_k, ksk_k, ksk_digits, rank);
+        let expand_rows: usize = GGSWCiphertext::expand_row_scratch_space(module, basek, out_k, tsk_k, tsk_digits, rank);
         let res_dft: usize = module.bytes_of_vec_znx_dft(rank + 1, out_size);
         res_znx + ci_dft + (ks | expand_rows | res_dft)
     }
@@ -130,10 +135,14 @@ impl GGSWCiphertext<Vec<u8>, FFT64> {
         basek: usize,
         out_k: usize,
         ksk_k: usize,
+        ksk_digits: usize,
         tsk_k: usize,
+        tsk_digits: usize,
         rank: usize,
     ) -> usize {
-        GGSWCiphertext::keyswitch_scratch_space(module, basek, out_k, out_k, ksk_k, tsk_k, rank)
+        GGSWCiphertext::keyswitch_scratch_space(
+            module, basek, out_k, out_k, ksk_k, ksk_digits, tsk_k, tsk_digits, rank,
+        )
     }
 
     pub fn automorphism_scratch_space(
@@ -141,8 +150,10 @@ impl GGSWCiphertext<Vec<u8>, FFT64> {
         basek: usize,
         out_k: usize,
         in_k: usize,
-        atk_k: usize,
+        ksk_k: usize,
+        ksk_digits: usize,
         tsk_k: usize,
+        tsk_digits: usize,
         rank: usize,
     ) -> usize {
         let cols: usize = rank + 1;
@@ -150,8 +161,9 @@ impl GGSWCiphertext<Vec<u8>, FFT64> {
         let res: usize = module.bytes_of_vec_znx(cols, out_size);
         let res_dft: usize = module.bytes_of_vec_znx_dft(cols, out_size);
         let ci_dft: usize = module.bytes_of_vec_znx_dft(cols, out_size);
-        let ks_internal: usize = GGSWCiphertext::keyswitch_internal_col0_scratch_space(module, basek, out_k, in_k, atk_k, rank);
-        let expand: usize = GGSWCiphertext::expand_row_scratch_space(module, basek, out_k, tsk_k, rank);
+        let ks_internal: usize =
+            GGSWCiphertext::keyswitch_internal_col0_scratch_space(module, basek, out_k, in_k, ksk_k, ksk_digits, rank);
+        let expand: usize = GGSWCiphertext::expand_row_scratch_space(module, basek, out_k, tsk_k, tsk_digits, rank);
         res + ci_dft + (ks_internal | expand | res_dft)
     }
 
@@ -159,11 +171,15 @@ impl GGSWCiphertext<Vec<u8>, FFT64> {
         module: &Module<FFT64>,
         basek: usize,
         out_k: usize,
-        atk_k: usize,
+        ksk_k: usize,
+        ksk_digits: usize,
         tsk_k: usize,
+        tsk_digits: usize,
         rank: usize,
     ) -> usize {
-        GGSWCiphertext::automorphism_scratch_space(module, basek, out_k, out_k, atk_k, tsk_k, rank)
+        GGSWCiphertext::automorphism_scratch_space(
+            module, basek, out_k, out_k, ksk_k, ksk_digits, tsk_k, tsk_digits, rank,
+        )
     }
 
     pub fn external_product_scratch_space(
@@ -172,11 +188,12 @@ impl GGSWCiphertext<Vec<u8>, FFT64> {
         out_k: usize,
         in_k: usize,
         ggsw_k: usize,
+        digits: usize,
         rank: usize,
     ) -> usize {
         let tmp_in: usize = GLWECiphertextFourier::bytes_of(module, basek, in_k, rank);
         let tmp_out: usize = GLWECiphertextFourier::bytes_of(module, basek, out_k, rank);
-        let ggsw: usize = GLWECiphertextFourier::external_product_scratch_space(module, basek, out_k, in_k, ggsw_k, rank);
+        let ggsw: usize = GLWECiphertextFourier::external_product_scratch_space(module, basek, out_k, in_k, ggsw_k, digits, rank);
         tmp_in + tmp_out + ggsw
     }
 
@@ -185,10 +202,12 @@ impl GGSWCiphertext<Vec<u8>, FFT64> {
         basek: usize,
         out_k: usize,
         ggsw_k: usize,
+        digits: usize,
         rank: usize,
     ) -> usize {
         let tmp: usize = GLWECiphertextFourier::bytes_of(module, basek, out_k, rank);
-        let ggsw: usize = GLWECiphertextFourier::external_product_inplace_scratch_space(module, basek, out_k, ggsw_k, rank);
+        let ggsw: usize =
+            GLWECiphertextFourier::external_product_inplace_scratch_space(module, basek, out_k, ggsw_k, digits, rank);
         tmp + ggsw
     }
 }
@@ -224,7 +243,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf, FFT64> {
             tmp_pt.data.zero();
 
             // Adds the scalar_znx_pt to the i-th limb of the vec_znx_pt
-            module.vec_znx_add_scalar_inplace(&mut tmp_pt.data, 0, row_i * digits, pt, 0);
+            module.vec_znx_add_scalar_inplace(&mut tmp_pt.data, 0, (digits - 1) + row_i * digits, pt, 0);
             module.vec_znx_normalize_inplace(basek, &mut tmp_pt.data, 0, scratch2);
 
             (0..rank + 1).for_each(|col_j| {
@@ -264,7 +283,15 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf, FFT64> {
         let cols: usize = self.rank() + 1;
 
         assert!(
-            scratch.available() >= GGSWCiphertext::expand_row_scratch_space(module, self.basek(), self.k(), tsk.k(), self.rank())
+            scratch.available()
+                >= GGSWCiphertext::expand_row_scratch_space(
+                    module,
+                    self.basek(),
+                    self.k(),
+                    tsk.k(),
+                    tsk.digits(),
+                    tsk.rank()
+                )
         );
 
         // Example for rank 3:
@@ -365,7 +392,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf, FFT64> {
 
             // Isolates DFT(a[i])
             (0..cols).for_each(|col_i| {
-                module.vec_znx_dft(&mut ci_dft, col_i, &tmp_res.data, col_i);
+                module.vec_znx_dft(1, 0, &mut ci_dft, col_i, &tmp_res.data, col_i);
             });
 
             module.vmp_prepare_row(&mut self.data, row_i, 0, &ci_dft);
@@ -436,8 +463,10 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf, FFT64> {
                         self.k(),
                         lhs.k(),
                         auto_key.k(),
+                        auto_key.digits(),
                         tensor_key.k(),
-                        self.rank()
+                        tensor_key.digits(),
+                        self.rank(),
                     )
             )
         };
@@ -459,7 +488,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf, FFT64> {
             (0..cols).for_each(|col_i| {
                 // (-(a0pi^-1(s0) + a1pi^-1(s1) + a2pi^-1(s2)) + M[i], a0, a1, a2) -> (-(a0s0 + a1s1 + a2s2) + pi(M[i]), a0, a1, a2)
                 module.vec_znx_automorphism_inplace(auto_key.p(), &mut tmp_res.data, col_i);
-                module.vec_znx_dft(&mut ci_dft, col_i, &tmp_res.data, col_i);
+                module.vec_znx_dft(1, 0, &mut ci_dft, col_i, &tmp_res.data, col_i);
             });
 
             module.vmp_prepare_row(&mut self.data, row_i, 0, &ci_dft);
@@ -593,6 +622,7 @@ impl<DataSelf: AsRef<[u8]>> GGSWCiphertext<DataSelf, FFT64> {
                         res.k(),
                         self.k(),
                         ksk.k(),
+                        ksk.digits(),
                         ksk.rank()
                     )
             )

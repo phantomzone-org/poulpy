@@ -129,7 +129,16 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGLWECiphertext<DataSelf, FFT64> {
                 self.rank(),
                 self.size(),
                 GGLWECiphertext::generate_from_sk_scratch_space(module, self.basek(), self.k(), self.rank())
-            )
+            );
+            assert!(
+                self.rows() * self.digits() * self.basek() <= self.k(),
+                "self.rows() : {} * self.digits() : {} * self.basek() : {} = {} >= self.k() = {}",
+                self.rows(),
+                self.digits(),
+                self.basek(),
+                self.rows() * self.digits() * self.basek(),
+                self.k()
+            );
         }
 
         let rows: usize = self.rows();

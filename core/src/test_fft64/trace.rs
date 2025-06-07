@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use backend::{FFT64, FillUniform, Module, ScratchOwned, Stats, VecZnxOps, ZnxView, ZnxViewMut};
 use sampling::source::Source;
 
-use crate::{AutomorphismKey, GLWECiphertext, GLWEPlaintext, GLWESecret, Infos, test_fft64::gglwe::var_noise_gglwe_product};
+use crate::{AutomorphismKey, GLWECiphertext, GLWEPlaintext, GLWESecret, Infos, test_fft64::var_noise_gglwe_product};
 
 #[test]
 fn trace_inplace() {
@@ -61,7 +61,7 @@ fn test_trace_inplace(log_n: usize, basek: usize, k: usize, sigma: f64, rank: us
     let mut auto_keys: HashMap<i64, AutomorphismKey<Vec<u8>, FFT64>> = HashMap::new();
     let gal_els: Vec<i64> = GLWECiphertext::trace_galois_elements(&module);
     gal_els.iter().for_each(|gal_el| {
-        let mut key: AutomorphismKey<Vec<u8>, FFT64> = AutomorphismKey::alloc(&module, basek, k_autokey, rows, rank);
+        let mut key: AutomorphismKey<Vec<u8>, FFT64> = AutomorphismKey::alloc(&module, basek, k_autokey, rows, 1, rank);
         key.generate_from_sk(
             &module,
             *gal_el,

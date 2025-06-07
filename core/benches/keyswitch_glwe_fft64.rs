@@ -26,11 +26,13 @@ fn bench_keyswitch_glwe_fft64(c: &mut Criterion) {
         let k_grlwe: usize = p.k_ksk;
         let rank_in: usize = p.rank_in;
         let rank_out: usize = p.rank_out;
+        let digits: usize = 1;
 
         let rows: usize = (p.k_ct_in + p.basek - 1) / p.basek;
         let sigma: f64 = 3.2;
 
-        let mut ksk: GLWESwitchingKey<Vec<u8>, FFT64> = GLWESwitchingKey::alloc(&module, basek, k_grlwe, rows, rank_in, rank_out);
+        let mut ksk: GLWESwitchingKey<Vec<u8>, FFT64> =
+            GLWESwitchingKey::alloc(&module, basek, k_grlwe, rows, digits, rank_in, rank_out);
         let mut ct_in: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_rlwe_in, rank_in);
         let mut ct_out: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_rlwe_out, rank_out);
 
@@ -124,11 +126,12 @@ fn bench_keyswitch_glwe_inplace_fft64(c: &mut Criterion) {
         let k_ct: usize = p.k_ct;
         let k_ksk: usize = p.k_ksk;
         let rank: usize = p.rank;
+        let digits: usize = 1;
 
         let rows: usize = (p.k_ct + p.basek - 1) / p.basek;
         let sigma: f64 = 3.2;
 
-        let mut ksk: GLWESwitchingKey<Vec<u8>, FFT64> = GLWESwitchingKey::alloc(&module, basek, k_ksk, rows, rank, rank);
+        let mut ksk: GLWESwitchingKey<Vec<u8>, FFT64> = GLWESwitchingKey::alloc(&module, basek, k_ksk, rows, digits, rank, rank);
         let mut ct: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_ct, rank);
 
         let mut scratch = ScratchOwned::new(

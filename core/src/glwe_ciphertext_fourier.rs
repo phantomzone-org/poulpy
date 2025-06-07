@@ -71,36 +71,40 @@ impl GLWECiphertextFourier<Vec<u8>, FFT64> {
         module: &Module<FFT64>,
         basek: usize,
         out_k: usize,
-        out_rank: usize,
         in_k: usize,
-        in_rank: usize,
         ksk_k: usize,
+        digits: usize,
+        in_rank: usize,
+        out_rank: usize,
     ) -> usize {
         GLWECiphertext::bytes_of(module, basek, out_k, out_rank)
-            + GLWECiphertext::keyswitch_from_fourier_scratch_space(module, basek, out_k, out_rank, in_k, in_rank, ksk_k)
+            + GLWECiphertext::keyswitch_from_fourier_scratch_space(module, basek, out_k, in_k, ksk_k, digits, in_rank, out_rank)
     }
 
     pub fn keyswitch_inplace_scratch_space(
         module: &Module<FFT64>,
         basek: usize,
         out_k: usize,
-        out_rank: usize,
         ksk_k: usize,
+        digits: usize,
+        rank: usize,
     ) -> usize {
-        Self::keyswitch_scratch_space(module, basek, out_k, out_rank, out_k, out_rank, ksk_k)
+        Self::keyswitch_scratch_space(module, basek, out_k, out_k, ksk_k, digits, rank, rank)
     }
 
+    // WARNING TODO: UPDATE
     pub fn external_product_scratch_space(
         module: &Module<FFT64>,
         basek: usize,
         out_k: usize,
         in_k: usize,
         ggsw_k: usize,
+        digits: usize,
         rank: usize,
     ) -> usize {
         let res_dft: usize = GLWECiphertextFourier::bytes_of(module, basek, out_k, rank);
         let out_size: usize = div_ceil(out_k, basek);
-        let in_size: usize = div_ceil(in_k, basek);
+        let in_size: usize = div_ceil(div_ceil(in_k, basek), digits);
         let ggsw_size: usize = div_ceil(ggsw_k, basek);
         let vmp: usize = module.vmp_apply_tmp_bytes(out_size, in_size, in_size, rank + 1, rank + 1, ggsw_size);
         let res_small: usize = GLWECiphertext::bytes_of(module, basek, out_k, rank);
@@ -113,9 +117,10 @@ impl GLWECiphertextFourier<Vec<u8>, FFT64> {
         basek: usize,
         out_k: usize,
         ggsw_k: usize,
+        digits: usize,
         rank: usize,
     ) -> usize {
-        Self::external_product_scratch_space(module, basek, out_k, out_k, ggsw_k, rank)
+        Self::external_product_scratch_space(module, basek, out_k, out_k, ggsw_k, digits, rank)
     }
 }
 
@@ -176,6 +181,18 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWECiphertextFourier<DataSelf, FFT64>
             assert_eq!(rhs.n(), module.n());
             assert_eq!(self.n(), module.n());
             assert_eq!(lhs.n(), module.n());
+            assert!(
+                scratch.available()
+                    >= GLWECiphertextFourier::external_product_scratch_space(
+                        module,
+                        self.basek(),
+                        self.k(),
+                        lhs.k(),
+                        rhs.k(),
+                        rhs.digits(),
+                        rhs.rank(),
+                    )
+            );
         }
 
         let cols: usize = rhs.rank() + 1;
@@ -184,7 +201,22 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWECiphertextFourier<DataSelf, FFT64>
         let (mut res_dft, scratch1) = scratch.tmp_vec_znx_dft(module, cols, rhs.size());
 
         {
-            module.vmp_apply(&mut res_dft, &lhs.data, &rhs.data, scratch1);
+            let digits = rhs.digits();
+
+            (0..digits).for_each(|di| {
+                // (lhs.size() + di) / digits = (a - (digit - di - 1) + digit - 1) / digits
+                let (mut a_dft, scratch2) = scratch1.tmp_vec_znx_dft(module, cols, (lhs.size() + di) / digits);
+
+                (0..cols).for_each(|col_i| {
+                    module.vec_znx_dft_copy(digits, digits - 1 - di, &mut a_dft, col_i, &lhs.data, col_i);
+                });
+
+                if di == 0 {
+                    module.vmp_apply(&mut res_dft, &a_dft, &rhs.data, scratch2);
+                } else {
+                    module.vmp_apply_add(&mut res_dft, &a_dft, &rhs.data, di, scratch2);
+                }
+            });
         }
 
         // VMP result in high precision
@@ -194,7 +226,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWECiphertextFourier<DataSelf, FFT64>
         let (mut res_small, scratch2) = scratch1.tmp_vec_znx(module, cols, rhs.size());
         (0..cols).for_each(|i| {
             module.vec_znx_big_normalize(basek, &mut res_small, i, &res_big, i, scratch2);
-            module.vec_znx_dft(&mut self.data, i, &res_small, i);
+            module.vec_znx_dft(1, 0, &mut self.data, i, &res_small, i);
         });
     }
 

@@ -20,6 +20,7 @@ fn packing() {
     let rank: usize = 3;
     let rows: usize = (ct_k + basek - 1) / basek;
     let sigma: f64 = 3.2;
+    let digits: usize = 1;
 
     let mut scratch: ScratchOwned = ScratchOwned::new(
         GLWECiphertext::encrypt_sk_scratch_space(&module, basek, ct_k)
@@ -42,7 +43,7 @@ fn packing() {
 
     let mut auto_keys: HashMap<i64, AutomorphismKey<Vec<u8>, FFT64>> = HashMap::new();
     gal_els.iter().for_each(|gal_el| {
-        let mut key: AutomorphismKey<Vec<u8>, FFT64> = AutomorphismKey::alloc(&module, basek, atk_k, rows, rank);
+        let mut key: AutomorphismKey<Vec<u8>, FFT64> = AutomorphismKey::alloc(&module, basek, atk_k, rows, digits, rank);
         key.generate_from_sk(
             &module,
             *gal_el,

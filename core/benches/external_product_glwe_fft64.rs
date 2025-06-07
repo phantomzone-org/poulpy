@@ -24,11 +24,12 @@ fn bench_external_product_glwe_fft64(c: &mut Criterion) {
         let k_ct_out: usize = p.k_ct_out;
         let k_ggsw: usize = p.k_ggsw;
         let rank: usize = p.rank;
+        let digits: usize = 1;
 
         let rows: usize = (p.k_ct_in + p.basek - 1) / p.basek;
         let sigma: f64 = 3.2;
 
-        let mut ct_ggsw: GGSWCiphertext<Vec<u8>, FFT64> = GGSWCiphertext::alloc(&module, basek, k_ggsw, rows, rank);
+        let mut ct_ggsw: GGSWCiphertext<Vec<u8>, FFT64> = GGSWCiphertext::alloc(&module, basek, k_ggsw, rows, digits, rank);
         let mut ct_glwe_in: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_ct_in, rank);
         let mut ct_glwe_out: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_ct_out, rank);
         let pt_rgsw: ScalarZnx<Vec<u8>> = module.new_scalar_znx(1);
@@ -118,11 +119,12 @@ fn bench_external_product_glwe_inplace_fft64(c: &mut Criterion) {
         let k_glwe: usize = p.k_ct;
         let k_ggsw: usize = p.k_ggsw;
         let rank: usize = p.rank;
+        let digits: usize = 1;
 
         let rows: usize = (p.k_ct + p.basek - 1) / p.basek;
         let sigma: f64 = 3.2;
 
-        let mut ct_ggsw: GGSWCiphertext<Vec<u8>, FFT64> = GGSWCiphertext::alloc(&module, basek, k_ggsw, rows, rank);
+        let mut ct_ggsw: GGSWCiphertext<Vec<u8>, FFT64> = GGSWCiphertext::alloc(&module, basek, k_ggsw, rows, digits, rank);
         let mut ct_glwe: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_glwe, rank);
         let pt_rgsw: ScalarZnx<Vec<u8>> = module.new_scalar_znx(1);
 
