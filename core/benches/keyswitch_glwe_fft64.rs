@@ -1,8 +1,8 @@
 use backend::{FFT64, Module, ScratchOwned};
-use core::{GLWECiphertext, GLWESecret, GLWESwitchingKey, Infos};
+use core::{AutomorphismKey, GLWECiphertext, GLWESecret, GLWESwitchingKey, Infos};
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use sampling::source::Source;
-use std::hint::black_box;
+use std::{hint::black_box, time::Duration};
 
 fn bench_keyswitch_glwe_fft64(c: &mut Criterion) {
     let mut group = c.benchmark_group("keyswitch_glwe_fft64");
@@ -13,6 +13,7 @@ fn bench_keyswitch_glwe_fft64(c: &mut Criterion) {
         k_ct_in: usize,
         k_ct_out: usize,
         k_ksk: usize,
+        digits: usize,
         rank_in: usize,
         rank_out: usize,
     }
@@ -26,13 +27,12 @@ fn bench_keyswitch_glwe_fft64(c: &mut Criterion) {
         let k_grlwe: usize = p.k_ksk;
         let rank_in: usize = p.rank_in;
         let rank_out: usize = p.rank_out;
-        let digits: usize = 1;
+        let digits: usize = p.digits;
 
-        let rows: usize = (p.k_ct_in + p.basek - 1) / p.basek;
+        let rows: usize = (p.k_ct_in + (p.basek * digits) - 1) / (p.basek * digits);
         let sigma: f64 = 3.2;
 
-        let mut ksk: GLWESwitchingKey<Vec<u8>, FFT64> =
-            GLWESwitchingKey::alloc(&module, basek, k_grlwe, rows, digits, rank_in, rank_out);
+        let mut ksk: AutomorphismKey<Vec<u8>, FFT64> = AutomorphismKey::alloc(&module, basek, k_grlwe, rows, digits, rank_out);
         let mut ct_in: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_rlwe_in, rank_in);
         let mut ct_out: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_rlwe_out, rank_out);
 
@@ -63,8 +63,8 @@ fn bench_keyswitch_glwe_fft64(c: &mut Criterion) {
 
         ksk.generate_from_sk(
             &module,
+            -1,
             &sk_in,
-            &sk_out,
             &mut source_xa,
             &mut source_xe,
             sigma,
@@ -81,21 +81,20 @@ fn bench_keyswitch_glwe_fft64(c: &mut Criterion) {
         );
 
         move || {
-            ct_out.keyswitch(
-                black_box(&module),
-                black_box(&ct_in),
-                black_box(&ksk),
-                black_box(scratch.borrow()),
-            );
+            ct_out.automorphism(&module, &ct_in, &ksk, scratch.borrow());
         }
     }
 
+    let digits: usize = 1;
+    let basek: usize = 19;
+
     let params_set: Vec<Params> = vec![Params {
-        log_n: 16,
-        basek: 50,
-        k_ct_in: 1250,
-        k_ct_out: 1250,
-        k_ksk: 1250 + 66,
+        log_n: 15,
+        basek: basek,
+        k_ct_in: 874 - digits * basek,
+        k_ct_out: 874 - digits * basek,
+        k_ksk: 874,
+        digits: digits,
         rank_in: 1,
         rank_out: 1,
     }];
@@ -103,6 +102,8 @@ fn bench_keyswitch_glwe_fft64(c: &mut Criterion) {
     for params in params_set {
         let id = BenchmarkId::new("KEYSWITCH_GLWE_FFT64", "");
         let mut runner = runner(params);
+        group.sample_size(500);
+        group.measurement_time(Duration::from_secs(40));
         group.bench_with_input(id, &(), |b, _| b.iter(&mut runner));
     }
 

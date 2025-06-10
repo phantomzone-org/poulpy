@@ -62,6 +62,13 @@ impl<D: AsRef<[u8]>> ZnxView for VecZnxDft<D, FFT64> {
     type Scalar = f64;
 }
 
+impl<D: AsMut<[u8]> + AsRef<[u8]>> VecZnxDft<D, FFT64>{
+    pub fn set_size(&mut self, size: usize){
+        assert!(size <= self.data.as_ref().len() / (self.n * self.cols()));
+        self.size = size
+    }
+}
+
 pub(crate) fn bytes_of_vec_znx_dft<B: Backend>(module: &Module<B>, cols: usize, size: usize) -> usize {
     unsafe { vec_znx_dft::bytes_of_vec_znx_dft(module.ptr, size as u64) as usize * cols }
 }

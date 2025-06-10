@@ -1,7 +1,5 @@
 use backend::{
-    AddNormal, Backend, FFT64, FillUniform, MatZnxDftOps, MatZnxDftScratch, Module, ScalarZnxAlloc, ScalarZnxDftAlloc,
-    ScalarZnxDftOps, Scratch, VecZnx, VecZnxAlloc, VecZnxBig, VecZnxBigAlloc, VecZnxBigOps, VecZnxBigScratch, VecZnxDftAlloc,
-    VecZnxDftOps, VecZnxOps, VecZnxToMut, VecZnxToRef, ZnxZero,
+    AddNormal, Backend, FillUniform, MatZnxDftOps, MatZnxDftScratch, Module, ScalarZnxAlloc, ScalarZnxDftAlloc, ScalarZnxDftOps, Scratch, VecZnx, VecZnxAlloc, VecZnxBig, VecZnxBigAlloc, VecZnxBigOps, VecZnxBigScratch, VecZnxDftAlloc, VecZnxDftOps, VecZnxOps, VecZnxToMut, VecZnxToRef, ZnxZero, FFT64
 };
 use sampling::source::Source;
 
@@ -94,14 +92,15 @@ impl GLWECiphertext<Vec<u8>> {
         rank_in: usize,
         rank_out: usize,
     ) -> usize {
-        let res_dft: usize = GLWECiphertextFourier::bytes_of(module, basek, k_out, rank_out);
+        let res_dft: usize = GLWECiphertextFourier::bytes_of(module, basek, k_out, rank_out + 1);
         let in_size: usize = div_ceil(div_ceil(k_in, basek), digits);
         let out_size: usize = div_ceil(k_out, basek);
         let ksk_size: usize = div_ceil(k_ksk, basek);
+        let ai_dft: usize = module.bytes_of_vec_znx_dft(rank_in, in_size);
         let vmp: usize = module.vmp_apply_tmp_bytes(out_size, in_size, in_size, rank_in, rank_out + 1, ksk_size)
             + module.bytes_of_vec_znx_dft(rank_in, in_size);
         let normalize: usize = module.vec_znx_big_normalize_tmp_bytes();
-        return res_dft + (vmp | normalize);
+        return res_dft + ((ai_dft + vmp) | normalize);
     }
 
     pub fn keyswitch_from_fourier_scratch_space(
@@ -494,20 +493,29 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
 
         let cols_in: usize = rhs.rank_in();
         let cols_out: usize = rhs.rank_out() + 1;
+        let digits: usize = rhs.digits();
 
         let (mut res_dft, scratch1) = scratch.tmp_vec_znx_dft(module, cols_out, rhs.size()); // Todo optimise
-
+        let (mut ai_dft, scratch2) = scratch1.tmp_vec_znx_dft(module, cols_in, (lhs.size() + digits - 1) / digits);
+        ai_dft.zero();
         {
-            let digits = rhs.digits();
-
             (0..digits).for_each(|di| {
-                // (lhs.size() + di) / digits = (a - (digit - di - 1) + digit - 1) / digits
-                let (mut ai_dft, scratch2) = scratch1.tmp_vec_znx_dft(module, cols_in, (lhs.size() + di) / digits);
+
+                ai_dft.set_size((lhs.size() + di) / digits);
+
+                // Small optimization for digits > 2
+                // VMP produce some error e, and since we aggregate vmp * 2^{di * B}, then
+                // we also aggregate ei * 2^{di * B}, with the largest error being ei * 2^{(digits-1) * B}.
+                // As such we can ignore the last digits-2 limbs safely of the sum of vmp products.
+                // It is possible to further ignore the last digits-1 limbs, but this introduce 
+                // ~0.5 to 1 bit of additional noise, and thus not chosen here to ensure that the same
+                // noise is kept with respect to the ideal functionality.
+                //res_dft.set_size(rhs.size() - ((digits - di) as isize - 2).max(0) as usize);
 
                 (0..cols_in).for_each(|col_i| {
                     module.vec_znx_dft(
                         digits,
-                        digits - 1 - di,
+                        digits - di - 1,
                         &mut ai_dft,
                         col_i,
                         &lhs.data,
@@ -587,15 +595,24 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         }
 
         let cols: usize = rhs.rank() + 1;
+        let digits: usize = rhs.digits();
 
         let (mut res_dft, scratch1) = scratch.tmp_vec_znx_dft(module, cols, rhs.size()); // Todo optimise
+        let (mut a_dft, scratch2) = scratch1.tmp_vec_znx_dft(module, cols, (lhs.size() + digits-1) / digits);
 
         {
-            let digits = rhs.digits();
-
             (0..digits).for_each(|di| {
                 // (lhs.size() + di) / digits = (a - (digit - di - 1) + digit - 1) / digits
-                let (mut a_dft, scratch2) = scratch1.tmp_vec_znx_dft(module, cols, (lhs.size() + di) / digits);
+                a_dft.set_size((lhs.size() + di) / digits);
+
+                // Small optimization for digits > 2
+                // VMP produce some error e, and since we aggregate vmp * 2^{di * B}, then
+                // we also aggregate ei * 2^{di * B}, with the largest error being ei * 2^{(digits-1) * B}.
+                // As such we can ignore the last digits-2 limbs safely of the sum of vmp products.
+                // It is possible to further ignore the last digits-1 limbs, but this introduce 
+                // ~0.5 to 1 bit of additional noise, and thus not chosen here to ensure that the same
+                // noise is kept with respect to the ideal functionality.
+                //res_dft.set_size(rhs.size() - ((digits - di) as isize - 2).max(0) as usize);
 
                 (0..cols).for_each(|col_i| {
                     module.vec_znx_dft(digits, digits - 1 - di, &mut a_dft, col_i, &lhs.data, col_i);

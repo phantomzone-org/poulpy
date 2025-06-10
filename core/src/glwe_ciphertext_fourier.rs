@@ -96,7 +96,7 @@ impl GLWECiphertextFourier<Vec<u8>, FFT64> {
     pub fn external_product_scratch_space(
         module: &Module<FFT64>,
         basek: usize,
-        k_out: usize,
+        _k_out: usize,
         k_in: usize,
         k_ggsw: usize,
         digits: usize,
@@ -197,17 +197,19 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWECiphertextFourier<DataSelf, FFT64>
         }
 
         let cols: usize = rhs.rank() + 1;
+        let digits = rhs.digits();
+
 
         // Space for VMP result in DFT domain and high precision
         let (mut res_dft, scratch1) = scratch.tmp_vec_znx_dft(module, cols, rhs.size());
+        let (mut a_dft, scratch2) = scratch1.tmp_vec_znx_dft(module, cols, (lhs.size() + digits - 1) / digits);
 
         {
-            let digits = rhs.digits();
-
             (0..digits).for_each(|di| {
-                // (lhs.size() + di) / digits = (a - (digit - di - 1) + digit - 1) / digits
-                let (mut a_dft, scratch2) = scratch1.tmp_vec_znx_dft(module, cols, (lhs.size() + di) / digits);
 
+                a_dft.set_size((lhs.size() + di) / digits);
+                res_dft.set_size(rhs.size() - (digits - di - 1));
+                
                 (0..cols).for_each(|col_i| {
                     module.vec_znx_dft_copy(digits, digits - 1 - di, &mut a_dft, col_i, &lhs.data, col_i);
                 });

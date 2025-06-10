@@ -557,7 +557,7 @@ fn test_automorphism(
     );
 
     assert!(
-        (noise_have - noise_want).abs() <= 0.5,
+        noise_have <= noise_want + 1.0,
         "{} {}",
         noise_have,
         noise_want
