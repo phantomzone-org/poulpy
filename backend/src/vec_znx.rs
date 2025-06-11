@@ -23,11 +23,21 @@ use std::{cmp::min, fmt};
 /// Given 3 polynomials (a, b, c) of Zn\[X\], each with 4 columns, then the memory
 /// layout is: `[a0, b0, c0, a1, b1, c1, a2, b2, c2, a3, b3, c3]`, where ai, bi, ci
 /// are small polynomials of Zn\[X\].
+#[derive(PartialEq, Eq)]
 pub struct VecZnx<D> {
     pub data: D,
     pub n: usize,
     pub cols: usize,
     pub size: usize,
+}
+
+impl<D> fmt::Debug for VecZnx<D>
+where
+    D: AsRef<[u8]>,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self)
+    }
 }
 
 impl<D> ZnxInfos for VecZnx<D> {
@@ -129,6 +139,35 @@ impl<D: AsMut<[u8]> + AsRef<[u8]>> VecZnx<D> {
                     });
                 });
             })
+        }
+    }
+
+    pub fn lsh(&mut self, basek: usize, k: usize, scratch: &mut Scratch) {
+        let n: usize = self.n();
+        let cols: usize = self.cols();
+        let size: usize = self.size();
+        let steps: usize = k / basek;
+
+        self.raw_mut().rotate_left(n * steps * cols);
+        (0..cols).for_each(|i| {
+            (size - steps..size).for_each(|j| {
+                self.zero_at(i, j);
+            })
+        });
+
+        let k_rem: usize = k % basek;
+
+        if k_rem != 0 {
+            let shift: usize = i64::BITS as usize - k_rem;
+            let (tmp_bytes, _) = scratch.tmp_slice::<u8>(n * size_of::<i64>());
+            (0..cols).for_each(|i| {
+                (0..steps).for_each(|j| {
+                    self.at_mut(i, j).iter_mut().for_each(|xi| {
+                        *xi <<= shift;
+                    });
+                });
+                normalize(basek, self, i, tmp_bytes);
+            });
         }
     }
 }

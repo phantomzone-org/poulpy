@@ -104,6 +104,12 @@ pub trait VecZnxOps {
     where
         A: VecZnxToMut;
 
+    /// Shifts by k bits all columns of `a`.
+    /// A positive k applies a left shift, while a negative k applies a right shift.
+    fn vec_znx_shift_inplace<A>(&self, basek: usize, k: i64, a: &mut A, scratch: &mut Scratch)
+    where
+        A: VecZnxToMut;
+
     /// Multiplies the selected column of `a` by X^k and stores the result in `res_col` of `res`.
     fn vec_znx_rotate<R, A>(&self, k: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
@@ -179,6 +185,17 @@ impl<B: Backend> VecZnxAlloc for Module<B> {
 }
 
 impl<BACKEND: Backend> VecZnxOps for Module<BACKEND> {
+    fn vec_znx_shift_inplace<A>(&self, basek: usize, k: i64, a: &mut A, scratch: &mut Scratch)
+    where
+        A: VecZnxToMut,
+    {
+        if k > 0 {
+            a.to_mut().lsh(basek, k as usize, scratch);
+        } else {
+            a.to_mut().rsh(basek, k.abs() as usize, scratch);
+        }
+    }
+
     fn vec_znx_copy<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxToMut,

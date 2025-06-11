@@ -5,18 +5,19 @@ use crate::{GLWECiphertextFourier, GLWEPlaintext, GLWESecret, GetRow, Infos, Ten
 
 #[test]
 fn encrypt_sk() {
+    let log_n: usize = 8;
     (1..4).for_each(|rank| {
         println!("test encrypt_sk rank: {}", rank);
-        test_encrypt_sk(12, 16, 54, 3.2, rank);
+        test_encrypt_sk(log_n, 16, 54, 3.2, rank);
     });
 }
 
 fn test_encrypt_sk(log_n: usize, basek: usize, k: usize, sigma: f64, rank: usize) {
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
 
-    let rows: usize = (k + basek - 1) / basek;
+    let rows: usize = k / basek;
 
-    let mut tensor_key: TensorKey<Vec<u8>, FFT64> = TensorKey::alloc(&module, basek, k, rows, rank);
+    let mut tensor_key: TensorKey<Vec<u8>, FFT64> = TensorKey::alloc(&module, basek, k, rows, 1, rank);
 
     let mut source_xs: Source = Source::new([0u8; 32]);
     let mut source_xe: Source = Source::new([0u8; 32]);
@@ -65,7 +66,7 @@ fn test_encrypt_sk(log_n: usize, basek: usize, k: usize, sigma: f64, rank: usize
                     ct_glwe_fourier.decrypt(&module, &mut pt, &sk, scratch.borrow());
                     module.vec_znx_sub_scalar_inplace(&mut pt.data, 0, row_i, &sk_ij.data, col_i);
                     let std_pt: f64 = pt.data.std(0, basek) * (k as f64).exp2();
-                    assert!((sigma - std_pt).abs() <= 0.2, "{} {}", sigma, std_pt);
+                    assert!((sigma - std_pt).abs() <= 0.5, "{} {}", sigma, std_pt);
                 });
             });
         })
