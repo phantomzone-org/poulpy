@@ -2,9 +2,7 @@ use std::marker::PhantomData;
 
 use crate::ffi::vec_znx_dft;
 use crate::znx_base::ZnxInfos;
-use crate::{
-    Backend, DataView, DataViewMut, FFT64, Module, VecZnxBig, ZnxSliceSize, ZnxView, alloc_aligned,
-};
+use crate::{Backend, DataView, DataViewMut, FFT64, Module, VecZnxBig, ZnxSliceSize, ZnxView, alloc_aligned};
 use std::fmt;
 
 pub struct VecZnxDft<D, B: Backend> {
@@ -62,10 +60,14 @@ impl<D: AsRef<[u8]>> ZnxView for VecZnxDft<D, FFT64> {
     type Scalar = f64;
 }
 
-impl<D: AsMut<[u8]> + AsRef<[u8]>> VecZnxDft<D, FFT64>{
-    pub fn set_size(&mut self, size: usize){
+impl<D: AsMut<[u8]> + AsRef<[u8]>> VecZnxDft<D, FFT64> {
+    pub fn set_size(&mut self, size: usize) {
         assert!(size <= self.data.as_ref().len() / (self.n * self.cols()));
         self.size = size
+    }
+
+    pub fn max_size(&mut self) -> usize {
+        self.data.as_ref().len() / (self.n * self.cols)
     }
 }
 

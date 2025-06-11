@@ -199,17 +199,23 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWECiphertextFourier<DataSelf, FFT64>
         let cols: usize = rhs.rank() + 1;
         let digits = rhs.digits();
 
-
         // Space for VMP result in DFT domain and high precision
         let (mut res_dft, scratch1) = scratch.tmp_vec_znx_dft(module, cols, rhs.size());
         let (mut a_dft, scratch2) = scratch1.tmp_vec_znx_dft(module, cols, (lhs.size() + digits - 1) / digits);
 
         {
             (0..digits).for_each(|di| {
-
                 a_dft.set_size((lhs.size() + di) / digits);
-                res_dft.set_size(rhs.size() - (digits - di - 1));
-                
+
+                // Small optimization for digits > 2
+                // VMP produce some error e, and since we aggregate vmp * 2^{di * B}, then
+                // we also aggregate ei * 2^{di * B}, with the largest error being ei * 2^{(digits-1) * B}.
+                // As such we can ignore the last digits-2 limbs safely of the sum of vmp products.
+                // It is possible to further ignore the last digits-1 limbs, but this introduce
+                // ~0.5 to 1 bit of additional noise, and thus not chosen here to ensure that the same
+                // noise is kept with respect to the ideal functionality.
+                res_dft.set_size(rhs.size() - ((digits - di) as isize - 2).max(0) as usize);
+
                 (0..cols).for_each(|col_i| {
                     module.vec_znx_dft_copy(digits, digits - 1 - di, &mut a_dft, col_i, &lhs.data, col_i);
                 });

@@ -1,5 +1,7 @@
 use backend::{
-    AddNormal, Backend, FillUniform, MatZnxDftOps, MatZnxDftScratch, Module, ScalarZnxAlloc, ScalarZnxDftAlloc, ScalarZnxDftOps, Scratch, VecZnx, VecZnxAlloc, VecZnxBig, VecZnxBigAlloc, VecZnxBigOps, VecZnxBigScratch, VecZnxDftAlloc, VecZnxDftOps, VecZnxOps, VecZnxToMut, VecZnxToRef, ZnxZero, FFT64
+    AddNormal, Backend, FFT64, FillUniform, MatZnxDftOps, MatZnxDftScratch, Module, ScalarZnxAlloc, ScalarZnxDftAlloc,
+    ScalarZnxDftOps, Scratch, VecZnx, VecZnxAlloc, VecZnxBig, VecZnxBigAlloc, VecZnxBigOps, VecZnxBigScratch, VecZnxDftAlloc,
+    VecZnxDftOps, VecZnxOps, VecZnxToMut, VecZnxToRef, ZnxZero,
 };
 use sampling::source::Source;
 
@@ -500,17 +502,16 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         ai_dft.zero();
         {
             (0..digits).for_each(|di| {
-
                 ai_dft.set_size((lhs.size() + di) / digits);
 
                 // Small optimization for digits > 2
                 // VMP produce some error e, and since we aggregate vmp * 2^{di * B}, then
                 // we also aggregate ei * 2^{di * B}, with the largest error being ei * 2^{(digits-1) * B}.
                 // As such we can ignore the last digits-2 limbs safely of the sum of vmp products.
-                // It is possible to further ignore the last digits-1 limbs, but this introduce 
+                // It is possible to further ignore the last digits-1 limbs, but this introduce
                 // ~0.5 to 1 bit of additional noise, and thus not chosen here to ensure that the same
                 // noise is kept with respect to the ideal functionality.
-                //res_dft.set_size(rhs.size() - ((digits - di) as isize - 2).max(0) as usize);
+                res_dft.set_size(rhs.size() - ((digits - di) as isize - 2).max(0) as usize);
 
                 (0..cols_in).for_each(|col_i| {
                     module.vec_znx_dft(
@@ -598,7 +599,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         let digits: usize = rhs.digits();
 
         let (mut res_dft, scratch1) = scratch.tmp_vec_znx_dft(module, cols, rhs.size()); // Todo optimise
-        let (mut a_dft, scratch2) = scratch1.tmp_vec_znx_dft(module, cols, (lhs.size() + digits-1) / digits);
+        let (mut a_dft, scratch2) = scratch1.tmp_vec_znx_dft(module, cols, (lhs.size() + digits - 1) / digits);
 
         {
             (0..digits).for_each(|di| {
@@ -609,10 +610,10 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
                 // VMP produce some error e, and since we aggregate vmp * 2^{di * B}, then
                 // we also aggregate ei * 2^{di * B}, with the largest error being ei * 2^{(digits-1) * B}.
                 // As such we can ignore the last digits-2 limbs safely of the sum of vmp products.
-                // It is possible to further ignore the last digits-1 limbs, but this introduce 
+                // It is possible to further ignore the last digits-1 limbs, but this introduce
                 // ~0.5 to 1 bit of additional noise, and thus not chosen here to ensure that the same
                 // noise is kept with respect to the ideal functionality.
-                //res_dft.set_size(rhs.size() - ((digits - di) as isize - 2).max(0) as usize);
+                res_dft.set_size(rhs.size() - ((digits - di) as isize - 2).max(0) as usize);
 
                 (0..cols).for_each(|col_i| {
                     module.vec_znx_dft(digits, digits - 1 - di, &mut a_dft, col_i, &lhs.data, col_i);

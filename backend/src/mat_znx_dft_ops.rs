@@ -660,7 +660,7 @@ mod tests {
 
                     (0..*digits).for_each(|di| {
                         (0..a_cols).for_each(|col_i| {
-                            module.vec_znx_dft(digits - 1 - di, *digits, &mut a_dft, col_i, &a, col_i);
+                            module.vec_znx_dft(*digits, digits - 1 - di, &mut a_dft, col_i, &a, col_i);
                         });
 
                         if di == 0 {

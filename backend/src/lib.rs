@@ -150,7 +150,7 @@ impl Scratch {
         unsafe { &mut *(data as *mut [u8] as *mut Self) }
     }
 
-    pub fn zero(&mut self){
+    pub fn zero(&mut self) {
         self.data.fill(0);
     }
 

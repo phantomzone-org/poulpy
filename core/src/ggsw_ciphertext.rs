@@ -348,7 +348,6 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf, FFT64> {
 
         let (mut tmp_dft_i, scratch1) = scratch.tmp_vec_znx_dft(module, cols, tsk.size());
         let (mut tmp_a, scratch2) = scratch1.tmp_vec_znx_dft(module, 1, (ci_dft.size() + digits - 1) / digits);
-        let res_size: usize = res.to_mut().size();
 
         {
             // Performs a key-switch for each combination of s[i]*s[j], i.e. for a0, a1, a2
@@ -363,23 +362,21 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf, FFT64> {
             // =
             // (-(x0s0 + x1s1 + x2s2) + s0(a0s0 + a1s1 + a2s2), x0, x1, x2)
             (1..cols).for_each(|col_i| {
-            
                 let pmat: &MatZnxDft<DataTsk, FFT64> = &tsk.at(col_i - 1, col_j - 1).0.data; // Selects Enc(s[i]s[j])
 
                 // Extracts a[i] and multipies with Enc(s[i]s[j])
                 (0..digits).for_each(|di| {
-
                     tmp_a.set_size((ci_dft.size() + di) / digits);
 
                     // Small optimization for digits > 2
                     // VMP produce some error e, and since we aggregate vmp * 2^{di * B}, then
                     // we also aggregate ei * 2^{di * B}, with the largest error being ei * 2^{(digits-1) * B}.
                     // As such we can ignore the last digits-2 limbs safely of the sum of vmp products.
-                    // It is possible to further ignore the last digits-1 limbs, but this introduce 
+                    // It is possible to further ignore the last digits-1 limbs, but this introduce
                     // ~0.5 to 1 bit of additional noise, and thus not chosen here to ensure that the same
                     // noise is kept with respect to the ideal functionality.
-                    //tmp_dft_i.set_size(res_size - ((digits - di) as isize - 2).max(0) as usize);
-                    
+                    tmp_dft_i.set_size(tsk.size() - ((digits - di) as isize - 2).max(0) as usize);
+
                     module.vec_znx_dft_copy(digits, digits - 1 - di, &mut tmp_a, 0, ci_dft, col_i);
                     if di == 0 && col_i == 1 {
                         module.vmp_apply(&mut tmp_dft_i, &tmp_a, pmat, scratch2);

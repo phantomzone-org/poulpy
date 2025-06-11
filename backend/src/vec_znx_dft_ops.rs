@@ -163,10 +163,10 @@ impl VecZnxDftOps<FFT64> for Module<FFT64> {
 
         (0..min_steps).for_each(|j| {
             let limb: usize = offset + j * step;
-            if limb < a_ref.size(){
+            if limb < a_ref.size() {
                 res_mut
-                .at_mut(res_col, j)
-                .copy_from_slice(a_ref.at(a_col, limb));
+                    .at_mut(res_col, j)
+                    .copy_from_slice(a_ref.at(a_col, limb));
             }
         });
         (min_steps..res_mut.size()).for_each(|j| {
