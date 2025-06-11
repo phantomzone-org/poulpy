@@ -75,7 +75,7 @@ impl<C: AsRef<[u8]>> GetRow<FFT64> for GLWESwitchingKey<C, FFT64> {
         col_j: usize,
         res: &mut GLWECiphertextFourier<R, FFT64>,
     ) {
-        module.vmp_extract_row(&mut res.data, &self.0.data, row_i, col_j);
+        module.mat_znx_dft_get_row(&mut res.data, &self.0.data, row_i, col_j);
     }
 }
 
@@ -87,7 +87,7 @@ impl<C: AsMut<[u8]> + AsRef<[u8]>> SetRow<FFT64> for GLWESwitchingKey<C, FFT64> 
         col_j: usize,
         a: &GLWECiphertextFourier<R, FFT64>,
     ) {
-        module.vmp_prepare_row(&mut self.0.data, row_i, col_j, &a.data);
+        module.mat_znx_dft_set_row(&mut self.0.data, row_i, col_j, &a.data);
     }
 }
 

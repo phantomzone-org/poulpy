@@ -429,7 +429,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf, FFT64> {
                 module.vec_znx_dft(1, 0, &mut ci_dft, col_i, &tmp_res.data, col_i);
             });
 
-            module.vmp_prepare_row(&mut self.data, row_i, 0, &ci_dft);
+            module.mat_znx_dft_set_row(&mut self.data, row_i, 0, &ci_dft);
 
             // Generates
             //
@@ -525,7 +525,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf, FFT64> {
                 module.vec_znx_dft(1, 0, &mut ci_dft, col_i, &tmp_res.data, col_i);
             });
 
-            module.vmp_prepare_row(&mut self.data, row_i, 0, &ci_dft);
+            module.mat_znx_dft_set_row(&mut self.data, row_i, 0, &ci_dft);
 
             // Generates
             //
@@ -688,7 +688,7 @@ impl<DataSelf: AsRef<[u8]>> GetRow<FFT64> for GGSWCiphertext<DataSelf, FFT64> {
         col_j: usize,
         res: &mut GLWECiphertextFourier<R, FFT64>,
     ) {
-        module.vmp_extract_row(&mut res.data, &self.data, row_i, col_j);
+        module.mat_znx_dft_get_row(&mut res.data, &self.data, row_i, col_j);
     }
 }
 
@@ -700,6 +700,6 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> SetRow<FFT64> for GGSWCiphertext<DataS
         col_j: usize,
         a: &GLWECiphertextFourier<R, FFT64>,
     ) {
-        module.vmp_prepare_row(&mut self.data, row_i, col_j, &a.data);
+        module.mat_znx_dft_set_row(&mut self.data, row_i, col_j, &a.data);
     }
 }
