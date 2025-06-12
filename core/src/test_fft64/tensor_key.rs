@@ -1,7 +1,7 @@
 use backend::{FFT64, Module, ScalarZnxDftOps, ScratchOwned, Stats, VecZnxOps};
 use sampling::source::Source;
 
-use crate::{GLWECiphertextFourier, GLWEPlaintext, GLWESecret, GetRow, Infos, TensorKey};
+use crate::{FourierGLWECiphertext, GLWEPlaintext, GLWESecret, GetRow, Infos, TensorKey};
 
 #[test]
 fn encrypt_sk() {
@@ -42,7 +42,7 @@ fn test_encrypt_sk(log_n: usize, basek: usize, k: usize, sigma: f64, rank: usize
         scratch.borrow(),
     );
 
-    let mut ct_glwe_fourier: GLWECiphertextFourier<Vec<u8>, FFT64> = GLWECiphertextFourier::alloc(&module, basek, k, rank);
+    let mut ct_glwe_fourier: FourierGLWECiphertext<Vec<u8>, FFT64> = FourierGLWECiphertext::alloc(&module, basek, k, rank);
     let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k);
 
     let mut sk_ij = GLWESecret::alloc(&module, 1);

@@ -1,19 +1,16 @@
 pub mod automorphism;
 pub mod blind_rotation;
 pub mod elem;
-pub mod gglwe_ciphertext;
-pub mod ggsw_ciphertext;
-pub mod glwe_ciphertext;
-pub mod glwe_ciphertext_fourier;
-pub mod glwe_ops;
-pub mod glwe_packing;
-pub mod glwe_plaintext;
+pub mod fourier_glwe;
+pub mod gglwe;
+pub mod ggsw;
+pub mod glwe;
 pub mod keys;
 pub mod keyswitch_key;
+pub mod lwe;
 pub mod tensor_key;
 #[cfg(test)]
 mod test_fft64;
-pub mod trace;
 mod utils;
 
 pub use automorphism::*;
@@ -21,20 +18,19 @@ use backend::Backend;
 use backend::FFT64;
 use backend::Module;
 pub use elem::*;
-pub use gglwe_ciphertext::*;
-pub use ggsw_ciphertext::*;
-pub use glwe_ciphertext::*;
-pub use glwe_ciphertext_fourier::*;
-pub use glwe_ops::*;
-pub use glwe_packing::*;
-pub use glwe_plaintext::*;
-pub use keys::*;
+pub use fourier_glwe::*;
+pub use gglwe::*;
+pub use ggsw::*;
+pub use glwe::*;
 pub use keyswitch_key::*;
+pub use lwe::*;
 pub use tensor_key::*;
 
 pub use backend::Scratch;
 pub use backend::ScratchOwned;
 use utils::div_ceil;
+
+use crate::keys::SecretDistribution;
 
 pub(crate) const SIX_SIGMA: f64 = 6.0;
 
@@ -66,7 +62,7 @@ pub trait ScratchCore<B: Backend> {
         basek: usize,
         k: usize,
         rank: usize,
-    ) -> (GLWECiphertextFourier<&mut [u8], B>, &mut Self);
+    ) -> (FourierGLWECiphertext<&mut [u8], B>, &mut Self);
     fn tmp_sk(&mut self, module: &Module<B>, rank: usize) -> (GLWESecret<&mut [u8], B>, &mut Self);
     fn tmp_glwe_pk(
         &mut self,
@@ -183,9 +179,9 @@ impl ScratchCore<FFT64> for Scratch {
         basek: usize,
         k: usize,
         rank: usize,
-    ) -> (GLWECiphertextFourier<&mut [u8], FFT64>, &mut Self) {
+    ) -> (FourierGLWECiphertext<&mut [u8], FFT64>, &mut Self) {
         let (data, scratch) = self.tmp_vec_znx_dft(module, rank + 1, div_ceil(k, basek));
-        (GLWECiphertextFourier { data, basek, k }, scratch)
+        (FourierGLWECiphertext { data, basek, k }, scratch)
     }
 
     fn tmp_glwe_pk(
