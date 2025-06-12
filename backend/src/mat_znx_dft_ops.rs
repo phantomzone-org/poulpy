@@ -3,7 +3,7 @@ use crate::ffi::vmp;
 use crate::znx_base::{ZnxInfos, ZnxView, ZnxViewMut};
 use crate::{
     Backend, FFT64, MatZnxDft, MatZnxDftOwned, MatZnxToMut, MatZnxToRef, Module, ScalarZnxAlloc, ScalarZnxDftAlloc,
-    ScalarZnxDftOps, Scratch, VecZnxDft, VecZnxDftAlloc, VecZnxDftOps, VecZnxDftToMut, VecZnxDftToRef, VecZnxOps, ZnxZero,
+    ScalarZnxDftOps, Scratch, VecZnxDft, VecZnxDftAlloc, VecZnxDftOps, VecZnxDftToMut, VecZnxDftToRef, VecZnxOps,
 };
 
 pub trait MatZnxDftAlloc<B: Backend> {
