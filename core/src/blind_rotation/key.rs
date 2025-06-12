@@ -23,6 +23,10 @@ impl BlindRotationKeyCGGI<FFT64> {
         }
     }
 
+    pub fn generate_from_sk_scratch_space(module: &Module<FFT64>, basek: usize, k: usize, rank: usize) -> usize {
+        GGSWCiphertext::encrypt_sk_scratch_space(module, basek, k, rank)
+    }
+
     pub fn generate_from_sk<DataSkGLWE, DataSkLWE>(
         &mut self,
         module: &Module<FFT64>,

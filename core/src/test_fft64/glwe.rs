@@ -6,7 +6,7 @@ use itertools::izip;
 use sampling::source::Source;
 
 use crate::{
-    GGSWCiphertext, GLWECiphertext, GLWECiphertextFourier, GLWEPlaintext, GLWEPublicKey, GLWESecret, Infos,
+    FourierGLWECiphertext, GGSWCiphertext, GLWECiphertext, GLWEPlaintext, GLWEPublicKey, GLWESecret, Infos,
     automorphism::AutomorphismKey,
     keyswitch_key::GLWESwitchingKey,
     test_fft64::{log2_std_noise_gglwe_product, noise_ggsw_product},
@@ -207,11 +207,11 @@ fn test_encrypt_zero_sk(log_n: usize, basek: usize, k_ct: usize, sigma: f64, ran
     let mut sk: GLWESecret<Vec<u8>, FFT64> = GLWESecret::alloc(&module, rank);
     sk.fill_ternary_prob(&module, 0.5, &mut source_xs);
 
-    let mut ct_dft: GLWECiphertextFourier<Vec<u8>, FFT64> = GLWECiphertextFourier::alloc(&module, basek, k_ct, rank);
+    let mut ct_dft: FourierGLWECiphertext<Vec<u8>, FFT64> = FourierGLWECiphertext::alloc(&module, basek, k_ct, rank);
 
     let mut scratch: ScratchOwned = ScratchOwned::new(
-        GLWECiphertextFourier::decrypt_scratch_space(&module, basek, k_ct)
-            | GLWECiphertextFourier::encrypt_sk_scratch_space(&module, basek, k_ct, rank),
+        FourierGLWECiphertext::decrypt_scratch_space(&module, basek, k_ct)
+            | FourierGLWECiphertext::encrypt_sk_scratch_space(&module, basek, k_ct, rank),
     );
 
     ct_dft.encrypt_zero_sk(

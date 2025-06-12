@@ -2,7 +2,8 @@ use backend::{FFT64, Module, ScalarZnxOps, ScratchOwned, Stats, VecZnxOps};
 use sampling::source::Source;
 
 use crate::{
-    AutomorphismKey, GLWECiphertextFourier, GLWEPlaintext, GLWESecret, GetRow, Infos, test_fft64::log2_std_noise_gglwe_product,
+    AutomorphismKey, FourierGLWECiphertext, GLWEPlaintext, GLWESecret, GetRow, Infos, div_ceil,
+    test_fft64::log2_std_noise_gglwe_product,
 };
 
 #[test]
@@ -69,7 +70,7 @@ fn test_automorphism(
 
     let mut scratch: ScratchOwned = ScratchOwned::new(
         AutomorphismKey::generate_from_sk_scratch_space(&module, basek, k_apply, rank)
-            | GLWECiphertextFourier::decrypt_scratch_space(&module, basek, k_out)
+            | FourierGLWECiphertext::decrypt_scratch_space(&module, basek, k_out)
             | AutomorphismKey::automorphism_scratch_space(&module, basek, k_out, k_in, k_apply, digits, rank),
     );
 
@@ -101,7 +102,7 @@ fn test_automorphism(
     // gglwe_{s1}(s0) (x) gglwe_{s2}(s1) = gglwe_{s2}(s0)
     auto_key_out.automorphism(&module, &auto_key_in, &auto_key_apply, scratch.borrow());
 
-    let mut ct_glwe_dft: GLWECiphertextFourier<Vec<u8>, FFT64> = GLWECiphertextFourier::alloc(&module, basek, k_out, rank);
+    let mut ct_glwe_dft: FourierGLWECiphertext<Vec<u8>, FFT64> = FourierGLWECiphertext::alloc(&module, basek, k_out, rank);
     let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_out);
 
     let mut sk_auto: GLWESecret<Vec<u8>, FFT64> = GLWESecret::alloc(&module, rank);
@@ -183,7 +184,7 @@ fn test_automorphism_inplace(
 
     let mut scratch: ScratchOwned = ScratchOwned::new(
         AutomorphismKey::generate_from_sk_scratch_space(&module, basek, k_apply, rank)
-            | GLWECiphertextFourier::decrypt_scratch_space(&module, basek, k_in)
+            | FourierGLWECiphertext::decrypt_scratch_space(&module, basek, k_in)
             | AutomorphismKey::automorphism_inplace_scratch_space(&module, basek, k_in, k_apply, digits, rank),
     );
 
@@ -215,7 +216,7 @@ fn test_automorphism_inplace(
     // gglwe_{s1}(s0) (x) gglwe_{s2}(s1) = gglwe_{s2}(s0)
     auto_key.automorphism_inplace(&module, &auto_key_apply, scratch.borrow());
 
-    let mut ct_glwe_dft: GLWECiphertextFourier<Vec<u8>, FFT64> = GLWECiphertextFourier::alloc(&module, basek, k_in, rank);
+    let mut ct_glwe_dft: FourierGLWECiphertext<Vec<u8>, FFT64> = FourierGLWECiphertext::alloc(&module, basek, k_in, rank);
     let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_in);
 
     let mut sk_auto: GLWESecret<Vec<u8>, FFT64> = GLWESecret::alloc(&module, rank);

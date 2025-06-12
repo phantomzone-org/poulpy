@@ -6,8 +6,8 @@ use backend::{
 use sampling::source::Source;
 
 use crate::{
-    AutomorphismKey, GLWECiphertext, GLWECiphertextFourier, GLWESecret, GLWESwitchingKey, GetRow, Infos, ScratchCore, SetRow,
-    TensorKey,
+    AutomorphismKey, FourierGLWECiphertext, GLWECiphertext, GLWESecret, GLWESwitchingKey, GetRow, Infos, ScratchCore, SetRow,
+    TensorKey, div_ceil,
 };
 
 pub struct GGSWCiphertext<C, B: Backend> {
@@ -220,9 +220,9 @@ impl GGSWCiphertext<Vec<u8>, FFT64> {
         digits: usize,
         rank: usize,
     ) -> usize {
-        let tmp_in: usize = GLWECiphertextFourier::bytes_of(module, basek, k_in, rank);
-        let tmp_out: usize = GLWECiphertextFourier::bytes_of(module, basek, k_out, rank);
-        let ggsw: usize = GLWECiphertextFourier::external_product_scratch_space(module, basek, k_out, k_in, k_ggsw, digits, rank);
+        let tmp_in: usize = FourierGLWECiphertext::bytes_of(module, basek, k_in, rank);
+        let tmp_out: usize = FourierGLWECiphertext::bytes_of(module, basek, k_out, rank);
+        let ggsw: usize = FourierGLWECiphertext::external_product_scratch_space(module, basek, k_out, k_in, k_ggsw, digits, rank);
         tmp_in + tmp_out + ggsw
     }
 
@@ -234,9 +234,9 @@ impl GGSWCiphertext<Vec<u8>, FFT64> {
         digits: usize,
         rank: usize,
     ) -> usize {
-        let tmp: usize = GLWECiphertextFourier::bytes_of(module, basek, k_out, rank);
+        let tmp: usize = FourierGLWECiphertext::bytes_of(module, basek, k_out, rank);
         let ggsw: usize =
-            GLWECiphertextFourier::external_product_inplace_scratch_space(module, basek, k_out, k_ggsw, digits, rank);
+            FourierGLWECiphertext::external_product_inplace_scratch_space(module, basek, k_out, k_ggsw, digits, rank);
         tmp + ggsw
     }
 }
@@ -686,7 +686,7 @@ impl<DataSelf: AsRef<[u8]>> GetRow<FFT64> for GGSWCiphertext<DataSelf, FFT64> {
         module: &Module<FFT64>,
         row_i: usize,
         col_j: usize,
-        res: &mut GLWECiphertextFourier<R, FFT64>,
+        res: &mut FourierGLWECiphertext<R, FFT64>,
     ) {
         module.mat_znx_dft_get_row(&mut res.data, &self.data, row_i, col_j);
     }
@@ -698,7 +698,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> SetRow<FFT64> for GGSWCiphertext<DataS
         module: &Module<FFT64>,
         row_i: usize,
         col_j: usize,
-        a: &GLWECiphertextFourier<R, FFT64>,
+        a: &FourierGLWECiphertext<R, FFT64>,
     ) {
         module.mat_znx_dft_set_row(&mut self.data, row_i, col_j, &a.data);
     }

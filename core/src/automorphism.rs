@@ -2,7 +2,7 @@ use backend::{Backend, FFT64, MatZnxDft, MatZnxDftOps, Module, ScalarZnxOps, Scr
 use sampling::source::Source;
 
 use crate::{
-    GGLWECiphertext, GGSWCiphertext, GLWECiphertext, GLWECiphertextFourier, GLWESecret, GLWESwitchingKey, GetRow, Infos,
+    FourierGLWECiphertext, GGLWECiphertext, GGSWCiphertext, GLWECiphertext, GLWESecret, GLWESwitchingKey, GetRow, Infos,
     ScratchCore, SetRow,
 };
 
@@ -68,7 +68,7 @@ impl<C: AsRef<[u8]>> GetRow<FFT64> for AutomorphismKey<C, FFT64> {
         module: &Module<FFT64>,
         row_i: usize,
         col_j: usize,
-        res: &mut GLWECiphertextFourier<R, FFT64>,
+        res: &mut FourierGLWECiphertext<R, FFT64>,
     ) {
         module.mat_znx_dft_get_row(&mut res.data, &self.key.0.data, row_i, col_j);
     }
@@ -80,7 +80,7 @@ impl<C: AsMut<[u8]> + AsRef<[u8]>> SetRow<FFT64> for AutomorphismKey<C, FFT64> {
         module: &Module<FFT64>,
         row_i: usize,
         col_j: usize,
-        a: &GLWECiphertextFourier<R, FFT64>,
+        a: &FourierGLWECiphertext<R, FFT64>,
     ) {
         module.mat_znx_dft_set_row(&mut self.key.0.data, row_i, col_j, &a.data);
     }
@@ -127,8 +127,8 @@ impl AutomorphismKey<Vec<u8>, FFT64> {
         digits: usize,
         rank: usize,
     ) -> usize {
-        let tmp_dft: usize = GLWECiphertextFourier::bytes_of(module, basek, k_in, rank);
-        let tmp_idft: usize = GLWECiphertextFourier::bytes_of(module, basek, k_out, rank);
+        let tmp_dft: usize = FourierGLWECiphertext::bytes_of(module, basek, k_in, rank);
+        let tmp_idft: usize = FourierGLWECiphertext::bytes_of(module, basek, k_out, rank);
         let idft: usize = module.vec_znx_idft_tmp_bytes();
         let keyswitch: usize = GLWECiphertext::keyswitch_inplace_scratch_space(module, basek, k_out, k_ksk, digits, rank);
         tmp_dft + tmp_idft + idft + keyswitch

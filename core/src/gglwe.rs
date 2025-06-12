@@ -4,7 +4,7 @@ use backend::{
 };
 use sampling::source::Source;
 
-use crate::{GLWECiphertext, GLWECiphertextFourier, GLWESecret, GetRow, Infos, ScratchCore, SetRow};
+use crate::{FourierGLWECiphertext, GLWECiphertext, GLWESecret, GetRow, Infos, ScratchCore, SetRow, div_ceil};
 
 pub struct GGLWECiphertext<C, B: Backend> {
     pub(crate) data: MatZnxDft<C, B>,
@@ -217,7 +217,7 @@ impl<C: AsRef<[u8]>> GetRow<FFT64> for GGLWECiphertext<C, FFT64> {
         module: &Module<FFT64>,
         row_i: usize,
         col_j: usize,
-        res: &mut GLWECiphertextFourier<R, FFT64>,
+        res: &mut FourierGLWECiphertext<R, FFT64>,
     ) {
         module.mat_znx_dft_get_row(&mut res.data, &self.data, row_i, col_j);
     }
@@ -229,7 +229,7 @@ impl<C: AsMut<[u8]> + AsRef<[u8]>> SetRow<FFT64> for GGLWECiphertext<C, FFT64> {
         module: &Module<FFT64>,
         row_i: usize,
         col_j: usize,
-        a: &GLWECiphertextFourier<R, FFT64>,
+        a: &FourierGLWECiphertext<R, FFT64>,
     ) {
         module.mat_znx_dft_set_row(&mut self.data, row_i, col_j, &a.data);
     }

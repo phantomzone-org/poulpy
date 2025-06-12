@@ -1,7 +1,7 @@
 use backend::{Backend, FFT64, MatZnxDft, MatZnxDftOps, Module, Scratch, ZnxZero};
 use sampling::source::Source;
 
-use crate::{GGLWECiphertext, GGSWCiphertext, GLWECiphertextFourier, GLWESecret, GetRow, Infos, ScratchCore, SetRow};
+use crate::{FourierGLWECiphertext, GGLWECiphertext, GGSWCiphertext, GLWESecret, GetRow, Infos, ScratchCore, SetRow};
 
 pub struct GLWESwitchingKey<Data, B: Backend>(pub(crate) GGLWECiphertext<Data, B>);
 
@@ -73,7 +73,7 @@ impl<C: AsRef<[u8]>> GetRow<FFT64> for GLWESwitchingKey<C, FFT64> {
         module: &Module<FFT64>,
         row_i: usize,
         col_j: usize,
-        res: &mut GLWECiphertextFourier<R, FFT64>,
+        res: &mut FourierGLWECiphertext<R, FFT64>,
     ) {
         module.mat_znx_dft_get_row(&mut res.data, &self.0.data, row_i, col_j);
     }
@@ -85,7 +85,7 @@ impl<C: AsMut<[u8]> + AsRef<[u8]>> SetRow<FFT64> for GLWESwitchingKey<C, FFT64> 
         module: &Module<FFT64>,
         row_i: usize,
         col_j: usize,
-        a: &GLWECiphertextFourier<R, FFT64>,
+        a: &FourierGLWECiphertext<R, FFT64>,
     ) {
         module.mat_znx_dft_set_row(&mut self.0.data, row_i, col_j, &a.data);
     }
@@ -110,10 +110,10 @@ impl GLWESwitchingKey<Vec<u8>, FFT64> {
         rank_in: usize,
         rank_out: usize,
     ) -> usize {
-        let tmp_in: usize = GLWECiphertextFourier::bytes_of(module, basek, k_in, rank_in);
-        let tmp_out: usize = GLWECiphertextFourier::bytes_of(module, basek, k_out, rank_out);
+        let tmp_in: usize = FourierGLWECiphertext::bytes_of(module, basek, k_in, rank_in);
+        let tmp_out: usize = FourierGLWECiphertext::bytes_of(module, basek, k_out, rank_out);
         let ksk: usize =
-            GLWECiphertextFourier::keyswitch_scratch_space(module, basek, k_out, k_in, k_ksk, digits, rank_in, rank_out);
+            FourierGLWECiphertext::keyswitch_scratch_space(module, basek, k_out, k_in, k_ksk, digits, rank_in, rank_out);
         tmp_in + tmp_out + ksk
     }
 
@@ -125,8 +125,8 @@ impl GLWESwitchingKey<Vec<u8>, FFT64> {
         digits: usize,
         rank: usize,
     ) -> usize {
-        let tmp: usize = GLWECiphertextFourier::bytes_of(module, basek, k_out, rank);
-        let ksk: usize = GLWECiphertextFourier::keyswitch_inplace_scratch_space(module, basek, k_out, k_ksk, digits, rank);
+        let tmp: usize = FourierGLWECiphertext::bytes_of(module, basek, k_out, rank);
+        let ksk: usize = FourierGLWECiphertext::keyswitch_inplace_scratch_space(module, basek, k_out, k_ksk, digits, rank);
         tmp + ksk
     }
 
@@ -139,9 +139,9 @@ impl GLWESwitchingKey<Vec<u8>, FFT64> {
         digits: usize,
         rank: usize,
     ) -> usize {
-        let tmp_in: usize = GLWECiphertextFourier::bytes_of(module, basek, k_in, rank);
-        let tmp_out: usize = GLWECiphertextFourier::bytes_of(module, basek, k_out, rank);
-        let ggsw: usize = GLWECiphertextFourier::external_product_scratch_space(module, basek, k_out, k_in, k_ggsw, digits, rank);
+        let tmp_in: usize = FourierGLWECiphertext::bytes_of(module, basek, k_in, rank);
+        let tmp_out: usize = FourierGLWECiphertext::bytes_of(module, basek, k_out, rank);
+        let ggsw: usize = FourierGLWECiphertext::external_product_scratch_space(module, basek, k_out, k_in, k_ggsw, digits, rank);
         tmp_in + tmp_out + ggsw
     }
 
@@ -153,9 +153,9 @@ impl GLWESwitchingKey<Vec<u8>, FFT64> {
         digits: usize,
         rank: usize,
     ) -> usize {
-        let tmp: usize = GLWECiphertextFourier::bytes_of(module, basek, k_out, rank);
+        let tmp: usize = FourierGLWECiphertext::bytes_of(module, basek, k_out, rank);
         let ggsw: usize =
-            GLWECiphertextFourier::external_product_inplace_scratch_space(module, basek, k_out, k_ggsw, digits, rank);
+            FourierGLWECiphertext::external_product_inplace_scratch_space(module, basek, k_out, k_ggsw, digits, rank);
         tmp + ggsw
     }
 }
