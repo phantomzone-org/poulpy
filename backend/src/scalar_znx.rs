@@ -104,12 +104,12 @@ impl<D: AsMut<[u8]> + AsRef<[u8]>> ScalarZnx<D> {
 }
 
 impl<D: From<Vec<u8>>> ScalarZnx<D> {
-    pub(crate) fn bytes_of<S: Sized>(n: usize, cols: usize) -> usize {
-        n * cols * size_of::<S>()
+    pub(crate) fn bytes_of(n: usize, cols: usize) -> usize {
+        n * cols * size_of::<i64>()
     }
 
-    pub(crate) fn new<S: Sized>(n: usize, cols: usize) -> Self {
-        let data = alloc_aligned::<u8>(Self::bytes_of::<S>(n, cols));
+    pub fn new(n: usize, cols: usize) -> Self {
+        let data = alloc_aligned::<u8>(Self::bytes_of(n, cols));
         Self {
             data: data.into(),
             n,
@@ -117,9 +117,9 @@ impl<D: From<Vec<u8>>> ScalarZnx<D> {
         }
     }
 
-    pub(crate) fn new_from_bytes<S: Sized>(n: usize, cols: usize, bytes: impl Into<Vec<u8>>) -> Self {
+    pub(crate) fn new_from_bytes(n: usize, cols: usize, bytes: impl Into<Vec<u8>>) -> Self {
         let data: Vec<u8> = bytes.into();
-        assert!(data.len() == Self::bytes_of::<S>(n, cols));
+        assert!(data.len() == Self::bytes_of(n, cols));
         Self {
             data: data.into(),
             n,
@@ -131,7 +131,7 @@ impl<D: From<Vec<u8>>> ScalarZnx<D> {
 pub type ScalarZnxOwned = ScalarZnx<Vec<u8>>;
 
 pub(crate) fn bytes_of_scalar_znx<B: Backend>(module: &Module<B>, cols: usize) -> usize {
-    ScalarZnxOwned::bytes_of::<i64>(module.n(), cols)
+    ScalarZnxOwned::bytes_of(module.n(), cols)
 }
 
 pub trait ScalarZnxAlloc {
@@ -142,13 +142,13 @@ pub trait ScalarZnxAlloc {
 
 impl<B: Backend> ScalarZnxAlloc for Module<B> {
     fn bytes_of_scalar_znx(&self, cols: usize) -> usize {
-        ScalarZnxOwned::bytes_of::<i64>(self.n(), cols)
+        ScalarZnxOwned::bytes_of(self.n(), cols)
     }
     fn new_scalar_znx(&self, cols: usize) -> ScalarZnxOwned {
-        ScalarZnxOwned::new::<i64>(self.n(), cols)
+        ScalarZnxOwned::new(self.n(), cols)
     }
     fn new_scalar_znx_from_bytes(&self, cols: usize, bytes: Vec<u8>) -> ScalarZnxOwned {
-        ScalarZnxOwned::new_from_bytes::<i64>(self.n(), cols, bytes)
+        ScalarZnxOwned::new_from_bytes(self.n(), cols, bytes)
     }
 }
 
