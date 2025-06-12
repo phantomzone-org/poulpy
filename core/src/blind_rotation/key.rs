@@ -1,7 +1,7 @@
 use backend::{Backend, FFT64, Module, ScalarZnx, ScalarZnxAlloc, ScalarZnxToRef, Scratch, ZnxView, ZnxViewMut};
 use sampling::source::Source;
 
-use crate::{AutomorphismKey, GGSWCiphertext, GLWESecret, SecretDistribution};
+use crate::{AutomorphismKey, GGSWCiphertext, GLWESecret, LWESecret, SecretDistribution};
 
 pub struct BlindRotationKeyCGGI<B: Backend> {
     pub(crate) data: Vec<GGSWCiphertext<Vec<u8>, B>>,
@@ -27,7 +27,7 @@ impl BlindRotationKeyCGGI<FFT64> {
         &mut self,
         module: &Module<FFT64>,
         sk_glwe: &GLWESecret<DataSkGLWE, FFT64>,
-        sk_lwe: &GLWESecret<DataSkLWE, FFT64>,
+        sk_lwe: &LWESecret<DataSkLWE>,
         source_xa: &mut Source,
         source_xe: &mut Source,
         sigma: f64,

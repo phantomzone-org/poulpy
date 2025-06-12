@@ -5,10 +5,10 @@ pub mod gglwe_ciphertext;
 pub mod ggsw_ciphertext;
 pub mod glwe_ciphertext;
 pub mod glwe_ciphertext_fourier;
-pub mod glwe_keys;
 pub mod glwe_ops;
 pub mod glwe_packing;
 pub mod glwe_plaintext;
+pub mod keys;
 pub mod keyswitch_key;
 pub mod tensor_key;
 #[cfg(test)]
@@ -24,10 +24,10 @@ pub use gglwe_ciphertext::*;
 pub use ggsw_ciphertext::*;
 pub use glwe_ciphertext::*;
 pub use glwe_ciphertext_fourier::*;
-pub use glwe_keys::*;
 pub use glwe_ops::*;
 pub use glwe_packing::*;
 pub use glwe_plaintext::*;
+pub use keys::*;
 pub use keyswitch_key::*;
 pub use tensor_key::*;
 
