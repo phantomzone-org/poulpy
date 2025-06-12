@@ -10,8 +10,11 @@ use crate::{GLWECiphertextFourier, Infos};
 pub(crate) enum SecretDistribution {
     TernaryFixed(usize), // Ternary with fixed Hamming weight
     TernaryProb(f64),    // Ternary with probabilistic Hamming weight
+    BinaryFixed(usize),  // Binary with fixed Hamming weight
+    BinaryProb(f64),     // Binary with probabilistic Hamming weight
+    BinaryBlock(usize),  // Binary split in block of size 2^k
     ZERO,                // Debug mod
-    NONE,
+    NONE,                // Unitialized
 }
 
 pub struct GLWESecret<T, B: Backend> {
@@ -63,6 +66,30 @@ impl<S: AsMut<[u8]> + AsRef<[u8]>> GLWESecret<S, FFT64> {
         });
         self.prep_fourier(module);
         self.dist = SecretDistribution::TernaryFixed(hw);
+    }
+
+    pub fn fill_binary_prob(&mut self, module: &Module<FFT64>, prob: f64, source: &mut Source) {
+        (0..self.rank()).for_each(|i| {
+            self.data.fill_binary_prob(i, prob, source);
+        });
+        self.prep_fourier(module);
+        self.dist = SecretDistribution::BinaryProb(prob);
+    }
+
+    pub fn fill_binary_hw(&mut self, module: &Module<FFT64>, hw: usize, source: &mut Source) {
+        (0..self.rank()).for_each(|i| {
+            self.data.fill_binary_hw(i, hw, source);
+        });
+        self.prep_fourier(module);
+        self.dist = SecretDistribution::BinaryFixed(hw);
+    }
+
+    pub fn fill_binary_block(&mut self, module: &Module<FFT64>, block_size: usize, source: &mut Source) {
+        (0..self.rank()).for_each(|i| {
+            self.data.fill_binary_block(i, block_size, source);
+        });
+        self.prep_fourier(module);
+        self.dist = SecretDistribution::BinaryBlock(block_size);
     }
 
     pub fn fill_zero(&mut self) {

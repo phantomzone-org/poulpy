@@ -763,6 +763,9 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
                 ),
                 SecretDistribution::TernaryFixed(hw) => u.fill_ternary_hw(0, hw, source_xu),
                 SecretDistribution::TernaryProb(prob) => u.fill_ternary_prob(0, prob, source_xu),
+                SecretDistribution::BinaryFixed(hw) => u.fill_binary_hw(0, hw, source_xu),
+                SecretDistribution::BinaryProb(prob) => u.fill_binary_prob(0, prob, source_xu),
+                SecretDistribution::BinaryBlock(block_size) => u.fill_binary_block(0, block_size, source_xu),
                 SecretDistribution::ZERO => {}
             }
 

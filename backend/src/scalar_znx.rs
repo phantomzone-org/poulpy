@@ -72,6 +72,31 @@ impl<D: AsMut<[u8]> + AsRef<[u8]>> ScalarZnx<D> {
             .for_each(|x: &mut i64| *x = (((source.next_u32() & 1) as i64) << 1) - 1);
         self.at_mut(col, 0).shuffle(source);
     }
+
+    pub fn fill_binary_prob(&mut self, col: usize, prob: f64, source: &mut Source) {
+        let choices: [i64; 2] = [0, 1];
+        let weights: [f64; 2] = [1.0 - prob, prob];
+        let dist: WeightedIndex<f64> = WeightedIndex::new(&weights).unwrap();
+        self.at_mut(col, 0)
+            .iter_mut()
+            .for_each(|x: &mut i64| *x = choices[dist.sample(source)]);
+    }
+
+    pub fn fill_binary_hw(&mut self, col: usize, hw: usize, source: &mut Source) {
+        assert!(hw <= self.n());
+        self.at_mut(col, 0)[..hw]
+            .iter_mut()
+            .for_each(|x: &mut i64| *x = (source.next_u32() & 1) as i64);
+        self.at_mut(col, 0).shuffle(source);
+    }
+
+    pub fn fill_binary_block(&mut self, col: usize, block_size: usize, source: &mut Source) {
+        assert!(self.n() % block_size == 0);
+        for chunk in self.at_mut(col, 0).chunks_mut(block_size) {
+            chunk[0] = 1;
+            chunk.shuffle(source);
+        }
+    }
 }
 
 impl<D: From<Vec<u8>>> ScalarZnx<D> {
