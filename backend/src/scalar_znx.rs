@@ -91,10 +91,14 @@ impl<D: AsMut<[u8]> + AsRef<[u8]>> ScalarZnx<D> {
     }
 
     pub fn fill_binary_block(&mut self, col: usize, block_size: usize, source: &mut Source) {
-        assert!(self.n() % block_size == 0);
-        for chunk in self.at_mut(col, 0).chunks_mut(block_size) {
-            chunk[0] = 1;
-            chunk.shuffle(source);
+        assert!(block_size & (block_size - 1) == 0);
+        let max_idx: u64 = (block_size + 1) as u64;
+        let mask_idx: u64 = (2 * block_size - 1) as u64;
+        for block in self.at_mut(col, 0).chunks_mut(block_size) {
+            let idx: usize = source.next_u64n(max_idx, mask_idx) as usize;
+            if idx != block_size {
+                block[idx] = 1;
+            }
         }
     }
 }
