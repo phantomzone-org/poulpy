@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use backend::{FFT64, Module, Scratch};
 
-use crate::{AutomorphismKey, GLWECiphertext, GLWECiphertextToMut, GLWECiphertextToRef, GLWEOps, Infos, SetMetaData};
+use crate::{GLWEAutomorphismKey, GLWECiphertext, GLWECiphertextToMut, GLWECiphertextToRef, GLWEOps, Infos, SetMetaData};
 
 impl GLWECiphertext<Vec<u8>> {
     pub fn trace_galois_elements(module: &Module<FFT64>) -> Vec<i64> {
@@ -51,7 +51,7 @@ where
         start: usize,
         end: usize,
         lhs: &GLWECiphertext<DataLhs>,
-        auto_keys: &HashMap<i64, AutomorphismKey<DataAK, FFT64>>,
+        auto_keys: &HashMap<i64, GLWEAutomorphismKey<DataAK, FFT64>>,
         scratch: &mut Scratch,
     ) where
         GLWECiphertext<DataLhs>: GLWECiphertextToRef + Infos,
@@ -65,7 +65,7 @@ where
         module: &Module<FFT64>,
         start: usize,
         end: usize,
-        auto_keys: &HashMap<i64, AutomorphismKey<DataAK, FFT64>>,
+        auto_keys: &HashMap<i64, GLWEAutomorphismKey<DataAK, FFT64>>,
         scratch: &mut Scratch,
     ) {
         (start..end).for_each(|i| {

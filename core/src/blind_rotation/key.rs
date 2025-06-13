@@ -1,16 +1,16 @@
 use backend::{Backend, FFT64, Module, ScalarZnx, ScalarZnxAlloc, ScalarZnxToRef, Scratch, ZnxView, ZnxViewMut};
 use sampling::source::Source;
 
-use crate::{AutomorphismKey, GGSWCiphertext, GLWESecret, LWESecret, SecretDistribution};
+use crate::{Distribution, FourierGLWESecret, GGSWCiphertext, GLWEAutomorphismKey, LWESecret};
 
 pub struct BlindRotationKeyCGGI<B: Backend> {
     pub(crate) data: Vec<GGSWCiphertext<Vec<u8>, B>>,
-    pub(crate) dist: SecretDistribution,
+    pub(crate) dist: Distribution,
 }
 
 pub struct BlindRotationKeyFHEW<B: Backend> {
     pub(crate) data: Vec<GGSWCiphertext<Vec<u8>, B>>,
-    pub(crate) auto: Vec<AutomorphismKey<Vec<u8>, B>>,
+    pub(crate) auto: Vec<GLWEAutomorphismKey<Vec<u8>, B>>,
 }
 
 impl BlindRotationKeyCGGI<FFT64> {
@@ -19,7 +19,7 @@ impl BlindRotationKeyCGGI<FFT64> {
         (0..lwe_degree).for_each(|_| data.push(GGSWCiphertext::alloc(module, basek, k, rows, 1, rank)));
         Self {
             data,
-            dist: SecretDistribution::NONE,
+            dist: Distribution::NONE,
         }
     }
 
@@ -30,7 +30,7 @@ impl BlindRotationKeyCGGI<FFT64> {
     pub fn generate_from_sk<DataSkGLWE, DataSkLWE>(
         &mut self,
         module: &Module<FFT64>,
-        sk_glwe: &GLWESecret<DataSkGLWE, FFT64>,
+        sk_glwe: &FourierGLWESecret<DataSkGLWE, FFT64>,
         sk_lwe: &LWESecret<DataSkLWE>,
         source_xa: &mut Source,
         source_xe: &mut Source,
@@ -46,7 +46,7 @@ impl BlindRotationKeyCGGI<FFT64> {
             assert_eq!(sk_glwe.n(), module.n());
             assert_eq!(sk_glwe.rank(), self.data[0].rank());
             match sk_lwe.dist {
-                SecretDistribution::BinaryBlock(_) | SecretDistribution::BinaryFixed(_) | SecretDistribution::BinaryProb(_) => {}
+                Distribution::BinaryBlock(_) | Distribution::BinaryFixed(_) | Distribution::BinaryProb(_) => {}
                 _ => panic!("invalid GLWESecret distribution: must be BinaryBlock, BinaryFixed or BinaryProb"),
             }
         }

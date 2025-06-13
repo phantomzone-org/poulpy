@@ -1,5 +1,5 @@
 #[derive(Clone, Copy, Debug)]
-pub(crate) enum SecretDistribution {
+pub(crate) enum Distribution {
     TernaryFixed(usize), // Ternary with fixed Hamming weight
     TernaryProb(f64),    // Ternary with probabilistic Hamming weight
     BinaryFixed(usize),  // Binary with fixed Hamming weight

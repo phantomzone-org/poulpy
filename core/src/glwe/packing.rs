@@ -1,4 +1,4 @@
-use crate::{AutomorphismKey, GLWECiphertext, GLWEOps, Infos, ScratchCore};
+use crate::{GLWEAutomorphismKey, GLWECiphertext, GLWEOps, Infos, ScratchCore};
 use std::collections::HashMap;
 
 use backend::{FFT64, Module, Scratch};
@@ -7,7 +7,7 @@ use backend::{FFT64, Module, Scratch};
 /// with constant memory of Log(N) ciphertexts.
 /// Main difference with usual GLWE packing is that
 /// the output is bit-reversed.
-pub struct StreamPacker {
+pub struct GLWEPacker {
     accumulators: Vec<Accumulator>,
     log_batch: usize,
     counter: usize,
@@ -39,7 +39,7 @@ impl Accumulator {
     }
 }
 
-impl StreamPacker {
+impl GLWEPacker {
     /// Instantiates a new [StreamPacker].
     ///
     /// #Arguments
@@ -98,7 +98,7 @@ impl StreamPacker {
         module: &Module<FFT64>,
         res: &mut Vec<GLWECiphertext<Vec<u8>>>,
         a: Option<&GLWECiphertext<DataA>>,
-        auto_keys: &HashMap<i64, AutomorphismKey<DataAK, FFT64>>,
+        auto_keys: &HashMap<i64, GLWEAutomorphismKey<DataAK, FFT64>>,
         scratch: &mut Scratch,
     ) {
         pack_core(
@@ -125,7 +125,7 @@ impl StreamPacker {
         &mut self,
         module: &Module<FFT64>,
         res: &mut Vec<GLWECiphertext<Vec<u8>>>,
-        auto_keys: &HashMap<i64, AutomorphismKey<DataAK, FFT64>>,
+        auto_keys: &HashMap<i64, GLWEAutomorphismKey<DataAK, FFT64>>,
         scratch: &mut Scratch,
     ) {
         if self.counter != 0 {
@@ -151,7 +151,7 @@ fn pack_core<D: AsRef<[u8]>, DataAK: AsRef<[u8]>>(
     a: Option<&GLWECiphertext<D>>,
     accumulators: &mut [Accumulator],
     i: usize,
-    auto_keys: &HashMap<i64, AutomorphismKey<DataAK, FFT64>>,
+    auto_keys: &HashMap<i64, GLWEAutomorphismKey<DataAK, FFT64>>,
     scratch: &mut Scratch,
 ) {
     let log_n: usize = module.log_n();
@@ -215,7 +215,7 @@ fn combine<D: AsRef<[u8]>, DataAK: AsRef<[u8]>>(
     acc: &mut Accumulator,
     b: Option<&GLWECiphertext<D>>,
     i: usize,
-    auto_keys: &HashMap<i64, AutomorphismKey<DataAK, FFT64>>,
+    auto_keys: &HashMap<i64, GLWEAutomorphismKey<DataAK, FFT64>>,
     scratch: &mut Scratch,
 ) {
     let log_n: usize = module.log_n();
