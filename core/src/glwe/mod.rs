@@ -29,3 +29,6 @@ pub use public_key::*;
 pub use secret::*;
 #[allow(unused_imports)]
 pub use trace::*;
+
+#[cfg(test)]
+mod test_fft64;
