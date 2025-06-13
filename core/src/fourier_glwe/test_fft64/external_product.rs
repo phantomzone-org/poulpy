@@ -1,9 +1,9 @@
+use crate::{
+    FourierGLWECiphertext, FourierGLWESecret, GGSWCiphertext, GLWECiphertext, GLWEOps, GLWEPlaintext, GLWESecret, Infos,
+    div_ceil, noise::noise_ggsw_product,
+};
 use backend::{FFT64, FillUniform, Module, ScalarZnx, ScalarZnxAlloc, ScratchOwned, Stats, VecZnxOps, ZnxViewMut};
 use sampling::source::Source;
-
-use crate::{
-    FourierGLWESecret, GGSWCiphertext, GLWECiphertext, GLWEPlaintext, GLWESecret, Infos, div_ceil, noise::noise_ggsw_product,
-};
 
 #[test]
 fn apply() {
@@ -14,9 +14,9 @@ fn apply() {
     (1..4).for_each(|rank| {
         (1..digits + 1).for_each(|di| {
             let k_ggsw: usize = k_in + basek * di;
-            let k_out: usize = k_ggsw; // Better capture noise
             println!("test external_product digits: {} rank: {}", di, rank);
-            test_external_product(log_n, basek, k_out, k_in, k_ggsw, di, rank, 3.2);
+            let k_out: usize = k_ggsw; // Better capture noise.
+            test_apply(log_n, basek, k_out, k_in, k_ggsw, di, rank, 3.2);
         });
     });
 }
@@ -26,33 +26,26 @@ fn apply_inplace() {
     let log_n: usize = 8;
     let basek: usize = 12;
     let k_ct: usize = 60;
-    let digits: usize = k_ct.div_ceil(basek);
+    let digits: usize = div_ceil(k_ct, basek);
     (1..4).for_each(|rank| {
         (1..digits + 1).for_each(|di| {
             let k_ggsw: usize = k_ct + basek * di;
             println!("test external_product digits: {} rank: {}", di, rank);
-            test_external_product_inplace(log_n, basek, k_ct, k_ggsw, di, rank, 3.2);
+            test_apply_inplace(log_n, basek, k_ct, k_ggsw, di, rank, 3.2);
         });
     });
 }
 
-fn test_external_product(
-    log_n: usize,
-    basek: usize,
-    k_out: usize,
-    k_in: usize,
-    k_ggsw: usize,
-    digits: usize,
-    rank: usize,
-    sigma: f64,
-) {
+fn test_apply(log_n: usize, basek: usize, k_out: usize, k_in: usize, k_ggsw: usize, digits: usize, rank: usize, sigma: f64) {
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
 
-    let rows: usize = k_in.div_ceil(basek * digits);
+    let rows: usize = div_ceil(k_in, digits * basek);
 
     let mut ct_ggsw: GGSWCiphertext<Vec<u8>, FFT64> = GGSWCiphertext::alloc(&module, basek, k_ggsw, rows, digits, rank);
-    let mut ct_glwe_in: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_in, rank);
-    let mut ct_glwe_out: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_out, rank);
+    let mut ct_in: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_in, rank);
+    let mut ct_out: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_out, rank);
+    let mut ct_in_dft: FourierGLWECiphertext<Vec<u8>, FFT64> = FourierGLWECiphertext::alloc(&module, basek, k_in, rank);
+    let mut ct_out_dft: FourierGLWECiphertext<Vec<u8>, FFT64> = FourierGLWECiphertext::alloc(&module, basek, k_out, rank);
     let mut pt_rgsw: ScalarZnx<Vec<u8>> = module.new_scalar_znx(1);
     let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_in);
     let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_out);
@@ -68,19 +61,20 @@ fn test_external_product(
 
     pt_want.data.at_mut(0, 0)[1] = 1;
 
-    let k: usize = 1;
+    let k: i64 = 1;
 
-    pt_rgsw.raw_mut()[k] = 1; // X^{k}
+    pt_rgsw.raw_mut()[0] = 1; // X^{0}
+    module.vec_znx_rotate_inplace(k, &mut pt_rgsw, 0); // X^{k}
 
     let mut scratch: ScratchOwned = ScratchOwned::new(
         GGSWCiphertext::encrypt_sk_scratch_space(&module, basek, ct_ggsw.k(), rank)
-            | GLWECiphertext::decrypt_scratch_space(&module, basek, ct_glwe_out.k())
-            | GLWECiphertext::encrypt_sk_scratch_space(&module, basek, ct_glwe_in.k())
-            | GLWECiphertext::external_product_scratch_space(
+            | GLWECiphertext::decrypt_scratch_space(&module, basek, ct_out.k())
+            | GLWECiphertext::encrypt_sk_scratch_space(&module, basek, ct_in.k())
+            | FourierGLWECiphertext::external_product_scratch_space(
                 &module,
                 basek,
-                ct_glwe_out.k(),
-                ct_glwe_in.k(),
+                ct_out.k(),
+                ct_in.k(),
                 ct_ggsw.k(),
                 digits,
                 rank,
@@ -101,7 +95,7 @@ fn test_external_product(
         scratch.borrow(),
     );
 
-    ct_glwe_in.encrypt_sk(
+    ct_in.encrypt_sk(
         &module,
         &pt_want,
         &sk_dft,
@@ -111,13 +105,14 @@ fn test_external_product(
         scratch.borrow(),
     );
 
-    ct_glwe_out.external_product(&module, &ct_glwe_in, &ct_ggsw, scratch.borrow());
+    ct_in.dft(&module, &mut ct_in_dft);
+    ct_out_dft.external_product(&module, &ct_in_dft, &ct_ggsw, scratch.borrow());
+    ct_out_dft.idft(&module, &mut ct_out, scratch.borrow());
 
-    ct_glwe_out.decrypt(&module, &mut pt_have, &sk_dft, scratch.borrow());
+    ct_out.decrypt(&module, &mut pt_have, &sk_dft, scratch.borrow());
 
-    module.vec_znx_rotate_inplace(k as i64, &mut pt_want.data, 0);
-
-    module.vec_znx_sub_ab_inplace(&mut pt_have.data, 0, &pt_want.data, 0);
+    pt_want.rotate_inplace(&module, k);
+    pt_have.sub_inplace_ab(&module, &pt_want);
 
     let noise_have: f64 = pt_have.data.std(0, basek).log2();
 
@@ -150,12 +145,13 @@ fn test_external_product(
     );
 }
 
-fn test_external_product_inplace(log_n: usize, basek: usize, k_ct: usize, k_ggsw: usize, digits: usize, rank: usize, sigma: f64) {
+fn test_apply_inplace(log_n: usize, basek: usize, k_ct: usize, k_ggsw: usize, digits: usize, rank: usize, sigma: f64) {
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
-    let rows: usize = k_ct.div_ceil(basek * digits);
+    let rows: usize = div_ceil(k_ct, digits * basek);
 
     let mut ct_ggsw: GGSWCiphertext<Vec<u8>, FFT64> = GGSWCiphertext::alloc(&module, basek, k_ggsw, rows, digits, rank);
-    let mut ct_glwe: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_ct, rank);
+    let mut ct: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_ct, rank);
+    let mut ct_rlwe_dft: FourierGLWECiphertext<Vec<u8>, FFT64> = FourierGLWECiphertext::alloc(&module, basek, k_ct, rank);
     let mut pt_rgsw: ScalarZnx<Vec<u8>> = module.new_scalar_znx(1);
     let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_ct);
     let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_ct);
@@ -171,15 +167,16 @@ fn test_external_product_inplace(log_n: usize, basek: usize, k_ct: usize, k_ggsw
 
     pt_want.data.at_mut(0, 0)[1] = 1;
 
-    let k: usize = 1;
+    let k: i64 = 1;
 
-    pt_rgsw.raw_mut()[k] = 1; // X^{k}
+    pt_rgsw.raw_mut()[0] = 1; // X^{0}
+    module.vec_znx_rotate_inplace(k, &mut pt_rgsw, 0); // X^{k}
 
     let mut scratch: ScratchOwned = ScratchOwned::new(
         GGSWCiphertext::encrypt_sk_scratch_space(&module, basek, ct_ggsw.k(), rank)
-            | GLWECiphertext::decrypt_scratch_space(&module, basek, ct_glwe.k())
-            | GLWECiphertext::encrypt_sk_scratch_space(&module, basek, ct_glwe.k())
-            | GLWECiphertext::external_product_inplace_scratch_space(&module, basek, ct_glwe.k(), ct_ggsw.k(), digits, rank),
+            | GLWECiphertext::decrypt_scratch_space(&module, basek, ct.k())
+            | GLWECiphertext::encrypt_sk_scratch_space(&module, basek, ct.k())
+            | FourierGLWECiphertext::external_product_inplace_scratch_space(&module, basek, ct.k(), ct_ggsw.k(), digits, rank),
     );
 
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(&module, rank);
@@ -196,7 +193,7 @@ fn test_external_product_inplace(log_n: usize, basek: usize, k_ct: usize, k_ggsw
         scratch.borrow(),
     );
 
-    ct_glwe.encrypt_sk(
+    ct.encrypt_sk(
         &module,
         &pt_want,
         &sk_dft,
@@ -206,13 +203,14 @@ fn test_external_product_inplace(log_n: usize, basek: usize, k_ct: usize, k_ggsw
         scratch.borrow(),
     );
 
-    ct_glwe.external_product_inplace(&module, &ct_ggsw, scratch.borrow());
+    ct.dft(&module, &mut ct_rlwe_dft);
+    ct_rlwe_dft.external_product_inplace(&module, &ct_ggsw, scratch.borrow());
+    ct_rlwe_dft.idft(&module, &mut ct, scratch.borrow());
 
-    ct_glwe.decrypt(&module, &mut pt_have, &sk_dft, scratch.borrow());
+    ct.decrypt(&module, &mut pt_have, &sk_dft, scratch.borrow());
 
-    module.vec_znx_rotate_inplace(k as i64, &mut pt_want.data, 0);
-
-    module.vec_znx_sub_ab_inplace(&mut pt_have.data, 0, &pt_want.data, 0);
+    pt_want.rotate_inplace(&module, k);
+    pt_have.sub_inplace_ab(&module, &pt_want);
 
     let noise_have: f64 = pt_have.data.std(0, basek).log2();
 
@@ -243,4 +241,6 @@ fn test_external_product_inplace(log_n: usize, basek: usize, k_ct: usize, k_ggsw
         noise_have,
         noise_want
     );
+
+    println!("{} {}", noise_have, noise_want);
 }

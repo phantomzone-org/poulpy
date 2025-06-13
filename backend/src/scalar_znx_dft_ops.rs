@@ -29,7 +29,7 @@ pub trait ScalarZnxDftOps<BACKEND: Backend> {
         R: VecZnxDftToMut<BACKEND>,
         A: ScalarZnxDftToRef<BACKEND>;
 
-    fn svp_idft<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch)
+    fn scalar_znx_idft<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch)
     where
         R: ScalarZnxToMut,
         A: ScalarZnxDftToRef<BACKEND>;
@@ -50,7 +50,7 @@ impl<B: Backend> ScalarZnxDftAlloc<B> for Module<B> {
 }
 
 impl ScalarZnxDftOps<FFT64> for Module<FFT64> {
-    fn svp_idft<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch)
+    fn scalar_znx_idft<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch)
     where
         R: ScalarZnxToMut,
         A: ScalarZnxDftToRef<FFT64>,

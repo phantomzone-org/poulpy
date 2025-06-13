@@ -11,24 +11,13 @@ pub mod public_key;
 pub mod secret;
 pub mod trace;
 
-#[allow(unused_imports)]
-pub use automorphism::*;
-pub use ciphertext::*;
-#[allow(unused_imports)]
-pub use decryption::*;
-#[allow(unused_imports)]
-pub use encryption::*;
-#[allow(unused_imports)]
-pub use external_product::*;
-#[allow(unused_imports)]
-pub use keyswitch::*;
-pub use ops::*;
-pub use packing::*;
-pub use plaintext::*;
-pub use public_key::*;
-pub use secret::*;
-#[allow(unused_imports)]
-pub use trace::*;
+pub use ciphertext::GLWECiphertext;
+pub(crate) use ciphertext::{GLWECiphertextToMut, GLWECiphertextToRef};
+pub use ops::GLWEOps;
+pub use packing::GLWEPacker;
+pub use plaintext::GLWEPlaintext;
+pub use public_key::GLWEPublicKey;
+pub use secret::GLWESecret;
 
 #[cfg(test)]
 mod test_fft64;

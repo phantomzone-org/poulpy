@@ -1,9 +1,4 @@
-mod automorphism_key;
-mod gglwe;
-mod ggsw;
-mod glwe_fourier;
-mod tensor_key;
-
+#[allow(dead_code)]
 pub(crate) fn var_noise_gglwe_product(
     n: f64,
     basek: usize,
@@ -34,6 +29,7 @@ pub(crate) fn var_noise_gglwe_product(
     noise
 }
 
+#[allow(dead_code)]
 pub(crate) fn log2_std_noise_gglwe_product(
     n: f64,
     basek: usize,
@@ -62,6 +58,7 @@ pub(crate) fn log2_std_noise_gglwe_product(
     noise.log2().min(-1.0).max(-(a_logq as f64)) // max noise is [-2^{-1}, 2^{-1}]
 }
 
+#[allow(dead_code)]
 pub(crate) fn noise_ggsw_product(
     n: f64,
     basek: usize,
@@ -94,6 +91,7 @@ pub(crate) fn noise_ggsw_product(
     noise.log2().min(-1.0) // max noise is [-2^{-1}, 2^{-1}]
 }
 
+#[allow(dead_code)]
 pub(crate) fn noise_ggsw_keyswitch(
     n: f64,
     basek: usize,

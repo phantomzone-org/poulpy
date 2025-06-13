@@ -1,11 +1,11 @@
-use crate::{AutomorphismKey, GLWECiphertext, GLWEOps, GLWEPlaintext, GLWESecret, StreamPacker};
+use crate::{FourierGLWESecret, GLWEAutomorphismKey, GLWECiphertext, GLWEOps, GLWEPacker, GLWEPlaintext, GLWESecret, div_ceil};
 use std::collections::HashMap;
 
 use backend::{Encoding, FFT64, Module, ScratchOwned, Stats};
 use sampling::source::Source;
 
 #[test]
-fn packing() {
+fn apply() {
     let log_n: usize = 5;
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
 
@@ -26,12 +26,13 @@ fn packing() {
     let mut scratch: ScratchOwned = ScratchOwned::new(
         GLWECiphertext::encrypt_sk_scratch_space(&module, basek, k_ct)
             | GLWECiphertext::decrypt_scratch_space(&module, basek, k_ct)
-            | AutomorphismKey::generate_from_sk_scratch_space(&module, basek, k_ksk, rank)
-            | StreamPacker::scratch_space(&module, basek, k_ct, k_ksk, digits, rank),
+            | GLWEAutomorphismKey::generate_from_sk_scratch_space(&module, basek, k_ksk, rank)
+            | GLWEPacker::scratch_space(&module, basek, k_ct, k_ksk, digits, rank),
     );
 
-    let mut sk: GLWESecret<Vec<u8>, FFT64> = GLWESecret::alloc(&module, rank);
-    sk.fill_ternary_prob(&module, 0.5, &mut source_xs);
+    let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(&module, rank);
+    sk.fill_ternary_prob(0.5, &mut source_xs);
+    let sk_dft: FourierGLWESecret<Vec<u8>, FFT64> = FourierGLWESecret::from(&module, &sk);
 
     let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_ct);
     let mut data: Vec<i64> = vec![0i64; module.n()];
@@ -40,11 +41,11 @@ fn packing() {
     });
     pt.data.encode_vec_i64(0, basek, pt_k, &data, 32);
 
-    let gal_els: Vec<i64> = StreamPacker::galois_elements(&module);
+    let gal_els: Vec<i64> = GLWEPacker::galois_elements(&module);
 
-    let mut auto_keys: HashMap<i64, AutomorphismKey<Vec<u8>, FFT64>> = HashMap::new();
+    let mut auto_keys: HashMap<i64, GLWEAutomorphismKey<Vec<u8>, FFT64>> = HashMap::new();
     gal_els.iter().for_each(|gal_el| {
-        let mut key: AutomorphismKey<Vec<u8>, FFT64> = AutomorphismKey::alloc(&module, basek, k_ksk, rows, digits, rank);
+        let mut key: GLWEAutomorphismKey<Vec<u8>, FFT64> = GLWEAutomorphismKey::alloc(&module, basek, k_ksk, rows, digits, rank);
         key.generate_from_sk(
             &module,
             *gal_el,
@@ -59,14 +60,14 @@ fn packing() {
 
     let log_batch: usize = 0;
 
-    let mut packer: StreamPacker = StreamPacker::new(&module, log_batch, basek, k_ct, rank);
+    let mut packer: GLWEPacker = GLWEPacker::new(&module, log_batch, basek, k_ct, rank);
 
     let mut ct: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_ct, rank);
 
     ct.encrypt_sk(
         &module,
         &pt,
-        &sk,
+        &sk_dft,
         &mut source_xa,
         &mut source_xe,
         sigma,
@@ -79,7 +80,7 @@ fn packing() {
         ct.encrypt_sk(
             &module,
             &pt,
-            &sk,
+            &sk_dft,
             &mut source_xa,
             &mut source_xe,
             sigma,
@@ -115,7 +116,7 @@ fn packing() {
         });
         pt_want.data.encode_vec_i64(0, basek, pt_k, &data, 32);
 
-        res_i.decrypt(&module, &mut pt, &sk, scratch.borrow());
+        res_i.decrypt(&module, &mut pt, &sk_dft, scratch.borrow());
 
         if i & 1 == 0 {
             pt.sub_inplace_ab(&module, &pt_want);

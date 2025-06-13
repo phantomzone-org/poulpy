@@ -2,8 +2,8 @@ use backend::{FFT64, Module, ScalarZnxOps, ScratchOwned, Stats, VecZnxOps};
 use sampling::source::Source;
 
 use crate::{
-    AutomorphismKey, FourierGLWECiphertext, GLWEPlaintext, GLWESecret, GetRow, Infos, div_ceil,
-    test_fft64::log2_std_noise_gglwe_product,
+    FourierGLWECiphertext, FourierGLWESecret, GLWEAutomorphismKey, GLWEPlaintext, GLWESecret, GetRow, Infos, div_ceil,
+    noise::log2_std_noise_gglwe_product,
 };
 
 #[test]
@@ -58,24 +58,25 @@ fn test_automorphism(
     let rows_in: usize = k_in / (basek * digits);
     let rows_apply: usize = k_in.div_ceil(basek * digits);
 
-    let mut auto_key_in: AutomorphismKey<Vec<u8>, FFT64> = AutomorphismKey::alloc(&module, basek, k_in, rows_in, digits_in, rank);
-    let mut auto_key_out: AutomorphismKey<Vec<u8>, FFT64> =
-        AutomorphismKey::alloc(&module, basek, k_out, rows_in, digits_in, rank);
-    let mut auto_key_apply: AutomorphismKey<Vec<u8>, FFT64> =
-        AutomorphismKey::alloc(&module, basek, k_apply, rows_apply, digits, rank);
+    let mut auto_key_in: GLWEAutomorphismKey<Vec<u8>, FFT64> =
+        GLWEAutomorphismKey::alloc(&module, basek, k_in, rows_in, digits_in, rank);
+    let mut auto_key_out: GLWEAutomorphismKey<Vec<u8>, FFT64> =
+        GLWEAutomorphismKey::alloc(&module, basek, k_out, rows_in, digits_in, rank);
+    let mut auto_key_apply: GLWEAutomorphismKey<Vec<u8>, FFT64> =
+        GLWEAutomorphismKey::alloc(&module, basek, k_apply, rows_apply, digits, rank);
 
     let mut source_xs: Source = Source::new([0u8; 32]);
     let mut source_xe: Source = Source::new([0u8; 32]);
     let mut source_xa: Source = Source::new([0u8; 32]);
 
     let mut scratch: ScratchOwned = ScratchOwned::new(
-        AutomorphismKey::generate_from_sk_scratch_space(&module, basek, k_apply, rank)
+        GLWEAutomorphismKey::generate_from_sk_scratch_space(&module, basek, k_apply, rank)
             | FourierGLWECiphertext::decrypt_scratch_space(&module, basek, k_out)
-            | AutomorphismKey::automorphism_scratch_space(&module, basek, k_out, k_in, k_apply, digits, rank),
+            | GLWEAutomorphismKey::automorphism_scratch_space(&module, basek, k_out, k_in, k_apply, digits, rank),
     );
 
-    let mut sk: GLWESecret<Vec<u8>, FFT64> = GLWESecret::alloc(&module, rank);
-    sk.fill_ternary_prob(&module, 0.5, &mut source_xs);
+    let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(&module, rank);
+    sk.fill_ternary_prob(0.5, &mut source_xs);
 
     // gglwe_{s1}(s0) = s0 -> s1
     auto_key_in.generate_from_sk(
@@ -105,7 +106,7 @@ fn test_automorphism(
     let mut ct_glwe_dft: FourierGLWECiphertext<Vec<u8>, FFT64> = FourierGLWECiphertext::alloc(&module, basek, k_out, rank);
     let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_out);
 
-    let mut sk_auto: GLWESecret<Vec<u8>, FFT64> = GLWESecret::alloc(&module, rank);
+    let mut sk_auto: GLWESecret<Vec<u8>> = GLWESecret::alloc(&module, rank);
     sk_auto.fill_zero(); // Necessary to avoid panic of unfilled sk
     (0..rank).for_each(|i| {
         module.scalar_znx_automorphism(
@@ -117,12 +118,12 @@ fn test_automorphism(
         );
     });
 
-    sk_auto.prep_fourier(&module);
+    let sk_auto_dft: FourierGLWESecret<Vec<u8>, FFT64> = FourierGLWESecret::from(&module, &sk_auto);
 
     (0..auto_key_out.rank_in()).for_each(|col_i| {
         (0..auto_key_out.rows()).for_each(|row_i| {
             auto_key_out.get_row(&module, row_i, col_i, &mut ct_glwe_dft);
-            ct_glwe_dft.decrypt(&module, &mut pt, &sk_auto, scratch.borrow());
+            ct_glwe_dft.decrypt(&module, &mut pt, &sk_auto_dft, scratch.borrow());
 
             module.vec_znx_sub_scalar_inplace(
                 &mut pt.data,
@@ -174,22 +175,23 @@ fn test_automorphism_inplace(
     let rows_in: usize = k_in / (basek * digits);
     let rows_apply: usize = k_in.div_ceil(basek * digits);
 
-    let mut auto_key: AutomorphismKey<Vec<u8>, FFT64> = AutomorphismKey::alloc(&module, basek, k_in, rows_in, digits_in, rank);
-    let mut auto_key_apply: AutomorphismKey<Vec<u8>, FFT64> =
-        AutomorphismKey::alloc(&module, basek, k_apply, rows_apply, digits, rank);
+    let mut auto_key: GLWEAutomorphismKey<Vec<u8>, FFT64> =
+        GLWEAutomorphismKey::alloc(&module, basek, k_in, rows_in, digits_in, rank);
+    let mut auto_key_apply: GLWEAutomorphismKey<Vec<u8>, FFT64> =
+        GLWEAutomorphismKey::alloc(&module, basek, k_apply, rows_apply, digits, rank);
 
     let mut source_xs: Source = Source::new([0u8; 32]);
     let mut source_xe: Source = Source::new([0u8; 32]);
     let mut source_xa: Source = Source::new([0u8; 32]);
 
     let mut scratch: ScratchOwned = ScratchOwned::new(
-        AutomorphismKey::generate_from_sk_scratch_space(&module, basek, k_apply, rank)
+        GLWEAutomorphismKey::generate_from_sk_scratch_space(&module, basek, k_apply, rank)
             | FourierGLWECiphertext::decrypt_scratch_space(&module, basek, k_in)
-            | AutomorphismKey::automorphism_inplace_scratch_space(&module, basek, k_in, k_apply, digits, rank),
+            | GLWEAutomorphismKey::automorphism_inplace_scratch_space(&module, basek, k_in, k_apply, digits, rank),
     );
 
-    let mut sk: GLWESecret<Vec<u8>, FFT64> = GLWESecret::alloc(&module, rank);
-    sk.fill_ternary_prob(&module, 0.5, &mut source_xs);
+    let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(&module, rank);
+    sk.fill_ternary_prob(0.5, &mut source_xs);
 
     // gglwe_{s1}(s0) = s0 -> s1
     auto_key.generate_from_sk(
@@ -219,8 +221,9 @@ fn test_automorphism_inplace(
     let mut ct_glwe_dft: FourierGLWECiphertext<Vec<u8>, FFT64> = FourierGLWECiphertext::alloc(&module, basek, k_in, rank);
     let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_in);
 
-    let mut sk_auto: GLWESecret<Vec<u8>, FFT64> = GLWESecret::alloc(&module, rank);
+    let mut sk_auto: GLWESecret<Vec<u8>> = GLWESecret::alloc(&module, rank);
     sk_auto.fill_zero(); // Necessary to avoid panic of unfilled sk
+
     (0..rank).for_each(|i| {
         module.scalar_znx_automorphism(
             module.galois_element_inv(p0 * p1),
@@ -231,13 +234,13 @@ fn test_automorphism_inplace(
         );
     });
 
-    sk_auto.prep_fourier(&module);
+    let sk_auto_dft: FourierGLWESecret<Vec<u8>, FFT64> = FourierGLWESecret::from(&module, &sk_auto);
 
     (0..auto_key.rank_in()).for_each(|col_i| {
         (0..auto_key.rows()).for_each(|row_i| {
             auto_key.get_row(&module, row_i, col_i, &mut ct_glwe_dft);
 
-            ct_glwe_dft.decrypt(&module, &mut pt, &sk_auto, scratch.borrow());
+            ct_glwe_dft.decrypt(&module, &mut pt, &sk_auto_dft, scratch.borrow());
             module.vec_znx_sub_scalar_inplace(
                 &mut pt.data,
                 0,

@@ -1,6 +1,6 @@
 use backend::{FFT64, Module, ScalarZnxDftOps, Scratch, VecZnxBigOps, VecZnxDftOps, ZnxZero};
 
-use crate::{GLWECiphertext, GLWEPlaintext, GLWESecret, Infos};
+use crate::{FourierGLWESecret, GLWECiphertext, GLWEPlaintext, Infos};
 
 impl<DataSelf: AsRef<[u8]>> GLWECiphertext<DataSelf> {
     pub fn clone(&self) -> GLWECiphertext<Vec<u8>> {
@@ -15,7 +15,7 @@ impl<DataSelf: AsRef<[u8]>> GLWECiphertext<DataSelf> {
         &self,
         module: &Module<FFT64>,
         pt: &mut GLWEPlaintext<DataPt>,
-        sk: &GLWESecret<DataSk, FFT64>,
+        sk: &FourierGLWESecret<DataSk, FFT64>,
         scratch: &mut Scratch,
     ) {
         #[cfg(debug_assertions)]
@@ -36,7 +36,7 @@ impl<DataSelf: AsRef<[u8]>> GLWECiphertext<DataSelf> {
                 // ci_dft = DFT(a[i]) * DFT(s[i])
                 let (mut ci_dft, _) = scratch_1.tmp_vec_znx_dft(module, 1, self.size()); // TODO optimize size when pt << ct
                 module.vec_znx_dft(1, 0, &mut ci_dft, 0, &self.data, i);
-                module.svp_apply_inplace(&mut ci_dft, 0, &sk.data_fourier, i - 1);
+                module.svp_apply_inplace(&mut ci_dft, 0, &sk.data, i - 1);
                 let ci_big = module.vec_znx_idft_consume(ci_dft);
 
                 // c0_big += a[i] * s[i]

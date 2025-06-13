@@ -3,10 +3,13 @@ use std::collections::HashMap;
 use backend::{FFT64, FillUniform, Module, ScratchOwned, Stats, VecZnxOps, ZnxView, ZnxViewMut};
 use sampling::source::Source;
 
-use crate::{AutomorphismKey, GLWECiphertext, GLWEPlaintext, GLWESecret, Infos, test_fft64::var_noise_gglwe_product};
+use crate::{
+    FourierGLWESecret, GLWEAutomorphismKey, GLWECiphertext, GLWEPlaintext, GLWESecret, Infos, div_ceil,
+    noise::var_noise_gglwe_product,
+};
 
 #[test]
-fn trace_inplace() {
+fn apply_inplace() {
     let log_n: usize = 8;
     (1..4).for_each(|rank| {
         println!("test trace_inplace rank: {}", rank);
@@ -33,12 +36,13 @@ fn test_trace_inplace(log_n: usize, basek: usize, k: usize, sigma: f64, rank: us
     let mut scratch: ScratchOwned = ScratchOwned::new(
         GLWECiphertext::encrypt_sk_scratch_space(&module, basek, ct.k())
             | GLWECiphertext::decrypt_scratch_space(&module, basek, ct.k())
-            | AutomorphismKey::generate_from_sk_scratch_space(&module, basek, k_autokey, rank)
+            | GLWEAutomorphismKey::generate_from_sk_scratch_space(&module, basek, k_autokey, rank)
             | GLWECiphertext::trace_inplace_scratch_space(&module, basek, ct.k(), k_autokey, digits, rank),
     );
 
-    let mut sk: GLWESecret<Vec<u8>, FFT64> = GLWESecret::alloc(&module, rank);
-    sk.fill_ternary_prob(&&module, 0.5, &mut source_xs);
+    let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(&module, rank);
+    sk.fill_ternary_prob(0.5, &mut source_xs);
+    let sk_dft: FourierGLWESecret<Vec<u8>, FFT64> = FourierGLWESecret::from(&module, &sk);
 
     let mut data_want: Vec<i64> = vec![0i64; module.n()];
 
@@ -53,17 +57,18 @@ fn test_trace_inplace(log_n: usize, basek: usize, k: usize, sigma: f64, rank: us
     ct.encrypt_sk(
         &module,
         &pt_have,
-        &sk,
+        &sk_dft,
         &mut source_xa,
         &mut source_xe,
         sigma,
         scratch.borrow(),
     );
 
-    let mut auto_keys: HashMap<i64, AutomorphismKey<Vec<u8>, FFT64>> = HashMap::new();
+    let mut auto_keys: HashMap<i64, GLWEAutomorphismKey<Vec<u8>, FFT64>> = HashMap::new();
     let gal_els: Vec<i64> = GLWECiphertext::trace_galois_elements(&module);
     gal_els.iter().for_each(|gal_el| {
-        let mut key: AutomorphismKey<Vec<u8>, FFT64> = AutomorphismKey::alloc(&module, basek, k_autokey, rows, digits, rank);
+        let mut key: GLWEAutomorphismKey<Vec<u8>, FFT64> =
+            GLWEAutomorphismKey::alloc(&module, basek, k_autokey, rows, digits, rank);
         key.generate_from_sk(
             &module,
             *gal_el,
@@ -81,7 +86,7 @@ fn test_trace_inplace(log_n: usize, basek: usize, k: usize, sigma: f64, rank: us
 
     (0..pt_want.size()).for_each(|i| pt_want.data.at_mut(0, i)[0] = pt_have.data.at(0, i)[0]);
 
-    ct.decrypt(&module, &mut pt_have, &sk, scratch.borrow());
+    ct.decrypt(&module, &mut pt_have, &sk_dft, scratch.borrow());
 
     module.vec_znx_sub_ab_inplace(&mut pt_want.data, 0, &pt_have.data, 0);
     module.vec_znx_normalize_inplace(basek, &mut pt_want.data, 0, scratch.borrow());

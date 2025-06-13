@@ -4,7 +4,7 @@ use backend::{
 };
 use sampling::source::Source;
 
-use crate::{GLWECiphertext, GLWEPlaintext, GLWEPublicKey, GLWESecret, Infos, SIX_SIGMA, div_ceil, keys::SecretDistribution};
+use crate::{FourierGLWESecret, GLWECiphertext, GLWEPlaintext, GLWEPublicKey, Infos, SIX_SIGMA, dist::Distribution, div_ceil};
 
 impl GLWECiphertext<Vec<u8>> {
     pub fn encrypt_sk_scratch_space(module: &Module<FFT64>, basek: usize, k: usize) -> usize {
@@ -24,7 +24,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         &mut self,
         module: &Module<FFT64>,
         pt: &GLWEPlaintext<DataPt>,
-        sk: &GLWESecret<DataSk, FFT64>,
+        sk: &FourierGLWESecret<DataSk, FFT64>,
         source_xa: &mut Source,
         source_xe: &mut Source,
         sigma: f64,
@@ -44,7 +44,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
     pub fn encrypt_zero_sk<DataSk: AsRef<[u8]>>(
         &mut self,
         module: &Module<FFT64>,
-        sk: &GLWESecret<DataSk, FFT64>,
+        sk: &FourierGLWESecret<DataSk, FFT64>,
         source_xa: &mut Source,
         source_xe: &mut Source,
         sigma: f64,
@@ -106,7 +106,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         &mut self,
         module: &Module<FFT64>,
         pt: Option<(&GLWEPlaintext<DataPt>, usize)>,
-        sk: &GLWESecret<DataSk, FFT64>,
+        sk: &FourierGLWESecret<DataSk, FFT64>,
         source_xa: &mut Source,
         source_xe: &mut Source,
         sigma: f64,
@@ -148,7 +148,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
 
                 // c[i] = norm(IDFT(DFT(c[i]) * DFT(s[i])))
                 module.vec_znx_dft(1, 0, &mut ci_dft, 0, &self.data, i);
-                module.svp_apply_inplace(&mut ci_dft, 0, &sk.data_fourier, i - 1);
+                module.svp_apply_inplace(&mut ci_dft, 0, &sk.data, i - 1);
                 let ci_big: VecZnxBig<&mut [u8], FFT64> = module.vec_znx_idft_consume(ci_dft);
 
                 // use c[0] as buffer, which is overwritten later by the normalization step
@@ -213,16 +213,16 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         {
             let (mut u, _) = scratch_1.tmp_scalar_znx(module, 1);
             match pk.dist {
-                SecretDistribution::NONE => panic!(
+                Distribution::NONE => panic!(
                     "invalid public key: SecretDistribution::NONE, ensure it has been correctly intialized through \
                      Self::generate"
                 ),
-                SecretDistribution::TernaryFixed(hw) => u.fill_ternary_hw(0, hw, source_xu),
-                SecretDistribution::TernaryProb(prob) => u.fill_ternary_prob(0, prob, source_xu),
-                SecretDistribution::BinaryFixed(hw) => u.fill_binary_hw(0, hw, source_xu),
-                SecretDistribution::BinaryProb(prob) => u.fill_binary_prob(0, prob, source_xu),
-                SecretDistribution::BinaryBlock(block_size) => u.fill_binary_block(0, block_size, source_xu),
-                SecretDistribution::ZERO => {}
+                Distribution::TernaryFixed(hw) => u.fill_ternary_hw(0, hw, source_xu),
+                Distribution::TernaryProb(prob) => u.fill_ternary_prob(0, prob, source_xu),
+                Distribution::BinaryFixed(hw) => u.fill_binary_hw(0, hw, source_xu),
+                Distribution::BinaryProb(prob) => u.fill_binary_prob(0, prob, source_xu),
+                Distribution::BinaryBlock(block_size) => u.fill_binary_block(0, block_size, source_xu),
+                Distribution::ZERO => {}
             }
 
             module.svp_prepare(&mut u_dft, 0, &u, 0);

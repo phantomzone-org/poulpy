@@ -1,10 +1,6 @@
 use backend::{Backend, FFT64, Module, VecZnx, VecZnxAlloc, VecZnxToMut, VecZnxToRef};
 
-use crate::{
-    GLWEOps, Infos, SetMetaData,
-    ciphertext::{GLWECiphertext, GLWECiphertextToMut, GLWECiphertextToRef},
-    div_ceil,
-};
+use crate::{GLWECiphertext, GLWECiphertextToMut, GLWECiphertextToRef, GLWEOps, Infos, SetMetaData, div_ceil};
 
 pub struct GLWEPlaintext<C> {
     pub data: VecZnx<C>,

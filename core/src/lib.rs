@@ -1,35 +1,29 @@
-pub mod automorphism;
 pub mod blind_rotation;
+pub mod dist;
 pub mod elem;
 pub mod fourier_glwe;
 pub mod gglwe;
 pub mod ggsw;
 pub mod glwe;
-pub mod keys;
-pub mod keyswitch_key;
 pub mod lwe;
-pub mod tensor_key;
-#[cfg(test)]
-mod test_fft64;
+pub mod noise;
 mod utils;
 
-pub use automorphism::*;
 use backend::Backend;
 use backend::FFT64;
 use backend::Module;
 pub use elem::*;
-pub use fourier_glwe::*;
-pub use gglwe::*;
+pub use fourier_glwe::{FourierGLWECiphertext, FourierGLWESecret};
+pub use gglwe::{GGLWECiphertext, GLWEAutomorphismKey, GLWESwitchingKey, GLWETensorKey};
 pub use ggsw::*;
-pub use glwe::*;
-pub use keyswitch_key::*;
+pub use glwe::{GLWECiphertext, GLWEOps, GLWEPacker, GLWEPlaintext, GLWEPublicKey, GLWESecret};
+pub(crate) use glwe::{GLWECiphertextToMut, GLWECiphertextToRef};
 pub use lwe::*;
-pub use tensor_key::*;
 
 pub use backend::Scratch;
 pub use backend::ScratchOwned;
 
-use crate::keys::SecretDistribution;
+use crate::dist::Distribution;
 
 pub(crate) const SIX_SIGMA: f64 = 6.0;
 
@@ -62,7 +56,8 @@ pub trait ScratchCore<B: Backend> {
         k: usize,
         rank: usize,
     ) -> (FourierGLWECiphertext<&mut [u8], B>, &mut Self);
-    fn tmp_sk(&mut self, module: &Module<B>, rank: usize) -> (GLWESecret<&mut [u8], B>, &mut Self);
+    fn tmp_sk(&mut self, module: &Module<B>, rank: usize) -> (GLWESecret<&mut [u8]>, &mut Self);
+    fn tmp_fourier_sk(&mut self, module: &Module<B>, rank: usize) -> (FourierGLWESecret<&mut [u8], B>, &mut Self);
     fn tmp_glwe_pk(
         &mut self,
         module: &Module<B>,
@@ -88,7 +83,7 @@ pub trait ScratchCore<B: Backend> {
         rows: usize,
         digits: usize,
         rank: usize,
-    ) -> (TensorKey<&mut [u8], B>, &mut Self);
+    ) -> (GLWETensorKey<&mut [u8], B>, &mut Self);
     fn tmp_autokey(
         &mut self,
         module: &Module<B>,
@@ -97,7 +92,7 @@ pub trait ScratchCore<B: Backend> {
         rows: usize,
         digits: usize,
         rank: usize,
-    ) -> (AutomorphismKey<&mut [u8], B>, &mut Self);
+    ) -> (GLWEAutomorphismKey<&mut [u8], B>, &mut Self);
 }
 
 impl ScratchCore<FFT64> for Scratch {
@@ -194,22 +189,31 @@ impl ScratchCore<FFT64> for Scratch {
         (
             GLWEPublicKey {
                 data,
-                dist: SecretDistribution::NONE,
+                dist: Distribution::NONE,
             },
             scratch,
         )
     }
 
-    fn tmp_sk(&mut self, module: &Module<FFT64>, rank: usize) -> (GLWESecret<&mut [u8], FFT64>, &mut Self) {
+    fn tmp_sk(&mut self, module: &Module<FFT64>, rank: usize) -> (GLWESecret<&mut [u8]>, &mut Self) {
         let (data, scratch) = self.tmp_scalar_znx(module, rank);
-        let (data_fourier, scratch1) = scratch.tmp_scalar_znx_dft(module, rank);
         (
             GLWESecret {
                 data,
-                data_fourier,
-                dist: SecretDistribution::NONE,
+                dist: Distribution::NONE,
             },
-            scratch1,
+            scratch,
+        )
+    }
+
+    fn tmp_fourier_sk(&mut self, module: &Module<FFT64>, rank: usize) -> (FourierGLWESecret<&mut [u8], FFT64>, &mut Self) {
+        let (data, scratch) = self.tmp_scalar_znx_dft(module, rank);
+        (
+            FourierGLWESecret {
+                data,
+                dist: Distribution::NONE,
+            },
+            scratch,
         )
     }
 
@@ -235,9 +239,9 @@ impl ScratchCore<FFT64> for Scratch {
         rows: usize,
         digits: usize,
         rank: usize,
-    ) -> (AutomorphismKey<&mut [u8], FFT64>, &mut Self) {
+    ) -> (GLWEAutomorphismKey<&mut [u8], FFT64>, &mut Self) {
         let (data, scratch) = self.tmp_glwe_ksk(module, basek, k, rows, digits, rank, rank);
-        (AutomorphismKey { key: data, p: 0 }, scratch)
+        (GLWEAutomorphismKey { key: data, p: 0 }, scratch)
     }
 
     fn tmp_tsk(
@@ -248,7 +252,7 @@ impl ScratchCore<FFT64> for Scratch {
         rows: usize,
         digits: usize,
         rank: usize,
-    ) -> (TensorKey<&mut [u8], FFT64>, &mut Self) {
+    ) -> (GLWETensorKey<&mut [u8], FFT64>, &mut Self) {
         let mut keys: Vec<GLWESwitchingKey<&mut [u8], FFT64>> = Vec::new();
         let pairs: usize = (((rank + 1) * rank) >> 1).max(1);
 
@@ -264,6 +268,6 @@ impl ScratchCore<FFT64> for Scratch {
             scratch = s;
             keys.push(gglwe);
         }
-        (TensorKey { keys }, scratch)
+        (GLWETensorKey { keys }, scratch)
     }
 }

@@ -1,18 +1,18 @@
 use backend::{Backend, FFT64, Module, ScratchOwned, VecZnxDft};
 use sampling::source::Source;
 
-use crate::{FourierGLWECiphertext, GLWESecret, Infos, keys::SecretDistribution};
+use crate::{FourierGLWECiphertext, FourierGLWESecret, Infos, dist::Distribution};
 
 pub struct GLWEPublicKey<D, B: Backend> {
     pub(crate) data: FourierGLWECiphertext<D, B>,
-    pub(crate) dist: SecretDistribution,
+    pub(crate) dist: Distribution,
 }
 
 impl<B: Backend> GLWEPublicKey<Vec<u8>, B> {
     pub fn alloc(module: &Module<B>, basek: usize, k: usize, rank: usize) -> Self {
         Self {
             data: FourierGLWECiphertext::alloc(module, basek, k, rank),
-            dist: SecretDistribution::NONE,
+            dist: Distribution::NONE,
         }
     }
 
@@ -47,7 +47,7 @@ impl<C: AsRef<[u8]> + AsMut<[u8]>> GLWEPublicKey<C, FFT64> {
     pub fn generate_from_sk<S: AsRef<[u8]>>(
         &mut self,
         module: &Module<FFT64>,
-        sk: &GLWESecret<S, FFT64>,
+        sk: &FourierGLWESecret<S, FFT64>,
         source_xa: &mut Source,
         source_xe: &mut Source,
         sigma: f64,
@@ -55,7 +55,7 @@ impl<C: AsRef<[u8]> + AsMut<[u8]>> GLWEPublicKey<C, FFT64> {
         #[cfg(debug_assertions)]
         {
             match sk.dist {
-                SecretDistribution::NONE => panic!("invalid sk: SecretDistribution::NONE"),
+                Distribution::NONE => panic!("invalid sk: SecretDistribution::NONE"),
                 _ => {}
             }
         }
