@@ -2,7 +2,7 @@ use backend::{FFT64, FillUniform, Module, ScratchOwned, Stats, VecZnxOps};
 use sampling::source::Source;
 
 use crate::{
-    FourierGLWESecret, GLWECiphertext, GLWEPlaintext, GLWESecret, GLWESwitchingKey, Infos, div_ceil,
+    FourierGLWESecret, GLWECiphertext, GLWEPlaintext, GLWESecret, GLWESwitchingKey, Infos,
     noise::log2_std_noise_gglwe_product,
 };
 
@@ -11,7 +11,7 @@ fn apply() {
     let log_n: usize = 8;
     let basek: usize = 12;
     let k_in: usize = 45;
-    let digits: usize = div_ceil(k_in, basek);
+    let digits: usize = k_in.div_ceil(basek);
     (1..4).for_each(|rank_in| {
         (1..4).for_each(|rank_out| {
             (1..digits + 1).for_each(|di| {
@@ -32,7 +32,7 @@ fn apply_inplace() {
     let log_n: usize = 8;
     let basek: usize = 12;
     let k_ct: usize = 45;
-    let digits: usize = div_ceil(k_ct, basek);
+    let digits: usize = k_ct.div_ceil(basek);
     (1..4).for_each(|rank| {
         (1..digits + 1).for_each(|di| {
             let k_ksk: usize = k_ct + basek * di;
@@ -55,7 +55,7 @@ fn test_keyswitch(
 ) {
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
 
-    let rows: usize = div_ceil(k_in, basek * digits);
+    let rows: usize = k_in.div_ceil(basek * digits);
 
     let mut ksk: GLWESwitchingKey<Vec<u8>, FFT64> =
         GLWESwitchingKey::alloc(&module, basek, k_ksk, rows, digits, rank_in, rank_out);
@@ -148,7 +148,7 @@ fn test_keyswitch(
 fn test_keyswitch_inplace(log_n: usize, basek: usize, k_ct: usize, k_ksk: usize, digits: usize, rank: usize, sigma: f64) {
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
 
-    let rows: usize = div_ceil(k_ct, basek * digits);
+    let rows: usize = k_ct.div_ceil(basek * digits);
 
     let mut ct_grlwe: GLWESwitchingKey<Vec<u8>, FFT64> = GLWESwitchingKey::alloc(&module, basek, k_ksk, rows, digits, rank, rank);
     let mut ct_glwe: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_ct, rank);

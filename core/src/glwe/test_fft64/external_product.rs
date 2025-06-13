@@ -2,7 +2,7 @@ use backend::{FFT64, FillUniform, Module, ScalarZnx, ScalarZnxAlloc, ScratchOwne
 use sampling::source::Source;
 
 use crate::{
-    FourierGLWESecret, GGSWCiphertext, GLWECiphertext, GLWEPlaintext, GLWESecret, Infos, div_ceil, noise::noise_ggsw_product,
+    FourierGLWESecret, GGSWCiphertext, GLWECiphertext, GLWEPlaintext, GLWESecret, Infos, noise::noise_ggsw_product,
 };
 
 #[test]
@@ -10,7 +10,7 @@ fn apply() {
     let log_n: usize = 8;
     let basek: usize = 12;
     let k_in: usize = 45;
-    let digits: usize = div_ceil(k_in, basek);
+    let digits: usize = k_in.div_ceil(basek);
     (1..4).for_each(|rank| {
         (1..digits + 1).for_each(|di| {
             let k_ggsw: usize = k_in + basek * di;

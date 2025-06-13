@@ -1,6 +1,6 @@
 use crate::{
     FourierGLWECiphertext, FourierGLWESecret, GGSWCiphertext, GLWECiphertext, GLWEOps, GLWEPlaintext, GLWESecret, Infos,
-    div_ceil, noise::noise_ggsw_product,
+    noise::noise_ggsw_product,
 };
 use backend::{FFT64, FillUniform, Module, ScalarZnx, ScalarZnxAlloc, ScratchOwned, Stats, VecZnxOps, ZnxViewMut};
 use sampling::source::Source;
@@ -10,7 +10,7 @@ fn apply() {
     let log_n: usize = 8;
     let basek: usize = 12;
     let k_in: usize = 45;
-    let digits: usize = div_ceil(k_in, basek);
+    let digits: usize = k_in.div_ceil(basek);
     (1..4).for_each(|rank| {
         (1..digits + 1).for_each(|di| {
             let k_ggsw: usize = k_in + basek * di;
@@ -26,7 +26,7 @@ fn apply_inplace() {
     let log_n: usize = 8;
     let basek: usize = 12;
     let k_ct: usize = 60;
-    let digits: usize = div_ceil(k_ct, basek);
+    let digits: usize = k_ct.div_ceil(basek);
     (1..4).for_each(|rank| {
         (1..digits + 1).for_each(|di| {
             let k_ggsw: usize = k_ct + basek * di;
@@ -39,7 +39,7 @@ fn apply_inplace() {
 fn test_apply(log_n: usize, basek: usize, k_out: usize, k_in: usize, k_ggsw: usize, digits: usize, rank: usize, sigma: f64) {
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
 
-    let rows: usize = div_ceil(k_in, digits * basek);
+    let rows: usize = k_in.div_ceil(digits * basek);
 
     let mut ct_ggsw: GGSWCiphertext<Vec<u8>, FFT64> = GGSWCiphertext::alloc(&module, basek, k_ggsw, rows, digits, rank);
     let mut ct_in: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_in, rank);
@@ -147,7 +147,7 @@ fn test_apply(log_n: usize, basek: usize, k_out: usize, k_in: usize, k_ggsw: usi
 
 fn test_apply_inplace(log_n: usize, basek: usize, k_ct: usize, k_ggsw: usize, digits: usize, rank: usize, sigma: f64) {
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
-    let rows: usize = div_ceil(k_ct, digits * basek);
+    let rows: usize = k_ct.div_ceil(digits * basek);
 
     let mut ct_ggsw: GGSWCiphertext<Vec<u8>, FFT64> = GGSWCiphertext::alloc(&module, basek, k_ggsw, rows, digits, rank);
     let mut ct: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_ct, rank);

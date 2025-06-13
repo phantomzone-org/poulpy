@@ -6,7 +6,7 @@ use sampling::source::Source;
 
 use crate::{
     FourierGLWECiphertext, FourierGLWESecret, GGSWCiphertext, GLWEAutomorphismKey, GLWEPlaintext, GLWESecret, GLWESwitchingKey,
-    GLWETensorKey, GetRow, Infos, div_ceil,
+    GLWETensorKey, GetRow, Infos,
     noise::{noise_ggsw_keyswitch, noise_ggsw_product},
 };
 

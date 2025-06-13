@@ -2,7 +2,7 @@ use backend::{
     FFT64, MatZnxDftOps, MatZnxDftScratch, Module, Scratch, VecZnxBig, VecZnxBigOps, VecZnxDftAlloc, VecZnxDftOps, VecZnxScratch,
 };
 
-use crate::{FourierGLWECiphertext, GGSWCiphertext, GLWECiphertext, Infos, div_ceil};
+use crate::{FourierGLWECiphertext, GGSWCiphertext, GLWECiphertext, Infos};
 
 impl GLWECiphertext<Vec<u8>> {
     pub fn external_product_scratch_space(
@@ -10,14 +10,14 @@ impl GLWECiphertext<Vec<u8>> {
         basek: usize,
         k_out: usize,
         k_in: usize,
-        ggsw_k: usize,
+        k_ggsw: usize,
         digits: usize,
         rank: usize,
     ) -> usize {
         let res_dft: usize = FourierGLWECiphertext::bytes_of(module, basek, k_out, rank);
-        let in_size: usize = div_ceil(div_ceil(k_in, basek), digits);
-        let out_size: usize = div_ceil(k_out, basek);
-        let ggsw_size: usize = div_ceil(ggsw_k, basek);
+        let in_size: usize = k_in.div_ceil(basek).div_ceil(digits);
+        let out_size: usize = k_out.div_ceil(basek);
+        let ggsw_size: usize = k_ggsw.div_ceil(basek);
         let vmp: usize = module.bytes_of_vec_znx_dft(rank + 1, in_size)
             + module.vmp_apply_tmp_bytes(
                 out_size,
@@ -35,11 +35,11 @@ impl GLWECiphertext<Vec<u8>> {
         module: &Module<FFT64>,
         basek: usize,
         k_out: usize,
-        ggsw_k: usize,
+        k_ggsw: usize,
         digits: usize,
         rank: usize,
     ) -> usize {
-        Self::external_product_scratch_space(module, basek, k_out, k_out, ggsw_k, digits, rank)
+        Self::external_product_scratch_space(module, basek, k_out, k_out, k_ggsw, digits, rank)
     }
 }
 

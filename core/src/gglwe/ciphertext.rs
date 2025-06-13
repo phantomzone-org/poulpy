@@ -1,6 +1,6 @@
 use backend::{Backend, FFT64, MatZnxDft, MatZnxDftAlloc, MatZnxDftOps, Module};
 
-use crate::{FourierGLWECiphertext, GetRow, Infos, SetRow, div_ceil};
+use crate::{FourierGLWECiphertext, GetRow, Infos, SetRow};
 
 pub struct GGLWECiphertext<C, B: Backend> {
     pub(crate) data: MatZnxDft<C, B>,
@@ -19,7 +19,7 @@ impl<B: Backend> GGLWECiphertext<Vec<u8>, B> {
         rank_in: usize,
         rank_out: usize,
     ) -> Self {
-        let size: usize = div_ceil(k, basek);
+        let size: usize = k.div_ceil(basek);
         debug_assert!(
             size > digits,
             "invalid gglwe: ceil(k/basek): {} <= digits: {}",
@@ -52,7 +52,7 @@ impl<B: Backend> GGLWECiphertext<Vec<u8>, B> {
         rank_in: usize,
         rank_out: usize,
     ) -> usize {
-        let size: usize = div_ceil(k, basek);
+        let size: usize = k.div_ceil(basek);
         debug_assert!(
             size > digits,
             "invalid gglwe: ceil(k/basek): {} <= digits: {}",

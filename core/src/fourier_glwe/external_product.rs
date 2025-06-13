@@ -3,7 +3,7 @@ use backend::{
     VecZnxDftAlloc, VecZnxDftOps,
 };
 
-use crate::{FourierGLWECiphertext, GGSWCiphertext, Infos, div_ceil};
+use crate::{FourierGLWECiphertext, GGSWCiphertext, Infos};
 
 impl FourierGLWECiphertext<Vec<u8>, FFT64> {
     // WARNING TODO: UPDATE
@@ -16,10 +16,10 @@ impl FourierGLWECiphertext<Vec<u8>, FFT64> {
         digits: usize,
         rank: usize,
     ) -> usize {
-        let ggsw_size: usize = div_ceil(k_ggsw, basek);
+        let ggsw_size: usize = k_ggsw.div_ceil(basek);
         let res_dft: usize = module.bytes_of_vec_znx_dft(rank + 1, ggsw_size);
-        let in_size: usize = div_ceil(div_ceil(k_in, basek), digits);
-        let ggsw_size: usize = div_ceil(k_ggsw, basek);
+        let in_size: usize = k_in.div_ceil(basek).div_ceil(digits);
+        let ggsw_size: usize = k_ggsw.div_ceil(basek);
         let vmp: usize = module.bytes_of_vec_znx_dft(rank + 1, in_size)
             + module.vmp_apply_tmp_bytes(ggsw_size, in_size, in_size, rank + 1, rank + 1, ggsw_size);
         let res_small: usize = module.bytes_of_vec_znx(rank + 1, ggsw_size);

@@ -3,11 +3,11 @@ use backend::{
     VecZnxDftOps, ZnxZero,
 };
 
-use crate::{FourierGLWECiphertext, FourierGLWESecret, GLWECiphertext, GLWEPlaintext, Infos, div_ceil};
+use crate::{FourierGLWECiphertext, FourierGLWESecret, GLWECiphertext, GLWEPlaintext, Infos};
 
 impl FourierGLWECiphertext<Vec<u8>, FFT64> {
     pub fn decrypt_scratch_space(module: &Module<FFT64>, basek: usize, k: usize) -> usize {
-        let size: usize = div_ceil(k, basek);
+        let size: usize = k.div_ceil(basek);
         (module.vec_znx_big_normalize_tmp_bytes()
             | module.bytes_of_vec_znx_dft(1, size)
             | (module.bytes_of_vec_znx_big(1, size) + module.vec_znx_idft_tmp_bytes()))

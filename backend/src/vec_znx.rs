@@ -177,7 +177,7 @@ impl<D: From<Vec<u8>>> VecZnx<D> {
         n * cols * size * size_of::<Scalar>()
     }
 
-    pub(crate) fn new<Scalar: Sized>(n: usize, cols: usize, size: usize) -> Self {
+    pub fn new<Scalar: Sized>(n: usize, cols: usize, size: usize) -> Self {
         let data = alloc_aligned::<u8>(Self::bytes_of::<Scalar>(n, cols, size));
         Self {
             data: data.into(),
@@ -243,7 +243,13 @@ fn normalize_tmp_bytes(n: usize) -> usize {
     n * std::mem::size_of::<i64>()
 }
 
-#[allow(dead_code)]
+impl<D: AsRef<[u8]> + AsMut<[u8]>> VecZnx<D>{
+    pub fn normalize(&mut self, basek: usize, a_col: usize, tmp_bytes: &mut [u8]){
+        normalize(basek, self, a_col, tmp_bytes);
+    }
+}
+
+
 fn normalize<D: AsMut<[u8]> + AsRef<[u8]>>(basek: usize, a: &mut VecZnx<D>, a_col: usize, tmp_bytes: &mut [u8]) {
     let n: usize = a.n();
 

@@ -4,15 +4,15 @@ use backend::{
 };
 use sampling::source::Source;
 
-use crate::{FourierGLWESecret, GLWECiphertext, GLWEPlaintext, GLWEPublicKey, Infos, SIX_SIGMA, dist::Distribution, div_ceil};
+use crate::{FourierGLWESecret, GLWECiphertext, GLWEPlaintext, GLWEPublicKey, Infos, SIX_SIGMA, dist::Distribution};
 
 impl GLWECiphertext<Vec<u8>> {
     pub fn encrypt_sk_scratch_space(module: &Module<FFT64>, basek: usize, k: usize) -> usize {
-        let size: usize = div_ceil(k, basek);
+        let size: usize = k.div_ceil(basek);
         module.vec_znx_big_normalize_tmp_bytes() + module.bytes_of_vec_znx_dft(1, size) + module.bytes_of_vec_znx(1, size)
     }
     pub fn encrypt_pk_scratch_space(module: &Module<FFT64>, basek: usize, k: usize) -> usize {
-        let size: usize = div_ceil(k, basek);
+        let size: usize = k.div_ceil(basek);
         ((module.bytes_of_vec_znx_dft(1, size) + module.bytes_of_vec_znx_big(1, size)) | module.bytes_of_scalar_znx(1))
             + module.bytes_of_scalar_znx_dft(1)
             + module.vec_znx_big_normalize_tmp_bytes()
@@ -71,7 +71,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         sigma: f64,
         scratch: &mut Scratch,
     ) {
-        self.encrypt_pk_private(
+        self.encrypt_pk_private::<DataPt, DataPk>(
             module,
             Some((pt, 0)),
             pk,
@@ -91,7 +91,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         sigma: f64,
         scratch: &mut Scratch,
     ) {
-        self.encrypt_pk_private(
+        self.encrypt_pk_private::<Vec<u8>, DataPk>(
             module,
             None::<(&GLWEPlaintext<Vec<u8>>, usize)>,
             pk,

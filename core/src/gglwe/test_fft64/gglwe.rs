@@ -3,7 +3,6 @@ use sampling::source::Source;
 
 use crate::{
     FourierGLWECiphertext, FourierGLWESecret, GGSWCiphertext, GLWEPlaintext, GLWESecret, GLWESwitchingKey, GetRow, Infos,
-    div_ceil,
     noise::{log2_std_noise_gglwe_product, noise_ggsw_product},
 };
 

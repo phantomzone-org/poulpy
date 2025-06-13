@@ -1,22 +1,22 @@
 use backend::{Backend, FFT64, Module, ScalarZnx, ScalarZnxAlloc, ScalarZnxToRef, Scratch, ZnxView, ZnxViewMut};
 use sampling::source::Source;
 
-use crate::{Distribution, FourierGLWESecret, GGSWCiphertext, GLWEAutomorphismKey, LWESecret};
+use crate::{Distribution, FourierGLWESecret, GGSWCiphertext, Infos, LWESecret};
 
 pub struct BlindRotationKeyCGGI<B: Backend> {
     pub(crate) data: Vec<GGSWCiphertext<Vec<u8>, B>>,
     pub(crate) dist: Distribution,
 }
 
-pub struct BlindRotationKeyFHEW<B: Backend> {
-    pub(crate) data: Vec<GGSWCiphertext<Vec<u8>, B>>,
-    pub(crate) auto: Vec<GLWEAutomorphismKey<Vec<u8>, B>>,
-}
+// pub struct BlindRotationKeyFHEW<B: Backend> {
+//    pub(crate) data: Vec<GGSWCiphertext<Vec<u8>, B>>,
+//    pub(crate) auto: Vec<GLWEAutomorphismKey<Vec<u8>, B>>,
+//}
 
 impl BlindRotationKeyCGGI<FFT64> {
-    pub fn allocate(module: &Module<FFT64>, lwe_degree: usize, basek: usize, k: usize, rows: usize, rank: usize) -> Self {
-        let mut data: Vec<GGSWCiphertext<Vec<u8>, FFT64>> = Vec::with_capacity(lwe_degree);
-        (0..lwe_degree).for_each(|_| data.push(GGSWCiphertext::alloc(module, basek, k, rows, 1, rank)));
+    pub fn allocate(module: &Module<FFT64>, n_lwe: usize, basek: usize, k: usize, rows: usize, rank: usize) -> Self {
+        let mut data: Vec<GGSWCiphertext<Vec<u8>, FFT64>> = Vec::with_capacity(n_lwe);
+        (0..n_lwe).for_each(|_| data.push(GGSWCiphertext::alloc(module, basek, k, rows, 1, rank)));
         Self {
             data,
             dist: Distribution::NONE,
@@ -60,5 +60,28 @@ impl BlindRotationKeyCGGI<FFT64> {
             pt.at_mut(0, 0)[0] = sk_ref.at(0, 0)[i];
             ggsw.encrypt_sk(module, &pt, sk_glwe, source_xa, source_xe, sigma, scratch);
         })
+    }
+
+    pub(crate) fn block_size(&self) -> usize {
+        match self.dist {
+            Distribution::BinaryBlock(value) => value,
+            _ => 1,
+        }
+    }
+
+    pub(crate) fn rows(&self) -> usize {
+        self.data[0].rows()
+    }
+
+    pub(crate) fn k(&self) -> usize {
+        self.data[0].k()
+    }
+
+    pub(crate) fn rank(&self) -> usize {
+        self.data[0].rank()
+    }
+
+    pub(crate) fn basek(&self) -> usize {
+        self.data[0].basek()
     }
 }

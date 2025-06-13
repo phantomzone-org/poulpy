@@ -1,6 +1,6 @@
 use backend::{Backend, Module, ZnxInfos};
 
-use crate::{FourierGLWECiphertext, div_ceil};
+use crate::FourierGLWECiphertext;
 
 pub trait Infos {
     type Inner: ZnxInfos;

@@ -3,7 +3,7 @@ use backend::{FFT64, FillUniform, Module, ScratchOwned, Stats, VecZnxOps};
 use sampling::source::Source;
 
 use crate::{
-    FourierGLWESecret, GLWEAutomorphismKey, GLWECiphertext, GLWEPlaintext, GLWESecret, Infos, div_ceil,
+    FourierGLWESecret, GLWEAutomorphismKey, GLWECiphertext, GLWEPlaintext, GLWESecret, Infos,
     noise::log2_std_noise_gglwe_product,
 };
 
@@ -12,7 +12,7 @@ fn apply_inplace() {
     let log_n: usize = 8;
     let basek: usize = 12;
     let k_ct: usize = 60;
-    let digits: usize = div_ceil(k_ct, basek);
+    let digits: usize = k_ct.div_ceil(basek);
     (1..4).for_each(|rank| {
         (1..digits + 1).for_each(|di| {
             let k_ksk: usize = k_ct + basek * di;
@@ -27,7 +27,7 @@ fn apply() {
     let log_n: usize = 8;
     let basek: usize = 12;
     let k_in: usize = 60;
-    let digits: usize = div_ceil(k_in, basek);
+    let digits: usize = k_in.div_ceil(basek);
     (1..4).for_each(|rank| {
         (1..digits + 1).for_each(|di| {
             let k_ksk: usize = k_in + basek * di;
@@ -51,7 +51,7 @@ fn test_automorphism(
 ) {
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
 
-    let rows: usize = div_ceil(k_in, basek * digits);
+    let rows: usize = k_in.div_ceil(basek * digits);
 
     let mut autokey: GLWEAutomorphismKey<Vec<u8>, FFT64> = GLWEAutomorphismKey::alloc(&module, basek, k_ksk, rows, digits, rank);
     let mut ct_in: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_in, rank);
@@ -149,7 +149,7 @@ fn test_automorphism_inplace(
 ) {
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
 
-    let rows: usize = div_ceil(k_ct, basek * digits);
+    let rows: usize = k_ct.div_ceil(basek * digits);
 
     let mut autokey: GLWEAutomorphismKey<Vec<u8>, FFT64> = GLWEAutomorphismKey::alloc(&module, basek, k_ksk, rows, digits, rank);
     let mut ct: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_ct, rank);

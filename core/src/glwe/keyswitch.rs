@@ -3,7 +3,7 @@ use backend::{
     VecZnxDftOps, ZnxZero,
 };
 
-use crate::{FourierGLWECiphertext, GLWECiphertext, GLWESwitchingKey, Infos, div_ceil};
+use crate::{FourierGLWECiphertext, GLWECiphertext, GLWESwitchingKey, Infos};
 
 impl GLWECiphertext<Vec<u8>> {
     pub fn keyswitch_scratch_space(
@@ -17,9 +17,9 @@ impl GLWECiphertext<Vec<u8>> {
         rank_out: usize,
     ) -> usize {
         let res_dft: usize = FourierGLWECiphertext::bytes_of(module, basek, k_out, rank_out + 1);
-        let in_size: usize = div_ceil(div_ceil(k_in, basek), digits);
-        let out_size: usize = div_ceil(k_out, basek);
-        let ksk_size: usize = div_ceil(k_ksk, basek);
+        let in_size: usize = k_in.div_ceil(basek).div_ceil(digits);
+        let out_size: usize = k_out.div_ceil(basek);
+        let ksk_size: usize = k_ksk.div_ceil(basek);
         let ai_dft: usize = module.bytes_of_vec_znx_dft(rank_in, in_size);
         let vmp: usize = module.vmp_apply_tmp_bytes(out_size, in_size, in_size, rank_in, rank_out + 1, ksk_size)
             + module.bytes_of_vec_znx_dft(rank_in, in_size);

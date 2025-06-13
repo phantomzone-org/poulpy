@@ -7,18 +7,17 @@ pub mod ggsw;
 pub mod glwe;
 pub mod lwe;
 pub mod noise;
-mod utils;
 
 use backend::Backend;
 use backend::FFT64;
 use backend::Module;
-pub use elem::*;
+pub use elem::{GetRow, Infos, SetMetaData, SetRow};
 pub use fourier_glwe::{FourierGLWECiphertext, FourierGLWESecret};
 pub use gglwe::{GGLWECiphertext, GLWEAutomorphismKey, GLWESwitchingKey, GLWETensorKey};
-pub use ggsw::*;
+pub use ggsw::GGSWCiphertext;
 pub use glwe::{GLWECiphertext, GLWEOps, GLWEPacker, GLWEPlaintext, GLWEPublicKey, GLWESecret};
 pub(crate) use glwe::{GLWECiphertextToMut, GLWECiphertextToRef};
-pub use lwe::*;
+pub use lwe::{LWECiphertext, LWESecret};
 
 pub use backend::Scratch;
 pub use backend::ScratchOwned;
@@ -174,7 +173,7 @@ impl ScratchCore<FFT64> for Scratch {
         k: usize,
         rank: usize,
     ) -> (FourierGLWECiphertext<&mut [u8], FFT64>, &mut Self) {
-        let (data, scratch) = self.tmp_vec_znx_dft(module, rank + 1, div_ceil(k, basek));
+        let (data, scratch) = self.tmp_vec_znx_dft(module, rank + 1, k.div_ceil(basek));
         (FourierGLWECiphertext { data, basek, k }, scratch)
     }
 

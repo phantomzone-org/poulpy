@@ -5,12 +5,12 @@ use sampling::source::Source;
 
 use crate::{
     FourierGLWESecret, GGLWECiphertext, GLWEAutomorphismKey, GLWECiphertext, GLWESecret, GLWESwitchingKey, GLWETensorKey, Infos,
-    ScratchCore, SetRow, div_ceil,
+    ScratchCore, SetRow,
 };
 
 impl GGLWECiphertext<Vec<u8>, FFT64> {
     pub fn generate_from_sk_scratch_space(module: &Module<FFT64>, basek: usize, k: usize, rank: usize) -> usize {
-        let size = div_ceil(k, basek);
+        let size = k.div_ceil(basek);
         GLWECiphertext::encrypt_sk_scratch_space(module, basek, k)
             + module.bytes_of_vec_znx(rank + 1, size)
             + module.bytes_of_vec_znx(1, size)

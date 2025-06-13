@@ -1,9 +1,6 @@
-use backend::{
-    Backend, FFT64, Module, VecZnx, VecZnxAlloc, VecZnxBigAlloc, VecZnxBigScratch, VecZnxDftAlloc, VecZnxDftOps, VecZnxToMut,
-    VecZnxToRef,
-};
+use backend::{Backend, FFT64, Module, VecZnx, VecZnxAlloc, VecZnxDftOps, VecZnxToMut, VecZnxToRef};
 
-use crate::{FourierGLWECiphertext, GLWEOps, Infos, SetMetaData, div_ceil};
+use crate::{FourierGLWECiphertext, GLWEOps, Infos, SetMetaData};
 
 pub struct GLWECiphertext<C> {
     pub data: VecZnx<C>,
@@ -14,14 +11,14 @@ pub struct GLWECiphertext<C> {
 impl GLWECiphertext<Vec<u8>> {
     pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank: usize) -> Self {
         Self {
-            data: module.new_vec_znx(rank + 1, div_ceil(k, basek)),
+            data: module.new_vec_znx(rank + 1, k.div_ceil(basek)),
             basek,
             k,
         }
     }
 
     pub fn bytes_of(module: &Module<FFT64>, basek: usize, k: usize, rank: usize) -> usize {
-        module.bytes_of_vec_znx(rank + 1, div_ceil(k, basek))
+        module.bytes_of_vec_znx(rank + 1, k.div_ceil(basek))
     }
 }
 
@@ -62,10 +59,13 @@ impl<C: AsRef<[u8]>> GLWECiphertext<C> {
     }
 }
 
-impl GLWECiphertext<Vec<u8>> {
-    pub fn decrypt_scratch_space(module: &Module<FFT64>, basek: usize, k: usize) -> usize {
-        let size: usize = div_ceil(k, basek);
-        (module.vec_znx_big_normalize_tmp_bytes() | module.bytes_of_vec_znx_dft(1, size)) + module.bytes_of_vec_znx_big(1, size)
+impl<DataSelf: AsRef<[u8]>> GLWECiphertext<DataSelf> {
+    pub fn clone(&self) -> GLWECiphertext<Vec<u8>> {
+        GLWECiphertext {
+            data: self.data.clone(),
+            basek: self.basek(),
+            k: self.k(),
+        }
     }
 }
 

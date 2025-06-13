@@ -26,7 +26,7 @@ fn bench_external_product_glwe_fft64(c: &mut Criterion) {
         let rank: usize = p.rank;
         let digits: usize = 1;
 
-        let rows: usize = (p.k_ct_in + p.basek - 1) / p.basek;
+        let rows: usize = 1; //(p.k_ct_in + p.basek - 1) / p.basek;
         let sigma: f64 = 3.2;
 
         let mut ct_ggsw: GGSWCiphertext<Vec<u8>, FFT64> = GGSWCiphertext::alloc(&module, basek, k_ggsw, rows, digits, rank);
@@ -81,11 +81,11 @@ fn bench_external_product_glwe_fft64(c: &mut Criterion) {
     }
 
     let params_set: Vec<Params> = vec![Params {
-        log_n: 10,
-        basek: 7,
-        k_ct_in: 27,
-        k_ct_out: 27,
-        k_ggsw: 27,
+        log_n: 11,
+        basek: 22,
+        k_ct_in: 44,
+        k_ct_out: 44,
+        k_ggsw: 54,
         rank: 1,
     }];
 

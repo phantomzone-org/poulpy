@@ -7,7 +7,7 @@ use sampling::source::Source;
 
 use crate::{
     FourierGLWECiphertext, FourierGLWESecret, GLWEAutomorphismKey, GLWECiphertext, GLWESwitchingKey, GLWETensorKey, GetRow,
-    Infos, ScratchCore, SetRow, div_ceil,
+    Infos, ScratchCore, SetRow,
 };
 
 pub struct GGSWCiphertext<C, B: Backend> {
@@ -17,8 +17,8 @@ pub struct GGSWCiphertext<C, B: Backend> {
     pub(crate) digits: usize,
 }
 
-impl<B: Backend> GGSWCiphertext<Vec<u8>, B> {
-    pub fn alloc(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self {
+impl GGSWCiphertext<Vec<u8>, FFT64> {
+    pub fn alloc(module: &Module<FFT64>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self {
         let size: usize = k.div_ceil(basek);
         debug_assert!(
             size > digits,

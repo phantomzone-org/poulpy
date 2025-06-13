@@ -1,4 +1,4 @@
-use crate::{FourierGLWESecret, GLWEAutomorphismKey, GLWECiphertext, GLWEOps, GLWEPacker, GLWEPlaintext, GLWESecret, div_ceil};
+use crate::{FourierGLWESecret, GLWEAutomorphismKey, GLWECiphertext, GLWEOps, GLWEPacker, GLWEPlaintext, GLWESecret};
 use std::collections::HashMap;
 
 use backend::{Encoding, FFT64, Module, ScratchOwned, Stats};
