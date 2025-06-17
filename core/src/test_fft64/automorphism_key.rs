@@ -2,8 +2,7 @@ use backend::{FFT64, Module, ScalarZnxOps, ScratchOwned, Stats, VecZnxOps};
 use sampling::source::Source;
 
 use crate::{
-    AutomorphismKey, GLWECiphertextFourier, GLWEPlaintext, GLWESecret, GetRow, Infos, div_ceil,
-    test_fft64::log2_std_noise_gglwe_product,
+    AutomorphismKey, GLWECiphertextFourier, GLWEPlaintext, GLWESecret, GetRow, Infos, test_fft64::log2_std_noise_gglwe_product,
 };
 
 #[test]
@@ -12,7 +11,7 @@ fn automorphism() {
     let basek: usize = 12;
     let k_in: usize = 60;
     let k_out: usize = 60;
-    let digits: usize = div_ceil(k_in, basek);
+    let digits: usize = k_in.div_ceil(basek);
     let sigma: f64 = 3.2;
     (1..4).for_each(|rank| {
         (2..digits + 1).for_each(|di| {
@@ -28,7 +27,7 @@ fn automorphism_inplace() {
     let log_n: usize = 8;
     let basek: usize = 12;
     let k_in: usize = 60;
-    let digits: usize = div_ceil(k_in, basek);
+    let digits: usize = k_in.div_ceil(basek);
     let sigma: f64 = 3.2;
     (1..4).for_each(|rank| {
         (2..digits + 1).for_each(|di| {
@@ -56,7 +55,7 @@ fn test_automorphism(
     let digits_in: usize = 1;
 
     let rows_in: usize = k_in / (basek * digits);
-    let rows_apply: usize = div_ceil(k_in, basek * digits);
+    let rows_apply: usize = k_in.div_ceil(basek * digits);
 
     let mut auto_key_in: AutomorphismKey<Vec<u8>, FFT64> = AutomorphismKey::alloc(&module, basek, k_in, rows_in, digits_in, rank);
     let mut auto_key_out: AutomorphismKey<Vec<u8>, FFT64> =
@@ -172,7 +171,7 @@ fn test_automorphism_inplace(
     let digits_in: usize = 1;
 
     let rows_in: usize = k_in / (basek * digits);
-    let rows_apply: usize = div_ceil(k_in, basek * digits);
+    let rows_apply: usize = k_in.div_ceil(basek * digits);
 
     let mut auto_key: AutomorphismKey<Vec<u8>, FFT64> = AutomorphismKey::alloc(&module, basek, k_in, rows_in, digits_in, rank);
     let mut auto_key_apply: AutomorphismKey<Vec<u8>, FFT64> =

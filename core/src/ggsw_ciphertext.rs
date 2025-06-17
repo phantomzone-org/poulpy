@@ -7,7 +7,7 @@ use sampling::source::Source;
 
 use crate::{
     AutomorphismKey, GLWECiphertext, GLWECiphertextFourier, GLWESecret, GLWESwitchingKey, GetRow, Infos, ScratchCore, SetRow,
-    TensorKey, div_ceil,
+    TensorKey,
 };
 
 pub struct GGSWCiphertext<C, B: Backend> {
@@ -19,7 +19,7 @@ pub struct GGSWCiphertext<C, B: Backend> {
 
 impl<B: Backend> GGSWCiphertext<Vec<u8>, B> {
     pub fn alloc(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self {
-        let size: usize = div_ceil(k, basek);
+        let size: usize = k.div_ceil(basek);
         debug_assert!(
             size > digits,
             "invalid ggsw: ceil(k/basek): {} <= digits: {}",
@@ -36,7 +36,7 @@ impl<B: Backend> GGSWCiphertext<Vec<u8>, B> {
         );
 
         Self {
-            data: module.new_mat_znx_dft(rows, rank + 1, rank + 1, div_ceil(k, basek)),
+            data: module.new_mat_znx_dft(rows, rank + 1, rank + 1, k.div_ceil(basek)),
             basek,
             k: k,
             digits,
@@ -44,7 +44,7 @@ impl<B: Backend> GGSWCiphertext<Vec<u8>, B> {
     }
 
     pub fn bytes_of(module: &Module<FFT64>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize {
-        let size: usize = div_ceil(k, basek);
+        let size: usize = k.div_ceil(basek);
         debug_assert!(
             size > digits,
             "invalid ggsw: ceil(k/basek): {} <= digits: {}",
@@ -92,7 +92,7 @@ impl<T, B: Backend> GGSWCiphertext<T, B> {
 
 impl GGSWCiphertext<Vec<u8>, FFT64> {
     pub fn encrypt_sk_scratch_space(module: &Module<FFT64>, basek: usize, k: usize, rank: usize) -> usize {
-        let size = div_ceil(k, basek);
+        let size = k.div_ceil(basek);
         GLWECiphertext::encrypt_sk_scratch_space(module, basek, k)
             + module.bytes_of_vec_znx(rank + 1, size)
             + module.bytes_of_vec_znx(1, size)
@@ -107,9 +107,9 @@ impl GGSWCiphertext<Vec<u8>, FFT64> {
         digits: usize,
         rank: usize,
     ) -> usize {
-        let tsk_size: usize = div_ceil(k_tsk, basek);
-        let self_size_out: usize = div_ceil(self_k, basek);
-        let self_size_in: usize = div_ceil(self_size_out, digits);
+        let tsk_size: usize = k_tsk.div_ceil(basek);
+        let self_size_out: usize = self_k.div_ceil(basek);
+        let self_size_in: usize = self_size_out.div_ceil(digits);
         let tmp_dft_i: usize = module.bytes_of_vec_znx_dft(rank + 1, tsk_size);
         let tmp_a: usize = module.bytes_of_vec_znx_dft(1, self_size_in);
         let vmp: usize = module.vmp_apply_tmp_bytes(
@@ -135,7 +135,7 @@ impl GGSWCiphertext<Vec<u8>, FFT64> {
         rank: usize,
     ) -> usize {
         GLWECiphertext::keyswitch_from_fourier_scratch_space(module, basek, k_out, k_in, k_ksk, digits, rank, rank)
-            + module.bytes_of_vec_znx_dft(rank + 1, div_ceil(k_in, basek))
+            + module.bytes_of_vec_znx_dft(rank + 1, k_in.div_ceil(basek))
     }
 
     pub fn keyswitch_scratch_space(
@@ -149,8 +149,7 @@ impl GGSWCiphertext<Vec<u8>, FFT64> {
         digits_tsk: usize,
         rank: usize,
     ) -> usize {
-        let out_size: usize = div_ceil(k_out, basek);
-
+        let out_size: usize = k_out.div_ceil(basek);
         let res_znx: usize = module.bytes_of_vec_znx(rank + 1, out_size);
         let ci_dft: usize = module.bytes_of_vec_znx_dft(rank + 1, out_size);
         let ks: usize =
@@ -187,7 +186,7 @@ impl GGSWCiphertext<Vec<u8>, FFT64> {
         rank: usize,
     ) -> usize {
         let cols: usize = rank + 1;
-        let out_size: usize = div_ceil(k_out, basek);
+        let out_size: usize = k_out.div_ceil(basek);
         let res: usize = module.bytes_of_vec_znx(cols, out_size);
         let res_dft: usize = module.bytes_of_vec_znx_dft(cols, out_size);
         let ci_dft: usize = module.bytes_of_vec_znx_dft(cols, out_size);

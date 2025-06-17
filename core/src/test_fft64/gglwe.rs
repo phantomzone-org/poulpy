@@ -2,7 +2,7 @@ use backend::{FFT64, Module, ScalarZnx, ScalarZnxAlloc, ScalarZnxToMut, ScratchO
 use sampling::source::Source;
 
 use crate::{
-    GGSWCiphertext, GLWECiphertextFourier, GLWEPlaintext, GLWESecret, GLWESwitchingKey, GetRow, Infos, div_ceil,
+    GGSWCiphertext, GLWECiphertextFourier, GLWEPlaintext, GLWESecret, GLWESwitchingKey, GetRow, Infos,
     test_fft64::{log2_std_noise_gglwe_product, noise_ggsw_product},
 };
 
@@ -30,7 +30,7 @@ fn key_switch() {
     let log_n: usize = 8;
     let basek: usize = 12;
     let k_in: usize = 60;
-    let digits: usize = div_ceil(k_in, basek);
+    let digits: usize = k_in.div_ceil(basek);
     (1..4).for_each(|rank_in_s0s1| {
         (1..4).for_each(|rank_out_s0s1| {
             (1..4).for_each(|rank_out_s1s2| {
@@ -64,7 +64,7 @@ fn key_switch_inplace() {
     let log_n: usize = 8;
     let basek: usize = 12;
     let k_ct: usize = 60;
-    let digits: usize = div_ceil(k_ct, basek);
+    let digits: usize = k_ct.div_ceil(basek);
     (1..4).for_each(|rank_in_s0s1| {
         (1..4).for_each(|rank_out_s0s1| {
             (1..digits + 1).for_each(|di| {
@@ -93,7 +93,7 @@ fn external_product() {
     let log_n: usize = 8;
     let basek: usize = 12;
     let k_in: usize = 60;
-    let digits: usize = div_ceil(k_in, basek);
+    let digits: usize = k_in.div_ceil(basek);
     (1..4).for_each(|rank_in| {
         (1..4).for_each(|rank_out| {
             (1..digits + 1).for_each(|di| {
@@ -116,7 +116,7 @@ fn external_product_inplace() {
     let log_n: usize = 5;
     let basek: usize = 12;
     let k_ct: usize = 60;
-    let digits: usize = div_ceil(k_ct, basek);
+    let digits: usize = k_ct.div_ceil(basek);
     (1..4).for_each(|rank_in| {
         (1..4).for_each(|rank_out| {
             (1..digits).for_each(|di| {
@@ -197,7 +197,7 @@ fn test_key_switch(
     sigma: f64,
 ) {
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
-    let rows: usize = div_ceil(k_in, basek * digits);
+    let rows: usize = k_in.div_ceil(basek * digits);
     let digits_in: usize = 1;
 
     let mut ct_gglwe_s0s1: GLWESwitchingKey<Vec<u8>, FFT64> = GLWESwitchingKey::alloc(
@@ -332,7 +332,7 @@ fn test_key_switch_inplace(
     sigma: f64,
 ) {
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
-    let rows: usize = div_ceil(k_ct, basek * digits);
+    let rows: usize = k_ct.div_ceil(basek * digits);
     let digits_in: usize = 1;
 
     let mut ct_gglwe_s0s1: GLWESwitchingKey<Vec<u8>, FFT64> =
@@ -438,7 +438,7 @@ fn test_external_product(
 ) {
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
 
-    let rows: usize = div_ceil(k_in, basek * digits);
+    let rows: usize = k_in.div_ceil(basek * digits);
     let digits_in: usize = 1;
 
     let mut ct_gglwe_in: GLWESwitchingKey<Vec<u8>, FFT64> =
@@ -559,7 +559,7 @@ fn test_external_product_inplace(
 ) {
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
 
-    let rows: usize = div_ceil(k_ct, basek * digits);
+    let rows: usize = k_ct.div_ceil(basek * digits);
 
     let digits_in: usize = 1;
 

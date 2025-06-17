@@ -7,7 +7,6 @@ use sampling::source::Source;
 use crate::{
     GGSWCiphertext, GLWECiphertextFourier, GLWEPlaintext, GLWESecret, GLWESwitchingKey, GetRow, Infos, TensorKey,
     automorphism::AutomorphismKey,
-    div_ceil,
     test_fft64::{noise_ggsw_keyswitch, noise_ggsw_product},
 };
 
@@ -30,7 +29,7 @@ fn keyswitch() {
     let log_n: usize = 8;
     let basek: usize = 12;
     let k_in: usize = 54;
-    let digits: usize = div_ceil(k_in, basek);
+    let digits: usize = k_in.div_ceil(basek);
     (1..4).for_each(|rank| {
         (1..digits + 1).for_each(|di| {
             let k_ksk: usize = k_in + basek * di;
@@ -47,7 +46,7 @@ fn keyswitch_inplace() {
     let log_n: usize = 8;
     let basek: usize = 12;
     let k_ct: usize = 54;
-    let digits: usize = div_ceil(k_ct, basek);
+    let digits: usize = k_ct.div_ceil(basek);
     (1..4).for_each(|rank| {
         (1..digits + 1).for_each(|di| {
             let k_ksk: usize = k_ct + basek * di;
@@ -63,7 +62,7 @@ fn automorphism() {
     let log_n: usize = 8;
     let basek: usize = 12;
     let k_in: usize = 54;
-    let digits: usize = div_ceil(k_in, basek);
+    let digits: usize = k_in.div_ceil(basek);
     (1..4).for_each(|rank| {
         (1..digits + 1).for_each(|di| {
             let k_ksk: usize = k_in + basek * di;
@@ -80,7 +79,7 @@ fn automorphism_inplace() {
     let log_n: usize = 8;
     let basek: usize = 12;
     let k_ct: usize = 54;
-    let digits: usize = div_ceil(k_ct, basek);
+    let digits: usize = k_ct.div_ceil(basek);
     (1..4).for_each(|rank| {
         (1..digits + 1).for_each(|di| {
             let k_ksk: usize = k_ct + basek * di;
@@ -96,7 +95,7 @@ fn external_product() {
     let log_n: usize = 8;
     let basek: usize = 12;
     let k_in: usize = 60;
-    let digits: usize = div_ceil(k_in, basek);
+    let digits: usize = k_in.div_ceil(basek);
     (1..4).for_each(|rank| {
         (1..digits + 1).for_each(|di| {
             let k_ggsw: usize = k_in + basek * di;
@@ -112,7 +111,7 @@ fn external_product_inplace() {
     let log_n: usize = 5;
     let basek: usize = 12;
     let k_ct: usize = 60;
-    let digits: usize = div_ceil(k_ct, basek);
+    let digits: usize = k_ct.div_ceil(basek);
     (1..4).for_each(|rank| {
         (1..digits).for_each(|di| {
             let k_ggsw: usize = k_ct + basek * di;
@@ -204,7 +203,7 @@ fn test_keyswitch(
     sigma: f64,
 ) {
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
-    let rows: usize = div_ceil(k_in, digits * basek);
+    let rows: usize = k_in.div_ceil(digits * basek);
 
     let digits_in: usize = 1;
 
@@ -332,7 +331,7 @@ fn test_keyswitch_inplace(
     sigma: f64,
 ) {
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
-    let rows: usize = div_ceil(k_ct, digits * basek);
+    let rows: usize = k_ct.div_ceil(digits * basek);
 
     let digits_in: usize = 1;
 
@@ -465,8 +464,8 @@ fn test_automorphism(
     sigma: f64,
 ) {
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
-    let rows: usize = div_ceil(k_in, basek * digits);
-    let rows_in: usize = k_in / (basek * digits);
+    let rows: usize = k_in.div_ceil(basek * digits);
+    let rows_in: usize = k_in.div_euclid(basek * digits);
 
     let digits_in: usize = 1;
 
@@ -592,8 +591,8 @@ fn test_automorphism_inplace(
     sigma: f64,
 ) {
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
-    let rows: usize = div_ceil(k_ct, digits * basek);
-    let rows_in: usize = k_ct / (basek * digits);
+    let rows: usize = k_ct.div_ceil(digits * basek);
+    let rows_in: usize = k_ct.div_euclid(basek * digits);
     let digits_in: usize = 1;
 
     let mut ct: GGSWCiphertext<Vec<u8>, FFT64> = GGSWCiphertext::alloc(&module, basek, k_ct, rows_in, digits_in, rank);
@@ -715,8 +714,8 @@ fn test_external_product(
 ) {
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
 
-    let rows: usize = div_ceil(k_in, basek * digits);
-    let rows_in: usize = k_in / (basek * digits);
+    let rows: usize = k_in.div_ceil(basek * digits);
+    let rows_in: usize = k_in.div_euclid(basek * digits);
     let digits_in: usize = 1;
 
     let mut ct_ggsw_lhs_in: GGSWCiphertext<Vec<u8>, FFT64> =
@@ -837,8 +836,8 @@ fn test_external_product(
 
 fn test_external_product_inplace(log_n: usize, basek: usize, k_ct: usize, k_ggsw: usize, digits: usize, rank: usize, sigma: f64) {
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
-    let rows: usize = div_ceil(k_ct, digits * basek);
-    let rows_in: usize = k_ct / (basek * digits);
+    let rows: usize = k_ct.div_ceil(digits * basek);
+    let rows_in: usize = k_ct.div_euclid(basek * digits);
     let digits_in: usize = 1;
 
     let mut ct_ggsw_lhs: GGSWCiphertext<Vec<u8>, FFT64> = GGSWCiphertext::alloc(&module, basek, k_ct, rows_in, digits_in, rank);

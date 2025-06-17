@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use backend::{FFT64, FillUniform, Module, ScratchOwned, Stats, VecZnxOps, ZnxView, ZnxViewMut};
 use sampling::source::Source;
 
-use crate::{AutomorphismKey, GLWECiphertext, GLWEPlaintext, GLWESecret, Infos, div_ceil, test_fft64::var_noise_gglwe_product};
+use crate::{AutomorphismKey, GLWECiphertext, GLWEPlaintext, GLWESecret, Infos, test_fft64::var_noise_gglwe_product};
 
 #[test]
 fn trace_inplace() {
@@ -20,7 +20,7 @@ fn test_trace_inplace(log_n: usize, basek: usize, k: usize, sigma: f64, rank: us
     let k_autokey: usize = k + basek;
 
     let digits: usize = 1;
-    let rows: usize = div_ceil(k, digits * basek);
+    let rows: usize = k.div_ceil(basek * digits);
 
     let mut ct: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k, rank);
     let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k);

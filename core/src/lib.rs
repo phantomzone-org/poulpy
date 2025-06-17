@@ -13,7 +13,6 @@ pub mod tensor_key;
 #[cfg(test)]
 mod test_fft64;
 pub mod trace;
-mod utils;
 
 pub use automorphism::*;
 use backend::Backend;
@@ -33,7 +32,6 @@ pub use tensor_key::*;
 
 pub use backend::Scratch;
 pub use backend::ScratchOwned;
-use utils::div_ceil;
 
 pub(crate) const SIX_SIGMA: f64 = 6.0;
 
@@ -112,12 +110,12 @@ impl ScratchCore<FFT64> for Scratch {
         k: usize,
         rank: usize,
     ) -> (GLWECiphertext<&mut [u8]>, &mut Self) {
-        let (data, scratch) = self.tmp_vec_znx(module, rank + 1, div_ceil(k, basek));
+        let (data, scratch) = self.tmp_vec_znx(module, rank + 1, k.div_ceil(basek));
         (GLWECiphertext { data, basek, k }, scratch)
     }
 
     fn tmp_glwe_pt(&mut self, module: &Module<FFT64>, basek: usize, k: usize) -> (GLWEPlaintext<&mut [u8]>, &mut Self) {
-        let (data, scratch) = self.tmp_vec_znx(module, 1, div_ceil(k, basek));
+        let (data, scratch) = self.tmp_vec_znx(module, 1, k.div_ceil(basek));
         (GLWEPlaintext { data, basek, k }, scratch)
     }
 
@@ -133,10 +131,10 @@ impl ScratchCore<FFT64> for Scratch {
     ) -> (GGLWECiphertext<&mut [u8], FFT64>, &mut Self) {
         let (data, scratch) = self.tmp_mat_znx_dft(
             module,
-            div_ceil(rows, digits),
+            rows.div_ceil(digits),
             rank_in,
             rank_out + 1,
-            div_ceil(k, basek),
+            k.div_ceil(basek),
         );
         (
             GGLWECiphertext {
@@ -160,10 +158,10 @@ impl ScratchCore<FFT64> for Scratch {
     ) -> (GGSWCiphertext<&mut [u8], FFT64>, &mut Self) {
         let (data, scratch) = self.tmp_mat_znx_dft(
             module,
-            div_ceil(rows, digits),
+            rows.div_ceil(digits),
             rank + 1,
             rank + 1,
-            div_ceil(k, basek),
+            k.div_ceil(basek),
         );
         (
             GGSWCiphertext {
@@ -183,7 +181,7 @@ impl ScratchCore<FFT64> for Scratch {
         k: usize,
         rank: usize,
     ) -> (GLWECiphertextFourier<&mut [u8], FFT64>, &mut Self) {
-        let (data, scratch) = self.tmp_vec_znx_dft(module, rank + 1, div_ceil(k, basek));
+        let (data, scratch) = self.tmp_vec_znx_dft(module, rank + 1, k.div_ceil(basek));
         (GLWECiphertextFourier { data, basek, k }, scratch)
     }
 

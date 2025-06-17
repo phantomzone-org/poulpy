@@ -1,4 +1,4 @@
-use crate::{AutomorphismKey, GLWECiphertext, GLWEOps, GLWEPlaintext, GLWESecret, StreamPacker, div_ceil};
+use crate::{AutomorphismKey, GLWECiphertext, GLWEOps, GLWEPlaintext, GLWESecret, StreamPacker};
 use std::collections::HashMap;
 
 use backend::{Encoding, FFT64, Module, ScratchOwned, Stats};
@@ -21,7 +21,7 @@ fn packing() {
     let digits: usize = 1;
     let k_ksk: usize = k_ct + basek * digits;
 
-    let rows: usize = div_ceil(k_ct, basek * digits);
+    let rows: usize = k_ct.div_ceil(basek * digits);
 
     let mut scratch: ScratchOwned = ScratchOwned::new(
         GLWECiphertext::encrypt_sk_scratch_space(&module, basek, k_ct)
