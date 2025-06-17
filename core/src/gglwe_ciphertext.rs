@@ -72,7 +72,7 @@ impl<B: Backend> GGLWECiphertext<Vec<u8>, B> {
             size
         );
 
-        module.bytes_of_mat_znx_dft(rows, rank_in, rank_out + 1, rows)
+        module.bytes_of_mat_znx_dft(rows, rank_in, rank_out + 1, size)
     }
 }
 
