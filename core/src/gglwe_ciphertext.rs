@@ -31,7 +31,7 @@ impl<B: Backend> GGLWECiphertext<Vec<u8>, B> {
             digits
         );
 
-        assert!(
+        debug_assert!(
             rows * digits <= size,
             "invalid gglwe: rows: {} * digits:{} > ceil(k/basek): {}",
             rows,
