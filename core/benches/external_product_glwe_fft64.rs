@@ -75,12 +75,7 @@ fn bench_external_product_glwe_fft64(c: &mut Criterion) {
         );
 
         move || {
-            ct_glwe_out.external_product(
-                black_box(&module),
-                black_box(&ct_glwe_in),
-                black_box(&ct_ggsw),
-                black_box(scratch.borrow()),
-            );
+            black_box(ct_glwe_out.external_product(&module, &ct_glwe_in, &ct_ggsw, scratch.borrow()));
         }
     }
 
@@ -163,13 +158,7 @@ fn bench_external_product_glwe_inplace_fft64(c: &mut Criterion) {
 
         move || {
             let scratch_borrow = scratch.borrow();
-            (0..687).for_each(|_| {
-                ct_glwe.external_product_inplace(
-                    black_box(&module),
-                    black_box(&ct_ggsw),
-                    black_box(scratch_borrow),
-                );
-            });
+            black_box(ct_glwe.external_product_inplace(&module, &ct_ggsw, scratch_borrow));
         }
     }
 

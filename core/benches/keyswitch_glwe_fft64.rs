@@ -81,7 +81,7 @@ fn bench_keyswitch_glwe_fft64(c: &mut Criterion) {
         );
 
         move || {
-            ct_out.automorphism(&module, &ct_in, &ksk, scratch.borrow());
+            black_box(ct_out.automorphism(&module, &ct_in, &ksk, scratch.borrow()));
         }
     }
 
@@ -172,11 +172,7 @@ fn bench_keyswitch_glwe_inplace_fft64(c: &mut Criterion) {
         );
 
         move || {
-            ct.keyswitch_inplace(
-                black_box(&module),
-                black_box(&ksk),
-                black_box(scratch.borrow()),
-            );
+            black_box(ct.keyswitch_inplace(&module, &ksk, scratch.borrow()));
         }
     }
 
