@@ -53,7 +53,7 @@ pub trait VecZnxDftOps<B: Backend> {
         R: VecZnxDftToMut<B>,
         A: VecZnxDftToRef<B>;
 
-    fn vec_znx_dft_copy<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn vec_znx_dft_copy<R, A>(&self, step: usize, offset: usize, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxDftToMut<B>,
         A: VecZnxDftToRef<B>;
@@ -74,9 +74,9 @@ pub trait VecZnxDftOps<B: Backend> {
         R: VecZnxBigToMut<B>,
         A: VecZnxDftToRef<B>;
 
-    fn vec_znx_dft<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn vec_znx_dft<R, A>(&self, step: usize, offset: usize, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
-        R: VecZnxDftToMut<B>,
+        R: VecZnxDftToMut<FFT64>,
         A: VecZnxToRef;
 }
 
@@ -150,7 +150,7 @@ impl VecZnxDftOps<FFT64> for Module<FFT64> {
         }
     }
 
-    fn vec_znx_dft_copy<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn vec_znx_dft_copy<R, A>(&self, step: usize, offset: usize, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxDftToMut<FFT64>,
         A: VecZnxDftToRef<FFT64>,
@@ -158,14 +158,18 @@ impl VecZnxDftOps<FFT64> for Module<FFT64> {
         let mut res_mut: VecZnxDft<&mut [u8], FFT64> = res.to_mut();
         let a_ref: VecZnxDft<&[u8], FFT64> = a.to_ref();
 
-        let min_size: usize = min(res_mut.size(), a_ref.size());
+        let steps: usize = (a_ref.size() + step - 1) / step;
+        let min_steps: usize = min(res_mut.size(), steps);
 
-        (0..min_size).for_each(|j| {
-            res_mut
-                .at_mut(res_col, j)
-                .copy_from_slice(a_ref.at(a_col, j));
+        (0..min_steps).for_each(|j| {
+            let limb: usize = offset + j * step;
+            if limb < a_ref.size() {
+                res_mut
+                    .at_mut(res_col, j)
+                    .copy_from_slice(a_ref.at(a_col, limb));
+            }
         });
-        (min_size..res_mut.size()).for_each(|j| {
+        (min_steps..res_mut.size()).for_each(|j| {
             res_mut.zero_at(res_col, j);
         })
     }
@@ -224,32 +228,30 @@ impl VecZnxDftOps<FFT64> for Module<FFT64> {
         unsafe { vec_znx_dft::vec_znx_idft_tmp_bytes(self.ptr) as usize }
     }
 
-    /// b <- DFT(a)
-    ///
-    /// # Panics
-    /// If b.cols < a_col
-    fn vec_znx_dft<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn vec_znx_dft<R, A>(&self, step: usize, offset: usize, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxDftToMut<FFT64>,
         A: VecZnxToRef,
     {
         let mut res_mut: VecZnxDft<&mut [u8], FFT64> = res.to_mut();
         let a_ref: crate::VecZnx<&[u8]> = a.to_ref();
-
-        let min_size: usize = min(res_mut.size(), a_ref.size());
-
+        let steps: usize = (a_ref.size() + step - 1) / step;
+        let min_steps: usize = min(res_mut.size(), steps);
         unsafe {
-            (0..min_size).for_each(|j| {
-                vec_znx_dft::vec_znx_dft(
-                    self.ptr,
-                    res_mut.at_mut_ptr(res_col, j) as *mut vec_znx_dft::vec_znx_dft_t,
-                    1 as u64,
-                    a_ref.at_ptr(a_col, j),
-                    1 as u64,
-                    a_ref.sl() as u64,
-                )
+            (0..min_steps).for_each(|j| {
+                let limb: usize = offset + j * step;
+                if limb < a_ref.size() {
+                    vec_znx_dft::vec_znx_dft(
+                        self.ptr,
+                        res_mut.at_mut_ptr(res_col, j) as *mut vec_znx_dft::vec_znx_dft_t,
+                        1 as u64,
+                        a_ref.at_ptr(a_col, limb),
+                        1 as u64,
+                        a_ref.sl() as u64,
+                    )
+                }
             });
-            (min_size..res_mut.size()).for_each(|j| {
+            (min_steps..res_mut.size()).for_each(|j| {
                 res_mut.zero_at(res_col, j);
             });
         }

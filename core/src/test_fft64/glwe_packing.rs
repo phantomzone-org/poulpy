@@ -14,24 +14,26 @@ fn packing() {
     let mut source_xa: Source = Source::new([0u8; 32]);
 
     let basek: usize = 18;
-    let ct_k: usize = 36;
-    let atk_k: usize = ct_k + basek;
+    let k_ct: usize = 36;
     let pt_k: usize = 18;
     let rank: usize = 3;
-    let rows: usize = (ct_k + basek - 1) / basek;
     let sigma: f64 = 3.2;
+    let digits: usize = 1;
+    let k_ksk: usize = k_ct + basek * digits;
+
+    let rows: usize = k_ct.div_ceil(basek * digits);
 
     let mut scratch: ScratchOwned = ScratchOwned::new(
-        GLWECiphertext::encrypt_sk_scratch_space(&module, basek, ct_k)
-            | GLWECiphertext::decrypt_scratch_space(&module, basek, ct_k)
-            | AutomorphismKey::generate_from_sk_scratch_space(&module, basek, atk_k, rank)
-            | StreamPacker::scratch_space(&module, basek, ct_k, atk_k, rank),
+        GLWECiphertext::encrypt_sk_scratch_space(&module, basek, k_ct)
+            | GLWECiphertext::decrypt_scratch_space(&module, basek, k_ct)
+            | AutomorphismKey::generate_from_sk_scratch_space(&module, basek, k_ksk, rank)
+            | StreamPacker::scratch_space(&module, basek, k_ct, k_ksk, digits, rank),
     );
 
     let mut sk: GLWESecret<Vec<u8>, FFT64> = GLWESecret::alloc(&module, rank);
     sk.fill_ternary_prob(&module, 0.5, &mut source_xs);
 
-    let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, ct_k);
+    let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_ct);
     let mut data: Vec<i64> = vec![0i64; module.n()];
     data.iter_mut().enumerate().for_each(|(i, x)| {
         *x = i as i64;
@@ -42,7 +44,7 @@ fn packing() {
 
     let mut auto_keys: HashMap<i64, AutomorphismKey<Vec<u8>, FFT64>> = HashMap::new();
     gal_els.iter().for_each(|gal_el| {
-        let mut key: AutomorphismKey<Vec<u8>, FFT64> = AutomorphismKey::alloc(&module, basek, atk_k, rows, rank);
+        let mut key: AutomorphismKey<Vec<u8>, FFT64> = AutomorphismKey::alloc(&module, basek, k_ksk, rows, digits, rank);
         key.generate_from_sk(
             &module,
             *gal_el,
@@ -57,9 +59,9 @@ fn packing() {
 
     let log_batch: usize = 0;
 
-    let mut packer: StreamPacker = StreamPacker::new(&module, log_batch, basek, ct_k, rank);
+    let mut packer: StreamPacker = StreamPacker::new(&module, log_batch, basek, k_ct, rank);
 
-    let mut ct: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, ct_k, rank);
+    let mut ct: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_ct, rank);
 
     ct.encrypt_sk(
         &module,
@@ -102,7 +104,7 @@ fn packing() {
     packer.flush(&module, &mut res, &auto_keys, scratch.borrow());
     packer.reset();
 
-    let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, ct_k);
+    let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_ct);
 
     res.iter().enumerate().for_each(|(i, res_i)| {
         let mut data: Vec<i64> = vec![0i64; module.n()];
@@ -124,7 +126,7 @@ fn packing() {
         let noise_have = pt.data.std(0, basek).log2();
         // println!("noise_have: {}", noise_have);
         assert!(
-            noise_have < -((ct_k - basek) as f64),
+            noise_have < -((k_ct - basek) as f64),
             "noise: {}",
             noise_have
         );

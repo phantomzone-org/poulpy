@@ -3,13 +3,14 @@ use std::collections::HashMap;
 use backend::{FFT64, FillUniform, Module, ScratchOwned, Stats, VecZnxOps, ZnxView, ZnxViewMut};
 use sampling::source::Source;
 
-use crate::{AutomorphismKey, GLWECiphertext, GLWEPlaintext, GLWESecret, Infos, test_fft64::gglwe::var_noise_gglwe_product};
+use crate::{AutomorphismKey, GLWECiphertext, GLWEPlaintext, GLWESecret, Infos, test_fft64::var_noise_gglwe_product};
 
 #[test]
 fn trace_inplace() {
+    let log_n: usize = 8;
     (1..4).for_each(|rank| {
         println!("test trace_inplace rank: {}", rank);
-        test_trace_inplace(11, 8, 54, 3.2, rank);
+        test_trace_inplace(log_n, 8, 54, 3.2, rank);
     });
 }
 
@@ -18,7 +19,8 @@ fn test_trace_inplace(log_n: usize, basek: usize, k: usize, sigma: f64, rank: us
 
     let k_autokey: usize = k + basek;
 
-    let rows: usize = (k + basek - 1) / basek;
+    let digits: usize = 1;
+    let rows: usize = k.div_ceil(basek * digits);
 
     let mut ct: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k, rank);
     let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k);
@@ -32,7 +34,7 @@ fn test_trace_inplace(log_n: usize, basek: usize, k: usize, sigma: f64, rank: us
         GLWECiphertext::encrypt_sk_scratch_space(&module, basek, ct.k())
             | GLWECiphertext::decrypt_scratch_space(&module, basek, ct.k())
             | AutomorphismKey::generate_from_sk_scratch_space(&module, basek, k_autokey, rank)
-            | GLWECiphertext::trace_inplace_scratch_space(&module, basek, ct.k(), k_autokey, rank),
+            | GLWECiphertext::trace_inplace_scratch_space(&module, basek, ct.k(), k_autokey, digits, rank),
     );
 
     let mut sk: GLWESecret<Vec<u8>, FFT64> = GLWESecret::alloc(&module, rank);
@@ -61,7 +63,7 @@ fn test_trace_inplace(log_n: usize, basek: usize, k: usize, sigma: f64, rank: us
     let mut auto_keys: HashMap<i64, AutomorphismKey<Vec<u8>, FFT64>> = HashMap::new();
     let gal_els: Vec<i64> = GLWECiphertext::trace_galois_elements(&module);
     gal_els.iter().for_each(|gal_el| {
-        let mut key: AutomorphismKey<Vec<u8>, FFT64> = AutomorphismKey::alloc(&module, basek, k_autokey, rows, rank);
+        let mut key: AutomorphismKey<Vec<u8>, FFT64> = AutomorphismKey::alloc(&module, basek, k_autokey, rows, digits, rank);
         key.generate_from_sk(
             &module,
             *gal_el,
@@ -102,5 +104,10 @@ fn test_trace_inplace(log_n: usize, basek: usize, k: usize, sigma: f64, rank: us
     noise_want += module.n() as f64 * 1.0 / 12.0 * 0.5 * rank as f64 * (-2.0 * (k) as f64).exp2();
     noise_want = noise_want.sqrt().log2();
 
-    assert!((noise_have - noise_want).abs() < 1.0);
+    assert!(
+        (noise_have - noise_want).abs() < 1.0,
+        "{} > {}",
+        noise_have,
+        noise_want
+    );
 }

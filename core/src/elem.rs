@@ -1,6 +1,6 @@
 use backend::{Backend, Module, ZnxInfos};
 
-use crate::{GLWECiphertextFourier, derive_size};
+use crate::GLWECiphertextFourier;
 
 pub trait Infos {
     type Inner: ZnxInfos;
@@ -34,7 +34,7 @@ pub trait Infos {
     /// Returns the number of size per polynomial.
     fn size(&self) -> usize {
         let size: usize = self.inner().size();
-        debug_assert_eq!(size, derive_size(self.basek(), self.k()));
+        debug_assert_eq!(size, self.k().div_ceil(self.basek()));
         size
     }
 

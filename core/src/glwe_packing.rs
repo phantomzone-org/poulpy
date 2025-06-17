@@ -74,8 +74,8 @@ impl StreamPacker {
     }
 
     /// Number of scratch space bytes required to call [Self::add].
-    pub fn scratch_space(module: &Module<FFT64>, basek: usize, ct_k: usize, atk_k: usize, rank: usize) -> usize {
-        pack_core_scratch_space(module, basek, ct_k, atk_k, rank)
+    pub fn scratch_space(module: &Module<FFT64>, basek: usize, ct_k: usize, k_ksk: usize, digits: usize, rank: usize) -> usize {
+        pack_core_scratch_space(module, basek, ct_k, k_ksk, digits, rank)
     }
 
     pub fn galois_elements(module: &Module<FFT64>) -> Vec<i64> {
@@ -142,8 +142,8 @@ impl StreamPacker {
     }
 }
 
-fn pack_core_scratch_space(module: &Module<FFT64>, basek: usize, ct_k: usize, atk_k: usize, rank: usize) -> usize {
-    combine_scratch_space(module, basek, ct_k, atk_k, rank)
+fn pack_core_scratch_space(module: &Module<FFT64>, basek: usize, ct_k: usize, k_ksk: usize, digits: usize, rank: usize) -> usize {
+    combine_scratch_space(module, basek, ct_k, k_ksk, digits, rank)
 }
 
 fn pack_core<D: AsRef<[u8]>, DataAK: AsRef<[u8]>>(
@@ -203,10 +203,10 @@ fn pack_core<D: AsRef<[u8]>, DataAK: AsRef<[u8]>>(
     }
 }
 
-fn combine_scratch_space(module: &Module<FFT64>, basek: usize, ct_k: usize, atk_k: usize, rank: usize) -> usize {
+fn combine_scratch_space(module: &Module<FFT64>, basek: usize, ct_k: usize, k_ksk: usize, digits: usize, rank: usize) -> usize {
     GLWECiphertext::bytes_of(module, basek, ct_k, rank)
         + (GLWECiphertext::rsh_scratch_space(module)
-            | GLWECiphertext::automorphism_scratch_space(module, basek, ct_k, ct_k, atk_k, rank))
+            | GLWECiphertext::automorphism_scratch_space(module, basek, ct_k, ct_k, k_ksk, digits, rank))
 }
 
 /// [combine] merges two ciphertexts together.

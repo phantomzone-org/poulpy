@@ -22,14 +22,22 @@ impl GLWECiphertext<Vec<u8>> {
         basek: usize,
         out_k: usize,
         in_k: usize,
-        atk_k: usize,
+        ksk_k: usize,
+        digits: usize,
         rank: usize,
     ) -> usize {
-        Self::automorphism_inplace_scratch_space(module, basek, out_k.min(in_k), atk_k, rank)
+        Self::automorphism_inplace_scratch_space(module, basek, out_k.min(in_k), ksk_k, digits, rank)
     }
 
-    pub fn trace_inplace_scratch_space(module: &Module<FFT64>, basek: usize, out_k: usize, atk_k: usize, rank: usize) -> usize {
-        Self::automorphism_inplace_scratch_space(module, basek, out_k, atk_k, rank)
+    pub fn trace_inplace_scratch_space(
+        module: &Module<FFT64>,
+        basek: usize,
+        out_k: usize,
+        ksk_k: usize,
+        digits: usize,
+        rank: usize,
+    ) -> usize {
+        Self::automorphism_inplace_scratch_space(module, basek, out_k, ksk_k, digits, rank)
     }
 }
 

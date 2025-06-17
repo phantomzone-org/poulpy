@@ -12,15 +12,15 @@ pub struct AutomorphismKey<Data, B: Backend> {
 }
 
 impl AutomorphismKey<Vec<u8>, FFT64> {
-    pub fn alloc(module: &Module<FFT64>, basek: usize, k: usize, rows: usize, rank: usize) -> Self {
+    pub fn alloc(module: &Module<FFT64>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self {
         AutomorphismKey {
-            key: GLWESwitchingKey::alloc(module, basek, k, rows, rank, rank),
+            key: GLWESwitchingKey::alloc(module, basek, k, rows, digits, rank, rank),
             p: 0,
         }
     }
 
-    pub fn bytes_of(module: &Module<FFT64>, basek: usize, k: usize, rows: usize, rank: usize) -> usize {
-        GLWESwitchingKey::<Vec<u8>, FFT64>::bytes_of(module, basek, k, rows, rank, rank)
+    pub fn bytes_of(module: &Module<FFT64>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize {
+        GLWESwitchingKey::<Vec<u8>, FFT64>::bytes_of(module, basek, k, rows, digits, rank, rank)
     }
 }
 
@@ -43,6 +43,10 @@ impl<T, B: Backend> Infos for AutomorphismKey<T, B> {
 impl<T, B: Backend> AutomorphismKey<T, B> {
     pub fn p(&self) -> i64 {
         self.p
+    }
+
+    pub fn digits(&self) -> usize {
+        self.key.digits()
     }
 
     pub fn rank(&self) -> usize {
@@ -94,68 +98,74 @@ impl AutomorphismKey<Vec<u8>, FFT64> {
     pub fn keyswitch_scratch_space(
         module: &Module<FFT64>,
         basek: usize,
-        out_k: usize,
-        in_k: usize,
-        ksk_k: usize,
+        k_out: usize,
+        k_in: usize,
+        k_ksk: usize,
+        digits: usize,
         rank: usize,
     ) -> usize {
-        GLWESwitchingKey::keyswitch_scratch_space(module, basek, out_k, rank, in_k, rank, ksk_k)
+        GLWESwitchingKey::keyswitch_scratch_space(module, basek, k_out, k_in, k_ksk, digits, rank, rank)
     }
 
     pub fn keyswitch_inplace_scratch_space(
         module: &Module<FFT64>,
         basek: usize,
-        out_k: usize,
-        out_rank: usize,
-        ksk_k: usize,
+        k_out: usize,
+        k_ksk: usize,
+        digits: usize,
+        rank: usize,
     ) -> usize {
-        GLWESwitchingKey::keyswitch_inplace_scratch_space(module, basek, out_k, out_rank, ksk_k)
+        GLWESwitchingKey::keyswitch_inplace_scratch_space(module, basek, k_out, k_ksk, digits, rank)
     }
 
     pub fn automorphism_scratch_space(
         module: &Module<FFT64>,
         basek: usize,
-        out_k: usize,
-        in_k: usize,
-        atk_k: usize,
+        k_out: usize,
+        k_in: usize,
+        k_ksk: usize,
+        digits: usize,
         rank: usize,
     ) -> usize {
-        let tmp_dft: usize = GLWECiphertextFourier::bytes_of(module, basek, in_k, rank);
-        let tmp_idft: usize = GLWECiphertextFourier::bytes_of(module, basek, out_k, rank);
+        let tmp_dft: usize = GLWECiphertextFourier::bytes_of(module, basek, k_in, rank);
+        let tmp_idft: usize = GLWECiphertextFourier::bytes_of(module, basek, k_out, rank);
         let idft: usize = module.vec_znx_idft_tmp_bytes();
-        let keyswitch: usize = GLWECiphertext::keyswitch_inplace_scratch_space(module, basek, out_k, rank, atk_k);
+        let keyswitch: usize = GLWECiphertext::keyswitch_inplace_scratch_space(module, basek, k_out, k_ksk, digits, rank);
         tmp_dft + tmp_idft + idft + keyswitch
     }
 
     pub fn automorphism_inplace_scratch_space(
         module: &Module<FFT64>,
         basek: usize,
-        out_k: usize,
-        ksk_k: usize,
+        k_out: usize,
+        k_ksk: usize,
+        digits: usize,
         rank: usize,
     ) -> usize {
-        AutomorphismKey::automorphism_scratch_space(module, basek, out_k, out_k, ksk_k, rank)
+        AutomorphismKey::automorphism_scratch_space(module, basek, k_out, k_out, k_ksk, digits, rank)
     }
 
     pub fn external_product_scratch_space(
         module: &Module<FFT64>,
         basek: usize,
-        out_k: usize,
-        in_k: usize,
+        k_out: usize,
+        k_in: usize,
         ggsw_k: usize,
+        digits: usize,
         rank: usize,
     ) -> usize {
-        GLWESwitchingKey::external_product_scratch_space(module, basek, out_k, in_k, ggsw_k, rank)
+        GLWESwitchingKey::external_product_scratch_space(module, basek, k_out, k_in, ggsw_k, digits, rank)
     }
 
     pub fn external_product_inplace_scratch_space(
         module: &Module<FFT64>,
         basek: usize,
-        out_k: usize,
+        k_out: usize,
         ggsw_k: usize,
+        digits: usize,
         rank: usize,
     ) -> usize {
-        GLWESwitchingKey::external_product_inplace_scratch_space(module, basek, out_k, ggsw_k, rank)
+        GLWESwitchingKey::external_product_inplace_scratch_space(module, basek, k_out, ggsw_k, digits, rank)
     }
 }
 
@@ -239,24 +249,33 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> AutomorphismKey<DataSelf, FFT64> {
                 self.rank_out(),
                 rhs.rank_out()
             );
+            assert!(
+                self.k() <= lhs.k(),
+                "output k={} cannot be greater than input k={}",
+                self.k(),
+                lhs.k()
+            )
         }
 
         let cols_out: usize = rhs.rank_out() + 1;
 
-        let (mut tmp_dft, scratch1) = scratch.tmp_glwe_fourier(module, lhs.basek(), lhs.k(), lhs.rank());
-
         (0..self.rank_in()).for_each(|col_i| {
             (0..self.rows()).for_each(|row_j| {
-                // Extracts relevant row
-                lhs.get_row(module, row_j, col_i, &mut tmp_dft);
+                let (mut tmp_idft_data, scratct1) = scratch.tmp_vec_znx_big(module, cols_out, self.size());
 
-                // Get a VecZnxBig from scratch space
-                let (mut tmp_idft_data, scratch2) = scratch1.tmp_vec_znx_big(module, cols_out, self.size());
+                {
+                    let (mut tmp_dft, scratch2) = scratct1.tmp_glwe_fourier(module, lhs.basek(), lhs.k(), lhs.rank());
 
-                // Switches input outside of DFT
-                (0..cols_out).for_each(|i| {
-                    module.vec_znx_idft(&mut tmp_idft_data, i, &tmp_dft.data, i, scratch2);
-                });
+                    // Extracts relevant row
+                    lhs.get_row(module, row_j, col_i, &mut tmp_dft);
+
+                    // Get a VecZnxBig from scratch space
+
+                    // Switches input outside of DFT
+                    (0..cols_out).for_each(|i| {
+                        module.vec_znx_idft(&mut tmp_idft_data, i, &tmp_dft.data, i, scratch2);
+                    });
+                }
 
                 // Consumes to small vec znx
                 let mut tmp_idft_small_data: VecZnx<&mut [u8]> = tmp_idft_data.to_vec_znx_small();
@@ -274,20 +293,25 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> AutomorphismKey<DataSelf, FFT64> {
                 };
 
                 // Key-switch (-sa + pi_{k}(s), a) to (-pi^{-1}_{k'}(s)a + pi_{k}(s), a)
-                tmp_idft.keyswitch_inplace(module, &rhs.key, scratch2);
+                tmp_idft.keyswitch_inplace(module, &rhs.key, scratct1);
 
-                // Applies back the automorphism X^{k}: (-pi^{-1}_{k'}(s)a + pi_{k}(s), a) -> (-pi^{-1}_{k'+k}(s)a + s, a)
-                // and switches back to DFT domain
-                (0..self.rank_out() + 1).for_each(|i| {
-                    module.vec_znx_automorphism_inplace(lhs.p(), &mut tmp_idft.data, i);
-                    module.vec_znx_dft(&mut tmp_dft.data, i, &tmp_idft.data, i);
-                });
+                {
+                    let (mut tmp_dft, _) = scratct1.tmp_glwe_fourier(module, self.basek(), self.k(), self.rank());
 
-                // Sets back the relevant row
-                self.set_row(module, row_j, col_i, &tmp_dft);
+                    // Applies back the automorphism X^{k}: (-pi^{-1}_{k'}(s)a + pi_{k}(s), a) -> (-pi^{-1}_{k'+k}(s)a + s, a)
+                    // and switches back to DFT domain
+                    (0..self.rank_out() + 1).for_each(|i| {
+                        module.vec_znx_automorphism_inplace(lhs.p(), &mut tmp_idft.data, i);
+                        module.vec_znx_dft(1, 0, &mut tmp_dft.data, i, &tmp_idft.data, i);
+                    });
+
+                    // Sets back the relevant row
+                    self.set_row(module, row_j, col_i, &tmp_dft);
+                }
             });
         });
 
+        let (mut tmp_dft, _) = scratch.tmp_glwe_fourier(module, self.basek(), self.k(), self.rank());
         tmp_dft.data.zero();
 
         (self.rows().min(lhs.rows())..self.rows()).for_each(|row_i| {
