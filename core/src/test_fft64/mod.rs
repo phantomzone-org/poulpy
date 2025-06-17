@@ -62,7 +62,7 @@ pub(crate) fn log2_std_noise_gglwe_product(
         b_logq,
     );
     noise = noise.sqrt();
-    noise.log2().min(-1.0) // max noise is [-2^{-1}, 2^{-1}]
+    noise.log2().min(-1.0).max(-(a_logq as f64)) // max noise is [-2^{-1}, 2^{-1}]
 }
 
 pub(crate) fn noise_ggsw_product(

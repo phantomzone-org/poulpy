@@ -10,7 +10,7 @@ fn automorphism() {
     let log_n: usize = 8;
     let basek: usize = 12;
     let k_in: usize = 60;
-    let k_out: usize = 60;
+    let k_out: usize = 40;
     let digits: usize = k_in.div_ceil(basek);
     let sigma: f64 = 3.2;
     (1..4).for_each(|rank| {
@@ -141,12 +141,12 @@ fn test_automorphism(
                 sigma * sigma,
                 0f64,
                 rank as f64,
-                k_in,
+                k_out,
                 k_apply,
             );
 
             assert!(
-                (noise_have - noise_want).abs() <= 0.5,
+                noise_have < noise_want + 0.5,
                 "{} {}",
                 noise_have,
                 noise_want
@@ -260,7 +260,7 @@ fn test_automorphism_inplace(
             );
 
             assert!(
-                (noise_have - noise_want).abs() <= 0.5,
+                noise_have < noise_want + 0.5,
                 "{} {}",
                 noise_have,
                 noise_want

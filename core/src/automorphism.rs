@@ -249,24 +249,33 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> AutomorphismKey<DataSelf, FFT64> {
                 self.rank_out(),
                 rhs.rank_out()
             );
+            assert!(
+                self.k() <= lhs.k(),
+                "output k={} cannot be greater than input k={}",
+                self.k(),
+                lhs.k()
+            )
         }
 
         let cols_out: usize = rhs.rank_out() + 1;
 
-        let (mut tmp_dft, scratch1) = scratch.tmp_glwe_fourier(module, lhs.basek(), lhs.k(), lhs.rank());
-
         (0..self.rank_in()).for_each(|col_i| {
             (0..self.rows()).for_each(|row_j| {
-                // Extracts relevant row
-                lhs.get_row(module, row_j, col_i, &mut tmp_dft);
+                let (mut tmp_idft_data, scratct1) = scratch.tmp_vec_znx_big(module, cols_out, self.size());
 
-                // Get a VecZnxBig from scratch space
-                let (mut tmp_idft_data, scratch2) = scratch1.tmp_vec_znx_big(module, cols_out, self.size());
+                {
+                    let (mut tmp_dft, scratch2) = scratct1.tmp_glwe_fourier(module, lhs.basek(), lhs.k(), lhs.rank());
 
-                // Switches input outside of DFT
-                (0..cols_out).for_each(|i| {
-                    module.vec_znx_idft(&mut tmp_idft_data, i, &tmp_dft.data, i, scratch2);
-                });
+                    // Extracts relevant row
+                    lhs.get_row(module, row_j, col_i, &mut tmp_dft);
+
+                    // Get a VecZnxBig from scratch space
+
+                    // Switches input outside of DFT
+                    (0..cols_out).for_each(|i| {
+                        module.vec_znx_idft(&mut tmp_idft_data, i, &tmp_dft.data, i, scratch2);
+                    });
+                }
 
                 // Consumes to small vec znx
                 let mut tmp_idft_small_data: VecZnx<&mut [u8]> = tmp_idft_data.to_vec_znx_small();
@@ -284,20 +293,25 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> AutomorphismKey<DataSelf, FFT64> {
                 };
 
                 // Key-switch (-sa + pi_{k}(s), a) to (-pi^{-1}_{k'}(s)a + pi_{k}(s), a)
-                tmp_idft.keyswitch_inplace(module, &rhs.key, scratch2);
+                tmp_idft.keyswitch_inplace(module, &rhs.key, scratct1);
 
-                // Applies back the automorphism X^{k}: (-pi^{-1}_{k'}(s)a + pi_{k}(s), a) -> (-pi^{-1}_{k'+k}(s)a + s, a)
-                // and switches back to DFT domain
-                (0..self.rank_out() + 1).for_each(|i| {
-                    module.vec_znx_automorphism_inplace(lhs.p(), &mut tmp_idft.data, i);
-                    module.vec_znx_dft(1, 0, &mut tmp_dft.data, i, &tmp_idft.data, i);
-                });
+                {
+                    let (mut tmp_dft, _) = scratct1.tmp_glwe_fourier(module, self.basek(), self.k(), self.rank());
 
-                // Sets back the relevant row
-                self.set_row(module, row_j, col_i, &tmp_dft);
+                    // Applies back the automorphism X^{k}: (-pi^{-1}_{k'}(s)a + pi_{k}(s), a) -> (-pi^{-1}_{k'+k}(s)a + s, a)
+                    // and switches back to DFT domain
+                    (0..self.rank_out() + 1).for_each(|i| {
+                        module.vec_znx_automorphism_inplace(lhs.p(), &mut tmp_idft.data, i);
+                        module.vec_znx_dft(1, 0, &mut tmp_dft.data, i, &tmp_idft.data, i);
+                    });
+
+                    // Sets back the relevant row
+                    self.set_row(module, row_j, col_i, &tmp_dft);
+                }
             });
         });
 
+        let (mut tmp_dft, _) = scratch.tmp_glwe_fourier(module, self.basek(), self.k(), self.rank());
         tmp_dft.data.zero();
 
         (self.rows().min(lhs.rows())..self.rows()).for_each(|row_i| {
