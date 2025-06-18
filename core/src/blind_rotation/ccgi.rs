@@ -4,8 +4,7 @@ use backend::{MatZnxDftOps, MatZnxDftScratch, Module, ScalarZnxDftOps, Scratch, 
 use itertools::izip;
 
 use crate::{
-    GGSWCiphertext, GLWECiphertext, GLWECiphertextToMut, GLWECiphertextToRef, GLWEPlaintext, Infos, LWECiphertext,
-    ScratchCore, blind_rotation::key::BlindRotationKeyCGGI, lwe::ciphertext::LWECiphertextToRef,
+    blind_rotation::key::BlindRotationKeyCGGI, lwe::ciphertext::LWECiphertextToRef, FourierGLWESecret, GGSWCiphertext, GLWECiphertext, GLWECiphertextToMut, GLWECiphertextToRef, GLWEPlaintext, GLWESecret, Infos, LWECiphertext, LWESecret, ScratchCore
 };
 
 pub fn cggi_blind_rotate_scratch_space(
@@ -34,8 +33,7 @@ pub fn cggi_blind_rotate<DataRes, DataIn, DataLUT>(
     DataIn: AsRef<[u8]>,
     DataLUT: AsRef<[u8]>,
 {
-
-    println!("{}", lwe.n());
+    let basek = res.basek();
 
     let mut lwe_2n: Vec<i64> = vec![0i64; lwe.n() + 1]; // TODO: from scratch space
     let mut out_mut: GLWECiphertext<&mut [u8]> = res.to_mut();
@@ -60,7 +58,7 @@ pub fn cggi_blind_rotate<DataRes, DataIn, DataLUT>(
 
     let (mut acc_dft, scratch1) = scratch.tmp_glwe_fourier(module, brk.basek(), out_mut.k(), out_mut.rank());
     let (mut acc_add_dft, scratch2) = scratch1.tmp_glwe_fourier(module, brk.basek(), out_mut.k(), out_mut.rank());
-    let (mut vmp_res, scratch3) = scratch2.tmp_vec_znx_dft(module, acc_dft.rank()+1, acc_dft.size());
+    let (mut vmp_res, scratch3) = scratch2.tmp_glwe_fourier(module, basek, out_mut.k(), out_mut.rank());
     let (mut xai_minus_one, scratch4) = scratch3.tmp_scalar_znx(module, 1);
     let (mut xai_minus_one_dft, scratch5) = scratch4.tmp_scalar_znx_dft(module, 1);
 
@@ -73,13 +71,13 @@ pub fn cggi_blind_rotate<DataRes, DataIn, DataLUT>(
 
         out_mut.dft(module, &mut acc_dft);
         acc_add_dft.data.zero();
-        
+
         izip!(ai.iter(), ski.iter())
             .enumerate()
             .for_each(|(i, (aii, skii))| {
 
                 // vmp_res = DFT(acc) * BRK[i]
-                module.vmp_apply(&mut vmp_res, &acc_dft.data, &skii.data, scratch5);
+                module.vmp_apply(&mut vmp_res.data, &acc_dft.data, &skii.data, scratch5);
 
                 // DFT(X^ai -1)
                 xai_minus_one.zero();
@@ -90,19 +88,23 @@ pub fn cggi_blind_rotate<DataRes, DataIn, DataLUT>(
 
                 // DFT(X^ai -1) * (DFT(acc) * BRK[i])
                 (0..cols).for_each(|i|{
-                    module.svp_apply_inplace(&mut vmp_res, i, &xai_minus_one_dft, 0);
-                    module.vec_znx_dft_add_inplace(&mut acc_add_dft.data, i, &vmp_res, i);
+                    module.svp_apply_inplace(&mut vmp_res.data, i, &xai_minus_one_dft, 0);
+                    module.vec_znx_dft_add_inplace(&mut acc_add_dft.data, i, &vmp_res.data, i);
                 });
-            
             });
         
-        acc_add_dft.idft(module, &mut out_mut, scratch5);
+        (0..cols).for_each(|i|{
+            module.vec_znx_dft_add_inplace(&mut acc_dft.data, i, &acc_add_dft.data, i);
+        });
+        
+        acc_dft.idft(module, &mut out_mut, scratch5);
+
     });
     let duration: std::time::Duration = start.elapsed();
     println!("external products: {} us", duration.as_micros());
 }
 
-fn mod_switch_2n(module: &Module<FFT64>, res: &mut [i64], lwe: &LWECiphertext<&[u8]>) {
+pub(crate) fn mod_switch_2n(module: &Module<FFT64>, res: &mut [i64], lwe: &LWECiphertext<&[u8]>) {
     let basek: usize = lwe.basek();
 
     let log2n: usize = module.log_n() + 1;
