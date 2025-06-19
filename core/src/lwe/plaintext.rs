@@ -2,7 +2,7 @@ use backend::{VecZnx, VecZnxToMut, VecZnxToRef};
 
 use crate::{Infos, SetMetaData};
 
-pub struct LWEPlaintext<D>{
+pub struct LWEPlaintext<D> {
     pub(crate) data: VecZnx<D>,
     pub(crate) k: usize,
     pub(crate) basek: usize,

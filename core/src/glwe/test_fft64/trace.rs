@@ -4,8 +4,7 @@ use backend::{FFT64, FillUniform, Module, ScratchOwned, Stats, VecZnxOps, ZnxVie
 use sampling::source::Source;
 
 use crate::{
-    FourierGLWESecret, GLWEAutomorphismKey, GLWECiphertext, GLWEPlaintext, GLWESecret, Infos,
-    noise::var_noise_gglwe_product,
+    FourierGLWESecret, GLWEAutomorphismKey, GLWECiphertext, GLWEPlaintext, GLWESecret, Infos, noise::var_noise_gglwe_product,
 };
 
 #[test]

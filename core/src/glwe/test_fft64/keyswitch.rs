@@ -2,8 +2,7 @@ use backend::{FFT64, FillUniform, Module, ScratchOwned, Stats, VecZnxOps};
 use sampling::source::Source;
 
 use crate::{
-    FourierGLWESecret, GLWECiphertext, GLWEPlaintext, GLWESecret, GLWESwitchingKey, Infos,
-    noise::log2_std_noise_gglwe_product,
+    FourierGLWESecret, GLWECiphertext, GLWEPlaintext, GLWESecret, GLWESwitchingKey, Infos, noise::log2_std_noise_gglwe_product,
 };
 
 #[test]

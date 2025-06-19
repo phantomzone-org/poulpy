@@ -69,14 +69,17 @@ impl BlindRotationKeyCGGI<FFT64> {
         }
     }
 
+    #[allow(dead_code)]
     pub(crate) fn rows(&self) -> usize {
         self.data[0].rows()
     }
 
+    #[allow(dead_code)]
     pub(crate) fn k(&self) -> usize {
         self.data[0].k()
     }
 
+    #[allow(dead_code)]
     pub(crate) fn rank(&self) -> usize {
         self.data[0].rank()
     }

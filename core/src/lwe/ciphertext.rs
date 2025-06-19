@@ -11,7 +11,7 @@ pub struct LWECiphertext<D> {
 impl LWECiphertext<Vec<u8>> {
     pub fn alloc(n: usize, basek: usize, k: usize) -> Self {
         Self {
-            data: VecZnx::new::<i64>(n+1, 1, k.div_ceil(basek)),
+            data: VecZnx::new::<i64>(n + 1, 1, k.div_ceil(basek)),
             k: k,
             basek: basek,
         }
@@ -21,8 +21,8 @@ impl LWECiphertext<Vec<u8>> {
 impl<T> Infos for LWECiphertext<T> {
     type Inner = VecZnx<T>;
 
-    fn n(&self) -> usize{
-        &self.inner().n-1
+    fn n(&self) -> usize {
+        &self.inner().n - 1
     }
 
     fn inner(&self) -> &Self::Inner {

@@ -1,10 +1,15 @@
 use std::time::Instant;
 
-use backend::{MatZnxDftOps, MatZnxDftScratch, Module, ScalarZnxDftOps, Scratch, VecZnxDftOps, VecZnxOps, ZnxView, ZnxViewMut, ZnxZero, FFT64};
+use backend::{
+    FFT64, MatZnxDftOps, MatZnxDftScratch, Module, ScalarZnxDftOps, Scratch, VecZnxDftOps, VecZnxOps, ZnxView, ZnxViewMut,
+    ZnxZero,
+};
 use itertools::izip;
 
 use crate::{
-    blind_rotation::key::BlindRotationKeyCGGI, lwe::ciphertext::LWECiphertextToRef, FourierGLWESecret, GGSWCiphertext, GLWECiphertext, GLWECiphertextToMut, GLWECiphertextToRef, GLWEPlaintext, GLWESecret, Infos, LWECiphertext, LWESecret, ScratchCore
+    GGSWCiphertext, GLWECiphertext, GLWECiphertextToMut, Infos, LWECiphertext, ScratchCore,
+    blind_rotation::{key::BlindRotationKeyCGGI, lut::LookUpTable},
+    lwe::ciphertext::LWECiphertextToRef,
 };
 
 pub fn cggi_blind_rotate_scratch_space(
@@ -21,26 +26,24 @@ pub fn cggi_blind_rotate_scratch_space(
             | GLWECiphertext::external_product_inplace_scratch_space(module, basek, k_lut, k_brk, 1, rank))
 }
 
-pub fn cggi_blind_rotate<DataRes, DataIn, DataLUT>(
+pub fn cggi_blind_rotate<DataRes, DataIn>(
     module: &Module<FFT64>,
     res: &mut GLWECiphertext<DataRes>,
     lwe: &LWECiphertext<DataIn>,
-    lut: &GLWEPlaintext<DataLUT>,
+    lut: &LookUpTable,
     brk: &BlindRotationKeyCGGI<FFT64>,
     scratch: &mut Scratch,
 ) where
     DataRes: AsRef<[u8]> + AsMut<[u8]>,
     DataIn: AsRef<[u8]>,
-    DataLUT: AsRef<[u8]>,
 {
     let basek = res.basek();
 
     let mut lwe_2n: Vec<i64> = vec![0i64; lwe.n() + 1]; // TODO: from scratch space
     let mut out_mut: GLWECiphertext<&mut [u8]> = res.to_mut();
     let lwe_ref: LWECiphertext<&[u8]> = lwe.to_ref();
-    let lut_ref: GLWECiphertext<&[u8]> = lut.to_ref();
 
-    let cols = out_mut.rank()+1;
+    let cols: usize = out_mut.rank() + 1;
 
     mod_switch_2n(module, &mut lwe_2n, &lwe_ref);
 
@@ -50,7 +53,7 @@ pub fn cggi_blind_rotate<DataRes, DataIn, DataLUT>(
     out_mut.data.zero();
 
     // Initialize out to X^{b} * LUT(X)
-    module.vec_znx_rotate(b, &mut out_mut.data, 0, &lut_ref.data, 0);
+    module.vec_znx_rotate(b, &mut out_mut.data, 0, &lut.data[0], 0);
 
     let block_size: usize = brk.block_size();
 
@@ -68,37 +71,32 @@ pub fn cggi_blind_rotate<DataRes, DataIn, DataLUT>(
         brk.data.chunks_exact(block_size)
     )
     .for_each(|(ai, ski)| {
-
         out_mut.dft(module, &mut acc_dft);
         acc_add_dft.data.zero();
 
-        izip!(ai.iter(), ski.iter())
-            .enumerate()
-            .for_each(|(i, (aii, skii))| {
+        izip!(ai.iter(), ski.iter()).for_each(|(aii, skii)| {
+            // vmp_res = DFT(acc) * BRK[i]
+            module.vmp_apply(&mut vmp_res.data, &acc_dft.data, &skii.data, scratch5);
 
-                // vmp_res = DFT(acc) * BRK[i]
-                module.vmp_apply(&mut vmp_res.data, &acc_dft.data, &skii.data, scratch5);
+            // DFT(X^ai -1)
+            xai_minus_one.zero();
+            xai_minus_one.at_mut(0, 0)[0] = 1;
+            module.vec_znx_rotate_inplace(*aii, &mut xai_minus_one, 0);
+            xai_minus_one.at_mut(0, 0)[0] -= 1;
+            module.svp_prepare(&mut xai_minus_one_dft, 0, &xai_minus_one, 0);
 
-                // DFT(X^ai -1)
-                xai_minus_one.zero();
-                xai_minus_one.at_mut(0, 0)[0] = 1;
-                module.vec_znx_rotate_inplace(*aii, &mut xai_minus_one, 0);
-                xai_minus_one.at_mut(0, 0)[0] -= 1;
-                module.svp_prepare(&mut xai_minus_one_dft, 0, &xai_minus_one, 0);
-
-                // DFT(X^ai -1) * (DFT(acc) * BRK[i])
-                (0..cols).for_each(|i|{
-                    module.svp_apply_inplace(&mut vmp_res.data, i, &xai_minus_one_dft, 0);
-                    module.vec_znx_dft_add_inplace(&mut acc_add_dft.data, i, &vmp_res.data, i);
-                });
+            // DFT(X^ai -1) * (DFT(acc) * BRK[i])
+            (0..cols).for_each(|i| {
+                module.svp_apply_inplace(&mut vmp_res.data, i, &xai_minus_one_dft, 0);
+                module.vec_znx_dft_add_inplace(&mut acc_add_dft.data, i, &vmp_res.data, i);
             });
-        
-        (0..cols).for_each(|i|{
+        });
+
+        (0..cols).for_each(|i| {
             module.vec_znx_dft_add_inplace(&mut acc_dft.data, i, &acc_add_dft.data, i);
         });
-        
-        acc_dft.idft(module, &mut out_mut, scratch5);
 
+        acc_dft.idft(module, &mut out_mut, scratch5);
     });
     let duration: std::time::Duration = start.elapsed();
     println!("external products: {} us", duration.as_micros());

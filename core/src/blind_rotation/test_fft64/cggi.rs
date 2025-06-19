@@ -1,10 +1,16 @@
 use std::time::Instant;
 
-use backend::{Encoding, Module, ScratchOwned, Stats, ZnxView, ZnxViewMut, FFT64};
+use backend::{Encoding, FFT64, Module, ScratchOwned, Stats, VecZnxOps, ZnxView};
 use sampling::source::Source;
 
 use crate::{
-    blind_rotation::{ccgi::{cggi_blind_rotate, cggi_blind_rotate_scratch_space, mod_switch_2n}, key::BlindRotationKeyCGGI}, lwe::{ciphertext::{LWECiphertextToMut, LWECiphertextToRef}, LWEPlaintext}, FourierGLWESecret, GLWECiphertext, GLWEOps, GLWEPlaintext, GLWESecret, Infos, LWECiphertext, LWESecret
+    FourierGLWESecret, GLWECiphertext, GLWEPlaintext, GLWESecret, Infos, LWECiphertext, LWESecret,
+    blind_rotation::{
+        ccgi::{cggi_blind_rotate, cggi_blind_rotate_scratch_space, mod_switch_2n},
+        key::BlindRotationKeyCGGI,
+        lut::LookUpTable,
+    },
+    lwe::{LWEPlaintext, ciphertext::LWECiphertextToRef},
 };
 
 #[test]
@@ -21,6 +27,8 @@ fn blind_rotation() {
     let rank: usize = 1;
     let block_size: usize = 7;
 
+    let message_modulus: usize = 64;
+
     let mut source_xs: Source = Source::new([0u8; 32]);
     let mut source_xe: Source = Source::new([0u8; 32]);
     let mut source_xa: Source = Source::new([0u8; 32]);
@@ -32,12 +40,14 @@ fn blind_rotation() {
     let mut sk_lwe: LWESecret<Vec<u8>> = LWESecret::alloc(n_lwe);
     sk_lwe.fill_binary_block(block_size, &mut source_xs);
 
-    let mut scratch: ScratchOwned = ScratchOwned::new(BlindRotationKeyCGGI::generate_from_sk_scratch_space(
-        &module, basek, k_brk, rank,
-    ) | cggi_blind_rotate_scratch_space(&module, basek, k_lut, k_brk, rows_brk, rank));
+    let mut scratch: ScratchOwned = ScratchOwned::new(
+        BlindRotationKeyCGGI::generate_from_sk_scratch_space(&module, basek, k_brk, rank)
+            | cggi_blind_rotate_scratch_space(&module, basek, k_lut, k_brk, rows_brk, rank),
+    );
 
     let start: Instant = Instant::now();
     let mut brk: BlindRotationKeyCGGI<FFT64> = BlindRotationKeyCGGI::allocate(&module, n_lwe, basek, k_brk, rows_brk, rank);
+
     brk.generate_from_sk(
         &module,
         &sk_glwe_dft,
@@ -47,6 +57,7 @@ fn blind_rotation() {
         3.2,
         scratch.borrow(),
     );
+
     let duration: std::time::Duration = start.elapsed();
     println!("brk-gen: {} ms", duration.as_millis());
 
@@ -67,44 +78,48 @@ fn blind_rotation() {
 
     println!("{}", pt_lwe.data);
 
-    let mut lut: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_lut);
+    fn lut_fn(x: i64) -> i64 {
+        2 * x + 1
+    }
 
-    
-    lut.data.at_mut(0, 0)[0] = 0;
-    (1..module.n()).for_each(|i|{
-        lut.data.at_mut(0, 0)[i] = - ((module.n() as i64 - i as i64  - 1)<<(basek - module.log_n() - 1));
-    });
-
-    
-
+    let mut lut: LookUpTable = LookUpTable::alloc(&module, basek, k_lut, 1);
+    lut.set(&module, lut_fn, message_modulus);
 
     let mut res: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_lut, rank);
 
     let start: Instant = Instant::now();
-    (0..1).for_each(|i|{
+    (0..1).for_each(|_| {
         cggi_blind_rotate(&module, &mut res, &lwe, &lut, &brk, scratch.borrow());
     });
-    
+
     let duration: std::time::Duration = start.elapsed();
     println!("blind-rotate: {} ms", duration.as_millis());
 
     let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_lut);
 
-    res.decrypt(&module , &mut pt_have, &sk_glwe_dft, scratch.borrow());
+    res.decrypt(&module, &mut pt_have, &sk_glwe_dft, scratch.borrow());
+
+    println!("pt_have: {}", pt_have.data);
 
     let mut lwe_2n: Vec<i64> = vec![0i64; lwe.n() + 1]; // TODO: from scratch space
 
     mod_switch_2n(&module, &mut lwe_2n, &lwe.to_ref());
 
-    let pt_want: i64 = (lwe_2n[0] + lwe_2n[1..].iter().zip(sk_lwe.data.at(0, 0)).map(|(x, y)| x * y).sum::<i64>()) % (module.n() as i64 * 2);
+    let pt_want: i64 = (lwe_2n[0]
+        + lwe_2n[1..]
+            .iter()
+            .zip(sk_lwe.data.at(0, 0))
+            .map(|(x, y)| x * y)
+            .sum::<i64>())
+        % (module.n() as i64 * 2);
 
-    lut.rotate_inplace(&module, pt_want);
+    module.vec_znx_rotate_inplace(pt_want, &mut lut.data[0], 0);
 
-    lut.sub_inplace_ab(&module, &pt_have);
+    println!("pt_want: {}", lut.data[0]);
 
-    let noise: f64 = lut.data.std(0, basek);
+    module.vec_znx_sub_ab_inplace(&mut lut.data[0], 0, &pt_have.data, 0);
+
+    let noise: f64 = lut.data[0].std(0, basek);
 
     println!("noise: {}", noise);
-
-    
 }

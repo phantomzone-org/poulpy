@@ -1,9 +1,7 @@
 use backend::{FFT64, FillUniform, Module, ScalarZnx, ScalarZnxAlloc, ScratchOwned, Stats, VecZnxOps, ZnxViewMut};
 use sampling::source::Source;
 
-use crate::{
-    FourierGLWESecret, GGSWCiphertext, GLWECiphertext, GLWEPlaintext, GLWESecret, Infos, noise::noise_ggsw_product,
-};
+use crate::{FourierGLWESecret, GGSWCiphertext, GLWECiphertext, GLWEPlaintext, GLWESecret, Infos, noise::noise_ggsw_product};
 
 #[test]
 fn apply() {

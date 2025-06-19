@@ -243,12 +243,11 @@ fn normalize_tmp_bytes(n: usize) -> usize {
     n * std::mem::size_of::<i64>()
 }
 
-impl<D: AsRef<[u8]> + AsMut<[u8]>> VecZnx<D>{
-    pub fn normalize(&mut self, basek: usize, a_col: usize, tmp_bytes: &mut [u8]){
+impl<D: AsRef<[u8]> + AsMut<[u8]>> VecZnx<D> {
+    pub fn normalize(&mut self, basek: usize, a_col: usize, tmp_bytes: &mut [u8]) {
         normalize(basek, self, a_col, tmp_bytes);
     }
 }
-
 
 fn normalize<D: AsMut<[u8]> + AsRef<[u8]>>(basek: usize, a: &mut VecZnx<D>, a_col: usize, tmp_bytes: &mut [u8]) {
     let n: usize = a.n();

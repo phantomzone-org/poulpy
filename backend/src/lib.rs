@@ -103,7 +103,7 @@ fn alloc_aligned_custom_u8(size: usize, align: usize) -> Vec<u8> {
 /// Size of T * size msut be a multiple of [DEFAULTALIGN].
 pub fn alloc_aligned_custom<T>(size: usize, align: usize) -> Vec<T> {
     assert_eq!(
-        (size * size_of::<T>()) % (align/ size_of::<T>()),
+        (size * size_of::<T>()) % (align / size_of::<T>()),
         0,
         "size={} must be a multiple of align={}",
         size,
