@@ -103,7 +103,7 @@ fn blind_rotation() {
 
     let mut lwe_2n: Vec<i64> = vec![0i64; lwe.n() + 1]; // TODO: from scratch space
 
-    mod_switch_2n(&module, &mut lwe_2n, &lwe.to_ref());
+    mod_switch_2n(module.n() * 2, &mut lwe_2n, &lwe.to_ref());
 
     let pt_want: i64 = (lwe_2n[0]
         + lwe_2n[1..]

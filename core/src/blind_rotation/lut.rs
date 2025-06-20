@@ -16,6 +16,10 @@ impl LookUpTable {
         Self { data, basek, k }
     }
 
+    pub fn extension_factor(&self) -> usize {
+        self.data.len()
+    }
+
     pub fn set(&mut self, module: &Module<FFT64>, f: fn(i64) -> i64, message_modulus: usize) {
         let basek: usize = self.basek;
 
@@ -29,7 +33,7 @@ impl LookUpTable {
         let f_scaled = |x: i64| (f(x) % message_modulus as i64) * scale;
 
         // If LUT size > module.n()
-        let domain_size: usize = self.data[0].n() * self.data.len();
+        let domain_size: usize = self.data[0].n() * self.extension_factor();
 
         let size: usize = self.k.div_ceil(self.basek);
 
@@ -63,7 +67,7 @@ impl LookUpTable {
         let mut tmp_bytes: Vec<u8> = alloc_aligned(lut_full.n() * size_of::<i64>());
         lut_full.normalize(self.basek, 0, &mut tmp_bytes);
 
-        if self.data.len() > 1 {
+        if self.extension_factor() > 1 {
             let mut scratch: ScratchOwned = ScratchOwned::new(module.bytes_of_vec_znx(1, size));
             module.vec_znx_split(&mut self.data, 0, &lut_full, 0, scratch.borrow());
         } else {
