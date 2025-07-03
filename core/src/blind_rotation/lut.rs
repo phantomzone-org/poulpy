@@ -1,4 +1,4 @@
-use backend::{FFT64, Module, VecZnx, VecZnxAlloc, VecZnxOps, ZnxInfos, ZnxViewMut, alloc_aligned};
+use backend::{FFT64, Module, ScalarZnx, VecZnx, VecZnxAlloc, VecZnxOps, ZnxInfos, ZnxView, ZnxViewMut, alloc_aligned};
 
 pub struct LookUpTable {
     pub(crate) data: Vec<VecZnx<Vec<u8>>>,
@@ -84,6 +84,31 @@ impl LookUpTable {
         }
     }
 
+    pub fn set_raw<D>(&mut self, module: &Module<FFT64>, lut: &ScalarZnx<D>)
+    where
+        D: AsRef<[u8]>,
+    {
+        let domain_size: usize = self.domain_size();
+
+        let size: usize = self.k.div_ceil(self.basek);
+
+        let mut lut_full: VecZnx<Vec<u8>> = VecZnx::new::<i64>(domain_size, 1, size);
+
+        lut_full.at_mut(0, 0).copy_from_slice(lut.raw());
+
+        if self.extension_factor() > 1 {
+            (0..self.extension_factor()).for_each(|i| {
+                module.switch_degree(&mut self.data[i], 0, &lut_full, 0);
+                if i < self.extension_factor() {
+                    lut_full.rotate(-1);
+                }
+            });
+        } else {
+            module.vec_znx_copy(&mut self.data[0], 0, &lut_full, 0);
+        }
+    }
+
+    #[allow(dead_code)]
     pub(crate) fn rotate(&mut self, k: i64) {
         let extension_factor: usize = self.extension_factor();
         let two_n: usize = 2 * self.data[0].n();

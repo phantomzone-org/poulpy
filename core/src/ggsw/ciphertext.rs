@@ -290,7 +290,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf, FFT64> {
 
                 // Switch vec_znx_ct into DFT domain
                 {
-                    let (mut tmp_ct_dft, _) = scratch2.tmp_glwe_fourier(module, basek, k, rank);
+                    let (mut tmp_ct_dft, _) = scratch2.tmp_fourier_glwe_ct(module, basek, k, rank);
                     tmp_ct.dft(module, &mut tmp_ct_dft);
                     self.set_row(module, row_i, col_j, &tmp_ct_dft);
                 }
@@ -438,7 +438,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf, FFT64> {
             // col 3: (-(d0s0' + d1s1' + d2s2')    , d0       , d1       , d2 + M[i])
             (1..cols).for_each(|col_j| {
                 self.expand_row(module, col_j, &mut tmp_res.data, &ci_dft, tsk, scratch2);
-                let (mut tmp_res_dft, _) = scratch2.tmp_glwe_fourier(module, basek, self.k(), rank);
+                let (mut tmp_res_dft, _) = scratch2.tmp_fourier_glwe_ct(module, basek, self.k(), rank);
                 tmp_res.dft(module, &mut tmp_res_dft);
                 self.set_row(module, row_i, col_j, &tmp_res_dft);
             });
@@ -541,7 +541,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf, FFT64> {
                     tensor_key,
                     scratch2,
                 );
-                let (mut tmp_res_dft, _) = scratch2.tmp_glwe_fourier(module, basek, self.k(), rank);
+                let (mut tmp_res_dft, _) = scratch2.tmp_fourier_glwe_ct(module, basek, self.k(), rank);
                 tmp_res.dft(module, &mut tmp_res_dft);
                 self.set_row(module, row_i, col_j, &tmp_res_dft);
             });
@@ -599,8 +599,8 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf, FFT64> {
             )
         }
 
-        let (mut tmp_ct_in, scratch1) = scratch.tmp_glwe_fourier(module, lhs.basek(), lhs.k(), lhs.rank());
-        let (mut tmp_ct_out, scratch2) = scratch1.tmp_glwe_fourier(module, self.basek(), self.k(), self.rank());
+        let (mut tmp_ct_in, scratch1) = scratch.tmp_fourier_glwe_ct(module, lhs.basek(), lhs.k(), lhs.rank());
+        let (mut tmp_ct_out, scratch2) = scratch1.tmp_fourier_glwe_ct(module, self.basek(), self.k(), self.rank());
 
         (0..self.rank() + 1).for_each(|col_i| {
             (0..self.rows()).for_each(|row_j| {
@@ -636,7 +636,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf, FFT64> {
             );
         }
 
-        let (mut tmp_ct, scratch1) = scratch.tmp_glwe_fourier(module, self.basek(), self.k(), self.rank());
+        let (mut tmp_ct, scratch1) = scratch.tmp_fourier_glwe_ct(module, self.basek(), self.k(), self.rank());
 
         (0..self.rank() + 1).for_each(|col_i| {
             (0..self.rows()).for_each(|row_j| {
@@ -674,7 +674,7 @@ impl<DataSelf: AsRef<[u8]>> GGSWCiphertext<DataSelf, FFT64> {
                     )
             )
         }
-        let (mut tmp_dft_dft, scratch1) = scratch.tmp_glwe_fourier(module, self.basek(), self.k(), self.rank());
+        let (mut tmp_dft_dft, scratch1) = scratch.tmp_fourier_glwe_ct(module, self.basek(), self.k(), self.rank());
         self.get_row(module, row_i, 0, &mut tmp_dft_dft);
         res.keyswitch_from_fourier(module, &tmp_dft_dft, ksk, scratch1);
     }

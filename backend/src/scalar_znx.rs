@@ -109,7 +109,7 @@ impl<D: From<Vec<u8>>> ScalarZnx<D> {
     }
 
     pub fn new(n: usize, cols: usize) -> Self {
-        let data = alloc_aligned::<u8>(Self::bytes_of(n, cols));
+        let data: Vec<u8> = alloc_aligned::<u8>(Self::bytes_of(n, cols));
         Self {
             data: data.into(),
             n,

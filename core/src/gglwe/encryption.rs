@@ -70,7 +70,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGLWECiphertext<DataSelf, FFT64> {
 
         let (mut tmp_pt, scrach_1) = scratch.tmp_glwe_pt(module, basek, k);
         let (mut tmp_ct, scrach_2) = scrach_1.tmp_glwe_ct(module, basek, k, rank_out);
-        let (mut tmp_ct_dft, scratch_3) = scrach_2.tmp_glwe_fourier(module, basek, k, rank_out);
+        let (mut tmp_ct_dft, scratch_3) = scrach_2.tmp_fourier_glwe_ct(module, basek, k, rank_out);
 
         // For each input column (i.e. rank) produces a GGLWE ciphertext of rank_out+1 columns
         //

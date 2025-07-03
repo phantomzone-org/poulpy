@@ -46,8 +46,13 @@ impl BlindRotationKeyCGGI<FFT64> {
             assert_eq!(sk_glwe.n(), module.n());
             assert_eq!(sk_glwe.rank(), self.data[0].rank());
             match sk_lwe.dist {
-                Distribution::BinaryBlock(_) | Distribution::BinaryFixed(_) | Distribution::BinaryProb(_) => {}
-                _ => panic!("invalid GLWESecret distribution: must be BinaryBlock, BinaryFixed or BinaryProb"),
+                Distribution::BinaryBlock(_)
+                | Distribution::BinaryFixed(_)
+                | Distribution::BinaryProb(_)
+                | Distribution::ZERO => {}
+                _ => panic!(
+                    "invalid GLWESecret distribution: must be BinaryBlock, BinaryFixed or BinaryProb (or ZERO for debugging)"
+                ),
             }
         }
 
@@ -77,6 +82,11 @@ impl BlindRotationKeyCGGI<FFT64> {
     #[allow(dead_code)]
     pub(crate) fn k(&self) -> usize {
         self.data[0].k()
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn size(&self) -> usize {
+        self.data[0].size()
     }
 
     #[allow(dead_code)]

@@ -25,7 +25,7 @@ fn standard() {
     let step: usize = lut.domain_size().div_round(message_modulus);
 
     (0..lut.domain_size()).step_by(step).for_each(|i| {
-        (0..step).for_each(|j| {
+        (0..step).for_each(|_| {
             assert_eq!(
                 lut_fn((i / step) as i64) % message_modulus as i64,
                 lut.data[0].raw()[0] / scale as i64
@@ -58,7 +58,7 @@ fn extended() {
     let step: usize = lut.domain_size().div_round(message_modulus);
 
     (0..lut.domain_size()).step_by(step).for_each(|i| {
-        (0..step).for_each(|j| {
+        (0..step).for_each(|_| {
             assert_eq!(
                 lut_fn((i / step) as i64) % message_modulus as i64,
                 lut.data[0].raw()[0] / scale as i64
