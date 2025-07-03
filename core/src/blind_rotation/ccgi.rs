@@ -1,8 +1,7 @@
 use std::time::Instant;
 
 use backend::{
-    FFT64, MatZnxDftOps, MatZnxDftScratch, Module, ScalarZnx, ScalarZnxAlloc, ScalarZnxDft, ScalarZnxDftAlloc, ScalarZnxDftOps,
-    Scratch, VecZnxBigAlloc, VecZnxBigOps, VecZnxDftOps, VecZnxOps, ZnxInfos, ZnxView, ZnxViewMut, ZnxZero,
+    MatZnxDftOps, MatZnxDftScratch, Module, ScalarZnx, ScalarZnxAlloc, ScalarZnxDft, ScalarZnxDftAlloc, ScalarZnxDftOps, Scratch, VecZnxBigAlloc, VecZnxBigOps, VecZnxBigScratch, VecZnxDftOps, VecZnxOps, ZnxInfos, ZnxView, ZnxViewMut, ZnxZero, FFT64
 };
 use itertools::izip;
 
@@ -40,7 +39,7 @@ pub fn cggi_blind_rotate_scratch_space(
         acc = 0;
     }
 
-    return acc + acc_dft + acc_dft_add + vmp_res + xai_plus_y + xai_plus_y_dft + (vmp | acc_big);
+    return acc + acc_big + acc_dft + acc_dft_add + vmp_res + xai_plus_y + xai_plus_y_dft + (vmp | module.vec_znx_big_normalize_tmp_bytes());
 }
 
 pub fn cggi_blind_rotate<DataRes, DataIn>(
