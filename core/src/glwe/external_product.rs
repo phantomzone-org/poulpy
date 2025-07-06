@@ -18,7 +18,7 @@ impl GLWECiphertext<Vec<u8>> {
         let in_size: usize = k_in.div_ceil(basek).div_ceil(digits);
         let out_size: usize = k_out.div_ceil(basek);
         let ggsw_size: usize = k_ggsw.div_ceil(basek);
-        let vmp: usize = module.bytes_of_vec_znx_dft(rank + 1, in_size)
+        let vmp: usize = module.bytes_of_vec_znx_dft(rank + 1, ggsw_size)
             + module.vmp_apply_tmp_bytes(
                 out_size,
                 in_size,

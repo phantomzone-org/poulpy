@@ -14,6 +14,7 @@ pub trait GLWEOps: GLWECiphertextToMut + Infos + SetMetaData {
             assert_eq!(b.n(), module.n());
             assert_eq!(self.n(), module.n());
             assert_eq!(a.basek(), b.basek());
+            assert_eq!(self.basek(), a.basek());
             assert!(self.rank() >= a.rank().max(b.rank()));
         }
 
@@ -46,8 +47,8 @@ pub trait GLWEOps: GLWECiphertextToMut + Infos + SetMetaData {
             });
         });
 
-        self.set_basek(a.basek());
-        self.set_k(a.k().max(b.k()));
+        // self.set_basek(a.basek());
+        // self.set_k(a.k().max(b.k()));
     }
 
     fn add_inplace<A>(&mut self, module: &Module<FFT64>, a: &A)

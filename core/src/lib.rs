@@ -19,6 +19,7 @@ pub use glwe::{GLWECiphertext, GLWEOps, GLWEPacker, GLWEPlaintext, GLWEPublicKey
 pub(crate) use glwe::{GLWECiphertextToMut, GLWECiphertextToRef};
 pub use lwe::{LWECiphertext, LWESecret};
 
+pub use backend;
 pub use backend::Scratch;
 pub use backend::ScratchOwned;
 

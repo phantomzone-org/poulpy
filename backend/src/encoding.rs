@@ -269,12 +269,12 @@ fn decode_coeff_i64<D: AsRef<[u8]>>(a: &VecZnx<D>, col_i: usize, basek: usize, k
 
     let size: usize = (k + basek - 1) / basek;
     let data: &[i64] = a.raw();
-    let mut res: i64 = data[i];
+    let mut res: i64 = 0;
     let rem: usize = basek - (k % basek);
     let slice_size: usize = a.n() * a.cols();
-    (0..size).for_each(|i| {
-        let x: i64 = data[i * slice_size];
-        if i == size - 1 && rem != basek {
+    (0..size).for_each(|j| {
+        let x: i64 = data[j * slice_size + i];
+        if j == size - 1 && rem != basek {
             let k_rem: usize = basek - rem;
             res = (res << k_rem) + (x >> rem);
         } else {
@@ -320,7 +320,7 @@ mod tests {
         let module: Module<FFT64> = Module::<FFT64>::new(n);
         let basek: usize = 17;
         let size: usize = 5;
-        for k in [size * basek - 5] {
+        for k in [1, basek / 2, size * basek - 5] {
             let mut a: VecZnx<_> = module.new_vec_znx(2, size);
             let mut source = Source::new([0u8; 32]);
             let raw: &mut [i64] = a.raw_mut();
