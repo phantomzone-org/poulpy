@@ -28,13 +28,23 @@ where
         self.data.fill_uniform(basek, 0, self.size(), source_xa);
         let mut tmp_znx: VecZnx<Vec<u8>> = VecZnx::<Vec<u8>>::new::<i64>(1, 1, self.size());
 
-        (0..self.size()).for_each(|i| {
+        let min_size = self.size().min(pt.size());
+
+        (0..min_size).for_each(|i| {
             tmp_znx.at_mut(0, i)[0] = pt.data.at(0, i)[0]
                 - self.data.at(0, i)[1..]
                     .iter()
                     .zip(sk.data.at(0, 0))
                     .map(|(x, y)| x * y)
                     .sum::<i64>();
+        });
+
+        (min_size..self.size()).for_each(|i| {
+            tmp_znx.at_mut(0, i)[0] -= self.data.at(0, i)[1..]
+                .iter()
+                .zip(sk.data.at(0, 0))
+                .map(|(x, y)| x * y)
+                .sum::<i64>();
         });
 
         tmp_znx.add_normal(basek, 0, self.k(), source_xe, sigma, sigma * SIX_SIGMA);

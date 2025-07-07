@@ -1,6 +1,6 @@
 use std::time::Instant;
 
-use backend::{Encoding, FFT64, Module, ScalarZnx, ScratchOwned, Stats, VecZnxOps, ZnxView, ZnxViewMut};
+use backend::{Encoding, FFT64, Module, ScratchOwned, Stats, VecZnxOps, ZnxView};
 use sampling::source::Source;
 
 use crate::{
@@ -16,13 +16,13 @@ use crate::{
 #[test]
 fn blind_rotation() {
     let module: Module<FFT64> = Module::<FFT64>::new(2048);
-    let basek: usize = 18;
+    let basek: usize = 19;
 
     let n_lwe: usize = 1071;
 
     let k_lwe: usize = 24;
     let k_brk: usize = 3 * basek;
-    let rows_brk: usize = 2;
+    let rows_brk: usize = 1;
     let k_lut: usize = 2 * basek;
     let rank: usize = 1;
     let block_size: usize = 7;
@@ -42,22 +42,19 @@ fn blind_rotation() {
     let mut sk_lwe: LWESecret<Vec<u8>> = LWESecret::alloc(n_lwe);
     sk_lwe.fill_binary_block(block_size, &mut source_xs);
 
-    sk_lwe.data.raw_mut()[0] = 0;
+    let mut scratch: ScratchOwned = ScratchOwned::new(BlindRotationKeyCGGI::generate_from_sk_scratch_space(
+        &module, basek, k_brk, rank,
+    ));
 
-    println!("sk_lwe: {:?}", sk_lwe.data.raw());
-
-    let mut scratch: ScratchOwned = ScratchOwned::new(
-        BlindRotationKeyCGGI::generate_from_sk_scratch_space(&module, basek, k_brk, rank)
-            | cggi_blind_rotate_scratch_space(
-                &module,
-                extension_factor,
-                basek,
-                k_lut,
-                k_brk,
-                rows_brk,
-                rank,
-            ),
-    );
+    let mut scratch_br: ScratchOwned = ScratchOwned::new(cggi_blind_rotate_scratch_space(
+        &module,
+        extension_factor,
+        basek,
+        k_lut,
+        k_brk,
+        rows_brk,
+        rank,
+    ));
 
     let start: Instant = Instant::now();
     let mut brk: BlindRotationKeyCGGI<FFT64> = BlindRotationKeyCGGI::allocate(&module, n_lwe, basek, k_brk, rows_brk, rank);
@@ -79,7 +76,7 @@ fn blind_rotation() {
 
     let mut pt_lwe: LWEPlaintext<Vec<u8>> = LWEPlaintext::alloc(basek, k_lwe);
 
-    let x: i64 = 1;
+    let x: i64 = 2;
     let bits: usize = 8;
 
     pt_lwe.data.encode_coeff_i64(0, basek, bits, 0, x, bits);
@@ -92,18 +89,19 @@ fn blind_rotation() {
 
     println!("{}", pt_lwe.data);
 
-    fn lut_fn(x: i64) -> i64 {
-        2 * x + 1
-    }
+    let mut f: Vec<i64> = vec![0i64; message_modulus];
+    f.iter_mut()
+        .enumerate()
+        .for_each(|(i, x)| *x = 2 * (i as i64) + 1);
 
     let mut lut: LookUpTable = LookUpTable::alloc(&module, basek, k_lut, extension_factor);
-    lut.set(&module, lut_fn, message_modulus);
+    lut.set(&module, &f, message_modulus);
 
     let mut res: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_lut, rank);
 
     let start: Instant = Instant::now();
-    (0..1).for_each(|_| {
-        cggi_blind_rotate(&module, &mut res, &lwe, &lut, &brk, scratch.borrow());
+    (0..32).for_each(|_| {
+        cggi_blind_rotate(&module, &mut res, &lwe, &lut, &brk, scratch_br.borrow());
     });
 
     let duration: std::time::Duration = start.elapsed();

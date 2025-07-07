@@ -35,7 +35,7 @@ fn test_trace_inplace(log_n: usize, basek: usize, k: usize, sigma: f64, rank: us
     let mut scratch: ScratchOwned = ScratchOwned::new(
         GLWECiphertext::encrypt_sk_scratch_space(&module, basek, ct.k())
             | GLWECiphertext::decrypt_scratch_space(&module, basek, ct.k())
-            | GLWEAutomorphismKey::generate_from_sk_scratch_space(&module, basek, k_autokey, rank)
+            | GLWEAutomorphismKey::encrypt_sk_scratch_space(&module, basek, k_autokey, rank)
             | GLWECiphertext::trace_inplace_scratch_space(&module, basek, ct.k(), k_autokey, digits, rank),
     );
 
@@ -68,7 +68,7 @@ fn test_trace_inplace(log_n: usize, basek: usize, k: usize, sigma: f64, rank: us
     gal_els.iter().for_each(|gal_el| {
         let mut key: GLWEAutomorphismKey<Vec<u8>, FFT64> =
             GLWEAutomorphismKey::alloc(&module, basek, k_autokey, rows, digits, rank);
-        key.generate_from_sk(
+        key.encrypt_sk(
             &module,
             *gal_el,
             &sk,

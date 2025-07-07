@@ -57,8 +57,8 @@ pub trait ZnxView: ZnxInfos + DataView<D: AsRef<[u8]>> {
     fn at_ptr(&self, i: usize, j: usize) -> *const Self::Scalar {
         #[cfg(debug_assertions)]
         {
-            assert!(i < self.cols());
-            assert!(j < self.size());
+            assert!(i < self.cols(), "{} >= {}", i, self.cols());
+            assert!(j < self.size(), "{} >= {}", j, self.size());
         }
         let offset: usize = self.n() * (j * self.cols() + i);
         unsafe { self.as_ptr().add(offset) }
@@ -85,8 +85,8 @@ pub trait ZnxViewMut: ZnxView + DataViewMut<D: AsMut<[u8]>> {
     fn at_mut_ptr(&mut self, i: usize, j: usize) -> *mut Self::Scalar {
         #[cfg(debug_assertions)]
         {
-            assert!(i < self.cols());
-            assert!(j < self.size());
+            assert!(i < self.cols(), "{} >= {}", i, self.cols());
+            assert!(j < self.size(), "{} >= {}", j, self.size());
         }
         let offset: usize = self.n() * (j * self.cols() + i);
         unsafe { self.as_mut_ptr().add(offset) }

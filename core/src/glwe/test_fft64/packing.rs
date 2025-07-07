@@ -26,7 +26,7 @@ fn apply() {
     let mut scratch: ScratchOwned = ScratchOwned::new(
         GLWECiphertext::encrypt_sk_scratch_space(&module, basek, k_ct)
             | GLWECiphertext::decrypt_scratch_space(&module, basek, k_ct)
-            | GLWEAutomorphismKey::generate_from_sk_scratch_space(&module, basek, k_ksk, rank)
+            | GLWEAutomorphismKey::encrypt_sk_scratch_space(&module, basek, k_ksk, rank)
             | GLWEPacker::scratch_space(&module, basek, k_ct, k_ksk, digits, rank),
     );
 
@@ -46,7 +46,7 @@ fn apply() {
     let mut auto_keys: HashMap<i64, GLWEAutomorphismKey<Vec<u8>, FFT64>> = HashMap::new();
     gal_els.iter().for_each(|gal_el| {
         let mut key: GLWEAutomorphismKey<Vec<u8>, FFT64> = GLWEAutomorphismKey::alloc(&module, basek, k_ksk, rows, digits, rank);
-        key.generate_from_sk(
+        key.encrypt_sk(
             &module,
             *gal_el,
             &sk,

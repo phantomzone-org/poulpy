@@ -361,7 +361,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf, FFT64> {
             // =
             // (-(x0s0 + x1s1 + x2s2) + s0(a0s0 + a1s1 + a2s2), x0, x1, x2)
             (1..cols).for_each(|col_i| {
-                let pmat: &MatZnxDft<DataTsk, FFT64> = &tsk.at(col_i - 1, col_j - 1).0.data; // Selects Enc(s[i]s[j])
+                let pmat: &MatZnxDft<DataTsk, FFT64> = &tsk.at(col_i - 1, col_j - 1).key.data; // Selects Enc(s[i]s[j])
 
                 // Extracts a[i] and multipies with Enc(s[i]s[j])
                 (0..digits).for_each(|di| {

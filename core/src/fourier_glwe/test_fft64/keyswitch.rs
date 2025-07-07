@@ -76,7 +76,7 @@ fn test_apply(
         .fill_uniform(basek, 0, pt_want.size(), &mut source_xa);
 
     let mut scratch: ScratchOwned = ScratchOwned::new(
-        GLWESwitchingKey::encrypt_sk_scratch_space(&module, basek, k_ksk, rank_out)
+        GLWESwitchingKey::encrypt_sk_scratch_space(&module, basek, k_ksk, rank_in, rank_out)
             | GLWECiphertext::decrypt_scratch_space(&module, basek, k_out)
             | GLWECiphertext::encrypt_sk_scratch_space(&module, basek, k_in)
             | FourierGLWECiphertext::keyswitch_scratch_space(
@@ -99,7 +99,7 @@ fn test_apply(
     sk_out.fill_ternary_prob(0.5, &mut source_xs);
     let sk_out_dft: FourierGLWESecret<Vec<u8>, FFT64> = FourierGLWESecret::from(&module, &sk_out);
 
-    ksk.generate_from_sk(
+    ksk.encrypt_sk(
         &module,
         &sk_in,
         &sk_out_dft,
@@ -170,7 +170,7 @@ fn test_apply_inplace(log_n: usize, basek: usize, k_ct: usize, k_ksk: usize, dig
         .fill_uniform(basek, 0, pt_want.size(), &mut source_xa);
 
     let mut scratch: ScratchOwned = ScratchOwned::new(
-        GLWESwitchingKey::encrypt_sk_scratch_space(&module, basek, ksk.k(), rank)
+        GLWESwitchingKey::encrypt_sk_scratch_space(&module, basek, ksk.k(), rank, rank)
             | GLWECiphertext::decrypt_scratch_space(&module, basek, ct_glwe.k())
             | GLWECiphertext::encrypt_sk_scratch_space(&module, basek, ct_glwe.k())
             | FourierGLWECiphertext::keyswitch_inplace_scratch_space(&module, basek, ct_rlwe_dft.k(), ksk.k(), digits, rank),
@@ -184,7 +184,7 @@ fn test_apply_inplace(log_n: usize, basek: usize, k_ct: usize, k_ksk: usize, dig
     sk_out.fill_ternary_prob(0.5, &mut source_xs);
     let sk_out_dft: FourierGLWESecret<Vec<u8>, FFT64> = FourierGLWESecret::from(&module, &sk_out);
 
-    ksk.generate_from_sk(
+    ksk.encrypt_sk(
         &module,
         &sk_in,
         &sk_out_dft,
