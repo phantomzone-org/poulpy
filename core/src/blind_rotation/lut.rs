@@ -40,8 +40,13 @@ impl LookUpTable {
         // Get the number minimum limb to store the message modulus
         let limbs: usize = k.div_ceil(1 << basek);
 
+        #[cfg(debug_assertions)]
+        {
+            assert!(limbs <= self.data[0].size());
+        }
+
         // Scaling factor
-        let scale: i64 = (1 << (basek * limbs - 1)).div_round(k) as i64;
+        let scale: i64 = 1 << (k % basek) as i64;
 
         // #elements in lookup table
         let f_len: usize = f.len();
