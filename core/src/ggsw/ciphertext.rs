@@ -20,6 +20,8 @@ pub struct GGSWCiphertext<C, B: Backend> {
 impl GGSWCiphertext<Vec<u8>, FFT64> {
     pub fn alloc(module: &Module<FFT64>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self {
         let size: usize = k.div_ceil(basek);
+        debug_assert!(digits > 0, "invalid ggsw: `digits` == 0");
+
         debug_assert!(
             size > digits,
             "invalid ggsw: ceil(k/basek): {} <= digits: {}",

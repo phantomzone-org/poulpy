@@ -2,11 +2,11 @@ use backend::{FFT64, Module, Scratch, VecZnx, VecZnxOps, ZnxZero};
 
 use crate::{GLWECiphertext, GLWECiphertextToMut, GLWECiphertextToRef, Infos, SetMetaData};
 
-pub trait GLWEOps: GLWECiphertextToMut + Infos + SetMetaData {
+pub trait GLWEOps: GLWECiphertextToMut + SetMetaData {
     fn add<A, B>(&mut self, module: &Module<FFT64>, a: &A, b: &B)
     where
-        A: GLWECiphertextToRef + Infos,
-        B: GLWECiphertextToRef + Infos,
+        A: GLWECiphertextToRef,
+        B: GLWECiphertextToRef,
     {
         #[cfg(debug_assertions)]
         {
@@ -75,8 +75,8 @@ pub trait GLWEOps: GLWECiphertextToMut + Infos + SetMetaData {
 
     fn sub<A, B>(&mut self, module: &Module<FFT64>, a: &A, b: &B)
     where
-        A: GLWECiphertextToRef + Infos,
-        B: GLWECiphertextToRef + Infos,
+        A: GLWECiphertextToRef,
+        B: GLWECiphertextToRef,
     {
         #[cfg(debug_assertions)]
         {
@@ -230,7 +230,7 @@ pub trait GLWEOps: GLWECiphertextToMut + Infos + SetMetaData {
 
     fn normalize<A>(&mut self, module: &Module<FFT64>, a: &A, scratch: &mut Scratch)
     where
-        A: GLWECiphertextToRef + Infos,
+        A: GLWECiphertextToRef,
     {
         #[cfg(debug_assertions)]
         {
