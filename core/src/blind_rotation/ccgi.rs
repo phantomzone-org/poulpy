@@ -438,7 +438,7 @@ pub(crate) fn negate_and_mod_switch_2n(n: usize, res: &mut [i64], lwe: &LWECiphe
     if basek > log2n {
         let diff: usize = basek - log2n;
         res.iter_mut().for_each(|x| {
-            *x = div_ceil_signed_by_pow2(x, diff);
+            *x = div_round_by_pow2(x, diff);
         })
     } else {
         let rem: usize = basek - (log2n % basek);
@@ -460,21 +460,5 @@ pub(crate) fn negate_and_mod_switch_2n(n: usize, res: &mut [i64], lwe: &LWECiphe
 
 #[inline(always)]
 fn div_round_by_pow2(x: &i64, k: usize) -> i64 {
-    if x >= &0 {
-        (x + (1 << (k - 1))) >> k
-    } else {
-        (x + (-1 << (k - 1))) >> k
-    }
-}
-
-// #[inline(always)]
-// fn div_floor_signed_by_pow2(x: &i64, k: usize) -> i64{
-// let bias: i64 = (1 << k) - 1;
-// (x + ((x >> 63) & bias)) >> k
-// }
-
-#[inline(always)]
-fn div_ceil_signed_by_pow2(x: &i64, k: usize) -> i64 {
-    let bias: i64 = (1 << k) - 1;
-    (x + ((x >> 63) & bias)) >> k
+    (x + (1 << (k - 1))) >> k
 }
