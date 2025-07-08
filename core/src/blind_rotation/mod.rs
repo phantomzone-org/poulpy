@@ -4,7 +4,7 @@ pub mod lut;
 
 pub use cggi::{cggi_blind_rotate, cggi_blind_rotate_scratch_space};
 pub use key::BlindRotationKeyCGGI;
-pub use lut::LookUpTable;
+pub use lut::{LookUpTable, LookUpTableRotationDirection};
 
 #[cfg(test)]
 pub mod test_fft64;

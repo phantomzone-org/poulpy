@@ -6,8 +6,8 @@ use backend::{
 use sampling::source::Source;
 
 use crate::{
-    FourierGLWECiphertext, FourierGLWESecret, GLWEAutomorphismKey, GLWECiphertext, GLWESwitchingKey, GLWETensorKey, GetRow,
-    Infos, ScratchCore, SetRow,
+    FourierGLWECiphertext, FourierGLWESecret, GGLWECiphertext, GLWEAutomorphismKey, GLWECiphertext, GLWESwitchingKey,
+    GLWETensorKey, GetRow, Infos, ScratchCore, SetRow,
 };
 
 pub struct GGSWCiphertext<C, B: Backend> {
@@ -298,6 +298,54 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf, FFT64> {
                 }
             });
         });
+    }
+
+    pub fn from_gglwe<DataA, DataTsk>(
+        &mut self,
+        module: &Module<FFT64>,
+        a: &GGLWECiphertext<DataA, FFT64>,
+        tsk: &GLWETensorKey<DataTsk, FFT64>,
+        scratch: &mut Scratch,
+    ) where
+        DataA: AsRef<[u8]>,
+        DataTsk: AsRef<[u8]>,
+    {
+        #[cfg(debug_assertions)]
+        {
+            assert_eq!(self.rank(), a.rank());
+            assert_eq!(self.rows(), a.rows());
+            assert_eq!(self.n(), module.n());
+            assert_eq!(a.n(), module.n());
+            assert_eq!(tsk.n(), module.n());
+        }
+
+        let rank: usize = self.rank();
+        let cols: usize = rank + 1;
+        let basek: usize = self.basek();
+
+        let (mut tmp_res, scratch1) = scratch.tmp_glwe_ct(module, basek, self.k(), rank);
+        let (mut ci_dft, scratch2) = scratch1.tmp_vec_znx_dft(module, cols, self.size());
+
+        // Keyswitch the j-th row of the col 0
+        (0..self.rows()).for_each(|row_i| {
+            // Extracts the j-th row of col 0 of a (a is GGLWE, so has 1 col)
+            module.mat_znx_dft_get_row(&mut ci_dft, &a.data, row_i, 0);
+
+            // Copies the j-th row of col 0 of a on col 0 of self
+            module.mat_znx_dft_set_row(&mut self.data, row_i, 0, &ci_dft);
+
+            // Generates the other cols
+            //
+            // col 1: (-(b0s0' + b1s1' + b2s2')    , b0 + M[i], b1       , b2       )
+            // col 2: (-(c0s0' + c1s1' + c2s2')    , c0       , c1 + M[i], c2       )
+            // col 3: (-(d0s0' + d1s1' + d2s2')    , d0       , d1       , d2 + M[i])
+            (1..cols).for_each(|col_j| {
+                self.expand_row(module, col_j, &mut tmp_res.data, &ci_dft, tsk, scratch2);
+                let (mut tmp_res_dft, _) = scratch2.tmp_fourier_glwe_ct(module, basek, self.k(), rank);
+                tmp_res.dft(module, &mut tmp_res_dft);
+                self.set_row(module, row_i, col_j, &tmp_res_dft);
+            });
+        })
     }
 
     pub(crate) fn expand_row<R, DataCi: AsRef<[u8]>, DataTsk: AsRef<[u8]>>(

@@ -6,7 +6,10 @@ use itertools::izip;
 
 use crate::{
     GLWECiphertext, GLWECiphertextToMut, GLWEOps, Infos, LWECiphertext, ScratchCore,
-    blind_rotation::{key::BlindRotationKeyCGGI, lut::LookUpTable},
+    blind_rotation::{
+        key::BlindRotationKeyCGGI,
+        lut::{LookUpTable, LookUpTableRotationDirection},
+    },
     dist::Distribution,
     lwe::ciphertext::LWECiphertextToRef,
 };
@@ -125,7 +128,7 @@ pub(crate) fn cggi_blind_rotate_block_binary_extended<DataRes, DataIn, DataBrk>(
     let two_n: usize = 2 * module.n();
     let two_n_ext: usize = 2 * lut.domain_size();
 
-    negate_and_mod_switch_2n(two_n_ext, &mut lwe_2n, &lwe_ref);
+    mod_switch_2n(two_n_ext, &mut lwe_2n, &lwe_ref, lut.rotation_direction());
 
     let a: &[i64] = &lwe_2n[1..];
     let b_pos: usize = ((lwe_2n[0] + two_n_ext as i64) & (two_n_ext - 1) as i64) as usize;
@@ -266,7 +269,12 @@ pub(crate) fn cggi_blind_rotate_block_binary<DataRes, DataIn, DataBrk>(
 
     let cols: usize = out_mut.rank() + 1;
 
-    negate_and_mod_switch_2n(2 * lut.domain_size(), &mut lwe_2n, &lwe_ref);
+    mod_switch_2n(
+        2 * lut.domain_size(),
+        &mut lwe_2n,
+        &lwe_ref,
+        lut.rotation_direction(),
+    );
 
     let a: &[i64] = &lwe_2n[1..];
     let b: i64 = lwe_2n[0];
@@ -390,7 +398,12 @@ pub(crate) fn cggi_blind_rotate_binary_standard<DataRes, DataIn, DataBrk>(
     let lwe_ref: LWECiphertext<&[u8]> = lwe.to_ref();
     let basek: usize = brk.basek();
 
-    negate_and_mod_switch_2n(2 * lut.domain_size(), &mut lwe_2n, &lwe_ref);
+    mod_switch_2n(
+        2 * lut.domain_size(),
+        &mut lwe_2n,
+        &lwe_ref,
+        lut.rotation_direction(),
+    );
 
     let a: &[i64] = &lwe_2n[1..];
     let b: i64 = lwe_2n[0];
@@ -425,13 +438,19 @@ pub(crate) fn cggi_blind_rotate_binary_standard<DataRes, DataIn, DataBrk>(
     out_mut.normalize_inplace(module, scratch2);
 }
 
-pub(crate) fn negate_and_mod_switch_2n(n: usize, res: &mut [i64], lwe: &LWECiphertext<&[u8]>) {
+pub(crate) fn mod_switch_2n(n: usize, res: &mut [i64], lwe: &LWECiphertext<&[u8]>, rot_dir: LookUpTableRotationDirection) {
     let basek: usize = lwe.basek();
 
     let log2n: usize = usize::BITS as usize - (n - 1).leading_zeros() as usize + 1;
 
     res.copy_from_slice(&lwe.data.at(0, 0));
-    res.iter_mut().for_each(|x| *x = -*x);
+
+    match rot_dir {
+        LookUpTableRotationDirection::Left => {
+            res.iter_mut().for_each(|x| *x = -*x);
+        }
+        LookUpTableRotationDirection::Right => {}
+    }
 
     if basek > log2n {
         let diff: usize = basek - log2n;

@@ -1,4 +1,5 @@
 pub mod blind_rotation;
+pub mod circuit_bootstrapping;
 pub mod dist;
 pub mod elem;
 pub mod fourier_glwe;
@@ -11,11 +12,13 @@ pub mod noise;
 use backend::Backend;
 use backend::FFT64;
 use backend::Module;
-pub use blind_rotation::{BlindRotationKeyCGGI, LookUpTable, cggi_blind_rotate, cggi_blind_rotate_scratch_space};
+pub use blind_rotation::{
+    BlindRotationKeyCGGI, LookUpTable, LookUpTableRotationDirection, cggi_blind_rotate, cggi_blind_rotate_scratch_space,
+};
 pub use elem::{GetRow, Infos, SetMetaData, SetRow};
 pub use fourier_glwe::{FourierGLWECiphertext, FourierGLWESecret};
 pub use gglwe::{GGLWECiphertext, GLWEAutomorphismKey, GLWESwitchingKey, GLWETensorKey};
-pub use ggsw::GGSWCiphertext;
+pub use ggsw::{GGSWCiphertext, get_ggsw_noise};
 pub use glwe::{GLWECiphertext, GLWEOps, GLWEPacker, GLWEPlaintext, GLWEPublicKey, GLWESecret};
 pub use lwe::{LWECiphertext, LWESecret};
 
