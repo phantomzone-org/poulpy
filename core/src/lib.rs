@@ -11,13 +11,15 @@ pub mod noise;
 use backend::Backend;
 use backend::FFT64;
 use backend::Module;
+pub use blind_rotation::{BlindRotationKeyCGGI, LookUpTable, cggi_blind_rotate, cggi_blind_rotate_scratch_space};
 pub use elem::{GetRow, Infos, SetMetaData, SetRow};
 pub use fourier_glwe::{FourierGLWECiphertext, FourierGLWESecret};
 pub use gglwe::{GGLWECiphertext, GLWEAutomorphismKey, GLWESwitchingKey, GLWETensorKey};
 pub use ggsw::GGSWCiphertext;
 pub use glwe::{GLWECiphertext, GLWEOps, GLWEPacker, GLWEPlaintext, GLWEPublicKey, GLWESecret};
-pub(crate) use glwe::{GLWECiphertextToMut, GLWECiphertextToRef};
 pub use lwe::{LWECiphertext, LWESecret};
+
+pub(crate) use glwe::{GLWECiphertextToMut, GLWECiphertextToRef};
 
 pub use backend::Scratch;
 pub use backend::ScratchOwned;

@@ -4,7 +4,7 @@ use sampling::source::Source;
 use crate::{
     FourierGLWESecret, GLWECiphertext, GLWEPlaintext, GLWESecret, Infos, LWECiphertext, LWESecret,
     blind_rotation::{
-        ccgi::{cggi_blind_rotate, cggi_blind_rotate_scratch_space, negate_and_mod_switch_2n},
+        cggi::{cggi_blind_rotate, cggi_blind_rotate_scratch_space, negate_and_mod_switch_2n},
         key::BlindRotationKeyCGGI,
         lut::LookUpTable,
     },
