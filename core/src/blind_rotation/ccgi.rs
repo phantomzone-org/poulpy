@@ -82,7 +82,6 @@ pub fn cggi_blind_rotate<DataRes, DataIn>(
     }
 }
 
-// TODO: ENSURE DOMAIN EXTENSION AS
 pub(crate) fn cggi_blind_rotate_block_binary_extended<DataRes, DataIn>(
     module: &Module<FFT64>,
     res: &mut GLWECiphertext<DataRes>,

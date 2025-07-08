@@ -8,6 +8,14 @@ pub struct LookUpTable {
 
 impl LookUpTable {
     pub fn alloc(module: &Module<FFT64>, basek: usize, k: usize, extension_factor: usize) -> Self {
+        #[cfg(debug_assertions)]
+        {
+            assert!(
+                extension_factor & (extension_factor - 1) == 0,
+                "extension_factor must be a power of two but is: {}",
+                extension_factor
+            );
+        }
         let size: usize = k.div_ceil(basek);
         let mut data: Vec<VecZnx<Vec<u8>>> = Vec::with_capacity(extension_factor);
         (0..extension_factor).for_each(|_| {
