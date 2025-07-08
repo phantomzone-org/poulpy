@@ -33,7 +33,8 @@ fn blind_rotatio_test(n_lwe: usize, block_size: usize, extension_factor: usize) 
     let k_lwe: usize = 24;
     let k_brk: usize = 3 * basek;
     let rows_brk: usize = 2; // Ensures first limb is noise-free.
-    let k_lut: usize = 2 * basek;
+    let k_lut: usize = 1 * basek;
+    let k_res: usize = 2 * basek;
     let rank: usize = 1;
 
     let message_modulus: usize = 1 << 4;
@@ -55,9 +56,10 @@ fn blind_rotatio_test(n_lwe: usize, block_size: usize, extension_factor: usize) 
 
     let mut scratch_br: ScratchOwned = ScratchOwned::new(cggi_blind_rotate_scratch_space(
         &module,
+        block_size,
         extension_factor,
         basek,
-        k_lut,
+        k_res,
         k_brk,
         rows_brk,
         rank,
@@ -100,13 +102,13 @@ fn blind_rotatio_test(n_lwe: usize, block_size: usize, extension_factor: usize) 
     let mut lut: LookUpTable = LookUpTable::alloc(&module, basek, k_lut, extension_factor);
     lut.set(&module, &f, message_modulus);
 
-    let mut res: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_lut, rank);
+    let mut res: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_res, rank);
 
     cggi_blind_rotate(&module, &mut res, &lwe, &lut, &brk, scratch_br.borrow());
 
     println!("out_mut.data: {}", res.data);
 
-    let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_lut);
+    let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_res);
 
     res.decrypt(&module, &mut pt_have, &sk_glwe_dft, scratch.borrow());
 
