@@ -1,6 +1,4 @@
-use std::time::Instant;
-
-use backend::{Encoding, FFT64, Module, ScratchOwned, Stats, VecZnxOps, ZnxView};
+use backend::{Encoding, FFT64, Module, ScratchOwned, ZnxView};
 use sampling::source::Source;
 
 use crate::{
@@ -14,22 +12,31 @@ use crate::{
 };
 
 #[test]
-fn blind_rotation() {
-    let module: Module<FFT64> = Module::<FFT64>::new(2048);
-    let basek: usize = 19;
+fn standard() {
+    blind_rotatio_test(224, 1, 1);
+}
 
-    let n_lwe: usize = 1071;
+#[test]
+fn block_binary() {
+    blind_rotatio_test(224, 7, 1);
+}
+
+#[test]
+fn block_binary_extended() {
+    blind_rotatio_test(224, 7, 2);
+}
+
+fn blind_rotatio_test(n_lwe: usize, block_size: usize, extension_factor: usize) {
+    let module: Module<FFT64> = Module::<FFT64>::new(512);
+    let basek: usize = 19;
 
     let k_lwe: usize = 24;
     let k_brk: usize = 3 * basek;
-    let rows_brk: usize = 1;
+    let rows_brk: usize = 2; // Ensures first limb is noise-free.
     let k_lut: usize = 2 * basek;
     let rank: usize = 1;
-    let block_size: usize = 7;
 
-    let extension_factor: usize = 2;
-
-    let message_modulus: usize = 1 << 6;
+    let message_modulus: usize = 1 << 4;
 
     let mut source_xs: Source = Source::new([1u8; 32]);
     let mut source_xe: Source = Source::new([1u8; 32]);
@@ -56,7 +63,6 @@ fn blind_rotation() {
         rank,
     ));
 
-    let start: Instant = Instant::now();
     let mut brk: BlindRotationKeyCGGI<FFT64> = BlindRotationKeyCGGI::allocate(&module, n_lwe, basek, k_brk, rows_brk, rank);
 
     brk.generate_from_sk(
@@ -69,9 +75,6 @@ fn blind_rotation() {
         scratch.borrow(),
     );
 
-    let duration: std::time::Duration = start.elapsed();
-    println!("brk-gen: {} ms", duration.as_millis());
-
     let mut lwe: LWECiphertext<Vec<u8>> = LWECiphertext::alloc(n_lwe, basek, k_lwe);
 
     let mut pt_lwe: LWEPlaintext<Vec<u8>> = LWEPlaintext::alloc(basek, k_lwe);
@@ -81,13 +84,13 @@ fn blind_rotation() {
 
     pt_lwe.data.encode_coeff_i64(0, basek, bits, 0, x, bits);
 
-    println!("{}", pt_lwe.data);
+    // println!("{}", pt_lwe.data);
 
     lwe.encrypt_sk(&pt_lwe, &sk_lwe, &mut source_xa, &mut source_xe, 3.2);
 
     lwe.decrypt(&mut pt_lwe, &sk_lwe);
 
-    println!("{}", pt_lwe.data);
+    // println!("{}", pt_lwe.data);
 
     let mut f: Vec<i64> = vec![0i64; message_modulus];
     f.iter_mut()
@@ -99,13 +102,9 @@ fn blind_rotation() {
 
     let mut res: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_lut, rank);
 
-    let start: Instant = Instant::now();
-    (0..32).for_each(|_| {
-        cggi_blind_rotate(&module, &mut res, &lwe, &lut, &brk, scratch_br.borrow());
-    });
+    cggi_blind_rotate(&module, &mut res, &lwe, &lut, &brk, scratch_br.borrow());
 
-    let duration: std::time::Duration = start.elapsed();
-    println!("blind-rotate: {} ms", duration.as_millis());
+    println!("out_mut.data: {}", res.data);
 
     let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_lut);
 
@@ -125,20 +124,21 @@ fn blind_rotation() {
             .sum::<i64>())
         % (2 * lut.domain_size()) as i64;
 
-    println!("pt_want: {}", pt_want);
+    // println!("pt_want: {}", pt_want);
 
     lut.rotate(pt_want);
 
-    lut.data.iter().for_each(|d| {
-        println!("{}", d);
-    });
+    // lut.data.iter().for_each(|d| {
+    //     println!("{}", d);
+    // });
 
     // First limb should be exactly equal (test are parameterized such that the noise does not reach
     // the first limb)
-    // assert_eq!(pt_have.data.at_mut(0, 0), lut.data[0].at_mut(0, 0));
+    assert_eq!(pt_have.data.at(0, 0), lut.data[0].at(0, 0));
 
     // Then checks the noise
-    module.vec_znx_sub_ab_inplace(&mut lut.data[0], 0, &pt_have.data, 0);
-    let noise: f64 = lut.data[0].std(0, basek);
-    println!("noise: {}", noise);
+    // module.vec_znx_sub_ab_inplace(&mut lut.data[0], 0, &pt_have.data, 0);
+    // let noise: f64 = lut.data[0].std(0, basek);
+    // println!("noise: {}", noise);
+    // assert!(noise < 1e-3);
 }

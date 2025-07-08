@@ -6,7 +6,7 @@ use backend::{
 use itertools::izip;
 
 use crate::{
-    GLWECiphertext, GLWECiphertextToMut, Infos, LWECiphertext,
+    GLWECiphertext, GLWECiphertextToMut, GLWEOps, Infos, LWECiphertext, ScratchCore,
     blind_rotation::{key::BlindRotationKeyCGGI, lut::LookUpTable},
     lwe::ciphertext::LWECiphertextToRef,
 };
@@ -63,7 +63,7 @@ pub fn cggi_blind_rotate<DataRes, DataIn>(
     } else if brk.block_size() > 1 {
         cggi_blind_rotate_block_binary(module, res, lwe, lut, brk, scratch);
     } else {
-        todo!("implement this case")
+        cggi_blind_rotate_standard(module, res, lwe, lut, brk, scratch);
     }
 }
 
@@ -121,8 +121,7 @@ pub(crate) fn cggi_blind_rotate_block_binary_extended<DataRes, DataIn>(
         a.chunks_exact(block_size),
         brk.data.chunks_exact(block_size)
     )
-    .enumerate()
-    .for_each(|(i, (ai, ski))| {
+    .for_each(|(ai, ski)| {
         (0..extension_factor).for_each(|i| {
             (0..cols).for_each(|j| {
                 module.vec_znx_dft(1, 0, &mut acc_dft[i], j, &acc[i], j);
@@ -321,6 +320,96 @@ pub(crate) fn cggi_blind_rotate_block_binary<DataRes, DataIn>(
             });
         }
     });
+}
+
+pub(crate) fn cggi_blind_rotate_standard<DataRes, DataIn>(
+    module: &Module<FFT64>,
+    res: &mut GLWECiphertext<DataRes>,
+    lwe: &LWECiphertext<DataIn>,
+    lut: &LookUpTable,
+    brk: &BlindRotationKeyCGGI<FFT64>,
+    scratch: &mut Scratch,
+) where
+    DataRes: AsRef<[u8]> + AsMut<[u8]>,
+    DataIn: AsRef<[u8]>,
+{
+    #[cfg(debug_assertions)]
+    {
+        assert_eq!(
+            res.n(),
+            module.n(),
+            "res.n(): {} != brk.n(): {}",
+            res.n(),
+            module.n()
+        );
+        assert_eq!(
+            lut.domain_size(),
+            module.n(),
+            "lut.n(): {} != brk.n(): {}",
+            lut.domain_size(),
+            module.n()
+        );
+        assert_eq!(
+            brk.n(),
+            module.n(),
+            "brk.n(): {} != brk.n(): {}",
+            brk.n(),
+            module.n()
+        );
+        assert_eq!(
+            res.rank(),
+            brk.rank(),
+            "res.rank(): {} != brk.rank(): {}",
+            res.rank(),
+            brk.rank()
+        );
+        assert_eq!(
+            lwe.n(),
+            brk.data.len(),
+            "lwe.n(): {} != brk.data.len(): {}",
+            lwe.n(),
+            brk.data.len()
+        );
+    }
+
+    let mut lwe_2n: Vec<i64> = vec![0i64; lwe.n() + 1]; // TODO: from scratch space
+    let mut out_mut: GLWECiphertext<&mut [u8]> = res.to_mut();
+    let lwe_ref: LWECiphertext<&[u8]> = lwe.to_ref();
+    let basek: usize = brk.basek();
+
+    negate_and_mod_switch_2n(2 * lut.domain_size(), &mut lwe_2n, &lwe_ref);
+
+    let a: &[i64] = &lwe_2n[1..];
+    let b: i64 = lwe_2n[0];
+
+    out_mut.data.zero();
+
+    // Initialize out to X^{b} * LUT(X)
+    module.vec_znx_rotate(b, &mut out_mut.data, 0, &lut.data[0], 0);
+
+    // ACC + [sum DFT(X^ai -1) * (DFT(ACC) x BRKi)]
+    let (mut acc_tmp, scratch1) = scratch.tmp_glwe_ct(module, basek, out_mut.k(), out_mut.rank());
+    let (mut acc_tmp_rot, scratch2) = scratch1.tmp_glwe_ct(module, basek, out_mut.k(), out_mut.rank());
+
+    // TODO: see if faster by skipping normalization in external product and keeping acc in big coeffs
+    // TODO: first iteration can be optimized to be a gglwe product
+    izip!(a.iter(), brk.data.iter()).for_each(|(ai, ski)| {
+        // acc_tmp = sk[i] * acc
+        acc_tmp.external_product(module, &out_mut, ski, scratch2);
+
+        // acc_tmp = (sk[i] * acc) * X^{ai}
+        acc_tmp_rot.rotate(module, *ai, &acc_tmp);
+
+        // acc = acc + (sk[i] * acc) * X^{ai}
+        out_mut.add_inplace(module, &acc_tmp_rot);
+
+        // acc = acc + (sk[i] * acc) * X^{ai} - (sk[i] * acc) = acc + (sk[i] * acc) * (X^{ai} - 1)
+        out_mut.sub_inplace_ab(module, &acc_tmp);
+    });
+
+    // We can normalize only at the end because we add normalized values in [-2^{basek-1}, 2^{basek-1}]
+    // on top of each others, thus ~ 2^{63-basek} additions are supported before overflow.
+    out_mut.normalize_inplace(module, scratch2);
 }
 
 pub(crate) fn negate_and_mod_switch_2n(n: usize, res: &mut [i64], lwe: &LWECiphertext<&[u8]>) {
