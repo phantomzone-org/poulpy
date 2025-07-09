@@ -87,8 +87,20 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
 
         #[cfg(debug_assertions)]
         {
-            assert_eq!(lhs.rank(), rhs.rank_in());
-            assert_eq!(self.rank(), rhs.rank_out());
+            assert_eq!(
+                lhs.rank(),
+                rhs.rank_in(),
+                "lhs.rank(): {} != rhs.rank_in(): {}",
+                lhs.rank(),
+                rhs.rank_in()
+            );
+            assert_eq!(
+                self.rank(),
+                rhs.rank_out(),
+                "self.rank(): {} != rhs.rank_out(): {}",
+                self.rank(),
+                rhs.rank_out()
+            );
             assert_eq!(self.basek(), basek);
             assert_eq!(lhs.basek(), basek);
             assert_eq!(rhs.n(), module.n());
@@ -141,9 +153,9 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
                 });
 
                 if di == 0 {
-                    module.vmp_apply(&mut res_dft, &ai_dft, &rhs.0.data, scratch2);
+                    module.vmp_apply(&mut res_dft, &ai_dft, &rhs.key.data, scratch2);
                 } else {
-                    module.vmp_apply_add(&mut res_dft, &ai_dft, &rhs.0.data, di, scratch2);
+                    module.vmp_apply_add(&mut res_dft, &ai_dft, &rhs.key.data, di, scratch2);
                 }
             });
         }
@@ -225,9 +237,9 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
                 });
 
                 if di == 0 {
-                    module.vmp_apply(&mut res_dft, &ai_dft, &rhs.0.data, scratch2);
+                    module.vmp_apply(&mut res_dft, &ai_dft, &rhs.key.data, scratch2);
                 } else {
-                    module.vmp_apply_add(&mut res_dft, &ai_dft, &rhs.0.data, di, scratch2);
+                    module.vmp_apply_add(&mut res_dft, &ai_dft, &rhs.key.data, di, scratch2);
                 }
             });
         }

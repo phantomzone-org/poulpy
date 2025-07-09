@@ -223,8 +223,8 @@ fn test_keyswitch(
     let mut scratch: ScratchOwned = ScratchOwned::new(
         GGSWCiphertext::encrypt_sk_scratch_space(&module, basek, k_in, rank)
             | FourierGLWECiphertext::decrypt_scratch_space(&module, basek, k_out)
-            | GLWESwitchingKey::encrypt_sk_scratch_space(&module, basek, k_ksk, rank)
-            | GLWETensorKey::generate_from_sk_scratch_space(&module, basek, k_tsk, rank)
+            | GLWESwitchingKey::encrypt_sk_scratch_space(&module, basek, k_ksk, rank, rank)
+            | GLWETensorKey::encrypt_sk_scratch_space(&module, basek, k_tsk, rank)
             | GGSWCiphertext::keyswitch_scratch_space(
                 &module, basek, k_out, k_in, k_ksk, digits, k_tsk, digits, rank,
             ),
@@ -240,7 +240,7 @@ fn test_keyswitch(
     sk_out.fill_ternary_prob(var_xs, &mut source_xs);
     let sk_out_dft: FourierGLWESecret<Vec<u8>, FFT64> = FourierGLWESecret::from(&module, &sk_out);
 
-    ksk.generate_from_sk(
+    ksk.encrypt_sk(
         &module,
         &sk_in,
         &sk_out_dft,
@@ -249,7 +249,7 @@ fn test_keyswitch(
         sigma,
         scratch.borrow(),
     );
-    tsk.generate_from_sk(
+    tsk.encrypt_sk(
         &module,
         &sk_out_dft,
         &mut source_xa,
@@ -352,8 +352,8 @@ fn test_keyswitch_inplace(
     let mut scratch: ScratchOwned = ScratchOwned::new(
         GGSWCiphertext::encrypt_sk_scratch_space(&module, basek, k_ct, rank)
             | FourierGLWECiphertext::decrypt_scratch_space(&module, basek, k_ct)
-            | GLWESwitchingKey::encrypt_sk_scratch_space(&module, basek, k_ksk, rank)
-            | GLWETensorKey::generate_from_sk_scratch_space(&module, basek, k_tsk, rank)
+            | GLWESwitchingKey::encrypt_sk_scratch_space(&module, basek, k_ksk, rank, rank)
+            | GLWETensorKey::encrypt_sk_scratch_space(&module, basek, k_tsk, rank)
             | GGSWCiphertext::keyswitch_inplace_scratch_space(&module, basek, k_ct, k_ksk, digits, k_tsk, digits, rank),
     );
 
@@ -367,7 +367,7 @@ fn test_keyswitch_inplace(
     sk_out.fill_ternary_prob(var_xs, &mut source_xs);
     let sk_out_dft: FourierGLWESecret<Vec<u8>, FFT64> = FourierGLWESecret::from(&module, &sk_out);
 
-    ksk.generate_from_sk(
+    ksk.encrypt_sk(
         &module,
         &sk_in,
         &sk_out_dft,
@@ -376,7 +376,7 @@ fn test_keyswitch_inplace(
         sigma,
         scratch.borrow(),
     );
-    tsk.generate_from_sk(
+    tsk.encrypt_sk(
         &module,
         &sk_out_dft,
         &mut source_xa,
@@ -489,8 +489,8 @@ fn test_automorphism(
     let mut scratch: ScratchOwned = ScratchOwned::new(
         GGSWCiphertext::encrypt_sk_scratch_space(&module, basek, k_in, rank)
             | FourierGLWECiphertext::decrypt_scratch_space(&module, basek, k_out)
-            | GLWEAutomorphismKey::generate_from_sk_scratch_space(&module, basek, k_ksk, rank)
-            | GLWETensorKey::generate_from_sk_scratch_space(&module, basek, k_tsk, rank)
+            | GLWEAutomorphismKey::encrypt_sk_scratch_space(&module, basek, k_ksk, rank)
+            | GLWETensorKey::encrypt_sk_scratch_space(&module, basek, k_tsk, rank)
             | GGSWCiphertext::automorphism_scratch_space(
                 &module, basek, k_out, k_in, k_ksk, digits, k_tsk, digits, rank,
             ),
@@ -502,7 +502,7 @@ fn test_automorphism(
     sk.fill_ternary_prob(var_xs, &mut source_xs);
     let sk_dft: FourierGLWESecret<Vec<u8>, FFT64> = FourierGLWESecret::from(&module, &sk);
 
-    auto_key.generate_from_sk(
+    auto_key.encrypt_sk(
         &module,
         p,
         &sk,
@@ -511,7 +511,7 @@ fn test_automorphism(
         sigma,
         scratch.borrow(),
     );
-    tensor_key.generate_from_sk(
+    tensor_key.encrypt_sk(
         &module,
         &sk_dft,
         &mut source_xa,
@@ -615,8 +615,8 @@ fn test_automorphism_inplace(
     let mut scratch: ScratchOwned = ScratchOwned::new(
         GGSWCiphertext::encrypt_sk_scratch_space(&module, basek, k_ct, rank)
             | FourierGLWECiphertext::decrypt_scratch_space(&module, basek, k_ct)
-            | GLWEAutomorphismKey::generate_from_sk_scratch_space(&module, basek, k_ksk, rank)
-            | GLWETensorKey::generate_from_sk_scratch_space(&module, basek, k_tsk, rank)
+            | GLWEAutomorphismKey::encrypt_sk_scratch_space(&module, basek, k_ksk, rank)
+            | GLWETensorKey::encrypt_sk_scratch_space(&module, basek, k_tsk, rank)
             | GGSWCiphertext::automorphism_inplace_scratch_space(&module, basek, k_ct, k_ksk, digits, k_tsk, digits, rank),
     );
 
@@ -626,7 +626,7 @@ fn test_automorphism_inplace(
     sk.fill_ternary_prob(var_xs, &mut source_xs);
     let sk_dft: FourierGLWESecret<Vec<u8>, FFT64> = FourierGLWESecret::from(&module, &sk);
 
-    auto_key.generate_from_sk(
+    auto_key.encrypt_sk(
         &module,
         p,
         &sk,
@@ -635,7 +635,7 @@ fn test_automorphism_inplace(
         sigma,
         scratch.borrow(),
     );
-    tensor_key.generate_from_sk(
+    tensor_key.encrypt_sk(
         &module,
         &sk_dft,
         &mut source_xa,

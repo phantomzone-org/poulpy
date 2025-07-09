@@ -231,6 +231,23 @@ impl Scratch {
         )
     }
 
+    pub fn tmp_slice_vec_znx_dft<B: Backend>(
+        &mut self,
+        slice_size: usize,
+        module: &Module<B>,
+        cols: usize,
+        size: usize,
+    ) -> (Vec<VecZnxDft<&mut [u8], B>>, &mut Self) {
+        let mut scratch: &mut Scratch = self;
+        let mut slice: Vec<VecZnxDft<&mut [u8], B>> = Vec::with_capacity(slice_size);
+        for _ in 0..slice_size{
+            let (znx, new_scratch) = scratch.tmp_vec_znx_dft(module, cols, size);
+            scratch = new_scratch;
+            slice.push(znx);
+        };
+        (slice, scratch)
+    }
+
     pub fn tmp_vec_znx_big<B: Backend>(
         &mut self,
         module: &Module<B>,
@@ -251,6 +268,23 @@ impl Scratch {
             VecZnx::from_data(take_slice, module.n(), cols, size),
             Self::new(rem_slice),
         )
+    }
+
+    pub fn tmp_slice_vec_znx<B: Backend>(
+        &mut self,
+        slice_size: usize,
+        module: &Module<B>,
+        cols: usize,
+        size: usize,
+    ) -> (Vec<VecZnx<&mut [u8]>>, &mut Self) {
+        let mut scratch: &mut Scratch = self;
+        let mut slice: Vec<VecZnx<&mut [u8]>> = Vec::with_capacity(slice_size);
+        for _ in 0..slice_size{
+            let (znx, new_scratch) = scratch.tmp_vec_znx(module, cols, size);
+            scratch = new_scratch;
+            slice.push(znx);
+        };
+        (slice, scratch)
     }
 
     pub fn tmp_mat_znx_dft<B: Backend>(

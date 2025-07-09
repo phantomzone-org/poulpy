@@ -23,7 +23,7 @@ fn test_encrypt_sk(log_n: usize, basek: usize, k: usize, sigma: f64, rank: usize
     let mut source_xe: Source = Source::new([0u8; 32]);
     let mut source_xa: Source = Source::new([0u8; 32]);
 
-    let mut scratch: ScratchOwned = ScratchOwned::new(GLWETensorKey::generate_from_sk_scratch_space(
+    let mut scratch: ScratchOwned = ScratchOwned::new(GLWETensorKey::encrypt_sk_scratch_space(
         &module,
         basek,
         tensor_key.k(),
@@ -34,7 +34,7 @@ fn test_encrypt_sk(log_n: usize, basek: usize, k: usize, sigma: f64, rank: usize
     sk.fill_ternary_prob(0.5, &mut source_xs);
     let sk_dft: FourierGLWESecret<Vec<u8>, FFT64> = FourierGLWESecret::from(&module, &sk);
 
-    tensor_key.generate_from_sk(
+    tensor_key.encrypt_sk(
         &module,
         &sk_dft,
         &mut source_xa,

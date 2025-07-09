@@ -38,7 +38,7 @@ fn bench_keyswitch_glwe_fft64(c: &mut Criterion) {
         let mut ct_out: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_rlwe_out, rank_out);
 
         let mut scratch = ScratchOwned::new(
-            GLWESwitchingKey::encrypt_sk_scratch_space(&module, basek, ksk.k(), rank_out)
+            GLWESwitchingKey::encrypt_sk_scratch_space(&module, basek, ksk.k(), rank_in, rank_out)
                 | GLWECiphertext::encrypt_sk_scratch_space(&module, basek, ct_in.k())
                 | GLWECiphertext::keyswitch_scratch_space(
                     &module,
@@ -63,7 +63,7 @@ fn bench_keyswitch_glwe_fft64(c: &mut Criterion) {
         let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(&module, rank_out);
         sk_out.fill_ternary_prob(0.5, &mut source_xs);
 
-        ksk.generate_from_sk(
+        ksk.encrypt_sk(
             &module,
             -1,
             &sk_in,
@@ -139,7 +139,7 @@ fn bench_keyswitch_glwe_inplace_fft64(c: &mut Criterion) {
         let mut ct: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_ct, rank);
 
         let mut scratch = ScratchOwned::new(
-            GLWESwitchingKey::encrypt_sk_scratch_space(&module, basek, ksk.k(), rank)
+            GLWESwitchingKey::encrypt_sk_scratch_space(&module, basek, ksk.k(), rank, rank)
                 | GLWECiphertext::encrypt_sk_scratch_space(&module, basek, ct.k())
                 | GLWECiphertext::keyswitch_inplace_scratch_space(&module, basek, ct.k(), ksk.k(), digits, rank),
         );
@@ -156,7 +156,7 @@ fn bench_keyswitch_glwe_inplace_fft64(c: &mut Criterion) {
         sk_out.fill_ternary_prob(0.5, &mut source_xs);
         let sk_out_dft: FourierGLWESecret<Vec<u8>, FFT64> = FourierGLWESecret::from(&module, &sk_out);
 
-        ksk.generate_from_sk(
+        ksk.encrypt_sk(
             &module,
             &sk_in,
             &sk_out_dft,

@@ -67,7 +67,7 @@ fn test_automorphism(
         .fill_uniform(basek, 0, pt_want.size(), &mut source_xa);
 
     let mut scratch: ScratchOwned = ScratchOwned::new(
-        GLWEAutomorphismKey::generate_from_sk_scratch_space(&module, basek, autokey.k(), rank)
+        GLWEAutomorphismKey::encrypt_sk_scratch_space(&module, basek, autokey.k(), rank)
             | GLWECiphertext::decrypt_scratch_space(&module, basek, ct_out.k())
             | GLWECiphertext::encrypt_sk_scratch_space(&module, basek, ct_in.k())
             | GLWECiphertext::automorphism_scratch_space(
@@ -85,7 +85,7 @@ fn test_automorphism(
     sk.fill_ternary_prob(0.5, &mut source_xs);
     let sk_dft: FourierGLWESecret<Vec<u8>, FFT64> = FourierGLWESecret::from(&module, &sk);
 
-    autokey.generate_from_sk(
+    autokey.encrypt_sk(
         &module,
         p,
         &sk,
@@ -164,7 +164,7 @@ fn test_automorphism_inplace(
         .fill_uniform(basek, 0, pt_want.size(), &mut source_xa);
 
     let mut scratch: ScratchOwned = ScratchOwned::new(
-        GLWEAutomorphismKey::generate_from_sk_scratch_space(&module, basek, autokey.k(), rank)
+        GLWEAutomorphismKey::encrypt_sk_scratch_space(&module, basek, autokey.k(), rank)
             | GLWECiphertext::decrypt_scratch_space(&module, basek, ct.k())
             | GLWECiphertext::encrypt_sk_scratch_space(&module, basek, ct.k())
             | GLWECiphertext::automorphism_inplace_scratch_space(&module, basek, ct.k(), autokey.k(), digits, rank),
@@ -174,7 +174,7 @@ fn test_automorphism_inplace(
     sk.fill_ternary_prob(0.5, &mut source_xs);
     let sk_dft: FourierGLWESecret<Vec<u8>, FFT64> = FourierGLWESecret::from(&module, &sk);
 
-    autokey.generate_from_sk(
+    autokey.encrypt_sk(
         &module,
         p,
         &sk,

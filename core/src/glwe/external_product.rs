@@ -14,7 +14,7 @@ impl GLWECiphertext<Vec<u8>> {
         digits: usize,
         rank: usize,
     ) -> usize {
-        let res_dft: usize = FourierGLWECiphertext::bytes_of(module, basek, k_out, rank);
+        let res_dft: usize = FourierGLWECiphertext::bytes_of(module, basek, k_ggsw, rank);
         let in_size: usize = k_in.div_ceil(basek).div_ceil(digits);
         let out_size: usize = k_out.div_ceil(basek);
         let ggsw_size: usize = k_ggsw.div_ceil(basek);

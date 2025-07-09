@@ -66,7 +66,7 @@ impl<C: AsRef<[u8]>> GetRow<FFT64> for GLWEAutomorphismKey<C, FFT64> {
         col_j: usize,
         res: &mut FourierGLWECiphertext<R, FFT64>,
     ) {
-        module.mat_znx_dft_get_row(&mut res.data, &self.key.0.data, row_i, col_j);
+        module.mat_znx_dft_get_row(&mut res.data, &self.key.key.data, row_i, col_j);
     }
 }
 
@@ -78,6 +78,6 @@ impl<C: AsMut<[u8]> + AsRef<[u8]>> SetRow<FFT64> for GLWEAutomorphismKey<C, FFT6
         col_j: usize,
         a: &FourierGLWECiphertext<R, FFT64>,
     ) {
-        module.mat_znx_dft_set_row(&mut self.key.0.data, row_i, col_j, &a.data);
+        module.mat_znx_dft_set_row(&mut self.key.key.data, row_i, col_j, &a.data);
     }
 }

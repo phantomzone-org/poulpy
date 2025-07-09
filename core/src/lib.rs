@@ -11,17 +11,18 @@ pub mod noise;
 use backend::Backend;
 use backend::FFT64;
 use backend::Module;
+pub use blind_rotation::{BlindRotationKeyCGGI, LookUpTable, cggi_blind_rotate, cggi_blind_rotate_scratch_space};
 pub use elem::{GetRow, Infos, SetMetaData, SetRow};
 pub use fourier_glwe::{FourierGLWECiphertext, FourierGLWESecret};
 pub use gglwe::{GGLWECiphertext, GLWEAutomorphismKey, GLWESwitchingKey, GLWETensorKey};
 pub use ggsw::GGSWCiphertext;
 pub use glwe::{GLWECiphertext, GLWEOps, GLWEPacker, GLWEPlaintext, GLWEPublicKey, GLWESecret};
-pub(crate) use glwe::{GLWECiphertextToMut, GLWECiphertextToRef};
 pub use lwe::{LWECiphertext, LWESecret};
 
 pub use backend;
 pub use backend::Scratch;
 pub use backend::ScratchOwned;
+pub(crate) use glwe::{GLWECiphertextToMut, GLWECiphertextToRef};
 
 use crate::dist::Distribution;
 
@@ -64,7 +65,7 @@ pub trait ScratchCore<B: Backend> {
         k: usize,
         rank: usize,
     ) -> (FourierGLWECiphertext<&mut [u8], B>, &mut Self);
-    fn tmp_vec_fourier_glwe_ct(
+    fn tmp_slice_fourier_glwe_ct(
         &mut self,
         size: usize,
         module: &Module<B>,
@@ -72,8 +73,8 @@ pub trait ScratchCore<B: Backend> {
         k: usize,
         rank: usize,
     ) -> (Vec<FourierGLWECiphertext<&mut [u8], B>>, &mut Self);
-    fn tmp_sk(&mut self, module: &Module<B>, rank: usize) -> (GLWESecret<&mut [u8]>, &mut Self);
-    fn tmp_fourier_sk(&mut self, module: &Module<B>, rank: usize) -> (FourierGLWESecret<&mut [u8], B>, &mut Self);
+    fn tmp_glwe_secret(&mut self, module: &Module<B>, rank: usize) -> (GLWESecret<&mut [u8]>, &mut Self);
+    fn tmp_fourier_glwe_secret(&mut self, module: &Module<B>, rank: usize) -> (FourierGLWESecret<&mut [u8], B>, &mut Self);
     fn tmp_glwe_pk(
         &mut self,
         module: &Module<B>,
@@ -212,7 +213,7 @@ impl ScratchCore<FFT64> for Scratch {
         (FourierGLWECiphertext { data, basek, k }, scratch)
     }
 
-    fn tmp_vec_fourier_glwe_ct(
+    fn tmp_slice_fourier_glwe_ct(
         &mut self,
         size: usize,
         module: &Module<FFT64>,
@@ -247,7 +248,7 @@ impl ScratchCore<FFT64> for Scratch {
         )
     }
 
-    fn tmp_sk(&mut self, module: &Module<FFT64>, rank: usize) -> (GLWESecret<&mut [u8]>, &mut Self) {
+    fn tmp_glwe_secret(&mut self, module: &Module<FFT64>, rank: usize) -> (GLWESecret<&mut [u8]>, &mut Self) {
         let (data, scratch) = self.tmp_scalar_znx(module, rank);
         (
             GLWESecret {
@@ -258,7 +259,11 @@ impl ScratchCore<FFT64> for Scratch {
         )
     }
 
-    fn tmp_fourier_sk(&mut self, module: &Module<FFT64>, rank: usize) -> (FourierGLWESecret<&mut [u8], FFT64>, &mut Self) {
+    fn tmp_fourier_glwe_secret(
+        &mut self,
+        module: &Module<FFT64>,
+        rank: usize,
+    ) -> (FourierGLWESecret<&mut [u8], FFT64>, &mut Self) {
         let (data, scratch) = self.tmp_scalar_znx_dft(module, rank);
         (
             FourierGLWESecret {
@@ -280,7 +285,14 @@ impl ScratchCore<FFT64> for Scratch {
         rank_out: usize,
     ) -> (GLWESwitchingKey<&mut [u8], FFT64>, &mut Self) {
         let (data, scratch) = self.tmp_gglwe(module, basek, k, rows, digits, rank_in, rank_out);
-        (GLWESwitchingKey(data), scratch)
+        (
+            GLWESwitchingKey {
+                key: data,
+                sk_in_n: 0,
+                sk_out_n: 0,
+            },
+            scratch,
+        )
     }
 
     fn tmp_autokey(
