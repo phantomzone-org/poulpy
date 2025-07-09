@@ -2,7 +2,7 @@ use backend::{FFT64, Module, Scratch, VecZnx, VecZnxOps, ZnxZero};
 
 use crate::{GLWECiphertext, GLWECiphertextToMut, GLWECiphertextToRef, Infos, SetMetaData};
 
-pub trait GLWEOps: GLWECiphertextToMut + SetMetaData {
+pub trait GLWEOps: GLWECiphertextToMut + SetMetaData + Sized {
     fn add<A, B>(&mut self, module: &Module<FFT64>, a: &A, b: &B)
     where
         A: GLWECiphertextToRef,
@@ -14,7 +14,6 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData {
             assert_eq!(b.n(), module.n());
             assert_eq!(self.n(), module.n());
             assert_eq!(a.basek(), b.basek());
-            assert_eq!(self.basek(), a.basek());
             assert!(self.rank() >= a.rank().max(b.rank()));
         }
 
@@ -47,8 +46,8 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData {
             });
         });
 
-        // self.set_basek(a.basek());
-        // self.set_k(a.k().max(b.k()));
+        self.set_basek(a.basek());
+        self.set_k(set_k(self, a, b));
     }
 
     fn add_inplace<A>(&mut self, module: &Module<FFT64>, a: &A)
@@ -70,7 +69,9 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData {
             module.vec_znx_add_inplace(&mut self_mut.data, i, &a_ref.data, i);
         });
 
-        self.set_k(a.k().max(self.k()));
+        if a.rank() != 0 {
+            self.set_k(a.k().min(self.k()));
+        }
     }
 
     fn sub<A, B>(&mut self, module: &Module<FFT64>, a: &A, b: &B)
@@ -118,7 +119,7 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData {
         });
 
         self.set_basek(a.basek());
-        self.set_k(a.k().max(b.k()));
+        self.set_k(set_k(self, a, b));
     }
 
     fn sub_inplace_ab<A>(&mut self, module: &Module<FFT64>, a: &A)
@@ -140,7 +141,9 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData {
             module.vec_znx_sub_ab_inplace(&mut self_mut.data, i, &a_ref.data, i);
         });
 
-        self.set_k(a.k().max(self.k()));
+        if a.rank() != 0 {
+            self.set_k(a.k().min(self.k()));
+        }
     }
 
     fn sub_inplace_ba<A>(&mut self, module: &Module<FFT64>, a: &A)
@@ -162,7 +165,9 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData {
             module.vec_znx_sub_ba_inplace(&mut self_mut.data, i, &a_ref.data, i);
         });
 
-        self.set_k(a.k().max(self.k()));
+        if a.rank() != 0 {
+            self.set_k(a.k().min(self.k()));
+        }
     }
 
     fn rotate<A>(&mut self, module: &Module<FFT64>, k: i64, a: &A)
@@ -184,7 +189,9 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData {
         });
 
         self.set_basek(a.basek());
-        self.set_k(a.k());
+        if a.rank() != 0 {
+            self.set_k(a.k().min(self.k()));
+        }
     }
 
     fn rotate_inplace(&mut self, module: &Module<FFT64>, k: i64) {
@@ -209,6 +216,8 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData {
             assert_eq!(self.n(), module.n());
             assert_eq!(a.n(), module.n());
             assert_eq!(self.rank(), a.rank());
+            assert_eq!(self.k(), a.k());
+            assert_eq!(self.basek(), a.basek());
         }
 
         let self_mut: &mut GLWECiphertext<&mut [u8]> = &mut self.to_mut();
@@ -246,7 +255,7 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData {
             module.vec_znx_normalize(a.basek(), &mut self_mut.data, i, &a_ref.data, i, scratch);
         });
         self.set_basek(a.basek());
-        self.set_k(a.k());
+        self.set_k(a.k().min(self.k()));
     }
 
     fn normalize_inplace(&mut self, module: &Module<FFT64>, scratch: &mut Scratch) {
@@ -264,5 +273,21 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData {
 impl GLWECiphertext<Vec<u8>> {
     pub fn rsh_scratch_space(module: &Module<FFT64>) -> usize {
         VecZnx::rsh_scratch_space(module.n())
+    }
+}
+
+// c = op(a, b)
+fn set_k(c: &impl Infos, a: &impl Infos, b: &impl Infos) -> usize {
+    if a.rank() != 0 || b.rank() != 0 {
+        let k = if a.rank() == 0 {
+            b.k()
+        } else if b.rank() == 0 {
+            a.k()
+        } else {
+            a.k().min(b.k())
+        };
+        k.min(c.k())
+    } else {
+        c.k()
     }
 }
