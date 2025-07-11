@@ -1,6 +1,6 @@
 use std::time::Instant;
 
-use backend::{Encoding, Module, ScalarZnxAlloc, ScratchOwned, VecZnxOps, ZnxView, ZnxViewMut, FFT64};
+use backend::{Encoding, FFT64, Module, ScalarZnxAlloc, ScratchOwned, VecZnxOps, ZnxView, ZnxViewMut};
 use sampling::source::Source;
 
 use crate::{
@@ -130,10 +130,9 @@ fn to_exponent() {
     let mut pt_res: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_glwe);
     ct_glwe.decrypt(&module, &mut pt_res, &sk_glwe_fourier, scratch.borrow());
 
-
     // Parameters are set such that the first limb should be noiseless.
     let mut pt_want: Vec<i64> = vec![0i64; module.n()];
-    pt_want[data as usize * (1<<log_gap_out)] = pt_glwe.data.at(0, 0)[0];
+    pt_want[data as usize * (1 << log_gap_out)] = pt_glwe.data.at(0, 0)[0];
     assert_eq!(pt_res.data.at(0, 0), pt_want);
 }
 
@@ -150,7 +149,7 @@ fn to_constant() {
     let k_lwe_ct: usize = 13;
     let block_size: usize = 7;
 
-    let k_brk: usize = 5*basek;
+    let k_brk: usize = 5 * basek;
     let rows_brk: usize = 3;
 
     let k_trace: usize = 5 * basek;
