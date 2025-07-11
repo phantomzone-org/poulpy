@@ -777,7 +777,7 @@ fn test_external_product(
 
     module.vec_znx_rotate_inplace(k as i64, &mut pt_ggsw_lhs, 0);
 
-    let noise_have: Vec<f64> = get_ggsw_noise(&module, &ct_ggsw_lhs_out, &pt_ggsw_rhs, &sk_dft);
+    let noise_have: Vec<f64> = get_ggsw_noise(&module, &ct_ggsw_lhs_out, &pt_ggsw_lhs, &sk_dft);
 
     let var_gct_err_lhs: f64 = sigma * sigma;
     let var_gct_err_rhs: f64 = 0f64;
@@ -864,67 +864,37 @@ fn test_external_product_inplace(log_n: usize, basek: usize, k_ct: usize, k_ggsw
 
     ct_ggsw_lhs.external_product_inplace(&module, &ct_ggsw_rhs, scratch.borrow());
 
-    let mut ct_glwe_fourier: FourierGLWECiphertext<Vec<u8>, FFT64> = FourierGLWECiphertext::alloc(&module, basek, k_ct, rank);
-    let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_ct);
-    let mut pt_dft: VecZnxDft<Vec<u8>, FFT64> = module.new_vec_znx_dft(1, ct_ggsw_lhs.size());
-    let mut pt_big: VecZnxBig<Vec<u8>, FFT64> = module.new_vec_znx_big(1, ct_ggsw_lhs.size());
-    let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_ct);
-
     module.vec_znx_rotate_inplace(k as i64, &mut pt_ggsw_lhs, 0);
 
-    (0..ct_ggsw_lhs.rank() + 1).for_each(|col_j| {
-        (0..ct_ggsw_lhs.rows()).for_each(|row_i| {
-            module.vec_znx_add_scalar_inplace(
-                &mut pt_want.data,
-                0,
-                (digits_in - 1) + row_i * digits_in,
-                &pt_ggsw_lhs,
-                0,
-            );
+    let noise_have: Vec<f64> = get_ggsw_noise(&module, &ct_ggsw_lhs, &pt_ggsw_lhs, &sk_dft);
 
-            if col_j > 0 {
-                module.vec_znx_dft(1, 0, &mut pt_dft, 0, &pt_want.data, 0);
-                module.svp_apply_inplace(&mut pt_dft, 0, &sk_dft.data, col_j - 1);
-                module.vec_znx_idft_tmp_a(&mut pt_big, 0, &mut pt_dft, 0);
-                module.vec_znx_big_normalize(basek, &mut pt_want.data, 0, &pt_big, 0, scratch.borrow());
-            }
+    let var_gct_err_lhs: f64 = sigma * sigma;
+    let var_gct_err_rhs: f64 = 0f64;
 
-            ct_ggsw_lhs.get_row(&module, row_i, col_j, &mut ct_glwe_fourier);
-            ct_glwe_fourier.decrypt(&module, &mut pt, &sk_dft, scratch.borrow());
+    let var_msg: f64 = 1f64 / module.n() as f64; // X^{k}
+    let var_a0_err: f64 = sigma * sigma;
+    let var_a1_err: f64 = 1f64 / 12f64;
 
-            module.vec_znx_sub_ab_inplace(&mut pt.data, 0, &pt_want.data, 0);
+    let noise_want: f64 = noise_ggsw_product(
+        module.n() as f64,
+        basek * digits,
+        0.5,
+        var_msg,
+        var_a0_err,
+        var_a1_err,
+        var_gct_err_lhs,
+        var_gct_err_rhs,
+        rank as f64,
+        k_ct,
+        k_ggsw,
+    );
 
-            let noise_have: f64 = pt.data.std(0, basek).log2();
-
-            let var_gct_err_lhs: f64 = sigma * sigma;
-            let var_gct_err_rhs: f64 = 0f64;
-
-            let var_msg: f64 = 1f64 / module.n() as f64; // X^{k}
-            let var_a0_err: f64 = sigma * sigma;
-            let var_a1_err: f64 = 1f64 / 12f64;
-
-            let noise_want: f64 = noise_ggsw_product(
-                module.n() as f64,
-                basek * digits,
-                0.5,
-                var_msg,
-                var_a0_err,
-                var_a1_err,
-                var_gct_err_lhs,
-                var_gct_err_rhs,
-                rank as f64,
-                k_ct,
-                k_ggsw,
-            );
-
-            assert!(
-                noise_have <= noise_want + 0.5,
-                "have: {} want: {}",
-                noise_have,
-                noise_want
-            );
-
-            pt_want.data.zero();
-        });
+    noise_have.iter().for_each(|noise_have| {
+        assert!(
+            *noise_have <= noise_want + 0.5,
+            "have: {} want: {}",
+            noise_have,
+            noise_want
+        );
     });
 }
