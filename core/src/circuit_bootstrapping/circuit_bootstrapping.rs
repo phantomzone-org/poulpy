@@ -177,7 +177,7 @@ pub fn circuit_bootstrap_core_cggi<DRes, DLwe, DBrk>(
     }
 
     // Lut precision, basically must be able to hold the decomposition power basis of the GGSW
-    let mut lut: LookUpTable = LookUpTable::alloc(module, basek, k, extension_factor);
+    let mut lut: LookUpTable = LookUpTable::alloc(module, basek, basek * rows, extension_factor);
     lut.set(module, &f, basek * rows);
 
     if to_exponent {
