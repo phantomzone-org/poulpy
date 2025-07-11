@@ -111,10 +111,10 @@ impl<D: AsMut<[u8]> + AsRef<[u8]>> VecZnx<D> {
         }
     }
 
-    pub fn rotate(&mut self, k: i64){
-        unsafe{
-            (0..self.cols()).for_each(|i|{
-                (0..self.size()).for_each(|j|{
+    pub fn rotate(&mut self, k: i64) {
+        unsafe {
+            (0..self.cols()).for_each(|i| {
+                (0..self.size()).for_each(|j| {
                     znx::znx_rotate_inplace_i64(self.n() as u64, k, self.at_mut_ptr(i, j));
                 });
             })

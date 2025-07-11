@@ -39,8 +39,8 @@ fn blind_rotatio_test(n_lwe: usize, block_size: usize, extension_factor: usize) 
 
     let message_modulus: usize = 1 << 4;
 
-    let mut source_xs: Source = Source::new([1u8; 32]);
-    let mut source_xe: Source = Source::new([1u8; 32]);
+    let mut source_xs: Source = Source::new([2u8; 32]);
+    let mut source_xe: Source = Source::new([2u8; 32]);
     let mut source_xa: Source = Source::new([1u8; 32]);
 
     let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc(&module, rank);
@@ -65,7 +65,8 @@ fn blind_rotatio_test(n_lwe: usize, block_size: usize, extension_factor: usize) 
         rank,
     ));
 
-    let mut brk: BlindRotationKeyCGGI<FFT64> = BlindRotationKeyCGGI::allocate(&module, n_lwe, basek, k_brk, rows_brk, rank);
+    let mut brk: BlindRotationKeyCGGI<Vec<u8>, FFT64> =
+        BlindRotationKeyCGGI::allocate(&module, n_lwe, basek, k_brk, rows_brk, rank);
 
     brk.generate_from_sk(
         &module,
@@ -86,13 +87,7 @@ fn blind_rotatio_test(n_lwe: usize, block_size: usize, extension_factor: usize) 
 
     pt_lwe.data.encode_coeff_i64(0, basek, bits, 0, x, bits);
 
-    // println!("{}", pt_lwe.data);
-
     lwe.encrypt_sk(&pt_lwe, &sk_lwe, &mut source_xa, &mut source_xe, 3.2);
-
-    lwe.decrypt(&mut pt_lwe, &sk_lwe);
-
-    // println!("{}", pt_lwe.data);
 
     let mut f: Vec<i64> = vec![0i64; message_modulus];
     f.iter_mut()
@@ -106,13 +101,9 @@ fn blind_rotatio_test(n_lwe: usize, block_size: usize, extension_factor: usize) 
 
     cggi_blind_rotate(&module, &mut res, &lwe, &lut, &brk, scratch_br.borrow());
 
-    println!("out_mut.data: {}", res.data);
-
     let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_res);
 
     res.decrypt(&module, &mut pt_have, &sk_glwe_dft, scratch.borrow());
-
-    println!("pt_have: {}", pt_have.data);
 
     let mut lwe_2n: Vec<i64> = vec![0i64; lwe.n() + 1]; // TODO: from scratch space
 
@@ -124,23 +115,11 @@ fn blind_rotatio_test(n_lwe: usize, block_size: usize, extension_factor: usize) 
             .zip(sk_lwe.data.at(0, 0))
             .map(|(x, y)| x * y)
             .sum::<i64>())
-        % (2 * lut.domain_size()) as i64;
-
-    // println!("pt_want: {}", pt_want);
+        & (2 * lut.domain_size() - 1) as i64;
 
     lut.rotate(pt_want);
-
-    // lut.data.iter().for_each(|d| {
-    //     println!("{}", d);
-    // });
 
     // First limb should be exactly equal (test are parameterized such that the noise does not reach
     // the first limb)
     assert_eq!(pt_have.data.at(0, 0), lut.data[0].at(0, 0));
-
-    // Then checks the noise
-    // module.vec_znx_sub_ab_inplace(&mut lut.data[0], 0, &pt_have.data, 0);
-    // let noise: f64 = lut.data[0].std(0, basek);
-    // println!("noise: {}", noise);
-    // assert!(noise < 1e-3);
 }
