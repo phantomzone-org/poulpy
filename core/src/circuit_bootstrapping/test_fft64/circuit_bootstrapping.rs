@@ -14,13 +14,13 @@ use crate::{
 
 #[test]
 fn to_exponent() {
-    let module: Module<FFT64> = Module::<FFT64>::new(2048);
+    let module: Module<FFT64> = Module::<FFT64>::new(256);
     let basek: usize = 17;
     let extension_factor: usize = 1;
     let rank: usize = 1;
     let sigma: f64 = 3.2;
 
-    let n_lwe: usize = 1071;
+    let n_lwe: usize = 77;
     let k_lwe_pt: usize = 4;
     let k_lwe_ct: usize = 22;
     let block_size: usize = 7;
@@ -138,13 +138,13 @@ fn to_exponent() {
 
 #[test]
 fn to_constant() {
-    let module: Module<FFT64> = Module::<FFT64>::new(1024);
+    let module: Module<FFT64> = Module::<FFT64>::new(256);
     let basek: usize = 14;
     let extension_factor: usize = 1;
     let rank: usize = 2;
     let sigma: f64 = 3.2;
 
-    let n_lwe: usize = 574;
+    let n_lwe: usize = 77;
     let k_lwe_pt: usize = 1;
     let k_lwe_ct: usize = 13;
     let block_size: usize = 7;

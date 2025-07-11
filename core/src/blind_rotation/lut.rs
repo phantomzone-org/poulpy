@@ -88,11 +88,18 @@ impl LookUpTable {
         #[cfg(debug_assertions)]
         {
             assert!(f.len() <= module.n());
+            assert!(
+                (max_bit_size(f) + (k % basek) as u32) < i64::BITS,
+                "overflow: max(|f|) << (k%basek) > i64::BITS"
+            );
             assert!(limbs <= self.data[0].size());
         }
 
         // Scaling factor
-        let scale: i64 = 1 << (k % basek) as i64;
+        let mut scale = 1;
+        if k % basek != 0 {
+            scale <<= basek - (k % basek);
+        }
 
         // #elements in lookup table
         let f_len: usize = f.len();
@@ -180,4 +187,17 @@ impl DivRound for usize {
     fn div_round(self, rhs: Self) -> Self {
         (self + rhs / 2) / rhs
     }
+}
+
+fn max_bit_size(vec: &[i64]) -> u32 {
+    vec.iter()
+        .map(|&v| {
+            if v == 0 {
+                0
+            } else {
+                v.unsigned_abs().ilog2() + 1
+            }
+        })
+        .max()
+        .unwrap_or(0)
 }
