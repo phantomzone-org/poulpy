@@ -72,15 +72,44 @@ impl<D: AsMut<[u8]> + AsRef<[u8]>> ScalarZnx<D> {
             .for_each(|x: &mut i64| *x = (((source.next_u32() & 1) as i64) << 1) - 1);
         self.at_mut(col, 0).shuffle(source);
     }
+
+    pub fn fill_binary_prob(&mut self, col: usize, prob: f64, source: &mut Source) {
+        let choices: [i64; 2] = [0, 1];
+        let weights: [f64; 2] = [1.0 - prob, prob];
+        let dist: WeightedIndex<f64> = WeightedIndex::new(&weights).unwrap();
+        self.at_mut(col, 0)
+            .iter_mut()
+            .for_each(|x: &mut i64| *x = choices[dist.sample(source)]);
+    }
+
+    pub fn fill_binary_hw(&mut self, col: usize, hw: usize, source: &mut Source) {
+        assert!(hw <= self.n());
+        self.at_mut(col, 0)[..hw]
+            .iter_mut()
+            .for_each(|x: &mut i64| *x = (source.next_u32() & 1) as i64);
+        self.at_mut(col, 0).shuffle(source);
+    }
+
+    pub fn fill_binary_block(&mut self, col: usize, block_size: usize, source: &mut Source) {
+        assert!(self.n() % block_size == 0);
+        let max_idx: u64 = (block_size + 1) as u64;
+        let mask_idx: u64 = (1 << ((u64::BITS - max_idx.leading_zeros()) as u64)) - 1;
+        for block in self.at_mut(col, 0).chunks_mut(block_size) {
+            let idx: usize = source.next_u64n(max_idx, mask_idx) as usize;
+            if idx != block_size {
+                block[idx] = 1;
+            }
+        }
+    }
 }
 
 impl<D: From<Vec<u8>>> ScalarZnx<D> {
-    pub(crate) fn bytes_of<S: Sized>(n: usize, cols: usize) -> usize {
-        n * cols * size_of::<S>()
+    pub(crate) fn bytes_of(n: usize, cols: usize) -> usize {
+        n * cols * size_of::<i64>()
     }
 
-    pub(crate) fn new<S: Sized>(n: usize, cols: usize) -> Self {
-        let data = alloc_aligned::<u8>(Self::bytes_of::<S>(n, cols));
+    pub fn new(n: usize, cols: usize) -> Self {
+        let data: Vec<u8> = alloc_aligned::<u8>(Self::bytes_of(n, cols));
         Self {
             data: data.into(),
             n,
@@ -88,9 +117,9 @@ impl<D: From<Vec<u8>>> ScalarZnx<D> {
         }
     }
 
-    pub(crate) fn new_from_bytes<S: Sized>(n: usize, cols: usize, bytes: impl Into<Vec<u8>>) -> Self {
+    pub(crate) fn new_from_bytes(n: usize, cols: usize, bytes: impl Into<Vec<u8>>) -> Self {
         let data: Vec<u8> = bytes.into();
-        assert!(data.len() == Self::bytes_of::<S>(n, cols));
+        assert!(data.len() == Self::bytes_of(n, cols));
         Self {
             data: data.into(),
             n,
@@ -102,7 +131,7 @@ impl<D: From<Vec<u8>>> ScalarZnx<D> {
 pub type ScalarZnxOwned = ScalarZnx<Vec<u8>>;
 
 pub(crate) fn bytes_of_scalar_znx<B: Backend>(module: &Module<B>, cols: usize) -> usize {
-    ScalarZnxOwned::bytes_of::<i64>(module.n(), cols)
+    ScalarZnxOwned::bytes_of(module.n(), cols)
 }
 
 pub trait ScalarZnxAlloc {
@@ -113,13 +142,13 @@ pub trait ScalarZnxAlloc {
 
 impl<B: Backend> ScalarZnxAlloc for Module<B> {
     fn bytes_of_scalar_znx(&self, cols: usize) -> usize {
-        ScalarZnxOwned::bytes_of::<i64>(self.n(), cols)
+        ScalarZnxOwned::bytes_of(self.n(), cols)
     }
     fn new_scalar_znx(&self, cols: usize) -> ScalarZnxOwned {
-        ScalarZnxOwned::new::<i64>(self.n(), cols)
+        ScalarZnxOwned::new(self.n(), cols)
     }
     fn new_scalar_znx_from_bytes(&self, cols: usize, bytes: Vec<u8>) -> ScalarZnxOwned {
-        ScalarZnxOwned::new_from_bytes::<i64>(self.n(), cols, bytes)
+        ScalarZnxOwned::new_from_bytes(self.n(), cols, bytes)
     }
 }
 

@@ -103,7 +103,7 @@ fn alloc_aligned_custom_u8(size: usize, align: usize) -> Vec<u8> {
 /// Size of T * size msut be a multiple of [DEFAULTALIGN].
 pub fn alloc_aligned_custom<T>(size: usize, align: usize) -> Vec<T> {
     assert_eq!(
-        (size * size_of::<T>()) % align,
+        (size * size_of::<T>()) % (align / size_of::<T>()),
         0,
         "size={} must be a multiple of align={}",
         size,
@@ -121,7 +121,7 @@ pub fn alloc_aligned_custom<T>(size: usize, align: usize) -> Vec<T> {
 /// of [DEFAULTALIGN]/size_of::<T>() that is equal or greater to `size`.
 pub fn alloc_aligned<T>(size: usize) -> Vec<T> {
     alloc_aligned_custom::<T>(
-        size + (size % (DEFAULTALIGN / size_of::<T>())),
+        size + (DEFAULTALIGN - (size % (DEFAULTALIGN / size_of::<T>()))),
         DEFAULTALIGN,
     )
 }
@@ -231,6 +231,23 @@ impl Scratch {
         )
     }
 
+    pub fn tmp_slice_vec_znx_dft<B: Backend>(
+        &mut self,
+        slice_size: usize,
+        module: &Module<B>,
+        cols: usize,
+        size: usize,
+    ) -> (Vec<VecZnxDft<&mut [u8], B>>, &mut Self) {
+        let mut scratch: &mut Scratch = self;
+        let mut slice: Vec<VecZnxDft<&mut [u8], B>> = Vec::with_capacity(slice_size);
+        for _ in 0..slice_size {
+            let (znx, new_scratch) = scratch.tmp_vec_znx_dft(module, cols, size);
+            scratch = new_scratch;
+            slice.push(znx);
+        }
+        (slice, scratch)
+    }
+
     pub fn tmp_vec_znx_big<B: Backend>(
         &mut self,
         module: &Module<B>,
@@ -251,6 +268,23 @@ impl Scratch {
             VecZnx::from_data(take_slice, module.n(), cols, size),
             Self::new(rem_slice),
         )
+    }
+
+    pub fn tmp_slice_vec_znx<B: Backend>(
+        &mut self,
+        slice_size: usize,
+        module: &Module<B>,
+        cols: usize,
+        size: usize,
+    ) -> (Vec<VecZnx<&mut [u8]>>, &mut Self) {
+        let mut scratch: &mut Scratch = self;
+        let mut slice: Vec<VecZnx<&mut [u8]>> = Vec::with_capacity(slice_size);
+        for _ in 0..slice_size {
+            let (znx, new_scratch) = scratch.tmp_vec_znx(module, cols, size);
+            scratch = new_scratch;
+            slice.push(znx);
+        }
+        (slice, scratch)
     }
 
     pub fn tmp_mat_znx_dft<B: Backend>(
