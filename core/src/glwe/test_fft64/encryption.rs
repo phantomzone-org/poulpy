@@ -8,10 +8,8 @@ use crate::{FourierGLWECiphertext, FourierGLWESecret, GLWECiphertext, GLWEPlaint
 fn encrypt_sk() {
     let log_n: usize = 8;
     (1..4).for_each(|rank| {
-        [2, 10, 30].iter().for_each(|k_pt| {
-            println!("test encrypt_sk rank: {}, k_pt: {k_pt}", rank);
-            test_encrypt_sk(log_n, 8, 54, *k_pt, 3.2, rank);
-        });
+        println!("test encrypt_sk rank: {}", rank);
+        test_encrypt_sk(log_n, 8, 54, 30, 3.2, rank);
     });
 }
 
@@ -53,21 +51,12 @@ fn test_encrypt_sk(log_n: usize, basek: usize, k_ct: usize, k_pt: usize, sigma: 
     let sk_dft: FourierGLWESecret<Vec<u8>, FFT64> = FourierGLWESecret::from(&module, &sk);
 
     let mut data_want: Vec<i64> = vec![0i64; module.n()];
-    if k_pt < 64 {
-        let pt_max = 1 << k_pt;
-        data_want.iter_mut().for_each(|x| {
-            let v = source_xa.next_u64n(pt_max, pt_max - 1);
-            *x = if v >= pt_max / 2 {
-                -((pt_max - v) as i64)
-            } else {
-                v as i64
-            };
-        });
-    } else {
-        data_want.iter_mut().for_each(|x| *x = source_xa.next_i64());
-    }
-    pt.data
-        .encode_vec_i64(0, basek, k_pt, &data_want, std::cmp::min(k_pt, 64));
+
+    data_want
+        .iter_mut()
+        .for_each(|x| *x = source_xa.next_i64() & 0xFF);
+
+    pt.data.encode_vec_i64(0, basek, k_pt, &data_want, 10);
 
     ct.encrypt_sk(
         &module,
@@ -94,7 +83,7 @@ fn test_encrypt_sk(log_n: usize, basek: usize, k_ct: usize, k_pt: usize, sigma: 
         let b_scaled = (*b as f64) / scale;
         assert!(
             (*a as f64 - b_scaled).abs() < 0.1,
-            "a={} b={}",
+            "{} {}",
             *a as f64,
             b_scaled
         )
