@@ -1,7 +1,7 @@
 use crate::{GLWEAutomorphismKey, GLWECiphertext, GLWEOps, Infos, ScratchCore};
 use std::collections::HashMap;
 
-use backend::{FFT64, Module, Scratch, VecZnxOps};
+use backend::{FFT64, Module, Scratch};
 
 /// [StreamPacker] enables only the fly GLWE packing
 /// with constant memory of Log(N) ciphertexts.

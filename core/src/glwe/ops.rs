@@ -47,7 +47,7 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData + Sized {
         });
 
         self.set_basek(a.basek());
-        self.set_k(set_k(self, a, b));
+        self.set_k(set_k_binary(self, a, b));
     }
 
     fn add_inplace<A>(&mut self, module: &Module<FFT64>, a: &A)
@@ -69,9 +69,7 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData + Sized {
             module.vec_znx_add_inplace(&mut self_mut.data, i, &a_ref.data, i);
         });
 
-        if a.rank() != 0 {
-            self.set_k(a.k().min(self.k()));
-        }
+        self.set_k(set_k_unary(self, a))
     }
 
     fn sub<A, B>(&mut self, module: &Module<FFT64>, a: &A, b: &B)
@@ -119,7 +117,7 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData + Sized {
         });
 
         self.set_basek(a.basek());
-        self.set_k(set_k(self, a, b));
+        self.set_k(set_k_binary(self, a, b));
     }
 
     fn sub_inplace_ab<A>(&mut self, module: &Module<FFT64>, a: &A)
@@ -141,9 +139,7 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData + Sized {
             module.vec_znx_sub_ab_inplace(&mut self_mut.data, i, &a_ref.data, i);
         });
 
-        if a.rank() != 0 {
-            self.set_k(a.k().min(self.k()));
-        }
+        self.set_k(set_k_unary(self, a))
     }
 
     fn sub_inplace_ba<A>(&mut self, module: &Module<FFT64>, a: &A)
@@ -165,9 +161,7 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData + Sized {
             module.vec_znx_sub_ba_inplace(&mut self_mut.data, i, &a_ref.data, i);
         });
 
-        if a.rank() != 0 {
-            self.set_k(a.k().min(self.k()));
-        }
+        self.set_k(set_k_unary(self, a))
     }
 
     fn rotate<A>(&mut self, module: &Module<FFT64>, k: i64, a: &A)
@@ -189,9 +183,7 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData + Sized {
         });
 
         self.set_basek(a.basek());
-        if a.rank() != 0 {
-            self.set_k(a.k().min(self.k()));
-        }
+        self.set_k(set_k_unary(self, a))
     }
 
     fn rotate_inplace(&mut self, module: &Module<FFT64>, k: i64) {
@@ -216,8 +208,6 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData + Sized {
             assert_eq!(self.n(), module.n());
             assert_eq!(a.n(), module.n());
             assert_eq!(self.rank(), a.rank());
-            assert_eq!(self.k(), a.k());
-            assert_eq!(self.basek(), a.basek());
         }
 
         let self_mut: &mut GLWECiphertext<&mut [u8]> = &mut self.to_mut();
@@ -227,7 +217,7 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData + Sized {
             module.vec_znx_copy(&mut self_mut.data, i, &a_ref.data, i);
         });
 
-        self.set_k(a.k());
+        self.set_k(a.k().min(self.size() * self.basek()));
         self.set_basek(a.basek());
     }
 
@@ -277,17 +267,31 @@ impl GLWECiphertext<Vec<u8>> {
 }
 
 // c = op(a, b)
-fn set_k(c: &impl Infos, a: &impl Infos, b: &impl Infos) -> usize {
+fn set_k_binary(c: &impl Infos, a: &impl Infos, b: &impl Infos) -> usize {
+    // If either operands is a ciphertext
     if a.rank() != 0 || b.rank() != 0 {
+        // If a is a plaintext (but b ciphertext)
         let k = if a.rank() == 0 {
             b.k()
+        // If b is a plaintext (but a ciphertext)
         } else if b.rank() == 0 {
             a.k()
+        // If a & b are both ciphertexts
         } else {
             a.k().min(b.k())
         };
         k.min(c.k())
+    // If a & b are both plaintexts
     } else {
         c.k()
+    }
+}
+
+// a = op(a, b)
+fn set_k_unary(a: &impl Infos, b: &impl Infos) -> usize {
+    if a.rank() != 0 || b.rank() != 0 {
+        a.k().min(b.k())
+    } else {
+        a.k()
     }
 }
