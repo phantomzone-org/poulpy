@@ -19,10 +19,10 @@ pub use ggsw::GGSWCiphertext;
 pub use glwe::{GLWECiphertext, GLWEOps, GLWEPacker, GLWEPlaintext, GLWEPublicKey, GLWESecret};
 pub use lwe::{LWECiphertext, LWESecret};
 
-pub(crate) use glwe::{GLWECiphertextToMut, GLWECiphertextToRef};
-
+pub use backend;
 pub use backend::Scratch;
 pub use backend::ScratchOwned;
+pub(crate) use glwe::{GLWECiphertextToMut, GLWECiphertextToRef};
 
 use crate::dist::Distribution;
 

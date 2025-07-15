@@ -79,7 +79,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> SetMetaData for GLWECiphertext<DataSel
     }
 }
 
-pub trait GLWECiphertextToRef {
+pub trait GLWECiphertextToRef: Infos {
     fn to_ref(&self) -> GLWECiphertext<&[u8]>;
 }
 
@@ -93,7 +93,7 @@ impl<D: AsRef<[u8]>> GLWECiphertextToRef for GLWECiphertext<D> {
     }
 }
 
-pub trait GLWECiphertextToMut {
+pub trait GLWECiphertextToMut: Infos {
     fn to_mut(&mut self) -> GLWECiphertext<&mut [u8]>;
 }
 

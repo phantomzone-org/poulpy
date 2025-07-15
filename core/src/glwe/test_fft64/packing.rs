@@ -74,8 +74,6 @@ fn apply() {
         scratch.borrow(),
     );
 
-    let mut res: Vec<GLWECiphertext<Vec<u8>>> = Vec::new();
-
     (0..module.n() >> log_batch).for_each(|i| {
         ct.encrypt_sk(
             &module,
@@ -90,11 +88,10 @@ fn apply() {
         pt.rotate_inplace(&module, -(1 << log_batch)); // X^-batch * pt
 
         if reverse_bits_msb(i, log_n as u32) % 5 == 0 {
-            packer.add(&module, &mut res, Some(&ct), &auto_keys, scratch.borrow());
+            packer.add(&module, Some(&ct), &auto_keys, scratch.borrow());
         } else {
             packer.add(
                 &module,
-                &mut res,
                 None::<&GLWECiphertext<Vec<u8>>>,
                 &auto_keys,
                 scratch.borrow(),
@@ -102,36 +99,29 @@ fn apply() {
         }
     });
 
-    packer.flush(&module, &mut res, &auto_keys, scratch.borrow());
-    packer.reset();
+    let mut res = GLWECiphertext::alloc(&module, basek, k_ct, rank);
+    packer.flush(&module, &mut res);
 
     let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_ct);
-
-    res.iter().enumerate().for_each(|(i, res_i)| {
-        let mut data: Vec<i64> = vec![0i64; module.n()];
-        data.iter_mut().enumerate().for_each(|(i, x)| {
-            if i % 5 == 0 {
-                *x = reverse_bits_msb(i, log_n as u32) as i64;
-            }
-        });
-        pt_want.data.encode_vec_i64(0, basek, pt_k, &data, 32);
-
-        res_i.decrypt(&module, &mut pt, &sk_dft, scratch.borrow());
-
-        if i & 1 == 0 {
-            pt.sub_inplace_ab(&module, &pt_want);
-        } else {
-            pt.add_inplace(&module, &pt_want);
+    let mut data: Vec<i64> = vec![0i64; module.n()];
+    data.iter_mut().enumerate().for_each(|(i, x)| {
+        if i % 5 == 0 {
+            *x = reverse_bits_msb(i, log_n as u32) as i64;
         }
-
-        let noise_have = pt.data.std(0, basek).log2();
-        // println!("noise_have: {}", noise_have);
-        assert!(
-            noise_have < -((k_ct - basek) as f64),
-            "noise: {}",
-            noise_have
-        );
     });
+    pt_want.data.encode_vec_i64(0, basek, pt_k, &data, 32);
+
+    res.decrypt(&module, &mut pt, &sk_dft, scratch.borrow());
+
+    pt.sub_inplace_ab(&module, &pt_want);
+
+    let noise_have = pt.data.std(0, basek).log2();
+    // println!("noise_have: {}", noise_have);
+    assert!(
+        noise_have < -((k_ct - basek) as f64),
+        "noise: {}",
+        noise_have
+    );
 }
 
 #[inline(always)]

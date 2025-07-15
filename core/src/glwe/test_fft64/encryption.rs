@@ -1,8 +1,7 @@
-use backend::{Decoding, Encoding, FFT64, Module, ScratchOwned, Stats, VecZnxOps, ZnxZero};
-use itertools::izip;
+use backend::{FFT64, FillUniform, Module, ScratchOwned, Stats};
 use sampling::source::Source;
 
-use crate::{FourierGLWECiphertext, FourierGLWESecret, GLWECiphertext, GLWEPlaintext, GLWEPublicKey, GLWESecret, Infos};
+use crate::{FourierGLWECiphertext, FourierGLWESecret, GLWECiphertext, GLWEOps, GLWEPlaintext, GLWEPublicKey, GLWESecret, Infos};
 
 #[test]
 fn encrypt_sk() {
@@ -35,7 +34,8 @@ fn test_encrypt_sk(log_n: usize, basek: usize, k_ct: usize, k_pt: usize, sigma: 
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
 
     let mut ct: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_ct, rank);
-    let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_pt);
+    let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_pt);
+    let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_pt);
 
     let mut source_xs: Source = Source::new([0u8; 32]);
     let mut source_xe: Source = Source::new([0u8; 32]);
@@ -50,17 +50,13 @@ fn test_encrypt_sk(log_n: usize, basek: usize, k_ct: usize, k_pt: usize, sigma: 
     sk.fill_ternary_prob(0.5, &mut source_xs);
     let sk_dft: FourierGLWESecret<Vec<u8>, FFT64> = FourierGLWESecret::from(&module, &sk);
 
-    let mut data_want: Vec<i64> = vec![0i64; module.n()];
-
-    data_want
-        .iter_mut()
-        .for_each(|x| *x = source_xa.next_i64() & 0xFF);
-
-    pt.data.encode_vec_i64(0, basek, k_pt, &data_want, 10);
+    pt_want
+        .data
+        .fill_uniform(basek, 0, pt_want.size(), &mut source_xa);
 
     ct.encrypt_sk(
         &module,
-        &pt,
+        &pt_want,
         &sk_dft,
         &mut source_xa,
         &mut source_xe,
@@ -68,26 +64,14 @@ fn test_encrypt_sk(log_n: usize, basek: usize, k_ct: usize, k_pt: usize, sigma: 
         scratch.borrow(),
     );
 
-    pt.data.zero();
+    ct.decrypt(&module, &mut pt_have, &sk_dft, scratch.borrow());
 
-    ct.decrypt(&module, &mut pt, &sk_dft, scratch.borrow());
+    pt_want.sub_inplace_ab(&module, &pt_have);
 
-    let mut data_have: Vec<i64> = vec![0i64; module.n()];
+    let noise_have: f64 = pt_want.data.std(0, basek) * (ct.k() as f64).exp2();
+    let noise_want: f64 = sigma;
 
-    pt.data
-        .decode_vec_i64(0, basek, pt.size() * basek, &mut data_have);
-
-    // TODO: properly assert the decryption noise through std(dec(ct) - pt)
-    let scale: f64 = (1 << (pt.size() * basek - k_pt)) as f64;
-    izip!(data_want.iter(), data_have.iter()).for_each(|(a, b)| {
-        let b_scaled = (*b as f64) / scale;
-        assert!(
-            (*a as f64 - b_scaled).abs() < 0.1,
-            "{} {}",
-            *a as f64,
-            b_scaled
-        )
-    });
+    assert!(noise_have <= noise_want + 0.2);
 }
 
 fn test_encrypt_zero_sk(log_n: usize, basek: usize, k_ct: usize, sigma: f64, rank: usize) {
@@ -127,6 +111,7 @@ fn test_encrypt_pk(log_n: usize, basek: usize, k_ct: usize, k_pk: usize, sigma: 
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
 
     let mut ct: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_ct, rank);
+    let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_ct);
     let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_ct);
 
     let mut source_xs: Source = Source::new([0u8; 32]);
@@ -147,13 +132,9 @@ fn test_encrypt_pk(log_n: usize, basek: usize, k_ct: usize, k_pk: usize, sigma: 
             | GLWECiphertext::encrypt_pk_scratch_space(&module, basek, pk.k()),
     );
 
-    let mut data_want: Vec<i64> = vec![0i64; module.n()];
-
-    data_want
-        .iter_mut()
-        .for_each(|x| *x = source_xa.next_i64() & 0);
-
-    pt_want.data.encode_vec_i64(0, basek, k_ct, &data_want, 10);
+    pt_want
+        .data
+        .fill_uniform(basek, 0, pt_want.size(), &mut source_xa);
 
     ct.encrypt_pk(
         &module,
@@ -165,11 +146,9 @@ fn test_encrypt_pk(log_n: usize, basek: usize, k_ct: usize, k_pk: usize, sigma: 
         scratch.borrow(),
     );
 
-    let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_ct);
-
     ct.decrypt(&module, &mut pt_have, &sk_dft, scratch.borrow());
 
-    module.vec_znx_sub_ab_inplace(&mut pt_want.data, 0, &pt_have.data, 0);
+    pt_want.sub_inplace_ab(&module, &pt_have);
 
     let noise_have: f64 = pt_want.data.std(0, basek).log2();
     let noise_want: f64 = ((((rank as f64) + 1.0) * module.n() as f64 * 0.5 * sigma * sigma).sqrt()).log2() - (k_ct as f64);

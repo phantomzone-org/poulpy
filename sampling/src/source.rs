@@ -1,17 +1,11 @@
 use rand_chacha::ChaCha8Rng;
 use rand_chacha::rand_core::SeedableRng;
-use rand_core::{OsRng, RngCore, TryRngCore};
+use rand_core::RngCore;
 
 const MAXF64: f64 = 9007199254740992.0;
 
 pub struct Source {
     source: ChaCha8Rng,
-}
-
-pub fn new_seed() -> [u8; 32] {
-    let mut seed = [0u8; 32];
-    OsRng.try_fill_bytes(&mut seed).unwrap();
-    seed
 }
 
 impl Source {
@@ -21,14 +15,11 @@ impl Source {
         }
     }
 
-    pub fn new_seed(&mut self) -> [u8; 32] {
-        let mut seed: [u8; 32] = [0u8; 32];
-        self.source.fill_bytes(&mut seed);
-        seed
-    }
-
     pub fn branch(&mut self) -> Self {
-        Source::new(self.new_seed())
+        let mut seed = [0; 32];
+        self.source.fill_bytes(&mut seed);
+
+        Source::new(seed)
     }
 
     #[inline(always)]

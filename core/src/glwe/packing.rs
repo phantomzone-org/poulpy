@@ -65,7 +65,7 @@ impl GLWEPacker {
     }
 
     /// Implicit reset of the internal state (to be called before a new packing procedure).
-    pub fn reset(&mut self) {
+    fn reset(&mut self) {
         for i in 0..self.accumulators.len() {
             self.accumulators[i].value = false;
             self.accumulators[i].control = false;
@@ -82,9 +82,7 @@ impl GLWEPacker {
         GLWECiphertext::trace_galois_elements(module)
     }
 
-    /// Adds a GLWE ciphertext to the [StreamPacker]. And propagates
-    /// intermediate results among the [Accumulator]s.
-    ///
+    /// Adds a GLWE ciphertext to the [StreamPacker].
     /// #Arguments
     ///
     /// * `module`: static backend FFT tables.
@@ -96,11 +94,16 @@ impl GLWEPacker {
     pub fn add<DataA: AsRef<[u8]>, DataAK: AsRef<[u8]>>(
         &mut self,
         module: &Module<FFT64>,
-        res: &mut Vec<GLWECiphertext<Vec<u8>>>,
         a: Option<&GLWECiphertext<DataA>>,
         auto_keys: &HashMap<i64, GLWEAutomorphismKey<DataAK, FFT64>>,
         scratch: &mut Scratch,
     ) {
+        assert!(
+            self.counter < module.n(),
+            "Packing limit of {} reached",
+            module.n() >> self.log_batch
+        );
+
         pack_core(
             module,
             a,
@@ -110,35 +113,18 @@ impl GLWEPacker {
             scratch,
         );
         self.counter += 1 << self.log_batch;
-        if self.counter == module.n() {
-            res.push(
-                self.accumulators[module.log_n() - self.log_batch - 1]
-                    .data
-                    .clone(),
-            );
-            self.reset();
-        }
     }
 
-    /// Flushes all accumlators and appends the result to `res`.
-    pub fn flush<DataAK: AsRef<[u8]>>(
-        &mut self,
-        module: &Module<FFT64>,
-        res: &mut Vec<GLWECiphertext<Vec<u8>>>,
-        auto_keys: &HashMap<i64, GLWEAutomorphismKey<DataAK, FFT64>>,
-        scratch: &mut Scratch,
-    ) {
-        if self.counter != 0 {
-            while self.counter != 0 {
-                self.add(
-                    module,
-                    res,
-                    None::<&GLWECiphertext<Vec<u8>>>,
-                    auto_keys,
-                    scratch,
-                );
-            }
-        }
+    /// Flush result to`res`.
+    pub fn flush<Data: AsMut<[u8]> + AsRef<[u8]>>(&mut self, module: &Module<FFT64>, res: &mut GLWECiphertext<Data>) {
+        assert!(self.counter == module.n());
+        // Copy result GLWE into res GLWE
+        res.copy(
+            module,
+            &self.accumulators[module.log_n() - self.log_batch - 1].data,
+        );
+
+        self.reset();
     }
 }
 

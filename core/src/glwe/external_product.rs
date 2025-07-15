@@ -2,7 +2,7 @@ use backend::{
     FFT64, MatZnxDftOps, MatZnxDftScratch, Module, Scratch, VecZnxBig, VecZnxBigOps, VecZnxDftAlloc, VecZnxDftOps, VecZnxScratch,
 };
 
-use crate::{FourierGLWECiphertext, GGSWCiphertext, GLWECiphertext, Infos};
+use crate::{GGSWCiphertext, GLWECiphertext, Infos};
 
 impl GLWECiphertext<Vec<u8>> {
     pub fn external_product_scratch_space(
@@ -14,21 +14,21 @@ impl GLWECiphertext<Vec<u8>> {
         digits: usize,
         rank: usize,
     ) -> usize {
-        let res_dft: usize = FourierGLWECiphertext::bytes_of(module, basek, k_ggsw, rank);
         let in_size: usize = k_in.div_ceil(basek).div_ceil(digits);
         let out_size: usize = k_out.div_ceil(basek);
         let ggsw_size: usize = k_ggsw.div_ceil(basek);
-        let vmp: usize = module.bytes_of_vec_znx_dft(rank + 1, in_size)
-            + module.vmp_apply_tmp_bytes(
-                out_size,
-                in_size,
-                in_size,  // rows
-                rank + 1, // cols in
-                rank + 1, // cols out
-                ggsw_size,
-            );
+        let res_dft: usize = module.bytes_of_vec_znx_dft(rank + 1, ggsw_size);
+        let a_dft: usize = module.bytes_of_vec_znx_dft(rank + 1, in_size);
+        let vmp: usize = module.vmp_apply_tmp_bytes(
+            out_size,
+            in_size,
+            in_size,  // rows
+            rank + 1, // cols in
+            rank + 1, // cols out
+            ggsw_size,
+        );
         let normalize: usize = module.vec_znx_normalize_tmp_bytes();
-        res_dft + (vmp | normalize)
+        res_dft + a_dft + (vmp | normalize)
     }
 
     pub fn external_product_inplace_scratch_space(
