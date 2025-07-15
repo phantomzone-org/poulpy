@@ -240,11 +240,11 @@ impl Scratch {
     ) -> (Vec<VecZnxDft<&mut [u8], B>>, &mut Self) {
         let mut scratch: &mut Scratch = self;
         let mut slice: Vec<VecZnxDft<&mut [u8], B>> = Vec::with_capacity(slice_size);
-        for _ in 0..slice_size{
+        for _ in 0..slice_size {
             let (znx, new_scratch) = scratch.tmp_vec_znx_dft(module, cols, size);
             scratch = new_scratch;
             slice.push(znx);
-        };
+        }
         (slice, scratch)
     }
 
@@ -279,11 +279,11 @@ impl Scratch {
     ) -> (Vec<VecZnx<&mut [u8]>>, &mut Self) {
         let mut scratch: &mut Scratch = self;
         let mut slice: Vec<VecZnx<&mut [u8]>> = Vec::with_capacity(slice_size);
-        for _ in 0..slice_size{
+        for _ in 0..slice_size {
             let (znx, new_scratch) = scratch.tmp_vec_znx(module, cols, size);
             scratch = new_scratch;
             slice.push(znx);
-        };
+        }
         (slice, scratch)
     }
 

@@ -24,6 +24,10 @@ impl LookUpTable {
         Self { data, basek, k }
     }
 
+    pub fn log_extension_factor(&self) -> usize {
+        (usize::BITS - (self.extension_factor() - 1).leading_zeros()) as _
+    }
+
     pub fn extension_factor(&self) -> usize {
         self.data.len()
     }
