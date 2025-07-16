@@ -2,8 +2,8 @@ use crate::ffi::vec_znx_dft::vec_znx_dft_t;
 use crate::ffi::vmp;
 use crate::znx_base::{ZnxInfos, ZnxView, ZnxViewMut};
 use crate::{
-    Backend, FFT64, MatZnxDftPrep, MatZnxDftPrepOwned, MatZnxDftPrepToRef, Module,
-    Scratch, VecZnxDft, VecZnxDftToMut, VecZnxDftToRef,
+    Backend, FFT64, MatZnxDftPrep, MatZnxDftPrepOwned, MatZnxDftPrepToRef, Module, Scratch, VecZnxDft, VecZnxDftToMut,
+    VecZnxDftToRef,
 };
 
 pub trait MatZnxDftPrepAlloc<B: Backend> {
@@ -43,7 +43,6 @@ pub trait MatZnxDftPrepScratch {
 /// This trait implements methods for vector matrix product,
 /// that is, multiplying a [VecZnx] with a [MatZnxDft].
 pub trait MatZnxDftPrepOps<BACKEND: Backend> {
-
     /// Applies the vector matrix product [VecZnxDft] x [MatZnxDft].
     /// The size of `buf` is given by [MatZnxDftOps::vmp_apply_dft_to_dft_tmp_bytes].
     ///
@@ -127,7 +126,6 @@ impl<BACKEND: Backend> MatZnxDftPrepScratch for Module<BACKEND> {
 }
 
 impl MatZnxDftPrepOps<FFT64> for Module<FFT64> {
-
     fn vmp_apply<R, A, B>(&self, res: &mut R, a: &A, b: &B, scratch: &mut Scratch)
     where
         R: VecZnxDftToMut<FFT64>,
@@ -240,13 +238,12 @@ impl MatZnxDftPrepOps<FFT64> for Module<FFT64> {
 #[cfg(test)]
 mod tests {
     use crate::{
-        Decoding, FFT64, FillUniform, MatZnxDftPrep, Module, ScratchOwned, VecZnx, VecZnxAlloc, VecZnxBig,
-        VecZnxBigAlloc, VecZnxBigOps, VecZnxBigScratch, VecZnxDft, VecZnxDftAlloc, VecZnxDftOps, VecZnxOps, ZnxInfos,
-        ZnxViewMut, ZnxZero,
+        Decoding, FFT64, FillUniform, MatZnxDftPrep, Module, ScratchOwned, VecZnx, VecZnxAlloc, VecZnxBig, VecZnxBigAlloc,
+        VecZnxBigOps, VecZnxBigScratch, VecZnxDft, VecZnxDftAlloc, VecZnxDftOps, VecZnxOps, ZnxInfos, ZnxViewMut, ZnxZero,
     };
     use sampling::source::Source;
 
-    use super::{MatZnxDftPrepScratch};
+    use super::MatZnxDftPrepScratch;
 
     #[test]
     fn vmp_apply() {

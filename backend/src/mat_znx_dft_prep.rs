@@ -1,5 +1,5 @@
 use crate::znx_base::ZnxInfos;
-use crate::{MatZnxDft, Backend, DataView, DataViewMut, FFT64, Module, ZnxSliceSize, ZnxView, alloc_aligned};
+use crate::{Backend, DataView, DataViewMut, FFT64, MatZnxDft, Module, ZnxSliceSize, ZnxView, alloc_aligned};
 use std::marker::PhantomData;
 
 /// An opaque version of [MatZnxDft], which is prepared for a specific backend, to be

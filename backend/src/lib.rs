@@ -204,7 +204,7 @@ impl Scratch {
     }
 
     pub fn tmp_scalar_znx<B: Backend>(&mut self, module: &Module<B>, cols: usize) -> (ScalarZnx<&mut [u8]>, &mut Self) {
-        let (take_slice, rem_slice) = Self::take_slice_aligned(&mut self.data, bytes_of_scalar_znx(module, cols));
+        let (take_slice, rem_slice) = Self::take_slice_aligned(&mut self.data, module.bytes_of_scalar_znx(cols));
 
         (
             ScalarZnx::from_data(take_slice, module.n(), cols),
@@ -212,8 +212,11 @@ impl Scratch {
         )
     }
 
-    pub fn tmp_scalar_znx_dft<B: Backend>(&mut self, module: &Module<B>, cols: usize) -> (ScalarZnxDft<&mut [u8], B>, &mut Self) {
-        let (take_slice, rem_slice) = Self::take_slice_aligned(&mut self.data, bytes_of_scalar_znx_dft(module, cols));
+    pub fn tmp_scalar_znx_dft<B: Backend>(&mut self, module: &Module<B>, cols: usize) -> (ScalarZnxDft<&mut [u8], B>, &mut Self)
+    where
+        Module<B>: ScalarZnxDftAlloc<B>,
+    {
+        let (take_slice, rem_slice) = Self::take_slice_aligned(&mut self.data, module.bytes_of_scalar_znx_dft(cols));
 
         (
             ScalarZnxDft::from_data(take_slice, module.n(), cols),
@@ -226,8 +229,11 @@ impl Scratch {
         module: &Module<B>,
         cols: usize,
         size: usize,
-    ) -> (VecZnxDft<&mut [u8], B>, &mut Self) {
-        let (take_slice, rem_slice) = Self::take_slice_aligned(&mut self.data, bytes_of_vec_znx_dft(module, cols, size));
+    ) -> (VecZnxDft<&mut [u8], B>, &mut Self)
+    where
+        Module<B>: VecZnxDftAlloc<B>,
+    {
+        let (take_slice, rem_slice) = Self::take_slice_aligned(&mut self.data, module.bytes_of_vec_znx_dft(cols, size));
 
         (
             VecZnxDft::from_data(take_slice, module.n(), cols, size),
@@ -241,7 +247,10 @@ impl Scratch {
         module: &Module<B>,
         cols: usize,
         size: usize,
-    ) -> (Vec<VecZnxDft<&mut [u8], B>>, &mut Self) {
+    ) -> (Vec<VecZnxDft<&mut [u8], B>>, &mut Self)
+    where
+        Module<B>: VecZnxDftAlloc<B>,
+    {
         let mut scratch: &mut Scratch = self;
         let mut slice: Vec<VecZnxDft<&mut [u8], B>> = Vec::with_capacity(slice_size);
         for _ in 0..slice_size {
@@ -258,7 +267,7 @@ impl Scratch {
         cols: usize,
         size: usize,
     ) -> (VecZnxBig<&mut [u8], B>, &mut Self) {
-        let (take_slice, rem_slice) = Self::take_slice_aligned(&mut self.data, bytes_of_vec_znx_big(module, cols, size));
+        let (take_slice, rem_slice) = Self::take_slice_aligned(&mut self.data, module.bytes_of_vec_znx_big(cols, size));
 
         (
             VecZnxBig::from_data(take_slice, module.n(), cols, size),
@@ -316,7 +325,7 @@ impl Scratch {
         cols_in: usize,
         cols_out: usize,
         size: usize,
-    ) -> (MatZnxDftPrep<&mut [u8], B>, &mut Self) {
+    ) -> (MatZnxDftPrep<&mut [u8], B>, &mut Self) where Module<B>: MatZnxDftAlloc<B>{
         let (take_slice, rem_slice) = Self::take_slice_aligned(
             &mut self.data,
             module.bytes_of_mat_znx_dft(rows, cols_in, cols_out, size),

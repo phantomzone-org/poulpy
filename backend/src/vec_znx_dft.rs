@@ -1,8 +1,7 @@
 use std::marker::PhantomData;
 
-use crate::ffi::vec_znx_dft;
 use crate::znx_base::ZnxInfos;
-use crate::{Backend, DataView, DataViewMut, FFT64, Module, VecZnxBig, ZnxSliceSize, ZnxView, alloc_aligned};
+use crate::{Backend, DataView, DataViewMut, FFT64, NTT120, VecZnxBig, ZnxSliceSize, ZnxView, alloc_aligned};
 use std::fmt;
 
 pub struct VecZnxDft<D, B: Backend> {
@@ -71,28 +70,43 @@ impl<D: AsMut<[u8]> + AsRef<[u8]>> VecZnxDft<D, FFT64> {
     }
 }
 
-pub(crate) fn bytes_of_vec_znx_dft<B: Backend>(module: &Module<B>, cols: usize, size: usize) -> usize {
-    unsafe { vec_znx_dft::bytes_of_vec_znx_dft(module.ptr, size as u64) as usize * cols }
+pub trait VecZnxDftBytesOf<D, B: Backend> {
+    fn bytes_of(n: usize, cols: usize, size: usize) -> usize;
 }
 
-impl<D: From<Vec<u8>>, B: Backend> VecZnxDft<D, B> {
-    pub(crate) fn new(module: &Module<B>, cols: usize, size: usize) -> Self {
-        let data = alloc_aligned::<u8>(bytes_of_vec_znx_dft(module, cols, size));
+impl<D: AsRef<[u8]>> VecZnxDftBytesOf<D, FFT64> for VecZnxDft<D, FFT64> {
+    fn bytes_of(n: usize, cols: usize, size: usize) -> usize {
+        n * cols * size * size_of::<f64>()
+    }
+}
+
+impl<D: AsRef<[u8]>> VecZnxDftBytesOf<D, NTT120> for VecZnxDft<D, NTT120> {
+    fn bytes_of(n: usize, cols: usize, size: usize) -> usize {
+        4 * n * cols * size * size_of::<i64>()
+    }
+}
+
+impl<D: From<Vec<u8>> + AsRef<[u8]>, B: Backend> VecZnxDft<D, B>
+where
+    VecZnxDft<D, B>: VecZnxDftBytesOf<D, B>,
+{
+    pub(crate) fn new(n: usize, cols: usize, size: usize) -> Self {
+        let data: Vec<u8> = alloc_aligned::<u8>(Self::bytes_of(n, cols, size));
         Self {
             data: data.into(),
-            n: module.n(),
+            n: n,
             cols,
             size,
             _phantom: PhantomData,
         }
     }
 
-    pub(crate) fn new_from_bytes(module: &Module<B>, cols: usize, size: usize, bytes: impl Into<Vec<u8>>) -> Self {
+    pub(crate) fn new_from_bytes(n: usize, cols: usize, size: usize, bytes: impl Into<Vec<u8>>) -> Self {
         let data: Vec<u8> = bytes.into();
-        assert!(data.len() == bytes_of_vec_znx_dft(module, cols, size));
+        assert!(data.len() == Self::bytes_of(n, cols, size));
         Self {
             data: data.into(),
-            n: module.n(),
+            n: n,
             cols,
             size,
             _phantom: PhantomData,

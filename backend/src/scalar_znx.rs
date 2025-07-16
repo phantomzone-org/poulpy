@@ -103,11 +103,13 @@ impl<D: AsMut<[u8]> + AsRef<[u8]>> ScalarZnx<D> {
     }
 }
 
-impl<D: From<Vec<u8>>> ScalarZnx<D> {
-    pub(crate) fn bytes_of(n: usize, cols: usize) -> usize {
+impl<D: AsRef<[u8]>> ScalarZnx<D> {
+    pub fn bytes_of(n: usize, cols: usize) -> usize {
         n * cols * size_of::<i64>()
     }
+}
 
+impl<D: From<Vec<u8>> + AsRef<[u8]>> ScalarZnx<D> {
     pub fn new(n: usize, cols: usize) -> Self {
         let data: Vec<u8> = alloc_aligned::<u8>(Self::bytes_of(n, cols));
         Self {
@@ -129,10 +131,6 @@ impl<D: From<Vec<u8>>> ScalarZnx<D> {
 }
 
 pub type ScalarZnxOwned = ScalarZnx<Vec<u8>>;
-
-pub(crate) fn bytes_of_scalar_znx<B: Backend>(module: &Module<B>, cols: usize) -> usize {
-    ScalarZnxOwned::bytes_of(module.n(), cols)
-}
 
 pub trait ScalarZnxAlloc {
     fn bytes_of_scalar_znx(&self, cols: usize) -> usize;

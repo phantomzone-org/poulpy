@@ -1,7 +1,4 @@
-
-use crate::{
-    Backend, FFT64, MatZnxDftOwned, Module
-};
+use crate::{Backend, FFT64, MatZnxDft, MatZnxDftBytesOf, MatZnxDftOwned, Module};
 
 pub trait MatZnxDftAlloc<B: Backend> {
     /// Allocates a new [MatZnxDft] with the given number of rows and columns.
@@ -24,13 +21,16 @@ pub trait MatZnxDftAlloc<B: Backend> {
     ) -> MatZnxDftOwned<B>;
 }
 
-impl<B: Backend> MatZnxDftAlloc<B> for Module<B> {
+impl<B: Backend> MatZnxDftAlloc<B> for Module<B>
+where
+    MatZnxDft<Vec<u8>, B>: MatZnxDftBytesOf<Vec<u8>, B>,
+{
     fn bytes_of_mat_znx_dft(&self, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize {
-        MatZnxDftOwned::bytes_of(self, rows, cols_in, cols_out, size)
+        MatZnxDftOwned::bytes_of(self.n(), rows, cols_in, cols_out, size)
     }
 
     fn new_mat_znx_dft(&self, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> MatZnxDftOwned<B> {
-        MatZnxDftOwned::new(self, rows, cols_in, cols_out, size)
+        MatZnxDftOwned::new(self.n(), rows, cols_in, cols_out, size)
     }
 
     fn new_mat_znx_dft_from_bytes(
@@ -41,22 +41,16 @@ impl<B: Backend> MatZnxDftAlloc<B> for Module<B> {
         size: usize,
         bytes: Vec<u8>,
     ) -> MatZnxDftOwned<B> {
-        MatZnxDftOwned::new_from_bytes(self, rows, cols_in, cols_out, size, bytes)
+        MatZnxDftOwned::new_from_bytes(self.n(), rows, cols_in, cols_out, size, bytes)
     }
 }
 
-pub trait MatZnxDftScratch {
-}
+pub trait MatZnxDftScratch {}
 
 /// This trait implements methods for vector matrix product,
 /// that is, multiplying a [VecZnx] with a [MatZnxDft].
-pub trait MatZnxDftOps<BACKEND: Backend> {
-}
+pub trait MatZnxDftOps<BACKEND: Backend> {}
 
-impl<BACKEND: Backend> MatZnxDftScratch for Module<BACKEND> {
-  
-}
+impl<BACKEND: Backend> MatZnxDftScratch for Module<BACKEND> {}
 
-impl MatZnxDftOps<FFT64> for Module<FFT64> {
-
-}
+impl MatZnxDftOps<FFT64> for Module<FFT64> {}

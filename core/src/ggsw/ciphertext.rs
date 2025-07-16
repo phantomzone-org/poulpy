@@ -1,5 +1,5 @@
 use backend::{
-    Backend, FFT64, MatZnxDftPrep, MatZnxDftAlloc, MatZnxDftOps, MatZnxDftScratch, Module, ScalarZnx, Scratch, VecZnxAlloc,
+    Backend, FFT64, MatZnxDftAlloc, MatZnxDftOps, MatZnxDftPrep, MatZnxDftScratch, Module, ScalarZnx, Scratch, VecZnxAlloc,
     VecZnxBigAlloc, VecZnxBigOps, VecZnxBigScratch, VecZnxDft, VecZnxDftAlloc, VecZnxDftOps, VecZnxOps, VecZnxToMut, ZnxInfos,
     ZnxZero,
 };

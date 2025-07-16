@@ -1,4 +1,4 @@
-use backend::{Backend, FFT64, MatZnxDftPrep, MatZnxDftOps, Module};
+use backend::{Backend, FFT64, MatZnxDftOps, MatZnxDftPrep, Module};
 
 use crate::{FourierGLWECiphertext, GLWESwitchingKey, GetRow, Infos, SetRow};
 

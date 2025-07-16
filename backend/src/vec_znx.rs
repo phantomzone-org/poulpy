@@ -182,13 +182,15 @@ impl<D: AsMut<[u8]> + AsRef<[u8]>> VecZnx<D> {
     }
 }
 
-impl<D: From<Vec<u8>>> VecZnx<D> {
-    pub(crate) fn bytes_of<Scalar: Sized>(n: usize, cols: usize, size: usize) -> usize {
+impl<D: AsRef<[u8]>> VecZnx<D> {
+    pub fn bytes_of<Scalar: Sized>(n: usize, cols: usize, size: usize) -> usize {
         n * cols * size * size_of::<Scalar>()
     }
+}
 
+impl<D: From<Vec<u8>> + AsRef<[u8]>> VecZnx<D> {
     pub fn new<Scalar: Sized>(n: usize, cols: usize, size: usize) -> Self {
-        let data = alloc_aligned::<u8>(Self::bytes_of::<Scalar>(n, cols, size));
+        let data: Vec<u8> = alloc_aligned::<u8>(Self::bytes_of::<Scalar>(n, cols, size));
         Self {
             data: data.into(),
             n,

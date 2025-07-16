@@ -2,8 +2,9 @@ use crate::ffi::svp;
 use crate::ffi::vec_znx_dft::vec_znx_dft_t;
 use crate::znx_base::{ZnxInfos, ZnxView, ZnxViewMut};
 use crate::{
-    Backend, FFT64, Module, ScalarZnx, ScalarZnxDft, ScalarZnxDftOwned, ScalarZnxDftToMut, ScalarZnxDftToRef, ScalarZnxToMut,
-    ScalarZnxToRef, Scratch, VecZnxDft, VecZnxDftOps, VecZnxDftToMut, VecZnxDftToRef, VecZnxOps,
+    Backend, FFT64, Module, ScalarZnx, ScalarZnxDft, ScalarZnxDftBytesOf, ScalarZnxDftOwned, ScalarZnxDftToMut,
+    ScalarZnxDftToRef, ScalarZnxToMut, ScalarZnxToRef, Scratch, VecZnxDft, VecZnxDftOps, VecZnxDftToMut, VecZnxDftToRef,
+    VecZnxOps,
 };
 
 pub trait ScalarZnxDftAlloc<B: Backend> {
@@ -35,17 +36,20 @@ pub trait ScalarZnxDftOps<BACKEND: Backend> {
         A: ScalarZnxDftToRef<BACKEND>;
 }
 
-impl<B: Backend> ScalarZnxDftAlloc<B> for Module<B> {
+impl<B: Backend> ScalarZnxDftAlloc<B> for Module<B>
+where
+    ScalarZnxDft<Vec<u8>, B>: ScalarZnxDftBytesOf<Vec<u8>, B>,
+{
     fn new_scalar_znx_dft(&self, cols: usize) -> ScalarZnxDftOwned<B> {
-        ScalarZnxDftOwned::new(self, cols)
+        ScalarZnxDftOwned::new(self.n(), cols)
     }
 
     fn bytes_of_scalar_znx_dft(&self, cols: usize) -> usize {
-        ScalarZnxDftOwned::bytes_of(self, cols)
+        ScalarZnxDftOwned::bytes_of(self.n(), cols)
     }
 
     fn new_scalar_znx_dft_from_bytes(&self, cols: usize, bytes: Vec<u8>) -> ScalarZnxDftOwned<B> {
-        ScalarZnxDftOwned::new_from_bytes(self, cols, bytes)
+        ScalarZnxDftOwned::new_from_bytes(self.n(), cols, bytes)
     }
 }
 
