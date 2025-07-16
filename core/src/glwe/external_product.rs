@@ -1,24 +1,36 @@
 use backend::{
-    FFT64, MatZnxDftOps, MatZnxDftScratch, Module, Scratch, VecZnxBig, VecZnxBigOps, VecZnxDftAlloc, VecZnxDftOps, VecZnxScratch,
+    Backend, DataViewMut, Module, Scratch, VecZnxBig, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftFromVecZnx,
+    VecZnxDftToVecZnxBigConsume, VecZnxScratch, VmpApply, VmpApplyAdd, VmpApplyTmpBytes,
 };
 
-use crate::{GGSWCiphertext, GLWECiphertext, Infos};
+use crate::{GGSWCiphertextExec, GLWECiphertext, Infos};
+
+pub trait GLWEExternalProductFamily<B: Backend> = VecZnxDftAllocBytes
+    + VmpApplyTmpBytes
+    + VmpApply<B>
+    + VmpApplyAdd<B>
+    + VecZnxDftFromVecZnx<B>
+    + VecZnxDftToVecZnxBigConsume<B>
+    + VecZnxBigNormalize<B>;
 
 impl GLWECiphertext<Vec<u8>> {
-    pub fn external_product_scratch_space(
-        module: &Module<FFT64>,
+    pub fn external_product_scratch_space<B: Backend>(
+        module: &Module<B>,
         basek: usize,
         k_out: usize,
         k_in: usize,
         k_ggsw: usize,
         digits: usize,
         rank: usize,
-    ) -> usize {
+    ) -> usize
+    where
+        Module<B>: GLWEExternalProductFamily<B>,
+    {
         let in_size: usize = k_in.div_ceil(basek).div_ceil(digits);
         let out_size: usize = k_out.div_ceil(basek);
         let ggsw_size: usize = k_ggsw.div_ceil(basek);
-        let res_dft: usize = module.bytes_of_vec_znx_dft(rank + 1, ggsw_size);
-        let a_dft: usize = module.bytes_of_vec_znx_dft(rank + 1, in_size);
+        let res_dft: usize = module.vec_znx_dft_alloc_bytes(rank + 1, ggsw_size);
+        let a_dft: usize = module.vec_znx_dft_alloc_bytes(rank + 1, in_size);
         let vmp: usize = module.vmp_apply_tmp_bytes(
             out_size,
             in_size,
@@ -31,26 +43,31 @@ impl GLWECiphertext<Vec<u8>> {
         res_dft + a_dft + (vmp | normalize)
     }
 
-    pub fn external_product_inplace_scratch_space(
-        module: &Module<FFT64>,
+    pub fn external_product_inplace_scratch_space<B: Backend>(
+        module: &Module<B>,
         basek: usize,
         k_out: usize,
         k_ggsw: usize,
         digits: usize,
         rank: usize,
-    ) -> usize {
+    ) -> usize
+    where
+        Module<B>: GLWEExternalProductFamily<B>,
+    {
         Self::external_product_scratch_space(module, basek, k_out, k_out, k_ggsw, digits, rank)
     }
 }
 
 impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
-    pub fn external_product<DataLhs: AsRef<[u8]>, DataRhs: AsRef<[u8]>>(
+    pub fn external_product<DataLhs: AsRef<[u8]>, DataRhs: AsRef<[u8]>, B: Backend>(
         &mut self,
-        module: &Module<FFT64>,
+        module: &Module<B>,
         lhs: &GLWECiphertext<DataLhs>,
-        rhs: &GGSWCiphertext<DataRhs, FFT64>,
+        rhs: &GGSWCiphertextExec<DataRhs, B>,
         scratch: &mut Scratch,
-    ) {
+    ) where
+        Module<B>: GLWEExternalProductFamily<B>,
+    {
         let basek: usize = self.basek();
 
         #[cfg(debug_assertions)]
@@ -82,6 +99,8 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         let (mut res_dft, scratch1) = scratch.tmp_vec_znx_dft(module, cols, rhs.size()); // Todo optimise
         let (mut a_dft, scratch2) = scratch1.tmp_vec_znx_dft(module, cols, (lhs.size() + digits - 1) / digits);
 
+        a_dft.data_mut().fill(0);
+
         {
             (0..digits).for_each(|di| {
                 // (lhs.size() + di) / digits = (a - (digit - di - 1) + digit - 1) / digits
@@ -97,7 +116,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
                 res_dft.set_size(rhs.size() - ((digits - di) as isize - 2).max(0) as usize);
 
                 (0..cols).for_each(|col_i| {
-                    module.vec_znx_dft(digits, digits - 1 - di, &mut a_dft, col_i, &lhs.data, col_i);
+                    module.vec_znx_dft_from_vec_znx(digits, digits - 1 - di, &mut a_dft, col_i, &lhs.data, col_i);
                 });
 
                 if di == 0 {
@@ -108,19 +127,21 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
             });
         }
 
-        let res_big: VecZnxBig<&mut [u8], FFT64> = module.vec_znx_idft_consume(res_dft);
+        let res_big: VecZnxBig<&mut [u8], B> = module.vec_znx_dft_to_vec_znx_big_consume(res_dft);
 
         (0..cols).for_each(|i| {
             module.vec_znx_big_normalize(basek, &mut self.data, i, &res_big, i, scratch1);
         });
     }
 
-    pub fn external_product_inplace<DataRhs: AsRef<[u8]>>(
+    pub fn external_product_inplace<DataRhs: AsRef<[u8]>, B: Backend>(
         &mut self,
-        module: &Module<FFT64>,
-        rhs: &GGSWCiphertext<DataRhs, FFT64>,
+        module: &Module<B>,
+        rhs: &GGSWCiphertextExec<DataRhs, B>,
         scratch: &mut Scratch,
-    ) {
+    ) where
+        Module<B>: GLWEExternalProductFamily<B>,
+    {
         unsafe {
             let self_ptr: *mut GLWECiphertext<DataSelf> = self as *mut GLWECiphertext<DataSelf>;
             self.external_product(&module, &*self_ptr, rhs, scratch);

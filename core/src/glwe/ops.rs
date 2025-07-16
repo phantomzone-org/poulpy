@@ -1,9 +1,9 @@
-use backend::{FFT64, Module, Scratch, VecZnx, VecZnxOps, ZnxZero};
+use backend::{Backend, Module, Scratch, VecZnx, VecZnxOps, ZnxZero};
 
 use crate::{GLWECiphertext, GLWECiphertextToMut, GLWECiphertextToRef, Infos, SetMetaData};
 
 pub trait GLWEOps: GLWECiphertextToMut + SetMetaData + Sized {
-    fn add<A, B>(&mut self, module: &Module<FFT64>, a: &A, b: &B)
+    fn add<A, B, BACKEND: Backend>(&mut self, module: &Module<BACKEND>, a: &A, b: &B)
     where
         A: GLWECiphertextToRef,
         B: GLWECiphertextToRef,
@@ -50,7 +50,7 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData + Sized {
         self.set_k(set_k_binary(self, a, b));
     }
 
-    fn add_inplace<A>(&mut self, module: &Module<FFT64>, a: &A)
+    fn add_inplace<A, BACKEND: Backend>(&mut self, module: &Module<BACKEND>, a: &A)
     where
         A: GLWECiphertextToRef + Infos,
     {
@@ -72,7 +72,7 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData + Sized {
         self.set_k(set_k_unary(self, a))
     }
 
-    fn sub<A, B>(&mut self, module: &Module<FFT64>, a: &A, b: &B)
+    fn sub<A, B, BACKEND: Backend>(&mut self, module: &Module<BACKEND>, a: &A, b: &B)
     where
         A: GLWECiphertextToRef,
         B: GLWECiphertextToRef,
@@ -120,7 +120,7 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData + Sized {
         self.set_k(set_k_binary(self, a, b));
     }
 
-    fn sub_inplace_ab<A>(&mut self, module: &Module<FFT64>, a: &A)
+    fn sub_inplace_ab<A, BACKEND: Backend>(&mut self, module: &Module<BACKEND>, a: &A)
     where
         A: GLWECiphertextToRef + Infos,
     {
@@ -142,7 +142,7 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData + Sized {
         self.set_k(set_k_unary(self, a))
     }
 
-    fn sub_inplace_ba<A>(&mut self, module: &Module<FFT64>, a: &A)
+    fn sub_inplace_ba<A, BACKEND: Backend>(&mut self, module: &Module<BACKEND>, a: &A)
     where
         A: GLWECiphertextToRef + Infos,
     {
@@ -164,7 +164,7 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData + Sized {
         self.set_k(set_k_unary(self, a))
     }
 
-    fn rotate<A>(&mut self, module: &Module<FFT64>, k: i64, a: &A)
+    fn rotate<A, BACKEND: Backend>(&mut self, module: &Module<BACKEND>, k: i64, a: &A)
     where
         A: GLWECiphertextToRef + Infos,
     {
@@ -186,7 +186,7 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData + Sized {
         self.set_k(set_k_unary(self, a))
     }
 
-    fn rotate_inplace(&mut self, module: &Module<FFT64>, k: i64) {
+    fn rotate_inplace<BACKEND: Backend>(&mut self, module: &Module<BACKEND>, k: i64) {
         #[cfg(debug_assertions)]
         {
             assert_eq!(self.n(), module.n());
@@ -199,7 +199,7 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData + Sized {
         });
     }
 
-    fn copy<A>(&mut self, module: &Module<FFT64>, a: &A)
+    fn copy<A, BACKEND: Backend>(&mut self, module: &Module<BACKEND>, a: &A)
     where
         A: GLWECiphertextToRef + Infos,
     {
@@ -227,7 +227,7 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData + Sized {
         self_mut.data.rsh(basek, k, scratch);
     }
 
-    fn normalize<A>(&mut self, module: &Module<FFT64>, a: &A, scratch: &mut Scratch)
+    fn normalize<A, BACKEND: Backend>(&mut self, module: &Module<BACKEND>, a: &A, scratch: &mut Scratch)
     where
         A: GLWECiphertextToRef,
     {
@@ -248,7 +248,7 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData + Sized {
         self.set_k(a.k().min(self.k()));
     }
 
-    fn normalize_inplace(&mut self, module: &Module<FFT64>, scratch: &mut Scratch) {
+    fn normalize_inplace<BACKEND: Backend>(&mut self, module: &Module<BACKEND>, scratch: &mut Scratch) {
         #[cfg(debug_assertions)]
         {
             assert_eq!(self.n(), module.n());
@@ -261,7 +261,7 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData + Sized {
 }
 
 impl GLWECiphertext<Vec<u8>> {
-    pub fn rsh_scratch_space(module: &Module<FFT64>) -> usize {
+    pub fn rsh_scratch_space<BACKEND: Backend>(module: &Module<BACKEND>) -> usize {
         VecZnx::rsh_scratch_space(module.n())
     }
 }

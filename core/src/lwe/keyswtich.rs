@@ -1,26 +1,80 @@
-use backend::{Backend, FFT64, Module, Scratch, VecZnxOps, ZnxView, ZnxViewMut, ZnxZero};
+use backend::{Backend, Module, Scratch, VecZnxOps, ZnxView, ZnxViewMut, ZnxZero};
 use sampling::source::Source;
 
-use crate::{FourierGLWESecret, GLWECiphertext, GLWESecret, GLWESwitchingKey, Infos, LWECiphertext, LWESecret, ScratchCore};
+use crate::{
+    GGLWEEncryptSkFamily, GGLWEExecLayoutFamily, GLWECiphertext, GLWEKeyswitchFamily, GLWESecret, GLWESecretExec,
+    GLWESwitchingKey, GLWESwitchingKeyExec, Infos, LWECiphertext, LWESecret, ScratchCore,
+};
 
 /// A special [GLWESwitchingKey] required to for the conversion from [GLWECiphertext] to [LWECiphertext].
-pub struct GLWEToLWESwitchingKey<D, B: Backend>(GLWESwitchingKey<D, B>);
+pub struct GLWEToLWESwitchingKey<D>(GLWESwitchingKey<D>);
+pub struct GLWEToLWESwitchingKeyExec<D, B: Backend>(GLWESwitchingKeyExec<D, B>);
 
-impl GLWEToLWESwitchingKey<Vec<u8>, FFT64> {
-    pub fn alloc(module: &Module<FFT64>, basek: usize, k: usize, rows: usize, rank: usize) -> Self {
+impl<B: Backend> GLWEToLWESwitchingKeyExec<Vec<u8>, B> {
+    pub fn alloc(module: &Module<B>, basek: usize, k: usize, rows: usize, rank: usize) -> Self
+    where
+        Module<B>: GGLWEExecLayoutFamily<B>,
+    {
+        Self(GLWESwitchingKeyExec::alloc(
+            module, basek, k, rows, 1, rank, rank,
+        ))
+    }
+
+    pub fn bytes_of(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize
+    where
+        Module<B>: GGLWEExecLayoutFamily<B>,
+    {
+        GLWESwitchingKeyExec::<Vec<u8>, B>::bytes_of(module, basek, k, rows, digits, rank, rank)
+    }
+
+    pub fn from<DataOther: AsRef<[u8]>>(
+        module: &Module<B>,
+        other: &GLWEToLWESwitchingKey<DataOther>,
+        scratch: &mut Scratch,
+    ) -> Self
+    where
+        Module<B>: GGLWEExecLayoutFamily<B>,
+    {
+        let mut ksk_exec: GLWEToLWESwitchingKeyExec<Vec<u8>, B> = Self::alloc(
+            module,
+            other.0.basek(),
+            other.0.k(),
+            other.0.rows(),
+            other.0.rank(),
+        );
+        ksk_exec.prepare(module, other, scratch);
+        ksk_exec
+    }
+}
+
+impl<D: AsRef<[u8]> + AsMut<[u8]>, B: Backend> GLWEToLWESwitchingKeyExec<D, B> {
+    pub fn prepare<DataOther>(&mut self, module: &Module<B>, other: &GLWEToLWESwitchingKey<DataOther>, scratch: &mut Scratch)
+    where
+        DataOther: AsRef<[u8]>,
+        Module<B>: GGLWEExecLayoutFamily<B>,
+    {
+        self.0.prepare(module, &other.0, scratch);
+    }
+}
+
+impl GLWEToLWESwitchingKey<Vec<u8>> {
+    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize, rank: usize) -> Self {
         Self(GLWESwitchingKey::alloc(module, basek, k, rows, 1, rank, 1))
     }
 
-    pub fn encrypt_sk_scratch_space(module: &Module<FFT64>, basek: usize, k: usize, rank: usize) -> usize {
-        FourierGLWESecret::bytes_of(module, rank)
+    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize
+    where
+        Module<B>: GGLWEEncryptSkFamily<B>,
+    {
+        GLWESecretExec::bytes_of(module, rank)
             + (GLWESwitchingKey::encrypt_sk_scratch_space(module, basek, k, rank, rank) | GLWESecret::bytes_of(module, rank))
     }
 }
 
-impl<D: AsMut<[u8]> + AsRef<[u8]>> GLWEToLWESwitchingKey<D, FFT64> {
-    pub fn encrypt_sk<DLwe, DGlwe>(
+impl<D: AsMut<[u8]> + AsRef<[u8]>> GLWEToLWESwitchingKey<D> {
+    pub fn encrypt_sk<DLwe, DGlwe, B: Backend>(
         &mut self,
-        module: &Module<FFT64>,
+        module: &Module<B>,
         sk_lwe: &LWESecret<DLwe>,
         sk_glwe: &GLWESecret<DGlwe>,
         source_xa: &mut Source,
@@ -30,26 +84,22 @@ impl<D: AsMut<[u8]> + AsRef<[u8]>> GLWEToLWESwitchingKey<D, FFT64> {
     ) where
         DLwe: AsRef<[u8]>,
         DGlwe: AsRef<[u8]>,
+        Module<B>: GGLWEEncryptSkFamily<B>,
     {
         #[cfg(debug_assertions)]
         {
             assert!(sk_lwe.n() <= module.n());
         }
 
-        let (mut sk_lwe_as_glwe_dft, scratch1) = scratch.tmp_fourier_glwe_secret(module, 1);
-
-        {
-            let (mut sk_lwe_as_glwe, _) = scratch1.tmp_glwe_secret(module, 1);
-            sk_lwe_as_glwe.data.zero();
-            sk_lwe_as_glwe.data.at_mut(0, 0)[..sk_lwe.n()].copy_from_slice(sk_lwe.data.at(0, 0));
-            module.vec_znx_automorphism_inplace(-1, &mut sk_lwe_as_glwe.data, 0);
-            sk_lwe_as_glwe_dft.set(module, &sk_lwe_as_glwe);
-        }
+        let (mut sk_lwe_as_glwe, scratch1) = scratch.tmp_glwe_secret(module, 1);
+        sk_lwe_as_glwe.data.zero();
+        sk_lwe_as_glwe.data.at_mut(0, 0)[..sk_lwe.n()].copy_from_slice(sk_lwe.data.at(0, 0));
+        module.vec_znx_automorphism_inplace(-1, &mut sk_lwe_as_glwe.data, 0);
 
         self.0.encrypt_sk(
             module,
             sk_glwe,
-            &sk_lwe_as_glwe_dft,
+            &sk_lwe_as_glwe,
             source_xa,
             source_xe,
             sigma,
@@ -59,24 +109,75 @@ impl<D: AsMut<[u8]> + AsRef<[u8]>> GLWEToLWESwitchingKey<D, FFT64> {
 }
 
 /// A special [GLWESwitchingKey] required to for the conversion from [LWECiphertext] to [GLWECiphertext].
-pub struct LWEToGLWESwitchingKey<D, B: Backend>(GLWESwitchingKey<D, B>);
+pub struct LWEToGLWESwitchingKeyExec<D, B: Backend>(GLWESwitchingKeyExec<D, B>);
 
-impl LWEToGLWESwitchingKey<Vec<u8>, FFT64> {
-    pub fn alloc(module: &Module<FFT64>, basek: usize, k: usize, rows: usize, rank: usize) -> Self {
+impl<B: Backend> LWEToGLWESwitchingKeyExec<Vec<u8>, B> {
+    pub fn alloc(module: &Module<B>, basek: usize, k: usize, rows: usize, rank: usize) -> Self
+    where
+        Module<B>: GGLWEExecLayoutFamily<B>,
+    {
+        Self(GLWESwitchingKeyExec::alloc(
+            module, basek, k, rows, 1, rank, rank,
+        ))
+    }
+
+    pub fn bytes_of(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize
+    where
+        Module<B>: GGLWEExecLayoutFamily<B>,
+    {
+        GLWESwitchingKeyExec::<Vec<u8>, B>::bytes_of(module, basek, k, rows, digits, rank, rank)
+    }
+
+    pub fn from<DataOther: AsRef<[u8]>>(
+        module: &Module<B>,
+        other: &LWEToGLWESwitchingKey<DataOther>,
+        scratch: &mut Scratch,
+    ) -> Self
+    where
+        Module<B>: GGLWEExecLayoutFamily<B>,
+    {
+        let mut ksk_exec: LWEToGLWESwitchingKeyExec<Vec<u8>, B> = Self::alloc(
+            module,
+            other.0.basek(),
+            other.0.k(),
+            other.0.rows(),
+            other.0.rank(),
+        );
+        ksk_exec.prepare(module, other, scratch);
+        ksk_exec
+    }
+}
+
+impl<D: AsRef<[u8]> + AsMut<[u8]>, B: Backend> LWEToGLWESwitchingKeyExec<D, B> {
+    pub fn prepare<DataOther>(&mut self, module: &Module<B>, other: &LWEToGLWESwitchingKey<DataOther>, scratch: &mut Scratch)
+    where
+        DataOther: AsRef<[u8]>,
+        Module<B>: GGLWEExecLayoutFamily<B>,
+    {
+        self.0.prepare(module, &other.0, scratch);
+    }
+}
+pub struct LWEToGLWESwitchingKey<D>(GLWESwitchingKey<D>);
+
+impl LWEToGLWESwitchingKey<Vec<u8>> {
+    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize, rank: usize) -> Self {
         Self(GLWESwitchingKey::alloc(module, basek, k, rows, 1, 1, rank))
     }
 
-    pub fn encrypt_sk_scratch_space(module: &Module<FFT64>, basek: usize, k: usize, rank: usize) -> usize {
+    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize
+    where
+        Module<B>: GGLWEEncryptSkFamily<B>,
+    {
         GLWESwitchingKey::encrypt_sk_scratch_space(module, basek, k, 1, rank) + GLWESecret::bytes_of(module, 1)
     }
 }
 
-impl<D: AsMut<[u8]> + AsRef<[u8]>> LWEToGLWESwitchingKey<D, FFT64> {
-    pub fn encrypt_sk<DLwe, DGlwe>(
+impl<D: AsMut<[u8]> + AsRef<[u8]>> LWEToGLWESwitchingKey<D> {
+    pub fn encrypt_sk<DLwe, DGlwe, B: Backend>(
         &mut self,
-        module: &Module<FFT64>,
+        module: &Module<B>,
         sk_lwe: &LWESecret<DLwe>,
-        sk_glwe: &FourierGLWESecret<DGlwe, FFT64>,
+        sk_glwe: &GLWESecret<DGlwe>,
         source_xa: &mut Source,
         source_xe: &mut Source,
         sigma: f64,
@@ -84,6 +185,7 @@ impl<D: AsMut<[u8]> + AsRef<[u8]>> LWEToGLWESwitchingKey<D, FFT64> {
     ) where
         DLwe: AsRef<[u8]>,
         DGlwe: AsRef<[u8]>,
+        Module<B>: GGLWEEncryptSkFamily<B>,
     {
         #[cfg(debug_assertions)]
         {
@@ -107,24 +209,71 @@ impl<D: AsMut<[u8]> + AsRef<[u8]>> LWEToGLWESwitchingKey<D, FFT64> {
     }
 }
 
-pub struct LWESwitchingKey<D, B: Backend>(GLWESwitchingKey<D, B>);
+pub struct LWESwitchingKeyExec<D, B: Backend>(GLWESwitchingKeyExec<D, B>);
 
-impl LWESwitchingKey<Vec<u8>, FFT64> {
-    pub fn alloc(module: &Module<FFT64>, basek: usize, k: usize, rows: usize) -> Self {
+impl<B: Backend> LWESwitchingKeyExec<Vec<u8>, B> {
+    pub fn alloc(module: &Module<B>, basek: usize, k: usize, rows: usize, rank: usize) -> Self
+    where
+        Module<B>: GGLWEExecLayoutFamily<B>,
+    {
+        Self(GLWESwitchingKeyExec::alloc(
+            module, basek, k, rows, 1, rank, rank,
+        ))
+    }
+
+    pub fn bytes_of(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize
+    where
+        Module<B>: GGLWEExecLayoutFamily<B>,
+    {
+        GLWESwitchingKeyExec::<Vec<u8>, B>::bytes_of(module, basek, k, rows, digits, rank, rank)
+    }
+
+    pub fn from<DataOther: AsRef<[u8]>>(module: &Module<B>, other: &LWESwitchingKey<DataOther>, scratch: &mut Scratch) -> Self
+    where
+        Module<B>: GGLWEExecLayoutFamily<B>,
+    {
+        let mut ksk_exec: LWESwitchingKeyExec<Vec<u8>, B> = Self::alloc(
+            module,
+            other.0.basek(),
+            other.0.k(),
+            other.0.rows(),
+            other.0.rank(),
+        );
+        ksk_exec.prepare(module, other, scratch);
+        ksk_exec
+    }
+}
+
+impl<D: AsRef<[u8]> + AsMut<[u8]>, B: Backend> LWESwitchingKeyExec<D, B> {
+    pub fn prepare<DataOther>(&mut self, module: &Module<B>, other: &LWESwitchingKey<DataOther>, scratch: &mut Scratch)
+    where
+        DataOther: AsRef<[u8]>,
+        Module<B>: GGLWEExecLayoutFamily<B>,
+    {
+        self.0.prepare(module, &other.0, scratch);
+    }
+}
+pub struct LWESwitchingKey<D>(GLWESwitchingKey<D>);
+
+impl LWESwitchingKey<Vec<u8>> {
+    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize) -> Self {
         Self(GLWESwitchingKey::alloc(module, basek, k, rows, 1, 1, 1))
     }
 
-    pub fn encrypt_sk_scratch_space(module: &Module<FFT64>, basek: usize, k: usize) -> usize {
+    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize) -> usize
+    where
+        Module<B>: GGLWEEncryptSkFamily<B>,
+    {
         GLWESecret::bytes_of(module, 1)
-            + FourierGLWESecret::bytes_of(module, 1)
+            + GLWESecretExec::bytes_of(module, 1)
             + GLWESwitchingKey::encrypt_sk_scratch_space(module, basek, k, 1, 1)
     }
 }
 
-impl<D: AsMut<[u8]> + AsRef<[u8]>> LWESwitchingKey<D, FFT64> {
-    pub fn encrypt_sk<DIn, DOut>(
+impl<D: AsMut<[u8]> + AsRef<[u8]>> LWESwitchingKey<D> {
+    pub fn encrypt_sk<DIn, DOut, B: Backend>(
         &mut self,
-        module: &Module<FFT64>,
+        module: &Module<B>,
         sk_lwe_in: &LWESecret<DIn>,
         sk_lwe_out: &LWESecret<DOut>,
         source_xa: &mut Source,
@@ -134,6 +283,7 @@ impl<D: AsMut<[u8]> + AsRef<[u8]>> LWESwitchingKey<D, FFT64> {
     ) where
         DIn: AsRef<[u8]>,
         DOut: AsRef<[u8]>,
+        Module<B>: GGLWEEncryptSkFamily<B>,
     {
         #[cfg(debug_assertions)]
         {
@@ -142,12 +292,11 @@ impl<D: AsMut<[u8]> + AsRef<[u8]>> LWESwitchingKey<D, FFT64> {
         }
 
         let (mut sk_in_glwe, scratch1) = scratch.tmp_glwe_secret(module, 1);
-        let (mut sk_out_glwe, scratch2) = scratch1.tmp_fourier_glwe_secret(module, 1);
+        let (mut sk_out_glwe, scratch2) = scratch1.tmp_glwe_secret(module, 1);
 
-        sk_in_glwe.data.at_mut(0, 0)[..sk_lwe_out.n()].copy_from_slice(sk_lwe_out.data.at(0, 0));
-        sk_in_glwe.data.at_mut(0, 0)[sk_lwe_out.n()..].fill(0);
+        sk_out_glwe.data.at_mut(0, 0)[..sk_lwe_out.n()].copy_from_slice(sk_lwe_out.data.at(0, 0));
+        sk_out_glwe.data.at_mut(0, 0)[sk_lwe_out.n()..].fill(0);
         module.vec_znx_automorphism_inplace(-1, &mut sk_in_glwe.data, 0);
-        sk_out_glwe.set(module, &sk_in_glwe);
         sk_in_glwe.data.at_mut(0, 0)[..sk_lwe_in.n()].copy_from_slice(sk_lwe_in.data.at(0, 0));
         sk_in_glwe.data.at_mut(0, 0)[sk_lwe_in.n()..].fill(0);
         module.vec_znx_automorphism_inplace(-1, &mut sk_in_glwe.data, 0);
@@ -165,25 +314,31 @@ impl<D: AsMut<[u8]> + AsRef<[u8]>> LWESwitchingKey<D, FFT64> {
 }
 
 impl LWECiphertext<Vec<u8>> {
-    pub fn from_glwe_scratch_space(
-        module: &Module<FFT64>,
+    pub fn from_glwe_scratch_space<B: Backend>(
+        module: &Module<B>,
         basek: usize,
         k_lwe: usize,
         k_glwe: usize,
         k_ksk: usize,
         rank: usize,
-    ) -> usize {
+    ) -> usize
+    where
+        Module<B>: GLWEKeyswitchFamily<B>,
+    {
         GLWECiphertext::bytes_of(module, basek, k_lwe, 1)
             + GLWECiphertext::keyswitch_scratch_space(module, basek, k_lwe, k_glwe, k_ksk, 1, rank, 1)
     }
 
-    pub fn keyswitch_scratch_space(
-        module: &Module<FFT64>,
+    pub fn keyswitch_scratch_space<B: Backend>(
+        module: &Module<B>,
         basek: usize,
         k_lwe_out: usize,
         k_lwe_in: usize,
         k_ksk: usize,
-    ) -> usize {
+    ) -> usize
+    where
+        Module<B>: GLWEKeyswitchFamily<B>,
+    {
         GLWECiphertext::bytes_of(module, basek, k_lwe_out.max(k_lwe_in), 1)
             + GLWECiphertext::keyswitch_inplace_scratch_space(module, basek, k_lwe_out, k_ksk, 1, 1)
     }
@@ -210,15 +365,16 @@ impl<DLwe: AsRef<[u8]> + AsMut<[u8]>> LWECiphertext<DLwe> {
         });
     }
 
-    pub fn from_glwe<DGlwe, DKs>(
+    pub fn from_glwe<DGlwe, DKs, B: Backend>(
         &mut self,
-        module: &Module<FFT64>,
+        module: &Module<B>,
         a: &GLWECiphertext<DGlwe>,
-        ks: &GLWEToLWESwitchingKey<DKs, FFT64>,
+        ks: &GLWEToLWESwitchingKeyExec<DKs, B>,
         scratch: &mut Scratch,
     ) where
         DGlwe: AsRef<[u8]>,
         DKs: AsRef<[u8]>,
+        Module<B>: GLWEKeyswitchFamily<B>,
     {
         #[cfg(debug_assertions)]
         {
@@ -229,15 +385,16 @@ impl<DLwe: AsRef<[u8]> + AsMut<[u8]>> LWECiphertext<DLwe> {
         self.sample_extract(&tmp_glwe);
     }
 
-    pub fn keyswitch<A, DKs>(
+    pub fn keyswitch<A, DKs, B: Backend>(
         &mut self,
-        module: &Module<FFT64>,
+        module: &Module<B>,
         a: &LWECiphertext<A>,
-        ksk: &LWESwitchingKey<DKs, FFT64>,
+        ksk: &LWESwitchingKeyExec<DKs, B>,
         scratch: &mut Scratch,
     ) where
         A: AsRef<[u8]>,
         DKs: AsRef<[u8]>,
+        Module<B>: GLWEKeyswitchFamily<B>,
     {
         #[cfg(debug_assertions)]
         {
@@ -267,29 +424,33 @@ impl<DLwe: AsRef<[u8]> + AsMut<[u8]>> LWECiphertext<DLwe> {
 }
 
 impl GLWECiphertext<Vec<u8>> {
-    pub fn from_lwe_scratch_space(
-        module: &Module<FFT64>,
+    pub fn from_lwe_scratch_space<B: Backend>(
+        module: &Module<B>,
         basek: usize,
         k_lwe: usize,
         k_glwe: usize,
         k_ksk: usize,
         rank: usize,
-    ) -> usize {
+    ) -> usize
+    where
+        Module<B>: GLWEKeyswitchFamily<B>,
+    {
         GLWECiphertext::keyswitch_scratch_space(module, basek, k_glwe, k_lwe, k_ksk, 1, 1, rank)
             + GLWECiphertext::bytes_of(module, basek, k_lwe, 1)
     }
 }
 
 impl<D: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<D> {
-    pub fn from_lwe<DLwe, DKsk>(
+    pub fn from_lwe<DLwe, DKsk, B: Backend>(
         &mut self,
-        module: &Module<FFT64>,
+        module: &Module<B>,
         lwe: &LWECiphertext<DLwe>,
-        ksk: &LWEToGLWESwitchingKey<DKsk, FFT64>,
+        ksk: &LWEToGLWESwitchingKeyExec<DKsk, B>,
         scratch: &mut Scratch,
     ) where
         DLwe: AsRef<[u8]>,
         DKsk: AsRef<[u8]>,
+        Module<B>: GLWEKeyswitchFamily<B>,
     {
         #[cfg(debug_assertions)]
         {

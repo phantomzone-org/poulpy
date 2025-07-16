@@ -1,11 +1,12 @@
-use backend::{Encoding, FFT64, Module, ScratchOwned, ZnxView};
+use backend::{Backend, Encoding, FFT64, Module, ScratchOwned, ZnxView};
 use sampling::source::Source;
 
 use crate::{
-    FourierGLWESecret, GLWECiphertext, GLWEPlaintext, GLWESecret, Infos, LWECiphertext, LWESecret,
+    BlindRotationKeyCGGIExecLayoutFamily, CCGIBlindRotationFamily, GLWECiphertext, GLWEDecryptFamily, GLWEPlaintext, GLWESecret,
+    GLWESecretExec, GLWESecretFamily, Infos, LWECiphertext, LWESecret,
     blind_rotation::{
         cggi::{cggi_blind_rotate, cggi_blind_rotate_scratch_space, negate_and_mod_switch_2n},
-        key::BlindRotationKeyCGGI,
+        key::{BlindRotationKeyCGGI, BlindRotationKeyCGGIExec},
         lut::LookUpTable,
     },
     lwe::{LWEPlaintext, ciphertext::LWECiphertextToRef},
@@ -13,21 +14,26 @@ use crate::{
 
 #[test]
 fn standard() {
-    blind_rotatio_test(224, 1, 1);
+    let module: Module<FFT64> = Module::<FFT64>::new(512);
+    blind_rotatio_test(&module, 224, 1, 1);
 }
 
 #[test]
 fn block_binary() {
-    blind_rotatio_test(224, 7, 1);
+    let module: Module<FFT64> = Module::<FFT64>::new(512);
+    blind_rotatio_test(&module, 224, 7, 1);
 }
 
 #[test]
 fn block_binary_extended() {
-    blind_rotatio_test(224, 7, 2);
+    let module: Module<FFT64> = Module::<FFT64>::new(512);
+    blind_rotatio_test(&module, 224, 7, 2);
 }
 
-fn blind_rotatio_test(n_lwe: usize, block_size: usize, extension_factor: usize) {
-    let module: Module<FFT64> = Module::<FFT64>::new(512);
+fn blind_rotatio_test<B: Backend>(module: &Module<B>, n_lwe: usize, block_size: usize, extension_factor: usize)
+where
+    Module<B>: CCGIBlindRotationFamily<B> + GLWESecretFamily<B> + GLWEDecryptFamily<B> + BlindRotationKeyCGGIExecLayoutFamily<B>,
+{
     let basek: usize = 19;
 
     let k_lwe: usize = 24;
@@ -43,19 +49,19 @@ fn blind_rotatio_test(n_lwe: usize, block_size: usize, extension_factor: usize) 
     let mut source_xe: Source = Source::new([2u8; 32]);
     let mut source_xa: Source = Source::new([1u8; 32]);
 
-    let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc(&module, rank);
+    let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc(module, rank);
     sk_glwe.fill_ternary_prob(0.5, &mut source_xs);
-    let sk_glwe_dft: FourierGLWESecret<Vec<u8>, FFT64> = FourierGLWESecret::from(&module, &sk_glwe);
+    let sk_glwe_dft: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk_glwe);
 
     let mut sk_lwe: LWESecret<Vec<u8>> = LWESecret::alloc(n_lwe);
     sk_lwe.fill_binary_block(block_size, &mut source_xs);
 
     let mut scratch: ScratchOwned = ScratchOwned::new(BlindRotationKeyCGGI::generate_from_sk_scratch_space(
-        &module, basek, k_brk, rank,
+        module, basek, k_brk, rank,
     ));
 
     let mut scratch_br: ScratchOwned = ScratchOwned::new(cggi_blind_rotate_scratch_space(
-        &module,
+        module,
         block_size,
         extension_factor,
         basek,
@@ -65,11 +71,10 @@ fn blind_rotatio_test(n_lwe: usize, block_size: usize, extension_factor: usize) 
         rank,
     ));
 
-    let mut brk: BlindRotationKeyCGGI<Vec<u8>, FFT64> =
-        BlindRotationKeyCGGI::allocate(&module, n_lwe, basek, k_brk, rows_brk, rank);
+    let mut brk: BlindRotationKeyCGGI<Vec<u8>> = BlindRotationKeyCGGI::alloc(module, n_lwe, basek, k_brk, rows_brk, rank);
 
     brk.generate_from_sk(
-        &module,
+        module,
         &sk_glwe_dft,
         &sk_lwe,
         &mut source_xa,
@@ -94,16 +99,18 @@ fn blind_rotatio_test(n_lwe: usize, block_size: usize, extension_factor: usize) 
         .enumerate()
         .for_each(|(i, x)| *x = 2 * (i as i64) + 1);
 
-    let mut lut: LookUpTable = LookUpTable::alloc(&module, basek, k_lut, extension_factor);
-    lut.set(&module, &f, message_modulus);
+    let mut lut: LookUpTable = LookUpTable::alloc(module, basek, k_lut, extension_factor);
+    lut.set(module, &f, message_modulus);
 
-    let mut res: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_res, rank);
+    let mut res: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(module, basek, k_res, rank);
 
-    cggi_blind_rotate(&module, &mut res, &lwe, &lut, &brk, scratch_br.borrow());
+    let brk_exec: BlindRotationKeyCGGIExec<Vec<u8>, B> = BlindRotationKeyCGGIExec::from(module, &brk, scratch_br.borrow());
 
-    let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_res);
+    cggi_blind_rotate(module, &mut res, &lwe, &lut, &brk_exec, scratch_br.borrow());
 
-    res.decrypt(&module, &mut pt_have, &sk_glwe_dft, scratch.borrow());
+    let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(module, basek, k_res);
+
+    res.decrypt(module, &mut pt_have, &sk_glwe_dft, scratch.borrow());
 
     let mut lwe_2n: Vec<i64> = vec![0i64; lwe.n() + 1]; // TODO: from scratch space
 

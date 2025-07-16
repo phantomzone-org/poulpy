@@ -1,7 +1,7 @@
-use crate::{GLWEAutomorphismKey, GLWECiphertext, GLWEOps, Infos, ScratchCore};
+use crate::{AutomorphismExecFamily, AutomorphismKeyExec, GLWECiphertext, GLWEOps, Infos, ScratchCore};
 use std::collections::HashMap;
 
-use backend::{FFT64, Module, Scratch};
+use backend::{Backend, Module, Scratch};
 
 /// [StreamPacker] enables only the fly GLWE packing
 /// with constant memory of Log(N) ciphertexts.
@@ -30,7 +30,7 @@ impl Accumulator {
     /// * `basek`: base 2 logarithm of the GLWE ciphertext in memory digit representation.
     /// * `k`: base 2 precision of the GLWE ciphertext precision over the Torus.
     /// * `rank`: rank of the GLWE ciphertext.
-    pub fn alloc(module: &Module<FFT64>, basek: usize, k: usize, rank: usize) -> Self {
+    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank: usize) -> Self {
         Self {
             data: GLWECiphertext::alloc(module, basek, k, rank),
             value: false,
@@ -53,7 +53,7 @@ impl GLWEPacker {
     /// * `basek`: base 2 logarithm of the GLWE ciphertext in memory digit representation.
     /// * `k`: base 2 precision of the GLWE ciphertext precision over the Torus.
     /// * `rank`: rank of the GLWE ciphertext.
-    pub fn new(module: &Module<FFT64>, log_batch: usize, basek: usize, k: usize, rank: usize) -> Self {
+    pub fn new<B: Backend>(module: &Module<B>, log_batch: usize, basek: usize, k: usize, rank: usize) -> Self {
         let mut accumulators: Vec<Accumulator> = Vec::<Accumulator>::new();
         let log_n: usize = module.log_n();
         (0..log_n - log_batch).for_each(|_| accumulators.push(Accumulator::alloc(module, basek, k, rank)));
@@ -74,11 +74,21 @@ impl GLWEPacker {
     }
 
     /// Number of scratch space bytes required to call [Self::add].
-    pub fn scratch_space(module: &Module<FFT64>, basek: usize, ct_k: usize, k_ksk: usize, digits: usize, rank: usize) -> usize {
+    pub fn scratch_space<B: Backend>(
+        module: &Module<B>,
+        basek: usize,
+        ct_k: usize,
+        k_ksk: usize,
+        digits: usize,
+        rank: usize,
+    ) -> usize
+    where
+        Module<B>: AutomorphismExecFamily<B>,
+    {
         pack_core_scratch_space(module, basek, ct_k, k_ksk, digits, rank)
     }
 
-    pub fn galois_elements(module: &Module<FFT64>) -> Vec<i64> {
+    pub fn galois_elements<B: Backend>(module: &Module<B>) -> Vec<i64> {
         GLWECiphertext::trace_galois_elements(module)
     }
 
@@ -91,13 +101,15 @@ impl GLWEPacker {
     /// * `a`: ciphertext to pack. Can optionally give None to pack a 0 ciphertext.
     /// * `auto_keys`: a [HashMap] containing the [AutomorphismKey]s.
     /// * `scratch`: scratch space of size at least [Self::add_scratch_space].
-    pub fn add<DataA: AsRef<[u8]>, DataAK: AsRef<[u8]>>(
+    pub fn add<DataA: AsRef<[u8]>, DataAK: AsRef<[u8]>, B: Backend>(
         &mut self,
-        module: &Module<FFT64>,
+        module: &Module<B>,
         a: Option<&GLWECiphertext<DataA>>,
-        auto_keys: &HashMap<i64, GLWEAutomorphismKey<DataAK, FFT64>>,
+        auto_keys: &HashMap<i64, AutomorphismKeyExec<DataAK, B>>,
         scratch: &mut Scratch,
-    ) {
+    ) where
+        Module<B>: AutomorphismExecFamily<B>,
+    {
         assert!(
             self.counter < module.n(),
             "Packing limit of {} reached",
@@ -116,7 +128,7 @@ impl GLWEPacker {
     }
 
     /// Flush result to`res`.
-    pub fn flush<Data: AsMut<[u8]> + AsRef<[u8]>>(&mut self, module: &Module<FFT64>, res: &mut GLWECiphertext<Data>) {
+    pub fn flush<Data: AsMut<[u8]> + AsRef<[u8]>, B: Backend>(&mut self, module: &Module<B>, res: &mut GLWECiphertext<Data>) {
         assert!(self.counter == module.n());
         // Copy result GLWE into res GLWE
         res.copy(
@@ -128,18 +140,30 @@ impl GLWEPacker {
     }
 }
 
-fn pack_core_scratch_space(module: &Module<FFT64>, basek: usize, ct_k: usize, k_ksk: usize, digits: usize, rank: usize) -> usize {
+fn pack_core_scratch_space<B: Backend>(
+    module: &Module<B>,
+    basek: usize,
+    ct_k: usize,
+    k_ksk: usize,
+    digits: usize,
+    rank: usize,
+) -> usize
+where
+    Module<B>: AutomorphismExecFamily<B>,
+{
     combine_scratch_space(module, basek, ct_k, k_ksk, digits, rank)
 }
 
-fn pack_core<D: AsRef<[u8]>, DataAK: AsRef<[u8]>>(
-    module: &Module<FFT64>,
+fn pack_core<D: AsRef<[u8]>, DataAK: AsRef<[u8]>, B: Backend>(
+    module: &Module<B>,
     a: Option<&GLWECiphertext<D>>,
     accumulators: &mut [Accumulator],
     i: usize,
-    auto_keys: &HashMap<i64, GLWEAutomorphismKey<DataAK, FFT64>>,
+    auto_keys: &HashMap<i64, AutomorphismKeyExec<DataAK, B>>,
     scratch: &mut Scratch,
-) {
+) where
+    Module<B>: AutomorphismExecFamily<B>,
+{
     let log_n: usize = module.log_n();
 
     if i == log_n {
@@ -189,21 +213,33 @@ fn pack_core<D: AsRef<[u8]>, DataAK: AsRef<[u8]>>(
     }
 }
 
-fn combine_scratch_space(module: &Module<FFT64>, basek: usize, ct_k: usize, k_ksk: usize, digits: usize, rank: usize) -> usize {
+fn combine_scratch_space<B: Backend>(
+    module: &Module<B>,
+    basek: usize,
+    ct_k: usize,
+    k_ksk: usize,
+    digits: usize,
+    rank: usize,
+) -> usize
+where
+    Module<B>: AutomorphismExecFamily<B>,
+{
     GLWECiphertext::bytes_of(module, basek, ct_k, rank)
         + (GLWECiphertext::rsh_scratch_space(module)
             | GLWECiphertext::automorphism_scratch_space(module, basek, ct_k, ct_k, k_ksk, digits, rank))
 }
 
 /// [combine] merges two ciphertexts together.
-fn combine<D: AsRef<[u8]>, DataAK: AsRef<[u8]>>(
-    module: &Module<FFT64>,
+fn combine<D: AsRef<[u8]>, DataAK: AsRef<[u8]>, B: Backend>(
+    module: &Module<B>,
     acc: &mut Accumulator,
     b: Option<&GLWECiphertext<D>>,
     i: usize,
-    auto_keys: &HashMap<i64, GLWEAutomorphismKey<DataAK, FFT64>>,
+    auto_keys: &HashMap<i64, AutomorphismKeyExec<DataAK, B>>,
     scratch: &mut Scratch,
-) {
+) where
+    Module<B>: AutomorphismExecFamily<B>,
+{
     let log_n: usize = module.log_n();
     let a: &mut GLWECiphertext<Vec<u8>> = &mut acc.data;
     let basek: usize = a.basek();
@@ -279,7 +315,7 @@ fn combine<D: AsRef<[u8]>, DataAK: AsRef<[u8]>>(
 
             // a = (b* X^t - phi(b* X^t))
             if let Some(key) = auto_keys.get(&gal_el) {
-                a.automorphism_sub_ba::<&mut [u8], _>(module, &tmp_b, key, scratch_1);
+                a.automorphism_sub_ba(module, &tmp_b, key, scratch_1);
             } else {
                 panic!("auto_key[{}] not found", gal_el);
             }

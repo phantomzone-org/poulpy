@@ -708,8 +708,13 @@ impl<BACKEND: Backend> VecZnxOps for Module<BACKEND> {
         let mut res: VecZnx<&mut [u8]> = res.to_mut();
 
         let (n_in, n_out) = (a.n(), res.n());
-        let (gap_in, gap_out): (usize, usize);
 
+        if n_in == n_out {
+            self.vec_znx_copy(&mut res, res_col, &a, a_col);
+            return;
+        }
+
+        let (gap_in, gap_out): (usize, usize);
         if n_in > n_out {
             (gap_in, gap_out) = (n_in / n_out, 1)
         } else {

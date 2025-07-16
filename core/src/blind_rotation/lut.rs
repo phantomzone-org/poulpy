@@ -1,4 +1,4 @@
-use backend::{FFT64, Module, VecZnx, VecZnxAlloc, VecZnxOps, ZnxInfos, ZnxViewMut, alloc_aligned};
+use backend::{Backend, Module, VecZnx, VecZnxAlloc, VecZnxOps, ZnxInfos, ZnxViewMut, alloc_aligned};
 
 pub struct LookUpTable {
     pub(crate) data: Vec<VecZnx<Vec<u8>>>,
@@ -7,7 +7,7 @@ pub struct LookUpTable {
 }
 
 impl LookUpTable {
-    pub fn alloc(module: &Module<FFT64>, basek: usize, k: usize, extension_factor: usize) -> Self {
+    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, extension_factor: usize) -> Self {
         #[cfg(debug_assertions)]
         {
             assert!(
@@ -36,7 +36,7 @@ impl LookUpTable {
         self.data.len() * self.data[0].n()
     }
 
-    pub fn set(&mut self, module: &Module<FFT64>, f: &Vec<i64>, k: usize) {
+    pub fn set<B: Backend>(&mut self, module: &Module<B>, f: &Vec<i64>, k: usize) {
         assert!(f.len() <= module.n());
 
         let basek: usize = self.basek;

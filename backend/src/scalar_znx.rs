@@ -1,7 +1,8 @@
 use crate::ffi::vec_znx;
 use crate::znx_base::ZnxInfos;
 use crate::{
-    Backend, DataView, DataViewMut, Module, VecZnx, VecZnxToMut, VecZnxToRef, ZnxSliceSize, ZnxView, ZnxViewMut, alloc_aligned,
+    Backend, DataView, DataViewMut, Module, VecZnx, VecZnxToMut, VecZnxToRef, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero,
+    alloc_aligned,
 };
 use rand::seq::SliceRandom;
 use rand_core::RngCore;
@@ -103,11 +104,13 @@ impl<D: AsMut<[u8]> + AsRef<[u8]>> ScalarZnx<D> {
     }
 }
 
-impl<D: From<Vec<u8>>> ScalarZnx<D> {
-    pub(crate) fn bytes_of(n: usize, cols: usize) -> usize {
+impl<D: AsRef<[u8]>> ScalarZnx<D> {
+    pub fn bytes_of(n: usize, cols: usize) -> usize {
         n * cols * size_of::<i64>()
     }
+}
 
+impl<D: From<Vec<u8>> + AsRef<[u8]>> ScalarZnx<D> {
     pub fn new(n: usize, cols: usize) -> Self {
         let data: Vec<u8> = alloc_aligned::<u8>(Self::bytes_of(n, cols));
         Self {
@@ -128,11 +131,16 @@ impl<D: From<Vec<u8>>> ScalarZnx<D> {
     }
 }
 
-pub type ScalarZnxOwned = ScalarZnx<Vec<u8>>;
-
-pub(crate) fn bytes_of_scalar_znx<B: Backend>(module: &Module<B>, cols: usize) -> usize {
-    ScalarZnxOwned::bytes_of(module.n(), cols)
+impl<D: AsRef<[u8]> + AsMut<[u8]>> ZnxZero for ScalarZnx<D> {
+    fn zero(&mut self) {
+        self.raw_mut().fill(0)
+    }
+    fn zero_at(&mut self, i: usize, j: usize) {
+        self.at_mut(i, j).fill(0);
+    }
 }
+
+pub type ScalarZnxOwned = ScalarZnx<Vec<u8>>;
 
 pub trait ScalarZnxAlloc {
     fn bytes_of_scalar_znx(&self, cols: usize) -> usize;
@@ -265,6 +273,7 @@ where
             n: self.n,
             cols: self.cols,
             size: 1,
+            max_size: 1,
         }
     }
 }
@@ -279,6 +288,7 @@ where
             n: self.n,
             cols: self.cols,
             size: 1,
+            max_size: 1,
         }
     }
 }

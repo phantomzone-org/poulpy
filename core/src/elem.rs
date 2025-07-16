@@ -1,6 +1,4 @@
-use backend::{Backend, Module, ZnxInfos};
-
-use crate::FourierGLWECiphertext;
+use backend::ZnxInfos;
 
 pub trait Infos {
     type Inner: ZnxInfos;
@@ -53,16 +51,4 @@ pub trait Infos {
 pub trait SetMetaData {
     fn set_basek(&mut self, basek: usize);
     fn set_k(&mut self, k: usize);
-}
-
-pub trait GetRow<B: Backend> {
-    fn get_row<R>(&self, module: &Module<B>, row_i: usize, col_j: usize, res: &mut FourierGLWECiphertext<R, B>)
-    where
-        R: AsMut<[u8]> + AsRef<[u8]>;
-}
-
-pub trait SetRow<B: Backend> {
-    fn set_row<R>(&mut self, module: &Module<B>, row_i: usize, col_j: usize, a: &FourierGLWECiphertext<R, B>)
-    where
-        R: AsRef<[u8]>;
 }
