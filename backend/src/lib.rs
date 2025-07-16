@@ -325,7 +325,10 @@ impl Scratch {
         cols_in: usize,
         cols_out: usize,
         size: usize,
-    ) -> (MatZnxDftPrep<&mut [u8], B>, &mut Self) where Module<B>: MatZnxDftAlloc<B>{
+    ) -> (MatZnxDftPrep<&mut [u8], B>, &mut Self)
+    where
+        Module<B>: MatZnxDftAlloc<B>,
+    {
         let (take_slice, rem_slice) = Self::take_slice_aligned(
             &mut self.data,
             module.bytes_of_mat_znx_dft(rows, cols_in, cols_out, size),

@@ -136,6 +136,28 @@ where
     }
 }
 
+pub(crate) trait MatZnxDftPrepToMut<B: Backend> {
+    fn to_mut(&mut self) -> MatZnxDftPrep<&mut [u8], B>;
+}
+
+impl<D, B: Backend> MatZnxDftPrepToMut<B> for MatZnxDftPrep<D, B>
+where
+    D: AsRef<[u8]> + AsMut<[u8]>,
+    B: Backend,
+{
+    fn to_mut(&mut self) -> MatZnxDftPrep<&mut [u8], B> {
+        MatZnxDftPrep {
+            data: self.data.as_mut(),
+            n: self.n,
+            rows: self.rows,
+            cols_in: self.cols_in,
+            cols_out: self.cols_out,
+            size: self.size,
+            _phantom: std::marker::PhantomData,
+        }
+    }
+}
+
 impl<D, B: Backend> MatZnxDftPrep<D, B> {
     pub(crate) fn from_data(data: D, n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> Self {
         Self {

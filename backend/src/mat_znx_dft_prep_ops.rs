@@ -2,8 +2,8 @@ use crate::ffi::vec_znx_dft::vec_znx_dft_t;
 use crate::ffi::vmp;
 use crate::znx_base::{ZnxInfos, ZnxView, ZnxViewMut};
 use crate::{
-    Backend, FFT64, MatZnxDftPrep, MatZnxDftPrepOwned, MatZnxDftPrepToRef, Module, Scratch, VecZnxDft, VecZnxDftToMut,
-    VecZnxDftToRef,
+    Backend, DataViewMut, FFT64, MatZnxDft, MatZnxDftPrep, MatZnxDftPrepOwned, MatZnxDftPrepToMut, MatZnxDftPrepToRef,
+    MatZnxDftToRef, Module, Scratch, VecZnxDft, VecZnxDftToMut, VecZnxDftToRef,
 };
 
 pub trait MatZnxDftPrepAlloc<B: Backend> {
@@ -28,6 +28,8 @@ pub trait MatZnxDftPrepAlloc<B: Backend> {
 }
 
 pub trait MatZnxDftPrepScratch {
+    fn vmp_prepare_tmp_bytes(&self, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize;
+
     /// Returns the size of the stratch space necessary for [MatZnxDftOps::vmp_apply_dft_to_dft].
     fn vmp_apply_tmp_bytes(
         &self,
@@ -43,6 +45,11 @@ pub trait MatZnxDftPrepScratch {
 /// This trait implements methods for vector matrix product,
 /// that is, multiplying a [VecZnx] with a [MatZnxDft].
 pub trait MatZnxDftPrepOps<BACKEND: Backend> {
+    fn vmp_prepare<R, A>(&self, res: &mut R, a: &A, scratch: &mut Scratch)
+    where
+        R: MatZnxDftPrepToMut<BACKEND>,
+        A: MatZnxDftToRef<BACKEND>;
+
     /// Applies the vector matrix product [VecZnxDft] x [MatZnxDft].
     /// The size of `buf` is given by [MatZnxDftOps::vmp_apply_dft_to_dft_tmp_bytes].
     ///
@@ -104,6 +111,10 @@ impl<B: Backend> MatZnxDftPrepAlloc<B> for Module<B> {
 }
 
 impl<BACKEND: Backend> MatZnxDftPrepScratch for Module<BACKEND> {
+    fn vmp_prepare_tmp_bytes(&self, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize {
+        0
+    }
+
     fn vmp_apply_tmp_bytes(
         &self,
         res_size: usize,
@@ -126,6 +137,38 @@ impl<BACKEND: Backend> MatZnxDftPrepScratch for Module<BACKEND> {
 }
 
 impl MatZnxDftPrepOps<FFT64> for Module<FFT64> {
+    fn vmp_prepare<R, A>(&self, res: &mut R, a: &A, scratch: &mut Scratch)
+    where
+        R: MatZnxDftPrepToMut<FFT64>,
+        A: MatZnxDftToRef<FFT64>,
+    {
+        let mut res: MatZnxDftPrep<&mut [u8], _> = res.to_mut();
+        let a: MatZnxDft<&[u8], _> = a.to_ref();
+
+        #[cfg(debug_assertions)]
+        {
+            assert_eq!(res.n(), self.n());
+            assert_eq!(a.n(), self.n());
+            assert_eq!(res.cols_in(), a.cols_in());
+            assert_eq!(res.rows(), a.rows());
+            assert_eq!(res.cols_out(), a.cols_out());
+            assert_eq!(res.size(), a.size());
+        }
+
+        let (tmp_bytes, _) = scratch.tmp_slice(self.vmp_prepare_tmp_bytes(a.rows(), a.cols_in(), a.cols_out(), a.size()));
+
+        unsafe {
+            vmp::vmp_prepare_contiguous_dft(
+                self.ptr,
+                res.as_mut_ptr(),
+                a.as_ptr(),
+                (a.rows() * a.cols_in()),
+                (a.size() * a.cols_out()),
+                tmp_bytes.as_mut_ptr(),
+            );
+        }
+    }
+
     fn vmp_apply<R, A, B>(&self, res: &mut R, a: &A, b: &B, scratch: &mut Scratch)
     where
         R: VecZnxDftToMut<FFT64>,
