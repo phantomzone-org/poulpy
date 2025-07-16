@@ -1,4 +1,4 @@
-use backend::{Backend, FFT64, MatZnxDft, Module};
+use backend::{Backend, FFT64, MatZnxDftPrep, Module};
 
 use crate::{GLWESwitchingKey, Infos};
 
@@ -25,7 +25,7 @@ impl GLWETensorKey<Vec<u8>, FFT64> {
 }
 
 impl<T, B: Backend> Infos for GLWETensorKey<T, B> {
-    type Inner = MatZnxDft<T, B>;
+    type Inner = MatZnxDftPrep<T, B>;
 
     fn inner(&self) -> &Self::Inner {
         &self.keys[0].inner()

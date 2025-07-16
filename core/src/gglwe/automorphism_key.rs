@@ -1,4 +1,4 @@
-use backend::{Backend, FFT64, MatZnxDft, MatZnxDftOps, Module};
+use backend::{Backend, FFT64, MatZnxDftPrep, MatZnxDftOps, Module};
 
 use crate::{FourierGLWECiphertext, GLWESwitchingKey, GetRow, Infos, SetRow};
 
@@ -21,7 +21,7 @@ impl GLWEAutomorphismKey<Vec<u8>, FFT64> {
 }
 
 impl<T, B: Backend> Infos for GLWEAutomorphismKey<T, B> {
-    type Inner = MatZnxDft<T, B>;
+    type Inner = MatZnxDftPrep<T, B>;
 
     fn inner(&self) -> &Self::Inner {
         &self.key.inner()

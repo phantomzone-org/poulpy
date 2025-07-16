@@ -4,6 +4,8 @@ pub mod encoding;
 pub mod ffi;
 pub mod mat_znx_dft;
 pub mod mat_znx_dft_ops;
+pub mod mat_znx_dft_prep;
+pub mod mat_znx_dft_prep_ops;
 pub mod module;
 pub mod sampling;
 pub mod scalar_znx;
@@ -21,6 +23,8 @@ pub mod znx_base;
 pub use encoding::*;
 pub use mat_znx_dft::*;
 pub use mat_znx_dft_ops::*;
+pub use mat_znx_dft_prep::*;
+pub use mat_znx_dft_prep_ops::*;
 pub use module::*;
 pub use sampling::*;
 pub use scalar_znx::*;
@@ -287,6 +291,24 @@ impl Scratch {
         (slice, scratch)
     }
 
+    pub fn tmp_mat_znx_dft_prep<B: Backend>(
+        &mut self,
+        module: &Module<B>,
+        rows: usize,
+        cols_in: usize,
+        cols_out: usize,
+        size: usize,
+    ) -> (MatZnxDftPrep<&mut [u8], B>, &mut Self) {
+        let (take_slice, rem_slice) = Self::take_slice_aligned(
+            &mut self.data,
+            module.bytes_of_mat_znx_dft_prep(rows, cols_in, cols_out, size),
+        );
+        (
+            MatZnxDftPrep::from_data(take_slice, module.n(), rows, cols_in, cols_out, size),
+            Self::new(rem_slice),
+        )
+    }
+
     pub fn tmp_mat_znx_dft<B: Backend>(
         &mut self,
         module: &Module<B>,
@@ -294,13 +316,13 @@ impl Scratch {
         cols_in: usize,
         cols_out: usize,
         size: usize,
-    ) -> (MatZnxDft<&mut [u8], B>, &mut Self) {
+    ) -> (MatZnxDftPrep<&mut [u8], B>, &mut Self) {
         let (take_slice, rem_slice) = Self::take_slice_aligned(
             &mut self.data,
             module.bytes_of_mat_znx_dft(rows, cols_in, cols_out, size),
         );
         (
-            MatZnxDft::from_data(take_slice, module.n(), rows, cols_in, cols_out, size),
+            MatZnxDftPrep::from_data(take_slice, module.n(), rows, cols_in, cols_out, size),
             Self::new(rem_slice),
         )
     }

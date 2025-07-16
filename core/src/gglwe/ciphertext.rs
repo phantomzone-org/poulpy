@@ -1,9 +1,9 @@
-use backend::{Backend, FFT64, MatZnxDft, MatZnxDftAlloc, MatZnxDftOps, Module};
+use backend::{Backend, FFT64, MatZnxDftPrep, MatZnxDftAlloc, MatZnxDftOps, Module};
 
 use crate::{FourierGLWECiphertext, GetRow, Infos, SetRow};
 
 pub struct GGLWECiphertext<C, B: Backend> {
-    pub(crate) data: MatZnxDft<C, B>,
+    pub(crate) data: MatZnxDftPrep<C, B>,
     pub(crate) basek: usize,
     pub(crate) k: usize,
     pub(crate) digits: usize,
@@ -73,7 +73,7 @@ impl<B: Backend> GGLWECiphertext<Vec<u8>, B> {
 }
 
 impl<T, B: Backend> Infos for GGLWECiphertext<T, B> {
-    type Inner = MatZnxDft<T, B>;
+    type Inner = MatZnxDftPrep<T, B>;
 
     fn inner(&self) -> &Self::Inner {
         &self.data

@@ -1,9 +1,10 @@
 use crate::znx_base::ZnxInfos;
-use crate::{alloc_aligned, Backend, DataView, DataViewMut, Module, VecZnxDft, VecZnxDftAlloc, ZnxSliceSize, ZnxView, FFT64};
+use crate::{MatZnxDft, Backend, DataView, DataViewMut, FFT64, Module, ZnxSliceSize, ZnxView, alloc_aligned};
 use std::marker::PhantomData;
 
-/// A matrix of [VecZnxDft].
-pub struct MatZnxDft<D, B: Backend> {
+/// An opaque version of [MatZnxDft], which is prepared for a specific backend, to be
+/// given as right operand of [vmp_apply].
+pub struct MatZnxDftPrep<D, B: Backend> {
     data: D,
     n: usize,
     size: usize,
@@ -13,7 +14,7 @@ pub struct MatZnxDft<D, B: Backend> {
     _phantom: PhantomData<B>,
 }
 
-impl<D, B: Backend> ZnxInfos for MatZnxDft<D, B> {
+impl<D, B: Backend> ZnxInfos for MatZnxDftPrep<D, B> {
     fn cols(&self) -> usize {
         self.cols_in
     }
@@ -31,30 +32,30 @@ impl<D, B: Backend> ZnxInfos for MatZnxDft<D, B> {
     }
 }
 
-impl<D> ZnxSliceSize for MatZnxDft<D, FFT64> {
+impl<D> ZnxSliceSize for MatZnxDftPrep<D, FFT64> {
     fn sl(&self) -> usize {
         self.n() * self.cols_out()
     }
 }
 
-impl<D, B: Backend> DataView for MatZnxDft<D, B> {
+impl<D, B: Backend> DataView for MatZnxDftPrep<D, B> {
     type D = D;
     fn data(&self) -> &Self::D {
         &self.data
     }
 }
 
-impl<D, B: Backend> DataViewMut for MatZnxDft<D, B> {
+impl<D, B: Backend> DataViewMut for MatZnxDftPrep<D, B> {
     fn data_mut(&mut self) -> &mut Self::D {
         &mut self.data
     }
 }
 
-impl<D: AsRef<[u8]>> ZnxView for MatZnxDft<D, FFT64> {
+impl<D: AsRef<[u8]>> ZnxView for MatZnxDftPrep<D, FFT64> {
     type Scalar = f64;
 }
 
-impl<D, B: Backend> MatZnxDft<D, B> {
+impl<D, B: Backend> MatZnxDftPrep<D, B> {
     pub fn cols_in(&self) -> usize {
         self.cols_in
     }
@@ -64,9 +65,15 @@ impl<D, B: Backend> MatZnxDft<D, B> {
     }
 }
 
-impl<D: From<Vec<u8>>, B: Backend> MatZnxDft<D, B> {
+impl<D: From<Vec<u8>>, B: Backend> MatZnxDftPrep<D, B> {
     pub(crate) fn bytes_of(module: &Module<B>, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize {
-        rows * cols_in * module.bytes_of_vec_znx_dft(cols_out, size)
+        unsafe {
+            crate::ffi::vmp::bytes_of_vmp_pmat(
+                module.ptr,
+                (rows * cols_in) as u64,
+                (size * cols_out) as u64,
+            ) as usize
+        }
     }
 
     pub(crate) fn new(module: &Module<B>, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> Self {
@@ -104,33 +111,20 @@ impl<D: From<Vec<u8>>, B: Backend> MatZnxDft<D, B> {
     }
 }
 
-impl<D: AsRef<[u8]>> MatZnxDft<D, FFT64>{
-    pub fn at_row(&self, row: usize, col: usize) -> VecZnxDft<D, B>{
-        VecZnxDft{
-            data: self.at(i, j),
-            n: self.n,
-            cols: self.cols_out(),
-            size: self.size(),
-            _phantom: std::marker::PhantomData,
-        }
-    }
+pub type MatZnxDftPrepOwned<B> = MatZnxDftPrep<Vec<u8>, B>;
+pub type MatZnxDftPrepRef<'a, B> = MatZnxDftPrep<&'a [u8], B>;
+
+pub trait MatZnxDftPrepToRef<B: Backend> {
+    fn to_ref(&self) -> MatZnxDftPrep<&[u8], B>;
 }
 
-pub type MatZnxDftOwned<B> = MatZnxDft<Vec<u8>, B>;
-pub type MatZnxDftMut<'a, B> = MatZnxDft<&'a mut [u8], B>;
-pub type MatZnxDftRef<'a, B> = MatZnxDft<&'a [u8], B>;
-
-pub trait MatZnxToRef<B: Backend> {
-    fn to_ref(&self) -> MatZnxDft<&[u8], B>;
-}
-
-impl<D, B: Backend> MatZnxToRef<B> for MatZnxDft<D, B>
+impl<D, B: Backend> MatZnxDftPrepToRef<B> for MatZnxDftPrep<D, B>
 where
     D: AsRef<[u8]>,
     B: Backend,
 {
-    fn to_ref(&self) -> MatZnxDft<&[u8], B> {
-        MatZnxDft {
+    fn to_ref(&self) -> MatZnxDftPrep<&[u8], B> {
+        MatZnxDftPrep {
             data: self.data.as_ref(),
             n: self.n,
             rows: self.rows,
@@ -142,29 +136,7 @@ where
     }
 }
 
-pub trait MatZnxToMut<B: Backend> {
-    fn to_mut(&mut self) -> MatZnxDft<&mut [u8], B>;
-}
-
-impl<D, B: Backend> MatZnxToMut<B> for MatZnxDft<D, B>
-where
-    D: AsRef<[u8]> + AsMut<[u8]>,
-    B: Backend,
-{
-    fn to_mut(&mut self) -> MatZnxDft<&mut [u8], B> {
-        MatZnxDft {
-            data: self.data.as_mut(),
-            n: self.n,
-            rows: self.rows,
-            cols_in: self.cols_in,
-            cols_out: self.cols_out,
-            size: self.size,
-            _phantom: std::marker::PhantomData,
-        }
-    }
-}
-
-impl<D, B: Backend> MatZnxDft<D, B> {
+impl<D, B: Backend> MatZnxDftPrep<D, B> {
     pub(crate) fn from_data(data: D, n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> Self {
         Self {
             data,
