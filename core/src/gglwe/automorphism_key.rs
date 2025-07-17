@@ -1,27 +1,27 @@
-use backend::{Backend, FFT64, MatZnxDftOps, MatZnxDftPrep, Module};
+use backend::{Backend, MatZnx, Module};
 
-use crate::{FourierGLWECiphertext, GLWESwitchingKey, GetRow, Infos, SetRow};
+use crate::{GLWECiphertext, GLWESwitchingKey, Infos};
 
-pub struct GLWEAutomorphismKey<Data, B: Backend> {
-    pub(crate) key: GLWESwitchingKey<Data, B>,
+pub struct GLWEAutomorphismKey<D> {
+    pub(crate) key: GLWESwitchingKey<D>,
     pub(crate) p: i64,
 }
 
-impl GLWEAutomorphismKey<Vec<u8>, FFT64> {
-    pub fn alloc(module: &Module<FFT64>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self {
+impl GLWEAutomorphismKey<Vec<u8>> {
+    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self {
         GLWEAutomorphismKey {
             key: GLWESwitchingKey::alloc(module, basek, k, rows, digits, rank, rank),
             p: 0,
         }
     }
 
-    pub fn bytes_of(module: &Module<FFT64>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize {
-        GLWESwitchingKey::<Vec<u8>, FFT64>::bytes_of(module, basek, k, rows, digits, rank, rank)
+    pub fn bytes_of<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize {
+        GLWESwitchingKey::<Vec<u8>>::bytes_of(module, basek, k, rows, digits, rank, rank)
     }
 }
 
-impl<T, B: Backend> Infos for GLWEAutomorphismKey<T, B> {
-    type Inner = MatZnxDftPrep<T, B>;
+impl<D> Infos for GLWEAutomorphismKey<D> {
+    type Inner = MatZnx<D>;
 
     fn inner(&self) -> &Self::Inner {
         &self.key.inner()
@@ -36,7 +36,7 @@ impl<T, B: Backend> Infos for GLWEAutomorphismKey<T, B> {
     }
 }
 
-impl<T, B: Backend> GLWEAutomorphismKey<T, B> {
+impl<D> GLWEAutomorphismKey<D> {
     pub fn p(&self) -> i64 {
         self.p
     }
@@ -58,26 +58,14 @@ impl<T, B: Backend> GLWEAutomorphismKey<T, B> {
     }
 }
 
-impl<C: AsRef<[u8]>> GetRow<FFT64> for GLWEAutomorphismKey<C, FFT64> {
-    fn get_row<R: AsMut<[u8]> + AsRef<[u8]>>(
-        &self,
-        module: &Module<FFT64>,
-        row_i: usize,
-        col_j: usize,
-        res: &mut FourierGLWECiphertext<R, FFT64>,
-    ) {
-        module.mat_znx_dft_get_row(&mut res.data, &self.key.key.data, row_i, col_j);
+impl<D: AsRef<[u8]>> GLWEAutomorphismKey<D> {
+    pub fn at(&self, row: usize, col: usize) -> GLWECiphertext<&[u8]> {
+        self.key.at(row, col)
     }
 }
 
-impl<C: AsMut<[u8]> + AsRef<[u8]>> SetRow<FFT64> for GLWEAutomorphismKey<C, FFT64> {
-    fn set_row<R: AsRef<[u8]>>(
-        &mut self,
-        module: &Module<FFT64>,
-        row_i: usize,
-        col_j: usize,
-        a: &FourierGLWECiphertext<R, FFT64>,
-    ) {
-        module.mat_znx_dft_set_row(&mut self.key.key.data, row_i, col_j, &a.data);
+impl<D: AsMut<[u8]> + AsRef<[u8]>> GLWEAutomorphismKey<D> {
+    pub fn at_mut(&mut self, row: usize, col: usize) -> GLWECiphertext<&mut [u8]> {
+        self.key.at_mut(row, col)
     }
 }

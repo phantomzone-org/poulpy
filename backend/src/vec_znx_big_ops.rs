@@ -1,8 +1,8 @@
 use crate::ffi::vec_znx;
 use crate::znx_base::{ZnxInfos, ZnxView, ZnxViewMut};
 use crate::{
-    Backend, FFT64, Module, Scratch, VecZnx, VecZnxBig, VecZnxBigOwned, VecZnxBigToMut, VecZnxBigToRef, VecZnxScratch,
-    VecZnxToMut, VecZnxToRef, ZnxSliceSize, bytes_of_vec_znx_big,
+    Backend, FFT64, Module, NTT120, Scratch, VecZnx, VecZnxBig, VecZnxBigBytesOf, VecZnxBigOwned, VecZnxBigToMut, VecZnxBigToRef,
+    VecZnxScratch, VecZnxToMut, VecZnxToRef, ZnxSliceSize,
 };
 
 pub trait VecZnxBigAlloc<B: Backend> {
@@ -22,20 +22,6 @@ pub trait VecZnxBigAlloc<B: Backend> {
     /// # Panics
     /// If `bytes.len()` < [Module::bytes_of_vec_znx_big].
     fn new_vec_znx_big_from_bytes(&self, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxBigOwned<B>;
-
-    // /// Returns a new [VecZnxBig] with the provided bytes array as backing array.
-    // ///
-    // /// Behavior: the backing array is only borrowed.
-    // ///
-    // /// # Arguments
-    // ///
-    // /// * `cols`: the number of polynomials..
-    // /// * `size`: the number of polynomials per column.
-    // /// * `bytes`: a byte array of size at least [Module::bytes_of_vec_znx_big].
-    // ///
-    // /// # Panics
-    // /// If `bytes.len()` < [Module::bytes_of_vec_znx_big].
-    // fn new_vec_znx_big_from_bytes_borrow(&self, cols: usize, size: usize, tmp_bytes: &mut [u8]) -> VecZnxBig<B>;
 
     /// Returns the minimum number of bytes necessary to allocate
     /// a new [VecZnxBig] through [VecZnxBig::from_bytes].
@@ -128,7 +114,7 @@ pub trait VecZnxBigOps<BACKEND: Backend> {
     fn vec_znx_big_normalize<R, A>(&self, basek: usize, res: &mut R, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch)
     where
         R: VecZnxToMut,
-        A: VecZnxBigToRef<FFT64>;
+        A: VecZnxBigToRef<BACKEND>;
 
     /// Applies the automorphism X^i -> X^ik on `a` and stores the result on `b`.
     fn vec_znx_big_automorphism<R, A>(&self, k: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
@@ -147,17 +133,20 @@ pub trait VecZnxBigScratch {
     fn vec_znx_big_normalize_tmp_bytes(&self) -> usize;
 }
 
-impl<B: Backend> VecZnxBigAlloc<B> for Module<B> {
+impl<B: Backend> VecZnxBigAlloc<B> for Module<B>
+where
+    VecZnxBig<Vec<u8>, B>: VecZnxBigBytesOf<B>,
+{
     fn new_vec_znx_big(&self, cols: usize, size: usize) -> VecZnxBigOwned<B> {
-        VecZnxBig::new(self, cols, size)
+        VecZnxBig::new(self.n(), cols, size)
     }
 
     fn new_vec_znx_big_from_bytes(&self, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxBigOwned<B> {
-        VecZnxBig::new_from_bytes(self, cols, size, bytes)
+        VecZnxBig::new_from_bytes(self.n(), cols, size, bytes)
     }
 
     fn bytes_of_vec_znx_big(&self, cols: usize, size: usize) -> usize {
-        bytes_of_vec_znx_big(self, cols, size)
+        VecZnxBig::bytes_of(self.n(), cols, size)
     }
 }
 
@@ -608,6 +597,132 @@ impl VecZnxBigOps<FFT64> for Module<FFT64> {
                 a.sl() as u64,
             )
         }
+    }
+}
+
+#[allow(unused_variables)]
+impl VecZnxBigOps<NTT120> for Module<NTT120> {
+    fn vec_znx_big_add<R, A, B>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
+    where
+        R: VecZnxBigToMut<NTT120>,
+        A: VecZnxBigToRef<NTT120>,
+        B: VecZnxBigToRef<NTT120>,
+    {
+        unimplemented!();
+    }
+
+    fn vec_znx_big_add_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    where
+        R: VecZnxBigToMut<NTT120>,
+        A: VecZnxBigToRef<NTT120>,
+    {
+        unimplemented!();
+    }
+
+    fn vec_znx_big_sub<R, A, B>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
+    where
+        R: VecZnxBigToMut<NTT120>,
+        A: VecZnxBigToRef<NTT120>,
+        B: VecZnxBigToRef<NTT120>,
+    {
+        unimplemented!();
+    }
+
+    fn vec_znx_big_sub_ab_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    where
+        R: VecZnxBigToMut<NTT120>,
+        A: VecZnxBigToRef<NTT120>,
+    {
+        unimplemented!();
+    }
+
+    fn vec_znx_big_sub_ba_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    where
+        R: VecZnxBigToMut<NTT120>,
+        A: VecZnxBigToRef<NTT120>,
+    {
+        unimplemented!();
+    }
+
+    fn vec_znx_big_sub_small_b<R, A, B>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
+    where
+        R: VecZnxBigToMut<NTT120>,
+        A: VecZnxBigToRef<NTT120>,
+        B: VecZnxToRef,
+    {
+        unimplemented!();
+    }
+
+    fn vec_znx_big_sub_small_b_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    where
+        R: VecZnxBigToMut<NTT120>,
+        A: VecZnxToRef,
+    {
+        unimplemented!();
+    }
+
+    fn vec_znx_big_sub_small_a<R, A, B>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
+    where
+        R: VecZnxBigToMut<NTT120>,
+        A: VecZnxToRef,
+        B: VecZnxBigToRef<NTT120>,
+    {
+        unimplemented!();
+    }
+
+    fn vec_znx_big_sub_small_a_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    where
+        R: VecZnxBigToMut<NTT120>,
+        A: VecZnxToRef,
+    {
+        unimplemented!();
+    }
+
+    fn vec_znx_big_add_small<R, A, B>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
+    where
+        R: VecZnxBigToMut<NTT120>,
+        A: VecZnxBigToRef<NTT120>,
+        B: VecZnxToRef,
+    {
+        unimplemented!();
+    }
+
+    fn vec_znx_big_add_small_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    where
+        R: VecZnxBigToMut<NTT120>,
+        A: VecZnxToRef,
+    {
+        unimplemented!();
+    }
+
+    fn vec_znx_big_negate_inplace<A>(&self, a: &mut A, a_col: usize)
+    where
+        A: VecZnxBigToMut<NTT120>,
+    {
+        unimplemented!();
+    }
+
+    fn vec_znx_big_normalize<R, A>(&self, basek: usize, res: &mut R, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch)
+    where
+        R: VecZnxToMut,
+        A: VecZnxBigToRef<NTT120>,
+    {
+        unimplemented!();
+    }
+
+    fn vec_znx_big_automorphism<R, A>(&self, k: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    where
+        R: VecZnxBigToMut<NTT120>,
+        A: VecZnxBigToRef<NTT120>,
+    {
+        unimplemented!();
+    }
+
+    fn vec_znx_big_automorphism_inplace<A>(&self, k: i64, a: &mut A, a_col: usize)
+    where
+        A: VecZnxBigToMut<NTT120>,
+    {
+        unimplemented!();
     }
 }
 

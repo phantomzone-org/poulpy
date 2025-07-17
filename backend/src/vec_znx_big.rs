@@ -1,6 +1,5 @@
-use crate::ffi::vec_znx_big;
 use crate::znx_base::{ZnxInfos, ZnxView};
-use crate::{Backend, DataView, DataViewMut, FFT64, Module, VecZnx, ZnxSliceSize, ZnxViewMut, ZnxZero, alloc_aligned};
+use crate::{Backend, DataView, DataViewMut, FFT64, NTT120, VecZnx, ZnxSliceSize, ZnxViewMut, ZnxZero, alloc_aligned};
 use std::fmt;
 use std::marker::PhantomData;
 
@@ -36,6 +35,12 @@ impl<D> ZnxSliceSize for VecZnxBig<D, FFT64> {
     }
 }
 
+impl<D> ZnxSliceSize for VecZnxBig<D, NTT120> {
+    fn sl(&self) -> usize {
+        4 * self.n() * self.cols()
+    }
+}
+
 impl<D, B: Backend> DataView for VecZnxBig<D, B> {
     type D = D;
     fn data(&self) -> &Self::D {
@@ -53,28 +58,47 @@ impl<D: AsRef<[u8]>> ZnxView for VecZnxBig<D, FFT64> {
     type Scalar = i64;
 }
 
-pub(crate) fn bytes_of_vec_znx_big<B: Backend>(module: &Module<B>, cols: usize, size: usize) -> usize {
-    unsafe { vec_znx_big::bytes_of_vec_znx_big(module.ptr, size as u64) as usize * cols }
+impl<D: AsRef<[u8]>> ZnxView for VecZnxBig<D, NTT120> {
+    type Scalar = i64;
 }
 
-impl<D: From<Vec<u8>>, B: Backend> VecZnxBig<D, B> {
-    pub(crate) fn new(module: &Module<B>, cols: usize, size: usize) -> Self {
-        let data = alloc_aligned::<u8>(bytes_of_vec_znx_big(module, cols, size));
+pub trait VecZnxBigBytesOf<B: Backend> {
+    fn bytes_of(n: usize, cols: usize, size: usize) -> usize;
+}
+
+impl<D: AsRef<[u8]>> VecZnxBigBytesOf<FFT64> for VecZnxBig<D, FFT64> {
+    fn bytes_of(n: usize, cols: usize, size: usize) -> usize {
+        n * cols * size * size_of::<f64>()
+    }
+}
+
+impl<D: AsRef<[u8]>> VecZnxBigBytesOf<NTT120> for VecZnxBig<D, NTT120> {
+    fn bytes_of(n: usize, cols: usize, size: usize) -> usize {
+        4 * n * cols * size * size_of::<i64>()
+    }
+}
+
+impl<D: From<Vec<u8>> + AsRef<[u8]>, B: Backend> VecZnxBig<D, B>
+where
+    VecZnxBig<D, B>: VecZnxBigBytesOf<B>,
+{
+    pub(crate) fn new(n: usize, cols: usize, size: usize) -> Self {
+        let data = alloc_aligned::<u8>(Self::bytes_of(n, cols, size));
         Self {
             data: data.into(),
-            n: module.n(),
+            n,
             cols,
             size,
             _phantom: PhantomData,
         }
     }
 
-    pub(crate) fn new_from_bytes(module: &Module<B>, cols: usize, size: usize, bytes: impl Into<Vec<u8>>) -> Self {
+    pub(crate) fn new_from_bytes(n: usize, cols: usize, size: usize, bytes: impl Into<Vec<u8>>) -> Self {
         let data: Vec<u8> = bytes.into();
-        assert!(data.len() == bytes_of_vec_znx_big(module, cols, size));
+        assert!(data.len() == Self::bytes_of(n, cols, size));
         Self {
             data: data.into(),
-            n: module.n(),
+            n,
             cols,
             size,
             _phantom: PhantomData,

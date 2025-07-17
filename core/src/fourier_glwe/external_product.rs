@@ -1,9 +1,9 @@
 use backend::{
-    FFT64, MatZnxDftOps, MatZnxDftScratch, Module, Scratch, VecZnxAlloc, VecZnxBig, VecZnxBigOps, VecZnxBigScratch,
+    FFT64, MatZnxDftPrepOps, MatZnxDftPrepScratch, Module, Scratch, VecZnxAlloc, VecZnxBig, VecZnxBigOps, VecZnxBigScratch,
     VecZnxDftAlloc, VecZnxDftOps,
 };
 
-use crate::{FourierGLWECiphertext, GGSWCiphertext, Infos};
+use crate::{FourierGLWECiphertext, Infos, ggsw::ciphertext_prep::GGSWCiphertextPrep};
 
 impl FourierGLWECiphertext<Vec<u8>, FFT64> {
     // WARNING TODO: UPDATE
@@ -44,7 +44,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> FourierGLWECiphertext<DataSelf, FFT64>
         &mut self,
         module: &Module<FFT64>,
         lhs: &FourierGLWECiphertext<DataLhs, FFT64>,
-        rhs: &GGSWCiphertext<DataRhs, FFT64>,
+        rhs: &GGSWCiphertextPrep<DataRhs, FFT64>,
         scratch: &mut Scratch,
     ) {
         let basek: usize = self.basek();
@@ -118,7 +118,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> FourierGLWECiphertext<DataSelf, FFT64>
     pub fn external_product_inplace<DataRhs: AsRef<[u8]>>(
         &mut self,
         module: &Module<FFT64>,
-        rhs: &GGSWCiphertext<DataRhs, FFT64>,
+        rhs: &GGSWCiphertextPrep<DataRhs, FFT64>,
         scratch: &mut Scratch,
     ) {
         unsafe {

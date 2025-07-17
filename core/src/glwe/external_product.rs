@@ -1,5 +1,6 @@
 use backend::{
-    FFT64, MatZnxDftOps, MatZnxDftScratch, Module, Scratch, VecZnxBig, VecZnxBigOps, VecZnxDftAlloc, VecZnxDftOps, VecZnxScratch,
+    FFT64, MatZnxDftPrepOps, MatZnxDftPrepScratch, Module, Scratch, VecZnxBig, VecZnxBigOps, VecZnxDftAlloc, VecZnxDftOps,
+    VecZnxScratch,
 };
 
 use crate::{GGSWCiphertext, GLWECiphertext, Infos};

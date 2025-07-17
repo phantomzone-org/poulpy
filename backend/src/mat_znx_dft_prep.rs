@@ -1,5 +1,5 @@
 use crate::znx_base::ZnxInfos;
-use crate::{Backend, DataView, DataViewMut, FFT64, MatZnxDft, Module, ZnxSliceSize, ZnxView, alloc_aligned};
+use crate::{Backend, DataView, DataViewMut, FFT64, Module, NTT120, ZnxSliceSize, ZnxView, alloc_aligned};
 use std::marker::PhantomData;
 
 /// An opaque version of [MatZnxDft], which is prepared for a specific backend, to be
@@ -38,6 +38,12 @@ impl<D> ZnxSliceSize for MatZnxDftPrep<D, FFT64> {
     }
 }
 
+impl<D> ZnxSliceSize for MatZnxDftPrep<D, NTT120> {
+    fn sl(&self) -> usize {
+        4 * self.n() * self.cols_out()
+    }
+}
+
 impl<D, B: Backend> DataView for MatZnxDftPrep<D, B> {
     type D = D;
     fn data(&self) -> &Self::D {
@@ -53,6 +59,10 @@ impl<D, B: Backend> DataViewMut for MatZnxDftPrep<D, B> {
 
 impl<D: AsRef<[u8]>> ZnxView for MatZnxDftPrep<D, FFT64> {
     type Scalar = f64;
+}
+
+impl<D: AsRef<[u8]>> ZnxView for MatZnxDftPrep<D, NTT120> {
+    type Scalar = i64;
 }
 
 impl<D, B: Backend> MatZnxDftPrep<D, B> {
@@ -136,7 +146,7 @@ where
     }
 }
 
-pub(crate) trait MatZnxDftPrepToMut<B: Backend> {
+pub trait MatZnxDftPrepToMut<B: Backend> {
     fn to_mut(&mut self) -> MatZnxDftPrep<&mut [u8], B>;
 }
 

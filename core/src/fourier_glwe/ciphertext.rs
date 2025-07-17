@@ -1,4 +1,4 @@
-use backend::{Backend, Module, VecZnxDft, VecZnxDftAlloc};
+use backend::{Backend, Module, VecZnxDft, VecZnxDftAlloc, VecZnxDftBytesOf};
 
 use crate::Infos;
 
@@ -8,7 +8,10 @@ pub struct FourierGLWECiphertext<C, B: Backend> {
     pub k: usize,
 }
 
-impl<B: Backend> FourierGLWECiphertext<Vec<u8>, B> {
+impl<B: Backend> FourierGLWECiphertext<Vec<u8>, B>
+where
+    VecZnxDft<Vec<u8>, B>: VecZnxDftBytesOf<Vec<u8>, B>,
+{
     pub fn alloc(module: &Module<B>, basek: usize, k: usize, rank: usize) -> Self {
         Self {
             data: module.new_vec_znx_dft(rank + 1, k.div_ceil(basek)),

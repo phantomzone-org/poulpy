@@ -1,10 +1,13 @@
-use backend::{FFT64, Module, Scratch, ZnxZero};
+use backend::{Backend, FFT64, Module, Scratch, ZnxZero};
 
-use crate::{FourierGLWECiphertext, GLWEAutomorphismKey, GLWESwitchingKey, GetRow, Infos, ScratchCore, SetRow};
+use crate::{
+    FourierGLWECiphertext, GLWEAutomorphismKey, GLWEAutomorphismKeyPrep, GLWESwitchingKey, GLWESwitchingKeyPrep, GetRow, Infos,
+    ScratchCore, SetRow,
+};
 
-impl GLWEAutomorphismKey<Vec<u8>, FFT64> {
-    pub fn keyswitch_scratch_space(
-        module: &Module<FFT64>,
+impl GLWEAutomorphismKey<Vec<u8>> {
+    pub fn keyswitch_scratch_space<B: Backend>(
+        module: &Module<B>,
         basek: usize,
         k_out: usize,
         k_in: usize,
@@ -15,8 +18,8 @@ impl GLWEAutomorphismKey<Vec<u8>, FFT64> {
         GLWESwitchingKey::keyswitch_scratch_space(module, basek, k_out, k_in, k_ksk, digits, rank, rank)
     }
 
-    pub fn keyswitch_inplace_scratch_space(
-        module: &Module<FFT64>,
+    pub fn keyswitch_inplace_scratch_space<B: Backend>(
+        module: &Module<B>,
         basek: usize,
         k_out: usize,
         k_ksk: usize,
@@ -27,30 +30,30 @@ impl GLWEAutomorphismKey<Vec<u8>, FFT64> {
     }
 }
 
-impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWEAutomorphismKey<DataSelf, FFT64> {
-    pub fn keyswitch<DataLhs: AsRef<[u8]>, DataRhs: AsRef<[u8]>>(
+impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWEAutomorphismKey<DataSelf> {
+    pub fn keyswitch<DataLhs: AsRef<[u8]>, DataRhs: AsRef<[u8]>, B: Backend>(
         &mut self,
-        module: &Module<FFT64>,
-        lhs: &GLWEAutomorphismKey<DataLhs, FFT64>,
-        rhs: &GLWESwitchingKey<DataRhs, FFT64>,
+        module: &Module<B>,
+        lhs: &GLWEAutomorphismKey<DataLhs>,
+        rhs: &GLWESwitchingKeyPrep<DataRhs, B>,
         scratch: &mut Scratch,
     ) {
         self.key.keyswitch(module, &lhs.key, rhs, scratch);
     }
 
-    pub fn keyswitch_inplace<DataRhs: AsRef<[u8]>>(
+    pub fn keyswitch_inplace<DataRhs: AsRef<[u8]>, B: Backend>(
         &mut self,
         module: &Module<FFT64>,
-        rhs: &GLWEAutomorphismKey<DataRhs, FFT64>,
+        rhs: &GLWEAutomorphismKeyPrep<DataRhs, B>,
         scratch: &mut Scratch,
     ) {
         self.key.keyswitch_inplace(module, &rhs.key, scratch);
     }
 }
 
-impl GLWESwitchingKey<Vec<u8>, FFT64> {
-    pub fn keyswitch_scratch_space(
-        module: &Module<FFT64>,
+impl GLWESwitchingKey<Vec<u8>> {
+    pub fn keyswitch_scratch_space<B: Backend>(
+        module: &Module<B>,
         basek: usize,
         k_out: usize,
         k_in: usize,
@@ -66,8 +69,8 @@ impl GLWESwitchingKey<Vec<u8>, FFT64> {
         tmp_in + tmp_out + ksk
     }
 
-    pub fn keyswitch_inplace_scratch_space(
-        module: &Module<FFT64>,
+    pub fn keyswitch_inplace_scratch_space<B: Backend>(
+        module: &Module<B>,
         basek: usize,
         k_out: usize,
         k_ksk: usize,
@@ -80,12 +83,12 @@ impl GLWESwitchingKey<Vec<u8>, FFT64> {
     }
 }
 
-impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<DataSelf, FFT64> {
-    pub fn keyswitch<DataLhs: AsRef<[u8]>, DataRhs: AsRef<[u8]>>(
+impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<DataSelf> {
+    pub fn keyswitch<DataLhs: AsRef<[u8]>, DataRhs: AsRef<[u8]>, B: Backend>(
         &mut self,
-        module: &Module<FFT64>,
-        lhs: &GLWESwitchingKey<DataLhs, FFT64>,
-        rhs: &GLWESwitchingKey<DataRhs, FFT64>,
+        module: &Module<B>,
+        lhs: &GLWESwitchingKey<DataLhs>,
+        rhs: &GLWESwitchingKeyPrep<DataRhs, B>,
         scratch: &mut Scratch,
     ) {
         #[cfg(debug_assertions)]
@@ -133,10 +136,10 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<DataSelf, FFT64> {
         });
     }
 
-    pub fn keyswitch_inplace<DataRhs: AsRef<[u8]>>(
+    pub fn keyswitch_inplace<DataRhs: AsRef<[u8]>, B: Backend>(
         &mut self,
-        module: &Module<FFT64>,
-        rhs: &GLWESwitchingKey<DataRhs, FFT64>,
+        module: &Module<B>,
+        rhs: &GLWESwitchingKeyPrep<DataRhs, B>,
         scratch: &mut Scratch,
     ) {
         #[cfg(debug_assertions)]
@@ -154,9 +157,8 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<DataSelf, FFT64> {
 
         (0..self.rank_in()).for_each(|col_i| {
             (0..self.rows()).for_each(|row_j| {
-                self.get_row(module, row_j, col_i, &mut tmp);
-                tmp.keyswitch_inplace(module, rhs, scratch1);
-                self.set_row(module, row_j, col_i, &tmp);
+                self.at_mut(row_j, col_i)
+                    .keyswitch_inplace(module, rhs, scratch1)
             });
         });
     }

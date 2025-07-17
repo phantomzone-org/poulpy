@@ -1,8 +1,11 @@
 use std::collections::HashMap;
 
-use backend::{FFT64, Module, Scratch};
+use backend::{Backend, FFT64, Module, Scratch};
 
-use crate::{GLWEAutomorphismKey, GLWECiphertext, GLWECiphertextToMut, GLWECiphertextToRef, GLWEOps, Infos, SetMetaData};
+use crate::{
+    GLWEAutomorphismKey, GLWEAutomorphismKeyPrep, GLWECiphertext, GLWECiphertextToMut, GLWECiphertextToRef, GLWEOps, Infos,
+    SetMetaData,
+};
 
 impl GLWECiphertext<Vec<u8>> {
     pub fn trace_galois_elements(module: &Module<FFT64>) -> Vec<i64> {
@@ -45,13 +48,13 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf>
 where
     GLWECiphertext<DataSelf>: GLWECiphertextToMut + Infos + SetMetaData,
 {
-    pub fn trace<DataLhs: AsRef<[u8]>, DataAK: AsRef<[u8]>>(
+    pub fn trace<DataLhs: AsRef<[u8]>, DataAK: AsRef<[u8]>, B: Backend>(
         &mut self,
-        module: &Module<FFT64>,
+        module: &Module<B>,
         start: usize,
         end: usize,
         lhs: &GLWECiphertext<DataLhs>,
-        auto_keys: &HashMap<i64, GLWEAutomorphismKey<DataAK, FFT64>>,
+        auto_keys: &HashMap<i64, GLWEAutomorphismKeyPrep<DataAK, B>>,
         scratch: &mut Scratch,
     ) where
         GLWECiphertext<DataLhs>: GLWECiphertextToRef + Infos,
@@ -60,12 +63,12 @@ where
         self.trace_inplace(module, start, end, auto_keys, scratch);
     }
 
-    pub fn trace_inplace<DataAK: AsRef<[u8]>>(
+    pub fn trace_inplace<DataAK: AsRef<[u8]>, B: Backend>(
         &mut self,
-        module: &Module<FFT64>,
+        module: &Module<B>,
         start: usize,
         end: usize,
-        auto_keys: &HashMap<i64, GLWEAutomorphismKey<DataAK, FFT64>>,
+        auto_keys: &HashMap<i64, GLWEAutomorphismKeyPrep<DataAK, B>>,
         scratch: &mut Scratch,
     ) {
         (start..end).for_each(|i| {

@@ -1,4 +1,5 @@
 pub mod ciphertext;
+pub mod ciphertext_prep;
 
 pub use ciphertext::GGSWCiphertext;
 

@@ -1,13 +1,13 @@
 use backend::{
-    FFT64, MatZnxDftOps, MatZnxDftScratch, Module, Scratch, VecZnxBig, VecZnxBigOps, VecZnxBigScratch, VecZnxDftAlloc,
+    Backend, FFT64, MatZnxDftPrepOps, Module, NTT120, Scratch, VecZnxBig, VecZnxBigOps, VecZnxDft, VecZnxDftBytesOf,
     VecZnxDftOps, ZnxZero,
 };
 
-use crate::{FourierGLWECiphertext, GLWECiphertext, GLWESwitchingKey, Infos};
+use crate::{FourierGLWECiphertext, GLWECiphertext, GLWESwitchingKey, GLWESwitchingKeyPrep, Infos};
 
 impl GLWECiphertext<Vec<u8>> {
-    pub fn keyswitch_scratch_space(
-        module: &Module<FFT64>,
+    pub fn keyswitch_scratch_space<B: Backend>(
+        module: &Module<B>,
         basek: usize,
         k_out: usize,
         k_in: usize,
@@ -15,7 +15,10 @@ impl GLWECiphertext<Vec<u8>> {
         digits: usize,
         rank_in: usize,
         rank_out: usize,
-    ) -> usize {
+    ) -> usize
+    where
+        VecZnxDft<Vec<u8>, B>: VecZnxDftBytesOf<Vec<u8>, B>,
+    {
         let res_dft: usize = FourierGLWECiphertext::bytes_of(module, basek, k_out, rank_out + 1);
         let in_size: usize = k_in.div_ceil(basek).div_ceil(digits);
         let out_size: usize = k_out.div_ceil(basek);
@@ -53,20 +56,22 @@ impl GLWECiphertext<Vec<u8>> {
 }
 
 impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
-    pub fn keyswitch<DataLhs: AsRef<[u8]>, DataRhs: AsRef<[u8]>>(
+    pub fn keyswitch<DataLhs: AsRef<[u8]>, DataRhs: AsRef<[u8]>, B: Backend>(
         &mut self,
-        module: &Module<FFT64>,
+        module: &Module<B>,
         lhs: &GLWECiphertext<DataLhs>,
-        rhs: &GLWESwitchingKey<DataRhs, FFT64>,
+        rhs: &GLWESwitchingKeyPrep<DataRhs, B>,
         scratch: &mut Scratch,
-    ) {
-        Self::keyswitch_private::<_, _, 0>(self, 0, module, lhs, rhs, scratch);
+    ) where
+        VecZnxDft<Vec<u8>, B>: VecZnxDftBytesOf<Vec<u8>, B>,
+    {
+        Self::keyswitch_private::<_, _, 0, B>(self, 0, module, lhs, rhs, scratch);
     }
 
-    pub fn keyswitch_inplace<DataRhs: AsRef<[u8]>>(
+    pub fn keyswitch_inplace<DataRhs: AsRef<[u8]>, B: Backend>(
         &mut self,
-        module: &Module<FFT64>,
-        rhs: &GLWESwitchingKey<DataRhs, FFT64>,
+        module: &Module<B>,
+        rhs: &GLWESwitchingKeyPrep<DataRhs, B>,
         scratch: &mut Scratch,
     ) {
         unsafe {
@@ -75,14 +80,17 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         }
     }
 
-    pub(crate) fn keyswitch_private<DataLhs: AsRef<[u8]>, DataRhs: AsRef<[u8]>, const OP: u8>(
+    pub(crate) fn keyswitch_private<DataLhs: AsRef<[u8]>, DataRhs: AsRef<[u8]>, const OP: u8, B: Backend>(
         &mut self,
         apply_auto: i64,
-        module: &Module<FFT64>,
+        module: &Module<B>,
         lhs: &GLWECiphertext<DataLhs>,
-        rhs: &GLWESwitchingKey<DataRhs, FFT64>,
+        rhs: &GLWESwitchingKeyPrep<DataRhs, B>,
         scratch: &mut Scratch,
-    ) {
+    ) where
+        Module<B>: MatZnxDftPrepOps<B> + VecZnxBigOps<B>,
+        VecZnxDft<Vec<u8>, B>: VecZnxDftBytesOf<Vec<u8>, B>,
+    {
         let basek: usize = self.basek();
 
         #[cfg(debug_assertions)]

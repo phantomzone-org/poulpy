@@ -1,6 +1,6 @@
-use backend::{FFT64, Module, Scratch, VecZnxOps};
+use backend::{Backend, FFT64, Module, Scratch, VecZnxOps};
 
-use crate::{GLWEAutomorphismKey, GLWECiphertext};
+use crate::{GLWEAutomorphismKeyPrep, GLWECiphertext};
 
 impl GLWECiphertext<Vec<u8>> {
     pub fn automorphism_scratch_space(
@@ -28,11 +28,11 @@ impl GLWECiphertext<Vec<u8>> {
 }
 
 impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
-    pub fn automorphism<DataLhs: AsRef<[u8]>, DataRhs: AsRef<[u8]>>(
+    pub fn automorphism<DataLhs: AsRef<[u8]>, DataRhs: AsRef<[u8]>, B: Backend>(
         &mut self,
-        module: &Module<FFT64>,
+        module: &Module<B>,
         lhs: &GLWECiphertext<DataLhs>,
-        rhs: &GLWEAutomorphismKey<DataRhs, FFT64>,
+        rhs: &GLWEAutomorphismKeyPrep<DataRhs, B>,
         scratch: &mut Scratch,
     ) {
         self.keyswitch(module, lhs, &rhs.key, scratch);
@@ -41,10 +41,10 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         })
     }
 
-    pub fn automorphism_inplace<DataRhs: AsRef<[u8]>>(
+    pub fn automorphism_inplace<DataRhs: AsRef<[u8]>, B: Backend>(
         &mut self,
-        module: &Module<FFT64>,
-        rhs: &GLWEAutomorphismKey<DataRhs, FFT64>,
+        module: &Module<B>,
+        rhs: &GLWEAutomorphismKeyPrep<DataRhs, B>,
         scratch: &mut Scratch,
     ) {
         self.keyswitch_inplace(module, &rhs.key, scratch);
@@ -53,20 +53,20 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         })
     }
 
-    pub fn automorphism_add<DataLhs: AsRef<[u8]>, DataRhs: AsRef<[u8]>>(
+    pub fn automorphism_add<DataLhs: AsRef<[u8]>, DataRhs: AsRef<[u8]>, B: Backend>(
         &mut self,
         module: &Module<FFT64>,
         lhs: &GLWECiphertext<DataLhs>,
-        rhs: &GLWEAutomorphismKey<DataRhs, FFT64>,
+        rhs: &GLWEAutomorphismKeyPrep<DataRhs, B>,
         scratch: &mut Scratch,
     ) {
         Self::keyswitch_private::<_, _, 1>(self, rhs.p(), module, lhs, &rhs.key, scratch);
     }
 
-    pub fn automorphism_add_inplace<DataRhs: AsRef<[u8]>>(
+    pub fn automorphism_add_inplace<DataRhs: AsRef<[u8]>, B: Backend>(
         &mut self,
-        module: &Module<FFT64>,
-        rhs: &GLWEAutomorphismKey<DataRhs, FFT64>,
+        module: &Module<B>,
+        rhs: &GLWEAutomorphismKeyPrep<DataRhs, B>,
         scratch: &mut Scratch,
     ) {
         unsafe {
@@ -75,11 +75,11 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         }
     }
 
-    pub fn automorphism_sub_ab<DataLhs: AsRef<[u8]>, DataRhs: AsRef<[u8]>>(
+    pub fn automorphism_sub_ab<DataLhs: AsRef<[u8]>, DataRhs: AsRef<[u8]>, B: Backend>(
         &mut self,
-        module: &Module<FFT64>,
+        module: &Module<B>,
         lhs: &GLWECiphertext<DataLhs>,
-        rhs: &GLWEAutomorphismKey<DataRhs, FFT64>,
+        rhs: &GLWEAutomorphismKeyPrep<DataRhs, B>,
         scratch: &mut Scratch,
     ) {
         Self::keyswitch_private::<_, _, 2>(self, rhs.p(), module, lhs, &rhs.key, scratch);
@@ -87,8 +87,8 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
 
     pub fn automorphism_sub_ab_inplace<DataRhs: AsRef<[u8]>>(
         &mut self,
-        module: &Module<FFT64>,
-        rhs: &GLWEAutomorphismKey<DataRhs, FFT64>,
+        module: &Module<B>,
+        rhs: &GLWEAutomorphismKeyPrep<DataRhs, B>,
         scratch: &mut Scratch,
     ) {
         unsafe {
@@ -97,20 +97,20 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         }
     }
 
-    pub fn automorphism_sub_ba<DataLhs: AsRef<[u8]>, DataRhs: AsRef<[u8]>>(
+    pub fn automorphism_sub_ba<DataLhs: AsRef<[u8]>, DataRhs: AsRef<[u8]>, B: Backend>(
         &mut self,
-        module: &Module<FFT64>,
+        module: &Module<B>,
         lhs: &GLWECiphertext<DataLhs>,
-        rhs: &GLWEAutomorphismKey<DataRhs, FFT64>,
+        rhs: &GLWEAutomorphismKeyPrep<DataRhs, B>,
         scratch: &mut Scratch,
     ) {
         Self::keyswitch_private::<_, _, 3>(self, rhs.p(), module, lhs, &rhs.key, scratch);
     }
 
-    pub fn automorphism_sub_ba_inplace<DataRhs: AsRef<[u8]>>(
+    pub fn automorphism_sub_ba_inplace<DataRhs: AsRef<[u8]>, B: Backend>(
         &mut self,
-        module: &Module<FFT64>,
-        rhs: &GLWEAutomorphismKey<DataRhs, FFT64>,
+        module: &Module<B>,
+        rhs: &GLWEAutomorphismKeyPrep<DataRhs, B>,
         scratch: &mut Scratch,
     ) {
         unsafe {

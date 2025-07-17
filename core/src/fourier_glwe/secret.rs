@@ -1,4 +1,4 @@
-use backend::{Backend, FFT64, Module, ScalarZnxDft, ScalarZnxDftAlloc, ScalarZnxDftOps, ZnxInfos};
+use backend::{Backend, FFT64, Module, ScalarZnxDft, ScalarZnxDftAlloc, ScalarZnxDftBytesOf, ScalarZnxDftOps, ZnxInfos};
 
 use crate::{GLWESecret, dist::Distribution};
 
@@ -7,7 +7,10 @@ pub struct FourierGLWESecret<T, B: Backend> {
     pub(crate) dist: Distribution,
 }
 
-impl<B: Backend> FourierGLWESecret<Vec<u8>, B> {
+impl<B: Backend> FourierGLWESecret<Vec<u8>, B>
+where
+    ScalarZnxDft<Vec<u8>, B>: ScalarZnxDftBytesOf<Vec<u8>, B>,
+{
     pub fn alloc(module: &Module<B>, rank: usize) -> Self {
         Self {
             data: module.new_scalar_znx_dft(rank),

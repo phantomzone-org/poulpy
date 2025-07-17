@@ -1,6 +1,6 @@
 use backend::{
-    FFT64, Module, ScalarZnx, ScalarZnxAlloc, ScalarZnxDftOps, ScalarZnxOps, Scratch, VecZnxAlloc, VecZnxDftAlloc, VecZnxOps,
-    ZnxInfos, ZnxView, ZnxViewMut, ZnxZero,
+    Backend, FFT64, Module, ScalarZnx, ScalarZnxAlloc, ScalarZnxDftOps, ScalarZnxOps, Scratch, VecZnxAlloc, VecZnxDftAlloc,
+    VecZnxOps, ZnxInfos, ZnxView, ZnxViewMut, ZnxZero,
 };
 use sampling::source::Source;
 
@@ -9,8 +9,8 @@ use crate::{
     ScratchCore, SetRow,
 };
 
-impl GGLWECiphertext<Vec<u8>, FFT64> {
-    pub fn encrypt_sk_scratch_space(module: &Module<FFT64>, basek: usize, k: usize, rank: usize) -> usize {
+impl GGLWECiphertext<Vec<u8>> {
+    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize {
         let size = k.div_ceil(basek);
         GLWECiphertext::encrypt_sk_scratch_space(module, basek, k)
             + module.bytes_of_vec_znx(rank + 1, size)
@@ -18,17 +18,17 @@ impl GGLWECiphertext<Vec<u8>, FFT64> {
             + module.bytes_of_vec_znx_dft(rank + 1, size)
     }
 
-    pub fn encrypt_pk_scratch_space(_module: &Module<FFT64>, _basek: usize, _k: usize, _rank: usize) -> usize {
+    pub fn encrypt_pk_scratch_space<B: Backend>(_module: &Module<B>, _basek: usize, _k: usize, _rank: usize) -> usize {
         unimplemented!()
     }
 }
 
-impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGLWECiphertext<DataSelf, FFT64> {
-    pub fn encrypt_sk<DataPt: AsRef<[u8]>, DataSk: AsRef<[u8]>>(
+impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGLWECiphertext<DataSelf> {
+    pub fn encrypt_sk<DataPt: AsRef<[u8]>, DataSk: AsRef<[u8]>, B: Backend>(
         &mut self,
-        module: &Module<FFT64>,
+        module: &Module<B>,
         pt: &ScalarZnx<DataPt>,
-        sk: &FourierGLWESecret<DataSk, FFT64>,
+        sk: &FourierGLWESecret<DataSk, B>,
         source_xa: &mut Source,
         source_xe: &mut Source,
         sigma: f64,

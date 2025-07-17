@@ -1,10 +1,10 @@
-use backend::{FFT64, Module, Scratch, VecZnx, VecZnxDftOps, VecZnxOps, ZnxZero};
+use backend::{Backend, FFT64, Module, Scratch, VecZnx, VecZnxDftOps, VecZnxOps, ZnxZero};
 
 use crate::{FourierGLWECiphertext, GLWEAutomorphismKey, GLWECiphertext, GetRow, Infos, ScratchCore, SetRow};
 
-impl GLWEAutomorphismKey<Vec<u8>, FFT64> {
-    pub fn automorphism_scratch_space(
-        module: &Module<FFT64>,
+impl GLWEAutomorphismKey<Vec<u8>> {
+    pub fn automorphism_scratch_space<B: Backend>(
+        module: &Module<B>,
         basek: usize,
         k_out: usize,
         k_in: usize,
@@ -31,12 +31,12 @@ impl GLWEAutomorphismKey<Vec<u8>, FFT64> {
     }
 }
 
-impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWEAutomorphismKey<DataSelf, FFT64> {
+impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWEAutomorphismKey<DataSelf> {
     pub fn automorphism<DataLhs: AsRef<[u8]>, DataRhs: AsRef<[u8]>>(
         &mut self,
         module: &Module<FFT64>,
-        lhs: &GLWEAutomorphismKey<DataLhs, FFT64>,
-        rhs: &GLWEAutomorphismKey<DataRhs, FFT64>,
+        lhs: &GLWEAutomorphismKey<DataLhs>,
+        rhs: &GLWEAutomorphismKeyPrep<DataRhs, FFT64>,
         scratch: &mut Scratch,
     ) {
         #[cfg(debug_assertions)]

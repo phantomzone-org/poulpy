@@ -1,7 +1,7 @@
 use backend::{
-    Backend, FFT64, MatZnxDftAlloc, MatZnxDftOps, MatZnxDftPrep, MatZnxDftScratch, Module, ScalarZnx, Scratch, VecZnxAlloc,
-    VecZnxBigAlloc, VecZnxBigOps, VecZnxBigScratch, VecZnxDft, VecZnxDftAlloc, VecZnxDftOps, VecZnxOps, VecZnxToMut, ZnxInfos,
-    ZnxZero,
+    Backend, FFT64, MatZnx, MatZnxAlloc, MatZnxDft, MatZnxDftAlloc, MatZnxDftPrep, MatZnxDftPrepOps, MatZnxDftPrepScratch,
+    Module, ScalarZnx, Scratch, VecZnxAlloc, VecZnxBigAlloc, VecZnxBigOps, VecZnxBigScratch, VecZnxDft, VecZnxDftAlloc,
+    VecZnxDftBytesOf, VecZnxDftOps, VecZnxOps, VecZnxToMut, ZnxInfos, ZnxZero,
 };
 use sampling::source::Source;
 
@@ -10,15 +10,35 @@ use crate::{
     Infos, ScratchCore, SetRow,
 };
 
-pub struct GGSWCiphertext<C, B: Backend> {
-    pub(crate) data: MatZnxDftPrep<C, B>,
+pub struct GGSWCiphertext<D> {
+    pub(crate) data: MatZnx<D>,
     pub(crate) basek: usize,
     pub(crate) k: usize,
     pub(crate) digits: usize,
 }
 
-impl GGSWCiphertext<Vec<u8>, FFT64> {
-    pub fn alloc(module: &Module<FFT64>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self {
+impl<D: AsRef<[u8]>> GGSWCiphertext<D> {
+    pub fn at(&self, row: usize, col: usize) -> GLWECiphertext<&[u8]> {
+        GLWECiphertext {
+            data: self.data.at(row, col),
+            basek: self.basek,
+            k: self.k,
+        }
+    }
+}
+
+impl<D: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<D> {
+    pub fn at_mut(&mut self, row: usize, col: usize) -> GLWECiphertext<&mut [u8]> {
+        GLWECiphertext {
+            data: self.data.at_mut(row, col),
+            basek: self.basek,
+            k: self.k,
+        }
+    }
+}
+
+impl GGSWCiphertext<Vec<u8>> {
+    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self {
         let size: usize = k.div_ceil(basek);
         debug_assert!(digits > 0, "invalid ggsw: `digits` == 0");
 
@@ -38,14 +58,14 @@ impl GGSWCiphertext<Vec<u8>, FFT64> {
         );
 
         Self {
-            data: module.new_mat_znx_dft(rows, rank + 1, rank + 1, k.div_ceil(basek)),
+            data: module.new_mat_znx(rows, rank + 1, rank + 1, k.div_ceil(basek)),
             basek,
             k: k,
             digits,
         }
     }
 
-    pub fn bytes_of(module: &Module<FFT64>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize {
+    pub fn bytes_of<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize {
         let size: usize = k.div_ceil(basek);
         debug_assert!(
             size > digits,
@@ -62,12 +82,12 @@ impl GGSWCiphertext<Vec<u8>, FFT64> {
             size
         );
 
-        module.bytes_of_mat_znx_dft(rows, rank + 1, rank + 1, size)
+        module.bytes_of_mat_znx(rows, rank + 1, rank + 1, size)
     }
 }
 
-impl<T, B: Backend> Infos for GGSWCiphertext<T, B> {
-    type Inner = MatZnxDftPrep<T, B>;
+impl<D> Infos for GGSWCiphertext<D> {
+    type Inner = MatZnx<D>;
 
     fn inner(&self) -> &Self::Inner {
         &self.data
@@ -82,7 +102,7 @@ impl<T, B: Backend> Infos for GGSWCiphertext<T, B> {
     }
 }
 
-impl<T, B: Backend> GGSWCiphertext<T, B> {
+impl<D> GGSWCiphertext<D> {
     pub fn rank(&self) -> usize {
         self.data.cols_out() - 1
     }
@@ -92,8 +112,11 @@ impl<T, B: Backend> GGSWCiphertext<T, B> {
     }
 }
 
-impl GGSWCiphertext<Vec<u8>, FFT64> {
-    pub fn encrypt_sk_scratch_space(module: &Module<FFT64>, basek: usize, k: usize, rank: usize) -> usize {
+impl GGSWCiphertext<Vec<u8>> {
+    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize
+    where
+        VecZnxDft<Vec<u8>, B>: VecZnxDftBytesOf<Vec<u8>, B>,
+    {
         let size = k.div_ceil(basek);
         GLWECiphertext::encrypt_sk_scratch_space(module, basek, k)
             + module.bytes_of_vec_znx(rank + 1, size)
@@ -101,14 +124,17 @@ impl GGSWCiphertext<Vec<u8>, FFT64> {
             + module.bytes_of_vec_znx_dft(rank + 1, size)
     }
 
-    pub(crate) fn expand_row_scratch_space(
-        module: &Module<FFT64>,
+    pub(crate) fn expand_row_scratch_space<B: Backend>(
+        module: &Module<B>,
         basek: usize,
         self_k: usize,
         k_tsk: usize,
         digits: usize,
         rank: usize,
-    ) -> usize {
+    ) -> usize
+    where
+        VecZnxDft<Vec<u8>, B>: VecZnxDftBytesOf<Vec<u8>, B>,
+    {
         let tsk_size: usize = k_tsk.div_ceil(basek);
         let self_size_out: usize = self_k.div_ceil(basek);
         let self_size_in: usize = self_size_out.div_ceil(digits);
@@ -243,7 +269,7 @@ impl GGSWCiphertext<Vec<u8>, FFT64> {
     }
 }
 
-impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf, FFT64> {
+impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
     pub fn encrypt_sk<DataPt: AsRef<[u8]>, DataSk: AsRef<[u8]>>(
         &mut self,
         module: &Module<FFT64>,
@@ -268,34 +294,26 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf, FFT64> {
         let digits: usize = self.digits();
 
         let (mut tmp_pt, scratch1) = scratch.tmp_glwe_pt(module, basek, k);
-        let (mut tmp_ct, scratch2) = scratch1.tmp_glwe_ct(module, basek, k, rank);
 
         (0..self.rows()).for_each(|row_i| {
             tmp_pt.data.zero();
 
             // Adds the scalar_znx_pt to the i-th limb of the vec_znx_pt
             module.vec_znx_add_scalar_inplace(&mut tmp_pt.data, 0, (digits - 1) + row_i * digits, pt, 0);
-            module.vec_znx_normalize_inplace(basek, &mut tmp_pt.data, 0, scratch2);
+            module.vec_znx_normalize_inplace(basek, &mut tmp_pt.data, 0, scratch1);
 
             (0..rank + 1).for_each(|col_j| {
                 // rlwe encrypt of vec_znx_pt into vec_znx_ct
 
-                tmp_ct.encrypt_sk_private(
+                self.at_mut(row_i, col_j).encrypt_sk_private(
                     module,
                     Some((&tmp_pt, col_j)),
                     sk,
                     source_xa,
                     source_xe,
                     sigma,
-                    scratch2,
+                    scratch1,
                 );
-
-                // Switch vec_znx_ct into DFT domain
-                {
-                    let (mut tmp_ct_dft, _) = scratch2.tmp_fourier_glwe_ct(module, basek, k, rank);
-                    tmp_ct.dft(module, &mut tmp_ct_dft);
-                    self.set_row(module, row_i, col_j, &tmp_ct_dft);
-                }
             });
         });
     }
@@ -408,7 +426,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf, FFT64> {
     pub fn keyswitch<DataLhs: AsRef<[u8]>, DataKsk: AsRef<[u8]>, DataTsk: AsRef<[u8]>>(
         &mut self,
         module: &Module<FFT64>,
-        lhs: &GGSWCiphertext<DataLhs, FFT64>,
+        lhs: &GGSWCiphertext<DataLhs>,
         ksk: &GLWESwitchingKey<DataKsk, FFT64>,
         tsk: &GLWETensorKey<DataTsk, FFT64>,
         scratch: &mut Scratch,
