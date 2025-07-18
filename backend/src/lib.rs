@@ -11,8 +11,8 @@ pub mod mat_znx_ops;
 pub mod module;
 pub mod sampling;
 pub mod scalar_znx;
-pub mod scalar_znx_dft;
-pub mod scalar_znx_dft_ops;
+pub mod scalar_znx_dft_prep;
+pub mod scalar_znx_dft_prep_ops;
 pub mod stats;
 pub mod vec_znx;
 pub mod vec_znx_big;
@@ -32,8 +32,8 @@ pub use mat_znx_ops::*;
 pub use module::*;
 pub use sampling::*;
 pub use scalar_znx::*;
-pub use scalar_znx_dft::*;
-pub use scalar_znx_dft_ops::*;
+pub use scalar_znx_dft_prep::*;
+pub use scalar_znx_dft_prep_ops::*;
 pub use stats::*;
 pub use vec_znx::*;
 pub use vec_znx_big::*;
@@ -216,14 +216,18 @@ impl Scratch {
         )
     }
 
-    pub fn tmp_scalar_znx_dft<B: Backend>(&mut self, module: &Module<B>, cols: usize) -> (ScalarZnxDft<&mut [u8], B>, &mut Self)
+    pub fn tmp_scalar_znx_dft_prep<B: Backend>(
+        &mut self,
+        module: &Module<B>,
+        cols: usize,
+    ) -> (ScalarZnxDftPrep<&mut [u8], B>, &mut Self)
     where
-        Module<B>: ScalarZnxDftAlloc<B>,
+        Module<B>: ScalarZnxDftPrepAlloc<B>,
     {
-        let (take_slice, rem_slice) = Self::take_slice_aligned(&mut self.data, module.bytes_of_scalar_znx_dft(cols));
+        let (take_slice, rem_slice) = Self::take_slice_aligned(&mut self.data, module.bytes_of_scalar_znx_dft_prep(cols));
 
         (
-            ScalarZnxDft::from_data(take_slice, module.n(), cols),
+            ScalarZnxDftPrep::from_data(take_slice, module.n(), cols),
             Self::new(rem_slice),
         )
     }
@@ -332,7 +336,7 @@ impl Scratch {
         cols_in: usize,
         cols_out: usize,
         size: usize,
-    ) -> (MatZnxDftPrep<&mut [u8], B>, &mut Self)
+    ) -> (MatZnxDft<&mut [u8], B>, &mut Self)
     where
         Module<B>: MatZnxDftAlloc<B>,
     {
@@ -341,7 +345,25 @@ impl Scratch {
             module.bytes_of_mat_znx_dft(rows, cols_in, cols_out, size),
         );
         (
-            MatZnxDftPrep::from_data(take_slice, module.n(), rows, cols_in, cols_out, size),
+            MatZnxDft::from_data(take_slice, module.n(), rows, cols_in, cols_out, size),
+            Self::new(rem_slice),
+        )
+    }
+
+    pub fn tmp_mat_znx<B: Backend>(
+        &mut self,
+        module: &Module<B>,
+        rows: usize,
+        cols_in: usize,
+        cols_out: usize,
+        size: usize,
+    ) -> (MatZnx<&mut [u8]>, &mut Self) {
+        let (take_slice, rem_slice) = Self::take_slice_aligned(
+            &mut self.data,
+            module.bytes_of_mat_znx(rows, cols_in, cols_out, size),
+        );
+        (
+            MatZnx::from_data(take_slice, module.n(), rows, cols_in, cols_out, size),
             Self::new(rem_slice),
         )
     }

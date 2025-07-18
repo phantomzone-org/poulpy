@@ -1,7 +1,7 @@
 use std::marker::PhantomData;
 
 use crate::znx_base::ZnxInfos;
-use crate::{Backend, DataView, DataViewMut, FFT64, NTT120, VecZnxBig, ZnxSliceSize, ZnxView, alloc_aligned};
+use crate::{alloc_aligned, Backend, DataView, DataViewMut, VecZnxBig, ZnxMachineWord, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero, FFT64, NTT120};
 use std::fmt;
 
 pub struct VecZnxDft<D, B: Backend> {
@@ -38,7 +38,25 @@ impl<D, B: Backend> ZnxInfos for VecZnxDft<D, B> {
 
 impl<D> ZnxSliceSize for VecZnxDft<D, FFT64> {
     fn sl(&self) -> usize {
-        self.n() * self.cols()
+        Self::mw() * self.n() * self.cols()
+    }
+}
+
+impl<D> ZnxSliceSize for VecZnxDft<D, NTT120> {
+    fn sl(&self) -> usize {
+        Self::mw() * self.n() * self.cols()
+    }
+}
+
+impl<D> ZnxMachineWord for VecZnxDft<D, FFT64> {
+    fn mw() -> usize {
+        1
+    }
+}
+
+impl<D> ZnxMachineWord for VecZnxDft<D, NTT120> {
+    fn mw() -> usize {
+        4
     }
 }
 
@@ -59,14 +77,18 @@ impl<D: AsRef<[u8]>> ZnxView for VecZnxDft<D, FFT64> {
     type Scalar = f64;
 }
 
-impl<D: AsMut<[u8]> + AsRef<[u8]>> VecZnxDft<D, FFT64> {
+impl<D: AsRef<[u8]>> ZnxView for VecZnxDft<D, NTT120> {
+    type Scalar = i64;
+}
+
+impl<D: AsMut<[u8]> + AsRef<[u8]>, B: Backend> VecZnxDft<D, B> where VecZnxDft<D, B>: ZnxMachineWord  {
     pub fn set_size(&mut self, size: usize) {
-        assert!(size <= self.data.as_ref().len() / (self.n * self.cols()));
+        assert!(size <= self.max_size());
         self.size = size
     }
 
     pub fn max_size(&mut self) -> usize {
-        self.data.as_ref().len() / (self.n * self.cols)
+        self.data.as_ref().len() / (self.n() * Self::mw() * self.cols())
     }
 }
 
@@ -74,15 +96,9 @@ pub trait VecZnxDftBytesOf<D, B: Backend> {
     fn bytes_of(n: usize, cols: usize, size: usize) -> usize;
 }
 
-impl<D: AsRef<[u8]>> VecZnxDftBytesOf<D, FFT64> for VecZnxDft<D, FFT64> {
+impl<D: AsRef<[u8]>, B: Backend> VecZnxDftBytesOf<D, B> for VecZnxDft<D, B> where VecZnxDft<D, B>: ZnxMachineWord {
     fn bytes_of(n: usize, cols: usize, size: usize) -> usize {
-        n * cols * size * size_of::<f64>()
-    }
-}
-
-impl<D: AsRef<[u8]>> VecZnxDftBytesOf<D, NTT120> for VecZnxDft<D, NTT120> {
-    fn bytes_of(n: usize, cols: usize, size: usize) -> usize {
-        4 * n * cols * size * size_of::<i64>()
+        Self::mw() * n * cols * size * size_of::<f64>()
     }
 }
 
@@ -128,15 +144,39 @@ impl<D, B: Backend> VecZnxDft<D, B> {
     }
 }
 
+impl<D: AsRef<[u8]> + AsMut<[u8]>> ZnxZero for VecZnxDft<D, FFT64>{
+    fn zero(&mut self) {
+        unsafe {
+            std::ptr::write_bytes(self.as_mut_ptr(), 0, self.sl() * self.size());
+        }
+    }
+
+    fn zero_at(&mut self, i: usize, j: usize) {
+        unsafe {
+            std::ptr::write_bytes(self.at_mut_ptr(i, j), 0, self.n());
+        }
+    }
+}
+
+impl<D: AsRef<[u8]> + AsMut<[u8]>> ZnxZero for VecZnxDft<D, NTT120>{
+    fn zero(&mut self) {
+        unsafe {
+            std::ptr::write_bytes(self.as_mut_ptr(), 0, self.sl() * self.size());
+        }
+    }
+
+    fn zero_at(&mut self, i: usize, j: usize) {
+        unsafe {
+            std::ptr::write_bytes(self.at_mut_ptr(i, j), 0, 4*self.n());
+        }
+    }
+}
+
 pub trait VecZnxDftToRef<B: Backend> {
     fn to_ref(&self) -> VecZnxDft<&[u8], B>;
 }
 
-impl<D, B: Backend> VecZnxDftToRef<B> for VecZnxDft<D, B>
-where
-    D: AsRef<[u8]>,
-    B: Backend,
-{
+impl<D: AsRef<[u8]>, B: Backend> VecZnxDftToRef<B> for VecZnxDft<D, B> {
     fn to_ref(&self) -> VecZnxDft<&[u8], B> {
         VecZnxDft {
             data: self.data.as_ref(),
@@ -152,11 +192,7 @@ pub trait VecZnxDftToMut<B: Backend> {
     fn to_mut(&mut self) -> VecZnxDft<&mut [u8], B>;
 }
 
-impl<D, B: Backend> VecZnxDftToMut<B> for VecZnxDft<D, B>
-where
-    D: AsRef<[u8]> + AsMut<[u8]>,
-    B: Backend,
-{
+impl<D: AsRef<[u8]> + AsMut<[u8]>, B: Backend> VecZnxDftToMut<B> for VecZnxDft<D, B> {
     fn to_mut(&mut self) -> VecZnxDft<&mut [u8], B> {
         VecZnxDft {
             data: self.data.as_mut(),

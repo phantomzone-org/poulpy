@@ -1,10 +1,10 @@
-use backend::{FFT64, Module, Scratch};
+use backend::{Backend, Module, Scratch, VecZnxDftAlloc};
 
-use crate::{FourierGLWECiphertext, GLWECiphertext, GLWESwitchingKey, Infos, ScratchCore};
+use crate::{FourierGLWECiphertext, GLWECiphertext, GLWESwitchingKeyPrep, Infos, ScratchCore};
 
-impl FourierGLWECiphertext<Vec<u8>, FFT64> {
+impl<B: Backend> FourierGLWECiphertext<Vec<u8>, B> {
     pub fn keyswitch_scratch_space(
-        module: &Module<FFT64>,
+        module: &Module<B>,
         basek: usize,
         k_out: usize,
         k_in: usize,
@@ -18,7 +18,7 @@ impl FourierGLWECiphertext<Vec<u8>, FFT64> {
     }
 
     pub fn keyswitch_inplace_scratch_space(
-        module: &Module<FFT64>,
+        module: &Module<B>,
         basek: usize,
         k_out: usize,
         k_ksk: usize,
@@ -29,14 +29,16 @@ impl FourierGLWECiphertext<Vec<u8>, FFT64> {
     }
 }
 
-impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> FourierGLWECiphertext<DataSelf, FFT64> {
+impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>, B: Backend> FourierGLWECiphertext<DataSelf, B> {
     pub fn keyswitch<DataLhs: AsRef<[u8]>, DataRhs: AsRef<[u8]>>(
         &mut self,
-        module: &Module<FFT64>,
-        lhs: &FourierGLWECiphertext<DataLhs, FFT64>,
-        rhs: &GLWESwitchingKey<DataRhs, FFT64>,
+        module: &Module<B>,
+        lhs: &FourierGLWECiphertext<DataLhs, B>,
+        rhs: &GLWESwitchingKeyPrep<DataRhs, B>,
         scratch: &mut Scratch,
-    ) {
+    ) where
+        Module<B>: VecZnxDftAlloc<B>,
+    {
         let (mut tmp_ct, scratch1) = scratch.tmp_glwe_ct(module, self.basek(), self.k(), self.rank());
         tmp_ct.keyswitch_from_fourier(module, lhs, rhs, scratch1);
         tmp_ct.dft(module, self);
@@ -44,12 +46,12 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> FourierGLWECiphertext<DataSelf, FFT64>
 
     pub fn keyswitch_inplace<DataRhs: AsRef<[u8]>>(
         &mut self,
-        module: &Module<FFT64>,
-        rhs: &GLWESwitchingKey<DataRhs, FFT64>,
+        module: &Module<B>,
+        rhs: &GLWESwitchingKeyPrep<DataRhs, B>,
         scratch: &mut Scratch,
     ) {
         unsafe {
-            let self_ptr: *mut FourierGLWECiphertext<DataSelf, FFT64> = self as *mut FourierGLWECiphertext<DataSelf, FFT64>;
+            let self_ptr: *mut FourierGLWECiphertext<DataSelf, B> = self as *mut FourierGLWECiphertext<DataSelf, B>;
             self.keyswitch(&module, &*self_ptr, rhs, scratch);
         }
     }

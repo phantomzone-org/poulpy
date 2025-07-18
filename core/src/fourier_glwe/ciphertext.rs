@@ -10,7 +10,7 @@ pub struct FourierGLWECiphertext<C, B: Backend> {
 
 impl<B: Backend> FourierGLWECiphertext<Vec<u8>, B>
 where
-    VecZnxDft<Vec<u8>, B>: VecZnxDftBytesOf<Vec<u8>, B>,
+    Module<B>: VecZnxDftAlloc<B>,
 {
     pub fn alloc(module: &Module<B>, basek: usize, k: usize, rank: usize) -> Self {
         Self {

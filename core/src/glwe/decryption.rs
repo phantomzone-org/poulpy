@@ -1,23 +1,23 @@
 use backend::{
-    FFT64, Module, ScalarZnxDftOps, Scratch, VecZnxBigAlloc, VecZnxBigOps, VecZnxBigScratch, VecZnxDftAlloc, VecZnxDftOps,
+    Backend, Module, ScalarZnxDftPrepOps, Scratch, VecZnxBigAlloc, VecZnxBigOps, VecZnxBigScratch, VecZnxDftAlloc, VecZnxDftOps,
     ZnxZero,
 };
 
 use crate::{FourierGLWESecret, GLWECiphertext, GLWEPlaintext, Infos};
 
 impl GLWECiphertext<Vec<u8>> {
-    pub fn decrypt_scratch_space(module: &Module<FFT64>, basek: usize, k: usize) -> usize {
+    pub fn decrypt_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize) -> usize {
         let size: usize = k.div_ceil(basek);
         (module.vec_znx_big_normalize_tmp_bytes() | module.bytes_of_vec_znx_dft(1, size)) + module.bytes_of_vec_znx_big(1, size)
     }
 }
 
 impl<DataSelf: AsRef<[u8]>> GLWECiphertext<DataSelf> {
-    pub fn decrypt<DataPt: AsMut<[u8]> + AsRef<[u8]>, DataSk: AsRef<[u8]>>(
+    pub fn decrypt<DataPt: AsMut<[u8]> + AsRef<[u8]>, DataSk: AsRef<[u8]>, B: Backend>(
         &self,
-        module: &Module<FFT64>,
+        module: &Module<B>,
         pt: &mut GLWEPlaintext<DataPt>,
-        sk: &FourierGLWESecret<DataSk, FFT64>,
+        sk: &FourierGLWESecret<DataSk, B>,
         scratch: &mut Scratch,
     ) {
         #[cfg(debug_assertions)]

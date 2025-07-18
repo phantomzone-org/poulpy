@@ -31,6 +31,11 @@ pub trait ZnxSliceSize {
     fn sl(&self) -> usize;
 }
 
+pub trait ZnxMachineWord{
+    /// Returns the number of machine words per polynomial.
+    fn mw() -> usize;
+}
+
 pub trait DataView {
     type D;
     fn data(&self) -> &Self::D;
@@ -105,21 +110,9 @@ pub trait ZnxZero: ZnxViewMut + ZnxSliceSize
 where
     Self: Sized,
 {
-    fn zero(&mut self) {
-        unsafe {
-            std::ptr::write_bytes(self.as_mut_ptr(), 0, self.n() * self.poly_count());
-        }
-    }
-
-    fn zero_at(&mut self, i: usize, j: usize) {
-        unsafe {
-            std::ptr::write_bytes(self.at_mut_ptr(i, j), 0, self.n());
-        }
-    }
+    fn zero(&mut self);
+    fn zero_at(&mut self, i: usize, j: usize);
 }
-
-// Blanket implementations
-impl<T> ZnxZero for T where T: ZnxViewMut + ZnxSliceSize {} // WARNING should not work for mat_znx_dft but it does
 
 use std::ops::{Add, AddAssign, Div, Mul, Neg, Shl, Shr, Sub};
 

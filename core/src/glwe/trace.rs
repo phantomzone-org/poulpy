@@ -1,14 +1,11 @@
 use std::collections::HashMap;
 
-use backend::{Backend, FFT64, Module, Scratch};
+use backend::{Backend, Module, Scratch};
 
-use crate::{
-    GLWEAutomorphismKey, GLWEAutomorphismKeyPrep, GLWECiphertext, GLWECiphertextToMut, GLWECiphertextToRef, GLWEOps, Infos,
-    SetMetaData,
-};
+use crate::{GLWEAutomorphismKeyPrep, GLWECiphertext, GLWECiphertextToMut, GLWECiphertextToRef, GLWEOps, Infos, SetMetaData};
 
 impl GLWECiphertext<Vec<u8>> {
-    pub fn trace_galois_elements(module: &Module<FFT64>) -> Vec<i64> {
+    pub fn trace_galois_elements<B: Backend>(module: &Module<B>) -> Vec<i64> {
         let mut gal_els: Vec<i64> = Vec::new();
         (0..module.log_n()).for_each(|i| {
             if i == 0 {
@@ -20,8 +17,8 @@ impl GLWECiphertext<Vec<u8>> {
         gal_els
     }
 
-    pub fn trace_scratch_space(
-        module: &Module<FFT64>,
+    pub fn trace_scratch_space<B: Backend>(
+        module: &Module<B>,
         basek: usize,
         out_k: usize,
         in_k: usize,
@@ -32,8 +29,8 @@ impl GLWECiphertext<Vec<u8>> {
         Self::automorphism_inplace_scratch_space(module, basek, out_k.min(in_k), ksk_k, digits, rank)
     }
 
-    pub fn trace_inplace_scratch_space(
-        module: &Module<FFT64>,
+    pub fn trace_inplace_scratch_space<B: Backend>(
+        module: &Module<B>,
         basek: usize,
         out_k: usize,
         ksk_k: usize,

@@ -1,5 +1,5 @@
 use backend::{
-    Backend, FFT64, Module, ScalarZnx, ScalarZnxAlloc, ScalarZnxDftOps, ScalarZnxOps, Scratch, VecZnxAlloc, VecZnxDftAlloc,
+    Backend, Module, ScalarZnx, ScalarZnxAlloc, ScalarZnxDftPrepOps, ScalarZnxOps, Scratch, VecZnxAlloc, VecZnxDftAlloc,
     VecZnxOps, ZnxInfos, ZnxView, ZnxViewMut, ZnxZero,
 };
 use sampling::source::Source;
@@ -120,15 +120,21 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGLWECiphertext<DataSelf> {
     }
 }
 
-impl GLWESwitchingKey<Vec<u8>, FFT64> {
-    pub fn encrypt_sk_scratch_space(module: &Module<FFT64>, basek: usize, k: usize, rank_in: usize, rank_out: usize) -> usize {
+impl GLWESwitchingKey<Vec<u8>> {
+    pub fn encrypt_sk_scratch_space<B: Backend>(
+        module: &Module<B>,
+        basek: usize,
+        k: usize,
+        rank_in: usize,
+        rank_out: usize,
+    ) -> usize {
         GGLWECiphertext::encrypt_sk_scratch_space(module, basek, k, rank_out)
             + module.bytes_of_scalar_znx(rank_in)
             + FourierGLWESecret::bytes_of(module, rank_out)
     }
 
-    pub fn encrypt_pk_scratch_space(
-        module: &Module<FFT64>,
+    pub fn encrypt_pk_scratch_space<B: Backend>(
+        module: &Module<B>,
         _basek: usize,
         _k: usize,
         _rank_in: usize,
@@ -138,12 +144,12 @@ impl GLWESwitchingKey<Vec<u8>, FFT64> {
     }
 }
 
-impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<DataSelf, FFT64> {
-    pub fn encrypt_sk<DataSkIn: AsRef<[u8]>, DataSkOut: AsRef<[u8]>>(
+impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<DataSelf> {
+    pub fn encrypt_sk<DataSkIn: AsRef<[u8]>, DataSkOut: AsRef<[u8]>, B: Backend>(
         &mut self,
-        module: &Module<FFT64>,
+        module: &Module<B>,
         sk_in: &GLWESecret<DataSkIn>,
-        sk_out: &FourierGLWESecret<DataSkOut, FFT64>,
+        sk_out: &FourierGLWESecret<DataSkOut, B>,
         source_xa: &mut Source,
         source_xe: &mut Source,
         sigma: f64,
@@ -193,20 +199,20 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<DataSelf, FFT64> {
     }
 }
 
-impl GLWEAutomorphismKey<Vec<u8>, FFT64> {
-    pub fn encrypt_sk_scratch_space(module: &Module<FFT64>, basek: usize, k: usize, rank: usize) -> usize {
+impl GLWEAutomorphismKey<Vec<u8>> {
+    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize {
         GLWESwitchingKey::encrypt_sk_scratch_space(module, basek, k, rank, rank) + GLWESecret::bytes_of(module, rank)
     }
 
-    pub fn encrypt_pk_scratch_space(module: &Module<FFT64>, _basek: usize, _k: usize, _rank: usize) -> usize {
+    pub fn encrypt_pk_scratch_space<B: Backend>(module: &Module<B>, _basek: usize, _k: usize, _rank: usize) -> usize {
         GLWESwitchingKey::encrypt_pk_scratch_space(module, _basek, _k, _rank, _rank)
     }
 }
 
-impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWEAutomorphismKey<DataSelf, FFT64> {
-    pub fn encrypt_sk<DataSk: AsRef<[u8]>>(
+impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWEAutomorphismKey<DataSelf> {
+    pub fn encrypt_sk<DataSk: AsRef<[u8]>, B: Backend>(
         &mut self,
-        module: &Module<FFT64>,
+        module: &Module<B>,
         p: i64,
         sk: &GLWESecret<DataSk>,
         source_xa: &mut Source,
@@ -260,19 +266,19 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWEAutomorphismKey<DataSelf, FFT64> {
     }
 }
 
-impl GLWETensorKey<Vec<u8>, FFT64> {
-    pub fn encrypt_sk_scratch_space(module: &Module<FFT64>, basek: usize, k: usize, rank: usize) -> usize {
+impl GLWETensorKey<Vec<u8>> {
+    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize {
         GLWESecret::bytes_of(module, 1)
             + FourierGLWESecret::bytes_of(module, 1)
             + GLWESwitchingKey::encrypt_sk_scratch_space(module, basek, k, rank, rank)
     }
 }
 
-impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWETensorKey<DataSelf, FFT64> {
-    pub fn encrypt_sk<DataSk: AsRef<[u8]>>(
+impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWETensorKey<DataSelf> {
+    pub fn encrypt_sk<DataSk: AsRef<[u8]>, B: Backend>(
         &mut self,
-        module: &Module<FFT64>,
-        sk: &FourierGLWESecret<DataSk, FFT64>,
+        module: &Module<B>,
+        sk: &FourierGLWESecret<DataSk, B>,
         source_xa: &mut Source,
         source_xe: &mut Source,
         sigma: f64,

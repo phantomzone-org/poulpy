@@ -1,6 +1,8 @@
-use backend::{Backend, FFT64, Module, Scratch, VecZnx, VecZnxDftOps, VecZnxOps, ZnxZero};
+use backend::{Backend, Module, Scratch, VecZnx, VecZnxDftOps, VecZnxOps, ZnxZero};
 
-use crate::{FourierGLWECiphertext, GLWEAutomorphismKey, GLWECiphertext, GetRow, Infos, ScratchCore, SetRow};
+use crate::{
+    FourierGLWECiphertext, GLWEAutomorphismKey, GLWEAutomorphismKeyPrep, GLWECiphertext, GetRow, Infos, ScratchCore, SetRow,
+};
 
 impl GLWEAutomorphismKey<Vec<u8>> {
     pub fn automorphism_scratch_space<B: Backend>(
@@ -19,8 +21,8 @@ impl GLWEAutomorphismKey<Vec<u8>> {
         tmp_dft + tmp_idft + idft + keyswitch
     }
 
-    pub fn automorphism_inplace_scratch_space(
-        module: &Module<FFT64>,
+    pub fn automorphism_inplace_scratch_space<B: Backend>(
+        module: &Module<B>,
         basek: usize,
         k_out: usize,
         k_ksk: usize,
@@ -32,11 +34,11 @@ impl GLWEAutomorphismKey<Vec<u8>> {
 }
 
 impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWEAutomorphismKey<DataSelf> {
-    pub fn automorphism<DataLhs: AsRef<[u8]>, DataRhs: AsRef<[u8]>>(
+    pub fn automorphism<DataLhs: AsRef<[u8]>, DataRhs: AsRef<[u8]>, B: Backend>(
         &mut self,
-        module: &Module<FFT64>,
+        module: &Module<B>,
         lhs: &GLWEAutomorphismKey<DataLhs>,
-        rhs: &GLWEAutomorphismKeyPrep<DataRhs, FFT64>,
+        rhs: &GLWEAutomorphismKeyPrep<DataRhs, B>,
         scratch: &mut Scratch,
     ) {
         #[cfg(debug_assertions)]
@@ -136,14 +138,14 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWEAutomorphismKey<DataSelf> {
         self.p = (lhs.p * rhs.p) % (module.cyclotomic_order() as i64);
     }
 
-    pub fn automorphism_inplace<DataRhs: AsRef<[u8]>>(
+    pub fn automorphism_inplace<DataRhs: AsRef<[u8]>, B: Backend>(
         &mut self,
-        module: &Module<FFT64>,
-        rhs: &GLWEAutomorphismKey<DataRhs, FFT64>,
+        module: &Module<B>,
+        rhs: &GLWEAutomorphismKeyPrep<DataRhs, B>,
         scratch: &mut Scratch,
     ) {
         unsafe {
-            let self_ptr: *mut GLWEAutomorphismKey<DataSelf, FFT64> = self as *mut GLWEAutomorphismKey<DataSelf, FFT64>;
+            let self_ptr: *mut GLWEAutomorphismKey<DataSelf, B> = self as *mut GLWEAutomorphismKey<DataSelf, B>;
             self.automorphism(&module, &*self_ptr, rhs, scratch);
         }
     }

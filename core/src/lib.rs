@@ -260,7 +260,7 @@ where
     }
 
     fn tmp_fourier_glwe_secret(&mut self, module: &Module<B>, rank: usize) -> (FourierGLWESecret<&mut [u8], B>, &mut Self) {
-        let (data, scratch) = self.tmp_scalar_znx_dft(module, rank);
+        let (data, scratch) = self.tmp_scalar_znx_dft_prep(module, rank);
         (
             FourierGLWESecret {
                 data,

@@ -1,13 +1,13 @@
 use backend::{
-    Backend, FFT64, MatZnx, MatZnxAlloc, MatZnxDft, MatZnxDftAlloc, MatZnxDftPrep, MatZnxDftPrepOps, MatZnxDftPrepScratch,
-    Module, ScalarZnx, Scratch, VecZnxAlloc, VecZnxBigAlloc, VecZnxBigOps, VecZnxBigScratch, VecZnxDft, VecZnxDftAlloc,
-    VecZnxDftBytesOf, VecZnxDftOps, VecZnxOps, VecZnxToMut, ZnxInfos, ZnxZero,
+    Backend, MatZnx, MatZnxAlloc, MatZnxDftPrep, MatZnxDftPrepOps, MatZnxDftPrepScratch, Module, ScalarZnx, Scratch, VecZnxAlloc,
+    VecZnxBigAlloc, VecZnxBigOps, VecZnxBigScratch, VecZnxDft, VecZnxDftAlloc, VecZnxDftBytesOf, VecZnxDftOps, VecZnxOps,
+    VecZnxToMut, ZnxInfos, ZnxZero,
 };
 use sampling::source::Source;
 
 use crate::{
-    FourierGLWECiphertext, FourierGLWESecret, GLWEAutomorphismKey, GLWECiphertext, GLWESwitchingKey, GLWETensorKey, GetRow,
-    Infos, ScratchCore, SetRow,
+    FourierGLWECiphertext, FourierGLWESecret, GLWEAutomorphismKeyPrep, GLWECiphertext, GLWESwitchingKeyPrep, GLWETensorKeyPrep,
+    GetRow, Infos, ScratchCore, SetRow, ggsw::ciphertext_prep::GGSWCiphertextPrep,
 };
 
 pub struct GGSWCiphertext<D> {
@@ -153,8 +153,8 @@ impl GGSWCiphertext<Vec<u8>> {
         tmp_dft_i + ((tmp_a + vmp) | (tmp_idft + norm))
     }
 
-    pub(crate) fn keyswitch_internal_col0_scratch_space(
-        module: &Module<FFT64>,
+    pub(crate) fn keyswitch_internal_col0_scratch_space<B: Backend>(
+        module: &Module<B>,
         basek: usize,
         k_out: usize,
         k_in: usize,
@@ -166,8 +166,8 @@ impl GGSWCiphertext<Vec<u8>> {
             + module.bytes_of_vec_znx_dft(rank + 1, k_in.div_ceil(basek))
     }
 
-    pub fn keyswitch_scratch_space(
-        module: &Module<FFT64>,
+    pub fn keyswitch_scratch_space<B: Backend>(
+        module: &Module<B>,
         basek: usize,
         k_out: usize,
         k_in: usize,
@@ -187,8 +187,8 @@ impl GGSWCiphertext<Vec<u8>> {
         res_znx + ci_dft + (ks | expand_rows | res_dft)
     }
 
-    pub fn keyswitch_inplace_scratch_space(
-        module: &Module<FFT64>,
+    pub fn keyswitch_inplace_scratch_space<B: Backend>(
+        module: &Module<B>,
         basek: usize,
         k_out: usize,
         k_ksk: usize,
@@ -202,8 +202,8 @@ impl GGSWCiphertext<Vec<u8>> {
         )
     }
 
-    pub fn automorphism_scratch_space(
-        module: &Module<FFT64>,
+    pub fn automorphism_scratch_space<B: Backend>(
+        module: &Module<B>,
         basek: usize,
         k_out: usize,
         k_in: usize,
@@ -224,8 +224,8 @@ impl GGSWCiphertext<Vec<u8>> {
         res + ci_dft + (ks_internal | expand | res_dft)
     }
 
-    pub fn automorphism_inplace_scratch_space(
-        module: &Module<FFT64>,
+    pub fn automorphism_inplace_scratch_space<B: Backend>(
+        module: &Module<B>,
         basek: usize,
         k_out: usize,
         k_ksk: usize,
@@ -239,8 +239,8 @@ impl GGSWCiphertext<Vec<u8>> {
         )
     }
 
-    pub fn external_product_scratch_space(
-        module: &Module<FFT64>,
+    pub fn external_product_scratch_space<B: Backend>(
+        module: &Module<B>,
         basek: usize,
         k_out: usize,
         k_in: usize,
@@ -254,8 +254,8 @@ impl GGSWCiphertext<Vec<u8>> {
         tmp_in + tmp_out + ggsw
     }
 
-    pub fn external_product_inplace_scratch_space(
-        module: &Module<FFT64>,
+    pub fn external_product_inplace_scratch_space<B: Backend>(
+        module: &Module<B>,
         basek: usize,
         k_out: usize,
         k_ggsw: usize,
@@ -270,11 +270,11 @@ impl GGSWCiphertext<Vec<u8>> {
 }
 
 impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
-    pub fn encrypt_sk<DataPt: AsRef<[u8]>, DataSk: AsRef<[u8]>>(
+    pub fn encrypt_sk<DataPt: AsRef<[u8]>, DataSk: AsRef<[u8]>, B: Backend>(
         &mut self,
-        module: &Module<FFT64>,
+        module: &Module<B>,
         pt: &ScalarZnx<DataPt>,
-        sk: &FourierGLWESecret<DataSk, FFT64>,
+        sk: &FourierGLWESecret<DataSk, B>,
         source_xa: &mut Source,
         source_xe: &mut Source,
         sigma: f64,
@@ -318,13 +318,13 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
         });
     }
 
-    pub(crate) fn expand_row<R, DataCi: AsRef<[u8]>, DataTsk: AsRef<[u8]>>(
+    pub(crate) fn expand_row<R, DataCi: AsRef<[u8]>, DataTsk: AsRef<[u8]>, B: Backend>(
         &mut self,
-        module: &Module<FFT64>,
+        module: &Module<B>,
         col_j: usize,
         res: &mut R,
-        ci_dft: &VecZnxDft<DataCi, FFT64>,
-        tsk: &GLWETensorKey<DataTsk, FFT64>,
+        ci_dft: &VecZnxDft<DataCi, B>,
+        tsk: &GLWETensorKeyPrep<DataTsk, B>,
         scratch: &mut Scratch,
     ) where
         R: VecZnxToMut,
@@ -381,7 +381,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
             // =
             // (-(x0s0 + x1s1 + x2s2) + s0(a0s0 + a1s1 + a2s2), x0, x1, x2)
             (1..cols).for_each(|col_i| {
-                let pmat: &MatZnxDftPrep<DataTsk, FFT64> = &tsk.at(col_i - 1, col_j - 1).key.data; // Selects Enc(s[i]s[j])
+                let pmat: &MatZnxDftPrep<DataTsk, B> = &tsk.at(col_i - 1, col_j - 1).key.data; // Selects Enc(s[i]s[j])
 
                 // Extracts a[i] and multipies with Enc(s[i]s[j])
                 (0..digits).for_each(|di| {
@@ -423,12 +423,12 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
         });
     }
 
-    pub fn keyswitch<DataLhs: AsRef<[u8]>, DataKsk: AsRef<[u8]>, DataTsk: AsRef<[u8]>>(
+    pub fn keyswitch<DataLhs: AsRef<[u8]>, DataKsk: AsRef<[u8]>, DataTsk: AsRef<[u8]>, B: Backend>(
         &mut self,
-        module: &Module<FFT64>,
+        module: &Module<B>,
         lhs: &GGSWCiphertext<DataLhs>,
-        ksk: &GLWESwitchingKey<DataKsk, FFT64>,
-        tsk: &GLWETensorKey<DataTsk, FFT64>,
+        ksk: &GLWESwitchingKeyPrep<DataKsk, B>,
+        tsk: &GLWETensorKeyPrep<DataTsk, B>,
         scratch: &mut Scratch,
     ) {
         let rank: usize = self.rank();
@@ -465,25 +465,25 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
         })
     }
 
-    pub fn keyswitch_inplace<DataKsk: AsRef<[u8]>, DataTsk: AsRef<[u8]>>(
+    pub fn keyswitch_inplace<DataKsk: AsRef<[u8]>, DataTsk: AsRef<[u8]>, B: Backend>(
         &mut self,
-        module: &Module<FFT64>,
-        ksk: &GLWESwitchingKey<DataKsk, FFT64>,
-        tsk: &GLWETensorKey<DataTsk, FFT64>,
+        module: &Module<B>,
+        ksk: &GLWESwitchingKeyPrep<DataKsk, B>,
+        tsk: &GLWETensorKeyPrep<DataTsk, B>,
         scratch: &mut Scratch,
     ) {
         unsafe {
-            let self_ptr: *mut GGSWCiphertext<DataSelf, FFT64> = self as *mut GGSWCiphertext<DataSelf, FFT64>;
+            let self_ptr: *mut GGSWCiphertext<DataSelf, B> = self as *mut GGSWCiphertext<DataSelf, B>;
             self.keyswitch(module, &*self_ptr, ksk, tsk, scratch);
         }
     }
 
-    pub fn automorphism<DataLhs: AsRef<[u8]>, DataAk: AsRef<[u8]>, DataTsk: AsRef<[u8]>>(
+    pub fn automorphism<DataLhs: AsRef<[u8]>, DataAk: AsRef<[u8]>, DataTsk: AsRef<[u8]>, B: Backend>(
         &mut self,
-        module: &Module<FFT64>,
-        lhs: &GGSWCiphertext<DataLhs, FFT64>,
-        auto_key: &GLWEAutomorphismKey<DataAk, FFT64>,
-        tensor_key: &GLWETensorKey<DataTsk, FFT64>,
+        module: &Module<B>,
+        lhs: &GGSWCiphertext<DataLhs>,
+        auto_key: &GLWEAutomorphismKeyPrep<DataAk, B>,
+        tensor_key: &GLWETensorKeyPrep<DataTsk, B>,
         scratch: &mut Scratch,
     ) {
         #[cfg(debug_assertions)]
@@ -568,24 +568,24 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
         })
     }
 
-    pub fn automorphism_inplace<DataKsk: AsRef<[u8]>, DataTsk: AsRef<[u8]>>(
+    pub fn automorphism_inplace<DataKsk: AsRef<[u8]>, DataTsk: AsRef<[u8]>, B: Backend>(
         &mut self,
-        module: &Module<FFT64>,
-        auto_key: &GLWEAutomorphismKey<DataKsk, FFT64>,
-        tensor_key: &GLWETensorKey<DataTsk, FFT64>,
+        module: &Module<B>,
+        auto_key: &GLWEAutomorphismKeyPrep<DataKsk, B>,
+        tensor_key: &GLWETensorKeyPrep<DataTsk, B>,
         scratch: &mut Scratch,
     ) {
         unsafe {
-            let self_ptr: *mut GGSWCiphertext<DataSelf, FFT64> = self as *mut GGSWCiphertext<DataSelf, FFT64>;
+            let self_ptr: *mut GGSWCiphertext<DataSelf, B> = self as *mut GGSWCiphertext<DataSelf, B>;
             self.automorphism(module, &*self_ptr, auto_key, tensor_key, scratch);
         }
     }
 
-    pub fn external_product<DataLhs: AsRef<[u8]>, DataRhs: AsRef<[u8]>>(
+    pub fn external_product<DataLhs: AsRef<[u8]>, DataRhs: AsRef<[u8]>, B: Backend>(
         &mut self,
-        module: &Module<FFT64>,
-        lhs: &GGSWCiphertext<DataLhs, FFT64>,
-        rhs: &GGSWCiphertext<DataRhs, FFT64>,
+        module: &Module<B>,
+        lhs: &GGSWCiphertext<DataLhs>,
+        rhs: &GGSWCiphertextPrep<DataRhs, B>,
         scratch: &mut Scratch,
     ) {
         #[cfg(debug_assertions)]
@@ -639,10 +639,10 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
         });
     }
 
-    pub fn external_product_inplace<DataRhs: AsRef<[u8]>>(
+    pub fn external_product_inplace<DataRhs: AsRef<[u8]>, B: Backend>(
         &mut self,
-        module: &Module<FFT64>,
-        rhs: &GGSWCiphertext<DataRhs, FFT64>,
+        module: &Module<B>,
+        rhs: &GGSWCiphertextPrep<DataRhs, B>,
         scratch: &mut Scratch,
     ) {
         #[cfg(debug_assertions)]
@@ -668,13 +668,13 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
     }
 }
 
-impl<DataSelf: AsRef<[u8]>> GGSWCiphertext<DataSelf, FFT64> {
-    pub(crate) fn keyswitch_internal_col0<DataRes: AsMut<[u8]> + AsRef<[u8]>, DataKsk: AsRef<[u8]>>(
+impl<DataSelf: AsRef<[u8]>> GGSWCiphertext<DataSelf> {
+    pub(crate) fn keyswitch_internal_col0<DataRes: AsMut<[u8]> + AsRef<[u8]>, DataKsk: AsRef<[u8]>, B: Backend>(
         &self,
-        module: &Module<FFT64>,
+        module: &Module<B>,
         row_i: usize,
         res: &mut GLWECiphertext<DataRes>,
-        ksk: &GLWESwitchingKey<DataKsk, FFT64>,
+        ksk: &GLWESwitchingKeyPrep<DataKsk, B>,
         scratch: &mut Scratch,
     ) {
         #[cfg(debug_assertions)]
@@ -697,29 +697,5 @@ impl<DataSelf: AsRef<[u8]>> GGSWCiphertext<DataSelf, FFT64> {
         let (mut tmp_dft_dft, scratch1) = scratch.tmp_fourier_glwe_ct(module, self.basek(), self.k(), self.rank());
         self.get_row(module, row_i, 0, &mut tmp_dft_dft);
         res.keyswitch_from_fourier(module, &tmp_dft_dft, ksk, scratch1);
-    }
-}
-
-impl<DataSelf: AsRef<[u8]>> GetRow<FFT64> for GGSWCiphertext<DataSelf, FFT64> {
-    fn get_row<R: AsMut<[u8]> + AsRef<[u8]>>(
-        &self,
-        module: &Module<FFT64>,
-        row_i: usize,
-        col_j: usize,
-        res: &mut FourierGLWECiphertext<R, FFT64>,
-    ) {
-        module.mat_znx_dft_get_row(&mut res.data, &self.data, row_i, col_j);
-    }
-}
-
-impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> SetRow<FFT64> for GGSWCiphertext<DataSelf, FFT64> {
-    fn set_row<R: AsRef<[u8]>>(
-        &mut self,
-        module: &Module<FFT64>,
-        row_i: usize,
-        col_j: usize,
-        a: &FourierGLWECiphertext<R, FFT64>,
-    ) {
-        module.mat_znx_dft_set_row(&mut self.data, row_i, col_j, &a.data);
     }
 }

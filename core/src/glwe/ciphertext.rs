@@ -1,4 +1,4 @@
-use backend::{Backend, FFT64, Module, VecZnx, VecZnxAlloc, VecZnxDftOps, VecZnxToMut, VecZnxToRef};
+use backend::{Backend, Module, VecZnx, VecZnxAlloc, VecZnxDftOps, VecZnxToMut, VecZnxToRef};
 
 use crate::{FourierGLWECiphertext, GLWEOps, Infos, SetMetaData};
 
@@ -17,7 +17,7 @@ impl GLWECiphertext<Vec<u8>> {
         }
     }
 
-    pub fn bytes_of(module: &Module<FFT64>, basek: usize, k: usize, rank: usize) -> usize {
+    pub fn bytes_of<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize {
         module.bytes_of_vec_znx(rank + 1, k.div_ceil(basek))
     }
 }
@@ -46,7 +46,11 @@ impl<T> GLWECiphertext<T> {
 
 impl<C: AsRef<[u8]>> GLWECiphertext<C> {
     #[allow(dead_code)]
-    pub(crate) fn dft<R: AsMut<[u8]> + AsRef<[u8]>>(&self, module: &Module<FFT64>, res: &mut FourierGLWECiphertext<R, FFT64>) {
+    pub(crate) fn dft<R: AsMut<[u8]> + AsRef<[u8]>, B: Backend>(
+        &self,
+        module: &Module<B>,
+        res: &mut FourierGLWECiphertext<R, B>,
+    ) {
         #[cfg(debug_assertions)]
         {
             assert_eq!(self.rank(), res.rank());

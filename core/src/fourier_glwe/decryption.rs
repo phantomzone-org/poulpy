@@ -1,12 +1,12 @@
 use backend::{
-    FFT64, Module, ScalarZnxDftOps, Scratch, VecZnxBig, VecZnxBigAlloc, VecZnxBigOps, VecZnxBigScratch, VecZnxDftAlloc,
+    Backend, Module, ScalarZnxDftPrepOps, Scratch, VecZnxBig, VecZnxBigAlloc, VecZnxBigOps, VecZnxBigScratch, VecZnxDftAlloc,
     VecZnxDftOps, ZnxZero,
 };
 
 use crate::{FourierGLWECiphertext, FourierGLWESecret, GLWECiphertext, GLWEPlaintext, Infos};
 
-impl FourierGLWECiphertext<Vec<u8>, FFT64> {
-    pub fn decrypt_scratch_space(module: &Module<FFT64>, basek: usize, k: usize) -> usize {
+impl<B: Backend> FourierGLWECiphertext<Vec<u8>, B> {
+    pub fn decrypt_scratch_space(module: &Module<B>, basek: usize, k: usize) -> usize {
         let size: usize = k.div_ceil(basek);
         (module.vec_znx_big_normalize_tmp_bytes()
             | module.bytes_of_vec_znx_dft(1, size)
@@ -15,12 +15,12 @@ impl FourierGLWECiphertext<Vec<u8>, FFT64> {
     }
 }
 
-impl<DataSelf: AsRef<[u8]>> FourierGLWECiphertext<DataSelf, FFT64> {
+impl<DataSelf: AsRef<[u8]>, B: Backend> FourierGLWECiphertext<DataSelf, B> {
     pub fn decrypt<DataPt: AsRef<[u8]> + AsMut<[u8]>, DataSk: AsRef<[u8]>>(
         &self,
-        module: &Module<FFT64>,
+        module: &Module<B>,
         pt: &mut GLWEPlaintext<DataPt>,
-        sk: &FourierGLWESecret<DataSk, FFT64>,
+        sk: &FourierGLWESecret<DataSk, B>,
         scratch: &mut Scratch,
     ) {
         #[cfg(debug_assertions)]
@@ -40,7 +40,7 @@ impl<DataSelf: AsRef<[u8]>> FourierGLWECiphertext<DataSelf, FFT64> {
             (1..cols).for_each(|i| {
                 let (mut ci_dft, _) = scratch_1.tmp_vec_znx_dft(module, 1, self.size()); // TODO optimize size when pt << ct
                 module.svp_apply(&mut ci_dft, 0, &sk.data, i - 1, &self.data, i);
-                let ci_big: VecZnxBig<&mut [u8], FFT64> = module.vec_znx_idft_consume(ci_dft);
+                let ci_big: VecZnxBig<&mut [u8], B> = module.vec_znx_idft_consume(ci_dft);
                 module.vec_znx_big_add_inplace(&mut pt_big, 0, &ci_big, 0);
             });
         }
@@ -62,7 +62,7 @@ impl<DataSelf: AsRef<[u8]>> FourierGLWECiphertext<DataSelf, FFT64> {
     #[allow(dead_code)]
     pub(crate) fn idft<DataRes: AsRef<[u8]> + AsMut<[u8]>>(
         &self,
-        module: &Module<FFT64>,
+        module: &Module<B>,
         res: &mut GLWECiphertext<DataRes>,
         scratch: &mut Scratch,
     ) {

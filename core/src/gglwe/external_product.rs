@@ -1,10 +1,13 @@
-use backend::{FFT64, Module, Scratch, ZnxZero};
+use backend::{Backend, Module, Scratch, ZnxZero};
 
-use crate::{FourierGLWECiphertext, GGSWCiphertext, GLWEAutomorphismKey, GLWESwitchingKey, GetRow, Infos, ScratchCore, SetRow};
+use crate::{
+    FourierGLWECiphertext, GLWEAutomorphismKey, GLWESwitchingKey, GetRow, Infos, ScratchCore, SetRow,
+    ggsw::ciphertext_prep::GGSWCiphertextPrep,
+};
 
-impl GLWESwitchingKey<Vec<u8>, FFT64> {
-    pub fn external_product_scratch_space(
-        module: &Module<FFT64>,
+impl GLWESwitchingKey<Vec<u8>> {
+    pub fn external_product_scratch_space<B: Backend>(
+        module: &Module<B>,
         basek: usize,
         k_out: usize,
         k_in: usize,
@@ -18,8 +21,8 @@ impl GLWESwitchingKey<Vec<u8>, FFT64> {
         tmp_in + tmp_out + ggsw
     }
 
-    pub fn external_product_inplace_scratch_space(
-        module: &Module<FFT64>,
+    pub fn external_product_inplace_scratch_space<B: Backend>(
+        module: &Module<B>,
         basek: usize,
         k_out: usize,
         k_ggsw: usize,
@@ -33,12 +36,12 @@ impl GLWESwitchingKey<Vec<u8>, FFT64> {
     }
 }
 
-impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<DataSelf, FFT64> {
-    pub fn external_product<DataLhs: AsRef<[u8]>, DataRhs: AsRef<[u8]>>(
+impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<DataSelf> {
+    pub fn external_product<DataLhs: AsRef<[u8]>, DataRhs: AsRef<[u8]>, B: Backend>(
         &mut self,
-        module: &Module<FFT64>,
-        lhs: &GLWESwitchingKey<DataLhs, FFT64>,
-        rhs: &GGSWCiphertext<DataRhs, FFT64>,
+        module: &Module<B>,
+        lhs: &GLWESwitchingKey<DataLhs>,
+        rhs: &GGSWCiphertextPrep<DataRhs, B>,
         scratch: &mut Scratch,
     ) {
         #[cfg(debug_assertions)]
@@ -86,10 +89,10 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<DataSelf, FFT64> {
         });
     }
 
-    pub fn external_product_inplace<DataRhs: AsRef<[u8]>>(
+    pub fn external_product_inplace<DataRhs: AsRef<[u8]>, B: Backend>(
         &mut self,
-        module: &Module<FFT64>,
-        rhs: &GGSWCiphertext<DataRhs, FFT64>,
+        module: &Module<B>,
+        rhs: &GGSWCiphertextPrep<DataRhs, B>,
         scratch: &mut Scratch,
     ) {
         #[cfg(debug_assertions)]
@@ -115,9 +118,9 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<DataSelf, FFT64> {
     }
 }
 
-impl GLWEAutomorphismKey<Vec<u8>, FFT64> {
-    pub fn external_product_scratch_space(
-        module: &Module<FFT64>,
+impl GLWEAutomorphismKey<Vec<u8>> {
+    pub fn external_product_scratch_space<B: Backend>(
+        module: &Module<B>,
         basek: usize,
         k_out: usize,
         k_in: usize,
@@ -128,8 +131,8 @@ impl GLWEAutomorphismKey<Vec<u8>, FFT64> {
         GLWESwitchingKey::external_product_scratch_space(module, basek, k_out, k_in, ggsw_k, digits, rank)
     }
 
-    pub fn external_product_inplace_scratch_space(
-        module: &Module<FFT64>,
+    pub fn external_product_inplace_scratch_space<B: Backend>(
+        module: &Module<B>,
         basek: usize,
         k_out: usize,
         ggsw_k: usize,
@@ -140,21 +143,21 @@ impl GLWEAutomorphismKey<Vec<u8>, FFT64> {
     }
 }
 
-impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWEAutomorphismKey<DataSelf, FFT64> {
-    pub fn external_product<DataLhs: AsRef<[u8]>, DataRhs: AsRef<[u8]>>(
+impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWEAutomorphismKey<DataSelf> {
+    pub fn external_product<DataLhs: AsRef<[u8]>, DataRhs: AsRef<[u8]>, B: Backend>(
         &mut self,
-        module: &Module<FFT64>,
-        lhs: &GLWEAutomorphismKey<DataLhs, FFT64>,
-        rhs: &GGSWCiphertext<DataRhs, FFT64>,
+        module: &Module<B>,
+        lhs: &GLWEAutomorphismKey<DataLhs>,
+        rhs: &GGSWCiphertextPrep<DataRhs, B>,
         scratch: &mut Scratch,
     ) {
         self.key.external_product(module, &lhs.key, rhs, scratch);
     }
 
-    pub fn external_product_inplace<DataRhs: AsRef<[u8]>>(
+    pub fn external_product_inplace<DataRhs: AsRef<[u8]>, B: Backend>(
         &mut self,
-        module: &Module<FFT64>,
-        rhs: &GGSWCiphertext<DataRhs, FFT64>,
+        module: &Module<B>,
+        rhs: &GGSWCiphertextPrep<DataRhs, B>,
         scratch: &mut Scratch,
     ) {
         self.key.external_product_inplace(module, rhs, scratch);

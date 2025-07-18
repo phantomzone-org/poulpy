@@ -1,4 +1,4 @@
-use backend::{Backend, FFT64, Module, Scratch, ZnxZero};
+use backend::{Backend, Module, Scratch, ZnxZero};
 
 use crate::{
     FourierGLWECiphertext, GLWEAutomorphismKey, GLWEAutomorphismKeyPrep, GLWESwitchingKey, GLWESwitchingKeyPrep, GetRow, Infos,
@@ -43,7 +43,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWEAutomorphismKey<DataSelf> {
 
     pub fn keyswitch_inplace<DataRhs: AsRef<[u8]>, B: Backend>(
         &mut self,
-        module: &Module<FFT64>,
+        module: &Module<B>,
         rhs: &GLWEAutomorphismKeyPrep<DataRhs, B>,
         scratch: &mut Scratch,
     ) {

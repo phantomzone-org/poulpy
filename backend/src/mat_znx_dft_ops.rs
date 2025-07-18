@@ -1,4 +1,4 @@
-use crate::{Backend, FFT64, MatZnxDft, MatZnxDftBytesOf, MatZnxDftOwned, Module};
+use crate::{Backend, FFT64, MatZnxDft, MatZnxDftBytesOf, MatZnxDftOwned, Module, NTT120};
 
 pub trait MatZnxDftAlloc<B: Backend> {
     /// Allocates a new [MatZnxDft] with the given number of rows and columns.
@@ -54,3 +54,5 @@ pub trait MatZnxDftOps<BACKEND: Backend> {}
 impl<BACKEND: Backend> MatZnxDftScratch for Module<BACKEND> {}
 
 impl MatZnxDftOps<FFT64> for Module<FFT64> {}
+
+impl MatZnxDftOps<NTT120> for Module<NTT120> {}

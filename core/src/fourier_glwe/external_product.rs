@@ -1,14 +1,14 @@
 use backend::{
-    FFT64, MatZnxDftPrepOps, MatZnxDftPrepScratch, Module, Scratch, VecZnxAlloc, VecZnxBig, VecZnxBigOps, VecZnxBigScratch,
+    Backend, MatZnxDftPrepOps, MatZnxDftPrepScratch, Module, Scratch, VecZnxAlloc, VecZnxBig, VecZnxBigOps, VecZnxBigScratch,
     VecZnxDftAlloc, VecZnxDftOps,
 };
 
 use crate::{FourierGLWECiphertext, Infos, ggsw::ciphertext_prep::GGSWCiphertextPrep};
 
-impl FourierGLWECiphertext<Vec<u8>, FFT64> {
+impl<B: Backend> FourierGLWECiphertext<Vec<u8>, B> {
     // WARNING TODO: UPDATE
     pub fn external_product_scratch_space(
-        module: &Module<FFT64>,
+        module: &Module<B>,
         basek: usize,
         _k_out: usize,
         k_in: usize,
@@ -28,7 +28,7 @@ impl FourierGLWECiphertext<Vec<u8>, FFT64> {
     }
 
     pub fn external_product_inplace_scratch_space(
-        module: &Module<FFT64>,
+        module: &Module<B>,
         basek: usize,
         k_out: usize,
         k_ggsw: usize,
@@ -39,12 +39,12 @@ impl FourierGLWECiphertext<Vec<u8>, FFT64> {
     }
 }
 
-impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> FourierGLWECiphertext<DataSelf, FFT64> {
+impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>, B: Backend> FourierGLWECiphertext<DataSelf, B> {
     pub fn external_product<DataLhs: AsRef<[u8]>, DataRhs: AsRef<[u8]>>(
         &mut self,
-        module: &Module<FFT64>,
-        lhs: &FourierGLWECiphertext<DataLhs, FFT64>,
-        rhs: &GGSWCiphertextPrep<DataRhs, FFT64>,
+        module: &Module<B>,
+        lhs: &FourierGLWECiphertext<DataLhs, B>,
+        rhs: &GGSWCiphertextPrep<DataRhs, B>,
         scratch: &mut Scratch,
     ) {
         let basek: usize = self.basek();
@@ -105,7 +105,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> FourierGLWECiphertext<DataSelf, FFT64>
         }
 
         // VMP result in high precision
-        let res_big: VecZnxBig<&mut [u8], FFT64> = module.vec_znx_idft_consume::<&mut [u8]>(res_dft);
+        let res_big: VecZnxBig<&mut [u8], B> = module.vec_znx_idft_consume::<&mut [u8]>(res_dft);
 
         // Space for VMP result normalized
         let (mut res_small, scratch2) = scratch1.tmp_vec_znx(module, cols, rhs.size());
@@ -117,12 +117,12 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> FourierGLWECiphertext<DataSelf, FFT64>
 
     pub fn external_product_inplace<DataRhs: AsRef<[u8]>>(
         &mut self,
-        module: &Module<FFT64>,
-        rhs: &GGSWCiphertextPrep<DataRhs, FFT64>,
+        module: &Module<B>,
+        rhs: &GGSWCiphertextPrep<DataRhs, B>,
         scratch: &mut Scratch,
     ) {
         unsafe {
-            let self_ptr: *mut FourierGLWECiphertext<DataSelf, FFT64> = self as *mut FourierGLWECiphertext<DataSelf, FFT64>;
+            let self_ptr: *mut FourierGLWECiphertext<DataSelf, B> = self as *mut FourierGLWECiphertext<DataSelf, B>;
             self.external_product(&module, &*self_ptr, rhs, scratch);
         }
     }

@@ -1,13 +1,13 @@
 use backend::{
-    FFT64, MatZnxDftPrepOps, MatZnxDftPrepScratch, Module, Scratch, VecZnxBig, VecZnxBigOps, VecZnxDftAlloc, VecZnxDftOps,
+    Backend, MatZnxDftPrepOps, MatZnxDftPrepScratch, Module, Scratch, VecZnxBig, VecZnxBigOps, VecZnxDftAlloc, VecZnxDftOps,
     VecZnxScratch,
 };
 
-use crate::{GGSWCiphertext, GLWECiphertext, Infos};
+use crate::{GLWECiphertext, Infos, ggsw::ciphertext_prep::GGSWCiphertextPrep};
 
 impl GLWECiphertext<Vec<u8>> {
-    pub fn external_product_scratch_space(
-        module: &Module<FFT64>,
+    pub fn external_product_scratch_space<B: Backend>(
+        module: &Module<B>,
         basek: usize,
         k_out: usize,
         k_in: usize,
@@ -32,8 +32,8 @@ impl GLWECiphertext<Vec<u8>> {
         res_dft + a_dft + (vmp | normalize)
     }
 
-    pub fn external_product_inplace_scratch_space(
-        module: &Module<FFT64>,
+    pub fn external_product_inplace_scratch_space<B: Backend>(
+        module: &Module<B>,
         basek: usize,
         k_out: usize,
         k_ggsw: usize,
@@ -45,11 +45,11 @@ impl GLWECiphertext<Vec<u8>> {
 }
 
 impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
-    pub fn external_product<DataLhs: AsRef<[u8]>, DataRhs: AsRef<[u8]>>(
+    pub fn external_product<DataLhs: AsRef<[u8]>, DataRhs: AsRef<[u8]>, B: Backend>(
         &mut self,
-        module: &Module<FFT64>,
+        module: &Module<B>,
         lhs: &GLWECiphertext<DataLhs>,
-        rhs: &GGSWCiphertext<DataRhs, FFT64>,
+        rhs: &GGSWCiphertextPrep<DataRhs, B>,
         scratch: &mut Scratch,
     ) {
         let basek: usize = self.basek();
@@ -109,17 +109,17 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
             });
         }
 
-        let res_big: VecZnxBig<&mut [u8], FFT64> = module.vec_znx_idft_consume(res_dft);
+        let res_big: VecZnxBig<&mut [u8], B> = module.vec_znx_idft_consume(res_dft);
 
         (0..cols).for_each(|i| {
             module.vec_znx_big_normalize(basek, &mut self.data, i, &res_big, i, scratch1);
         });
     }
 
-    pub fn external_product_inplace<DataRhs: AsRef<[u8]>>(
+    pub fn external_product_inplace<DataRhs: AsRef<[u8]>, B: Backend>(
         &mut self,
-        module: &Module<FFT64>,
-        rhs: &GGSWCiphertext<DataRhs, FFT64>,
+        module: &Module<B>,
+        rhs: &GGSWCiphertextPrep<DataRhs, B>,
         scratch: &mut Scratch,
     ) {
         unsafe {

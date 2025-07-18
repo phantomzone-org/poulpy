@@ -4,6 +4,7 @@ use crate::DataView;
 use crate::DataViewMut;
 use crate::ScalarZnx;
 use crate::Scratch;
+use crate::ZnxMachineWord;
 use crate::ZnxSliceSize;
 use crate::ZnxZero;
 use crate::alloc_aligned;
@@ -58,9 +59,15 @@ impl<D> ZnxInfos for VecZnx<D> {
     }
 }
 
-impl<D> ZnxSliceSize for VecZnx<D> {
+impl<D> ZnxSliceSize for VecZnx<D> where VecZnx<D>: ZnxMachineWord{
     fn sl(&self) -> usize {
-        self.n() * self.cols()
+        Self::mw() * self.n() * self.cols()
+    }
+}
+
+impl<D: AsRef<[u8]>> ZnxMachineWord for VecZnx<D> {
+    fn mw() -> usize {
+        1
     }
 }
 
@@ -84,6 +91,20 @@ impl<D: AsRef<[u8]>> ZnxView for VecZnx<D> {
 impl VecZnx<Vec<u8>> {
     pub fn rsh_scratch_space(n: usize) -> usize {
         n * std::mem::size_of::<i64>()
+    }
+}
+
+impl<D: AsRef<[u8]> + AsMut<[u8]>> ZnxZero for VecZnx<D>{
+    fn zero(&mut self) {
+        unsafe {
+            std::ptr::write_bytes(self.as_mut_ptr(), 0, self.sl() * self.size());
+        }
+    }
+
+    fn zero_at(&mut self, i: usize, j: usize) {
+        unsafe {
+            std::ptr::write_bytes(self.at_mut_ptr(i, j), 0, self.n());
+        }
     }
 }
 

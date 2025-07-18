@@ -1,10 +1,10 @@
-use backend::{Backend, FFT64, Module, Scratch, VecZnxOps};
+use backend::{Backend, Module, Scratch, VecZnxOps};
 
 use crate::{GLWEAutomorphismKeyPrep, GLWECiphertext};
 
 impl GLWECiphertext<Vec<u8>> {
-    pub fn automorphism_scratch_space(
-        module: &Module<FFT64>,
+    pub fn automorphism_scratch_space<B: Backend>(
+        module: &Module<B>,
         basek: usize,
         k_out: usize,
         k_in: usize,
@@ -15,8 +15,8 @@ impl GLWECiphertext<Vec<u8>> {
         Self::keyswitch_scratch_space(module, basek, k_out, k_in, k_ksk, digits, rank, rank)
     }
 
-    pub fn automorphism_inplace_scratch_space(
-        module: &Module<FFT64>,
+    pub fn automorphism_inplace_scratch_space<B: Backend>(
+        module: &Module<B>,
         basek: usize,
         k_out: usize,
         k_ksk: usize,
@@ -55,7 +55,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
 
     pub fn automorphism_add<DataLhs: AsRef<[u8]>, DataRhs: AsRef<[u8]>, B: Backend>(
         &mut self,
-        module: &Module<FFT64>,
+        module: &Module<B>,
         lhs: &GLWECiphertext<DataLhs>,
         rhs: &GLWEAutomorphismKeyPrep<DataRhs, B>,
         scratch: &mut Scratch,
@@ -85,7 +85,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         Self::keyswitch_private::<_, _, 2>(self, rhs.p(), module, lhs, &rhs.key, scratch);
     }
 
-    pub fn automorphism_sub_ab_inplace<DataRhs: AsRef<[u8]>>(
+    pub fn automorphism_sub_ab_inplace<DataRhs: AsRef<[u8]>, B: Backend>(
         &mut self,
         module: &Module<B>,
         rhs: &GLWEAutomorphismKeyPrep<DataRhs, B>,
