@@ -1,5 +1,5 @@
 use crate::znx_base::{ZnxInfos, ZnxView};
-use crate::{Backend, DataView, DataViewMut, FFT64, NTT120, VecZnx, ZnxSliceSize, ZnxViewMut, ZnxZero, alloc_aligned};
+use crate::{alloc_aligned, Backend, DataView, DataViewMut, VecZnx, ZnxWordSize, ZnxSliceSize, ZnxViewMut, ZnxZero, FFT64, NTT120};
 use std::fmt;
 use std::marker::PhantomData;
 
@@ -29,15 +29,15 @@ impl<D, B: Backend> ZnxInfos for VecZnxBig<D, B> {
     }
 }
 
-impl<D> ZnxSliceSize for VecZnxBig<D, FFT64> {
-    fn sl(&self) -> usize {
-        self.n() * self.cols()
+impl<D, B: Backend> ZnxWordSize for VecZnxBig<D, B>  {
+    fn ws() -> usize {
+        1
     }
 }
 
-impl<D> ZnxSliceSize for VecZnxBig<D, NTT120> {
+impl<D, B: Backend> ZnxSliceSize for VecZnxBig<D, B> where VecZnxBig<D, B>: ZnxWordSize  {
     fn sl(&self) -> usize {
-        4 * self.n() * self.cols()
+       Self::ws() * self.n() * self.cols()
     }
 }
 
@@ -59,22 +59,30 @@ impl<D: AsRef<[u8]>> ZnxView for VecZnxBig<D, FFT64> {
 }
 
 impl<D: AsRef<[u8]>> ZnxView for VecZnxBig<D, NTT120> {
-    type Scalar = i64;
+    type Scalar = i128;
 }
 
 pub trait VecZnxBigBytesOf<B: Backend> {
     fn bytes_of(n: usize, cols: usize, size: usize) -> usize;
 }
 
-impl<D: AsRef<[u8]>> VecZnxBigBytesOf<FFT64> for VecZnxBig<D, FFT64> {
+impl<D: AsRef<[u8]>, B: Backend> VecZnxBigBytesOf<B> for VecZnxBig<D, B> where VecZnxBig<D, B>: ZnxWordSize {
     fn bytes_of(n: usize, cols: usize, size: usize) -> usize {
-        n * cols * size * size_of::<f64>()
+        Self::ws() * n * cols * size * size_of::<f64>()
     }
 }
 
-impl<D: AsRef<[u8]>> VecZnxBigBytesOf<NTT120> for VecZnxBig<D, NTT120> {
-    fn bytes_of(n: usize, cols: usize, size: usize) -> usize {
-        4 * n * cols * size * size_of::<i64>()
+impl<D: AsRef<[u8]> + AsMut<[u8]>, B: Backend> ZnxZero for VecZnxBig<D, B> where VecZnxBig<D, B>: ZnxWordSize + ZnxViewMut {
+    fn zero(&mut self) {
+        unsafe {
+            std::ptr::write_bytes(self.as_mut_ptr(), 0, self.sl() * self.size());
+        }
+    }
+
+    fn zero_at(&mut self, i: usize, j: usize) {
+        unsafe {
+            std::ptr::write_bytes(self.at_mut_ptr(i, j), 0, self.n() * Self::ws());
+        }
     }
 }
 

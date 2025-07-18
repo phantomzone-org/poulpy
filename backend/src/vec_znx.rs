@@ -4,7 +4,7 @@ use crate::DataView;
 use crate::DataViewMut;
 use crate::ScalarZnx;
 use crate::Scratch;
-use crate::ZnxMachineWord;
+use crate::ZnxWordSize;
 use crate::ZnxSliceSize;
 use crate::ZnxZero;
 use crate::alloc_aligned;
@@ -59,14 +59,14 @@ impl<D> ZnxInfos for VecZnx<D> {
     }
 }
 
-impl<D> ZnxSliceSize for VecZnx<D> where VecZnx<D>: ZnxMachineWord{
+impl<D> ZnxSliceSize for VecZnx<D> where VecZnx<D>: ZnxWordSize{
     fn sl(&self) -> usize {
-        Self::mw() * self.n() * self.cols()
+        Self::ws() * self.n() * self.cols()
     }
 }
 
-impl<D: AsRef<[u8]>> ZnxMachineWord for VecZnx<D> {
-    fn mw() -> usize {
+impl<D: AsRef<[u8]>> ZnxWordSize for VecZnx<D> {
+    fn ws() -> usize {
         1
     }
 }

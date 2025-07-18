@@ -1,7 +1,7 @@
 use std::marker::PhantomData;
 
 use crate::znx_base::ZnxInfos;
-use crate::{alloc_aligned, Backend, DataView, DataViewMut, VecZnxBig, ZnxMachineWord, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero, FFT64, NTT120};
+use crate::{alloc_aligned, Backend, DataView, DataViewMut, VecZnxBig, ZnxWordSize, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero, FFT64, NTT120};
 use std::fmt;
 
 pub struct VecZnxDft<D, B: Backend> {
@@ -38,24 +38,24 @@ impl<D, B: Backend> ZnxInfos for VecZnxDft<D, B> {
 
 impl<D> ZnxSliceSize for VecZnxDft<D, FFT64> {
     fn sl(&self) -> usize {
-        Self::mw() * self.n() * self.cols()
+        Self::ws() * self.n() * self.cols()
     }
 }
 
 impl<D> ZnxSliceSize for VecZnxDft<D, NTT120> {
     fn sl(&self) -> usize {
-        Self::mw() * self.n() * self.cols()
+        Self::ws() * self.n() * self.cols()
     }
 }
 
-impl<D> ZnxMachineWord for VecZnxDft<D, FFT64> {
-    fn mw() -> usize {
+impl<D> ZnxWordSize for VecZnxDft<D, FFT64> {
+    fn ws() -> usize {
         1
     }
 }
 
-impl<D> ZnxMachineWord for VecZnxDft<D, NTT120> {
-    fn mw() -> usize {
+impl<D> ZnxWordSize for VecZnxDft<D, NTT120> {
+    fn ws() -> usize {
         4
     }
 }
@@ -81,14 +81,28 @@ impl<D: AsRef<[u8]>> ZnxView for VecZnxDft<D, NTT120> {
     type Scalar = i64;
 }
 
-impl<D: AsMut<[u8]> + AsRef<[u8]>, B: Backend> VecZnxDft<D, B> where VecZnxDft<D, B>: ZnxMachineWord  {
+impl<D: AsMut<[u8]> + AsRef<[u8]>, B: Backend> VecZnxDft<D, B> where VecZnxDft<D, B>: ZnxWordSize  {
     pub fn set_size(&mut self, size: usize) {
         assert!(size <= self.max_size());
         self.size = size
     }
 
     pub fn max_size(&mut self) -> usize {
-        self.data.as_ref().len() / (self.n() * Self::mw() * self.cols())
+        self.data.as_ref().len() / (self.n() * Self::ws() * self.cols())
+    }
+}
+
+impl<D: AsRef<[u8]> + AsMut<[u8]>, B: Backend> ZnxZero for VecZnxDft<D, B> where VecZnxDft<D, B>: ZnxSliceSize + ZnxWordSize + ZnxViewMut {
+    fn zero(&mut self) {
+        unsafe {
+            std::ptr::write_bytes(self.as_mut_ptr(), 0, self.sl() * self.size());
+        }
+    }
+
+    fn zero_at(&mut self, i: usize, j: usize) {
+        unsafe {
+            std::ptr::write_bytes(self.at_mut_ptr(i, j), 0, self.n() * Self::ws());
+        }
     }
 }
 
@@ -96,9 +110,9 @@ pub trait VecZnxDftBytesOf<D, B: Backend> {
     fn bytes_of(n: usize, cols: usize, size: usize) -> usize;
 }
 
-impl<D: AsRef<[u8]>, B: Backend> VecZnxDftBytesOf<D, B> for VecZnxDft<D, B> where VecZnxDft<D, B>: ZnxMachineWord {
+impl<D: AsRef<[u8]>, B: Backend> VecZnxDftBytesOf<D, B> for VecZnxDft<D, B> where VecZnxDft<D, B>: ZnxWordSize {
     fn bytes_of(n: usize, cols: usize, size: usize) -> usize {
-        Self::mw() * n * cols * size * size_of::<f64>()
+        Self::ws() * n * cols * size * size_of::<f64>()
     }
 }
 
@@ -140,34 +154,6 @@ impl<D, B: Backend> VecZnxDft<D, B> {
             cols,
             size,
             _phantom: PhantomData,
-        }
-    }
-}
-
-impl<D: AsRef<[u8]> + AsMut<[u8]>> ZnxZero for VecZnxDft<D, FFT64>{
-    fn zero(&mut self) {
-        unsafe {
-            std::ptr::write_bytes(self.as_mut_ptr(), 0, self.sl() * self.size());
-        }
-    }
-
-    fn zero_at(&mut self, i: usize, j: usize) {
-        unsafe {
-            std::ptr::write_bytes(self.at_mut_ptr(i, j), 0, self.n());
-        }
-    }
-}
-
-impl<D: AsRef<[u8]> + AsMut<[u8]>> ZnxZero for VecZnxDft<D, NTT120>{
-    fn zero(&mut self) {
-        unsafe {
-            std::ptr::write_bytes(self.as_mut_ptr(), 0, self.sl() * self.size());
-        }
-    }
-
-    fn zero_at(&mut self, i: usize, j: usize) {
-        unsafe {
-            std::ptr::write_bytes(self.at_mut_ptr(i, j), 0, 4*self.n());
         }
     }
 }

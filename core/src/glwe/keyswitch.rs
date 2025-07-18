@@ -1,6 +1,5 @@
 use backend::{
-    Backend, MatZnxDftPrepOps, MatZnxDftPrepScratch, Module, Scratch, VecZnxBig, VecZnxBigOps, VecZnxBigScratch,
-    VecZnxDftAlloc, VecZnxDftOps, ZnxZero,
+    Backend, MatZnxDftPrepOps, MatZnxDftPrepScratch, Module, Scratch, VecZnxBig, VecZnxBigOps, VecZnxBigScratch, VecZnxDft, VecZnxDftAlloc, VecZnxDftOps, ZnxZero
 };
 
 use crate::{FourierGLWECiphertext, GLWECiphertext, GLWESwitchingKeyPrep, Infos};
