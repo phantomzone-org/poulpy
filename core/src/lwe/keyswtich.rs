@@ -1,4 +1,6 @@
-use backend::{Backend, Module, Scratch, VecZnxOps, ZnxView, ZnxViewMut, ZnxZero};
+use backend::{
+    Backend, Module, ScalarZnxAlloc, ScalarZnxDftPrepAlloc, Scratch, VecZnxDftAlloc, VecZnxOps, ZnxView, ZnxViewMut, ZnxZero,
+};
 use sampling::source::Source;
 
 use crate::{
@@ -11,12 +13,17 @@ pub struct GLWEToLWESwitchingKeyPrep<D, B: Backend>(GLWESwitchingKeyPrep<D, B>);
 
 impl<B: Backend> GLWEToLWESwitchingKeyPrep<Vec<u8>, B> {
     pub fn alloc(module: &Module<B>, basek: usize, k: usize, rows: usize, rank: usize) -> Self {
-        Self(GLWESwitchingKey::alloc(module, basek, k, rows, 1, rank, 1))
+        Self(GLWESwitchingKeyPrep::alloc(
+            module, basek, k, rows, 1, rank, 1,
+        ))
     }
 
-    pub fn encrypt_sk_scratch_space(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize {
+    pub fn encrypt_sk_scratch_space(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize
+    where
+        Module<B>: ScalarZnxDftPrepAlloc<B>,
+    {
         FourierGLWESecret::bytes_of(module, rank)
-            + (GLWESwitchingKey::encrypt_sk_scratch_space(module, basek, k, rank, rank) | GLWESecret::bytes_of(module, rank))
+            + (GLWESwitchingKeyPrep::encrypt_sk_scratch_space(module, basek, k, rank, rank) | GLWESecret::bytes_of(module, rank))
     }
 }
 
@@ -33,6 +40,7 @@ impl<D: AsMut<[u8]> + AsRef<[u8]>, B: Backend> GLWEToLWESwitchingKeyPrep<D, B> {
     ) where
         DLwe: AsRef<[u8]>,
         DGlwe: AsRef<[u8]>,
+        Module<B>: ScalarZnxAlloc + VecZnxDftAlloc<B>,
     {
         #[cfg(debug_assertions)]
         {
@@ -277,7 +285,10 @@ impl GLWECiphertext<Vec<u8>> {
         k_glwe: usize,
         k_ksk: usize,
         rank: usize,
-    ) -> usize {
+    ) -> usize
+    where
+        Module<B>: VecZnxDftAlloc<B>,
+    {
         GLWECiphertext::keyswitch_scratch_space(module, basek, k_glwe, k_lwe, k_ksk, 1, 1, rank)
             + GLWECiphertext::bytes_of(module, basek, k_lwe, 1)
     }
@@ -293,6 +304,7 @@ impl<D: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<D> {
     ) where
         DLwe: AsRef<[u8]>,
         DKsk: AsRef<[u8]>,
+        Module<B>: VecZnxDftAlloc<B>,
     {
         #[cfg(debug_assertions)]
         {

@@ -1,7 +1,8 @@
 use crate::ffi::vec_znx;
 use crate::znx_base::ZnxInfos;
 use crate::{
-    Backend, DataView, DataViewMut, Module, VecZnx, VecZnxToMut, VecZnxToRef, ZnxSliceSize, ZnxView, ZnxViewMut, alloc_aligned,
+    Backend, DataView, DataViewMut, Module, VecZnx, VecZnxToMut, VecZnxToRef, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero,
+    alloc_aligned,
 };
 use rand::seq::SliceRandom;
 use rand_core::RngCore;
@@ -127,6 +128,15 @@ impl<D: From<Vec<u8>> + AsRef<[u8]>> ScalarZnx<D> {
             n,
             cols,
         }
+    }
+}
+
+impl<D: AsRef<[u8]> + AsMut<[u8]>> ZnxZero for ScalarZnx<D> {
+    fn zero(&mut self) {
+        self.raw_mut().fill(0)
+    }
+    fn zero_at(&mut self, i: usize, j: usize) {
+        self.at_mut(i, j).fill(0);
     }
 }
 

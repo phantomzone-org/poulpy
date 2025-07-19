@@ -147,7 +147,6 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
 
         {
             (0..digits).for_each(|di| {
-
                 ai_dft.set_size((lhs.size() + di) / digits);
 
                 // Small optimization for digits > 2

@@ -1,3 +1,6 @@
+use rand_distr::{Distribution, Normal};
+use sampling::source::Source;
+
 use crate::ffi::vec_znx;
 use crate::znx_base::{ZnxInfos, ZnxView, ZnxViewMut};
 use crate::{
@@ -26,6 +29,170 @@ pub trait VecZnxBigAlloc<B: Backend> {
     /// Returns the minimum number of bytes necessary to allocate
     /// a new [VecZnxBig] through [VecZnxBig::from_bytes].
     fn bytes_of_vec_znx_big(&self, cols: usize, size: usize) -> usize;
+}
+
+pub trait VecZnxBigSampling<B: Backend> {
+    fn add_normal<R: VecZnxBigToMut<B>>(
+        &self,
+        basek: usize,
+        res: &mut R,
+        res_col: usize,
+        k: usize,
+        source: &mut Source,
+        sigma: f64,
+        bound: f64,
+    );
+    fn fill_normal<R: VecZnxBigToMut<B>>(
+        &self,
+        basek: usize,
+        res: &mut R,
+        res_col: usize,
+        k: usize,
+        source: &mut Source,
+        sigma: f64,
+        bound: f64,
+    );
+    fn fill_dist_f64<R: VecZnxBigToMut<B>, D: Distribution<f64>>(
+        &self,
+        basek: usize,
+        res: &mut R,
+        res_col: usize,
+        k: usize,
+        source: &mut Source,
+        dist: D,
+        bound: f64,
+    );
+    fn add_dist_f64<R: VecZnxBigToMut<B>, D: Distribution<f64>>(
+        &self,
+        basek: usize,
+        res: &mut R,
+        res_col: usize,
+        k: usize,
+        source: &mut Source,
+        dist: D,
+        bound: f64,
+    );
+}
+
+impl<V: AsRef<[u8]> + AsMut<[u8]>> VecZnxBigSampling<FFT64> for VecZnxBig<V, FFT64> {
+    fn add_dist_f64<R: VecZnxBigToMut<FFT64>, D: Distribution<f64>>(
+        &self,
+        basek: usize,
+        res: &mut R,
+        res_col: usize,
+        k: usize,
+        source: &mut Source,
+        dist: D,
+        bound: f64,
+    ) {
+        let mut res: VecZnxBig<&mut [u8], FFT64> = res.to_mut();
+        assert!(
+            (bound.log2().ceil() as i64) < 64,
+            "invalid bound: ceil(log2(bound))={} > 63",
+            (bound.log2().ceil() as i64)
+        );
+
+        let limb: usize = (k + basek - 1) / basek - 1;
+        let basek_rem: usize = (limb + 1) * basek - k;
+
+        if basek_rem != 0 {
+            res.at_mut(res_col, limb).iter_mut().for_each(|x| {
+                let mut dist_f64: f64 = dist.sample(source);
+                while dist_f64.abs() > bound {
+                    dist_f64 = dist.sample(source)
+                }
+                *x += (dist_f64.round() as i64) << basek_rem;
+            });
+        } else {
+            res.at_mut(res_col, limb).iter_mut().for_each(|x| {
+                let mut dist_f64: f64 = dist.sample(source);
+                while dist_f64.abs() > bound {
+                    dist_f64 = dist.sample(source)
+                }
+                *x += dist_f64.round() as i64
+            });
+        }
+    }
+    fn add_normal<R: VecZnxBigToMut<FFT64>>(
+        &self,
+        basek: usize,
+        res: &mut R,
+        res_col: usize,
+        k: usize,
+        source: &mut Source,
+        sigma: f64,
+        bound: f64,
+    ) {
+        self.add_dist_f64(
+            basek,
+            res,
+            res_col,
+            k,
+            source,
+            Normal::new(0.0, sigma).unwrap(),
+            bound,
+        );
+    }
+
+    fn fill_dist_f64<R: VecZnxBigToMut<FFT64>, D: Distribution<f64>>(
+        &self,
+        basek: usize,
+        res: &mut R,
+        res_col: usize,
+        k: usize,
+        source: &mut Source,
+        dist: D,
+        bound: f64,
+    ) {
+        let mut res: VecZnxBig<&mut [u8], FFT64> = res.to_mut();
+        assert!(
+            (bound.log2().ceil() as i64) < 64,
+            "invalid bound: ceil(log2(bound))={} > 63",
+            (bound.log2().ceil() as i64)
+        );
+
+        let limb: usize = (k + basek - 1) / basek - 1;
+        let basek_rem: usize = (limb + 1) * basek - k;
+
+        if basek_rem != 0 {
+            res.at_mut(res_col, limb).iter_mut().for_each(|x| {
+                let mut dist_f64: f64 = dist.sample(source);
+                while dist_f64.abs() > bound {
+                    dist_f64 = dist.sample(source)
+                }
+                *x = (dist_f64.round() as i64) << basek_rem;
+            });
+        } else {
+            res.at_mut(res_col, limb).iter_mut().for_each(|x| {
+                let mut dist_f64: f64 = dist.sample(source);
+                while dist_f64.abs() > bound {
+                    dist_f64 = dist.sample(source)
+                }
+                *x = dist_f64.round() as i64
+            });
+        }
+    }
+
+    fn fill_normal<R: VecZnxBigToMut<FFT64>>(
+        &self,
+        basek: usize,
+        res: &mut R,
+        res_col: usize,
+        k: usize,
+        source: &mut Source,
+        sigma: f64,
+        bound: f64,
+    ) {
+        self.fill_dist_f64(
+            basek,
+            res,
+            res_col,
+            k,
+            source,
+            Normal::new(0.0, sigma).unwrap(),
+            bound,
+        );
+    }
 }
 
 pub trait VecZnxBigOps<BACKEND: Backend> {

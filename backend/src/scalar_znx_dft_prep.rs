@@ -60,17 +60,17 @@ impl<D: AsRef<[u8]>> ZnxView for ScalarZnxDftPrep<D, NTT120> {
     type Scalar = i64;
 }
 
-pub trait ScalarZnxDftPrepBytesOf<D, B: Backend> {
+pub trait ScalarZnxDftPrepBytesOf<B: Backend> {
     fn bytes_of(n: usize, cols: usize) -> usize;
 }
 
-impl<D: AsRef<[u8]>> ScalarZnxDftPrepBytesOf<D, FFT64> for ScalarZnxDftPrep<D, FFT64> {
+impl<D: AsRef<[u8]>> ScalarZnxDftPrepBytesOf<FFT64> for ScalarZnxDftPrep<D, FFT64> {
     fn bytes_of(n: usize, cols: usize) -> usize {
         n * cols * size_of::<f64>()
     }
 }
 
-impl<D: AsRef<[u8]>> ScalarZnxDftPrepBytesOf<D, NTT120> for ScalarZnxDftPrep<D, NTT120> {
+impl<D: AsRef<[u8]>> ScalarZnxDftPrepBytesOf<NTT120> for ScalarZnxDftPrep<D, NTT120> {
     fn bytes_of(n: usize, cols: usize) -> usize {
         4 * n * cols * size_of::<i64>()
     }
@@ -78,7 +78,7 @@ impl<D: AsRef<[u8]>> ScalarZnxDftPrepBytesOf<D, NTT120> for ScalarZnxDftPrep<D, 
 
 impl<D: From<Vec<u8>> + AsRef<[u8]>, B: Backend> ScalarZnxDftPrep<D, B>
 where
-    ScalarZnxDftPrep<D, B>: ScalarZnxDftPrepBytesOf<D, B>,
+    ScalarZnxDftPrep<D, B>: ScalarZnxDftPrepBytesOf<B>,
 {
     pub(crate) fn new(n: usize, cols: usize) -> Self {
         let data: Vec<u8> = alloc_aligned::<u8>(Self::bytes_of(n, cols));

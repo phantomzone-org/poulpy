@@ -32,7 +32,7 @@ pub trait ScalarZnxDftPrepOps<BACKEND: Backend> {
 
 impl<B: Backend> ScalarZnxDftPrepAlloc<B> for Module<B>
 where
-    ScalarZnxDftPrep<Vec<u8>, B>: ScalarZnxDftPrepBytesOf<Vec<u8>, B>,
+    ScalarZnxDftPrep<Vec<u8>, B>: ScalarZnxDftPrepBytesOf<B>,
 {
     fn new_scalar_znx_dft_prep(&self, cols: usize) -> ScalarZnxDftPrepOwned<B> {
         ScalarZnxDftPrepOwned::new(self.n(), cols)

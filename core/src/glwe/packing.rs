@@ -81,7 +81,10 @@ impl GLWEPacker {
         k_ksk: usize,
         digits: usize,
         rank: usize,
-    ) -> usize where Module<B>: VecZnxDftAlloc<B>{
+    ) -> usize
+    where
+        Module<B>: VecZnxDftAlloc<B>,
+    {
         pack_core_scratch_space(module, basek, ct_k, k_ksk, digits, rank)
     }
 
@@ -104,7 +107,9 @@ impl GLWEPacker {
         a: Option<&GLWECiphertext<DataA>>,
         auto_keys: &HashMap<i64, GLWEAutomorphismKeyPrep<DataAK, B>>,
         scratch: &mut Scratch,
-    ) where Module<B>: MatZnxDftPrepOps<B> + VecZnxBigOps<B> + VecZnxDftAlloc<B> + VecZnxDftOps<B>{
+    ) where
+        Module<B>: MatZnxDftPrepOps<B> + VecZnxBigOps<B> + VecZnxDftAlloc<B> + VecZnxDftOps<B>,
+    {
         assert!(
             self.counter < module.n(),
             "Packing limit of {} reached",
@@ -142,7 +147,10 @@ fn pack_core_scratch_space<B: Backend>(
     k_ksk: usize,
     digits: usize,
     rank: usize,
-) -> usize where Module<B>: VecZnxDftAlloc<B>{
+) -> usize
+where
+    Module<B>: VecZnxDftAlloc<B>,
+{
     combine_scratch_space(module, basek, ct_k, k_ksk, digits, rank)
 }
 
@@ -153,7 +161,9 @@ fn pack_core<D: AsRef<[u8]>, DataAK: AsRef<[u8]>, B: Backend>(
     i: usize,
     auto_keys: &HashMap<i64, GLWEAutomorphismKeyPrep<DataAK, B>>,
     scratch: &mut Scratch,
-) where Module<B>: MatZnxDftPrepOps<B> + VecZnxBigOps<B> + VecZnxDftAlloc<B> + VecZnxDftOps<B> {
+) where
+    Module<B>: MatZnxDftPrepOps<B> + VecZnxBigOps<B> + VecZnxDftAlloc<B> + VecZnxDftOps<B>,
+{
     let log_n: usize = module.log_n();
 
     if i == log_n {
@@ -210,7 +220,10 @@ fn combine_scratch_space<B: Backend>(
     k_ksk: usize,
     digits: usize,
     rank: usize,
-) -> usize where Module<B>: VecZnxDftAlloc<B>{
+) -> usize
+where
+    Module<B>: VecZnxDftAlloc<B>,
+{
     GLWECiphertext::bytes_of(module, basek, ct_k, rank)
         + (GLWECiphertext::rsh_scratch_space(module)
             | GLWECiphertext::automorphism_scratch_space(module, basek, ct_k, ct_k, k_ksk, digits, rank))
@@ -224,7 +237,9 @@ fn combine<D: AsRef<[u8]>, DataAK: AsRef<[u8]>, B: Backend>(
     i: usize,
     auto_keys: &HashMap<i64, GLWEAutomorphismKeyPrep<DataAK, B>>,
     scratch: &mut Scratch,
-) where Module<B>: MatZnxDftPrepOps<B> + VecZnxBigOps<B> + VecZnxDftAlloc<B> + VecZnxDftOps<B>{
+) where
+    Module<B>: MatZnxDftPrepOps<B> + VecZnxBigOps<B> + VecZnxDftAlloc<B> + VecZnxDftOps<B>,
+{
     let log_n: usize = module.log_n();
     let a: &mut GLWECiphertext<Vec<u8>> = &mut acc.data;
     let basek: usize = a.basek();

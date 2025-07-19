@@ -1,11 +1,15 @@
 use backend::{
-    Backend, DataViewMut, Module, ScalarZnxDftPrepOps, Scratch, VecZnxBigAlloc, VecZnxBigOps, VecZnxBigScratch, VecZnxDftAlloc, VecZnxDftOps
+    Backend, DataViewMut, Module, ScalarZnxDftPrepOps, Scratch, VecZnxBigAlloc, VecZnxBigOps, VecZnxBigScratch, VecZnxDftAlloc,
+    VecZnxDftOps,
 };
 
 use crate::{FourierGLWESecret, GLWECiphertext, GLWEPlaintext, Infos};
 
 impl GLWECiphertext<Vec<u8>> {
-    pub fn decrypt_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize) -> usize where Module<B>: VecZnxDftAlloc<B>{
+    pub fn decrypt_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize) -> usize
+    where
+        Module<B>: VecZnxDftAlloc<B>,
+    {
         let size: usize = k.div_ceil(basek);
         (module.vec_znx_big_normalize_tmp_bytes() | module.bytes_of_vec_znx_dft(1, size)) + module.bytes_of_vec_znx_big(1, size)
     }
@@ -18,7 +22,9 @@ impl<DataSelf: AsRef<[u8]>> GLWECiphertext<DataSelf> {
         pt: &mut GLWEPlaintext<DataPt>,
         sk: &FourierGLWESecret<DataSk, B>,
         scratch: &mut Scratch,
-    ) where Module<B>: VecZnxDftOps<B> + ScalarZnxDftPrepOps<B> + VecZnxBigOps<B> + VecZnxDftAlloc<B>{
+    ) where
+        Module<B>: VecZnxDftOps<B> + ScalarZnxDftPrepOps<B> + VecZnxBigOps<B> + VecZnxDftAlloc<B>,
+    {
         #[cfg(debug_assertions)]
         {
             assert_eq!(self.rank(), sk.rank());

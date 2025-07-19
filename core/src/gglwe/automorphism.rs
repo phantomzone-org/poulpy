@@ -1,8 +1,6 @@
-use backend::{Backend, Module, Scratch, VecZnx, VecZnxDftOps, VecZnxOps, ZnxZero};
+use backend::{Backend, MatZnxDftPrepOps, Module, Scratch, VecZnxBigOps, VecZnxDftAlloc, VecZnxDftOps, VecZnxOps, ZnxZero};
 
-use crate::{
-    FourierGLWECiphertext, GLWEAutomorphismKey, GLWEAutomorphismKeyPrep, GLWECiphertext, GetRow, Infos, ScratchCore, SetRow,
-};
+use crate::{FourierGLWECiphertext, GLWEAutomorphismKey, GLWEAutomorphismKeyPrep, GLWECiphertext, Infos};
 
 impl GLWEAutomorphismKey<Vec<u8>> {
     pub fn automorphism_scratch_space<B: Backend>(
@@ -13,7 +11,10 @@ impl GLWEAutomorphismKey<Vec<u8>> {
         k_ksk: usize,
         digits: usize,
         rank: usize,
-    ) -> usize {
+    ) -> usize
+    where
+        Module<B>: VecZnxDftAlloc<B> + VecZnxDftOps<B>,
+    {
         let tmp_dft: usize = FourierGLWECiphertext::bytes_of(module, basek, k_in, rank);
         let tmp_idft: usize = FourierGLWECiphertext::bytes_of(module, basek, k_out, rank);
         let idft: usize = module.vec_znx_idft_tmp_bytes();
@@ -28,7 +29,10 @@ impl GLWEAutomorphismKey<Vec<u8>> {
         k_ksk: usize,
         digits: usize,
         rank: usize,
-    ) -> usize {
+    ) -> usize
+    where
+        Module<B>: VecZnxDftAlloc<B> + VecZnxDftOps<B>,
+    {
         GLWEAutomorphismKey::automorphism_scratch_space(module, basek, k_out, k_out, k_ksk, digits, rank)
     }
 }
@@ -40,7 +44,9 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWEAutomorphismKey<DataSelf> {
         lhs: &GLWEAutomorphismKey<DataLhs>,
         rhs: &GLWEAutomorphismKeyPrep<DataRhs, B>,
         scratch: &mut Scratch,
-    ) {
+    ) where
+        Module<B>: MatZnxDftPrepOps<B> + VecZnxBigOps<B> + VecZnxDftAlloc<B> + VecZnxDftOps<B>,
+    {
         #[cfg(debug_assertions)]
         {
             assert_eq!(
@@ -74,64 +80,32 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWEAutomorphismKey<DataSelf> {
 
         let cols_out: usize = rhs.rank_out() + 1;
 
+        let p: i64 = lhs.p();
+        let p_inv = module.galois_element_inv(p);
+
         (0..self.rank_in()).for_each(|col_i| {
             (0..self.rows()).for_each(|row_j| {
-                let (mut tmp_idft_data, scratct1) = scratch.tmp_vec_znx_big(module, cols_out, self.size());
+                let mut res_ct: GLWECiphertext<&mut [u8]> = self.at_mut(col_i, row_j);
+                let lhs_ct: GLWECiphertext<&[u8]> = lhs.at(col_i, row_j);
 
-                {
-                    let (mut tmp_dft, scratch2) = scratct1.tmp_fourier_glwe_ct(module, lhs.basek(), lhs.k(), lhs.rank());
-
-                    // Extracts relevant row
-                    lhs.get_row(module, row_j, col_i, &mut tmp_dft);
-
-                    // Get a VecZnxBig from scratch space
-
-                    // Switches input outside of DFT
-                    (0..cols_out).for_each(|i| {
-                        module.vec_znx_idft(&mut tmp_idft_data, i, &tmp_dft.data, i, scratch2);
-                    });
-                }
-
-                // Consumes to small vec znx
-                let mut tmp_idft_small_data: VecZnx<&mut [u8]> = tmp_idft_data.to_vec_znx_small();
-
-                // Reverts the automorphis key from (-pi^{-1}_{k}(s)a + s, a) to (-sa + pi_{k}(s), a)
+                // Reverts the automorphism X^{-k}: (-pi^{-1}_{k}(s)a + s, a) to (-sa + pi_{k}(s), a)
                 (0..cols_out).for_each(|i| {
-                    module.vec_znx_automorphism_inplace(lhs.p(), &mut tmp_idft_small_data, i);
+                    module.vec_znx_automorphism(lhs.p(), &mut res_ct.data, i, &lhs_ct.data, i);
                 });
 
-                // Wraps into ciphertext
-                let mut tmp_idft: GLWECiphertext<&mut [u8]> = GLWECiphertext::<&mut [u8]> {
-                    data: tmp_idft_small_data,
-                    basek: self.basek(),
-                    k: self.k(),
-                };
-
                 // Key-switch (-sa + pi_{k}(s), a) to (-pi^{-1}_{k'}(s)a + pi_{k}(s), a)
-                tmp_idft.keyswitch_inplace(module, &rhs.key, scratct1);
+                res_ct.keyswitch_inplace(module, &rhs.key, scratch);
 
-                {
-                    let (mut tmp_dft, _) = scratct1.tmp_fourier_glwe_ct(module, self.basek(), self.k(), self.rank());
-
-                    // Applies back the automorphism X^{k}: (-pi^{-1}_{k'}(s)a + pi_{k}(s), a) -> (-pi^{-1}_{k'+k}(s)a + s, a)
-                    // and switches back to DFT domain
-                    (0..self.rank_out() + 1).for_each(|i| {
-                        module.vec_znx_automorphism_inplace(lhs.p(), &mut tmp_idft.data, i);
-                        module.vec_znx_dft(1, 0, &mut tmp_dft.data, i, &tmp_idft.data, i);
-                    });
-
-                    // Sets back the relevant row
-                    self.set_row(module, row_j, col_i, &tmp_dft);
-                }
+                // Applies back the automorphism X^{-k}: (-pi^{-1}_{k'}(s)a + pi_{k}(s), a) to (-pi^{-1}_{k'+k}(s)a + s, a)
+                (0..cols_out).for_each(|i| {
+                    module.vec_znx_automorphism_inplace(p_inv, &mut res_ct.data, i);
+                });
             });
         });
 
-        let (mut tmp_dft, _) = scratch.tmp_fourier_glwe_ct(module, self.basek(), self.k(), self.rank());
-        tmp_dft.data.zero();
-
         (self.rows().min(lhs.rows())..self.rows()).for_each(|row_i| {
             (0..self.rank_in()).for_each(|col_j| {
-                self.set_row(module, row_i, col_j, &tmp_dft);
+                self.at_mut(row_i, col_j).data.zero();
             });
         });
 
@@ -143,9 +117,11 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWEAutomorphismKey<DataSelf> {
         module: &Module<B>,
         rhs: &GLWEAutomorphismKeyPrep<DataRhs, B>,
         scratch: &mut Scratch,
-    ) {
+    ) where
+        Module<B>: MatZnxDftPrepOps<B> + VecZnxBigOps<B> + VecZnxDftAlloc<B> + VecZnxDftOps<B>,
+    {
         unsafe {
-            let self_ptr: *mut GLWEAutomorphismKey<DataSelf, B> = self as *mut GLWEAutomorphismKey<DataSelf, B>;
+            let self_ptr: *mut GLWEAutomorphismKey<DataSelf> = self as *mut GLWEAutomorphismKey<DataSelf>;
             self.automorphism(&module, &*self_ptr, rhs, scratch);
         }
     }

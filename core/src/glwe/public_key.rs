@@ -9,14 +9,20 @@ pub struct GLWEPublicKey<D, B: Backend> {
 }
 
 impl<B: Backend> GLWEPublicKey<Vec<u8>, B> {
-    pub fn alloc(module: &Module<B>, basek: usize, k: usize, rank: usize) -> Self where Module<B>: VecZnxDftAlloc<B>{
+    pub fn alloc(module: &Module<B>, basek: usize, k: usize, rank: usize) -> Self
+    where
+        Module<B>: VecZnxDftAlloc<B>,
+    {
         Self {
             data: FourierGLWECiphertext::alloc(module, basek, k, rank),
             dist: Distribution::NONE,
         }
     }
 
-    pub fn bytes_of(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize where Module<B>: VecZnxDftAlloc<B>{
+    pub fn bytes_of(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize
+    where
+        Module<B>: VecZnxDftAlloc<B>,
+    {
         FourierGLWECiphertext::<Vec<u8>, B>::bytes_of(module, basek, k, rank)
     }
 }

@@ -10,6 +10,7 @@ pub mod noise;
 
 use backend::Backend;
 use backend::Module;
+use backend::ScalarZnxDftPrepAlloc;
 use backend::VecZnxDftAlloc;
 pub use blind_rotation::{BlindRotationKeyCGGI, LookUpTable, cggi_blind_rotate, cggi_blind_rotate_scratch_space};
 pub use elem::{GetRow, Infos, SetMetaData, SetRow};
@@ -67,7 +68,9 @@ pub trait ScratchCore<B: Backend> {
         basek: usize,
         k: usize,
         rank: usize,
-    ) -> (FourierGLWECiphertext<&mut [u8], B>, &mut Self);
+    ) -> (FourierGLWECiphertext<&mut [u8], B>, &mut Self)
+    where
+        Module<B>: VecZnxDftAlloc<B>;
     fn tmp_slice_fourier_glwe_ct(
         &mut self,
         size: usize,
@@ -75,16 +78,22 @@ pub trait ScratchCore<B: Backend> {
         basek: usize,
         k: usize,
         rank: usize,
-    ) -> (Vec<FourierGLWECiphertext<&mut [u8], B>>, &mut Self);
+    ) -> (Vec<FourierGLWECiphertext<&mut [u8], B>>, &mut Self)
+    where
+        Module<B>: VecZnxDftAlloc<B>;
     fn tmp_glwe_secret(&mut self, module: &Module<B>, rank: usize) -> (GLWESecret<&mut [u8]>, &mut Self);
-    fn tmp_fourier_glwe_secret(&mut self, module: &Module<B>, rank: usize) -> (FourierGLWESecret<&mut [u8], B>, &mut Self);
+    fn tmp_fourier_glwe_secret(&mut self, module: &Module<B>, rank: usize) -> (FourierGLWESecret<&mut [u8], B>, &mut Self)
+    where
+        Module<B>: ScalarZnxDftPrepAlloc<B>;
     fn tmp_glwe_pk(
         &mut self,
         module: &Module<B>,
         basek: usize,
         k: usize,
         rank: usize,
-    ) -> (GLWEPublicKey<&mut [u8], B>, &mut Self);
+    ) -> (GLWEPublicKey<&mut [u8], B>, &mut Self)
+    where
+        Module<B>: VecZnxDftAlloc<B>;
     fn tmp_glwe_ksk(
         &mut self,
         module: &Module<B>,
@@ -115,10 +124,7 @@ pub trait ScratchCore<B: Backend> {
     ) -> (GLWEAutomorphismKey<&mut [u8]>, &mut Self);
 }
 
-impl<B: Backend> ScratchCore<B> for Scratch
-where
-    Module<B>: VecZnxDftAlloc<B>,
-{
+impl<B: Backend> ScratchCore<B> for Scratch {
     fn tmp_glwe_ct(&mut self, module: &Module<B>, basek: usize, k: usize, rank: usize) -> (GLWECiphertext<&mut [u8]>, &mut Self) {
         let (data, scratch) = self.tmp_vec_znx(module, rank + 1, k.div_ceil(basek));
         (GLWECiphertext { data, basek, k }, scratch)
@@ -208,7 +214,10 @@ where
         basek: usize,
         k: usize,
         rank: usize,
-    ) -> (FourierGLWECiphertext<&mut [u8], B>, &mut Self) {
+    ) -> (FourierGLWECiphertext<&mut [u8], B>, &mut Self)
+    where
+        Module<B>: VecZnxDftAlloc<B>,
+    {
         let (data, scratch) = self.tmp_vec_znx_dft(module, rank + 1, k.div_ceil(basek));
         (FourierGLWECiphertext { data, basek, k }, scratch)
     }
@@ -220,7 +229,10 @@ where
         basek: usize,
         k: usize,
         rank: usize,
-    ) -> (Vec<FourierGLWECiphertext<&mut [u8], B>>, &mut Self) {
+    ) -> (Vec<FourierGLWECiphertext<&mut [u8], B>>, &mut Self)
+    where
+        Module<B>: VecZnxDftAlloc<B>,
+    {
         let mut scratch: &mut Scratch = self;
         let mut cts: Vec<FourierGLWECiphertext<&mut [u8], B>> = Vec::with_capacity(size);
         for _ in 0..size {
@@ -231,13 +243,10 @@ where
         (cts, scratch)
     }
 
-    fn tmp_glwe_pk(
-        &mut self,
-        module: &Module<B>,
-        basek: usize,
-        k: usize,
-        rank: usize,
-    ) -> (GLWEPublicKey<&mut [u8], B>, &mut Self) {
+    fn tmp_glwe_pk(&mut self, module: &Module<B>, basek: usize, k: usize, rank: usize) -> (GLWEPublicKey<&mut [u8], B>, &mut Self)
+    where
+        Module<B>: VecZnxDftAlloc<B>,
+    {
         let (data, scratch) = self.tmp_fourier_glwe_ct(module, basek, k, rank);
         (
             GLWEPublicKey {
@@ -259,7 +268,10 @@ where
         )
     }
 
-    fn tmp_fourier_glwe_secret(&mut self, module: &Module<B>, rank: usize) -> (FourierGLWESecret<&mut [u8], B>, &mut Self) {
+    fn tmp_fourier_glwe_secret(&mut self, module: &Module<B>, rank: usize) -> (FourierGLWESecret<&mut [u8], B>, &mut Self)
+    where
+        Module<B>: ScalarZnxDftPrepAlloc<B>,
+    {
         let (data, scratch) = self.tmp_scalar_znx_dft_prep(module, rank);
         (
             FourierGLWESecret {
