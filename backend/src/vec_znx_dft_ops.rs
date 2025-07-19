@@ -97,7 +97,7 @@ pub trait VecZnxDftOps<B: Backend> {
 
 impl<B: Backend> VecZnxDftAlloc<B> for Module<B>
 where
-    VecZnxDft<Vec<u8>, B>: VecZnxDftBytesOf<Vec<u8>, B>,
+    VecZnxDft<Vec<u8>, B>: VecZnxDftBytesOf<B>,
 {
     fn new_vec_znx_dft(&self, cols: usize, size: usize) -> VecZnxDftOwned<B> {
         VecZnxDftOwned::new(self.n(), cols, size)

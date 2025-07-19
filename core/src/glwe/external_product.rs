@@ -1,6 +1,5 @@
 use backend::{
-    Backend, MatZnxDftPrepOps, MatZnxDftPrepScratch, Module, Scratch, VecZnxBig, VecZnxBigOps, VecZnxDftAlloc, VecZnxDftOps,
-    VecZnxScratch,
+    Backend, DataViewMut, MatZnxDftPrepOps, MatZnxDftPrepScratch, Module, Scratch, VecZnxBig, VecZnxBigOps, VecZnxDftAlloc, VecZnxDftOps, VecZnxScratch
 };
 
 use crate::{GLWECiphertext, Infos, ggsw::ciphertext_prep::GGSWCiphertextPrep};
@@ -14,7 +13,7 @@ impl GLWECiphertext<Vec<u8>> {
         k_ggsw: usize,
         digits: usize,
         rank: usize,
-    ) -> usize {
+    ) -> usize where Module<B>: VecZnxDftAlloc<B>{
         let in_size: usize = k_in.div_ceil(basek).div_ceil(digits);
         let out_size: usize = k_out.div_ceil(basek);
         let ggsw_size: usize = k_ggsw.div_ceil(basek);
@@ -39,7 +38,7 @@ impl GLWECiphertext<Vec<u8>> {
         k_ggsw: usize,
         digits: usize,
         rank: usize,
-    ) -> usize {
+    ) -> usize where Module<B>: VecZnxDftAlloc<B>{
         Self::external_product_scratch_space(module, basek, k_out, k_out, k_ggsw, digits, rank)
     }
 }
@@ -51,7 +50,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         lhs: &GLWECiphertext<DataLhs>,
         rhs: &GGSWCiphertextPrep<DataRhs, B>,
         scratch: &mut Scratch,
-    ) {
+    ) where Module<B>: VecZnxDftAlloc<B> + VecZnxDftOps<B> + MatZnxDftPrepOps<B> + VecZnxBigOps<B>{
         let basek: usize = self.basek();
 
         #[cfg(debug_assertions)]
@@ -82,6 +81,8 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
 
         let (mut res_dft, scratch1) = scratch.tmp_vec_znx_dft(module, cols, rhs.size()); // Todo optimise
         let (mut a_dft, scratch2) = scratch1.tmp_vec_znx_dft(module, cols, (lhs.size() + digits - 1) / digits);
+
+        a_dft.data_mut().fill(0);
 
         {
             (0..digits).for_each(|di| {
@@ -121,7 +122,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         module: &Module<B>,
         rhs: &GGSWCiphertextPrep<DataRhs, B>,
         scratch: &mut Scratch,
-    ) {
+    ) where Module<B>: VecZnxDftAlloc<B> + VecZnxDftOps<B> + MatZnxDftPrepOps<B> + VecZnxBigOps<B> {
         unsafe {
             let self_ptr: *mut GLWECiphertext<DataSelf> = self as *mut GLWECiphertext<DataSelf>;
             self.external_product(&module, &*self_ptr, rhs, scratch);

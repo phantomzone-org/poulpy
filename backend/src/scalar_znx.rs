@@ -263,6 +263,7 @@ where
             n: self.n,
             cols: self.cols,
             size: 1,
+            max_size: 1,
         }
     }
 }
@@ -277,6 +278,7 @@ where
             n: self.n,
             cols: self.cols,
             size: 1,
+            max_size: 1,
         }
     }
 }

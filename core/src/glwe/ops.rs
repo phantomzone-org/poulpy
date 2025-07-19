@@ -221,7 +221,7 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData + Sized {
         self.set_basek(a.basek());
     }
 
-    fn rsh<BACKEND: Backend>(&mut self, k: usize, scratch: &mut Scratch) {
+    fn rsh(&mut self, k: usize, scratch: &mut Scratch) {
         let basek: usize = self.basek();
         let mut self_mut: GLWECiphertext<&mut [u8]> = self.to_mut();
         self_mut.data.rsh(basek, k, scratch);

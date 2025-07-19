@@ -1,12 +1,11 @@
 use backend::{
-    Backend, Module, ScalarZnxDftPrepOps, Scratch, VecZnxBig, VecZnxBigAlloc, VecZnxBigOps, VecZnxBigScratch, VecZnxDftAlloc,
-    VecZnxDftOps, ZnxZero,
+    Backend, DataViewMut, Module, ScalarZnxDftPrepOps, Scratch, VecZnxBig, VecZnxBigAlloc, VecZnxBigOps, VecZnxBigScratch, VecZnxDftAlloc, VecZnxDftOps
 };
 
-use crate::{FourierGLWECiphertext, FourierGLWESecret, GLWECiphertext, GLWEPlaintext, Infos};
+use crate::{FourierGLWECiphertext, FourierGLWESecret, GLWEPlaintext, Infos};
 
 impl<B: Backend> FourierGLWECiphertext<Vec<u8>, B> {
-    pub fn decrypt_scratch_space(module: &Module<B>, basek: usize, k: usize) -> usize {
+    pub fn decrypt_scratch_space(module: &Module<B>, basek: usize, k: usize) -> usize where Module<B>: VecZnxDftAlloc<B> + VecZnxDftOps<B>{
         let size: usize = k.div_ceil(basek);
         (module.vec_znx_big_normalize_tmp_bytes()
             | module.bytes_of_vec_znx_dft(1, size)
@@ -22,7 +21,7 @@ impl<DataSelf: AsRef<[u8]>, B: Backend> FourierGLWECiphertext<DataSelf, B> {
         pt: &mut GLWEPlaintext<DataPt>,
         sk: &FourierGLWESecret<DataSk, B>,
         scratch: &mut Scratch,
-    ) {
+    ) where Module<B>: ScalarZnxDftPrepOps<B> + VecZnxDftAlloc<B> + VecZnxDftOps<B> + VecZnxBigOps<B> {
         #[cfg(debug_assertions)]
         {
             assert_eq!(self.rank(), sk.rank());
@@ -34,7 +33,8 @@ impl<DataSelf: AsRef<[u8]>, B: Backend> FourierGLWECiphertext<DataSelf, B> {
         let cols = self.rank() + 1;
 
         let (mut pt_big, scratch_1) = scratch.tmp_vec_znx_big(module, 1, self.size()); // TODO optimize size when pt << ct
-        pt_big.zero();
+
+        pt_big.data_mut().fill(0);
 
         {
             (1..cols).for_each(|i| {
@@ -57,28 +57,5 @@ impl<DataSelf: AsRef<[u8]>, B: Backend> FourierGLWECiphertext<DataSelf, B> {
 
         pt.basek = self.basek();
         pt.k = pt.k().min(self.k());
-    }
-
-    #[allow(dead_code)]
-    pub(crate) fn idft<DataRes: AsRef<[u8]> + AsMut<[u8]>>(
-        &self,
-        module: &Module<B>,
-        res: &mut GLWECiphertext<DataRes>,
-        scratch: &mut Scratch,
-    ) {
-        #[cfg(debug_assertions)]
-        {
-            assert_eq!(self.rank(), res.rank());
-            assert_eq!(self.basek(), res.basek())
-        }
-
-        let min_size: usize = self.size().min(res.size());
-
-        let (mut res_big, scratch1) = scratch.tmp_vec_znx_big(module, 1, min_size);
-
-        (0..self.rank() + 1).for_each(|i| {
-            module.vec_znx_idft(&mut res_big, 0, &self.data, i, scratch1);
-            module.vec_znx_big_normalize(self.basek(), &mut res.data, i, &res_big, 0, scratch1);
-        });
     }
 }

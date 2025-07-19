@@ -1,5 +1,6 @@
 use backend::{
-    Backend, MatZnxDftPrepOps, MatZnxDftPrepScratch, Module, Scratch, VecZnxBig, VecZnxBigOps, VecZnxBigScratch, VecZnxDft, VecZnxDftAlloc, VecZnxDftOps, ZnxZero
+    Backend, DataViewMut, MatZnxDftPrepOps, MatZnxDftPrepScratch, Module, Scratch, VecZnxBig, VecZnxBigOps, VecZnxBigScratch,
+    VecZnxDftAlloc, VecZnxDftOps,
 };
 
 use crate::{FourierGLWECiphertext, GLWECiphertext, GLWESwitchingKeyPrep, Infos};
@@ -68,7 +69,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         rhs: &GLWESwitchingKeyPrep<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
-        Module<B>: MatZnxDftPrepOps<B> + VecZnxBigOps<B> + VecZnxDftAlloc<B>,
+        Module<B>: MatZnxDftPrepOps<B> + VecZnxBigOps<B> + VecZnxDftAlloc<B> + VecZnxDftOps<B>,
     {
         Self::keyswitch_private::<_, _, 0, B>(self, 0, module, lhs, rhs, scratch);
     }
@@ -79,7 +80,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         rhs: &GLWESwitchingKeyPrep<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
-        Module<B>: MatZnxDftPrepOps<B> + VecZnxBigOps<B> + VecZnxDftAlloc<B>,
+        Module<B>: MatZnxDftPrepOps<B> + VecZnxBigOps<B> + VecZnxDftAlloc<B> + VecZnxDftOps<B>,
     {
         unsafe {
             let self_ptr: *mut GLWECiphertext<DataSelf> = self as *mut GLWECiphertext<DataSelf>;
@@ -87,7 +88,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         }
     }
 
-    pub(crate) fn keyswitch_private<DataLhs: AsRef<[u8]>, DataRhs: AsRef<[u8]>, const OP: u8, B: Backend>(
+    pub(crate) fn keyswitch_private<'a, DataLhs: AsRef<[u8]>, DataRhs: AsRef<[u8]>, const OP: u8, B: Backend>(
         &mut self,
         apply_auto: i64,
         module: &Module<B>,
@@ -141,9 +142,12 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
 
         let (mut res_dft, scratch1) = scratch.tmp_vec_znx_dft(module, cols_out, rhs.size()); // Todo optimise
         let (mut ai_dft, scratch2) = scratch1.tmp_vec_znx_dft(module, cols_in, (lhs.size() + digits - 1) / digits);
-        ai_dft.zero();
+
+        ai_dft.data_mut().fill(0);
+
         {
             (0..digits).for_each(|di| {
+
                 ai_dft.set_size((lhs.size() + di) / digits);
 
                 // Small optimization for digits > 2
@@ -200,7 +204,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         rhs: &GLWESwitchingKeyPrep<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
-        Module<B>: MatZnxDftPrepOps<B>,
+        Module<B>: MatZnxDftPrepOps<B> + VecZnxBigOps<B> + VecZnxDftAlloc<B> + VecZnxDftOps<B>,
     {
         let basek: usize = self.basek();
 

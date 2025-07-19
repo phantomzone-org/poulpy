@@ -1,6 +1,6 @@
-use backend::{Backend, Module, VecZnx, VecZnxAlloc, VecZnxDftOps, VecZnxToMut, VecZnxToRef};
+use backend::{Backend, Module, VecZnx, VecZnxAlloc, VecZnxToMut, VecZnxToRef};
 
-use crate::{FourierGLWECiphertext, GLWEOps, Infos, SetMetaData};
+use crate::{GLWEOps, Infos, SetMetaData};
 
 pub struct GLWECiphertext<C> {
     pub data: VecZnx<C>,
@@ -41,25 +41,6 @@ impl<T> Infos for GLWECiphertext<T> {
 impl<T> GLWECiphertext<T> {
     pub fn rank(&self) -> usize {
         self.cols() - 1
-    }
-}
-
-impl<C: AsRef<[u8]>> GLWECiphertext<C> {
-    #[allow(dead_code)]
-    pub(crate) fn dft<R: AsMut<[u8]> + AsRef<[u8]>, B: Backend>(
-        &self,
-        module: &Module<B>,
-        res: &mut FourierGLWECiphertext<R, B>,
-    ) {
-        #[cfg(debug_assertions)]
-        {
-            assert_eq!(self.rank(), res.rank());
-            assert_eq!(self.basek(), res.basek())
-        }
-
-        (0..self.rank() + 1).for_each(|i| {
-            module.vec_znx_dft(1, 0, &mut res.data, i, &self.data, i);
-        })
     }
 }
 

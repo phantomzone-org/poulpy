@@ -80,7 +80,7 @@ pub trait MatZnxDftBytesOf<D, B: Backend> {
 
 impl<D: AsRef<[u8]>> MatZnxDftBytesOf<D, FFT64> for MatZnxDft<D, FFT64>
 where
-    VecZnxDft<D, FFT64>: VecZnxDftBytesOf<D, FFT64>,
+    VecZnxDft<D, FFT64>: VecZnxDftBytesOf<FFT64>,
 {
     fn bytes_of(n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize {
         rows * cols_in * VecZnxDft::bytes_of(n, cols_out, size)
@@ -89,7 +89,7 @@ where
 
 impl<D: AsRef<[u8]>> MatZnxDftBytesOf<D, NTT120> for MatZnxDft<D, NTT120>
 where
-    VecZnxDft<D, FFT64>: VecZnxDftBytesOf<D, FFT64>,
+    VecZnxDft<D, NTT120>: VecZnxDftBytesOf<NTT120>,
 {
     fn bytes_of(n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize {
         rows * cols_in * VecZnxDft::bytes_of(n, cols_out, size)
@@ -138,7 +138,7 @@ where
 impl<D: AsRef<[u8]>, B: Backend> MatZnxDft<D, B>
 where
     MatZnxDft<D, B>: MatZnxDftToRef<B>,
-    VecZnxDft<D, B>: VecZnxDftBytesOf<D, B>,
+    VecZnxDft<D, B>: VecZnxDftBytesOf<B>,
 {
     pub fn at(&self, row: usize, col: usize) -> VecZnxDft<&[u8], B> {
         let self_ref: MatZnxDft<&[u8], B> = self.to_ref();
@@ -151,6 +151,7 @@ where
             n: self.n,
             cols: self.cols_out,
             size: self.size,
+            max_size: self.size,
             _phantom: std::marker::PhantomData,
         }
     }
@@ -159,7 +160,7 @@ where
 impl<D: AsRef<[u8]> + AsMut<[u8]>, B: Backend> MatZnxDft<D, B>
 where
     MatZnxDft<D, B>: MatZnxDftToMut<B>,
-    VecZnxDft<D, B>: VecZnxDftBytesOf<D, B>,
+    VecZnxDft<D, B>: VecZnxDftBytesOf<B>,
 {
     pub fn at_mut(&mut self, row: usize, col: usize) -> VecZnxDft<&mut [u8], B> {
         let n: usize = self.n();
@@ -176,6 +177,7 @@ where
             n,
             cols: cols_out,
             size,
+            max_size: size,
             _phantom: std::marker::PhantomData,
         }
     }

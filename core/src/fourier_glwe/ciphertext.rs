@@ -1,4 +1,4 @@
-use backend::{Backend, Module, VecZnxDft, VecZnxDftAlloc, VecZnxDftBytesOf};
+use backend::{Backend, Module, VecZnxDft, VecZnxDftAlloc};
 
 use crate::Infos;
 

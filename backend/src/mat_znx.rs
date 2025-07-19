@@ -114,6 +114,7 @@ impl<D: AsRef<[u8]>> MatZnx<D> {
             n: self.n,
             cols: self.cols_out,
             size: self.size,
+            max_size: self.size,
         }
     }
 }
@@ -134,6 +135,7 @@ impl<D: AsRef<[u8]> + AsMut<[u8]>> MatZnx<D> {
             n,
             cols: cols_out,
             size,
+            max_size: size,
         }
     }
 }

@@ -1,5 +1,9 @@
+use rand_distr::num_traits::Zero;
+
 use crate::znx_base::{ZnxInfos, ZnxView};
-use crate::{alloc_aligned, Backend, DataView, DataViewMut, VecZnx, ZnxWordSize, ZnxSliceSize, ZnxViewMut, ZnxZero, FFT64, NTT120};
+use crate::{
+    Backend, DataView, DataViewMut, FFT64, NTT120, VecZnx, ZnxSliceSize, ZnxViewMut, ZnxWordSize, ZnxZero, alloc_aligned,
+};
 use std::fmt;
 use std::marker::PhantomData;
 
@@ -8,6 +12,7 @@ pub struct VecZnxBig<D, B: Backend> {
     n: usize,
     cols: usize,
     size: usize,
+    max_size: usize,
     _phantom: PhantomData<B>,
 }
 
@@ -29,15 +34,18 @@ impl<D, B: Backend> ZnxInfos for VecZnxBig<D, B> {
     }
 }
 
-impl<D, B: Backend> ZnxWordSize for VecZnxBig<D, B>  {
+impl<D, B: Backend> ZnxWordSize for VecZnxBig<D, B> {
     fn ws() -> usize {
         1
     }
 }
 
-impl<D, B: Backend> ZnxSliceSize for VecZnxBig<D, B> where VecZnxBig<D, B>: ZnxWordSize  {
+impl<D, B: Backend> ZnxSliceSize for VecZnxBig<D, B>
+where
+    VecZnxBig<D, B>: ZnxWordSize,
+{
     fn sl(&self) -> usize {
-       Self::ws() * self.n() * self.cols()
+        Self::ws() * self.n() * self.cols()
     }
 }
 
@@ -66,23 +74,25 @@ pub trait VecZnxBigBytesOf<B: Backend> {
     fn bytes_of(n: usize, cols: usize, size: usize) -> usize;
 }
 
-impl<D: AsRef<[u8]>, B: Backend> VecZnxBigBytesOf<B> for VecZnxBig<D, B> where VecZnxBig<D, B>: ZnxWordSize {
+impl<D: AsRef<[u8]>, B: Backend> VecZnxBigBytesOf<B> for VecZnxBig<D, B>
+where
+    VecZnxBig<D, B>: ZnxWordSize,
+{
     fn bytes_of(n: usize, cols: usize, size: usize) -> usize {
         Self::ws() * n * cols * size * size_of::<f64>()
     }
 }
 
-impl<D: AsRef<[u8]> + AsMut<[u8]>, B: Backend> ZnxZero for VecZnxBig<D, B> where VecZnxBig<D, B>: ZnxWordSize + ZnxViewMut {
+impl<D: AsRef<[u8]> + AsMut<[u8]>, B: Backend> ZnxZero for VecZnxBig<D, B>
+where
+    Self: ZnxViewMut,
+    <Self as ZnxView>::Scalar: Zero + Copy,
+{
     fn zero(&mut self) {
-        unsafe {
-            std::ptr::write_bytes(self.as_mut_ptr(), 0, self.sl() * self.size());
-        }
+        self.raw_mut().fill(<Self as ZnxView>::Scalar::zero())
     }
-
     fn zero_at(&mut self, i: usize, j: usize) {
-        unsafe {
-            std::ptr::write_bytes(self.at_mut_ptr(i, j), 0, self.n() * Self::ws());
-        }
+        self.at_mut(i, j).fill(<Self as ZnxView>::Scalar::zero());
     }
 }
 
@@ -97,6 +107,7 @@ where
             n,
             cols,
             size,
+            max_size: size,
             _phantom: PhantomData,
         }
     }
@@ -109,6 +120,7 @@ where
             n,
             cols,
             size,
+            max_size: size,
             _phantom: PhantomData,
         }
     }
@@ -121,6 +133,7 @@ impl<D, B: Backend> VecZnxBig<D, B> {
             n,
             cols,
             size,
+            max_size: size,
             _phantom: PhantomData,
         }
     }
@@ -138,6 +151,7 @@ where
             n: self.n,
             cols: self.cols,
             size: self.size,
+            max_size: self.max_size,
         }
     }
 
@@ -187,6 +201,7 @@ where
             n: self.n,
             cols: self.cols,
             size: self.size,
+            max_size: self.max_size,
             _phantom: std::marker::PhantomData,
         }
     }
@@ -207,6 +222,7 @@ where
             n: self.n,
             cols: self.cols,
             size: self.size,
+            max_size: self.max_size,
             _phantom: std::marker::PhantomData,
         }
     }

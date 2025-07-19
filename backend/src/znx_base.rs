@@ -31,7 +31,7 @@ pub trait ZnxSliceSize {
     fn sl(&self) -> usize;
 }
 
-pub trait ZnxWordSize{
+pub trait ZnxWordSize {
     /// Returns the number of machine words per polynomial.
     fn ws() -> usize;
 }
@@ -46,7 +46,7 @@ pub trait DataViewMut: DataView {
 }
 
 pub trait ZnxView: ZnxInfos + DataView<D: AsRef<[u8]>> {
-    type Scalar: Copy;
+    type Scalar: Copy + Zero;
 
     /// Returns a non-mutable pointer to the underlying coefficients array.
     fn as_ptr(&self) -> *const Self::Scalar {
@@ -106,7 +106,7 @@ pub trait ZnxViewMut: ZnxView + DataViewMut<D: AsMut<[u8]>> {
 //(Jay)Note: Can't provide blanket impl. of ZnxView because Scalar is not known
 impl<T> ZnxViewMut for T where T: ZnxView + DataViewMut<D: AsMut<[u8]>> {}
 
-pub trait ZnxZero: ZnxViewMut + ZnxSliceSize
+pub trait ZnxZero
 where
     Self: Sized,
 {
@@ -143,7 +143,7 @@ impl Integer for i128 {
 }
 
 //(Jay)Note: `rsh` impl. ignores the column
-pub fn rsh<V: ZnxZero>(k: usize, basek: usize, a: &mut V, _a_col: usize, scratch: &mut Scratch)
+pub fn rsh<V: ZnxZero + ZnxViewMut>(k: usize, basek: usize, a: &mut V, _a_col: usize, scratch: &mut Scratch)
 where
     V::Scalar: From<usize> + Integer + Zero,
 {

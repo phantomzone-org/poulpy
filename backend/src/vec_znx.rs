@@ -4,8 +4,8 @@ use crate::DataView;
 use crate::DataViewMut;
 use crate::ScalarZnx;
 use crate::Scratch;
-use crate::ZnxWordSize;
 use crate::ZnxSliceSize;
+use crate::ZnxWordSize;
 use crate::ZnxZero;
 use crate::alloc_aligned;
 use crate::assert_alignement;
@@ -26,10 +26,11 @@ use std::{cmp::min, fmt};
 /// are small polynomials of Zn\[X\].
 #[derive(PartialEq, Eq)]
 pub struct VecZnx<D> {
-    pub data: D,
-    pub n: usize,
-    pub cols: usize,
-    pub size: usize,
+    pub(crate) data: D,
+    pub(crate) n: usize,
+    pub(crate) cols: usize,
+    pub(crate) size: usize,
+    pub(crate) max_size: usize,
 }
 
 impl<D> fmt::Debug for VecZnx<D>
@@ -59,7 +60,10 @@ impl<D> ZnxInfos for VecZnx<D> {
     }
 }
 
-impl<D> ZnxSliceSize for VecZnx<D> where VecZnx<D>: ZnxWordSize{
+impl<D> ZnxSliceSize for VecZnx<D>
+where
+    VecZnx<D>: ZnxWordSize,
+{
     fn sl(&self) -> usize {
         Self::ws() * self.n() * self.cols()
     }
@@ -94,17 +98,12 @@ impl VecZnx<Vec<u8>> {
     }
 }
 
-impl<D: AsRef<[u8]> + AsMut<[u8]>> ZnxZero for VecZnx<D>{
+impl<D: AsRef<[u8]> + AsMut<[u8]>> ZnxZero for VecZnx<D> {
     fn zero(&mut self) {
-        unsafe {
-            std::ptr::write_bytes(self.as_mut_ptr(), 0, self.sl() * self.size());
-        }
+        self.raw_mut().fill(0)
     }
-
     fn zero_at(&mut self, i: usize, j: usize) {
-        unsafe {
-            std::ptr::write_bytes(self.at_mut_ptr(i, j), 0, self.n());
-        }
+        self.at_mut(i, j).fill(0);
     }
 }
 
@@ -217,6 +216,7 @@ impl<D: From<Vec<u8>> + AsRef<[u8]>> VecZnx<D> {
             n,
             cols,
             size,
+            max_size: size,
         }
     }
 
@@ -228,6 +228,7 @@ impl<D: From<Vec<u8>> + AsRef<[u8]>> VecZnx<D> {
             n,
             cols,
             size,
+            max_size: size,
         }
     }
 }
@@ -239,6 +240,7 @@ impl<D> VecZnx<D> {
             n,
             cols,
             size,
+            max_size: size,
         }
     }
 
@@ -401,6 +403,7 @@ where
             n: self.n,
             cols: self.cols,
             size: self.size,
+            max_size: self.max_size,
         }
     }
 }
@@ -419,6 +422,7 @@ where
             n: self.n,
             cols: self.cols,
             size: self.size,
+            max_size: self.max_size,
         }
     }
 }
@@ -431,6 +435,7 @@ impl<DataSelf: AsRef<[u8]>> VecZnx<DataSelf> {
             n: self_ref.n,
             cols: self_ref.cols,
             size: self_ref.size,
+            max_size: self_ref.max_size,
         }
     }
 }
