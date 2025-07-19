@@ -1,8 +1,12 @@
 use std::marker::PhantomData;
 
-use crate::ffi::vec_znx_dft;
+use rand_distr::num_traits::Zero;
+
 use crate::znx_base::ZnxInfos;
-use crate::{Backend, DataView, DataViewMut, FFT64, Module, VecZnxBig, ZnxSliceSize, ZnxView, alloc_aligned};
+use crate::{
+    Backend, DataView, DataViewMut, FFT64, NTT120, VecZnxBig, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxWordSize, ZnxZero,
+    alloc_aligned,
+};
 use std::fmt;
 
 pub struct VecZnxDft<D, B: Backend> {
@@ -10,6 +14,7 @@ pub struct VecZnxDft<D, B: Backend> {
     pub(crate) n: usize,
     pub(crate) cols: usize,
     pub(crate) size: usize,
+    pub(crate) max_size: usize,
     pub(crate) _phantom: PhantomData<B>,
 }
 
@@ -39,7 +44,25 @@ impl<D, B: Backend> ZnxInfos for VecZnxDft<D, B> {
 
 impl<D> ZnxSliceSize for VecZnxDft<D, FFT64> {
     fn sl(&self) -> usize {
-        self.n() * self.cols()
+        Self::ws() * self.n() * self.cols()
+    }
+}
+
+impl<D> ZnxSliceSize for VecZnxDft<D, NTT120> {
+    fn sl(&self) -> usize {
+        Self::ws() * self.n() * self.cols()
+    }
+}
+
+impl<D> ZnxWordSize for VecZnxDft<D, FFT64> {
+    fn ws() -> usize {
+        1
+    }
+}
+
+impl<D> ZnxWordSize for VecZnxDft<D, NTT120> {
+    fn ws() -> usize {
+        4
     }
 }
 
@@ -60,41 +83,74 @@ impl<D: AsRef<[u8]>> ZnxView for VecZnxDft<D, FFT64> {
     type Scalar = f64;
 }
 
-impl<D: AsMut<[u8]> + AsRef<[u8]>> VecZnxDft<D, FFT64> {
+impl<D: AsRef<[u8]>> ZnxView for VecZnxDft<D, NTT120> {
+    type Scalar = i64;
+}
+
+impl<D: AsRef<[u8]>, B: Backend> VecZnxDft<D, B> {
+    pub fn max_size(&self) -> usize {
+        self.max_size
+    }
+}
+
+impl<D: AsMut<[u8]> + AsRef<[u8]>, B: Backend> VecZnxDft<D, B> {
     pub fn set_size(&mut self, size: usize) {
-        assert!(size <= self.data.as_ref().len() / (self.n * self.cols()));
+        assert!(size <= self.max_size);
         self.size = size
     }
+}
 
-    pub fn max_size(&mut self) -> usize {
-        self.data.as_ref().len() / (self.n * self.cols)
+impl<D: AsRef<[u8]> + AsMut<[u8]>, B: Backend> ZnxZero for VecZnxDft<D, B>
+where
+    Self: ZnxViewMut,
+    <Self as ZnxView>::Scalar: Zero + Copy,
+{
+    fn zero(&mut self) {
+        self.raw_mut().fill(<Self as ZnxView>::Scalar::zero())
+    }
+    fn zero_at(&mut self, i: usize, j: usize) {
+        self.at_mut(i, j).fill(<Self as ZnxView>::Scalar::zero());
     }
 }
 
-pub(crate) fn bytes_of_vec_znx_dft<B: Backend>(module: &Module<B>, cols: usize, size: usize) -> usize {
-    unsafe { vec_znx_dft::bytes_of_vec_znx_dft(module.ptr, size as u64) as usize * cols }
+pub trait VecZnxDftBytesOf<B: Backend> {
+    fn bytes_of(n: usize, cols: usize, size: usize) -> usize;
 }
 
-impl<D: From<Vec<u8>>, B: Backend> VecZnxDft<D, B> {
-    pub(crate) fn new(module: &Module<B>, cols: usize, size: usize) -> Self {
-        let data = alloc_aligned::<u8>(bytes_of_vec_znx_dft(module, cols, size));
+impl<D: AsRef<[u8]>, B: Backend> VecZnxDftBytesOf<B> for VecZnxDft<D, B>
+where
+    VecZnxDft<D, B>: ZnxWordSize,
+{
+    fn bytes_of(n: usize, cols: usize, size: usize) -> usize {
+        Self::ws() * n * cols * size * size_of::<f64>()
+    }
+}
+
+impl<D: From<Vec<u8>> + AsRef<[u8]>, B: Backend> VecZnxDft<D, B>
+where
+    VecZnxDft<D, B>: VecZnxDftBytesOf<B>,
+{
+    pub(crate) fn new(n: usize, cols: usize, size: usize) -> Self {
+        let data: Vec<u8> = alloc_aligned::<u8>(Self::bytes_of(n, cols, size));
         Self {
             data: data.into(),
-            n: module.n(),
+            n: n,
             cols,
             size,
+            max_size: size,
             _phantom: PhantomData,
         }
     }
 
-    pub(crate) fn new_from_bytes(module: &Module<B>, cols: usize, size: usize, bytes: impl Into<Vec<u8>>) -> Self {
+    pub(crate) fn new_from_bytes(n: usize, cols: usize, size: usize, bytes: impl Into<Vec<u8>>) -> Self {
         let data: Vec<u8> = bytes.into();
-        assert!(data.len() == bytes_of_vec_znx_dft(module, cols, size));
+        assert!(data.len() == Self::bytes_of(n, cols, size));
         Self {
             data: data.into(),
-            n: module.n(),
+            n: n,
             cols,
             size,
+            max_size: size,
             _phantom: PhantomData,
         }
     }
@@ -109,6 +165,7 @@ impl<D, B: Backend> VecZnxDft<D, B> {
             n,
             cols,
             size,
+            max_size: size,
             _phantom: PhantomData,
         }
     }
@@ -118,17 +175,14 @@ pub trait VecZnxDftToRef<B: Backend> {
     fn to_ref(&self) -> VecZnxDft<&[u8], B>;
 }
 
-impl<D, B: Backend> VecZnxDftToRef<B> for VecZnxDft<D, B>
-where
-    D: AsRef<[u8]>,
-    B: Backend,
-{
+impl<D: AsRef<[u8]>, B: Backend> VecZnxDftToRef<B> for VecZnxDft<D, B> {
     fn to_ref(&self) -> VecZnxDft<&[u8], B> {
         VecZnxDft {
             data: self.data.as_ref(),
             n: self.n,
             cols: self.cols,
             size: self.size,
+            max_size: self.max_size,
             _phantom: std::marker::PhantomData,
         }
     }
@@ -138,17 +192,14 @@ pub trait VecZnxDftToMut<B: Backend> {
     fn to_mut(&mut self) -> VecZnxDft<&mut [u8], B>;
 }
 
-impl<D, B: Backend> VecZnxDftToMut<B> for VecZnxDft<D, B>
-where
-    D: AsRef<[u8]> + AsMut<[u8]>,
-    B: Backend,
-{
+impl<D: AsRef<[u8]> + AsMut<[u8]>, B: Backend> VecZnxDftToMut<B> for VecZnxDft<D, B> {
     fn to_mut(&mut self) -> VecZnxDft<&mut [u8], B> {
         VecZnxDft {
             data: self.data.as_mut(),
             n: self.n,
             cols: self.cols,
             size: self.size,
+            max_size: self.max_size,
             _phantom: std::marker::PhantomData,
         }
     }

@@ -1,36 +1,15 @@
-use backend::{Backend, MatZnx, MatZnxAlloc, Module};
+use crate::Infos;
+use backend::{Backend, MatZnxDftPrep, MatZnxDftPrepAlloc, Module};
 
-use crate::{GLWECiphertext, Infos};
-
-pub struct GGLWECiphertext<D> {
-    pub(crate) data: MatZnx<D>,
+pub struct GGLWECiphertextPrep<D, B: Backend> {
+    pub(crate) data: MatZnxDftPrep<D, B>,
     pub(crate) basek: usize,
     pub(crate) k: usize,
     pub(crate) digits: usize,
 }
 
-impl<D: AsRef<[u8]>> GGLWECiphertext<D> {
-    pub fn at(&self, row: usize, col: usize) -> GLWECiphertext<&[u8]> {
-        GLWECiphertext {
-            data: self.data.at(row, col),
-            basek: self.basek,
-            k: self.k,
-        }
-    }
-}
-
-impl<D: AsMut<[u8]> + AsRef<[u8]>> GGLWECiphertext<D> {
-    pub fn at_mut(&mut self, row: usize, col: usize) -> GLWECiphertext<&mut [u8]> {
-        GLWECiphertext {
-            data: self.data.at_mut(row, col),
-            basek: self.basek,
-            k: self.k,
-        }
-    }
-}
-
-impl GGLWECiphertext<Vec<u8>> {
-    pub fn alloc<B: Backend>(
+impl<B: Backend> GGLWECiphertextPrep<Vec<u8>, B> {
+    pub fn alloc(
         module: &Module<B>,
         basek: usize,
         k: usize,
@@ -56,14 +35,14 @@ impl GGLWECiphertext<Vec<u8>> {
         );
 
         Self {
-            data: module.new_mat_znx(rows, rank_in, rank_out + 1, size),
+            data: module.new_mat_znx_dft_prep(rows, rank_in, rank_out + 1, size),
             basek: basek,
             k,
             digits,
         }
     }
 
-    pub fn bytes_of<B: Backend>(
+    pub fn bytes_of(
         module: &Module<B>,
         basek: usize,
         k: usize,
@@ -88,12 +67,12 @@ impl GGLWECiphertext<Vec<u8>> {
             size
         );
 
-        module.bytes_of_mat_znx(rows, rank_in, rank_out + 1, rows)
+        module.bytes_of_mat_znx_dft_prep(rows, rank_in, rank_out + 1, rows)
     }
 }
 
-impl<D> Infos for GGLWECiphertext<D> {
-    type Inner = MatZnx<D>;
+impl<D, B: Backend> Infos for GGLWECiphertextPrep<D, B> {
+    type Inner = MatZnxDftPrep<D, B>;
 
     fn inner(&self) -> &Self::Inner {
         &self.data
@@ -108,7 +87,7 @@ impl<D> Infos for GGLWECiphertext<D> {
     }
 }
 
-impl<D> GGLWECiphertext<D> {
+impl<D, B: Backend> GGLWECiphertextPrep<D, B> {
     pub fn rank(&self) -> usize {
         self.data.cols_out() - 1
     }

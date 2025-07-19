@@ -1,31 +1,37 @@
-use backend::{FFT64, Module, Scratch, ZnxZero};
+use backend::{Backend, MatZnxDftPrepOps, Module, Scratch, VecZnxBigOps, VecZnxDftAlloc, VecZnxDftOps, ZnxZero};
 
-use crate::{FourierGLWECiphertext, GGSWCiphertext, GLWEAutomorphismKey, GLWESwitchingKey, GetRow, Infos, ScratchCore, SetRow};
+use crate::{FourierGLWECiphertext, GLWEAutomorphismKey, GLWESwitchingKey, Infos, ggsw::ciphertext_prep::GGSWCiphertextPrep};
 
-impl GLWESwitchingKey<Vec<u8>, FFT64> {
-    pub fn external_product_scratch_space(
-        module: &Module<FFT64>,
+impl GLWESwitchingKey<Vec<u8>> {
+    pub fn external_product_scratch_space<B: Backend>(
+        module: &Module<B>,
         basek: usize,
         k_out: usize,
         k_in: usize,
         k_ggsw: usize,
         digits: usize,
         rank: usize,
-    ) -> usize {
+    ) -> usize
+    where
+        Module<B>: VecZnxDftAlloc<B>,
+    {
         let tmp_in: usize = FourierGLWECiphertext::bytes_of(module, basek, k_in, rank);
         let tmp_out: usize = FourierGLWECiphertext::bytes_of(module, basek, k_out, rank);
         let ggsw: usize = FourierGLWECiphertext::external_product_scratch_space(module, basek, k_out, k_in, k_ggsw, digits, rank);
         tmp_in + tmp_out + ggsw
     }
 
-    pub fn external_product_inplace_scratch_space(
-        module: &Module<FFT64>,
+    pub fn external_product_inplace_scratch_space<B: Backend>(
+        module: &Module<B>,
         basek: usize,
         k_out: usize,
         k_ggsw: usize,
         digits: usize,
         rank: usize,
-    ) -> usize {
+    ) -> usize
+    where
+        Module<B>: VecZnxDftAlloc<B>,
+    {
         let tmp: usize = FourierGLWECiphertext::bytes_of(module, basek, k_out, rank);
         let ggsw: usize =
             FourierGLWECiphertext::external_product_inplace_scratch_space(module, basek, k_out, k_ggsw, digits, rank);
@@ -33,14 +39,16 @@ impl GLWESwitchingKey<Vec<u8>, FFT64> {
     }
 }
 
-impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<DataSelf, FFT64> {
-    pub fn external_product<DataLhs: AsRef<[u8]>, DataRhs: AsRef<[u8]>>(
+impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<DataSelf> {
+    pub fn external_product<DataLhs: AsRef<[u8]>, DataRhs: AsRef<[u8]>, B: Backend>(
         &mut self,
-        module: &Module<FFT64>,
-        lhs: &GLWESwitchingKey<DataLhs, FFT64>,
-        rhs: &GGSWCiphertext<DataRhs, FFT64>,
+        module: &Module<B>,
+        lhs: &GLWESwitchingKey<DataLhs>,
+        rhs: &GGSWCiphertextPrep<DataRhs, B>,
         scratch: &mut Scratch,
-    ) {
+    ) where
+        Module<B>: VecZnxDftAlloc<B> + VecZnxDftOps<B> + MatZnxDftPrepOps<B> + VecZnxBigOps<B>,
+    {
         #[cfg(debug_assertions)]
         {
             assert_eq!(
@@ -66,32 +74,28 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<DataSelf, FFT64> {
             );
         }
 
-        let (mut tmp_in, scratch1) = scratch.tmp_fourier_glwe_ct(module, lhs.basek(), lhs.k(), lhs.rank());
-        let (mut tmp_out, scratch2) = scratch1.tmp_fourier_glwe_ct(module, self.basek(), self.k(), self.rank());
-
         (0..self.rank_in()).for_each(|col_i| {
             (0..self.rows()).for_each(|row_j| {
-                lhs.get_row(module, row_j, col_i, &mut tmp_in);
-                tmp_out.external_product(module, &tmp_in, rhs, scratch2);
-                self.set_row(module, row_j, col_i, &tmp_out);
+                self.at_mut(row_j, col_i)
+                    .external_product(module, &lhs.at(row_j, col_i), rhs, scratch);
             });
         });
 
-        tmp_out.data.zero();
-
         (self.rows().min(lhs.rows())..self.rows()).for_each(|row_i| {
             (0..self.rank_in()).for_each(|col_j| {
-                self.set_row(module, row_i, col_j, &tmp_out);
+                self.at_mut(row_i, col_j).data.zero();
             });
         });
     }
 
-    pub fn external_product_inplace<DataRhs: AsRef<[u8]>>(
+    pub fn external_product_inplace<DataRhs: AsRef<[u8]>, B: Backend>(
         &mut self,
-        module: &Module<FFT64>,
-        rhs: &GGSWCiphertext<DataRhs, FFT64>,
+        module: &Module<B>,
+        rhs: &GGSWCiphertextPrep<DataRhs, B>,
         scratch: &mut Scratch,
-    ) {
+    ) where
+        Module<B>: VecZnxDftAlloc<B> + VecZnxDftOps<B> + MatZnxDftPrepOps<B> + VecZnxBigOps<B>,
+    {
         #[cfg(debug_assertions)]
         {
             assert_eq!(
@@ -103,60 +107,67 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<DataSelf, FFT64> {
             );
         }
 
-        let (mut tmp, scratch1) = scratch.tmp_fourier_glwe_ct(module, self.basek(), self.k(), self.rank());
-        println!("tmp: {}", tmp.size());
         (0..self.rank_in()).for_each(|col_i| {
             (0..self.rows()).for_each(|row_j| {
-                self.get_row(module, row_j, col_i, &mut tmp);
-                tmp.external_product_inplace(module, rhs, scratch1);
-                self.set_row(module, row_j, col_i, &tmp);
+                self.at_mut(row_j, col_i)
+                    .external_product_inplace(module, rhs, scratch);
             });
         });
     }
 }
 
-impl GLWEAutomorphismKey<Vec<u8>, FFT64> {
-    pub fn external_product_scratch_space(
-        module: &Module<FFT64>,
+impl GLWEAutomorphismKey<Vec<u8>> {
+    pub fn external_product_scratch_space<B: Backend>(
+        module: &Module<B>,
         basek: usize,
         k_out: usize,
         k_in: usize,
         ggsw_k: usize,
         digits: usize,
         rank: usize,
-    ) -> usize {
+    ) -> usize
+    where
+        Module<B>: VecZnxDftAlloc<B>,
+    {
         GLWESwitchingKey::external_product_scratch_space(module, basek, k_out, k_in, ggsw_k, digits, rank)
     }
 
-    pub fn external_product_inplace_scratch_space(
-        module: &Module<FFT64>,
+    pub fn external_product_inplace_scratch_space<B: Backend>(
+        module: &Module<B>,
         basek: usize,
         k_out: usize,
         ggsw_k: usize,
         digits: usize,
         rank: usize,
-    ) -> usize {
+    ) -> usize
+    where
+        Module<B>: VecZnxDftAlloc<B>,
+    {
         GLWESwitchingKey::external_product_inplace_scratch_space(module, basek, k_out, ggsw_k, digits, rank)
     }
 }
 
-impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWEAutomorphismKey<DataSelf, FFT64> {
-    pub fn external_product<DataLhs: AsRef<[u8]>, DataRhs: AsRef<[u8]>>(
+impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWEAutomorphismKey<DataSelf> {
+    pub fn external_product<DataLhs: AsRef<[u8]>, DataRhs: AsRef<[u8]>, B: Backend>(
         &mut self,
-        module: &Module<FFT64>,
-        lhs: &GLWEAutomorphismKey<DataLhs, FFT64>,
-        rhs: &GGSWCiphertext<DataRhs, FFT64>,
+        module: &Module<B>,
+        lhs: &GLWEAutomorphismKey<DataLhs>,
+        rhs: &GGSWCiphertextPrep<DataRhs, B>,
         scratch: &mut Scratch,
-    ) {
+    ) where
+        Module<B>: VecZnxDftAlloc<B> + VecZnxDftOps<B> + MatZnxDftPrepOps<B> + VecZnxBigOps<B>,
+    {
         self.key.external_product(module, &lhs.key, rhs, scratch);
     }
 
-    pub fn external_product_inplace<DataRhs: AsRef<[u8]>>(
+    pub fn external_product_inplace<DataRhs: AsRef<[u8]>, B: Backend>(
         &mut self,
-        module: &Module<FFT64>,
-        rhs: &GGSWCiphertext<DataRhs, FFT64>,
+        module: &Module<B>,
+        rhs: &GGSWCiphertextPrep<DataRhs, B>,
         scratch: &mut Scratch,
-    ) {
+    ) where
+        Module<B>: VecZnxDftAlloc<B> + VecZnxDftOps<B> + MatZnxDftPrepOps<B> + VecZnxBigOps<B>,
+    {
         self.key.external_product_inplace(module, rhs, scratch);
     }
 }

@@ -2,69 +2,55 @@ use crate::ffi::svp;
 use crate::ffi::vec_znx_dft::vec_znx_dft_t;
 use crate::znx_base::{ZnxInfos, ZnxView, ZnxViewMut};
 use crate::{
-    Backend, FFT64, Module, ScalarZnx, ScalarZnxDft, ScalarZnxDftOwned, ScalarZnxDftToMut, ScalarZnxDftToRef, ScalarZnxToMut,
-    ScalarZnxToRef, Scratch, VecZnxDft, VecZnxDftOps, VecZnxDftToMut, VecZnxDftToRef, VecZnxOps,
+    Backend, FFT64, Module, NTT120, ScalarZnxDftPrep, ScalarZnxDftPrepBytesOf, ScalarZnxDftPrepOwned, ScalarZnxDftPrepToMut,
+    ScalarZnxDftPrepToRef, ScalarZnxToRef, VecZnxDft, VecZnxDftToMut, VecZnxDftToRef,
 };
 
-pub trait ScalarZnxDftAlloc<B: Backend> {
-    fn new_scalar_znx_dft(&self, cols: usize) -> ScalarZnxDftOwned<B>;
-    fn bytes_of_scalar_znx_dft(&self, cols: usize) -> usize;
-    fn new_scalar_znx_dft_from_bytes(&self, cols: usize, bytes: Vec<u8>) -> ScalarZnxDftOwned<B>;
+pub trait ScalarZnxDftPrepAlloc<B: Backend> {
+    fn new_scalar_znx_dft_prep(&self, cols: usize) -> ScalarZnxDftPrepOwned<B>;
+    fn bytes_of_scalar_znx_dft_prep(&self, cols: usize) -> usize;
+    fn new_scalar_znx_dft_prep_from_bytes(&self, cols: usize, bytes: Vec<u8>) -> ScalarZnxDftPrepOwned<B>;
 }
 
-pub trait ScalarZnxDftOps<BACKEND: Backend> {
+pub trait ScalarZnxDftPrepOps<BACKEND: Backend> {
     fn svp_prepare<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
-        R: ScalarZnxDftToMut<BACKEND>,
+        R: ScalarZnxDftPrepToMut<BACKEND>,
         A: ScalarZnxToRef;
 
     fn svp_apply<R, A, B>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
     where
         R: VecZnxDftToMut<BACKEND>,
-        A: ScalarZnxDftToRef<BACKEND>,
+        A: ScalarZnxDftPrepToRef<BACKEND>,
         B: VecZnxDftToRef<BACKEND>;
 
     fn svp_apply_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxDftToMut<BACKEND>,
-        A: ScalarZnxDftToRef<BACKEND>;
-
-    fn scalar_znx_idft<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch)
-    where
-        R: ScalarZnxToMut,
-        A: ScalarZnxDftToRef<BACKEND>;
+        A: ScalarZnxDftPrepToRef<BACKEND>;
 }
 
-impl<B: Backend> ScalarZnxDftAlloc<B> for Module<B> {
-    fn new_scalar_znx_dft(&self, cols: usize) -> ScalarZnxDftOwned<B> {
-        ScalarZnxDftOwned::new(self, cols)
+impl<B: Backend> ScalarZnxDftPrepAlloc<B> for Module<B>
+where
+    ScalarZnxDftPrep<Vec<u8>, B>: ScalarZnxDftPrepBytesOf<B>,
+{
+    fn new_scalar_znx_dft_prep(&self, cols: usize) -> ScalarZnxDftPrepOwned<B> {
+        ScalarZnxDftPrepOwned::new(self.n(), cols)
     }
 
-    fn bytes_of_scalar_znx_dft(&self, cols: usize) -> usize {
-        ScalarZnxDftOwned::bytes_of(self, cols)
+    fn bytes_of_scalar_znx_dft_prep(&self, cols: usize) -> usize {
+        ScalarZnxDftPrepOwned::bytes_of(self.n(), cols)
     }
 
-    fn new_scalar_znx_dft_from_bytes(&self, cols: usize, bytes: Vec<u8>) -> ScalarZnxDftOwned<B> {
-        ScalarZnxDftOwned::new_from_bytes(self, cols, bytes)
+    fn new_scalar_znx_dft_prep_from_bytes(&self, cols: usize, bytes: Vec<u8>) -> ScalarZnxDftPrepOwned<B> {
+        ScalarZnxDftPrepOwned::new_from_bytes(self.n(), cols, bytes)
     }
 }
 
-impl ScalarZnxDftOps<FFT64> for Module<FFT64> {
-    fn scalar_znx_idft<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch)
-    where
-        R: ScalarZnxToMut,
-        A: ScalarZnxDftToRef<FFT64>,
-    {
-        let res_mut: &mut ScalarZnx<&mut [u8]> = &mut res.to_mut();
-        let a_ref: &ScalarZnxDft<&[u8], FFT64> = &a.to_ref();
-        let (mut vec_znx_big, scratch1) = scratch.tmp_vec_znx_big(self, 1, 1);
-        self.vec_znx_idft(&mut vec_znx_big, 0, a_ref, a_col, scratch1);
-        self.vec_znx_copy(res_mut, res_col, &vec_znx_big.to_vec_znx_small(), 0);
-    }
-
+impl ScalarZnxDftPrepOps<FFT64> for Module<FFT64> {
     fn svp_prepare<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
-        R: ScalarZnxDftToMut<FFT64>,
+        R: ScalarZnxDftPrepToMut<FFT64>,
         A: ScalarZnxToRef,
     {
         unsafe {
@@ -79,11 +65,11 @@ impl ScalarZnxDftOps<FFT64> for Module<FFT64> {
     fn svp_apply<R, A, B>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
     where
         R: VecZnxDftToMut<FFT64>,
-        A: ScalarZnxDftToRef<FFT64>,
+        A: ScalarZnxDftPrepToRef<FFT64>,
         B: VecZnxDftToRef<FFT64>,
     {
         let mut res: VecZnxDft<&mut [u8], FFT64> = res.to_mut();
-        let a: ScalarZnxDft<&[u8], FFT64> = a.to_ref();
+        let a: ScalarZnxDftPrep<&[u8], FFT64> = a.to_ref();
         let b: VecZnxDft<&[u8], FFT64> = b.to_ref();
         unsafe {
             svp::svp_apply_dft_to_dft(
@@ -102,10 +88,10 @@ impl ScalarZnxDftOps<FFT64> for Module<FFT64> {
     fn svp_apply_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxDftToMut<FFT64>,
-        A: ScalarZnxDftToRef<FFT64>,
+        A: ScalarZnxDftPrepToRef<FFT64>,
     {
         let mut res: VecZnxDft<&mut [u8], FFT64> = res.to_mut();
-        let a: ScalarZnxDft<&[u8], FFT64> = a.to_ref();
+        let a: ScalarZnxDftPrep<&[u8], FFT64> = a.to_ref();
         unsafe {
             svp::svp_apply_dft_to_dft(
                 self.ptr,
@@ -118,5 +104,33 @@ impl ScalarZnxDftOps<FFT64> for Module<FFT64> {
                 res.cols() as u64,
             )
         }
+    }
+}
+
+#[allow(unused_variables)]
+impl ScalarZnxDftPrepOps<NTT120> for Module<NTT120> {
+    fn svp_prepare<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    where
+        R: ScalarZnxDftPrepToMut<NTT120>,
+        A: ScalarZnxToRef,
+    {
+        unimplemented!()
+    }
+
+    fn svp_apply<R, A, B>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
+    where
+        R: VecZnxDftToMut<NTT120>,
+        A: ScalarZnxDftPrepToRef<NTT120>,
+        B: VecZnxDftToRef<NTT120>,
+    {
+        unimplemented!()
+    }
+
+    fn svp_apply_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    where
+        R: VecZnxDftToMut<NTT120>,
+        A: ScalarZnxDftPrepToRef<NTT120>,
+    {
+        unimplemented!()
     }
 }

@@ -1,11 +1,10 @@
 use crate::ffi::{vec_znx_big, vec_znx_dft};
-use crate::vec_znx_dft::bytes_of_vec_znx_dft;
 use crate::znx_base::ZnxInfos;
 use crate::{
-    Backend, Scratch, VecZnxBig, VecZnxBigToMut, VecZnxDft, VecZnxDftOwned, VecZnxDftToMut, VecZnxDftToRef, VecZnxToRef,
-    ZnxSliceSize,
+    Backend, Scratch, VecZnxBig, VecZnxBigToMut, VecZnxDft, VecZnxDftBytesOf, VecZnxDftOwned, VecZnxDftToMut, VecZnxDftToRef,
+    VecZnxToRef, ZnxSliceSize,
 };
-use crate::{FFT64, Module, ZnxView, ZnxViewMut, ZnxZero};
+use crate::{FFT64, Module, NTT120, ZnxView, ZnxViewMut, ZnxZero};
 use std::cmp::min;
 
 pub trait VecZnxDftAlloc<B: Backend> {
@@ -81,9 +80,9 @@ pub trait VecZnxDftOps<B: Backend> {
         A: VecZnxDftToMut<B>;
 
     /// Consumes a to return IDFT(a) in big coeff space.
-    fn vec_znx_idft_consume<D>(&self, a: VecZnxDft<D, B>) -> VecZnxBig<D, FFT64>
+    fn vec_znx_idft_consume<D>(&self, a: VecZnxDft<D, B>) -> VecZnxBig<D, B>
     where
-        VecZnxDft<D, FFT64>: VecZnxDftToMut<FFT64>;
+        VecZnxDft<D, B>: VecZnxDftToMut<B>;
 
     fn vec_znx_idft<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch)
     where
@@ -92,21 +91,24 @@ pub trait VecZnxDftOps<B: Backend> {
 
     fn vec_znx_dft<R, A>(&self, step: usize, offset: usize, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
-        R: VecZnxDftToMut<FFT64>,
+        R: VecZnxDftToMut<B>,
         A: VecZnxToRef;
 }
 
-impl<B: Backend> VecZnxDftAlloc<B> for Module<B> {
+impl<B: Backend> VecZnxDftAlloc<B> for Module<B>
+where
+    VecZnxDft<Vec<u8>, B>: VecZnxDftBytesOf<B>,
+{
     fn new_vec_znx_dft(&self, cols: usize, size: usize) -> VecZnxDftOwned<B> {
-        VecZnxDftOwned::new(&self, cols, size)
+        VecZnxDftOwned::new(self.n(), cols, size)
     }
 
     fn new_vec_znx_dft_from_bytes(&self, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxDftOwned<B> {
-        VecZnxDftOwned::new_from_bytes(self, cols, size, bytes)
+        VecZnxDftOwned::new_from_bytes(self.n(), cols, size, bytes)
     }
 
     fn bytes_of_vec_znx_dft(&self, cols: usize, size: usize) -> usize {
-        bytes_of_vec_znx_dft(self, cols, size)
+        VecZnxDftOwned::bytes_of(self.n(), cols, size)
     }
 }
 
@@ -381,5 +383,94 @@ impl VecZnxDftOps<FFT64> for Module<FFT64> {
                 res_mut.zero_at(res_col, j);
             });
         }
+    }
+}
+
+#[allow(unused_variables, unused_mut)]
+impl VecZnxDftOps<NTT120> for Module<NTT120> {
+    fn vec_znx_dft_add<R, A, D>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &D, b_col: usize)
+    where
+        R: VecZnxDftToMut<NTT120>,
+        A: VecZnxDftToRef<NTT120>,
+        D: VecZnxDftToRef<NTT120>,
+    {
+        unimplemented!()
+    }
+
+    fn vec_znx_dft_add_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    where
+        R: VecZnxDftToMut<NTT120>,
+        A: VecZnxDftToRef<NTT120>,
+    {
+        unimplemented!()
+    }
+
+    fn vec_znx_dft_sub<R, A, D>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &D, b_col: usize)
+    where
+        R: VecZnxDftToMut<NTT120>,
+        A: VecZnxDftToRef<NTT120>,
+        D: VecZnxDftToRef<NTT120>,
+    {
+        unimplemented!()
+    }
+
+    fn vec_znx_dft_sub_ab_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    where
+        R: VecZnxDftToMut<NTT120>,
+        A: VecZnxDftToRef<NTT120>,
+    {
+        unimplemented!()
+    }
+
+    fn vec_znx_dft_sub_ba_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    where
+        R: VecZnxDftToMut<NTT120>,
+        A: VecZnxDftToRef<NTT120>,
+    {
+        unimplemented!()
+    }
+
+    fn vec_znx_dft_copy<R, A>(&self, step: usize, offset: usize, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    where
+        R: VecZnxDftToMut<NTT120>,
+        A: VecZnxDftToRef<NTT120>,
+    {
+        unimplemented!()
+    }
+
+    fn vec_znx_idft_tmp_a<R, A>(&self, res: &mut R, res_col: usize, a: &mut A, a_col: usize)
+    where
+        R: VecZnxBigToMut<NTT120>,
+        A: VecZnxDftToMut<NTT120>,
+    {
+        unimplemented!()
+    }
+
+    fn vec_znx_idft_consume<D>(&self, mut a: VecZnxDft<D, NTT120>) -> VecZnxBig<D, NTT120>
+    where
+        VecZnxDft<D, NTT120>: VecZnxDftToMut<NTT120>,
+    {
+        unimplemented!()
+    }
+
+    fn vec_znx_idft_tmp_bytes(&self) -> usize {
+        unsafe { vec_znx_dft::vec_znx_idft_tmp_bytes(self.ptr) as usize }
+    }
+
+    fn vec_znx_dft<R, A>(&self, step: usize, offset: usize, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    where
+        R: VecZnxDftToMut<NTT120>,
+        A: VecZnxToRef,
+    {
+        unimplemented!()
+    }
+
+    // b <- IDFT(a), scratch space size obtained with [vec_znx_idft_tmp_bytes].
+    fn vec_znx_idft<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch)
+    where
+        R: VecZnxBigToMut<NTT120>,
+        A: VecZnxDftToRef<NTT120>,
+    {
+        unimplemented!()
     }
 }

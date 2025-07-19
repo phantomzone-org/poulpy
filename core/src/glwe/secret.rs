@@ -75,10 +75,4 @@ impl<S: AsMut<[u8]> + AsRef<[u8]>> GLWESecret<S> {
         self.data.zero();
         self.dist = Distribution::ZERO;
     }
-
-    // pub(crate) fn prep_fourier(&mut self, module: &Module<FFT64>) {
-    // (0..self.rank()).for_each(|i| {
-    // module.svp_prepare(&mut self.data_fourier, i, &self.data, i);
-    // });
-    // }
 }

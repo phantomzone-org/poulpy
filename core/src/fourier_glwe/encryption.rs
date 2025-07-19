@@ -1,25 +1,25 @@
-use backend::{FFT64, Module, Scratch, VecZnxAlloc, VecZnxBigScratch, VecZnxDftOps};
+use backend::{Backend, Module, Scratch, VecZnxAlloc, VecZnxBigScratch, VecZnxDftOps};
 use sampling::source::Source;
 
 use crate::{FourierGLWECiphertext, FourierGLWESecret, GLWECiphertext, Infos, ScratchCore};
 
-impl FourierGLWECiphertext<Vec<u8>, FFT64> {
+impl<B: Backend> FourierGLWECiphertext<Vec<u8>, B> {
     #[allow(dead_code)]
-    pub(crate) fn idft_scratch_space(module: &Module<FFT64>, basek: usize, k: usize) -> usize {
+    pub(crate) fn idft_scratch_space(module: &Module<B>, basek: usize, k: usize) -> usize {
         module.bytes_of_vec_znx(1, k.div_ceil(basek))
             + (module.vec_znx_big_normalize_tmp_bytes() | module.vec_znx_idft_tmp_bytes())
     }
 
-    pub fn encrypt_sk_scratch_space(module: &Module<FFT64>, basek: usize, k: usize, rank: usize) -> usize {
+    pub fn encrypt_sk_scratch_space(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize {
         module.bytes_of_vec_znx(rank + 1, k.div_ceil(basek)) + GLWECiphertext::encrypt_sk_scratch_space(module, basek, k)
     }
 }
 
-impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> FourierGLWECiphertext<DataSelf, FFT64> {
+impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>, B: Backend> FourierGLWECiphertext<DataSelf, B> {
     pub fn encrypt_zero_sk<DataSk: AsRef<[u8]>>(
         &mut self,
-        module: &Module<FFT64>,
-        sk: &FourierGLWESecret<DataSk, FFT64>,
+        module: &Module<B>,
+        sk: &FourierGLWESecret<DataSk, B>,
         source_xa: &mut Source,
         source_xe: &mut Source,
         sigma: f64,

@@ -1,7 +1,7 @@
 use backend::{
-    AddNormal, Decoding, Encoding, FFT64, FillUniform, Module, ScalarZnx, ScalarZnxAlloc, ScalarZnxDft, ScalarZnxDftAlloc,
-    ScalarZnxDftOps, ScratchOwned, VecZnx, VecZnxAlloc, VecZnxBig, VecZnxBigAlloc, VecZnxBigOps, VecZnxBigScratch, VecZnxDft,
-    VecZnxDftAlloc, VecZnxDftOps, VecZnxOps, ZnxInfos,
+    AddNormal, Decoding, Encoding, FFT64, FillUniform, Module, ScalarZnx, ScalarZnxAlloc, ScalarZnxDftPrep,
+    ScalarZnxDftPrepAlloc, ScalarZnxDftPrepOps, ScratchOwned, VecZnx, VecZnxAlloc, VecZnxBig, VecZnxBigAlloc, VecZnxBigOps,
+    VecZnxBigScratch, VecZnxDft, VecZnxDftAlloc, VecZnxDftOps, VecZnxOps, ZnxInfos,
 };
 use itertools::izip;
 use sampling::source::Source;
@@ -24,7 +24,7 @@ fn main() {
     s.fill_ternary_prob(0, 0.5, &mut source);
 
     // Buffer to store s in the DFT domain
-    let mut s_dft: ScalarZnxDft<Vec<u8>, FFT64> = module.new_scalar_znx_dft(s.cols());
+    let mut s_dft: ScalarZnxDftPrep<Vec<u8>, FFT64> = module.new_scalar_znx_dft_prep(s.cols());
 
     // s_dft <- DFT(s)
     module.svp_prepare(&mut s_dft, 0, &s, 0);

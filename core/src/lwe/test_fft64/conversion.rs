@@ -5,7 +5,7 @@ use crate::{
     FourierGLWESecret, GLWECiphertext, GLWEPlaintext, GLWESecret, Infos, LWECiphertext, LWESecret,
     lwe::{
         LWEPlaintext,
-        keyswtich::{GLWEToLWESwitchingKey, LWESwitchingKey, LWEToGLWESwitchingKey},
+        keyswtich::{GLWEToLWESwitchingKeyPrep, LWESwitchingKeyPrep, LWEToGLWESwitchingKeyPrep},
     },
 };
 
@@ -31,7 +31,7 @@ fn lwe_to_glwe() {
     let mut source_xe: Source = Source::new([0u8; 32]);
 
     let mut scratch: ScratchOwned = ScratchOwned::new(
-        LWEToGLWESwitchingKey::encrypt_sk_scratch_space(&module, basek, k_ksk, rank)
+        LWEToGLWESwitchingKeyPrep::encrypt_sk_scratch_space(&module, basek, k_ksk, rank)
             | GLWECiphertext::from_lwe_scratch_space(&module, basek, k_lwe_ct, k_glwe_ct, k_ksk, rank)
             | GLWECiphertext::decrypt_scratch_space(&module, basek, k_glwe_ct),
     );
@@ -55,7 +55,8 @@ fn lwe_to_glwe() {
     let mut lwe_ct: LWECiphertext<Vec<u8>> = LWECiphertext::alloc(n_lwe, basek, k_lwe_ct);
     lwe_ct.encrypt_sk(&lwe_pt, &sk_lwe, &mut source_xa, &mut source_xe, sigma);
 
-    let mut ksk: LWEToGLWESwitchingKey<Vec<u8>, FFT64> = LWEToGLWESwitchingKey::alloc(&module, basek, k_ksk, lwe_ct.size(), rank);
+    let mut ksk: LWEToGLWESwitchingKeyPrep<Vec<u8>, FFT64> =
+        LWEToGLWESwitchingKeyPrep::alloc(&module, basek, k_ksk, lwe_ct.size(), rank);
 
     ksk.encrypt_sk(
         &module,
@@ -98,7 +99,7 @@ fn glwe_to_lwe() {
     let mut source_xe: Source = Source::new([0u8; 32]);
 
     let mut scratch: ScratchOwned = ScratchOwned::new(
-        LWEToGLWESwitchingKey::encrypt_sk_scratch_space(&module, basek, k_ksk, rank)
+        LWEToGLWESwitchingKeyPrep::encrypt_sk_scratch_space(&module, basek, k_ksk, rank)
             | GLWECiphertext::from_lwe_scratch_space(&module, basek, k_lwe_ct, k_glwe_ct, k_ksk, rank)
             | GLWECiphertext::decrypt_scratch_space(&module, basek, k_glwe_ct),
     );
@@ -130,8 +131,8 @@ fn glwe_to_lwe() {
         scratch.borrow(),
     );
 
-    let mut ksk: GLWEToLWESwitchingKey<Vec<u8>, FFT64> =
-        GLWEToLWESwitchingKey::alloc(&module, basek, k_ksk, glwe_ct.size(), rank);
+    let mut ksk: GLWEToLWESwitchingKeyPrep<Vec<u8>, FFT64> =
+        GLWEToLWESwitchingKeyPrep::alloc(&module, basek, k_ksk, glwe_ct.size(), rank);
 
     ksk.encrypt_sk(
         &module,
@@ -171,7 +172,7 @@ fn keyswitch() {
     let mut source_xe: Source = Source::new([0u8; 32]);
 
     let mut scratch: ScratchOwned = ScratchOwned::new(
-        LWESwitchingKey::encrypt_sk_scratch_space(&module, basek, k_ksk)
+        LWESwitchingKeyPrep::encrypt_sk_scratch_space(&module, basek, k_ksk)
             | LWECiphertext::keyswitch_scratch_space(&module, basek, k_lwe_ct, k_lwe_ct, k_ksk),
     );
 
@@ -197,7 +198,7 @@ fn keyswitch() {
         sigma,
     );
 
-    let mut ksk: LWESwitchingKey<Vec<u8>, FFT64> = LWESwitchingKey::alloc(&module, basek, k_ksk, lwe_ct_in.size());
+    let mut ksk: LWESwitchingKeyPrep<Vec<u8>, FFT64> = LWESwitchingKeyPrep::alloc(&module, basek, k_ksk, lwe_ct_in.size());
 
     ksk.encrypt_sk(
         &module,

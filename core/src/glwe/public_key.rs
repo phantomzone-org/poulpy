@@ -1,4 +1,4 @@
-use backend::{Backend, FFT64, Module, ScratchOwned, VecZnxDft};
+use backend::{Backend, Module, ScratchOwned, VecZnxDft, VecZnxDftAlloc};
 use sampling::source::Source;
 
 use crate::{FourierGLWECiphertext, FourierGLWESecret, Infos, dist::Distribution};
@@ -9,14 +9,20 @@ pub struct GLWEPublicKey<D, B: Backend> {
 }
 
 impl<B: Backend> GLWEPublicKey<Vec<u8>, B> {
-    pub fn alloc(module: &Module<B>, basek: usize, k: usize, rank: usize) -> Self {
+    pub fn alloc(module: &Module<B>, basek: usize, k: usize, rank: usize) -> Self
+    where
+        Module<B>: VecZnxDftAlloc<B>,
+    {
         Self {
             data: FourierGLWECiphertext::alloc(module, basek, k, rank),
             dist: Distribution::NONE,
         }
     }
 
-    pub fn bytes_of(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize {
+    pub fn bytes_of(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize
+    where
+        Module<B>: VecZnxDftAlloc<B>,
+    {
         FourierGLWECiphertext::<Vec<u8>, B>::bytes_of(module, basek, k, rank)
     }
 }
@@ -43,11 +49,11 @@ impl<T, B: Backend> GLWEPublicKey<T, B> {
     }
 }
 
-impl<C: AsRef<[u8]> + AsMut<[u8]>> GLWEPublicKey<C, FFT64> {
+impl<C: AsRef<[u8]> + AsMut<[u8]>, B: Backend> GLWEPublicKey<C, B> {
     pub fn generate_from_sk<S: AsRef<[u8]>>(
         &mut self,
-        module: &Module<FFT64>,
-        sk: &FourierGLWESecret<S, FFT64>,
+        module: &Module<B>,
+        sk: &FourierGLWESecret<S, B>,
         source_xa: &mut Source,
         source_xe: &mut Source,
         sigma: f64,

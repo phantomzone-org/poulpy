@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 
-use backend::{FFT64, Module, Scratch};
+use backend::{Backend, MatZnxDftPrepOps, Module, Scratch, VecZnxBigOps, VecZnxDftAlloc, VecZnxDftOps};
 
-use crate::{GLWEAutomorphismKey, GLWECiphertext, GLWECiphertextToMut, GLWECiphertextToRef, GLWEOps, Infos, SetMetaData};
+use crate::{GLWEAutomorphismKeyPrep, GLWECiphertext, GLWECiphertextToMut, GLWECiphertextToRef, GLWEOps, Infos, SetMetaData};
 
 impl GLWECiphertext<Vec<u8>> {
-    pub fn trace_galois_elements(module: &Module<FFT64>) -> Vec<i64> {
+    pub fn trace_galois_elements<B: Backend>(module: &Module<B>) -> Vec<i64> {
         let mut gal_els: Vec<i64> = Vec::new();
         (0..module.log_n()).for_each(|i| {
             if i == 0 {
@@ -17,26 +17,32 @@ impl GLWECiphertext<Vec<u8>> {
         gal_els
     }
 
-    pub fn trace_scratch_space(
-        module: &Module<FFT64>,
+    pub fn trace_scratch_space<B: Backend>(
+        module: &Module<B>,
         basek: usize,
         out_k: usize,
         in_k: usize,
         ksk_k: usize,
         digits: usize,
         rank: usize,
-    ) -> usize {
+    ) -> usize
+    where
+        Module<B>: VecZnxDftAlloc<B>,
+    {
         Self::automorphism_inplace_scratch_space(module, basek, out_k.min(in_k), ksk_k, digits, rank)
     }
 
-    pub fn trace_inplace_scratch_space(
-        module: &Module<FFT64>,
+    pub fn trace_inplace_scratch_space<B: Backend>(
+        module: &Module<B>,
         basek: usize,
         out_k: usize,
         ksk_k: usize,
         digits: usize,
         rank: usize,
-    ) -> usize {
+    ) -> usize
+    where
+        Module<B>: VecZnxDftAlloc<B>,
+    {
         Self::automorphism_inplace_scratch_space(module, basek, out_k, ksk_k, digits, rank)
     }
 }
@@ -45,29 +51,32 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf>
 where
     GLWECiphertext<DataSelf>: GLWECiphertextToMut + Infos + SetMetaData,
 {
-    pub fn trace<DataLhs: AsRef<[u8]>, DataAK: AsRef<[u8]>>(
+    pub fn trace<DataLhs: AsRef<[u8]>, DataAK: AsRef<[u8]>, B: Backend>(
         &mut self,
-        module: &Module<FFT64>,
+        module: &Module<B>,
         start: usize,
         end: usize,
         lhs: &GLWECiphertext<DataLhs>,
-        auto_keys: &HashMap<i64, GLWEAutomorphismKey<DataAK, FFT64>>,
+        auto_keys: &HashMap<i64, GLWEAutomorphismKeyPrep<DataAK, B>>,
         scratch: &mut Scratch,
     ) where
         GLWECiphertext<DataLhs>: GLWECiphertextToRef + Infos,
+        Module<B>: MatZnxDftPrepOps<B> + VecZnxBigOps<B> + VecZnxDftAlloc<B> + VecZnxDftOps<B>,
     {
         self.copy(module, lhs);
         self.trace_inplace(module, start, end, auto_keys, scratch);
     }
 
-    pub fn trace_inplace<DataAK: AsRef<[u8]>>(
+    pub fn trace_inplace<DataAK: AsRef<[u8]>, B: Backend>(
         &mut self,
-        module: &Module<FFT64>,
+        module: &Module<B>,
         start: usize,
         end: usize,
-        auto_keys: &HashMap<i64, GLWEAutomorphismKey<DataAK, FFT64>>,
+        auto_keys: &HashMap<i64, GLWEAutomorphismKeyPrep<DataAK, B>>,
         scratch: &mut Scratch,
-    ) {
+    ) where
+        Module<B>: MatZnxDftPrepOps<B> + VecZnxBigOps<B> + VecZnxDftAlloc<B> + VecZnxDftOps<B>,
+    {
         (start..end).for_each(|i| {
             self.rsh(1, scratch);
 

@@ -1,6 +1,9 @@
-use crate::ffi::vec_znx_big;
+use rand_distr::num_traits::Zero;
+
 use crate::znx_base::{ZnxInfos, ZnxView};
-use crate::{Backend, DataView, DataViewMut, FFT64, Module, VecZnx, ZnxSliceSize, ZnxViewMut, ZnxZero, alloc_aligned};
+use crate::{
+    Backend, DataView, DataViewMut, FFT64, NTT120, VecZnx, ZnxSliceSize, ZnxViewMut, ZnxWordSize, ZnxZero, alloc_aligned,
+};
 use std::fmt;
 use std::marker::PhantomData;
 
@@ -9,6 +12,7 @@ pub struct VecZnxBig<D, B: Backend> {
     n: usize,
     cols: usize,
     size: usize,
+    max_size: usize,
     _phantom: PhantomData<B>,
 }
 
@@ -30,9 +34,18 @@ impl<D, B: Backend> ZnxInfos for VecZnxBig<D, B> {
     }
 }
 
-impl<D> ZnxSliceSize for VecZnxBig<D, FFT64> {
+impl<D, B: Backend> ZnxWordSize for VecZnxBig<D, B> {
+    fn ws() -> usize {
+        1
+    }
+}
+
+impl<D, B: Backend> ZnxSliceSize for VecZnxBig<D, B>
+where
+    VecZnxBig<D, B>: ZnxWordSize,
+{
     fn sl(&self) -> usize {
-        self.n() * self.cols()
+        Self::ws() * self.n() * self.cols()
     }
 }
 
@@ -53,30 +66,61 @@ impl<D: AsRef<[u8]>> ZnxView for VecZnxBig<D, FFT64> {
     type Scalar = i64;
 }
 
-pub(crate) fn bytes_of_vec_znx_big<B: Backend>(module: &Module<B>, cols: usize, size: usize) -> usize {
-    unsafe { vec_znx_big::bytes_of_vec_znx_big(module.ptr, size as u64) as usize * cols }
+impl<D: AsRef<[u8]>> ZnxView for VecZnxBig<D, NTT120> {
+    type Scalar = i128;
 }
 
-impl<D: From<Vec<u8>>, B: Backend> VecZnxBig<D, B> {
-    pub(crate) fn new(module: &Module<B>, cols: usize, size: usize) -> Self {
-        let data = alloc_aligned::<u8>(bytes_of_vec_znx_big(module, cols, size));
+pub trait VecZnxBigBytesOf<B: Backend> {
+    fn bytes_of(n: usize, cols: usize, size: usize) -> usize;
+}
+
+impl<D: AsRef<[u8]>, B: Backend> VecZnxBigBytesOf<B> for VecZnxBig<D, B>
+where
+    VecZnxBig<D, B>: ZnxWordSize,
+{
+    fn bytes_of(n: usize, cols: usize, size: usize) -> usize {
+        Self::ws() * n * cols * size * size_of::<f64>()
+    }
+}
+
+impl<D: AsRef<[u8]> + AsMut<[u8]>, B: Backend> ZnxZero for VecZnxBig<D, B>
+where
+    Self: ZnxViewMut,
+    <Self as ZnxView>::Scalar: Zero + Copy,
+{
+    fn zero(&mut self) {
+        self.raw_mut().fill(<Self as ZnxView>::Scalar::zero())
+    }
+    fn zero_at(&mut self, i: usize, j: usize) {
+        self.at_mut(i, j).fill(<Self as ZnxView>::Scalar::zero());
+    }
+}
+
+impl<D: From<Vec<u8>> + AsRef<[u8]>, B: Backend> VecZnxBig<D, B>
+where
+    VecZnxBig<D, B>: VecZnxBigBytesOf<B>,
+{
+    pub(crate) fn new(n: usize, cols: usize, size: usize) -> Self {
+        let data = alloc_aligned::<u8>(Self::bytes_of(n, cols, size));
         Self {
             data: data.into(),
-            n: module.n(),
+            n,
             cols,
             size,
+            max_size: size,
             _phantom: PhantomData,
         }
     }
 
-    pub(crate) fn new_from_bytes(module: &Module<B>, cols: usize, size: usize, bytes: impl Into<Vec<u8>>) -> Self {
+    pub(crate) fn new_from_bytes(n: usize, cols: usize, size: usize, bytes: impl Into<Vec<u8>>) -> Self {
         let data: Vec<u8> = bytes.into();
-        assert!(data.len() == bytes_of_vec_znx_big(module, cols, size));
+        assert!(data.len() == Self::bytes_of(n, cols, size));
         Self {
             data: data.into(),
-            n: module.n(),
+            n,
             cols,
             size,
+            max_size: size,
             _phantom: PhantomData,
         }
     }
@@ -89,6 +133,7 @@ impl<D, B: Backend> VecZnxBig<D, B> {
             n,
             cols,
             size,
+            max_size: size,
             _phantom: PhantomData,
         }
     }
@@ -106,6 +151,7 @@ where
             n: self.n,
             cols: self.cols,
             size: self.size,
+            max_size: self.max_size,
         }
     }
 
@@ -155,6 +201,7 @@ where
             n: self.n,
             cols: self.cols,
             size: self.size,
+            max_size: self.max_size,
             _phantom: std::marker::PhantomData,
         }
     }
@@ -175,6 +222,7 @@ where
             n: self.n,
             cols: self.cols,
             size: self.size,
+            max_size: self.max_size,
             _phantom: std::marker::PhantomData,
         }
     }

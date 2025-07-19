@@ -1,15 +1,15 @@
-use backend::{Backend, MatZnx, Module};
+use backend::{Backend, MatZnxDftPrep, Module};
 
-use crate::{GGLWECiphertext, GLWECiphertext, Infos};
+use crate::{GGLWECiphertextPrep, Infos};
 
-pub struct GLWESwitchingKey<D> {
-    pub(crate) key: GGLWECiphertext<D>,
+pub struct GLWESwitchingKeyPrep<D, B: Backend> {
+    pub(crate) key: GGLWECiphertextPrep<D, B>,
     pub(crate) sk_in_n: usize,  // Degree of sk_in
     pub(crate) sk_out_n: usize, // Degree of sk_out
 }
 
-impl GLWESwitchingKey<Vec<u8>> {
-    pub fn alloc<B: Backend>(
+impl<B: Backend> GLWESwitchingKeyPrep<Vec<u8>, B> {
+    pub fn alloc(
         module: &Module<B>,
         basek: usize,
         k: usize,
@@ -18,14 +18,14 @@ impl GLWESwitchingKey<Vec<u8>> {
         rank_in: usize,
         rank_out: usize,
     ) -> Self {
-        GLWESwitchingKey {
-            key: GGLWECiphertext::alloc(module, basek, k, rows, digits, rank_in, rank_out),
+        GLWESwitchingKeyPrep::<Vec<u8>, B> {
+            key: GGLWECiphertextPrep::alloc(module, basek, k, rows, digits, rank_in, rank_out),
             sk_in_n: 0,
             sk_out_n: 0,
         }
     }
 
-    pub fn bytes_of<B: Backend>(
+    pub fn bytes_of(
         module: &Module<B>,
         basek: usize,
         k: usize,
@@ -34,12 +34,12 @@ impl GLWESwitchingKey<Vec<u8>> {
         rank_in: usize,
         rank_out: usize,
     ) -> usize {
-        GGLWECiphertext::<Vec<u8>>::bytes_of(module, basek, k, rows, digits, rank_in, rank_out)
+        GGLWECiphertextPrep::bytes_of(module, basek, k, rows, digits, rank_in, rank_out)
     }
 }
 
-impl<D> Infos for GLWESwitchingKey<D> {
-    type Inner = MatZnx<D>;
+impl<D, B: Backend> Infos for GLWESwitchingKeyPrep<D, B> {
+    type Inner = MatZnxDftPrep<D, B>;
 
     fn inner(&self) -> &Self::Inner {
         self.key.inner()
@@ -54,7 +54,7 @@ impl<D> Infos for GLWESwitchingKey<D> {
     }
 }
 
-impl<D> GLWESwitchingKey<D> {
+impl<D, B: Backend> GLWESwitchingKeyPrep<D, B> {
     pub fn rank(&self) -> usize {
         self.key.data.cols_out() - 1
     }
@@ -77,17 +77,5 @@ impl<D> GLWESwitchingKey<D> {
 
     pub fn sk_degree_out(&self) -> usize {
         self.sk_out_n
-    }
-}
-
-impl<D: AsRef<[u8]>> GLWESwitchingKey<D> {
-    pub fn at(&self, row: usize, col: usize) -> GLWECiphertext<&[u8]> {
-        self.key.at(row, col)
-    }
-}
-
-impl<D: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<D> {
-    pub fn at_mut(&mut self, row: usize, col: usize) -> GLWECiphertext<&mut [u8]> {
-        self.key.at_mut(row, col)
     }
 }

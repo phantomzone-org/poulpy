@@ -1,13 +1,8 @@
 use crate::znx_base::ZnxInfos;
-use crate::{Backend, DataView, DataViewMut, FFT64, Module, ZnxSliceSize, ZnxView, alloc_aligned};
+use crate::{Backend, DataView, DataViewMut, FFT64, NTT120, VecZnxDft, VecZnxDftBytesOf, ZnxSliceSize, ZnxView, alloc_aligned};
 use std::marker::PhantomData;
 
-/// Vector Matrix Product Prepared Matrix: a vector of [VecZnx],
-/// stored as a 3D matrix in the DFT domain in a single contiguous array.
-/// Each col of the [MatZnxDft] can be seen as a collection of [VecZnxDft].
-///
-/// [MatZnxDft] is used to permform a vector matrix product between a [VecZnx]/[VecZnxDft] and a [MatZnxDft].
-/// See the trait [MatZnxDftOps] for additional information.
+/// A matrix of [VecZnxDft].
 pub struct MatZnxDft<D, B: Backend> {
     data: D,
     n: usize,
@@ -42,6 +37,12 @@ impl<D> ZnxSliceSize for MatZnxDft<D, FFT64> {
     }
 }
 
+impl<D> ZnxSliceSize for MatZnxDft<D, NTT120> {
+    fn sl(&self) -> usize {
+        4 * self.n() * self.cols_out()
+    }
+}
+
 impl<D, B: Backend> DataView for MatZnxDft<D, B> {
     type D = D;
     fn data(&self) -> &Self::D {
@@ -59,6 +60,10 @@ impl<D: AsRef<[u8]>> ZnxView for MatZnxDft<D, FFT64> {
     type Scalar = f64;
 }
 
+impl<D: AsRef<[u8]>> ZnxView for MatZnxDft<D, NTT120> {
+    type Scalar = i64;
+}
+
 impl<D, B: Backend> MatZnxDft<D, B> {
     pub fn cols_in(&self) -> usize {
         self.cols_in
@@ -69,22 +74,37 @@ impl<D, B: Backend> MatZnxDft<D, B> {
     }
 }
 
-impl<D: From<Vec<u8>>, B: Backend> MatZnxDft<D, B> {
-    pub(crate) fn bytes_of(module: &Module<B>, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize {
-        unsafe {
-            crate::ffi::vmp::bytes_of_vmp_pmat(
-                module.ptr,
-                (rows * cols_in) as u64,
-                (size * cols_out) as u64,
-            ) as usize
-        }
-    }
+pub trait MatZnxDftBytesOf<D, B: Backend> {
+    fn bytes_of(n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize;
+}
 
-    pub(crate) fn new(module: &Module<B>, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> Self {
-        let data: Vec<u8> = alloc_aligned(Self::bytes_of(module, rows, cols_in, cols_out, size));
+impl<D: AsRef<[u8]>> MatZnxDftBytesOf<D, FFT64> for MatZnxDft<D, FFT64>
+where
+    VecZnxDft<D, FFT64>: VecZnxDftBytesOf<FFT64>,
+{
+    fn bytes_of(n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize {
+        rows * cols_in * VecZnxDft::bytes_of(n, cols_out, size)
+    }
+}
+
+impl<D: AsRef<[u8]>> MatZnxDftBytesOf<D, NTT120> for MatZnxDft<D, NTT120>
+where
+    VecZnxDft<D, NTT120>: VecZnxDftBytesOf<NTT120>,
+{
+    fn bytes_of(n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize {
+        rows * cols_in * VecZnxDft::bytes_of(n, cols_out, size)
+    }
+}
+
+impl<D: From<Vec<u8>> + AsRef<[u8]>, B: Backend> MatZnxDft<D, B>
+where
+    MatZnxDft<D, B>: MatZnxDftBytesOf<D, B>,
+{
+    pub(crate) fn new(n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> Self {
+        let data: Vec<u8> = alloc_aligned(Self::bytes_of(n, rows, cols_in, cols_out, size));
         Self {
             data: data.into(),
-            n: module.n(),
+            n,
             size,
             rows,
             cols_in,
@@ -94,7 +114,7 @@ impl<D: From<Vec<u8>>, B: Backend> MatZnxDft<D, B> {
     }
 
     pub(crate) fn new_from_bytes(
-        module: &Module<B>,
+        n: usize,
         rows: usize,
         cols_in: usize,
         cols_out: usize,
@@ -102,10 +122,10 @@ impl<D: From<Vec<u8>>, B: Backend> MatZnxDft<D, B> {
         bytes: impl Into<Vec<u8>>,
     ) -> Self {
         let data: Vec<u8> = bytes.into();
-        assert!(data.len() == Self::bytes_of(module, rows, cols_in, cols_out, size));
+        assert!(data.len() == Self::bytes_of(n, rows, cols_in, cols_out, size));
         Self {
             data: data.into(),
-            n: module.n(),
+            n,
             size,
             rows,
             cols_in,
@@ -115,38 +135,50 @@ impl<D: From<Vec<u8>>, B: Backend> MatZnxDft<D, B> {
     }
 }
 
-impl<D: AsRef<[u8]>> MatZnxDft<D, FFT64> {
-    /// Returns a copy of the backend array at index (i, j) of the [MatZnxDft].
-    ///
-    /// # Arguments
-    ///
-    /// * `row`: row index (i).
-    /// * `col`: col index (j).
-    #[allow(dead_code)]
-    fn at(&self, row: usize, col: usize) -> Vec<f64> {
-        let n: usize = self.n();
+impl<D: AsRef<[u8]>, B: Backend> MatZnxDft<D, B>
+where
+    MatZnxDft<D, B>: MatZnxDftToRef<B>,
+    VecZnxDft<D, B>: VecZnxDftBytesOf<B>,
+{
+    pub fn at(&self, row: usize, col: usize) -> VecZnxDft<&[u8], B> {
+        let self_ref: MatZnxDft<&[u8], B> = self.to_ref();
+        let nb_bytes: usize = VecZnxDft::bytes_of(self.n, self.cols_out, self.size);
+        let start: usize = nb_bytes * row * col;
+        let end: usize = start + nb_bytes;
 
-        let mut res: Vec<f64> = alloc_aligned(n);
-
-        if n < 8 {
-            res.copy_from_slice(&self.raw()[(row + col * self.rows()) * n..(row + col * self.rows()) * (n + 1)]);
-        } else {
-            (0..n >> 3).for_each(|blk| {
-                res[blk * 8..(blk + 1) * 8].copy_from_slice(&self.at_block(row, col, blk)[..8]);
-            });
+        VecZnxDft {
+            data: &self_ref.data[start..end],
+            n: self.n,
+            cols: self.cols_out,
+            size: self.size,
+            max_size: self.size,
+            _phantom: std::marker::PhantomData,
         }
-
-        res
     }
+}
 
-    #[allow(dead_code)]
-    fn at_block(&self, row: usize, col: usize, blk: usize) -> &[f64] {
-        let nrows: usize = self.rows();
-        let nsize: usize = self.size();
-        if col == (nsize - 1) && (nsize & 1 == 1) {
-            &self.raw()[blk * nrows * nsize * 8 + col * nrows * 8 + row * 8..]
-        } else {
-            &self.raw()[blk * nrows * nsize * 8 + (col / 2) * (2 * nrows) * 8 + row * 2 * 8 + (col % 2) * 8..]
+impl<D: AsRef<[u8]> + AsMut<[u8]>, B: Backend> MatZnxDft<D, B>
+where
+    MatZnxDft<D, B>: MatZnxDftToMut<B>,
+    VecZnxDft<D, B>: VecZnxDftBytesOf<B>,
+{
+    pub fn at_mut(&mut self, row: usize, col: usize) -> VecZnxDft<&mut [u8], B> {
+        let n: usize = self.n();
+        let cols_out: usize = self.cols_out();
+        let size: usize = self.size();
+
+        let self_ref: MatZnxDft<&mut [u8], B> = self.to_mut();
+        let nb_bytes: usize = VecZnxDft::bytes_of(n, cols_out, size);
+        let start: usize = nb_bytes * row * col;
+        let end: usize = start + nb_bytes;
+
+        VecZnxDft {
+            data: &mut self_ref.data[start..end],
+            n,
+            cols: cols_out,
+            size,
+            max_size: size,
+            _phantom: std::marker::PhantomData,
         }
     }
 }
@@ -155,15 +187,11 @@ pub type MatZnxDftOwned<B> = MatZnxDft<Vec<u8>, B>;
 pub type MatZnxDftMut<'a, B> = MatZnxDft<&'a mut [u8], B>;
 pub type MatZnxDftRef<'a, B> = MatZnxDft<&'a [u8], B>;
 
-pub trait MatZnxToRef<B: Backend> {
+pub trait MatZnxDftToRef<B: Backend> {
     fn to_ref(&self) -> MatZnxDft<&[u8], B>;
 }
 
-impl<D, B: Backend> MatZnxToRef<B> for MatZnxDft<D, B>
-where
-    D: AsRef<[u8]>,
-    B: Backend,
-{
+impl<D: AsRef<[u8]>, B: Backend> MatZnxDftToRef<B> for MatZnxDft<D, B> {
     fn to_ref(&self) -> MatZnxDft<&[u8], B> {
         MatZnxDft {
             data: self.data.as_ref(),
@@ -177,15 +205,11 @@ where
     }
 }
 
-pub trait MatZnxToMut<B: Backend> {
+pub trait MatZnxDftToMut<B: Backend> {
     fn to_mut(&mut self) -> MatZnxDft<&mut [u8], B>;
 }
 
-impl<D, B: Backend> MatZnxToMut<B> for MatZnxDft<D, B>
-where
-    D: AsRef<[u8]> + AsMut<[u8]>,
-    B: Backend,
-{
+impl<D: AsRef<[u8]> + AsMut<[u8]>, B: Backend> MatZnxDftToMut<B> for MatZnxDft<D, B> {
     fn to_mut(&mut self) -> MatZnxDft<&mut [u8], B> {
         MatZnxDft {
             data: self.data.as_mut(),
