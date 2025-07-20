@@ -1,15 +1,15 @@
-use backend::{Backend, Module, ScalarZnxDftPrep, ScalarZnxDftPrepAlloc, ScalarZnxDftPrepBytesOf, ScalarZnxDftPrepOps, ZnxInfos};
+use backend::{Backend, Module, ScalarZnxDftPrepAlloc, ScalarZnxDftPrepOps, SvpPPol, SvpPPolBytesOf, ZnxInfos};
 
 use crate::{GLWESecret, dist::Distribution};
 
 pub struct FourierGLWESecret<T, B: Backend> {
-    pub(crate) data: ScalarZnxDftPrep<T, B>,
+    pub(crate) data: SvpPPol<T, B>,
     pub(crate) dist: Distribution,
 }
 
 impl<B: Backend> FourierGLWESecret<Vec<u8>, B>
 where
-    ScalarZnxDftPrep<Vec<u8>, B>: ScalarZnxDftPrepBytesOf<Vec<u8>, B>,
+    SvpPPol<Vec<u8>, B>: SvpPPolBytesOf<Vec<u8>, B>,
 {
     pub fn alloc(module: &Module<B>, rank: usize) -> Self {
         Self {
@@ -27,7 +27,7 @@ impl<B: Backend> FourierGLWESecret<Vec<u8>, B> {
     pub fn from<D>(module: &Module<B>, sk: &GLWESecret<D>) -> Self
     where
         D: AsRef<[u8]>,
-        ScalarZnxDftPrep<Vec<u8>, B>: ScalarZnxDftPrepBytesOf<Vec<u8>, B>,
+        SvpPPol<Vec<u8>, B>: SvpPPolBytesOf<Vec<u8>, B>,
     {
         let mut sk_dft: FourierGLWESecret<Vec<u8>, B> = Self::alloc(module, sk.rank());
         sk_dft.set(module, sk);

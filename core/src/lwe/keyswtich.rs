@@ -40,7 +40,7 @@ impl<D: AsMut<[u8]> + AsRef<[u8]>, B: Backend> GLWEToLWESwitchingKeyPrep<D, B> {
     ) where
         DLwe: AsRef<[u8]>,
         DGlwe: AsRef<[u8]>,
-        Module<B>: ScalarZnxAlloc + VecZnxDftAlloc<B>,
+        Module<B>: ScalarZnxDftPrepAlloc<B> + VecZnxDftAlloc<B>,
     {
         #[cfg(debug_assertions)]
         {

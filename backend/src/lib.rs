@@ -11,14 +11,11 @@ pub mod mat_znx_ops;
 pub mod module;
 pub mod sampling;
 pub mod scalar_znx;
-pub mod scalar_znx_dft_prep;
-pub mod scalar_znx_dft_prep_ops;
 pub mod stats;
+pub mod svp_ppol;
 pub mod vec_znx;
 pub mod vec_znx_big;
-pub mod vec_znx_big_ops;
 pub mod vec_znx_dft;
-pub mod vec_znx_dft_ops;
 pub mod vec_znx_ops;
 pub mod znx_base;
 
@@ -32,14 +29,11 @@ pub use mat_znx_ops::*;
 pub use module::*;
 pub use sampling::*;
 pub use scalar_znx::*;
-pub use scalar_znx_dft_prep::*;
-pub use scalar_znx_dft_prep_ops::*;
 pub use stats::*;
+pub use svp_ppol::*;
 pub use vec_znx::*;
 pub use vec_znx_big::*;
-pub use vec_znx_big_ops::*;
 pub use vec_znx_dft::*;
-pub use vec_znx_dft_ops::*;
 pub use vec_znx_ops::*;
 pub use znx_base::*;
 
@@ -216,18 +210,14 @@ impl Scratch {
         )
     }
 
-    pub fn tmp_scalar_znx_dft_prep<B: Backend>(
-        &mut self,
-        module: &Module<B>,
-        cols: usize,
-    ) -> (ScalarZnxDftPrep<&mut [u8], B>, &mut Self)
+    pub fn tmp_scalar_znx_dft_prep<B: Backend>(&mut self, module: &Module<B>, cols: usize) -> (SvpPPol<&mut [u8], B>, &mut Self)
     where
-        Module<B>: ScalarZnxDftPrepAlloc<B>,
+        Module<B>: SvpPPolAllocBytes<B>,
     {
-        let (take_slice, rem_slice) = Self::take_slice_aligned(&mut self.data, module.bytes_of_scalar_znx_dft_prep(cols));
+        let (take_slice, rem_slice) = Self::take_slice_aligned(&mut self.data, module.svp_ppol_alloc_bytes(cols));
 
         (
-            ScalarZnxDftPrep::from_data(take_slice, module.n(), cols),
+            SvpPPol::from_data(take_slice, module.n(), cols),
             Self::new(rem_slice),
         )
     }
@@ -239,9 +229,9 @@ impl Scratch {
         size: usize,
     ) -> (VecZnxDft<&mut [u8], B>, &mut Self)
     where
-        Module<B>: VecZnxDftAlloc<B>,
+        Module<B>: VecZnxDftAllocBytes<B>,
     {
-        let (take_slice, rem_slice) = Self::take_slice_aligned(&mut self.data, module.bytes_of_vec_znx_dft(cols, size));
+        let (take_slice, rem_slice) = Self::take_slice_aligned(&mut self.data, module.vec_znx_dft_alloc_bytes(cols, size));
 
         (
             VecZnxDft::from_data(take_slice, module.n(), cols, size),
@@ -257,7 +247,7 @@ impl Scratch {
         size: usize,
     ) -> (Vec<VecZnxDft<&mut [u8], B>>, &mut Self)
     where
-        Module<B>: VecZnxDftAlloc<B>,
+        Module<B>: VecZnxDftAllocBytes<B>,
     {
         let mut scratch: &mut Scratch = self;
         let mut slice: Vec<VecZnxDft<&mut [u8], B>> = Vec::with_capacity(slice_size);
@@ -276,9 +266,9 @@ impl Scratch {
         size: usize,
     ) -> (VecZnxBig<&mut [u8], B>, &mut Self)
     where
-        VecZnxBig<Vec<u8>, B>: VecZnxBigBytesOf<B>,
+        Module<B>: VecZnxBigAllocBytes<B>,
     {
-        let (take_slice, rem_slice) = Self::take_slice_aligned(&mut self.data, module.bytes_of_vec_znx_big(cols, size));
+        let (take_slice, rem_slice) = Self::take_slice_aligned(&mut self.data, module.vec_znx_big_alloc_bytes(cols, size));
 
         (
             VecZnxBig::from_data(take_slice, module.n(), cols, size),

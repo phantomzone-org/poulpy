@@ -1,19 +1,16 @@
 use rand_distr::num_traits::Zero;
 
 use crate::znx_base::{ZnxInfos, ZnxView};
-use crate::{
-    Backend, DataView, DataViewMut, FFT64, NTT120, VecZnx, ZnxSliceSize, ZnxViewMut, ZnxWordSize, ZnxZero, alloc_aligned,
-};
-use std::fmt;
+use crate::{Backend, DataView, DataViewMut, ZnxSliceSize, ZnxViewMut, ZnxWordSize, ZnxZero, alloc_aligned};
 use std::marker::PhantomData;
 
 pub struct VecZnxBig<D, B: Backend> {
-    data: D,
-    n: usize,
-    cols: usize,
-    size: usize,
-    max_size: usize,
-    _phantom: PhantomData<B>,
+    pub(crate) data: D,
+    pub(crate) n: usize,
+    pub(crate) cols: usize,
+    pub(crate) size: usize,
+    pub(crate) max_size: usize,
+    pub(crate) _phantom: PhantomData<B>,
 }
 
 impl<D, B: Backend> ZnxInfos for VecZnxBig<D, B> {
@@ -60,14 +57,6 @@ impl<D, B: Backend> DataViewMut for VecZnxBig<D, B> {
     fn data_mut(&mut self) -> &mut Self::D {
         &mut self.data
     }
-}
-
-impl<D: AsRef<[u8]>> ZnxView for VecZnxBig<D, FFT64> {
-    type Scalar = i64;
-}
-
-impl<D: AsRef<[u8]>> ZnxView for VecZnxBig<D, NTT120> {
-    type Scalar = i128;
 }
 
 pub trait VecZnxBigBytesOf<B: Backend> {
@@ -139,51 +128,6 @@ impl<D, B: Backend> VecZnxBig<D, B> {
     }
 }
 
-impl<D: AsMut<[u8]> + AsRef<[u8]>> VecZnxBig<D, FFT64>
-where
-    VecZnxBig<D, FFT64>: VecZnxBigToMut<FFT64> + ZnxInfos,
-{
-    // Consumes the VecZnxBig to return a VecZnx.
-    // Useful when no normalization is needed.
-    pub fn to_vec_znx_small(self) -> VecZnx<D> {
-        VecZnx {
-            data: self.data,
-            n: self.n,
-            cols: self.cols,
-            size: self.size,
-            max_size: self.max_size,
-        }
-    }
-
-    /// Extracts the a_col-th column of 'a' and stores it on the self_col-th column [Self].
-    pub fn extract_column<C>(&mut self, self_col: usize, a: &C, a_col: usize)
-    where
-        C: VecZnxBigToRef<FFT64> + ZnxInfos,
-    {
-        #[cfg(debug_assertions)]
-        {
-            assert!(self_col < self.cols());
-            assert!(a_col < a.cols());
-        }
-
-        let min_size: usize = self.size.min(a.size());
-        let max_size: usize = self.size;
-
-        let mut self_mut: VecZnxBig<&mut [u8], FFT64> = self.to_mut();
-        let a_ref: VecZnxBig<&[u8], FFT64> = a.to_ref();
-
-        (0..min_size).for_each(|i: usize| {
-            self_mut
-                .at_mut(self_col, i)
-                .copy_from_slice(a_ref.at(a_col, i));
-        });
-
-        (min_size..max_size).for_each(|i| {
-            self_mut.zero_at(self_col, i);
-        });
-    }
-}
-
 pub type VecZnxBigOwned<B> = VecZnxBig<Vec<u8>, B>;
 
 pub trait VecZnxBigToRef<B: Backend> {
@@ -225,40 +169,5 @@ where
             max_size: self.max_size,
             _phantom: std::marker::PhantomData,
         }
-    }
-}
-
-impl<D: AsRef<[u8]>> fmt::Display for VecZnxBig<D, FFT64> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(
-            f,
-            "VecZnxBig(n={}, cols={}, size={})",
-            self.n, self.cols, self.size
-        )?;
-
-        for col in 0..self.cols {
-            writeln!(f, "Column {}:", col)?;
-            for size in 0..self.size {
-                let coeffs = self.at(col, size);
-                write!(f, "  Size {}: [", size)?;
-
-                let max_show = 100;
-                let show_count = coeffs.len().min(max_show);
-
-                for (i, &coeff) in coeffs.iter().take(show_count).enumerate() {
-                    if i > 0 {
-                        write!(f, ", ")?;
-                    }
-                    write!(f, "{}", coeff)?;
-                }
-
-                if coeffs.len() > max_show {
-                    write!(f, ", ... ({} more)", coeffs.len() - max_show)?;
-                }
-
-                writeln!(f, "]")?;
-            }
-        }
-        Ok(())
     }
 }

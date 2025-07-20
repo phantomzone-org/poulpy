@@ -1,5 +1,5 @@
 use backend::{
-    Backend, Module, ScalarZnx, ScalarZnxAlloc, ScalarZnxDftPrepBytesOf, ScalarZnxDftPrepOps, ScalarZnxOps, Scratch, VecZnxAlloc,
+    Backend, Module, ScalarZnx, ScalarZnxAlloc, ScalarZnxDftPrepOps, ScalarZnxOps, Scratch, SvpPPolBytesOf, VecZnxAlloc,
     VecZnxBigOps, VecZnxDftAlloc, VecZnxDftOps, VecZnxOps, ZnxInfos, ZnxView, ZnxViewMut, ZnxZero,
 };
 use sampling::source::Source;
@@ -126,7 +126,7 @@ impl GLWESwitchingKey<Vec<u8>> {
         rank_out: usize,
     ) -> usize
     where
-        Module<B>: VecZnxDftAlloc<B> + ScalarZnxDftPrepBytesOf<B>,
+        Module<B>: VecZnxDftAlloc<B> + SvpPPolBytesOf<B>,
     {
         GGLWECiphertext::encrypt_sk_scratch_space(module, basek, k, rank_out)
             + module.bytes_of_scalar_znx(rank_in)
@@ -194,7 +194,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<DataSelf> {
 impl GLWEAutomorphismKey<Vec<u8>> {
     pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize
     where
-        Module<B>: VecZnxDftAlloc<B> + ScalarZnxDftPrepBytesOf<B>,
+        Module<B>: VecZnxDftAlloc<B> + SvpPPolBytesOf<B>,
     {
         GLWESwitchingKey::encrypt_sk_scratch_space(module, basek, k, rank, rank) + GLWESecret::bytes_of(module, rank)
     }
@@ -215,7 +215,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWEAutomorphismKey<DataSelf> {
         sigma: f64,
         scratch: &mut Scratch,
     ) where
-        Module<B>: VecZnxDftAlloc<B> + ScalarZnxDftPrepBytesOf<B> + VecZnxDftOps<B> + ScalarZnxDftPrepOps<B> + VecZnxBigOps<B>,
+        Module<B>: VecZnxDftAlloc<B> + SvpPPolBytesOf<B> + VecZnxDftOps<B> + ScalarZnxDftPrepOps<B> + VecZnxBigOps<B>,
     {
         #[cfg(debug_assertions)]
         {
@@ -257,7 +257,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWEAutomorphismKey<DataSelf> {
 impl GLWETensorKey<Vec<u8>> {
     pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize
     where
-        Module<B>: VecZnxDftAlloc<B> + ScalarZnxDftPrepBytesOf<B>,
+        Module<B>: VecZnxDftAlloc<B> + SvpPPolBytesOf<B>,
     {
         GLWESecret::bytes_of(module, 1)
             + FourierGLWESecret::bytes_of(module, 1)

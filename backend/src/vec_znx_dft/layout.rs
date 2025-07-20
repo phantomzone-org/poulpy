@@ -3,11 +3,7 @@ use std::marker::PhantomData;
 use rand_distr::num_traits::Zero;
 
 use crate::znx_base::ZnxInfos;
-use crate::{
-    Backend, DataView, DataViewMut, FFT64, NTT120, VecZnxBig, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxWordSize, ZnxZero,
-    alloc_aligned,
-};
-use std::fmt;
+use crate::{Backend, DataView, DataViewMut, VecZnxBig, ZnxView, ZnxViewMut, ZnxWordSize, ZnxZero, alloc_aligned};
 
 pub struct VecZnxDft<D, B: Backend> {
     pub(crate) data: D,
@@ -42,30 +38,6 @@ impl<D, B: Backend> ZnxInfos for VecZnxDft<D, B> {
     }
 }
 
-impl<D> ZnxSliceSize for VecZnxDft<D, FFT64> {
-    fn sl(&self) -> usize {
-        Self::ws() * self.n() * self.cols()
-    }
-}
-
-impl<D> ZnxSliceSize for VecZnxDft<D, NTT120> {
-    fn sl(&self) -> usize {
-        Self::ws() * self.n() * self.cols()
-    }
-}
-
-impl<D> ZnxWordSize for VecZnxDft<D, FFT64> {
-    fn ws() -> usize {
-        1
-    }
-}
-
-impl<D> ZnxWordSize for VecZnxDft<D, NTT120> {
-    fn ws() -> usize {
-        4
-    }
-}
-
 impl<D, B: Backend> DataView for VecZnxDft<D, B> {
     type D = D;
     fn data(&self) -> &Self::D {
@@ -77,14 +49,6 @@ impl<D, B: Backend> DataViewMut for VecZnxDft<D, B> {
     fn data_mut(&mut self) -> &mut Self::D {
         &mut self.data
     }
-}
-
-impl<D: AsRef<[u8]>> ZnxView for VecZnxDft<D, FFT64> {
-    type Scalar = f64;
-}
-
-impl<D: AsRef<[u8]>> ZnxView for VecZnxDft<D, NTT120> {
-    type Scalar = i64;
 }
 
 impl<D: AsRef<[u8]>, B: Backend> VecZnxDft<D, B> {
@@ -202,40 +166,5 @@ impl<D: AsRef<[u8]> + AsMut<[u8]>, B: Backend> VecZnxDftToMut<B> for VecZnxDft<D
             max_size: self.max_size,
             _phantom: std::marker::PhantomData,
         }
-    }
-}
-
-impl<D: AsRef<[u8]>> fmt::Display for VecZnxDft<D, FFT64> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(
-            f,
-            "VecZnxDft(n={}, cols={}, size={})",
-            self.n, self.cols, self.size
-        )?;
-
-        for col in 0..self.cols {
-            writeln!(f, "Column {}:", col)?;
-            for size in 0..self.size {
-                let coeffs = self.at(col, size);
-                write!(f, "  Size {}: [", size)?;
-
-                let max_show = 100;
-                let show_count = coeffs.len().min(max_show);
-
-                for (i, &coeff) in coeffs.iter().take(show_count).enumerate() {
-                    if i > 0 {
-                        write!(f, ", ")?;
-                    }
-                    write!(f, "{}", coeff)?;
-                }
-
-                if coeffs.len() > max_show {
-                    write!(f, ", ... ({} more)", coeffs.len() - max_show)?;
-                }
-
-                writeln!(f, "]")?;
-            }
-        }
-        Ok(())
     }
 }
