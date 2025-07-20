@@ -242,7 +242,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         let cols: usize = self.rank() + 1;
 
         // Generates u according to the underlying secret distribution.
-        let (mut u_dft, scratch_1) = scratch.tmp_scalar_znx_dft_prep(module, 1);
+        let (mut u_dft, scratch_1) = scratch.tmp_svp_ppol(module, 1);
 
         {
             let (mut u, _) = scratch_1.tmp_scalar_znx(module, 1);

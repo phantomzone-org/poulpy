@@ -1,7 +1,4 @@
-use crate::{
-    Backend, SvpPPolOwned, SvpPPolToMut, SvpPPolToRef, ScalarZnxToRef, VecZnxDftToMut,
-    VecZnxDftToRef,
-};
+use crate::{Backend, ScalarZnxToRef, SvpPPolOwned, SvpPPolToMut, SvpPPolToRef, VecZnxDftToMut, VecZnxDftToRef};
 
 pub trait SvpPPolyFromBytes<B: Backend> {
     fn svp_ppol_from_bytes(&self, cols: usize, bytes: Vec<u8>) -> SvpPPolOwned<B>;
@@ -11,7 +8,7 @@ pub trait SvpPPolAlloc<B: Backend> {
     fn svp_ppol_alloc(&self, cols: usize) -> SvpPPolOwned<B>;
 }
 
-pub trait SvpPPolAllocBytes<B: Backend> {
+pub trait SvpPPolAllocBytes {
     fn svp_ppol_alloc_bytes(&self, cols: usize) -> usize;
 }
 

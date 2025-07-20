@@ -1,4 +1,4 @@
-use backend::{Backend, MatZnxDftPrep, Module};
+use backend::{Backend, Module, VmpPMat};
 
 use crate::{GGLWECiphertextPrep, Infos};
 
@@ -39,7 +39,7 @@ impl<B: Backend> GLWESwitchingKeyPrep<Vec<u8>, B> {
 }
 
 impl<D, B: Backend> Infos for GLWESwitchingKeyPrep<D, B> {
-    type Inner = MatZnxDftPrep<D, B>;
+    type Inner = VmpPMat<D, B>;
 
     fn inner(&self) -> &Self::Inner {
         self.key.inner()

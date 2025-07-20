@@ -1,8 +1,8 @@
 use crate::Infos;
-use backend::{Backend, MatZnxDftPrep, MatZnxDftPrepAlloc, Module};
+use backend::{Backend, MatZnxDftPrepAlloc, Module, VmpPMat};
 
 pub struct GGLWECiphertextPrep<D, B: Backend> {
-    pub(crate) data: MatZnxDftPrep<D, B>,
+    pub(crate) data: VmpPMat<D, B>,
     pub(crate) basek: usize,
     pub(crate) k: usize,
     pub(crate) digits: usize,
@@ -72,7 +72,7 @@ impl<B: Backend> GGLWECiphertextPrep<Vec<u8>, B> {
 }
 
 impl<D, B: Backend> Infos for GGLWECiphertextPrep<D, B> {
-    type Inner = MatZnxDftPrep<D, B>;
+    type Inner = VmpPMat<D, B>;
 
     fn inner(&self) -> &Self::Inner {
         &self.data

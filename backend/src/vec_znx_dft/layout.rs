@@ -3,7 +3,7 @@ use std::marker::PhantomData;
 use rand_distr::num_traits::Zero;
 
 use crate::znx_base::ZnxInfos;
-use crate::{Backend, DataView, DataViewMut, VecZnxBig, ZnxView, ZnxViewMut, ZnxWordSize, ZnxZero, alloc_aligned};
+use crate::{Backend, DataView, DataViewMut, VecZnxBig, ZnxView, ZnxViewMut, ZnxZero, alloc_aligned};
 
 pub struct VecZnxDft<D, B: Backend> {
     pub(crate) data: D,
@@ -77,22 +77,13 @@ where
     }
 }
 
-pub trait VecZnxDftBytesOf<B: Backend> {
+pub trait VecZnxDftBytesOf {
     fn bytes_of(n: usize, cols: usize, size: usize) -> usize;
-}
-
-impl<D: AsRef<[u8]>, B: Backend> VecZnxDftBytesOf<B> for VecZnxDft<D, B>
-where
-    VecZnxDft<D, B>: ZnxWordSize,
-{
-    fn bytes_of(n: usize, cols: usize, size: usize) -> usize {
-        Self::ws() * n * cols * size * size_of::<f64>()
-    }
 }
 
 impl<D: From<Vec<u8>> + AsRef<[u8]>, B: Backend> VecZnxDft<D, B>
 where
-    VecZnxDft<D, B>: VecZnxDftBytesOf<B>,
+    VecZnxDft<D, B>: VecZnxDftBytesOf,
 {
     pub(crate) fn new(n: usize, cols: usize, size: usize) -> Self {
         let data: Vec<u8> = alloc_aligned::<u8>(Self::bytes_of(n, cols, size));

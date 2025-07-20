@@ -1,9 +1,9 @@
-use backend::{Backend, FFT64, MatZnxDftPrep, MatZnxDftPrepAlloc, MatZnxDftPrepOps, Module, Scratch};
+use backend::{Backend, FFT64, MatZnxDftPrepAlloc, MatZnxDftPrepOps, Module, Scratch, VmpPMat};
 
 use crate::{GGLWECiphertext, Infos};
 
 pub struct GGSWCiphertextPrep<C, B: Backend> {
-    pub(crate) data: MatZnxDftPrep<C, B>,
+    pub(crate) data: VmpPMat<C, B>,
     pub(crate) basek: usize,
     pub(crate) k: usize,
     pub(crate) digits: usize,
@@ -59,7 +59,7 @@ impl GGSWCiphertextPrep<Vec<u8>, FFT64> {
 }
 
 impl<T, B: Backend> Infos for GGSWCiphertextPrep<T, B> {
-    type Inner = MatZnxDftPrep<T, B>;
+    type Inner = VmpPMat<T, B>;
 
     fn inner(&self) -> &Self::Inner {
         &self.data

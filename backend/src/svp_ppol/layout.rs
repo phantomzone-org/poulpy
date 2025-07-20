@@ -40,13 +40,13 @@ impl<D, B: Backend> DataViewMut for SvpPPol<D, B> {
     }
 }
 
-pub trait SvpPPolBytesOf<B: Backend> {
+pub trait SvpPPolBytesOf {
     fn bytes_of(n: usize, cols: usize) -> usize;
 }
 
 impl<D: From<Vec<u8>> + AsRef<[u8]>, B: Backend> SvpPPol<D, B>
 where
-    SvpPPol<D, B>: SvpPPolBytesOf<B>,
+    SvpPPol<D, B>: SvpPPolBytesOf,
 {
     pub(crate) fn alloc(n: usize, cols: usize) -> Self {
         let data: Vec<u8> = alloc_aligned::<u8>(Self::bytes_of(n, cols));

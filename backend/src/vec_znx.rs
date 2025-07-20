@@ -5,7 +5,6 @@ use crate::DataViewMut;
 use crate::ScalarZnx;
 use crate::Scratch;
 use crate::ZnxSliceSize;
-use crate::ZnxWordSize;
 use crate::ZnxZero;
 use crate::alloc_aligned;
 use crate::assert_alignement;
@@ -60,18 +59,9 @@ impl<D> ZnxInfos for VecZnx<D> {
     }
 }
 
-impl<D> ZnxSliceSize for VecZnx<D>
-where
-    VecZnx<D>: ZnxWordSize,
-{
+impl<D> ZnxSliceSize for VecZnx<D> {
     fn sl(&self) -> usize {
-        Self::ws() * self.n() * self.cols()
-    }
-}
-
-impl<D: AsRef<[u8]>> ZnxWordSize for VecZnx<D> {
-    fn ws() -> usize {
-        1
+        self.n() * self.cols()
     }
 }
 

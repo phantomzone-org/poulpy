@@ -1,17 +1,19 @@
 use crate::{
     Module, NTT120, VecZnxDft, VecZnxDftAllocBytes, VecZnxDftBytesOf, VecZnxDftNew, VecZnxDftOwned, ZnxInfos, ZnxSliceSize,
-    ZnxView, ZnxWordSize,
+    ZnxView,
 };
+
+const VEC_ZNX_DFT_NTT120_WORDSIZE: usize = 4;
 
 impl<D> ZnxSliceSize for VecZnxDft<D, NTT120> {
     fn sl(&self) -> usize {
-        Self::ws() * self.n() * self.cols()
+        VEC_ZNX_DFT_NTT120_WORDSIZE * self.n() * self.cols()
     }
 }
 
-impl<D> ZnxWordSize for VecZnxDft<D, NTT120> {
-    fn ws() -> usize {
-        4
+impl<D: AsRef<[u8]>> VecZnxDftBytesOf for VecZnxDft<D, NTT120> {
+    fn bytes_of(n: usize, cols: usize, size: usize) -> usize {
+        VEC_ZNX_DFT_NTT120_WORDSIZE * n * cols * size * size_of::<i64>()
     }
 }
 

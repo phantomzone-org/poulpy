@@ -1,7 +1,7 @@
 use rand_distr::num_traits::Zero;
 
 use crate::znx_base::{ZnxInfos, ZnxView};
-use crate::{Backend, DataView, DataViewMut, ZnxSliceSize, ZnxViewMut, ZnxWordSize, ZnxZero, alloc_aligned};
+use crate::{Backend, DataView, DataViewMut, ZnxViewMut, ZnxZero, alloc_aligned};
 use std::marker::PhantomData;
 
 pub struct VecZnxBig<D, B: Backend> {
@@ -31,21 +31,6 @@ impl<D, B: Backend> ZnxInfos for VecZnxBig<D, B> {
     }
 }
 
-impl<D, B: Backend> ZnxWordSize for VecZnxBig<D, B> {
-    fn ws() -> usize {
-        1
-    }
-}
-
-impl<D, B: Backend> ZnxSliceSize for VecZnxBig<D, B>
-where
-    VecZnxBig<D, B>: ZnxWordSize,
-{
-    fn sl(&self) -> usize {
-        Self::ws() * self.n() * self.cols()
-    }
-}
-
 impl<D, B: Backend> DataView for VecZnxBig<D, B> {
     type D = D;
     fn data(&self) -> &Self::D {
@@ -59,17 +44,8 @@ impl<D, B: Backend> DataViewMut for VecZnxBig<D, B> {
     }
 }
 
-pub trait VecZnxBigBytesOf<B: Backend> {
+pub trait VecZnxBigBytesOf {
     fn bytes_of(n: usize, cols: usize, size: usize) -> usize;
-}
-
-impl<D: AsRef<[u8]>, B: Backend> VecZnxBigBytesOf<B> for VecZnxBig<D, B>
-where
-    VecZnxBig<D, B>: ZnxWordSize,
-{
-    fn bytes_of(n: usize, cols: usize, size: usize) -> usize {
-        Self::ws() * n * cols * size * size_of::<f64>()
-    }
 }
 
 impl<D: AsRef<[u8]> + AsMut<[u8]>, B: Backend> ZnxZero for VecZnxBig<D, B>
@@ -87,7 +63,7 @@ where
 
 impl<D: From<Vec<u8>> + AsRef<[u8]>, B: Backend> VecZnxBig<D, B>
 where
-    VecZnxBig<D, B>: VecZnxBigBytesOf<B>,
+    VecZnxBig<D, B>: VecZnxBigBytesOf,
 {
     pub(crate) fn new(n: usize, cols: usize, size: usize) -> Self {
         let data = alloc_aligned::<u8>(Self::bytes_of(n, cols, size));

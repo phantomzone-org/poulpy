@@ -1,10 +1,13 @@
 use crate::{
-    ffi::{svp, vec_znx_dft::vec_znx_dft_t}, Module, ScalarZnxToRef, SvpPPol, SvpPPolAlloc, SvpPPolAllocBytes, SvpPPolApply, SvpPPolApplyInplace, SvpPPolBytesOf, SvpPPolOwned, SvpPPolPrepare, SvpPPolToMut, SvpPPolToRef, SvpPPolyFromBytes, VecZnxDft, VecZnxDftToMut, VecZnxDftToRef, ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut, FFT64
+    FFT64, Module, ScalarZnxToRef, SvpPPol, SvpPPolAlloc, SvpPPolAllocBytes, SvpPPolApply, SvpPPolApplyInplace, SvpPPolBytesOf,
+    SvpPPolOwned, SvpPPolPrepare, SvpPPolToMut, SvpPPolToRef, SvpPPolyFromBytes, VecZnxDft, VecZnxDftToMut, VecZnxDftToRef,
+    ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut,
+    ffi::{svp, vec_znx_dft::vec_znx_dft_t},
 };
 
 const SVP_PPOL_FFT64_WORD_SIZE: usize = 1;
 
-impl<D: AsRef<[u8]>> SvpPPolBytesOf<FFT64> for SvpPPol<D, FFT64> {
+impl<D: AsRef<[u8]>> SvpPPolBytesOf for SvpPPol<D, FFT64> {
     fn bytes_of(n: usize, cols: usize) -> usize {
         SVP_PPOL_FFT64_WORD_SIZE * n * cols * size_of::<f64>()
     }
@@ -32,7 +35,7 @@ impl SvpPPolAlloc<FFT64> for Module<FFT64> {
     }
 }
 
-impl SvpPPolAllocBytes<FFT64> for Module<FFT64> {
+impl SvpPPolAllocBytes for Module<FFT64> {
     fn svp_ppol_alloc_bytes(&self, cols: usize) -> usize {
         SvpPPol::<Vec<u8>, FFT64>::bytes_of(self.n(), cols)
     }

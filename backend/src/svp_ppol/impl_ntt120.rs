@@ -1,10 +1,11 @@
 use crate::{
-    Module, SvpPPol, SvpPPolAlloc, SvpPPolAllocBytes, SvpPPolBytesOf, SvpPPolOwned, SvpPPolyFromBytes, ZnxInfos, ZnxSliceSize, ZnxView, NTT120
+    Module, NTT120, SvpPPol, SvpPPolAlloc, SvpPPolAllocBytes, SvpPPolBytesOf, SvpPPolOwned, SvpPPolyFromBytes, ZnxInfos,
+    ZnxSliceSize, ZnxView,
 };
 
 const SVP_PPOL_NTT120_WORD_SIZE: usize = 4;
 
-impl<D: AsRef<[u8]>> SvpPPolBytesOf<NTT120> for SvpPPol<D, NTT120> {
+impl<D: AsRef<[u8]>> SvpPPolBytesOf for SvpPPol<D, NTT120> {
     fn bytes_of(n: usize, cols: usize) -> usize {
         SVP_PPOL_NTT120_WORD_SIZE * n * cols * size_of::<i64>()
     }
@@ -32,7 +33,7 @@ impl SvpPPolAlloc<NTT120> for Module<NTT120> {
     }
 }
 
-impl SvpPPolAllocBytes<NTT120> for Module<NTT120> {
+impl SvpPPolAllocBytes for Module<NTT120> {
     fn svp_ppol_alloc_bytes(&self, cols: usize) -> usize {
         SvpPPol::<Vec<u8>, NTT120>::bytes_of(self.n(), cols)
     }

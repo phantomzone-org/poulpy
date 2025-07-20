@@ -272,7 +272,7 @@ impl<B: Backend> ScratchCore<B> for Scratch {
     where
         Module<B>: ScalarZnxDftPrepAlloc<B>,
     {
-        let (data, scratch) = self.tmp_scalar_znx_dft_prep(module, rank);
+        let (data, scratch) = self.tmp_svp_ppol(module, rank);
         (
             FourierGLWESecret {
                 data,

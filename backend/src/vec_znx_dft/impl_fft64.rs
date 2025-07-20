@@ -2,8 +2,7 @@ use crate::{
     FFT64, Module, Scratch, VecZnxBig, VecZnxBigToMut, VecZnxDft, VecZnxDftAdd, VecZnxDftAddInplace, VecZnxDftAllocBytes,
     VecZnxDftBytesOf, VecZnxDftCopy, VecZnxDftFromBytes, VecZnxDftFromVecZnx, VecZnxDftNew, VecZnxDftOwned, VecZnxDftSub,
     VecZnxDftSubABInplace, VecZnxDftSubBAInplace, VecZnxDftToMut, VecZnxDftToRef, VecZnxDftToVecZnxBig,
-    VecZnxDftToVecZnxBigConsume, VecZnxDftToVecZnxBigTmpA, VecZnxToRef, ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxWordSize,
-    ZnxZero,
+    VecZnxDftToVecZnxBigConsume, VecZnxDftToVecZnxBigTmpA, VecZnxToRef, ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero,
     ffi::{vec_znx_big, vec_znx_dft},
 };
 use std::fmt;
@@ -12,13 +11,13 @@ const VEC_ZNX_DFT_FFT64_WORDSIZE: usize = 1;
 
 impl<D> ZnxSliceSize for VecZnxDft<D, FFT64> {
     fn sl(&self) -> usize {
-        Self::ws() * self.n() * self.cols()
+        VEC_ZNX_DFT_FFT64_WORDSIZE * self.n() * self.cols()
     }
 }
 
-impl<D> ZnxWordSize for VecZnxDft<D, FFT64> {
-    fn ws() -> usize {
-        VEC_ZNX_DFT_FFT64_WORDSIZE
+impl<D: AsRef<[u8]>> VecZnxDftBytesOf for VecZnxDft<D, FFT64> {
+    fn bytes_of(n: usize, cols: usize, size: usize) -> usize {
+        VEC_ZNX_DFT_FFT64_WORDSIZE * n * cols * size * size_of::<f64>()
     }
 }
 

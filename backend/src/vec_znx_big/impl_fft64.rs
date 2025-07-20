@@ -9,6 +9,8 @@ use std::fmt;
 use rand_distr::{Distribution, Normal};
 use sampling::source::Source;
 
+const VEC_ZNX_BIG_FFT64_WORDSIZE: usize = 1;
+
 use crate::{
     FFT64, Module, VecZnx, VecZnxBig, VecZnxBigAddDistF64, VecZnxBigAddNormal, VecZnxBigAllocBytes, VecZnxBigFillDistF64,
     VecZnxBigFillNormal, VecZnxBigFromBytes, VecZnxBigNew, VecZnxBigOwned, VecZnxBigToMut, VecZnxBigToRef, ZnxInfos, ZnxView,
@@ -16,6 +18,18 @@ use crate::{
 
 impl<D: AsRef<[u8]>> ZnxView for VecZnxBig<D, FFT64> {
     type Scalar = i64;
+}
+
+impl<D: AsRef<[u8]>> VecZnxBigBytesOf for VecZnxBig<D, FFT64> {
+    fn bytes_of(n: usize, cols: usize, size: usize) -> usize {
+        VEC_ZNX_BIG_FFT64_WORDSIZE * n * cols * size * size_of::<f64>()
+    }
+}
+
+impl<D: AsRef<[u8]>> ZnxSliceSize for VecZnxBig<D, FFT64> {
+    fn sl(&self) -> usize {
+        VEC_ZNX_BIG_FFT64_WORDSIZE * self.n() * self.cols()
+    }
 }
 
 impl VecZnxBigNew<FFT64> for Module<FFT64> {

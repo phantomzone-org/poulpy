@@ -1,5 +1,8 @@
 use backend::{
-    AddNormal, Decoding, Encoding, FillUniform, Module, ScalarZnx, ScalarZnxAlloc, ScratchOwned, SvpPPol, SvpPPolAlloc, SvpPPolApplyInplace, SvpPPolPrepare, VecZnx, VecZnxAlloc, VecZnxBig, VecZnxBigAddSmallInplace, VecZnxBigNew, VecZnxBigNormalize, VecZnxBigSubSmallBInplace, VecZnxDft, VecZnxDftFromVecZnx, VecZnxDftNew, VecZnxDftToVecZnxBigTmpA, VecZnxOps, ZnxInfos, FFT64
+    AddNormal, Decoding, Encoding, FFT64, FillUniform, Module, ScalarZnx, ScalarZnxAlloc, ScratchOwned, SvpPPol, SvpPPolAlloc,
+    SvpPPolApplyInplace, SvpPPolPrepare, VecZnx, VecZnxAlloc, VecZnxBig, VecZnxBigAddSmallInplace, VecZnxBigNew,
+    VecZnxBigNormalize, VecZnxBigSubSmallBInplace, VecZnxDft, VecZnxDftFromVecZnx, VecZnxDftNew, VecZnxDftToVecZnxBigTmpA,
+    VecZnxOps, ZnxInfos,
 };
 use itertools::izip;
 use sampling::source::Source;

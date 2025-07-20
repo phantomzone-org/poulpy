@@ -3,10 +3,6 @@ pub mod encoding;
 // Other modules and exports
 pub mod ffi;
 pub mod mat_znx;
-pub mod mat_znx_dft;
-pub mod mat_znx_dft_ops;
-pub mod mat_znx_dft_prep;
-pub mod mat_znx_dft_prep_ops;
 pub mod mat_znx_ops;
 pub mod module;
 pub mod sampling;
@@ -17,14 +13,11 @@ pub mod vec_znx;
 pub mod vec_znx_big;
 pub mod vec_znx_dft;
 pub mod vec_znx_ops;
+pub mod vmp_pmat;
 pub mod znx_base;
 
 pub use encoding::*;
 pub use mat_znx::*;
-pub use mat_znx_dft::*;
-pub use mat_znx_dft_ops::*;
-pub use mat_znx_dft_prep::*;
-pub use mat_znx_dft_prep_ops::*;
 pub use mat_znx_ops::*;
 pub use module::*;
 pub use sampling::*;
@@ -35,6 +28,7 @@ pub use vec_znx::*;
 pub use vec_znx_big::*;
 pub use vec_znx_dft::*;
 pub use vec_znx_ops::*;
+pub use vmp_pmat::*;
 pub use znx_base::*;
 
 pub const GALOISGENERATOR: u64 = 5;
@@ -210,9 +204,9 @@ impl Scratch {
         )
     }
 
-    pub fn tmp_scalar_znx_dft_prep<B: Backend>(&mut self, module: &Module<B>, cols: usize) -> (SvpPPol<&mut [u8], B>, &mut Self)
+    pub fn tmp_svp_ppol<B: Backend>(&mut self, module: &Module<B>, cols: usize) -> (SvpPPol<&mut [u8], B>, &mut Self)
     where
-        Module<B>: SvpPPolAllocBytes<B>,
+        Module<B>: SvpPPolAllocBytes,
     {
         let (take_slice, rem_slice) = Self::take_slice_aligned(&mut self.data, module.svp_ppol_alloc_bytes(cols));
 
@@ -301,41 +295,23 @@ impl Scratch {
         (slice, scratch)
     }
 
-    pub fn tmp_mat_znx_dft_prep<B: Backend>(
+    pub fn tmp_vmp_pmat<B: Backend>(
         &mut self,
         module: &Module<B>,
         rows: usize,
         cols_in: usize,
         cols_out: usize,
         size: usize,
-    ) -> (MatZnxDftPrep<&mut [u8], B>, &mut Self) {
-        let (take_slice, rem_slice) = Self::take_slice_aligned(
-            &mut self.data,
-            module.bytes_of_mat_znx_dft_prep(rows, cols_in, cols_out, size),
-        );
-        (
-            MatZnxDftPrep::from_data(take_slice, module.n(), rows, cols_in, cols_out, size),
-            Self::new(rem_slice),
-        )
-    }
-
-    pub fn tmp_mat_znx_dft<B: Backend>(
-        &mut self,
-        module: &Module<B>,
-        rows: usize,
-        cols_in: usize,
-        cols_out: usize,
-        size: usize,
-    ) -> (MatZnxDft<&mut [u8], B>, &mut Self)
+    ) -> (VmpPMat<&mut [u8], B>, &mut Self)
     where
-        Module<B>: MatZnxDftAlloc<B>,
+        Module<B>: VmpPMatAllocBytes,
     {
         let (take_slice, rem_slice) = Self::take_slice_aligned(
             &mut self.data,
-            module.bytes_of_mat_znx_dft(rows, cols_in, cols_out, size),
+            module.vmp_pmat_alloc_bytes(rows, cols_in, cols_out, size),
         );
         (
-            MatZnxDft::from_data(take_slice, module.n(), rows, cols_in, cols_out, size),
+            VmpPMat::from_data(take_slice, module.n(), rows, cols_in, cols_out, size),
             Self::new(rem_slice),
         )
     }

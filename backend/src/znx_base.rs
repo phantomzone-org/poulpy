@@ -31,11 +31,6 @@ pub trait ZnxSliceSize {
     fn sl(&self) -> usize;
 }
 
-pub trait ZnxWordSize {
-    /// Returns the number of machine words per polynomial.
-    fn ws() -> usize;
-}
-
 pub trait DataView {
     type D;
     fn data(&self) -> &Self::D;
