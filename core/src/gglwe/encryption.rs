@@ -1,5 +1,7 @@
 use backend::{
-    Backend, Module, ScalarZnx, ScalarZnxAlloc, ScalarZnxOps, Scratch, SvpPPolAllocBytes, SvpPPolApply, SvpPPolPrepare, VecZnxAlloc, VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigTmpA, VecZnxOps, ZnxInfos, ZnxZero
+    Backend, Module, ScalarZnx, ScalarZnxAlloc, ScalarZnxOps, Scratch, SvpPPolAllocBytes, SvpPPolApply, SvpPPolPrepare,
+    VecZnxAlloc, VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigTmpA,
+    VecZnxOps, ZnxInfos, ZnxZero,
 };
 use sampling::source::Source;
 
@@ -273,7 +275,8 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWETensorKey<DataSelf> {
         sigma: f64,
         scratch: &mut Scratch,
     ) where
-        Module<B>: VecZnxDftAllocBytes + VecZnxBigAllocBytes
+        Module<B>: VecZnxDftAllocBytes
+            + VecZnxBigAllocBytes
             + SvpPPolAllocBytes
             + VecZnxDftToVecZnxBigTmpA<B>
             + SvpPPolApply<B>

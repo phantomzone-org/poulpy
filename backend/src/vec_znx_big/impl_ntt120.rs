@@ -1,4 +1,4 @@
-use crate::{Module, VecZnxBig, VecZnxBigAllocBytes, VecZnxBigBytesOf, ZnxInfos, ZnxSliceSize, ZnxView, NTT120};
+use crate::{Module, NTT120, VecZnxBig, VecZnxBigAllocBytes, VecZnxBigBytesOf, ZnxInfos, ZnxSliceSize, ZnxView};
 
 const VEC_ZNX_BIG_NTT120_WORDSIZE: usize = 4;
 

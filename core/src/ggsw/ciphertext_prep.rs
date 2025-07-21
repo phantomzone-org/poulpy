@@ -10,7 +10,10 @@ pub struct GGSWCiphertextPrep<C, B: Backend> {
 }
 
 impl<B: Backend> GGSWCiphertextPrep<Vec<u8>, B> {
-    pub fn alloc(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self where Module<B>: VmpPMatAlloc<B>{
+    pub fn alloc(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self
+    where
+        Module<B>: VmpPMatAlloc<B>,
+    {
         let size: usize = k.div_ceil(basek);
         debug_assert!(digits > 0, "invalid ggsw: `digits` == 0");
 
@@ -37,7 +40,10 @@ impl<B: Backend> GGSWCiphertextPrep<Vec<u8>, B> {
         }
     }
 
-    pub fn bytes_of(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize where Module<B>: VmpPMatAllocBytes{
+    pub fn bytes_of(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize
+    where
+        Module<B>: VmpPMatAllocBytes,
+    {
         let size: usize = k.div_ceil(basek);
         debug_assert!(
             size > digits,
@@ -88,7 +94,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>, B: Backend> GGSWCiphertextPrep<DataSel
     pub fn prepare<DataOther>(&mut self, module: &Module<B>, other: &GGLWECiphertext<DataOther>, scratch: &mut Scratch)
     where
         DataOther: AsRef<[u8]>,
-        Module<B>: VmpPMatPrepare<B>
+        Module<B>: VmpPMatPrepare<B>,
     {
         module.vmp_prepare(&mut self.data, &other.data, scratch);
         self.k = other.k;

@@ -9,15 +9,10 @@ pub struct GLWESwitchingKeyPrep<D, B: Backend> {
 }
 
 impl<B: Backend> GLWESwitchingKeyPrep<Vec<u8>, B> {
-    pub fn alloc(
-        module: &Module<B>,
-        basek: usize,
-        k: usize,
-        rows: usize,
-        digits: usize,
-        rank_in: usize,
-        rank_out: usize,
-    ) -> Self where Module<B>: VmpPMatAlloc<B>{
+    pub fn alloc(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank_in: usize, rank_out: usize) -> Self
+    where
+        Module<B>: VmpPMatAlloc<B>,
+    {
         GLWESwitchingKeyPrep::<Vec<u8>, B> {
             key: GGLWECiphertextPrep::alloc(module, basek, k, rows, digits, rank_in, rank_out),
             sk_in_n: 0,
@@ -33,7 +28,10 @@ impl<B: Backend> GLWESwitchingKeyPrep<Vec<u8>, B> {
         digits: usize,
         rank_in: usize,
         rank_out: usize,
-    ) -> usize where Module<B>: VmpPMatAllocBytes {
+    ) -> usize
+    where
+        Module<B>: VmpPMatAllocBytes,
+    {
         GGLWECiphertextPrep::bytes_of(module, basek, k, rows, digits, rank_in, rank_out)
     }
 }
