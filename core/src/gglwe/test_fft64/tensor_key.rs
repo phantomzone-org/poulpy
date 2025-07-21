@@ -1,4 +1,4 @@
-use backend::{FFT64, Module, ScalarZnxDftPrepOps, ScratchOwned, Stats, VecZnxOps};
+use backend::{FFT64, Module, ScratchOwned, Stats, VecZnxOps};
 use sampling::source::Source;
 
 use crate::{FourierGLWECiphertext, FourierGLWESecret, GLWEPlaintext, GLWESecret, GLWETensorKey, GetRow, Infos};

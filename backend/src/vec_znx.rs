@@ -306,40 +306,6 @@ fn normalize<D: AsMut<[u8]> + AsRef<[u8]>>(basek: usize, a: &mut VecZnx<D>, a_co
     }
 }
 
-impl<D: AsMut<[u8]> + AsRef<[u8]>> VecZnx<D>
-where
-    VecZnx<D>: VecZnxToMut + ZnxInfos,
-{
-    /// Extracts the a_col-th column of 'a' and stores it on the self_col-th column [Self].
-    pub fn extract_column<R>(&mut self, self_col: usize, a: &VecZnx<R>, a_col: usize)
-    where
-        R: AsRef<[u8]>,
-        VecZnx<R>: VecZnxToRef + ZnxInfos,
-    {
-        #[cfg(debug_assertions)]
-        {
-            assert!(self_col < self.cols());
-            assert!(a_col < a.cols());
-        }
-
-        let min_size: usize = self.size.min(a.size());
-        let max_size: usize = self.size;
-
-        let mut self_mut: VecZnx<&mut [u8]> = self.to_mut();
-        let a_ref: VecZnx<&[u8]> = a.to_ref();
-
-        (0..min_size).for_each(|i: usize| {
-            self_mut
-                .at_mut(self_col, i)
-                .copy_from_slice(a_ref.at(a_col, i));
-        });
-
-        (min_size..max_size).for_each(|i| {
-            self_mut.zero_at(self_col, i);
-        });
-    }
-}
-
 impl<D: AsRef<[u8]>> fmt::Display for VecZnx<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(

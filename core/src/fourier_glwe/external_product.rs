@@ -1,7 +1,4 @@
-use backend::{
-    Backend, MatZnxDftPrepOps, MatZnxDftPrepScratch, Module, Scratch, VecZnxAlloc, VecZnxBig, VecZnxBigOps, VecZnxBigScratch,
-    VecZnxDftAlloc, VecZnxDftOps,
-};
+use backend::{Backend, Module, Scratch, VecZnxAlloc, VecZnxBig};
 
 use crate::{FourierGLWECiphertext, Infos, ggsw::ciphertext_prep::GGSWCiphertextPrep};
 

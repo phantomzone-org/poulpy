@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use backend::{Backend, MatZnxDftPrepOps, Module, Scratch, VecZnxBigOps, VecZnxDftAlloc, VecZnxDftOps};
+use backend::{Backend, Module, Scratch, VecZnxDftAllocBytes};
 
 use crate::{GLWEAutomorphismKeyPrep, GLWECiphertext, GLWECiphertextToMut, GLWECiphertextToRef, GLWEOps, Infos, SetMetaData};
 
@@ -27,7 +27,7 @@ impl GLWECiphertext<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: VecZnxDftAlloc<B>,
+        Module<B>: VecZnxDftAllocBytes,
     {
         Self::automorphism_inplace_scratch_space(module, basek, out_k.min(in_k), ksk_k, digits, rank)
     }
@@ -41,7 +41,7 @@ impl GLWECiphertext<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: VecZnxDftAlloc<B>,
+        Module<B>: VecZnxDftAllocBytes,
     {
         Self::automorphism_inplace_scratch_space(module, basek, out_k, ksk_k, digits, rank)
     }
@@ -61,7 +61,7 @@ where
         scratch: &mut Scratch,
     ) where
         GLWECiphertext<DataLhs>: GLWECiphertextToRef + Infos,
-        Module<B>: MatZnxDftPrepOps<B> + VecZnxBigOps<B> + VecZnxDftAlloc<B> + VecZnxDftOps<B>,
+        Module<B>: VecZnxDftAllocBytes,
     {
         self.copy(module, lhs);
         self.trace_inplace(module, start, end, auto_keys, scratch);
@@ -75,7 +75,7 @@ where
         auto_keys: &HashMap<i64, GLWEAutomorphismKeyPrep<DataAK, B>>,
         scratch: &mut Scratch,
     ) where
-        Module<B>: MatZnxDftPrepOps<B> + VecZnxBigOps<B> + VecZnxDftAlloc<B> + VecZnxDftOps<B>,
+        Module<B>: VecZnxDftAllocBytes,
     {
         (start..end).for_each(|i| {
             self.rsh(1, scratch);

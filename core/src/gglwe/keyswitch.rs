@@ -1,4 +1,4 @@
-use backend::{Backend, MatZnxDftPrepOps, Module, Scratch, VecZnxBigOps, VecZnxDftAlloc, VecZnxDftOps, ZnxZero};
+use backend::{Backend, Module, Scratch, VecZnxDftAllocBytes, ZnxZero};
 
 use crate::{FourierGLWECiphertext, GLWEAutomorphismKey, GLWEAutomorphismKeyPrep, GLWESwitchingKey, GLWESwitchingKeyPrep, Infos};
 
@@ -13,7 +13,7 @@ impl GLWEAutomorphismKey<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: VecZnxDftAlloc<B>,
+        Module<B>: VecZnxDftAllocBytes,
     {
         GLWESwitchingKey::keyswitch_scratch_space(module, basek, k_out, k_in, k_ksk, digits, rank, rank)
     }
@@ -27,7 +27,7 @@ impl GLWEAutomorphismKey<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: VecZnxDftAlloc<B>,
+        Module<B>: VecZnxDftAllocBytes,
     {
         GLWESwitchingKey::keyswitch_inplace_scratch_space(module, basek, k_out, k_ksk, digits, rank)
     }
@@ -41,7 +41,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWEAutomorphismKey<DataSelf> {
         rhs: &GLWESwitchingKeyPrep<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
-        Module<B>: MatZnxDftPrepOps<B> + VecZnxBigOps<B> + VecZnxDftAlloc<B> + VecZnxDftOps<B>,
+        Module<B>: VecZnxDftAllocBytes,
     {
         self.key.keyswitch(module, &lhs.key, rhs, scratch);
     }
@@ -52,7 +52,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWEAutomorphismKey<DataSelf> {
         rhs: &GLWEAutomorphismKeyPrep<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
-        Module<B>: MatZnxDftPrepOps<B> + VecZnxBigOps<B> + VecZnxDftAlloc<B> + VecZnxDftOps<B>,
+        Module<B>: VecZnxDftAllocBytes,
     {
         self.key.keyswitch_inplace(module, &rhs.key, scratch);
     }
@@ -70,7 +70,7 @@ impl GLWESwitchingKey<Vec<u8>> {
         rank_out: usize,
     ) -> usize
     where
-        Module<B>: VecZnxDftAlloc<B>,
+        Module<B>: VecZnxDftAllocBytes,
     {
         let tmp_in: usize = FourierGLWECiphertext::bytes_of(module, basek, k_in, rank_in);
         let tmp_out: usize = FourierGLWECiphertext::bytes_of(module, basek, k_out, rank_out);
@@ -88,7 +88,7 @@ impl GLWESwitchingKey<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: VecZnxDftAlloc<B>,
+        Module<B>: VecZnxDftAllocBytes,
     {
         let tmp: usize = FourierGLWECiphertext::bytes_of(module, basek, k_out, rank);
         let ksk: usize = FourierGLWECiphertext::keyswitch_inplace_scratch_space(module, basek, k_out, k_ksk, digits, rank);
@@ -104,7 +104,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<DataSelf> {
         rhs: &GLWESwitchingKeyPrep<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
-        Module<B>: MatZnxDftPrepOps<B> + VecZnxBigOps<B> + VecZnxDftAlloc<B> + VecZnxDftOps<B>,
+        Module<B>: VecZnxDftAllocBytes,
     {
         #[cfg(debug_assertions)]
         {
@@ -151,7 +151,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<DataSelf> {
         rhs: &GLWESwitchingKeyPrep<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
-        Module<B>: MatZnxDftPrepOps<B> + VecZnxBigOps<B> + VecZnxDftAlloc<B> + VecZnxDftOps<B>,
+        Module<B>: VecZnxDftAllocBytes,
     {
         #[cfg(debug_assertions)]
         {

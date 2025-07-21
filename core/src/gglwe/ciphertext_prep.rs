@@ -1,5 +1,5 @@
 use crate::Infos;
-use backend::{Backend, MatZnxDftPrepAlloc, Module, VmpPMat};
+use backend::{Backend, Module, VmpPMat, VmpPMatAlloc, VmpPMatAllocBytes};
 
 pub struct GGLWECiphertextPrep<D, B: Backend> {
     pub(crate) data: VmpPMat<D, B>,
@@ -9,15 +9,10 @@ pub struct GGLWECiphertextPrep<D, B: Backend> {
 }
 
 impl<B: Backend> GGLWECiphertextPrep<Vec<u8>, B> {
-    pub fn alloc(
-        module: &Module<B>,
-        basek: usize,
-        k: usize,
-        rows: usize,
-        digits: usize,
-        rank_in: usize,
-        rank_out: usize,
-    ) -> Self {
+    pub fn alloc(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank_in: usize, rank_out: usize) -> Self
+    where
+        Module<B>: VmpPMatAlloc<B>,
+    {
         let size: usize = k.div_ceil(basek);
         debug_assert!(
             size > digits,
@@ -35,7 +30,7 @@ impl<B: Backend> GGLWECiphertextPrep<Vec<u8>, B> {
         );
 
         Self {
-            data: module.new_mat_znx_dft_prep(rows, rank_in, rank_out + 1, size),
+            data: module.vmp_pmat_alloc(rows, rank_in, rank_out + 1, size),
             basek: basek,
             k,
             digits,
@@ -50,7 +45,10 @@ impl<B: Backend> GGLWECiphertextPrep<Vec<u8>, B> {
         digits: usize,
         rank_in: usize,
         rank_out: usize,
-    ) -> usize {
+    ) -> usize
+    where
+        Module<B>: VmpPMatAllocBytes,
+    {
         let size: usize = k.div_ceil(basek);
         debug_assert!(
             size > digits,
@@ -67,7 +65,7 @@ impl<B: Backend> GGLWECiphertextPrep<Vec<u8>, B> {
             size
         );
 
-        module.bytes_of_mat_znx_dft_prep(rows, rank_in, rank_out + 1, rows)
+        module.vmp_pmat_alloc_bytes(rows, rank_in, rank_out + 1, rows)
     }
 }
 

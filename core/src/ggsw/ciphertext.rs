@@ -1,7 +1,6 @@
 use backend::{
-    Backend, MatZnx, MatZnxAlloc, MatZnxDftPrepOps, MatZnxDftPrepScratch, Module, ScalarZnx, Scratch, VecZnxAlloc,
-    VecZnxBigAlloc, VecZnxBigOps, VecZnxBigScratch, VecZnxDft, VecZnxDftAlloc, VecZnxDftBytesOf, VecZnxDftOps, VecZnxOps,
-    VecZnxToMut, VmpPMat, ZnxInfos, ZnxZero,
+    Backend, MatZnx, MatZnxAlloc, Module, ScalarZnx, Scratch, VecZnxAlloc, VecZnxDft, VecZnxDftAllocBytes, VecZnxDftBytesOf,
+    VecZnxOps, VecZnxToMut, VmpPMat, ZnxInfos, ZnxZero,
 };
 use sampling::source::Source;
 
@@ -115,7 +114,7 @@ impl<D> GGSWCiphertext<D> {
 impl GGSWCiphertext<Vec<u8>> {
     pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize
     where
-        VecZnxDft<Vec<u8>, B>: VecZnxDftBytesOf<Vec<u8>, B>,
+        Module<B>: VecZnxDftAllocBytes,
     {
         let size = k.div_ceil(basek);
         GLWECiphertext::encrypt_sk_scratch_space(module, basek, k)
@@ -133,7 +132,7 @@ impl GGSWCiphertext<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        VecZnxDft<Vec<u8>, B>: VecZnxDftBytesOf<Vec<u8>, B>,
+        Module<B>: VecZnxDftAllocBytes,
     {
         let tsk_size: usize = k_tsk.div_ceil(basek);
         let self_size_out: usize = self_k.div_ceil(basek);

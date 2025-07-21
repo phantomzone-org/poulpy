@@ -1,7 +1,4 @@
-use backend::{
-    Backend, DataViewMut, MatZnxDftPrepOps, MatZnxDftPrepScratch, Module, Scratch, VecZnxBig, VecZnxBigOps, VecZnxDftAlloc,
-    VecZnxDftOps, VecZnxScratch,
-};
+use backend::{Backend, DataViewMut, Module, Scratch, VecZnxBig, VecZnxDftAllocBytes, VecZnxScratch};
 
 use crate::{GLWECiphertext, Infos, ggsw::ciphertext_prep::GGSWCiphertextPrep};
 
@@ -16,7 +13,7 @@ impl GLWECiphertext<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: VecZnxDftAlloc<B>,
+        Module<B>: VecZnxDftAllocBytes,
     {
         let in_size: usize = k_in.div_ceil(basek).div_ceil(digits);
         let out_size: usize = k_out.div_ceil(basek);
@@ -44,7 +41,7 @@ impl GLWECiphertext<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: VecZnxDftAlloc<B>,
+        Module<B>: VecZnxDftAllocBytes,
     {
         Self::external_product_scratch_space(module, basek, k_out, k_out, k_ggsw, digits, rank)
     }
@@ -58,7 +55,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         rhs: &GGSWCiphertextPrep<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
-        Module<B>: VecZnxDftAlloc<B> + VecZnxDftOps<B> + MatZnxDftPrepOps<B> + VecZnxBigOps<B>,
+        Module<B>: VecZnxDftAllocBytes,
     {
         let basek: usize = self.basek();
 
@@ -132,7 +129,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         rhs: &GGSWCiphertextPrep<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
-        Module<B>: VecZnxDftAlloc<B> + VecZnxDftOps<B> + MatZnxDftPrepOps<B> + VecZnxBigOps<B>,
+        Module<B>: VecZnxDftAllocBytes,
     {
         unsafe {
             let self_ptr: *mut GLWECiphertext<DataSelf> = self as *mut GLWECiphertext<DataSelf>;

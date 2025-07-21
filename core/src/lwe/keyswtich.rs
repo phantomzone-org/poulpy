@@ -1,6 +1,4 @@
-use backend::{
-    Backend, Module, ScalarZnxAlloc, ScalarZnxDftPrepAlloc, Scratch, VecZnxDftAlloc, VecZnxOps, ZnxView, ZnxViewMut, ZnxZero,
-};
+use backend::{Backend, Module, Scratch, SvpPPolAllocBytes, VecZnxDftAllocBytes, VecZnxOps, ZnxView, ZnxViewMut, ZnxZero};
 use sampling::source::Source;
 
 use crate::{
@@ -20,7 +18,7 @@ impl<B: Backend> GLWEToLWESwitchingKeyPrep<Vec<u8>, B> {
 
     pub fn encrypt_sk_scratch_space(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize
     where
-        Module<B>: ScalarZnxDftPrepAlloc<B>,
+        Module<B>: SvpPPolAllocBytes,
     {
         FourierGLWESecret::bytes_of(module, rank)
             + (GLWESwitchingKeyPrep::encrypt_sk_scratch_space(module, basek, k, rank, rank) | GLWESecret::bytes_of(module, rank))
@@ -40,7 +38,7 @@ impl<D: AsMut<[u8]> + AsRef<[u8]>, B: Backend> GLWEToLWESwitchingKeyPrep<D, B> {
     ) where
         DLwe: AsRef<[u8]>,
         DGlwe: AsRef<[u8]>,
-        Module<B>: ScalarZnxDftPrepAlloc<B> + VecZnxDftAlloc<B>,
+        Module<B>: SvpPPolAllocBytes + VecZnxDftAllocBytes,
     {
         #[cfg(debug_assertions)]
         {
@@ -287,7 +285,7 @@ impl GLWECiphertext<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: VecZnxDftAlloc<B>,
+        Module<B>: VecZnxDftAllocBytes,
     {
         GLWECiphertext::keyswitch_scratch_space(module, basek, k_glwe, k_lwe, k_ksk, 1, 1, rank)
             + GLWECiphertext::bytes_of(module, basek, k_lwe, 1)
@@ -304,7 +302,7 @@ impl<D: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<D> {
     ) where
         DLwe: AsRef<[u8]>,
         DKsk: AsRef<[u8]>,
-        Module<B>: VecZnxDftAlloc<B>,
+        Module<B>: VecZnxDftAllocBytes,
     {
         #[cfg(debug_assertions)]
         {

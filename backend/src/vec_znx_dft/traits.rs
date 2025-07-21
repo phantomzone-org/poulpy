@@ -10,7 +10,7 @@ pub trait VecZnxDftFromBytes<B: Backend> {
     fn new_vec_znx_dft_from_bytes(&self, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxDftOwned<B>;
 }
 
-pub trait VecZnxDftAllocBytes<B: Backend> {
+pub trait VecZnxDftAllocBytes {
     fn vec_znx_dft_alloc_bytes(&self, cols: usize, size: usize) -> usize;
 }
 

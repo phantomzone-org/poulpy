@@ -1,4 +1,4 @@
-use backend::{Backend, MatZnxDftPrepOps, Module, Scratch, VecZnxBigOps, VecZnxDftAlloc, VecZnxDftOps, VecZnxOps};
+use backend::{Backend, Module, Scratch, VecZnxDftAllocBytes, VecZnxOps};
 
 use crate::{GLWEAutomorphismKeyPrep, GLWECiphertext};
 
@@ -13,7 +13,7 @@ impl GLWECiphertext<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: VecZnxDftAlloc<B>,
+        Module<B>: VecZnxDftAllocBytes,
     {
         Self::keyswitch_scratch_space(module, basek, k_out, k_in, k_ksk, digits, rank, rank)
     }
@@ -27,7 +27,7 @@ impl GLWECiphertext<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: VecZnxDftAlloc<B>,
+        Module<B>: VecZnxDftAllocBytes,
     {
         Self::keyswitch_inplace_scratch_space(module, basek, k_out, k_ksk, digits, rank)
     }
@@ -41,7 +41,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         rhs: &GLWEAutomorphismKeyPrep<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
-        Module<B>: MatZnxDftPrepOps<B> + VecZnxBigOps<B> + VecZnxDftAlloc<B> + VecZnxDftOps<B>,
+        Module<B>: VecZnxDftAllocBytes,
     {
         self.keyswitch(module, lhs, &rhs.key, scratch);
         (0..self.rank() + 1).for_each(|i| {
@@ -55,7 +55,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         rhs: &GLWEAutomorphismKeyPrep<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
-        Module<B>: MatZnxDftPrepOps<B> + VecZnxBigOps<B> + VecZnxDftAlloc<B> + VecZnxDftOps<B>,
+        Module<B>: VecZnxDftAllocBytes,
     {
         self.keyswitch_inplace(module, &rhs.key, scratch);
         (0..self.rank() + 1).for_each(|i| {
@@ -70,7 +70,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         rhs: &GLWEAutomorphismKeyPrep<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
-        Module<B>: MatZnxDftPrepOps<B> + VecZnxBigOps<B> + VecZnxDftAlloc<B> + VecZnxDftOps<B>,
+        Module<B>: VecZnxDftAllocBytes,
     {
         Self::keyswitch_private::<_, _, 1, B>(self, rhs.p(), module, lhs, &rhs.key, scratch);
     }
@@ -81,7 +81,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         rhs: &GLWEAutomorphismKeyPrep<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
-        Module<B>: MatZnxDftPrepOps<B> + VecZnxBigOps<B> + VecZnxDftAlloc<B> + VecZnxDftOps<B>,
+        Module<B>: VecZnxDftAllocBytes,
     {
         unsafe {
             let self_ptr: *mut GLWECiphertext<DataSelf> = self as *mut GLWECiphertext<DataSelf>;
@@ -96,7 +96,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         rhs: &GLWEAutomorphismKeyPrep<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
-        Module<B>: MatZnxDftPrepOps<B> + VecZnxBigOps<B> + VecZnxDftAlloc<B> + VecZnxDftOps<B>,
+        Module<B>: VecZnxDftAllocBytes,
     {
         Self::keyswitch_private::<_, _, 2, B>(self, rhs.p(), module, lhs, &rhs.key, scratch);
     }
@@ -107,7 +107,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         rhs: &GLWEAutomorphismKeyPrep<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
-        Module<B>: MatZnxDftPrepOps<B> + VecZnxBigOps<B> + VecZnxDftAlloc<B> + VecZnxDftOps<B>,
+        Module<B>: VecZnxDftAllocBytes,
     {
         unsafe {
             let self_ptr: *mut GLWECiphertext<DataSelf> = self as *mut GLWECiphertext<DataSelf>;
@@ -122,7 +122,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         rhs: &GLWEAutomorphismKeyPrep<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
-        Module<B>: MatZnxDftPrepOps<B> + VecZnxBigOps<B> + VecZnxDftAlloc<B> + VecZnxDftOps<B>,
+        Module<B>: VecZnxDftAllocBytes,
     {
         Self::keyswitch_private::<_, _, 3, B>(self, rhs.p(), module, lhs, &rhs.key, scratch);
     }
@@ -133,7 +133,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         rhs: &GLWEAutomorphismKeyPrep<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
-        Module<B>: MatZnxDftPrepOps<B> + VecZnxBigOps<B> + VecZnxDftAlloc<B> + VecZnxDftOps<B>,
+        Module<B>: VecZnxDftAllocBytes,
     {
         unsafe {
             let self_ptr: *mut GLWECiphertext<DataSelf> = self as *mut GLWECiphertext<DataSelf>;

@@ -110,11 +110,7 @@ pub trait VecZnxBigToRef<B: Backend> {
     fn to_ref(&self) -> VecZnxBig<&[u8], B>;
 }
 
-impl<D, B: Backend> VecZnxBigToRef<B> for VecZnxBig<D, B>
-where
-    D: AsRef<[u8]>,
-    B: Backend,
-{
+impl<D: AsRef<[u8]>, B: Backend> VecZnxBigToRef<B> for VecZnxBig<D, B> {
     fn to_ref(&self) -> VecZnxBig<&[u8], B> {
         VecZnxBig {
             data: self.data.as_ref(),
@@ -131,11 +127,7 @@ pub trait VecZnxBigToMut<B: Backend> {
     fn to_mut(&mut self) -> VecZnxBig<&mut [u8], B>;
 }
 
-impl<D, B: Backend> VecZnxBigToMut<B> for VecZnxBig<D, B>
-where
-    D: AsRef<[u8]> + AsMut<[u8]>,
-    B: Backend,
-{
+impl<D: AsRef<[u8]> + AsMut<[u8]>, B: Backend> VecZnxBigToMut<B> for VecZnxBig<D, B> {
     fn to_mut(&mut self) -> VecZnxBig<&mut [u8], B> {
         VecZnxBig {
             data: self.data.as_mut(),

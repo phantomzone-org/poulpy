@@ -21,7 +21,7 @@ impl<D: AsRef<[u8]>> ZnxView for VecZnxDft<D, NTT120> {
     type Scalar = i64;
 }
 
-impl VecZnxDftAllocBytes<NTT120> for Module<NTT120> {
+impl VecZnxDftAllocBytes for Module<NTT120> {
     fn vec_znx_dft_alloc_bytes(&self, cols: usize, size: usize) -> usize {
         VecZnxDft::<Vec<u8>, NTT120>::bytes_of(self.n(), cols, size)
     }

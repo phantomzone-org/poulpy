@@ -31,7 +31,7 @@ impl VecZnxDftFromBytes<FFT64> for Module<FFT64> {
     }
 }
 
-impl VecZnxDftAllocBytes<FFT64> for Module<FFT64> {
+impl VecZnxDftAllocBytes for Module<FFT64> {
     fn vec_znx_dft_alloc_bytes(&self, cols: usize, size: usize) -> usize {
         VecZnxDft::<Vec<u8>, FFT64>::bytes_of(self.n(), cols, size)
     }

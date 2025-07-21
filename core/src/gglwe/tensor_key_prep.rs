@@ -1,4 +1,4 @@
-use backend::{Backend, Module, VmpPMat};
+use backend::{Backend, Module, VmpPMat, VmpPMatAlloc};
 
 use crate::{GLWESwitchingKey, GLWESwitchingKeyPrep, Infos};
 
@@ -7,7 +7,7 @@ pub struct GLWETensorKeyPrep<D, B: Backend> {
 }
 
 impl<B: Backend> GLWETensorKeyPrep<Vec<u8>, B> {
-    pub fn alloc(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self {
+    pub fn alloc(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self where Module<B>: VmpPMatAlloc<B>{
         let mut keys: Vec<GLWESwitchingKeyPrep<Vec<u8>, B>> = Vec::new();
         let pairs: usize = (((rank + 1) * rank) >> 1).max(1);
         (0..pairs).for_each(|_| {

@@ -1,14 +1,11 @@
-use backend::{
-    Backend, DataViewMut, Module, ScalarZnxDftPrepOps, Scratch, VecZnxBig, VecZnxBigAlloc, VecZnxBigOps, VecZnxBigScratch,
-    VecZnxDftAlloc, VecZnxDftOps,
-};
+use backend::{Backend, DataViewMut, Module, Scratch, VecZnxBig, VecZnxDftAllocBytes};
 
 use crate::{FourierGLWECiphertext, FourierGLWESecret, GLWEPlaintext, Infos};
 
 impl<B: Backend> FourierGLWECiphertext<Vec<u8>, B> {
     pub fn decrypt_scratch_space(module: &Module<B>, basek: usize, k: usize) -> usize
     where
-        Module<B>: VecZnxDftAlloc<B> + VecZnxDftOps<B>,
+        Module<B>: VecZnxDftAllocBytes,
     {
         let size: usize = k.div_ceil(basek);
         (module.vec_znx_big_normalize_tmp_bytes()
@@ -26,7 +23,7 @@ impl<DataSelf: AsRef<[u8]>, B: Backend> FourierGLWECiphertext<DataSelf, B> {
         sk: &FourierGLWESecret<DataSk, B>,
         scratch: &mut Scratch,
     ) where
-        Module<B>: ScalarZnxDftPrepOps<B> + VecZnxDftAlloc<B> + VecZnxDftOps<B> + VecZnxBigOps<B>,
+        Module<B>: VecZnxDftAllocBytes,
     {
         #[cfg(debug_assertions)]
         {

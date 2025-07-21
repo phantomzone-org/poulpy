@@ -1,6 +1,6 @@
 use backend::{
-    FFT64, Module, ScalarZnx, ScalarZnxAlloc, ScalarZnxDftPrepOps, ScalarZnxOps, ScratchOwned, Stats, VecZnxBig, VecZnxBigAlloc,
-    VecZnxBigOps, VecZnxDft, VecZnxDftAlloc, VecZnxDftOps, VecZnxOps, VecZnxToMut, ZnxViewMut, ZnxZero,
+    FFT64, Module, ScalarZnx, ScalarZnxAlloc, ScalarZnxOps, ScratchOwned, Stats, VecZnxBig, VecZnxDft, VecZnxOps, VecZnxToMut,
+    ZnxViewMut, ZnxZero,
 };
 use sampling::source::Source;
 

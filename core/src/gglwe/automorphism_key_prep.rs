@@ -1,4 +1,4 @@
-use backend::{Backend, Module, VmpPMat};
+use backend::{Backend, Module, VmpPMat, VmpPMatAlloc, VmpPMatAllocBytes};
 
 use crate::{GLWESwitchingKeyPrep, Infos};
 
@@ -8,14 +8,14 @@ pub struct GLWEAutomorphismKeyPrep<D, B: Backend> {
 }
 
 impl<B: Backend> GLWEAutomorphismKeyPrep<Vec<u8>, B> {
-    pub fn alloc(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self {
+    pub fn alloc(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self where Module<B>: VmpPMatAlloc<B>{
         GLWEAutomorphismKeyPrep::<Vec<u8>, B> {
             key: GLWESwitchingKeyPrep::alloc(module, basek, k, rows, digits, rank, rank),
             p: 0,
         }
     }
 
-    pub fn bytes_of(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize {
+    pub fn bytes_of(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize where Module<B>: VmpPMatAllocBytes{
         GLWESwitchingKeyPrep::<Vec<u8>, B>::bytes_of(module, basek, k, rows, digits, rank, rank)
     }
 }

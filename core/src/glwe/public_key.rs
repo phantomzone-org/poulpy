@@ -1,4 +1,4 @@
-use backend::{Backend, Module, ScratchOwned, VecZnxDft, VecZnxDftAlloc};
+use backend::{Backend, Module, ScratchOwned, VecZnxDft, VecZnxDftAllocBytes};
 use sampling::source::Source;
 
 use crate::{FourierGLWECiphertext, FourierGLWESecret, Infos, dist::Distribution};
@@ -11,7 +11,7 @@ pub struct GLWEPublicKey<D, B: Backend> {
 impl<B: Backend> GLWEPublicKey<Vec<u8>, B> {
     pub fn alloc(module: &Module<B>, basek: usize, k: usize, rank: usize) -> Self
     where
-        Module<B>: VecZnxDftAlloc<B>,
+        Module<B>: VecZnxDftAllocBytes,
     {
         Self {
             data: FourierGLWECiphertext::alloc(module, basek, k, rank),
@@ -21,7 +21,7 @@ impl<B: Backend> GLWEPublicKey<Vec<u8>, B> {
 
     pub fn bytes_of(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize
     where
-        Module<B>: VecZnxDftAlloc<B>,
+        Module<B>: VecZnxDftAllocBytes,
     {
         FourierGLWECiphertext::<Vec<u8>, B>::bytes_of(module, basek, k, rank)
     }

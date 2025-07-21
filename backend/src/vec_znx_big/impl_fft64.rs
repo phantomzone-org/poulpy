@@ -2,7 +2,7 @@ use crate::{
     Scratch, VecZnxBigAdd, VecZnxBigAddInplace, VecZnxBigAddSmall, VecZnxBigAddSmallInplace, VecZnxBigAutomorphism,
     VecZnxBigAutomorphismInplace, VecZnxBigBytesOf, VecZnxBigNegateInplace, VecZnxBigNormalize, VecZnxBigSub,
     VecZnxBigSubABInplace, VecZnxBigSubBAInplace, VecZnxBigSubSmallA, VecZnxBigSubSmallAInplace, VecZnxBigSubSmallB,
-    VecZnxBigSubSmallBInplace, VecZnxToMut, VecZnxToRef, ZnxSliceSize, ZnxViewMut, ZnxZero, ffi::vec_znx,
+    VecZnxBigSubSmallBInplace, VecZnxToMut, VecZnxToRef, ZnxSliceSize, ZnxViewMut, ffi::vec_znx,
 };
 use std::fmt;
 
@@ -44,54 +44,9 @@ impl VecZnxBigFromBytes<FFT64> for Module<FFT64> {
     }
 }
 
-impl VecZnxBigAllocBytes<FFT64> for Module<FFT64> {
+impl VecZnxBigAllocBytes for Module<FFT64> {
     fn vec_znx_big_alloc_bytes(&self, cols: usize, size: usize) -> usize {
         VecZnxBig::<Vec<u8>, FFT64>::bytes_of(self.n(), cols, size)
-    }
-}
-
-impl<D: AsMut<[u8]> + AsRef<[u8]>> VecZnxBig<D, FFT64>
-where
-    VecZnxBig<D, FFT64>: VecZnxBigToMut<FFT64> + ZnxInfos,
-{
-    // Consumes the VecZnxBig to return a VecZnx.
-    // Useful when no normalization is needed.
-    pub fn to_vec_znx_small(self) -> VecZnx<D> {
-        VecZnx {
-            data: self.data,
-            n: self.n,
-            cols: self.cols,
-            size: self.size,
-            max_size: self.max_size,
-        }
-    }
-
-    /// Extracts the a_col-th column of 'a' and stores it on the self_col-th column [Self].
-    pub fn extract_column<C>(&mut self, self_col: usize, a: &C, a_col: usize)
-    where
-        C: VecZnxBigToRef<FFT64> + ZnxInfos,
-    {
-        #[cfg(debug_assertions)]
-        {
-            assert!(self_col < self.cols());
-            assert!(a_col < a.cols());
-        }
-
-        let min_size: usize = self.size.min(a.size());
-        let max_size: usize = self.size;
-
-        let mut self_mut: VecZnxBig<&mut [u8], FFT64> = self.to_mut();
-        let a_ref: VecZnxBig<&[u8], FFT64> = a.to_ref();
-
-        (0..min_size).for_each(|i: usize| {
-            self_mut
-                .at_mut(self_col, i)
-                .copy_from_slice(a_ref.at(a_col, i));
-        });
-
-        (min_size..max_size).for_each(|i| {
-            self_mut.zero_at(self_col, i);
-        });
     }
 }
 

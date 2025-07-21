@@ -1,4 +1,4 @@
-use backend::{Backend, Module, Scratch, VecZnxDftAlloc};
+use backend::{Backend, Module, Scratch, VecZnxDftAllocBytes};
 
 use crate::{FourierGLWECiphertext, GLWECiphertext, GLWESwitchingKeyPrep, Infos, ScratchCore};
 
@@ -37,7 +37,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>, B: Backend> FourierGLWECiphertext<Data
         rhs: &GLWESwitchingKeyPrep<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
-        Module<B>: VecZnxDftAlloc<B>,
+        Module<B>: VecZnxDftAllocBytes,
     {
         let (mut tmp_ct, scratch1) = scratch.tmp_glwe_ct(module, self.basek(), self.k(), self.rank());
         tmp_ct.keyswitch_from_fourier(module, lhs, rhs, scratch1);

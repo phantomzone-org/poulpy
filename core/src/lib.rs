@@ -10,8 +10,8 @@ pub mod noise;
 
 use backend::Backend;
 use backend::Module;
-use backend::ScalarZnxDftPrepAlloc;
-use backend::VecZnxDftAlloc;
+use backend::SvpPPolAllocBytes;
+use backend::VecZnxDftAllocBytes;
 pub use blind_rotation::{BlindRotationKeyCGGI, LookUpTable, cggi_blind_rotate, cggi_blind_rotate_scratch_space};
 pub use elem::{GetRow, Infos, SetMetaData, SetRow};
 pub use fourier_glwe::{FourierGLWECiphertext, FourierGLWESecret};
@@ -70,7 +70,7 @@ pub trait ScratchCore<B: Backend> {
         rank: usize,
     ) -> (FourierGLWECiphertext<&mut [u8], B>, &mut Self)
     where
-        Module<B>: VecZnxDftAlloc<B>;
+        Module<B>: VecZnxDftAllocBytes;
     fn tmp_slice_fourier_glwe_ct(
         &mut self,
         size: usize,
@@ -80,11 +80,11 @@ pub trait ScratchCore<B: Backend> {
         rank: usize,
     ) -> (Vec<FourierGLWECiphertext<&mut [u8], B>>, &mut Self)
     where
-        Module<B>: VecZnxDftAlloc<B>;
+        Module<B>: VecZnxDftAllocBytes;
     fn tmp_glwe_secret(&mut self, module: &Module<B>, rank: usize) -> (GLWESecret<&mut [u8]>, &mut Self);
     fn tmp_fourier_glwe_secret(&mut self, module: &Module<B>, rank: usize) -> (FourierGLWESecret<&mut [u8], B>, &mut Self)
     where
-        Module<B>: ScalarZnxDftPrepAlloc<B>;
+        Module<B>: SvpPPolAllocBytes;
     fn tmp_glwe_pk(
         &mut self,
         module: &Module<B>,
@@ -93,7 +93,7 @@ pub trait ScratchCore<B: Backend> {
         rank: usize,
     ) -> (GLWEPublicKey<&mut [u8], B>, &mut Self)
     where
-        Module<B>: VecZnxDftAlloc<B>;
+        Module<B>: VecZnxDftAllocBytes;
     fn tmp_glwe_ksk(
         &mut self,
         module: &Module<B>,
@@ -216,7 +216,7 @@ impl<B: Backend> ScratchCore<B> for Scratch {
         rank: usize,
     ) -> (FourierGLWECiphertext<&mut [u8], B>, &mut Self)
     where
-        Module<B>: VecZnxDftAlloc<B>,
+        Module<B>: VecZnxDftAllocBytes,
     {
         let (data, scratch) = self.tmp_vec_znx_dft(module, rank + 1, k.div_ceil(basek));
         (FourierGLWECiphertext { data, basek, k }, scratch)
@@ -231,7 +231,7 @@ impl<B: Backend> ScratchCore<B> for Scratch {
         rank: usize,
     ) -> (Vec<FourierGLWECiphertext<&mut [u8], B>>, &mut Self)
     where
-        Module<B>: VecZnxDftAlloc<B>,
+        Module<B>: VecZnxDftAllocBytes,
     {
         let mut scratch: &mut Scratch = self;
         let mut cts: Vec<FourierGLWECiphertext<&mut [u8], B>> = Vec::with_capacity(size);
@@ -245,7 +245,7 @@ impl<B: Backend> ScratchCore<B> for Scratch {
 
     fn tmp_glwe_pk(&mut self, module: &Module<B>, basek: usize, k: usize, rank: usize) -> (GLWEPublicKey<&mut [u8], B>, &mut Self)
     where
-        Module<B>: VecZnxDftAlloc<B>,
+        Module<B>: VecZnxDftAllocBytes,
     {
         let (data, scratch) = self.tmp_fourier_glwe_ct(module, basek, k, rank);
         (
@@ -270,7 +270,7 @@ impl<B: Backend> ScratchCore<B> for Scratch {
 
     fn tmp_fourier_glwe_secret(&mut self, module: &Module<B>, rank: usize) -> (FourierGLWESecret<&mut [u8], B>, &mut Self)
     where
-        Module<B>: ScalarZnxDftPrepAlloc<B>,
+        Module<B>: SvpPPolAllocBytes,
     {
         let (data, scratch) = self.tmp_svp_ppol(module, rank);
         (

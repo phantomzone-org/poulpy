@@ -11,7 +11,7 @@ pub trait VecZnxBigFromBytes<B: Backend> {
     fn new_vec_znx_big_from_bytes(&self, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxBigOwned<B>;
 }
 
-pub trait VecZnxBigAllocBytes<B: Backend> {
+pub trait VecZnxBigAllocBytes {
     fn vec_znx_big_alloc_bytes(&self, cols: usize, size: usize) -> usize;
 }
 

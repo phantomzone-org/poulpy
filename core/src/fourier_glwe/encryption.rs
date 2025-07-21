@@ -1,4 +1,4 @@
-use backend::{Backend, Module, Scratch, VecZnxAlloc, VecZnxBigScratch, VecZnxDftOps};
+use backend::{Backend, Module, Scratch, VecZnxAlloc};
 use sampling::source::Source;
 
 use crate::{FourierGLWECiphertext, FourierGLWESecret, GLWECiphertext, Infos, ScratchCore};

@@ -1,6 +1,5 @@
 use backend::{
-    AddNormal, Backend, FillUniform, Module, ScalarZnxAlloc, ScalarZnxDftPrepAlloc, ScalarZnxDftPrepOps, Scratch, VecZnxAlloc,
-    VecZnxBig, VecZnxBigAlloc, VecZnxBigOps, VecZnxBigSampling, VecZnxBigScratch, VecZnxDftAlloc, VecZnxDftOps, VecZnxOps,
+    AddNormal, Backend, FillUniform, Module, ScalarZnxAlloc, Scratch, VecZnxAlloc, VecZnxBig, VecZnxDftAllocBytes, VecZnxOps,
     ZnxZero,
 };
 use sampling::source::Source;
@@ -10,14 +9,14 @@ use crate::{FourierGLWESecret, GLWECiphertext, GLWEPlaintext, GLWEPublicKey, Inf
 impl GLWECiphertext<Vec<u8>> {
     pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize) -> usize
     where
-        Module<B>: VecZnxDftAlloc<B>,
+        Module<B>: VecZnxDftAllocBytes,
     {
         let size: usize = k.div_ceil(basek);
         module.vec_znx_big_normalize_tmp_bytes() + module.bytes_of_vec_znx_dft(1, size) + module.bytes_of_vec_znx(1, size)
     }
     pub fn encrypt_pk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize) -> usize
     where
-        Module<B>: VecZnxDftAlloc<B> + ScalarZnxAlloc + ScalarZnxDftPrepAlloc<B>,
+        Module<B>: VecZnxDftAllocBytes,
     {
         let size: usize = k.div_ceil(basek);
         ((module.bytes_of_vec_znx_dft(1, size) + module.bytes_of_vec_znx_big(1, size)) | module.bytes_of_scalar_znx(1))
@@ -37,7 +36,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         sigma: f64,
         scratch: &mut Scratch,
     ) where
-        Module<B>: VecZnxDftAlloc<B> + VecZnxDftOps<B> + ScalarZnxDftPrepOps<B> + VecZnxBigOps<B>,
+        Module<B>: VecZnxDftAllocBytes,
     {
         self.encrypt_sk_private(
             module,
@@ -59,7 +58,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         sigma: f64,
         scratch: &mut Scratch,
     ) where
-        Module<B>: VecZnxDftAlloc<B> + VecZnxDftOps<B> + ScalarZnxDftPrepOps<B> + VecZnxBigOps<B>,
+        Module<B>: VecZnxDftAllocBytes,
     {
         self.encrypt_sk_private(
             module,
@@ -82,12 +81,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         sigma: f64,
         scratch: &mut Scratch,
     ) where
-        Module<B>: ScalarZnxDftPrepOps<B>
-            + ScalarZnxDftPrepAlloc<B>
-            + VecZnxDftOps<B>
-            + VecZnxDftAlloc<B>
-            + VecZnxBigOps<B>
-            + VecZnxBigSampling<B>,
+        Module<B>: VecZnxDftAllocBytes,
     {
         self.encrypt_pk_private::<DataPt, DataPk, B>(
             module,
@@ -109,12 +103,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         sigma: f64,
         scratch: &mut Scratch,
     ) where
-        Module<B>: ScalarZnxDftPrepOps<B>
-            + ScalarZnxDftPrepAlloc<B>
-            + VecZnxDftOps<B>
-            + VecZnxDftAlloc<B>
-            + VecZnxBigOps<B>
-            + VecZnxBigSampling<B>,
+        Module<B>: VecZnxDftAllocBytes,
     {
         self.encrypt_pk_private::<Vec<u8>, DataPk, B>(
             module,
@@ -137,7 +126,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         sigma: f64,
         scratch: &mut Scratch,
     ) where
-        Module<B>: VecZnxDftAlloc<B> + VecZnxDftOps<B> + ScalarZnxDftPrepOps<B> + VecZnxBigOps<B>,
+        Module<B>: VecZnxDftAllocBytes,
     {
         #[cfg(debug_assertions)]
         {
@@ -218,12 +207,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         sigma: f64,
         scratch: &mut Scratch,
     ) where
-        Module<B>: ScalarZnxDftPrepOps<B>
-            + ScalarZnxDftPrepAlloc<B>
-            + VecZnxDftOps<B>
-            + VecZnxDftAlloc<B>
-            + VecZnxBigOps<B>
-            + VecZnxBigSampling<B>,
+        Module<B>: VecZnxDftAllocBytes,
     {
         #[cfg(debug_assertions)]
         {
