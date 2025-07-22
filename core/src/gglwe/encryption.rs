@@ -6,7 +6,7 @@ use backend::{
 use sampling::source::Source;
 
 use crate::{
-    GLWESecretExec, GGLWECiphertext, GLWEAutomorphismKey, GLWECiphertext, GLWESecret, GLWESwitchingKey, GLWETensorKey, Infos,
+    GGLWECiphertext, GLWEAutomorphismKey, GLWECiphertext, GLWESecret, GLWESecretExec, GLWESwitchingKey, GLWETensorKey, Infos,
     ScratchCore,
 };
 

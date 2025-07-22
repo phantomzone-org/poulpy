@@ -1,6 +1,6 @@
 use backend::{
     AddNormal, Decoding, Encoding, FFT64, FillUniform, Module, ScalarZnx, ScalarZnxAlloc, ScratchOwned, SvpPPol, SvpPPolAlloc,
-    SvpPPolApplyInplace, SvpPPolPrepare, VecZnx, VecZnxAlloc, VecZnxBig, VecZnxBigAddSmallInplace, VecZnxBigNew,
+    SvpPPolApplyInplace, SvpPPolPrepare, VecZnx, VecZnxAlloc, VecZnxBig, VecZnxBigAddSmallInplace, VecZnxBigAlloc,
     VecZnxBigNormalize, VecZnxBigSubSmallBInplace, VecZnxDft, VecZnxDftAlloc, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigTmpA,
     VecZnxOps, ZnxInfos,
 };
@@ -54,7 +54,7 @@ fn main() {
     // Alias scratch space (VecZnxDft<B> is always at least as big as VecZnxBig<B>)
 
     // BIG(ct[1] * s) <- IDFT(DFT(ct[1] * s)) (not normalized)
-    let mut buf_big: VecZnxBig<Vec<u8>, FFT64> = module.new_vec_znx_big(1, ct_size);
+    let mut buf_big: VecZnxBig<Vec<u8>, FFT64> = module.vec_znx_big_alloc(1, ct_size);
     module.vec_znx_dft_to_vec_znx_big_tmp_a(&mut buf_big, 0, &mut buf_dft, 0);
 
     // Creates a plaintext: VecZnx with 1 column

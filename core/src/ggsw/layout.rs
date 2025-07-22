@@ -1,15 +1,15 @@
 use backend::{Backend, MatZnx, MatZnxAlloc, Module, Scratch, VmpPMat, VmpPMatAlloc, VmpPMatAllocBytes, VmpPMatPrepare};
 
-use crate::{GLWECiphertext, Infos};
+use crate::{GGLWECiphertext, GLWECiphertext, Infos};
 
-pub struct GGLWECiphertext<D> {
+pub struct GGSWCiphertext<D> {
     pub(crate) data: MatZnx<D>,
     pub(crate) basek: usize,
     pub(crate) k: usize,
     pub(crate) digits: usize,
 }
 
-impl<D: AsRef<[u8]>> GGLWECiphertext<D> {
+impl<D: AsRef<[u8]>> GGSWCiphertext<D> {
     pub fn at(&self, row: usize, col: usize) -> GLWECiphertext<&[u8]> {
         GLWECiphertext {
             data: self.data.at(row, col),
@@ -19,7 +19,7 @@ impl<D: AsRef<[u8]>> GGLWECiphertext<D> {
     }
 }
 
-impl<D: AsMut<[u8]> + AsRef<[u8]>> GGLWECiphertext<D> {
+impl<D: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<D> {
     pub fn at_mut(&mut self, row: usize, col: usize) -> GLWECiphertext<&mut [u8]> {
         GLWECiphertext {
             data: self.data.at_mut(row, col),
@@ -29,70 +29,56 @@ impl<D: AsMut<[u8]> + AsRef<[u8]>> GGLWECiphertext<D> {
     }
 }
 
-impl GGLWECiphertext<Vec<u8>> {
-    pub fn alloc<B: Backend>(
-        module: &Module<B>,
-        basek: usize,
-        k: usize,
-        rows: usize,
-        digits: usize,
-        rank_in: usize,
-        rank_out: usize,
-    ) -> Self {
+impl GGSWCiphertext<Vec<u8>> {
+    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self {
         let size: usize = k.div_ceil(basek);
+        debug_assert!(digits > 0, "invalid ggsw: `digits` == 0");
+
         debug_assert!(
             size > digits,
-            "invalid gglwe: ceil(k/basek): {} <= digits: {}",
+            "invalid ggsw: ceil(k/basek): {} <= digits: {}",
             size,
             digits
         );
 
         assert!(
             rows * digits <= size,
-            "invalid gglwe: rows: {} * digits:{} > ceil(k/basek): {}",
+            "invalid ggsw: rows: {} * digits:{} > ceil(k/basek): {}",
             rows,
             digits,
             size
         );
 
         Self {
-            data: module.new_mat_znx(rows, rank_in, rank_out + 1, size),
-            basek: basek,
-            k,
+            data: module.new_mat_znx(rows, rank + 1, rank + 1, k.div_ceil(basek)),
+            basek,
+            k: k,
             digits,
         }
     }
 
-    pub fn bytes_of<B: Backend>(
-        module: &Module<B>,
-        basek: usize,
-        k: usize,
-        rows: usize,
-        digits: usize,
-        rank_in: usize,
-        rank_out: usize,
-    ) -> usize {
+    pub fn bytes_of<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize {
         let size: usize = k.div_ceil(basek);
         debug_assert!(
             size > digits,
-            "invalid gglwe: ceil(k/basek): {} <= digits: {}",
+            "invalid ggsw: ceil(k/basek): {} <= digits: {}",
             size,
             digits
         );
 
         assert!(
             rows * digits <= size,
-            "invalid gglwe: rows: {} * digits:{} > ceil(k/basek): {}",
+            "invalid ggsw: rows: {} * digits:{} > ceil(k/basek): {}",
             rows,
             digits,
             size
         );
 
-        module.bytes_of_mat_znx(rows, rank_in, rank_out + 1, rows)
+        module.bytes_of_mat_znx(rows, rank + 1, rank + 1, size)
     }
 }
 
-impl<D> Infos for GGLWECiphertext<D> {
+impl<D> Infos for GGSWCiphertext<D> {
     type Inner = MatZnx<D>;
 
     fn inner(&self) -> &Self::Inner {
@@ -108,7 +94,7 @@ impl<D> Infos for GGLWECiphertext<D> {
     }
 }
 
-impl<D> GGLWECiphertext<D> {
+impl<D> GGSWCiphertext<D> {
     pub fn rank(&self) -> usize {
         self.data.cols_out() - 1
     }
@@ -116,86 +102,72 @@ impl<D> GGLWECiphertext<D> {
     pub fn digits(&self) -> usize {
         self.digits
     }
-
-    pub fn rank_in(&self) -> usize {
-        self.data.cols_in()
-    }
-
-    pub fn rank_out(&self) -> usize {
-        self.data.cols_out() - 1
-    }
 }
 
-pub struct GGLWECiphertextExec<D, B: Backend> {
-    pub(crate) data: VmpPMat<D, B>,
+pub struct GGSWCiphertextExec<C, B: Backend> {
+    pub(crate) data: VmpPMat<C, B>,
     pub(crate) basek: usize,
     pub(crate) k: usize,
     pub(crate) digits: usize,
 }
 
-impl<B: Backend> GGLWECiphertextExec<Vec<u8>, B> {
-    pub fn alloc(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank_in: usize, rank_out: usize) -> Self
+impl<B: Backend> GGSWCiphertextExec<Vec<u8>, B> {
+    pub fn alloc(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self
     where
         Module<B>: VmpPMatAlloc<B>,
     {
         let size: usize = k.div_ceil(basek);
+        debug_assert!(digits > 0, "invalid ggsw: `digits` == 0");
+
         debug_assert!(
             size > digits,
-            "invalid gglwe: ceil(k/basek): {} <= digits: {}",
+            "invalid ggsw: ceil(k/basek): {} <= digits: {}",
             size,
             digits
         );
 
         assert!(
             rows * digits <= size,
-            "invalid gglwe: rows: {} * digits:{} > ceil(k/basek): {}",
+            "invalid ggsw: rows: {} * digits:{} > ceil(k/basek): {}",
             rows,
             digits,
             size
         );
 
         Self {
-            data: module.vmp_pmat_alloc(rows, rank_in, rank_out + 1, size),
-            basek: basek,
-            k,
+            data: module.vmp_pmat_alloc(rows, rank + 1, rank + 1, k.div_ceil(basek)),
+            basek,
+            k: k,
             digits,
         }
     }
 
-    pub fn bytes_of(
-        module: &Module<B>,
-        basek: usize,
-        k: usize,
-        rows: usize,
-        digits: usize,
-        rank_in: usize,
-        rank_out: usize,
-    ) -> usize
+    pub fn bytes_of(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize
     where
         Module<B>: VmpPMatAllocBytes,
     {
         let size: usize = k.div_ceil(basek);
         debug_assert!(
             size > digits,
-            "invalid gglwe: ceil(k/basek): {} <= digits: {}",
+            "invalid ggsw: ceil(k/basek): {} <= digits: {}",
             size,
             digits
         );
 
         assert!(
             rows * digits <= size,
-            "invalid gglwe: rows: {} * digits:{} > ceil(k/basek): {}",
+            "invalid ggsw: rows: {} * digits:{} > ceil(k/basek): {}",
             rows,
             digits,
             size
         );
 
-        module.vmp_pmat_alloc_bytes(rows, rank_in, rank_out + 1, rows)
+        module.vmp_pmat_alloc_bytes(rows, rank + 1, rank + 1, size)
     }
 }
 
-impl<D, B: Backend> Infos for GGLWECiphertextExec<D, B> {
-    type Inner = VmpPMat<D, B>;
+impl<T, B: Backend> Infos for GGSWCiphertextExec<T, B> {
+    type Inner = VmpPMat<T, B>;
 
     fn inner(&self) -> &Self::Inner {
         &self.data
@@ -210,7 +182,7 @@ impl<D, B: Backend> Infos for GGLWECiphertextExec<D, B> {
     }
 }
 
-impl<D, B: Backend> GGLWECiphertextExec<D, B> {
+impl<T, B: Backend> GGSWCiphertextExec<T, B> {
     pub fn rank(&self) -> usize {
         self.data.cols_out() - 1
     }
@@ -218,25 +190,17 @@ impl<D, B: Backend> GGLWECiphertextExec<D, B> {
     pub fn digits(&self) -> usize {
         self.digits
     }
-
-    pub fn rank_in(&self) -> usize {
-        self.data.cols_in()
-    }
-
-    pub fn rank_out(&self) -> usize {
-        self.data.cols_out() - 1
-    }
 }
 
-impl<D: AsRef<[u8]> + AsMut<[u8]>, B: Backend> GGLWECiphertextExec<D, B> {
+impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>, B: Backend> GGSWCiphertextExec<DataSelf, B> {
     pub fn prepare<DataOther>(&mut self, module: &Module<B>, other: &GGLWECiphertext<DataOther>, scratch: &mut Scratch)
     where
         DataOther: AsRef<[u8]>,
         Module<B>: VmpPMatPrepare<B>,
     {
         module.vmp_prepare(&mut self.data, &other.data, scratch);
-        self.basek = other.basek;
         self.k = other.k;
+        self.basek = other.basek;
         self.digits = other.digits;
     }
 }

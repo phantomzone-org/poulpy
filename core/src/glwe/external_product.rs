@@ -3,7 +3,7 @@ use backend::{
     VecZnxDftToVecZnxBigConsume, VecZnxScratch, VmpApply,
 };
 
-use crate::{GLWECiphertext, Infos, ggsw::ciphertext_prep::GGSWCiphertextPrep};
+use crate::{GGSWCiphertextExec, GLWECiphertext, Infos};
 
 impl GLWECiphertext<Vec<u8>> {
     pub fn external_product_scratch_space<B: Backend>(
@@ -55,7 +55,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         &mut self,
         module: &Module<B>,
         lhs: &GLWECiphertext<DataLhs>,
-        rhs: &GGSWCiphertextPrep<DataRhs, B>,
+        rhs: &GGSWCiphertextExec<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
         Module<B>:
@@ -130,7 +130,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
     pub fn external_product_inplace<DataRhs: AsRef<[u8]>, B: Backend>(
         &mut self,
         module: &Module<B>,
-        rhs: &GGSWCiphertextPrep<DataRhs, B>,
+        rhs: &GGSWCiphertextExec<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
         Module<B>:

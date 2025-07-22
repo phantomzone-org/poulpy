@@ -1,7 +1,10 @@
-mod ciphertext;
+mod automorphism;
 mod encryption;
+mod external_product;
+mod keyswitch;
+mod layout;
 
-pub use ciphertext::{GGSWCiphertext, GGSWCiphertextExec};
+pub use layout::{GGSWCiphertext, GGSWCiphertextExec};
 
 #[cfg(test)]
-mod test_fft64;
+mod test;

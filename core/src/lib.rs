@@ -1,11 +1,11 @@
-pub mod blind_rotation;
-pub mod dist;
-pub mod elem;
-pub mod gglwe;
-pub mod ggsw;
-pub mod glwe;
-pub mod lwe;
-pub mod noise;
+mod blind_rotation;
+mod dist;
+mod elem;
+mod gglwe;
+mod ggsw;
+mod glwe;
+mod lwe;
+mod noise;
 
 use backend::Backend;
 use backend::Module;
@@ -14,10 +14,10 @@ use backend::VecZnxDftAllocBytes;
 pub use blind_rotation::{BlindRotationKeyCGGI, LookUpTable, cggi_blind_rotate, cggi_blind_rotate_scratch_space};
 pub use elem::{Infos, SetMetaData};
 pub use gglwe::{
-    GGLWECiphertext, GGLWECiphertextPrep, GLWEAutomorphismKey, GLWEAutomorphismKeyExec, GLWESwitchingKey, GLWESwitchingKeyExec,
-    GLWETensorKey, GLWETensorKeyPrep,
+    GGLWECiphertext, GGLWECiphertextExec, GLWEAutomorphismKey, GLWEAutomorphismKeyExec, GLWESwitchingKey, GLWESwitchingKeyExec,
+    GLWETensorKey, GLWETensorKeyExec,
 };
-pub use ggsw::GGSWCiphertext;
+pub use ggsw::{GGSWCiphertext, GGSWCiphertextExec};
 pub use glwe::{GLWECiphertext, GLWEOps, GLWEPacker, GLWEPlaintext, GLWEPublicKey, GLWESecret, GLWESecretExec};
 pub use lwe::{LWECiphertext, LWESecret};
 

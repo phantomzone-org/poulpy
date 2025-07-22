@@ -12,8 +12,9 @@ use sampling::source::Source;
 const VEC_ZNX_BIG_FFT64_WORDSIZE: usize = 1;
 
 use crate::{
-    FFT64, Module, VecZnx, VecZnxBig, VecZnxBigAddDistF64, VecZnxBigAddNormal, VecZnxBigAllocBytes, VecZnxBigFillDistF64,
-    VecZnxBigFillNormal, VecZnxBigFromBytes, VecZnxBigNew, VecZnxBigOwned, VecZnxBigToMut, VecZnxBigToRef, ZnxInfos, ZnxView,
+    FFT64, Module, VecZnx, VecZnxBig, VecZnxBigAddDistF64, VecZnxBigAddNormal, VecZnxBigAlloc, VecZnxBigAllocBytes,
+    VecZnxBigFillDistF64, VecZnxBigFillNormal, VecZnxBigFromBytes, VecZnxBigOwned, VecZnxBigToMut, VecZnxBigToRef, ZnxInfos,
+    ZnxView,
 };
 
 impl<D: AsRef<[u8]>> ZnxView for VecZnxBig<D, FFT64> {
@@ -32,14 +33,14 @@ impl<D: AsRef<[u8]>> ZnxSliceSize for VecZnxBig<D, FFT64> {
     }
 }
 
-impl VecZnxBigNew<FFT64> for Module<FFT64> {
-    fn new_vec_znx_big(&self, cols: usize, size: usize) -> VecZnxBigOwned<FFT64> {
+impl VecZnxBigAlloc<FFT64> for Module<FFT64> {
+    fn vec_znx_big_alloc(&self, cols: usize, size: usize) -> VecZnxBigOwned<FFT64> {
         VecZnxBig::<Vec<u8>, FFT64>::new(self.n(), cols, size)
     }
 }
 
 impl VecZnxBigFromBytes<FFT64> for Module<FFT64> {
-    fn new_vec_znx_big_from_bytes(&self, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxBigOwned<FFT64> {
+    fn vec_znx_big_from_bytes(&self, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxBigOwned<FFT64> {
         VecZnxBig::<Vec<u8>, FFT64>::new_from_bytes(self.n(), cols, size, bytes)
     }
 }

@@ -1,9 +1,10 @@
-use backend::{Backend, Module, ScalarZnx, Scratch, SvpPPolApplyInplace, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume};
+use backend::{
+    Backend, Module, ScalarZnx, Scratch, SvpPPolApplyInplace, VecZnxAlloc, VecZnxBigNormalize, VecZnxDftAllocBytes,
+    VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume, VecZnxOps, ZnxZero,
+};
 use sampling::source::Source;
 
-use crate::{GGSWCiphertext, GLWECiphertext, GLWESecretExec};
-
-
+use crate::{GGSWCiphertext, GLWECiphertext, GLWESecretExec, Infos, ScratchCore};
 
 impl GGSWCiphertext<Vec<u8>> {
     pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize
@@ -38,6 +39,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
     {
         #[cfg(debug_assertions)]
         {
+            use backend::ZnxInfos;
             assert_eq!(self.rank(), sk.rank());
             assert_eq!(self.n(), module.n());
             assert_eq!(pt.n(), module.n());

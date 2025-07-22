@@ -2,7 +2,8 @@ use backend::{FFT64, Module, ScalarZnxOps, ScratchOwned, Stats, VecZnxOps};
 use sampling::source::Source;
 
 use crate::{
-    noise::log2_std_noise_gglwe_product, GLWEAutomorphismKey, GLWEAutomorphismKeyExec, GLWEPlaintext, GLWESecret, GLWESecretExec, Infos
+    GLWEAutomorphismKey, GLWEAutomorphismKeyExec, GLWEPlaintext, GLWESecret, GLWESecretExec, Infos,
+    noise::log2_std_noise_gglwe_product,
 };
 
 #[test]
@@ -98,12 +99,18 @@ fn test_automorphism(
         scratch.borrow(),
     );
 
-    let mut auto_key_apply_exec: GLWEAutomorphismKeyExec<Vec<u8>, FFT64> = GLWEAutomorphismKeyExec::alloc(&module, basek, k_apply, rows_apply, digits, rank);
+    let mut auto_key_apply_exec: GLWEAutomorphismKeyExec<Vec<u8>, FFT64> =
+        GLWEAutomorphismKeyExec::alloc(&module, basek, k_apply, rows_apply, digits, rank);
 
     auto_key_apply_exec.prepare(&module, &auto_key_apply, scratch.borrow());
 
     // gglwe_{s1}(s0) (x) gglwe_{s2}(s1) = gglwe_{s2}(s0)
-    auto_key_out.automorphism(&module, &auto_key_in, &auto_key_apply_exec, scratch.borrow());
+    auto_key_out.automorphism(
+        &module,
+        &auto_key_in,
+        &auto_key_apply_exec,
+        scratch.borrow(),
+    );
 
     let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_out);
 
@@ -123,8 +130,9 @@ fn test_automorphism(
 
     (0..auto_key_out.rank_in()).for_each(|col_i| {
         (0..auto_key_out.rows()).for_each(|row_i| {
-
-            auto_key_out.at(row_i, col_i).decrypt(&module, &mut pt, &sk_auto_dft, scratch.borrow());
+            auto_key_out
+                .at(row_i, col_i)
+                .decrypt(&module, &mut pt, &sk_auto_dft, scratch.borrow());
 
             module.vec_znx_sub_scalar_inplace(
                 &mut pt.data,
@@ -176,8 +184,7 @@ fn test_automorphism_inplace(
     let rows_in: usize = k_in / (basek * digits);
     let rows_apply: usize = k_in.div_ceil(basek * digits);
 
-    let mut auto_key: GLWEAutomorphismKey<Vec<u8>> =
-        GLWEAutomorphismKey::alloc(&module, basek, k_in, rows_in, digits_in, rank);
+    let mut auto_key: GLWEAutomorphismKey<Vec<u8>> = GLWEAutomorphismKey::alloc(&module, basek, k_in, rows_in, digits_in, rank);
     let mut auto_key_apply: GLWEAutomorphismKey<Vec<u8>> =
         GLWEAutomorphismKey::alloc(&module, basek, k_apply, rows_apply, digits, rank);
 
@@ -215,7 +222,8 @@ fn test_automorphism_inplace(
         scratch.borrow(),
     );
 
-    let mut auto_key_apply_exec: GLWEAutomorphismKeyExec<Vec<u8>, FFT64> = GLWEAutomorphismKeyExec::alloc(&module, basek, k_apply, rows_apply, digits, rank);
+    let mut auto_key_apply_exec: GLWEAutomorphismKeyExec<Vec<u8>, FFT64> =
+        GLWEAutomorphismKeyExec::alloc(&module, basek, k_apply, rows_apply, digits, rank);
 
     auto_key_apply_exec.prepare(&module, &auto_key_apply, scratch.borrow());
 
@@ -241,7 +249,9 @@ fn test_automorphism_inplace(
 
     (0..auto_key.rank_in()).for_each(|col_i| {
         (0..auto_key.rows()).for_each(|row_i| {
-            auto_key.at(row_i, col_i).decrypt(&module, &mut pt, &sk_auto_dft, scratch.borrow());
+            auto_key
+                .at(row_i, col_i)
+                .decrypt(&module, &mut pt, &sk_auto_dft, scratch.borrow());
             module.vec_znx_sub_scalar_inplace(
                 &mut pt.data,
                 0,

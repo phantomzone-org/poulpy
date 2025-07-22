@@ -2,7 +2,8 @@ use backend::{FFT64, Module, ScalarZnx, ScalarZnxAlloc, ScalarZnxToMut, ScratchO
 use sampling::source::Source;
 
 use crate::{
-    noise::{log2_std_noise_gglwe_product, noise_ggsw_product}, GGSWCiphertext, GLWEPlaintext, GLWESecret, GLWESecretExec, GLWESwitchingKey, GLWESwitchingKeyExec, Infos
+    GGSWCiphertext, GLWEPlaintext, GLWESecret, GLWESecretExec, GLWESwitchingKey, GLWESwitchingKeyExec, Infos,
+    noise::{log2_std_noise_gglwe_product, noise_ggsw_product},
 };
 
 #[test]
@@ -134,17 +135,16 @@ fn test_encrypt_sk(log_n: usize, basek: usize, k_ksk: usize, digits: usize, rank
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
     let rows: usize = (k_ksk - digits * basek) / (digits * basek);
 
-    let mut ksk: GLWESwitchingKey<Vec<u8>> =
-        GLWESwitchingKey::alloc(&module, basek, k_ksk, rows, digits, rank_in, rank_out);
+    let mut ksk: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc(&module, basek, k_ksk, rows, digits, rank_in, rank_out);
     let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_ksk);
 
     let mut source_xs: Source = Source::new([0u8; 32]);
     let mut source_xe: Source = Source::new([0u8; 32]);
     let mut source_xa: Source = Source::new([0u8; 32]);
 
-    let mut scratch: ScratchOwned = ScratchOwned::new(
-        GLWESwitchingKey::encrypt_sk_scratch_space(&module, basek, k_ksk, rank_in, rank_out)
-    );
+    let mut scratch: ScratchOwned = ScratchOwned::new(GLWESwitchingKey::encrypt_sk_scratch_space(
+        &module, basek, k_ksk, rank_in, rank_out,
+    ));
 
     let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc(&module, rank_in);
     sk_in.fill_ternary_prob(0.5, &mut source_xs);
@@ -163,10 +163,10 @@ fn test_encrypt_sk(log_n: usize, basek: usize, k_ksk: usize, digits: usize, rank
         scratch.borrow(),
     );
 
-
     (0..ksk.rank_in()).for_each(|col_i| {
         (0..ksk.rows()).for_each(|row_i| {
-            ksk.at(row_i, col_i).decrypt(&module, &mut pt, &sk_out_exec, scratch.borrow());
+            ksk.at(row_i, col_i)
+                .decrypt(&module, &mut pt, &sk_out_exec, scratch.borrow());
             module.vec_znx_sub_scalar_inplace(
                 &mut pt.data,
                 0,
@@ -236,15 +236,15 @@ fn test_key_switch(
             rank_in_s0s1,
             rank_in_s0s1 | rank_out_s0s1,
         ) | GLWESwitchingKey::keyswitch_scratch_space(
-                &module,
-                basek,
-                k_out,
-                k_in,
-                k_ksk,
-                digits,
-                ct_gglwe_s1s2.rank_in(),
-                ct_gglwe_s1s2.rank_out(),
-            ),
+            &module,
+            basek,
+            k_out,
+            k_in,
+            k_ksk,
+            digits,
+            ct_gglwe_s1s2.rank_in(),
+            ct_gglwe_s1s2.rank_out(),
+        ),
     );
 
     let mut sk0: GLWESecret<Vec<u8>> = GLWESecret::alloc(&module, rank_in_s0s1);
@@ -279,7 +279,7 @@ fn test_key_switch(
         scratch.borrow(),
     );
 
-    let mut ct_gglwe_s1s2_exec : GLWESwitchingKeyExec<Vec<u8>, FFT64> = GLWESwitchingKeyExec::alloc(
+    let mut ct_gglwe_s1s2_exec: GLWESwitchingKeyExec<Vec<u8>, FFT64> = GLWESwitchingKeyExec::alloc(
         &module,
         basek,
         k_out,
@@ -292,14 +292,20 @@ fn test_key_switch(
     ct_gglwe_s1s2_exec.prepare(&module, &ct_gglwe_s1s2, scratch.borrow());
 
     // gglwe_{s1}(s0) (x) gglwe_{s2}(s1) = gglwe_{s2}(s0)
-    ct_gglwe_s0s2.keyswitch(&module, &ct_gglwe_s0s1, &ct_gglwe_s1s2_exec, scratch.borrow());
-
+    ct_gglwe_s0s2.keyswitch(
+        &module,
+        &ct_gglwe_s0s1,
+        &ct_gglwe_s1s2_exec,
+        scratch.borrow(),
+    );
 
     let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_out);
 
     (0..ct_gglwe_s0s2.rank_in()).for_each(|col_i| {
         (0..ct_gglwe_s0s2.rows()).for_each(|row_i| {
-            ct_gglwe_s0s2.at(row_i, col_i).decrypt(&module, &mut pt, &sk2_exec, scratch.borrow());
+            ct_gglwe_s0s2
+                .at(row_i, col_i)
+                .decrypt(&module, &mut pt, &sk2_exec, scratch.borrow());
             module.vec_znx_sub_scalar_inplace(
                 &mut pt.data,
                 0,
@@ -392,15 +398,8 @@ fn test_key_switch_inplace(
         scratch.borrow(),
     );
 
-    let mut ct_gglwe_s1s2_exec : GLWESwitchingKeyExec<Vec<u8>, FFT64> = GLWESwitchingKeyExec::alloc(
-        &module,
-        basek,
-        k_ct,
-        rows,
-        digits_in,
-        rank_in,
-        rank_out,
-    );
+    let mut ct_gglwe_s1s2_exec: GLWESwitchingKeyExec<Vec<u8>, FFT64> =
+        GLWESwitchingKeyExec::alloc(&module, basek, k_ct, rows, digits_in, rank_in, rank_out);
 
     ct_gglwe_s1s2_exec.prepare(&module, &ct_gglwe_s1s2, scratch.borrow());
 
@@ -413,7 +412,9 @@ fn test_key_switch_inplace(
 
     (0..ct_gglwe_s0s2.rank_in()).for_each(|col_i| {
         (0..ct_gglwe_s0s2.rows()).for_each(|row_i| {
-            ct_gglwe_s0s2.at(row_i, col_i).decrypt(&module, &mut pt, &sk2_exec, scratch.borrow());
+            ct_gglwe_s0s2
+                .at(row_i, col_i)
+                .decrypt(&module, &mut pt, &sk2_exec, scratch.borrow());
             module.vec_znx_sub_scalar_inplace(
                 &mut pt.data,
                 0,
@@ -512,7 +513,8 @@ fn test_external_product(
         scratch.borrow(),
     );
 
-    let mut ct_rgsw_exec: GGSWCiphertextExec<Vec<u8>, FFT64> = GGSWCiphertextExec::alloc(&module, basek, k_ggsw, rows, digits, rank_out);
+    let mut ct_rgsw_exec: GGSWCiphertextExec<Vec<u8>, FFT64> =
+        GGSWCiphertextExec::alloc(&module, basek, k_ggsw, rows, digits, rank_out);
 
     // gglwe_(m) (x) RGSW_(X^k) = gglwe_(m * X^k)
     ct_gglwe_out.external_product(&module, &ct_gglwe_in, &ct_rgsw, scratch.borrow());
@@ -525,8 +527,9 @@ fn test_external_product(
 
     (0..rank_in).for_each(|col_i| {
         (0..ct_gglwe_out.rows()).for_each(|row_i| {
-
-            ct_gglwe_out.at(row_i, col_i).decrypt(&module, &mut pt, &sk_out_exec, scratch.borrow());
+            ct_gglwe_out
+                .at(row_i, col_i)
+                .decrypt(&module, &mut pt, &sk_out_exec, scratch.borrow());
 
             module.vec_znx_sub_scalar_inplace(
                 &mut pt.data,

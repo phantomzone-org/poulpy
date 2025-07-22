@@ -3,7 +3,7 @@ use backend::{
     VmpApply, ZnxZero,
 };
 
-use crate::{GLWEAutomorphismKey, GLWECiphertext, GLWESwitchingKey, Infos, ggsw::ciphertext_prep::GGSWCiphertextPrep};
+use crate::{GGSWCiphertextExec, GLWEAutomorphismKey, GLWECiphertext, GLWESwitchingKey, Infos};
 
 impl GLWESwitchingKey<Vec<u8>> {
     pub fn external_product_scratch_space<B: Backend>(
@@ -41,7 +41,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<DataSelf> {
         &mut self,
         module: &Module<B>,
         lhs: &GLWESwitchingKey<DataLhs>,
-        rhs: &GGSWCiphertextPrep<DataRhs, B>,
+        rhs: &GGSWCiphertextExec<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
         Module<B>:
@@ -89,7 +89,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<DataSelf> {
     pub fn external_product_inplace<DataRhs: AsRef<[u8]>, B: Backend>(
         &mut self,
         module: &Module<B>,
-        rhs: &GGSWCiphertextPrep<DataRhs, B>,
+        rhs: &GGSWCiphertextExec<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
         Module<B>:
@@ -151,7 +151,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWEAutomorphismKey<DataSelf> {
         &mut self,
         module: &Module<B>,
         lhs: &GLWEAutomorphismKey<DataLhs>,
-        rhs: &GGSWCiphertextPrep<DataRhs, B>,
+        rhs: &GGSWCiphertextExec<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
         Module<B>:
@@ -163,7 +163,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWEAutomorphismKey<DataSelf> {
     pub fn external_product_inplace<DataRhs: AsRef<[u8]>, B: Backend>(
         &mut self,
         module: &Module<B>,
-        rhs: &GGSWCiphertextPrep<DataRhs, B>,
+        rhs: &GGSWCiphertextExec<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
         Module<B>:

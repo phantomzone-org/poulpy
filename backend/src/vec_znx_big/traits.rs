@@ -3,12 +3,12 @@ use sampling::source::Source;
 
 use crate::{Backend, Scratch, VecZnxBigOwned, VecZnxBigToMut, VecZnxBigToRef, VecZnxToMut, VecZnxToRef};
 
-pub trait VecZnxBigNew<B: Backend> {
-    fn new_vec_znx_big(&self, cols: usize, size: usize) -> VecZnxBigOwned<B>;
+pub trait VecZnxBigAlloc<B: Backend> {
+    fn vec_znx_big_alloc(&self, cols: usize, size: usize) -> VecZnxBigOwned<B>;
 }
 
 pub trait VecZnxBigFromBytes<B: Backend> {
-    fn new_vec_znx_big_from_bytes(&self, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxBigOwned<B>;
+    fn vec_znx_big_from_bytes(&self, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxBigOwned<B>;
 }
 
 pub trait VecZnxBigAllocBytes {
