@@ -1,4 +1,7 @@
-use backend::{Backend, DataViewMut, Module, Scratch, VecZnxBig, VecZnxDftAllocBytes, VecZnxScratch};
+use backend::{
+    Backend, DataViewMut, Module, Scratch, VecZnxBig, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftFromVecZnx,
+    VecZnxDftToVecZnxBigConsume, VecZnxScratch, VmpApply,
+};
 
 use crate::{GLWECiphertext, Infos, ggsw::ciphertext_prep::GGSWCiphertextPrep};
 
@@ -13,13 +16,13 @@ impl GLWECiphertext<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: VecZnxDftAllocBytes,
+        Module<B>: VecZnxDftAllocBytes + VmpApply<B>,
     {
         let in_size: usize = k_in.div_ceil(basek).div_ceil(digits);
         let out_size: usize = k_out.div_ceil(basek);
         let ggsw_size: usize = k_ggsw.div_ceil(basek);
-        let res_dft: usize = module.bytes_of_vec_znx_dft(rank + 1, ggsw_size);
-        let a_dft: usize = module.bytes_of_vec_znx_dft(rank + 1, in_size);
+        let res_dft: usize = module.vec_znx_dft_alloc_bytes(rank + 1, ggsw_size);
+        let a_dft: usize = module.vec_znx_dft_alloc_bytes(rank + 1, in_size);
         let vmp: usize = module.vmp_apply_tmp_bytes(
             out_size,
             in_size,
@@ -41,7 +44,7 @@ impl GLWECiphertext<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: VecZnxDftAllocBytes,
+        Module<B>: VecZnxDftAllocBytes + VmpApply<B>,
     {
         Self::external_product_scratch_space(module, basek, k_out, k_out, k_ggsw, digits, rank)
     }
@@ -55,7 +58,8 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         rhs: &GGSWCiphertextPrep<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
-        Module<B>: VecZnxDftAllocBytes,
+        Module<B>:
+            VecZnxDftAllocBytes + VmpApply<B> + VecZnxDftFromVecZnx<B> + VecZnxDftToVecZnxBigConsume<B> + VecZnxBigNormalize<B>,
     {
         let basek: usize = self.basek();
 
@@ -105,7 +109,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
                 res_dft.set_size(rhs.size() - ((digits - di) as isize - 2).max(0) as usize);
 
                 (0..cols).for_each(|col_i| {
-                    module.vec_znx_dft(digits, digits - 1 - di, &mut a_dft, col_i, &lhs.data, col_i);
+                    module.vec_znx_dft_from_vec_znx(digits, digits - 1 - di, &mut a_dft, col_i, &lhs.data, col_i);
                 });
 
                 if di == 0 {
@@ -116,7 +120,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
             });
         }
 
-        let res_big: VecZnxBig<&mut [u8], B> = module.vec_znx_idft_consume(res_dft);
+        let res_big: VecZnxBig<&mut [u8], B> = module.vec_znx_dft_to_vec_znx_big_consume(res_dft);
 
         (0..cols).for_each(|i| {
             module.vec_znx_big_normalize(basek, &mut self.data, i, &res_big, i, scratch1);
@@ -129,7 +133,8 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         rhs: &GGSWCiphertextPrep<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
-        Module<B>: VecZnxDftAllocBytes,
+        Module<B>:
+            VecZnxDftAllocBytes + VmpApply<B> + VecZnxDftFromVecZnx<B> + VecZnxDftToVecZnxBigConsume<B> + VecZnxBigNormalize<B>,
     {
         unsafe {
             let self_ptr: *mut GLWECiphertext<DataSelf> = self as *mut GLWECiphertext<DataSelf>;

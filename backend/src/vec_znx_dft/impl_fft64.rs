@@ -1,6 +1,6 @@
 use crate::{
     FFT64, Module, Scratch, VecZnxBig, VecZnxBigToMut, VecZnxDft, VecZnxDftAdd, VecZnxDftAddInplace, VecZnxDftAllocBytes,
-    VecZnxDftBytesOf, VecZnxDftCopy, VecZnxDftFromBytes, VecZnxDftFromVecZnx, VecZnxDftNew, VecZnxDftOwned, VecZnxDftSub,
+    VecZnxDftBytesOf, VecZnxDftCopy, VecZnxDftFromBytes, VecZnxDftFromVecZnx, VecZnxDftAlloc, VecZnxDftOwned, VecZnxDftSub,
     VecZnxDftSubABInplace, VecZnxDftSubBAInplace, VecZnxDftToMut, VecZnxDftToRef, VecZnxDftToVecZnxBig,
     VecZnxDftToVecZnxBigConsume, VecZnxDftToVecZnxBigTmpA, VecZnxToRef, ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero,
     ffi::{vec_znx_big, vec_znx_dft},
@@ -26,8 +26,8 @@ impl<D: AsRef<[u8]>> ZnxView for VecZnxDft<D, FFT64> {
 }
 
 impl VecZnxDftFromBytes<FFT64> for Module<FFT64> {
-    fn new_vec_znx_dft_from_bytes(&self, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxDftOwned<FFT64> {
-        VecZnxDft::<Vec<u8>, FFT64>::new_from_bytes(self.n(), cols, size, bytes)
+    fn vec_znx_dft_from_bytes(&self, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxDftOwned<FFT64> {
+        VecZnxDft::<Vec<u8>, FFT64>::from_bytes(self.n(), cols, size, bytes)
     }
 }
 
@@ -37,9 +37,9 @@ impl VecZnxDftAllocBytes for Module<FFT64> {
     }
 }
 
-impl VecZnxDftNew<FFT64> for Module<FFT64> {
-    fn new_vec_znx_dft(&self, cols: usize, size: usize) -> VecZnxDftOwned<FFT64> {
-        VecZnxDftOwned::new(self.n(), cols, size)
+impl VecZnxDftAlloc<FFT64> for Module<FFT64> {
+    fn vec_znx_dft_alloc(&self, cols: usize, size: usize) -> VecZnxDftOwned<FFT64> {
+        VecZnxDftOwned::alloc(self.n(), cols, size)
     }
 }
 

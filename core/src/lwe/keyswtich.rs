@@ -1,32 +1,32 @@
-use backend::{Backend, Module, Scratch, SvpPPolAllocBytes, VecZnxDftAllocBytes, VecZnxOps, ZnxView, ZnxViewMut, ZnxZero};
+use backend::{Backend, Module, Scratch, SvpPPolAllocBytes, SvpPPolApplyInplace, SvpPPolPrepare, VecZnxBigAddSmallInplace, VecZnxBigAutomorphismInplace, VecZnxBigNormalize, VecZnxBigSubSmallAInplace, VecZnxBigSubSmallBInplace, VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume, VecZnxOps, VmpApply, ZnxView, ZnxViewMut, ZnxZero};
 use sampling::source::Source;
 
 use crate::{
-    FourierGLWESecret, GLWECiphertext, GLWESecret, GLWESwitchingKey, GLWESwitchingKeyPrep, Infos, LWECiphertext, LWESecret,
-    ScratchCore,
+    FourierGLWESecret, GLWECiphertext, GLWESecret, GLWESwitchingKey, GLWESwitchingKeyPrep, Infos, LWECiphertext, LWESecret, ScratchCore
 };
 
 /// A special [GLWESwitchingKey] required to for the conversion from [GLWECiphertext] to [LWECiphertext].
+pub struct GLWEToLWESwitchingKey<D>(GLWESwitchingKey<D>);
 pub struct GLWEToLWESwitchingKeyPrep<D, B: Backend>(GLWESwitchingKeyPrep<D, B>);
 
-impl<B: Backend> GLWEToLWESwitchingKeyPrep<Vec<u8>, B> {
-    pub fn alloc(module: &Module<B>, basek: usize, k: usize, rows: usize, rank: usize) -> Self {
-        Self(GLWESwitchingKeyPrep::alloc(
+impl GLWEToLWESwitchingKey<Vec<u8>> {
+    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize, rank: usize) -> Self {
+        Self(GLWESwitchingKey::alloc(
             module, basek, k, rows, 1, rank, 1,
         ))
     }
 
-    pub fn encrypt_sk_scratch_space(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize
+    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize
     where
-        Module<B>: SvpPPolAllocBytes,
+        Module<B>: VecZnxDftAllocBytes + SvpPPolAllocBytes + VecZnxBigNormalize<B>,
     {
         FourierGLWESecret::bytes_of(module, rank)
-            + (GLWESwitchingKeyPrep::encrypt_sk_scratch_space(module, basek, k, rank, rank) | GLWESecret::bytes_of(module, rank))
+            + (GLWESwitchingKey::encrypt_sk_scratch_space(module, basek, k, rank, rank) | GLWESecret::bytes_of(module, rank))
     }
 }
 
-impl<D: AsMut<[u8]> + AsRef<[u8]>, B: Backend> GLWEToLWESwitchingKeyPrep<D, B> {
-    pub fn encrypt_sk<DLwe, DGlwe>(
+impl<D: AsMut<[u8]> + AsRef<[u8]>> GLWEToLWESwitchingKey<D> {
+    pub fn encrypt_sk<DLwe, DGlwe, B: Backend>(
         &mut self,
         module: &Module<B>,
         sk_lwe: &LWESecret<DLwe>,
@@ -38,54 +38,58 @@ impl<D: AsMut<[u8]> + AsRef<[u8]>, B: Backend> GLWEToLWESwitchingKeyPrep<D, B> {
     ) where
         DLwe: AsRef<[u8]>,
         DGlwe: AsRef<[u8]>,
-        Module<B>: SvpPPolAllocBytes + VecZnxDftAllocBytes,
+        Module<B>: VecZnxDftAllocBytes
+            + SvpPPolPrepare<B>
+            + SvpPPolAllocBytes
+            + VecZnxBigNormalize<B>
+            + VecZnxDftFromVecZnx<B>
+            + SvpPPolApplyInplace<B>
+            + VecZnxDftToVecZnxBigConsume<B>,
     {
         #[cfg(debug_assertions)]
         {
             assert!(sk_lwe.n() <= module.n());
         }
 
-        let (mut sk_lwe_as_glwe_dft, scratch1) = scratch.tmp_fourier_glwe_secret(module, 1);
-
-        {
-            let (mut sk_lwe_as_glwe, _) = scratch1.tmp_glwe_secret(module, 1);
-            sk_lwe_as_glwe.data.zero();
-            sk_lwe_as_glwe.data.at_mut(0, 0)[..sk_lwe.n()].copy_from_slice(sk_lwe.data.at(0, 0));
-            module.vec_znx_automorphism_inplace(-1, &mut sk_lwe_as_glwe.data, 0);
-            sk_lwe_as_glwe_dft.set(module, &sk_lwe_as_glwe);
-        }
+        let (mut sk_lwe_as_glwe, scratch1) = scratch.tmp_glwe_secret(module, 1);
+        sk_lwe_as_glwe.data.zero();
+        sk_lwe_as_glwe.data.at_mut(0, 0)[..sk_lwe.n()].copy_from_slice(sk_lwe.data.at(0, 0));
+        module.vec_znx_automorphism_inplace(-1, &mut sk_lwe_as_glwe.data, 0);
 
         self.0.encrypt_sk(
             module,
             sk_glwe,
-            &sk_lwe_as_glwe_dft,
+            &sk_lwe_as_glwe,
             source_xa,
             source_xe,
             sigma,
             scratch1,
         );
+
+    
     }
 }
 
 /// A special [GLWESwitchingKey] required to for the conversion from [LWECiphertext] to [GLWECiphertext].
 pub struct LWEToGLWESwitchingKeyPrep<D, B: Backend>(GLWESwitchingKeyPrep<D, B>);
+pub struct LWEToGLWESwitchingKey<D>(GLWESwitchingKey<D>);
 
-impl<B: Backend> LWEToGLWESwitchingKeyPrep<Vec<u8>, B> {
-    pub fn alloc(module: &Module<B>, basek: usize, k: usize, rows: usize, rank: usize) -> Self {
+impl LWEToGLWESwitchingKey<Vec<u8>> {
+    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize, rank: usize) -> Self {
         Self(GLWESwitchingKey::alloc(module, basek, k, rows, 1, 1, rank))
     }
 
-    pub fn encrypt_sk_scratch_space(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize {
+    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize where Module<B>: VecZnxDftAllocBytes + SvpPPolAllocBytes + VecZnxBigNormalize<B>, {
         GLWESwitchingKey::encrypt_sk_scratch_space(module, basek, k, 1, rank) + GLWESecret::bytes_of(module, 1)
     }
 }
 
-impl<D: AsMut<[u8]> + AsRef<[u8]>, B: Backend> LWEToGLWESwitchingKeyPrep<D, B> {
-    pub fn encrypt_sk<DLwe, DGlwe>(
+impl<D: AsMut<[u8]> + AsRef<[u8]>> LWEToGLWESwitchingKey<D> {
+    pub fn encrypt_sk<DLwe, DGlwe, B: Backend>(
         &mut self,
         module: &Module<B>,
         sk_lwe: &LWESecret<DLwe>,
-        sk_glwe: &FourierGLWESecret<DGlwe, B>,
+        sk_glwe: &GLWESecret<DGlwe>,
         source_xa: &mut Source,
         source_xe: &mut Source,
         sigma: f64,
@@ -93,6 +97,13 @@ impl<D: AsMut<[u8]> + AsRef<[u8]>, B: Backend> LWEToGLWESwitchingKeyPrep<D, B> {
     ) where
         DLwe: AsRef<[u8]>,
         DGlwe: AsRef<[u8]>,
+        Module<B>: VecZnxDftAllocBytes
+            + SvpPPolPrepare<B>
+            + SvpPPolAllocBytes
+            + VecZnxBigNormalize<B>
+            + VecZnxDftFromVecZnx<B>
+            + SvpPPolApplyInplace<B>
+            + VecZnxDftToVecZnxBigConsume<B>,
     {
         #[cfg(debug_assertions)]
         {
@@ -117,21 +128,22 @@ impl<D: AsMut<[u8]> + AsRef<[u8]>, B: Backend> LWEToGLWESwitchingKeyPrep<D, B> {
 }
 
 pub struct LWESwitchingKeyPrep<D, B: Backend>(GLWESwitchingKeyPrep<D, B>);
+pub struct LWESwitchingKey<D>(GLWESwitchingKey<D>);
 
-impl<B: Backend> LWESwitchingKeyPrep<Vec<u8>, B> {
-    pub fn alloc(module: &Module<B>, basek: usize, k: usize, rows: usize) -> Self {
+impl LWESwitchingKey<Vec<u8>> {
+    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize) -> Self {
         Self(GLWESwitchingKey::alloc(module, basek, k, rows, 1, 1, 1))
     }
 
-    pub fn encrypt_sk_scratch_space(module: &Module<B>, basek: usize, k: usize) -> usize {
+    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize) -> usize where Module<B>: SvpPPolAllocBytes + VecZnxBigNormalize<B> + VecZnxDftAllocBytes {
         GLWESecret::bytes_of(module, 1)
             + FourierGLWESecret::bytes_of(module, 1)
             + GLWESwitchingKey::encrypt_sk_scratch_space(module, basek, k, 1, 1)
     }
 }
 
-impl<D: AsMut<[u8]> + AsRef<[u8]>, B: Backend> LWESwitchingKeyPrep<D, B> {
-    pub fn encrypt_sk<DIn, DOut>(
+impl<D: AsMut<[u8]> + AsRef<[u8]>> LWESwitchingKey<D> {
+    pub fn encrypt_sk<DIn, DOut, B: Backend>(
         &mut self,
         module: &Module<B>,
         sk_lwe_in: &LWESecret<DIn>,
@@ -143,6 +155,13 @@ impl<D: AsMut<[u8]> + AsRef<[u8]>, B: Backend> LWESwitchingKeyPrep<D, B> {
     ) where
         DIn: AsRef<[u8]>,
         DOut: AsRef<[u8]>,
+        Module<B>: VecZnxDftAllocBytes
+            + SvpPPolPrepare<B>
+            + SvpPPolAllocBytes
+            + VecZnxBigNormalize<B>
+            + VecZnxDftFromVecZnx<B>
+            + SvpPPolApplyInplace<B>
+            + VecZnxDftToVecZnxBigConsume<B>,
     {
         #[cfg(debug_assertions)]
         {
@@ -151,12 +170,11 @@ impl<D: AsMut<[u8]> + AsRef<[u8]>, B: Backend> LWESwitchingKeyPrep<D, B> {
         }
 
         let (mut sk_in_glwe, scratch1) = scratch.tmp_glwe_secret(module, 1);
-        let (mut sk_out_glwe, scratch2) = scratch1.tmp_fourier_glwe_secret(module, 1);
+        let (mut sk_out_glwe, scratch2) = scratch1.tmp_glwe_secret(module, 1);
 
-        sk_in_glwe.data.at_mut(0, 0)[..sk_lwe_out.n()].copy_from_slice(sk_lwe_out.data.at(0, 0));
-        sk_in_glwe.data.at_mut(0, 0)[sk_lwe_out.n()..].fill(0);
+        sk_out_glwe.data.at_mut(0, 0)[..sk_lwe_out.n()].copy_from_slice(sk_lwe_out.data.at(0, 0));
+        sk_out_glwe.data.at_mut(0, 0)[sk_lwe_out.n()..].fill(0);
         module.vec_znx_automorphism_inplace(-1, &mut sk_in_glwe.data, 0);
-        sk_out_glwe.set(module, &sk_in_glwe);
         sk_in_glwe.data.at_mut(0, 0)[..sk_lwe_in.n()].copy_from_slice(sk_lwe_in.data.at(0, 0));
         sk_in_glwe.data.at_mut(0, 0)[sk_lwe_in.n()..].fill(0);
         module.vec_znx_automorphism_inplace(-1, &mut sk_in_glwe.data, 0);
@@ -181,7 +199,7 @@ impl LWECiphertext<Vec<u8>> {
         k_glwe: usize,
         k_ksk: usize,
         rank: usize,
-    ) -> usize {
+    ) -> usize where Module<B>: VecZnxDftAllocBytes + VmpApply<B> + VecZnxBigNormalize<B>,{
         GLWECiphertext::bytes_of(module, basek, k_lwe, 1)
             + GLWECiphertext::keyswitch_scratch_space(module, basek, k_lwe, k_glwe, k_ksk, 1, rank, 1)
     }
@@ -192,7 +210,7 @@ impl LWECiphertext<Vec<u8>> {
         k_lwe_out: usize,
         k_lwe_in: usize,
         k_ksk: usize,
-    ) -> usize {
+    ) -> usize where Module<B>: VecZnxDftAllocBytes + VmpApply<B> + VecZnxBigNormalize<B>,{
         GLWECiphertext::bytes_of(module, basek, k_lwe_out.max(k_lwe_in), 1)
             + GLWECiphertext::keyswitch_inplace_scratch_space(module, basek, k_lwe_out, k_ksk, 1, 1)
     }
@@ -228,6 +246,15 @@ impl<DLwe: AsRef<[u8]> + AsMut<[u8]>> LWECiphertext<DLwe> {
     ) where
         DGlwe: AsRef<[u8]>,
         DKs: AsRef<[u8]>,
+        Module<B>: VecZnxDftAllocBytes
+            + VmpApply<B>
+            + VecZnxDftFromVecZnx<B>
+            + VecZnxDftToVecZnxBigConsume<B>
+            + VecZnxBigAddSmallInplace<B>
+            + VecZnxBigNormalize<B>
+            + VecZnxBigAutomorphismInplace<B>
+            + VecZnxBigSubSmallAInplace<B>
+            + VecZnxBigSubSmallBInplace<B>,
     {
         #[cfg(debug_assertions)]
         {
@@ -247,6 +274,15 @@ impl<DLwe: AsRef<[u8]> + AsMut<[u8]>> LWECiphertext<DLwe> {
     ) where
         A: AsRef<[u8]>,
         DKs: AsRef<[u8]>,
+        Module<B>: VecZnxDftAllocBytes
+            + VmpApply<B>
+            + VecZnxDftFromVecZnx<B>
+            + VecZnxDftToVecZnxBigConsume<B>
+            + VecZnxBigAddSmallInplace<B>
+            + VecZnxBigNormalize<B>
+            + VecZnxBigAutomorphismInplace<B>
+            + VecZnxBigSubSmallAInplace<B>
+            + VecZnxBigSubSmallBInplace<B>,
     {
         #[cfg(debug_assertions)]
         {
@@ -285,7 +321,7 @@ impl GLWECiphertext<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: VecZnxDftAllocBytes,
+        Module<B>: VecZnxDftAllocBytes + VmpApply<B> + VecZnxBigNormalize<B>,
     {
         GLWECiphertext::keyswitch_scratch_space(module, basek, k_glwe, k_lwe, k_ksk, 1, 1, rank)
             + GLWECiphertext::bytes_of(module, basek, k_lwe, 1)
@@ -302,7 +338,15 @@ impl<D: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<D> {
     ) where
         DLwe: AsRef<[u8]>,
         DKsk: AsRef<[u8]>,
-        Module<B>: VecZnxDftAllocBytes,
+        Module<B>: VecZnxDftAllocBytes
+            + VmpApply<B>
+            + VecZnxDftFromVecZnx<B>
+            + VecZnxDftToVecZnxBigConsume<B>
+            + VecZnxBigAddSmallInplace<B>
+            + VecZnxBigNormalize<B>
+            + VecZnxBigAutomorphismInplace<B>
+            + VecZnxBigSubSmallAInplace<B>
+            + VecZnxBigSubSmallBInplace<B>,
     {
         #[cfg(debug_assertions)]
         {

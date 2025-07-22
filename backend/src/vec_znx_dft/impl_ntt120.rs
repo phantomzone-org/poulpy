@@ -1,5 +1,5 @@
 use crate::{
-    Module, NTT120, VecZnxDft, VecZnxDftAllocBytes, VecZnxDftBytesOf, VecZnxDftNew, VecZnxDftOwned, ZnxInfos, ZnxSliceSize,
+    Module, NTT120, VecZnxDft, VecZnxDftAllocBytes, VecZnxDftBytesOf, VecZnxDftAlloc, VecZnxDftOwned, ZnxInfos, ZnxSliceSize,
     ZnxView,
 };
 
@@ -27,8 +27,8 @@ impl VecZnxDftAllocBytes for Module<NTT120> {
     }
 }
 
-impl VecZnxDftNew<NTT120> for Module<NTT120> {
-    fn new_vec_znx_dft(&self, cols: usize, size: usize) -> VecZnxDftOwned<NTT120> {
-        VecZnxDftOwned::new(self.n(), cols, size)
+impl VecZnxDftAlloc<NTT120> for Module<NTT120> {
+    fn vec_znx_dft_alloc(&self, cols: usize, size: usize) -> VecZnxDftOwned<NTT120> {
+        VecZnxDftOwned::alloc(self.n(), cols, size)
     }
 }

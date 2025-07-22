@@ -2,12 +2,12 @@ use crate::{
     Backend, Scratch, VecZnxBig, VecZnxBigToMut, VecZnxDft, VecZnxDftOwned, VecZnxDftToMut, VecZnxDftToRef, VecZnxToRef,
 };
 
-pub trait VecZnxDftNew<B: Backend> {
-    fn new_vec_znx_dft(&self, cols: usize, size: usize) -> VecZnxDftOwned<B>;
+pub trait VecZnxDftAlloc<B: Backend> {
+    fn vec_znx_dft_alloc(&self, cols: usize, size: usize) -> VecZnxDftOwned<B>;
 }
 
 pub trait VecZnxDftFromBytes<B: Backend> {
-    fn new_vec_znx_dft_from_bytes(&self, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxDftOwned<B>;
+    fn vec_znx_dft_from_bytes(&self, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxDftOwned<B>;
 }
 
 pub trait VecZnxDftAllocBytes {

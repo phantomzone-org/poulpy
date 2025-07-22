@@ -56,8 +56,7 @@ fn test_keyswitch(
 
     let rows: usize = k_in.div_ceil(basek * digits);
 
-    let mut ksk: GLWESwitchingKey<Vec<u8>, FFT64> =
-        GLWESwitchingKey::alloc(&module, basek, k_ksk, rows, digits, rank_in, rank_out);
+    let mut ksk: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc(&module, basek, k_ksk, rows, digits, rank_in, rank_out);
     let mut ct_in: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_in, rank_in);
     let mut ct_out: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_out, rank_out);
     let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_in);
@@ -149,7 +148,7 @@ fn test_keyswitch_inplace(log_n: usize, basek: usize, k_ct: usize, k_ksk: usize,
 
     let rows: usize = k_ct.div_ceil(basek * digits);
 
-    let mut ct_grlwe: GLWESwitchingKey<Vec<u8>, FFT64> = GLWESwitchingKey::alloc(&module, basek, k_ksk, rows, digits, rank, rank);
+    let mut ct_grlwe: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc(&module, basek, k_ksk, rows, digits, rank, rank);
     let mut ct_glwe: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_ct, rank);
     let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_ct);
     let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_ct);
@@ -180,7 +179,7 @@ fn test_keyswitch_inplace(log_n: usize, basek: usize, k_ct: usize, k_ksk: usize,
     ct_grlwe.encrypt_sk(
         &module,
         &sk_in,
-        &sk_out_dft,
+        &sk_out,
         &mut source_xa,
         &mut source_xe,
         sigma,

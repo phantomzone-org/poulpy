@@ -1,4 +1,7 @@
-use backend::{Backend, Module, Scratch, VecZnxDftAllocBytes, ZnxZero};
+use backend::{
+    Backend, Module, Scratch, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume,
+    VmpApply, ZnxZero,
+};
 
 use crate::{FourierGLWECiphertext, GLWEAutomorphismKey, GLWESwitchingKey, Infos, ggsw::ciphertext_prep::GGSWCiphertextPrep};
 
@@ -47,7 +50,8 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<DataSelf> {
         rhs: &GGSWCiphertextPrep<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
-        Module<B>: VecZnxDftAllocBytes,
+        Module<B>:
+            VecZnxDftAllocBytes + VmpApply<B> + VecZnxDftFromVecZnx<B> + VecZnxDftToVecZnxBigConsume<B> + VecZnxBigNormalize<B>,
     {
         #[cfg(debug_assertions)]
         {
@@ -94,7 +98,8 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<DataSelf> {
         rhs: &GGSWCiphertextPrep<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
-        Module<B>: VecZnxDftAllocBytes,
+        Module<B>:
+            VecZnxDftAllocBytes + VmpApply<B> + VecZnxDftFromVecZnx<B> + VecZnxDftToVecZnxBigConsume<B> + VecZnxBigNormalize<B>,
     {
         #[cfg(debug_assertions)]
         {
@@ -155,7 +160,8 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWEAutomorphismKey<DataSelf> {
         rhs: &GGSWCiphertextPrep<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
-        Module<B>: VecZnxDftAllocBytes,
+        Module<B>:
+            VecZnxDftAllocBytes + VmpApply<B> + VecZnxDftFromVecZnx<B> + VecZnxDftToVecZnxBigConsume<B> + VecZnxBigNormalize<B>,
     {
         self.key.external_product(module, &lhs.key, rhs, scratch);
     }
@@ -166,7 +172,8 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWEAutomorphismKey<DataSelf> {
         rhs: &GGSWCiphertextPrep<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
-        Module<B>: VecZnxDftAllocBytes,
+        Module<B>:
+            VecZnxDftAllocBytes + VmpApply<B> + VecZnxDftFromVecZnx<B> + VecZnxDftToVecZnxBigConsume<B> + VecZnxBigNormalize<B>,
     {
         self.key.external_product_inplace(module, rhs, scratch);
     }

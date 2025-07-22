@@ -85,7 +85,7 @@ impl<D: From<Vec<u8>> + AsRef<[u8]>, B: Backend> VecZnxDft<D, B>
 where
     VecZnxDft<D, B>: VecZnxDftBytesOf,
 {
-    pub(crate) fn new(n: usize, cols: usize, size: usize) -> Self {
+    pub(crate) fn alloc(n: usize, cols: usize, size: usize) -> Self {
         let data: Vec<u8> = alloc_aligned::<u8>(Self::bytes_of(n, cols, size));
         Self {
             data: data.into(),
@@ -97,7 +97,7 @@ where
         }
     }
 
-    pub(crate) fn new_from_bytes(n: usize, cols: usize, size: usize, bytes: impl Into<Vec<u8>>) -> Self {
+    pub(crate) fn from_bytes(n: usize, cols: usize, size: usize, bytes: impl Into<Vec<u8>>) -> Self {
         let data: Vec<u8> = bytes.into();
         assert!(data.len() == Self::bytes_of(n, cols, size));
         Self {

@@ -13,7 +13,7 @@ use backend::Module;
 use backend::SvpPPolAllocBytes;
 use backend::VecZnxDftAllocBytes;
 pub use blind_rotation::{BlindRotationKeyCGGI, LookUpTable, cggi_blind_rotate, cggi_blind_rotate_scratch_space};
-pub use elem::{GetRow, Infos, SetMetaData, SetRow};
+pub use elem::{Infos, SetMetaData};
 pub use fourier_glwe::{FourierGLWECiphertext, FourierGLWESecret};
 pub use gglwe::{
     GGLWECiphertext, GGLWECiphertextPrep, GLWEAutomorphismKey, GLWEAutomorphismKeyPrep, GLWESwitchingKey, GLWESwitchingKeyPrep,

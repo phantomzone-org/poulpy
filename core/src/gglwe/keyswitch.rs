@@ -1,4 +1,4 @@
-use backend::{Backend, Module, Scratch, VecZnxDftAllocBytes, ZnxZero};
+use backend::{Backend, Module, Scratch, VecZnxBigAddSmallInplace, VecZnxBigAutomorphismInplace, VecZnxBigNormalize, VecZnxBigSubSmallAInplace, VecZnxBigSubSmallBInplace, VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume, VmpApply, ZnxZero};
 
 use crate::{FourierGLWECiphertext, GLWEAutomorphismKey, GLWEAutomorphismKeyPrep, GLWESwitchingKey, GLWESwitchingKeyPrep, Infos};
 
@@ -41,7 +41,15 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWEAutomorphismKey<DataSelf> {
         rhs: &GLWESwitchingKeyPrep<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
-        Module<B>: VecZnxDftAllocBytes,
+        Module<B>: VecZnxDftAllocBytes
+            + VmpApply<B>
+            + VecZnxDftFromVecZnx<B>
+            + VecZnxDftToVecZnxBigConsume<B>
+            + VecZnxBigAddSmallInplace<B>
+            + VecZnxBigNormalize<B>
+            + VecZnxBigAutomorphismInplace<B>
+            + VecZnxBigSubSmallAInplace<B>
+            + VecZnxBigSubSmallBInplace<B>,
     {
         self.key.keyswitch(module, &lhs.key, rhs, scratch);
     }
@@ -52,7 +60,15 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWEAutomorphismKey<DataSelf> {
         rhs: &GLWEAutomorphismKeyPrep<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
-        Module<B>: VecZnxDftAllocBytes,
+        Module<B>: VecZnxDftAllocBytes
+            + VmpApply<B>
+            + VecZnxDftFromVecZnx<B>
+            + VecZnxDftToVecZnxBigConsume<B>
+            + VecZnxBigAddSmallInplace<B>
+            + VecZnxBigNormalize<B>
+            + VecZnxBigAutomorphismInplace<B>
+            + VecZnxBigSubSmallAInplace<B>
+            + VecZnxBigSubSmallBInplace<B>,
     {
         self.key.keyswitch_inplace(module, &rhs.key, scratch);
     }
@@ -104,7 +120,15 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<DataSelf> {
         rhs: &GLWESwitchingKeyPrep<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
-        Module<B>: VecZnxDftAllocBytes,
+        Module<B>: VecZnxDftAllocBytes
+            + VmpApply<B>
+            + VecZnxDftFromVecZnx<B>
+            + VecZnxDftToVecZnxBigConsume<B>
+            + VecZnxBigAddSmallInplace<B>
+            + VecZnxBigNormalize<B>
+            + VecZnxBigAutomorphismInplace<B>
+            + VecZnxBigSubSmallAInplace<B>
+            + VecZnxBigSubSmallBInplace<B>,
     {
         #[cfg(debug_assertions)]
         {
@@ -151,7 +175,15 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<DataSelf> {
         rhs: &GLWESwitchingKeyPrep<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
-        Module<B>: VecZnxDftAllocBytes,
+        Module<B>: VecZnxDftAllocBytes
+            + VmpApply<B>
+            + VecZnxDftFromVecZnx<B>
+            + VecZnxDftToVecZnxBigConsume<B>
+            + VecZnxBigAddSmallInplace<B>
+            + VecZnxBigNormalize<B>
+            + VecZnxBigAutomorphismInplace<B>
+            + VecZnxBigSubSmallAInplace<B>
+            + VecZnxBigSubSmallBInplace<B>,
     {
         #[cfg(debug_assertions)]
         {

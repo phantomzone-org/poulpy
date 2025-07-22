@@ -1,13 +1,14 @@
 use backend::{
-    Backend, MatZnx, MatZnxAlloc, Module, ScalarZnx, Scratch, VecZnxAlloc, VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxDft,
-    VecZnxDftAddInplace, VecZnxDftAllocBytes, VecZnxDftBytesOf, VecZnxDftCopy, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigTmpA,
-    VecZnxOps, VecZnxScratch, VecZnxToMut, VmpApply, VmpPMat, ZnxInfos, ZnxZero,
+    Backend, MatZnx, MatZnxAlloc, Module, ScalarZnx, Scratch, SvpPPolApplyInplace, VecZnxAlloc, VecZnxBigAddSmallInplace,
+    VecZnxBigAllocBytes, VecZnxBigAutomorphismInplace, VecZnxBigNormalize, VecZnxBigSubSmallAInplace, VecZnxBigSubSmallBInplace,
+    VecZnxDft, VecZnxDftAddInplace, VecZnxDftAllocBytes, VecZnxDftCopy, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume,
+    VecZnxDftToVecZnxBigTmpA, VecZnxOps, VecZnxScratch, VmpApply, VmpPMat, ZnxInfos, ZnxZero,
 };
 use sampling::source::Source;
 
 use crate::{
     FourierGLWECiphertext, FourierGLWESecret, GLWEAutomorphismKeyPrep, GLWECiphertext, GLWESwitchingKeyPrep, GLWETensorKeyPrep,
-    GetRow, Infos, ScratchCore, SetRow, ggsw::ciphertext_prep::GGSWCiphertextPrep,
+    Infos, ScratchCore, ggsw::ciphertext_prep::GGSWCiphertextPrep,
 };
 
 pub struct GGSWCiphertext<D> {
@@ -115,7 +116,7 @@ impl<D> GGSWCiphertext<D> {
 impl GGSWCiphertext<Vec<u8>> {
     pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize
     where
-        Module<B>: VecZnxDftAllocBytes,
+        Module<B>: VecZnxDftAllocBytes + VecZnxBigNormalize<B>,
     {
         let size = k.div_ceil(basek);
         GLWECiphertext::encrypt_sk_scratch_space(module, basek, k)
@@ -284,7 +285,12 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
         sigma: f64,
         scratch: &mut Scratch,
     ) where
-        Module<B>: VecZnxDftAllocBytes,
+        Module<B>: VecZnxDftAllocBytes
+            + VecZnxBigNormalize<B>
+            + VecZnxDftFromVecZnx<B>
+            + SvpPPolApplyInplace<B>
+            + VecZnxDftToVecZnxBigConsume<B>
+            + VecZnxBigNormalize<B>,
     {
         #[cfg(debug_assertions)]
         {
@@ -459,11 +465,15 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
             + VecZnxDftCopy<B>
             + VecZnxDftAddInplace<B>
             + VecZnxDftToVecZnxBigTmpA<B>
+            + VecZnxDftToVecZnxBigConsume<B>
+            + VecZnxBigAddSmallInplace<B>
+            + VecZnxBigAutomorphismInplace<B>
+            + VecZnxBigSubSmallAInplace<B>
+            + VecZnxBigSubSmallBInplace<B>
             + VecZnxBigNormalize<B>,
     {
         let rank: usize = self.rank();
         let cols: usize = rank + 1;
-        let basek: usize = self.basek();
 
         // Keyswitch the j-th row of the col 0
         (0..lhs.rows()).for_each(|row_i| {
@@ -494,7 +504,22 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
         ksk: &GLWESwitchingKeyPrep<DataKsk, B>,
         tsk: &GLWETensorKeyPrep<DataTsk, B>,
         scratch: &mut Scratch,
-    ) {
+    ) where
+        Module<B>: VecZnxDftFromVecZnx<B>
+            + VecZnxDftAllocBytes
+            + VecZnxBigAllocBytes
+            + VecZnxBigNormalize<B>
+            + VmpApply<B>
+            + VecZnxDftCopy<B>
+            + VecZnxDftAddInplace<B>
+            + VecZnxDftToVecZnxBigTmpA<B>
+            + VecZnxDftToVecZnxBigConsume<B>
+            + VecZnxBigAddSmallInplace<B>
+            + VecZnxBigAutomorphismInplace<B>
+            + VecZnxBigSubSmallAInplace<B>
+            + VecZnxBigSubSmallBInplace<B>
+            + VecZnxBigNormalize<B>,
+    {
         unsafe {
             let self_ptr: *mut GGSWCiphertext<DataSelf> = self as *mut GGSWCiphertext<DataSelf>;
             self.keyswitch(module, &*self_ptr, ksk, tsk, scratch);
@@ -509,7 +534,19 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
         tensor_key: &GLWETensorKeyPrep<DataTsk, B>,
         scratch: &mut Scratch,
     ) where
-        Module<B>: VecZnxDftAllocBytes + VecZnxBigAllocBytes + VecZnxBigNormalize<B> + VmpApply<B> + VecZnxDftFromVecZnx<B>,
+        Module<B>: VecZnxDftAllocBytes
+            + VecZnxBigAllocBytes
+            + VecZnxDftFromVecZnx<B>
+            + VecZnxDftCopy<B>
+            + VecZnxDftToVecZnxBigTmpA<B>
+            + VmpApply<B>
+            + VecZnxDftAddInplace<B>
+            + VecZnxDftToVecZnxBigConsume<B>
+            + VecZnxBigAddSmallInplace<B>
+            + VecZnxBigAutomorphismInplace<B>
+            + VecZnxBigSubSmallAInplace<B>
+            + VecZnxBigSubSmallBInplace<B>
+            + VecZnxBigNormalize<B>,
     {
         #[cfg(debug_assertions)]
         {
@@ -552,24 +589,18 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
 
         let rank: usize = self.rank();
         let cols: usize = rank + 1;
-        let basek: usize = self.basek();
 
         // Keyswitch the j-th row of the col 0
         (0..lhs.rows()).for_each(|row_i| {
             // Key-switch column 0, i.e.
             // col 0: (-(a0s0 + a1s1 + a2s2) + M[i], a0, a1, a2) -> (-(a0pi^-1(s0) + a1pi^-1(s1) + a2pi^-1(s2)) + M[i], a0, a1, a2)
-            lhs.keyswitch_internal_col0(
-                module,
-                row_i,
-                self.at_mut(row_i, 0),
-                &auto_key.key,
-                scratch2,
-            );
+            self.at_mut(row_i, 0)
+                .automorphism(module, &lhs.at(row_i, 0), auto_key, scratch);
 
             // Isolates DFT(AUTO(a[i]))
-            (0..cols).for_each(|col_i| {
-                // (-(a0pi^-1(s0) + a1pi^-1(s1) + a2pi^-1(s2)) + M[i], a0, a1, a2) -> (-(a0s0 + a1s1 + a2s2) + pi(M[i]), a0, a1, a2)
-                module.vec_znx_automorphism_inplace(auto_key.p(), self.at_mut(row_i, 0), col_i);
+            let (mut ci_dft, scratch1) = scratch.tmp_vec_znx_dft(module, cols - 1, self.size());
+            (1..cols).for_each(|i| {
+                module.vec_znx_dft_from_vec_znx(1, 0, &mut ci_dft, i - 1, &self.at(row_i, 0).data, i);
             });
 
             // Generates
@@ -578,7 +609,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
             // col 2: (-(c0s0 + c1s1 + c2s2)    , c0           , c1 + pi(M[i]), c2           )
             // col 3: (-(d0s0 + d1s1 + d2s2)    , d0           , d1           , d2 + pi(M[i]))
             (1..cols).for_each(|col_j| {
-                self.expand_row(module, row_i, col_j, tensor_key, scratch2);
+                self.expand_row(module, row_i, col_j, &ci_dft, tensor_key, scratch1);
             });
         })
     }
@@ -589,9 +620,23 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
         auto_key: &GLWEAutomorphismKeyPrep<DataKsk, B>,
         tensor_key: &GLWETensorKeyPrep<DataTsk, B>,
         scratch: &mut Scratch,
-    ) {
+    ) where
+        Module<B>: VecZnxDftAllocBytes
+            + VecZnxBigAllocBytes
+            + VecZnxDftFromVecZnx<B>
+            + VecZnxDftCopy<B>
+            + VecZnxDftToVecZnxBigTmpA<B>
+            + VmpApply<B>
+            + VecZnxDftAddInplace<B>
+            + VecZnxDftToVecZnxBigConsume<B>
+            + VecZnxBigAddSmallInplace<B>
+            + VecZnxBigAutomorphismInplace<B>
+            + VecZnxBigSubSmallAInplace<B>
+            + VecZnxBigSubSmallBInplace<B>
+            + VecZnxBigNormalize<B>,
+    {
         unsafe {
-            let self_ptr: *mut GGSWCiphertext<DataSelf, B> = self as *mut GGSWCiphertext<DataSelf, B>;
+            let self_ptr: *mut GGSWCiphertext<DataSelf> = self as *mut GGSWCiphertext<DataSelf>;
             self.automorphism(module, &*self_ptr, auto_key, tensor_key, scratch);
         }
     }
@@ -602,7 +647,10 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
         lhs: &GGSWCiphertext<DataLhs>,
         rhs: &GGSWCiphertextPrep<DataRhs, B>,
         scratch: &mut Scratch,
-    ) {
+    ) where
+        Module<B>:
+            VecZnxDftAllocBytes + VmpApply<B> + VecZnxDftFromVecZnx<B> + VecZnxDftToVecZnxBigConsume<B> + VecZnxBigNormalize<B>,
+    {
         #[cfg(debug_assertions)]
         {
             assert_eq!(
@@ -634,22 +682,16 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
             )
         }
 
-        let (mut tmp_ct_in, scratch1) = scratch.tmp_fourier_glwe_ct(module, lhs.basek(), lhs.k(), lhs.rank());
-        let (mut tmp_ct_out, scratch2) = scratch1.tmp_fourier_glwe_ct(module, self.basek(), self.k(), self.rank());
-
         (0..self.rank() + 1).for_each(|col_i| {
             (0..self.rows()).for_each(|row_j| {
-                lhs.get_row(module, row_j, col_i, &mut tmp_ct_in);
-                tmp_ct_out.external_product(module, &tmp_ct_in, rhs, scratch2);
-                self.set_row(module, row_j, col_i, &tmp_ct_out);
+                self.at_mut(row_j, col_i)
+                    .external_product(module, &lhs.at(row_j, col_i), rhs, scratch);
             });
         });
 
-        tmp_ct_out.data.zero();
-
         (self.rows().min(lhs.rows())..self.rows()).for_each(|row_i| {
             (0..self.rank() + 1).for_each(|col_j| {
-                self.set_row(module, row_i, col_j, &tmp_ct_out);
+                self.at_mut(row_i, col_j).data.zero();
             });
         });
     }
@@ -659,7 +701,10 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
         module: &Module<B>,
         rhs: &GGSWCiphertextPrep<DataRhs, B>,
         scratch: &mut Scratch,
-    ) {
+    ) where
+        Module<B>:
+            VecZnxDftAllocBytes + VmpApply<B> + VecZnxDftFromVecZnx<B> + VecZnxDftToVecZnxBigConsume<B> + VecZnxBigNormalize<B>,
+    {
         #[cfg(debug_assertions)]
         {
             assert_eq!(
@@ -671,13 +716,10 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
             );
         }
 
-        let (mut tmp_ct, scratch1) = scratch.tmp_fourier_glwe_ct(module, self.basek(), self.k(), self.rank());
-
         (0..self.rank() + 1).for_each(|col_i| {
             (0..self.rows()).for_each(|row_j| {
-                self.get_row(module, row_j, col_i, &mut tmp_ct);
-                tmp_ct.external_product_inplace(module, rhs, scratch1);
-                self.set_row(module, row_j, col_i, &tmp_ct);
+                self.at_mut(row_j, col_i)
+                    .external_product_inplace(module, rhs, scratch);
             });
         });
     }

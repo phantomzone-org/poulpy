@@ -1,7 +1,7 @@
 use backend::{
     AddNormal, Decoding, Encoding, FFT64, FillUniform, Module, ScalarZnx, ScalarZnxAlloc, ScratchOwned, SvpPPol, SvpPPolAlloc,
     SvpPPolApplyInplace, SvpPPolPrepare, VecZnx, VecZnxAlloc, VecZnxBig, VecZnxBigAddSmallInplace, VecZnxBigNew,
-    VecZnxBigNormalize, VecZnxBigSubSmallBInplace, VecZnxDft, VecZnxDftFromVecZnx, VecZnxDftNew, VecZnxDftToVecZnxBigTmpA,
+    VecZnxBigNormalize, VecZnxBigSubSmallBInplace, VecZnxDft, VecZnxDftFromVecZnx, VecZnxDftAlloc, VecZnxDftToVecZnxBigTmpA,
     VecZnxOps, ZnxInfos,
 };
 use itertools::izip;
@@ -39,7 +39,7 @@ fn main() {
     // Fill the second column with random values: ct = (0, a)
     ct.fill_uniform(basek, 1, ct_size, &mut source);
 
-    let mut buf_dft: VecZnxDft<Vec<u8>, FFT64> = module.new_vec_znx_dft(1, ct_size);
+    let mut buf_dft: VecZnxDft<Vec<u8>, FFT64> = module.vec_znx_dft_alloc(1, ct_size);
 
     module.vec_znx_dft_from_vec_znx(1, 0, &mut buf_dft, 0, &ct, 1);
 

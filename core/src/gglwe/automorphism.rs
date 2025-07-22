@@ -1,6 +1,10 @@
-use backend::{Backend, Module, Scratch, VecZnxDftAllocBytes, VecZnxDftToVecZnxBig, VecZnxOps, ZnxZero};
+use backend::{
+    Backend, Module, Scratch, VecZnxBigAddSmallInplace, VecZnxBigAutomorphismInplace, VecZnxBigNormalize,
+    VecZnxBigSubSmallAInplace, VecZnxBigSubSmallBInplace, VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBig,
+    VecZnxDftToVecZnxBigConsume, VecZnxOps, VmpApply, ZnxZero,
+};
 
-use crate::{FourierGLWECiphertext, GLWEAutomorphismKey, GLWEAutomorphismKeyPrep, GLWECiphertext, Infos};
+use crate::{GLWEAutomorphismKey, GLWEAutomorphismKeyPrep, GLWECiphertext, Infos};
 
 impl GLWEAutomorphismKey<Vec<u8>> {
     pub fn automorphism_scratch_space<B: Backend>(
@@ -13,13 +17,9 @@ impl GLWEAutomorphismKey<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: VecZnxDftAllocBytes + VecZnxDftToVecZnxBig<B>,
+        Module<B>: VecZnxDftAllocBytes + VecZnxDftToVecZnxBig<B> + VmpApply<B> + VecZnxBigNormalize<B>,
     {
-        let tmp_dft: usize = FourierGLWECiphertext::bytes_of(module, basek, k_in, rank);
-        let tmp_idft: usize = FourierGLWECiphertext::bytes_of(module, basek, k_out, rank);
-        let idft: usize = module.vec_znx_dft_to_vec_znx_big_scratch_space();
-        let keyswitch: usize = GLWECiphertext::keyswitch_inplace_scratch_space(module, basek, k_out, k_ksk, digits, rank);
-        tmp_dft + tmp_idft + idft + keyswitch
+        GLWECiphertext::keyswitch_scratch_space(module, basek, k_out, k_in, k_ksk, digits, rank, rank)
     }
 
     pub fn automorphism_inplace_scratch_space<B: Backend>(
@@ -31,7 +31,7 @@ impl GLWEAutomorphismKey<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: VecZnxDftAllocBytes + VecZnxDftToVecZnxBig<B>,
+        Module<B>: VecZnxDftAllocBytes + VecZnxDftToVecZnxBig<B> + VmpApply<B> + VecZnxBigNormalize<B>,
     {
         GLWEAutomorphismKey::automorphism_scratch_space(module, basek, k_out, k_out, k_ksk, digits, rank)
     }
@@ -45,7 +45,15 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWEAutomorphismKey<DataSelf> {
         rhs: &GLWEAutomorphismKeyPrep<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
-        Module<B>: VecZnxDftAllocBytes,
+        Module<B>: VecZnxDftAllocBytes
+            + VmpApply<B>
+            + VecZnxDftFromVecZnx<B>
+            + VecZnxDftToVecZnxBigConsume<B>
+            + VecZnxBigAddSmallInplace<B>
+            + VecZnxBigNormalize<B>
+            + VecZnxBigAutomorphismInplace<B>
+            + VecZnxBigSubSmallAInplace<B>
+            + VecZnxBigSubSmallBInplace<B>,
     {
         #[cfg(debug_assertions)]
         {
@@ -118,7 +126,15 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWEAutomorphismKey<DataSelf> {
         rhs: &GLWEAutomorphismKeyPrep<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
-        Module<B>: VecZnxDftAllocBytes,
+        Module<B>: VecZnxDftAllocBytes
+            + VmpApply<B>
+            + VecZnxDftFromVecZnx<B>
+            + VecZnxDftToVecZnxBigConsume<B>
+            + VecZnxBigAddSmallInplace<B>
+            + VecZnxBigNormalize<B>
+            + VecZnxBigAutomorphismInplace<B>
+            + VecZnxBigSubSmallAInplace<B>
+            + VecZnxBigSubSmallBInplace<B>,
     {
         unsafe {
             let self_ptr: *mut GLWEAutomorphismKey<DataSelf> = self as *mut GLWEAutomorphismKey<DataSelf>;

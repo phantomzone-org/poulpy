@@ -48,7 +48,7 @@ fn test_external_product(
 
     let rows: usize = k_in.div_ceil(basek * digits);
 
-    let mut ct_ggsw: GGSWCiphertext<Vec<u8>, FFT64> = GGSWCiphertext::alloc(&module, basek, k_ggsw, rows, digits, rank);
+    let mut ct_ggsw: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(&module, basek, k_ggsw, rows, digits, rank);
     let mut ct_glwe_in: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_in, rank);
     let mut ct_glwe_out: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_out, rank);
     let mut pt_rgsw: ScalarZnx<Vec<u8>> = module.new_scalar_znx(1);
@@ -152,7 +152,7 @@ fn test_external_product_inplace(log_n: usize, basek: usize, k_ct: usize, k_ggsw
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
     let rows: usize = k_ct.div_ceil(basek * digits);
 
-    let mut ct_ggsw: GGSWCiphertext<Vec<u8>, FFT64> = GGSWCiphertext::alloc(&module, basek, k_ggsw, rows, digits, rank);
+    let mut ct_ggsw: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(&module, basek, k_ggsw, rows, digits, rank);
     let mut ct_glwe: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_ct, rank);
     let mut pt_rgsw: ScalarZnx<Vec<u8>> = module.new_scalar_znx(1);
     let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_ct);
