@@ -1,6 +1,6 @@
 use crate::{
-    FFT64, Module, Scratch, VecZnxBig, VecZnxBigToMut, VecZnxDft, VecZnxDftAdd, VecZnxDftAddInplace, VecZnxDftAllocBytes,
-    VecZnxDftBytesOf, VecZnxDftCopy, VecZnxDftFromBytes, VecZnxDftFromVecZnx, VecZnxDftAlloc, VecZnxDftOwned, VecZnxDftSub,
+    FFT64, Module, Scratch, VecZnxBig, VecZnxBigToMut, VecZnxDft, VecZnxDftAdd, VecZnxDftAddInplace, VecZnxDftAlloc,
+    VecZnxDftAllocBytes, VecZnxDftBytesOf, VecZnxDftCopy, VecZnxDftFromBytes, VecZnxDftFromVecZnx, VecZnxDftOwned, VecZnxDftSub,
     VecZnxDftSubABInplace, VecZnxDftSubBAInplace, VecZnxDftToMut, VecZnxDftToRef, VecZnxDftToVecZnxBig,
     VecZnxDftToVecZnxBigConsume, VecZnxDftToVecZnxBigTmpA, VecZnxToRef, ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero,
     ffi::{vec_znx_big, vec_znx_dft},

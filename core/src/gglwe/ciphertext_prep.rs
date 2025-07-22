@@ -1,11 +1,24 @@
-use crate::Infos;
-use backend::{Backend, Module, VmpPMat, VmpPMatAlloc, VmpPMatAllocBytes};
+use crate::{GGLWECiphertext, Infos};
+use backend::{Backend, Module, Scratch, VmpPMat, VmpPMatAlloc, VmpPMatAllocBytes, VmpPMatPrepare};
 
 pub struct GGLWECiphertextPrep<D, B: Backend> {
     pub(crate) data: VmpPMat<D, B>,
     pub(crate) basek: usize,
     pub(crate) k: usize,
     pub(crate) digits: usize,
+}
+
+impl<D: AsRef<[u8]> + AsMut<[u8]>, B: Backend> GGLWECiphertextPrep<D, B> {
+    pub fn prepare<DataOther>(&mut self, module: &Module<B>, other: &GGLWECiphertext<DataOther>, scratch: &mut Scratch)
+    where
+        DataOther: AsRef<[u8]>,
+        Module<B>: VmpPMatPrepare<B>,
+    {
+        module.vmp_prepare(&mut self.data, &other.data, scratch);
+        self.basek = other.basek;
+        self.k = other.k;
+        self.digits = other.digits;
+    }
 }
 
 impl<B: Backend> GGLWECiphertextPrep<Vec<u8>, B> {

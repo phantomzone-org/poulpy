@@ -4,7 +4,7 @@ use backend::{
     VecZnxOps, VmpApply,
 };
 
-use crate::{GLWEAutomorphismKeyPrep, GLWECiphertext};
+use crate::{GLWEAutomorphismKeyExec, GLWECiphertext};
 
 impl GLWECiphertext<Vec<u8>> {
     pub fn automorphism_scratch_space<B: Backend>(
@@ -42,7 +42,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         &mut self,
         module: &Module<B>,
         lhs: &GLWECiphertext<DataLhs>,
-        rhs: &GLWEAutomorphismKeyPrep<DataRhs, B>,
+        rhs: &GLWEAutomorphismKeyExec<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
         Module<B>: VecZnxDftAllocBytes
@@ -64,7 +64,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
     pub fn automorphism_inplace<DataRhs: AsRef<[u8]>, B: Backend>(
         &mut self,
         module: &Module<B>,
-        rhs: &GLWEAutomorphismKeyPrep<DataRhs, B>,
+        rhs: &GLWEAutomorphismKeyExec<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
         Module<B>: VecZnxDftAllocBytes
@@ -87,7 +87,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         &mut self,
         module: &Module<B>,
         lhs: &GLWECiphertext<DataLhs>,
-        rhs: &GLWEAutomorphismKeyPrep<DataRhs, B>,
+        rhs: &GLWEAutomorphismKeyExec<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
         Module<B>: VecZnxDftAllocBytes
@@ -106,7 +106,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
     pub fn automorphism_add_inplace<DataRhs: AsRef<[u8]>, B: Backend>(
         &mut self,
         module: &Module<B>,
-        rhs: &GLWEAutomorphismKeyPrep<DataRhs, B>,
+        rhs: &GLWEAutomorphismKeyExec<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
         Module<B>: VecZnxDftAllocBytes
@@ -129,7 +129,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         &mut self,
         module: &Module<B>,
         lhs: &GLWECiphertext<DataLhs>,
-        rhs: &GLWEAutomorphismKeyPrep<DataRhs, B>,
+        rhs: &GLWEAutomorphismKeyExec<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
         Module<B>: VecZnxDftAllocBytes
@@ -148,7 +148,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
     pub fn automorphism_sub_ab_inplace<DataRhs: AsRef<[u8]>, B: Backend>(
         &mut self,
         module: &Module<B>,
-        rhs: &GLWEAutomorphismKeyPrep<DataRhs, B>,
+        rhs: &GLWEAutomorphismKeyExec<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
         Module<B>: VecZnxDftAllocBytes
@@ -171,7 +171,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         &mut self,
         module: &Module<B>,
         lhs: &GLWECiphertext<DataLhs>,
-        rhs: &GLWEAutomorphismKeyPrep<DataRhs, B>,
+        rhs: &GLWEAutomorphismKeyExec<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
         Module<B>: VecZnxDftAllocBytes
@@ -190,7 +190,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
     pub fn automorphism_sub_ba_inplace<DataRhs: AsRef<[u8]>, B: Backend>(
         &mut self,
         module: &Module<B>,
-        rhs: &GLWEAutomorphismKeyPrep<DataRhs, B>,
+        rhs: &GLWEAutomorphismKeyExec<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
         Module<B>: VecZnxDftAllocBytes

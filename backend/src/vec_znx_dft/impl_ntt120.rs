@@ -1,5 +1,5 @@
 use crate::{
-    Module, NTT120, VecZnxDft, VecZnxDftAllocBytes, VecZnxDftBytesOf, VecZnxDftAlloc, VecZnxDftOwned, ZnxInfos, ZnxSliceSize,
+    Module, NTT120, VecZnxDft, VecZnxDftAlloc, VecZnxDftAllocBytes, VecZnxDftBytesOf, VecZnxDftOwned, ZnxInfos, ZnxSliceSize,
     ZnxView,
 };
 

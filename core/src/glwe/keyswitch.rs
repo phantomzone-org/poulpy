@@ -4,7 +4,7 @@ use backend::{
     VmpApply,
 };
 
-use crate::{FourierGLWECiphertext, GLWECiphertext, GLWESwitchingKeyPrep, Infos};
+use crate::{GLWECiphertext, GLWESwitchingKeyExec, Infos};
 
 impl GLWECiphertext<Vec<u8>> {
     pub fn keyswitch_scratch_space<B: Backend>(
@@ -20,10 +20,10 @@ impl GLWECiphertext<Vec<u8>> {
     where
         Module<B>: VecZnxDftAllocBytes + VmpApply<B> + VecZnxBigNormalize<B>,
     {
-        let res_dft: usize = FourierGLWECiphertext::bytes_of(module, basek, k_out, rank_out + 1);
         let in_size: usize = k_in.div_ceil(basek).div_ceil(digits);
         let out_size: usize = k_out.div_ceil(basek);
         let ksk_size: usize = k_ksk.div_ceil(basek);
+        let res_dft: usize = module.vec_znx_dft_alloc_bytes(rank_out + 1, ksk_size);
         let ai_dft: usize = module.vec_znx_dft_alloc_bytes(rank_in, in_size);
         let vmp: usize = module.vmp_apply_tmp_bytes(out_size, in_size, in_size, rank_in, rank_out + 1, ksk_size)
             + module.vec_znx_dft_alloc_bytes(rank_in, in_size);
@@ -67,7 +67,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         &mut self,
         module: &Module<B>,
         lhs: &GLWECiphertext<DataLhs>,
-        rhs: &GLWESwitchingKeyPrep<DataRhs, B>,
+        rhs: &GLWESwitchingKeyExec<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
         Module<B>: VecZnxDftAllocBytes
@@ -86,7 +86,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
     pub fn keyswitch_inplace<DataRhs: AsRef<[u8]>, B: Backend>(
         &mut self,
         module: &Module<B>,
-        rhs: &GLWESwitchingKeyPrep<DataRhs, B>,
+        rhs: &GLWESwitchingKeyExec<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
         Module<B>: VecZnxDftAllocBytes
@@ -110,7 +110,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         apply_auto: i64,
         module: &Module<B>,
         lhs: &GLWECiphertext<DataLhs>,
-        rhs: &GLWESwitchingKeyPrep<DataRhs, B>,
+        rhs: &GLWESwitchingKeyExec<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
         Module<B>: VecZnxDftAllocBytes

@@ -6,7 +6,7 @@ use backend::{
     VmpApply,
 };
 
-use crate::{GLWEAutomorphismKeyPrep, GLWECiphertext, GLWECiphertextToMut, GLWECiphertextToRef, GLWEOps, Infos, SetMetaData};
+use crate::{GLWEAutomorphismKeyExec, GLWECiphertext, GLWECiphertextToMut, GLWECiphertextToRef, GLWEOps, Infos, SetMetaData};
 
 impl GLWECiphertext<Vec<u8>> {
     pub fn trace_galois_elements<B: Backend>(module: &Module<B>) -> Vec<i64> {
@@ -61,7 +61,7 @@ where
         start: usize,
         end: usize,
         lhs: &GLWECiphertext<DataLhs>,
-        auto_keys: &HashMap<i64, GLWEAutomorphismKeyPrep<DataAK, B>>,
+        auto_keys: &HashMap<i64, GLWEAutomorphismKeyExec<DataAK, B>>,
         scratch: &mut Scratch,
     ) where
         GLWECiphertext<DataLhs>: GLWECiphertextToRef + Infos,
@@ -84,7 +84,7 @@ where
         module: &Module<B>,
         start: usize,
         end: usize,
-        auto_keys: &HashMap<i64, GLWEAutomorphismKeyPrep<DataAK, B>>,
+        auto_keys: &HashMap<i64, GLWEAutomorphismKeyExec<DataAK, B>>,
         scratch: &mut Scratch,
     ) where
         Module<B>: VecZnxDftAllocBytes

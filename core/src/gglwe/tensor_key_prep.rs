@@ -1,9 +1,9 @@
 use backend::{Backend, Module, VmpPMat, VmpPMatAlloc};
 
-use crate::{GLWESwitchingKey, GLWESwitchingKeyPrep, Infos};
+use crate::{GLWESwitchingKey, GLWESwitchingKeyExec, Infos};
 
 pub struct GLWETensorKeyPrep<D, B: Backend> {
-    pub(crate) keys: Vec<GLWESwitchingKeyPrep<D, B>>,
+    pub(crate) keys: Vec<GLWESwitchingKeyExec<D, B>>,
 }
 
 impl<B: Backend> GLWETensorKeyPrep<Vec<u8>, B> {
@@ -11,10 +11,10 @@ impl<B: Backend> GLWETensorKeyPrep<Vec<u8>, B> {
     where
         Module<B>: VmpPMatAlloc<B>,
     {
-        let mut keys: Vec<GLWESwitchingKeyPrep<Vec<u8>, B>> = Vec::new();
+        let mut keys: Vec<GLWESwitchingKeyExec<Vec<u8>, B>> = Vec::new();
         let pairs: usize = (((rank + 1) * rank) >> 1).max(1);
         (0..pairs).for_each(|_| {
-            keys.push(GLWESwitchingKeyPrep::alloc(
+            keys.push(GLWESwitchingKeyExec::alloc(
                 module, basek, k, rows, digits, 1, rank,
             ));
         });
@@ -63,7 +63,7 @@ impl<D, B: Backend> GLWETensorKeyPrep<D, B> {
 
 impl<D: AsMut<[u8]> + AsRef<[u8]>, B: Backend> GLWETensorKeyPrep<D, B> {
     // Returns a mutable reference to GLWESwitchingKey_{s}(s[i] * s[j])
-    pub fn at_mut(&mut self, mut i: usize, mut j: usize) -> &mut GLWESwitchingKeyPrep<D, B> {
+    pub fn at_mut(&mut self, mut i: usize, mut j: usize) -> &mut GLWESwitchingKeyExec<D, B> {
         if i > j {
             std::mem::swap(&mut i, &mut j);
         };
@@ -74,7 +74,7 @@ impl<D: AsMut<[u8]> + AsRef<[u8]>, B: Backend> GLWETensorKeyPrep<D, B> {
 
 impl<D: AsRef<[u8]>, B: Backend> GLWETensorKeyPrep<D, B> {
     // Returns a reference to GLWESwitchingKey_{s}(s[i] * s[j])
-    pub fn at(&self, mut i: usize, mut j: usize) -> &GLWESwitchingKeyPrep<D, B> {
+    pub fn at(&self, mut i: usize, mut j: usize) -> &GLWESwitchingKeyExec<D, B> {
         if i > j {
             std::mem::swap(&mut i, &mut j);
         };

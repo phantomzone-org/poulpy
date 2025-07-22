@@ -4,7 +4,7 @@ use backend::{
     VecZnxDftToVecZnxBigConsume, VecZnxOps, VmpApply, ZnxZero,
 };
 
-use crate::{GLWEAutomorphismKey, GLWEAutomorphismKeyPrep, GLWECiphertext, Infos};
+use crate::{GLWEAutomorphismKey, GLWEAutomorphismKeyExec, GLWECiphertext, Infos};
 
 impl GLWEAutomorphismKey<Vec<u8>> {
     pub fn automorphism_scratch_space<B: Backend>(
@@ -42,7 +42,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWEAutomorphismKey<DataSelf> {
         &mut self,
         module: &Module<B>,
         lhs: &GLWEAutomorphismKey<DataLhs>,
-        rhs: &GLWEAutomorphismKeyPrep<DataRhs, B>,
+        rhs: &GLWEAutomorphismKeyExec<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
         Module<B>: VecZnxDftAllocBytes
@@ -123,7 +123,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWEAutomorphismKey<DataSelf> {
     pub fn automorphism_inplace<DataRhs: AsRef<[u8]>, B: Backend>(
         &mut self,
         module: &Module<B>,
-        rhs: &GLWEAutomorphismKeyPrep<DataRhs, B>,
+        rhs: &GLWEAutomorphismKeyExec<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
         Module<B>: VecZnxDftAllocBytes

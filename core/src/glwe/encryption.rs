@@ -5,7 +5,7 @@ use backend::{
 };
 use sampling::source::Source;
 
-use crate::{FourierGLWESecret, GLWECiphertext, GLWEPlaintext, GLWEPublicKey, Infos, SIX_SIGMA, dist::Distribution};
+use crate::{GLWECiphertext, GLWEPlaintext, GLWEPublicKey, GLWESecretExec, Infos, SIX_SIGMA, dist::Distribution};
 
 impl GLWECiphertext<Vec<u8>> {
     pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize) -> usize
@@ -31,7 +31,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         &mut self,
         module: &Module<B>,
         pt: &GLWEPlaintext<DataPt>,
-        sk: &FourierGLWESecret<DataSk, B>,
+        sk: &GLWESecretExec<DataSk, B>,
         source_xa: &mut Source,
         source_xe: &mut Source,
         sigma: f64,
@@ -57,7 +57,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
     pub fn encrypt_zero_sk<DataSk: AsRef<[u8]>, B: Backend>(
         &mut self,
         module: &Module<B>,
-        sk: &FourierGLWESecret<DataSk, B>,
+        sk: &GLWESecretExec<DataSk, B>,
         source_xa: &mut Source,
         source_xe: &mut Source,
         sigma: f64,
@@ -143,7 +143,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         &mut self,
         module: &Module<B>,
         pt: Option<(&GLWEPlaintext<DataPt>, usize)>,
-        sk: &FourierGLWESecret<DataSk, B>,
+        sk: &GLWESecretExec<DataSk, B>,
         source_xa: &mut Source,
         source_xe: &mut Source,
         sigma: f64,
@@ -284,7 +284,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         (0..cols).for_each(|i| {
             let (mut ci_dft, scratch_2) = scratch_1.tmp_vec_znx_dft(module, 1, size_pk);
             // ci_dft = DFT(u) * DFT(pk[i])
-            module.svp_apply(&mut ci_dft, 0, &u_dft, 0, &pk.data.data, i);
+            module.svp_apply(&mut ci_dft, 0, &u_dft, 0, &pk.data, i);
 
             // ci_big = u * p[i]
             let mut ci_big = module.vec_znx_dft_to_vec_znx_big_consume(ci_dft);

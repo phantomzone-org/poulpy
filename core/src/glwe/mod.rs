@@ -17,7 +17,7 @@ pub use ops::GLWEOps;
 pub use packing::GLWEPacker;
 pub use plaintext::GLWEPlaintext;
 pub use public_key::GLWEPublicKey;
-pub use secret::GLWESecret;
+pub use secret::{GLWESecret, GLWESecretExec};
 
 #[cfg(test)]
 mod test_fft64;

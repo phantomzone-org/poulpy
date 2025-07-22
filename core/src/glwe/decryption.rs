@@ -4,7 +4,7 @@ use backend::{
     VecZnxScratch,
 };
 
-use crate::{FourierGLWESecret, GLWECiphertext, GLWEPlaintext, Infos};
+use crate::{GLWECiphertext, GLWEPlaintext, GLWESecretExec, Infos};
 
 impl GLWECiphertext<Vec<u8>> {
     pub fn decrypt_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize) -> usize
@@ -21,7 +21,7 @@ impl<DataSelf: AsRef<[u8]>> GLWECiphertext<DataSelf> {
         &self,
         module: &Module<B>,
         pt: &mut GLWEPlaintext<DataPt>,
-        sk: &FourierGLWESecret<DataSk, B>,
+        sk: &GLWESecretExec<DataSk, B>,
         scratch: &mut Scratch,
     ) where
         Module<B>: VecZnxDftAllocBytes

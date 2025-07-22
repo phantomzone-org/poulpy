@@ -2,8 +2,7 @@ use backend::{FFT64, Module, ScalarZnx, ScalarZnxAlloc, ScalarZnxToMut, ScratchO
 use sampling::source::Source;
 
 use crate::{
-    FourierGLWECiphertext, FourierGLWESecret, GGSWCiphertext, GLWEPlaintext, GLWESecret, GLWESwitchingKey, GetRow, Infos,
-    noise::{log2_std_noise_gglwe_product, noise_ggsw_product},
+    noise::{log2_std_noise_gglwe_product, noise_ggsw_product}, GGSWCiphertext, GLWEPlaintext, GLWESecret, GLWESecretExec, GLWESwitchingKey, GLWESwitchingKeyExec, Infos
 };
 
 #[test]
@@ -135,7 +134,7 @@ fn test_encrypt_sk(log_n: usize, basek: usize, k_ksk: usize, digits: usize, rank
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
     let rows: usize = (k_ksk - digits * basek) / (digits * basek);
 
-    let mut ksk: GLWESwitchingKey<Vec<u8>, FFT64> =
+    let mut ksk: GLWESwitchingKey<Vec<u8>> =
         GLWESwitchingKey::alloc(&module, basek, k_ksk, rows, digits, rank_in, rank_out);
     let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_ksk);
 
@@ -145,7 +144,6 @@ fn test_encrypt_sk(log_n: usize, basek: usize, k_ksk: usize, digits: usize, rank
 
     let mut scratch: ScratchOwned = ScratchOwned::new(
         GLWESwitchingKey::encrypt_sk_scratch_space(&module, basek, k_ksk, rank_in, rank_out)
-            | FourierGLWECiphertext::decrypt_scratch_space(&module, basek, k_ksk),
     );
 
     let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc(&module, rank_in);
@@ -153,25 +151,22 @@ fn test_encrypt_sk(log_n: usize, basek: usize, k_ksk: usize, digits: usize, rank
 
     let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(&module, rank_out);
     sk_out.fill_ternary_prob(0.5, &mut source_xs);
-    let sk_out_dft: FourierGLWESecret<Vec<u8>, FFT64> = FourierGLWESecret::from(&module, &sk_out);
+    let sk_out_exec: GLWESecretExec<Vec<u8>, FFT64> = GLWESecretExec::from(&module, &sk_out);
 
     ksk.encrypt_sk(
         &module,
         &sk_in,
-        &sk_out_dft,
+        &sk_out,
         &mut source_xa,
         &mut source_xe,
         sigma,
         scratch.borrow(),
     );
 
-    let mut ct_glwe_fourier: FourierGLWECiphertext<Vec<u8>, FFT64> =
-        FourierGLWECiphertext::alloc(&module, basek, k_ksk, rank_out);
 
     (0..ksk.rank_in()).for_each(|col_i| {
         (0..ksk.rows()).for_each(|row_i| {
-            ksk.get_row(&module, row_i, col_i, &mut ct_glwe_fourier);
-            ct_glwe_fourier.decrypt(&module, &mut pt, &sk_out_dft, scratch.borrow());
+            ksk.at(row_i, col_i).decrypt(&module, &mut pt, &sk_out_exec, scratch.borrow());
             module.vec_znx_sub_scalar_inplace(
                 &mut pt.data,
                 0,
@@ -201,7 +196,7 @@ fn test_key_switch(
     let rows: usize = k_in.div_ceil(basek * digits);
     let digits_in: usize = 1;
 
-    let mut ct_gglwe_s0s1: GLWESwitchingKey<Vec<u8>, FFT64> = GLWESwitchingKey::alloc(
+    let mut ct_gglwe_s0s1: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc(
         &module,
         basek,
         k_in,
@@ -210,7 +205,7 @@ fn test_key_switch(
         rank_in_s0s1,
         rank_out_s0s1,
     );
-    let mut ct_gglwe_s1s2: GLWESwitchingKey<Vec<u8>, FFT64> = GLWESwitchingKey::alloc(
+    let mut ct_gglwe_s1s2: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc(
         &module,
         basek,
         k_ksk,
@@ -219,7 +214,7 @@ fn test_key_switch(
         rank_out_s0s1,
         rank_out_s1s2,
     );
-    let mut ct_gglwe_s0s2: GLWESwitchingKey<Vec<u8>, FFT64> = GLWESwitchingKey::alloc(
+    let mut ct_gglwe_s0s2: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc(
         &module,
         basek,
         k_out,
@@ -240,8 +235,7 @@ fn test_key_switch(
             k_ksk,
             rank_in_s0s1,
             rank_in_s0s1 | rank_out_s0s1,
-        ) | FourierGLWECiphertext::decrypt_scratch_space(&module, basek, k_out)
-            | GLWESwitchingKey::keyswitch_scratch_space(
+        ) | GLWESwitchingKey::keyswitch_scratch_space(
                 &module,
                 basek,
                 k_out,
@@ -258,17 +252,16 @@ fn test_key_switch(
 
     let mut sk1: GLWESecret<Vec<u8>> = GLWESecret::alloc(&module, rank_out_s0s1);
     sk1.fill_ternary_prob(0.5, &mut source_xs);
-    let sk1_dft: FourierGLWESecret<Vec<u8>, FFT64> = FourierGLWESecret::from(&module, &sk1);
 
     let mut sk2: GLWESecret<Vec<u8>> = GLWESecret::alloc(&module, rank_out_s1s2);
     sk2.fill_ternary_prob(0.5, &mut source_xs);
-    let sk2_dft: FourierGLWESecret<Vec<u8>, FFT64> = FourierGLWESecret::from(&module, &sk2);
+    let sk2_exec: GLWESecretExec<Vec<u8>, FFT64> = GLWESecretExec::from(&module, &sk2);
 
     // gglwe_{s1}(s0) = s0 -> s1
     ct_gglwe_s0s1.encrypt_sk(
         &module,
         &sk0,
-        &sk1_dft,
+        &sk1,
         &mut source_xa,
         &mut source_xe,
         sigma,
@@ -279,24 +272,34 @@ fn test_key_switch(
     ct_gglwe_s1s2.encrypt_sk(
         &module,
         &sk1,
-        &sk2_dft,
+        &sk2,
         &mut source_xa,
         &mut source_xe,
         sigma,
         scratch.borrow(),
     );
 
-    // gglwe_{s1}(s0) (x) gglwe_{s2}(s1) = gglwe_{s2}(s0)
-    ct_gglwe_s0s2.keyswitch(&module, &ct_gglwe_s0s1, &ct_gglwe_s1s2, scratch.borrow());
+    let mut ct_gglwe_s1s2_exec : GLWESwitchingKeyExec<Vec<u8>, FFT64> = GLWESwitchingKeyExec::alloc(
+        &module,
+        basek,
+        k_out,
+        rows,
+        digits_in,
+        rank_in_s0s1,
+        rank_out_s1s2,
+    );
 
-    let mut ct_glwe_dft: FourierGLWECiphertext<Vec<u8>, FFT64> =
-        FourierGLWECiphertext::alloc(&module, basek, k_out, rank_out_s1s2);
+    ct_gglwe_s1s2_exec.prepare(&module, &ct_gglwe_s1s2, scratch.borrow());
+
+    // gglwe_{s1}(s0) (x) gglwe_{s2}(s1) = gglwe_{s2}(s0)
+    ct_gglwe_s0s2.keyswitch(&module, &ct_gglwe_s0s1, &ct_gglwe_s1s2_exec, scratch.borrow());
+
+
     let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_out);
 
     (0..ct_gglwe_s0s2.rank_in()).for_each(|col_i| {
         (0..ct_gglwe_s0s2.rows()).for_each(|row_i| {
-            ct_gglwe_s0s2.get_row(&module, row_i, col_i, &mut ct_glwe_dft);
-            ct_glwe_dft.decrypt(&module, &mut pt, &sk2_dft, scratch.borrow());
+            ct_gglwe_s0s2.at(row_i, col_i).decrypt(&module, &mut pt, &sk2_exec, scratch.borrow());
             module.vec_znx_sub_scalar_inplace(
                 &mut pt.data,
                 0,
@@ -343,9 +346,9 @@ fn test_key_switch_inplace(
     let rows: usize = k_ct.div_ceil(basek * digits);
     let digits_in: usize = 1;
 
-    let mut ct_gglwe_s0s1: GLWESwitchingKey<Vec<u8>, FFT64> =
+    let mut ct_gglwe_s0s1: GLWESwitchingKey<Vec<u8>> =
         GLWESwitchingKey::alloc(&module, basek, k_ct, rows, digits_in, rank_in, rank_out);
-    let mut ct_gglwe_s1s2: GLWESwitchingKey<Vec<u8>, FFT64> =
+    let mut ct_gglwe_s1s2: GLWESwitchingKey<Vec<u8>> =
         GLWESwitchingKey::alloc(&module, basek, k_ksk, rows, digits, rank_out, rank_out);
 
     let mut source_xs: Source = Source::new([0u8; 32]);
@@ -354,7 +357,6 @@ fn test_key_switch_inplace(
 
     let mut scratch: ScratchOwned = ScratchOwned::new(
         GLWESwitchingKey::encrypt_sk_scratch_space(&module, basek, k_ksk, rank_in, rank_out)
-            | FourierGLWECiphertext::decrypt_scratch_space(&module, basek, k_ksk)
             | GLWESwitchingKey::keyswitch_inplace_scratch_space(&module, basek, k_ct, k_ksk, digits, rank_out),
     );
 
@@ -363,17 +365,16 @@ fn test_key_switch_inplace(
 
     let mut sk1: GLWESecret<Vec<u8>> = GLWESecret::alloc(&module, rank_out);
     sk1.fill_ternary_prob(0.5, &mut source_xs);
-    let sk1_dft: FourierGLWESecret<Vec<u8>, FFT64> = FourierGLWESecret::from(&module, &sk1);
 
     let mut sk2: GLWESecret<Vec<u8>> = GLWESecret::alloc(&module, rank_out);
     sk2.fill_ternary_prob(0.5, &mut source_xs);
-    let sk2_dft: FourierGLWESecret<Vec<u8>, FFT64> = FourierGLWESecret::from(&module, &sk2);
+    let sk2_exec: GLWESecretExec<Vec<u8>, FFT64> = GLWESecretExec::from(&module, &sk2);
 
     // gglwe_{s1}(s0) = s0 -> s1
     ct_gglwe_s0s1.encrypt_sk(
         &module,
         &sk0,
-        &sk1_dft,
+        &sk1,
         &mut source_xa,
         &mut source_xe,
         sigma,
@@ -384,25 +385,35 @@ fn test_key_switch_inplace(
     ct_gglwe_s1s2.encrypt_sk(
         &module,
         &sk1,
-        &sk2_dft,
+        &sk2,
         &mut source_xa,
         &mut source_xe,
         sigma,
         scratch.borrow(),
     );
 
+    let mut ct_gglwe_s1s2_exec : GLWESwitchingKeyExec<Vec<u8>, FFT64> = GLWESwitchingKeyExec::alloc(
+        &module,
+        basek,
+        k_ct,
+        rows,
+        digits_in,
+        rank_in,
+        rank_out,
+    );
+
+    ct_gglwe_s1s2_exec.prepare(&module, &ct_gglwe_s1s2, scratch.borrow());
+
     // gglwe_{s1}(s0) (x) gglwe_{s2}(s1) = gglwe_{s2}(s0)
-    ct_gglwe_s0s1.keyswitch_inplace(&module, &ct_gglwe_s1s2, scratch.borrow());
+    ct_gglwe_s0s1.keyswitch_inplace(&module, &ct_gglwe_s1s2_exec, scratch.borrow());
 
-    let ct_gglwe_s0s2: GLWESwitchingKey<Vec<u8>, FFT64> = ct_gglwe_s0s1;
+    let ct_gglwe_s0s2: GLWESwitchingKey<Vec<u8>> = ct_gglwe_s0s1;
 
-    let mut ct_glwe_dft: FourierGLWECiphertext<Vec<u8>, FFT64> = FourierGLWECiphertext::alloc(&module, basek, k_ct, rank_out);
     let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_ct);
 
     (0..ct_gglwe_s0s2.rank_in()).for_each(|col_i| {
         (0..ct_gglwe_s0s2.rows()).for_each(|row_i| {
-            ct_gglwe_s0s2.get_row(&module, row_i, col_i, &mut ct_glwe_dft);
-            ct_glwe_dft.decrypt(&module, &mut pt, &sk2_dft, scratch.borrow());
+            ct_gglwe_s0s2.at(row_i, col_i).decrypt(&module, &mut pt, &sk2_exec, scratch.borrow());
             module.vec_znx_sub_scalar_inplace(
                 &mut pt.data,
                 0,
@@ -451,11 +462,11 @@ fn test_external_product(
     let rows: usize = k_in.div_ceil(basek * digits);
     let digits_in: usize = 1;
 
-    let mut ct_gglwe_in: GLWESwitchingKey<Vec<u8>, FFT64> =
+    let mut ct_gglwe_in: GLWESwitchingKey<Vec<u8>> =
         GLWESwitchingKey::alloc(&module, basek, k_in, rows, digits_in, rank_in, rank_out);
-    let mut ct_gglwe_out: GLWESwitchingKey<Vec<u8>, FFT64> =
+    let mut ct_gglwe_out: GLWESwitchingKey<Vec<u8>> =
         GLWESwitchingKey::alloc(&module, basek, k_out, rows, digits_in, rank_in, rank_out);
-    let mut ct_rgsw: GGSWCiphertext<Vec<u8>, FFT64> = GGSWCiphertext::alloc(&module, basek, k_ggsw, rows, digits, rank_out);
+    let mut ct_rgsw: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(&module, basek, k_ggsw, rows, digits, rank_out);
 
     let mut pt_rgsw: ScalarZnx<Vec<u8>> = module.new_scalar_znx(1);
 
@@ -465,7 +476,6 @@ fn test_external_product(
 
     let mut scratch: ScratchOwned = ScratchOwned::new(
         GLWESwitchingKey::encrypt_sk_scratch_space(&module, basek, k_in, rank_in, rank_out)
-            | FourierGLWECiphertext::decrypt_scratch_space(&module, basek, k_out)
             | GLWESwitchingKey::external_product_scratch_space(&module, basek, k_out, k_in, k_ggsw, digits, rank_out)
             | GGSWCiphertext::encrypt_sk_scratch_space(&module, basek, k_ggsw, rank_out),
     );
@@ -479,13 +489,13 @@ fn test_external_product(
 
     let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(&module, rank_out);
     sk_out.fill_ternary_prob(0.5, &mut source_xs);
-    let sk_out_dft: FourierGLWESecret<Vec<u8>, FFT64> = FourierGLWESecret::from(&module, &sk_out);
+    let sk_out_exec: GLWESecretExec<Vec<u8>, FFT64> = GLWESecretExec::from(&module, &sk_out);
 
     // gglwe_{s1}(s0) = s0 -> s1
     ct_gglwe_in.encrypt_sk(
         &module,
         &sk_in,
-        &sk_out_dft,
+        &sk_out,
         &mut source_xa,
         &mut source_xe,
         sigma,
@@ -495,17 +505,18 @@ fn test_external_product(
     ct_rgsw.encrypt_sk(
         &module,
         &pt_rgsw,
-        &sk_out_dft,
+        &sk_out_exec,
         &mut source_xa,
         &mut source_xe,
         sigma,
         scratch.borrow(),
     );
 
+    let mut ct_rgsw_exec: GGSWCiphertextExec<Vec<u8>, FFT64> = GGSWCiphertextExec::alloc(&module, basek, k_ggsw, rows, digits, rank_out);
+
     // gglwe_(m) (x) RGSW_(X^k) = gglwe_(m * X^k)
     ct_gglwe_out.external_product(&module, &ct_gglwe_in, &ct_rgsw, scratch.borrow());
 
-    let mut ct_glwe_dft: FourierGLWECiphertext<Vec<u8>, FFT64> = FourierGLWECiphertext::alloc(&module, basek, k_out, rank_out);
     let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_out);
 
     (0..rank_in).for_each(|i| {
@@ -514,8 +525,8 @@ fn test_external_product(
 
     (0..rank_in).for_each(|col_i| {
         (0..ct_gglwe_out.rows()).for_each(|row_i| {
-            ct_gglwe_out.get_row(&module, row_i, col_i, &mut ct_glwe_dft);
-            ct_glwe_dft.decrypt(&module, &mut pt, &sk_out_dft, scratch.borrow());
+
+            ct_gglwe_out.at(row_i, col_i).decrypt(&module, &mut pt, &sk_out_exec, scratch.borrow());
 
             module.vec_znx_sub_scalar_inplace(
                 &mut pt.data,
@@ -600,13 +611,13 @@ fn test_external_product_inplace(
 
     let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(&module, rank_out);
     sk_out.fill_ternary_prob(0.5, &mut source_xs);
-    let sk_out_dft: FourierGLWESecret<Vec<u8>, FFT64> = FourierGLWESecret::from(&module, &sk_out);
+    let sk_out_exec: FourierGLWESecret<Vec<u8>, FFT64> = FourierGLWESecret::from(&module, &sk_out);
 
     // gglwe_{s1}(s0) = s0 -> s1
     ct_gglwe.encrypt_sk(
         &module,
         &sk_in,
-        &sk_out_dft,
+        &sk_out_exec,
         &mut source_xa,
         &mut source_xe,
         sigma,
@@ -616,7 +627,7 @@ fn test_external_product_inplace(
     ct_rgsw.encrypt_sk(
         &module,
         &pt_rgsw,
-        &sk_out_dft,
+        &sk_out_exec,
         &mut source_xa,
         &mut source_xe,
         sigma,
@@ -626,7 +637,7 @@ fn test_external_product_inplace(
     // gglwe_(m) (x) RGSW_(X^k) = gglwe_(m * X^k)
     ct_gglwe.external_product_inplace(&module, &ct_rgsw, scratch.borrow());
 
-    let mut ct_glwe_dft: FourierGLWECiphertext<Vec<u8>, FFT64> = FourierGLWECiphertext::alloc(&module, basek, k_ct, rank_out);
+    let mut ct_glwe_exec: FourierGLWECiphertext<Vec<u8>, FFT64> = FourierGLWECiphertext::alloc(&module, basek, k_ct, rank_out);
     let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_ct);
 
     (0..rank_in).for_each(|i| {
@@ -635,8 +646,8 @@ fn test_external_product_inplace(
 
     (0..rank_in).for_each(|col_i| {
         (0..ct_gglwe.rows()).for_each(|row_i| {
-            ct_gglwe.get_row(&module, row_i, col_i, &mut ct_glwe_dft);
-            ct_glwe_dft.decrypt(&module, &mut pt, &sk_out_dft, scratch.borrow());
+            ct_gglwe.get_row(&module, row_i, col_i, &mut ct_glwe_exec);
+            ct_glwe_exec.decrypt(&module, &mut pt, &sk_out_exec, scratch.borrow());
 
             module.vec_znx_sub_scalar_inplace(
                 &mut pt.data,

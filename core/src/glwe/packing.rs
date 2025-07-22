@@ -1,4 +1,4 @@
-use crate::{GLWEAutomorphismKeyPrep, GLWECiphertext, GLWEOps, Infos, ScratchCore};
+use crate::{GLWEAutomorphismKeyExec, GLWECiphertext, GLWEOps, Infos, ScratchCore};
 use std::collections::HashMap;
 
 use backend::{
@@ -109,7 +109,7 @@ impl GLWEPacker {
         &mut self,
         module: &Module<B>,
         a: Option<&GLWECiphertext<DataA>>,
-        auto_keys: &HashMap<i64, GLWEAutomorphismKeyPrep<DataAK, B>>,
+        auto_keys: &HashMap<i64, GLWEAutomorphismKeyExec<DataAK, B>>,
         scratch: &mut Scratch,
     ) where
         Module<B>: VecZnxDftAllocBytes
@@ -171,7 +171,7 @@ fn pack_core<D: AsRef<[u8]>, DataAK: AsRef<[u8]>, B: Backend>(
     a: Option<&GLWECiphertext<D>>,
     accumulators: &mut [Accumulator],
     i: usize,
-    auto_keys: &HashMap<i64, GLWEAutomorphismKeyPrep<DataAK, B>>,
+    auto_keys: &HashMap<i64, GLWEAutomorphismKeyExec<DataAK, B>>,
     scratch: &mut Scratch,
 ) where
     Module<B>: VecZnxDftAllocBytes
@@ -255,7 +255,7 @@ fn combine<D: AsRef<[u8]>, DataAK: AsRef<[u8]>, B: Backend>(
     acc: &mut Accumulator,
     b: Option<&GLWECiphertext<D>>,
     i: usize,
-    auto_keys: &HashMap<i64, GLWEAutomorphismKeyPrep<DataAK, B>>,
+    auto_keys: &HashMap<i64, GLWEAutomorphismKeyExec<DataAK, B>>,
     scratch: &mut Scratch,
 ) where
     Module<B>: VecZnxDftAllocBytes

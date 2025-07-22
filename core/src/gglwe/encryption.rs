@@ -6,7 +6,7 @@ use backend::{
 use sampling::source::Source;
 
 use crate::{
-    FourierGLWESecret, GGLWECiphertext, GLWEAutomorphismKey, GLWECiphertext, GLWESecret, GLWESwitchingKey, GLWETensorKey, Infos,
+    GLWESecretExec, GGLWECiphertext, GLWEAutomorphismKey, GLWECiphertext, GLWESecret, GLWESwitchingKey, GLWETensorKey, Infos,
     ScratchCore,
 };
 
@@ -32,7 +32,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGLWECiphertext<DataSelf> {
         &mut self,
         module: &Module<B>,
         pt: &ScalarZnx<DataPt>,
-        sk: &FourierGLWESecret<DataSk, B>,
+        sk: &GLWESecretExec<DataSk, B>,
         source_xa: &mut Source,
         source_xe: &mut Source,
         sigma: f64,
@@ -134,7 +134,7 @@ impl GLWESwitchingKey<Vec<u8>> {
     {
         GGLWECiphertext::encrypt_sk_scratch_space(module, basek, k, rank_out)
             + module.bytes_of_scalar_znx(rank_in)
-            + FourierGLWESecret::bytes_of(module, rank_out)
+            + GLWESecretExec::bytes_of(module, rank_out)
     }
 
     pub fn encrypt_pk_scratch_space<B: Backend>(
@@ -178,7 +178,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<DataSelf> {
             module.switch_degree(&mut sk_in_tmp, i, &sk_in.data, i);
         });
 
-        let (mut sk_out_tmp, scratch2) = scratch1.tmp_fourier_glwe_secret(module, sk_out.rank());
+        let (mut sk_out_tmp, scratch2) = scratch1.tmp_glwe_secret_exec(module, sk_out.rank());
         {
             let (mut tmp, _) = scratch2.tmp_scalar_znx(module, 1);
             (0..sk_out.rank()).for_each(|i| {
@@ -276,7 +276,7 @@ impl GLWETensorKey<Vec<u8>> {
         Module<B>: VecZnxDftAllocBytes + SvpPPolAllocBytes + VecZnxBigNormalize<B>,
     {
         GLWESecret::bytes_of(module, 1)
-            + FourierGLWESecret::bytes_of(module, 1)
+            + GLWESecretExec::bytes_of(module, 1)
             + GLWESwitchingKey::encrypt_sk_scratch_space(module, basek, k, rank, rank)
     }
 }
@@ -311,8 +311,8 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWETensorKey<DataSelf> {
 
         let rank: usize = self.rank();
 
-        let (mut sk_dft_prep, scratch1) = scratch.tmp_fourier_glwe_secret(module, rank);
-        sk_dft_prep.set(module, &sk);
+        let (mut sk_dft_prep, scratch1) = scratch.tmp_glwe_secret_exec(module, rank);
+        sk_dft_prep.prepare(module, &sk);
 
         let (mut sk_dft, scratch2) = scratch1.tmp_vec_znx_dft(module, rank, 1);
 

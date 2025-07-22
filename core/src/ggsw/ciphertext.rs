@@ -1,14 +1,9 @@
 use backend::{
-    Backend, MatZnx, MatZnxAlloc, Module, ScalarZnx, Scratch, SvpPPolApplyInplace, VecZnxAlloc, VecZnxBigAddSmallInplace,
-    VecZnxBigAllocBytes, VecZnxBigAutomorphismInplace, VecZnxBigNormalize, VecZnxBigSubSmallAInplace, VecZnxBigSubSmallBInplace,
-    VecZnxDft, VecZnxDftAddInplace, VecZnxDftAllocBytes, VecZnxDftCopy, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume,
-    VecZnxDftToVecZnxBigTmpA, VecZnxOps, VecZnxScratch, VmpApply, VmpPMat, ZnxInfos, ZnxZero,
+    Backend, MatZnx, MatZnxAlloc, Module, Scratch, VecZnxAlloc, VecZnxBigAddSmallInplace, VecZnxBigAllocBytes, VecZnxBigAutomorphismInplace, VecZnxBigNormalize, VecZnxBigSubSmallAInplace, VecZnxBigSubSmallBInplace, VecZnxDft, VecZnxDftAddInplace, VecZnxDftAllocBytes, VecZnxDftCopy, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume, VecZnxDftToVecZnxBigTmpA, VecZnxScratch, VmpApply, VmpPMat, VmpPMatAlloc, VmpPMatAllocBytes, ZnxInfos, ZnxZero
 };
-use sampling::source::Source;
 
 use crate::{
-    FourierGLWECiphertext, FourierGLWESecret, GLWEAutomorphismKeyPrep, GLWECiphertext, GLWESwitchingKeyPrep, GLWETensorKeyPrep,
-    Infos, ScratchCore, ggsw::ciphertext_prep::GGSWCiphertextPrep,
+    GLWEAutomorphismKeyExec, GLWECiphertext, GLWESwitchingKeyExec, GLWETensorKeyPrep, Infos
 };
 
 pub struct GGSWCiphertext<D> {
@@ -114,16 +109,6 @@ impl<D> GGSWCiphertext<D> {
 }
 
 impl GGSWCiphertext<Vec<u8>> {
-    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize
-    where
-        Module<B>: VecZnxDftAllocBytes + VecZnxBigNormalize<B>,
-    {
-        let size = k.div_ceil(basek);
-        GLWECiphertext::encrypt_sk_scratch_space(module, basek, k)
-            + module.bytes_of_vec_znx(rank + 1, size)
-            + module.bytes_of_vec_znx(1, size)
-            + module.vec_znx_dft_alloc_bytes(rank + 1, size)
-    }
 
     pub(crate) fn expand_row_scratch_space<B: Backend>(
         module: &Module<B>,
@@ -248,12 +233,9 @@ impl GGSWCiphertext<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: VecZnxDftAllocBytes,
+        Module<B>: VecZnxDftAllocBytes + VmpApply<B>,
     {
-        let tmp_in: usize = FourierGLWECiphertext::bytes_of(module, basek, k_in, rank);
-        let tmp_out: usize = FourierGLWECiphertext::bytes_of(module, basek, k_out, rank);
-        let ggsw: usize = FourierGLWECiphertext::external_product_scratch_space(module, basek, k_out, k_in, k_ggsw, digits, rank);
-        tmp_in + tmp_out + ggsw
+        GLWECiphertext::external_product_scratch_space(module, basek, k_out, k_in, k_ggsw, digits, rank)
     }
 
     pub fn external_product_inplace_scratch_space<B: Backend>(
@@ -265,71 +247,13 @@ impl GGSWCiphertext<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: VecZnxDftAllocBytes,
+        Module<B>: VecZnxDftAllocBytes + VmpApply<B>,
     {
-        let tmp: usize = FourierGLWECiphertext::bytes_of(module, basek, k_out, rank);
-        let ggsw: usize =
-            FourierGLWECiphertext::external_product_inplace_scratch_space(module, basek, k_out, k_ggsw, digits, rank);
-        tmp + ggsw
+        GLWECiphertext::external_product_inplace_scratch_space(module, basek, k_out, k_ggsw, digits, rank)
     }
 }
 
 impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
-    pub fn encrypt_sk<DataPt: AsRef<[u8]>, DataSk: AsRef<[u8]>, B: Backend>(
-        &mut self,
-        module: &Module<B>,
-        pt: &ScalarZnx<DataPt>,
-        sk: &FourierGLWESecret<DataSk, B>,
-        source_xa: &mut Source,
-        source_xe: &mut Source,
-        sigma: f64,
-        scratch: &mut Scratch,
-    ) where
-        Module<B>: VecZnxDftAllocBytes
-            + VecZnxBigNormalize<B>
-            + VecZnxDftFromVecZnx<B>
-            + SvpPPolApplyInplace<B>
-            + VecZnxDftToVecZnxBigConsume<B>
-            + VecZnxBigNormalize<B>,
-    {
-        #[cfg(debug_assertions)]
-        {
-            assert_eq!(self.rank(), sk.rank());
-            assert_eq!(self.n(), module.n());
-            assert_eq!(pt.n(), module.n());
-            assert_eq!(sk.n(), module.n());
-        }
-
-        let basek: usize = self.basek();
-        let k: usize = self.k();
-        let rank: usize = self.rank();
-        let digits: usize = self.digits();
-
-        let (mut tmp_pt, scratch1) = scratch.tmp_glwe_pt(module, basek, k);
-
-        (0..self.rows()).for_each(|row_i| {
-            tmp_pt.data.zero();
-
-            // Adds the scalar_znx_pt to the i-th limb of the vec_znx_pt
-            module.vec_znx_add_scalar_inplace(&mut tmp_pt.data, 0, (digits - 1) + row_i * digits, pt, 0);
-            module.vec_znx_normalize_inplace(basek, &mut tmp_pt.data, 0, scratch1);
-
-            (0..rank + 1).for_each(|col_j| {
-                // rlwe encrypt of vec_znx_pt into vec_znx_ct
-
-                self.at_mut(row_i, col_j).encrypt_sk_private(
-                    module,
-                    Some((&tmp_pt, col_j)),
-                    sk,
-                    source_xa,
-                    source_xe,
-                    sigma,
-                    scratch1,
-                );
-            });
-        });
-    }
-
     pub(crate) fn expand_row<DataCi: AsRef<[u8]>, DataTsk: AsRef<[u8]>, B: Backend>(
         &mut self,
         module: &Module<B>,
@@ -453,7 +377,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
         &mut self,
         module: &Module<B>,
         lhs: &GGSWCiphertext<DataLhs>,
-        ksk: &GLWESwitchingKeyPrep<DataKsk, B>,
+        ksk: &GLWESwitchingKeyExec<DataKsk, B>,
         tsk: &GLWETensorKeyPrep<DataTsk, B>,
         scratch: &mut Scratch,
     ) where
@@ -501,7 +425,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
     pub fn keyswitch_inplace<DataKsk: AsRef<[u8]>, DataTsk: AsRef<[u8]>, B: Backend>(
         &mut self,
         module: &Module<B>,
-        ksk: &GLWESwitchingKeyPrep<DataKsk, B>,
+        ksk: &GLWESwitchingKeyExec<DataKsk, B>,
         tsk: &GLWETensorKeyPrep<DataTsk, B>,
         scratch: &mut Scratch,
     ) where
@@ -530,7 +454,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
         &mut self,
         module: &Module<B>,
         lhs: &GGSWCiphertext<DataLhs>,
-        auto_key: &GLWEAutomorphismKeyPrep<DataAk, B>,
+        auto_key: &GLWEAutomorphismKeyExec<DataAk, B>,
         tensor_key: &GLWETensorKeyPrep<DataTsk, B>,
         scratch: &mut Scratch,
     ) where
@@ -617,7 +541,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
     pub fn automorphism_inplace<DataKsk: AsRef<[u8]>, DataTsk: AsRef<[u8]>, B: Backend>(
         &mut self,
         module: &Module<B>,
-        auto_key: &GLWEAutomorphismKeyPrep<DataKsk, B>,
+        auto_key: &GLWEAutomorphismKeyExec<DataKsk, B>,
         tensor_key: &GLWETensorKeyPrep<DataTsk, B>,
         scratch: &mut Scratch,
     ) where
@@ -645,7 +569,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
         &mut self,
         module: &Module<B>,
         lhs: &GGSWCiphertext<DataLhs>,
-        rhs: &GGSWCiphertextPrep<DataRhs, B>,
+        rhs: &GGSWCiphertextExec<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
         Module<B>:
@@ -699,7 +623,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
     pub fn external_product_inplace<DataRhs: AsRef<[u8]>, B: Backend>(
         &mut self,
         module: &Module<B>,
-        rhs: &GGSWCiphertextPrep<DataRhs, B>,
+        rhs: &GGSWCiphertextExec<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
         Module<B>:
@@ -722,5 +646,106 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
                     .external_product_inplace(module, rhs, scratch);
             });
         });
+    }
+}
+
+pub struct GGSWCiphertextExec<C, B: Backend> {
+    pub(crate) data: VmpPMat<C, B>,
+    pub(crate) basek: usize,
+    pub(crate) k: usize,
+    pub(crate) digits: usize,
+}
+
+impl<B: Backend> GGSWCiphertextExec<Vec<u8>, B> {
+    pub fn alloc(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self
+    where
+        Module<B>: VmpPMatAlloc<B>,
+    {
+        let size: usize = k.div_ceil(basek);
+        debug_assert!(digits > 0, "invalid ggsw: `digits` == 0");
+
+        debug_assert!(
+            size > digits,
+            "invalid ggsw: ceil(k/basek): {} <= digits: {}",
+            size,
+            digits
+        );
+
+        assert!(
+            rows * digits <= size,
+            "invalid ggsw: rows: {} * digits:{} > ceil(k/basek): {}",
+            rows,
+            digits,
+            size
+        );
+
+        Self {
+            data: module.vmp_pmat_alloc(rows, rank + 1, rank + 1, k.div_ceil(basek)),
+            basek,
+            k: k,
+            digits,
+        }
+    }
+
+    pub fn bytes_of(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize
+    where
+        Module<B>: VmpPMatAllocBytes,
+    {
+        let size: usize = k.div_ceil(basek);
+        debug_assert!(
+            size > digits,
+            "invalid ggsw: ceil(k/basek): {} <= digits: {}",
+            size,
+            digits
+        );
+
+        assert!(
+            rows * digits <= size,
+            "invalid ggsw: rows: {} * digits:{} > ceil(k/basek): {}",
+            rows,
+            digits,
+            size
+        );
+
+        module.vmp_pmat_alloc_bytes(rows, rank + 1, rank + 1, size)
+    }
+}
+
+impl<T, B: Backend> Infos for GGSWCiphertextExec<T, B> {
+    type Inner = VmpPMat<T, B>;
+
+    fn inner(&self) -> &Self::Inner {
+        &self.data
+    }
+
+    fn basek(&self) -> usize {
+        self.basek
+    }
+
+    fn k(&self) -> usize {
+        self.k
+    }
+}
+
+impl<T, B: Backend> GGSWCiphertextExec<T, B> {
+    pub fn rank(&self) -> usize {
+        self.data.cols_out() - 1
+    }
+
+    pub fn digits(&self) -> usize {
+        self.digits
+    }
+}
+
+impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>, B: Backend> GGSWCiphertextExec<DataSelf, B> {
+    pub fn prepare<DataOther>(&mut self, module: &Module<B>, other: &GGLWECiphertext<DataOther>, scratch: &mut Scratch)
+    where
+        DataOther: AsRef<[u8]>,
+        Module<B>: VmpPMatPrepare<B>,
+    {
+        module.vmp_prepare(&mut self.data, &other.data, scratch);
+        self.k = other.k;
+        self.basek = other.basek;
+        self.digits = other.digits;
     }
 }

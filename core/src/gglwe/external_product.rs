@@ -3,7 +3,7 @@ use backend::{
     VmpApply, ZnxZero,
 };
 
-use crate::{FourierGLWECiphertext, GLWEAutomorphismKey, GLWESwitchingKey, Infos, ggsw::ciphertext_prep::GGSWCiphertextPrep};
+use crate::{GLWEAutomorphismKey, GLWECiphertext, GLWESwitchingKey, Infos, ggsw::ciphertext_prep::GGSWCiphertextPrep};
 
 impl GLWESwitchingKey<Vec<u8>> {
     pub fn external_product_scratch_space<B: Backend>(
@@ -16,12 +16,9 @@ impl GLWESwitchingKey<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: VecZnxDftAllocBytes,
+        Module<B>: VecZnxDftAllocBytes + VmpApply<B>,
     {
-        let tmp_in: usize = FourierGLWECiphertext::bytes_of(module, basek, k_in, rank);
-        let tmp_out: usize = FourierGLWECiphertext::bytes_of(module, basek, k_out, rank);
-        let ggsw: usize = FourierGLWECiphertext::external_product_scratch_space(module, basek, k_out, k_in, k_ggsw, digits, rank);
-        tmp_in + tmp_out + ggsw
+        GLWECiphertext::external_product_scratch_space(module, basek, k_out, k_in, k_ggsw, digits, rank)
     }
 
     pub fn external_product_inplace_scratch_space<B: Backend>(
@@ -33,12 +30,9 @@ impl GLWESwitchingKey<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: VecZnxDftAllocBytes,
+        Module<B>: VecZnxDftAllocBytes + VmpApply<B>,
     {
-        let tmp: usize = FourierGLWECiphertext::bytes_of(module, basek, k_out, rank);
-        let ggsw: usize =
-            FourierGLWECiphertext::external_product_inplace_scratch_space(module, basek, k_out, k_ggsw, digits, rank);
-        tmp + ggsw
+        GLWECiphertext::external_product_inplace_scratch_space(module, basek, k_out, k_ggsw, digits, rank)
     }
 }
 
@@ -132,7 +126,7 @@ impl GLWEAutomorphismKey<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: VecZnxDftAllocBytes,
+        Module<B>: VecZnxDftAllocBytes + VmpApply<B>,
     {
         GLWESwitchingKey::external_product_scratch_space(module, basek, k_out, k_in, ggsw_k, digits, rank)
     }
@@ -146,7 +140,7 @@ impl GLWEAutomorphismKey<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: VecZnxDftAllocBytes,
+        Module<B>: VecZnxDftAllocBytes + VmpApply<B>,
     {
         GLWESwitchingKey::external_product_inplace_scratch_space(module, basek, k_out, ggsw_k, digits, rank)
     }

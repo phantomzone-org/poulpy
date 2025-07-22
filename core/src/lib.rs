@@ -1,7 +1,6 @@
 pub mod blind_rotation;
 pub mod dist;
 pub mod elem;
-pub mod fourier_glwe;
 pub mod gglwe;
 pub mod ggsw;
 pub mod glwe;
@@ -14,13 +13,12 @@ use backend::SvpPPolAllocBytes;
 use backend::VecZnxDftAllocBytes;
 pub use blind_rotation::{BlindRotationKeyCGGI, LookUpTable, cggi_blind_rotate, cggi_blind_rotate_scratch_space};
 pub use elem::{Infos, SetMetaData};
-pub use fourier_glwe::{FourierGLWECiphertext, FourierGLWESecret};
 pub use gglwe::{
-    GGLWECiphertext, GGLWECiphertextPrep, GLWEAutomorphismKey, GLWEAutomorphismKeyPrep, GLWESwitchingKey, GLWESwitchingKeyPrep,
+    GGLWECiphertext, GGLWECiphertextPrep, GLWEAutomorphismKey, GLWEAutomorphismKeyExec, GLWESwitchingKey, GLWESwitchingKeyExec,
     GLWETensorKey, GLWETensorKeyPrep,
 };
 pub use ggsw::GGSWCiphertext;
-pub use glwe::{GLWECiphertext, GLWEOps, GLWEPacker, GLWEPlaintext, GLWEPublicKey, GLWESecret};
+pub use glwe::{GLWECiphertext, GLWEOps, GLWEPacker, GLWEPlaintext, GLWEPublicKey, GLWESecret, GLWESecretExec};
 pub use lwe::{LWECiphertext, LWESecret};
 
 pub use backend;
@@ -62,27 +60,8 @@ pub trait ScratchCore<B: Backend> {
         digits: usize,
         rank: usize,
     ) -> (GGSWCiphertext<&mut [u8]>, &mut Self);
-    fn tmp_fourier_glwe_ct(
-        &mut self,
-        module: &Module<B>,
-        basek: usize,
-        k: usize,
-        rank: usize,
-    ) -> (FourierGLWECiphertext<&mut [u8], B>, &mut Self)
-    where
-        Module<B>: VecZnxDftAllocBytes;
-    fn tmp_slice_fourier_glwe_ct(
-        &mut self,
-        size: usize,
-        module: &Module<B>,
-        basek: usize,
-        k: usize,
-        rank: usize,
-    ) -> (Vec<FourierGLWECiphertext<&mut [u8], B>>, &mut Self)
-    where
-        Module<B>: VecZnxDftAllocBytes;
     fn tmp_glwe_secret(&mut self, module: &Module<B>, rank: usize) -> (GLWESecret<&mut [u8]>, &mut Self);
-    fn tmp_fourier_glwe_secret(&mut self, module: &Module<B>, rank: usize) -> (FourierGLWESecret<&mut [u8], B>, &mut Self)
+    fn tmp_glwe_secret_exec(&mut self, module: &Module<B>, rank: usize) -> (GLWESecretExec<&mut [u8], B>, &mut Self)
     where
         Module<B>: SvpPPolAllocBytes;
     fn tmp_glwe_pk(
@@ -208,49 +187,16 @@ impl<B: Backend> ScratchCore<B> for Scratch {
         )
     }
 
-    fn tmp_fourier_glwe_ct(
-        &mut self,
-        module: &Module<B>,
-        basek: usize,
-        k: usize,
-        rank: usize,
-    ) -> (FourierGLWECiphertext<&mut [u8], B>, &mut Self)
-    where
-        Module<B>: VecZnxDftAllocBytes,
-    {
-        let (data, scratch) = self.tmp_vec_znx_dft(module, rank + 1, k.div_ceil(basek));
-        (FourierGLWECiphertext { data, basek, k }, scratch)
-    }
-
-    fn tmp_slice_fourier_glwe_ct(
-        &mut self,
-        size: usize,
-        module: &Module<B>,
-        basek: usize,
-        k: usize,
-        rank: usize,
-    ) -> (Vec<FourierGLWECiphertext<&mut [u8], B>>, &mut Self)
-    where
-        Module<B>: VecZnxDftAllocBytes,
-    {
-        let mut scratch: &mut Scratch = self;
-        let mut cts: Vec<FourierGLWECiphertext<&mut [u8], B>> = Vec::with_capacity(size);
-        for _ in 0..size {
-            let (ct, new_scratch) = scratch.tmp_fourier_glwe_ct(module, basek, k, rank);
-            scratch = new_scratch;
-            cts.push(ct);
-        }
-        (cts, scratch)
-    }
-
     fn tmp_glwe_pk(&mut self, module: &Module<B>, basek: usize, k: usize, rank: usize) -> (GLWEPublicKey<&mut [u8], B>, &mut Self)
     where
         Module<B>: VecZnxDftAllocBytes,
     {
-        let (data, scratch) = self.tmp_fourier_glwe_ct(module, basek, k, rank);
+        let (data, scratch) = self.tmp_vec_znx_dft(module, rank + 1, k.div_ceil(basek));
         (
             GLWEPublicKey {
                 data,
+                k,
+                basek,
                 dist: Distribution::NONE,
             },
             scratch,
@@ -268,13 +214,13 @@ impl<B: Backend> ScratchCore<B> for Scratch {
         )
     }
 
-    fn tmp_fourier_glwe_secret(&mut self, module: &Module<B>, rank: usize) -> (FourierGLWESecret<&mut [u8], B>, &mut Self)
+    fn tmp_glwe_secret_exec(&mut self, module: &Module<B>, rank: usize) -> (GLWESecretExec<&mut [u8], B>, &mut Self)
     where
         Module<B>: SvpPPolAllocBytes,
     {
         let (data, scratch) = self.tmp_svp_ppol(module, rank);
         (
-            FourierGLWESecret {
+            GLWESecretExec {
                 data,
                 dist: Distribution::NONE,
             },
