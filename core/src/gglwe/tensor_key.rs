@@ -167,11 +167,15 @@ impl<D: AsRef<[u8]> + AsMut<[u8]>, B: Backend> GLWETensorKeyExec<D, B> {
         DataOther: AsRef<[u8]>,
         Module<B>: VmpPMatPrepare<B>,
     {
-        #[cfg(debug_assertions)]{
+        #[cfg(debug_assertions)]
+        {
             assert_eq!(self.keys.len(), other.keys.len());
         }
-        self.keys.iter_mut().zip(other.keys.iter()).for_each(|(a, b)|{
-            a.prepare(module, b, scratch);
-        });
+        self.keys
+            .iter_mut()
+            .zip(other.keys.iter())
+            .for_each(|(a, b)| {
+                a.prepare(module, b, scratch);
+            });
     }
 }

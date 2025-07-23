@@ -1,6 +1,6 @@
 use backend::{Backend, MatZnx, Module, Scratch, VmpPMat, VmpPMatAlloc, VmpPMatAllocBytes, VmpPMatPrepare};
 
-use crate::{GGLWECiphertextExec, GGLWECiphertext, GLWECiphertext, Infos};
+use crate::{GGLWECiphertext, GGLWECiphertextExec, GLWECiphertext, Infos};
 
 pub struct GLWESwitchingKey<D> {
     pub(crate) key: GGLWECiphertext<D>,

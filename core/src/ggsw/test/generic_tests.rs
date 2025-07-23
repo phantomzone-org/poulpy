@@ -1,11 +1,16 @@
 use backend::{
-    Backend, Module, ScalarZnx, ScalarZnxAlloc, ScalarZnxOps, ScratchOwned, Stats, SvpPPolAlloc, SvpPPolAllocBytes, SvpPPolApply, SvpPPolApplyInplace, SvpPPolPrepare, VecZnxBig, VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigAlloc, VecZnxBigAllocBytes, VecZnxBigAutomorphismInplace, VecZnxBigNormalize, VecZnxBigSubSmallAInplace, VecZnxBigSubSmallBInplace, VecZnxDft, VecZnxDftAddInplace, VecZnxDftAlloc, VecZnxDftAllocBytes, VecZnxDftCopy, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume, VecZnxDftToVecZnxBigTmpA, VecZnxOps, VecZnxToMut, VmpApply, VmpPMatAlloc, VmpPMatPrepare, ZnxViewMut, ZnxZero
+    Backend, Module, ScalarZnx, ScalarZnxAlloc, ScalarZnxOps, ScratchOwned, Stats, SvpPPolAlloc, SvpPPolAllocBytes, SvpPPolApply,
+    SvpPPolApplyInplace, SvpPPolPrepare, VecZnxBig, VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigAlloc,
+    VecZnxBigAllocBytes, VecZnxBigAutomorphismInplace, VecZnxBigNormalize, VecZnxBigSubSmallAInplace, VecZnxBigSubSmallBInplace,
+    VecZnxDft, VecZnxDftAddInplace, VecZnxDftAlloc, VecZnxDftAllocBytes, VecZnxDftCopy, VecZnxDftFromVecZnx,
+    VecZnxDftToVecZnxBigConsume, VecZnxDftToVecZnxBigTmpA, VecZnxOps, VecZnxToMut, VmpApply, VmpPMatAlloc, VmpPMatPrepare,
+    ZnxViewMut, ZnxZero,
 };
 use sampling::source::Source;
 
 use crate::{
-    GGSWCiphertext, GLWEAutomorphismKey, GLWEPlaintext, GLWESecret, GLWESecretExec, GLWESwitchingKey, GLWESwitchingKeyExec,
-    GLWETensorKey, GLWETensorKeyExec, Infos,
+    GGSWCiphertext, GLWEAutomorphismKey, GLWEAutomorphismKeyExec, GLWEPlaintext, GLWESecret, GLWESecretExec, GLWESwitchingKey,
+    GLWESwitchingKeyExec, GLWETensorKey, GLWETensorKeyExec, Infos,
     noise::{noise_ggsw_keyswitch, noise_ggsw_product},
 };
 
@@ -124,7 +129,9 @@ fn test_keyswitch<B: Backend>(
         + SvpPPolApply<B>
         + VecZnxDftAddInplace<B>
         + VecZnxBigAutomorphismInplace<B>
-        +VecZnxBigSubSmallAInplace<B> + VecZnxBigSubSmallBInplace<B> + VmpPMatAlloc<B>,
+        + VecZnxBigSubSmallAInplace<B>
+        + VecZnxBigSubSmallBInplace<B>
+        + VmpPMatAlloc<B>,
 {
     let rows: usize = k_in.div_ceil(digits * basek);
 
@@ -251,7 +258,7 @@ fn test_keyswitch<B: Backend>(
 }
 
 fn test_keyswitch_inplace<B: Backend>(
-    log_n: usize,
+    module: &Module<B>,
     basek: usize,
     k_ct: usize,
     k_ksk: usize,
@@ -259,15 +266,39 @@ fn test_keyswitch_inplace<B: Backend>(
     digits: usize,
     rank: usize,
     sigma: f64,
-) {
-    let module: Module<B> = Module::<B>::new(1 << log_n);
+) where
+    Module<B>: VecZnxDftAllocBytes
+        + VecZnxBigNormalize<B>
+        + SvpPPolAllocBytes
+        + SvpPPolAlloc<B>
+        + SvpPPolPrepare<B>
+        + VecZnxDftAlloc<B>
+        + VecZnxBigAlloc<B>
+        + VecZnxDftFromVecZnx<B>
+        + SvpPPolApplyInplace<B>
+        + VecZnxDftToVecZnxBigTmpA<B>
+        + VecZnxBigNormalize<B>
+        + VecZnxBigAllocBytes
+        + VecZnxDftToVecZnxBigConsume<B>
+        + VecZnxBigAddInplace<B>
+        + VecZnxBigAddSmallInplace<B>
+        + VmpApply<B>
+        + VmpPMatPrepare<B>
+        + VecZnxDftCopy<B>
+        + SvpPPolApply<B>
+        + VecZnxDftAddInplace<B>
+        + VecZnxBigAutomorphismInplace<B>
+        + VecZnxBigSubSmallAInplace<B>
+        + VecZnxBigSubSmallBInplace<B>
+        + VmpPMatAlloc<B>,
+{
     let rows: usize = k_ct.div_ceil(digits * basek);
 
     let digits_in: usize = 1;
 
-    let mut ct: GGSWCiphertext<Vec<u8>, B> = GGSWCiphertext::alloc(module, basek, k_ct, rows, digits_in, rank);
-    let mut tsk: GLWETensorKey<Vec<u8>, B> = GLWETensorKey::alloc(module, basek, k_tsk, rows, digits, rank);
-    let mut ksk: GLWESwitchingKey<Vec<u8>, B> = GLWESwitchingKey::alloc(module, basek, k_ksk, rows, digits, rank, rank);
+    let mut ct: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(module, basek, k_ct, rows, digits_in, rank);
+    let mut tsk: GLWETensorKey<Vec<u8>> = GLWETensorKey::alloc(module, basek, k_tsk, rows, digits, rank);
+    let mut ksk: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc(module, basek, k_ksk, rows, digits, rank, rank);
     let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(module, basek, k_ct);
     let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(module, basek, k_ct);
     let mut pt_scalar: ScalarZnx<Vec<u8>> = module.new_scalar_znx(1);
@@ -278,7 +309,6 @@ fn test_keyswitch_inplace<B: Backend>(
 
     let mut scratch: ScratchOwned = ScratchOwned::new(
         GGSWCiphertext::encrypt_sk_scratch_space(module, basek, k_ct, rank)
-            | FourierGLWECiphertext::decrypt_scratch_space(module, basek, k_ct)
             | GLWESwitchingKey::encrypt_sk_scratch_space(module, basek, k_ksk, rank, rank)
             | GLWETensorKey::encrypt_sk_scratch_space(module, basek, k_tsk, rank)
             | GGSWCiphertext::keyswitch_inplace_scratch_space(module, basek, k_ct, k_ksk, digits, k_tsk, digits, rank),
@@ -297,7 +327,7 @@ fn test_keyswitch_inplace<B: Backend>(
     ksk.encrypt_sk(
         module,
         &sk_in,
-        &sk_out_dft,
+        &sk_out,
         &mut source_xa,
         &mut source_xe,
         sigma,
@@ -305,7 +335,7 @@ fn test_keyswitch_inplace<B: Backend>(
     );
     tsk.encrypt_sk(
         module,
-        &sk_out_dft,
+        &sk_out,
         &mut source_xa,
         &mut source_xe,
         sigma,
@@ -324,11 +354,17 @@ fn test_keyswitch_inplace<B: Backend>(
         scratch.borrow(),
     );
 
-    ct.keyswitch_inplace(module, &ksk, &tsk, scratch.borrow());
+    let mut ksk_exec: GLWESwitchingKeyExec<Vec<u8>, B> =
+        GLWESwitchingKeyExec::alloc(module, basek, k_ksk, rows, digits, rank, rank);
+    let mut tsk_exec: GLWETensorKeyExec<Vec<u8>, B> = GLWETensorKeyExec::alloc(module, basek, k_ksk, rows, digits, rank);
 
-    let mut ct_glwe_fourier: FourierGLWECiphertext<Vec<u8>, B> = FourierGLWECiphertext::alloc(module, basek, k_ct, rank);
-    let mut pt_dft: VecZnxDft<Vec<u8>, B> = module.new_vec_znx_dft(1, ct.size());
-    let mut pt_big: VecZnxBig<Vec<u8>, B> = module.new_vec_znx_big(1, ct.size());
+    ksk_exec.prepare(module, &ksk, scratch.borrow());
+    tsk_exec.prepare(module, &tsk, scratch.borrow());
+
+    ct.keyswitch_inplace(module, &ksk_exec, &tsk_exec, scratch.borrow());
+
+    let mut pt_dft: VecZnxDft<Vec<u8>, B> = module.vec_znx_dft_alloc(1, ct.size());
+    let mut pt_big: VecZnxBig<Vec<u8>, B> = module.vec_znx_big_alloc(1, ct.size());
 
     (0..ct.rank() + 1).for_each(|col_j| {
         (0..ct.rows()).for_each(|row_i| {
@@ -342,15 +378,14 @@ fn test_keyswitch_inplace<B: Backend>(
 
             // mul with sk[col_j-1]
             if col_j > 0 {
-                module.vec_znx_dft(1, 0, &mut pt_dft, 0, &pt_want.data, 0);
+                module.vec_znx_dft_from_vec_znx(1, 0, &mut pt_dft, 0, &pt_want.data, 0);
                 module.svp_apply_inplace(&mut pt_dft, 0, &sk_out_dft.data, col_j - 1);
-                module.vec_znx_idft_tmp_a(&mut pt_big, 0, &mut pt_dft, 0);
+                module.vec_znx_dft_to_vec_znx_big_tmp_a(&mut pt_big, 0, &mut pt_dft, 0);
                 module.vec_znx_big_normalize(basek, &mut pt_want.data, 0, &pt_big, 0, scratch.borrow());
             }
 
-            ct.get_row(module, row_i, col_j, &mut ct_glwe_fourier);
-
-            ct_glwe_fourier.decrypt(module, &mut pt_have, &sk_out_dft, scratch.borrow());
+            ct.at(row_i, col_j)
+                .decrypt(module, &mut pt_have, &sk_out_dft, scratch.borrow());
 
             module.vec_znx_sub_ab_inplace(&mut pt_have.data, 0, &pt_want.data, 0);
 
@@ -385,7 +420,7 @@ fn test_keyswitch_inplace<B: Backend>(
 
 fn test_automorphism<B: Backend>(
     p: i64,
-    log_n: usize,
+    module: &Module<B>,
     basek: usize,
     k_out: usize,
     k_in: usize,
@@ -394,17 +429,41 @@ fn test_automorphism<B: Backend>(
     digits: usize,
     rank: usize,
     sigma: f64,
-) {
-    let module: Module<B> = Module::<B>::new(1 << log_n);
+) where
+    Module<B>: VecZnxDftAllocBytes
+        + VecZnxBigNormalize<B>
+        + SvpPPolAllocBytes
+        + SvpPPolAlloc<B>
+        + SvpPPolPrepare<B>
+        + VecZnxDftAlloc<B>
+        + VecZnxBigAlloc<B>
+        + VecZnxDftFromVecZnx<B>
+        + SvpPPolApplyInplace<B>
+        + VecZnxDftToVecZnxBigTmpA<B>
+        + VecZnxBigNormalize<B>
+        + VecZnxBigAllocBytes
+        + VecZnxDftToVecZnxBigConsume<B>
+        + VecZnxBigAddInplace<B>
+        + VecZnxBigAddSmallInplace<B>
+        + VmpApply<B>
+        + VmpPMatPrepare<B>
+        + VecZnxDftCopy<B>
+        + SvpPPolApply<B>
+        + VecZnxDftAddInplace<B>
+        + VecZnxBigAutomorphismInplace<B>
+        + VecZnxBigSubSmallAInplace<B>
+        + VecZnxBigSubSmallBInplace<B>
+        + VmpPMatAlloc<B>,
+{
     let rows: usize = k_in.div_ceil(basek * digits);
     let rows_in: usize = k_in.div_euclid(basek * digits);
 
     let digits_in: usize = 1;
 
-    let mut ct_in: GGSWCiphertext<Vec<u8>, B> = GGSWCiphertext::alloc(module, basek, k_in, rows_in, digits_in, rank);
-    let mut ct_out: GGSWCiphertext<Vec<u8>, B> = GGSWCiphertext::alloc(module, basek, k_out, rows_in, digits_in, rank);
-    let mut tensor_key: GLWETensorKey<Vec<u8>, B> = GLWETensorKey::alloc(module, basek, k_tsk, rows, digits, rank);
-    let mut auto_key: GLWEAutomorphismKey<Vec<u8>, B> = GLWEAutomorphismKey::alloc(module, basek, k_ksk, rows, digits, rank);
+    let mut ct_in: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(module, basek, k_in, rows_in, digits_in, rank);
+    let mut ct_out: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(module, basek, k_out, rows_in, digits_in, rank);
+    let mut tensor_key: GLWETensorKey<Vec<u8>> = GLWETensorKey::alloc(module, basek, k_tsk, rows, digits, rank);
+    let mut auto_key: GLWEAutomorphismKey<Vec<u8>> = GLWEAutomorphismKey::alloc(module, basek, k_ksk, rows, digits, rank);
     let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(module, basek, k_out);
     let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(module, basek, k_out);
     let mut pt_scalar: ScalarZnx<Vec<u8>> = module.new_scalar_znx(1);
@@ -415,7 +474,6 @@ fn test_automorphism<B: Backend>(
 
     let mut scratch: ScratchOwned = ScratchOwned::new(
         GGSWCiphertext::encrypt_sk_scratch_space(module, basek, k_in, rank)
-            | FourierGLWECiphertext::decrypt_scratch_space(module, basek, k_out)
             | GLWEAutomorphismKey::encrypt_sk_scratch_space(module, basek, k_ksk, rank)
             | GLWETensorKey::encrypt_sk_scratch_space(module, basek, k_tsk, rank)
             | GGSWCiphertext::automorphism_scratch_space(
@@ -440,7 +498,7 @@ fn test_automorphism<B: Backend>(
     );
     tensor_key.encrypt_sk(
         module,
-        &sk_dft,
+        &sk,
         &mut source_xa,
         &mut source_xe,
         sigma,
@@ -459,13 +517,19 @@ fn test_automorphism<B: Backend>(
         scratch.borrow(),
     );
 
-    ct_out.automorphism(module, &ct_in, &auto_key, &tensor_key, scratch.borrow());
+    let mut auto_key_exec: GLWEAutomorphismKeyExec<Vec<u8>, B> =
+        GLWEAutomorphismKeyExec::alloc(module, basek, k_ksk, rows, digits, rank);
+    auto_key_exec.prepare(module, &auto_key, scratch.borrow());
+
+    let mut tsk_exec: GLWETensorKeyExec<Vec<u8>, B> = GLWETensorKeyExec::alloc(module, basek, k_tsk, rows, digits, rank);
+    tsk_exec.prepare(module, &tensor_key, scratch.borrow());
+
+    ct_out.automorphism(module, &ct_in, &auto_key_exec, &tsk_exec, scratch.borrow());
 
     module.scalar_znx_automorphism_inplace(p, &mut pt_scalar, 0);
 
-    let mut ct_glwe_fourier: FourierGLWECiphertext<Vec<u8>, B> = FourierGLWECiphertext::alloc(module, basek, k_out, rank);
-    let mut pt_dft: VecZnxDft<Vec<u8>, B> = module.new_vec_znx_dft(1, ct_out.size());
-    let mut pt_big: VecZnxBig<Vec<u8>, B> = module.new_vec_znx_big(1, ct_out.size());
+    let mut pt_dft: VecZnxDft<Vec<u8>, B> = module.vec_znx_dft_alloc(1, ct_out.size());
+    let mut pt_big: VecZnxBig<Vec<u8>, B> = module.vec_znx_big_alloc(1, ct_out.size());
 
     (0..ct_out.rank() + 1).for_each(|col_j| {
         (0..ct_out.rows()).for_each(|row_i| {
@@ -473,15 +537,15 @@ fn test_automorphism<B: Backend>(
 
             // mul with sk[col_j-1]
             if col_j > 0 {
-                module.vec_znx_dft(1, 0, &mut pt_dft, 0, &pt_want.data, 0);
+                module.vec_znx_dft_from_vec_znx(1, 0, &mut pt_dft, 0, &pt_want.data, 0);
                 module.svp_apply_inplace(&mut pt_dft, 0, &sk_dft.data, col_j - 1);
-                module.vec_znx_idft_tmp_a(&mut pt_big, 0, &mut pt_dft, 0);
+                module.vec_znx_dft_to_vec_znx_big_tmp_a(&mut pt_big, 0, &mut pt_dft, 0);
                 module.vec_znx_big_normalize(basek, &mut pt_want.data, 0, &pt_big, 0, scratch.borrow());
             }
 
-            ct_out.get_row(module, row_i, col_j, &mut ct_glwe_fourier);
-
-            ct_glwe_fourier.decrypt(module, &mut pt_have, &sk_dft, scratch.borrow());
+            ct_out
+                .at(row_i, col_j)
+                .decrypt(module, &mut pt_have, &sk_dft, scratch.borrow());
 
             module.vec_znx_sub_ab_inplace(&mut pt_have.data, 0, &pt_want.data, 0);
 
