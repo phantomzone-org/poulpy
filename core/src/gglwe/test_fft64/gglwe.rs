@@ -1,14 +1,16 @@
-use backend::{FFT64, Module, ScalarZnx, ScalarZnxAlloc, ScalarZnxToMut, ScratchOwned, Stats, VecZnxOps, ZnxViewMut};
+use backend::{Backend, FFT64, Module, ScalarZnx, ScalarZnxAlloc, ScalarZnxToMut, ScratchOwned, Stats, VecZnxOps, ZnxViewMut};
 use sampling::source::Source;
 
 use crate::{
-    GGSWCiphertext, GLWEPlaintext, GLWESecret, GLWESecretExec, GLWESwitchingKey, GLWESwitchingKeyExec, Infos,
+    GGLWEEncryptSkFamily, GGLWELayoutFamily, GGSWCiphertext, GGSWCiphertextExec, GLWEDecryptFamily, GLWEPlaintext, GLWESecret,
+    GLWESecretExec, GLWESwitchingKey, GLWESwitchingKeyExec, Infos,
     noise::{log2_std_noise_gglwe_product, noise_ggsw_product},
 };
 
 #[test]
 fn encrypt_sk() {
     let log_n: usize = 8;
+    let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
     let basek: usize = 12;
     let k_ksk: usize = 54;
     let digits: usize = k_ksk / basek;
@@ -19,7 +21,7 @@ fn encrypt_sk() {
                     "test encrypt_sk digits: {} ranks: ({} {})",
                     di, rank_in, rank_out
                 );
-                test_encrypt_sk(log_n, basek, k_ksk, di, rank_in, rank_out, 3.2);
+                test_encrypt_sk(&module, basek, k_ksk, di, rank_in, rank_out, 3.2);
             });
         });
     });
@@ -131,12 +133,20 @@ fn external_product_inplace() {
     });
 }
 
-fn test_encrypt_sk(log_n: usize, basek: usize, k_ksk: usize, digits: usize, rank_in: usize, rank_out: usize, sigma: f64) {
-    let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
+fn test_encrypt_sk<B: Backend>(
+    module: &Module<B>,
+    basek: usize,
+    k_ksk: usize,
+    digits: usize,
+    rank_in: usize,
+    rank_out: usize,
+    sigma: f64,
+) where
+    Module<B>: GGLWEEncryptSkFamily<B> + GLWEDecryptFamily<B>,
+{
     let rows: usize = (k_ksk - digits * basek) / (digits * basek);
 
     let mut ksk: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc(&module, basek, k_ksk, rows, digits, rank_in, rank_out);
-    let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_ksk);
 
     let mut source_xs: Source = Source::new([0u8; 32]);
     let mut source_xe: Source = Source::new([0u8; 32]);
@@ -151,7 +161,7 @@ fn test_encrypt_sk(log_n: usize, basek: usize, k_ksk: usize, digits: usize, rank
 
     let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(&module, rank_out);
     sk_out.fill_ternary_prob(0.5, &mut source_xs);
-    let sk_out_exec: GLWESecretExec<Vec<u8>, FFT64> = GLWESecretExec::from(&module, &sk_out);
+    let sk_out_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(&module, &sk_out);
 
     ksk.encrypt_sk(
         &module,
@@ -163,21 +173,8 @@ fn test_encrypt_sk(log_n: usize, basek: usize, k_ksk: usize, digits: usize, rank
         scratch.borrow(),
     );
 
-    (0..ksk.rank_in()).for_each(|col_i| {
-        (0..ksk.rows()).for_each(|row_i| {
-            ksk.at(row_i, col_i)
-                .decrypt(&module, &mut pt, &sk_out_exec, scratch.borrow());
-            module.vec_znx_sub_scalar_inplace(
-                &mut pt.data,
-                0,
-                (digits - 1) + row_i * digits,
-                &sk_in.data,
-                col_i,
-            );
-            let std_pt: f64 = pt.data.std(0, basek) * (k_ksk as f64).exp2();
-            assert!((sigma - std_pt).abs() <= 0.5, "{} {}", sigma, std_pt);
-        });
-    });
+    ksk.key
+        .assert_noise(&module, &sk_out_exec, &sk_in.data, sigma);
 }
 
 fn test_key_switch(
@@ -516,8 +513,10 @@ fn test_external_product(
     let mut ct_rgsw_exec: GGSWCiphertextExec<Vec<u8>, FFT64> =
         GGSWCiphertextExec::alloc(&module, basek, k_ggsw, rows, digits, rank_out);
 
+    ct_rgsw_exec.prepare(module, &ct_rgsw, scratch.borrow());
+
     // gglwe_(m) (x) RGSW_(X^k) = gglwe_(m * X^k)
-    ct_gglwe_out.external_product(&module, &ct_gglwe_in, &ct_rgsw, scratch.borrow());
+    ct_gglwe_out.external_product(&module, &ct_gglwe_in, &ct_rgsw_exec, scratch.borrow());
 
     let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_out);
 
@@ -525,51 +524,26 @@ fn test_external_product(
         module.vec_znx_rotate_inplace(r as i64, &mut sk_in.data, i); // * X^{r}
     });
 
-    (0..rank_in).for_each(|col_i| {
-        (0..ct_gglwe_out.rows()).for_each(|row_i| {
-            ct_gglwe_out
-                .at(row_i, col_i)
-                .decrypt(&module, &mut pt, &sk_out_exec, scratch.borrow());
+    let var_gct_err_lhs: f64 = sigma * sigma;
+    let var_gct_err_rhs: f64 = 0f64;
 
-            module.vec_znx_sub_scalar_inplace(
-                &mut pt.data,
-                0,
-                (digits_in - 1) + row_i * digits_in,
-                &sk_in.data,
-                col_i,
-            );
+    let var_msg: f64 = 1f64 / module.n() as f64; // X^{k}
+    let var_a0_err: f64 = sigma * sigma;
+    let var_a1_err: f64 = 1f64 / 12f64;
 
-            let noise_have: f64 = pt.data.std(0, basek).log2();
-
-            let var_gct_err_lhs: f64 = sigma * sigma;
-            let var_gct_err_rhs: f64 = 0f64;
-
-            let var_msg: f64 = 1f64 / module.n() as f64; // X^{k}
-            let var_a0_err: f64 = sigma * sigma;
-            let var_a1_err: f64 = 1f64 / 12f64;
-
-            let noise_want: f64 = noise_ggsw_product(
-                module.n() as f64,
-                basek * digits,
-                0.5,
-                var_msg,
-                var_a0_err,
-                var_a1_err,
-                var_gct_err_lhs,
-                var_gct_err_rhs,
-                rank_out as f64,
-                k_in,
-                k_ggsw,
-            );
-
-            assert!(
-                (noise_have - noise_want).abs() <= 1.0,
-                "{} {}",
-                noise_have,
-                noise_want
-            );
-        });
-    });
+    let noise_want: f64 = noise_ggsw_product(
+        module.n() as f64,
+        basek * digits,
+        0.5,
+        var_msg,
+        var_a0_err,
+        var_a1_err,
+        var_gct_err_lhs,
+        var_gct_err_rhs,
+        rank_out as f64,
+        k_in,
+        k_ggsw,
+    );
 }
 
 fn test_external_product_inplace(

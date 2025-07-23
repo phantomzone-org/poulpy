@@ -1,9 +1,6 @@
-use backend::{
-    Backend, Module, Scratch, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume,
-    VmpApply, ZnxZero,
-};
+use backend::{Backend, Module, Scratch, ZnxZero};
 
-use crate::{GGSWCiphertext, GLWECiphertext, Infos, ggsw::GGSWCiphertextExec};
+use crate::{GGSWCiphertext, GGSWCiphertextExec, GLWECiphertext, GLWEExternalProductFamily, Infos};
 
 impl GGSWCiphertext<Vec<u8>> {
     pub fn external_product_scratch_space<B: Backend>(
@@ -16,7 +13,7 @@ impl GGSWCiphertext<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: VecZnxDftAllocBytes + VmpApply<B>,
+        Module<B>: GLWEExternalProductFamily<B>,
     {
         GLWECiphertext::external_product_scratch_space(module, basek, k_out, k_in, k_ggsw, digits, rank)
     }
@@ -30,7 +27,7 @@ impl GGSWCiphertext<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: VecZnxDftAllocBytes + VmpApply<B>,
+        Module<B>: GLWEExternalProductFamily<B>,
     {
         GLWECiphertext::external_product_inplace_scratch_space(module, basek, k_out, k_ggsw, digits, rank)
     }
@@ -44,8 +41,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
         rhs: &GGSWCiphertextExec<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
-        Module<B>:
-            VecZnxDftAllocBytes + VmpApply<B> + VecZnxDftFromVecZnx<B> + VecZnxDftToVecZnxBigConsume<B> + VecZnxBigNormalize<B>,
+        Module<B>: GLWEExternalProductFamily<B>,
     {
         #[cfg(debug_assertions)]
         {
@@ -100,8 +96,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
         rhs: &GGSWCiphertextExec<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
-        Module<B>:
-            VecZnxDftAllocBytes + VmpApply<B> + VecZnxDftFromVecZnx<B> + VecZnxDftToVecZnxBigConsume<B> + VecZnxBigNormalize<B>,
+        Module<B>: GLWEExternalProductFamily<B>,
     {
         #[cfg(debug_assertions)]
         {

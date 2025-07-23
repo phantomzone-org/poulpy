@@ -2,7 +2,7 @@ use backend::{FFT64, Module, ScalarZnxOps, ScratchOwned, Stats, VecZnxOps};
 use sampling::source::Source;
 
 use crate::{
-    GLWEAutomorphismKey, GLWEAutomorphismKeyExec, GLWEPlaintext, GLWESecret, GLWESecretExec, Infos,
+    GGLWEAutomorphismKey, GLWEAutomorphismKeyExec, GLWEPlaintext, GLWESecret, GLWESecretExec, Infos,
     noise::log2_std_noise_gglwe_product,
 };
 
@@ -58,20 +58,20 @@ fn test_automorphism(
     let rows_in: usize = k_in / (basek * digits);
     let rows_apply: usize = k_in.div_ceil(basek * digits);
 
-    let mut auto_key_in: GLWEAutomorphismKey<Vec<u8>> =
-        GLWEAutomorphismKey::alloc(&module, basek, k_in, rows_in, digits_in, rank);
-    let mut auto_key_out: GLWEAutomorphismKey<Vec<u8>> =
-        GLWEAutomorphismKey::alloc(&module, basek, k_out, rows_in, digits_in, rank);
-    let mut auto_key_apply: GLWEAutomorphismKey<Vec<u8>> =
-        GLWEAutomorphismKey::alloc(&module, basek, k_apply, rows_apply, digits, rank);
+    let mut auto_key_in: GGLWEAutomorphismKey<Vec<u8>> =
+        GGLWEAutomorphismKey::alloc(&module, basek, k_in, rows_in, digits_in, rank);
+    let mut auto_key_out: GGLWEAutomorphismKey<Vec<u8>> =
+        GGLWEAutomorphismKey::alloc(&module, basek, k_out, rows_in, digits_in, rank);
+    let mut auto_key_apply: GGLWEAutomorphismKey<Vec<u8>> =
+        GGLWEAutomorphismKey::alloc(&module, basek, k_apply, rows_apply, digits, rank);
 
     let mut source_xs: Source = Source::new([0u8; 32]);
     let mut source_xe: Source = Source::new([0u8; 32]);
     let mut source_xa: Source = Source::new([0u8; 32]);
 
     let mut scratch: ScratchOwned = ScratchOwned::new(
-        GLWEAutomorphismKey::encrypt_sk_scratch_space(&module, basek, k_apply, rank)
-            | GLWEAutomorphismKey::automorphism_scratch_space(&module, basek, k_out, k_in, k_apply, digits, rank),
+        GGLWEAutomorphismKey::encrypt_sk_scratch_space(&module, basek, k_apply, rank)
+            | GGLWEAutomorphismKey::automorphism_scratch_space(&module, basek, k_out, k_in, k_apply, digits, rank),
     );
 
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(&module, rank);
@@ -184,17 +184,17 @@ fn test_automorphism_inplace(
     let rows_in: usize = k_in / (basek * digits);
     let rows_apply: usize = k_in.div_ceil(basek * digits);
 
-    let mut auto_key: GLWEAutomorphismKey<Vec<u8>> = GLWEAutomorphismKey::alloc(&module, basek, k_in, rows_in, digits_in, rank);
-    let mut auto_key_apply: GLWEAutomorphismKey<Vec<u8>> =
-        GLWEAutomorphismKey::alloc(&module, basek, k_apply, rows_apply, digits, rank);
+    let mut auto_key: GGLWEAutomorphismKey<Vec<u8>> = GGLWEAutomorphismKey::alloc(&module, basek, k_in, rows_in, digits_in, rank);
+    let mut auto_key_apply: GGLWEAutomorphismKey<Vec<u8>> =
+        GGLWEAutomorphismKey::alloc(&module, basek, k_apply, rows_apply, digits, rank);
 
     let mut source_xs: Source = Source::new([0u8; 32]);
     let mut source_xe: Source = Source::new([0u8; 32]);
     let mut source_xa: Source = Source::new([0u8; 32]);
 
     let mut scratch: ScratchOwned = ScratchOwned::new(
-        GLWEAutomorphismKey::encrypt_sk_scratch_space(&module, basek, k_apply, rank)
-            | GLWEAutomorphismKey::automorphism_inplace_scratch_space(&module, basek, k_in, k_apply, digits, rank),
+        GGLWEAutomorphismKey::encrypt_sk_scratch_space(&module, basek, k_apply, rank)
+            | GGLWEAutomorphismKey::automorphism_inplace_scratch_space(&module, basek, k_in, k_apply, digits, rank),
     );
 
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(&module, rank);

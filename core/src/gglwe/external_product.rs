@@ -1,9 +1,6 @@
-use backend::{
-    Backend, Module, Scratch, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume,
-    VmpApply, ZnxZero,
-};
+use backend::{Backend, Module, Scratch, ZnxZero};
 
-use crate::{GGSWCiphertextExec, GLWEAutomorphismKey, GLWECiphertext, GLWESwitchingKey, Infos};
+use crate::{GGLWEAutomorphismKey, GGSWCiphertextExec, GLWECiphertext, GLWEExternalProductFamily, GLWESwitchingKey, Infos};
 
 impl GLWESwitchingKey<Vec<u8>> {
     pub fn external_product_scratch_space<B: Backend>(
@@ -16,7 +13,7 @@ impl GLWESwitchingKey<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: VecZnxDftAllocBytes + VmpApply<B>,
+        Module<B>: GLWEExternalProductFamily<B>,
     {
         GLWECiphertext::external_product_scratch_space(module, basek, k_out, k_in, k_ggsw, digits, rank)
     }
@@ -30,7 +27,7 @@ impl GLWESwitchingKey<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: VecZnxDftAllocBytes + VmpApply<B>,
+        Module<B>: GLWEExternalProductFamily<B>,
     {
         GLWECiphertext::external_product_inplace_scratch_space(module, basek, k_out, k_ggsw, digits, rank)
     }
@@ -44,8 +41,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<DataSelf> {
         rhs: &GGSWCiphertextExec<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
-        Module<B>:
-            VecZnxDftAllocBytes + VmpApply<B> + VecZnxDftFromVecZnx<B> + VecZnxDftToVecZnxBigConsume<B> + VecZnxBigNormalize<B>,
+        Module<B>: GLWEExternalProductFamily<B>,
     {
         #[cfg(debug_assertions)]
         {
@@ -92,8 +88,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<DataSelf> {
         rhs: &GGSWCiphertextExec<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
-        Module<B>:
-            VecZnxDftAllocBytes + VmpApply<B> + VecZnxDftFromVecZnx<B> + VecZnxDftToVecZnxBigConsume<B> + VecZnxBigNormalize<B>,
+        Module<B>: GLWEExternalProductFamily<B>,
     {
         #[cfg(debug_assertions)]
         {
@@ -115,7 +110,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<DataSelf> {
     }
 }
 
-impl GLWEAutomorphismKey<Vec<u8>> {
+impl GGLWEAutomorphismKey<Vec<u8>> {
     pub fn external_product_scratch_space<B: Backend>(
         module: &Module<B>,
         basek: usize,
@@ -126,7 +121,7 @@ impl GLWEAutomorphismKey<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: VecZnxDftAllocBytes + VmpApply<B>,
+        Module<B>: GLWEExternalProductFamily<B>,
     {
         GLWESwitchingKey::external_product_scratch_space(module, basek, k_out, k_in, ggsw_k, digits, rank)
     }
@@ -140,22 +135,21 @@ impl GLWEAutomorphismKey<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: VecZnxDftAllocBytes + VmpApply<B>,
+        Module<B>: GLWEExternalProductFamily<B>,
     {
         GLWESwitchingKey::external_product_inplace_scratch_space(module, basek, k_out, ggsw_k, digits, rank)
     }
 }
 
-impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWEAutomorphismKey<DataSelf> {
+impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGLWEAutomorphismKey<DataSelf> {
     pub fn external_product<DataLhs: AsRef<[u8]>, DataRhs: AsRef<[u8]>, B: Backend>(
         &mut self,
         module: &Module<B>,
-        lhs: &GLWEAutomorphismKey<DataLhs>,
+        lhs: &GGLWEAutomorphismKey<DataLhs>,
         rhs: &GGSWCiphertextExec<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
-        Module<B>:
-            VecZnxDftAllocBytes + VmpApply<B> + VecZnxDftFromVecZnx<B> + VecZnxDftToVecZnxBigConsume<B> + VecZnxBigNormalize<B>,
+        Module<B>: GLWEExternalProductFamily<B>,
     {
         self.key.external_product(module, &lhs.key, rhs, scratch);
     }
@@ -166,8 +160,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWEAutomorphismKey<DataSelf> {
         rhs: &GGSWCiphertextExec<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
-        Module<B>:
-            VecZnxDftAllocBytes + VmpApply<B> + VecZnxDftFromVecZnx<B> + VecZnxDftToVecZnxBigConsume<B> + VecZnxBigNormalize<B>,
+        Module<B>: GLWEExternalProductFamily<B>,
     {
         self.key.external_product_inplace(module, rhs, scratch);
     }

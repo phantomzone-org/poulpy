@@ -1,5 +1,5 @@
 use backend::{
-    Backend, Module, ScalarZnx, ScalarZnxAlloc, ScalarZnxOps, ScratchOwned, Stats, SvpPPolAlloc, SvpPPolAllocBytes, SvpPPolApply,
+    Backend, Module, ScalarZnx, ScalarZnxAlloc, ScalarZnxOps, ScratchOwned, Stats, SvpApply, SvpPPolAlloc, SvpPPolAllocBytes,
     SvpPPolApplyInplace, SvpPPolPrepare, VecZnxBig, VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigAlloc,
     VecZnxBigAllocBytes, VecZnxBigAutomorphismInplace, VecZnxBigNormalize, VecZnxBigSubSmallAInplace, VecZnxBigSubSmallBInplace,
     VecZnxDft, VecZnxDftAddInplace, VecZnxDftAlloc, VecZnxDftAllocBytes, VecZnxDftCopy, VecZnxDftFromVecZnx,
@@ -9,7 +9,7 @@ use backend::{
 use sampling::source::Source;
 
 use crate::{
-    GGSWCiphertext, GLWEAutomorphismKey, GLWEAutomorphismKeyExec, GLWECiphertext, GLWEPlaintext, GLWESecret, GLWESecretExec,
+    GGLWEAutomorphismKey, GGSWCiphertext, GLWEAutomorphismKeyExec, GLWECiphertext, GLWEPlaintext, GLWESecret, GLWESecretExec,
     GLWESwitchingKey, GLWESwitchingKeyExec, GLWETensorKey, GLWETensorKeyExec, Infos,
     noise::{noise_ggsw_keyswitch, noise_ggsw_product},
 };
@@ -154,7 +154,7 @@ fn test_keyswitch<B: Backend>(
         + SvpPPolAllocBytes
         + SvpPPolAlloc<B>
         + VecZnxDftCopy<B>
-        + SvpPPolApply<B>
+        + SvpApply<B>
         + VmpPMatPrepare<B>
         + VecZnxDftAddInplace<B>
         + VmpPMatAlloc<B>,
@@ -280,7 +280,7 @@ fn test_keyswitch_inplace<B: Backend>(
         + VmpApply<B>
         + VmpPMatPrepare<B>
         + VecZnxDftCopy<B>
-        + SvpPPolApply<B>
+        + SvpApply<B>
         + VecZnxDftAddInplace<B>
         + VecZnxBigAutomorphismInplace<B>
         + VecZnxBigSubSmallAInplace<B>
@@ -443,7 +443,7 @@ fn test_automorphism<B: Backend>(
         + VmpApply<B>
         + VmpPMatPrepare<B>
         + VecZnxDftCopy<B>
-        + SvpPPolApply<B>
+        + SvpApply<B>
         + VecZnxDftAddInplace<B>
         + VecZnxBigAutomorphismInplace<B>
         + VecZnxBigSubSmallAInplace<B>
@@ -458,7 +458,7 @@ fn test_automorphism<B: Backend>(
     let mut ct_in: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(module, basek, k_in, rows_in, digits_in, rank);
     let mut ct_out: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(module, basek, k_out, rows_in, digits_in, rank);
     let mut tensor_key: GLWETensorKey<Vec<u8>> = GLWETensorKey::alloc(module, basek, k_tsk, rows, digits, rank);
-    let mut auto_key: GLWEAutomorphismKey<Vec<u8>> = GLWEAutomorphismKey::alloc(module, basek, k_ksk, rows, digits, rank);
+    let mut auto_key: GGLWEAutomorphismKey<Vec<u8>> = GGLWEAutomorphismKey::alloc(module, basek, k_ksk, rows, digits, rank);
     let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(module, basek, k_out);
     let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(module, basek, k_out);
     let mut pt_scalar: ScalarZnx<Vec<u8>> = module.new_scalar_znx(1);
@@ -469,7 +469,7 @@ fn test_automorphism<B: Backend>(
 
     let mut scratch: ScratchOwned = ScratchOwned::new(
         GGSWCiphertext::encrypt_sk_scratch_space(module, basek, k_in, rank)
-            | GLWEAutomorphismKey::encrypt_sk_scratch_space(module, basek, k_ksk, rank)
+            | GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, basek, k_ksk, rank)
             | GLWETensorKey::encrypt_sk_scratch_space(module, basek, k_tsk, rank)
             | GGSWCiphertext::automorphism_scratch_space(
                 module, basek, k_out, k_in, k_ksk, digits, k_tsk, digits, rank,
@@ -589,7 +589,7 @@ fn test_automorphism_inplace<B: Backend>(
 
     let mut ct: GGSWCiphertext<Vec<u8>, B> = GGSWCiphertext::alloc(module, basek, k_ct, rows_in, digits_in, rank);
     let mut tensor_key: GLWETensorKey<Vec<u8>, B> = GLWETensorKey::alloc(module, basek, k_tsk, rows, digits, rank);
-    let mut auto_key: GLWEAutomorphismKey<Vec<u8>, B> = GLWEAutomorphismKey::alloc(module, basek, k_ksk, rows, digits, rank);
+    let mut auto_key: GGLWEAutomorphismKey<Vec<u8>, B> = GGLWEAutomorphismKey::alloc(module, basek, k_ksk, rows, digits, rank);
     let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(module, basek, k_ct);
     let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(module, basek, k_ct);
     let mut pt_scalar: ScalarZnx<Vec<u8>> = module.new_scalar_znx(1);
@@ -601,7 +601,7 @@ fn test_automorphism_inplace<B: Backend>(
     let mut scratch: ScratchOwned = ScratchOwned::new(
         GGSWCiphertext::encrypt_sk_scratch_space(module, basek, k_ct, rank)
             | FourierGLWECiphertext::decrypt_scratch_space(module, basek, k_ct)
-            | GLWEAutomorphismKey::encrypt_sk_scratch_space(module, basek, k_ksk, rank)
+            | GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, basek, k_ksk, rank)
             | GLWETensorKey::encrypt_sk_scratch_space(module, basek, k_tsk, rank)
             | GGSWCiphertext::automorphism_inplace_scratch_space(module, basek, k_ct, k_ksk, digits, k_tsk, digits, rank),
     );

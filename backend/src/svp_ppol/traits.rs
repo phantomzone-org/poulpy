@@ -19,7 +19,7 @@ pub trait SvpPPolPrepare<B: Backend> {
         A: ScalarZnxToRef;
 }
 
-pub trait SvpPPolApply<B: Backend> {
+pub trait SvpApply<B: Backend> {
     fn svp_apply<R, A, C>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &C, b_col: usize)
     where
         R: VecZnxDftToMut<B>,

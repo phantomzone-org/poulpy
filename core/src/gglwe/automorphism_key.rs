@@ -1,15 +1,15 @@
-use backend::{Backend, MatZnx, Module, Scratch, VmpPMat, VmpPMatAlloc, VmpPMatAllocBytes, VmpPMatPrepare};
+use backend::{Backend, MatZnx, Module, Scratch, VmpPMat};
 
-use crate::{GLWECiphertext, GLWESwitchingKey, GLWESwitchingKeyExec, Infos};
+use crate::{GGLWELayoutFamily, GLWECiphertext, GLWESwitchingKey, GLWESwitchingKeyExec, Infos};
 
-pub struct GLWEAutomorphismKey<D> {
+pub struct GGLWEAutomorphismKey<D> {
     pub(crate) key: GLWESwitchingKey<D>,
     pub(crate) p: i64,
 }
 
-impl GLWEAutomorphismKey<Vec<u8>> {
+impl GGLWEAutomorphismKey<Vec<u8>> {
     pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self {
-        GLWEAutomorphismKey {
+        GGLWEAutomorphismKey {
             key: GLWESwitchingKey::alloc(module, basek, k, rows, digits, rank, rank),
             p: 0,
         }
@@ -20,7 +20,7 @@ impl GLWEAutomorphismKey<Vec<u8>> {
     }
 }
 
-impl<D> Infos for GLWEAutomorphismKey<D> {
+impl<D> Infos for GGLWEAutomorphismKey<D> {
     type Inner = MatZnx<D>;
 
     fn inner(&self) -> &Self::Inner {
@@ -36,7 +36,7 @@ impl<D> Infos for GLWEAutomorphismKey<D> {
     }
 }
 
-impl<D> GLWEAutomorphismKey<D> {
+impl<D> GGLWEAutomorphismKey<D> {
     pub fn p(&self) -> i64 {
         self.p
     }
@@ -58,13 +58,13 @@ impl<D> GLWEAutomorphismKey<D> {
     }
 }
 
-impl<D: AsRef<[u8]>> GLWEAutomorphismKey<D> {
+impl<D: AsRef<[u8]>> GGLWEAutomorphismKey<D> {
     pub fn at(&self, row: usize, col: usize) -> GLWECiphertext<&[u8]> {
         self.key.at(row, col)
     }
 }
 
-impl<D: AsMut<[u8]> + AsRef<[u8]>> GLWEAutomorphismKey<D> {
+impl<D: AsMut<[u8]> + AsRef<[u8]>> GGLWEAutomorphismKey<D> {
     pub fn at_mut(&mut self, row: usize, col: usize) -> GLWECiphertext<&mut [u8]> {
         self.key.at_mut(row, col)
     }
@@ -78,7 +78,7 @@ pub struct GLWEAutomorphismKeyExec<D, B: Backend> {
 impl<B: Backend> GLWEAutomorphismKeyExec<Vec<u8>, B> {
     pub fn alloc(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self
     where
-        Module<B>: VmpPMatAlloc<B>,
+        Module<B>: GGLWELayoutFamily<B>,
     {
         GLWEAutomorphismKeyExec::<Vec<u8>, B> {
             key: GLWESwitchingKeyExec::alloc(module, basek, k, rows, digits, rank, rank),
@@ -88,17 +88,17 @@ impl<B: Backend> GLWEAutomorphismKeyExec<Vec<u8>, B> {
 
     pub fn bytes_of(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize
     where
-        Module<B>: VmpPMatAllocBytes,
+        Module<B>: GGLWELayoutFamily<B>,
     {
         GLWESwitchingKeyExec::<Vec<u8>, B>::bytes_of(module, basek, k, rows, digits, rank, rank)
     }
 }
 
 impl<D: AsRef<[u8]> + AsMut<[u8]>, B: Backend> GLWEAutomorphismKeyExec<D, B> {
-    pub fn prepare<DataOther>(&mut self, module: &Module<B>, other: &GLWEAutomorphismKey<DataOther>, scratch: &mut Scratch)
+    pub fn prepare<DataOther>(&mut self, module: &Module<B>, other: &GGLWEAutomorphismKey<DataOther>, scratch: &mut Scratch)
     where
         DataOther: AsRef<[u8]>,
-        Module<B>: VmpPMatPrepare<B>,
+        Module<B>: GGLWELayoutFamily<B>,
     {
         self.key.prepare(module, &other.key, scratch);
         self.p = other.p;

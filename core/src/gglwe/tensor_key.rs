@@ -1,6 +1,6 @@
-use backend::{Backend, MatZnx, Module, Scratch, VmpPMat, VmpPMatAlloc, VmpPMatPrepare};
+use backend::{Backend, MatZnx, Module, Scratch, VmpPMat};
 
-use crate::{GLWESwitchingKey, GLWESwitchingKeyExec, Infos};
+use crate::{GGLWELayoutFamily, GLWESwitchingKey, GLWESwitchingKeyExec, Infos};
 
 pub struct GLWETensorKey<D> {
     pub(crate) keys: Vec<GLWESwitchingKey<D>>,
@@ -87,7 +87,7 @@ pub struct GLWETensorKeyExec<D, B: Backend> {
 impl<B: Backend> GLWETensorKeyExec<Vec<u8>, B> {
     pub fn alloc(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self
     where
-        Module<B>: VmpPMatAlloc<B>,
+        Module<B>: GGLWELayoutFamily<B>,
     {
         let mut keys: Vec<GLWESwitchingKeyExec<Vec<u8>, B>> = Vec::new();
         let pairs: usize = (((rank + 1) * rank) >> 1).max(1);
@@ -165,7 +165,7 @@ impl<D: AsRef<[u8]> + AsMut<[u8]>, B: Backend> GLWETensorKeyExec<D, B> {
     pub fn prepare<DataOther>(&mut self, module: &Module<B>, other: &GLWETensorKey<DataOther>, scratch: &mut Scratch)
     where
         DataOther: AsRef<[u8]>,
-        Module<B>: VmpPMatPrepare<B>,
+        Module<B>: GGLWELayoutFamily<B>,
     {
         #[cfg(debug_assertions)]
         {

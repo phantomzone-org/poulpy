@@ -2,6 +2,8 @@ use backend::{Backend, MatZnx, MatZnxAlloc, Module, Scratch, VmpPMat, VmpPMatAll
 
 use crate::{GGLWECiphertext, GLWECiphertext, Infos};
 
+pub trait GGSWLayoutFamily<B: Backend> = VmpPMatAlloc<B> + VmpPMatAllocBytes + VmpPMatPrepare<B>;
+
 pub struct GGSWCiphertext<D> {
     pub(crate) data: MatZnx<D>,
     pub(crate) basek: usize,
@@ -114,7 +116,7 @@ pub struct GGSWCiphertextExec<C, B: Backend> {
 impl<B: Backend> GGSWCiphertextExec<Vec<u8>, B> {
     pub fn alloc(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self
     where
-        Module<B>: VmpPMatAlloc<B>,
+        Module<B>: GGSWLayoutFamily<B>,
     {
         let size: usize = k.div_ceil(basek);
         debug_assert!(digits > 0, "invalid ggsw: `digits` == 0");
@@ -144,7 +146,7 @@ impl<B: Backend> GGSWCiphertextExec<Vec<u8>, B> {
 
     pub fn bytes_of(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize
     where
-        Module<B>: VmpPMatAllocBytes,
+        Module<B>: GGSWLayoutFamily<B>,
     {
         let size: usize = k.div_ceil(basek);
         debug_assert!(
@@ -196,7 +198,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>, B: Backend> GGSWCiphertextExec<DataSel
     pub fn prepare<DataOther>(&mut self, module: &Module<B>, other: &GGLWECiphertext<DataOther>, scratch: &mut Scratch)
     where
         DataOther: AsRef<[u8]>,
-        Module<B>: VmpPMatPrepare<B>,
+        Module<B>: GGSWLayoutFamily<B>,
     {
         module.vmp_prepare(&mut self.data, &other.data, scratch);
         self.k = other.k;

@@ -1,4 +1,4 @@
-use crate::{FourierGLWESecret, GLWEAutomorphismKey, GLWECiphertext, GLWEOps, GLWEPacker, GLWEPlaintext, GLWESecret};
+use crate::{FourierGLWESecret, GGLWEAutomorphismKey, GLWECiphertext, GLWEOps, GLWEPacker, GLWEPlaintext, GLWESecret};
 use std::collections::HashMap;
 
 use backend::{Encoding, FFT64, Module, ScratchOwned, Stats};
@@ -26,7 +26,7 @@ fn apply() {
     let mut scratch: ScratchOwned = ScratchOwned::new(
         GLWECiphertext::encrypt_sk_scratch_space(&module, basek, k_ct)
             | GLWECiphertext::decrypt_scratch_space(&module, basek, k_ct)
-            | GLWEAutomorphismKey::encrypt_sk_scratch_space(&module, basek, k_ksk, rank)
+            | GGLWEAutomorphismKey::encrypt_sk_scratch_space(&module, basek, k_ksk, rank)
             | GLWEPacker::scratch_space(&module, basek, k_ct, k_ksk, digits, rank),
     );
 
@@ -43,9 +43,10 @@ fn apply() {
 
     let gal_els: Vec<i64> = GLWEPacker::galois_elements(&module);
 
-    let mut auto_keys: HashMap<i64, GLWEAutomorphismKey<Vec<u8>, FFT64>> = HashMap::new();
+    let mut auto_keys: HashMap<i64, GGLWEAutomorphismKey<Vec<u8>, FFT64>> = HashMap::new();
     gal_els.iter().for_each(|gal_el| {
-        let mut key: GLWEAutomorphismKey<Vec<u8>, FFT64> = GLWEAutomorphismKey::alloc(&module, basek, k_ksk, rows, digits, rank);
+        let mut key: GGLWEAutomorphismKey<Vec<u8>, FFT64> =
+            GGLWEAutomorphismKey::alloc(&module, basek, k_ksk, rows, digits, rank);
         key.encrypt_sk(
             &module,
             *gal_el,

@@ -15,10 +15,10 @@ use backend::VecZnxDftAllocBytes;
 pub use blind_rotation::{BlindRotationKeyCGGI, LookUpTable, cggi_blind_rotate, cggi_blind_rotate_scratch_space};
 pub use elem::{Infos, SetMetaData};
 pub use gglwe::{
-    GGLWECiphertext, GGLWECiphertextExec, GLWEAutomorphismKey, GLWEAutomorphismKeyExec, GLWESwitchingKey, GLWESwitchingKeyExec,
-    GLWETensorKey, GLWETensorKeyExec,
+    GGLWEAutomorphismKey, GGLWECiphertext, GGLWECiphertextExec, GGLWEEncryptSkFamily, GGLWELayoutFamily, GLWEAutomorphismKeyExec,
+    GLWESwitchingKey, GLWESwitchingKeyExec, GLWETensorKey, GLWETensorKeyExec,
 };
-pub use ggsw::{GGSWCiphertext, GGSWCiphertextExec};
+pub use ggsw::{GGSWCiphertext, GGSWCiphertextExec, GGSWExpandFamily};
 pub use glwe::{
     GLWEAutomorphismFamily, GLWECiphertext, GLWEDecryptFamily, GLWEEncryptPkFamily, GLWEEncryptSkFamily,
     GLWEExternalProductFamily, GLWEKeyswitchFamily, GLWEOps, GLWEPacker, GLWEPlaintext, GLWEPublicKey, GLWEPublicKeyFamily,
@@ -105,7 +105,7 @@ pub trait ScratchCore<B: Backend> {
         rows: usize,
         digits: usize,
         rank: usize,
-    ) -> (GLWEAutomorphismKey<&mut [u8]>, &mut Self);
+    ) -> (GGLWEAutomorphismKey<&mut [u8]>, &mut Self);
 }
 
 impl<B: Backend> ScratchCore<B> for Scratch {
@@ -262,9 +262,9 @@ impl<B: Backend> ScratchCore<B> for Scratch {
         rows: usize,
         digits: usize,
         rank: usize,
-    ) -> (GLWEAutomorphismKey<&mut [u8]>, &mut Self) {
+    ) -> (GGLWEAutomorphismKey<&mut [u8]>, &mut Self) {
         let (data, scratch) = self.tmp_glwe_ksk(module, basek, k, rows, digits, rank, rank);
-        (GLWEAutomorphismKey { key: data, p: 0 }, scratch)
+        (GGLWEAutomorphismKey { key: data, p: 0 }, scratch)
     }
 
     fn tmp_tsk(

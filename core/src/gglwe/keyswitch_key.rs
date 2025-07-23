@@ -1,6 +1,6 @@
-use backend::{Backend, MatZnx, Module, Scratch, VmpPMat, VmpPMatAlloc, VmpPMatAllocBytes, VmpPMatPrepare};
+use backend::{Backend, MatZnx, Module, Scratch, VmpPMat};
 
-use crate::{GGLWECiphertext, GGLWECiphertextExec, GLWECiphertext, Infos};
+use crate::{GGLWECiphertext, GGLWECiphertextExec, GGLWELayoutFamily, GLWECiphertext, Infos};
 
 pub struct GLWESwitchingKey<D> {
     pub(crate) key: GGLWECiphertext<D>,
@@ -101,7 +101,7 @@ pub struct GLWESwitchingKeyExec<D, B: Backend> {
 impl<B: Backend> GLWESwitchingKeyExec<Vec<u8>, B> {
     pub fn alloc(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank_in: usize, rank_out: usize) -> Self
     where
-        Module<B>: VmpPMatAlloc<B>,
+        Module<B>: GGLWELayoutFamily<B>,
     {
         GLWESwitchingKeyExec::<Vec<u8>, B> {
             key: GGLWECiphertextExec::alloc(module, basek, k, rows, digits, rank_in, rank_out),
@@ -120,7 +120,7 @@ impl<B: Backend> GLWESwitchingKeyExec<Vec<u8>, B> {
         rank_out: usize,
     ) -> usize
     where
-        Module<B>: VmpPMatAllocBytes,
+        Module<B>: GGLWELayoutFamily<B>,
     {
         GGLWECiphertextExec::bytes_of(module, basek, k, rows, digits, rank_in, rank_out)
     }
@@ -172,7 +172,7 @@ impl<D: AsRef<[u8]> + AsMut<[u8]>, B: Backend> GLWESwitchingKeyExec<D, B> {
     pub fn prepare<DataOther>(&mut self, module: &Module<B>, other: &GLWESwitchingKey<DataOther>, scratch: &mut Scratch)
     where
         DataOther: AsRef<[u8]>,
-        Module<B>: VmpPMatPrepare<B>,
+        Module<B>: GGLWELayoutFamily<B>,
     {
         self.key.prepare(module, &other.key, scratch);
         self.sk_in_n = other.sk_in_n;

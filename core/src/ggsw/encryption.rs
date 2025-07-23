@@ -1,15 +1,14 @@
-use backend::{
-    Backend, Module, ScalarZnx, Scratch, SvpPPolApplyInplace, VecZnxAlloc, VecZnxBigNormalize, VecZnxDftAllocBytes,
-    VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume, VecZnxOps, ZnxZero,
-};
+use backend::{Backend, Module, ScalarZnx, Scratch, VecZnxAlloc, VecZnxDftAllocBytes, VecZnxOps, ZnxZero};
 use sampling::source::Source;
 
-use crate::{GGSWCiphertext, GLWECiphertext, GLWESecretExec, Infos, ScratchCore};
+use crate::{GGSWCiphertext, GLWECiphertext, GLWEEncryptSkFamily, GLWESecretExec, Infos, ScratchCore};
+
+pub trait GGSWEncryptSkFamily<B: Backend> = GLWEEncryptSkFamily<B>;
 
 impl GGSWCiphertext<Vec<u8>> {
     pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize
     where
-        Module<B>: VecZnxDftAllocBytes + VecZnxBigNormalize<B>,
+        Module<B>: GGSWEncryptSkFamily<B>,
     {
         let size = k.div_ceil(basek);
         GLWECiphertext::encrypt_sk_scratch_space(module, basek, k)
@@ -30,12 +29,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
         sigma: f64,
         scratch: &mut Scratch,
     ) where
-        Module<B>: VecZnxDftAllocBytes
-            + VecZnxBigNormalize<B>
-            + VecZnxDftFromVecZnx<B>
-            + SvpPPolApplyInplace<B>
-            + VecZnxDftToVecZnxBigConsume<B>
-            + VecZnxBigNormalize<B>,
+        Module<B>: GGSWEncryptSkFamily<B>,
     {
         #[cfg(debug_assertions)]
         {

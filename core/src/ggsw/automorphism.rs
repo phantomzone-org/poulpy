@@ -1,10 +1,8 @@
-use backend::{
-    Backend, Module, Scratch, VecZnxAlloc, VecZnxBigAddSmallInplace, VecZnxBigAllocBytes, VecZnxBigAutomorphismInplace,
-    VecZnxBigNormalize, VecZnxBigSubSmallAInplace, VecZnxBigSubSmallBInplace, VecZnxDftAddInplace, VecZnxDftAllocBytes,
-    VecZnxDftCopy, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume, VecZnxDftToVecZnxBigTmpA, VmpApply,
-};
+use backend::{Backend, Module, Scratch, VecZnxAlloc, VecZnxDftAllocBytes, VecZnxDftFromVecZnx};
 
-use crate::{GGSWCiphertext, GLWEAutomorphismKeyExec, GLWECiphertext, GLWETensorKeyExec, Infos};
+use crate::{
+    GGSWCiphertext, GGSWExpandFamily, GLWEAutomorphismFamily, GLWEAutomorphismKeyExec, GLWECiphertext, GLWETensorKeyExec, Infos,
+};
 
 impl GGSWCiphertext<Vec<u8>> {
     pub fn automorphism_scratch_space<B: Backend>(
@@ -19,7 +17,7 @@ impl GGSWCiphertext<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: VecZnxDftAllocBytes + VecZnxBigAllocBytes + VecZnxBigNormalize<B> + VmpApply<B>,
+        Module<B>: GLWEAutomorphismFamily<B> + GGSWExpandFamily<B>,
     {
         let cols: usize = rank + 1;
         let out_size: usize = k_out.div_ceil(basek);
@@ -43,7 +41,7 @@ impl GGSWCiphertext<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: VecZnxDftAllocBytes + VecZnxBigAllocBytes + VecZnxBigNormalize<B> + VmpApply<B>,
+        Module<B>: GLWEAutomorphismFamily<B> + GGSWExpandFamily<B>,
     {
         GGSWCiphertext::automorphism_scratch_space(
             module, basek, k_out, k_out, k_ksk, digits_ksk, k_tsk, digits_tsk, rank,
@@ -60,19 +58,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
         tensor_key: &GLWETensorKeyExec<DataTsk, B>,
         scratch: &mut Scratch,
     ) where
-        Module<B>: VecZnxDftAllocBytes
-            + VecZnxBigAllocBytes
-            + VecZnxDftFromVecZnx<B>
-            + VecZnxDftCopy<B>
-            + VecZnxDftToVecZnxBigTmpA<B>
-            + VmpApply<B>
-            + VecZnxDftAddInplace<B>
-            + VecZnxDftToVecZnxBigConsume<B>
-            + VecZnxBigAddSmallInplace<B>
-            + VecZnxBigAutomorphismInplace<B>
-            + VecZnxBigSubSmallAInplace<B>
-            + VecZnxBigSubSmallBInplace<B>
-            + VecZnxBigNormalize<B>,
+        Module<B>: GLWEAutomorphismFamily<B> + GGSWExpandFamily<B>,
     {
         #[cfg(debug_assertions)]
         {
@@ -149,19 +135,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
         tensor_key: &GLWETensorKeyExec<DataTsk, B>,
         scratch: &mut Scratch,
     ) where
-        Module<B>: VecZnxDftAllocBytes
-            + VecZnxBigAllocBytes
-            + VecZnxDftFromVecZnx<B>
-            + VecZnxDftCopy<B>
-            + VecZnxDftToVecZnxBigTmpA<B>
-            + VmpApply<B>
-            + VecZnxDftAddInplace<B>
-            + VecZnxDftToVecZnxBigConsume<B>
-            + VecZnxBigAddSmallInplace<B>
-            + VecZnxBigAutomorphismInplace<B>
-            + VecZnxBigSubSmallAInplace<B>
-            + VecZnxBigSubSmallBInplace<B>
-            + VecZnxBigNormalize<B>,
+        Module<B>: GLWEAutomorphismFamily<B> + GGSWExpandFamily<B>,
     {
         unsafe {
             let self_ptr: *mut GGSWCiphertext<DataSelf> = self as *mut GGSWCiphertext<DataSelf>;
