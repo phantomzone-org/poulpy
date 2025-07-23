@@ -7,17 +7,33 @@ use sampling::source::Source;
 
 use crate::{GLWECiphertext, GLWEPlaintext, GLWEPublicKey, GLWESecretExec, Infos, SIX_SIGMA, dist::Distribution};
 
+pub trait GLWEEncryptSkFamily<B: Backend> = VecZnxDftAllocBytes
+    + VecZnxBigNormalize<B>
+    + VecZnxDftFromVecZnx<B>
+    + SvpPPolApplyInplace<B>
+    + VecZnxDftToVecZnxBigConsume<B>;
+
+pub trait GLWEEncryptPkFamily<B: Backend> = VecZnxDftAllocBytes
+    + VecZnxBigAllocBytes
+    + SvpPPolAllocBytes
+    + SvpPPolPrepare<B>
+    + SvpPPolApply<B>
+    + VecZnxDftToVecZnxBigConsume<B>
+    + VecZnxBigAddNormal<B>
+    + VecZnxBigAddSmallInplace<B>
+    + VecZnxBigNormalize<B>;
+
 impl GLWECiphertext<Vec<u8>> {
     pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize) -> usize
     where
-        Module<B>: VecZnxDftAllocBytes + VecZnxBigNormalize<B>,
+        Module<B>: GLWEEncryptSkFamily<B>,
     {
         let size: usize = k.div_ceil(basek);
         module.vec_znx_normalize_tmp_bytes() + module.vec_znx_dft_alloc_bytes(1, size) + module.vec_znx_dft_alloc_bytes(1, size)
     }
     pub fn encrypt_pk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize) -> usize
     where
-        Module<B>: VecZnxDftAllocBytes + VecZnxBigAllocBytes + ScalarZnxAlloc + SvpPPolAllocBytes + VecZnxBigNormalize<B>,
+        Module<B>: GLWEEncryptPkFamily<B>,
     {
         let size: usize = k.div_ceil(basek);
         ((module.vec_znx_dft_alloc_bytes(1, size) + module.vec_znx_big_alloc_bytes(1, size)) | module.bytes_of_scalar_znx(1))
@@ -37,11 +53,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         sigma: f64,
         scratch: &mut Scratch,
     ) where
-        Module<B>: VecZnxDftAllocBytes
-            + VecZnxBigNormalize<B>
-            + VecZnxDftFromVecZnx<B>
-            + SvpPPolApplyInplace<B>
-            + VecZnxDftToVecZnxBigConsume<B>,
+        Module<B>: GLWEEncryptSkFamily<B>,
     {
         self.encrypt_sk_private(
             module,
@@ -63,11 +75,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         sigma: f64,
         scratch: &mut Scratch,
     ) where
-        Module<B>: VecZnxDftAllocBytes
-            + VecZnxBigNormalize<B>
-            + VecZnxDftFromVecZnx<B>
-            + SvpPPolApplyInplace<B>
-            + VecZnxDftToVecZnxBigConsume<B>,
+        Module<B>: GLWEEncryptSkFamily<B>,
     {
         self.encrypt_sk_private(
             module,
@@ -90,14 +98,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         sigma: f64,
         scratch: &mut Scratch,
     ) where
-        Module<B>: VecZnxDftAllocBytes
-            + SvpPPolAllocBytes
-            + SvpPPolPrepare<B>
-            + SvpPPolApply<B>
-            + VecZnxDftToVecZnxBigConsume<B>
-            + VecZnxBigAddNormal<B>
-            + VecZnxBigAddSmallInplace<B>
-            + VecZnxBigNormalize<B>,
+        Module<B>: GLWEEncryptPkFamily<B>,
     {
         self.encrypt_pk_private::<DataPt, DataPk, B>(
             module,
@@ -119,14 +120,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         sigma: f64,
         scratch: &mut Scratch,
     ) where
-        Module<B>: VecZnxDftAllocBytes
-            + SvpPPolAllocBytes
-            + SvpPPolPrepare<B>
-            + SvpPPolApply<B>
-            + VecZnxDftToVecZnxBigConsume<B>
-            + VecZnxBigAddNormal<B>
-            + VecZnxBigAddSmallInplace<B>
-            + VecZnxBigNormalize<B>,
+        Module<B>: GLWEEncryptPkFamily<B>,
     {
         self.encrypt_pk_private::<Vec<u8>, DataPk, B>(
             module,

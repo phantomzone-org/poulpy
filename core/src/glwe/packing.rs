@@ -1,10 +1,7 @@
-use crate::{
-    GLWEAutomorphismKeyExec, GLWECiphertext, GLWEKeyswitchScratchSpaceFamily, GLWEKeyswitchApplyFamily, GLWEOps, Infos,
-    ScratchCore,
-};
+use crate::{GLWEAutomorphismFamily, GLWEAutomorphismKeyExec, GLWECiphertext, GLWEOps, Infos, ScratchCore};
 use std::collections::HashMap;
 
-use backend::{Backend, Module, Scratch, VecZnxBigAutomorphismInplace, VecZnxBigSubSmallBInplace};
+use backend::{Backend, Module, Scratch};
 
 /// [StreamPacker] enables only the fly GLWE packing
 /// with constant memory of Log(N) ciphertexts.
@@ -86,7 +83,7 @@ impl GLWEPacker {
         rank: usize,
     ) -> usize
     where
-        Module<B>: GLWEKeyswitchScratchSpaceFamily,
+        Module<B>: GLWEAutomorphismFamily<B>,
     {
         pack_core_scratch_space(module, basek, ct_k, k_ksk, digits, rank)
     }
@@ -111,7 +108,7 @@ impl GLWEPacker {
         auto_keys: &HashMap<i64, GLWEAutomorphismKeyExec<DataAK, B>>,
         scratch: &mut Scratch,
     ) where
-        Module<B>: GLWEKeyswitchApplyFamily<B> + VecZnxBigAutomorphismInplace<B> + VecZnxBigSubSmallBInplace<B>,
+        Module<B>: GLWEAutomorphismFamily<B>,
     {
         assert!(
             self.counter < module.n(),
@@ -152,7 +149,7 @@ fn pack_core_scratch_space<B: Backend>(
     rank: usize,
 ) -> usize
 where
-    Module<B>: GLWEKeyswitchScratchSpaceFamily,
+    Module<B>: GLWEAutomorphismFamily<B>,
 {
     combine_scratch_space(module, basek, ct_k, k_ksk, digits, rank)
 }
@@ -165,7 +162,7 @@ fn pack_core<D: AsRef<[u8]>, DataAK: AsRef<[u8]>, B: Backend>(
     auto_keys: &HashMap<i64, GLWEAutomorphismKeyExec<DataAK, B>>,
     scratch: &mut Scratch,
 ) where
-    Module<B>: GLWEKeyswitchApplyFamily<B> + VecZnxBigAutomorphismInplace<B> + VecZnxBigSubSmallBInplace<B>,
+    Module<B>: GLWEAutomorphismFamily<B>,
 {
     let log_n: usize = module.log_n();
 
@@ -225,7 +222,7 @@ fn combine_scratch_space<B: Backend>(
     rank: usize,
 ) -> usize
 where
-    Module<B>: GLWEKeyswitchScratchSpaceFamily,
+    Module<B>: GLWEAutomorphismFamily<B>,
 {
     GLWECiphertext::bytes_of(module, basek, ct_k, rank)
         + (GLWECiphertext::rsh_scratch_space(module)
@@ -241,7 +238,7 @@ fn combine<D: AsRef<[u8]>, DataAK: AsRef<[u8]>, B: Backend>(
     auto_keys: &HashMap<i64, GLWEAutomorphismKeyExec<DataAK, B>>,
     scratch: &mut Scratch,
 ) where
-    Module<B>: GLWEKeyswitchApplyFamily<B> + VecZnxBigAutomorphismInplace<B> + VecZnxBigSubSmallBInplace<B>,
+    Module<B>: GLWEAutomorphismFamily<B>,
 {
     let log_n: usize = module.log_n();
     let a: &mut GLWECiphertext<Vec<u8>> = &mut acc.data;

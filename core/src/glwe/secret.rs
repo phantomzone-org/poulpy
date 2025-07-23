@@ -5,6 +5,8 @@ use sampling::source::Source;
 
 use crate::dist::Distribution;
 
+pub trait GLWESecretFamily<B: Backend> = SvpPPolPrepare<B> + SvpPPolAllocBytes + SvpPPolAlloc<B>;
+
 pub struct GLWESecret<T> {
     pub(crate) data: ScalarZnx<T>,
     pub(crate) dist: Distribution,
@@ -87,7 +89,7 @@ pub struct GLWESecretExec<T, B: Backend> {
 impl<B: Backend> GLWESecretExec<Vec<u8>, B> {
     pub fn alloc(module: &Module<B>, rank: usize) -> Self
     where
-        Module<B>: SvpPPolAlloc<B>,
+        Module<B>: GLWESecretFamily<B>,
     {
         Self {
             data: module.svp_ppol_alloc(rank),
@@ -97,7 +99,7 @@ impl<B: Backend> GLWESecretExec<Vec<u8>, B> {
 
     pub fn bytes_of(module: &Module<B>, rank: usize) -> usize
     where
-        Module<B>: SvpPPolAllocBytes,
+        Module<B>: GLWESecretFamily<B>,
     {
         module.svp_ppol_alloc_bytes(rank)
     }
@@ -107,7 +109,7 @@ impl<B: Backend> GLWESecretExec<Vec<u8>, B> {
     pub fn from<D>(module: &Module<B>, sk: &GLWESecret<D>) -> Self
     where
         D: AsRef<[u8]>,
-        Module<B>: SvpPPolAllocBytes + SvpPPolAlloc<B> + SvpPPolPrepare<B>,
+        Module<B>: GLWESecretFamily<B>,
     {
         let mut sk_dft: GLWESecretExec<Vec<u8>, B> = Self::alloc(module, sk.rank());
         sk_dft.prepare(module, sk);
@@ -133,7 +135,7 @@ impl<S: AsMut<[u8]> + AsRef<[u8]>, B: Backend> GLWESecretExec<S, B> {
     pub(crate) fn prepare<D>(&mut self, module: &Module<B>, sk: &GLWESecret<D>)
     where
         D: AsRef<[u8]>,
-        Module<B>: SvpPPolPrepare<B>,
+        Module<B>: GLWESecretFamily<B>,
     {
         (0..self.rank()).for_each(|i| {
             module.svp_prepare(&mut self.data, i, &sk.data, i);

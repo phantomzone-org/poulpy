@@ -6,6 +6,13 @@ use sampling::source::Source;
 
 use crate::{GLWECiphertext, GLWESecretExec, Infos, dist::Distribution};
 
+pub trait GLWEPublicKeyFamily<B: Backend> = VecZnxDftAlloc<B>
+    + VecZnxDftAllocBytes
+    + VecZnxBigNormalize<B>
+    + VecZnxDftFromVecZnx<B>
+    + SvpPPolApplyInplace<B>
+    + VecZnxDftToVecZnxBigConsume<B>;
+
 pub struct GLWEPublicKey<D, B: Backend> {
     pub(crate) data: VecZnxDft<D, B>,
     pub(crate) basek: usize,
@@ -16,7 +23,7 @@ pub struct GLWEPublicKey<D, B: Backend> {
 impl<B: Backend> GLWEPublicKey<Vec<u8>, B> {
     pub fn alloc(module: &Module<B>, basek: usize, k: usize, rank: usize) -> Self
     where
-        Module<B>: VecZnxDftAlloc<B>,
+        Module<B>: GLWEPublicKeyFamily<B>,
     {
         Self {
             data: module.vec_znx_dft_alloc(rank + 1, k.div_ceil(basek)),
@@ -28,7 +35,7 @@ impl<B: Backend> GLWEPublicKey<Vec<u8>, B> {
 
     pub fn bytes_of(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize
     where
-        Module<B>: VecZnxDftAllocBytes,
+        Module<B>: GLWEPublicKeyFamily<B>,
     {
         module.vec_znx_dft_alloc_bytes(rank + 1, k.div_ceil(basek))
     }
@@ -65,11 +72,7 @@ impl<C: AsRef<[u8]> + AsMut<[u8]>, B: Backend> GLWEPublicKey<C, B> {
         source_xe: &mut Source,
         sigma: f64,
     ) where
-        Module<B>: VecZnxDftAllocBytes
-            + VecZnxBigNormalize<B>
-            + VecZnxDftFromVecZnx<B>
-            + SvpPPolApplyInplace<B>
-            + VecZnxDftToVecZnxBigConsume<B>,
+        Module<B>: GLWEPublicKeyFamily<B>,
     {
         #[cfg(debug_assertions)]
         {

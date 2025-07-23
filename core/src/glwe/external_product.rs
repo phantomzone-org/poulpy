@@ -5,6 +5,14 @@ use backend::{
 
 use crate::{GGSWCiphertextExec, GLWECiphertext, Infos};
 
+pub trait GLWEExternalProductFamily<B: Backend> = VecZnxDftAllocBytes
+    + VmpApplyTmpBytes
+    + VmpApply<B>
+    + VmpApplyAdd<B>
+    + VecZnxDftFromVecZnx<B>
+    + VecZnxDftToVecZnxBigConsume<B>
+    + VecZnxBigNormalize<B>;
+
 impl GLWECiphertext<Vec<u8>> {
     pub fn external_product_scratch_space<B: Backend>(
         module: &Module<B>,
@@ -16,7 +24,7 @@ impl GLWECiphertext<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: VecZnxDftAllocBytes + VmpApplyTmpBytes,
+        Module<B>: GLWEExternalProductFamily<B>,
     {
         let in_size: usize = k_in.div_ceil(basek).div_ceil(digits);
         let out_size: usize = k_out.div_ceil(basek);
@@ -44,7 +52,7 @@ impl GLWECiphertext<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: VecZnxDftAllocBytes + VmpApplyTmpBytes,
+        Module<B>: GLWEExternalProductFamily<B>,
     {
         Self::external_product_scratch_space(module, basek, k_out, k_out, k_ggsw, digits, rank)
     }
@@ -58,13 +66,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         rhs: &GGSWCiphertextExec<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
-        Module<B>: VecZnxDftAllocBytes
-            + VmpApplyTmpBytes
-            + VmpApply<B>
-            + VmpApplyAdd<B>
-            + VecZnxDftFromVecZnx<B>
-            + VecZnxDftToVecZnxBigConsume<B>
-            + VecZnxBigNormalize<B>,
+        Module<B>: GLWEExternalProductFamily<B>,
     {
         let basek: usize = self.basek();
 
@@ -138,13 +140,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         rhs: &GGSWCiphertextExec<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
-        Module<B>: VecZnxDftAllocBytes
-            + VmpApply<B>
-            + VmpApplyAdd<B>
-            + VmpApplyTmpBytes
-            + VecZnxDftFromVecZnx<B>
-            + VecZnxDftToVecZnxBigConsume<B>
-            + VecZnxBigNormalize<B>,
+        Module<B>: GLWEExternalProductFamily<B>,
     {
         unsafe {
             let self_ptr: *mut GLWECiphertext<DataSelf> = self as *mut GLWECiphertext<DataSelf>;

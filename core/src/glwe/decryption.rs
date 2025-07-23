@@ -6,10 +6,19 @@ use backend::{
 
 use crate::{GLWECiphertext, GLWEPlaintext, GLWESecretExec, Infos};
 
+pub trait GLWEDecryptFamily<B: Backend> = VecZnxDftAllocBytes
+    + VecZnxBigAllocBytes
+    + VecZnxDftFromVecZnx<B>
+    + SvpPPolApplyInplace<B>
+    + VecZnxDftToVecZnxBigConsume<B>
+    + VecZnxBigAddInplace<B>
+    + VecZnxBigAddSmallInplace<B>
+    + VecZnxBigNormalize<B>;
+
 impl GLWECiphertext<Vec<u8>> {
     pub fn decrypt_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize) -> usize
     where
-        Module<B>: VecZnxDftAllocBytes + VecZnxBigNormalize<B>,
+        Module<B>: GLWEDecryptFamily<B>,
     {
         let size: usize = k.div_ceil(basek);
         (module.vec_znx_normalize_tmp_bytes() | module.vec_znx_dft_alloc_bytes(1, size)) + module.vec_znx_dft_alloc_bytes(1, size)
@@ -24,14 +33,7 @@ impl<DataSelf: AsRef<[u8]>> GLWECiphertext<DataSelf> {
         sk: &GLWESecretExec<DataSk, B>,
         scratch: &mut Scratch,
     ) where
-        Module<B>: VecZnxDftAllocBytes
-            + VecZnxBigAllocBytes
-            + VecZnxDftFromVecZnx<B>
-            + SvpPPolApplyInplace<B>
-            + VecZnxDftToVecZnxBigConsume<B>
-            + VecZnxBigAddInplace<B>
-            + VecZnxBigAddSmallInplace<B>
-            + VecZnxBigNormalize<B>,
+        Module<B>: GLWEDecryptFamily<B>,
     {
         #[cfg(debug_assertions)]
         {

@@ -19,7 +19,11 @@ pub use gglwe::{
     GLWETensorKey, GLWETensorKeyExec,
 };
 pub use ggsw::{GGSWCiphertext, GGSWCiphertextExec};
-pub use glwe::{GLWECiphertext, GLWEOps, GLWEPacker, GLWEPlaintext, GLWEPublicKey, GLWESecret, GLWESecretExec, GLWEKeyswitchScratchSpaceFamily, GLWEKeyswitchApplyFamily};
+pub use glwe::{
+    GLWEAutomorphismFamily, GLWECiphertext, GLWEDecryptFamily, GLWEEncryptPkFamily, GLWEEncryptSkFamily,
+    GLWEExternalProductFamily, GLWEKeyswitchFamily, GLWEOps, GLWEPacker, GLWEPlaintext, GLWEPublicKey, GLWEPublicKeyFamily,
+    GLWESecret, GLWESecretExec, GLWESecretFamily,
+};
 pub use lwe::{LWECiphertext, LWESecret};
 
 pub use backend;
