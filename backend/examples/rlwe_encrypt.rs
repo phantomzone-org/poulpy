@@ -1,8 +1,8 @@
 use backend::{
     AddNormal, Decoding, Encoding, FFT64, FillUniform, Module, ScalarZnx, ScalarZnxAlloc, ScratchOwned, SvpPPol, SvpPPolAlloc,
     SvpPPolApplyInplace, SvpPPolPrepare, VecZnx, VecZnxAlloc, VecZnxBig, VecZnxBigAddSmallInplace, VecZnxBigAlloc,
-    VecZnxBigNormalize, VecZnxBigSubSmallBInplace, VecZnxDft, VecZnxDftAlloc, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigTmpA,
-    VecZnxOps, ZnxInfos,
+    VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallBInplace, VecZnxDft, VecZnxDftAlloc, VecZnxDftFromVecZnx,
+    VecZnxDftToVecZnxBigTmpA, VecZnxOps, ZnxInfos,
 };
 use itertools::izip;
 use sampling::source::Source;
@@ -15,7 +15,7 @@ fn main() {
     let log_scale: usize = msg_size * basek - 5;
     let module: Module<FFT64> = Module::<FFT64>::new(n);
 
-    let mut scratch: ScratchOwned = ScratchOwned::new(module.vec_znx_big_normalize_scratch_bytes());
+    let mut scratch: ScratchOwned = ScratchOwned::new(module.vec_znx_big_normalize_tmp_bytes());
 
     let seed: [u8; 32] = [0; 32];
     let mut source: Source = Source::new(seed);

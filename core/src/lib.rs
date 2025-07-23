@@ -1,3 +1,4 @@
+#![feature(trait_alias)]
 mod blind_rotation;
 mod dist;
 mod elem;
@@ -18,7 +19,7 @@ pub use gglwe::{
     GLWETensorKey, GLWETensorKeyExec,
 };
 pub use ggsw::{GGSWCiphertext, GGSWCiphertextExec};
-pub use glwe::{GLWECiphertext, GLWEOps, GLWEPacker, GLWEPlaintext, GLWEPublicKey, GLWESecret, GLWESecretExec};
+pub use glwe::{GLWECiphertext, GLWEOps, GLWEPacker, GLWEPlaintext, GLWEPublicKey, GLWESecret, GLWESecretExec, GLWEKeyswitchScratchSpaceFamily, GLWEKeyswitchApplyFamily};
 pub use lwe::{LWECiphertext, LWESecret};
 
 pub use backend;

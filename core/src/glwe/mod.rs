@@ -18,6 +18,7 @@ pub use packing::GLWEPacker;
 pub use plaintext::GLWEPlaintext;
 pub use public_key::GLWEPublicKey;
 pub use secret::{GLWESecret, GLWESecretExec};
+pub use keyswitch::{GLWEKeyswitchApplyFamily, GLWEKeyswitchScratchSpaceFamily};
 
 #[cfg(test)]
 mod test_fft64;

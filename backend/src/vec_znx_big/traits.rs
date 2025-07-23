@@ -67,124 +67,127 @@ pub trait VecZnxBigAddDistF64<B: Backend> {
     );
 }
 
-pub trait VecZnxBigAdd<BACKEND: Backend> {
+pub trait VecZnxBigAdd<B: Backend> {
     /// Adds `a` to `b` and stores the result on `c`.
-    fn vec_znx_big_add<R, A, B>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
+    fn vec_znx_big_add<R, A, C>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &C, b_col: usize)
     where
-        R: VecZnxBigToMut<BACKEND>,
-        A: VecZnxBigToRef<BACKEND>,
-        B: VecZnxBigToRef<BACKEND>;
+        R: VecZnxBigToMut<B>,
+        A: VecZnxBigToRef<B>,
+        C: VecZnxBigToRef<B>;
 }
 
-pub trait VecZnxBigAddInplace<BACKEND: Backend> {
+pub trait VecZnxBigAddInplace<B: Backend> {
     /// Adds `a` to `b` and stores the result on `b`.
     fn vec_znx_big_add_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
-        R: VecZnxBigToMut<BACKEND>,
-        A: VecZnxBigToRef<BACKEND>;
+        R: VecZnxBigToMut<B>,
+        A: VecZnxBigToRef<B>;
 }
 
-pub trait VecZnxBigAddSmall<BACKEND: Backend> {
+pub trait VecZnxBigAddSmall<B: Backend> {
     /// Adds `a` to `b` and stores the result on `c`.
-    fn vec_znx_big_add_small<R, A, B>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
+    fn vec_znx_big_add_small<R, A, C>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &C, b_col: usize)
     where
-        R: VecZnxBigToMut<BACKEND>,
-        A: VecZnxBigToRef<BACKEND>,
-        B: VecZnxToRef;
+        R: VecZnxBigToMut<B>,
+        A: VecZnxBigToRef<B>,
+        C: VecZnxToRef;
 }
 
-pub trait VecZnxBigAddSmallInplace<BACKEND: Backend> {
+pub trait VecZnxBigAddSmallInplace<B: Backend> {
     /// Adds `a` to `b` and stores the result on `b`.
     fn vec_znx_big_add_small_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
-        R: VecZnxBigToMut<BACKEND>,
+        R: VecZnxBigToMut<B>,
         A: VecZnxToRef;
 }
 
-pub trait VecZnxBigSub<BACKEND: Backend> {
+pub trait VecZnxBigSub<B: Backend> {
     /// Subtracts `a` to `b` and stores the result on `c`.
-    fn vec_znx_big_sub<R, A, B>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
+    fn vec_znx_big_sub<R, A, C>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &C, b_col: usize)
     where
-        R: VecZnxBigToMut<BACKEND>,
-        A: VecZnxBigToRef<BACKEND>,
-        B: VecZnxBigToRef<BACKEND>;
+        R: VecZnxBigToMut<B>,
+        A: VecZnxBigToRef<B>,
+        C: VecZnxBigToRef<B>;
 }
 
-pub trait VecZnxBigSubABInplace<BACKEND: Backend> {
+pub trait VecZnxBigSubABInplace<B: Backend> {
     /// Subtracts `a` from `b` and stores the result on `b`.
     fn vec_znx_big_sub_ab_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
-        R: VecZnxBigToMut<BACKEND>,
-        A: VecZnxBigToRef<BACKEND>;
+        R: VecZnxBigToMut<B>,
+        A: VecZnxBigToRef<B>;
 }
 
-pub trait VecZnxBigSubBAInplace<BACKEND: Backend> {
+pub trait VecZnxBigSubBAInplace<B: Backend> {
     /// Subtracts `b` from `a` and stores the result on `b`.
     fn vec_znx_big_sub_ba_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
-        R: VecZnxBigToMut<BACKEND>,
-        A: VecZnxBigToRef<BACKEND>;
+        R: VecZnxBigToMut<B>,
+        A: VecZnxBigToRef<B>;
 }
 
-pub trait VecZnxBigSubSmallA<BACKEND: Backend> {
+pub trait VecZnxBigSubSmallA<B: Backend> {
     /// Subtracts `b` from `a` and stores the result on `c`.
-    fn vec_znx_big_sub_small_a<R, A, B>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
+    fn vec_znx_big_sub_small_a<R, A, C>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &C, b_col: usize)
     where
-        R: VecZnxBigToMut<BACKEND>,
+        R: VecZnxBigToMut<B>,
         A: VecZnxToRef,
-        B: VecZnxBigToRef<BACKEND>;
+        C: VecZnxBigToRef<B>;
 }
 
-pub trait VecZnxBigSubSmallAInplace<BACKEND: Backend> {
+pub trait VecZnxBigSubSmallAInplace<B: Backend> {
     /// Subtracts `a` from `res` and stores the result on `res`.
     fn vec_znx_big_sub_small_a_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
-        R: VecZnxBigToMut<BACKEND>,
+        R: VecZnxBigToMut<B>,
         A: VecZnxToRef;
 }
 
-pub trait VecZnxBigSubSmallB<BACKEND: Backend> {
+pub trait VecZnxBigSubSmallB<B: Backend> {
     /// Subtracts `b` from `a` and stores the result on `c`.
-    fn vec_znx_big_sub_small_b<R, A, B>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
+    fn vec_znx_big_sub_small_b<R, A, C>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &C, b_col: usize)
     where
-        R: VecZnxBigToMut<BACKEND>,
-        A: VecZnxBigToRef<BACKEND>,
-        B: VecZnxToRef;
+        R: VecZnxBigToMut<B>,
+        A: VecZnxBigToRef<B>,
+        C: VecZnxToRef;
 }
 
-pub trait VecZnxBigSubSmallBInplace<BACKEND: Backend> {
+pub trait VecZnxBigSubSmallBInplace<B: Backend> {
     /// Subtracts `res` from `a` and stores the result on `res`.
     fn vec_znx_big_sub_small_b_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
-        R: VecZnxBigToMut<BACKEND>,
+        R: VecZnxBigToMut<B>,
         A: VecZnxToRef;
 }
 
-pub trait VecZnxBigNegateInplace<BACKEND: Backend> {
+pub trait VecZnxBigNegateInplace<B: Backend> {
     fn vec_znx_big_negate_inplace<A>(&self, a: &mut A, a_col: usize)
     where
-        A: VecZnxBigToMut<BACKEND>;
+        A: VecZnxBigToMut<B>;
 }
 
-pub trait VecZnxBigNormalize<BACKEND: Backend> {
-    fn vec_znx_big_normalize_scratch_bytes(&self) -> usize;
+pub trait VecZnxBigNormalizeTmpBytes {
+    fn vec_znx_big_normalize_tmp_bytes(&self) -> usize;
+}
+
+pub trait VecZnxBigNormalize<B: Backend> {
     fn vec_znx_big_normalize<R, A>(&self, basek: usize, res: &mut R, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch)
     where
         R: VecZnxToMut,
-        A: VecZnxBigToRef<BACKEND>;
+        A: VecZnxBigToRef<B>;
 }
 
-pub trait VecZnxBigAutomorphism<BACKEND: Backend> {
+pub trait VecZnxBigAutomorphism<B: Backend> {
     /// Applies the automorphism X^i -> X^ik on `a` and stores the result on `b`.
     fn vec_znx_big_automorphism<R, A>(&self, k: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
-        R: VecZnxBigToMut<BACKEND>,
-        A: VecZnxBigToRef<BACKEND>;
+        R: VecZnxBigToMut<B>,
+        A: VecZnxBigToRef<B>;
 }
 
-pub trait VecZnxBigAutomorphismInplace<BACKEND: Backend> {
+pub trait VecZnxBigAutomorphismInplace<B: Backend> {
     /// Applies the automorphism X^i -> X^ik on `a` and stores the result on `a`.
     fn vec_znx_big_automorphism_inplace<A>(&self, k: i64, a: &mut A, a_col: usize)
     where
-        A: VecZnxBigToMut<BACKEND>;
+        A: VecZnxBigToMut<B>;
 }

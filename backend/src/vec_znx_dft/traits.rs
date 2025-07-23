@@ -14,8 +14,11 @@ pub trait VecZnxDftAllocBytes {
     fn vec_znx_dft_alloc_bytes(&self, cols: usize, size: usize) -> usize;
 }
 
+pub trait VecZnxDftToVecZnxBigTmpBytes {
+    fn vec_znx_dft_to_vec_znx_big_tmp_bytes(&self) -> usize;
+}
+
 pub trait VecZnxDftToVecZnxBig<B: Backend> {
-    fn vec_znx_dft_to_vec_znx_big_scratch_space(&self) -> usize;
     fn vec_znx_to_vec_znx_big<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch)
     where
         R: VecZnxBigToMut<B>,

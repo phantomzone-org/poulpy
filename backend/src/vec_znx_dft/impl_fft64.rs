@@ -2,7 +2,8 @@ use crate::{
     FFT64, Module, Scratch, VecZnxBig, VecZnxBigToMut, VecZnxDft, VecZnxDftAdd, VecZnxDftAddInplace, VecZnxDftAlloc,
     VecZnxDftAllocBytes, VecZnxDftBytesOf, VecZnxDftCopy, VecZnxDftFromBytes, VecZnxDftFromVecZnx, VecZnxDftOwned, VecZnxDftSub,
     VecZnxDftSubABInplace, VecZnxDftSubBAInplace, VecZnxDftToMut, VecZnxDftToRef, VecZnxDftToVecZnxBig,
-    VecZnxDftToVecZnxBigConsume, VecZnxDftToVecZnxBigTmpA, VecZnxToRef, ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero,
+    VecZnxDftToVecZnxBigConsume, VecZnxDftToVecZnxBigTmpA, VecZnxDftToVecZnxBigTmpBytes, VecZnxToRef, ZnxInfos, ZnxSliceSize,
+    ZnxView, ZnxViewMut, ZnxZero,
     ffi::{vec_znx_big, vec_znx_dft},
 };
 use std::fmt;
@@ -43,11 +44,13 @@ impl VecZnxDftAlloc<FFT64> for Module<FFT64> {
     }
 }
 
-impl VecZnxDftToVecZnxBig<FFT64> for Module<FFT64> {
-    fn vec_znx_dft_to_vec_znx_big_scratch_space(&self) -> usize {
+impl VecZnxDftToVecZnxBigTmpBytes for Module<FFT64> {
+    fn vec_znx_dft_to_vec_znx_big_tmp_bytes(&self) -> usize {
         unsafe { vec_znx_dft::vec_znx_idft_tmp_bytes(self.ptr) as usize }
     }
+}
 
+impl VecZnxDftToVecZnxBig<FFT64> for Module<FFT64> {
     fn vec_znx_to_vec_znx_big<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch)
     where
         R: VecZnxBigToMut<FFT64>,
@@ -56,7 +59,7 @@ impl VecZnxDftToVecZnxBig<FFT64> for Module<FFT64> {
         let mut res_mut: VecZnxBig<&mut [u8], FFT64> = res.to_mut();
         let a_ref: VecZnxDft<&[u8], FFT64> = a.to_ref();
 
-        let (tmp_bytes, _) = scratch.tmp_slice(self.vec_znx_dft_to_vec_znx_big_scratch_space());
+        let (tmp_bytes, _) = scratch.tmp_slice(self.vec_znx_dft_to_vec_znx_big_tmp_bytes());
 
         let min_size: usize = res_mut.size().min(a_ref.size());
 

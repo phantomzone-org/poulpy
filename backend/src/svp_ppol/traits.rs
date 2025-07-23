@@ -12,24 +12,24 @@ pub trait SvpPPolAllocBytes {
     fn svp_ppol_alloc_bytes(&self, cols: usize) -> usize;
 }
 
-pub trait SvpPPolPrepare<BACKEND: Backend> {
+pub trait SvpPPolPrepare<B: Backend> {
     fn svp_prepare<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
-        R: SvpPPolToMut<BACKEND>,
+        R: SvpPPolToMut<B>,
         A: ScalarZnxToRef;
 }
 
-pub trait SvpPPolApply<BACKEND: Backend> {
-    fn svp_apply<R, A, B>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
+pub trait SvpPPolApply<B: Backend> {
+    fn svp_apply<R, A, C>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &C, b_col: usize)
     where
-        R: VecZnxDftToMut<BACKEND>,
-        A: SvpPPolToRef<BACKEND>,
-        B: VecZnxDftToRef<BACKEND>;
+        R: VecZnxDftToMut<B>,
+        A: SvpPPolToRef<B>,
+        C: VecZnxDftToRef<B>;
 }
 
-pub trait SvpPPolApplyInplace<BACKEND: Backend> {
+pub trait SvpPPolApplyInplace<B: Backend> {
     fn svp_apply_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
-        R: VecZnxDftToMut<BACKEND>,
-        A: SvpPPolToRef<BACKEND>;
+        R: VecZnxDftToMut<B>,
+        A: SvpPPolToRef<B>;
 }

@@ -7,6 +7,8 @@ use backend::{
 
 use crate::{GGSWCiphertext, GLWECiphertext, GLWESwitchingKeyExec, GLWETensorKeyExec, Infos};
 
+trait GGSWScratchSpaceFamily<B: Backend> = VecZnxDftAllocBytes + VecZnxBigAllocBytes + VecZnxBigNormalize<B> + VmpApply<B>;
+
 impl GGSWCiphertext<Vec<u8>> {
     pub(crate) fn expand_row_scratch_space<B: Backend>(
         module: &Module<B>,
@@ -17,7 +19,7 @@ impl GGSWCiphertext<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: VecZnxDftAllocBytes + VecZnxBigAllocBytes + VecZnxBigNormalize<B> + VmpApply<B>,
+        Module<B>: GGSWScratchSpaceFamily<B>,
     {
         let tsk_size: usize = k_tsk.div_ceil(basek);
         let self_size_out: usize = self_k.div_ceil(basek);
@@ -49,7 +51,7 @@ impl GGSWCiphertext<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: VecZnxDftAllocBytes + VecZnxBigAllocBytes + VecZnxBigNormalize<B> + VmpApply<B>,
+        Module<B>: GGSWScratchSpaceFamily<B>,
     {
         let out_size: usize = k_out.div_ceil(basek);
         let res_znx: usize = module.bytes_of_vec_znx(rank + 1, out_size);
@@ -71,7 +73,7 @@ impl GGSWCiphertext<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: VecZnxDftAllocBytes + VecZnxBigAllocBytes + VecZnxBigNormalize<B> + VmpApply<B>,
+        Module<B>: GGSWScratchSpaceFamily<B>,
     {
         GGSWCiphertext::keyswitch_scratch_space(
             module, basek, k_out, k_out, k_ksk, digits_ksk, k_tsk, digits_tsk, rank,

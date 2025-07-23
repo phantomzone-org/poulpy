@@ -1,10 +1,13 @@
 use backend::{
-    Backend, DataViewMut, Module, Scratch, VecZnxBig, VecZnxBigAddSmallInplace, VecZnxBigAutomorphismInplace, VecZnxBigNormalize,
-    VecZnxBigSubSmallAInplace, VecZnxBigSubSmallBInplace, VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume,
-    VmpApply,
+    Backend, DataViewMut, Module, Scratch, VecZnx, VecZnxBig, VecZnxBigAddSmallInplace, VecZnxBigNormalize,
+    VecZnxBigNormalizeTmpBytes, VecZnxDft, VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume, VmpApply,
+    VmpApplyAdd, VmpApplyTmpBytes, VmpPMat, ZnxInfos,
 };
 
 use crate::{GLWECiphertext, GLWESwitchingKeyExec, Infos};
+
+pub trait GLWEKeyswitchScratchSpaceFamily =
+    VecZnxDftAllocBytes + VmpApplyTmpBytes + VecZnxBigNormalizeTmpBytes + VmpApplyTmpBytes;
 
 impl GLWECiphertext<Vec<u8>> {
     pub fn keyswitch_scratch_space<B: Backend>(
@@ -18,7 +21,7 @@ impl GLWECiphertext<Vec<u8>> {
         rank_out: usize,
     ) -> usize
     where
-        Module<B>: VecZnxDftAllocBytes + VmpApply<B> + VecZnxBigNormalize<B>,
+        Module<B>: GLWEKeyswitchScratchSpaceFamily,
     {
         let in_size: usize = k_in.div_ceil(basek).div_ceil(digits);
         let out_size: usize = k_out.div_ceil(basek);
@@ -27,7 +30,7 @@ impl GLWECiphertext<Vec<u8>> {
         let ai_dft: usize = module.vec_znx_dft_alloc_bytes(rank_in, in_size);
         let vmp: usize = module.vmp_apply_tmp_bytes(out_size, in_size, in_size, rank_in, rank_out + 1, ksk_size)
             + module.vec_znx_dft_alloc_bytes(rank_in, in_size);
-        let normalize: usize = module.vec_znx_big_normalize_scratch_bytes();
+        let normalize: usize = module.vec_znx_big_normalize_tmp_bytes();
         return res_dft + ((ai_dft + vmp) | normalize);
     }
 
@@ -42,7 +45,7 @@ impl GLWECiphertext<Vec<u8>> {
         rank_out: usize,
     ) -> usize
     where
-        Module<B>: VecZnxDftAllocBytes + VmpApply<B> + VecZnxBigNormalize<B>,
+        Module<B>: GLWEKeyswitchScratchSpaceFamily,
     {
         Self::keyswitch_scratch_space(module, basek, k_out, k_in, k_ksk, digits, rank_in, rank_out)
     }
@@ -56,9 +59,63 @@ impl GLWECiphertext<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: VecZnxDftAllocBytes + VmpApply<B> + VecZnxBigNormalize<B>,
+        Module<B>: GLWEKeyswitchScratchSpaceFamily,
     {
         Self::keyswitch_scratch_space(module, basek, k_out, k_out, k_ksk, digits, rank, rank)
+    }
+}
+
+pub trait GLWEKeyswitchApplyFamily<B: Backend> = GLWEKeyswitchScratchSpaceFamily
+    + VmpApply<B>
+    + VmpApplyAdd<B>
+    + VecZnxDftFromVecZnx<B>
+    + VecZnxDftToVecZnxBigConsume<B>
+    + VecZnxBigAddSmallInplace<B>
+    + VecZnxBigNormalize<B>;
+
+impl<DataSelf: AsRef<[u8]>> GLWECiphertext<DataSelf> {
+    pub(crate) fn assert_keyswitch<B: Backend, DataLhs, DataRhs>(
+        &self,
+        module: &Module<B>,
+        lhs: &GLWECiphertext<DataLhs>,
+        rhs: &GLWESwitchingKeyExec<DataRhs, B>,
+        scratch: &Scratch,
+    ) where
+        Module<B>: GLWEKeyswitchScratchSpaceFamily,
+    {
+        let basek: usize = self.basek();
+        assert_eq!(
+            lhs.rank(),
+            rhs.rank_in(),
+            "lhs.rank(): {} != rhs.rank_in(): {}",
+            lhs.rank(),
+            rhs.rank_in()
+        );
+        assert_eq!(
+            self.rank(),
+            rhs.rank_out(),
+            "self.rank(): {} != rhs.rank_out(): {}",
+            self.rank(),
+            rhs.rank_out()
+        );
+        assert_eq!(self.basek(), basek);
+        assert_eq!(lhs.basek(), basek);
+        assert_eq!(rhs.n(), module.n());
+        assert_eq!(self.n(), module.n());
+        assert_eq!(lhs.n(), module.n());
+        assert!(
+            scratch.available()
+                >= GLWECiphertext::keyswitch_scratch_space(
+                    module,
+                    self.basek(),
+                    self.k(),
+                    lhs.k(),
+                    rhs.k(),
+                    rhs.digits(),
+                    rhs.rank_in(),
+                    rhs.rank_out(),
+                )
+        );
     }
 }
 
@@ -70,17 +127,17 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         rhs: &GLWESwitchingKeyExec<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
-        Module<B>: VecZnxDftAllocBytes
-            + VmpApply<B>
-            + VecZnxDftFromVecZnx<B>
-            + VecZnxDftToVecZnxBigConsume<B>
-            + VecZnxBigAddSmallInplace<B>
-            + VecZnxBigNormalize<B>
-            + VecZnxBigAutomorphismInplace<B>
-            + VecZnxBigSubSmallAInplace<B>
-            + VecZnxBigSubSmallBInplace<B>,
+        Module<B>: GLWEKeyswitchApplyFamily<B>,
     {
-        Self::keyswitch_private::<_, _, 0, B>(self, 0, module, lhs, rhs, scratch);
+        #[cfg(debug_assertions)]
+        {
+            self.assert_keyswitch(module, lhs, rhs, scratch);
+        }
+        let (res_dft, scratch1) = scratch.tmp_vec_znx_dft(module, self.cols(), rhs.size()); // Todo optimise
+        let res_big: VecZnxBig<_, B> = keyswitch(module, res_dft, lhs, rhs, scratch1);
+        (0..self.cols()).for_each(|i| {
+            module.vec_znx_big_normalize(self.basek(), &mut self.data, i, &res_big, i, scratch1);
+        })
     }
 
     pub fn keyswitch_inplace<DataRhs: AsRef<[u8]>, B: Backend>(
@@ -89,135 +146,117 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         rhs: &GLWESwitchingKeyExec<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
-        Module<B>: VecZnxDftAllocBytes
-            + VmpApply<B>
-            + VecZnxDftFromVecZnx<B>
-            + VecZnxDftToVecZnxBigConsume<B>
-            + VecZnxBigAddSmallInplace<B>
-            + VecZnxBigNormalize<B>
-            + VecZnxBigAutomorphismInplace<B>
-            + VecZnxBigSubSmallAInplace<B>
-            + VecZnxBigSubSmallBInplace<B>,
+        Module<B>: GLWEKeyswitchApplyFamily<B>,
     {
         unsafe {
             let self_ptr: *mut GLWECiphertext<DataSelf> = self as *mut GLWECiphertext<DataSelf>;
             self.keyswitch(&module, &*self_ptr, rhs, scratch);
         }
     }
+}
 
-    pub(crate) fn keyswitch_private<'a, DataLhs: AsRef<[u8]>, DataRhs: AsRef<[u8]>, const OP: u8, B: Backend>(
-        &mut self,
-        apply_auto: i64,
-        module: &Module<B>,
-        lhs: &GLWECiphertext<DataLhs>,
-        rhs: &GLWESwitchingKeyExec<DataRhs, B>,
-        scratch: &mut Scratch,
-    ) where
-        Module<B>: VecZnxDftAllocBytes
-            + VmpApply<B>
-            + VecZnxDftFromVecZnx<B>
-            + VecZnxDftToVecZnxBigConsume<B>
-            + VecZnxBigAddSmallInplace<B>
-            + VecZnxBigNormalize<B>
-            + VecZnxBigAutomorphismInplace<B>
-            + VecZnxBigSubSmallAInplace<B>
-            + VecZnxBigSubSmallBInplace<B>,
-    {
-        let basek: usize = self.basek();
-
-        #[cfg(debug_assertions)]
-        {
-            assert_eq!(
-                lhs.rank(),
-                rhs.rank_in(),
-                "lhs.rank(): {} != rhs.rank_in(): {}",
-                lhs.rank(),
-                rhs.rank_in()
-            );
-            assert_eq!(
-                self.rank(),
-                rhs.rank_out(),
-                "self.rank(): {} != rhs.rank_out(): {}",
-                self.rank(),
-                rhs.rank_out()
-            );
-            assert_eq!(self.basek(), basek);
-            assert_eq!(lhs.basek(), basek);
-            assert_eq!(rhs.n(), module.n());
-            assert_eq!(self.n(), module.n());
-            assert_eq!(lhs.n(), module.n());
-            assert!(
-                scratch.available()
-                    >= GLWECiphertext::keyswitch_scratch_space(
-                        module,
-                        self.basek(),
-                        self.k(),
-                        lhs.k(),
-                        rhs.k(),
-                        rhs.digits(),
-                        rhs.rank_in(),
-                        rhs.rank_out(),
-                    )
-            );
-        }
-
-        let cols_in: usize = rhs.rank_in();
-        let cols_out: usize = rhs.rank_out() + 1;
-        let digits: usize = rhs.digits();
-
-        let (mut res_dft, scratch1) = scratch.tmp_vec_znx_dft(module, cols_out, rhs.size()); // Todo optimise
-        let (mut ai_dft, scratch2) = scratch1.tmp_vec_znx_dft(module, cols_in, (lhs.size() + digits - 1) / digits);
-
-        ai_dft.data_mut().fill(0);
-
-        {
-            (0..digits).for_each(|di| {
-                ai_dft.set_size((lhs.size() + di) / digits);
-
-                // Small optimization for digits > 2
-                // VMP produce some error e, and since we aggregate vmp * 2^{di * B}, then
-                // we also aggregate ei * 2^{di * B}, with the largest error being ei * 2^{(digits-1) * B}.
-                // As such we can ignore the last digits-2 limbs safely of the sum of vmp products.
-                // It is possible to further ignore the last digits-1 limbs, but this introduce
-                // ~0.5 to 1 bit of additional noise, and thus not chosen here to ensure that the same
-                // noise is kept with respect to the ideal functionality.
-                res_dft.set_size(rhs.size() - ((digits - di) as isize - 2).max(0) as usize);
-
-                (0..cols_in).for_each(|col_i| {
-                    module.vec_znx_dft_from_vec_znx(
-                        digits,
-                        digits - di - 1,
-                        &mut ai_dft,
-                        col_i,
-                        &lhs.data,
-                        col_i + 1,
-                    );
-                });
-
-                if di == 0 {
-                    module.vmp_apply(&mut res_dft, &ai_dft, &rhs.key.data, scratch2);
-                } else {
-                    module.vmp_apply_add(&mut res_dft, &ai_dft, &rhs.key.data, di, scratch2);
-                }
-            });
-        }
-
-        let mut res_big: VecZnxBig<&mut [u8], B> = module.vec_znx_dft_to_vec_znx_big_consume(res_dft);
-
-        module.vec_znx_big_add_small_inplace(&mut res_big, 0, &lhs.data, 0);
-
-        (0..cols_out).for_each(|i| {
-            if apply_auto != 0 {
-                module.vec_znx_big_automorphism_inplace(apply_auto, &mut res_big, i);
-            }
-
-            match OP {
-                1 => module.vec_znx_big_add_small_inplace(&mut res_big, i, &lhs.data, i),
-                2 => module.vec_znx_big_sub_small_a_inplace(&mut res_big, i, &lhs.data, i),
-                3 => module.vec_znx_big_sub_small_b_inplace(&mut res_big, i, &lhs.data, i),
-                _ => {}
-            }
-            module.vec_znx_big_normalize(basek, &mut self.data, i, &res_big, i, scratch1);
-        });
+pub(crate) fn keyswitch<B: Backend, DataRes, DataIn, DataKey>(
+    module: &Module<B>,
+    res_dft: VecZnxDft<DataRes, B>,
+    lhs: &GLWECiphertext<DataIn>,
+    rhs: &GLWESwitchingKeyExec<DataKey, B>,
+    scratch: &mut Scratch,
+) -> VecZnxBig<DataRes, B>
+where
+    DataRes: AsRef<[u8]> + AsMut<[u8]>,
+    DataIn: AsRef<[u8]>,
+    DataKey: AsRef<[u8]>,
+    Module<B>: GLWEKeyswitchApplyFamily<B>,
+{
+    if rhs.digits() == 1 {
+        return keyswitch_vmp_one_digit(module, res_dft, &lhs.data, &rhs.key.data, scratch);
     }
+
+    keyswitch_vmp_multiple_digits(
+        module,
+        res_dft,
+        &lhs.data,
+        &rhs.key.data,
+        rhs.digits(),
+        scratch,
+    )
+}
+
+fn keyswitch_vmp_one_digit<B: Backend, DataRes, DataIn, DataVmp>(
+    module: &Module<B>,
+    mut res_dft: VecZnxDft<DataRes, B>,
+    a: &VecZnx<DataIn>,
+    mat: &VmpPMat<DataVmp, B>,
+    scratch: &mut Scratch,
+) -> VecZnxBig<DataRes, B>
+where
+    DataRes: AsRef<[u8]> + AsMut<[u8]>,
+    DataIn: AsRef<[u8]>,
+    DataVmp: AsRef<[u8]>,
+    Module<B>:
+        VecZnxDftAllocBytes + VecZnxDftFromVecZnx<B> + VmpApply<B> + VecZnxDftToVecZnxBigConsume<B> + VecZnxBigAddSmallInplace<B>,
+{
+    let cols: usize = a.cols();
+    let (mut ai_dft, scratch1) = scratch.tmp_vec_znx_dft(module, cols, a.size());
+    (0..cols).for_each(|col_i| {
+        module.vec_znx_dft_from_vec_znx(1, 0, &mut ai_dft, col_i, a, col_i + 1);
+    });
+    module.vmp_apply(&mut res_dft, &ai_dft, mat, scratch1);
+    let mut res_big: VecZnxBig<DataRes, B> = module.vec_znx_dft_to_vec_znx_big_consume(res_dft);
+    module.vec_znx_big_add_small_inplace(&mut res_big, 0, a, 0);
+    res_big
+}
+
+fn keyswitch_vmp_multiple_digits<B: Backend, DataRes, DataIn, DataVmp>(
+    module: &Module<B>,
+    mut res_dft: VecZnxDft<DataRes, B>,
+    a: &VecZnx<DataIn>,
+    mat: &VmpPMat<DataVmp, B>,
+    digits: usize,
+    scratch: &mut Scratch,
+) -> VecZnxBig<DataRes, B>
+where
+    DataRes: AsRef<[u8]> + AsMut<[u8]>,
+    DataIn: AsRef<[u8]>,
+    DataVmp: AsRef<[u8]>,
+    Module<B>: VecZnxDftAllocBytes
+        + VecZnxDftFromVecZnx<B>
+        + VmpApply<B>
+        + VmpApplyAdd<B>
+        + VecZnxDftToVecZnxBigConsume<B>
+        + VecZnxBigAddSmallInplace<B>,
+{
+    let cols: usize = a.cols();
+    let size: usize = a.size();
+    let (mut ai_dft, scratch1) = scratch.tmp_vec_znx_dft(module, cols, (size + digits - 1) / digits);
+
+    ai_dft.data_mut().fill(0);
+
+    (0..digits).for_each(|di| {
+        ai_dft.set_size((size + di) / digits);
+
+        // Small optimization for digits > 2
+        // VMP produce some error e, and since we aggregate vmp * 2^{di * B}, then
+        // we also aggregate ei * 2^{di * B}, with the largest error being ei * 2^{(digits-1) * B}.
+        // As such we can ignore the last digits-2 limbs safely of the sum of vmp products.
+        // It is possible to further ignore the last digits-1 limbs, but this introduce
+        // ~0.5 to 1 bit of additional noise, and thus not chosen here to ensure that the same
+        // noise is kept with respect to the ideal functionality.
+        res_dft.set_size(mat.size() - ((digits - di) as isize - 2).max(0) as usize);
+
+        (0..cols).for_each(|col_i| {
+            module.vec_znx_dft_from_vec_znx(digits, digits - di - 1, &mut ai_dft, col_i, a, col_i + 1);
+        });
+
+        if di == 0 {
+            module.vmp_apply(&mut res_dft, &ai_dft, mat, scratch1);
+        } else {
+            module.vmp_apply_add(&mut res_dft, &ai_dft, mat, di, scratch1);
+        }
+    });
+
+    res_dft.set_size(res_dft.max_size());
+    let mut res_big: VecZnxBig<DataRes, B> = module.vec_znx_dft_to_vec_znx_big_consume(res_dft);
+    module.vec_znx_big_add_small_inplace(&mut res_big, 0, a, 0);
+    res_big
 }

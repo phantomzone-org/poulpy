@@ -12,16 +12,18 @@ pub trait VmpPMatFromBytes<B: Backend> {
     fn vmp_pmat_from_bytes(&self, rows: usize, cols_in: usize, cols_out: usize, size: usize, bytes: Vec<u8>) -> VmpPMatOwned<B>;
 }
 
-pub trait VmpPMatPrepare<B: Backend> {
+pub trait VmpPrepareTmpBytes {
     fn vmp_prepare_scratch_bytes(&self, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize;
+}
 
+pub trait VmpPMatPrepare<B: Backend> {
     fn vmp_prepare<R, A>(&self, res: &mut R, a: &A, scratch: &mut Scratch)
     where
         R: VmpPMatToMut<B>,
         A: MatZnxToRef;
 }
 
-pub trait VmpApply<B: Backend> {
+pub trait VmpApplyTmpBytes {
     fn vmp_apply_tmp_bytes(
         &self,
         res_size: usize,
@@ -31,7 +33,9 @@ pub trait VmpApply<B: Backend> {
         b_cols_out: usize,
         b_size: usize,
     ) -> usize;
+}
 
+pub trait VmpApply<B: Backend> {
     /// Applies the vector matrix product [VecZnxDft] x [MatZnxDft].
     /// The size of `buf` is given by [MatZnxDftOps::vmp_apply_dft_to_dft_tmp_bytes].
     ///
@@ -62,7 +66,21 @@ pub trait VmpApply<B: Backend> {
         R: VecZnxDftToMut<B>,
         A: VecZnxDftToRef<B>,
         C: VmpPMatToRef<B>;
+}
 
+pub trait VmpApplyAddTmpBytes {
+    fn vmp_apply_add_tmp_bytes(
+        &self,
+        res_size: usize,
+        a_size: usize,
+        b_rows: usize,
+        b_cols_in: usize,
+        b_cols_out: usize,
+        b_size: usize,
+    ) -> usize;
+}
+
+pub trait VmpApplyAdd<B: Backend> {
     // Same as [MatZnxDftOps::vmp_apply] except result is added on R instead of overwritting R.
     fn vmp_apply_add<R, A, C>(&self, res: &mut R, a: &A, b: &C, scale: usize, scratch: &mut Scratch)
     where

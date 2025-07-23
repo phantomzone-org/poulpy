@@ -1,8 +1,8 @@
 use crate::{
     Scratch, VecZnxBigAdd, VecZnxBigAddInplace, VecZnxBigAddSmall, VecZnxBigAddSmallInplace, VecZnxBigAutomorphism,
-    VecZnxBigAutomorphismInplace, VecZnxBigBytesOf, VecZnxBigNegateInplace, VecZnxBigNormalize, VecZnxBigSub,
-    VecZnxBigSubABInplace, VecZnxBigSubBAInplace, VecZnxBigSubSmallA, VecZnxBigSubSmallAInplace, VecZnxBigSubSmallB,
-    VecZnxBigSubSmallBInplace, VecZnxToMut, VecZnxToRef, ZnxSliceSize, ZnxViewMut, ffi::vec_znx,
+    VecZnxBigAutomorphismInplace, VecZnxBigBytesOf, VecZnxBigNegateInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
+    VecZnxBigSub, VecZnxBigSubABInplace, VecZnxBigSubBAInplace, VecZnxBigSubSmallA, VecZnxBigSubSmallAInplace,
+    VecZnxBigSubSmallB, VecZnxBigSubSmallBInplace, VecZnxToMut, VecZnxToRef, ZnxSliceSize, ZnxViewMut, ffi::vec_znx,
 };
 use std::fmt;
 
@@ -575,10 +575,13 @@ impl VecZnxBigNegateInplace<FFT64> for Module<FFT64> {
     }
 }
 
-impl VecZnxBigNormalize<FFT64> for Module<FFT64> {
-    fn vec_znx_big_normalize_scratch_bytes(&self) -> usize {
+impl VecZnxBigNormalizeTmpBytes for Module<FFT64> {
+    fn vec_znx_big_normalize_tmp_bytes(&self) -> usize {
         unsafe { vec_znx::vec_znx_normalize_base2k_tmp_bytes(self.ptr) as usize }
     }
+}
+
+impl VecZnxBigNormalize<FFT64> for Module<FFT64> {
     fn vec_znx_big_normalize<R, A>(&self, basek: usize, res: &mut R, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch)
     where
         R: VecZnxToMut,
@@ -593,7 +596,7 @@ impl VecZnxBigNormalize<FFT64> for Module<FFT64> {
             assert_eq!(res.n(), self.n());
         }
 
-        let (tmp_bytes, _) = scratch.tmp_slice(self.vec_znx_big_normalize_scratch_bytes());
+        let (tmp_bytes, _) = scratch.tmp_slice(self.vec_znx_big_normalize_tmp_bytes());
         unsafe {
             vec_znx::vec_znx_normalize_base2k(
                 self.ptr,

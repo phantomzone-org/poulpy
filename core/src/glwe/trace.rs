@@ -1,12 +1,10 @@
 use std::collections::HashMap;
 
 use backend::{
-    Backend, Module, Scratch, VecZnxBigAddSmallInplace, VecZnxBigAutomorphismInplace, VecZnxBigNormalize,
-    VecZnxBigSubSmallAInplace, VecZnxBigSubSmallBInplace, VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume,
-    VmpApply,
+    Backend, Module, Scratch, VecZnxBigAddSmallInplace, VecZnxBigAutomorphismInplace
 };
 
-use crate::{GLWEAutomorphismKeyExec, GLWECiphertext, GLWECiphertextToMut, GLWECiphertextToRef, GLWEOps, Infos, SetMetaData};
+use crate::{GLWEAutomorphismKeyExec, GLWECiphertext, GLWECiphertextToMut, GLWECiphertextToRef, GLWEOps, Infos, SetMetaData, GLWEKeyswitchScratchSpaceFamily, GLWEKeyswitchApplyFamily};
 
 impl GLWECiphertext<Vec<u8>> {
     pub fn trace_galois_elements<B: Backend>(module: &Module<B>) -> Vec<i64> {
@@ -31,7 +29,7 @@ impl GLWECiphertext<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: VecZnxDftAllocBytes + VmpApply<B> + VecZnxBigNormalize<B>,
+        Module<B>: GLWEKeyswitchScratchSpaceFamily,
     {
         Self::automorphism_inplace_scratch_space(module, basek, out_k.min(in_k), ksk_k, digits, rank)
     }
@@ -45,7 +43,7 @@ impl GLWECiphertext<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: VecZnxDftAllocBytes + VmpApply<B> + VecZnxBigNormalize<B>,
+        Module<B>: GLWEKeyswitchScratchSpaceFamily,
     {
         Self::automorphism_inplace_scratch_space(module, basek, out_k, ksk_k, digits, rank)
     }
@@ -65,15 +63,7 @@ where
         scratch: &mut Scratch,
     ) where
         GLWECiphertext<DataLhs>: GLWECiphertextToRef + Infos,
-        Module<B>: VecZnxDftAllocBytes
-            + VmpApply<B>
-            + VecZnxDftFromVecZnx<B>
-            + VecZnxDftToVecZnxBigConsume<B>
-            + VecZnxBigAddSmallInplace<B>
-            + VecZnxBigNormalize<B>
-            + VecZnxBigAutomorphismInplace<B>
-            + VecZnxBigSubSmallAInplace<B>
-            + VecZnxBigSubSmallBInplace<B>,
+        Module<B>: GLWEKeyswitchApplyFamily<B> + VecZnxBigAutomorphismInplace<B> + VecZnxBigAddSmallInplace<B>,
     {
         self.copy(module, lhs);
         self.trace_inplace(module, start, end, auto_keys, scratch);
@@ -87,15 +77,7 @@ where
         auto_keys: &HashMap<i64, GLWEAutomorphismKeyExec<DataAK, B>>,
         scratch: &mut Scratch,
     ) where
-        Module<B>: VecZnxDftAllocBytes
-            + VmpApply<B>
-            + VecZnxDftFromVecZnx<B>
-            + VecZnxDftToVecZnxBigConsume<B>
-            + VecZnxBigAddSmallInplace<B>
-            + VecZnxBigNormalize<B>
-            + VecZnxBigAutomorphismInplace<B>
-            + VecZnxBigSubSmallAInplace<B>
-            + VecZnxBigSubSmallBInplace<B>,
+        Module<B>: GLWEKeyswitchApplyFamily<B> + VecZnxBigAutomorphismInplace<B> + VecZnxBigAddSmallInplace<B>,
     {
         (start..end).for_each(|i| {
             self.rsh(1, scratch);
