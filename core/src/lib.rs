@@ -15,10 +15,11 @@ use backend::VecZnxDftAllocBytes;
 pub use blind_rotation::{BlindRotationKeyCGGI, LookUpTable, cggi_blind_rotate, cggi_blind_rotate_scratch_space};
 pub use elem::{Infos, SetMetaData};
 pub use gglwe::{
-    GGLWEAutomorphismKey, GGLWECiphertext, GGLWECiphertextExec, GGLWEEncryptSkFamily, GGLWELayoutFamily, GLWEAutomorphismKeyExec,
-    GLWESwitchingKey, GLWESwitchingKeyExec, GLWETensorKey, GLWETensorKeyExec,
+    GGLWEAutomorphismKey, GGLWECiphertext, GGLWECiphertextExec, GGLWEEncryptSkFamily, GGLWELayoutFamily,
+    GLWEAutomorphismKeyEncryptSkFamily, GLWEAutomorphismKeyExec, GLWESwitchingKey, GLWESwitchingKeyEncryptSkFamily,
+    GLWESwitchingKeyExec, GLWETensorKey, GLWETensorKeyEncryptSkFamily, GLWETensorKeyExec,
 };
-pub use ggsw::{GGSWCiphertext, GGSWCiphertextExec, GGSWExpandFamily};
+pub use ggsw::{GGSWCiphertext, GGSWCiphertextExec, GGSWExpandFamily, GGSWLayoutFamily};
 pub use glwe::{
     GLWEAutomorphismFamily, GLWECiphertext, GLWEDecryptFamily, GLWEEncryptPkFamily, GLWEEncryptSkFamily,
     GLWEExternalProductFamily, GLWEKeyswitchFamily, GLWEOps, GLWEPacker, GLWEPlaintext, GLWEPublicKey, GLWEPublicKeyFamily,

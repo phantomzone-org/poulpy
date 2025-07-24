@@ -5,7 +5,7 @@ mod keyswitch;
 mod layout;
 
 pub use keyswitch::GGSWExpandFamily;
-pub use layout::{GGSWCiphertext, GGSWCiphertextExec};
+pub use layout::{GGSWCiphertext, GGSWCiphertextExec, GGSWLayoutFamily};
 
 #[cfg(test)]
 mod test;

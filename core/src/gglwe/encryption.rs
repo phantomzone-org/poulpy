@@ -194,12 +194,12 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<DataSelf> {
     }
 }
 
-pub trait GLWEAutomorphismKeyEncryptFamily<B: Backend> = GGLWEEncryptSkFamily<B>;
+pub trait GLWEAutomorphismKeyEncryptSkFamily<B: Backend> = GGLWEEncryptSkFamily<B>;
 
 impl GGLWEAutomorphismKey<Vec<u8>> {
     pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize
     where
-        Module<B>: GLWEAutomorphismKeyEncryptFamily<B>,
+        Module<B>: GLWEAutomorphismKeyEncryptSkFamily<B>,
     {
         GLWESwitchingKey::encrypt_sk_scratch_space(module, basek, k, rank, rank) + GLWESecret::bytes_of(module, rank)
     }
@@ -220,7 +220,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGLWEAutomorphismKey<DataSelf> {
         sigma: f64,
         scratch: &mut Scratch,
     ) where
-        Module<B>: GLWEAutomorphismKeyEncryptFamily<B>,
+        Module<B>: GLWEAutomorphismKeyEncryptSkFamily<B>,
     {
         #[cfg(debug_assertions)]
         {

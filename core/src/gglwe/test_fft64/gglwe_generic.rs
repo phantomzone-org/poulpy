@@ -1,140 +1,14 @@
-use backend::{B, Backend, Module, ScalarZnx, ScalarZnxAlloc, ScalarZnxToMut, ScratchOwned, Stats, VecZnxOps, ZnxViewMut};
+use backend::{Backend, Module, ScalarZnx, ScalarZnxAlloc, ScalarZnxToMut, ScratchOwned, VecZnxOps, ZnxViewMut};
 use sampling::source::Source;
 
 use crate::{
-    GGLWEEncryptSkFamily, GGLWELayoutFamily, GGSWCiphertext, GGSWCiphertextExec, GLWEDecryptFamily, GLWEKeyswitchFamily,
-    GLWEPlaintext, GLWESecret, GLWESecretExec, GLWESwitchingKey, GLWESwitchingKeyExec, Infos,
+    GGLWEEncryptSkFamily, GGLWELayoutFamily, GGSWCiphertext, GGSWCiphertextExec, GGSWLayoutFamily, GLWEDecryptFamily,
+    GLWEExternalProductFamily, GLWEKeyswitchFamily, GLWESecret, GLWESecretExec, GLWESwitchingKey,
+    GLWESwitchingKeyEncryptSkFamily, GLWESwitchingKeyExec,
     noise::{log2_std_noise_gglwe_product, noise_ggsw_product},
 };
 
-#[test]
-fn encrypt_sk() {
-    let log_n: usize = 8;
-    let module: Module<B> = Module::<B>::new(1 << log_n);
-    let basek: usize = 12;
-    let k_ksk: usize = 54;
-    let digits: usize = k_ksk / basek;
-    (1..4).for_each(|rank_in| {
-        (1..4).for_each(|rank_out| {
-            (1..digits + 1).for_each(|di| {
-                println!(
-                    "test encrypt_sk digits: {} ranks: ({} {})",
-                    di, rank_in, rank_out
-                );
-                test_encrypt_sk(module, basek, k_ksk, di, rank_in, rank_out, 3.2);
-            });
-        });
-    });
-}
-
-#[test]
-fn key_switch() {
-    let log_n: usize = 8;
-    let module: Module<B> = Module::<B>::new(1 << log_n);
-    let basek: usize = 12;
-    let k_in: usize = 60;
-    let digits: usize = k_in.div_ceil(basek);
-    (1..4).for_each(|rank_in_s0s1| {
-        (1..4).for_each(|rank_out_s0s1| {
-            (1..4).for_each(|rank_out_s1s2| {
-                (1..digits + 1).for_each(|di| {
-                    let k_ksk: usize = k_in + basek * di;
-                    println!(
-                        "test key_switch digits: {} ranks: ({},{},{})",
-                        di, rank_in_s0s1, rank_out_s0s1, rank_out_s1s2
-                    );
-                    let k_out: usize = k_ksk; // Better capture noise.
-                    test_key_switch(
-                        module,
-                        basek,
-                        k_out,
-                        k_in,
-                        k_ksk,
-                        di,
-                        rank_in_s0s1,
-                        rank_out_s0s1,
-                        rank_out_s1s2,
-                        3.2,
-                    );
-                })
-            })
-        });
-    });
-}
-
-#[test]
-fn key_switch_inplace() {
-    let log_n: usize = 8;
-    let basek: usize = 12;
-    let k_ct: usize = 60;
-    let digits: usize = k_ct.div_ceil(basek);
-    (1..4).for_each(|rank_in_s0s1| {
-        (1..4).for_each(|rank_out_s0s1| {
-            (1..digits + 1).for_each(|di| {
-                let k_ksk: usize = k_ct + basek * di;
-                println!(
-                    "test key_switch_inplace digits: {} ranks: ({},{})",
-                    di, rank_in_s0s1, rank_out_s0s1
-                );
-                test_key_switch_inplace(
-                    log_n,
-                    basek,
-                    k_ct,
-                    k_ksk,
-                    di,
-                    rank_in_s0s1,
-                    rank_out_s0s1,
-                    3.2,
-                );
-            });
-        });
-    });
-}
-
-#[test]
-fn external_product() {
-    let log_n: usize = 8;
-    let basek: usize = 12;
-    let k_in: usize = 60;
-    let digits: usize = k_in.div_ceil(basek);
-    (1..4).for_each(|rank_in| {
-        (1..4).for_each(|rank_out| {
-            (1..digits + 1).for_each(|di| {
-                let k_ggsw: usize = k_in + basek * di;
-                println!(
-                    "test external_product digits: {} ranks: ({} {})",
-                    di, rank_in, rank_out
-                );
-                let k_out: usize = k_in; // Better capture noise.
-                test_external_product(
-                    log_n, basek, k_out, k_in, k_ggsw, di, rank_in, rank_out, 3.2,
-                );
-            });
-        });
-    });
-}
-
-#[test]
-fn external_product_inplace() {
-    let log_n: usize = 5;
-    let basek: usize = 12;
-    let k_ct: usize = 60;
-    let digits: usize = k_ct.div_ceil(basek);
-    (1..4).for_each(|rank_in| {
-        (1..4).for_each(|rank_out| {
-            (1..digits).for_each(|di| {
-                let k_ggsw: usize = k_ct + basek * di;
-                println!(
-                    "test external_product_inplace digits: {} ranks: ({} {})",
-                    di, rank_in, rank_out
-                );
-                test_external_product_inplace(log_n, basek, k_ct, k_ggsw, di, rank_in, rank_out, 3.2);
-            });
-        });
-    });
-}
-
-fn test_encrypt_sk<B: Backend>(
+pub(crate) fn test_encrypt_sk<B: Backend>(
     module: &Module<B>,
     basek: usize,
     k_ksk: usize,
@@ -178,7 +52,7 @@ fn test_encrypt_sk<B: Backend>(
         .assert_noise(module, &sk_out_exec, &sk_in.data, sigma);
 }
 
-fn test_key_switch<B: Backend>(
+pub(crate) fn test_key_switch<B: Backend>(
     module: &Module<B>,
     basek: usize,
     k_out: usize,
@@ -316,8 +190,8 @@ fn test_key_switch<B: Backend>(
         .assert_noise(module, &sk2_exec, &sk0.data, max_noise);
 }
 
-fn test_key_switch_inplace(
-    log_n: usize,
+pub(crate) fn test_key_switch_inplace<B: Backend>(
+    module: &Module<B>,
     basek: usize,
     k_ct: usize,
     k_ksk: usize,
@@ -325,8 +199,9 @@ fn test_key_switch_inplace(
     rank_in: usize,
     rank_out: usize,
     sigma: f64,
-) {
-    let module: Module<B> = Module::<B>::new(1 << log_n);
+) where
+    Module<B>: GLWESwitchingKeyEncryptSkFamily<B> + GLWEKeyswitchFamily<B> + GGLWELayoutFamily<B> + GLWEDecryptFamily<B>,
+{
     let rows: usize = k_ct.div_ceil(basek * digits);
     let digits_in: usize = 1;
 
@@ -344,14 +219,16 @@ fn test_key_switch_inplace(
             | GLWESwitchingKey::keyswitch_inplace_scratch_space(module, basek, k_ct, k_ksk, digits, rank_out),
     );
 
+    let var_xs: f64 = 0.5;
+
     let mut sk0: GLWESecret<Vec<u8>> = GLWESecret::alloc(module, rank_in);
-    sk0.fill_ternary_prob(0.5, &mut source_xs);
+    sk0.fill_ternary_prob(var_xs, &mut source_xs);
 
     let mut sk1: GLWESecret<Vec<u8>> = GLWESecret::alloc(module, rank_out);
-    sk1.fill_ternary_prob(0.5, &mut source_xs);
+    sk1.fill_ternary_prob(var_xs, &mut source_xs);
 
     let mut sk2: GLWESecret<Vec<u8>> = GLWESecret::alloc(module, rank_out);
-    sk2.fill_ternary_prob(0.5, &mut source_xs);
+    sk2.fill_ternary_prob(var_xs, &mut source_xs);
     let sk2_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk2);
 
     // gglwe_{s1}(s0) = s0 -> s1
@@ -386,47 +263,26 @@ fn test_key_switch_inplace(
 
     let ct_gglwe_s0s2: GLWESwitchingKey<Vec<u8>> = ct_gglwe_s0s1;
 
-    let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(module, basek, k_ct);
+    let max_noise: f64 = log2_std_noise_gglwe_product(
+        module.n() as f64,
+        basek * digits,
+        var_xs,
+        var_xs,
+        0f64,
+        sigma * sigma,
+        0f64,
+        rank_out as f64,
+        k_ct,
+        k_ksk,
+    );
 
-    (0..ct_gglwe_s0s2.rank_in()).for_each(|col_i| {
-        (0..ct_gglwe_s0s2.rows()).for_each(|row_i| {
-            ct_gglwe_s0s2
-                .at(row_i, col_i)
-                .decrypt(module, &mut pt, &sk2_exec, scratch.borrow());
-            module.vec_znx_sub_scalar_inplace(
-                &mut pt.data,
-                0,
-                (digits_in - 1) + row_i * digits_in,
-                &sk0.data,
-                col_i,
-            );
-
-            let noise_have: f64 = pt.data.std(0, basek).log2();
-            let noise_want: f64 = log2_std_noise_gglwe_product(
-                module.n() as f64,
-                basek * digits,
-                0.5,
-                0.5,
-                0f64,
-                sigma * sigma,
-                0f64,
-                rank_out as f64,
-                k_ct,
-                k_ksk,
-            );
-
-            assert!(
-                (noise_have - noise_want).abs() <= 1.0,
-                "{} {}",
-                noise_have,
-                noise_want
-            );
-        });
-    });
+    ct_gglwe_s0s2
+        .key
+        .assert_noise(module, &sk2_exec, &sk0.data, max_noise);
 }
 
-fn test_external_product(
-    log_n: usize,
+pub(crate) fn test_external_product<B: Backend>(
+    module: &Module<B>,
     basek: usize,
     k_out: usize,
     k_in: usize,
@@ -435,9 +291,9 @@ fn test_external_product(
     rank_in: usize,
     rank_out: usize,
     sigma: f64,
-) {
-    let module: Module<B> = Module::<B>::new(1 << log_n);
-
+) where
+    Module<B>: GLWESwitchingKeyEncryptSkFamily<B> + GLWEExternalProductFamily<B> + GGSWLayoutFamily<B> + GLWEDecryptFamily<B>,
+{
     let rows: usize = k_in.div_ceil(basek * digits);
     let digits_in: usize = 1;
 
@@ -463,11 +319,13 @@ fn test_external_product(
 
     pt_rgsw.to_mut().raw_mut()[r] = 1; // X^{r}
 
+    let var_xs: f64 = 0.5;
+
     let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc(module, rank_in);
-    sk_in.fill_ternary_prob(0.5, &mut source_xs);
+    sk_in.fill_ternary_prob(var_xs, &mut source_xs);
 
     let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(module, rank_out);
-    sk_out.fill_ternary_prob(0.5, &mut source_xs);
+    sk_out.fill_ternary_prob(var_xs, &mut source_xs);
     let sk_out_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk_out);
 
     // gglwe_{s1}(s0) = s0 -> s1
@@ -499,8 +357,6 @@ fn test_external_product(
     // gglwe_(m) (x) RGSW_(X^k) = gglwe_(m * X^k)
     ct_gglwe_out.external_product(module, &ct_gglwe_in, &ct_rgsw_exec, scratch.borrow());
 
-    let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(module, basek, k_out);
-
     (0..rank_in).for_each(|i| {
         module.vec_znx_rotate_inplace(r as i64, &mut sk_in.data, i); // * X^{r}
     });
@@ -512,10 +368,10 @@ fn test_external_product(
     let var_a0_err: f64 = sigma * sigma;
     let var_a1_err: f64 = 1f64 / 12f64;
 
-    let noise_want: f64 = noise_ggsw_product(
+    let max_noise: f64 = noise_ggsw_product(
         module.n() as f64,
         basek * digits,
-        0.5,
+        var_xs,
         var_msg,
         var_a0_err,
         var_a1_err,
@@ -525,10 +381,14 @@ fn test_external_product(
         k_in,
         k_ggsw,
     );
+
+    ct_gglwe_out
+        .key
+        .assert_noise(module, &sk_out_exec, &sk_in.data, max_noise);
 }
 
-fn test_external_product_inplace(
-    log_n: usize,
+pub(crate) fn test_external_product_inplace<B: Backend>(
+    module: &Module<B>,
     basek: usize,
     k_ct: usize,
     k_ggsw: usize,
@@ -536,16 +396,16 @@ fn test_external_product_inplace(
     rank_in: usize,
     rank_out: usize,
     sigma: f64,
-) {
-    let module: Module<B> = Module::<B>::new(1 << log_n);
-
+) where
+    Module<B>: GLWESwitchingKeyEncryptSkFamily<B> + GLWEExternalProductFamily<B> + GGSWLayoutFamily<B> + GLWEDecryptFamily<B>,
+{
     let rows: usize = k_ct.div_ceil(basek * digits);
 
     let digits_in: usize = 1;
 
-    let mut ct_gglwe: GLWESwitchingKey<Vec<u8>, B> =
+    let mut ct_gglwe: GLWESwitchingKey<Vec<u8>> =
         GLWESwitchingKey::alloc(module, basek, k_ct, rows, digits_in, rank_in, rank_out);
-    let mut ct_rgsw: GGSWCiphertext<Vec<u8>, B> = GGSWCiphertext::alloc(module, basek, k_ggsw, rows, digits, rank_out);
+    let mut ct_rgsw: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(module, basek, k_ggsw, rows, digits, rank_out);
 
     let mut pt_rgsw: ScalarZnx<Vec<u8>> = module.new_scalar_znx(1);
 
@@ -555,7 +415,6 @@ fn test_external_product_inplace(
 
     let mut scratch: ScratchOwned = ScratchOwned::new(
         GLWESwitchingKey::encrypt_sk_scratch_space(module, basek, k_ct, rank_in, rank_out)
-            | FourierGLWECiphertext::decrypt_scratch_space(module, basek, k_ct)
             | GLWESwitchingKey::external_product_inplace_scratch_space(module, basek, k_ct, k_ggsw, digits, rank_out)
             | GGSWCiphertext::encrypt_sk_scratch_space(module, basek, k_ggsw, rank_out),
     );
@@ -564,18 +423,20 @@ fn test_external_product_inplace(
 
     pt_rgsw.to_mut().raw_mut()[r] = 1; // X^{r}
 
+    let var_xs: f64 = 0.5;
+
     let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc(module, rank_in);
-    sk_in.fill_ternary_prob(0.5, &mut source_xs);
+    sk_in.fill_ternary_prob(var_xs, &mut source_xs);
 
     let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(module, rank_out);
-    sk_out.fill_ternary_prob(0.5, &mut source_xs);
-    let sk_out_exec: FourierGLWESecret<Vec<u8>, B> = FourierGLWESecret::from(module, &sk_out);
+    sk_out.fill_ternary_prob(var_xs, &mut source_xs);
+    let sk_out_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk_out);
 
     // gglwe_{s1}(s0) = s0 -> s1
     ct_gglwe.encrypt_sk(
         module,
         &sk_in,
-        &sk_out_exec,
+        &sk_out,
         &mut source_xa,
         &mut source_xe,
         sigma,
@@ -592,58 +453,40 @@ fn test_external_product_inplace(
         scratch.borrow(),
     );
 
-    // gglwe_(m) (x) RGSW_(X^k) = gglwe_(m * X^k)
-    ct_gglwe.external_product_inplace(module, &ct_rgsw, scratch.borrow());
+    let mut ct_rgsw_exec: GGSWCiphertextExec<Vec<u8>, B> =
+        GGSWCiphertextExec::alloc(module, basek, k_ggsw, rows, digits, rank_out);
 
-    let mut ct_glwe_exec: FourierGLWECiphertext<Vec<u8>, B> = FourierGLWECiphertext::alloc(module, basek, k_ct, rank_out);
-    let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(module, basek, k_ct);
+    ct_rgsw_exec.prepare(module, &ct_rgsw, scratch.borrow());
+
+    // gglwe_(m) (x) RGSW_(X^k) = gglwe_(m * X^k)
+    ct_gglwe.external_product_inplace(module, &ct_rgsw_exec, scratch.borrow());
 
     (0..rank_in).for_each(|i| {
         module.vec_znx_rotate_inplace(r as i64, &mut sk_in.data, i); // * X^{r}
     });
 
-    (0..rank_in).for_each(|col_i| {
-        (0..ct_gglwe.rows()).for_each(|row_i| {
-            ct_gglwe.get_row(module, row_i, col_i, &mut ct_glwe_exec);
-            ct_glwe_exec.decrypt(module, &mut pt, &sk_out_exec, scratch.borrow());
+    let var_gct_err_lhs: f64 = sigma * sigma;
+    let var_gct_err_rhs: f64 = 0f64;
 
-            module.vec_znx_sub_scalar_inplace(
-                &mut pt.data,
-                0,
-                (digits_in - 1) + row_i * digits_in,
-                &sk_in.data,
-                col_i,
-            );
+    let var_msg: f64 = 1f64 / module.n() as f64; // X^{k}
+    let var_a0_err: f64 = sigma * sigma;
+    let var_a1_err: f64 = 1f64 / 12f64;
 
-            let noise_have: f64 = pt.data.std(0, basek).log2();
+    let max_noise: f64 = noise_ggsw_product(
+        module.n() as f64,
+        basek * digits,
+        var_xs,
+        var_msg,
+        var_a0_err,
+        var_a1_err,
+        var_gct_err_lhs,
+        var_gct_err_rhs,
+        rank_out as f64,
+        k_ct,
+        k_ggsw,
+    );
 
-            let var_gct_err_lhs: f64 = sigma * sigma;
-            let var_gct_err_rhs: f64 = 0f64;
-
-            let var_msg: f64 = 1f64 / module.n() as f64; // X^{k}
-            let var_a0_err: f64 = sigma * sigma;
-            let var_a1_err: f64 = 1f64 / 12f64;
-
-            let noise_want: f64 = noise_ggsw_product(
-                module.n() as f64,
-                basek * digits,
-                0.5,
-                var_msg,
-                var_a0_err,
-                var_a1_err,
-                var_gct_err_lhs,
-                var_gct_err_rhs,
-                rank_out as f64,
-                k_ct,
-                k_ggsw,
-            );
-
-            assert!(
-                (noise_have - noise_want).abs() <= 1.0,
-                "{} {}",
-                noise_have,
-                noise_want
-            );
-        });
-    });
+    ct_gglwe
+        .key
+        .assert_noise(module, &sk_out_exec, &sk_in.data, max_noise);
 }

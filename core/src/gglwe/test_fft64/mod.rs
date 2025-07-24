@@ -1,3 +1,4 @@
-pub mod automorphism_key;
-pub mod gglwe;
-pub mod tensor_key;
+mod automorphism_key;
+mod gglwe_fft64;
+mod gglwe_generic;
+mod tensor_key;

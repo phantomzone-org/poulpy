@@ -1,6 +1,6 @@
 use backend::{Backend, MatZnx, MatZnxAlloc, Module, Scratch, VmpPMat, VmpPMatAlloc, VmpPMatAllocBytes, VmpPMatPrepare};
 
-use crate::{GGLWECiphertext, GLWECiphertext, Infos};
+use crate::{GLWECiphertext, Infos};
 
 pub trait GGSWLayoutFamily<B: Backend> = VmpPMatAlloc<B> + VmpPMatAllocBytes + VmpPMatPrepare<B>;
 
@@ -195,7 +195,7 @@ impl<T, B: Backend> GGSWCiphertextExec<T, B> {
 }
 
 impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>, B: Backend> GGSWCiphertextExec<DataSelf, B> {
-    pub fn prepare<DataOther>(&mut self, module: &Module<B>, other: &GGLWECiphertext<DataOther>, scratch: &mut Scratch)
+    pub fn prepare<DataOther>(&mut self, module: &Module<B>, other: &GGSWCiphertext<DataOther>, scratch: &mut Scratch)
     where
         DataOther: AsRef<[u8]>,
         Module<B>: GGSWLayoutFamily<B>,
