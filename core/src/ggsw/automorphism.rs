@@ -1,7 +1,8 @@
 use backend::{Backend, Module, Scratch, VecZnxAlloc, VecZnxDftAllocBytes, VecZnxDftFromVecZnx};
 
 use crate::{
-    GGSWCiphertext, GGSWKeySwitchFamily, GLWEAutomorphismFamily, GLWEAutomorphismKeyExec, GLWECiphertext, GLWETensorKeyExec, Infos,
+    GGSWCiphertext, GGSWKeySwitchFamily, GLWEAutomorphismFamily, GLWEAutomorphismKeyExec, GLWECiphertext, GLWETensorKeyExec,
+    Infos,
 };
 
 impl GGSWCiphertext<Vec<u8>> {

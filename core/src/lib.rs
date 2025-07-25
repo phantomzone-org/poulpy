@@ -19,7 +19,9 @@ pub use gglwe::{
     GLWEAutomorphismKeyEncryptSkFamily, GLWEAutomorphismKeyExec, GLWESwitchingKey, GLWESwitchingKeyEncryptSkFamily,
     GLWESwitchingKeyExec, GLWETensorKey, GLWETensorKeyEncryptSkFamily, GLWETensorKeyExec,
 };
-pub use ggsw::{GGSWCiphertext, GGSWCiphertextExec, GGSWKeySwitchFamily, GGSWLayoutFamily, GGSWEncryptSkFamily, GGSWAssertNoiseFamily};
+pub use ggsw::{
+    GGSWAssertNoiseFamily, GGSWCiphertext, GGSWCiphertextExec, GGSWEncryptSkFamily, GGSWKeySwitchFamily, GGSWLayoutFamily,
+};
 pub use glwe::{
     GLWEAutomorphismFamily, GLWECiphertext, GLWEDecryptFamily, GLWEEncryptPkFamily, GLWEEncryptSkFamily,
     GLWEExternalProductFamily, GLWEKeyswitchFamily, GLWEOps, GLWEPacker, GLWEPlaintext, GLWEPublicKey, GLWEPublicKeyFamily,

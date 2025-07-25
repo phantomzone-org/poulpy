@@ -1,10 +1,18 @@
-use backend::{Backend, Module, ScalarZnx, ScratchOwned, Stats, VecZnxBig, VecZnxBigAlloc, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxDft, VecZnxDftAlloc, VecZnxDftToVecZnxBigTmpA, VecZnxOps, VecZnxScratch, ZnxZero};
+use backend::{
+    Backend, Module, ScalarZnx, ScratchOwned, Stats, VecZnxBig, VecZnxBigAlloc, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
+    VecZnxDft, VecZnxDftAlloc, VecZnxDftToVecZnxBigTmpA, VecZnxOps, VecZnxScratch, ZnxZero,
+};
 
 use crate::{GGSWCiphertext, GLWECiphertext, GLWEDecryptFamily, GLWEPlaintext, GLWESecretExec, Infos};
 
-pub trait GGSWAssertNoiseFamily<B: Backend> = GLWEDecryptFamily<B> + VecZnxBigAlloc<B> + VecZnxDftAlloc<B> + VecZnxBigNormalizeTmpBytes + VecZnxBigNormalize<B> + VecZnxDftToVecZnxBigTmpA<B>;
+pub trait GGSWAssertNoiseFamily<B: Backend> = GLWEDecryptFamily<B>
+    + VecZnxBigAlloc<B>
+    + VecZnxDftAlloc<B>
+    + VecZnxBigNormalizeTmpBytes
+    + VecZnxBigNormalize<B>
+    + VecZnxDftToVecZnxBigTmpA<B>;
 
-impl<D: AsRef<[u8]>> GGSWCiphertext<D>{
+impl<D: AsRef<[u8]>> GGSWCiphertext<D> {
     pub fn assert_noise<B: Backend, DataSk, DataScalar, F>(
         &self,
         module: &Module<B>,
@@ -31,13 +39,7 @@ impl<D: AsRef<[u8]>> GGSWCiphertext<D>{
 
         (0..self.rank() + 1).for_each(|col_j| {
             (0..self.rows()).for_each(|row_i| {
-                module.vec_znx_add_scalar_inplace(
-                    &mut pt.data,
-                    0,
-                    (digits - 1) + row_i * digits,
-                    pt_want,
-                    0,
-                );
+                module.vec_znx_add_scalar_inplace(&mut pt.data, 0, (digits - 1) + row_i * digits, pt_want, 0);
 
                 // mul with sk[col_j-1]
                 if col_j > 0 {
