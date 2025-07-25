@@ -5,7 +5,7 @@ use backend::{
 
 use crate::{GGSWCiphertext, GLWECiphertext, GLWEKeyswitchFamily, GLWESwitchingKeyExec, GLWETensorKeyExec, Infos};
 
-pub trait GGSWExpandFamily<B> =
+pub trait GGSWKeySwitchFamily<B> =
     GLWEKeyswitchFamily<B> + VecZnxBigAllocBytes + VecZnxDftCopy<B> + VecZnxDftAddInplace<B> + VecZnxDftToVecZnxBigTmpA<B>;
 
 impl GGSWCiphertext<Vec<u8>> {
@@ -18,7 +18,7 @@ impl GGSWCiphertext<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: GGSWExpandFamily<B>,
+        Module<B>: GGSWKeySwitchFamily<B>,
     {
         let tsk_size: usize = k_tsk.div_ceil(basek);
         let self_size_out: usize = self_k.div_ceil(basek);
@@ -50,7 +50,7 @@ impl GGSWCiphertext<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: GLWEKeyswitchFamily<B> + GGSWExpandFamily<B>,
+        Module<B>: GLWEKeyswitchFamily<B> + GGSWKeySwitchFamily<B>,
     {
         let out_size: usize = k_out.div_ceil(basek);
         let res_znx: usize = module.bytes_of_vec_znx(rank + 1, out_size);
@@ -72,7 +72,7 @@ impl GGSWCiphertext<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: GLWEKeyswitchFamily<B> + GGSWExpandFamily<B>,
+        Module<B>: GLWEKeyswitchFamily<B> + GGSWKeySwitchFamily<B>,
     {
         GGSWCiphertext::keyswitch_scratch_space(
             module, basek, k_out, k_out, k_ksk, digits_ksk, k_tsk, digits_tsk, rank,
@@ -90,7 +90,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
         tsk: &GLWETensorKeyExec<DataTsk, B>,
         scratch: &mut Scratch,
     ) where
-        Module<B>: GGSWExpandFamily<B>,
+        Module<B>: GGSWKeySwitchFamily<B>,
     {
         let cols: usize = self.rank() + 1;
 
@@ -201,7 +201,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
         tsk: &GLWETensorKeyExec<DataTsk, B>,
         scratch: &mut Scratch,
     ) where
-        Module<B>: GLWEKeyswitchFamily<B> + GGSWExpandFamily<B>,
+        Module<B>: GLWEKeyswitchFamily<B> + GGSWKeySwitchFamily<B>,
     {
         let rank: usize = self.rank();
         let cols: usize = rank + 1;
@@ -236,7 +236,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
         tsk: &GLWETensorKeyExec<DataTsk, B>,
         scratch: &mut Scratch,
     ) where
-        Module<B>: GLWEKeyswitchFamily<B> + GGSWExpandFamily<B>,
+        Module<B>: GLWEKeyswitchFamily<B> + GGSWKeySwitchFamily<B>,
     {
         unsafe {
             let self_ptr: *mut GGSWCiphertext<DataSelf> = self as *mut GGSWCiphertext<DataSelf>;
