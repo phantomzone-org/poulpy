@@ -1,6 +1,6 @@
 use backend::{Backend, MatZnx, Module, Scratch, VmpPMat};
 
-use crate::{GGLWELayoutFamily, GLWECiphertext, GLWESwitchingKey, GLWESwitchingKeyExec, Infos};
+use crate::{GGLWEExecLayoutFamily, GLWECiphertext, GLWESwitchingKey, GLWESwitchingKeyExec, Infos};
 
 pub struct GGLWEAutomorphismKey<D> {
     pub(crate) key: GLWESwitchingKey<D>,
@@ -78,7 +78,7 @@ pub struct GLWEAutomorphismKeyExec<D, B: Backend> {
 impl<B: Backend> GLWEAutomorphismKeyExec<Vec<u8>, B> {
     pub fn alloc(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self
     where
-        Module<B>: GGLWELayoutFamily<B>,
+        Module<B>: GGLWEExecLayoutFamily<B>,
     {
         GLWEAutomorphismKeyExec::<Vec<u8>, B> {
             key: GLWESwitchingKeyExec::alloc(module, basek, k, rows, digits, rank, rank),
@@ -88,7 +88,7 @@ impl<B: Backend> GLWEAutomorphismKeyExec<Vec<u8>, B> {
 
     pub fn bytes_of(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize
     where
-        Module<B>: GGLWELayoutFamily<B>,
+        Module<B>: GGLWEExecLayoutFamily<B>,
     {
         GLWESwitchingKeyExec::<Vec<u8>, B>::bytes_of(module, basek, k, rows, digits, rank, rank)
     }
@@ -98,7 +98,7 @@ impl<D: AsRef<[u8]> + AsMut<[u8]>, B: Backend> GLWEAutomorphismKeyExec<D, B> {
     pub fn prepare<DataOther>(&mut self, module: &Module<B>, other: &GGLWEAutomorphismKey<DataOther>, scratch: &mut Scratch)
     where
         DataOther: AsRef<[u8]>,
-        Module<B>: GGLWELayoutFamily<B>,
+        Module<B>: GGLWEExecLayoutFamily<B>,
     {
         self.key.prepare(module, &other.key, scratch);
         self.p = other.p;

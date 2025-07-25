@@ -15,7 +15,7 @@ use backend::VecZnxDftAllocBytes;
 pub use blind_rotation::{BlindRotationKeyCGGI, LookUpTable, cggi_blind_rotate, cggi_blind_rotate_scratch_space};
 pub use elem::{Infos, SetMetaData};
 pub use gglwe::{
-    GGLWEAutomorphismKey, GGLWECiphertext, GGLWECiphertextExec, GGLWEEncryptSkFamily, GGLWELayoutFamily,
+    GGLWEAutomorphismKey, GGLWECiphertext, GGLWECiphertextExec, GGLWEEncryptSkFamily, GGLWEExecLayoutFamily,
     GLWEAutomorphismKeyEncryptSkFamily, GLWEAutomorphismKeyExec, GLWESwitchingKey, GLWESwitchingKeyEncryptSkFamily,
     GLWESwitchingKeyExec, GLWETensorKey, GLWETensorKeyEncryptSkFamily, GLWETensorKeyExec,
 };

@@ -2,7 +2,7 @@ use backend::{Backend, Module, ScalarZnx, ScalarZnxAlloc, ScalarZnxToMut, Scratc
 use sampling::source::Source;
 
 use crate::{
-    GGLWEEncryptSkFamily, GGLWELayoutFamily, GGSWCiphertext, GGSWCiphertextExec, GGSWLayoutFamily, GLWEDecryptFamily,
+    GGLWEEncryptSkFamily, GGLWEExecLayoutFamily, GGSWCiphertext, GGSWCiphertextExec, GGSWLayoutFamily, GLWEDecryptFamily,
     GLWEExternalProductFamily, GLWEKeyswitchFamily, GLWESecret, GLWESecretExec, GLWESwitchingKey,
     GLWESwitchingKeyEncryptSkFamily, GLWESwitchingKeyExec,
     noise::{log2_std_noise_gglwe_product, noise_ggsw_product},
@@ -64,7 +64,7 @@ pub(crate) fn test_key_switch<B: Backend>(
     rank_out_s1s2: usize,
     sigma: f64,
 ) where
-    Module<B>: GGLWEEncryptSkFamily<B> + GLWEDecryptFamily<B> + GLWEKeyswitchFamily<B> + GGLWELayoutFamily<B>,
+    Module<B>: GGLWEEncryptSkFamily<B> + GLWEDecryptFamily<B> + GLWEKeyswitchFamily<B> + GGLWEExecLayoutFamily<B>,
 {
     let rows: usize = k_in.div_ceil(basek * digits);
     let digits_in: usize = 1;
@@ -200,7 +200,7 @@ pub(crate) fn test_key_switch_inplace<B: Backend>(
     rank_out: usize,
     sigma: f64,
 ) where
-    Module<B>: GLWESwitchingKeyEncryptSkFamily<B> + GLWEKeyswitchFamily<B> + GGLWELayoutFamily<B> + GLWEDecryptFamily<B>,
+    Module<B>: GLWESwitchingKeyEncryptSkFamily<B> + GLWEKeyswitchFamily<B> + GGLWEExecLayoutFamily<B> + GLWEDecryptFamily<B>,
 {
     let rows: usize = k_ct.div_ceil(basek * digits);
     let digits_in: usize = 1;

@@ -2,7 +2,7 @@ use backend::{Backend, MatZnx, MatZnxAlloc, Module, Scratch, VmpPMat, VmpPMatAll
 
 use crate::{GLWECiphertext, Infos};
 
-pub trait GGLWELayoutFamily<B: Backend> = VmpPMatAlloc<B> + VmpPMatAllocBytes + VmpPMatPrepare<B>;
+pub trait GGLWEExecLayoutFamily<B: Backend> = VmpPMatAlloc<B> + VmpPMatAllocBytes + VmpPMatPrepare<B>;
 
 pub struct GGLWECiphertext<D> {
     pub(crate) data: MatZnx<D>,
@@ -138,7 +138,7 @@ pub struct GGLWECiphertextExec<D, B: Backend> {
 impl<B: Backend> GGLWECiphertextExec<Vec<u8>, B> {
     pub fn alloc(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank_in: usize, rank_out: usize) -> Self
     where
-        Module<B>: GGLWELayoutFamily<B>,
+        Module<B>: GGLWEExecLayoutFamily<B>,
     {
         let size: usize = k.div_ceil(basek);
         debug_assert!(
@@ -174,7 +174,7 @@ impl<B: Backend> GGLWECiphertextExec<Vec<u8>, B> {
         rank_out: usize,
     ) -> usize
     where
-        Module<B>: GGLWELayoutFamily<B>,
+        Module<B>: GGLWEExecLayoutFamily<B>,
     {
         let size: usize = k.div_ceil(basek);
         debug_assert!(
@@ -234,7 +234,7 @@ impl<D: AsRef<[u8]> + AsMut<[u8]>, B: Backend> GGLWECiphertextExec<D, B> {
     pub fn prepare<DataOther>(&mut self, module: &Module<B>, other: &GGLWECiphertext<DataOther>, scratch: &mut Scratch)
     where
         DataOther: AsRef<[u8]>,
-        Module<B>: GGLWELayoutFamily<B>,
+        Module<B>: GGLWEExecLayoutFamily<B>,
     {
         module.vmp_prepare(&mut self.data, &other.data, scratch);
         self.basek = other.basek;

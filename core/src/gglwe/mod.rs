@@ -13,7 +13,7 @@ pub use encryption::{
     GGLWEEncryptSkFamily, GLWEAutomorphismKeyEncryptSkFamily, GLWESwitchingKeyEncryptSkFamily, GLWETensorKeyEncryptSkFamily,
 };
 pub use keyswitch_key::{GLWESwitchingKey, GLWESwitchingKeyExec};
-pub use layout::{GGLWECiphertext, GGLWECiphertextExec, GGLWELayoutFamily};
+pub use layout::{GGLWECiphertext, GGLWECiphertextExec, GGLWEExecLayoutFamily};
 pub use tensor_key::{GLWETensorKey, GLWETensorKeyExec};
 
 #[cfg(test)]
