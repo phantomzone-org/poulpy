@@ -1,4 +1,4 @@
-use backend::{Backend, FFT64, Module, ScratchOwned, Stats, VecZnxBigAlloc, VecZnxDftAlloc, VecZnxOps};
+use backend::{Backend, Module, ScratchOwned, Stats, VecZnxBigAlloc, VecZnxDftAlloc, VecZnxOps};
 use sampling::source::Source;
 
 use crate::{
@@ -6,17 +6,7 @@ use crate::{
     GLWETensorKeyEncryptSkFamily, Infos,
 };
 
-#[test]
-fn encrypt_sk() {
-    let log_n: usize = 8;
-    let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
-    (1..4).for_each(|rank| {
-        println!("test encrypt_sk rank: {}", rank);
-        test_encrypt_sk(&module, 16, 54, 3.2, rank);
-    });
-}
-
-fn test_encrypt_sk<B: Backend>(module: &Module<B>, basek: usize, k: usize, sigma: f64, rank: usize)
+pub(crate) fn test_encrypt_sk<B: Backend>(module: &Module<B>, basek: usize, k: usize, sigma: f64, rank: usize)
 where
     Module<B>:
         GGLWEExecLayoutFamily<B> + GLWETensorKeyEncryptSkFamily<B> + GLWEDecryptFamily<B> + VecZnxDftAlloc<B> + VecZnxBigAlloc<B>,
