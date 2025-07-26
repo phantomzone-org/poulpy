@@ -5,8 +5,8 @@ use backend::{
 use sampling::source::Source;
 
 use crate::{
-    AutomorphismKey, GGLWECiphertext, GLWECiphertext, GLWEEncryptSkFamily, GLWESecret, GLWESecretExec, GLWESecretFamily,
-    GLWESwitchingKey, GLWETensorKey, Infos, ScratchCore,
+    AutomorphismKey, GGLWECiphertext, GLWECiphertext, GLWEDecryptFamily, GLWEEncryptSkFamily, GLWESecret, GLWESecretExec,
+    GLWESecretFamily, GLWESwitchingKey, GLWETensorKey, Infos, ScratchCore,
 };
 
 pub trait GGLWEEncryptSkFamily<B: Backend> = GLWEEncryptSkFamily<B> + GLWESecretFamily<B>;
@@ -167,7 +167,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<DataSelf> {
         }
 
         let (mut sk_in_tmp, scratch1) = scratch.tmp_scalar_znx(module, sk_in.rank());
-        (0..sk_out.rank()).for_each(|i| {
+        (0..sk_in.rank()).for_each(|i| {
             module.switch_degree(&mut sk_in_tmp, i, &sk_in.data, i);
         });
 
@@ -175,7 +175,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<DataSelf> {
         {
             let (mut tmp, _) = scratch2.tmp_scalar_znx(module, 1);
             (0..sk_out.rank()).for_each(|i| {
-                module.switch_degree(&mut tmp, i, &sk_out.data, i);
+                module.switch_degree(&mut tmp, 0, &sk_out.data, i);
                 module.svp_prepare(&mut sk_out_tmp.data, i, &tmp, 0);
             });
         }
@@ -267,8 +267,11 @@ impl GLWETensorKey<Vec<u8>> {
     where
         Module<B>: GLWETensorKeyEncryptSkFamily<B>,
     {
-        GLWESecret::bytes_of(module, 1)
-            + GLWESecretExec::bytes_of(module, 1)
+        GLWESecretExec::bytes_of(module, rank)
+            + module.vec_znx_dft_alloc_bytes(rank, 1)
+            + module.vec_znx_big_alloc_bytes(1, 1)
+            + module.vec_znx_dft_alloc_bytes(1, 1)
+            + GLWESecret::bytes_of(module, 1)
             + GLWESwitchingKey::encrypt_sk_scratch_space(module, basek, k, rank, rank)
     }
 }

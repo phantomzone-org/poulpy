@@ -104,9 +104,15 @@ impl<D: From<Vec<u8>> + AsRef<[u8]>> MatZnx<D> {
 
 impl<D: AsRef<[u8]>> MatZnx<D> {
     pub fn at(&self, row: usize, col: usize) -> VecZnx<&[u8]> {
+        #[cfg(debug_assertions)]
+        {
+            assert!(row < self.rows(), "rows: {} >= {}", row, self.rows());
+            assert!(col < self.cols_in(), "cols: {} >= {}", col, self.cols_in());
+        }
+
         let self_ref: MatZnx<&[u8]> = self.to_ref();
         let nb_bytes: usize = VecZnx::<Vec<u8>>::bytes_of::<i64>(self.n, self.cols_out, self.size);
-        let start: usize = nb_bytes * row * col;
+        let start: usize = nb_bytes * self.cols() * row + col * nb_bytes;
         let end: usize = start + nb_bytes;
 
         VecZnx {
@@ -121,13 +127,20 @@ impl<D: AsRef<[u8]>> MatZnx<D> {
 
 impl<D: AsRef<[u8]> + AsMut<[u8]>> MatZnx<D> {
     pub fn at_mut(&mut self, row: usize, col: usize) -> VecZnx<&mut [u8]> {
+        #[cfg(debug_assertions)]
+        {
+            assert!(row < self.rows(), "rows: {} >= {}", row, self.rows());
+            assert!(col < self.cols_in(), "cols: {} >= {}", col, self.cols_in());
+        }
+
         let n: usize = self.n();
         let cols_out: usize = self.cols_out();
+        let cols_in: usize = self.cols_in();
         let size: usize = self.size();
 
         let self_ref: MatZnx<&mut [u8]> = self.to_mut();
         let nb_bytes: usize = VecZnx::<Vec<u8>>::bytes_of::<i64>(n, cols_out, size);
-        let start: usize = nb_bytes * row * col;
+        let start: usize = nb_bytes * cols_in * row + col * nb_bytes;
         let end: usize = start + nb_bytes;
 
         VecZnx {

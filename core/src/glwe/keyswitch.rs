@@ -197,8 +197,8 @@ where
         VecZnxDftAllocBytes + VecZnxDftFromVecZnx<B> + VmpApply<B> + VecZnxDftToVecZnxBigConsume<B> + VecZnxBigAddSmallInplace<B>,
 {
     let cols: usize = a.cols();
-    let (mut ai_dft, scratch1) = scratch.tmp_vec_znx_dft(module, cols-1, a.size());
-    (0..cols-1).for_each(|col_i| {
+    let (mut ai_dft, scratch1) = scratch.tmp_vec_znx_dft(module, cols - 1, a.size());
+    (0..cols - 1).for_each(|col_i| {
         module.vec_znx_dft_from_vec_znx(1, 0, &mut ai_dft, col_i, a, col_i + 1);
     });
     module.vmp_apply(&mut res_dft, &ai_dft, mat, scratch1);
@@ -228,7 +228,7 @@ where
 {
     let cols: usize = a.cols();
     let size: usize = a.size();
-    let (mut ai_dft, scratch1) = scratch.tmp_vec_znx_dft(module, cols-1, (size + digits - 1) / digits);
+    let (mut ai_dft, scratch1) = scratch.tmp_vec_znx_dft(module, cols - 1, (size + digits - 1) / digits);
 
     ai_dft.data_mut().fill(0);
 
@@ -244,7 +244,7 @@ where
         // noise is kept with respect to the ideal functionality.
         res_dft.set_size(mat.size() - ((digits - di) as isize - 2).max(0) as usize);
 
-        (0..cols-1).for_each(|col_i| {
+        (0..cols - 1).for_each(|col_i| {
             module.vec_znx_dft_from_vec_znx(digits, digits - di - 1, &mut ai_dft, col_i, a, col_i + 1);
         });
 

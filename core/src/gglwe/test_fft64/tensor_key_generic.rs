@@ -62,7 +62,9 @@ where
                         .at(i, j)
                         .at(row_i, col_i)
                         .decrypt(&module, &mut pt, &sk_exec, scratch.borrow());
+
                     module.vec_znx_sub_scalar_inplace(&mut pt.data, 0, row_i, &sk_ij.data, col_i);
+
                     let std_pt: f64 = pt.data.std(0, basek) * (k as f64).exp2();
                     assert!((sigma - std_pt).abs() <= 0.5, "{} {}", sigma, std_pt);
                 });

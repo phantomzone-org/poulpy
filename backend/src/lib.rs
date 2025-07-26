@@ -117,7 +117,7 @@ pub fn alloc_aligned_custom<T>(size: usize, align: usize) -> Vec<T> {
 /// of [DEFAULTALIGN]/size_of::<T>() that is equal or greater to `size`.
 pub fn alloc_aligned<T>(size: usize) -> Vec<T> {
     alloc_aligned_custom::<T>(
-        size + (DEFAULTALIGN - (size % (DEFAULTALIGN / size_of::<T>()))),
+        size + (DEFAULTALIGN - (size % (DEFAULTALIGN / size_of::<T>()))) % DEFAULTALIGN,
         DEFAULTALIGN,
     )
 }
