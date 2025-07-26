@@ -25,10 +25,11 @@ use std::{cmp::min, fmt};
 /// are small polynomials of Zn\[X\].
 #[derive(PartialEq, Eq)]
 pub struct VecZnx<D> {
-    pub data: D,
-    pub n: usize,
-    pub cols: usize,
-    pub size: usize,
+    pub(crate) data: D,
+    pub(crate) n: usize,
+    pub(crate) cols: usize,
+    pub(crate) size: usize,
+    pub(crate) max_size: usize,
 }
 
 impl<D> fmt::Debug for VecZnx<D>
@@ -84,6 +85,15 @@ impl<D: AsRef<[u8]>> ZnxView for VecZnx<D> {
 impl VecZnx<Vec<u8>> {
     pub fn rsh_scratch_space(n: usize) -> usize {
         n * std::mem::size_of::<i64>()
+    }
+}
+
+impl<D: AsRef<[u8]> + AsMut<[u8]>> ZnxZero for VecZnx<D> {
+    fn zero(&mut self) {
+        self.raw_mut().fill(0)
+    }
+    fn zero_at(&mut self, i: usize, j: usize) {
+        self.at_mut(i, j).fill(0);
     }
 }
 
@@ -182,18 +192,21 @@ impl<D: AsMut<[u8]> + AsRef<[u8]>> VecZnx<D> {
     }
 }
 
-impl<D: From<Vec<u8>>> VecZnx<D> {
-    pub(crate) fn bytes_of<Scalar: Sized>(n: usize, cols: usize, size: usize) -> usize {
+impl<D: AsRef<[u8]>> VecZnx<D> {
+    pub fn bytes_of<Scalar: Sized>(n: usize, cols: usize, size: usize) -> usize {
         n * cols * size * size_of::<Scalar>()
     }
+}
 
+impl<D: From<Vec<u8>> + AsRef<[u8]>> VecZnx<D> {
     pub fn new<Scalar: Sized>(n: usize, cols: usize, size: usize) -> Self {
-        let data = alloc_aligned::<u8>(Self::bytes_of::<Scalar>(n, cols, size));
+        let data: Vec<u8> = alloc_aligned::<u8>(Self::bytes_of::<Scalar>(n, cols, size));
         Self {
             data: data.into(),
             n,
             cols,
             size,
+            max_size: size,
         }
     }
 
@@ -205,6 +218,7 @@ impl<D: From<Vec<u8>>> VecZnx<D> {
             n,
             cols,
             size,
+            max_size: size,
         }
     }
 }
@@ -216,6 +230,7 @@ impl<D> VecZnx<D> {
             n,
             cols,
             size,
+            max_size: size,
         }
     }
 
@@ -291,40 +306,6 @@ fn normalize<D: AsMut<[u8]> + AsRef<[u8]>>(basek: usize, a: &mut VecZnx<D>, a_co
     }
 }
 
-impl<D: AsMut<[u8]> + AsRef<[u8]>> VecZnx<D>
-where
-    VecZnx<D>: VecZnxToMut + ZnxInfos,
-{
-    /// Extracts the a_col-th column of 'a' and stores it on the self_col-th column [Self].
-    pub fn extract_column<R>(&mut self, self_col: usize, a: &VecZnx<R>, a_col: usize)
-    where
-        R: AsRef<[u8]>,
-        VecZnx<R>: VecZnxToRef + ZnxInfos,
-    {
-        #[cfg(debug_assertions)]
-        {
-            assert!(self_col < self.cols());
-            assert!(a_col < a.cols());
-        }
-
-        let min_size: usize = self.size.min(a.size());
-        let max_size: usize = self.size;
-
-        let mut self_mut: VecZnx<&mut [u8]> = self.to_mut();
-        let a_ref: VecZnx<&[u8]> = a.to_ref();
-
-        (0..min_size).for_each(|i: usize| {
-            self_mut
-                .at_mut(self_col, i)
-                .copy_from_slice(a_ref.at(a_col, i));
-        });
-
-        (min_size..max_size).for_each(|i| {
-            self_mut.zero_at(self_col, i);
-        });
-    }
-}
-
 impl<D: AsRef<[u8]>> fmt::Display for VecZnx<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(
@@ -378,6 +359,7 @@ where
             n: self.n,
             cols: self.cols,
             size: self.size,
+            max_size: self.max_size,
         }
     }
 }
@@ -396,6 +378,7 @@ where
             n: self.n,
             cols: self.cols,
             size: self.size,
+            max_size: self.max_size,
         }
     }
 }
@@ -408,6 +391,7 @@ impl<DataSelf: AsRef<[u8]>> VecZnx<DataSelf> {
             n: self_ref.n,
             cols: self_ref.cols,
             size: self_ref.size,
+            max_size: self_ref.max_size,
         }
     }
 }

@@ -1,5 +1,5 @@
 use backend::{FFT64, Module, ScratchOwned};
-use core::{FourierGLWESecret, GLWEAutomorphismKey, GLWECiphertext, GLWESecret, GLWESwitchingKey, Infos};
+use core::{AutomorphismKey, FourierGLWESecret, GLWECiphertext, GLWESecret, GLWESwitchingKey, Infos};
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use sampling::source::Source;
 use std::{hint::black_box, time::Duration};
@@ -32,8 +32,7 @@ fn bench_keyswitch_glwe_fft64(c: &mut Criterion) {
         let rows: usize = (p.k_ct_in + (p.basek * digits) - 1) / (p.basek * digits);
         let sigma: f64 = 3.2;
 
-        let mut ksk: GLWEAutomorphismKey<Vec<u8>, FFT64> =
-            GLWEAutomorphismKey::alloc(&module, basek, k_grlwe, rows, digits, rank_out);
+        let mut ksk: AutomorphismKey<Vec<u8>, FFT64> = AutomorphismKey::alloc(&module, basek, k_grlwe, rows, digits, rank_out);
         let mut ct_in: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_rlwe_in, rank_in);
         let mut ct_out: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_rlwe_out, rank_out);
 

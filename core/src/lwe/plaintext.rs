@@ -45,6 +45,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> SetMetaData for LWEPlaintext<DataSelf>
 }
 
 pub trait LWEPlaintextToRef {
+    #[allow(dead_code)]
     fn to_ref(&self) -> LWEPlaintext<&[u8]>;
 }
 
@@ -59,6 +60,7 @@ impl<D: AsRef<[u8]>> LWEPlaintextToRef for LWEPlaintext<D> {
 }
 
 pub trait LWEPlaintextToMut {
+    #[allow(dead_code)]
     fn to_mut(&mut self) -> LWEPlaintext<&mut [u8]>;
 }
 

@@ -1,4 +1,4 @@
-use backend::{VecZnx, VecZnxToMut, VecZnxToRef};
+use backend::{VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos};
 
 use crate::{Infos, SetMetaData};
 
@@ -18,11 +18,14 @@ impl LWECiphertext<Vec<u8>> {
     }
 }
 
-impl<T> Infos for LWECiphertext<T> {
+impl<T> Infos for LWECiphertext<T>
+where
+    VecZnx<T>: ZnxInfos,
+{
     type Inner = VecZnx<T>;
 
     fn n(&self) -> usize {
-        &self.inner().n - 1
+        &self.inner().n() - 1
     }
 
     fn inner(&self) -> &Self::Inner {
@@ -63,6 +66,7 @@ impl<D: AsRef<[u8]>> LWECiphertextToRef for LWECiphertext<D> {
 }
 
 pub trait LWECiphertextToMut {
+    #[allow(dead_code)]
     fn to_mut(&mut self) -> LWECiphertext<&mut [u8]>;
 }
 

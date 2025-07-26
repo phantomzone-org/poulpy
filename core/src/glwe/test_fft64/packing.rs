@@ -1,14 +1,27 @@
-use crate::{FourierGLWESecret, GLWEAutomorphismKey, GLWECiphertext, GLWEOps, GLWEPacker, GLWEPlaintext, GLWESecret};
+use crate::{
+    AutomorphismExecFamily, AutomorphismKey, AutomorphismKeyExec, GGLWEExecLayoutFamily, GLWECiphertext, GLWEDecryptFamily,
+    GLWEEncryptSkFamily, GLWEOps, GLWEPacker, GLWEPlaintext, GLWESecret, GLWESecretExec, GLWESecretFamily,
+};
 use std::collections::HashMap;
 
-use backend::{Encoding, FFT64, Module, ScratchOwned, Stats};
+use backend::{Backend, Encoding, FFT64, Module, ScratchOwned, Stats};
 use sampling::source::Source;
 
 #[test]
-fn apply() {
+fn trace() {
     let log_n: usize = 5;
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
+    test_trace(&module);
+}
 
+pub(crate) fn test_trace<B: Backend>(module: &Module<B>)
+where
+    Module<B>: GLWESecretFamily<B>
+        + GLWEEncryptSkFamily<B>
+        + GLWEDecryptFamily<B>
+        + AutomorphismExecFamily<B>
+        + GGLWEExecLayoutFamily<B>,
+{
     let mut source_xs: Source = Source::new([0u8; 32]);
     let mut source_xe: Source = Source::new([0u8; 32]);
     let mut source_xa: Source = Source::new([0u8; 32]);
@@ -24,30 +37,29 @@ fn apply() {
     let rows: usize = k_ct.div_ceil(basek * digits);
 
     let mut scratch: ScratchOwned = ScratchOwned::new(
-        GLWECiphertext::encrypt_sk_scratch_space(&module, basek, k_ct)
-            | GLWECiphertext::decrypt_scratch_space(&module, basek, k_ct)
-            | GLWEAutomorphismKey::encrypt_sk_scratch_space(&module, basek, k_ksk, rank)
-            | GLWEPacker::scratch_space(&module, basek, k_ct, k_ksk, digits, rank),
+        GLWECiphertext::encrypt_sk_scratch_space(module, basek, k_ct)
+            | AutomorphismKey::encrypt_sk_scratch_space(module, basek, k_ksk, rank)
+            | GLWEPacker::scratch_space(module, basek, k_ct, k_ksk, digits, rank),
     );
 
-    let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(&module, rank);
+    let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(module, rank);
     sk.fill_ternary_prob(0.5, &mut source_xs);
-    let sk_dft: FourierGLWESecret<Vec<u8>, FFT64> = FourierGLWESecret::from(&module, &sk);
+    let sk_dft: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk);
 
-    let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_ct);
+    let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(module, basek, k_ct);
     let mut data: Vec<i64> = vec![0i64; module.n()];
     data.iter_mut().enumerate().for_each(|(i, x)| {
         *x = i as i64;
     });
     pt.data.encode_vec_i64(0, basek, pt_k, &data, 32);
 
-    let gal_els: Vec<i64> = GLWEPacker::galois_elements(&module);
+    let gal_els: Vec<i64> = GLWEPacker::galois_elements(module);
 
-    let mut auto_keys: HashMap<i64, GLWEAutomorphismKey<Vec<u8>, FFT64>> = HashMap::new();
+    let mut auto_keys: HashMap<i64, AutomorphismKeyExec<Vec<u8>, B>> = HashMap::new();
+    let mut tmp: AutomorphismKey<Vec<u8>> = AutomorphismKey::alloc(module, basek, k_ksk, rows, digits, rank);
     gal_els.iter().for_each(|gal_el| {
-        let mut key: GLWEAutomorphismKey<Vec<u8>, FFT64> = GLWEAutomorphismKey::alloc(&module, basek, k_ksk, rows, digits, rank);
-        key.encrypt_sk(
-            &module,
+        tmp.encrypt_sk(
+            module,
             *gal_el,
             &sk,
             &mut source_xa,
@@ -55,17 +67,18 @@ fn apply() {
             sigma,
             scratch.borrow(),
         );
-        auto_keys.insert(*gal_el, key);
+        let atk_exec: AutomorphismKeyExec<Vec<u8>, B> = AutomorphismKeyExec::from(module, &tmp, scratch.borrow());
+        auto_keys.insert(*gal_el, atk_exec);
     });
 
     let log_batch: usize = 0;
 
-    let mut packer: GLWEPacker = GLWEPacker::new(&module, log_batch, basek, k_ct, rank);
+    let mut packer: GLWEPacker = GLWEPacker::new(module, log_batch, basek, k_ct, rank);
 
-    let mut ct: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_ct, rank);
+    let mut ct: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(module, basek, k_ct, rank);
 
     ct.encrypt_sk(
-        &module,
+        module,
         &pt,
         &sk_dft,
         &mut source_xa,
@@ -74,9 +87,11 @@ fn apply() {
         scratch.borrow(),
     );
 
+    let log_n: usize = module.log_n();
+
     (0..module.n() >> log_batch).for_each(|i| {
         ct.encrypt_sk(
-            &module,
+            module,
             &pt,
             &sk_dft,
             &mut source_xa,
@@ -85,13 +100,13 @@ fn apply() {
             scratch.borrow(),
         );
 
-        pt.rotate_inplace(&module, -(1 << log_batch)); // X^-batch * pt
+        pt.rotate_inplace(module, -(1 << log_batch)); // X^-batch * pt
 
         if reverse_bits_msb(i, log_n as u32) % 5 == 0 {
-            packer.add(&module, Some(&ct), &auto_keys, scratch.borrow());
+            packer.add(module, Some(&ct), &auto_keys, scratch.borrow());
         } else {
             packer.add(
-                &module,
+                module,
                 None::<&GLWECiphertext<Vec<u8>>>,
                 &auto_keys,
                 scratch.borrow(),
@@ -99,10 +114,10 @@ fn apply() {
         }
     });
 
-    let mut res = GLWECiphertext::alloc(&module, basek, k_ct, rank);
-    packer.flush(&module, &mut res);
+    let mut res = GLWECiphertext::alloc(module, basek, k_ct, rank);
+    packer.flush(module, &mut res);
 
-    let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_ct);
+    let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(module, basek, k_ct);
     let mut data: Vec<i64> = vec![0i64; module.n()];
     data.iter_mut().enumerate().for_each(|(i, x)| {
         if i % 5 == 0 {
@@ -111,9 +126,9 @@ fn apply() {
     });
     pt_want.data.encode_vec_i64(0, basek, pt_k, &data, 32);
 
-    res.decrypt(&module, &mut pt, &sk_dft, scratch.borrow());
+    res.decrypt(module, &mut pt, &sk_dft, scratch.borrow());
 
-    pt.sub_inplace_ab(&module, &pt_want);
+    pt.sub_inplace_ab(module, &pt_want);
 
     let noise_have = pt.data.std(0, basek).log2();
     // println!("noise_have: {}", noise_have);
