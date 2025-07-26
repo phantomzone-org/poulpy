@@ -166,6 +166,26 @@ impl<B: Backend> GGSWCiphertextExec<Vec<u8>, B> {
 
         module.vmp_pmat_alloc_bytes(rows, rank + 1, rank + 1, size)
     }
+
+    pub fn from<DataOther: AsRef<[u8]>>(
+        module: &Module<B>,
+        other: &GGSWCiphertext<DataOther>,
+        scratch: &mut Scratch,
+    ) -> GGSWCiphertextExec<Vec<u8>, B>
+    where
+        Module<B>: GGSWLayoutFamily<B>,
+    {
+        let mut ggsw_exec: GGSWCiphertextExec<Vec<u8>, B> = Self::alloc(
+            module,
+            other.basek(),
+            other.k(),
+            other.rows(),
+            other.digits(),
+            other.rank(),
+        );
+        ggsw_exec.prepare(module, other, scratch);
+        ggsw_exec
+    }
 }
 
 impl<T, B: Backend> Infos for GGSWCiphertextExec<T, B> {
