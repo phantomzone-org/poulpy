@@ -1,8 +1,8 @@
 use backend::{
-    Backend, Module, Scratch, SvpApply, SvpApplyInplace, SvpPPol, SvpPPolAllocBytes, VecZnxAlloc,
-    VecZnxBigAddSmallInplace, VecZnxBigAllocBytes, VecZnxBigNormalizeTmpBytes, VecZnxDftAdd, VecZnxDftAddInplace,
-    VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftSubABInplace, VecZnxDftToVecZnxBig, VecZnxDftToVecZnxBigTmpBytes,
-    VecZnxDftZero, VecZnxOps, VmpApplyTmpBytes, ZnxView, ZnxZero,
+    Backend, Module, Scratch, SvpApply, SvpApplyInplace, SvpPPol, SvpPPolAllocBytes, VecZnxAlloc, VecZnxBigAddSmallInplace,
+    VecZnxBigAllocBytes, VecZnxBigNormalizeTmpBytes, VecZnxDftAdd, VecZnxDftAddInplace, VecZnxDftAllocBytes, VecZnxDftFromVecZnx,
+    VecZnxDftSubABInplace, VecZnxDftToVecZnxBig, VecZnxDftToVecZnxBigTmpBytes, VecZnxDftZero, VecZnxOps, VmpApplyTmpBytes,
+    ZnxView, ZnxZero,
 };
 use itertools::izip;
 

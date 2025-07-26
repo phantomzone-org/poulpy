@@ -18,7 +18,7 @@ pub struct BlindRotationKeyCGGI<D> {
 //}
 
 impl BlindRotationKeyCGGI<Vec<u8>> {
-    pub fn allocate<B: Backend>(module: &Module<B>, n_lwe: usize, basek: usize, k: usize, rows: usize, rank: usize) -> Self {
+    pub fn alloc<B: Backend>(module: &Module<B>, n_lwe: usize, basek: usize, k: usize, rows: usize, rank: usize) -> Self {
         let mut data: Vec<GGSWCiphertext<Vec<u8>>> = Vec::with_capacity(n_lwe);
         (0..n_lwe).for_each(|_| data.push(GGSWCiphertext::alloc(module, basek, k, rows, 1, rank)));
         Self {
@@ -161,10 +161,12 @@ impl<D: AsRef<[u8]>, B: Backend> BlindRotationKeyCGGIExec<D, B> {
     }
 }
 
+pub trait BlindRotationKeyCGGIExecLayoutFamily<B: Backend> = GGSWLayoutFamily<B> + SvpPPolAlloc<B> + SvpPrepare<B>;
+
 impl<B: Backend> BlindRotationKeyCGGIExec<Vec<u8>, B> {
     pub fn alloc(module: &Module<B>, n_lwe: usize, basek: usize, k: usize, rows: usize, rank: usize) -> Self
     where
-        Module<B>: GGSWLayoutFamily<B>,
+        Module<B>: BlindRotationKeyCGGIExecLayoutFamily<B>,
     {
         let mut data: Vec<GGSWCiphertextExec<Vec<u8>, B>> = Vec::with_capacity(n_lwe);
         (0..n_lwe).for_each(|_| data.push(GGSWCiphertextExec::alloc(module, basek, k, rows, 1, rank)));
@@ -175,10 +177,10 @@ impl<B: Backend> BlindRotationKeyCGGIExec<Vec<u8>, B> {
         }
     }
 
-    pub fn from<DataOther>(&mut self, module: &Module<B>, other: &BlindRotationKeyCGGI<DataOther>, scratch: &mut Scratch) -> Self
+    pub fn from<DataOther>(module: &Module<B>, other: &BlindRotationKeyCGGI<DataOther>, scratch: &mut Scratch) -> Self
     where
         DataOther: AsRef<[u8]>,
-        Module<B>: GGSWLayoutFamily<B> + SvpPPolAlloc<B> + SvpPrepare<B>,
+        Module<B>: BlindRotationKeyCGGIExecLayoutFamily<B>,
     {
         let mut brk: BlindRotationKeyCGGIExec<Vec<u8>, B> = Self::alloc(
             module,
@@ -197,7 +199,7 @@ impl<D: AsRef<[u8]> + AsMut<[u8]>, B: Backend> BlindRotationKeyCGGIExec<D, B> {
     pub fn prepare<DataOther>(&mut self, module: &Module<B>, other: &BlindRotationKeyCGGI<DataOther>, scratch: &mut Scratch)
     where
         DataOther: AsRef<[u8]>,
-        Module<B>: GGSWLayoutFamily<B> + SvpPPolAlloc<B> + SvpPrepare<B>,
+        Module<B>: BlindRotationKeyCGGIExecLayoutFamily<B>,
     {
         #[cfg(debug_assertions)]
         {

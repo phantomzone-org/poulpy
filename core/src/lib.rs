@@ -12,7 +12,10 @@ use backend::Backend;
 use backend::Module;
 use backend::SvpPPolAllocBytes;
 use backend::VecZnxDftAllocBytes;
-pub use blind_rotation::{BlindRotationKeyCGGI, LookUpTable, cggi_blind_rotate, cggi_blind_rotate_scratch_space};
+pub use blind_rotation::{
+    BlindRotationKeyCGGI, BlindRotationKeyCGGIExec, BlindRotationKeyCGGIExecLayoutFamily, CCGIBlindRotationFamily, LookUpTable,
+    cggi_blind_rotate, cggi_blind_rotate_scratch_space,
+};
 pub use elem::{Infos, SetMetaData};
 pub use gglwe::{
     AutomorphismKey, AutomorphismKeyEncryptSkFamily, AutomorphismKeyExec, GGLWECiphertext, GGLWECiphertextExec,

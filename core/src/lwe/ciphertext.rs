@@ -66,6 +66,7 @@ impl<D: AsRef<[u8]>> LWECiphertextToRef for LWECiphertext<D> {
 }
 
 pub trait LWECiphertextToMut {
+    #[allow(dead_code)]
     fn to_mut(&mut self) -> LWECiphertext<&mut [u8]>;
 }
 
