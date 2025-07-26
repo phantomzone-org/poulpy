@@ -1,5 +1,5 @@
 use crate::{
-    FFT64, Module, ScalarZnxToRef, SvpApply, SvpPPol, SvpPPolAlloc, SvpPPolAllocBytes, SvpPPolApplyInplace, SvpPPolBytesOf,
+    FFT64, Module, ScalarZnxToRef, SvpApply, SvpApplyInplace, SvpPPol, SvpPPolAlloc, SvpPPolAllocBytes, SvpPPolBytesOf,
     SvpPPolOwned, SvpPPolToMut, SvpPPolToRef, SvpPPolyFromBytes, SvpPrepare, VecZnxDft, VecZnxDftToMut, VecZnxDftToRef, ZnxInfos,
     ZnxSliceSize, ZnxView, ZnxViewMut,
     ffi::{svp, vec_znx_dft::vec_znx_dft_t},
@@ -82,7 +82,7 @@ impl SvpApply<FFT64> for Module<FFT64> {
     }
 }
 
-impl SvpPPolApplyInplace<FFT64> for Module<FFT64> {
+impl SvpApplyInplace<FFT64> for Module<FFT64> {
     fn svp_apply_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxDftToMut<FFT64>,

@@ -1,7 +1,7 @@
 use backend::{
-    AddNormal, Decoding, Encoding, FFT64, FillUniform, Module, ScalarZnx, ScalarZnxAlloc, ScratchOwned, SvpPPol, SvpPPolAlloc,
-    SvpPPolApplyInplace, SvpPrepare, VecZnx, VecZnxAlloc, VecZnxBig, VecZnxBigAddSmallInplace, VecZnxBigAlloc,
-    VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallBInplace, VecZnxDft, VecZnxDftAlloc, VecZnxDftFromVecZnx,
+    AddNormal, Decoding, Encoding, FFT64, FillUniform, Module, ScalarZnx, ScalarZnxAlloc, ScratchOwned, SvpApplyInplace, SvpPPol,
+    SvpPPolAlloc, SvpPrepare, VecZnx, VecZnxAlloc, VecZnxBig, VecZnxBigAddSmallInplace, VecZnxBigAlloc, VecZnxBigNormalize,
+    VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallBInplace, VecZnxDft, VecZnxDftAlloc, VecZnxDftFromVecZnx,
     VecZnxDftToVecZnxBigTmpA, VecZnxOps, ZnxInfos,
 };
 use itertools::izip;

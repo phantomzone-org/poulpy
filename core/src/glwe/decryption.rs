@@ -1,7 +1,6 @@
 use backend::{
-    Backend, DataViewMut, Module, Scratch, SvpPPolApplyInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace,
-    VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume,
-    VecZnxScratch,
+    Backend, DataViewMut, Module, Scratch, SvpApplyInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigAllocBytes,
+    VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume, VecZnxScratch,
 };
 
 use crate::{GLWECiphertext, GLWEPlaintext, GLWESecretExec, Infos};
@@ -9,7 +8,7 @@ use crate::{GLWECiphertext, GLWEPlaintext, GLWESecretExec, Infos};
 pub trait GLWEDecryptFamily<B: Backend> = VecZnxDftAllocBytes
     + VecZnxBigAllocBytes
     + VecZnxDftFromVecZnx<B>
-    + SvpPPolApplyInplace<B>
+    + SvpApplyInplace<B>
     + VecZnxDftToVecZnxBigConsume<B>
     + VecZnxBigAddInplace<B>
     + VecZnxBigAddSmallInplace<B>

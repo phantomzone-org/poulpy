@@ -1,5 +1,5 @@
 use backend::{
-    Backend, Module, ScratchOwned, SvpPPolApplyInplace, VecZnxBigNormalize, VecZnxDft, VecZnxDftAlloc, VecZnxDftAllocBytes,
+    Backend, Module, ScratchOwned, SvpApplyInplace, VecZnxBigNormalize, VecZnxDft, VecZnxDftAlloc, VecZnxDftAllocBytes,
     VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume,
 };
 use sampling::source::Source;
@@ -10,7 +10,7 @@ pub trait GLWEPublicKeyFamily<B: Backend> = VecZnxDftAlloc<B>
     + VecZnxDftAllocBytes
     + VecZnxBigNormalize<B>
     + VecZnxDftFromVecZnx<B>
-    + SvpPPolApplyInplace<B>
+    + SvpApplyInplace<B>
     + VecZnxDftToVecZnxBigConsume<B>;
 
 pub struct GLWEPublicKey<D, B: Backend> {

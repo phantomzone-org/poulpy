@@ -1,17 +1,14 @@
 use backend::{
-    AddNormal, Backend, FillUniform, Module, ScalarZnxAlloc, Scratch, SvpApply, SvpPPolAllocBytes, SvpPPolApplyInplace,
-    SvpPrepare, VecZnxBig, VecZnxBigAddNormal, VecZnxBigAddSmallInplace, VecZnxBigAllocBytes, VecZnxBigNormalize,
-    VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume, VecZnxOps, VecZnxScratch, ZnxZero,
+    AddNormal, Backend, FillUniform, Module, ScalarZnxAlloc, Scratch, SvpApply, SvpApplyInplace, SvpPPolAllocBytes, SvpPrepare,
+    VecZnxBig, VecZnxBigAddNormal, VecZnxBigAddSmallInplace, VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxDftAllocBytes,
+    VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume, VecZnxOps, VecZnxScratch, ZnxZero,
 };
 use sampling::source::Source;
 
 use crate::{GLWECiphertext, GLWEPlaintext, GLWEPublicKey, GLWESecretExec, Infos, SIX_SIGMA, dist::Distribution};
 
-pub trait GLWEEncryptSkFamily<B: Backend> = VecZnxDftAllocBytes
-    + VecZnxBigNormalize<B>
-    + VecZnxDftFromVecZnx<B>
-    + SvpPPolApplyInplace<B>
-    + VecZnxDftToVecZnxBigConsume<B>;
+pub trait GLWEEncryptSkFamily<B: Backend> =
+    VecZnxDftAllocBytes + VecZnxBigNormalize<B> + VecZnxDftFromVecZnx<B> + SvpApplyInplace<B> + VecZnxDftToVecZnxBigConsume<B>;
 
 pub trait GLWEEncryptPkFamily<B: Backend> = VecZnxDftAllocBytes
     + VecZnxBigAllocBytes
@@ -146,7 +143,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         Module<B>: VecZnxDftAllocBytes
             + VecZnxBigNormalize<B>
             + VecZnxDftFromVecZnx<B>
-            + SvpPPolApplyInplace<B>
+            + SvpApplyInplace<B>
             + VecZnxDftToVecZnxBigConsume<B>,
     {
         #[cfg(debug_assertions)]

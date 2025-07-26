@@ -27,7 +27,7 @@ pub trait SvpApply<B: Backend> {
         C: VecZnxDftToRef<B>;
 }
 
-pub trait SvpPPolApplyInplace<B: Backend> {
+pub trait SvpApplyInplace<B: Backend> {
     fn svp_apply_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxDftToMut<B>,
