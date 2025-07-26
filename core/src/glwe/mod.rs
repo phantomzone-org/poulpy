@@ -4,13 +4,13 @@ mod encryption;
 mod external_product;
 mod keyswitch;
 mod layout;
+mod noise;
 mod ops;
 mod packing;
 mod plaintext;
 mod public_key;
 mod secret;
 mod trace;
-mod noise;
 
 pub use automorphism::GLWEAutomorphismFamily;
 pub use decryption::GLWEDecryptFamily;

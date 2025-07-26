@@ -1,9 +1,11 @@
-use backend::{Backend, FillUniform, Module, ScratchOwned, VecZnxOps, FFT64};
+use backend::{Backend, FFT64, FillUniform, Module, ScratchOwned, VecZnxOps};
 
 use sampling::source::Source;
 
 use crate::{
-    noise::log2_std_noise_gglwe_product, GGLWEExecLayoutFamily, GLWEAutomorphismFamily, GGLWEAutomorphismKey, GLWEAutomorphismKeyEncryptSkFamily, GLWEAutomorphismKeyExec, GLWECiphertext, GLWEDecryptFamily, GLWEPlaintext, GLWESecret, GLWESecretExec, Infos
+    GGLWEAutomorphismKey, GGLWEExecLayoutFamily, GLWEAutomorphismFamily, GLWEAutomorphismKeyEncryptSkFamily,
+    GLWEAutomorphismKeyExec, GLWECiphertext, GLWEDecryptFamily, GLWEPlaintext, GLWESecret, GLWESecretExec, Infos,
+    noise::log2_std_noise_gglwe_product,
 };
 
 #[test]
@@ -49,15 +51,16 @@ fn test_automorphism<B: Backend>(
     digits: usize,
     rank: usize,
     sigma: f64,
-) where Module<B>: GLWEAutomorphismKeyEncryptSkFamily<B> + GLWEDecryptFamily<B> + GLWEAutomorphismFamily<B> + GGLWEExecLayoutFamily<B>{
-
+) where
+    Module<B>:
+        GLWEAutomorphismKeyEncryptSkFamily<B> + GLWEDecryptFamily<B> + GLWEAutomorphismFamily<B> + GGLWEExecLayoutFamily<B>,
+{
     let rows: usize = k_in.div_ceil(basek * digits);
 
     let mut autokey: GGLWEAutomorphismKey<Vec<u8>> = GGLWEAutomorphismKey::alloc(module, basek, k_ksk, rows, digits, rank);
     let mut ct_in: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(module, basek, k_in, rank);
     let mut ct_out: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(module, basek, k_out, rank);
     let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(module, basek, k_in);
-    
 
     let mut source_xs: Source = Source::new([0u8; 32]);
     let mut source_xe: Source = Source::new([0u8; 32]);
@@ -106,7 +109,8 @@ fn test_automorphism<B: Backend>(
         scratch.borrow(),
     );
 
-    let mut autokey_exec: GLWEAutomorphismKeyExec<Vec<u8>, B> = GLWEAutomorphismKeyExec::alloc(module, basek, k_ksk, rows, digits, rank);
+    let mut autokey_exec: GLWEAutomorphismKeyExec<Vec<u8>, B> =
+        GLWEAutomorphismKeyExec::alloc(module, basek, k_ksk, rows, digits, rank);
     autokey_exec.prepare(module, &autokey, scratch.borrow());
 
     ct_out.automorphism(module, &ct_in, &autokey_exec, scratch.borrow());
@@ -127,7 +131,6 @@ fn test_automorphism<B: Backend>(
     module.vec_znx_automorphism_inplace(p, &mut pt_want.data, 0);
 
     ct_out.assert_noise(module, &sk_exec, &pt_want, max_noise + 1.0);
-
 }
 
 fn test_automorphism_inplace<B: Backend>(
@@ -139,8 +142,10 @@ fn test_automorphism_inplace<B: Backend>(
     digits: usize,
     rank: usize,
     sigma: f64,
-) where Module<B>: GLWEAutomorphismKeyEncryptSkFamily<B> + GLWEDecryptFamily<B> + GLWEAutomorphismFamily<B> + GGLWEExecLayoutFamily<B>{
-
+) where
+    Module<B>:
+        GLWEAutomorphismKeyEncryptSkFamily<B> + GLWEDecryptFamily<B> + GLWEAutomorphismFamily<B> + GGLWEExecLayoutFamily<B>,
+{
     let rows: usize = k_ct.div_ceil(basek * digits);
 
     let mut autokey: GGLWEAutomorphismKey<Vec<u8>> = GGLWEAutomorphismKey::alloc(module, basek, k_ksk, rows, digits, rank);
@@ -186,10 +191,11 @@ fn test_automorphism_inplace<B: Backend>(
         scratch.borrow(),
     );
 
-    let mut autokey_exec: GLWEAutomorphismKeyExec<Vec<u8>, B> = GLWEAutomorphismKeyExec::alloc(module, basek, k_ksk, rows, digits, rank);
+    let mut autokey_exec: GLWEAutomorphismKeyExec<Vec<u8>, B> =
+        GLWEAutomorphismKeyExec::alloc(module, basek, k_ksk, rows, digits, rank);
     autokey_exec.prepare(module, &autokey, scratch.borrow());
 
-    ct.automorphism_inplace(module, &autokey, scratch.borrow());
+    ct.automorphism_inplace(module, &autokey_exec, scratch.borrow());
 
     let max_noise: f64 = log2_std_noise_gglwe_product(
         module.n() as f64,
