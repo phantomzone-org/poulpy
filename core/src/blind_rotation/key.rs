@@ -1,15 +1,89 @@
 use backend::{
-    Backend, FFT64, Module, ScalarZnx, ScalarZnxAlloc, ScalarZnxDft, ScalarZnxDftAlloc, ScalarZnxDftOps, ScalarZnxToRef, Scratch,
-    ZnxView, ZnxViewMut,
+    Backend, Module, ScalarZnx, ScalarZnxAlloc, ScalarZnxToRef, Scratch, SvpPPol, SvpPPolAlloc, SvpPrepare, ZnxView, ZnxViewMut,
 };
 use sampling::source::Source;
 
-use crate::{Distribution, FourierGLWESecret, GGSWCiphertext, Infos, LWESecret};
+use crate::{
+    Distribution, GGSWCiphertext, GGSWCiphertextExec, GGSWEncryptSkFamily, GGSWLayoutFamily, GLWESecretExec, Infos, LWESecret,
+};
 
-pub struct BlindRotationKeyCGGI<D, B: Backend> {
-    pub(crate) data: Vec<GGSWCiphertext<D, B>>,
+pub struct BlindRotationKeyCGGI<D> {
+    pub(crate) data: Vec<GGSWCiphertext<D>>,
     pub(crate) dist: Distribution,
-    pub(crate) x_pow_a: Option<Vec<ScalarZnxDft<Vec<u8>, B>>>,
+}
+
+pub struct BlindRotationKeyCGGIExec<D, B: Backend> {
+    pub(crate) data: Vec<GGSWCiphertextExec<D, B>>,
+    pub(crate) dist: Distribution,
+    pub(crate) x_pow_a: Option<Vec<SvpPPol<Vec<u8>, B>>>,
+}
+
+impl<B: Backend> BlindRotationKeyCGGIExec<Vec<u8>, B> {
+    pub fn alloc(module: &Module<B>, n_lwe: usize, basek: usize, k: usize, rows: usize, rank: usize) -> Self
+    where
+        Module<B>: GGSWLayoutFamily<B>,
+    {
+        let mut data: Vec<GGSWCiphertextExec<Vec<u8>, B>> = Vec::with_capacity(n_lwe);
+        (0..n_lwe).for_each(|_| data.push(GGSWCiphertextExec::alloc(module, basek, k, rows, 1, rank)));
+        Self {
+            data,
+            dist: Distribution::NONE,
+            x_pow_a: None,
+        }
+    }
+
+    pub fn from<DataOther>(&mut self, module: &Module<B>, other: &BlindRotationKeyCGGI<DataOther>, scratch: &mut Scratch) -> Self
+    where
+        DataOther: AsRef<[u8]>,
+        Module<B>: GGSWLayoutFamily<B> + SvpPPolAlloc<B> + SvpPrepare<B>,
+    {
+        let mut brk: BlindRotationKeyCGGIExec<Vec<u8>, B> = Self::alloc(
+            module,
+            other.data.len(),
+            other.basek(),
+            other.k(),
+            other.rows(),
+            other.rank(),
+        );
+        brk.prepare(module, other, scratch);
+        brk
+    }
+}
+
+impl<D: AsRef<[u8]> + AsMut<[u8]>, B: Backend> BlindRotationKeyCGGIExec<D, B> {
+    pub fn prepare<DataOther>(&mut self, module: &Module<B>, other: &BlindRotationKeyCGGI<DataOther>, scratch: &mut Scratch)
+    where
+        DataOther: AsRef<[u8]>,
+        Module<B>: GGSWLayoutFamily<B> + SvpPPolAlloc<B> + SvpPrepare<B>,
+    {
+        #[cfg(debug_assertions)]
+        {
+            assert_eq!(self.data.len(), other.data.len());
+        }
+
+        self.data
+            .iter_mut()
+            .zip(other.data.iter())
+            .for_each(|(ggsw_exec, other)| {
+                ggsw_exec.prepare(module, other, scratch);
+            });
+
+        self.dist = other.dist;
+
+        match other.dist {
+            Distribution::BinaryBlock(_) => {
+                let mut x_pow_a: Vec<SvpPPol<Vec<u8>, B>> = Vec::with_capacity(module.n() << 1);
+                let mut buf: ScalarZnx<Vec<u8>> = module.new_scalar_znx(1);
+                (0..module.n() << 1).for_each(|i| {
+                    let mut res: SvpPPol<Vec<u8>, B> = module.svp_ppol_alloc(1);
+                    set_xai_plus_y(module, i, 0, &mut res, &mut buf);
+                    x_pow_a.push(res);
+                });
+                self.x_pow_a = Some(x_pow_a);
+            }
+            _ => {}
+        }
+    }
 }
 
 // pub struct BlindRotationKeyFHEW<B: Backend> {
@@ -17,23 +91,25 @@ pub struct BlindRotationKeyCGGI<D, B: Backend> {
 //    pub(crate) auto: Vec<GLWEAutomorphismKey<Vec<u8>, B>>,
 //}
 
-impl BlindRotationKeyCGGI<Vec<u8>, FFT64> {
-    pub fn allocate(module: &Module<FFT64>, n_lwe: usize, basek: usize, k: usize, rows: usize, rank: usize) -> Self {
-        let mut data: Vec<GGSWCiphertext<Vec<u8>, FFT64>> = Vec::with_capacity(n_lwe);
+impl BlindRotationKeyCGGI<Vec<u8>> {
+    pub fn allocate<B: Backend>(module: &Module<B>, n_lwe: usize, basek: usize, k: usize, rows: usize, rank: usize) -> Self {
+        let mut data: Vec<GGSWCiphertext<Vec<u8>>> = Vec::with_capacity(n_lwe);
         (0..n_lwe).for_each(|_| data.push(GGSWCiphertext::alloc(module, basek, k, rows, 1, rank)));
         Self {
             data,
             dist: Distribution::NONE,
-            x_pow_a: None::<Vec<ScalarZnxDft<Vec<u8>, FFT64>>>,
         }
     }
 
-    pub fn generate_from_sk_scratch_space(module: &Module<FFT64>, basek: usize, k: usize, rank: usize) -> usize {
+    pub fn generate_from_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize
+    where
+        Module<B>: GGSWEncryptSkFamily<B>,
+    {
         GGSWCiphertext::encrypt_sk_scratch_space(module, basek, k, rank)
     }
 }
 
-impl<D: AsRef<[u8]>> BlindRotationKeyCGGI<D, FFT64> {
+impl<D: AsRef<[u8]>> BlindRotationKeyCGGI<D> {
     #[allow(dead_code)]
     pub(crate) fn n(&self) -> usize {
         self.data[0].n()
@@ -71,11 +147,11 @@ impl<D: AsRef<[u8]>> BlindRotationKeyCGGI<D, FFT64> {
     }
 }
 
-impl<D: AsRef<[u8]> + AsMut<[u8]>> BlindRotationKeyCGGI<D, FFT64> {
-    pub fn generate_from_sk<DataSkGLWE, DataSkLWE>(
+impl<D: AsRef<[u8]> + AsMut<[u8]>> BlindRotationKeyCGGI<D> {
+    pub fn generate_from_sk<DataSkGLWE, DataSkLWE, B: Backend>(
         &mut self,
-        module: &Module<FFT64>,
-        sk_glwe: &FourierGLWESecret<DataSkGLWE, FFT64>,
+        module: &Module<B>,
+        sk_glwe: &GLWESecretExec<DataSkGLWE, B>,
         sk_lwe: &LWESecret<DataSkLWE>,
         source_xa: &mut Source,
         source_xe: &mut Source,
@@ -84,6 +160,7 @@ impl<D: AsRef<[u8]> + AsMut<[u8]>> BlindRotationKeyCGGI<D, FFT64> {
     ) where
         DataSkGLWE: AsRef<[u8]>,
         DataSkLWE: AsRef<[u8]>,
+        Module<B>: GGSWEncryptSkFamily<B>,
     {
         #[cfg(debug_assertions)]
         {
@@ -110,27 +187,14 @@ impl<D: AsRef<[u8]> + AsMut<[u8]>> BlindRotationKeyCGGI<D, FFT64> {
             pt.at_mut(0, 0)[0] = sk_ref.at(0, 0)[i];
             ggsw.encrypt_sk(module, &pt, sk_glwe, source_xa, source_xe, sigma, scratch);
         });
-
-        match sk_lwe.dist {
-            Distribution::BinaryBlock(_) => {
-                let mut x_pow_a: Vec<ScalarZnxDft<Vec<u8>, FFT64>> = Vec::with_capacity(module.n() << 1);
-                let mut buf: ScalarZnx<Vec<u8>> = module.new_scalar_znx(1);
-                (0..module.n() << 1).for_each(|i| {
-                    let mut res: ScalarZnxDft<Vec<u8>, FFT64> = module.new_scalar_znx_dft(1);
-                    set_xai_plus_y(module, i, 0, &mut res, &mut buf);
-                    x_pow_a.push(res);
-                });
-                self.x_pow_a = Some(x_pow_a);
-            }
-            _ => {}
-        }
     }
 }
 
-pub fn set_xai_plus_y<A, B>(module: &Module<FFT64>, ai: usize, y: i64, res: &mut ScalarZnxDft<A, FFT64>, buf: &mut ScalarZnx<B>)
+pub fn set_xai_plus_y<A, C, B: Backend>(module: &Module<B>, ai: usize, y: i64, res: &mut SvpPPol<A, B>, buf: &mut ScalarZnx<C>)
 where
     A: AsRef<[u8]> + AsMut<[u8]>,
-    B: AsRef<[u8]> + AsMut<[u8]>,
+    C: AsRef<[u8]> + AsMut<[u8]>,
+    Module<B>: SvpPrepare<B>,
 {
     let n: usize = module.n();
 

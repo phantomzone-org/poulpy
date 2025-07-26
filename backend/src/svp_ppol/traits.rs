@@ -12,7 +12,7 @@ pub trait SvpPPolAllocBytes {
     fn svp_ppol_alloc_bytes(&self, cols: usize) -> usize;
 }
 
-pub trait SvpPPolPrepare<B: Backend> {
+pub trait SvpPrepare<B: Backend> {
     fn svp_prepare<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: SvpPPolToMut<B>,

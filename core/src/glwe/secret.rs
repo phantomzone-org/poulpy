@@ -1,11 +1,11 @@
 use backend::{
-    Backend, Module, ScalarZnx, ScalarZnxAlloc, SvpPPol, SvpPPolAlloc, SvpPPolAllocBytes, SvpPPolPrepare, ZnxInfos, ZnxZero,
+    Backend, Module, ScalarZnx, ScalarZnxAlloc, SvpPPol, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare, ZnxInfos, ZnxZero,
 };
 use sampling::source::Source;
 
 use crate::dist::Distribution;
 
-pub trait GLWESecretFamily<B: Backend> = SvpPPolPrepare<B> + SvpPPolAllocBytes + SvpPPolAlloc<B>;
+pub trait GLWESecretFamily<B: Backend> = SvpPrepare<B> + SvpPPolAllocBytes + SvpPPolAlloc<B>;
 
 pub struct GLWESecret<T> {
     pub(crate) data: ScalarZnx<T>,
