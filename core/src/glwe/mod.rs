@@ -12,7 +12,7 @@ mod public_key;
 mod secret;
 mod trace;
 
-pub use automorphism::GLWEAutomorphismFamily;
+pub use automorphism::AutomorphismExecFamily;
 pub use decryption::GLWEDecryptFamily;
 pub use encryption::{GLWEEncryptPkFamily, GLWEEncryptSkFamily};
 pub use external_product::GLWEExternalProductFamily;

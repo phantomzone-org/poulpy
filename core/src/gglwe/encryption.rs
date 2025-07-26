@@ -5,7 +5,7 @@ use backend::{
 use sampling::source::Source;
 
 use crate::{
-    GGLWEAutomorphismKey, GGLWECiphertext, GLWECiphertext, GLWEEncryptSkFamily, GLWESecret, GLWESecretExec, GLWESecretFamily,
+    AutomorphismKey, GGLWECiphertext, GLWECiphertext, GLWEEncryptSkFamily, GLWESecret, GLWESecretExec, GLWESecretFamily,
     GLWESwitchingKey, GLWETensorKey, Infos, ScratchCore,
 };
 
@@ -194,12 +194,12 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<DataSelf> {
     }
 }
 
-pub trait GLWEAutomorphismKeyEncryptSkFamily<B: Backend> = GGLWEEncryptSkFamily<B>;
+pub trait AutomorphismKeyEncryptSkFamily<B: Backend> = GGLWEEncryptSkFamily<B>;
 
-impl GGLWEAutomorphismKey<Vec<u8>> {
+impl AutomorphismKey<Vec<u8>> {
     pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize
     where
-        Module<B>: GLWEAutomorphismKeyEncryptSkFamily<B>,
+        Module<B>: AutomorphismKeyEncryptSkFamily<B>,
     {
         GLWESwitchingKey::encrypt_sk_scratch_space(module, basek, k, rank, rank) + GLWESecret::bytes_of(module, rank)
     }
@@ -209,7 +209,7 @@ impl GGLWEAutomorphismKey<Vec<u8>> {
     }
 }
 
-impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGLWEAutomorphismKey<DataSelf> {
+impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> AutomorphismKey<DataSelf> {
     pub fn encrypt_sk<DataSk: AsRef<[u8]>, B: Backend>(
         &mut self,
         module: &Module<B>,
@@ -220,7 +220,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGLWEAutomorphismKey<DataSelf> {
         sigma: f64,
         scratch: &mut Scratch,
     ) where
-        Module<B>: GLWEAutomorphismKeyEncryptSkFamily<B>,
+        Module<B>: AutomorphismKeyEncryptSkFamily<B>,
     {
         #[cfg(debug_assertions)]
         {
@@ -229,13 +229,12 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGLWEAutomorphismKey<DataSelf> {
             assert_eq!(self.rank_out(), self.rank_in());
             assert_eq!(sk.rank(), self.rank());
             assert!(
-                scratch.available()
-                    >= GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, self.basek(), self.k(), self.rank()),
+                scratch.available() >= AutomorphismKey::encrypt_sk_scratch_space(module, self.basek(), self.k(), self.rank()),
                 "scratch.available(): {} < AutomorphismKey::encrypt_sk_scratch_space(module, self.rank()={}, self.size()={}): {}",
                 scratch.available(),
                 self.rank(),
                 self.size(),
-                GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, self.basek(), self.k(), self.rank())
+                AutomorphismKey::encrypt_sk_scratch_space(module, self.basek(), self.k(), self.rank())
             )
         }
 

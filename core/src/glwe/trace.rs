@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use backend::{Backend, Module, Scratch};
 
 use crate::{
-    GLWEAutomorphismFamily, GLWEAutomorphismKeyExec, GLWECiphertext, GLWECiphertextToMut, GLWECiphertextToRef, GLWEOps, Infos,
+    AutomorphismExecFamily, AutomorphismKeyExec, GLWECiphertext, GLWECiphertextToMut, GLWECiphertextToRef, GLWEOps, Infos,
     SetMetaData,
 };
 
@@ -30,7 +30,7 @@ impl GLWECiphertext<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: GLWEAutomorphismFamily<B>,
+        Module<B>: AutomorphismExecFamily<B>,
     {
         Self::automorphism_inplace_scratch_space(module, basek, out_k.min(in_k), ksk_k, digits, rank)
     }
@@ -44,7 +44,7 @@ impl GLWECiphertext<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: GLWEAutomorphismFamily<B>,
+        Module<B>: AutomorphismExecFamily<B>,
     {
         Self::automorphism_inplace_scratch_space(module, basek, out_k, ksk_k, digits, rank)
     }
@@ -60,11 +60,11 @@ where
         start: usize,
         end: usize,
         lhs: &GLWECiphertext<DataLhs>,
-        auto_keys: &HashMap<i64, GLWEAutomorphismKeyExec<DataAK, B>>,
+        auto_keys: &HashMap<i64, AutomorphismKeyExec<DataAK, B>>,
         scratch: &mut Scratch,
     ) where
         GLWECiphertext<DataLhs>: GLWECiphertextToRef + Infos,
-        Module<B>: GLWEAutomorphismFamily<B>,
+        Module<B>: AutomorphismExecFamily<B>,
     {
         self.copy(module, lhs);
         self.trace_inplace(module, start, end, auto_keys, scratch);
@@ -75,10 +75,10 @@ where
         module: &Module<B>,
         start: usize,
         end: usize,
-        auto_keys: &HashMap<i64, GLWEAutomorphismKeyExec<DataAK, B>>,
+        auto_keys: &HashMap<i64, AutomorphismKeyExec<DataAK, B>>,
         scratch: &mut Scratch,
     ) where
-        Module<B>: GLWEAutomorphismFamily<B>,
+        Module<B>: AutomorphismExecFamily<B>,
     {
         (start..end).for_each(|i| {
             self.rsh(1, scratch);

@@ -4,7 +4,7 @@ use backend::{FFT64, FillUniform, Module, ScratchOwned, Stats, VecZnxOps, ZnxVie
 use sampling::source::Source;
 
 use crate::{
-    FourierGLWESecret, GGLWEAutomorphismKey, GLWECiphertext, GLWEPlaintext, GLWESecret, Infos, noise::var_noise_gglwe_product,
+    AutomorphismKey, FourierGLWESecret, GLWECiphertext, GLWEPlaintext, GLWESecret, Infos, noise::var_noise_gglwe_product,
 };
 
 #[test]
@@ -35,7 +35,7 @@ fn test_trace_inplace(log_n: usize, basek: usize, k: usize, sigma: f64, rank: us
     let mut scratch: ScratchOwned = ScratchOwned::new(
         GLWECiphertext::encrypt_sk_scratch_space(&module, basek, ct.k())
             | GLWECiphertext::decrypt_scratch_space(&module, basek, ct.k())
-            | GGLWEAutomorphismKey::encrypt_sk_scratch_space(&module, basek, k_autokey, rank)
+            | AutomorphismKey::encrypt_sk_scratch_space(&module, basek, k_autokey, rank)
             | GLWECiphertext::trace_inplace_scratch_space(&module, basek, ct.k(), k_autokey, digits, rank),
     );
 
@@ -63,11 +63,10 @@ fn test_trace_inplace(log_n: usize, basek: usize, k: usize, sigma: f64, rank: us
         scratch.borrow(),
     );
 
-    let mut auto_keys: HashMap<i64, GGLWEAutomorphismKey<Vec<u8>, FFT64>> = HashMap::new();
+    let mut auto_keys: HashMap<i64, AutomorphismKey<Vec<u8>, FFT64>> = HashMap::new();
     let gal_els: Vec<i64> = GLWECiphertext::trace_galois_elements(&module);
     gal_els.iter().for_each(|gal_el| {
-        let mut key: GGLWEAutomorphismKey<Vec<u8>, FFT64> =
-            GGLWEAutomorphismKey::alloc(&module, basek, k_autokey, rows, digits, rank);
+        let mut key: AutomorphismKey<Vec<u8>, FFT64> = AutomorphismKey::alloc(&module, basek, k_autokey, rows, digits, rank);
         key.encrypt_sk(
             &module,
             *gal_el,

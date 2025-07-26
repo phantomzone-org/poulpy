@@ -1,4 +1,4 @@
-use crate::{GLWEAutomorphismFamily, GLWEAutomorphismKeyExec, GLWECiphertext, GLWEOps, Infos, ScratchCore};
+use crate::{AutomorphismExecFamily, AutomorphismKeyExec, GLWECiphertext, GLWEOps, Infos, ScratchCore};
 use std::collections::HashMap;
 
 use backend::{Backend, Module, Scratch};
@@ -83,7 +83,7 @@ impl GLWEPacker {
         rank: usize,
     ) -> usize
     where
-        Module<B>: GLWEAutomorphismFamily<B>,
+        Module<B>: AutomorphismExecFamily<B>,
     {
         pack_core_scratch_space(module, basek, ct_k, k_ksk, digits, rank)
     }
@@ -105,10 +105,10 @@ impl GLWEPacker {
         &mut self,
         module: &Module<B>,
         a: Option<&GLWECiphertext<DataA>>,
-        auto_keys: &HashMap<i64, GLWEAutomorphismKeyExec<DataAK, B>>,
+        auto_keys: &HashMap<i64, AutomorphismKeyExec<DataAK, B>>,
         scratch: &mut Scratch,
     ) where
-        Module<B>: GLWEAutomorphismFamily<B>,
+        Module<B>: AutomorphismExecFamily<B>,
     {
         assert!(
             self.counter < module.n(),
@@ -149,7 +149,7 @@ fn pack_core_scratch_space<B: Backend>(
     rank: usize,
 ) -> usize
 where
-    Module<B>: GLWEAutomorphismFamily<B>,
+    Module<B>: AutomorphismExecFamily<B>,
 {
     combine_scratch_space(module, basek, ct_k, k_ksk, digits, rank)
 }
@@ -159,10 +159,10 @@ fn pack_core<D: AsRef<[u8]>, DataAK: AsRef<[u8]>, B: Backend>(
     a: Option<&GLWECiphertext<D>>,
     accumulators: &mut [Accumulator],
     i: usize,
-    auto_keys: &HashMap<i64, GLWEAutomorphismKeyExec<DataAK, B>>,
+    auto_keys: &HashMap<i64, AutomorphismKeyExec<DataAK, B>>,
     scratch: &mut Scratch,
 ) where
-    Module<B>: GLWEAutomorphismFamily<B>,
+    Module<B>: AutomorphismExecFamily<B>,
 {
     let log_n: usize = module.log_n();
 
@@ -222,7 +222,7 @@ fn combine_scratch_space<B: Backend>(
     rank: usize,
 ) -> usize
 where
-    Module<B>: GLWEAutomorphismFamily<B>,
+    Module<B>: AutomorphismExecFamily<B>,
 {
     GLWECiphertext::bytes_of(module, basek, ct_k, rank)
         + (GLWECiphertext::rsh_scratch_space(module)
@@ -235,10 +235,10 @@ fn combine<D: AsRef<[u8]>, DataAK: AsRef<[u8]>, B: Backend>(
     acc: &mut Accumulator,
     b: Option<&GLWECiphertext<D>>,
     i: usize,
-    auto_keys: &HashMap<i64, GLWEAutomorphismKeyExec<DataAK, B>>,
+    auto_keys: &HashMap<i64, AutomorphismKeyExec<DataAK, B>>,
     scratch: &mut Scratch,
 ) where
-    Module<B>: GLWEAutomorphismFamily<B>,
+    Module<B>: AutomorphismExecFamily<B>,
 {
     let log_n: usize = module.log_n();
     let a: &mut GLWECiphertext<Vec<u8>> = &mut acc.data;

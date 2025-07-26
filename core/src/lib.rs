@@ -15,15 +15,15 @@ use backend::VecZnxDftAllocBytes;
 pub use blind_rotation::{BlindRotationKeyCGGI, LookUpTable, cggi_blind_rotate, cggi_blind_rotate_scratch_space};
 pub use elem::{Infos, SetMetaData};
 pub use gglwe::{
-    GGLWEAutomorphismKey, GGLWECiphertext, GGLWECiphertextExec, GGLWEEncryptSkFamily, GGLWEExecLayoutFamily,
-    GLWEAutomorphismKeyEncryptSkFamily, GLWEAutomorphismKeyExec, GLWESwitchingKey, GLWESwitchingKeyEncryptSkFamily,
-    GLWESwitchingKeyExec, GLWETensorKey, GLWETensorKeyEncryptSkFamily, GLWETensorKeyExec,
+    AutomorphismKey, AutomorphismKeyEncryptSkFamily, AutomorphismKeyExec, GGLWECiphertext, GGLWECiphertextExec,
+    GGLWEEncryptSkFamily, GGLWEExecLayoutFamily, GLWESwitchingKey, GLWESwitchingKeyEncryptSkFamily, GLWESwitchingKeyExec,
+    GLWETensorKey, GLWETensorKeyEncryptSkFamily, GLWETensorKeyExec,
 };
 pub use ggsw::{
     GGSWAssertNoiseFamily, GGSWCiphertext, GGSWCiphertextExec, GGSWEncryptSkFamily, GGSWKeySwitchFamily, GGSWLayoutFamily,
 };
 pub use glwe::{
-    GLWEAutomorphismFamily, GLWECiphertext, GLWEDecryptFamily, GLWEEncryptPkFamily, GLWEEncryptSkFamily,
+    AutomorphismExecFamily, GLWECiphertext, GLWEDecryptFamily, GLWEEncryptPkFamily, GLWEEncryptSkFamily,
     GLWEExternalProductFamily, GLWEKeyswitchFamily, GLWEOps, GLWEPacker, GLWEPlaintext, GLWEPublicKey, GLWEPublicKeyFamily,
     GLWESecret, GLWESecretExec, GLWESecretFamily,
 };
@@ -108,7 +108,7 @@ pub trait ScratchCore<B: Backend> {
         rows: usize,
         digits: usize,
         rank: usize,
-    ) -> (GGLWEAutomorphismKey<&mut [u8]>, &mut Self);
+    ) -> (AutomorphismKey<&mut [u8]>, &mut Self);
 }
 
 impl<B: Backend> ScratchCore<B> for Scratch {
@@ -265,9 +265,9 @@ impl<B: Backend> ScratchCore<B> for Scratch {
         rows: usize,
         digits: usize,
         rank: usize,
-    ) -> (GGLWEAutomorphismKey<&mut [u8]>, &mut Self) {
+    ) -> (AutomorphismKey<&mut [u8]>, &mut Self) {
         let (data, scratch) = self.tmp_glwe_ksk(module, basek, k, rows, digits, rank, rank);
-        (GGLWEAutomorphismKey { key: data, p: 0 }, scratch)
+        (AutomorphismKey { key: data, p: 0 }, scratch)
     }
 
     fn tmp_tsk(

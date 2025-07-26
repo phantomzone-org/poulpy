@@ -1,8 +1,7 @@
 use backend::{Backend, Module, Scratch, VecZnxAlloc, VecZnxDftAllocBytes, VecZnxDftFromVecZnx};
 
 use crate::{
-    GGSWCiphertext, GGSWKeySwitchFamily, GLWEAutomorphismFamily, GLWEAutomorphismKeyExec, GLWECiphertext, GLWETensorKeyExec,
-    Infos,
+    AutomorphismExecFamily, AutomorphismKeyExec, GGSWCiphertext, GGSWKeySwitchFamily, GLWECiphertext, GLWETensorKeyExec, Infos,
 };
 
 impl GGSWCiphertext<Vec<u8>> {
@@ -18,7 +17,7 @@ impl GGSWCiphertext<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: GLWEAutomorphismFamily<B> + GGSWKeySwitchFamily<B>,
+        Module<B>: AutomorphismExecFamily<B> + GGSWKeySwitchFamily<B>,
     {
         let cols: usize = rank + 1;
         let out_size: usize = k_out.div_ceil(basek);
@@ -42,7 +41,7 @@ impl GGSWCiphertext<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: GLWEAutomorphismFamily<B> + GGSWKeySwitchFamily<B>,
+        Module<B>: AutomorphismExecFamily<B> + GGSWKeySwitchFamily<B>,
     {
         GGSWCiphertext::automorphism_scratch_space(
             module, basek, k_out, k_out, k_ksk, digits_ksk, k_tsk, digits_tsk, rank,
@@ -55,11 +54,11 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
         &mut self,
         module: &Module<B>,
         lhs: &GGSWCiphertext<DataLhs>,
-        auto_key: &GLWEAutomorphismKeyExec<DataAk, B>,
+        auto_key: &AutomorphismKeyExec<DataAk, B>,
         tensor_key: &GLWETensorKeyExec<DataTsk, B>,
         scratch: &mut Scratch,
     ) where
-        Module<B>: GLWEAutomorphismFamily<B> + GGSWKeySwitchFamily<B>,
+        Module<B>: AutomorphismExecFamily<B> + GGSWKeySwitchFamily<B>,
     {
         #[cfg(debug_assertions)]
         {
@@ -132,11 +131,11 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
     pub fn automorphism_inplace<DataKsk: AsRef<[u8]>, DataTsk: AsRef<[u8]>, B: Backend>(
         &mut self,
         module: &Module<B>,
-        auto_key: &GLWEAutomorphismKeyExec<DataKsk, B>,
+        auto_key: &AutomorphismKeyExec<DataKsk, B>,
         tensor_key: &GLWETensorKeyExec<DataTsk, B>,
         scratch: &mut Scratch,
     ) where
-        Module<B>: GLWEAutomorphismFamily<B> + GGSWKeySwitchFamily<B>,
+        Module<B>: AutomorphismExecFamily<B> + GGSWKeySwitchFamily<B>,
     {
         unsafe {
             let self_ptr: *mut GGSWCiphertext<DataSelf> = self as *mut GGSWCiphertext<DataSelf>;

@@ -8,9 +8,9 @@ mod layout;
 mod noise;
 mod tensor_key;
 
-pub use automorphism_key::{GGLWEAutomorphismKey, GLWEAutomorphismKeyExec};
+pub use automorphism_key::{AutomorphismKey, AutomorphismKeyExec};
 pub use encryption::{
-    GGLWEEncryptSkFamily, GLWEAutomorphismKeyEncryptSkFamily, GLWESwitchingKeyEncryptSkFamily, GLWETensorKeyEncryptSkFamily,
+    AutomorphismKeyEncryptSkFamily, GGLWEEncryptSkFamily, GLWESwitchingKeyEncryptSkFamily, GLWETensorKeyEncryptSkFamily,
 };
 pub use keyswitch_key::{GLWESwitchingKey, GLWESwitchingKeyExec};
 pub use layout::{GGLWECiphertext, GGLWECiphertextExec, GGLWEExecLayoutFamily};

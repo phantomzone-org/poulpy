@@ -1,8 +1,8 @@
 use backend::{Backend, Module, Scratch, VecZnxOps, ZnxZero};
 
-use crate::{GGLWEAutomorphismKey, GLWEAutomorphismFamily, GLWEAutomorphismKeyExec, GLWECiphertext, Infos};
+use crate::{AutomorphismExecFamily, AutomorphismKey, AutomorphismKeyExec, GLWECiphertext, Infos};
 
-impl GGLWEAutomorphismKey<Vec<u8>> {
+impl AutomorphismKey<Vec<u8>> {
     pub fn automorphism_scratch_space<B: Backend>(
         module: &Module<B>,
         basek: usize,
@@ -13,7 +13,7 @@ impl GGLWEAutomorphismKey<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: GLWEAutomorphismFamily<B>,
+        Module<B>: AutomorphismExecFamily<B>,
     {
         GLWECiphertext::keyswitch_scratch_space(module, basek, k_out, k_in, k_ksk, digits, rank, rank)
     }
@@ -27,21 +27,21 @@ impl GGLWEAutomorphismKey<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: GLWEAutomorphismFamily<B>,
+        Module<B>: AutomorphismExecFamily<B>,
     {
-        GGLWEAutomorphismKey::automorphism_scratch_space(module, basek, k_out, k_out, k_ksk, digits, rank)
+        AutomorphismKey::automorphism_scratch_space(module, basek, k_out, k_out, k_ksk, digits, rank)
     }
 }
 
-impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGLWEAutomorphismKey<DataSelf> {
+impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> AutomorphismKey<DataSelf> {
     pub fn automorphism<DataLhs: AsRef<[u8]>, DataRhs: AsRef<[u8]>, B: Backend>(
         &mut self,
         module: &Module<B>,
-        lhs: &GGLWEAutomorphismKey<DataLhs>,
-        rhs: &GLWEAutomorphismKeyExec<DataRhs, B>,
+        lhs: &AutomorphismKey<DataLhs>,
+        rhs: &AutomorphismKeyExec<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
-        Module<B>: GLWEAutomorphismFamily<B>,
+        Module<B>: AutomorphismExecFamily<B>,
     {
         #[cfg(debug_assertions)]
         {
@@ -111,13 +111,13 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGLWEAutomorphismKey<DataSelf> {
     pub fn automorphism_inplace<DataRhs: AsRef<[u8]>, B: Backend>(
         &mut self,
         module: &Module<B>,
-        rhs: &GLWEAutomorphismKeyExec<DataRhs, B>,
+        rhs: &AutomorphismKeyExec<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
-        Module<B>: GLWEAutomorphismFamily<B>,
+        Module<B>: AutomorphismExecFamily<B>,
     {
         unsafe {
-            let self_ptr: *mut GGLWEAutomorphismKey<DataSelf> = self as *mut GGLWEAutomorphismKey<DataSelf>;
+            let self_ptr: *mut AutomorphismKey<DataSelf> = self as *mut AutomorphismKey<DataSelf>;
             self.automorphism(&module, &*self_ptr, rhs, scratch);
         }
     }

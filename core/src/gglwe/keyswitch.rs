@@ -1,11 +1,10 @@
 use backend::{Backend, Module, Scratch, ZnxZero};
 
 use crate::{
-    GGLWEAutomorphismKey, GLWEAutomorphismKeyExec, GLWECiphertext, GLWEKeyswitchFamily, GLWESwitchingKey, GLWESwitchingKeyExec,
-    Infos,
+    AutomorphismKey, AutomorphismKeyExec, GLWECiphertext, GLWEKeyswitchFamily, GLWESwitchingKey, GLWESwitchingKeyExec, Infos,
 };
 
-impl GGLWEAutomorphismKey<Vec<u8>> {
+impl AutomorphismKey<Vec<u8>> {
     pub fn keyswitch_scratch_space<B: Backend>(
         module: &Module<B>,
         basek: usize,
@@ -36,11 +35,11 @@ impl GGLWEAutomorphismKey<Vec<u8>> {
     }
 }
 
-impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGLWEAutomorphismKey<DataSelf> {
+impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> AutomorphismKey<DataSelf> {
     pub fn keyswitch<DataLhs: AsRef<[u8]>, DataRhs: AsRef<[u8]>, B: Backend>(
         &mut self,
         module: &Module<B>,
-        lhs: &GGLWEAutomorphismKey<DataLhs>,
+        lhs: &AutomorphismKey<DataLhs>,
         rhs: &GLWESwitchingKeyExec<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
@@ -52,7 +51,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGLWEAutomorphismKey<DataSelf> {
     pub fn keyswitch_inplace<DataRhs: AsRef<[u8]>, B: Backend>(
         &mut self,
         module: &Module<B>,
-        rhs: &GLWEAutomorphismKeyExec<DataRhs, B>,
+        rhs: &AutomorphismKeyExec<DataRhs, B>,
         scratch: &mut Scratch,
     ) where
         Module<B>: GLWEKeyswitchFamily<B>,
