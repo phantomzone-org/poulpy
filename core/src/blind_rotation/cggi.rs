@@ -1,6 +1,6 @@
 use backend::{
-    Backend, Module, Scratch, SvpApply, SvpApplyInplace, SvpPPol, SvpPPolAllocBytes, VecZnxAlloc, VecZnxBigAddSmallInplace,
-    VecZnxBigAllocBytes, VecZnxBigNormalizeTmpBytes, VecZnxDftAdd, VecZnxDftAddInplace, VecZnxDftAllocBytes, VecZnxDftFromVecZnx,
+    Backend, Module, Scratch, SvpApply, SvpPPol, SvpPPolAllocBytes, VecZnxAlloc, VecZnxBigAddSmallInplace, VecZnxBigAllocBytes,
+    VecZnxBigNormalizeTmpBytes, VecZnxDftAdd, VecZnxDftAddInplace, VecZnxDftAllocBytes, VecZnxDftFromVecZnx,
     VecZnxDftSubABInplace, VecZnxDftToVecZnxBig, VecZnxDftToVecZnxBigTmpBytes, VecZnxDftZero, VecZnxOps, VmpApplyTmpBytes,
     ZnxView, ZnxZero,
 };
@@ -26,7 +26,6 @@ pub trait CCGIBlindRotationFamily<B: Backend> = VecZnxBigAllocBytes
     + VecZnxDftZero<B>
     + SvpApply<B>
     + VecZnxDftSubABInplace<B>
-    + SvpApplyInplace<B>
     + VecZnxBigAddSmallInplace<B>
     + GLWEExternalProductFamily<B>;
 
@@ -50,6 +49,7 @@ where
         let acc_dft: usize = module.vec_znx_dft_alloc_bytes(cols, rows) * extension_factor;
         let acc_big: usize = module.vec_znx_big_alloc_bytes(1, brk_size);
         let vmp_res: usize = module.vec_znx_dft_alloc_bytes(cols, brk_size) * extension_factor;
+        let vmp_xai: usize = module.vec_znx_dft_alloc_bytes(1, brk_size);
         let acc_dft_add: usize = vmp_res;
         let vmp: usize = module.vmp_apply_tmp_bytes(brk_size, rows, rows, 2, 2, brk_size); // GGSW product: (1 x 2) x (2 x 2)
 
@@ -64,6 +64,7 @@ where
             + acc_dft
             + acc_dft_add
             + vmp_res
+            + vmp_xai
             + (vmp | (acc_big + (module.vec_znx_big_normalize_tmp_bytes() | module.vec_znx_dft_to_vec_znx_big_tmp_bytes())));
     } else {
         2 * GLWECiphertext::bytes_of(module, basek, k_res, rank)
@@ -123,6 +124,7 @@ pub(crate) fn cggi_blind_rotate_block_binary_extended<DataRes, DataIn, DataBrk, 
     let (mut acc_dft, scratch2) = scratch1.tmp_slice_vec_znx_dft(extension_factor, module, cols, rows);
     let (mut vmp_res, scratch3) = scratch2.tmp_slice_vec_znx_dft(extension_factor, module, cols, brk.size());
     let (mut acc_add_dft, scratch4) = scratch3.tmp_slice_vec_znx_dft(extension_factor, module, cols, brk.size());
+    let (mut vmp_xai, scratch5) = scratch4.tmp_vec_znx_dft(module, 1, brk.size());
 
     (0..extension_factor).for_each(|i| {
         acc[i].zero();
@@ -178,7 +180,7 @@ pub(crate) fn cggi_blind_rotate_block_binary_extended<DataRes, DataIn, DataBrk, 
 
             // vmp_res = DFT(acc) * BRK[i]
             (0..extension_factor).for_each(|i| {
-                module.vmp_apply(&mut vmp_res[i], &acc_dft[i], &skii.data, scratch4);
+                module.vmp_apply(&mut vmp_res[i], &acc_dft[i], &skii.data, scratch5);
             });
 
             // Trivial case: no rotation between polynomials, we can directly multiply with (X^{-ai} - 1)
@@ -188,9 +190,9 @@ pub(crate) fn cggi_blind_rotate_block_binary_extended<DataRes, DataIn, DataBrk, 
                     // DFT X^{-ai}
                     (0..extension_factor).for_each(|j| {
                         (0..cols).for_each(|i| {
-                            module.svp_apply(&mut acc_dft[i], 0, &x_pow_a[ai_hi], 0, &vmp_res[j], i);
-                            module.vec_znx_dft_add_inplace(&mut acc_add_dft[j], i, &acc_dft[j], 0);
-                            module.vec_znx_dft_add_inplace(&mut acc_add_dft[j], i, &vmp_res[j], i);
+                            module.svp_apply(&mut vmp_xai, 0, &x_pow_a[ai_hi], 0, &vmp_res[j], i);
+                            module.vec_znx_dft_add_inplace(&mut acc_add_dft[j], i, &vmp_xai, 0);
+                            module.vec_znx_dft_sub_ab_inplace(&mut acc_add_dft[j], i, &vmp_res[j], i);
                         });
                     });
                 }
@@ -200,32 +202,13 @@ pub(crate) fn cggi_blind_rotate_block_binary_extended<DataRes, DataIn, DataBrk, 
             // ring homomorphism R^{N} -> prod R^{N/extension_factor}, so we split the
             // computation in two steps: acc_add_dft = (acc * sk) * (-1) + (acc * sk) * X^{-ai}
             } else {
-                // Sets acc_add_dft[i] = acc[i] * sk
-
-                // Sets acc_add_dft[0..ai_lo] -= acc[..ai_lo] * sk
-                if (ai_hi + 1) & (two_n - 1) != 0 {
-                    for i in 0..ai_lo {
-                        (0..cols).for_each(|k| {
-                            module.vec_znx_dft_sub_ab_inplace(&mut acc_add_dft[i], k, &vmp_res[i], k);
-                        });
-                    }
-                }
-
-                // Sets acc_add_dft[ai_lo..extension_factor] -= acc[ai_lo..extension_factor] * sk
-                if ai_hi != 0 {
-                    for i in ai_lo..extension_factor {
-                        (0..cols).for_each(|k: usize| {
-                            module.vec_znx_dft_sub_ab_inplace(&mut acc_add_dft[i], k, &vmp_res[i], k);
-                        });
-                    }
-                }
-
                 // Sets acc_add_dft[0..ai_lo] += (acc[extension_factor - ai_lo..extension_factor] * sk) * X^{-ai+1}
                 if (ai_hi + 1) & (two_n - 1) != 0 {
                     for (i, j) in (0..ai_lo).zip(extension_factor - ai_lo..extension_factor) {
                         (0..cols).for_each(|k| {
-                            module.svp_apply_inplace(&mut vmp_res[j], k, &x_pow_a[ai_hi + 1], 0);
-                            module.vec_znx_dft_add_inplace(&mut acc_add_dft[i], k, &vmp_res[j], k);
+                            module.svp_apply(&mut vmp_xai, 0, &x_pow_a[ai_hi + 1], 0, &vmp_res[j], k);
+                            module.vec_znx_dft_add_inplace(&mut acc_add_dft[i], k, &vmp_xai, 0);
+                            module.vec_znx_dft_sub_ab_inplace(&mut acc_add_dft[i], k, &vmp_res[i], k);
                         });
                     }
                 }
@@ -235,8 +218,9 @@ pub(crate) fn cggi_blind_rotate_block_binary_extended<DataRes, DataIn, DataBrk, 
                     // Sets acc_add_dft[ai_lo..extension_factor] += (acc[0..extension_factor - ai_lo] * sk) * X^{-ai}
                     for (i, j) in (ai_lo..extension_factor).zip(0..extension_factor - ai_lo) {
                         (0..cols).for_each(|k| {
-                            module.svp_apply_inplace(&mut vmp_res[j], k, &x_pow_a[ai_hi], 0);
-                            module.vec_znx_dft_add_inplace(&mut acc_add_dft[i], k, &vmp_res[j], k);
+                            module.svp_apply(&mut vmp_xai, 0, &x_pow_a[ai_hi], 0, &vmp_res[j], k);
+                            module.vec_znx_dft_add_inplace(&mut acc_add_dft[i], k, &vmp_xai, 0);
+                            module.vec_znx_dft_sub_ab_inplace(&mut acc_add_dft[i], k, &vmp_res[i], k);
                         });
                     }
                 }
@@ -244,7 +228,7 @@ pub(crate) fn cggi_blind_rotate_block_binary_extended<DataRes, DataIn, DataBrk, 
         });
 
         {
-            let (mut acc_add_big, scratch7) = scratch4.tmp_vec_znx_big(module, 1, brk.size());
+            let (mut acc_add_big, scratch7) = scratch5.tmp_vec_znx_big(module, 1, brk.size());
 
             (0..extension_factor).for_each(|j| {
                 (0..cols).for_each(|i| {
@@ -300,6 +284,7 @@ pub(crate) fn cggi_blind_rotate_block_binary<DataRes, DataIn, DataBrk, B: Backen
     let (mut acc_dft, scratch1) = scratch.tmp_vec_znx_dft(module, cols, rows);
     let (mut vmp_res, scratch2) = scratch1.tmp_vec_znx_dft(module, cols, brk.size());
     let (mut acc_add_dft, scratch3) = scratch2.tmp_vec_znx_dft(module, cols, brk.size());
+    let (mut vmp_xai, scratch4) = scratch3.tmp_vec_znx_dft(module, 1, brk.size());
 
     let x_pow_a: &Vec<SvpPPol<Vec<u8>, B>>;
     if let Some(b) = &brk.x_pow_a {
@@ -323,23 +308,23 @@ pub(crate) fn cggi_blind_rotate_block_binary<DataRes, DataIn, DataBrk, B: Backen
             let ai_pos: usize = ((aii + two_n as i64) & (two_n - 1) as i64) as usize;
 
             // vmp_res = DFT(acc) * BRK[i]
-            module.vmp_apply(&mut vmp_res, &acc_dft, &skii.data, scratch3);
+            module.vmp_apply(&mut vmp_res, &acc_dft, &skii.data, scratch4);
 
             // DFT(X^ai -1) * (DFT(acc) * BRK[i])
             (0..cols).for_each(|i| {
-                module.svp_apply(&mut acc_dft, 0, &x_pow_a[ai_pos], 0, &vmp_res, i);
-                module.vec_znx_dft_add_inplace(&mut acc_add_dft, i, &acc_dft, 0);
-                module.vec_znx_dft_add_inplace(&mut acc_add_dft, i, &vmp_res, i);
+                module.svp_apply(&mut vmp_xai, 0, &x_pow_a[ai_pos], 0, &vmp_res, i);
+                module.vec_znx_dft_add_inplace(&mut acc_add_dft, i, &vmp_xai, 0);
+                module.vec_znx_dft_sub_ab_inplace(&mut acc_add_dft, i, &vmp_res, i);
             });
         });
 
         {
-            let (mut acc_add_big, scratch4) = scratch3.tmp_vec_znx_big(module, 1, brk.size());
+            let (mut acc_add_big, scratch5) = scratch4.tmp_vec_znx_big(module, 1, brk.size());
 
             (0..cols).for_each(|i| {
-                module.vec_znx_dft_to_vec_znx_big(&mut acc_add_big, 0, &acc_add_dft, i, scratch4);
+                module.vec_znx_dft_to_vec_znx_big(&mut acc_add_big, 0, &acc_add_dft, i, scratch5);
                 module.vec_znx_big_add_small_inplace(&mut acc_add_big, 0, &out_mut.data, i);
-                module.vec_znx_big_normalize(basek, &mut out_mut.data, i, &acc_add_big, 0, scratch4);
+                module.vec_znx_big_normalize(basek, &mut out_mut.data, i, &acc_add_big, 0, scratch5);
             });
         }
     });
