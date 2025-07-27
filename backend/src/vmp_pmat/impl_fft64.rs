@@ -61,10 +61,34 @@ impl VmpPMatPrepare<FFT64> for Module<FFT64> {
         {
             assert_eq!(res.n(), self.n());
             assert_eq!(a.n(), self.n());
-            assert_eq!(res.cols_in(), a.cols_in());
-            assert_eq!(res.rows(), a.rows());
-            assert_eq!(res.cols_out(), a.cols_out());
-            assert_eq!(res.size(), a.size());
+            assert_eq!(
+                res.cols_in(),
+                a.cols_in(),
+                "res.cols_in: {} != a.cols_in: {}",
+                res.cols_in(),
+                a.cols_in()
+            );
+            assert_eq!(
+                res.rows(),
+                a.rows(),
+                "res.rows: {} != a.rows: {}",
+                res.rows(),
+                a.rows()
+            );
+            assert_eq!(
+                res.cols_out(),
+                a.cols_out(),
+                "res.cols_out: {} != a.cols_out: {}",
+                res.cols_out(),
+                a.cols_out()
+            );
+            assert_eq!(
+                res.size(),
+                a.size(),
+                "res.size: {} != a.size: {}",
+                res.size(),
+                a.size()
+            );
         }
 
         let (tmp_bytes, _) = scratch.tmp_slice(self.vmp_prepare_scratch_bytes(a.rows(), a.cols_in(), a.cols_out(), a.size()));

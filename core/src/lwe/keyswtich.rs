@@ -11,20 +11,20 @@ pub struct GLWEToLWESwitchingKey<D>(GLWESwitchingKey<D>);
 pub struct GLWEToLWESwitchingKeyExec<D, B: Backend>(GLWESwitchingKeyExec<D, B>);
 
 impl<B: Backend> GLWEToLWESwitchingKeyExec<Vec<u8>, B> {
-    pub fn alloc(module: &Module<B>, basek: usize, k: usize, rows: usize, rank: usize) -> Self
+    pub fn alloc(module: &Module<B>, basek: usize, k: usize, rows: usize, rank_in: usize) -> Self
     where
         Module<B>: GGLWEExecLayoutFamily<B>,
     {
         Self(GLWESwitchingKeyExec::alloc(
-            module, basek, k, rows, 1, rank, rank,
+            module, basek, k, rows, 1, rank_in, 1,
         ))
     }
 
-    pub fn bytes_of(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize
+    pub fn bytes_of(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank_in: usize) -> usize
     where
         Module<B>: GGLWEExecLayoutFamily<B>,
     {
-        GLWESwitchingKeyExec::<Vec<u8>, B>::bytes_of(module, basek, k, rows, digits, rank, rank)
+        GLWESwitchingKeyExec::<Vec<u8>, B>::bytes_of(module, basek, k, rows, digits, rank_in, 1)
     }
 
     pub fn from<DataOther: AsRef<[u8]>>(
@@ -40,7 +40,7 @@ impl<B: Backend> GLWEToLWESwitchingKeyExec<Vec<u8>, B> {
             other.0.basek(),
             other.0.k(),
             other.0.rows(),
-            other.0.rank(),
+            other.0.rank_in(),
         );
         ksk_exec.prepare(module, other, scratch);
         ksk_exec
@@ -58,16 +58,18 @@ impl<D: AsRef<[u8]> + AsMut<[u8]>, B: Backend> GLWEToLWESwitchingKeyExec<D, B> {
 }
 
 impl GLWEToLWESwitchingKey<Vec<u8>> {
-    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize, rank: usize) -> Self {
-        Self(GLWESwitchingKey::alloc(module, basek, k, rows, 1, rank, 1))
+    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize, rank_in: usize) -> Self {
+        Self(GLWESwitchingKey::alloc(
+            module, basek, k, rows, 1, rank_in, 1,
+        ))
     }
 
-    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize
+    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank_in: usize) -> usize
     where
         Module<B>: GGLWEEncryptSkFamily<B>,
     {
-        GLWESecretExec::bytes_of(module, rank)
-            + (GLWESwitchingKey::encrypt_sk_scratch_space(module, basek, k, rank, rank) | GLWESecret::bytes_of(module, rank))
+        GLWESecretExec::bytes_of(module, rank_in)
+            + (GLWESwitchingKey::encrypt_sk_scratch_space(module, basek, k, rank_in, 1) | GLWESecret::bytes_of(module, rank_in))
     }
 }
 
@@ -112,20 +114,20 @@ impl<D: AsMut<[u8]> + AsRef<[u8]>> GLWEToLWESwitchingKey<D> {
 pub struct LWEToGLWESwitchingKeyExec<D, B: Backend>(GLWESwitchingKeyExec<D, B>);
 
 impl<B: Backend> LWEToGLWESwitchingKeyExec<Vec<u8>, B> {
-    pub fn alloc(module: &Module<B>, basek: usize, k: usize, rows: usize, rank: usize) -> Self
+    pub fn alloc(module: &Module<B>, basek: usize, k: usize, rows: usize, rank_out: usize) -> Self
     where
         Module<B>: GGLWEExecLayoutFamily<B>,
     {
         Self(GLWESwitchingKeyExec::alloc(
-            module, basek, k, rows, 1, rank, rank,
+            module, basek, k, rows, 1, 1, rank_out,
         ))
     }
 
-    pub fn bytes_of(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize
+    pub fn bytes_of(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank_out: usize) -> usize
     where
         Module<B>: GGLWEExecLayoutFamily<B>,
     {
-        GLWESwitchingKeyExec::<Vec<u8>, B>::bytes_of(module, basek, k, rows, digits, rank, rank)
+        GLWESwitchingKeyExec::<Vec<u8>, B>::bytes_of(module, basek, k, rows, digits, 1, rank_out)
     }
 
     pub fn from<DataOther: AsRef<[u8]>>(
@@ -160,15 +162,17 @@ impl<D: AsRef<[u8]> + AsMut<[u8]>, B: Backend> LWEToGLWESwitchingKeyExec<D, B> {
 pub struct LWEToGLWESwitchingKey<D>(GLWESwitchingKey<D>);
 
 impl LWEToGLWESwitchingKey<Vec<u8>> {
-    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize, rank: usize) -> Self {
-        Self(GLWESwitchingKey::alloc(module, basek, k, rows, 1, 1, rank))
+    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize, rank_out: usize) -> Self {
+        Self(GLWESwitchingKey::alloc(
+            module, basek, k, rows, 1, 1, rank_out,
+        ))
     }
 
-    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize
+    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank_out: usize) -> usize
     where
         Module<B>: GGLWEEncryptSkFamily<B>,
     {
-        GLWESwitchingKey::encrypt_sk_scratch_space(module, basek, k, 1, rank) + GLWESecret::bytes_of(module, 1)
+        GLWESwitchingKey::encrypt_sk_scratch_space(module, basek, k, 1, rank_out) + GLWESecret::bytes_of(module, 1)
     }
 }
 
@@ -212,33 +216,25 @@ impl<D: AsMut<[u8]> + AsRef<[u8]>> LWEToGLWESwitchingKey<D> {
 pub struct LWESwitchingKeyExec<D, B: Backend>(GLWESwitchingKeyExec<D, B>);
 
 impl<B: Backend> LWESwitchingKeyExec<Vec<u8>, B> {
-    pub fn alloc(module: &Module<B>, basek: usize, k: usize, rows: usize, rank: usize) -> Self
+    pub fn alloc(module: &Module<B>, basek: usize, k: usize, rows: usize) -> Self
     where
         Module<B>: GGLWEExecLayoutFamily<B>,
     {
-        Self(GLWESwitchingKeyExec::alloc(
-            module, basek, k, rows, 1, rank, rank,
-        ))
+        Self(GLWESwitchingKeyExec::alloc(module, basek, k, rows, 1, 1, 1))
     }
 
-    pub fn bytes_of(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize
+    pub fn bytes_of(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize) -> usize
     where
         Module<B>: GGLWEExecLayoutFamily<B>,
     {
-        GLWESwitchingKeyExec::<Vec<u8>, B>::bytes_of(module, basek, k, rows, digits, rank, rank)
+        GLWESwitchingKeyExec::<Vec<u8>, B>::bytes_of(module, basek, k, rows, digits, 1, 1)
     }
 
     pub fn from<DataOther: AsRef<[u8]>>(module: &Module<B>, other: &LWESwitchingKey<DataOther>, scratch: &mut Scratch) -> Self
     where
         Module<B>: GGLWEExecLayoutFamily<B>,
     {
-        let mut ksk_exec: LWESwitchingKeyExec<Vec<u8>, B> = Self::alloc(
-            module,
-            other.0.basek(),
-            other.0.k(),
-            other.0.rows(),
-            other.0.rank(),
-        );
+        let mut ksk_exec: LWESwitchingKeyExec<Vec<u8>, B> = Self::alloc(module, other.0.basek(), other.0.k(), other.0.rows());
         ksk_exec.prepare(module, other, scratch);
         ksk_exec
     }
@@ -296,7 +292,8 @@ impl<D: AsMut<[u8]> + AsRef<[u8]>> LWESwitchingKey<D> {
 
         sk_out_glwe.data.at_mut(0, 0)[..sk_lwe_out.n()].copy_from_slice(sk_lwe_out.data.at(0, 0));
         sk_out_glwe.data.at_mut(0, 0)[sk_lwe_out.n()..].fill(0);
-        module.vec_znx_automorphism_inplace(-1, &mut sk_in_glwe.data, 0);
+        module.vec_znx_automorphism_inplace(-1, &mut sk_out_glwe.data, 0);
+
         sk_in_glwe.data.at_mut(0, 0)[..sk_lwe_in.n()].copy_from_slice(sk_lwe_in.data.at(0, 0));
         sk_in_glwe.data.at_mut(0, 0)[sk_lwe_in.n()..].fill(0);
         module.vec_znx_automorphism_inplace(-1, &mut sk_in_glwe.data, 0);
