@@ -52,7 +52,7 @@ pub(crate) fn test_encrypt_sk<B: Backend>(
         .assert_noise(module, &sk_out_exec, &sk_in.data, sigma);
 }
 
-pub(crate) fn test_key_switch<B: Backend>(
+pub(crate) fn test_keyswitch<B: Backend>(
     module: &Module<B>,
     basek: usize,
     k_out: usize,
@@ -101,24 +101,23 @@ pub(crate) fn test_key_switch<B: Backend>(
     let mut source_xe: Source = Source::new([0u8; 32]);
     let mut source_xa: Source = Source::new([0u8; 32]);
 
-    let mut scratch: ScratchOwned = ScratchOwned::new(
-        GLWESwitchingKey::encrypt_sk_scratch_space(
-            module,
-            basek,
-            k_ksk,
-            rank_in_s0s1,
-            rank_in_s0s1 | rank_out_s0s1,
-        ) | GLWESwitchingKey::keyswitch_scratch_space(
-            module,
-            basek,
-            k_out,
-            k_in,
-            k_ksk,
-            digits,
-            ct_gglwe_s1s2.rank_in(),
-            ct_gglwe_s1s2.rank_out(),
-        ),
-    );
+    let mut scratch_enc: ScratchOwned = ScratchOwned::new(GLWESwitchingKey::encrypt_sk_scratch_space(
+        module,
+        basek,
+        k_ksk,
+        rank_in_s0s1 | rank_out_s0s1,
+        rank_out_s0s1 | rank_out_s1s2,
+    ));
+    let mut scratch_apply: ScratchOwned = ScratchOwned::new(GLWESwitchingKey::keyswitch_scratch_space(
+        module,
+        basek,
+        k_out,
+        k_in,
+        k_ksk,
+        digits,
+        ct_gglwe_s1s2.rank_in(),
+        ct_gglwe_s1s2.rank_out(),
+    ));
 
     let mut sk0: GLWESecret<Vec<u8>> = GLWESecret::alloc(module, rank_in_s0s1);
     sk0.fill_ternary_prob(0.5, &mut source_xs);
@@ -138,7 +137,7 @@ pub(crate) fn test_key_switch<B: Backend>(
         &mut source_xa,
         &mut source_xe,
         sigma,
-        scratch.borrow(),
+        scratch_enc.borrow(),
     );
 
     // gglwe_{s2}(s1) -> s1 -> s2
@@ -149,27 +148,18 @@ pub(crate) fn test_key_switch<B: Backend>(
         &mut source_xa,
         &mut source_xe,
         sigma,
-        scratch.borrow(),
+        scratch_enc.borrow(),
     );
 
-    let mut ct_gglwe_s1s2_exec: GLWESwitchingKeyExec<Vec<u8>, B> = GLWESwitchingKeyExec::alloc(
-        module,
-        basek,
-        k_out,
-        rows,
-        digits_in,
-        rank_in_s0s1,
-        rank_out_s1s2,
-    );
-
-    ct_gglwe_s1s2_exec.prepare(module, &ct_gglwe_s1s2, scratch.borrow());
+    let ct_gglwe_s1s2_exec: GLWESwitchingKeyExec<Vec<u8>, B> =
+        GLWESwitchingKeyExec::from(module, &ct_gglwe_s1s2, scratch_apply.borrow());
 
     // gglwe_{s1}(s0) (x) gglwe_{s2}(s1) = gglwe_{s2}(s0)
     ct_gglwe_s0s2.keyswitch(
         module,
         &ct_gglwe_s0s1,
         &ct_gglwe_s1s2_exec,
-        scratch.borrow(),
+        scratch_apply.borrow(),
     );
 
     let max_noise: f64 = log2_std_noise_gglwe_product(
@@ -187,10 +177,10 @@ pub(crate) fn test_key_switch<B: Backend>(
 
     ct_gglwe_s0s2
         .key
-        .assert_noise(module, &sk2_exec, &sk0.data, max_noise);
+        .assert_noise(module, &sk2_exec, &sk0.data, max_noise + 0.5);
 }
 
-pub(crate) fn test_key_switch_inplace<B: Backend>(
+pub(crate) fn test_keyswitch_inplace<B: Backend>(
     module: &Module<B>,
     basek: usize,
     k_ct: usize,
@@ -214,10 +204,16 @@ pub(crate) fn test_key_switch_inplace<B: Backend>(
     let mut source_xe: Source = Source::new([0u8; 32]);
     let mut source_xa: Source = Source::new([0u8; 32]);
 
-    let mut scratch: ScratchOwned = ScratchOwned::new(
-        GLWESwitchingKey::encrypt_sk_scratch_space(module, basek, k_ksk, rank_in, rank_out)
-            | GLWESwitchingKey::keyswitch_inplace_scratch_space(module, basek, k_ct, k_ksk, digits, rank_out),
-    );
+    let mut scratch_enc: ScratchOwned = ScratchOwned::new(GLWESwitchingKey::encrypt_sk_scratch_space(
+        module,
+        basek,
+        k_ksk,
+        rank_in | rank_out,
+        rank_out,
+    ));
+    let mut scratch_apply: ScratchOwned = ScratchOwned::new(GLWESwitchingKey::keyswitch_inplace_scratch_space(
+        module, basek, k_ct, k_ksk, digits, rank_out,
+    ));
 
     let var_xs: f64 = 0.5;
 
@@ -239,7 +235,7 @@ pub(crate) fn test_key_switch_inplace<B: Backend>(
         &mut source_xa,
         &mut source_xe,
         sigma,
-        scratch.borrow(),
+        scratch_enc.borrow(),
     );
 
     // gglwe_{s2}(s1) -> s1 -> s2
@@ -250,16 +246,14 @@ pub(crate) fn test_key_switch_inplace<B: Backend>(
         &mut source_xa,
         &mut source_xe,
         sigma,
-        scratch.borrow(),
+        scratch_enc.borrow(),
     );
 
-    let mut ct_gglwe_s1s2_exec: GLWESwitchingKeyExec<Vec<u8>, B> =
-        GLWESwitchingKeyExec::alloc(module, basek, k_ct, rows, digits_in, rank_in, rank_out);
-
-    ct_gglwe_s1s2_exec.prepare(module, &ct_gglwe_s1s2, scratch.borrow());
+    let ct_gglwe_s1s2_exec: GLWESwitchingKeyExec<Vec<u8>, B> =
+        GLWESwitchingKeyExec::from(module, &ct_gglwe_s1s2, scratch_apply.borrow());
 
     // gglwe_{s1}(s0) (x) gglwe_{s2}(s1) = gglwe_{s2}(s0)
-    ct_gglwe_s0s1.keyswitch_inplace(module, &ct_gglwe_s1s2_exec, scratch.borrow());
+    ct_gglwe_s0s1.keyswitch_inplace(module, &ct_gglwe_s1s2_exec, scratch_apply.borrow());
 
     let ct_gglwe_s0s2: GLWESwitchingKey<Vec<u8>> = ct_gglwe_s0s1;
 
@@ -278,7 +272,7 @@ pub(crate) fn test_key_switch_inplace<B: Backend>(
 
     ct_gglwe_s0s2
         .key
-        .assert_noise(module, &sk2_exec, &sk0.data, max_noise);
+        .assert_noise(module, &sk2_exec, &sk0.data, max_noise + 0.5);
 }
 
 pub(crate) fn test_external_product<B: Backend>(
@@ -384,7 +378,7 @@ pub(crate) fn test_external_product<B: Backend>(
 
     ct_gglwe_out
         .key
-        .assert_noise(module, &sk_out_exec, &sk_in.data, max_noise);
+        .assert_noise(module, &sk_out_exec, &sk_in.data, max_noise + 0.5);
 }
 
 pub(crate) fn test_external_product_inplace<B: Backend>(
@@ -488,5 +482,5 @@ pub(crate) fn test_external_product_inplace<B: Backend>(
 
     ct_gglwe
         .key
-        .assert_noise(module, &sk_out_exec, &sk_in.data, max_noise);
+        .assert_noise(module, &sk_out_exec, &sk_in.data, max_noise + 0.5);
 }

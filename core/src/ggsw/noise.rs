@@ -54,8 +54,9 @@ impl<D: AsRef<[u8]>> GGSWCiphertext<D> {
 
                 module.vec_znx_sub_ab_inplace(&mut pt_have.data, 0, &pt.data, 0);
 
-                let std_pt: f64 = pt_have.data.std(0, basek) * (k as f64).exp2();
+                let std_pt: f64 = pt_have.data.std(0, basek).log2();
                 let noise: f64 = max_noise(col_j);
+                println!("{} {}", std_pt, noise);
                 assert!(std_pt <= noise, "{} > {}", std_pt, noise);
 
                 pt.data.zero();

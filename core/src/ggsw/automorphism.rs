@@ -1,4 +1,4 @@
-use backend::{Backend, Module, Scratch, VecZnxAlloc, VecZnxDftAllocBytes, VecZnxDftFromVecZnx};
+use backend::{Backend, Module, Scratch, VecZnxDftAllocBytes, VecZnxDftFromVecZnx};
 
 use crate::{
     AutomorphismExecFamily, AutomorphismKeyExec, GGSWCiphertext, GGSWKeySwitchFamily, GLWECiphertext, GLWETensorKeyExec, Infos,
@@ -19,15 +19,12 @@ impl GGSWCiphertext<Vec<u8>> {
     where
         Module<B>: AutomorphismExecFamily<B> + GGSWKeySwitchFamily<B>,
     {
-        let cols: usize = rank + 1;
         let out_size: usize = k_out.div_ceil(basek);
-        let res: usize = module.bytes_of_vec_znx(cols, out_size);
-        let res_dft: usize = module.vec_znx_dft_alloc_bytes(cols, out_size);
-        let ci_dft: usize = module.vec_znx_dft_alloc_bytes(cols, out_size);
+        let ci_dft: usize = module.vec_znx_dft_alloc_bytes(rank + 1, out_size);
         let ks_internal: usize =
             GLWECiphertext::keyswitch_scratch_space(module, basek, k_out, k_in, k_ksk, digits_ksk, rank, rank);
         let expand: usize = GGSWCiphertext::expand_row_scratch_space(module, basek, k_out, k_tsk, digits_tsk, rank);
-        res + ci_dft + (ks_internal | expand | res_dft)
+        ci_dft + (ks_internal | expand)
     }
 
     pub fn automorphism_inplace_scratch_space<B: Backend>(
@@ -112,9 +109,9 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
                 .automorphism(module, &lhs.at(row_i, 0), auto_key, scratch);
 
             // Isolates DFT(AUTO(a[i]))
-            let (mut ci_dft, scratch1) = scratch.tmp_vec_znx_dft(module, cols - 1, self.size());
-            (1..cols).for_each(|i| {
-                module.vec_znx_dft_from_vec_znx(1, 0, &mut ci_dft, i - 1, &self.at(row_i, 0).data, i);
+            let (mut ci_dft, scratch1) = scratch.tmp_vec_znx_dft(module, cols, self.size());
+            (0..cols).for_each(|i| {
+                module.vec_znx_dft_from_vec_znx(1, 0, &mut ci_dft, i, &self.at(row_i, 0).data, i);
             });
 
             // Generates

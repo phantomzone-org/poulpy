@@ -81,8 +81,8 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> AutomorphismKey<DataSelf> {
 
         (0..self.rank_in()).for_each(|col_i| {
             (0..self.rows()).for_each(|row_j| {
-                let mut res_ct: GLWECiphertext<&mut [u8]> = self.at_mut(col_i, row_j);
-                let lhs_ct: GLWECiphertext<&[u8]> = lhs.at(col_i, row_j);
+                let mut res_ct: GLWECiphertext<&mut [u8]> = self.at_mut(row_j, col_i);
+                let lhs_ct: GLWECiphertext<&[u8]> = lhs.at(row_j, col_i);
 
                 // Reverts the automorphism X^{-k}: (-pi^{-1}_{k}(s)a + s, a) to (-sa + pi_{k}(s), a)
                 (0..cols_out).for_each(|i| {

@@ -1,7 +1,7 @@
 use backend::{FFT64, Module};
 
 use crate::gglwe::test_fft64::gglwe_generic::{
-    test_encrypt_sk, test_external_product, test_external_product_inplace, test_key_switch, test_key_switch_inplace,
+    test_encrypt_sk, test_external_product, test_external_product_inplace, test_keyswitch, test_keyswitch_inplace,
 };
 
 #[test]
@@ -25,7 +25,7 @@ fn encrypt_sk() {
 }
 
 #[test]
-fn key_switch() {
+fn keyswitch() {
     let log_n: usize = 8;
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
     let basek: usize = 12;
@@ -41,7 +41,7 @@ fn key_switch() {
                         di, rank_in_s0s1, rank_out_s0s1, rank_out_s1s2
                     );
                     let k_out: usize = k_ksk; // Better capture noise.
-                    test_key_switch(
+                    test_keyswitch(
                         &module,
                         basek,
                         k_out,
@@ -60,7 +60,7 @@ fn key_switch() {
 }
 
 #[test]
-fn key_switch_inplace() {
+fn keyswitch_inplace() {
     let log_n: usize = 8;
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
     let basek: usize = 12;
@@ -74,7 +74,7 @@ fn key_switch_inplace() {
                     "test key_switch_inplace digits: {} ranks: ({},{})",
                     di, rank_in_s0s1, rank_out_s0s1
                 );
-                test_key_switch_inplace(
+                test_keyswitch_inplace(
                     &module,
                     basek,
                     k_ct,

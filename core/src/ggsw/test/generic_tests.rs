@@ -43,7 +43,7 @@ where
         scratch.borrow(),
     );
 
-    let noise_f = |_col_i: usize| sigma + 0.5;
+    let noise_f = |_col_i: usize| -(k as f64) + sigma.log2() + 0.5;
 
     ct.assert_noise(module, &sk_exec, &pt_scalar, &noise_f);
 }

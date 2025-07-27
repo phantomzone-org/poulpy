@@ -1,26 +1,23 @@
 use backend::{
-    Backend, Module, ScalarZnx, ScalarZnxAlloc, ScalarZnxOps, Scratch, SvpApply, VecZnxAlloc, VecZnxBigAllocBytes,
-    VecZnxDftToVecZnxBigTmpA, VecZnxOps, ZnxInfos, ZnxZero,
+    Backend, Module, ScalarZnx, ScalarZnxAlloc, ScalarZnxOps, Scratch, SvpApply, VecZnxBigAllocBytes, VecZnxDftToVecZnxBigTmpA,
+    VecZnxOps, VecZnxScratch, ZnxInfos, ZnxZero,
 };
 use sampling::source::Source;
 
 use crate::{
-    AutomorphismKey, GGLWECiphertext, GLWECiphertext, GLWEDecryptFamily, GLWEEncryptSkFamily, GLWESecret, GLWESecretExec,
-    GLWESecretFamily, GLWESwitchingKey, GLWETensorKey, Infos, ScratchCore,
+    AutomorphismKey, GGLWECiphertext, GLWECiphertext, GLWEDecryptFamily, GLWEEncryptSkFamily, GLWEPlaintext, GLWESecret,
+    GLWESecretExec, GLWESecretFamily, GLWESwitchingKey, GLWETensorKey, Infos, ScratchCore,
 };
 
 pub trait GGLWEEncryptSkFamily<B: Backend> = GLWEEncryptSkFamily<B> + GLWESecretFamily<B>;
 
 impl GGLWECiphertext<Vec<u8>> {
-    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize
+    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize) -> usize
     where
         Module<B>: GGLWEEncryptSkFamily<B>,
     {
-        let size = k.div_ceil(basek);
         GLWECiphertext::encrypt_sk_scratch_space(module, basek, k)
-            + module.bytes_of_vec_znx(rank + 1, size)
-            + module.bytes_of_vec_znx(1, size)
-            + module.vec_znx_dft_alloc_bytes(rank + 1, size)
+            + (GLWEPlaintext::byte_of(module, basek, k) | module.vec_znx_normalize_tmp_bytes())
     }
 
     pub fn encrypt_pk_scratch_space<B: Backend>(_module: &Module<B>, _basek: usize, _k: usize, _rank: usize) -> usize {
@@ -61,12 +58,12 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGLWECiphertext<DataSelf> {
             assert_eq!(sk.n(), module.n());
             assert_eq!(pt.n(), module.n());
             assert!(
-                scratch.available() >= GGLWECiphertext::encrypt_sk_scratch_space(module, self.basek(), self.k(), self.rank()),
+                scratch.available() >= GGLWECiphertext::encrypt_sk_scratch_space(module, self.basek(), self.k()),
                 "scratch.available: {} < GGLWECiphertext::encrypt_sk_scratch_space(module, self.rank()={}, self.size()={}): {}",
                 scratch.available(),
                 self.rank(),
                 self.size(),
-                GGLWECiphertext::encrypt_sk_scratch_space(module, self.basek(), self.k(), self.rank())
+                GGLWECiphertext::encrypt_sk_scratch_space(module, self.basek(), self.k())
             );
             assert!(
                 self.rows() * self.digits() * self.basek() <= self.k(),
@@ -131,7 +128,7 @@ impl GLWESwitchingKey<Vec<u8>> {
     where
         Module<B>: GLWESwitchingKeyEncryptSkFamily<B>,
     {
-        GGLWECiphertext::encrypt_sk_scratch_space(module, basek, k, rank_out)
+        (GGLWECiphertext::encrypt_sk_scratch_space(module, basek, k) | module.bytes_of_scalar_znx(1))
             + module.bytes_of_scalar_znx(rank_in)
             + GLWESecretExec::bytes_of(module, rank_out)
     }
@@ -164,6 +161,25 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<DataSelf> {
         {
             assert!(sk_in.n() <= module.n());
             assert!(sk_out.n() <= module.n());
+            assert!(
+                scratch.available()
+                    >= GLWESwitchingKey::encrypt_sk_scratch_space(
+                        module,
+                        self.basek(),
+                        self.k(),
+                        self.rank_in(),
+                        self.rank_out()
+                    ),
+                "scratch.available()={} < GLWESwitchingKey::encrypt_sk_scratch_space={}",
+                scratch.available(),
+                GLWESwitchingKey::encrypt_sk_scratch_space(
+                    module,
+                    self.basek(),
+                    self.k(),
+                    self.rank_in(),
+                    self.rank_out()
+                )
+            )
         }
 
         let (mut sk_in_tmp, scratch1) = scratch.tmp_scalar_znx(module, sk_in.rank());

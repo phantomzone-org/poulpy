@@ -23,6 +23,7 @@ impl GGSWCiphertext<Vec<u8>> {
         let tsk_size: usize = k_tsk.div_ceil(basek);
         let self_size_out: usize = self_k.div_ceil(basek);
         let self_size_in: usize = self_size_out.div_ceil(digits);
+
         let tmp_dft_i: usize = module.vec_znx_dft_alloc_bytes(rank + 1, tsk_size);
         let tmp_a: usize = module.vec_znx_dft_alloc_bytes(1, self_size_in);
         let vmp: usize = module.vmp_apply_tmp_bytes(
@@ -214,9 +215,9 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
                 .keyswitch(module, &lhs.at(row_i, 0), ksk, scratch);
 
             // Pre-compute DFT of (a0, a1, a2)
-            let (mut ci_dft, scratch1) = scratch.tmp_vec_znx_dft(module, cols - 1, self.size());
-            (1..cols).for_each(|i| {
-                module.vec_znx_dft_from_vec_znx(1, 0, &mut ci_dft, i - 1, &self.at(row_i, 0).data, i);
+            let (mut ci_dft, scratch1) = scratch.tmp_vec_znx_dft(module, cols, self.size());
+            (0..cols).for_each(|i| {
+                module.vec_znx_dft_from_vec_znx(1, 0, &mut ci_dft, i, &self.at(row_i, 0).data, i);
             });
             // Generates
             //

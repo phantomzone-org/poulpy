@@ -76,16 +76,15 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
             )
         }
 
+        let min_rows: usize = self.rows().min(lhs.rows());
+
         (0..self.rank() + 1).for_each(|col_i| {
-            (0..self.rows()).for_each(|row_j| {
+            (0..min_rows).for_each(|row_j| {
                 self.at_mut(row_j, col_i)
                     .external_product(module, &lhs.at(row_j, col_i), rhs, scratch);
             });
-        });
-
-        (self.rows().min(lhs.rows())..self.rows()).for_each(|row_i| {
-            (0..self.rank() + 1).for_each(|col_j| {
-                self.at_mut(row_i, col_j).data.zero();
+            (min_rows..self.rows()).for_each(|row_i| {
+                self.at_mut(row_i, col_i).data.zero();
             });
         });
     }
