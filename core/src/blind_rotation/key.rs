@@ -107,7 +107,7 @@ impl<D: AsRef<[u8]> + AsMut<[u8]>> BlindRotationKeyCGGI<D> {
 
         self.dist = sk_lwe.dist;
 
-        let mut pt: ScalarZnx<Vec<u8>> = module.new_scalar_znx(1);
+        let mut pt: ScalarZnx<Vec<u8>> = module.scalar_znx_alloc(1);
         let sk_ref: ScalarZnx<&[u8]> = sk_lwe.data.to_ref();
 
         self.data.iter_mut().enumerate().for_each(|(i, ggsw)| {
@@ -218,7 +218,7 @@ impl<D: AsRef<[u8]> + AsMut<[u8]>, B: Backend> BlindRotationKeyCGGIExec<D, B> {
         match other.dist {
             Distribution::BinaryBlock(_) => {
                 let mut x_pow_a: Vec<SvpPPol<Vec<u8>, B>> = Vec::with_capacity(module.n() << 1);
-                let mut buf: ScalarZnx<Vec<u8>> = module.new_scalar_znx(1);
+                let mut buf: ScalarZnx<Vec<u8>> = module.scalar_znx_alloc(1);
                 (0..module.n() << 1).for_each(|i| {
                     let mut res: SvpPPol<Vec<u8>, B> = module.svp_ppol_alloc(1);
                     set_xai_plus_y(module, i, 0, &mut res, &mut buf);

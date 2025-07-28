@@ -1,7 +1,5 @@
 use backend::{
-    AddNormal, Backend, FillUniform, Module, ScalarZnxAlloc, Scratch, SvpApply, SvpApplyInplace, SvpPPolAllocBytes, SvpPrepare,
-    VecZnxBig, VecZnxBigAddNormal, VecZnxBigAddSmallInplace, VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxDftAllocBytes,
-    VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume, VecZnxOps, VecZnxScratch, ZnxZero,
+    AddNormal, Backend, FillUniform, Module, ScalarZnxAllocBytes, Scratch, SvpApply, SvpApplyInplace, SvpPPolAllocBytes, SvpPrepare, VecZnxBig, VecZnxBigAddNormal, VecZnxBigAddSmallInplace, VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume, VecZnxOps, VecZnxScratch, ZnxZero
 };
 use sampling::source::Source;
 
@@ -33,7 +31,7 @@ impl GLWECiphertext<Vec<u8>> {
         Module<B>: GLWEEncryptPkFamily<B>,
     {
         let size: usize = k.div_ceil(basek);
-        ((module.vec_znx_dft_alloc_bytes(1, size) + module.vec_znx_big_alloc_bytes(1, size)) | module.bytes_of_scalar_znx(1))
+        ((module.vec_znx_dft_alloc_bytes(1, size) + module.vec_znx_big_alloc_bytes(1, size)) | module.scalar_znx_alloc_bytes(1))
             + module.svp_ppol_alloc_bytes(1)
             + module.vec_znx_normalize_tmp_bytes()
     }

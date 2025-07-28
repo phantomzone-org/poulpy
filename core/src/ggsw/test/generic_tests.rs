@@ -16,7 +16,7 @@ where
 
     let mut ct: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(module, basek, k, rows, digits, rank);
 
-    let mut pt_scalar: ScalarZnx<Vec<u8>> = module.new_scalar_znx(1);
+    let mut pt_scalar: ScalarZnx<Vec<u8>> = module.scalar_znx_alloc(1);
 
     let mut source_xs: Source = Source::new([0u8; 32]);
     let mut source_xe: Source = Source::new([0u8; 32]);
@@ -73,7 +73,7 @@ pub(crate) fn test_keyswitch<B: Backend>(
     let mut ct_out: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(module, basek, k_out, rows, digits_in, rank);
     let mut tsk: GLWETensorKey<Vec<u8>> = GLWETensorKey::alloc(module, basek, k_ksk, rows, digits, rank);
     let mut ksk: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc(module, basek, k_ksk, rows, digits, rank, rank);
-    let mut pt_scalar: ScalarZnx<Vec<u8>> = module.new_scalar_znx(1);
+    let mut pt_scalar: ScalarZnx<Vec<u8>> = module.scalar_znx_alloc(1);
 
     let mut source_xs: Source = Source::new([0u8; 32]);
     let mut source_xe: Source = Source::new([0u8; 32]);
@@ -179,7 +179,7 @@ pub(crate) fn test_keyswitch_inplace<B: Backend>(
     let mut ct: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(module, basek, k_ct, rows, digits_in, rank);
     let mut tsk: GLWETensorKey<Vec<u8>> = GLWETensorKey::alloc(module, basek, k_tsk, rows, digits, rank);
     let mut ksk: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc(module, basek, k_ksk, rows, digits, rank, rank);
-    let mut pt_scalar: ScalarZnx<Vec<u8>> = module.new_scalar_znx(1);
+    let mut pt_scalar: ScalarZnx<Vec<u8>> = module.scalar_znx_alloc(1);
 
     let mut source_xs: Source = Source::new([0u8; 32]);
     let mut source_xe: Source = Source::new([0u8; 32]);
@@ -288,7 +288,7 @@ pub(crate) fn test_automorphism<B: Backend>(
     let mut ct_out: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(module, basek, k_out, rows_in, digits_in, rank);
     let mut tensor_key: GLWETensorKey<Vec<u8>> = GLWETensorKey::alloc(module, basek, k_tsk, rows, digits, rank);
     let mut auto_key: AutomorphismKey<Vec<u8>> = AutomorphismKey::alloc(module, basek, k_ksk, rows, digits, rank);
-    let mut pt_scalar: ScalarZnx<Vec<u8>> = module.new_scalar_znx(1);
+    let mut pt_scalar: ScalarZnx<Vec<u8>> = module.scalar_znx_alloc(1);
 
     let mut source_xs: Source = Source::new([0u8; 32]);
     let mut source_xe: Source = Source::new([0u8; 32]);
@@ -393,7 +393,7 @@ pub(crate) fn test_automorphism_inplace<B: Backend>(
     let mut ct: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(module, basek, k_ct, rows_in, digits_in, rank);
     let mut tensor_key: GLWETensorKey<Vec<u8>> = GLWETensorKey::alloc(module, basek, k_tsk, rows, digits, rank);
     let mut auto_key: AutomorphismKey<Vec<u8>> = AutomorphismKey::alloc(module, basek, k_ksk, rows, digits, rank);
-    let mut pt_scalar: ScalarZnx<Vec<u8>> = module.new_scalar_znx(1);
+    let mut pt_scalar: ScalarZnx<Vec<u8>> = module.scalar_znx_alloc(1);
 
     let mut source_xs: Source = Source::new([0u8; 32]);
     let mut source_xe: Source = Source::new([0u8; 32]);
@@ -494,8 +494,8 @@ pub(crate) fn test_external_product<B: Backend>(
     let mut ct_ggsw_lhs_in: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(module, basek, k_in, rows_in, digits_in, rank);
     let mut ct_ggsw_lhs_out: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(module, basek, k_out, rows_in, digits_in, rank);
     let mut ct_ggsw_rhs: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(module, basek, k_ggsw, rows, digits, rank);
-    let mut pt_ggsw_lhs: ScalarZnx<Vec<u8>> = module.new_scalar_znx(1);
-    let mut pt_ggsw_rhs: ScalarZnx<Vec<u8>> = module.new_scalar_znx(1);
+    let mut pt_ggsw_lhs: ScalarZnx<Vec<u8>> = module.scalar_znx_alloc(1);
+    let mut pt_ggsw_rhs: ScalarZnx<Vec<u8>> = module.scalar_znx_alloc(1);
 
     let mut source_xs: Source = Source::new([0u8; 32]);
     let mut source_xe: Source = Source::new([0u8; 32]);
@@ -591,8 +591,8 @@ pub(crate) fn test_external_product_inplace<B: Backend>(
     let mut ct_ggsw_lhs: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(module, basek, k_ct, rows_in, digits_in, rank);
     let mut ct_ggsw_rhs: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(module, basek, k_ggsw, rows, digits, rank);
 
-    let mut pt_ggsw_lhs: ScalarZnx<Vec<u8>> = module.new_scalar_znx(1);
-    let mut pt_ggsw_rhs: ScalarZnx<Vec<u8>> = module.new_scalar_znx(1);
+    let mut pt_ggsw_lhs: ScalarZnx<Vec<u8>> = module.scalar_znx_alloc(1);
+    let mut pt_ggsw_rhs: ScalarZnx<Vec<u8>> = module.scalar_znx_alloc(1);
 
     let mut source_xs: Source = Source::new([0u8; 32]);
     let mut source_xe: Source = Source::new([0u8; 32]);

@@ -1,20 +1,20 @@
-pub mod encoding;
+mod encoding;
 #[allow(non_camel_case_types, non_snake_case, non_upper_case_globals, dead_code, improper_ctypes)]
 // Other modules and exports
-pub mod ffi;
-pub mod mat_znx;
-pub mod mat_znx_ops;
-pub mod module;
-pub mod sampling;
-pub mod scalar_znx;
-pub mod stats;
-pub mod svp_ppol;
-pub mod vec_znx;
-pub mod vec_znx_big;
-pub mod vec_znx_dft;
-pub mod vec_znx_ops;
-pub mod vmp_pmat;
-pub mod znx_base;
+mod ffi;
+mod mat_znx;
+mod mat_znx_ops;
+mod module;
+mod sampling;
+mod scalar_znx;
+mod stats;
+mod svp_ppol;
+mod vec_znx;
+mod vec_znx_big;
+mod vec_znx_dft;
+mod vec_znx_ops;
+mod vmp_pmat;
+mod znx_base;
 
 pub use encoding::*;
 pub use mat_znx::*;
@@ -196,7 +196,7 @@ impl Scratch {
     }
 
     pub fn tmp_scalar_znx<B: Backend>(&mut self, module: &Module<B>, cols: usize) -> (ScalarZnx<&mut [u8]>, &mut Self) {
-        let (take_slice, rem_slice) = Self::take_slice_aligned(&mut self.data, module.bytes_of_scalar_znx(cols));
+        let (take_slice, rem_slice) = Self::take_slice_aligned(&mut self.data, module.scalar_znx_alloc_bytes(cols));
 
         (
             ScalarZnx::from_data(take_slice, module.n(), cols),

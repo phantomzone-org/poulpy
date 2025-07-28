@@ -1,4 +1,4 @@
-use backend::{Backend, FFT64, FillUniform, Module, ScalarZnx, ScalarZnxAlloc, ScratchOwned, VecZnxOps, ZnxViewMut};
+use backend::{Backend, FillUniform, Module, ScalarZnx, ScalarZnxAlloc, ScratchOwned, VecZnxOps, ZnxViewMut, FFT64};
 use sampling::source::Source;
 
 use crate::{
@@ -57,7 +57,7 @@ fn test_external_product<B: Backend>(
     let mut ct_ggsw: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(module, basek, k_ggsw, rows, digits, rank);
     let mut ct_glwe_in: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(module, basek, k_in, rank);
     let mut ct_glwe_out: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(module, basek, k_out, rank);
-    let mut pt_rgsw: ScalarZnx<Vec<u8>> = module.new_scalar_znx(1);
+    let mut pt_rgsw: ScalarZnx<Vec<u8>> = module.scalar_znx_alloc(1);
     let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(module, basek, k_in);
 
     let mut source_xs: Source = Source::new([0u8; 32]);
@@ -159,7 +159,7 @@ fn test_external_product_inplace<B: Backend>(
 
     let mut ct_ggsw: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(module, basek, k_ggsw, rows, digits, rank);
     let mut ct_glwe: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(module, basek, k_ct, rank);
-    let mut pt_rgsw: ScalarZnx<Vec<u8>> = module.new_scalar_znx(1);
+    let mut pt_rgsw: ScalarZnx<Vec<u8>> = module.scalar_znx_alloc(1);
     let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(module, basek, k_ct);
 
     let mut source_xs: Source = Source::new([0u8; 32]);

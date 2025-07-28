@@ -297,7 +297,7 @@ pub(crate) fn test_external_product<B: Backend>(
         GLWESwitchingKey::alloc(module, basek, k_out, rows, digits_in, rank_in, rank_out);
     let mut ct_rgsw: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(module, basek, k_ggsw, rows, digits, rank_out);
 
-    let mut pt_rgsw: ScalarZnx<Vec<u8>> = module.new_scalar_znx(1);
+    let mut pt_rgsw: ScalarZnx<Vec<u8>> = module.scalar_znx_alloc(1);
 
     let mut source_xs: Source = Source::new([0u8; 32]);
     let mut source_xe: Source = Source::new([0u8; 32]);
@@ -401,7 +401,7 @@ pub(crate) fn test_external_product_inplace<B: Backend>(
         GLWESwitchingKey::alloc(module, basek, k_ct, rows, digits_in, rank_in, rank_out);
     let mut ct_rgsw: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(module, basek, k_ggsw, rows, digits, rank_out);
 
-    let mut pt_rgsw: ScalarZnx<Vec<u8>> = module.new_scalar_znx(1);
+    let mut pt_rgsw: ScalarZnx<Vec<u8>> = module.scalar_znx_alloc(1);
 
     let mut source_xs: Source = Source::new([0u8; 32]);
     let mut source_xe: Source = Source::new([0u8; 32]);

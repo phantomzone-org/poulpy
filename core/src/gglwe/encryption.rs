@@ -1,6 +1,5 @@
 use backend::{
-    Backend, Module, ScalarZnx, ScalarZnxAlloc, ScalarZnxOps, Scratch, SvpApply, VecZnxBigAllocBytes, VecZnxDftToVecZnxBigTmpA,
-    VecZnxOps, VecZnxScratch, ZnxInfos, ZnxZero,
+    Backend, Module, ScalarZnx, ScalarZnxAllocBytes, ScalarZnxOps, Scratch, SvpApply, VecZnxBigAllocBytes, VecZnxDftToVecZnxBigTmpA, VecZnxOps, VecZnxScratch, ZnxInfos, ZnxZero
 };
 use sampling::source::Source;
 
@@ -128,8 +127,8 @@ impl GLWESwitchingKey<Vec<u8>> {
     where
         Module<B>: GLWESwitchingKeyEncryptSkFamily<B>,
     {
-        (GGLWECiphertext::encrypt_sk_scratch_space(module, basek, k) | module.bytes_of_scalar_znx(1))
-            + module.bytes_of_scalar_znx(rank_in)
+        (GGLWECiphertext::encrypt_sk_scratch_space(module, basek, k) | module.scalar_znx_alloc_bytes(1))
+            + module.scalar_znx_alloc_bytes(rank_in)
             + GLWESecretExec::bytes_of(module, rank_out)
     }
 

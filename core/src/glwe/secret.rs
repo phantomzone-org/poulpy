@@ -1,5 +1,5 @@
 use backend::{
-    Backend, Module, ScalarZnx, ScalarZnxAlloc, SvpPPol, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare, ZnxInfos, ZnxZero,
+    Backend, Module, ScalarZnx, ScalarZnxAlloc, ScalarZnxAllocBytes, SvpPPol, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare, ZnxInfos, ZnxZero
 };
 use sampling::source::Source;
 
@@ -15,13 +15,13 @@ pub struct GLWESecret<T> {
 impl GLWESecret<Vec<u8>> {
     pub fn alloc<B: Backend>(module: &Module<B>, rank: usize) -> Self {
         Self {
-            data: module.new_scalar_znx(rank),
+            data: module.scalar_znx_alloc(rank),
             dist: Distribution::NONE,
         }
     }
 
     pub fn bytes_of<B: Backend>(module: &Module<B>, rank: usize) -> usize {
-        module.bytes_of_scalar_znx(rank)
+        module.scalar_znx_alloc_bytes(rank)
     }
 }
 

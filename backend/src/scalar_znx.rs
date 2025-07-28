@@ -142,20 +142,32 @@ impl<D: AsRef<[u8]> + AsMut<[u8]>> ZnxZero for ScalarZnx<D> {
 
 pub type ScalarZnxOwned = ScalarZnx<Vec<u8>>;
 
+pub trait ScalarZnxFromBytes {
+    fn scalar_znx_from_bytes(&self, cols: usize, bytes: Vec<u8>) -> ScalarZnxOwned;
+}
+
+pub trait ScalarZnxAllocBytes {
+    fn scalar_znx_alloc_bytes(&self, cols: usize) -> usize;
+}
+
 pub trait ScalarZnxAlloc {
-    fn bytes_of_scalar_znx(&self, cols: usize) -> usize;
-    fn new_scalar_znx(&self, cols: usize) -> ScalarZnxOwned;
-    fn new_scalar_znx_from_bytes(&self, cols: usize, bytes: Vec<u8>) -> ScalarZnxOwned;
+    fn scalar_znx_alloc(&self, cols: usize) -> ScalarZnxOwned;
+}
+
+impl<B: Backend> ScalarZnxAllocBytes for Module<B> {
+    fn scalar_znx_alloc_bytes(&self, cols: usize) -> usize {
+        ScalarZnxOwned::bytes_of(self.n(), cols)
+    }
 }
 
 impl<B: Backend> ScalarZnxAlloc for Module<B> {
-    fn bytes_of_scalar_znx(&self, cols: usize) -> usize {
-        ScalarZnxOwned::bytes_of(self.n(), cols)
-    }
-    fn new_scalar_znx(&self, cols: usize) -> ScalarZnxOwned {
+    fn scalar_znx_alloc(&self, cols: usize) -> ScalarZnxOwned {
         ScalarZnxOwned::new(self.n(), cols)
     }
-    fn new_scalar_znx_from_bytes(&self, cols: usize, bytes: Vec<u8>) -> ScalarZnxOwned {
+}
+
+impl<B: Backend> ScalarZnxFromBytes for Module<B> {
+    fn scalar_znx_from_bytes(&self, cols: usize, bytes: Vec<u8>) -> ScalarZnxOwned {
         ScalarZnxOwned::new_from_bytes(self.n(), cols, bytes)
     }
 }
