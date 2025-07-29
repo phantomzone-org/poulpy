@@ -180,9 +180,8 @@ where
 #[cfg(test)]
 mod tests {
     use super::{AddNormal, FillUniform};
-    use crate::vec_znx_ops::*;
-    use crate::znx_base::*;
     use crate::{FFT64, Module, Stats, VecZnx};
+    use crate::{VecZnxAlloc, znx_base::*};
     use sampling::source::Source;
 
     #[test]
@@ -196,7 +195,7 @@ mod tests {
         let zero: Vec<i64> = vec![0; n];
         let one_12_sqrt: f64 = 0.28867513459481287;
         (0..cols).for_each(|col_i| {
-            let mut a: VecZnx<_> = module.new_vec_znx(cols, size);
+            let mut a: VecZnx<_> = module.vec_znx_alloc(cols, size);
             a.fill_uniform(basek, col_i, size, &mut source);
             (0..cols).for_each(|col_j| {
                 if col_j != col_i {
@@ -230,7 +229,7 @@ mod tests {
         let zero: Vec<i64> = vec![0; n];
         let k_f64: f64 = (1u64 << k as u64) as f64;
         (0..cols).for_each(|col_i| {
-            let mut a: VecZnx<_> = module.new_vec_znx(cols, size);
+            let mut a: VecZnx<_> = module.vec_znx_alloc(cols, size);
             a.add_normal(basek, col_i, k, &mut source, sigma, bound);
             (0..cols).for_each(|col_j| {
                 if col_j != col_i {

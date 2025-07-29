@@ -1,6 +1,6 @@
 use backend::{
     Backend, DataViewMut, Module, Scratch, SvpApplyInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigAllocBytes,
-    VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume, VecZnxScratch,
+    VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume, VecZnxNormalizeTmpBytes,
 };
 
 use crate::{GLWECiphertext, GLWEPlaintext, GLWESecretExec, Infos};

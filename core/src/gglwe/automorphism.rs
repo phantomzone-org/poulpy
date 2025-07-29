@@ -1,4 +1,4 @@
-use backend::{Backend, Module, Scratch, VecZnxOps, ZnxZero};
+use backend::{Backend, Module, Scratch, VecZnxAutomorphism, VecZnxAutomorphismInplace, ZnxZero};
 
 use crate::{AutomorphismExecFamily, AutomorphismKey, AutomorphismKeyExec, GLWECiphertext, Infos};
 

@@ -2,7 +2,7 @@ use backend::{
     AddNormal, Decoding, Encoding, FFT64, FillUniform, Module, ScalarZnx, ScalarZnxAlloc, ScratchOwned, SvpApplyInplace, SvpPPol,
     SvpPPolAlloc, SvpPrepare, VecZnx, VecZnxAlloc, VecZnxBig, VecZnxBigAddSmallInplace, VecZnxBigAlloc, VecZnxBigNormalize,
     VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallBInplace, VecZnxDft, VecZnxDftAlloc, VecZnxDftFromVecZnx,
-    VecZnxDftToVecZnxBigTmpA, VecZnxOps, ZnxInfos,
+    VecZnxDftToVecZnxBigTmpA, VecZnxNormalizeInplace, ZnxInfos,
 };
 use itertools::izip;
 use sampling::source::Source;
@@ -31,7 +31,7 @@ fn main() {
     module.svp_prepare(&mut s_dft, 0, &s, 0);
 
     // Allocates a VecZnx with two columns: ct=(0, 0)
-    let mut ct: VecZnx<Vec<u8>> = module.new_vec_znx(
+    let mut ct: VecZnx<Vec<u8>> = module.vec_znx_alloc(
         2,       // Number of columns
         ct_size, // Number of small poly per column
     );
@@ -58,7 +58,7 @@ fn main() {
     module.vec_znx_dft_to_vec_znx_big_tmp_a(&mut buf_big, 0, &mut buf_dft, 0);
 
     // Creates a plaintext: VecZnx with 1 column
-    let mut m = module.new_vec_znx(
+    let mut m = module.vec_znx_alloc(
         1,        // Number of columns
         msg_size, // Number of small polynomials
     );
@@ -118,7 +118,7 @@ fn main() {
     module.vec_znx_big_add_small_inplace(&mut buf_big, 0, &ct, 0);
 
     // m + e <- BIG(ct[1] * s + ct[0])
-    let mut res = module.new_vec_znx(1, ct_size);
+    let mut res = module.vec_znx_alloc(1, ct_size);
     module.vec_znx_big_normalize(basek, &mut res, 0, &buf_big, 0, scratch.borrow());
 
     // have = m * 2^{log_scale} + e

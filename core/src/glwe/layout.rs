@@ -1,4 +1,4 @@
-use backend::{Backend, Module, VecZnx, VecZnxAlloc, VecZnxToMut, VecZnxToRef};
+use backend::{Backend, Module, VecZnx, VecZnxAlloc, VecZnxAllocBytes, VecZnxToMut, VecZnxToRef};
 
 use crate::{GLWEOps, Infos, SetMetaData};
 
@@ -11,14 +11,14 @@ pub struct GLWECiphertext<C> {
 impl GLWECiphertext<Vec<u8>> {
     pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank: usize) -> Self {
         Self {
-            data: module.new_vec_znx(rank + 1, k.div_ceil(basek)),
+            data: module.vec_znx_alloc(rank + 1, k.div_ceil(basek)),
             basek,
             k,
         }
     }
 
     pub fn bytes_of<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize {
-        module.bytes_of_vec_znx(rank + 1, k.div_ceil(basek))
+        module.vec_znx_alloc_bytes(rank + 1, k.div_ceil(basek))
     }
 }
 

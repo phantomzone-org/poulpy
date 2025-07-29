@@ -1,4 +1,4 @@
-use backend::{Backend, FFT64, FillUniform, Module, ScratchOwned, VecZnxOps};
+use backend::{Backend, FFT64, FillUniform, Module, ScratchOwned, VecZnxAutomorphismInplace};
 
 use sampling::source::Source;
 

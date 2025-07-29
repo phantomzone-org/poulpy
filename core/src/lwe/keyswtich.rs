@@ -1,4 +1,4 @@
-use backend::{Backend, Module, Scratch, VecZnxOps, ZnxView, ZnxViewMut, ZnxZero};
+use backend::{Backend, Module, Scratch, VecZnxAutomorphismInplace, ZnxView, ZnxViewMut, ZnxZero};
 use sampling::source::Source;
 
 use crate::{

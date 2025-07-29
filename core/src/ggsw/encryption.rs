@@ -1,4 +1,7 @@
-use backend::{Backend, Module, ScalarZnx, Scratch, VecZnxAlloc, VecZnxDftAllocBytes, VecZnxOps, ZnxZero};
+use backend::{
+    Backend, Module, ScalarZnx, Scratch, VecZnxAddScalarInplace, VecZnxAllocBytes, VecZnxDftAllocBytes, VecZnxNormalizeInplace,
+    ZnxZero,
+};
 use sampling::source::Source;
 
 use crate::{GGSWCiphertext, GLWECiphertext, GLWEEncryptSkFamily, GLWESecretExec, Infos, ScratchCore};
@@ -12,8 +15,8 @@ impl GGSWCiphertext<Vec<u8>> {
     {
         let size = k.div_ceil(basek);
         GLWECiphertext::encrypt_sk_scratch_space(module, basek, k)
-            + module.bytes_of_vec_znx(rank + 1, size)
-            + module.bytes_of_vec_znx(1, size)
+            + module.vec_znx_alloc_bytes(rank + 1, size)
+            + module.vec_znx_alloc_bytes(1, size)
             + module.vec_znx_dft_alloc_bytes(rank + 1, size)
     }
 }

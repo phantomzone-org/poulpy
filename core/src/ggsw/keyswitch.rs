@@ -1,6 +1,6 @@
 use backend::{
-    Backend, Module, Scratch, VecZnxAlloc, VecZnxBigAllocBytes, VecZnxDft, VecZnxDftAddInplace, VecZnxDftCopy,
-    VecZnxDftToVecZnxBigTmpA, VecZnxScratch, VmpPMat, ZnxInfos,
+    Backend, Module, Scratch, VecZnxAllocBytes, VecZnxBigAllocBytes, VecZnxDft, VecZnxDftAddInplace, VecZnxDftCopy,
+    VecZnxDftToVecZnxBigTmpA, VecZnxNormalizeTmpBytes, VmpPMat, ZnxInfos,
 };
 
 use crate::{GGSWCiphertext, GLWECiphertext, GLWEKeyswitchFamily, GLWESwitchingKeyExec, GLWETensorKeyExec, Infos};
@@ -54,7 +54,7 @@ impl GGSWCiphertext<Vec<u8>> {
         Module<B>: GLWEKeyswitchFamily<B> + GGSWKeySwitchFamily<B>,
     {
         let out_size: usize = k_out.div_ceil(basek);
-        let res_znx: usize = module.bytes_of_vec_znx(rank + 1, out_size);
+        let res_znx: usize = module.vec_znx_alloc_bytes(rank + 1, out_size);
         let ci_dft: usize = module.vec_znx_dft_alloc_bytes(rank + 1, out_size);
         let ks: usize = GLWECiphertext::keyswitch_scratch_space(module, basek, k_out, k_in, k_ksk, digits_ksk, rank, rank);
         let expand_rows: usize = GGSWCiphertext::expand_row_scratch_space(module, basek, k_out, k_tsk, digits_tsk, rank);

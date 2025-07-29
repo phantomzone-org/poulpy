@@ -1,4 +1,4 @@
-use backend::{Backend, Module, ScalarZnx, ScratchOwned, Stats, VecZnxOps, ZnxZero};
+use backend::{Backend, Module, ScalarZnx, ScratchOwned, Stats, VecZnxSubScalarInplace, ZnxZero};
 
 use crate::{GGLWECiphertext, GLWECiphertext, GLWEDecryptFamily, GLWEPlaintext, GLWESecretExec, Infos};
 

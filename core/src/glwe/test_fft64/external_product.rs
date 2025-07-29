@@ -1,4 +1,4 @@
-use backend::{Backend, FillUniform, Module, ScalarZnx, ScalarZnxAlloc, ScratchOwned, VecZnxOps, ZnxViewMut, FFT64};
+use backend::{Backend, FFT64, FillUniform, Module, ScalarZnx, ScalarZnxAlloc, ScratchOwned, VecZnxRotateInplace, ZnxViewMut};
 use sampling::source::Source;
 
 use crate::{

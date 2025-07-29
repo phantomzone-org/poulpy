@@ -1,8 +1,8 @@
 use backend::{
-    Backend, Module, Scratch, SvpApply, SvpPPol, SvpPPolAllocBytes, VecZnxAlloc, VecZnxBigAddSmallInplace, VecZnxBigAllocBytes,
-    VecZnxBigNormalizeTmpBytes, VecZnxDftAdd, VecZnxDftAddInplace, VecZnxDftAllocBytes, VecZnxDftFromVecZnx,
-    VecZnxDftSubABInplace, VecZnxDftToVecZnxBig, VecZnxDftToVecZnxBigTmpBytes, VecZnxDftZero, VecZnxOps, VmpApplyTmpBytes,
-    ZnxView, ZnxZero,
+    Backend, Module, Scratch, SvpApply, SvpPPol, SvpPPolAllocBytes, VecZnxAllocBytes, VecZnxBigAddSmallInplace,
+    VecZnxBigAllocBytes, VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftAdd, VecZnxDftAddInplace, VecZnxDftAllocBytes,
+    VecZnxDftFromVecZnx, VecZnxDftSubABInplace, VecZnxDftToVecZnxBig, VecZnxDftToVecZnxBigTmpBytes, VecZnxDftZero, VecZnxRotate,
+    VmpApplyTmpBytes, ZnxView, ZnxZero,
 };
 use itertools::izip;
 
@@ -55,7 +55,7 @@ where
 
         let acc: usize;
         if extension_factor > 1 {
-            acc = module.bytes_of_vec_znx(cols, k_res.div_ceil(basek)) * extension_factor;
+            acc = module.vec_znx_alloc_bytes(cols, k_res.div_ceil(basek)) * extension_factor;
         } else {
             acc = 0;
         }

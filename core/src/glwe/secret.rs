@@ -1,5 +1,6 @@
 use backend::{
-    Backend, Module, ScalarZnx, ScalarZnxAlloc, ScalarZnxAllocBytes, SvpPPol, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare, ZnxInfos, ZnxZero
+    Backend, Module, ScalarZnx, ScalarZnxAlloc, ScalarZnxAllocBytes, SvpPPol, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare,
+    ZnxInfos, ZnxZero,
 };
 use sampling::source::Source;
 

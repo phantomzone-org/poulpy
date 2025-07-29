@@ -286,9 +286,8 @@ fn decode_coeff_i64<D: AsRef<[u8]>>(a: &VecZnx<D>, col_i: usize, basek: usize, k
 
 #[cfg(test)]
 mod tests {
-    use crate::vec_znx_ops::*;
-    use crate::znx_base::*;
     use crate::{Decoding, Encoding, FFT64, Module, VecZnx, znx_base::ZnxInfos};
+    use crate::{VecZnxAlloc, znx_base::*};
     use itertools::izip;
     use sampling::source::Source;
 
@@ -299,7 +298,7 @@ mod tests {
         let basek: usize = 17;
         let size: usize = 5;
         let k: usize = size * basek - 5;
-        let mut a: VecZnx<_> = module.new_vec_znx(2, size);
+        let mut a: VecZnx<_> = module.vec_znx_alloc(2, size);
         let mut source: Source = Source::new([0u8; 32]);
         let raw: &mut [i64] = a.raw_mut();
         raw.iter_mut().enumerate().for_each(|(i, x)| *x = i as i64);
@@ -321,7 +320,7 @@ mod tests {
         let basek: usize = 17;
         let size: usize = 5;
         for k in [1, basek / 2, size * basek - 5] {
-            let mut a: VecZnx<_> = module.new_vec_znx(2, size);
+            let mut a: VecZnx<_> = module.vec_znx_alloc(2, size);
             let mut source = Source::new([0u8; 32]);
             let raw: &mut [i64] = a.raw_mut();
             raw.iter_mut().enumerate().for_each(|(i, x)| *x = i as i64);

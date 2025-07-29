@@ -2,7 +2,6 @@ use itertools::izip;
 
 use crate::DataView;
 use crate::DataViewMut;
-use crate::ScalarZnx;
 use crate::Scratch;
 use crate::ZnxSliceSize;
 use crate::ZnxZero;
@@ -231,19 +230,6 @@ impl<D> VecZnx<D> {
             cols,
             size,
             max_size: size,
-        }
-    }
-
-    pub fn to_scalar_znx(self) -> ScalarZnx<D> {
-        debug_assert_eq!(
-            self.size, 1,
-            "cannot convert VecZnx to ScalarZnx if cols: {} != 1",
-            self.cols
-        );
-        ScalarZnx {
-            data: self.data,
-            n: self.n,
-            cols: self.cols,
         }
     }
 }

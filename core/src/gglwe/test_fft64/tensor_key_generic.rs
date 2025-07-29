@@ -1,4 +1,4 @@
-use backend::{Backend, Module, ScratchOwned, Stats, VecZnxBigAlloc, VecZnxDftAlloc, VecZnxOps};
+use backend::{Backend, Module, ScratchOwned, Stats, VecZnxBigAlloc, VecZnxDftAlloc, VecZnxSubScalarInplace};
 use sampling::source::Source;
 
 use crate::{

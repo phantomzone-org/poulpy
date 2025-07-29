@@ -1,4 +1,4 @@
-use backend::{Backend, Module, VecZnx, VecZnxAlloc, VecZnxToMut, VecZnxToRef};
+use backend::{Backend, Module, VecZnx, VecZnxAlloc, VecZnxAllocBytes, VecZnxToMut, VecZnxToRef};
 
 use crate::{GLWECiphertext, GLWECiphertextToMut, GLWECiphertextToRef, GLWEOps, Infos, SetMetaData};
 
@@ -37,14 +37,14 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> SetMetaData for GLWEPlaintext<DataSelf
 impl GLWEPlaintext<Vec<u8>> {
     pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize) -> Self {
         Self {
-            data: module.new_vec_znx(1, k.div_ceil(basek)),
+            data: module.vec_znx_alloc(1, k.div_ceil(basek)),
             basek: basek,
             k,
         }
     }
 
     pub fn byte_of<B: Backend>(module: &Module<B>, basek: usize, k: usize) -> usize {
-        module.bytes_of_vec_znx(1, k.div_ceil(basek))
+        module.vec_znx_alloc_bytes(1, k.div_ceil(basek))
     }
 }
 

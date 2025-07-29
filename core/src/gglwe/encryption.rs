@@ -1,5 +1,7 @@
 use backend::{
-    Backend, Module, ScalarZnx, ScalarZnxAllocBytes, ScalarZnxOps, Scratch, SvpApply, VecZnxBigAllocBytes, VecZnxDftToVecZnxBigTmpA, VecZnxOps, VecZnxScratch, ZnxInfos, ZnxZero
+    Backend, Module, ScalarZnx, ScalarZnxAllocBytes, ScalarZnxOps, Scratch, SvpApply, VecZnxAddScalarInplace,
+    VecZnxBigAllocBytes, VecZnxDftToVecZnxBigTmpA, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSwithcDegree, ZnxInfos,
+    ZnxZero,
 };
 use sampling::source::Source;
 
@@ -183,14 +185,14 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<DataSelf> {
 
         let (mut sk_in_tmp, scratch1) = scratch.tmp_scalar_znx(module, sk_in.rank());
         (0..sk_in.rank()).for_each(|i| {
-            module.switch_degree(&mut sk_in_tmp, i, &sk_in.data, i);
+            module.vec_znx_switch_degree(&mut sk_in_tmp, i, &sk_in.data, i);
         });
 
         let (mut sk_out_tmp, scratch2) = scratch1.tmp_glwe_secret_exec(module, sk_out.rank());
         {
             let (mut tmp, _) = scratch2.tmp_scalar_znx(module, 1);
             (0..sk_out.rank()).for_each(|i| {
-                module.switch_degree(&mut tmp, 0, &sk_out.data, i);
+                module.vec_znx_switch_degree(&mut tmp, 0, &sk_out.data, i);
                 module.svp_prepare(&mut sk_out_tmp.data, i, &tmp, 0);
             });
         }

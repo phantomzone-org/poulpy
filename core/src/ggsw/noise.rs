@@ -1,6 +1,7 @@
 use backend::{
-    Backend, Module, ScalarZnx, ScratchOwned, Stats, VecZnxBig, VecZnxBigAlloc, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
-    VecZnxDft, VecZnxDftAlloc, VecZnxDftToVecZnxBigTmpA, VecZnxOps, VecZnxScratch, ZnxZero,
+    Backend, Module, ScalarZnx, ScratchOwned, Stats, VecZnxAddScalarInplace, VecZnxBig, VecZnxBigAlloc, VecZnxBigNormalize,
+    VecZnxBigNormalizeTmpBytes, VecZnxDft, VecZnxDftAlloc, VecZnxDftToVecZnxBigTmpA, VecZnxNormalizeTmpBytes, VecZnxSubABInplace,
+    ZnxZero,
 };
 
 use crate::{GGSWCiphertext, GLWECiphertext, GLWEDecryptFamily, GLWEPlaintext, GLWESecretExec, Infos};

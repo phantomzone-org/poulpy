@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 
-use backend::{Backend, FFT64, FillUniform, Module, ScratchOwned, Stats, VecZnxOps, ZnxView, ZnxViewMut};
+use backend::{
+    Backend, FFT64, FillUniform, Module, ScratchOwned, Stats, VecZnxNormalizeInplace, VecZnxSubABInplace, ZnxView, ZnxViewMut,
+};
 use sampling::source::Source;
 
 use crate::{

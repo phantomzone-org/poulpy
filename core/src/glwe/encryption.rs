@@ -1,5 +1,8 @@
 use backend::{
-    AddNormal, Backend, FillUniform, Module, ScalarZnxAllocBytes, Scratch, SvpApply, SvpApplyInplace, SvpPPolAllocBytes, SvpPrepare, VecZnxBig, VecZnxBigAddNormal, VecZnxBigAddSmallInplace, VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume, VecZnxOps, VecZnxScratch, ZnxZero
+    AddNormal, Backend, FillUniform, Module, ScalarZnxAllocBytes, Scratch, SvpApply, SvpApplyInplace, SvpPPolAllocBytes,
+    SvpPrepare, VecZnxAddInplace, VecZnxBig, VecZnxBigAddNormal, VecZnxBigAddSmallInplace, VecZnxBigAllocBytes,
+    VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume, VecZnxNormalize,
+    VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSubABInplace, ZnxZero,
 };
 use sampling::source::Source;
 

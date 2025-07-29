@@ -13,3 +13,4 @@ rand_distr = {workspace = true}
 rand_core = {workspace = true}
 sampling = { path = "../sampling" }
 utils = { path = "../utils" }
+paste = "1.0.15"

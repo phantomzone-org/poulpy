@@ -12,7 +12,6 @@ mod svp_ppol;
 mod vec_znx;
 mod vec_znx_big;
 mod vec_znx_dft;
-mod vec_znx_ops;
 mod vmp_pmat;
 mod znx_base;
 
@@ -27,7 +26,6 @@ pub use svp_ppol::*;
 pub use vec_znx::*;
 pub use vec_znx_big::*;
 pub use vec_znx_dft::*;
-pub use vec_znx_ops::*;
 pub use vmp_pmat::*;
 pub use znx_base::*;
 
@@ -271,7 +269,7 @@ impl Scratch {
     }
 
     pub fn tmp_vec_znx<B: Backend>(&mut self, module: &Module<B>, cols: usize, size: usize) -> (VecZnx<&mut [u8]>, &mut Self) {
-        let (take_slice, rem_slice) = Self::take_slice_aligned(&mut self.data, module.bytes_of_vec_znx(cols, size));
+        let (take_slice, rem_slice) = Self::take_slice_aligned(&mut self.data, module.vec_znx_alloc_bytes(cols, size));
         (
             VecZnx::from_data(take_slice, module.n(), cols, size),
             Self::new(rem_slice),

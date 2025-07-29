@@ -1,4 +1,4 @@
-use backend::{Backend, Module, VecZnx, VecZnxAlloc, VecZnxOps, ZnxInfos, ZnxViewMut, alloc_aligned};
+use backend::{Backend, Module, VecZnx, VecZnxAlloc, VecZnxCopy, VecZnxSwithcDegree, ZnxInfos, ZnxViewMut, alloc_aligned};
 
 pub struct LookUpTable {
     pub(crate) data: Vec<VecZnx<Vec<u8>>>,
@@ -19,7 +19,7 @@ impl LookUpTable {
         let size: usize = k.div_ceil(basek);
         let mut data: Vec<VecZnx<Vec<u8>>> = Vec::with_capacity(extension_factor);
         (0..extension_factor).for_each(|_| {
-            data.push(module.new_vec_znx(1, size));
+            data.push(module.vec_znx_alloc(1, size));
         });
         Self { data, basek, k }
     }
@@ -81,7 +81,7 @@ impl LookUpTable {
 
         if self.extension_factor() > 1 {
             (0..self.extension_factor()).for_each(|i| {
-                module.switch_degree(&mut self.data[i], 0, &lut_full, 0);
+                module.vec_znx_switch_degree(&mut self.data[i], 0, &lut_full, 0);
                 if i < self.extension_factor() {
                     lut_full.rotate(-1);
                 }
