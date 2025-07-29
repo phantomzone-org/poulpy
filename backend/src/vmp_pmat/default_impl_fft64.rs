@@ -1,7 +1,8 @@
 use crate::{
-    Backend, FFT64, MatZnx, MatZnxToRef, Module, Scratch, VecZnxDft, VecZnxDftToMut, VecZnxDftToRef, VmpApply, VmpApplyAdd,
-    VmpApplyAddTmpBytes, VmpApplyTmpBytes, VmpPMat, VmpPMatAlloc, VmpPMatAllocBytes, VmpPMatBytesOf, VmpPMatFromBytes,
-    VmpPMatOwned, VmpPMatPrepare, VmpPMatToMut, VmpPMatToRef, VmpPrepareTmpBytes, ZnxInfos, ZnxView, ZnxViewMut,
+    Backend, FFT64, MatZnx, MatZnxToRef, Module, Scratch, VecZnxDft, VecZnxDftToMut, VecZnxDftToRef, VmpApplyAddImpl,
+    VmpApplyAddTmpBytesImpl, VmpApplyImpl, VmpApplyTmpBytes, VmpApplyTmpBytesImpl, VmpPMat, VmpPMatAllocBytesImpl,
+    VmpPMatAllocImpl, VmpPMatBytesOf, VmpPMatFromBytesImpl, VmpPMatOwned, VmpPMatPrepareImpl, VmpPMatToMut, VmpPMatToRef,
+    VmpPrepareTmpBytes, VmpPrepareTmpBytesImpl, ZnxInfos, ZnxView, ZnxViewMut,
     ffi::{vec_znx_dft::vec_znx_dft_t, vmp},
 };
 
@@ -17,39 +18,51 @@ impl<D: AsRef<[u8]>, B: Backend> VmpPMatBytesOf for VmpPMat<D, B> {
     }
 }
 
-impl VmpPMatAllocBytes for Module<FFT64> {
-    fn vmp_pmat_alloc_bytes(&self, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize {
-        VmpPMat::<Vec<u8>, FFT64>::bytes_of(self.n(), rows, cols_in, cols_out, size)
+impl VmpPMatAllocBytesImpl<FFT64> for () {
+    fn vmp_pmat_alloc_bytes_impl(module: &Module<FFT64>, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize {
+        VmpPMat::<Vec<u8>, FFT64>::bytes_of(module.n(), rows, cols_in, cols_out, size)
     }
 }
 
-impl VmpPMatFromBytes<FFT64> for Module<FFT64> {
-    fn vmp_pmat_from_bytes(
-        &self,
+impl VmpPMatFromBytesImpl<FFT64> for () {
+    fn vmp_pmat_from_bytes_impl(
+        module: &Module<FFT64>,
         rows: usize,
         cols_in: usize,
         cols_out: usize,
         size: usize,
         bytes: Vec<u8>,
     ) -> VmpPMatOwned<FFT64> {
-        VmpPMatOwned::from_bytes(self.n(), rows, cols_in, cols_out, size, bytes)
+        VmpPMatOwned::from_bytes(module.n(), rows, cols_in, cols_out, size, bytes)
     }
 }
 
-impl VmpPMatAlloc<FFT64> for Module<FFT64> {
-    fn vmp_pmat_alloc(&self, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> VmpPMatOwned<FFT64> {
-        VmpPMatOwned::alloc(self.n(), rows, cols_in, cols_out, size)
+impl VmpPMatAllocImpl<FFT64> for () {
+    fn vmp_pmat_alloc_impl(
+        module: &Module<FFT64>,
+        rows: usize,
+        cols_in: usize,
+        cols_out: usize,
+        size: usize,
+    ) -> VmpPMatOwned<FFT64> {
+        VmpPMatOwned::alloc(module.n(), rows, cols_in, cols_out, size)
     }
 }
 
-impl VmpPrepareTmpBytes for Module<FFT64> {
-    fn vmp_prepare_scratch_bytes(&self, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize {
-        unsafe { vmp::vmp_prepare_tmp_bytes(self.ptr, (rows * cols_in) as u64, (cols_out * size) as u64) as usize }
+impl VmpPrepareTmpBytesImpl<FFT64> for () {
+    fn vmp_prepare_tmp_bytes_impl(module: &Module<FFT64>, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize {
+        unsafe {
+            vmp::vmp_prepare_tmp_bytes(
+                module.ptr,
+                (rows * cols_in) as u64,
+                (cols_out * size) as u64,
+            ) as usize
+        }
     }
 }
 
-impl VmpPMatPrepare<FFT64> for Module<FFT64> {
-    fn vmp_prepare<R, A>(&self, res: &mut R, a: &A, scratch: &mut Scratch)
+impl VmpPMatPrepareImpl<FFT64> for () {
+    fn vmp_prepare_impl<R, A>(module: &Module<FFT64>, res: &mut R, a: &A, scratch: &mut Scratch)
     where
         R: VmpPMatToMut<FFT64>,
         A: MatZnxToRef,
@@ -59,8 +72,8 @@ impl VmpPMatPrepare<FFT64> for Module<FFT64> {
 
         #[cfg(debug_assertions)]
         {
-            assert_eq!(res.n(), self.n());
-            assert_eq!(a.n(), self.n());
+            assert_eq!(res.n(), module.n());
+            assert_eq!(a.n(), module.n());
             assert_eq!(
                 res.cols_in(),
                 a.cols_in(),
@@ -91,11 +104,11 @@ impl VmpPMatPrepare<FFT64> for Module<FFT64> {
             );
         }
 
-        let (tmp_bytes, _) = scratch.tmp_slice(self.vmp_prepare_scratch_bytes(a.rows(), a.cols_in(), a.cols_out(), a.size()));
+        let (tmp_bytes, _) = scratch.tmp_slice(module.vmp_prepare_tmp_bytes(a.rows(), a.cols_in(), a.cols_out(), a.size()));
 
         unsafe {
             vmp::vmp_prepare_contiguous(
-                self.ptr,
+                module.ptr,
                 res.as_mut_ptr() as *mut vmp::vmp_pmat_t,
                 a.as_ptr(),
                 (a.rows() * a.cols_in()) as u64,
@@ -106,9 +119,9 @@ impl VmpPMatPrepare<FFT64> for Module<FFT64> {
     }
 }
 
-impl VmpApplyTmpBytes for Module<FFT64> {
-    fn vmp_apply_tmp_bytes(
-        &self,
+impl VmpApplyTmpBytesImpl<FFT64> for () {
+    fn vmp_apply_tmp_bytes_impl(
+        module: &Module<FFT64>,
         res_size: usize,
         a_size: usize,
         b_rows: usize,
@@ -118,7 +131,7 @@ impl VmpApplyTmpBytes for Module<FFT64> {
     ) -> usize {
         unsafe {
             vmp::vmp_apply_dft_to_dft_tmp_bytes(
-                self.ptr,
+                module.ptr,
                 (res_size * b_cols_out) as u64,
                 (a_size * b_cols_in) as u64,
                 (b_rows * b_cols_in) as u64,
@@ -128,8 +141,8 @@ impl VmpApplyTmpBytes for Module<FFT64> {
     }
 }
 
-impl VmpApply<FFT64> for Module<FFT64> {
-    fn vmp_apply<R, A, C>(&self, res: &mut R, a: &A, b: &C, scratch: &mut Scratch)
+impl VmpApplyImpl<FFT64> for () {
+    fn vmp_apply_impl<R, A, C>(module: &Module<FFT64>, res: &mut R, a: &A, b: &C, scratch: &mut Scratch)
     where
         R: VecZnxDftToMut<FFT64>,
         A: VecZnxDftToRef<FFT64>,
@@ -141,9 +154,9 @@ impl VmpApply<FFT64> for Module<FFT64> {
 
         #[cfg(debug_assertions)]
         {
-            assert_eq!(res.n(), self.n());
-            assert_eq!(b.n(), self.n());
-            assert_eq!(a.n(), self.n());
+            assert_eq!(res.n(), module.n());
+            assert_eq!(b.n(), module.n());
+            assert_eq!(a.n(), module.n());
             assert_eq!(
                 res.cols(),
                 b.cols_out(),
@@ -160,7 +173,7 @@ impl VmpApply<FFT64> for Module<FFT64> {
             );
         }
 
-        let (tmp_bytes, _) = scratch.tmp_slice(self.vmp_apply_tmp_bytes(
+        let (tmp_bytes, _) = scratch.tmp_slice(module.vmp_apply_tmp_bytes(
             res.size(),
             a.size(),
             b.rows(),
@@ -170,7 +183,7 @@ impl VmpApply<FFT64> for Module<FFT64> {
         ));
         unsafe {
             vmp::vmp_apply_dft_to_dft(
-                self.ptr,
+                module.ptr,
                 res.as_mut_ptr() as *mut vec_znx_dft_t,
                 (res.size() * res.cols()) as u64,
                 a.as_ptr() as *const vec_znx_dft_t,
@@ -184,9 +197,9 @@ impl VmpApply<FFT64> for Module<FFT64> {
     }
 }
 
-impl VmpApplyAddTmpBytes for Module<FFT64> {
-    fn vmp_apply_add_tmp_bytes(
-        &self,
+impl VmpApplyAddTmpBytesImpl<FFT64> for () {
+    fn vmp_apply_add_tmp_bytes_impl(
+        module: &Module<FFT64>,
         res_size: usize,
         a_size: usize,
         b_rows: usize,
@@ -196,7 +209,7 @@ impl VmpApplyAddTmpBytes for Module<FFT64> {
     ) -> usize {
         unsafe {
             vmp::vmp_apply_dft_to_dft_tmp_bytes(
-                self.ptr,
+                module.ptr,
                 (res_size * b_cols_out) as u64,
                 (a_size * b_cols_in) as u64,
                 (b_rows * b_cols_in) as u64,
@@ -206,8 +219,8 @@ impl VmpApplyAddTmpBytes for Module<FFT64> {
     }
 }
 
-impl VmpApplyAdd<FFT64> for Module<FFT64> {
-    fn vmp_apply_add<R, A, C>(&self, res: &mut R, a: &A, b: &C, scale: usize, scratch: &mut Scratch)
+impl VmpApplyAddImpl<FFT64> for () {
+    fn vmp_apply_add_impl<R, A, C>(module: &Module<FFT64>, res: &mut R, a: &A, b: &C, scale: usize, scratch: &mut Scratch)
     where
         R: VecZnxDftToMut<FFT64>,
         A: VecZnxDftToRef<FFT64>,
@@ -219,9 +232,9 @@ impl VmpApplyAdd<FFT64> for Module<FFT64> {
 
         #[cfg(debug_assertions)]
         {
-            assert_eq!(res.n(), self.n());
-            assert_eq!(b.n(), self.n());
-            assert_eq!(a.n(), self.n());
+            assert_eq!(res.n(), module.n());
+            assert_eq!(b.n(), module.n());
+            assert_eq!(a.n(), module.n());
             assert_eq!(
                 res.cols(),
                 b.cols_out(),
@@ -238,7 +251,7 @@ impl VmpApplyAdd<FFT64> for Module<FFT64> {
             );
         }
 
-        let (tmp_bytes, _) = scratch.tmp_slice(self.vmp_apply_tmp_bytes(
+        let (tmp_bytes, _) = scratch.tmp_slice(module.vmp_apply_tmp_bytes(
             res.size(),
             a.size(),
             b.rows(),
@@ -248,7 +261,7 @@ impl VmpApplyAdd<FFT64> for Module<FFT64> {
         ));
         unsafe {
             vmp::vmp_apply_dft_to_dft_add(
-                self.ptr,
+                module.ptr,
                 res.as_mut_ptr() as *mut vec_znx_dft_t,
                 (res.size() * res.cols()) as u64,
                 a.as_ptr() as *const vec_znx_dft_t,

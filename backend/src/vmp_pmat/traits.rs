@@ -13,7 +13,7 @@ pub trait VmpPMatFromBytes<B: Backend> {
 }
 
 pub trait VmpPrepareTmpBytes {
-    fn vmp_prepare_scratch_bytes(&self, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize;
+    fn vmp_prepare_tmp_bytes(&self, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize;
 }
 
 pub trait VmpPMatPrepare<B: Backend> {
