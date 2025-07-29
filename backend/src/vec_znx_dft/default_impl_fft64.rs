@@ -1,9 +1,10 @@
 use crate::{
-    FFT64, Module, Scratch, VecZnxBig, VecZnxBigToMut, VecZnxDft, VecZnxDftAdd, VecZnxDftAddInplace, VecZnxDftAlloc,
-    VecZnxDftAllocBytes, VecZnxDftBytesOf, VecZnxDftCopy, VecZnxDftFromBytes, VecZnxDftFromVecZnx, VecZnxDftOwned, VecZnxDftSub,
-    VecZnxDftSubABInplace, VecZnxDftSubBAInplace, VecZnxDftToMut, VecZnxDftToRef, VecZnxDftToVecZnxBig,
-    VecZnxDftToVecZnxBigConsume, VecZnxDftToVecZnxBigTmpA, VecZnxDftToVecZnxBigTmpBytes, VecZnxDftZero, VecZnxToRef, ZnxInfos,
-    ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero,
+    FFT64, Module, Scratch, VecZnxBig, VecZnxBigToMut, VecZnxDft, VecZnxDftAddImpl, VecZnxDftAddInplaceImpl,
+    VecZnxDftAllocBytesImpl, VecZnxDftAllocImpl, VecZnxDftBytesOf, VecZnxDftCopyImpl, VecZnxDftFromBytesImpl,
+    VecZnxDftFromVecZnxImpl, VecZnxDftOwned, VecZnxDftSubABInplaceImpl, VecZnxDftSubBAInplaceImpl, VecZnxDftSubImpl,
+    VecZnxDftToMut, VecZnxDftToRef, VecZnxDftToVecZnxBigConsumeImpl, VecZnxDftToVecZnxBigImpl, VecZnxDftToVecZnxBigTmpAImpl,
+    VecZnxDftToVecZnxBigTmpBytes, VecZnxDftToVecZnxBigTmpBytesImpl, VecZnxDftZeroImpl, VecZnxToRef, ZnxInfos, ZnxSliceSize,
+    ZnxView, ZnxViewMut, ZnxZero,
     ffi::{vec_znx_big, vec_znx_dft},
 };
 use std::fmt;
@@ -26,47 +27,53 @@ impl<D: AsRef<[u8]>> ZnxView for VecZnxDft<D, FFT64> {
     type Scalar = f64;
 }
 
-impl VecZnxDftFromBytes<FFT64> for Module<FFT64> {
-    fn vec_znx_dft_from_bytes(&self, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxDftOwned<FFT64> {
-        VecZnxDft::<Vec<u8>, FFT64>::from_bytes(self.n(), cols, size, bytes)
+impl VecZnxDftFromBytesImpl<FFT64> for () {
+    fn vec_znx_dft_from_bytes_impl(module: &Module<FFT64>, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxDftOwned<FFT64> {
+        VecZnxDft::<Vec<u8>, FFT64>::from_bytes(module.n(), cols, size, bytes)
     }
 }
 
-impl VecZnxDftAllocBytes for Module<FFT64> {
-    fn vec_znx_dft_alloc_bytes(&self, cols: usize, size: usize) -> usize {
-        VecZnxDft::<Vec<u8>, FFT64>::bytes_of(self.n(), cols, size)
+impl VecZnxDftAllocBytesImpl<FFT64> for () {
+    fn vec_znx_dft_alloc_bytes_impl(module: &Module<FFT64>, cols: usize, size: usize) -> usize {
+        VecZnxDft::<Vec<u8>, FFT64>::bytes_of(module.n(), cols, size)
     }
 }
 
-impl VecZnxDftAlloc<FFT64> for Module<FFT64> {
-    fn vec_znx_dft_alloc(&self, cols: usize, size: usize) -> VecZnxDftOwned<FFT64> {
-        VecZnxDftOwned::alloc(self.n(), cols, size)
+impl VecZnxDftAllocImpl<FFT64> for () {
+    fn vec_znx_dft_alloc_impl(module: &Module<FFT64>, cols: usize, size: usize) -> VecZnxDftOwned<FFT64> {
+        VecZnxDftOwned::alloc(module.n(), cols, size)
     }
 }
 
-impl VecZnxDftToVecZnxBigTmpBytes for Module<FFT64> {
-    fn vec_znx_dft_to_vec_znx_big_tmp_bytes(&self) -> usize {
-        unsafe { vec_znx_dft::vec_znx_idft_tmp_bytes(self.ptr) as usize }
+impl VecZnxDftToVecZnxBigTmpBytesImpl<FFT64> for () {
+    fn vec_znx_dft_to_vec_znx_big_tmp_bytes_impl(module: &Module<FFT64>) -> usize {
+        unsafe { vec_znx_dft::vec_znx_idft_tmp_bytes(module.ptr) as usize }
     }
 }
 
-impl VecZnxDftToVecZnxBig<FFT64> for Module<FFT64> {
-    fn vec_znx_dft_to_vec_znx_big<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch)
-    where
+impl VecZnxDftToVecZnxBigImpl<FFT64> for () {
+    fn vec_znx_dft_to_vec_znx_big_impl<R, A>(
+        module: &Module<FFT64>,
+        res: &mut R,
+        res_col: usize,
+        a: &A,
+        a_col: usize,
+        scratch: &mut Scratch,
+    ) where
         R: VecZnxBigToMut<FFT64>,
         A: VecZnxDftToRef<FFT64>,
     {
         let mut res_mut: VecZnxBig<&mut [u8], FFT64> = res.to_mut();
         let a_ref: VecZnxDft<&[u8], FFT64> = a.to_ref();
 
-        let (tmp_bytes, _) = scratch.tmp_slice(self.vec_znx_dft_to_vec_znx_big_tmp_bytes());
+        let (tmp_bytes, _) = scratch.tmp_slice(module.vec_znx_dft_to_vec_znx_big_tmp_bytes());
 
         let min_size: usize = res_mut.size().min(a_ref.size());
 
         unsafe {
             (0..min_size).for_each(|j| {
                 vec_znx_dft::vec_znx_idft(
-                    self.ptr,
+                    module.ptr,
                     res_mut.at_mut_ptr(res_col, j) as *mut vec_znx_big::vec_znx_big_t,
                     1 as u64,
                     a_ref.at_ptr(a_col, j) as *const vec_znx_dft::vec_znx_dft_t,
@@ -81,8 +88,8 @@ impl VecZnxDftToVecZnxBig<FFT64> for Module<FFT64> {
     }
 }
 
-impl VecZnxDftToVecZnxBigTmpA<FFT64> for Module<FFT64> {
-    fn vec_znx_dft_to_vec_znx_big_tmp_a<R, A>(&self, res: &mut R, res_col: usize, a: &mut A, a_col: usize)
+impl VecZnxDftToVecZnxBigTmpAImpl<FFT64> for () {
+    fn vec_znx_dft_to_vec_znx_big_tmp_a_impl<R, A>(module: &Module<FFT64>, res: &mut R, res_col: usize, a: &mut A, a_col: usize)
     where
         R: VecZnxBigToMut<FFT64>,
         A: VecZnxDftToMut<FFT64>,
@@ -95,7 +102,7 @@ impl VecZnxDftToVecZnxBigTmpA<FFT64> for Module<FFT64> {
         unsafe {
             (0..min_size).for_each(|j| {
                 vec_znx_dft::vec_znx_idft_tmp_a(
-                    self.ptr,
+                    module.ptr,
                     res_mut.at_mut_ptr(res_col, j) as *mut vec_znx_big::vec_znx_big_t,
                     1 as u64,
                     a_mut.at_mut_ptr(a_col, j) as *mut vec_znx_dft::vec_znx_dft_t,
@@ -109,8 +116,8 @@ impl VecZnxDftToVecZnxBigTmpA<FFT64> for Module<FFT64> {
     }
 }
 
-impl VecZnxDftToVecZnxBigConsume<FFT64> for Module<FFT64> {
-    fn vec_znx_dft_to_vec_znx_big_consume<D>(&self, mut a: VecZnxDft<D, FFT64>) -> VecZnxBig<D, FFT64>
+impl VecZnxDftToVecZnxBigConsumeImpl<FFT64> for () {
+    fn vec_znx_dft_to_vec_znx_big_consume_impl<D>(module: &Module<FFT64>, mut a: VecZnxDft<D, FFT64>) -> VecZnxBig<D, FFT64>
     where
         VecZnxDft<D, FFT64>: VecZnxDftToMut<FFT64>,
     {
@@ -121,7 +128,7 @@ impl VecZnxDftToVecZnxBigConsume<FFT64> for Module<FFT64> {
             (0..a_mut.size()).for_each(|j| {
                 (0..a_mut.cols()).for_each(|i| {
                     vec_znx_dft::vec_znx_idft_tmp_a(
-                        self.ptr,
+                        module.ptr,
                         a_mut.at_mut_ptr(i, j) as *mut vec_znx_big::vec_znx_big_t,
                         1 as u64,
                         a_mut.at_mut_ptr(i, j) as *mut vec_znx_dft::vec_znx_dft_t,
@@ -135,9 +142,16 @@ impl VecZnxDftToVecZnxBigConsume<FFT64> for Module<FFT64> {
     }
 }
 
-impl VecZnxDftFromVecZnx<FFT64> for Module<FFT64> {
-    fn vec_znx_dft_from_vec_znx<R, A>(&self, step: usize, offset: usize, res: &mut R, res_col: usize, a: &A, a_col: usize)
-    where
+impl VecZnxDftFromVecZnxImpl<FFT64> for () {
+    fn vec_znx_dft_from_vec_znx_impl<R, A>(
+        module: &Module<FFT64>,
+        step: usize,
+        offset: usize,
+        res: &mut R,
+        res_col: usize,
+        a: &A,
+        a_col: usize,
+    ) where
         R: VecZnxDftToMut<FFT64>,
         A: VecZnxToRef,
     {
@@ -150,7 +164,7 @@ impl VecZnxDftFromVecZnx<FFT64> for Module<FFT64> {
                 let limb: usize = offset + j * step;
                 if limb < a_ref.size() {
                     vec_znx_dft::vec_znx_dft(
-                        self.ptr,
+                        module.ptr,
                         res_mut.at_mut_ptr(res_col, j) as *mut vec_znx_dft::vec_znx_dft_t,
                         1 as u64,
                         a_ref.at_ptr(a_col, limb),
@@ -166,9 +180,16 @@ impl VecZnxDftFromVecZnx<FFT64> for Module<FFT64> {
     }
 }
 
-impl VecZnxDftAdd<FFT64> for Module<FFT64> {
-    fn vec_znx_dft_add<R, A, D>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &D, b_col: usize)
-    where
+impl VecZnxDftAddImpl<FFT64> for () {
+    fn vec_znx_dft_add_impl<R, A, D>(
+        module: &Module<FFT64>,
+        res: &mut R,
+        res_col: usize,
+        a: &A,
+        a_col: usize,
+        b: &D,
+        b_col: usize,
+    ) where
         R: VecZnxDftToMut<FFT64>,
         A: VecZnxDftToRef<FFT64>,
         D: VecZnxDftToRef<FFT64>,
@@ -182,7 +203,7 @@ impl VecZnxDftAdd<FFT64> for Module<FFT64> {
         unsafe {
             (0..min_size).for_each(|j| {
                 vec_znx_dft::vec_dft_add(
-                    self.ptr,
+                    module.ptr,
                     res_mut.at_mut_ptr(res_col, j) as *mut vec_znx_dft::vec_znx_dft_t,
                     1,
                     a_ref.at_ptr(a_col, j) as *const vec_znx_dft::vec_znx_dft_t,
@@ -198,8 +219,8 @@ impl VecZnxDftAdd<FFT64> for Module<FFT64> {
     }
 }
 
-impl VecZnxDftAddInplace<FFT64> for Module<FFT64> {
-    fn vec_znx_dft_add_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+impl VecZnxDftAddInplaceImpl<FFT64> for () {
+    fn vec_znx_dft_add_inplace_impl<R, A>(module: &Module<FFT64>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxDftToMut<FFT64>,
         A: VecZnxDftToRef<FFT64>,
@@ -212,7 +233,7 @@ impl VecZnxDftAddInplace<FFT64> for Module<FFT64> {
         unsafe {
             (0..min_size).for_each(|j| {
                 vec_znx_dft::vec_dft_add(
-                    self.ptr,
+                    module.ptr,
                     res_mut.at_mut_ptr(res_col, j) as *mut vec_znx_dft::vec_znx_dft_t,
                     1,
                     res_mut.at_ptr(res_col, j) as *const vec_znx_dft::vec_znx_dft_t,
@@ -225,9 +246,16 @@ impl VecZnxDftAddInplace<FFT64> for Module<FFT64> {
     }
 }
 
-impl VecZnxDftSub<FFT64> for Module<FFT64> {
-    fn vec_znx_dft_sub<R, A, D>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &D, b_col: usize)
-    where
+impl VecZnxDftSubImpl<FFT64> for () {
+    fn vec_znx_dft_sub_impl<R, A, D>(
+        module: &Module<FFT64>,
+        res: &mut R,
+        res_col: usize,
+        a: &A,
+        a_col: usize,
+        b: &D,
+        b_col: usize,
+    ) where
         R: VecZnxDftToMut<FFT64>,
         A: VecZnxDftToRef<FFT64>,
         D: VecZnxDftToRef<FFT64>,
@@ -241,7 +269,7 @@ impl VecZnxDftSub<FFT64> for Module<FFT64> {
         unsafe {
             (0..min_size).for_each(|j| {
                 vec_znx_dft::vec_dft_sub(
-                    self.ptr,
+                    module.ptr,
                     res_mut.at_mut_ptr(res_col, j) as *mut vec_znx_dft::vec_znx_dft_t,
                     1,
                     a_ref.at_ptr(a_col, j) as *const vec_znx_dft::vec_znx_dft_t,
@@ -257,8 +285,8 @@ impl VecZnxDftSub<FFT64> for Module<FFT64> {
     }
 }
 
-impl VecZnxDftSubABInplace<FFT64> for Module<FFT64> {
-    fn vec_znx_dft_sub_ab_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+impl VecZnxDftSubABInplaceImpl<FFT64> for () {
+    fn vec_znx_dft_sub_ab_inplace_impl<R, A>(module: &Module<FFT64>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxDftToMut<FFT64>,
         A: VecZnxDftToRef<FFT64>,
@@ -271,7 +299,7 @@ impl VecZnxDftSubABInplace<FFT64> for Module<FFT64> {
         unsafe {
             (0..min_size).for_each(|j| {
                 vec_znx_dft::vec_dft_sub(
-                    self.ptr,
+                    module.ptr,
                     res_mut.at_mut_ptr(res_col, j) as *mut vec_znx_dft::vec_znx_dft_t,
                     1,
                     res_mut.at_ptr(res_col, j) as *const vec_znx_dft::vec_znx_dft_t,
@@ -284,8 +312,8 @@ impl VecZnxDftSubABInplace<FFT64> for Module<FFT64> {
     }
 }
 
-impl VecZnxDftSubBAInplace<FFT64> for Module<FFT64> {
-    fn vec_znx_dft_sub_ba_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+impl VecZnxDftSubBAInplaceImpl<FFT64> for () {
+    fn vec_znx_dft_sub_ba_inplace_impl<R, A>(module: &Module<FFT64>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxDftToMut<FFT64>,
         A: VecZnxDftToRef<FFT64>,
@@ -298,7 +326,7 @@ impl VecZnxDftSubBAInplace<FFT64> for Module<FFT64> {
         unsafe {
             (0..min_size).for_each(|j| {
                 vec_znx_dft::vec_dft_sub(
-                    self.ptr,
+                    module.ptr,
                     res_mut.at_mut_ptr(res_col, j) as *mut vec_znx_dft::vec_znx_dft_t,
                     1,
                     a_ref.at_ptr(a_col, j) as *const vec_znx_dft::vec_znx_dft_t,
@@ -311,9 +339,16 @@ impl VecZnxDftSubBAInplace<FFT64> for Module<FFT64> {
     }
 }
 
-impl VecZnxDftCopy<FFT64> for Module<FFT64> {
-    fn vec_znx_dft_copy<R, A>(&self, step: usize, offset: usize, res: &mut R, res_col: usize, a: &A, a_col: usize)
-    where
+impl VecZnxDftCopyImpl<FFT64> for () {
+    fn vec_znx_dft_copy_impl<R, A>(
+        _module: &Module<FFT64>,
+        step: usize,
+        offset: usize,
+        res: &mut R,
+        res_col: usize,
+        a: &A,
+        a_col: usize,
+    ) where
         R: VecZnxDftToMut<FFT64>,
         A: VecZnxDftToRef<FFT64>,
     {
@@ -337,8 +372,8 @@ impl VecZnxDftCopy<FFT64> for Module<FFT64> {
     }
 }
 
-impl VecZnxDftZero<FFT64> for Module<FFT64> {
-    fn vec_znx_dft_zero<R>(&self, res: &mut R)
+impl VecZnxDftZeroImpl<FFT64> for () {
+    fn vec_znx_dft_zero_impl<R>(_module: &Module<FFT64>, res: &mut R)
     where
         R: VecZnxDftToMut<FFT64>,
     {

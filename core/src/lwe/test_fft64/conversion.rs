@@ -22,7 +22,7 @@ fn lwe_to_glwe() {
 
 pub(crate) fn test_lwe_to_glwe<B: Backend>(module: &Module<B>)
 where
-    Module<B>: GGLWEEncryptSkFamily<B> + GLWEKeyswitchFamily<B> + GLWEDecryptFamily<B> + GGLWEExecLayoutFamily<B>,
+    Module<B>: GGLWEEncryptSkFamily<B> + GLWEDecryptFamily<B> + GGLWEExecLayoutFamily<B> + GLWEKeyswitchFamily<B>,
 {
     let basek: usize = 17;
     let sigma: f64 = 3.2;

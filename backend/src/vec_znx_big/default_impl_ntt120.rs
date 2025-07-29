@@ -1,4 +1,7 @@
-use crate::{Module, NTT120, VecZnxBig, VecZnxBigAllocBytes, VecZnxBigBytesOf, ZnxInfos, ZnxSliceSize, ZnxView};
+use crate::{
+    Module, NTT120, VecZnxBig, VecZnxBigBytesOf, ZnxInfos, ZnxSliceSize, ZnxView,
+    vec_znx_big::impl_traits::VecZnxBigAllocBytesImpl,
+};
 
 const VEC_ZNX_BIG_NTT120_WORDSIZE: usize = 4;
 
@@ -18,8 +21,8 @@ impl<D: AsRef<[u8]>> ZnxSliceSize for VecZnxBig<D, NTT120> {
     }
 }
 
-impl VecZnxBigAllocBytes for Module<NTT120> {
-    fn vec_znx_big_alloc_bytes(&self, cols: usize, size: usize) -> usize {
-        VecZnxBig::<Vec<u8>, NTT120>::bytes_of(self.n(), cols, size)
+impl VecZnxBigAllocBytesImpl<NTT120> for Module<NTT120> {
+    fn vec_znx_big_alloc_bytes_impl(module: &Module<NTT120>, cols: usize, size: usize) -> usize {
+        VecZnxBig::<Vec<u8>, NTT120>::bytes_of(module.n(), cols, size)
     }
 }
