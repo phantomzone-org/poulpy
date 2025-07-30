@@ -1,5 +1,5 @@
 use crate::{
-    Module, NTT120, SvpPPol, SvpPPolAlloc, SvpPPolAllocBytes, SvpPPolBytesOf, SvpPPolOwned, SvpPPolyFromBytes, ZnxInfos,
+    Module, NTT120, SvpPPol, SvpPPolAlloc, SvpPPolAllocBytes, SvpPPolBytesOf, SvpPPolFromBytes, SvpPPolOwned, ZnxInfos,
     ZnxSliceSize, ZnxView,
 };
 
@@ -21,7 +21,7 @@ impl<D: AsRef<[u8]>> ZnxView for SvpPPol<D, NTT120> {
     type Scalar = i64;
 }
 
-impl SvpPPolyFromBytes<NTT120> for Module<NTT120> {
+impl SvpPPolFromBytes<NTT120> for Module<NTT120> {
     fn svp_ppol_from_bytes(&self, cols: usize, bytes: Vec<u8>) -> SvpPPolOwned<NTT120> {
         SvpPPolOwned::from_bytes(self.n(), cols, bytes)
     }

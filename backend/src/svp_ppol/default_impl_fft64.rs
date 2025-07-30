@@ -1,7 +1,7 @@
 use crate::{
-    FFT64, Module, ScalarZnxToRef, SvpApply, SvpApplyInplace, SvpPPol, SvpPPolAlloc, SvpPPolAllocBytes, SvpPPolBytesOf,
-    SvpPPolOwned, SvpPPolToMut, SvpPPolToRef, SvpPPolyFromBytes, SvpPrepare, VecZnxDft, VecZnxDftToMut, VecZnxDftToRef, ZnxInfos,
-    ZnxSliceSize, ZnxView, ZnxViewMut,
+    FFT64, Module, ScalarZnxToRef, SvpApplyImpl, SvpApplyInplaceImpl, SvpPPol, SvpPPolAllocBytesImpl, SvpPPolAllocImpl,
+    SvpPPolBytesOf, SvpPPolFromBytesImpl, SvpPPolOwned, SvpPPolToMut, SvpPPolToRef, SvpPrepareImpl, VecZnxDft, VecZnxDftToMut,
+    VecZnxDftToRef, ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut,
     ffi::{svp, vec_znx_dft::vec_znx_dft_t},
 };
 
@@ -23,33 +23,33 @@ impl<D: AsRef<[u8]>> ZnxView for SvpPPol<D, FFT64> {
     type Scalar = f64;
 }
 
-impl SvpPPolyFromBytes<FFT64> for Module<FFT64> {
-    fn svp_ppol_from_bytes(&self, cols: usize, bytes: Vec<u8>) -> SvpPPolOwned<FFT64> {
-        SvpPPolOwned::from_bytes(self.n(), cols, bytes)
+impl SvpPPolFromBytesImpl<FFT64> for () {
+    fn svp_ppol_from_bytes_impl(module: &Module<FFT64>, cols: usize, bytes: Vec<u8>) -> SvpPPolOwned<FFT64> {
+        SvpPPolOwned::from_bytes(module.n(), cols, bytes)
     }
 }
 
-impl SvpPPolAlloc<FFT64> for Module<FFT64> {
-    fn svp_ppol_alloc(&self, cols: usize) -> SvpPPolOwned<FFT64> {
-        SvpPPolOwned::alloc(self.n(), cols)
+impl SvpPPolAllocImpl<FFT64> for () {
+    fn svp_ppol_alloc_impl(module: &Module<FFT64>, cols: usize) -> SvpPPolOwned<FFT64> {
+        SvpPPolOwned::alloc(module.n(), cols)
     }
 }
 
-impl SvpPPolAllocBytes for Module<FFT64> {
-    fn svp_ppol_alloc_bytes(&self, cols: usize) -> usize {
-        SvpPPol::<Vec<u8>, FFT64>::bytes_of(self.n(), cols)
+impl SvpPPolAllocBytesImpl<FFT64> for () {
+    fn svp_ppol_alloc_bytes_impl(module: &Module<FFT64>, cols: usize) -> usize {
+        SvpPPol::<Vec<u8>, FFT64>::bytes_of(module.n(), cols)
     }
 }
 
-impl SvpPrepare<FFT64> for Module<FFT64> {
-    fn svp_prepare<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+impl SvpPrepareImpl<FFT64> for () {
+    fn svp_prepare_impl<R, A>(module: &Module<FFT64>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: SvpPPolToMut<FFT64>,
         A: ScalarZnxToRef,
     {
         unsafe {
             svp::svp_prepare(
-                self.ptr,
+                module.ptr,
                 res.to_mut().at_mut_ptr(res_col, 0) as *mut svp::svp_ppol_t,
                 a.to_ref().at_ptr(a_col, 0),
             )
@@ -57,8 +57,8 @@ impl SvpPrepare<FFT64> for Module<FFT64> {
     }
 }
 
-impl SvpApply<FFT64> for Module<FFT64> {
-    fn svp_apply<R, A, B>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
+impl SvpApplyImpl<FFT64> for () {
+    fn svp_apply_impl<R, A, B>(module: &Module<FFT64>, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
     where
         R: VecZnxDftToMut<FFT64>,
         A: SvpPPolToRef<FFT64>,
@@ -69,7 +69,7 @@ impl SvpApply<FFT64> for Module<FFT64> {
         let b: VecZnxDft<&[u8], FFT64> = b.to_ref();
         unsafe {
             svp::svp_apply_dft_to_dft(
-                self.ptr,
+                module.ptr,
                 res.at_mut_ptr(res_col, 0) as *mut vec_znx_dft_t,
                 res.size() as u64,
                 res.cols() as u64,
@@ -82,8 +82,8 @@ impl SvpApply<FFT64> for Module<FFT64> {
     }
 }
 
-impl SvpApplyInplace<FFT64> for Module<FFT64> {
-    fn svp_apply_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+impl SvpApplyInplaceImpl<FFT64> for () {
+    fn svp_apply_inplace_impl<R, A>(module: &Module<FFT64>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxDftToMut<FFT64>,
         A: SvpPPolToRef<FFT64>,
@@ -92,7 +92,7 @@ impl SvpApplyInplace<FFT64> for Module<FFT64> {
         let a: SvpPPol<&[u8], FFT64> = a.to_ref();
         unsafe {
             svp::svp_apply_dft_to_dft(
-                self.ptr,
+                module.ptr,
                 res.at_mut_ptr(res_col, 0) as *mut vec_znx_dft_t,
                 res.size() as u64,
                 res.cols() as u64,

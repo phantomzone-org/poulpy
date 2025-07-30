@@ -1,6 +1,6 @@
 use crate::{Backend, ScalarZnxToRef, SvpPPolOwned, SvpPPolToMut, SvpPPolToRef, VecZnxDftToMut, VecZnxDftToRef};
 
-pub trait SvpPPolyFromBytes<B: Backend> {
+pub trait SvpPPolFromBytes<B: Backend> {
     fn svp_ppol_from_bytes(&self, cols: usize, bytes: Vec<u8>) -> SvpPPolOwned<B>;
 }
 
