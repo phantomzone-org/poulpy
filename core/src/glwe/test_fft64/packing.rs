@@ -4,7 +4,7 @@ use crate::{
 };
 use std::collections::HashMap;
 
-use backend::{Backend, Encoding, FFT64, Module, ScratchOwned, Stats};
+use backend::{Backend, Encoding, FFT64, Module, ModuleNew, ScratchOwned, Stats};
 use sampling::source::Source;
 
 #[test]

@@ -1,4 +1,4 @@
-use backend::{FFT64, Module};
+use backend::{FFT64, Module, ModuleNew};
 
 use crate::gglwe::test_fft64::gglwe_generic::{
     test_encrypt_sk, test_external_product, test_external_product_inplace, test_keyswitch, test_keyswitch_inplace,

@@ -7,7 +7,7 @@ use crate::{
     VecZnxNormalizeInplaceImpl, VecZnxNormalizeTmpBytesImpl, VecZnxOwned, VecZnxRotateImpl, VecZnxRotateInplaceImpl,
     VecZnxShiftInplaceImpl, VecZnxSplitImpl, VecZnxSubABInplaceImpl, VecZnxSubBAInplaceImpl, VecZnxSubImpl,
     VecZnxSubScalarInplaceImpl, VecZnxSwithcDegreeImpl, ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero,
-    ffi::vec_znx,
+    ffi::{module::module_info_t, vec_znx},
     vec_znx::{
         layout::{VecZnxToMut, VecZnxToRef},
         traits::{VecZnxCopy, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace, VecZnxSwithcDegree},
@@ -34,7 +34,7 @@ impl<B: Backend> VecZnxAllocBytesImpl<B> for () {
 
 impl<B: Backend> VecZnxNormalizeTmpBytesImpl<B> for () {
     fn vec_znx_normalize_tmp_bytes_impl(module: &Module<B>) -> usize {
-        unsafe { vec_znx::vec_znx_normalize_base2k_tmp_bytes(module.ptr) as usize }
+        unsafe { vec_znx::vec_znx_normalize_base2k_tmp_bytes(module.ptr() as *const module_info_t) as usize }
     }
 }
 
@@ -64,7 +64,7 @@ impl<B: Backend> VecZnxNormalizeImpl<B> for () {
 
         unsafe {
             vec_znx::vec_znx_normalize_base2k(
-                module.ptr,
+                module.ptr() as *const module_info_t,
                 basek as u64,
                 res.at_mut_ptr(res_col, 0),
                 res.size() as u64,
@@ -94,7 +94,7 @@ impl<B: Backend> VecZnxNormalizeInplaceImpl<B> for () {
 
         unsafe {
             vec_znx::vec_znx_normalize_base2k(
-                module.ptr,
+                module.ptr() as *const module_info_t,
                 basek as u64,
                 a.at_mut_ptr(a_col, 0),
                 a.size() as u64,
@@ -128,7 +128,7 @@ impl<B: Backend> VecZnxAddImpl<B> for () {
         }
         unsafe {
             vec_znx::vec_znx_add(
-                module.ptr,
+                module.ptr() as *const module_info_t,
                 res.at_mut_ptr(res_col, 0),
                 res.size() as u64,
                 res.sl() as u64,
@@ -160,7 +160,7 @@ impl<B: Backend> VecZnxAddInplaceImpl<B> for () {
         }
         unsafe {
             vec_znx::vec_znx_add(
-                module.ptr,
+                module.ptr() as *const module_info_t,
                 res.at_mut_ptr(res_col, 0),
                 res.size() as u64,
                 res.sl() as u64,
@@ -199,7 +199,7 @@ impl<B: Backend> VecZnxAddScalarInplaceImpl<B> for () {
 
         unsafe {
             vec_znx::vec_znx_add(
-                module.ptr,
+                module.ptr() as *const module_info_t,
                 res.at_mut_ptr(res_col, res_limb),
                 1 as u64,
                 res.sl() as u64,
@@ -235,7 +235,7 @@ impl<B: Backend> VecZnxSubImpl<B> for () {
         }
         unsafe {
             vec_znx::vec_znx_sub(
-                module.ptr,
+                module.ptr() as *const module_info_t,
                 res.at_mut_ptr(res_col, 0),
                 res.size() as u64,
                 res.sl() as u64,
@@ -268,7 +268,7 @@ impl<B: Backend> VecZnxSubABInplaceImpl<B> for () {
         }
         unsafe {
             vec_znx::vec_znx_sub(
-                module.ptr,
+                module.ptr() as *const module_info_t,
                 res.at_mut_ptr(res_col, 0),
                 res.size() as u64,
                 res.sl() as u64,
@@ -301,7 +301,7 @@ impl<B: Backend> VecZnxSubBAInplaceImpl<B> for () {
         }
         unsafe {
             vec_znx::vec_znx_sub(
-                module.ptr,
+                module.ptr() as *const module_info_t,
                 res.at_mut_ptr(res_col, 0),
                 res.size() as u64,
                 res.sl() as u64,
@@ -340,7 +340,7 @@ impl<B: Backend> VecZnxSubScalarInplaceImpl<B> for () {
 
         unsafe {
             vec_znx::vec_znx_sub(
-                module.ptr,
+                module.ptr() as *const module_info_t,
                 res.at_mut_ptr(res_col, res_limb),
                 1 as u64,
                 res.sl() as u64,
@@ -371,7 +371,7 @@ impl<B: Backend> VecZnxNegateImpl<B> for () {
         }
         unsafe {
             vec_znx::vec_znx_negate(
-                module.ptr,
+                module.ptr() as *const module_info_t,
                 res.at_mut_ptr(res_col, 0),
                 res.size() as u64,
                 res.sl() as u64,
@@ -396,7 +396,7 @@ impl<B: Backend> VecZnxNegateInplaceImpl<B> for () {
         }
         unsafe {
             vec_znx::vec_znx_negate(
-                module.ptr,
+                module.ptr() as *const module_info_t,
                 a.at_mut_ptr(a_col, 0),
                 a.size() as u64,
                 a.sl() as u64,
@@ -439,7 +439,7 @@ impl<B: Backend> VecZnxRotateImpl<B> for () {
         }
         unsafe {
             vec_znx::vec_znx_rotate(
-                module.ptr,
+                module.ptr() as *const module_info_t,
                 k,
                 res.at_mut_ptr(res_col, 0),
                 res.size() as u64,
@@ -465,7 +465,7 @@ impl<B: Backend> VecZnxRotateInplaceImpl<B> for () {
         }
         unsafe {
             vec_znx::vec_znx_rotate(
-                module.ptr,
+                module.ptr() as *const module_info_t,
                 k,
                 a.at_mut_ptr(a_col, 0),
                 a.size() as u64,
@@ -494,7 +494,7 @@ impl<B: Backend> VecZnxAutomorphismImpl<B> for () {
         }
         unsafe {
             vec_znx::vec_znx_automorphism(
-                module.ptr,
+                module.ptr() as *const module_info_t,
                 k,
                 res.at_mut_ptr(res_col, 0),
                 res.size() as u64,
@@ -525,7 +525,7 @@ impl<B: Backend> VecZnxAutomorphismInplaceImpl<B> for () {
         }
         unsafe {
             vec_znx::vec_znx_automorphism(
-                module.ptr,
+                module.ptr() as *const module_info_t,
                 k,
                 a.at_mut_ptr(a_col, 0),
                 a.size() as u64,

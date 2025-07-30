@@ -1,4 +1,4 @@
-use backend::{Backend, FFT64, FillUniform, Module, ScratchOwned};
+use backend::{Backend, FFT64, FillUniform, Module, ModuleNew, ScratchOwned};
 use sampling::source::Source;
 
 use crate::{

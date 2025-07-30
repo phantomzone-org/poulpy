@@ -1,8 +1,11 @@
 use crate::{
-    Backend, MatZnxToRef, Module, Scratch, VmpApply, VmpApplyAdd, VmpApplyAddImpl, VmpApplyAddTmpBytes, VmpApplyAddTmpBytesImpl,
-    VmpApplyImpl, VmpApplyTmpBytes, VmpApplyTmpBytesImpl, VmpPMatAlloc, VmpPMatAllocBytes, VmpPMatAllocBytesImpl,
-    VmpPMatAllocImpl, VmpPMatFromBytes, VmpPMatFromBytesImpl, VmpPMatOwned, VmpPMatPrepare, VmpPMatPrepareImpl, VmpPMatToMut,
-    VmpPrepareTmpBytes, VmpPrepareTmpBytesImpl,
+    Backend, MatZnxToRef, Module, Scratch, VecZnxDftToMut, VecZnxDftToRef, VmpApply, VmpApplyAdd, VmpApplyAddTmpBytes,
+    VmpApplyTmpBytes, VmpPMatAlloc, VmpPMatAllocBytes, VmpPMatFromBytes, VmpPMatOwned, VmpPMatPrepare, VmpPMatToMut,
+    VmpPMatToRef, VmpPrepareTmpBytes,
+    vmp_pmat::impl_traits::{
+        VmpApplyAddImpl, VmpApplyAddTmpBytesImpl, VmpApplyImpl, VmpApplyTmpBytesImpl, VmpPMatAllocBytesImpl, VmpPMatAllocImpl,
+        VmpPMatFromBytesImpl, VmpPMatPrepareImpl, VmpPrepareTmpBytesImpl,
+    },
 };
 
 impl<B: Backend> VmpPMatAlloc<B> for Module<B>
@@ -79,9 +82,9 @@ where
 {
     fn vmp_apply<R, A, C>(&self, res: &mut R, a: &A, b: &C, scratch: &mut Scratch)
     where
-        R: crate::VecZnxDftToMut<B>,
-        A: crate::VecZnxDftToRef<B>,
-        C: super::VmpPMatToRef<B>,
+        R: VecZnxDftToMut<B>,
+        A: VecZnxDftToRef<B>,
+        C: VmpPMatToRef<B>,
     {
         <() as VmpApplyImpl<B>>::vmp_apply_impl(self, res, a, b, scratch);
     }
@@ -112,9 +115,9 @@ where
 {
     fn vmp_apply_add<R, A, C>(&self, res: &mut R, a: &A, b: &C, scale: usize, scratch: &mut Scratch)
     where
-        R: crate::VecZnxDftToMut<B>,
-        A: crate::VecZnxDftToRef<B>,
-        C: super::VmpPMatToRef<B>,
+        R: VecZnxDftToMut<B>,
+        A: VecZnxDftToRef<B>,
+        C: VmpPMatToRef<B>,
     {
         <() as VmpApplyAddImpl<B>>::vmp_apply_add_impl(self, res, a, b, scale, scratch);
     }

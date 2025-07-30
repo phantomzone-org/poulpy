@@ -1,4 +1,4 @@
-use backend::{FFT64, Module, ScalarZnxOps, ScratchOwned, Stats, VecZnxSubScalarInplace};
+use backend::{FFT64, Module, ModuleNew, ScalarZnxOps, ScratchOwned, Stats, VecZnxSubScalarInplace};
 use sampling::source::Source;
 
 use crate::{

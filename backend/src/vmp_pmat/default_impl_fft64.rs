@@ -1,9 +1,11 @@
 use crate::{
-    Backend, FFT64, MatZnx, MatZnxToRef, Module, Scratch, VecZnxDft, VecZnxDftToMut, VecZnxDftToRef, VmpApplyAddImpl,
-    VmpApplyAddTmpBytesImpl, VmpApplyImpl, VmpApplyTmpBytes, VmpApplyTmpBytesImpl, VmpPMat, VmpPMatAllocBytesImpl,
-    VmpPMatAllocImpl, VmpPMatBytesOf, VmpPMatFromBytesImpl, VmpPMatOwned, VmpPMatPrepareImpl, VmpPMatToMut, VmpPMatToRef,
-    VmpPrepareTmpBytes, VmpPrepareTmpBytesImpl, ZnxInfos, ZnxView, ZnxViewMut,
+    Backend, FFT64, MatZnx, MatZnxToRef, Module, Scratch, VecZnxDft, VecZnxDftToMut, VecZnxDftToRef, VmpApplyTmpBytes, VmpPMat,
+    VmpPMatBytesOf, VmpPMatOwned, VmpPMatToMut, VmpPMatToRef, VmpPrepareTmpBytes, ZnxInfos, ZnxView, ZnxViewMut,
     ffi::{vec_znx_dft::vec_znx_dft_t, vmp},
+    vmp_pmat::impl_traits::{
+        VmpApplyAddImpl, VmpApplyAddTmpBytesImpl, VmpApplyImpl, VmpApplyTmpBytesImpl, VmpPMatAllocBytesImpl, VmpPMatAllocImpl,
+        VmpPMatFromBytesImpl, VmpPMatPrepareImpl, VmpPrepareTmpBytesImpl,
+    },
 };
 
 const VMP_PMAT_FFT64_WORDSIZE: usize = 1;
@@ -53,7 +55,7 @@ impl VmpPrepareTmpBytesImpl<FFT64> for () {
     fn vmp_prepare_tmp_bytes_impl(module: &Module<FFT64>, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize {
         unsafe {
             vmp::vmp_prepare_tmp_bytes(
-                module.ptr,
+                module.ptr(),
                 (rows * cols_in) as u64,
                 (cols_out * size) as u64,
             ) as usize
@@ -108,7 +110,7 @@ impl VmpPMatPrepareImpl<FFT64> for () {
 
         unsafe {
             vmp::vmp_prepare_contiguous(
-                module.ptr,
+                module.ptr(),
                 res.as_mut_ptr() as *mut vmp::vmp_pmat_t,
                 a.as_ptr(),
                 (a.rows() * a.cols_in()) as u64,
@@ -131,7 +133,7 @@ impl VmpApplyTmpBytesImpl<FFT64> for () {
     ) -> usize {
         unsafe {
             vmp::vmp_apply_dft_to_dft_tmp_bytes(
-                module.ptr,
+                module.ptr(),
                 (res_size * b_cols_out) as u64,
                 (a_size * b_cols_in) as u64,
                 (b_rows * b_cols_in) as u64,
@@ -183,7 +185,7 @@ impl VmpApplyImpl<FFT64> for () {
         ));
         unsafe {
             vmp::vmp_apply_dft_to_dft(
-                module.ptr,
+                module.ptr(),
                 res.as_mut_ptr() as *mut vec_znx_dft_t,
                 (res.size() * res.cols()) as u64,
                 a.as_ptr() as *const vec_znx_dft_t,
@@ -209,7 +211,7 @@ impl VmpApplyAddTmpBytesImpl<FFT64> for () {
     ) -> usize {
         unsafe {
             vmp::vmp_apply_dft_to_dft_tmp_bytes(
-                module.ptr,
+                module.ptr(),
                 (res_size * b_cols_out) as u64,
                 (a_size * b_cols_in) as u64,
                 (b_rows * b_cols_in) as u64,
@@ -261,7 +263,7 @@ impl VmpApplyAddImpl<FFT64> for () {
         ));
         unsafe {
             vmp::vmp_apply_dft_to_dft_add(
-                module.ptr,
+                module.ptr(),
                 res.as_mut_ptr() as *mut vec_znx_dft_t,
                 (res.size() * res.cols()) as u64,
                 a.as_ptr() as *const vec_znx_dft_t,

@@ -4,49 +4,49 @@ use crate::{
     SvpPPolToMut, SvpPPolToRef, SvpPrepare, SvpPrepareImpl, VecZnxDftToMut, VecZnxDftToRef,
 };
 
-impl<B: Backend> SvpPPolFromBytes<B> for Module<B>
+impl<B> SvpPPolFromBytes<B> for Module<B>
 where
-    (): SvpPPolFromBytesImpl<B>,
+    B: Backend + SvpPPolFromBytesImpl<B>,
 {
     fn svp_ppol_from_bytes(&self, cols: usize, bytes: Vec<u8>) -> SvpPPolOwned<B> {
-        <() as SvpPPolFromBytesImpl<B>>::svp_ppol_from_bytes_impl(self, cols, bytes)
+        B::svp_ppol_from_bytes_impl(self, cols, bytes)
     }
 }
 
-impl<B: Backend> SvpPPolAlloc<B> for Module<B>
+impl<B> SvpPPolAlloc<B> for Module<B>
 where
-    (): SvpPPolAllocImpl<B>,
+    B: Backend + SvpPPolAllocImpl<B>,
 {
     fn svp_ppol_alloc(&self, cols: usize) -> SvpPPolOwned<B> {
-        <() as SvpPPolAllocImpl<B>>::svp_ppol_alloc_impl(self, cols)
+        B::svp_ppol_alloc_impl(self, cols)
     }
 }
 
-impl<B: Backend> SvpPPolAllocBytes for Module<B>
+impl<B> SvpPPolAllocBytes for Module<B>
 where
-    (): SvpPPolAllocBytesImpl<B>,
+    B: Backend + SvpPPolAllocBytesImpl<B>,
 {
     fn svp_ppol_alloc_bytes(&self, cols: usize) -> usize {
-        <() as SvpPPolAllocBytesImpl<B>>::svp_ppol_alloc_bytes_impl(self, cols)
+        B::svp_ppol_alloc_bytes_impl(self, cols)
     }
 }
 
-impl<B: Backend> SvpPrepare<B> for Module<B>
+impl<B> SvpPrepare<B> for Module<B>
 where
-    (): SvpPrepareImpl<B>,
+    B: Backend + SvpPrepareImpl<B>,
 {
     fn svp_prepare<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: SvpPPolToMut<B>,
         A: ScalarZnxToRef,
     {
-        <() as SvpPrepareImpl<B>>::svp_prepare_impl(self, res, res_col, a, a_col);
+        B::svp_prepare_impl(self, res, res_col, a, a_col);
     }
 }
 
-impl<B: Backend> SvpApply<B> for Module<B>
+impl<B> SvpApply<B> for Module<B>
 where
-    (): SvpApplyImpl<B>,
+    B: Backend + SvpApplyImpl<B>,
 {
     fn svp_apply<R, A, C>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &C, b_col: usize)
     where
@@ -54,19 +54,19 @@ where
         A: SvpPPolToRef<B>,
         C: VecZnxDftToRef<B>,
     {
-        <() as SvpApplyImpl<B>>::svp_apply_impl(self, res, res_col, a, a_col, b, b_col);
+        B::svp_apply_impl(self, res, res_col, a, a_col, b, b_col);
     }
 }
 
-impl<B: Backend> SvpApplyInplace<B> for Module<B>
+impl<B> SvpApplyInplace<B> for Module<B>
 where
-    (): SvpApplyInplaceImpl<B>,
+    B: Backend + SvpApplyInplaceImpl,
 {
     fn svp_apply_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxDftToMut<B>,
         A: SvpPPolToRef<B>,
     {
-        <() as SvpApplyInplaceImpl<B>>::svp_apply_inplace_impl(self, res, res_col, a, a_col);
+        B::svp_apply_inplace_impl(self, res, res_col, a, a_col);
     }
 }

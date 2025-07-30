@@ -180,14 +180,14 @@ where
 #[cfg(test)]
 mod tests {
     use super::{AddNormal, FillUniform};
-    use crate::{FFT64, Module, Stats, VecZnx};
+    use crate::{FFT64, Module, ModuleNew, Stats, VecZnx};
     use crate::{VecZnxAlloc, znx_base::*};
     use sampling::source::Source;
 
     #[test]
     fn vec_znx_fill_uniform() {
         let n: usize = 4096;
-        let module: Module<FFT64> = Module::<FFT64>::new(n);
+        let module: Module<FFT64> = Module::<FFT64>::new(n as u64);
         let basek: usize = 17;
         let size: usize = 5;
         let mut source: Source = Source::new([0u8; 32]);
@@ -218,7 +218,7 @@ mod tests {
     #[test]
     fn vec_znx_add_normal() {
         let n: usize = 4096;
-        let module: Module<FFT64> = Module::<FFT64>::new(n);
+        let module: Module<FFT64> = Module::<FFT64>::new(n as u64);
         let basek: usize = 17;
         let k: usize = 2 * 17;
         let size: usize = 5;

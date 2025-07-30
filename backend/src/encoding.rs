@@ -287,14 +287,14 @@ fn decode_coeff_i64<D: AsRef<[u8]>>(a: &VecZnx<D>, col_i: usize, basek: usize, k
 #[cfg(test)]
 mod tests {
     use crate::{Decoding, Encoding, FFT64, Module, VecZnx, znx_base::ZnxInfos};
-    use crate::{VecZnxAlloc, znx_base::*};
+    use crate::{ModuleNew, VecZnxAlloc, znx_base::*};
     use itertools::izip;
     use sampling::source::Source;
 
     #[test]
     fn test_set_get_i64_lo_norm() {
         let n: usize = 8;
-        let module: Module<FFT64> = Module::<FFT64>::new(n);
+        let module: Module<FFT64> = Module::<FFT64>::new(n as u64);
         let basek: usize = 17;
         let size: usize = 5;
         let k: usize = size * basek - 5;
@@ -316,7 +316,7 @@ mod tests {
     #[test]
     fn test_set_get_i64_hi_norm() {
         let n: usize = 8;
-        let module: Module<FFT64> = Module::<FFT64>::new(n);
+        let module: Module<FFT64> = Module::<FFT64>::new(n as u64);
         let basek: usize = 17;
         let size: usize = 5;
         for k in [1, basek / 2, size * basek - 5] {

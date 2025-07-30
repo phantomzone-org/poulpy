@@ -1,7 +1,7 @@
 use backend::{
-    AddNormal, Decoding, Encoding, FFT64, FillUniform, Module, ScalarZnx, ScalarZnxAlloc, ScratchOwned, SvpApplyInplace, SvpPPol,
-    SvpPPolAlloc, SvpPrepare, VecZnx, VecZnxAlloc, VecZnxBig, VecZnxBigAddSmallInplace, VecZnxBigAlloc, VecZnxBigNormalize,
-    VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallBInplace, VecZnxDft, VecZnxDftAlloc, VecZnxDftFromVecZnx,
+    AddNormal, Decoding, Encoding, FFT64, FillUniform, Module, ModuleNew, ScalarZnx, ScalarZnxAlloc, ScratchOwned,
+    SvpApplyInplace, SvpPPol, SvpPPolAlloc, SvpPrepare, VecZnx, VecZnxAlloc, VecZnxBig, VecZnxBigAddSmallInplace, VecZnxBigAlloc,
+    VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallBInplace, VecZnxDft, VecZnxDftAlloc, VecZnxDftFromVecZnx,
     VecZnxDftToVecZnxBigTmpA, VecZnxNormalizeInplace, ZnxInfos,
 };
 use itertools::izip;
@@ -13,7 +13,7 @@ fn main() {
     let ct_size: usize = 3;
     let msg_size: usize = 2;
     let log_scale: usize = msg_size * basek - 5;
-    let module: Module<FFT64> = Module::<FFT64>::new(n);
+    let module: Module<FFT64> = Module::<FFT64>::new(n as u64);
 
     let mut scratch: ScratchOwned = ScratchOwned::new(module.vec_znx_big_normalize_tmp_bytes());
 

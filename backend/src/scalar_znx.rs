@@ -1,3 +1,4 @@
+use crate::ffi::module::module_info_t;
 use crate::ffi::vec_znx;
 use crate::znx_base::ZnxInfos;
 use crate::{
@@ -199,7 +200,7 @@ impl<B: Backend> ScalarZnxOps for Module<B> {
         }
         unsafe {
             vec_znx::vec_znx_automorphism(
-                self.ptr,
+                self.ptr() as *const module_info_t,
                 k,
                 res.at_mut_ptr(res_col, 0),
                 res.size() as u64,
@@ -222,7 +223,7 @@ impl<B: Backend> ScalarZnxOps for Module<B> {
         }
         unsafe {
             vec_znx::vec_znx_automorphism(
-                self.ptr,
+                self.ptr() as *const module_info_t,
                 k,
                 a.at_mut_ptr(a_col, 0),
                 a.size() as u64,

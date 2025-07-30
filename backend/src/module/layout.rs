@@ -1,6 +1,6 @@
 use crate::GALOISGENERATOR;
-use crate::ffi::module::{MODULE, delete_module_info, module_info_t, new_module_info};
 use std::marker::PhantomData;
+use std::ptr::NonNull;
 
 #[derive(Copy, Clone)]
 #[repr(u8)]
@@ -9,63 +9,60 @@ pub enum BACKEND {
     NTT120,
 }
 
-pub trait Backend {
+pub trait Backend: Sized {
+    type Handle: 'static;
     const KIND: BACKEND;
     fn module_type() -> u32;
+    unsafe fn destroy(handle: NonNull<Self::Handle>);
 }
 
 pub struct FFT64;
 pub struct NTT120;
 
-impl Backend for FFT64 {
-    const KIND: BACKEND = BACKEND::FFT64;
-    fn module_type() -> u32 {
-        0
-    }
-}
-
-impl Backend for NTT120 {
-    const KIND: BACKEND = BACKEND::NTT120;
-    fn module_type() -> u32 {
-        1
-    }
-}
-
 pub struct Module<B: Backend> {
-    pub ptr: *mut MODULE,
-    n: usize,
+    ptr: NonNull<B::Handle>,
+    n: u64,
     _marker: PhantomData<B>,
 }
 
 impl<B: Backend> Module<B> {
-    // Instantiates a new module.
-    pub fn new(n: usize) -> Self {
-        unsafe {
-            let m: *mut module_info_t = new_module_info(n as u64, B::module_type());
-            if m.is_null() {
-                panic!("Failed to create module.");
-            }
-            Self {
-                ptr: m,
-                n: n,
-                _marker: PhantomData,
-            }
+    /// Construct from a raw pointer managed elsewhere.
+    /// SAFETY: `ptr` must be non-null and remain valid for the lifetime of this Module.
+    #[inline]
+    pub unsafe fn from_raw_parts(ptr: *mut B::Handle, n: u64) -> Self {
+        Self {
+            ptr: NonNull::new(ptr).expect("null module ptr"),
+            n,
+            _marker: PhantomData,
         }
     }
 
-    pub fn n(&self) -> usize {
-        self.n
+    #[inline]
+    pub unsafe fn ptr(&self) -> *mut <B as Backend>::Handle {
+        self.ptr.as_ptr()
     }
 
+    #[inline]
+    pub fn n(&self) -> usize {
+        self.n as usize
+    }
+    #[inline]
+    pub fn as_mut_ptr(&self) -> *mut B::Handle {
+        self.ptr.as_ptr()
+    }
+
+    #[inline]
     pub fn log_n(&self) -> usize {
         (usize::BITS - (self.n() - 1).leading_zeros()) as _
     }
 
+    #[inline]
     pub fn cyclotomic_order(&self) -> u64 {
         (self.n() << 1) as _
     }
 
     // Returns GALOISGENERATOR^|generator| * sign(generator)
+    #[inline]
     pub fn galois_element(&self, generator: i64) -> i64 {
         if generator == 0 {
             return 1;
@@ -74,6 +71,7 @@ impl<B: Backend> Module<B> {
     }
 
     // Returns gen^-1
+    #[inline]
     pub fn galois_element_inv(&self, gal_el: i64) -> i64 {
         if gal_el == 0 {
             panic!("cannot invert 0")
@@ -85,11 +83,11 @@ impl<B: Backend> Module<B> {
 
 impl<B: Backend> Drop for Module<B> {
     fn drop(&mut self) {
-        unsafe { delete_module_info(self.ptr) }
+        unsafe { B::destroy(self.ptr) }
     }
 }
 
-fn mod_exp_u64(x: u64, e: usize) -> u64 {
+pub fn mod_exp_u64(x: u64, e: usize) -> u64 {
     let mut y: u64 = 1;
     let mut x_pow: u64 = x;
     let mut exp = e;

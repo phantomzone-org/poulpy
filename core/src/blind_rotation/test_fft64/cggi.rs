@@ -1,4 +1,4 @@
-use backend::{Backend, Encoding, FFT64, Module, ScratchOwned, ZnxView};
+use backend::{Backend, Encoding, FFT64, Module, ModuleNew, ScratchOwned, ZnxView};
 use sampling::source::Source;
 
 use crate::{

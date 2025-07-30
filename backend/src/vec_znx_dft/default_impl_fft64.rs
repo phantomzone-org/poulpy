@@ -47,7 +47,7 @@ impl VecZnxDftAllocImpl<FFT64> for () {
 
 impl VecZnxDftToVecZnxBigTmpBytesImpl<FFT64> for () {
     fn vec_znx_dft_to_vec_znx_big_tmp_bytes_impl(module: &Module<FFT64>) -> usize {
-        unsafe { vec_znx_dft::vec_znx_idft_tmp_bytes(module.ptr) as usize }
+        unsafe { vec_znx_dft::vec_znx_idft_tmp_bytes(module.ptr()) as usize }
     }
 }
 
@@ -73,7 +73,7 @@ impl VecZnxDftToVecZnxBigImpl<FFT64> for () {
         unsafe {
             (0..min_size).for_each(|j| {
                 vec_znx_dft::vec_znx_idft(
-                    module.ptr,
+                    module.ptr(),
                     res_mut.at_mut_ptr(res_col, j) as *mut vec_znx_big::vec_znx_big_t,
                     1 as u64,
                     a_ref.at_ptr(a_col, j) as *const vec_znx_dft::vec_znx_dft_t,
@@ -102,7 +102,7 @@ impl VecZnxDftToVecZnxBigTmpAImpl<FFT64> for () {
         unsafe {
             (0..min_size).for_each(|j| {
                 vec_znx_dft::vec_znx_idft_tmp_a(
-                    module.ptr,
+                    module.ptr(),
                     res_mut.at_mut_ptr(res_col, j) as *mut vec_znx_big::vec_znx_big_t,
                     1 as u64,
                     a_mut.at_mut_ptr(a_col, j) as *mut vec_znx_dft::vec_znx_dft_t,
@@ -128,7 +128,7 @@ impl VecZnxDftToVecZnxBigConsumeImpl<FFT64> for () {
             (0..a_mut.size()).for_each(|j| {
                 (0..a_mut.cols()).for_each(|i| {
                     vec_znx_dft::vec_znx_idft_tmp_a(
-                        module.ptr,
+                        module.ptr(),
                         a_mut.at_mut_ptr(i, j) as *mut vec_znx_big::vec_znx_big_t,
                         1 as u64,
                         a_mut.at_mut_ptr(i, j) as *mut vec_znx_dft::vec_znx_dft_t,
@@ -164,7 +164,7 @@ impl VecZnxDftFromVecZnxImpl<FFT64> for () {
                 let limb: usize = offset + j * step;
                 if limb < a_ref.size() {
                     vec_znx_dft::vec_znx_dft(
-                        module.ptr,
+                        module.ptr(),
                         res_mut.at_mut_ptr(res_col, j) as *mut vec_znx_dft::vec_znx_dft_t,
                         1 as u64,
                         a_ref.at_ptr(a_col, limb),
@@ -203,7 +203,7 @@ impl VecZnxDftAddImpl<FFT64> for () {
         unsafe {
             (0..min_size).for_each(|j| {
                 vec_znx_dft::vec_dft_add(
-                    module.ptr,
+                    module.ptr(),
                     res_mut.at_mut_ptr(res_col, j) as *mut vec_znx_dft::vec_znx_dft_t,
                     1,
                     a_ref.at_ptr(a_col, j) as *const vec_znx_dft::vec_znx_dft_t,
@@ -233,7 +233,7 @@ impl VecZnxDftAddInplaceImpl<FFT64> for () {
         unsafe {
             (0..min_size).for_each(|j| {
                 vec_znx_dft::vec_dft_add(
-                    module.ptr,
+                    module.ptr(),
                     res_mut.at_mut_ptr(res_col, j) as *mut vec_znx_dft::vec_znx_dft_t,
                     1,
                     res_mut.at_ptr(res_col, j) as *const vec_znx_dft::vec_znx_dft_t,
@@ -269,7 +269,7 @@ impl VecZnxDftSubImpl<FFT64> for () {
         unsafe {
             (0..min_size).for_each(|j| {
                 vec_znx_dft::vec_dft_sub(
-                    module.ptr,
+                    module.ptr(),
                     res_mut.at_mut_ptr(res_col, j) as *mut vec_znx_dft::vec_znx_dft_t,
                     1,
                     a_ref.at_ptr(a_col, j) as *const vec_znx_dft::vec_znx_dft_t,
@@ -299,7 +299,7 @@ impl VecZnxDftSubABInplaceImpl<FFT64> for () {
         unsafe {
             (0..min_size).for_each(|j| {
                 vec_znx_dft::vec_dft_sub(
-                    module.ptr,
+                    module.ptr(),
                     res_mut.at_mut_ptr(res_col, j) as *mut vec_znx_dft::vec_znx_dft_t,
                     1,
                     res_mut.at_ptr(res_col, j) as *const vec_znx_dft::vec_znx_dft_t,
@@ -326,7 +326,7 @@ impl VecZnxDftSubBAInplaceImpl<FFT64> for () {
         unsafe {
             (0..min_size).for_each(|j| {
                 vec_znx_dft::vec_dft_sub(
-                    module.ptr,
+                    module.ptr(),
                     res_mut.at_mut_ptr(res_col, j) as *mut vec_znx_dft::vec_znx_dft_t,
                     1,
                     a_ref.at_ptr(a_col, j) as *const vec_znx_dft::vec_znx_dft_t,

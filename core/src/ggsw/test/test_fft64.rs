@@ -1,4 +1,4 @@
-use backend::{FFT64, Module};
+use backend::{FFT64, Module, ModuleNew};
 
 use crate::ggsw::test::generic_tests::{
     test_automorphism, test_automorphism_inplace, test_encrypt_sk, test_external_product, test_external_product_inplace,

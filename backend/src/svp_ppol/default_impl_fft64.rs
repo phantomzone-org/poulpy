@@ -23,33 +23,33 @@ impl<D: AsRef<[u8]>> ZnxView for SvpPPol<D, FFT64> {
     type Scalar = f64;
 }
 
-impl SvpPPolFromBytesImpl<FFT64> for () {
-    fn svp_ppol_from_bytes_impl(module: &Module<FFT64>, cols: usize, bytes: Vec<u8>) -> SvpPPolOwned<FFT64> {
+unsafe impl SvpPPolFromBytesImpl<Self> for FFT64 {
+    fn svp_ppol_from_bytes_impl(module: &Module<Self>, cols: usize, bytes: Vec<u8>) -> SvpPPolOwned<Self> {
         SvpPPolOwned::from_bytes(module.n(), cols, bytes)
     }
 }
 
-impl SvpPPolAllocImpl<FFT64> for () {
-    fn svp_ppol_alloc_impl(module: &Module<FFT64>, cols: usize) -> SvpPPolOwned<FFT64> {
+unsafe impl SvpPPolAllocImpl<Self> for FFT64 {
+    fn svp_ppol_alloc_impl(module: &Module<Self>, cols: usize) -> SvpPPolOwned<Self> {
         SvpPPolOwned::alloc(module.n(), cols)
     }
 }
 
-impl SvpPPolAllocBytesImpl<FFT64> for () {
-    fn svp_ppol_alloc_bytes_impl(module: &Module<FFT64>, cols: usize) -> usize {
-        SvpPPol::<Vec<u8>, FFT64>::bytes_of(module.n(), cols)
+unsafe impl SvpPPolAllocBytesImpl<Self> for FFT64 {
+    fn svp_ppol_alloc_bytes_impl(module: &Module<Self>, cols: usize) -> usize {
+        SvpPPol::<Vec<u8>, Self>::bytes_of(module.n(), cols)
     }
 }
 
-impl SvpPrepareImpl<FFT64> for () {
-    fn svp_prepare_impl<R, A>(module: &Module<FFT64>, res: &mut R, res_col: usize, a: &A, a_col: usize)
+unsafe impl SvpPrepareImpl<Self> for FFT64 {
+    fn svp_prepare_impl<R, A>(module: &Module<Self>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
-        R: SvpPPolToMut<FFT64>,
+        R: SvpPPolToMut<Self>,
         A: ScalarZnxToRef,
     {
         unsafe {
             svp::svp_prepare(
-                module.ptr,
+                module.ptr(),
                 res.to_mut().at_mut_ptr(res_col, 0) as *mut svp::svp_ppol_t,
                 a.to_ref().at_ptr(a_col, 0),
             )
@@ -57,19 +57,19 @@ impl SvpPrepareImpl<FFT64> for () {
     }
 }
 
-impl SvpApplyImpl<FFT64> for () {
-    fn svp_apply_impl<R, A, B>(module: &Module<FFT64>, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
+unsafe impl SvpApplyImpl<Self> for FFT64 {
+    fn svp_apply_impl<R, A, B>(module: &Module<Self>, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
     where
-        R: VecZnxDftToMut<FFT64>,
-        A: SvpPPolToRef<FFT64>,
-        B: VecZnxDftToRef<FFT64>,
+        R: VecZnxDftToMut<Self>,
+        A: SvpPPolToRef<Self>,
+        B: VecZnxDftToRef<Self>,
     {
-        let mut res: VecZnxDft<&mut [u8], FFT64> = res.to_mut();
-        let a: SvpPPol<&[u8], FFT64> = a.to_ref();
-        let b: VecZnxDft<&[u8], FFT64> = b.to_ref();
+        let mut res: VecZnxDft<&mut [u8], Self> = res.to_mut();
+        let a: SvpPPol<&[u8], Self> = a.to_ref();
+        let b: VecZnxDft<&[u8], Self> = b.to_ref();
         unsafe {
             svp::svp_apply_dft_to_dft(
-                module.ptr,
+                module.ptr(),
                 res.at_mut_ptr(res_col, 0) as *mut vec_znx_dft_t,
                 res.size() as u64,
                 res.cols() as u64,
@@ -82,17 +82,17 @@ impl SvpApplyImpl<FFT64> for () {
     }
 }
 
-impl SvpApplyInplaceImpl<FFT64> for () {
-    fn svp_apply_inplace_impl<R, A>(module: &Module<FFT64>, res: &mut R, res_col: usize, a: &A, a_col: usize)
+unsafe impl SvpApplyInplaceImpl for FFT64 {
+    fn svp_apply_inplace_impl<R, A>(module: &Module<Self>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
-        R: VecZnxDftToMut<FFT64>,
-        A: SvpPPolToRef<FFT64>,
+        R: VecZnxDftToMut<Self>,
+        A: SvpPPolToRef<Self>,
     {
-        let mut res: VecZnxDft<&mut [u8], FFT64> = res.to_mut();
-        let a: SvpPPol<&[u8], FFT64> = a.to_ref();
+        let mut res: VecZnxDft<&mut [u8], Self> = res.to_mut();
+        let a: SvpPPol<&[u8], Self> = a.to_ref();
         unsafe {
             svp::svp_apply_dft_to_dft(
-                module.ptr,
+                module.ptr(),
                 res.at_mut_ptr(res_col, 0) as *mut vec_znx_dft_t,
                 res.size() as u64,
                 res.cols() as u64,

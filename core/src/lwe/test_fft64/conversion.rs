@@ -1,4 +1,4 @@
-use backend::{Backend, Encoding, FFT64, Module, ScratchOwned, ZnxView};
+use backend::{Backend, Encoding, FFT64, Module, ModuleNew, ScratchOwned, ZnxView};
 use sampling::source::Source;
 
 use crate::{
@@ -15,8 +15,8 @@ use crate::{
 
 #[test]
 fn lwe_to_glwe() {
-    let log_n: usize = 1 << 5;
-    let module: Module<FFT64> = Module::<FFT64>::new(log_n);
+    let log_n: usize = 5;
+    let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
     test_lwe_to_glwe(&module)
 }
 
@@ -91,8 +91,8 @@ where
 
 #[test]
 fn glwe_to_lwe() {
-    let log_n: usize = 1 << 5;
-    let module: Module<FFT64> = Module::<FFT64>::new(log_n);
+    let log_n: usize = 5;
+    let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
     test_glwe_to_lwe(&module)
 }
 
@@ -175,8 +175,8 @@ where
 
 #[test]
 fn keyswitch() {
-    let log_n: usize = 1 << 5;
-    let module: Module<FFT64> = Module::<FFT64>::new(log_n);
+    let log_n: usize = 5;
+    let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
     test_keyswitch(&module)
 }
 

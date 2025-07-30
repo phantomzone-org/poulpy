@@ -209,7 +209,7 @@ impl VecZnxBigAddImpl<FFT64> for () {
         }
         unsafe {
             vec_znx::vec_znx_add(
-                module.ptr,
+                module.ptr(),
                 res.at_mut_ptr(res_col, 0),
                 res.size() as u64,
                 res.sl() as u64,
@@ -241,7 +241,7 @@ impl VecZnxBigAddInplaceImpl<FFT64> for () {
         }
         unsafe {
             vec_znx::vec_znx_add(
-                module.ptr,
+                module.ptr(),
                 res.at_mut_ptr(res_col, 0),
                 res.size() as u64,
                 res.sl() as u64,
@@ -284,7 +284,7 @@ impl VecZnxBigAddSmallImpl<FFT64> for () {
         }
         unsafe {
             vec_znx::vec_znx_add(
-                module.ptr,
+                module.ptr(),
                 res.at_mut_ptr(res_col, 0),
                 res.size() as u64,
                 res.sl() as u64,
@@ -316,7 +316,7 @@ impl VecZnxBigAddSmallInplaceImpl<FFT64> for () {
         }
         unsafe {
             vec_znx::vec_znx_add(
-                module.ptr,
+                module.ptr(),
                 res.at_mut_ptr(res_col, 0),
                 res.size() as u64,
                 res.sl() as u64,
@@ -359,7 +359,7 @@ impl VecZnxBigSubImpl<FFT64> for () {
         }
         unsafe {
             vec_znx::vec_znx_sub(
-                module.ptr,
+                module.ptr(),
                 res.at_mut_ptr(res_col, 0),
                 res.size() as u64,
                 res.sl() as u64,
@@ -391,7 +391,7 @@ impl VecZnxBigSubABInplaceImpl<FFT64> for () {
         }
         unsafe {
             vec_znx::vec_znx_sub(
-                module.ptr,
+                module.ptr(),
                 res.at_mut_ptr(res_col, 0),
                 res.size() as u64,
                 res.sl() as u64,
@@ -423,7 +423,7 @@ impl VecZnxBigSubBAInplaceImpl<FFT64> for () {
         }
         unsafe {
             vec_znx::vec_znx_sub(
-                module.ptr,
+                module.ptr(),
                 res.at_mut_ptr(res_col, 0),
                 res.size() as u64,
                 res.sl() as u64,
@@ -466,7 +466,7 @@ impl VecZnxBigSubSmallAImpl<FFT64> for () {
         }
         unsafe {
             vec_znx::vec_znx_sub(
-                module.ptr,
+                module.ptr(),
                 res.at_mut_ptr(res_col, 0),
                 res.size() as u64,
                 res.sl() as u64,
@@ -498,7 +498,7 @@ impl VecZnxBigSubSmallAInplaceImpl<FFT64> for () {
         }
         unsafe {
             vec_znx::vec_znx_sub(
-                module.ptr,
+                module.ptr(),
                 res.at_mut_ptr(res_col, 0),
                 res.size() as u64,
                 res.sl() as u64,
@@ -541,7 +541,7 @@ impl VecZnxBigSubSmallBImpl<FFT64> for () {
         }
         unsafe {
             vec_znx::vec_znx_sub(
-                module.ptr,
+                module.ptr(),
                 res.at_mut_ptr(res_col, 0),
                 res.size() as u64,
                 res.sl() as u64,
@@ -573,7 +573,7 @@ impl VecZnxBigSubSmallBInplaceImpl<FFT64> for () {
         }
         unsafe {
             vec_znx::vec_znx_sub(
-                module.ptr,
+                module.ptr(),
                 res.at_mut_ptr(res_col, 0),
                 res.size() as u64,
                 res.sl() as u64,
@@ -600,7 +600,7 @@ impl VecZnxBigNegateInplaceImpl<FFT64> for () {
         }
         unsafe {
             vec_znx::vec_znx_negate(
-                module.ptr,
+                module.ptr(),
                 a.at_mut_ptr(a_col, 0),
                 a.size() as u64,
                 a.sl() as u64,
@@ -614,7 +614,7 @@ impl VecZnxBigNegateInplaceImpl<FFT64> for () {
 
 impl VecZnxBigNormalizeTmpBytesImpl<FFT64> for () {
     fn vec_znx_big_normalize_tmp_bytes_impl(module: &Module<FFT64>) -> usize {
-        unsafe { vec_znx::vec_znx_normalize_base2k_tmp_bytes(module.ptr) as usize }
+        unsafe { vec_znx::vec_znx_normalize_base2k_tmp_bytes(module.ptr()) as usize }
     }
 }
 
@@ -643,7 +643,7 @@ impl VecZnxBigNormalizeImpl<FFT64> for () {
         let (tmp_bytes, _) = scratch.tmp_slice(module.vec_znx_big_normalize_tmp_bytes());
         unsafe {
             vec_znx::vec_znx_normalize_base2k(
-                module.ptr,
+                module.ptr(),
                 basek as u64,
                 res.at_mut_ptr(res_col, 0),
                 res.size() as u64,
@@ -674,7 +674,7 @@ impl VecZnxBigAutomorphismImpl<FFT64> for () {
         }
         unsafe {
             vec_znx::vec_znx_automorphism(
-                module.ptr,
+                module.ptr(),
                 k,
                 res.at_mut_ptr(res_col, 0),
                 res.size() as u64,
@@ -701,7 +701,7 @@ impl VecZnxBigAutomorphismInplaceImpl<FFT64> for () {
         }
         unsafe {
             vec_znx::vec_znx_automorphism(
-                module.ptr,
+                module.ptr(),
                 k,
                 a.at_mut_ptr(a_col, 0),
                 a.size() as u64,
