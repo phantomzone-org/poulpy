@@ -2,16 +2,8 @@ use crate::GALOISGENERATOR;
 use std::marker::PhantomData;
 use std::ptr::NonNull;
 
-#[derive(Copy, Clone)]
-#[repr(u8)]
-pub enum BACKEND {
-    FFT64,
-    NTT120,
-}
-
 pub trait Backend: Sized {
     type Handle: 'static;
-    const KIND: BACKEND;
     fn module_type() -> u32;
     unsafe fn destroy(handle: NonNull<Self::Handle>);
 }

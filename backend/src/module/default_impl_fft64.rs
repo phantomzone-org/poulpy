@@ -1,13 +1,12 @@
 use std::ptr::NonNull;
 
 use crate::{
-    BACKEND, Backend, FFT64, Module, ModuleNewImpl,
+    Backend, FFT64, Module, ModuleNewImpl,
     ffi::module::{MODULE, delete_module_info, new_module_info},
 };
 
 impl Backend for FFT64 {
     type Handle = MODULE;
-    const KIND: BACKEND = BACKEND::FFT64;
     fn module_type() -> u32 {
         0
     }
