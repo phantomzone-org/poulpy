@@ -1,5 +1,6 @@
 use backend::{
-    Backend, Module, ScalarZnx, ScalarZnxAlloc, ScalarZnxToRef, Scratch, SvpPPol, SvpPPolAlloc, SvpPrepare, ZnxView, ZnxViewMut,
+    Backend, MatZnxAlloc, Module, ScalarZnx, ScalarZnxAlloc, ScalarZnxToRef, Scratch, SvpPPol, SvpPPolAlloc, SvpPrepare, ZnxView,
+    ZnxViewMut,
 };
 use sampling::source::Source;
 
@@ -18,7 +19,10 @@ pub struct BlindRotationKeyCGGI<D> {
 //}
 
 impl BlindRotationKeyCGGI<Vec<u8>> {
-    pub fn alloc<B: Backend>(module: &Module<B>, n_lwe: usize, basek: usize, k: usize, rows: usize, rank: usize) -> Self {
+    pub fn alloc<B: Backend>(module: &Module<B>, n_lwe: usize, basek: usize, k: usize, rows: usize, rank: usize) -> Self
+    where
+        Module<B>: MatZnxAlloc,
+    {
         let mut data: Vec<GGSWCiphertext<Vec<u8>>> = Vec::with_capacity(n_lwe);
         (0..n_lwe).for_each(|_| data.push(GGSWCiphertext::alloc(module, basek, k, rows, 1, rank)));
         Self {

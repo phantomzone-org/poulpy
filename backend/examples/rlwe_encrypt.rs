@@ -1,8 +1,8 @@
 use backend::{
-    AddNormal, Decoding, Encoding, FFT64, FillUniform, Module, ModuleNew, ScalarZnx, ScalarZnxAlloc, ScratchOwned,
-    SvpApplyInplace, SvpPPol, SvpPPolAlloc, SvpPrepare, VecZnx, VecZnxAlloc, VecZnxBig, VecZnxBigAddSmallInplace, VecZnxBigAlloc,
+    Decoding, Encoding, FFT64, Module, ModuleNew, ScalarZnx, ScalarZnxAlloc, ScratchOwned, SvpApplyInplace, SvpPPol,
+    SvpPPolAlloc, SvpPrepare, VecZnx, VecZnxAddNormal, VecZnxAlloc, VecZnxBig, VecZnxBigAddSmallInplace, VecZnxBigAlloc,
     VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallBInplace, VecZnxDft, VecZnxDftAlloc, VecZnxDftFromVecZnx,
-    VecZnxDftToVecZnxBigTmpA, VecZnxNormalizeInplace, ZnxInfos,
+    VecZnxDftToVecZnxBigTmpA, VecZnxFillUniform, VecZnxNormalizeInplace, ZnxInfos,
 };
 use itertools::izip;
 use sampling::source::Source;
@@ -37,7 +37,7 @@ fn main() {
     );
 
     // Fill the second column with random values: ct = (0, a)
-    ct.fill_uniform(basek, 1, ct_size, &mut source);
+    module.vec_znx_fill_uniform(basek, &mut ct, 1, ct_size * basek, &mut source);
 
     let mut buf_dft: VecZnxDft<Vec<u8>, FFT64> = module.vec_znx_dft_alloc(1, ct_size);
 
@@ -89,13 +89,14 @@ fn main() {
 
     // Add noise to ct[0]
     // ct[0] <- ct[0] + e
-    ct.add_normal(
+    module.vec_znx_add_normal(
         basek,
+        &mut ct,
         0,               // Selects the first column of ct (ct[0])
         basek * ct_size, // Scaling of the noise: 2^{-basek * limbs}
         &mut source,
-        3.2,  // Standard deviation
-        19.0, // Truncatation bound
+        3.2,       // Standard deviation
+        3.2 * 6.0, // Truncatation bound
     );
 
     // Final ciphertext: ct = (-a * s + m + e, a)

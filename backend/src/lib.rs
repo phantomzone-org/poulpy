@@ -1,13 +1,8 @@
-mod encoding;
 #[allow(non_camel_case_types, non_snake_case, non_upper_case_globals, dead_code, improper_ctypes)]
-// Other modules and exports
 mod ffi;
 mod mat_znx;
-mod mat_znx_ops;
 mod module;
-mod sampling;
 mod scalar_znx;
-mod stats;
 mod svp_ppol;
 mod vec_znx;
 mod vec_znx_big;
@@ -15,13 +10,9 @@ mod vec_znx_dft;
 mod vmp_pmat;
 mod znx_base;
 
-pub use encoding::*;
 pub use mat_znx::*;
-pub use mat_znx_ops::*;
 pub use module::*;
-pub use sampling::*;
 pub use scalar_znx::*;
-pub use stats::*;
 pub use svp_ppol::*;
 pub use vec_znx::*;
 pub use vec_znx_big::*;
@@ -321,10 +312,13 @@ impl Scratch {
         cols_in: usize,
         cols_out: usize,
         size: usize,
-    ) -> (MatZnx<&mut [u8]>, &mut Self) {
+    ) -> (MatZnx<&mut [u8]>, &mut Self)
+    where
+        Module<B>: MatZnxAllocBytes,
+    {
         let (take_slice, rem_slice) = Self::take_slice_aligned(
             &mut self.data,
-            module.bytes_of_mat_znx(rows, cols_in, cols_out, size),
+            module.mat_znx_alloc_bytes(rows, cols_in, cols_out, size),
         );
         (
             MatZnx::from_data(take_slice, module.n(), rows, cols_in, cols_out, size),

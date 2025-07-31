@@ -1,4 +1,6 @@
-use backend::{Backend, MatZnx, MatZnxAlloc, Module, Scratch, VmpPMat, VmpPMatAlloc, VmpPMatAllocBytes, VmpPMatPrepare};
+use backend::{
+    Backend, MatZnx, MatZnxAlloc, MatZnxAllocBytes, Module, Scratch, VmpPMat, VmpPMatAlloc, VmpPMatAllocBytes, VmpPMatPrepare,
+};
 
 use crate::{GLWECiphertext, Infos};
 
@@ -40,7 +42,10 @@ impl GGLWECiphertext<Vec<u8>> {
         digits: usize,
         rank_in: usize,
         rank_out: usize,
-    ) -> Self {
+    ) -> Self
+    where
+        Module<B>: MatZnxAlloc,
+    {
         let size: usize = k.div_ceil(basek);
         debug_assert!(
             size > digits,
@@ -58,7 +63,7 @@ impl GGLWECiphertext<Vec<u8>> {
         );
 
         Self {
-            data: module.new_mat_znx(rows, rank_in, rank_out + 1, size),
+            data: module.mat_znx_alloc(rows, rank_in, rank_out + 1, size),
             basek: basek,
             k,
             digits,
@@ -73,7 +78,10 @@ impl GGLWECiphertext<Vec<u8>> {
         digits: usize,
         rank_in: usize,
         rank_out: usize,
-    ) -> usize {
+    ) -> usize
+    where
+        Module<B>: MatZnxAllocBytes,
+    {
         let size: usize = k.div_ceil(basek);
         debug_assert!(
             size > digits,
@@ -90,7 +98,7 @@ impl GGLWECiphertext<Vec<u8>> {
             size
         );
 
-        module.bytes_of_mat_znx(rows, rank_in, rank_out + 1, rows)
+        module.mat_znx_alloc_bytes(rows, rank_in, rank_out + 1, rows)
     }
 }
 

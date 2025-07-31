@@ -1,3 +1,6 @@
+use rand_distr::Distribution;
+use sampling::source::Source;
+
 use crate::{ScalarZnxToRef, Scratch, VecZnxOwned, VecZnxToMut, VecZnxToRef};
 
 pub trait VecZnxAlloc {
@@ -204,4 +207,76 @@ pub trait VecZnxCopy {
     where
         R: VecZnxToMut,
         A: VecZnxToRef;
+}
+
+pub trait VecZnxStd {
+    /// Returns the standard devaition of the i-th polynomial.
+    fn vec_znx_std<A>(&self, basek: usize, a: &A, a_col: usize) -> f64
+    where
+        A: VecZnxToRef;
+}
+
+pub trait VecZnxFillUniform {
+    /// Fills the first `size` size with uniform values in \[-2^{basek-1}, 2^{basek-1}\]
+    fn vec_znx_fill_uniform<R>(&self, basek: usize, res: &mut R, res_col: usize, k: usize, source: &mut Source)
+    where
+        R: VecZnxToMut;
+}
+
+pub trait VecZnxFillDistF64 {
+    fn vec_znx_fill_dist_f64<R, D: Distribution<f64>>(
+        &self,
+        basek: usize,
+        res: &mut R,
+        res_col: usize,
+        k: usize,
+        source: &mut Source,
+        dist: D,
+        bound: f64,
+    ) where
+        R: VecZnxToMut;
+}
+
+pub trait VecZnxAddDistF64 {
+    /// Adds vector sampled according to the provided distribution, scaled by 2^{-k} and bounded to \[-bound, bound\].
+    fn vec_znx_add_dist_f64<R, D: Distribution<f64>>(
+        &self,
+        basek: usize,
+        res: &mut R,
+        res_col: usize,
+        k: usize,
+        source: &mut Source,
+        dist: D,
+        bound: f64,
+    ) where
+        R: VecZnxToMut;
+}
+
+pub trait VecZnxFillNormal {
+    fn vec_znx_fill_normal<R>(
+        &self,
+        basek: usize,
+        res: &mut R,
+        res_col: usize,
+        k: usize,
+        source: &mut Source,
+        sigma: f64,
+        bound: f64,
+    ) where
+        R: VecZnxToMut;
+}
+
+pub trait VecZnxAddNormal {
+    /// Adds a discrete normal vector scaled by 2^{-k} with the provided standard deviation and bounded to \[-bound, bound\].
+    fn vec_znx_add_normal<R>(
+        &self,
+        basek: usize,
+        res: &mut R,
+        res_col: usize,
+        k: usize,
+        source: &mut Source,
+        sigma: f64,
+        bound: f64,
+    ) where
+        R: VecZnxToMut;
 }

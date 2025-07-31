@@ -27,31 +27,31 @@ impl<D: AsRef<[u8]>> ZnxView for VecZnxDft<D, FFT64> {
     type Scalar = f64;
 }
 
-impl VecZnxDftFromBytesImpl<FFT64> for () {
+unsafe impl VecZnxDftFromBytesImpl<FFT64> for FFT64 {
     fn vec_znx_dft_from_bytes_impl(module: &Module<FFT64>, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxDftOwned<FFT64> {
         VecZnxDft::<Vec<u8>, FFT64>::from_bytes(module.n(), cols, size, bytes)
     }
 }
 
-impl VecZnxDftAllocBytesImpl<FFT64> for () {
+unsafe impl VecZnxDftAllocBytesImpl<FFT64> for FFT64 {
     fn vec_znx_dft_alloc_bytes_impl(module: &Module<FFT64>, cols: usize, size: usize) -> usize {
         VecZnxDft::<Vec<u8>, FFT64>::bytes_of(module.n(), cols, size)
     }
 }
 
-impl VecZnxDftAllocImpl<FFT64> for () {
+unsafe impl VecZnxDftAllocImpl<FFT64> for FFT64 {
     fn vec_znx_dft_alloc_impl(module: &Module<FFT64>, cols: usize, size: usize) -> VecZnxDftOwned<FFT64> {
         VecZnxDftOwned::alloc(module.n(), cols, size)
     }
 }
 
-impl VecZnxDftToVecZnxBigTmpBytesImpl<FFT64> for () {
+unsafe impl VecZnxDftToVecZnxBigTmpBytesImpl<FFT64> for FFT64 {
     fn vec_znx_dft_to_vec_znx_big_tmp_bytes_impl(module: &Module<FFT64>) -> usize {
         unsafe { vec_znx_dft::vec_znx_idft_tmp_bytes(module.ptr()) as usize }
     }
 }
 
-impl VecZnxDftToVecZnxBigImpl<FFT64> for () {
+unsafe impl VecZnxDftToVecZnxBigImpl<FFT64> for FFT64 {
     fn vec_znx_dft_to_vec_znx_big_impl<R, A>(
         module: &Module<FFT64>,
         res: &mut R,
@@ -88,7 +88,7 @@ impl VecZnxDftToVecZnxBigImpl<FFT64> for () {
     }
 }
 
-impl VecZnxDftToVecZnxBigTmpAImpl<FFT64> for () {
+unsafe impl VecZnxDftToVecZnxBigTmpAImpl<FFT64> for FFT64 {
     fn vec_znx_dft_to_vec_znx_big_tmp_a_impl<R, A>(module: &Module<FFT64>, res: &mut R, res_col: usize, a: &mut A, a_col: usize)
     where
         R: VecZnxBigToMut<FFT64>,
@@ -116,7 +116,7 @@ impl VecZnxDftToVecZnxBigTmpAImpl<FFT64> for () {
     }
 }
 
-impl VecZnxDftToVecZnxBigConsumeImpl<FFT64> for () {
+unsafe impl VecZnxDftToVecZnxBigConsumeImpl<FFT64> for FFT64 {
     fn vec_znx_dft_to_vec_znx_big_consume_impl<D>(module: &Module<FFT64>, mut a: VecZnxDft<D, FFT64>) -> VecZnxBig<D, FFT64>
     where
         VecZnxDft<D, FFT64>: VecZnxDftToMut<FFT64>,
@@ -142,7 +142,7 @@ impl VecZnxDftToVecZnxBigConsumeImpl<FFT64> for () {
     }
 }
 
-impl VecZnxDftFromVecZnxImpl<FFT64> for () {
+unsafe impl VecZnxDftFromVecZnxImpl<FFT64> for FFT64 {
     fn vec_znx_dft_from_vec_znx_impl<R, A>(
         module: &Module<FFT64>,
         step: usize,
@@ -180,7 +180,7 @@ impl VecZnxDftFromVecZnxImpl<FFT64> for () {
     }
 }
 
-impl VecZnxDftAddImpl<FFT64> for () {
+unsafe impl VecZnxDftAddImpl<FFT64> for FFT64 {
     fn vec_znx_dft_add_impl<R, A, D>(
         module: &Module<FFT64>,
         res: &mut R,
@@ -219,7 +219,7 @@ impl VecZnxDftAddImpl<FFT64> for () {
     }
 }
 
-impl VecZnxDftAddInplaceImpl<FFT64> for () {
+unsafe impl VecZnxDftAddInplaceImpl<FFT64> for FFT64 {
     fn vec_znx_dft_add_inplace_impl<R, A>(module: &Module<FFT64>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxDftToMut<FFT64>,
@@ -246,7 +246,7 @@ impl VecZnxDftAddInplaceImpl<FFT64> for () {
     }
 }
 
-impl VecZnxDftSubImpl<FFT64> for () {
+unsafe impl VecZnxDftSubImpl<FFT64> for FFT64 {
     fn vec_znx_dft_sub_impl<R, A, D>(
         module: &Module<FFT64>,
         res: &mut R,
@@ -285,7 +285,7 @@ impl VecZnxDftSubImpl<FFT64> for () {
     }
 }
 
-impl VecZnxDftSubABInplaceImpl<FFT64> for () {
+unsafe impl VecZnxDftSubABInplaceImpl<FFT64> for FFT64 {
     fn vec_znx_dft_sub_ab_inplace_impl<R, A>(module: &Module<FFT64>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxDftToMut<FFT64>,
@@ -312,7 +312,7 @@ impl VecZnxDftSubABInplaceImpl<FFT64> for () {
     }
 }
 
-impl VecZnxDftSubBAInplaceImpl<FFT64> for () {
+unsafe impl VecZnxDftSubBAInplaceImpl<FFT64> for FFT64 {
     fn vec_znx_dft_sub_ba_inplace_impl<R, A>(module: &Module<FFT64>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxDftToMut<FFT64>,
@@ -339,7 +339,7 @@ impl VecZnxDftSubBAInplaceImpl<FFT64> for () {
     }
 }
 
-impl VecZnxDftCopyImpl<FFT64> for () {
+unsafe impl VecZnxDftCopyImpl<FFT64> for FFT64 {
     fn vec_znx_dft_copy_impl<R, A>(
         _module: &Module<FFT64>,
         step: usize,
@@ -372,7 +372,7 @@ impl VecZnxDftCopyImpl<FFT64> for () {
     }
 }
 
-impl VecZnxDftZeroImpl<FFT64> for () {
+unsafe impl VecZnxDftZeroImpl<FFT64> for FFT64 {
     fn vec_znx_dft_zero_impl<R>(_module: &Module<FFT64>, res: &mut R)
     where
         R: VecZnxDftToMut<FFT64>,

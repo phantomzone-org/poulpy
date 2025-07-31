@@ -1,5 +1,5 @@
-use backend::{FFT64, Module, ScalarZnx, ScalarZnxAlloc, ScratchOwned};
-use core::{FourierGLWESecret, GGSWCiphertext, GLWECiphertext, GLWESecret, Infos};
+use backend::{FFT64, Module, ModuleNew, ScalarZnx, ScalarZnxAlloc, ScratchOwned};
+use core::{GGSWCiphertext, GGSWCiphertextExec, GLWECiphertext, GLWESecret, GLWESecretExec, Infos};
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use sampling::source::Source;
 use std::hint::black_box;
@@ -29,10 +29,10 @@ fn bench_external_product_glwe_fft64(c: &mut Criterion) {
         let rows: usize = 1; //(p.k_ct_in + p.basek - 1) / p.basek;
         let sigma: f64 = 3.2;
 
-        let mut ct_ggsw: GGSWCiphertext<Vec<u8>, FFT64> = GGSWCiphertext::alloc(&module, basek, k_ggsw, rows, digits, rank);
+        let mut ct_ggsw: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(&module, basek, k_ggsw, rows, digits, rank);
         let mut ct_glwe_in: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_ct_in, rank);
         let mut ct_glwe_out: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_ct_out, rank);
-        let pt_rgsw: ScalarZnx<Vec<u8>> = module.new_scalar_znx(1);
+        let pt_rgsw: ScalarZnx<Vec<u8>> = module.scalar_znx_alloc(1);
 
         let mut scratch = ScratchOwned::new(
             GGSWCiphertext::encrypt_sk_scratch_space(&module, basek, ct_ggsw.k(), rank)
@@ -54,7 +54,7 @@ fn bench_external_product_glwe_fft64(c: &mut Criterion) {
 
         let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(&module, rank);
         sk.fill_ternary_prob(0.5, &mut source_xs);
-        let sk_dft: FourierGLWESecret<Vec<u8>, FFT64> = FourierGLWESecret::from(&module, &sk);
+        let sk_dft: GLWESecretExec<Vec<u8>, FFT64> = GLWESecretExec::from(&module, &sk);
 
         ct_ggsw.encrypt_sk(
             &module,
@@ -75,8 +75,10 @@ fn bench_external_product_glwe_fft64(c: &mut Criterion) {
             scratch.borrow(),
         );
 
+        let ggsw_exec: GGSWCiphertextExec<Vec<u8>, FFT64> = GGSWCiphertextExec::from(&module, &ct_ggsw, scratch.borrow());
+
         move || {
-            black_box(ct_glwe_out.external_product(&module, &ct_glwe_in, &ct_ggsw, scratch.borrow()));
+            black_box(ct_glwe_out.external_product(&module, &ct_glwe_in, &ggsw_exec, scratch.borrow()));
         }
     }
 
@@ -121,9 +123,9 @@ fn bench_external_product_glwe_inplace_fft64(c: &mut Criterion) {
         let rows: usize = (p.k_ct + p.basek - 1) / p.basek;
         let sigma: f64 = 3.2;
 
-        let mut ct_ggsw: GGSWCiphertext<Vec<u8>, FFT64> = GGSWCiphertext::alloc(&module, basek, k_ggsw, rows, digits, rank);
+        let mut ct_ggsw: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(&module, basek, k_ggsw, rows, digits, rank);
         let mut ct_glwe: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_glwe, rank);
-        let pt_rgsw: ScalarZnx<Vec<u8>> = module.new_scalar_znx(1);
+        let pt_rgsw: ScalarZnx<Vec<u8>> = module.scalar_znx_alloc(1);
 
         let mut scratch = ScratchOwned::new(
             GGSWCiphertext::encrypt_sk_scratch_space(&module, basek, ct_ggsw.k(), rank)
@@ -137,7 +139,7 @@ fn bench_external_product_glwe_inplace_fft64(c: &mut Criterion) {
 
         let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(&module, rank);
         sk.fill_ternary_prob(0.5, &mut source_xs);
-        let sk_dft: FourierGLWESecret<Vec<u8>, FFT64> = FourierGLWESecret::from(&module, &sk);
+        let sk_dft: GLWESecretExec<Vec<u8>, FFT64> = GLWESecretExec::from(&module, &sk);
 
         ct_ggsw.encrypt_sk(
             &module,
@@ -158,9 +160,11 @@ fn bench_external_product_glwe_inplace_fft64(c: &mut Criterion) {
             scratch.borrow(),
         );
 
+        let ggsw_exec: GGSWCiphertextExec<Vec<u8>, FFT64> = GGSWCiphertextExec::from(&module, &ct_ggsw, scratch.borrow());
+
         move || {
             let scratch_borrow = scratch.borrow();
-            black_box(ct_glwe.external_product_inplace(&module, &ct_ggsw, scratch_borrow));
+            black_box(ct_glwe.external_product_inplace(&module, &ggsw_exec, scratch_borrow));
         }
     }
 

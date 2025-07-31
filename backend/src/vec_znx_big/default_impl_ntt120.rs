@@ -21,7 +21,7 @@ impl<D: AsRef<[u8]>> ZnxSliceSize for VecZnxBig<D, NTT120> {
     }
 }
 
-impl VecZnxBigAllocBytesImpl<NTT120> for Module<NTT120> {
+unsafe impl VecZnxBigAllocBytesImpl<NTT120> for NTT120 {
     fn vec_znx_big_alloc_bytes_impl(module: &Module<NTT120>, cols: usize, size: usize) -> usize {
         VecZnxBig::<Vec<u8>, NTT120>::bytes_of(module.n(), cols, size)
     }

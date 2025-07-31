@@ -1,4 +1,4 @@
-use backend::{FFT64, Module, ModuleNew, ScalarZnxOps, ScratchOwned, Stats, VecZnxSubScalarInplace};
+use backend::{FFT64, Module, ModuleNew, ScalarZnxAutomorphism, ScratchOwned, VecZnxStd, VecZnxSubScalarInplace};
 use sampling::source::Source;
 
 use crate::{
@@ -138,7 +138,7 @@ fn test_automorphism(
                 col_i,
             );
 
-            let noise_have: f64 = pt.data.std(0, basek).log2();
+            let noise_have: f64 = module.vec_znx_std(basek, &pt.data, 0).log2();
             let noise_want: f64 = log2_std_noise_gglwe_product(
                 module.n() as f64,
                 basek * digits,
@@ -255,7 +255,7 @@ fn test_automorphism_inplace(
                 col_i,
             );
 
-            let noise_have: f64 = pt.data.std(0, basek).log2();
+            let noise_have: f64 = module.vec_znx_std(basek, &pt.data, 0).log2();
             let noise_want: f64 = log2_std_noise_gglwe_product(
                 module.n() as f64,
                 basek * digits,

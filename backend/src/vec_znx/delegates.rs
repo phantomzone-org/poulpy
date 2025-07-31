@@ -1,10 +1,14 @@
+use sampling::source::Source;
+
 use crate::{
-    Backend, Module, ScalarZnxToRef, Scratch, VecZnxAddImpl, VecZnxAddInplaceImpl, VecZnxAddScalarInplaceImpl,
-    VecZnxAllocBytesImpl, VecZnxAllocImpl, VecZnxAutomorphismImpl, VecZnxAutomorphismInplaceImpl, VecZnxCopyImpl,
-    VecZnxFromBytesImpl, VecZnxMergeImpl, VecZnxNegateImpl, VecZnxNegateInplaceImpl, VecZnxNormalizeImpl,
-    VecZnxNormalizeInplaceImpl, VecZnxNormalizeTmpBytesImpl, VecZnxOwned, VecZnxRotateImpl, VecZnxRotateInplaceImpl,
-    VecZnxShiftInplaceImpl, VecZnxSplitImpl, VecZnxSubABInplaceImpl, VecZnxSubBAInplaceImpl, VecZnxSubImpl,
-    VecZnxSubScalarInplaceImpl, VecZnxSwithcDegreeImpl, VecZnxToMut, VecZnxToRef,
+    Backend, Module, ScalarZnxToRef, Scratch, VecZnxAddDistF64, VecZnxAddDistF64Impl, VecZnxAddImpl, VecZnxAddInplaceImpl,
+    VecZnxAddNormal, VecZnxAddNormalImpl, VecZnxAddScalarInplaceImpl, VecZnxAllocBytesImpl, VecZnxAllocImpl,
+    VecZnxAutomorphismImpl, VecZnxAutomorphismInplaceImpl, VecZnxCopyImpl, VecZnxFillDistF64, VecZnxFillDistF64Impl,
+    VecZnxFillNormal, VecZnxFillNormalImpl, VecZnxFillUniform, VecZnxFillUniformImpl, VecZnxFromBytesImpl, VecZnxMergeImpl,
+    VecZnxNegateImpl, VecZnxNegateInplaceImpl, VecZnxNormalizeImpl, VecZnxNormalizeInplaceImpl, VecZnxNormalizeTmpBytesImpl,
+    VecZnxOwned, VecZnxRotateImpl, VecZnxRotateInplaceImpl, VecZnxShiftInplaceImpl, VecZnxSplitImpl, VecZnxStd, VecZnxStdImpl,
+    VecZnxSubABInplaceImpl, VecZnxSubBAInplaceImpl, VecZnxSubImpl, VecZnxSubScalarInplaceImpl, VecZnxSwithcDegreeImpl,
+    VecZnxToMut, VecZnxToRef,
     vec_znx::traits::{
         VecZnxAdd, VecZnxAddInplace, VecZnxAddScalarInplace, VecZnxAlloc, VecZnxAllocBytes, VecZnxAutomorphism,
         VecZnxAutomorphismInplace, VecZnxCopy, VecZnxFromBytes, VecZnxMerge, VecZnxNegate, VecZnxNegateInplace, VecZnxNormalize,
@@ -13,70 +17,70 @@ use crate::{
     },
 };
 
-impl<B: Backend> VecZnxAlloc for Module<B>
+impl<B> VecZnxAlloc for Module<B>
 where
-    (): VecZnxAllocImpl<B>,
+    B: Backend + VecZnxAllocImpl<B>,
 {
     fn vec_znx_alloc(&self, cols: usize, size: usize) -> VecZnxOwned {
-        <() as VecZnxAllocImpl<B>>::vec_znx_alloc_impl(self, cols, size)
+        B::vec_znx_alloc_impl(self, cols, size)
     }
 }
 
-impl<B: Backend> VecZnxFromBytes for Module<B>
+impl<B> VecZnxFromBytes for Module<B>
 where
-    (): VecZnxFromBytesImpl<B>,
+    B: Backend + VecZnxFromBytesImpl<B>,
 {
     fn vec_znx_from_bytes(&self, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxOwned {
-        <() as VecZnxFromBytesImpl<B>>::vec_znx_from_bytes_impl(self, cols, size, bytes)
+        B::vec_znx_from_bytes_impl(self, cols, size, bytes)
     }
 }
 
-impl<B: Backend> VecZnxAllocBytes for Module<B>
+impl<B> VecZnxAllocBytes for Module<B>
 where
-    (): VecZnxAllocBytesImpl<B>,
+    B: Backend + VecZnxAllocBytesImpl<B>,
 {
     fn vec_znx_alloc_bytes(&self, cols: usize, size: usize) -> usize {
-        <() as VecZnxAllocBytesImpl<B>>::vec_znx_alloc_bytes_impl(self, cols, size)
+        B::vec_znx_alloc_bytes_impl(self, cols, size)
     }
 }
 
-impl<B: Backend> VecZnxNormalizeTmpBytes for Module<B>
+impl<B> VecZnxNormalizeTmpBytes for Module<B>
 where
-    (): VecZnxNormalizeTmpBytesImpl<B>,
+    B: Backend + VecZnxNormalizeTmpBytesImpl<B>,
 {
     fn vec_znx_normalize_tmp_bytes(&self) -> usize {
-        <() as VecZnxNormalizeTmpBytesImpl<B>>::vec_znx_normalize_tmp_bytes_impl(self)
+        B::vec_znx_normalize_tmp_bytes_impl(self)
     }
 }
 
-impl<B: Backend> VecZnxNormalize for Module<B>
+impl<B> VecZnxNormalize for Module<B>
 where
-    (): VecZnxNormalizeImpl<B>,
+    B: Backend + VecZnxNormalizeImpl<B>,
 {
     fn vec_znx_normalize<R, A>(&self, basek: usize, res: &mut R, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch)
     where
         R: VecZnxToMut,
         A: VecZnxToRef,
     {
-        <() as VecZnxNormalizeImpl<B>>::vec_znx_normalize_impl(self, basek, res, res_col, a, a_col, scratch)
+        B::vec_znx_normalize_impl(self, basek, res, res_col, a, a_col, scratch)
     }
 }
 
-impl<B: Backend> VecZnxNormalizeInplace for Module<B>
+impl<B> VecZnxNormalizeInplace for Module<B>
 where
-    (): VecZnxNormalizeInplaceImpl<B>,
+    B: Backend + VecZnxNormalizeInplaceImpl<B>,
 {
     fn vec_znx_normalize_inplace<A>(&self, basek: usize, a: &mut A, a_col: usize, scratch: &mut Scratch)
     where
         A: VecZnxToMut,
     {
-        <() as VecZnxNormalizeInplaceImpl<B>>::vec_znx_normalize_inplace_impl(self, basek, a, a_col, scratch)
+        B::vec_znx_normalize_inplace_impl(self, basek, a, a_col, scratch)
     }
 }
 
-impl<B: Backend> VecZnxAdd for Module<B>
+impl<B> VecZnxAdd for Module<B>
 where
-    (): VecZnxAddImpl<B>,
+    B: Backend + VecZnxAddImpl<B>,
 {
     fn vec_znx_add<R, A, C>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &C, b_col: usize)
     where
@@ -84,39 +88,39 @@ where
         A: VecZnxToRef,
         C: VecZnxToRef,
     {
-        <() as VecZnxAddImpl<B>>::vec_znx_add_impl(self, res, res_col, a, a_col, b, b_col)
+        B::vec_znx_add_impl(self, res, res_col, a, a_col, b, b_col)
     }
 }
 
-impl<B: Backend> VecZnxAddInplace for Module<B>
+impl<B> VecZnxAddInplace for Module<B>
 where
-    (): VecZnxAddInplaceImpl<B>,
+    B: Backend + VecZnxAddInplaceImpl<B>,
 {
     fn vec_znx_add_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxToMut,
         A: VecZnxToRef,
     {
-        <() as VecZnxAddInplaceImpl<B>>::vec_znx_add_inplace_impl(self, res, res_col, a, a_col)
+        B::vec_znx_add_inplace_impl(self, res, res_col, a, a_col)
     }
 }
 
-impl<B: Backend> VecZnxAddScalarInplace for Module<B>
+impl<B> VecZnxAddScalarInplace for Module<B>
 where
-    (): VecZnxAddScalarInplaceImpl<B>,
+    B: Backend + VecZnxAddScalarInplaceImpl<B>,
 {
     fn vec_znx_add_scalar_inplace<R, A>(&self, res: &mut R, res_col: usize, res_limb: usize, a: &A, a_col: usize)
     where
         R: VecZnxToMut,
         A: ScalarZnxToRef,
     {
-        <() as VecZnxAddScalarInplaceImpl<B>>::vec_znx_add_scalar_inplace_impl(self, res, res_col, res_limb, a, a_col)
+        B::vec_znx_add_scalar_inplace_impl(self, res, res_col, res_limb, a, a_col)
     }
 }
 
-impl<B: Backend> VecZnxSub for Module<B>
+impl<B> VecZnxSub for Module<B>
 where
-    (): VecZnxSubImpl<B>,
+    B: Backend + VecZnxSubImpl<B>,
 {
     fn vec_znx_sub<R, A, C>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &C, b_col: usize)
     where
@@ -124,184 +128,288 @@ where
         A: VecZnxToRef,
         C: VecZnxToRef,
     {
-        <() as VecZnxSubImpl<B>>::vec_znx_sub_impl(self, res, res_col, a, a_col, b, b_col)
+        B::vec_znx_sub_impl(self, res, res_col, a, a_col, b, b_col)
     }
 }
 
-impl<B: Backend> VecZnxSubABInplace for Module<B>
+impl<B> VecZnxSubABInplace for Module<B>
 where
-    (): VecZnxSubABInplaceImpl<B>,
+    B: Backend + VecZnxSubABInplaceImpl<B>,
 {
     fn vec_znx_sub_ab_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxToMut,
         A: VecZnxToRef,
     {
-        <() as VecZnxSubABInplaceImpl<B>>::vec_znx_sub_ab_inplace_impl(self, res, res_col, a, a_col)
+        B::vec_znx_sub_ab_inplace_impl(self, res, res_col, a, a_col)
     }
 }
 
-impl<B: Backend> VecZnxSubBAInplace for Module<B>
+impl<B> VecZnxSubBAInplace for Module<B>
 where
-    (): VecZnxSubBAInplaceImpl<B>,
+    B: Backend + VecZnxSubBAInplaceImpl<B>,
 {
     fn vec_znx_sub_ba_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxToMut,
         A: VecZnxToRef,
     {
-        <() as VecZnxSubBAInplaceImpl<B>>::vec_znx_sub_ba_inplace_impl(self, res, res_col, a, a_col)
+        B::vec_znx_sub_ba_inplace_impl(self, res, res_col, a, a_col)
     }
 }
 
-impl<B: Backend> VecZnxSubScalarInplace for Module<B>
+impl<B> VecZnxSubScalarInplace for Module<B>
 where
-    (): VecZnxSubScalarInplaceImpl<B>,
+    B: Backend + VecZnxSubScalarInplaceImpl<B>,
 {
     fn vec_znx_sub_scalar_inplace<R, A>(&self, res: &mut R, res_col: usize, res_limb: usize, a: &A, a_col: usize)
     where
         R: VecZnxToMut,
         A: ScalarZnxToRef,
     {
-        <() as VecZnxSubScalarInplaceImpl<B>>::vec_znx_sub_scalar_inplace_impl(self, res, res_col, res_limb, a, a_col)
+        B::vec_znx_sub_scalar_inplace_impl(self, res, res_col, res_limb, a, a_col)
     }
 }
 
-impl<B: Backend> VecZnxNegate for Module<B>
+impl<B> VecZnxNegate for Module<B>
 where
-    (): VecZnxNegateImpl<B>,
+    B: Backend + VecZnxNegateImpl<B>,
 {
     fn vec_znx_negate<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxToMut,
         A: VecZnxToRef,
     {
-        <() as VecZnxNegateImpl<B>>::vec_znx_negate_impl(self, res, res_col, a, a_col)
+        B::vec_znx_negate_impl(self, res, res_col, a, a_col)
     }
 }
 
-impl<B: Backend> VecZnxNegateInplace for Module<B>
+impl<B> VecZnxNegateInplace for Module<B>
 where
-    (): VecZnxNegateInplaceImpl<B>,
+    B: Backend + VecZnxNegateInplaceImpl<B>,
 {
     fn vec_znx_negate_inplace<A>(&self, a: &mut A, a_col: usize)
     where
         A: VecZnxToMut,
     {
-        <() as VecZnxNegateInplaceImpl<B>>::vec_znx_negate_inplace_impl(self, a, a_col)
+        B::vec_znx_negate_inplace_impl(self, a, a_col)
     }
 }
 
-impl<B: Backend> VecZnxShiftInplace for Module<B>
+impl<B> VecZnxShiftInplace for Module<B>
 where
-    (): VecZnxShiftInplaceImpl<B>,
+    B: Backend + VecZnxShiftInplaceImpl<B>,
 {
     fn vec_znx_shift_inplace<A>(&self, basek: usize, k: i64, a: &mut A, scratch: &mut Scratch)
     where
         A: VecZnxToMut,
     {
-        <() as VecZnxShiftInplaceImpl<B>>::vec_znx_shift_inplace_impl(self, basek, k, a, scratch)
+        B::vec_znx_shift_inplace_impl(self, basek, k, a, scratch)
     }
 }
 
-impl<B: Backend> VecZnxRotate for Module<B>
+impl<B> VecZnxRotate for Module<B>
 where
-    (): VecZnxRotateImpl<B>,
+    B: Backend + VecZnxRotateImpl<B>,
 {
     fn vec_znx_rotate<R, A>(&self, k: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxToMut,
         A: VecZnxToRef,
     {
-        <() as VecZnxRotateImpl<B>>::vec_znx_rotate_impl(self, k, res, res_col, a, a_col)
+        B::vec_znx_rotate_impl(self, k, res, res_col, a, a_col)
     }
 }
 
-impl<B: Backend> VecZnxRotateInplace for Module<B>
+impl<B> VecZnxRotateInplace for Module<B>
 where
-    (): VecZnxRotateInplaceImpl<B>,
+    B: Backend + VecZnxRotateInplaceImpl<B>,
 {
     fn vec_znx_rotate_inplace<A>(&self, k: i64, a: &mut A, a_col: usize)
     where
         A: VecZnxToMut,
     {
-        <() as VecZnxRotateInplaceImpl<B>>::vec_znx_rotate_inplace_impl(self, k, a, a_col)
+        B::vec_znx_rotate_inplace_impl(self, k, a, a_col)
     }
 }
 
-impl<B: Backend> VecZnxAutomorphism for Module<B>
+impl<B> VecZnxAutomorphism for Module<B>
 where
-    (): VecZnxAutomorphismImpl<B>,
+    B: Backend + VecZnxAutomorphismImpl<B>,
 {
     fn vec_znx_automorphism<R, A>(&self, k: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxToMut,
         A: VecZnxToRef,
     {
-        <() as VecZnxAutomorphismImpl<B>>::vec_znx_automorphism_impl(self, k, res, res_col, a, a_col)
+        B::vec_znx_automorphism_impl(self, k, res, res_col, a, a_col)
     }
 }
 
-impl<B: Backend> VecZnxAutomorphismInplace for Module<B>
+impl<B> VecZnxAutomorphismInplace for Module<B>
 where
-    (): VecZnxAutomorphismInplaceImpl<B>,
+    B: Backend + VecZnxAutomorphismInplaceImpl<B>,
 {
     fn vec_znx_automorphism_inplace<A>(&self, k: i64, a: &mut A, a_col: usize)
     where
         A: VecZnxToMut,
     {
-        <() as VecZnxAutomorphismInplaceImpl<B>>::vec_znx_automorphism_inplace_impl(self, k, a, a_col)
+        B::vec_znx_automorphism_inplace_impl(self, k, a, a_col)
     }
 }
 
-impl<B: Backend> VecZnxSplit for Module<B>
+impl<B> VecZnxSplit for Module<B>
 where
-    (): VecZnxSplitImpl<B>,
+    B: Backend + VecZnxSplitImpl<B>,
 {
     fn vec_znx_split<R, A>(&self, res: &mut Vec<R>, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch)
     where
         R: VecZnxToMut,
         A: VecZnxToRef,
     {
-        <() as VecZnxSplitImpl<B>>::vec_znx_split_impl(self, res, res_col, a, a_col, scratch)
+        B::vec_znx_split_impl(self, res, res_col, a, a_col, scratch)
     }
 }
 
-impl<B: Backend> VecZnxMerge for Module<B>
+impl<B> VecZnxMerge for Module<B>
 where
-    (): VecZnxMergeImpl<B>,
+    B: Backend + VecZnxMergeImpl<B>,
 {
     fn vec_znx_merge<R, A>(&self, res: &mut R, res_col: usize, a: Vec<A>, a_col: usize)
     where
         R: VecZnxToMut,
         A: VecZnxToRef,
     {
-        <() as VecZnxMergeImpl<B>>::vec_znx_merge_impl(self, res, res_col, a, a_col)
+        B::vec_znx_merge_impl(self, res, res_col, a, a_col)
     }
 }
 
-impl<B: Backend> VecZnxSwithcDegree for Module<B>
+impl<B> VecZnxSwithcDegree for Module<B>
 where
-    (): VecZnxSwithcDegreeImpl<B>,
+    B: Backend + VecZnxSwithcDegreeImpl<B>,
 {
     fn vec_znx_switch_degree<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxToMut,
         A: VecZnxToRef,
     {
-        <() as VecZnxSwithcDegreeImpl<B>>::vec_znx_switch_degree_impl(self, res, res_col, a, a_col)
+        B::vec_znx_switch_degree_impl(self, res, res_col, a, a_col)
     }
 }
 
-impl<B: Backend> VecZnxCopy for Module<B>
+impl<B> VecZnxCopy for Module<B>
 where
-    (): VecZnxCopyImpl<B>,
+    B: Backend + VecZnxCopyImpl<B>,
 {
     fn vec_znx_copy<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxToMut,
         A: VecZnxToRef,
     {
-        <() as VecZnxCopyImpl<B>>::vec_znx_copy_impl(self, res, res_col, a, a_col)
+        B::vec_znx_copy_impl(self, res, res_col, a, a_col)
+    }
+}
+
+impl<B> VecZnxStd for Module<B>
+where
+    B: Backend + VecZnxStdImpl<B>,
+{
+    fn vec_znx_std<A>(&self, basek: usize, a: &A, a_col: usize) -> f64
+    where
+        A: VecZnxToRef,
+    {
+        B::vec_znx_std_impl(self, basek, a, a_col)
+    }
+}
+
+impl<B> VecZnxFillUniform for Module<B>
+where
+    B: Backend + VecZnxFillUniformImpl<B>,
+{
+    fn vec_znx_fill_uniform<R>(&self, basek: usize, res: &mut R, res_col: usize, k: usize, source: &mut Source)
+    where
+        R: VecZnxToMut,
+    {
+        B::vec_znx_fill_uniform_impl(self, basek, res, res_col, k, source);
+    }
+}
+
+impl<B> VecZnxFillDistF64 for Module<B>
+where
+    B: Backend + VecZnxFillDistF64Impl<B>,
+{
+    fn vec_znx_fill_dist_f64<R, D: rand::prelude::Distribution<f64>>(
+        &self,
+        basek: usize,
+        res: &mut R,
+        res_col: usize,
+        k: usize,
+        source: &mut Source,
+        dist: D,
+        bound: f64,
+    ) where
+        R: VecZnxToMut,
+    {
+        B::vec_znx_fill_dist_f64_impl(self, basek, res, res_col, k, source, dist, bound);
+    }
+}
+
+impl<B> VecZnxAddDistF64 for Module<B>
+where
+    B: Backend + VecZnxAddDistF64Impl<B>,
+{
+    fn vec_znx_add_dist_f64<R, D: rand::prelude::Distribution<f64>>(
+        &self,
+        basek: usize,
+        res: &mut R,
+        res_col: usize,
+        k: usize,
+        source: &mut Source,
+        dist: D,
+        bound: f64,
+    ) where
+        R: VecZnxToMut,
+    {
+        B::vec_znx_add_dist_f64_impl(self, basek, res, res_col, k, source, dist, bound);
+    }
+}
+
+impl<B> VecZnxFillNormal for Module<B>
+where
+    B: Backend + VecZnxFillNormalImpl<B>,
+{
+    fn vec_znx_fill_normal<R>(
+        &self,
+        basek: usize,
+        res: &mut R,
+        res_col: usize,
+        k: usize,
+        source: &mut Source,
+        sigma: f64,
+        bound: f64,
+    ) where
+        R: VecZnxToMut,
+    {
+        B::vec_znx_fill_normal_impl(self, basek, res, res_col, k, source, sigma, bound);
+    }
+}
+
+impl<B> VecZnxAddNormal for Module<B>
+where
+    B: Backend + VecZnxAddNormalImpl<B>,
+{
+    fn vec_znx_add_normal<R>(
+        &self,
+        basek: usize,
+        res: &mut R,
+        res_col: usize,
+        k: usize,
+        source: &mut Source,
+        sigma: f64,
+        bound: f64,
+    ) where
+        R: VecZnxToMut,
+    {
+        B::vec_znx_add_normal_impl(self, basek, res, res_col, k, source, sigma, bound);
     }
 }

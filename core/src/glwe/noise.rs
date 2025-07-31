@@ -1,4 +1,4 @@
-use backend::{Backend, Module, ScratchOwned, Stats, VecZnxNormalizeInplace, VecZnxSubABInplace};
+use backend::{Backend, Module, ScratchOwned, VecZnxNormalizeInplace, VecZnxStd, VecZnxSubABInplace};
 
 use crate::{GLWECiphertext, GLWEDecryptFamily, GLWEPlaintext, GLWESecretExec, Infos};
 
@@ -27,7 +27,7 @@ impl<D: AsRef<[u8]>> GLWECiphertext<D> {
         module.vec_znx_sub_ab_inplace(&mut pt_have.data, 0, &pt_want.data, 0);
         module.vec_znx_normalize_inplace(self.basek(), &mut pt_have.data, 0, scratch.borrow());
 
-        let noise_have: f64 = pt_have.data.std(0, self.basek()).log2();
+        let noise_have: f64 = module.vec_znx_std(self.basek(), &pt_have.data, 0).log2();
         assert!(noise_have <= max_noise, "{} {}", noise_have, max_noise);
     }
 }

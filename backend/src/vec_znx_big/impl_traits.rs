@@ -3,19 +3,19 @@ use sampling::source::Source;
 
 use crate::{Backend, Module, Scratch, VecZnxBigOwned, VecZnxBigToMut, VecZnxBigToRef, VecZnxToMut, VecZnxToRef};
 
-pub trait VecZnxBigAllocImpl<B: Backend> {
+pub unsafe trait VecZnxBigAllocImpl<B: Backend> {
     fn vec_znx_big_alloc_impl(module: &Module<B>, cols: usize, size: usize) -> VecZnxBigOwned<B>;
 }
 
-pub trait VecZnxBigFromBytesImpl<B: Backend> {
+pub unsafe trait VecZnxBigFromBytesImpl<B: Backend> {
     fn vec_znx_big_from_bytes_impl(module: &Module<B>, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxBigOwned<B>;
 }
 
-pub trait VecZnxBigAllocBytesImpl<B: Backend> {
+pub unsafe trait VecZnxBigAllocBytesImpl<B: Backend> {
     fn vec_znx_big_alloc_bytes_impl(module: &Module<B>, cols: usize, size: usize) -> usize;
 }
 
-pub trait VecZnxBigAddNormalImpl<B: Backend> {
+pub unsafe trait VecZnxBigAddNormalImpl<B: Backend> {
     fn add_normal_impl<R: VecZnxBigToMut<B>>(
         module: &Module<B>,
         basek: usize,
@@ -28,7 +28,7 @@ pub trait VecZnxBigAddNormalImpl<B: Backend> {
     );
 }
 
-pub trait VecZnxBigFillNormalImpl<B: Backend> {
+pub unsafe trait VecZnxBigFillNormalImpl<B: Backend> {
     fn fill_normal_impl<R: VecZnxBigToMut<B>>(
         module: &Module<B>,
         basek: usize,
@@ -41,7 +41,7 @@ pub trait VecZnxBigFillNormalImpl<B: Backend> {
     );
 }
 
-pub trait VecZnxBigFillDistF64Impl<B: Backend> {
+pub unsafe trait VecZnxBigFillDistF64Impl<B: Backend> {
     fn fill_dist_f64_impl<R: VecZnxBigToMut<B>, D: Distribution<f64>>(
         module: &Module<B>,
         basek: usize,
@@ -54,7 +54,7 @@ pub trait VecZnxBigFillDistF64Impl<B: Backend> {
     );
 }
 
-pub trait VecZnxBigAddDistF64Impl<B: Backend> {
+pub unsafe trait VecZnxBigAddDistF64Impl<B: Backend> {
     fn add_dist_f64_impl<R: VecZnxBigToMut<B>, D: Distribution<f64>>(
         module: &Module<B>,
         basek: usize,
@@ -67,7 +67,7 @@ pub trait VecZnxBigAddDistF64Impl<B: Backend> {
     );
 }
 
-pub trait VecZnxBigAddImpl<B: Backend> {
+pub unsafe trait VecZnxBigAddImpl<B: Backend> {
     fn vec_znx_big_add_impl<R, A, C>(module: &Module<B>, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &C, b_col: usize)
     where
         R: VecZnxBigToMut<B>,
@@ -75,14 +75,14 @@ pub trait VecZnxBigAddImpl<B: Backend> {
         C: VecZnxBigToRef<B>;
 }
 
-pub trait VecZnxBigAddInplaceImpl<B: Backend> {
+pub unsafe trait VecZnxBigAddInplaceImpl<B: Backend> {
     fn vec_znx_big_add_inplace_impl<R, A>(module: &Module<B>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxBigToMut<B>,
         A: VecZnxBigToRef<B>;
 }
 
-pub trait VecZnxBigAddSmallImpl<B: Backend> {
+pub unsafe trait VecZnxBigAddSmallImpl<B: Backend> {
     fn vec_znx_big_add_small_impl<R, A, C>(
         module: &Module<B>,
         res: &mut R,
@@ -97,14 +97,14 @@ pub trait VecZnxBigAddSmallImpl<B: Backend> {
         C: VecZnxToRef;
 }
 
-pub trait VecZnxBigAddSmallInplaceImpl<B: Backend> {
+pub unsafe trait VecZnxBigAddSmallInplaceImpl<B: Backend> {
     fn vec_znx_big_add_small_inplace_impl<R, A>(module: &Module<B>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxBigToMut<B>,
         A: VecZnxToRef;
 }
 
-pub trait VecZnxBigSubImpl<B: Backend> {
+pub unsafe trait VecZnxBigSubImpl<B: Backend> {
     fn vec_znx_big_sub_impl<R, A, C>(module: &Module<B>, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &C, b_col: usize)
     where
         R: VecZnxBigToMut<B>,
@@ -112,21 +112,21 @@ pub trait VecZnxBigSubImpl<B: Backend> {
         C: VecZnxBigToRef<B>;
 }
 
-pub trait VecZnxBigSubABInplaceImpl<B: Backend> {
+pub unsafe trait VecZnxBigSubABInplaceImpl<B: Backend> {
     fn vec_znx_big_sub_ab_inplace_impl<R, A>(module: &Module<B>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxBigToMut<B>,
         A: VecZnxBigToRef<B>;
 }
 
-pub trait VecZnxBigSubBAInplaceImpl<B: Backend> {
+pub unsafe trait VecZnxBigSubBAInplaceImpl<B: Backend> {
     fn vec_znx_big_sub_ba_inplace_impl<R, A>(module: &Module<B>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxBigToMut<B>,
         A: VecZnxBigToRef<B>;
 }
 
-pub trait VecZnxBigSubSmallAImpl<B: Backend> {
+pub unsafe trait VecZnxBigSubSmallAImpl<B: Backend> {
     fn vec_znx_big_sub_small_a_impl<R, A, C>(
         module: &Module<B>,
         res: &mut R,
@@ -141,14 +141,14 @@ pub trait VecZnxBigSubSmallAImpl<B: Backend> {
         C: VecZnxBigToRef<B>;
 }
 
-pub trait VecZnxBigSubSmallAInplaceImpl<B: Backend> {
+pub unsafe trait VecZnxBigSubSmallAInplaceImpl<B: Backend> {
     fn vec_znx_big_sub_small_a_inplace_impl<R, A>(module: &Module<B>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxBigToMut<B>,
         A: VecZnxToRef;
 }
 
-pub trait VecZnxBigSubSmallBImpl<B: Backend> {
+pub unsafe trait VecZnxBigSubSmallBImpl<B: Backend> {
     fn vec_znx_big_sub_small_b_impl<R, A, C>(
         module: &Module<B>,
         res: &mut R,
@@ -163,24 +163,24 @@ pub trait VecZnxBigSubSmallBImpl<B: Backend> {
         C: VecZnxToRef;
 }
 
-pub trait VecZnxBigSubSmallBInplaceImpl<B: Backend> {
+pub unsafe trait VecZnxBigSubSmallBInplaceImpl<B: Backend> {
     fn vec_znx_big_sub_small_b_inplace_impl<R, A>(module: &Module<B>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxBigToMut<B>,
         A: VecZnxToRef;
 }
 
-pub trait VecZnxBigNegateInplaceImpl<B: Backend> {
+pub unsafe trait VecZnxBigNegateInplaceImpl<B: Backend> {
     fn vec_znx_big_negate_inplace_impl<A>(module: &Module<B>, a: &mut A, a_col: usize)
     where
         A: VecZnxBigToMut<B>;
 }
 
-pub trait VecZnxBigNormalizeTmpBytesImpl<B: Backend> {
+pub unsafe trait VecZnxBigNormalizeTmpBytesImpl<B: Backend> {
     fn vec_znx_big_normalize_tmp_bytes_impl(module: &Module<B>) -> usize;
 }
 
-pub trait VecZnxBigNormalizeImpl<B: Backend> {
+pub unsafe trait VecZnxBigNormalizeImpl<B: Backend> {
     fn vec_znx_big_normalize_impl<R, A>(
         module: &Module<B>,
         basek: usize,
@@ -194,14 +194,14 @@ pub trait VecZnxBigNormalizeImpl<B: Backend> {
         A: VecZnxBigToRef<B>;
 }
 
-pub trait VecZnxBigAutomorphismImpl<B: Backend> {
+pub unsafe trait VecZnxBigAutomorphismImpl<B: Backend> {
     fn vec_znx_big_automorphism_impl<R, A>(module: &Module<B>, k: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxBigToMut<B>,
         A: VecZnxBigToRef<B>;
 }
 
-pub trait VecZnxBigAutomorphismInplaceImpl<B: Backend> {
+pub unsafe trait VecZnxBigAutomorphismInplaceImpl<B: Backend> {
     fn vec_znx_big_automorphism_inplace_impl<A>(module: &Module<B>, k: i64, a: &mut A, a_col: usize)
     where
         A: VecZnxBigToMut<B>;

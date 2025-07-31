@@ -1,4 +1,6 @@
-use backend::{Backend, Module, ScalarZnx, ScalarZnxAlloc, ScalarZnxToMut, ScratchOwned, VecZnxRotateInplace, ZnxViewMut};
+use backend::{
+    Backend, MatZnxAlloc, Module, ScalarZnx, ScalarZnxAlloc, ScalarZnxToMut, ScratchOwned, VecZnxRotateInplace, ZnxViewMut,
+};
 use sampling::source::Source;
 
 use crate::{
@@ -17,7 +19,7 @@ pub(crate) fn test_encrypt_sk<B: Backend>(
     rank_out: usize,
     sigma: f64,
 ) where
-    Module<B>: GGLWEEncryptSkFamily<B> + GLWEDecryptFamily<B>,
+    Module<B>: GGLWEEncryptSkFamily<B> + GLWEDecryptFamily<B> + MatZnxAlloc,
 {
     let rows: usize = (k_ksk - digits * basek) / (digits * basek);
 
@@ -64,7 +66,7 @@ pub(crate) fn test_keyswitch<B: Backend>(
     rank_out_s1s2: usize,
     sigma: f64,
 ) where
-    Module<B>: GGLWEEncryptSkFamily<B> + GLWEDecryptFamily<B> + GLWEKeyswitchFamily<B> + GGLWEExecLayoutFamily<B>,
+    Module<B>: GGLWEEncryptSkFamily<B> + GLWEDecryptFamily<B> + GLWEKeyswitchFamily<B> + GGLWEExecLayoutFamily<B> + MatZnxAlloc,
 {
     let rows: usize = k_in.div_ceil(basek * digits);
     let digits_in: usize = 1;
@@ -190,7 +192,11 @@ pub(crate) fn test_keyswitch_inplace<B: Backend>(
     rank_out: usize,
     sigma: f64,
 ) where
-    Module<B>: GLWESwitchingKeyEncryptSkFamily<B> + GLWEKeyswitchFamily<B> + GGLWEExecLayoutFamily<B> + GLWEDecryptFamily<B>,
+    Module<B>: GLWESwitchingKeyEncryptSkFamily<B>
+        + GLWEKeyswitchFamily<B>
+        + GGLWEExecLayoutFamily<B>
+        + GLWEDecryptFamily<B>
+        + MatZnxAlloc,
 {
     let rows: usize = k_ct.div_ceil(basek * digits);
     let digits_in: usize = 1;
@@ -286,7 +292,11 @@ pub(crate) fn test_external_product<B: Backend>(
     rank_out: usize,
     sigma: f64,
 ) where
-    Module<B>: GLWESwitchingKeyEncryptSkFamily<B> + GLWEExternalProductFamily<B> + GGSWLayoutFamily<B> + GLWEDecryptFamily<B>,
+    Module<B>: GLWESwitchingKeyEncryptSkFamily<B>
+        + GLWEExternalProductFamily<B>
+        + GGSWLayoutFamily<B>
+        + GLWEDecryptFamily<B>
+        + MatZnxAlloc,
 {
     let rows: usize = k_in.div_ceil(basek * digits);
     let digits_in: usize = 1;
@@ -391,7 +401,11 @@ pub(crate) fn test_external_product_inplace<B: Backend>(
     rank_out: usize,
     sigma: f64,
 ) where
-    Module<B>: GLWESwitchingKeyEncryptSkFamily<B> + GLWEExternalProductFamily<B> + GGSWLayoutFamily<B> + GLWEDecryptFamily<B>,
+    Module<B>: GLWESwitchingKeyEncryptSkFamily<B>
+        + GLWEExternalProductFamily<B>
+        + GGSWLayoutFamily<B>
+        + GLWEDecryptFamily<B>
+        + MatZnxAlloc,
 {
     let rows: usize = k_ct.div_ceil(basek * digits);
 

@@ -1,4 +1,4 @@
-use backend::{Backend, Encoding, FFT64, Module, ModuleNew, ScratchOwned, ZnxView};
+use backend::{Backend, Encoding, FFT64, MatZnxAlloc, Module, ModuleNew, ScratchOwned, ZnxView};
 use sampling::source::Source;
 
 use crate::{
@@ -22,7 +22,7 @@ fn lwe_to_glwe() {
 
 pub(crate) fn test_lwe_to_glwe<B: Backend>(module: &Module<B>)
 where
-    Module<B>: GGLWEEncryptSkFamily<B> + GLWEDecryptFamily<B> + GGLWEExecLayoutFamily<B> + GLWEKeyswitchFamily<B>,
+    Module<B>: GGLWEEncryptSkFamily<B> + GLWEDecryptFamily<B> + GGLWEExecLayoutFamily<B> + GLWEKeyswitchFamily<B> + MatZnxAlloc,
 {
     let basek: usize = 17;
     let sigma: f64 = 3.2;
@@ -63,7 +63,14 @@ where
         .encode_coeff_i64(0, basek, k_lwe_pt, 0, data, k_lwe_pt);
 
     let mut lwe_ct: LWECiphertext<Vec<u8>> = LWECiphertext::alloc(n_lwe, basek, k_lwe_ct);
-    lwe_ct.encrypt_sk(&lwe_pt, &sk_lwe, &mut source_xa, &mut source_xe, sigma);
+    lwe_ct.encrypt_sk(
+        module,
+        &lwe_pt,
+        &sk_lwe,
+        &mut source_xa,
+        &mut source_xe,
+        sigma,
+    );
 
     let mut ksk: LWEToGLWESwitchingKey<Vec<u8>> = LWEToGLWESwitchingKey::alloc(module, basek, k_ksk, lwe_ct.size(), rank);
 
@@ -98,7 +105,7 @@ fn glwe_to_lwe() {
 
 fn test_glwe_to_lwe<B: Backend>(module: &Module<B>)
 where
-    Module<B>: GGLWEEncryptSkFamily<B> + GLWEKeyswitchFamily<B> + GLWEDecryptFamily<B> + GGLWEExecLayoutFamily<B>,
+    Module<B>: GGLWEEncryptSkFamily<B> + GLWEKeyswitchFamily<B> + GLWEDecryptFamily<B> + GGLWEExecLayoutFamily<B> + MatZnxAlloc,
 {
     let basek: usize = 17;
     let sigma: f64 = 3.2;
@@ -182,7 +189,7 @@ fn keyswitch() {
 
 fn test_keyswitch<B: Backend>(module: &Module<B>)
 where
-    Module<B>: GGLWEEncryptSkFamily<B> + GLWEKeyswitchFamily<B> + GLWEDecryptFamily<B> + GGLWEExecLayoutFamily<B>,
+    Module<B>: GGLWEEncryptSkFamily<B> + GLWEKeyswitchFamily<B> + GLWEDecryptFamily<B> + GGLWEExecLayoutFamily<B> + MatZnxAlloc,
 {
     let basek: usize = 17;
     let sigma: f64 = 3.2;
@@ -218,6 +225,7 @@ where
 
     let mut lwe_ct_in: LWECiphertext<Vec<u8>> = LWECiphertext::alloc(n_lwe_in, basek, k_lwe_ct);
     lwe_ct_in.encrypt_sk(
+        module,
         &lwe_pt_in,
         &sk_lwe_in,
         &mut source_xa,

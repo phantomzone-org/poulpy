@@ -1,4 +1,4 @@
-use backend::{Backend, MatZnx, Module, Scratch, VmpPMat};
+use backend::{Backend, MatZnx, MatZnxAlloc, MatZnxAllocBytes, Module, Scratch, VmpPMat};
 
 use crate::{GGLWEExecLayoutFamily, GLWECiphertext, GLWESwitchingKey, GLWESwitchingKeyExec, Infos};
 
@@ -8,14 +8,20 @@ pub struct AutomorphismKey<D> {
 }
 
 impl AutomorphismKey<Vec<u8>> {
-    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self {
+    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self
+    where
+        Module<B>: MatZnxAlloc,
+    {
         AutomorphismKey {
             key: GLWESwitchingKey::alloc(module, basek, k, rows, digits, rank, rank),
             p: 0,
         }
     }
 
-    pub fn bytes_of<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize {
+    pub fn bytes_of<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize
+    where
+        Module<B>: MatZnxAllocBytes,
+    {
         GLWESwitchingKey::<Vec<u8>>::bytes_of(module, basek, k, rows, digits, rank, rank)
     }
 }

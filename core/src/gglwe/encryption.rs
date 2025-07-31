@@ -1,5 +1,5 @@
 use backend::{
-    Backend, Module, ScalarZnx, ScalarZnxAllocBytes, ScalarZnxOps, Scratch, SvpApply, VecZnxAddScalarInplace,
+    Backend, Module, ScalarZnx, ScalarZnxAllocBytes, ScalarZnxAutomorphism, Scratch, SvpApply, VecZnxAddScalarInplace,
     VecZnxBigAllocBytes, VecZnxDftToVecZnxBigTmpA, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSwithcDegree, ZnxInfos,
     ZnxZero,
 };

@@ -1,4 +1,4 @@
-use backend::{Backend, MatZnx, Module, Scratch, VmpPMat};
+use backend::{Backend, MatZnx, MatZnxAlloc, MatZnxAllocBytes, Module, Scratch, VmpPMat};
 
 use crate::{GGLWEExecLayoutFamily, GLWESwitchingKey, GLWESwitchingKeyExec, Infos};
 
@@ -7,7 +7,10 @@ pub struct GLWETensorKey<D> {
 }
 
 impl GLWETensorKey<Vec<u8>> {
-    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self {
+    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self
+    where
+        Module<B>: MatZnxAlloc,
+    {
         let mut keys: Vec<GLWESwitchingKey<Vec<u8>>> = Vec::new();
         let pairs: usize = (((rank + 1) * rank) >> 1).max(1);
         (0..pairs).for_each(|_| {
@@ -18,7 +21,10 @@ impl GLWETensorKey<Vec<u8>> {
         Self { keys: keys }
     }
 
-    pub fn bytes_of<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize {
+    pub fn bytes_of<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize
+    where
+        Module<B>: MatZnxAllocBytes,
+    {
         let pairs: usize = (((rank + 1) * rank) >> 1).max(1);
         pairs * GLWESwitchingKey::<Vec<u8>>::bytes_of(module, basek, k, rows, digits, 1, rank)
     }
@@ -99,7 +105,10 @@ impl<B: Backend> GLWETensorKeyExec<Vec<u8>, B> {
         Self { keys }
     }
 
-    pub fn bytes_of(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize {
+    pub fn bytes_of(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize
+    where
+        Module<B>: MatZnxAllocBytes,
+    {
         let pairs: usize = (((rank + 1) * rank) >> 1).max(1);
         pairs * GLWESwitchingKey::<Vec<u8>>::bytes_of(module, basek, k, rows, digits, 1, rank)
     }

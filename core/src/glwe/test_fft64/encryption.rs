@@ -1,4 +1,4 @@
-use backend::{Backend, FFT64, FillUniform, Module, ModuleNew, ScratchOwned, Stats};
+use backend::{Backend, FFT64, Module, ModuleNew, ScratchOwned, VecZnxFillUniform, VecZnxStd};
 use sampling::source::Source;
 
 use crate::{
@@ -57,9 +57,7 @@ where
     sk.fill_ternary_prob(0.5, &mut source_xs);
     let sk_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk);
 
-    pt_want
-        .data
-        .fill_uniform(basek, 0, pt_want.size(), &mut source_xa);
+    module.vec_znx_fill_uniform(basek, &mut pt_want.data, 0, k_pt, &mut source_xa);
 
     ct.encrypt_sk(
         module,
@@ -75,7 +73,7 @@ where
 
     pt_want.sub_inplace_ab(module, &pt_have);
 
-    let noise_have: f64 = pt_want.data.std(0, basek) * (ct.k() as f64).exp2();
+    let noise_have: f64 = module.vec_znx_std(basek, &pt_want.data, 0) * (ct.k() as f64).exp2();
     let noise_want: f64 = sigma;
 
     assert!(noise_have <= noise_want + 0.2);
@@ -112,7 +110,7 @@ where
     );
     ct.decrypt(module, &mut pt, &sk_exec, scratch.borrow());
 
-    assert!((sigma - pt.data.std(0, basek) * (k_ct as f64).exp2()) <= 0.2);
+    assert!((sigma - module.vec_znx_std(basek, &pt.data, 0) * (k_ct as f64).exp2()) <= 0.2);
 }
 
 fn test_encrypt_pk<B: Backend>(module: &Module<B>, basek: usize, k_ct: usize, k_pk: usize, sigma: f64, rank: usize)
@@ -141,9 +139,7 @@ where
             | GLWECiphertext::encrypt_pk_scratch_space(module, basek, pk.k()),
     );
 
-    pt_want
-        .data
-        .fill_uniform(basek, 0, pt_want.size(), &mut source_xa);
+    module.vec_znx_fill_uniform(basek, &mut pt_want.data, 0, k_ct, &mut source_xa);
 
     ct.encrypt_pk(
         module,
@@ -159,7 +155,7 @@ where
 
     pt_want.sub_inplace_ab(module, &pt_have);
 
-    let noise_have: f64 = pt_want.data.std(0, basek).log2();
+    let noise_have: f64 = module.vec_znx_std(basek, &pt_want.data, 0).log2();
     let noise_want: f64 = ((((rank as f64) + 1.0) * module.n() as f64 * 0.5 * sigma * sigma).sqrt()).log2() - (k_ct as f64);
 
     assert!(

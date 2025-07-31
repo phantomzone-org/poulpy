@@ -1,4 +1,4 @@
-use backend::{Backend, Module, ScalarZnx, ScratchOwned, Stats, VecZnxSubScalarInplace, ZnxZero};
+use backend::{Backend, Module, ScalarZnx, ScratchOwned, VecZnxStd, VecZnxSubScalarInplace, ZnxZero};
 
 use crate::{GGLWECiphertext, GLWECiphertext, GLWEDecryptFamily, GLWEPlaintext, GLWESecretExec, Infos};
 
@@ -34,7 +34,7 @@ impl<DataIn: AsRef<[u8]>> GGLWECiphertext<DataIn> {
                     col_i,
                 );
 
-                let noise_have: f64 = pt.data.std(0, basek).log2();
+                let noise_have: f64 = module.vec_znx_std(basek, &pt.data, 0).log2();
 
                 assert!(
                     noise_have <= max_noise,

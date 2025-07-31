@@ -1,4 +1,6 @@
-use backend::{Backend, MatZnx, MatZnxAlloc, Module, Scratch, VmpPMat, VmpPMatAlloc, VmpPMatAllocBytes, VmpPMatPrepare};
+use backend::{
+    Backend, MatZnx, MatZnxAlloc, MatZnxAllocBytes, Module, Scratch, VmpPMat, VmpPMatAlloc, VmpPMatAllocBytes, VmpPMatPrepare,
+};
 
 use crate::{GLWECiphertext, Infos};
 
@@ -32,7 +34,10 @@ impl<D: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<D> {
 }
 
 impl GGSWCiphertext<Vec<u8>> {
-    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self {
+    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self
+    where
+        Module<B>: MatZnxAlloc,
+    {
         let size: usize = k.div_ceil(basek);
         debug_assert!(digits > 0, "invalid ggsw: `digits` == 0");
 
@@ -52,14 +57,17 @@ impl GGSWCiphertext<Vec<u8>> {
         );
 
         Self {
-            data: module.new_mat_znx(rows, rank + 1, rank + 1, k.div_ceil(basek)),
+            data: module.mat_znx_alloc(rows, rank + 1, rank + 1, k.div_ceil(basek)),
             basek,
             k: k,
             digits,
         }
     }
 
-    pub fn bytes_of<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize {
+    pub fn bytes_of<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize
+    where
+        Module<B>: MatZnxAllocBytes,
+    {
         let size: usize = k.div_ceil(basek);
         debug_assert!(
             size > digits,
@@ -76,7 +84,7 @@ impl GGSWCiphertext<Vec<u8>> {
             size
         );
 
-        module.bytes_of_mat_znx(rows, rank + 1, rank + 1, size)
+        module.mat_znx_alloc_bytes(rows, rank + 1, rank + 1, size)
     }
 }
 

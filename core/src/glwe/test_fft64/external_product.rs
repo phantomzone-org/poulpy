@@ -1,5 +1,6 @@
 use backend::{
-    Backend, FFT64, FillUniform, Module, ModuleNew, ScalarZnx, ScalarZnxAlloc, ScratchOwned, VecZnxRotateInplace, ZnxViewMut,
+    Backend, FFT64, MatZnxAlloc, Module, ModuleNew, ScalarZnx, ScalarZnxAlloc, ScratchOwned, VecZnxFillUniform,
+    VecZnxRotateInplace, ZnxViewMut,
 };
 use sampling::source::Source;
 
@@ -51,8 +52,12 @@ fn test_external_product<B: Backend>(
     rank: usize,
     sigma: f64,
 ) where
-    Module<B>:
-        GLWEEncryptSkFamily<B> + GLWEDecryptFamily<B> + GLWESecretFamily<B> + GLWEExternalProductFamily<B> + GGSWLayoutFamily<B>,
+    Module<B>: GLWEEncryptSkFamily<B>
+        + GLWEDecryptFamily<B>
+        + GLWESecretFamily<B>
+        + GLWEExternalProductFamily<B>
+        + GGSWLayoutFamily<B>
+        + MatZnxAlloc,
 {
     let rows: usize = k_in.div_ceil(basek * digits);
 
@@ -67,9 +72,7 @@ fn test_external_product<B: Backend>(
     let mut source_xa: Source = Source::new([0u8; 32]);
 
     // Random input plaintext
-    pt_want
-        .data
-        .fill_uniform(basek, 0, pt_want.size(), &mut source_xa);
+    module.vec_znx_fill_uniform(basek, &mut pt_want.data, 0, k_in, &mut source_xa);
 
     pt_want.data.at_mut(0, 0)[1] = 1;
 
@@ -154,8 +157,12 @@ fn test_external_product_inplace<B: Backend>(
     rank: usize,
     sigma: f64,
 ) where
-    Module<B>:
-        GLWEEncryptSkFamily<B> + GLWEDecryptFamily<B> + GLWESecretFamily<B> + GLWEExternalProductFamily<B> + GGSWLayoutFamily<B>,
+    Module<B>: GLWEEncryptSkFamily<B>
+        + GLWEDecryptFamily<B>
+        + GLWESecretFamily<B>
+        + GLWEExternalProductFamily<B>
+        + GGSWLayoutFamily<B>
+        + MatZnxAlloc,
 {
     let rows: usize = k_ct.div_ceil(basek * digits);
 
@@ -169,9 +176,7 @@ fn test_external_product_inplace<B: Backend>(
     let mut source_xa: Source = Source::new([0u8; 32]);
 
     // Random input plaintext
-    pt_want
-        .data
-        .fill_uniform(basek, 0, pt_want.size(), &mut source_xa);
+    module.vec_znx_fill_uniform(basek, &mut pt_want.data, 0, k_ct, &mut source_xa);
 
     pt_want.data.at_mut(0, 0)[1] = 1;
 

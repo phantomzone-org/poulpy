@@ -4,7 +4,7 @@ use crate::{
 };
 use std::collections::HashMap;
 
-use backend::{Backend, Encoding, FFT64, Module, ModuleNew, ScratchOwned, Stats};
+use backend::{Backend, Encoding, FFT64, MatZnxAlloc, Module, ModuleNew, ScratchOwned, VecZnxStd};
 use sampling::source::Source;
 
 #[test]
@@ -20,7 +20,8 @@ where
         + GLWEEncryptSkFamily<B>
         + GLWEDecryptFamily<B>
         + AutomorphismExecFamily<B>
-        + GGLWEExecLayoutFamily<B>,
+        + GGLWEExecLayoutFamily<B>
+        + MatZnxAlloc,
 {
     let mut source_xs: Source = Source::new([0u8; 32]);
     let mut source_xe: Source = Source::new([0u8; 32]);
@@ -130,7 +131,7 @@ where
 
     pt.sub_inplace_ab(module, &pt_want);
 
-    let noise_have = pt.data.std(0, basek).log2();
+    let noise_have = module.vec_znx_std(basek, &pt.data, 0).log2();
     // println!("noise_have: {}", noise_have);
     assert!(
         noise_have < -((k_ct - basek) as f64),

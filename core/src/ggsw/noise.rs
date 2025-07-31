@@ -1,7 +1,7 @@
 use backend::{
-    Backend, Module, ScalarZnx, ScratchOwned, Stats, VecZnxAddScalarInplace, VecZnxBig, VecZnxBigAlloc, VecZnxBigNormalize,
-    VecZnxBigNormalizeTmpBytes, VecZnxDft, VecZnxDftAlloc, VecZnxDftToVecZnxBigTmpA, VecZnxNormalizeTmpBytes, VecZnxSubABInplace,
-    ZnxZero,
+    Backend, Module, ScalarZnx, ScratchOwned, VecZnxAddScalarInplace, VecZnxBig, VecZnxBigAlloc, VecZnxBigNormalize,
+    VecZnxBigNormalizeTmpBytes, VecZnxDft, VecZnxDftAlloc, VecZnxDftToVecZnxBigTmpA, VecZnxNormalizeTmpBytes, VecZnxStd,
+    VecZnxSubABInplace, ZnxZero,
 };
 
 use crate::{GGSWCiphertext, GLWECiphertext, GLWEDecryptFamily, GLWEPlaintext, GLWESecretExec, Infos};
@@ -55,7 +55,7 @@ impl<D: AsRef<[u8]>> GGSWCiphertext<D> {
 
                 module.vec_znx_sub_ab_inplace(&mut pt_have.data, 0, &pt.data, 0);
 
-                let std_pt: f64 = pt_have.data.std(0, basek).log2();
+                let std_pt: f64 = module.vec_znx_std(basek, &pt_have.data, 0).log2();
                 let noise: f64 = max_noise(col_j);
                 println!("{} {}", std_pt, noise);
                 assert!(std_pt <= noise, "{} > {}", std_pt, noise);

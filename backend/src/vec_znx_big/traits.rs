@@ -16,7 +16,7 @@ pub trait VecZnxBigAllocBytes {
 }
 
 pub trait VecZnxBigAddNormal<B: Backend> {
-    fn add_normal<R: VecZnxBigToMut<B>>(
+    fn vec_znx_big_add_normal<R: VecZnxBigToMut<B>>(
         &self,
         basek: usize,
         res: &mut R,
@@ -29,7 +29,7 @@ pub trait VecZnxBigAddNormal<B: Backend> {
 }
 
 pub trait VecZnxBigFillNormal<B: Backend> {
-    fn fill_normal<R: VecZnxBigToMut<B>>(
+    fn vec_znx_big_fill_normal<R: VecZnxBigToMut<B>>(
         &self,
         basek: usize,
         res: &mut R,
@@ -42,7 +42,7 @@ pub trait VecZnxBigFillNormal<B: Backend> {
 }
 
 pub trait VecZnxBigFillDistF64<B: Backend> {
-    fn fill_dist_f64<R: VecZnxBigToMut<B>, D: Distribution<f64>>(
+    fn vec_znx_big_fill_dist_f64<R: VecZnxBigToMut<B>, D: Distribution<f64>>(
         &self,
         basek: usize,
         res: &mut R,
@@ -55,7 +55,7 @@ pub trait VecZnxBigFillDistF64<B: Backend> {
 }
 
 pub trait VecZnxBigAddDistF64<B: Backend> {
-    fn add_dist_f64<R: VecZnxBigToMut<B>, D: Distribution<f64>>(
+    fn vec_znx_big_add_dist_f64<R: VecZnxBigToMut<B>, D: Distribution<f64>>(
         &self,
         basek: usize,
         res: &mut R,

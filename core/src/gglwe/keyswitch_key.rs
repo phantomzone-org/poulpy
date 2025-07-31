@@ -1,4 +1,4 @@
-use backend::{Backend, MatZnx, Module, Scratch, VmpPMat};
+use backend::{Backend, MatZnx, MatZnxAlloc, MatZnxAllocBytes, Module, Scratch, VmpPMat};
 
 use crate::{GGLWECiphertext, GGLWECiphertextExec, GGLWEExecLayoutFamily, GLWECiphertext, Infos};
 
@@ -17,7 +17,10 @@ impl GLWESwitchingKey<Vec<u8>> {
         digits: usize,
         rank_in: usize,
         rank_out: usize,
-    ) -> Self {
+    ) -> Self
+    where
+        Module<B>: MatZnxAlloc,
+    {
         GLWESwitchingKey {
             key: GGLWECiphertext::alloc(module, basek, k, rows, digits, rank_in, rank_out),
             sk_in_n: 0,
@@ -33,7 +36,10 @@ impl GLWESwitchingKey<Vec<u8>> {
         digits: usize,
         rank_in: usize,
         rank_out: usize,
-    ) -> usize {
+    ) -> usize
+    where
+        Module<B>: MatZnxAllocBytes,
+    {
         GGLWECiphertext::<Vec<u8>>::bytes_of(module, basek, k, rows, digits, rank_in, rank_out)
     }
 }

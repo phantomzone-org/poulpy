@@ -1,4 +1,4 @@
-use backend::{Backend, Encoding, FFT64, Module, ModuleNew, ScratchOwned, ZnxView};
+use backend::{Backend, Encoding, FFT64, MatZnxAlloc, Module, ModuleNew, ScratchOwned, ZnxView};
 use sampling::source::Source;
 
 use crate::{
@@ -32,7 +32,11 @@ fn block_binary_extended() {
 
 fn blind_rotatio_test<B: Backend>(module: &Module<B>, n_lwe: usize, block_size: usize, extension_factor: usize)
 where
-    Module<B>: CCGIBlindRotationFamily<B> + GLWESecretFamily<B> + GLWEDecryptFamily<B> + BlindRotationKeyCGGIExecLayoutFamily<B>,
+    Module<B>: CCGIBlindRotationFamily<B>
+        + GLWESecretFamily<B>
+        + GLWEDecryptFamily<B>
+        + BlindRotationKeyCGGIExecLayoutFamily<B>
+        + MatZnxAlloc,
 {
     let basek: usize = 19;
 
@@ -92,7 +96,14 @@ where
 
     pt_lwe.data.encode_coeff_i64(0, basek, bits, 0, x, bits);
 
-    lwe.encrypt_sk(&pt_lwe, &sk_lwe, &mut source_xa, &mut source_xe, 3.2);
+    lwe.encrypt_sk(
+        module,
+        &pt_lwe,
+        &sk_lwe,
+        &mut source_xa,
+        &mut source_xe,
+        3.2,
+    );
 
     let mut f: Vec<i64> = vec![0i64; message_modulus];
     f.iter_mut()

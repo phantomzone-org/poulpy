@@ -35,25 +35,25 @@ impl<D: AsRef<[u8]>> ZnxSliceSize for VecZnxBig<D, FFT64> {
     }
 }
 
-impl VecZnxBigAllocImpl<FFT64> for () {
+unsafe impl VecZnxBigAllocImpl<FFT64> for FFT64 {
     fn vec_znx_big_alloc_impl(module: &Module<FFT64>, cols: usize, size: usize) -> VecZnxBigOwned<FFT64> {
         VecZnxBig::<Vec<u8>, FFT64>::new(module.n(), cols, size)
     }
 }
 
-impl VecZnxBigFromBytesImpl<FFT64> for () {
+unsafe impl VecZnxBigFromBytesImpl<FFT64> for FFT64 {
     fn vec_znx_big_from_bytes_impl(module: &Module<FFT64>, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxBigOwned<FFT64> {
         VecZnxBig::<Vec<u8>, FFT64>::new_from_bytes(module.n(), cols, size, bytes)
     }
 }
 
-impl VecZnxBigAllocBytesImpl<FFT64> for () {
+unsafe impl VecZnxBigAllocBytesImpl<FFT64> for FFT64 {
     fn vec_znx_big_alloc_bytes_impl(module: &Module<FFT64>, cols: usize, size: usize) -> usize {
         VecZnxBig::<Vec<u8>, FFT64>::bytes_of(module.n(), cols, size)
     }
 }
 
-impl VecZnxBigAddDistF64Impl<FFT64> for () {
+unsafe impl VecZnxBigAddDistF64Impl<FFT64> for FFT64 {
     fn add_dist_f64_impl<R: VecZnxBigToMut<FFT64>, D: Distribution<f64>>(
         _module: &Module<FFT64>,
         basek: usize,
@@ -94,7 +94,7 @@ impl VecZnxBigAddDistF64Impl<FFT64> for () {
     }
 }
 
-impl VecZnxBigAddNormalImpl<FFT64> for () {
+unsafe impl VecZnxBigAddNormalImpl<FFT64> for FFT64 {
     fn add_normal_impl<R: VecZnxBigToMut<FFT64>>(
         module: &Module<FFT64>,
         basek: usize,
@@ -105,7 +105,7 @@ impl VecZnxBigAddNormalImpl<FFT64> for () {
         sigma: f64,
         bound: f64,
     ) {
-        module.add_dist_f64(
+        module.vec_znx_big_add_dist_f64(
             basek,
             res,
             res_col,
@@ -117,7 +117,7 @@ impl VecZnxBigAddNormalImpl<FFT64> for () {
     }
 }
 
-impl VecZnxBigFillDistF64Impl<FFT64> for () {
+unsafe impl VecZnxBigFillDistF64Impl<FFT64> for FFT64 {
     fn fill_dist_f64_impl<R: VecZnxBigToMut<FFT64>, D: Distribution<f64>>(
         _module: &Module<FFT64>,
         basek: usize,
@@ -158,7 +158,7 @@ impl VecZnxBigFillDistF64Impl<FFT64> for () {
     }
 }
 
-impl VecZnxBigFillNormalImpl<FFT64> for () {
+unsafe impl VecZnxBigFillNormalImpl<FFT64> for FFT64 {
     fn fill_normal_impl<R: VecZnxBigToMut<FFT64>>(
         module: &Module<FFT64>,
         basek: usize,
@@ -169,7 +169,7 @@ impl VecZnxBigFillNormalImpl<FFT64> for () {
         sigma: f64,
         bound: f64,
     ) {
-        module.fill_dist_f64(
+        module.vec_znx_big_fill_dist_f64(
             basek,
             res,
             res_col,
@@ -181,7 +181,7 @@ impl VecZnxBigFillNormalImpl<FFT64> for () {
     }
 }
 
-impl VecZnxBigAddImpl<FFT64> for () {
+unsafe impl VecZnxBigAddImpl<FFT64> for FFT64 {
     /// Adds `a` to `b` and stores the result on `c`.
     fn vec_znx_big_add_impl<R, A, B>(
         module: &Module<FFT64>,
@@ -224,7 +224,7 @@ impl VecZnxBigAddImpl<FFT64> for () {
     }
 }
 
-impl VecZnxBigAddInplaceImpl<FFT64> for () {
+unsafe impl VecZnxBigAddInplaceImpl<FFT64> for FFT64 {
     /// Adds `a` to `b` and stores the result on `b`.
     fn vec_znx_big_add_inplace_impl<R, A>(module: &Module<FFT64>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
@@ -256,7 +256,7 @@ impl VecZnxBigAddInplaceImpl<FFT64> for () {
     }
 }
 
-impl VecZnxBigAddSmallImpl<FFT64> for () {
+unsafe impl VecZnxBigAddSmallImpl<FFT64> for FFT64 {
     /// Adds `a` to `b` and stores the result on `c`.
     fn vec_znx_big_add_small_impl<R, A, B>(
         module: &Module<FFT64>,
@@ -299,7 +299,7 @@ impl VecZnxBigAddSmallImpl<FFT64> for () {
     }
 }
 
-impl VecZnxBigAddSmallInplaceImpl<FFT64> for () {
+unsafe impl VecZnxBigAddSmallInplaceImpl<FFT64> for FFT64 {
     /// Adds `a` to `b` and stores the result on `b`.
     fn vec_znx_big_add_small_inplace_impl<R, A>(module: &Module<FFT64>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
@@ -331,7 +331,7 @@ impl VecZnxBigAddSmallInplaceImpl<FFT64> for () {
     }
 }
 
-impl VecZnxBigSubImpl<FFT64> for () {
+unsafe impl VecZnxBigSubImpl<FFT64> for FFT64 {
     /// Subtracts `a` to `b` and stores the result on `c`.
     fn vec_znx_big_sub_impl<R, A, B>(
         module: &Module<FFT64>,
@@ -374,7 +374,7 @@ impl VecZnxBigSubImpl<FFT64> for () {
     }
 }
 
-impl VecZnxBigSubABInplaceImpl<FFT64> for () {
+unsafe impl VecZnxBigSubABInplaceImpl<FFT64> for FFT64 {
     /// Subtracts `a` from `b` and stores the result on `b`.
     fn vec_znx_big_sub_ab_inplace_impl<R, A>(module: &Module<FFT64>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
@@ -406,7 +406,7 @@ impl VecZnxBigSubABInplaceImpl<FFT64> for () {
     }
 }
 
-impl VecZnxBigSubBAInplaceImpl<FFT64> for () {
+unsafe impl VecZnxBigSubBAInplaceImpl<FFT64> for FFT64 {
     /// Subtracts `b` from `a` and stores the result on `b`.
     fn vec_znx_big_sub_ba_inplace_impl<R, A>(module: &Module<FFT64>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
@@ -438,7 +438,7 @@ impl VecZnxBigSubBAInplaceImpl<FFT64> for () {
     }
 }
 
-impl VecZnxBigSubSmallAImpl<FFT64> for () {
+unsafe impl VecZnxBigSubSmallAImpl<FFT64> for FFT64 {
     /// Subtracts `b` from `a` and stores the result on `c`.
     fn vec_znx_big_sub_small_a_impl<R, A, B>(
         module: &Module<FFT64>,
@@ -481,7 +481,7 @@ impl VecZnxBigSubSmallAImpl<FFT64> for () {
     }
 }
 
-impl VecZnxBigSubSmallAInplaceImpl<FFT64> for () {
+unsafe impl VecZnxBigSubSmallAInplaceImpl<FFT64> for FFT64 {
     /// Subtracts `a` from `res` and stores the result on `res`.
     fn vec_znx_big_sub_small_a_inplace_impl<R, A>(module: &Module<FFT64>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
@@ -513,7 +513,7 @@ impl VecZnxBigSubSmallAInplaceImpl<FFT64> for () {
     }
 }
 
-impl VecZnxBigSubSmallBImpl<FFT64> for () {
+unsafe impl VecZnxBigSubSmallBImpl<FFT64> for FFT64 {
     /// Subtracts `b` from `a` and stores the result on `c`.
     fn vec_znx_big_sub_small_b_impl<R, A, B>(
         module: &Module<FFT64>,
@@ -556,7 +556,7 @@ impl VecZnxBigSubSmallBImpl<FFT64> for () {
     }
 }
 
-impl VecZnxBigSubSmallBInplaceImpl<FFT64> for () {
+unsafe impl VecZnxBigSubSmallBInplaceImpl<FFT64> for FFT64 {
     /// Subtracts `res` from `a` and stores the result on `res`.
     fn vec_znx_big_sub_small_b_inplace_impl<R, A>(module: &Module<FFT64>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
@@ -588,7 +588,7 @@ impl VecZnxBigSubSmallBInplaceImpl<FFT64> for () {
     }
 }
 
-impl VecZnxBigNegateInplaceImpl<FFT64> for () {
+unsafe impl VecZnxBigNegateInplaceImpl<FFT64> for FFT64 {
     fn vec_znx_big_negate_inplace_impl<A>(module: &Module<FFT64>, a: &mut A, a_col: usize)
     where
         A: VecZnxBigToMut<FFT64>,
@@ -612,13 +612,13 @@ impl VecZnxBigNegateInplaceImpl<FFT64> for () {
     }
 }
 
-impl VecZnxBigNormalizeTmpBytesImpl<FFT64> for () {
+unsafe impl VecZnxBigNormalizeTmpBytesImpl<FFT64> for FFT64 {
     fn vec_znx_big_normalize_tmp_bytes_impl(module: &Module<FFT64>) -> usize {
         unsafe { vec_znx::vec_znx_normalize_base2k_tmp_bytes(module.ptr()) as usize }
     }
 }
 
-impl VecZnxBigNormalizeImpl<FFT64> for () {
+unsafe impl VecZnxBigNormalizeImpl<FFT64> for FFT64 {
     fn vec_znx_big_normalize_impl<R, A>(
         module: &Module<FFT64>,
         basek: usize,
@@ -657,7 +657,7 @@ impl VecZnxBigNormalizeImpl<FFT64> for () {
     }
 }
 
-impl VecZnxBigAutomorphismImpl<FFT64> for () {
+unsafe impl VecZnxBigAutomorphismImpl<FFT64> for FFT64 {
     /// Applies the automorphism X^i -> X^ik on `a` and stores the result on `b`.
     fn vec_znx_big_automorphism_impl<R, A>(module: &Module<FFT64>, k: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
@@ -687,7 +687,7 @@ impl VecZnxBigAutomorphismImpl<FFT64> for () {
     }
 }
 
-impl VecZnxBigAutomorphismInplaceImpl<FFT64> for () {
+unsafe impl VecZnxBigAutomorphismInplaceImpl<FFT64> for FFT64 {
     /// Applies the automorphism X^i -> X^ik on `a` and stores the result on `a`.
     fn vec_znx_big_automorphism_inplace_impl<A>(module: &Module<FFT64>, k: i64, a: &mut A, a_col: usize)
     where

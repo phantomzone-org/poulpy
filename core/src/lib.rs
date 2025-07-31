@@ -9,6 +9,7 @@ mod lwe;
 mod noise;
 
 use backend::Backend;
+use backend::MatZnxAllocBytes;
 use backend::Module;
 use backend::SvpPPolAllocBytes;
 use backend::VecZnxDftAllocBytes;
@@ -61,7 +62,9 @@ pub trait ScratchCore<B: Backend> {
         digits: usize,
         rank_in: usize,
         rank_out: usize,
-    ) -> (GGLWECiphertext<&mut [u8]>, &mut Self);
+    ) -> (GGLWECiphertext<&mut [u8]>, &mut Self)
+    where
+        Module<B>: MatZnxAllocBytes;
     fn tmp_ggsw(
         &mut self,
         module: &Module<B>,
@@ -70,7 +73,9 @@ pub trait ScratchCore<B: Backend> {
         rows: usize,
         digits: usize,
         rank: usize,
-    ) -> (GGSWCiphertext<&mut [u8]>, &mut Self);
+    ) -> (GGSWCiphertext<&mut [u8]>, &mut Self)
+    where
+        Module<B>: MatZnxAllocBytes;
     fn tmp_glwe_secret(&mut self, module: &Module<B>, rank: usize) -> (GLWESecret<&mut [u8]>, &mut Self);
     fn tmp_glwe_secret_exec(&mut self, module: &Module<B>, rank: usize) -> (GLWESecretExec<&mut [u8], B>, &mut Self)
     where
@@ -93,7 +98,9 @@ pub trait ScratchCore<B: Backend> {
         digits: usize,
         rank_in: usize,
         rank_out: usize,
-    ) -> (GLWESwitchingKey<&mut [u8]>, &mut Self);
+    ) -> (GLWESwitchingKey<&mut [u8]>, &mut Self)
+    where
+        Module<B>: MatZnxAllocBytes;
     fn tmp_tsk(
         &mut self,
         module: &Module<B>,
@@ -102,7 +109,9 @@ pub trait ScratchCore<B: Backend> {
         rows: usize,
         digits: usize,
         rank: usize,
-    ) -> (GLWETensorKey<&mut [u8]>, &mut Self);
+    ) -> (GLWETensorKey<&mut [u8]>, &mut Self)
+    where
+        Module<B>: MatZnxAllocBytes;
     fn tmp_autokey(
         &mut self,
         module: &Module<B>,
@@ -111,7 +120,9 @@ pub trait ScratchCore<B: Backend> {
         rows: usize,
         digits: usize,
         rank: usize,
-    ) -> (AutomorphismKey<&mut [u8]>, &mut Self);
+    ) -> (AutomorphismKey<&mut [u8]>, &mut Self)
+    where
+        Module<B>: MatZnxAllocBytes;
 }
 
 impl<B: Backend> ScratchCore<B> for Scratch {
@@ -152,7 +163,10 @@ impl<B: Backend> ScratchCore<B> for Scratch {
         digits: usize,
         rank_in: usize,
         rank_out: usize,
-    ) -> (GGLWECiphertext<&mut [u8]>, &mut Self) {
+    ) -> (GGLWECiphertext<&mut [u8]>, &mut Self)
+    where
+        Module<B>: MatZnxAllocBytes,
+    {
         let (data, scratch) = self.tmp_mat_znx(
             module,
             rows.div_ceil(digits),
@@ -179,7 +193,10 @@ impl<B: Backend> ScratchCore<B> for Scratch {
         rows: usize,
         digits: usize,
         rank: usize,
-    ) -> (GGSWCiphertext<&mut [u8]>, &mut Self) {
+    ) -> (GGSWCiphertext<&mut [u8]>, &mut Self)
+    where
+        Module<B>: MatZnxAllocBytes,
+    {
         let (data, scratch) = self.tmp_mat_znx(
             module,
             rows.div_ceil(digits),
@@ -248,7 +265,10 @@ impl<B: Backend> ScratchCore<B> for Scratch {
         digits: usize,
         rank_in: usize,
         rank_out: usize,
-    ) -> (GLWESwitchingKey<&mut [u8]>, &mut Self) {
+    ) -> (GLWESwitchingKey<&mut [u8]>, &mut Self)
+    where
+        Module<B>: MatZnxAllocBytes,
+    {
         let (data, scratch) = self.tmp_gglwe(module, basek, k, rows, digits, rank_in, rank_out);
         (
             GLWESwitchingKey {
@@ -268,7 +288,10 @@ impl<B: Backend> ScratchCore<B> for Scratch {
         rows: usize,
         digits: usize,
         rank: usize,
-    ) -> (AutomorphismKey<&mut [u8]>, &mut Self) {
+    ) -> (AutomorphismKey<&mut [u8]>, &mut Self)
+    where
+        Module<B>: MatZnxAllocBytes,
+    {
         let (data, scratch) = self.tmp_glwe_ksk(module, basek, k, rows, digits, rank, rank);
         (AutomorphismKey { key: data, p: 0 }, scratch)
     }
@@ -281,7 +304,10 @@ impl<B: Backend> ScratchCore<B> for Scratch {
         rows: usize,
         digits: usize,
         rank: usize,
-    ) -> (GLWETensorKey<&mut [u8]>, &mut Self) {
+    ) -> (GLWETensorKey<&mut [u8]>, &mut Self)
+    where
+        Module<B>: MatZnxAllocBytes,
+    {
         let mut keys: Vec<GLWESwitchingKey<&mut [u8]>> = Vec::new();
         let pairs: usize = (((rank + 1) * rank) >> 1).max(1);
 

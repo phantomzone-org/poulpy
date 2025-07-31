@@ -1,10 +1,5 @@
-use crate::ffi::module::module_info_t;
-use crate::ffi::vec_znx;
 use crate::znx_base::ZnxInfos;
-use crate::{
-    Backend, DataView, DataViewMut, Module, VecZnx, VecZnxToMut, VecZnxToRef, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero,
-    alloc_aligned,
-};
+use crate::{DataView, DataViewMut, VecZnx, VecZnxToMut, VecZnxToRef, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero, alloc_aligned};
 use rand::seq::SliceRandom;
 use rand_core::RngCore;
 use rand_distr::{Distribution, weighted::WeightedIndex};
@@ -142,99 +137,6 @@ impl<D: AsRef<[u8]> + AsMut<[u8]>> ZnxZero for ScalarZnx<D> {
 }
 
 pub type ScalarZnxOwned = ScalarZnx<Vec<u8>>;
-
-pub trait ScalarZnxFromBytes {
-    fn scalar_znx_from_bytes(&self, cols: usize, bytes: Vec<u8>) -> ScalarZnxOwned;
-}
-
-pub trait ScalarZnxAllocBytes {
-    fn scalar_znx_alloc_bytes(&self, cols: usize) -> usize;
-}
-
-pub trait ScalarZnxAlloc {
-    fn scalar_znx_alloc(&self, cols: usize) -> ScalarZnxOwned;
-}
-
-impl<B: Backend> ScalarZnxAllocBytes for Module<B> {
-    fn scalar_znx_alloc_bytes(&self, cols: usize) -> usize {
-        ScalarZnxOwned::bytes_of(self.n(), cols)
-    }
-}
-
-impl<B: Backend> ScalarZnxAlloc for Module<B> {
-    fn scalar_znx_alloc(&self, cols: usize) -> ScalarZnxOwned {
-        ScalarZnxOwned::new(self.n(), cols)
-    }
-}
-
-impl<B: Backend> ScalarZnxFromBytes for Module<B> {
-    fn scalar_znx_from_bytes(&self, cols: usize, bytes: Vec<u8>) -> ScalarZnxOwned {
-        ScalarZnxOwned::new_from_bytes(self.n(), cols, bytes)
-    }
-}
-
-pub trait ScalarZnxOps {
-    fn scalar_znx_automorphism<R, A>(&self, k: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
-    where
-        R: ScalarZnxToMut,
-        A: ScalarZnxToRef;
-
-    /// Applies the automorphism X^i -> X^ik on the selected column of `a`.
-    fn scalar_znx_automorphism_inplace<A>(&self, k: i64, a: &mut A, a_col: usize)
-    where
-        A: ScalarZnxToMut;
-}
-
-impl<B: Backend> ScalarZnxOps for Module<B> {
-    fn scalar_znx_automorphism<R, A>(&self, k: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
-    where
-        R: ScalarZnxToMut,
-        A: ScalarZnxToRef,
-    {
-        let a: ScalarZnx<&[u8]> = a.to_ref();
-        let mut res: ScalarZnx<&mut [u8]> = res.to_mut();
-        #[cfg(debug_assertions)]
-        {
-            assert_eq!(a.n(), self.n());
-            assert_eq!(res.n(), self.n());
-        }
-        unsafe {
-            vec_znx::vec_znx_automorphism(
-                self.ptr() as *const module_info_t,
-                k,
-                res.at_mut_ptr(res_col, 0),
-                res.size() as u64,
-                res.sl() as u64,
-                a.at_ptr(a_col, 0),
-                a.size() as u64,
-                a.sl() as u64,
-            )
-        }
-    }
-
-    fn scalar_znx_automorphism_inplace<A>(&self, k: i64, a: &mut A, a_col: usize)
-    where
-        A: ScalarZnxToMut,
-    {
-        let mut a: ScalarZnx<&mut [u8]> = a.to_mut();
-        #[cfg(debug_assertions)]
-        {
-            assert_eq!(a.n(), self.n());
-        }
-        unsafe {
-            vec_znx::vec_znx_automorphism(
-                self.ptr() as *const module_info_t,
-                k,
-                a.at_mut_ptr(a_col, 0),
-                a.size() as u64,
-                a.sl() as u64,
-                a.at_ptr(a_col, 0),
-                a.size() as u64,
-                a.sl() as u64,
-            )
-        }
-    }
-}
 
 impl<D> ScalarZnx<D> {
     pub(crate) fn from_data(data: D, n: usize, cols: usize) -> Self {

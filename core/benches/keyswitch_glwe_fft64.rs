@@ -1,5 +1,8 @@
-use backend::{FFT64, Module, ScratchOwned};
-use core::{AutomorphismKey, FourierGLWESecret, GLWECiphertext, GLWESecret, GLWESwitchingKey, Infos};
+use backend::{FFT64, Module, ModuleNew, ScratchOwned};
+use core::{
+    AutomorphismKey, AutomorphismKeyExec, GLWECiphertext, GLWESecret, GLWESecretExec, GLWESwitchingKey, GLWESwitchingKeyExec,
+    Infos,
+};
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use sampling::source::Source;
 use std::{hint::black_box, time::Duration};
@@ -32,7 +35,7 @@ fn bench_keyswitch_glwe_fft64(c: &mut Criterion) {
         let rows: usize = (p.k_ct_in + (p.basek * digits) - 1) / (p.basek * digits);
         let sigma: f64 = 3.2;
 
-        let mut ksk: AutomorphismKey<Vec<u8>, FFT64> = AutomorphismKey::alloc(&module, basek, k_grlwe, rows, digits, rank_out);
+        let mut ksk: AutomorphismKey<Vec<u8>> = AutomorphismKey::alloc(&module, basek, k_grlwe, rows, digits, rank_out);
         let mut ct_in: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_rlwe_in, rank_in);
         let mut ct_out: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_rlwe_out, rank_out);
 
@@ -57,7 +60,7 @@ fn bench_keyswitch_glwe_fft64(c: &mut Criterion) {
 
         let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc(&module, rank_in);
         sk_in.fill_ternary_prob(0.5, &mut source_xs);
-        let sk_in_dft: FourierGLWESecret<Vec<u8>, FFT64> = FourierGLWESecret::from(&module, &sk_in);
+        let sk_in_dft: GLWESecretExec<Vec<u8>, FFT64> = GLWESecretExec::from(&module, &sk_in);
 
         let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(&module, rank_out);
         sk_out.fill_ternary_prob(0.5, &mut source_xs);
@@ -81,8 +84,10 @@ fn bench_keyswitch_glwe_fft64(c: &mut Criterion) {
             scratch.borrow(),
         );
 
+        let ksk_exec: AutomorphismKeyExec<Vec<u8>, _> = AutomorphismKeyExec::from(&module, &ksk, scratch.borrow());
+
         move || {
-            black_box(ct_out.automorphism(&module, &ct_in, &ksk, scratch.borrow()));
+            black_box(ct_out.automorphism(&module, &ct_in, &ksk_exec, scratch.borrow()));
         }
     }
 
@@ -134,7 +139,7 @@ fn bench_keyswitch_glwe_inplace_fft64(c: &mut Criterion) {
         let rows: usize = (p.k_ct + p.basek - 1) / p.basek;
         let sigma: f64 = 3.2;
 
-        let mut ksk: GLWESwitchingKey<Vec<u8>, FFT64> = GLWESwitchingKey::alloc(&module, basek, k_ksk, rows, digits, rank, rank);
+        let mut ksk: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc(&module, basek, k_ksk, rows, digits, rank, rank);
         let mut ct: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_ct, rank);
 
         let mut scratch = ScratchOwned::new(
@@ -149,16 +154,15 @@ fn bench_keyswitch_glwe_inplace_fft64(c: &mut Criterion) {
 
         let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc(&module, rank);
         sk_in.fill_ternary_prob(0.5, &mut source_xs);
-        let sk_in_dft: FourierGLWESecret<Vec<u8>, FFT64> = FourierGLWESecret::from(&module, &sk_in);
+        let sk_in_dft: GLWESecretExec<Vec<u8>, FFT64> = GLWESecretExec::from(&module, &sk_in);
 
         let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(&module, rank);
         sk_out.fill_ternary_prob(0.5, &mut source_xs);
-        let sk_out_dft: FourierGLWESecret<Vec<u8>, FFT64> = FourierGLWESecret::from(&module, &sk_out);
 
         ksk.encrypt_sk(
             &module,
             &sk_in,
-            &sk_out_dft,
+            &sk_out,
             &mut source_xa,
             &mut source_xe,
             sigma,
@@ -174,8 +178,10 @@ fn bench_keyswitch_glwe_inplace_fft64(c: &mut Criterion) {
             scratch.borrow(),
         );
 
+        let ksk_exec: GLWESwitchingKeyExec<Vec<u8>, FFT64> = GLWESwitchingKeyExec::from(&module, &ksk, scratch.borrow());
+
         move || {
-            black_box(ct.keyswitch_inplace(&module, &ksk, scratch.borrow()));
+            black_box(ct.keyswitch_inplace(&module, &ksk_exec, scratch.borrow()));
         }
     }
 

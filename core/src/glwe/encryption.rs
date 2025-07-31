@@ -1,7 +1,7 @@
 use backend::{
-    AddNormal, Backend, FillUniform, Module, ScalarZnxAllocBytes, Scratch, SvpApply, SvpApplyInplace, SvpPPolAllocBytes,
-    SvpPrepare, VecZnxAddInplace, VecZnxBig, VecZnxBigAddNormal, VecZnxBigAddSmallInplace, VecZnxBigAllocBytes,
-    VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume, VecZnxNormalize,
+    Backend, Module, ScalarZnxAllocBytes, Scratch, SvpApply, SvpApplyInplace, SvpPPolAllocBytes, SvpPrepare, VecZnxAddInplace,
+    VecZnxAddNormal, VecZnxBig, VecZnxBigAddNormal, VecZnxBigAddSmallInplace, VecZnxBigAllocBytes, VecZnxBigNormalize,
+    VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume, VecZnxFillUniform, VecZnxNormalize,
     VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSubABInplace, ZnxZero,
 };
 use sampling::source::Source;
@@ -169,8 +169,8 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         let size: usize = self.size();
         let cols: usize = self.rank() + 1;
 
-        let (mut c0_big, scratch_1) = scratch.tmp_vec_znx(module, 1, size);
-        c0_big.zero();
+        let (mut c0, scratch_1) = scratch.tmp_vec_znx(module, 1, size);
+        c0.zero();
 
         {
             // c[i] = uniform
@@ -179,7 +179,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
                 let (mut ci_dft, scratch_2) = scratch_1.tmp_vec_znx_dft(module, 1, size);
 
                 // c[i] = uniform
-                self.data.fill_uniform(basek, i, size, source_xa);
+                module.vec_znx_fill_uniform(basek, &mut self.data, i, k, source_xa);
 
                 // c[i] = norm(IDFT(DFT(c[i]) * DFT(s[i])))
                 module.vec_znx_dft_from_vec_znx(1, 0, &mut ci_dft, 0, &self.data, i);
@@ -190,7 +190,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
                 module.vec_znx_big_normalize(basek, &mut self.data, 0, &ci_big, 0, scratch_2);
 
                 // c0_tmp = -c[i] * s[i] (use c[0] as buffer)
-                module.vec_znx_sub_ab_inplace(&mut c0_big, 0, &self.data, 0);
+                module.vec_znx_sub_ab_inplace(&mut c0, 0, &self.data, 0);
 
                 // c[i] += m if col = i
                 if let Some((pt, col)) = pt {
@@ -203,17 +203,17 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         }
 
         // c[0] += e
-        c0_big.add_normal(basek, 0, k, source_xe, sigma, sigma * SIX_SIGMA);
+        module.vec_znx_add_normal(basek, &mut c0, 0, k, source_xe, sigma, sigma * SIX_SIGMA);
 
         // c[0] += m if col = 0
         if let Some((pt, col)) = pt {
             if col == 0 {
-                module.vec_znx_add_inplace(&mut c0_big, 0, &pt.data, 0);
+                module.vec_znx_add_inplace(&mut c0, 0, &pt.data, 0);
             }
         }
 
         // c[0] = norm(c[0])
-        module.vec_znx_normalize(basek, &mut self.data, 0, &c0_big, 0, scratch_1);
+        module.vec_znx_normalize(basek, &mut self.data, 0, &c0, 0, scratch_1);
     }
 
     pub(crate) fn encrypt_pk_private<DataPt: AsRef<[u8]>, DataPk: AsRef<[u8]>, B: Backend>(
@@ -282,7 +282,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
             let mut ci_big = module.vec_znx_dft_to_vec_znx_big_consume(ci_dft);
 
             // ci_big = u * pk[i] + e
-            module.add_normal(
+            module.vec_znx_big_add_normal(
                 basek,
                 &mut ci_big,
                 0,

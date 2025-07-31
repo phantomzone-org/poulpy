@@ -1,4 +1,4 @@
-use backend::{Backend, Module, ScratchOwned, Stats, VecZnxBigAlloc, VecZnxDftAlloc, VecZnxSubScalarInplace};
+use backend::{Backend, MatZnxAlloc, Module, ScratchOwned, VecZnxBigAlloc, VecZnxDftAlloc, VecZnxStd, VecZnxSubScalarInplace};
 use sampling::source::Source;
 
 use crate::{
@@ -8,8 +8,12 @@ use crate::{
 
 pub(crate) fn test_encrypt_sk<B: Backend>(module: &Module<B>, basek: usize, k: usize, sigma: f64, rank: usize)
 where
-    Module<B>:
-        GGLWEExecLayoutFamily<B> + GLWETensorKeyEncryptSkFamily<B> + GLWEDecryptFamily<B> + VecZnxDftAlloc<B> + VecZnxBigAlloc<B>,
+    Module<B>: GGLWEExecLayoutFamily<B>
+        + GLWETensorKeyEncryptSkFamily<B>
+        + GLWEDecryptFamily<B>
+        + VecZnxDftAlloc<B>
+        + VecZnxBigAlloc<B>
+        + MatZnxAlloc,
 {
     let rows: usize = k / basek;
 
@@ -65,7 +69,7 @@ where
 
                     module.vec_znx_sub_scalar_inplace(&mut pt.data, 0, row_i, &sk_ij.data, col_i);
 
-                    let std_pt: f64 = pt.data.std(0, basek) * (k as f64).exp2();
+                    let std_pt: f64 = module.vec_znx_std(basek, &pt.data, 0) * (k as f64).exp2();
                     assert!((sigma - std_pt).abs() <= 0.5, "{} {}", sigma, std_pt);
                 });
             });

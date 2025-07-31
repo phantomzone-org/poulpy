@@ -1,4 +1,4 @@
-use backend::{AddNormal, FillUniform, VecZnx, ZnxView, ZnxViewMut, alloc_aligned};
+use backend::{Backend, Module, VecZnx, VecZnxAddNormal, VecZnxFillUniform, ZnxView, ZnxViewMut, alloc_aligned};
 use sampling::source::Source;
 
 use crate::{Infos, LWECiphertext, LWESecret, SIX_SIGMA, lwe::LWEPlaintext};
@@ -7,8 +7,9 @@ impl<DataSelf> LWECiphertext<DataSelf>
 where
     DataSelf: AsMut<[u8]> + AsRef<[u8]>,
 {
-    pub fn encrypt_sk<DataPt, DataSk>(
+    pub fn encrypt_sk<DataPt, DataSk, B: Backend>(
         &mut self,
+        module: &Module<B>,
         pt: &LWEPlaintext<DataPt>,
         sk: &LWESecret<DataSk>,
         source_xa: &mut Source,
@@ -24,8 +25,10 @@ where
         }
 
         let basek: usize = self.basek();
+        let k: usize = self.k();
 
-        self.data.fill_uniform(basek, 0, self.size(), source_xa);
+        module.vec_znx_fill_uniform(basek, &mut self.data, 0, k, source_xa);
+
         let mut tmp_znx: VecZnx<Vec<u8>> = VecZnx::<Vec<u8>>::new::<i64>(1, 1, self.size());
 
         let min_size = self.size().min(pt.size());
@@ -47,7 +50,15 @@ where
                 .sum::<i64>();
         });
 
-        tmp_znx.add_normal(basek, 0, self.k(), source_xe, sigma, sigma * SIX_SIGMA);
+        module.vec_znx_add_normal(
+            basek,
+            &mut self.data,
+            0,
+            k,
+            source_xe,
+            sigma,
+            sigma * SIX_SIGMA,
+        );
 
         let mut tmp_bytes: Vec<u8> = alloc_aligned(size_of::<i64>());
 

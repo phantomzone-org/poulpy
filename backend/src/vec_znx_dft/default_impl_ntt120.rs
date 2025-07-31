@@ -21,13 +21,13 @@ impl<D: AsRef<[u8]>> ZnxView for VecZnxDft<D, NTT120> {
     type Scalar = i64;
 }
 
-impl VecZnxDftAllocBytesImpl<NTT120> for () {
+unsafe impl VecZnxDftAllocBytesImpl<NTT120> for NTT120 {
     fn vec_znx_dft_alloc_bytes_impl(module: &Module<NTT120>, cols: usize, size: usize) -> usize {
         VecZnxDft::<Vec<u8>, NTT120>::bytes_of(module.n(), cols, size)
     }
 }
 
-impl VecZnxDftAllocImpl<NTT120> for Module<NTT120> {
+unsafe impl VecZnxDftAllocImpl<NTT120> for NTT120 {
     fn vec_znx_dft_alloc_impl(module: &Module<NTT120>, cols: usize, size: usize) -> VecZnxDftOwned<NTT120> {
         VecZnxDftOwned::alloc(module.n(), cols, size)
     }
