@@ -1,8 +1,8 @@
 use backend::{
-    Decoding, Encoding, FFT64, Module, ModuleNew, ScalarZnx, ScalarZnxAlloc, ScratchOwned, SvpApplyInplace, SvpPPol,
-    SvpPPolAlloc, SvpPrepare, VecZnx, VecZnxAddNormal, VecZnxAlloc, VecZnxBig, VecZnxBigAddSmallInplace, VecZnxBigAlloc,
-    VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallBInplace, VecZnxDft, VecZnxDftAlloc, VecZnxDftFromVecZnx,
-    VecZnxDftToVecZnxBigTmpA, VecZnxFillUniform, VecZnxNormalizeInplace, ZnxInfos,
+    FFT64, Module, ModuleNew, ScalarZnx, ScalarZnxAlloc, ScratchOwned, SvpApplyInplace, SvpPPol, SvpPPolAlloc, SvpPrepare,
+    VecZnx, VecZnxAddNormal, VecZnxAlloc, VecZnxBig, VecZnxBigAddSmallInplace, VecZnxBigAlloc, VecZnxBigNormalize,
+    VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallBInplace, VecZnxDecodeVeci64, VecZnxDft, VecZnxDftAlloc, VecZnxDftFromVecZnx,
+    VecZnxDftToVecZnxBigTmpA, VecZnxEncodeVeci64, VecZnxFillUniform, VecZnxNormalizeInplace, ZnxInfos,
 };
 use itertools::izip;
 use sampling::source::Source;
@@ -65,7 +65,7 @@ fn main() {
     let mut want: Vec<i64> = vec![0; n];
     want.iter_mut()
         .for_each(|x| *x = source.next_u64n(16, 15) as i64);
-    m.encode_vec_i64(0, basek, log_scale, &want, 4);
+    module.encode_vec_i64(basek, &mut m, 0, log_scale, &want, 4);
     module.vec_znx_normalize_inplace(basek, &mut m, 0, scratch.borrow());
 
     // m - BIG(ct[1] * s)
@@ -124,7 +124,7 @@ fn main() {
 
     // have = m * 2^{log_scale} + e
     let mut have: Vec<i64> = vec![i64::default(); n];
-    res.decode_vec_i64(0, basek, res.size() * basek, &mut have);
+    module.decode_vec_i64(basek, &mut res, 0, ct_size * basek, &mut have);
 
     let scale: f64 = (1 << (res.size() * basek - log_scale)) as f64;
     izip!(want.iter(), have.iter())

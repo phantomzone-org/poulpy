@@ -1,4 +1,5 @@
 use rand_distr::Distribution;
+use rug::Float;
 use sampling::source::Source;
 
 use crate::{ScalarZnxToRef, Scratch, VecZnxOwned, VecZnxToMut, VecZnxToRef};
@@ -279,4 +280,76 @@ pub trait VecZnxAddNormal {
         bound: f64,
     ) where
         R: VecZnxToMut;
+}
+
+pub trait VecZnxEncodeVeci64 {
+    /// encode a vector of i64 on the receiver.
+    ///
+    /// # Arguments
+    ///
+    /// * `col_i`: the index of the poly where to encode the data.
+    /// * `basek`: base two negative logarithm decomposition of the receiver.
+    /// * `k`: base two negative logarithm of the scaling of the data.
+    /// * `data`: data to encode on the receiver.
+    /// * `log_max`: base two logarithm of the infinity norm of the input data.
+    fn encode_vec_i64<R>(&self, basek: usize, res: &mut R, res_col: usize, k: usize, data: &[i64], log_max: usize)
+    where
+        R: VecZnxToMut;
+}
+
+pub trait VecZnxEncodeCoeffsi64 {
+    /// encodes a single i64 on the receiver at the given index.
+    ///
+    /// # Arguments
+    ///
+    /// * `res_col`: the index of the poly where to encode the data.
+    /// * `basek`: base two negative logarithm decomposition of the receiver.
+    /// * `k`: base two negative logarithm of the scaling of the data.
+    /// * `i`: index of the coefficient on which to encode the data.
+    /// * `data`: data to encode on the receiver.
+    /// * `log_max`: base two logarithm of the infinity norm of the input data.
+    fn encode_coeff_i64<R>(&self, basek: usize, res: &mut R, res_col: usize, k: usize, i: usize, data: i64, log_max: usize)
+    where
+        R: VecZnxToMut;
+}
+
+pub trait VecZnxDecodeVeci64 {
+    /// decode a vector of i64 from the receiver.
+    ///
+    /// # Arguments
+    ///
+    /// * `res_col`: the index of the poly where to encode the data.
+    /// * `basek`: base two negative logarithm decomposition of the receiver.
+    /// * `k`: base two logarithm of the scaling of the data.
+    /// * `data`: data to decode from the receiver.
+    fn decode_vec_i64<R>(&self, basek: usize, res: &R, res_col: usize, k: usize, data: &mut [i64])
+    where
+        R: VecZnxToRef;
+}
+
+pub trait VecZnxDecodeCoeffsi64 {
+    /// decode a single of i64 from the receiver at the given index.
+    ///
+    /// # Arguments
+    ///
+    /// * `res_col`: the index of the poly where to encode the data.
+    /// * `basek`: base two negative logarithm decomposition of the receiver.
+    /// * `k`: base two negative logarithm of the scaling of the data.
+    /// * `i`: index of the coefficient to decode.
+    /// * `data`: data to decode from the receiver.
+    fn decode_coeff_i64<R>(&self, basek: usize, res: &R, res_col: usize, k: usize, i: usize) -> i64
+    where
+        R: VecZnxToRef;
+}
+
+pub trait VecZnxDecodeVecFloat {
+    /// decode a vector of Float from the receiver.
+    ///
+    /// # Arguments
+    /// * `col_i`: the index of the poly where to encode the data.
+    /// * `basek`: base two negative logarithm decomposition of the receiver.
+    /// * `data`: data to decode from the receiver.
+    fn decode_vec_float<R>(&self, basek: usize, res: &R, col_i: usize, data: &mut [Float])
+    where
+        R: VecZnxToRef;
 }

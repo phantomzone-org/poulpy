@@ -1,4 +1,5 @@
 use rand_distr::Distribution;
+use rug::Float;
 use sampling::source::Source;
 
 use crate::{
@@ -301,4 +302,49 @@ pub unsafe trait VecZnxAddNormalImpl<B: Backend> {
         bound: f64,
     ) where
         R: VecZnxToMut;
+}
+
+pub unsafe trait VecZnxEncodeVeci64Impl<B: Backend> {
+    fn encode_vec_i64_impl<R>(
+        module: &Module<B>,
+        basek: usize,
+        res: &mut R,
+        res_col: usize,
+        k: usize,
+        data: &[i64],
+        log_max: usize,
+    ) where
+        R: VecZnxToMut;
+}
+
+pub unsafe trait VecZnxEncodeCoeffsi64Impl<B: Backend> {
+    fn encode_coeff_i64_impl<R>(
+        module: &Module<B>,
+        basek: usize,
+        res: &mut R,
+        res_col: usize,
+        k: usize,
+        i: usize,
+        data: i64,
+        log_max: usize,
+    ) where
+        R: VecZnxToMut;
+}
+
+pub unsafe trait VecZnxDecodeVeci64Impl<B: Backend> {
+    fn decode_vec_i64_impl<R>(module: &Module<B>, basek: usize, res: &R, res_col: usize, k: usize, data: &mut [i64])
+    where
+        R: VecZnxToRef;
+}
+
+pub unsafe trait VecZnxDecodeCoeffsi64Impl<B: Backend> {
+    fn decode_coeff_i64_impl<R>(module: &Module<B>, basek: usize, res: &R, res_col: usize, k: usize, i: usize) -> i64
+    where
+        R: VecZnxToRef;
+}
+
+pub unsafe trait VecZnxDecodeVecFloatImpl<B: Backend> {
+    fn decode_vec_float_impl<R>(module: &Module<B>, basek: usize, res: &R, res_col: usize, data: &mut [Float])
+    where
+        R: VecZnxToRef;
 }

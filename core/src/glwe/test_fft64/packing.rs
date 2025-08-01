@@ -4,7 +4,7 @@ use crate::{
 };
 use std::collections::HashMap;
 
-use backend::{Backend, Encoding, FFT64, MatZnxAlloc, Module, ModuleNew, ScratchOwned, VecZnxStd};
+use backend::{Backend, FFT64, MatZnxAlloc, Module, ModuleNew, ScratchOwned, VecZnxEncodeVeci64, VecZnxStd};
 use sampling::source::Source;
 
 #[test]
@@ -52,7 +52,8 @@ where
     data.iter_mut().enumerate().for_each(|(i, x)| {
         *x = i as i64;
     });
-    pt.data.encode_vec_i64(0, basek, pt_k, &data, 32);
+
+    module.encode_vec_i64(basek, &mut pt.data, 0, pt_k, &data, 32);
 
     let gal_els: Vec<i64> = GLWEPacker::galois_elements(module);
 
@@ -125,7 +126,8 @@ where
             *x = reverse_bits_msb(i, log_n as u32) as i64;
         }
     });
-    pt_want.data.encode_vec_i64(0, basek, pt_k, &data, 32);
+
+    module.encode_vec_i64(basek, &mut pt_want.data, 0, pt_k, &data, 32);
 
     res.decrypt(module, &mut pt, &sk_dft, scratch.borrow());
 

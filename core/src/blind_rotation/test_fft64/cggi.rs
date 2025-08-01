@@ -1,4 +1,4 @@
-use backend::{Backend, Encoding, FFT64, MatZnxAlloc, Module, ModuleNew, ScratchOwned, ZnxView};
+use backend::{Backend, FFT64, MatZnxAlloc, Module, ModuleNew, ScratchOwned, VecZnxEncodeCoeffsi64, ZnxView};
 use sampling::source::Source;
 
 use crate::{
@@ -94,7 +94,7 @@ where
     let x: i64 = 2;
     let bits: usize = 8;
 
-    pt_lwe.data.encode_coeff_i64(0, basek, bits, 0, x, bits);
+    module.encode_coeff_i64(basek, &mut pt_lwe.data, 0, bits, 0, x, bits);
 
     lwe.encrypt_sk(
         module,

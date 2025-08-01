@@ -1,4 +1,4 @@
-use backend::{Backend, Encoding, FFT64, MatZnxAlloc, Module, ModuleNew, ScratchOwned, ZnxView};
+use backend::{Backend, FFT64, MatZnxAlloc, Module, ModuleNew, ScratchOwned, VecZnxEncodeCoeffsi64, ZnxView};
 use sampling::source::Source;
 
 use crate::{
@@ -58,9 +58,7 @@ where
     let data: i64 = 17;
 
     let mut lwe_pt: LWEPlaintext<Vec<u8>> = LWEPlaintext::alloc(basek, k_lwe_pt);
-    lwe_pt
-        .data
-        .encode_coeff_i64(0, basek, k_lwe_pt, 0, data, k_lwe_pt);
+    module.encode_coeff_i64(basek, &mut lwe_pt.data, 0, k_lwe_pt, 0, data, k_lwe_pt);
 
     let mut lwe_ct: LWECiphertext<Vec<u8>> = LWECiphertext::alloc(n_lwe, basek, k_lwe_ct);
     lwe_ct.encrypt_sk(
@@ -140,10 +138,7 @@ where
 
     let data: i64 = 17;
     let mut glwe_pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(module, basek, k_glwe_ct);
-
-    glwe_pt
-        .data
-        .encode_coeff_i64(0, basek, k_lwe_pt, 0, data, k_lwe_pt);
+    module.encode_coeff_i64(basek, &mut glwe_pt.data, 0, k_lwe_pt, 0, data, k_lwe_pt);
 
     let mut glwe_ct = GLWECiphertext::alloc(module, basek, k_glwe_ct, rank);
     glwe_ct.encrypt_sk(
@@ -219,9 +214,7 @@ where
     let data: i64 = 17;
 
     let mut lwe_pt_in: LWEPlaintext<Vec<u8>> = LWEPlaintext::alloc(basek, k_lwe_pt);
-    lwe_pt_in
-        .data
-        .encode_coeff_i64(0, basek, k_lwe_pt, 0, data, k_lwe_pt);
+    module.encode_coeff_i64(basek, &mut lwe_pt_in.data, 0, k_lwe_pt, 0, data, k_lwe_pt);
 
     let mut lwe_ct_in: LWECiphertext<Vec<u8>> = LWECiphertext::alloc(n_lwe_in, basek, k_lwe_ct);
     lwe_ct_in.encrypt_sk(

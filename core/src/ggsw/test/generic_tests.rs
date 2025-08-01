@@ -1,6 +1,6 @@
 use backend::{
-    Backend, MatZnxAlloc, Module, ScalarZnx, ScalarZnxAlloc, ScalarZnxAutomorphismInplace, ScratchOwned, VecZnxRotateInplace,
-    VecZnxToMut, ZnxViewMut,
+    Backend, MatZnxAlloc, Module, ScalarZnx, ScalarZnxAlloc, ScalarZnxAutomorphismInplace, ScalarZnxToMut, ScratchOwned,
+    VecZnxRotateInplace, ZnxViewMut,
 };
 use sampling::source::Source;
 

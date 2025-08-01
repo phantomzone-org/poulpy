@@ -259,7 +259,10 @@ impl Scratch {
         )
     }
 
-    pub fn tmp_vec_znx<B: Backend>(&mut self, module: &Module<B>, cols: usize, size: usize) -> (VecZnx<&mut [u8]>, &mut Self) {
+    pub fn tmp_vec_znx<B: Backend>(&mut self, module: &Module<B>, cols: usize, size: usize) -> (VecZnx<&mut [u8]>, &mut Self)
+    where
+        Module<B>: VecZnxAllocBytes,
+    {
         let (take_slice, rem_slice) = Self::take_slice_aligned(&mut self.data, module.vec_znx_alloc_bytes(cols, size));
         (
             VecZnx::from_data(take_slice, module.n(), cols, size),
@@ -273,7 +276,10 @@ impl Scratch {
         module: &Module<B>,
         cols: usize,
         size: usize,
-    ) -> (Vec<VecZnx<&mut [u8]>>, &mut Self) {
+    ) -> (Vec<VecZnx<&mut [u8]>>, &mut Self)
+    where
+        Module<B>: VecZnxAllocBytes,
+    {
         let mut scratch: &mut Scratch = self;
         let mut slice: Vec<VecZnx<&mut [u8]>> = Vec::with_capacity(slice_size);
         for _ in 0..slice_size {
