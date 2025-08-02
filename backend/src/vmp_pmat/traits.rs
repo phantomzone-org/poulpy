@@ -36,15 +36,15 @@ pub trait VmpApplyTmpBytes {
 }
 
 pub trait VmpApply<B: Backend> {
-    /// Applies the vector matrix product [VecZnxDft] x [MatZnxDft].
-    /// The size of `buf` is given by [MatZnxDftOps::vmp_apply_dft_to_dft_tmp_bytes].
+    /// Applies the vector matrix product [crate::VecZnxDft] x [crate::VmpPMat].
+    /// The size of `buf` is given by [VmpApplyTmpBytes::vmp_apply_tmp_bytes].
     ///
-    /// A vector matrix product is equivalent to a sum of [crate::SvpPPolOps::svp_apply_dft]
-    /// where each [crate::Scalar] is a limb of the input [VecZnxDft] (equivalent to an [crate::SvpPPol])
-    /// and each vector a [VecZnxDft] (row) of the [MatZnxDft].
+    /// A vector matrix product numerically equivalent to a sum of [crate::SvpApply::svp_apply],
+    /// where each [crate::SvpPPol] is a limb of the input [crate::VecZnx] in DFT,
+    /// and each vector a [crate::VecZnxDft] (row) of the [crate::VmpPMat].
     ///
-    /// As such, given an input [VecZnx] of `i` size and a [MatZnxDft] of `i` rows and
-    /// `j` size, the output is a [VecZnx] of `j` size.
+    /// As such, given an input [crate::VecZnx] of `i` size and a [crate::VmpPMat] of `i` rows and
+    /// `j` size, the output is a [crate::VecZnx] of `j` size.
     ///
     /// If there is a mismatch between the dimensions the largest valid ones are used.
     ///
@@ -53,14 +53,14 @@ pub trait VmpApply<B: Backend> {
     ///             |h i j|
     ///             |k l m|
     /// ```
-    /// where each element is a [VecZnxDft].
+    /// where each element is a [crate::VecZnxDft].
     ///
     /// # Arguments
     ///
-    /// * `c`: the output of the vector matrix product, as a [VecZnxDft].
-    /// * `a`: the left operand [VecZnxDft] of the vector matrix product.
-    /// * `b`: the right operand [MatZnxDft] of the vector matrix product.
-    /// * `buf`: scratch space, the size can be obtained with [MatZnxDftOps::vmp_apply_dft_to_dft_tmp_bytes].
+    /// * `c`: the output of the vector matrix product, as a [crate::VecZnxDft].
+    /// * `a`: the left operand [crate::VecZnxDft] of the vector matrix product.
+    /// * `b`: the right operand [crate::VmpPMat] of the vector matrix product.
+    /// * `buf`: scratch space, the size can be obtained with [VmpApplyTmpBytes::vmp_apply_tmp_bytes].
     fn vmp_apply<R, A, C>(&self, res: &mut R, a: &A, b: &C, scratch: &mut Scratch)
     where
         R: VecZnxDftToMut<B>,
@@ -81,7 +81,6 @@ pub trait VmpApplyAddTmpBytes {
 }
 
 pub trait VmpApplyAdd<B: Backend> {
-    // Same as [MatZnxDftOps::vmp_apply] except result is added on R instead of overwritting R.
     fn vmp_apply_add<R, A, C>(&self, res: &mut R, a: &A, b: &C, scale: usize, scratch: &mut Scratch)
     where
         R: VecZnxDftToMut<B>,

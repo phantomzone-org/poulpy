@@ -7,44 +7,43 @@ use crate::{
     vec_znx::layout::{VecZnxOwned, VecZnxToMut, VecZnxToRef},
 };
 
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See \[TODO\] for reference code.
+/// * See [crate::vec_znx::traits::VecZnxAlloc] for behavioral contract.
+/// * See [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxAllocImpl<B: Backend> {
-    /// Allocates a new [VecZnx].
-    ///
-    /// # Arguments
-    ///
-    /// * `cols`: the number of polynomials.
-    /// * `size`: the number small polynomials per column.
     fn vec_znx_alloc_impl(module: &Module<B>, cols: usize, size: usize) -> VecZnxOwned;
 }
 
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See \[TODO\] for reference code.
+/// * See \[TODO\] for behavioral contract.
+/// * See [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxFromBytesImpl<B: Backend> {
-    /// Instantiates a new [VecZnx] from a slice of bytes.
-    /// The returned [VecZnx] takes ownership of the slice of bytes.
-    ///
-    /// # Arguments
-    ///
-    /// * `cols`: the number of polynomials.
-    /// * `size`: the number small polynomials per column.
-    ///
-    /// # Panic
-    /// Requires the slice of bytes to be equal to [VecZnxOps::bytes_of_vec_znx].
     fn vec_znx_from_bytes_impl(module: &Module<B>, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxOwned;
 }
 
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See \[TODO\] for reference code.
+/// * See \[TODO\] for behavioral contract.
+/// * See [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxAllocBytesImpl<B: Backend> {
-    /// Returns the number of bytes necessary to allocate
-    /// a new [VecZnx] through [VecZnxOps::new_vec_znx_from_bytes]
-    /// or [VecZnxOps::new_vec_znx_from_bytes_borrow].
     fn vec_znx_alloc_bytes_impl(module: &Module<B>, cols: usize, size: usize) -> usize;
 }
 
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See \[TODO\] for reference code.
+/// * See \[TODO\] for behavioral contract.
+/// * See [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxNormalizeTmpBytesImpl<B: Backend> {
-    /// Returns the minimum number of bytes necessary for normalization.
     fn vec_znx_normalize_tmp_bytes_impl(module: &Module<B>) -> usize;
 }
 
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See \[TODO\] for reference code.
+/// * See \[TODO\] for behavioral contract.
+/// * See [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxNormalizeImpl<B: Backend> {
-    /// Normalizes the selected column of `a` and stores the result into the selected column of `res`.
     fn vec_znx_normalize_impl<R, A>(
         module: &Module<B>,
         basek: usize,
@@ -58,13 +57,20 @@ pub unsafe trait VecZnxNormalizeImpl<B: Backend> {
         A: VecZnxToRef;
 }
 
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See \[TODO\] for reference code.
+/// * See \[TODO\] for behavioral contract.
+/// * See [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxNormalizeInplaceImpl<B: Backend> {
-    /// Normalizes the selected column of `a`.
     fn vec_znx_normalize_inplace_impl<A>(module: &Module<B>, basek: usize, a: &mut A, a_col: usize, scratch: &mut Scratch)
     where
         A: VecZnxToMut;
 }
 
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See \[TODO\] for reference code.
+/// * See \[TODO\] for behavioral contract.
+/// * See [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxAddImpl<B: Backend> {
     fn vec_znx_add_impl<R, A, C>(module: &Module<B>, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &C, b_col: usize)
     where
@@ -73,16 +79,22 @@ pub unsafe trait VecZnxAddImpl<B: Backend> {
         C: VecZnxToRef;
 }
 
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See \[TODO\] for reference code.
+/// * See \[TODO\] for behavioral contract.
+/// * See [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxAddInplaceImpl<B: Backend> {
-    /// Adds the selected column of `a` to the selected column of `res` and writes the result on the selected column of `res`.
     fn vec_znx_add_inplace_impl<R, A>(module: &Module<B>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxToMut,
         A: VecZnxToRef;
 }
 
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See \[TODO\] for reference code.
+/// * See \[TODO\] for behavioral contract.
+/// * See [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxAddScalarInplaceImpl<B: Backend> {
-    /// Adds the selected column of `a` on the selected column and limb of `res`.
     fn vec_znx_add_scalar_inplace_impl<R, A>(
         module: &Module<B>,
         res: &mut R,
@@ -95,8 +107,11 @@ pub unsafe trait VecZnxAddScalarInplaceImpl<B: Backend> {
         A: ScalarZnxToRef;
 }
 
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See \[TODO\] for reference code.
+/// * See \[TODO\] for behavioral contract.
+/// * See [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxSubImpl<B: Backend> {
-    /// Subtracts the selected column of `b` from the selected column of `a` and writes the result on the selected column of `res`.
     fn vec_znx_sub_impl<R, A, C>(module: &Module<B>, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &C, b_col: usize)
     where
         R: VecZnxToMut,
@@ -104,28 +119,33 @@ pub unsafe trait VecZnxSubImpl<B: Backend> {
         C: VecZnxToRef;
 }
 
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See \[TODO\] for reference code.
+/// * See \[TODO\] for behavioral contract.
+/// * See [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxSubABInplaceImpl<B: Backend> {
-    /// Subtracts the selected column of `a` from the selected column of `res` inplace.
-    ///
-    /// res[res_col] -= a[a_col]
     fn vec_znx_sub_ab_inplace_impl<R, A>(module: &Module<B>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxToMut,
         A: VecZnxToRef;
 }
 
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See \[TODO\] for reference code.
+/// * See \[TODO\] for behavioral contract.
+/// * See [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxSubBAInplaceImpl<B: Backend> {
-    /// Subtracts the selected column of `res` from the selected column of `a` and inplace mutates `res`
-    ///
-    /// res[res_col] = a[a_col] - res[res_col]
     fn vec_znx_sub_ba_inplace_impl<R, A>(module: &Module<B>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxToMut,
         A: VecZnxToRef;
 }
 
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See \[TODO\] for reference code.
+/// * See \[TODO\] for behavioral contract.
+/// * See [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxSubScalarInplaceImpl<B: Backend> {
-    /// Subtracts the selected column of `a` on the selected column and limb of `res`.
     fn vec_znx_sub_scalar_inplace_impl<R, A>(
         module: &Module<B>,
         res: &mut R,
@@ -138,85 +158,115 @@ pub unsafe trait VecZnxSubScalarInplaceImpl<B: Backend> {
         A: ScalarZnxToRef;
 }
 
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See \[TODO\] for reference code.
+/// * See \[TODO\] for behavioral contract.
+/// * See [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxNegateImpl<B: Backend> {
-    // Negates the selected column of `a` and stores the result in `res_col` of `res`.
     fn vec_znx_negate_impl<R, A>(module: &Module<B>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxToMut,
         A: VecZnxToRef;
 }
 
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See \[TODO\] for reference code.
+/// * See \[TODO\] for behavioral contract.
+/// * See [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxNegateInplaceImpl<B: Backend> {
-    /// Negates the selected column of `a`.
     fn vec_znx_negate_inplace_impl<A>(module: &Module<B>, a: &mut A, a_col: usize)
     where
         A: VecZnxToMut;
 }
 
-pub unsafe trait VecZnxShiftInplaceImpl<B: Backend> {
-    /// Shifts by k bits all columns of `a`.
-    /// A positive k applies a left shift, while a negative k applies a right shift.
-    fn vec_znx_shift_inplace_impl<A>(module: &Module<B>, basek: usize, k: i64, a: &mut A, scratch: &mut Scratch)
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See \[TODO\] for reference code.
+/// * See \[TODO\] for behavioral contract.
+/// * See [crate::doc::backend_safety] for safety contract.
+pub unsafe trait VecZnxRshInplaceImpl<B: Backend> {
+    fn vec_znx_rsh_inplace_impl<A>(module: &Module<B>, basek: usize, k: usize, a: &mut A)
     where
         A: VecZnxToMut;
 }
 
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See \[TODO\] for reference code.
+/// * See \[TODO\] for behavioral contract.
+/// * See [crate::doc::backend_safety] for safety contract.
+pub unsafe trait VecZnxLshInplaceImpl<B: Backend> {
+    fn vec_znx_lsh_inplace_impl<A>(module: &Module<B>, basek: usize, k: usize, a: &mut A)
+    where
+        A: VecZnxToMut;
+}
+
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See \[TODO\] for reference code.
+/// * See \[TODO\] for behavioral contract.
+/// * See [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxRotateImpl<B: Backend> {
-    /// Multiplies the selected column of `a` by X^k and stores the result in `res_col` of `res`.
     fn vec_znx_rotate_impl<R, A>(module: &Module<B>, k: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxToMut,
         A: VecZnxToRef;
 }
 
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See \[TODO\] for reference code.
+/// * See \[TODO\] for behavioral contract.
+/// * See [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxRotateInplaceImpl<B: Backend> {
-    /// Multiplies the selected column of `a` by X^k.
     fn vec_znx_rotate_inplace_impl<A>(module: &Module<B>, k: i64, a: &mut A, a_col: usize)
     where
         A: VecZnxToMut;
 }
 
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See \[TODO\] for reference code.
+/// * See \[TODO\] for behavioral contract.
+/// * See [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxAutomorphismImpl<B: Backend> {
-    /// Applies the automorphism X^i -> X^ik on the selected column of `a` and stores the result in `res_col` column of `res`.
     fn vec_znx_automorphism_impl<R, A>(module: &Module<B>, k: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxToMut,
         A: VecZnxToRef;
 }
 
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See \[TODO\] for reference code.
+/// * See \[TODO\] for behavioral contract.
+/// * See [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxAutomorphismInplaceImpl<B: Backend> {
-    /// Applies the automorphism X^i -> X^ik on the selected column of `a`.
     fn vec_znx_automorphism_inplace_impl<A>(module: &Module<B>, k: i64, a: &mut A, a_col: usize)
     where
         A: VecZnxToMut;
 }
 
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See \[TODO\] for reference code.
+/// * See \[TODO\] for behavioral contract.
+/// * See [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxSplitImpl<B: Backend> {
-    /// Splits the selected columns of `b` into subrings and copies them them into the selected column of `res`.
-    ///
-    /// # Panics
-    ///
-    /// This method requires that all [VecZnx] of b have the same ring degree
-    /// and that b.n() * b.len() <= a.n()
     fn vec_znx_split_impl<R, A>(module: &Module<B>, res: &mut Vec<R>, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch)
     where
         R: VecZnxToMut,
         A: VecZnxToRef;
 }
 
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See \[TODO\] for reference code.
+/// * See \[TODO\] for behavioral contract.
+/// * See [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxMergeImpl<B: Backend> {
-    /// Merges the subrings of the selected column of `a` into the selected column of `res`.
-    ///
-    /// # Panics
-    ///
-    /// This method requires that all [VecZnx] of a have the same ring degree
-    /// and that a.n() * a.len() <= b.n()
     fn vec_znx_merge_impl<R, A>(module: &Module<B>, res: &mut R, res_col: usize, a: Vec<A>, a_col: usize)
     where
         R: VecZnxToMut,
         A: VecZnxToRef;
 }
 
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See \[TODO\] for reference code.
+/// * See \[TODO\] for behavioral contract.
+/// * See [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxSwithcDegreeImpl<B: Backend> {
     fn vec_znx_switch_degree_impl<R: VecZnxToMut, A: VecZnxToRef>(
         module: &Module<B>,
@@ -227,6 +277,10 @@ pub unsafe trait VecZnxSwithcDegreeImpl<B: Backend> {
     );
 }
 
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See \[TODO\] for reference code.
+/// * See \[TODO\] for behavioral contract.
+/// * See [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxCopyImpl<B: Backend> {
     fn vec_znx_copy_impl<R, A>(module: &Module<B>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
@@ -234,19 +288,30 @@ pub unsafe trait VecZnxCopyImpl<B: Backend> {
         A: VecZnxToRef;
 }
 
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See \[TODO\] for reference code.
+/// * See \[TODO\] for behavioral contract.
+/// * See [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxStdImpl<B: Backend> {
     fn vec_znx_std_impl<A>(module: &Module<B>, basek: usize, a: &A, a_col: usize) -> f64
     where
         A: VecZnxToRef;
 }
 
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See \[TODO\] for reference code.
+/// * See \[TODO\] for behavioral contract.
+/// * See [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxFillUniformImpl<B: Backend> {
-    /// Fills the first `size` size with uniform values in \[-2^{basek-1}, 2^{basek-1}\]
     fn vec_znx_fill_uniform_impl<R>(module: &Module<B>, basek: usize, res: &mut R, res_col: usize, k: usize, source: &mut Source)
     where
         R: VecZnxToMut;
 }
 
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See \[TODO\] for reference code.
+/// * See \[TODO\] for behavioral contract.
+/// * See [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxFillDistF64Impl<B: Backend> {
     fn vec_znx_fill_dist_f64_impl<R, D: Distribution<f64>>(
         module: &Module<B>,
@@ -261,8 +326,11 @@ pub unsafe trait VecZnxFillDistF64Impl<B: Backend> {
         R: VecZnxToMut;
 }
 
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See \[TODO\] for reference code.
+/// * See \[TODO\] for behavioral contract.
+/// * See [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxAddDistF64Impl<B: Backend> {
-    /// Adds vector sampled according to the provided distribution, scaled by 2^{-k} and bounded to \[-bound, bound\].
     fn vec_znx_add_dist_f64_impl<R, D: Distribution<f64>>(
         module: &Module<B>,
         basek: usize,
@@ -276,6 +344,10 @@ pub unsafe trait VecZnxAddDistF64Impl<B: Backend> {
         R: VecZnxToMut;
 }
 
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See \[TODO\] for reference code.
+/// * See \[TODO\] for behavioral contract.
+/// * See [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxFillNormalImpl<B: Backend> {
     fn vec_znx_fill_normal_impl<R>(
         module: &Module<B>,
@@ -290,6 +362,10 @@ pub unsafe trait VecZnxFillNormalImpl<B: Backend> {
         R: VecZnxToMut;
 }
 
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See \[TODO\] for reference code.
+/// * See \[TODO\] for behavioral contract.
+/// * See [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxAddNormalImpl<B: Backend> {
     fn vec_znx_add_normal_impl<R>(
         module: &Module<B>,
@@ -304,6 +380,10 @@ pub unsafe trait VecZnxAddNormalImpl<B: Backend> {
         R: VecZnxToMut;
 }
 
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See \[TODO\] for reference code.
+/// * See \[TODO\] for behavioral contract.
+/// * See [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxEncodeVeci64Impl<B: Backend> {
     fn encode_vec_i64_impl<R>(
         module: &Module<B>,
@@ -317,6 +397,10 @@ pub unsafe trait VecZnxEncodeVeci64Impl<B: Backend> {
         R: VecZnxToMut;
 }
 
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See \[TODO\] for reference code.
+/// * See \[TODO\] for behavioral contract.
+/// * See [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxEncodeCoeffsi64Impl<B: Backend> {
     fn encode_coeff_i64_impl<R>(
         module: &Module<B>,
@@ -331,18 +415,30 @@ pub unsafe trait VecZnxEncodeCoeffsi64Impl<B: Backend> {
         R: VecZnxToMut;
 }
 
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See \[TODO\] for reference code.
+/// * See \[TODO\] for behavioral contract.
+/// * See [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxDecodeVeci64Impl<B: Backend> {
     fn decode_vec_i64_impl<R>(module: &Module<B>, basek: usize, res: &R, res_col: usize, k: usize, data: &mut [i64])
     where
         R: VecZnxToRef;
 }
 
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See \[TODO\] for reference code.
+/// * See \[TODO\] for behavioral contract.
+/// * See [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxDecodeCoeffsi64Impl<B: Backend> {
     fn decode_coeff_i64_impl<R>(module: &Module<B>, basek: usize, res: &R, res_col: usize, k: usize, i: usize) -> i64
     where
         R: VecZnxToRef;
 }
 
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See \[TODO\] for reference code.
+/// * See \[TODO\] for behavioral contract.
+/// * See [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxDecodeVecFloatImpl<B: Backend> {
     fn decode_vec_float_impl<R>(module: &Module<B>, basek: usize, res: &R, res_col: usize, data: &mut [Float])
     where

@@ -2,8 +2,8 @@ use crate::znx_base::ZnxInfos;
 use crate::{Backend, DataView, DataViewMut, alloc_aligned};
 use std::marker::PhantomData;
 
-/// An opaque version of [MatZnxDft], which is prepared for a specific backend, to be
-/// given as right operand of [vmp_apply].
+/// An opaque version of [crate::MatZnx] in DFT,
+/// which is prepared for a specific backend.
 pub struct VmpPMat<D, B: Backend> {
     data: D,
     n: usize,

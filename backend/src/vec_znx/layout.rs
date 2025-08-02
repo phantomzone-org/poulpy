@@ -1,8 +1,5 @@
-use itertools::izip;
-
 use crate::DataView;
 use crate::DataViewMut;
-use crate::Scratch;
 use crate::ZnxSliceSize;
 use crate::ZnxZero;
 use crate::alloc_aligned;
@@ -10,7 +7,7 @@ use crate::assert_alignement;
 use crate::cast_mut;
 use crate::ffi::znx;
 use crate::znx_base::{ZnxInfos, ZnxView, ZnxViewMut};
-use std::{cmp::min, fmt};
+use std::fmt;
 
 /// [VecZnx] represents collection of contiguously stacked vector of small norm polynomials of
 /// Zn\[X\] with [i64] coefficients.
@@ -96,101 +93,6 @@ impl<D: AsRef<[u8]> + AsMut<[u8]>> ZnxZero for VecZnx<D> {
     }
 }
 
-impl<D: AsMut<[u8]> + AsRef<[u8]>> VecZnx<D> {
-    /// Truncates the precision of the [VecZnx] by k bits.
-    ///
-    /// # Arguments
-    ///
-    /// * `basek`: the base two logarithm of the coefficients decomposition.
-    /// * `k`: the number of bits of precision to drop.
-    pub fn trunc_pow2(&mut self, basek: usize, k: usize, col: usize) {
-        if k == 0 {
-            return;
-        }
-
-        self.size -= k / basek;
-
-        let k_rem: usize = k % basek;
-
-        if k_rem != 0 {
-            let mask: i64 = ((1 << (basek - k_rem - 1)) - 1) << k_rem;
-            self.at_mut(col, self.size() - 1)
-                .iter_mut()
-                .for_each(|x: &mut i64| *x &= mask)
-        }
-    }
-
-    pub fn rotate(&mut self, k: i64) {
-        unsafe {
-            (0..self.cols()).for_each(|i| {
-                (0..self.size()).for_each(|j| {
-                    znx::znx_rotate_inplace_i64(self.n() as u64, k, self.at_mut_ptr(i, j));
-                });
-            })
-        }
-    }
-
-    pub fn rsh(&mut self, basek: usize, k: usize, scratch: &mut Scratch) {
-        let n: usize = self.n();
-        let cols: usize = self.cols();
-        let size: usize = self.size();
-        let steps: usize = k / basek;
-
-        self.raw_mut().rotate_right(n * steps * cols);
-        (0..cols).for_each(|i| {
-            (0..steps).for_each(|j| {
-                self.zero_at(i, j);
-            })
-        });
-
-        let k_rem: usize = k % basek;
-
-        if k_rem != 0 {
-            let (carry, _) = scratch.tmp_slice::<i64>(n);
-            let shift = i64::BITS as usize - k_rem;
-            (0..cols).for_each(|i| {
-                carry.fill(0);
-                (steps..size).for_each(|j| {
-                    izip!(carry.iter_mut(), self.at_mut(i, j).iter_mut()).for_each(|(ci, xi)| {
-                        *xi += *ci << basek;
-                        *ci = (*xi << shift) >> shift;
-                        *xi = (*xi - *ci) >> k_rem;
-                    });
-                });
-            })
-        }
-    }
-
-    pub fn lsh(&mut self, basek: usize, k: usize, scratch: &mut Scratch) {
-        let n: usize = self.n();
-        let cols: usize = self.cols();
-        let size: usize = self.size();
-        let steps: usize = k / basek;
-
-        self.raw_mut().rotate_left(n * steps * cols);
-        (0..cols).for_each(|i| {
-            (size - steps..size).for_each(|j| {
-                self.zero_at(i, j);
-            })
-        });
-
-        let k_rem: usize = k % basek;
-
-        if k_rem != 0 {
-            let shift: usize = i64::BITS as usize - k_rem;
-            let (tmp_bytes, _) = scratch.tmp_slice::<u8>(n * size_of::<i64>());
-            (0..cols).for_each(|i| {
-                (0..steps).for_each(|j| {
-                    self.at_mut(i, j).iter_mut().for_each(|xi| {
-                        *xi <<= shift;
-                    });
-                });
-                normalize(basek, self, i, tmp_bytes);
-            });
-        }
-    }
-}
-
 impl<D: AsRef<[u8]>> VecZnx<D> {
     pub fn bytes_of<Scalar: Sized>(n: usize, cols: usize, size: usize) -> usize {
         n * cols * size * size_of::<Scalar>()
@@ -232,21 +134,6 @@ impl<D> VecZnx<D> {
             max_size: size,
         }
     }
-}
-
-/// Copies the coefficients of `a` on the receiver.
-/// Copy is done with the minimum size matching both backing arrays.
-/// Panics if the cols do not match.
-pub fn copy_vec_znx_from<DataMut, Data>(b: &mut VecZnx<DataMut>, a: &VecZnx<Data>)
-where
-    DataMut: AsMut<[u8]> + AsRef<[u8]>,
-    Data: AsRef<[u8]>,
-{
-    assert_eq!(b.cols(), a.cols());
-    let data_a: &[i64] = a.raw();
-    let data_b: &mut [i64] = b.raw_mut();
-    let size = min(data_b.len(), data_a.len());
-    data_b[..size].copy_from_slice(&data_a[..size])
 }
 
 #[allow(dead_code)]

@@ -2,12 +2,12 @@ use crate::{
     Backend, Module, ScalarZnxToRef, Scratch, VecZnx, VecZnxAddImpl, VecZnxAddInplaceImpl, VecZnxAddScalarInplaceImpl,
     VecZnxAllocBytesImpl, VecZnxAllocImpl, VecZnxAutomorphismImpl, VecZnxAutomorphismInplaceImpl, VecZnxCopyImpl,
     VecZnxDecodeCoeffsi64Impl, VecZnxDecodeVecFloat, VecZnxDecodeVecFloatImpl, VecZnxDecodeVeci64Impl, VecZnxEncodeCoeffsi64Impl,
-    VecZnxEncodeVeci64Impl, VecZnxFromBytesImpl, VecZnxMergeImpl, VecZnxNegateImpl, VecZnxNegateInplaceImpl, VecZnxNormalizeImpl,
-    VecZnxNormalizeInplaceImpl, VecZnxNormalizeTmpBytesImpl, VecZnxOwned, VecZnxRotateImpl, VecZnxRotateInplaceImpl,
-    VecZnxShiftInplaceImpl, VecZnxSplitImpl, VecZnxStdImpl, VecZnxSubABInplaceImpl, VecZnxSubBAInplaceImpl, VecZnxSubImpl,
-    VecZnxSubScalarInplaceImpl, VecZnxSwithcDegreeImpl, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut,
-    ZnxZero,
-    ffi::{module::module_info_t, vec_znx},
+    VecZnxEncodeVeci64Impl, VecZnxFromBytesImpl, VecZnxLshInplaceImpl, VecZnxMergeImpl, VecZnxNegateImpl,
+    VecZnxNegateInplaceImpl, VecZnxNormalizeImpl, VecZnxNormalizeInplaceImpl, VecZnxNormalizeTmpBytesImpl, VecZnxOwned,
+    VecZnxRotateImpl, VecZnxRotateInplaceImpl, VecZnxRshInplaceImpl, VecZnxSplitImpl, VecZnxStdImpl, VecZnxSubABInplaceImpl,
+    VecZnxSubBAInplaceImpl, VecZnxSubImpl, VecZnxSubScalarInplaceImpl, VecZnxSwithcDegreeImpl, VecZnxToMut, VecZnxToRef,
+    ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero,
+    ffi::{module::module_info_t, vec_znx, znx},
     vec_znx::traits::{VecZnxCopy, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace, VecZnxSwithcDegree},
 };
 use crate::{
@@ -151,7 +151,6 @@ unsafe impl<B: Backend> VecZnxAddImpl<B> for B {
 }
 
 unsafe impl<B: Backend> VecZnxAddInplaceImpl<B> for B {
-    /// Adds the selected column of `a` to the selected column of `res` and writes the result on the selected column of `res`.
     fn vec_znx_add_inplace_impl<R, A>(module: &Module<B>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxToMut,
@@ -183,7 +182,6 @@ unsafe impl<B: Backend> VecZnxAddInplaceImpl<B> for B {
 }
 
 unsafe impl<B: Backend> VecZnxAddScalarInplaceImpl<B> for B {
-    /// Adds the selected column of `a` on the selected column and limb of `res`.
     fn vec_znx_add_scalar_inplace_impl<R, A>(
         module: &Module<B>,
         res: &mut R,
@@ -222,7 +220,6 @@ unsafe impl<B: Backend> VecZnxAddScalarInplaceImpl<B> for B {
 }
 
 unsafe impl<B: Backend> VecZnxSubImpl<B> for B {
-    /// Subtracts the selected column of `b` from the selected column of `a` and writes the result on the selected column of `res`.
     fn vec_znx_sub_impl<R, A, C>(module: &Module<B>, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &C, b_col: usize)
     where
         R: VecZnxToMut,
@@ -258,9 +255,6 @@ unsafe impl<B: Backend> VecZnxSubImpl<B> for B {
 }
 
 unsafe impl<B: Backend> VecZnxSubABInplaceImpl<B> for B {
-    /// Subtracts the selected column of `a` from the selected column of `res` inplace.
-    ///
-    /// res[res_col] -= a[a_col]
     fn vec_znx_sub_ab_inplace_impl<R, A>(module: &Module<B>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxToMut,
@@ -291,9 +285,6 @@ unsafe impl<B: Backend> VecZnxSubABInplaceImpl<B> for B {
 }
 
 unsafe impl<B: Backend> VecZnxSubBAInplaceImpl<B> for B {
-    /// Subtracts the selected column of `res` from the selected column of `a` and inplace mutates `res`
-    ///
-    /// res[res_col] = a[a_col] - res[res_col]
     fn vec_znx_sub_ba_inplace_impl<R, A>(module: &Module<B>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxToMut,
@@ -324,7 +315,6 @@ unsafe impl<B: Backend> VecZnxSubBAInplaceImpl<B> for B {
 }
 
 unsafe impl<B: Backend> VecZnxSubScalarInplaceImpl<B> for B {
-    /// Subtracts the selected column of `a` on the selected column and limb of `res`.
     fn vec_znx_sub_scalar_inplace_impl<R, A>(
         module: &Module<B>,
         res: &mut R,
@@ -363,7 +353,6 @@ unsafe impl<B: Backend> VecZnxSubScalarInplaceImpl<B> for B {
 }
 
 unsafe impl<B: Backend> VecZnxNegateImpl<B> for B {
-    // Negates the selected column of `a` and stores the result in `res_col` of `res`.
     fn vec_znx_negate_impl<R, A>(module: &Module<B>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxToMut,
@@ -391,7 +380,6 @@ unsafe impl<B: Backend> VecZnxNegateImpl<B> for B {
 }
 
 unsafe impl<B: Backend> VecZnxNegateInplaceImpl<B> for B {
-    /// Negates the selected column of `a`.
     fn vec_znx_negate_inplace_impl<A>(module: &Module<B>, a: &mut A, a_col: usize)
     where
         A: VecZnxToMut,
@@ -415,24 +403,79 @@ unsafe impl<B: Backend> VecZnxNegateInplaceImpl<B> for B {
     }
 }
 
-unsafe impl<B: Backend> VecZnxShiftInplaceImpl<B> for B {
-    /// Shifts by k bits all columns of `a`.
-    /// A positive k applies a left shift, while a negative k applies a right shift.
-    fn vec_znx_shift_inplace_impl<A>(_module: &Module<B>, basek: usize, k: i64, a: &mut A, scratch: &mut Scratch)
+unsafe impl<B: Backend> VecZnxLshInplaceImpl<B> for B {
+    fn vec_znx_lsh_inplace_impl<A>(_module: &Module<B>, basek: usize, k: usize, a: &mut A)
     where
         A: VecZnxToMut,
     {
-        if k > 0 {
-            a.to_mut().lsh(basek, k as usize, scratch);
-        } else {
-            a.to_mut().rsh(basek, k.abs() as usize, scratch);
+        let mut a: VecZnx<&mut [u8]> = a.to_mut();
+
+        let n: usize = a.n();
+        let cols: usize = a.cols();
+        let size: usize = a.size();
+        let steps: usize = k / basek;
+
+        a.raw_mut().rotate_left(n * steps * cols);
+        (0..cols).for_each(|i| {
+            (size - steps..size).for_each(|j| {
+                a.zero_at(i, j);
+            })
+        });
+
+        let k_rem: usize = k % basek;
+
+        if k_rem != 0 {
+            let shift: usize = i64::BITS as usize - k_rem;
+            (0..cols).for_each(|i| {
+                (0..steps).for_each(|j| {
+                    a.at_mut(i, j).iter_mut().for_each(|xi| {
+                        *xi <<= shift;
+                    });
+                });
+            });
+        }
+    }
+}
+
+unsafe impl<B: Backend> VecZnxRshInplaceImpl<B> for B {
+    fn vec_znx_rsh_inplace_impl<A>(_module: &Module<B>, basek: usize, k: usize, a: &mut A)
+    where
+        A: VecZnxToMut,
+    {
+        let mut a: VecZnx<&mut [u8]> = a.to_mut();
+        let n: usize = a.n();
+        let cols: usize = a.cols();
+        let size: usize = a.size();
+        let steps: usize = k / basek;
+
+        a.raw_mut().rotate_right(n * steps * cols);
+        (0..cols).for_each(|i| {
+            (0..steps).for_each(|j| {
+                a.zero_at(i, j);
+            })
+        });
+
+        let k_rem: usize = k % basek;
+
+        if k_rem != 0 {
+            let mut carry: Vec<i64> = vec![0i64; n]; // ALLOC (but small so OK)
+            let shift: usize = i64::BITS as usize - k_rem;
+            (0..cols).for_each(|i| {
+                carry.fill(0);
+                (steps..size).for_each(|j| {
+                    izip!(carry.iter_mut(), a.at_mut(i, j).iter_mut()).for_each(|(ci, xi)| {
+                        *xi += *ci << basek;
+                        *ci = (*xi << shift) >> shift;
+                        *xi = (*xi - *ci) >> k_rem;
+                    });
+                });
+            })
         }
     }
 }
 
 unsafe impl<B: Backend> VecZnxRotateImpl<B> for B {
-    /// Multiplies the selected column of `a` by X^k and stores the result in `res_col` of `res`.
-    fn vec_znx_rotate_impl<R, A>(module: &Module<B>, k: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn vec_znx_rotate_impl<R, A>(_module: &Module<B>, k: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxToMut,
         A: VecZnxToRef,
@@ -441,52 +484,36 @@ unsafe impl<B: Backend> VecZnxRotateImpl<B> for B {
         let mut res: VecZnx<&mut [u8]> = res.to_mut();
         #[cfg(debug_assertions)]
         {
-            assert_eq!(a.n(), module.n());
-            assert_eq!(res.n(), module.n());
+            assert_eq!(res.n(), a.n());
         }
         unsafe {
-            vec_znx::vec_znx_rotate(
-                module.ptr() as *const module_info_t,
-                k,
-                res.at_mut_ptr(res_col, 0),
-                res.size() as u64,
-                res.sl() as u64,
-                a.at_ptr(a_col, 0),
-                a.size() as u64,
-                a.sl() as u64,
-            )
+            (0..a.size()).for_each(|j| {
+                znx::znx_rotate_i64(
+                    a.n() as u64,
+                    k,
+                    res.at_mut_ptr(res_col, j),
+                    a.at_ptr(a_col, j),
+                );
+            });
         }
     }
 }
 
 unsafe impl<B: Backend> VecZnxRotateInplaceImpl<B> for B {
-    /// Multiplies the selected column of `a` by X^k.
-    fn vec_znx_rotate_inplace_impl<A>(module: &Module<B>, k: i64, a: &mut A, a_col: usize)
+    fn vec_znx_rotate_inplace_impl<A>(_module: &Module<B>, k: i64, a: &mut A, a_col: usize)
     where
         A: VecZnxToMut,
     {
         let mut a: VecZnx<&mut [u8]> = a.to_mut();
-        #[cfg(debug_assertions)]
-        {
-            assert_eq!(a.n(), module.n());
-        }
         unsafe {
-            vec_znx::vec_znx_rotate(
-                module.ptr() as *const module_info_t,
-                k,
-                a.at_mut_ptr(a_col, 0),
-                a.size() as u64,
-                a.sl() as u64,
-                a.at_ptr(a_col, 0),
-                a.size() as u64,
-                a.sl() as u64,
-            )
+            (0..a.size()).for_each(|j| {
+                znx::znx_rotate_inplace_i64(a.n() as u64, k, a.at_mut_ptr(a_col, j));
+            });
         }
     }
 }
 
 unsafe impl<B: Backend> VecZnxAutomorphismImpl<B> for B {
-    /// Applies the automorphism X^i -> X^ik on the selected column of `a` and stores the result in `res_col` column of `res`.
     fn vec_znx_automorphism_impl<R, A>(module: &Module<B>, k: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxToMut,
@@ -515,7 +542,6 @@ unsafe impl<B: Backend> VecZnxAutomorphismImpl<B> for B {
 }
 
 unsafe impl<B: Backend> VecZnxAutomorphismInplaceImpl<B> for B {
-    /// Applies the automorphism X^i -> X^ik on the selected column of `a`.
     fn vec_znx_automorphism_inplace_impl<A>(module: &Module<B>, k: i64, a: &mut A, a_col: usize)
     where
         A: VecZnxToMut,
@@ -546,12 +572,6 @@ unsafe impl<B: Backend> VecZnxAutomorphismInplaceImpl<B> for B {
 }
 
 unsafe impl<B: Backend> VecZnxSplitImpl<B> for B {
-    /// Splits the selected columns of `b` into subrings and copies them them into the selected column of `res`.
-    ///
-    /// # Panics
-    ///
-    /// This method requires that all [VecZnx] of b have the same ring degree
-    /// and that b.n() * b.len() <= a.n()
     fn vec_znx_split_impl<R, A>(module: &Module<B>, res: &mut Vec<R>, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch)
     where
         R: VecZnxToMut,
@@ -588,12 +608,6 @@ unsafe impl<B: Backend> VecZnxSplitImpl<B> for B {
 }
 
 unsafe impl<B: Backend> VecZnxMergeImpl<B> for B {
-    /// Merges the subrings of the selected column of `a` into the selected column of `res`.
-    ///
-    /// # Panics
-    ///
-    /// This method requires that all [VecZnx] of a have the same ring degree
-    /// and that a.n() * a.len() <= b.n()
     fn vec_znx_merge_impl<R, A>(module: &Module<B>, res: &mut R, res_col: usize, a: Vec<A>, a_col: usize)
     where
         R: VecZnxToMut,

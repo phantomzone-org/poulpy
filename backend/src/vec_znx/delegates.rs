@@ -6,16 +6,16 @@ use crate::{
     VecZnxAutomorphismImpl, VecZnxAutomorphismInplaceImpl, VecZnxCopyImpl, VecZnxDecodeCoeffsi64, VecZnxDecodeCoeffsi64Impl,
     VecZnxDecodeVecFloat, VecZnxDecodeVecFloatImpl, VecZnxDecodeVeci64, VecZnxDecodeVeci64Impl, VecZnxEncodeCoeffsi64,
     VecZnxEncodeCoeffsi64Impl, VecZnxEncodeVeci64, VecZnxEncodeVeci64Impl, VecZnxFillDistF64, VecZnxFillDistF64Impl,
-    VecZnxFillNormal, VecZnxFillNormalImpl, VecZnxFillUniform, VecZnxFillUniformImpl, VecZnxFromBytesImpl, VecZnxMergeImpl,
-    VecZnxNegateImpl, VecZnxNegateInplaceImpl, VecZnxNormalizeImpl, VecZnxNormalizeInplaceImpl, VecZnxNormalizeTmpBytesImpl,
-    VecZnxOwned, VecZnxRotateImpl, VecZnxRotateInplaceImpl, VecZnxShiftInplaceImpl, VecZnxSplitImpl, VecZnxStd, VecZnxStdImpl,
-    VecZnxSubABInplaceImpl, VecZnxSubBAInplaceImpl, VecZnxSubImpl, VecZnxSubScalarInplaceImpl, VecZnxSwithcDegreeImpl,
-    VecZnxToMut, VecZnxToRef,
+    VecZnxFillNormal, VecZnxFillNormalImpl, VecZnxFillUniform, VecZnxFillUniformImpl, VecZnxFromBytesImpl, VecZnxLshInplace,
+    VecZnxLshInplaceImpl, VecZnxMergeImpl, VecZnxNegateImpl, VecZnxNegateInplaceImpl, VecZnxNormalizeImpl,
+    VecZnxNormalizeInplaceImpl, VecZnxNormalizeTmpBytesImpl, VecZnxOwned, VecZnxRotateImpl, VecZnxRotateInplaceImpl,
+    VecZnxRshInplace, VecZnxRshInplaceImpl, VecZnxSplitImpl, VecZnxStd, VecZnxStdImpl, VecZnxSubABInplaceImpl,
+    VecZnxSubBAInplaceImpl, VecZnxSubImpl, VecZnxSubScalarInplaceImpl, VecZnxSwithcDegreeImpl, VecZnxToMut, VecZnxToRef,
     vec_znx::traits::{
         VecZnxAdd, VecZnxAddInplace, VecZnxAddScalarInplace, VecZnxAlloc, VecZnxAllocBytes, VecZnxAutomorphism,
         VecZnxAutomorphismInplace, VecZnxCopy, VecZnxFromBytes, VecZnxMerge, VecZnxNegate, VecZnxNegateInplace, VecZnxNormalize,
-        VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace, VecZnxShiftInplace, VecZnxSplit,
-        VecZnxSub, VecZnxSubABInplace, VecZnxSubBAInplace, VecZnxSubScalarInplace, VecZnxSwithcDegree,
+        VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace, VecZnxSplit, VecZnxSub,
+        VecZnxSubABInplace, VecZnxSubBAInplace, VecZnxSubScalarInplace, VecZnxSwithcDegree,
     },
 };
 
@@ -198,15 +198,27 @@ where
     }
 }
 
-impl<B> VecZnxShiftInplace for Module<B>
+impl<B> VecZnxLshInplace for Module<B>
 where
-    B: Backend + VecZnxShiftInplaceImpl<B>,
+    B: Backend + VecZnxLshInplaceImpl<B>,
 {
-    fn vec_znx_shift_inplace<A>(&self, basek: usize, k: i64, a: &mut A, scratch: &mut Scratch)
+    fn vec_znx_lsh_inplace<A>(&self, basek: usize, k: usize, a: &mut A)
     where
         A: VecZnxToMut,
     {
-        B::vec_znx_shift_inplace_impl(self, basek, k, a, scratch)
+        B::vec_znx_lsh_inplace_impl(self, basek, k, a)
+    }
+}
+
+impl<B> VecZnxRshInplace for Module<B>
+where
+    B: Backend + VecZnxRshInplaceImpl<B>,
+{
+    fn vec_znx_rsh_inplace<A>(&self, basek: usize, k: usize, a: &mut A)
+    where
+        A: VecZnxToMut,
+    {
+        B::vec_znx_rsh_inplace_impl(self, basek, k, a)
     }
 }
 

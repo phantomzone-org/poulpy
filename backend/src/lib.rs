@@ -1,4 +1,7 @@
-#[allow(non_camel_case_types, non_snake_case, non_upper_case_globals, dead_code, improper_ctypes)]
+#![allow(non_camel_case_types, non_snake_case, non_upper_case_globals, dead_code, improper_ctypes)]
+#![deny(rustdoc::broken_intra_doc_links)]
+#![cfg_attr(docsrs, feature(doc_cfg))]
+
 mod ffi;
 mod mat_znx;
 mod module;
@@ -22,6 +25,11 @@ pub use znx_base::*;
 
 pub const GALOISGENERATOR: u64 = 5;
 pub const DEFAULTALIGN: usize = 64;
+
+pub mod doc {
+    #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/docs/backend_safety_contract.md"))]
+    pub mod backend_safety {}
+}
 
 fn is_aligned_custom<T>(ptr: *const T, align: usize) -> bool {
     (ptr as usize) % align == 0
@@ -103,7 +111,7 @@ pub fn alloc_aligned_custom<T>(size: usize, align: usize) -> Vec<T> {
 }
 
 /// Allocates an aligned vector of size equal to the smallest multiple
-/// of [DEFAULTALIGN]/size_of::<T>() that is equal or greater to `size`.
+/// of [DEFAULTALIGN]/`size_of::<T>`() that is equal or greater to `size`.
 pub fn alloc_aligned<T>(size: usize) -> Vec<T> {
     alloc_aligned_custom::<T>(
         size + (DEFAULTALIGN - (size % (DEFAULTALIGN / size_of::<T>()))) % DEFAULTALIGN,

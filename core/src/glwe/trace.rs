@@ -81,7 +81,7 @@ where
         Module<B>: AutomorphismExecFamily<B>,
     {
         (start..end).for_each(|i| {
-            self.rsh(1, scratch);
+            self.rsh(module, 1);
 
             let p: i64;
             if i == 0 {

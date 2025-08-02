@@ -1,6 +1,7 @@
 use backend::{
     Backend, Module, Scratch, VecZnx, VecZnxAdd, VecZnxAddInplace, VecZnxCopy, VecZnxNegateInplace, VecZnxNormalize,
-    VecZnxNormalizeInplace, VecZnxRotate, VecZnxRotateInplace, VecZnxSub, VecZnxSubABInplace, VecZnxSubBAInplace, ZnxZero,
+    VecZnxNormalizeInplace, VecZnxRotate, VecZnxRotateInplace, VecZnxRshInplace, VecZnxSub, VecZnxSubABInplace,
+    VecZnxSubBAInplace, ZnxZero,
 };
 
 use crate::{GLWECiphertext, GLWECiphertextToMut, GLWECiphertextToRef, Infos, SetMetaData};
@@ -224,10 +225,9 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData + Sized {
         self.set_basek(a.basek());
     }
 
-    fn rsh(&mut self, k: usize, scratch: &mut Scratch) {
+    fn rsh<B: Backend>(&mut self, module: &Module<B>, k: usize) {
         let basek: usize = self.basek();
-        let mut self_mut: GLWECiphertext<&mut [u8]> = self.to_mut();
-        self_mut.data.rsh(basek, k, scratch);
+        module.vec_znx_rsh_inplace(basek, k, &mut self.to_mut().data);
     }
 
     fn normalize<A, BACKEND: Backend>(&mut self, module: &Module<BACKEND>, a: &A, scratch: &mut Scratch)

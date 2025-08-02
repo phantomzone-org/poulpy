@@ -4,7 +4,6 @@ use std::ptr::NonNull;
 
 pub trait Backend: Sized {
     type Handle: 'static;
-    fn module_type() -> u32;
     unsafe fn destroy(handle: NonNull<Self::Handle>);
 }
 

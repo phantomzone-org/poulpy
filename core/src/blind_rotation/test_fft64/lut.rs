@@ -23,7 +23,7 @@ fn standard() {
     lut.set(&module, &f, log_scale);
 
     let half_step: i64 = lut.domain_size().div_round(message_modulus << 1) as i64;
-    lut.rotate(half_step);
+    lut.rotate(&module, half_step);
 
     let step: usize = lut.domain_size().div_round(message_modulus);
 
@@ -33,7 +33,7 @@ fn standard() {
                 f[i / step] % message_modulus as i64,
                 lut.data[0].raw()[0] / (1 << (log_scale % basek)) as i64
             );
-            lut.rotate(-1);
+            lut.rotate(&module, -1);
         });
     });
 }
@@ -57,7 +57,7 @@ fn extended() {
     lut.set(&module, &f, log_scale);
 
     let half_step: i64 = lut.domain_size().div_round(message_modulus << 1) as i64;
-    lut.rotate(half_step);
+    lut.rotate(&module, half_step);
 
     let step: usize = lut.domain_size().div_round(message_modulus);
 
@@ -67,7 +67,7 @@ fn extended() {
                 f[i / step] % message_modulus as i64,
                 lut.data[0].raw()[0] / (1 << (log_scale % basek)) as i64
             );
-            lut.rotate(-1);
+            lut.rotate(&module, -1);
         });
     });
 }

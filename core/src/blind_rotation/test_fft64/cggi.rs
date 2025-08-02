@@ -135,7 +135,7 @@ where
             .sum::<i64>())
         & (2 * lut.domain_size() - 1) as i64;
 
-    lut.rotate(pt_want);
+    lut.rotate(module, pt_want);
 
     // First limb should be exactly equal (test are parameterized such that the noise does not reach
     // the first limb)
