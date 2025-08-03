@@ -20,7 +20,7 @@ where
     B: Backend + VecZnxBigAllocImpl<B>,
 {
     fn vec_znx_big_alloc(&self, cols: usize, size: usize) -> VecZnxBigOwned<B> {
-        B::vec_znx_big_alloc_impl(self, cols, size)
+        B::vec_znx_big_alloc_impl(self.n(), cols, size)
     }
 }
 
@@ -29,7 +29,7 @@ where
     B: Backend + VecZnxBigFromBytesImpl<B>,
 {
     fn vec_znx_big_from_bytes(&self, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxBigOwned<B> {
-        B::vec_znx_big_from_bytes_impl(self, cols, size, bytes)
+        B::vec_znx_big_from_bytes_impl(self.n(), cols, size, bytes)
     }
 }
 
@@ -38,7 +38,7 @@ where
     B: Backend + VecZnxBigAllocBytesImpl<B>,
 {
     fn vec_znx_big_alloc_bytes(&self, cols: usize, size: usize) -> usize {
-        B::vec_znx_big_alloc_bytes_impl(self, cols, size)
+        B::vec_znx_big_alloc_bytes_impl(self.n(), cols, size)
     }
 }
 
@@ -287,8 +287,15 @@ impl<B> VecZnxBigNormalize<B> for Module<B>
 where
     B: Backend + VecZnxBigNormalizeImpl<B>,
 {
-    fn vec_znx_big_normalize<R, A>(&self, basek: usize, res: &mut R, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch)
-    where
+    fn vec_znx_big_normalize<R, A>(
+        &self,
+        basek: usize,
+        res: &mut R,
+        res_col: usize,
+        a: &A,
+        a_col: usize,
+        scratch: &mut Scratch<B>,
+    ) where
         R: VecZnxToMut,
         A: VecZnxBigToRef<B>,
     {

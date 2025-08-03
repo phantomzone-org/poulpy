@@ -99,7 +99,7 @@ impl<B: Backend> AutomorphismKeyExec<Vec<u8>, B> {
         GLWESwitchingKeyExec::<Vec<u8>, B>::bytes_of(module, basek, k, rows, digits, rank, rank)
     }
 
-    pub fn from<DataOther: AsRef<[u8]>>(module: &Module<B>, other: &AutomorphismKey<DataOther>, scratch: &mut Scratch) -> Self
+    pub fn from<DataOther: AsRef<[u8]>>(module: &Module<B>, other: &AutomorphismKey<DataOther>, scratch: &mut Scratch<B>) -> Self
     where
         Module<B>: GGLWEExecLayoutFamily<B>,
     {
@@ -117,7 +117,7 @@ impl<B: Backend> AutomorphismKeyExec<Vec<u8>, B> {
 }
 
 impl<D: AsRef<[u8]> + AsMut<[u8]>, B: Backend> AutomorphismKeyExec<D, B> {
-    pub fn prepare<DataOther>(&mut self, module: &Module<B>, other: &AutomorphismKey<DataOther>, scratch: &mut Scratch)
+    pub fn prepare<DataOther>(&mut self, module: &Module<B>, other: &AutomorphismKey<DataOther>, scratch: &mut Scratch<B>)
     where
         DataOther: AsRef<[u8]>,
         Module<B>: GGLWEExecLayoutFamily<B>,

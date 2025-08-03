@@ -1,5 +1,5 @@
 use crate::{
-    FFT64, Module, Scratch, VecZnxBig, VecZnxBigToMut, VecZnxDft, VecZnxDftAddImpl, VecZnxDftAddInplaceImpl,
+    FFT64, Module, Scratch, ScratchTakeSlice, VecZnxBig, VecZnxBigToMut, VecZnxDft, VecZnxDftAddImpl, VecZnxDftAddInplaceImpl,
     VecZnxDftAllocBytesImpl, VecZnxDftAllocImpl, VecZnxDftBytesOf, VecZnxDftCopyImpl, VecZnxDftFromBytesImpl,
     VecZnxDftFromVecZnxImpl, VecZnxDftOwned, VecZnxDftSubABInplaceImpl, VecZnxDftSubBAInplaceImpl, VecZnxDftSubImpl,
     VecZnxDftToMut, VecZnxDftToRef, VecZnxDftToVecZnxBigConsumeImpl, VecZnxDftToVecZnxBigImpl, VecZnxDftToVecZnxBigTmpAImpl,
@@ -28,20 +28,20 @@ impl<D: AsRef<[u8]>> ZnxView for VecZnxDft<D, FFT64> {
 }
 
 unsafe impl VecZnxDftFromBytesImpl<FFT64> for FFT64 {
-    fn vec_znx_dft_from_bytes_impl(module: &Module<FFT64>, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxDftOwned<FFT64> {
-        VecZnxDft::<Vec<u8>, FFT64>::from_bytes(module.n(), cols, size, bytes)
+    fn vec_znx_dft_from_bytes_impl(n: usize, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxDftOwned<FFT64> {
+        VecZnxDft::<Vec<u8>, FFT64>::from_bytes(n, cols, size, bytes)
     }
 }
 
 unsafe impl VecZnxDftAllocBytesImpl<FFT64> for FFT64 {
-    fn vec_znx_dft_alloc_bytes_impl(module: &Module<FFT64>, cols: usize, size: usize) -> usize {
-        VecZnxDft::<Vec<u8>, FFT64>::bytes_of(module.n(), cols, size)
+    fn vec_znx_dft_alloc_bytes_impl(n: usize, cols: usize, size: usize) -> usize {
+        VecZnxDft::<Vec<u8>, FFT64>::bytes_of(n, cols, size)
     }
 }
 
 unsafe impl VecZnxDftAllocImpl<FFT64> for FFT64 {
-    fn vec_znx_dft_alloc_impl(module: &Module<FFT64>, cols: usize, size: usize) -> VecZnxDftOwned<FFT64> {
-        VecZnxDftOwned::alloc(module.n(), cols, size)
+    fn vec_znx_dft_alloc_impl(n: usize, cols: usize, size: usize) -> VecZnxDftOwned<FFT64> {
+        VecZnxDftOwned::alloc(n, cols, size)
     }
 }
 
@@ -58,7 +58,7 @@ unsafe impl VecZnxDftToVecZnxBigImpl<FFT64> for FFT64 {
         res_col: usize,
         a: &A,
         a_col: usize,
-        scratch: &mut Scratch,
+        scratch: &mut Scratch<FFT64>,
     ) where
         R: VecZnxBigToMut<FFT64>,
         A: VecZnxDftToRef<FFT64>,
@@ -66,7 +66,7 @@ unsafe impl VecZnxDftToVecZnxBigImpl<FFT64> for FFT64 {
         let mut res_mut: VecZnxBig<&mut [u8], FFT64> = res.to_mut();
         let a_ref: VecZnxDft<&[u8], FFT64> = a.to_ref();
 
-        let (tmp_bytes, _) = scratch.tmp_slice(module.vec_znx_dft_to_vec_znx_big_tmp_bytes());
+        let (tmp_bytes, _) = scratch.take_slice(module.vec_znx_dft_to_vec_znx_big_tmp_bytes());
 
         let min_size: usize = res_mut.size().min(a_ref.size());
 

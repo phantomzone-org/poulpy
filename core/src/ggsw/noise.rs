@@ -1,7 +1,5 @@
 use backend::{
-    Backend, Module, ScalarZnx, ScratchOwned, VecZnxAddScalarInplace, VecZnxBig, VecZnxBigAlloc, VecZnxBigNormalize,
-    VecZnxBigNormalizeTmpBytes, VecZnxDft, VecZnxDftAlloc, VecZnxDftToVecZnxBigTmpA, VecZnxNormalizeTmpBytes, VecZnxStd,
-    VecZnxSubABInplace, ZnxZero,
+    Backend, Module, ScalarZnx, ScratchOwned, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxBig, VecZnxBigAlloc, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxDft, VecZnxDftAlloc, VecZnxDftToVecZnxBigTmpA, VecZnxNormalizeTmpBytes, VecZnxStd, VecZnxSubABInplace, ZnxZero
 };
 
 use crate::{GGSWCiphertext, GLWECiphertext, GLWEDecryptFamily, GLWEPlaintext, GLWESecretExec, Infos};
@@ -35,8 +33,8 @@ impl<D: AsRef<[u8]>> GGSWCiphertext<D> {
         let mut pt_dft: VecZnxDft<Vec<u8>, B> = module.vec_znx_dft_alloc(1, self.size());
         let mut pt_big: VecZnxBig<Vec<u8>, B> = module.vec_znx_big_alloc(1, self.size());
 
-        let mut scratch: ScratchOwned =
-            ScratchOwned::new(GLWECiphertext::decrypt_scratch_space(module, basek, k) | module.vec_znx_normalize_tmp_bytes());
+        let mut scratch: ScratchOwned<B> =
+            ScratchOwned::alloc(GLWECiphertext::decrypt_scratch_space(module, basek, k) | module.vec_znx_normalize_tmp_bytes());
 
         (0..self.rank() + 1).for_each(|col_j| {
             (0..self.rows()).for_each(|row_i| {

@@ -1,12 +1,12 @@
 use crate::{
-    Backend, Module, ScalarZnxToRef, Scratch, VecZnx, VecZnxAddImpl, VecZnxAddInplaceImpl, VecZnxAddScalarInplaceImpl,
-    VecZnxAllocBytesImpl, VecZnxAllocImpl, VecZnxAutomorphismImpl, VecZnxAutomorphismInplaceImpl, VecZnxCopyImpl,
-    VecZnxDecodeCoeffsi64Impl, VecZnxDecodeVecFloat, VecZnxDecodeVecFloatImpl, VecZnxDecodeVeci64Impl, VecZnxEncodeCoeffsi64Impl,
-    VecZnxEncodeVeci64Impl, VecZnxFromBytesImpl, VecZnxLshInplaceImpl, VecZnxMergeImpl, VecZnxNegateImpl,
-    VecZnxNegateInplaceImpl, VecZnxNormalizeImpl, VecZnxNormalizeInplaceImpl, VecZnxNormalizeTmpBytesImpl, VecZnxOwned,
-    VecZnxRotateImpl, VecZnxRotateInplaceImpl, VecZnxRshInplaceImpl, VecZnxSplitImpl, VecZnxStdImpl, VecZnxSubABInplaceImpl,
-    VecZnxSubBAInplaceImpl, VecZnxSubImpl, VecZnxSubScalarInplaceImpl, VecZnxSwithcDegreeImpl, VecZnxToMut, VecZnxToRef,
-    ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero,
+    Backend, Module, ScalarZnxToRef, Scratch, ScratchTakeSlice, ScratchTakeVecZnx, VecZnx, VecZnxAddImpl, VecZnxAddInplaceImpl,
+    VecZnxAddScalarInplaceImpl, VecZnxAllocBytesImpl, VecZnxAllocImpl, VecZnxAutomorphismImpl, VecZnxAutomorphismInplaceImpl,
+    VecZnxCopyImpl, VecZnxDecodeCoeffsi64Impl, VecZnxDecodeVecFloat, VecZnxDecodeVecFloatImpl, VecZnxDecodeVeci64Impl,
+    VecZnxEncodeCoeffsi64Impl, VecZnxEncodeVeci64Impl, VecZnxFromBytesImpl, VecZnxLshInplaceImpl, VecZnxMergeImpl,
+    VecZnxNegateImpl, VecZnxNegateInplaceImpl, VecZnxNormalizeImpl, VecZnxNormalizeInplaceImpl, VecZnxNormalizeTmpBytesImpl,
+    VecZnxOwned, VecZnxRotateImpl, VecZnxRotateInplaceImpl, VecZnxRshInplaceImpl, VecZnxSplitImpl, VecZnxStdImpl,
+    VecZnxSubABInplaceImpl, VecZnxSubBAInplaceImpl, VecZnxSubImpl, VecZnxSubScalarInplaceImpl, VecZnxSwithcDegreeImpl,
+    VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero,
     ffi::{module::module_info_t, vec_znx, znx},
     vec_znx::traits::{VecZnxCopy, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace, VecZnxSwithcDegree},
 };
@@ -22,20 +22,20 @@ use rug::{Assign, Float};
 use sampling::source::Source;
 
 unsafe impl<B: Backend> VecZnxAllocImpl<B> for B {
-    fn vec_znx_alloc_impl(module: &Module<B>, cols: usize, size: usize) -> VecZnxOwned {
-        VecZnxOwned::new::<i64>(module.n(), cols, size)
+    fn vec_znx_alloc_impl(n: usize, cols: usize, size: usize) -> VecZnxOwned {
+        VecZnxOwned::new::<i64>(n, cols, size)
     }
 }
 
 unsafe impl<B: Backend> VecZnxFromBytesImpl<B> for B {
-    fn vec_znx_from_bytes_impl(module: &Module<B>, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxOwned {
-        VecZnxOwned::new_from_bytes::<i64>(module.n(), cols, size, bytes)
+    fn vec_znx_from_bytes_impl(n: usize, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxOwned {
+        VecZnxOwned::new_from_bytes::<i64>(n, cols, size, bytes)
     }
 }
 
 unsafe impl<B: Backend> VecZnxAllocBytesImpl<B> for B {
-    fn vec_znx_alloc_bytes_impl(module: &Module<B>, cols: usize, size: usize) -> usize {
-        VecZnxOwned::bytes_of::<i64>(module.n(), cols, size)
+    fn vec_znx_alloc_bytes_impl(n: usize, cols: usize, size: usize) -> usize {
+        VecZnxOwned::bytes_of::<i64>(n, cols, size)
     }
 }
 
@@ -53,7 +53,7 @@ unsafe impl<B: Backend> VecZnxNormalizeImpl<B> for B {
         res_col: usize,
         a: &A,
         a_col: usize,
-        scratch: &mut Scratch,
+        scratch: &mut Scratch<B>,
     ) where
         R: VecZnxToMut,
         A: VecZnxToRef,
@@ -67,7 +67,7 @@ unsafe impl<B: Backend> VecZnxNormalizeImpl<B> for B {
             assert_eq!(res.n(), module.n());
         }
 
-        let (tmp_bytes, _) = scratch.tmp_slice(module.vec_znx_normalize_tmp_bytes());
+        let (tmp_bytes, _) = scratch.take_slice(module.vec_znx_normalize_tmp_bytes());
 
         unsafe {
             vec_znx::vec_znx_normalize_base2k(
@@ -86,7 +86,7 @@ unsafe impl<B: Backend> VecZnxNormalizeImpl<B> for B {
 }
 
 unsafe impl<B: Backend> VecZnxNormalizeInplaceImpl<B> for B {
-    fn vec_znx_normalize_inplace_impl<A>(module: &Module<B>, basek: usize, a: &mut A, a_col: usize, scratch: &mut Scratch)
+    fn vec_znx_normalize_inplace_impl<A>(module: &Module<B>, basek: usize, a: &mut A, a_col: usize, scratch: &mut Scratch<B>)
     where
         A: VecZnxToMut,
     {
@@ -97,7 +97,7 @@ unsafe impl<B: Backend> VecZnxNormalizeInplaceImpl<B> for B {
             assert_eq!(a.n(), module.n());
         }
 
-        let (tmp_bytes, _) = scratch.tmp_slice(module.vec_znx_normalize_tmp_bytes());
+        let (tmp_bytes, _) = scratch.take_slice(module.vec_znx_normalize_tmp_bytes());
 
         unsafe {
             vec_znx::vec_znx_normalize_base2k(
@@ -572,8 +572,14 @@ unsafe impl<B: Backend> VecZnxAutomorphismInplaceImpl<B> for B {
 }
 
 unsafe impl<B: Backend> VecZnxSplitImpl<B> for B {
-    fn vec_znx_split_impl<R, A>(module: &Module<B>, res: &mut Vec<R>, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch)
-    where
+    fn vec_znx_split_impl<R, A>(
+        module: &Module<B>,
+        res: &mut Vec<R>,
+        res_col: usize,
+        a: &A,
+        a_col: usize,
+        scratch: &mut Scratch<B>,
+    ) where
         R: VecZnxToMut,
         A: VecZnxToRef,
     {
@@ -581,7 +587,7 @@ unsafe impl<B: Backend> VecZnxSplitImpl<B> for B {
 
         let (n_in, n_out) = (a.n(), res[0].to_mut().n());
 
-        let (mut buf, _) = scratch.tmp_vec_znx(module, 1, a.size());
+        let (mut buf, _) = scratch.take_vec_znx(module, 1, a.size());
 
         debug_assert!(
             n_out < n_in,

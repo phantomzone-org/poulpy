@@ -19,7 +19,7 @@ pub trait VecZnxDftToVecZnxBigTmpBytes {
 }
 
 pub trait VecZnxDftToVecZnxBig<B: Backend> {
-    fn vec_znx_dft_to_vec_znx_big<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch)
+    fn vec_znx_dft_to_vec_znx_big<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch<B>)
     where
         R: VecZnxBigToMut<B>,
         A: VecZnxDftToRef<B>;

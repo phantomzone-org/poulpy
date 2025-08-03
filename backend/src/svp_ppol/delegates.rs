@@ -9,7 +9,7 @@ where
     B: Backend + SvpPPolFromBytesImpl<B>,
 {
     fn svp_ppol_from_bytes(&self, cols: usize, bytes: Vec<u8>) -> SvpPPolOwned<B> {
-        B::svp_ppol_from_bytes_impl(self, cols, bytes)
+        B::svp_ppol_from_bytes_impl(self.n(), cols, bytes)
     }
 }
 
@@ -18,7 +18,7 @@ where
     B: Backend + SvpPPolAllocImpl<B>,
 {
     fn svp_ppol_alloc(&self, cols: usize) -> SvpPPolOwned<B> {
-        B::svp_ppol_alloc_impl(self, cols)
+        B::svp_ppol_alloc_impl(self.n(), cols)
     }
 }
 
@@ -27,7 +27,7 @@ where
     B: Backend + SvpPPolAllocBytesImpl<B>,
 {
     fn svp_ppol_alloc_bytes(&self, cols: usize) -> usize {
-        B::svp_ppol_alloc_bytes_impl(self, cols)
+        B::svp_ppol_alloc_bytes_impl(self.n(), cols)
     }
 }
 

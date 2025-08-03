@@ -24,7 +24,7 @@ where
     B: Backend + VecZnxAllocImpl<B>,
 {
     fn vec_znx_alloc(&self, cols: usize, size: usize) -> VecZnxOwned {
-        B::vec_znx_alloc_impl(self, cols, size)
+        B::vec_znx_alloc_impl(self.n(), cols, size)
     }
 }
 
@@ -33,7 +33,7 @@ where
     B: Backend + VecZnxFromBytesImpl<B>,
 {
     fn vec_znx_from_bytes(&self, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxOwned {
-        B::vec_znx_from_bytes_impl(self, cols, size, bytes)
+        B::vec_znx_from_bytes_impl(self.n(), cols, size, bytes)
     }
 }
 
@@ -42,7 +42,7 @@ where
     B: Backend + VecZnxAllocBytesImpl<B>,
 {
     fn vec_znx_alloc_bytes(&self, cols: usize, size: usize) -> usize {
-        B::vec_znx_alloc_bytes_impl(self, cols, size)
+        B::vec_znx_alloc_bytes_impl(self.n(), cols, size)
     }
 }
 
@@ -55,11 +55,11 @@ where
     }
 }
 
-impl<B> VecZnxNormalize for Module<B>
+impl<B> VecZnxNormalize<B> for Module<B>
 where
     B: Backend + VecZnxNormalizeImpl<B>,
 {
-    fn vec_znx_normalize<R, A>(&self, basek: usize, res: &mut R, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch)
+    fn vec_znx_normalize<R, A>(&self, basek: usize, res: &mut R, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch<B>)
     where
         R: VecZnxToMut,
         A: VecZnxToRef,
@@ -68,11 +68,11 @@ where
     }
 }
 
-impl<B> VecZnxNormalizeInplace for Module<B>
+impl<B> VecZnxNormalizeInplace<B> for Module<B>
 where
     B: Backend + VecZnxNormalizeInplaceImpl<B>,
 {
-    fn vec_znx_normalize_inplace<A>(&self, basek: usize, a: &mut A, a_col: usize, scratch: &mut Scratch)
+    fn vec_znx_normalize_inplace<A>(&self, basek: usize, a: &mut A, a_col: usize, scratch: &mut Scratch<B>)
     where
         A: VecZnxToMut,
     {
@@ -272,11 +272,11 @@ where
     }
 }
 
-impl<B> VecZnxSplit for Module<B>
+impl<B> VecZnxSplit<B> for Module<B>
 where
     B: Backend + VecZnxSplitImpl<B>,
 {
-    fn vec_znx_split<R, A>(&self, res: &mut Vec<R>, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch)
+    fn vec_znx_split<R, A>(&self, res: &mut Vec<R>, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch<B>)
     where
         R: VecZnxToMut,
         A: VecZnxToRef,

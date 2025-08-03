@@ -13,7 +13,7 @@ where
     B: Backend + VmpPMatAllocImpl<B>,
 {
     fn vmp_pmat_alloc(&self, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> VmpPMatOwned<B> {
-        B::vmp_pmat_alloc_impl(self, rows, cols_in, cols_out, size)
+        B::vmp_pmat_alloc_impl(self.n(), rows, cols_in, cols_out, size)
     }
 }
 
@@ -22,7 +22,7 @@ where
     B: Backend + VmpPMatAllocBytesImpl<B>,
 {
     fn vmp_pmat_alloc_bytes(&self, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize {
-        B::vmp_pmat_alloc_bytes_impl(self, rows, cols_in, cols_out, size)
+        B::vmp_pmat_alloc_bytes_impl(self.n(), rows, cols_in, cols_out, size)
     }
 }
 
@@ -31,7 +31,7 @@ where
     B: Backend + VmpPMatFromBytesImpl<B>,
 {
     fn vmp_pmat_from_bytes(&self, rows: usize, cols_in: usize, cols_out: usize, size: usize, bytes: Vec<u8>) -> VmpPMatOwned<B> {
-        B::vmp_pmat_from_bytes_impl(self, rows, cols_in, cols_out, size, bytes)
+        B::vmp_pmat_from_bytes_impl(self.n(), rows, cols_in, cols_out, size, bytes)
     }
 }
 
@@ -48,7 +48,7 @@ impl<B> VmpPMatPrepare<B> for Module<B>
 where
     B: Backend + VmpPMatPrepareImpl<B>,
 {
-    fn vmp_prepare<R, A>(&self, res: &mut R, a: &A, scratch: &mut Scratch)
+    fn vmp_prepare<R, A>(&self, res: &mut R, a: &A, scratch: &mut Scratch<B>)
     where
         R: VmpPMatToMut<B>,
         A: MatZnxToRef,
@@ -80,7 +80,7 @@ impl<B> VmpApply<B> for Module<B>
 where
     B: Backend + VmpApplyImpl<B>,
 {
-    fn vmp_apply<R, A, C>(&self, res: &mut R, a: &A, b: &C, scratch: &mut Scratch)
+    fn vmp_apply<R, A, C>(&self, res: &mut R, a: &A, b: &C, scratch: &mut Scratch<B>)
     where
         R: VecZnxDftToMut<B>,
         A: VecZnxDftToRef<B>,
@@ -113,7 +113,7 @@ impl<B> VmpApplyAdd<B> for Module<B>
 where
     B: Backend + VmpApplyAddImpl<B>,
 {
-    fn vmp_apply_add<R, A, C>(&self, res: &mut R, a: &A, b: &C, scale: usize, scratch: &mut Scratch)
+    fn vmp_apply_add<R, A, C>(&self, res: &mut R, a: &A, b: &C, scale: usize, scratch: &mut Scratch<B>)
     where
         R: VecZnxDftToMut<B>,
         A: VecZnxDftToRef<B>,

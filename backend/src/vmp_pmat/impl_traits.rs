@@ -1,16 +1,16 @@
 use crate::{Backend, MatZnxToRef, Module, Scratch, VecZnxDftToMut, VecZnxDftToRef, VmpPMatOwned, VmpPMatToMut, VmpPMatToRef};
 
 pub unsafe trait VmpPMatAllocImpl<B: Backend> {
-    fn vmp_pmat_alloc_impl(module: &Module<B>, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> VmpPMatOwned<B>;
+    fn vmp_pmat_alloc_impl(n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> VmpPMatOwned<B>;
 }
 
 pub unsafe trait VmpPMatAllocBytesImpl<B: Backend> {
-    fn vmp_pmat_alloc_bytes_impl(module: &Module<B>, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize;
+    fn vmp_pmat_alloc_bytes_impl(n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize;
 }
 
 pub unsafe trait VmpPMatFromBytesImpl<B: Backend> {
     fn vmp_pmat_from_bytes_impl(
-        module: &Module<B>,
+        n: usize,
         rows: usize,
         cols_in: usize,
         cols_out: usize,
@@ -24,7 +24,7 @@ pub unsafe trait VmpPrepareTmpBytesImpl<B: Backend> {
 }
 
 pub unsafe trait VmpPMatPrepareImpl<B: Backend> {
-    fn vmp_prepare_impl<R, A>(module: &Module<B>, res: &mut R, a: &A, scratch: &mut Scratch)
+    fn vmp_prepare_impl<R, A>(module: &Module<B>, res: &mut R, a: &A, scratch: &mut Scratch<B>)
     where
         R: VmpPMatToMut<B>,
         A: MatZnxToRef;
@@ -43,7 +43,7 @@ pub unsafe trait VmpApplyTmpBytesImpl<B: Backend> {
 }
 
 pub unsafe trait VmpApplyImpl<B: Backend> {
-    fn vmp_apply_impl<R, A, C>(module: &Module<B>, res: &mut R, a: &A, b: &C, scratch: &mut Scratch)
+    fn vmp_apply_impl<R, A, C>(module: &Module<B>, res: &mut R, a: &A, b: &C, scratch: &mut Scratch<B>)
     where
         R: VecZnxDftToMut<B>,
         A: VecZnxDftToRef<B>,
@@ -64,7 +64,7 @@ pub unsafe trait VmpApplyAddTmpBytesImpl<B: Backend> {
 
 pub unsafe trait VmpApplyAddImpl<B: Backend> {
     // Same as [MatZnxDftOps::vmp_apply] except result is added on R instead of overwritting R.
-    fn vmp_apply_add_impl<R, A, C>(module: &Module<B>, res: &mut R, a: &A, b: &C, scale: usize, scratch: &mut Scratch)
+    fn vmp_apply_add_impl<R, A, C>(module: &Module<B>, res: &mut R, a: &A, b: &C, scale: usize, scratch: &mut Scratch<B>)
     where
         R: VecZnxDftToMut<B>,
         A: VecZnxDftToRef<B>,

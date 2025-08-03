@@ -1,7 +1,5 @@
 use backend::{
-    Backend, Module, ScalarZnx, ScalarZnxAllocBytes, ScalarZnxAutomorphism, Scratch, SvpApply, VecZnxAddScalarInplace,
-    VecZnxBigAllocBytes, VecZnxDftToVecZnxBigTmpA, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSwithcDegree, ZnxInfos,
-    ZnxZero,
+    Backend, Module, ScalarZnx, ScalarZnxAllocBytes, ScalarZnxAutomorphism, Scratch, ScratchAvailable, ScratchTakeScalarZnx, ScratchTakeVecZnxBig, ScratchTakeVecZnxDft, SvpApply, VecZnxAddScalarInplace, VecZnxBigAllocBytes, VecZnxDftToVecZnxBigTmpA, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSwithcDegree, ZnxInfos, ZnxZero
 };
 use sampling::source::Source;
 
@@ -35,7 +33,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGLWECiphertext<DataSelf> {
         source_xa: &mut Source,
         source_xe: &mut Source,
         sigma: f64,
-        scratch: &mut Scratch,
+        scratch: &mut Scratch<B>,
     ) where
         Module<B>: GGLWEEncryptSkFamily<B>,
     {
@@ -154,9 +152,10 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<DataSelf> {
         source_xa: &mut Source,
         source_xe: &mut Source,
         sigma: f64,
-        scratch: &mut Scratch,
+        scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWESwitchingKeyEncryptSkFamily<B>,
+        Scratch<B>: ScratchAvailable + ScratchTakeScalarZnx<B>
     {
         #[cfg(debug_assertions)]
         {
@@ -183,14 +182,14 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<DataSelf> {
             )
         }
 
-        let (mut sk_in_tmp, scratch1) = scratch.tmp_scalar_znx(module, sk_in.rank());
+        let (mut sk_in_tmp, scratch1) = scratch.take_scalar_znx(module, sk_in.rank());
         (0..sk_in.rank()).for_each(|i| {
             module.vec_znx_switch_degree(&mut sk_in_tmp, i, &sk_in.data, i);
         });
 
         let (mut sk_out_tmp, scratch2) = scratch1.tmp_glwe_secret_exec(module, sk_out.rank());
         {
-            let (mut tmp, _) = scratch2.tmp_scalar_znx(module, 1);
+            let (mut tmp, _) = scratch2.take_scalar_znx(module, 1);
             (0..sk_out.rank()).for_each(|i| {
                 module.vec_znx_switch_degree(&mut tmp, 0, &sk_out.data, i);
                 module.svp_prepare(&mut sk_out_tmp.data, i, &tmp, 0);
@@ -235,9 +234,10 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> AutomorphismKey<DataSelf> {
         source_xa: &mut Source,
         source_xe: &mut Source,
         sigma: f64,
-        scratch: &mut Scratch,
+        scratch: &mut Scratch<B>,
     ) where
         Module<B>: AutomorphismKeyEncryptSkFamily<B>,
+        Scratch<B>: ScratchAvailable
     {
         #[cfg(debug_assertions)]
         {
@@ -301,9 +301,10 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWETensorKey<DataSelf> {
         source_xa: &mut Source,
         source_xe: &mut Source,
         sigma: f64,
-        scratch: &mut Scratch,
+        scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWETensorKeyEncryptSkFamily<B>,
+        Scratch<B>: ScratchTakeVecZnxDft<B> + ScratchTakeVecZnxBig<B>
     {
         #[cfg(debug_assertions)]
         {
@@ -317,15 +318,15 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWETensorKey<DataSelf> {
         let (mut sk_dft_prep, scratch1) = scratch.tmp_glwe_secret_exec(module, rank);
         sk_dft_prep.prepare(module, &sk);
 
-        let (mut sk_dft, scratch2) = scratch1.tmp_vec_znx_dft(module, rank, 1);
+        let (mut sk_dft, scratch2) = scratch1.take_vec_znx_dft(module, rank, 1);
 
         (0..rank).for_each(|i| {
             module.vec_znx_dft_from_vec_znx(1, 0, &mut sk_dft, i, &sk.data, i);
         });
 
-        let (mut sk_ij_big, scratch3) = scratch2.tmp_vec_znx_big(module, 1, 1);
+        let (mut sk_ij_big, scratch3) = scratch2.take_vec_znx_big(module, 1, 1);
         let (mut sk_ij, scratch4) = scratch3.tmp_glwe_secret(module, 1);
-        let (mut sk_ij_dft, scratch5) = scratch4.tmp_vec_znx_dft(module, 1, 1);
+        let (mut sk_ij_dft, scratch5) = scratch4.take_vec_znx_dft(module, 1, 1);
 
         (0..rank).for_each(|i| {
             (i..rank).for_each(|j| {

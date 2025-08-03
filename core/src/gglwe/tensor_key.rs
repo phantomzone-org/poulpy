@@ -171,7 +171,7 @@ impl<D: AsRef<[u8]>, B: Backend> GLWETensorKeyExec<D, B> {
 }
 
 impl<D: AsRef<[u8]> + AsMut<[u8]>, B: Backend> GLWETensorKeyExec<D, B> {
-    pub fn prepare<DataOther>(&mut self, module: &Module<B>, other: &GLWETensorKey<DataOther>, scratch: &mut Scratch)
+    pub fn prepare<DataOther>(&mut self, module: &Module<B>, other: &GLWETensorKey<DataOther>, scratch: &mut Scratch<B>)
     where
         DataOther: AsRef<[u8]>,
         Module<B>: GGLWEExecLayoutFamily<B>,

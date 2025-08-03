@@ -1,8 +1,5 @@
 use backend::{
-    Backend, Module, Scratch, SvpApply, SvpPPol, SvpPPolAllocBytes, VecZnxAllocBytes, VecZnxBigAddSmallInplace,
-    VecZnxBigAllocBytes, VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftAdd, VecZnxDftAddInplace, VecZnxDftAllocBytes,
-    VecZnxDftFromVecZnx, VecZnxDftSubABInplace, VecZnxDftToVecZnxBig, VecZnxDftToVecZnxBigTmpBytes, VecZnxDftZero, VecZnxRotate,
-    VmpApplyTmpBytes, ZnxView, ZnxZero,
+    Backend, Module, Scratch, ScratchTakeVecZnxBig, ScratchTakeVecZnxDft, ScratchTakeVecZnxDftSlice, ScratchTakeVecZnxSlice, SvpApply, SvpPPol, SvpPPolAllocBytes, VecZnxAllocBytes, VecZnxBigAddSmallInplace, VecZnxBigAllocBytes, VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftAdd, VecZnxDftAddInplace, VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftSubABInplace, VecZnxDftToVecZnxBig, VecZnxDftToVecZnxBigTmpBytes, VecZnxDftZero, VecZnxRotate, VmpApplyTmpBytes, ZnxView, ZnxZero
 };
 use itertools::izip;
 
@@ -78,12 +75,13 @@ pub fn cggi_blind_rotate<DataRes, DataIn, DataBrk, B: Backend>(
     lwe: &LWECiphertext<DataIn>,
     lut: &LookUpTable,
     brk: &BlindRotationKeyCGGIExec<DataBrk, B>,
-    scratch: &mut Scratch,
+    scratch: &mut Scratch<B>,
 ) where
     DataRes: AsRef<[u8]> + AsMut<[u8]>,
     DataIn: AsRef<[u8]>,
     DataBrk: AsRef<[u8]>,
     Module<B>: CCGIBlindRotationFamily<B>,
+    Scratch<B>: ScratchTakeVecZnxDftSlice<B> + ScratchTakeVecZnxDft<B> + ScratchTakeVecZnxBig<B>,
 {
     match brk.dist {
         Distribution::BinaryBlock(_) | Distribution::BinaryFixed(_) | Distribution::BinaryProb(_) | Distribution::ZERO => {
@@ -108,23 +106,24 @@ pub(crate) fn cggi_blind_rotate_block_binary_extended<DataRes, DataIn, DataBrk, 
     lwe: &LWECiphertext<DataIn>,
     lut: &LookUpTable,
     brk: &BlindRotationKeyCGGIExec<DataBrk, B>,
-    scratch: &mut Scratch,
+    scratch: &mut Scratch<B>,
 ) where
     DataRes: AsRef<[u8]> + AsMut<[u8]>,
     DataIn: AsRef<[u8]>,
     DataBrk: AsRef<[u8]>,
     Module<B>: CCGIBlindRotationFamily<B>,
+    Scratch<B>: ScratchTakeVecZnxDftSlice<B> + ScratchTakeVecZnxDft<B> + ScratchTakeVecZnxBig<B>
 {
     let extension_factor: usize = lut.extension_factor();
     let basek: usize = res.basek();
     let rows: usize = brk.rows();
     let cols: usize = res.rank() + 1;
 
-    let (mut acc, scratch1) = scratch.tmp_slice_vec_znx(extension_factor, module, cols, res.size());
-    let (mut acc_dft, scratch2) = scratch1.tmp_slice_vec_znx_dft(extension_factor, module, cols, rows);
-    let (mut vmp_res, scratch3) = scratch2.tmp_slice_vec_znx_dft(extension_factor, module, cols, brk.size());
-    let (mut acc_add_dft, scratch4) = scratch3.tmp_slice_vec_znx_dft(extension_factor, module, cols, brk.size());
-    let (mut vmp_xai, scratch5) = scratch4.tmp_vec_znx_dft(module, 1, brk.size());
+    let (mut acc, scratch1) = scratch.take_vec_znx_slice(extension_factor, module, cols, res.size());
+    let (mut acc_dft, scratch2) = scratch1.take_vec_znx_dft_slice(extension_factor, module, cols, rows);
+    let (mut vmp_res, scratch3) = scratch2.take_vec_znx_dft_slice(extension_factor, module, cols, brk.size());
+    let (mut acc_add_dft, scratch4) = scratch3.take_vec_znx_dft_slice(extension_factor, module, cols, brk.size());
+    let (mut vmp_xai, scratch5) = scratch4.take_vec_znx_dft(module, 1, brk.size());
 
     (0..extension_factor).for_each(|i| {
         acc[i].zero();
@@ -228,7 +227,7 @@ pub(crate) fn cggi_blind_rotate_block_binary_extended<DataRes, DataIn, DataBrk, 
         });
 
         {
-            let (mut acc_add_big, scratch7) = scratch5.tmp_vec_znx_big(module, 1, brk.size());
+            let (mut acc_add_big, scratch7) = scratch5.take_vec_znx_big(module, 1, brk.size());
 
             (0..extension_factor).for_each(|j| {
                 (0..cols).for_each(|i| {
@@ -251,12 +250,13 @@ pub(crate) fn cggi_blind_rotate_block_binary<DataRes, DataIn, DataBrk, B: Backen
     lwe: &LWECiphertext<DataIn>,
     lut: &LookUpTable,
     brk: &BlindRotationKeyCGGIExec<DataBrk, B>,
-    scratch: &mut Scratch,
+    scratch: &mut Scratch<B>,
 ) where
     DataRes: AsRef<[u8]> + AsMut<[u8]>,
     DataIn: AsRef<[u8]>,
     DataBrk: AsRef<[u8]>,
     Module<B>: CCGIBlindRotationFamily<B>,
+    Scratch<B>: ScratchTakeVecZnxDft<B> + ScratchTakeVecZnxBig<B>
 {
     let mut lwe_2n: Vec<i64> = vec![0i64; lwe.n() + 1]; // TODO: from scratch space
     let mut out_mut: GLWECiphertext<&mut [u8]> = res.to_mut();
@@ -281,10 +281,10 @@ pub(crate) fn cggi_blind_rotate_block_binary<DataRes, DataIn, DataBrk, B: Backen
 
     // ACC + [sum DFT(X^ai -1) * (DFT(ACC) x BRKi)]
 
-    let (mut acc_dft, scratch1) = scratch.tmp_vec_znx_dft(module, cols, rows);
-    let (mut vmp_res, scratch2) = scratch1.tmp_vec_znx_dft(module, cols, brk.size());
-    let (mut acc_add_dft, scratch3) = scratch2.tmp_vec_znx_dft(module, cols, brk.size());
-    let (mut vmp_xai, scratch4) = scratch3.tmp_vec_znx_dft(module, 1, brk.size());
+    let (mut acc_dft, scratch1) = scratch.take_vec_znx_dft(module, cols, rows);
+    let (mut vmp_res, scratch2) = scratch1.take_vec_znx_dft(module, cols, brk.size());
+    let (mut acc_add_dft, scratch3) = scratch2.take_vec_znx_dft(module, cols, brk.size());
+    let (mut vmp_xai, scratch4) = scratch3.take_vec_znx_dft(module, 1, brk.size());
 
     let x_pow_a: &Vec<SvpPPol<Vec<u8>, B>>;
     if let Some(b) = &brk.x_pow_a {
@@ -319,7 +319,7 @@ pub(crate) fn cggi_blind_rotate_block_binary<DataRes, DataIn, DataBrk, B: Backen
         });
 
         {
-            let (mut acc_add_big, scratch5) = scratch4.tmp_vec_znx_big(module, 1, brk.size());
+            let (mut acc_add_big, scratch5) = scratch4.take_vec_znx_big(module, 1, brk.size());
 
             (0..cols).for_each(|i| {
                 module.vec_znx_dft_to_vec_znx_big(&mut acc_add_big, 0, &acc_add_dft, i, scratch5);
@@ -336,12 +336,13 @@ pub(crate) fn cggi_blind_rotate_binary_standard<DataRes, DataIn, DataBrk, B: Bac
     lwe: &LWECiphertext<DataIn>,
     lut: &LookUpTable,
     brk: &BlindRotationKeyCGGIExec<DataBrk, B>,
-    scratch: &mut Scratch,
+    scratch: &mut Scratch<B>,
 ) where
     DataRes: AsRef<[u8]> + AsMut<[u8]>,
     DataIn: AsRef<[u8]>,
     DataBrk: AsRef<[u8]>,
     Module<B>: CCGIBlindRotationFamily<B>,
+    Scratch<B>: ScratchTakeVecZnxDft<B> + ScratchTakeVecZnxBig<B>
 {
     #[cfg(debug_assertions)]
     {

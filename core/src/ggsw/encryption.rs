@@ -30,7 +30,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
         source_xa: &mut Source,
         source_xe: &mut Source,
         sigma: f64,
-        scratch: &mut Scratch,
+        scratch: &mut Scratch<B>,
     ) where
         Module<B>: GGSWEncryptSkFamily<B>,
     {

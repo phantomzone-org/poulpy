@@ -4,15 +4,15 @@ use sampling::source::Source;
 use crate::{Backend, Module, Scratch, VecZnxBigOwned, VecZnxBigToMut, VecZnxBigToRef, VecZnxToMut, VecZnxToRef};
 
 pub unsafe trait VecZnxBigAllocImpl<B: Backend> {
-    fn vec_znx_big_alloc_impl(module: &Module<B>, cols: usize, size: usize) -> VecZnxBigOwned<B>;
+    fn vec_znx_big_alloc_impl(n: usize, cols: usize, size: usize) -> VecZnxBigOwned<B>;
 }
 
 pub unsafe trait VecZnxBigFromBytesImpl<B: Backend> {
-    fn vec_znx_big_from_bytes_impl(module: &Module<B>, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxBigOwned<B>;
+    fn vec_znx_big_from_bytes_impl(n: usize, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxBigOwned<B>;
 }
 
 pub unsafe trait VecZnxBigAllocBytesImpl<B: Backend> {
-    fn vec_znx_big_alloc_bytes_impl(module: &Module<B>, cols: usize, size: usize) -> usize;
+    fn vec_znx_big_alloc_bytes_impl(n: usize, cols: usize, size: usize) -> usize;
 }
 
 pub unsafe trait VecZnxBigAddNormalImpl<B: Backend> {
@@ -188,7 +188,7 @@ pub unsafe trait VecZnxBigNormalizeImpl<B: Backend> {
         res_col: usize,
         a: &A,
         a_col: usize,
-        scratch: &mut Scratch,
+        scratch: &mut Scratch<B>,
     ) where
         R: VecZnxToMut,
         A: VecZnxBigToRef<B>;

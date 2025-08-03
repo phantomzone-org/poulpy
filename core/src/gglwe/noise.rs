@@ -1,4 +1,4 @@
-use backend::{Backend, Module, ScalarZnx, ScratchOwned, VecZnxStd, VecZnxSubScalarInplace, ZnxZero};
+use backend::{Backend, Module, ScalarZnx, ScratchOwned, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxStd, VecZnxSubScalarInplace, ZnxZero};
 
 use crate::{GGLWECiphertext, GLWECiphertext, GLWEDecryptFamily, GLWEPlaintext, GLWESecretExec, Infos};
 
@@ -18,7 +18,7 @@ impl<DataIn: AsRef<[u8]>> GGLWECiphertext<DataIn> {
         let basek: usize = self.basek();
         let k: usize = self.k();
 
-        let mut scratch: ScratchOwned = ScratchOwned::new(GLWECiphertext::decrypt_scratch_space(module, basek, k));
+        let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GLWECiphertext::decrypt_scratch_space(module, basek, k));
         let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(module, basek, k);
 
         (0..self.rank_in()).for_each(|col_i| {

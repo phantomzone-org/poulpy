@@ -2,7 +2,7 @@ use rand_distr::Distribution;
 use rug::Float;
 use sampling::source::Source;
 
-use crate::{ScalarZnxToRef, Scratch, VecZnxOwned, VecZnxToMut, VecZnxToRef};
+use crate::{Backend, ScalarZnxToRef, Scratch, VecZnxOwned, VecZnxToMut, VecZnxToRef};
 
 pub trait VecZnxAlloc {
     /// Allocates a new [crate::VecZnx].
@@ -38,17 +38,17 @@ pub trait VecZnxNormalizeTmpBytes {
     fn vec_znx_normalize_tmp_bytes(&self) -> usize;
 }
 
-pub trait VecZnxNormalize {
+pub trait VecZnxNormalize<B: Backend> {
     /// Normalizes the selected column of `a` and stores the result into the selected column of `res`.
-    fn vec_znx_normalize<R, A>(&self, basek: usize, res: &mut R, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch)
+    fn vec_znx_normalize<R, A>(&self, basek: usize, res: &mut R, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch<B>)
     where
         R: VecZnxToMut,
         A: VecZnxToRef;
 }
 
-pub trait VecZnxNormalizeInplace {
+pub trait VecZnxNormalizeInplace<B: Backend> {
     /// Normalizes the selected column of `a`.
-    fn vec_znx_normalize_inplace<A>(&self, basek: usize, a: &mut A, a_col: usize, scratch: &mut Scratch)
+    fn vec_znx_normalize_inplace<A>(&self, basek: usize, a: &mut A, a_col: usize, scratch: &mut Scratch<B>)
     where
         A: VecZnxToMut;
 }
@@ -174,14 +174,14 @@ pub trait VecZnxAutomorphismInplace {
         A: VecZnxToMut;
 }
 
-pub trait VecZnxSplit {
+pub trait VecZnxSplit<B: Backend> {
     /// Splits the selected columns of `b` into subrings and copies them them into the selected column of `res`.
     ///
     /// # Panics
     ///
     /// This method requires that all [crate::VecZnx] of b have the same ring degree
     /// and that b.n() * b.len() <= a.n()
-    fn vec_znx_split<R, A>(&self, res: &mut Vec<R>, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch)
+    fn vec_znx_split<R, A>(&self, res: &mut Vec<R>, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch<B>)
     where
         R: VecZnxToMut,
         A: VecZnxToRef;

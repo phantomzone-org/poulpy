@@ -1,5 +1,5 @@
 use backend::{
-    Backend, MatZnxAlloc, Module, ScalarZnx, ScalarZnxAlloc, ScalarZnxToMut, ScratchOwned, VecZnxRotateInplace, ZnxViewMut,
+    Backend, MatZnxAlloc, Module, ScalarZnx, ScalarZnxAlloc, ScalarZnxToMut, ScratchOwned, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxRotateInplace, ZnxViewMut
 };
 use sampling::source::Source;
 
@@ -29,7 +29,7 @@ pub(crate) fn test_encrypt_sk<B: Backend>(
     let mut source_xe: Source = Source::new([0u8; 32]);
     let mut source_xa: Source = Source::new([0u8; 32]);
 
-    let mut scratch: ScratchOwned = ScratchOwned::new(GLWESwitchingKey::encrypt_sk_scratch_space(
+    let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GLWESwitchingKey::encrypt_sk_scratch_space(
         module, basek, k_ksk, rank_in, rank_out,
     ));
 
@@ -103,14 +103,14 @@ pub(crate) fn test_keyswitch<B: Backend>(
     let mut source_xe: Source = Source::new([0u8; 32]);
     let mut source_xa: Source = Source::new([0u8; 32]);
 
-    let mut scratch_enc: ScratchOwned = ScratchOwned::new(GLWESwitchingKey::encrypt_sk_scratch_space(
+    let mut scratch_enc: ScratchOwned<B> = ScratchOwned::alloc(GLWESwitchingKey::encrypt_sk_scratch_space(
         module,
         basek,
         k_ksk,
         rank_in_s0s1 | rank_out_s0s1,
         rank_out_s0s1 | rank_out_s1s2,
     ));
-    let mut scratch_apply: ScratchOwned = ScratchOwned::new(GLWESwitchingKey::keyswitch_scratch_space(
+    let mut scratch_apply: ScratchOwned<B> = ScratchOwned::alloc(GLWESwitchingKey::keyswitch_scratch_space(
         module,
         basek,
         k_out,
@@ -210,14 +210,14 @@ pub(crate) fn test_keyswitch_inplace<B: Backend>(
     let mut source_xe: Source = Source::new([0u8; 32]);
     let mut source_xa: Source = Source::new([0u8; 32]);
 
-    let mut scratch_enc: ScratchOwned = ScratchOwned::new(GLWESwitchingKey::encrypt_sk_scratch_space(
+    let mut scratch_enc: ScratchOwned<B> = ScratchOwned::alloc(GLWESwitchingKey::encrypt_sk_scratch_space(
         module,
         basek,
         k_ksk,
         rank_in | rank_out,
         rank_out,
     ));
-    let mut scratch_apply: ScratchOwned = ScratchOwned::new(GLWESwitchingKey::keyswitch_inplace_scratch_space(
+    let mut scratch_apply: ScratchOwned<B> = ScratchOwned::alloc(GLWESwitchingKey::keyswitch_inplace_scratch_space(
         module, basek, k_ct, k_ksk, digits, rank_out,
     ));
 
@@ -313,7 +313,7 @@ pub(crate) fn test_external_product<B: Backend>(
     let mut source_xe: Source = Source::new([0u8; 32]);
     let mut source_xa: Source = Source::new([0u8; 32]);
 
-    let mut scratch: ScratchOwned = ScratchOwned::new(
+    let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
         GLWESwitchingKey::encrypt_sk_scratch_space(module, basek, k_in, rank_in, rank_out)
             | GLWESwitchingKey::external_product_scratch_space(module, basek, k_out, k_in, k_ggsw, digits, rank_out)
             | GGSWCiphertext::encrypt_sk_scratch_space(module, basek, k_ggsw, rank_out),
@@ -421,7 +421,7 @@ pub(crate) fn test_external_product_inplace<B: Backend>(
     let mut source_xe: Source = Source::new([0u8; 32]);
     let mut source_xa: Source = Source::new([0u8; 32]);
 
-    let mut scratch: ScratchOwned = ScratchOwned::new(
+    let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
         GLWESwitchingKey::encrypt_sk_scratch_space(module, basek, k_ct, rank_in, rank_out)
             | GLWESwitchingKey::external_product_inplace_scratch_space(module, basek, k_ct, k_ggsw, digits, rank_out)
             | GGSWCiphertext::encrypt_sk_scratch_space(module, basek, k_ggsw, rank_out),

@@ -13,7 +13,7 @@ where
     B: Backend + VecZnxDftFromBytesImpl<B>,
 {
     fn vec_znx_dft_from_bytes(&self, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxDftOwned<B> {
-        B::vec_znx_dft_from_bytes_impl(self, cols, size, bytes)
+        B::vec_znx_dft_from_bytes_impl(self.n(), cols, size, bytes)
     }
 }
 
@@ -22,7 +22,7 @@ where
     B: Backend + VecZnxDftAllocBytesImpl<B>,
 {
     fn vec_znx_dft_alloc_bytes(&self, cols: usize, size: usize) -> usize {
-        B::vec_znx_dft_alloc_bytes_impl(self, cols, size)
+        B::vec_znx_dft_alloc_bytes_impl(self.n(), cols, size)
     }
 }
 
@@ -31,7 +31,7 @@ where
     B: Backend + VecZnxDftAllocImpl<B>,
 {
     fn vec_znx_dft_alloc(&self, cols: usize, size: usize) -> VecZnxDftOwned<B> {
-        B::vec_znx_dft_alloc_impl(self, cols, size)
+        B::vec_znx_dft_alloc_impl(self.n(), cols, size)
     }
 }
 
@@ -48,7 +48,7 @@ impl<B> VecZnxDftToVecZnxBig<B> for Module<B>
 where
     B: Backend + VecZnxDftToVecZnxBigImpl<B>,
 {
-    fn vec_znx_dft_to_vec_znx_big<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch)
+    fn vec_znx_dft_to_vec_znx_big<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch<B>)
     where
         R: VecZnxBigToMut<B>,
         A: VecZnxDftToRef<B>,

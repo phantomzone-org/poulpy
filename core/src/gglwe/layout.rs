@@ -239,7 +239,7 @@ impl<D, B: Backend> GGLWECiphertextExec<D, B> {
 }
 
 impl<D: AsRef<[u8]> + AsMut<[u8]>, B: Backend> GGLWECiphertextExec<D, B> {
-    pub fn prepare<DataOther>(&mut self, module: &Module<B>, other: &GGLWECiphertext<DataOther>, scratch: &mut Scratch)
+    pub fn prepare<DataOther>(&mut self, module: &Module<B>, other: &GGLWECiphertext<DataOther>, scratch: &mut Scratch<B>)
     where
         DataOther: AsRef<[u8]>,
         Module<B>: GGLWEExecLayoutFamily<B>,

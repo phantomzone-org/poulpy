@@ -1,4 +1,4 @@
-use backend::{Backend, FFT64, MatZnxAlloc, Module, ModuleNew, ScratchOwned, VecZnxEncodeCoeffsi64, ZnxView};
+use backend::{Backend, MatZnxAlloc, Module, ModuleNew, ScratchOwned, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxBigAllocBytesImpl, VecZnxDftAllocBytesImpl, VecZnxEncodeCoeffsi64, ZnxView, FFT64};
 use sampling::source::Source;
 
 use crate::{
@@ -37,6 +37,7 @@ where
         + GLWEDecryptFamily<B>
         + BlindRotationKeyCGGIExecLayoutFamily<B>
         + MatZnxAlloc,
+    B: VecZnxDftAllocBytesImpl<B> + VecZnxBigAllocBytesImpl<B>
 {
     let basek: usize = 19;
 
@@ -60,11 +61,11 @@ where
     let mut sk_lwe: LWESecret<Vec<u8>> = LWESecret::alloc(n_lwe);
     sk_lwe.fill_binary_block(block_size, &mut source_xs);
 
-    let mut scratch: ScratchOwned = ScratchOwned::new(BlindRotationKeyCGGI::generate_from_sk_scratch_space(
+    let mut scratch: ScratchOwned<B> = ScratchOwned::<B>::alloc(BlindRotationKeyCGGI::generate_from_sk_scratch_space(
         module, basek, k_brk, rank,
     ));
 
-    let mut scratch_br: ScratchOwned = ScratchOwned::new(cggi_blind_rotate_scratch_space(
+    let mut scratch_br: ScratchOwned<B> = ScratchOwned::<B>::alloc(cggi_blind_rotate_scratch_space(
         module,
         block_size,
         extension_factor,

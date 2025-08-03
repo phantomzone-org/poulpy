@@ -17,7 +17,7 @@ pub trait VmpPrepareTmpBytes {
 }
 
 pub trait VmpPMatPrepare<B: Backend> {
-    fn vmp_prepare<R, A>(&self, res: &mut R, a: &A, scratch: &mut Scratch)
+    fn vmp_prepare<R, A>(&self, res: &mut R, a: &A, scratch: &mut Scratch<B>)
     where
         R: VmpPMatToMut<B>,
         A: MatZnxToRef;
@@ -61,7 +61,7 @@ pub trait VmpApply<B: Backend> {
     /// * `a`: the left operand [crate::VecZnxDft] of the vector matrix product.
     /// * `b`: the right operand [crate::VmpPMat] of the vector matrix product.
     /// * `buf`: scratch space, the size can be obtained with [VmpApplyTmpBytes::vmp_apply_tmp_bytes].
-    fn vmp_apply<R, A, C>(&self, res: &mut R, a: &A, b: &C, scratch: &mut Scratch)
+    fn vmp_apply<R, A, C>(&self, res: &mut R, a: &A, b: &C, scratch: &mut Scratch<B>)
     where
         R: VecZnxDftToMut<B>,
         A: VecZnxDftToRef<B>,
@@ -81,7 +81,7 @@ pub trait VmpApplyAddTmpBytes {
 }
 
 pub trait VmpApplyAdd<B: Backend> {
-    fn vmp_apply_add<R, A, C>(&self, res: &mut R, a: &A, b: &C, scale: usize, scratch: &mut Scratch)
+    fn vmp_apply_add<R, A, C>(&self, res: &mut R, a: &A, b: &C, scale: usize, scratch: &mut Scratch<B>)
     where
         R: VecZnxDftToMut<B>,
         A: VecZnxDftToRef<B>,

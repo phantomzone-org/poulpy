@@ -1,4 +1,4 @@
-use backend::{Backend, Module, Scratch, VecZnxDftAllocBytes, VecZnxDftFromVecZnx};
+use backend::{Backend, Module, Scratch, ScratchAvailable, ScratchTakeVecZnxBig, ScratchTakeVecZnxDft, VecZnxDftAllocBytes, VecZnxDftFromVecZnx};
 
 use crate::{
     AutomorphismExecFamily, AutomorphismKeyExec, GGSWCiphertext, GGSWKeySwitchFamily, GLWECiphertext, GLWETensorKeyExec, Infos,
@@ -53,9 +53,10 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
         lhs: &GGSWCiphertext<DataLhs>,
         auto_key: &AutomorphismKeyExec<DataAk, B>,
         tensor_key: &GLWETensorKeyExec<DataTsk, B>,
-        scratch: &mut Scratch,
+        scratch: &mut Scratch<B>,
     ) where
         Module<B>: AutomorphismExecFamily<B> + GGSWKeySwitchFamily<B>,
+        Scratch<B>: ScratchAvailable + ScratchTakeVecZnxDft<B> + ScratchTakeVecZnxBig<B>,
     {
         #[cfg(debug_assertions)]
         {
@@ -109,7 +110,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
                 .automorphism(module, &lhs.at(row_i, 0), auto_key, scratch);
 
             // Isolates DFT(AUTO(a[i]))
-            let (mut ci_dft, scratch1) = scratch.tmp_vec_znx_dft(module, cols, self.size());
+            let (mut ci_dft, scratch1) = scratch.take_vec_znx_dft(module, cols, self.size());
             (0..cols).for_each(|i| {
                 module.vec_znx_dft_from_vec_znx(1, 0, &mut ci_dft, i, &self.at(row_i, 0).data, i);
             });
@@ -130,9 +131,10 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
         module: &Module<B>,
         auto_key: &AutomorphismKeyExec<DataKsk, B>,
         tensor_key: &GLWETensorKeyExec<DataTsk, B>,
-        scratch: &mut Scratch,
+        scratch: &mut Scratch<B>,
     ) where
         Module<B>: AutomorphismExecFamily<B> + GGSWKeySwitchFamily<B>,
+        Scratch<B>: ScratchAvailable + ScratchTakeVecZnxDft<B> + ScratchTakeVecZnxBig<B>,
     {
         unsafe {
             let self_ptr: *mut GGSWCiphertext<DataSelf> = self as *mut GGSWCiphertext<DataSelf>;

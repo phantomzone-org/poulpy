@@ -1,6 +1,6 @@
 use crate::{
-    Module, NTT120, VecZnxDft, VecZnxDftAllocBytesImpl, VecZnxDftAllocImpl, VecZnxDftBytesOf, VecZnxDftOwned, ZnxInfos,
-    ZnxSliceSize, ZnxView,
+    NTT120, VecZnxDft, VecZnxDftAllocBytesImpl, VecZnxDftAllocImpl, VecZnxDftBytesOf, VecZnxDftOwned, ZnxInfos, ZnxSliceSize,
+    ZnxView,
 };
 
 const VEC_ZNX_DFT_NTT120_WORDSIZE: usize = 4;
@@ -22,13 +22,13 @@ impl<D: AsRef<[u8]>> ZnxView for VecZnxDft<D, NTT120> {
 }
 
 unsafe impl VecZnxDftAllocBytesImpl<NTT120> for NTT120 {
-    fn vec_znx_dft_alloc_bytes_impl(module: &Module<NTT120>, cols: usize, size: usize) -> usize {
-        VecZnxDft::<Vec<u8>, NTT120>::bytes_of(module.n(), cols, size)
+    fn vec_znx_dft_alloc_bytes_impl(n: usize, cols: usize, size: usize) -> usize {
+        VecZnxDft::<Vec<u8>, NTT120>::bytes_of(n, cols, size)
     }
 }
 
 unsafe impl VecZnxDftAllocImpl<NTT120> for NTT120 {
-    fn vec_znx_dft_alloc_impl(module: &Module<NTT120>, cols: usize, size: usize) -> VecZnxDftOwned<NTT120> {
-        VecZnxDftOwned::alloc(module.n(), cols, size)
+    fn vec_znx_dft_alloc_impl(n: usize, cols: usize, size: usize) -> VecZnxDftOwned<NTT120> {
+        VecZnxDftOwned::alloc(n, cols, size)
     }
 }

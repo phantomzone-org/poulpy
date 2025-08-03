@@ -1,6 +1,6 @@
 use crate::{
-    Module, NTT120, SvpPPol, SvpPPolAllocBytesImpl, SvpPPolAllocImpl, SvpPPolBytesOf, SvpPPolFromBytesImpl, SvpPPolOwned,
-    ZnxInfos, ZnxSliceSize, ZnxView,
+    NTT120, SvpPPol, SvpPPolAllocBytesImpl, SvpPPolAllocImpl, SvpPPolBytesOf, SvpPPolFromBytesImpl, SvpPPolOwned, ZnxInfos,
+    ZnxSliceSize, ZnxView,
 };
 
 const SVP_PPOL_NTT120_WORD_SIZE: usize = 4;
@@ -22,19 +22,19 @@ impl<D: AsRef<[u8]>> ZnxView for SvpPPol<D, NTT120> {
 }
 
 unsafe impl SvpPPolFromBytesImpl<Self> for NTT120 {
-    fn svp_ppol_from_bytes_impl(module: &Module<Self>, cols: usize, bytes: Vec<u8>) -> SvpPPolOwned<NTT120> {
-        SvpPPolOwned::from_bytes(module.n(), cols, bytes)
+    fn svp_ppol_from_bytes_impl(n: usize, cols: usize, bytes: Vec<u8>) -> SvpPPolOwned<NTT120> {
+        SvpPPolOwned::from_bytes(n, cols, bytes)
     }
 }
 
 unsafe impl SvpPPolAllocImpl<Self> for NTT120 {
-    fn svp_ppol_alloc_impl(module: &Module<Self>, cols: usize) -> SvpPPolOwned<NTT120> {
-        SvpPPolOwned::alloc(module.n(), cols)
+    fn svp_ppol_alloc_impl(n: usize, cols: usize) -> SvpPPolOwned<NTT120> {
+        SvpPPolOwned::alloc(n, cols)
     }
 }
 
 unsafe impl SvpPPolAllocBytesImpl<Self> for NTT120 {
-    fn svp_ppol_alloc_bytes_impl(module: &Module<Self>, cols: usize) -> usize {
-        SvpPPol::<Vec<u8>, Self>::bytes_of(module.n(), cols)
+    fn svp_ppol_alloc_bytes_impl(n: usize, cols: usize) -> usize {
+        SvpPPol::<Vec<u8>, Self>::bytes_of(n, cols)
     }
 }

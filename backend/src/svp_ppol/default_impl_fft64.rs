@@ -24,20 +24,20 @@ impl<D: AsRef<[u8]>> ZnxView for SvpPPol<D, FFT64> {
 }
 
 unsafe impl SvpPPolFromBytesImpl<Self> for FFT64 {
-    fn svp_ppol_from_bytes_impl(module: &Module<Self>, cols: usize, bytes: Vec<u8>) -> SvpPPolOwned<Self> {
-        SvpPPolOwned::from_bytes(module.n(), cols, bytes)
+    fn svp_ppol_from_bytes_impl(n: usize, cols: usize, bytes: Vec<u8>) -> SvpPPolOwned<Self> {
+        SvpPPolOwned::from_bytes(n, cols, bytes)
     }
 }
 
 unsafe impl SvpPPolAllocImpl<Self> for FFT64 {
-    fn svp_ppol_alloc_impl(module: &Module<Self>, cols: usize) -> SvpPPolOwned<Self> {
-        SvpPPolOwned::alloc(module.n(), cols)
+    fn svp_ppol_alloc_impl(n: usize, cols: usize) -> SvpPPolOwned<Self> {
+        SvpPPolOwned::alloc(n, cols)
     }
 }
 
 unsafe impl SvpPPolAllocBytesImpl<Self> for FFT64 {
-    fn svp_ppol_alloc_bytes_impl(module: &Module<Self>, cols: usize) -> usize {
-        SvpPPol::<Vec<u8>, Self>::bytes_of(module.n(), cols)
+    fn svp_ppol_alloc_bytes_impl(n: usize, cols: usize) -> usize {
+        SvpPPol::<Vec<u8>, Self>::bytes_of(n, cols)
     }
 }
 

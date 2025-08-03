@@ -1,4 +1,4 @@
-use backend::{FFT64, Module, ModuleNew, ScalarZnxAutomorphism, ScratchOwned, VecZnxStd, VecZnxSubScalarInplace};
+use backend::{Module, ModuleNew, ScalarZnxAutomorphism, ScratchOwned, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxStd, VecZnxSubScalarInplace, FFT64};
 use sampling::source::Source;
 
 use crate::{
@@ -65,7 +65,7 @@ fn test_automorphism(
     let mut source_xe: Source = Source::new([0u8; 32]);
     let mut source_xa: Source = Source::new([0u8; 32]);
 
-    let mut scratch: ScratchOwned = ScratchOwned::new(
+    let mut scratch: ScratchOwned<FFT64> = ScratchOwned::alloc(
         AutomorphismKey::encrypt_sk_scratch_space(&module, basek, k_apply, rank)
             | AutomorphismKey::automorphism_scratch_space(&module, basek, k_out, k_in, k_apply, digits, rank),
     );
@@ -187,7 +187,7 @@ fn test_automorphism_inplace(
     let mut source_xe: Source = Source::new([0u8; 32]);
     let mut source_xa: Source = Source::new([0u8; 32]);
 
-    let mut scratch: ScratchOwned = ScratchOwned::new(
+    let mut scratch: ScratchOwned<FFT64> = ScratchOwned::alloc(
         AutomorphismKey::encrypt_sk_scratch_space(&module, basek, k_apply, rank)
             | AutomorphismKey::automorphism_inplace_scratch_space(&module, basek, k_in, k_apply, digits, rank),
     );

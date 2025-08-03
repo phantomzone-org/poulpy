@@ -131,7 +131,7 @@ impl<B: Backend> GLWESwitchingKeyExec<Vec<u8>, B> {
         GGLWECiphertextExec::bytes_of(module, basek, k, rows, digits, rank_in, rank_out)
     }
 
-    pub fn from<DataOther: AsRef<[u8]>>(module: &Module<B>, other: &GLWESwitchingKey<DataOther>, scratch: &mut Scratch) -> Self
+    pub fn from<DataOther: AsRef<[u8]>>(module: &Module<B>, other: &GLWESwitchingKey<DataOther>, scratch: &mut Scratch<B>) -> Self
     where
         Module<B>: GGLWEExecLayoutFamily<B>,
     {
@@ -192,7 +192,7 @@ impl<D, B: Backend> GLWESwitchingKeyExec<D, B> {
 }
 
 impl<D: AsRef<[u8]> + AsMut<[u8]>, B: Backend> GLWESwitchingKeyExec<D, B> {
-    pub fn prepare<DataOther>(&mut self, module: &Module<B>, other: &GLWESwitchingKey<DataOther>, scratch: &mut Scratch)
+    pub fn prepare<DataOther>(&mut self, module: &Module<B>, other: &GLWESwitchingKey<DataOther>, scratch: &mut Scratch<B>)
     where
         DataOther: AsRef<[u8]>,
         Module<B>: GGLWEExecLayoutFamily<B>,

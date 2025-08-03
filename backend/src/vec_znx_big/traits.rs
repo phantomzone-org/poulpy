@@ -171,8 +171,15 @@ pub trait VecZnxBigNormalizeTmpBytes {
 }
 
 pub trait VecZnxBigNormalize<B: Backend> {
-    fn vec_znx_big_normalize<R, A>(&self, basek: usize, res: &mut R, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch)
-    where
+    fn vec_znx_big_normalize<R, A>(
+        &self,
+        basek: usize,
+        res: &mut R,
+        res_col: usize,
+        a: &A,
+        a_col: usize,
+        scratch: &mut Scratch<B>,
+    ) where
         R: VecZnxToMut,
         A: VecZnxBigToRef<B>;
 }

@@ -44,7 +44,7 @@ pub trait SvpPPolBytesOf {
     fn bytes_of(n: usize, cols: usize) -> usize;
 }
 
-impl<D: From<Vec<u8>> + AsRef<[u8]>, B: Backend> SvpPPol<D, B>
+impl<D: From<Vec<u8>>, B: Backend> SvpPPol<D, B>
 where
     SvpPPol<D, B>: SvpPPolBytesOf,
 {

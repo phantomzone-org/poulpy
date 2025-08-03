@@ -87,7 +87,7 @@ impl<D: AsRef<[u8]> + AsMut<[u8]>> BlindRotationKeyCGGI<D> {
         source_xa: &mut Source,
         source_xe: &mut Source,
         sigma: f64,
-        scratch: &mut Scratch,
+        scratch: &mut Scratch<B>,
     ) where
         DataSkGLWE: AsRef<[u8]>,
         DataSkLWE: AsRef<[u8]>,
@@ -181,7 +181,7 @@ impl<B: Backend> BlindRotationKeyCGGIExec<Vec<u8>, B> {
         }
     }
 
-    pub fn from<DataOther>(module: &Module<B>, other: &BlindRotationKeyCGGI<DataOther>, scratch: &mut Scratch) -> Self
+    pub fn from<DataOther>(module: &Module<B>, other: &BlindRotationKeyCGGI<DataOther>, scratch: &mut Scratch<B>) -> Self
     where
         DataOther: AsRef<[u8]>,
         Module<B>: BlindRotationKeyCGGIExecLayoutFamily<B>,
@@ -200,7 +200,7 @@ impl<B: Backend> BlindRotationKeyCGGIExec<Vec<u8>, B> {
 }
 
 impl<D: AsRef<[u8]> + AsMut<[u8]>, B: Backend> BlindRotationKeyCGGIExec<D, B> {
-    pub fn prepare<DataOther>(&mut self, module: &Module<B>, other: &BlindRotationKeyCGGI<DataOther>, scratch: &mut Scratch)
+    pub fn prepare<DataOther>(&mut self, module: &Module<B>, other: &BlindRotationKeyCGGI<DataOther>, scratch: &mut Scratch<B>)
     where
         DataOther: AsRef<[u8]>,
         Module<B>: BlindRotationKeyCGGIExecLayoutFamily<B>,

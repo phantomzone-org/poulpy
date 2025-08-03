@@ -178,7 +178,7 @@ impl<B: Backend> GGSWCiphertextExec<Vec<u8>, B> {
     pub fn from<DataOther: AsRef<[u8]>>(
         module: &Module<B>,
         other: &GGSWCiphertext<DataOther>,
-        scratch: &mut Scratch,
+        scratch: &mut Scratch<B>,
     ) -> GGSWCiphertextExec<Vec<u8>, B>
     where
         Module<B>: GGSWLayoutFamily<B>,
@@ -223,7 +223,7 @@ impl<T, B: Backend> GGSWCiphertextExec<T, B> {
 }
 
 impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>, B: Backend> GGSWCiphertextExec<DataSelf, B> {
-    pub fn prepare<DataOther>(&mut self, module: &Module<B>, other: &GGSWCiphertext<DataOther>, scratch: &mut Scratch)
+    pub fn prepare<DataOther>(&mut self, module: &Module<B>, other: &GGSWCiphertext<DataOther>, scratch: &mut Scratch<B>)
     where
         DataOther: AsRef<[u8]>,
         Module<B>: GGSWLayoutFamily<B>,

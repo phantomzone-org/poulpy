@@ -39,7 +39,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> AutomorphismKey<DataSelf> {
         module: &Module<B>,
         lhs: &AutomorphismKey<DataLhs>,
         rhs: &AutomorphismKeyExec<DataRhs, B>,
-        scratch: &mut Scratch,
+        scratch: &mut Scratch<B>,
     ) where
         Module<B>: AutomorphismExecFamily<B>,
     {
@@ -112,7 +112,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> AutomorphismKey<DataSelf> {
         &mut self,
         module: &Module<B>,
         rhs: &AutomorphismKeyExec<DataRhs, B>,
-        scratch: &mut Scratch,
+        scratch: &mut Scratch<B>,
     ) where
         Module<B>: AutomorphismExecFamily<B>,
     {

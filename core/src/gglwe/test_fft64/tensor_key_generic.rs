@@ -1,4 +1,4 @@
-use backend::{Backend, MatZnxAlloc, Module, ScratchOwned, VecZnxBigAlloc, VecZnxDftAlloc, VecZnxStd, VecZnxSubScalarInplace};
+use backend::{Backend, MatZnxAlloc, Module, ScratchOwned, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxBigAlloc, VecZnxBigAllocBytesImpl, VecZnxDftAlloc, VecZnxDftAllocBytesImpl, VecZnxStd, VecZnxSubScalarInplace};
 use sampling::source::Source;
 
 use crate::{
@@ -14,6 +14,7 @@ where
         + VecZnxDftAlloc<B>
         + VecZnxBigAlloc<B>
         + MatZnxAlloc,
+    B: VecZnxDftAllocBytesImpl<B> + VecZnxBigAllocBytesImpl<B>
 {
     let rows: usize = k / basek;
 
@@ -23,7 +24,7 @@ where
     let mut source_xe: Source = Source::new([0u8; 32]);
     let mut source_xa: Source = Source::new([0u8; 32]);
 
-    let mut scratch: ScratchOwned = ScratchOwned::new(GLWETensorKey::encrypt_sk_scratch_space(
+    let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GLWETensorKey::encrypt_sk_scratch_space(
         module,
         basek,
         tensor_key.k(),

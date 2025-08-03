@@ -1,6 +1,5 @@
 use backend::{
-    Backend, Module, Scratch, VecZnxAllocBytes, VecZnxBigAllocBytes, VecZnxDft, VecZnxDftAddInplace, VecZnxDftCopy,
-    VecZnxDftToVecZnxBigTmpA, VecZnxNormalizeTmpBytes, VmpPMat, ZnxInfos,
+    Backend, Module, Scratch, ScratchAvailable, ScratchTakeVecZnxBig, ScratchTakeVecZnxDft, VecZnxAllocBytes, VecZnxBigAllocBytes, VecZnxDft, VecZnxDftAddInplace, VecZnxDftCopy, VecZnxDftToVecZnxBigTmpA, VecZnxNormalizeTmpBytes, VmpPMat, ZnxInfos
 };
 
 use crate::{GGSWCiphertext, GLWECiphertext, GLWEKeyswitchFamily, GLWESwitchingKeyExec, GLWETensorKeyExec, Infos};
@@ -89,9 +88,10 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
         col_j: usize,
         ci_dft: &VecZnxDft<DataCi, B>,
         tsk: &GLWETensorKeyExec<DataTsk, B>,
-        scratch: &mut Scratch,
+        scratch: &mut Scratch<B>,
     ) where
         Module<B>: GGSWKeySwitchFamily<B>,
+        Scratch<B>: ScratchTakeVecZnxDft<B> + ScratchTakeVecZnxBig<B>
     {
         let cols: usize = self.rank() + 1;
 
@@ -129,8 +129,8 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
 
         let digits: usize = tsk.digits();
 
-        let (mut tmp_dft_i, scratch1) = scratch.tmp_vec_znx_dft(module, cols, tsk.size());
-        let (mut tmp_a, scratch2) = scratch1.tmp_vec_znx_dft(module, 1, (ci_dft.size() + digits - 1) / digits);
+        let (mut tmp_dft_i, scratch1) = scratch.take_vec_znx_dft(module, cols, tsk.size());
+        let (mut tmp_a, scratch2) = scratch1.take_vec_znx_dft(module, 1, (ci_dft.size() + digits - 1) / digits);
 
         {
             // Performs a key-switch for each combination of s[i]*s[j], i.e. for a0, a1, a2
@@ -180,7 +180,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
         // =
         // (-(x0s0 + x1s1 + x2s2), x0 + M[i], x1, x2)
         module.vec_znx_dft_add_inplace(&mut tmp_dft_i, col_j, ci_dft, 0);
-        let (mut tmp_idft, scratch2) = scratch1.tmp_vec_znx_big(module, 1, tsk.size());
+        let (mut tmp_idft, scratch2) = scratch1.take_vec_znx_big(module, 1, tsk.size());
         (0..cols).for_each(|i| {
             module.vec_znx_dft_to_vec_znx_big_tmp_a(&mut tmp_idft, 0, &mut tmp_dft_i, i);
             module.vec_znx_big_normalize(
@@ -200,9 +200,10 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
         lhs: &GGSWCiphertext<DataLhs>,
         ksk: &GLWESwitchingKeyExec<DataKsk, B>,
         tsk: &GLWETensorKeyExec<DataTsk, B>,
-        scratch: &mut Scratch,
+        scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWEKeyswitchFamily<B> + GGSWKeySwitchFamily<B>,
+        Scratch<B>: ScratchTakeVecZnxDft<B> + ScratchTakeVecZnxBig<B>
     {
         let rank: usize = self.rank();
         let cols: usize = rank + 1;
@@ -215,7 +216,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
                 .keyswitch(module, &lhs.at(row_i, 0), ksk, scratch);
 
             // Pre-compute DFT of (a0, a1, a2)
-            let (mut ci_dft, scratch1) = scratch.tmp_vec_znx_dft(module, cols, self.size());
+            let (mut ci_dft, scratch1) = scratch.take_vec_znx_dft(module, cols, self.size());
             (0..cols).for_each(|i| {
                 module.vec_znx_dft_from_vec_znx(1, 0, &mut ci_dft, i, &self.at(row_i, 0).data, i);
             });
@@ -235,9 +236,10 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
         module: &Module<B>,
         ksk: &GLWESwitchingKeyExec<DataKsk, B>,
         tsk: &GLWETensorKeyExec<DataTsk, B>,
-        scratch: &mut Scratch,
+        scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWEKeyswitchFamily<B> + GGSWKeySwitchFamily<B>,
+        Scratch<B>: ScratchTakeVecZnxDft<B> + ScratchTakeVecZnxBig<B>
     {
         unsafe {
             let self_ptr: *mut GGSWCiphertext<DataSelf> = self as *mut GGSWCiphertext<DataSelf>;

@@ -56,15 +56,15 @@ impl<D, B: Backend> VmpPMat<D, B> {
 }
 
 pub trait VmpPMatBytesOf {
-    fn bytes_of(n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize;
+    fn vmp_pmat_bytes_of(n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize;
 }
 
 impl<D: From<Vec<u8>>, B: Backend> VmpPMat<D, B>
 where
-    VmpPMat<D, B>: VmpPMatBytesOf,
+    B: VmpPMatBytesOf,
 {
     pub(crate) fn alloc(n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> Self {
-        let data: Vec<u8> = alloc_aligned(Self::bytes_of(n, rows, cols_in, cols_out, size));
+        let data: Vec<u8> = alloc_aligned(B::vmp_pmat_bytes_of(n, rows, cols_in, cols_out, size));
         Self {
             data: data.into(),
             n,
@@ -85,7 +85,7 @@ where
         bytes: impl Into<Vec<u8>>,
     ) -> Self {
         let data: Vec<u8> = bytes.into();
-        assert!(data.len() == Self::bytes_of(n, rows, cols_in, cols_out, size));
+        assert!(data.len() == B::vmp_pmat_bytes_of(n, rows, cols_in, cols_out, size));
         Self {
             data: data.into(),
             n,

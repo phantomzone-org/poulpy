@@ -9,7 +9,7 @@ where
     B: Backend + ScalarZnxAllocBytesImpl<B>,
 {
     fn scalar_znx_alloc_bytes(&self, cols: usize) -> usize {
-        B::scalar_znx_alloc_bytes_impl(self, cols)
+        B::scalar_znx_alloc_bytes_impl(self.n(), cols)
     }
 }
 
@@ -18,7 +18,7 @@ where
     B: Backend + ScalarZnxAllocImpl<B>,
 {
     fn scalar_znx_alloc(&self, cols: usize) -> ScalarZnxOwned {
-        B::scalar_znx_alloc_impl(self, cols)
+        B::scalar_znx_alloc_impl(self.n(), cols)
     }
 }
 
@@ -27,7 +27,7 @@ where
     B: Backend + ScalarZnxFromBytesImpl<B>,
 {
     fn scalar_znx_from_bytes(&self, cols: usize, bytes: Vec<u8>) -> ScalarZnxOwned {
-        B::scalar_znx_from_bytes_impl(self, cols, bytes)
+        B::scalar_znx_from_bytes_impl(self.n(), cols, bytes)
     }
 }
 

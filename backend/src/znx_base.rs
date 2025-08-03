@@ -111,7 +111,7 @@ where
 
 use std::ops::{Add, AddAssign, Div, Mul, Neg, Shl, Shr, Sub};
 
-use crate::Scratch;
+use crate::{Backend, Scratch, ScratchTakeSlice};
 pub trait Integer:
     Copy
     + Default
@@ -138,7 +138,7 @@ impl Integer for i128 {
 }
 
 //(Jay)Note: `rsh` impl. ignores the column
-pub fn rsh<V: ZnxZero + ZnxViewMut>(k: usize, basek: usize, a: &mut V, _a_col: usize, scratch: &mut Scratch)
+pub fn rsh<V: ZnxZero + ZnxViewMut, B: Backend>(k: usize, basek: usize, a: &mut V, _a_col: usize, scratch: &mut Scratch<B>)
 where
     V::Scalar: From<usize> + Integer + Zero,
 {
@@ -159,7 +159,7 @@ where
     let k_rem: usize = k % basek;
 
     if k_rem != 0 {
-        let (carry, _) = scratch.tmp_slice::<V::Scalar>(rsh_tmp_bytes::<V::Scalar>(n));
+        let (carry, _) = scratch.take_slice::<V::Scalar>(rsh_tmp_bytes::<V::Scalar>(n));
 
         unsafe {
             std::ptr::write_bytes(carry.as_mut_ptr(), 0, n * size_of::<V::Scalar>());

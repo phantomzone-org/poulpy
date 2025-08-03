@@ -1,6 +1,6 @@
 use crate::{
-    Scratch, VecZnxBigAddDistF64Impl, VecZnxBigAddImpl, VecZnxBigAddInplaceImpl, VecZnxBigAddNormalImpl, VecZnxBigAddSmallImpl,
-    VecZnxBigAddSmallInplaceImpl, VecZnxBigAllocBytesImpl, VecZnxBigAllocImpl, VecZnxBigAutomorphismImpl,
+    Scratch, ScratchTakeSlice, VecZnxBigAddDistF64Impl, VecZnxBigAddImpl, VecZnxBigAddInplaceImpl, VecZnxBigAddNormalImpl,
+    VecZnxBigAddSmallImpl, VecZnxBigAddSmallInplaceImpl, VecZnxBigAllocBytesImpl, VecZnxBigAllocImpl, VecZnxBigAutomorphismImpl,
     VecZnxBigAutomorphismInplaceImpl, VecZnxBigBytesOf, VecZnxBigFillDistF64Impl, VecZnxBigFillNormalImpl,
     VecZnxBigFromBytesImpl, VecZnxBigNegateInplaceImpl, VecZnxBigNormalizeImpl, VecZnxBigNormalizeTmpBytes,
     VecZnxBigNormalizeTmpBytesImpl, VecZnxBigSubABInplaceImpl, VecZnxBigSubBAInplaceImpl, VecZnxBigSubImpl,
@@ -36,20 +36,20 @@ impl<D: AsRef<[u8]>> ZnxSliceSize for VecZnxBig<D, FFT64> {
 }
 
 unsafe impl VecZnxBigAllocImpl<FFT64> for FFT64 {
-    fn vec_znx_big_alloc_impl(module: &Module<FFT64>, cols: usize, size: usize) -> VecZnxBigOwned<FFT64> {
-        VecZnxBig::<Vec<u8>, FFT64>::new(module.n(), cols, size)
+    fn vec_znx_big_alloc_impl(n: usize, cols: usize, size: usize) -> VecZnxBigOwned<FFT64> {
+        VecZnxBig::<Vec<u8>, FFT64>::new(n, cols, size)
     }
 }
 
 unsafe impl VecZnxBigFromBytesImpl<FFT64> for FFT64 {
-    fn vec_znx_big_from_bytes_impl(module: &Module<FFT64>, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxBigOwned<FFT64> {
-        VecZnxBig::<Vec<u8>, FFT64>::new_from_bytes(module.n(), cols, size, bytes)
+    fn vec_znx_big_from_bytes_impl(n: usize, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxBigOwned<FFT64> {
+        VecZnxBig::<Vec<u8>, FFT64>::new_from_bytes(n, cols, size, bytes)
     }
 }
 
 unsafe impl VecZnxBigAllocBytesImpl<FFT64> for FFT64 {
-    fn vec_znx_big_alloc_bytes_impl(module: &Module<FFT64>, cols: usize, size: usize) -> usize {
-        VecZnxBig::<Vec<u8>, FFT64>::bytes_of(module.n(), cols, size)
+    fn vec_znx_big_alloc_bytes_impl(n: usize, cols: usize, size: usize) -> usize {
+        VecZnxBig::<Vec<u8>, FFT64>::bytes_of(n, cols, size)
     }
 }
 
@@ -626,7 +626,7 @@ unsafe impl VecZnxBigNormalizeImpl<FFT64> for FFT64 {
         res_col: usize,
         a: &A,
         a_col: usize,
-        scratch: &mut Scratch,
+        scratch: &mut Scratch<FFT64>,
     ) where
         R: VecZnxToMut,
         A: VecZnxBigToRef<FFT64>,
@@ -640,7 +640,7 @@ unsafe impl VecZnxBigNormalizeImpl<FFT64> for FFT64 {
             assert_eq!(res.n(), module.n());
         }
 
-        let (tmp_bytes, _) = scratch.tmp_slice(module.vec_znx_big_normalize_tmp_bytes());
+        let (tmp_bytes, _) = scratch.take_slice(module.vec_znx_big_normalize_tmp_bytes());
         unsafe {
             vec_znx::vec_znx_normalize_base2k(
                 module.ptr(),

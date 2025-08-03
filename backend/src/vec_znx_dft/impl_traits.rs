@@ -3,15 +3,15 @@ use crate::{
 };
 
 pub unsafe trait VecZnxDftAllocImpl<B: Backend> {
-    fn vec_znx_dft_alloc_impl(module: &Module<B>, cols: usize, size: usize) -> VecZnxDftOwned<B>;
+    fn vec_znx_dft_alloc_impl(n: usize, cols: usize, size: usize) -> VecZnxDftOwned<B>;
 }
 
 pub unsafe trait VecZnxDftFromBytesImpl<B: Backend> {
-    fn vec_znx_dft_from_bytes_impl(module: &Module<B>, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxDftOwned<B>;
+    fn vec_znx_dft_from_bytes_impl(n: usize, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxDftOwned<B>;
 }
 
 pub unsafe trait VecZnxDftAllocBytesImpl<B: Backend> {
-    fn vec_znx_dft_alloc_bytes_impl(module: &Module<B>, cols: usize, size: usize) -> usize;
+    fn vec_znx_dft_alloc_bytes_impl(n: usize, cols: usize, size: usize) -> usize;
 }
 
 pub unsafe trait VecZnxDftToVecZnxBigTmpBytesImpl<B: Backend> {
@@ -25,7 +25,7 @@ pub unsafe trait VecZnxDftToVecZnxBigImpl<B: Backend> {
         res_col: usize,
         a: &A,
         a_col: usize,
-        scratch: &mut Scratch,
+        scratch: &mut Scratch<B>,
     ) where
         R: VecZnxBigToMut<B>,
         A: VecZnxDftToRef<B>;
