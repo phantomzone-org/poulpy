@@ -1,5 +1,6 @@
 use backend::{
-    Backend, MatZnxAlloc, Module, ScalarZnx, ScalarZnxAlloc, ScalarZnxToMut, ScratchOwned, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxRotateInplace, ZnxViewMut
+    Backend, MatZnxAlloc, Module, ScalarZnx, ScalarZnxAlloc, ScalarZnxToMut, ScratchOwned, ScratchOwnedAlloc, ScratchOwnedBorrow,
+    ScratchTakeSvpPPolImpl, ScratchTakeVecZnxBigImpl, ScratchTakeVecZnxDftImpl, VecZnxRotateInplace, ZnxViewMut,
 };
 use sampling::source::Source;
 
@@ -20,6 +21,7 @@ pub(crate) fn test_encrypt_sk<B: Backend>(
     sigma: f64,
 ) where
     Module<B>: GGLWEEncryptSkFamily<B> + GLWEDecryptFamily<B> + MatZnxAlloc,
+    B: ScratchTakeVecZnxDftImpl<B> + ScratchTakeVecZnxBigImpl<B> + ScratchTakeSvpPPolImpl<B>,
 {
     let rows: usize = (k_ksk - digits * basek) / (digits * basek);
 
@@ -67,6 +69,7 @@ pub(crate) fn test_keyswitch<B: Backend>(
     sigma: f64,
 ) where
     Module<B>: GGLWEEncryptSkFamily<B> + GLWEDecryptFamily<B> + GLWEKeyswitchFamily<B> + GGLWEExecLayoutFamily<B> + MatZnxAlloc,
+    B: ScratchTakeVecZnxDftImpl<B> + ScratchTakeVecZnxBigImpl<B> + ScratchTakeSvpPPolImpl<B>,
 {
     let rows: usize = k_in.div_ceil(basek * digits);
     let digits_in: usize = 1;
@@ -197,6 +200,7 @@ pub(crate) fn test_keyswitch_inplace<B: Backend>(
         + GGLWEExecLayoutFamily<B>
         + GLWEDecryptFamily<B>
         + MatZnxAlloc,
+    B: ScratchTakeVecZnxDftImpl<B> + ScratchTakeVecZnxBigImpl<B> + ScratchTakeSvpPPolImpl<B>,
 {
     let rows: usize = k_ct.div_ceil(basek * digits);
     let digits_in: usize = 1;
@@ -297,6 +301,7 @@ pub(crate) fn test_external_product<B: Backend>(
         + GGSWLayoutFamily<B>
         + GLWEDecryptFamily<B>
         + MatZnxAlloc,
+    B: ScratchTakeVecZnxDftImpl<B> + ScratchTakeVecZnxBigImpl<B> + ScratchTakeSvpPPolImpl<B>,
 {
     let rows: usize = k_in.div_ceil(basek * digits);
     let digits_in: usize = 1;
@@ -406,6 +411,7 @@ pub(crate) fn test_external_product_inplace<B: Backend>(
         + GGSWLayoutFamily<B>
         + GLWEDecryptFamily<B>
         + MatZnxAlloc,
+    B: ScratchTakeVecZnxDftImpl<B> + ScratchTakeVecZnxBigImpl<B> + ScratchTakeSvpPPolImpl<B>,
 {
     let rows: usize = k_ct.div_ceil(basek * digits);
 

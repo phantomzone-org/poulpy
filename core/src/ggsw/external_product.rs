@@ -1,4 +1,4 @@
-use backend::{Backend, Module, Scratch, ScratchAvailable, ZnxZero};
+use backend::{Backend, Module, Scratch, ScratchAvailable, ScratchTakeVecZnxDft, ZnxZero};
 
 use crate::{GGSWCiphertext, GGSWCiphertextExec, GLWECiphertext, GLWEExternalProductFamily, Infos};
 
@@ -42,7 +42,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWEExternalProductFamily<B>,
-        Scratch<B>: ScratchAvailable
+        Scratch<B>: ScratchAvailable + ScratchTakeVecZnxDft<B>,
     {
         #[cfg(debug_assertions)]
         {
@@ -97,6 +97,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWEExternalProductFamily<B>,
+        Scratch<B>: ScratchTakeVecZnxDft<B>,
     {
         #[cfg(debug_assertions)]
         {

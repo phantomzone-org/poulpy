@@ -1,7 +1,7 @@
 use backend::{
-    Backend, DataViewMut, Module, Scratch, VecZnx, VecZnxBig, VecZnxBigAddSmallInplace, VecZnxBigNormalize,
-    VecZnxBigNormalizeTmpBytes, VecZnxDft, VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume, VmpApply,
-    VmpApplyAdd, VmpApplyTmpBytes, VmpPMat, ZnxInfos,
+    Backend, DataViewMut, Module, Scratch, ScratchAvailable, ScratchTakeVecZnxDft, VecZnx, VecZnxBig, VecZnxBigAddSmallInplace,
+    VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxDft, VecZnxDftAllocBytes, VecZnxDftFromVecZnx,
+    VecZnxDftToVecZnxBigConsume, VmpApply, VmpApplyAdd, VmpApplyTmpBytes, VmpPMat, ZnxInfos,
 };
 
 use crate::{GLWECiphertext, GLWESwitchingKeyExec, Infos};
@@ -79,7 +79,7 @@ impl<DataSelf: AsRef<[u8]>> GLWECiphertext<DataSelf> {
         module: &Module<B>,
         lhs: &GLWECiphertext<DataLhs>,
         rhs: &GLWESwitchingKeyExec<DataRhs, B>,
-        scratch: &Scratch,
+        scratch: &Scratch<B>,
     ) where
         Module<B>: GLWEKeyswitchFamily<B>,
     {
@@ -125,15 +125,16 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         module: &Module<B>,
         lhs: &GLWECiphertext<DataLhs>,
         rhs: &GLWESwitchingKeyExec<DataRhs, B>,
-        scratch: &mut Scratch,
+        scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWEKeyswitchFamily<B>,
+        Scratch<B>: ScratchTakeVecZnxDft<B>,
     {
         #[cfg(debug_assertions)]
         {
             self.assert_keyswitch(module, lhs, rhs, scratch);
         }
-        let (res_dft, scratch1) = scratch.tmp_vec_znx_dft(module, self.cols(), rhs.size()); // Todo optimise
+        let (res_dft, scratch1) = scratch.take_vec_znx_dft(module, self.cols(), rhs.size()); // Todo optimise
         let res_big: VecZnxBig<_, B> = keyswitch(module, res_dft, lhs, rhs, scratch1);
         (0..self.cols()).for_each(|i| {
             module.vec_znx_big_normalize(self.basek(), &mut self.data, i, &res_big, i, scratch1);
@@ -144,9 +145,10 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         &mut self,
         module: &Module<B>,
         rhs: &GLWESwitchingKeyExec<DataRhs, B>,
-        scratch: &mut Scratch,
+        scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWEKeyswitchFamily<B>,
+        Scratch<B>: ScratchTakeVecZnxDft<B>,
     {
         unsafe {
             let self_ptr: *mut GLWECiphertext<DataSelf> = self as *mut GLWECiphertext<DataSelf>;
@@ -160,13 +162,14 @@ pub(crate) fn keyswitch<B: Backend, DataRes, DataIn, DataKey>(
     res_dft: VecZnxDft<DataRes, B>,
     lhs: &GLWECiphertext<DataIn>,
     rhs: &GLWESwitchingKeyExec<DataKey, B>,
-    scratch: &mut Scratch,
+    scratch: &mut Scratch<B>,
 ) -> VecZnxBig<DataRes, B>
 where
     DataRes: AsRef<[u8]> + AsMut<[u8]>,
     DataIn: AsRef<[u8]>,
     DataKey: AsRef<[u8]>,
     Module<B>: GLWEKeyswitchFamily<B>,
+    Scratch<B>: ScratchTakeVecZnxDft<B>,
 {
     if rhs.digits() == 1 {
         return keyswitch_vmp_one_digit(module, res_dft, &lhs.data, &rhs.key.data, scratch);
@@ -187,7 +190,7 @@ fn keyswitch_vmp_one_digit<B: Backend, DataRes, DataIn, DataVmp>(
     mut res_dft: VecZnxDft<DataRes, B>,
     a: &VecZnx<DataIn>,
     mat: &VmpPMat<DataVmp, B>,
-    scratch: &mut Scratch,
+    scratch: &mut Scratch<B>,
 ) -> VecZnxBig<DataRes, B>
 where
     DataRes: AsRef<[u8]> + AsMut<[u8]>,
@@ -195,9 +198,10 @@ where
     DataVmp: AsRef<[u8]>,
     Module<B>:
         VecZnxDftAllocBytes + VecZnxDftFromVecZnx<B> + VmpApply<B> + VecZnxDftToVecZnxBigConsume<B> + VecZnxBigAddSmallInplace<B>,
+    Scratch<B>: ScratchTakeVecZnxDft<B>,
 {
     let cols: usize = a.cols();
-    let (mut ai_dft, scratch1) = scratch.tmp_vec_znx_dft(module, cols - 1, a.size());
+    let (mut ai_dft, scratch1) = scratch.take_vec_znx_dft(module, cols - 1, a.size());
     (0..cols - 1).for_each(|col_i| {
         module.vec_znx_dft_from_vec_znx(1, 0, &mut ai_dft, col_i, a, col_i + 1);
     });
@@ -213,7 +217,7 @@ fn keyswitch_vmp_multiple_digits<B: Backend, DataRes, DataIn, DataVmp>(
     a: &VecZnx<DataIn>,
     mat: &VmpPMat<DataVmp, B>,
     digits: usize,
-    scratch: &mut Scratch,
+    scratch: &mut Scratch<B>,
 ) -> VecZnxBig<DataRes, B>
 where
     DataRes: AsRef<[u8]> + AsMut<[u8]>,
@@ -225,10 +229,11 @@ where
         + VmpApplyAdd<B>
         + VecZnxDftToVecZnxBigConsume<B>
         + VecZnxBigAddSmallInplace<B>,
+    Scratch<B>: ScratchTakeVecZnxDft<B>,
 {
     let cols: usize = a.cols();
     let size: usize = a.size();
-    let (mut ai_dft, scratch1) = scratch.tmp_vec_znx_dft(module, cols - 1, (size + digits - 1) / digits);
+    let (mut ai_dft, scratch1) = scratch.take_vec_znx_dft(module, cols - 1, (size + digits - 1) / digits);
 
     ai_dft.data_mut().fill(0);
 

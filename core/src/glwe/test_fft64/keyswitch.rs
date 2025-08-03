@@ -1,4 +1,7 @@
-use backend::{Backend, FFT64, MatZnxAlloc, Module, ModuleNew, ScratchOwned, VecZnxFillUniform};
+use backend::{
+    Backend, FFT64, MatZnxAlloc, Module, ModuleNew, ScratchOwned, ScratchOwnedAlloc, ScratchOwnedBorrow, ScratchTakeSvpPPolImpl,
+    ScratchTakeVecZnxBigImpl, ScratchTakeVecZnxDftImpl, VecZnxFillUniform,
+};
 use sampling::source::Source;
 
 use crate::{
@@ -64,6 +67,7 @@ fn test_keyswitch<B: Backend>(
         + GLWEDecryptFamily<B>
         + GGLWEExecLayoutFamily<B>
         + MatZnxAlloc,
+    B: ScratchTakeVecZnxDftImpl<B> + ScratchTakeVecZnxBigImpl<B> + ScratchTakeSvpPPolImpl<B>,
 {
     let rows: usize = k_in.div_ceil(basek * digits);
 
@@ -78,7 +82,7 @@ fn test_keyswitch<B: Backend>(
 
     module.vec_znx_fill_uniform(basek, &mut pt_want.data, 0, k_in, &mut source_xa);
 
-    let mut scratch: ScratchOwned = ScratchOwned::new(
+    let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
         GLWESwitchingKey::encrypt_sk_scratch_space(module, basek, ksk.k(), rank_in, rank_out)
             | GLWECiphertext::encrypt_sk_scratch_space(module, basek, ct_in.k())
             | GLWECiphertext::keyswitch_scratch_space(
@@ -156,6 +160,7 @@ fn test_keyswitch_inplace<B: Backend>(
         + GLWEDecryptFamily<B>
         + GGLWEExecLayoutFamily<B>
         + MatZnxAlloc,
+    B: ScratchTakeVecZnxDftImpl<B> + ScratchTakeVecZnxBigImpl<B> + ScratchTakeSvpPPolImpl<B>,
 {
     let rows: usize = k_ct.div_ceil(basek * digits);
 
@@ -169,7 +174,7 @@ fn test_keyswitch_inplace<B: Backend>(
 
     module.vec_znx_fill_uniform(basek, &mut pt_want.data, 0, k_ct, &mut source_xa);
 
-    let mut scratch: ScratchOwned = ScratchOwned::new(
+    let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
         GLWESwitchingKey::encrypt_sk_scratch_space(module, basek, ksk.k(), rank, rank)
             | GLWECiphertext::encrypt_sk_scratch_space(module, basek, ct_glwe.k())
             | GLWECiphertext::keyswitch_inplace_scratch_space(module, basek, ct_glwe.k(), ksk.k(), digits, rank),

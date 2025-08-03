@@ -1,5 +1,7 @@
 use backend::{
-    Backend, Module, ScalarZnx, ScratchOwned, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxBig, VecZnxBigAlloc, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxDft, VecZnxDftAlloc, VecZnxDftToVecZnxBigTmpA, VecZnxNormalizeTmpBytes, VecZnxStd, VecZnxSubABInplace, ZnxZero
+    Backend, Module, ScalarZnx, ScratchOwned, ScratchOwnedAlloc, ScratchOwnedBorrow, ScratchTakeVecZnxBigImpl,
+    ScratchTakeVecZnxDftImpl, VecZnxAddScalarInplace, VecZnxBig, VecZnxBigAlloc, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
+    VecZnxDft, VecZnxDftAlloc, VecZnxDftToVecZnxBigTmpA, VecZnxNormalizeTmpBytes, VecZnxStd, VecZnxSubABInplace, ZnxZero,
 };
 
 use crate::{GGSWCiphertext, GLWECiphertext, GLWEDecryptFamily, GLWEPlaintext, GLWESecretExec, Infos};
@@ -22,6 +24,7 @@ impl<D: AsRef<[u8]>> GGSWCiphertext<D> {
         DataSk: AsRef<[u8]>,
         DataScalar: AsRef<[u8]>,
         Module<B>: GGSWAssertNoiseFamily<B>,
+        B: ScratchTakeVecZnxDftImpl<B> + ScratchTakeVecZnxBigImpl<B>,
         F: Fn(usize) -> f64,
     {
         let basek: usize = self.basek();

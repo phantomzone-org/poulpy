@@ -1,10 +1,14 @@
 use backend::{
-    Backend, Module, Scratch, ScratchTakeVecZnxBig, ScratchTakeVecZnxDft, ScratchTakeVecZnxDftSlice, ScratchTakeVecZnxSlice, SvpApply, SvpPPol, SvpPPolAllocBytes, VecZnxAllocBytes, VecZnxBigAddSmallInplace, VecZnxBigAllocBytes, VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftAdd, VecZnxDftAddInplace, VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftSubABInplace, VecZnxDftToVecZnxBig, VecZnxDftToVecZnxBigTmpBytes, VecZnxDftZero, VecZnxRotate, VmpApplyTmpBytes, ZnxView, ZnxZero
+    Backend, Module, Scratch, ScratchTakeVecZnxBig, ScratchTakeVecZnxDft, ScratchTakeVecZnxDftSlice, ScratchTakeVecZnxSlice,
+    SvpApply, SvpPPol, SvpPPolAllocBytes, VecZnxAllocBytes, VecZnxBigAddSmallInplace, VecZnxBigAllocBytes,
+    VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftAdd, VecZnxDftAddInplace, VecZnxDftAllocBytes, VecZnxDftFromVecZnx,
+    VecZnxDftSubABInplace, VecZnxDftToVecZnxBig, VecZnxDftToVecZnxBigTmpBytes, VecZnxDftZero, VecZnxRotate, VmpApplyTmpBytes,
+    ZnxView, ZnxZero,
 };
 use itertools::izip;
 
 use crate::{
-    GLWECiphertext, GLWECiphertextToMut, GLWEExternalProductFamily, GLWEOps, Infos, LWECiphertext, ScratchCore,
+    GLWECiphertext, GLWECiphertextToMut, GLWEExternalProductFamily, GLWEOps, Infos, LWECiphertext, TakeGLWECt,
     blind_rotation::{key::BlindRotationKeyCGGIExec, lut::LookUpTable},
     dist::Distribution,
     lwe::ciphertext::LWECiphertextToRef,
@@ -112,7 +116,7 @@ pub(crate) fn cggi_blind_rotate_block_binary_extended<DataRes, DataIn, DataBrk, 
     DataIn: AsRef<[u8]>,
     DataBrk: AsRef<[u8]>,
     Module<B>: CCGIBlindRotationFamily<B>,
-    Scratch<B>: ScratchTakeVecZnxDftSlice<B> + ScratchTakeVecZnxDft<B> + ScratchTakeVecZnxBig<B>
+    Scratch<B>: ScratchTakeVecZnxDftSlice<B> + ScratchTakeVecZnxDft<B> + ScratchTakeVecZnxBig<B>,
 {
     let extension_factor: usize = lut.extension_factor();
     let basek: usize = res.basek();
@@ -256,7 +260,7 @@ pub(crate) fn cggi_blind_rotate_block_binary<DataRes, DataIn, DataBrk, B: Backen
     DataIn: AsRef<[u8]>,
     DataBrk: AsRef<[u8]>,
     Module<B>: CCGIBlindRotationFamily<B>,
-    Scratch<B>: ScratchTakeVecZnxDft<B> + ScratchTakeVecZnxBig<B>
+    Scratch<B>: ScratchTakeVecZnxDft<B> + ScratchTakeVecZnxBig<B>,
 {
     let mut lwe_2n: Vec<i64> = vec![0i64; lwe.n() + 1]; // TODO: from scratch space
     let mut out_mut: GLWECiphertext<&mut [u8]> = res.to_mut();
@@ -342,7 +346,7 @@ pub(crate) fn cggi_blind_rotate_binary_standard<DataRes, DataIn, DataBrk, B: Bac
     DataIn: AsRef<[u8]>,
     DataBrk: AsRef<[u8]>,
     Module<B>: CCGIBlindRotationFamily<B>,
-    Scratch<B>: ScratchTakeVecZnxDft<B> + ScratchTakeVecZnxBig<B>
+    Scratch<B>: ScratchTakeVecZnxDft<B> + ScratchTakeVecZnxBig<B>,
 {
     #[cfg(debug_assertions)]
     {
@@ -399,8 +403,8 @@ pub(crate) fn cggi_blind_rotate_binary_standard<DataRes, DataIn, DataBrk, B: Bac
     module.vec_znx_rotate(b, &mut out_mut.data, 0, &lut.data[0], 0);
 
     // ACC + [sum DFT(X^ai -1) * (DFT(ACC) x BRKi)]
-    let (mut acc_tmp, scratch1) = scratch.tmp_glwe_ct(module, basek, out_mut.k(), out_mut.rank());
-    let (mut acc_tmp_rot, scratch2) = scratch1.tmp_glwe_ct(module, basek, out_mut.k(), out_mut.rank());
+    let (mut acc_tmp, scratch1) = scratch.take_glwe_ct(module, basek, out_mut.k(), out_mut.rank());
+    let (mut acc_tmp_rot, scratch2) = scratch1.take_glwe_ct(module, basek, out_mut.k(), out_mut.rank());
 
     // TODO: see if faster by skipping normalization in external product and keeping acc in big coeffs
     // TODO: first iteration can be optimized to be a gglwe product

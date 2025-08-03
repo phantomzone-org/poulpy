@@ -1,4 +1,7 @@
-use backend::{Backend, Module, ScalarZnx, ScratchOwned, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxStd, VecZnxSubScalarInplace, ZnxZero};
+use backend::{
+    Backend, Module, ScalarZnx, ScratchOwned, ScratchOwnedAlloc, ScratchOwnedBorrow, ScratchTakeVecZnxBigImpl,
+    ScratchTakeVecZnxDftImpl, VecZnxStd, VecZnxSubScalarInplace, ZnxZero,
+};
 
 use crate::{GGLWECiphertext, GLWECiphertext, GLWEDecryptFamily, GLWEPlaintext, GLWESecretExec, Infos};
 
@@ -13,6 +16,7 @@ impl<DataIn: AsRef<[u8]>> GGLWECiphertext<DataIn> {
         DataSk: AsRef<[u8]>,
         DataWant: AsRef<[u8]>,
         Module<B>: GLWEDecryptFamily<B>,
+        B: ScratchTakeVecZnxDftImpl<B> + ScratchTakeVecZnxBigImpl<B>,
     {
         let digits: usize = self.digits();
         let basek: usize = self.basek();

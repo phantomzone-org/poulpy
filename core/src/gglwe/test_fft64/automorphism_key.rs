@@ -1,4 +1,7 @@
-use backend::{Module, ModuleNew, ScalarZnxAutomorphism, ScratchOwned, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxStd, VecZnxSubScalarInplace, FFT64};
+use backend::{
+    FFT64, Module, ModuleNew, ScalarZnxAutomorphism, ScratchOwned, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxStd,
+    VecZnxSubScalarInplace,
+};
 use sampling::source::Source;
 
 use crate::{

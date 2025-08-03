@@ -1,11 +1,13 @@
 use backend::{
-    Backend, Module, ScalarZnx, ScalarZnxAllocBytes, ScalarZnxAutomorphism, Scratch, ScratchAvailable, ScratchTakeScalarZnx, ScratchTakeVecZnxBig, ScratchTakeVecZnxDft, SvpApply, VecZnxAddScalarInplace, VecZnxBigAllocBytes, VecZnxDftToVecZnxBigTmpA, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSwithcDegree, ZnxInfos, ZnxZero
+    Backend, Module, ScalarZnx, ScalarZnxAllocBytes, ScalarZnxAutomorphism, Scratch, ScratchAvailable, ScratchTakeScalarZnx,
+    ScratchTakeVecZnxBig, ScratchTakeVecZnxDft, SvpApply, VecZnxAddScalarInplace, VecZnxBigAllocBytes, VecZnxDftToVecZnxBigTmpA,
+    VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSwithcDegree, ZnxInfos, ZnxZero,
 };
 use sampling::source::Source;
 
 use crate::{
     AutomorphismKey, GGLWECiphertext, GLWECiphertext, GLWEDecryptFamily, GLWEEncryptSkFamily, GLWEPlaintext, GLWESecret,
-    GLWESecretExec, GLWESecretFamily, GLWESwitchingKey, GLWETensorKey, Infos, ScratchCore,
+    GLWESecretExec, GLWESecretFamily, GLWESwitchingKey, GLWETensorKey, Infos, TakeGLWEPt, TakeGLWESecret, TakeGLWESecretExec,
 };
 
 pub trait GGLWEEncryptSkFamily<B: Backend> = GLWEEncryptSkFamily<B> + GLWESecretFamily<B>;
@@ -36,6 +38,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGLWECiphertext<DataSelf> {
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: GGLWEEncryptSkFamily<B>,
+        Scratch<B>: ScratchTakeVecZnxDft<B>,
     {
         #[cfg(debug_assertions)]
         {
@@ -81,7 +84,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGLWECiphertext<DataSelf> {
         let k: usize = self.k();
         let rank_in: usize = self.rank_in();
 
-        let (mut tmp_pt, scrach_1) = scratch.tmp_glwe_pt(module, basek, k);
+        let (mut tmp_pt, scrach_1) = scratch.take_glwe_pt(module, basek, k);
         // For each input column (i.e. rank) produces a GGLWE ciphertext of rank_out+1 columns
         //
         // Example for ksk rank 2 to rank 3:
@@ -155,7 +158,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<DataSelf> {
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWESwitchingKeyEncryptSkFamily<B>,
-        Scratch<B>: ScratchAvailable + ScratchTakeScalarZnx<B>
+        Scratch<B>: ScratchAvailable + ScratchTakeScalarZnx<B> + ScratchTakeVecZnxDft<B> + TakeGLWESecretExec<B>,
     {
         #[cfg(debug_assertions)]
         {
@@ -187,7 +190,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<DataSelf> {
             module.vec_znx_switch_degree(&mut sk_in_tmp, i, &sk_in.data, i);
         });
 
-        let (mut sk_out_tmp, scratch2) = scratch1.tmp_glwe_secret_exec(module, sk_out.rank());
+        let (mut sk_out_tmp, scratch2) = scratch1.take_glwe_secret_exec(module, sk_out.rank());
         {
             let (mut tmp, _) = scratch2.take_scalar_znx(module, 1);
             (0..sk_out.rank()).for_each(|i| {
@@ -237,7 +240,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> AutomorphismKey<DataSelf> {
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: AutomorphismKeyEncryptSkFamily<B>,
-        Scratch<B>: ScratchAvailable
+        Scratch<B>: ScratchAvailable + ScratchTakeScalarZnx<B> + ScratchTakeVecZnxDft<B> + TakeGLWESecretExec<B>,
     {
         #[cfg(debug_assertions)]
         {
@@ -255,7 +258,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> AutomorphismKey<DataSelf> {
             )
         }
 
-        let (mut sk_out, scratch_1) = scratch.tmp_glwe_secret(module, sk.rank());
+        let (mut sk_out, scratch_1) = scratch.take_glwe_secret(module, sk.rank());
 
         {
             (0..self.rank()).for_each(|i| {
@@ -304,7 +307,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWETensorKey<DataSelf> {
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWETensorKeyEncryptSkFamily<B>,
-        Scratch<B>: ScratchTakeVecZnxDft<B> + ScratchTakeVecZnxBig<B>
+        Scratch<B>: ScratchTakeVecZnxDft<B> + ScratchTakeVecZnxBig<B> + TakeGLWESecretExec<B>,
     {
         #[cfg(debug_assertions)]
         {
@@ -315,7 +318,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWETensorKey<DataSelf> {
 
         let rank: usize = self.rank();
 
-        let (mut sk_dft_prep, scratch1) = scratch.tmp_glwe_secret_exec(module, rank);
+        let (mut sk_dft_prep, scratch1) = scratch.take_glwe_secret_exec(module, rank);
         sk_dft_prep.prepare(module, &sk);
 
         let (mut sk_dft, scratch2) = scratch1.take_vec_znx_dft(module, rank, 1);
@@ -325,7 +328,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWETensorKey<DataSelf> {
         });
 
         let (mut sk_ij_big, scratch3) = scratch2.take_vec_znx_big(module, 1, 1);
-        let (mut sk_ij, scratch4) = scratch3.tmp_glwe_secret(module, 1);
+        let (mut sk_ij, scratch4) = scratch3.take_glwe_secret(module, 1);
         let (mut sk_ij_dft, scratch5) = scratch4.take_vec_znx_dft(module, 1, 1);
 
         (0..rank).for_each(|i| {

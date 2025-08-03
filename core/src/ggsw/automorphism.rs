@@ -1,4 +1,7 @@
-use backend::{Backend, Module, Scratch, ScratchAvailable, ScratchTakeVecZnxBig, ScratchTakeVecZnxDft, VecZnxDftAllocBytes, VecZnxDftFromVecZnx};
+use backend::{
+    Backend, Module, Scratch, ScratchAvailable, ScratchTakeVecZnxBig, ScratchTakeVecZnxDft, VecZnxDftAllocBytes,
+    VecZnxDftFromVecZnx,
+};
 
 use crate::{
     AutomorphismExecFamily, AutomorphismKeyExec, GGSWCiphertext, GGSWKeySwitchFamily, GLWECiphertext, GLWETensorKeyExec, Infos,

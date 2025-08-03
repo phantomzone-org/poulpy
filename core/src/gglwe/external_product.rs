@@ -1,4 +1,4 @@
-use backend::{Backend, Module, Scratch, ZnxZero};
+use backend::{Backend, Module, Scratch, ScratchTakeVecZnxDft, ZnxZero};
 
 use crate::{AutomorphismKey, GGSWCiphertextExec, GLWECiphertext, GLWEExternalProductFamily, GLWESwitchingKey, Infos};
 
@@ -42,6 +42,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<DataSelf> {
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWEExternalProductFamily<B>,
+        Scratch<B>: ScratchTakeVecZnxDft<B>,
     {
         #[cfg(debug_assertions)]
         {
@@ -89,6 +90,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<DataSelf> {
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWEExternalProductFamily<B>,
+        Scratch<B>: ScratchTakeVecZnxDft<B>,
     {
         #[cfg(debug_assertions)]
         {
@@ -150,6 +152,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> AutomorphismKey<DataSelf> {
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWEExternalProductFamily<B>,
+        Scratch<B>: ScratchTakeVecZnxDft<B>,
     {
         self.key.external_product(module, &lhs.key, rhs, scratch);
     }
@@ -161,6 +164,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> AutomorphismKey<DataSelf> {
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWEExternalProductFamily<B>,
+        Scratch<B>: ScratchTakeVecZnxDft<B>,
     {
         self.key.external_product_inplace(module, rhs, scratch);
     }

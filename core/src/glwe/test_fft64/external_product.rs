@@ -1,6 +1,6 @@
 use backend::{
-    Backend, FFT64, MatZnxAlloc, Module, ModuleNew, ScalarZnx, ScalarZnxAlloc, ScratchOwned, VecZnxFillUniform,
-    VecZnxRotateInplace, ZnxViewMut,
+    Backend, FFT64, MatZnxAlloc, Module, ModuleNew, ScalarZnx, ScalarZnxAlloc, ScratchOwned, ScratchOwnedAlloc,
+    ScratchOwnedBorrow, ScratchTakeVecZnxBigImpl, ScratchTakeVecZnxDftImpl, VecZnxFillUniform, VecZnxRotateInplace, ZnxViewMut,
 };
 use sampling::source::Source;
 
@@ -58,6 +58,7 @@ fn test_external_product<B: Backend>(
         + GLWEExternalProductFamily<B>
         + GGSWLayoutFamily<B>
         + MatZnxAlloc,
+    B: ScratchTakeVecZnxDftImpl<B> + ScratchTakeVecZnxBigImpl<B>,
 {
     let rows: usize = k_in.div_ceil(basek * digits);
 
@@ -80,7 +81,7 @@ fn test_external_product<B: Backend>(
 
     pt_rgsw.raw_mut()[k] = 1; // X^{k}
 
-    let mut scratch: ScratchOwned = ScratchOwned::new(
+    let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
         GGSWCiphertext::encrypt_sk_scratch_space(module, basek, ct_ggsw.k(), rank)
             | GLWECiphertext::encrypt_sk_scratch_space(module, basek, ct_glwe_in.k())
             | GLWECiphertext::external_product_scratch_space(
@@ -163,6 +164,7 @@ fn test_external_product_inplace<B: Backend>(
         + GLWEExternalProductFamily<B>
         + GGSWLayoutFamily<B>
         + MatZnxAlloc,
+    B: ScratchTakeVecZnxDftImpl<B> + ScratchTakeVecZnxBigImpl<B>,
 {
     let rows: usize = k_ct.div_ceil(basek * digits);
 
@@ -184,7 +186,7 @@ fn test_external_product_inplace<B: Backend>(
 
     pt_rgsw.raw_mut()[k] = 1; // X^{k}
 
-    let mut scratch: ScratchOwned = ScratchOwned::new(
+    let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
         GGSWCiphertext::encrypt_sk_scratch_space(module, basek, ct_ggsw.k(), rank)
             | GLWECiphertext::encrypt_sk_scratch_space(module, basek, ct_glwe.k())
             | GLWECiphertext::external_product_inplace_scratch_space(module, basek, ct_glwe.k(), ct_ggsw.k(), digits, rank),

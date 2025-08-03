@@ -1,4 +1,8 @@
-use backend::{Backend, FFT64, MatZnxAlloc, Module, ModuleNew, ScratchOwned, VecZnxEncodeCoeffsi64, ZnxView};
+use backend::{
+    Backend, FFT64, MatZnxAlloc, Module, ModuleNew, ScratchOwned, ScratchOwnedAlloc, ScratchOwnedBorrow,
+    ScratchTakeScalarZnxImpl, ScratchTakeSvpPPolImpl, ScratchTakeVecZnxBigImpl, ScratchTakeVecZnxDftImpl, VecZnxEncodeCoeffsi64,
+    ZnxView,
+};
 use sampling::source::Source;
 
 use crate::{
@@ -23,6 +27,7 @@ fn lwe_to_glwe() {
 pub(crate) fn test_lwe_to_glwe<B: Backend>(module: &Module<B>)
 where
     Module<B>: GGLWEEncryptSkFamily<B> + GLWEDecryptFamily<B> + GGLWEExecLayoutFamily<B> + GLWEKeyswitchFamily<B> + MatZnxAlloc,
+    B: ScratchTakeScalarZnxImpl<B> + ScratchTakeVecZnxDftImpl<B> + ScratchTakeVecZnxBigImpl<B> + ScratchTakeSvpPPolImpl<B>,
 {
     let basek: usize = 17;
     let sigma: f64 = 3.2;
@@ -41,7 +46,7 @@ where
     let mut source_xa: Source = Source::new([0u8; 32]);
     let mut source_xe: Source = Source::new([0u8; 32]);
 
-    let mut scratch: ScratchOwned = ScratchOwned::new(
+    let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
         LWEToGLWESwitchingKey::encrypt_sk_scratch_space(module, basek, k_ksk, rank)
             | GLWECiphertext::from_lwe_scratch_space(module, basek, k_lwe_ct, k_glwe_ct, k_ksk, rank)
             | GLWECiphertext::decrypt_scratch_space(module, basek, k_glwe_ct),
@@ -104,6 +109,7 @@ fn glwe_to_lwe() {
 fn test_glwe_to_lwe<B: Backend>(module: &Module<B>)
 where
     Module<B>: GGLWEEncryptSkFamily<B> + GLWEKeyswitchFamily<B> + GLWEDecryptFamily<B> + GGLWEExecLayoutFamily<B> + MatZnxAlloc,
+    B: ScratchTakeScalarZnxImpl<B> + ScratchTakeVecZnxDftImpl<B> + ScratchTakeVecZnxBigImpl<B> + ScratchTakeSvpPPolImpl<B>,
 {
     let basek: usize = 17;
     let sigma: f64 = 3.2;
@@ -122,7 +128,7 @@ where
     let mut source_xa: Source = Source::new([0u8; 32]);
     let mut source_xe: Source = Source::new([0u8; 32]);
 
-    let mut scratch: ScratchOwned = ScratchOwned::new(
+    let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
         LWEToGLWESwitchingKey::encrypt_sk_scratch_space(module, basek, k_ksk, rank)
             | GLWECiphertext::from_lwe_scratch_space(module, basek, k_lwe_ct, k_glwe_ct, k_ksk, rank)
             | GLWECiphertext::decrypt_scratch_space(module, basek, k_glwe_ct),
@@ -185,6 +191,7 @@ fn keyswitch() {
 fn test_keyswitch<B: Backend>(module: &Module<B>)
 where
     Module<B>: GGLWEEncryptSkFamily<B> + GLWEKeyswitchFamily<B> + GLWEDecryptFamily<B> + GGLWEExecLayoutFamily<B> + MatZnxAlloc,
+    B: ScratchTakeScalarZnxImpl<B> + ScratchTakeVecZnxDftImpl<B> + ScratchTakeVecZnxBigImpl<B> + ScratchTakeSvpPPolImpl<B>,
 {
     let basek: usize = 17;
     let sigma: f64 = 3.2;
@@ -200,7 +207,7 @@ where
     let mut source_xa: Source = Source::new([0u8; 32]);
     let mut source_xe: Source = Source::new([0u8; 32]);
 
-    let mut scratch: ScratchOwned = ScratchOwned::new(
+    let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
         LWESwitchingKey::encrypt_sk_scratch_space(module, basek, k_ksk)
             | LWECiphertext::keyswitch_scratch_space(module, basek, k_lwe_ct, k_lwe_ct, k_ksk),
     );

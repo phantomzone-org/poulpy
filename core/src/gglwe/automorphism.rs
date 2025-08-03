@@ -1,4 +1,4 @@
-use backend::{Backend, Module, Scratch, VecZnxAutomorphism, VecZnxAutomorphismInplace, ZnxZero};
+use backend::{Backend, Module, Scratch, ScratchTakeVecZnxDft, VecZnxAutomorphism, VecZnxAutomorphismInplace, ZnxZero};
 
 use crate::{AutomorphismExecFamily, AutomorphismKey, AutomorphismKeyExec, GLWECiphertext, Infos};
 
@@ -42,6 +42,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> AutomorphismKey<DataSelf> {
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: AutomorphismExecFamily<B>,
+        Scratch<B>: ScratchTakeVecZnxDft<B>,
     {
         #[cfg(debug_assertions)]
         {
@@ -115,6 +116,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> AutomorphismKey<DataSelf> {
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: AutomorphismExecFamily<B>,
+        Scratch<B>: ScratchTakeVecZnxDft<B>,
     {
         unsafe {
             let self_ptr: *mut AutomorphismKey<DataSelf> = self as *mut AutomorphismKey<DataSelf>;

@@ -1,4 +1,7 @@
-use backend::{Backend, MatZnxAlloc, Module, ModuleNew, ScratchOwned, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxBigAllocBytesImpl, VecZnxDftAllocBytesImpl, VecZnxEncodeCoeffsi64, ZnxView, FFT64};
+use backend::{
+    Backend, FFT64, MatZnxAlloc, Module, ModuleNew, ScratchOwned, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxBigAllocBytesImpl,
+    VecZnxDftAllocBytesImpl, VecZnxEncodeCoeffsi64, ZnxView,
+};
 use sampling::source::Source;
 
 use crate::{
@@ -37,7 +40,7 @@ where
         + GLWEDecryptFamily<B>
         + BlindRotationKeyCGGIExecLayoutFamily<B>
         + MatZnxAlloc,
-    B: VecZnxDftAllocBytesImpl<B> + VecZnxBigAllocBytesImpl<B>
+    B: VecZnxDftAllocBytesImpl<B> + VecZnxBigAllocBytesImpl<B>,
 {
     let basek: usize = 19;
 

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use backend::{Backend, Module, Scratch};
+use backend::{Backend, Module, Scratch, ScratchTakeVecZnxDft};
 
 use crate::{
     AutomorphismExecFamily, AutomorphismKeyExec, GLWECiphertext, GLWECiphertextToMut, GLWECiphertextToRef, GLWEOps, Infos,
@@ -61,10 +61,11 @@ where
         end: usize,
         lhs: &GLWECiphertext<DataLhs>,
         auto_keys: &HashMap<i64, AutomorphismKeyExec<DataAK, B>>,
-        scratch: &mut Scratch,
+        scratch: &mut Scratch<B>,
     ) where
         GLWECiphertext<DataLhs>: GLWECiphertextToRef + Infos,
         Module<B>: AutomorphismExecFamily<B>,
+        Scratch<B>: ScratchTakeVecZnxDft<B>,
     {
         self.copy(module, lhs);
         self.trace_inplace(module, start, end, auto_keys, scratch);
@@ -76,9 +77,10 @@ where
         start: usize,
         end: usize,
         auto_keys: &HashMap<i64, AutomorphismKeyExec<DataAK, B>>,
-        scratch: &mut Scratch,
+        scratch: &mut Scratch<B>,
     ) where
         Module<B>: AutomorphismExecFamily<B>,
+        Scratch<B>: ScratchTakeVecZnxDft<B>,
     {
         (start..end).for_each(|i| {
             self.rsh(module, 1);

@@ -1,10 +1,10 @@
 use backend::{
-    Backend, Module, ScalarZnx, Scratch, VecZnxAddScalarInplace, VecZnxAllocBytes, VecZnxDftAllocBytes, VecZnxNormalizeInplace,
-    ZnxZero,
+    Backend, Module, ScalarZnx, Scratch, ScratchTakeVecZnxDft, VecZnxAddScalarInplace, VecZnxAllocBytes, VecZnxDftAllocBytes,
+    VecZnxNormalizeInplace, ZnxZero,
 };
 use sampling::source::Source;
 
-use crate::{GGSWCiphertext, GLWECiphertext, GLWEEncryptSkFamily, GLWESecretExec, Infos, ScratchCore};
+use crate::{GGSWCiphertext, GLWECiphertext, GLWEEncryptSkFamily, GLWESecretExec, Infos, TakeGLWEPt};
 
 pub trait GGSWEncryptSkFamily<B: Backend> = GLWEEncryptSkFamily<B>;
 
@@ -33,6 +33,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: GGSWEncryptSkFamily<B>,
+        Scratch<B>: ScratchTakeVecZnxDft<B>,
     {
         #[cfg(debug_assertions)]
         {
@@ -48,7 +49,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
         let rank: usize = self.rank();
         let digits: usize = self.digits();
 
-        let (mut tmp_pt, scratch1) = scratch.tmp_glwe_pt(module, basek, k);
+        let (mut tmp_pt, scratch1) = scratch.take_glwe_pt(module, basek, k);
 
         (0..self.rows()).for_each(|row_i| {
             tmp_pt.data.zero();

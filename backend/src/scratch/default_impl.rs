@@ -5,9 +5,8 @@ use crate::{
     ScratchFromBytesImpl, ScratchOwned, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, ScratchTakeMatZnxImpl,
     ScratchTakeScalarZnxImpl, ScratchTakeSliceImpl, ScratchTakeSvpPPolImpl, ScratchTakeVecZnxBigImpl, ScratchTakeVecZnxDftImpl,
     ScratchTakeVecZnxDftSliceImpl, ScratchTakeVecZnxImpl, ScratchTakeVecZnxSliceImpl, ScratchTakeVmpPMatImpl, SvpPPol,
-    SvpPPolAllocBytesImpl, VecZnx, VecZnxAllocBytesImpl, VecZnxBig,
-    VecZnxBigAllocBytesImpl, VecZnxDft, VecZnxDftAllocBytesImpl, VmpPMat,
-    VmpPMatAllocBytesImpl, alloc_aligned,
+    SvpPPolAllocBytesImpl, VecZnx, VecZnxAllocBytesImpl, VecZnxBig, VecZnxBigAllocBytesImpl, VecZnxDft, VecZnxDftAllocBytesImpl,
+    VmpPMat, VmpPMatAllocBytesImpl, alloc_aligned,
 };
 
 unsafe impl<B: Backend> ScratchOwnedAllocImpl<B> for B {

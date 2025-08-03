@@ -1,7 +1,7 @@
-use crate::{AutomorphismExecFamily, AutomorphismKeyExec, GLWECiphertext, GLWEOps, Infos, ScratchCore};
+use crate::{AutomorphismExecFamily, AutomorphismKeyExec, GLWECiphertext, GLWEOps, Infos, TakeGLWECt};
 use std::collections::HashMap;
 
-use backend::{Backend, Module, Scratch};
+use backend::{Backend, Module, Scratch, ScratchTakeVecZnxDft};
 
 /// [StreamPacker] enables only the fly GLWE packing
 /// with constant memory of Log(N) ciphertexts.
@@ -106,9 +106,10 @@ impl GLWEPacker {
         module: &Module<B>,
         a: Option<&GLWECiphertext<DataA>>,
         auto_keys: &HashMap<i64, AutomorphismKeyExec<DataAK, B>>,
-        scratch: &mut Scratch,
+        scratch: &mut Scratch<B>,
     ) where
         Module<B>: AutomorphismExecFamily<B>,
+        Scratch<B>: ScratchTakeVecZnxDft<B>,
     {
         assert!(
             self.counter < module.n(),
@@ -160,9 +161,10 @@ fn pack_core<D: AsRef<[u8]>, DataAK: AsRef<[u8]>, B: Backend>(
     accumulators: &mut [Accumulator],
     i: usize,
     auto_keys: &HashMap<i64, AutomorphismKeyExec<DataAK, B>>,
-    scratch: &mut Scratch,
+    scratch: &mut Scratch<B>,
 ) where
     Module<B>: AutomorphismExecFamily<B>,
+    Scratch<B>: ScratchTakeVecZnxDft<B>,
 {
     let log_n: usize = module.log_n();
 
@@ -236,9 +238,10 @@ fn combine<D: AsRef<[u8]>, DataAK: AsRef<[u8]>, B: Backend>(
     b: Option<&GLWECiphertext<D>>,
     i: usize,
     auto_keys: &HashMap<i64, AutomorphismKeyExec<DataAK, B>>,
-    scratch: &mut Scratch,
+    scratch: &mut Scratch<B>,
 ) where
     Module<B>: AutomorphismExecFamily<B>,
+    Scratch<B>: ScratchTakeVecZnxDft<B>,
 {
     let log_n: usize = module.log_n();
     let a: &mut GLWECiphertext<Vec<u8>> = &mut acc.data;
@@ -268,7 +271,7 @@ fn combine<D: AsRef<[u8]>, DataAK: AsRef<[u8]>, B: Backend>(
     // since 2*(I(X) * Q/2) = I(X) * Q = 0 mod Q.
     if acc.value {
         if let Some(b) = b {
-            let (mut tmp_b, scratch_1) = scratch.tmp_glwe_ct(module, basek, k, rank);
+            let (mut tmp_b, scratch_1) = scratch.take_glwe_ct(module, basek, k, rank);
 
             // a = a * X^-t
             a.rotate_inplace(module, -t);
@@ -309,7 +312,7 @@ fn combine<D: AsRef<[u8]>, DataAK: AsRef<[u8]>, B: Backend>(
         }
     } else {
         if let Some(b) = b {
-            let (mut tmp_b, scratch_1) = scratch.tmp_glwe_ct(module, basek, k, rank);
+            let (mut tmp_b, scratch_1) = scratch.take_glwe_ct(module, basek, k, rank);
             tmp_b.rotate(module, 1 << (log_n - i - 1), b);
             tmp_b.rsh(module, 1);
 

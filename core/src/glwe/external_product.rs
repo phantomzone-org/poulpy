@@ -1,6 +1,6 @@
 use backend::{
-    Backend, DataViewMut, Module, Scratch, VecZnxBig, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftFromVecZnx,
-    VecZnxDftToVecZnxBigConsume, VecZnxNormalizeTmpBytes, VmpApply, VmpApplyAdd, VmpApplyTmpBytes,
+    Backend, DataViewMut, Module, Scratch, ScratchTakeVecZnxDft, VecZnxBig, VecZnxBigNormalize, VecZnxDftAllocBytes,
+    VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume, VecZnxNormalizeTmpBytes, VmpApply, VmpApplyAdd, VmpApplyTmpBytes,
 };
 
 use crate::{GGSWCiphertextExec, GLWECiphertext, Infos};
@@ -64,14 +64,17 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         module: &Module<B>,
         lhs: &GLWECiphertext<DataLhs>,
         rhs: &GGSWCiphertextExec<DataRhs, B>,
-        scratch: &mut Scratch,
+        scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWEExternalProductFamily<B>,
+        Scratch<B>: ScratchTakeVecZnxDft<B>,
     {
         let basek: usize = self.basek();
 
         #[cfg(debug_assertions)]
         {
+            use backend::ScratchAvailable;
+
             assert_eq!(rhs.rank(), lhs.rank());
             assert_eq!(rhs.rank(), self.rank());
             assert_eq!(self.basek(), basek);
@@ -96,8 +99,8 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         let cols: usize = rhs.rank() + 1;
         let digits: usize = rhs.digits();
 
-        let (mut res_dft, scratch1) = scratch.tmp_vec_znx_dft(module, cols, rhs.size()); // Todo optimise
-        let (mut a_dft, scratch2) = scratch1.tmp_vec_znx_dft(module, cols, (lhs.size() + digits - 1) / digits);
+        let (mut res_dft, scratch1) = scratch.take_vec_znx_dft(module, cols, rhs.size()); // Todo optimise
+        let (mut a_dft, scratch2) = scratch1.take_vec_znx_dft(module, cols, (lhs.size() + digits - 1) / digits);
 
         a_dft.data_mut().fill(0);
 
@@ -138,9 +141,10 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         &mut self,
         module: &Module<B>,
         rhs: &GGSWCiphertextExec<DataRhs, B>,
-        scratch: &mut Scratch,
+        scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWEExternalProductFamily<B>,
+        Scratch<B>: ScratchTakeVecZnxDft<B>,
     {
         unsafe {
             let self_ptr: *mut GLWECiphertext<DataSelf> = self as *mut GLWECiphertext<DataSelf>;

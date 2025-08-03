@@ -1,4 +1,4 @@
-use backend::{Backend, Module, Scratch, ZnxZero};
+use backend::{Backend, Module, Scratch, ScratchTakeVecZnxDft, ZnxZero};
 
 use crate::{
     AutomorphismKey, AutomorphismKeyExec, GLWECiphertext, GLWEKeyswitchFamily, GLWESwitchingKey, GLWESwitchingKeyExec, Infos,
@@ -44,6 +44,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> AutomorphismKey<DataSelf> {
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWEKeyswitchFamily<B>,
+        Scratch<B>: ScratchTakeVecZnxDft<B>,
     {
         self.key.keyswitch(module, &lhs.key, rhs, scratch);
     }
@@ -55,6 +56,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> AutomorphismKey<DataSelf> {
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWEKeyswitchFamily<B>,
+        Scratch<B>: ScratchTakeVecZnxDft<B>,
     {
         self.key.keyswitch_inplace(module, &rhs.key, scratch);
     }
@@ -101,6 +103,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<DataSelf> {
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWEKeyswitchFamily<B>,
+        Scratch<B>: ScratchTakeVecZnxDft<B>,
     {
         #[cfg(debug_assertions)]
         {
@@ -148,6 +151,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<DataSelf> {
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWEKeyswitchFamily<B>,
+        Scratch<B>: ScratchTakeVecZnxDft<B>,
     {
         #[cfg(debug_assertions)]
         {

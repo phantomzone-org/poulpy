@@ -1,4 +1,7 @@
-use backend::{Backend, FFT64, MatZnxAlloc, Module, ModuleNew, ScratchOwned, VecZnxAutomorphismInplace, VecZnxFillUniform};
+use backend::{
+    Backend, FFT64, MatZnxAlloc, Module, ModuleNew, ScratchOwned, ScratchOwnedAlloc, ScratchOwnedBorrow, ScratchTakeSvpPPolImpl,
+    ScratchTakeVecZnxBigImpl, ScratchTakeVecZnxDftImpl, VecZnxAutomorphismInplace, VecZnxFillUniform,
+};
 
 use sampling::source::Source;
 
@@ -56,6 +59,7 @@ fn test_automorphism<B: Backend>(
         + AutomorphismExecFamily<B>
         + GGLWEExecLayoutFamily<B>
         + MatZnxAlloc,
+    B: ScratchTakeVecZnxDftImpl<B> + ScratchTakeVecZnxBigImpl<B> + ScratchTakeSvpPPolImpl<B>,
 {
     let rows: usize = k_in.div_ceil(basek * digits);
 
@@ -70,7 +74,7 @@ fn test_automorphism<B: Backend>(
 
     module.vec_znx_fill_uniform(basek, &mut pt_want.data, 0, k_in, &mut source_xa);
 
-    let mut scratch: ScratchOwned = ScratchOwned::new(
+    let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
         AutomorphismKey::encrypt_sk_scratch_space(module, basek, autokey.k(), rank)
             | GLWECiphertext::decrypt_scratch_space(module, basek, ct_out.k())
             | GLWECiphertext::encrypt_sk_scratch_space(module, basek, ct_in.k())
@@ -147,6 +151,7 @@ fn test_automorphism_inplace<B: Backend>(
         + AutomorphismExecFamily<B>
         + GGLWEExecLayoutFamily<B>
         + MatZnxAlloc,
+    B: ScratchTakeVecZnxDftImpl<B> + ScratchTakeVecZnxBigImpl<B> + ScratchTakeSvpPPolImpl<B>,
 {
     let rows: usize = k_ct.div_ceil(basek * digits);
 
@@ -160,7 +165,7 @@ fn test_automorphism_inplace<B: Backend>(
 
     module.vec_znx_fill_uniform(basek, &mut pt_want.data, 0, k_ct, &mut source_xa);
 
-    let mut scratch: ScratchOwned = ScratchOwned::new(
+    let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
         AutomorphismKey::encrypt_sk_scratch_space(module, basek, autokey.k(), rank)
             | GLWECiphertext::decrypt_scratch_space(module, basek, ct.k())
             | GLWECiphertext::encrypt_sk_scratch_space(module, basek, ct.k())

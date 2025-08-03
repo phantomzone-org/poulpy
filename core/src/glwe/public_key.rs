@@ -1,6 +1,6 @@
 use backend::{
-    Backend, Module, ScratchOwned, SvpApplyInplace, VecZnxBigNormalize, VecZnxDft, VecZnxDftAlloc, VecZnxDftAllocBytes,
-    VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume,
+    Backend, Module, ScratchOwned, ScratchOwnedAlloc, ScratchOwnedBorrow, ScratchTakeVecZnxDftImpl, SvpApplyInplace,
+    VecZnxBigNormalize, VecZnxDft, VecZnxDftAlloc, VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume,
 };
 use sampling::source::Source;
 
@@ -73,6 +73,7 @@ impl<C: AsRef<[u8]> + AsMut<[u8]>, B: Backend> GLWEPublicKey<C, B> {
         sigma: f64,
     ) where
         Module<B>: GLWEPublicKeyFamily<B>,
+        B: ScratchTakeVecZnxDftImpl<B>,
     {
         #[cfg(debug_assertions)]
         {
@@ -83,7 +84,7 @@ impl<C: AsRef<[u8]> + AsMut<[u8]>, B: Backend> GLWEPublicKey<C, B> {
         }
 
         // Its ok to allocate scratch space here since pk is usually generated only once.
-        let mut scratch: ScratchOwned = ScratchOwned::new(GLWECiphertext::encrypt_sk_scratch_space(
+        let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GLWECiphertext::encrypt_sk_scratch_space(
             module,
             self.basek(),
             self.k(),

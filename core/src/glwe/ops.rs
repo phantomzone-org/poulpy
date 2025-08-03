@@ -230,7 +230,7 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData + Sized {
         module.vec_znx_rsh_inplace(basek, k, &mut self.to_mut().data);
     }
 
-    fn normalize<A, BACKEND: Backend>(&mut self, module: &Module<BACKEND>, a: &A, scratch: &mut Scratch)
+    fn normalize<A, B: Backend>(&mut self, module: &Module<B>, a: &A, scratch: &mut Scratch<B>)
     where
         A: GLWECiphertextToRef,
     {
@@ -251,7 +251,7 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData + Sized {
         self.set_k(a.k().min(self.k()));
     }
 
-    fn normalize_inplace<BACKEND: Backend>(&mut self, module: &Module<BACKEND>, scratch: &mut Scratch) {
+    fn normalize_inplace<B: Backend>(&mut self, module: &Module<B>, scratch: &mut Scratch<B>) {
         #[cfg(debug_assertions)]
         {
             assert_eq!(self.n(), module.n());

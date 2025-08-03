@@ -1,4 +1,7 @@
-use backend::{Backend, FFT64, Module, ModuleNew, ScratchOwned, VecZnxFillUniform, VecZnxStd};
+use backend::{
+    Backend, FFT64, Module, ModuleNew, ScratchOwned, ScratchOwnedAlloc, ScratchOwnedBorrow, ScratchTakeSvpPPolImpl,
+    ScratchTakeVecZnxBigImpl, ScratchTakeVecZnxDftImpl, VecZnxFillUniform, VecZnxStd,
+};
 use sampling::source::Source;
 
 use crate::{
@@ -39,6 +42,7 @@ fn encrypt_pk() {
 fn test_encrypt_sk<B: Backend>(module: &Module<B>, basek: usize, k_ct: usize, k_pt: usize, sigma: f64, rank: usize)
 where
     Module<B>: GLWEEncryptSkFamily<B> + GLWEDecryptFamily<B> + GLWESecretFamily<B>,
+    B: ScratchTakeVecZnxDftImpl<B> + ScratchTakeVecZnxBigImpl<B>,
 {
     let mut ct: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(module, basek, k_ct, rank);
     let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(module, basek, k_pt);
@@ -48,7 +52,7 @@ where
     let mut source_xe: Source = Source::new([0u8; 32]);
     let mut source_xa: Source = Source::new([0u8; 32]);
 
-    let mut scratch: ScratchOwned = ScratchOwned::new(
+    let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
         GLWECiphertext::encrypt_sk_scratch_space(module, basek, ct.k())
             | GLWECiphertext::decrypt_scratch_space(module, basek, ct.k()),
     );
@@ -82,6 +86,7 @@ where
 fn test_encrypt_zero_sk<B: Backend>(module: &Module<B>, basek: usize, k_ct: usize, sigma: f64, rank: usize)
 where
     Module<B>: GLWEEncryptSkFamily<B> + GLWEDecryptFamily<B> + GLWESecretFamily<B>,
+    B: ScratchTakeVecZnxDftImpl<B> + ScratchTakeVecZnxBigImpl<B>,
 {
     let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(module, basek, k_ct);
 
@@ -95,7 +100,7 @@ where
 
     let mut ct: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(module, basek, k_ct, rank);
 
-    let mut scratch: ScratchOwned = ScratchOwned::new(
+    let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
         GLWECiphertext::decrypt_scratch_space(module, basek, k_ct)
             | GLWECiphertext::encrypt_sk_scratch_space(module, basek, k_ct),
     );
@@ -116,6 +121,7 @@ where
 fn test_encrypt_pk<B: Backend>(module: &Module<B>, basek: usize, k_ct: usize, k_pk: usize, sigma: f64, rank: usize)
 where
     Module<B>: GLWEDecryptFamily<B> + GLWEPublicKeyFamily<B> + GLWESecretFamily<B> + GLWEEncryptPkFamily<B>,
+    B: ScratchTakeVecZnxDftImpl<B> + ScratchTakeVecZnxBigImpl<B> + ScratchTakeSvpPPolImpl<B>,
 {
     let mut ct: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(module, basek, k_ct, rank);
     let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(module, basek, k_ct);
@@ -133,7 +139,7 @@ where
     let mut pk: GLWEPublicKey<Vec<u8>, B> = GLWEPublicKey::alloc(module, basek, k_pk, rank);
     pk.generate_from_sk(module, &sk_exec, &mut source_xa, &mut source_xe, sigma);
 
-    let mut scratch: ScratchOwned = ScratchOwned::new(
+    let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
         GLWECiphertext::encrypt_sk_scratch_space(module, basek, ct.k())
             | GLWECiphertext::decrypt_scratch_space(module, basek, ct.k())
             | GLWECiphertext::encrypt_pk_scratch_space(module, basek, pk.k()),

@@ -1,6 +1,6 @@
 use backend::{
-    Backend, MatZnxAlloc, Module, ScalarZnx, ScalarZnxAlloc, ScalarZnxToRef, Scratch, SvpPPol, SvpPPolAlloc, SvpPrepare, ZnxView,
-    ZnxViewMut,
+    Backend, MatZnxAlloc, Module, ScalarZnx, ScalarZnxAlloc, ScalarZnxToRef, Scratch, ScratchTakeVecZnxDft, SvpPPol,
+    SvpPPolAlloc, SvpPrepare, ZnxView, ZnxViewMut,
 };
 use sampling::source::Source;
 
@@ -92,6 +92,7 @@ impl<D: AsRef<[u8]> + AsMut<[u8]>> BlindRotationKeyCGGI<D> {
         DataSkGLWE: AsRef<[u8]>,
         DataSkLWE: AsRef<[u8]>,
         Module<B>: GGSWEncryptSkFamily<B>,
+        Scratch<B>: ScratchTakeVecZnxDft<B>,
     {
         #[cfg(debug_assertions)]
         {

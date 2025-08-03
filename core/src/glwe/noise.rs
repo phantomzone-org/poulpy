@@ -1,4 +1,7 @@
-use backend::{Backend, Module, ScratchOwned, VecZnxNormalizeInplace, VecZnxStd, VecZnxSubABInplace};
+use backend::{
+    Backend, Module, ScratchOwned, ScratchOwnedAlloc, ScratchOwnedBorrow, ScratchTakeVecZnxBigImpl, ScratchTakeVecZnxDftImpl,
+    VecZnxNormalizeInplace, VecZnxStd, VecZnxSubABInplace,
+};
 
 use crate::{GLWECiphertext, GLWEDecryptFamily, GLWEPlaintext, GLWESecretExec, Infos};
 
@@ -13,10 +16,11 @@ impl<D: AsRef<[u8]>> GLWECiphertext<D> {
         DataSk: AsRef<[u8]>,
         DataPt: AsRef<[u8]>,
         Module<B>: GLWEDecryptFamily<B>,
+        B: ScratchTakeVecZnxDftImpl<B> + ScratchTakeVecZnxBigImpl<B>,
     {
         let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(module, self.basek(), self.k());
 
-        let mut scratch: ScratchOwned = ScratchOwned::new(GLWECiphertext::decrypt_scratch_space(
+        let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GLWECiphertext::decrypt_scratch_space(
             module,
             self.basek(),
             self.k(),

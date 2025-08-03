@@ -1,5 +1,11 @@
 use crate::{
-    Backend, MatZnx, Module, ScalarZnx, Scratch, ScratchAvailable, ScratchAvailableImpl, ScratchFromBytes, ScratchFromBytesImpl, ScratchOwned, ScratchOwnedAlloc, ScratchOwnedAllocImpl, ScratchOwnedBorrow, ScratchOwnedBorrowImpl, ScratchTakeMatZnx, ScratchTakeMatZnxImpl, ScratchTakeScalarZnx, ScratchTakeScalarZnxImpl, ScratchTakeSlice, ScratchTakeSliceImpl, ScratchTakeSvpPPol, ScratchTakeSvpPPolImpl, ScratchTakeVecZnx, ScratchTakeVecZnxBig, ScratchTakeVecZnxBigImpl, ScratchTakeVecZnxDft, ScratchTakeVecZnxDftImpl, ScratchTakeVecZnxDftSlice, ScratchTakeVecZnxDftSliceImpl, ScratchTakeVecZnxImpl, ScratchTakeVecZnxSlice, ScratchTakeVecZnxSliceImpl, ScratchTakeVmpPMat, ScratchTakeVmpPMatImpl, SvpPPol, VecZnx, VecZnxBig, VecZnxDft, VmpPMat
+    Backend, MatZnx, Module, ScalarZnx, Scratch, ScratchAvailable, ScratchAvailableImpl, ScratchFromBytes, ScratchFromBytesImpl,
+    ScratchOwned, ScratchOwnedAlloc, ScratchOwnedAllocImpl, ScratchOwnedBorrow, ScratchOwnedBorrowImpl, ScratchTakeMatZnx,
+    ScratchTakeMatZnxImpl, ScratchTakeScalarZnx, ScratchTakeScalarZnxImpl, ScratchTakeSlice, ScratchTakeSliceImpl,
+    ScratchTakeSvpPPol, ScratchTakeSvpPPolImpl, ScratchTakeVecZnx, ScratchTakeVecZnxBig, ScratchTakeVecZnxBigImpl,
+    ScratchTakeVecZnxDft, ScratchTakeVecZnxDftImpl, ScratchTakeVecZnxDftSlice, ScratchTakeVecZnxDftSliceImpl,
+    ScratchTakeVecZnxImpl, ScratchTakeVecZnxSlice, ScratchTakeVecZnxSliceImpl, ScratchTakeVmpPMat, ScratchTakeVmpPMatImpl,
+    SvpPPol, VecZnx, VecZnxBig, VecZnxDft, VmpPMat,
 };
 
 impl<B: Backend> ScratchOwnedAlloc<B> for ScratchOwned<B>

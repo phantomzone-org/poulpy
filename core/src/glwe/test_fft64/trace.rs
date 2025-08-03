@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 
 use backend::{
-    Backend, FFT64, MatZnxAlloc, Module, ModuleNew, ScratchOwned, VecZnxFillUniform, VecZnxNormalizeInplace, VecZnxStd,
-    VecZnxSubABInplace, ZnxView, ZnxViewMut,
+    Backend, FFT64, MatZnxAlloc, Module, ModuleNew, ScratchOwned, ScratchOwnedAlloc, ScratchOwnedBorrow, ScratchTakeSvpPPolImpl,
+    ScratchTakeVecZnxBigImpl, ScratchTakeVecZnxDftImpl, VecZnxFillUniform, VecZnxNormalizeInplace, VecZnxStd, VecZnxSubABInplace,
+    ZnxView, ZnxViewMut,
 };
 use sampling::source::Source;
 
@@ -29,6 +30,7 @@ where
         + AutomorphismExecFamily<B>
         + GGLWEExecLayoutFamily<B>
         + MatZnxAlloc,
+    B: ScratchTakeVecZnxDftImpl<B> + ScratchTakeVecZnxBigImpl<B> + ScratchTakeSvpPPolImpl<B>,
 {
     let k_autokey: usize = k + basek;
 
@@ -43,7 +45,7 @@ where
     let mut source_xe: Source = Source::new([0u8; 32]);
     let mut source_xa: Source = Source::new([0u8; 32]);
 
-    let mut scratch: ScratchOwned = ScratchOwned::new(
+    let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
         GLWECiphertext::encrypt_sk_scratch_space(module, basek, ct.k())
             | GLWECiphertext::decrypt_scratch_space(module, basek, ct.k())
             | AutomorphismKey::encrypt_sk_scratch_space(module, basek, k_autokey, rank)

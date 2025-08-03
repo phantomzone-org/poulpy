@@ -42,7 +42,7 @@ pub trait ScratchTakeVecZnxSlice<B: Backend> {
     ) -> (Vec<VecZnx<&mut [u8]>>, &mut Self);
 }
 
-pub trait ScratchTakeVecZnxBig<B: Backend>{
+pub trait ScratchTakeVecZnxBig<B: Backend> {
     fn take_vec_znx_big(&mut self, module: &Module<B>, cols: usize, size: usize) -> (VecZnxBig<&mut [u8], B>, &mut Self);
 }
 

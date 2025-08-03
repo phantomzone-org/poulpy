@@ -1,4 +1,7 @@
-use backend::{Backend, MatZnxAlloc, Module, ScratchOwned, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxBigAlloc, VecZnxBigAllocBytesImpl, VecZnxDftAlloc, VecZnxDftAllocBytesImpl, VecZnxStd, VecZnxSubScalarInplace};
+use backend::{
+    Backend, MatZnxAlloc, Module, ScratchOwned, ScratchOwnedAlloc, ScratchOwnedBorrow, ScratchTakeSvpPPolImpl, VecZnxBigAlloc,
+    VecZnxBigAllocBytesImpl, VecZnxDftAlloc, VecZnxDftAllocBytesImpl, VecZnxStd, VecZnxSubScalarInplace,
+};
 use sampling::source::Source;
 
 use crate::{
@@ -14,7 +17,7 @@ where
         + VecZnxDftAlloc<B>
         + VecZnxBigAlloc<B>
         + MatZnxAlloc,
-    B: VecZnxDftAllocBytesImpl<B> + VecZnxBigAllocBytesImpl<B>
+    B: VecZnxDftAllocBytesImpl<B> + VecZnxBigAllocBytesImpl<B> + ScratchTakeSvpPPolImpl<B>,
 {
     let rows: usize = k / basek;
 

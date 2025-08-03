@@ -4,7 +4,10 @@ use crate::{
 };
 use std::collections::HashMap;
 
-use backend::{Backend, FFT64, MatZnxAlloc, Module, ModuleNew, ScratchOwned, VecZnxEncodeVeci64, VecZnxStd};
+use backend::{
+    Backend, FFT64, MatZnxAlloc, Module, ModuleNew, ScratchOwned, ScratchOwnedAlloc, ScratchOwnedBorrow, ScratchTakeSvpPPolImpl,
+    ScratchTakeVecZnxBigImpl, ScratchTakeVecZnxDftImpl, VecZnxEncodeVeci64, VecZnxStd,
+};
 use sampling::source::Source;
 
 #[test]
@@ -22,6 +25,7 @@ where
         + AutomorphismExecFamily<B>
         + GGLWEExecLayoutFamily<B>
         + MatZnxAlloc,
+    B: ScratchTakeVecZnxDftImpl<B> + ScratchTakeVecZnxBigImpl<B> + ScratchTakeSvpPPolImpl<B>,
 {
     let mut source_xs: Source = Source::new([0u8; 32]);
     let mut source_xe: Source = Source::new([0u8; 32]);
@@ -37,7 +41,7 @@ where
 
     let rows: usize = k_ct.div_ceil(basek * digits);
 
-    let mut scratch: ScratchOwned = ScratchOwned::new(
+    let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
         GLWECiphertext::encrypt_sk_scratch_space(module, basek, k_ct)
             | AutomorphismKey::encrypt_sk_scratch_space(module, basek, k_ksk, rank)
             | GLWEPacker::scratch_space(module, basek, k_ct, k_ksk, digits, rank),

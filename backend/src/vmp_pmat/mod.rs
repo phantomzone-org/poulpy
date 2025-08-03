@@ -5,6 +5,6 @@ mod impl_traits;
 mod layout;
 mod traits;
 
+pub use impl_traits::*;
 pub use layout::*;
 pub use traits::*;
-pub use impl_traits::*;
