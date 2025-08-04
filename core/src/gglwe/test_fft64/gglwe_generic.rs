@@ -1,6 +1,7 @@
-use backend::{
-    Backend, MatZnxAlloc, Module, ScalarZnx, ScalarZnxAlloc, ScalarZnxToMut, ScratchOwned, ScratchOwnedAlloc, ScratchOwnedBorrow,
-    ScratchTakeSvpPPolImpl, ScratchTakeVecZnxBigImpl, ScratchTakeVecZnxDftImpl, VecZnxRotateInplace, ZnxViewMut,
+use backend::hal::{
+    api::{MatZnxAlloc, ScalarZnxAlloc, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxRotateInplace, ZnxViewMut},
+    layouts::{Backend, Module, ScalarZnx, ScalarZnxToMut, ScratchOwned},
+    oep::{ScratchTakeSvpPPolImpl, ScratchTakeVecZnxBigImpl, ScratchTakeVecZnxDftImpl},
 };
 use sampling::source::Source;
 
@@ -20,7 +21,7 @@ pub(crate) fn test_encrypt_sk<B: Backend>(
     rank_out: usize,
     sigma: f64,
 ) where
-    Module<B>: GGLWEEncryptSkFamily<B> + GLWEDecryptFamily<B> + MatZnxAlloc,
+    Module<B>: GGLWEEncryptSkFamily<B> + GLWEDecryptFamily<B>,
     B: ScratchTakeVecZnxDftImpl<B> + ScratchTakeVecZnxBigImpl<B> + ScratchTakeSvpPPolImpl<B>,
 {
     let rows: usize = (k_ksk - digits * basek) / (digits * basek);

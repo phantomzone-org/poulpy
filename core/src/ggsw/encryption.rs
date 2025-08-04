@@ -1,6 +1,6 @@
-use backend::{
-    Backend, Module, ScalarZnx, Scratch, ScratchTakeVecZnxDft, VecZnxAddScalarInplace, VecZnxAllocBytes, VecZnxDftAllocBytes,
-    VecZnxNormalizeInplace, ZnxZero,
+use backend::hal::{
+    api::{ScratchTakeVecZnxDft, VecZnxAddScalarInplace, VecZnxAllocBytes, VecZnxNormalizeInplace, ZnxZero},
+    layouts::{Backend, Module, ScalarZnx, Scratch},
 };
 use sampling::source::Source;
 
@@ -37,7 +37,8 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
     {
         #[cfg(debug_assertions)]
         {
-            use backend::ZnxInfos;
+            use backend::hal::api::ZnxInfos;
+
             assert_eq!(self.rank(), sk.rank());
             assert_eq!(self.n(), module.n());
             assert_eq!(pt.n(), module.n());

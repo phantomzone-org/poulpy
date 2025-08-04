@@ -1,6 +1,10 @@
-use backend::{
-    Backend, Module, ScratchOwned, ScratchOwnedAlloc, ScratchOwnedBorrow, ScratchTakeVecZnxDftImpl, SvpApplyInplace,
-    VecZnxBigNormalize, VecZnxDft, VecZnxDftAlloc, VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume,
+use backend::hal::{
+    api::{
+        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyInplace, VecZnxBigNormalize, VecZnxDftAlloc, VecZnxDftAllocBytes,
+        VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume,
+    },
+    layouts::{Backend, Module, ScratchOwned, VecZnxDft},
+    oep::ScratchTakeVecZnxDftImpl,
 };
 use sampling::source::Source;
 

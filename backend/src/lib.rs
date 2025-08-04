@@ -2,36 +2,11 @@
 #![deny(rustdoc::broken_intra_doc_links)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
-mod ffi;
-mod mat_znx;
-mod module;
-mod scalar_znx;
-mod scratch;
-mod svp_ppol;
-mod vec_znx;
-mod vec_znx_big;
-mod vec_znx_dft;
-mod vmp_pmat;
-mod znx_base;
-
-pub use mat_znx::*;
-pub use module::*;
-pub use scalar_znx::*;
-pub use scratch::*;
-pub use svp_ppol::*;
-pub use vec_znx::*;
-pub use vec_znx_big::*;
-pub use vec_znx_dft::*;
-pub use vmp_pmat::*;
-pub use znx_base::*;
+pub mod hal;
+pub mod implementation;
 
 pub const GALOISGENERATOR: u64 = 5;
 pub const DEFAULTALIGN: usize = 64;
-
-pub mod doc {
-    #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/docs/backend_safety_contract.md"))]
-    pub mod backend_safety {}
-}
 
 fn is_aligned_custom<T>(ptr: *const T, align: usize) -> bool {
     (ptr as usize) % align == 0

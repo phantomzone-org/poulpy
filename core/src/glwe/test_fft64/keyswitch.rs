@@ -1,6 +1,10 @@
 use backend::{
-    Backend, FFT64, MatZnxAlloc, Module, ModuleNew, ScratchOwned, ScratchOwnedAlloc, ScratchOwnedBorrow, ScratchTakeSvpPPolImpl,
-    ScratchTakeVecZnxBigImpl, ScratchTakeVecZnxDftImpl, VecZnxFillUniform,
+    hal::{
+        api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxFillUniform},
+        layouts::{Backend, Module, ScratchOwned},
+        oep::{ScratchTakeSvpPPolImpl, ScratchTakeVecZnxBigImpl, ScratchTakeVecZnxDftImpl},
+    },
+    implementation::cpu_avx::FFT64,
 };
 use sampling::source::Source;
 
@@ -65,8 +69,7 @@ fn test_keyswitch<B: Backend>(
         + GLWESwitchingKeyEncryptSkFamily<B>
         + GLWEKeyswitchFamily<B>
         + GLWEDecryptFamily<B>
-        + GGLWEExecLayoutFamily<B>
-        + MatZnxAlloc,
+        + GGLWEExecLayoutFamily<B>,
     B: ScratchTakeVecZnxDftImpl<B> + ScratchTakeVecZnxBigImpl<B> + ScratchTakeSvpPPolImpl<B>,
 {
     let rows: usize = k_in.div_ceil(basek * digits);
@@ -158,8 +161,7 @@ fn test_keyswitch_inplace<B: Backend>(
         + GLWESwitchingKeyEncryptSkFamily<B>
         + GLWEKeyswitchFamily<B>
         + GLWEDecryptFamily<B>
-        + GGLWEExecLayoutFamily<B>
-        + MatZnxAlloc,
+        + GGLWEExecLayoutFamily<B>,
     B: ScratchTakeVecZnxDftImpl<B> + ScratchTakeVecZnxBigImpl<B> + ScratchTakeSvpPPolImpl<B>,
 {
     let rows: usize = k_ct.div_ceil(basek * digits);

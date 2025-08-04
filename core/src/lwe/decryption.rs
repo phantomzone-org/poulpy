@@ -1,4 +1,7 @@
-use backend::{ZnxView, ZnxViewMut, alloc_aligned};
+use backend::hal::{
+    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxNormalizeInplace, ZnxView, ZnxViewMut},
+    layouts::{Backend, Module, ScratchOwned},
+};
 
 use crate::{Infos, LWECiphertext, LWESecret, SetMetaData, lwe::LWEPlaintext};
 
@@ -6,7 +9,7 @@ impl<DataSelf> LWECiphertext<DataSelf>
 where
     DataSelf: AsRef<[u8]>,
 {
-    pub fn decrypt<DataPt, DataSk>(&self, pt: &mut LWEPlaintext<DataPt>, sk: &LWESecret<DataSk>)
+    pub fn decrypt<DataPt, DataSk, B: Backend>(&self, module: &Module<B>, pt: &mut LWEPlaintext<DataPt>, sk: &LWESecret<DataSk>)
     where
         DataPt: AsRef<[u8]> + AsMut<[u8]>,
         DataSk: AsRef<[u8]>,
@@ -24,10 +27,12 @@ where
                     .map(|(x, y)| x * y)
                     .sum::<i64>();
         });
-
-        let mut tmp_bytes: Vec<u8> = alloc_aligned(size_of::<i64>());
-        pt.data.normalize(self.basek(), 0, &mut tmp_bytes);
-
+        module.vec_znx_normalize_inplace(
+            self.basek(),
+            &mut pt.data,
+            0,
+            ScratchOwned::alloc(size_of::<i64>()).borrow(),
+        );
         pt.set_basek(self.basek());
         pt.set_k(self.k().min(pt.size() * self.basek()));
     }

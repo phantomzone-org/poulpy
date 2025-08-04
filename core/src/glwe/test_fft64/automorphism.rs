@@ -1,8 +1,11 @@
 use backend::{
-    Backend, FFT64, MatZnxAlloc, Module, ModuleNew, ScratchOwned, ScratchOwnedAlloc, ScratchOwnedBorrow, ScratchTakeSvpPPolImpl,
-    ScratchTakeVecZnxBigImpl, ScratchTakeVecZnxDftImpl, VecZnxAutomorphismInplace, VecZnxFillUniform,
+    hal::{
+        api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAutomorphismInplace, VecZnxFillUniform},
+        layouts::{Backend, Module, ScratchOwned},
+        oep::{ScratchTakeSvpPPolImpl, ScratchTakeVecZnxBigImpl, ScratchTakeVecZnxDftImpl},
+    },
+    implementation::cpu_avx::FFT64,
 };
-
 use sampling::source::Source;
 
 use crate::{
@@ -54,11 +57,7 @@ fn test_automorphism<B: Backend>(
     rank: usize,
     sigma: f64,
 ) where
-    Module<B>: AutomorphismKeyEncryptSkFamily<B>
-        + GLWEDecryptFamily<B>
-        + AutomorphismExecFamily<B>
-        + GGLWEExecLayoutFamily<B>
-        + MatZnxAlloc,
+    Module<B>: AutomorphismKeyEncryptSkFamily<B> + GLWEDecryptFamily<B> + AutomorphismExecFamily<B> + GGLWEExecLayoutFamily<B>,
     B: ScratchTakeVecZnxDftImpl<B> + ScratchTakeVecZnxBigImpl<B> + ScratchTakeSvpPPolImpl<B>,
 {
     let rows: usize = k_in.div_ceil(basek * digits);
@@ -146,11 +145,7 @@ fn test_automorphism_inplace<B: Backend>(
     rank: usize,
     sigma: f64,
 ) where
-    Module<B>: AutomorphismKeyEncryptSkFamily<B>
-        + GLWEDecryptFamily<B>
-        + AutomorphismExecFamily<B>
-        + GGLWEExecLayoutFamily<B>
-        + MatZnxAlloc,
+    Module<B>: AutomorphismKeyEncryptSkFamily<B> + GLWEDecryptFamily<B> + AutomorphismExecFamily<B> + GGLWEExecLayoutFamily<B>,
     B: ScratchTakeVecZnxDftImpl<B> + ScratchTakeVecZnxBigImpl<B> + ScratchTakeSvpPPolImpl<B>,
 {
     let rows: usize = k_ct.div_ceil(basek * digits);

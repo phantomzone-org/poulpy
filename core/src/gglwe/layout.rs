@@ -1,5 +1,6 @@
-use backend::{
-    Backend, MatZnx, MatZnxAlloc, MatZnxAllocBytes, Module, Scratch, VmpPMat, VmpPMatAlloc, VmpPMatAllocBytes, VmpPMatPrepare,
+use backend::hal::{
+    api::{MatZnxAlloc, MatZnxAllocBytes, VmpPMatAlloc, VmpPMatAllocBytes, VmpPMatPrepare},
+    layouts::{Backend, MatZnx, Module, Scratch, VmpPMat},
 };
 
 use crate::{GLWECiphertext, Infos};
@@ -42,10 +43,7 @@ impl GGLWECiphertext<Vec<u8>> {
         digits: usize,
         rank_in: usize,
         rank_out: usize,
-    ) -> Self
-    where
-        Module<B>: MatZnxAlloc,
-    {
+    ) -> Self {
         let size: usize = k.div_ceil(basek);
         debug_assert!(
             size > digits,
@@ -78,10 +76,7 @@ impl GGLWECiphertext<Vec<u8>> {
         digits: usize,
         rank_in: usize,
         rank_out: usize,
-    ) -> usize
-    where
-        Module<B>: MatZnxAllocBytes,
-    {
+    ) -> usize {
         let size: usize = k.div_ceil(basek);
         debug_assert!(
             size > digits,

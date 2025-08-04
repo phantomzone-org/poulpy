@@ -1,6 +1,9 @@
-use backend::{
-    Backend, MatZnxAlloc, Module, ScratchOwned, ScratchOwnedAlloc, ScratchOwnedBorrow, ScratchTakeSvpPPolImpl, VecZnxBigAlloc,
-    VecZnxBigAllocBytesImpl, VecZnxDftAlloc, VecZnxDftAllocBytesImpl, VecZnxStd, VecZnxSubScalarInplace,
+use backend::hal::{
+    api::{
+        MatZnxAlloc, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxBigAlloc, VecZnxDftAlloc, VecZnxStd, VecZnxSubScalarInplace,
+    },
+    layouts::{Backend, Module, ScratchOwned, VecZnxDft},
+    oep::{ScratchTakeSvpPPolImpl, VecZnxBigAllocBytesImpl, VecZnxDftAllocBytesImpl},
 };
 use sampling::source::Source;
 
@@ -53,7 +56,7 @@ where
     let mut sk_ij_dft = module.vec_znx_dft_alloc(1, 1);
     let mut sk_ij_big = module.vec_znx_big_alloc(1, 1);
     let mut sk_ij: GLWESecret<Vec<u8>> = GLWESecret::alloc(&module, 1);
-    let mut sk_dft: backend::VecZnxDft<Vec<u8>, B> = module.vec_znx_dft_alloc(rank, 1);
+    let mut sk_dft: VecZnxDft<Vec<u8>, B> = module.vec_znx_dft_alloc(rank, 1);
 
     (0..rank).for_each(|i| {
         module.vec_znx_dft_from_vec_znx(1, 0, &mut sk_dft, i, &sk.data, i);

@@ -1,6 +1,8 @@
-use backend::{
-    Backend, Module, VecZnx, VecZnxAlloc, VecZnxCopy, VecZnxRotateInplace, VecZnxSwithcDegree, ZnxInfos, ZnxViewMut,
-    alloc_aligned,
+use backend::hal::{
+    api::{
+        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAlloc, VecZnxCopy, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotateInplace, VecZnxSwithcDegree, ZnxInfos, ZnxViewMut
+    },
+    layouts::{Backend, Module, ScratchOwned, VecZnx},
 };
 
 pub struct LookUpTable {
@@ -82,8 +84,14 @@ impl LookUpTable {
 
         module.vec_znx_rotate_inplace(-(half_step as i64), &mut lut_full, 0);
 
-        let mut tmp_bytes: Vec<u8> = alloc_aligned(lut_full.n() * size_of::<i64>());
-        lut_full.normalize(self.basek, 0, &mut tmp_bytes);
+        let n_large: usize = lut_full.n();
+
+        module.vec_znx_normalize_inplace(
+            self.basek,
+            &mut lut_full,
+            0,
+            ScratchOwned::alloc(module.vec_znx_normalize_tmp_bytes(n_large)).borrow(),
+        );
 
         if self.extension_factor() > 1 {
             (0..self.extension_factor()).for_each(|i| {

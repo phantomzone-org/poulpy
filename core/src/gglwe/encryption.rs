@@ -1,7 +1,10 @@
-use backend::{
-    Backend, Module, ScalarZnx, ScalarZnxAllocBytes, ScalarZnxAutomorphism, Scratch, ScratchAvailable, ScratchTakeScalarZnx,
-    ScratchTakeVecZnxBig, ScratchTakeVecZnxDft, SvpApply, VecZnxAddScalarInplace, VecZnxBigAllocBytes, VecZnxDftToVecZnxBigTmpA,
-    VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSwithcDegree, ZnxInfos, ZnxZero,
+use backend::hal::{
+    api::{
+        ScalarZnxAllocBytes, ScalarZnxAutomorphism, ScratchAvailable, ScratchTakeScalarZnx, ScratchTakeVecZnxBig,
+        ScratchTakeVecZnxDft, SvpApply, VecZnxAddScalarInplace, VecZnxBigAllocBytes, VecZnxDftToVecZnxBigTmpA,
+        VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSwithcDegree, ZnxZero,
+    },
+    layouts::{Backend, Module, ScalarZnx, Scratch},
 };
 use sampling::source::Source;
 
@@ -18,7 +21,7 @@ impl GGLWECiphertext<Vec<u8>> {
         Module<B>: GGLWEEncryptSkFamily<B>,
     {
         GLWECiphertext::encrypt_sk_scratch_space(module, basek, k)
-            + (GLWEPlaintext::byte_of(module, basek, k) | module.vec_znx_normalize_tmp_bytes())
+            + (GLWEPlaintext::byte_of(module, basek, k) | module.vec_znx_normalize_tmp_bytes(module.n()))
     }
 
     pub fn encrypt_pk_scratch_space<B: Backend>(_module: &Module<B>, _basek: usize, _k: usize, _rank: usize) -> usize {
@@ -42,6 +45,8 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGLWECiphertext<DataSelf> {
     {
         #[cfg(debug_assertions)]
         {
+            use backend::hal::api::ZnxInfos;
+
             assert_eq!(
                 self.rank_in(),
                 pt.cols(),

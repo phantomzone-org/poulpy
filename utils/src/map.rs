@@ -1,5 +1,6 @@
-use fnv::FnvHashMap;
 use std::hash::Hash;
+
+use fnv::FnvHashMap;
 
 pub struct Map<K, V>(pub FnvHashMap<K, V>);
 

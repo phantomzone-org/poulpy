@@ -1,9 +1,15 @@
 use std::collections::HashMap;
 
 use backend::{
-    Backend, FFT64, MatZnxAlloc, Module, ModuleNew, ScratchOwned, ScratchOwnedAlloc, ScratchOwnedBorrow, ScratchTakeSvpPPolImpl,
-    ScratchTakeVecZnxBigImpl, ScratchTakeVecZnxDftImpl, VecZnxFillUniform, VecZnxNormalizeInplace, VecZnxStd, VecZnxSubABInplace,
-    ZnxView, ZnxViewMut,
+    hal::{
+        api::{
+            ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxFillUniform, VecZnxNormalizeInplace, VecZnxStd,
+            VecZnxSubABInplace, ZnxView, ZnxViewMut,
+        },
+        layouts::{Backend, Module, ScratchOwned},
+        oep::{ScratchTakeSvpPPolImpl, ScratchTakeVecZnxBigImpl, ScratchTakeVecZnxDftImpl},
+    },
+    implementation::cpu_avx::FFT64,
 };
 use sampling::source::Source;
 
@@ -28,8 +34,7 @@ where
         + GLWEEncryptSkFamily<B>
         + GLWEDecryptFamily<B>
         + AutomorphismExecFamily<B>
-        + GGLWEExecLayoutFamily<B>
-        + MatZnxAlloc,
+        + GGLWEExecLayoutFamily<B>,
     B: ScratchTakeVecZnxDftImpl<B> + ScratchTakeVecZnxBigImpl<B> + ScratchTakeSvpPPolImpl<B>,
 {
     let k_autokey: usize = k + basek;

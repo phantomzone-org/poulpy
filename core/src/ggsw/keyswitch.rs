@@ -1,7 +1,9 @@
-use backend::{
-    Backend, Module, Scratch, ScratchAvailable, ScratchTakeVecZnxBig, ScratchTakeVecZnxDft, VecZnxAllocBytes,
-    VecZnxBigAllocBytes, VecZnxDft, VecZnxDftAddInplace, VecZnxDftCopy, VecZnxDftToVecZnxBigTmpA, VecZnxNormalizeTmpBytes,
-    VmpPMat, ZnxInfos,
+use backend::hal::{
+    api::{
+        ScratchAvailable, ScratchTakeVecZnxBig, ScratchTakeVecZnxDft, VecZnxAllocBytes, VecZnxBigAllocBytes, VecZnxDftAddInplace,
+        VecZnxDftCopy, VecZnxDftToVecZnxBigTmpA, VecZnxNormalizeTmpBytes, ZnxInfos,
+    },
+    layouts::{Backend, Module, Scratch, VecZnxDft, VmpPMat},
 };
 
 use crate::{GGSWCiphertext, GLWECiphertext, GLWEKeyswitchFamily, GLWESwitchingKeyExec, GLWETensorKeyExec, Infos};
@@ -36,7 +38,7 @@ impl GGSWCiphertext<Vec<u8>> {
             tsk_size,
         );
         let tmp_idft: usize = module.vec_znx_big_alloc_bytes(1, tsk_size);
-        let norm: usize = module.vec_znx_normalize_tmp_bytes();
+        let norm: usize = module.vec_znx_normalize_tmp_bytes(module.n());
         tmp_dft_i + ((tmp_a + vmp) | (tmp_idft + norm))
     }
 

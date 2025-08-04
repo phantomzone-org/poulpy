@@ -1,6 +1,8 @@
-use backend::{
-    Backend, MatZnxAlloc, Module, Scratch, ScratchAvailable, ScratchTakeScalarZnx, ScratchTakeVecZnxDft,
-    VecZnxAutomorphismInplace, ZnxView, ZnxViewMut, ZnxZero,
+use backend::hal::{
+    api::{
+        ScratchAvailable, ScratchTakeScalarZnx, ScratchTakeVecZnxDft, VecZnxAutomorphismInplace, ZnxView, ZnxViewMut, ZnxZero,
+    },
+    layouts::{Backend, Module, Scratch},
 };
 use sampling::source::Source;
 
@@ -61,10 +63,7 @@ impl<D: AsRef<[u8]> + AsMut<[u8]>, B: Backend> GLWEToLWESwitchingKeyExec<D, B> {
 }
 
 impl GLWEToLWESwitchingKey<Vec<u8>> {
-    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize, rank_in: usize) -> Self
-    where
-        Module<B>: MatZnxAlloc,
-    {
+    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize, rank_in: usize) -> Self {
         Self(GLWESwitchingKey::alloc(
             module, basek, k, rows, 1, rank_in, 1,
         ))
@@ -169,10 +168,7 @@ impl<D: AsRef<[u8]> + AsMut<[u8]>, B: Backend> LWEToGLWESwitchingKeyExec<D, B> {
 pub struct LWEToGLWESwitchingKey<D>(GLWESwitchingKey<D>);
 
 impl LWEToGLWESwitchingKey<Vec<u8>> {
-    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize, rank_out: usize) -> Self
-    where
-        Module<B>: MatZnxAlloc,
-    {
+    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize, rank_out: usize) -> Self {
         Self(GLWESwitchingKey::alloc(
             module, basek, k, rows, 1, 1, rank_out,
         ))
@@ -263,10 +259,7 @@ impl<D: AsRef<[u8]> + AsMut<[u8]>, B: Backend> LWESwitchingKeyExec<D, B> {
 pub struct LWESwitchingKey<D>(GLWESwitchingKey<D>);
 
 impl LWESwitchingKey<Vec<u8>> {
-    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize) -> Self
-    where
-        Module<B>: MatZnxAlloc,
-    {
+    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize) -> Self {
         Self(GLWESwitchingKey::alloc(module, basek, k, rows, 1, 1, 1))
     }
 

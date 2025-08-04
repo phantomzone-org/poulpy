@@ -1,8 +1,15 @@
-use backend::{FFT64, Module, ModuleNew, ScalarZnx, ScalarZnxAlloc, ScratchOwned, ScratchOwnedAlloc, ScratchOwnedBorrow};
 use core::{GGSWCiphertext, GGSWCiphertextExec, GLWECiphertext, GLWESecret, GLWESecretExec, Infos};
+use std::hint::black_box;
+
+use backend::{
+    hal::{
+        api::{ModuleNew, ScalarZnxAlloc, ScratchOwnedAlloc, ScratchOwnedBorrow},
+        layouts::{Module, ScalarZnx, ScratchOwned},
+    },
+    implementation::cpu_avx::FFT64,
+};
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use sampling::source::Source;
-use std::hint::black_box;
 
 fn bench_external_product_glwe_fft64(c: &mut Criterion) {
     let mut group = c.benchmark_group("external_product_glwe_fft64");

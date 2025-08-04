@@ -1,6 +1,10 @@
 use backend::{
-    Backend, FFT64, MatZnxAlloc, Module, ModuleNew, ScratchOwned, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxBigAllocBytesImpl,
-    VecZnxDftAllocBytesImpl, VecZnxEncodeCoeffsi64, ZnxView,
+    hal::{
+        api::{MatZnxAlloc, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxEncodeCoeffsi64, ZnxView},
+        layouts::{Backend, Module, ScratchOwned},
+        oep::{VecZnxBigAllocBytesImpl, VecZnxDftAllocBytesImpl},
+    },
+    implementation::cpu_avx::FFT64,
 };
 use sampling::source::Source;
 

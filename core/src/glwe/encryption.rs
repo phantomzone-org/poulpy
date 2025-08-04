@@ -1,9 +1,12 @@
-use backend::{
-    Backend, Module, ScalarZnxAllocBytes, Scratch, ScratchTakeScalarZnx, ScratchTakeSvpPPol, ScratchTakeVecZnx,
-    ScratchTakeVecZnxDft, SvpApply, SvpApplyInplace, SvpPPolAllocBytes, SvpPrepare, VecZnxAddInplace, VecZnxAddNormal, VecZnxBig,
-    VecZnxBigAddNormal, VecZnxBigAddSmallInplace, VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxDftAllocBytes,
-    VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume, VecZnxFillUniform, VecZnxNormalize, VecZnxNormalizeInplace,
-    VecZnxNormalizeTmpBytes, VecZnxSubABInplace, ZnxZero,
+use backend::hal::{
+    api::{
+        ScalarZnxAllocBytes, ScratchTakeScalarZnx, ScratchTakeSvpPPol, ScratchTakeVecZnx, ScratchTakeVecZnxDft, SvpApply,
+        SvpApplyInplace, SvpPPolAllocBytes, SvpPrepare, VecZnxAddInplace, VecZnxAddNormal, VecZnxBigAddNormal,
+        VecZnxBigAddSmallInplace, VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftFromVecZnx,
+        VecZnxDftToVecZnxBigConsume, VecZnxFillUniform, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes,
+        VecZnxSubABInplace, ZnxZero,
+    },
+    layouts::{Backend, Module, Scratch, VecZnxBig},
 };
 use sampling::source::Source;
 
@@ -28,7 +31,7 @@ impl GLWECiphertext<Vec<u8>> {
         Module<B>: GLWEEncryptSkFamily<B>,
     {
         let size: usize = k.div_ceil(basek);
-        module.vec_znx_normalize_tmp_bytes() + module.vec_znx_dft_alloc_bytes(1, size) + module.vec_znx_dft_alloc_bytes(1, size)
+        module.vec_znx_normalize_tmp_bytes(module.n()) + module.vec_znx_dft_alloc_bytes(1, size) + module.vec_znx_dft_alloc_bytes(1, size)
     }
     pub fn encrypt_pk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize) -> usize
     where
@@ -37,7 +40,7 @@ impl GLWECiphertext<Vec<u8>> {
         let size: usize = k.div_ceil(basek);
         ((module.vec_znx_dft_alloc_bytes(1, size) + module.vec_znx_big_alloc_bytes(1, size)) | module.scalar_znx_alloc_bytes(1))
             + module.svp_ppol_alloc_bytes(1)
-            + module.vec_znx_normalize_tmp_bytes()
+            + module.vec_znx_normalize_tmp_bytes(module.n())
     }
 }
 
@@ -155,7 +158,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
     {
         #[cfg(debug_assertions)]
         {
-            use backend::ScratchAvailable;
+            use backend::hal::api::ScratchAvailable;
 
             assert_eq!(self.rank(), sk.rank());
             assert_eq!(sk.n(), module.n());

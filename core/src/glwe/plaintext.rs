@@ -1,4 +1,7 @@
-use backend::{Backend, Module, VecZnx, VecZnxAlloc, VecZnxAllocBytes, VecZnxToMut, VecZnxToRef};
+use backend::hal::{
+    api::{VecZnxAlloc, VecZnxAllocBytes},
+    layouts::{Backend, Module, VecZnx, VecZnxToMut, VecZnxToRef},
+};
 
 use crate::{GLWECiphertext, GLWECiphertextToMut, GLWECiphertextToRef, GLWEOps, Infos, SetMetaData};
 

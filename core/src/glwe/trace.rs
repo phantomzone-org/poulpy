@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 
-use backend::{Backend, Module, Scratch, ScratchTakeVecZnxDft};
+use backend::hal::{
+    api::ScratchTakeVecZnxDft,
+    layouts::{Backend, Module, Scratch},
+};
 
 use crate::{
     AutomorphismExecFamily, AutomorphismKeyExec, GLWECiphertext, GLWECiphertextToMut, GLWECiphertextToRef, GLWEOps, Infos,

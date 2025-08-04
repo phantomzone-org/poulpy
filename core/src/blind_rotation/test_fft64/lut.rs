@@ -1,6 +1,12 @@
 use std::vec;
 
-use backend::{FFT64, Module, ModuleNew, ZnxView};
+use backend::{
+    hal::{
+        api::{ModuleNew, ZnxView},
+        layouts::Module,
+    },
+    implementation::cpu_avx::FFT64,
+};
 
 use crate::blind_rotation::lut::{DivRound, LookUpTable};
 

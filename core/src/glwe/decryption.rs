@@ -1,7 +1,10 @@
-use backend::{
-    Backend, DataViewMut, Module, Scratch, ScratchTakeVecZnxBig, ScratchTakeVecZnxDft, SvpApplyInplace, VecZnxBigAddInplace,
-    VecZnxBigAddSmallInplace, VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftFromVecZnx,
-    VecZnxDftToVecZnxBigConsume, VecZnxNormalizeTmpBytes,
+use backend::hal::{
+    api::{
+        DataViewMut, ScratchTakeVecZnxBig, ScratchTakeVecZnxDft, SvpApplyInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace,
+        VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume,
+        VecZnxNormalizeTmpBytes,
+    },
+    layouts::{Backend, Module, Scratch},
 };
 
 use crate::{GLWECiphertext, GLWEPlaintext, GLWESecretExec, Infos};
@@ -21,7 +24,7 @@ impl GLWECiphertext<Vec<u8>> {
         Module<B>: GLWEDecryptFamily<B>,
     {
         let size: usize = k.div_ceil(basek);
-        (module.vec_znx_normalize_tmp_bytes() | module.vec_znx_dft_alloc_bytes(1, size)) + module.vec_znx_dft_alloc_bytes(1, size)
+        (module.vec_znx_normalize_tmp_bytes(module.n()) | module.vec_znx_dft_alloc_bytes(1, size)) + module.vec_znx_dft_alloc_bytes(1, size)
     }
 }
 

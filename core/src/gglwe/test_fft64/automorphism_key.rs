@@ -1,6 +1,9 @@
 use backend::{
-    FFT64, Module, ModuleNew, ScalarZnxAutomorphism, ScratchOwned, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxStd,
-    VecZnxSubScalarInplace,
+    hal::{
+        api::{ModuleNew, ScalarZnxAutomorphism, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxStd, VecZnxSubScalarInplace},
+        layouts::{Module, ScratchOwned},
+    },
+    implementation::cpu_avx::FFT64,
 };
 use sampling::source::Source;
 

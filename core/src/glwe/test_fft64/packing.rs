@@ -1,14 +1,19 @@
+use std::collections::HashMap;
+
+use backend::{
+    hal::{
+        api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxEncodeVeci64, VecZnxStd},
+        layouts::{Backend, Module, ScratchOwned},
+        oep::{ScratchTakeSvpPPolImpl, ScratchTakeVecZnxBigImpl, ScratchTakeVecZnxDftImpl},
+    },
+    implementation::cpu_avx::FFT64,
+};
+use sampling::source::Source;
+
 use crate::{
     AutomorphismExecFamily, AutomorphismKey, AutomorphismKeyExec, GGLWEExecLayoutFamily, GLWECiphertext, GLWEDecryptFamily,
     GLWEEncryptSkFamily, GLWEOps, GLWEPacker, GLWEPlaintext, GLWESecret, GLWESecretExec, GLWESecretFamily,
 };
-use std::collections::HashMap;
-
-use backend::{
-    Backend, FFT64, MatZnxAlloc, Module, ModuleNew, ScratchOwned, ScratchOwnedAlloc, ScratchOwnedBorrow, ScratchTakeSvpPPolImpl,
-    ScratchTakeVecZnxBigImpl, ScratchTakeVecZnxDftImpl, VecZnxEncodeVeci64, VecZnxStd,
-};
-use sampling::source::Source;
 
 #[test]
 fn trace() {
@@ -23,8 +28,7 @@ where
         + GLWEEncryptSkFamily<B>
         + GLWEDecryptFamily<B>
         + AutomorphismExecFamily<B>
-        + GGLWEExecLayoutFamily<B>
-        + MatZnxAlloc,
+        + GGLWEExecLayoutFamily<B>,
     B: ScratchTakeVecZnxDftImpl<B> + ScratchTakeVecZnxBigImpl<B> + ScratchTakeSvpPPolImpl<B>,
 {
     let mut source_xs: Source = Source::new([0u8; 32]);

@@ -1,6 +1,9 @@
-use backend::{
-    Backend, Module, Scratch, ScratchTakeVecZnxDft, VecZnxAutomorphismInplace, VecZnxBig, VecZnxBigAddSmallInplace,
-    VecZnxBigAutomorphismInplace, VecZnxBigNormalize, VecZnxBigSubSmallAInplace, VecZnxBigSubSmallBInplace,
+use backend::hal::{
+    api::{
+        ScratchTakeVecZnxDft, VecZnxAutomorphismInplace, VecZnxBigAutomorphismInplace, VecZnxBigSubSmallAInplace,
+        VecZnxBigSubSmallBInplace,
+    },
+    layouts::{Backend, Module, Scratch, VecZnxBig},
 };
 
 use crate::{AutomorphismKeyExec, GLWECiphertext, GLWEKeyswitchFamily, Infos, glwe::keyswitch::keyswitch};

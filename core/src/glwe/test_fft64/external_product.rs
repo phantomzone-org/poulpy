@@ -1,6 +1,12 @@
 use backend::{
-    Backend, FFT64, MatZnxAlloc, Module, ModuleNew, ScalarZnx, ScalarZnxAlloc, ScratchOwned, ScratchOwnedAlloc,
-    ScratchOwnedBorrow, ScratchTakeVecZnxBigImpl, ScratchTakeVecZnxDftImpl, VecZnxFillUniform, VecZnxRotateInplace, ZnxViewMut,
+    hal::{
+        api::{
+            ModuleNew, ScalarZnxAlloc, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxFillUniform, VecZnxRotateInplace, ZnxViewMut,
+        },
+        layouts::{Backend, Module, ScalarZnx, ScratchOwned},
+        oep::{ScratchTakeVecZnxBigImpl, ScratchTakeVecZnxDftImpl},
+    },
+    implementation::cpu_avx::FFT64,
 };
 use sampling::source::Source;
 
@@ -52,12 +58,8 @@ fn test_external_product<B: Backend>(
     rank: usize,
     sigma: f64,
 ) where
-    Module<B>: GLWEEncryptSkFamily<B>
-        + GLWEDecryptFamily<B>
-        + GLWESecretFamily<B>
-        + GLWEExternalProductFamily<B>
-        + GGSWLayoutFamily<B>
-        + MatZnxAlloc,
+    Module<B>:
+        GLWEEncryptSkFamily<B> + GLWEDecryptFamily<B> + GLWESecretFamily<B> + GLWEExternalProductFamily<B> + GGSWLayoutFamily<B>,
     B: ScratchTakeVecZnxDftImpl<B> + ScratchTakeVecZnxBigImpl<B>,
 {
     let rows: usize = k_in.div_ceil(basek * digits);
@@ -158,12 +160,8 @@ fn test_external_product_inplace<B: Backend>(
     rank: usize,
     sigma: f64,
 ) where
-    Module<B>: GLWEEncryptSkFamily<B>
-        + GLWEDecryptFamily<B>
-        + GLWESecretFamily<B>
-        + GLWEExternalProductFamily<B>
-        + GGSWLayoutFamily<B>
-        + MatZnxAlloc,
+    Module<B>:
+        GLWEEncryptSkFamily<B> + GLWEDecryptFamily<B> + GLWESecretFamily<B> + GLWEExternalProductFamily<B> + GGSWLayoutFamily<B>,
     B: ScratchTakeVecZnxDftImpl<B> + ScratchTakeVecZnxBigImpl<B>,
 {
     let rows: usize = k_ct.div_ceil(basek * digits);

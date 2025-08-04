@@ -1,9 +1,11 @@
-use backend::{
-    Backend, Module, Scratch, ScratchTakeVecZnxBig, ScratchTakeVecZnxDft, ScratchTakeVecZnxDftSlice, ScratchTakeVecZnxSlice,
-    SvpApply, SvpPPol, SvpPPolAllocBytes, VecZnxAllocBytes, VecZnxBigAddSmallInplace, VecZnxBigAllocBytes,
-    VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftAdd, VecZnxDftAddInplace, VecZnxDftAllocBytes, VecZnxDftFromVecZnx,
-    VecZnxDftSubABInplace, VecZnxDftToVecZnxBig, VecZnxDftToVecZnxBigTmpBytes, VecZnxDftZero, VecZnxRotate, VmpApplyTmpBytes,
-    ZnxView, ZnxZero,
+use backend::hal::{
+    api::{
+        ScratchTakeVecZnxBig, ScratchTakeVecZnxDft, ScratchTakeVecZnxDftSlice, ScratchTakeVecZnxSlice, SvpApply,
+        SvpPPolAllocBytes, VecZnxAllocBytes, VecZnxBigAddSmallInplace, VecZnxBigAllocBytes, VecZnxBigNormalizeTmpBytes,
+        VecZnxCopy, VecZnxDftAdd, VecZnxDftAddInplace, VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftSubABInplace,
+        VecZnxDftToVecZnxBig, VecZnxDftToVecZnxBigTmpBytes, VecZnxDftZero, VecZnxRotate, VmpApplyTmpBytes, ZnxView, ZnxZero,
+    },
+    layouts::{Backend, Module, Scratch, SvpPPol},
 };
 use itertools::izip;
 
@@ -66,7 +68,7 @@ where
             + acc_dft_add
             + vmp_res
             + vmp_xai
-            + (vmp | (acc_big + (module.vec_znx_big_normalize_tmp_bytes() | module.vec_znx_dft_to_vec_znx_big_tmp_bytes())));
+            + (vmp | (acc_big + (module.vec_znx_big_normalize_tmp_bytes(module.n()) | module.vec_znx_dft_to_vec_znx_big_tmp_bytes())));
     } else {
         2 * GLWECiphertext::bytes_of(module, basek, k_res, rank)
             + GLWECiphertext::external_product_scratch_space(module, basek, k_res, k_res, k_brk, 1, rank)

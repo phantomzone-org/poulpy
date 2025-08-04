@@ -1,4 +1,7 @@
-use backend::{ScalarZnx, ZnxInfos, ZnxZero};
+use backend::hal::{
+    api::{ZnxInfos, ZnxZero},
+    layouts::ScalarZnx,
+};
 use sampling::source::Source;
 
 use crate::Distribution;

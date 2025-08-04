@@ -1,7 +1,10 @@
 use backend::{
-    Backend, FFT64, MatZnxAlloc, Module, ModuleNew, ScratchOwned, ScratchOwnedAlloc, ScratchOwnedBorrow,
-    ScratchTakeScalarZnxImpl, ScratchTakeSvpPPolImpl, ScratchTakeVecZnxBigImpl, ScratchTakeVecZnxDftImpl, VecZnxEncodeCoeffsi64,
-    ZnxView,
+    hal::{
+        api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxEncodeCoeffsi64, ZnxView},
+        layouts::{Backend, Module, ScratchOwned},
+        oep::{ScratchTakeScalarZnxImpl, ScratchTakeSvpPPolImpl, ScratchTakeVecZnxBigImpl, ScratchTakeVecZnxDftImpl},
+    },
+    implementation::cpu_avx::FFT64,
 };
 use sampling::source::Source;
 
@@ -26,7 +29,7 @@ fn lwe_to_glwe() {
 
 pub(crate) fn test_lwe_to_glwe<B: Backend>(module: &Module<B>)
 where
-    Module<B>: GGLWEEncryptSkFamily<B> + GLWEDecryptFamily<B> + GGLWEExecLayoutFamily<B> + GLWEKeyswitchFamily<B> + MatZnxAlloc,
+    Module<B>: GGLWEEncryptSkFamily<B> + GLWEDecryptFamily<B> + GGLWEExecLayoutFamily<B> + GLWEKeyswitchFamily<B>,
     B: ScratchTakeScalarZnxImpl<B> + ScratchTakeVecZnxDftImpl<B> + ScratchTakeVecZnxBigImpl<B> + ScratchTakeSvpPPolImpl<B>,
 {
     let basek: usize = 17;
@@ -108,7 +111,7 @@ fn glwe_to_lwe() {
 
 fn test_glwe_to_lwe<B: Backend>(module: &Module<B>)
 where
-    Module<B>: GGLWEEncryptSkFamily<B> + GLWEKeyswitchFamily<B> + GLWEDecryptFamily<B> + GGLWEExecLayoutFamily<B> + MatZnxAlloc,
+    Module<B>: GGLWEEncryptSkFamily<B> + GLWEKeyswitchFamily<B> + GLWEDecryptFamily<B> + GGLWEExecLayoutFamily<B>,
     B: ScratchTakeScalarZnxImpl<B> + ScratchTakeVecZnxDftImpl<B> + ScratchTakeVecZnxBigImpl<B> + ScratchTakeSvpPPolImpl<B>,
 {
     let basek: usize = 17;
@@ -176,7 +179,7 @@ where
     lwe_ct.from_glwe(module, &glwe_ct, &ksk_exec, scratch.borrow());
 
     let mut lwe_pt: LWEPlaintext<Vec<u8>> = LWEPlaintext::alloc(basek, k_lwe_ct);
-    lwe_ct.decrypt(&mut lwe_pt, &sk_lwe);
+    lwe_ct.decrypt(module, &mut lwe_pt, &sk_lwe);
 
     assert_eq!(glwe_pt.data.at(0, 0)[0], lwe_pt.data.at(0, 0)[0]);
 }
@@ -190,7 +193,7 @@ fn keyswitch() {
 
 fn test_keyswitch<B: Backend>(module: &Module<B>)
 where
-    Module<B>: GGLWEEncryptSkFamily<B> + GLWEKeyswitchFamily<B> + GLWEDecryptFamily<B> + GGLWEExecLayoutFamily<B> + MatZnxAlloc,
+    Module<B>: GGLWEEncryptSkFamily<B> + GLWEKeyswitchFamily<B> + GLWEDecryptFamily<B> + GGLWEExecLayoutFamily<B>,
     B: ScratchTakeScalarZnxImpl<B> + ScratchTakeVecZnxDftImpl<B> + ScratchTakeVecZnxBigImpl<B> + ScratchTakeSvpPPolImpl<B>,
 {
     let basek: usize = 17;
@@ -252,7 +255,7 @@ where
     lwe_ct_out.keyswitch(module, &lwe_ct_in, &ksk_exec, scratch.borrow());
 
     let mut lwe_pt_out: LWEPlaintext<Vec<u8>> = LWEPlaintext::alloc(basek, k_lwe_ct);
-    lwe_ct_out.decrypt(&mut lwe_pt_out, &sk_lwe_out);
+    lwe_ct_out.decrypt(module, &mut lwe_pt_out, &sk_lwe_out);
 
     assert_eq!(lwe_pt_in.data.at(0, 0)[0], lwe_pt_out.data.at(0, 0)[0]);
 }

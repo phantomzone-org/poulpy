@@ -1,6 +1,6 @@
-use backend::{
-    Backend, Module, Scratch, ScratchAvailable, ScratchTakeVecZnxBig, ScratchTakeVecZnxDft, VecZnxDftAllocBytes,
-    VecZnxDftFromVecZnx,
+use backend::hal::{
+    api::{ScratchAvailable, ScratchTakeVecZnxBig, ScratchTakeVecZnxDft},
+    layouts::{Backend, Module, Scratch},
 };
 
 use crate::{

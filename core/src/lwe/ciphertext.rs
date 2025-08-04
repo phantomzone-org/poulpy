@@ -1,4 +1,7 @@
-use backend::{VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos};
+use backend::hal::{
+    api::ZnxInfos,
+    layouts::{VecZnx, VecZnxToMut, VecZnxToRef},
+};
 
 use crate::{Infos, SetMetaData};
 

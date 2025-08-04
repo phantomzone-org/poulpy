@@ -1,4 +1,9 @@
-use backend::{Backend, Module, VecZnx, VecZnxAddNormal, VecZnxFillUniform, ZnxView, ZnxViewMut, alloc_aligned};
+use backend::hal::{
+    api::{
+        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddNormal, VecZnxFillUniform, VecZnxNormalizeInplace, ZnxView, ZnxViewMut,
+    },
+    layouts::{Backend, Module, ScratchOwned, VecZnx},
+};
 use sampling::source::Source;
 
 use crate::{Infos, LWECiphertext, LWESecret, SIX_SIGMA, lwe::LWEPlaintext};
@@ -60,9 +65,12 @@ where
             sigma * SIX_SIGMA,
         );
 
-        let mut tmp_bytes: Vec<u8> = alloc_aligned(size_of::<i64>());
-
-        tmp_znx.normalize(basek, 0, &mut tmp_bytes);
+        module.vec_znx_normalize_inplace(
+            basek,
+            &mut tmp_znx,
+            0,
+            ScratchOwned::alloc(size_of::<i64>()).borrow(),
+        );
 
         (0..self.size()).for_each(|i| {
             self.data.at_mut(0, i)[0] = tmp_znx.at(0, i)[0];

@@ -1,4 +1,7 @@
-use backend::{Backend, Module, Scratch, ScratchAvailable, ScratchTakeVecZnxDft, ZnxZero};
+use backend::hal::{
+    api::{ScratchAvailable, ScratchTakeVecZnxDft, ZnxZero},
+    layouts::{Backend, Module, Scratch},
+};
 
 use crate::{GGSWCiphertext, GGSWCiphertextExec, GLWECiphertext, GLWEExternalProductFamily, Infos};
 

@@ -1,4 +1,4 @@
-use backend::ZnxInfos;
+use backend::hal::api::ZnxInfos;
 
 pub trait Infos {
     type Inner: ZnxInfos;

@@ -1,6 +1,6 @@
-use backend::{
-    Backend, Module, ScalarZnx, ScalarZnxAlloc, ScalarZnxAllocBytes, SvpPPol, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare,
-    ZnxInfos, ZnxZero,
+use backend::hal::{
+    api::{ScalarZnxAlloc, ScalarZnxAllocBytes, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare, ZnxInfos, ZnxZero},
+    layouts::{Backend, Module, ScalarZnx, SvpPPol},
 };
 use sampling::source::Source;
 

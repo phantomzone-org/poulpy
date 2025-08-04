@@ -1,9 +1,12 @@
-use backend::{Backend, Module, VecZnx, VecZnxAlloc, VecZnxAllocBytes, VecZnxToMut, VecZnxToRef};
+use backend::hal::{
+    api::{VecZnxAlloc, VecZnxAllocBytes},
+    layouts::{Backend, Module, VecZnx, VecZnxToMut, VecZnxToRef},
+};
 
 use crate::{GLWEOps, Infos, SetMetaData};
 
-pub struct GLWECiphertext<C> {
-    pub data: VecZnx<C>,
+pub struct GLWECiphertext<D> {
+    pub data: VecZnx<D>,
     pub basek: usize,
     pub k: usize,
 }
@@ -22,8 +25,8 @@ impl GLWECiphertext<Vec<u8>> {
     }
 }
 
-impl<T> Infos for GLWECiphertext<T> {
-    type Inner = VecZnx<T>;
+impl<D> Infos for GLWECiphertext<D> {
+    type Inner = VecZnx<D>;
 
     fn inner(&self) -> &Self::Inner {
         &self.data
@@ -38,7 +41,7 @@ impl<T> Infos for GLWECiphertext<T> {
     }
 }
 
-impl<T> GLWECiphertext<T> {
+impl<D> GLWECiphertext<D> {
     pub fn rank(&self) -> usize {
         self.cols() - 1
     }

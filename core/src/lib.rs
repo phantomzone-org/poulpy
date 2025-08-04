@@ -8,15 +8,11 @@ mod glwe;
 mod lwe;
 mod noise;
 
-use backend::Backend;
-use backend::Module;
-use backend::ScratchTakeMatZnx;
-use backend::ScratchTakeScalarZnx;
-use backend::ScratchTakeSvpPPol;
-use backend::ScratchTakeSvpPPolImpl;
-use backend::ScratchTakeVecZnx;
-use backend::ScratchTakeVecZnxDft;
-use backend::ScratchTakeVecZnxDftImpl;
+use backend::hal::{
+    api::{ScratchTakeMatZnx, ScratchTakeScalarZnx, ScratchTakeSvpPPol, ScratchTakeVecZnx, ScratchTakeVecZnxDft},
+    layouts::{Backend, Module, Scratch},
+    oep::{ScratchTakeSvpPPolImpl, ScratchTakeVecZnxDftImpl},
+};
 pub use blind_rotation::{
     BlindRotationKeyCGGI, BlindRotationKeyCGGIExec, BlindRotationKeyCGGIExecLayoutFamily, CCGIBlindRotationFamily, LookUpTable,
     cggi_blind_rotate, cggi_blind_rotate_scratch_space,
@@ -35,12 +31,8 @@ pub use glwe::{
     GLWEExternalProductFamily, GLWEKeyswitchFamily, GLWEOps, GLWEPacker, GLWEPlaintext, GLWEPublicKey, GLWEPublicKeyFamily,
     GLWESecret, GLWESecretExec, GLWESecretFamily,
 };
-pub use lwe::{LWECiphertext, LWESecret};
-
-pub use backend;
-pub use backend::Scratch;
-pub use backend::ScratchOwned;
 pub(crate) use glwe::{GLWECiphertextToMut, GLWECiphertextToRef};
+pub use lwe::{LWECiphertext, LWESecret};
 
 use crate::dist::Distribution;
 

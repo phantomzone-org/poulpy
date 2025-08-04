@@ -1,7 +1,10 @@
-use backend::{
-    Backend, DataViewMut, Module, Scratch, ScratchAvailable, ScratchTakeVecZnxDft, VecZnx, VecZnxBig, VecZnxBigAddSmallInplace,
-    VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxDft, VecZnxDftAllocBytes, VecZnxDftFromVecZnx,
-    VecZnxDftToVecZnxBigConsume, VmpApply, VmpApplyAdd, VmpApplyTmpBytes, VmpPMat, ZnxInfos,
+use backend::hal::{
+    api::{
+        DataViewMut, ScratchAvailable, ScratchTakeVecZnxDft, VecZnxBigAddSmallInplace, VecZnxBigNormalize,
+        VecZnxBigNormalizeTmpBytes, VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume, VmpApply, VmpApplyAdd,
+        VmpApplyTmpBytes, ZnxInfos,
+    },
+    layouts::{Backend, Module, Scratch, VecZnx, VecZnxBig, VecZnxDft, VmpPMat},
 };
 
 use crate::{GLWECiphertext, GLWESwitchingKeyExec, Infos};
@@ -38,7 +41,7 @@ impl GLWECiphertext<Vec<u8>> {
         let ai_dft: usize = module.vec_znx_dft_alloc_bytes(rank_in, in_size);
         let vmp: usize = module.vmp_apply_tmp_bytes(out_size, in_size, in_size, rank_in, rank_out + 1, ksk_size)
             + module.vec_znx_dft_alloc_bytes(rank_in, in_size);
-        let normalize: usize = module.vec_znx_big_normalize_tmp_bytes();
+        let normalize: usize = module.vec_znx_big_normalize_tmp_bytes(module.n());
         return res_dft + ((ai_dft + vmp) | normalize);
     }
 

@@ -1,7 +1,11 @@
-use crate::{AutomorphismExecFamily, AutomorphismKeyExec, GLWECiphertext, GLWEOps, Infos, TakeGLWECt};
 use std::collections::HashMap;
 
-use backend::{Backend, Module, Scratch, ScratchTakeVecZnxDft};
+use backend::hal::{
+    api::ScratchTakeVecZnxDft,
+    layouts::{Backend, Module, Scratch},
+};
+
+use crate::{AutomorphismExecFamily, AutomorphismKeyExec, GLWECiphertext, GLWEOps, Infos, TakeGLWECt};
 
 /// [StreamPacker] enables only the fly GLWE packing
 /// with constant memory of Log(N) ciphertexts.

@@ -1,4 +1,7 @@
-use backend::{FFT64, Module, ModuleNew};
+use backend::{
+    hal::{api::ModuleNew, layouts::Module},
+    implementation::cpu_avx::FFT64,
+};
 
 use crate::gglwe::test_fft64::tensor_key_generic::test_encrypt_sk;
 

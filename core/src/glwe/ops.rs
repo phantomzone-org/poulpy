@@ -1,7 +1,9 @@
-use backend::{
-    Backend, Module, Scratch, VecZnx, VecZnxAdd, VecZnxAddInplace, VecZnxCopy, VecZnxNegateInplace, VecZnxNormalize,
-    VecZnxNormalizeInplace, VecZnxRotate, VecZnxRotateInplace, VecZnxRshInplace, VecZnxSub, VecZnxSubABInplace,
-    VecZnxSubBAInplace, ZnxZero,
+use backend::hal::{
+    api::{
+        VecZnxAdd, VecZnxAddInplace, VecZnxCopy, VecZnxNegateInplace, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxRotate,
+        VecZnxRotateInplace, VecZnxRshInplace, VecZnxSub, VecZnxSubABInplace, VecZnxSubBAInplace, ZnxZero,
+    },
+    layouts::{Backend, Module, Scratch, VecZnx},
 };
 
 use crate::{GLWECiphertext, GLWECiphertextToMut, GLWECiphertextToRef, Infos, SetMetaData};

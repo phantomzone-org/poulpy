@@ -1,6 +1,7 @@
-use backend::{
-    Backend, Module, ScalarZnx, ScratchOwned, ScratchOwnedAlloc, ScratchOwnedBorrow, ScratchTakeVecZnxBigImpl,
-    ScratchTakeVecZnxDftImpl, VecZnxStd, VecZnxSubScalarInplace, ZnxZero,
+use backend::hal::{
+    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxStd, VecZnxSubScalarInplace, ZnxZero},
+    layouts::{Backend, Module, ScalarZnx, ScratchOwned},
+    oep::{ScratchTakeVecZnxBigImpl, ScratchTakeVecZnxDftImpl},
 };
 
 use crate::{GGLWECiphertext, GLWECiphertext, GLWEDecryptFamily, GLWEPlaintext, GLWESecretExec, Infos};

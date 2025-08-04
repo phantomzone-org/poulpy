@@ -1,4 +1,4 @@
-use backend::{VecZnx, VecZnxToMut, VecZnxToRef};
+use backend::hal::layouts::{VecZnx, VecZnxToMut, VecZnxToRef};
 
 use crate::{Infos, SetMetaData};
 
