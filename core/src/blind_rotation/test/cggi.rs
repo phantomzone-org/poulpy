@@ -39,10 +39,7 @@ fn block_binary_extended() {
 
 fn blind_rotatio_test<B: Backend>(module: &Module<B>, n_lwe: usize, block_size: usize, extension_factor: usize)
 where
-    Module<B>: CCGIBlindRotationFamily<B>
-        + GLWESecretFamily<B>
-        + GLWEDecryptFamily<B>
-        + BlindRotationKeyCGGIExecLayoutFamily<B>,
+    Module<B>: CCGIBlindRotationFamily<B> + GLWESecretFamily<B> + GLWEDecryptFamily<B> + BlindRotationKeyCGGIExecLayoutFamily<B>,
     B: VecZnxDftAllocBytesImpl<B> + VecZnxBigAllocBytesImpl<B>,
 {
     let basek: usize = 19;

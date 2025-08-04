@@ -1,24 +1,51 @@
 use backend::hal::{
-    api::{ScalarZnxAlloc, ScalarZnxAutomorphismInplace, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxRotateInplace, ZnxViewMut},
+    api::{
+        MatZnxAlloc, ScalarZnxAlloc, ScalarZnxAllocBytes, ScalarZnxAutomorphism, ScalarZnxAutomorphismInplace, ScratchOwnedAlloc,
+        ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxAlloc, VecZnxAllocBytes, VecZnxAutomorphismInplace,
+        VecZnxRotateInplace, VecZnxStd, VecZnxSubABInplace, VecZnxSwithcDegree, ZnxViewMut,
+    },
     layouts::{Backend, Module, ScalarZnx, ScalarZnxToMut, ScratchOwned},
     oep::{
-        TakeSvpPPolImpl, TakeVecZnxBigImpl, TakeVecZnxDftImpl, VecZnxBigAllocBytesImpl,
-        VecZnxDftAllocBytesImpl,
+        ScratchAvailableImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeScalarZnxImpl, TakeSvpPPolImpl,
+        TakeVecZnxBigImpl, TakeVecZnxDftImpl, TakeVecZnxImpl, VecZnxBigAllocBytesImpl, VecZnxDftAllocBytesImpl,
     },
 };
 use sampling::source::Source;
 
 use crate::{
-    AutomorphismKey, AutomorphismKeyExec, GGLWEExecLayoutFamily, GGSWAssertNoiseFamily, GGSWCiphertext,
-    GGSWCiphertextExec, GGSWEncryptSkFamily, GGSWKeySwitchFamily, GLWESecret, GLWESecretExec, GLWESecretFamily, GLWESwitchingKey,
+    AutomorphismKey, AutomorphismKeyExec, GGLWEExecLayoutFamily, GGSWAssertNoiseFamily, GGSWCiphertext, GGSWCiphertextExec,
+    GGSWEncryptSkFamily, GGSWKeySwitchFamily, GLWESecret, GLWESecretExec, GLWESecretFamily, GLWESwitchingKey,
     GLWESwitchingKeyEncryptSkFamily, GLWESwitchingKeyExec, GLWETensorKey, GLWETensorKeyEncryptSkFamily, GLWETensorKeyExec,
     noise::{noise_ggsw_keyswitch, noise_ggsw_product},
 };
 
+pub(crate) trait TestModuleFamily<B: Backend> = GLWESecretFamily<B>
+    + GGSWEncryptSkFamily<B>
+    + GGSWAssertNoiseFamily<B>
+    + VecZnxAlloc
+    + ScalarZnxAlloc
+    + VecZnxAllocBytes
+    + MatZnxAlloc
+    + VecZnxAddScalarInplace
+    + VecZnxSubABInplace
+    + VecZnxStd
+    + ScalarZnxAllocBytes;
+pub(crate) trait TestScratchFamily<B: Backend> = TakeVecZnxDftImpl<B>
+    + TakeVecZnxBigImpl<B>
+    + TakeSvpPPolImpl<B>
+    + ScratchOwnedAllocImpl<B>
+    + ScratchOwnedBorrowImpl<B>
+    + ScratchAvailableImpl<B>
+    + TakeScalarZnxImpl<B>
+    + TakeVecZnxImpl<B>
+    + VecZnxDftAllocBytesImpl<B>
+    + VecZnxBigAllocBytesImpl<B>
+    + TakeSvpPPolImpl<B>;
+
 pub(crate) fn test_encrypt_sk<B: Backend>(module: &Module<B>, basek: usize, k: usize, digits: usize, rank: usize, sigma: f64)
 where
-    Module<B>: GLWESecretFamily<B> + GGSWEncryptSkFamily<B> + GGSWAssertNoiseFamily<B>,
-    B: TakeVecZnxDftImpl<B> + TakeVecZnxBigImpl<B> + TakeSvpPPolImpl<B>,
+    Module<B>: TestModuleFamily<B>,
+    B: TestScratchFamily<B>,
 {
     let rows: usize = (k - digits * basek) / (digits * basek);
 
@@ -67,12 +94,14 @@ pub(crate) fn test_keyswitch<B: Backend>(
     rank: usize,
     sigma: f64,
 ) where
-    Module<B>: GGSWAssertNoiseFamily<B>
+    Module<B>: TestModuleFamily<B>
+        + GGSWAssertNoiseFamily<B>
         + GGSWKeySwitchFamily<B>
         + GLWESwitchingKeyEncryptSkFamily<B>
         + GLWETensorKeyEncryptSkFamily<B>
-        + GGLWEExecLayoutFamily<B>,
-    B: VecZnxDftAllocBytesImpl<B> + VecZnxBigAllocBytesImpl<B> + TakeSvpPPolImpl<B>,
+        + GGLWEExecLayoutFamily<B>
+        + VecZnxSwithcDegree,
+    B: TestScratchFamily<B> + VecZnxDftAllocBytesImpl<B> + VecZnxBigAllocBytesImpl<B> + TakeSvpPPolImpl<B>,
 {
     let rows: usize = k_in.div_ceil(digits * basek);
 
@@ -175,12 +204,14 @@ pub(crate) fn test_keyswitch_inplace<B: Backend>(
     rank: usize,
     sigma: f64,
 ) where
-    Module<B>: GGSWAssertNoiseFamily<B>
+    Module<B>: TestModuleFamily<B>
+        + GGSWAssertNoiseFamily<B>
         + GGSWKeySwitchFamily<B>
         + GLWESwitchingKeyEncryptSkFamily<B>
         + GLWETensorKeyEncryptSkFamily<B>
-        + GGLWEExecLayoutFamily<B>,
-    B: VecZnxDftAllocBytesImpl<B> + VecZnxBigAllocBytesImpl<B> + TakeSvpPPolImpl<B>,
+        + GGLWEExecLayoutFamily<B>
+        + VecZnxSwithcDegree,
+    B: TestScratchFamily<B>,
 {
     let rows: usize = k_ct.div_ceil(digits * basek);
 
@@ -282,12 +313,17 @@ pub(crate) fn test_automorphism<B: Backend>(
     rank: usize,
     sigma: f64,
 ) where
-    Module<B>: GGSWAssertNoiseFamily<B>
+    Module<B>: TestModuleFamily<B>
+        + GGSWAssertNoiseFamily<B>
         + GGSWKeySwitchFamily<B>
         + GLWESwitchingKeyEncryptSkFamily<B>
         + GLWETensorKeyEncryptSkFamily<B>
-        + GGLWEExecLayoutFamily<B>,
-    B: VecZnxDftAllocBytesImpl<B> + VecZnxBigAllocBytesImpl<B> + TakeSvpPPolImpl<B>,
+        + GGLWEExecLayoutFamily<B>
+        + VecZnxSwithcDegree
+        + VecZnxAutomorphismInplace
+        + ScalarZnxAutomorphismInplace
+        + ScalarZnxAutomorphism,
+    B: TestScratchFamily<B>,
 {
     let rows: usize = k_in.div_ceil(basek * digits);
     let rows_in: usize = k_in.div_euclid(basek * digits);
@@ -389,12 +425,17 @@ pub(crate) fn test_automorphism_inplace<B: Backend>(
     rank: usize,
     sigma: f64,
 ) where
-    Module<B>: GGSWAssertNoiseFamily<B>
+    Module<B>: TestModuleFamily<B>
+        + GGSWAssertNoiseFamily<B>
         + GGSWKeySwitchFamily<B>
         + GLWESwitchingKeyEncryptSkFamily<B>
         + GLWETensorKeyEncryptSkFamily<B>
-        + GGLWEExecLayoutFamily<B>,
-    B: VecZnxDftAllocBytesImpl<B> + VecZnxBigAllocBytesImpl<B> + TakeSvpPPolImpl<B>,
+        + GGLWEExecLayoutFamily<B>
+        + VecZnxSwithcDegree
+        + VecZnxAutomorphismInplace
+        + ScalarZnxAutomorphismInplace
+        + ScalarZnxAutomorphism,
+    B: TestScratchFamily<B>,
 {
     let rows: usize = k_ct.div_ceil(digits * basek);
     let rows_in: usize = k_ct.div_euclid(basek * digits);
@@ -491,12 +532,14 @@ pub(crate) fn test_external_product<B: Backend>(
     rank: usize,
     sigma: f64,
 ) where
-    Module<B>: GGSWAssertNoiseFamily<B>
+    Module<B>: TestModuleFamily<B>
+        + GGSWAssertNoiseFamily<B>
         + GGSWKeySwitchFamily<B>
         + GLWESwitchingKeyEncryptSkFamily<B>
         + GLWETensorKeyEncryptSkFamily<B>
-        + GGLWEExecLayoutFamily<B>,
-    B: TakeVecZnxDftImpl<B> + TakeVecZnxBigImpl<B>,
+        + GGLWEExecLayoutFamily<B>
+        + VecZnxRotateInplace,
+    B: TestScratchFamily<B>,
 {
     let rows: usize = k_in.div_ceil(basek * digits);
     let rows_in: usize = k_in.div_euclid(basek * digits);
@@ -589,12 +632,14 @@ pub(crate) fn test_external_product_inplace<B: Backend>(
     rank: usize,
     sigma: f64,
 ) where
-    Module<B>: GGSWAssertNoiseFamily<B>
+    Module<B>: TestModuleFamily<B>
+        + GGSWAssertNoiseFamily<B>
         + GGSWKeySwitchFamily<B>
         + GLWESwitchingKeyEncryptSkFamily<B>
         + GLWETensorKeyEncryptSkFamily<B>
-        + GGLWEExecLayoutFamily<B>,
-    B: TakeVecZnxDftImpl<B> + TakeVecZnxBigImpl<B>,
+        + GGLWEExecLayoutFamily<B>
+        + VecZnxRotateInplace,
+    B: TestScratchFamily<B>,
 {
     let rows: usize = k_ct.div_ceil(digits * basek);
     let rows_in: usize = k_ct.div_euclid(basek * digits);

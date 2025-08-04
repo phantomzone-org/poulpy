@@ -1,7 +1,5 @@
 use backend::hal::{
-    api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxBigAlloc, VecZnxDftAlloc, VecZnxStd, VecZnxSubScalarInplace,
-    },
+    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxBigAlloc, VecZnxDftAlloc, VecZnxStd, VecZnxSubScalarInplace},
     layouts::{Backend, Module, ScratchOwned, VecZnxDft},
     oep::{TakeSvpPPolImpl, VecZnxBigAllocBytesImpl, VecZnxDftAllocBytesImpl},
 };
@@ -14,11 +12,8 @@ use crate::{
 
 pub(crate) fn test_encrypt_sk<B: Backend>(module: &Module<B>, basek: usize, k: usize, sigma: f64, rank: usize)
 where
-    Module<B>: GGLWEExecLayoutFamily<B>
-        + GLWETensorKeyEncryptSkFamily<B>
-        + GLWEDecryptFamily<B>
-        + VecZnxDftAlloc<B>
-        + VecZnxBigAlloc<B>,
+    Module<B>:
+        GGLWEExecLayoutFamily<B> + GLWETensorKeyEncryptSkFamily<B> + GLWEDecryptFamily<B> + VecZnxDftAlloc<B> + VecZnxBigAlloc<B>,
     B: VecZnxDftAllocBytesImpl<B> + VecZnxBigAllocBytesImpl<B> + TakeSvpPPolImpl<B>,
 {
     let rows: usize = k / basek;

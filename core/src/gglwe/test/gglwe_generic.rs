@@ -196,10 +196,7 @@ pub(crate) fn test_keyswitch_inplace<B: Backend>(
     rank_out: usize,
     sigma: f64,
 ) where
-    Module<B>: GLWESwitchingKeyEncryptSkFamily<B>
-        + GLWEKeyswitchFamily<B>
-        + GGLWEExecLayoutFamily<B>
-        + GLWEDecryptFamily<B>,
+    Module<B>: GLWESwitchingKeyEncryptSkFamily<B> + GLWEKeyswitchFamily<B> + GGLWEExecLayoutFamily<B> + GLWEDecryptFamily<B>,
     B: TakeVecZnxDftImpl<B> + TakeVecZnxBigImpl<B> + TakeSvpPPolImpl<B>,
 {
     let rows: usize = k_ct.div_ceil(basek * digits);
@@ -296,10 +293,7 @@ pub(crate) fn test_external_product<B: Backend>(
     rank_out: usize,
     sigma: f64,
 ) where
-    Module<B>: GLWESwitchingKeyEncryptSkFamily<B>
-        + GLWEExternalProductFamily<B>
-        + GGSWLayoutFamily<B>
-        + GLWEDecryptFamily<B>,
+    Module<B>: GLWESwitchingKeyEncryptSkFamily<B> + GLWEExternalProductFamily<B> + GGSWLayoutFamily<B> + GLWEDecryptFamily<B>,
     B: TakeVecZnxDftImpl<B> + TakeVecZnxBigImpl<B> + TakeSvpPPolImpl<B>,
 {
     let rows: usize = k_in.div_ceil(basek * digits);
@@ -405,10 +399,7 @@ pub(crate) fn test_external_product_inplace<B: Backend>(
     rank_out: usize,
     sigma: f64,
 ) where
-    Module<B>: GLWESwitchingKeyEncryptSkFamily<B>
-        + GLWEExternalProductFamily<B>
-        + GGSWLayoutFamily<B>
-        + GLWEDecryptFamily<B>,
+    Module<B>: GLWESwitchingKeyEncryptSkFamily<B> + GLWEExternalProductFamily<B> + GGSWLayoutFamily<B> + GLWEDecryptFamily<B>,
     B: TakeVecZnxDftImpl<B> + TakeVecZnxBigImpl<B> + TakeSvpPPolImpl<B>,
 {
     let rows: usize = k_ct.div_ceil(basek * digits);
