@@ -2,30 +2,65 @@ use std::collections::HashMap;
 
 use backend::{
     hal::{
-        api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxEncodeVeci64, VecZnxStd},
+        api::{
+            MatZnxAlloc, ModuleNew, ScalarZnxAlloc, ScalarZnxAllocBytes, ScalarZnxAutomorphism, ScratchOwnedAlloc,
+            ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxAlloc, VecZnxAllocBytes, VecZnxBigSubSmallBInplace,
+            VecZnxEncodeVeci64, VecZnxRotateInplace, VecZnxStd, VecZnxSwithcDegree,
+        },
         layouts::{Backend, Module, ScratchOwned},
-        oep::{TakeSvpPPolImpl, TakeVecZnxBigImpl, TakeVecZnxDftImpl},
+        oep::{
+            ScratchAvailableImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeScalarZnxImpl, TakeSvpPPolImpl,
+            TakeVecZnxBigImpl, TakeVecZnxDftImpl, TakeVecZnxImpl,
+        },
     },
     implementation::cpu_avx::FFT64,
 };
 use sampling::source::Source;
 
 use crate::{
-    AutomorphismKey, AutomorphismKeyExec, GGLWEExecLayoutFamily, GLWECiphertext, GLWEDecryptFamily, GLWEEncryptSkFamily, GLWEOps,
-    GLWEPacker, GLWEPlaintext, GLWESecret, GLWESecretExec, GLWESecretFamily,
+    AutomorphismKey, AutomorphismKeyExec, GGLWEExecLayoutFamily, GLWECiphertext, GLWEDecryptFamily, GLWEKeyswitchFamily, GLWEOps,
+    GLWEPacker, GLWEPackingFamily, GLWEPlaintext, GLWESecret, GLWESecretExec, GLWESecretFamily, GLWESwitchingKeyEncryptSkFamily,
 };
 
 #[test]
 fn trace() {
     let log_n: usize = 5;
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
-    test_trace(&module);
+    test_packing(&module);
 }
 
-pub(crate) fn test_trace<B: Backend>(module: &Module<B>)
+pub(crate) trait PackingTestModuleFamily<B: Backend> = GLWEPackingFamily<B>
+    + GLWESecretFamily<B>
+    + GLWESwitchingKeyEncryptSkFamily<B>
+    + GLWEKeyswitchFamily<B>
+    + GLWEDecryptFamily<B>
+    + GGLWEExecLayoutFamily<B>
+    + MatZnxAlloc
+    + VecZnxAlloc
+    + ScalarZnxAlloc
+    + ScalarZnxAllocBytes
+    + VecZnxAllocBytes
+    + VecZnxStd
+    + VecZnxSwithcDegree
+    + VecZnxAddScalarInplace
+    + VecZnxEncodeVeci64
+    + ScalarZnxAutomorphism
+    + VecZnxRotateInplace
+    + VecZnxBigSubSmallBInplace<B>;
+
+pub(crate) trait PackingTestScratchFamily<B: Backend> = TakeVecZnxDftImpl<B>
+    + TakeVecZnxBigImpl<B>
+    + TakeSvpPPolImpl<B>
+    + ScratchOwnedAllocImpl<B>
+    + ScratchOwnedBorrowImpl<B>
+    + ScratchAvailableImpl<B>
+    + TakeScalarZnxImpl<B>
+    + TakeVecZnxImpl<B>;
+
+pub(crate) fn test_packing<B: Backend>(module: &Module<B>)
 where
-    Module<B>: GLWESecretFamily<B> + GLWEEncryptSkFamily<B> + GLWEDecryptFamily<B> + GGLWEExecLayoutFamily<B>,
-    B: TakeVecZnxDftImpl<B> + TakeVecZnxBigImpl<B> + TakeSvpPPolImpl<B>,
+    Module<B>: PackingTestModuleFamily<B>,
+    B: PackingTestScratchFamily<B>,
 {
     let mut source_xs: Source = Source::new([0u8; 32]);
     let mut source_xe: Source = Source::new([0u8; 32]);

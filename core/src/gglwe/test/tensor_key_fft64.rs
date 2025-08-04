@@ -3,7 +3,7 @@ use backend::{
     implementation::cpu_avx::FFT64,
 };
 
-use crate::gglwe::test_fft64::tensor_key_generic::test_encrypt_sk;
+use crate::gglwe::test::tensor_key_generic::test_encrypt_sk;
 
 #[test]
 fn encrypt_sk() {

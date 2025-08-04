@@ -12,17 +12,16 @@ mod public_key;
 mod secret;
 mod trace;
 
-pub use decryption::GLWEDecryptFamily;
-pub use encryption::{GLWEEncryptPkFamily, GLWEEncryptSkFamily};
-pub use external_product::GLWEExternalProductFamily;
-pub use keyswitch::GLWEKeyswitchFamily;
-pub use layout::GLWECiphertext;
-pub(crate) use layout::{GLWECiphertextToMut, GLWECiphertextToRef};
+pub use decryption::*;
+pub use encryption::*;
+pub use external_product::*;
+pub use keyswitch::*;
+pub use layout::*;
 pub use ops::GLWEOps;
-pub use packing::GLWEPacker;
-pub use plaintext::GLWEPlaintext;
-pub use public_key::{GLWEPublicKey, GLWEPublicKeyFamily};
-pub use secret::{GLWESecret, GLWESecretExec, GLWESecretFamily};
+pub use packing::*;
+pub use plaintext::*;
+pub use public_key::*;
+pub use secret::*;
 
 #[cfg(test)]
 mod test_fft64;

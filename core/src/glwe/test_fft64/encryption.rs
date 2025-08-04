@@ -1,8 +1,14 @@
 use backend::{
     hal::{
-        api::{ModuleNew, ScalarZnxAlloc, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAlloc, VecZnxDftAlloc, VecZnxFillUniform, VecZnxStd, VecZnxSubABInplace},
+        api::{
+            ModuleNew, ScalarZnxAlloc, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAlloc, VecZnxDftAlloc, VecZnxFillUniform,
+            VecZnxStd, VecZnxSubABInplace,
+        },
         layouts::{Backend, Module, ScratchOwned},
-        oep::{ScratchAvailableImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeScalarZnxImpl, TakeSvpPPolImpl, TakeVecZnxBigImpl, TakeVecZnxDftImpl, TakeVecZnxImpl},
+        oep::{
+            ScratchAvailableImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeScalarZnxImpl, TakeSvpPPolImpl,
+            TakeVecZnxBigImpl, TakeVecZnxDftImpl, TakeVecZnxImpl,
+        },
     },
     implementation::cpu_avx::FFT64,
 };
@@ -43,7 +49,8 @@ fn encrypt_pk() {
     });
 }
 
-pub(crate) trait EncryptionTestModuleFamily<B: Backend> = GLWEDecryptFamily<B> + GLWESecretFamily<B> + VecZnxAlloc + ScalarZnxAlloc + VecZnxStd;
+pub(crate) trait EncryptionTestModuleFamily<B: Backend> =
+    GLWEDecryptFamily<B> + GLWESecretFamily<B> + VecZnxAlloc + ScalarZnxAlloc + VecZnxStd;
 
 pub(crate) trait EncryptionTestScratchFamily<B: Backend> = TakeVecZnxDftImpl<B>
     + TakeVecZnxBigImpl<B>
@@ -135,7 +142,12 @@ where
 
 fn test_encrypt_pk<B: Backend>(module: &Module<B>, basek: usize, k_ct: usize, k_pk: usize, sigma: f64, rank: usize)
 where
-    Module<B>: EncryptionTestModuleFamily<B> + GLWEEncryptPkFamily<B> + GLWEEncryptSkFamily<B> + VecZnxDftAlloc<B> + VecZnxFillUniform + VecZnxSubABInplace,
+    Module<B>: EncryptionTestModuleFamily<B>
+        + GLWEEncryptPkFamily<B>
+        + GLWEEncryptSkFamily<B>
+        + VecZnxDftAlloc<B>
+        + VecZnxFillUniform
+        + VecZnxSubABInplace,
     B: EncryptionTestScratchFamily<B>,
 {
     let mut ct: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(module, basek, k_ct, rank);

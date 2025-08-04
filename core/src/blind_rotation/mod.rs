@@ -6,5 +6,5 @@ pub use cggi::{CCGIBlindRotationFamily, cggi_blind_rotate, cggi_blind_rotate_scr
 pub use key::{BlindRotationKeyCGGI, BlindRotationKeyCGGIExec, BlindRotationKeyCGGIExecLayoutFamily};
 pub use lut::LookUpTable;
 
-//#[cfg(test)]
-// pub mod test_fft64;
+#[cfg(test)]
+mod test;

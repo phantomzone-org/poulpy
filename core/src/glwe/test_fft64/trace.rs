@@ -3,19 +3,25 @@ use std::collections::HashMap;
 use backend::{
     hal::{
         api::{
-            ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxFillUniform, VecZnxNormalizeInplace, VecZnxStd,
-            VecZnxSubABInplace, ZnxView, ZnxViewMut,
+            MatZnxAlloc, ModuleNew, ScalarZnxAlloc, ScalarZnxAllocBytes, ScalarZnxAutomorphism, ScratchOwnedAlloc,
+            ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxAlloc, VecZnxAllocBytes, VecZnxBigAutomorphismInplace,
+            VecZnxBigSubSmallBInplace, VecZnxCopy, VecZnxEncodeVeci64, VecZnxFillUniform, VecZnxNormalizeInplace,
+            VecZnxRotateInplace, VecZnxRshInplace, VecZnxStd, VecZnxSubABInplace, VecZnxSwithcDegree, ZnxView, ZnxViewMut,
         },
         layouts::{Backend, Module, ScratchOwned},
-        oep::{TakeSvpPPolImpl, TakeVecZnxBigImpl, TakeVecZnxDftImpl},
+        oep::{
+            ScratchAvailableImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeScalarZnxImpl, TakeSvpPPolImpl,
+            TakeVecZnxBigImpl, TakeVecZnxDftImpl, TakeVecZnxImpl,
+        },
     },
     implementation::cpu_avx::FFT64,
 };
 use sampling::source::Source;
 
 use crate::{
-    AutomorphismKey, AutomorphismKeyExec, GGLWEExecLayoutFamily, GLWECiphertext, GLWEDecryptFamily, GLWEEncryptSkFamily,
-    GLWEPlaintext, GLWESecret, GLWESecretExec, GLWESecretFamily, Infos, noise::var_noise_gglwe_product,
+    AutomorphismKey, AutomorphismKeyExec, GGLWEExecLayoutFamily, GLWECiphertext, GLWEDecryptFamily, GLWEKeyswitchFamily,
+    GLWEPlaintext, GLWESecret, GLWESecretExec, GLWESecretFamily, GLWESwitchingKeyEncryptSkFamily, Infos,
+    noise::var_noise_gglwe_product,
 };
 
 #[test]
@@ -28,10 +34,40 @@ fn apply_inplace() {
     });
 }
 
+pub(crate) trait TraceTestModuleFamily<B: Backend> = GLWESecretFamily<B>
+    + GLWESwitchingKeyEncryptSkFamily<B>
+    + GLWEKeyswitchFamily<B>
+    + GLWEDecryptFamily<B>
+    + GGLWEExecLayoutFamily<B>
+    + MatZnxAlloc
+    + VecZnxAlloc
+    + ScalarZnxAlloc
+    + ScalarZnxAllocBytes
+    + VecZnxAllocBytes
+    + VecZnxStd
+    + VecZnxSwithcDegree
+    + VecZnxAddScalarInplace
+    + VecZnxEncodeVeci64
+    + ScalarZnxAutomorphism
+    + VecZnxRotateInplace
+    + VecZnxBigSubSmallBInplace<B>
+    + VecZnxBigAutomorphismInplace<B>
+    + VecZnxCopy
+    + VecZnxRshInplace;
+
+pub(crate) trait TraceTestScratchFamily<B: Backend> = TakeVecZnxDftImpl<B>
+    + TakeVecZnxBigImpl<B>
+    + TakeSvpPPolImpl<B>
+    + ScratchOwnedAllocImpl<B>
+    + ScratchOwnedBorrowImpl<B>
+    + ScratchAvailableImpl<B>
+    + TakeScalarZnxImpl<B>
+    + TakeVecZnxImpl<B>;
+
 fn test_trace_inplace<B: Backend>(module: &Module<B>, basek: usize, k: usize, sigma: f64, rank: usize)
 where
-    Module<B>: GLWESecretFamily<B> + GLWEEncryptSkFamily<B> + GLWEDecryptFamily<B> + GGLWEExecLayoutFamily<B>,
-    B: TakeVecZnxDftImpl<B> + TakeVecZnxBigImpl<B> + TakeSvpPPolImpl<B>,
+    Module<B>: TraceTestModuleFamily<B>,
+    B: TraceTestScratchFamily<B>,
 {
     let k_autokey: usize = k + basek;
 

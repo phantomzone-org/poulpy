@@ -3,7 +3,7 @@ use backend::hal::{
         ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxBigAlloc, VecZnxDftAlloc, VecZnxStd, VecZnxSubScalarInplace,
     },
     layouts::{Backend, Module, ScratchOwned, VecZnxDft},
-    oep::{ScratchTakeSvpPPolImpl, VecZnxBigAllocBytesImpl, VecZnxDftAllocBytesImpl},
+    oep::{TakeSvpPPolImpl, VecZnxBigAllocBytesImpl, VecZnxDftAllocBytesImpl},
 };
 use sampling::source::Source;
 
@@ -19,7 +19,7 @@ where
         + GLWEDecryptFamily<B>
         + VecZnxDftAlloc<B>
         + VecZnxBigAlloc<B>,
-    B: VecZnxDftAllocBytesImpl<B> + VecZnxBigAllocBytesImpl<B> + ScratchTakeSvpPPolImpl<B>,
+    B: VecZnxDftAllocBytesImpl<B> + VecZnxBigAllocBytesImpl<B> + TakeSvpPPolImpl<B>,
 {
     let rows: usize = k / basek;
 

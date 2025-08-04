@@ -1,10 +1,14 @@
 use backend::{
     hal::{
         api::{
-            ModuleNew, ScalarZnxAlloc, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxFillUniform, VecZnxRotateInplace, ZnxViewMut,
+            MatZnxAlloc, ModuleNew, ScalarZnxAlloc, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxAlloc,
+            VecZnxAllocBytes, VecZnxFillUniform, VecZnxRotateInplace, VecZnxStd, ZnxViewMut,
         },
         layouts::{Backend, Module, ScalarZnx, ScratchOwned},
-        oep::{TakeVecZnxBigImpl, TakeVecZnxDftImpl},
+        oep::{
+            ScratchAvailableImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeScalarZnxImpl, TakeSvpPPolImpl,
+            TakeVecZnxBigImpl, TakeVecZnxDftImpl, TakeVecZnxImpl,
+        },
     },
     implementation::cpu_avx::FFT64,
 };
@@ -48,6 +52,28 @@ fn apply_inplace() {
     });
 }
 
+pub(crate) trait ExternalProductTestModuleFamily<B: Backend> = GLWEEncryptSkFamily<B>
+    + GLWEDecryptFamily<B>
+    + GLWESecretFamily<B>
+    + GLWEExternalProductFamily<B>
+    + GGSWLayoutFamily<B>
+    + MatZnxAlloc
+    + VecZnxAlloc
+    + ScalarZnxAlloc
+    + VecZnxAllocBytes
+    + VecZnxAddScalarInplace
+    + VecZnxRotateInplace
+    + VecZnxStd;
+
+pub(crate) trait ExternalProductTestScratchFamily<B: Backend> = TakeVecZnxDftImpl<B>
+    + TakeVecZnxBigImpl<B>
+    + TakeSvpPPolImpl<B>
+    + ScratchOwnedAllocImpl<B>
+    + ScratchOwnedBorrowImpl<B>
+    + ScratchAvailableImpl<B>
+    + TakeScalarZnxImpl<B>
+    + TakeVecZnxImpl<B>;
+
 fn test_external_product<B: Backend>(
     module: &Module<B>,
     basek: usize,
@@ -58,9 +84,8 @@ fn test_external_product<B: Backend>(
     rank: usize,
     sigma: f64,
 ) where
-    Module<B>:
-        GLWEEncryptSkFamily<B> + GLWEDecryptFamily<B> + GLWESecretFamily<B> + GLWEExternalProductFamily<B> + GGSWLayoutFamily<B>,
-    B: TakeVecZnxDftImpl<B> + TakeVecZnxBigImpl<B>,
+    Module<B>: ExternalProductTestModuleFamily<B>,
+    B: ExternalProductTestScratchFamily<B>,
 {
     let rows: usize = k_in.div_ceil(basek * digits);
 
@@ -160,9 +185,8 @@ fn test_external_product_inplace<B: Backend>(
     rank: usize,
     sigma: f64,
 ) where
-    Module<B>:
-        GLWEEncryptSkFamily<B> + GLWEDecryptFamily<B> + GLWESecretFamily<B> + GLWEExternalProductFamily<B> + GGSWLayoutFamily<B>,
-    B: TakeVecZnxDftImpl<B> + TakeVecZnxBigImpl<B>,
+    Module<B>: ExternalProductTestModuleFamily<B>,
+    B: ExternalProductTestScratchFamily<B>,
 {
     let rows: usize = k_ct.div_ceil(basek * digits);
 

@@ -1,7 +1,7 @@
 use backend::hal::{
     api::{ScalarZnxAlloc, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxRotateInplace, ZnxViewMut},
     layouts::{Backend, Module, ScalarZnx, ScalarZnxToMut, ScratchOwned},
-    oep::{ScratchTakeSvpPPolImpl, ScratchTakeVecZnxBigImpl, ScratchTakeVecZnxDftImpl},
+    oep::{TakeSvpPPolImpl, TakeVecZnxBigImpl, TakeVecZnxDftImpl},
 };
 use sampling::source::Source;
 
@@ -22,7 +22,7 @@ pub(crate) fn test_encrypt_sk<B: Backend>(
     sigma: f64,
 ) where
     Module<B>: GGLWEEncryptSkFamily<B> + GLWEDecryptFamily<B>,
-    B: ScratchTakeVecZnxDftImpl<B> + ScratchTakeVecZnxBigImpl<B> + ScratchTakeSvpPPolImpl<B>,
+    B: TakeVecZnxDftImpl<B> + TakeVecZnxBigImpl<B> + TakeSvpPPolImpl<B>,
 {
     let rows: usize = (k_ksk - digits * basek) / (digits * basek);
 
@@ -70,7 +70,7 @@ pub(crate) fn test_keyswitch<B: Backend>(
     sigma: f64,
 ) where
     Module<B>: GGLWEEncryptSkFamily<B> + GLWEDecryptFamily<B> + GLWEKeyswitchFamily<B> + GGLWEExecLayoutFamily<B>,
-    B: ScratchTakeVecZnxDftImpl<B> + ScratchTakeVecZnxBigImpl<B> + ScratchTakeSvpPPolImpl<B>,
+    B: TakeVecZnxDftImpl<B> + TakeVecZnxBigImpl<B> + TakeSvpPPolImpl<B>,
 {
     let rows: usize = k_in.div_ceil(basek * digits);
     let digits_in: usize = 1;
@@ -200,7 +200,7 @@ pub(crate) fn test_keyswitch_inplace<B: Backend>(
         + GLWEKeyswitchFamily<B>
         + GGLWEExecLayoutFamily<B>
         + GLWEDecryptFamily<B>,
-    B: ScratchTakeVecZnxDftImpl<B> + ScratchTakeVecZnxBigImpl<B> + ScratchTakeSvpPPolImpl<B>,
+    B: TakeVecZnxDftImpl<B> + TakeVecZnxBigImpl<B> + TakeSvpPPolImpl<B>,
 {
     let rows: usize = k_ct.div_ceil(basek * digits);
     let digits_in: usize = 1;
@@ -300,7 +300,7 @@ pub(crate) fn test_external_product<B: Backend>(
         + GLWEExternalProductFamily<B>
         + GGSWLayoutFamily<B>
         + GLWEDecryptFamily<B>,
-    B: ScratchTakeVecZnxDftImpl<B> + ScratchTakeVecZnxBigImpl<B> + ScratchTakeSvpPPolImpl<B>,
+    B: TakeVecZnxDftImpl<B> + TakeVecZnxBigImpl<B> + TakeSvpPPolImpl<B>,
 {
     let rows: usize = k_in.div_ceil(basek * digits);
     let digits_in: usize = 1;
@@ -409,7 +409,7 @@ pub(crate) fn test_external_product_inplace<B: Backend>(
         + GLWEExternalProductFamily<B>
         + GGSWLayoutFamily<B>
         + GLWEDecryptFamily<B>,
-    B: ScratchTakeVecZnxDftImpl<B> + ScratchTakeVecZnxBigImpl<B> + ScratchTakeSvpPPolImpl<B>,
+    B: TakeVecZnxDftImpl<B> + TakeVecZnxBigImpl<B> + TakeSvpPPolImpl<B>,
 {
     let rows: usize = k_ct.div_ceil(basek * digits);
 

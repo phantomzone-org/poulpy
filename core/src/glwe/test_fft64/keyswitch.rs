@@ -1,8 +1,14 @@
 use backend::{
     hal::{
-        api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxFillUniform},
+        api::{
+            MatZnxAlloc, ModuleNew, ScalarZnxAlloc, ScalarZnxAllocBytes, ScratchOwnedAlloc, ScratchOwnedBorrow,
+            VecZnxAddScalarInplace, VecZnxAlloc, VecZnxAllocBytes, VecZnxFillUniform, VecZnxStd, VecZnxSwithcDegree,
+        },
         layouts::{Backend, Module, ScratchOwned},
-        oep::{TakeSvpPPolImpl, TakeVecZnxBigImpl, TakeVecZnxDftImpl},
+        oep::{
+            ScratchAvailableImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeScalarZnxImpl, TakeSvpPPolImpl,
+            TakeVecZnxBigImpl, TakeVecZnxDftImpl, TakeVecZnxImpl,
+        },
     },
     implementation::cpu_avx::FFT64,
 };
@@ -54,6 +60,29 @@ fn apply_inplace() {
     });
 }
 
+pub(crate) trait KeySwitchTestModuleFamily<B: Backend> = GLWESecretFamily<B>
+    + GLWESwitchingKeyEncryptSkFamily<B>
+    + GLWEKeyswitchFamily<B>
+    + GLWEDecryptFamily<B>
+    + GGLWEExecLayoutFamily<B>
+    + MatZnxAlloc
+    + VecZnxAlloc
+    + ScalarZnxAlloc
+    + ScalarZnxAllocBytes
+    + VecZnxAllocBytes
+    + VecZnxStd
+    + VecZnxSwithcDegree
+    + VecZnxAddScalarInplace;
+
+pub(crate) trait KeySwitchTestScratchFamily<B: Backend> = TakeVecZnxDftImpl<B>
+    + TakeVecZnxBigImpl<B>
+    + TakeSvpPPolImpl<B>
+    + ScratchOwnedAllocImpl<B>
+    + ScratchOwnedBorrowImpl<B>
+    + ScratchAvailableImpl<B>
+    + TakeScalarZnxImpl<B>
+    + TakeVecZnxImpl<B>;
+
 fn test_keyswitch<B: Backend>(
     module: &Module<B>,
     basek: usize,
@@ -65,12 +94,8 @@ fn test_keyswitch<B: Backend>(
     rank_out: usize,
     sigma: f64,
 ) where
-    Module<B>: GLWESecretFamily<B>
-        + GLWESwitchingKeyEncryptSkFamily<B>
-        + GLWEKeyswitchFamily<B>
-        + GLWEDecryptFamily<B>
-        + GGLWEExecLayoutFamily<B>,
-    B: TakeVecZnxDftImpl<B> + TakeVecZnxBigImpl<B> + TakeSvpPPolImpl<B>,
+    Module<B>: KeySwitchTestModuleFamily<B>,
+    B: KeySwitchTestScratchFamily<B>,
 {
     let rows: usize = k_in.div_ceil(basek * digits);
 
@@ -157,12 +182,8 @@ fn test_keyswitch_inplace<B: Backend>(
     rank: usize,
     sigma: f64,
 ) where
-    Module<B>: GLWESecretFamily<B>
-        + GLWESwitchingKeyEncryptSkFamily<B>
-        + GLWEKeyswitchFamily<B>
-        + GLWEDecryptFamily<B>
-        + GGLWEExecLayoutFamily<B>,
-    B: TakeVecZnxDftImpl<B> + TakeVecZnxBigImpl<B> + TakeSvpPPolImpl<B>,
+    Module<B>: KeySwitchTestModuleFamily<B>,
+    B: KeySwitchTestScratchFamily<B>,
 {
     let rows: usize = k_ct.div_ceil(basek * digits);
 
