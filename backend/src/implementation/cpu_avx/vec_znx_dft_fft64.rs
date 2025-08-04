@@ -2,7 +2,7 @@ use std::fmt;
 
 use crate::{
     hal::{
-        api::{ScratchTakeSlice, VecZnxDftToVecZnxBigTmpBytes, ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero},
+        api::{TakeSlice, VecZnxDftToVecZnxBigTmpBytes, ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero},
         layouts::{
             Module, Scratch, VecZnx, VecZnxBig, VecZnxBigToMut, VecZnxDft, VecZnxDftBytesOf, VecZnxDftOwned, VecZnxDftToMut,
             VecZnxDftToRef, VecZnxToRef,

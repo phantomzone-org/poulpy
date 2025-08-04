@@ -6,8 +6,8 @@ use sampling::source::Source;
 use crate::{
     hal::{
         api::{
-            ScratchTakeSlice, VecZnxBigAddDistF64, VecZnxBigFillDistF64, VecZnxBigNormalizeTmpBytes, ZnxInfos, ZnxSliceSize,
-            ZnxView, ZnxViewMut,
+            TakeSlice, VecZnxBigAddDistF64, VecZnxBigFillDistF64, VecZnxBigNormalizeTmpBytes, ZnxInfos, ZnxSliceSize, ZnxView,
+            ZnxViewMut,
         },
         layouts::{
             Module, Scratch, VecZnx, VecZnxBig, VecZnxBigBytesOf, VecZnxBigOwned, VecZnxBigToMut, VecZnxBigToRef, VecZnxToMut,

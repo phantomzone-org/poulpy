@@ -43,7 +43,10 @@ impl GGLWECiphertext<Vec<u8>> {
         digits: usize,
         rank_in: usize,
         rank_out: usize,
-    ) -> Self {
+    ) -> Self
+    where
+        Module<B>: MatZnxAlloc,
+    {
         let size: usize = k.div_ceil(basek);
         debug_assert!(
             size > digits,
@@ -76,7 +79,10 @@ impl GGLWECiphertext<Vec<u8>> {
         digits: usize,
         rank_in: usize,
         rank_out: usize,
-    ) -> usize {
+    ) -> usize
+    where
+        Module<B>: MatZnxAllocBytes,
+    {
         let size: usize = k.div_ceil(basek);
         debug_assert!(
             size > digits,

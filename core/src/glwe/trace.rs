@@ -1,14 +1,16 @@
 use std::collections::HashMap;
 
 use backend::hal::{
-    api::ScratchTakeVecZnxDft,
+    api::{ScratchAvailable, TakeVecZnxDft, VecZnxBigAutomorphismInplace, VecZnxCopy, VecZnxRshInplace},
     layouts::{Backend, Module, Scratch},
 };
 
 use crate::{
-    AutomorphismExecFamily, AutomorphismKeyExec, GLWECiphertext, GLWECiphertextToMut, GLWECiphertextToRef, GLWEOps, Infos,
+    AutomorphismKeyExec, GLWECiphertext, GLWECiphertextToMut, GLWECiphertextToRef, GLWEKeyswitchFamily, GLWEOps, Infos,
     SetMetaData,
 };
+
+pub trait GLWETraceFamily<B: Backend> = GLWEKeyswitchFamily<B> + VecZnxCopy + VecZnxRshInplace + VecZnxBigAutomorphismInplace<B>;
 
 impl GLWECiphertext<Vec<u8>> {
     pub fn trace_galois_elements<B: Backend>(module: &Module<B>) -> Vec<i64> {
@@ -33,7 +35,7 @@ impl GLWECiphertext<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: AutomorphismExecFamily<B>,
+        Module<B>: GLWEKeyswitchFamily<B>,
     {
         Self::automorphism_inplace_scratch_space(module, basek, out_k.min(in_k), ksk_k, digits, rank)
     }
@@ -47,7 +49,7 @@ impl GLWECiphertext<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: AutomorphismExecFamily<B>,
+        Module<B>: GLWEKeyswitchFamily<B>,
     {
         Self::automorphism_inplace_scratch_space(module, basek, out_k, ksk_k, digits, rank)
     }
@@ -66,9 +68,9 @@ where
         auto_keys: &HashMap<i64, AutomorphismKeyExec<DataAK, B>>,
         scratch: &mut Scratch<B>,
     ) where
-        GLWECiphertext<DataLhs>: GLWECiphertextToRef + Infos,
-        Module<B>: AutomorphismExecFamily<B>,
-        Scratch<B>: ScratchTakeVecZnxDft<B>,
+        GLWECiphertext<DataLhs>: GLWECiphertextToRef + Infos + VecZnxRshInplace,
+        Module<B>: GLWETraceFamily<B>,
+        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
     {
         self.copy(module, lhs);
         self.trace_inplace(module, start, end, auto_keys, scratch);
@@ -82,8 +84,8 @@ where
         auto_keys: &HashMap<i64, AutomorphismKeyExec<DataAK, B>>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: AutomorphismExecFamily<B>,
-        Scratch<B>: ScratchTakeVecZnxDft<B>,
+        Module<B>: GLWETraceFamily<B>,
+        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
     {
         (start..end).for_each(|i| {
             self.rsh(module, 1);

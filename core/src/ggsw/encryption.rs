@@ -1,5 +1,7 @@
 use backend::hal::{
-    api::{ScratchTakeVecZnxDft, VecZnxAddScalarInplace, VecZnxAllocBytes, VecZnxNormalizeInplace, ZnxZero},
+    api::{
+        ScratchAvailable, TakeVecZnx, TakeVecZnxDft, VecZnxAddScalarInplace, VecZnxAllocBytes, VecZnxNormalizeInplace, ZnxZero,
+    },
     layouts::{Backend, Module, ScalarZnx, Scratch},
 };
 use sampling::source::Source;
@@ -11,7 +13,7 @@ pub trait GGSWEncryptSkFamily<B: Backend> = GLWEEncryptSkFamily<B>;
 impl GGSWCiphertext<Vec<u8>> {
     pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize
     where
-        Module<B>: GGSWEncryptSkFamily<B>,
+        Module<B>: GGSWEncryptSkFamily<B> + VecZnxAllocBytes,
     {
         let size = k.div_ceil(basek);
         GLWECiphertext::encrypt_sk_scratch_space(module, basek, k)
@@ -32,8 +34,8 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
         sigma: f64,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: GGSWEncryptSkFamily<B>,
-        Scratch<B>: ScratchTakeVecZnxDft<B>,
+        Module<B>: GGSWEncryptSkFamily<B> + VecZnxAddScalarInplace,
+        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx<B>,
     {
         #[cfg(debug_assertions)]
         {

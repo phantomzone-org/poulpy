@@ -1,6 +1,6 @@
 use backend::hal::{
     api::{
-        ScratchAvailable, ScratchTakeVecZnxBig, ScratchTakeVecZnxDft, VecZnxAllocBytes, VecZnxBigAllocBytes, VecZnxDftAddInplace,
+        ScratchAvailable, TakeVecZnxBig, TakeVecZnxDft, VecZnxAllocBytes, VecZnxBigAllocBytes, VecZnxDftAddInplace,
         VecZnxDftCopy, VecZnxDftToVecZnxBigTmpA, VecZnxNormalizeTmpBytes, ZnxInfos,
     },
     layouts::{Backend, Module, Scratch, VecZnxDft, VmpPMat},
@@ -21,7 +21,7 @@ impl GGSWCiphertext<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: GGSWKeySwitchFamily<B>,
+        Module<B>: GGSWKeySwitchFamily<B> + VecZnxNormalizeTmpBytes,
     {
         let tsk_size: usize = k_tsk.div_ceil(basek);
         let self_size_out: usize = self_k.div_ceil(basek);
@@ -54,7 +54,7 @@ impl GGSWCiphertext<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: GLWEKeyswitchFamily<B> + GGSWKeySwitchFamily<B>,
+        Module<B>: GLWEKeyswitchFamily<B> + GGSWKeySwitchFamily<B> + VecZnxAllocBytes + VecZnxNormalizeTmpBytes,
     {
         let out_size: usize = k_out.div_ceil(basek);
         let res_znx: usize = module.vec_znx_alloc_bytes(rank + 1, out_size);
@@ -76,7 +76,7 @@ impl GGSWCiphertext<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: GLWEKeyswitchFamily<B> + GGSWKeySwitchFamily<B>,
+        Module<B>: GLWEKeyswitchFamily<B> + GGSWKeySwitchFamily<B> + VecZnxAllocBytes + VecZnxNormalizeTmpBytes,
     {
         GGSWCiphertext::keyswitch_scratch_space(
             module, basek, k_out, k_out, k_ksk, digits_ksk, k_tsk, digits_tsk, rank,
@@ -94,8 +94,8 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
         tsk: &GLWETensorKeyExec<DataTsk, B>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: GGSWKeySwitchFamily<B>,
-        Scratch<B>: ScratchTakeVecZnxDft<B> + ScratchTakeVecZnxBig<B>,
+        Module<B>: GGSWKeySwitchFamily<B> + VecZnxNormalizeTmpBytes,
+        Scratch<B>: TakeVecZnxDft<B> + TakeVecZnxBig<B> + ScratchAvailable,
     {
         let cols: usize = self.rank() + 1;
 
@@ -206,8 +206,8 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
         tsk: &GLWETensorKeyExec<DataTsk, B>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: GLWEKeyswitchFamily<B> + GGSWKeySwitchFamily<B>,
-        Scratch<B>: ScratchTakeVecZnxDft<B> + ScratchTakeVecZnxBig<B>,
+        Module<B>: GLWEKeyswitchFamily<B> + GGSWKeySwitchFamily<B> + VecZnxNormalizeTmpBytes,
+        Scratch<B>: TakeVecZnxDft<B> + TakeVecZnxBig<B> + ScratchAvailable,
     {
         let rank: usize = self.rank();
         let cols: usize = rank + 1;
@@ -242,8 +242,8 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
         tsk: &GLWETensorKeyExec<DataTsk, B>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: GLWEKeyswitchFamily<B> + GGSWKeySwitchFamily<B>,
-        Scratch<B>: ScratchTakeVecZnxDft<B> + ScratchTakeVecZnxBig<B>,
+        Module<B>: GLWEKeyswitchFamily<B> + GGSWKeySwitchFamily<B> + VecZnxNormalizeTmpBytes,
+        Scratch<B>: TakeVecZnxDft<B> + TakeVecZnxBig<B> + ScratchAvailable,
     {
         unsafe {
             let self_ptr: *mut GGSWCiphertext<DataSelf> = self as *mut GGSWCiphertext<DataSelf>;

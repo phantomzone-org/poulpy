@@ -1,10 +1,9 @@
 use backend::hal::{
     api::{
-        ScalarZnxAllocBytes, ScratchTakeScalarZnx, ScratchTakeSvpPPol, ScratchTakeVecZnx, ScratchTakeVecZnxDft, SvpApply,
-        SvpApplyInplace, SvpPPolAllocBytes, SvpPrepare, VecZnxAddInplace, VecZnxAddNormal, VecZnxBigAddNormal,
-        VecZnxBigAddSmallInplace, VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftFromVecZnx,
-        VecZnxDftToVecZnxBigConsume, VecZnxFillUniform, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes,
-        VecZnxSubABInplace, ZnxZero,
+        ScalarZnxAllocBytes, ScratchAvailable, SvpApply, SvpApplyInplace, SvpPPolAllocBytes, SvpPrepare, TakeScalarZnx,
+        TakeSvpPPol, TakeVecZnx, TakeVecZnxDft, VecZnxAddInplace, VecZnxAddNormal, VecZnxBigAddNormal, VecZnxBigAddSmallInplace,
+        VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume,
+        VecZnxFillUniform, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSubABInplace, ZnxZero,
     },
     layouts::{Backend, Module, Scratch, VecZnxBig},
 };
@@ -12,8 +11,18 @@ use sampling::source::Source;
 
 use crate::{GLWECiphertext, GLWEPlaintext, GLWEPublicKey, GLWESecretExec, Infos, SIX_SIGMA, dist::Distribution};
 
-pub trait GLWEEncryptSkFamily<B: Backend> =
-    VecZnxDftAllocBytes + VecZnxBigNormalize<B> + VecZnxDftFromVecZnx<B> + SvpApplyInplace<B> + VecZnxDftToVecZnxBigConsume<B>;
+pub trait GLWEEncryptSkFamily<B: Backend> = VecZnxDftAllocBytes
+    + VecZnxBigNormalize<B>
+    + VecZnxDftFromVecZnx<B>
+    + SvpApplyInplace<B>
+    + VecZnxDftToVecZnxBigConsume<B>
+    + VecZnxNormalizeTmpBytes
+    + VecZnxFillUniform
+    + VecZnxSubABInplace
+    + VecZnxAddInplace
+    + VecZnxNormalizeInplace<B>
+    + VecZnxAddNormal
+    + VecZnxNormalize<B>;
 
 pub trait GLWEEncryptPkFamily<B: Backend> = VecZnxDftAllocBytes
     + VecZnxBigAllocBytes
@@ -23,7 +32,9 @@ pub trait GLWEEncryptPkFamily<B: Backend> = VecZnxDftAllocBytes
     + VecZnxDftToVecZnxBigConsume<B>
     + VecZnxBigAddNormal<B>
     + VecZnxBigAddSmallInplace<B>
-    + VecZnxBigNormalize<B>;
+    + VecZnxBigNormalize<B>
+    + ScalarZnxAllocBytes
+    + VecZnxNormalizeTmpBytes;
 
 impl GLWECiphertext<Vec<u8>> {
     pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize) -> usize
@@ -31,7 +42,9 @@ impl GLWECiphertext<Vec<u8>> {
         Module<B>: GLWEEncryptSkFamily<B>,
     {
         let size: usize = k.div_ceil(basek);
-        module.vec_znx_normalize_tmp_bytes(module.n()) + module.vec_znx_dft_alloc_bytes(1, size) + module.vec_znx_dft_alloc_bytes(1, size)
+        module.vec_znx_normalize_tmp_bytes(module.n())
+            + module.vec_znx_dft_alloc_bytes(1, size)
+            + module.vec_znx_dft_alloc_bytes(1, size)
     }
     pub fn encrypt_pk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize) -> usize
     where
@@ -56,7 +69,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWEEncryptSkFamily<B>,
-        Scratch<B>: ScratchTakeVecZnxDft<B>,
+        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx<B>,
     {
         self.encrypt_sk_private(
             module,
@@ -79,7 +92,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWEEncryptSkFamily<B>,
-        Scratch<B>: ScratchTakeVecZnxDft<B>,
+        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx<B>,
     {
         self.encrypt_sk_private(
             module,
@@ -103,7 +116,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWEEncryptPkFamily<B>,
-        Scratch<B>: ScratchTakeVecZnxDft<B> + ScratchTakeSvpPPol<B>,
+        Scratch<B>: TakeVecZnxDft<B> + TakeSvpPPol<B> + TakeScalarZnx<B>,
     {
         self.encrypt_pk_private::<DataPt, DataPk, B>(
             module,
@@ -126,7 +139,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWEEncryptPkFamily<B>,
-        Scratch<B>: ScratchTakeVecZnxDft<B> + ScratchTakeSvpPPol<B>,
+        Scratch<B>: TakeVecZnxDft<B> + TakeSvpPPol<B> + TakeScalarZnx<B>,
     {
         self.encrypt_pk_private::<Vec<u8>, DataPk, B>(
             module,
@@ -149,17 +162,11 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         sigma: f64,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: VecZnxDftAllocBytes
-            + VecZnxBigNormalize<B>
-            + VecZnxDftFromVecZnx<B>
-            + SvpApplyInplace<B>
-            + VecZnxDftToVecZnxBigConsume<B>,
-        Scratch<B>: ScratchTakeVecZnxDft<B>,
+        Module<B>: GLWEEncryptSkFamily<B>,
+        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx<B>,
     {
         #[cfg(debug_assertions)]
         {
-            use backend::hal::api::ScratchAvailable;
-
             assert_eq!(self.rank(), sk.rank());
             assert_eq!(sk.n(), module.n());
             assert_eq!(self.n(), module.n());
@@ -245,7 +252,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
             + VecZnxBigAddNormal<B>
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>,
-        Scratch<B>: ScratchTakeVecZnxDft<B> + ScratchTakeSvpPPol<B>,
+        Scratch<B>: TakeVecZnxDft<B> + TakeSvpPPol<B> + TakeScalarZnx<B>,
     {
         #[cfg(debug_assertions)]
         {

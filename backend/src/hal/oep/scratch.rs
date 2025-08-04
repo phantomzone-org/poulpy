@@ -16,29 +16,24 @@ pub unsafe trait ScratchAvailableImpl<B: Backend> {
     fn scratch_available_impl(scratch: &Scratch<B>) -> usize;
 }
 
-pub unsafe trait ScratchTakeSliceImpl<B: Backend> {
-    fn scratch_take_slice_impl<T>(scratch: &mut Scratch<B>, len: usize) -> (&mut [T], &mut Scratch<B>);
+pub unsafe trait TakeSliceImpl<B: Backend> {
+    fn take_slice_impl<T>(scratch: &mut Scratch<B>, len: usize) -> (&mut [T], &mut Scratch<B>);
 }
 
-pub unsafe trait ScratchTakeScalarZnxImpl<B: Backend> {
-    fn scratch_take_scalar_znx_impl(scratch: &mut Scratch<B>, n: usize, cols: usize) -> (ScalarZnx<&mut [u8]>, &mut Scratch<B>);
+pub unsafe trait TakeScalarZnxImpl<B: Backend> {
+    fn take_scalar_znx_impl(scratch: &mut Scratch<B>, n: usize, cols: usize) -> (ScalarZnx<&mut [u8]>, &mut Scratch<B>);
 }
 
-pub unsafe trait ScratchTakeSvpPPolImpl<B: Backend> {
-    fn scratch_take_svp_ppol_impl(scratch: &mut Scratch<B>, n: usize, cols: usize) -> (SvpPPol<&mut [u8], B>, &mut Scratch<B>);
+pub unsafe trait TakeSvpPPolImpl<B: Backend> {
+    fn take_svp_ppol_impl(scratch: &mut Scratch<B>, n: usize, cols: usize) -> (SvpPPol<&mut [u8], B>, &mut Scratch<B>);
 }
 
-pub unsafe trait ScratchTakeVecZnxImpl<B: Backend> {
-    fn scratch_take_vec_znx_impl(
-        scratch: &mut Scratch<B>,
-        n: usize,
-        cols: usize,
-        size: usize,
-    ) -> (VecZnx<&mut [u8]>, &mut Scratch<B>);
+pub unsafe trait TakeVecZnxImpl<B: Backend> {
+    fn take_vec_znx_impl(scratch: &mut Scratch<B>, n: usize, cols: usize, size: usize) -> (VecZnx<&mut [u8]>, &mut Scratch<B>);
 }
 
-pub unsafe trait ScratchTakeVecZnxSliceImpl<B: Backend> {
-    fn scratch_take_vec_znx_slice_impl(
+pub unsafe trait TakeVecZnxSliceImpl<B: Backend> {
+    fn take_vec_znx_slice_impl(
         scratch: &mut Scratch<B>,
         len: usize,
         n: usize,
@@ -47,8 +42,8 @@ pub unsafe trait ScratchTakeVecZnxSliceImpl<B: Backend> {
     ) -> (Vec<VecZnx<&mut [u8]>>, &mut Scratch<B>);
 }
 
-pub unsafe trait ScratchTakeVecZnxBigImpl<B: Backend> {
-    fn scratch_take_vec_znx_big_impl(
+pub unsafe trait TakeVecZnxBigImpl<B: Backend> {
+    fn take_vec_znx_big_impl(
         scratch: &mut Scratch<B>,
         n: usize,
         cols: usize,
@@ -56,8 +51,8 @@ pub unsafe trait ScratchTakeVecZnxBigImpl<B: Backend> {
     ) -> (VecZnxBig<&mut [u8], B>, &mut Scratch<B>);
 }
 
-pub unsafe trait ScratchTakeVecZnxDftImpl<B: Backend> {
-    fn scratch_take_vec_znx_dft_impl(
+pub unsafe trait TakeVecZnxDftImpl<B: Backend> {
+    fn take_vec_znx_dft_impl(
         scratch: &mut Scratch<B>,
         n: usize,
         cols: usize,
@@ -65,8 +60,8 @@ pub unsafe trait ScratchTakeVecZnxDftImpl<B: Backend> {
     ) -> (VecZnxDft<&mut [u8], B>, &mut Scratch<B>);
 }
 
-pub unsafe trait ScratchTakeVecZnxDftSliceImpl<B: Backend> {
-    fn scratch_take_vec_znx_dft_slice_impl(
+pub unsafe trait TakeVecZnxDftSliceImpl<B: Backend> {
+    fn take_vec_znx_dft_slice_impl(
         scratch: &mut Scratch<B>,
         len: usize,
         n: usize,
@@ -75,8 +70,8 @@ pub unsafe trait ScratchTakeVecZnxDftSliceImpl<B: Backend> {
     ) -> (Vec<VecZnxDft<&mut [u8], B>>, &mut Scratch<B>);
 }
 
-pub unsafe trait ScratchTakeVmpPMatImpl<B: Backend> {
-    fn scratch_take_vmp_pmat_impl(
+pub unsafe trait TakeVmpPMatImpl<B: Backend> {
+    fn take_vmp_pmat_impl(
         scratch: &mut Scratch<B>,
         n: usize,
         rows: usize,
@@ -86,8 +81,8 @@ pub unsafe trait ScratchTakeVmpPMatImpl<B: Backend> {
     ) -> (VmpPMat<&mut [u8], B>, &mut Scratch<B>);
 }
 
-pub unsafe trait ScratchTakeMatZnxImpl<B: Backend> {
-    fn scratch_take_mat_znx_impl(
+pub unsafe trait TakeMatZnxImpl<B: Backend> {
+    fn take_mat_znx_impl(
         scratch: &mut Scratch<B>,
         n: usize,
         rows: usize,

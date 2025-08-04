@@ -4,7 +4,7 @@ use backend::{
             ModuleNew, ScalarZnxAlloc, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxFillUniform, VecZnxRotateInplace, ZnxViewMut,
         },
         layouts::{Backend, Module, ScalarZnx, ScratchOwned},
-        oep::{ScratchTakeVecZnxBigImpl, ScratchTakeVecZnxDftImpl},
+        oep::{TakeVecZnxBigImpl, TakeVecZnxDftImpl},
     },
     implementation::cpu_avx::FFT64,
 };
@@ -60,7 +60,7 @@ fn test_external_product<B: Backend>(
 ) where
     Module<B>:
         GLWEEncryptSkFamily<B> + GLWEDecryptFamily<B> + GLWESecretFamily<B> + GLWEExternalProductFamily<B> + GGSWLayoutFamily<B>,
-    B: ScratchTakeVecZnxDftImpl<B> + ScratchTakeVecZnxBigImpl<B>,
+    B: TakeVecZnxDftImpl<B> + TakeVecZnxBigImpl<B>,
 {
     let rows: usize = k_in.div_ceil(basek * digits);
 
@@ -162,7 +162,7 @@ fn test_external_product_inplace<B: Backend>(
 ) where
     Module<B>:
         GLWEEncryptSkFamily<B> + GLWEDecryptFamily<B> + GLWESecretFamily<B> + GLWEExternalProductFamily<B> + GGSWLayoutFamily<B>,
-    B: ScratchTakeVecZnxDftImpl<B> + ScratchTakeVecZnxBigImpl<B>,
+    B: TakeVecZnxDftImpl<B> + TakeVecZnxBigImpl<B>,
 {
     let rows: usize = k_ct.div_ceil(basek * digits);
 

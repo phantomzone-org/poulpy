@@ -1,6 +1,6 @@
 use crate::{
     hal::{
-        api::{ScratchTakeSlice, VmpApplyTmpBytes, VmpPrepareTmpBytes, ZnxInfos, ZnxView, ZnxViewMut},
+        api::{TakeSlice, VmpApplyTmpBytes, VmpPrepareTmpBytes, ZnxInfos, ZnxView, ZnxViewMut},
         layouts::{
             MatZnx, MatZnxToRef, Module, Scratch, VecZnxDft, VecZnxDftToMut, VecZnxDftToRef, VmpPMat, VmpPMatBytesOf,
             VmpPMatOwned, VmpPMatToMut, VmpPMatToRef,

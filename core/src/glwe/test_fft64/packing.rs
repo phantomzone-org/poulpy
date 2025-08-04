@@ -4,15 +4,15 @@ use backend::{
     hal::{
         api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxEncodeVeci64, VecZnxStd},
         layouts::{Backend, Module, ScratchOwned},
-        oep::{ScratchTakeSvpPPolImpl, ScratchTakeVecZnxBigImpl, ScratchTakeVecZnxDftImpl},
+        oep::{TakeSvpPPolImpl, TakeVecZnxBigImpl, TakeVecZnxDftImpl},
     },
     implementation::cpu_avx::FFT64,
 };
 use sampling::source::Source;
 
 use crate::{
-    AutomorphismExecFamily, AutomorphismKey, AutomorphismKeyExec, GGLWEExecLayoutFamily, GLWECiphertext, GLWEDecryptFamily,
-    GLWEEncryptSkFamily, GLWEOps, GLWEPacker, GLWEPlaintext, GLWESecret, GLWESecretExec, GLWESecretFamily,
+    AutomorphismKey, AutomorphismKeyExec, GGLWEExecLayoutFamily, GLWECiphertext, GLWEDecryptFamily, GLWEEncryptSkFamily, GLWEOps,
+    GLWEPacker, GLWEPlaintext, GLWESecret, GLWESecretExec, GLWESecretFamily,
 };
 
 #[test]
@@ -24,12 +24,8 @@ fn trace() {
 
 pub(crate) fn test_trace<B: Backend>(module: &Module<B>)
 where
-    Module<B>: GLWESecretFamily<B>
-        + GLWEEncryptSkFamily<B>
-        + GLWEDecryptFamily<B>
-        + AutomorphismExecFamily<B>
-        + GGLWEExecLayoutFamily<B>,
-    B: ScratchTakeVecZnxDftImpl<B> + ScratchTakeVecZnxBigImpl<B> + ScratchTakeSvpPPolImpl<B>,
+    Module<B>: GLWESecretFamily<B> + GLWEEncryptSkFamily<B> + GLWEDecryptFamily<B> + GGLWEExecLayoutFamily<B>,
+    B: TakeVecZnxDftImpl<B> + TakeVecZnxBigImpl<B> + TakeSvpPPolImpl<B>,
 {
     let mut source_xs: Source = Source::new([0u8; 32]);
     let mut source_xe: Source = Source::new([0u8; 32]);
@@ -141,7 +137,7 @@ where
 
     pt.sub_inplace_ab(module, &pt_want);
 
-    let noise_have = module.vec_znx_std(basek, &pt.data, 0).log2();
+    let noise_have: f64 = module.vec_znx_std(basek, &pt.data, 0).log2();
     // println!("noise_have: {}", noise_have);
     assert!(
         noise_have < -((k_ct - basek) as f64),

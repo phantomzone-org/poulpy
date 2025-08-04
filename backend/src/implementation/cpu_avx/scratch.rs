@@ -7,15 +7,18 @@ use crate::{
         layouts::{Backend, MatZnx, ScalarZnx, Scratch, ScratchOwned, SvpPPol, VecZnx, VecZnxBig, VecZnxDft, VmpPMat},
         oep::{
             ScalarZnxAllocBytesImpl, ScratchAvailableImpl, ScratchFromBytesImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl,
-            ScratchTakeMatZnxImpl, ScratchTakeScalarZnxImpl, ScratchTakeSliceImpl, ScratchTakeSvpPPolImpl,
-            ScratchTakeVecZnxBigImpl, ScratchTakeVecZnxDftImpl, ScratchTakeVecZnxDftSliceImpl, ScratchTakeVecZnxImpl,
-            ScratchTakeVecZnxSliceImpl, ScratchTakeVmpPMatImpl, SvpPPolAllocBytesImpl, VecZnxAllocBytesImpl,
-            VecZnxBigAllocBytesImpl, VecZnxDftAllocBytesImpl, VmpPMatAllocBytesImpl,
+            SvpPPolAllocBytesImpl, TakeMatZnxImpl, TakeScalarZnxImpl, TakeSliceImpl, TakeSvpPPolImpl, TakeVecZnxBigImpl,
+            TakeVecZnxDftImpl, TakeVecZnxDftSliceImpl, TakeVecZnxImpl, TakeVecZnxSliceImpl, TakeVmpPMatImpl,
+            VecZnxAllocBytesImpl, VecZnxBigAllocBytesImpl, VecZnxDftAllocBytesImpl, VmpPMatAllocBytesImpl,
         },
     },
+    implementation::cpu_avx::CPUAVX,
 };
 
-unsafe impl<B: Backend> ScratchOwnedAllocImpl<B> for B {
+unsafe impl<B: Backend> ScratchOwnedAllocImpl<B> for B
+where
+    B: CPUAVX,
+{
     fn scratch_owned_alloc_impl(size: usize) -> ScratchOwned<B> {
         let data: Vec<u8> = alloc_aligned(size);
         ScratchOwned {
@@ -25,19 +28,28 @@ unsafe impl<B: Backend> ScratchOwnedAllocImpl<B> for B {
     }
 }
 
-unsafe impl<B: Backend> ScratchOwnedBorrowImpl<B> for B {
+unsafe impl<B: Backend> ScratchOwnedBorrowImpl<B> for B
+where
+    B: CPUAVX,
+{
     fn scratch_owned_borrow_impl(scratch: &mut ScratchOwned<B>) -> &mut Scratch<B> {
         Scratch::from_bytes(&mut scratch.data)
     }
 }
 
-unsafe impl<B: Backend> ScratchFromBytesImpl<B> for B {
+unsafe impl<B: Backend> ScratchFromBytesImpl<B> for B
+where
+    B: CPUAVX,
+{
     fn scratch_from_bytes_impl(data: &mut [u8]) -> &mut Scratch<B> {
         unsafe { &mut *(data as *mut [u8] as *mut Scratch<B>) }
     }
 }
 
-unsafe impl<B: Backend> ScratchAvailableImpl<B> for B {
+unsafe impl<B: Backend> ScratchAvailableImpl<B> for B
+where
+    B: CPUAVX,
+{
     fn scratch_available_impl(scratch: &Scratch<B>) -> usize {
         let ptr: *const u8 = scratch.data.as_ptr();
         let self_len: usize = scratch.data.len();
@@ -46,8 +58,11 @@ unsafe impl<B: Backend> ScratchAvailableImpl<B> for B {
     }
 }
 
-unsafe impl<B: Backend> ScratchTakeSliceImpl<B> for B {
-    fn scratch_take_slice_impl<T>(scratch: &mut Scratch<B>, len: usize) -> (&mut [T], &mut Scratch<B>) {
+unsafe impl<B: Backend> TakeSliceImpl<B> for B
+where
+    B: CPUAVX,
+{
+    fn take_slice_impl<T>(scratch: &mut Scratch<B>, len: usize) -> (&mut [T], &mut Scratch<B>) {
         let (take_slice, rem_slice) = take_slice_aligned(&mut scratch.data, len * std::mem::size_of::<T>());
 
         unsafe {
@@ -59,11 +74,11 @@ unsafe impl<B: Backend> ScratchTakeSliceImpl<B> for B {
     }
 }
 
-unsafe impl<B: Backend> ScratchTakeScalarZnxImpl<B> for B
+unsafe impl<B: Backend> TakeScalarZnxImpl<B> for B
 where
-    B: ScalarZnxAllocBytesImpl<B>,
+    B: CPUAVX + ScalarZnxAllocBytesImpl<B>,
 {
-    fn scratch_take_scalar_znx_impl(scratch: &mut Scratch<B>, n: usize, cols: usize) -> (ScalarZnx<&mut [u8]>, &mut Scratch<B>) {
+    fn take_scalar_znx_impl(scratch: &mut Scratch<B>, n: usize, cols: usize) -> (ScalarZnx<&mut [u8]>, &mut Scratch<B>) {
         let (take_slice, rem_slice) = take_slice_aligned(&mut scratch.data, B::scalar_znx_alloc_bytes_impl(n, cols));
         (
             ScalarZnx::from_data(take_slice, n, cols),
@@ -72,11 +87,11 @@ where
     }
 }
 
-unsafe impl<B: Backend> ScratchTakeSvpPPolImpl<B> for B
+unsafe impl<B: Backend> TakeSvpPPolImpl<B> for B
 where
-    B: SvpPPolAllocBytesImpl<B>,
+    B: CPUAVX + SvpPPolAllocBytesImpl<B>,
 {
-    fn scratch_take_svp_ppol_impl(scratch: &mut Scratch<B>, n: usize, cols: usize) -> (SvpPPol<&mut [u8], B>, &mut Scratch<B>) {
+    fn take_svp_ppol_impl(scratch: &mut Scratch<B>, n: usize, cols: usize) -> (SvpPPol<&mut [u8], B>, &mut Scratch<B>) {
         let (take_slice, rem_slice) = take_slice_aligned(&mut scratch.data, B::svp_ppol_alloc_bytes_impl(n, cols));
         (
             SvpPPol::from_data(take_slice, n, cols),
@@ -85,16 +100,11 @@ where
     }
 }
 
-unsafe impl<B: Backend> ScratchTakeVecZnxImpl<B> for B
+unsafe impl<B: Backend> TakeVecZnxImpl<B> for B
 where
-    B: VecZnxAllocBytesImpl<B>,
+    B: CPUAVX + VecZnxAllocBytesImpl<B>,
 {
-    fn scratch_take_vec_znx_impl(
-        scratch: &mut Scratch<B>,
-        n: usize,
-        cols: usize,
-        size: usize,
-    ) -> (VecZnx<&mut [u8]>, &mut Scratch<B>) {
+    fn take_vec_znx_impl(scratch: &mut Scratch<B>, n: usize, cols: usize, size: usize) -> (VecZnx<&mut [u8]>, &mut Scratch<B>) {
         let (take_slice, rem_slice) = take_slice_aligned(
             &mut scratch.data,
             B::vec_znx_alloc_bytes_impl(n, cols, size),
@@ -106,11 +116,11 @@ where
     }
 }
 
-unsafe impl<B: Backend> ScratchTakeVecZnxBigImpl<B> for B
+unsafe impl<B: Backend> TakeVecZnxBigImpl<B> for B
 where
-    B: VecZnxBigAllocBytesImpl<B>,
+    B: CPUAVX + VecZnxBigAllocBytesImpl<B>,
 {
-    fn scratch_take_vec_znx_big_impl(
+    fn take_vec_znx_big_impl(
         scratch: &mut Scratch<B>,
         n: usize,
         cols: usize,
@@ -127,11 +137,11 @@ where
     }
 }
 
-unsafe impl<B: Backend> ScratchTakeVecZnxDftImpl<B> for B
+unsafe impl<B: Backend> TakeVecZnxDftImpl<B> for B
 where
-    B: VecZnxDftAllocBytesImpl<B>,
+    B: CPUAVX + VecZnxDftAllocBytesImpl<B>,
 {
-    fn scratch_take_vec_znx_dft_impl(
+    fn take_vec_znx_dft_impl(
         scratch: &mut Scratch<B>,
         n: usize,
         cols: usize,
@@ -149,11 +159,11 @@ where
     }
 }
 
-unsafe impl<B: Backend> ScratchTakeVecZnxDftSliceImpl<B> for B
+unsafe impl<B: Backend> TakeVecZnxDftSliceImpl<B> for B
 where
-    B: VecZnxDftAllocBytesImpl<B>,
+    B: CPUAVX + VecZnxDftAllocBytesImpl<B>,
 {
-    fn scratch_take_vec_znx_dft_slice_impl(
+    fn take_vec_znx_dft_slice_impl(
         scratch: &mut Scratch<B>,
         len: usize,
         n: usize,
@@ -163,7 +173,7 @@ where
         let mut scratch: &mut Scratch<B> = scratch;
         let mut slice: Vec<VecZnxDft<&mut [u8], B>> = Vec::with_capacity(len);
         for _ in 0..len {
-            let (znx, new_scratch) = B::scratch_take_vec_znx_dft_impl(scratch, n, cols, size);
+            let (znx, new_scratch) = B::take_vec_znx_dft_impl(scratch, n, cols, size);
             scratch = new_scratch;
             slice.push(znx);
         }
@@ -171,8 +181,11 @@ where
     }
 }
 
-unsafe impl<B: Backend> ScratchTakeVecZnxSliceImpl<B> for B {
-    fn scratch_take_vec_znx_slice_impl(
+unsafe impl<B: Backend> TakeVecZnxSliceImpl<B> for B
+where
+    B: CPUAVX,
+{
+    fn take_vec_znx_slice_impl(
         scratch: &mut Scratch<B>,
         len: usize,
         n: usize,
@@ -182,7 +195,7 @@ unsafe impl<B: Backend> ScratchTakeVecZnxSliceImpl<B> for B {
         let mut scratch: &mut Scratch<B> = scratch;
         let mut slice: Vec<VecZnx<&mut [u8]>> = Vec::with_capacity(len);
         for _ in 0..len {
-            let (znx, new_scratch) = B::scratch_take_vec_znx_impl(scratch, n, cols, size);
+            let (znx, new_scratch) = B::take_vec_znx_impl(scratch, n, cols, size);
             scratch = new_scratch;
             slice.push(znx);
         }
@@ -190,11 +203,11 @@ unsafe impl<B: Backend> ScratchTakeVecZnxSliceImpl<B> for B {
     }
 }
 
-unsafe impl<B: Backend> ScratchTakeVmpPMatImpl<B> for B
+unsafe impl<B: Backend> TakeVmpPMatImpl<B> for B
 where
-    B: VmpPMatAllocBytesImpl<B>,
+    B: CPUAVX + VmpPMatAllocBytesImpl<B>,
 {
-    fn scratch_take_vmp_pmat_impl(
+    fn take_vmp_pmat_impl(
         scratch: &mut Scratch<B>,
         n: usize,
         rows: usize,
@@ -213,8 +226,11 @@ where
     }
 }
 
-unsafe impl<B: Backend> ScratchTakeMatZnxImpl<B> for B {
-    fn scratch_take_mat_znx_impl(
+unsafe impl<B: Backend> TakeMatZnxImpl<B> for B
+where
+    B: CPUAVX,
+{
+    fn take_mat_znx_impl(
         scratch: &mut Scratch<B>,
         n: usize,
         rows: usize,

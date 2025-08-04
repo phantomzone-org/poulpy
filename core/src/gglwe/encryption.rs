@@ -1,7 +1,7 @@
 use backend::hal::{
     api::{
-        ScalarZnxAllocBytes, ScalarZnxAutomorphism, ScratchAvailable, ScratchTakeScalarZnx, ScratchTakeVecZnxBig,
-        ScratchTakeVecZnxDft, SvpApply, VecZnxAddScalarInplace, VecZnxBigAllocBytes, VecZnxDftToVecZnxBigTmpA,
+        ScalarZnxAllocBytes, ScalarZnxAutomorphism, ScratchAvailable, SvpApply, TakeScalarZnx, TakeVecZnx, TakeVecZnxBig,
+        TakeVecZnxDft, VecZnxAddScalarInplace, VecZnxAllocBytes, VecZnxBigAllocBytes, VecZnxDftToVecZnxBigTmpA,
         VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSwithcDegree, ZnxZero,
     },
     layouts::{Backend, Module, ScalarZnx, Scratch},
@@ -18,7 +18,7 @@ pub trait GGLWEEncryptSkFamily<B: Backend> = GLWEEncryptSkFamily<B> + GLWESecret
 impl GGLWECiphertext<Vec<u8>> {
     pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize) -> usize
     where
-        Module<B>: GGLWEEncryptSkFamily<B>,
+        Module<B>: GGLWEEncryptSkFamily<B> + VecZnxAllocBytes,
     {
         GLWECiphertext::encrypt_sk_scratch_space(module, basek, k)
             + (GLWEPlaintext::byte_of(module, basek, k) | module.vec_znx_normalize_tmp_bytes(module.n()))
@@ -40,8 +40,8 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGLWECiphertext<DataSelf> {
         sigma: f64,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: GGLWEEncryptSkFamily<B>,
-        Scratch<B>: ScratchTakeVecZnxDft<B>,
+        Module<B>: GGLWEEncryptSkFamily<B> + VecZnxAllocBytes + VecZnxAddScalarInplace,
+        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx<B>,
     {
         #[cfg(debug_assertions)]
         {
@@ -133,7 +133,7 @@ impl GLWESwitchingKey<Vec<u8>> {
         rank_out: usize,
     ) -> usize
     where
-        Module<B>: GLWESwitchingKeyEncryptSkFamily<B>,
+        Module<B>: GLWESwitchingKeyEncryptSkFamily<B> + ScalarZnxAllocBytes + VecZnxAllocBytes,
     {
         (GGLWECiphertext::encrypt_sk_scratch_space(module, basek, k) | module.scalar_znx_alloc_bytes(1))
             + module.scalar_znx_alloc_bytes(rank_in)
@@ -162,8 +162,13 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<DataSelf> {
         sigma: f64,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: GLWESwitchingKeyEncryptSkFamily<B>,
-        Scratch<B>: ScratchAvailable + ScratchTakeScalarZnx<B> + ScratchTakeVecZnxDft<B> + TakeGLWESecretExec<B>,
+        Module<B>: GLWESwitchingKeyEncryptSkFamily<B>
+            + ScalarZnxAllocBytes
+            + VecZnxSwithcDegree
+            + VecZnxAllocBytes
+            + VecZnxAddScalarInplace,
+        Scratch<B>:
+            ScratchAvailable + TakeScalarZnx<B> + TakeVecZnxDft<B> + TakeGLWESecretExec<B> + ScratchAvailable + TakeVecZnx<B>,
     {
         #[cfg(debug_assertions)]
         {
@@ -223,7 +228,7 @@ pub trait AutomorphismKeyEncryptSkFamily<B: Backend> = GGLWEEncryptSkFamily<B>;
 impl AutomorphismKey<Vec<u8>> {
     pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize
     where
-        Module<B>: AutomorphismKeyEncryptSkFamily<B>,
+        Module<B>: AutomorphismKeyEncryptSkFamily<B> + ScalarZnxAllocBytes + VecZnxAllocBytes,
     {
         GLWESwitchingKey::encrypt_sk_scratch_space(module, basek, k, rank, rank) + GLWESecret::bytes_of(module, rank)
     }
@@ -244,8 +249,13 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> AutomorphismKey<DataSelf> {
         sigma: f64,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: AutomorphismKeyEncryptSkFamily<B>,
-        Scratch<B>: ScratchAvailable + ScratchTakeScalarZnx<B> + ScratchTakeVecZnxDft<B> + TakeGLWESecretExec<B>,
+        Module<B>: AutomorphismKeyEncryptSkFamily<B>
+            + ScalarZnxAutomorphism
+            + ScalarZnxAllocBytes
+            + VecZnxAllocBytes
+            + VecZnxSwithcDegree
+            + VecZnxAddScalarInplace,
+        Scratch<B>: ScratchAvailable + TakeScalarZnx<B> + TakeVecZnxDft<B> + TakeGLWESecretExec<B> + TakeVecZnx<B>,
     {
         #[cfg(debug_assertions)]
         {
@@ -290,7 +300,7 @@ pub trait GLWETensorKeyEncryptSkFamily<B: Backend> =
 impl GLWETensorKey<Vec<u8>> {
     pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize
     where
-        Module<B>: GLWETensorKeyEncryptSkFamily<B>,
+        Module<B>: GLWETensorKeyEncryptSkFamily<B> + ScalarZnxAllocBytes + VecZnxAllocBytes,
     {
         GLWESecretExec::bytes_of(module, rank)
             + module.vec_znx_dft_alloc_bytes(rank, 1)
@@ -311,8 +321,13 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWETensorKey<DataSelf> {
         sigma: f64,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: GLWETensorKeyEncryptSkFamily<B>,
-        Scratch<B>: ScratchTakeVecZnxDft<B> + ScratchTakeVecZnxBig<B> + TakeGLWESecretExec<B>,
+        Module<B>: GLWETensorKeyEncryptSkFamily<B>
+            + ScalarZnxAllocBytes
+            + VecZnxSwithcDegree
+            + VecZnxAllocBytes
+            + VecZnxAddScalarInplace,
+        Scratch<B>:
+            ScratchAvailable + TakeVecZnxDft<B> + TakeVecZnxBig<B> + TakeGLWESecretExec<B> + TakeScalarZnx<B> + TakeVecZnx<B>,
     {
         #[cfg(debug_assertions)]
         {

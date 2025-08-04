@@ -12,7 +12,10 @@ pub struct GLWECiphertext<D> {
 }
 
 impl GLWECiphertext<Vec<u8>> {
-    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank: usize) -> Self {
+    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank: usize) -> Self
+    where
+        Module<B>: VecZnxAlloc,
+    {
         Self {
             data: module.vec_znx_alloc(rank + 1, k.div_ceil(basek)),
             basek,
@@ -20,7 +23,10 @@ impl GLWECiphertext<Vec<u8>> {
         }
     }
 
-    pub fn bytes_of<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize {
+    pub fn bytes_of<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize
+    where
+        Module<B>: VecZnxAllocBytes,
+    {
         module.vec_znx_alloc_bytes(rank + 1, k.div_ceil(basek))
     }
 }

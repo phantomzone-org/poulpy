@@ -1,6 +1,6 @@
 use backend::hal::{
     api::{
-        DataViewMut, ScratchTakeVecZnxBig, ScratchTakeVecZnxDft, SvpApplyInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace,
+        DataViewMut, SvpApplyInplace, TakeVecZnxBig, TakeVecZnxDft, VecZnxBigAddInplace, VecZnxBigAddSmallInplace,
         VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume,
         VecZnxNormalizeTmpBytes,
     },
@@ -16,7 +16,8 @@ pub trait GLWEDecryptFamily<B: Backend> = VecZnxDftAllocBytes
     + VecZnxDftToVecZnxBigConsume<B>
     + VecZnxBigAddInplace<B>
     + VecZnxBigAddSmallInplace<B>
-    + VecZnxBigNormalize<B>;
+    + VecZnxBigNormalize<B>
+    + VecZnxNormalizeTmpBytes;
 
 impl GLWECiphertext<Vec<u8>> {
     pub fn decrypt_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize) -> usize
@@ -24,7 +25,8 @@ impl GLWECiphertext<Vec<u8>> {
         Module<B>: GLWEDecryptFamily<B>,
     {
         let size: usize = k.div_ceil(basek);
-        (module.vec_znx_normalize_tmp_bytes(module.n()) | module.vec_znx_dft_alloc_bytes(1, size)) + module.vec_znx_dft_alloc_bytes(1, size)
+        (module.vec_znx_normalize_tmp_bytes(module.n()) | module.vec_znx_dft_alloc_bytes(1, size))
+            + module.vec_znx_dft_alloc_bytes(1, size)
     }
 }
 
@@ -37,7 +39,7 @@ impl<DataSelf: AsRef<[u8]>> GLWECiphertext<DataSelf> {
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWEDecryptFamily<B>,
-        Scratch<B>: ScratchTakeVecZnxDft<B> + ScratchTakeVecZnxBig<B>,
+        Scratch<B>: TakeVecZnxDft<B> + TakeVecZnxBig<B>,
     {
         #[cfg(debug_assertions)]
         {

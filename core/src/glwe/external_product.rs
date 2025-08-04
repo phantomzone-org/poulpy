@@ -1,6 +1,6 @@
 use backend::hal::{
     api::{
-        DataViewMut, ScratchTakeVecZnxDft, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftFromVecZnx,
+        DataViewMut, ScratchAvailable, TakeVecZnxDft, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftFromVecZnx,
         VecZnxDftToVecZnxBigConsume, VecZnxNormalizeTmpBytes, VmpApply, VmpApplyAdd, VmpApplyTmpBytes,
     },
     layouts::{Backend, Module, Scratch, VecZnxBig},
@@ -14,7 +14,8 @@ pub trait GLWEExternalProductFamily<B: Backend> = VecZnxDftAllocBytes
     + VmpApplyAdd<B>
     + VecZnxDftFromVecZnx<B>
     + VecZnxDftToVecZnxBigConsume<B>
-    + VecZnxBigNormalize<B>;
+    + VecZnxBigNormalize<B>
+    + VecZnxNormalizeTmpBytes;
 
 impl GLWECiphertext<Vec<u8>> {
     pub fn external_product_scratch_space<B: Backend>(
@@ -70,7 +71,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWEExternalProductFamily<B>,
-        Scratch<B>: ScratchTakeVecZnxDft<B>,
+        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
     {
         let basek: usize = self.basek();
 
@@ -147,7 +148,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWEExternalProductFamily<B>,
-        Scratch<B>: ScratchTakeVecZnxDft<B>,
+        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
     {
         unsafe {
             let self_ptr: *mut GLWECiphertext<DataSelf> = self as *mut GLWECiphertext<DataSelf>;

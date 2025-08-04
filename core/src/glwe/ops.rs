@@ -13,6 +13,7 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData + Sized {
     where
         A: GLWECiphertextToRef,
         B: GLWECiphertextToRef,
+        Module<BACKEND>: VecZnxAdd + VecZnxCopy,
     {
         #[cfg(debug_assertions)]
         {
@@ -59,6 +60,7 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData + Sized {
     fn add_inplace<A, BACKEND: Backend>(&mut self, module: &Module<BACKEND>, a: &A)
     where
         A: GLWECiphertextToRef + Infos,
+        Module<BACKEND>: VecZnxAddInplace,
     {
         #[cfg(debug_assertions)]
         {
@@ -82,6 +84,7 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData + Sized {
     where
         A: GLWECiphertextToRef,
         B: GLWECiphertextToRef,
+        Module<BACKEND>: VecZnxSub + VecZnxCopy + VecZnxNegateInplace,
     {
         #[cfg(debug_assertions)]
         {
@@ -129,6 +132,7 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData + Sized {
     fn sub_inplace_ab<A, BACKEND: Backend>(&mut self, module: &Module<BACKEND>, a: &A)
     where
         A: GLWECiphertextToRef + Infos,
+        Module<BACKEND>: VecZnxSubABInplace,
     {
         #[cfg(debug_assertions)]
         {
@@ -151,6 +155,7 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData + Sized {
     fn sub_inplace_ba<A, BACKEND: Backend>(&mut self, module: &Module<BACKEND>, a: &A)
     where
         A: GLWECiphertextToRef + Infos,
+        Module<BACKEND>: VecZnxSubBAInplace,
     {
         #[cfg(debug_assertions)]
         {
@@ -170,9 +175,10 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData + Sized {
         self.set_k(set_k_unary(self, a))
     }
 
-    fn rotate<A, BACKEND: Backend>(&mut self, module: &Module<BACKEND>, k: i64, a: &A)
+    fn rotate<A, B: Backend>(&mut self, module: &Module<B>, k: i64, a: &A)
     where
         A: GLWECiphertextToRef + Infos,
+        Module<B>: VecZnxRotate,
     {
         #[cfg(debug_assertions)]
         {
@@ -192,7 +198,10 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData + Sized {
         self.set_k(set_k_unary(self, a))
     }
 
-    fn rotate_inplace<BACKEND: Backend>(&mut self, module: &Module<BACKEND>, k: i64) {
+    fn rotate_inplace<B: Backend>(&mut self, module: &Module<B>, k: i64)
+    where
+        Module<B>: VecZnxRotateInplace,
+    {
         #[cfg(debug_assertions)]
         {
             assert_eq!(self.n(), module.n());
@@ -205,9 +214,10 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData + Sized {
         });
     }
 
-    fn copy<A, BACKEND: Backend>(&mut self, module: &Module<BACKEND>, a: &A)
+    fn copy<A, B: Backend>(&mut self, module: &Module<B>, a: &A)
     where
         A: GLWECiphertextToRef + Infos,
+        Module<B>: VecZnxCopy,
     {
         #[cfg(debug_assertions)]
         {
@@ -227,7 +237,10 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData + Sized {
         self.set_basek(a.basek());
     }
 
-    fn rsh<B: Backend>(&mut self, module: &Module<B>, k: usize) {
+    fn rsh<B: Backend>(&mut self, module: &Module<B>, k: usize)
+    where
+        Module<B>: VecZnxRshInplace,
+    {
         let basek: usize = self.basek();
         module.vec_znx_rsh_inplace(basek, k, &mut self.to_mut().data);
     }
@@ -235,6 +248,7 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData + Sized {
     fn normalize<A, B: Backend>(&mut self, module: &Module<B>, a: &A, scratch: &mut Scratch<B>)
     where
         A: GLWECiphertextToRef,
+        Module<B>: VecZnxNormalize<B>,
     {
         #[cfg(debug_assertions)]
         {
@@ -253,7 +267,10 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData + Sized {
         self.set_k(a.k().min(self.k()));
     }
 
-    fn normalize_inplace<B: Backend>(&mut self, module: &Module<B>, scratch: &mut Scratch<B>) {
+    fn normalize_inplace<B: Backend>(&mut self, module: &Module<B>, scratch: &mut Scratch<B>)
+    where
+        Module<B>: VecZnxNormalizeInplace<B>,
+    {
         #[cfg(debug_assertions)]
         {
             assert_eq!(self.n(), module.n());

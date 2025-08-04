@@ -1,5 +1,5 @@
 use backend::hal::{
-    api::{ScratchTakeVecZnxDft, ZnxZero},
+    api::{ScratchAvailable, TakeVecZnxDft, ZnxZero},
     layouts::{Backend, Module, Scratch},
 };
 
@@ -45,7 +45,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<DataSelf> {
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWEExternalProductFamily<B>,
-        Scratch<B>: ScratchTakeVecZnxDft<B>,
+        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
     {
         #[cfg(debug_assertions)]
         {
@@ -93,7 +93,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<DataSelf> {
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWEExternalProductFamily<B>,
-        Scratch<B>: ScratchTakeVecZnxDft<B>,
+        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
     {
         #[cfg(debug_assertions)]
         {
@@ -155,7 +155,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> AutomorphismKey<DataSelf> {
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWEExternalProductFamily<B>,
-        Scratch<B>: ScratchTakeVecZnxDft<B>,
+        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
     {
         self.key.external_product(module, &lhs.key, rhs, scratch);
     }
@@ -167,7 +167,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> AutomorphismKey<DataSelf> {
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWEExternalProductFamily<B>,
-        Scratch<B>: ScratchTakeVecZnxDft<B>,
+        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
     {
         self.key.external_product_inplace(module, rhs, scratch);
     }

@@ -1,15 +1,12 @@
 use backend::hal::{
     api::{
-        ScratchTakeVecZnxDft, VecZnxAutomorphismInplace, VecZnxBigAutomorphismInplace, VecZnxBigSubSmallAInplace,
+        ScratchAvailable, TakeVecZnxDft, VecZnxAutomorphismInplace, VecZnxBigAutomorphismInplace, VecZnxBigSubSmallAInplace,
         VecZnxBigSubSmallBInplace,
     },
     layouts::{Backend, Module, Scratch, VecZnxBig},
 };
 
 use crate::{AutomorphismKeyExec, GLWECiphertext, GLWEKeyswitchFamily, Infos, glwe::keyswitch::keyswitch};
-
-pub trait AutomorphismExecFamily<B: Backend> =
-    GLWEKeyswitchFamily<B> + VecZnxBigAutomorphismInplace<B> + VecZnxBigSubSmallAInplace<B> + VecZnxBigSubSmallBInplace<B>;
 
 impl GLWECiphertext<Vec<u8>> {
     pub fn automorphism_scratch_space<B: Backend>(
@@ -22,7 +19,7 @@ impl GLWECiphertext<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: AutomorphismExecFamily<B>,
+        Module<B>: GLWEKeyswitchFamily<B>,
     {
         Self::keyswitch_scratch_space(module, basek, k_out, k_in, k_ksk, digits, rank, rank)
     }
@@ -36,7 +33,7 @@ impl GLWECiphertext<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: AutomorphismExecFamily<B>,
+        Module<B>: GLWEKeyswitchFamily<B>,
     {
         Self::keyswitch_inplace_scratch_space(module, basek, k_out, k_ksk, digits, rank)
     }
@@ -50,8 +47,8 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         rhs: &AutomorphismKeyExec<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: AutomorphismExecFamily<B>,
-        Scratch<B>: ScratchTakeVecZnxDft<B>,
+        Module<B>: GLWEKeyswitchFamily<B> + VecZnxAutomorphismInplace,
+        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
     {
         self.keyswitch(module, lhs, &rhs.key, scratch);
         (0..self.rank() + 1).for_each(|i| {
@@ -65,8 +62,8 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         rhs: &AutomorphismKeyExec<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: AutomorphismExecFamily<B>,
-        Scratch<B>: ScratchTakeVecZnxDft<B>,
+        Module<B>: GLWEKeyswitchFamily<B> + VecZnxAutomorphismInplace,
+        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
     {
         self.keyswitch_inplace(module, &rhs.key, scratch);
         (0..self.rank() + 1).for_each(|i| {
@@ -81,8 +78,8 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         rhs: &AutomorphismKeyExec<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: AutomorphismExecFamily<B>,
-        Scratch<B>: ScratchTakeVecZnxDft<B>,
+        Module<B>: GLWEKeyswitchFamily<B> + VecZnxBigAutomorphismInplace<B>,
+        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
     {
         #[cfg(debug_assertions)]
         {
@@ -103,8 +100,8 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         rhs: &AutomorphismKeyExec<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: AutomorphismExecFamily<B>,
-        Scratch<B>: ScratchTakeVecZnxDft<B>,
+        Module<B>: GLWEKeyswitchFamily<B> + VecZnxBigAutomorphismInplace<B>,
+        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
     {
         unsafe {
             let self_ptr: *mut GLWECiphertext<DataSelf> = self as *mut GLWECiphertext<DataSelf>;
@@ -119,8 +116,8 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         rhs: &AutomorphismKeyExec<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: AutomorphismExecFamily<B>,
-        Scratch<B>: ScratchTakeVecZnxDft<B>,
+        Module<B>: GLWEKeyswitchFamily<B> + VecZnxBigAutomorphismInplace<B> + VecZnxBigSubSmallAInplace<B>,
+        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
     {
         #[cfg(debug_assertions)]
         {
@@ -141,8 +138,8 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         rhs: &AutomorphismKeyExec<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: AutomorphismExecFamily<B>,
-        Scratch<B>: ScratchTakeVecZnxDft<B>,
+        Module<B>: GLWEKeyswitchFamily<B> + VecZnxBigAutomorphismInplace<B> + VecZnxBigSubSmallAInplace<B>,
+        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
     {
         unsafe {
             let self_ptr: *mut GLWECiphertext<DataSelf> = self as *mut GLWECiphertext<DataSelf>;
@@ -157,8 +154,8 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         rhs: &AutomorphismKeyExec<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: AutomorphismExecFamily<B>,
-        Scratch<B>: ScratchTakeVecZnxDft<B>,
+        Module<B>: GLWEKeyswitchFamily<B> + VecZnxBigAutomorphismInplace<B> + VecZnxBigSubSmallBInplace<B>,
+        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
     {
         #[cfg(debug_assertions)]
         {
@@ -179,8 +176,8 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         rhs: &AutomorphismKeyExec<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: AutomorphismExecFamily<B>,
-        Scratch<B>: ScratchTakeVecZnxDft<B>,
+        Module<B>: GLWEKeyswitchFamily<B> + VecZnxBigAutomorphismInplace<B> + VecZnxBigSubSmallBInplace<B>,
+        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
     {
         unsafe {
             let self_ptr: *mut GLWECiphertext<DataSelf> = self as *mut GLWECiphertext<DataSelf>;

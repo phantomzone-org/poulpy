@@ -7,15 +7,15 @@ use backend::{
             VecZnxSubABInplace, ZnxView, ZnxViewMut,
         },
         layouts::{Backend, Module, ScratchOwned},
-        oep::{ScratchTakeSvpPPolImpl, ScratchTakeVecZnxBigImpl, ScratchTakeVecZnxDftImpl},
+        oep::{TakeSvpPPolImpl, TakeVecZnxBigImpl, TakeVecZnxDftImpl},
     },
     implementation::cpu_avx::FFT64,
 };
 use sampling::source::Source;
 
 use crate::{
-    AutomorphismExecFamily, AutomorphismKey, AutomorphismKeyExec, GGLWEExecLayoutFamily, GLWECiphertext, GLWEDecryptFamily,
-    GLWEEncryptSkFamily, GLWEPlaintext, GLWESecret, GLWESecretExec, GLWESecretFamily, Infos, noise::var_noise_gglwe_product,
+    AutomorphismKey, AutomorphismKeyExec, GGLWEExecLayoutFamily, GLWECiphertext, GLWEDecryptFamily, GLWEEncryptSkFamily,
+    GLWEPlaintext, GLWESecret, GLWESecretExec, GLWESecretFamily, Infos, noise::var_noise_gglwe_product,
 };
 
 #[test]
@@ -30,12 +30,8 @@ fn apply_inplace() {
 
 fn test_trace_inplace<B: Backend>(module: &Module<B>, basek: usize, k: usize, sigma: f64, rank: usize)
 where
-    Module<B>: GLWESecretFamily<B>
-        + GLWEEncryptSkFamily<B>
-        + GLWEDecryptFamily<B>
-        + AutomorphismExecFamily<B>
-        + GGLWEExecLayoutFamily<B>,
-    B: ScratchTakeVecZnxDftImpl<B> + ScratchTakeVecZnxBigImpl<B> + ScratchTakeSvpPPolImpl<B>,
+    Module<B>: GLWESecretFamily<B> + GLWEEncryptSkFamily<B> + GLWEDecryptFamily<B> + GGLWEExecLayoutFamily<B>,
+    B: TakeVecZnxDftImpl<B> + TakeVecZnxBigImpl<B> + TakeSvpPPolImpl<B>,
 {
     let k_autokey: usize = k + basek;
 

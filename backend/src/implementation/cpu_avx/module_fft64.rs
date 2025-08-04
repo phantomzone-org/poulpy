@@ -5,10 +5,15 @@ use crate::{
         layouts::{Backend, Module},
         oep::ModuleNewImpl,
     },
-    implementation::cpu_avx::ffi::module::{MODULE, delete_module_info, new_module_info},
+    implementation::cpu_avx::{
+        CPUAVX,
+        ffi::module::{MODULE, delete_module_info, new_module_info},
+    },
 };
 
 pub struct FFT64;
+
+impl CPUAVX for FFT64 {}
 
 impl Backend for FFT64 {
     type Handle = MODULE;

@@ -1,9 +1,9 @@
 use backend::hal::{
-    api::{ScratchTakeVecZnxDft, VecZnxAutomorphism, VecZnxAutomorphismInplace, ZnxZero},
+    api::{ScratchAvailable, TakeVecZnxDft, VecZnxAutomorphism, VecZnxAutomorphismInplace, ZnxZero},
     layouts::{Backend, Module, Scratch},
 };
 
-use crate::{AutomorphismExecFamily, AutomorphismKey, AutomorphismKeyExec, GLWECiphertext, Infos};
+use crate::{AutomorphismKey, AutomorphismKeyExec, GLWECiphertext, GLWEKeyswitchFamily, Infos};
 
 impl AutomorphismKey<Vec<u8>> {
     pub fn automorphism_scratch_space<B: Backend>(
@@ -16,7 +16,7 @@ impl AutomorphismKey<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: AutomorphismExecFamily<B>,
+        Module<B>: GLWEKeyswitchFamily<B>,
     {
         GLWECiphertext::keyswitch_scratch_space(module, basek, k_out, k_in, k_ksk, digits, rank, rank)
     }
@@ -30,7 +30,7 @@ impl AutomorphismKey<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: AutomorphismExecFamily<B>,
+        Module<B>: GLWEKeyswitchFamily<B>,
     {
         AutomorphismKey::automorphism_scratch_space(module, basek, k_out, k_out, k_ksk, digits, rank)
     }
@@ -44,8 +44,8 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> AutomorphismKey<DataSelf> {
         rhs: &AutomorphismKeyExec<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: AutomorphismExecFamily<B>,
-        Scratch<B>: ScratchTakeVecZnxDft<B>,
+        Module<B>: GLWEKeyswitchFamily<B> + VecZnxAutomorphism + VecZnxAutomorphismInplace,
+        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
     {
         #[cfg(debug_assertions)]
         {
@@ -118,8 +118,8 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> AutomorphismKey<DataSelf> {
         rhs: &AutomorphismKeyExec<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: AutomorphismExecFamily<B>,
-        Scratch<B>: ScratchTakeVecZnxDft<B>,
+        Module<B>: GLWEKeyswitchFamily<B> + VecZnxAutomorphism + VecZnxAutomorphismInplace,
+        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
     {
         unsafe {
             let self_ptr: *mut AutomorphismKey<DataSelf> = self as *mut AutomorphismKey<DataSelf>;

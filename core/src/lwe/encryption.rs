@@ -3,6 +3,7 @@ use backend::hal::{
         ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddNormal, VecZnxFillUniform, VecZnxNormalizeInplace, ZnxView, ZnxViewMut,
     },
     layouts::{Backend, Module, ScratchOwned, VecZnx},
+    oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl},
 };
 use sampling::source::Source;
 
@@ -23,6 +24,8 @@ where
     ) where
         DataPt: AsRef<[u8]>,
         DataSk: AsRef<[u8]>,
+        Module<B>: VecZnxFillUniform + VecZnxAddNormal + VecZnxNormalizeInplace<B>,
+        B: ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
     {
         #[cfg(debug_assertions)]
         {

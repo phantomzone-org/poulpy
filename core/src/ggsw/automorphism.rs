@@ -1,10 +1,10 @@
 use backend::hal::{
-    api::{ScratchAvailable, ScratchTakeVecZnxBig, ScratchTakeVecZnxDft},
+    api::{ScratchAvailable, TakeVecZnxBig, TakeVecZnxDft, VecZnxAutomorphismInplace, VecZnxNormalizeTmpBytes},
     layouts::{Backend, Module, Scratch},
 };
 
 use crate::{
-    AutomorphismExecFamily, AutomorphismKeyExec, GGSWCiphertext, GGSWKeySwitchFamily, GLWECiphertext, GLWETensorKeyExec, Infos,
+    AutomorphismKeyExec, GGSWCiphertext, GGSWKeySwitchFamily, GLWECiphertext, GLWEKeyswitchFamily, GLWETensorKeyExec, Infos,
 };
 
 impl GGSWCiphertext<Vec<u8>> {
@@ -20,7 +20,7 @@ impl GGSWCiphertext<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: AutomorphismExecFamily<B> + GGSWKeySwitchFamily<B>,
+        Module<B>: GLWEKeyswitchFamily<B> + GGSWKeySwitchFamily<B> + VecZnxNormalizeTmpBytes,
     {
         let out_size: usize = k_out.div_ceil(basek);
         let ci_dft: usize = module.vec_znx_dft_alloc_bytes(rank + 1, out_size);
@@ -41,7 +41,7 @@ impl GGSWCiphertext<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: AutomorphismExecFamily<B> + GGSWKeySwitchFamily<B>,
+        Module<B>: GLWEKeyswitchFamily<B> + GGSWKeySwitchFamily<B> + VecZnxNormalizeTmpBytes,
     {
         GGSWCiphertext::automorphism_scratch_space(
             module, basek, k_out, k_out, k_ksk, digits_ksk, k_tsk, digits_tsk, rank,
@@ -58,8 +58,8 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
         tensor_key: &GLWETensorKeyExec<DataTsk, B>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: AutomorphismExecFamily<B> + GGSWKeySwitchFamily<B>,
-        Scratch<B>: ScratchAvailable + ScratchTakeVecZnxDft<B> + ScratchTakeVecZnxBig<B>,
+        Module<B>: GLWEKeyswitchFamily<B> + GGSWKeySwitchFamily<B> + VecZnxAutomorphismInplace + VecZnxNormalizeTmpBytes,
+        Scratch<B>: ScratchAvailable + TakeVecZnxDft<B> + TakeVecZnxBig<B>,
     {
         #[cfg(debug_assertions)]
         {
@@ -136,8 +136,8 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
         tensor_key: &GLWETensorKeyExec<DataTsk, B>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: AutomorphismExecFamily<B> + GGSWKeySwitchFamily<B>,
-        Scratch<B>: ScratchAvailable + ScratchTakeVecZnxDft<B> + ScratchTakeVecZnxBig<B>,
+        Module<B>: GLWEKeyswitchFamily<B> + GGSWKeySwitchFamily<B> + VecZnxAutomorphismInplace + VecZnxNormalizeTmpBytes,
+        Scratch<B>: ScratchAvailable + TakeVecZnxDft<B> + TakeVecZnxBig<B>,
     {
         unsafe {
             let self_ptr: *mut GGSWCiphertext<DataSelf> = self as *mut GGSWCiphertext<DataSelf>;

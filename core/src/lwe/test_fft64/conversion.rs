@@ -1,8 +1,15 @@
 use backend::{
     hal::{
-        api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxEncodeCoeffsi64, ZnxView},
+        api::{
+            MatZnxAlloc, ModuleNew, ScalarZnxAlloc, ScalarZnxAllocBytes, ScratchOwnedAlloc, ScratchOwnedBorrow,
+            VecZnxAddScalarInplace, VecZnxAlloc, VecZnxAllocBytes, VecZnxAutomorphismInplace, VecZnxEncodeCoeffsi64,
+            VecZnxSwithcDegree, ZnxView,
+        },
         layouts::{Backend, Module, ScratchOwned},
-        oep::{ScratchTakeScalarZnxImpl, ScratchTakeSvpPPolImpl, ScratchTakeVecZnxBigImpl, ScratchTakeVecZnxDftImpl},
+        oep::{
+            ScratchAvailableImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeScalarZnxImpl, TakeSvpPPolImpl,
+            TakeVecZnxBigImpl, TakeVecZnxDftImpl, TakeVecZnxImpl,
+        },
     },
     implementation::cpu_avx::FFT64,
 };
@@ -27,10 +34,33 @@ fn lwe_to_glwe() {
     test_lwe_to_glwe(&module)
 }
 
+pub(crate) trait LWETestModuleFamily<B: Backend> = GGLWEEncryptSkFamily<B>
+    + GLWEDecryptFamily<B>
+    + VecZnxSwithcDegree
+    + VecZnxAddScalarInplace
+    + VecZnxAlloc
+    + GGLWEExecLayoutFamily<B>
+    + GLWEKeyswitchFamily<B>
+    + ScalarZnxAllocBytes
+    + VecZnxAllocBytes
+    + ScalarZnxAlloc
+    + VecZnxEncodeCoeffsi64
+    + MatZnxAlloc
+    + VecZnxAutomorphismInplace;
+
+pub(crate) trait LWETestScratchFamily<B: Backend> = TakeScalarZnxImpl<B>
+    + TakeVecZnxDftImpl<B>
+    + ScratchAvailableImpl<B>
+    + TakeVecZnxImpl<B>
+    + TakeVecZnxBigImpl<B>
+    + TakeSvpPPolImpl<B>
+    + ScratchOwnedAllocImpl<B>
+    + ScratchOwnedBorrowImpl<B>;
+
 pub(crate) fn test_lwe_to_glwe<B: Backend>(module: &Module<B>)
 where
-    Module<B>: GGLWEEncryptSkFamily<B> + GLWEDecryptFamily<B> + GGLWEExecLayoutFamily<B> + GLWEKeyswitchFamily<B>,
-    B: ScratchTakeScalarZnxImpl<B> + ScratchTakeVecZnxDftImpl<B> + ScratchTakeVecZnxBigImpl<B> + ScratchTakeSvpPPolImpl<B>,
+    Module<B>: LWETestModuleFamily<B>,
+    B: LWETestScratchFamily<B>,
 {
     let basek: usize = 17;
     let sigma: f64 = 3.2;
@@ -111,8 +141,8 @@ fn glwe_to_lwe() {
 
 fn test_glwe_to_lwe<B: Backend>(module: &Module<B>)
 where
-    Module<B>: GGLWEEncryptSkFamily<B> + GLWEKeyswitchFamily<B> + GLWEDecryptFamily<B> + GGLWEExecLayoutFamily<B>,
-    B: ScratchTakeScalarZnxImpl<B> + ScratchTakeVecZnxDftImpl<B> + ScratchTakeVecZnxBigImpl<B> + ScratchTakeSvpPPolImpl<B>,
+    Module<B>: LWETestModuleFamily<B>,
+    B: LWETestScratchFamily<B>,
 {
     let basek: usize = 17;
     let sigma: f64 = 3.2;
@@ -193,8 +223,8 @@ fn keyswitch() {
 
 fn test_keyswitch<B: Backend>(module: &Module<B>)
 where
-    Module<B>: GGLWEEncryptSkFamily<B> + GLWEKeyswitchFamily<B> + GLWEDecryptFamily<B> + GGLWEExecLayoutFamily<B>,
-    B: ScratchTakeScalarZnxImpl<B> + ScratchTakeVecZnxDftImpl<B> + ScratchTakeVecZnxBigImpl<B> + ScratchTakeSvpPPolImpl<B>,
+    Module<B>: LWETestModuleFamily<B>,
+    B: LWETestScratchFamily<B>,
 {
     let basek: usize = 17;
     let sigma: f64 = 3.2;

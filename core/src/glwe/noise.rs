@@ -1,7 +1,7 @@
 use backend::hal::{
-    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxNormalizeInplace, VecZnxStd, VecZnxSubABInplace},
+    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAlloc, VecZnxNormalizeInplace, VecZnxStd, VecZnxSubABInplace},
     layouts::{Backend, Module, ScratchOwned},
-    oep::{ScratchTakeVecZnxBigImpl, ScratchTakeVecZnxDftImpl},
+    oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeVecZnxBigImpl, TakeVecZnxDftImpl},
 };
 
 use crate::{GLWECiphertext, GLWEDecryptFamily, GLWEPlaintext, GLWESecretExec, Infos};
@@ -16,8 +16,8 @@ impl<D: AsRef<[u8]>> GLWECiphertext<D> {
     ) where
         DataSk: AsRef<[u8]>,
         DataPt: AsRef<[u8]>,
-        Module<B>: GLWEDecryptFamily<B>,
-        B: ScratchTakeVecZnxDftImpl<B> + ScratchTakeVecZnxBigImpl<B>,
+        Module<B>: GLWEDecryptFamily<B> + VecZnxSubABInplace + VecZnxNormalizeInplace<B> + VecZnxStd + VecZnxAlloc,
+        B: TakeVecZnxDftImpl<B> + TakeVecZnxBigImpl<B> + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
     {
         let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(module, self.basek(), self.k());
 

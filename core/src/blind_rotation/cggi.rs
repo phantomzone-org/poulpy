@@ -1,9 +1,10 @@
 use backend::hal::{
     api::{
-        ScratchTakeVecZnxBig, ScratchTakeVecZnxDft, ScratchTakeVecZnxDftSlice, ScratchTakeVecZnxSlice, SvpApply,
-        SvpPPolAllocBytes, VecZnxAllocBytes, VecZnxBigAddSmallInplace, VecZnxBigAllocBytes, VecZnxBigNormalizeTmpBytes,
-        VecZnxCopy, VecZnxDftAdd, VecZnxDftAddInplace, VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftSubABInplace,
-        VecZnxDftToVecZnxBig, VecZnxDftToVecZnxBigTmpBytes, VecZnxDftZero, VecZnxRotate, VmpApplyTmpBytes, ZnxView, ZnxZero,
+        ScratchAvailable, SvpApply, SvpPPolAllocBytes, TakeVecZnx, TakeVecZnxBig, TakeVecZnxDft, TakeVecZnxDftSlice,
+        TakeVecZnxSlice, VecZnxAddInplace, VecZnxAllocBytes, VecZnxBigAddSmallInplace, VecZnxBigAllocBytes,
+        VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftAdd, VecZnxDftAddInplace, VecZnxDftAllocBytes, VecZnxDftFromVecZnx,
+        VecZnxDftSubABInplace, VecZnxDftToVecZnxBig, VecZnxDftToVecZnxBigTmpBytes, VecZnxDftZero, VecZnxNormalize,
+        VecZnxNormalizeInplace, VecZnxRotate, VecZnxSubABInplace, VmpApplyTmpBytes, ZnxView, ZnxZero,
     },
     layouts::{Backend, Module, Scratch, SvpPPol},
 };
@@ -30,7 +31,13 @@ pub trait CCGIBlindRotationFamily<B: Backend> = VecZnxBigAllocBytes
     + SvpApply<B>
     + VecZnxDftSubABInplace<B>
     + VecZnxBigAddSmallInplace<B>
-    + GLWEExternalProductFamily<B>;
+    + GLWEExternalProductFamily<B>
+    + VecZnxRotate
+    + VecZnxAddInplace
+    + VecZnxSubABInplace
+    + VecZnxNormalize<B>
+    + VecZnxNormalizeInplace<B>
+    + VecZnxCopy;
 
 pub fn cggi_blind_rotate_scratch_space<B: Backend>(
     module: &Module<B>,
@@ -43,7 +50,7 @@ pub fn cggi_blind_rotate_scratch_space<B: Backend>(
     rank: usize,
 ) -> usize
 where
-    Module<B>: CCGIBlindRotationFamily<B>,
+    Module<B>: CCGIBlindRotationFamily<B> + VecZnxAllocBytes,
 {
     let brk_size: usize = k_brk.div_ceil(basek);
 
@@ -68,7 +75,9 @@ where
             + acc_dft_add
             + vmp_res
             + vmp_xai
-            + (vmp | (acc_big + (module.vec_znx_big_normalize_tmp_bytes(module.n()) | module.vec_znx_dft_to_vec_znx_big_tmp_bytes())));
+            + (vmp
+                | (acc_big
+                    + (module.vec_znx_big_normalize_tmp_bytes(module.n()) | module.vec_znx_dft_to_vec_znx_big_tmp_bytes())));
     } else {
         2 * GLWECiphertext::bytes_of(module, basek, k_res, rank)
             + GLWECiphertext::external_product_scratch_space(module, basek, k_res, k_res, k_brk, 1, rank)
@@ -87,7 +96,8 @@ pub fn cggi_blind_rotate<DataRes, DataIn, DataBrk, B: Backend>(
     DataIn: AsRef<[u8]>,
     DataBrk: AsRef<[u8]>,
     Module<B>: CCGIBlindRotationFamily<B>,
-    Scratch<B>: ScratchTakeVecZnxDftSlice<B> + ScratchTakeVecZnxDft<B> + ScratchTakeVecZnxBig<B>,
+    Scratch<B>:
+        TakeVecZnxDftSlice<B> + TakeVecZnxDft<B> + TakeVecZnxBig<B> + TakeVecZnx<B> + ScratchAvailable + TakeVecZnxSlice<B>,
 {
     match brk.dist {
         Distribution::BinaryBlock(_) | Distribution::BinaryFixed(_) | Distribution::BinaryProb(_) | Distribution::ZERO => {
@@ -118,7 +128,7 @@ pub(crate) fn cggi_blind_rotate_block_binary_extended<DataRes, DataIn, DataBrk, 
     DataIn: AsRef<[u8]>,
     DataBrk: AsRef<[u8]>,
     Module<B>: CCGIBlindRotationFamily<B>,
-    Scratch<B>: ScratchTakeVecZnxDftSlice<B> + ScratchTakeVecZnxDft<B> + ScratchTakeVecZnxBig<B>,
+    Scratch<B>: TakeVecZnxDftSlice<B> + TakeVecZnxDft<B> + TakeVecZnxBig<B> + TakeVecZnxSlice<B>,
 {
     let extension_factor: usize = lut.extension_factor();
     let basek: usize = res.basek();
@@ -262,7 +272,7 @@ pub(crate) fn cggi_blind_rotate_block_binary<DataRes, DataIn, DataBrk, B: Backen
     DataIn: AsRef<[u8]>,
     DataBrk: AsRef<[u8]>,
     Module<B>: CCGIBlindRotationFamily<B>,
-    Scratch<B>: ScratchTakeVecZnxDft<B> + ScratchTakeVecZnxBig<B>,
+    Scratch<B>: TakeVecZnxDft<B> + TakeVecZnxBig<B>,
 {
     let mut lwe_2n: Vec<i64> = vec![0i64; lwe.n() + 1]; // TODO: from scratch space
     let mut out_mut: GLWECiphertext<&mut [u8]> = res.to_mut();
@@ -348,7 +358,7 @@ pub(crate) fn cggi_blind_rotate_binary_standard<DataRes, DataIn, DataBrk, B: Bac
     DataIn: AsRef<[u8]>,
     DataBrk: AsRef<[u8]>,
     Module<B>: CCGIBlindRotationFamily<B>,
-    Scratch<B>: ScratchTakeVecZnxDft<B> + ScratchTakeVecZnxBig<B>,
+    Scratch<B>: TakeVecZnxDft<B> + TakeVecZnxBig<B> + TakeVecZnx<B> + ScratchAvailable,
 {
     #[cfg(debug_assertions)]
     {

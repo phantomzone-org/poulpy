@@ -1,5 +1,5 @@
 use backend::hal::{
-    api::{MatZnxAlloc, ScalarZnxAlloc, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxRotateInplace, ZnxViewMut},
+    api::{ScalarZnxAlloc, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxRotateInplace, ZnxViewMut},
     layouts::{Backend, Module, ScalarZnx, ScalarZnxToMut, ScratchOwned},
     oep::{ScratchTakeSvpPPolImpl, ScratchTakeVecZnxBigImpl, ScratchTakeVecZnxDftImpl},
 };
@@ -69,7 +69,7 @@ pub(crate) fn test_keyswitch<B: Backend>(
     rank_out_s1s2: usize,
     sigma: f64,
 ) where
-    Module<B>: GGLWEEncryptSkFamily<B> + GLWEDecryptFamily<B> + GLWEKeyswitchFamily<B> + GGLWEExecLayoutFamily<B> + MatZnxAlloc,
+    Module<B>: GGLWEEncryptSkFamily<B> + GLWEDecryptFamily<B> + GLWEKeyswitchFamily<B> + GGLWEExecLayoutFamily<B>,
     B: ScratchTakeVecZnxDftImpl<B> + ScratchTakeVecZnxBigImpl<B> + ScratchTakeSvpPPolImpl<B>,
 {
     let rows: usize = k_in.div_ceil(basek * digits);
@@ -199,8 +199,7 @@ pub(crate) fn test_keyswitch_inplace<B: Backend>(
     Module<B>: GLWESwitchingKeyEncryptSkFamily<B>
         + GLWEKeyswitchFamily<B>
         + GGLWEExecLayoutFamily<B>
-        + GLWEDecryptFamily<B>
-        + MatZnxAlloc,
+        + GLWEDecryptFamily<B>,
     B: ScratchTakeVecZnxDftImpl<B> + ScratchTakeVecZnxBigImpl<B> + ScratchTakeSvpPPolImpl<B>,
 {
     let rows: usize = k_ct.div_ceil(basek * digits);
@@ -300,8 +299,7 @@ pub(crate) fn test_external_product<B: Backend>(
     Module<B>: GLWESwitchingKeyEncryptSkFamily<B>
         + GLWEExternalProductFamily<B>
         + GGSWLayoutFamily<B>
-        + GLWEDecryptFamily<B>
-        + MatZnxAlloc,
+        + GLWEDecryptFamily<B>,
     B: ScratchTakeVecZnxDftImpl<B> + ScratchTakeVecZnxBigImpl<B> + ScratchTakeSvpPPolImpl<B>,
 {
     let rows: usize = k_in.div_ceil(basek * digits);
@@ -410,8 +408,7 @@ pub(crate) fn test_external_product_inplace<B: Backend>(
     Module<B>: GLWESwitchingKeyEncryptSkFamily<B>
         + GLWEExternalProductFamily<B>
         + GGSWLayoutFamily<B>
-        + GLWEDecryptFamily<B>
-        + MatZnxAlloc,
+        + GLWEDecryptFamily<B>,
     B: ScratchTakeVecZnxDftImpl<B> + ScratchTakeVecZnxBigImpl<B> + ScratchTakeSvpPPolImpl<B>,
 {
     let rows: usize = k_ct.div_ceil(basek * digits);

@@ -1,5 +1,5 @@
 use backend::hal::{
-    api::{ScratchAvailable, ScratchTakeVecZnxDft, ZnxZero},
+    api::{ScratchAvailable, TakeVecZnxDft, ZnxZero},
     layouts::{Backend, Module, Scratch},
 };
 
@@ -45,7 +45,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWEExternalProductFamily<B>,
-        Scratch<B>: ScratchAvailable + ScratchTakeVecZnxDft<B>,
+        Scratch<B>: ScratchAvailable + TakeVecZnxDft<B>,
     {
         #[cfg(debug_assertions)]
         {
@@ -100,7 +100,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWEExternalProductFamily<B>,
-        Scratch<B>: ScratchTakeVecZnxDft<B>,
+        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
     {
         #[cfg(debug_assertions)]
         {

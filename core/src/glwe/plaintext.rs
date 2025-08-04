@@ -38,7 +38,10 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> SetMetaData for GLWEPlaintext<DataSelf
 }
 
 impl GLWEPlaintext<Vec<u8>> {
-    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize) -> Self {
+    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize) -> Self
+    where
+        Module<B>: VecZnxAlloc,
+    {
         Self {
             data: module.vec_znx_alloc(1, k.div_ceil(basek)),
             basek: basek,
@@ -46,7 +49,10 @@ impl GLWEPlaintext<Vec<u8>> {
         }
     }
 
-    pub fn byte_of<B: Backend>(module: &Module<B>, basek: usize, k: usize) -> usize {
+    pub fn byte_of<B: Backend>(module: &Module<B>, basek: usize, k: usize) -> usize
+    where
+        Module<B>: VecZnxAllocBytes,
+    {
         module.vec_znx_alloc_bytes(1, k.div_ceil(basek))
     }
 }

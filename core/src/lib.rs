@@ -9,9 +9,8 @@ mod lwe;
 mod noise;
 
 use backend::hal::{
-    api::{ScratchTakeMatZnx, ScratchTakeScalarZnx, ScratchTakeSvpPPol, ScratchTakeVecZnx, ScratchTakeVecZnxDft},
+    api::{TakeMatZnx, TakeScalarZnx, TakeSvpPPol, TakeVecZnx, TakeVecZnxDft},
     layouts::{Backend, Module, Scratch},
-    oep::{ScratchTakeSvpPPolImpl, ScratchTakeVecZnxDftImpl},
 };
 pub use blind_rotation::{
     BlindRotationKeyCGGI, BlindRotationKeyCGGIExec, BlindRotationKeyCGGIExecLayoutFamily, CCGIBlindRotationFamily, LookUpTable,
@@ -27,9 +26,8 @@ pub use ggsw::{
     GGSWAssertNoiseFamily, GGSWCiphertext, GGSWCiphertextExec, GGSWEncryptSkFamily, GGSWKeySwitchFamily, GGSWLayoutFamily,
 };
 pub use glwe::{
-    AutomorphismExecFamily, GLWECiphertext, GLWEDecryptFamily, GLWEEncryptPkFamily, GLWEEncryptSkFamily,
-    GLWEExternalProductFamily, GLWEKeyswitchFamily, GLWEOps, GLWEPacker, GLWEPlaintext, GLWEPublicKey, GLWEPublicKeyFamily,
-    GLWESecret, GLWESecretExec, GLWESecretFamily,
+    GLWECiphertext, GLWEDecryptFamily, GLWEEncryptPkFamily, GLWEEncryptSkFamily, GLWEExternalProductFamily, GLWEKeyswitchFamily,
+    GLWEOps, GLWEPacker, GLWEPlaintext, GLWEPublicKey, GLWEPublicKeyFamily, GLWESecret, GLWESecretExec, GLWESecretFamily,
 };
 pub(crate) use glwe::{GLWECiphertextToMut, GLWECiphertextToRef};
 pub use lwe::{LWECiphertext, LWESecret};
@@ -138,7 +136,10 @@ pub trait TakeAutomorphismKey<B: Backend> {
     ) -> (AutomorphismKey<&mut [u8]>, &mut Self);
 }
 
-impl<B: Backend> TakeGLWECt<B> for Scratch<B> {
+impl<B: Backend> TakeGLWECt<B> for Scratch<B>
+where
+    Scratch<B>: TakeVecZnx<B>,
+{
     fn take_glwe_ct(
         &mut self,
         module: &Module<B>,
@@ -151,7 +152,10 @@ impl<B: Backend> TakeGLWECt<B> for Scratch<B> {
     }
 }
 
-impl<B: Backend> TakeGLWECtSlice<B> for Scratch<B> {
+impl<B: Backend> TakeGLWECtSlice<B> for Scratch<B>
+where
+    Scratch<B>: TakeVecZnx<B>,
+{
     fn take_glwe_ct_slice(
         &mut self,
         size: usize,
@@ -171,14 +175,20 @@ impl<B: Backend> TakeGLWECtSlice<B> for Scratch<B> {
     }
 }
 
-impl<B: Backend> TakeGLWEPt<B> for Scratch<B> {
+impl<B: Backend> TakeGLWEPt<B> for Scratch<B>
+where
+    Scratch<B>: TakeVecZnx<B>,
+{
     fn take_glwe_pt(&mut self, module: &Module<B>, basek: usize, k: usize) -> (GLWEPlaintext<&mut [u8]>, &mut Self) {
         let (data, scratch) = self.take_vec_znx(module, 1, k.div_ceil(basek));
         (GLWEPlaintext { data, basek, k }, scratch)
     }
 }
 
-impl<B: Backend> TakeGGLWE<B> for Scratch<B> {
+impl<B: Backend> TakeGGLWE<B> for Scratch<B>
+where
+    Scratch<B>: TakeMatZnx<B>,
+{
     fn take_gglwe(
         &mut self,
         module: &Module<B>,
@@ -208,7 +218,10 @@ impl<B: Backend> TakeGGLWE<B> for Scratch<B> {
     }
 }
 
-impl<B: Backend> TakeGGSW<B> for Scratch<B> {
+impl<B: Backend> TakeGGSW<B> for Scratch<B>
+where
+    Scratch<B>: TakeMatZnx<B>,
+{
     fn take_ggsw(
         &mut self,
         module: &Module<B>,
@@ -239,7 +252,7 @@ impl<B: Backend> TakeGGSW<B> for Scratch<B> {
 
 impl<B: Backend> TakeGLWEPk<B> for Scratch<B>
 where
-    B: ScratchTakeVecZnxDftImpl<B>,
+    Scratch<B>: TakeVecZnxDft<B>,
 {
     fn take_glwe_pk(
         &mut self,
@@ -261,7 +274,10 @@ where
     }
 }
 
-impl<B: Backend> TakeGLWESecret<B> for Scratch<B> {
+impl<B: Backend> TakeGLWESecret<B> for Scratch<B>
+where
+    Scratch<B>: TakeScalarZnx<B>,
+{
     fn take_glwe_secret(&mut self, module: &Module<B>, rank: usize) -> (GLWESecret<&mut [u8]>, &mut Self) {
         let (data, scratch) = self.take_scalar_znx(module, rank);
         (
@@ -276,7 +292,7 @@ impl<B: Backend> TakeGLWESecret<B> for Scratch<B> {
 
 impl<B: Backend> TakeGLWESecretExec<B> for Scratch<B>
 where
-    B: ScratchTakeSvpPPolImpl<B>,
+    Scratch<B>: TakeSvpPPol<B>,
 {
     fn take_glwe_secret_exec(&mut self, module: &Module<B>, rank: usize) -> (GLWESecretExec<&mut [u8], B>, &mut Self) {
         let (data, scratch) = self.take_svp_ppol(module, rank);
@@ -290,7 +306,10 @@ where
     }
 }
 
-impl<B: Backend> TakeGLWESwitchingKey<B> for Scratch<B> {
+impl<B: Backend> TakeGLWESwitchingKey<B> for Scratch<B>
+where
+    Scratch<B>: TakeMatZnx<B>,
+{
     fn take_glwe_switching_key(
         &mut self,
         module: &Module<B>,
@@ -313,7 +332,10 @@ impl<B: Backend> TakeGLWESwitchingKey<B> for Scratch<B> {
     }
 }
 
-impl<B: Backend> TakeAutomorphismKey<B> for Scratch<B> {
+impl<B: Backend> TakeAutomorphismKey<B> for Scratch<B>
+where
+    Scratch<B>: TakeMatZnx<B>,
+{
     fn take_automorphism_key(
         &mut self,
         module: &Module<B>,
@@ -328,7 +350,10 @@ impl<B: Backend> TakeAutomorphismKey<B> for Scratch<B> {
     }
 }
 
-impl<B: Backend> TakeTensorKey<B> for Scratch<B> {
+impl<B: Backend> TakeTensorKey<B> for Scratch<B>
+where
+    Scratch<B>: TakeMatZnx<B>,
+{
     fn take_tensor_key(
         &mut self,
         module: &Module<B>,

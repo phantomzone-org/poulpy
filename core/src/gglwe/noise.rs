@@ -1,7 +1,7 @@
 use backend::hal::{
-    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxStd, VecZnxSubScalarInplace, ZnxZero},
+    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAlloc, VecZnxStd, VecZnxSubScalarInplace, ZnxZero},
     layouts::{Backend, Module, ScalarZnx, ScratchOwned},
-    oep::{ScratchTakeVecZnxBigImpl, ScratchTakeVecZnxDftImpl},
+    oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeVecZnxBigImpl, TakeVecZnxDftImpl},
 };
 
 use crate::{GGLWECiphertext, GLWECiphertext, GLWEDecryptFamily, GLWEPlaintext, GLWESecretExec, Infos};
@@ -16,8 +16,8 @@ impl<DataIn: AsRef<[u8]>> GGLWECiphertext<DataIn> {
     ) where
         DataSk: AsRef<[u8]>,
         DataWant: AsRef<[u8]>,
-        Module<B>: GLWEDecryptFamily<B>,
-        B: ScratchTakeVecZnxDftImpl<B> + ScratchTakeVecZnxBigImpl<B>,
+        Module<B>: GLWEDecryptFamily<B> + VecZnxStd + VecZnxAlloc + VecZnxSubScalarInplace,
+        B: TakeVecZnxDftImpl<B> + TakeVecZnxBigImpl<B> + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
     {
         let digits: usize = self.digits();
         let basek: usize = self.basek();

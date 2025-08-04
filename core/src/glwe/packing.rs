@@ -1,11 +1,29 @@
 use std::collections::HashMap;
 
 use backend::hal::{
-    api::ScratchTakeVecZnxDft,
+    api::{
+        ScratchAvailable, TakeVecZnx, TakeVecZnxDft, VecZnxAddInplace, VecZnxAlloc, VecZnxAllocBytes, VecZnxAutomorphismInplace,
+        VecZnxBigAutomorphismInplace, VecZnxBigSubSmallBInplace, VecZnxCopy, VecZnxNegateInplace, VecZnxNormalizeInplace,
+        VecZnxRotate, VecZnxRotateInplace, VecZnxRshInplace, VecZnxSub, VecZnxSubABInplace,
+    },
     layouts::{Backend, Module, Scratch},
 };
 
-use crate::{AutomorphismExecFamily, AutomorphismKeyExec, GLWECiphertext, GLWEOps, Infos, TakeGLWECt};
+use crate::{AutomorphismKeyExec, GLWECiphertext, GLWEKeyswitchFamily, GLWEOps, Infos, TakeGLWECt};
+
+pub trait GLWEPackingFamily<B: Backend> = GLWEKeyswitchFamily<B>
+    + VecZnxCopy
+    + VecZnxRotateInplace
+    + VecZnxSub
+    + VecZnxNegateInplace
+    + VecZnxRshInplace
+    + VecZnxAddInplace
+    + VecZnxNormalizeInplace<B>
+    + VecZnxSubABInplace
+    + VecZnxRotate
+    + VecZnxAutomorphismInplace
+    + VecZnxBigSubSmallBInplace<B>
+    + VecZnxBigAutomorphismInplace<B>;
 
 /// [StreamPacker] enables only the fly GLWE packing
 /// with constant memory of Log(N) ciphertexts.
@@ -34,7 +52,10 @@ impl Accumulator {
     /// * `basek`: base 2 logarithm of the GLWE ciphertext in memory digit representation.
     /// * `k`: base 2 precision of the GLWE ciphertext precision over the Torus.
     /// * `rank`: rank of the GLWE ciphertext.
-    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank: usize) -> Self {
+    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank: usize) -> Self
+    where
+        Module<B>: VecZnxAlloc,
+    {
         Self {
             data: GLWECiphertext::alloc(module, basek, k, rank),
             value: false,
@@ -57,7 +78,10 @@ impl GLWEPacker {
     /// * `basek`: base 2 logarithm of the GLWE ciphertext in memory digit representation.
     /// * `k`: base 2 precision of the GLWE ciphertext precision over the Torus.
     /// * `rank`: rank of the GLWE ciphertext.
-    pub fn new<B: Backend>(module: &Module<B>, log_batch: usize, basek: usize, k: usize, rank: usize) -> Self {
+    pub fn new<B: Backend>(module: &Module<B>, log_batch: usize, basek: usize, k: usize, rank: usize) -> Self
+    where
+        Module<B>: VecZnxAlloc,
+    {
         let mut accumulators: Vec<Accumulator> = Vec::<Accumulator>::new();
         let log_n: usize = module.log_n();
         (0..log_n - log_batch).for_each(|_| accumulators.push(Accumulator::alloc(module, basek, k, rank)));
@@ -87,7 +111,7 @@ impl GLWEPacker {
         rank: usize,
     ) -> usize
     where
-        Module<B>: AutomorphismExecFamily<B>,
+        Module<B>: GLWEKeyswitchFamily<B> + VecZnxAllocBytes,
     {
         pack_core_scratch_space(module, basek, ct_k, k_ksk, digits, rank)
     }
@@ -112,8 +136,8 @@ impl GLWEPacker {
         auto_keys: &HashMap<i64, AutomorphismKeyExec<DataAK, B>>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: AutomorphismExecFamily<B>,
-        Scratch<B>: ScratchTakeVecZnxDft<B>,
+        Module<B>: GLWEPackingFamily<B>,
+        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx<B>,
     {
         assert!(
             self.counter < module.n(),
@@ -133,7 +157,10 @@ impl GLWEPacker {
     }
 
     /// Flush result to`res`.
-    pub fn flush<Data: AsMut<[u8]> + AsRef<[u8]>, B: Backend>(&mut self, module: &Module<B>, res: &mut GLWECiphertext<Data>) {
+    pub fn flush<Data: AsMut<[u8]> + AsRef<[u8]>, B: Backend>(&mut self, module: &Module<B>, res: &mut GLWECiphertext<Data>)
+    where
+        Module<B>: VecZnxCopy,
+    {
         assert!(self.counter == module.n());
         // Copy result GLWE into res GLWE
         res.copy(
@@ -154,7 +181,7 @@ fn pack_core_scratch_space<B: Backend>(
     rank: usize,
 ) -> usize
 where
-    Module<B>: AutomorphismExecFamily<B>,
+    Module<B>: GLWEKeyswitchFamily<B> + VecZnxAllocBytes,
 {
     combine_scratch_space(module, basek, ct_k, k_ksk, digits, rank)
 }
@@ -167,8 +194,8 @@ fn pack_core<D: AsRef<[u8]>, DataAK: AsRef<[u8]>, B: Backend>(
     auto_keys: &HashMap<i64, AutomorphismKeyExec<DataAK, B>>,
     scratch: &mut Scratch<B>,
 ) where
-    Module<B>: AutomorphismExecFamily<B>,
-    Scratch<B>: ScratchTakeVecZnxDft<B>,
+    Module<B>: GLWEPackingFamily<B>,
+    Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx<B>,
 {
     let log_n: usize = module.log_n();
 
@@ -228,7 +255,7 @@ fn combine_scratch_space<B: Backend>(
     rank: usize,
 ) -> usize
 where
-    Module<B>: AutomorphismExecFamily<B>,
+    Module<B>: GLWEKeyswitchFamily<B> + VecZnxAllocBytes,
 {
     GLWECiphertext::bytes_of(module, basek, ct_k, rank)
         + (GLWECiphertext::rsh_scratch_space(module)
@@ -244,8 +271,8 @@ fn combine<D: AsRef<[u8]>, DataAK: AsRef<[u8]>, B: Backend>(
     auto_keys: &HashMap<i64, AutomorphismKeyExec<DataAK, B>>,
     scratch: &mut Scratch<B>,
 ) where
-    Module<B>: AutomorphismExecFamily<B>,
-    Scratch<B>: ScratchTakeVecZnxDft<B>,
+    Module<B>: GLWEPackingFamily<B>,
+    Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx<B>,
 {
     let log_n: usize = module.log_n();
     let a: &mut GLWECiphertext<Vec<u8>> = &mut acc.data;

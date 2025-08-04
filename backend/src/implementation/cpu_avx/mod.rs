@@ -24,3 +24,5 @@ pub mod doc {
     #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/docs/backend_safety_contract.md"))]
     pub mod backend_safety {}
 }
+
+pub(crate) trait CPUAVX {}

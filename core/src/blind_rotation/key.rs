@@ -1,5 +1,8 @@
 use backend::hal::{
-    api::{ScalarZnxAlloc, ScratchTakeVecZnxDft, SvpPPolAlloc, SvpPrepare, ZnxView, ZnxViewMut},
+    api::{
+        MatZnxAlloc, ScalarZnxAlloc, ScratchAvailable, SvpPPolAlloc, SvpPrepare, TakeVecZnx, TakeVecZnxDft,
+        VecZnxAddScalarInplace, VecZnxAllocBytes, ZnxView, ZnxViewMut,
+    },
     layouts::{Backend, Module, ScalarZnx, ScalarZnxToRef, Scratch, SvpPPol},
 };
 use sampling::source::Source;
@@ -19,7 +22,10 @@ pub struct BlindRotationKeyCGGI<D> {
 //}
 
 impl BlindRotationKeyCGGI<Vec<u8>> {
-    pub fn alloc<B: Backend>(module: &Module<B>, n_lwe: usize, basek: usize, k: usize, rows: usize, rank: usize) -> Self {
+    pub fn alloc<B: Backend>(module: &Module<B>, n_lwe: usize, basek: usize, k: usize, rows: usize, rank: usize) -> Self
+    where
+        Module<B>: MatZnxAlloc,
+    {
         let mut data: Vec<GGSWCiphertext<Vec<u8>>> = Vec::with_capacity(n_lwe);
         (0..n_lwe).for_each(|_| data.push(GGSWCiphertext::alloc(module, basek, k, rows, 1, rank)));
         Self {
@@ -30,7 +36,7 @@ impl BlindRotationKeyCGGI<Vec<u8>> {
 
     pub fn generate_from_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize
     where
-        Module<B>: GGSWEncryptSkFamily<B>,
+        Module<B>: GGSWEncryptSkFamily<B> + VecZnxAllocBytes,
     {
         GGSWCiphertext::encrypt_sk_scratch_space(module, basek, k, rank)
     }
@@ -88,8 +94,8 @@ impl<D: AsRef<[u8]> + AsMut<[u8]>> BlindRotationKeyCGGI<D> {
     ) where
         DataSkGLWE: AsRef<[u8]>,
         DataSkLWE: AsRef<[u8]>,
-        Module<B>: GGSWEncryptSkFamily<B>,
-        Scratch<B>: ScratchTakeVecZnxDft<B>,
+        Module<B>: GGSWEncryptSkFamily<B> + ScalarZnxAlloc + VecZnxAddScalarInplace,
+        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx<B>,
     {
         #[cfg(debug_assertions)]
         {
@@ -182,7 +188,7 @@ impl<B: Backend> BlindRotationKeyCGGIExec<Vec<u8>, B> {
     pub fn from<DataOther>(module: &Module<B>, other: &BlindRotationKeyCGGI<DataOther>, scratch: &mut Scratch<B>) -> Self
     where
         DataOther: AsRef<[u8]>,
-        Module<B>: BlindRotationKeyCGGIExecLayoutFamily<B>,
+        Module<B>: BlindRotationKeyCGGIExecLayoutFamily<B> + ScalarZnxAlloc,
     {
         let mut brk: BlindRotationKeyCGGIExec<Vec<u8>, B> = Self::alloc(
             module,
@@ -201,7 +207,7 @@ impl<D: AsRef<[u8]> + AsMut<[u8]>, B: Backend> BlindRotationKeyCGGIExec<D, B> {
     pub fn prepare<DataOther>(&mut self, module: &Module<B>, other: &BlindRotationKeyCGGI<DataOther>, scratch: &mut Scratch<B>)
     where
         DataOther: AsRef<[u8]>,
-        Module<B>: BlindRotationKeyCGGIExecLayoutFamily<B>,
+        Module<B>: BlindRotationKeyCGGIExecLayoutFamily<B> + ScalarZnxAlloc,
     {
         #[cfg(debug_assertions)]
         {

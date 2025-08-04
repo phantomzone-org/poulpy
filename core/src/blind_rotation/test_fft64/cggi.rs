@@ -1,6 +1,6 @@
 use backend::{
     hal::{
-        api::{MatZnxAlloc, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxEncodeCoeffsi64, ZnxView},
+        api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxEncodeCoeffsi64, ZnxView},
         layouts::{Backend, Module, ScratchOwned},
         oep::{VecZnxBigAllocBytesImpl, VecZnxDftAllocBytesImpl},
     },
@@ -42,8 +42,7 @@ where
     Module<B>: CCGIBlindRotationFamily<B>
         + GLWESecretFamily<B>
         + GLWEDecryptFamily<B>
-        + BlindRotationKeyCGGIExecLayoutFamily<B>
-        + MatZnxAlloc,
+        + BlindRotationKeyCGGIExecLayoutFamily<B>,
     B: VecZnxDftAllocBytesImpl<B> + VecZnxBigAllocBytesImpl<B>,
 {
     let basek: usize = 19;

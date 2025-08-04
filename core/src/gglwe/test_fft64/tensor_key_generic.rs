@@ -1,6 +1,6 @@
 use backend::hal::{
     api::{
-        MatZnxAlloc, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxBigAlloc, VecZnxDftAlloc, VecZnxStd, VecZnxSubScalarInplace,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxBigAlloc, VecZnxDftAlloc, VecZnxStd, VecZnxSubScalarInplace,
     },
     layouts::{Backend, Module, ScratchOwned, VecZnxDft},
     oep::{ScratchTakeSvpPPolImpl, VecZnxBigAllocBytesImpl, VecZnxDftAllocBytesImpl},
@@ -18,8 +18,7 @@ where
         + GLWETensorKeyEncryptSkFamily<B>
         + GLWEDecryptFamily<B>
         + VecZnxDftAlloc<B>
-        + VecZnxBigAlloc<B>
-        + MatZnxAlloc,
+        + VecZnxBigAlloc<B>,
     B: VecZnxDftAllocBytesImpl<B> + VecZnxBigAllocBytesImpl<B> + ScratchTakeSvpPPolImpl<B>,
 {
     let rows: usize = k / basek;

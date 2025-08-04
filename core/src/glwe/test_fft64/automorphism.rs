@@ -1,16 +1,24 @@
 use backend::{
     hal::{
-        api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAutomorphismInplace, VecZnxFillUniform},
+        api::{
+            MatZnxAlloc, ModuleNew, ScalarZnxAlloc, ScalarZnxAllocBytes, ScalarZnxAutomorphism, ScratchOwnedAlloc,
+            ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxAlloc, VecZnxAllocBytes, VecZnxAutomorphismInplace,
+            VecZnxFillUniform, VecZnxStd, VecZnxSwithcDegree,
+        },
         layouts::{Backend, Module, ScratchOwned},
-        oep::{ScratchTakeSvpPPolImpl, ScratchTakeVecZnxBigImpl, ScratchTakeVecZnxDftImpl},
+        oep::{
+            ScratchAvailableImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeScalarZnxImpl, TakeSvpPPolImpl,
+            TakeVecZnxBigImpl, TakeVecZnxDftImpl, TakeVecZnxImpl,
+        },
     },
     implementation::cpu_avx::FFT64,
 };
 use sampling::source::Source;
 
 use crate::{
-    AutomorphismExecFamily, AutomorphismKey, AutomorphismKeyEncryptSkFamily, AutomorphismKeyExec, GGLWEExecLayoutFamily,
-    GLWECiphertext, GLWEDecryptFamily, GLWEPlaintext, GLWESecret, GLWESecretExec, Infos, noise::log2_std_noise_gglwe_product,
+    AutomorphismKey, AutomorphismKeyEncryptSkFamily, AutomorphismKeyExec, GGLWEExecLayoutFamily, GLWECiphertext,
+    GLWEDecryptFamily, GLWEKeyswitchFamily, GLWEPlaintext, GLWESecret, GLWESecretExec, Infos,
+    noise::log2_std_noise_gglwe_product,
 };
 
 #[test]
@@ -46,6 +54,29 @@ fn apply() {
     });
 }
 
+pub(crate) trait AutomorphismTestModuleFamily<B: Backend> = AutomorphismKeyEncryptSkFamily<B>
+    + GLWEDecryptFamily<B>
+    + GGLWEExecLayoutFamily<B>
+    + GLWEKeyswitchFamily<B>
+    + MatZnxAlloc
+    + VecZnxAlloc
+    + ScalarZnxAllocBytes
+    + VecZnxAllocBytes
+    + ScalarZnxAutomorphism
+    + VecZnxSwithcDegree
+    + ScalarZnxAlloc
+    + VecZnxAddScalarInplace
+    + VecZnxAutomorphismInplace
+    + VecZnxStd;
+pub(crate) trait AutomorphismTestScratchFamily<B: Backend> = TakeVecZnxDftImpl<B>
+    + TakeVecZnxBigImpl<B>
+    + TakeSvpPPolImpl<B>
+    + ScratchOwnedAllocImpl<B>
+    + ScratchOwnedBorrowImpl<B>
+    + ScratchAvailableImpl<B>
+    + TakeScalarZnxImpl<B>
+    + TakeVecZnxImpl<B>;
+
 fn test_automorphism<B: Backend>(
     module: &Module<B>,
     basek: usize,
@@ -57,8 +88,8 @@ fn test_automorphism<B: Backend>(
     rank: usize,
     sigma: f64,
 ) where
-    Module<B>: AutomorphismKeyEncryptSkFamily<B> + GLWEDecryptFamily<B> + AutomorphismExecFamily<B> + GGLWEExecLayoutFamily<B>,
-    B: ScratchTakeVecZnxDftImpl<B> + ScratchTakeVecZnxBigImpl<B> + ScratchTakeSvpPPolImpl<B>,
+    Module<B>: AutomorphismTestModuleFamily<B>,
+    B: AutomorphismTestScratchFamily<B>,
 {
     let rows: usize = k_in.div_ceil(basek * digits);
 
@@ -145,8 +176,8 @@ fn test_automorphism_inplace<B: Backend>(
     rank: usize,
     sigma: f64,
 ) where
-    Module<B>: AutomorphismKeyEncryptSkFamily<B> + GLWEDecryptFamily<B> + AutomorphismExecFamily<B> + GGLWEExecLayoutFamily<B>,
-    B: ScratchTakeVecZnxDftImpl<B> + ScratchTakeVecZnxBigImpl<B> + ScratchTakeSvpPPolImpl<B>,
+    Module<B>: AutomorphismTestModuleFamily<B>,
+    B: AutomorphismTestScratchFamily<B>,
 {
     let rows: usize = k_ct.div_ceil(basek * digits);
 

@@ -1,6 +1,7 @@
 use backend::hal::{
     api::{
-        ScratchAvailable, ScratchTakeScalarZnx, ScratchTakeVecZnxDft, VecZnxAutomorphismInplace, ZnxView, ZnxViewMut, ZnxZero,
+        MatZnxAlloc, ScalarZnxAllocBytes, ScratchAvailable, TakeScalarZnx, TakeVecZnx, TakeVecZnxDft, VecZnxAddScalarInplace,
+        VecZnxAllocBytes, VecZnxAutomorphismInplace, VecZnxSwithcDegree, ZnxView, ZnxViewMut, ZnxZero,
     },
     layouts::{Backend, Module, Scratch},
 };
@@ -63,7 +64,10 @@ impl<D: AsRef<[u8]> + AsMut<[u8]>, B: Backend> GLWEToLWESwitchingKeyExec<D, B> {
 }
 
 impl GLWEToLWESwitchingKey<Vec<u8>> {
-    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize, rank_in: usize) -> Self {
+    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize, rank_in: usize) -> Self
+    where
+        Module<B>: MatZnxAlloc,
+    {
         Self(GLWESwitchingKey::alloc(
             module, basek, k, rows, 1, rank_in, 1,
         ))
@@ -71,7 +75,7 @@ impl GLWEToLWESwitchingKey<Vec<u8>> {
 
     pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank_in: usize) -> usize
     where
-        Module<B>: GGLWEEncryptSkFamily<B>,
+        Module<B>: GGLWEEncryptSkFamily<B> + ScalarZnxAllocBytes + VecZnxAllocBytes,
     {
         GLWESecretExec::bytes_of(module, rank_in)
             + (GLWESwitchingKey::encrypt_sk_scratch_space(module, basek, k, rank_in, 1) | GLWESecret::bytes_of(module, rank_in))
@@ -91,8 +95,13 @@ impl<D: AsMut<[u8]> + AsRef<[u8]>> GLWEToLWESwitchingKey<D> {
     ) where
         DLwe: AsRef<[u8]>,
         DGlwe: AsRef<[u8]>,
-        Module<B>: GGLWEEncryptSkFamily<B>,
-        Scratch<B>: ScratchAvailable + ScratchTakeScalarZnx<B> + ScratchTakeVecZnxDft<B> + TakeGLWESecretExec<B>,
+        Module<B>: GGLWEEncryptSkFamily<B>
+            + VecZnxAutomorphismInplace
+            + ScalarZnxAllocBytes
+            + VecZnxSwithcDegree
+            + VecZnxAllocBytes
+            + VecZnxAddScalarInplace,
+        Scratch<B>: ScratchAvailable + TakeScalarZnx<B> + TakeVecZnxDft<B> + TakeGLWESecretExec<B> + TakeVecZnx<B>,
     {
         #[cfg(debug_assertions)]
         {
@@ -168,7 +177,10 @@ impl<D: AsRef<[u8]> + AsMut<[u8]>, B: Backend> LWEToGLWESwitchingKeyExec<D, B> {
 pub struct LWEToGLWESwitchingKey<D>(GLWESwitchingKey<D>);
 
 impl LWEToGLWESwitchingKey<Vec<u8>> {
-    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize, rank_out: usize) -> Self {
+    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize, rank_out: usize) -> Self
+    where
+        Module<B>: MatZnxAlloc,
+    {
         Self(GLWESwitchingKey::alloc(
             module, basek, k, rows, 1, 1, rank_out,
         ))
@@ -176,7 +188,7 @@ impl LWEToGLWESwitchingKey<Vec<u8>> {
 
     pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank_out: usize) -> usize
     where
-        Module<B>: GGLWEEncryptSkFamily<B>,
+        Module<B>: GGLWEEncryptSkFamily<B> + ScalarZnxAllocBytes + VecZnxAllocBytes,
     {
         GLWESwitchingKey::encrypt_sk_scratch_space(module, basek, k, 1, rank_out) + GLWESecret::bytes_of(module, 1)
     }
@@ -195,8 +207,13 @@ impl<D: AsMut<[u8]> + AsRef<[u8]>> LWEToGLWESwitchingKey<D> {
     ) where
         DLwe: AsRef<[u8]>,
         DGlwe: AsRef<[u8]>,
-        Module<B>: GGLWEEncryptSkFamily<B>,
-        Scratch<B>: ScratchAvailable + ScratchTakeScalarZnx<B> + ScratchTakeVecZnxDft<B> + TakeGLWESecretExec<B>,
+        Module<B>: GGLWEEncryptSkFamily<B>
+            + VecZnxAutomorphismInplace
+            + ScalarZnxAllocBytes
+            + VecZnxSwithcDegree
+            + VecZnxAllocBytes
+            + VecZnxAddScalarInplace,
+        Scratch<B>: ScratchAvailable + TakeScalarZnx<B> + TakeVecZnxDft<B> + TakeGLWESecretExec<B> + TakeVecZnx<B>,
     {
         #[cfg(debug_assertions)]
         {
@@ -259,13 +276,16 @@ impl<D: AsRef<[u8]> + AsMut<[u8]>, B: Backend> LWESwitchingKeyExec<D, B> {
 pub struct LWESwitchingKey<D>(GLWESwitchingKey<D>);
 
 impl LWESwitchingKey<Vec<u8>> {
-    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize) -> Self {
+    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize) -> Self
+    where
+        Module<B>: MatZnxAlloc,
+    {
         Self(GLWESwitchingKey::alloc(module, basek, k, rows, 1, 1, 1))
     }
 
     pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize) -> usize
     where
-        Module<B>: GGLWEEncryptSkFamily<B>,
+        Module<B>: GGLWEEncryptSkFamily<B> + ScalarZnxAllocBytes + VecZnxAllocBytes,
     {
         GLWESecret::bytes_of(module, 1)
             + GLWESecretExec::bytes_of(module, 1)
@@ -286,8 +306,13 @@ impl<D: AsMut<[u8]> + AsRef<[u8]>> LWESwitchingKey<D> {
     ) where
         DIn: AsRef<[u8]>,
         DOut: AsRef<[u8]>,
-        Module<B>: GGLWEEncryptSkFamily<B>,
-        Scratch<B>: ScratchAvailable + ScratchTakeScalarZnx<B> + ScratchTakeVecZnxDft<B> + TakeGLWESecretExec<B>,
+        Module<B>: GGLWEEncryptSkFamily<B>
+            + VecZnxAutomorphismInplace
+            + ScalarZnxAllocBytes
+            + VecZnxSwithcDegree
+            + VecZnxAllocBytes
+            + VecZnxAddScalarInplace,
+        Scratch<B>: ScratchAvailable + TakeScalarZnx<B> + TakeVecZnxDft<B> + TakeGLWESecretExec<B> + TakeVecZnx<B>,
     {
         #[cfg(debug_assertions)]
         {
@@ -328,7 +353,7 @@ impl LWECiphertext<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: GLWEKeyswitchFamily<B>,
+        Module<B>: GLWEKeyswitchFamily<B> + VecZnxAllocBytes,
     {
         GLWECiphertext::bytes_of(module, basek, k_lwe, 1)
             + GLWECiphertext::keyswitch_scratch_space(module, basek, k_lwe, k_glwe, k_ksk, 1, rank, 1)
@@ -342,7 +367,7 @@ impl LWECiphertext<Vec<u8>> {
         k_ksk: usize,
     ) -> usize
     where
-        Module<B>: GLWEKeyswitchFamily<B>,
+        Module<B>: GLWEKeyswitchFamily<B> + ScalarZnxAllocBytes + VecZnxAllocBytes,
     {
         GLWECiphertext::bytes_of(module, basek, k_lwe_out.max(k_lwe_in), 1)
             + GLWECiphertext::keyswitch_inplace_scratch_space(module, basek, k_lwe_out, k_ksk, 1, 1)
@@ -380,7 +405,7 @@ impl<DLwe: AsRef<[u8]> + AsMut<[u8]>> LWECiphertext<DLwe> {
         DGlwe: AsRef<[u8]>,
         DKs: AsRef<[u8]>,
         Module<B>: GLWEKeyswitchFamily<B>,
-        Scratch<B>: ScratchTakeVecZnxDft<B>,
+        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx<B>,
     {
         #[cfg(debug_assertions)]
         {
@@ -401,7 +426,7 @@ impl<DLwe: AsRef<[u8]> + AsMut<[u8]>> LWECiphertext<DLwe> {
         A: AsRef<[u8]>,
         DKs: AsRef<[u8]>,
         Module<B>: GLWEKeyswitchFamily<B>,
-        Scratch<B>: ScratchTakeVecZnxDft<B>,
+        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx<B>,
     {
         #[cfg(debug_assertions)]
         {
@@ -440,7 +465,7 @@ impl GLWECiphertext<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: GLWEKeyswitchFamily<B>,
+        Module<B>: GLWEKeyswitchFamily<B> + VecZnxAllocBytes,
     {
         GLWECiphertext::keyswitch_scratch_space(module, basek, k_glwe, k_lwe, k_ksk, 1, 1, rank)
             + GLWECiphertext::bytes_of(module, basek, k_lwe, 1)
@@ -458,7 +483,7 @@ impl<D: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<D> {
         DLwe: AsRef<[u8]>,
         DKsk: AsRef<[u8]>,
         Module<B>: GLWEKeyswitchFamily<B>,
-        Scratch<B>: ScratchTakeVecZnxDft<B>,
+        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx<B>,
     {
         #[cfg(debug_assertions)]
         {

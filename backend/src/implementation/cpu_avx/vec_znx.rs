@@ -10,7 +10,7 @@ use sampling::source::Source;
 use crate::{
     hal::{
         api::{
-            ScratchTakeSlice, ScratchTakeVecZnx, VecZnxAddDistF64, VecZnxCopy, VecZnxDecodeVecFloat, VecZnxFillDistF64,
+            TakeSlice, TakeVecZnx, VecZnxAddDistF64, VecZnxCopy, VecZnxDecodeVecFloat, VecZnxFillDistF64,
             VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace, VecZnxSwithcDegree, ZnxInfos, ZnxSliceSize, ZnxView,
             ZnxViewMut, ZnxZero,
         },
@@ -26,34 +26,52 @@ use crate::{
             VecZnxSubScalarInplaceImpl, VecZnxSwithcDegreeImpl,
         },
     },
-    implementation::cpu_avx::ffi::{module::module_info_t, vec_znx, znx},
+    implementation::cpu_avx::{
+        CPUAVX,
+        ffi::{module::module_info_t, vec_znx, znx},
+    },
 };
 
-unsafe impl<B: Backend> VecZnxAllocImpl<B> for B {
+unsafe impl<B: Backend> VecZnxAllocImpl<B> for B
+where
+    B: CPUAVX,
+{
     fn vec_znx_alloc_impl(n: usize, cols: usize, size: usize) -> VecZnxOwned {
         VecZnxOwned::new::<i64>(n, cols, size)
     }
 }
 
-unsafe impl<B: Backend> VecZnxFromBytesImpl<B> for B {
+unsafe impl<B: Backend> VecZnxFromBytesImpl<B> for B
+where
+    B: CPUAVX,
+{
     fn vec_znx_from_bytes_impl(n: usize, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxOwned {
         VecZnxOwned::new_from_bytes::<i64>(n, cols, size, bytes)
     }
 }
 
-unsafe impl<B: Backend> VecZnxAllocBytesImpl<B> for B {
+unsafe impl<B: Backend> VecZnxAllocBytesImpl<B> for B
+where
+    B: CPUAVX,
+{
     fn vec_znx_alloc_bytes_impl(n: usize, cols: usize, size: usize) -> usize {
         VecZnxOwned::bytes_of::<i64>(n, cols, size)
     }
 }
 
-unsafe impl<B: Backend> VecZnxNormalizeTmpBytesImpl<B> for B {
+unsafe impl<B: Backend> VecZnxNormalizeTmpBytesImpl<B> for B
+where
+    B: CPUAVX,
+{
     fn vec_znx_normalize_tmp_bytes_impl(module: &Module<B>, n: usize) -> usize {
         unsafe { vec_znx::vec_znx_normalize_base2k_tmp_bytes(module.ptr() as *const module_info_t, n as u64) as usize }
     }
 }
 
-unsafe impl<B: Backend> VecZnxNormalizeImpl<B> for B {
+unsafe impl<B: Backend> VecZnxNormalizeImpl<B> for B
+where
+    B: CPUAVX,
+{
     fn vec_znx_normalize_impl<R, A>(
         module: &Module<B>,
         basek: usize,
@@ -93,7 +111,10 @@ unsafe impl<B: Backend> VecZnxNormalizeImpl<B> for B {
     }
 }
 
-unsafe impl<B: Backend> VecZnxNormalizeInplaceImpl<B> for B {
+unsafe impl<B: Backend> VecZnxNormalizeInplaceImpl<B> for B
+where
+    B: CPUAVX,
+{
     fn vec_znx_normalize_inplace_impl<A>(module: &Module<B>, basek: usize, a: &mut A, a_col: usize, scratch: &mut Scratch<B>)
     where
         A: VecZnxToMut,
@@ -119,7 +140,10 @@ unsafe impl<B: Backend> VecZnxNormalizeInplaceImpl<B> for B {
     }
 }
 
-unsafe impl<B: Backend> VecZnxAddImpl<B> for B {
+unsafe impl<B: Backend> VecZnxAddImpl<B> for B
+where
+    B: CPUAVX,
+{
     fn vec_znx_add_impl<R, A, C>(module: &Module<B>, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &C, b_col: usize)
     where
         R: VecZnxToMut,
@@ -154,7 +178,10 @@ unsafe impl<B: Backend> VecZnxAddImpl<B> for B {
     }
 }
 
-unsafe impl<B: Backend> VecZnxAddInplaceImpl<B> for B {
+unsafe impl<B: Backend> VecZnxAddInplaceImpl<B> for B
+where
+    B: CPUAVX,
+{
     fn vec_znx_add_inplace_impl<R, A>(module: &Module<B>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxToMut,
@@ -185,7 +212,10 @@ unsafe impl<B: Backend> VecZnxAddInplaceImpl<B> for B {
     }
 }
 
-unsafe impl<B: Backend> VecZnxAddScalarInplaceImpl<B> for B {
+unsafe impl<B: Backend> VecZnxAddScalarInplaceImpl<B> for B
+where
+    B: CPUAVX,
+{
     fn vec_znx_add_scalar_inplace_impl<R, A>(
         module: &Module<B>,
         res: &mut R,
@@ -223,7 +253,10 @@ unsafe impl<B: Backend> VecZnxAddScalarInplaceImpl<B> for B {
     }
 }
 
-unsafe impl<B: Backend> VecZnxSubImpl<B> for B {
+unsafe impl<B: Backend> VecZnxSubImpl<B> for B
+where
+    B: CPUAVX,
+{
     fn vec_znx_sub_impl<R, A, C>(module: &Module<B>, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &C, b_col: usize)
     where
         R: VecZnxToMut,
@@ -258,7 +291,10 @@ unsafe impl<B: Backend> VecZnxSubImpl<B> for B {
     }
 }
 
-unsafe impl<B: Backend> VecZnxSubABInplaceImpl<B> for B {
+unsafe impl<B: Backend> VecZnxSubABInplaceImpl<B> for B
+where
+    B: CPUAVX,
+{
     fn vec_znx_sub_ab_inplace_impl<R, A>(module: &Module<B>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxToMut,
@@ -288,7 +324,10 @@ unsafe impl<B: Backend> VecZnxSubABInplaceImpl<B> for B {
     }
 }
 
-unsafe impl<B: Backend> VecZnxSubBAInplaceImpl<B> for B {
+unsafe impl<B: Backend> VecZnxSubBAInplaceImpl<B> for B
+where
+    B: CPUAVX,
+{
     fn vec_znx_sub_ba_inplace_impl<R, A>(module: &Module<B>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxToMut,
@@ -318,7 +357,10 @@ unsafe impl<B: Backend> VecZnxSubBAInplaceImpl<B> for B {
     }
 }
 
-unsafe impl<B: Backend> VecZnxSubScalarInplaceImpl<B> for B {
+unsafe impl<B: Backend> VecZnxSubScalarInplaceImpl<B> for B
+where
+    B: CPUAVX,
+{
     fn vec_znx_sub_scalar_inplace_impl<R, A>(
         module: &Module<B>,
         res: &mut R,
@@ -356,7 +398,10 @@ unsafe impl<B: Backend> VecZnxSubScalarInplaceImpl<B> for B {
     }
 }
 
-unsafe impl<B: Backend> VecZnxNegateImpl<B> for B {
+unsafe impl<B: Backend> VecZnxNegateImpl<B> for B
+where
+    B: CPUAVX,
+{
     fn vec_znx_negate_impl<R, A>(module: &Module<B>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxToMut,
@@ -383,7 +428,10 @@ unsafe impl<B: Backend> VecZnxNegateImpl<B> for B {
     }
 }
 
-unsafe impl<B: Backend> VecZnxNegateInplaceImpl<B> for B {
+unsafe impl<B: Backend> VecZnxNegateInplaceImpl<B> for B
+where
+    B: CPUAVX,
+{
     fn vec_znx_negate_inplace_impl<A>(module: &Module<B>, a: &mut A, a_col: usize)
     where
         A: VecZnxToMut,
@@ -407,7 +455,10 @@ unsafe impl<B: Backend> VecZnxNegateInplaceImpl<B> for B {
     }
 }
 
-unsafe impl<B: Backend> VecZnxLshInplaceImpl<B> for B {
+unsafe impl<B: Backend> VecZnxLshInplaceImpl<B> for B
+where
+    B: CPUAVX,
+{
     fn vec_znx_lsh_inplace_impl<A>(_module: &Module<B>, basek: usize, k: usize, a: &mut A)
     where
         A: VecZnxToMut,
@@ -441,7 +492,10 @@ unsafe impl<B: Backend> VecZnxLshInplaceImpl<B> for B {
     }
 }
 
-unsafe impl<B: Backend> VecZnxRshInplaceImpl<B> for B {
+unsafe impl<B: Backend> VecZnxRshInplaceImpl<B> for B
+where
+    B: CPUAVX,
+{
     fn vec_znx_rsh_inplace_impl<A>(_module: &Module<B>, basek: usize, k: usize, a: &mut A)
     where
         A: VecZnxToMut,
@@ -478,7 +532,10 @@ unsafe impl<B: Backend> VecZnxRshInplaceImpl<B> for B {
     }
 }
 
-unsafe impl<B: Backend> VecZnxRotateImpl<B> for B {
+unsafe impl<B: Backend> VecZnxRotateImpl<B> for B
+where
+    B: CPUAVX,
+{
     fn vec_znx_rotate_impl<R, A>(_module: &Module<B>, k: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxToMut,
@@ -503,7 +560,10 @@ unsafe impl<B: Backend> VecZnxRotateImpl<B> for B {
     }
 }
 
-unsafe impl<B: Backend> VecZnxRotateInplaceImpl<B> for B {
+unsafe impl<B: Backend> VecZnxRotateInplaceImpl<B> for B
+where
+    B: CPUAVX,
+{
     fn vec_znx_rotate_inplace_impl<A>(_module: &Module<B>, k: i64, a: &mut A, a_col: usize)
     where
         A: VecZnxToMut,
@@ -517,7 +577,10 @@ unsafe impl<B: Backend> VecZnxRotateInplaceImpl<B> for B {
     }
 }
 
-unsafe impl<B: Backend> VecZnxAutomorphismImpl<B> for B {
+unsafe impl<B: Backend> VecZnxAutomorphismImpl<B> for B
+where
+    B: CPUAVX,
+{
     fn vec_znx_automorphism_impl<R, A>(module: &Module<B>, k: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxToMut,
@@ -545,7 +608,10 @@ unsafe impl<B: Backend> VecZnxAutomorphismImpl<B> for B {
     }
 }
 
-unsafe impl<B: Backend> VecZnxAutomorphismInplaceImpl<B> for B {
+unsafe impl<B: Backend> VecZnxAutomorphismInplaceImpl<B> for B
+where
+    B: CPUAVX,
+{
     fn vec_znx_automorphism_inplace_impl<A>(module: &Module<B>, k: i64, a: &mut A, a_col: usize)
     where
         A: VecZnxToMut,
@@ -575,7 +641,10 @@ unsafe impl<B: Backend> VecZnxAutomorphismInplaceImpl<B> for B {
     }
 }
 
-unsafe impl<B: Backend> VecZnxSplitImpl<B> for B {
+unsafe impl<B: Backend> VecZnxSplitImpl<B> for B
+where
+    B: CPUAVX,
+{
     fn vec_znx_split_impl<R, A>(
         module: &Module<B>,
         res: &mut Vec<R>,
@@ -617,7 +686,10 @@ unsafe impl<B: Backend> VecZnxSplitImpl<B> for B {
     }
 }
 
-unsafe impl<B: Backend> VecZnxMergeImpl<B> for B {
+unsafe impl<B: Backend> VecZnxMergeImpl<B> for B
+where
+    B: CPUAVX,
+{
     fn vec_znx_merge_impl<R, A>(module: &Module<B>, res: &mut R, res_col: usize, a: Vec<A>, a_col: usize)
     where
         R: VecZnxToMut,
@@ -648,7 +720,10 @@ unsafe impl<B: Backend> VecZnxMergeImpl<B> for B {
     }
 }
 
-unsafe impl<B: Backend> VecZnxSwithcDegreeImpl<B> for B {
+unsafe impl<B: Backend> VecZnxSwithcDegreeImpl<B> for B
+where
+    B: CPUAVX,
+{
     fn vec_znx_switch_degree_impl<R, A>(module: &Module<B>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxToMut,
@@ -684,7 +759,10 @@ unsafe impl<B: Backend> VecZnxSwithcDegreeImpl<B> for B {
     }
 }
 
-unsafe impl<B: Backend> VecZnxCopyImpl<B> for B {
+unsafe impl<B: Backend> VecZnxCopyImpl<B> for B
+where
+    B: CPUAVX,
+{
     fn vec_znx_copy_impl<R, A>(_module: &Module<B>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxToMut,
@@ -706,7 +784,10 @@ unsafe impl<B: Backend> VecZnxCopyImpl<B> for B {
     }
 }
 
-unsafe impl<B: Backend> VecZnxStdImpl<B> for B {
+unsafe impl<B: Backend> VecZnxStdImpl<B> for B
+where
+    B: CPUAVX,
+{
     fn vec_znx_std_impl<A>(module: &Module<B>, basek: usize, a: &A, a_col: usize) -> f64
     where
         A: VecZnxToRef,
@@ -732,7 +813,10 @@ unsafe impl<B: Backend> VecZnxStdImpl<B> for B {
     }
 }
 
-unsafe impl<B: Backend> VecZnxFillUniformImpl<B> for B {
+unsafe impl<B: Backend> VecZnxFillUniformImpl<B> for B
+where
+    B: CPUAVX,
+{
     fn vec_znx_fill_uniform_impl<R>(_module: &Module<B>, basek: usize, res: &mut R, res_col: usize, k: usize, source: &mut Source)
     where
         R: VecZnxToMut,
@@ -749,7 +833,10 @@ unsafe impl<B: Backend> VecZnxFillUniformImpl<B> for B {
     }
 }
 
-unsafe impl<B: Backend> VecZnxFillDistF64Impl<B> for B {
+unsafe impl<B: Backend> VecZnxFillDistF64Impl<B> for B
+where
+    B: CPUAVX,
+{
     fn vec_znx_fill_dist_f64_impl<R, D: rand::prelude::Distribution<f64>>(
         _module: &Module<B>,
         basek: usize,
@@ -792,7 +879,10 @@ unsafe impl<B: Backend> VecZnxFillDistF64Impl<B> for B {
     }
 }
 
-unsafe impl<B: Backend> VecZnxAddDistF64Impl<B> for B {
+unsafe impl<B: Backend> VecZnxAddDistF64Impl<B> for B
+where
+    B: CPUAVX,
+{
     fn vec_znx_add_dist_f64_impl<R, D: rand::prelude::Distribution<f64>>(
         _module: &Module<B>,
         basek: usize,
@@ -835,7 +925,10 @@ unsafe impl<B: Backend> VecZnxAddDistF64Impl<B> for B {
     }
 }
 
-unsafe impl<B: Backend> VecZnxFillNormalImpl<B> for B {
+unsafe impl<B: Backend> VecZnxFillNormalImpl<B> for B
+where
+    B: CPUAVX,
+{
     fn vec_znx_fill_normal_impl<R>(
         module: &Module<B>,
         basek: usize,
@@ -860,7 +953,10 @@ unsafe impl<B: Backend> VecZnxFillNormalImpl<B> for B {
     }
 }
 
-unsafe impl<B: Backend> VecZnxAddNormalImpl<B> for B {
+unsafe impl<B: Backend> VecZnxAddNormalImpl<B> for B
+where
+    B: CPUAVX,
+{
     fn vec_znx_add_normal_impl<R>(
         module: &Module<B>,
         basek: usize,
@@ -885,7 +981,10 @@ unsafe impl<B: Backend> VecZnxAddNormalImpl<B> for B {
     }
 }
 
-unsafe impl<B: Backend> VecZnxEncodeVeci64Impl<B> for B {
+unsafe impl<B: Backend> VecZnxEncodeVeci64Impl<B> for B
+where
+    B: CPUAVX,
+{
     fn encode_vec_i64_impl<R>(
         _module: &Module<B>,
         basek: usize,
@@ -950,7 +1049,10 @@ unsafe impl<B: Backend> VecZnxEncodeVeci64Impl<B> for B {
     }
 }
 
-unsafe impl<B: Backend> VecZnxEncodeCoeffsi64Impl<B> for B {
+unsafe impl<B: Backend> VecZnxEncodeCoeffsi64Impl<B> for B
+where
+    B: CPUAVX,
+{
     fn encode_coeff_i64_impl<R>(
         _module: &Module<B>,
         basek: usize,
@@ -1008,7 +1110,10 @@ unsafe impl<B: Backend> VecZnxEncodeCoeffsi64Impl<B> for B {
     }
 }
 
-unsafe impl<B: Backend> VecZnxDecodeVeci64Impl<B> for B {
+unsafe impl<B: Backend> VecZnxDecodeVeci64Impl<B> for B
+where
+    B: CPUAVX,
+{
     fn decode_vec_i64_impl<R>(_module: &Module<B>, basek: usize, res: &R, res_col: usize, k: usize, data: &mut [i64])
     where
         R: VecZnxToRef,
@@ -1048,7 +1153,10 @@ unsafe impl<B: Backend> VecZnxDecodeVeci64Impl<B> for B {
     }
 }
 
-unsafe impl<B: Backend> VecZnxDecodeCoeffsi64Impl<B> for B {
+unsafe impl<B: Backend> VecZnxDecodeCoeffsi64Impl<B> for B
+where
+    B: CPUAVX,
+{
     fn decode_coeff_i64_impl<R>(_module: &Module<B>, basek: usize, res: &R, res_col: usize, k: usize, i: usize) -> i64
     where
         R: VecZnxToRef,
@@ -1077,7 +1185,10 @@ unsafe impl<B: Backend> VecZnxDecodeCoeffsi64Impl<B> for B {
     }
 }
 
-unsafe impl<B: Backend> VecZnxDecodeVecFloatImpl<B> for B {
+unsafe impl<B: Backend> VecZnxDecodeVecFloatImpl<B> for B
+where
+    B: CPUAVX,
+{
     fn decode_vec_float_impl<R>(_module: &Module<B>, basek: usize, res: &R, res_col: usize, data: &mut [Float])
     where
         R: VecZnxToRef,

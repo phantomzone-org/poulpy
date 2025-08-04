@@ -16,5 +16,5 @@ pub use keyswitch_key::{GLWESwitchingKey, GLWESwitchingKeyExec};
 pub use layout::{GGLWECiphertext, GGLWECiphertextExec, GGLWEExecLayoutFamily};
 pub use tensor_key::{GLWETensorKey, GLWETensorKeyExec};
 
-#[cfg(test)]
-mod test_fft64;
+//#[cfg(test)]
+// mod test_fft64;

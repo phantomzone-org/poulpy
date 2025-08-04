@@ -35,7 +35,10 @@ impl<D: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<D> {
 }
 
 impl GGSWCiphertext<Vec<u8>> {
-    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self {
+    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self
+    where
+        Module<B>: MatZnxAlloc,
+    {
         let size: usize = k.div_ceil(basek);
         debug_assert!(digits > 0, "invalid ggsw: `digits` == 0");
 
@@ -62,7 +65,10 @@ impl GGSWCiphertext<Vec<u8>> {
         }
     }
 
-    pub fn bytes_of<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize {
+    pub fn bytes_of<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize
+    where
+        Module<B>: MatZnxAllocBytes,
+    {
         let size: usize = k.div_ceil(basek);
         debug_assert!(
             size > digits,

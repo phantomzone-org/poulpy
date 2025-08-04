@@ -1,6 +1,7 @@
 use backend::hal::{
     api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxNormalizeInplace, ZnxView, ZnxViewMut},
     layouts::{Backend, Module, ScratchOwned},
+    oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl},
 };
 
 use crate::{Infos, LWECiphertext, LWESecret, SetMetaData, lwe::LWEPlaintext};
@@ -13,6 +14,8 @@ where
     where
         DataPt: AsRef<[u8]> + AsMut<[u8]>,
         DataSk: AsRef<[u8]>,
+        Module<B>: VecZnxNormalizeInplace<B>,
+        B: ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
     {
         #[cfg(debug_assertions)]
         {

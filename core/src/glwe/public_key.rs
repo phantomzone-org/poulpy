@@ -1,21 +1,13 @@
 use backend::hal::{
-    api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyInplace, VecZnxBigNormalize, VecZnxDftAlloc, VecZnxDftAllocBytes,
-        VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume,
-    },
+    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAlloc, VecZnxDftAlloc, VecZnxDftAllocBytes, VecZnxDftFromVecZnx},
     layouts::{Backend, Module, ScratchOwned, VecZnxDft},
-    oep::ScratchTakeVecZnxDftImpl,
+    oep::{ScratchAvailableImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeVecZnxDftImpl, TakeVecZnxImpl},
 };
 use sampling::source::Source;
 
-use crate::{GLWECiphertext, GLWESecretExec, Infos, dist::Distribution};
+use crate::{GLWECiphertext, GLWEEncryptSkFamily, GLWESecretExec, Infos, dist::Distribution};
 
-pub trait GLWEPublicKeyFamily<B: Backend> = VecZnxDftAlloc<B>
-    + VecZnxDftAllocBytes
-    + VecZnxBigNormalize<B>
-    + VecZnxDftFromVecZnx<B>
-    + SvpApplyInplace<B>
-    + VecZnxDftToVecZnxBigConsume<B>;
+pub trait GLWEPublicKeyFamily<B: Backend> = GLWEEncryptSkFamily<B>;
 
 pub struct GLWEPublicKey<D, B: Backend> {
     pub(crate) data: VecZnxDft<D, B>,
@@ -27,7 +19,7 @@ pub struct GLWEPublicKey<D, B: Backend> {
 impl<B: Backend> GLWEPublicKey<Vec<u8>, B> {
     pub fn alloc(module: &Module<B>, basek: usize, k: usize, rank: usize) -> Self
     where
-        Module<B>: GLWEPublicKeyFamily<B>,
+        Module<B>: VecZnxDftAlloc<B>,
     {
         Self {
             data: module.vec_znx_dft_alloc(rank + 1, k.div_ceil(basek)),
@@ -39,7 +31,7 @@ impl<B: Backend> GLWEPublicKey<Vec<u8>, B> {
 
     pub fn bytes_of(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize
     where
-        Module<B>: GLWEPublicKeyFamily<B>,
+        Module<B>: VecZnxDftAllocBytes,
     {
         module.vec_znx_dft_alloc_bytes(rank + 1, k.div_ceil(basek))
     }
@@ -76,8 +68,12 @@ impl<C: AsRef<[u8]> + AsMut<[u8]>, B: Backend> GLWEPublicKey<C, B> {
         source_xe: &mut Source,
         sigma: f64,
     ) where
-        Module<B>: GLWEPublicKeyFamily<B>,
-        B: ScratchTakeVecZnxDftImpl<B>,
+        Module<B>: GLWEPublicKeyFamily<B> + VecZnxAlloc,
+        B: ScratchOwnedAllocImpl<B>
+            + ScratchOwnedBorrowImpl<B>
+            + TakeVecZnxDftImpl<B>
+            + ScratchAvailableImpl<B>
+            + TakeVecZnxImpl<B>,
     {
         #[cfg(debug_assertions)]
         {

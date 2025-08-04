@@ -14,14 +14,20 @@ pub struct GLWESecret<T> {
 }
 
 impl GLWESecret<Vec<u8>> {
-    pub fn alloc<B: Backend>(module: &Module<B>, rank: usize) -> Self {
+    pub fn alloc<B: Backend>(module: &Module<B>, rank: usize) -> Self
+    where
+        Module<B>: ScalarZnxAlloc,
+    {
         Self {
             data: module.scalar_znx_alloc(rank),
             dist: Distribution::NONE,
         }
     }
 
-    pub fn bytes_of<B: Backend>(module: &Module<B>, rank: usize) -> usize {
+    pub fn bytes_of<B: Backend>(module: &Module<B>, rank: usize) -> usize
+    where
+        Module<B>: ScalarZnxAllocBytes,
+    {
         module.scalar_znx_alloc_bytes(rank)
     }
 }

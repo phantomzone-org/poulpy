@@ -5,10 +5,15 @@ use crate::{
         layouts::{Backend, Module},
         oep::ModuleNewImpl,
     },
-    implementation::cpu_avx::ffi::module::{MODULE, delete_module_info, new_module_info},
+    implementation::cpu_avx::{
+        CPUAVX,
+        ffi::module::{MODULE, delete_module_info, new_module_info},
+    },
 };
 
 pub struct NTT120;
+
+impl CPUAVX for NTT120 {}
 
 impl Backend for NTT120 {
     type Handle = MODULE;

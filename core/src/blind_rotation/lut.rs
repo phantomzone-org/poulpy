@@ -1,8 +1,10 @@
 use backend::hal::{
     api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAlloc, VecZnxCopy, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotateInplace, VecZnxSwithcDegree, ZnxInfos, ZnxViewMut
+        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAlloc, VecZnxCopy, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes,
+        VecZnxRotateInplace, VecZnxSwithcDegree, ZnxInfos, ZnxViewMut,
     },
     layouts::{Backend, Module, ScratchOwned, VecZnx},
+    oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl},
 };
 
 pub struct LookUpTable {
@@ -12,7 +14,10 @@ pub struct LookUpTable {
 }
 
 impl LookUpTable {
-    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, extension_factor: usize) -> Self {
+    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, extension_factor: usize) -> Self
+    where
+        Module<B>: VecZnxAlloc,
+    {
         #[cfg(debug_assertions)]
         {
             assert!(
@@ -43,7 +48,8 @@ impl LookUpTable {
 
     pub fn set<B: Backend>(&mut self, module: &Module<B>, f: &Vec<i64>, k: usize)
     where
-        Module<B>: VecZnxRotateInplace,
+        Module<B>: VecZnxRotateInplace + VecZnxNormalizeInplace<B> + VecZnxNormalizeTmpBytes + VecZnxSwithcDegree + VecZnxCopy,
+        B: ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
     {
         assert!(f.len() <= module.n());
 
