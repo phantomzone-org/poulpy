@@ -8,7 +8,7 @@ use backend::{
         },
         layouts::{Module, ScalarZnx, ScratchOwned, SvpPPol, VecZnx, VecZnxBig, VecZnxDft},
     },
-    implementation::cpu_avx::FFT64,
+    implementation::cpu_spqlios::FFT64,
 };
 use itertools::izip;
 use sampling::source::Source;

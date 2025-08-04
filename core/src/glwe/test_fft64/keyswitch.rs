@@ -10,7 +10,7 @@ use backend::{
             TakeVecZnxBigImpl, TakeVecZnxDftImpl, TakeVecZnxImpl,
         },
     },
-    implementation::cpu_avx::FFT64,
+    implementation::cpu_spqlios::FFT64,
 };
 use sampling::source::Source;
 

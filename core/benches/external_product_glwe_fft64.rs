@@ -6,7 +6,7 @@ use backend::{
         api::{ModuleNew, ScalarZnxAlloc, ScratchOwnedAlloc, ScratchOwnedBorrow},
         layouts::{Module, ScalarZnx, ScratchOwned},
     },
-    implementation::cpu_avx::FFT64,
+    implementation::cpu_spqlios::FFT64,
 };
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use sampling::source::Source;

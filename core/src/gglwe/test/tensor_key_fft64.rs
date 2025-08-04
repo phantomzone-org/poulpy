@@ -1,6 +1,6 @@
 use backend::{
     hal::{api::ModuleNew, layouts::Module},
-    implementation::cpu_avx::FFT64,
+    implementation::cpu_spqlios::FFT64,
 };
 
 use crate::gglwe::test::tensor_key_generic::test_encrypt_sk;

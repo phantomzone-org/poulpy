@@ -1,20 +1,54 @@
 use backend::hal::{
-    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxBigAlloc, VecZnxDftAlloc, VecZnxStd, VecZnxSubScalarInplace},
+    api::{
+        MatZnxAlloc, ScalarZnxAlloc, ScalarZnxAllocBytes, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace,
+        VecZnxAlloc, VecZnxAllocBytes, VecZnxBigAlloc, VecZnxDftAlloc, VecZnxStd, VecZnxSubScalarInplace, VecZnxSwithcDegree,
+    },
     layouts::{Backend, Module, ScratchOwned, VecZnxDft},
-    oep::{TakeSvpPPolImpl, VecZnxBigAllocBytesImpl, VecZnxDftAllocBytesImpl},
+    oep::{
+        ScratchAvailableImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeScalarZnxImpl, TakeSvpPPolImpl,
+        TakeVecZnxBigImpl, TakeVecZnxDftImpl, TakeVecZnxImpl, VecZnxBigAllocBytesImpl, VecZnxDftAllocBytesImpl,
+    },
 };
 use sampling::source::Source;
 
 use crate::{
-    GGLWEExecLayoutFamily, GLWEDecryptFamily, GLWEPlaintext, GLWESecret, GLWESecretExec, GLWETensorKey,
+    GGLWEEncryptSkFamily, GGLWEExecLayoutFamily, GLWEDecryptFamily, GLWEPlaintext, GLWESecret, GLWESecretExec, GLWETensorKey,
     GLWETensorKeyEncryptSkFamily, Infos,
 };
 
+pub(crate) trait TestModuleFamily<B: Backend> = GGLWEEncryptSkFamily<B>
+    + GLWEDecryptFamily<B>
+    + MatZnxAlloc
+    + ScalarZnxAlloc
+    + ScalarZnxAllocBytes
+    + VecZnxAllocBytes
+    + VecZnxSwithcDegree
+    + VecZnxAddScalarInplace
+    + VecZnxStd
+    + VecZnxAlloc
+    + VecZnxSubScalarInplace;
+
+pub(crate) trait TestScratchFamily<B: Backend> = TakeVecZnxDftImpl<B>
+    + TakeVecZnxBigImpl<B>
+    + TakeSvpPPolImpl<B>
+    + ScratchOwnedAllocImpl<B>
+    + ScratchOwnedBorrowImpl<B>
+    + ScratchAvailableImpl<B>
+    + TakeScalarZnxImpl<B>
+    + TakeVecZnxImpl<B>
+    + VecZnxDftAllocBytesImpl<B>
+    + VecZnxBigAllocBytesImpl<B>
+    + TakeSvpPPolImpl<B>;
+
 pub(crate) fn test_encrypt_sk<B: Backend>(module: &Module<B>, basek: usize, k: usize, sigma: f64, rank: usize)
 where
-    Module<B>:
-        GGLWEExecLayoutFamily<B> + GLWETensorKeyEncryptSkFamily<B> + GLWEDecryptFamily<B> + VecZnxDftAlloc<B> + VecZnxBigAlloc<B>,
-    B: VecZnxDftAllocBytesImpl<B> + VecZnxBigAllocBytesImpl<B> + TakeSvpPPolImpl<B>,
+    Module<B>: TestModuleFamily<B>
+        + GGLWEExecLayoutFamily<B>
+        + GLWETensorKeyEncryptSkFamily<B>
+        + GLWEDecryptFamily<B>
+        + VecZnxDftAlloc<B>
+        + VecZnxBigAlloc<B>,
+    B: TestScratchFamily<B>,
 {
     let rows: usize = k / basek;
 

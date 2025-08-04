@@ -1,1 +1,1 @@
-pub mod cpu_avx;
+pub mod cpu_spqlios;

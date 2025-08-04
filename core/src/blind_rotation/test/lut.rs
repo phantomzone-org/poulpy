@@ -5,7 +5,7 @@ use backend::{
         api::{ModuleNew, ZnxView},
         layouts::Module,
     },
-    implementation::cpu_avx::FFT64,
+    implementation::cpu_spqlios::FFT64,
 };
 
 use crate::blind_rotation::lut::{DivRound, LookUpTable};

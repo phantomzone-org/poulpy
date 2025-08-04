@@ -1,6 +1,6 @@
 use backend::{
     hal::{api::ModuleNew, layouts::Module},
-    implementation::cpu_avx::FFT64,
+    implementation::cpu_spqlios::FFT64,
 };
 
 use crate::ggsw::test::generic_tests::{

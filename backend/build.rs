@@ -1,13 +1,7 @@
-use std::path::absolute;
+mod builds {
+    pub mod cpu_spqlios;
+}
 
 fn main() {
-    println!(
-        "cargo:rustc-link-search=native={}",
-        absolute("spqlios-arithmetic/build/spqlios")
-            .unwrap()
-            .to_str()
-            .unwrap()
-    );
-    println!("cargo:rustc-link-lib=static=spqlios");
-    // println!("cargo:rustc-link-lib=dylib=spqlios")
+    builds::cpu_spqlios::build()
 }

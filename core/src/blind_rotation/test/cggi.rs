@@ -1,10 +1,17 @@
 use backend::{
     hal::{
-        api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxEncodeCoeffsi64, ZnxView},
+        api::{
+            MatZnxAlloc, ModuleNew, ScalarZnxAlloc, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddNormal,
+            VecZnxAddScalarInplace, VecZnxAlloc, VecZnxAllocBytes, VecZnxEncodeCoeffsi64, VecZnxFillUniform, VecZnxRotateInplace,
+            VecZnxSwithcDegree, ZnxView,
+        },
         layouts::{Backend, Module, ScratchOwned},
-        oep::{VecZnxBigAllocBytesImpl, VecZnxDftAllocBytesImpl},
+        oep::{
+            ScratchAvailableImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeVecZnxBigImpl, TakeVecZnxDftImpl,
+            TakeVecZnxDftSliceImpl, TakeVecZnxImpl, TakeVecZnxSliceImpl, VecZnxBigAllocBytesImpl, VecZnxDftAllocBytesImpl,
+        },
     },
-    implementation::cpu_avx::FFT64,
+    implementation::cpu_spqlios::FFT64,
 };
 use sampling::source::Source;
 
@@ -37,10 +44,35 @@ fn block_binary_extended() {
     blind_rotatio_test(&module, 224, 7, 2);
 }
 
+pub(crate) trait CGGITestModuleFamily<B: Backend> = CCGIBlindRotationFamily<B>
+    + GLWESecretFamily<B>
+    + GLWEDecryptFamily<B>
+    + BlindRotationKeyCGGIExecLayoutFamily<B>
+    + VecZnxAlloc
+    + ScalarZnxAlloc
+    + VecZnxFillUniform
+    + VecZnxAddNormal
+    + VecZnxAllocBytes
+    + VecZnxAddScalarInplace
+    + VecZnxEncodeCoeffsi64
+    + VecZnxRotateInplace
+    + VecZnxSwithcDegree
+    + MatZnxAlloc;
+pub(crate) trait CGGITestScratchFamily<B: Backend> = VecZnxDftAllocBytesImpl<B>
+    + VecZnxBigAllocBytesImpl<B>
+    + ScratchOwnedAllocImpl<B>
+    + ScratchOwnedBorrowImpl<B>
+    + TakeVecZnxDftImpl<B>
+    + TakeVecZnxBigImpl<B>
+    + TakeVecZnxDftSliceImpl<B>
+    + ScratchAvailableImpl<B>
+    + TakeVecZnxImpl<B>
+    + TakeVecZnxSliceImpl<B>;
+
 fn blind_rotatio_test<B: Backend>(module: &Module<B>, n_lwe: usize, block_size: usize, extension_factor: usize)
 where
-    Module<B>: CCGIBlindRotationFamily<B> + GLWESecretFamily<B> + GLWEDecryptFamily<B> + BlindRotationKeyCGGIExecLayoutFamily<B>,
-    B: VecZnxDftAllocBytesImpl<B> + VecZnxBigAllocBytesImpl<B>,
+    Module<B>: CGGITestModuleFamily<B>,
+    B: CGGITestScratchFamily<B>,
 {
     let basek: usize = 19;
 

@@ -3,7 +3,7 @@ use backend::{
         api::{ModuleNew, ScalarZnxAutomorphism, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxStd, VecZnxSubScalarInplace},
         layouts::{Module, ScratchOwned},
     },
-    implementation::cpu_avx::FFT64,
+    implementation::cpu_spqlios::FFT64,
 };
 use sampling::source::Source;
 
