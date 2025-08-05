@@ -64,6 +64,9 @@ unsafe extern "C" {
     pub unsafe fn rnx_mul_xp_minus_one_inplace(nn: u64, p: i64, res: *mut f64);
 }
 unsafe extern "C" {
+    pub unsafe fn znx_mul_xp_minus_one_inplace(nn: u64, p: i64, res: *mut i64);
+}
+unsafe extern "C" {
     pub unsafe fn znx_normalize(nn: u64, base_k: u64, out: *mut i64, carry_out: *mut i64, in_: *const i64, carry_in: *const i64);
 }
 

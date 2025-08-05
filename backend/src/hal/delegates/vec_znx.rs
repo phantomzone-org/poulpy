@@ -280,12 +280,12 @@ impl<B> VecZnxMulXpMinusOne for Module<B>
 where
     B: Backend + VecZnxMulXpMinusOneImpl<B>,
 {
-    fn vec_znx_mul_xp_minus_one<R, A>(&self, p: i64, r: &mut R, r_col: usize, a: &A, a_col: usize)
+    fn vec_znx_mul_xp_minus_one<R, A>(&self, p: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxToMut,
         A: VecZnxToRef,
     {
-        B::vec_znx_mul_xp_minus_one_impl(self, p, r, r_col, a, a_col);
+        B::vec_znx_mul_xp_minus_one_impl(self, p, res, res_col, a, a_col);
     }
 }
 
@@ -293,11 +293,11 @@ impl<B> VecZnxMulXpMinusOneInplace for Module<B>
 where
     B: Backend + VecZnxMulXpMinusOneInplaceImpl<B>,
 {
-    fn vec_znx_mul_xp_minus_one_inplace<R>(&self, p: i64, r: &mut R, r_col: usize)
+    fn vec_znx_mul_xp_minus_one_inplace<R>(&self, p: i64, res: &mut R, res_col: usize)
     where
         R: VecZnxToMut,
     {
-        B::vec_znx_mul_xp_minus_one_inplace_impl(self, p, r, r_col);
+        B::vec_znx_mul_xp_minus_one_inplace_impl(self, p, res, res_col);
     }
 }
 

@@ -20,10 +20,10 @@ use crate::{
             VecZnxAllocBytesImpl, VecZnxAllocImpl, VecZnxAutomorphismImpl, VecZnxAutomorphismInplaceImpl, VecZnxCopyImpl,
             VecZnxDecodeCoeffsi64Impl, VecZnxDecodeVecFloatImpl, VecZnxDecodeVeci64Impl, VecZnxEncodeCoeffsi64Impl,
             VecZnxEncodeVeci64Impl, VecZnxFillDistF64Impl, VecZnxFillNormalImpl, VecZnxFillUniformImpl, VecZnxFromBytesImpl,
-            VecZnxLshInplaceImpl, VecZnxMergeImpl, VecZnxNegateImpl, VecZnxNegateInplaceImpl, VecZnxNormalizeImpl,
-            VecZnxNormalizeInplaceImpl, VecZnxNormalizeTmpBytesImpl, VecZnxRotateImpl, VecZnxRotateInplaceImpl,
-            VecZnxRshInplaceImpl, VecZnxSplitImpl, VecZnxStdImpl, VecZnxSubABInplaceImpl, VecZnxSubBAInplaceImpl, VecZnxSubImpl,
-            VecZnxSubScalarInplaceImpl, VecZnxSwithcDegreeImpl,
+            VecZnxLshInplaceImpl, VecZnxMergeImpl, VecZnxMulXpMinusOneImpl, VecZnxMulXpMinusOneInplaceImpl, VecZnxNegateImpl,
+            VecZnxNegateInplaceImpl, VecZnxNormalizeImpl, VecZnxNormalizeInplaceImpl, VecZnxNormalizeTmpBytesImpl,
+            VecZnxRotateImpl, VecZnxRotateInplaceImpl, VecZnxRshInplaceImpl, VecZnxSplitImpl, VecZnxStdImpl,
+            VecZnxSubABInplaceImpl, VecZnxSubBAInplaceImpl, VecZnxSubImpl, VecZnxSubScalarInplaceImpl, VecZnxSwithcDegreeImpl,
         },
     },
     implementation::cpu_spqlios::{
@@ -636,6 +636,65 @@ where
                 a.at_ptr(a_col, 0),
                 a.size() as u64,
                 a.sl() as u64,
+            )
+        }
+    }
+}
+
+unsafe impl<B: Backend> VecZnxMulXpMinusOneImpl<B> for B
+where
+    B: CPUAVX,
+{
+    fn vec_znx_mul_xp_minus_one_impl<R, A>(module: &Module<B>, p: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    where
+        R: VecZnxToMut,
+        A: VecZnxToRef,
+    {
+        let a: VecZnx<&[u8]> = a.to_ref();
+        let mut res: VecZnx<&mut [u8]> = res.to_mut();
+        #[cfg(debug_assertions)]
+        {
+            assert_eq!(a.n(), module.n());
+            assert_eq!(res.n(), module.n());
+        }
+        unsafe {
+            vec_znx::vec_znx_mul_xp_minus_one(
+                module.ptr() as *const module_info_t,
+                p,
+                res.at_mut_ptr(res_col, 0),
+                res.size() as u64,
+                res.sl() as u64,
+                a.at_ptr(a_col, 0),
+                a.size() as u64,
+                a.sl() as u64,
+            )
+        }
+    }
+}
+
+unsafe impl<B: Backend> VecZnxMulXpMinusOneInplaceImpl<B> for B
+where
+    B: CPUAVX,
+{
+    fn vec_znx_mul_xp_minus_one_inplace_impl<R>(module: &Module<B>, p: i64, res: &mut R, res_col: usize)
+    where
+        R: VecZnxToMut,
+    {
+        let mut res: VecZnx<&mut [u8]> = res.to_mut();
+        #[cfg(debug_assertions)]
+        {
+            assert_eq!(res.n(), module.n());
+        }
+        unsafe {
+            vec_znx::vec_znx_mul_xp_minus_one(
+                module.ptr() as *const module_info_t,
+                p,
+                res.at_mut_ptr(res_col, 0),
+                res.size() as u64,
+                res.sl() as u64,
+                res.at_ptr(res_col, 0),
+                res.size() as u64,
+                res.sl() as u64,
             )
         }
     }

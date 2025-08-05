@@ -1,7 +1,8 @@
 use backend::hal::{
     api::{
-        VecZnxAdd, VecZnxAddInplace, VecZnxCopy, VecZnxNegateInplace, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxRotate,
-        VecZnxRotateInplace, VecZnxRshInplace, VecZnxSub, VecZnxSubABInplace, VecZnxSubBAInplace, ZnxZero,
+        VecZnxAdd, VecZnxAddInplace, VecZnxCopy, VecZnxMulXpMinusOne, VecZnxMulXpMinusOneInplace, VecZnxNegateInplace,
+        VecZnxNormalize, VecZnxNormalizeInplace, VecZnxRotate, VecZnxRotateInplace, VecZnxRshInplace, VecZnxSub,
+        VecZnxSubABInplace, VecZnxSubBAInplace, ZnxZero,
     },
     layouts::{Backend, Module, Scratch, VecZnx},
 };
@@ -211,6 +212,45 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData + Sized {
 
         (0..self_mut.rank() + 1).for_each(|i| {
             module.vec_znx_rotate_inplace(k, &mut self_mut.data, i);
+        });
+    }
+
+    fn mul_xp_minus_one<A, B: Backend>(&mut self, module: &Module<B>, k: i64, a: &A)
+    where
+        A: GLWECiphertextToRef + Infos,
+        Module<B>: VecZnxMulXpMinusOne,
+    {
+        #[cfg(debug_assertions)]
+        {
+            assert_eq!(a.n(), module.n());
+            assert_eq!(self.n(), module.n());
+            assert_eq!(self.rank(), a.rank())
+        }
+
+        let self_mut: &mut GLWECiphertext<&mut [u8]> = &mut self.to_mut();
+        let a_ref: &GLWECiphertext<&[u8]> = &a.to_ref();
+
+        (0..a.rank() + 1).for_each(|i| {
+            module.vec_znx_mul_xp_minus_one(k, &mut self_mut.data, i, &a_ref.data, i);
+        });
+
+        self.set_basek(a.basek());
+        self.set_k(set_k_unary(self, a))
+    }
+
+    fn mul_xp_minus_one_inplace<B: Backend>(&mut self, module: &Module<B>, k: i64)
+    where
+        Module<B>: VecZnxMulXpMinusOneInplace,
+    {
+        #[cfg(debug_assertions)]
+        {
+            assert_eq!(self.n(), module.n());
+        }
+
+        let self_mut: &mut GLWECiphertext<&mut [u8]> = &mut self.to_mut();
+
+        (0..self_mut.rank() + 1).for_each(|i| {
+            module.vec_znx_mul_xp_minus_one_inplace(k, &mut self_mut.data, i);
         });
     }
 

@@ -29,6 +29,19 @@ unsafe extern "C" {
 }
 
 unsafe extern "C" {
+    pub unsafe fn vec_znx_mul_xp_minus_one(
+        module: *const MODULE,
+        p: i64,
+        res: *mut i64,
+        res_size: u64,
+        res_sl: u64,
+        a: *const i64,
+        a_size: u64,
+        a_sl: u64,
+    );
+}
+
+unsafe extern "C" {
     pub unsafe fn vec_znx_negate(
         module: *const MODULE,
         res: *mut i64,

@@ -240,14 +240,14 @@ pub unsafe trait VecZnxAutomorphismInplaceImpl<B: Backend> {
 }
 
 pub unsafe trait VecZnxMulXpMinusOneImpl<B: Backend> {
-    fn vec_znx_mul_xp_minus_one_impl<R, A>(module: &Module<B>, p: i64, r: &mut R, r_col: usize, a: &A, a_col: usize)
+    fn vec_znx_mul_xp_minus_one_impl<R, A>(module: &Module<B>, p: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxToMut,
         A: VecZnxToRef;
 }
 
 pub unsafe trait VecZnxMulXpMinusOneInplaceImpl<B: Backend> {
-    fn vec_znx_mul_xp_minus_one_inplace_impl<R>(module: &Module<B>, p: i64, r: &mut R, r_col: usize)
+    fn vec_znx_mul_xp_minus_one_inplace_impl<R>(module: &Module<B>, p: i64, res: &mut R, res_col: usize)
     where
         R: VecZnxToMut;
 }

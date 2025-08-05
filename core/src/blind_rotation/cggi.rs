@@ -3,8 +3,8 @@ use backend::hal::{
         ScratchAvailable, SvpApply, SvpPPolAllocBytes, TakeVecZnx, TakeVecZnxBig, TakeVecZnxDft, TakeVecZnxDftSlice,
         TakeVecZnxSlice, VecZnxAddInplace, VecZnxAllocBytes, VecZnxBigAddSmallInplace, VecZnxBigAllocBytes,
         VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftAdd, VecZnxDftAddInplace, VecZnxDftAllocBytes, VecZnxDftFromVecZnx,
-        VecZnxDftSubABInplace, VecZnxDftToVecZnxBig, VecZnxDftToVecZnxBigTmpBytes, VecZnxDftZero, VecZnxNormalize,
-        VecZnxNormalizeInplace, VecZnxRotate, VecZnxSubABInplace, VmpApplyTmpBytes, ZnxView, ZnxZero,
+        VecZnxDftSubABInplace, VecZnxDftToVecZnxBig, VecZnxDftToVecZnxBigTmpBytes, VecZnxDftZero, VecZnxMulXpMinusOneInplace,
+        VecZnxNormalize, VecZnxNormalizeInplace, VecZnxRotate, VecZnxSubABInplace, VmpApplyTmpBytes, ZnxView, ZnxZero,
     },
     layouts::{Backend, Module, Scratch, SvpPPol},
 };
@@ -37,7 +37,8 @@ pub trait CCGIBlindRotationFamily<B: Backend> = VecZnxBigAllocBytes
     + VecZnxSubABInplace
     + VecZnxNormalize<B>
     + VecZnxNormalizeInplace<B>
-    + VecZnxCopy;
+    + VecZnxCopy
+    + VecZnxMulXpMinusOneInplace;
 
 pub fn cggi_blind_rotate_scratch_space<B: Backend>(
     module: &Module<B>,
@@ -79,7 +80,7 @@ where
                 | (acc_big
                     + (module.vec_znx_big_normalize_tmp_bytes(module.n()) | module.vec_znx_dft_to_vec_znx_big_tmp_bytes())));
     } else {
-        2 * GLWECiphertext::bytes_of(module, basek, k_res, rank)
+        GLWECiphertext::bytes_of(module, basek, k_res, rank)
             + GLWECiphertext::external_product_scratch_space(module, basek, k_res, k_res, k_brk, 1, rank)
     }
 }
@@ -416,27 +417,23 @@ pub(crate) fn cggi_blind_rotate_binary_standard<DataRes, DataIn, DataBrk, B: Bac
 
     // ACC + [sum DFT(X^ai -1) * (DFT(ACC) x BRKi)]
     let (mut acc_tmp, scratch1) = scratch.take_glwe_ct(module, basek, out_mut.k(), out_mut.rank());
-    let (mut acc_tmp_rot, scratch2) = scratch1.take_glwe_ct(module, basek, out_mut.k(), out_mut.rank());
 
     // TODO: see if faster by skipping normalization in external product and keeping acc in big coeffs
     // TODO: first iteration can be optimized to be a gglwe product
     izip!(a.iter(), brk.data.iter()).for_each(|(ai, ski)| {
         // acc_tmp = sk[i] * acc
-        acc_tmp.external_product(module, &out_mut, ski, scratch2);
+        acc_tmp.external_product(module, &out_mut, ski, scratch1);
 
-        // acc_tmp = (sk[i] * acc) * X^{ai}
-        acc_tmp_rot.rotate(module, *ai, &acc_tmp);
+        // acc_tmp = (sk[i] * acc) * (X^{ai} - 1)
+        acc_tmp.mul_xp_minus_one_inplace(module, *ai);
 
-        // acc = acc + (sk[i] * acc) * X^{ai}
-        out_mut.add_inplace(module, &acc_tmp_rot);
-
-        // acc = acc + (sk[i] * acc) * X^{ai} - (sk[i] * acc) = acc + (sk[i] * acc) * (X^{ai} - 1)
-        out_mut.sub_inplace_ab(module, &acc_tmp);
+        // acc = acc + (sk[i] * acc) * (X^{ai} - 1)
+        out_mut.add_inplace(module, &acc_tmp);
     });
 
     // We can normalize only at the end because we add normalized values in [-2^{basek-1}, 2^{basek-1}]
     // on top of each others, thus ~ 2^{63-basek} additions are supported before overflow.
-    out_mut.normalize_inplace(module, scratch2);
+    out_mut.normalize_inplace(module, scratch1);
 }
 
 pub(crate) fn negate_and_mod_switch_2n(n: usize, res: &mut [i64], lwe: &LWECiphertext<&[u8]>) {
