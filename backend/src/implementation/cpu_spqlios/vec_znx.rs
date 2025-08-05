@@ -915,7 +915,7 @@ where
             (bound.log2().ceil() as i64)
         );
 
-        let limb: usize = (k + basek - 1) / basek - 1;
+        let limb: usize = k.div_ceil(basek) - 1;
         let basek_rem: usize = (limb + 1) * basek - k;
 
         if basek_rem != 0 {
@@ -961,7 +961,7 @@ where
             (bound.log2().ceil() as i64)
         );
 
-        let limb: usize = (k + basek - 1) / basek - 1;
+        let limb: usize = k.div_ceil(basek) - 1;
         let basek_rem: usize = (limb + 1) * basek - k;
 
         if basek_rem != 0 {
@@ -1124,7 +1124,7 @@ where
     ) where
         R: VecZnxToMut,
     {
-        let size: usize = (k + basek - 1) / basek;
+        let size: usize = k.div_ceil(basek);
 
         #[cfg(debug_assertions)]
         {
@@ -1177,7 +1177,7 @@ where
     where
         R: VecZnxToRef,
     {
-        let size: usize = (k + basek - 1) / basek;
+        let size: usize = k.div_ceil(basek);
         #[cfg(debug_assertions)]
         {
             let a: VecZnx<&[u8]> = res.to_ref();
@@ -1228,7 +1228,7 @@ where
         }
 
         let a: VecZnx<&[u8]> = res.to_ref();
-        let size: usize = (k + basek - 1) / basek;
+        let size: usize = k.div_ceil(basek);
         let mut res: i64 = 0;
         let rem: usize = basek - (k % basek);
         (0..size).for_each(|j| {

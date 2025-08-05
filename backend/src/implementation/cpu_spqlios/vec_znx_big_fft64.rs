@@ -79,7 +79,7 @@ unsafe impl VecZnxBigAddDistF64Impl<FFT64> for FFT64 {
             (bound.log2().ceil() as i64)
         );
 
-        let limb: usize = (k + basek - 1) / basek - 1;
+        let limb: usize = k.div_ceil(basek) - 1;
         let basek_rem: usize = (limb + 1) * basek - k;
 
         if basek_rem != 0 {
@@ -143,7 +143,7 @@ unsafe impl VecZnxBigFillDistF64Impl<FFT64> for FFT64 {
             (bound.log2().ceil() as i64)
         );
 
-        let limb: usize = (k + basek - 1) / basek - 1;
+        let limb: usize = k.div_ceil(basek) - 1;
         let basek_rem: usize = (limb + 1) * basek - k;
 
         if basek_rem != 0 {
