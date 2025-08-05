@@ -3,7 +3,7 @@ use backend::hal::{
         MatZnxAlloc, ScalarZnxAlloc, ScratchAvailable, SvpPPolAlloc, SvpPrepare, TakeVecZnx, TakeVecZnxDft,
         VecZnxAddScalarInplace, VecZnxAllocBytes, ZnxView, ZnxViewMut,
     },
-    layouts::{Backend, Module, ScalarZnx, ScalarZnxToRef, Scratch, SvpPPol},
+    layouts::{Backend, Module, ReaderFrom, ScalarZnx, ScalarZnxToRef, Scratch, SvpPPol, WriterTo},
 };
 use sampling::source::Source;
 
@@ -12,14 +12,45 @@ use crate::{
 };
 
 pub struct BlindRotationKeyCGGI<D> {
-    pub(crate) data: Vec<GGSWCiphertext<D>>,
+    pub(crate) keys: Vec<GGSWCiphertext<D>>,
     pub(crate) dist: Distribution,
 }
 
-// pub struct BlindRotationKeyFHEW<B: Backend> {
-//    pub(crate) data: Vec<GGSWCiphertext<Vec<u8>, B>>,
-//    pub(crate) auto: Vec<GLWEAutomorphismKey<Vec<u8>, B>>,
-//}
+use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
+
+impl<D: AsRef<[u8]> + AsMut<[u8]>> ReaderFrom for BlindRotationKeyCGGI<D> {
+    fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
+        match Distribution::read_from(reader) {
+            Ok(dist) => self.dist = dist,
+            Err(e) => return Err(e),
+        }
+        let len: usize = reader.read_u64::<LittleEndian>()? as usize;
+        if self.keys.len() != len {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                format!("self.keys.len()={} != read len={}", self.keys.len(), len),
+            ));
+        }
+        for key in &mut self.keys {
+            key.read_from(reader)?;
+        }
+        Ok(())
+    }
+}
+
+impl<D: AsRef<[u8]>> WriterTo for BlindRotationKeyCGGI<D> {
+    fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
+        match self.dist.write_to(writer) {
+            Ok(()) => {}
+            Err(e) => return Err(e),
+        }
+        writer.write_u64::<LittleEndian>(self.keys.len() as u64)?;
+        for key in &self.keys {
+            key.write_to(writer)?;
+        }
+        Ok(())
+    }
+}
 
 impl BlindRotationKeyCGGI<Vec<u8>> {
     pub fn alloc<B: Backend>(module: &Module<B>, n_lwe: usize, basek: usize, k: usize, rows: usize, rank: usize) -> Self
@@ -29,7 +60,7 @@ impl BlindRotationKeyCGGI<Vec<u8>> {
         let mut data: Vec<GGSWCiphertext<Vec<u8>>> = Vec::with_capacity(n_lwe);
         (0..n_lwe).for_each(|_| data.push(GGSWCiphertext::alloc(module, basek, k, rows, 1, rank)));
         Self {
-            data,
+            keys: data,
             dist: Distribution::NONE,
         }
     }
@@ -45,31 +76,31 @@ impl BlindRotationKeyCGGI<Vec<u8>> {
 impl<D: AsRef<[u8]>> BlindRotationKeyCGGI<D> {
     #[allow(dead_code)]
     pub(crate) fn n(&self) -> usize {
-        self.data[0].n()
+        self.keys[0].n()
     }
 
     #[allow(dead_code)]
     pub(crate) fn rows(&self) -> usize {
-        self.data[0].rows()
+        self.keys[0].rows()
     }
 
     #[allow(dead_code)]
     pub(crate) fn k(&self) -> usize {
-        self.data[0].k()
+        self.keys[0].k()
     }
 
     #[allow(dead_code)]
     pub(crate) fn size(&self) -> usize {
-        self.data[0].size()
+        self.keys[0].size()
     }
 
     #[allow(dead_code)]
     pub(crate) fn rank(&self) -> usize {
-        self.data[0].rank()
+        self.keys[0].rank()
     }
 
     pub(crate) fn basek(&self) -> usize {
-        self.data[0].basek()
+        self.keys[0].basek()
     }
 
     #[allow(dead_code)]
@@ -99,9 +130,9 @@ impl<D: AsRef<[u8]> + AsMut<[u8]>> BlindRotationKeyCGGI<D> {
     {
         #[cfg(debug_assertions)]
         {
-            assert_eq!(self.data.len(), sk_lwe.n());
+            assert_eq!(self.keys.len(), sk_lwe.n());
             assert_eq!(sk_glwe.n(), module.n());
-            assert_eq!(sk_glwe.rank(), self.data[0].rank());
+            assert_eq!(sk_glwe.rank(), self.keys[0].rank());
             match sk_lwe.dist {
                 Distribution::BinaryBlock(_)
                 | Distribution::BinaryFixed(_)
@@ -118,7 +149,7 @@ impl<D: AsRef<[u8]> + AsMut<[u8]>> BlindRotationKeyCGGI<D> {
         let mut pt: ScalarZnx<Vec<u8>> = module.scalar_znx_alloc(1);
         let sk_ref: ScalarZnx<&[u8]> = sk_lwe.data.to_ref();
 
-        self.data.iter_mut().enumerate().for_each(|(i, ggsw)| {
+        self.keys.iter_mut().enumerate().for_each(|(i, ggsw)| {
             pt.at_mut(0, 0)[0] = sk_ref.at(0, 0)[i];
             ggsw.encrypt_sk(module, &pt, sk_glwe, source_xa, source_xe, sigma, scratch);
         });
@@ -192,7 +223,7 @@ impl<B: Backend> BlindRotationKeyCGGIExec<Vec<u8>, B> {
     {
         let mut brk: BlindRotationKeyCGGIExec<Vec<u8>, B> = Self::alloc(
             module,
-            other.data.len(),
+            other.keys.len(),
             other.basek(),
             other.k(),
             other.rows(),
@@ -211,12 +242,12 @@ impl<D: AsRef<[u8]> + AsMut<[u8]>, B: Backend> BlindRotationKeyCGGIExec<D, B> {
     {
         #[cfg(debug_assertions)]
         {
-            assert_eq!(self.data.len(), other.data.len());
+            assert_eq!(self.data.len(), other.keys.len());
         }
 
         self.data
             .iter_mut()
-            .zip(other.data.iter())
+            .zip(other.keys.iter())
             .for_each(|(ggsw_exec, other)| {
                 ggsw_exec.prepare(module, other, scratch);
             });

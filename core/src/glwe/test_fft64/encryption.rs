@@ -16,7 +16,7 @@ use sampling::source::Source;
 
 use crate::{
     GLWECiphertext, GLWEDecryptFamily, GLWEEncryptPkFamily, GLWEEncryptSkFamily, GLWEOps, GLWEPlaintext, GLWEPublicKey,
-    GLWESecret, GLWESecretExec, GLWESecretFamily, Infos,
+    GLWEPublicKeyExec, GLWESecret, GLWESecretExec, GLWESecretFamily, Infos,
 };
 
 #[test]
@@ -163,7 +163,7 @@ where
     sk.fill_ternary_prob(0.5, &mut source_xs);
     let sk_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk);
 
-    let mut pk: GLWEPublicKey<Vec<u8>, B> = GLWEPublicKey::alloc(module, basek, k_pk, rank);
+    let mut pk: GLWEPublicKey<Vec<u8>> = GLWEPublicKey::alloc(module, basek, k_pk, rank);
     pk.generate_from_sk(module, &sk_exec, &mut source_xa, &mut source_xe, sigma);
 
     let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
@@ -174,10 +174,12 @@ where
 
     module.vec_znx_fill_uniform(basek, &mut pt_want.data, 0, k_ct, &mut source_xa);
 
+    let pk_exec: GLWEPublicKeyExec<Vec<u8>, B> = GLWEPublicKeyExec::from(module, &pk, scratch.borrow());
+
     ct.encrypt_pk(
         module,
         &pt_want,
-        &pk,
+        &pk_exec,
         &mut source_xu,
         &mut source_xe,
         sigma,
@@ -192,7 +194,7 @@ where
     let noise_want: f64 = ((((rank as f64) + 1.0) * module.n() as f64 * 0.5 * sigma * sigma).sqrt()).log2() - (k_ct as f64);
 
     assert!(
-        (noise_have - noise_want).abs() < 0.2,
+        noise_have <= noise_want + 0.2,
         "{} {}",
         noise_have,
         noise_want

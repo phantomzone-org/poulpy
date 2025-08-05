@@ -1,6 +1,6 @@
 use backend::hal::{
     api::ZnxInfos,
-    layouts::{VecZnx, VecZnxToMut, VecZnxToRef},
+    layouts::{ReaderFrom, VecZnx, VecZnxToMut, VecZnxToRef, WriterTo},
 };
 
 use crate::{Infos, SetMetaData};
@@ -80,5 +80,23 @@ impl<D: AsMut<[u8]> + AsRef<[u8]>> LWECiphertextToMut for LWECiphertext<D> {
             basek: self.basek,
             k: self.k,
         }
+    }
+}
+
+use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
+
+impl<D: AsRef<[u8]> + AsMut<[u8]>> ReaderFrom for LWECiphertext<D> {
+    fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
+        self.k = reader.read_u64::<LittleEndian>()? as usize;
+        self.basek = reader.read_u64::<LittleEndian>()? as usize;
+        self.data.read_from(reader)
+    }
+}
+
+impl<D: AsRef<[u8]>> WriterTo for LWECiphertext<D> {
+    fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
+        writer.write_u64::<LittleEndian>(self.k as u64)?;
+        writer.write_u64::<LittleEndian>(self.basek as u64)?;
+        self.data.write_to(writer)
     }
 }

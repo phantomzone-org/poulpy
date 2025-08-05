@@ -1,6 +1,9 @@
 use backend::hal::{
-    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAlloc, VecZnxDftAlloc, VecZnxDftAllocBytes, VecZnxDftFromVecZnx},
-    layouts::{Backend, Module, ScratchOwned, VecZnxDft},
+    api::{
+        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAlloc, VecZnxAllocBytes, VecZnxDftAlloc, VecZnxDftAllocBytes,
+        VecZnxDftFromVecZnx,
+    },
+    layouts::{Backend, Module, ReaderFrom, Scratch, ScratchOwned, VecZnx, VecZnxDft, WriterTo},
     oep::{ScratchAvailableImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeVecZnxDftImpl, TakeVecZnxImpl},
 };
 use sampling::source::Source;
@@ -9,36 +12,36 @@ use crate::{GLWECiphertext, GLWEEncryptSkFamily, GLWESecretExec, Infos, dist::Di
 
 pub trait GLWEPublicKeyFamily<B: Backend> = GLWEEncryptSkFamily<B>;
 
-pub struct GLWEPublicKey<D, B: Backend> {
-    pub(crate) data: VecZnxDft<D, B>,
+pub struct GLWEPublicKey<D> {
+    pub(crate) data: VecZnx<D>,
     pub(crate) basek: usize,
     pub(crate) k: usize,
     pub(crate) dist: Distribution,
 }
 
-impl<B: Backend> GLWEPublicKey<Vec<u8>, B> {
-    pub fn alloc(module: &Module<B>, basek: usize, k: usize, rank: usize) -> Self
+impl GLWEPublicKey<Vec<u8>> {
+    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank: usize) -> Self
     where
-        Module<B>: VecZnxDftAlloc<B>,
+        Module<B>: VecZnxAlloc,
     {
         Self {
-            data: module.vec_znx_dft_alloc(rank + 1, k.div_ceil(basek)),
+            data: module.vec_znx_alloc(rank + 1, k.div_ceil(basek)),
             basek: basek,
             k: k,
             dist: Distribution::NONE,
         }
     }
 
-    pub fn bytes_of(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize
+    pub fn bytes_of<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize
     where
-        Module<B>: VecZnxDftAllocBytes,
+        Module<B>: VecZnxAllocBytes,
     {
-        module.vec_znx_dft_alloc_bytes(rank + 1, k.div_ceil(basek))
+        module.vec_znx_alloc_bytes(rank + 1, k.div_ceil(basek))
     }
 }
 
-impl<T, B: Backend> Infos for GLWEPublicKey<T, B> {
-    type Inner = VecZnxDft<T, B>;
+impl<T> Infos for GLWEPublicKey<T> {
+    type Inner = VecZnx<T>;
 
     fn inner(&self) -> &Self::Inner {
         &self.data
@@ -53,14 +56,14 @@ impl<T, B: Backend> Infos for GLWEPublicKey<T, B> {
     }
 }
 
-impl<T, B: Backend> GLWEPublicKey<T, B> {
+impl<T> GLWEPublicKey<T> {
     pub fn rank(&self) -> usize {
         self.cols() - 1
     }
 }
 
-impl<C: AsRef<[u8]> + AsMut<[u8]>, B: Backend> GLWEPublicKey<C, B> {
-    pub fn generate_from_sk<S: AsRef<[u8]>>(
+impl<C: AsRef<[u8]> + AsMut<[u8]>> GLWEPublicKey<C> {
+    pub fn generate_from_sk<S: AsRef<[u8]>, B: Backend>(
         &mut self,
         module: &Module<B>,
         sk: &GLWESecretExec<S, B>,
@@ -92,9 +95,114 @@ impl<C: AsRef<[u8]> + AsMut<[u8]>, B: Backend> GLWEPublicKey<C, B> {
 
         let mut tmp: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(module, self.basek(), self.k(), self.rank());
         tmp.encrypt_zero_sk(module, sk, source_xa, source_xe, sigma, scratch.borrow());
-        (0..self.cols()).for_each(|i| {
-            module.vec_znx_dft_from_vec_znx(1, 0, &mut self.data, i, &tmp.data, i);
-        });
         self.dist = sk.dist;
+    }
+}
+
+use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
+
+impl<D: AsRef<[u8]> + AsMut<[u8]>> ReaderFrom for GLWEPublicKey<D> {
+    fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
+        self.k = reader.read_u64::<LittleEndian>()? as usize;
+        self.basek = reader.read_u64::<LittleEndian>()? as usize;
+        match Distribution::read_from(reader) {
+            Ok(dist) => self.dist = dist,
+            Err(e) => return Err(e),
+        }
+        self.data.read_from(reader)
+    }
+}
+
+impl<D: AsRef<[u8]>> WriterTo for GLWEPublicKey<D> {
+    fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
+        writer.write_u64::<LittleEndian>(self.k as u64)?;
+        writer.write_u64::<LittleEndian>(self.basek as u64)?;
+        match self.dist.write_to(writer) {
+            Ok(()) => {}
+            Err(e) => return Err(e),
+        }
+        self.data.write_to(writer)
+    }
+}
+
+pub struct GLWEPublicKeyExec<D, B: Backend> {
+    pub(crate) data: VecZnxDft<D, B>,
+    pub(crate) basek: usize,
+    pub(crate) k: usize,
+    pub(crate) dist: Distribution,
+}
+
+impl<T, B: Backend> Infos for GLWEPublicKeyExec<T, B> {
+    type Inner = VecZnxDft<T, B>;
+
+    fn inner(&self) -> &Self::Inner {
+        &self.data
+    }
+
+    fn basek(&self) -> usize {
+        self.basek
+    }
+
+    fn k(&self) -> usize {
+        self.k
+    }
+}
+
+impl<T, B: Backend> GLWEPublicKeyExec<T, B> {
+    pub fn rank(&self) -> usize {
+        self.cols() - 1
+    }
+}
+
+impl<B: Backend> GLWEPublicKeyExec<Vec<u8>, B> {
+    pub fn alloc(module: &Module<B>, basek: usize, k: usize, rank: usize) -> Self
+    where
+        Module<B>: VecZnxDftAlloc<B>,
+    {
+        Self {
+            data: module.vec_znx_dft_alloc(rank + 1, k.div_ceil(basek)),
+            basek: basek,
+            k: k,
+            dist: Distribution::NONE,
+        }
+    }
+
+    pub fn bytes_of(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize
+    where
+        Module<B>: VecZnxDftAllocBytes,
+    {
+        module.vec_znx_dft_alloc_bytes(rank + 1, k.div_ceil(basek))
+    }
+
+    pub fn from<DataOther>(module: &Module<B>, other: &GLWEPublicKey<DataOther>, scratch: &mut Scratch<B>) -> Self
+    where
+        DataOther: AsRef<[u8]>,
+        Module<B>: VecZnxDftAlloc<B> + VecZnxDftFromVecZnx<B>,
+    {
+        let mut pk_exec: GLWEPublicKeyExec<Vec<u8>, B> = GLWEPublicKeyExec::alloc(module, other.basek(), other.k(), other.rank());
+        pk_exec.prepare(module, other, scratch);
+        pk_exec
+    }
+}
+
+impl<D: AsRef<[u8]> + AsMut<[u8]>, B: Backend> GLWEPublicKeyExec<D, B> {
+    pub fn prepare<DataOther>(&mut self, module: &Module<B>, other: &GLWEPublicKey<DataOther>, _scratch: &mut Scratch<B>)
+    where
+        DataOther: AsRef<[u8]>,
+        Module<B>: VecZnxDftFromVecZnx<B>,
+    {
+        #[cfg(debug_assertions)]
+        {
+            assert_eq!(self.n(), module.n());
+            assert_eq!(other.n(), module.n());
+            assert_eq!(self.size(), other.size());
+        }
+
+        (0..self.cols()).for_each(|i| {
+            module.vec_znx_dft_from_vec_znx(1, 0, &mut self.data, i, &other.data, i);
+        });
+        self.k = other.k;
+        self.basek = other.basek;
+        self.dist = other.dist;
     }
 }

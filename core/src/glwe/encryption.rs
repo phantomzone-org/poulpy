@@ -9,7 +9,7 @@ use backend::hal::{
 };
 use sampling::source::Source;
 
-use crate::{GLWECiphertext, GLWEPlaintext, GLWEPublicKey, GLWESecretExec, Infos, SIX_SIGMA, dist::Distribution};
+use crate::{GLWECiphertext, GLWEPlaintext, GLWEPublicKeyExec, GLWESecretExec, Infos, SIX_SIGMA, dist::Distribution};
 
 pub trait GLWEEncryptSkFamily<B: Backend> = VecZnxDftAllocBytes
     + VecZnxBigNormalize<B>
@@ -109,7 +109,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         &mut self,
         module: &Module<B>,
         pt: &GLWEPlaintext<DataPt>,
-        pk: &GLWEPublicKey<DataPk, B>,
+        pk: &GLWEPublicKeyExec<DataPk, B>,
         source_xu: &mut Source,
         source_xe: &mut Source,
         sigma: f64,
@@ -132,7 +132,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
     pub fn encrypt_zero_pk<DataPk: AsRef<[u8]>, B: Backend>(
         &mut self,
         module: &Module<B>,
-        pk: &GLWEPublicKey<DataPk, B>,
+        pk: &GLWEPublicKeyExec<DataPk, B>,
         source_xu: &mut Source,
         source_xe: &mut Source,
         sigma: f64,
@@ -238,7 +238,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         &mut self,
         module: &Module<B>,
         pt: Option<(&GLWEPlaintext<DataPt>, usize)>,
-        pk: &GLWEPublicKey<DataPk, B>,
+        pk: &GLWEPublicKeyExec<DataPk, B>,
         source_xu: &mut Source,
         source_xe: &mut Source,
         sigma: f64,

@@ -1,6 +1,6 @@
 use backend::hal::{
     api::{MatZnxAlloc, MatZnxAllocBytes},
-    layouts::{Backend, MatZnx, Module, Scratch, VmpPMat},
+    layouts::{Backend, MatZnx, Module, ReaderFrom, Scratch, VmpPMat, WriterTo},
 };
 
 use crate::{GGLWEExecLayoutFamily, GLWESwitchingKey, GLWESwitchingKeyExec, Infos};
@@ -86,6 +86,34 @@ impl<D: AsRef<[u8]>> GLWETensorKey<D> {
         };
         let rank: usize = self.rank();
         &self.keys[i * rank + j - (i * (i + 1) / 2)]
+    }
+}
+
+use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
+
+impl<D: AsRef<[u8]> + AsMut<[u8]>> ReaderFrom for GLWETensorKey<D> {
+    fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
+        let len: usize = reader.read_u64::<LittleEndian>()? as usize;
+        if self.keys.len() != len {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                format!("self.keys.len()={} != read len={}", self.keys.len(), len),
+            ));
+        }
+        for key in &mut self.keys {
+            key.read_from(reader)?;
+        }
+        Ok(())
+    }
+}
+
+impl<D: AsRef<[u8]>> WriterTo for GLWETensorKey<D> {
+    fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
+        writer.write_u64::<LittleEndian>(self.keys.len() as u64)?;
+        for key in &self.keys {
+            key.write_to(writer)?;
+        }
+        Ok(())
     }
 }
 

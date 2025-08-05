@@ -1,6 +1,6 @@
 use backend::hal::{
     api::{MatZnxAlloc, MatZnxAllocBytes},
-    layouts::{Backend, MatZnx, Module, Scratch, VmpPMat},
+    layouts::{Backend, MatZnx, Module, ReaderFrom, Scratch, VmpPMat, WriterTo},
 };
 
 use crate::{GGLWEExecLayoutFamily, GLWECiphertext, GLWESwitchingKey, GLWESwitchingKeyExec, Infos};
@@ -76,6 +76,22 @@ impl<D: AsRef<[u8]>> AutomorphismKey<D> {
 impl<D: AsMut<[u8]> + AsRef<[u8]>> AutomorphismKey<D> {
     pub fn at_mut(&mut self, row: usize, col: usize) -> GLWECiphertext<&mut [u8]> {
         self.key.at_mut(row, col)
+    }
+}
+
+use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
+
+impl<D: AsRef<[u8]> + AsMut<[u8]>> ReaderFrom for AutomorphismKey<D> {
+    fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
+        self.p = reader.read_u64::<LittleEndian>()? as i64;
+        self.key.read_from(reader)
+    }
+}
+
+impl<D: AsRef<[u8]>> WriterTo for AutomorphismKey<D> {
+    fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
+        writer.write_u64::<LittleEndian>(self.p as u64)?;
+        self.key.write_to(writer)
     }
 }
 

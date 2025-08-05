@@ -1,6 +1,6 @@
 use backend::hal::{
     api::{ScalarZnxAlloc, ScalarZnxAllocBytes, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare, ZnxInfos, ZnxZero},
-    layouts::{Backend, Module, ScalarZnx, SvpPPol},
+    layouts::{Backend, Module, ReaderFrom, ScalarZnx, SvpPPol, WriterTo},
 };
 use sampling::source::Source;
 
@@ -85,6 +85,26 @@ impl<S: AsMut<[u8]> + AsRef<[u8]>> GLWESecret<S> {
     pub fn fill_zero(&mut self) {
         self.data.zero();
         self.dist = Distribution::ZERO;
+    }
+}
+
+impl<D: AsRef<[u8]> + AsMut<[u8]>> ReaderFrom for GLWESecret<D> {
+    fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
+        match Distribution::read_from(reader) {
+            Ok(dist) => self.dist = dist,
+            Err(e) => return Err(e),
+        }
+        self.data.read_from(reader)
+    }
+}
+
+impl<D: AsRef<[u8]>> WriterTo for GLWESecret<D> {
+    fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
+        match self.dist.write_to(writer) {
+            Ok(()) => {}
+            Err(e) => return Err(e),
+        }
+        self.data.write_to(writer)
     }
 }
 

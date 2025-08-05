@@ -3,7 +3,7 @@ use backend::hal::{
         MatZnxAlloc, ScalarZnxAllocBytes, ScratchAvailable, TakeScalarZnx, TakeVecZnx, TakeVecZnxDft, VecZnxAddScalarInplace,
         VecZnxAllocBytes, VecZnxAutomorphismInplace, VecZnxSwithcDegree, ZnxView, ZnxViewMut, ZnxZero,
     },
-    layouts::{Backend, Module, Scratch},
+    layouts::{Backend, Module, ReaderFrom, Scratch, WriterTo},
 };
 use sampling::source::Source;
 
@@ -14,6 +14,19 @@ use crate::{
 
 /// A special [GLWESwitchingKey] required to for the conversion from [GLWECiphertext] to [LWECiphertext].
 pub struct GLWEToLWESwitchingKey<D>(GLWESwitchingKey<D>);
+
+impl<D: AsRef<[u8]> + AsMut<[u8]>> ReaderFrom for GLWEToLWESwitchingKey<D> {
+    fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
+        self.0.read_from(reader)
+    }
+}
+
+impl<D: AsRef<[u8]>> WriterTo for GLWEToLWESwitchingKey<D> {
+    fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
+        self.0.write_to(writer)
+    }
+}
+
 pub struct GLWEToLWESwitchingKeyExec<D, B: Backend>(GLWESwitchingKeyExec<D, B>);
 
 impl<B: Backend> GLWEToLWESwitchingKeyExec<Vec<u8>, B> {
@@ -176,6 +189,18 @@ impl<D: AsRef<[u8]> + AsMut<[u8]>, B: Backend> LWEToGLWESwitchingKeyExec<D, B> {
 }
 pub struct LWEToGLWESwitchingKey<D>(GLWESwitchingKey<D>);
 
+impl<D: AsRef<[u8]> + AsMut<[u8]>> ReaderFrom for LWEToGLWESwitchingKey<D> {
+    fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
+        self.0.read_from(reader)
+    }
+}
+
+impl<D: AsRef<[u8]>> WriterTo for LWEToGLWESwitchingKey<D> {
+    fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
+        self.0.write_to(writer)
+    }
+}
+
 impl LWEToGLWESwitchingKey<Vec<u8>> {
     pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize, rank_out: usize) -> Self
     where
@@ -274,6 +299,18 @@ impl<D: AsRef<[u8]> + AsMut<[u8]>, B: Backend> LWESwitchingKeyExec<D, B> {
     }
 }
 pub struct LWESwitchingKey<D>(GLWESwitchingKey<D>);
+
+impl<D: AsRef<[u8]> + AsMut<[u8]>> ReaderFrom for LWESwitchingKey<D> {
+    fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
+        self.0.read_from(reader)
+    }
+}
+
+impl<D: AsRef<[u8]>> WriterTo for LWESwitchingKey<D> {
+    fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
+        self.0.write_to(writer)
+    }
+}
 
 impl LWESwitchingKey<Vec<u8>> {
     pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize) -> Self

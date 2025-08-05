@@ -78,13 +78,17 @@ pub trait TakeGLWESecretExec<B: Backend> {
 }
 
 pub trait TakeGLWEPk<B: Backend> {
-    fn take_glwe_pk(
+    fn take_glwe_pk(&mut self, module: &Module<B>, basek: usize, k: usize, rank: usize) -> (GLWEPublicKey<&mut [u8]>, &mut Self);
+}
+
+pub trait TakeGLWEPkExec<B: Backend> {
+    fn take_glwe_pk_exec(
         &mut self,
         module: &Module<B>,
         basek: usize,
         k: usize,
         rank: usize,
-    ) -> (GLWEPublicKey<&mut [u8], B>, &mut Self);
+    ) -> (GLWEPublicKeyExec<&mut [u8], B>, &mut Self);
 }
 
 pub trait TakeGLWESwitchingKey<B: Backend> {
@@ -240,18 +244,36 @@ where
 
 impl<B: Backend> TakeGLWEPk<B> for Scratch<B>
 where
+    Scratch<B>: TakeVecZnx<B>,
+{
+    fn take_glwe_pk(&mut self, module: &Module<B>, basek: usize, k: usize, rank: usize) -> (GLWEPublicKey<&mut [u8]>, &mut Self) {
+        let (data, scratch) = self.take_vec_znx(module, rank + 1, k.div_ceil(basek));
+        (
+            GLWEPublicKey {
+                data,
+                k,
+                basek,
+                dist: Distribution::NONE,
+            },
+            scratch,
+        )
+    }
+}
+
+impl<B: Backend> TakeGLWEPkExec<B> for Scratch<B>
+where
     Scratch<B>: TakeVecZnxDft<B>,
 {
-    fn take_glwe_pk(
+    fn take_glwe_pk_exec(
         &mut self,
         module: &Module<B>,
         basek: usize,
         k: usize,
         rank: usize,
-    ) -> (GLWEPublicKey<&mut [u8], B>, &mut Self) {
+    ) -> (GLWEPublicKeyExec<&mut [u8], B>, &mut Self) {
         let (data, scratch) = self.take_vec_znx_dft(module, rank + 1, k.div_ceil(basek));
         (
-            GLWEPublicKey {
+            GLWEPublicKeyExec {
                 data,
                 k,
                 basek,
