@@ -168,7 +168,7 @@ unsafe impl VecZnxDftFromVecZnxImpl<FFT64> for FFT64 {
     {
         let mut res_mut: VecZnxDft<&mut [u8], FFT64> = res.to_mut();
         let a_ref: VecZnx<&[u8]> = a.to_ref();
-        let steps: usize = (a_ref.size() + step - 1) / step;
+        let steps: usize = a_ref.size().div_ceil(step);
         let min_steps: usize = res_mut.size().min(steps);
         unsafe {
             (0..min_steps).for_each(|j| {
@@ -366,7 +366,7 @@ unsafe impl VecZnxDftCopyImpl<FFT64> for FFT64 {
         let mut res_mut: VecZnxDft<&mut [u8], FFT64> = res.to_mut();
         let a_ref: VecZnxDft<&[u8], FFT64> = a.to_ref();
 
-        let steps: usize = (a_ref.size() + step - 1) / step;
+        let steps: usize = a_ref.size().div_ceil(step);
         let min_steps: usize = res_mut.size().min(steps);
 
         (0..min_steps).for_each(|j| {

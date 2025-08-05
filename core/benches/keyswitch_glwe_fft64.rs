@@ -39,7 +39,7 @@ fn bench_keyswitch_glwe_fft64(c: &mut Criterion) {
         let rank_out: usize = p.rank_out;
         let digits: usize = p.digits;
 
-        let rows: usize = (p.k_ct_in + (p.basek * digits) - 1) / (p.basek * digits);
+        let rows: usize = p.k_ct_in.div_ceil(p.basek * digits);
         let sigma: f64 = 3.2;
 
         let mut ksk: AutomorphismKey<Vec<u8>> = AutomorphismKey::alloc(&module, basek, k_grlwe, rows, digits, rank_out);
@@ -143,7 +143,7 @@ fn bench_keyswitch_glwe_inplace_fft64(c: &mut Criterion) {
         let rank: usize = p.rank;
         let digits: usize = 1;
 
-        let rows: usize = (p.k_ct + p.basek - 1) / p.basek;
+        let rows: usize = p.k_ct.div_ceil(p.basek);
         let sigma: f64 = 3.2;
 
         let mut ksk: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc(&module, basek, k_ksk, rows, digits, rank, rank);

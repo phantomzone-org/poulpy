@@ -104,13 +104,13 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         let digits: usize = rhs.digits();
 
         let (mut res_dft, scratch1) = scratch.take_vec_znx_dft(module, cols, rhs.size()); // Todo optimise
-        let (mut a_dft, scratch2) = scratch1.take_vec_znx_dft(module, cols, (lhs.size() + digits - 1) / digits);
+        let (mut a_dft, scratch2) = scratch1.take_vec_znx_dft(module, cols, lhs.size().div_ceil(digits));
 
         a_dft.data_mut().fill(0);
 
         {
             (0..digits).for_each(|di| {
-                // (lhs.size() + di) / digits = (a - (digit - di - 1) + digit - 1) / digits
+                // (lhs.size() + di) / digits = (a - (digit - di - 1)).div_ceil(digits)
                 a_dft.set_size((lhs.size() + di) / digits);
 
                 // Small optimization for digits > 2

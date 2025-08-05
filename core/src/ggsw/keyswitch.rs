@@ -134,7 +134,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
         let digits: usize = tsk.digits();
 
         let (mut tmp_dft_i, scratch1) = scratch.take_vec_znx_dft(module, cols, tsk.size());
-        let (mut tmp_a, scratch2) = scratch1.take_vec_znx_dft(module, 1, (ci_dft.size() + digits - 1) / digits);
+        let (mut tmp_a, scratch2) = scratch1.take_vec_znx_dft(module, 1, ci_dft.size().div_ceil(digits));
 
         {
             // Performs a key-switch for each combination of s[i]*s[j], i.e. for a0, a1, a2

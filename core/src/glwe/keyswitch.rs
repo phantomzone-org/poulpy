@@ -236,7 +236,7 @@ where
 {
     let cols: usize = a.cols();
     let size: usize = a.size();
-    let (mut ai_dft, scratch1) = scratch.take_vec_znx_dft(module, cols - 1, (size + digits - 1) / digits);
+    let (mut ai_dft, scratch1) = scratch.take_vec_znx_dft(module, cols - 1, size.div_ceil(digits));
 
     ai_dft.data_mut().fill(0);
 
