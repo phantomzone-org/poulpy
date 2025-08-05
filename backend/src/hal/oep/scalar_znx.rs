@@ -24,3 +24,16 @@ pub unsafe trait ScalarZnxAutomorphismInplaceIml<B: Backend> {
     where
         A: ScalarZnxToMut;
 }
+
+pub unsafe trait ScalarZnxMulXpMinusOneImpl<B: Backend> {
+    fn scalar_znx_mul_xp_minus_one_impl<R, A>(module: &Module<B>, p: i64, r: &mut R, r_col: usize, a: &A, a_col: usize)
+    where
+        R: ScalarZnxToMut,
+        A: ScalarZnxToRef;
+}
+
+pub unsafe trait ScalarZnxMulXpMinusOneInplaceImpl<B: Backend> {
+    fn scalar_znx_mul_xp_minus_one_inplace_impl<R>(module: &Module<B>, p: i64, r: &mut R, r_col: usize)
+    where
+        R: ScalarZnxToMut;
+}

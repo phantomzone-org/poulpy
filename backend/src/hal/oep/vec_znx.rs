@@ -8,6 +8,7 @@ use crate::hal::layouts::{Backend, Module, ScalarZnxToRef, Scratch, VecZnxOwned,
 /// * See \[TODO\] for reference code.
 /// * See [crate::vec_znx::traits::VecZnxAlloc] for behavioral contract.
 /// * See [crate::doc::backend_safety] for safety contract.
+/// * See test \[TODO\]
 pub unsafe trait VecZnxAllocImpl<B: Backend> {
     fn vec_znx_alloc_impl(n: usize, cols: usize, size: usize) -> VecZnxOwned;
 }
@@ -236,6 +237,19 @@ pub unsafe trait VecZnxAutomorphismInplaceImpl<B: Backend> {
     fn vec_znx_automorphism_inplace_impl<A>(module: &Module<B>, k: i64, a: &mut A, a_col: usize)
     where
         A: VecZnxToMut;
+}
+
+pub unsafe trait VecZnxMulXpMinusOneImpl<B: Backend> {
+    fn vec_znx_mul_xp_minus_one_impl<R, A>(module: &Module<B>, p: i64, r: &mut R, r_col: usize, a: &A, a_col: usize)
+    where
+        R: VecZnxToMut,
+        A: VecZnxToRef;
+}
+
+pub unsafe trait VecZnxMulXpMinusOneInplaceImpl<B: Backend> {
+    fn vec_znx_mul_xp_minus_one_inplace_impl<R>(module: &Module<B>, p: i64, r: &mut R, r_col: usize)
+    where
+        R: VecZnxToMut;
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)

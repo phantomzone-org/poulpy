@@ -2,11 +2,12 @@ use crate::{
     alloc_aligned,
     hal::{
         api::{DataView, DataViewMut, ZnxInfos, ZnxSliceSize, ZnxView},
-        layouts::VecZnx,
+        layouts::{ReaderFrom, VecZnx, WriterTo},
     },
 };
 
 /// A matrix of [VecZnx].
+#[derive(PartialEq, Eq)]
 pub struct MatZnx<D> {
     data: D,
     n: usize,
@@ -206,5 +207,41 @@ impl<D> MatZnx<D> {
             cols_out,
             size,
         }
+    }
+}
+
+use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
+
+impl<D: AsRef<[u8]> + AsMut<[u8]>> ReaderFrom for MatZnx<D> {
+    fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
+        self.n = reader.read_u64::<LittleEndian>()? as usize;
+        self.size = reader.read_u64::<LittleEndian>()? as usize;
+        self.rows = reader.read_u64::<LittleEndian>()? as usize;
+        self.cols_in = reader.read_u64::<LittleEndian>()? as usize;
+        self.cols_out = reader.read_u64::<LittleEndian>()? as usize;
+        let len: usize = reader.read_u64::<LittleEndian>()? as usize;
+        let buf: &mut [u8] = self.data.as_mut();
+        if buf.len() != len {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::UnexpectedEof,
+                format!("self.data.len()={} != read len={}", buf.len(), len),
+            ));
+        }
+        reader.read_exact(&mut buf[..len])?;
+        Ok(())
+    }
+}
+
+impl<D: AsRef<[u8]>> WriterTo for MatZnx<D> {
+    fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
+        writer.write_u64::<LittleEndian>(self.n as u64)?;
+        writer.write_u64::<LittleEndian>(self.size as u64)?;
+        writer.write_u64::<LittleEndian>(self.rows as u64)?;
+        writer.write_u64::<LittleEndian>(self.cols_in as u64)?;
+        writer.write_u64::<LittleEndian>(self.cols_out as u64)?;
+        let buf: &[u8] = self.data.as_ref();
+        writer.write_u64::<LittleEndian>(buf.len() as u64)?;
+        writer.write_all(buf)?;
+        Ok(())
     }
 }

@@ -7,10 +7,11 @@ use crate::{
     alloc_aligned,
     hal::{
         api::{DataView, DataViewMut, ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero},
-        layouts::{VecZnx, VecZnxToMut, VecZnxToRef},
+        layouts::{ReaderFrom, VecZnx, VecZnxToMut, VecZnxToRef, WriterTo},
     },
 };
 
+#[derive(PartialEq, Eq)]
 pub struct ScalarZnx<D> {
     pub(crate) data: D,
     pub(crate) n: usize,
@@ -211,5 +212,35 @@ where
             size: 1,
             max_size: 1,
         }
+    }
+}
+
+use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
+
+impl<D: AsRef<[u8]> + AsMut<[u8]>> ReaderFrom for ScalarZnx<D> {
+    fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
+        self.n = reader.read_u64::<LittleEndian>()? as usize;
+        self.cols = reader.read_u64::<LittleEndian>()? as usize;
+        let len: usize = reader.read_u64::<LittleEndian>()? as usize;
+        let buf: &mut [u8] = self.data.as_mut();
+        if buf.len() != len {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::UnexpectedEof,
+                format!("self.data.len()={} != read len={}", buf.len(), len),
+            ));
+        }
+        reader.read_exact(&mut buf[..len])?;
+        Ok(())
+    }
+}
+
+impl<D: AsRef<[u8]>> WriterTo for ScalarZnx<D> {
+    fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
+        writer.write_u64::<LittleEndian>(self.n as u64)?;
+        writer.write_u64::<LittleEndian>(self.cols as u64)?;
+        let buf: &[u8] = self.data.as_ref();
+        writer.write_u64::<LittleEndian>(buf.len() as u64)?;
+        writer.write_all(buf)?;
+        Ok(())
     }
 }

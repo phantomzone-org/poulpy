@@ -9,6 +9,7 @@ use crate::{
         layouts::{Backend, VecZnxBig},
     },
 };
+#[derive(PartialEq, Eq)]
 pub struct VecZnxDft<D, B: Backend> {
     pub(crate) data: D,
     pub(crate) n: usize,

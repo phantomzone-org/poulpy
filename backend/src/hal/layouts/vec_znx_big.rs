@@ -10,6 +10,7 @@ use crate::{
     },
 };
 
+#[derive(PartialEq, Eq)]
 pub struct VecZnxBig<D, B: Backend> {
     pub(crate) data: D,
     pub(crate) n: usize,

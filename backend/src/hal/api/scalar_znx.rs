@@ -24,3 +24,16 @@ pub trait ScalarZnxAutomorphismInplace {
     where
         A: ScalarZnxToMut;
 }
+
+pub trait ScalarZnxMulXpMinusOne {
+    fn scalar_znx_mul_xp_minus_one<R, A>(&self, p: i64, r: &mut R, r_col: usize, a: &A, a_col: usize)
+    where
+        R: ScalarZnxToMut,
+        A: ScalarZnxToRef;
+}
+
+pub trait ScalarZnxMulXpMinusOneInplace {
+    fn scalar_znx_mul_xp_minus_one_inplace<R>(&self, p: i64, r: &mut R, r_col: usize)
+    where
+        R: ScalarZnxToMut;
+}

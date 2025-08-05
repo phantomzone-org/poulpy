@@ -1,9 +1,12 @@
 use crate::hal::{
-    api::{ScalarZnxAlloc, ScalarZnxAllocBytes, ScalarZnxAutomorphism, ScalarZnxAutomorphismInplace, ScalarZnxFromBytes},
+    api::{
+        ScalarZnxAlloc, ScalarZnxAllocBytes, ScalarZnxAutomorphism, ScalarZnxAutomorphismInplace, ScalarZnxFromBytes,
+        ScalarZnxMulXpMinusOne, ScalarZnxMulXpMinusOneInplace,
+    },
     layouts::{Backend, Module, ScalarZnxOwned, ScalarZnxToMut, ScalarZnxToRef},
     oep::{
         ScalarZnxAllocBytesImpl, ScalarZnxAllocImpl, ScalarZnxAutomorphismImpl, ScalarZnxAutomorphismInplaceIml,
-        ScalarZnxFromBytesImpl,
+        ScalarZnxFromBytesImpl, ScalarZnxMulXpMinusOneImpl, ScalarZnxMulXpMinusOneInplaceImpl,
     },
 };
 
@@ -56,5 +59,30 @@ where
         A: ScalarZnxToMut,
     {
         B::scalar_znx_automorphism_inplace_impl(self, k, a, a_col);
+    }
+}
+
+impl<B> ScalarZnxMulXpMinusOne for Module<B>
+where
+    B: Backend + ScalarZnxMulXpMinusOneImpl<B>,
+{
+    fn scalar_znx_mul_xp_minus_one<R, A>(&self, p: i64, r: &mut R, r_col: usize, a: &A, a_col: usize)
+    where
+        R: ScalarZnxToMut,
+        A: ScalarZnxToRef,
+    {
+        B::scalar_znx_mul_xp_minus_one_impl(self, p, r, r_col, a, a_col);
+    }
+}
+
+impl<B> ScalarZnxMulXpMinusOneInplace for Module<B>
+where
+    B: Backend + ScalarZnxMulXpMinusOneInplaceImpl<B>,
+{
+    fn scalar_znx_mul_xp_minus_one_inplace<R>(&self, p: i64, r: &mut R, r_col: usize)
+    where
+        R: ScalarZnxToMut,
+    {
+        B::scalar_znx_mul_xp_minus_one_inplace_impl(self, p, r, r_col);
     }
 }

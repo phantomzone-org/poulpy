@@ -174,6 +174,19 @@ pub trait VecZnxAutomorphismInplace {
         A: VecZnxToMut;
 }
 
+pub trait VecZnxMulXpMinusOne {
+    fn vec_znx_mul_xp_minus_one<R, A>(&self, p: i64, r: &mut R, r_col: usize, a: &A, a_col: usize)
+    where
+        R: VecZnxToMut,
+        A: VecZnxToRef;
+}
+
+pub trait VecZnxMulXpMinusOneInplace {
+    fn vec_znx_mul_xp_minus_one_inplace<R>(&self, p: i64, r: &mut R, r_col: usize)
+    where
+        R: VecZnxToMut;
+}
+
 pub trait VecZnxSplit<B: Backend> {
     /// Splits the selected columns of `b` into subrings and copies them them into the selected column of `res`.
     ///
