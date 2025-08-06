@@ -37,7 +37,7 @@ impl AutomorphismKey<Vec<u8>> {
 }
 
 impl<DataSelf: DataMut> AutomorphismKey<DataSelf> {
-    pub fn automorphism<DataLhs: DataRef, DataRhs: DataRef, B: Backend>(
+    pub fn automorphism<'a, DataLhs: DataRef, DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
         lhs: &AutomorphismKey<DataLhs>,

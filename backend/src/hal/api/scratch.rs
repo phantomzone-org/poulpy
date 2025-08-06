@@ -81,3 +81,8 @@ pub trait TakeMatZnx<B: Backend> {
         size: usize,
     ) -> (MatZnx<&mut [u8]>, &mut Self);
 }
+
+pub trait TakeLike<'a, B: Backend, T> {
+    type Output;
+    fn take_like(&'a mut self, template: &T) -> (Self::Output, &'a mut Self);
+}

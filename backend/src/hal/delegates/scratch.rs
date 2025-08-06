@@ -1,17 +1,19 @@
 use crate::hal::{
     api::{
-        ScratchAvailable, ScratchFromBytes, ScratchOwnedAlloc, ScratchOwnedBorrow, TakeMatZnx, TakeScalarZnx, TakeSlice,
-        TakeSvpPPol, TakeVecZnx, TakeVecZnxBig, TakeVecZnxDft, TakeVecZnxDftSlice, TakeVecZnxSlice, TakeVmpPMat,
+        ScratchAvailable, ScratchFromBytes, ScratchOwnedAlloc, ScratchOwnedBorrow, TakeLike, TakeMatZnx, TakeScalarZnx,
+        TakeSlice, TakeSvpPPol, TakeVecZnx, TakeVecZnxBig, TakeVecZnxDft, TakeVecZnxDftSlice, TakeVecZnxSlice, TakeVmpPMat,
     },
-    layouts::{Backend, MatZnx, Module, ScalarZnx, Scratch, ScratchOwned, SvpPPol, VecZnx, VecZnxBig, VecZnxDft, VmpPMat},
+    layouts::{
+        Backend, DataRef, MatZnx, Module, ScalarZnx, Scratch, ScratchOwned, SvpPPol, VecZnx, VecZnxBig, VecZnxDft, VmpPMat,
+    },
     oep::{
-        ScratchAvailableImpl, ScratchFromBytesImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeMatZnxImpl,
+        ScratchAvailableImpl, ScratchFromBytesImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeLikeImpl, TakeMatZnxImpl,
         TakeScalarZnxImpl, TakeSliceImpl, TakeSvpPPolImpl, TakeVecZnxBigImpl, TakeVecZnxDftImpl, TakeVecZnxDftSliceImpl,
         TakeVecZnxImpl, TakeVecZnxSliceImpl, TakeVmpPMatImpl,
     },
 };
 
-impl<B: Backend> ScratchOwnedAlloc<B> for ScratchOwned<B>
+impl<B> ScratchOwnedAlloc<B> for ScratchOwned<B>
 where
     B: Backend + ScratchOwnedAllocImpl<B>,
 {
@@ -20,7 +22,7 @@ where
     }
 }
 
-impl<B: Backend> ScratchOwnedBorrow<B> for ScratchOwned<B>
+impl<B> ScratchOwnedBorrow<B> for ScratchOwned<B>
 where
     B: Backend + ScratchOwnedBorrowImpl<B>,
 {
@@ -29,7 +31,7 @@ where
     }
 }
 
-impl<B: Backend> ScratchFromBytes<B> for Scratch<B>
+impl<B> ScratchFromBytes<B> for Scratch<B>
 where
     B: Backend + ScratchFromBytesImpl<B>,
 {
@@ -38,7 +40,7 @@ where
     }
 }
 
-impl<B: Backend> ScratchAvailable for Scratch<B>
+impl<B> ScratchAvailable for Scratch<B>
 where
     B: Backend + ScratchAvailableImpl<B>,
 {
@@ -47,7 +49,7 @@ where
     }
 }
 
-impl<B: Backend> TakeSlice for Scratch<B>
+impl<B> TakeSlice for Scratch<B>
 where
     B: Backend + TakeSliceImpl<B>,
 {
@@ -56,7 +58,7 @@ where
     }
 }
 
-impl<B: Backend> TakeScalarZnx<B> for Scratch<B>
+impl<B> TakeScalarZnx<B> for Scratch<B>
 where
     B: Backend + TakeScalarZnxImpl<B>,
 {
@@ -65,7 +67,7 @@ where
     }
 }
 
-impl<B: Backend> TakeSvpPPol<B> for Scratch<B>
+impl<B> TakeSvpPPol<B> for Scratch<B>
 where
     B: Backend + TakeSvpPPolImpl<B>,
 {
@@ -74,7 +76,7 @@ where
     }
 }
 
-impl<B: Backend> TakeVecZnx<B> for Scratch<B>
+impl<B> TakeVecZnx<B> for Scratch<B>
 where
     B: Backend + TakeVecZnxImpl<B>,
 {
@@ -83,7 +85,7 @@ where
     }
 }
 
-impl<B: Backend> TakeVecZnxSlice<B> for Scratch<B>
+impl<B> TakeVecZnxSlice<B> for Scratch<B>
 where
     B: Backend + TakeVecZnxSliceImpl<B>,
 {
@@ -98,7 +100,7 @@ where
     }
 }
 
-impl<B: Backend> TakeVecZnxBig<B> for Scratch<B>
+impl<B> TakeVecZnxBig<B> for Scratch<B>
 where
     B: Backend + TakeVecZnxBigImpl<B>,
 {
@@ -107,7 +109,7 @@ where
     }
 }
 
-impl<B: Backend> TakeVecZnxDft<B> for Scratch<B>
+impl<B> TakeVecZnxDft<B> for Scratch<B>
 where
     B: Backend + TakeVecZnxDftImpl<B>,
 {
@@ -116,7 +118,7 @@ where
     }
 }
 
-impl<B: Backend> TakeVecZnxDftSlice<B> for Scratch<B>
+impl<B> TakeVecZnxDftSlice<B> for Scratch<B>
 where
     B: Backend + TakeVecZnxDftSliceImpl<B>,
 {
@@ -131,7 +133,7 @@ where
     }
 }
 
-impl<B: Backend> TakeVmpPMat<B> for Scratch<B>
+impl<B> TakeVmpPMat<B> for Scratch<B>
 where
     B: Backend + TakeVmpPMatImpl<B>,
 {
@@ -147,7 +149,7 @@ where
     }
 }
 
-impl<B: Backend> TakeMatZnx<B> for Scratch<B>
+impl<B> TakeMatZnx<B> for Scratch<B>
 where
     B: Backend + TakeMatZnxImpl<B>,
 {
@@ -160,5 +162,82 @@ where
         size: usize,
     ) -> (MatZnx<&mut [u8]>, &mut Self) {
         B::take_mat_znx_impl(self, module.n(), rows, cols_in, cols_out, size)
+    }
+}
+
+impl<'a, B: Backend, D> TakeLike<'a, B, ScalarZnx<D>> for Scratch<B>
+where
+    B: TakeLikeImpl<'a, B, ScalarZnx<D>, Output = ScalarZnx<&'a mut [u8]>>,
+    D: DataRef,
+{
+    type Output = ScalarZnx<&'a mut [u8]>;
+    fn take_like(&'a mut self, template: &ScalarZnx<D>) -> (Self::Output, &'a mut Self) {
+        B::take_like_impl(self, template)
+    }
+}
+
+impl<'a, B: Backend, D> TakeLike<'a, B, SvpPPol<D, B>> for Scratch<B>
+where
+    B: TakeLikeImpl<'a, B, SvpPPol<D, B>, Output = SvpPPol<&'a mut [u8], B>>,
+    D: DataRef,
+{
+    type Output = SvpPPol<&'a mut [u8], B>;
+    fn take_like(&'a mut self, template: &SvpPPol<D, B>) -> (Self::Output, &'a mut Self) {
+        B::take_like_impl(self, template)
+    }
+}
+
+impl<'a, B: Backend, D> TakeLike<'a, B, VecZnx<D>> for Scratch<B>
+where
+    B: TakeLikeImpl<'a, B, VecZnx<D>, Output = VecZnx<&'a mut [u8]>>,
+    D: DataRef,
+{
+    type Output = VecZnx<&'a mut [u8]>;
+    fn take_like(&'a mut self, template: &VecZnx<D>) -> (Self::Output, &'a mut Self) {
+        B::take_like_impl(self, template)
+    }
+}
+
+impl<'a, B: Backend, D> TakeLike<'a, B, VecZnxBig<D, B>> for Scratch<B>
+where
+    B: TakeLikeImpl<'a, B, VecZnxBig<D, B>, Output = VecZnxBig<&'a mut [u8], B>>,
+    D: DataRef,
+{
+    type Output = VecZnxBig<&'a mut [u8], B>;
+    fn take_like(&'a mut self, template: &VecZnxBig<D, B>) -> (Self::Output, &'a mut Self) {
+        B::take_like_impl(self, template)
+    }
+}
+
+impl<'a, B: Backend, D> TakeLike<'a, B, VecZnxDft<D, B>> for Scratch<B>
+where
+    B: TakeLikeImpl<'a, B, VecZnxDft<D, B>, Output = VecZnxDft<&'a mut [u8], B>>,
+    D: DataRef,
+{
+    type Output = VecZnxDft<&'a mut [u8], B>;
+    fn take_like(&'a mut self, template: &VecZnxDft<D, B>) -> (Self::Output, &'a mut Self) {
+        B::take_like_impl(self, template)
+    }
+}
+
+impl<'a, B: Backend, D> TakeLike<'a, B, MatZnx<D>> for Scratch<B>
+where
+    B: TakeLikeImpl<'a, B, MatZnx<D>, Output = MatZnx<&'a mut [u8]>>,
+    D: DataRef,
+{
+    type Output = MatZnx<&'a mut [u8]>;
+    fn take_like(&'a mut self, template: &MatZnx<D>) -> (Self::Output, &'a mut Self) {
+        B::take_like_impl(self, template)
+    }
+}
+
+impl<'a, B: Backend, D> TakeLike<'a, B, VmpPMat<D, B>> for Scratch<B>
+where
+    B: TakeLikeImpl<'a, B, VmpPMat<D, B>, Output = VmpPMat<&'a mut [u8], B>>,
+    D: DataRef,
+{
+    type Output = VmpPMat<&'a mut [u8], B>;
+    fn take_like(&'a mut self, template: &VmpPMat<D, B>) -> (Self::Output, &'a mut Self) {
+        B::take_like_impl(self, template)
     }
 }

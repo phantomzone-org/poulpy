@@ -1062,7 +1062,7 @@ where
             let a: VecZnx<&mut [u8]> = res.to_mut();
             assert!(
                 size <= a.size(),
-                "invalid argument k: (k + a.basek - 1)/a.basek={} > a.size()={}",
+                "invalid argument k: k.div_ceil(basek)={} > a.size()={}",
                 size,
                 a.size()
             );
@@ -1132,7 +1132,7 @@ where
             assert!(i < a.n());
             assert!(
                 size <= a.size(),
-                "invalid argument k: (k + a.basek - 1)/a.basek={} > a.size()={}",
+                "invalid argument k: k.div_ceil(basek)={} > a.size()={}",
                 size,
                 a.size()
             );
