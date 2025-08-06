@@ -10,8 +10,8 @@ use crate::{
             ZnxViewMut,
         },
         layouts::{
-            Module, Scratch, VecZnx, VecZnxBig, VecZnxBigBytesOf, VecZnxBigOwned, VecZnxBigToMut, VecZnxBigToRef, VecZnxToMut,
-            VecZnxToRef,
+            Data, DataRef, Module, Scratch, VecZnx, VecZnxBig, VecZnxBigBytesOf, VecZnxBigOwned, VecZnxBigToMut, VecZnxBigToRef,
+            VecZnxToMut, VecZnxToRef,
         },
         oep::{
             VecZnxBigAddDistF64Impl, VecZnxBigAddImpl, VecZnxBigAddInplaceImpl, VecZnxBigAddNormalImpl, VecZnxBigAddSmallImpl,
@@ -27,17 +27,17 @@ use crate::{
 
 const VEC_ZNX_BIG_FFT64_WORDSIZE: usize = 1;
 
-impl<D: AsRef<[u8]>> ZnxView for VecZnxBig<D, FFT64> {
+impl<D: DataRef> ZnxView for VecZnxBig<D, FFT64> {
     type Scalar = i64;
 }
 
-impl<D: AsRef<[u8]>> VecZnxBigBytesOf for VecZnxBig<D, FFT64> {
+impl<D: Data> VecZnxBigBytesOf for VecZnxBig<D, FFT64> {
     fn bytes_of(n: usize, cols: usize, size: usize) -> usize {
         VEC_ZNX_BIG_FFT64_WORDSIZE * n * cols * size * size_of::<f64>()
     }
 }
 
-impl<D: AsRef<[u8]>> ZnxSliceSize for VecZnxBig<D, FFT64> {
+impl<D: Data> ZnxSliceSize for VecZnxBig<D, FFT64> {
     fn sl(&self) -> usize {
         VEC_ZNX_BIG_FFT64_WORDSIZE * self.n() * self.cols()
     }
@@ -722,7 +722,7 @@ unsafe impl VecZnxBigAutomorphismInplaceImpl<FFT64> for FFT64 {
     }
 }
 
-impl<D: AsRef<[u8]>> fmt::Display for VecZnxBig<D, FFT64> {
+impl<D: DataRef> fmt::Display for VecZnxBig<D, FFT64> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(
             f,

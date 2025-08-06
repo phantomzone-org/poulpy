@@ -2,17 +2,14 @@ use backend::hal::{
     api::{
         ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddNormal, VecZnxFillUniform, VecZnxNormalizeInplace, ZnxView, ZnxViewMut,
     },
-    layouts::{Backend, Module, ScratchOwned, VecZnx},
+    layouts::{Backend, DataMut, DataRef, Module, ScratchOwned, VecZnx},
     oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl},
 };
 use sampling::source::Source;
 
 use crate::{Infos, LWECiphertext, LWESecret, SIX_SIGMA, lwe::LWEPlaintext};
 
-impl<DataSelf> LWECiphertext<DataSelf>
-where
-    DataSelf: AsMut<[u8]> + AsRef<[u8]>,
-{
+impl<DataSelf: DataMut> LWECiphertext<DataSelf> {
     pub fn encrypt_sk<DataPt, DataSk, B: Backend>(
         &mut self,
         module: &Module<B>,
@@ -22,8 +19,8 @@ where
         source_xe: &mut Source,
         sigma: f64,
     ) where
-        DataPt: AsRef<[u8]>,
-        DataSk: AsRef<[u8]>,
+        DataPt: DataRef,
+        DataSk: DataRef,
         Module<B>: VecZnxFillUniform + VecZnxAddNormal + VecZnxNormalizeInplace<B>,
         B: ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
     {

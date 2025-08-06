@@ -1,11 +1,12 @@
 use backend::hal::{
     api::{MatZnxAlloc, MatZnxAllocBytes},
-    layouts::{Backend, MatZnx, Module, ReaderFrom, Scratch, VmpPMat, WriterTo},
+    layouts::{Backend, Data, DataMut, DataRef, MatZnx, Module, ReaderFrom, Scratch, VmpPMat, WriterTo},
 };
 
 use crate::{GGLWEExecLayoutFamily, GLWESwitchingKey, GLWESwitchingKeyExec, Infos};
 
-pub struct GLWETensorKey<D> {
+#[derive(PartialEq, Eq)]
+pub struct GLWETensorKey<D: Data> {
     pub(crate) keys: Vec<GLWESwitchingKey<D>>,
 }
 
@@ -33,7 +34,7 @@ impl GLWETensorKey<Vec<u8>> {
     }
 }
 
-impl<D> Infos for GLWETensorKey<D> {
+impl<D: Data> Infos for GLWETensorKey<D> {
     type Inner = MatZnx<D>;
 
     fn inner(&self) -> &Self::Inner {
@@ -49,7 +50,7 @@ impl<D> Infos for GLWETensorKey<D> {
     }
 }
 
-impl<D> GLWETensorKey<D> {
+impl<D: Data> GLWETensorKey<D> {
     pub fn rank(&self) -> usize {
         self.keys[0].rank()
     }
@@ -67,7 +68,7 @@ impl<D> GLWETensorKey<D> {
     }
 }
 
-impl<D: AsMut<[u8]> + AsRef<[u8]>> GLWETensorKey<D> {
+impl<D: DataMut> GLWETensorKey<D> {
     // Returns a mutable reference to GLWESwitchingKey_{s}(s[i] * s[j])
     pub fn at_mut(&mut self, mut i: usize, mut j: usize) -> &mut GLWESwitchingKey<D> {
         if i > j {
@@ -78,7 +79,7 @@ impl<D: AsMut<[u8]> + AsRef<[u8]>> GLWETensorKey<D> {
     }
 }
 
-impl<D: AsRef<[u8]>> GLWETensorKey<D> {
+impl<D: DataRef> GLWETensorKey<D> {
     // Returns a reference to GLWESwitchingKey_{s}(s[i] * s[j])
     pub fn at(&self, mut i: usize, mut j: usize) -> &GLWESwitchingKey<D> {
         if i > j {
@@ -91,7 +92,7 @@ impl<D: AsRef<[u8]>> GLWETensorKey<D> {
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
-impl<D: AsRef<[u8]> + AsMut<[u8]>> ReaderFrom for GLWETensorKey<D> {
+impl<D: DataMut> ReaderFrom for GLWETensorKey<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         let len: usize = reader.read_u64::<LittleEndian>()? as usize;
         if self.keys.len() != len {
@@ -107,7 +108,7 @@ impl<D: AsRef<[u8]> + AsMut<[u8]>> ReaderFrom for GLWETensorKey<D> {
     }
 }
 
-impl<D: AsRef<[u8]>> WriterTo for GLWETensorKey<D> {
+impl<D: DataRef> WriterTo for GLWETensorKey<D> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         writer.write_u64::<LittleEndian>(self.keys.len() as u64)?;
         for key in &self.keys {
@@ -117,7 +118,8 @@ impl<D: AsRef<[u8]>> WriterTo for GLWETensorKey<D> {
     }
 }
 
-pub struct GLWETensorKeyExec<D, B: Backend> {
+#[derive(PartialEq, Eq)]
+pub struct GLWETensorKeyExec<D: Data, B: Backend> {
     pub(crate) keys: Vec<GLWESwitchingKeyExec<D, B>>,
 }
 
@@ -145,7 +147,7 @@ impl<B: Backend> GLWETensorKeyExec<Vec<u8>, B> {
     }
 }
 
-impl<D, B: Backend> Infos for GLWETensorKeyExec<D, B> {
+impl<D: Data, B: Backend> Infos for GLWETensorKeyExec<D, B> {
     type Inner = VmpPMat<D, B>;
 
     fn inner(&self) -> &Self::Inner {
@@ -161,7 +163,7 @@ impl<D, B: Backend> Infos for GLWETensorKeyExec<D, B> {
     }
 }
 
-impl<D, B: Backend> GLWETensorKeyExec<D, B> {
+impl<D: Data, B: Backend> GLWETensorKeyExec<D, B> {
     pub fn rank(&self) -> usize {
         self.keys[0].rank()
     }
@@ -179,7 +181,7 @@ impl<D, B: Backend> GLWETensorKeyExec<D, B> {
     }
 }
 
-impl<D: AsMut<[u8]> + AsRef<[u8]>, B: Backend> GLWETensorKeyExec<D, B> {
+impl<D: DataMut, B: Backend> GLWETensorKeyExec<D, B> {
     // Returns a mutable reference to GLWESwitchingKey_{s}(s[i] * s[j])
     pub fn at_mut(&mut self, mut i: usize, mut j: usize) -> &mut GLWESwitchingKeyExec<D, B> {
         if i > j {
@@ -190,7 +192,7 @@ impl<D: AsMut<[u8]> + AsRef<[u8]>, B: Backend> GLWETensorKeyExec<D, B> {
     }
 }
 
-impl<D: AsRef<[u8]>, B: Backend> GLWETensorKeyExec<D, B> {
+impl<D: DataRef, B: Backend> GLWETensorKeyExec<D, B> {
     // Returns a reference to GLWESwitchingKey_{s}(s[i] * s[j])
     pub fn at(&self, mut i: usize, mut j: usize) -> &GLWESwitchingKeyExec<D, B> {
         if i > j {
@@ -201,10 +203,10 @@ impl<D: AsRef<[u8]>, B: Backend> GLWETensorKeyExec<D, B> {
     }
 }
 
-impl<D: AsRef<[u8]> + AsMut<[u8]>, B: Backend> GLWETensorKeyExec<D, B> {
+impl<D: DataMut, B: Backend> GLWETensorKeyExec<D, B> {
     pub fn prepare<DataOther>(&mut self, module: &Module<B>, other: &GLWETensorKey<DataOther>, scratch: &mut Scratch<B>)
     where
-        DataOther: AsRef<[u8]>,
+        DataOther: DataRef,
         Module<B>: GGLWEExecLayoutFamily<B>,
     {
         #[cfg(debug_assertions)]

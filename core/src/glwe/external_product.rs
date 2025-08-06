@@ -3,7 +3,7 @@ use backend::hal::{
         DataViewMut, ScratchAvailable, TakeVecZnxDft, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftFromVecZnx,
         VecZnxDftToVecZnxBigConsume, VecZnxNormalizeTmpBytes, VmpApply, VmpApplyAdd, VmpApplyTmpBytes,
     },
-    layouts::{Backend, Module, Scratch, VecZnxBig},
+    layouts::{Backend, DataMut, DataRef, Module, Scratch, VecZnxBig},
 };
 
 use crate::{GGSWCiphertextExec, GLWECiphertext, Infos};
@@ -62,8 +62,8 @@ impl GLWECiphertext<Vec<u8>> {
     }
 }
 
-impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
-    pub fn external_product<DataLhs: AsRef<[u8]>, DataRhs: AsRef<[u8]>, B: Backend>(
+impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
+    pub fn external_product<DataLhs: DataRef, DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
         lhs: &GLWECiphertext<DataLhs>,
@@ -141,7 +141,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         });
     }
 
-    pub fn external_product_inplace<DataRhs: AsRef<[u8]>, B: Backend>(
+    pub fn external_product_inplace<DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
         rhs: &GGSWCiphertextExec<DataRhs, B>,

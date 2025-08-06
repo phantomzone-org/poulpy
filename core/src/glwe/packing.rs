@@ -6,7 +6,7 @@ use backend::hal::{
         VecZnxBigAutomorphismInplace, VecZnxBigSubSmallBInplace, VecZnxCopy, VecZnxNegateInplace, VecZnxNormalizeInplace,
         VecZnxRotate, VecZnxRotateInplace, VecZnxRshInplace, VecZnxSub, VecZnxSubABInplace,
     },
-    layouts::{Backend, Module, Scratch},
+    layouts::{Backend, DataMut, DataRef, Module, Scratch},
 };
 
 use crate::{AutomorphismKeyExec, GLWECiphertext, GLWEKeyswitchFamily, GLWEOps, Infos, TakeGLWECt};
@@ -129,7 +129,7 @@ impl GLWEPacker {
     /// * `a`: ciphertext to pack. Can optionally give None to pack a 0 ciphertext.
     /// * `auto_keys`: a [HashMap] containing the [AutomorphismKey]s.
     /// * `scratch`: scratch space of size at least [Self::add_scratch_space].
-    pub fn add<DataA: AsRef<[u8]>, DataAK: AsRef<[u8]>, B: Backend>(
+    pub fn add<DataA: DataRef, DataAK: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
         a: Option<&GLWECiphertext<DataA>>,
@@ -157,7 +157,7 @@ impl GLWEPacker {
     }
 
     /// Flush result to`res`.
-    pub fn flush<Data: AsMut<[u8]> + AsRef<[u8]>, B: Backend>(&mut self, module: &Module<B>, res: &mut GLWECiphertext<Data>)
+    pub fn flush<Data: DataMut, B: Backend>(&mut self, module: &Module<B>, res: &mut GLWECiphertext<Data>)
     where
         Module<B>: VecZnxCopy,
     {
@@ -186,7 +186,7 @@ where
     combine_scratch_space(module, basek, ct_k, k_ksk, digits, rank)
 }
 
-fn pack_core<D: AsRef<[u8]>, DataAK: AsRef<[u8]>, B: Backend>(
+fn pack_core<D: DataRef, DataAK: DataRef, B: Backend>(
     module: &Module<B>,
     a: Option<&GLWECiphertext<D>>,
     accumulators: &mut [Accumulator],
@@ -263,7 +263,7 @@ where
 }
 
 /// [combine] merges two ciphertexts together.
-fn combine<D: AsRef<[u8]>, DataAK: AsRef<[u8]>, B: Backend>(
+fn combine<D: DataRef, DataAK: DataRef, B: Backend>(
     module: &Module<B>,
     acc: &mut Accumulator,
     b: Option<&GLWECiphertext<D>>,

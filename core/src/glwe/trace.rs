@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use backend::hal::{
     api::{ScratchAvailable, TakeVecZnxDft, VecZnxBigAutomorphismInplace, VecZnxCopy, VecZnxRshInplace},
-    layouts::{Backend, Module, Scratch},
+    layouts::{Backend, DataMut, DataRef, Module, Scratch},
 };
 
 use crate::{
@@ -55,11 +55,11 @@ impl GLWECiphertext<Vec<u8>> {
     }
 }
 
-impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf>
+impl<DataSelf: DataMut> GLWECiphertext<DataSelf>
 where
     GLWECiphertext<DataSelf>: GLWECiphertextToMut + Infos + SetMetaData,
 {
-    pub fn trace<DataLhs: AsRef<[u8]>, DataAK: AsRef<[u8]>, B: Backend>(
+    pub fn trace<DataLhs: DataRef, DataAK: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
         start: usize,
@@ -76,7 +76,7 @@ where
         self.trace_inplace(module, start, end, auto_keys, scratch);
     }
 
-    pub fn trace_inplace<DataAK: AsRef<[u8]>, B: Backend>(
+    pub fn trace_inplace<DataAK: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
         start: usize,

@@ -1,11 +1,11 @@
 use backend::hal::{
     api::ZnxInfos,
-    layouts::{ReaderFrom, VecZnx, VecZnxToMut, VecZnxToRef, WriterTo},
+    layouts::{Data, DataMut, DataRef, ReaderFrom, VecZnx, VecZnxToMut, VecZnxToRef, WriterTo},
 };
 
 use crate::{Infos, SetMetaData};
 
-pub struct LWECiphertext<D> {
+pub struct LWECiphertext<D: Data> {
     pub(crate) data: VecZnx<D>,
     pub(crate) k: usize,
     pub(crate) basek: usize,
@@ -21,11 +21,11 @@ impl LWECiphertext<Vec<u8>> {
     }
 }
 
-impl<T> Infos for LWECiphertext<T>
+impl<D: Data> Infos for LWECiphertext<D>
 where
-    VecZnx<T>: ZnxInfos,
+    VecZnx<D>: ZnxInfos,
 {
-    type Inner = VecZnx<T>;
+    type Inner = VecZnx<D>;
 
     fn n(&self) -> usize {
         &self.inner().n() - 1
@@ -44,7 +44,7 @@ where
     }
 }
 
-impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> SetMetaData for LWECiphertext<DataSelf> {
+impl<DataSelf: DataMut> SetMetaData for LWECiphertext<DataSelf> {
     fn set_k(&mut self, k: usize) {
         self.k = k
     }
@@ -58,7 +58,7 @@ pub trait LWECiphertextToRef {
     fn to_ref(&self) -> LWECiphertext<&[u8]>;
 }
 
-impl<D: AsRef<[u8]>> LWECiphertextToRef for LWECiphertext<D> {
+impl<D: DataRef> LWECiphertextToRef for LWECiphertext<D> {
     fn to_ref(&self) -> LWECiphertext<&[u8]> {
         LWECiphertext {
             data: self.data.to_ref(),
@@ -73,7 +73,7 @@ pub trait LWECiphertextToMut {
     fn to_mut(&mut self) -> LWECiphertext<&mut [u8]>;
 }
 
-impl<D: AsMut<[u8]> + AsRef<[u8]>> LWECiphertextToMut for LWECiphertext<D> {
+impl<D: DataMut> LWECiphertextToMut for LWECiphertext<D> {
     fn to_mut(&mut self) -> LWECiphertext<&mut [u8]> {
         LWECiphertext {
             data: self.data.to_mut(),
@@ -85,7 +85,7 @@ impl<D: AsMut<[u8]> + AsRef<[u8]>> LWECiphertextToMut for LWECiphertext<D> {
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
-impl<D: AsRef<[u8]> + AsMut<[u8]>> ReaderFrom for LWECiphertext<D> {
+impl<D: DataMut> ReaderFrom for LWECiphertext<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         self.k = reader.read_u64::<LittleEndian>()? as usize;
         self.basek = reader.read_u64::<LittleEndian>()? as usize;
@@ -93,7 +93,7 @@ impl<D: AsRef<[u8]> + AsMut<[u8]>> ReaderFrom for LWECiphertext<D> {
     }
 }
 
-impl<D: AsRef<[u8]>> WriterTo for LWECiphertext<D> {
+impl<D: DataRef> WriterTo for LWECiphertext<D> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         writer.write_u64::<LittleEndian>(self.k as u64)?;
         writer.write_u64::<LittleEndian>(self.basek as u64)?;

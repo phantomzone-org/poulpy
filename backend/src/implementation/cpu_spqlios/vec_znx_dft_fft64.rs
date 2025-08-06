@@ -4,8 +4,8 @@ use crate::{
     hal::{
         api::{TakeSlice, VecZnxDftToVecZnxBigTmpBytes, ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero},
         layouts::{
-            Module, Scratch, VecZnx, VecZnxBig, VecZnxBigToMut, VecZnxDft, VecZnxDftBytesOf, VecZnxDftOwned, VecZnxDftToMut,
-            VecZnxDftToRef, VecZnxToRef,
+            Data, DataRef, Module, Scratch, VecZnx, VecZnxBig, VecZnxBigToMut, VecZnxDft, VecZnxDftBytesOf, VecZnxDftOwned,
+            VecZnxDftToMut, VecZnxDftToRef, VecZnxToRef,
         },
         oep::{
             VecZnxDftAddImpl, VecZnxDftAddInplaceImpl, VecZnxDftAllocBytesImpl, VecZnxDftAllocImpl, VecZnxDftCopyImpl,
@@ -22,19 +22,19 @@ use crate::{
 
 const VEC_ZNX_DFT_FFT64_WORDSIZE: usize = 1;
 
-impl<D> ZnxSliceSize for VecZnxDft<D, FFT64> {
+impl<D: Data> ZnxSliceSize for VecZnxDft<D, FFT64> {
     fn sl(&self) -> usize {
         VEC_ZNX_DFT_FFT64_WORDSIZE * self.n() * self.cols()
     }
 }
 
-impl<D: AsRef<[u8]>> VecZnxDftBytesOf for VecZnxDft<D, FFT64> {
+impl<D: Data> VecZnxDftBytesOf for VecZnxDft<D, FFT64> {
     fn bytes_of(n: usize, cols: usize, size: usize) -> usize {
         VEC_ZNX_DFT_FFT64_WORDSIZE * n * cols * size * size_of::<f64>()
     }
 }
 
-impl<D: AsRef<[u8]>> ZnxView for VecZnxDft<D, FFT64> {
+impl<D: DataRef> ZnxView for VecZnxDft<D, FFT64> {
     type Scalar = f64;
 }
 
@@ -128,7 +128,7 @@ unsafe impl VecZnxDftToVecZnxBigTmpAImpl<FFT64> for FFT64 {
 }
 
 unsafe impl VecZnxDftToVecZnxBigConsumeImpl<FFT64> for FFT64 {
-    fn vec_znx_dft_to_vec_znx_big_consume_impl<D>(module: &Module<FFT64>, mut a: VecZnxDft<D, FFT64>) -> VecZnxBig<D, FFT64>
+    fn vec_znx_dft_to_vec_znx_big_consume_impl<D: Data>(module: &Module<FFT64>, mut a: VecZnxDft<D, FFT64>) -> VecZnxBig<D, FFT64>
     where
         VecZnxDft<D, FFT64>: VecZnxDftToMut<FFT64>,
     {
@@ -392,7 +392,7 @@ unsafe impl VecZnxDftZeroImpl<FFT64> for FFT64 {
     }
 }
 
-impl<D: AsRef<[u8]>> fmt::Display for VecZnxDft<D, FFT64> {
+impl<D: DataRef> fmt::Display for VecZnxDft<D, FFT64> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(
             f,

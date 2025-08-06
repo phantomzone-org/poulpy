@@ -4,7 +4,7 @@ use backend::hal::{
         VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume,
         VecZnxNormalizeTmpBytes,
     },
-    layouts::{Backend, Module, Scratch},
+    layouts::{Backend, DataMut, DataRef, Module, Scratch},
 };
 
 use crate::{GLWECiphertext, GLWEPlaintext, GLWESecretExec, Infos};
@@ -30,8 +30,8 @@ impl GLWECiphertext<Vec<u8>> {
     }
 }
 
-impl<DataSelf: AsRef<[u8]>> GLWECiphertext<DataSelf> {
-    pub fn decrypt<DataPt: AsMut<[u8]> + AsRef<[u8]>, DataSk: AsRef<[u8]>, B: Backend>(
+impl<DataSelf: DataRef> GLWECiphertext<DataSelf> {
+    pub fn decrypt<DataPt: DataMut, DataSk: DataRef, B: Backend>(
         &self,
         module: &Module<B>,
         pt: &mut GLWEPlaintext<DataPt>,

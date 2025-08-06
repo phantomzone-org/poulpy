@@ -1,11 +1,12 @@
 use backend::hal::{
     api::{VecZnxAlloc, VecZnxAllocBytes},
-    layouts::{Backend, Module, ReaderFrom, VecZnx, VecZnxToMut, VecZnxToRef, WriterTo},
+    layouts::{Backend, Data, DataMut, DataRef, Module, ReaderFrom, VecZnx, VecZnxToMut, VecZnxToRef, WriterTo},
 };
 
 use crate::{GLWEOps, Infos, SetMetaData};
 
-pub struct GLWECiphertext<D> {
+#[derive(PartialEq, Eq)]
+pub struct GLWECiphertext<D: Data> {
     pub data: VecZnx<D>,
     pub basek: usize,
     pub k: usize,
@@ -31,7 +32,7 @@ impl GLWECiphertext<Vec<u8>> {
     }
 }
 
-impl<D> Infos for GLWECiphertext<D> {
+impl<D: Data> Infos for GLWECiphertext<D> {
     type Inner = VecZnx<D>;
 
     fn inner(&self) -> &Self::Inner {
@@ -47,13 +48,13 @@ impl<D> Infos for GLWECiphertext<D> {
     }
 }
 
-impl<D> GLWECiphertext<D> {
+impl<D: Data> GLWECiphertext<D> {
     pub fn rank(&self) -> usize {
         self.cols() - 1
     }
 }
 
-impl<DataSelf: AsRef<[u8]>> GLWECiphertext<DataSelf> {
+impl<D: DataRef> GLWECiphertext<D> {
     pub fn clone(&self) -> GLWECiphertext<Vec<u8>> {
         GLWECiphertext {
             data: self.data.clone(),
@@ -63,7 +64,7 @@ impl<DataSelf: AsRef<[u8]>> GLWECiphertext<DataSelf> {
     }
 }
 
-impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> SetMetaData for GLWECiphertext<DataSelf> {
+impl<D: DataMut> SetMetaData for GLWECiphertext<D> {
     fn set_k(&mut self, k: usize) {
         self.k = k
     }
@@ -77,7 +78,7 @@ pub trait GLWECiphertextToRef: Infos {
     fn to_ref(&self) -> GLWECiphertext<&[u8]>;
 }
 
-impl<D: AsRef<[u8]>> GLWECiphertextToRef for GLWECiphertext<D> {
+impl<D: DataRef> GLWECiphertextToRef for GLWECiphertext<D> {
     fn to_ref(&self) -> GLWECiphertext<&[u8]> {
         GLWECiphertext {
             data: self.data.to_ref(),
@@ -91,7 +92,7 @@ pub trait GLWECiphertextToMut: Infos {
     fn to_mut(&mut self) -> GLWECiphertext<&mut [u8]>;
 }
 
-impl<D: AsMut<[u8]> + AsRef<[u8]>> GLWECiphertextToMut for GLWECiphertext<D> {
+impl<D: DataMut> GLWECiphertextToMut for GLWECiphertext<D> {
     fn to_mut(&mut self) -> GLWECiphertext<&mut [u8]> {
         GLWECiphertext {
             data: self.data.to_mut(),
@@ -101,16 +102,11 @@ impl<D: AsMut<[u8]> + AsRef<[u8]>> GLWECiphertextToMut for GLWECiphertext<D> {
     }
 }
 
-impl<D> GLWEOps for GLWECiphertext<D>
-where
-    D: AsRef<[u8]> + AsMut<[u8]>,
-    GLWECiphertext<D>: GLWECiphertextToMut + Infos + SetMetaData,
-{
-}
+impl<D: DataMut> GLWEOps for GLWECiphertext<D> where GLWECiphertext<D>: GLWECiphertextToMut + Infos + SetMetaData {}
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
-impl<D: AsRef<[u8]> + AsMut<[u8]>> ReaderFrom for GLWECiphertext<D> {
+impl<D: DataMut> ReaderFrom for GLWECiphertext<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         self.k = reader.read_u64::<LittleEndian>()? as usize;
         self.basek = reader.read_u64::<LittleEndian>()? as usize;
@@ -118,7 +114,7 @@ impl<D: AsRef<[u8]> + AsMut<[u8]>> ReaderFrom for GLWECiphertext<D> {
     }
 }
 
-impl<D: AsRef<[u8]>> WriterTo for GLWECiphertext<D> {
+impl<D: DataRef> WriterTo for GLWECiphertext<D> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         writer.write_u64::<LittleEndian>(self.k as u64)?;
         writer.write_u64::<LittleEndian>(self.basek as u64)?;

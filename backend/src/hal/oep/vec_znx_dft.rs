@@ -1,5 +1,6 @@
 use crate::hal::layouts::{
-    Backend, Module, Scratch, VecZnxBig, VecZnxBigToMut, VecZnxDft, VecZnxDftOwned, VecZnxDftToMut, VecZnxDftToRef, VecZnxToRef,
+    Backend, Data, Module, Scratch, VecZnxBig, VecZnxBigToMut, VecZnxDft, VecZnxDftOwned, VecZnxDftToMut, VecZnxDftToRef,
+    VecZnxToRef,
 };
 
 pub unsafe trait VecZnxDftAllocImpl<B: Backend> {
@@ -39,7 +40,7 @@ pub unsafe trait VecZnxDftToVecZnxBigTmpAImpl<B: Backend> {
 }
 
 pub unsafe trait VecZnxDftToVecZnxBigConsumeImpl<B: Backend> {
-    fn vec_znx_dft_to_vec_znx_big_consume_impl<D>(module: &Module<B>, a: VecZnxDft<D, B>) -> VecZnxBig<D, B>
+    fn vec_znx_dft_to_vec_znx_big_consume_impl<D: Data>(module: &Module<B>, a: VecZnxDft<D, B>) -> VecZnxBig<D, B>
     where
         VecZnxDft<D, B>: VecZnxDftToMut<B>;
 }

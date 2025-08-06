@@ -1,6 +1,7 @@
 #![allow(non_camel_case_types, non_snake_case, non_upper_case_globals, dead_code, improper_ctypes)]
 #![deny(rustdoc::broken_intra_doc_links)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
+#![feature(trait_alias)]
 
 pub mod hal;
 pub mod implementation;

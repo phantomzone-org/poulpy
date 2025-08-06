@@ -5,7 +5,7 @@ use backend::hal::{
         VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume,
         VecZnxFillUniform, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSubABInplace, ZnxZero,
     },
-    layouts::{Backend, Module, Scratch, VecZnxBig},
+    layouts::{Backend, DataMut, DataRef, Module, Scratch, VecZnxBig},
 };
 use sampling::source::Source;
 
@@ -57,8 +57,8 @@ impl GLWECiphertext<Vec<u8>> {
     }
 }
 
-impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
-    pub fn encrypt_sk<DataPt: AsRef<[u8]>, DataSk: AsRef<[u8]>, B: Backend>(
+impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
+    pub fn encrypt_sk<DataPt: DataRef, DataSk: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
         pt: &GLWEPlaintext<DataPt>,
@@ -82,7 +82,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         );
     }
 
-    pub fn encrypt_zero_sk<DataSk: AsRef<[u8]>, B: Backend>(
+    pub fn encrypt_zero_sk<DataSk: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
         sk: &GLWESecretExec<DataSk, B>,
@@ -105,7 +105,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         );
     }
 
-    pub fn encrypt_pk<DataPt: AsRef<[u8]>, DataPk: AsRef<[u8]>, B: Backend>(
+    pub fn encrypt_pk<DataPt: DataRef, DataPk: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
         pt: &GLWEPlaintext<DataPt>,
@@ -129,7 +129,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         );
     }
 
-    pub fn encrypt_zero_pk<DataPk: AsRef<[u8]>, B: Backend>(
+    pub fn encrypt_zero_pk<DataPk: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
         pk: &GLWEPublicKeyExec<DataPk, B>,
@@ -152,7 +152,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         );
     }
 
-    pub(crate) fn encrypt_sk_private<DataPt: AsRef<[u8]>, DataSk: AsRef<[u8]>, B: Backend>(
+    pub(crate) fn encrypt_sk_private<DataPt: DataRef, DataSk: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
         pt: Option<(&GLWEPlaintext<DataPt>, usize)>,
@@ -234,7 +234,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         module.vec_znx_normalize(basek, &mut self.data, 0, &c0, 0, scratch_1);
     }
 
-    pub(crate) fn encrypt_pk_private<DataPt: AsRef<[u8]>, DataPk: AsRef<[u8]>, B: Backend>(
+    pub(crate) fn encrypt_pk_private<DataPt: DataRef, DataPk: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
         pt: Option<(&GLWEPlaintext<DataPt>, usize)>,

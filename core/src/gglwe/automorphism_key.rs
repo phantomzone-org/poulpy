@@ -1,11 +1,12 @@
 use backend::hal::{
     api::{MatZnxAlloc, MatZnxAllocBytes},
-    layouts::{Backend, MatZnx, Module, ReaderFrom, Scratch, VmpPMat, WriterTo},
+    layouts::{Backend, Data, DataMut, DataRef, MatZnx, Module, ReaderFrom, Scratch, VmpPMat, WriterTo},
 };
 
 use crate::{GGLWEExecLayoutFamily, GLWECiphertext, GLWESwitchingKey, GLWESwitchingKeyExec, Infos};
 
-pub struct AutomorphismKey<D> {
+#[derive(PartialEq, Eq)]
+pub struct AutomorphismKey<D: Data> {
     pub(crate) key: GLWESwitchingKey<D>,
     pub(crate) p: i64,
 }
@@ -29,7 +30,7 @@ impl AutomorphismKey<Vec<u8>> {
     }
 }
 
-impl<D> Infos for AutomorphismKey<D> {
+impl<D: Data> Infos for AutomorphismKey<D> {
     type Inner = MatZnx<D>;
 
     fn inner(&self) -> &Self::Inner {
@@ -45,7 +46,7 @@ impl<D> Infos for AutomorphismKey<D> {
     }
 }
 
-impl<D> AutomorphismKey<D> {
+impl<D: Data> AutomorphismKey<D> {
     pub fn p(&self) -> i64 {
         self.p
     }
@@ -67,13 +68,13 @@ impl<D> AutomorphismKey<D> {
     }
 }
 
-impl<D: AsRef<[u8]>> AutomorphismKey<D> {
+impl<D: DataRef> AutomorphismKey<D> {
     pub fn at(&self, row: usize, col: usize) -> GLWECiphertext<&[u8]> {
         self.key.at(row, col)
     }
 }
 
-impl<D: AsMut<[u8]> + AsRef<[u8]>> AutomorphismKey<D> {
+impl<D: DataMut> AutomorphismKey<D> {
     pub fn at_mut(&mut self, row: usize, col: usize) -> GLWECiphertext<&mut [u8]> {
         self.key.at_mut(row, col)
     }
@@ -81,21 +82,22 @@ impl<D: AsMut<[u8]> + AsRef<[u8]>> AutomorphismKey<D> {
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
-impl<D: AsRef<[u8]> + AsMut<[u8]>> ReaderFrom for AutomorphismKey<D> {
+impl<D: DataMut> ReaderFrom for AutomorphismKey<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         self.p = reader.read_u64::<LittleEndian>()? as i64;
         self.key.read_from(reader)
     }
 }
 
-impl<D: AsRef<[u8]>> WriterTo for AutomorphismKey<D> {
+impl<D: DataRef> WriterTo for AutomorphismKey<D> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         writer.write_u64::<LittleEndian>(self.p as u64)?;
         self.key.write_to(writer)
     }
 }
 
-pub struct AutomorphismKeyExec<D, B: Backend> {
+#[derive(PartialEq, Eq)]
+pub struct AutomorphismKeyExec<D: Data, B: Backend> {
     pub(crate) key: GLWESwitchingKeyExec<D, B>,
     pub(crate) p: i64,
 }
@@ -118,7 +120,7 @@ impl<B: Backend> AutomorphismKeyExec<Vec<u8>, B> {
         GLWESwitchingKeyExec::<Vec<u8>, B>::bytes_of(module, basek, k, rows, digits, rank, rank)
     }
 
-    pub fn from<DataOther: AsRef<[u8]>>(module: &Module<B>, other: &AutomorphismKey<DataOther>, scratch: &mut Scratch<B>) -> Self
+    pub fn from<DataOther: DataRef>(module: &Module<B>, other: &AutomorphismKey<DataOther>, scratch: &mut Scratch<B>) -> Self
     where
         Module<B>: GGLWEExecLayoutFamily<B>,
     {
@@ -135,10 +137,10 @@ impl<B: Backend> AutomorphismKeyExec<Vec<u8>, B> {
     }
 }
 
-impl<D: AsRef<[u8]> + AsMut<[u8]>, B: Backend> AutomorphismKeyExec<D, B> {
+impl<D: DataMut, B: Backend> AutomorphismKeyExec<D, B> {
     pub fn prepare<DataOther>(&mut self, module: &Module<B>, other: &AutomorphismKey<DataOther>, scratch: &mut Scratch<B>)
     where
-        DataOther: AsRef<[u8]>,
+        DataOther: DataRef,
         Module<B>: GGLWEExecLayoutFamily<B>,
     {
         self.key.prepare(module, &other.key, scratch);
@@ -146,7 +148,7 @@ impl<D: AsRef<[u8]> + AsMut<[u8]>, B: Backend> AutomorphismKeyExec<D, B> {
     }
 }
 
-impl<D, B: Backend> Infos for AutomorphismKeyExec<D, B> {
+impl<D: Data, B: Backend> Infos for AutomorphismKeyExec<D, B> {
     type Inner = VmpPMat<D, B>;
 
     fn inner(&self) -> &Self::Inner {
@@ -162,7 +164,7 @@ impl<D, B: Backend> Infos for AutomorphismKeyExec<D, B> {
     }
 }
 
-impl<D, B: Backend> AutomorphismKeyExec<D, B> {
+impl<D: Data, B: Backend> AutomorphismKeyExec<D, B> {
     pub fn p(&self) -> i64 {
         self.p
     }

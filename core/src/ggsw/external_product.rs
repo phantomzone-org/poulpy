@@ -1,6 +1,6 @@
 use backend::hal::{
     api::{ScratchAvailable, TakeVecZnxDft, ZnxZero},
-    layouts::{Backend, Module, Scratch},
+    layouts::{Backend, DataMut, DataRef, Module, Scratch},
 };
 
 use crate::{GGSWCiphertext, GGSWCiphertextExec, GLWECiphertext, GLWEExternalProductFamily, Infos};
@@ -36,8 +36,8 @@ impl GGSWCiphertext<Vec<u8>> {
     }
 }
 
-impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
-    pub fn external_product<DataLhs: AsRef<[u8]>, DataRhs: AsRef<[u8]>, B: Backend>(
+impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
+    pub fn external_product<DataLhs: DataRef, DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
         lhs: &GGSWCiphertext<DataLhs>,
@@ -93,7 +93,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
         });
     }
 
-    pub fn external_product_inplace<DataRhs: AsRef<[u8]>, B: Backend>(
+    pub fn external_product_inplace<DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
         rhs: &GGSWCiphertextExec<DataRhs, B>,

@@ -5,7 +5,7 @@ use crate::hal::{
         VecZnxDftToVecZnxBigConsume, VecZnxDftToVecZnxBigTmpA, VecZnxDftToVecZnxBigTmpBytes, VecZnxDftZero,
     },
     layouts::{
-        Backend, Module, Scratch, VecZnxBig, VecZnxBigToMut, VecZnxDft, VecZnxDftOwned, VecZnxDftToMut, VecZnxDftToRef,
+        Backend, Data, Module, Scratch, VecZnxBig, VecZnxBigToMut, VecZnxDft, VecZnxDftOwned, VecZnxDftToMut, VecZnxDftToRef,
         VecZnxToRef,
     },
     oep::{
@@ -82,7 +82,7 @@ impl<B> VecZnxDftToVecZnxBigConsume<B> for Module<B>
 where
     B: Backend + VecZnxDftToVecZnxBigConsumeImpl<B>,
 {
-    fn vec_znx_dft_to_vec_znx_big_consume<D>(&self, a: VecZnxDft<D, B>) -> VecZnxBig<D, B>
+    fn vec_znx_dft_to_vec_znx_big_consume<D: Data>(&self, a: VecZnxDft<D, B>) -> VecZnxBig<D, B>
     where
         VecZnxDft<D, B>: VecZnxDftToMut<B>,
     {

@@ -1,20 +1,21 @@
 use backend::hal::{
     api::{MatZnxAlloc, MatZnxAllocBytes, VmpPMatAlloc, VmpPMatAllocBytes, VmpPMatPrepare},
-    layouts::{Backend, MatZnx, Module, ReaderFrom, Scratch, VmpPMat, WriterTo},
+    layouts::{Backend, Data, DataMut, DataRef, MatZnx, Module, ReaderFrom, Scratch, VmpPMat, WriterTo},
 };
 
 use crate::{GLWECiphertext, Infos};
 
 pub trait GGLWEExecLayoutFamily<B: Backend> = VmpPMatAlloc<B> + VmpPMatAllocBytes + VmpPMatPrepare<B>;
 
-pub struct GGLWECiphertext<D> {
+#[derive(PartialEq, Eq)]
+pub struct GGLWECiphertext<D: Data> {
     pub(crate) data: MatZnx<D>,
     pub(crate) basek: usize,
     pub(crate) k: usize,
     pub(crate) digits: usize,
 }
 
-impl<D: AsRef<[u8]>> GGLWECiphertext<D> {
+impl<D: DataRef> GGLWECiphertext<D> {
     pub fn at(&self, row: usize, col: usize) -> GLWECiphertext<&[u8]> {
         GLWECiphertext {
             data: self.data.at(row, col),
@@ -24,7 +25,7 @@ impl<D: AsRef<[u8]>> GGLWECiphertext<D> {
     }
 }
 
-impl<D: AsMut<[u8]> + AsRef<[u8]>> GGLWECiphertext<D> {
+impl<D: DataMut> GGLWECiphertext<D> {
     pub fn at_mut(&mut self, row: usize, col: usize) -> GLWECiphertext<&mut [u8]> {
         GLWECiphertext {
             data: self.data.at_mut(row, col),
@@ -103,7 +104,7 @@ impl GGLWECiphertext<Vec<u8>> {
     }
 }
 
-impl<D> Infos for GGLWECiphertext<D> {
+impl<D: Data> Infos for GGLWECiphertext<D> {
     type Inner = MatZnx<D>;
 
     fn inner(&self) -> &Self::Inner {
@@ -119,7 +120,7 @@ impl<D> Infos for GGLWECiphertext<D> {
     }
 }
 
-impl<D> GGLWECiphertext<D> {
+impl<D: Data> GGLWECiphertext<D> {
     pub fn rank(&self) -> usize {
         self.data.cols_out() - 1
     }
@@ -139,7 +140,7 @@ impl<D> GGLWECiphertext<D> {
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
-impl<D: AsRef<[u8]> + AsMut<[u8]>> ReaderFrom for GGLWECiphertext<D> {
+impl<D: DataMut> ReaderFrom for GGLWECiphertext<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         self.k = reader.read_u64::<LittleEndian>()? as usize;
         self.basek = reader.read_u64::<LittleEndian>()? as usize;
@@ -148,7 +149,7 @@ impl<D: AsRef<[u8]> + AsMut<[u8]>> ReaderFrom for GGLWECiphertext<D> {
     }
 }
 
-impl<D: AsRef<[u8]>> WriterTo for GGLWECiphertext<D> {
+impl<D: DataRef> WriterTo for GGLWECiphertext<D> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         writer.write_u64::<LittleEndian>(self.k as u64)?;
         writer.write_u64::<LittleEndian>(self.basek as u64)?;
@@ -157,7 +158,8 @@ impl<D: AsRef<[u8]>> WriterTo for GGLWECiphertext<D> {
     }
 }
 
-pub struct GGLWECiphertextExec<D, B: Backend> {
+#[derive(PartialEq, Eq)]
+pub struct GGLWECiphertextExec<D: Data, B: Backend> {
     pub(crate) data: VmpPMat<D, B>,
     pub(crate) basek: usize,
     pub(crate) k: usize,
@@ -225,7 +227,7 @@ impl<B: Backend> GGLWECiphertextExec<Vec<u8>, B> {
     }
 }
 
-impl<D, B: Backend> Infos for GGLWECiphertextExec<D, B> {
+impl<D: Data, B: Backend> Infos for GGLWECiphertextExec<D, B> {
     type Inner = VmpPMat<D, B>;
 
     fn inner(&self) -> &Self::Inner {
@@ -241,7 +243,7 @@ impl<D, B: Backend> Infos for GGLWECiphertextExec<D, B> {
     }
 }
 
-impl<D, B: Backend> GGLWECiphertextExec<D, B> {
+impl<D: Data, B: Backend> GGLWECiphertextExec<D, B> {
     pub fn rank(&self) -> usize {
         self.data.cols_out() - 1
     }
@@ -259,10 +261,10 @@ impl<D, B: Backend> GGLWECiphertextExec<D, B> {
     }
 }
 
-impl<D: AsRef<[u8]> + AsMut<[u8]>, B: Backend> GGLWECiphertextExec<D, B> {
+impl<D: DataMut, B: Backend> GGLWECiphertextExec<D, B> {
     pub fn prepare<DataOther>(&mut self, module: &Module<B>, other: &GGLWECiphertext<DataOther>, scratch: &mut Scratch<B>)
     where
-        DataOther: AsRef<[u8]>,
+        DataOther: DataRef,
         Module<B>: GGLWEExecLayoutFamily<B>,
     {
         module.vmp_prepare(&mut self.data, &other.data, scratch);

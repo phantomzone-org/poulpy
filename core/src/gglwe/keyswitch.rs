@@ -1,6 +1,6 @@
 use backend::hal::{
     api::{ScratchAvailable, TakeVecZnxDft, ZnxZero},
-    layouts::{Backend, Module, Scratch},
+    layouts::{Backend, DataMut, DataRef, Module, Scratch},
 };
 
 use crate::{
@@ -38,8 +38,8 @@ impl AutomorphismKey<Vec<u8>> {
     }
 }
 
-impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> AutomorphismKey<DataSelf> {
-    pub fn keyswitch<DataLhs: AsRef<[u8]>, DataRhs: AsRef<[u8]>, B: Backend>(
+impl<DataSelf: DataMut> AutomorphismKey<DataSelf> {
+    pub fn keyswitch<DataLhs: DataRef, DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
         lhs: &AutomorphismKey<DataLhs>,
@@ -52,7 +52,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> AutomorphismKey<DataSelf> {
         self.key.keyswitch(module, &lhs.key, rhs, scratch);
     }
 
-    pub fn keyswitch_inplace<DataRhs: AsRef<[u8]>, B: Backend>(
+    pub fn keyswitch_inplace<DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
         rhs: &AutomorphismKeyExec<DataRhs, B>,
@@ -97,8 +97,8 @@ impl GLWESwitchingKey<Vec<u8>> {
     }
 }
 
-impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<DataSelf> {
-    pub fn keyswitch<DataLhs: AsRef<[u8]>, DataRhs: AsRef<[u8]>, B: Backend>(
+impl<DataSelf: DataMut> GLWESwitchingKey<DataSelf> {
+    pub fn keyswitch<DataLhs: DataRef, DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
         lhs: &GLWESwitchingKey<DataLhs>,
@@ -147,7 +147,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<DataSelf> {
         });
     }
 
-    pub fn keyswitch_inplace<DataRhs: AsRef<[u8]>, B: Backend>(
+    pub fn keyswitch_inplace<DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
         rhs: &GLWESwitchingKeyExec<DataRhs, B>,

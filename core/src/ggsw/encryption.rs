@@ -2,7 +2,7 @@ use backend::hal::{
     api::{
         ScratchAvailable, TakeVecZnx, TakeVecZnxDft, VecZnxAddScalarInplace, VecZnxAllocBytes, VecZnxNormalizeInplace, ZnxZero,
     },
-    layouts::{Backend, Module, ScalarZnx, Scratch},
+    layouts::{Backend, DataMut, DataRef, Module, ScalarZnx, Scratch},
 };
 use sampling::source::Source;
 
@@ -23,8 +23,8 @@ impl GGSWCiphertext<Vec<u8>> {
     }
 }
 
-impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
-    pub fn encrypt_sk<DataPt: AsRef<[u8]>, DataSk: AsRef<[u8]>, B: Backend>(
+impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
+    pub fn encrypt_sk<DataPt: DataRef, DataSk: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
         pt: &ScalarZnx<DataPt>,

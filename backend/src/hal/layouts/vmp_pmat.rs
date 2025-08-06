@@ -4,14 +4,14 @@ use crate::{
     alloc_aligned,
     hal::{
         api::{DataView, DataViewMut, ZnxInfos},
-        layouts::Backend,
+        layouts::{Backend, Data, DataMut, DataRef},
     },
 };
 
 /// An opaque version of [crate::MatZnx] in DFT,
 /// which is prepared for a specific backend.
 #[derive(PartialEq, Eq)]
-pub struct VmpPMat<D, B: Backend> {
+pub struct VmpPMat<D: Data, B: Backend> {
     data: D,
     n: usize,
     size: usize,
@@ -21,7 +21,7 @@ pub struct VmpPMat<D, B: Backend> {
     _phantom: PhantomData<B>,
 }
 
-impl<D, B: Backend> ZnxInfos for VmpPMat<D, B> {
+impl<D: Data, B: Backend> ZnxInfos for VmpPMat<D, B> {
     fn cols(&self) -> usize {
         self.cols_in
     }
@@ -39,20 +39,20 @@ impl<D, B: Backend> ZnxInfos for VmpPMat<D, B> {
     }
 }
 
-impl<D, B: Backend> DataView for VmpPMat<D, B> {
+impl<D: Data, B: Backend> DataView for VmpPMat<D, B> {
     type D = D;
     fn data(&self) -> &Self::D {
         &self.data
     }
 }
 
-impl<D, B: Backend> DataViewMut for VmpPMat<D, B> {
+impl<D: Data, B: Backend> DataViewMut for VmpPMat<D, B> {
     fn data_mut(&mut self) -> &mut Self::D {
         &mut self.data
     }
 }
 
-impl<D, B: Backend> VmpPMat<D, B> {
+impl<D: Data, B: Backend> VmpPMat<D, B> {
     pub fn cols_in(&self) -> usize {
         self.cols_in
     }
@@ -66,7 +66,7 @@ pub trait VmpPMatBytesOf {
     fn vmp_pmat_bytes_of(n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize;
 }
 
-impl<D: From<Vec<u8>>, B: Backend> VmpPMat<D, B>
+impl<D: DataRef + From<Vec<u8>>, B: Backend> VmpPMat<D, B>
 where
     B: VmpPMatBytesOf,
 {
@@ -112,11 +112,7 @@ pub trait VmpPMatToRef<B: Backend> {
     fn to_ref(&self) -> VmpPMat<&[u8], B>;
 }
 
-impl<D, B: Backend> VmpPMatToRef<B> for VmpPMat<D, B>
-where
-    D: AsRef<[u8]>,
-    B: Backend,
-{
+impl<D: DataRef, B: Backend> VmpPMatToRef<B> for VmpPMat<D, B> {
     fn to_ref(&self) -> VmpPMat<&[u8], B> {
         VmpPMat {
             data: self.data.as_ref(),
@@ -134,11 +130,7 @@ pub trait VmpPMatToMut<B: Backend> {
     fn to_mut(&mut self) -> VmpPMat<&mut [u8], B>;
 }
 
-impl<D, B: Backend> VmpPMatToMut<B> for VmpPMat<D, B>
-where
-    D: AsRef<[u8]> + AsMut<[u8]>,
-    B: Backend,
-{
+impl<D: DataMut, B: Backend> VmpPMatToMut<B> for VmpPMat<D, B> {
     fn to_mut(&mut self) -> VmpPMat<&mut [u8], B> {
         VmpPMat {
             data: self.data.as_mut(),
@@ -152,7 +144,7 @@ where
     }
 }
 
-impl<D, B: Backend> VmpPMat<D, B> {
+impl<D: Data, B: Backend> VmpPMat<D, B> {
     pub(crate) fn from_data(data: D, n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> Self {
         Self {
             data,

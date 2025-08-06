@@ -64,3 +64,21 @@ impl Distribution {
         Ok(dist)
     }
 }
+
+impl PartialEq for Distribution {
+    fn eq(&self, other: &Self) -> bool {
+        use Distribution::*;
+        match (self, other) {
+            (TernaryFixed(a), TernaryFixed(b)) => a == b,
+            (TernaryProb(a), TernaryProb(b)) => a.to_bits() == b.to_bits(),
+            (BinaryFixed(a), BinaryFixed(b)) => a == b,
+            (BinaryProb(a), BinaryProb(b)) => a.to_bits() == b.to_bits(),
+            (BinaryBlock(a), BinaryBlock(b)) => a == b,
+            (ZERO, ZERO) => true,
+            (NONE, NONE) => true,
+            _ => false,
+        }
+    }
+}
+
+impl Eq for Distribution {}

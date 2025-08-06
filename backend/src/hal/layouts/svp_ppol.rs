@@ -4,19 +4,19 @@ use crate::{
     alloc_aligned,
     hal::{
         api::{DataView, DataViewMut, ZnxInfos},
-        layouts::{Backend, ReaderFrom, WriterTo},
+        layouts::{Backend, Data, DataMut, DataRef, ReaderFrom, WriterTo},
     },
 };
 
 #[derive(PartialEq, Eq)]
-pub struct SvpPPol<D, B: Backend> {
+pub struct SvpPPol<D: Data, B: Backend> {
     data: D,
     n: usize,
     cols: usize,
     _phantom: PhantomData<B>,
 }
 
-impl<D, B: Backend> ZnxInfos for SvpPPol<D, B> {
+impl<D: Data, B: Backend> ZnxInfos for SvpPPol<D, B> {
     fn cols(&self) -> usize {
         self.cols
     }
@@ -34,14 +34,14 @@ impl<D, B: Backend> ZnxInfos for SvpPPol<D, B> {
     }
 }
 
-impl<D, B: Backend> DataView for SvpPPol<D, B> {
+impl<D: Data, B: Backend> DataView for SvpPPol<D, B> {
     type D = D;
     fn data(&self) -> &Self::D {
         &self.data
     }
 }
 
-impl<D, B: Backend> DataViewMut for SvpPPol<D, B> {
+impl<D: Data, B: Backend> DataViewMut for SvpPPol<D, B> {
     fn data_mut(&mut self) -> &mut Self::D {
         &mut self.data
     }
@@ -51,7 +51,7 @@ pub trait SvpPPolBytesOf {
     fn bytes_of(n: usize, cols: usize) -> usize;
 }
 
-impl<D: From<Vec<u8>>, B: Backend> SvpPPol<D, B>
+impl<D: Data + From<Vec<u8>>, B: Backend> SvpPPol<D, B>
 where
     SvpPPol<D, B>: SvpPPolBytesOf,
 {
@@ -83,7 +83,7 @@ pub trait SvpPPolToRef<B: Backend> {
     fn to_ref(&self) -> SvpPPol<&[u8], B>;
 }
 
-impl<D: AsRef<[u8]>, B: Backend> SvpPPolToRef<B> for SvpPPol<D, B> {
+impl<D: DataRef, B: Backend> SvpPPolToRef<B> for SvpPPol<D, B> {
     fn to_ref(&self) -> SvpPPol<&[u8], B> {
         SvpPPol {
             data: self.data.as_ref(),
@@ -98,7 +98,7 @@ pub trait SvpPPolToMut<B: Backend> {
     fn to_mut(&mut self) -> SvpPPol<&mut [u8], B>;
 }
 
-impl<D: AsMut<[u8]> + AsRef<[u8]>, B: Backend> SvpPPolToMut<B> for SvpPPol<D, B> {
+impl<D: DataMut, B: Backend> SvpPPolToMut<B> for SvpPPol<D, B> {
     fn to_mut(&mut self) -> SvpPPol<&mut [u8], B> {
         SvpPPol {
             data: self.data.as_mut(),
@@ -109,7 +109,7 @@ impl<D: AsMut<[u8]> + AsRef<[u8]>, B: Backend> SvpPPolToMut<B> for SvpPPol<D, B>
     }
 }
 
-impl<D, B: Backend> SvpPPol<D, B> {
+impl<D: Data, B: Backend> SvpPPol<D, B> {
     pub(crate) fn from_data(data: D, n: usize, cols: usize) -> Self {
         Self {
             data,
@@ -122,7 +122,7 @@ impl<D, B: Backend> SvpPPol<D, B> {
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
-impl<D: AsRef<[u8]> + AsMut<[u8]>, B: Backend> ReaderFrom for SvpPPol<D, B> {
+impl<D: DataMut, B: Backend> ReaderFrom for SvpPPol<D, B> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         self.n = reader.read_u64::<LittleEndian>()? as usize;
         self.cols = reader.read_u64::<LittleEndian>()? as usize;
@@ -139,7 +139,7 @@ impl<D: AsRef<[u8]> + AsMut<[u8]>, B: Backend> ReaderFrom for SvpPPol<D, B> {
     }
 }
 
-impl<D: AsRef<[u8]>, B: Backend> WriterTo for SvpPPol<D, B> {
+impl<D: DataRef, B: Backend> WriterTo for SvpPPol<D, B> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         writer.write_u64::<LittleEndian>(self.n as u64)?;
         writer.write_u64::<LittleEndian>(self.cols as u64)?;

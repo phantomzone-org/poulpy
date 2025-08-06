@@ -6,7 +6,7 @@ use backend::hal::{
         VecZnxDftSubABInplace, VecZnxDftToVecZnxBig, VecZnxDftToVecZnxBigTmpBytes, VecZnxDftZero, VecZnxMulXpMinusOneInplace,
         VecZnxNormalize, VecZnxNormalizeInplace, VecZnxRotate, VecZnxSubABInplace, VmpApplyTmpBytes, ZnxView, ZnxZero,
     },
-    layouts::{Backend, Module, Scratch, SvpPPol},
+    layouts::{Backend, DataMut, DataRef, Module, Scratch, SvpPPol},
 };
 use itertools::izip;
 
@@ -93,9 +93,9 @@ pub fn cggi_blind_rotate<DataRes, DataIn, DataBrk, B: Backend>(
     brk: &BlindRotationKeyCGGIExec<DataBrk, B>,
     scratch: &mut Scratch<B>,
 ) where
-    DataRes: AsRef<[u8]> + AsMut<[u8]>,
-    DataIn: AsRef<[u8]>,
-    DataBrk: AsRef<[u8]>,
+    DataRes: DataMut,
+    DataIn: DataRef,
+    DataBrk: DataRef,
     Module<B>: CCGIBlindRotationFamily<B>,
     Scratch<B>:
         TakeVecZnxDftSlice<B> + TakeVecZnxDft<B> + TakeVecZnxBig<B> + TakeVecZnx<B> + ScratchAvailable + TakeVecZnxSlice<B>,
@@ -125,9 +125,9 @@ pub(crate) fn cggi_blind_rotate_block_binary_extended<DataRes, DataIn, DataBrk, 
     brk: &BlindRotationKeyCGGIExec<DataBrk, B>,
     scratch: &mut Scratch<B>,
 ) where
-    DataRes: AsRef<[u8]> + AsMut<[u8]>,
-    DataIn: AsRef<[u8]>,
-    DataBrk: AsRef<[u8]>,
+    DataRes: DataMut,
+    DataIn: DataRef,
+    DataBrk: DataRef,
     Module<B>: CCGIBlindRotationFamily<B>,
     Scratch<B>: TakeVecZnxDftSlice<B> + TakeVecZnxDft<B> + TakeVecZnxBig<B> + TakeVecZnxSlice<B>,
 {
@@ -269,9 +269,9 @@ pub(crate) fn cggi_blind_rotate_block_binary<DataRes, DataIn, DataBrk, B: Backen
     brk: &BlindRotationKeyCGGIExec<DataBrk, B>,
     scratch: &mut Scratch<B>,
 ) where
-    DataRes: AsRef<[u8]> + AsMut<[u8]>,
-    DataIn: AsRef<[u8]>,
-    DataBrk: AsRef<[u8]>,
+    DataRes: DataMut,
+    DataIn: DataRef,
+    DataBrk: DataRef,
     Module<B>: CCGIBlindRotationFamily<B>,
     Scratch<B>: TakeVecZnxDft<B> + TakeVecZnxBig<B>,
 {
@@ -355,9 +355,9 @@ pub(crate) fn cggi_blind_rotate_binary_standard<DataRes, DataIn, DataBrk, B: Bac
     brk: &BlindRotationKeyCGGIExec<DataBrk, B>,
     scratch: &mut Scratch<B>,
 ) where
-    DataRes: AsRef<[u8]> + AsMut<[u8]>,
-    DataIn: AsRef<[u8]>,
-    DataBrk: AsRef<[u8]>,
+    DataRes: DataMut,
+    DataIn: DataRef,
+    DataBrk: DataRef,
     Module<B>: CCGIBlindRotationFamily<B>,
     Scratch<B>: TakeVecZnxDft<B> + TakeVecZnxBig<B> + TakeVecZnx<B> + ScratchAvailable,
 {

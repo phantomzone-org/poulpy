@@ -1,3 +1,4 @@
+use crate::hal::layouts::{Data, DataMut, DataRef};
 use rand_distr::num_traits::Zero;
 
 pub trait ZnxInfos {
@@ -31,7 +32,7 @@ pub trait ZnxSliceSize {
 }
 
 pub trait DataView {
-    type D;
+    type D: Data;
     fn data(&self) -> &Self::D;
 }
 
@@ -39,7 +40,7 @@ pub trait DataViewMut: DataView {
     fn data_mut(&mut self) -> &mut Self::D;
 }
 
-pub trait ZnxView: ZnxInfos + DataView<D: AsRef<[u8]>> {
+pub trait ZnxView: ZnxInfos + DataView<D: DataRef> {
     type Scalar: Copy + Zero;
 
     /// Returns a non-mutable pointer to the underlying coefficients array.
@@ -69,7 +70,7 @@ pub trait ZnxView: ZnxInfos + DataView<D: AsRef<[u8]>> {
     }
 }
 
-pub trait ZnxViewMut: ZnxView + DataViewMut<D: AsMut<[u8]>> {
+pub trait ZnxViewMut: ZnxView + DataViewMut<D: DataMut> {
     /// Returns a mutable pointer to the underlying coefficients array.
     fn as_mut_ptr(&mut self) -> *mut Self::Scalar {
         self.data_mut().as_mut().as_mut_ptr() as *mut Self::Scalar
@@ -98,7 +99,7 @@ pub trait ZnxViewMut: ZnxView + DataViewMut<D: AsMut<[u8]>> {
 }
 
 //(Jay)Note: Can't provide blanket impl. of ZnxView because Scalar is not known
-impl<T> ZnxViewMut for T where T: ZnxView + DataViewMut<D: AsMut<[u8]>> {}
+impl<T> ZnxViewMut for T where T: ZnxView + DataViewMut<D: DataMut> {}
 
 pub trait ZnxZero
 where

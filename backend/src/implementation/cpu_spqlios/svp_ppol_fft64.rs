@@ -2,8 +2,8 @@ use crate::{
     hal::{
         api::{ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut},
         layouts::{
-            Module, ScalarZnxToRef, SvpPPol, SvpPPolBytesOf, SvpPPolOwned, SvpPPolToMut, SvpPPolToRef, VecZnxDft, VecZnxDftToMut,
-            VecZnxDftToRef,
+            Data, DataRef, Module, ScalarZnxToRef, SvpPPol, SvpPPolBytesOf, SvpPPolOwned, SvpPPolToMut, SvpPPolToRef, VecZnxDft,
+            VecZnxDftToMut, VecZnxDftToRef,
         },
         oep::{SvpApplyImpl, SvpApplyInplaceImpl, SvpPPolAllocBytesImpl, SvpPPolAllocImpl, SvpPPolFromBytesImpl, SvpPrepareImpl},
     },
@@ -15,19 +15,19 @@ use crate::{
 
 const SVP_PPOL_FFT64_WORD_SIZE: usize = 1;
 
-impl<D: AsRef<[u8]>> SvpPPolBytesOf for SvpPPol<D, FFT64> {
+impl<D: Data> SvpPPolBytesOf for SvpPPol<D, FFT64> {
     fn bytes_of(n: usize, cols: usize) -> usize {
         SVP_PPOL_FFT64_WORD_SIZE * n * cols * size_of::<f64>()
     }
 }
 
-impl<D> ZnxSliceSize for SvpPPol<D, FFT64> {
+impl<D: Data> ZnxSliceSize for SvpPPol<D, FFT64> {
     fn sl(&self) -> usize {
         SVP_PPOL_FFT64_WORD_SIZE * self.n()
     }
 }
 
-impl<D: AsRef<[u8]>> ZnxView for SvpPPol<D, FFT64> {
+impl<D: DataRef> ZnxView for SvpPPol<D, FFT64> {
     type Scalar = f64;
 }
 

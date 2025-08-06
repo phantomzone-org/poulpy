@@ -1,6 +1,6 @@
 use backend::hal::{
     api::{ScalarZnxAlloc, ScalarZnxAllocBytes, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare, ZnxInfos, ZnxZero},
-    layouts::{Backend, Module, ReaderFrom, ScalarZnx, SvpPPol, WriterTo},
+    layouts::{Backend, Data, DataMut, DataRef, Module, ReaderFrom, ScalarZnx, SvpPPol, WriterTo},
 };
 use sampling::source::Source;
 
@@ -8,8 +8,9 @@ use crate::dist::Distribution;
 
 pub trait GLWESecretFamily<B: Backend> = SvpPrepare<B> + SvpPPolAllocBytes + SvpPPolAlloc<B>;
 
-pub struct GLWESecret<T> {
-    pub(crate) data: ScalarZnx<T>,
+#[derive(PartialEq, Eq)]
+pub struct GLWESecret<D: Data> {
+    pub(crate) data: ScalarZnx<D>,
     pub(crate) dist: Distribution,
 }
 
@@ -32,7 +33,7 @@ impl GLWESecret<Vec<u8>> {
     }
 }
 
-impl<DataSelf> GLWESecret<DataSelf> {
+impl<D: Data> GLWESecret<D> {
     pub fn n(&self) -> usize {
         self.data.n()
     }
@@ -46,7 +47,7 @@ impl<DataSelf> GLWESecret<DataSelf> {
     }
 }
 
-impl<S: AsMut<[u8]> + AsRef<[u8]>> GLWESecret<S> {
+impl<D: DataMut> GLWESecret<D> {
     pub fn fill_ternary_prob(&mut self, prob: f64, source: &mut Source) {
         (0..self.rank()).for_each(|i| {
             self.data.fill_ternary_prob(i, prob, source);
@@ -88,7 +89,7 @@ impl<S: AsMut<[u8]> + AsRef<[u8]>> GLWESecret<S> {
     }
 }
 
-impl<D: AsRef<[u8]> + AsMut<[u8]>> ReaderFrom for GLWESecret<D> {
+impl<D: DataMut> ReaderFrom for GLWESecret<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         match Distribution::read_from(reader) {
             Ok(dist) => self.dist = dist,
@@ -98,7 +99,7 @@ impl<D: AsRef<[u8]> + AsMut<[u8]>> ReaderFrom for GLWESecret<D> {
     }
 }
 
-impl<D: AsRef<[u8]>> WriterTo for GLWESecret<D> {
+impl<D: DataRef> WriterTo for GLWESecret<D> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         match self.dist.write_to(writer) {
             Ok(()) => {}
@@ -108,8 +109,8 @@ impl<D: AsRef<[u8]>> WriterTo for GLWESecret<D> {
     }
 }
 
-pub struct GLWESecretExec<T, B: Backend> {
-    pub(crate) data: SvpPPol<T, B>,
+pub struct GLWESecretExec<D: Data, B: Backend> {
+    pub(crate) data: SvpPPol<D, B>,
     pub(crate) dist: Distribution,
 }
 
@@ -135,7 +136,7 @@ impl<B: Backend> GLWESecretExec<Vec<u8>, B> {
 impl<B: Backend> GLWESecretExec<Vec<u8>, B> {
     pub fn from<D>(module: &Module<B>, sk: &GLWESecret<D>) -> Self
     where
-        D: AsRef<[u8]>,
+        D: DataRef,
         Module<B>: GLWESecretFamily<B>,
     {
         let mut sk_dft: GLWESecretExec<Vec<u8>, B> = Self::alloc(module, sk.rank());
@@ -144,7 +145,7 @@ impl<B: Backend> GLWESecretExec<Vec<u8>, B> {
     }
 }
 
-impl<DataSelf, B: Backend> GLWESecretExec<DataSelf, B> {
+impl<D: Data, B: Backend> GLWESecretExec<D, B> {
     pub fn n(&self) -> usize {
         self.data.n()
     }
@@ -158,10 +159,10 @@ impl<DataSelf, B: Backend> GLWESecretExec<DataSelf, B> {
     }
 }
 
-impl<S: AsMut<[u8]> + AsRef<[u8]>, B: Backend> GLWESecretExec<S, B> {
-    pub(crate) fn prepare<D>(&mut self, module: &Module<B>, sk: &GLWESecret<D>)
+impl<D: DataMut, B: Backend> GLWESecretExec<D, B> {
+    pub(crate) fn prepare<O>(&mut self, module: &Module<B>, sk: &GLWESecret<O>)
     where
-        D: AsRef<[u8]>,
+        O: DataRef,
         Module<B>: GLWESecretFamily<B>,
     {
         (0..self.rank()).for_each(|i| {

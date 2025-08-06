@@ -1,6 +1,6 @@
 use backend::hal::{
     api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxNormalizeInplace, ZnxView, ZnxViewMut},
-    layouts::{Backend, Module, ScratchOwned},
+    layouts::{Backend, DataMut, DataRef, Module, ScratchOwned},
     oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl},
 };
 
@@ -8,12 +8,12 @@ use crate::{Infos, LWECiphertext, LWESecret, SetMetaData, lwe::LWEPlaintext};
 
 impl<DataSelf> LWECiphertext<DataSelf>
 where
-    DataSelf: AsRef<[u8]>,
+    DataSelf: DataRef,
 {
     pub fn decrypt<DataPt, DataSk, B: Backend>(&self, module: &Module<B>, pt: &mut LWEPlaintext<DataPt>, sk: &LWESecret<DataSk>)
     where
-        DataPt: AsRef<[u8]> + AsMut<[u8]>,
-        DataSk: AsRef<[u8]>,
+        DataPt: DataMut,
+        DataSk: DataRef,
         Module<B>: VecZnxNormalizeInplace<B>,
         B: ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
     {

@@ -3,7 +3,7 @@ use backend::hal::{
         ScratchAvailable, TakeVecZnxBig, TakeVecZnxDft, VecZnxAllocBytes, VecZnxBigAllocBytes, VecZnxDftAddInplace,
         VecZnxDftCopy, VecZnxDftToVecZnxBigTmpA, VecZnxNormalizeTmpBytes, ZnxInfos,
     },
-    layouts::{Backend, Module, Scratch, VecZnxDft, VmpPMat},
+    layouts::{Backend, DataMut, DataRef, Module, Scratch, VecZnxDft, VmpPMat},
 };
 
 use crate::{GGSWCiphertext, GLWECiphertext, GLWEKeyswitchFamily, GLWESwitchingKeyExec, GLWETensorKeyExec, Infos};
@@ -84,8 +84,8 @@ impl GGSWCiphertext<Vec<u8>> {
     }
 }
 
-impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
-    pub(crate) fn expand_row<DataCi: AsRef<[u8]>, DataTsk: AsRef<[u8]>, B: Backend>(
+impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
+    pub(crate) fn expand_row<DataCi: DataRef, DataTsk: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
         row_i: usize,
@@ -198,7 +198,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
         });
     }
 
-    pub fn keyswitch<DataLhs: AsRef<[u8]>, DataKsk: AsRef<[u8]>, DataTsk: AsRef<[u8]>, B: Backend>(
+    pub fn keyswitch<DataLhs: DataRef, DataKsk: DataRef, DataTsk: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
         lhs: &GGSWCiphertext<DataLhs>,
@@ -235,7 +235,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
         })
     }
 
-    pub fn keyswitch_inplace<DataKsk: AsRef<[u8]>, DataTsk: AsRef<[u8]>, B: Backend>(
+    pub fn keyswitch_inplace<DataKsk: DataRef, DataTsk: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
         ksk: &GLWESwitchingKeyExec<DataKsk, B>,

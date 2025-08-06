@@ -1,7 +1,7 @@
 use crate::{
     hal::{
         api::{ZnxInfos, ZnxSliceSize, ZnxView},
-        layouts::{SvpPPol, SvpPPolBytesOf, SvpPPolOwned},
+        layouts::{Data, DataRef, SvpPPol, SvpPPolBytesOf, SvpPPolOwned},
         oep::{SvpPPolAllocBytesImpl, SvpPPolAllocImpl, SvpPPolFromBytesImpl},
     },
     implementation::cpu_spqlios::module_ntt120::NTT120,
@@ -9,19 +9,19 @@ use crate::{
 
 const SVP_PPOL_NTT120_WORD_SIZE: usize = 4;
 
-impl<D: AsRef<[u8]>> SvpPPolBytesOf for SvpPPol<D, NTT120> {
+impl<D: Data> SvpPPolBytesOf for SvpPPol<D, NTT120> {
     fn bytes_of(n: usize, cols: usize) -> usize {
         SVP_PPOL_NTT120_WORD_SIZE * n * cols * size_of::<i64>()
     }
 }
 
-impl<D> ZnxSliceSize for SvpPPol<D, NTT120> {
+impl<D: Data> ZnxSliceSize for SvpPPol<D, NTT120> {
     fn sl(&self) -> usize {
         SVP_PPOL_NTT120_WORD_SIZE * self.n()
     }
 }
 
-impl<D: AsRef<[u8]>> ZnxView for SvpPPol<D, NTT120> {
+impl<D: DataRef> ZnxView for SvpPPol<D, NTT120> {
     type Scalar = i64;
 }
 

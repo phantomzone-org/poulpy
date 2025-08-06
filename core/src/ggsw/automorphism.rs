@@ -1,6 +1,6 @@
 use backend::hal::{
     api::{ScratchAvailable, TakeVecZnxBig, TakeVecZnxDft, VecZnxAutomorphismInplace, VecZnxNormalizeTmpBytes},
-    layouts::{Backend, Module, Scratch},
+    layouts::{Backend, DataMut, DataRef, Module, Scratch},
 };
 
 use crate::{
@@ -49,8 +49,8 @@ impl GGSWCiphertext<Vec<u8>> {
     }
 }
 
-impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
-    pub fn automorphism<DataLhs: AsRef<[u8]>, DataAk: AsRef<[u8]>, DataTsk: AsRef<[u8]>, B: Backend>(
+impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
+    pub fn automorphism<DataLhs: DataRef, DataAk: DataRef, DataTsk: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
         lhs: &GGSWCiphertext<DataLhs>,
@@ -129,7 +129,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGSWCiphertext<DataSelf> {
         })
     }
 
-    pub fn automorphism_inplace<DataKsk: AsRef<[u8]>, DataTsk: AsRef<[u8]>, B: Backend>(
+    pub fn automorphism_inplace<DataKsk: DataRef, DataTsk: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
         auto_key: &AutomorphismKeyExec<DataKsk, B>,

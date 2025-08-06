@@ -1,11 +1,12 @@
 use backend::hal::{
     api::{MatZnxAlloc, MatZnxAllocBytes},
-    layouts::{Backend, MatZnx, Module, ReaderFrom, Scratch, VmpPMat, WriterTo},
+    layouts::{Backend, Data, DataMut, DataRef, MatZnx, Module, ReaderFrom, Scratch, VmpPMat, WriterTo},
 };
 
 use crate::{GGLWECiphertext, GGLWECiphertextExec, GGLWEExecLayoutFamily, GLWECiphertext, Infos};
 
-pub struct GLWESwitchingKey<D> {
+#[derive(PartialEq, Eq)]
+pub struct GLWESwitchingKey<D: Data> {
     pub(crate) key: GGLWECiphertext<D>,
     pub(crate) sk_in_n: usize,  // Degree of sk_in
     pub(crate) sk_out_n: usize, // Degree of sk_out
@@ -47,7 +48,7 @@ impl GLWESwitchingKey<Vec<u8>> {
     }
 }
 
-impl<D> Infos for GLWESwitchingKey<D> {
+impl<D: Data> Infos for GLWESwitchingKey<D> {
     type Inner = MatZnx<D>;
 
     fn inner(&self) -> &Self::Inner {
@@ -63,7 +64,7 @@ impl<D> Infos for GLWESwitchingKey<D> {
     }
 }
 
-impl<D> GLWESwitchingKey<D> {
+impl<D: Data> GLWESwitchingKey<D> {
     pub fn rank(&self) -> usize {
         self.key.data.cols_out() - 1
     }
@@ -89,13 +90,13 @@ impl<D> GLWESwitchingKey<D> {
     }
 }
 
-impl<D: AsRef<[u8]>> GLWESwitchingKey<D> {
+impl<D: DataRef> GLWESwitchingKey<D> {
     pub fn at(&self, row: usize, col: usize) -> GLWECiphertext<&[u8]> {
         self.key.at(row, col)
     }
 }
 
-impl<D: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<D> {
+impl<D: DataMut> GLWESwitchingKey<D> {
     pub fn at_mut(&mut self, row: usize, col: usize) -> GLWECiphertext<&mut [u8]> {
         self.key.at_mut(row, col)
     }
@@ -103,7 +104,7 @@ impl<D: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<D> {
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
-impl<D: AsRef<[u8]> + AsMut<[u8]>> ReaderFrom for GLWESwitchingKey<D> {
+impl<D: DataMut> ReaderFrom for GLWESwitchingKey<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         self.sk_in_n = reader.read_u64::<LittleEndian>()? as usize;
         self.sk_out_n = reader.read_u64::<LittleEndian>()? as usize;
@@ -111,7 +112,7 @@ impl<D: AsRef<[u8]> + AsMut<[u8]>> ReaderFrom for GLWESwitchingKey<D> {
     }
 }
 
-impl<D: AsRef<[u8]>> WriterTo for GLWESwitchingKey<D> {
+impl<D: DataRef> WriterTo for GLWESwitchingKey<D> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         writer.write_u64::<LittleEndian>(self.sk_in_n as u64)?;
         writer.write_u64::<LittleEndian>(self.sk_out_n as u64)?;
@@ -119,7 +120,8 @@ impl<D: AsRef<[u8]>> WriterTo for GLWESwitchingKey<D> {
     }
 }
 
-pub struct GLWESwitchingKeyExec<D, B: Backend> {
+#[derive(PartialEq, Eq)]
+pub struct GLWESwitchingKeyExec<D: Data, B: Backend> {
     pub(crate) key: GGLWECiphertextExec<D, B>,
     pub(crate) sk_in_n: usize,  // Degree of sk_in
     pub(crate) sk_out_n: usize, // Degree of sk_out
@@ -152,7 +154,7 @@ impl<B: Backend> GLWESwitchingKeyExec<Vec<u8>, B> {
         GGLWECiphertextExec::bytes_of(module, basek, k, rows, digits, rank_in, rank_out)
     }
 
-    pub fn from<DataOther: AsRef<[u8]>>(module: &Module<B>, other: &GLWESwitchingKey<DataOther>, scratch: &mut Scratch<B>) -> Self
+    pub fn from<DataOther: DataRef>(module: &Module<B>, other: &GLWESwitchingKey<DataOther>, scratch: &mut Scratch<B>) -> Self
     where
         Module<B>: GGLWEExecLayoutFamily<B>,
     {
@@ -170,7 +172,7 @@ impl<B: Backend> GLWESwitchingKeyExec<Vec<u8>, B> {
     }
 }
 
-impl<D, B: Backend> Infos for GLWESwitchingKeyExec<D, B> {
+impl<D: Data, B: Backend> Infos for GLWESwitchingKeyExec<D, B> {
     type Inner = VmpPMat<D, B>;
 
     fn inner(&self) -> &Self::Inner {
@@ -186,7 +188,7 @@ impl<D, B: Backend> Infos for GLWESwitchingKeyExec<D, B> {
     }
 }
 
-impl<D, B: Backend> GLWESwitchingKeyExec<D, B> {
+impl<D: Data, B: Backend> GLWESwitchingKeyExec<D, B> {
     pub fn rank(&self) -> usize {
         self.key.data.cols_out() - 1
     }
@@ -212,10 +214,10 @@ impl<D, B: Backend> GLWESwitchingKeyExec<D, B> {
     }
 }
 
-impl<D: AsRef<[u8]> + AsMut<[u8]>, B: Backend> GLWESwitchingKeyExec<D, B> {
+impl<D: DataMut, B: Backend> GLWESwitchingKeyExec<D, B> {
     pub fn prepare<DataOther>(&mut self, module: &Module<B>, other: &GLWESwitchingKey<DataOther>, scratch: &mut Scratch<B>)
     where
-        DataOther: AsRef<[u8]>,
+        DataOther: DataRef,
         Module<B>: GGLWEExecLayoutFamily<B>,
     {
         self.key.prepare(module, &other.key, scratch);

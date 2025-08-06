@@ -1,5 +1,5 @@
 use crate::hal::layouts::{
-    Backend, Scratch, VecZnxBig, VecZnxBigToMut, VecZnxDft, VecZnxDftOwned, VecZnxDftToMut, VecZnxDftToRef, VecZnxToRef,
+    Backend, Data, Scratch, VecZnxBig, VecZnxBigToMut, VecZnxDft, VecZnxDftOwned, VecZnxDftToMut, VecZnxDftToRef, VecZnxToRef,
 };
 
 pub trait VecZnxDftAlloc<B: Backend> {
@@ -33,7 +33,7 @@ pub trait VecZnxDftToVecZnxBigTmpA<B: Backend> {
 }
 
 pub trait VecZnxDftToVecZnxBigConsume<B: Backend> {
-    fn vec_znx_dft_to_vec_znx_big_consume<D>(&self, a: VecZnxDft<D, B>) -> VecZnxBig<D, B>
+    fn vec_znx_dft_to_vec_znx_big_consume<D: Data>(&self, a: VecZnxDft<D, B>) -> VecZnxBig<D, B>
     where
         VecZnxDft<D, B>: VecZnxDftToMut<B>;
 }

@@ -3,7 +3,7 @@ use backend::hal::{
         ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAlloc, VecZnxAllocBytes, VecZnxDftAlloc, VecZnxDftAllocBytes,
         VecZnxDftFromVecZnx,
     },
-    layouts::{Backend, Module, ReaderFrom, Scratch, ScratchOwned, VecZnx, VecZnxDft, WriterTo},
+    layouts::{Backend, Data, DataMut, DataRef, Module, ReaderFrom, Scratch, ScratchOwned, VecZnx, VecZnxDft, WriterTo},
     oep::{ScratchAvailableImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeVecZnxDftImpl, TakeVecZnxImpl},
 };
 use sampling::source::Source;
@@ -12,7 +12,8 @@ use crate::{GLWECiphertext, GLWEEncryptSkFamily, GLWESecretExec, Infos, dist::Di
 
 pub trait GLWEPublicKeyFamily<B: Backend> = GLWEEncryptSkFamily<B>;
 
-pub struct GLWEPublicKey<D> {
+#[derive(PartialEq, Eq)]
+pub struct GLWEPublicKey<D: Data> {
     pub(crate) data: VecZnx<D>,
     pub(crate) basek: usize,
     pub(crate) k: usize,
@@ -40,8 +41,8 @@ impl GLWEPublicKey<Vec<u8>> {
     }
 }
 
-impl<T> Infos for GLWEPublicKey<T> {
-    type Inner = VecZnx<T>;
+impl<D: Data> Infos for GLWEPublicKey<D> {
+    type Inner = VecZnx<D>;
 
     fn inner(&self) -> &Self::Inner {
         &self.data
@@ -56,14 +57,14 @@ impl<T> Infos for GLWEPublicKey<T> {
     }
 }
 
-impl<T> GLWEPublicKey<T> {
+impl<D: Data> GLWEPublicKey<D> {
     pub fn rank(&self) -> usize {
         self.cols() - 1
     }
 }
 
-impl<C: AsRef<[u8]> + AsMut<[u8]>> GLWEPublicKey<C> {
-    pub fn generate_from_sk<S: AsRef<[u8]>, B: Backend>(
+impl<D: DataMut> GLWEPublicKey<D> {
+    pub fn generate_from_sk<S: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
         sk: &GLWESecretExec<S, B>,
@@ -101,7 +102,7 @@ impl<C: AsRef<[u8]> + AsMut<[u8]>> GLWEPublicKey<C> {
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
-impl<D: AsRef<[u8]> + AsMut<[u8]>> ReaderFrom for GLWEPublicKey<D> {
+impl<D: DataMut> ReaderFrom for GLWEPublicKey<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         self.k = reader.read_u64::<LittleEndian>()? as usize;
         self.basek = reader.read_u64::<LittleEndian>()? as usize;
@@ -113,7 +114,7 @@ impl<D: AsRef<[u8]> + AsMut<[u8]>> ReaderFrom for GLWEPublicKey<D> {
     }
 }
 
-impl<D: AsRef<[u8]>> WriterTo for GLWEPublicKey<D> {
+impl<D: DataRef> WriterTo for GLWEPublicKey<D> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         writer.write_u64::<LittleEndian>(self.k as u64)?;
         writer.write_u64::<LittleEndian>(self.basek as u64)?;
@@ -125,15 +126,16 @@ impl<D: AsRef<[u8]>> WriterTo for GLWEPublicKey<D> {
     }
 }
 
-pub struct GLWEPublicKeyExec<D, B: Backend> {
+#[derive(PartialEq, Eq)]
+pub struct GLWEPublicKeyExec<D: Data, B: Backend> {
     pub(crate) data: VecZnxDft<D, B>,
     pub(crate) basek: usize,
     pub(crate) k: usize,
     pub(crate) dist: Distribution,
 }
 
-impl<T, B: Backend> Infos for GLWEPublicKeyExec<T, B> {
-    type Inner = VecZnxDft<T, B>;
+impl<D: Data, B: Backend> Infos for GLWEPublicKeyExec<D, B> {
+    type Inner = VecZnxDft<D, B>;
 
     fn inner(&self) -> &Self::Inner {
         &self.data
@@ -148,7 +150,7 @@ impl<T, B: Backend> Infos for GLWEPublicKeyExec<T, B> {
     }
 }
 
-impl<T, B: Backend> GLWEPublicKeyExec<T, B> {
+impl<D: Data, B: Backend> GLWEPublicKeyExec<D, B> {
     pub fn rank(&self) -> usize {
         self.cols() - 1
     }
@@ -176,7 +178,7 @@ impl<B: Backend> GLWEPublicKeyExec<Vec<u8>, B> {
 
     pub fn from<DataOther>(module: &Module<B>, other: &GLWEPublicKey<DataOther>, scratch: &mut Scratch<B>) -> Self
     where
-        DataOther: AsRef<[u8]>,
+        DataOther: DataRef,
         Module<B>: VecZnxDftAlloc<B> + VecZnxDftFromVecZnx<B>,
     {
         let mut pk_exec: GLWEPublicKeyExec<Vec<u8>, B> = GLWEPublicKeyExec::alloc(module, other.basek(), other.k(), other.rank());
@@ -185,10 +187,10 @@ impl<B: Backend> GLWEPublicKeyExec<Vec<u8>, B> {
     }
 }
 
-impl<D: AsRef<[u8]> + AsMut<[u8]>, B: Backend> GLWEPublicKeyExec<D, B> {
+impl<D: DataMut, B: Backend> GLWEPublicKeyExec<D, B> {
     pub fn prepare<DataOther>(&mut self, module: &Module<B>, other: &GLWEPublicKey<DataOther>, _scratch: &mut Scratch<B>)
     where
-        DataOther: AsRef<[u8]>,
+        DataOther: DataRef,
         Module<B>: VecZnxDftFromVecZnx<B>,
     {
         #[cfg(debug_assertions)]

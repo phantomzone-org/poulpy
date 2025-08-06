@@ -4,7 +4,7 @@ use backend::hal::{
         TakeVecZnxDft, VecZnxAddScalarInplace, VecZnxAllocBytes, VecZnxBigAllocBytes, VecZnxDftToVecZnxBigTmpA,
         VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSwithcDegree, ZnxZero,
     },
-    layouts::{Backend, Module, ScalarZnx, Scratch},
+    layouts::{Backend, DataMut, DataRef, Module, ScalarZnx, Scratch},
 };
 use sampling::source::Source;
 
@@ -29,8 +29,8 @@ impl GGLWECiphertext<Vec<u8>> {
     }
 }
 
-impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGLWECiphertext<DataSelf> {
-    pub fn encrypt_sk<DataPt: AsRef<[u8]>, DataSk: AsRef<[u8]>, B: Backend>(
+impl<DataSelf: DataMut> GGLWECiphertext<DataSelf> {
+    pub fn encrypt_sk<DataPt: DataRef, DataSk: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
         pt: &ScalarZnx<DataPt>,
@@ -151,8 +151,8 @@ impl GLWESwitchingKey<Vec<u8>> {
     }
 }
 
-impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<DataSelf> {
-    pub fn encrypt_sk<DataSkIn: AsRef<[u8]>, DataSkOut: AsRef<[u8]>, B: Backend>(
+impl<DataSelf: DataMut> GLWESwitchingKey<DataSelf> {
+    pub fn encrypt_sk<DataSkIn: DataRef, DataSkOut: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
         sk_in: &GLWESecret<DataSkIn>,
@@ -238,8 +238,8 @@ impl AutomorphismKey<Vec<u8>> {
     }
 }
 
-impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> AutomorphismKey<DataSelf> {
-    pub fn encrypt_sk<DataSk: AsRef<[u8]>, B: Backend>(
+impl<DataSelf: DataMut> AutomorphismKey<DataSelf> {
+    pub fn encrypt_sk<DataSk: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
         p: i64,
@@ -311,8 +311,8 @@ impl GLWETensorKey<Vec<u8>> {
     }
 }
 
-impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWETensorKey<DataSelf> {
-    pub fn encrypt_sk<DataSk: AsRef<[u8]>, B: Backend>(
+impl<DataSelf: DataMut> GLWETensorKey<DataSelf> {
+    pub fn encrypt_sk<DataSk: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
         sk: &GLWESecret<DataSk>,

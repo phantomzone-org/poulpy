@@ -1,7 +1,7 @@
 use crate::{
     hal::{
         api::{ZnxInfos, ZnxSliceSize, ZnxView},
-        layouts::{VecZnxBig, VecZnxBigBytesOf},
+        layouts::{Data, DataRef, VecZnxBig, VecZnxBigBytesOf},
         oep::VecZnxBigAllocBytesImpl,
     },
     implementation::cpu_spqlios::module_ntt120::NTT120,
@@ -9,17 +9,17 @@ use crate::{
 
 const VEC_ZNX_BIG_NTT120_WORDSIZE: usize = 4;
 
-impl<D: AsRef<[u8]>> ZnxView for VecZnxBig<D, NTT120> {
+impl<D: DataRef> ZnxView for VecZnxBig<D, NTT120> {
     type Scalar = i128;
 }
 
-impl<D: AsRef<[u8]>> VecZnxBigBytesOf for VecZnxBig<D, NTT120> {
+impl<D: Data> VecZnxBigBytesOf for VecZnxBig<D, NTT120> {
     fn bytes_of(n: usize, cols: usize, size: usize) -> usize {
         VEC_ZNX_BIG_NTT120_WORDSIZE * n * cols * size * size_of::<f64>()
     }
 }
 
-impl<D: AsRef<[u8]>> ZnxSliceSize for VecZnxBig<D, NTT120> {
+impl<D: Data> ZnxSliceSize for VecZnxBig<D, NTT120> {
     fn sl(&self) -> usize {
         VEC_ZNX_BIG_NTT120_WORDSIZE * self.n() * self.cols()
     }

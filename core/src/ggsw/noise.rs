@@ -4,7 +4,7 @@ use backend::hal::{
         VecZnxBigNormalizeTmpBytes, VecZnxDftAlloc, VecZnxDftToVecZnxBigTmpA, VecZnxNormalizeTmpBytes, VecZnxStd,
         VecZnxSubABInplace, ZnxZero,
     },
-    layouts::{Backend, Module, ScalarZnx, ScratchOwned, VecZnxBig, VecZnxDft},
+    layouts::{Backend, DataRef, Module, ScalarZnx, ScratchOwned, VecZnxBig, VecZnxDft},
     oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeVecZnxBigImpl, TakeVecZnxDftImpl},
 };
 
@@ -17,7 +17,7 @@ pub trait GGSWAssertNoiseFamily<B: Backend> = GLWEDecryptFamily<B>
     + VecZnxBigNormalize<B>
     + VecZnxDftToVecZnxBigTmpA<B>;
 
-impl<D: AsRef<[u8]>> GGSWCiphertext<D> {
+impl<D: DataRef> GGSWCiphertext<D> {
     pub fn assert_noise<B: Backend, DataSk, DataScalar, F>(
         &self,
         module: &Module<B>,
@@ -25,8 +25,8 @@ impl<D: AsRef<[u8]>> GGSWCiphertext<D> {
         pt_want: &ScalarZnx<DataScalar>,
         max_noise: F,
     ) where
-        DataSk: AsRef<[u8]>,
-        DataScalar: AsRef<[u8]>,
+        DataSk: DataRef,
+        DataScalar: DataRef,
         Module<B>: GGSWAssertNoiseFamily<B> + VecZnxAlloc + VecZnxAddScalarInplace + VecZnxSubABInplace + VecZnxStd,
         B: TakeVecZnxDftImpl<B> + TakeVecZnxBigImpl<B> + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
         F: Fn(usize) -> f64,

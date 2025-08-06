@@ -3,7 +3,7 @@ use backend::hal::{
         MatZnxAlloc, ScalarZnxAlloc, ScratchAvailable, SvpPPolAlloc, SvpPrepare, TakeVecZnx, TakeVecZnxDft,
         VecZnxAddScalarInplace, VecZnxAllocBytes, ZnxView, ZnxViewMut,
     },
-    layouts::{Backend, Module, ReaderFrom, ScalarZnx, ScalarZnxToRef, Scratch, SvpPPol, WriterTo},
+    layouts::{Backend, Data, DataMut, DataRef, Module, ReaderFrom, ScalarZnx, ScalarZnxToRef, Scratch, SvpPPol, WriterTo},
 };
 use sampling::source::Source;
 
@@ -11,14 +11,30 @@ use crate::{
     Distribution, GGSWCiphertext, GGSWCiphertextExec, GGSWEncryptSkFamily, GGSWLayoutFamily, GLWESecretExec, Infos, LWESecret,
 };
 
-pub struct BlindRotationKeyCGGI<D> {
+pub struct BlindRotationKeyCGGI<D: Data> {
     pub(crate) keys: Vec<GGSWCiphertext<D>>,
     pub(crate) dist: Distribution,
 }
 
+impl<D: Data> PartialEq for BlindRotationKeyCGGI<D> {
+    fn eq(&self, other: &Self) -> bool {
+        if self.keys.len() != other.keys.len() {
+            return false;
+        }
+        for (a, b) in self.keys.iter().zip(other.keys.iter()) {
+            if a != b {
+                return false;
+            }
+        }
+        self.dist == other.dist
+    }
+}
+
+impl<D: Data> Eq for BlindRotationKeyCGGI<D> {}
+
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
-impl<D: AsRef<[u8]> + AsMut<[u8]>> ReaderFrom for BlindRotationKeyCGGI<D> {
+impl<D: DataMut> ReaderFrom for BlindRotationKeyCGGI<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         match Distribution::read_from(reader) {
             Ok(dist) => self.dist = dist,
@@ -38,7 +54,7 @@ impl<D: AsRef<[u8]> + AsMut<[u8]>> ReaderFrom for BlindRotationKeyCGGI<D> {
     }
 }
 
-impl<D: AsRef<[u8]>> WriterTo for BlindRotationKeyCGGI<D> {
+impl<D: DataRef> WriterTo for BlindRotationKeyCGGI<D> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         match self.dist.write_to(writer) {
             Ok(()) => {}
@@ -73,7 +89,7 @@ impl BlindRotationKeyCGGI<Vec<u8>> {
     }
 }
 
-impl<D: AsRef<[u8]>> BlindRotationKeyCGGI<D> {
+impl<D: DataRef> BlindRotationKeyCGGI<D> {
     #[allow(dead_code)]
     pub(crate) fn n(&self) -> usize {
         self.keys[0].n()
@@ -112,7 +128,7 @@ impl<D: AsRef<[u8]>> BlindRotationKeyCGGI<D> {
     }
 }
 
-impl<D: AsRef<[u8]> + AsMut<[u8]>> BlindRotationKeyCGGI<D> {
+impl<D: DataMut> BlindRotationKeyCGGI<D> {
     pub fn generate_from_sk<DataSkGLWE, DataSkLWE, B: Backend>(
         &mut self,
         module: &Module<B>,
@@ -123,8 +139,8 @@ impl<D: AsRef<[u8]> + AsMut<[u8]>> BlindRotationKeyCGGI<D> {
         sigma: f64,
         scratch: &mut Scratch<B>,
     ) where
-        DataSkGLWE: AsRef<[u8]>,
-        DataSkLWE: AsRef<[u8]>,
+        DataSkGLWE: DataRef,
+        DataSkLWE: DataRef,
         Module<B>: GGSWEncryptSkFamily<B> + ScalarZnxAlloc + VecZnxAddScalarInplace,
         Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx<B>,
     {
@@ -156,13 +172,14 @@ impl<D: AsRef<[u8]> + AsMut<[u8]>> BlindRotationKeyCGGI<D> {
     }
 }
 
-pub struct BlindRotationKeyCGGIExec<D, B: Backend> {
+#[derive(PartialEq, Eq)]
+pub struct BlindRotationKeyCGGIExec<D: Data, B: Backend> {
     pub(crate) data: Vec<GGSWCiphertextExec<D, B>>,
     pub(crate) dist: Distribution,
     pub(crate) x_pow_a: Option<Vec<SvpPPol<Vec<u8>, B>>>,
 }
 
-impl<D: AsRef<[u8]>, B: Backend> BlindRotationKeyCGGIExec<D, B> {
+impl<D: Data, B: Backend> BlindRotationKeyCGGIExec<D, B> {
     #[allow(dead_code)]
     pub(crate) fn n(&self) -> usize {
         self.data[0].n()
@@ -218,7 +235,7 @@ impl<B: Backend> BlindRotationKeyCGGIExec<Vec<u8>, B> {
 
     pub fn from<DataOther>(module: &Module<B>, other: &BlindRotationKeyCGGI<DataOther>, scratch: &mut Scratch<B>) -> Self
     where
-        DataOther: AsRef<[u8]>,
+        DataOther: DataRef,
         Module<B>: BlindRotationKeyCGGIExecLayoutFamily<B> + ScalarZnxAlloc,
     {
         let mut brk: BlindRotationKeyCGGIExec<Vec<u8>, B> = Self::alloc(
@@ -234,10 +251,10 @@ impl<B: Backend> BlindRotationKeyCGGIExec<Vec<u8>, B> {
     }
 }
 
-impl<D: AsRef<[u8]> + AsMut<[u8]>, B: Backend> BlindRotationKeyCGGIExec<D, B> {
+impl<D: DataMut, B: Backend> BlindRotationKeyCGGIExec<D, B> {
     pub fn prepare<DataOther>(&mut self, module: &Module<B>, other: &BlindRotationKeyCGGI<DataOther>, scratch: &mut Scratch<B>)
     where
-        DataOther: AsRef<[u8]>,
+        DataOther: DataRef,
         Module<B>: BlindRotationKeyCGGIExecLayoutFamily<B> + ScalarZnxAlloc,
     {
         #[cfg(debug_assertions)]
@@ -272,8 +289,8 @@ impl<D: AsRef<[u8]> + AsMut<[u8]>, B: Backend> BlindRotationKeyCGGIExec<D, B> {
 
 pub fn set_xai_plus_y<A, C, B: Backend>(module: &Module<B>, ai: usize, y: i64, res: &mut SvpPPol<A, B>, buf: &mut ScalarZnx<C>)
 where
-    A: AsRef<[u8]> + AsMut<[u8]>,
-    C: AsRef<[u8]> + AsMut<[u8]>,
+    A: DataMut,
+    C: DataMut,
     Module<B>: SvpPrepare<B>,
 {
     let n: usize = module.n();

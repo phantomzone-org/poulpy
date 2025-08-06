@@ -1,12 +1,12 @@
 use backend::hal::{
     api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAlloc, VecZnxStd, VecZnxSubScalarInplace, ZnxZero},
-    layouts::{Backend, Module, ScalarZnx, ScratchOwned},
+    layouts::{Backend, DataRef, Module, ScalarZnx, ScratchOwned},
     oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeVecZnxBigImpl, TakeVecZnxDftImpl},
 };
 
 use crate::{GGLWECiphertext, GLWECiphertext, GLWEDecryptFamily, GLWEPlaintext, GLWESecretExec, Infos};
 
-impl<DataIn: AsRef<[u8]>> GGLWECiphertext<DataIn> {
+impl<D: DataRef> GGLWECiphertext<D> {
     pub fn assert_noise<B: Backend, DataSk, DataWant>(
         self,
         module: &Module<B>,
@@ -14,8 +14,8 @@ impl<DataIn: AsRef<[u8]>> GGLWECiphertext<DataIn> {
         pt_want: &ScalarZnx<DataWant>,
         max_noise: f64,
     ) where
-        DataSk: AsRef<[u8]>,
-        DataWant: AsRef<[u8]>,
+        DataSk: DataRef,
+        DataWant: DataRef,
         Module<B>: GLWEDecryptFamily<B> + VecZnxStd + VecZnxAlloc + VecZnxSubScalarInplace,
         B: TakeVecZnxDftImpl<B> + TakeVecZnxBigImpl<B> + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
     {

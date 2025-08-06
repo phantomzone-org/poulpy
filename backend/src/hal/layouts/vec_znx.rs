@@ -4,7 +4,7 @@ use crate::{
     alloc_aligned,
     hal::{
         api::{DataView, DataViewMut, ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero},
-        layouts::{ReaderFrom, WriterTo},
+        layouts::{Data, DataMut, DataRef, ReaderFrom, WriterTo},
     },
 };
 
@@ -19,7 +19,7 @@ use crate::{
 /// layout is: `[a0, b0, c0, a1, b1, c1, a2, b2, c2, a3, b3, c3]`, where ai, bi, ci
 /// are small polynomials of Zn\[X\].
 #[derive(PartialEq, Eq)]
-pub struct VecZnx<D> {
+pub struct VecZnx<D: Data> {
     pub(crate) data: D,
     pub(crate) n: usize,
     pub(crate) cols: usize,
@@ -27,16 +27,13 @@ pub struct VecZnx<D> {
     pub(crate) max_size: usize,
 }
 
-impl<D> fmt::Debug for VecZnx<D>
-where
-    D: AsRef<[u8]>,
-{
+impl<D: DataRef> fmt::Debug for VecZnx<D> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self)
     }
 }
 
-impl<D> ZnxInfos for VecZnx<D> {
+impl<D: Data> ZnxInfos for VecZnx<D> {
     fn cols(&self) -> usize {
         self.cols
     }
@@ -54,26 +51,26 @@ impl<D> ZnxInfos for VecZnx<D> {
     }
 }
 
-impl<D> ZnxSliceSize for VecZnx<D> {
+impl<D: Data> ZnxSliceSize for VecZnx<D> {
     fn sl(&self) -> usize {
         self.n() * self.cols()
     }
 }
 
-impl<D> DataView for VecZnx<D> {
+impl<D: Data> DataView for VecZnx<D> {
     type D = D;
     fn data(&self) -> &Self::D {
         &self.data
     }
 }
 
-impl<D> DataViewMut for VecZnx<D> {
+impl<D: Data> DataViewMut for VecZnx<D> {
     fn data_mut(&mut self) -> &mut Self::D {
         &mut self.data
     }
 }
 
-impl<D: AsRef<[u8]>> ZnxView for VecZnx<D> {
+impl<D: DataRef> ZnxView for VecZnx<D> {
     type Scalar = i64;
 }
 
@@ -83,7 +80,7 @@ impl VecZnx<Vec<u8>> {
     }
 }
 
-impl<D: AsRef<[u8]> + AsMut<[u8]>> ZnxZero for VecZnx<D> {
+impl<D: DataMut> ZnxZero for VecZnx<D> {
     fn zero(&mut self) {
         self.raw_mut().fill(0)
     }
@@ -92,13 +89,13 @@ impl<D: AsRef<[u8]> + AsMut<[u8]>> ZnxZero for VecZnx<D> {
     }
 }
 
-impl<D: AsRef<[u8]>> VecZnx<D> {
+impl<D: DataRef> VecZnx<D> {
     pub fn bytes_of<Scalar: Sized>(n: usize, cols: usize, size: usize) -> usize {
         n * cols * size * size_of::<Scalar>()
     }
 }
 
-impl<D: From<Vec<u8>> + AsRef<[u8]>> VecZnx<D> {
+impl<D: DataRef + From<Vec<u8>>> VecZnx<D> {
     pub fn new<Scalar: Sized>(n: usize, cols: usize, size: usize) -> Self {
         let data: Vec<u8> = alloc_aligned::<u8>(Self::bytes_of::<Scalar>(n, cols, size));
         Self {
@@ -123,7 +120,7 @@ impl<D: From<Vec<u8>> + AsRef<[u8]>> VecZnx<D> {
     }
 }
 
-impl<D> VecZnx<D> {
+impl<D: Data> VecZnx<D> {
     pub(crate) fn from_data(data: D, n: usize, cols: usize, size: usize) -> Self {
         Self {
             data,
@@ -135,12 +132,7 @@ impl<D> VecZnx<D> {
     }
 }
 
-#[allow(dead_code)]
-fn normalize_tmp_bytes(n: usize) -> usize {
-    n * std::mem::size_of::<i64>()
-}
-
-impl<D: AsRef<[u8]>> fmt::Display for VecZnx<D> {
+impl<D: DataRef> fmt::Display for VecZnx<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(
             f,
@@ -183,10 +175,7 @@ pub trait VecZnxToRef {
     fn to_ref(&self) -> VecZnx<&[u8]>;
 }
 
-impl<D> VecZnxToRef for VecZnx<D>
-where
-    D: AsRef<[u8]>,
-{
+impl<D: DataRef> VecZnxToRef for VecZnx<D> {
     fn to_ref(&self) -> VecZnx<&[u8]> {
         VecZnx {
             data: self.data.as_ref(),
@@ -202,10 +191,7 @@ pub trait VecZnxToMut {
     fn to_mut(&mut self) -> VecZnx<&mut [u8]>;
 }
 
-impl<D> VecZnxToMut for VecZnx<D>
-where
-    D: AsRef<[u8]> + AsMut<[u8]>,
-{
+impl<D: DataMut> VecZnxToMut for VecZnx<D> {
     fn to_mut(&mut self) -> VecZnx<&mut [u8]> {
         VecZnx {
             data: self.data.as_mut(),
@@ -217,7 +203,7 @@ where
     }
 }
 
-impl<DataSelf: AsRef<[u8]>> VecZnx<DataSelf> {
+impl<D: DataRef> VecZnx<D> {
     pub fn clone(&self) -> VecZnx<Vec<u8>> {
         let self_ref: VecZnx<&[u8]> = self.to_ref();
         VecZnx {
@@ -232,7 +218,7 @@ impl<DataSelf: AsRef<[u8]>> VecZnx<DataSelf> {
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
-impl<D: AsRef<[u8]> + AsMut<[u8]>> ReaderFrom for VecZnx<D> {
+impl<D: DataMut> ReaderFrom for VecZnx<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         self.n = reader.read_u64::<LittleEndian>()? as usize;
         self.cols = reader.read_u64::<LittleEndian>()? as usize;
@@ -251,7 +237,7 @@ impl<D: AsRef<[u8]> + AsMut<[u8]>> ReaderFrom for VecZnx<D> {
     }
 }
 
-impl<D: AsRef<[u8]>> WriterTo for VecZnx<D> {
+impl<D: DataRef> WriterTo for VecZnx<D> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         writer.write_u64::<LittleEndian>(self.n as u64)?;
         writer.write_u64::<LittleEndian>(self.cols as u64)?;

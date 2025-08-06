@@ -1,6 +1,6 @@
 use backend::hal::{
     api::{ScratchAvailable, TakeVecZnxDft, VecZnxAutomorphism, VecZnxAutomorphismInplace, ZnxZero},
-    layouts::{Backend, Module, Scratch},
+    layouts::{Backend, DataMut, DataRef, Module, Scratch},
 };
 
 use crate::{AutomorphismKey, AutomorphismKeyExec, GLWECiphertext, GLWEKeyswitchFamily, Infos};
@@ -36,8 +36,8 @@ impl AutomorphismKey<Vec<u8>> {
     }
 }
 
-impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> AutomorphismKey<DataSelf> {
-    pub fn automorphism<DataLhs: AsRef<[u8]>, DataRhs: AsRef<[u8]>, B: Backend>(
+impl<DataSelf: DataMut> AutomorphismKey<DataSelf> {
+    pub fn automorphism<DataLhs: DataRef, DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
         lhs: &AutomorphismKey<DataLhs>,
@@ -112,7 +112,7 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> AutomorphismKey<DataSelf> {
         self.p = (lhs.p * rhs.p) % (module.cyclotomic_order() as i64);
     }
 
-    pub fn automorphism_inplace<DataRhs: AsRef<[u8]>, B: Backend>(
+    pub fn automorphism_inplace<DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
         rhs: &AutomorphismKeyExec<DataRhs, B>,

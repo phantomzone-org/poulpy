@@ -3,7 +3,7 @@ use backend::hal::{
         DataViewMut, ScratchAvailable, TakeVecZnxDft, VecZnxBigAddSmallInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
         VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume, VmpApply, VmpApplyAdd, VmpApplyTmpBytes, ZnxInfos,
     },
-    layouts::{Backend, Module, Scratch, VecZnx, VecZnxBig, VecZnxDft, VmpPMat},
+    layouts::{Backend, DataMut, DataRef, Module, Scratch, VecZnx, VecZnxBig, VecZnxDft, VmpPMat},
 };
 
 use crate::{GLWECiphertext, GLWESwitchingKeyExec, Infos};
@@ -75,7 +75,7 @@ impl GLWECiphertext<Vec<u8>> {
     }
 }
 
-impl<DataSelf: AsRef<[u8]>> GLWECiphertext<DataSelf> {
+impl<DataSelf: DataRef> GLWECiphertext<DataSelf> {
     pub(crate) fn assert_keyswitch<B: Backend, DataLhs, DataRhs>(
         &self,
         module: &Module<B>,
@@ -83,6 +83,8 @@ impl<DataSelf: AsRef<[u8]>> GLWECiphertext<DataSelf> {
         rhs: &GLWESwitchingKeyExec<DataRhs, B>,
         scratch: &Scratch<B>,
     ) where
+        DataLhs: DataRef,
+        DataRhs: DataRef,
         Module<B>: GLWEKeyswitchFamily<B>,
         Scratch<B>: ScratchAvailable,
     {
@@ -122,8 +124,8 @@ impl<DataSelf: AsRef<[u8]>> GLWECiphertext<DataSelf> {
     }
 }
 
-impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
-    pub fn keyswitch<DataLhs: AsRef<[u8]>, DataRhs: AsRef<[u8]>, B: Backend>(
+impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
+    pub fn keyswitch<DataLhs: DataRef, DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
         lhs: &GLWECiphertext<DataLhs>,
@@ -144,7 +146,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         })
     }
 
-    pub fn keyswitch_inplace<DataRhs: AsRef<[u8]>, B: Backend>(
+    pub fn keyswitch_inplace<DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
         rhs: &GLWESwitchingKeyExec<DataRhs, B>,
@@ -168,9 +170,9 @@ pub(crate) fn keyswitch<B: Backend, DataRes, DataIn, DataKey>(
     scratch: &mut Scratch<B>,
 ) -> VecZnxBig<DataRes, B>
 where
-    DataRes: AsRef<[u8]> + AsMut<[u8]>,
-    DataIn: AsRef<[u8]>,
-    DataKey: AsRef<[u8]>,
+    DataRes: DataMut,
+    DataIn: DataRef,
+    DataKey: DataRef,
     Module<B>: GLWEKeyswitchFamily<B>,
     Scratch<B>: TakeVecZnxDft<B>,
 {
@@ -196,9 +198,9 @@ fn keyswitch_vmp_one_digit<B: Backend, DataRes, DataIn, DataVmp>(
     scratch: &mut Scratch<B>,
 ) -> VecZnxBig<DataRes, B>
 where
-    DataRes: AsRef<[u8]> + AsMut<[u8]>,
-    DataIn: AsRef<[u8]>,
-    DataVmp: AsRef<[u8]>,
+    DataRes: DataMut,
+    DataIn: DataRef,
+    DataVmp: DataRef,
     Module<B>:
         VecZnxDftAllocBytes + VecZnxDftFromVecZnx<B> + VmpApply<B> + VecZnxDftToVecZnxBigConsume<B> + VecZnxBigAddSmallInplace<B>,
     Scratch<B>: TakeVecZnxDft<B>,
@@ -223,9 +225,9 @@ fn keyswitch_vmp_multiple_digits<B: Backend, DataRes, DataIn, DataVmp>(
     scratch: &mut Scratch<B>,
 ) -> VecZnxBig<DataRes, B>
 where
-    DataRes: AsRef<[u8]> + AsMut<[u8]>,
-    DataIn: AsRef<[u8]>,
-    DataVmp: AsRef<[u8]>,
+    DataRes: DataMut,
+    DataIn: DataRef,
+    DataVmp: DataRef,
     Module<B>: VecZnxDftAllocBytes
         + VecZnxDftFromVecZnx<B>
         + VmpApply<B>

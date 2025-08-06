@@ -2,13 +2,13 @@ use crate::{
     alloc_aligned,
     hal::{
         api::{DataView, DataViewMut, ZnxInfos, ZnxSliceSize, ZnxView},
-        layouts::{ReaderFrom, VecZnx, WriterTo},
+        layouts::{Data, DataMut, DataRef, ReaderFrom, VecZnx, WriterTo},
     },
 };
 
 /// A matrix of [VecZnx].
 #[derive(PartialEq, Eq)]
-pub struct MatZnx<D> {
+pub struct MatZnx<D: Data> {
     data: D,
     n: usize,
     size: usize,
@@ -17,7 +17,7 @@ pub struct MatZnx<D> {
     cols_out: usize,
 }
 
-impl<D> ZnxInfos for MatZnx<D> {
+impl<D: Data> ZnxInfos for MatZnx<D> {
     fn cols(&self) -> usize {
         self.cols_in
     }
@@ -35,30 +35,30 @@ impl<D> ZnxInfos for MatZnx<D> {
     }
 }
 
-impl<D> ZnxSliceSize for MatZnx<D> {
+impl<D: Data> ZnxSliceSize for MatZnx<D> {
     fn sl(&self) -> usize {
         self.n() * self.cols_out()
     }
 }
 
-impl<D> DataView for MatZnx<D> {
+impl<D: Data> DataView for MatZnx<D> {
     type D = D;
     fn data(&self) -> &Self::D {
         &self.data
     }
 }
 
-impl<D> DataViewMut for MatZnx<D> {
+impl<D: Data> DataViewMut for MatZnx<D> {
     fn data_mut(&mut self) -> &mut Self::D {
         &mut self.data
     }
 }
 
-impl<D: AsRef<[u8]>> ZnxView for MatZnx<D> {
+impl<D: DataRef> ZnxView for MatZnx<D> {
     type Scalar = i64;
 }
 
-impl<D> MatZnx<D> {
+impl<D: Data> MatZnx<D> {
     pub fn cols_in(&self) -> usize {
         self.cols_in
     }
@@ -68,13 +68,13 @@ impl<D> MatZnx<D> {
     }
 }
 
-impl<D: AsRef<[u8]>> MatZnx<D> {
+impl<D: DataRef> MatZnx<D> {
     pub fn bytes_of(n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize {
         rows * cols_in * VecZnx::<Vec<u8>>::bytes_of::<i64>(n, cols_out, size)
     }
 }
 
-impl<D: From<Vec<u8>> + AsRef<[u8]>> MatZnx<D> {
+impl<D: DataRef + From<Vec<u8>>> MatZnx<D> {
     pub(crate) fn new(n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> Self {
         let data: Vec<u8> = alloc_aligned(Self::bytes_of(n, rows, cols_in, cols_out, size));
         Self {
@@ -108,7 +108,7 @@ impl<D: From<Vec<u8>> + AsRef<[u8]>> MatZnx<D> {
     }
 }
 
-impl<D: AsRef<[u8]>> MatZnx<D> {
+impl<D: DataRef> MatZnx<D> {
     pub fn at(&self, row: usize, col: usize) -> VecZnx<&[u8]> {
         #[cfg(debug_assertions)]
         {
@@ -131,7 +131,7 @@ impl<D: AsRef<[u8]>> MatZnx<D> {
     }
 }
 
-impl<D: AsRef<[u8]> + AsMut<[u8]>> MatZnx<D> {
+impl<D: DataMut> MatZnx<D> {
     pub fn at_mut(&mut self, row: usize, col: usize) -> VecZnx<&mut [u8]> {
         #[cfg(debug_assertions)]
         {
@@ -167,7 +167,7 @@ pub trait MatZnxToRef {
     fn to_ref(&self) -> MatZnx<&[u8]>;
 }
 
-impl<D: AsRef<[u8]>> MatZnxToRef for MatZnx<D> {
+impl<D: DataRef> MatZnxToRef for MatZnx<D> {
     fn to_ref(&self) -> MatZnx<&[u8]> {
         MatZnx {
             data: self.data.as_ref(),
@@ -184,7 +184,7 @@ pub trait MatZnxToMut {
     fn to_mut(&mut self) -> MatZnx<&mut [u8]>;
 }
 
-impl<D: AsRef<[u8]> + AsMut<[u8]>> MatZnxToMut for MatZnx<D> {
+impl<D: DataMut> MatZnxToMut for MatZnx<D> {
     fn to_mut(&mut self) -> MatZnx<&mut [u8]> {
         MatZnx {
             data: self.data.as_mut(),
@@ -197,7 +197,7 @@ impl<D: AsRef<[u8]> + AsMut<[u8]>> MatZnxToMut for MatZnx<D> {
     }
 }
 
-impl<D> MatZnx<D> {
+impl<D: Data> MatZnx<D> {
     pub(crate) fn from_data(data: D, n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> Self {
         Self {
             data,
@@ -212,7 +212,7 @@ impl<D> MatZnx<D> {
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
-impl<D: AsRef<[u8]> + AsMut<[u8]>> ReaderFrom for MatZnx<D> {
+impl<D: DataMut> ReaderFrom for MatZnx<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         self.n = reader.read_u64::<LittleEndian>()? as usize;
         self.size = reader.read_u64::<LittleEndian>()? as usize;
@@ -232,7 +232,7 @@ impl<D: AsRef<[u8]> + AsMut<[u8]>> ReaderFrom for MatZnx<D> {
     }
 }
 
-impl<D: AsRef<[u8]>> WriterTo for MatZnx<D> {
+impl<D: DataRef> WriterTo for MatZnx<D> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         writer.write_u64::<LittleEndian>(self.n as u64)?;
         writer.write_u64::<LittleEndian>(self.size as u64)?;

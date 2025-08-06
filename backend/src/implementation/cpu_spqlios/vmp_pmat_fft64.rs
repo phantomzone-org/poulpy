@@ -2,7 +2,7 @@ use crate::{
     hal::{
         api::{TakeSlice, VmpApplyTmpBytes, VmpPrepareTmpBytes, ZnxInfos, ZnxView, ZnxViewMut},
         layouts::{
-            MatZnx, MatZnxToRef, Module, Scratch, VecZnxDft, VecZnxDftToMut, VecZnxDftToRef, VmpPMat, VmpPMatBytesOf,
+            DataRef, MatZnx, MatZnxToRef, Module, Scratch, VecZnxDft, VecZnxDftToMut, VecZnxDftToRef, VmpPMat, VmpPMatBytesOf,
             VmpPMatOwned, VmpPMatToMut, VmpPMatToRef,
         },
         oep::{
@@ -18,7 +18,7 @@ use crate::{
 
 const VMP_PMAT_FFT64_WORDSIZE: usize = 1;
 
-impl<D: AsRef<[u8]>> ZnxView for VmpPMat<D, FFT64> {
+impl<D: DataRef> ZnxView for VmpPMat<D, FFT64> {
     type Scalar = f64;
 }
 

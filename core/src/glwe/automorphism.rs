@@ -3,7 +3,7 @@ use backend::hal::{
         ScratchAvailable, TakeVecZnxDft, VecZnxAutomorphismInplace, VecZnxBigAutomorphismInplace, VecZnxBigSubSmallAInplace,
         VecZnxBigSubSmallBInplace,
     },
-    layouts::{Backend, Module, Scratch, VecZnxBig},
+    layouts::{Backend, DataMut, DataRef, Module, Scratch, VecZnxBig},
 };
 
 use crate::{AutomorphismKeyExec, GLWECiphertext, GLWEKeyswitchFamily, Infos, glwe::keyswitch::keyswitch};
@@ -39,8 +39,8 @@ impl GLWECiphertext<Vec<u8>> {
     }
 }
 
-impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
-    pub fn automorphism<DataLhs: AsRef<[u8]>, DataRhs: AsRef<[u8]>, B: Backend>(
+impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
+    pub fn automorphism<DataLhs: DataRef, DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
         lhs: &GLWECiphertext<DataLhs>,
@@ -56,7 +56,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         })
     }
 
-    pub fn automorphism_inplace<DataRhs: AsRef<[u8]>, B: Backend>(
+    pub fn automorphism_inplace<DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
         rhs: &AutomorphismKeyExec<DataRhs, B>,
@@ -71,7 +71,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         })
     }
 
-    pub fn automorphism_add<DataLhs: AsRef<[u8]>, DataRhs: AsRef<[u8]>, B: Backend>(
+    pub fn automorphism_add<DataLhs: DataRef, DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
         lhs: &GLWECiphertext<DataLhs>,
@@ -94,7 +94,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         })
     }
 
-    pub fn automorphism_add_inplace<DataRhs: AsRef<[u8]>, B: Backend>(
+    pub fn automorphism_add_inplace<DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
         rhs: &AutomorphismKeyExec<DataRhs, B>,
@@ -109,7 +109,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         }
     }
 
-    pub fn automorphism_sub_ab<DataLhs: AsRef<[u8]>, DataRhs: AsRef<[u8]>, B: Backend>(
+    pub fn automorphism_sub_ab<DataLhs: DataRef, DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
         lhs: &GLWECiphertext<DataLhs>,
@@ -132,7 +132,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         })
     }
 
-    pub fn automorphism_sub_ab_inplace<DataRhs: AsRef<[u8]>, B: Backend>(
+    pub fn automorphism_sub_ab_inplace<DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
         rhs: &AutomorphismKeyExec<DataRhs, B>,
@@ -147,7 +147,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         }
     }
 
-    pub fn automorphism_sub_ba<DataLhs: AsRef<[u8]>, DataRhs: AsRef<[u8]>, B: Backend>(
+    pub fn automorphism_sub_ba<DataLhs: DataRef, DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
         lhs: &GLWECiphertext<DataLhs>,
@@ -170,7 +170,7 @@ impl<DataSelf: AsRef<[u8]> + AsMut<[u8]>> GLWECiphertext<DataSelf> {
         })
     }
 
-    pub fn automorphism_sub_ba_inplace<DataRhs: AsRef<[u8]>, B: Backend>(
+    pub fn automorphism_sub_ba_inplace<DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
         rhs: &AutomorphismKeyExec<DataRhs, B>,
