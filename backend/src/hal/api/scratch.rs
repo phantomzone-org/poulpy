@@ -31,7 +31,6 @@ pub trait TakeScalarZnx<B: Backend> {
     fn take_scalar_znx(&mut self, module: &Module<B>, cols: usize) -> (ScalarZnx<&mut [u8]>, &mut Self);
 }
 
-
 /// Take a slice of bytes from a [Scratch], wraps it into a [SvpPPol] and returns it
 /// as well as a new [Scratch] minus the taken array of bytes.
 pub trait TakeSvpPPol<B: Backend> {

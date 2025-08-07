@@ -3,18 +3,32 @@ use sampling::source::Source;
 
 use crate::hal::layouts::{Backend, Scratch, VecZnxBigOwned, VecZnxBigToMut, VecZnxBigToRef, VecZnxToMut, VecZnxToRef};
 
+/// Allocates as [crate::hal::layouts::VecZnxBig].
 pub trait VecZnxBigAlloc<B: Backend> {
     fn vec_znx_big_alloc(&self, cols: usize, size: usize) -> VecZnxBigOwned<B>;
 }
 
-pub trait VecZnxBigFromBytes<B: Backend> {
-    fn vec_znx_big_from_bytes(&self, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxBigOwned<B>;
-}
-
+/// Returns the size in bytes to allocate a [crate::hal::layouts::VecZnxBig].
 pub trait VecZnxBigAllocBytes {
     fn vec_znx_big_alloc_bytes(&self, cols: usize, size: usize) -> usize;
 }
 
+/// Consume a vector of bytes into a [crate::hal::layouts::VecZnxBig].
+/// User must ensure that bytes is memory aligned and that it length is equal to [VecZnxBigAllocBytes].
+pub trait VecZnxBigFromBytes<B: Backend> {
+    fn vec_znx_big_from_bytes(&self, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxBigOwned<B>;
+}
+
+/// Add a discrete normal distribution on res.
+/// 
+/// # Arguments
+/// * `basek`: base two logarithm of the bivariate representation
+/// * `res`: receiver.
+/// * `res_col`: column of the receiver on which the operation is performed/stored.
+/// * `k`: 
+/// * `source`: random coin source.
+/// * `sigma`: standard deviation of the discrete normal distribution.
+/// * `bound`: rejection sampling bound.
 pub trait VecZnxBigAddNormal<B: Backend> {
     fn vec_znx_big_add_normal<R: VecZnxBigToMut<B>>(
         &self,

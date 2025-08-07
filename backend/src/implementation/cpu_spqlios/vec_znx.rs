@@ -467,7 +467,7 @@ where
     }
 }
 
-pub(crate) fn vec_znx_lsh_inplace_ref<A>(basek: usize, k: usize, a: &mut A)
+pub fn vec_znx_lsh_inplace_ref<A>(basek: usize, k: usize, a: &mut A)
 where
     A: VecZnxToMut,
 {
@@ -511,7 +511,7 @@ where
     }
 }
 
-pub(crate) fn vec_znx_rsh_inplace_ref<A>(basek: usize, k: usize, a: &mut A)
+pub fn vec_znx_rsh_inplace_ref<A>(basek: usize, k: usize, a: &mut A)
 where
     A: VecZnxToMut,
 {
@@ -733,7 +733,7 @@ where
     }
 }
 
-pub(crate) fn vec_znx_split_ref<R, A, B: Backend>(
+pub fn vec_znx_split_ref<R, A, B: Backend>(
     module: &Module<B>,
     res: &mut Vec<R>,
     res_col: usize,
@@ -787,7 +787,7 @@ where
     }
 }
 
-pub(crate) fn vec_znx_merge_ref<R, A, B: Backend>(module: &Module<B>, res: &mut R, res_col: usize, a: Vec<A>, a_col: usize)
+pub fn vec_znx_merge_ref<R, A, B: Backend>(module: &Module<B>, res: &mut R, res_col: usize, a: Vec<A>, a_col: usize)
 where
     B: CPUAVX,
     R: VecZnxToMut,
@@ -830,7 +830,7 @@ where
     }
 }
 
-pub(crate) fn vec_znx_switch_degree_ref<R, A, B: Backend>(module: &Module<B>, res: &mut R, res_col: usize, a: &A, a_col: usize)
+pub fn vec_znx_switch_degree_ref<R, A, B: Backend>(module: &Module<B>, res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
     B: CPUAVX,
     R: VecZnxToMut,
@@ -878,7 +878,7 @@ where
     }
 }
 
-pub(crate) fn vec_znx_copy_ref<R, A>(res: &mut R, res_col: usize, a: &A, a_col: usize)
+pub fn vec_znx_copy_ref<R, A>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
     R: VecZnxToMut,
     A: VecZnxToRef,
