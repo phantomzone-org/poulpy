@@ -314,7 +314,6 @@ pub unsafe trait VecZnxCopyImpl<B: Backend> {
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See \[TODO\] for reference code.
 /// * See [crate::hal::api::VecZnxStd] for corresponding public API.
 /// * See [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxStdImpl<B: Backend> {
@@ -324,7 +323,6 @@ pub unsafe trait VecZnxStdImpl<B: Backend> {
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See \[TODO\] for reference code.
 /// * See [crate::hal::api::VecZnxFillUniform] for corresponding public API.
 /// * See [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxFillUniformImpl<B: Backend> {
@@ -334,7 +332,6 @@ pub unsafe trait VecZnxFillUniformImpl<B: Backend> {
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See \[TODO\] for reference code.
 /// * See [crate::hal::api::VecZnxFillDistF64] for corresponding public API.
 /// * See [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxFillDistF64Impl<B: Backend> {
@@ -352,7 +349,6 @@ pub unsafe trait VecZnxFillDistF64Impl<B: Backend> {
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See \[TODO\] for reference code.
 /// * See [crate::hal::api::VecZnxAddDistF64] for corresponding public API.
 /// * See [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxAddDistF64Impl<B: Backend> {
@@ -370,7 +366,6 @@ pub unsafe trait VecZnxAddDistF64Impl<B: Backend> {
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See \[TODO\] for reference code.
 /// * See [crate::hal::api::VecZnxFillNormal] for corresponding public API.
 /// * See [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxFillNormalImpl<B: Backend> {
@@ -388,7 +383,6 @@ pub unsafe trait VecZnxFillNormalImpl<B: Backend> {
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See \[TODO\] for reference code.
 /// * See [crate::hal::api::VecZnxAddNormal] for corresponding public API.
 /// * See [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxAddNormalImpl<B: Backend> {
