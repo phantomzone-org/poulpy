@@ -8,16 +8,6 @@ use crate::{
     },
 };
 
-/// [VecZnx] represents collection of contiguously stacked vector of small norm polynomials of
-/// Zn\[X\] with [i64] coefficients.
-/// A [VecZnx] is composed of multiple Zn\[X\] polynomials stored in a single contiguous array
-/// in the memory.
-///
-/// # Example
-///
-/// Given 3 polynomials (a, b, c) of Zn\[X\], each with 4 columns, then the memory
-/// layout is: `[a0, b0, c0, a1, b1, c1, a2, b2, c2, a3, b3, c3]`, where ai, bi, ci
-/// are small polynomials of Zn\[X\].
 #[derive(PartialEq, Eq)]
 pub struct VecZnx<D: Data> {
     pub(crate) data: D,
@@ -90,14 +80,14 @@ impl<D: DataMut> ZnxZero for VecZnx<D> {
 }
 
 impl<D: DataRef> VecZnx<D> {
-    pub fn bytes_of<Scalar: Sized>(n: usize, cols: usize, size: usize) -> usize {
+    pub fn alloc_bytes<Scalar: Sized>(n: usize, cols: usize, size: usize) -> usize {
         n * cols * size * size_of::<Scalar>()
     }
 }
 
 impl<D: DataRef + From<Vec<u8>>> VecZnx<D> {
     pub fn new<Scalar: Sized>(n: usize, cols: usize, size: usize) -> Self {
-        let data: Vec<u8> = alloc_aligned::<u8>(Self::bytes_of::<Scalar>(n, cols, size));
+        let data: Vec<u8> = alloc_aligned::<u8>(Self::alloc_bytes::<Scalar>(n, cols, size));
         Self {
             data: data.into(),
             n,
@@ -107,9 +97,9 @@ impl<D: DataRef + From<Vec<u8>>> VecZnx<D> {
         }
     }
 
-    pub(crate) fn new_from_bytes<Scalar: Sized>(n: usize, cols: usize, size: usize, bytes: impl Into<Vec<u8>>) -> Self {
+    pub fn from_bytes<Scalar: Sized>(n: usize, cols: usize, size: usize, bytes: impl Into<Vec<u8>>) -> Self {
         let data: Vec<u8> = bytes.into();
-        assert!(data.len() == Self::bytes_of::<Scalar>(n, cols, size));
+        assert!(data.len() == Self::alloc_bytes::<Scalar>(n, cols, size));
         Self {
             data: data.into(),
             n,
@@ -121,7 +111,7 @@ impl<D: DataRef + From<Vec<u8>>> VecZnx<D> {
 }
 
 impl<D: Data> VecZnx<D> {
-    pub(crate) fn from_data(data: D, n: usize, cols: usize, size: usize) -> Self {
+    pub fn from_data(data: D, n: usize, cols: usize, size: usize) -> Self {
         Self {
             data,
             n,

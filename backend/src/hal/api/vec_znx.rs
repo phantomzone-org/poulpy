@@ -5,7 +5,7 @@ use sampling::source::Source;
 use crate::hal::layouts::{Backend, ScalarZnxToRef, Scratch, VecZnxOwned, VecZnxToMut, VecZnxToRef};
 
 pub trait VecZnxAlloc {
-    /// Allocates a new [crate::VecZnx].
+    /// Allocates a new [crate::hal::layouts::VecZnx].
     ///
     /// # Arguments
     ///
@@ -15,21 +15,18 @@ pub trait VecZnxAlloc {
 }
 
 pub trait VecZnxFromBytes {
-    /// Instantiates a new [crate::VecZnx] from a slice of bytes.
-    /// The returned [crate::VecZnx] takes ownership of the slice of bytes.
+    /// Instantiates a new [crate::hal::layouts::VecZnx] from a slice of bytes.
+    /// The returned [crate::hal::layouts::VecZnx] takes ownership of the slice of bytes.
     ///
     /// # Arguments
     ///
     /// * `cols`: the number of polynomials.
     /// * `size`: the number small polynomials per column.
-    ///
-    /// # Panic
-    /// Requires the slice of bytes to be equal to [crate::VecZnxAllocBytes::vec_znx_alloc_bytes].
     fn vec_znx_from_bytes(&self, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxOwned;
 }
 
 pub trait VecZnxAllocBytes {
-    /// Returns the number of bytes necessary to allocate a new [crate::VecZnx] through [crate::VecZnxFromBytes::vec_znx_from_bytes].
+    /// Returns the number of bytes necessary to allocate a new [crate::hal::layouts::VecZnx].
     fn vec_znx_alloc_bytes(&self, cols: usize, size: usize) -> usize;
 }
 
@@ -192,7 +189,7 @@ pub trait VecZnxSplit<B: Backend> {
     ///
     /// # Panics
     ///
-    /// This method requires that all [crate::VecZnx] of b have the same ring degree
+    /// This method requires that all [crate::hal::layouts::VecZnx] of b have the same ring degree
     /// and that b.n() * b.len() <= a.n()
     fn vec_znx_split<R, A>(&self, res: &mut Vec<R>, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch<B>)
     where
@@ -205,7 +202,7 @@ pub trait VecZnxMerge {
     ///
     /// # Panics
     ///
-    /// This method requires that all [crate::VecZnx] of a have the same ring degree
+    /// This method requires that all [crate::hal::layouts::VecZnx] of a have the same ring degree
     /// and that a.n() * a.len() <= b.n()
     fn vec_znx_merge<R, A>(&self, res: &mut R, res_col: usize, a: Vec<A>, a_col: usize)
     where

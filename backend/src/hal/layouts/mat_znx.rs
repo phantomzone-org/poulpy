@@ -6,7 +6,6 @@ use crate::{
     },
 };
 
-/// A matrix of [VecZnx].
 #[derive(PartialEq, Eq)]
 pub struct MatZnx<D: Data> {
     data: D,
@@ -70,7 +69,7 @@ impl<D: Data> MatZnx<D> {
 
 impl<D: DataRef> MatZnx<D> {
     pub fn bytes_of(n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize {
-        rows * cols_in * VecZnx::<Vec<u8>>::bytes_of::<i64>(n, cols_out, size)
+        rows * cols_in * VecZnx::<Vec<u8>>::alloc_bytes::<i64>(n, cols_out, size)
     }
 }
 
@@ -117,7 +116,7 @@ impl<D: DataRef> MatZnx<D> {
         }
 
         let self_ref: MatZnx<&[u8]> = self.to_ref();
-        let nb_bytes: usize = VecZnx::<Vec<u8>>::bytes_of::<i64>(self.n, self.cols_out, self.size);
+        let nb_bytes: usize = VecZnx::<Vec<u8>>::alloc_bytes::<i64>(self.n, self.cols_out, self.size);
         let start: usize = nb_bytes * self.cols() * row + col * nb_bytes;
         let end: usize = start + nb_bytes;
 
@@ -145,7 +144,7 @@ impl<D: DataMut> MatZnx<D> {
         let size: usize = self.size();
 
         let self_ref: MatZnx<&mut [u8]> = self.to_mut();
-        let nb_bytes: usize = VecZnx::<Vec<u8>>::bytes_of::<i64>(n, cols_out, size);
+        let nb_bytes: usize = VecZnx::<Vec<u8>>::alloc_bytes::<i64>(n, cols_out, size);
         let start: usize = nb_bytes * cols_in * row + col * nb_bytes;
         let end: usize = start + nb_bytes;
 

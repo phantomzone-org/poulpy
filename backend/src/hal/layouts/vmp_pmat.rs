@@ -8,8 +8,6 @@ use crate::{
     },
 };
 
-/// An opaque version of [crate::MatZnx] in DFT,
-/// which is prepared for a specific backend.
 #[derive(PartialEq, Eq)]
 pub struct VmpPMat<D: Data, B: Backend> {
     data: D,

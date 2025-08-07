@@ -38,15 +38,14 @@ pub trait VmpApplyTmpBytes {
 }
 
 pub trait VmpApply<B: Backend> {
-    /// Applies the vector matrix product [crate::VecZnxDft] x [crate::VmpPMat].
-    /// The size of `buf` is given by [VmpApplyTmpBytes::vmp_apply_tmp_bytes].
+    /// Applies the vector matrix product [crate::hal::layouts::VecZnxDft] x [crate::hal::layouts::VmpPMat].
     ///
-    /// A vector matrix product numerically equivalent to a sum of [crate::SvpApply::svp_apply],
-    /// where each [crate::SvpPPol] is a limb of the input [crate::VecZnx] in DFT,
-    /// and each vector a [crate::VecZnxDft] (row) of the [crate::VmpPMat].
+    /// A vector matrix product numerically equivalent to a sum of [crate::hal::api::SvpApply],
+    /// where each [crate::hal::layouts::SvpPPol] is a limb of the input [crate::hal::layouts::VecZnx] in DFT,
+    /// and each vector a [crate::hal::layouts::VecZnxDft] (row) of the [crate::hal::layouts::VmpPMat].
     ///
-    /// As such, given an input [crate::VecZnx] of `i` size and a [crate::VmpPMat] of `i` rows and
-    /// `j` size, the output is a [crate::VecZnx] of `j` size.
+    /// As such, given an input [crate::hal::layouts::VecZnx] of `i` size and a [crate::hal::layouts::VmpPMat] of `i` rows and
+    /// `j` size, the output is a [crate::hal::layouts::VecZnx] of `j` size.
     ///
     /// If there is a mismatch between the dimensions the largest valid ones are used.
     ///
@@ -55,13 +54,13 @@ pub trait VmpApply<B: Backend> {
     ///             |h i j|
     ///             |k l m|
     /// ```
-    /// where each element is a [crate::VecZnxDft].
+    /// where each element is a [crate::hal::layouts::VecZnxDft].
     ///
     /// # Arguments
     ///
-    /// * `c`: the output of the vector matrix product, as a [crate::VecZnxDft].
-    /// * `a`: the left operand [crate::VecZnxDft] of the vector matrix product.
-    /// * `b`: the right operand [crate::VmpPMat] of the vector matrix product.
+    /// * `c`: the output of the vector matrix product, as a [crate::hal::layouts::VecZnxDft].
+    /// * `a`: the left operand [crate::hal::layouts::VecZnxDft] of the vector matrix product.
+    /// * `b`: the right operand [crate::hal::layouts::VmpPMat] of the vector matrix product.
     /// * `buf`: scratch space, the size can be obtained with [VmpApplyTmpBytes::vmp_apply_tmp_bytes].
     fn vmp_apply<R, A, C>(&self, res: &mut R, a: &A, b: &C, scratch: &mut Scratch<B>)
     where

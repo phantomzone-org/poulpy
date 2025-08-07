@@ -46,7 +46,7 @@ where
     B: CPUAVX,
 {
     fn vec_znx_from_bytes_impl(n: usize, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxOwned {
-        VecZnxOwned::new_from_bytes::<i64>(n, cols, size, bytes)
+        VecZnxOwned::from_bytes::<i64>(n, cols, size, bytes)
     }
 }
 
@@ -55,7 +55,7 @@ where
     B: CPUAVX,
 {
     fn vec_znx_alloc_bytes_impl(n: usize, cols: usize, size: usize) -> usize {
-        VecZnxOwned::bytes_of::<i64>(n, cols, size)
+        VecZnxOwned::alloc_bytes::<i64>(n, cols, size)
     }
 }
 
@@ -463,32 +463,39 @@ where
     where
         A: VecZnxToMut,
     {
-        let mut a: VecZnx<&mut [u8]> = a.to_mut();
+        vec_znx_lsh_inplace_ref(basek, k, a)
+    }
+}
 
-        let n: usize = a.n();
-        let cols: usize = a.cols();
-        let size: usize = a.size();
-        let steps: usize = k / basek;
+pub(crate) fn vec_znx_lsh_inplace_ref<A>(basek: usize, k: usize, a: &mut A)
+where
+    A: VecZnxToMut,
+{
+    let mut a: VecZnx<&mut [u8]> = a.to_mut();
 
-        a.raw_mut().rotate_left(n * steps * cols);
+    let n: usize = a.n();
+    let cols: usize = a.cols();
+    let size: usize = a.size();
+    let steps: usize = k / basek;
+
+    a.raw_mut().rotate_left(n * steps * cols);
+    (0..cols).for_each(|i| {
+        (size - steps..size).for_each(|j| {
+            a.zero_at(i, j);
+        })
+    });
+
+    let k_rem: usize = k % basek;
+
+    if k_rem != 0 {
+        let shift: usize = i64::BITS as usize - k_rem;
         (0..cols).for_each(|i| {
-            (size - steps..size).for_each(|j| {
-                a.zero_at(i, j);
-            })
-        });
-
-        let k_rem: usize = k % basek;
-
-        if k_rem != 0 {
-            let shift: usize = i64::BITS as usize - k_rem;
-            (0..cols).for_each(|i| {
-                (0..steps).for_each(|j| {
-                    a.at_mut(i, j).iter_mut().for_each(|xi| {
-                        *xi <<= shift;
-                    });
+            (0..steps).for_each(|j| {
+                a.at_mut(i, j).iter_mut().for_each(|xi| {
+                    *xi <<= shift;
                 });
             });
-        }
+        });
     }
 }
 
@@ -500,35 +507,42 @@ where
     where
         A: VecZnxToMut,
     {
-        let mut a: VecZnx<&mut [u8]> = a.to_mut();
-        let n: usize = a.n();
-        let cols: usize = a.cols();
-        let size: usize = a.size();
-        let steps: usize = k / basek;
+        vec_znx_rsh_inplace_ref(basek, k, a)
+    }
+}
 
-        a.raw_mut().rotate_right(n * steps * cols);
+pub(crate) fn vec_znx_rsh_inplace_ref<A>(basek: usize, k: usize, a: &mut A)
+where
+    A: VecZnxToMut,
+{
+    let mut a: VecZnx<&mut [u8]> = a.to_mut();
+    let n: usize = a.n();
+    let cols: usize = a.cols();
+    let size: usize = a.size();
+    let steps: usize = k / basek;
+
+    a.raw_mut().rotate_right(n * steps * cols);
+    (0..cols).for_each(|i| {
+        (0..steps).for_each(|j| {
+            a.zero_at(i, j);
+        })
+    });
+
+    let k_rem: usize = k % basek;
+
+    if k_rem != 0 {
+        let mut carry: Vec<i64> = vec![0i64; n]; // ALLOC (but small so OK)
+        let shift: usize = i64::BITS as usize - k_rem;
         (0..cols).for_each(|i| {
-            (0..steps).for_each(|j| {
-                a.zero_at(i, j);
-            })
-        });
-
-        let k_rem: usize = k % basek;
-
-        if k_rem != 0 {
-            let mut carry: Vec<i64> = vec![0i64; n]; // ALLOC (but small so OK)
-            let shift: usize = i64::BITS as usize - k_rem;
-            (0..cols).for_each(|i| {
-                carry.fill(0);
-                (steps..size).for_each(|j| {
-                    izip!(carry.iter_mut(), a.at_mut(i, j).iter_mut()).for_each(|(ci, xi)| {
-                        *xi += *ci << basek;
-                        *ci = (*xi << shift) >> shift;
-                        *xi = (*xi - *ci) >> k_rem;
-                    });
+            carry.fill(0);
+            (steps..size).for_each(|j| {
+                izip!(carry.iter_mut(), a.at_mut(i, j).iter_mut()).for_each(|(ci, xi)| {
+                    *xi += *ci << basek;
+                    *ci = (*xi << shift) >> shift;
+                    *xi = (*xi - *ci) >> k_rem;
                 });
-            })
-        }
+            });
+        })
     }
 }
 
@@ -715,34 +729,49 @@ where
         R: VecZnxToMut,
         A: VecZnxToRef,
     {
-        let a: VecZnx<&[u8]> = a.to_ref();
-
-        let (n_in, n_out) = (a.n(), res[0].to_mut().n());
-
-        let (mut buf, _) = scratch.take_vec_znx(module, 1, a.size());
-
-        debug_assert!(
-            n_out < n_in,
-            "invalid a: output ring degree should be smaller"
-        );
-        res[1..].iter_mut().for_each(|bi| {
-            debug_assert_eq!(
-                bi.to_mut().n(),
-                n_out,
-                "invalid input a: all VecZnx must have the same degree"
-            )
-        });
-
-        res.iter_mut().enumerate().for_each(|(i, bi)| {
-            if i == 0 {
-                module.vec_znx_switch_degree(bi, res_col, &a, a_col);
-                module.vec_znx_rotate(-1, &mut buf, 0, &a, a_col);
-            } else {
-                module.vec_znx_switch_degree(bi, res_col, &mut buf, a_col);
-                module.vec_znx_rotate_inplace(-1, &mut buf, a_col);
-            }
-        })
+        vec_znx_split_ref(module, res, res_col, a, a_col, scratch)
     }
+}
+
+pub(crate) fn vec_znx_split_ref<R, A, B: Backend>(
+    module: &Module<B>,
+    res: &mut Vec<R>,
+    res_col: usize,
+    a: &A,
+    a_col: usize,
+    scratch: &mut Scratch<B>,
+) where
+    B: CPUAVX,
+    R: VecZnxToMut,
+    A: VecZnxToRef,
+{
+    let a: VecZnx<&[u8]> = a.to_ref();
+
+    let (n_in, n_out) = (a.n(), res[0].to_mut().n());
+
+    let (mut buf, _) = scratch.take_vec_znx(module, 1, a.size());
+
+    debug_assert!(
+        n_out < n_in,
+        "invalid a: output ring degree should be smaller"
+    );
+    res[1..].iter_mut().for_each(|bi| {
+        debug_assert_eq!(
+            bi.to_mut().n(),
+            n_out,
+            "invalid input a: all VecZnx must have the same degree"
+        )
+    });
+
+    res.iter_mut().enumerate().for_each(|(i, bi)| {
+        if i == 0 {
+            module.vec_znx_switch_degree(bi, res_col, &a, a_col);
+            module.vec_znx_rotate(-1, &mut buf, 0, &a, a_col);
+        } else {
+            module.vec_znx_switch_degree(bi, res_col, &mut buf, a_col);
+            module.vec_znx_rotate_inplace(-1, &mut buf, a_col);
+        }
+    })
 }
 
 unsafe impl<B: Backend> VecZnxMergeImpl<B> for B
@@ -754,29 +783,38 @@ where
         R: VecZnxToMut,
         A: VecZnxToRef,
     {
-        let mut res: VecZnx<&mut [u8]> = res.to_mut();
-
-        let (n_in, n_out) = (res.n(), a[0].to_ref().n());
-
-        debug_assert!(
-            n_out < n_in,
-            "invalid a: output ring degree should be smaller"
-        );
-        a[1..].iter().for_each(|ai| {
-            debug_assert_eq!(
-                ai.to_ref().n(),
-                n_out,
-                "invalid input a: all VecZnx must have the same degree"
-            )
-        });
-
-        a.iter().enumerate().for_each(|(_, ai)| {
-            module.vec_znx_switch_degree(&mut res, res_col, ai, a_col);
-            module.vec_znx_rotate_inplace(-1, &mut res, res_col);
-        });
-
-        module.vec_znx_rotate_inplace(a.len() as i64, &mut res, res_col);
+        vec_znx_merge_ref(module, res, res_col, a, a_col)
     }
+}
+
+pub(crate) fn vec_znx_merge_ref<R, A, B: Backend>(module: &Module<B>, res: &mut R, res_col: usize, a: Vec<A>, a_col: usize)
+where
+    B: CPUAVX,
+    R: VecZnxToMut,
+    A: VecZnxToRef,
+{
+    let mut res: VecZnx<&mut [u8]> = res.to_mut();
+
+    let (n_in, n_out) = (res.n(), a[0].to_ref().n());
+
+    debug_assert!(
+        n_out < n_in,
+        "invalid a: output ring degree should be smaller"
+    );
+    a[1..].iter().for_each(|ai| {
+        debug_assert_eq!(
+            ai.to_ref().n(),
+            n_out,
+            "invalid input a: all VecZnx must have the same degree"
+        )
+    });
+
+    a.iter().enumerate().for_each(|(_, ai)| {
+        module.vec_znx_switch_degree(&mut res, res_col, ai, a_col);
+        module.vec_znx_rotate_inplace(-1, &mut res, res_col);
+    });
+
+    module.vec_znx_rotate_inplace(a.len() as i64, &mut res, res_col);
 }
 
 unsafe impl<B: Backend> VecZnxSwithcDegreeImpl<B> for B
@@ -788,34 +826,43 @@ where
         R: VecZnxToMut,
         A: VecZnxToRef,
     {
-        let a: VecZnx<&[u8]> = a.to_ref();
-        let mut res: VecZnx<&mut [u8]> = res.to_mut();
-
-        let (n_in, n_out) = (a.n(), res.n());
-
-        if n_in == n_out {
-            module.vec_znx_copy(&mut res, res_col, &a, a_col);
-            return;
-        }
-
-        let (gap_in, gap_out): (usize, usize);
-        if n_in > n_out {
-            (gap_in, gap_out) = (n_in / n_out, 1)
-        } else {
-            (gap_in, gap_out) = (1, n_out / n_in);
-            res.zero();
-        }
-
-        let size: usize = a.size().min(res.size());
-
-        (0..size).for_each(|i| {
-            izip!(
-                a.at(a_col, i).iter().step_by(gap_in),
-                res.at_mut(res_col, i).iter_mut().step_by(gap_out)
-            )
-            .for_each(|(x_in, x_out)| *x_out = *x_in);
-        });
+        vec_znx_switch_degree_ref(module, res, res_col, a, a_col)
     }
+}
+
+pub(crate) fn vec_znx_switch_degree_ref<R, A, B: Backend>(module: &Module<B>, res: &mut R, res_col: usize, a: &A, a_col: usize)
+where
+    B: CPUAVX,
+    R: VecZnxToMut,
+    A: VecZnxToRef,
+{
+    let a: VecZnx<&[u8]> = a.to_ref();
+    let mut res: VecZnx<&mut [u8]> = res.to_mut();
+
+    let (n_in, n_out) = (a.n(), res.n());
+
+    if n_in == n_out {
+        module.vec_znx_copy(&mut res, res_col, &a, a_col);
+        return;
+    }
+
+    let (gap_in, gap_out): (usize, usize);
+    if n_in > n_out {
+        (gap_in, gap_out) = (n_in / n_out, 1)
+    } else {
+        (gap_in, gap_out) = (1, n_out / n_in);
+        res.zero();
+    }
+
+    let size: usize = a.size().min(res.size());
+
+    (0..size).for_each(|i| {
+        izip!(
+            a.at(a_col, i).iter().step_by(gap_in),
+            res.at_mut(res_col, i).iter_mut().step_by(gap_out)
+        )
+        .for_each(|(x_in, x_out)| *x_out = *x_in);
+    });
 }
 
 unsafe impl<B: Backend> VecZnxCopyImpl<B> for B
@@ -827,20 +874,28 @@ where
         R: VecZnxToMut,
         A: VecZnxToRef,
     {
-        let mut res_mut: VecZnx<&mut [u8]> = res.to_mut();
-        let a_ref: VecZnx<&[u8]> = a.to_ref();
-
-        let min_size: usize = res_mut.size().min(a_ref.size());
-
-        (0..min_size).for_each(|j| {
-            res_mut
-                .at_mut(res_col, j)
-                .copy_from_slice(a_ref.at(a_col, j));
-        });
-        (min_size..res_mut.size()).for_each(|j| {
-            res_mut.zero_at(res_col, j);
-        })
+        vec_znx_copy_ref(res, res_col, a, a_col)
     }
+}
+
+pub(crate) fn vec_znx_copy_ref<R, A>(res: &mut R, res_col: usize, a: &A, a_col: usize)
+where
+    R: VecZnxToMut,
+    A: VecZnxToRef,
+{
+    let mut res_mut: VecZnx<&mut [u8]> = res.to_mut();
+    let a_ref: VecZnx<&[u8]> = a.to_ref();
+
+    let min_size: usize = res_mut.size().min(a_ref.size());
+
+    (0..min_size).for_each(|j| {
+        res_mut
+            .at_mut(res_col, j)
+            .copy_from_slice(a_ref.at(a_col, j));
+    });
+    (min_size..res_mut.size()).for_each(|j| {
+        res_mut.zero_at(res_col, j);
+    })
 }
 
 unsafe impl<B: Backend> VecZnxStdImpl<B> for B

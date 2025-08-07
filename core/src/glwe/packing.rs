@@ -25,7 +25,7 @@ pub trait GLWEPackingFamily<B: Backend> = GLWEKeyswitchFamily<B>
     + VecZnxBigSubSmallBInplace<B>
     + VecZnxBigAutomorphismInplace<B>;
 
-/// [StreamPacker] enables only the fly GLWE packing
+/// [GLWEPacker] enables only the fly GLWE packing
 /// with constant memory of Log(N) ciphertexts.
 /// Main difference with usual GLWE packing is that
 /// the output is bit-reversed.
@@ -36,7 +36,7 @@ pub struct GLWEPacker {
 }
 
 /// [Accumulator] stores intermediate packing result.
-/// There are Log(N) such accumulators in a [StreamPacker].
+/// There are Log(N) such accumulators in a [GLWEPacker].
 struct Accumulator {
     data: GLWECiphertext<Vec<u8>>,
     value: bool,   // Implicit flag for zero ciphertext
@@ -65,7 +65,7 @@ impl Accumulator {
 }
 
 impl GLWEPacker {
-    /// Instantiates a new [StreamPacker].
+    /// Instantiates a new [GLWEPacker].
     ///
     /// #Arguments
     ///
@@ -120,15 +120,15 @@ impl GLWEPacker {
         GLWECiphertext::trace_galois_elements(module)
     }
 
-    /// Adds a GLWE ciphertext to the [StreamPacker].
+    /// Adds a GLWE ciphertext to the [GLWEPacker].
     /// #Arguments
     ///
     /// * `module`: static backend FFT tables.
     /// * `res`: space to append fully packed ciphertext. Only when the number
     ///          of packed ciphertexts reaches N/2^log_batch is a result written.
     /// * `a`: ciphertext to pack. Can optionally give None to pack a 0 ciphertext.
-    /// * `auto_keys`: a [HashMap] containing the [AutomorphismKey]s.
-    /// * `scratch`: scratch space of size at least [Self::add_scratch_space].
+    /// * `auto_keys`: a [HashMap] containing the [AutomorphismKeyExec]s.
+    /// * `scratch`: scratch space of size at least [Self::scratch_space].
     pub fn add<DataA: DataRef, DataAK: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
