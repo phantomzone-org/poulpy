@@ -1,2 +1,2 @@
-mod generics;
-pub use generics::*;
+pub mod generics;
+pub mod serialization;
