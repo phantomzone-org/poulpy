@@ -1,47 +1,97 @@
 use std::collections::HashMap;
 
-use backend::{FFT64, FillUniform, Module, ScratchOwned, Stats, VecZnxOps, ZnxView, ZnxViewMut};
+use backend::{
+    hal::{
+        api::{
+            MatZnxAlloc, ModuleNew, ScalarZnxAlloc, ScalarZnxAllocBytes, ScalarZnxAutomorphism, ScratchOwnedAlloc,
+            ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxAlloc, VecZnxAllocBytes, VecZnxBigAutomorphismInplace,
+            VecZnxBigSubSmallBInplace, VecZnxCopy, VecZnxEncodeVeci64, VecZnxFillUniform, VecZnxNormalizeInplace,
+            VecZnxRotateInplace, VecZnxRshInplace, VecZnxStd, VecZnxSubABInplace, VecZnxSwithcDegree, ZnxView, ZnxViewMut,
+        },
+        layouts::{Backend, Module, ScratchOwned},
+        oep::{
+            ScratchAvailableImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeScalarZnxImpl, TakeSvpPPolImpl,
+            TakeVecZnxBigImpl, TakeVecZnxDftImpl, TakeVecZnxImpl,
+        },
+    },
+    implementation::cpu_spqlios::FFT64,
+};
 use sampling::source::Source;
 
 use crate::{
-    FourierGLWESecret, GLWEAutomorphismKey, GLWECiphertext, GLWEPlaintext, GLWESecret, Infos, noise::var_noise_gglwe_product,
+    AutomorphismKey, AutomorphismKeyExec, GGLWEExecLayoutFamily, GLWECiphertext, GLWEDecryptFamily, GLWEKeyswitchFamily,
+    GLWEPlaintext, GLWESecret, GLWESecretExec, GLWESecretFamily, GLWESwitchingKeyEncryptSkFamily, Infos,
+    noise::var_noise_gglwe_product,
 };
 
 #[test]
 fn apply_inplace() {
     let log_n: usize = 8;
+    let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
     (1..4).for_each(|rank| {
         println!("test trace_inplace rank: {}", rank);
-        test_trace_inplace(log_n, 8, 54, 3.2, rank);
+        test_trace_inplace(&module, 8, 54, 3.2, rank);
     });
 }
 
-fn test_trace_inplace(log_n: usize, basek: usize, k: usize, sigma: f64, rank: usize) {
-    let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
+pub(crate) trait TraceTestModuleFamily<B: Backend> = GLWESecretFamily<B>
+    + GLWESwitchingKeyEncryptSkFamily<B>
+    + GLWEKeyswitchFamily<B>
+    + GLWEDecryptFamily<B>
+    + GGLWEExecLayoutFamily<B>
+    + MatZnxAlloc
+    + VecZnxAlloc
+    + ScalarZnxAlloc
+    + ScalarZnxAllocBytes
+    + VecZnxAllocBytes
+    + VecZnxStd
+    + VecZnxSwithcDegree
+    + VecZnxAddScalarInplace
+    + VecZnxEncodeVeci64
+    + ScalarZnxAutomorphism
+    + VecZnxRotateInplace
+    + VecZnxBigSubSmallBInplace<B>
+    + VecZnxBigAutomorphismInplace<B>
+    + VecZnxCopy
+    + VecZnxRshInplace;
 
+pub(crate) trait TraceTestScratchFamily<B: Backend> = TakeVecZnxDftImpl<B>
+    + TakeVecZnxBigImpl<B>
+    + TakeSvpPPolImpl<B>
+    + ScratchOwnedAllocImpl<B>
+    + ScratchOwnedBorrowImpl<B>
+    + ScratchAvailableImpl<B>
+    + TakeScalarZnxImpl<B>
+    + TakeVecZnxImpl<B>;
+
+fn test_trace_inplace<B: Backend>(module: &Module<B>, basek: usize, k: usize, sigma: f64, rank: usize)
+where
+    Module<B>: TraceTestModuleFamily<B>,
+    B: TraceTestScratchFamily<B>,
+{
     let k_autokey: usize = k + basek;
 
     let digits: usize = 1;
     let rows: usize = k.div_ceil(basek * digits);
 
-    let mut ct: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k, rank);
-    let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k);
-    let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k);
+    let mut ct: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(module, basek, k, rank);
+    let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(module, basek, k);
+    let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(module, basek, k);
 
     let mut source_xs: Source = Source::new([0u8; 32]);
     let mut source_xe: Source = Source::new([0u8; 32]);
     let mut source_xa: Source = Source::new([0u8; 32]);
 
-    let mut scratch: ScratchOwned = ScratchOwned::new(
-        GLWECiphertext::encrypt_sk_scratch_space(&module, basek, ct.k())
-            | GLWECiphertext::decrypt_scratch_space(&module, basek, ct.k())
-            | GLWEAutomorphismKey::encrypt_sk_scratch_space(&module, basek, k_autokey, rank)
-            | GLWECiphertext::trace_inplace_scratch_space(&module, basek, ct.k(), k_autokey, digits, rank),
+    let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
+        GLWECiphertext::encrypt_sk_scratch_space(module, basek, ct.k())
+            | GLWECiphertext::decrypt_scratch_space(module, basek, ct.k())
+            | AutomorphismKey::encrypt_sk_scratch_space(module, basek, k_autokey, rank)
+            | GLWECiphertext::trace_inplace_scratch_space(module, basek, ct.k(), k_autokey, digits, rank),
     );
 
-    let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(&module, rank);
+    let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(module, rank);
     sk.fill_ternary_prob(0.5, &mut source_xs);
-    let sk_dft: FourierGLWESecret<Vec<u8>, FFT64> = FourierGLWESecret::from(&module, &sk);
+    let sk_dft: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk);
 
     let mut data_want: Vec<i64> = vec![0i64; module.n()];
 
@@ -49,12 +99,10 @@ fn test_trace_inplace(log_n: usize, basek: usize, k: usize, sigma: f64, rank: us
         .iter_mut()
         .for_each(|x| *x = source_xa.next_i64() & 0xFF);
 
-    pt_have
-        .data
-        .fill_uniform(basek, 0, pt_have.size(), &mut source_xa);
+    module.vec_znx_fill_uniform(basek, &mut pt_have.data, 0, k, &mut source_xa);
 
     ct.encrypt_sk(
-        &module,
+        module,
         &pt_have,
         &sk_dft,
         &mut source_xa,
@@ -63,13 +111,12 @@ fn test_trace_inplace(log_n: usize, basek: usize, k: usize, sigma: f64, rank: us
         scratch.borrow(),
     );
 
-    let mut auto_keys: HashMap<i64, GLWEAutomorphismKey<Vec<u8>, FFT64>> = HashMap::new();
-    let gal_els: Vec<i64> = GLWECiphertext::trace_galois_elements(&module);
+    let mut auto_keys: HashMap<i64, AutomorphismKeyExec<Vec<u8>, B>> = HashMap::new();
+    let gal_els: Vec<i64> = GLWECiphertext::trace_galois_elements(module);
+    let mut tmp: AutomorphismKey<Vec<u8>> = AutomorphismKey::alloc(module, basek, k_autokey, rows, digits, rank);
     gal_els.iter().for_each(|gal_el| {
-        let mut key: GLWEAutomorphismKey<Vec<u8>, FFT64> =
-            GLWEAutomorphismKey::alloc(&module, basek, k_autokey, rows, digits, rank);
-        key.encrypt_sk(
-            &module,
+        tmp.encrypt_sk(
+            module,
             *gal_el,
             &sk,
             &mut source_xa,
@@ -77,20 +124,21 @@ fn test_trace_inplace(log_n: usize, basek: usize, k: usize, sigma: f64, rank: us
             sigma,
             scratch.borrow(),
         );
-        auto_keys.insert(*gal_el, key);
+        let atk_exec: AutomorphismKeyExec<Vec<u8>, B> = AutomorphismKeyExec::from(module, &tmp, scratch.borrow());
+        auto_keys.insert(*gal_el, atk_exec);
     });
 
-    ct.trace_inplace(&module, 0, 5, &auto_keys, scratch.borrow());
-    ct.trace_inplace(&module, 5, log_n, &auto_keys, scratch.borrow());
+    ct.trace_inplace(module, 0, 5, &auto_keys, scratch.borrow());
+    ct.trace_inplace(module, 5, module.log_n(), &auto_keys, scratch.borrow());
 
     (0..pt_want.size()).for_each(|i| pt_want.data.at_mut(0, i)[0] = pt_have.data.at(0, i)[0]);
 
-    ct.decrypt(&module, &mut pt_have, &sk_dft, scratch.borrow());
+    ct.decrypt(module, &mut pt_have, &sk_dft, scratch.borrow());
 
     module.vec_znx_sub_ab_inplace(&mut pt_want.data, 0, &pt_have.data, 0);
     module.vec_znx_normalize_inplace(basek, &mut pt_want.data, 0, scratch.borrow());
 
-    let noise_have = pt_want.data.std(0, basek).log2();
+    let noise_have: f64 = module.vec_znx_std(basek, &pt_want.data, 0).log2();
 
     let mut noise_want: f64 = var_noise_gglwe_product(
         module.n() as f64,

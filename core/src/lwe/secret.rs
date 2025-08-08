@@ -1,10 +1,13 @@
-use backend::{ScalarZnx, ZnxInfos, ZnxZero};
+use backend::hal::{
+    api::{ZnxInfos, ZnxZero},
+    layouts::{Data, DataMut, ScalarZnx},
+};
 use sampling::source::Source;
 
 use crate::Distribution;
 
-pub struct LWESecret<T> {
-    pub(crate) data: ScalarZnx<T>,
+pub struct LWESecret<D: Data> {
+    pub(crate) data: ScalarZnx<D>,
     pub(crate) dist: Distribution,
 }
 
@@ -17,7 +20,7 @@ impl LWESecret<Vec<u8>> {
     }
 }
 
-impl<DataSelf> LWESecret<DataSelf> {
+impl<D: Data> LWESecret<D> {
     pub fn n(&self) -> usize {
         self.data.n()
     }
@@ -31,7 +34,7 @@ impl<DataSelf> LWESecret<DataSelf> {
     }
 }
 
-impl<D: AsRef<[u8]> + AsMut<[u8]>> LWESecret<D> {
+impl<D: DataMut> LWESecret<D> {
     pub fn fill_ternary_prob(&mut self, prob: f64, source: &mut Source) {
         self.data.fill_ternary_prob(0, prob, source);
         self.dist = Distribution::TernaryProb(prob);

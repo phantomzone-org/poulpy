@@ -1,23 +1,27 @@
-pub mod automorphism;
-pub mod ciphertext;
-pub mod decryption;
-pub mod encryption;
-pub mod external_product;
-pub mod keyswitch;
-pub mod ops;
-pub mod packing;
-pub mod plaintext;
-pub mod public_key;
-pub mod secret;
-pub mod trace;
+mod automorphism;
+mod decryption;
+mod encryption;
+mod external_product;
+mod keyswitch;
+mod layout;
+mod noise;
+mod ops;
+mod packing;
+mod plaintext;
+mod public_key;
+mod secret;
+mod trace;
 
-pub use ciphertext::GLWECiphertext;
-pub(crate) use ciphertext::{GLWECiphertextToMut, GLWECiphertextToRef};
+pub use decryption::*;
+pub use encryption::*;
+pub use external_product::*;
+pub use keyswitch::*;
+pub use layout::*;
 pub use ops::GLWEOps;
-pub use packing::GLWEPacker;
-pub use plaintext::GLWEPlaintext;
-pub use public_key::GLWEPublicKey;
-pub use secret::GLWESecret;
+pub use packing::*;
+pub use plaintext::*;
+pub use public_key::*;
+pub use secret::*;
 
 #[cfg(test)]
 mod test_fft64;

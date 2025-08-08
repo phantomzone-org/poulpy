@@ -1,12 +1,20 @@
-use backend::{FFT64, Module, Scratch, VecZnx, VecZnxOps, ZnxZero};
+use backend::hal::{
+    api::{
+        VecZnxAdd, VecZnxAddInplace, VecZnxCopy, VecZnxMulXpMinusOne, VecZnxMulXpMinusOneInplace, VecZnxNegateInplace,
+        VecZnxNormalize, VecZnxNormalizeInplace, VecZnxRotate, VecZnxRotateInplace, VecZnxRshInplace, VecZnxSub,
+        VecZnxSubABInplace, VecZnxSubBAInplace, ZnxZero,
+    },
+    layouts::{Backend, Module, Scratch, VecZnx},
+};
 
 use crate::{GLWECiphertext, GLWECiphertextToMut, GLWECiphertextToRef, Infos, SetMetaData};
 
 pub trait GLWEOps: GLWECiphertextToMut + SetMetaData + Sized {
-    fn add<A, B>(&mut self, module: &Module<FFT64>, a: &A, b: &B)
+    fn add<A, B, BACKEND: Backend>(&mut self, module: &Module<BACKEND>, a: &A, b: &B)
     where
         A: GLWECiphertextToRef,
         B: GLWECiphertextToRef,
+        Module<BACKEND>: VecZnxAdd + VecZnxCopy,
     {
         #[cfg(debug_assertions)]
         {
@@ -50,9 +58,10 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData + Sized {
         self.set_k(set_k_binary(self, a, b));
     }
 
-    fn add_inplace<A>(&mut self, module: &Module<FFT64>, a: &A)
+    fn add_inplace<A, BACKEND: Backend>(&mut self, module: &Module<BACKEND>, a: &A)
     where
         A: GLWECiphertextToRef + Infos,
+        Module<BACKEND>: VecZnxAddInplace,
     {
         #[cfg(debug_assertions)]
         {
@@ -72,10 +81,11 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData + Sized {
         self.set_k(set_k_unary(self, a))
     }
 
-    fn sub<A, B>(&mut self, module: &Module<FFT64>, a: &A, b: &B)
+    fn sub<A, B, BACKEND: Backend>(&mut self, module: &Module<BACKEND>, a: &A, b: &B)
     where
         A: GLWECiphertextToRef,
         B: GLWECiphertextToRef,
+        Module<BACKEND>: VecZnxSub + VecZnxCopy + VecZnxNegateInplace,
     {
         #[cfg(debug_assertions)]
         {
@@ -120,9 +130,10 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData + Sized {
         self.set_k(set_k_binary(self, a, b));
     }
 
-    fn sub_inplace_ab<A>(&mut self, module: &Module<FFT64>, a: &A)
+    fn sub_inplace_ab<A, BACKEND: Backend>(&mut self, module: &Module<BACKEND>, a: &A)
     where
         A: GLWECiphertextToRef + Infos,
+        Module<BACKEND>: VecZnxSubABInplace,
     {
         #[cfg(debug_assertions)]
         {
@@ -142,9 +153,10 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData + Sized {
         self.set_k(set_k_unary(self, a))
     }
 
-    fn sub_inplace_ba<A>(&mut self, module: &Module<FFT64>, a: &A)
+    fn sub_inplace_ba<A, BACKEND: Backend>(&mut self, module: &Module<BACKEND>, a: &A)
     where
         A: GLWECiphertextToRef + Infos,
+        Module<BACKEND>: VecZnxSubBAInplace,
     {
         #[cfg(debug_assertions)]
         {
@@ -164,9 +176,10 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData + Sized {
         self.set_k(set_k_unary(self, a))
     }
 
-    fn rotate<A>(&mut self, module: &Module<FFT64>, k: i64, a: &A)
+    fn rotate<A, B: Backend>(&mut self, module: &Module<B>, k: i64, a: &A)
     where
         A: GLWECiphertextToRef + Infos,
+        Module<B>: VecZnxRotate,
     {
         #[cfg(debug_assertions)]
         {
@@ -186,7 +199,10 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData + Sized {
         self.set_k(set_k_unary(self, a))
     }
 
-    fn rotate_inplace(&mut self, module: &Module<FFT64>, k: i64) {
+    fn rotate_inplace<B: Backend>(&mut self, module: &Module<B>, k: i64)
+    where
+        Module<B>: VecZnxRotateInplace,
+    {
         #[cfg(debug_assertions)]
         {
             assert_eq!(self.n(), module.n());
@@ -199,9 +215,49 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData + Sized {
         });
     }
 
-    fn copy<A>(&mut self, module: &Module<FFT64>, a: &A)
+    fn mul_xp_minus_one<A, B: Backend>(&mut self, module: &Module<B>, k: i64, a: &A)
     where
         A: GLWECiphertextToRef + Infos,
+        Module<B>: VecZnxMulXpMinusOne,
+    {
+        #[cfg(debug_assertions)]
+        {
+            assert_eq!(a.n(), module.n());
+            assert_eq!(self.n(), module.n());
+            assert_eq!(self.rank(), a.rank())
+        }
+
+        let self_mut: &mut GLWECiphertext<&mut [u8]> = &mut self.to_mut();
+        let a_ref: &GLWECiphertext<&[u8]> = &a.to_ref();
+
+        (0..a.rank() + 1).for_each(|i| {
+            module.vec_znx_mul_xp_minus_one(k, &mut self_mut.data, i, &a_ref.data, i);
+        });
+
+        self.set_basek(a.basek());
+        self.set_k(set_k_unary(self, a))
+    }
+
+    fn mul_xp_minus_one_inplace<B: Backend>(&mut self, module: &Module<B>, k: i64)
+    where
+        Module<B>: VecZnxMulXpMinusOneInplace,
+    {
+        #[cfg(debug_assertions)]
+        {
+            assert_eq!(self.n(), module.n());
+        }
+
+        let self_mut: &mut GLWECiphertext<&mut [u8]> = &mut self.to_mut();
+
+        (0..self_mut.rank() + 1).for_each(|i| {
+            module.vec_znx_mul_xp_minus_one_inplace(k, &mut self_mut.data, i);
+        });
+    }
+
+    fn copy<A, B: Backend>(&mut self, module: &Module<B>, a: &A)
+    where
+        A: GLWECiphertextToRef + Infos,
+        Module<B>: VecZnxCopy,
     {
         #[cfg(debug_assertions)]
         {
@@ -221,15 +277,18 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData + Sized {
         self.set_basek(a.basek());
     }
 
-    fn rsh(&mut self, k: usize, scratch: &mut Scratch) {
+    fn rsh<B: Backend>(&mut self, module: &Module<B>, k: usize)
+    where
+        Module<B>: VecZnxRshInplace,
+    {
         let basek: usize = self.basek();
-        let mut self_mut: GLWECiphertext<&mut [u8]> = self.to_mut();
-        self_mut.data.rsh(basek, k, scratch);
+        module.vec_znx_rsh_inplace(basek, k, &mut self.to_mut().data);
     }
 
-    fn normalize<A>(&mut self, module: &Module<FFT64>, a: &A, scratch: &mut Scratch)
+    fn normalize<A, B: Backend>(&mut self, module: &Module<B>, a: &A, scratch: &mut Scratch<B>)
     where
         A: GLWECiphertextToRef,
+        Module<B>: VecZnxNormalize<B>,
     {
         #[cfg(debug_assertions)]
         {
@@ -248,7 +307,10 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData + Sized {
         self.set_k(a.k().min(self.k()));
     }
 
-    fn normalize_inplace(&mut self, module: &Module<FFT64>, scratch: &mut Scratch) {
+    fn normalize_inplace<B: Backend>(&mut self, module: &Module<B>, scratch: &mut Scratch<B>)
+    where
+        Module<B>: VecZnxNormalizeInplace<B>,
+    {
         #[cfg(debug_assertions)]
         {
             assert_eq!(self.n(), module.n());
@@ -261,7 +323,7 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData + Sized {
 }
 
 impl GLWECiphertext<Vec<u8>> {
-    pub fn rsh_scratch_space(module: &Module<FFT64>) -> usize {
+    pub fn rsh_scratch_space<BACKEND: Backend>(module: &Module<BACKEND>) -> usize {
         VecZnx::rsh_scratch_space(module.n())
     }
 }

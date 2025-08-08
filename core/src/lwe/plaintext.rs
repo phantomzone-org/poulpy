@@ -1,8 +1,8 @@
-use backend::{VecZnx, VecZnxToMut, VecZnxToRef};
+use backend::hal::layouts::{Data, DataMut, DataRef, VecZnx, VecZnxToMut, VecZnxToRef};
 
 use crate::{Infos, SetMetaData};
 
-pub struct LWEPlaintext<D> {
+pub struct LWEPlaintext<D: Data> {
     pub(crate) data: VecZnx<D>,
     pub(crate) k: usize,
     pub(crate) basek: usize,
@@ -18,8 +18,8 @@ impl LWEPlaintext<Vec<u8>> {
     }
 }
 
-impl<T> Infos for LWEPlaintext<T> {
-    type Inner = VecZnx<T>;
+impl<D: Data> Infos for LWEPlaintext<D> {
+    type Inner = VecZnx<D>;
 
     fn inner(&self) -> &Self::Inner {
         &self.data
@@ -34,7 +34,7 @@ impl<T> Infos for LWEPlaintext<T> {
     }
 }
 
-impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> SetMetaData for LWEPlaintext<DataSelf> {
+impl<D: DataMut> SetMetaData for LWEPlaintext<D> {
     fn set_k(&mut self, k: usize) {
         self.k = k
     }
@@ -45,10 +45,11 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> SetMetaData for LWEPlaintext<DataSelf>
 }
 
 pub trait LWEPlaintextToRef {
+    #[allow(dead_code)]
     fn to_ref(&self) -> LWEPlaintext<&[u8]>;
 }
 
-impl<D: AsRef<[u8]>> LWEPlaintextToRef for LWEPlaintext<D> {
+impl<D: DataRef> LWEPlaintextToRef for LWEPlaintext<D> {
     fn to_ref(&self) -> LWEPlaintext<&[u8]> {
         LWEPlaintext {
             data: self.data.to_ref(),
@@ -59,10 +60,11 @@ impl<D: AsRef<[u8]>> LWEPlaintextToRef for LWEPlaintext<D> {
 }
 
 pub trait LWEPlaintextToMut {
+    #[allow(dead_code)]
     fn to_mut(&mut self) -> LWEPlaintext<&mut [u8]>;
 }
 
-impl<D: AsMut<[u8]> + AsRef<[u8]>> LWEPlaintextToMut for LWEPlaintext<D> {
+impl<D: DataMut> LWEPlaintextToMut for LWEPlaintext<D> {
     fn to_mut(&mut self) -> LWEPlaintext<&mut [u8]> {
         LWEPlaintext {
             data: self.data.to_mut(),

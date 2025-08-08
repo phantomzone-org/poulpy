@@ -1,5 +1,4 @@
-use rand_chacha::ChaCha8Rng;
-use rand_chacha::rand_core::SeedableRng;
+use rand_chacha::{ChaCha8Rng, rand_core::SeedableRng};
 use rand_core::RngCore;
 
 const MAXF64: f64 = 9007199254740992.0;

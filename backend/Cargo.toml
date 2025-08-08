@@ -13,7 +13,12 @@ rand_distr = {workspace = true}
 rand_core = {workspace = true}
 sampling = { path = "../sampling" }
 utils = { path = "../utils" }
+paste = "1.0.15"
+byteorder = {workspace = true} 
 
-[[bench]]
-name = "fft"
-harness = false
+[build-dependencies]
+cmake = "0.1.54"
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

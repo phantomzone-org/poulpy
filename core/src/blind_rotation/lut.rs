@@ -1,4 +1,11 @@
-use backend::{FFT64, Module, VecZnx, VecZnxAlloc, VecZnxOps, ZnxInfos, ZnxViewMut, alloc_aligned};
+use backend::hal::{
+    api::{
+        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAlloc, VecZnxCopy, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes,
+        VecZnxRotateInplace, VecZnxSwithcDegree, ZnxInfos, ZnxViewMut,
+    },
+    layouts::{Backend, Module, ScratchOwned, VecZnx},
+    oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl},
+};
 
 pub struct LookUpTable {
     pub(crate) data: Vec<VecZnx<Vec<u8>>>,
@@ -7,7 +14,10 @@ pub struct LookUpTable {
 }
 
 impl LookUpTable {
-    pub fn alloc(module: &Module<FFT64>, basek: usize, k: usize, extension_factor: usize) -> Self {
+    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, extension_factor: usize) -> Self
+    where
+        Module<B>: VecZnxAlloc,
+    {
         #[cfg(debug_assertions)]
         {
             assert!(
@@ -19,7 +29,7 @@ impl LookUpTable {
         let size: usize = k.div_ceil(basek);
         let mut data: Vec<VecZnx<Vec<u8>>> = Vec::with_capacity(extension_factor);
         (0..extension_factor).for_each(|_| {
-            data.push(module.new_vec_znx(1, size));
+            data.push(module.vec_znx_alloc(1, size));
         });
         Self { data, basek, k }
     }
@@ -36,7 +46,11 @@ impl LookUpTable {
         self.data.len() * self.data[0].n()
     }
 
-    pub fn set(&mut self, module: &Module<FFT64>, f: &Vec<i64>, k: usize) {
+    pub fn set<B: Backend>(&mut self, module: &Module<B>, f: &Vec<i64>, k: usize)
+    where
+        Module<B>: VecZnxRotateInplace + VecZnxNormalizeInplace<B> + VecZnxNormalizeTmpBytes + VecZnxSwithcDegree + VecZnxCopy,
+        B: ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
+    {
         assert!(f.len() <= module.n());
 
         let basek: usize = self.basek;
@@ -74,16 +88,22 @@ impl LookUpTable {
         // Rotates half the step to the left
         let half_step: usize = domain_size.div_round(f_len << 1);
 
-        lut_full.rotate(-(half_step as i64));
+        module.vec_znx_rotate_inplace(-(half_step as i64), &mut lut_full, 0);
 
-        let mut tmp_bytes: Vec<u8> = alloc_aligned(lut_full.n() * size_of::<i64>());
-        lut_full.normalize(self.basek, 0, &mut tmp_bytes);
+        let n_large: usize = lut_full.n();
+
+        module.vec_znx_normalize_inplace(
+            self.basek,
+            &mut lut_full,
+            0,
+            ScratchOwned::alloc(module.vec_znx_normalize_tmp_bytes(n_large)).borrow(),
+        );
 
         if self.extension_factor() > 1 {
             (0..self.extension_factor()).for_each(|i| {
-                module.switch_degree(&mut self.data[i], 0, &lut_full, 0);
+                module.vec_znx_switch_degree(&mut self.data[i], 0, &lut_full, 0);
                 if i < self.extension_factor() {
-                    lut_full.rotate(-1);
+                    module.vec_znx_rotate_inplace(-1, &mut lut_full, 0);
                 }
             });
         } else {
@@ -92,7 +112,10 @@ impl LookUpTable {
     }
 
     #[allow(dead_code)]
-    pub(crate) fn rotate(&mut self, k: i64) {
+    pub(crate) fn rotate<B: Backend>(&mut self, module: &Module<B>, k: i64)
+    where
+        Module<B>: VecZnxRotateInplace,
+    {
         let extension_factor: usize = self.extension_factor();
         let two_n: usize = 2 * self.data[0].n();
         let two_n_ext: usize = two_n * extension_factor;
@@ -103,11 +126,11 @@ impl LookUpTable {
         let k_lo: usize = k_pos % extension_factor;
 
         (0..extension_factor - k_lo).for_each(|i| {
-            self.data[i].rotate(k_hi as i64);
+            module.vec_znx_rotate_inplace(k_hi as i64, &mut self.data[i], 0);
         });
 
         (extension_factor - k_lo..extension_factor).for_each(|i| {
-            self.data[i].rotate(k_hi as i64 + 1);
+            module.vec_znx_rotate_inplace(k_hi as i64 + 1, &mut self.data[i], 0);
         });
 
         self.data.rotate_right(k_lo as usize);

@@ -1,15 +1,18 @@
-use backend::{Backend, FFT64, Module, VecZnx, VecZnxAlloc, VecZnxToMut, VecZnxToRef};
+use backend::hal::{
+    api::{VecZnxAlloc, VecZnxAllocBytes},
+    layouts::{Backend, Data, DataMut, DataRef, Module, VecZnx, VecZnxToMut, VecZnxToRef},
+};
 
 use crate::{GLWECiphertext, GLWECiphertextToMut, GLWECiphertextToRef, GLWEOps, Infos, SetMetaData};
 
-pub struct GLWEPlaintext<C> {
-    pub data: VecZnx<C>,
+pub struct GLWEPlaintext<D: Data> {
+    pub data: VecZnx<D>,
     pub basek: usize,
     pub k: usize,
 }
 
-impl<T> Infos for GLWEPlaintext<T> {
-    type Inner = VecZnx<T>;
+impl<D: Data> Infos for GLWEPlaintext<D> {
+    type Inner = VecZnx<D>;
 
     fn inner(&self) -> &Self::Inner {
         &self.data
@@ -24,7 +27,7 @@ impl<T> Infos for GLWEPlaintext<T> {
     }
 }
 
-impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> SetMetaData for GLWEPlaintext<DataSelf> {
+impl<D: DataMut> SetMetaData for GLWEPlaintext<D> {
     fn set_k(&mut self, k: usize) {
         self.k = k
     }
@@ -35,20 +38,26 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> SetMetaData for GLWEPlaintext<DataSelf
 }
 
 impl GLWEPlaintext<Vec<u8>> {
-    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize) -> Self {
+    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize) -> Self
+    where
+        Module<B>: VecZnxAlloc,
+    {
         Self {
-            data: module.new_vec_znx(1, k.div_ceil(basek)),
+            data: module.vec_znx_alloc(1, k.div_ceil(basek)),
             basek: basek,
             k,
         }
     }
 
-    pub fn byte_of(module: &Module<FFT64>, basek: usize, k: usize) -> usize {
-        module.bytes_of_vec_znx(1, k.div_ceil(basek))
+    pub fn byte_of<B: Backend>(module: &Module<B>, basek: usize, k: usize) -> usize
+    where
+        Module<B>: VecZnxAllocBytes,
+    {
+        module.vec_znx_alloc_bytes(1, k.div_ceil(basek))
     }
 }
 
-impl<D: AsRef<[u8]>> GLWECiphertextToRef for GLWEPlaintext<D> {
+impl<D: DataRef> GLWECiphertextToRef for GLWEPlaintext<D> {
     fn to_ref(&self) -> GLWECiphertext<&[u8]> {
         GLWECiphertext {
             data: self.data.to_ref(),
@@ -58,7 +67,7 @@ impl<D: AsRef<[u8]>> GLWECiphertextToRef for GLWEPlaintext<D> {
     }
 }
 
-impl<D: AsMut<[u8]> + AsRef<[u8]>> GLWECiphertextToMut for GLWEPlaintext<D> {
+impl<D: DataMut> GLWECiphertextToMut for GLWEPlaintext<D> {
     fn to_mut(&mut self) -> GLWECiphertext<&mut [u8]> {
         GLWECiphertext {
             data: self.data.to_mut(),
@@ -70,7 +79,7 @@ impl<D: AsMut<[u8]> + AsRef<[u8]>> GLWECiphertextToMut for GLWEPlaintext<D> {
 
 impl<D> GLWEOps for GLWEPlaintext<D>
 where
-    D: AsRef<[u8]> + AsMut<[u8]>,
+    D: DataMut,
     GLWEPlaintext<D>: GLWECiphertextToMut + Infos + SetMetaData,
 {
 }

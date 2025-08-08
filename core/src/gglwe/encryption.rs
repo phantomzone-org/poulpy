@@ -1,41 +1,52 @@
-use backend::{
-    FFT64, Module, ScalarZnx, ScalarZnxAlloc, ScalarZnxDftOps, ScalarZnxOps, Scratch, VecZnxAlloc, VecZnxDftAlloc, VecZnxOps,
-    ZnxInfos, ZnxView, ZnxViewMut, ZnxZero,
+use backend::hal::{
+    api::{
+        ScalarZnxAllocBytes, ScalarZnxAutomorphism, ScratchAvailable, SvpApply, TakeScalarZnx, TakeVecZnx, TakeVecZnxBig,
+        TakeVecZnxDft, VecZnxAddScalarInplace, VecZnxAllocBytes, VecZnxBigAllocBytes, VecZnxDftToVecZnxBigTmpA,
+        VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSwithcDegree, ZnxZero,
+    },
+    layouts::{Backend, DataMut, DataRef, Module, ScalarZnx, Scratch},
 };
 use sampling::source::Source;
 
 use crate::{
-    FourierGLWESecret, GGLWECiphertext, GLWEAutomorphismKey, GLWECiphertext, GLWESecret, GLWESwitchingKey, GLWETensorKey, Infos,
-    ScratchCore, SetRow,
+    AutomorphismKey, GGLWECiphertext, GLWECiphertext, GLWEDecryptFamily, GLWEEncryptSkFamily, GLWEPlaintext, GLWESecret,
+    GLWESecretExec, GLWESecretFamily, GLWESwitchingKey, GLWETensorKey, Infos, TakeGLWEPt, TakeGLWESecret, TakeGLWESecretExec,
 };
 
-impl GGLWECiphertext<Vec<u8>, FFT64> {
-    pub fn encrypt_sk_scratch_space(module: &Module<FFT64>, basek: usize, k: usize, rank: usize) -> usize {
-        let size = k.div_ceil(basek);
+pub trait GGLWEEncryptSkFamily<B: Backend> = GLWEEncryptSkFamily<B> + GLWESecretFamily<B>;
+
+impl GGLWECiphertext<Vec<u8>> {
+    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize) -> usize
+    where
+        Module<B>: GGLWEEncryptSkFamily<B> + VecZnxAllocBytes,
+    {
         GLWECiphertext::encrypt_sk_scratch_space(module, basek, k)
-            + module.bytes_of_vec_znx(rank + 1, size)
-            + module.bytes_of_vec_znx(1, size)
-            + module.bytes_of_vec_znx_dft(rank + 1, size)
+            + (GLWEPlaintext::byte_of(module, basek, k) | module.vec_znx_normalize_tmp_bytes(module.n()))
     }
 
-    pub fn encrypt_pk_scratch_space(_module: &Module<FFT64>, _basek: usize, _k: usize, _rank: usize) -> usize {
+    pub fn encrypt_pk_scratch_space<B: Backend>(_module: &Module<B>, _basek: usize, _k: usize, _rank: usize) -> usize {
         unimplemented!()
     }
 }
 
-impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGLWECiphertext<DataSelf, FFT64> {
-    pub fn encrypt_sk<DataPt: AsRef<[u8]>, DataSk: AsRef<[u8]>>(
+impl<DataSelf: DataMut> GGLWECiphertext<DataSelf> {
+    pub fn encrypt_sk<DataPt: DataRef, DataSk: DataRef, B: Backend>(
         &mut self,
-        module: &Module<FFT64>,
+        module: &Module<B>,
         pt: &ScalarZnx<DataPt>,
-        sk: &FourierGLWESecret<DataSk, FFT64>,
+        sk: &GLWESecretExec<DataSk, B>,
         source_xa: &mut Source,
         source_xe: &mut Source,
         sigma: f64,
-        scratch: &mut Scratch,
-    ) {
+        scratch: &mut Scratch<B>,
+    ) where
+        Module<B>: GGLWEEncryptSkFamily<B> + VecZnxAllocBytes + VecZnxAddScalarInplace,
+        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx<B>,
+    {
         #[cfg(debug_assertions)]
         {
+            use backend::hal::api::ZnxInfos;
+
             assert_eq!(
                 self.rank_in(),
                 pt.cols(),
@@ -54,12 +65,12 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGLWECiphertext<DataSelf, FFT64> {
             assert_eq!(sk.n(), module.n());
             assert_eq!(pt.n(), module.n());
             assert!(
-                scratch.available() >= GGLWECiphertext::encrypt_sk_scratch_space(module, self.basek(), self.k(), self.rank()),
+                scratch.available() >= GGLWECiphertext::encrypt_sk_scratch_space(module, self.basek(), self.k()),
                 "scratch.available: {} < GGLWECiphertext::encrypt_sk_scratch_space(module, self.rank()={}, self.size()={}): {}",
                 scratch.available(),
                 self.rank(),
                 self.size(),
-                GGLWECiphertext::encrypt_sk_scratch_space(module, self.basek(), self.k(), self.rank())
+                GGLWECiphertext::encrypt_sk_scratch_space(module, self.basek(), self.k())
             );
             assert!(
                 self.rows() * self.digits() * self.basek() <= self.k(),
@@ -77,12 +88,8 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGLWECiphertext<DataSelf, FFT64> {
         let basek: usize = self.basek();
         let k: usize = self.k();
         let rank_in: usize = self.rank_in();
-        let rank_out: usize = self.rank_out();
 
-        let (mut tmp_pt, scrach_1) = scratch.tmp_glwe_pt(module, basek, k);
-        let (mut tmp_ct, scrach_2) = scrach_1.tmp_glwe_ct(module, basek, k, rank_out);
-        let (mut tmp_ct_dft, scratch_3) = scrach_2.tmp_fourier_glwe_ct(module, basek, k, rank_out);
-
+        let (mut tmp_pt, scrach_1) = scratch.take_glwe_pt(module, basek, k);
         // For each input column (i.e. rank) produces a GGLWE ciphertext of rank_out+1 columns
         //
         // Example for ksk rank 2 to rank 3:
@@ -105,30 +112,36 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GGLWECiphertext<DataSelf, FFT64> {
                     pt,
                     col_i,
                 );
-                module.vec_znx_normalize_inplace(basek, &mut tmp_pt.data, 0, scratch_3);
+                module.vec_znx_normalize_inplace(basek, &mut tmp_pt.data, 0, scrach_1);
 
                 // rlwe encrypt of vec_znx_pt into vec_znx_ct
-                tmp_ct.encrypt_sk(module, &tmp_pt, sk, source_xa, source_xe, sigma, scratch_3);
-
-                // Switch vec_znx_ct into DFT domain
-                tmp_ct.dft(module, &mut tmp_ct_dft);
-
-                // Stores vec_znx_dft_ct into thw i-th row of the MatZnxDft
-                self.set_row(module, row_i, col_i, &tmp_ct_dft);
+                self.at_mut(row_i, col_i)
+                    .encrypt_sk(module, &tmp_pt, sk, source_xa, source_xe, sigma, scrach_1);
             });
         });
     }
 }
 
-impl GLWESwitchingKey<Vec<u8>, FFT64> {
-    pub fn encrypt_sk_scratch_space(module: &Module<FFT64>, basek: usize, k: usize, rank_in: usize, rank_out: usize) -> usize {
-        GGLWECiphertext::encrypt_sk_scratch_space(module, basek, k, rank_out)
-            + module.bytes_of_scalar_znx(rank_in)
-            + FourierGLWESecret::bytes_of(module, rank_out)
+pub trait GLWESwitchingKeyEncryptSkFamily<B: Backend> = GGLWEEncryptSkFamily<B>;
+
+impl GLWESwitchingKey<Vec<u8>> {
+    pub fn encrypt_sk_scratch_space<B: Backend>(
+        module: &Module<B>,
+        basek: usize,
+        k: usize,
+        rank_in: usize,
+        rank_out: usize,
+    ) -> usize
+    where
+        Module<B>: GLWESwitchingKeyEncryptSkFamily<B> + ScalarZnxAllocBytes + VecZnxAllocBytes,
+    {
+        (GGLWECiphertext::encrypt_sk_scratch_space(module, basek, k) | module.scalar_znx_alloc_bytes(1))
+            + module.scalar_znx_alloc_bytes(rank_in)
+            + GLWESecretExec::bytes_of(module, rank_out)
     }
 
-    pub fn encrypt_pk_scratch_space(
-        module: &Module<FFT64>,
+    pub fn encrypt_pk_scratch_space<B: Backend>(
+        module: &Module<B>,
         _basek: usize,
         _k: usize,
         _rank_in: usize,
@@ -138,46 +151,63 @@ impl GLWESwitchingKey<Vec<u8>, FFT64> {
     }
 }
 
-impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<DataSelf, FFT64> {
-    pub fn encrypt_sk<DataSkIn: AsRef<[u8]>, DataSkOut: AsRef<[u8]>>(
+impl<DataSelf: DataMut> GLWESwitchingKey<DataSelf> {
+    pub fn encrypt_sk<DataSkIn: DataRef, DataSkOut: DataRef, B: Backend>(
         &mut self,
-        module: &Module<FFT64>,
+        module: &Module<B>,
         sk_in: &GLWESecret<DataSkIn>,
-        sk_out: &FourierGLWESecret<DataSkOut, FFT64>,
+        sk_out: &GLWESecret<DataSkOut>,
         source_xa: &mut Source,
         source_xe: &mut Source,
         sigma: f64,
-        scratch: &mut Scratch,
-    ) {
+        scratch: &mut Scratch<B>,
+    ) where
+        Module<B>: GLWESwitchingKeyEncryptSkFamily<B>
+            + ScalarZnxAllocBytes
+            + VecZnxSwithcDegree
+            + VecZnxAllocBytes
+            + VecZnxAddScalarInplace,
+        Scratch<B>:
+            ScratchAvailable + TakeScalarZnx<B> + TakeVecZnxDft<B> + TakeGLWESecretExec<B> + ScratchAvailable + TakeVecZnx<B>,
+    {
         #[cfg(debug_assertions)]
         {
             assert!(sk_in.n() <= module.n());
             assert!(sk_out.n() <= module.n());
+            assert!(
+                scratch.available()
+                    >= GLWESwitchingKey::encrypt_sk_scratch_space(
+                        module,
+                        self.basek(),
+                        self.k(),
+                        self.rank_in(),
+                        self.rank_out()
+                    ),
+                "scratch.available()={} < GLWESwitchingKey::encrypt_sk_scratch_space={}",
+                scratch.available(),
+                GLWESwitchingKey::encrypt_sk_scratch_space(
+                    module,
+                    self.basek(),
+                    self.k(),
+                    self.rank_in(),
+                    self.rank_out()
+                )
+            )
         }
 
-        let (mut sk_in_tmp, scratch1) = scratch.tmp_scalar_znx(module, sk_in.rank());
-        sk_in_tmp.zero();
-
+        let (mut sk_in_tmp, scratch1) = scratch.take_scalar_znx(module, sk_in.rank());
         (0..sk_in.rank()).for_each(|i| {
-            sk_in_tmp
-                .at_mut(i, 0)
-                .iter_mut()
-                .step_by(module.n() / sk_in.n())
-                .zip(sk_in.data.at(i, 0).iter())
-                .for_each(|(x, y)| *x = *y);
+            module.vec_znx_switch_degree(&mut sk_in_tmp, i, &sk_in.data, i);
         });
 
-        let (mut sk_out_tmp, scratch2) = scratch1.tmp_fourier_glwe_secret(module, sk_out.rank());
-        (0..sk_out.rank()).for_each(|i| {
-            sk_out_tmp
-                .data
-                .at_mut(i, 0)
-                .chunks_exact_mut(module.n() / sk_out.n())
-                .zip(sk_out.data.at(i, 0).iter())
-                .for_each(|(a_chunk, &b_elem)| {
-                    a_chunk.fill(b_elem);
-                });
-        });
+        let (mut sk_out_tmp, scratch2) = scratch1.take_glwe_secret_exec(module, sk_out.rank());
+        {
+            let (mut tmp, _) = scratch2.take_scalar_znx(module, 1);
+            (0..sk_out.rank()).for_each(|i| {
+                module.vec_znx_switch_degree(&mut tmp, 0, &sk_out.data, i);
+                module.svp_prepare(&mut sk_out_tmp.data, i, &tmp, 0);
+            });
+        }
 
         self.key.encrypt_sk(
             module,
@@ -193,27 +223,40 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWESwitchingKey<DataSelf, FFT64> {
     }
 }
 
-impl GLWEAutomorphismKey<Vec<u8>, FFT64> {
-    pub fn encrypt_sk_scratch_space(module: &Module<FFT64>, basek: usize, k: usize, rank: usize) -> usize {
+pub trait AutomorphismKeyEncryptSkFamily<B: Backend> = GGLWEEncryptSkFamily<B>;
+
+impl AutomorphismKey<Vec<u8>> {
+    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize
+    where
+        Module<B>: AutomorphismKeyEncryptSkFamily<B> + ScalarZnxAllocBytes + VecZnxAllocBytes,
+    {
         GLWESwitchingKey::encrypt_sk_scratch_space(module, basek, k, rank, rank) + GLWESecret::bytes_of(module, rank)
     }
 
-    pub fn encrypt_pk_scratch_space(module: &Module<FFT64>, _basek: usize, _k: usize, _rank: usize) -> usize {
+    pub fn encrypt_pk_scratch_space<B: Backend>(module: &Module<B>, _basek: usize, _k: usize, _rank: usize) -> usize {
         GLWESwitchingKey::encrypt_pk_scratch_space(module, _basek, _k, _rank, _rank)
     }
 }
 
-impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWEAutomorphismKey<DataSelf, FFT64> {
-    pub fn encrypt_sk<DataSk: AsRef<[u8]>>(
+impl<DataSelf: DataMut> AutomorphismKey<DataSelf> {
+    pub fn encrypt_sk<DataSk: DataRef, B: Backend>(
         &mut self,
-        module: &Module<FFT64>,
+        module: &Module<B>,
         p: i64,
         sk: &GLWESecret<DataSk>,
         source_xa: &mut Source,
         source_xe: &mut Source,
         sigma: f64,
-        scratch: &mut Scratch,
-    ) {
+        scratch: &mut Scratch<B>,
+    ) where
+        Module<B>: AutomorphismKeyEncryptSkFamily<B>
+            + ScalarZnxAutomorphism
+            + ScalarZnxAllocBytes
+            + VecZnxAllocBytes
+            + VecZnxSwithcDegree
+            + VecZnxAddScalarInplace,
+        Scratch<B>: ScratchAvailable + TakeScalarZnx<B> + TakeVecZnxDft<B> + TakeGLWESecretExec<B> + TakeVecZnx<B>,
+    {
         #[cfg(debug_assertions)]
         {
             assert_eq!(self.n(), module.n());
@@ -221,19 +264,18 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWEAutomorphismKey<DataSelf, FFT64> {
             assert_eq!(self.rank_out(), self.rank_in());
             assert_eq!(sk.rank(), self.rank());
             assert!(
-                scratch.available() >= GLWEAutomorphismKey::encrypt_sk_scratch_space(module, self.basek(), self.k(), self.rank()),
+                scratch.available() >= AutomorphismKey::encrypt_sk_scratch_space(module, self.basek(), self.k(), self.rank()),
                 "scratch.available(): {} < AutomorphismKey::encrypt_sk_scratch_space(module, self.rank()={}, self.size()={}): {}",
                 scratch.available(),
                 self.rank(),
                 self.size(),
-                GLWEAutomorphismKey::encrypt_sk_scratch_space(module, self.basek(), self.k(), self.rank())
+                AutomorphismKey::encrypt_sk_scratch_space(module, self.basek(), self.k(), self.rank())
             )
         }
 
-        let (mut sk_out_dft, scratch_1) = scratch.tmp_fourier_glwe_secret(module, sk.rank());
+        let (mut sk_out, scratch_1) = scratch.take_glwe_secret(module, sk.rank());
 
         {
-            let (mut sk_out, _) = scratch_1.tmp_glwe_secret(module, sk.rank());
             (0..self.rank()).for_each(|i| {
                 module.scalar_znx_automorphism(
                     module.galois_element_inv(p),
@@ -243,41 +285,50 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWEAutomorphismKey<DataSelf, FFT64> {
                     i,
                 );
             });
-            sk_out_dft.set(module, &sk_out);
         }
 
-        self.key.encrypt_sk(
-            module,
-            &sk,
-            &sk_out_dft,
-            source_xa,
-            source_xe,
-            sigma,
-            scratch_1,
-        );
+        self.key
+            .encrypt_sk(module, &sk, &sk_out, source_xa, source_xe, sigma, scratch_1);
 
         self.p = p;
     }
 }
 
-impl GLWETensorKey<Vec<u8>, FFT64> {
-    pub fn encrypt_sk_scratch_space(module: &Module<FFT64>, basek: usize, k: usize, rank: usize) -> usize {
-        GLWESecret::bytes_of(module, 1)
-            + FourierGLWESecret::bytes_of(module, 1)
+pub trait GLWETensorKeyEncryptSkFamily<B: Backend> =
+    GGLWEEncryptSkFamily<B> + VecZnxBigAllocBytes + VecZnxDftToVecZnxBigTmpA<B> + SvpApply<B>;
+
+impl GLWETensorKey<Vec<u8>> {
+    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize
+    where
+        Module<B>: GLWETensorKeyEncryptSkFamily<B> + ScalarZnxAllocBytes + VecZnxAllocBytes,
+    {
+        GLWESecretExec::bytes_of(module, rank)
+            + module.vec_znx_dft_alloc_bytes(rank, 1)
+            + module.vec_znx_big_alloc_bytes(1, 1)
+            + module.vec_znx_dft_alloc_bytes(1, 1)
+            + GLWESecret::bytes_of(module, 1)
             + GLWESwitchingKey::encrypt_sk_scratch_space(module, basek, k, rank, rank)
     }
 }
 
-impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWETensorKey<DataSelf, FFT64> {
-    pub fn encrypt_sk<DataSk: AsRef<[u8]>>(
+impl<DataSelf: DataMut> GLWETensorKey<DataSelf> {
+    pub fn encrypt_sk<DataSk: DataRef, B: Backend>(
         &mut self,
-        module: &Module<FFT64>,
-        sk: &FourierGLWESecret<DataSk, FFT64>,
+        module: &Module<B>,
+        sk: &GLWESecret<DataSk>,
         source_xa: &mut Source,
         source_xe: &mut Source,
         sigma: f64,
-        scratch: &mut Scratch,
-    ) {
+        scratch: &mut Scratch<B>,
+    ) where
+        Module<B>: GLWETensorKeyEncryptSkFamily<B>
+            + ScalarZnxAllocBytes
+            + VecZnxSwithcDegree
+            + VecZnxAllocBytes
+            + VecZnxAddScalarInplace,
+        Scratch<B>:
+            ScratchAvailable + TakeVecZnxDft<B> + TakeVecZnxBig<B> + TakeGLWESecretExec<B> + TakeScalarZnx<B> + TakeVecZnx<B>,
+    {
         #[cfg(debug_assertions)]
         {
             assert_eq!(self.rank(), sk.rank());
@@ -287,15 +338,28 @@ impl<DataSelf: AsMut<[u8]> + AsRef<[u8]>> GLWETensorKey<DataSelf, FFT64> {
 
         let rank: usize = self.rank();
 
-        let (mut sk_ij, scratch1) = scratch.tmp_glwe_secret(module, 1);
-        let (mut sk_ij_dft, scratch2) = scratch1.tmp_fourier_glwe_secret(module, 1);
+        let (mut sk_dft_prep, scratch1) = scratch.take_glwe_secret_exec(module, rank);
+        sk_dft_prep.prepare(module, &sk);
+
+        let (mut sk_dft, scratch2) = scratch1.take_vec_znx_dft(module, rank, 1);
+
+        (0..rank).for_each(|i| {
+            module.vec_znx_dft_from_vec_znx(1, 0, &mut sk_dft, i, &sk.data, i);
+        });
+
+        let (mut sk_ij_big, scratch3) = scratch2.take_vec_znx_big(module, 1, 1);
+        let (mut sk_ij, scratch4) = scratch3.take_glwe_secret(module, 1);
+        let (mut sk_ij_dft, scratch5) = scratch4.take_vec_znx_dft(module, 1, 1);
 
         (0..rank).for_each(|i| {
             (i..rank).for_each(|j| {
-                module.svp_apply(&mut sk_ij_dft.data, 0, &sk.data, i, &sk.data, j);
-                module.scalar_znx_idft(&mut sk_ij.data, 0, &sk_ij_dft.data, 0, scratch2);
+                module.svp_apply(&mut sk_ij_dft, 0, &sk_dft_prep.data, j, &sk_dft, i);
+
+                module.vec_znx_dft_to_vec_znx_big_tmp_a(&mut sk_ij_big, 0, &mut sk_ij_dft, 0);
+                module.vec_znx_big_normalize(self.basek(), &mut sk_ij.data, 0, &sk_ij_big, 0, scratch5);
+
                 self.at_mut(i, j)
-                    .encrypt_sk(module, &sk_ij, sk, source_xa, source_xe, sigma, scratch2);
+                    .encrypt_sk(module, &sk_ij, sk, source_xa, source_xe, sigma, scratch5);
             });
         })
     }

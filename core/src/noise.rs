@@ -12,7 +12,7 @@ pub(crate) fn var_noise_gglwe_product(
     b_logq: usize,
 ) -> f64 {
     let a_logq: usize = a_logq.min(b_logq);
-    let a_cols: usize = (a_logq + basek - 1) / basek;
+    let a_cols: usize = a_logq.div_ceil(basek);
 
     let b_scale: f64 = (b_logq as f64).exp2();
     let a_scale: f64 = ((b_logq - a_logq) as f64).exp2();
@@ -73,7 +73,7 @@ pub(crate) fn noise_ggsw_product(
     k_ggsw: usize,
 ) -> f64 {
     let a_logq: usize = k_in.min(k_ggsw);
-    let a_cols: usize = (a_logq + basek - 1) / basek;
+    let a_cols: usize = a_logq.div_ceil(basek);
 
     let b_scale: f64 = (k_ggsw as f64).exp2();
     let a_scale: f64 = ((k_ggsw - a_logq) as f64).exp2();
