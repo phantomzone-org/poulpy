@@ -30,7 +30,6 @@ pub trait ZnxSliceSize {
     /// two size of the same column.
     fn sl(&self) -> usize;
 }
-
 pub trait DataView {
     type D: Data;
     fn data(&self) -> &Self::D;

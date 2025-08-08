@@ -373,7 +373,7 @@ where
     where
         R: VecZnxToMut,
     {
-        B::vec_znx_fill_uniform_impl(self, basek, res, res_col, k, source);
+        B::vec_znx_fill_uniform_impl(basek, res, res_col, k, source);
     }
 }
 
@@ -393,7 +393,7 @@ where
     ) where
         R: VecZnxToMut,
     {
-        B::vec_znx_fill_dist_f64_impl(self, basek, res, res_col, k, source, dist, bound);
+        B::vec_znx_fill_dist_f64_impl(basek, res, res_col, k, source, dist, bound);
     }
 }
 
@@ -413,7 +413,7 @@ where
     ) where
         R: VecZnxToMut,
     {
-        B::vec_znx_add_dist_f64_impl(self, basek, res, res_col, k, source, dist, bound);
+        B::vec_znx_add_dist_f64_impl(basek, res, res_col, k, source, dist, bound);
     }
 }
 
@@ -433,7 +433,7 @@ where
     ) where
         R: VecZnxToMut,
     {
-        B::vec_znx_fill_normal_impl(self, basek, res, res_col, k, source, sigma, bound);
+        B::vec_znx_fill_normal_impl(basek, res, res_col, k, source, sigma, bound);
     }
 }
 
@@ -453,7 +453,7 @@ where
     ) where
         R: VecZnxToMut,
     {
-        B::vec_znx_add_normal_impl(self, basek, res, res_col, k, source, sigma, bound);
+        B::vec_znx_add_normal_impl(basek, res, res_col, k, source, sigma, bound);
     }
 }
 
@@ -465,7 +465,7 @@ where
     where
         R: VecZnxToMut,
     {
-        B::encode_vec_i64_impl(self, basek, res, res_col, k, data, log_max);
+        B::encode_vec_i64_impl(basek, res, res_col, k, data, log_max);
     }
 }
 
@@ -477,7 +477,7 @@ where
     where
         R: VecZnxToMut,
     {
-        B::encode_coeff_i64_impl(self, basek, res, res_col, k, i, data, log_max);
+        B::encode_coeff_i64_impl(basek, res, res_col, k, i, data, log_max);
     }
 }
 
@@ -489,7 +489,7 @@ where
     where
         R: VecZnxToRef,
     {
-        B::decode_vec_i64_impl(self, basek, res, res_col, k, data);
+        B::decode_vec_i64_impl(basek, res, res_col, k, data);
     }
 }
 
@@ -501,7 +501,7 @@ where
     where
         R: VecZnxToRef,
     {
-        B::decode_coeff_i64_impl(self, basek, res, res_col, k, i)
+        B::decode_coeff_i64_impl(basek, res, res_col, k, i)
     }
 }
 
@@ -513,6 +513,6 @@ where
     where
         R: VecZnxToRef,
     {
-        B::decode_vec_float_impl(self, basek, res, col_i, data);
+        B::decode_vec_float_impl(basek, res, col_i, data);
     }
 }

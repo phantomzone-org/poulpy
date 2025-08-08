@@ -24,4 +24,4 @@ pub use public_key::*;
 pub use secret::*;
 
 #[cfg(test)]
-mod test_fft64;
+mod test;

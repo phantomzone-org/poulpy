@@ -10,7 +10,7 @@ use sampling::source::Source;
 use crate::{
     hal::{
         api::{
-            TakeSlice, TakeVecZnx, VecZnxAddDistF64, VecZnxCopy, VecZnxDecodeVecFloat, VecZnxFillDistF64,
+            TakeSlice, TakeVecZnx, VecZnxCopy, VecZnxDecodeVecFloat,
             VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace, VecZnxSwithcDegree, ZnxInfos, ZnxSliceSize, ZnxView,
             ZnxViewMut, ZnxZero,
         },
@@ -931,7 +931,7 @@ unsafe impl<B: Backend> VecZnxFillUniformImpl<B> for B
 where
     B: CPUAVX,
 {
-    fn vec_znx_fill_uniform_impl<R>(_module: &Module<B>, basek: usize, res: &mut R, res_col: usize, k: usize, source: &mut Source)
+    fn vec_znx_fill_uniform_impl<R>(basek: usize, res: &mut R, res_col: usize, k: usize, source: &mut Source)
     where
         R: VecZnxToMut,
     {
@@ -952,7 +952,6 @@ where
     B: CPUAVX,
 {
     fn vec_znx_fill_dist_f64_impl<R, D: rand::prelude::Distribution<f64>>(
-        _module: &Module<B>,
         basek: usize,
         res: &mut R,
         res_col: usize,
@@ -998,7 +997,6 @@ where
     B: CPUAVX,
 {
     fn vec_znx_add_dist_f64_impl<R, D: rand::prelude::Distribution<f64>>(
-        _module: &Module<B>,
         basek: usize,
         res: &mut R,
         res_col: usize,
@@ -1044,7 +1042,6 @@ where
     B: CPUAVX,
 {
     fn vec_znx_fill_normal_impl<R>(
-        module: &Module<B>,
         basek: usize,
         res: &mut R,
         res_col: usize,
@@ -1055,7 +1052,7 @@ where
     ) where
         R: VecZnxToMut,
     {
-        module.vec_znx_fill_dist_f64(
+        B::vec_znx_fill_dist_f64_impl(
             basek,
             res,
             res_col,
@@ -1072,7 +1069,6 @@ where
     B: CPUAVX,
 {
     fn vec_znx_add_normal_impl<R>(
-        module: &Module<B>,
         basek: usize,
         res: &mut R,
         res_col: usize,
@@ -1083,7 +1079,7 @@ where
     ) where
         R: VecZnxToMut,
     {
-        module.vec_znx_add_dist_f64(
+        B::vec_znx_add_dist_f64_impl(
             basek,
             res,
             res_col,
@@ -1100,7 +1096,6 @@ where
     B: CPUAVX,
 {
     fn encode_vec_i64_impl<R>(
-        _module: &Module<B>,
         basek: usize,
         res: &mut R,
         res_col: usize,
@@ -1168,7 +1163,6 @@ where
     B: CPUAVX,
 {
     fn encode_coeff_i64_impl<R>(
-        _module: &Module<B>,
         basek: usize,
         res: &mut R,
         res_col: usize,
@@ -1228,7 +1222,7 @@ unsafe impl<B: Backend> VecZnxDecodeVeci64Impl<B> for B
 where
     B: CPUAVX,
 {
-    fn decode_vec_i64_impl<R>(_module: &Module<B>, basek: usize, res: &R, res_col: usize, k: usize, data: &mut [i64])
+    fn decode_vec_i64_impl<R>(basek: usize, res: &R, res_col: usize, k: usize, data: &mut [i64])
     where
         R: VecZnxToRef,
     {
@@ -1271,7 +1265,7 @@ unsafe impl<B: Backend> VecZnxDecodeCoeffsi64Impl<B> for B
 where
     B: CPUAVX,
 {
-    fn decode_coeff_i64_impl<R>(_module: &Module<B>, basek: usize, res: &R, res_col: usize, k: usize, i: usize) -> i64
+    fn decode_coeff_i64_impl<R>(basek: usize, res: &R, res_col: usize, k: usize, i: usize) -> i64
     where
         R: VecZnxToRef,
     {
@@ -1303,7 +1297,7 @@ unsafe impl<B: Backend> VecZnxDecodeVecFloatImpl<B> for B
 where
     B: CPUAVX,
 {
-    fn decode_vec_float_impl<R>(_module: &Module<B>, basek: usize, res: &R, res_col: usize, data: &mut [Float])
+    fn decode_vec_float_impl<R>(basek: usize, res: &R, res_col: usize, data: &mut [Float])
     where
         R: VecZnxToRef,
     {

@@ -1,12 +1,16 @@
 use crate::{
     alloc_aligned,
     hal::{
-        api::{DataView, DataViewMut, ZnxInfos, ZnxSliceSize, ZnxView},
-        layouts::{Data, DataMut, DataRef, ReaderFrom, VecZnx, WriterTo},
+        api::{DataView, DataViewMut, ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero},
+        layouts::{Backend, Data, DataMut, DataRef, FillUniform, ReaderFrom, VecZnx, WriterTo},
     },
 };
 
-#[derive(PartialEq, Eq)]
+use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
+use rand::RngCore;
+use sampling::source::Source;
+
+#[derive(PartialEq, Eq, Clone, Debug)]
 pub struct MatZnx<D: Data> {
     data: D,
     n: usize,
@@ -162,6 +166,15 @@ pub type MatZnxOwned = MatZnx<Vec<u8>>;
 pub type MatZnxMut<'a> = MatZnx<&'a mut [u8]>;
 pub type MatZnxRef<'a> = MatZnx<&'a [u8]>;
 
+impl<D: DataMut> ZnxZero for MatZnx<D> {
+    fn zero(&mut self) {
+        self.raw_mut().fill(0)
+    }
+    fn zero_at(&mut self, i: usize, j: usize) {
+        self.at_mut(i, j).zero();
+    }
+}
+
 pub trait MatZnxToRef {
     fn to_ref(&self) -> MatZnx<&[u8]>;
 }
@@ -209,9 +222,13 @@ impl<D: Data> MatZnx<D> {
     }
 }
 
-use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
+impl<D: DataMut> FillUniform for MatZnx<D> {
+    fn fill_uniform(&mut self, source: &mut Source) {
+        source.fill_bytes(self.data.as_mut());
+    }
+}
 
-impl<D: DataMut> ReaderFrom for MatZnx<D> {
+impl<D: DataMut, B: Backend> ReaderFrom<B> for MatZnx<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         self.n = reader.read_u64::<LittleEndian>()? as usize;
         self.size = reader.read_u64::<LittleEndian>()? as usize;
@@ -231,7 +248,7 @@ impl<D: DataMut> ReaderFrom for MatZnx<D> {
     }
 }
 
-impl<D: DataRef> WriterTo for MatZnx<D> {
+impl<D: DataRef, B: Backend> WriterTo<B> for MatZnx<D> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         writer.write_u64::<LittleEndian>(self.n as u64)?;
         writer.write_u64::<LittleEndian>(self.size as u64)?;

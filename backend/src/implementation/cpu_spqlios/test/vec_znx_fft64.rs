@@ -2,7 +2,7 @@ use crate::{
     hal::{
         api::ModuleNew,
         layouts::Module,
-        tests::vec_znx::{
+        tests::vec_znx::generics::{
             test_vec_znx_add_normal, test_vec_znx_encode_vec_i64_hi_norm, test_vec_znx_encode_vec_i64_lo_norm,
             test_vec_znx_fill_uniform,
         },

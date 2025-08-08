@@ -326,7 +326,7 @@ pub unsafe trait VecZnxStdImpl<B: Backend> {
 /// * See [crate::hal::api::VecZnxFillUniform] for corresponding public API.
 /// * See [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxFillUniformImpl<B: Backend> {
-    fn vec_znx_fill_uniform_impl<R>(module: &Module<B>, basek: usize, res: &mut R, res_col: usize, k: usize, source: &mut Source)
+    fn vec_znx_fill_uniform_impl<R>(basek: usize, res: &mut R, res_col: usize, k: usize, source: &mut Source)
     where
         R: VecZnxToMut;
 }
@@ -336,7 +336,6 @@ pub unsafe trait VecZnxFillUniformImpl<B: Backend> {
 /// * See [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxFillDistF64Impl<B: Backend> {
     fn vec_znx_fill_dist_f64_impl<R, D: Distribution<f64>>(
-        module: &Module<B>,
         basek: usize,
         res: &mut R,
         res_col: usize,
@@ -353,7 +352,6 @@ pub unsafe trait VecZnxFillDistF64Impl<B: Backend> {
 /// * See [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxAddDistF64Impl<B: Backend> {
     fn vec_znx_add_dist_f64_impl<R, D: Distribution<f64>>(
-        module: &Module<B>,
         basek: usize,
         res: &mut R,
         res_col: usize,
@@ -370,7 +368,6 @@ pub unsafe trait VecZnxAddDistF64Impl<B: Backend> {
 /// * See [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxFillNormalImpl<B: Backend> {
     fn vec_znx_fill_normal_impl<R>(
-        module: &Module<B>,
         basek: usize,
         res: &mut R,
         res_col: usize,
@@ -387,7 +384,6 @@ pub unsafe trait VecZnxFillNormalImpl<B: Backend> {
 /// * See [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxAddNormalImpl<B: Backend> {
     fn vec_znx_add_normal_impl<R>(
-        module: &Module<B>,
         basek: usize,
         res: &mut R,
         res_col: usize,
@@ -405,7 +401,6 @@ pub unsafe trait VecZnxAddNormalImpl<B: Backend> {
 /// * See [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxEncodeVeci64Impl<B: Backend> {
     fn encode_vec_i64_impl<R>(
-        module: &Module<B>,
         basek: usize,
         res: &mut R,
         res_col: usize,
@@ -422,7 +417,6 @@ pub unsafe trait VecZnxEncodeVeci64Impl<B: Backend> {
 /// * See [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxEncodeCoeffsi64Impl<B: Backend> {
     fn encode_coeff_i64_impl<R>(
-        module: &Module<B>,
         basek: usize,
         res: &mut R,
         res_col: usize,
@@ -439,7 +433,7 @@ pub unsafe trait VecZnxEncodeCoeffsi64Impl<B: Backend> {
 /// * See [crate::hal::api::VecZnxDecodeVeci64] for corresponding public API.
 /// * See [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxDecodeVeci64Impl<B: Backend> {
-    fn decode_vec_i64_impl<R>(module: &Module<B>, basek: usize, res: &R, res_col: usize, k: usize, data: &mut [i64])
+    fn decode_vec_i64_impl<R>(basek: usize, res: &R, res_col: usize, k: usize, data: &mut [i64])
     where
         R: VecZnxToRef;
 }
@@ -449,7 +443,7 @@ pub unsafe trait VecZnxDecodeVeci64Impl<B: Backend> {
 /// * See [crate::hal::api::VecZnxDecodeCoeffsi64] for corresponding public API.
 /// * See [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxDecodeCoeffsi64Impl<B: Backend> {
-    fn decode_coeff_i64_impl<R>(module: &Module<B>, basek: usize, res: &R, res_col: usize, k: usize, i: usize) -> i64
+    fn decode_coeff_i64_impl<R>(basek: usize, res: &R, res_col: usize, k: usize, i: usize) -> i64
     where
         R: VecZnxToRef;
 }
@@ -459,7 +453,7 @@ pub unsafe trait VecZnxDecodeCoeffsi64Impl<B: Backend> {
 /// * See [crate::hal::api::VecZnxDecodeVecFloat] for corresponding public API.
 /// * See [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxDecodeVecFloatImpl<B: Backend> {
-    fn decode_vec_float_impl<R>(module: &Module<B>, basek: usize, res: &R, res_col: usize, data: &mut [Float])
+    fn decode_vec_float_impl<R>(basek: usize, res: &R, res_col: usize, data: &mut [Float])
     where
         R: VecZnxToRef;
 }

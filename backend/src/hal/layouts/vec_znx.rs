@@ -4,11 +4,11 @@ use crate::{
     alloc_aligned,
     hal::{
         api::{DataView, DataViewMut, ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero},
-        layouts::{Data, DataMut, DataRef, ReaderFrom, WriterTo},
+        layouts::{Backend, Data, DataMut, DataRef, FillUniform, ReaderFrom, WriterTo},
     },
 };
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Clone)]
 pub struct VecZnx<D: Data> {
     pub(crate) data: D,
     pub(crate) n: usize,
@@ -38,6 +38,12 @@ impl<D: Data> ZnxInfos for VecZnx<D> {
 
     fn size(&self) -> usize {
         self.size
+    }
+}
+
+impl<D: Data> VecZnx<D> {
+    pub fn max_size(&self) -> usize {
+        self.max_size
     }
 }
 
@@ -161,6 +167,12 @@ pub type VecZnxOwned = VecZnx<Vec<u8>>;
 pub type VecZnxMut<'a> = VecZnx<&'a mut [u8]>;
 pub type VecZnxRef<'a> = VecZnx<&'a [u8]>;
 
+impl<D: DataMut> FillUniform for VecZnx<D> {
+    fn fill_uniform(&mut self, source: &mut Source) {
+        source.fill_bytes(self.data.as_mut());
+    }
+}
+
 pub trait VecZnxToRef {
     fn to_ref(&self) -> VecZnx<&[u8]>;
 }
@@ -207,8 +219,10 @@ impl<D: DataRef> VecZnx<D> {
 }
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
+use rand::RngCore;
+use sampling::source::Source;
 
-impl<D: DataMut> ReaderFrom for VecZnx<D> {
+impl<D: DataMut, B: Backend> ReaderFrom<B> for VecZnx<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         self.n = reader.read_u64::<LittleEndian>()? as usize;
         self.cols = reader.read_u64::<LittleEndian>()? as usize;
@@ -227,7 +241,7 @@ impl<D: DataMut> ReaderFrom for VecZnx<D> {
     }
 }
 
-impl<D: DataRef> WriterTo for VecZnx<D> {
+impl<D: DataRef, B: Backend> WriterTo<B> for VecZnx<D> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         writer.write_u64::<LittleEndian>(self.n as u64)?;
         writer.write_u64::<LittleEndian>(self.cols as u64)?;

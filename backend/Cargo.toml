@@ -14,7 +14,8 @@ rand_core = {workspace = true}
 sampling = { path = "../sampling" }
 utils = { path = "../utils" }
 paste = "1.0.15"
-byteorder = {workspace = true} 
+byteorder = {workspace = true}
+zstd = "0.13.3"
 
 [build-dependencies]
 cmake = "0.1.54"

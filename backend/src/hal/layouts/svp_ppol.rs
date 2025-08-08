@@ -4,11 +4,11 @@ use crate::{
     alloc_aligned,
     hal::{
         api::{DataView, DataViewMut, ZnxInfos},
-        layouts::{Backend, Data, DataMut, DataRef, ReaderFrom, WriterTo},
+        layouts::{Backend, Data, DataMut, DataRef, FillUniform, ReaderFrom, WriterTo},
     },
 };
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Clone)]
 pub struct SvpPPol<D: Data, B: Backend> {
     data: D,
     n: usize,
@@ -79,6 +79,12 @@ where
 
 pub type SvpPPolOwned<B> = SvpPPol<Vec<u8>, B>;
 
+impl<D: DataMut, B: Backend> FillUniform for SvpPPol<D, B> {
+    fn fill_uniform(&mut self, source: &mut Source) {
+        source.fill_bytes(self.data.as_mut());
+    }
+}
+
 pub trait SvpPPolToRef<B: Backend> {
     fn to_ref(&self) -> SvpPPol<&[u8], B>;
 }
@@ -121,8 +127,10 @@ impl<D: Data, B: Backend> SvpPPol<D, B> {
 }
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
+use rand::RngCore;
+use sampling::source::Source;
 
-impl<D: DataMut, B: Backend> ReaderFrom for SvpPPol<D, B> {
+impl<D: DataMut, B: Backend> ReaderFrom<B> for SvpPPol<D, B> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         self.n = reader.read_u64::<LittleEndian>()? as usize;
         self.cols = reader.read_u64::<LittleEndian>()? as usize;
@@ -139,7 +147,7 @@ impl<D: DataMut, B: Backend> ReaderFrom for SvpPPol<D, B> {
     }
 }
 
-impl<D: DataRef, B: Backend> WriterTo for SvpPPol<D, B> {
+impl<D: DataRef, B: Backend> WriterTo<B> for SvpPPol<D, B> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         writer.write_u64::<LittleEndian>(self.n as u64)?;
         writer.write_u64::<LittleEndian>(self.cols as u64)?;

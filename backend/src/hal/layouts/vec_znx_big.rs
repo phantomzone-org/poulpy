@@ -1,16 +1,18 @@
 use std::marker::PhantomData;
 
+use rand::RngCore;
 use rand_distr::num_traits::Zero;
+use sampling::source::Source;
 
 use crate::{
     alloc_aligned,
     hal::{
         api::{DataView, DataViewMut, ZnxInfos, ZnxView, ZnxViewMut, ZnxZero},
-        layouts::{Backend, Data, DataMut, DataRef},
+        layouts::{Backend, Data, DataMut, DataRef, FillUniform},
     },
 };
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Clone)]
 pub struct VecZnxBig<D: Data, B: Backend> {
     pub(crate) data: D,
     pub(crate) n: usize,
@@ -112,6 +114,12 @@ impl<D: Data, B: Backend> VecZnxBig<D, B> {
 }
 
 pub type VecZnxBigOwned<B> = VecZnxBig<Vec<u8>, B>;
+
+impl<D: DataMut, B: Backend> FillUniform for VecZnxBig<D, B> {
+    fn fill_uniform(&mut self, source: &mut Source) {
+        source.fill_bytes(self.data.as_mut());
+    }
+}
 
 pub trait VecZnxBigToRef<B: Backend> {
     fn to_ref(&self) -> VecZnxBig<&[u8], B>;

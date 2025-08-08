@@ -31,18 +31,6 @@ pub fn assert_alignement<T>(ptr: *const T) {
     )
 }
 
-pub fn cast<T, V>(data: &[T]) -> &[V] {
-    let ptr: *const V = data.as_ptr() as *const V;
-    let len: usize = data.len() / size_of::<V>();
-    unsafe { std::slice::from_raw_parts(ptr, len) }
-}
-
-pub fn cast_mut<T, V>(data: &[T]) -> &mut [V] {
-    let ptr: *mut V = data.as_ptr() as *mut V;
-    let len: usize = data.len() / size_of::<V>();
-    unsafe { std::slice::from_raw_parts_mut(ptr, len) }
-}
-
 /// Allocates a block of bytes with a custom alignement.
 /// Alignement must be a power of two and size a multiple of the alignement.
 /// Allocated memory is initialized to zero.

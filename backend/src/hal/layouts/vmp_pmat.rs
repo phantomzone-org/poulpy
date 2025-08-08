@@ -1,14 +1,17 @@
 use std::marker::PhantomData;
 
+use rand::RngCore;
+use sampling::source::Source;
+
 use crate::{
     alloc_aligned,
     hal::{
         api::{DataView, DataViewMut, ZnxInfos},
-        layouts::{Backend, Data, DataMut, DataRef},
+        layouts::{Backend, Data, DataMut, DataRef, FillUniform},
     },
 };
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Clone)]
 pub struct VmpPMat<D: Data, B: Backend> {
     data: D,
     n: usize,
@@ -105,6 +108,12 @@ where
 
 pub type VmpPMatOwned<B> = VmpPMat<Vec<u8>, B>;
 pub type VmpPMatRef<'a, B> = VmpPMat<&'a [u8], B>;
+
+impl<D: DataMut, B: Backend> FillUniform for VmpPMat<D, B> {
+    fn fill_uniform(&mut self, source: &mut Source) {
+        source.fill_bytes(self.data.as_mut());
+    }
+}
 
 pub trait VmpPMatToRef<B: Backend> {
     fn to_ref(&self) -> VmpPMat<&[u8], B>;

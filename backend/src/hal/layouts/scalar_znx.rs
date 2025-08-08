@@ -7,11 +7,11 @@ use crate::{
     alloc_aligned,
     hal::{
         api::{DataView, DataViewMut, ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero},
-        layouts::{Data, DataMut, DataRef, ReaderFrom, VecZnx, VecZnxToMut, VecZnxToRef, WriterTo},
+        layouts::{Backend, Data, DataMut, DataRef, FillUniform, ReaderFrom, VecZnx, VecZnxToMut, VecZnxToRef, WriterTo},
     },
 };
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub struct ScalarZnx<D: Data> {
     pub(crate) data: D,
     pub(crate) n: usize,
@@ -151,6 +151,12 @@ impl<D: Data> ScalarZnx<D> {
     }
 }
 
+impl<D: DataMut> FillUniform for ScalarZnx<D> {
+    fn fill_uniform(&mut self, source: &mut Source) {
+        source.fill_bytes(self.data.as_mut());
+    }
+}
+
 pub trait ScalarZnxToRef {
     fn to_ref(&self) -> ScalarZnx<&[u8]>;
 }
@@ -205,7 +211,7 @@ impl<D: DataMut> VecZnxToMut for ScalarZnx<D> {
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
-impl<D: DataMut> ReaderFrom for ScalarZnx<D> {
+impl<D: DataMut, B: Backend> ReaderFrom<B> for ScalarZnx<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         self.n = reader.read_u64::<LittleEndian>()? as usize;
         self.cols = reader.read_u64::<LittleEndian>()? as usize;
@@ -222,7 +228,7 @@ impl<D: DataMut> ReaderFrom for ScalarZnx<D> {
     }
 }
 
-impl<D: DataRef> WriterTo for ScalarZnx<D> {
+impl<D: DataRef, B: Backend> WriterTo<B> for ScalarZnx<D> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         writer.write_u64::<LittleEndian>(self.n as u64)?;
         writer.write_u64::<LittleEndian>(self.cols as u64)?;
