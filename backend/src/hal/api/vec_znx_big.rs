@@ -20,12 +20,12 @@ pub trait VecZnxBigFromBytes<B: Backend> {
 }
 
 /// Add a discrete normal distribution on res.
-/// 
+///
 /// # Arguments
 /// * `basek`: base two logarithm of the bivariate representation
 /// * `res`: receiver.
 /// * `res_col`: column of the receiver on which the operation is performed/stored.
-/// * `k`: 
+/// * `k`:
 /// * `source`: random coin source.
 /// * `sigma`: standard deviation of the discrete normal distribution.
 /// * `bound`: rejection sampling bound.

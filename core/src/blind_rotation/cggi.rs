@@ -11,11 +11,9 @@ use backend::hal::{
 use itertools::izip;
 
 use crate::{
-    GLWECiphertext, GLWECiphertextToMut, GLWEOps, Infos, LWECiphertext, ScratchCore,
-    blind_rotation::{
-        key::BlindRotationKeyCGGI,
-        lut::{LookUpTable, LookUpTableRotationDirection},
-    },
+    BlindRotationKeyCGGIExec, GLWECiphertext, GLWECiphertextToMut, GLWEExternalProductFamily, GLWEOps, Infos, LWECiphertext,
+    TakeGLWECt,
+    blind_rotation::lut::{LookUpTable, LookUpTableRotationDirection},
     dist::Distribution,
     lwe::ciphertext::LWECiphertextToRef,
 };

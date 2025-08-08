@@ -1,5 +1,6 @@
 #![feature(trait_alias)]
 mod blind_rotation;
+mod circuit_bootstrapping;
 mod dist;
 mod elem;
 mod gglwe;
@@ -12,6 +13,7 @@ mod scratch;
 use crate::dist::Distribution;
 
 pub use blind_rotation::*;
+pub use circuit_bootstrapping::*;
 pub use elem::*;
 pub use gglwe::*;
 pub use ggsw::*;

@@ -1,20 +1,76 @@
 use std::time::Instant;
 
-use backend::{Encoding, FFT64, Module, ScalarZnxAlloc, ScratchOwned, VecZnxOps, ZnxView, ZnxViewMut};
+use backend::{
+    hal::{
+        api::{
+            MatZnxAlloc, ModuleNew, ScalarZnxAlloc, ScalarZnxAllocBytes, ScalarZnxAutomorphism, ScratchOwnedAlloc,
+            ScratchOwnedBorrow, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxAllocBytes, VecZnxEncodeCoeffsi64,
+            VecZnxFillUniform, VecZnxNormalizeInplace, VecZnxRotateInplace, VecZnxStd, VecZnxSwithcDegree, ZnxView, ZnxViewMut,
+        },
+        layouts::{Backend, Module, ScalarZnx, ScratchOwned},
+        oep::{
+            ScratchAvailableImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeMatZnxImpl, TakeScalarZnxImpl,
+            TakeSvpPPolImpl, TakeVecZnxBigImpl, TakeVecZnxDftImpl, TakeVecZnxDftSliceImpl, TakeVecZnxImpl, TakeVecZnxSliceImpl,
+        },
+    },
+    implementation::cpu_spqlios::FFT64,
+};
 use sampling::source::Source;
 
 use crate::{
-    FourierGLWESecret, GGSWCiphertext, GLWECiphertext, GLWEPlaintext, GLWESecret, LWECiphertext, LWESecret,
+    AutomorphismKeyEncryptSkFamily, BlindRotationKeyCGGIExecLayoutFamily, GGSWAssertNoiseFamily, GGSWCiphertext,
+    GGSWCiphertextExec, GGSWEncryptSkFamily, GLWECiphertext, GLWEDecryptFamily, GLWEPlaintext, GLWESecret, GLWESecretExec,
+    GLWESecretFamily, GLWETensorKeyEncryptSkFamily, LWECiphertext, LWESecret,
     circuit_bootstrapping::circuit_bootstrapping::{
-        CircuitBootstrappingKeyCGGI, circuit_bootstrap_to_constant_cggi, circuit_bootstrap_to_exponent_cggi,
+        CGGICircuitBootstrapFamily, CircuitBootstrappingKeyCGGI, CircuitBootstrappingKeyCGGIExec,
+        circuit_bootstrap_to_constant_cggi, circuit_bootstrap_to_exponent_cggi,
     },
-    get_ggsw_noise,
     lwe::LWEPlaintext,
 };
 
 #[test]
-fn to_exponent() {
+fn test_to_exponent() {
     let module: Module<FFT64> = Module::<FFT64>::new(256);
+    to_exponent(&module);
+}
+
+fn to_exponent<B: Backend>(module: &Module<B>)
+where
+    Module<B>: GLWESecretFamily<B>
+        + ScalarZnxAlloc
+        + VecZnxEncodeCoeffsi64
+        + VecZnxFillUniform
+        + VecZnxAddNormal
+        + VecZnxNormalizeInplace<B>
+        + MatZnxAlloc
+        + GLWESecretFamily<B>
+        + GGSWEncryptSkFamily<B>
+        + ScalarZnxAlloc
+        + VecZnxAddScalarInplace
+        + AutomorphismKeyEncryptSkFamily<B>
+        + ScalarZnxAutomorphism
+        + ScalarZnxAllocBytes
+        + VecZnxAllocBytes
+        + VecZnxSwithcDegree
+        + GLWETensorKeyEncryptSkFamily<B>
+        + BlindRotationKeyCGGIExecLayoutFamily<B>
+        + ScalarZnxAlloc
+        + CGGICircuitBootstrapFamily<B>
+        + GLWEDecryptFamily<B>
+        + GGSWAssertNoiseFamily<B>
+        + VecZnxStd,
+    B: ScratchOwnedAllocImpl<B>
+        + ScratchOwnedBorrowImpl<B>
+        + TakeVecZnxDftImpl<B>
+        + ScratchAvailableImpl<B>
+        + TakeVecZnxImpl<B>
+        + TakeScalarZnxImpl<B>
+        + TakeSvpPPolImpl<B>
+        + TakeVecZnxBigImpl<B>
+        + TakeVecZnxDftSliceImpl<B>
+        + TakeMatZnxImpl<B>
+        + TakeVecZnxSliceImpl<B>,
+{
     let basek: usize = 17;
     let extension_factor: usize = 1;
     let rank: usize = 1;
@@ -34,7 +90,7 @@ fn to_exponent() {
     let k_tsk: usize = 5 * basek;
     let rows_tsk: usize = 4;
 
-    let mut scratch: ScratchOwned = ScratchOwned::new(1 << 23);
+    let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(1 << 23);
 
     let mut source_xs: Source = Source::new([1u8; 32]);
     let mut source_xa: Source = Source::new([1u8; 32]);
@@ -46,20 +102,24 @@ fn to_exponent() {
     let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc(&module, rank);
     sk_glwe.fill_ternary_prob(0.5, &mut source_xs);
 
-    let mut sk_glwe_fourier: FourierGLWESecret<Vec<u8>, FFT64> = FourierGLWESecret::alloc(&module, rank);
-    sk_glwe_fourier.set(&module, &sk_glwe);
+    let sk_glwe_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(&module, &sk_glwe);
 
     let data: i64 = 1;
 
     let mut pt_lwe: LWEPlaintext<Vec<u8>> = LWEPlaintext::alloc(basek, k_lwe_pt);
-    pt_lwe
-        .data
-        .encode_coeff_i64(0, basek, k_lwe_pt + 2, 0, data, k_lwe_pt);
+    module.encode_coeff_i64(basek, &mut pt_lwe.data, 0, k_lwe_pt + 2, 0, data, k_lwe_pt);
 
     println!("pt_lwe: {}", pt_lwe.data);
 
     let mut ct_lwe: LWECiphertext<Vec<u8>> = LWECiphertext::alloc(n_lwe, basek, k_lwe_ct);
-    ct_lwe.encrypt_sk(&pt_lwe, &sk_lwe, &mut source_xa, &mut source_xe, sigma);
+    ct_lwe.encrypt_sk(
+        &module,
+        &pt_lwe,
+        &sk_lwe,
+        &mut source_xa,
+        &mut source_xe,
+        sigma,
+    );
 
     let now: Instant = Instant::now();
     let cbt_key: CircuitBootstrappingKeyCGGI<Vec<u8>> = CircuitBootstrappingKeyCGGI::generate(
@@ -83,9 +143,12 @@ fn to_exponent() {
     let k_ggsw_res: usize = 4 * basek;
     let rows_ggsw_res: usize = 2;
 
-    let mut res: GGSWCiphertext<Vec<u8>, FFT64> = GGSWCiphertext::alloc(&module, basek, k_ggsw_res, rows_ggsw_res, 1, rank);
+    let mut res: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(&module, basek, k_ggsw_res, rows_ggsw_res, 1, rank);
 
     let log_gap_out = 1;
+
+    let cbt_exec: CircuitBootstrappingKeyCGGIExec<Vec<u8>, B> =
+        CircuitBootstrappingKeyCGGIExec::from(&module, &cbt_key, scratch.borrow());
 
     let now: Instant = Instant::now();
     circuit_bootstrap_to_exponent_cggi(
@@ -95,19 +158,17 @@ fn to_exponent() {
         &ct_lwe,
         k_lwe_pt,
         extension_factor,
-        &cbt_key,
+        &cbt_exec,
         scratch.borrow(),
     );
     println!("CBT: {} ms", now.elapsed().as_millis());
 
     // X^{data * 2^log_gap_out}
-    let mut pt_ggsw: backend::ScalarZnx<Vec<u8>> = module.new_scalar_znx(1);
+    let mut pt_ggsw: ScalarZnx<Vec<u8>> = module.scalar_znx_alloc(1);
     pt_ggsw.at_mut(0, 0)[0] = 1;
     module.vec_znx_rotate_inplace(data * (1 << log_gap_out), &mut pt_ggsw, 0);
 
-    let noise: Vec<f64> = get_ggsw_noise(&module, &res, &pt_ggsw, &sk_glwe_fourier);
-
-    println!("noise: {:?}", &noise);
+    res.print_noise(module, &sk_glwe_exec, &pt_ggsw);
 
     let k_glwe: usize = k_ggsw_res;
 
@@ -118,17 +179,19 @@ fn to_exponent() {
     ct_glwe.encrypt_sk(
         &module,
         &pt_glwe,
-        &sk_glwe_fourier,
+        &sk_glwe_exec,
         &mut source_xa,
         &mut source_xe,
         sigma,
         scratch.borrow(),
     );
 
-    ct_glwe.external_product_inplace(&module, &res, scratch.borrow());
+    let res_exec: GGSWCiphertextExec<Vec<u8>, B> = GGSWCiphertextExec::from(&module, &res, scratch.borrow());
+
+    ct_glwe.external_product_inplace(&module, &res_exec, scratch.borrow());
 
     let mut pt_res: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_glwe);
-    ct_glwe.decrypt(&module, &mut pt_res, &sk_glwe_fourier, scratch.borrow());
+    ct_glwe.decrypt(&module, &mut pt_res, &sk_glwe_exec, scratch.borrow());
 
     // Parameters are set such that the first limb should be noiseless.
     let mut pt_want: Vec<i64> = vec![0i64; module.n()];
@@ -137,8 +200,48 @@ fn to_exponent() {
 }
 
 #[test]
-fn to_constant() {
+fn test_to_constant() {
     let module: Module<FFT64> = Module::<FFT64>::new(256);
+    to_constant(&module);
+}
+
+fn to_constant<B: Backend>(module: &Module<B>)
+where
+    Module<B>: GLWESecretFamily<B>
+        + ScalarZnxAlloc
+        + VecZnxEncodeCoeffsi64
+        + VecZnxFillUniform
+        + VecZnxAddNormal
+        + VecZnxNormalizeInplace<B>
+        + MatZnxAlloc
+        + GLWESecretFamily<B>
+        + GGSWEncryptSkFamily<B>
+        + ScalarZnxAlloc
+        + VecZnxAddScalarInplace
+        + AutomorphismKeyEncryptSkFamily<B>
+        + ScalarZnxAutomorphism
+        + ScalarZnxAllocBytes
+        + VecZnxAllocBytes
+        + VecZnxSwithcDegree
+        + GLWETensorKeyEncryptSkFamily<B>
+        + BlindRotationKeyCGGIExecLayoutFamily<B>
+        + ScalarZnxAlloc
+        + CGGICircuitBootstrapFamily<B>
+        + GLWEDecryptFamily<B>
+        + GGSWAssertNoiseFamily<B>
+        + VecZnxStd,
+    B: ScratchOwnedAllocImpl<B>
+        + ScratchOwnedBorrowImpl<B>
+        + TakeVecZnxDftImpl<B>
+        + ScratchAvailableImpl<B>
+        + TakeVecZnxImpl<B>
+        + TakeScalarZnxImpl<B>
+        + TakeSvpPPolImpl<B>
+        + TakeVecZnxBigImpl<B>
+        + TakeVecZnxDftSliceImpl<B>
+        + TakeMatZnxImpl<B>
+        + TakeVecZnxSliceImpl<B>,
+{
     let basek: usize = 14;
     let extension_factor: usize = 1;
     let rank: usize = 2;
@@ -158,7 +261,7 @@ fn to_constant() {
     let k_tsk: usize = 5 * basek;
     let rows_tsk: usize = 4;
 
-    let mut scratch: ScratchOwned = ScratchOwned::new(1 << 23);
+    let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(1 << 23);
 
     let mut source_xs: Source = Source::new([1u8; 32]);
     let mut source_xa: Source = Source::new([1u8; 32]);
@@ -170,20 +273,24 @@ fn to_constant() {
     let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc(&module, rank);
     sk_glwe.fill_ternary_prob(0.5, &mut source_xs);
 
-    let mut sk_glwe_fourier: FourierGLWESecret<Vec<u8>, FFT64> = FourierGLWESecret::alloc(&module, rank);
-    sk_glwe_fourier.set(&module, &sk_glwe);
+    let sk_glwe_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(&module, &sk_glwe);
 
     let data: i64 = 1;
 
     let mut pt_lwe: LWEPlaintext<Vec<u8>> = LWEPlaintext::alloc(basek, k_lwe_pt);
-    pt_lwe
-        .data
-        .encode_coeff_i64(0, basek, k_lwe_pt + 2, 0, data, k_lwe_pt);
+    module.encode_coeff_i64(basek, &mut pt_lwe.data, 0, k_lwe_pt + 2, 0, data, k_lwe_pt);
 
     println!("pt_lwe: {}", pt_lwe.data);
 
     let mut ct_lwe: LWECiphertext<Vec<u8>> = LWECiphertext::alloc(n_lwe, basek, k_lwe_ct);
-    ct_lwe.encrypt_sk(&pt_lwe, &sk_lwe, &mut source_xa, &mut source_xe, sigma);
+    ct_lwe.encrypt_sk(
+        module,
+        &pt_lwe,
+        &sk_lwe,
+        &mut source_xa,
+        &mut source_xe,
+        sigma,
+    );
 
     let now: Instant = Instant::now();
     let cbt_key: CircuitBootstrappingKeyCGGI<Vec<u8>> = CircuitBootstrappingKeyCGGI::generate(
@@ -207,7 +314,10 @@ fn to_constant() {
     let k_ggsw_res: usize = 4 * basek;
     let rows_ggsw_res: usize = 3;
 
-    let mut res: GGSWCiphertext<Vec<u8>, FFT64> = GGSWCiphertext::alloc(&module, basek, k_ggsw_res, rows_ggsw_res, 1, rank);
+    let mut res: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(&module, basek, k_ggsw_res, rows_ggsw_res, 1, rank);
+
+    let cbt_exec: CircuitBootstrappingKeyCGGIExec<Vec<u8>, B> =
+        CircuitBootstrappingKeyCGGIExec::from(&module, &cbt_key, scratch.borrow());
 
     let now: Instant = Instant::now();
     circuit_bootstrap_to_constant_cggi(
@@ -216,18 +326,16 @@ fn to_constant() {
         &ct_lwe,
         k_lwe_pt,
         extension_factor,
-        &cbt_key,
+        &cbt_exec,
         scratch.borrow(),
     );
     println!("CBT: {} ms", now.elapsed().as_millis());
 
     // X^{data * 2^log_gap_out}
-    let mut pt_ggsw: backend::ScalarZnx<Vec<u8>> = module.new_scalar_znx(1);
+    let mut pt_ggsw: ScalarZnx<Vec<u8>> = module.scalar_znx_alloc(1);
     pt_ggsw.at_mut(0, 0)[0] = data;
 
-    let noise: Vec<f64> = get_ggsw_noise(&module, &res, &pt_ggsw, &sk_glwe_fourier);
-
-    println!("noise: {:?}", &noise);
+    res.print_noise(module, &sk_glwe_exec, &pt_ggsw);
 
     let k_glwe: usize = k_ggsw_res;
 
@@ -238,17 +346,19 @@ fn to_constant() {
     ct_glwe.encrypt_sk(
         &module,
         &pt_glwe,
-        &sk_glwe_fourier,
+        &sk_glwe_exec,
         &mut source_xa,
         &mut source_xe,
         sigma,
         scratch.borrow(),
     );
 
-    ct_glwe.external_product_inplace(&module, &res, scratch.borrow());
+    let res_exec: GGSWCiphertextExec<Vec<u8>, B> = GGSWCiphertextExec::from(&module, &res, scratch.borrow());
+
+    ct_glwe.external_product_inplace(&module, &res_exec, scratch.borrow());
 
     let mut pt_res: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k_glwe);
-    ct_glwe.decrypt(&module, &mut pt_res, &sk_glwe_fourier, scratch.borrow());
+    ct_glwe.decrypt(&module, &mut pt_res, &sk_glwe_exec, scratch.borrow());
 
     // Parameters are set such that the first limb should be noiseless.
     let mut pt_want: Vec<i64> = vec![0i64; module.n()];

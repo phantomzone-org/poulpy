@@ -60,13 +60,6 @@ impl LookUpTable {
         self.data.len() * self.data[0].n()
     }
 
-    pub fn set<B: Backend>(&mut self, module: &Module<B>, f: &Vec<i64>, k: usize)
-    where
-        Module<B>: VecZnxRotateInplace + VecZnxNormalizeInplace<B> + VecZnxNormalizeTmpBytes + VecZnxSwithcDegree + VecZnxCopy,
-        B: ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
-    {
-        assert!(f.len() <= module.n());
-
     pub fn rotation_direction(&self) -> LookUpTableRotationDirection {
         self.rot_dir
     }
@@ -79,7 +72,13 @@ impl LookUpTable {
         self.rot_dir = rot_dir
     }
 
-    pub fn set(&mut self, module: &Module<FFT64>, f: &Vec<i64>, k: usize) {
+    pub fn set<B: Backend>(&mut self, module: &Module<B>, f: &Vec<i64>, k: usize)
+    where
+        Module<B>: VecZnxRotateInplace + VecZnxNormalizeInplace<B> + VecZnxNormalizeTmpBytes + VecZnxSwithcDegree + VecZnxCopy,
+        B: ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
+    {
+        assert!(f.len() <= module.n());
+
         let basek: usize = self.basek;
 
         // Get the number minimum limb to store the message modulus
@@ -125,9 +124,7 @@ impl LookUpTable {
         let drift: usize = step >> 1;
 
         // Rotates half the step to the left
-        lut_full.rotate(-(drift as i64));
-
-        module.vec_znx_rotate_inplace(-(half_step as i64), &mut lut_full, 0);
+        module.vec_znx_rotate_inplace(-(drift as i64), &mut lut_full, 0);
 
         let n_large: usize = lut_full.n();
 
