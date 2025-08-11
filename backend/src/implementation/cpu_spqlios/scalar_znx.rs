@@ -27,7 +27,7 @@ where
     B: CPUAVX,
 {
     fn scalar_znx_alloc_impl(n: usize, cols: usize) -> ScalarZnxOwned {
-        ScalarZnxOwned::new(n, cols)
+        ScalarZnxOwned::alloc(n, cols)
     }
 }
 
@@ -36,7 +36,7 @@ where
     B: CPUAVX,
 {
     fn scalar_znx_from_bytes_impl(n: usize, cols: usize, bytes: Vec<u8>) -> ScalarZnxOwned {
-        ScalarZnxOwned::new_from_bytes(n, cols, bytes)
+        ScalarZnxOwned::from_bytes(n, cols, bytes)
     }
 }
 

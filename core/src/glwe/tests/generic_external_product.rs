@@ -1,16 +1,13 @@
-use backend::{
-    hal::{
-        api::{
-            MatZnxAlloc, ModuleNew, ScalarZnxAlloc, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxAlloc,
-            VecZnxAllocBytes, VecZnxFillUniform, VecZnxRotateInplace, VecZnxStd, ZnxViewMut,
-        },
-        layouts::{Backend, Module, ScalarZnx, ScratchOwned},
-        oep::{
-            ScratchAvailableImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeScalarZnxImpl, TakeSvpPPolImpl,
-            TakeVecZnxBigImpl, TakeVecZnxDftImpl, TakeVecZnxImpl,
-        },
+use backend::hal::{
+    api::{
+        MatZnxAlloc, ScalarZnxAlloc, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxAlloc,
+        VecZnxAllocBytes, VecZnxFillUniform, VecZnxRotateInplace, VecZnxStd, ZnxViewMut,
     },
-    implementation::cpu_spqlios::FFT64,
+    layouts::{Backend, Module, ScalarZnx, ScratchOwned},
+    oep::{
+        ScratchAvailableImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeScalarZnxImpl, TakeSvpPPolImpl,
+        TakeVecZnxBigImpl, TakeVecZnxDftImpl, TakeVecZnxImpl,
+    },
 };
 use sampling::source::Source;
 
@@ -18,39 +15,6 @@ use crate::{
     GGSWCiphertext, GGSWCiphertextExec, GGSWLayoutFamily, GLWECiphertext, GLWEDecryptFamily, GLWEEncryptSkFamily,
     GLWEExternalProductFamily, GLWEPlaintext, GLWESecret, GLWESecretExec, GLWESecretFamily, Infos, noise::noise_ggsw_product,
 };
-
-#[test]
-fn apply() {
-    let log_n: usize = 8;
-    let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
-    let basek: usize = 12;
-    let k_in: usize = 45;
-    let digits: usize = k_in.div_ceil(basek);
-    (1..4).for_each(|rank| {
-        (1..digits + 1).for_each(|di| {
-            let k_ggsw: usize = k_in + basek * di;
-            let k_out: usize = k_ggsw; // Better capture noise
-            println!("test external_product digits: {} rank: {}", di, rank);
-            test_external_product(&module, basek, k_out, k_in, k_ggsw, di, rank, 3.2);
-        });
-    });
-}
-
-#[test]
-fn apply_inplace() {
-    let log_n: usize = 8;
-    let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
-    let basek: usize = 12;
-    let k_ct: usize = 60;
-    let digits: usize = k_ct.div_ceil(basek);
-    (1..4).for_each(|rank| {
-        (1..digits + 1).for_each(|di| {
-            let k_ggsw: usize = k_ct + basek * di;
-            println!("test external_product digits: {} rank: {}", di, rank);
-            test_external_product_inplace(&module, basek, k_ct, k_ggsw, di, rank, 3.2);
-        });
-    });
-}
 
 pub(crate) trait ExternalProductTestModuleFamily<B: Backend> = GLWEEncryptSkFamily<B>
     + GLWEDecryptFamily<B>
@@ -74,7 +38,7 @@ pub(crate) trait ExternalProductTestScratchFamily<B: Backend> = TakeVecZnxDftImp
     + TakeScalarZnxImpl<B>
     + TakeVecZnxImpl<B>;
 
-fn test_external_product<B: Backend>(
+pub(crate) fn test_external_product<B: Backend>(
     module: &Module<B>,
     basek: usize,
     k_out: usize,
@@ -176,7 +140,7 @@ fn test_external_product<B: Backend>(
     ct_glwe_out.assert_noise(module, &sk_exec, &pt_want, max_noise + 0.5);
 }
 
-fn test_external_product_inplace<B: Backend>(
+pub(crate) fn test_external_product_inplace<B: Backend>(
     module: &Module<B>,
     basek: usize,
     k_ct: usize,

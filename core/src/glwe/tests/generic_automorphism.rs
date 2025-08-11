@@ -1,17 +1,14 @@
-use backend::{
-    hal::{
-        api::{
-            MatZnxAlloc, ModuleNew, ScalarZnxAlloc, ScalarZnxAllocBytes, ScalarZnxAutomorphism, ScratchOwnedAlloc,
-            ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxAlloc, VecZnxAllocBytes, VecZnxAutomorphismInplace,
-            VecZnxFillUniform, VecZnxStd, VecZnxSwithcDegree,
-        },
-        layouts::{Backend, Module, ScratchOwned},
-        oep::{
-            ScratchAvailableImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeScalarZnxImpl, TakeSvpPPolImpl,
-            TakeVecZnxBigImpl, TakeVecZnxDftImpl, TakeVecZnxImpl,
-        },
+use backend::hal::{
+    api::{
+        MatZnxAlloc, ScalarZnxAlloc, ScalarZnxAllocBytes, ScalarZnxAutomorphism, ScratchOwnedAlloc, ScratchOwnedBorrow,
+        VecZnxAddScalarInplace, VecZnxAlloc, VecZnxAllocBytes, VecZnxAutomorphismInplace, VecZnxFillUniform, VecZnxStd,
+        VecZnxSwithcDegree,
     },
-    implementation::cpu_spqlios::FFT64,
+    layouts::{Backend, Module, ScratchOwned},
+    oep::{
+        ScratchAvailableImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeScalarZnxImpl, TakeSvpPPolImpl,
+        TakeVecZnxBigImpl, TakeVecZnxDftImpl, TakeVecZnxImpl,
+    },
 };
 use sampling::source::Source;
 
@@ -20,39 +17,6 @@ use crate::{
     GLWEDecryptFamily, GLWEKeyswitchFamily, GLWEPlaintext, GLWESecret, GLWESecretExec, Infos,
     noise::log2_std_noise_gglwe_product,
 };
-
-#[test]
-fn apply_inplace() {
-    let log_n: usize = 8;
-    let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
-    let basek: usize = 12;
-    let k_ct: usize = 60;
-    let digits: usize = k_ct.div_ceil(basek);
-    (1..4).for_each(|rank| {
-        (1..digits + 1).for_each(|di| {
-            let k_ksk: usize = k_ct + basek * di;
-            println!("test automorphism_inplace digits: {} rank: {}", di, rank);
-            test_automorphism_inplace(&module, basek, -5, k_ct, k_ksk, di, rank, 3.2);
-        });
-    });
-}
-
-#[test]
-fn apply() {
-    let log_n: usize = 8;
-    let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
-    let basek: usize = 12;
-    let k_in: usize = 60;
-    let digits: usize = k_in.div_ceil(basek);
-    (1..4).for_each(|rank| {
-        (1..digits + 1).for_each(|di| {
-            let k_ksk: usize = k_in + basek * di;
-            let k_out: usize = k_ksk; // Better capture noise.
-            println!("test automorphism digits: {} rank: {}", di, rank);
-            test_automorphism(&module, basek, -5, k_out, k_in, k_ksk, di, rank, 3.2);
-        })
-    });
-}
 
 pub(crate) trait AutomorphismTestModuleFamily<B: Backend> = AutomorphismKeyEncryptSkFamily<B>
     + GLWEDecryptFamily<B>
@@ -77,7 +41,7 @@ pub(crate) trait AutomorphismTestScratchFamily<B: Backend> = TakeVecZnxDftImpl<B
     + TakeScalarZnxImpl<B>
     + TakeVecZnxImpl<B>;
 
-fn test_automorphism<B: Backend>(
+pub(crate) fn test_automorphism<B: Backend>(
     module: &Module<B>,
     basek: usize,
     p: i64,
@@ -166,7 +130,7 @@ fn test_automorphism<B: Backend>(
     ct_out.assert_noise(module, &sk_exec, &pt_want, max_noise + 1.0);
 }
 
-fn test_automorphism_inplace<B: Backend>(
+pub(crate) fn test_automorphism_inplace<B: Backend>(
     module: &Module<B>,
     basek: usize,
     p: i64,

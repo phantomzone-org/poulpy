@@ -1,19 +1,16 @@
 use std::collections::HashMap;
 
-use backend::{
-    hal::{
-        api::{
-            MatZnxAlloc, ModuleNew, ScalarZnxAlloc, ScalarZnxAllocBytes, ScalarZnxAutomorphism, ScratchOwnedAlloc,
-            ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxAlloc, VecZnxAllocBytes, VecZnxBigSubSmallBInplace,
-            VecZnxEncodeVeci64, VecZnxRotateInplace, VecZnxStd, VecZnxSwithcDegree,
-        },
-        layouts::{Backend, Module, ScratchOwned},
-        oep::{
-            ScratchAvailableImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeScalarZnxImpl, TakeSvpPPolImpl,
-            TakeVecZnxBigImpl, TakeVecZnxDftImpl, TakeVecZnxImpl,
-        },
+use backend::hal::{
+    api::{
+        MatZnxAlloc, ScalarZnxAlloc, ScalarZnxAllocBytes, ScalarZnxAutomorphism, ScratchOwnedAlloc, ScratchOwnedBorrow,
+        VecZnxAddScalarInplace, VecZnxAlloc, VecZnxAllocBytes, VecZnxBigSubSmallBInplace, VecZnxEncodeVeci64,
+        VecZnxRotateInplace, VecZnxStd, VecZnxSwithcDegree,
     },
-    implementation::cpu_spqlios::FFT64,
+    layouts::{Backend, Module, ScratchOwned},
+    oep::{
+        ScratchAvailableImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeScalarZnxImpl, TakeSvpPPolImpl,
+        TakeVecZnxBigImpl, TakeVecZnxDftImpl, TakeVecZnxImpl,
+    },
 };
 use sampling::source::Source;
 
@@ -21,13 +18,6 @@ use crate::{
     AutomorphismKey, AutomorphismKeyExec, GGLWEExecLayoutFamily, GLWECiphertext, GLWEDecryptFamily, GLWEKeyswitchFamily, GLWEOps,
     GLWEPacker, GLWEPackingFamily, GLWEPlaintext, GLWESecret, GLWESecretExec, GLWESecretFamily, GLWESwitchingKeyEncryptSkFamily,
 };
-
-#[test]
-fn trace() {
-    let log_n: usize = 5;
-    let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
-    test_packing(&module);
-}
 
 pub(crate) trait PackingTestModuleFamily<B: Backend> = GLWEPackingFamily<B>
     + GLWESecretFamily<B>

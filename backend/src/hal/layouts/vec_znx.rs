@@ -3,12 +3,12 @@ use std::fmt;
 use crate::{
     alloc_aligned,
     hal::{
-        api::{DataView, DataViewMut, ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero},
+        api::{DataView, DataViewMut, FillUniform, ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero},
         layouts::{Data, DataMut, DataRef, ReaderFrom, WriterTo},
     },
 };
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Clone)]
 pub struct VecZnx<D: Data> {
     pub(crate) data: D,
     pub(crate) n: usize,
@@ -86,7 +86,7 @@ impl<D: DataRef> VecZnx<D> {
 }
 
 impl<D: DataRef + From<Vec<u8>>> VecZnx<D> {
-    pub fn new<Scalar: Sized>(n: usize, cols: usize, size: usize) -> Self {
+    pub fn alloc<Scalar: Sized>(n: usize, cols: usize, size: usize) -> Self {
         let data: Vec<u8> = alloc_aligned::<u8>(Self::alloc_bytes::<Scalar>(n, cols, size));
         Self {
             data: data.into(),
@@ -157,6 +157,12 @@ impl<D: DataRef> fmt::Display for VecZnx<D> {
     }
 }
 
+impl<D: DataMut> FillUniform for VecZnx<D> {
+    fn fill_uniform(&mut self, source: &mut Source) {
+        source.fill_bytes(self.data.as_mut());
+    }
+}
+
 pub type VecZnxOwned = VecZnx<Vec<u8>>;
 pub type VecZnxMut<'a> = VecZnx<&'a mut [u8]>;
 pub type VecZnxRef<'a> = VecZnx<&'a [u8]>;
@@ -207,6 +213,8 @@ impl<D: DataRef> VecZnx<D> {
 }
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
+use rand::RngCore;
+use sampling::source::Source;
 
 impl<D: DataMut> ReaderFrom for VecZnx<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {

@@ -11,7 +11,7 @@ where
     B: CPUAVX,
 {
     fn mat_znx_alloc_impl(module: &Module<B>, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> MatZnxOwned {
-        MatZnxOwned::new(module.n(), rows, cols_in, cols_out, size)
+        MatZnxOwned::alloc(module.n(), rows, cols_in, cols_out, size)
     }
 }
 
@@ -36,6 +36,6 @@ where
         size: usize,
         bytes: Vec<u8>,
     ) -> MatZnxOwned {
-        MatZnxOwned::new_from_bytes(module.n(), rows, cols_in, cols_out, size, bytes)
+        MatZnxOwned::from_bytes(module.n(), rows, cols_in, cols_out, size, bytes)
     }
 }

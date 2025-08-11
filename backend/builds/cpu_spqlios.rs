@@ -1,7 +1,9 @@
 use std::path::PathBuf;
 
 pub fn build() {
-    let dst: PathBuf = cmake::Config::new("src/implementation/cpu_spqlios/spqlios-arithmetic").define("ENABLE_TESTING", "FALSE").build();
+    let dst: PathBuf = cmake::Config::new("src/implementation/cpu_spqlios/spqlios-arithmetic")
+        .define("ENABLE_TESTING", "FALSE")
+        .build();
 
     let lib_dir: PathBuf = dst.join("lib");
 

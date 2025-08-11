@@ -34,7 +34,7 @@ impl<DataSelf: DataMut> LWECiphertext<DataSelf> {
 
         module.vec_znx_fill_uniform(basek, &mut self.data, 0, k, source_xa);
 
-        let mut tmp_znx: VecZnx<Vec<u8>> = VecZnx::<Vec<u8>>::new::<i64>(1, 1, self.size());
+        let mut tmp_znx: VecZnx<Vec<u8>> = VecZnx::<Vec<u8>>::alloc::<i64>(1, 1, self.size());
 
         let min_size = self.size().min(pt.size());
 

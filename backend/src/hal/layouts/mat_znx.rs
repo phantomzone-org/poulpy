@@ -1,12 +1,17 @@
 use crate::{
     alloc_aligned,
     hal::{
-        api::{DataView, DataViewMut, ZnxInfos, ZnxSliceSize, ZnxView},
+        api::{DataView, DataViewMut, FillUniform, ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero},
         layouts::{Data, DataMut, DataRef, ReaderFrom, VecZnx, WriterTo},
     },
 };
+use std::fmt;
 
-#[derive(PartialEq, Eq)]
+use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
+use rand::RngCore;
+use sampling::source::Source;
+
+#[derive(PartialEq, Eq, Clone)]
 pub struct MatZnx<D: Data> {
     data: D,
     n: usize,
@@ -14,6 +19,12 @@ pub struct MatZnx<D: Data> {
     rows: usize,
     cols_in: usize,
     cols_out: usize,
+}
+
+impl<D: DataRef> fmt::Debug for MatZnx<D> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self)
+    }
 }
 
 impl<D: Data> ZnxInfos for MatZnx<D> {
@@ -74,7 +85,7 @@ impl<D: DataRef> MatZnx<D> {
 }
 
 impl<D: DataRef + From<Vec<u8>>> MatZnx<D> {
-    pub(crate) fn new(n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> Self {
+    pub(crate) fn alloc(n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> Self {
         let data: Vec<u8> = alloc_aligned(Self::bytes_of(n, rows, cols_in, cols_out, size));
         Self {
             data: data.into(),
@@ -86,7 +97,7 @@ impl<D: DataRef + From<Vec<u8>>> MatZnx<D> {
         }
     }
 
-    pub(crate) fn new_from_bytes(
+    pub(crate) fn from_bytes(
         n: usize,
         rows: usize,
         cols_in: usize,
@@ -158,6 +169,12 @@ impl<D: DataMut> MatZnx<D> {
     }
 }
 
+impl<D: DataMut> FillUniform for MatZnx<D> {
+    fn fill_uniform(&mut self, source: &mut Source) {
+        source.fill_bytes(self.data.as_mut());
+    }
+}
+
 pub type MatZnxOwned = MatZnx<Vec<u8>>;
 pub type MatZnxMut<'a> = MatZnx<&'a mut [u8]>;
 pub type MatZnxRef<'a> = MatZnx<&'a [u8]>;
@@ -209,8 +226,6 @@ impl<D: Data> MatZnx<D> {
     }
 }
 
-use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
-
 impl<D: DataMut> ReaderFrom for MatZnx<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         self.n = reader.read_u64::<LittleEndian>()? as usize;
@@ -242,5 +257,34 @@ impl<D: DataRef> WriterTo for MatZnx<D> {
         writer.write_u64::<LittleEndian>(buf.len() as u64)?;
         writer.write_all(buf)?;
         Ok(())
+    }
+}
+
+impl<D: DataRef> fmt::Display for MatZnx<D> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(
+            f,
+            "MatZnx(n={}, rows={}, cols_in={}, cols_out={}, size={})",
+            self.n, self.rows, self.cols_in, self.cols_out, self.size
+        )?;
+
+        for row_i in 0..self.rows {
+            writeln!(f, "Row {}:", row_i)?;
+            for col_i in 0..self.cols_in {
+                writeln!(f, "cols_in {}:", col_i)?;
+                writeln!(f, "{}:", self.at(row_i, col_i))?;
+            }
+        }
+        Ok(())
+    }
+}
+
+impl<D: DataMut> ZnxZero for MatZnx<D> {
+    fn zero(&mut self) {
+        self.raw_mut().fill(0)
+    }
+
+    fn zero_at(&mut self, i: usize, j: usize) {
+        self.at_mut(i, j).zero();
     }
 }

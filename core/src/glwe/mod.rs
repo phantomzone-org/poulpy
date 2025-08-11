@@ -12,6 +12,9 @@ mod public_key;
 mod secret;
 mod trace;
 
+#[cfg(test)]
+mod tests;
+
 pub use decryption::*;
 pub use encryption::*;
 pub use external_product::*;
@@ -22,6 +25,3 @@ pub use packing::*;
 pub use plaintext::*;
 pub use public_key::*;
 pub use secret::*;
-
-#[cfg(test)]
-mod test_fft64;

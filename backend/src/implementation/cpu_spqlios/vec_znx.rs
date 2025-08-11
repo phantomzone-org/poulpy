@@ -37,7 +37,7 @@ where
     B: CPUAVX,
 {
     fn vec_znx_alloc_impl(n: usize, cols: usize, size: usize) -> VecZnxOwned {
-        VecZnxOwned::new::<i64>(n, cols, size)
+        VecZnxOwned::alloc::<i64>(n, cols, size)
     }
 }
 

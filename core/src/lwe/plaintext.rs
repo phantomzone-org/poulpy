@@ -11,7 +11,7 @@ pub struct LWEPlaintext<D: Data> {
 impl LWEPlaintext<Vec<u8>> {
     pub fn alloc(basek: usize, k: usize) -> Self {
         Self {
-            data: VecZnx::new::<i64>(1, 1, k.div_ceil(basek)),
+            data: VecZnx::alloc::<i64>(1, 1, k.div_ceil(basek)),
             k: k,
             basek: basek,
         }
