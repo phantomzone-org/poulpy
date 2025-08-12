@@ -75,7 +75,7 @@ impl LookUpTable {
         let size: usize = self.k.div_ceil(self.basek);
 
         // Equivalent to AUTO([f(0), -f(n-1), -f(n-2), ..., -f(1)], -1)
-        let mut lut_full: VecZnx<Vec<u8>> = VecZnx::new::<i64>(domain_size, 1, size);
+        let mut lut_full: VecZnx<Vec<u8>> = VecZnx::alloc::<i64>(domain_size, 1, size);
 
         let lut_at: &mut [i64] = lut_full.at_mut(0, limbs - 1);
 

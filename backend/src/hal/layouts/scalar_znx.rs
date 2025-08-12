@@ -6,12 +6,12 @@ use sampling::source::Source;
 use crate::{
     alloc_aligned,
     hal::{
-        api::{DataView, DataViewMut, ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero},
-        layouts::{Data, DataMut, DataRef, ReaderFrom, VecZnx, VecZnxToMut, VecZnxToRef, WriterTo},
+        api::{DataView, DataViewMut, FillUniform, ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero},
+        layouts::{Data, DataMut, DataRef, ReaderFrom, VecZnx, WriterTo},
     },
 };
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub struct ScalarZnx<D: Data> {
     pub(crate) data: D,
     pub(crate) n: usize,
@@ -114,7 +114,7 @@ impl<D: DataRef> ScalarZnx<D> {
 }
 
 impl<D: DataRef + From<Vec<u8>>> ScalarZnx<D> {
-    pub fn new(n: usize, cols: usize) -> Self {
+    pub fn alloc(n: usize, cols: usize) -> Self {
         let data: Vec<u8> = alloc_aligned::<u8>(Self::bytes_of(n, cols));
         Self {
             data: data.into(),
@@ -123,7 +123,7 @@ impl<D: DataRef + From<Vec<u8>>> ScalarZnx<D> {
         }
     }
 
-    pub(crate) fn new_from_bytes(n: usize, cols: usize, bytes: impl Into<Vec<u8>>) -> Self {
+    pub(crate) fn from_bytes(n: usize, cols: usize, bytes: impl Into<Vec<u8>>) -> Self {
         let data: Vec<u8> = bytes.into();
         assert!(data.len() == Self::bytes_of(n, cols));
         Self {
@@ -140,6 +140,12 @@ impl<D: DataMut> ZnxZero for ScalarZnx<D> {
     }
     fn zero_at(&mut self, i: usize, j: usize) {
         self.at_mut(i, j).fill(0);
+    }
+}
+
+impl<D: DataMut> FillUniform for ScalarZnx<D> {
+    fn fill_uniform(&mut self, source: &mut Source) {
+        source.fill_bytes(self.data.as_mut());
     }
 }
 
@@ -179,8 +185,8 @@ impl<D: DataMut> ScalarZnxToMut for ScalarZnx<D> {
     }
 }
 
-impl<D: DataRef> VecZnxToRef for ScalarZnx<D> {
-    fn to_ref(&self) -> VecZnx<&[u8]> {
+impl<D: DataRef> ScalarZnx<D> {
+    pub fn as_vec_znx(&self) -> VecZnx<&[u8]> {
         VecZnx {
             data: self.data.as_ref(),
             n: self.n,
@@ -191,8 +197,8 @@ impl<D: DataRef> VecZnxToRef for ScalarZnx<D> {
     }
 }
 
-impl<D: DataMut> VecZnxToMut for ScalarZnx<D> {
-    fn to_mut(&mut self) -> VecZnx<&mut [u8]> {
+impl<D: DataMut> ScalarZnx<D> {
+    pub fn as_vec_znx_mut(&mut self) -> VecZnx<&mut [u8]> {
         VecZnx {
             data: self.data.as_mut(),
             n: self.n,

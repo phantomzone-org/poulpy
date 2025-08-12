@@ -1,8 +1,8 @@
 use backend::hal::{
     api::{
-        MatZnxAlloc, ScalarZnxAlloc, ScalarZnxAllocBytes, ScalarZnxAutomorphism, ScalarZnxAutomorphismInplace, ScratchOwnedAlloc,
-        ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxAlloc, VecZnxAllocBytes, VecZnxAutomorphismInplace,
-        VecZnxRotateInplace, VecZnxStd, VecZnxSubABInplace, VecZnxSwithcDegree, ZnxViewMut,
+        MatZnxAlloc, ScalarZnxAlloc, ScalarZnxAllocBytes, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace,
+        VecZnxAlloc, VecZnxAllocBytes, VecZnxAutomorphism, VecZnxAutomorphismInplace, VecZnxRotateInplace, VecZnxStd,
+        VecZnxSubABInplace, VecZnxSwithcDegree, ZnxViewMut,
     },
     layouts::{Backend, Module, ScalarZnx, ScalarZnxToMut, ScratchOwned},
     oep::{
@@ -321,8 +321,8 @@ pub(crate) fn test_automorphism<B: Backend>(
         + GGLWEExecLayoutFamily<B>
         + VecZnxSwithcDegree
         + VecZnxAutomorphismInplace
-        + ScalarZnxAutomorphismInplace
-        + ScalarZnxAutomorphism,
+        + VecZnxAutomorphismInplace
+        + VecZnxAutomorphism,
     B: TestScratchFamily<B>,
 {
     let rows: usize = k_in.div_ceil(basek * digits);
@@ -393,7 +393,7 @@ pub(crate) fn test_automorphism<B: Backend>(
 
     ct_out.automorphism(module, &ct_in, &auto_key_exec, &tsk_exec, scratch.borrow());
 
-    module.scalar_znx_automorphism_inplace(p, &mut pt_scalar, 0);
+    module.vec_znx_automorphism_inplace(p, &mut pt_scalar.as_vec_znx_mut(), 0);
 
     let max_noise = |col_j: usize| -> f64 {
         noise_ggsw_keyswitch(
@@ -433,8 +433,8 @@ pub(crate) fn test_automorphism_inplace<B: Backend>(
         + GGLWEExecLayoutFamily<B>
         + VecZnxSwithcDegree
         + VecZnxAutomorphismInplace
-        + ScalarZnxAutomorphismInplace
-        + ScalarZnxAutomorphism,
+        + VecZnxAutomorphism
+        + VecZnxAutomorphismInplace,
     B: TestScratchFamily<B>,
 {
     let rows: usize = k_ct.div_ceil(digits * basek);
@@ -501,7 +501,7 @@ pub(crate) fn test_automorphism_inplace<B: Backend>(
 
     ct.automorphism_inplace(module, &auto_key_exec, &tsk_exec, scratch.borrow());
 
-    module.scalar_znx_automorphism_inplace(p, &mut pt_scalar, 0);
+    module.vec_znx_automorphism_inplace(p, &mut pt_scalar.as_vec_znx_mut(), 0);
 
     let max_noise = |col_j: usize| -> f64 {
         noise_ggsw_keyswitch(
@@ -595,7 +595,7 @@ pub(crate) fn test_external_product<B: Backend>(
 
     ct_ggsw_lhs_out.external_product(module, &ct_ggsw_lhs_in, &ct_rhs_exec, scratch.borrow());
 
-    module.vec_znx_rotate_inplace(k as i64, &mut pt_ggsw_lhs, 0);
+    module.vec_znx_rotate_inplace(k as i64, &mut pt_ggsw_lhs.as_vec_znx_mut(), 0);
 
     let var_gct_err_lhs: f64 = sigma * sigma;
     let var_gct_err_rhs: f64 = 0f64;
@@ -695,7 +695,7 @@ pub(crate) fn test_external_product_inplace<B: Backend>(
 
     ct_ggsw_lhs.external_product_inplace(module, &ct_rhs_exec, scratch.borrow());
 
-    module.vec_znx_rotate_inplace(k as i64, &mut pt_ggsw_lhs, 0);
+    module.vec_znx_rotate_inplace(k as i64, &mut pt_ggsw_lhs.as_vec_znx_mut(), 0);
 
     let var_gct_err_lhs: f64 = sigma * sigma;
     let var_gct_err_rhs: f64 = 0f64;

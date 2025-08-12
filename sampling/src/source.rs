@@ -14,11 +14,10 @@ impl Source {
         }
     }
 
-    pub fn branch(&mut self) -> Self {
+    pub fn branch(&mut self) -> ([u8; 32], Self) {
         let mut seed = [0; 32];
         self.source.fill_bytes(&mut seed);
-
-        Source::new(seed)
+        (seed, Source::new(seed))
     }
 
     #[inline(always)]

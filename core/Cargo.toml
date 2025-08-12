@@ -12,6 +12,7 @@ sampling = {path="../sampling"}
 rand_distr = {workspace = true}
 itertools = {workspace = true}
 byteorder = {workspace = true}
+rand_core = {workspace = true}
 
 [[bench]]
 name = "external_product_glwe_fft64"

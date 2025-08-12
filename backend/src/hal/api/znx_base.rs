@@ -1,5 +1,6 @@
 use crate::hal::layouts::{Data, DataMut, DataRef};
 use rand_distr::num_traits::Zero;
+use sampling::source::Source;
 
 pub trait ZnxInfos {
     /// Returns the ring degree of the polynomials.
@@ -107,4 +108,8 @@ where
 {
     fn zero(&mut self);
     fn zero_at(&mut self, i: usize, j: usize);
+}
+
+pub trait FillUniform {
+    fn fill_uniform(&mut self, source: &mut Source);
 }

@@ -1,16 +1,13 @@
-use backend::{
-    hal::{
-        api::{
-            MatZnxAlloc, ModuleNew, ScalarZnxAlloc, ScalarZnxAllocBytes, ScratchOwnedAlloc, ScratchOwnedBorrow,
-            VecZnxAddScalarInplace, VecZnxAlloc, VecZnxAllocBytes, VecZnxFillUniform, VecZnxStd, VecZnxSwithcDegree,
-        },
-        layouts::{Backend, Module, ScratchOwned},
-        oep::{
-            ScratchAvailableImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeScalarZnxImpl, TakeSvpPPolImpl,
-            TakeVecZnxBigImpl, TakeVecZnxDftImpl, TakeVecZnxImpl,
-        },
+use backend::hal::{
+    api::{
+        MatZnxAlloc, ScalarZnxAlloc, ScalarZnxAllocBytes, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace,
+        VecZnxAlloc, VecZnxAllocBytes, VecZnxFillUniform, VecZnxStd, VecZnxSwithcDegree,
     },
-    implementation::cpu_spqlios::FFT64,
+    layouts::{Backend, Module, ScratchOwned},
+    oep::{
+        ScratchAvailableImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeScalarZnxImpl, TakeSvpPPolImpl,
+        TakeVecZnxBigImpl, TakeVecZnxDftImpl, TakeVecZnxImpl,
+    },
 };
 use sampling::source::Source;
 
@@ -19,46 +16,6 @@ use crate::{
     GLWESecretFamily, GLWESwitchingKey, GLWESwitchingKeyEncryptSkFamily, GLWESwitchingKeyExec, Infos,
     noise::log2_std_noise_gglwe_product,
 };
-
-#[test]
-fn apply() {
-    let log_n: usize = 8;
-    let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
-    let basek: usize = 12;
-    let k_in: usize = 45;
-    let digits: usize = k_in.div_ceil(basek);
-    (1..4).for_each(|rank_in| {
-        (1..4).for_each(|rank_out| {
-            (1..digits + 1).for_each(|di| {
-                let k_ksk: usize = k_in + basek * di;
-                let k_out: usize = k_ksk; // better capture noise
-                println!(
-                    "test keyswitch digits: {} rank_in: {} rank_out: {}",
-                    di, rank_in, rank_out
-                );
-                test_keyswitch(
-                    &module, basek, k_out, k_in, k_ksk, di, rank_in, rank_out, 3.2,
-                );
-            })
-        });
-    });
-}
-
-#[test]
-fn apply_inplace() {
-    let log_n: usize = 8;
-    let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
-    let basek: usize = 12;
-    let k_ct: usize = 45;
-    let digits: usize = k_ct.div_ceil(basek);
-    (1..4).for_each(|rank| {
-        (1..digits + 1).for_each(|di| {
-            let k_ksk: usize = k_ct + basek * di;
-            println!("test keyswitch_inplace digits: {} rank: {}", di, rank);
-            test_keyswitch_inplace(&module, basek, k_ct, k_ksk, di, rank, 3.2);
-        });
-    });
-}
 
 pub(crate) trait KeySwitchTestModuleFamily<B: Backend> = GLWESecretFamily<B>
     + GLWESwitchingKeyEncryptSkFamily<B>
@@ -83,7 +40,7 @@ pub(crate) trait KeySwitchTestScratchFamily<B: Backend> = TakeVecZnxDftImpl<B>
     + TakeScalarZnxImpl<B>
     + TakeVecZnxImpl<B>;
 
-fn test_keyswitch<B: Backend>(
+pub(crate) fn test_keyswitch<B: Backend>(
     module: &Module<B>,
     basek: usize,
     k_out: usize,
@@ -173,7 +130,7 @@ fn test_keyswitch<B: Backend>(
     ct_out.assert_noise(module, &sk_out_exec, &pt_want, max_noise + 0.5);
 }
 
-fn test_keyswitch_inplace<B: Backend>(
+pub(crate) fn test_keyswitch_inplace<B: Backend>(
     module: &Module<B>,
     basek: usize,
     k_ct: usize,

@@ -64,7 +64,7 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
             (0..rank + 1).for_each(|col_j| {
                 // rlwe encrypt of vec_znx_pt into vec_znx_ct
 
-                self.at_mut(row_i, col_j).encrypt_sk_private(
+                self.at_mut(row_i, col_j).encrypt_sk_internal(
                     module,
                     Some((&tmp_pt, col_j)),
                     sk,

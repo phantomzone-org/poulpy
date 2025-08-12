@@ -1,7 +1,8 @@
 use backend::hal::{
     api::{
         MatZnxAlloc, ScalarZnxAlloc, ScalarZnxAllocBytes, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace,
-        VecZnxAlloc, VecZnxAllocBytes, VecZnxRotateInplace, VecZnxStd, VecZnxSubScalarInplace, VecZnxSwithcDegree, ZnxViewMut,
+        VecZnxAlloc, VecZnxAllocBytes, VecZnxCopy, VecZnxRotateInplace, VecZnxStd, VecZnxSubScalarInplace, VecZnxSwithcDegree,
+        ZnxViewMut,
     },
     layouts::{Backend, Module, ScalarZnx, ScalarZnxToMut, ScratchOwned},
     oep::{
@@ -13,7 +14,7 @@ use sampling::source::Source;
 
 use crate::{
     GGLWEEncryptSkFamily, GGLWEExecLayoutFamily, GGSWCiphertext, GGSWCiphertextExec, GGSWLayoutFamily, GLWEDecryptFamily,
-    GLWEExternalProductFamily, GLWEKeyswitchFamily, GLWESecret, GLWESecretExec, GLWESwitchingKey,
+    GLWEExternalProductFamily, GLWEKeyswitchFamily, GLWESecret, GLWESecretExec, GLWESwitchingKey, GLWESwitchingKeyCompressed,
     GLWESwitchingKeyEncryptSkFamily, GLWESwitchingKeyExec,
     noise::{log2_std_noise_gglwe_product, noise_ggsw_product},
 };
@@ -28,7 +29,8 @@ pub(crate) trait TestModuleFamily<B: Backend> = GGLWEEncryptSkFamily<B>
     + VecZnxAddScalarInplace
     + VecZnxStd
     + VecZnxAlloc
-    + VecZnxSubScalarInplace;
+    + VecZnxSubScalarInplace
+    + VecZnxCopy;
 
 pub(crate) trait TestScratchFamily<B: Backend> = TakeVecZnxDftImpl<B>
     + TakeVecZnxBigImpl<B>
@@ -42,7 +44,7 @@ pub(crate) trait TestScratchFamily<B: Backend> = TakeVecZnxDftImpl<B>
     + VecZnxBigAllocBytesImpl<B>
     + TakeSvpPPolImpl<B>;
 
-pub(crate) fn test_encrypt_sk<B: Backend>(
+pub(crate) fn test_gglwe_encrypt_sk<B: Backend>(
     module: &Module<B>,
     basek: usize,
     k_ksk: usize,
@@ -87,7 +89,57 @@ pub(crate) fn test_encrypt_sk<B: Backend>(
         .assert_noise(module, &sk_out_exec, &sk_in.data, sigma);
 }
 
-pub(crate) fn test_keyswitch<B: Backend>(
+pub(crate) fn test_gglwe_encrypt_sk_compressed<B: Backend>(
+    module: &Module<B>,
+    basek: usize,
+    k_ksk: usize,
+    digits: usize,
+    rank_in: usize,
+    rank_out: usize,
+    sigma: f64,
+) where
+    Module<B>: TestModuleFamily<B>,
+    B: TestScratchFamily<B>,
+{
+    let rows: usize = (k_ksk - digits * basek) / (digits * basek);
+
+    let mut ksk_compressed: GLWESwitchingKeyCompressed<Vec<u8>> =
+        GLWESwitchingKeyCompressed::alloc(module, basek, k_ksk, rows, digits, rank_in, rank_out);
+
+    let mut source_xs: Source = Source::new([0u8; 32]);
+    let mut source_xe: Source = Source::new([0u8; 32]);
+
+    let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GLWESwitchingKeyCompressed::encrypt_sk_scratch_space(
+        module, basek, k_ksk, rank_in, rank_out,
+    ));
+
+    let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc(module, rank_in);
+    sk_in.fill_ternary_prob(0.5, &mut source_xs);
+
+    let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(module, rank_out);
+    sk_out.fill_ternary_prob(0.5, &mut source_xs);
+    let sk_out_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk_out);
+
+    let seed_xa = [1u8; 32];
+
+    ksk_compressed.encrypt_sk(
+        module,
+        &sk_in,
+        &sk_out,
+        seed_xa,
+        &mut source_xe,
+        sigma,
+        scratch.borrow(),
+    );
+
+    let mut ksk: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc(module, basek, k_ksk, rows, digits, rank_in, rank_out);
+    ksk.decompress(module, &ksk_compressed);
+
+    ksk.key
+        .assert_noise(module, &sk_out_exec, &sk_in.data, sigma);
+}
+
+pub(crate) fn test_gglwe_keyswitch<B: Backend>(
     module: &Module<B>,
     basek: usize,
     k_out: usize,
@@ -217,7 +269,7 @@ pub(crate) fn test_keyswitch<B: Backend>(
         .assert_noise(module, &sk2_exec, &sk0.data, max_noise + 0.5);
 }
 
-pub(crate) fn test_keyswitch_inplace<B: Backend>(
+pub(crate) fn test_gglwe_keyswitch_inplace<B: Backend>(
     module: &Module<B>,
     basek: usize,
     k_ct: usize,
@@ -317,7 +369,7 @@ pub(crate) fn test_keyswitch_inplace<B: Backend>(
         .assert_noise(module, &sk2_exec, &sk0.data, max_noise + 0.5);
 }
 
-pub(crate) fn test_external_product<B: Backend>(
+pub(crate) fn test_gglwe_external_product<B: Backend>(
     module: &Module<B>,
     basek: usize,
     k_out: usize,
@@ -400,7 +452,7 @@ pub(crate) fn test_external_product<B: Backend>(
     ct_gglwe_out.external_product(module, &ct_gglwe_in, &ct_rgsw_exec, scratch.borrow());
 
     (0..rank_in).for_each(|i| {
-        module.vec_znx_rotate_inplace(r as i64, &mut sk_in.data, i); // * X^{r}
+        module.vec_znx_rotate_inplace(r as i64, &mut sk_in.data.as_vec_znx_mut(), i); // * X^{r}
     });
 
     let var_gct_err_lhs: f64 = sigma * sigma;
@@ -429,7 +481,7 @@ pub(crate) fn test_external_product<B: Backend>(
         .assert_noise(module, &sk_out_exec, &sk_in.data, max_noise + 0.5);
 }
 
-pub(crate) fn test_external_product_inplace<B: Backend>(
+pub(crate) fn test_gglwe_external_product_inplace<B: Backend>(
     module: &Module<B>,
     basek: usize,
     k_ct: usize,
@@ -510,7 +562,7 @@ pub(crate) fn test_external_product_inplace<B: Backend>(
     ct_gglwe.external_product_inplace(module, &ct_rgsw_exec, scratch.borrow());
 
     (0..rank_in).for_each(|i| {
-        module.vec_znx_rotate_inplace(r as i64, &mut sk_in.data, i); // * X^{r}
+        module.vec_znx_rotate_inplace(r as i64, &mut sk_in.data.as_vec_znx_mut(), i); // * X^{r}
     });
 
     let var_gct_err_lhs: f64 = sigma * sigma;

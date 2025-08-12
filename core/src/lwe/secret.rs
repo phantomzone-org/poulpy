@@ -14,7 +14,7 @@ pub struct LWESecret<D: Data> {
 impl LWESecret<Vec<u8>> {
     pub fn alloc(n: usize) -> Self {
         Self {
-            data: ScalarZnx::new(n, 1),
+            data: ScalarZnx::alloc(n, 1),
             dist: Distribution::NONE,
         }
     }
