@@ -2,9 +2,9 @@ use std::collections::HashMap;
 
 use backend::hal::{
     api::{
-        MatZnxAlloc, ScalarZnxAlloc, ScalarZnxAllocBytes, ScalarZnxAutomorphism, ScratchOwnedAlloc, ScratchOwnedBorrow,
-        VecZnxAddScalarInplace, VecZnxAlloc, VecZnxAllocBytes, VecZnxBigSubSmallBInplace, VecZnxEncodeVeci64,
-        VecZnxRotateInplace, VecZnxStd, VecZnxSwithcDegree,
+        MatZnxAlloc, ScalarZnxAlloc, ScalarZnxAllocBytes, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace,
+        VecZnxAlloc, VecZnxAllocBytes, VecZnxAutomorphism, VecZnxBigSubSmallBInplace, VecZnxEncodeVeci64, VecZnxRotateInplace,
+        VecZnxStd, VecZnxSwithcDegree,
     },
     layouts::{Backend, Module, ScratchOwned},
     oep::{
@@ -34,8 +34,8 @@ pub(crate) trait PackingTestModuleFamily<B: Backend> = GLWEPackingFamily<B>
     + VecZnxSwithcDegree
     + VecZnxAddScalarInplace
     + VecZnxEncodeVeci64
-    + ScalarZnxAutomorphism
     + VecZnxRotateInplace
+    + VecZnxAutomorphism
     + VecZnxBigSubSmallBInplace<B>;
 
 pub(crate) trait PackingTestScratchFamily<B: Backend> = TakeVecZnxDftImpl<B>

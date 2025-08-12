@@ -2,10 +2,10 @@ use std::collections::HashMap;
 
 use backend::hal::{
     api::{
-        MatZnxAlloc, ScalarZnxAlloc, ScalarZnxAllocBytes, ScalarZnxAutomorphism, ScratchOwnedAlloc, ScratchOwnedBorrow,
-        VecZnxAddScalarInplace, VecZnxAlloc, VecZnxAllocBytes, VecZnxBigAutomorphismInplace, VecZnxBigSubSmallBInplace,
-        VecZnxCopy, VecZnxEncodeVeci64, VecZnxFillUniform, VecZnxNormalizeInplace, VecZnxRotateInplace, VecZnxRshInplace,
-        VecZnxStd, VecZnxSubABInplace, VecZnxSwithcDegree, ZnxView, ZnxViewMut,
+        MatZnxAlloc, ScalarZnxAlloc, ScalarZnxAllocBytes, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace,
+        VecZnxAlloc, VecZnxAllocBytes, VecZnxAutomorphism, VecZnxBigAutomorphismInplace, VecZnxBigSubSmallBInplace, VecZnxCopy,
+        VecZnxEncodeVeci64, VecZnxFillUniform, VecZnxNormalizeInplace, VecZnxRotateInplace, VecZnxRshInplace, VecZnxStd,
+        VecZnxSubABInplace, VecZnxSwithcDegree, ZnxView, ZnxViewMut,
     },
     layouts::{Backend, Module, ScratchOwned},
     oep::{
@@ -35,11 +35,11 @@ pub(crate) trait TraceTestModuleFamily<B: Backend> = GLWESecretFamily<B>
     + VecZnxSwithcDegree
     + VecZnxAddScalarInplace
     + VecZnxEncodeVeci64
-    + ScalarZnxAutomorphism
     + VecZnxRotateInplace
     + VecZnxBigSubSmallBInplace<B>
     + VecZnxBigAutomorphismInplace<B>
     + VecZnxCopy
+    + VecZnxAutomorphism
     + VecZnxRshInplace;
 
 pub(crate) trait TraceTestScratchFamily<B: Backend> = TakeVecZnxDftImpl<B>

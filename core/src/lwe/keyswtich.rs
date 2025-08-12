@@ -126,7 +126,7 @@ impl<D: DataMut> GLWEToLWESwitchingKey<D> {
         let (mut sk_lwe_as_glwe, scratch1) = scratch.take_glwe_secret(module, 1);
         sk_lwe_as_glwe.data.zero();
         sk_lwe_as_glwe.data.at_mut(0, 0)[..sk_lwe.n()].copy_from_slice(sk_lwe.data.at(0, 0));
-        module.vec_znx_automorphism_inplace(-1, &mut sk_lwe_as_glwe.data, 0);
+        module.vec_znx_automorphism_inplace(-1, &mut sk_lwe_as_glwe.data.as_vec_znx_mut(), 0);
 
         self.0.encrypt_sk(
             module,
@@ -252,7 +252,7 @@ impl<D: DataMut> LWEToGLWESwitchingKey<D> {
         let (mut sk_lwe_as_glwe, scratch1) = scratch.take_glwe_secret(module, 1);
         sk_lwe_as_glwe.data.at_mut(0, 0)[..sk_lwe.n()].copy_from_slice(sk_lwe.data.at(0, 0));
         sk_lwe_as_glwe.data.at_mut(0, 0)[sk_lwe.n()..].fill(0);
-        module.vec_znx_automorphism_inplace(-1, &mut sk_lwe_as_glwe.data, 0);
+        module.vec_znx_automorphism_inplace(-1, &mut sk_lwe_as_glwe.data.as_vec_znx_mut(), 0);
 
         self.0.encrypt_sk(
             module,
@@ -368,11 +368,11 @@ impl<D: DataMut> LWESwitchingKey<D> {
 
         sk_out_glwe.data.at_mut(0, 0)[..sk_lwe_out.n()].copy_from_slice(sk_lwe_out.data.at(0, 0));
         sk_out_glwe.data.at_mut(0, 0)[sk_lwe_out.n()..].fill(0);
-        module.vec_znx_automorphism_inplace(-1, &mut sk_out_glwe.data, 0);
+        module.vec_znx_automorphism_inplace(-1, &mut sk_out_glwe.data.as_vec_znx_mut(), 0);
 
         sk_in_glwe.data.at_mut(0, 0)[..sk_lwe_in.n()].copy_from_slice(sk_lwe_in.data.at(0, 0));
         sk_in_glwe.data.at_mut(0, 0)[sk_lwe_in.n()..].fill(0);
-        module.vec_znx_automorphism_inplace(-1, &mut sk_in_glwe.data, 0);
+        module.vec_znx_automorphism_inplace(-1, &mut sk_in_glwe.data.as_vec_znx_mut(), 0);
 
         self.0.encrypt_sk(
             module,

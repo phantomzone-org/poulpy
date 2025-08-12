@@ -452,7 +452,7 @@ pub(crate) fn test_gglwe_external_product<B: Backend>(
     ct_gglwe_out.external_product(module, &ct_gglwe_in, &ct_rgsw_exec, scratch.borrow());
 
     (0..rank_in).for_each(|i| {
-        module.vec_znx_rotate_inplace(r as i64, &mut sk_in.data, i); // * X^{r}
+        module.vec_znx_rotate_inplace(r as i64, &mut sk_in.data.as_vec_znx_mut(), i); // * X^{r}
     });
 
     let var_gct_err_lhs: f64 = sigma * sigma;
@@ -562,7 +562,7 @@ pub(crate) fn test_gglwe_external_product_inplace<B: Backend>(
     ct_gglwe.external_product_inplace(module, &ct_rgsw_exec, scratch.borrow());
 
     (0..rank_in).for_each(|i| {
-        module.vec_znx_rotate_inplace(r as i64, &mut sk_in.data, i); // * X^{r}
+        module.vec_znx_rotate_inplace(r as i64, &mut sk_in.data.as_vec_znx_mut(), i); // * X^{r}
     });
 
     let var_gct_err_lhs: f64 = sigma * sigma;

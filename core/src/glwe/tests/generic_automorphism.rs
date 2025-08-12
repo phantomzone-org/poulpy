@@ -1,7 +1,7 @@
 use backend::hal::{
     api::{
-        MatZnxAlloc, ScalarZnxAlloc, ScalarZnxAllocBytes, ScalarZnxAutomorphism, ScratchOwnedAlloc, ScratchOwnedBorrow,
-        VecZnxAddScalarInplace, VecZnxAlloc, VecZnxAllocBytes, VecZnxAutomorphismInplace, VecZnxFillUniform, VecZnxStd,
+        MatZnxAlloc, ScalarZnxAlloc, ScalarZnxAllocBytes, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace,
+        VecZnxAlloc, VecZnxAllocBytes, VecZnxAutomorphism, VecZnxAutomorphismInplace, VecZnxFillUniform, VecZnxStd,
         VecZnxSwithcDegree,
     },
     layouts::{Backend, Module, ScratchOwned},
@@ -26,7 +26,7 @@ pub(crate) trait AutomorphismTestModuleFamily<B: Backend> = AutomorphismKeyEncry
     + VecZnxAlloc
     + ScalarZnxAllocBytes
     + VecZnxAllocBytes
-    + ScalarZnxAutomorphism
+    + VecZnxAutomorphism
     + VecZnxSwithcDegree
     + ScalarZnxAlloc
     + VecZnxAddScalarInplace

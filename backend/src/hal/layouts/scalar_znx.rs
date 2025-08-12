@@ -7,7 +7,7 @@ use crate::{
     alloc_aligned,
     hal::{
         api::{DataView, DataViewMut, FillUniform, ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero},
-        layouts::{Data, DataMut, DataRef, ReaderFrom, VecZnx, VecZnxToMut, VecZnxToRef, WriterTo},
+        layouts::{Data, DataMut, DataRef, ReaderFrom, VecZnx, WriterTo},
     },
 };
 
@@ -185,8 +185,8 @@ impl<D: DataMut> ScalarZnxToMut for ScalarZnx<D> {
     }
 }
 
-impl<D: DataRef> VecZnxToRef for ScalarZnx<D> {
-    fn to_ref(&self) -> VecZnx<&[u8]> {
+impl<D: DataRef> ScalarZnx<D> {
+    pub fn as_vec_znx(&self) -> VecZnx<&[u8]> {
         VecZnx {
             data: self.data.as_ref(),
             n: self.n,
@@ -197,8 +197,8 @@ impl<D: DataRef> VecZnxToRef for ScalarZnx<D> {
     }
 }
 
-impl<D: DataMut> VecZnxToMut for ScalarZnx<D> {
-    fn to_mut(&mut self) -> VecZnx<&mut [u8]> {
+impl<D: DataMut> ScalarZnx<D> {
+    pub fn as_vec_znx_mut(&mut self) -> VecZnx<&mut [u8]> {
         VecZnx {
             data: self.data.as_mut(),
             n: self.n,

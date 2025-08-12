@@ -8,7 +8,7 @@ use crate::dist::Distribution;
 
 pub trait GLWESecretFamily<B: Backend> = SvpPrepare<B> + SvpPPolAllocBytes + SvpPPolAlloc<B>;
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Clone)]
 pub struct GLWESecret<D: Data> {
     pub(crate) data: ScalarZnx<D>,
     pub(crate) dist: Distribution,

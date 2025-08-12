@@ -87,14 +87,21 @@ where
     let mut sk_dft: VecZnxDft<Vec<u8>, B> = module.vec_znx_dft_alloc(rank, 1);
 
     (0..rank).for_each(|i| {
-        module.vec_znx_dft_from_vec_znx(1, 0, &mut sk_dft, i, &sk.data, i);
+        module.vec_znx_dft_from_vec_znx(1, 0, &mut sk_dft, i, &sk.data.as_vec_znx(), i);
     });
 
     (0..rank).for_each(|i| {
         (0..rank).for_each(|j| {
             module.svp_apply(&mut sk_ij_dft, 0, &sk_exec.data, j, &sk_dft, i);
             module.vec_znx_dft_to_vec_znx_big_tmp_a(&mut sk_ij_big, 0, &mut sk_ij_dft, 0);
-            module.vec_znx_big_normalize(basek, &mut sk_ij.data, 0, &sk_ij_big, 0, scratch.borrow());
+            module.vec_znx_big_normalize(
+                basek,
+                &mut sk_ij.data.as_vec_znx_mut(),
+                0,
+                &sk_ij_big,
+                0,
+                scratch.borrow(),
+            );
             (0..tensor_key.rank_in()).for_each(|col_i| {
                 (0..tensor_key.rows()).for_each(|row_i| {
                     tensor_key
