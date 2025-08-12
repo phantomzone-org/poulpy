@@ -1,4 +1,7 @@
-use backend::hal::api::ZnxInfos;
+use backend::hal::{
+    api::{VecZnxCopy, VecZnxFillUniform, ZnxInfos},
+    layouts::{Backend, Module},
+};
 
 pub trait Infos {
     type Inner: ZnxInfos;
@@ -51,4 +54,10 @@ pub trait Infos {
 pub trait SetMetaData {
     fn set_basek(&mut self, basek: usize);
     fn set_k(&mut self, k: usize);
+}
+
+pub trait Decompress<B: Backend, C> {
+    fn decompress(&mut self, module: &Module<B>, other: &C)
+    where
+        Module<B>: VecZnxFillUniform + VecZnxCopy;
 }

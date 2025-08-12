@@ -12,7 +12,7 @@ use backend::hal::{
 use sampling::source::Source;
 
 use crate::{
-    GLWECiphertext, GLWECiphertextCompressed, GLWEDecryptFamily, GLWEEncryptPkFamily, GLWEEncryptSkFamily, GLWEOps,
+    Decompress, GLWECiphertext, GLWECiphertextCompressed, GLWEDecryptFamily, GLWEEncryptPkFamily, GLWEEncryptSkFamily, GLWEOps,
     GLWEPlaintext, GLWEPublicKey, GLWEPublicKeyExec, GLWESecret, GLWESecretExec, GLWESecretFamily, Infos,
 };
 
