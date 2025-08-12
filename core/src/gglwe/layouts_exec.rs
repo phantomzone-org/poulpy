@@ -366,6 +366,27 @@ impl<B: Backend> GLWETensorKeyExec<Vec<u8>, B> {
         let pairs: usize = (((rank + 1) * rank) >> 1).max(1);
         pairs * GLWESwitchingKeyExec::bytes_of(module, n, basek, k, rows, digits, 1, rank)
     }
+
+    pub fn from<D: DataRef>(
+        module: &Module<B>,
+        other: &GLWETensorKey<D>,
+        scratch: &mut Scratch<B>,
+    ) -> GLWETensorKeyExec<Vec<u8>, B>
+    where
+        Module<B>: GGLWEExecLayoutFamily<B>,
+    {
+        let mut tsk_exec: GLWETensorKeyExec<Vec<u8>, B> = Self::alloc(
+            module,
+            other.n(),
+            other.basek(),
+            other.k(),
+            other.rows(),
+            other.digits(),
+            other.rank(),
+        );
+        tsk_exec.prepare(module, other, scratch);
+        tsk_exec
+    }
 }
 
 impl<D: Data, B: Backend> Infos for GLWETensorKeyExec<D, B> {
