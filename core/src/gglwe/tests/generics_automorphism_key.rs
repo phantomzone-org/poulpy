@@ -1,20 +1,51 @@
-use backend::{
-    hal::{
-        api::{ModuleNew, ScalarZnxAutomorphism, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxStd, VecZnxSubScalarInplace},
-        layouts::{Module, ScratchOwned},
+use backend::hal::{
+    api::{
+        MatZnxAlloc, ScalarZnxAlloc, ScalarZnxAllocBytes, ScalarZnxAutomorphism, ScratchOwnedAlloc, ScratchOwnedBorrow,
+        VecZnxAddScalarInplace, VecZnxAlloc, VecZnxAllocBytes, VecZnxAutomorphism, VecZnxAutomorphismInplace, VecZnxStd,
+        VecZnxSubScalarInplace, VecZnxSwithcDegree,
     },
-    implementation::cpu_spqlios::FFT64,
+    layouts::{Backend, Module, ScratchOwned},
+    oep::{
+        ScratchAvailableImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeScalarZnxImpl, TakeSvpPPolImpl,
+        TakeVecZnxBigImpl, TakeVecZnxDftImpl, TakeVecZnxImpl,
+    },
 };
 use sampling::source::Source;
 
 use crate::{
-    AutomorphismKey, AutomorphismKeyExec, GLWEPlaintext, GLWESecret, GLWESecretExec, Infos, noise::log2_std_noise_gglwe_product,
+    AutomorphismKey, AutomorphismKeyEncryptSkFamily, AutomorphismKeyExec, GGLWEExecLayoutFamily, GLWEDecryptFamily,
+    GLWEKeyswitchFamily, GLWEPlaintext, GLWESecret, GLWESecretExec, Infos, noise::log2_std_noise_gglwe_product,
 };
 
-pub(crate) fn test_gglwe_automorphism(
+pub(crate) trait AutomorphismTestModuleFamily<B: Backend> = MatZnxAlloc
+    + AutomorphismKeyEncryptSkFamily<B>
+    + ScalarZnxAllocBytes
+    + VecZnxAllocBytes
+    + GLWEKeyswitchFamily<B>
+    + ScalarZnxAlloc
+    + ScalarZnxAutomorphism
+    + GGLWEExecLayoutFamily<B>
+    + VecZnxSwithcDegree
+    + VecZnxAddScalarInplace
+    + VecZnxAutomorphism
+    + VecZnxAutomorphismInplace
+    + VecZnxAlloc
+    + GLWEDecryptFamily<B>
+    + VecZnxSubScalarInplace
+    + VecZnxStd;
+pub(crate) trait AutomorphismTestScratchFamily<B: Backend> = ScratchOwnedAllocImpl<B>
+    + ScratchOwnedBorrowImpl<B>
+    + ScratchAvailableImpl<B>
+    + TakeScalarZnxImpl<B>
+    + TakeVecZnxDftImpl<B>
+    + TakeVecZnxImpl<B>
+    + TakeSvpPPolImpl<B>
+    + TakeVecZnxBigImpl<B>;
+
+pub(crate) fn test_gglwe_automorphism<B: Backend>(
+    module: &Module<B>,
     p0: i64,
     p1: i64,
-    log_n: usize,
     basek: usize,
     digits: usize,
     k_in: usize,
@@ -22,9 +53,10 @@ pub(crate) fn test_gglwe_automorphism(
     k_apply: usize,
     sigma: f64,
     rank: usize,
-) {
-    let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
-
+) where
+    Module<B>: AutomorphismTestModuleFamily<B>,
+    B: AutomorphismTestScratchFamily<B>,
+{
     let digits_in: usize = 1;
 
     let rows_in: usize = k_in / (basek * digits);
@@ -38,7 +70,7 @@ pub(crate) fn test_gglwe_automorphism(
     let mut source_xe: Source = Source::new([0u8; 32]);
     let mut source_xa: Source = Source::new([0u8; 32]);
 
-    let mut scratch: ScratchOwned<FFT64> = ScratchOwned::alloc(
+    let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
         AutomorphismKey::encrypt_sk_scratch_space(&module, basek, k_apply, rank)
             | AutomorphismKey::automorphism_scratch_space(&module, basek, k_out, k_in, k_apply, digits, rank),
     );
@@ -68,7 +100,7 @@ pub(crate) fn test_gglwe_automorphism(
         scratch.borrow(),
     );
 
-    let mut auto_key_apply_exec: AutomorphismKeyExec<Vec<u8>, FFT64> =
+    let mut auto_key_apply_exec: AutomorphismKeyExec<Vec<u8>, B> =
         AutomorphismKeyExec::alloc(&module, basek, k_apply, rows_apply, digits, rank);
 
     auto_key_apply_exec.prepare(&module, &auto_key_apply, scratch.borrow());
@@ -95,7 +127,7 @@ pub(crate) fn test_gglwe_automorphism(
         );
     });
 
-    let sk_auto_dft: GLWESecretExec<Vec<u8>, FFT64> = GLWESecretExec::from(&module, &sk_auto);
+    let sk_auto_dft: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(&module, &sk_auto);
 
     (0..auto_key_out.rank_in()).for_each(|col_i| {
         (0..auto_key_out.rows()).for_each(|row_i| {
@@ -135,19 +167,20 @@ pub(crate) fn test_gglwe_automorphism(
     });
 }
 
-pub(crate) fn test_gglwe_automorphism_inplace(
+pub(crate) fn test_gglwe_automorphism_inplace<B: Backend>(
+    module: &Module<B>,
     p0: i64,
     p1: i64,
-    log_n: usize,
     basek: usize,
     digits: usize,
     k_in: usize,
     k_apply: usize,
     sigma: f64,
     rank: usize,
-) {
-    let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
-
+) where
+    Module<B>: AutomorphismTestModuleFamily<B>,
+    B: AutomorphismTestScratchFamily<B>,
+{
     let digits_in: usize = 1;
 
     let rows_in: usize = k_in / (basek * digits);
@@ -160,7 +193,7 @@ pub(crate) fn test_gglwe_automorphism_inplace(
     let mut source_xe: Source = Source::new([0u8; 32]);
     let mut source_xa: Source = Source::new([0u8; 32]);
 
-    let mut scratch: ScratchOwned<FFT64> = ScratchOwned::alloc(
+    let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
         AutomorphismKey::encrypt_sk_scratch_space(&module, basek, k_apply, rank)
             | AutomorphismKey::automorphism_inplace_scratch_space(&module, basek, k_in, k_apply, digits, rank),
     );
@@ -190,7 +223,7 @@ pub(crate) fn test_gglwe_automorphism_inplace(
         scratch.borrow(),
     );
 
-    let mut auto_key_apply_exec: AutomorphismKeyExec<Vec<u8>, FFT64> =
+    let mut auto_key_apply_exec: AutomorphismKeyExec<Vec<u8>, B> =
         AutomorphismKeyExec::alloc(&module, basek, k_apply, rows_apply, digits, rank);
 
     auto_key_apply_exec.prepare(&module, &auto_key_apply, scratch.borrow());
@@ -213,7 +246,7 @@ pub(crate) fn test_gglwe_automorphism_inplace(
         );
     });
 
-    let sk_auto_dft: GLWESecretExec<Vec<u8>, FFT64> = GLWESecretExec::from(&module, &sk_auto);
+    let sk_auto_dft: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(&module, &sk_auto);
 
     (0..auto_key.rank_in()).for_each(|col_i| {
         (0..auto_key.rows()).for_each(|row_i| {

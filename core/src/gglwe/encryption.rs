@@ -9,9 +9,9 @@ use backend::hal::{
 use sampling::source::Source;
 
 use crate::{
-    AutomorphismKey, GGLWECiphertext, GGLWECiphertextCompressed, GLWECiphertext, GLWEDecryptFamily, GLWEEncryptSkFamily,
-    GLWEPlaintext, GLWESecret, GLWESecretExec, GLWESecretFamily, GLWESwitchingKey, GLWESwitchingKeyCompressed, GLWETensorKey,
-    Infos, TakeGLWEPt, TakeGLWESecret, TakeGLWESecretExec, encrypt_sk_internal,
+    AutomorphismKey, AutomorphismKeyCompressed, GGLWECiphertext, GGLWECiphertextCompressed, GLWECiphertext, GLWEDecryptFamily,
+    GLWEEncryptSkFamily, GLWEPlaintext, GLWESecret, GLWESecretExec, GLWESecretFamily, GLWESwitchingKey,
+    GLWESwitchingKeyCompressed, GLWETensorKey, Infos, TakeGLWEPt, TakeGLWESecret, TakeGLWESecretExec, encrypt_sk_internal,
 };
 
 pub trait GGLWEEncryptSkFamily<B: Backend> = GLWEEncryptSkFamily<B> + GLWESecretFamily<B>;
@@ -485,6 +485,72 @@ impl<DataSelf: DataMut> AutomorphismKey<DataSelf> {
 
         self.key
             .encrypt_sk(module, &sk, &sk_out, source_xa, source_xe, sigma, scratch_1);
+
+        self.p = p;
+    }
+}
+
+impl AutomorphismKeyCompressed<Vec<u8>> {
+    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize
+    where
+        Module<B>: AutomorphismKeyEncryptSkFamily<B> + ScalarZnxAllocBytes + VecZnxAllocBytes,
+    {
+        GLWESwitchingKeyCompressed::encrypt_sk_scratch_space(module, basek, k, rank, rank) + GLWESecret::bytes_of(module, rank)
+    }
+}
+
+impl<DataSelf: DataMut> AutomorphismKeyCompressed<DataSelf> {
+    pub fn encrypt_sk<DataSk: DataRef, B: Backend>(
+        &mut self,
+        module: &Module<B>,
+        p: i64,
+        sk: &GLWESecret<DataSk>,
+        seed_xa: [u8; 32],
+        source_xe: &mut Source,
+        sigma: f64,
+        scratch: &mut Scratch<B>,
+    ) where
+        Module<B>: AutomorphismKeyEncryptSkFamily<B>
+            + ScalarZnxAutomorphism
+            + ScalarZnxAllocBytes
+            + VecZnxAllocBytes
+            + VecZnxSwithcDegree
+            + VecZnxAddScalarInplace,
+        Scratch<B>: ScratchAvailable + TakeScalarZnx<B> + TakeVecZnxDft<B> + TakeGLWESecretExec<B> + TakeVecZnx<B>,
+    {
+        #[cfg(debug_assertions)]
+        {
+            assert_eq!(self.n(), module.n());
+            assert_eq!(sk.n(), module.n());
+            assert_eq!(self.rank_out(), self.rank_in());
+            assert_eq!(sk.rank(), self.rank());
+            assert!(
+                scratch.available()
+                    >= AutomorphismKeyCompressed::encrypt_sk_scratch_space(module, self.basek(), self.k(), self.rank()),
+                "scratch.available(): {} < AutomorphismKey::encrypt_sk_scratch_space(module, self.rank()={}, self.size()={}): {}",
+                scratch.available(),
+                self.rank(),
+                self.size(),
+                AutomorphismKeyCompressed::encrypt_sk_scratch_space(module, self.basek(), self.k(), self.rank())
+            )
+        }
+
+        let (mut sk_out, scratch_1) = scratch.take_glwe_secret(module, sk.rank());
+
+        {
+            (0..self.rank()).for_each(|i| {
+                module.scalar_znx_automorphism(
+                    module.galois_element_inv(p),
+                    &mut sk_out.data,
+                    i,
+                    &sk.data,
+                    i,
+                );
+            });
+        }
+
+        self.key
+            .encrypt_sk(module, &sk, &sk_out, seed_xa, source_xe, sigma, scratch_1);
 
         self.p = p;
     }

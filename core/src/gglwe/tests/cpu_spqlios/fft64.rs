@@ -165,6 +165,7 @@ fn gglwe_external_product_inplace() {
 #[test]
 fn gglwe_automorphism() {
     let log_n: usize = 8;
+    let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
     let basek: usize = 12;
     let k_in: usize = 60;
     let k_out: usize = 40;
@@ -174,7 +175,7 @@ fn gglwe_automorphism() {
         (2..digits + 1).for_each(|di| {
             println!("test automorphism digits: {} rank: {}", di, rank);
             let k_apply: usize = (digits + di) * basek;
-            test_gglwe_automorphism(-1, 5, log_n, basek, di, k_in, k_out, k_apply, sigma, rank);
+            test_gglwe_automorphism(&module, -1, 5, basek, di, k_in, k_out, k_apply, sigma, rank);
         });
     });
 }
@@ -182,6 +183,7 @@ fn gglwe_automorphism() {
 #[test]
 fn gglwe_automorphism_inplace() {
     let log_n: usize = 8;
+    let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
     let basek: usize = 12;
     let k_in: usize = 60;
     let digits: usize = k_in.div_ceil(basek);
@@ -190,7 +192,7 @@ fn gglwe_automorphism_inplace() {
         (2..digits + 1).for_each(|di| {
             println!("test automorphism digits: {} rank: {}", di, rank);
             let k_apply: usize = (digits + di) * basek;
-            test_gglwe_automorphism_inplace(-1, 5, log_n, basek, di, k_in, k_apply, sigma, rank);
+            test_gglwe_automorphism_inplace(&module, -1, 5, basek, di, k_in, k_apply, sigma, rank);
         });
     });
 }

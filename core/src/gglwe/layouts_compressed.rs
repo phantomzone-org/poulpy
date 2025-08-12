@@ -3,7 +3,7 @@ use backend::hal::{
     layouts::{Backend, Data, DataMut, DataRef, MatZnx, Module, ReaderFrom, WriterTo},
 };
 
-use crate::{GGLWECiphertext, GLWECiphertextCompressed, GLWESwitchingKey, Infos};
+use crate::{AutomorphismKey, GGLWECiphertext, GLWECiphertextCompressed, GLWESwitchingKey, Infos};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
 #[derive(PartialEq, Eq)]
@@ -239,33 +239,33 @@ impl<D: Data> Infos for GLWESwitchingKeyCompressed<D> {
     type Inner = MatZnx<D>;
 
     fn inner(&self) -> &Self::Inner {
-        &self.key.data
+        &self.key.inner()
     }
 
     fn basek(&self) -> usize {
-        self.key.basek
+        self.key.basek()
     }
 
     fn k(&self) -> usize {
-        self.key.k
+        self.key.k()
     }
 }
 
 impl<D: Data> GLWESwitchingKeyCompressed<D> {
     pub fn rank(&self) -> usize {
-        self.key.rank_out
+        self.key.rank()
     }
 
     pub fn digits(&self) -> usize {
-        self.key.digits
+        self.key.digits()
     }
 
     pub fn rank_in(&self) -> usize {
-        self.key.data.cols_in()
+        self.key.rank_in()
     }
 
     pub fn rank_out(&self) -> usize {
-        self.key.rank_out
+        self.key.rank_out()
     }
 }
 
@@ -324,5 +324,88 @@ impl<D: DataMut> GLWESwitchingKey<D> {
         self.key.decompress(module, &other.key);
         self.sk_in_n = other.sk_in_n;
         self.sk_out_n = other.sk_out_n;
+    }
+}
+
+#[derive(PartialEq, Eq)]
+pub struct AutomorphismKeyCompressed<D: Data> {
+    pub(crate) key: GLWESwitchingKeyCompressed<D>,
+    pub(crate) p: i64,
+}
+
+impl AutomorphismKeyCompressed<Vec<u8>> {
+    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self
+    where
+        Module<B>: MatZnxAlloc,
+    {
+        AutomorphismKeyCompressed {
+            key: GLWESwitchingKeyCompressed::alloc(module, basek, k, rows, digits, rank, rank),
+            p: 0,
+        }
+    }
+
+    pub fn bytes_of<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize
+    where
+        Module<B>: MatZnxAllocBytes,
+    {
+        GLWESwitchingKeyCompressed::<Vec<u8>>::bytes_of(module, basek, k, rows, digits, rank)
+    }
+}
+
+impl<D: Data> Infos for AutomorphismKeyCompressed<D> {
+    type Inner = MatZnx<D>;
+
+    fn inner(&self) -> &Self::Inner {
+        &self.key.inner()
+    }
+
+    fn basek(&self) -> usize {
+        self.key.basek()
+    }
+
+    fn k(&self) -> usize {
+        self.key.k()
+    }
+}
+
+impl<D: Data> AutomorphismKeyCompressed<D> {
+    pub fn rank(&self) -> usize {
+        self.key.rank()
+    }
+
+    pub fn digits(&self) -> usize {
+        self.key.digits()
+    }
+
+    pub fn rank_in(&self) -> usize {
+        self.key.rank_in()
+    }
+
+    pub fn rank_out(&self) -> usize {
+        self.key.rank_out()
+    }
+}
+
+impl<D: DataMut> ReaderFrom for AutomorphismKeyCompressed<D> {
+    fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
+        self.p = reader.read_u64::<LittleEndian>()? as i64;
+        self.key.read_from(reader)
+    }
+}
+
+impl<D: DataRef> WriterTo for AutomorphismKeyCompressed<D> {
+    fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
+        writer.write_u64::<LittleEndian>(self.p as u64)?;
+        self.key.write_to(writer)
+    }
+}
+
+impl<D: DataMut> AutomorphismKey<D> {
+    pub fn decompress<DataOther: DataRef, B: Backend>(&mut self, module: &Module<B>, other: &AutomorphismKeyCompressed<DataOther>)
+    where
+        Module<B>: VecZnxFillUniform + VecZnxCopy,
+    {
+        self.key.decompress(module, &other.key);
+        self.p = other.p;
     }
 }
