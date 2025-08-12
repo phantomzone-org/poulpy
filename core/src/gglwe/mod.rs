@@ -1,20 +1,16 @@
 mod automorphism;
-mod automorphism_key;
 mod encryption;
 mod external_product;
 mod keyswitch;
-mod keyswitch_key;
 mod layout;
+mod layouts_compressed;
+mod layouts_exec;
 mod noise;
-mod tensor_key;
 
-pub use automorphism_key::{AutomorphismKey, AutomorphismKeyExec};
-pub use encryption::{
-    AutomorphismKeyEncryptSkFamily, GGLWEEncryptSkFamily, GLWESwitchingKeyEncryptSkFamily, GLWETensorKeyEncryptSkFamily,
-};
-pub use keyswitch_key::{GLWESwitchingKey, GLWESwitchingKeyExec};
-pub use layout::{GGLWECiphertext, GGLWECiphertextExec, GGLWEExecLayoutFamily};
-pub use tensor_key::{GLWETensorKey, GLWETensorKeyExec};
+pub use encryption::*;
+pub use layout::*;
+pub use layouts_compressed::*;
+pub use layouts_exec::*;
 
 #[cfg(test)]
-mod test;
+mod tests;

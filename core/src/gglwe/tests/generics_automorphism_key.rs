@@ -11,40 +11,7 @@ use crate::{
     AutomorphismKey, AutomorphismKeyExec, GLWEPlaintext, GLWESecret, GLWESecretExec, Infos, noise::log2_std_noise_gglwe_product,
 };
 
-#[test]
-fn automorphism() {
-    let log_n: usize = 8;
-    let basek: usize = 12;
-    let k_in: usize = 60;
-    let k_out: usize = 40;
-    let digits: usize = k_in.div_ceil(basek);
-    let sigma: f64 = 3.2;
-    (1..4).for_each(|rank| {
-        (2..digits + 1).for_each(|di| {
-            println!("test automorphism digits: {} rank: {}", di, rank);
-            let k_apply: usize = (digits + di) * basek;
-            test_automorphism(-1, 5, log_n, basek, di, k_in, k_out, k_apply, sigma, rank);
-        });
-    });
-}
-
-#[test]
-fn automorphism_inplace() {
-    let log_n: usize = 8;
-    let basek: usize = 12;
-    let k_in: usize = 60;
-    let digits: usize = k_in.div_ceil(basek);
-    let sigma: f64 = 3.2;
-    (1..4).for_each(|rank| {
-        (2..digits + 1).for_each(|di| {
-            println!("test automorphism digits: {} rank: {}", di, rank);
-            let k_apply: usize = (digits + di) * basek;
-            test_automorphism_inplace(-1, 5, log_n, basek, di, k_in, k_apply, sigma, rank);
-        });
-    });
-}
-
-fn test_automorphism(
+pub(crate) fn test_gglwe_automorphism(
     p0: i64,
     p1: i64,
     log_n: usize,
@@ -168,7 +135,7 @@ fn test_automorphism(
     });
 }
 
-fn test_automorphism_inplace(
+pub(crate) fn test_gglwe_automorphism_inplace(
     p0: i64,
     p1: i64,
     log_n: usize,

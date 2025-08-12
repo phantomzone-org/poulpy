@@ -40,7 +40,7 @@ pub(crate) trait TestScratchFamily<B: Backend> = TakeVecZnxDftImpl<B>
     + VecZnxBigAllocBytesImpl<B>
     + TakeSvpPPolImpl<B>;
 
-pub(crate) fn test_encrypt_sk<B: Backend>(module: &Module<B>, basek: usize, k: usize, sigma: f64, rank: usize)
+pub(crate) fn test_tensor_key_encrypt_sk<B: Backend>(module: &Module<B>, basek: usize, k: usize, sigma: f64, rank: usize)
 where
     Module<B>: TestModuleFamily<B>
         + GGLWEExecLayoutFamily<B>

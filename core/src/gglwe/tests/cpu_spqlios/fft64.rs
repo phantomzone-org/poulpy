@@ -3,12 +3,17 @@ use backend::{
     implementation::cpu_spqlios::FFT64,
 };
 
-use crate::gglwe::test::gglwe_generic::{
-    test_encrypt_sk, test_external_product, test_external_product_inplace, test_keyswitch, test_keyswitch_inplace,
+use crate::gglwe::tests::{
+    generics_automorphism_key::{test_gglwe_automorphism, test_gglwe_automorphism_inplace},
+    generics_gglwe::{
+        test_gglwe_encrypt_sk, test_gglwe_encrypt_sk_compressed, test_gglwe_external_product,
+        test_gglwe_external_product_inplace, test_gglwe_keyswitch, test_gglwe_keyswitch_inplace,
+    },
+    generics_tensor_key::test_tensor_key_encrypt_sk,
 };
 
 #[test]
-fn encrypt_sk() {
+fn gglwe_encrypt_sk() {
     let log_n: usize = 8;
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
     let basek: usize = 12;
@@ -21,14 +26,34 @@ fn encrypt_sk() {
                     "test encrypt_sk digits: {} ranks: ({} {})",
                     di, rank_in, rank_out
                 );
-                test_encrypt_sk(&module, basek, k_ksk, di, rank_in, rank_out, 3.2);
+                test_gglwe_encrypt_sk(&module, basek, k_ksk, di, rank_in, rank_out, 3.2);
             });
         });
     });
 }
 
 #[test]
-fn keyswitch() {
+fn gglwe_encrypt_sk_compressed() {
+    let log_n: usize = 8;
+    let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
+    let basek: usize = 12;
+    let k_ksk: usize = 54;
+    let digits: usize = k_ksk / basek;
+    (1..4).for_each(|rank_in| {
+        (1..4).for_each(|rank_out| {
+            (1..digits + 1).for_each(|di| {
+                println!(
+                    "test encrypt_sk digits: {} ranks: ({} {})",
+                    di, rank_in, rank_out
+                );
+                test_gglwe_encrypt_sk_compressed(&module, basek, k_ksk, di, rank_in, rank_out, 3.2);
+            });
+        });
+    });
+}
+
+#[test]
+fn gglwe_keyswitch() {
     let log_n: usize = 8;
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
     let basek: usize = 12;
@@ -44,7 +69,7 @@ fn keyswitch() {
                         di, rank_in_s0s1, rank_out_s0s1, rank_out_s1s2
                     );
                     let k_out: usize = k_ksk; // Better capture noise.
-                    test_keyswitch(
+                    test_gglwe_keyswitch(
                         &module,
                         basek,
                         k_out,
@@ -63,7 +88,7 @@ fn keyswitch() {
 }
 
 #[test]
-fn keyswitch_inplace() {
+fn gglwe_keyswitch_inplace() {
     let log_n: usize = 8;
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
     let basek: usize = 12;
@@ -77,7 +102,7 @@ fn keyswitch_inplace() {
                     "test key_switch_inplace digits: {} ranks: ({},{})",
                     di, rank_in_s0s1, rank_out_s0s1
                 );
-                test_keyswitch_inplace(
+                test_gglwe_keyswitch_inplace(
                     &module,
                     basek,
                     k_ct,
@@ -93,7 +118,7 @@ fn keyswitch_inplace() {
 }
 
 #[test]
-fn external_product() {
+fn gglwe_external_product() {
     let log_n: usize = 8;
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
     let basek: usize = 12;
@@ -108,7 +133,7 @@ fn external_product() {
                     di, rank_in, rank_out
                 );
                 let k_out: usize = k_in; // Better capture noise.
-                test_external_product(
+                test_gglwe_external_product(
                     &module, basek, k_out, k_in, k_ggsw, di, rank_in, rank_out, 3.2,
                 );
             });
@@ -117,7 +142,7 @@ fn external_product() {
 }
 
 #[test]
-fn external_product_inplace() {
+fn gglwe_external_product_inplace() {
     let log_n: usize = 5;
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
     let basek: usize = 12;
@@ -131,8 +156,51 @@ fn external_product_inplace() {
                     "test external_product_inplace digits: {} ranks: ({} {})",
                     di, rank_in, rank_out
                 );
-                test_external_product_inplace(&module, basek, k_ct, k_ggsw, di, rank_in, rank_out, 3.2);
+                test_gglwe_external_product_inplace(&module, basek, k_ct, k_ggsw, di, rank_in, rank_out, 3.2);
             });
         });
+    });
+}
+
+#[test]
+fn gglwe_automorphism() {
+    let log_n: usize = 8;
+    let basek: usize = 12;
+    let k_in: usize = 60;
+    let k_out: usize = 40;
+    let digits: usize = k_in.div_ceil(basek);
+    let sigma: f64 = 3.2;
+    (1..4).for_each(|rank| {
+        (2..digits + 1).for_each(|di| {
+            println!("test automorphism digits: {} rank: {}", di, rank);
+            let k_apply: usize = (digits + di) * basek;
+            test_gglwe_automorphism(-1, 5, log_n, basek, di, k_in, k_out, k_apply, sigma, rank);
+        });
+    });
+}
+
+#[test]
+fn gglwe_automorphism_inplace() {
+    let log_n: usize = 8;
+    let basek: usize = 12;
+    let k_in: usize = 60;
+    let digits: usize = k_in.div_ceil(basek);
+    let sigma: f64 = 3.2;
+    (1..4).for_each(|rank| {
+        (2..digits + 1).for_each(|di| {
+            println!("test automorphism digits: {} rank: {}", di, rank);
+            let k_apply: usize = (digits + di) * basek;
+            test_gglwe_automorphism_inplace(-1, 5, log_n, basek, di, k_in, k_apply, sigma, rank);
+        });
+    });
+}
+
+#[test]
+fn tensor_key_encrypt_sk() {
+    let log_n: usize = 8;
+    let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
+    (1..4).for_each(|rank| {
+        println!("test encrypt_sk rank: {}", rank);
+        test_tensor_key_encrypt_sk(&module, 16, 54, 3.2, rank);
     });
 }
