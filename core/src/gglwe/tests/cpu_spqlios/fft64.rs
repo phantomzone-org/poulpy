@@ -12,7 +12,7 @@ use crate::gglwe::tests::{
         test_gglwe_encrypt_sk, test_gglwe_encrypt_sk_compressed, test_gglwe_external_product,
         test_gglwe_external_product_inplace, test_gglwe_keyswitch, test_gglwe_keyswitch_inplace,
     },
-    generics_tensor_key::test_tensor_key_encrypt_sk,
+    generics_tensor_key::{test_tensor_key_encrypt_sk, test_tensor_key_encrypt_sk_compressed},
 };
 
 #[test]
@@ -26,7 +26,7 @@ fn gglwe_encrypt_sk() {
         (1..4).for_each(|rank_out| {
             (1..digits + 1).for_each(|di| {
                 println!(
-                    "test encrypt_sk digits: {} ranks: ({} {})",
+                    "test gglwe_encrypt_sk digits: {} ranks: ({} {})",
                     di, rank_in, rank_out
                 );
                 test_gglwe_encrypt_sk(&module, basek, k_ksk, di, rank_in, rank_out, 3.2);
@@ -46,7 +46,7 @@ fn gglwe_encrypt_sk_compressed() {
         (1..4).for_each(|rank_out| {
             (1..digits + 1).for_each(|di| {
                 println!(
-                    "test encrypt_sk digits: {} ranks: ({} {})",
+                    "test gglwe_encrypt_sk_compressed digits: {} ranks: ({} {})",
                     di, rank_in, rank_out
                 );
                 test_gglwe_encrypt_sk_compressed(&module, basek, k_ksk, di, rank_in, rank_out, 3.2);
@@ -68,7 +68,7 @@ fn gglwe_keyswitch() {
                 (1..digits + 1).for_each(|di| {
                     let k_ksk: usize = k_in + basek * di;
                     println!(
-                        "test key_switch digits: {} ranks: ({},{},{})",
+                        "test gglwe_keyswitch digits: {} ranks: ({},{},{})",
                         di, rank_in_s0s1, rank_out_s0s1, rank_out_s1s2
                     );
                     let k_out: usize = k_ksk; // Better capture noise.
@@ -102,7 +102,7 @@ fn gglwe_keyswitch_inplace() {
             (1..digits + 1).for_each(|di| {
                 let k_ksk: usize = k_ct + basek * di;
                 println!(
-                    "test key_switch_inplace digits: {} ranks: ({},{})",
+                    "test gglwe_keyswitch_inplace digits: {} ranks: ({},{})",
                     di, rank_in_s0s1, rank_out_s0s1
                 );
                 test_gglwe_keyswitch_inplace(
@@ -132,7 +132,7 @@ fn gglwe_external_product() {
             (1..digits + 1).for_each(|di| {
                 let k_ggsw: usize = k_in + basek * di;
                 println!(
-                    "test external_product digits: {} ranks: ({} {})",
+                    "test gglwe_external_product digits: {} ranks: ({} {})",
                     di, rank_in, rank_out
                 );
                 let k_out: usize = k_in; // Better capture noise.
@@ -156,7 +156,7 @@ fn gglwe_external_product_inplace() {
             (1..digits).for_each(|di| {
                 let k_ggsw: usize = k_ct + basek * di;
                 println!(
-                    "test external_product_inplace digits: {} ranks: ({} {})",
+                    "test gglwe_external_product_inplace digits: {} ranks: ({} {})",
                     di, rank_in, rank_out
                 );
                 test_gglwe_external_product_inplace(&module, basek, k_ct, k_ggsw, di, rank_in, rank_out, 3.2);
@@ -194,7 +194,10 @@ fn automorphism_key_encrypt_sk_compressed() {
     let sigma: f64 = 3.2;
     (1..4).for_each(|rank| {
         (2..digits + 1).for_each(|di| {
-            println!("test automorphism digits: {} rank: {}", di, rank);
+            println!(
+                "test automorphism key encrypt sk compressed digits: {} rank: {}",
+                di, rank
+            );
             test_automorphisk_key_encrypt_sk_compressed(&module, basek, k, di, rank, sigma);
         });
     });
@@ -228,7 +231,7 @@ fn gglwe_automorphism_inplace() {
     let sigma: f64 = 3.2;
     (1..4).for_each(|rank| {
         (2..digits + 1).for_each(|di| {
-            println!("test automorphism digits: {} rank: {}", di, rank);
+            println!("test automorphism_inplace digits: {} rank: {}", di, rank);
             let k_apply: usize = (digits + di) * basek;
             test_gglwe_automorphism_inplace(&module, -1, 5, basek, di, k_in, k_apply, sigma, rank);
         });
@@ -242,5 +245,15 @@ fn tensor_key_encrypt_sk() {
     (1..4).for_each(|rank| {
         println!("test encrypt_sk rank: {}", rank);
         test_tensor_key_encrypt_sk(&module, 16, 54, 3.2, rank);
+    });
+}
+
+#[test]
+fn tensor_key_encrypt_sk_compressed() {
+    let log_n: usize = 8;
+    let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
+    (1..4).for_each(|rank| {
+        println!("test encrypt_sk_compressed rank: {}", rank);
+        test_tensor_key_encrypt_sk_compressed(&module, 16, 54, 3.2, rank);
     });
 }

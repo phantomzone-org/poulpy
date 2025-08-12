@@ -11,7 +11,8 @@ use sampling::source::Source;
 use crate::{
     AutomorphismKey, AutomorphismKeyCompressed, GGLWECiphertext, GGLWECiphertextCompressed, GLWECiphertext, GLWEDecryptFamily,
     GLWEEncryptSkFamily, GLWEPlaintext, GLWESecret, GLWESecretExec, GLWESecretFamily, GLWESwitchingKey,
-    GLWESwitchingKeyCompressed, GLWETensorKey, Infos, TakeGLWEPt, TakeGLWESecret, TakeGLWESecretExec, encrypt_sk_internal,
+    GLWESwitchingKeyCompressed, GLWETensorKey, GLWETensorKeyCompressed, Infos, TakeGLWEPt, TakeGLWESecret, TakeGLWESecretExec,
+    encrypt_sk_internal,
 };
 
 pub trait GGLWEEncryptSkFamily<B: Backend> = GLWEEncryptSkFamily<B> + GLWESecretFamily<B>;
@@ -639,6 +640,80 @@ impl<DataSelf: DataMut> GLWETensorKey<DataSelf> {
 
                 self.at_mut(i, j)
                     .encrypt_sk(module, &sk_ij, sk, source_xa, source_xe, sigma, scratch5);
+            });
+        })
+    }
+}
+
+impl GLWETensorKeyCompressed<Vec<u8>> {
+    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize
+    where
+        Module<B>: GLWETensorKeyEncryptSkFamily<B> + ScalarZnxAllocBytes + VecZnxAllocBytes,
+    {
+        GLWETensorKey::encrypt_sk_scratch_space(module, basek, k, rank)
+    }
+}
+
+impl<DataSelf: DataMut> GLWETensorKeyCompressed<DataSelf> {
+    pub fn encrypt_sk<DataSk: DataRef, B: Backend>(
+        &mut self,
+        module: &Module<B>,
+        sk: &GLWESecret<DataSk>,
+        seed_xa: [u8; 32],
+        source_xe: &mut Source,
+        sigma: f64,
+        scratch: &mut Scratch<B>,
+    ) where
+        Module<B>: GLWETensorKeyEncryptSkFamily<B>
+            + ScalarZnxAllocBytes
+            + VecZnxSwithcDegree
+            + VecZnxAllocBytes
+            + VecZnxAddScalarInplace,
+        Scratch<B>:
+            ScratchAvailable + TakeVecZnxDft<B> + TakeVecZnxBig<B> + TakeGLWESecretExec<B> + TakeScalarZnx<B> + TakeVecZnx<B>,
+    {
+        #[cfg(debug_assertions)]
+        {
+            assert_eq!(self.rank(), sk.rank());
+            assert_eq!(self.n(), module.n());
+            assert_eq!(sk.n(), module.n());
+        }
+
+        let rank: usize = self.rank();
+
+        let (mut sk_dft_prep, scratch1) = scratch.take_glwe_secret_exec(module, rank);
+        sk_dft_prep.prepare(module, &sk);
+
+        let (mut sk_dft, scratch2) = scratch1.take_vec_znx_dft(module, rank, 1);
+
+        (0..rank).for_each(|i| {
+            module.vec_znx_dft_from_vec_znx(1, 0, &mut sk_dft, i, &sk.data.as_vec_znx(), i);
+        });
+
+        let (mut sk_ij_big, scratch3) = scratch2.take_vec_znx_big(module, 1, 1);
+        let (mut sk_ij, scratch4) = scratch3.take_glwe_secret(module, 1);
+        let (mut sk_ij_dft, scratch5) = scratch4.take_vec_znx_dft(module, 1, 1);
+
+        let mut source_xa: Source = Source::new(seed_xa);
+
+        (0..rank).for_each(|i| {
+            (i..rank).for_each(|j| {
+                module.svp_apply(&mut sk_ij_dft, 0, &sk_dft_prep.data, j, &sk_dft, i);
+
+                module.vec_znx_dft_to_vec_znx_big_tmp_a(&mut sk_ij_big, 0, &mut sk_ij_dft, 0);
+                module.vec_znx_big_normalize(
+                    self.basek(),
+                    &mut sk_ij.data.as_vec_znx_mut(),
+                    0,
+                    &sk_ij_big,
+                    0,
+                    scratch5,
+                );
+
+                let (seed_xa_tmp, _) = source_xa.branch();
+
+                self.at_mut(i, j)
+                    .encrypt_sk(module, &sk_ij, sk, seed_xa_tmp, source_xe, sigma, scratch5);
             });
         })
     }

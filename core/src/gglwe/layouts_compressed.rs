@@ -3,7 +3,7 @@ use backend::hal::{
     layouts::{Backend, Data, DataMut, DataRef, MatZnx, Module, ReaderFrom, WriterTo},
 };
 
-use crate::{AutomorphismKey, GGLWECiphertext, GLWECiphertextCompressed, GLWESwitchingKey, Infos};
+use crate::{AutomorphismKey, GGLWECiphertext, GLWECiphertextCompressed, GLWESwitchingKey, GLWETensorKey, Infos};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
 #[derive(PartialEq, Eq)]
@@ -407,5 +407,129 @@ impl<D: DataMut> AutomorphismKey<D> {
     {
         self.key.decompress(module, &other.key);
         self.p = other.p;
+    }
+}
+
+#[derive(PartialEq, Eq)]
+pub struct GLWETensorKeyCompressed<D: Data> {
+    pub(crate) keys: Vec<GLWESwitchingKeyCompressed<D>>,
+}
+
+impl GLWETensorKeyCompressed<Vec<u8>> {
+    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self
+    where
+        Module<B>: MatZnxAlloc,
+    {
+        let mut keys: Vec<GLWESwitchingKeyCompressed<Vec<u8>>> = Vec::new();
+        let pairs: usize = (((rank + 1) * rank) >> 1).max(1);
+        (0..pairs).for_each(|_| {
+            keys.push(GLWESwitchingKeyCompressed::alloc(
+                module, basek, k, rows, digits, 1, rank,
+            ));
+        });
+        Self { keys: keys }
+    }
+
+    pub fn bytes_of<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize
+    where
+        Module<B>: MatZnxAllocBytes,
+    {
+        let pairs: usize = (((rank + 1) * rank) >> 1).max(1);
+        pairs * GLWESwitchingKeyCompressed::<Vec<u8>>::bytes_of(module, basek, k, rows, digits, 1)
+    }
+}
+
+impl<D: Data> Infos for GLWETensorKeyCompressed<D> {
+    type Inner = MatZnx<D>;
+
+    fn inner(&self) -> &Self::Inner {
+        &self.keys[0].inner()
+    }
+
+    fn basek(&self) -> usize {
+        self.keys[0].basek()
+    }
+
+    fn k(&self) -> usize {
+        self.keys[0].k()
+    }
+}
+
+impl<D: Data> GLWETensorKeyCompressed<D> {
+    pub fn rank(&self) -> usize {
+        self.keys[0].rank()
+    }
+
+    pub fn digits(&self) -> usize {
+        self.keys[0].digits()
+    }
+
+    pub fn rank_in(&self) -> usize {
+        self.keys[0].rank_in()
+    }
+
+    pub fn rank_out(&self) -> usize {
+        self.keys[0].rank_out()
+    }
+}
+
+impl<D: DataMut> ReaderFrom for GLWETensorKeyCompressed<D> {
+    fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
+        let len: usize = reader.read_u64::<LittleEndian>()? as usize;
+        if self.keys.len() != len {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                format!("self.keys.len()={} != read len={}", self.keys.len(), len),
+            ));
+        }
+        for key in &mut self.keys {
+            key.read_from(reader)?;
+        }
+        Ok(())
+    }
+}
+
+impl<D: DataRef> WriterTo for GLWETensorKeyCompressed<D> {
+    fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
+        writer.write_u64::<LittleEndian>(self.keys.len() as u64)?;
+        for key in &self.keys {
+            key.write_to(writer)?;
+        }
+        Ok(())
+    }
+}
+
+impl<D: DataMut> GLWETensorKeyCompressed<D> {
+    pub(crate) fn at_mut(&mut self, mut i: usize, mut j: usize) -> &mut GLWESwitchingKeyCompressed<D> {
+        if i > j {
+            std::mem::swap(&mut i, &mut j);
+        };
+        let rank: usize = self.rank();
+        &mut self.keys[i * rank + j - (i * (i + 1) / 2)]
+    }
+}
+
+impl<D: DataMut> GLWETensorKey<D> {
+    pub fn decompress<DataOther: DataRef, B: Backend>(&mut self, module: &Module<B>, other: &GLWETensorKeyCompressed<DataOther>)
+    where
+        Module<B>: VecZnxFillUniform + VecZnxCopy,
+    {
+        #[cfg(debug_assertions)]
+        {
+            assert_eq!(
+                self.keys.len(),
+                other.keys.len(),
+                "invalid receiver: self.keys.len()={} != other.keys.len()={}",
+                self.keys.len(),
+                other.keys.len()
+            );
+        }
+
+        self.keys
+            .iter_mut()
+            .zip(other.keys.iter())
+            .for_each(|(a, b)| {
+                a.decompress(module, b);
+            });
     }
 }
