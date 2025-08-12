@@ -4,7 +4,10 @@ use backend::{
 };
 
 use crate::gglwe::tests::{
-    generics_automorphism_key::{test_gglwe_automorphism, test_gglwe_automorphism_inplace},
+    generics_automorphism_key::{
+        test_automorphisk_key_encrypt_sk, test_automorphisk_key_encrypt_sk_compressed, test_gglwe_automorphism,
+        test_gglwe_automorphism_inplace,
+    },
     generics_gglwe::{
         test_gglwe_encrypt_sk, test_gglwe_encrypt_sk_compressed, test_gglwe_external_product,
         test_gglwe_external_product_inplace, test_gglwe_keyswitch, test_gglwe_keyswitch_inplace,
@@ -158,6 +161,41 @@ fn gglwe_external_product_inplace() {
                 );
                 test_gglwe_external_product_inplace(&module, basek, k_ct, k_ggsw, di, rank_in, rank_out, 3.2);
             });
+        });
+    });
+}
+
+#[test]
+fn automorphism_key_encrypt_sk() {
+    let log_n: usize = 8;
+    let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
+    let basek: usize = 12;
+    let k: usize = 60;
+    let digits: usize = k.div_ceil(basek) - 1;
+    let sigma: f64 = 3.2;
+    (1..4).for_each(|rank| {
+        (2..digits + 1).for_each(|di| {
+            println!(
+                "test automorphism key encrypt sk digits: {} rank: {}",
+                di, rank
+            );
+            test_automorphisk_key_encrypt_sk(&module, basek, k, di, rank, sigma);
+        });
+    });
+}
+
+#[test]
+fn automorphism_key_encrypt_sk_compressed() {
+    let log_n: usize = 8;
+    let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
+    let basek: usize = 12;
+    let k: usize = 60;
+    let digits: usize = k.div_ceil(basek) - 1;
+    let sigma: f64 = 3.2;
+    (1..4).for_each(|rank| {
+        (2..digits + 1).for_each(|di| {
+            println!("test automorphism digits: {} rank: {}", di, rank);
+            test_automorphisk_key_encrypt_sk_compressed(&module, basek, k, di, rank, sigma);
         });
     });
 }

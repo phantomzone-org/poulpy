@@ -1,8 +1,8 @@
 use backend::hal::{
     api::{
         MatZnxAlloc, ScalarZnxAlloc, ScalarZnxAllocBytes, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace,
-        VecZnxAlloc, VecZnxAllocBytes, VecZnxAutomorphism, VecZnxAutomorphismInplace, VecZnxStd, VecZnxSubScalarInplace,
-        VecZnxSwithcDegree,
+        VecZnxAlloc, VecZnxAllocBytes, VecZnxAutomorphism, VecZnxAutomorphismInplace, VecZnxCopy, VecZnxStd,
+        VecZnxSubScalarInplace, VecZnxSwithcDegree,
     },
     layouts::{Backend, Module, ScratchOwned},
     oep::{
@@ -13,8 +13,9 @@ use backend::hal::{
 use sampling::source::Source;
 
 use crate::{
-    AutomorphismKey, AutomorphismKeyEncryptSkFamily, AutomorphismKeyExec, GGLWEExecLayoutFamily, GLWEDecryptFamily,
-    GLWEKeyswitchFamily, GLWEPlaintext, GLWESecret, GLWESecretExec, Infos, noise::log2_std_noise_gglwe_product,
+    AutomorphismKey, AutomorphismKeyCompressed, AutomorphismKeyEncryptSkFamily, AutomorphismKeyExec, GGLWEExecLayoutFamily,
+    GLWEDecryptFamily, GLWEKeyswitchFamily, GLWEPlaintext, GLWESecret, GLWESecretExec, Infos,
+    noise::log2_std_noise_gglwe_product,
 };
 
 pub(crate) trait AutomorphismTestModuleFamily<B: Backend> = MatZnxAlloc
@@ -32,7 +33,8 @@ pub(crate) trait AutomorphismTestModuleFamily<B: Backend> = MatZnxAlloc
     + VecZnxAlloc
     + GLWEDecryptFamily<B>
     + VecZnxSubScalarInplace
-    + VecZnxStd;
+    + VecZnxStd
+    + VecZnxCopy;
 pub(crate) trait AutomorphismTestScratchFamily<B: Backend> = ScratchOwnedAllocImpl<B>
     + ScratchOwnedBorrowImpl<B>
     + ScratchAvailableImpl<B>
@@ -91,6 +93,66 @@ pub(crate) fn test_automorphisk_key_encrypt_sk<B: Backend>(
         );
     });
     let sk_out_exec = GLWESecretExec::from(module, &sk_out);
+
+    atk.key
+        .key
+        .assert_noise(module, &sk_out_exec, &sk.data, sigma);
+}
+
+pub(crate) fn test_automorphisk_key_encrypt_sk_compressed<B: Backend>(
+    module: &Module<B>,
+    basek: usize,
+    k_ksk: usize,
+    digits: usize,
+    rank: usize,
+    sigma: f64,
+) where
+    Module<B>: AutomorphismTestModuleFamily<B>,
+    B: AutomorphismTestScratchFamily<B>,
+{
+    let rows: usize = (k_ksk - digits * basek) / (digits * basek);
+
+    let mut atk_compressed: AutomorphismKeyCompressed<Vec<u8>> =
+        AutomorphismKeyCompressed::alloc(module, basek, k_ksk, rows, digits, rank);
+
+    let mut source_xs: Source = Source::new([0u8; 32]);
+    let mut source_xe: Source = Source::new([0u8; 32]);
+
+    let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(AutomorphismKey::encrypt_sk_scratch_space(
+        module, basek, k_ksk, rank,
+    ));
+
+    let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(module, rank);
+    sk.fill_ternary_prob(0.5, &mut source_xs);
+
+    let p = -5;
+
+    let seed_xa: [u8; 32] = [1u8; 32];
+
+    atk_compressed.encrypt_sk(
+        module,
+        p,
+        &sk,
+        seed_xa,
+        &mut source_xe,
+        sigma,
+        scratch.borrow(),
+    );
+
+    let mut sk_out: GLWESecret<Vec<u8>> = sk.clone();
+    (0..atk_compressed.rank()).for_each(|i| {
+        module.vec_znx_automorphism(
+            module.galois_element_inv(p),
+            &mut sk_out.data.as_vec_znx_mut(),
+            i,
+            &sk.data.as_vec_znx(),
+            i,
+        );
+    });
+    let sk_out_exec = GLWESecretExec::from(module, &sk_out);
+
+    let mut atk: AutomorphismKey<Vec<u8>> = AutomorphismKey::alloc(module, basek, k_ksk, rows, digits, rank);
+    atk.decompress(module, &atk_compressed);
 
     atk.key
         .key
