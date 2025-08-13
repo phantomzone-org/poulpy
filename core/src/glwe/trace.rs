@@ -5,10 +5,7 @@ use backend::hal::{
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
 };
 
-use crate::{
-    AutomorphismKeyExec, GLWECiphertext, GLWECiphertextToMut, GLWECiphertextToRef, GLWEKeyswitchFamily, GLWEOps, Infos,
-    SetMetaData,
-};
+use crate::{AutomorphismKeyExec, GLWECiphertext, GLWECiphertextToMut, GLWEKeyswitchFamily, GLWEOps, Infos, SetMetaData};
 
 pub trait GLWETraceFamily<B: Backend> = GLWEKeyswitchFamily<B> + VecZnxCopy + VecZnxRshInplace + VecZnxBigAutomorphismInplace<B>;
 
@@ -70,7 +67,6 @@ where
         auto_keys: &HashMap<i64, AutomorphismKeyExec<DataAK, B>>,
         scratch: &mut Scratch<B>,
     ) where
-        GLWECiphertext<DataLhs>: GLWECiphertextToRef + Infos + VecZnxRshInplace,
         Module<B>: GLWETraceFamily<B>,
         Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
     {

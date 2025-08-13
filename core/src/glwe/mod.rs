@@ -25,3 +25,4 @@ pub use packing::*;
 pub use plaintext::*;
 pub use public_key::*;
 pub use secret::*;
+pub use trace::*;

@@ -7,10 +7,18 @@ use backend::hal::{
     oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl},
 };
 
+#[derive(Debug, Clone, Copy)]
+pub enum LookUpTableRotationDirection {
+    Left,
+    Right,
+}
+
 pub struct LookUpTable {
     pub(crate) data: Vec<VecZnx<Vec<u8>>>,
+    pub(crate) rot_dir: LookUpTableRotationDirection,
     pub(crate) basek: usize,
     pub(crate) k: usize,
+    pub(crate) drift: usize,
 }
 
 impl LookUpTable {
@@ -28,7 +36,13 @@ impl LookUpTable {
         (0..extension_factor).for_each(|_| {
             data.push(VecZnx::alloc(n, 1, size));
         });
-        Self { data, basek, k }
+        Self {
+            data,
+            basek,
+            k,
+            drift: 0,
+            rot_dir: LookUpTableRotationDirection::Left,
+        }
     }
 
     pub fn log_extension_factor(&self) -> usize {
@@ -43,6 +57,18 @@ impl LookUpTable {
         self.data.len() * self.data[0].n()
     }
 
+    pub fn rotation_direction(&self) -> LookUpTableRotationDirection {
+        self.rot_dir
+    }
+
+    // By default X^{-dec(lwe)} is computed during the blind rotation.
+    // Setting [reverse_rotation] to true will reverse the sign of
+    // rotation of the LUT by instead evaluating X^{dec(lwe)} during
+    // the blind rotation.
+    pub fn set_rotation_direction(&mut self, rot_dir: LookUpTableRotationDirection) {
+        self.rot_dir = rot_dir
+    }
+
     pub fn set<B: Backend>(&mut self, module: &Module<B>, f: &Vec<i64>, k: usize)
     where
         Module<B>: VecZnxRotateInplace + VecZnxNormalizeInplace<B> + VecZnxNormalizeTmpBytes + VecZnxSwithcDegree + VecZnxCopy,
@@ -53,15 +79,23 @@ impl LookUpTable {
         let basek: usize = self.basek;
 
         // Get the number minimum limb to store the message modulus
-        let limbs: usize = k.div_ceil(1 << basek);
+        let limbs: usize = k.div_ceil(basek);
 
         #[cfg(debug_assertions)]
         {
+            assert!(f.len() <= module.n());
+            assert!(
+                (max_bit_size(f) + (k % basek) as u32) < i64::BITS,
+                "overflow: max(|f|) << (k%basek) > i64::BITS"
+            );
             assert!(limbs <= self.data[0].size());
         }
 
         // Scaling factor
-        let scale: i64 = 1 << (k % basek) as i64;
+        let mut scale = 1;
+        if k % basek != 0 {
+            scale <<= basek - (k % basek);
+        }
 
         // #elements in lookup table
         let f_len: usize = f.len();
@@ -76,16 +110,18 @@ impl LookUpTable {
 
         let lut_at: &mut [i64] = lut_full.at_mut(0, limbs - 1);
 
+        let step: usize = domain_size.div_round(f_len);
+
         f.iter().enumerate().for_each(|(i, fi)| {
-            let start: usize = (i * domain_size).div_round(f_len);
-            let end: usize = ((i + 1) * domain_size).div_round(f_len);
+            let start: usize = i * step;
+            let end: usize = start + step;
             lut_at[start..end].fill(fi * scale);
         });
 
-        // Rotates half the step to the left
-        let half_step: usize = domain_size.div_round(f_len << 1);
+        let drift: usize = step >> 1;
 
-        module.vec_znx_rotate_inplace(-(half_step as i64), &mut lut_full, 0);
+        // Rotates half the step to the left
+        module.vec_znx_rotate_inplace(-(drift as i64), &mut lut_full, 0);
 
         let n_large: usize = lut_full.n();
 
@@ -106,6 +142,8 @@ impl LookUpTable {
         } else {
             module.vec_znx_copy(&mut self.data[0], 0, &lut_full, 0);
         }
+
+        self.drift = drift
     }
 
     #[allow(dead_code)]
@@ -143,4 +181,17 @@ impl DivRound for usize {
     fn div_round(self, rhs: Self) -> Self {
         (self + rhs / 2) / rhs
     }
+}
+
+fn max_bit_size(vec: &[i64]) -> u32 {
+    vec.iter()
+        .map(|&v| {
+            if v == 0 {
+                0
+            } else {
+                v.unsigned_abs().ilog2() + 1
+            }
+        })
+        .max()
+        .unwrap_or(0)
 }

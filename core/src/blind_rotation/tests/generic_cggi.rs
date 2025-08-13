@@ -14,8 +14,7 @@ use sampling::source::Source;
 use crate::{
     BlindRotationKeyCGGI, BlindRotationKeyCGGIExec, BlindRotationKeyCGGIExecLayoutFamily, CCGIBlindRotationFamily,
     GLWECiphertext, GLWEDecryptFamily, GLWEPlaintext, GLWESecret, GLWESecretExec, GLWESecretFamily, Infos, LWECiphertext,
-    LWECiphertextToRef, LWEPlaintext, LWESecret, LookUpTable, cggi_blind_rotate, cggi_blind_rotate_scratch_space,
-    negate_and_mod_switch_2n,
+    LWECiphertextToRef, LWEPlaintext, LWESecret, LookUpTable, cggi_blind_rotate, cggi_blind_rotate_scratch_space, mod_switch_2n,
 };
 
 pub(crate) trait CGGITestModuleFamily<B: Backend> = CCGIBlindRotationFamily<B>
@@ -133,7 +132,12 @@ where
 
     let mut lwe_2n: Vec<i64> = vec![0i64; lwe.n() + 1]; // TODO: from scratch space
 
-    negate_and_mod_switch_2n(2 * lut.domain_size(), &mut lwe_2n, &lwe.to_ref());
+    mod_switch_2n(
+        2 * lut.domain_size(),
+        &mut lwe_2n,
+        &lwe.to_ref(),
+        lut.rotation_direction(),
+    );
 
     let pt_want: i64 = (lwe_2n[0]
         + lwe_2n[1..]
