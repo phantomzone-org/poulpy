@@ -1,6 +1,6 @@
 use backend::hal::{
     api::{TakeMatZnx, TakeScalarZnx, TakeSvpPPol, TakeVecZnx, TakeVecZnxDft, TakeVmpPMat},
-    layouts::{Backend, DataRef, Module, Scratch},
+    layouts::{Backend, DataRef, Scratch},
     oep::{TakeMatZnxImpl, TakeScalarZnxImpl, TakeSvpPPolImpl, TakeVecZnxDftImpl, TakeVecZnxImpl, TakeVmpPMatImpl},
 };
 
@@ -16,15 +16,14 @@ pub trait TakeLike<'a, B: Backend, T> {
 }
 
 pub trait TakeGLWECt<B: Backend> {
-    fn take_glwe_ct(&mut self, module: &Module<B>, basek: usize, k: usize, rank: usize)
-    -> (GLWECiphertext<&mut [u8]>, &mut Self);
+    fn take_glwe_ct(&mut self, n: usize, basek: usize, k: usize, rank: usize) -> (GLWECiphertext<&mut [u8]>, &mut Self);
 }
 
 pub trait TakeGLWECtSlice<B: Backend> {
     fn take_glwe_ct_slice(
         &mut self,
         size: usize,
-        module: &Module<B>,
+        n: usize,
         basek: usize,
         k: usize,
         rank: usize,
@@ -32,13 +31,13 @@ pub trait TakeGLWECtSlice<B: Backend> {
 }
 
 pub trait TakeGLWEPt<B: Backend> {
-    fn take_glwe_pt(&mut self, module: &Module<B>, basek: usize, k: usize) -> (GLWEPlaintext<&mut [u8]>, &mut Self);
+    fn take_glwe_pt(&mut self, n: usize, basek: usize, k: usize) -> (GLWEPlaintext<&mut [u8]>, &mut Self);
 }
 
 pub trait TakeGGLWE<B: Backend> {
     fn take_gglwe(
         &mut self,
-        module: &Module<B>,
+        n: usize,
         basek: usize,
         k: usize,
         rows: usize,
@@ -51,7 +50,7 @@ pub trait TakeGGLWE<B: Backend> {
 pub trait TakeGGLWEExec<B: Backend> {
     fn take_gglwe_exec(
         &mut self,
-        module: &Module<B>,
+        n: usize,
         basek: usize,
         k: usize,
         rows: usize,
@@ -64,7 +63,7 @@ pub trait TakeGGLWEExec<B: Backend> {
 pub trait TakeGGSW<B: Backend> {
     fn take_ggsw(
         &mut self,
-        module: &Module<B>,
+        n: usize,
         basek: usize,
         k: usize,
         rows: usize,
@@ -76,7 +75,7 @@ pub trait TakeGGSW<B: Backend> {
 pub trait TakeGGSWExec<B: Backend> {
     fn take_ggsw_exec(
         &mut self,
-        module: &Module<B>,
+        n: usize,
         basek: usize,
         k: usize,
         rows: usize,
@@ -86,21 +85,21 @@ pub trait TakeGGSWExec<B: Backend> {
 }
 
 pub trait TakeGLWESecret<B: Backend> {
-    fn take_glwe_secret(&mut self, module: &Module<B>, rank: usize) -> (GLWESecret<&mut [u8]>, &mut Self);
+    fn take_glwe_secret(&mut self, n: usize, rank: usize) -> (GLWESecret<&mut [u8]>, &mut Self);
 }
 
 pub trait TakeGLWESecretExec<B: Backend> {
-    fn take_glwe_secret_exec(&mut self, module: &Module<B>, rank: usize) -> (GLWESecretExec<&mut [u8], B>, &mut Self);
+    fn take_glwe_secret_exec(&mut self, n: usize, rank: usize) -> (GLWESecretExec<&mut [u8], B>, &mut Self);
 }
 
 pub trait TakeGLWEPk<B: Backend> {
-    fn take_glwe_pk(&mut self, module: &Module<B>, basek: usize, k: usize, rank: usize) -> (GLWEPublicKey<&mut [u8]>, &mut Self);
+    fn take_glwe_pk(&mut self, n: usize, basek: usize, k: usize, rank: usize) -> (GLWEPublicKey<&mut [u8]>, &mut Self);
 }
 
 pub trait TakeGLWEPkExec<B: Backend> {
     fn take_glwe_pk_exec(
         &mut self,
-        module: &Module<B>,
+        n: usize,
         basek: usize,
         k: usize,
         rank: usize,
@@ -110,7 +109,7 @@ pub trait TakeGLWEPkExec<B: Backend> {
 pub trait TakeGLWESwitchingKey<B: Backend> {
     fn take_glwe_switching_key(
         &mut self,
-        module: &Module<B>,
+        n: usize,
         basek: usize,
         k: usize,
         rows: usize,
@@ -123,7 +122,7 @@ pub trait TakeGLWESwitchingKey<B: Backend> {
 pub trait TakeGLWESwitchingKeyExec<B: Backend> {
     fn take_glwe_switching_key_exec(
         &mut self,
-        module: &Module<B>,
+        n: usize,
         basek: usize,
         k: usize,
         rows: usize,
@@ -136,7 +135,7 @@ pub trait TakeGLWESwitchingKeyExec<B: Backend> {
 pub trait TakeTensorKey<B: Backend> {
     fn take_tensor_key(
         &mut self,
-        module: &Module<B>,
+        n: usize,
         basek: usize,
         k: usize,
         rows: usize,
@@ -148,7 +147,7 @@ pub trait TakeTensorKey<B: Backend> {
 pub trait TakeTensorKeyExec<B: Backend> {
     fn take_tensor_key_exec(
         &mut self,
-        module: &Module<B>,
+        n: usize,
         basek: usize,
         k: usize,
         rows: usize,
@@ -160,7 +159,7 @@ pub trait TakeTensorKeyExec<B: Backend> {
 pub trait TakeAutomorphismKey<B: Backend> {
     fn take_automorphism_key(
         &mut self,
-        module: &Module<B>,
+        n: usize,
         basek: usize,
         k: usize,
         rows: usize,
@@ -172,7 +171,7 @@ pub trait TakeAutomorphismKey<B: Backend> {
 pub trait TakeAutomorphismKeyExec<B: Backend> {
     fn take_automorphism_key_exec(
         &mut self,
-        module: &Module<B>,
+        n: usize,
         basek: usize,
         k: usize,
         rows: usize,
@@ -183,16 +182,10 @@ pub trait TakeAutomorphismKeyExec<B: Backend> {
 
 impl<B: Backend> TakeGLWECt<B> for Scratch<B>
 where
-    Scratch<B>: TakeVecZnx<B>,
+    Scratch<B>: TakeVecZnx,
 {
-    fn take_glwe_ct(
-        &mut self,
-        module: &Module<B>,
-        basek: usize,
-        k: usize,
-        rank: usize,
-    ) -> (GLWECiphertext<&mut [u8]>, &mut Self) {
-        let (data, scratch) = self.take_vec_znx(module, rank + 1, k.div_ceil(basek));
+    fn take_glwe_ct(&mut self, n: usize, basek: usize, k: usize, rank: usize) -> (GLWECiphertext<&mut [u8]>, &mut Self) {
+        let (data, scratch) = self.take_vec_znx(n, rank + 1, k.div_ceil(basek));
         (GLWECiphertext { data, basek, k }, scratch)
     }
 }
@@ -219,12 +212,12 @@ where
 
 impl<B: Backend> TakeGLWECtSlice<B> for Scratch<B>
 where
-    Scratch<B>: TakeVecZnx<B>,
+    Scratch<B>: TakeVecZnx,
 {
     fn take_glwe_ct_slice(
         &mut self,
         size: usize,
-        module: &Module<B>,
+        n: usize,
         basek: usize,
         k: usize,
         rank: usize,
@@ -232,7 +225,7 @@ where
         let mut scratch: &mut Scratch<B> = self;
         let mut cts: Vec<GLWECiphertext<&mut [u8]>> = Vec::with_capacity(size);
         for _ in 0..size {
-            let (ct, new_scratch) = scratch.take_glwe_ct(module, basek, k, rank);
+            let (ct, new_scratch) = scratch.take_glwe_ct(n, basek, k, rank);
             scratch = new_scratch;
             cts.push(ct);
         }
@@ -242,10 +235,10 @@ where
 
 impl<B: Backend> TakeGLWEPt<B> for Scratch<B>
 where
-    Scratch<B>: TakeVecZnx<B>,
+    Scratch<B>: TakeVecZnx,
 {
-    fn take_glwe_pt(&mut self, module: &Module<B>, basek: usize, k: usize) -> (GLWEPlaintext<&mut [u8]>, &mut Self) {
-        let (data, scratch) = self.take_vec_znx(module, 1, k.div_ceil(basek));
+    fn take_glwe_pt(&mut self, n: usize, basek: usize, k: usize) -> (GLWEPlaintext<&mut [u8]>, &mut Self) {
+        let (data, scratch) = self.take_vec_znx(n, 1, k.div_ceil(basek));
         (GLWEPlaintext { data, basek, k }, scratch)
     }
 }
@@ -272,11 +265,11 @@ where
 
 impl<B: Backend> TakeGGLWE<B> for Scratch<B>
 where
-    Scratch<B>: TakeMatZnx<B>,
+    Scratch<B>: TakeMatZnx,
 {
     fn take_gglwe(
         &mut self,
-        module: &Module<B>,
+        n: usize,
         basek: usize,
         k: usize,
         rows: usize,
@@ -285,7 +278,7 @@ where
         rank_out: usize,
     ) -> (GGLWECiphertext<&mut [u8]>, &mut Self) {
         let (data, scratch) = self.take_mat_znx(
-            module,
+            n,
             rows.div_ceil(digits),
             rank_in,
             rank_out + 1,
@@ -337,7 +330,7 @@ where
 {
     fn take_gglwe_exec(
         &mut self,
-        module: &Module<B>,
+        n: usize,
         basek: usize,
         k: usize,
         rows: usize,
@@ -346,7 +339,7 @@ where
         rank_out: usize,
     ) -> (GGLWECiphertextExec<&mut [u8], B>, &mut Self) {
         let (data, scratch) = self.take_vmp_pmat(
-            module,
+            n,
             rows.div_ceil(digits),
             rank_in,
             rank_out + 1,
@@ -394,11 +387,11 @@ where
 
 impl<B: Backend> TakeGGSW<B> for Scratch<B>
 where
-    Scratch<B>: TakeMatZnx<B>,
+    Scratch<B>: TakeMatZnx,
 {
     fn take_ggsw(
         &mut self,
-        module: &Module<B>,
+        n: usize,
         basek: usize,
         k: usize,
         rows: usize,
@@ -406,7 +399,7 @@ where
         rank: usize,
     ) -> (GGSWCiphertext<&mut [u8]>, &mut Self) {
         let (data, scratch) = self.take_mat_znx(
-            module,
+            n,
             rows.div_ceil(digits),
             rank + 1,
             rank + 1,
@@ -458,7 +451,7 @@ where
 {
     fn take_ggsw_exec(
         &mut self,
-        module: &Module<B>,
+        n: usize,
         basek: usize,
         k: usize,
         rows: usize,
@@ -466,7 +459,7 @@ where
         rank: usize,
     ) -> (GGSWCiphertextExec<&mut [u8], B>, &mut Self) {
         let (data, scratch) = self.take_vmp_pmat(
-            module,
+            n,
             rows.div_ceil(digits),
             rank + 1,
             rank + 1,
@@ -514,10 +507,10 @@ where
 
 impl<B: Backend> TakeGLWEPk<B> for Scratch<B>
 where
-    Scratch<B>: TakeVecZnx<B>,
+    Scratch<B>: TakeVecZnx,
 {
-    fn take_glwe_pk(&mut self, module: &Module<B>, basek: usize, k: usize, rank: usize) -> (GLWEPublicKey<&mut [u8]>, &mut Self) {
-        let (data, scratch) = self.take_vec_znx(module, rank + 1, k.div_ceil(basek));
+    fn take_glwe_pk(&mut self, n: usize, basek: usize, k: usize, rank: usize) -> (GLWEPublicKey<&mut [u8]>, &mut Self) {
+        let (data, scratch) = self.take_vec_znx(n, rank + 1, k.div_ceil(basek));
         (
             GLWEPublicKey {
                 data,
@@ -557,12 +550,12 @@ where
 {
     fn take_glwe_pk_exec(
         &mut self,
-        module: &Module<B>,
+        n: usize,
         basek: usize,
         k: usize,
         rank: usize,
     ) -> (GLWEPublicKeyExec<&mut [u8], B>, &mut Self) {
-        let (data, scratch) = self.take_vec_znx_dft(module, rank + 1, k.div_ceil(basek));
+        let (data, scratch) = self.take_vec_znx_dft(n, rank + 1, k.div_ceil(basek));
         (
             GLWEPublicKeyExec {
                 data,
@@ -598,10 +591,10 @@ where
 
 impl<B: Backend> TakeGLWESecret<B> for Scratch<B>
 where
-    Scratch<B>: TakeScalarZnx<B>,
+    Scratch<B>: TakeScalarZnx,
 {
-    fn take_glwe_secret(&mut self, module: &Module<B>, rank: usize) -> (GLWESecret<&mut [u8]>, &mut Self) {
-        let (data, scratch) = self.take_scalar_znx(module, rank);
+    fn take_glwe_secret(&mut self, n: usize, rank: usize) -> (GLWESecret<&mut [u8]>, &mut Self) {
+        let (data, scratch) = self.take_scalar_znx(n, rank);
         (
             GLWESecret {
                 data,
@@ -635,8 +628,8 @@ impl<B: Backend> TakeGLWESecretExec<B> for Scratch<B>
 where
     Scratch<B>: TakeSvpPPol<B>,
 {
-    fn take_glwe_secret_exec(&mut self, module: &Module<B>, rank: usize) -> (GLWESecretExec<&mut [u8], B>, &mut Self) {
-        let (data, scratch) = self.take_svp_ppol(module, rank);
+    fn take_glwe_secret_exec(&mut self, n: usize, rank: usize) -> (GLWESecretExec<&mut [u8], B>, &mut Self) {
+        let (data, scratch) = self.take_svp_ppol(n, rank);
         (
             GLWESecretExec {
                 data,
@@ -668,11 +661,11 @@ where
 
 impl<B: Backend> TakeGLWESwitchingKey<B> for Scratch<B>
 where
-    Scratch<B>: TakeMatZnx<B>,
+    Scratch<B>: TakeMatZnx,
 {
     fn take_glwe_switching_key(
         &mut self,
-        module: &Module<B>,
+        n: usize,
         basek: usize,
         k: usize,
         rows: usize,
@@ -680,7 +673,7 @@ where
         rank_in: usize,
         rank_out: usize,
     ) -> (GLWESwitchingKey<&mut [u8]>, &mut Self) {
-        let (data, scratch) = self.take_gglwe(module, basek, k, rows, digits, rank_in, rank_out);
+        let (data, scratch) = self.take_gglwe(n, basek, k, rows, digits, rank_in, rank_out);
         (
             GLWESwitchingKey {
                 key: data,
@@ -719,7 +712,7 @@ where
 {
     fn take_glwe_switching_key_exec(
         &mut self,
-        module: &Module<B>,
+        n: usize,
         basek: usize,
         k: usize,
         rows: usize,
@@ -727,7 +720,7 @@ where
         rank_in: usize,
         rank_out: usize,
     ) -> (GLWESwitchingKeyExec<&mut [u8], B>, &mut Self) {
-        let (data, scratch) = self.take_gglwe_exec(module, basek, k, rows, digits, rank_in, rank_out);
+        let (data, scratch) = self.take_gglwe_exec(n, basek, k, rows, digits, rank_in, rank_out);
         (
             GLWESwitchingKeyExec {
                 key: data,
@@ -762,18 +755,18 @@ where
 
 impl<B: Backend> TakeAutomorphismKey<B> for Scratch<B>
 where
-    Scratch<B>: TakeMatZnx<B>,
+    Scratch<B>: TakeMatZnx,
 {
     fn take_automorphism_key(
         &mut self,
-        module: &Module<B>,
+        n: usize,
         basek: usize,
         k: usize,
         rows: usize,
         digits: usize,
         rank: usize,
     ) -> (AutomorphismKey<&mut [u8]>, &mut Self) {
-        let (data, scratch) = self.take_glwe_switching_key(module, basek, k, rows, digits, rank, rank);
+        let (data, scratch) = self.take_glwe_switching_key(n, basek, k, rows, digits, rank, rank);
         (AutomorphismKey { key: data, p: 0 }, scratch)
     }
 }
@@ -798,14 +791,14 @@ where
 {
     fn take_automorphism_key_exec(
         &mut self,
-        module: &Module<B>,
+        n: usize,
         basek: usize,
         k: usize,
         rows: usize,
         digits: usize,
         rank: usize,
     ) -> (AutomorphismKeyExec<&mut [u8], B>, &mut Self) {
-        let (data, scratch) = self.take_glwe_switching_key_exec(module, basek, k, rows, digits, rank, rank);
+        let (data, scratch) = self.take_glwe_switching_key_exec(n, basek, k, rows, digits, rank, rank);
         (AutomorphismKeyExec { key: data, p: 0 }, scratch)
     }
 }
@@ -826,11 +819,11 @@ where
 
 impl<B: Backend> TakeTensorKey<B> for Scratch<B>
 where
-    Scratch<B>: TakeMatZnx<B>,
+    Scratch<B>: TakeMatZnx,
 {
     fn take_tensor_key(
         &mut self,
-        module: &Module<B>,
+        n: usize,
         basek: usize,
         k: usize,
         rows: usize,
@@ -843,12 +836,12 @@ where
         let mut scratch: &mut Scratch<B> = self;
 
         if pairs != 0 {
-            let (gglwe, s) = scratch.take_glwe_switching_key(module, basek, k, rows, digits, 1, rank);
+            let (gglwe, s) = scratch.take_glwe_switching_key(n, basek, k, rows, digits, 1, rank);
             scratch = s;
             keys.push(gglwe);
         }
         for _ in 1..pairs {
-            let (gglwe, s) = scratch.take_glwe_switching_key(module, basek, k, rows, digits, 1, rank);
+            let (gglwe, s) = scratch.take_glwe_switching_key(n, basek, k, rows, digits, 1, rank);
             scratch = s;
             keys.push(gglwe);
         }
@@ -891,7 +884,7 @@ where
 {
     fn take_tensor_key_exec(
         &mut self,
-        module: &Module<B>,
+        n: usize,
         basek: usize,
         k: usize,
         rows: usize,
@@ -904,12 +897,12 @@ where
         let mut scratch: &mut Scratch<B> = self;
 
         if pairs != 0 {
-            let (gglwe, s) = scratch.take_glwe_switching_key_exec(module, basek, k, rows, digits, 1, rank);
+            let (gglwe, s) = scratch.take_glwe_switching_key_exec(n, basek, k, rows, digits, 1, rank);
             scratch = s;
             keys.push(gglwe);
         }
         for _ in 1..pairs {
-            let (gglwe, s) = scratch.take_glwe_switching_key_exec(module, basek, k, rows, digits, 1, rank);
+            let (gglwe, s) = scratch.take_glwe_switching_key_exec(n, basek, k, rows, digits, 1, rank);
             scratch = s;
             keys.push(gglwe);
         }

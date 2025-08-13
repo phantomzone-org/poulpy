@@ -11,6 +11,7 @@ use crate::{AutomorphismKeyExec, GLWECiphertext, GLWEKeyswitchFamily, Infos, glw
 impl GLWECiphertext<Vec<u8>> {
     pub fn automorphism_scratch_space<B: Backend>(
         module: &Module<B>,
+        n: usize,
         basek: usize,
         k_out: usize,
         k_in: usize,
@@ -21,11 +22,12 @@ impl GLWECiphertext<Vec<u8>> {
     where
         Module<B>: GLWEKeyswitchFamily<B>,
     {
-        Self::keyswitch_scratch_space(module, basek, k_out, k_in, k_ksk, digits, rank, rank)
+        Self::keyswitch_scratch_space(module, n, basek, k_out, k_in, k_ksk, digits, rank, rank)
     }
 
     pub fn automorphism_inplace_scratch_space<B: Backend>(
         module: &Module<B>,
+        n: usize,
         basek: usize,
         k_out: usize,
         k_ksk: usize,
@@ -35,7 +37,7 @@ impl GLWECiphertext<Vec<u8>> {
     where
         Module<B>: GLWEKeyswitchFamily<B>,
     {
-        Self::keyswitch_inplace_scratch_space(module, basek, k_out, k_ksk, digits, rank)
+        Self::keyswitch_inplace_scratch_space(module, n, basek, k_out, k_ksk, digits, rank)
     }
 }
 
@@ -85,7 +87,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         {
             self.assert_keyswitch(module, lhs, &rhs.key, scratch);
         }
-        let (res_dft, scratch1) = scratch.take_vec_znx_dft(module, self.cols(), rhs.size()); // TODO: optimise size
+        let (res_dft, scratch1) = scratch.take_vec_znx_dft(self.n(), self.cols(), rhs.size()); // TODO: optimise size
         let mut res_big: VecZnxBig<_, B> = keyswitch(module, res_dft, lhs, &rhs.key, scratch1);
         (0..self.cols()).for_each(|i| {
             module.vec_znx_big_automorphism_inplace(rhs.p(), &mut res_big, i);
@@ -123,7 +125,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         {
             self.assert_keyswitch(module, lhs, &rhs.key, scratch);
         }
-        let (res_dft, scratch1) = scratch.take_vec_znx_dft(module, self.cols(), rhs.size()); // TODO: optimise size
+        let (res_dft, scratch1) = scratch.take_vec_znx_dft(self.n(), self.cols(), rhs.size()); // TODO: optimise size
         let mut res_big: VecZnxBig<_, B> = keyswitch(module, res_dft, lhs, &rhs.key, scratch1);
         (0..self.cols()).for_each(|i| {
             module.vec_znx_big_automorphism_inplace(rhs.p(), &mut res_big, i);
@@ -161,7 +163,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         {
             self.assert_keyswitch(module, lhs, &rhs.key, scratch);
         }
-        let (res_dft, scratch1) = scratch.take_vec_znx_dft(module, self.cols(), rhs.size()); // TODO: optimise size
+        let (res_dft, scratch1) = scratch.take_vec_znx_dft(self.n(), self.cols(), rhs.size()); // TODO: optimise size
         let mut res_big: VecZnxBig<_, B> = keyswitch(module, res_dft, lhs, &rhs.key, scratch1);
         (0..self.cols()).for_each(|i| {
             module.vec_znx_big_automorphism_inplace(rhs.p(), &mut res_big, i);

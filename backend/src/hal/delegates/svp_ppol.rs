@@ -8,8 +8,8 @@ impl<B> SvpPPolFromBytes<B> for Module<B>
 where
     B: Backend + SvpPPolFromBytesImpl<B>,
 {
-    fn svp_ppol_from_bytes(&self, cols: usize, bytes: Vec<u8>) -> SvpPPolOwned<B> {
-        B::svp_ppol_from_bytes_impl(self.n(), cols, bytes)
+    fn svp_ppol_from_bytes(&self, n: usize, cols: usize, bytes: Vec<u8>) -> SvpPPolOwned<B> {
+        B::svp_ppol_from_bytes_impl(n, cols, bytes)
     }
 }
 
@@ -17,8 +17,8 @@ impl<B> SvpPPolAlloc<B> for Module<B>
 where
     B: Backend + SvpPPolAllocImpl<B>,
 {
-    fn svp_ppol_alloc(&self, cols: usize) -> SvpPPolOwned<B> {
-        B::svp_ppol_alloc_impl(self.n(), cols)
+    fn svp_ppol_alloc(&self, n: usize, cols: usize) -> SvpPPolOwned<B> {
+        B::svp_ppol_alloc_impl(n, cols)
     }
 }
 
@@ -26,8 +26,8 @@ impl<B> SvpPPolAllocBytes for Module<B>
 where
     B: Backend + SvpPPolAllocBytesImpl<B>,
 {
-    fn svp_ppol_alloc_bytes(&self, cols: usize) -> usize {
-        B::svp_ppol_alloc_bytes_impl(self.n(), cols)
+    fn svp_ppol_alloc_bytes(&self, n: usize, cols: usize) -> usize {
+        B::svp_ppol_alloc_bytes_impl(n, cols)
     }
 }
 

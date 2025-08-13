@@ -1,6 +1,6 @@
 use backend::hal::{
     api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxAlloc, VecZnxBigAlloc, VecZnxBigNormalize,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxBigAlloc, VecZnxBigNormalize,
         VecZnxBigNormalizeTmpBytes, VecZnxDftAlloc, VecZnxDftToVecZnxBigTmpA, VecZnxNormalizeTmpBytes, VecZnxStd,
         VecZnxSubABInplace, ZnxZero,
     },
@@ -27,7 +27,7 @@ impl<D: DataRef> GGSWCiphertext<D> {
     ) where
         DataSk: DataRef,
         DataScalar: DataRef,
-        Module<B>: GGSWAssertNoiseFamily<B> + VecZnxAlloc + VecZnxAddScalarInplace + VecZnxSubABInplace + VecZnxStd,
+        Module<B>: GGSWAssertNoiseFamily<B> + VecZnxAddScalarInplace + VecZnxSubABInplace + VecZnxStd,
         B: TakeVecZnxDftImpl<B> + TakeVecZnxBigImpl<B> + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
         F: Fn(usize) -> f64,
     {
@@ -35,13 +35,13 @@ impl<D: DataRef> GGSWCiphertext<D> {
         let k: usize = self.k();
         let digits: usize = self.digits();
 
-        let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(module, basek, k);
-        let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(module, basek, k);
-        let mut pt_dft: VecZnxDft<Vec<u8>, B> = module.vec_znx_dft_alloc(1, self.size());
-        let mut pt_big: VecZnxBig<Vec<u8>, B> = module.vec_znx_big_alloc(1, self.size());
+        let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(self.n(), basek, k);
+        let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(self.n(), basek, k);
+        let mut pt_dft: VecZnxDft<Vec<u8>, B> = module.vec_znx_dft_alloc(self.n(), 1, self.size());
+        let mut pt_big: VecZnxBig<Vec<u8>, B> = module.vec_znx_big_alloc(self.n(), 1, self.size());
 
         let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-            GLWECiphertext::decrypt_scratch_space(module, basek, k) | module.vec_znx_normalize_tmp_bytes(module.n()),
+            GLWECiphertext::decrypt_scratch_space(module, self.n(), basek, k) | module.vec_znx_normalize_tmp_bytes(self.n()),
         );
 
         (0..self.rank() + 1).for_each(|col_j| {

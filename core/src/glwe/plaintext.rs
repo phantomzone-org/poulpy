@@ -1,7 +1,4 @@
-use backend::hal::{
-    api::{VecZnxAlloc, VecZnxAllocBytes},
-    layouts::{Backend, Data, DataMut, DataRef, Module, VecZnx, VecZnxToMut, VecZnxToRef},
-};
+use backend::hal::layouts::{Data, DataMut, DataRef, VecZnx, VecZnxToMut, VecZnxToRef};
 
 use crate::{GLWECiphertext, GLWECiphertextToMut, GLWECiphertextToRef, GLWEOps, Infos, SetMetaData};
 
@@ -38,22 +35,16 @@ impl<D: DataMut> SetMetaData for GLWEPlaintext<D> {
 }
 
 impl GLWEPlaintext<Vec<u8>> {
-    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize) -> Self
-    where
-        Module<B>: VecZnxAlloc,
-    {
+    pub fn alloc(n: usize, basek: usize, k: usize) -> Self {
         Self {
-            data: module.vec_znx_alloc(1, k.div_ceil(basek)),
+            data: VecZnx::alloc(n, 1, k.div_ceil(basek)),
             basek: basek,
             k,
         }
     }
 
-    pub fn byte_of<B: Backend>(module: &Module<B>, basek: usize, k: usize) -> usize
-    where
-        Module<B>: VecZnxAllocBytes,
-    {
-        module.vec_znx_alloc_bytes(1, k.div_ceil(basek))
+    pub fn byte_of(n: usize, basek: usize, k: usize) -> usize {
+        VecZnx::alloc_bytes(n, 1, k.div_ceil(basek))
     }
 }
 

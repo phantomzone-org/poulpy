@@ -3,7 +3,7 @@ use std::hint::black_box;
 
 use backend::{
     hal::{
-        api::{ModuleNew, ScalarZnxAlloc, ScratchOwnedAlloc, ScratchOwnedBorrow},
+        api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
         layouts::{Module, ScalarZnx, ScratchOwned},
     },
     implementation::cpu_spqlios::FFT64,
@@ -26,6 +26,7 @@ fn bench_external_product_glwe_fft64(c: &mut Criterion) {
     fn runner(p: Params) -> impl FnMut() {
         let module: Module<FFT64> = Module::<FFT64>::new(1 << p.log_n);
 
+        let n: usize = module.n();
         let basek: usize = p.basek;
         let k_ct_in: usize = p.k_ct_in;
         let k_ct_out: usize = p.k_ct_out;
@@ -36,16 +37,17 @@ fn bench_external_product_glwe_fft64(c: &mut Criterion) {
         let rows: usize = 1; //(p.k_ct_in.div_ceil(p.basek);
         let sigma: f64 = 3.2;
 
-        let mut ct_ggsw: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(&module, basek, k_ggsw, rows, digits, rank);
-        let mut ct_glwe_in: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_ct_in, rank);
-        let mut ct_glwe_out: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_ct_out, rank);
-        let pt_rgsw: ScalarZnx<Vec<u8>> = module.scalar_znx_alloc(1);
+        let mut ct_ggsw: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(n, basek, k_ggsw, rows, digits, rank);
+        let mut ct_glwe_in: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(n, basek, k_ct_in, rank);
+        let mut ct_glwe_out: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(n, basek, k_ct_out, rank);
+        let pt_rgsw: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n, 1);
 
         let mut scratch: ScratchOwned<FFT64> = ScratchOwned::alloc(
-            GGSWCiphertext::encrypt_sk_scratch_space(&module, basek, ct_ggsw.k(), rank)
-                | GLWECiphertext::encrypt_sk_scratch_space(&module, basek, ct_glwe_in.k())
+            GGSWCiphertext::encrypt_sk_scratch_space(&module, n, basek, ct_ggsw.k(), rank)
+                | GLWECiphertext::encrypt_sk_scratch_space(&module, n, basek, ct_glwe_in.k())
                 | GLWECiphertext::external_product_scratch_space(
                     &module,
+                    n,
                     basek,
                     ct_glwe_out.k(),
                     ct_glwe_in.k(),
@@ -59,7 +61,7 @@ fn bench_external_product_glwe_fft64(c: &mut Criterion) {
         let mut source_xe = Source::new([0u8; 32]);
         let mut source_xa = Source::new([0u8; 32]);
 
-        let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(&module, rank);
+        let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
         sk.fill_ternary_prob(0.5, &mut source_xs);
         let sk_dft: GLWESecretExec<Vec<u8>, FFT64> = GLWESecretExec::from(&module, &sk);
 
@@ -121,6 +123,7 @@ fn bench_external_product_glwe_inplace_fft64(c: &mut Criterion) {
     fn runner(p: Params) -> impl FnMut() {
         let module: Module<FFT64> = Module::<FFT64>::new(1 << p.log_n);
 
+        let n = module.n();
         let basek: usize = p.basek;
         let k_glwe: usize = p.k_ct;
         let k_ggsw: usize = p.k_ggsw;
@@ -130,21 +133,29 @@ fn bench_external_product_glwe_inplace_fft64(c: &mut Criterion) {
         let rows: usize = p.k_ct.div_ceil(p.basek);
         let sigma: f64 = 3.2;
 
-        let mut ct_ggsw: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(&module, basek, k_ggsw, rows, digits, rank);
-        let mut ct_glwe: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&module, basek, k_glwe, rank);
-        let pt_rgsw: ScalarZnx<Vec<u8>> = module.scalar_znx_alloc(1);
+        let mut ct_ggsw: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(n, basek, k_ggsw, rows, digits, rank);
+        let mut ct_glwe: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(n, basek, k_glwe, rank);
+        let pt_rgsw: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n, 1);
 
         let mut scratch: ScratchOwned<FFT64> = ScratchOwned::alloc(
-            GGSWCiphertext::encrypt_sk_scratch_space(&module, basek, ct_ggsw.k(), rank)
-                | GLWECiphertext::encrypt_sk_scratch_space(&module, basek, ct_glwe.k())
-                | GLWECiphertext::external_product_inplace_scratch_space(&module, basek, ct_glwe.k(), ct_ggsw.k(), digits, rank),
+            GGSWCiphertext::encrypt_sk_scratch_space(&module, n, basek, ct_ggsw.k(), rank)
+                | GLWECiphertext::encrypt_sk_scratch_space(&module, n, basek, ct_glwe.k())
+                | GLWECiphertext::external_product_inplace_scratch_space(
+                    &module,
+                    n,
+                    basek,
+                    ct_glwe.k(),
+                    ct_ggsw.k(),
+                    digits,
+                    rank,
+                ),
         );
 
         let mut source_xs = Source::new([0u8; 32]);
         let mut source_xe = Source::new([0u8; 32]);
         let mut source_xa = Source::new([0u8; 32]);
 
-        let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(&module, rank);
+        let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
         sk.fill_ternary_prob(0.5, &mut source_xs);
         let sk_dft: GLWESecretExec<Vec<u8>, FFT64> = GLWESecretExec::from(&module, &sk);
 

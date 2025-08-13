@@ -57,8 +57,8 @@ unsafe impl VecZnxDftAllocImpl<FFT64> for FFT64 {
 }
 
 unsafe impl VecZnxDftToVecZnxBigTmpBytesImpl<FFT64> for FFT64 {
-    fn vec_znx_dft_to_vec_znx_big_tmp_bytes_impl(module: &Module<FFT64>) -> usize {
-        unsafe { vec_znx_dft::vec_znx_idft_tmp_bytes(module.ptr()) as usize }
+    fn vec_znx_dft_to_vec_znx_big_tmp_bytes_impl(module: &Module<FFT64>, n: usize) -> usize {
+        unsafe { vec_znx_dft::vec_znx_idft_tmp_bytes(module.ptr(), n as u64) as usize }
     }
 }
 
@@ -74,26 +74,31 @@ unsafe impl VecZnxDftToVecZnxBigImpl<FFT64> for FFT64 {
         R: VecZnxBigToMut<FFT64>,
         A: VecZnxDftToRef<FFT64>,
     {
-        let mut res_mut: VecZnxBig<&mut [u8], FFT64> = res.to_mut();
-        let a_ref: VecZnxDft<&[u8], FFT64> = a.to_ref();
+        let mut res: VecZnxBig<&mut [u8], FFT64> = res.to_mut();
+        let a: VecZnxDft<&[u8], FFT64> = a.to_ref();
 
-        let (tmp_bytes, _) = scratch.take_slice(module.vec_znx_dft_to_vec_znx_big_tmp_bytes());
+        #[cfg(debug_assertions)]
+        {
+            assert_eq!(res.n(), a.n())
+        }
 
-        let min_size: usize = res_mut.size().min(a_ref.size());
+        let (tmp_bytes, _) = scratch.take_slice(module.vec_znx_dft_to_vec_znx_big_tmp_bytes(a.n()));
+
+        let min_size: usize = res.size().min(a.size());
 
         unsafe {
             (0..min_size).for_each(|j| {
                 vec_znx_dft::vec_znx_idft(
                     module.ptr(),
-                    res_mut.at_mut_ptr(res_col, j) as *mut vec_znx_big::vec_znx_big_t,
+                    res.at_mut_ptr(res_col, j) as *mut vec_znx_big::vec_znx_big_t,
                     1 as u64,
-                    a_ref.at_ptr(a_col, j) as *const vec_znx_dft::vec_znx_dft_t,
+                    a.at_ptr(a_col, j) as *const vec_znx_dft::vec_znx_dft_t,
                     1 as u64,
                     tmp_bytes.as_mut_ptr(),
                 )
             });
-            (min_size..res_mut.size()).for_each(|j| {
-                res_mut.zero_at(res_col, j);
+            (min_size..res.size()).for_each(|j| {
+                res.zero_at(res_col, j);
             });
         }
     }

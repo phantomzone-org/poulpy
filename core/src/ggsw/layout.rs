@@ -1,18 +1,50 @@
 use backend::hal::{
-    api::{MatZnxAlloc, MatZnxAllocBytes, VmpPMatAlloc, VmpPMatAllocBytes, VmpPMatPrepare},
-    layouts::{Backend, Data, DataMut, DataRef, MatZnx, Module, ReaderFrom, WriterTo},
+    api::{FillUniform, Reset, VmpPMatAlloc, VmpPMatAllocBytes, VmpPMatPrepare},
+    layouts::{Backend, Data, DataMut, DataRef, MatZnx, ReaderFrom, WriterTo},
 };
+use std::fmt;
 
 use crate::{GLWECiphertext, Infos};
 
 pub trait GGSWLayoutFamily<B: Backend> = VmpPMatAlloc<B> + VmpPMatAllocBytes + VmpPMatPrepare<B>;
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Clone)]
 pub struct GGSWCiphertext<D: Data> {
     pub(crate) data: MatZnx<D>,
     pub(crate) basek: usize,
     pub(crate) k: usize,
     pub(crate) digits: usize,
+}
+
+impl<D: DataRef> fmt::Debug for GGSWCiphertext<D> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "(GGSWCiphertext: basek={} k={} digits={}) {}",
+            self.basek, self.k, self.digits, self.data
+        )
+    }
+}
+
+impl<D: DataMut> Reset for GGSWCiphertext<D>
+where
+    MatZnx<D>: Reset,
+{
+    fn reset(&mut self) {
+        self.data.reset();
+        self.basek = 0;
+        self.k = 0;
+        self.digits = 0;
+    }
+}
+
+impl<D: DataMut> FillUniform for GGSWCiphertext<D>
+where
+    MatZnx<D>: FillUniform,
+{
+    fn fill_uniform(&mut self, source: &mut sampling::source::Source) {
+        self.data.fill_uniform(source);
+    }
 }
 
 impl<D: DataRef> GGSWCiphertext<D> {
@@ -36,10 +68,7 @@ impl<D: DataMut> GGSWCiphertext<D> {
 }
 
 impl GGSWCiphertext<Vec<u8>> {
-    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self
-    where
-        Module<B>: MatZnxAlloc,
-    {
+    pub fn alloc(n: usize, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self {
         let size: usize = k.div_ceil(basek);
         debug_assert!(digits > 0, "invalid ggsw: `digits` == 0");
 
@@ -59,17 +88,14 @@ impl GGSWCiphertext<Vec<u8>> {
         );
 
         Self {
-            data: module.mat_znx_alloc(rows, rank + 1, rank + 1, k.div_ceil(basek)),
+            data: MatZnx::alloc(n, rows, rank + 1, rank + 1, k.div_ceil(basek)),
             basek,
             k: k,
             digits,
         }
     }
 
-    pub fn bytes_of<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize
-    where
-        Module<B>: MatZnxAllocBytes,
-    {
+    pub fn bytes_of(n: usize, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize {
         let size: usize = k.div_ceil(basek);
         debug_assert!(
             size > digits,
@@ -86,7 +112,7 @@ impl GGSWCiphertext<Vec<u8>> {
             size
         );
 
-        module.mat_znx_alloc_bytes(rows, rank + 1, rank + 1, size)
+        MatZnx::alloc_bytes(n, rows, rank + 1, rank + 1, size)
     }
 }
 

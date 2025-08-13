@@ -3,7 +3,7 @@ use std::fmt::Debug;
 use sampling::source::Source;
 
 use crate::hal::{
-    api::{FillUniform, ZnxZero},
+    api::{FillUniform, Reset},
     layouts::{ReaderFrom, WriterTo},
 };
 
@@ -12,7 +12,7 @@ use crate::hal::{
 /// - `T` must implement I/O traits, zeroing, cloning, and random filling.
 pub fn test_reader_writer_interface<T>(mut original: T)
 where
-    T: WriterTo + ReaderFrom + PartialEq + Eq + Debug + Clone + ZnxZero + FillUniform,
+    T: WriterTo + ReaderFrom + PartialEq + Eq + Debug + Clone + Reset + FillUniform,
 {
     // Fill original with uniform random data
     let mut source = Source::new([0u8; 32]);
@@ -24,7 +24,7 @@ where
 
     // Prepare receiver: same shape, but zeroed
     let mut receiver = original.clone();
-    receiver.zero();
+    receiver.reset();
 
     // Deserialize from buffer
     let mut reader: &[u8] = &buffer;
@@ -45,7 +45,7 @@ fn scalar_znx_serialize() {
 
 #[test]
 fn vec_znx_serialize() {
-    let original: crate::hal::layouts::VecZnx<Vec<u8>> = crate::hal::layouts::VecZnx::alloc::<i64>(1024, 3, 4);
+    let original: crate::hal::layouts::VecZnx<Vec<u8>> = crate::hal::layouts::VecZnx::alloc(1024, 3, 4);
     test_reader_writer_interface(original);
 }
 

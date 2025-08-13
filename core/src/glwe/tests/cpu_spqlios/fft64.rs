@@ -8,7 +8,6 @@ use crate::glwe::tests::{
     generic_encryption::{test_encrypt_pk, test_encrypt_sk, test_encrypt_sk_compressed, test_encrypt_zero_sk},
     generic_external_product::{test_external_product, test_external_product_inplace},
     generic_keyswitch::{test_keyswitch, test_keyswitch_inplace},
-    generic_serialization::{test_serialization, test_serialization_compressed},
     packing::test_packing,
     trace::test_trace_inplace,
 };
@@ -174,18 +173,4 @@ fn packing() {
     let log_n: usize = 5;
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
     test_packing(&module);
-}
-
-#[test]
-fn serialization() {
-    let log_n: usize = 5;
-    let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
-    test_serialization(&module);
-}
-
-#[test]
-fn serialization_compressed() {
-    let log_n: usize = 5;
-    let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
-    test_serialization_compressed(&module);
 }

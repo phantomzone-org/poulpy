@@ -56,7 +56,7 @@ unsafe extern "C" {
     );
 }
 unsafe extern "C" {
-    pub unsafe fn vec_znx_idft_tmp_bytes(module: *const MODULE) -> u64;
+    pub unsafe fn vec_znx_idft_tmp_bytes(module: *const MODULE, n: u64) -> u64;
 }
 unsafe extern "C" {
     pub unsafe fn vec_znx_idft_tmp_a(
@@ -66,20 +66,4 @@ unsafe extern "C" {
         a_dft: *mut VEC_ZNX_DFT,
         a_size: u64,
     );
-}
-
-unsafe extern "C" {
-    pub unsafe fn vec_znx_dft_automorphism(
-        module: *const MODULE,
-        d: i64,
-        res_dft: *mut VEC_ZNX_DFT,
-        res_size: u64,
-        a_dft: *const VEC_ZNX_DFT,
-        a_size: u64,
-        tmp: *mut u8,
-    );
-}
-
-unsafe extern "C" {
-    pub unsafe fn vec_znx_dft_automorphism_tmp_bytes(module: *const MODULE) -> u64;
 }

@@ -10,6 +10,7 @@ use crate::{
 impl GGSWCiphertext<Vec<u8>> {
     pub fn automorphism_scratch_space<B: Backend>(
         module: &Module<B>,
+        n: usize,
         basek: usize,
         k_out: usize,
         k_in: usize,
@@ -23,15 +24,16 @@ impl GGSWCiphertext<Vec<u8>> {
         Module<B>: GLWEKeyswitchFamily<B> + GGSWKeySwitchFamily<B> + VecZnxNormalizeTmpBytes,
     {
         let out_size: usize = k_out.div_ceil(basek);
-        let ci_dft: usize = module.vec_znx_dft_alloc_bytes(rank + 1, out_size);
+        let ci_dft: usize = module.vec_znx_dft_alloc_bytes(n, rank + 1, out_size);
         let ks_internal: usize =
-            GLWECiphertext::keyswitch_scratch_space(module, basek, k_out, k_in, k_ksk, digits_ksk, rank, rank);
-        let expand: usize = GGSWCiphertext::expand_row_scratch_space(module, basek, k_out, k_tsk, digits_tsk, rank);
+            GLWECiphertext::keyswitch_scratch_space(module, n, basek, k_out, k_in, k_ksk, digits_ksk, rank, rank);
+        let expand: usize = GGSWCiphertext::expand_row_scratch_space(module, n, basek, k_out, k_tsk, digits_tsk, rank);
         ci_dft + (ks_internal | expand)
     }
 
     pub fn automorphism_inplace_scratch_space<B: Backend>(
         module: &Module<B>,
+        n: usize,
         basek: usize,
         k_out: usize,
         k_ksk: usize,
@@ -44,7 +46,7 @@ impl GGSWCiphertext<Vec<u8>> {
         Module<B>: GLWEKeyswitchFamily<B> + GGSWKeySwitchFamily<B> + VecZnxNormalizeTmpBytes,
     {
         GGSWCiphertext::automorphism_scratch_space(
-            module, basek, k_out, k_out, k_ksk, digits_ksk, k_tsk, digits_tsk, rank,
+            module, n, basek, k_out, k_out, k_ksk, digits_ksk, k_tsk, digits_tsk, rank,
         )
     }
 }
@@ -64,6 +66,9 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
         #[cfg(debug_assertions)]
         {
             use crate::Infos;
+
+            assert_eq!(self.n(), auto_key.n());
+            assert_eq!(lhs.n(), auto_key.n());
 
             assert_eq!(
                 self.rank(),
@@ -90,6 +95,7 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
                 scratch.available()
                     >= GGSWCiphertext::automorphism_scratch_space(
                         module,
+                        self.n(),
                         self.basek(),
                         self.k(),
                         lhs.k(),
@@ -102,6 +108,7 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
             )
         };
 
+        let n: usize = auto_key.n();
         let rank: usize = self.rank();
         let cols: usize = rank + 1;
 
@@ -113,7 +120,7 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
                 .automorphism(module, &lhs.at(row_i, 0), auto_key, scratch);
 
             // Isolates DFT(AUTO(a[i]))
-            let (mut ci_dft, scratch1) = scratch.take_vec_znx_dft(module, cols, self.size());
+            let (mut ci_dft, scratch1) = scratch.take_vec_znx_dft(n, cols, self.size());
             (0..cols).for_each(|i| {
                 module.vec_znx_dft_from_vec_znx(1, 0, &mut ci_dft, i, &self.at(row_i, 0).data, i);
             });

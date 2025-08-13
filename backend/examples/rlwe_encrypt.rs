@@ -1,10 +1,10 @@
 use backend::{
     hal::{
         api::{
-            ModuleNew, ScalarZnxAlloc, ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyInplace, SvpPPolAlloc, SvpPrepare,
-            VecZnxAddNormal, VecZnxAlloc, VecZnxBigAddSmallInplace, VecZnxBigAlloc, VecZnxBigNormalize,
-            VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallBInplace, VecZnxDecodeVeci64, VecZnxDftAlloc, VecZnxDftFromVecZnx,
-            VecZnxDftToVecZnxBigTmpA, VecZnxEncodeVeci64, VecZnxFillUniform, VecZnxNormalizeInplace, ZnxInfos,
+            ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyInplace, SvpPPolAlloc, SvpPrepare, VecZnxAddNormal,
+            VecZnxBigAddSmallInplace, VecZnxBigAlloc, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallBInplace,
+            VecZnxDecodeVeci64, VecZnxDftAlloc, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigTmpA, VecZnxEncodeVeci64,
+            VecZnxFillUniform, VecZnxNormalizeInplace, ZnxInfos,
         },
         layouts::{Module, ScalarZnx, ScratchOwned, SvpPPol, VecZnx, VecZnxBig, VecZnxDft},
     },
@@ -27,17 +27,18 @@ fn main() {
     let mut source: Source = Source::new(seed);
 
     // s <- Z_{-1, 0, 1}[X]/(X^{N}+1)
-    let mut s: ScalarZnx<Vec<u8>> = module.scalar_znx_alloc(1);
+    let mut s: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(module.n(), 1);
     s.fill_ternary_prob(0, 0.5, &mut source);
 
     // Buffer to store s in the DFT domain
-    let mut s_dft: SvpPPol<Vec<u8>, FFT64> = module.svp_ppol_alloc(s.cols());
+    let mut s_dft: SvpPPol<Vec<u8>, FFT64> = module.svp_ppol_alloc(n, s.cols());
 
     // s_dft <- DFT(s)
     module.svp_prepare(&mut s_dft, 0, &s, 0);
 
     // Allocates a VecZnx with two columns: ct=(0, 0)
-    let mut ct: VecZnx<Vec<u8>> = module.vec_znx_alloc(
+    let mut ct: VecZnx<Vec<u8>> = VecZnx::alloc(
+        module.n(),
         2,       // Number of columns
         ct_size, // Number of small poly per column
     );
@@ -45,7 +46,7 @@ fn main() {
     // Fill the second column with random values: ct = (0, a)
     module.vec_znx_fill_uniform(basek, &mut ct, 1, ct_size * basek, &mut source);
 
-    let mut buf_dft: VecZnxDft<Vec<u8>, FFT64> = module.vec_znx_dft_alloc(1, ct_size);
+    let mut buf_dft: VecZnxDft<Vec<u8>, FFT64> = module.vec_znx_dft_alloc(n, 1, ct_size);
 
     module.vec_znx_dft_from_vec_znx(1, 0, &mut buf_dft, 0, &ct, 1);
 
@@ -60,11 +61,12 @@ fn main() {
     // Alias scratch space (VecZnxDft<B> is always at least as big as VecZnxBig<B>)
 
     // BIG(ct[1] * s) <- IDFT(DFT(ct[1] * s)) (not normalized)
-    let mut buf_big: VecZnxBig<Vec<u8>, FFT64> = module.vec_znx_big_alloc(1, ct_size);
+    let mut buf_big: VecZnxBig<Vec<u8>, FFT64> = module.vec_znx_big_alloc(n, 1, ct_size);
     module.vec_znx_dft_to_vec_znx_big_tmp_a(&mut buf_big, 0, &mut buf_dft, 0);
 
     // Creates a plaintext: VecZnx with 1 column
-    let mut m = module.vec_znx_alloc(
+    let mut m = VecZnx::alloc(
+        module.n(),
         1,        // Number of columns
         msg_size, // Number of small polynomials
     );
@@ -125,7 +127,7 @@ fn main() {
     module.vec_znx_big_add_small_inplace(&mut buf_big, 0, &ct, 0);
 
     // m + e <- BIG(ct[1] * s + ct[0])
-    let mut res = module.vec_znx_alloc(1, ct_size);
+    let mut res = VecZnx::alloc(module.n(), 1, ct_size);
     module.vec_znx_big_normalize(basek, &mut res, 0, &buf_big, 0, scratch.borrow());
 
     // have = m * 2^{log_scale} + e

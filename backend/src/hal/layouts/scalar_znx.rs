@@ -6,7 +6,7 @@ use sampling::source::Source;
 use crate::{
     alloc_aligned,
     hal::{
-        api::{DataView, DataViewMut, FillUniform, ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero},
+        api::{DataView, DataViewMut, FillUniform, Reset, ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero},
         layouts::{Data, DataMut, DataRef, ReaderFrom, VecZnx, WriterTo},
     },
 };
@@ -107,15 +107,13 @@ impl<D: DataMut> ScalarZnx<D> {
     }
 }
 
-impl<D: DataRef> ScalarZnx<D> {
-    pub fn bytes_of(n: usize, cols: usize) -> usize {
+impl ScalarZnx<Vec<u8>> {
+    pub fn alloc_bytes(n: usize, cols: usize) -> usize {
         n * cols * size_of::<i64>()
     }
-}
 
-impl<D: DataRef + From<Vec<u8>>> ScalarZnx<D> {
     pub fn alloc(n: usize, cols: usize) -> Self {
-        let data: Vec<u8> = alloc_aligned::<u8>(Self::bytes_of(n, cols));
+        let data: Vec<u8> = alloc_aligned::<u8>(Self::alloc_bytes(n, cols));
         Self {
             data: data.into(),
             n,
@@ -123,9 +121,9 @@ impl<D: DataRef + From<Vec<u8>>> ScalarZnx<D> {
         }
     }
 
-    pub(crate) fn from_bytes(n: usize, cols: usize, bytes: impl Into<Vec<u8>>) -> Self {
+    pub fn from_bytes(n: usize, cols: usize, bytes: impl Into<Vec<u8>>) -> Self {
         let data: Vec<u8> = bytes.into();
-        assert!(data.len() == Self::bytes_of(n, cols));
+        assert!(data.len() == Self::alloc_bytes(n, cols));
         Self {
             data: data.into(),
             n,
@@ -146,6 +144,14 @@ impl<D: DataMut> ZnxZero for ScalarZnx<D> {
 impl<D: DataMut> FillUniform for ScalarZnx<D> {
     fn fill_uniform(&mut self, source: &mut Source) {
         source.fill_bytes(self.data.as_mut());
+    }
+}
+
+impl<D: DataMut> Reset for ScalarZnx<D> {
+    fn reset(&mut self) {
+        self.zero();
+        self.n = 0;
+        self.cols = 0;
     }
 }
 

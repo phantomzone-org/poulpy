@@ -20,6 +20,7 @@ pub trait GLWEExternalProductFamily<B: Backend> = VecZnxDftAllocBytes
 impl GLWECiphertext<Vec<u8>> {
     pub fn external_product_scratch_space<B: Backend>(
         module: &Module<B>,
+        n: usize,
         basek: usize,
         k_out: usize,
         k_in: usize,
@@ -33,9 +34,10 @@ impl GLWECiphertext<Vec<u8>> {
         let in_size: usize = k_in.div_ceil(basek).div_ceil(digits);
         let out_size: usize = k_out.div_ceil(basek);
         let ggsw_size: usize = k_ggsw.div_ceil(basek);
-        let res_dft: usize = module.vec_znx_dft_alloc_bytes(rank + 1, ggsw_size);
-        let a_dft: usize = module.vec_znx_dft_alloc_bytes(rank + 1, in_size);
+        let res_dft: usize = module.vec_znx_dft_alloc_bytes(n, rank + 1, ggsw_size);
+        let a_dft: usize = module.vec_znx_dft_alloc_bytes(n, rank + 1, in_size);
         let vmp: usize = module.vmp_apply_tmp_bytes(
+            n,
             out_size,
             in_size,
             in_size,  // rows
@@ -49,6 +51,7 @@ impl GLWECiphertext<Vec<u8>> {
 
     pub fn external_product_inplace_scratch_space<B: Backend>(
         module: &Module<B>,
+        n: usize,
         basek: usize,
         k_out: usize,
         k_ggsw: usize,
@@ -58,7 +61,7 @@ impl GLWECiphertext<Vec<u8>> {
     where
         Module<B>: GLWEExternalProductFamily<B>,
     {
-        Self::external_product_scratch_space(module, basek, k_out, k_out, k_ggsw, digits, rank)
+        Self::external_product_scratch_space(module, n, basek, k_out, k_out, k_ggsw, digits, rank)
     }
 }
 
@@ -83,13 +86,13 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
             assert_eq!(rhs.rank(), self.rank());
             assert_eq!(self.basek(), basek);
             assert_eq!(lhs.basek(), basek);
-            assert_eq!(rhs.n(), module.n());
-            assert_eq!(self.n(), module.n());
-            assert_eq!(lhs.n(), module.n());
+            assert_eq!(rhs.n(), self.n());
+            assert_eq!(lhs.n(), self.n());
             assert!(
                 scratch.available()
                     >= GLWECiphertext::external_product_scratch_space(
                         module,
+                        self.n(),
                         self.basek(),
                         self.k(),
                         lhs.k(),
@@ -103,8 +106,8 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         let cols: usize = rhs.rank() + 1;
         let digits: usize = rhs.digits();
 
-        let (mut res_dft, scratch1) = scratch.take_vec_znx_dft(module, cols, rhs.size()); // Todo optimise
-        let (mut a_dft, scratch2) = scratch1.take_vec_znx_dft(module, cols, lhs.size().div_ceil(digits));
+        let (mut res_dft, scratch1) = scratch.take_vec_znx_dft(self.n(), cols, rhs.size()); // Todo optimise
+        let (mut a_dft, scratch2) = scratch1.take_vec_znx_dft(self.n(), cols, lhs.size().div_ceil(digits));
 
         a_dft.data_mut().fill(0);
 

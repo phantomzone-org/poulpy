@@ -14,8 +14,8 @@ impl<B> VmpPMatAlloc<B> for Module<B>
 where
     B: Backend + VmpPMatAllocImpl<B>,
 {
-    fn vmp_pmat_alloc(&self, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> VmpPMatOwned<B> {
-        B::vmp_pmat_alloc_impl(self.n(), rows, cols_in, cols_out, size)
+    fn vmp_pmat_alloc(&self, n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> VmpPMatOwned<B> {
+        B::vmp_pmat_alloc_impl(n, rows, cols_in, cols_out, size)
     }
 }
 
@@ -23,8 +23,8 @@ impl<B> VmpPMatAllocBytes for Module<B>
 where
     B: Backend + VmpPMatAllocBytesImpl<B>,
 {
-    fn vmp_pmat_alloc_bytes(&self, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize {
-        B::vmp_pmat_alloc_bytes_impl(self.n(), rows, cols_in, cols_out, size)
+    fn vmp_pmat_alloc_bytes(&self, n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize {
+        B::vmp_pmat_alloc_bytes_impl(n, rows, cols_in, cols_out, size)
     }
 }
 
@@ -32,8 +32,16 @@ impl<B> VmpPMatFromBytes<B> for Module<B>
 where
     B: Backend + VmpPMatFromBytesImpl<B>,
 {
-    fn vmp_pmat_from_bytes(&self, rows: usize, cols_in: usize, cols_out: usize, size: usize, bytes: Vec<u8>) -> VmpPMatOwned<B> {
-        B::vmp_pmat_from_bytes_impl(self.n(), rows, cols_in, cols_out, size, bytes)
+    fn vmp_pmat_from_bytes(
+        &self,
+        n: usize,
+        rows: usize,
+        cols_in: usize,
+        cols_out: usize,
+        size: usize,
+        bytes: Vec<u8>,
+    ) -> VmpPMatOwned<B> {
+        B::vmp_pmat_from_bytes_impl(n, rows, cols_in, cols_out, size, bytes)
     }
 }
 
@@ -41,8 +49,8 @@ impl<B> VmpPrepareTmpBytes for Module<B>
 where
     B: Backend + VmpPrepareTmpBytesImpl<B>,
 {
-    fn vmp_prepare_tmp_bytes(&self, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize {
-        B::vmp_prepare_tmp_bytes_impl(self, rows, cols_in, cols_out, size)
+    fn vmp_prepare_tmp_bytes(&self, n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize {
+        B::vmp_prepare_tmp_bytes_impl(self, n, rows, cols_in, cols_out, size)
     }
 }
 
@@ -65,6 +73,7 @@ where
 {
     fn vmp_apply_tmp_bytes(
         &self,
+        n: usize,
         res_size: usize,
         a_size: usize,
         b_rows: usize,
@@ -73,7 +82,7 @@ where
         b_size: usize,
     ) -> usize {
         B::vmp_apply_tmp_bytes_impl(
-            self, res_size, a_size, b_rows, b_cols_in, b_cols_out, b_size,
+            self, n, res_size, a_size, b_rows, b_cols_in, b_cols_out, b_size,
         )
     }
 }
@@ -98,6 +107,7 @@ where
 {
     fn vmp_apply_add_tmp_bytes(
         &self,
+        n: usize,
         res_size: usize,
         a_size: usize,
         b_rows: usize,
@@ -106,7 +116,7 @@ where
         b_size: usize,
     ) -> usize {
         B::vmp_apply_add_tmp_bytes_impl(
-            self, res_size, a_size, b_rows, b_cols_in, b_cols_out, b_size,
+            self, n, res_size, a_size, b_rows, b_cols_in, b_cols_out, b_size,
         )
     }
 }

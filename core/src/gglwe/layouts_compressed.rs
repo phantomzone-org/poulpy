@@ -1,12 +1,13 @@
 use backend::hal::{
-    api::{MatZnxAlloc, MatZnxAllocBytes, VecZnxCopy, VecZnxFillUniform},
+    api::{FillUniform, Reset, VecZnxCopy, VecZnxFillUniform},
     layouts::{Backend, Data, DataMut, DataRef, MatZnx, Module, ReaderFrom, WriterTo},
 };
 
 use crate::{AutomorphismKey, Decompress, GGLWECiphertext, GLWECiphertextCompressed, GLWESwitchingKey, GLWETensorKey, Infos};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
+use std::fmt;
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Clone)]
 pub struct GGLWECiphertextCompressed<D: Data> {
     pub(crate) data: MatZnx<D>,
     pub(crate) basek: usize,
@@ -16,19 +17,44 @@ pub struct GGLWECiphertextCompressed<D: Data> {
     pub(crate) seed: Vec<[u8; 32]>,
 }
 
+impl<D: DataRef> fmt::Debug for GGLWECiphertextCompressed<D> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self)
+    }
+}
+
+impl<D: DataMut> FillUniform for GGLWECiphertextCompressed<D> {
+    fn fill_uniform(&mut self, source: &mut sampling::source::Source) {
+        self.data.fill_uniform(source);
+    }
+}
+
+impl<D: DataMut> Reset for GGLWECiphertextCompressed<D>
+where
+    MatZnx<D>: Reset,
+{
+    fn reset(&mut self) {
+        self.data.reset();
+        self.basek = 0;
+        self.k = 0;
+        self.digits = 0;
+        self.rank_out = 0;
+        self.seed = Vec::new();
+    }
+}
+
+impl<D: DataRef> fmt::Display for GGLWECiphertextCompressed<D> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "(GGLWECiphertextCompressed: basek={} k={} digits={}) {}",
+            self.basek, self.k, self.digits, self.data
+        )
+    }
+}
+
 impl GGLWECiphertextCompressed<Vec<u8>> {
-    pub fn alloc<B: Backend>(
-        module: &Module<B>,
-        basek: usize,
-        k: usize,
-        rows: usize,
-        digits: usize,
-        rank_in: usize,
-        rank_out: usize,
-    ) -> Self
-    where
-        Module<B>: MatZnxAlloc,
-    {
+    pub fn alloc(n: usize, basek: usize, k: usize, rows: usize, digits: usize, rank_in: usize, rank_out: usize) -> Self {
         let size: usize = k.div_ceil(basek);
         debug_assert!(
             size > digits,
@@ -46,7 +72,7 @@ impl GGLWECiphertextCompressed<Vec<u8>> {
         );
 
         Self {
-            data: module.mat_znx_alloc(rows, rank_in, 1, size),
+            data: MatZnx::alloc(n, rows, rank_in, 1, size),
             basek: basek,
             k,
             rank_out,
@@ -55,10 +81,7 @@ impl GGLWECiphertextCompressed<Vec<u8>> {
         }
     }
 
-    pub fn bytes_of<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank_in: usize) -> usize
-    where
-        Module<B>: MatZnxAllocBytes,
-    {
+    pub fn bytes_of(n: usize, basek: usize, k: usize, rows: usize, digits: usize, rank_in: usize) -> usize {
         let size: usize = k.div_ceil(basek);
         debug_assert!(
             size > digits,
@@ -75,7 +98,7 @@ impl GGLWECiphertextCompressed<Vec<u8>> {
             size
         );
 
-        module.mat_znx_alloc_bytes(rows, rank_in, 1, rows)
+        MatZnx::alloc_bytes(n, rows, rank_in, 1, rows)
     }
 }
 
@@ -145,11 +168,9 @@ impl<D: DataMut> ReaderFrom for GGLWECiphertextCompressed<D> {
         self.digits = reader.read_u64::<LittleEndian>()? as usize;
         self.rank_out = reader.read_u64::<LittleEndian>()? as usize;
         let seed_len = reader.read_u64::<LittleEndian>()? as usize;
-        if seed_len != self.seed.len() {
-        } else {
-            for s in &mut self.seed {
-                reader.read_exact(s)?;
-            }
+        self.seed = vec![[0u8; 32]; seed_len];
+        for s in &mut self.seed {
+            reader.read_exact(s)?;
         }
         self.data.read_from(reader)
     }
@@ -228,11 +249,44 @@ impl<D: DataMut, B: Backend, DR: DataRef> Decompress<B, GGLWECiphertextCompresse
     }
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Clone)]
 pub struct GLWESwitchingKeyCompressed<D: Data> {
     pub(crate) key: GGLWECiphertextCompressed<D>,
     pub(crate) sk_in_n: usize,  // Degree of sk_in
     pub(crate) sk_out_n: usize, // Degree of sk_out
+}
+
+impl<D: DataRef> fmt::Debug for GLWESwitchingKeyCompressed<D> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self)
+    }
+}
+
+impl<D: DataMut> FillUniform for GLWESwitchingKeyCompressed<D> {
+    fn fill_uniform(&mut self, source: &mut sampling::source::Source) {
+        self.key.fill_uniform(source);
+    }
+}
+
+impl<D: DataMut> Reset for GLWESwitchingKeyCompressed<D>
+where
+    MatZnx<D>: Reset,
+{
+    fn reset(&mut self) {
+        self.key.reset();
+        self.sk_in_n = 0;
+        self.sk_out_n = 0;
+    }
+}
+
+impl<D: DataRef> fmt::Display for GLWESwitchingKeyCompressed<D> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "(GLWESwitchingKeyCompressed: sk_in_n={} sk_out_n={}) {}",
+            self.sk_in_n, self.sk_out_n, self.key.data
+        )
+    }
 }
 
 impl<D: Data> Infos for GLWESwitchingKeyCompressed<D> {
@@ -270,30 +324,16 @@ impl<D: Data> GLWESwitchingKeyCompressed<D> {
 }
 
 impl GLWESwitchingKeyCompressed<Vec<u8>> {
-    pub fn alloc<B: Backend>(
-        module: &Module<B>,
-        basek: usize,
-        k: usize,
-        rows: usize,
-        digits: usize,
-        rank_in: usize,
-        rank_out: usize,
-    ) -> Self
-    where
-        Module<B>: MatZnxAlloc,
-    {
+    pub fn alloc(n: usize, basek: usize, k: usize, rows: usize, digits: usize, rank_in: usize, rank_out: usize) -> Self {
         GLWESwitchingKeyCompressed {
-            key: GGLWECiphertextCompressed::alloc(module, basek, k, rows, digits, rank_in, rank_out),
+            key: GGLWECiphertextCompressed::alloc(n, basek, k, rows, digits, rank_in, rank_out),
             sk_in_n: 0,
             sk_out_n: 0,
         }
     }
 
-    pub fn bytes_of<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank_in: usize) -> usize
-    where
-        Module<B>: MatZnxAllocBytes,
-    {
-        GGLWECiphertextCompressed::<Vec<u8>>::bytes_of(module, basek, k, rows, digits, rank_in)
+    pub fn bytes_of(n: usize, basek: usize, k: usize, rows: usize, digits: usize, rank_in: usize) -> usize {
+        GGLWECiphertextCompressed::bytes_of(n, basek, k, rows, digits, rank_in)
     }
 }
 
@@ -327,28 +367,50 @@ impl<D: DataMut> GLWESwitchingKey<D> {
     }
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Clone)]
 pub struct AutomorphismKeyCompressed<D: Data> {
     pub(crate) key: GLWESwitchingKeyCompressed<D>,
     pub(crate) p: i64,
 }
 
+impl<D: DataRef> fmt::Debug for AutomorphismKeyCompressed<D> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self)
+    }
+}
+
+impl<D: DataMut> FillUniform for AutomorphismKeyCompressed<D> {
+    fn fill_uniform(&mut self, source: &mut sampling::source::Source) {
+        self.key.fill_uniform(source);
+    }
+}
+
+impl<D: DataMut> Reset for AutomorphismKeyCompressed<D>
+where
+    MatZnx<D>: Reset,
+{
+    fn reset(&mut self) {
+        self.key.reset();
+        self.p = 0;
+    }
+}
+
+impl<D: DataRef> fmt::Display for AutomorphismKeyCompressed<D> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "(AutomorphismKeyCompressed: p={}) {}", self.p, self.key)
+    }
+}
+
 impl AutomorphismKeyCompressed<Vec<u8>> {
-    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self
-    where
-        Module<B>: MatZnxAlloc,
-    {
+    pub fn alloc(n: usize, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self {
         AutomorphismKeyCompressed {
-            key: GLWESwitchingKeyCompressed::alloc(module, basek, k, rows, digits, rank, rank),
+            key: GLWESwitchingKeyCompressed::alloc(n, basek, k, rows, digits, rank, rank),
             p: 0,
         }
     }
 
-    pub fn bytes_of<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize
-    where
-        Module<B>: MatZnxAllocBytes,
-    {
-        GLWESwitchingKeyCompressed::<Vec<u8>>::bytes_of(module, basek, k, rows, digits, rank)
+    pub fn bytes_of(n: usize, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize {
+        GLWESwitchingKeyCompressed::<Vec<u8>>::bytes_of(n, basek, k, rows, digits, rank)
     }
 }
 
@@ -410,32 +472,61 @@ impl<D: DataMut> AutomorphismKey<D> {
     }
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Clone)]
 pub struct GLWETensorKeyCompressed<D: Data> {
     pub(crate) keys: Vec<GLWESwitchingKeyCompressed<D>>,
 }
 
+impl<D: DataRef> fmt::Debug for GLWETensorKeyCompressed<D> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self)
+    }
+}
+
+impl<D: DataMut> FillUniform for GLWETensorKeyCompressed<D> {
+    fn fill_uniform(&mut self, source: &mut sampling::source::Source) {
+        self.keys
+            .iter_mut()
+            .for_each(|key: &mut GLWESwitchingKeyCompressed<D>| key.fill_uniform(source))
+    }
+}
+
+impl<D: DataMut> Reset for GLWETensorKeyCompressed<D>
+where
+    MatZnx<D>: Reset,
+{
+    fn reset(&mut self) {
+        self.keys
+            .iter_mut()
+            .for_each(|key: &mut GLWESwitchingKeyCompressed<D>| key.reset())
+    }
+}
+
+impl<D: DataRef> fmt::Display for GLWETensorKeyCompressed<D> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "(GLWETensorKeyCompressed)",)?;
+        for (i, key) in self.keys.iter().enumerate() {
+            write!(f, "{}: {}", i, key)?;
+        }
+        Ok(())
+    }
+}
+
 impl GLWETensorKeyCompressed<Vec<u8>> {
-    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self
-    where
-        Module<B>: MatZnxAlloc,
-    {
+    pub fn alloc(n: usize, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self {
         let mut keys: Vec<GLWESwitchingKeyCompressed<Vec<u8>>> = Vec::new();
         let pairs: usize = (((rank + 1) * rank) >> 1).max(1);
         (0..pairs).for_each(|_| {
             keys.push(GLWESwitchingKeyCompressed::alloc(
-                module, basek, k, rows, digits, 1, rank,
+                n, basek, k, rows, digits, 1, rank,
             ));
         });
         Self { keys: keys }
     }
 
-    pub fn bytes_of<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize
-    where
-        Module<B>: MatZnxAllocBytes,
-    {
+    pub fn bytes_of(n: usize, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize {
         let pairs: usize = (((rank + 1) * rank) >> 1).max(1);
-        pairs * GLWESwitchingKeyCompressed::<Vec<u8>>::bytes_of(module, basek, k, rows, digits, 1)
+        pairs * GLWESwitchingKeyCompressed::bytes_of(n, basek, k, rows, digits, 1)
     }
 }
 

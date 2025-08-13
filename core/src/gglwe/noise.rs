@@ -1,5 +1,5 @@
 use backend::hal::{
-    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAlloc, VecZnxStd, VecZnxSubScalarInplace, ZnxZero},
+    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxStd, VecZnxSubScalarInplace, ZnxZero},
     layouts::{Backend, DataRef, Module, ScalarZnx, ScratchOwned},
     oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeVecZnxBigImpl, TakeVecZnxDftImpl},
 };
@@ -16,15 +16,20 @@ impl<D: DataRef> GGLWECiphertext<D> {
     ) where
         DataSk: DataRef,
         DataWant: DataRef,
-        Module<B>: GLWEDecryptFamily<B> + VecZnxStd + VecZnxAlloc + VecZnxSubScalarInplace,
+        Module<B>: GLWEDecryptFamily<B> + VecZnxStd + VecZnxSubScalarInplace,
         B: TakeVecZnxDftImpl<B> + TakeVecZnxBigImpl<B> + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
     {
         let digits: usize = self.digits();
         let basek: usize = self.basek();
         let k: usize = self.k();
 
-        let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GLWECiphertext::decrypt_scratch_space(module, basek, k));
-        let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(module, basek, k);
+        let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GLWECiphertext::decrypt_scratch_space(
+            module,
+            self.n(),
+            basek,
+            k,
+        ));
+        let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(self.n(), basek, k);
 
         (0..self.rank_in()).for_each(|col_i| {
             (0..self.rows()).for_each(|row_i| {

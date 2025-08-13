@@ -6,10 +6,10 @@ use crate::{
         api::ScratchFromBytes,
         layouts::{Backend, MatZnx, ScalarZnx, Scratch, ScratchOwned, SvpPPol, VecZnx, VecZnxBig, VecZnxDft, VmpPMat},
         oep::{
-            ScalarZnxAllocBytesImpl, ScratchAvailableImpl, ScratchFromBytesImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl,
-            SvpPPolAllocBytesImpl, TakeMatZnxImpl, TakeScalarZnxImpl, TakeSliceImpl, TakeSvpPPolImpl, TakeVecZnxBigImpl,
-            TakeVecZnxDftImpl, TakeVecZnxDftSliceImpl, TakeVecZnxImpl, TakeVecZnxSliceImpl, TakeVmpPMatImpl,
-            VecZnxAllocBytesImpl, VecZnxBigAllocBytesImpl, VecZnxDftAllocBytesImpl, VmpPMatAllocBytesImpl,
+            ScratchAvailableImpl, ScratchFromBytesImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, SvpPPolAllocBytesImpl,
+            TakeMatZnxImpl, TakeScalarZnxImpl, TakeSliceImpl, TakeSvpPPolImpl, TakeVecZnxBigImpl, TakeVecZnxDftImpl,
+            TakeVecZnxDftSliceImpl, TakeVecZnxImpl, TakeVecZnxSliceImpl, TakeVmpPMatImpl, VecZnxBigAllocBytesImpl,
+            VecZnxDftAllocBytesImpl, VmpPMatAllocBytesImpl,
         },
     },
     implementation::cpu_spqlios::CPUAVX,
@@ -76,10 +76,10 @@ where
 
 unsafe impl<B: Backend> TakeScalarZnxImpl<B> for B
 where
-    B: CPUAVX + ScalarZnxAllocBytesImpl<B>,
+    B: CPUAVX,
 {
     fn take_scalar_znx_impl(scratch: &mut Scratch<B>, n: usize, cols: usize) -> (ScalarZnx<&mut [u8]>, &mut Scratch<B>) {
-        let (take_slice, rem_slice) = take_slice_aligned(&mut scratch.data, B::scalar_znx_alloc_bytes_impl(n, cols));
+        let (take_slice, rem_slice) = take_slice_aligned(&mut scratch.data, ScalarZnx::alloc_bytes(n, cols));
         (
             ScalarZnx::from_data(take_slice, n, cols),
             Scratch::from_bytes(rem_slice),
@@ -102,13 +102,10 @@ where
 
 unsafe impl<B: Backend> TakeVecZnxImpl<B> for B
 where
-    B: CPUAVX + VecZnxAllocBytesImpl<B>,
+    B: CPUAVX,
 {
     fn take_vec_znx_impl(scratch: &mut Scratch<B>, n: usize, cols: usize, size: usize) -> (VecZnx<&mut [u8]>, &mut Scratch<B>) {
-        let (take_slice, rem_slice) = take_slice_aligned(
-            &mut scratch.data,
-            B::vec_znx_alloc_bytes_impl(n, cols, size),
-        );
+        let (take_slice, rem_slice) = take_slice_aligned(&mut scratch.data, VecZnx::alloc_bytes(n, cols, size));
         (
             VecZnx::from_data(take_slice, n, cols, size),
             Scratch::from_bytes(rem_slice),
@@ -240,7 +237,7 @@ where
     ) -> (MatZnx<&mut [u8]>, &mut Scratch<B>) {
         let (take_slice, rem_slice) = take_slice_aligned(
             &mut scratch.data,
-            MatZnx::<Vec<u8>>::bytes_of(n, rows, cols_in, cols_out, size),
+            MatZnx::alloc_bytes(n, rows, cols_in, cols_out, size),
         );
         (
             MatZnx::from_data(take_slice, n, rows, cols_in, cols_out, size),

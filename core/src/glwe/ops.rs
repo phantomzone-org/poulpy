@@ -18,9 +18,8 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData + Sized {
     {
         #[cfg(debug_assertions)]
         {
-            assert_eq!(a.n(), module.n());
-            assert_eq!(b.n(), module.n());
-            assert_eq!(self.n(), module.n());
+            assert_eq!(a.n(), self.n());
+            assert_eq!(b.n(), self.n());
             assert_eq!(a.basek(), b.basek());
             assert!(self.rank() >= a.rank().max(b.rank()));
         }
@@ -65,8 +64,7 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData + Sized {
     {
         #[cfg(debug_assertions)]
         {
-            assert_eq!(a.n(), module.n());
-            assert_eq!(self.n(), module.n());
+            assert_eq!(a.n(), self.n());
             assert_eq!(self.basek(), a.basek());
             assert!(self.rank() >= a.rank())
         }
@@ -89,9 +87,8 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData + Sized {
     {
         #[cfg(debug_assertions)]
         {
-            assert_eq!(a.n(), module.n());
-            assert_eq!(b.n(), module.n());
-            assert_eq!(self.n(), module.n());
+            assert_eq!(a.n(), self.n());
+            assert_eq!(b.n(), self.n());
             assert_eq!(a.basek(), b.basek());
             assert!(self.rank() >= a.rank().max(b.rank()));
         }
@@ -137,8 +134,7 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData + Sized {
     {
         #[cfg(debug_assertions)]
         {
-            assert_eq!(a.n(), module.n());
-            assert_eq!(self.n(), module.n());
+            assert_eq!(a.n(), self.n());
             assert_eq!(self.basek(), a.basek());
             assert!(self.rank() >= a.rank())
         }
@@ -160,8 +156,7 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData + Sized {
     {
         #[cfg(debug_assertions)]
         {
-            assert_eq!(a.n(), module.n());
-            assert_eq!(self.n(), module.n());
+            assert_eq!(a.n(), self.n());
             assert_eq!(self.basek(), a.basek());
             assert!(self.rank() >= a.rank())
         }
@@ -183,8 +178,7 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData + Sized {
     {
         #[cfg(debug_assertions)]
         {
-            assert_eq!(a.n(), module.n());
-            assert_eq!(self.n(), module.n());
+            assert_eq!(a.n(), self.n());
             assert_eq!(self.rank(), a.rank())
         }
 
@@ -203,11 +197,6 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData + Sized {
     where
         Module<B>: VecZnxRotateInplace,
     {
-        #[cfg(debug_assertions)]
-        {
-            assert_eq!(self.n(), module.n());
-        }
-
         let self_mut: &mut GLWECiphertext<&mut [u8]> = &mut self.to_mut();
 
         (0..self_mut.rank() + 1).for_each(|i| {
@@ -222,8 +211,7 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData + Sized {
     {
         #[cfg(debug_assertions)]
         {
-            assert_eq!(a.n(), module.n());
-            assert_eq!(self.n(), module.n());
+            assert_eq!(a.n(), self.n());
             assert_eq!(self.rank(), a.rank())
         }
 
@@ -242,11 +230,6 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData + Sized {
     where
         Module<B>: VecZnxMulXpMinusOneInplace,
     {
-        #[cfg(debug_assertions)]
-        {
-            assert_eq!(self.n(), module.n());
-        }
-
         let self_mut: &mut GLWECiphertext<&mut [u8]> = &mut self.to_mut();
 
         (0..self_mut.rank() + 1).for_each(|i| {
@@ -261,8 +244,7 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData + Sized {
     {
         #[cfg(debug_assertions)]
         {
-            assert_eq!(self.n(), module.n());
-            assert_eq!(a.n(), module.n());
+            assert_eq!(self.n(), a.n());
             assert_eq!(self.rank(), a.rank());
         }
 
@@ -292,8 +274,7 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData + Sized {
     {
         #[cfg(debug_assertions)]
         {
-            assert_eq!(self.n(), module.n());
-            assert_eq!(a.n(), module.n());
+            assert_eq!(self.n(), a.n());
             assert_eq!(self.rank(), a.rank());
         }
 
@@ -311,10 +292,6 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData + Sized {
     where
         Module<B>: VecZnxNormalizeInplace<B>,
     {
-        #[cfg(debug_assertions)]
-        {
-            assert_eq!(self.n(), module.n());
-        }
         let self_mut: &mut GLWECiphertext<&mut [u8]> = &mut self.to_mut();
         (0..self_mut.rank() + 1).for_each(|i| {
             module.vec_znx_normalize_inplace(self_mut.basek(), &mut self_mut.data, i, scratch);
@@ -323,8 +300,8 @@ pub trait GLWEOps: GLWECiphertextToMut + SetMetaData + Sized {
 }
 
 impl GLWECiphertext<Vec<u8>> {
-    pub fn rsh_scratch_space<BACKEND: Backend>(module: &Module<BACKEND>) -> usize {
-        VecZnx::rsh_scratch_space(module.n())
+    pub fn rsh_scratch_space(n: usize) -> usize {
+        VecZnx::rsh_scratch_space(n)
     }
 }
 

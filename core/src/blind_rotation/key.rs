@@ -1,7 +1,7 @@
 use backend::hal::{
     api::{
-        MatZnxAlloc, ScalarZnxAlloc, ScratchAvailable, SvpPPolAlloc, SvpPrepare, TakeVecZnx, TakeVecZnxDft,
-        VecZnxAddScalarInplace, VecZnxAllocBytes, ZnxView, ZnxViewMut,
+        ScratchAvailable, SvpPPolAlloc, SvpPrepare, TakeVecZnx, TakeVecZnxDft, VecZnxAddScalarInplace, ZnxInfos, ZnxView,
+        ZnxViewMut,
     },
     layouts::{Backend, Data, DataMut, DataRef, Module, ReaderFrom, ScalarZnx, ScalarZnxToRef, Scratch, SvpPPol, WriterTo},
 };
@@ -69,23 +69,20 @@ impl<D: DataRef> WriterTo for BlindRotationKeyCGGI<D> {
 }
 
 impl BlindRotationKeyCGGI<Vec<u8>> {
-    pub fn alloc<B: Backend>(module: &Module<B>, n_lwe: usize, basek: usize, k: usize, rows: usize, rank: usize) -> Self
-    where
-        Module<B>: MatZnxAlloc,
-    {
+    pub fn alloc(n_gglwe: usize, n_lwe: usize, basek: usize, k: usize, rows: usize, rank: usize) -> Self {
         let mut data: Vec<GGSWCiphertext<Vec<u8>>> = Vec::with_capacity(n_lwe);
-        (0..n_lwe).for_each(|_| data.push(GGSWCiphertext::alloc(module, basek, k, rows, 1, rank)));
+        (0..n_lwe).for_each(|_| data.push(GGSWCiphertext::alloc(n_gglwe, basek, k, rows, 1, rank)));
         Self {
             keys: data,
             dist: Distribution::NONE,
         }
     }
 
-    pub fn generate_from_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize
+    pub fn generate_from_sk_scratch_space<B: Backend>(module: &Module<B>, n: usize, basek: usize, k: usize, rank: usize) -> usize
     where
-        Module<B>: GGSWEncryptSkFamily<B> + VecZnxAllocBytes,
+        Module<B>: GGSWEncryptSkFamily<B>,
     {
-        GGSWCiphertext::encrypt_sk_scratch_space(module, basek, k, rank)
+        GGSWCiphertext::encrypt_sk_scratch_space(module, n, basek, k, rank)
     }
 }
 
@@ -141,13 +138,13 @@ impl<D: DataMut> BlindRotationKeyCGGI<D> {
     ) where
         DataSkGLWE: DataRef,
         DataSkLWE: DataRef,
-        Module<B>: GGSWEncryptSkFamily<B> + ScalarZnxAlloc + VecZnxAddScalarInplace,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx<B>,
+        Module<B>: GGSWEncryptSkFamily<B> + VecZnxAddScalarInplace,
+        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
     {
         #[cfg(debug_assertions)]
         {
             assert_eq!(self.keys.len(), sk_lwe.n());
-            assert_eq!(sk_glwe.n(), module.n());
+            assert!(sk_glwe.n() <= module.n());
             assert_eq!(sk_glwe.rank(), self.keys[0].rank());
             match sk_lwe.dist {
                 Distribution::BinaryBlock(_)
@@ -162,7 +159,7 @@ impl<D: DataMut> BlindRotationKeyCGGI<D> {
 
         self.dist = sk_lwe.dist;
 
-        let mut pt: ScalarZnx<Vec<u8>> = module.scalar_znx_alloc(1);
+        let mut pt: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(sk_glwe.n(), 1);
         let sk_ref: ScalarZnx<&[u8]> = sk_lwe.data.to_ref();
 
         self.keys.iter_mut().enumerate().for_each(|(i, ggsw)| {
@@ -220,12 +217,16 @@ impl<D: Data, B: Backend> BlindRotationKeyCGGIExec<D, B> {
 pub trait BlindRotationKeyCGGIExecLayoutFamily<B: Backend> = GGSWLayoutFamily<B> + SvpPPolAlloc<B> + SvpPrepare<B>;
 
 impl<B: Backend> BlindRotationKeyCGGIExec<Vec<u8>, B> {
-    pub fn alloc(module: &Module<B>, n_lwe: usize, basek: usize, k: usize, rows: usize, rank: usize) -> Self
+    pub fn alloc(module: &Module<B>, n_glwe: usize, n_lwe: usize, basek: usize, k: usize, rows: usize, rank: usize) -> Self
     where
         Module<B>: BlindRotationKeyCGGIExecLayoutFamily<B>,
     {
         let mut data: Vec<GGSWCiphertextExec<Vec<u8>, B>> = Vec::with_capacity(n_lwe);
-        (0..n_lwe).for_each(|_| data.push(GGSWCiphertextExec::alloc(module, basek, k, rows, 1, rank)));
+        (0..n_lwe).for_each(|_| {
+            data.push(GGSWCiphertextExec::alloc(
+                module, n_glwe, basek, k, rows, 1, rank,
+            ))
+        });
         Self {
             data,
             dist: Distribution::NONE,
@@ -236,10 +237,11 @@ impl<B: Backend> BlindRotationKeyCGGIExec<Vec<u8>, B> {
     pub fn from<DataOther>(module: &Module<B>, other: &BlindRotationKeyCGGI<DataOther>, scratch: &mut Scratch<B>) -> Self
     where
         DataOther: DataRef,
-        Module<B>: BlindRotationKeyCGGIExecLayoutFamily<B> + ScalarZnxAlloc,
+        Module<B>: BlindRotationKeyCGGIExecLayoutFamily<B>,
     {
         let mut brk: BlindRotationKeyCGGIExec<Vec<u8>, B> = Self::alloc(
             module,
+            other.n(),
             other.keys.len(),
             other.basek(),
             other.k(),
@@ -255,12 +257,14 @@ impl<D: DataMut, B: Backend> BlindRotationKeyCGGIExec<D, B> {
     pub fn prepare<DataOther>(&mut self, module: &Module<B>, other: &BlindRotationKeyCGGI<DataOther>, scratch: &mut Scratch<B>)
     where
         DataOther: DataRef,
-        Module<B>: BlindRotationKeyCGGIExecLayoutFamily<B> + ScalarZnxAlloc,
+        Module<B>: BlindRotationKeyCGGIExecLayoutFamily<B>,
     {
         #[cfg(debug_assertions)]
         {
             assert_eq!(self.data.len(), other.keys.len());
         }
+
+        let n: usize = other.n();
 
         self.data
             .iter_mut()
@@ -273,10 +277,10 @@ impl<D: DataMut, B: Backend> BlindRotationKeyCGGIExec<D, B> {
 
         match other.dist {
             Distribution::BinaryBlock(_) => {
-                let mut x_pow_a: Vec<SvpPPol<Vec<u8>, B>> = Vec::with_capacity(module.n() << 1);
-                let mut buf: ScalarZnx<Vec<u8>> = module.scalar_znx_alloc(1);
-                (0..module.n() << 1).for_each(|i| {
-                    let mut res: SvpPPol<Vec<u8>, B> = module.svp_ppol_alloc(1);
+                let mut x_pow_a: Vec<SvpPPol<Vec<u8>, B>> = Vec::with_capacity(n << 1);
+                let mut buf: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n, 1);
+                (0..n << 1).for_each(|i| {
+                    let mut res: SvpPPol<Vec<u8>, B> = module.svp_ppol_alloc(n, 1);
                     set_xai_plus_y(module, i, 0, &mut res, &mut buf);
                     x_pow_a.push(res);
                 });
@@ -293,7 +297,7 @@ where
     C: DataMut,
     Module<B>: SvpPrepare<B>,
 {
-    let n: usize = module.n();
+    let n: usize = res.n();
 
     {
         let raw: &mut [i64] = buf.at_mut(0, 0);

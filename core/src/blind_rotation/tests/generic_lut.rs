@@ -1,18 +1,19 @@
 use std::vec;
 
-use backend::{
-    hal::{
-        api::{ModuleNew, ZnxView},
-        layouts::Module,
-    },
-    implementation::cpu_spqlios::FFT64,
+use backend::hal::{
+    api::{VecZnxCopy, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotateInplace, VecZnxSwithcDegree, ZnxView},
+    layouts::{Backend, Module},
+    oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl},
 };
 
-use crate::blind_rotation::lut::{DivRound, LookUpTable};
+use crate::{DivRound, LookUpTable};
 
-#[test]
-fn standard() {
-    let module: Module<FFT64> = Module::<FFT64>::new(32);
+pub(crate) fn test_lut_standard<B: Backend>(module: &Module<B>)
+where
+    Module<B>: VecZnxRotateInplace + VecZnxNormalizeInplace<B> + VecZnxNormalizeTmpBytes + VecZnxSwithcDegree + VecZnxCopy,
+    B: ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
+{
+    let n: usize = module.n();
     let basek: usize = 20;
     let k_lut: usize = 40;
     let message_modulus: usize = 16;
@@ -25,11 +26,11 @@ fn standard() {
         .enumerate()
         .for_each(|(i, x)| *x = (i as i64) - 8);
 
-    let mut lut: LookUpTable = LookUpTable::alloc(&module, basek, k_lut, extension_factor);
-    lut.set(&module, &f, log_scale);
+    let mut lut: LookUpTable = LookUpTable::alloc(n, basek, k_lut, extension_factor);
+    lut.set(module, &f, log_scale);
 
     let half_step: i64 = lut.domain_size().div_round(message_modulus << 1) as i64;
-    lut.rotate(&module, half_step);
+    lut.rotate(module, half_step);
 
     let step: usize = lut.domain_size().div_round(message_modulus);
 
@@ -39,14 +40,17 @@ fn standard() {
                 f[i / step] % message_modulus as i64,
                 lut.data[0].raw()[0] / (1 << (log_scale % basek)) as i64
             );
-            lut.rotate(&module, -1);
+            lut.rotate(module, -1);
         });
     });
 }
 
-#[test]
-fn extended() {
-    let module: Module<FFT64> = Module::<FFT64>::new(32);
+pub(crate) fn test_lut_extended<B: Backend>(module: &Module<B>)
+where
+    Module<B>: VecZnxRotateInplace + VecZnxNormalizeInplace<B> + VecZnxNormalizeTmpBytes + VecZnxSwithcDegree + VecZnxCopy,
+    B: ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
+{
+    let n: usize = module.n();
     let basek: usize = 20;
     let k_lut: usize = 40;
     let message_modulus: usize = 16;
@@ -59,7 +63,7 @@ fn extended() {
         .enumerate()
         .for_each(|(i, x)| *x = (i as i64) - 8);
 
-    let mut lut: LookUpTable = LookUpTable::alloc(&module, basek, k_lut, extension_factor);
+    let mut lut: LookUpTable = LookUpTable::alloc(n, basek, k_lut, extension_factor);
     lut.set(&module, &f, log_scale);
 
     let half_step: i64 = lut.domain_size().div_round(message_modulus << 1) as i64;

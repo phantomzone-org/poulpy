@@ -1,8 +1,6 @@
 use backend::hal::{
-    api::{
-        ScratchAvailable, TakeVecZnx, TakeVecZnxDft, VecZnxAddScalarInplace, VecZnxAllocBytes, VecZnxNormalizeInplace, ZnxZero,
-    },
-    layouts::{Backend, DataMut, DataRef, Module, ScalarZnx, Scratch},
+    api::{ScratchAvailable, TakeVecZnx, TakeVecZnxDft, VecZnxAddScalarInplace, VecZnxNormalizeInplace, ZnxZero},
+    layouts::{Backend, DataMut, DataRef, Module, ScalarZnx, Scratch, VecZnx},
 };
 use sampling::source::Source;
 
@@ -14,15 +12,15 @@ use crate::{
 pub trait GGSWEncryptSkFamily<B: Backend> = GLWEEncryptSkFamily<B>;
 
 impl GGSWCiphertext<Vec<u8>> {
-    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize
+    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, n: usize, basek: usize, k: usize, rank: usize) -> usize
     where
-        Module<B>: GGSWEncryptSkFamily<B> + VecZnxAllocBytes,
+        Module<B>: GGSWEncryptSkFamily<B>,
     {
         let size = k.div_ceil(basek);
-        GLWECiphertext::encrypt_sk_scratch_space(module, basek, k)
-            + module.vec_znx_alloc_bytes(rank + 1, size)
-            + module.vec_znx_alloc_bytes(1, size)
-            + module.vec_znx_dft_alloc_bytes(rank + 1, size)
+        GLWECiphertext::encrypt_sk_scratch_space(module, n, basek, k)
+            + VecZnx::alloc_bytes(n, rank + 1, size)
+            + VecZnx::alloc_bytes(n, 1, size)
+            + module.vec_znx_dft_alloc_bytes(n, rank + 1, size)
     }
 }
 
@@ -38,16 +36,15 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: GGSWEncryptSkFamily<B> + VecZnxAddScalarInplace,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx<B>,
+        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
     {
         #[cfg(debug_assertions)]
         {
             use backend::hal::api::ZnxInfos;
 
             assert_eq!(self.rank(), sk.rank());
-            assert_eq!(self.n(), module.n());
-            assert_eq!(pt.n(), module.n());
-            assert_eq!(sk.n(), module.n());
+            assert_eq!(self.n(), sk.n());
+            assert_eq!(pt.n(), sk.n());
         }
 
         let basek: usize = self.basek();
@@ -55,7 +52,7 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
         let rank: usize = self.rank();
         let digits: usize = self.digits();
 
-        let (mut tmp_pt, scratch1) = scratch.take_glwe_pt(module, basek, k);
+        let (mut tmp_pt, scratch1) = scratch.take_glwe_pt(self.n(), basek, k);
 
         (0..self.rows()).for_each(|row_i| {
             tmp_pt.data.zero();
@@ -82,11 +79,11 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
 }
 
 impl GGSWCiphertextCompressed<Vec<u8>> {
-    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize
+    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, n: usize, basek: usize, k: usize, rank: usize) -> usize
     where
-        Module<B>: GGSWEncryptSkFamily<B> + VecZnxAllocBytes,
+        Module<B>: GGSWEncryptSkFamily<B>,
     {
-        GGSWCiphertext::encrypt_sk_scratch_space(module, basek, k, rank)
+        GGSWCiphertext::encrypt_sk_scratch_space(module, n, basek, k, rank)
     }
 }
 
@@ -102,16 +99,15 @@ impl<DataSelf: DataMut> GGSWCiphertextCompressed<DataSelf> {
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: GGSWEncryptSkFamily<B> + VecZnxAddScalarInplace,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx<B>,
+        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
     {
         #[cfg(debug_assertions)]
         {
             use backend::hal::api::ZnxInfos;
 
             assert_eq!(self.rank(), sk.rank());
-            assert_eq!(self.n(), module.n());
-            assert_eq!(pt.n(), module.n());
-            assert_eq!(sk.n(), module.n());
+            assert_eq!(self.n(), sk.n());
+            assert_eq!(pt.n(), sk.n());
         }
 
         let basek: usize = self.basek();
@@ -120,9 +116,11 @@ impl<DataSelf: DataMut> GGSWCiphertextCompressed<DataSelf> {
         let cols: usize = rank + 1;
         let digits: usize = self.digits();
 
-        let (mut tmp_pt, scratch_1) = scratch.take_glwe_pt(module, basek, k);
+        let (mut tmp_pt, scratch_1) = scratch.take_glwe_pt(self.n(), basek, k);
 
         let mut source = Source::new(seed_xa);
+
+        self.seed = vec![[0u8; 32]; self.rows() * cols];
 
         (0..self.rows()).for_each(|row_i| {
             tmp_pt.data.zero();
@@ -137,7 +135,7 @@ impl<DataSelf: DataMut> GGSWCiphertextCompressed<DataSelf> {
                 let (seed, mut source_xa_tmp) = source.branch();
 
                 self.seed[row_i * cols + col_j] = seed;
-                
+
                 encrypt_sk_internal(
                     module,
                     self.basek(),

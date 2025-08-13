@@ -3,7 +3,7 @@ use std::fmt;
 use crate::{
     alloc_aligned,
     hal::{
-        api::{DataView, DataViewMut, FillUniform, ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero},
+        api::{DataView, DataViewMut, FillUniform, Reset, ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero},
         layouts::{Data, DataMut, DataRef, ReaderFrom, WriterTo},
     },
 };
@@ -79,15 +79,13 @@ impl<D: DataMut> ZnxZero for VecZnx<D> {
     }
 }
 
-impl<D: DataRef> VecZnx<D> {
-    pub fn alloc_bytes<Scalar: Sized>(n: usize, cols: usize, size: usize) -> usize {
-        n * cols * size * size_of::<Scalar>()
+impl VecZnx<Vec<u8>> {
+    pub fn alloc_bytes(n: usize, cols: usize, size: usize) -> usize {
+        n * cols * size * size_of::<i64>()
     }
-}
 
-impl<D: DataRef + From<Vec<u8>>> VecZnx<D> {
-    pub fn alloc<Scalar: Sized>(n: usize, cols: usize, size: usize) -> Self {
-        let data: Vec<u8> = alloc_aligned::<u8>(Self::alloc_bytes::<Scalar>(n, cols, size));
+    pub fn alloc(n: usize, cols: usize, size: usize) -> Self {
+        let data: Vec<u8> = alloc_aligned::<u8>(Self::alloc_bytes(n, cols, size));
         Self {
             data: data.into(),
             n,
@@ -99,7 +97,7 @@ impl<D: DataRef + From<Vec<u8>>> VecZnx<D> {
 
     pub fn from_bytes<Scalar: Sized>(n: usize, cols: usize, size: usize, bytes: impl Into<Vec<u8>>) -> Self {
         let data: Vec<u8> = bytes.into();
-        assert!(data.len() == Self::alloc_bytes::<Scalar>(n, cols, size));
+        assert!(data.len() == Self::alloc_bytes(n, cols, size));
         Self {
             data: data.into(),
             n,
@@ -160,6 +158,16 @@ impl<D: DataRef> fmt::Display for VecZnx<D> {
 impl<D: DataMut> FillUniform for VecZnx<D> {
     fn fill_uniform(&mut self, source: &mut Source) {
         source.fill_bytes(self.data.as_mut());
+    }
+}
+
+impl<D: DataMut> Reset for VecZnx<D> {
+    fn reset(&mut self) {
+        self.zero();
+        self.n = 0;
+        self.cols = 0;
+        self.size = 0;
+        self.max_size = 0;
     }
 }
 

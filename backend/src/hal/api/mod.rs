@@ -1,6 +1,4 @@
-mod mat_znx;
 mod module;
-mod scalar_znx;
 mod scratch;
 mod svp_ppol;
 mod vec_znx;
@@ -9,9 +7,7 @@ mod vec_znx_dft;
 mod vmp_pmat;
 mod znx_base;
 
-pub use mat_znx::*;
 pub use module::*;
-pub use scalar_znx::*;
 pub use scratch::*;
 pub use svp_ppol::*;
 pub use vec_znx::*;

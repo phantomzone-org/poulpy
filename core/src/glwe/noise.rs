@@ -1,5 +1,5 @@
 use backend::hal::{
-    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAlloc, VecZnxNormalizeInplace, VecZnxStd, VecZnxSubABInplace},
+    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxNormalizeInplace, VecZnxStd, VecZnxSubABInplace},
     layouts::{Backend, DataRef, Module, ScratchOwned},
     oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeVecZnxBigImpl, TakeVecZnxDftImpl},
 };
@@ -16,13 +16,14 @@ impl<D: DataRef> GLWECiphertext<D> {
     ) where
         DataSk: DataRef,
         DataPt: DataRef,
-        Module<B>: GLWEDecryptFamily<B> + VecZnxSubABInplace + VecZnxNormalizeInplace<B> + VecZnxStd + VecZnxAlloc,
+        Module<B>: GLWEDecryptFamily<B> + VecZnxSubABInplace + VecZnxNormalizeInplace<B> + VecZnxStd,
         B: TakeVecZnxDftImpl<B> + TakeVecZnxBigImpl<B> + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
     {
-        let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(module, self.basek(), self.k());
+        let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(self.n(), self.basek(), self.k());
 
         let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GLWECiphertext::decrypt_scratch_space(
             module,
+            self.n(),
             self.basek(),
             self.k(),
         ));

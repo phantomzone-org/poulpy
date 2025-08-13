@@ -1,19 +1,54 @@
 use backend::hal::{
-    api::{MatZnxAlloc, MatZnxAllocBytes, VmpPMatAlloc, VmpPMatAllocBytes, VmpPMatPrepare},
-    layouts::{Backend, Data, DataMut, DataRef, MatZnx, Module, ReaderFrom, WriterTo},
+    api::{FillUniform, Reset, VmpPMatAlloc, VmpPMatAllocBytes, VmpPMatPrepare},
+    layouts::{Backend, Data, DataMut, DataRef, MatZnx, ReaderFrom, WriterTo},
 };
 
 use crate::{GLWECiphertext, Infos};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
 pub trait GGLWEExecLayoutFamily<B: Backend> = VmpPMatAlloc<B> + VmpPMatAllocBytes + VmpPMatPrepare<B>;
+use std::fmt;
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Clone)]
 pub struct GGLWECiphertext<D: Data> {
     pub(crate) data: MatZnx<D>,
     pub(crate) basek: usize,
     pub(crate) k: usize,
     pub(crate) digits: usize,
+}
+
+impl<D: DataRef> fmt::Debug for GGLWECiphertext<D> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self)
+    }
+}
+
+impl<D: DataMut> FillUniform for GGLWECiphertext<D> {
+    fn fill_uniform(&mut self, source: &mut sampling::source::Source) {
+        self.data.fill_uniform(source);
+    }
+}
+
+impl<D: DataMut> Reset for GGLWECiphertext<D>
+where
+    MatZnx<D>: Reset,
+{
+    fn reset(&mut self) {
+        self.data.reset();
+        self.basek = 0;
+        self.k = 0;
+        self.digits = 0;
+    }
+}
+
+impl<D: DataRef> fmt::Display for GGLWECiphertext<D> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "(GGLWECiphertext: basek={} k={} digits={}) {}",
+            self.basek, self.k, self.digits, self.data
+        )
+    }
 }
 
 impl<D: DataRef> GGLWECiphertext<D> {
@@ -37,18 +72,7 @@ impl<D: DataMut> GGLWECiphertext<D> {
 }
 
 impl GGLWECiphertext<Vec<u8>> {
-    pub fn alloc<B: Backend>(
-        module: &Module<B>,
-        basek: usize,
-        k: usize,
-        rows: usize,
-        digits: usize,
-        rank_in: usize,
-        rank_out: usize,
-    ) -> Self
-    where
-        Module<B>: MatZnxAlloc,
-    {
+    pub fn alloc(n: usize, basek: usize, k: usize, rows: usize, digits: usize, rank_in: usize, rank_out: usize) -> Self {
         let size: usize = k.div_ceil(basek);
         debug_assert!(
             size > digits,
@@ -66,25 +90,14 @@ impl GGLWECiphertext<Vec<u8>> {
         );
 
         Self {
-            data: module.mat_znx_alloc(rows, rank_in, rank_out + 1, size),
+            data: MatZnx::alloc(n, rows, rank_in, rank_out + 1, size),
             basek: basek,
             k,
             digits,
         }
     }
 
-    pub fn bytes_of<B: Backend>(
-        module: &Module<B>,
-        basek: usize,
-        k: usize,
-        rows: usize,
-        digits: usize,
-        rank_in: usize,
-        rank_out: usize,
-    ) -> usize
-    where
-        Module<B>: MatZnxAllocBytes,
-    {
+    pub fn bytes_of(n: usize, basek: usize, k: usize, rows: usize, digits: usize, rank_in: usize, rank_out: usize) -> usize {
         let size: usize = k.div_ceil(basek);
         debug_assert!(
             size > digits,
@@ -101,7 +114,7 @@ impl GGLWECiphertext<Vec<u8>> {
             size
         );
 
-        module.mat_znx_alloc_bytes(rows, rank_in, rank_out + 1, rows)
+        MatZnx::alloc_bytes(n, rows, rank_in, rank_out + 1, rows)
     }
 }
 
@@ -157,46 +170,57 @@ impl<D: DataRef> WriterTo for GGLWECiphertext<D> {
     }
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Clone)]
 pub struct GLWESwitchingKey<D: Data> {
     pub(crate) key: GGLWECiphertext<D>,
     pub(crate) sk_in_n: usize,  // Degree of sk_in
     pub(crate) sk_out_n: usize, // Degree of sk_out
 }
 
+impl<D: DataRef> fmt::Debug for GLWESwitchingKey<D> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self)
+    }
+}
+
+impl<D: DataRef> fmt::Display for GLWESwitchingKey<D> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "(GLWESwitchingKey: sk_in_n={} sk_out_n={}) {}",
+            self.sk_in_n, self.sk_out_n, self.key.data
+        )
+    }
+}
+
+impl<D: DataMut> FillUniform for GLWESwitchingKey<D> {
+    fn fill_uniform(&mut self, source: &mut sampling::source::Source) {
+        self.key.fill_uniform(source);
+    }
+}
+
+impl<D: DataMut> Reset for GLWESwitchingKey<D>
+where
+    MatZnx<D>: Reset,
+{
+    fn reset(&mut self) {
+        self.key.reset();
+        self.sk_in_n = 0;
+        self.sk_out_n = 0;
+    }
+}
+
 impl GLWESwitchingKey<Vec<u8>> {
-    pub fn alloc<B: Backend>(
-        module: &Module<B>,
-        basek: usize,
-        k: usize,
-        rows: usize,
-        digits: usize,
-        rank_in: usize,
-        rank_out: usize,
-    ) -> Self
-    where
-        Module<B>: MatZnxAlloc,
-    {
+    pub fn alloc(n: usize, basek: usize, k: usize, rows: usize, digits: usize, rank_in: usize, rank_out: usize) -> Self {
         GLWESwitchingKey {
-            key: GGLWECiphertext::alloc(module, basek, k, rows, digits, rank_in, rank_out),
+            key: GGLWECiphertext::alloc(n, basek, k, rows, digits, rank_in, rank_out),
             sk_in_n: 0,
             sk_out_n: 0,
         }
     }
 
-    pub fn bytes_of<B: Backend>(
-        module: &Module<B>,
-        basek: usize,
-        k: usize,
-        rows: usize,
-        digits: usize,
-        rank_in: usize,
-        rank_out: usize,
-    ) -> usize
-    where
-        Module<B>: MatZnxAllocBytes,
-    {
-        GGLWECiphertext::<Vec<u8>>::bytes_of(module, basek, k, rows, digits, rank_in, rank_out)
+    pub fn bytes_of(n: usize, basek: usize, k: usize, rows: usize, digits: usize, rank_in: usize, rank_out: usize) -> usize {
+        GGLWECiphertext::<Vec<u8>>::bytes_of(n, basek, k, rows, digits, rank_in, rank_out)
     }
 }
 
@@ -270,28 +294,50 @@ impl<D: DataRef> WriterTo for GLWESwitchingKey<D> {
     }
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Clone)]
 pub struct AutomorphismKey<D: Data> {
     pub(crate) key: GLWESwitchingKey<D>,
     pub(crate) p: i64,
 }
 
+impl<D: DataRef> fmt::Debug for AutomorphismKey<D> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self)
+    }
+}
+
+impl<D: DataMut> FillUniform for AutomorphismKey<D> {
+    fn fill_uniform(&mut self, source: &mut sampling::source::Source) {
+        self.key.fill_uniform(source);
+    }
+}
+
+impl<D: DataMut> Reset for AutomorphismKey<D>
+where
+    MatZnx<D>: Reset,
+{
+    fn reset(&mut self) {
+        self.key.reset();
+        self.p = 0;
+    }
+}
+
+impl<D: DataRef> fmt::Display for AutomorphismKey<D> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "(AutomorphismKey: p={}) {}", self.p, self.key)
+    }
+}
+
 impl AutomorphismKey<Vec<u8>> {
-    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self
-    where
-        Module<B>: MatZnxAlloc,
-    {
+    pub fn alloc(n: usize, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self {
         AutomorphismKey {
-            key: GLWESwitchingKey::alloc(module, basek, k, rows, digits, rank, rank),
+            key: GLWESwitchingKey::alloc(n, basek, k, rows, digits, rank, rank),
             p: 0,
         }
     }
 
-    pub fn bytes_of<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize
-    where
-        Module<B>: MatZnxAllocBytes,
-    {
-        GLWESwitchingKey::<Vec<u8>>::bytes_of(module, basek, k, rows, digits, rank, rank)
+    pub fn bytes_of(n: usize, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize {
+        GLWESwitchingKey::bytes_of(n, basek, k, rows, digits, rank, rank)
     }
 }
 
@@ -359,32 +405,59 @@ impl<D: DataRef> WriterTo for AutomorphismKey<D> {
     }
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Clone)]
 pub struct GLWETensorKey<D: Data> {
     pub(crate) keys: Vec<GLWESwitchingKey<D>>,
 }
 
+impl<D: DataRef> fmt::Debug for GLWETensorKey<D> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self)
+    }
+}
+
+impl<D: DataMut> FillUniform for GLWETensorKey<D> {
+    fn fill_uniform(&mut self, source: &mut sampling::source::Source) {
+        self.keys
+            .iter_mut()
+            .for_each(|key: &mut GLWESwitchingKey<D>| key.fill_uniform(source))
+    }
+}
+
+impl<D: DataMut> Reset for GLWETensorKey<D>
+where
+    MatZnx<D>: Reset,
+{
+    fn reset(&mut self) {
+        self.keys
+            .iter_mut()
+            .for_each(|key: &mut GLWESwitchingKey<D>| key.reset())
+    }
+}
+
+impl<D: DataRef> fmt::Display for GLWETensorKey<D> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "(GLWETensorKey)",)?;
+        for (i, key) in self.keys.iter().enumerate() {
+            write!(f, "{}: {}", i, key)?;
+        }
+        Ok(())
+    }
+}
+
 impl GLWETensorKey<Vec<u8>> {
-    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self
-    where
-        Module<B>: MatZnxAlloc,
-    {
+    pub fn alloc(n: usize, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self {
         let mut keys: Vec<GLWESwitchingKey<Vec<u8>>> = Vec::new();
         let pairs: usize = (((rank + 1) * rank) >> 1).max(1);
         (0..pairs).for_each(|_| {
-            keys.push(GLWESwitchingKey::alloc(
-                module, basek, k, rows, digits, 1, rank,
-            ));
+            keys.push(GLWESwitchingKey::alloc(n, basek, k, rows, digits, 1, rank));
         });
         Self { keys: keys }
     }
 
-    pub fn bytes_of<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize
-    where
-        Module<B>: MatZnxAllocBytes,
-    {
+    pub fn bytes_of(n: usize, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize {
         let pairs: usize = (((rank + 1) * rank) >> 1).max(1);
-        pairs * GLWESwitchingKey::<Vec<u8>>::bytes_of(module, basek, k, rows, digits, 1, rank)
+        pairs * GLWESwitchingKey::<Vec<u8>>::bytes_of(n, basek, k, rows, digits, 1, rank)
     }
 }
 

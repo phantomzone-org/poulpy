@@ -1,8 +1,7 @@
 use backend::hal::{
     api::{
-        MatZnxAlloc, ScalarZnxAlloc, ScalarZnxAllocBytes, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace,
-        VecZnxAlloc, VecZnxAllocBytes, VecZnxCopy, VecZnxRotateInplace, VecZnxStd, VecZnxSubScalarInplace, VecZnxSwithcDegree,
-        ZnxViewMut,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxCopy, VecZnxRotateInplace, VecZnxStd,
+        VecZnxSubScalarInplace, VecZnxSwithcDegree, ZnxViewMut,
     },
     layouts::{Backend, Module, ScalarZnx, ScalarZnxToMut, ScratchOwned},
     oep::{
@@ -21,14 +20,9 @@ use crate::{
 
 pub(crate) trait TestModuleFamily<B: Backend> = GGLWEEncryptSkFamily<B>
     + GLWEDecryptFamily<B>
-    + MatZnxAlloc
-    + ScalarZnxAlloc
-    + ScalarZnxAllocBytes
-    + VecZnxAllocBytes
     + VecZnxSwithcDegree
     + VecZnxAddScalarInplace
     + VecZnxStd
-    + VecZnxAlloc
     + VecZnxSubScalarInplace
     + VecZnxCopy;
 
@@ -56,22 +50,23 @@ pub(crate) fn test_gglwe_encrypt_sk<B: Backend>(
     Module<B>: TestModuleFamily<B>,
     B: TestScratchFamily<B>,
 {
+    let n: usize = module.n();
     let rows: usize = (k_ksk - digits * basek) / (digits * basek);
 
-    let mut ksk: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc(module, basek, k_ksk, rows, digits, rank_in, rank_out);
+    let mut ksk: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc(n, basek, k_ksk, rows, digits, rank_in, rank_out);
 
     let mut source_xs: Source = Source::new([0u8; 32]);
     let mut source_xe: Source = Source::new([0u8; 32]);
     let mut source_xa: Source = Source::new([0u8; 32]);
 
     let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GLWESwitchingKey::encrypt_sk_scratch_space(
-        module, basek, k_ksk, rank_in, rank_out,
+        module, n, basek, k_ksk, rank_in, rank_out,
     ));
 
-    let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc(module, rank_in);
+    let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank_in);
     sk_in.fill_ternary_prob(0.5, &mut source_xs);
 
-    let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(module, rank_out);
+    let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank_out);
     sk_out.fill_ternary_prob(0.5, &mut source_xs);
     let sk_out_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk_out);
 
@@ -101,22 +96,23 @@ pub(crate) fn test_gglwe_encrypt_sk_compressed<B: Backend>(
     Module<B>: TestModuleFamily<B>,
     B: TestScratchFamily<B>,
 {
+    let n: usize = module.n();
     let rows: usize = (k_ksk - digits * basek) / (digits * basek);
 
     let mut ksk_compressed: GLWESwitchingKeyCompressed<Vec<u8>> =
-        GLWESwitchingKeyCompressed::alloc(module, basek, k_ksk, rows, digits, rank_in, rank_out);
+        GLWESwitchingKeyCompressed::alloc(n, basek, k_ksk, rows, digits, rank_in, rank_out);
 
     let mut source_xs: Source = Source::new([0u8; 32]);
     let mut source_xe: Source = Source::new([0u8; 32]);
 
     let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GLWESwitchingKeyCompressed::encrypt_sk_scratch_space(
-        module, basek, k_ksk, rank_in, rank_out,
+        module, n, basek, k_ksk, rank_in, rank_out,
     ));
 
-    let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc(module, rank_in);
+    let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank_in);
     sk_in.fill_ternary_prob(0.5, &mut source_xs);
 
-    let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(module, rank_out);
+    let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank_out);
     sk_out.fill_ternary_prob(0.5, &mut source_xs);
     let sk_out_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk_out);
 
@@ -132,7 +128,7 @@ pub(crate) fn test_gglwe_encrypt_sk_compressed<B: Backend>(
         scratch.borrow(),
     );
 
-    let mut ksk: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc(module, basek, k_ksk, rows, digits, rank_in, rank_out);
+    let mut ksk: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc(n, basek, k_ksk, rows, digits, rank_in, rank_out);
     ksk.decompress(module, &ksk_compressed);
 
     ksk.key
@@ -155,29 +151,16 @@ pub(crate) fn test_gglwe_keyswitch<B: Backend>(
         TestModuleFamily<B> + GGLWEEncryptSkFamily<B> + GLWEDecryptFamily<B> + GLWEKeyswitchFamily<B> + GGLWEExecLayoutFamily<B>,
     B: TestScratchFamily<B>,
 {
+    let n: usize = module.n();
     let rows: usize = k_in.div_ceil(basek * digits);
     let digits_in: usize = 1;
 
-    let mut ct_gglwe_s0s1: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc(
-        module,
-        basek,
-        k_in,
-        rows,
-        digits_in,
-        rank_in_s0s1,
-        rank_out_s0s1,
-    );
-    let mut ct_gglwe_s1s2: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc(
-        module,
-        basek,
-        k_ksk,
-        rows,
-        digits,
-        rank_out_s0s1,
-        rank_out_s1s2,
-    );
+    let mut ct_gglwe_s0s1: GLWESwitchingKey<Vec<u8>> =
+        GLWESwitchingKey::alloc(n, basek, k_in, rows, digits_in, rank_in_s0s1, rank_out_s0s1);
+    let mut ct_gglwe_s1s2: GLWESwitchingKey<Vec<u8>> =
+        GLWESwitchingKey::alloc(n, basek, k_ksk, rows, digits, rank_out_s0s1, rank_out_s1s2);
     let mut ct_gglwe_s0s2: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc(
-        module,
+        n,
         basek,
         k_out,
         rows,
@@ -192,6 +175,7 @@ pub(crate) fn test_gglwe_keyswitch<B: Backend>(
 
     let mut scratch_enc: ScratchOwned<B> = ScratchOwned::alloc(GLWESwitchingKey::encrypt_sk_scratch_space(
         module,
+        n,
         basek,
         k_ksk,
         rank_in_s0s1 | rank_out_s0s1,
@@ -199,6 +183,7 @@ pub(crate) fn test_gglwe_keyswitch<B: Backend>(
     ));
     let mut scratch_apply: ScratchOwned<B> = ScratchOwned::alloc(GLWESwitchingKey::keyswitch_scratch_space(
         module,
+        n,
         basek,
         k_out,
         k_in,
@@ -208,13 +193,13 @@ pub(crate) fn test_gglwe_keyswitch<B: Backend>(
         ct_gglwe_s1s2.rank_out(),
     ));
 
-    let mut sk0: GLWESecret<Vec<u8>> = GLWESecret::alloc(module, rank_in_s0s1);
+    let mut sk0: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank_in_s0s1);
     sk0.fill_ternary_prob(0.5, &mut source_xs);
 
-    let mut sk1: GLWESecret<Vec<u8>> = GLWESecret::alloc(module, rank_out_s0s1);
+    let mut sk1: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank_out_s0s1);
     sk1.fill_ternary_prob(0.5, &mut source_xs);
 
-    let mut sk2: GLWESecret<Vec<u8>> = GLWESecret::alloc(module, rank_out_s1s2);
+    let mut sk2: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank_out_s1s2);
     sk2.fill_ternary_prob(0.5, &mut source_xs);
     let sk2_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk2);
 
@@ -252,7 +237,7 @@ pub(crate) fn test_gglwe_keyswitch<B: Backend>(
     );
 
     let max_noise: f64 = log2_std_noise_gglwe_product(
-        module.n() as f64,
+        n as f64,
         basek * digits,
         0.5,
         0.5,
@@ -286,13 +271,13 @@ pub(crate) fn test_gglwe_keyswitch_inplace<B: Backend>(
         + GLWEDecryptFamily<B>,
     B: TestScratchFamily<B>,
 {
+    let n: usize = module.n();
     let rows: usize = k_ct.div_ceil(basek * digits);
     let digits_in: usize = 1;
 
     let mut ct_gglwe_s0s1: GLWESwitchingKey<Vec<u8>> =
-        GLWESwitchingKey::alloc(module, basek, k_ct, rows, digits_in, rank_in, rank_out);
-    let mut ct_gglwe_s1s2: GLWESwitchingKey<Vec<u8>> =
-        GLWESwitchingKey::alloc(module, basek, k_ksk, rows, digits, rank_out, rank_out);
+        GLWESwitchingKey::alloc(n, basek, k_ct, rows, digits_in, rank_in, rank_out);
+    let mut ct_gglwe_s1s2: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc(n, basek, k_ksk, rows, digits, rank_out, rank_out);
 
     let mut source_xs: Source = Source::new([0u8; 32]);
     let mut source_xe: Source = Source::new([0u8; 32]);
@@ -300,24 +285,25 @@ pub(crate) fn test_gglwe_keyswitch_inplace<B: Backend>(
 
     let mut scratch_enc: ScratchOwned<B> = ScratchOwned::alloc(GLWESwitchingKey::encrypt_sk_scratch_space(
         module,
+        n,
         basek,
         k_ksk,
         rank_in | rank_out,
         rank_out,
     ));
     let mut scratch_apply: ScratchOwned<B> = ScratchOwned::alloc(GLWESwitchingKey::keyswitch_inplace_scratch_space(
-        module, basek, k_ct, k_ksk, digits, rank_out,
+        module, n, basek, k_ct, k_ksk, digits, rank_out,
     ));
 
     let var_xs: f64 = 0.5;
 
-    let mut sk0: GLWESecret<Vec<u8>> = GLWESecret::alloc(module, rank_in);
+    let mut sk0: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank_in);
     sk0.fill_ternary_prob(var_xs, &mut source_xs);
 
-    let mut sk1: GLWESecret<Vec<u8>> = GLWESecret::alloc(module, rank_out);
+    let mut sk1: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank_out);
     sk1.fill_ternary_prob(var_xs, &mut source_xs);
 
-    let mut sk2: GLWESecret<Vec<u8>> = GLWESecret::alloc(module, rank_out);
+    let mut sk2: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank_out);
     sk2.fill_ternary_prob(var_xs, &mut source_xs);
     let sk2_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk2);
 
@@ -352,7 +338,7 @@ pub(crate) fn test_gglwe_keyswitch_inplace<B: Backend>(
     let ct_gglwe_s0s2: GLWESwitchingKey<Vec<u8>> = ct_gglwe_s0s1;
 
     let max_noise: f64 = log2_std_noise_gglwe_product(
-        module.n() as f64,
+        n as f64,
         basek * digits,
         var_xs,
         var_xs,
@@ -388,25 +374,25 @@ pub(crate) fn test_gglwe_external_product<B: Backend>(
         + VecZnxRotateInplace,
     B: TestScratchFamily<B>,
 {
+    let n: usize = module.n();
     let rows: usize = k_in.div_ceil(basek * digits);
     let digits_in: usize = 1;
 
-    let mut ct_gglwe_in: GLWESwitchingKey<Vec<u8>> =
-        GLWESwitchingKey::alloc(module, basek, k_in, rows, digits_in, rank_in, rank_out);
+    let mut ct_gglwe_in: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc(n, basek, k_in, rows, digits_in, rank_in, rank_out);
     let mut ct_gglwe_out: GLWESwitchingKey<Vec<u8>> =
-        GLWESwitchingKey::alloc(module, basek, k_out, rows, digits_in, rank_in, rank_out);
-    let mut ct_rgsw: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(module, basek, k_ggsw, rows, digits, rank_out);
+        GLWESwitchingKey::alloc(n, basek, k_out, rows, digits_in, rank_in, rank_out);
+    let mut ct_rgsw: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(n, basek, k_ggsw, rows, digits, rank_out);
 
-    let mut pt_rgsw: ScalarZnx<Vec<u8>> = module.scalar_znx_alloc(1);
+    let mut pt_rgsw: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n, 1);
 
     let mut source_xs: Source = Source::new([0u8; 32]);
     let mut source_xe: Source = Source::new([0u8; 32]);
     let mut source_xa: Source = Source::new([0u8; 32]);
 
     let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-        GLWESwitchingKey::encrypt_sk_scratch_space(module, basek, k_in, rank_in, rank_out)
-            | GLWESwitchingKey::external_product_scratch_space(module, basek, k_out, k_in, k_ggsw, digits, rank_out)
-            | GGSWCiphertext::encrypt_sk_scratch_space(module, basek, k_ggsw, rank_out),
+        GLWESwitchingKey::encrypt_sk_scratch_space(module, n, basek, k_in, rank_in, rank_out)
+            | GLWESwitchingKey::external_product_scratch_space(module, n, basek, k_out, k_in, k_ggsw, digits, rank_out)
+            | GGSWCiphertext::encrypt_sk_scratch_space(module, n, basek, k_ggsw, rank_out),
     );
 
     let r: usize = 1;
@@ -415,10 +401,10 @@ pub(crate) fn test_gglwe_external_product<B: Backend>(
 
     let var_xs: f64 = 0.5;
 
-    let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc(module, rank_in);
+    let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank_in);
     sk_in.fill_ternary_prob(var_xs, &mut source_xs);
 
-    let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(module, rank_out);
+    let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank_out);
     sk_out.fill_ternary_prob(var_xs, &mut source_xs);
     let sk_out_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk_out);
 
@@ -444,7 +430,7 @@ pub(crate) fn test_gglwe_external_product<B: Backend>(
     );
 
     let mut ct_rgsw_exec: GGSWCiphertextExec<Vec<u8>, B> =
-        GGSWCiphertextExec::alloc(module, basek, k_ggsw, rows, digits, rank_out);
+        GGSWCiphertextExec::alloc(module, n, basek, k_ggsw, rows, digits, rank_out);
 
     ct_rgsw_exec.prepare(module, &ct_rgsw, scratch.borrow());
 
@@ -458,12 +444,12 @@ pub(crate) fn test_gglwe_external_product<B: Backend>(
     let var_gct_err_lhs: f64 = sigma * sigma;
     let var_gct_err_rhs: f64 = 0f64;
 
-    let var_msg: f64 = 1f64 / module.n() as f64; // X^{k}
+    let var_msg: f64 = 1f64 / n as f64; // X^{k}
     let var_a0_err: f64 = sigma * sigma;
     let var_a1_err: f64 = 1f64 / 12f64;
 
     let max_noise: f64 = noise_ggsw_product(
-        module.n() as f64,
+        n as f64,
         basek * digits,
         var_xs,
         var_msg,
@@ -499,24 +485,24 @@ pub(crate) fn test_gglwe_external_product_inplace<B: Backend>(
         + VecZnxRotateInplace,
     B: TestScratchFamily<B>,
 {
+    let n: usize = module.n();
     let rows: usize = k_ct.div_ceil(basek * digits);
 
     let digits_in: usize = 1;
 
-    let mut ct_gglwe: GLWESwitchingKey<Vec<u8>> =
-        GLWESwitchingKey::alloc(module, basek, k_ct, rows, digits_in, rank_in, rank_out);
-    let mut ct_rgsw: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(module, basek, k_ggsw, rows, digits, rank_out);
+    let mut ct_gglwe: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc(n, basek, k_ct, rows, digits_in, rank_in, rank_out);
+    let mut ct_rgsw: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(n, basek, k_ggsw, rows, digits, rank_out);
 
-    let mut pt_rgsw: ScalarZnx<Vec<u8>> = module.scalar_znx_alloc(1);
+    let mut pt_rgsw: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n, 1);
 
     let mut source_xs: Source = Source::new([0u8; 32]);
     let mut source_xe: Source = Source::new([0u8; 32]);
     let mut source_xa: Source = Source::new([0u8; 32]);
 
     let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-        GLWESwitchingKey::encrypt_sk_scratch_space(module, basek, k_ct, rank_in, rank_out)
-            | GLWESwitchingKey::external_product_inplace_scratch_space(module, basek, k_ct, k_ggsw, digits, rank_out)
-            | GGSWCiphertext::encrypt_sk_scratch_space(module, basek, k_ggsw, rank_out),
+        GLWESwitchingKey::encrypt_sk_scratch_space(module, n, basek, k_ct, rank_in, rank_out)
+            | GLWESwitchingKey::external_product_inplace_scratch_space(module, n, basek, k_ct, k_ggsw, digits, rank_out)
+            | GGSWCiphertext::encrypt_sk_scratch_space(module, n, basek, k_ggsw, rank_out),
     );
 
     let r: usize = 1;
@@ -525,10 +511,10 @@ pub(crate) fn test_gglwe_external_product_inplace<B: Backend>(
 
     let var_xs: f64 = 0.5;
 
-    let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc(module, rank_in);
+    let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank_in);
     sk_in.fill_ternary_prob(var_xs, &mut source_xs);
 
-    let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(module, rank_out);
+    let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank_out);
     sk_out.fill_ternary_prob(var_xs, &mut source_xs);
     let sk_out_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk_out);
 
@@ -554,7 +540,7 @@ pub(crate) fn test_gglwe_external_product_inplace<B: Backend>(
     );
 
     let mut ct_rgsw_exec: GGSWCiphertextExec<Vec<u8>, B> =
-        GGSWCiphertextExec::alloc(module, basek, k_ggsw, rows, digits, rank_out);
+        GGSWCiphertextExec::alloc(module, n, basek, k_ggsw, rows, digits, rank_out);
 
     ct_rgsw_exec.prepare(module, &ct_rgsw, scratch.borrow());
 
@@ -568,12 +554,12 @@ pub(crate) fn test_gglwe_external_product_inplace<B: Backend>(
     let var_gct_err_lhs: f64 = sigma * sigma;
     let var_gct_err_rhs: f64 = 0f64;
 
-    let var_msg: f64 = 1f64 / module.n() as f64; // X^{k}
+    let var_msg: f64 = 1f64 / n as f64; // X^{k}
     let var_a0_err: f64 = sigma * sigma;
     let var_a1_err: f64 = 1f64 / 12f64;
 
     let max_noise: f64 = noise_ggsw_product(
-        module.n() as f64,
+        n as f64,
         basek * digits,
         var_xs,
         var_msg,

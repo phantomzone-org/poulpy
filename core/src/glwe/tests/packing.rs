@@ -2,9 +2,8 @@ use std::collections::HashMap;
 
 use backend::hal::{
     api::{
-        MatZnxAlloc, ScalarZnxAlloc, ScalarZnxAllocBytes, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace,
-        VecZnxAlloc, VecZnxAllocBytes, VecZnxAutomorphism, VecZnxBigSubSmallBInplace, VecZnxEncodeVeci64, VecZnxRotateInplace,
-        VecZnxStd, VecZnxSwithcDegree,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxAutomorphism, VecZnxBigSubSmallBInplace,
+        VecZnxEncodeVeci64, VecZnxRotateInplace, VecZnxStd, VecZnxSwithcDegree,
     },
     layouts::{Backend, Module, ScratchOwned},
     oep::{
@@ -25,11 +24,6 @@ pub(crate) trait PackingTestModuleFamily<B: Backend> = GLWEPackingFamily<B>
     + GLWEKeyswitchFamily<B>
     + GLWEDecryptFamily<B>
     + GGLWEExecLayoutFamily<B>
-    + MatZnxAlloc
-    + VecZnxAlloc
-    + ScalarZnxAlloc
-    + ScalarZnxAllocBytes
-    + VecZnxAllocBytes
     + VecZnxStd
     + VecZnxSwithcDegree
     + VecZnxAddScalarInplace
@@ -56,6 +50,7 @@ where
     let mut source_xe: Source = Source::new([0u8; 32]);
     let mut source_xa: Source = Source::new([0u8; 32]);
 
+    let n: usize = module.n();
     let basek: usize = 18;
     let k_ct: usize = 36;
     let pt_k: usize = 18;
@@ -67,17 +62,17 @@ where
     let rows: usize = k_ct.div_ceil(basek * digits);
 
     let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-        GLWECiphertext::encrypt_sk_scratch_space(module, basek, k_ct)
-            | AutomorphismKey::encrypt_sk_scratch_space(module, basek, k_ksk, rank)
-            | GLWEPacker::scratch_space(module, basek, k_ct, k_ksk, digits, rank),
+        GLWECiphertext::encrypt_sk_scratch_space(module, n, basek, k_ct)
+            | AutomorphismKey::encrypt_sk_scratch_space(module, n, basek, k_ksk, rank)
+            | GLWEPacker::scratch_space(module, n, basek, k_ct, k_ksk, digits, rank),
     );
 
-    let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(module, rank);
+    let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
     sk.fill_ternary_prob(0.5, &mut source_xs);
     let sk_dft: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk);
 
-    let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(module, basek, k_ct);
-    let mut data: Vec<i64> = vec![0i64; module.n()];
+    let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(n, basek, k_ct);
+    let mut data: Vec<i64> = vec![0i64; n];
     data.iter_mut().enumerate().for_each(|(i, x)| {
         *x = i as i64;
     });
@@ -87,7 +82,7 @@ where
     let gal_els: Vec<i64> = GLWEPacker::galois_elements(module);
 
     let mut auto_keys: HashMap<i64, AutomorphismKeyExec<Vec<u8>, B>> = HashMap::new();
-    let mut tmp: AutomorphismKey<Vec<u8>> = AutomorphismKey::alloc(module, basek, k_ksk, rows, digits, rank);
+    let mut tmp: AutomorphismKey<Vec<u8>> = AutomorphismKey::alloc(n, basek, k_ksk, rows, digits, rank);
     gal_els.iter().for_each(|gal_el| {
         tmp.encrypt_sk(
             module,
@@ -104,9 +99,9 @@ where
 
     let log_batch: usize = 0;
 
-    let mut packer: GLWEPacker = GLWEPacker::new(module, log_batch, basek, k_ct, rank);
+    let mut packer: GLWEPacker = GLWEPacker::new(n, log_batch, basek, k_ct, rank);
 
-    let mut ct: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(module, basek, k_ct, rank);
+    let mut ct: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(n, basek, k_ct, rank);
 
     ct.encrypt_sk(
         module,
@@ -120,7 +115,7 @@ where
 
     let log_n: usize = module.log_n();
 
-    (0..module.n() >> log_batch).for_each(|i| {
+    (0..n >> log_batch).for_each(|i| {
         ct.encrypt_sk(
             module,
             &pt,
@@ -145,11 +140,11 @@ where
         }
     });
 
-    let mut res = GLWECiphertext::alloc(module, basek, k_ct, rank);
+    let mut res = GLWECiphertext::alloc(n, basek, k_ct, rank);
     packer.flush(module, &mut res);
 
-    let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(module, basek, k_ct);
-    let mut data: Vec<i64> = vec![0i64; module.n()];
+    let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(n, basek, k_ct);
+    let mut data: Vec<i64> = vec![0i64; n];
     data.iter_mut().enumerate().for_each(|(i, x)| {
         if i % 5 == 0 {
             *x = reverse_bits_msb(i, log_n as u32) as i64;

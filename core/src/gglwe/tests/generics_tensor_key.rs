@@ -1,8 +1,7 @@
 use backend::hal::{
     api::{
-        MatZnxAlloc, ScalarZnxAlloc, ScalarZnxAllocBytes, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace,
-        VecZnxAlloc, VecZnxAllocBytes, VecZnxBigAlloc, VecZnxCopy, VecZnxDftAlloc, VecZnxStd, VecZnxSubScalarInplace,
-        VecZnxSwithcDegree,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxBigAlloc, VecZnxCopy, VecZnxDftAlloc, VecZnxStd,
+        VecZnxSubScalarInplace, VecZnxSwithcDegree,
     },
     layouts::{Backend, Module, ScratchOwned, VecZnxDft},
     oep::{
@@ -19,14 +18,9 @@ use crate::{
 
 pub(crate) trait TestModuleFamily<B: Backend> = GGLWEEncryptSkFamily<B>
     + GLWEDecryptFamily<B>
-    + MatZnxAlloc
-    + ScalarZnxAlloc
-    + ScalarZnxAllocBytes
-    + VecZnxAllocBytes
     + VecZnxSwithcDegree
     + VecZnxAddScalarInplace
     + VecZnxStd
-    + VecZnxAlloc
     + VecZnxSubScalarInplace;
 
 pub(crate) trait TestScratchFamily<B: Backend> = TakeVecZnxDftImpl<B>
@@ -51,9 +45,10 @@ where
         + VecZnxBigAlloc<B>,
     B: TestScratchFamily<B>,
 {
+    let n: usize = module.n();
     let rows: usize = k / basek;
 
-    let mut tensor_key: GLWETensorKey<Vec<u8>> = GLWETensorKey::alloc(&module, basek, k, rows, 1, rank);
+    let mut tensor_key: GLWETensorKey<Vec<u8>> = GLWETensorKey::alloc(n, basek, k, rows, 1, rank);
 
     let mut source_xs: Source = Source::new([0u8; 32]);
     let mut source_xe: Source = Source::new([0u8; 32]);
@@ -61,14 +56,15 @@ where
 
     let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GLWETensorKey::encrypt_sk_scratch_space(
         module,
+        n,
         basek,
         tensor_key.k(),
         rank,
     ));
 
-    let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(&module, rank);
+    let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
     sk.fill_ternary_prob(0.5, &mut source_xs);
-    let mut sk_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(&module, &sk);
+    let mut sk_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk);
     sk_exec.prepare(module, &sk);
 
     tensor_key.encrypt_sk(
@@ -80,12 +76,12 @@ where
         scratch.borrow(),
     );
 
-    let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k);
+    let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(n, basek, k);
 
-    let mut sk_ij_dft = module.vec_znx_dft_alloc(1, 1);
-    let mut sk_ij_big = module.vec_znx_big_alloc(1, 1);
-    let mut sk_ij: GLWESecret<Vec<u8>> = GLWESecret::alloc(&module, 1);
-    let mut sk_dft: VecZnxDft<Vec<u8>, B> = module.vec_znx_dft_alloc(rank, 1);
+    let mut sk_ij_dft = module.vec_znx_dft_alloc(n, 1, 1);
+    let mut sk_ij_big = module.vec_znx_big_alloc(n, 1, 1);
+    let mut sk_ij: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, 1);
+    let mut sk_dft: VecZnxDft<Vec<u8>, B> = module.vec_znx_dft_alloc(n, rank, 1);
 
     (0..rank).for_each(|i| {
         module.vec_znx_dft_from_vec_znx(1, 0, &mut sk_dft, i, &sk.data.as_vec_znx(), i);
@@ -108,7 +104,7 @@ where
                     tensor_key
                         .at(i, j)
                         .at(row_i, col_i)
-                        .decrypt(&module, &mut pt, &sk_exec, scratch.borrow());
+                        .decrypt(module, &mut pt, &sk_exec, scratch.borrow());
 
                     module.vec_znx_sub_scalar_inplace(&mut pt.data, 0, row_i, &sk_ij.data, col_i);
 
@@ -136,24 +132,25 @@ pub(crate) fn test_tensor_key_encrypt_sk_compressed<B: Backend>(
         + VecZnxCopy,
     B: TestScratchFamily<B>,
 {
+    let n: usize = module.n();
     let rows: usize = k / basek;
 
-    let mut tensor_key_compressed: GLWETensorKeyCompressed<Vec<u8>> =
-        GLWETensorKeyCompressed::alloc(&module, basek, k, rows, 1, rank);
+    let mut tensor_key_compressed: GLWETensorKeyCompressed<Vec<u8>> = GLWETensorKeyCompressed::alloc(n, basek, k, rows, 1, rank);
 
     let mut source_xs: Source = Source::new([0u8; 32]);
     let mut source_xe: Source = Source::new([0u8; 32]);
 
     let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GLWETensorKeyCompressed::encrypt_sk_scratch_space(
         module,
+        n,
         basek,
         tensor_key_compressed.k(),
         rank,
     ));
 
-    let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(&module, rank);
+    let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
     sk.fill_ternary_prob(0.5, &mut source_xs);
-    let mut sk_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(&module, &sk);
+    let mut sk_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk);
     sk_exec.prepare(module, &sk);
 
     let seed_xa: [u8; 32] = [1u8; 32];
@@ -167,15 +164,15 @@ pub(crate) fn test_tensor_key_encrypt_sk_compressed<B: Backend>(
         scratch.borrow(),
     );
 
-    let mut tensor_key: GLWETensorKey<Vec<u8>> = GLWETensorKey::alloc(&module, basek, k, rows, 1, rank);
+    let mut tensor_key: GLWETensorKey<Vec<u8>> = GLWETensorKey::alloc(n, basek, k, rows, 1, rank);
     tensor_key.decompress(module, &tensor_key_compressed);
 
-    let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&module, basek, k);
+    let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(n, basek, k);
 
-    let mut sk_ij_dft = module.vec_znx_dft_alloc(1, 1);
-    let mut sk_ij_big = module.vec_znx_big_alloc(1, 1);
-    let mut sk_ij: GLWESecret<Vec<u8>> = GLWESecret::alloc(&module, 1);
-    let mut sk_dft: VecZnxDft<Vec<u8>, B> = module.vec_znx_dft_alloc(rank, 1);
+    let mut sk_ij_dft = module.vec_znx_dft_alloc(n, 1, 1);
+    let mut sk_ij_big = module.vec_znx_big_alloc(n, 1, 1);
+    let mut sk_ij: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, 1);
+    let mut sk_dft: VecZnxDft<Vec<u8>, B> = module.vec_znx_dft_alloc(n, rank, 1);
 
     (0..rank).for_each(|i| {
         module.vec_znx_dft_from_vec_znx(1, 0, &mut sk_dft, i, &sk.data.as_vec_znx(), i);
@@ -198,7 +195,7 @@ pub(crate) fn test_tensor_key_encrypt_sk_compressed<B: Backend>(
                     tensor_key
                         .at(i, j)
                         .at(row_i, col_i)
-                        .decrypt(&module, &mut pt, &sk_exec, scratch.borrow());
+                        .decrypt(module, &mut pt, &sk_exec, scratch.borrow());
 
                     module.vec_znx_sub_scalar_inplace(&mut pt.data, 0, row_i, &sk_ij.data, col_i);
 

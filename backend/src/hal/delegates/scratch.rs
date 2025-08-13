@@ -3,9 +3,7 @@ use crate::hal::{
         ScratchAvailable, ScratchFromBytes, ScratchOwnedAlloc, ScratchOwnedBorrow, TakeLike, TakeMatZnx, TakeScalarZnx,
         TakeSlice, TakeSvpPPol, TakeVecZnx, TakeVecZnxBig, TakeVecZnxDft, TakeVecZnxDftSlice, TakeVecZnxSlice, TakeVmpPMat,
     },
-    layouts::{
-        Backend, DataRef, MatZnx, Module, ScalarZnx, Scratch, ScratchOwned, SvpPPol, VecZnx, VecZnxBig, VecZnxDft, VmpPMat,
-    },
+    layouts::{Backend, DataRef, MatZnx, ScalarZnx, Scratch, ScratchOwned, SvpPPol, VecZnx, VecZnxBig, VecZnxDft, VmpPMat},
     oep::{
         ScratchAvailableImpl, ScratchFromBytesImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeLikeImpl, TakeMatZnxImpl,
         TakeScalarZnxImpl, TakeSliceImpl, TakeSvpPPolImpl, TakeVecZnxBigImpl, TakeVecZnxDftImpl, TakeVecZnxDftSliceImpl,
@@ -58,12 +56,12 @@ where
     }
 }
 
-impl<B> TakeScalarZnx<B> for Scratch<B>
+impl<B> TakeScalarZnx for Scratch<B>
 where
     B: Backend + TakeScalarZnxImpl<B>,
 {
-    fn take_scalar_znx(&mut self, module: &Module<B>, cols: usize) -> (ScalarZnx<&mut [u8]>, &mut Self) {
-        B::take_scalar_znx_impl(self, module.n(), cols)
+    fn take_scalar_znx(&mut self, n: usize, cols: usize) -> (ScalarZnx<&mut [u8]>, &mut Self) {
+        B::take_scalar_znx_impl(self, n, cols)
     }
 }
 
@@ -71,32 +69,26 @@ impl<B> TakeSvpPPol<B> for Scratch<B>
 where
     B: Backend + TakeSvpPPolImpl<B>,
 {
-    fn take_svp_ppol(&mut self, module: &Module<B>, cols: usize) -> (SvpPPol<&mut [u8], B>, &mut Self) {
-        B::take_svp_ppol_impl(self, module.n(), cols)
+    fn take_svp_ppol(&mut self, n: usize, cols: usize) -> (SvpPPol<&mut [u8], B>, &mut Self) {
+        B::take_svp_ppol_impl(self, n, cols)
     }
 }
 
-impl<B> TakeVecZnx<B> for Scratch<B>
+impl<B> TakeVecZnx for Scratch<B>
 where
     B: Backend + TakeVecZnxImpl<B>,
 {
-    fn take_vec_znx(&mut self, module: &Module<B>, cols: usize, size: usize) -> (VecZnx<&mut [u8]>, &mut Self) {
-        B::take_vec_znx_impl(self, module.n(), cols, size)
+    fn take_vec_znx(&mut self, n: usize, cols: usize, size: usize) -> (VecZnx<&mut [u8]>, &mut Self) {
+        B::take_vec_znx_impl(self, n, cols, size)
     }
 }
 
-impl<B> TakeVecZnxSlice<B> for Scratch<B>
+impl<B> TakeVecZnxSlice for Scratch<B>
 where
     B: Backend + TakeVecZnxSliceImpl<B>,
 {
-    fn take_vec_znx_slice(
-        &mut self,
-        len: usize,
-        module: &Module<B>,
-        cols: usize,
-        size: usize,
-    ) -> (Vec<VecZnx<&mut [u8]>>, &mut Self) {
-        B::take_vec_znx_slice_impl(self, len, module.n(), cols, size)
+    fn take_vec_znx_slice(&mut self, len: usize, n: usize, cols: usize, size: usize) -> (Vec<VecZnx<&mut [u8]>>, &mut Self) {
+        B::take_vec_znx_slice_impl(self, len, n, cols, size)
     }
 }
 
@@ -104,8 +96,8 @@ impl<B> TakeVecZnxBig<B> for Scratch<B>
 where
     B: Backend + TakeVecZnxBigImpl<B>,
 {
-    fn take_vec_znx_big(&mut self, module: &Module<B>, cols: usize, size: usize) -> (VecZnxBig<&mut [u8], B>, &mut Self) {
-        B::take_vec_znx_big_impl(self, module.n(), cols, size)
+    fn take_vec_znx_big(&mut self, n: usize, cols: usize, size: usize) -> (VecZnxBig<&mut [u8], B>, &mut Self) {
+        B::take_vec_znx_big_impl(self, n, cols, size)
     }
 }
 
@@ -113,8 +105,8 @@ impl<B> TakeVecZnxDft<B> for Scratch<B>
 where
     B: Backend + TakeVecZnxDftImpl<B>,
 {
-    fn take_vec_znx_dft(&mut self, module: &Module<B>, cols: usize, size: usize) -> (VecZnxDft<&mut [u8], B>, &mut Self) {
-        B::take_vec_znx_dft_impl(self, module.n(), cols, size)
+    fn take_vec_znx_dft(&mut self, n: usize, cols: usize, size: usize) -> (VecZnxDft<&mut [u8], B>, &mut Self) {
+        B::take_vec_znx_dft_impl(self, n, cols, size)
     }
 }
 
@@ -125,11 +117,11 @@ where
     fn take_vec_znx_dft_slice(
         &mut self,
         len: usize,
-        module: &Module<B>,
+        n: usize,
         cols: usize,
         size: usize,
     ) -> (Vec<VecZnxDft<&mut [u8], B>>, &mut Self) {
-        B::take_vec_znx_dft_slice_impl(self, len, module.n(), cols, size)
+        B::take_vec_znx_dft_slice_impl(self, len, n, cols, size)
     }
 }
 
@@ -139,29 +131,29 @@ where
 {
     fn take_vmp_pmat(
         &mut self,
-        module: &Module<B>,
+        n: usize,
         rows: usize,
         cols_in: usize,
         cols_out: usize,
         size: usize,
     ) -> (VmpPMat<&mut [u8], B>, &mut Self) {
-        B::take_vmp_pmat_impl(self, module.n(), rows, cols_in, cols_out, size)
+        B::take_vmp_pmat_impl(self, n, rows, cols_in, cols_out, size)
     }
 }
 
-impl<B> TakeMatZnx<B> for Scratch<B>
+impl<B> TakeMatZnx for Scratch<B>
 where
     B: Backend + TakeMatZnxImpl<B>,
 {
     fn take_mat_znx(
         &mut self,
-        module: &Module<B>,
+        n: usize,
         rows: usize,
         cols_in: usize,
         cols_out: usize,
         size: usize,
     ) -> (MatZnx<&mut [u8]>, &mut Self) {
-        B::take_mat_znx_impl(self, module.n(), rows, cols_in, cols_out, size)
+        B::take_mat_znx_impl(self, n, rows, cols_in, cols_out, size)
     }
 }
 

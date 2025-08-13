@@ -3,19 +3,19 @@ use crate::hal::layouts::{
 };
 
 pub trait VecZnxDftAlloc<B: Backend> {
-    fn vec_znx_dft_alloc(&self, cols: usize, size: usize) -> VecZnxDftOwned<B>;
+    fn vec_znx_dft_alloc(&self, n: usize, cols: usize, size: usize) -> VecZnxDftOwned<B>;
 }
 
 pub trait VecZnxDftFromBytes<B: Backend> {
-    fn vec_znx_dft_from_bytes(&self, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxDftOwned<B>;
+    fn vec_znx_dft_from_bytes(&self, n: usize, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxDftOwned<B>;
 }
 
 pub trait VecZnxDftAllocBytes {
-    fn vec_znx_dft_alloc_bytes(&self, cols: usize, size: usize) -> usize;
+    fn vec_znx_dft_alloc_bytes(&self, n: usize, cols: usize, size: usize) -> usize;
 }
 
 pub trait VecZnxDftToVecZnxBigTmpBytes {
-    fn vec_znx_dft_to_vec_znx_big_tmp_bytes(&self) -> usize;
+    fn vec_znx_dft_to_vec_znx_big_tmp_bytes(&self, n: usize) -> usize;
 }
 
 pub trait VecZnxDftToVecZnxBig<B: Backend> {

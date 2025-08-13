@@ -1,5 +1,5 @@
 use backend::hal::{
-    api::{ScalarZnxAlloc, ScalarZnxAllocBytes, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare, ZnxInfos, ZnxZero},
+    api::{SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare, ZnxInfos, ZnxZero},
     layouts::{Backend, Data, DataMut, DataRef, Module, ReaderFrom, ScalarZnx, SvpPPol, WriterTo},
 };
 use sampling::source::Source;
@@ -15,21 +15,15 @@ pub struct GLWESecret<D: Data> {
 }
 
 impl GLWESecret<Vec<u8>> {
-    pub fn alloc<B: Backend>(module: &Module<B>, rank: usize) -> Self
-    where
-        Module<B>: ScalarZnxAlloc,
-    {
+    pub fn alloc(n: usize, rank: usize) -> Self {
         Self {
-            data: module.scalar_znx_alloc(rank),
+            data: ScalarZnx::alloc(n, rank),
             dist: Distribution::NONE,
         }
     }
 
-    pub fn bytes_of<B: Backend>(module: &Module<B>, rank: usize) -> usize
-    where
-        Module<B>: ScalarZnxAllocBytes,
-    {
-        module.scalar_znx_alloc_bytes(rank)
+    pub fn bytes_of(n: usize, rank: usize) -> usize {
+        ScalarZnx::alloc_bytes(n, rank)
     }
 }
 
@@ -115,21 +109,21 @@ pub struct GLWESecretExec<D: Data, B: Backend> {
 }
 
 impl<B: Backend> GLWESecretExec<Vec<u8>, B> {
-    pub fn alloc(module: &Module<B>, rank: usize) -> Self
+    pub fn alloc(module: &Module<B>, n: usize, rank: usize) -> Self
     where
-        Module<B>: GLWESecretFamily<B>,
+        Module<B>: SvpPPolAlloc<B>,
     {
         Self {
-            data: module.svp_ppol_alloc(rank),
+            data: module.svp_ppol_alloc(n, rank),
             dist: Distribution::NONE,
         }
     }
 
-    pub fn bytes_of(module: &Module<B>, rank: usize) -> usize
+    pub fn bytes_of(module: &Module<B>, n: usize, rank: usize) -> usize
     where
-        Module<B>: GLWESecretFamily<B>,
+        Module<B>: SvpPPolAllocBytes,
     {
-        module.svp_ppol_alloc_bytes(rank)
+        module.svp_ppol_alloc_bytes(n, rank)
     }
 }
 
@@ -137,9 +131,9 @@ impl<B: Backend> GLWESecretExec<Vec<u8>, B> {
     pub fn from<D>(module: &Module<B>, sk: &GLWESecret<D>) -> Self
     where
         D: DataRef,
-        Module<B>: GLWESecretFamily<B>,
+        Module<B>: SvpPrepare<B> + SvpPPolAlloc<B>,
     {
-        let mut sk_dft: GLWESecretExec<Vec<u8>, B> = Self::alloc(module, sk.rank());
+        let mut sk_dft: GLWESecretExec<Vec<u8>, B> = Self::alloc(module, sk.n(), sk.rank());
         sk_dft.prepare(module, sk);
         sk_dft
     }
@@ -163,7 +157,7 @@ impl<D: DataMut, B: Backend> GLWESecretExec<D, B> {
     pub(crate) fn prepare<O>(&mut self, module: &Module<B>, sk: &GLWESecret<O>)
     where
         O: DataRef,
-        Module<B>: GLWESecretFamily<B>,
+        Module<B>: SvpPrepare<B>,
     {
         (0..self.rank()).for_each(|i| {
             module.svp_prepare(&mut self.data, i, &sk.data, i);

@@ -113,3 +113,7 @@ where
 pub trait FillUniform {
     fn fill_uniform(&mut self, source: &mut Source);
 }
+
+pub trait Reset {
+    fn reset(&mut self);
+}

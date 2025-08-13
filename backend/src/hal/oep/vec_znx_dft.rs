@@ -16,7 +16,7 @@ pub unsafe trait VecZnxDftAllocBytesImpl<B: Backend> {
 }
 
 pub unsafe trait VecZnxDftToVecZnxBigTmpBytesImpl<B: Backend> {
-    fn vec_znx_dft_to_vec_znx_big_tmp_bytes_impl(module: &Module<B>) -> usize;
+    fn vec_znx_dft_to_vec_znx_big_tmp_bytes_impl(module: &Module<B>, n: usize) -> usize;
 }
 
 pub unsafe trait VecZnxDftToVecZnxBigImpl<B: Backend> {

@@ -14,7 +14,16 @@ pub struct GGLWECiphertextExec<D: Data, B: Backend> {
 }
 
 impl<B: Backend> GGLWECiphertextExec<Vec<u8>, B> {
-    pub fn alloc(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank_in: usize, rank_out: usize) -> Self
+    pub fn alloc(
+        module: &Module<B>,
+        n: usize,
+        basek: usize,
+        k: usize,
+        rows: usize,
+        digits: usize,
+        rank_in: usize,
+        rank_out: usize,
+    ) -> Self
     where
         Module<B>: GGLWEExecLayoutFamily<B>,
     {
@@ -35,7 +44,7 @@ impl<B: Backend> GGLWECiphertextExec<Vec<u8>, B> {
         );
 
         Self {
-            data: module.vmp_pmat_alloc(rows, rank_in, rank_out + 1, size),
+            data: module.vmp_pmat_alloc(n, rows, rank_in, rank_out + 1, size),
             basek: basek,
             k,
             digits,
@@ -44,6 +53,7 @@ impl<B: Backend> GGLWECiphertextExec<Vec<u8>, B> {
 
     pub fn bytes_of(
         module: &Module<B>,
+        n: usize,
         basek: usize,
         k: usize,
         rows: usize,
@@ -70,7 +80,7 @@ impl<B: Backend> GGLWECiphertextExec<Vec<u8>, B> {
             size
         );
 
-        module.vmp_pmat_alloc_bytes(rows, rank_in, rank_out + 1, rows)
+        module.vmp_pmat_alloc_bytes(n, rows, rank_in, rank_out + 1, rows)
     }
 }
 
@@ -129,12 +139,21 @@ pub struct GLWESwitchingKeyExec<D: Data, B: Backend> {
 }
 
 impl<B: Backend> GLWESwitchingKeyExec<Vec<u8>, B> {
-    pub fn alloc(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank_in: usize, rank_out: usize) -> Self
+    pub fn alloc(
+        module: &Module<B>,
+        n: usize,
+        basek: usize,
+        k: usize,
+        rows: usize,
+        digits: usize,
+        rank_in: usize,
+        rank_out: usize,
+    ) -> Self
     where
         Module<B>: GGLWEExecLayoutFamily<B>,
     {
         GLWESwitchingKeyExec::<Vec<u8>, B> {
-            key: GGLWECiphertextExec::alloc(module, basek, k, rows, digits, rank_in, rank_out),
+            key: GGLWECiphertextExec::alloc(module, n, basek, k, rows, digits, rank_in, rank_out),
             sk_in_n: 0,
             sk_out_n: 0,
         }
@@ -142,6 +161,7 @@ impl<B: Backend> GLWESwitchingKeyExec<Vec<u8>, B> {
 
     pub fn bytes_of(
         module: &Module<B>,
+        n: usize,
         basek: usize,
         k: usize,
         rows: usize,
@@ -152,7 +172,7 @@ impl<B: Backend> GLWESwitchingKeyExec<Vec<u8>, B> {
     where
         Module<B>: GGLWEExecLayoutFamily<B>,
     {
-        GGLWECiphertextExec::bytes_of(module, basek, k, rows, digits, rank_in, rank_out)
+        GGLWECiphertextExec::bytes_of(module, n, basek, k, rows, digits, rank_in, rank_out)
     }
 
     pub fn from<DataOther: DataRef>(module: &Module<B>, other: &GLWESwitchingKey<DataOther>, scratch: &mut Scratch<B>) -> Self
@@ -161,6 +181,7 @@ impl<B: Backend> GLWESwitchingKeyExec<Vec<u8>, B> {
     {
         let mut ksk_exec: GLWESwitchingKeyExec<Vec<u8>, B> = Self::alloc(
             module,
+            other.n(),
             other.basek(),
             other.k(),
             other.rows(),
@@ -234,21 +255,21 @@ pub struct AutomorphismKeyExec<D: Data, B: Backend> {
 }
 
 impl<B: Backend> AutomorphismKeyExec<Vec<u8>, B> {
-    pub fn alloc(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self
+    pub fn alloc(module: &Module<B>, n: usize, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self
     where
         Module<B>: GGLWEExecLayoutFamily<B>,
     {
         AutomorphismKeyExec::<Vec<u8>, B> {
-            key: GLWESwitchingKeyExec::alloc(module, basek, k, rows, digits, rank, rank),
+            key: GLWESwitchingKeyExec::alloc(module, n, basek, k, rows, digits, rank, rank),
             p: 0,
         }
     }
 
-    pub fn bytes_of(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize
+    pub fn bytes_of(module: &Module<B>, n: usize, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize
     where
         Module<B>: GGLWEExecLayoutFamily<B>,
     {
-        GLWESwitchingKeyExec::<Vec<u8>, B>::bytes_of(module, basek, k, rows, digits, rank, rank)
+        GLWESwitchingKeyExec::bytes_of(module, n, basek, k, rows, digits, rank, rank)
     }
 
     pub fn from<DataOther: DataRef>(module: &Module<B>, other: &AutomorphismKey<DataOther>, scratch: &mut Scratch<B>) -> Self
@@ -257,6 +278,7 @@ impl<B: Backend> AutomorphismKeyExec<Vec<u8>, B> {
     {
         let mut atk_exec: AutomorphismKeyExec<Vec<u8>, B> = Self::alloc(
             module,
+            other.n(),
             other.basek(),
             other.k(),
             other.rows(),
@@ -323,7 +345,7 @@ pub struct GLWETensorKeyExec<D: Data, B: Backend> {
 }
 
 impl<B: Backend> GLWETensorKeyExec<Vec<u8>, B> {
-    pub fn alloc(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self
+    pub fn alloc(module: &Module<B>, n: usize, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self
     where
         Module<B>: GGLWEExecLayoutFamily<B>,
     {
@@ -331,18 +353,18 @@ impl<B: Backend> GLWETensorKeyExec<Vec<u8>, B> {
         let pairs: usize = (((rank + 1) * rank) >> 1).max(1);
         (0..pairs).for_each(|_| {
             keys.push(GLWESwitchingKeyExec::alloc(
-                module, basek, k, rows, digits, 1, rank,
+                module, n, basek, k, rows, digits, 1, rank,
             ));
         });
         Self { keys }
     }
 
-    pub fn bytes_of(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize
+    pub fn bytes_of(module: &Module<B>, n: usize, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize
     where
         Module<B>: GGLWEExecLayoutFamily<B>,
     {
         let pairs: usize = (((rank + 1) * rank) >> 1).max(1);
-        pairs * GLWESwitchingKeyExec::<Vec<u8>, B>::bytes_of(module, basek, k, rows, digits, 1, rank)
+        pairs * GLWESwitchingKeyExec::bytes_of(module, n, basek, k, rows, digits, 1, rank)
     }
 }
 

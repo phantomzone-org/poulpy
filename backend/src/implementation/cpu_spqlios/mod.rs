@@ -1,8 +1,6 @@
 mod ffi;
-mod mat_znx;
 mod module_fft64;
 mod module_ntt120;
-mod scalar_znx;
 mod scratch;
 mod svp_ppol_fft64;
 mod svp_ppol_ntt120;

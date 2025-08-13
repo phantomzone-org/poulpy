@@ -1,7 +1,7 @@
 use backend::hal::{
     api::{
-        MatZnxAlloc, ScalarZnxAlloc, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxAlloc,
-        VecZnxAllocBytes, VecZnxFillUniform, VecZnxRotateInplace, VecZnxStd, ZnxViewMut,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxFillUniform, VecZnxRotateInplace, VecZnxStd,
+        ZnxViewMut,
     },
     layouts::{Backend, Module, ScalarZnx, ScratchOwned},
     oep::{
@@ -21,10 +21,6 @@ pub(crate) trait ExternalProductTestModuleFamily<B: Backend> = GLWEEncryptSkFami
     + GLWESecretFamily<B>
     + GLWEExternalProductFamily<B>
     + GGSWLayoutFamily<B>
-    + MatZnxAlloc
-    + VecZnxAlloc
-    + ScalarZnxAlloc
-    + VecZnxAllocBytes
     + VecZnxAddScalarInplace
     + VecZnxRotateInplace
     + VecZnxStd;
@@ -51,13 +47,14 @@ pub(crate) fn test_external_product<B: Backend>(
     Module<B>: ExternalProductTestModuleFamily<B>,
     B: ExternalProductTestScratchFamily<B>,
 {
+    let n: usize = module.n();
     let rows: usize = k_in.div_ceil(basek * digits);
 
-    let mut ct_ggsw: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(module, basek, k_ggsw, rows, digits, rank);
-    let mut ct_glwe_in: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(module, basek, k_in, rank);
-    let mut ct_glwe_out: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(module, basek, k_out, rank);
-    let mut pt_rgsw: ScalarZnx<Vec<u8>> = module.scalar_znx_alloc(1);
-    let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(module, basek, k_in);
+    let mut ct_ggsw: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(n, basek, k_ggsw, rows, digits, rank);
+    let mut ct_glwe_in: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(n, basek, k_in, rank);
+    let mut ct_glwe_out: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(n, basek, k_out, rank);
+    let mut pt_rgsw: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n, 1);
+    let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(n, basek, k_in);
 
     let mut source_xs: Source = Source::new([0u8; 32]);
     let mut source_xe: Source = Source::new([0u8; 32]);
@@ -73,10 +70,11 @@ pub(crate) fn test_external_product<B: Backend>(
     pt_rgsw.raw_mut()[k] = 1; // X^{k}
 
     let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-        GGSWCiphertext::encrypt_sk_scratch_space(module, basek, ct_ggsw.k(), rank)
-            | GLWECiphertext::encrypt_sk_scratch_space(module, basek, ct_glwe_in.k())
+        GGSWCiphertext::encrypt_sk_scratch_space(module, n, basek, ct_ggsw.k(), rank)
+            | GLWECiphertext::encrypt_sk_scratch_space(module, n, basek, ct_glwe_in.k())
             | GLWECiphertext::external_product_scratch_space(
                 module,
+                n,
                 basek,
                 ct_glwe_out.k(),
                 ct_glwe_in.k(),
@@ -86,7 +84,7 @@ pub(crate) fn test_external_product<B: Backend>(
             ),
     );
 
-    let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(module, rank);
+    let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
     sk.fill_ternary_prob(0.5, &mut source_xs);
     let sk_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk);
 
@@ -119,12 +117,12 @@ pub(crate) fn test_external_product<B: Backend>(
     let var_gct_err_lhs: f64 = sigma * sigma;
     let var_gct_err_rhs: f64 = 0f64;
 
-    let var_msg: f64 = 1f64 / module.n() as f64; // X^{k}
+    let var_msg: f64 = 1f64 / n as f64; // X^{k}
     let var_a0_err: f64 = sigma * sigma;
     let var_a1_err: f64 = 1f64 / 12f64;
 
     let max_noise: f64 = noise_ggsw_product(
-        module.n() as f64,
+        n as f64,
         basek * digits,
         0.5,
         var_msg,
@@ -152,12 +150,13 @@ pub(crate) fn test_external_product_inplace<B: Backend>(
     Module<B>: ExternalProductTestModuleFamily<B>,
     B: ExternalProductTestScratchFamily<B>,
 {
+    let n: usize = module.n();
     let rows: usize = k_ct.div_ceil(basek * digits);
 
-    let mut ct_ggsw: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(module, basek, k_ggsw, rows, digits, rank);
-    let mut ct_glwe: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(module, basek, k_ct, rank);
-    let mut pt_rgsw: ScalarZnx<Vec<u8>> = module.scalar_znx_alloc(1);
-    let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(module, basek, k_ct);
+    let mut ct_ggsw: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(n, basek, k_ggsw, rows, digits, rank);
+    let mut ct_glwe: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(n, basek, k_ct, rank);
+    let mut pt_rgsw: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n, 1);
+    let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(n, basek, k_ct);
 
     let mut source_xs: Source = Source::new([0u8; 32]);
     let mut source_xe: Source = Source::new([0u8; 32]);
@@ -173,12 +172,12 @@ pub(crate) fn test_external_product_inplace<B: Backend>(
     pt_rgsw.raw_mut()[k] = 1; // X^{k}
 
     let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-        GGSWCiphertext::encrypt_sk_scratch_space(module, basek, ct_ggsw.k(), rank)
-            | GLWECiphertext::encrypt_sk_scratch_space(module, basek, ct_glwe.k())
-            | GLWECiphertext::external_product_inplace_scratch_space(module, basek, ct_glwe.k(), ct_ggsw.k(), digits, rank),
+        GGSWCiphertext::encrypt_sk_scratch_space(module, n, basek, ct_ggsw.k(), rank)
+            | GLWECiphertext::encrypt_sk_scratch_space(module, n, basek, ct_glwe.k())
+            | GLWECiphertext::external_product_inplace_scratch_space(module, n, basek, ct_glwe.k(), ct_ggsw.k(), digits, rank),
     );
 
-    let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(module, rank);
+    let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
     sk.fill_ternary_prob(0.5, &mut source_xs);
     let sk_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk);
 
@@ -211,12 +210,12 @@ pub(crate) fn test_external_product_inplace<B: Backend>(
     let var_gct_err_lhs: f64 = sigma * sigma;
     let var_gct_err_rhs: f64 = 0f64;
 
-    let var_msg: f64 = 1f64 / module.n() as f64; // X^{k}
+    let var_msg: f64 = 1f64 / n as f64; // X^{k}
     let var_a0_err: f64 = sigma * sigma;
     let var_a1_err: f64 = 1f64 / 12f64;
 
     let max_noise: f64 = noise_ggsw_product(
-        module.n() as f64,
+        n as f64,
         basek * digits,
         0.5,
         var_msg,

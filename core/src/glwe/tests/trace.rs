@@ -2,10 +2,9 @@ use std::collections::HashMap;
 
 use backend::hal::{
     api::{
-        MatZnxAlloc, ScalarZnxAlloc, ScalarZnxAllocBytes, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace,
-        VecZnxAlloc, VecZnxAllocBytes, VecZnxAutomorphism, VecZnxBigAutomorphismInplace, VecZnxBigSubSmallBInplace, VecZnxCopy,
-        VecZnxEncodeVeci64, VecZnxFillUniform, VecZnxNormalizeInplace, VecZnxRotateInplace, VecZnxRshInplace, VecZnxStd,
-        VecZnxSubABInplace, VecZnxSwithcDegree, ZnxView, ZnxViewMut,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxAutomorphism, VecZnxBigAutomorphismInplace,
+        VecZnxBigSubSmallBInplace, VecZnxCopy, VecZnxEncodeVeci64, VecZnxFillUniform, VecZnxNormalizeInplace,
+        VecZnxRotateInplace, VecZnxRshInplace, VecZnxStd, VecZnxSubABInplace, VecZnxSwithcDegree, ZnxView, ZnxViewMut,
     },
     layouts::{Backend, Module, ScratchOwned},
     oep::{
@@ -26,11 +25,6 @@ pub(crate) trait TraceTestModuleFamily<B: Backend> = GLWESecretFamily<B>
     + GLWEKeyswitchFamily<B>
     + GLWEDecryptFamily<B>
     + GGLWEExecLayoutFamily<B>
-    + MatZnxAlloc
-    + VecZnxAlloc
-    + ScalarZnxAlloc
-    + ScalarZnxAllocBytes
-    + VecZnxAllocBytes
     + VecZnxStd
     + VecZnxSwithcDegree
     + VecZnxAddScalarInplace
@@ -56,31 +50,32 @@ where
     Module<B>: TraceTestModuleFamily<B>,
     B: TraceTestScratchFamily<B>,
 {
+    let n: usize = module.n();
     let k_autokey: usize = k + basek;
 
     let digits: usize = 1;
     let rows: usize = k.div_ceil(basek * digits);
 
-    let mut ct: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(module, basek, k, rank);
-    let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(module, basek, k);
-    let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(module, basek, k);
+    let mut ct: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(n, basek, k, rank);
+    let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(n, basek, k);
+    let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(n, basek, k);
 
     let mut source_xs: Source = Source::new([0u8; 32]);
     let mut source_xe: Source = Source::new([0u8; 32]);
     let mut source_xa: Source = Source::new([0u8; 32]);
 
     let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-        GLWECiphertext::encrypt_sk_scratch_space(module, basek, ct.k())
-            | GLWECiphertext::decrypt_scratch_space(module, basek, ct.k())
-            | AutomorphismKey::encrypt_sk_scratch_space(module, basek, k_autokey, rank)
-            | GLWECiphertext::trace_inplace_scratch_space(module, basek, ct.k(), k_autokey, digits, rank),
+        GLWECiphertext::encrypt_sk_scratch_space(module, n, basek, ct.k())
+            | GLWECiphertext::decrypt_scratch_space(module, n, basek, ct.k())
+            | AutomorphismKey::encrypt_sk_scratch_space(module, n, basek, k_autokey, rank)
+            | GLWECiphertext::trace_inplace_scratch_space(module, n, basek, ct.k(), k_autokey, digits, rank),
     );
 
-    let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(module, rank);
+    let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
     sk.fill_ternary_prob(0.5, &mut source_xs);
     let sk_dft: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk);
 
-    let mut data_want: Vec<i64> = vec![0i64; module.n()];
+    let mut data_want: Vec<i64> = vec![0i64; n];
 
     data_want
         .iter_mut()
@@ -100,7 +95,7 @@ where
 
     let mut auto_keys: HashMap<i64, AutomorphismKeyExec<Vec<u8>, B>> = HashMap::new();
     let gal_els: Vec<i64> = GLWECiphertext::trace_galois_elements(module);
-    let mut tmp: AutomorphismKey<Vec<u8>> = AutomorphismKey::alloc(module, basek, k_autokey, rows, digits, rank);
+    let mut tmp: AutomorphismKey<Vec<u8>> = AutomorphismKey::alloc(n, basek, k_autokey, rows, digits, rank);
     gal_els.iter().for_each(|gal_el| {
         tmp.encrypt_sk(
             module,
@@ -128,7 +123,7 @@ where
     let noise_have: f64 = module.vec_znx_std(basek, &pt_want.data, 0).log2();
 
     let mut noise_want: f64 = var_noise_gglwe_product(
-        module.n() as f64,
+        n as f64,
         basek,
         0.5,
         0.5,
@@ -140,7 +135,7 @@ where
         k_autokey,
     );
     noise_want += sigma * sigma * (-2.0 * (k) as f64).exp2();
-    noise_want += module.n() as f64 * 1.0 / 12.0 * 0.5 * rank as f64 * (-2.0 * (k) as f64).exp2();
+    noise_want += n as f64 * 1.0 / 12.0 * 0.5 * rank as f64 * (-2.0 * (k) as f64).exp2();
     noise_want = noise_want.sqrt().log2();
 
     assert!(

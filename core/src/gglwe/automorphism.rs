@@ -8,6 +8,7 @@ use crate::{AutomorphismKey, AutomorphismKeyExec, GLWECiphertext, GLWEKeyswitchF
 impl AutomorphismKey<Vec<u8>> {
     pub fn automorphism_scratch_space<B: Backend>(
         module: &Module<B>,
+        n: usize,
         basek: usize,
         k_out: usize,
         k_in: usize,
@@ -18,11 +19,12 @@ impl AutomorphismKey<Vec<u8>> {
     where
         Module<B>: GLWEKeyswitchFamily<B>,
     {
-        GLWECiphertext::keyswitch_scratch_space(module, basek, k_out, k_in, k_ksk, digits, rank, rank)
+        GLWECiphertext::keyswitch_scratch_space(module, n, basek, k_out, k_in, k_ksk, digits, rank, rank)
     }
 
     pub fn automorphism_inplace_scratch_space<B: Backend>(
         module: &Module<B>,
+        n: usize,
         basek: usize,
         k_out: usize,
         k_ksk: usize,
@@ -32,7 +34,7 @@ impl AutomorphismKey<Vec<u8>> {
     where
         Module<B>: GLWEKeyswitchFamily<B>,
     {
-        AutomorphismKey::automorphism_scratch_space(module, basek, k_out, k_out, k_ksk, digits, rank)
+        AutomorphismKey::automorphism_scratch_space(module, n, basek, k_out, k_out, k_ksk, digits, rank)
     }
 }
 

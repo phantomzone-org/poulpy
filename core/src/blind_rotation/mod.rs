@@ -1,10 +1,10 @@
-pub mod cggi;
-pub mod key;
-pub mod lut;
+mod cggi;
+mod key;
+mod lut;
 
-pub use cggi::{CCGIBlindRotationFamily, cggi_blind_rotate, cggi_blind_rotate_scratch_space};
-pub use key::{BlindRotationKeyCGGI, BlindRotationKeyCGGIExec, BlindRotationKeyCGGIExecLayoutFamily};
-pub use lut::LookUpTable;
+pub use cggi::*;
+pub use key::*;
+pub use lut::*;
 
 #[cfg(test)]
-mod test;
+mod tests;

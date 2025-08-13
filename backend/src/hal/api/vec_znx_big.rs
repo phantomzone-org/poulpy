@@ -5,18 +5,18 @@ use crate::hal::layouts::{Backend, Scratch, VecZnxBigOwned, VecZnxBigToMut, VecZ
 
 /// Allocates as [crate::hal::layouts::VecZnxBig].
 pub trait VecZnxBigAlloc<B: Backend> {
-    fn vec_znx_big_alloc(&self, cols: usize, size: usize) -> VecZnxBigOwned<B>;
+    fn vec_znx_big_alloc(&self, n: usize, cols: usize, size: usize) -> VecZnxBigOwned<B>;
 }
 
 /// Returns the size in bytes to allocate a [crate::hal::layouts::VecZnxBig].
 pub trait VecZnxBigAllocBytes {
-    fn vec_znx_big_alloc_bytes(&self, cols: usize, size: usize) -> usize;
+    fn vec_znx_big_alloc_bytes(&self, n: usize, cols: usize, size: usize) -> usize;
 }
 
 /// Consume a vector of bytes into a [crate::hal::layouts::VecZnxBig].
 /// User must ensure that bytes is memory aligned and that it length is equal to [VecZnxBigAllocBytes].
 pub trait VecZnxBigFromBytes<B: Backend> {
-    fn vec_znx_big_from_bytes(&self, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxBigOwned<B>;
+    fn vec_znx_big_from_bytes(&self, n: usize, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxBigOwned<B>;
 }
 
 /// Add a discrete normal distribution on res.

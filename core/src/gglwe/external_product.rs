@@ -8,6 +8,7 @@ use crate::{AutomorphismKey, GGSWCiphertextExec, GLWECiphertext, GLWEExternalPro
 impl GLWESwitchingKey<Vec<u8>> {
     pub fn external_product_scratch_space<B: Backend>(
         module: &Module<B>,
+        n: usize,
         basek: usize,
         k_out: usize,
         k_in: usize,
@@ -18,11 +19,12 @@ impl GLWESwitchingKey<Vec<u8>> {
     where
         Module<B>: GLWEExternalProductFamily<B>,
     {
-        GLWECiphertext::external_product_scratch_space(module, basek, k_out, k_in, k_ggsw, digits, rank)
+        GLWECiphertext::external_product_scratch_space(module, n, basek, k_out, k_in, k_ggsw, digits, rank)
     }
 
     pub fn external_product_inplace_scratch_space<B: Backend>(
         module: &Module<B>,
+        n: usize,
         basek: usize,
         k_out: usize,
         k_ggsw: usize,
@@ -32,7 +34,7 @@ impl GLWESwitchingKey<Vec<u8>> {
     where
         Module<B>: GLWEExternalProductFamily<B>,
     {
-        GLWECiphertext::external_product_inplace_scratch_space(module, basek, k_out, k_ggsw, digits, rank)
+        GLWECiphertext::external_product_inplace_scratch_space(module, n, basek, k_out, k_ggsw, digits, rank)
     }
 }
 
@@ -118,6 +120,7 @@ impl<DataSelf: DataMut> GLWESwitchingKey<DataSelf> {
 impl AutomorphismKey<Vec<u8>> {
     pub fn external_product_scratch_space<B: Backend>(
         module: &Module<B>,
+        n: usize,
         basek: usize,
         k_out: usize,
         k_in: usize,
@@ -128,11 +131,12 @@ impl AutomorphismKey<Vec<u8>> {
     where
         Module<B>: GLWEExternalProductFamily<B>,
     {
-        GLWESwitchingKey::external_product_scratch_space(module, basek, k_out, k_in, ggsw_k, digits, rank)
+        GLWESwitchingKey::external_product_scratch_space(module, n, basek, k_out, k_in, ggsw_k, digits, rank)
     }
 
     pub fn external_product_inplace_scratch_space<B: Backend>(
         module: &Module<B>,
+        n: usize,
         basek: usize,
         k_out: usize,
         ggsw_k: usize,
@@ -142,7 +146,7 @@ impl AutomorphismKey<Vec<u8>> {
     where
         Module<B>: GLWEExternalProductFamily<B>,
     {
-        GLWESwitchingKey::external_product_inplace_scratch_space(module, basek, k_out, ggsw_k, digits, rank)
+        GLWESwitchingKey::external_product_inplace_scratch_space(module, n, basek, k_out, ggsw_k, digits, rank)
     }
 }
 

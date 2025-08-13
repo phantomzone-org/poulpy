@@ -1,7 +1,7 @@
 use backend::hal::{
     api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAlloc, VecZnxCopy, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes,
-        VecZnxRotateInplace, VecZnxSwithcDegree, ZnxInfos, ZnxViewMut,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxCopy, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotateInplace,
+        VecZnxSwithcDegree, ZnxInfos, ZnxViewMut,
     },
     layouts::{Backend, Module, ScratchOwned, VecZnx},
     oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl},
@@ -14,10 +14,7 @@ pub struct LookUpTable {
 }
 
 impl LookUpTable {
-    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, extension_factor: usize) -> Self
-    where
-        Module<B>: VecZnxAlloc,
-    {
+    pub fn alloc(n: usize, basek: usize, k: usize, extension_factor: usize) -> Self {
         #[cfg(debug_assertions)]
         {
             assert!(
@@ -29,7 +26,7 @@ impl LookUpTable {
         let size: usize = k.div_ceil(basek);
         let mut data: Vec<VecZnx<Vec<u8>>> = Vec::with_capacity(extension_factor);
         (0..extension_factor).for_each(|_| {
-            data.push(module.vec_znx_alloc(1, size));
+            data.push(VecZnx::alloc(n, 1, size));
         });
         Self { data, basek, k }
     }
@@ -69,13 +66,13 @@ impl LookUpTable {
         // #elements in lookup table
         let f_len: usize = f.len();
 
-        // If LUT size > module.n()
+        // If LUT size > TakeScalarZnx
         let domain_size: usize = self.domain_size();
 
         let size: usize = self.k.div_ceil(self.basek);
 
         // Equivalent to AUTO([f(0), -f(n-1), -f(n-2), ..., -f(1)], -1)
-        let mut lut_full: VecZnx<Vec<u8>> = VecZnx::alloc::<i64>(domain_size, 1, size);
+        let mut lut_full: VecZnx<Vec<u8>> = VecZnx::alloc(domain_size, 1, size);
 
         let lut_at: &mut [i64] = lut_full.at_mut(0, limbs - 1);
 

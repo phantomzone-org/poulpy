@@ -14,7 +14,7 @@ pub struct GGSWCiphertextExec<D: Data, B: Backend> {
 }
 
 impl<B: Backend> GGSWCiphertextExec<Vec<u8>, B> {
-    pub fn alloc(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self
+    pub fn alloc(module: &Module<B>, n: usize, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self
     where
         Module<B>: GGSWLayoutFamily<B>,
     {
@@ -37,14 +37,14 @@ impl<B: Backend> GGSWCiphertextExec<Vec<u8>, B> {
         );
 
         Self {
-            data: module.vmp_pmat_alloc(rows, rank + 1, rank + 1, k.div_ceil(basek)),
+            data: module.vmp_pmat_alloc(n, rows, rank + 1, rank + 1, k.div_ceil(basek)),
             basek,
             k: k,
             digits,
         }
     }
 
-    pub fn bytes_of(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize
+    pub fn bytes_of(module: &Module<B>, n: usize, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize
     where
         Module<B>: GGSWLayoutFamily<B>,
     {
@@ -64,7 +64,7 @@ impl<B: Backend> GGSWCiphertextExec<Vec<u8>, B> {
             size
         );
 
-        module.vmp_pmat_alloc_bytes(rows, rank + 1, rank + 1, size)
+        module.vmp_pmat_alloc_bytes(n, rows, rank + 1, rank + 1, size)
     }
 
     pub fn from<DataOther: DataRef>(
@@ -77,6 +77,7 @@ impl<B: Backend> GGSWCiphertextExec<Vec<u8>, B> {
     {
         let mut ggsw_exec: GGSWCiphertextExec<Vec<u8>, B> = Self::alloc(
             module,
+            other.n(),
             other.basek(),
             other.k(),
             other.rows(),

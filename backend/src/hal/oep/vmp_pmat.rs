@@ -22,7 +22,14 @@ pub unsafe trait VmpPMatFromBytesImpl<B: Backend> {
 }
 
 pub unsafe trait VmpPrepareTmpBytesImpl<B: Backend> {
-    fn vmp_prepare_tmp_bytes_impl(module: &Module<B>, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize;
+    fn vmp_prepare_tmp_bytes_impl(
+        module: &Module<B>,
+        n: usize,
+        rows: usize,
+        cols_in: usize,
+        cols_out: usize,
+        size: usize,
+    ) -> usize;
 }
 
 pub unsafe trait VmpPMatPrepareImpl<B: Backend> {
@@ -35,6 +42,7 @@ pub unsafe trait VmpPMatPrepareImpl<B: Backend> {
 pub unsafe trait VmpApplyTmpBytesImpl<B: Backend> {
     fn vmp_apply_tmp_bytes_impl(
         module: &Module<B>,
+        n: usize,
         res_size: usize,
         a_size: usize,
         b_rows: usize,
@@ -55,6 +63,7 @@ pub unsafe trait VmpApplyImpl<B: Backend> {
 pub unsafe trait VmpApplyAddTmpBytesImpl<B: Backend> {
     fn vmp_apply_add_tmp_bytes_impl(
         module: &Module<B>,
+        n: usize,
         res_size: usize,
         a_size: usize,
         b_rows: usize,

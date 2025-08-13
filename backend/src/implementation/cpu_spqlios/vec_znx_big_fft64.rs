@@ -210,9 +210,8 @@ unsafe impl VecZnxBigAddImpl<FFT64> for FFT64 {
 
         #[cfg(debug_assertions)]
         {
-            assert_eq!(a.n(), module.n());
-            assert_eq!(b.n(), module.n());
-            assert_eq!(res.n(), module.n());
+            assert_eq!(a.n(), res.n());
+            assert_eq!(b.n(), res.n());
             assert_ne!(a.as_ptr(), b.as_ptr());
         }
         unsafe {
@@ -244,8 +243,7 @@ unsafe impl VecZnxBigAddInplaceImpl<FFT64> for FFT64 {
 
         #[cfg(debug_assertions)]
         {
-            assert_eq!(a.n(), module.n());
-            assert_eq!(res.n(), module.n());
+            assert_eq!(a.n(), res.n());
         }
         unsafe {
             vec_znx::vec_znx_add(
@@ -285,9 +283,8 @@ unsafe impl VecZnxBigAddSmallImpl<FFT64> for FFT64 {
 
         #[cfg(debug_assertions)]
         {
-            assert_eq!(a.n(), module.n());
-            assert_eq!(b.n(), module.n());
-            assert_eq!(res.n(), module.n());
+            assert_eq!(a.n(), res.n());
+            assert_eq!(b.n(), res.n());
             assert_ne!(a.as_ptr(), b.as_ptr());
         }
         unsafe {
@@ -319,8 +316,7 @@ unsafe impl VecZnxBigAddSmallInplaceImpl<FFT64> for FFT64 {
 
         #[cfg(debug_assertions)]
         {
-            assert_eq!(a.n(), module.n());
-            assert_eq!(res.n(), module.n());
+            assert_eq!(a.n(), res.n());
         }
         unsafe {
             vec_znx::vec_znx_add(
@@ -360,9 +356,8 @@ unsafe impl VecZnxBigSubImpl<FFT64> for FFT64 {
 
         #[cfg(debug_assertions)]
         {
-            assert_eq!(a.n(), module.n());
-            assert_eq!(b.n(), module.n());
-            assert_eq!(res.n(), module.n());
+            assert_eq!(a.n(), res.n());
+            assert_eq!(b.n(), res.n());
             assert_ne!(a.as_ptr(), b.as_ptr());
         }
         unsafe {
@@ -394,8 +389,7 @@ unsafe impl VecZnxBigSubABInplaceImpl<FFT64> for FFT64 {
 
         #[cfg(debug_assertions)]
         {
-            assert_eq!(a.n(), module.n());
-            assert_eq!(res.n(), module.n());
+            assert_eq!(a.n(), res.n());
         }
         unsafe {
             vec_znx::vec_znx_sub(
@@ -426,8 +420,7 @@ unsafe impl VecZnxBigSubBAInplaceImpl<FFT64> for FFT64 {
 
         #[cfg(debug_assertions)]
         {
-            assert_eq!(a.n(), module.n());
-            assert_eq!(res.n(), module.n());
+            assert_eq!(a.n(), res.n());
         }
         unsafe {
             vec_znx::vec_znx_sub(
@@ -467,9 +460,8 @@ unsafe impl VecZnxBigSubSmallAImpl<FFT64> for FFT64 {
 
         #[cfg(debug_assertions)]
         {
-            assert_eq!(a.n(), module.n());
-            assert_eq!(b.n(), module.n());
-            assert_eq!(res.n(), module.n());
+            assert_eq!(a.n(), res.n());
+            assert_eq!(b.n(), res.n());
             assert_ne!(a.as_ptr(), b.as_ptr());
         }
         unsafe {
@@ -501,8 +493,7 @@ unsafe impl VecZnxBigSubSmallAInplaceImpl<FFT64> for FFT64 {
 
         #[cfg(debug_assertions)]
         {
-            assert_eq!(a.n(), module.n());
-            assert_eq!(res.n(), module.n());
+            assert_eq!(a.n(), res.n());
         }
         unsafe {
             vec_znx::vec_znx_sub(
@@ -542,9 +533,8 @@ unsafe impl VecZnxBigSubSmallBImpl<FFT64> for FFT64 {
 
         #[cfg(debug_assertions)]
         {
-            assert_eq!(a.n(), module.n());
-            assert_eq!(b.n(), module.n());
-            assert_eq!(res.n(), module.n());
+            assert_eq!(a.n(), res.n());
+            assert_eq!(b.n(), res.n());
             assert_ne!(a.as_ptr(), b.as_ptr());
         }
         unsafe {
@@ -576,8 +566,7 @@ unsafe impl VecZnxBigSubSmallBInplaceImpl<FFT64> for FFT64 {
 
         #[cfg(debug_assertions)]
         {
-            assert_eq!(a.n(), module.n());
-            assert_eq!(res.n(), module.n());
+            assert_eq!(a.n(), res.n());
         }
         unsafe {
             vec_znx::vec_znx_sub(
@@ -602,10 +591,6 @@ unsafe impl VecZnxBigNegateInplaceImpl<FFT64> for FFT64 {
         A: VecZnxBigToMut<FFT64>,
     {
         let mut a: VecZnxBig<&mut [u8], FFT64> = a.to_mut();
-        #[cfg(debug_assertions)]
-        {
-            assert_eq!(a.n(), module.n());
-        }
         unsafe {
             vec_znx::vec_znx_negate(
                 module.ptr(),
@@ -677,8 +662,7 @@ unsafe impl VecZnxBigAutomorphismImpl<FFT64> for FFT64 {
 
         #[cfg(debug_assertions)]
         {
-            assert_eq!(a.n(), module.n());
-            assert_eq!(res.n(), module.n());
+            assert_eq!(a.n(), res.n());
         }
         unsafe {
             vec_znx::vec_znx_automorphism(
@@ -702,11 +686,6 @@ unsafe impl VecZnxBigAutomorphismInplaceImpl<FFT64> for FFT64 {
         A: VecZnxBigToMut<FFT64>,
     {
         let mut a: VecZnxBig<&mut [u8], FFT64> = a.to_mut();
-
-        #[cfg(debug_assertions)]
-        {
-            assert_eq!(a.n(), module.n());
-        }
         unsafe {
             vec_znx::vec_znx_automorphism(
                 module.ptr(),

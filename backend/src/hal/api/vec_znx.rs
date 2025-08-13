@@ -2,33 +2,7 @@ use rand_distr::Distribution;
 use rug::Float;
 use sampling::source::Source;
 
-use crate::hal::layouts::{Backend, ScalarZnxToRef, Scratch, VecZnxOwned, VecZnxToMut, VecZnxToRef};
-
-pub trait VecZnxAlloc {
-    /// Allocates a new [crate::hal::layouts::VecZnx].
-    ///
-    /// # Arguments
-    ///
-    /// * `cols`: the number of polynomials.
-    /// * `size`: the number small polynomials per column.
-    fn vec_znx_alloc(&self, cols: usize, size: usize) -> VecZnxOwned;
-}
-
-pub trait VecZnxFromBytes {
-    /// Instantiates a new [crate::hal::layouts::VecZnx] from a slice of bytes.
-    /// The returned [crate::hal::layouts::VecZnx] takes ownership of the slice of bytes.
-    ///
-    /// # Arguments
-    ///
-    /// * `cols`: the number of polynomials.
-    /// * `size`: the number small polynomials per column.
-    fn vec_znx_from_bytes(&self, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxOwned;
-}
-
-pub trait VecZnxAllocBytes {
-    /// Returns the number of bytes necessary to allocate a new [crate::hal::layouts::VecZnx].
-    fn vec_znx_alloc_bytes(&self, cols: usize, size: usize) -> usize;
-}
+use crate::hal::layouts::{Backend, ScalarZnxToRef, Scratch, VecZnxToMut, VecZnxToRef};
 
 pub trait VecZnxNormalizeTmpBytes {
     /// Returns the minimum number of bytes necessary for normalization.

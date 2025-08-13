@@ -1,4 +1,4 @@
-use crate::hal::layouts::{Backend, MatZnx, Module, ScalarZnx, Scratch, SvpPPol, VecZnx, VecZnxBig, VecZnxDft, VmpPMat};
+use crate::hal::layouts::{Backend, MatZnx, ScalarZnx, Scratch, SvpPPol, VecZnx, VecZnxBig, VecZnxDft, VmpPMat};
 
 /// Allocates a new [crate::hal::layouts::ScratchOwned] of `size` aligned bytes.
 pub trait ScratchOwnedAlloc<B: Backend> {
@@ -27,44 +27,38 @@ pub trait TakeSlice {
 
 /// Take a slice of bytes from a [Scratch], wraps it into a [ScalarZnx] and returns it
 /// as well as a new [Scratch] minus the taken array of bytes.
-pub trait TakeScalarZnx<B: Backend> {
-    fn take_scalar_znx(&mut self, module: &Module<B>, cols: usize) -> (ScalarZnx<&mut [u8]>, &mut Self);
+pub trait TakeScalarZnx {
+    fn take_scalar_znx(&mut self, n: usize, cols: usize) -> (ScalarZnx<&mut [u8]>, &mut Self);
 }
 
 /// Take a slice of bytes from a [Scratch], wraps it into a [SvpPPol] and returns it
 /// as well as a new [Scratch] minus the taken array of bytes.
 pub trait TakeSvpPPol<B: Backend> {
-    fn take_svp_ppol(&mut self, module: &Module<B>, cols: usize) -> (SvpPPol<&mut [u8], B>, &mut Self);
+    fn take_svp_ppol(&mut self, n: usize, cols: usize) -> (SvpPPol<&mut [u8], B>, &mut Self);
 }
 
 /// Take a slice of bytes from a [Scratch], wraps it into a [VecZnx] and returns it
 /// as well as a new [Scratch] minus the taken array of bytes.
-pub trait TakeVecZnx<B: Backend> {
-    fn take_vec_znx(&mut self, module: &Module<B>, cols: usize, size: usize) -> (VecZnx<&mut [u8]>, &mut Self);
+pub trait TakeVecZnx {
+    fn take_vec_znx(&mut self, n: usize, cols: usize, size: usize) -> (VecZnx<&mut [u8]>, &mut Self);
 }
 
 /// Take a slice of bytes from a [Scratch], slices it into a vector of [VecZnx] aand returns it
 /// as well as a new [Scratch] minus the taken array of bytes.
-pub trait TakeVecZnxSlice<B: Backend> {
-    fn take_vec_znx_slice(
-        &mut self,
-        len: usize,
-        module: &Module<B>,
-        cols: usize,
-        size: usize,
-    ) -> (Vec<VecZnx<&mut [u8]>>, &mut Self);
+pub trait TakeVecZnxSlice {
+    fn take_vec_znx_slice(&mut self, len: usize, n: usize, cols: usize, size: usize) -> (Vec<VecZnx<&mut [u8]>>, &mut Self);
 }
 
 /// Take a slice of bytes from a [Scratch], wraps it into a [VecZnxBig] and returns it
 /// as well as a new [Scratch] minus the taken array of bytes.
 pub trait TakeVecZnxBig<B: Backend> {
-    fn take_vec_znx_big(&mut self, module: &Module<B>, cols: usize, size: usize) -> (VecZnxBig<&mut [u8], B>, &mut Self);
+    fn take_vec_znx_big(&mut self, n: usize, cols: usize, size: usize) -> (VecZnxBig<&mut [u8], B>, &mut Self);
 }
 
 /// Take a slice of bytes from a [Scratch], wraps it into a [VecZnxDft] and returns it
 /// as well as a new [Scratch] minus the taken array of bytes.
 pub trait TakeVecZnxDft<B: Backend> {
-    fn take_vec_znx_dft(&mut self, module: &Module<B>, cols: usize, size: usize) -> (VecZnxDft<&mut [u8], B>, &mut Self);
+    fn take_vec_znx_dft(&mut self, n: usize, cols: usize, size: usize) -> (VecZnxDft<&mut [u8], B>, &mut Self);
 }
 
 /// Take a slice of bytes from a [Scratch], slices it into a vector of [VecZnxDft] and returns it
@@ -73,7 +67,7 @@ pub trait TakeVecZnxDftSlice<B: Backend> {
     fn take_vec_znx_dft_slice(
         &mut self,
         len: usize,
-        module: &Module<B>,
+        n: usize,
         cols: usize,
         size: usize,
     ) -> (Vec<VecZnxDft<&mut [u8], B>>, &mut Self);
@@ -84,7 +78,7 @@ pub trait TakeVecZnxDftSlice<B: Backend> {
 pub trait TakeVmpPMat<B: Backend> {
     fn take_vmp_pmat(
         &mut self,
-        module: &Module<B>,
+        n: usize,
         rows: usize,
         cols_in: usize,
         cols_out: usize,
@@ -94,10 +88,10 @@ pub trait TakeVmpPMat<B: Backend> {
 
 /// Take a slice of bytes from a [Scratch], wraps it into a [MatZnx] and returns it
 /// as well as a new [Scratch] minus the taken array of bytes.
-pub trait TakeMatZnx<B: Backend> {
+pub trait TakeMatZnx {
     fn take_mat_znx(
         &mut self,
-        module: &Module<B>,
+        n: usize,
         rows: usize,
         cols_in: usize,
         cols_out: usize,

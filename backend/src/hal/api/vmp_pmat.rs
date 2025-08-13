@@ -3,19 +3,27 @@ use crate::hal::layouts::{
 };
 
 pub trait VmpPMatAlloc<B: Backend> {
-    fn vmp_pmat_alloc(&self, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> VmpPMatOwned<B>;
+    fn vmp_pmat_alloc(&self, n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> VmpPMatOwned<B>;
 }
 
 pub trait VmpPMatAllocBytes {
-    fn vmp_pmat_alloc_bytes(&self, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize;
+    fn vmp_pmat_alloc_bytes(&self, n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize;
 }
 
 pub trait VmpPMatFromBytes<B: Backend> {
-    fn vmp_pmat_from_bytes(&self, rows: usize, cols_in: usize, cols_out: usize, size: usize, bytes: Vec<u8>) -> VmpPMatOwned<B>;
+    fn vmp_pmat_from_bytes(
+        &self,
+        n: usize,
+        rows: usize,
+        cols_in: usize,
+        cols_out: usize,
+        size: usize,
+        bytes: Vec<u8>,
+    ) -> VmpPMatOwned<B>;
 }
 
 pub trait VmpPrepareTmpBytes {
-    fn vmp_prepare_tmp_bytes(&self, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize;
+    fn vmp_prepare_tmp_bytes(&self, n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize;
 }
 
 pub trait VmpPMatPrepare<B: Backend> {
@@ -28,6 +36,7 @@ pub trait VmpPMatPrepare<B: Backend> {
 pub trait VmpApplyTmpBytes {
     fn vmp_apply_tmp_bytes(
         &self,
+        n: usize,
         res_size: usize,
         a_size: usize,
         b_rows: usize,
@@ -72,6 +81,7 @@ pub trait VmpApply<B: Backend> {
 pub trait VmpApplyAddTmpBytes {
     fn vmp_apply_add_tmp_bytes(
         &self,
+        n: usize,
         res_size: usize,
         a_size: usize,
         b_rows: usize,

@@ -2,32 +2,7 @@ use rand_distr::Distribution;
 use rug::Float;
 use sampling::source::Source;
 
-use crate::hal::layouts::{Backend, Module, ScalarZnxToRef, Scratch, VecZnxOwned, VecZnxToMut, VecZnxToRef};
-
-/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See [crate::hal::layouts::VecZnx::new] for reference code.
-/// * See [crate::hal::api::VecZnxAlloc] for corresponding public API.
-/// * See [crate::doc::backend_safety] for safety contract.
-/// * See test \[TODO\]
-pub unsafe trait VecZnxAllocImpl<B: Backend> {
-    fn vec_znx_alloc_impl(n: usize, cols: usize, size: usize) -> VecZnxOwned;
-}
-
-/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See [crate::hal::layouts::VecZnx::from_bytes] for reference code.
-/// * See [crate::hal::api::VecZnxFromBytes] for corresponding public API.
-/// * See [crate::doc::backend_safety] for safety contract.
-pub unsafe trait VecZnxFromBytesImpl<B: Backend> {
-    fn vec_znx_from_bytes_impl(n: usize, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxOwned;
-}
-
-/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See [crate::hal::layouts::VecZnx::alloc_bytes] for reference code.
-/// * See [crate::hal::api::VecZnxAllocBytes] for corresponding public API.
-/// * See [crate::doc::backend_safety] for safety contract.
-pub unsafe trait VecZnxAllocBytesImpl<B: Backend> {
-    fn vec_znx_alloc_bytes_impl(n: usize, cols: usize, size: usize) -> usize;
-}
+use crate::hal::layouts::{Backend, Module, ScalarZnxToRef, Scratch, VecZnxToMut, VecZnxToRef};
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
 /// * See [vec_znx_normalize_base2k_tmp_bytes_ref](https://github.com/phantomzone-org/spqlios-arithmetic/blob/32a3f5fcce9863b58e949f2dfd5abc1bfbaa09b4/spqlios/arithmetic/vec_znx.c#L245C17-L245C55) for reference code.

@@ -2,9 +2,9 @@ use std::collections::HashMap;
 
 use backend::hal::{
     api::{
-        ScratchAvailable, TakeVecZnx, TakeVecZnxDft, VecZnxAddInplace, VecZnxAlloc, VecZnxAllocBytes, VecZnxAutomorphismInplace,
-        VecZnxBigAutomorphismInplace, VecZnxBigSubSmallBInplace, VecZnxCopy, VecZnxNegateInplace, VecZnxNormalizeInplace,
-        VecZnxRotate, VecZnxRotateInplace, VecZnxRshInplace, VecZnxSub, VecZnxSubABInplace,
+        ScratchAvailable, TakeVecZnx, TakeVecZnxDft, VecZnxAddInplace, VecZnxAutomorphismInplace, VecZnxBigAutomorphismInplace,
+        VecZnxBigSubSmallBInplace, VecZnxCopy, VecZnxNegateInplace, VecZnxNormalizeInplace, VecZnxRotate, VecZnxRotateInplace,
+        VecZnxRshInplace, VecZnxSub, VecZnxSubABInplace,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
 };
@@ -52,12 +52,9 @@ impl Accumulator {
     /// * `basek`: base 2 logarithm of the GLWE ciphertext in memory digit representation.
     /// * `k`: base 2 precision of the GLWE ciphertext precision over the Torus.
     /// * `rank`: rank of the GLWE ciphertext.
-    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank: usize) -> Self
-    where
-        Module<B>: VecZnxAlloc,
-    {
+    pub fn alloc(n: usize, basek: usize, k: usize, rank: usize) -> Self {
         Self {
-            data: GLWECiphertext::alloc(module, basek, k, rank),
+            data: GLWECiphertext::alloc(n, basek, k, rank),
             value: false,
             control: false,
         }
@@ -78,13 +75,10 @@ impl GLWEPacker {
     /// * `basek`: base 2 logarithm of the GLWE ciphertext in memory digit representation.
     /// * `k`: base 2 precision of the GLWE ciphertext precision over the Torus.
     /// * `rank`: rank of the GLWE ciphertext.
-    pub fn new<B: Backend>(module: &Module<B>, log_batch: usize, basek: usize, k: usize, rank: usize) -> Self
-    where
-        Module<B>: VecZnxAlloc,
-    {
+    pub fn new(n: usize, log_batch: usize, basek: usize, k: usize, rank: usize) -> Self {
         let mut accumulators: Vec<Accumulator> = Vec::<Accumulator>::new();
-        let log_n: usize = module.log_n();
-        (0..log_n - log_batch).for_each(|_| accumulators.push(Accumulator::alloc(module, basek, k, rank)));
+        let log_n: usize = (usize::BITS - (n - 1).leading_zeros()) as _;
+        (0..log_n - log_batch).for_each(|_| accumulators.push(Accumulator::alloc(n, basek, k, rank)));
         Self {
             accumulators: accumulators,
             log_batch,
@@ -104,6 +98,7 @@ impl GLWEPacker {
     /// Number of scratch space bytes required to call [Self::add].
     pub fn scratch_space<B: Backend>(
         module: &Module<B>,
+        n: usize,
         basek: usize,
         ct_k: usize,
         k_ksk: usize,
@@ -111,9 +106,9 @@ impl GLWEPacker {
         rank: usize,
     ) -> usize
     where
-        Module<B>: GLWEKeyswitchFamily<B> + VecZnxAllocBytes,
+        Module<B>: GLWEKeyswitchFamily<B>,
     {
-        pack_core_scratch_space(module, basek, ct_k, k_ksk, digits, rank)
+        pack_core_scratch_space(module, n, basek, ct_k, k_ksk, digits, rank)
     }
 
     pub fn galois_elements<B: Backend>(module: &Module<B>) -> Vec<i64> {
@@ -137,12 +132,12 @@ impl GLWEPacker {
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWEPackingFamily<B>,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx<B>,
+        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
     {
         assert!(
-            self.counter < module.n(),
+            self.counter < self.accumulators[0].data.n(),
             "Packing limit of {} reached",
-            module.n() >> self.log_batch
+            self.accumulators[0].data.n() >> self.log_batch
         );
 
         pack_core(
@@ -161,7 +156,7 @@ impl GLWEPacker {
     where
         Module<B>: VecZnxCopy,
     {
-        assert!(self.counter == module.n());
+        assert!(self.counter == self.accumulators[0].data.n());
         // Copy result GLWE into res GLWE
         res.copy(
             module,
@@ -174,6 +169,7 @@ impl GLWEPacker {
 
 fn pack_core_scratch_space<B: Backend>(
     module: &Module<B>,
+    n: usize,
     basek: usize,
     ct_k: usize,
     k_ksk: usize,
@@ -181,9 +177,9 @@ fn pack_core_scratch_space<B: Backend>(
     rank: usize,
 ) -> usize
 where
-    Module<B>: GLWEKeyswitchFamily<B> + VecZnxAllocBytes,
+    Module<B>: GLWEKeyswitchFamily<B>,
 {
-    combine_scratch_space(module, basek, ct_k, k_ksk, digits, rank)
+    combine_scratch_space(module, n, basek, ct_k, k_ksk, digits, rank)
 }
 
 fn pack_core<D: DataRef, DataAK: DataRef, B: Backend>(
@@ -195,7 +191,7 @@ fn pack_core<D: DataRef, DataAK: DataRef, B: Backend>(
     scratch: &mut Scratch<B>,
 ) where
     Module<B>: GLWEPackingFamily<B>,
-    Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx<B>,
+    Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
 {
     let log_n: usize = module.log_n();
 
@@ -248,6 +244,7 @@ fn pack_core<D: DataRef, DataAK: DataRef, B: Backend>(
 
 fn combine_scratch_space<B: Backend>(
     module: &Module<B>,
+    n: usize,
     basek: usize,
     ct_k: usize,
     k_ksk: usize,
@@ -255,11 +252,11 @@ fn combine_scratch_space<B: Backend>(
     rank: usize,
 ) -> usize
 where
-    Module<B>: GLWEKeyswitchFamily<B> + VecZnxAllocBytes,
+    Module<B>: GLWEKeyswitchFamily<B>,
 {
-    GLWECiphertext::bytes_of(module, basek, ct_k, rank)
-        + (GLWECiphertext::rsh_scratch_space(module)
-            | GLWECiphertext::automorphism_scratch_space(module, basek, ct_k, ct_k, k_ksk, digits, rank))
+    GLWECiphertext::bytes_of(n, basek, ct_k, rank)
+        + (GLWECiphertext::rsh_scratch_space(n)
+            | GLWECiphertext::automorphism_scratch_space(module, n, basek, ct_k, ct_k, k_ksk, digits, rank))
 }
 
 /// [combine] merges two ciphertexts together.
@@ -272,9 +269,10 @@ fn combine<D: DataRef, DataAK: DataRef, B: Backend>(
     scratch: &mut Scratch<B>,
 ) where
     Module<B>: GLWEPackingFamily<B>,
-    Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx<B>,
+    Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
 {
-    let log_n: usize = module.log_n();
+    let n: usize = acc.data.n();
+    let log_n: usize = (u64::BITS - (n - 1).leading_zeros()) as _;
     let a: &mut GLWECiphertext<Vec<u8>> = &mut acc.data;
     let basek: usize = a.basek();
     let k: usize = a.k();
@@ -302,7 +300,7 @@ fn combine<D: DataRef, DataAK: DataRef, B: Backend>(
     // since 2*(I(X) * Q/2) = I(X) * Q = 0 mod Q.
     if acc.value {
         if let Some(b) = b {
-            let (mut tmp_b, scratch_1) = scratch.take_glwe_ct(module, basek, k, rank);
+            let (mut tmp_b, scratch_1) = scratch.take_glwe_ct(n, basek, k, rank);
 
             // a = a * X^-t
             a.rotate_inplace(module, -t);
@@ -343,7 +341,7 @@ fn combine<D: DataRef, DataAK: DataRef, B: Backend>(
         }
     } else {
         if let Some(b) = b {
-            let (mut tmp_b, scratch_1) = scratch.take_glwe_ct(module, basek, k, rank);
+            let (mut tmp_b, scratch_1) = scratch.take_glwe_ct(n, basek, k, rank);
             tmp_b.rotate(module, 1 << (log_n - i - 1), b);
             tmp_b.rsh(module, 1);
 

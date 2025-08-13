@@ -20,13 +20,13 @@ pub trait GLWEDecryptFamily<B: Backend> = VecZnxDftAllocBytes
     + VecZnxNormalizeTmpBytes;
 
 impl GLWECiphertext<Vec<u8>> {
-    pub fn decrypt_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize) -> usize
+    pub fn decrypt_scratch_space<B: Backend>(module: &Module<B>, n: usize, basek: usize, k: usize) -> usize
     where
         Module<B>: GLWEDecryptFamily<B>,
     {
         let size: usize = k.div_ceil(basek);
-        (module.vec_znx_normalize_tmp_bytes(module.n()) | module.vec_znx_dft_alloc_bytes(1, size))
-            + module.vec_znx_dft_alloc_bytes(1, size)
+        (module.vec_znx_normalize_tmp_bytes(n) | module.vec_znx_dft_alloc_bytes(n, 1, size))
+            + module.vec_znx_dft_alloc_bytes(n, 1, size)
     }
 }
 
@@ -44,20 +44,19 @@ impl<DataSelf: DataRef> GLWECiphertext<DataSelf> {
         #[cfg(debug_assertions)]
         {
             assert_eq!(self.rank(), sk.rank());
-            assert_eq!(self.n(), module.n());
-            assert_eq!(pt.n(), module.n());
-            assert_eq!(sk.n(), module.n());
+            assert_eq!(self.n(), sk.n());
+            assert_eq!(pt.n(), sk.n());
         }
 
         let cols: usize = self.rank() + 1;
 
-        let (mut c0_big, scratch_1) = scratch.take_vec_znx_big(module, 1, self.size()); // TODO optimize size when pt << ct
+        let (mut c0_big, scratch_1) = scratch.take_vec_znx_big(self.n(), 1, self.size()); // TODO optimize size when pt << ct
         c0_big.data_mut().fill(0);
 
         {
             (1..cols).for_each(|i| {
                 // ci_dft = DFT(a[i]) * DFT(s[i])
-                let (mut ci_dft, _) = scratch_1.take_vec_znx_dft(module, 1, self.size()); // TODO optimize size when pt << ct
+                let (mut ci_dft, _) = scratch_1.take_vec_znx_dft(self.n(), 1, self.size()); // TODO optimize size when pt << ct
                 module.vec_znx_dft_from_vec_znx(1, 0, &mut ci_dft, 0, &self.data, i);
                 module.svp_apply_inplace(&mut ci_dft, 0, &sk.data, i - 1);
                 let ci_big = module.vec_znx_dft_to_vec_znx_big_consume(ci_dft);

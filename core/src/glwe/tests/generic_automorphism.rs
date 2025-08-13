@@ -1,8 +1,7 @@
 use backend::hal::{
     api::{
-        MatZnxAlloc, ScalarZnxAlloc, ScalarZnxAllocBytes, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace,
-        VecZnxAlloc, VecZnxAllocBytes, VecZnxAutomorphism, VecZnxAutomorphismInplace, VecZnxFillUniform, VecZnxStd,
-        VecZnxSwithcDegree,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxAutomorphism, VecZnxAutomorphismInplace,
+        VecZnxFillUniform, VecZnxStd, VecZnxSwithcDegree,
     },
     layouts::{Backend, Module, ScratchOwned},
     oep::{
@@ -22,13 +21,8 @@ pub(crate) trait AutomorphismTestModuleFamily<B: Backend> = AutomorphismKeyEncry
     + GLWEDecryptFamily<B>
     + GGLWEExecLayoutFamily<B>
     + GLWEKeyswitchFamily<B>
-    + MatZnxAlloc
-    + VecZnxAlloc
-    + ScalarZnxAllocBytes
-    + VecZnxAllocBytes
     + VecZnxAutomorphism
     + VecZnxSwithcDegree
-    + ScalarZnxAlloc
     + VecZnxAddScalarInplace
     + VecZnxAutomorphismInplace
     + VecZnxStd;
@@ -55,12 +49,13 @@ pub(crate) fn test_automorphism<B: Backend>(
     Module<B>: AutomorphismTestModuleFamily<B>,
     B: AutomorphismTestScratchFamily<B>,
 {
+    let n: usize = module.n();
     let rows: usize = k_in.div_ceil(basek * digits);
 
-    let mut autokey: AutomorphismKey<Vec<u8>> = AutomorphismKey::alloc(module, basek, k_ksk, rows, digits, rank);
-    let mut ct_in: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(module, basek, k_in, rank);
-    let mut ct_out: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(module, basek, k_out, rank);
-    let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(module, basek, k_in);
+    let mut autokey: AutomorphismKey<Vec<u8>> = AutomorphismKey::alloc(n, basek, k_ksk, rows, digits, rank);
+    let mut ct_in: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(n, basek, k_in, rank);
+    let mut ct_out: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(n, basek, k_out, rank);
+    let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(n, basek, k_in);
 
     let mut source_xs: Source = Source::new([0u8; 32]);
     let mut source_xe: Source = Source::new([0u8; 32]);
@@ -69,11 +64,12 @@ pub(crate) fn test_automorphism<B: Backend>(
     module.vec_znx_fill_uniform(basek, &mut pt_want.data, 0, k_in, &mut source_xa);
 
     let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-        AutomorphismKey::encrypt_sk_scratch_space(module, basek, autokey.k(), rank)
-            | GLWECiphertext::decrypt_scratch_space(module, basek, ct_out.k())
-            | GLWECiphertext::encrypt_sk_scratch_space(module, basek, ct_in.k())
+        AutomorphismKey::encrypt_sk_scratch_space(module, n, basek, autokey.k(), rank)
+            | GLWECiphertext::decrypt_scratch_space(module, n, basek, ct_out.k())
+            | GLWECiphertext::encrypt_sk_scratch_space(module, n, basek, ct_in.k())
             | GLWECiphertext::automorphism_scratch_space(
                 module,
+                n,
                 basek,
                 ct_out.k(),
                 ct_in.k(),
@@ -83,7 +79,7 @@ pub(crate) fn test_automorphism<B: Backend>(
             ),
     );
 
-    let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(module, rank);
+    let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
     sk.fill_ternary_prob(0.5, &mut source_xs);
     let sk_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk);
 
@@ -107,7 +103,8 @@ pub(crate) fn test_automorphism<B: Backend>(
         scratch.borrow(),
     );
 
-    let mut autokey_exec: AutomorphismKeyExec<Vec<u8>, B> = AutomorphismKeyExec::alloc(module, basek, k_ksk, rows, digits, rank);
+    let mut autokey_exec: AutomorphismKeyExec<Vec<u8>, B> =
+        AutomorphismKeyExec::alloc(module, n, basek, k_ksk, rows, digits, rank);
     autokey_exec.prepare(module, &autokey, scratch.borrow());
 
     ct_out.automorphism(module, &ct_in, &autokey_exec, scratch.borrow());
@@ -143,11 +140,12 @@ pub(crate) fn test_automorphism_inplace<B: Backend>(
     Module<B>: AutomorphismTestModuleFamily<B>,
     B: AutomorphismTestScratchFamily<B>,
 {
+    let n: usize = module.n();
     let rows: usize = k_ct.div_ceil(basek * digits);
 
-    let mut autokey: AutomorphismKey<Vec<u8>> = AutomorphismKey::alloc(module, basek, k_ksk, rows, digits, rank);
-    let mut ct: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(module, basek, k_ct, rank);
-    let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(module, basek, k_ct);
+    let mut autokey: AutomorphismKey<Vec<u8>> = AutomorphismKey::alloc(n, basek, k_ksk, rows, digits, rank);
+    let mut ct: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(n, basek, k_ct, rank);
+    let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(n, basek, k_ct);
 
     let mut source_xs: Source = Source::new([0u8; 32]);
     let mut source_xe: Source = Source::new([0u8; 32]);
@@ -156,13 +154,13 @@ pub(crate) fn test_automorphism_inplace<B: Backend>(
     module.vec_znx_fill_uniform(basek, &mut pt_want.data, 0, k_ct, &mut source_xa);
 
     let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-        AutomorphismKey::encrypt_sk_scratch_space(module, basek, autokey.k(), rank)
-            | GLWECiphertext::decrypt_scratch_space(module, basek, ct.k())
-            | GLWECiphertext::encrypt_sk_scratch_space(module, basek, ct.k())
-            | GLWECiphertext::automorphism_inplace_scratch_space(module, basek, ct.k(), autokey.k(), digits, rank),
+        AutomorphismKey::encrypt_sk_scratch_space(module, n, basek, autokey.k(), rank)
+            | GLWECiphertext::decrypt_scratch_space(module, n, basek, ct.k())
+            | GLWECiphertext::encrypt_sk_scratch_space(module, n, basek, ct.k())
+            | GLWECiphertext::automorphism_inplace_scratch_space(module, n, basek, ct.k(), autokey.k(), digits, rank),
     );
 
-    let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(module, rank);
+    let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
     sk.fill_ternary_prob(0.5, &mut source_xs);
     let sk_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk);
 
@@ -186,7 +184,8 @@ pub(crate) fn test_automorphism_inplace<B: Backend>(
         scratch.borrow(),
     );
 
-    let mut autokey_exec: AutomorphismKeyExec<Vec<u8>, B> = AutomorphismKeyExec::alloc(module, basek, k_ksk, rows, digits, rank);
+    let mut autokey_exec: AutomorphismKeyExec<Vec<u8>, B> =
+        AutomorphismKeyExec::alloc(module, n, basek, k_ksk, rows, digits, rank);
     autokey_exec.prepare(module, &autokey, scratch.borrow());
 
     ct.automorphism_inplace(module, &autokey_exec, scratch.borrow());
