@@ -119,7 +119,28 @@ impl<DataSelf: DataRef> GLWECiphertext<DataSelf> {
                     rhs.digits(),
                     rhs.rank_in(),
                     rhs.rank_out(),
-                )
+                ),
+            "scratch.available()={} < GLWECiphertext::keyswitch_scratch_space(
+                    module,
+                    self.basek(),
+                    self.k(),
+                    lhs.k(),
+                    rhs.k(),
+                    rhs.digits(),
+                    rhs.rank_in(),
+                    rhs.rank_out(),
+                )={}",
+            scratch.available(),
+            GLWECiphertext::keyswitch_scratch_space(
+                module,
+                self.basek(),
+                self.k(),
+                lhs.k(),
+                rhs.k(),
+                rhs.digits(),
+                rhs.rank_in(),
+                rhs.rank_out(),
+            )
         );
     }
 }

@@ -6,7 +6,7 @@ use backend::hal::{
 };
 use sampling::source::Source;
 
-use crate::{GLWEOps, Infos, SetMetaData};
+use crate::{Decompress, GLWEOps, Infos, SetMetaData};
 
 #[derive(PartialEq, Eq, Clone)]
 pub struct GLWECiphertext<D: Data> {
@@ -266,10 +266,9 @@ impl<D: DataRef> WriterTo for GLWECiphertextCompressed<D> {
     }
 }
 
-impl<D: DataMut> GLWECiphertext<D> {
-    pub fn decompress<DataOther, B: Backend>(&mut self, module: &Module<B>, other: &GLWECiphertextCompressed<DataOther>)
+impl<D: DataMut, B: Backend, DR: DataRef> Decompress<B, GLWECiphertextCompressed<DR>> for GLWECiphertext<D> {
+    fn decompress(&mut self, module: &Module<B>, other: &GLWECiphertextCompressed<DR>)
     where
-        DataOther: DataRef,
         Module<B>: VecZnxFillUniform + VecZnxCopy,
     {
         #[cfg(debug_assertions)]
@@ -299,7 +298,9 @@ impl<D: DataMut> GLWECiphertext<D> {
             self.decompress_internal(module, other, &mut source);
         }
     }
+}
 
+impl<D: DataMut> GLWECiphertext<D> {
     pub(crate) fn decompress_internal<DataOther, B: Backend>(
         &mut self,
         module: &Module<B>,
@@ -309,13 +310,19 @@ impl<D: DataMut> GLWECiphertext<D> {
         DataOther: DataRef,
         Module<B>: VecZnxFillUniform + VecZnxCopy,
     {
+        #[cfg(debug_assertions)]
+        {
+            assert_eq!(self.rank(), other.rank())
+        }
+
         let k: usize = other.k;
         let basek: usize = other.basek;
-        let cols: usize = other.cols();
+        let cols: usize = other.rank() + 1;
         module.vec_znx_copy(&mut self.data, 0, &other.data, 0);
         (1..cols).for_each(|i| {
             module.vec_znx_fill_uniform(basek, &mut self.data, i, k, source);
         });
+
         self.basek = basek;
         self.k = k;
     }

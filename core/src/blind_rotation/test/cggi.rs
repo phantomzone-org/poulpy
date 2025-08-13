@@ -3,7 +3,7 @@ use backend::{
         api::{
             MatZnxAlloc, ModuleNew, ScalarZnxAlloc, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddNormal,
             VecZnxAddScalarInplace, VecZnxAlloc, VecZnxAllocBytes, VecZnxEncodeCoeffsi64, VecZnxFillUniform, VecZnxRotateInplace,
-            VecZnxSwithcDegree, ZnxView,
+            VecZnxSub, VecZnxSwithcDegree, ZnxView,
         },
         layouts::{Backend, Module, ScratchOwned},
         oep::{
@@ -57,7 +57,8 @@ pub(crate) trait CGGITestModuleFamily<B: Backend> = CCGIBlindRotationFamily<B>
     + VecZnxEncodeCoeffsi64
     + VecZnxRotateInplace
     + VecZnxSwithcDegree
-    + MatZnxAlloc;
+    + MatZnxAlloc
+    + VecZnxSub;
 pub(crate) trait CGGITestScratchFamily<B: Backend> = VecZnxDftAllocBytesImpl<B>
     + VecZnxBigAllocBytesImpl<B>
     + ScratchOwnedAllocImpl<B>

@@ -1,10 +1,10 @@
 use backend::hal::{
     api::{
         ScalarZnxAllocBytes, ScratchAvailable, SvpApply, SvpApplyInplace, SvpPPolAllocBytes, SvpPrepare, TakeScalarZnx,
-        TakeSvpPPol, TakeVecZnx, TakeVecZnxDft, VecZnxAddInplace, VecZnxAddNormal, VecZnxBigAddNormal, VecZnxBigAddSmallInplace,
-        VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume,
-        VecZnxFillUniform, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSubABInplace, ZnxInfos,
-        ZnxZero,
+        TakeSvpPPol, TakeVecZnx, TakeVecZnxDft, VecZnxAddInplace, VecZnxAddNormal, VecZnxAllocBytes, VecZnxBigAddNormal,
+        VecZnxBigAddSmallInplace, VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftFromVecZnx,
+        VecZnxDftToVecZnxBigConsume, VecZnxFillUniform, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes,
+        VecZnxSub, VecZnxSubABInplace, ZnxInfos, ZnxZero,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch, VecZnx, VecZnxBig},
 };
@@ -26,7 +26,9 @@ pub trait GLWEEncryptSkFamily<B: Backend> = VecZnxDftAllocBytes
     + VecZnxAddInplace
     + VecZnxNormalizeInplace<B>
     + VecZnxAddNormal
-    + VecZnxNormalize<B>;
+    + VecZnxNormalize<B>
+    + VecZnxSub
+    + VecZnxAllocBytes;
 
 pub trait GLWEEncryptPkFamily<B: Backend> = VecZnxDftAllocBytes
     + VecZnxBigAllocBytes
@@ -47,7 +49,7 @@ impl GLWECiphertext<Vec<u8>> {
     {
         let size: usize = k.div_ceil(basek);
         module.vec_znx_normalize_tmp_bytes(module.n())
-            + module.vec_znx_dft_alloc_bytes(1, size)
+            + 2 * module.vec_znx_alloc_bytes(1, size)
             + module.vec_znx_dft_alloc_bytes(1, size)
     }
     pub fn encrypt_pk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize) -> usize
@@ -146,11 +148,13 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         Module<B>: GLWEEncryptSkFamily<B>,
         Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx<B>,
     {
+        let cols: usize = self.rank() + 1;
         encrypt_sk_internal(
             module,
             self.basek(),
             self.k(),
             &mut self.data,
+            cols,
             false,
             pt,
             sk,
@@ -345,11 +349,13 @@ impl<D: DataMut> GLWECiphertextCompressed<D> {
         Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx<B>,
     {
         let mut source_xa = Source::new(seed_xa);
+        let cols: usize = self.rank() + 1;
         encrypt_sk_internal(
             module,
             self.basek(),
             self.k(),
             &mut self.data,
+            cols,
             true,
             pt,
             sk,
@@ -367,6 +373,7 @@ pub(crate) fn encrypt_sk_internal<DataCt: DataMut, DataPt: DataRef, DataSk: Data
     basek: usize,
     k: usize,
     ct: &mut VecZnx<DataCt>,
+    cols: usize,
     compressed: bool,
     pt: Option<(&GLWEPlaintext<DataPt>, usize)>,
     sk: &GLWESecretExec<DataSk, B>,
@@ -381,12 +388,6 @@ pub(crate) fn encrypt_sk_internal<DataCt: DataMut, DataPt: DataRef, DataSk: Data
     #[cfg(debug_assertions)]
     {
         if compressed {
-            if let Some((_, col)) = pt {
-                assert_eq!(
-                    col, 0,
-                    "invalid plaintext: cannot put pt in col>0 if compressed encryption"
-                )
-            }
             assert_eq!(
                 ct.cols(),
                 1,
@@ -397,14 +398,15 @@ pub(crate) fn encrypt_sk_internal<DataCt: DataMut, DataPt: DataRef, DataSk: Data
     }
 
     let size: usize = ct.size();
-    let cols: usize = ct.cols();
 
     let (mut c0, scratch_1) = scratch.take_vec_znx(module, 1, size);
     c0.zero();
 
     {
-        // c[i] = uniform
-        // c[0] -= c[i] * s[i],
+        let (mut ci, scratch_2) = scratch_1.take_vec_znx(module, 1, size);
+
+        // ct[i] = uniform
+        // ct[0] -= c[i] * s[i],
         (1..cols).for_each(|i| {
             let col_ct: usize;
             if compressed {
@@ -413,29 +415,34 @@ pub(crate) fn encrypt_sk_internal<DataCt: DataMut, DataPt: DataRef, DataSk: Data
                 col_ct = i;
             }
 
-            let (mut ci_dft, scratch_2) = scratch_1.take_vec_znx_dft(module, 1, size);
-
-            // c[i] = uniform
+            // ct[i] = uniform (+ pt)
             module.vec_znx_fill_uniform(basek, ct, col_ct, k, source_xa);
 
-            // c[i] = norm(IDFT(DFT(c[i]) * DFT(s[i])))
-            module.vec_znx_dft_from_vec_znx(1, 0, &mut ci_dft, 0, ct, col_ct);
+            let (mut ci_dft, scratch_3) = scratch_2.take_vec_znx_dft(module, 1, size);
+
+            // ci = ct[i] - pt
+            // i.e. we act as we sample ct[i] already as uniform + pt
+            // and if there is a pt, then we subtract it before applying DFT
+            if let Some((pt, col)) = pt {
+                if i == col {
+                    module.vec_znx_sub(&mut ci, 0, ct, col_ct, &pt.data, 0);
+                    module.vec_znx_normalize_inplace(basek, &mut ci, 0, scratch_3);
+                    module.vec_znx_dft_from_vec_znx(1, 0, &mut ci_dft, 0, &ci, 0);
+                } else {
+                    module.vec_znx_dft_from_vec_znx(1, 0, &mut ci_dft, 0, ct, col_ct);
+                }
+            } else {
+                module.vec_znx_dft_from_vec_znx(1, 0, &mut ci_dft, 0, ct, col_ct);
+            }
+
             module.svp_apply_inplace(&mut ci_dft, 0, &sk.data, i - 1);
             let ci_big: VecZnxBig<&mut [u8], B> = module.vec_znx_dft_to_vec_znx_big_consume(ci_dft);
 
             // use c[0] as buffer, which is overwritten later by the normalization step
-            module.vec_znx_big_normalize(basek, ct, 0, &ci_big, 0, scratch_2);
+            module.vec_znx_big_normalize(basek, &mut ci, 0, &ci_big, 0, scratch_3);
 
             // c0_tmp = -c[i] * s[i] (use c[0] as buffer)
-            module.vec_znx_sub_ab_inplace(&mut c0, 0, ct, 0);
-
-            // c[i] += m if col = i
-            // note: case cannot happen if compressed = true
-            if let Some((pt, col)) = pt {
-                if i == col {
-                    module.vec_znx_add_inplace(ct, i, &pt.data, 0);
-                }
-            }
+            module.vec_znx_sub_ab_inplace(&mut c0, 0, &ci, 0);
         });
     }
 

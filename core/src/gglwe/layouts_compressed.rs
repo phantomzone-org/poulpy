@@ -3,7 +3,7 @@ use backend::hal::{
     layouts::{Backend, Data, DataMut, DataRef, MatZnx, Module, ReaderFrom, WriterTo},
 };
 
-use crate::{AutomorphismKey, GGLWECiphertext, GLWECiphertextCompressed, GLWESwitchingKey, GLWETensorKey, Infos};
+use crate::{AutomorphismKey, Decompress, GGLWECiphertext, GLWECiphertextCompressed, GLWESwitchingKey, GLWETensorKey, Infos};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
 #[derive(PartialEq, Eq)]
@@ -169,8 +169,8 @@ impl<D: DataRef> WriterTo for GGLWECiphertextCompressed<D> {
     }
 }
 
-impl<D: DataMut> GGLWECiphertext<D> {
-    pub fn decompress<DataOther: DataRef, B: Backend>(&mut self, module: &Module<B>, other: &GGLWECiphertextCompressed<DataOther>)
+impl<D: DataMut, B: Backend, DR: DataRef> Decompress<B, GGLWECiphertextCompressed<DR>> for GGLWECiphertext<D> {
+    fn decompress(&mut self, module: &Module<B>, other: &GGLWECiphertextCompressed<DR>)
     where
         Module<B>: VecZnxFillUniform + VecZnxCopy,
     {

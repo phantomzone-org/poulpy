@@ -12,7 +12,7 @@ use backend::hal::{
 use sampling::source::Source;
 
 use crate::{
-    GLWECiphertext, GLWECiphertextCompressed, GLWEDecryptFamily, GLWEEncryptPkFamily, GLWEEncryptSkFamily, GLWEOps,
+    Decompress, GLWECiphertext, GLWECiphertextCompressed, GLWEDecryptFamily, GLWEEncryptPkFamily, GLWEEncryptSkFamily, GLWEOps,
     GLWEPlaintext, GLWEPublicKey, GLWEPublicKeyExec, GLWESecret, GLWESecretExec, GLWESecretFamily, Infos,
 };
 
@@ -125,7 +125,12 @@ pub(crate) fn test_encrypt_sk_compressed<B: Backend>(
     let noise_have: f64 = module.vec_znx_std(basek, &pt_want.data, 0) * (ct.k() as f64).exp2();
     let noise_want: f64 = sigma;
 
-    assert!(noise_have <= noise_want + 0.2);
+    assert!(
+        noise_have <= noise_want + 0.2,
+        "{} <= {}",
+        noise_have,
+        noise_want + 0.2
+    );
 }
 
 pub(crate) fn test_encrypt_zero_sk<B: Backend>(module: &Module<B>, basek: usize, k_ct: usize, sigma: f64, rank: usize)
