@@ -1,7 +1,7 @@
 use backend::hal::{
     api::{
-        ScratchAvailable, SvpPPolAlloc, SvpPrepare, TakeVecZnx, TakeVecZnxDft, VecZnxAddScalarInplace, ZnxInfos, ZnxView,
-        ZnxViewMut,
+        FillUniform, Reset, ScratchAvailable, SvpPPolAlloc, SvpPrepare, TakeVecZnx, TakeVecZnxDft, VecZnxAddScalarInplace,
+        ZnxInfos, ZnxView, ZnxViewMut,
     },
     layouts::{Backend, Data, DataMut, DataRef, Module, ReaderFrom, ScalarZnx, ScalarZnxToRef, Scratch, SvpPPol, WriterTo},
 };
@@ -10,10 +10,18 @@ use sampling::source::Source;
 use crate::{
     Distribution, GGSWCiphertext, GGSWCiphertextExec, GGSWEncryptSkFamily, GGSWLayoutFamily, GLWESecretExec, Infos, LWESecret,
 };
+use std::fmt;
 
+#[derive(Clone)]
 pub struct BlindRotationKeyCGGI<D: Data> {
     pub(crate) keys: Vec<GGSWCiphertext<D>>,
     pub(crate) dist: Distribution,
+}
+
+impl<D: DataRef> fmt::Debug for BlindRotationKeyCGGI<D> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self)
+    }
 }
 
 impl<D: Data> PartialEq for BlindRotationKeyCGGI<D> {
@@ -31,6 +39,30 @@ impl<D: Data> PartialEq for BlindRotationKeyCGGI<D> {
 }
 
 impl<D: Data> Eq for BlindRotationKeyCGGI<D> {}
+
+impl<D: DataRef> fmt::Display for BlindRotationKeyCGGI<D> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for (i, key) in self.keys.iter().enumerate() {
+            write!(f, "key[{}]: {}", i, key)?;
+        }
+        writeln!(f, "{:?}", self.dist)
+    }
+}
+
+impl<D: DataMut> Reset for BlindRotationKeyCGGI<D> {
+    fn reset(&mut self) {
+        self.keys.iter_mut().for_each(|key| key.reset());
+        self.dist = Distribution::NONE;
+    }
+}
+
+impl<D: DataMut> FillUniform for BlindRotationKeyCGGI<D> {
+    fn fill_uniform(&mut self, source: &mut sampling::source::Source) {
+        self.keys
+            .iter_mut()
+            .for_each(|key| key.fill_uniform(source));
+    }
+}
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 

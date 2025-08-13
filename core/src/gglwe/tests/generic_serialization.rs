@@ -12,7 +12,7 @@ fn test_gglwe_serialization() {
 }
 
 #[test]
-fn test_gglwe_serialization_compressed() {
+fn test_gglwe_compressed_serialization() {
     let original: GGLWECiphertextCompressed<Vec<u8>> = GGLWECiphertextCompressed::alloc(1024, 12, 54, 3, 1, 2, 2);
     test_reader_writer_interface(original);
 }
@@ -24,7 +24,7 @@ fn test_glwe_switching_key_serialization() {
 }
 
 #[test]
-fn test_glwe_switching_key_serialization_compressed() {
+fn test_glwe_switching_key_compressed_serialization() {
     let original: GLWESwitchingKeyCompressed<Vec<u8>> = GLWESwitchingKeyCompressed::alloc(1024, 12, 54, 3, 1, 2, 2);
     test_reader_writer_interface(original);
 }
@@ -36,7 +36,7 @@ fn test_automorphism_key_serialization() {
 }
 
 #[test]
-fn test_automorphism_key_serialization_compressed() {
+fn test_automorphism_key_compressed_serialization() {
     let original: AutomorphismKeyCompressed<Vec<u8>> = AutomorphismKeyCompressed::alloc(1024, 12, 54, 3, 1, 2);
     test_reader_writer_interface(original);
 }
@@ -48,7 +48,7 @@ fn test_tensor_key_serialization() {
 }
 
 #[test]
-fn test_tensor_key_serialization_compressed() {
+fn test_tensor_key_compressed_serialization() {
     let original: GLWETensorKeyCompressed<Vec<u8>> = GLWETensorKeyCompressed::alloc(1024, 12, 54, 3, 1, 2);
     test_reader_writer_interface(original);
 }

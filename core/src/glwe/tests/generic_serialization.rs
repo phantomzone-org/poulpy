@@ -9,7 +9,7 @@ fn test_serialization() {
 }
 
 #[test]
-fn test_serialization_compressed() {
+fn test_compressed_serialization() {
     let original: GLWECiphertextCompressed<Vec<u8>> = GLWECiphertextCompressed::alloc(1024, 12, 54, 3);
     test_reader_writer_interface(original);
 }

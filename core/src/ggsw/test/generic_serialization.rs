@@ -9,7 +9,7 @@ fn ggsw_test_serialization() {
 }
 
 #[test]
-fn ggsw_test_serialization_compressed() {
+fn ggsw_test_compressed_serialization() {
     let original: GGSWCiphertextCompressed<Vec<u8>> = GGSWCiphertextCompressed::alloc(1024, 12, 54, 3, 1, 2);
     test_reader_writer_interface(original);
 }

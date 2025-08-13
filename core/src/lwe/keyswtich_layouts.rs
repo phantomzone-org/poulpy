@@ -1,20 +1,39 @@
 use backend::hal::{
-    api::{
-        ScratchAvailable, TakeScalarZnx, TakeVecZnx, TakeVecZnxDft, VecZnxAddScalarInplace, VecZnxAutomorphismInplace,
-        VecZnxSwithcDegree, ZnxView, ZnxViewMut, ZnxZero,
-    },
-    layouts::{Backend, Data, DataMut, DataRef, MatZnx, Module, ReaderFrom, Scratch, WriterTo},
+    api::{FillUniform, Reset},
+    layouts::{Backend, Data, DataMut, DataRef, MatZnx, Module, ReaderFrom, WriterTo},
 };
-use sampling::source::Source;
 
-use crate::{
-    GGLWEEncryptSkFamily, GLWECiphertext, GLWEKeyswitchFamily, GLWESecret, GLWESecretExec, GLWESwitchingKey, Infos,
-    LWECiphertext, LWESecret, TakeGLWESecret, TakeGLWESecretExec,
-};
+use crate::{GGLWEEncryptSkFamily, GLWESecret, GLWESecretExec, GLWESwitchingKey, Infos};
+
+use std::fmt;
 
 /// A special [GLWESwitchingKey] required to for the conversion from [GLWECiphertext] to [LWECiphertext].
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Clone)]
 pub struct GLWEToLWESwitchingKey<D: Data>(pub(crate) GLWESwitchingKey<D>);
+
+impl<D: DataRef> fmt::Debug for GLWEToLWESwitchingKey<D> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self)
+    }
+}
+
+impl<D: DataMut> FillUniform for GLWEToLWESwitchingKey<D> {
+    fn fill_uniform(&mut self, source: &mut sampling::source::Source) {
+        self.0.fill_uniform(source);
+    }
+}
+
+impl<D: DataMut> Reset for GLWEToLWESwitchingKey<D> {
+    fn reset(&mut self) {
+        self.0.reset();
+    }
+}
+
+impl<D: DataRef> fmt::Display for GLWEToLWESwitchingKey<D> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "(GLWEToLWESwitchingKey) {}", self.0)
+    }
+}
 
 impl<D: Data> Infos for GLWEToLWESwitchingKey<D> {
     type Inner = MatZnx<D>;
@@ -76,46 +95,32 @@ impl GLWEToLWESwitchingKey<Vec<u8>> {
     }
 }
 
-impl<D: DataMut> GLWEToLWESwitchingKey<D> {
-    pub fn encrypt_sk<DLwe, DGlwe, B: Backend>(
-        &mut self,
-        module: &Module<B>,
-        sk_lwe: &LWESecret<DLwe>,
-        sk_glwe: &GLWESecret<DGlwe>,
-        source_xa: &mut Source,
-        source_xe: &mut Source,
-        sigma: f64,
-        scratch: &mut Scratch<B>,
-    ) where
-        DLwe: DataRef,
-        DGlwe: DataRef,
-        Module<B>: GGLWEEncryptSkFamily<B> + VecZnxAutomorphismInplace + VecZnxSwithcDegree + VecZnxAddScalarInplace,
-        Scratch<B>: ScratchAvailable + TakeScalarZnx + TakeVecZnxDft<B> + TakeGLWESecretExec<B> + TakeVecZnx,
-    {
-        #[cfg(debug_assertions)]
-        {
-            assert!(sk_lwe.n() <= module.n());
-        }
+#[derive(PartialEq, Eq, Clone)]
+pub struct LWEToGLWESwitchingKey<D: Data>(pub(crate) GLWESwitchingKey<D>);
 
-        let (mut sk_lwe_as_glwe, scratch1) = scratch.take_glwe_secret(sk_glwe.n(), 1);
-        sk_lwe_as_glwe.data.zero();
-        sk_lwe_as_glwe.data.at_mut(0, 0)[..sk_lwe.n()].copy_from_slice(sk_lwe.data.at(0, 0));
-        module.vec_znx_automorphism_inplace(-1, &mut sk_lwe_as_glwe.data.as_vec_znx_mut(), 0);
-
-        self.0.encrypt_sk(
-            module,
-            sk_glwe,
-            &sk_lwe_as_glwe,
-            source_xa,
-            source_xe,
-            sigma,
-            scratch1,
-        );
+impl<D: DataRef> fmt::Debug for LWEToGLWESwitchingKey<D> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self)
     }
 }
 
-#[derive(PartialEq, Eq)]
-pub struct LWEToGLWESwitchingKey<D: Data>(pub(crate) GLWESwitchingKey<D>);
+impl<D: DataMut> FillUniform for LWEToGLWESwitchingKey<D> {
+    fn fill_uniform(&mut self, source: &mut sampling::source::Source) {
+        self.0.fill_uniform(source);
+    }
+}
+
+impl<D: DataMut> Reset for LWEToGLWESwitchingKey<D> {
+    fn reset(&mut self) {
+        self.0.reset();
+    }
+}
+
+impl<D: DataRef> fmt::Display for LWEToGLWESwitchingKey<D> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "(LWEToGLWESwitchingKey) {}", self.0)
+    }
+}
 
 impl<D: Data> Infos for LWEToGLWESwitchingKey<D> {
     type Inner = MatZnx<D>;
@@ -176,46 +181,32 @@ impl LWEToGLWESwitchingKey<Vec<u8>> {
     }
 }
 
-impl<D: DataMut> LWEToGLWESwitchingKey<D> {
-    pub fn encrypt_sk<DLwe, DGlwe, B: Backend>(
-        &mut self,
-        module: &Module<B>,
-        sk_lwe: &LWESecret<DLwe>,
-        sk_glwe: &GLWESecret<DGlwe>,
-        source_xa: &mut Source,
-        source_xe: &mut Source,
-        sigma: f64,
-        scratch: &mut Scratch<B>,
-    ) where
-        DLwe: DataRef,
-        DGlwe: DataRef,
-        Module<B>: GGLWEEncryptSkFamily<B> + VecZnxAutomorphismInplace + VecZnxSwithcDegree + VecZnxAddScalarInplace,
-        Scratch<B>: ScratchAvailable + TakeScalarZnx + TakeVecZnxDft<B> + TakeGLWESecretExec<B> + TakeVecZnx,
-    {
-        #[cfg(debug_assertions)]
-        {
-            assert!(sk_lwe.n() <= module.n());
-        }
+#[derive(PartialEq, Eq, Clone)]
+pub struct LWESwitchingKey<D: Data>(pub(crate) GLWESwitchingKey<D>);
 
-        let (mut sk_lwe_as_glwe, scratch1) = scratch.take_glwe_secret(sk_glwe.n(), 1);
-        sk_lwe_as_glwe.data.at_mut(0, 0)[..sk_lwe.n()].copy_from_slice(sk_lwe.data.at(0, 0));
-        sk_lwe_as_glwe.data.at_mut(0, 0)[sk_lwe.n()..].fill(0);
-        module.vec_znx_automorphism_inplace(-1, &mut sk_lwe_as_glwe.data.as_vec_znx_mut(), 0);
-
-        self.0.encrypt_sk(
-            module,
-            &sk_lwe_as_glwe,
-            &sk_glwe,
-            source_xa,
-            source_xe,
-            sigma,
-            scratch1,
-        );
+impl<D: DataRef> fmt::Debug for LWESwitchingKey<D> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self)
     }
 }
 
-#[derive(PartialEq, Eq)]
-pub struct LWESwitchingKey<D: Data>(pub(crate) GLWESwitchingKey<D>);
+impl<D: DataMut> FillUniform for LWESwitchingKey<D> {
+    fn fill_uniform(&mut self, source: &mut sampling::source::Source) {
+        self.0.fill_uniform(source);
+    }
+}
+
+impl<D: DataMut> Reset for LWESwitchingKey<D> {
+    fn reset(&mut self) {
+        self.0.reset();
+    }
+}
+
+impl<D: DataRef> fmt::Display for LWESwitchingKey<D> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "(LWESwitchingKey) {}", self.0)
+    }
+}
 
 impl<D: Data> Infos for LWESwitchingKey<D> {
     type Inner = MatZnx<D>;
@@ -275,84 +266,5 @@ impl LWESwitchingKey<Vec<u8>> {
         GLWESecret::bytes_of(n, 1)
             + GLWESecretExec::bytes_of(module, n, 1)
             + GLWESwitchingKey::encrypt_sk_scratch_space(module, n, basek, k, 1, 1)
-    }
-}
-
-impl<D: DataMut> LWESwitchingKey<D> {
-    pub fn encrypt_sk<DIn, DOut, B: Backend>(
-        &mut self,
-        module: &Module<B>,
-        sk_lwe_in: &LWESecret<DIn>,
-        sk_lwe_out: &LWESecret<DOut>,
-        source_xa: &mut Source,
-        source_xe: &mut Source,
-        sigma: f64,
-        scratch: &mut Scratch<B>,
-    ) where
-        DIn: DataRef,
-        DOut: DataRef,
-        Module<B>: GGLWEEncryptSkFamily<B> + VecZnxAutomorphismInplace + VecZnxSwithcDegree + VecZnxAddScalarInplace,
-        Scratch<B>: ScratchAvailable + TakeScalarZnx + TakeVecZnxDft<B> + TakeGLWESecretExec<B> + TakeVecZnx,
-    {
-        #[cfg(debug_assertions)]
-        {
-            assert!(sk_lwe_in.n() <= self.n());
-            assert!(sk_lwe_out.n() <= self.n());
-            assert!(self.n() <= module.n());
-        }
-
-        let (mut sk_in_glwe, scratch1) = scratch.take_glwe_secret(self.n(), 1);
-        let (mut sk_out_glwe, scratch2) = scratch1.take_glwe_secret(self.n(), 1);
-
-        sk_out_glwe.data.at_mut(0, 0)[..sk_lwe_out.n()].copy_from_slice(sk_lwe_out.data.at(0, 0));
-        sk_out_glwe.data.at_mut(0, 0)[sk_lwe_out.n()..].fill(0);
-        module.vec_znx_automorphism_inplace(-1, &mut sk_out_glwe.data.as_vec_znx_mut(), 0);
-
-        sk_in_glwe.data.at_mut(0, 0)[..sk_lwe_in.n()].copy_from_slice(sk_lwe_in.data.at(0, 0));
-        sk_in_glwe.data.at_mut(0, 0)[sk_lwe_in.n()..].fill(0);
-        module.vec_znx_automorphism_inplace(-1, &mut sk_in_glwe.data.as_vec_znx_mut(), 0);
-
-        self.0.encrypt_sk(
-            module,
-            &sk_in_glwe,
-            &sk_out_glwe,
-            source_xa,
-            source_xe,
-            sigma,
-            scratch2,
-        );
-    }
-}
-
-impl LWECiphertext<Vec<u8>> {
-    pub fn from_glwe_scratch_space<B: Backend>(
-        module: &Module<B>,
-        n: usize,
-        basek: usize,
-        k_lwe: usize,
-        k_glwe: usize,
-        k_ksk: usize,
-        rank: usize,
-    ) -> usize
-    where
-        Module<B>: GLWEKeyswitchFamily<B>,
-    {
-        GLWECiphertext::bytes_of(n, basek, k_lwe, 1)
-            + GLWECiphertext::keyswitch_scratch_space(module, n, basek, k_lwe, k_glwe, k_ksk, 1, rank, 1)
-    }
-
-    pub fn keyswitch_scratch_space<B: Backend>(
-        module: &Module<B>,
-        n: usize,
-        basek: usize,
-        k_lwe_out: usize,
-        k_lwe_in: usize,
-        k_ksk: usize,
-    ) -> usize
-    where
-        Module<B>: GLWEKeyswitchFamily<B>,
-    {
-        GLWECiphertext::bytes_of(n, basek, k_lwe_out.max(k_lwe_in), 1)
-            + GLWECiphertext::keyswitch_inplace_scratch_space(module, n, basek, k_lwe_out, k_ksk, 1, 1)
     }
 }

@@ -45,7 +45,7 @@ impl GLWECiphertext<Vec<u8>> {
             rank + 1, // cols out
             ggsw_size,
         );
-        let normalize: usize = module.vec_znx_normalize_tmp_bytes(module.n());
+        let normalize: usize = module.vec_znx_normalize_tmp_bytes(n);
         res_dft + a_dft + (vmp | normalize)
     }
 

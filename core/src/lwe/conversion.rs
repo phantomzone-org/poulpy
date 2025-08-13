@@ -8,6 +8,39 @@ use crate::{
     LWEToGLWESwitchingKeyExec, TakeGLWECt,
 };
 
+impl LWECiphertext<Vec<u8>> {
+    pub fn from_glwe_scratch_space<B: Backend>(
+        module: &Module<B>,
+        n: usize,
+        basek: usize,
+        k_lwe: usize,
+        k_glwe: usize,
+        k_ksk: usize,
+        rank: usize,
+    ) -> usize
+    where
+        Module<B>: GLWEKeyswitchFamily<B>,
+    {
+        GLWECiphertext::bytes_of(n, basek, k_lwe, 1)
+            + GLWECiphertext::keyswitch_scratch_space(module, n, basek, k_lwe, k_glwe, k_ksk, 1, rank, 1)
+    }
+
+    pub fn keyswitch_scratch_space<B: Backend>(
+        module: &Module<B>,
+        n: usize,
+        basek: usize,
+        k_lwe_out: usize,
+        k_lwe_in: usize,
+        k_ksk: usize,
+    ) -> usize
+    where
+        Module<B>: GLWEKeyswitchFamily<B>,
+    {
+        GLWECiphertext::bytes_of(n, basek, k_lwe_out.max(k_lwe_in), 1)
+            + GLWECiphertext::keyswitch_inplace_scratch_space(module, n, basek, k_lwe_out, k_ksk, 1, 1)
+    }
+}
+
 impl<DLwe: DataMut> LWECiphertext<DLwe> {
     pub fn sample_extract<DGlwe: DataRef>(&mut self, a: &GLWECiphertext<DGlwe>) {
         #[cfg(debug_assertions)]

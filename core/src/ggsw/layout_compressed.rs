@@ -19,6 +19,12 @@ pub struct GGSWCiphertextCompressed<D: Data> {
 
 impl<D: DataRef> fmt::Debug for GGSWCiphertextCompressed<D> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.data)
+    }
+}
+
+impl<D: DataRef> fmt::Display for GGSWCiphertextCompressed<D> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
             "(GGSWCiphertextCompressed: basek={} k={} digits={}) {}",
@@ -27,10 +33,7 @@ impl<D: DataRef> fmt::Debug for GGSWCiphertextCompressed<D> {
     }
 }
 
-impl<D: DataMut> Reset for GGSWCiphertextCompressed<D>
-where
-    MatZnx<D>: Reset,
-{
+impl<D: DataMut> Reset for GGSWCiphertextCompressed<D> {
     fn reset(&mut self) {
         self.data.reset();
         self.basek = 0;
@@ -41,10 +44,7 @@ where
     }
 }
 
-impl<D: DataMut> FillUniform for GGSWCiphertextCompressed<D>
-where
-    MatZnx<D>: FillUniform,
-{
+impl<D: DataMut> FillUniform for GGSWCiphertextCompressed<D> {
     fn fill_uniform(&mut self, source: &mut sampling::source::Source) {
         self.data.fill_uniform(source);
     }

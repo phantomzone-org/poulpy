@@ -29,10 +29,7 @@ impl<D: DataMut> FillUniform for GGLWECiphertext<D> {
     }
 }
 
-impl<D: DataMut> Reset for GGLWECiphertext<D>
-where
-    MatZnx<D>: Reset,
-{
+impl<D: DataMut> Reset for GGLWECiphertext<D> {
     fn reset(&mut self) {
         self.data.reset();
         self.basek = 0;
