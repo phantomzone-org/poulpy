@@ -3,92 +3,19 @@ use backend::hal::{
     layouts::{Backend, Data, DataMut, DataRef, MatZnx, Module, ReaderFrom, WriterTo},
 };
 
-use crate::{Decompress, GGLWECiphertextCompressed, GGSWCiphertext, GLWECiphertextCompressed, Infos};
+use crate::{Decompress, GGSWCiphertext, GLWECiphertextCompressed, Infos};
 
 #[derive(PartialEq, Eq)]
-pub struct GGSWCiphertextCompressedV1<D: Data> {
-    pub(crate) data: GGLWECiphertextCompressed<D>,
-}
-
-impl GGSWCiphertextCompressedV1<Vec<u8>> {
-    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self
-    where
-        Module<B>: MatZnxAlloc,
-    {
-        GGSWCiphertextCompressedV1 {
-            data: GGLWECiphertextCompressed::alloc(module, basek, k, rows, digits, rank, rank),
-        }
-    }
-
-    pub fn bytes_of<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize
-    where
-        Module<B>: MatZnxAllocBytes,
-    {
-        GGLWECiphertextCompressed::bytes_of(module, basek, k, rows, digits, rank)
-    }
-}
-
-impl<D: Data> Infos for GGSWCiphertextCompressedV1<D> {
-    type Inner = MatZnx<D>;
-
-    fn inner(&self) -> &Self::Inner {
-        self.data.inner()
-    }
-
-    fn basek(&self) -> usize {
-        self.data.basek()
-    }
-
-    fn k(&self) -> usize {
-        self.data.k()
-    }
-}
-
-impl<D: Data> GGSWCiphertextCompressedV1<D> {
-    pub fn rank(&self) -> usize {
-        self.data.rank()
-    }
-
-    pub fn digits(&self) -> usize {
-        self.data.digits()
-    }
-}
-
-impl<D: DataMut> ReaderFrom for GGSWCiphertextCompressedV1<D> {
-    fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
-        self.data.read_from(reader)
-    }
-}
-
-impl<D: DataRef> WriterTo for GGSWCiphertextCompressedV1<D> {
-    fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
-        self.data.write_to(writer)
-    }
-}
-
-impl<D: DataMut, B: Backend, DR: DataRef> Decompress<B, GGSWCiphertextCompressedV1<DR>> for GGSWCiphertext<D> {
-    fn decompress(&mut self, module: &Module<B>, other: &GGSWCiphertextCompressedV1<DR>)
-    where
-        Module<B>: VecZnxFillUniform + VecZnxCopy,
-    {
-        let rows = self.rows();
-        (0..rows).for_each(|row_i| {
-            self.at_mut(row_i, 0)
-                .decompress(module, &other.data.at(row_i, 0));
-        });
-    }
-}
-
-#[derive(PartialEq, Eq)]
-pub struct GGSWCiphertextCompressedV2<D: Data> {
+pub struct GGSWCiphertextCompressed<D: Data> {
     pub(crate) data: MatZnx<D>,
     pub(crate) basek: usize,
     pub(crate) k: usize,
     pub(crate) digits: usize,
+    pub(crate) rank: usize,
     pub(crate) seed: Vec<[u8; 32]>,
 }
 
-impl GGSWCiphertextCompressedV2<Vec<u8>> {
+impl GGSWCiphertextCompressed<Vec<u8>> {
     pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self
     where
         Module<B>: MatZnxAlloc,
@@ -116,7 +43,8 @@ impl GGSWCiphertextCompressedV2<Vec<u8>> {
             basek,
             k: k,
             digits,
-            seed: vec![[0u8; 32]; rows * rank],
+            rank,
+            seed: vec![[0u8; 32]; rows * (rank + 1)],
         }
     }
 
@@ -144,33 +72,32 @@ impl GGSWCiphertextCompressedV2<Vec<u8>> {
     }
 }
 
-impl<D: DataRef> GGSWCiphertextCompressedV2<D> {
+impl<D: DataRef> GGSWCiphertextCompressed<D> {
     pub fn at(&self, row: usize, col: usize) -> GLWECiphertextCompressed<&[u8]> {
         GLWECiphertextCompressed {
             data: self.data.at(row, col),
             basek: self.basek,
             k: self.k,
             rank: self.rank(),
-            seed: self.seed[row * self.cols() + col],
+            seed: self.seed[row * (self.rank() + 1) + col],
         }
     }
 }
 
-impl<D: DataMut> GGSWCiphertextCompressedV2<D> {
+impl<D: DataMut> GGSWCiphertextCompressed<D> {
     pub fn at_mut(&mut self, row: usize, col: usize) -> GLWECiphertextCompressed<&mut [u8]> {
         let rank: usize = self.rank();
-        let cols: usize = self.cols();
         GLWECiphertextCompressed {
             data: self.data.at_mut(row, col),
             basek: self.basek,
             k: self.k,
             rank: rank,
-            seed: self.seed[row * cols + col],
+            seed: self.seed[row * (rank + 1) + col],
         }
     }
 }
 
-impl<D: Data> Infos for GGSWCiphertextCompressedV2<D> {
+impl<D: Data> Infos for GGSWCiphertextCompressed<D> {
     type Inner = MatZnx<D>;
 
     fn inner(&self) -> &Self::Inner {
@@ -186,9 +113,9 @@ impl<D: Data> Infos for GGSWCiphertextCompressedV2<D> {
     }
 }
 
-impl<D: Data> GGSWCiphertextCompressedV2<D> {
+impl<D: Data> GGSWCiphertextCompressed<D> {
     pub fn rank(&self) -> usize {
-        self.data.cols_out() - 1
+        self.rank
     }
 
     pub fn digits(&self) -> usize {
@@ -196,27 +123,35 @@ impl<D: Data> GGSWCiphertextCompressedV2<D> {
     }
 }
 
-impl<D: DataMut> ReaderFrom for GGSWCiphertextCompressedV2<D> {
+impl<D: DataMut> ReaderFrom for GGSWCiphertextCompressed<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         self.data.read_from(reader)
     }
 }
 
-impl<D: DataRef> WriterTo for GGSWCiphertextCompressedV2<D> {
+impl<D: DataRef> WriterTo for GGSWCiphertextCompressed<D> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         self.data.write_to(writer)
     }
 }
 
-impl<D: DataMut, B: Backend, DR: DataRef> Decompress<B, GGSWCiphertextCompressedV2<DR>> for GGSWCiphertext<D> {
-    fn decompress(&mut self, module: &Module<B>, other: &GGSWCiphertextCompressedV2<DR>)
+impl<D: DataMut, B: Backend, DR: DataRef> Decompress<B, GGSWCiphertextCompressed<DR>> for GGSWCiphertext<D> {
+    fn decompress(&mut self, module: &Module<B>, other: &GGSWCiphertextCompressed<DR>)
     where
         Module<B>: VecZnxFillUniform + VecZnxCopy,
     {
-        let rows = self.rows();
+        #[cfg(debug_assertions)]
+        {
+            assert_eq!(self.rank(), other.rank())
+        }
+
+        let rows: usize = self.rows();
+        let rank: usize = self.rank();
         (0..rows).for_each(|row_i| {
-            self.at_mut(row_i, 0)
-                .decompress(module, &other.at(row_i, 0));
+            (0..rank + 1).for_each(|col_j| {
+                self.at_mut(row_i, col_j)
+                    .decompress(module, &other.at(row_i, col_j));
+            });
         });
     }
 }

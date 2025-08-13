@@ -1,7 +1,7 @@
 use backend::hal::{
     api::{
         MatZnxAlloc, ScalarZnxAlloc, ScalarZnxAllocBytes, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace,
-        VecZnxAlloc, VecZnxAllocBytes, VecZnxAutomorphism, VecZnxAutomorphismInplace, VecZnxRotateInplace, VecZnxStd,
+        VecZnxAlloc, VecZnxAllocBytes, VecZnxAutomorphism, VecZnxAutomorphismInplace, VecZnxCopy, VecZnxRotateInplace, VecZnxStd,
         VecZnxSubABInplace, VecZnxSwithcDegree, ZnxViewMut,
     },
     layouts::{Backend, Module, ScalarZnx, ScalarZnxToMut, ScratchOwned},
@@ -13,9 +13,10 @@ use backend::hal::{
 use sampling::source::Source;
 
 use crate::{
-    AutomorphismKey, AutomorphismKeyExec, GGLWEExecLayoutFamily, GGSWAssertNoiseFamily, GGSWCiphertext, GGSWCiphertextExec,
-    GGSWEncryptSkFamily, GGSWKeySwitchFamily, GLWESecret, GLWESecretExec, GLWESecretFamily, GLWESwitchingKey,
-    GLWESwitchingKeyEncryptSkFamily, GLWESwitchingKeyExec, GLWETensorKey, GLWETensorKeyEncryptSkFamily, GLWETensorKeyExec,
+    AutomorphismKey, AutomorphismKeyExec, Decompress, GGLWEExecLayoutFamily, GGSWAssertNoiseFamily, GGSWCiphertext,
+    GGSWCiphertextCompressed, GGSWCiphertextExec, GGSWEncryptSkFamily, GGSWKeySwitchFamily, GLWESecret, GLWESecretExec,
+    GLWESecretFamily, GLWESwitchingKey, GLWESwitchingKeyEncryptSkFamily, GLWESwitchingKeyExec, GLWETensorKey,
+    GLWETensorKeyEncryptSkFamily, GLWETensorKeyExec,
     noise::{noise_ggsw_keyswitch, noise_ggsw_product},
 };
 
@@ -29,7 +30,8 @@ pub(crate) trait TestModuleFamily<B: Backend> = GLWESecretFamily<B>
     + VecZnxAddScalarInplace
     + VecZnxSubABInplace
     + VecZnxStd
-    + ScalarZnxAllocBytes;
+    + ScalarZnxAllocBytes
+    + VecZnxCopy;
 pub(crate) trait TestScratchFamily<B: Backend> = TakeVecZnxDftImpl<B>
     + TakeVecZnxBigImpl<B>
     + TakeSvpPPolImpl<B>
@@ -79,6 +81,58 @@ where
     );
 
     let noise_f = |_col_i: usize| -(k as f64) + sigma.log2() + 0.5;
+
+    ct.assert_noise(module, &sk_exec, &pt_scalar, &noise_f);
+}
+
+pub(crate) fn test_encrypt_sk_compressed<B: Backend>(
+    module: &Module<B>,
+    basek: usize,
+    k: usize,
+    digits: usize,
+    rank: usize,
+    sigma: f64,
+) where
+    Module<B>: TestModuleFamily<B>,
+    B: TestScratchFamily<B>,
+{
+    let rows: usize = (k - digits * basek) / (digits * basek);
+
+    let mut ct_compressed: GGSWCiphertextCompressed<Vec<u8>> =
+        GGSWCiphertextCompressed::alloc(module, basek, k, rows, digits, rank);
+
+    let mut pt_scalar: ScalarZnx<Vec<u8>> = module.scalar_znx_alloc(1);
+
+    let mut source_xs: Source = Source::new([0u8; 32]);
+    let mut source_xe: Source = Source::new([0u8; 32]);
+
+    pt_scalar.fill_ternary_hw(0, module.n(), &mut source_xs);
+
+    let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GGSWCiphertextCompressed::encrypt_sk_scratch_space(
+        module, basek, k, rank,
+    ));
+
+    let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(module, rank);
+    sk.fill_ternary_prob(0.5, &mut source_xs);
+    let mut sk_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk);
+    sk_exec.prepare(module, &sk);
+
+    let seed_xa: [u8; 32] = [1u8; 32];
+
+    ct_compressed.encrypt_sk(
+        module,
+        &pt_scalar,
+        &sk_exec,
+        seed_xa,
+        &mut source_xe,
+        sigma,
+        scratch.borrow(),
+    );
+
+    let noise_f = |_col_i: usize| -(k as f64) + sigma.log2() + 0.5;
+
+    let mut ct: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(module, basek, k, rows, digits, rank);
+    ct.decompress(module, &ct_compressed);
 
     ct.assert_noise(module, &sk_exec, &pt_scalar, &noise_f);
 }

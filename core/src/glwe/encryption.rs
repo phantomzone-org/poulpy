@@ -148,11 +148,13 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         Module<B>: GLWEEncryptSkFamily<B>,
         Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx<B>,
     {
+        let cols: usize = self.rank() + 1;
         encrypt_sk_internal(
             module,
             self.basek(),
             self.k(),
             &mut self.data,
+            cols,
             false,
             pt,
             sk,
@@ -347,11 +349,13 @@ impl<D: DataMut> GLWECiphertextCompressed<D> {
         Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx<B>,
     {
         let mut source_xa = Source::new(seed_xa);
+        let cols: usize = self.rank() + 1;
         encrypt_sk_internal(
             module,
             self.basek(),
             self.k(),
             &mut self.data,
+            cols,
             true,
             pt,
             sk,
@@ -369,6 +373,7 @@ pub(crate) fn encrypt_sk_internal<DataCt: DataMut, DataPt: DataRef, DataSk: Data
     basek: usize,
     k: usize,
     ct: &mut VecZnx<DataCt>,
+    cols: usize,
     compressed: bool,
     pt: Option<(&GLWEPlaintext<DataPt>, usize)>,
     sk: &GLWESecretExec<DataSk, B>,
@@ -393,7 +398,6 @@ pub(crate) fn encrypt_sk_internal<DataCt: DataMut, DataPt: DataRef, DataSk: Data
     }
 
     let size: usize = ct.size();
-    let cols: usize = ct.cols();
 
     let (mut c0, scratch_1) = scratch.take_vec_znx(module, 1, size);
     c0.zero();
@@ -411,7 +415,7 @@ pub(crate) fn encrypt_sk_internal<DataCt: DataMut, DataPt: DataRef, DataSk: Data
                 col_ct = i;
             }
 
-            // ct[i] = uniform
+            // ct[i] = uniform (+ pt)
             module.vec_znx_fill_uniform(basek, ct, col_ct, k, source_xa);
 
             let (mut ci_dft, scratch_3) = scratch_2.take_vec_znx_dft(module, 1, size);

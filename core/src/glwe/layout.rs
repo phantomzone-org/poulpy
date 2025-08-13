@@ -310,13 +310,19 @@ impl<D: DataMut> GLWECiphertext<D> {
         DataOther: DataRef,
         Module<B>: VecZnxFillUniform + VecZnxCopy,
     {
+        #[cfg(debug_assertions)]
+        {
+            assert_eq!(self.rank(), other.rank())
+        }
+
         let k: usize = other.k;
         let basek: usize = other.basek;
-        let cols: usize = other.cols();
+        let cols: usize = other.rank() + 1;
         module.vec_znx_copy(&mut self.data, 0, &other.data, 0);
         (1..cols).for_each(|i| {
             module.vec_znx_fill_uniform(basek, &mut self.data, i, k, source);
         });
+
         self.basek = basek;
         self.k = k;
     }

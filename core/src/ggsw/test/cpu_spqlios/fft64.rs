@@ -4,8 +4,8 @@ use backend::{
 };
 
 use crate::ggsw::test::generic_tests::{
-    test_automorphism, test_automorphism_inplace, test_encrypt_sk, test_external_product, test_external_product_inplace,
-    test_keyswitch, test_keyswitch_inplace,
+    test_automorphism, test_automorphism_inplace, test_encrypt_sk, test_encrypt_sk_compressed, test_external_product,
+    test_external_product_inplace, test_keyswitch, test_keyswitch_inplace,
 };
 
 #[test]
@@ -19,6 +19,21 @@ fn encrypt_sk() {
         (1..digits + 1).for_each(|di| {
             println!("test encrypt_sk digits: {} rank: {}", di, rank);
             test_encrypt_sk(&module, basek, k_ct, di, rank, 3.2);
+        });
+    });
+}
+
+#[test]
+fn encrypt_sk_compressed() {
+    let log_n: usize = 8;
+    let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
+    let basek: usize = 12;
+    let k_ct: usize = 54;
+    let digits: usize = k_ct / basek;
+    (1..4).for_each(|rank| {
+        (1..digits + 1).for_each(|di| {
+            println!("test encrypt_sk_compressed digits: {} rank: {}", di, rank);
+            test_encrypt_sk_compressed(&module, basek, k_ct, di, rank, 3.2);
         });
     });
 }

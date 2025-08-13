@@ -192,6 +192,7 @@ impl<D: DataMut> GGLWECiphertextCompressed<D> {
         let basek: usize = self.basek();
         let k: usize = self.k();
         let rank_in: usize = self.rank_in();
+        let cols: usize = self.rank_out() + 1;
 
         let mut source_xa = Source::new(seed);
 
@@ -217,6 +218,7 @@ impl<D: DataMut> GGLWECiphertextCompressed<D> {
                     self.basek(),
                     self.k(),
                     &mut self.at_mut(row_i, col_i).data,
+                    cols,
                     true,
                     Some((&tmp_pt, 0)),
                     sk,
