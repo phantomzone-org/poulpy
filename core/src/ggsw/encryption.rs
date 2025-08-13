@@ -1,12 +1,16 @@
 use backend::hal::{
     api::{
-        ScratchAvailable, TakeVecZnx, TakeVecZnxDft, VecZnxAddScalarInplace, VecZnxAllocBytes, VecZnxNormalizeInplace, ZnxZero,
+        ScratchAvailable, TakeVecZnx, TakeVecZnxDft, VecZnxAddScalarInplace, VecZnxAllocBytes, VecZnxNormalizeInplace, ZnxInfos,
+        ZnxZero,
     },
-    layouts::{Backend, DataMut, DataRef, Module, ScalarZnx, Scratch},
+    layouts::{Backend, DataMut, DataRef, Module, ScalarZnx, Scratch, VecZnx, VecZnxBig},
 };
 use sampling::source::Source;
 
-use crate::{GGSWCiphertext, GLWECiphertext, GLWEEncryptSkFamily, GLWESecretExec, Infos, TakeGLWEPt};
+use crate::{
+    GGLWEEncryptSkFamily, GGSWCiphertext, GGSWCiphertextCompressedV1, GGSWCiphertextCompressedV2, GLWECiphertext,
+    GLWEEncryptSkFamily, GLWEPlaintext, GLWESecretExec, Infos, SIX_SIGMA, TakeGLWEPt,
+};
 
 pub trait GGSWEncryptSkFamily<B: Backend> = GLWEEncryptSkFamily<B>;
 
@@ -75,5 +79,38 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
                 );
             });
         });
+    }
+}
+
+impl<DataSelf: DataMut> GGSWCiphertextCompressedV1<DataSelf> {
+    pub fn encrypt_sk<DataPt: DataRef, DataSk: DataRef, B: Backend>(
+        &mut self,
+        module: &Module<B>,
+        pt: &ScalarZnx<DataPt>,
+        sk: &GLWESecretExec<DataSk, B>,
+        seed: [u8; 32],
+        source_xe: &mut Source,
+        sigma: f64,
+        scratch: &mut Scratch<B>,
+    ) where
+        Module<B>: GGLWEEncryptSkFamily<B> + VecZnxAllocBytes + VecZnxAddScalarInplace,
+        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx<B>,
+    {
+        self.data
+            .encrypt_sk(module, pt, sk, seed, source_xe, sigma, scratch);
+    }
+}
+
+impl<DataSelf: DataMut> GGSWCiphertextCompressedV2<DataSelf> {
+    pub fn encrypt_sk<DataPt: DataRef, DataSk: DataRef, B: Backend>(
+        &mut self,
+        modumodule: &Module<B>,
+        pt: &ScalarZnx<DataPt>,
+        sk: &GLWESecretExec<DataSk, B>,
+        seed: [u8; 32],
+        source_xe: &mut Source,
+        sigma: f64,
+        scratch: &mut Scratch<B>,
+    ) {
     }
 }
