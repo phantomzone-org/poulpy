@@ -4,8 +4,8 @@ use backend::{
     hal::{
         api::{
             ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxAutomorphism,
-            VecZnxEncodeCoeffsi64, VecZnxFillUniform, VecZnxNormalizeInplace, VecZnxRotateInplace, VecZnxStd, VecZnxSwithcDegree,
-            VmpPMatAlloc, VmpPMatPrepare, ZnxView, ZnxViewMut,
+            VecZnxFillUniform, VecZnxNormalizeInplace, VecZnxRotateInplace, VecZnxSwithcDegree, VmpPMatAlloc, VmpPMatPrepare,
+            ZnxView, ZnxViewMut,
         },
         layouts::{Backend, Module, ScalarZnx, ScratchOwned},
         oep::{
@@ -17,20 +17,22 @@ use backend::{
 };
 use sampling::source::Source;
 
-use crate::{
-    BlindRotationKeyCGGIExecLayoutFamily,
-    circuit_bootstrapping::circuit_bootstrapping::{
+use crate::tfhe::{
+    blind_rotation::BlindRotationKeyCGGIExecLayoutFamily,
+    circuit_bootstrapping::{
         CGGICircuitBootstrapFamily, CircuitBootstrappingKeyCGGI, CircuitBootstrappingKeyCGGIExec,
         circuit_bootstrap_to_constant_cggi, circuit_bootstrap_to_exponent_cggi,
     },
-    layouts::{
-        GGSWCiphertext, GLWECiphertext, GLWEPlaintext, GLWESecret, LWECiphertext, LWEPlaintext, LWESecret,
-        prepared::{GGSWCiphertextExec, GLWESecretExec},
-    },
 };
 
-use crate::trait_families::{
-    AutomorphismKeyEncryptSkFamily, GGSWAssertNoiseFamily, GGSWEncryptSkFamily, GLWEDecryptFamily, GLWETensorKeyEncryptSkFamily,
+use core::trait_families::{
+    GGLWEAutomorphismKeyEncryptSkFamily, GGLWETensorKeyEncryptSkFamily, GGSWAssertNoiseFamily, GGSWEncryptSkFamily,
+    GLWEDecryptFamily,
+};
+
+use core::layouts::{
+    GGSWCiphertext, GLWECiphertext, GLWEPlaintext, GLWESecret, LWECiphertext, LWEPlaintext, LWESecret,
+    prepared::{GGSWCiphertextExec, GLWESecretExec},
 };
 
 #[test]
@@ -41,21 +43,19 @@ fn test_to_exponent() {
 
 fn to_exponent<B: Backend>(module: &Module<B>)
 where
-    Module<B>: VecZnxEncodeCoeffsi64
-        + VecZnxFillUniform
+    Module<B>: VecZnxFillUniform
         + VecZnxAddNormal
         + VecZnxNormalizeInplace<B>
         + GGSWEncryptSkFamily<B>
         + VecZnxAddScalarInplace
-        + AutomorphismKeyEncryptSkFamily<B>
+        + GGLWEAutomorphismKeyEncryptSkFamily<B>
         + VecZnxAutomorphism
         + VecZnxSwithcDegree
-        + GLWETensorKeyEncryptSkFamily<B>
+        + GGLWETensorKeyEncryptSkFamily<B>
         + BlindRotationKeyCGGIExecLayoutFamily<B>
         + CGGICircuitBootstrapFamily<B>
         + GLWEDecryptFamily<B>
         + GGSWAssertNoiseFamily<B>
-        + VecZnxStd
         + VmpPMatAlloc<B>
         + VmpPMatPrepare<B>,
     B: ScratchOwnedAllocImpl<B>
@@ -107,9 +107,9 @@ where
     let data: i64 = 1;
 
     let mut pt_lwe: LWEPlaintext<Vec<u8>> = LWEPlaintext::alloc(basek, k_lwe_pt);
-    module.encode_coeff_i64(basek, &mut pt_lwe.data, 0, k_lwe_pt + 2, 0, data, k_lwe_pt);
+    pt_lwe.encode_i64(data, k_lwe_pt + 2);
 
-    println!("pt_lwe: {}", pt_lwe.data);
+    println!("pt_lwe: {}", pt_lwe);
 
     let mut ct_lwe: LWECiphertext<Vec<u8>> = LWECiphertext::alloc(n_lwe, basek, k_lwe_ct);
     ct_lwe.encrypt_sk(
@@ -207,21 +207,19 @@ fn test_to_constant() {
 
 fn to_constant<B: Backend>(module: &Module<B>)
 where
-    Module<B>: VecZnxEncodeCoeffsi64
-        + VecZnxFillUniform
+    Module<B>: VecZnxFillUniform
         + VecZnxAddNormal
         + VecZnxNormalizeInplace<B>
         + GGSWEncryptSkFamily<B>
         + VecZnxAddScalarInplace
-        + AutomorphismKeyEncryptSkFamily<B>
+        + GGLWEAutomorphismKeyEncryptSkFamily<B>
         + VecZnxAutomorphism
         + VecZnxSwithcDegree
-        + GLWETensorKeyEncryptSkFamily<B>
+        + GGLWETensorKeyEncryptSkFamily<B>
         + BlindRotationKeyCGGIExecLayoutFamily<B>
         + CGGICircuitBootstrapFamily<B>
         + GLWEDecryptFamily<B>
         + GGSWAssertNoiseFamily<B>
-        + VecZnxStd
         + VmpPMatAlloc<B>
         + VmpPMatPrepare<B>,
     B: ScratchOwnedAllocImpl<B>
@@ -273,9 +271,9 @@ where
     let data: i64 = 1;
 
     let mut pt_lwe: LWEPlaintext<Vec<u8>> = LWEPlaintext::alloc(basek, k_lwe_pt);
-    module.encode_coeff_i64(basek, &mut pt_lwe.data, 0, k_lwe_pt + 2, 0, data, k_lwe_pt);
+    pt_lwe.encode_i64(data, k_lwe_pt + 2);
 
-    println!("pt_lwe: {}", pt_lwe.data);
+    println!("pt_lwe: {}", pt_lwe);
 
     let mut ct_lwe: LWECiphertext<Vec<u8>> = LWECiphertext::alloc(n_lwe, basek, k_lwe_ct);
     ct_lwe.encrypt_sk(

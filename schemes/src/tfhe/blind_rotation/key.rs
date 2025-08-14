@@ -7,16 +7,16 @@ use backend::hal::{
 };
 use sampling::source::Source;
 
-use crate::{
-    Distribution, Infos,
-    layouts::{
-        GGSWCiphertext, LWESecret,
-        prepared::{GGSWCiphertextExec, GLWESecretExec},
-    },
-};
 use std::fmt;
 
-use crate::trait_families::GGSWEncryptSkFamily;
+use core::{
+    Distribution,
+    layouts::{
+        GGSWCiphertext, Infos, LWESecret,
+        prepared::{GGSWCiphertextExec, GLWESecretExec},
+    },
+    trait_families::GGSWEncryptSkFamily,
+};
 
 #[derive(Clone)]
 pub struct BlindRotationKeyCGGI<D: Data> {
@@ -184,7 +184,7 @@ impl<D: DataMut> BlindRotationKeyCGGI<D> {
             assert_eq!(self.keys.len(), sk_lwe.n());
             assert!(sk_glwe.n() <= module.n());
             assert_eq!(sk_glwe.rank(), self.keys[0].rank());
-            match sk_lwe.dist {
+            match sk_lwe.dist() {
                 Distribution::BinaryBlock(_)
                 | Distribution::BinaryFixed(_)
                 | Distribution::BinaryProb(_)
@@ -195,10 +195,10 @@ impl<D: DataMut> BlindRotationKeyCGGI<D> {
             }
         }
 
-        self.dist = sk_lwe.dist;
+        self.dist = sk_lwe.dist();
 
         let mut pt: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(sk_glwe.n(), 1);
-        let sk_ref: ScalarZnx<&[u8]> = sk_lwe.data.to_ref();
+        let sk_ref: ScalarZnx<&[u8]> = sk_lwe.data().to_ref();
 
         self.keys.iter_mut().enumerate().for_each(|(i, ggsw)| {
             pt.at_mut(0, 0)[0] = sk_ref.at(0, 0)[i];

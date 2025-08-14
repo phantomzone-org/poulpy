@@ -1,5 +1,4 @@
 use rand_distr::Distribution;
-use rug::Float;
 use sampling::source::Source;
 
 use crate::hal::layouts::{Backend, Module, ScalarZnxToRef, Scratch, VecZnxToMut, VecZnxToRef};
@@ -289,15 +288,6 @@ pub unsafe trait VecZnxCopyImpl<B: Backend> {
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See [crate::hal::api::VecZnxStd] for corresponding public API.
-/// * See [crate::doc::backend_safety] for safety contract.
-pub unsafe trait VecZnxStdImpl<B: Backend> {
-    fn vec_znx_std_impl<A>(module: &Module<B>, basek: usize, a: &A, a_col: usize) -> f64
-    where
-        A: VecZnxToRef;
-}
-
-/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
 /// * See [crate::hal::api::VecZnxFillUniform] for corresponding public API.
 /// * See [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxFillUniformImpl<B: Backend> {
@@ -372,69 +362,4 @@ pub unsafe trait VecZnxAddNormalImpl<B: Backend> {
         bound: f64,
     ) where
         R: VecZnxToMut;
-}
-
-/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See \[TODO\] for reference code.
-/// * See [crate::hal::api::VecZnxEncodeVeci64] for corresponding public API.
-/// * See [crate::doc::backend_safety] for safety contract.
-pub unsafe trait VecZnxEncodeVeci64Impl<B: Backend> {
-    fn encode_vec_i64_impl<R>(
-        module: &Module<B>,
-        basek: usize,
-        res: &mut R,
-        res_col: usize,
-        k: usize,
-        data: &[i64],
-        log_max: usize,
-    ) where
-        R: VecZnxToMut;
-}
-
-/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See \[TODO\] for reference code.
-/// * See [crate::hal::api::VecZnxEncodeCoeffsi64] for corresponding public API.
-/// * See [crate::doc::backend_safety] for safety contract.
-pub unsafe trait VecZnxEncodeCoeffsi64Impl<B: Backend> {
-    fn encode_coeff_i64_impl<R>(
-        module: &Module<B>,
-        basek: usize,
-        res: &mut R,
-        res_col: usize,
-        k: usize,
-        i: usize,
-        data: i64,
-        log_max: usize,
-    ) where
-        R: VecZnxToMut;
-}
-
-/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See \[TODO\] for reference code.
-/// * See [crate::hal::api::VecZnxDecodeVeci64] for corresponding public API.
-/// * See [crate::doc::backend_safety] for safety contract.
-pub unsafe trait VecZnxDecodeVeci64Impl<B: Backend> {
-    fn decode_vec_i64_impl<R>(module: &Module<B>, basek: usize, res: &R, res_col: usize, k: usize, data: &mut [i64])
-    where
-        R: VecZnxToRef;
-}
-
-/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See \[TODO\] for reference code.
-/// * See [crate::hal::api::VecZnxDecodeCoeffsi64] for corresponding public API.
-/// * See [crate::doc::backend_safety] for safety contract.
-pub unsafe trait VecZnxDecodeCoeffsi64Impl<B: Backend> {
-    fn decode_coeff_i64_impl<R>(module: &Module<B>, basek: usize, res: &R, res_col: usize, k: usize, i: usize) -> i64
-    where
-        R: VecZnxToRef;
-}
-
-/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See \[TODO\] for reference code.
-/// * See [crate::hal::api::VecZnxDecodeVecFloat] for corresponding public API.
-/// * See [crate::doc::backend_safety] for safety contract.
-pub unsafe trait VecZnxDecodeVecFloatImpl<B: Backend> {
-    fn decode_vec_float_impl<R>(module: &Module<B>, basek: usize, res: &R, res_col: usize, data: &mut [Float])
-    where
-        R: VecZnxToRef;
 }

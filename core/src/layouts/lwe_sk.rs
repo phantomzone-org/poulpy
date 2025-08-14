@@ -1,6 +1,6 @@
 use backend::hal::{
-    api::{ZnxInfos, ZnxZero},
-    layouts::{Data, DataMut, ScalarZnx},
+    api::{ZnxInfos, ZnxView, ZnxZero},
+    layouts::{Data, DataMut, DataRef, ScalarZnx},
 };
 use sampling::source::Source;
 
@@ -17,6 +17,20 @@ impl LWESecret<Vec<u8>> {
             data: ScalarZnx::alloc(n, 1),
             dist: Distribution::NONE,
         }
+    }
+}
+
+impl<D: DataRef> LWESecret<D> {
+    pub fn raw(&self) -> &[i64] {
+        self.data.at(0, 0)
+    }
+
+    pub fn dist(&self) -> Distribution {
+        self.dist
+    }
+
+    pub fn data(&self) -> &ScalarZnx<D> {
+        &self.data
     }
 }
 

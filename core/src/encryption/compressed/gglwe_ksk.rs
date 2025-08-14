@@ -7,7 +7,7 @@ use sampling::source::Source;
 use crate::{
     TakeGLWESecretExec,
     layouts::{
-        GGLWECiphertext, GLWESecret, GGLWESwitchingKey, Infos, compressed::GGLWESwitchingKeyCompressed, prepared::GLWESecretExec,
+        GGLWECiphertext, GGLWESwitchingKey, GLWESecret, Infos, compressed::GGLWESwitchingKeyCompressed, prepared::GLWESecretExec,
     },
 };
 

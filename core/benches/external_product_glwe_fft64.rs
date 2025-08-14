@@ -1,4 +1,7 @@
-use core::layouts::{prepared::{GGSWCiphertextExec, GLWESecretExec}, GGSWCiphertext, GLWECiphertext, GLWESecret, Infos};
+use core::layouts::{
+    GGSWCiphertext, GLWECiphertext, GLWESecret, Infos,
+    prepared::{GGSWCiphertextExec, GLWESecretExec},
+};
 use std::hint::black_box;
 
 use backend::{

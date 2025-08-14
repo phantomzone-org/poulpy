@@ -1,7 +1,7 @@
 use backend::hal::{
     api::{
         ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxAutomorphism, VecZnxAutomorphismInplace, VecZnxCopy,
-        VecZnxStd, VecZnxSubScalarInplace, VecZnxSwithcDegree, VmpPMatAlloc, VmpPMatPrepare,
+        VecZnxSubScalarInplace, VecZnxSwithcDegree, VmpPMatAlloc, VmpPMatPrepare,
     },
     layouts::{Backend, Module, ScratchOwned},
     oep::{
@@ -36,7 +36,6 @@ pub fn test_gglwe_automorphisk_key_encrypt_sk<B: Backend>(
         + VecZnxAutomorphismInplace
         + GLWEDecryptFamily<B>
         + VecZnxSubScalarInplace
-        + VecZnxStd
         + VecZnxCopy
         + VmpPMatAlloc<B>
         + VmpPMatPrepare<B>,
@@ -112,7 +111,6 @@ pub fn test_gglwe_automorphisk_key_compressed_encrypt_sk<B: Backend>(
         + VecZnxAutomorphismInplace
         + GLWEDecryptFamily<B>
         + VecZnxSubScalarInplace
-        + VecZnxStd
         + VecZnxCopy
         + VmpPMatAlloc<B>
         + VmpPMatPrepare<B>,

@@ -1,7 +1,7 @@
 use backend::hal::{
     api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxCopy, VecZnxStd, VecZnxSubABInplace,
-        VecZnxSwithcDegree, VmpPMatAlloc, VmpPMatPrepare,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxCopy, VecZnxSubABInplace, VecZnxSwithcDegree,
+        VmpPMatAlloc, VmpPMatPrepare,
     },
     layouts::{Backend, Module, ScalarZnx, ScratchOwned},
     oep::{
@@ -13,8 +13,8 @@ use sampling::source::Source;
 
 use crate::{
     layouts::{
-        GGLWETensorKey, GGSWCiphertext, GLWESecret, GGLWESwitchingKey,
-        prepared::{GLWESecretExec, GGLWESwitchingKeyExec, GGLWETensorKeyExec},
+        GGLWESwitchingKey, GGLWETensorKey, GGSWCiphertext, GLWESecret,
+        prepared::{GGLWESwitchingKeyExec, GGLWETensorKeyExec, GLWESecretExec},
     },
     noise::noise_ggsw_keyswitch,
     trait_families::GGSWAssertNoiseFamily,
@@ -41,7 +41,6 @@ pub fn test_ggsw_keyswitch<B: Backend>(
         + GGSWAssertNoiseFamily<B>
         + VecZnxAddScalarInplace
         + VecZnxSubABInplace
-        + VecZnxStd
         + VecZnxCopy
         + VmpPMatAlloc<B>
         + VmpPMatPrepare<B>
@@ -172,7 +171,6 @@ pub fn test_ggsw_keyswitch_inplace<B: Backend>(
         + GGSWAssertNoiseFamily<B>
         + VecZnxAddScalarInplace
         + VecZnxSubABInplace
-        + VecZnxStd
         + VecZnxCopy
         + VmpPMatAlloc<B>
         + VmpPMatPrepare<B>

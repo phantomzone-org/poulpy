@@ -1,7 +1,7 @@
 use backend::hal::{
     api::{
         ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxAutomorphism, VecZnxAutomorphismInplace, VecZnxCopy,
-        VecZnxStd, VecZnxSubScalarInplace, VecZnxSwithcDegree,
+        VecZnxSubScalarInplace, VecZnxSwithcDegree,
     },
     layouts::{Backend, Module, ScratchOwned},
     oep::{

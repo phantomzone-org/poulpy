@@ -1,7 +1,7 @@
 use backend::hal::{
     api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxEncodeCoeffsi64, VecZnxFillUniform,
-        VecZnxRotateInplace, VecZnxSub, VecZnxSwithcDegree, VmpPMatAlloc, VmpPMatPrepare, ZnxView,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxFillUniform, VecZnxRotateInplace,
+        VecZnxSub, VecZnxSwithcDegree, VmpPMatAlloc, VmpPMatPrepare, ZnxView,
     },
     layouts::{Backend, Module, ScratchOwned},
     oep::{
@@ -11,17 +11,18 @@ use backend::hal::{
 };
 use sampling::source::Source;
 
-use crate::{
-    BlindRotationKeyCGGI, BlindRotationKeyCGGIExec, BlindRotationKeyCGGIExecLayoutFamily, CCGIBlindRotationFamily, Infos,
-    LookUpTable, cggi_blind_rotate, cggi_blind_rotate_scratch_space,
-    layouts::{
-        GLWECiphertext, GLWEPlaintext, GLWESecret, LWECiphertext, LWECiphertextToRef, LWEPlaintext, LWESecret,
-        prepared::GLWESecretExec,
-    },
-    mod_switch_2n,
+use crate::tfhe::blind_rotation::{
+    BlindRotationKeyCGGI, BlindRotationKeyCGGIExec, BlindRotationKeyCGGIExecLayoutFamily, CCGIBlindRotationFamily, LookUpTable,
+    cggi_blind_rotate, cggi_blind_rotate_scratch_space, mod_switch_2n,
 };
 
-use crate::trait_families::{GLWEDecryptFamily, GLWESecretExecModuleFamily};
+use core::{
+    layouts::{
+        GLWECiphertext, GLWEPlaintext, GLWESecret, Infos, LWECiphertext, LWECiphertextToRef, LWEPlaintext, LWESecret,
+        prepared::GLWESecretExec,
+    },
+    trait_families::{GLWEDecryptFamily, GLWESecretExecModuleFamily},
+};
 
 pub(crate) trait CGGITestModuleFamily<B: Backend> = CCGIBlindRotationFamily<B>
     + GLWESecretExecModuleFamily<B>
@@ -30,7 +31,6 @@ pub(crate) trait CGGITestModuleFamily<B: Backend> = CCGIBlindRotationFamily<B>
     + VecZnxFillUniform
     + VecZnxAddNormal
     + VecZnxAddScalarInplace
-    + VecZnxEncodeCoeffsi64
     + VecZnxRotateInplace
     + VecZnxSwithcDegree
     + VecZnxSub
@@ -109,7 +109,7 @@ where
     let x: i64 = 2;
     let bits: usize = 8;
 
-    module.encode_coeff_i64(basek, &mut pt_lwe.data, 0, bits, 0, x, bits);
+    pt_lwe.encode_i64(x, bits);
 
     lwe.encrypt_sk(
         module,
@@ -150,7 +150,7 @@ where
     let pt_want: i64 = (lwe_2n[0]
         + lwe_2n[1..]
             .iter()
-            .zip(sk_lwe.data.at(0, 0))
+            .zip(sk_lwe.raw())
             .map(|(x, y)| x * y)
             .sum::<i64>())
         & (2 * lut.domain_size() - 1) as i64;

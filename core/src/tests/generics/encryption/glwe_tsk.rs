@@ -1,6 +1,6 @@
 use backend::hal::{
     api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxBigAlloc, VecZnxCopy, VecZnxDftAlloc, VecZnxStd,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxBigAlloc, VecZnxCopy, VecZnxDftAlloc,
         VecZnxSubScalarInplace, VecZnxSwithcDegree, VmpPMatAlloc, VmpPMatPrepare,
     },
     layouts::{Backend, Module, ScratchOwned, VecZnxDft},
@@ -25,7 +25,6 @@ where
         + GLWEDecryptFamily<B>
         + VecZnxSwithcDegree
         + VecZnxAddScalarInplace
-        + VecZnxStd
         + VecZnxSubScalarInplace
         + VmpPMatAlloc<B>
         + VmpPMatPrepare<B>
@@ -108,7 +107,7 @@ where
 
                     module.vec_znx_sub_scalar_inplace(&mut pt.data, 0, row_i, &sk_ij.data, col_i);
 
-                    let std_pt: f64 = module.vec_znx_std(basek, &pt.data, 0) * (k as f64).exp2();
+                    let std_pt: f64 = pt.data.std(basek, 0) * (k as f64).exp2();
                     assert!((sigma - std_pt).abs() <= 0.5, "{} {}", sigma, std_pt);
                 });
             });
@@ -123,7 +122,6 @@ where
         + GLWEDecryptFamily<B>
         + VecZnxSwithcDegree
         + VecZnxAddScalarInplace
-        + VecZnxStd
         + VecZnxSubScalarInplace
         + VmpPMatAlloc<B>
         + VmpPMatPrepare<B>
@@ -147,7 +145,8 @@ where
     let n: usize = module.n();
     let rows: usize = k / basek;
 
-    let mut tensor_key_compressed: GGLWETensorKeyCompressed<Vec<u8>> = GGLWETensorKeyCompressed::alloc(n, basek, k, rows, 1, rank);
+    let mut tensor_key_compressed: GGLWETensorKeyCompressed<Vec<u8>> =
+        GGLWETensorKeyCompressed::alloc(n, basek, k, rows, 1, rank);
 
     let mut source_xs: Source = Source::new([0u8; 32]);
     let mut source_xe: Source = Source::new([0u8; 32]);
@@ -211,7 +210,7 @@ where
 
                     module.vec_znx_sub_scalar_inplace(&mut pt.data, 0, row_i, &sk_ij.data, col_i);
 
-                    let std_pt: f64 = module.vec_znx_std(basek, &pt.data, 0) * (k as f64).exp2();
+                    let std_pt: f64 = pt.data.std(basek, 0) * (k as f64).exp2();
                     assert!((sigma - std_pt).abs() <= 0.5, "{} {}", sigma, std_pt);
                 });
             });

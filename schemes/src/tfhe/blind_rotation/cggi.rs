@@ -10,13 +10,13 @@ use backend::hal::{
 };
 use itertools::izip;
 
-use crate::{
-    GLWEOps, Infos, LookUpTableRotationDirection, TakeGLWECt,
-    blind_rotation::{key::BlindRotationKeyCGGIExec, lut::LookUpTable},
-    dist::Distribution,
-    layouts::{GLWECiphertext, GLWECiphertextToMut, LWECiphertext, LWECiphertextToRef},
+use core::{
+    Distribution, GLWEOperations, TakeGLWECt,
+    layouts::{GLWECiphertext, GLWECiphertextToMut, Infos, LWECiphertext, LWECiphertextToRef},
     trait_families::GLWEExternalProductFamily,
 };
+
+use crate::tfhe::blind_rotation::{BlindRotationKeyCGGIExec, LookUpTable, LookUpTableRotationDirection};
 
 pub trait CCGIBlindRotationFamily<B: Backend> = VecZnxBigAllocBytes
     + VecZnxDftAllocBytes
@@ -196,7 +196,7 @@ pub(crate) fn cggi_blind_rotate_block_binary_extended<DataRes, DataIn, DataBrk, 
 
             // vmp_res = DFT(acc) * BRK[i]
             (0..extension_factor).for_each(|i| {
-                module.vmp_apply(&mut vmp_res[i], &acc_dft[i], &skii.data, scratch5);
+                module.vmp_apply(&mut vmp_res[i], &acc_dft[i], skii.data(), scratch5);
             });
 
             // Trivial case: no rotation between polynomials, we can directly multiply with (X^{-ai} - 1)
@@ -331,7 +331,7 @@ pub(crate) fn cggi_blind_rotate_block_binary<DataRes, DataIn, DataBrk, B: Backen
             let ai_pos: usize = ((aii + two_n as i64) & (two_n - 1) as i64) as usize;
 
             // vmp_res = DFT(acc) * BRK[i]
-            module.vmp_apply(&mut vmp_res, &acc_dft, &skii.data, scratch4);
+            module.vmp_apply(&mut vmp_res, &acc_dft, skii.data(), scratch4);
 
             // DFT(X^ai -1) * (DFT(acc) * BRK[i])
             (0..cols).for_each(|i| {
@@ -445,7 +445,7 @@ pub(crate) fn mod_switch_2n(n: usize, res: &mut [i64], lwe: &LWECiphertext<&[u8]
 
     let log2n: usize = usize::BITS as usize - (n - 1).leading_zeros() as usize + 1;
 
-    res.copy_from_slice(&lwe.data.at(0, 0));
+    res.copy_from_slice(&lwe.data().at(0, 0));
 
     match rot_dir {
         LookUpTableRotationDirection::Left => {
@@ -465,11 +465,11 @@ pub(crate) fn mod_switch_2n(n: usize, res: &mut [i64], lwe: &LWECiphertext<&[u8]
         (1..size).for_each(|i| {
             if i == size - 1 && rem != basek {
                 let k_rem: usize = basek - rem;
-                izip!(lwe.data.at(0, i).iter(), res.iter_mut()).for_each(|(x, y)| {
+                izip!(lwe.data().at(0, i).iter(), res.iter_mut()).for_each(|(x, y)| {
                     *y = (*y << k_rem) + (x >> rem);
                 });
             } else {
-                izip!(lwe.data.at(0, i).iter(), res.iter_mut()).for_each(|(x, y)| {
+                izip!(lwe.data().at(0, i).iter(), res.iter_mut()).for_each(|(x, y)| {
                     *y = (*y << basek) + x;
                 });
             }

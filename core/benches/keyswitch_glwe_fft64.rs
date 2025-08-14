@@ -1,4 +1,7 @@
-use core::layouts::{prepared::{GGLWEAutomorphismKeyExec, GGLWESwitchingKeyExec, GLWESecretExec}, GGLWEAutomorphismKey, GGLWESwitchingKey, GLWECiphertext, GLWESecret, Infos};
+use core::layouts::{
+    GGLWEAutomorphismKey, GGLWESwitchingKey, GLWECiphertext, GLWESecret, Infos,
+    prepared::{GGLWEAutomorphismKeyExec, GGLWESwitchingKeyExec, GLWESecretExec},
+};
 use std::{hint::black_box, time::Duration};
 
 use backend::{

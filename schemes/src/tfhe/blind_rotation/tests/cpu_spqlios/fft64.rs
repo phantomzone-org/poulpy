@@ -3,7 +3,7 @@ use backend::{
     implementation::cpu_spqlios::FFT64,
 };
 
-use crate::blind_rotation::tests::{
+use crate::tfhe::blind_rotation::tests::{
     generic_cggi::blind_rotatio_test,
     generic_lut::{test_lut_extended, test_lut_standard},
 };

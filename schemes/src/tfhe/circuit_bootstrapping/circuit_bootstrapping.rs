@@ -2,132 +2,23 @@ use std::{collections::HashMap, time::Instant, usize};
 
 use backend::hal::{
     api::{
-        ScratchAvailable, TakeMatZnx, TakeScalarZnx, TakeSvpPPol, TakeVecZnx, TakeVecZnxBig, TakeVecZnxDft, TakeVecZnxDftSlice,
-        TakeVecZnxSlice, VecZnxAddInplace, VecZnxAddScalarInplace, VecZnxAutomorphism, VecZnxAutomorphismInplace,
-        VecZnxBigAutomorphismInplace, VecZnxBigSubSmallBInplace, VecZnxCopy, VecZnxDftCopy, VecZnxDftToVecZnxBigTmpA,
-        VecZnxNegateInplace, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotateInplace, VecZnxRshInplace, VecZnxSub,
-        VecZnxSubABInplace, VecZnxSwithcDegree, VmpPMatAlloc, VmpPMatPrepare,
+        ScratchAvailable, TakeMatZnx, TakeVecZnx, TakeVecZnxBig, TakeVecZnxDft, TakeVecZnxDftSlice, TakeVecZnxSlice,
+        VecZnxAddInplace, VecZnxAutomorphismInplace, VecZnxBigAutomorphismInplace, VecZnxBigSubSmallBInplace, VecZnxCopy,
+        VecZnxDftCopy, VecZnxDftToVecZnxBigTmpA, VecZnxNegateInplace, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes,
+        VecZnxRotateInplace, VecZnxRshInplace, VecZnxSub, VecZnxSubABInplace, VecZnxSwithcDegree,
     },
-    layouts::{Backend, Data, DataMut, DataRef, Module, Scratch},
+    layouts::{Backend, DataMut, DataRef, Module, Scratch},
     oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl},
 };
-use sampling::source::Source;
 
-use crate::{
-    BlindRotationKeyCGGI, BlindRotationKeyCGGIExec, BlindRotationKeyCGGIExecLayoutFamily, CCGIBlindRotationFamily, GLWEOps,
-    Infos, LookUpTable, LookUpTableRotationDirection, TakeGGLWE, TakeGLWECt, cggi_blind_rotate,
-    layouts::{
-        AutomorphismKey, GGSWCiphertext, GLWECiphertext, GLWESecret, GLWETensorKey, LWECiphertext, LWESecret,
-        prepared::{AutomorphismKeyExec, GLWESecretExec, GLWETensorKeyExec},
-    },
+use core::{GLWEOperations, TakeGGLWE, TakeGLWECt, layouts::Infos, trait_families::GLWETraceModuleFamily};
+
+use core::layouts::{GGSWCiphertext, GLWECiphertext, LWECiphertext, prepared::GGLWEAutomorphismKeyExec};
+
+use crate::tfhe::{
+    blind_rotation::{CCGIBlindRotationFamily, LookUpTable, LookUpTableRotationDirection, cggi_blind_rotate},
+    circuit_bootstrapping::CircuitBootstrappingKeyCGGIExec,
 };
-
-use crate::trait_families::{
-    AutomorphismKeyEncryptSkFamily, GGSWEncryptSkFamily, GLWESecretExecModuleFamily, GLWETensorKeyEncryptSkFamily,
-    GLWETraceModuleFamily,
-};
-
-pub struct CircuitBootstrappingKeyCGGI<D: Data> {
-    pub(crate) brk: BlindRotationKeyCGGI<D>,
-    pub(crate) tsk: GLWETensorKey<Vec<u8>>,
-    pub(crate) atk: HashMap<i64, AutomorphismKey<Vec<u8>>>,
-}
-
-impl CircuitBootstrappingKeyCGGI<Vec<u8>> {
-    pub fn generate<DLwe, DGlwe, B: Backend>(
-        module: &Module<B>,
-        basek: usize,
-        sk_lwe: &LWESecret<DLwe>,
-        sk_glwe: &GLWESecret<DGlwe>,
-        k_brk: usize,
-        rows_brk: usize,
-        k_trace: usize,
-        rows_trace: usize,
-        k_tsk: usize,
-        rows_tsk: usize,
-        source_xa: &mut Source,
-        source_xe: &mut Source,
-        sigma: f64,
-        scratch: &mut Scratch<B>,
-    ) -> Self
-    where
-        Module<B>: GGSWEncryptSkFamily<B>
-            + GLWESecretExecModuleFamily<B>
-            + VecZnxAddScalarInplace
-            + AutomorphismKeyEncryptSkFamily<B>
-            + VecZnxAutomorphism
-            + VecZnxSwithcDegree
-            + GLWETensorKeyEncryptSkFamily<B>,
-        DLwe: DataRef,
-        DGlwe: DataRef,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx + TakeScalarZnx + TakeSvpPPol<B> + TakeVecZnxBig<B>,
-    {
-        let mut auto_keys: HashMap<i64, AutomorphismKey<Vec<u8>>> = HashMap::new();
-        let gal_els: Vec<i64> = GLWECiphertext::trace_galois_elements(&module);
-        gal_els.iter().for_each(|gal_el| {
-            let mut key: AutomorphismKey<Vec<u8>> =
-                AutomorphismKey::alloc(sk_glwe.n(), basek, k_trace, rows_trace, 1, sk_glwe.rank());
-            key.encrypt_sk(
-                &module, *gal_el, &sk_glwe, source_xa, source_xe, sigma, scratch,
-            );
-            auto_keys.insert(*gal_el, key);
-        });
-
-        let sk_glwe_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk_glwe);
-
-        let mut brk: BlindRotationKeyCGGI<Vec<u8>> = BlindRotationKeyCGGI::alloc(
-            sk_glwe.n(),
-            sk_lwe.n(),
-            basek,
-            k_brk,
-            rows_brk,
-            sk_glwe.rank(),
-        );
-        brk.generate_from_sk(
-            module,
-            &sk_glwe_exec,
-            sk_lwe,
-            source_xa,
-            source_xe,
-            sigma,
-            scratch,
-        );
-
-        let mut tsk: GLWETensorKey<Vec<u8>> = GLWETensorKey::alloc(sk_glwe.n(), basek, k_tsk, rows_tsk, 1, sk_glwe.rank());
-        tsk.encrypt_sk(module, &sk_glwe, source_xa, source_xe, sigma, scratch);
-
-        Self {
-            brk,
-            atk: auto_keys,
-            tsk,
-        }
-    }
-}
-
-pub struct CircuitBootstrappingKeyCGGIExec<D: Data, B: Backend> {
-    pub(crate) brk: BlindRotationKeyCGGIExec<D, B>,
-    pub(crate) tsk: GLWETensorKeyExec<Vec<u8>, B>,
-    pub(crate) atk: HashMap<i64, AutomorphismKeyExec<Vec<u8>, B>>,
-}
-
-impl<B: Backend> CircuitBootstrappingKeyCGGIExec<Vec<u8>, B> {
-    pub fn from<DataOther: DataRef>(
-        module: &Module<B>,
-        other: &CircuitBootstrappingKeyCGGI<DataOther>,
-        scratch: &mut Scratch<B>,
-    ) -> CircuitBootstrappingKeyCGGIExec<Vec<u8>, B>
-    where
-        Module<B>: BlindRotationKeyCGGIExecLayoutFamily<B> + VmpPMatAlloc<B> + VmpPMatPrepare<B>,
-    {
-        let brk: BlindRotationKeyCGGIExec<Vec<u8>, B> = BlindRotationKeyCGGIExec::from(module, &other.brk, scratch);
-        let tsk: GLWETensorKeyExec<Vec<u8>, B> = GLWETensorKeyExec::from(module, &other.tsk, scratch);
-        let mut atk: HashMap<i64, AutomorphismKeyExec<Vec<u8>, B>> = HashMap::new();
-        for (key, value) in &other.atk {
-            atk.insert(*key, AutomorphismKeyExec::from(module, value, scratch));
-        }
-        CircuitBootstrappingKeyCGGIExec { brk, tsk, atk }
-    }
-}
 
 pub trait CGGICircuitBootstrapFamily<B: Backend> = VecZnxRotateInplace
     + VecZnxNormalizeInplace<B>
@@ -235,18 +126,16 @@ pub fn circuit_bootstrap_core_cggi<DRes, DLwe, DBrk, B: Backend>(
     DBrk: DataRef,
     Module<B>: CGGICircuitBootstrapFamily<B>,
     B: ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
-    Scratch<B>: TakeGGLWE<B>
-        + TakeVecZnxDftSlice<B>
+    Scratch<B>: TakeVecZnxDftSlice<B>
         + TakeVecZnxBig<B>
         + TakeVecZnxDft<B>
         + TakeVecZnx
         + ScratchAvailable
-        + TakeVecZnxSlice,
+        + TakeVecZnxSlice
+        + TakeMatZnx,
 {
     #[cfg(debug_assertions)]
     {
-        use crate::Infos;
-
         assert_eq!(res.n(), key.brk.n());
         assert_eq!(lwe.basek(), key.brk.basek());
         assert_eq!(res.basek(), key.brk.basek());
@@ -332,7 +221,7 @@ fn post_process<DataRes, DataA, B: Backend>(
     log_gap_in: usize,
     log_gap_out: usize,
     log_domain: usize,
-    auto_keys: &HashMap<i64, AutomorphismKeyExec<Vec<u8>, B>>,
+    auto_keys: &HashMap<i64, GGLWEAutomorphismKeyExec<Vec<u8>, B>>,
     scratch: &mut Scratch<B>,
 ) where
     DataRes: DataMut,
@@ -385,7 +274,7 @@ pub fn pack<D: DataMut, B: Backend>(
     module: &Module<B>,
     cts: &mut HashMap<usize, GLWECiphertext<D>>,
     log_gap_out: usize,
-    auto_keys: &HashMap<i64, AutomorphismKeyExec<Vec<u8>, B>>,
+    auto_keys: &HashMap<i64, GGLWEAutomorphismKeyExec<Vec<u8>, B>>,
     scratch: &mut Scratch<B>,
 ) where
     Module<B>: CGGICircuitBootstrapFamily<B>,
@@ -402,7 +291,7 @@ pub fn pack<D: DataMut, B: Backend>(
 
         let t = 16.min(1 << (log_n - 1 - i));
 
-        let auto_key: &AutomorphismKeyExec<Vec<u8>, B>;
+        let auto_key: &GGLWEAutomorphismKeyExec<Vec<u8>, B>;
         if i == 0 {
             auto_key = auto_keys.get(&-1).unwrap()
         } else {
@@ -444,7 +333,7 @@ fn combine<A: DataMut, D: DataMut, DataAK: DataRef, B: Backend>(
     a: Option<&mut GLWECiphertext<A>>,
     b: Option<&mut GLWECiphertext<D>>,
     i: usize,
-    auto_key: &AutomorphismKeyExec<DataAK, B>,
+    auto_key: &GGLWEAutomorphismKeyExec<DataAK, B>,
     scratch: &mut Scratch<B>,
 ) where
     Module<B>: CGGICircuitBootstrapFamily<B>,

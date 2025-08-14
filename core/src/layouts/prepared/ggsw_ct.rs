@@ -115,6 +115,12 @@ impl<D: Data, B: Backend> GGSWCiphertextExec<D, B> {
     }
 }
 
+impl<D: DataRef, B: Backend> GGSWCiphertextExec<D, B> {
+    pub fn data(&self) -> &VmpPMat<D, B> {
+        &self.data
+    }
+}
+
 impl<DataSelf: DataMut, B: Backend> GGSWCiphertextExec<DataSelf, B> {
     pub fn prepare<DataOther>(&mut self, module: &Module<B>, other: &GGSWCiphertext<DataOther>, scratch: &mut Scratch<B>)
     where

@@ -1,7 +1,7 @@
 use backend::hal::{
     api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxFillUniform, VecZnxStd, VecZnxSwithcDegree,
-        VmpPMatAlloc, VmpPMatPrepare,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxFillUniform, VecZnxSwithcDegree, VmpPMatAlloc,
+        VmpPMatPrepare,
     },
     layouts::{Backend, Module, ScratchOwned},
     oep::{
@@ -13,8 +13,8 @@ use sampling::source::Source;
 
 use crate::{
     layouts::{
-        GLWECiphertext, GLWEPlaintext, GLWESecret, GGLWESwitchingKey, Infos,
-        prepared::{GLWESecretExec, GGLWESwitchingKeyExec},
+        GGLWESwitchingKey, GLWECiphertext, GLWEPlaintext, GLWESecret, Infos,
+        prepared::{GGLWESwitchingKeyExec, GLWESecretExec},
     },
     noise::log2_std_noise_gglwe_product,
     trait_families::{GLWEDecryptFamily, GLWEKeyswitchFamily},
@@ -37,7 +37,6 @@ pub fn test_glwe_keyswitch<B: Backend>(
         + GLWESecretExecModuleFamily<B>
         + GLWEKeyswitchFamily<B>
         + GLWEDecryptFamily<B>
-        + VecZnxStd
         + VecZnxSwithcDegree
         + VecZnxAddScalarInplace
         + VmpPMatAlloc<B>
@@ -142,7 +141,6 @@ pub fn test_glwe_keyswitch_inplace<B: Backend>(
         + GLWESecretExecModuleFamily<B>
         + GLWEKeyswitchFamily<B>
         + GLWEDecryptFamily<B>
-        + VecZnxStd
         + VecZnxSwithcDegree
         + VecZnxAddScalarInplace
         + VmpPMatAlloc<B>

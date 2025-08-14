@@ -9,7 +9,7 @@ use sampling::source::Source;
 
 use crate::{
     TakeGLWESecret, TakeGLWESecretExec,
-    layouts::{GLWESecret, GGLWESwitchingKey, Infos, LWESecret, LWESwitchingKey, prepared::GLWESecretExec},
+    layouts::{GGLWESwitchingKey, GLWESecret, Infos, LWESecret, LWESwitchingKey, prepared::GLWESecretExec},
 };
 
 use crate::trait_families::{GGLWEEncryptSkFamily, GGLWESwitchingKeyEncryptSkFamily, GLWESecretExecModuleFamily};

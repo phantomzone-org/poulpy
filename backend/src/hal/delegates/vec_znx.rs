@@ -3,22 +3,19 @@ use sampling::source::Source;
 use crate::hal::{
     api::{
         VecZnxAdd, VecZnxAddDistF64, VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxAutomorphism,
-        VecZnxAutomorphismInplace, VecZnxCopy, VecZnxDecodeCoeffsi64, VecZnxDecodeVecFloat, VecZnxDecodeVeci64,
-        VecZnxEncodeCoeffsi64, VecZnxEncodeVeci64, VecZnxFillDistF64, VecZnxFillNormal, VecZnxFillUniform, VecZnxLshInplace,
+        VecZnxAutomorphismInplace, VecZnxCopy, VecZnxFillDistF64, VecZnxFillNormal, VecZnxFillUniform, VecZnxLshInplace,
         VecZnxMerge, VecZnxMulXpMinusOne, VecZnxMulXpMinusOneInplace, VecZnxNegate, VecZnxNegateInplace, VecZnxNormalize,
         VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace, VecZnxRshInplace, VecZnxSplit,
-        VecZnxStd, VecZnxSub, VecZnxSubABInplace, VecZnxSubBAInplace, VecZnxSubScalarInplace, VecZnxSwithcDegree,
+        VecZnxSub, VecZnxSubABInplace, VecZnxSubBAInplace, VecZnxSubScalarInplace, VecZnxSwithcDegree,
     },
     layouts::{Backend, Module, ScalarZnxToRef, Scratch, VecZnxToMut, VecZnxToRef},
     oep::{
         VecZnxAddDistF64Impl, VecZnxAddImpl, VecZnxAddInplaceImpl, VecZnxAddNormalImpl, VecZnxAddScalarInplaceImpl,
-        VecZnxAutomorphismImpl, VecZnxAutomorphismInplaceImpl, VecZnxCopyImpl, VecZnxDecodeCoeffsi64Impl,
-        VecZnxDecodeVecFloatImpl, VecZnxDecodeVeci64Impl, VecZnxEncodeCoeffsi64Impl, VecZnxEncodeVeci64Impl,
-        VecZnxFillDistF64Impl, VecZnxFillNormalImpl, VecZnxFillUniformImpl, VecZnxLshInplaceImpl, VecZnxMergeImpl,
-        VecZnxMulXpMinusOneImpl, VecZnxMulXpMinusOneInplaceImpl, VecZnxNegateImpl, VecZnxNegateInplaceImpl, VecZnxNormalizeImpl,
-        VecZnxNormalizeInplaceImpl, VecZnxNormalizeTmpBytesImpl, VecZnxRotateImpl, VecZnxRotateInplaceImpl, VecZnxRshInplaceImpl,
-        VecZnxSplitImpl, VecZnxStdImpl, VecZnxSubABInplaceImpl, VecZnxSubBAInplaceImpl, VecZnxSubImpl,
-        VecZnxSubScalarInplaceImpl, VecZnxSwithcDegreeImpl,
+        VecZnxAutomorphismImpl, VecZnxAutomorphismInplaceImpl, VecZnxCopyImpl, VecZnxFillDistF64Impl, VecZnxFillNormalImpl,
+        VecZnxFillUniformImpl, VecZnxLshInplaceImpl, VecZnxMergeImpl, VecZnxMulXpMinusOneImpl, VecZnxMulXpMinusOneInplaceImpl,
+        VecZnxNegateImpl, VecZnxNegateInplaceImpl, VecZnxNormalizeImpl, VecZnxNormalizeInplaceImpl, VecZnxNormalizeTmpBytesImpl,
+        VecZnxRotateImpl, VecZnxRotateInplaceImpl, VecZnxRshInplaceImpl, VecZnxSplitImpl, VecZnxSubABInplaceImpl,
+        VecZnxSubBAInplaceImpl, VecZnxSubImpl, VecZnxSubScalarInplaceImpl, VecZnxSwithcDegreeImpl,
     },
 };
 
@@ -325,18 +322,6 @@ where
     }
 }
 
-impl<B> VecZnxStd for Module<B>
-where
-    B: Backend + VecZnxStdImpl<B>,
-{
-    fn vec_znx_std<A>(&self, basek: usize, a: &A, a_col: usize) -> f64
-    where
-        A: VecZnxToRef,
-    {
-        B::vec_znx_std_impl(self, basek, a, a_col)
-    }
-}
-
 impl<B> VecZnxFillUniform for Module<B>
 where
     B: Backend + VecZnxFillUniformImpl<B>,
@@ -426,65 +411,5 @@ where
         R: VecZnxToMut,
     {
         B::vec_znx_add_normal_impl(self, basek, res, res_col, k, source, sigma, bound);
-    }
-}
-
-impl<B> VecZnxEncodeVeci64 for Module<B>
-where
-    B: Backend + VecZnxEncodeVeci64Impl<B>,
-{
-    fn encode_vec_i64<R>(&self, basek: usize, res: &mut R, res_col: usize, k: usize, data: &[i64], log_max: usize)
-    where
-        R: VecZnxToMut,
-    {
-        B::encode_vec_i64_impl(self, basek, res, res_col, k, data, log_max);
-    }
-}
-
-impl<B> VecZnxEncodeCoeffsi64 for Module<B>
-where
-    B: Backend + VecZnxEncodeCoeffsi64Impl<B>,
-{
-    fn encode_coeff_i64<R>(&self, basek: usize, res: &mut R, res_col: usize, k: usize, i: usize, data: i64, log_max: usize)
-    where
-        R: VecZnxToMut,
-    {
-        B::encode_coeff_i64_impl(self, basek, res, res_col, k, i, data, log_max);
-    }
-}
-
-impl<B> VecZnxDecodeVeci64 for Module<B>
-where
-    B: Backend + VecZnxDecodeVeci64Impl<B>,
-{
-    fn decode_vec_i64<R>(&self, basek: usize, res: &R, res_col: usize, k: usize, data: &mut [i64])
-    where
-        R: VecZnxToRef,
-    {
-        B::decode_vec_i64_impl(self, basek, res, res_col, k, data);
-    }
-}
-
-impl<B> VecZnxDecodeCoeffsi64 for Module<B>
-where
-    B: Backend + VecZnxDecodeCoeffsi64Impl<B>,
-{
-    fn decode_coeff_i64<R>(&self, basek: usize, res: &R, res_col: usize, k: usize, i: usize) -> i64
-    where
-        R: VecZnxToRef,
-    {
-        B::decode_coeff_i64_impl(self, basek, res, res_col, k, i)
-    }
-}
-
-impl<B> VecZnxDecodeVecFloat for Module<B>
-where
-    B: Backend + VecZnxDecodeVecFloatImpl<B>,
-{
-    fn decode_vec_float<R>(&self, basek: usize, res: &R, col_i: usize, data: &mut [rug::Float])
-    where
-        R: VecZnxToRef,
-    {
-        B::decode_vec_float_impl(self, basek, res, col_i, data);
     }
 }

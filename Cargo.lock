@@ -564,6 +564,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "schemes"
+version = "0.1.0"
+dependencies = [
+ "backend",
+ "byteorder",
+ "core",
+ "itertools 0.14.0",
+ "sampling",
+]
+
+[[package]]
 name = "serde"
 version = "1.0.219"
 source = "registry+https://github.com/rust-lang/crates.io-index"

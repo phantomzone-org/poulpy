@@ -1,5 +1,5 @@
 use backend::hal::{
-    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxStd, VecZnxSubScalarInplace, ZnxZero},
+    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxSubScalarInplace, ZnxZero},
     layouts::{Backend, DataRef, Module, ScalarZnx, ScratchOwned},
     oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeVecZnxBigImpl, TakeVecZnxDftImpl},
 };
@@ -19,7 +19,7 @@ impl<D: DataRef> GGLWECiphertext<D> {
     ) where
         DataSk: DataRef,
         DataWant: DataRef,
-        Module<B>: GLWEDecryptFamily<B> + VecZnxStd + VecZnxSubScalarInplace,
+        Module<B>: GLWEDecryptFamily<B> + VecZnxSubScalarInplace,
         B: TakeVecZnxDftImpl<B> + TakeVecZnxBigImpl<B> + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
     {
         let digits: usize = self.digits();
@@ -47,7 +47,7 @@ impl<D: DataRef> GGLWECiphertext<D> {
                     col_i,
                 );
 
-                let noise_have: f64 = module.vec_znx_std(basek, &pt.data, 0).log2();
+                let noise_have: f64 = pt.data.std(basek, 0).log2();
 
                 assert!(
                     noise_have <= max_noise,

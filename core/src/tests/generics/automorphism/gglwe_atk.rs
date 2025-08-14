@@ -1,7 +1,7 @@
 use backend::hal::{
     api::{
         ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxAutomorphism, VecZnxAutomorphismInplace, VecZnxCopy,
-        VecZnxStd, VecZnxSubScalarInplace, VecZnxSwithcDegree, VmpPMatAlloc, VmpPMatPrepare,
+        VecZnxSubScalarInplace, VecZnxSwithcDegree, VmpPMatAlloc, VmpPMatPrepare,
     },
     layouts::{Backend, Module, ScratchOwned},
     oep::{
@@ -44,7 +44,6 @@ pub fn test_gglwe_automorphism_key_automorphism<B: Backend>(
         + VecZnxAutomorphismInplace
         + GLWEDecryptFamily<B>
         + VecZnxSubScalarInplace
-        + VecZnxStd
         + VecZnxCopy
         + VmpPMatAlloc<B>
         + VmpPMatPrepare<B>,
@@ -140,7 +139,7 @@ pub fn test_gglwe_automorphism_key_automorphism<B: Backend>(
                 col_i,
             );
 
-            let noise_have: f64 = module.vec_znx_std(basek, &pt.data, 0).log2();
+            let noise_have: f64 = pt.data.std(basek, 0).log2();
             let noise_want: f64 = log2_std_noise_gglwe_product(
                 n as f64,
                 basek * digits,
@@ -185,7 +184,6 @@ pub fn test_gglwe_automorphism_key_automorphism_inplace<B: Backend>(
         + VecZnxAutomorphismInplace
         + GLWEDecryptFamily<B>
         + VecZnxSubScalarInplace
-        + VecZnxStd
         + VecZnxCopy
         + VmpPMatAlloc<B>
         + VmpPMatPrepare<B>,
@@ -280,7 +278,7 @@ pub fn test_gglwe_automorphism_key_automorphism_inplace<B: Backend>(
                 col_i,
             );
 
-            let noise_have: f64 = module.vec_znx_std(basek, &pt.data, 0).log2();
+            let noise_have: f64 = pt.data.std(basek, 0).log2();
             let noise_want: f64 = log2_std_noise_gglwe_product(
                 n as f64,
                 basek * digits,

@@ -1,5 +1,5 @@
 use backend::hal::{
-    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxCopy, VecZnxDftAlloc, VecZnxFillUniform, VecZnxStd, VecZnxSubABInplace},
+    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxCopy, VecZnxDftAlloc, VecZnxFillUniform, VecZnxSubABInplace},
     layouts::{Backend, Module, ScratchOwned},
     oep::{
         ScratchAvailableImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeScalarZnxImpl, TakeSvpPPolImpl,
@@ -20,8 +20,7 @@ use crate::{
 
 use crate::trait_families::{GLWEDecryptFamily, GLWEEncryptPkFamily, GLWEEncryptSkFamily, GLWESecretExecModuleFamily};
 
-pub trait EncryptionTestModuleFamily<B: Backend> =
-    GLWEDecryptFamily<B> + VecZnxStd + GLWESecretExecModuleFamily<B> + GLWEEncryptPkFamily<B>;
+pub trait EncryptionTestModuleFamily<B: Backend> = GLWEDecryptFamily<B> + GLWESecretExecModuleFamily<B> + GLWEEncryptPkFamily<B>;
 
 pub fn test_glwe_encrypt_sk<B: Backend>(module: &Module<B>, basek: usize, k_ct: usize, k_pt: usize, sigma: f64, rank: usize)
 where
@@ -69,7 +68,7 @@ where
 
     pt_want.sub_inplace_ab(module, &pt_have);
 
-    let noise_have: f64 = module.vec_znx_std(basek, &pt_want.data, 0) * (ct.k() as f64).exp2();
+    let noise_have: f64 = pt_want.data.std(basek, 0) * (ct.k() as f64).exp2();
     let noise_want: f64 = sigma;
 
     assert!(noise_have <= noise_want + 0.2);
@@ -133,7 +132,7 @@ pub fn test_glwe_compressed_encrypt_sk<B: Backend>(
 
     pt_want.sub_inplace_ab(module, &pt_have);
 
-    let noise_have: f64 = module.vec_znx_std(basek, &pt_want.data, 0) * (ct.k() as f64).exp2();
+    let noise_have: f64 = pt_want.data.std(basek, 0) * (ct.k() as f64).exp2();
     let noise_want: f64 = sigma;
 
     assert!(
@@ -184,7 +183,7 @@ where
     );
     ct.decrypt(module, &mut pt, &sk_exec, scratch.borrow());
 
-    assert!((sigma - module.vec_znx_std(basek, &pt.data, 0) * (k_ct as f64).exp2()) <= 0.2);
+    assert!((sigma - pt.data.std(basek, 0) * (k_ct as f64).exp2()) <= 0.2);
 }
 
 pub fn test_glwe_encrypt_pk<B: Backend>(module: &Module<B>, basek: usize, k_ct: usize, k_pk: usize, sigma: f64, rank: usize)
@@ -241,7 +240,7 @@ where
 
     pt_want.sub_inplace_ab(module, &pt_have);
 
-    let noise_have: f64 = module.vec_znx_std(basek, &pt_want.data, 0).log2();
+    let noise_have: f64 = pt_want.data.std(basek, 0).log2();
     let noise_want: f64 = ((((rank as f64) + 1.0) * n as f64 * 0.5 * sigma * sigma).sqrt()).log2() - (k_ct as f64);
 
     assert!(

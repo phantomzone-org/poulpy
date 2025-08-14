@@ -4,13 +4,14 @@ use backend::hal::{
 };
 use sampling::source::Source;
 
-use crate::{
-    Distribution, Infos,
-    layouts::{LWESecret, compressed::GGSWCiphertextCompressed, prepared::GLWESecretExec},
-};
 use std::fmt;
 
-use crate::trait_families::GGSWEncryptSkFamily;
+use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
+use core::{
+    Distribution,
+    layouts::{Infos, LWESecret, compressed::GGSWCiphertextCompressed, prepared::GLWESecretExec},
+    trait_families::GGSWEncryptSkFamily,
+};
 
 #[derive(Clone)]
 pub struct BlindRotationKeyCGGICompressed<D: Data> {
@@ -63,8 +64,6 @@ impl<D: DataMut> FillUniform for BlindRotationKeyCGGICompressed<D> {
             .for_each(|key| key.fill_uniform(source));
     }
 }
-
-use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
 impl<D: DataMut> ReaderFrom for BlindRotationKeyCGGICompressed<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
@@ -183,7 +182,7 @@ impl<D: DataMut> BlindRotationKeyCGGICompressed<D> {
             assert_eq!(self.keys.len(), sk_lwe.n());
             assert!(sk_glwe.n() <= module.n());
             assert_eq!(sk_glwe.rank(), self.keys[0].rank());
-            match sk_lwe.dist {
+            match sk_lwe.dist() {
                 Distribution::BinaryBlock(_)
                 | Distribution::BinaryFixed(_)
                 | Distribution::BinaryProb(_)
@@ -194,10 +193,10 @@ impl<D: DataMut> BlindRotationKeyCGGICompressed<D> {
             }
         }
 
-        self.dist = sk_lwe.dist;
+        self.dist = sk_lwe.dist();
 
         let mut pt: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(sk_glwe.n(), 1);
-        let sk_ref: ScalarZnx<&[u8]> = sk_lwe.data.to_ref();
+        let sk_ref: ScalarZnx<&[u8]> = sk_lwe.data().to_ref();
 
         let mut source_xa: Source = Source::new(seed_xa);
 

@@ -1,7 +1,7 @@
 use backend::hal::{
     api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxCopy, VecZnxStd, VecZnxSubScalarInplace,
-        VecZnxSwithcDegree, VmpPMatAlloc, VmpPMatPrepare,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxCopy, VecZnxSubScalarInplace, VecZnxSwithcDegree,
+        VmpPMatAlloc, VmpPMatPrepare,
     },
     layouts::{Backend, Module, ScratchOwned},
     oep::{
@@ -13,8 +13,8 @@ use sampling::source::Source;
 
 use crate::{
     layouts::{
-        GLWESecret, GGLWESwitchingKey,
-        prepared::{GLWESecretExec, GGLWESwitchingKeyExec},
+        GGLWESwitchingKey, GLWESecret,
+        prepared::{GGLWESwitchingKeyExec, GLWESecretExec},
     },
     noise::log2_std_noise_gglwe_product,
     trait_families::{GLWEDecryptFamily, GLWEKeyswitchFamily},
@@ -39,7 +39,6 @@ pub fn test_gglwe_switching_key_keyswitch<B: Backend>(
         + GLWEDecryptFamily<B>
         + VecZnxSwithcDegree
         + VecZnxAddScalarInplace
-        + VecZnxStd
         + VecZnxSubScalarInplace
         + VecZnxCopy
         + VmpPMatAlloc<B>
@@ -177,7 +176,6 @@ pub fn test_gglwe_switching_key_keyswitch_inplace<B: Backend>(
         + GLWEDecryptFamily<B>
         + VecZnxSwithcDegree
         + VecZnxAddScalarInplace
-        + VecZnxStd
         + VecZnxSubScalarInplace
         + VecZnxCopy
         + VmpPMatAlloc<B>
@@ -203,7 +201,8 @@ pub fn test_gglwe_switching_key_keyswitch_inplace<B: Backend>(
 
     let mut ct_gglwe_s0s1: GGLWESwitchingKey<Vec<u8>> =
         GGLWESwitchingKey::alloc(n, basek, k_ct, rows, digits_in, rank_in, rank_out);
-    let mut ct_gglwe_s1s2: GGLWESwitchingKey<Vec<u8>> = GGLWESwitchingKey::alloc(n, basek, k_ksk, rows, digits, rank_out, rank_out);
+    let mut ct_gglwe_s1s2: GGLWESwitchingKey<Vec<u8>> =
+        GGLWESwitchingKey::alloc(n, basek, k_ksk, rows, digits, rank_out, rank_out);
 
     let mut source_xs: Source = Source::new([0u8; 32]);
     let mut source_xe: Source = Source::new([0u8; 32]);

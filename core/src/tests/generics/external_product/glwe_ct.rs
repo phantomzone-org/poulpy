@@ -1,7 +1,7 @@
 use backend::hal::{
     api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxFillUniform, VecZnxRotateInplace, VecZnxStd,
-        VmpPMatAlloc, VmpPMatPrepare, ZnxViewMut,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxFillUniform, VecZnxRotateInplace, VmpPMatAlloc,
+        VmpPMatPrepare, ZnxViewMut,
     },
     layouts::{Backend, Module, ScalarZnx, ScratchOwned},
     oep::{
@@ -37,7 +37,6 @@ pub fn test_glwe_external_product<B: Backend>(
         + GLWEExternalProductFamily<B>
         + VecZnxAddScalarInplace
         + VecZnxRotateInplace
-        + VecZnxStd
         + VmpPMatAlloc<B>
         + VmpPMatPrepare<B>,
     B: TakeVecZnxDftImpl<B>
@@ -155,7 +154,6 @@ pub fn test_glwe_external_product_inplace<B: Backend>(
         + GLWEExternalProductFamily<B>
         + VecZnxAddScalarInplace
         + VecZnxRotateInplace
-        + VecZnxStd
         + VmpPMatAlloc<B>
         + VmpPMatPrepare<B>,
     B: TakeVecZnxDftImpl<B>

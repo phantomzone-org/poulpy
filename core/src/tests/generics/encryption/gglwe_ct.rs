@@ -1,7 +1,7 @@
 use backend::hal::{
     api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxCopy, VecZnxStd, VecZnxSubScalarInplace,
-        VecZnxSwithcDegree, VmpPMatAlloc, VmpPMatPrepare,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxCopy, VecZnxSubScalarInplace, VecZnxSwithcDegree,
+        VmpPMatAlloc, VmpPMatPrepare,
     },
     layouts::{Backend, Module, ScratchOwned},
     oep::{
@@ -12,7 +12,7 @@ use backend::hal::{
 use sampling::source::Source;
 
 use crate::{
-    layouts::{GLWESecret, GGLWESwitchingKey, compressed::GGLWESwitchingKeyCompressed, prepared::GLWESecretExec},
+    layouts::{GGLWESwitchingKey, GLWESecret, compressed::GGLWESwitchingKeyCompressed, prepared::GLWESecretExec},
     trait_families::{Decompress, GLWEDecryptFamily},
 };
 
@@ -32,7 +32,6 @@ pub fn test_gglwe_switching_key_encrypt_sk<B: Backend>(
         + GLWEDecryptFamily<B>
         + VecZnxSwithcDegree
         + VecZnxAddScalarInplace
-        + VecZnxStd
         + VecZnxSubScalarInplace
         + VecZnxCopy
         + VmpPMatAlloc<B>
@@ -97,7 +96,6 @@ pub fn test_gglwe_switching_key_compressed_encrypt_sk<B: Backend>(
         + GLWEDecryptFamily<B>
         + VecZnxSwithcDegree
         + VecZnxAddScalarInplace
-        + VecZnxStd
         + VecZnxSubScalarInplace
         + VecZnxCopy
         + VmpPMatAlloc<B>

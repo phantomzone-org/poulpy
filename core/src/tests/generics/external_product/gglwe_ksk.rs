@@ -1,7 +1,7 @@
 use backend::hal::{
     api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxCopy, VecZnxRotateInplace, VecZnxStd,
-        VecZnxSubScalarInplace, VecZnxSwithcDegree, VmpPMatAlloc, VmpPMatPrepare, ZnxViewMut,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxCopy, VecZnxRotateInplace, VecZnxSubScalarInplace,
+        VecZnxSwithcDegree, VmpPMatAlloc, VmpPMatPrepare, ZnxViewMut,
     },
     layouts::{Backend, Module, ScalarZnx, ScalarZnxToMut, ScratchOwned},
     oep::{
@@ -13,7 +13,7 @@ use sampling::source::Source;
 
 use crate::{
     layouts::{
-        GGSWCiphertext, GLWESecret, GGLWESwitchingKey,
+        GGLWESwitchingKey, GGSWCiphertext, GLWESecret,
         prepared::{GGSWCiphertextExec, GLWESecretExec},
     },
     noise::noise_ggsw_product,
@@ -38,7 +38,6 @@ pub fn test_gglwe_switching_key_external_product<B: Backend>(
         + GLWEDecryptFamily<B>
         + VecZnxSwithcDegree
         + VecZnxAddScalarInplace
-        + VecZnxStd
         + VecZnxSubScalarInplace
         + VecZnxCopy
         + VmpPMatAlloc<B>
@@ -63,7 +62,8 @@ pub fn test_gglwe_switching_key_external_product<B: Backend>(
     let rows: usize = k_in.div_ceil(basek * digits);
     let digits_in: usize = 1;
 
-    let mut ct_gglwe_in: GGLWESwitchingKey<Vec<u8>> = GGLWESwitchingKey::alloc(n, basek, k_in, rows, digits_in, rank_in, rank_out);
+    let mut ct_gglwe_in: GGLWESwitchingKey<Vec<u8>> =
+        GGLWESwitchingKey::alloc(n, basek, k_in, rows, digits_in, rank_in, rank_out);
     let mut ct_gglwe_out: GGLWESwitchingKey<Vec<u8>> =
         GGLWESwitchingKey::alloc(n, basek, k_out, rows, digits_in, rank_in, rank_out);
     let mut ct_rgsw: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(n, basek, k_ggsw, rows, digits, rank_out);
@@ -167,7 +167,6 @@ pub fn test_gglwe_switching_key_external_product_inplace<B: Backend>(
         + GLWEDecryptFamily<B>
         + VecZnxSwithcDegree
         + VecZnxAddScalarInplace
-        + VecZnxStd
         + VecZnxSubScalarInplace
         + VecZnxCopy
         + VmpPMatAlloc<B>

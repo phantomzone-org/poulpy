@@ -1,7 +1,7 @@
 use backend::hal::{
     api::{
         ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxAutomorphism, VecZnxAutomorphismInplace,
-        VecZnxFillUniform, VecZnxStd, VecZnxSwithcDegree, VmpPMatAlloc, VmpPMatPrepare,
+        VecZnxFillUniform, VecZnxSwithcDegree, VmpPMatAlloc, VmpPMatPrepare,
     },
     layouts::{Backend, Module, ScratchOwned},
     oep::{
@@ -41,7 +41,6 @@ pub fn test_glwe_automorphism<B: Backend>(
         + VecZnxSwithcDegree
         + VecZnxAddScalarInplace
         + VecZnxAutomorphismInplace
-        + VecZnxStd
         + VmpPMatAlloc<B>
         + VmpPMatPrepare<B>,
     B: TakeVecZnxDftImpl<B>
@@ -149,7 +148,6 @@ pub fn test_glwe_automorphism_inplace<B: Backend>(
         + VecZnxSwithcDegree
         + VecZnxAddScalarInplace
         + VecZnxAutomorphismInplace
-        + VecZnxStd
         + VmpPMatAlloc<B>
         + VmpPMatPrepare<B>,
     B: TakeVecZnxDftImpl<B>

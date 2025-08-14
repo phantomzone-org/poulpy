@@ -1,7 +1,7 @@
 use backend::hal::{
     api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxAutomorphismInplace, VecZnxEncodeCoeffsi64,
-        VecZnxSwithcDegree, VmpPMatAlloc, VmpPMatPrepare, ZnxView,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxAutomorphismInplace, VecZnxSwithcDegree,
+        VmpPMatAlloc, VmpPMatPrepare, ZnxView,
     },
     layouts::{Backend, Module, ScratchOwned},
     oep::{
@@ -26,7 +26,6 @@ where
         + VecZnxSwithcDegree
         + VecZnxAddScalarInplace
         + GLWEKeyswitchFamily<B>
-        + VecZnxEncodeCoeffsi64
         + VecZnxAutomorphismInplace
         + VmpPMatAlloc<B>
         + VmpPMatPrepare<B>
@@ -75,7 +74,7 @@ where
     let data: i64 = 17;
 
     let mut lwe_pt: LWEPlaintext<Vec<u8>> = LWEPlaintext::alloc(basek, k_lwe_pt);
-    module.encode_coeff_i64(basek, &mut lwe_pt.data, 0, k_lwe_pt, 0, data, k_lwe_pt);
+    lwe_pt.encode_i64(data, k_lwe_pt);
 
     let mut lwe_ct: LWECiphertext<Vec<u8>> = LWECiphertext::alloc(n_lwe, basek, k_lwe_ct);
     lwe_ct.encrypt_sk(
@@ -118,7 +117,6 @@ where
         + VecZnxSwithcDegree
         + VecZnxAddScalarInplace
         + GLWEKeyswitchFamily<B>
-        + VecZnxEncodeCoeffsi64
         + VecZnxAutomorphismInplace
         + VmpPMatAlloc<B>
         + VmpPMatPrepare<B>
@@ -166,7 +164,7 @@ where
 
     let data: i64 = 17;
     let mut glwe_pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(n, basek, k_glwe_ct);
-    module.encode_coeff_i64(basek, &mut glwe_pt.data, 0, k_lwe_pt, 0, data, k_lwe_pt);
+    glwe_pt.encode_coeff_i64(data, k_lwe_pt, 0);
 
     let mut glwe_ct = GLWECiphertext::alloc(n, basek, k_glwe_ct, rank);
     glwe_ct.encrypt_sk(

@@ -1,5 +1,5 @@
 [workspace]
-members = ["backend", "core", "sampling", "utils"]
+members = ["backend", "core", "sampling", "utils", "schemes"]
 resolver = "3"
 
 [workspace.dependencies]

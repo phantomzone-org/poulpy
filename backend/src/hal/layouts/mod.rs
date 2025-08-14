@@ -1,8 +1,10 @@
+mod encoding;
 mod mat_znx;
 mod module;
 mod scalar_znx;
 mod scratch;
 mod serialization;
+mod stats;
 mod svp_ppol;
 mod vec_znx;
 mod vec_znx_big;

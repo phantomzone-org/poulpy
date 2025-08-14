@@ -5,7 +5,7 @@ use backend::hal::{
 
 use crate::{
     layouts::{
-        GGLWEAutomorphismKey, GLWECiphertext, GGLWESwitchingKey, Infos,
+        GGLWEAutomorphismKey, GGLWESwitchingKey, GLWECiphertext, Infos,
         prepared::{GGLWEAutomorphismKeyExec, GGLWESwitchingKeyExec},
     },
     trait_families::GLWEKeyswitchFamily,

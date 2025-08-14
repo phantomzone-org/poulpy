@@ -1,11 +1,11 @@
 use backend::hal::tests::serialization::test_reader_writer_interface;
 
 use crate::layouts::{
-    GGLWEAutomorphismKey, GGLWECiphertext, GGLWETensorKey, GGSWCiphertext, GLWECiphertext, GGLWESwitchingKey,
+    GGLWEAutomorphismKey, GGLWECiphertext, GGLWESwitchingKey, GGLWETensorKey, GGSWCiphertext, GLWECiphertext,
     GLWEToLWESwitchingKey, LWECiphertext, LWESwitchingKey, LWEToGLWESwitchingKey,
     compressed::{
-        GGLWEAutomorphismKeyCompressed, GGLWECiphertextCompressed, GGSWCiphertextCompressed, GLWECiphertextCompressed,
-        GGLWESwitchingKeyCompressed, GGLWETensorKeyCompressed, GLWEToLWESwitchingKeyCompressed, LWECiphertextCompressed,
+        GGLWEAutomorphismKeyCompressed, GGLWECiphertextCompressed, GGLWESwitchingKeyCompressed, GGLWETensorKeyCompressed,
+        GGSWCiphertextCompressed, GLWECiphertextCompressed, GLWEToLWESwitchingKeyCompressed, LWECiphertextCompressed,
         LWESwitchingKeyCompressed, LWEToGLWESwitchingKeyCompressed,
     },
 };

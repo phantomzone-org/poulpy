@@ -7,11 +7,11 @@ use backend::hal::{
 use crate::{
     dist::Distribution,
     layouts::{
-        GGLWEAutomorphismKey, GGLWECiphertext, GGLWETensorKey, GGSWCiphertext, GLWECiphertext, GLWEPlaintext, GLWEPublicKey,
-        GLWESecret, GGLWESwitchingKey, Infos,
+        GGLWEAutomorphismKey, GGLWECiphertext, GGLWESwitchingKey, GGLWETensorKey, GGSWCiphertext, GLWECiphertext, GLWEPlaintext,
+        GLWEPublicKey, GLWESecret, Infos,
         prepared::{
-            GGLWEAutomorphismKeyExec, GGLWECiphertextExec, GGSWCiphertextExec, GLWEPublicKeyExec, GLWESecretExec,
-            GGLWESwitchingKeyExec, GGLWETensorKeyExec,
+            GGLWEAutomorphismKeyExec, GGLWECiphertextExec, GGLWESwitchingKeyExec, GGLWETensorKeyExec, GGSWCiphertextExec,
+            GLWEPublicKeyExec, GLWESecretExec,
         },
     },
 };

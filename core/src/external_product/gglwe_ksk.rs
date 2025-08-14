@@ -4,7 +4,7 @@ use backend::hal::{
 };
 
 use crate::{
-    layouts::{GLWECiphertext, GGLWESwitchingKey, Infos, prepared::GGSWCiphertextExec},
+    layouts::{GGLWESwitchingKey, GLWECiphertext, Infos, prepared::GGSWCiphertextExec},
     trait_families::GLWEExternalProductFamily,
 };
 

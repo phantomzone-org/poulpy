@@ -3,9 +3,8 @@ use std::collections::HashMap;
 use backend::hal::{
     api::{
         ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxAutomorphism, VecZnxBigAutomorphismInplace,
-        VecZnxBigSubSmallBInplace, VecZnxCopy, VecZnxEncodeVeci64, VecZnxFillUniform, VecZnxNormalizeInplace,
-        VecZnxRotateInplace, VecZnxRshInplace, VecZnxStd, VecZnxSubABInplace, VecZnxSwithcDegree, VmpPMatAlloc, VmpPMatPrepare,
-        ZnxView, ZnxViewMut,
+        VecZnxBigSubSmallBInplace, VecZnxCopy, VecZnxFillUniform, VecZnxNormalizeInplace, VecZnxRotateInplace, VecZnxRshInplace,
+        VecZnxSubABInplace, VecZnxSwithcDegree, VmpPMatAlloc, VmpPMatPrepare, ZnxView, ZnxViewMut,
     },
     layouts::{Backend, Module, ScratchOwned},
     oep::{
@@ -30,10 +29,8 @@ pub trait TraceTestModuleFamily<B: Backend> = GGLWESwitchingKeyEncryptSkFamily<B
     + GLWESecretExecModuleFamily<B>
     + GLWEKeyswitchFamily<B>
     + GLWEDecryptFamily<B>
-    + VecZnxStd
     + VecZnxSwithcDegree
     + VecZnxAddScalarInplace
-    + VecZnxEncodeVeci64
     + VecZnxRotateInplace
     + VecZnxBigSubSmallBInplace<B>
     + VecZnxBigAutomorphismInplace<B>
@@ -127,7 +124,7 @@ where
     module.vec_znx_sub_ab_inplace(&mut pt_want.data, 0, &pt_have.data, 0);
     module.vec_znx_normalize_inplace(basek, &mut pt_want.data, 0, scratch.borrow());
 
-    let noise_have: f64 = module.vec_znx_std(basek, &pt_want.data, 0).log2();
+    let noise_have: f64 = pt_want.std().log2();
 
     let mut noise_want: f64 = var_noise_gglwe_product(
         n as f64,

@@ -1,7 +1,7 @@
 use backend::hal::{
     api::{
         ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxBigAlloc, VecZnxBigNormalize, VecZnxDftAlloc,
-        VecZnxDftToVecZnxBigTmpA, VecZnxNormalizeTmpBytes, VecZnxStd, VecZnxSubABInplace, ZnxZero,
+        VecZnxDftToVecZnxBigTmpA, VecZnxNormalizeTmpBytes, VecZnxSubABInplace, ZnxZero,
     },
     layouts::{Backend, DataRef, Module, ScalarZnx, ScratchOwned, VecZnxBig, VecZnxDft},
     oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeVecZnxBigImpl, TakeVecZnxDftImpl},
@@ -22,7 +22,7 @@ impl<D: DataRef> GGSWCiphertext<D> {
     ) where
         DataSk: DataRef,
         DataScalar: DataRef,
-        Module<B>: GGSWAssertNoiseFamily<B> + VecZnxAddScalarInplace + VecZnxSubABInplace + VecZnxStd,
+        Module<B>: GGSWAssertNoiseFamily<B> + VecZnxAddScalarInplace + VecZnxSubABInplace,
         B: TakeVecZnxDftImpl<B> + TakeVecZnxBigImpl<B> + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
         F: Fn(usize) -> f64,
     {
@@ -56,7 +56,7 @@ impl<D: DataRef> GGSWCiphertext<D> {
 
                 module.vec_znx_sub_ab_inplace(&mut pt_have.data, 0, &pt.data, 0);
 
-                let std_pt: f64 = module.vec_znx_std(basek, &pt_have.data, 0).log2();
+                let std_pt: f64 = pt_have.data.std(basek, 0).log2();
                 let noise: f64 = max_noise(col_j);
                 println!("{} {}", std_pt, noise);
                 assert!(std_pt <= noise, "{} > {}", std_pt, noise);
@@ -76,7 +76,7 @@ impl<D: DataRef> GGSWCiphertext<D> {
     ) where
         DataSk: DataRef,
         DataScalar: DataRef,
-        Module<B>: GGSWAssertNoiseFamily<B> + VecZnxAddScalarInplace + VecZnxSubABInplace + VecZnxStd,
+        Module<B>: GGSWAssertNoiseFamily<B> + VecZnxAddScalarInplace + VecZnxSubABInplace,
         B: TakeVecZnxDftImpl<B> + TakeVecZnxBigImpl<B> + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
     {
         let basek: usize = self.basek();
@@ -109,7 +109,7 @@ impl<D: DataRef> GGSWCiphertext<D> {
 
                 module.vec_znx_sub_ab_inplace(&mut pt_have.data, 0, &pt.data, 0);
 
-                let std_pt: f64 = module.vec_znx_std(basek, &pt_have.data, 0).log2();
+                let std_pt: f64 = pt_have.data.std(basek, 0).log2();
                 println!("{}", std_pt);
                 pt.data.zero();
             });

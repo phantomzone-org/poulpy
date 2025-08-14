@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use backend::hal::{
     api::{
         ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxAutomorphism, VecZnxBigSubSmallBInplace,
-        VecZnxEncodeVeci64, VecZnxRotateInplace, VecZnxStd, VecZnxSwithcDegree, VmpPMatAlloc, VmpPMatPrepare,
+        VecZnxRotateInplace, VecZnxSwithcDegree, VmpPMatAlloc, VmpPMatPrepare,
     },
     layouts::{Backend, Module, ScratchOwned},
     oep::{
@@ -29,10 +29,8 @@ pub trait PackingTestModuleFamily<B: Backend> = GLWEPackingFamily<B>
     + GGLWESwitchingKeyEncryptSkFamily<B>
     + GLWEKeyswitchFamily<B>
     + GLWEDecryptFamily<B>
-    + VecZnxStd
     + VecZnxSwithcDegree
     + VecZnxAddScalarInplace
-    + VecZnxEncodeVeci64
     + VecZnxRotateInplace
     + VecZnxAutomorphism
     + VecZnxBigSubSmallBInplace<B>
@@ -84,7 +82,7 @@ where
         *x = i as i64;
     });
 
-    module.encode_vec_i64(basek, &mut pt.data, 0, pt_k, &data, 32);
+    pt.encode_vec_i64(&data, pt_k);
 
     let gal_els: Vec<i64> = GLWEPacker::galois_elements(module);
 
@@ -158,13 +156,13 @@ where
         }
     });
 
-    module.encode_vec_i64(basek, &mut pt_want.data, 0, pt_k, &data, 32);
+    pt_want.encode_vec_i64(&data, pt_k);
 
     res.decrypt(module, &mut pt, &sk_dft, scratch.borrow());
 
     pt.sub_inplace_ab(module, &pt_want);
 
-    let noise_have: f64 = module.vec_znx_std(basek, &pt.data, 0).log2();
+    let noise_have: f64 = pt.std().log2();
     // println!("noise_have: {}", noise_have);
     assert!(
         noise_have < -((k_ct - basek) as f64),

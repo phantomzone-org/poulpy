@@ -1,6 +1,6 @@
 use backend::hal::{
     api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxCopy, VecZnxStd, VecZnxSubABInplace, VmpPMatAlloc,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxCopy, VecZnxSubABInplace, VmpPMatAlloc,
         VmpPMatPrepare,
     },
     layouts::{Backend, Module, ScalarZnx, ScratchOwned},
@@ -25,7 +25,6 @@ where
         + GGSWAssertNoiseFamily<B>
         + VecZnxAddScalarInplace
         + VecZnxSubABInplace
-        + VecZnxStd
         + VecZnxCopy
         + VmpPMatAlloc<B>
         + VmpPMatPrepare<B>,
@@ -91,7 +90,6 @@ pub fn test_ggsw_compressed_encrypt_sk<B: Backend>(
         + GGSWAssertNoiseFamily<B>
         + VecZnxAddScalarInplace
         + VecZnxSubABInplace
-        + VecZnxStd
         + VecZnxCopy
         + VmpPMatAlloc<B>
         + VmpPMatPrepare<B>,

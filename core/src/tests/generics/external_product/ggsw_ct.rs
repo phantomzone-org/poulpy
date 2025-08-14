@@ -1,7 +1,7 @@
 use backend::hal::{
     api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxCopy, VecZnxRotateInplace, VecZnxStd,
-        VecZnxSubABInplace, VmpPMatAlloc, VmpPMatPrepare, ZnxViewMut,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxCopy, VecZnxRotateInplace, VecZnxSubABInplace,
+        VmpPMatAlloc, VmpPMatPrepare, ZnxViewMut,
     },
     layouts::{Backend, Module, ScalarZnx, ScalarZnxToMut, ScratchOwned},
     oep::{
@@ -40,7 +40,6 @@ pub fn test_ggsw_external_product<B: Backend>(
         + GGSWAssertNoiseFamily<B>
         + VecZnxAddScalarInplace
         + VecZnxSubABInplace
-        + VecZnxStd
         + VecZnxCopy
         + VmpPMatAlloc<B>
         + VmpPMatPrepare<B>
@@ -158,7 +157,6 @@ pub fn test_ggsw_external_product_inplace<B: Backend>(
         + GGSWAssertNoiseFamily<B>
         + VecZnxAddScalarInplace
         + VecZnxSubABInplace
-        + VecZnxStd
         + VecZnxCopy
         + VmpPMatAlloc<B>
         + VmpPMatPrepare<B>

@@ -1,3 +1,5 @@
+use std::fmt;
+
 use backend::hal::layouts::{Data, DataMut, DataRef, VecZnx, VecZnxToMut, VecZnxToRef};
 
 use crate::layouts::{GLWECiphertext, GLWECiphertextToMut, GLWECiphertextToRef, Infos, SetMetaData};
@@ -6,6 +8,18 @@ pub struct GLWEPlaintext<D: Data> {
     pub data: VecZnx<D>,
     pub basek: usize,
     pub k: usize,
+}
+
+impl<D: DataRef> fmt::Display for GLWEPlaintext<D> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "GLWEPlaintext: basek={} k={}: {}",
+            self.basek(),
+            self.k(),
+            self.data
+        )
+    }
 }
 
 impl<D: Data> Infos for GLWEPlaintext<D> {
