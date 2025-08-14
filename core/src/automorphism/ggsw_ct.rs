@@ -1,0 +1,151 @@
+use backend::hal::{
+    api::{ScratchAvailable, TakeVecZnxBig, TakeVecZnxDft, VecZnxAutomorphismInplace, VecZnxNormalizeTmpBytes},
+    layouts::{Backend, DataMut, DataRef, Module, Scratch},
+};
+
+use crate::{
+    layouts::{
+        GGSWCiphertext, GLWECiphertext, Infos,
+        prepared::{GGLWEAutomorphismKeyExec, GGLWETensorKeyExec},
+    },
+    trait_families::{GGSWKeySwitchFamily, GLWEKeyswitchFamily},
+};
+
+impl GGSWCiphertext<Vec<u8>> {
+    pub fn automorphism_scratch_space<B: Backend>(
+        module: &Module<B>,
+        n: usize,
+        basek: usize,
+        k_out: usize,
+        k_in: usize,
+        k_ksk: usize,
+        digits_ksk: usize,
+        k_tsk: usize,
+        digits_tsk: usize,
+        rank: usize,
+    ) -> usize
+    where
+        Module<B>: GLWEKeyswitchFamily<B> + GGSWKeySwitchFamily<B> + VecZnxNormalizeTmpBytes,
+    {
+        let out_size: usize = k_out.div_ceil(basek);
+        let ci_dft: usize = module.vec_znx_dft_alloc_bytes(n, rank + 1, out_size);
+        let ks_internal: usize =
+            GLWECiphertext::keyswitch_scratch_space(module, n, basek, k_out, k_in, k_ksk, digits_ksk, rank, rank);
+        let expand: usize = GGSWCiphertext::expand_row_scratch_space(module, n, basek, k_out, k_tsk, digits_tsk, rank);
+        ci_dft + (ks_internal | expand)
+    }
+
+    pub fn automorphism_inplace_scratch_space<B: Backend>(
+        module: &Module<B>,
+        n: usize,
+        basek: usize,
+        k_out: usize,
+        k_ksk: usize,
+        digits_ksk: usize,
+        k_tsk: usize,
+        digits_tsk: usize,
+        rank: usize,
+    ) -> usize
+    where
+        Module<B>: GLWEKeyswitchFamily<B> + GGSWKeySwitchFamily<B> + VecZnxNormalizeTmpBytes,
+    {
+        GGSWCiphertext::automorphism_scratch_space(
+            module, n, basek, k_out, k_out, k_ksk, digits_ksk, k_tsk, digits_tsk, rank,
+        )
+    }
+}
+
+impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
+    pub fn automorphism<DataLhs: DataRef, DataAk: DataRef, DataTsk: DataRef, B: Backend>(
+        &mut self,
+        module: &Module<B>,
+        lhs: &GGSWCiphertext<DataLhs>,
+        auto_key: &GGLWEAutomorphismKeyExec<DataAk, B>,
+        tensor_key: &GGLWETensorKeyExec<DataTsk, B>,
+        scratch: &mut Scratch<B>,
+    ) where
+        Module<B>: GLWEKeyswitchFamily<B> + GGSWKeySwitchFamily<B> + VecZnxAutomorphismInplace + VecZnxNormalizeTmpBytes,
+        Scratch<B>: ScratchAvailable + TakeVecZnxDft<B> + TakeVecZnxBig<B>,
+    {
+        #[cfg(debug_assertions)]
+        {
+            assert_eq!(self.n(), auto_key.n());
+            assert_eq!(lhs.n(), auto_key.n());
+
+            assert_eq!(
+                self.rank(),
+                lhs.rank(),
+                "ggsw_out rank: {} != ggsw_in rank: {}",
+                self.rank(),
+                lhs.rank()
+            );
+            assert_eq!(
+                self.rank(),
+                auto_key.rank(),
+                "ggsw_in rank: {} != auto_key rank: {}",
+                self.rank(),
+                auto_key.rank()
+            );
+            assert_eq!(
+                self.rank(),
+                tensor_key.rank(),
+                "ggsw_in rank: {} != tensor_key rank: {}",
+                self.rank(),
+                tensor_key.rank()
+            );
+            assert!(
+                scratch.available()
+                    >= GGSWCiphertext::automorphism_scratch_space(
+                        module,
+                        self.n(),
+                        self.basek(),
+                        self.k(),
+                        lhs.k(),
+                        auto_key.k(),
+                        auto_key.digits(),
+                        tensor_key.k(),
+                        tensor_key.digits(),
+                        self.rank(),
+                    )
+            )
+        };
+
+        self.automorphism_internal(module, lhs, auto_key, scratch);
+        self.expand_row(module, tensor_key, scratch);
+    }
+
+    pub fn automorphism_inplace<DataKsk: DataRef, DataTsk: DataRef, B: Backend>(
+        &mut self,
+        module: &Module<B>,
+        auto_key: &GGLWEAutomorphismKeyExec<DataKsk, B>,
+        tensor_key: &GGLWETensorKeyExec<DataTsk, B>,
+        scratch: &mut Scratch<B>,
+    ) where
+        Module<B>: GLWEKeyswitchFamily<B> + GGSWKeySwitchFamily<B> + VecZnxAutomorphismInplace + VecZnxNormalizeTmpBytes,
+        Scratch<B>: ScratchAvailable + TakeVecZnxDft<B> + TakeVecZnxBig<B>,
+    {
+        unsafe {
+            let self_ptr: *mut GGSWCiphertext<DataSelf> = self as *mut GGSWCiphertext<DataSelf>;
+            self.automorphism(module, &*self_ptr, auto_key, tensor_key, scratch);
+        }
+    }
+
+    fn automorphism_internal<DataLhs: DataRef, DataAk: DataRef, B: Backend>(
+        &mut self,
+        module: &Module<B>,
+        lhs: &GGSWCiphertext<DataLhs>,
+        auto_key: &GGLWEAutomorphismKeyExec<DataAk, B>,
+        scratch: &mut Scratch<B>,
+    ) where
+        Module<B>: GLWEKeyswitchFamily<B> + GGSWKeySwitchFamily<B> + VecZnxAutomorphismInplace + VecZnxNormalizeTmpBytes,
+        Scratch<B>: ScratchAvailable + TakeVecZnxDft<B> + TakeVecZnxBig<B>,
+    {
+        // Keyswitch the j-th row of the col 0
+        (0..lhs.rows()).for_each(|row_i| {
+            // Key-switch column 0, i.e.
+            // col 0: (-(a0s0 + a1s1 + a2s2) + M[i], a0, a1, a2) -> (-(a0pi^-1(s0) + a1pi^-1(s1) + a2pi^-1(s2)) + M[i], a0, a1, a2)
+            self.at_mut(row_i, 0)
+                .automorphism(module, &lhs.at(row_i, 0), auto_key, scratch);
+        });
+    }
+}

@@ -1,7 +1,4 @@
-use core::{
-    AutomorphismKey, AutomorphismKeyExec, GLWECiphertext, GLWESecret, GLWESecretExec, GLWESwitchingKey, GLWESwitchingKeyExec,
-    Infos,
-};
+use core::layouts::{prepared::{GGLWEAutomorphismKeyExec, GGLWESwitchingKeyExec, GLWESecretExec}, GGLWEAutomorphismKey, GGLWESwitchingKey, GLWECiphertext, GLWESecret, Infos};
 use std::{hint::black_box, time::Duration};
 
 use backend::{
@@ -43,12 +40,12 @@ fn bench_keyswitch_glwe_fft64(c: &mut Criterion) {
         let rows: usize = p.k_ct_in.div_ceil(p.basek * digits);
         let sigma: f64 = 3.2;
 
-        let mut ksk: AutomorphismKey<Vec<u8>> = AutomorphismKey::alloc(n, basek, k_grlwe, rows, digits, rank_out);
+        let mut ksk: GGLWEAutomorphismKey<Vec<u8>> = GGLWEAutomorphismKey::alloc(n, basek, k_grlwe, rows, digits, rank_out);
         let mut ct_in: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(n, basek, k_rlwe_in, rank_in);
         let mut ct_out: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(n, basek, k_rlwe_out, rank_out);
 
         let mut scratch: ScratchOwned<FFT64> = ScratchOwned::alloc(
-            GLWESwitchingKey::encrypt_sk_scratch_space(&module, n, basek, ksk.k(), rank_in, rank_out)
+            GGLWESwitchingKey::encrypt_sk_scratch_space(&module, n, basek, ksk.k(), rank_in, rank_out)
                 | GLWECiphertext::encrypt_sk_scratch_space(&module, n, basek, ct_in.k())
                 | GLWECiphertext::keyswitch_scratch_space(
                     &module,
@@ -93,7 +90,7 @@ fn bench_keyswitch_glwe_fft64(c: &mut Criterion) {
             scratch.borrow(),
         );
 
-        let ksk_exec: AutomorphismKeyExec<Vec<u8>, _> = AutomorphismKeyExec::from(&module, &ksk, scratch.borrow());
+        let ksk_exec: GGLWEAutomorphismKeyExec<Vec<u8>, _> = GGLWEAutomorphismKeyExec::from(&module, &ksk, scratch.borrow());
 
         move || {
             black_box(ct_out.automorphism(&module, &ct_in, &ksk_exec, scratch.borrow()));
@@ -149,11 +146,11 @@ fn bench_keyswitch_glwe_inplace_fft64(c: &mut Criterion) {
         let rows: usize = p.k_ct.div_ceil(p.basek);
         let sigma: f64 = 3.2;
 
-        let mut ksk: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc(n, basek, k_ksk, rows, digits, rank, rank);
+        let mut ksk: GGLWESwitchingKey<Vec<u8>> = GGLWESwitchingKey::alloc(n, basek, k_ksk, rows, digits, rank, rank);
         let mut ct: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(n, basek, k_ct, rank);
 
         let mut scratch: ScratchOwned<FFT64> = ScratchOwned::alloc(
-            GLWESwitchingKey::encrypt_sk_scratch_space(&module, n, basek, ksk.k(), rank, rank)
+            GGLWESwitchingKey::encrypt_sk_scratch_space(&module, n, basek, ksk.k(), rank, rank)
                 | GLWECiphertext::encrypt_sk_scratch_space(&module, n, basek, ct.k())
                 | GLWECiphertext::keyswitch_inplace_scratch_space(&module, n, basek, ct.k(), ksk.k(), digits, rank),
         );
@@ -188,7 +185,7 @@ fn bench_keyswitch_glwe_inplace_fft64(c: &mut Criterion) {
             scratch.borrow(),
         );
 
-        let ksk_exec: GLWESwitchingKeyExec<Vec<u8>, FFT64> = GLWESwitchingKeyExec::from(&module, &ksk, scratch.borrow());
+        let ksk_exec: GGLWESwitchingKeyExec<Vec<u8>, FFT64> = GGLWESwitchingKeyExec::from(&module, &ksk, scratch.borrow());
 
         move || {
             black_box(ct.keyswitch_inplace(&module, &ksk_exec, scratch.borrow()));
