@@ -1,24 +1,24 @@
 #![feature(trait_alias)]
-mod blind_rotation;
-mod circuit_bootstrapping;
+mod automorphism;
+mod conversion;
+mod decryption;
 mod dist;
-mod elem;
-mod gglwe;
-mod ggsw;
-mod glwe;
-mod lwe;
+mod encryption;
+mod external_product;
+mod glwe_packing;
+mod glwe_trace;
+mod keyswitching;
 mod noise;
+mod operations;
 mod scratch;
 
-use crate::dist::Distribution;
+pub use operations::*;
+pub mod layouts;
+pub mod trait_families;
+pub use glwe_packing::*;
 
-pub use blind_rotation::*;
-pub use circuit_bootstrapping::*;
-pub use elem::*;
-pub use gglwe::*;
-pub use ggsw::*;
-pub use glwe::*;
-pub use lwe::*;
 pub use scratch::*;
 
 pub(crate) const SIX_SIGMA: f64 = 6.0;
+
+pub mod tests;

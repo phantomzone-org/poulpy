@@ -5,9 +5,15 @@ use backend::hal::{
 };
 
 use crate::{
-    AutomorphismKey, AutomorphismKeyExec, GGLWECiphertext, GGLWECiphertextExec, GGSWCiphertext, GGSWCiphertextExec,
-    GLWECiphertext, GLWEPlaintext, GLWEPublicKey, GLWEPublicKeyExec, GLWESecret, GLWESecretExec, GLWESwitchingKey,
-    GLWESwitchingKeyExec, GLWETensorKey, GLWETensorKeyExec, Infos, dist::Distribution,
+    dist::Distribution,
+    layouts::{
+        GGLWEAutomorphismKey, GGLWECiphertext, GGLWETensorKey, GGSWCiphertext, GLWECiphertext, GLWEPlaintext, GLWEPublicKey,
+        GLWESecret, GGLWESwitchingKey, Infos,
+        prepared::{
+            GGLWEAutomorphismKeyExec, GGLWECiphertextExec, GGSWCiphertextExec, GLWEPublicKeyExec, GLWESecretExec,
+            GGLWESwitchingKeyExec, GGLWETensorKeyExec,
+        },
+    },
 };
 
 pub trait TakeLike<'a, B: Backend, T> {
@@ -116,7 +122,7 @@ pub trait TakeGLWESwitchingKey<B: Backend> {
         digits: usize,
         rank_in: usize,
         rank_out: usize,
-    ) -> (GLWESwitchingKey<&mut [u8]>, &mut Self);
+    ) -> (GGLWESwitchingKey<&mut [u8]>, &mut Self);
 }
 
 pub trait TakeGLWESwitchingKeyExec<B: Backend> {
@@ -129,7 +135,7 @@ pub trait TakeGLWESwitchingKeyExec<B: Backend> {
         digits: usize,
         rank_in: usize,
         rank_out: usize,
-    ) -> (GLWESwitchingKeyExec<&mut [u8], B>, &mut Self);
+    ) -> (GGLWESwitchingKeyExec<&mut [u8], B>, &mut Self);
 }
 
 pub trait TakeTensorKey<B: Backend> {
@@ -141,7 +147,7 @@ pub trait TakeTensorKey<B: Backend> {
         rows: usize,
         digits: usize,
         rank: usize,
-    ) -> (GLWETensorKey<&mut [u8]>, &mut Self);
+    ) -> (GGLWETensorKey<&mut [u8]>, &mut Self);
 }
 
 pub trait TakeTensorKeyExec<B: Backend> {
@@ -153,7 +159,7 @@ pub trait TakeTensorKeyExec<B: Backend> {
         rows: usize,
         digits: usize,
         rank: usize,
-    ) -> (GLWETensorKeyExec<&mut [u8], B>, &mut Self);
+    ) -> (GGLWETensorKeyExec<&mut [u8], B>, &mut Self);
 }
 
 pub trait TakeAutomorphismKey<B: Backend> {
@@ -165,7 +171,7 @@ pub trait TakeAutomorphismKey<B: Backend> {
         rows: usize,
         digits: usize,
         rank: usize,
-    ) -> (AutomorphismKey<&mut [u8]>, &mut Self);
+    ) -> (GGLWEAutomorphismKey<&mut [u8]>, &mut Self);
 }
 
 pub trait TakeAutomorphismKeyExec<B: Backend> {
@@ -177,7 +183,7 @@ pub trait TakeAutomorphismKeyExec<B: Backend> {
         rows: usize,
         digits: usize,
         rank: usize,
-    ) -> (AutomorphismKeyExec<&mut [u8], B>, &mut Self);
+    ) -> (GGLWEAutomorphismKeyExec<&mut [u8], B>, &mut Self);
 }
 
 impl<B: Backend> TakeGLWECt<B> for Scratch<B>
@@ -672,10 +678,10 @@ where
         digits: usize,
         rank_in: usize,
         rank_out: usize,
-    ) -> (GLWESwitchingKey<&mut [u8]>, &mut Self) {
+    ) -> (GGLWESwitchingKey<&mut [u8]>, &mut Self) {
         let (data, scratch) = self.take_gglwe(n, basek, k, rows, digits, rank_in, rank_out);
         (
-            GLWESwitchingKey {
+            GGLWESwitchingKey {
                 key: data,
                 sk_in_n: 0,
                 sk_out_n: 0,
@@ -685,18 +691,18 @@ where
     }
 }
 
-impl<'a, B, D> TakeLike<'a, B, GLWESwitchingKey<D>> for Scratch<B>
+impl<'a, B, D> TakeLike<'a, B, GGLWESwitchingKey<D>> for Scratch<B>
 where
     Scratch<B>: TakeLike<'a, B, GGLWECiphertext<D>, Output = GGLWECiphertext<&'a mut [u8]>>,
     B: Backend + TakeMatZnxImpl<B>,
     D: DataRef,
 {
-    type Output = GLWESwitchingKey<&'a mut [u8]>;
+    type Output = GGLWESwitchingKey<&'a mut [u8]>;
 
-    fn take_like(&'a mut self, template: &GLWESwitchingKey<D>) -> (Self::Output, &'a mut Self) {
+    fn take_like(&'a mut self, template: &GGLWESwitchingKey<D>) -> (Self::Output, &'a mut Self) {
         let (key, scratch) = self.take_like(&template.key);
         (
-            GLWESwitchingKey {
+            GGLWESwitchingKey {
                 key,
                 sk_in_n: template.sk_in_n,
                 sk_out_n: template.sk_out_n,
@@ -719,10 +725,10 @@ where
         digits: usize,
         rank_in: usize,
         rank_out: usize,
-    ) -> (GLWESwitchingKeyExec<&mut [u8], B>, &mut Self) {
+    ) -> (GGLWESwitchingKeyExec<&mut [u8], B>, &mut Self) {
         let (data, scratch) = self.take_gglwe_exec(n, basek, k, rows, digits, rank_in, rank_out);
         (
-            GLWESwitchingKeyExec {
+            GGLWESwitchingKeyExec {
                 key: data,
                 sk_in_n: 0,
                 sk_out_n: 0,
@@ -732,18 +738,18 @@ where
     }
 }
 
-impl<'a, B, D> TakeLike<'a, B, GLWESwitchingKeyExec<D, B>> for Scratch<B>
+impl<'a, B, D> TakeLike<'a, B, GGLWESwitchingKeyExec<D, B>> for Scratch<B>
 where
     Scratch<B>: TakeLike<'a, B, GGLWECiphertextExec<D, B>, Output = GGLWECiphertextExec<&'a mut [u8], B>>,
     B: Backend + TakeMatZnxImpl<B>,
     D: DataRef,
 {
-    type Output = GLWESwitchingKeyExec<&'a mut [u8], B>;
+    type Output = GGLWESwitchingKeyExec<&'a mut [u8], B>;
 
-    fn take_like(&'a mut self, template: &GLWESwitchingKeyExec<D, B>) -> (Self::Output, &'a mut Self) {
+    fn take_like(&'a mut self, template: &GGLWESwitchingKeyExec<D, B>) -> (Self::Output, &'a mut Self) {
         let (key, scratch) = self.take_like(&template.key);
         (
-            GLWESwitchingKeyExec {
+            GGLWESwitchingKeyExec {
                 key,
                 sk_in_n: template.sk_in_n,
                 sk_out_n: template.sk_out_n,
@@ -765,23 +771,23 @@ where
         rows: usize,
         digits: usize,
         rank: usize,
-    ) -> (AutomorphismKey<&mut [u8]>, &mut Self) {
+    ) -> (GGLWEAutomorphismKey<&mut [u8]>, &mut Self) {
         let (data, scratch) = self.take_glwe_switching_key(n, basek, k, rows, digits, rank, rank);
-        (AutomorphismKey { key: data, p: 0 }, scratch)
+        (GGLWEAutomorphismKey { key: data, p: 0 }, scratch)
     }
 }
 
-impl<'a, B, D> TakeLike<'a, B, AutomorphismKey<D>> for Scratch<B>
+impl<'a, B, D> TakeLike<'a, B, GGLWEAutomorphismKey<D>> for Scratch<B>
 where
-    Scratch<B>: TakeLike<'a, B, GLWESwitchingKey<D>, Output = GLWESwitchingKey<&'a mut [u8]>>,
+    Scratch<B>: TakeLike<'a, B, GGLWESwitchingKey<D>, Output = GGLWESwitchingKey<&'a mut [u8]>>,
     B: Backend + TakeMatZnxImpl<B>,
     D: DataRef,
 {
-    type Output = AutomorphismKey<&'a mut [u8]>;
+    type Output = GGLWEAutomorphismKey<&'a mut [u8]>;
 
-    fn take_like(&'a mut self, template: &AutomorphismKey<D>) -> (Self::Output, &'a mut Self) {
+    fn take_like(&'a mut self, template: &GGLWEAutomorphismKey<D>) -> (Self::Output, &'a mut Self) {
         let (key, scratch) = self.take_like(&template.key);
-        (AutomorphismKey { key, p: template.p }, scratch)
+        (GGLWEAutomorphismKey { key, p: template.p }, scratch)
     }
 }
 
@@ -797,23 +803,23 @@ where
         rows: usize,
         digits: usize,
         rank: usize,
-    ) -> (AutomorphismKeyExec<&mut [u8], B>, &mut Self) {
+    ) -> (GGLWEAutomorphismKeyExec<&mut [u8], B>, &mut Self) {
         let (data, scratch) = self.take_glwe_switching_key_exec(n, basek, k, rows, digits, rank, rank);
-        (AutomorphismKeyExec { key: data, p: 0 }, scratch)
+        (GGLWEAutomorphismKeyExec { key: data, p: 0 }, scratch)
     }
 }
 
-impl<'a, B, D> TakeLike<'a, B, AutomorphismKeyExec<D, B>> for Scratch<B>
+impl<'a, B, D> TakeLike<'a, B, GGLWEAutomorphismKeyExec<D, B>> for Scratch<B>
 where
-    Scratch<B>: TakeLike<'a, B, GLWESwitchingKeyExec<D, B>, Output = GLWESwitchingKeyExec<&'a mut [u8], B>>,
+    Scratch<B>: TakeLike<'a, B, GGLWESwitchingKeyExec<D, B>, Output = GGLWESwitchingKeyExec<&'a mut [u8], B>>,
     B: Backend + TakeMatZnxImpl<B>,
     D: DataRef,
 {
-    type Output = AutomorphismKeyExec<&'a mut [u8], B>;
+    type Output = GGLWEAutomorphismKeyExec<&'a mut [u8], B>;
 
-    fn take_like(&'a mut self, template: &AutomorphismKeyExec<D, B>) -> (Self::Output, &'a mut Self) {
+    fn take_like(&'a mut self, template: &GGLWEAutomorphismKeyExec<D, B>) -> (Self::Output, &'a mut Self) {
         let (key, scratch) = self.take_like(&template.key);
-        (AutomorphismKeyExec { key, p: template.p }, scratch)
+        (GGLWEAutomorphismKeyExec { key, p: template.p }, scratch)
     }
 }
 
@@ -829,8 +835,8 @@ where
         rows: usize,
         digits: usize,
         rank: usize,
-    ) -> (GLWETensorKey<&mut [u8]>, &mut Self) {
-        let mut keys: Vec<GLWESwitchingKey<&mut [u8]>> = Vec::new();
+    ) -> (GGLWETensorKey<&mut [u8]>, &mut Self) {
+        let mut keys: Vec<GGLWESwitchingKey<&mut [u8]>> = Vec::new();
         let pairs: usize = (((rank + 1) * rank) >> 1).max(1);
 
         let mut scratch: &mut Scratch<B> = self;
@@ -845,20 +851,20 @@ where
             scratch = s;
             keys.push(gglwe);
         }
-        (GLWETensorKey { keys }, scratch)
+        (GGLWETensorKey { keys }, scratch)
     }
 }
 
-impl<'a, B, D> TakeLike<'a, B, GLWETensorKey<D>> for Scratch<B>
+impl<'a, B, D> TakeLike<'a, B, GGLWETensorKey<D>> for Scratch<B>
 where
-    Scratch<B>: TakeLike<'a, B, GLWESwitchingKey<D>, Output = GLWESwitchingKey<&'a mut [u8]>>,
+    Scratch<B>: TakeLike<'a, B, GGLWESwitchingKey<D>, Output = GGLWESwitchingKey<&'a mut [u8]>>,
     B: Backend + TakeMatZnxImpl<B>,
     D: DataRef,
 {
-    type Output = GLWETensorKey<&'a mut [u8]>;
+    type Output = GGLWETensorKey<&'a mut [u8]>;
 
-    fn take_like(&'a mut self, template: &GLWETensorKey<D>) -> (Self::Output, &'a mut Self) {
-        let mut keys: Vec<GLWESwitchingKey<&mut [u8]>> = Vec::new();
+    fn take_like(&'a mut self, template: &GGLWETensorKey<D>) -> (Self::Output, &'a mut Self) {
+        let mut keys: Vec<GGLWESwitchingKey<&mut [u8]>> = Vec::new();
         let pairs: usize = template.keys.len();
 
         let mut scratch: &mut Scratch<B> = self;
@@ -874,7 +880,7 @@ where
             keys.push(gglwe);
         }
 
-        (GLWETensorKey { keys }, scratch)
+        (GGLWETensorKey { keys }, scratch)
     }
 }
 
@@ -890,8 +896,8 @@ where
         rows: usize,
         digits: usize,
         rank: usize,
-    ) -> (GLWETensorKeyExec<&mut [u8], B>, &mut Self) {
-        let mut keys: Vec<GLWESwitchingKeyExec<&mut [u8], B>> = Vec::new();
+    ) -> (GGLWETensorKeyExec<&mut [u8], B>, &mut Self) {
+        let mut keys: Vec<GGLWESwitchingKeyExec<&mut [u8], B>> = Vec::new();
         let pairs: usize = (((rank + 1) * rank) >> 1).max(1);
 
         let mut scratch: &mut Scratch<B> = self;
@@ -906,20 +912,20 @@ where
             scratch = s;
             keys.push(gglwe);
         }
-        (GLWETensorKeyExec { keys }, scratch)
+        (GGLWETensorKeyExec { keys }, scratch)
     }
 }
 
-impl<'a, B, D> TakeLike<'a, B, GLWETensorKeyExec<D, B>> for Scratch<B>
+impl<'a, B, D> TakeLike<'a, B, GGLWETensorKeyExec<D, B>> for Scratch<B>
 where
-    Scratch<B>: TakeLike<'a, B, GLWESwitchingKeyExec<D, B>, Output = GLWESwitchingKeyExec<&'a mut [u8], B>>,
+    Scratch<B>: TakeLike<'a, B, GGLWESwitchingKeyExec<D, B>, Output = GGLWESwitchingKeyExec<&'a mut [u8], B>>,
     B: Backend + TakeMatZnxImpl<B>,
     D: DataRef,
 {
-    type Output = GLWETensorKeyExec<&'a mut [u8], B>;
+    type Output = GGLWETensorKeyExec<&'a mut [u8], B>;
 
-    fn take_like(&'a mut self, template: &GLWETensorKeyExec<D, B>) -> (Self::Output, &'a mut Self) {
-        let mut keys: Vec<GLWESwitchingKeyExec<&mut [u8], B>> = Vec::new();
+    fn take_like(&'a mut self, template: &GGLWETensorKeyExec<D, B>) -> (Self::Output, &'a mut Self) {
+        let mut keys: Vec<GGLWESwitchingKeyExec<&mut [u8], B>> = Vec::new();
         let pairs: usize = template.keys.len();
 
         let mut scratch: &mut Scratch<B> = self;
@@ -935,6 +941,6 @@ where
             keys.push(gglwe);
         }
 
-        (GLWETensorKeyExec { keys }, scratch)
+        (GGLWETensorKeyExec { keys }, scratch)
     }
 }
