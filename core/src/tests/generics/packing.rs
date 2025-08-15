@@ -22,10 +22,10 @@ use crate::{
     trait_families::{GLWEDecryptFamily, GLWEKeyswitchFamily, GLWEPackingFamily},
 };
 
-use crate::trait_families::{GGLWESwitchingKeyEncryptSkFamily, GLWESecretExecModuleFamily};
+use crate::trait_families::{GGLWESwitchingKeyEncryptSkFamily, GLWESecretPreparedModuleFamily};
 
 pub trait PackingTestModuleFamily<B: Backend> = GLWEPackingFamily<B>
-    + GLWESecretExecModuleFamily<B>
+    + GLWESecretPreparedModuleFamily<B>
     + GGLWESwitchingKeyEncryptSkFamily<B>
     + GLWEKeyswitchFamily<B>
     + GLWEDecryptFamily<B>
@@ -98,8 +98,8 @@ where
             sigma,
             scratch.borrow(),
         );
-        let atk_exec: GGLWEAutomorphismKeyPrepared<Vec<u8>, B> = tmp.prepare_alloc(module, scratch.borrow());
-        auto_keys.insert(*gal_el, atk_exec);
+        let atk_prepared: GGLWEAutomorphismKeyPrepared<Vec<u8>, B> = tmp.prepare_alloc(module, scratch.borrow());
+        auto_keys.insert(*gal_el, atk_prepared);
     });
 
     let log_batch: usize = 0;

@@ -17,7 +17,7 @@ use crate::layouts::{
     prepared::{GLWESecretPrepared, GLWEToLWESwitchingKeyPrepared, LWEToGLWESwitchingKeyPrepared, PrepareAlloc},
 };
 
-use crate::trait_families::{GGLWEEncryptSkFamily, GLWEDecryptFamily, GLWEKeyswitchFamily, GLWESecretExecModuleFamily};
+use crate::trait_families::{GGLWEEncryptSkFamily, GLWEDecryptFamily, GLWEKeyswitchFamily, GLWESecretPreparedModuleFamily};
 
 pub fn test_lwe_to_glwe<B: Backend>(module: &Module<B>)
 where
@@ -29,7 +29,7 @@ where
         + VecZnxAutomorphismInplace
         + VmpPMatAlloc<B>
         + VmpPMatPrepare<B>
-        + GLWESecretExecModuleFamily<B>,
+        + GLWESecretPreparedModuleFamily<B>,
     B: TakeScalarZnxImpl<B>
         + TakeVecZnxDftImpl<B>
         + ScratchAvailableImpl<B>
@@ -66,7 +66,7 @@ where
     let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
     sk_glwe.fill_ternary_prob(0.5, &mut source_xs);
 
-    let sk_glwe_exec: GLWESecretPrepared<Vec<u8>, B> = sk_glwe.prepare_alloc(module, scratch.borrow());
+    let sk_glwe_prepared: GLWESecretPrepared<Vec<u8>, B> = sk_glwe.prepare_alloc(module, scratch.borrow());
 
     let mut sk_lwe: LWESecret<Vec<u8>> = LWESecret::alloc(n_lwe);
     sk_lwe.fill_ternary_prob(0.5, &mut source_xs);
@@ -100,12 +100,12 @@ where
 
     let mut glwe_ct: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(n, basek, k_glwe_ct, rank);
 
-    let ksk_exec: LWEToGLWESwitchingKeyPrepared<Vec<u8>, B> = ksk.prepare_alloc(module, scratch.borrow());
+    let ksk_prepared: LWEToGLWESwitchingKeyPrepared<Vec<u8>, B> = ksk.prepare_alloc(module, scratch.borrow());
 
-    glwe_ct.from_lwe(module, &lwe_ct, &ksk_exec, scratch.borrow());
+    glwe_ct.from_lwe(module, &lwe_ct, &ksk_prepared, scratch.borrow());
 
     let mut glwe_pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(n, basek, k_glwe_ct);
-    glwe_ct.decrypt(module, &mut glwe_pt, &sk_glwe_exec, scratch.borrow());
+    glwe_ct.decrypt(module, &mut glwe_pt, &sk_glwe_prepared, scratch.borrow());
 
     assert_eq!(glwe_pt.data.at(0, 0)[0], lwe_pt.data.at(0, 0)[0]);
 }
@@ -120,7 +120,7 @@ where
         + VecZnxAutomorphismInplace
         + VmpPMatAlloc<B>
         + VmpPMatPrepare<B>
-        + GLWESecretExecModuleFamily<B>,
+        + GLWESecretPreparedModuleFamily<B>,
     B: TakeScalarZnxImpl<B>
         + TakeVecZnxDftImpl<B>
         + ScratchAvailableImpl<B>
@@ -157,7 +157,7 @@ where
     let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
     sk_glwe.fill_ternary_prob(0.5, &mut source_xs);
 
-    let sk_glwe_exec: GLWESecretPrepared<Vec<u8>, B> = sk_glwe.prepare_alloc(module, scratch.borrow());
+    let sk_glwe_prepared: GLWESecretPrepared<Vec<u8>, B> = sk_glwe.prepare_alloc(module, scratch.borrow());
 
     let mut sk_lwe = LWESecret::alloc(n_lwe);
     sk_lwe.fill_ternary_prob(0.5, &mut source_xs);
@@ -170,7 +170,7 @@ where
     glwe_ct.encrypt_sk(
         module,
         &glwe_pt,
-        &sk_glwe_exec,
+        &sk_glwe_prepared,
         &mut source_xa,
         &mut source_xe,
         sigma,
@@ -191,9 +191,9 @@ where
 
     let mut lwe_ct: LWECiphertext<Vec<u8>> = LWECiphertext::alloc(n_lwe, basek, k_lwe_ct);
 
-    let ksk_exec: GLWEToLWESwitchingKeyPrepared<Vec<u8>, B> = ksk.prepare_alloc(module, scratch.borrow());
+    let ksk_prepared: GLWEToLWESwitchingKeyPrepared<Vec<u8>, B> = ksk.prepare_alloc(module, scratch.borrow());
 
-    lwe_ct.from_glwe(module, &glwe_ct, &ksk_exec, scratch.borrow());
+    lwe_ct.from_glwe(module, &glwe_ct, &ksk_prepared, scratch.borrow());
 
     let mut lwe_pt: LWEPlaintext<Vec<u8>> = LWEPlaintext::alloc(basek, k_lwe_ct);
     lwe_ct.decrypt(module, &mut lwe_pt, &sk_lwe);

@@ -8,17 +8,17 @@ use backend::hal::{
 use sampling::source::Source;
 
 use crate::{
-    TakeGLWESecret, TakeGLWESecretExec,
+    TakeGLWESecret, TakeGLWESecretPrepared,
     layouts::{GGLWETensorKey, GLWESecret, Infos, compressed::GGLWETensorKeyCompressed, prepared::Prepare},
     trait_families::GLWEDecryptFamily,
 };
 
-use crate::trait_families::{GGLWETensorKeyEncryptSkFamily, GLWESecretExecModuleFamily};
+use crate::trait_families::{GGLWETensorKeyEncryptSkFamily, GLWESecretPreparedModuleFamily};
 
 impl GGLWETensorKeyCompressed<Vec<u8>> {
     pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, n: usize, basek: usize, k: usize, rank: usize) -> usize
     where
-        Module<B>: GGLWETensorKeyEncryptSkFamily<B> + GLWESecretExecModuleFamily<B>,
+        Module<B>: GGLWETensorKeyEncryptSkFamily<B> + GLWESecretPreparedModuleFamily<B>,
     {
         GGLWETensorKey::encrypt_sk_scratch_space(module, n, basek, k, rank)
     }
@@ -34,8 +34,10 @@ impl<DataSelf: DataMut> GGLWETensorKeyCompressed<DataSelf> {
         sigma: f64,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: GGLWETensorKeyEncryptSkFamily<B> + VecZnxSwithcDegree + VecZnxAddScalarInplace + GLWESecretExecModuleFamily<B>,
-        Scratch<B>: ScratchAvailable + TakeVecZnxDft<B> + TakeVecZnxBig<B> + TakeGLWESecretExec<B> + TakeScalarZnx + TakeVecZnx,
+        Module<B>:
+            GGLWETensorKeyEncryptSkFamily<B> + VecZnxSwithcDegree + VecZnxAddScalarInplace + GLWESecretPreparedModuleFamily<B>,
+        Scratch<B>:
+            ScratchAvailable + TakeVecZnxDft<B> + TakeVecZnxBig<B> + TakeGLWESecretPrepared<B> + TakeScalarZnx + TakeVecZnx,
     {
         #[cfg(debug_assertions)]
         {
@@ -46,7 +48,7 @@ impl<DataSelf: DataMut> GGLWETensorKeyCompressed<DataSelf> {
         let n: usize = sk.n();
         let rank: usize = self.rank();
 
-        let (mut sk_dft_prep, scratch1) = scratch.take_glwe_secret_exec(n, rank);
+        let (mut sk_dft_prep, scratch1) = scratch.take_glwe_secret_prepared(n, rank);
         sk_dft_prep.prepare(module, &sk, scratch1);
 
         let (mut sk_dft, scratch2) = scratch1.take_vec_znx_dft(n, rank, 1);

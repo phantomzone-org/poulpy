@@ -22,7 +22,7 @@ use crate::{
 
 use crate::trait_families::{
     GGLWESwitchingKeyEncryptSkFamily, GGLWETensorKeyEncryptSkFamily, GGSWEncryptSkFamily, GGSWKeySwitchFamily,
-    GLWESecretExecModuleFamily,
+    GLWESecretPreparedModuleFamily,
 };
 
 pub fn test_ggsw_keyswitch<B: Backend>(
@@ -36,7 +36,7 @@ pub fn test_ggsw_keyswitch<B: Backend>(
     rank: usize,
     sigma: f64,
 ) where
-    Module<B>: GLWESecretExecModuleFamily<B>
+    Module<B>: GLWESecretPreparedModuleFamily<B>
         + GGSWEncryptSkFamily<B>
         + GGSWAssertNoiseFamily<B>
         + VecZnxAddScalarInplace
@@ -96,7 +96,7 @@ pub fn test_ggsw_keyswitch<B: Backend>(
 
     let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
     sk_out.fill_ternary_prob(var_xs, &mut source_xs);
-    let sk_out_exec: GLWESecretPrepared<Vec<u8>, B> = sk_out.prepare_alloc(module, scratch.borrow());
+    let sk_out_prepared: GLWESecretPrepared<Vec<u8>, B> = sk_out.prepare_alloc(module, scratch.borrow());
 
     ksk.encrypt_sk(
         module,
@@ -128,10 +128,16 @@ pub fn test_ggsw_keyswitch<B: Backend>(
         scratch.borrow(),
     );
 
-    let ksk_exec: GGLWESwitchingKeyPrepared<Vec<u8>, B> = ksk.prepare_alloc(module, scratch.borrow());
-    let tsk_exec: GGLWETensorKeyPrepared<Vec<u8>, B> = tsk.prepare_alloc(module, scratch.borrow());
+    let ksk_prepared: GGLWESwitchingKeyPrepared<Vec<u8>, B> = ksk.prepare_alloc(module, scratch.borrow());
+    let tsk_prepared: GGLWETensorKeyPrepared<Vec<u8>, B> = tsk.prepare_alloc(module, scratch.borrow());
 
-    ct_out.keyswitch(module, &ct_in, &ksk_exec, &tsk_exec, scratch.borrow());
+    ct_out.keyswitch(
+        module,
+        &ct_in,
+        &ksk_prepared,
+        &tsk_prepared,
+        scratch.borrow(),
+    );
 
     let max_noise = |col_j: usize| -> f64 {
         noise_ggsw_keyswitch(
@@ -149,7 +155,7 @@ pub fn test_ggsw_keyswitch<B: Backend>(
         ) + 0.5
     };
 
-    ct_out.assert_noise(module, &sk_out_exec, &pt_scalar, &max_noise);
+    ct_out.assert_noise(module, &sk_out_prepared, &pt_scalar, &max_noise);
 }
 
 pub fn test_ggsw_keyswitch_inplace<B: Backend>(
@@ -162,7 +168,7 @@ pub fn test_ggsw_keyswitch_inplace<B: Backend>(
     rank: usize,
     sigma: f64,
 ) where
-    Module<B>: GLWESecretExecModuleFamily<B>
+    Module<B>: GLWESecretPreparedModuleFamily<B>
         + GGSWEncryptSkFamily<B>
         + GGSWAssertNoiseFamily<B>
         + VecZnxAddScalarInplace
@@ -216,7 +222,7 @@ pub fn test_ggsw_keyswitch_inplace<B: Backend>(
 
     let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
     sk_out.fill_ternary_prob(var_xs, &mut source_xs);
-    let sk_out_exec: GLWESecretPrepared<Vec<u8>, B> = sk_out.prepare_alloc(module, scratch.borrow());
+    let sk_out_prepared: GLWESecretPrepared<Vec<u8>, B> = sk_out.prepare_alloc(module, scratch.borrow());
 
     ksk.encrypt_sk(
         module,
@@ -248,10 +254,10 @@ pub fn test_ggsw_keyswitch_inplace<B: Backend>(
         scratch.borrow(),
     );
 
-    let ksk_exec: GGLWESwitchingKeyPrepared<Vec<u8>, B> = ksk.prepare_alloc(module, scratch.borrow());
-    let tsk_exec: GGLWETensorKeyPrepared<Vec<u8>, B> = tsk.prepare_alloc(module, scratch.borrow());
+    let ksk_prepared: GGLWESwitchingKeyPrepared<Vec<u8>, B> = ksk.prepare_alloc(module, scratch.borrow());
+    let tsk_prepared: GGLWETensorKeyPrepared<Vec<u8>, B> = tsk.prepare_alloc(module, scratch.borrow());
 
-    ct.keyswitch_inplace(module, &ksk_exec, &tsk_exec, scratch.borrow());
+    ct.keyswitch_inplace(module, &ksk_prepared, &tsk_prepared, scratch.borrow());
 
     let max_noise = |col_j: usize| -> f64 {
         noise_ggsw_keyswitch(
@@ -269,5 +275,5 @@ pub fn test_ggsw_keyswitch_inplace<B: Backend>(
         ) + 0.5
     };
 
-    ct.assert_noise(module, &sk_out_exec, &pt_scalar, &max_noise);
+    ct.assert_noise(module, &sk_out_prepared, &pt_scalar, &max_noise);
 }

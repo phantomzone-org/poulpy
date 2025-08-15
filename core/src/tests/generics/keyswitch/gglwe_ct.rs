@@ -20,7 +20,7 @@ use crate::{
     trait_families::{GLWEDecryptFamily, GLWEKeyswitchFamily},
 };
 
-use crate::trait_families::{GGLWEEncryptSkFamily, GGLWESwitchingKeyEncryptSkFamily, GLWESecretExecModuleFamily};
+use crate::trait_families::{GGLWEEncryptSkFamily, GGLWESwitchingKeyEncryptSkFamily, GLWESecretPreparedModuleFamily};
 
 pub fn test_gglwe_switching_key_keyswitch<B: Backend>(
     module: &Module<B>,
@@ -35,7 +35,7 @@ pub fn test_gglwe_switching_key_keyswitch<B: Backend>(
     sigma: f64,
 ) where
     Module<B>: GGLWEEncryptSkFamily<B>
-        + GLWESecretExecModuleFamily<B>
+        + GLWESecretPreparedModuleFamily<B>
         + GLWEDecryptFamily<B>
         + VecZnxSwithcDegree
         + VecZnxAddScalarInplace
@@ -108,7 +108,7 @@ pub fn test_gglwe_switching_key_keyswitch<B: Backend>(
 
     let mut sk2: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank_out_s1s2);
     sk2.fill_ternary_prob(0.5, &mut source_xs);
-    let sk2_exec: GLWESecretPrepared<Vec<u8>, B> = sk2.prepare_alloc(module, scratch_apply.borrow());
+    let sk2_prepared: GLWESecretPrepared<Vec<u8>, B> = sk2.prepare_alloc(module, scratch_apply.borrow());
 
     // gglwe_{s1}(s0) = s0 -> s1
     ct_gglwe_s0s1.encrypt_sk(
@@ -132,13 +132,14 @@ pub fn test_gglwe_switching_key_keyswitch<B: Backend>(
         scratch_enc.borrow(),
     );
 
-    let ct_gglwe_s1s2_exec: GGLWESwitchingKeyPrepared<Vec<u8>, B> = ct_gglwe_s1s2.prepare_alloc(module, scratch_apply.borrow());
+    let ct_gglwe_s1s2_prepared: GGLWESwitchingKeyPrepared<Vec<u8>, B> =
+        ct_gglwe_s1s2.prepare_alloc(module, scratch_apply.borrow());
 
     // gglwe_{s1}(s0) (x) gglwe_{s2}(s1) = gglwe_{s2}(s0)
     ct_gglwe_s0s2.keyswitch(
         module,
         &ct_gglwe_s0s1,
-        &ct_gglwe_s1s2_exec,
+        &ct_gglwe_s1s2_prepared,
         scratch_apply.borrow(),
     );
 
@@ -157,7 +158,7 @@ pub fn test_gglwe_switching_key_keyswitch<B: Backend>(
 
     ct_gglwe_s0s2
         .key
-        .assert_noise(module, &sk2_exec, &sk0.data, max_noise + 0.5);
+        .assert_noise(module, &sk2_prepared, &sk0.data, max_noise + 0.5);
 }
 
 pub fn test_gglwe_switching_key_keyswitch_inplace<B: Backend>(
@@ -171,7 +172,7 @@ pub fn test_gglwe_switching_key_keyswitch_inplace<B: Backend>(
     sigma: f64,
 ) where
     Module<B>: GGLWEEncryptSkFamily<B>
-        + GLWESecretExecModuleFamily<B>
+        + GLWESecretPreparedModuleFamily<B>
         + GLWEDecryptFamily<B>
         + VecZnxSwithcDegree
         + VecZnxAddScalarInplace
@@ -229,7 +230,7 @@ pub fn test_gglwe_switching_key_keyswitch_inplace<B: Backend>(
 
     let mut sk2: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank_out);
     sk2.fill_ternary_prob(var_xs, &mut source_xs);
-    let sk2_exec: GLWESecretPrepared<Vec<u8>, B> = sk2.prepare_alloc(module, scratch_apply.borrow());
+    let sk2_prepared: GLWESecretPrepared<Vec<u8>, B> = sk2.prepare_alloc(module, scratch_apply.borrow());
 
     // gglwe_{s1}(s0) = s0 -> s1
     ct_gglwe_s0s1.encrypt_sk(
@@ -253,10 +254,11 @@ pub fn test_gglwe_switching_key_keyswitch_inplace<B: Backend>(
         scratch_enc.borrow(),
     );
 
-    let ct_gglwe_s1s2_exec: GGLWESwitchingKeyPrepared<Vec<u8>, B> = ct_gglwe_s1s2.prepare_alloc(module, scratch_apply.borrow());
+    let ct_gglwe_s1s2_prepared: GGLWESwitchingKeyPrepared<Vec<u8>, B> =
+        ct_gglwe_s1s2.prepare_alloc(module, scratch_apply.borrow());
 
     // gglwe_{s1}(s0) (x) gglwe_{s2}(s1) = gglwe_{s2}(s0)
-    ct_gglwe_s0s1.keyswitch_inplace(module, &ct_gglwe_s1s2_exec, scratch_apply.borrow());
+    ct_gglwe_s0s1.keyswitch_inplace(module, &ct_gglwe_s1s2_prepared, scratch_apply.borrow());
 
     let ct_gglwe_s0s2: GGLWESwitchingKey<Vec<u8>> = ct_gglwe_s0s1;
 
@@ -275,5 +277,5 @@ pub fn test_gglwe_switching_key_keyswitch_inplace<B: Backend>(
 
     ct_gglwe_s0s2
         .key
-        .assert_noise(module, &sk2_exec, &sk0.data, max_noise + 0.5);
+        .assert_noise(module, &sk2_prepared, &sk0.data, max_noise + 0.5);
 }

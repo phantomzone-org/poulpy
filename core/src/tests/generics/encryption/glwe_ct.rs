@@ -18,9 +18,10 @@ use crate::{
     trait_families::Decompress,
 };
 
-use crate::trait_families::{GLWEDecryptFamily, GLWEEncryptPkFamily, GLWEEncryptSkFamily, GLWESecretExecModuleFamily};
+use crate::trait_families::{GLWEDecryptFamily, GLWEEncryptPkFamily, GLWEEncryptSkFamily, GLWESecretPreparedModuleFamily};
 
-pub trait EncryptionTestModuleFamily<B: Backend> = GLWEDecryptFamily<B> + GLWESecretExecModuleFamily<B> + GLWEEncryptPkFamily<B>;
+pub trait EncryptionTestModuleFamily<B: Backend> =
+    GLWEDecryptFamily<B> + GLWESecretPreparedModuleFamily<B> + GLWEEncryptPkFamily<B>;
 
 pub fn test_glwe_encrypt_sk<B: Backend>(module: &Module<B>, basek: usize, k_ct: usize, k_pt: usize, sigma: f64, rank: usize)
 where
@@ -50,21 +51,21 @@ where
 
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
     sk.fill_ternary_prob(0.5, &mut source_xs);
-    let sk_exec: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
+    let sk_prepared: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
 
     module.vec_znx_fill_uniform(basek, &mut pt_want.data, 0, k_pt, &mut source_xa);
 
     ct.encrypt_sk(
         module,
         &pt_want,
-        &sk_exec,
+        &sk_prepared,
         &mut source_xa,
         &mut source_xe,
         sigma,
         scratch.borrow(),
     );
 
-    ct.decrypt(module, &mut pt_have, &sk_exec, scratch.borrow());
+    ct.decrypt(module, &mut pt_have, &sk_prepared, scratch.borrow());
 
     pt_want.sub_inplace_ab(module, &pt_have);
 
@@ -109,7 +110,7 @@ pub fn test_glwe_compressed_encrypt_sk<B: Backend>(
 
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
     sk.fill_ternary_prob(0.5, &mut source_xs);
-    let sk_exec: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
+    let sk_prepared: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
 
     module.vec_znx_fill_uniform(basek, &mut pt_want.data, 0, k_pt, &mut source_xa);
 
@@ -118,7 +119,7 @@ pub fn test_glwe_compressed_encrypt_sk<B: Backend>(
     ct_compressed.encrypt_sk(
         module,
         &pt_want,
-        &sk_exec,
+        &sk_prepared,
         seed_xa,
         &mut source_xe,
         sigma,
@@ -128,7 +129,7 @@ pub fn test_glwe_compressed_encrypt_sk<B: Backend>(
     let mut ct: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(n, basek, k_ct, rank);
     ct.decompress(module, &ct_compressed);
 
-    ct.decrypt(module, &mut pt_have, &sk_exec, scratch.borrow());
+    ct.decrypt(module, &mut pt_have, &sk_prepared, scratch.borrow());
 
     pt_want.sub_inplace_ab(module, &pt_have);
 
@@ -169,19 +170,19 @@ where
 
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
     sk.fill_ternary_prob(0.5, &mut source_xs);
-    let sk_exec: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
+    let sk_prepared: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
 
     let mut ct: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(n, basek, k_ct, rank);
 
     ct.encrypt_zero_sk(
         module,
-        &sk_exec,
+        &sk_prepared,
         &mut source_xa,
         &mut source_xe,
         sigma,
         scratch.borrow(),
     );
-    ct.decrypt(module, &mut pt, &sk_exec, scratch.borrow());
+    ct.decrypt(module, &mut pt, &sk_prepared, scratch.borrow());
 
     assert!((sigma - pt.data.std(basek, 0) * (k_ct as f64).exp2()) <= 0.2);
 }
@@ -217,26 +218,26 @@ where
 
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
     sk.fill_ternary_prob(0.5, &mut source_xs);
-    let sk_exec: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
+    let sk_prepared: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
 
     let mut pk: GLWEPublicKey<Vec<u8>> = GLWEPublicKey::alloc(n, basek, k_pk, rank);
-    pk.generate_from_sk(module, &sk_exec, &mut source_xa, &mut source_xe, sigma);
+    pk.generate_from_sk(module, &sk_prepared, &mut source_xa, &mut source_xe, sigma);
 
     module.vec_znx_fill_uniform(basek, &mut pt_want.data, 0, k_ct, &mut source_xa);
 
-    let pk_exec: GLWEPublicKeyPrepared<Vec<u8>, B> = pk.prepare_alloc(module, scratch.borrow());
+    let pk_prepared: GLWEPublicKeyPrepared<Vec<u8>, B> = pk.prepare_alloc(module, scratch.borrow());
 
     ct.encrypt_pk(
         module,
         &pt_want,
-        &pk_exec,
+        &pk_prepared,
         &mut source_xu,
         &mut source_xe,
         sigma,
         scratch.borrow(),
     );
 
-    ct.decrypt(module, &mut pt_have, &sk_exec, scratch.borrow());
+    ct.decrypt(module, &mut pt_have, &sk_prepared, scratch.borrow());
 
     pt_want.sub_inplace_ab(module, &pt_have);
 

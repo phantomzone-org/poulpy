@@ -21,7 +21,7 @@ use crate::{
 };
 
 use crate::trait_families::{
-    GGLWESwitchingKeyEncryptSkFamily, GGLWETensorKeyEncryptSkFamily, GGSWKeySwitchFamily, GLWESecretExecModuleFamily,
+    GGLWESwitchingKeyEncryptSkFamily, GGLWETensorKeyEncryptSkFamily, GGSWKeySwitchFamily, GLWESecretPreparedModuleFamily,
 };
 
 pub fn test_ggsw_automorphism<B: Backend>(
@@ -37,7 +37,7 @@ pub fn test_ggsw_automorphism<B: Backend>(
     sigma: f64,
 ) where
     Module<B>: GGSWAssertNoiseFamily<B>
-        + GLWESecretExecModuleFamily<B>
+        + GLWESecretPreparedModuleFamily<B>
         + VecZnxAddScalarInplace
         + VecZnxCopy
         + VecZnxSubABInplace
@@ -91,7 +91,7 @@ pub fn test_ggsw_automorphism<B: Backend>(
 
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
     sk.fill_ternary_prob(var_xs, &mut source_xs);
-    let sk_exec: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
+    let sk_prepared: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
 
     auto_key.encrypt_sk(
         module,
@@ -116,22 +116,28 @@ pub fn test_ggsw_automorphism<B: Backend>(
     ct_in.encrypt_sk(
         module,
         &pt_scalar,
-        &sk_exec,
+        &sk_prepared,
         &mut source_xa,
         &mut source_xe,
         sigma,
         scratch.borrow(),
     );
 
-    let mut auto_key_exec: GGLWEAutomorphismKeyPrepared<Vec<u8>, B> =
+    let mut auto_key_prepared: GGLWEAutomorphismKeyPrepared<Vec<u8>, B> =
         GGLWEAutomorphismKeyPrepared::alloc(module, n, basek, k_ksk, rows, digits, rank);
-    auto_key_exec.prepare(module, &auto_key, scratch.borrow());
+    auto_key_prepared.prepare(module, &auto_key, scratch.borrow());
 
-    let mut tsk_exec: GGLWETensorKeyPrepared<Vec<u8>, B> =
+    let mut tsk_prepared: GGLWETensorKeyPrepared<Vec<u8>, B> =
         GGLWETensorKeyPrepared::alloc(module, n, basek, k_tsk, rows, digits, rank);
-    tsk_exec.prepare(module, &tensor_key, scratch.borrow());
+    tsk_prepared.prepare(module, &tensor_key, scratch.borrow());
 
-    ct_out.automorphism(module, &ct_in, &auto_key_exec, &tsk_exec, scratch.borrow());
+    ct_out.automorphism(
+        module,
+        &ct_in,
+        &auto_key_prepared,
+        &tsk_prepared,
+        scratch.borrow(),
+    );
 
     module.vec_znx_automorphism_inplace(p, &mut pt_scalar.as_vec_znx_mut(), 0);
 
@@ -151,7 +157,7 @@ pub fn test_ggsw_automorphism<B: Backend>(
         ) + 0.5
     };
 
-    ct_out.assert_noise(module, &sk_exec, &pt_scalar, &max_noise);
+    ct_out.assert_noise(module, &sk_prepared, &pt_scalar, &max_noise);
 }
 
 pub fn test_ggsw_automorphism_inplace<B: Backend>(
@@ -166,7 +172,7 @@ pub fn test_ggsw_automorphism_inplace<B: Backend>(
     sigma: f64,
 ) where
     Module<B>: GGSWAssertNoiseFamily<B>
-        + GLWESecretExecModuleFamily<B>
+        + GLWESecretPreparedModuleFamily<B>
         + VecZnxAddScalarInplace
         + VecZnxCopy
         + VecZnxSubABInplace
@@ -216,7 +222,7 @@ pub fn test_ggsw_automorphism_inplace<B: Backend>(
 
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
     sk.fill_ternary_prob(var_xs, &mut source_xs);
-    let sk_exec: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
+    let sk_prepared: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
 
     auto_key.encrypt_sk(
         module,
@@ -241,22 +247,22 @@ pub fn test_ggsw_automorphism_inplace<B: Backend>(
     ct.encrypt_sk(
         module,
         &pt_scalar,
-        &sk_exec,
+        &sk_prepared,
         &mut source_xa,
         &mut source_xe,
         sigma,
         scratch.borrow(),
     );
 
-    let mut auto_key_exec: GGLWEAutomorphismKeyPrepared<Vec<u8>, B> =
+    let mut auto_key_prepared: GGLWEAutomorphismKeyPrepared<Vec<u8>, B> =
         GGLWEAutomorphismKeyPrepared::alloc(module, n, basek, k_ksk, rows, digits, rank);
-    auto_key_exec.prepare(module, &auto_key, scratch.borrow());
+    auto_key_prepared.prepare(module, &auto_key, scratch.borrow());
 
-    let mut tsk_exec: GGLWETensorKeyPrepared<Vec<u8>, B> =
+    let mut tsk_prepared: GGLWETensorKeyPrepared<Vec<u8>, B> =
         GGLWETensorKeyPrepared::alloc(module, n, basek, k_tsk, rows, digits, rank);
-    tsk_exec.prepare(module, &tensor_key, scratch.borrow());
+    tsk_prepared.prepare(module, &tensor_key, scratch.borrow());
 
-    ct.automorphism_inplace(module, &auto_key_exec, &tsk_exec, scratch.borrow());
+    ct.automorphism_inplace(module, &auto_key_prepared, &tsk_prepared, scratch.borrow());
 
     module.vec_znx_automorphism_inplace(p, &mut pt_scalar.as_vec_znx_mut(), 0);
 
@@ -276,5 +282,5 @@ pub fn test_ggsw_automorphism_inplace<B: Backend>(
         ) + 0.5
     };
 
-    ct.assert_noise(module, &sk_exec, &pt_scalar, &max_noise);
+    ct.assert_noise(module, &sk_prepared, &pt_scalar, &max_noise);
 }

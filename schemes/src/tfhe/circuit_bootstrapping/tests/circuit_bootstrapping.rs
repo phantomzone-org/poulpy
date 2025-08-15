@@ -103,7 +103,7 @@ where
     let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
     sk_glwe.fill_ternary_prob(0.5, &mut source_xs);
 
-    let sk_glwe_exec: GLWESecretPrepared<Vec<u8>, B> = sk_glwe.prepare_alloc(module, scratch.borrow());
+    let sk_glwe_prepared: GLWESecretPrepared<Vec<u8>, B> = sk_glwe.prepare_alloc(module, scratch.borrow());
 
     let data: i64 = 1;
 
@@ -148,10 +148,10 @@ where
 
     let log_gap_out = 1;
 
-    let cbt_exec: CircuitBootstrappingKeyPrepared<Vec<u8>, BRA, B> = cbt_key.prepare_alloc(module, scratch.borrow());
+    let cbt_prepared: CircuitBootstrappingKeyPrepared<Vec<u8>, BRA, B> = cbt_key.prepare_alloc(module, scratch.borrow());
 
     let now: Instant = Instant::now();
-    cbt_exec.execute_to_exponent(
+    cbt_prepared.execute_to_exponent(
         module,
         log_gap_out,
         &mut res,
@@ -167,7 +167,7 @@ where
     pt_ggsw.at_mut(0, 0)[0] = 1;
     module.vec_znx_rotate_inplace(data * (1 << log_gap_out), &mut pt_ggsw.as_vec_znx_mut(), 0);
 
-    res.print_noise(module, &sk_glwe_exec, &pt_ggsw);
+    res.print_noise(module, &sk_glwe_prepared, &pt_ggsw);
 
     let k_glwe: usize = k_ggsw_res;
 
@@ -178,19 +178,19 @@ where
     ct_glwe.encrypt_sk(
         module,
         &pt_glwe,
-        &sk_glwe_exec,
+        &sk_glwe_prepared,
         &mut source_xa,
         &mut source_xe,
         sigma,
         scratch.borrow(),
     );
 
-    let res_exec: GGSWCiphertextPrepared<Vec<u8>, B> = res.prepare_alloc(module, scratch.borrow());
+    let res_prepared: GGSWCiphertextPrepared<Vec<u8>, B> = res.prepare_alloc(module, scratch.borrow());
 
-    ct_glwe.external_product_inplace(module, &res_exec, scratch.borrow());
+    ct_glwe.external_product_inplace(module, &res_prepared, scratch.borrow());
 
     let mut pt_res: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(n, basek, k_glwe);
-    ct_glwe.decrypt(module, &mut pt_res, &sk_glwe_exec, scratch.borrow());
+    ct_glwe.decrypt(module, &mut pt_res, &sk_glwe_prepared, scratch.borrow());
 
     // Parameters are set such that the first limb should be noiseless.
     let mut pt_want: Vec<i64> = vec![0i64; module.n()];
@@ -263,7 +263,7 @@ where
     let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
     sk_glwe.fill_ternary_prob(0.5, &mut source_xs);
 
-    let sk_glwe_exec: GLWESecretPrepared<Vec<u8>, B> = sk_glwe.prepare_alloc(module, scratch.borrow());
+    let sk_glwe_prepared: GLWESecretPrepared<Vec<u8>, B> = sk_glwe.prepare_alloc(module, scratch.borrow());
 
     let data: i64 = 1;
 
@@ -306,10 +306,10 @@ where
 
     let mut res: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(n, basek, k_ggsw_res, rows_ggsw_res, 1, rank);
 
-    let cbt_exec: CircuitBootstrappingKeyPrepared<Vec<u8>, BRA, B> = cbt_key.prepare_alloc(module, scratch.borrow());
+    let cbt_prepared: CircuitBootstrappingKeyPrepared<Vec<u8>, BRA, B> = cbt_key.prepare_alloc(module, scratch.borrow());
 
     let now: Instant = Instant::now();
-    cbt_exec.execute_to_constant(
+    cbt_prepared.execute_to_constant(
         module,
         &mut res,
         &ct_lwe,
@@ -323,7 +323,7 @@ where
     let mut pt_ggsw: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n, 1);
     pt_ggsw.at_mut(0, 0)[0] = data;
 
-    res.print_noise(module, &sk_glwe_exec, &pt_ggsw);
+    res.print_noise(module, &sk_glwe_prepared, &pt_ggsw);
 
     let k_glwe: usize = k_ggsw_res;
 
@@ -334,19 +334,19 @@ where
     ct_glwe.encrypt_sk(
         module,
         &pt_glwe,
-        &sk_glwe_exec,
+        &sk_glwe_prepared,
         &mut source_xa,
         &mut source_xe,
         sigma,
         scratch.borrow(),
     );
 
-    let res_exec: GGSWCiphertextPrepared<Vec<u8>, B> = res.prepare_alloc(module, scratch.borrow());
+    let res_prepared: GGSWCiphertextPrepared<Vec<u8>, B> = res.prepare_alloc(module, scratch.borrow());
 
-    ct_glwe.external_product_inplace(module, &res_exec, scratch.borrow());
+    ct_glwe.external_product_inplace(module, &res_prepared, scratch.borrow());
 
     let mut pt_res: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(n, basek, k_glwe);
-    ct_glwe.decrypt(module, &mut pt_res, &sk_glwe_exec, scratch.borrow());
+    ct_glwe.decrypt(module, &mut pt_res, &sk_glwe_prepared, scratch.borrow());
 
     // Parameters are set such that the first limb should be noiseless.
     let mut pt_want: Vec<i64> = vec![0i64; module.n()];

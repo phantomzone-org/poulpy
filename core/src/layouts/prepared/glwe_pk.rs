@@ -67,10 +67,10 @@ where
     Module<B>: VecZnxDftAlloc<B> + VecZnxDftFromVecZnx<B>,
 {
     fn prepare_alloc(&self, module: &Module<B>, scratch: &mut Scratch<B>) -> GLWEPublicKeyPrepared<Vec<u8>, B> {
-        let mut pk_exec: GLWEPublicKeyPrepared<Vec<u8>, B> =
+        let mut pk_prepared: GLWEPublicKeyPrepared<Vec<u8>, B> =
             GLWEPublicKeyPrepared::alloc(module, self.n(), self.basek(), self.k(), self.rank());
-        pk_exec.prepare(module, self, scratch);
-        pk_exec
+        pk_prepared.prepare(module, self, scratch);
+        pk_prepared
     }
 }
 

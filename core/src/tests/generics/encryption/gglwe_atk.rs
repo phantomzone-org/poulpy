@@ -20,7 +20,7 @@ use crate::{
     trait_families::{Decompress, GLWEDecryptFamily, GLWEKeyswitchFamily},
 };
 
-use crate::trait_families::{GGLWEAutomorphismKeyEncryptSkFamily, GLWESecretExecModuleFamily};
+use crate::trait_families::{GGLWEAutomorphismKeyEncryptSkFamily, GLWESecretPreparedModuleFamily};
 
 pub fn test_gglwe_automorphisk_key_encrypt_sk<B: Backend>(
     module: &Module<B>,
@@ -31,7 +31,7 @@ pub fn test_gglwe_automorphisk_key_encrypt_sk<B: Backend>(
     sigma: f64,
 ) where
     Module<B>: GGLWEAutomorphismKeyEncryptSkFamily<B>
-        + GLWESecretExecModuleFamily<B>
+        + GLWESecretPreparedModuleFamily<B>
         + GLWEKeyswitchFamily<B>
         + VecZnxAutomorphism
         + VecZnxSwithcDegree
@@ -90,11 +90,11 @@ pub fn test_gglwe_automorphisk_key_encrypt_sk<B: Backend>(
             i,
         );
     });
-    let sk_out_exec: GLWESecretPrepared<Vec<u8>, B> = sk_out.prepare_alloc(module, scratch.borrow());
+    let sk_out_prepared: GLWESecretPrepared<Vec<u8>, B> = sk_out.prepare_alloc(module, scratch.borrow());
 
     atk.key
         .key
-        .assert_noise(module, &sk_out_exec, &sk.data, sigma);
+        .assert_noise(module, &sk_out_prepared, &sk.data, sigma);
 }
 
 pub fn test_gglwe_automorphisk_key_compressed_encrypt_sk<B: Backend>(
@@ -106,7 +106,7 @@ pub fn test_gglwe_automorphisk_key_compressed_encrypt_sk<B: Backend>(
     sigma: f64,
 ) where
     Module<B>: GGLWEAutomorphismKeyEncryptSkFamily<B>
-        + GLWESecretExecModuleFamily<B>
+        + GLWESecretPreparedModuleFamily<B>
         + GLWEKeyswitchFamily<B>
         + VecZnxAutomorphism
         + VecZnxSwithcDegree
@@ -167,12 +167,12 @@ pub fn test_gglwe_automorphisk_key_compressed_encrypt_sk<B: Backend>(
             i,
         );
     });
-    let sk_out_exec = sk_out.prepare_alloc(module, scratch.borrow());
+    let sk_out_prepared = sk_out.prepare_alloc(module, scratch.borrow());
 
     let mut atk: GGLWEAutomorphismKey<Vec<u8>> = GGLWEAutomorphismKey::alloc(n, basek, k_ksk, rows, digits, rank);
     atk.decompress(module, &atk_compressed);
 
     atk.key
         .key
-        .assert_noise(module, &sk_out_exec, &sk.data, sigma);
+        .assert_noise(module, &sk_out_prepared, &sk.data, sigma);
 }

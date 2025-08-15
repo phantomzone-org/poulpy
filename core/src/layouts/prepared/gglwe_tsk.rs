@@ -116,7 +116,7 @@ where
     Module<B>: VmpPMatAlloc<B> + VmpPMatPrepare<B>,
 {
     fn prepare_alloc(&self, module: &Module<B>, scratch: &mut Scratch<B>) -> GGLWETensorKeyPrepared<Vec<u8>, B> {
-        let mut tsk_exec: GGLWETensorKeyPrepared<Vec<u8>, B> = GGLWETensorKeyPrepared::alloc(
+        let mut tsk_prepared: GGLWETensorKeyPrepared<Vec<u8>, B> = GGLWETensorKeyPrepared::alloc(
             module,
             self.n(),
             self.basek(),
@@ -125,7 +125,7 @@ where
             self.digits(),
             self.rank(),
         );
-        tsk_exec.prepare(module, self, scratch);
-        tsk_exec
+        tsk_prepared.prepare(module, self, scratch);
+        tsk_prepared
     }
 }

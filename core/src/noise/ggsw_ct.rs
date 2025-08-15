@@ -16,7 +16,7 @@ impl<D: DataRef> GGSWCiphertext<D> {
     pub fn assert_noise<B: Backend, DataSk, DataScalar, F>(
         &self,
         module: &Module<B>,
-        sk_exec: &GLWESecretPrepared<DataSk, B>,
+        sk_prepared: &GLWESecretPrepared<DataSk, B>,
         pt_want: &ScalarZnx<DataScalar>,
         max_noise: F,
     ) where
@@ -46,13 +46,13 @@ impl<D: DataRef> GGSWCiphertext<D> {
                 // mul with sk[col_j-1]
                 if col_j > 0 {
                     module.vec_znx_dft_from_vec_znx(1, 0, &mut pt_dft, 0, &pt.data, 0);
-                    module.svp_apply_inplace(&mut pt_dft, 0, &sk_exec.data, col_j - 1);
+                    module.svp_apply_inplace(&mut pt_dft, 0, &sk_prepared.data, col_j - 1);
                     module.vec_znx_dft_to_vec_znx_big_tmp_a(&mut pt_big, 0, &mut pt_dft, 0);
                     module.vec_znx_big_normalize(basek, &mut pt.data, 0, &pt_big, 0, scratch.borrow());
                 }
 
                 self.at(row_i, col_j)
-                    .decrypt(module, &mut pt_have, &sk_exec, scratch.borrow());
+                    .decrypt(module, &mut pt_have, &sk_prepared, scratch.borrow());
 
                 module.vec_znx_sub_ab_inplace(&mut pt_have.data, 0, &pt.data, 0);
 
@@ -71,7 +71,7 @@ impl<D: DataRef> GGSWCiphertext<D> {
     pub fn print_noise<B: Backend, DataSk, DataScalar>(
         &self,
         module: &Module<B>,
-        sk_exec: &GLWESecretPrepared<DataSk, B>,
+        sk_prepared: &GLWESecretPrepared<DataSk, B>,
         pt_want: &ScalarZnx<DataScalar>,
     ) where
         DataSk: DataRef,
@@ -99,13 +99,13 @@ impl<D: DataRef> GGSWCiphertext<D> {
                 // mul with sk[col_j-1]
                 if col_j > 0 {
                     module.vec_znx_dft_from_vec_znx(1, 0, &mut pt_dft, 0, &pt.data, 0);
-                    module.svp_apply_inplace(&mut pt_dft, 0, &sk_exec.data, col_j - 1);
+                    module.svp_apply_inplace(&mut pt_dft, 0, &sk_prepared.data, col_j - 1);
                     module.vec_znx_dft_to_vec_znx_big_tmp_a(&mut pt_big, 0, &mut pt_dft, 0);
                     module.vec_znx_big_normalize(basek, &mut pt.data, 0, &pt_big, 0, scratch.borrow());
                 }
 
                 self.at(row_i, col_j)
-                    .decrypt(module, &mut pt_have, &sk_exec, scratch.borrow());
+                    .decrypt(module, &mut pt_have, &sk_prepared, scratch.borrow());
 
                 module.vec_znx_sub_ab_inplace(&mut pt_have.data, 0, &pt.data, 0);
 

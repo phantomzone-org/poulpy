@@ -115,12 +115,12 @@ In addition to providing a general purpose FHE library over a unified plaintext 
 	    pub(crate) dist: Distribution,
 	}
 
-	pub struct GLWESecretExec<D: Data, B: Backend> {
+	pub struct GLWESecrecPrepared<D: Data, B: Backend> {
 	    pub(crate) data: SvpPPol<D, B>,
 	    pub(crate) dist: Distribution,
 	}
  
-	impl<D: DataMut, B: Backend> GLWESecretExec<D, B> {
+	impl<D: DataMut, B: Backend> GLWESecretPrepared<D, B> {
 	    pub fn prepare<O>(&mut self, module: &Module<B>, sk: &GLWESecret<O>)
 	    where
 	        O: DataRef,

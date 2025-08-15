@@ -20,12 +20,12 @@ use crate::{
     trait_families::{Decompress, GLWEDecryptFamily},
 };
 
-use crate::trait_families::{GGLWEEncryptSkFamily, GGLWETensorKeyEncryptSkFamily, GLWESecretExecModuleFamily};
+use crate::trait_families::{GGLWEEncryptSkFamily, GGLWETensorKeyEncryptSkFamily, GLWESecretPreparedModuleFamily};
 
 pub fn test_glwe_tensor_key_encrypt_sk<B: Backend>(module: &Module<B>, basek: usize, k: usize, sigma: f64, rank: usize)
 where
     Module<B>: GGLWEEncryptSkFamily<B>
-        + GLWESecretExecModuleFamily<B>
+        + GLWESecretPreparedModuleFamily<B>
         + GLWEDecryptFamily<B>
         + VecZnxSwithcDegree
         + VecZnxAddScalarInplace
@@ -67,7 +67,7 @@ where
 
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
     sk.fill_ternary_prob(0.5, &mut source_xs);
-    let sk_exec: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
+    let sk_prepared: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
 
     tensor_key.encrypt_sk(
         module,
@@ -91,7 +91,7 @@ where
 
     (0..rank).for_each(|i| {
         (0..rank).for_each(|j| {
-            module.svp_apply(&mut sk_ij_dft, 0, &sk_exec.data, j, &sk_dft, i);
+            module.svp_apply(&mut sk_ij_dft, 0, &sk_prepared.data, j, &sk_dft, i);
             module.vec_znx_dft_to_vec_znx_big_tmp_a(&mut sk_ij_big, 0, &mut sk_ij_dft, 0);
             module.vec_znx_big_normalize(
                 basek,
@@ -106,7 +106,7 @@ where
                     tensor_key
                         .at(i, j)
                         .at(row_i, col_i)
-                        .decrypt(module, &mut pt, &sk_exec, scratch.borrow());
+                        .decrypt(module, &mut pt, &sk_prepared, scratch.borrow());
 
                     module.vec_znx_sub_scalar_inplace(&mut pt.data, 0, row_i, &sk_ij.data, col_i);
 
@@ -121,7 +121,7 @@ where
 pub fn test_glwe_tensor_key_compressed_encrypt_sk<B: Backend>(module: &Module<B>, basek: usize, k: usize, sigma: f64, rank: usize)
 where
     Module<B>: GGLWEEncryptSkFamily<B>
-        + GLWESecretExecModuleFamily<B>
+        + GLWESecretPreparedModuleFamily<B>
         + GLWEDecryptFamily<B>
         + VecZnxSwithcDegree
         + VecZnxAddScalarInplace
@@ -164,7 +164,7 @@ where
 
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
     sk.fill_ternary_prob(0.5, &mut source_xs);
-    let sk_exec: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
+    let sk_prepared: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
 
     let seed_xa: [u8; 32] = [1u8; 32];
 
@@ -193,7 +193,7 @@ where
 
     (0..rank).for_each(|i| {
         (0..rank).for_each(|j| {
-            module.svp_apply(&mut sk_ij_dft, 0, &sk_exec.data, j, &sk_dft, i);
+            module.svp_apply(&mut sk_ij_dft, 0, &sk_prepared.data, j, &sk_dft, i);
             module.vec_znx_dft_to_vec_znx_big_tmp_a(&mut sk_ij_big, 0, &mut sk_ij_dft, 0);
             module.vec_znx_big_normalize(
                 basek,
@@ -208,7 +208,7 @@ where
                     tensor_key
                         .at(i, j)
                         .at(row_i, col_i)
-                        .decrypt(module, &mut pt, &sk_exec, scratch.borrow());
+                        .decrypt(module, &mut pt, &sk_prepared, scratch.borrow());
 
                     module.vec_znx_sub_scalar_inplace(&mut pt.data, 0, row_i, &sk_ij.data, col_i);
 

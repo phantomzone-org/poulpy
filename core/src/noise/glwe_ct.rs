@@ -15,7 +15,7 @@ impl<D: DataRef> GLWECiphertext<D> {
     pub fn assert_noise<B: Backend, DataSk, DataPt>(
         &self,
         module: &Module<B>,
-        sk_exec: &GLWESecretPrepared<DataSk, B>,
+        sk_prepared: &GLWESecretPrepared<DataSk, B>,
         pt_want: &GLWEPlaintext<DataPt>,
         max_noise: f64,
     ) where
@@ -33,7 +33,7 @@ impl<D: DataRef> GLWECiphertext<D> {
             self.k(),
         ));
 
-        self.decrypt(module, &mut pt_have, &sk_exec, scratch.borrow());
+        self.decrypt(module, &mut pt_have, &sk_prepared, scratch.borrow());
 
         module.vec_znx_sub_ab_inplace(&mut pt_have.data, 0, &pt_want.data, 0);
         module.vec_znx_normalize_inplace(self.basek(), &mut pt_have.data, 0, scratch.borrow());

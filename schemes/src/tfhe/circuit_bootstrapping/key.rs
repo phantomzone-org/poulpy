@@ -14,7 +14,7 @@ use backend::hal::{
 use sampling::source::Source;
 
 use core::trait_families::{
-    GGLWEAutomorphismKeyEncryptSkFamily, GGLWETensorKeyEncryptSkFamily, GGSWEncryptSkFamily, GLWESecretExecModuleFamily,
+    GGLWEAutomorphismKeyEncryptSkFamily, GGLWETensorKeyEncryptSkFamily, GGSWEncryptSkFamily, GLWESecretPreparedModuleFamily,
 };
 
 use crate::tfhe::blind_rotation::{
@@ -53,7 +53,7 @@ impl<BRA: BlindRotationAlgo, B: Backend> CircuitBootstrappingKeyEncryptSk<B> for
 where
     BlindRotationKey<Vec<u8>, BRA>: BlindRotationKeyAlloc + BlindRotationKeyEncryptSk<B>,
     Module<B>: GGSWEncryptSkFamily<B>
-        + GLWESecretExecModuleFamily<B>
+        + GLWESecretPreparedModuleFamily<B>
         + VecZnxAddScalarInplace
         + GGLWEAutomorphismKeyEncryptSkFamily<B>
         + VecZnxAutomorphism
@@ -92,7 +92,7 @@ where
             auto_keys.insert(*gal_el, key);
         });
 
-        let sk_glwe_exec: GLWESecretPrepared<Vec<u8>, B> = sk_glwe.prepare_alloc(module, scratch);
+        let sk_glwe_prepared: GLWESecretPrepared<Vec<u8>, B> = sk_glwe.prepare_alloc(module, scratch);
 
         let mut brk: BlindRotationKey<Vec<u8>, BRA> = BlindRotationKey::<Vec<u8>, BRA>::alloc(
             sk_glwe.n(),
@@ -105,7 +105,7 @@ where
 
         brk.encrypt_sk(
             module,
-            &sk_glwe_exec,
+            &sk_glwe_prepared,
             sk_lwe,
             source_xa,
             source_xe,

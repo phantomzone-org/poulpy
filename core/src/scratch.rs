@@ -53,8 +53,8 @@ pub trait TakeGGLWE<B: Backend> {
     ) -> (GGLWECiphertext<&mut [u8]>, &mut Self);
 }
 
-pub trait TakeGGLWEExec<B: Backend> {
-    fn take_gglwe_exec(
+pub trait TakeGGLWEPrepared<B: Backend> {
+    fn take_gglwe_prepared(
         &mut self,
         n: usize,
         basek: usize,
@@ -78,8 +78,8 @@ pub trait TakeGGSW<B: Backend> {
     ) -> (GGSWCiphertext<&mut [u8]>, &mut Self);
 }
 
-pub trait TakeGGSWExec<B: Backend> {
-    fn take_ggsw_exec(
+pub trait TakeGGSWPrepared<B: Backend> {
+    fn take_ggsw_prepared(
         &mut self,
         n: usize,
         basek: usize,
@@ -94,16 +94,16 @@ pub trait TakeGLWESecret<B: Backend> {
     fn take_glwe_secret(&mut self, n: usize, rank: usize) -> (GLWESecret<&mut [u8]>, &mut Self);
 }
 
-pub trait TakeGLWESecretExec<B: Backend> {
-    fn take_glwe_secret_exec(&mut self, n: usize, rank: usize) -> (GLWESecretPrepared<&mut [u8], B>, &mut Self);
+pub trait TakeGLWESecretPrepared<B: Backend> {
+    fn take_glwe_secret_prepared(&mut self, n: usize, rank: usize) -> (GLWESecretPrepared<&mut [u8], B>, &mut Self);
 }
 
 pub trait TakeGLWEPk<B: Backend> {
     fn take_glwe_pk(&mut self, n: usize, basek: usize, k: usize, rank: usize) -> (GLWEPublicKey<&mut [u8]>, &mut Self);
 }
 
-pub trait TakeGLWEPkExec<B: Backend> {
-    fn take_glwe_pk_exec(
+pub trait TakeGLWEPkPrepared<B: Backend> {
+    fn take_glwe_pk_prepared(
         &mut self,
         n: usize,
         basek: usize,
@@ -125,8 +125,8 @@ pub trait TakeGLWESwitchingKey<B: Backend> {
     ) -> (GGLWESwitchingKey<&mut [u8]>, &mut Self);
 }
 
-pub trait TakeGLWESwitchingKeyExec<B: Backend> {
-    fn take_glwe_switching_key_exec(
+pub trait TakeGLWESwitchingKeyPrepared<B: Backend> {
+    fn take_glwe_switching_key_prepared(
         &mut self,
         n: usize,
         basek: usize,
@@ -150,8 +150,8 @@ pub trait TakeTensorKey<B: Backend> {
     ) -> (GGLWETensorKey<&mut [u8]>, &mut Self);
 }
 
-pub trait TakeTensorKeyExec<B: Backend> {
-    fn take_tensor_key_exec(
+pub trait TakeTensorKeyPrepared<B: Backend> {
+    fn take_tensor_key_prepared(
         &mut self,
         n: usize,
         basek: usize,
@@ -174,8 +174,8 @@ pub trait TakeAutomorphismKey<B: Backend> {
     ) -> (GGLWEAutomorphismKey<&mut [u8]>, &mut Self);
 }
 
-pub trait TakeAutomorphismKeyExec<B: Backend> {
-    fn take_automorphism_key_exec(
+pub trait TakeAutomorphismKeyPrepared<B: Backend> {
+    fn take_automorphism_key_prepared(
         &mut self,
         n: usize,
         basek: usize,
@@ -330,11 +330,11 @@ where
     }
 }
 
-impl<B: Backend> TakeGGLWEExec<B> for Scratch<B>
+impl<B: Backend> TakeGGLWEPrepared<B> for Scratch<B>
 where
     Scratch<B>: TakeVmpPMat<B>,
 {
-    fn take_gglwe_exec(
+    fn take_gglwe_prepared(
         &mut self,
         n: usize,
         basek: usize,
@@ -451,11 +451,11 @@ where
     }
 }
 
-impl<B: Backend> TakeGGSWExec<B> for Scratch<B>
+impl<B: Backend> TakeGGSWPrepared<B> for Scratch<B>
 where
     Scratch<B>: TakeVmpPMat<B>,
 {
-    fn take_ggsw_exec(
+    fn take_ggsw_prepared(
         &mut self,
         n: usize,
         basek: usize,
@@ -550,11 +550,11 @@ where
     }
 }
 
-impl<B: Backend> TakeGLWEPkExec<B> for Scratch<B>
+impl<B: Backend> TakeGLWEPkPrepared<B> for Scratch<B>
 where
     Scratch<B>: TakeVecZnxDft<B>,
 {
-    fn take_glwe_pk_exec(
+    fn take_glwe_pk_prepared(
         &mut self,
         n: usize,
         basek: usize,
@@ -630,11 +630,11 @@ where
     }
 }
 
-impl<B: Backend> TakeGLWESecretExec<B> for Scratch<B>
+impl<B: Backend> TakeGLWESecretPrepared<B> for Scratch<B>
 where
     Scratch<B>: TakeSvpPPol<B>,
 {
-    fn take_glwe_secret_exec(&mut self, n: usize, rank: usize) -> (GLWESecretPrepared<&mut [u8], B>, &mut Self) {
+    fn take_glwe_secret_prepared(&mut self, n: usize, rank: usize) -> (GLWESecretPrepared<&mut [u8], B>, &mut Self) {
         let (data, scratch) = self.take_svp_ppol(n, rank);
         (
             GLWESecretPrepared {
@@ -712,11 +712,11 @@ where
     }
 }
 
-impl<B: Backend> TakeGLWESwitchingKeyExec<B> for Scratch<B>
+impl<B: Backend> TakeGLWESwitchingKeyPrepared<B> for Scratch<B>
 where
-    Scratch<B>: TakeGGLWEExec<B>,
+    Scratch<B>: TakeGGLWEPrepared<B>,
 {
-    fn take_glwe_switching_key_exec(
+    fn take_glwe_switching_key_prepared(
         &mut self,
         n: usize,
         basek: usize,
@@ -726,7 +726,7 @@ where
         rank_in: usize,
         rank_out: usize,
     ) -> (GGLWESwitchingKeyPrepared<&mut [u8], B>, &mut Self) {
-        let (data, scratch) = self.take_gglwe_exec(n, basek, k, rows, digits, rank_in, rank_out);
+        let (data, scratch) = self.take_gglwe_prepared(n, basek, k, rows, digits, rank_in, rank_out);
         (
             GGLWESwitchingKeyPrepared {
                 key: data,
@@ -791,11 +791,11 @@ where
     }
 }
 
-impl<B: Backend> TakeAutomorphismKeyExec<B> for Scratch<B>
+impl<B: Backend> TakeAutomorphismKeyPrepared<B> for Scratch<B>
 where
-    Scratch<B>: TakeGLWESwitchingKeyExec<B>,
+    Scratch<B>: TakeGLWESwitchingKeyPrepared<B>,
 {
-    fn take_automorphism_key_exec(
+    fn take_automorphism_key_prepared(
         &mut self,
         n: usize,
         basek: usize,
@@ -804,7 +804,7 @@ where
         digits: usize,
         rank: usize,
     ) -> (GGLWEAutomorphismKeyPrepared<&mut [u8], B>, &mut Self) {
-        let (data, scratch) = self.take_glwe_switching_key_exec(n, basek, k, rows, digits, rank, rank);
+        let (data, scratch) = self.take_glwe_switching_key_prepared(n, basek, k, rows, digits, rank, rank);
         (GGLWEAutomorphismKeyPrepared { key: data, p: 0 }, scratch)
     }
 }
@@ -884,11 +884,11 @@ where
     }
 }
 
-impl<B: Backend> TakeTensorKeyExec<B> for Scratch<B>
+impl<B: Backend> TakeTensorKeyPrepared<B> for Scratch<B>
 where
     Scratch<B>: TakeVmpPMat<B>,
 {
-    fn take_tensor_key_exec(
+    fn take_tensor_key_prepared(
         &mut self,
         n: usize,
         basek: usize,
@@ -903,12 +903,12 @@ where
         let mut scratch: &mut Scratch<B> = self;
 
         if pairs != 0 {
-            let (gglwe, s) = scratch.take_glwe_switching_key_exec(n, basek, k, rows, digits, 1, rank);
+            let (gglwe, s) = scratch.take_glwe_switching_key_prepared(n, basek, k, rows, digits, 1, rank);
             scratch = s;
             keys.push(gglwe);
         }
         for _ in 1..pairs {
-            let (gglwe, s) = scratch.take_glwe_switching_key_exec(n, basek, k, rows, digits, 1, rank);
+            let (gglwe, s) = scratch.take_glwe_switching_key_prepared(n, basek, k, rows, digits, 1, rank);
             scratch = s;
             keys.push(gglwe);
         }

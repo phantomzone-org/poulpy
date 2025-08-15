@@ -16,7 +16,7 @@ use crate::layouts::{
     prepared::{LWESwitchingKeyPrepared, PrepareAlloc},
 };
 
-use crate::trait_families::{GGLWEEncryptSkFamily, GLWEDecryptFamily, GLWEKeyswitchFamily, GLWESecretExecModuleFamily};
+use crate::trait_families::{GGLWEEncryptSkFamily, GLWEDecryptFamily, GLWEKeyswitchFamily, GLWESecretPreparedModuleFamily};
 
 pub fn test_lwe_keyswitch<B: Backend>(module: &Module<B>)
 where
@@ -28,7 +28,7 @@ where
         + VecZnxAutomorphismInplace
         + VmpPMatAlloc<B>
         + VmpPMatPrepare<B>
-        + GLWESecretExecModuleFamily<B>,
+        + GLWESecretPreparedModuleFamily<B>,
     B: TakeScalarZnxImpl<B>
         + TakeVecZnxDftImpl<B>
         + ScratchAvailableImpl<B>
@@ -94,9 +94,9 @@ where
 
     let mut lwe_ct_out: LWECiphertext<Vec<u8>> = LWECiphertext::alloc(n_lwe_out, basek, k_lwe_ct);
 
-    let ksk_exec: LWESwitchingKeyPrepared<Vec<u8>, B> = ksk.prepare_alloc(module, scratch.borrow());
+    let ksk_prepared: LWESwitchingKeyPrepared<Vec<u8>, B> = ksk.prepare_alloc(module, scratch.borrow());
 
-    lwe_ct_out.keyswitch(module, &lwe_ct_in, &ksk_exec, scratch.borrow());
+    lwe_ct_out.keyswitch(module, &lwe_ct_in, &ksk_prepared, scratch.borrow());
 
     let mut lwe_pt_out: LWEPlaintext<Vec<u8>> = LWEPlaintext::alloc(basek, k_lwe_ct);
     lwe_ct_out.decrypt(module, &mut lwe_pt_out, &sk_lwe_out);

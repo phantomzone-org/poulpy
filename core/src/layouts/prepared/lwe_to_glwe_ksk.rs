@@ -69,7 +69,7 @@ where
     Module<B>: VmpPMatPrepare<B> + VmpPMatAlloc<B>,
 {
     fn prepare_alloc(&self, module: &Module<B>, scratch: &mut Scratch<B>) -> LWEToGLWESwitchingKeyPrepared<Vec<u8>, B> {
-        let mut ksk_exec: LWEToGLWESwitchingKeyPrepared<Vec<u8>, B> = LWEToGLWESwitchingKeyPrepared::alloc(
+        let mut ksk_prepared: LWEToGLWESwitchingKeyPrepared<Vec<u8>, B> = LWEToGLWESwitchingKeyPrepared::alloc(
             module,
             self.0.n(),
             self.0.basek(),
@@ -77,8 +77,8 @@ where
             self.0.rows(),
             self.0.rank_out(),
         );
-        ksk_exec.prepare(module, self, scratch);
-        ksk_exec
+        ksk_prepared.prepare(module, self, scratch);
+        ksk_prepared
     }
 }
 

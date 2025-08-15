@@ -102,8 +102,8 @@ where
         self.data
             .iter_mut()
             .zip(other.keys.iter())
-            .for_each(|(ggsw_exec, other)| {
-                ggsw_exec.prepare(module, other, scratch);
+            .for_each(|(ggsw_prepared, other)| {
+                ggsw_prepared.prepare(module, other, scratch);
             });
 
         self.dist = other.dist;

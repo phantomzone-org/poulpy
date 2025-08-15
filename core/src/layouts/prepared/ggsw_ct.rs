@@ -120,7 +120,7 @@ where
     Module<B>: VmpPMatAlloc<B> + VmpPMatPrepare<B>,
 {
     fn prepare_alloc(&self, module: &Module<B>, scratch: &mut Scratch<B>) -> GGSWCiphertextPrepared<Vec<u8>, B> {
-        let mut ggsw_exec: GGSWCiphertextPrepared<Vec<u8>, B> = GGSWCiphertextPrepared::alloc(
+        let mut ggsw_prepared: GGSWCiphertextPrepared<Vec<u8>, B> = GGSWCiphertextPrepared::alloc(
             module,
             self.n(),
             self.basek(),
@@ -129,7 +129,7 @@ where
             self.digits(),
             self.rank(),
         );
-        ggsw_exec.prepare(module, self, scratch);
-        ggsw_exec
+        ggsw_prepared.prepare(module, self, scratch);
+        ggsw_prepared
     }
 }

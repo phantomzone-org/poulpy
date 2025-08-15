@@ -20,7 +20,7 @@ use crate::{
     trait_families::{GLWEDecryptFamily, GLWEKeyswitchFamily},
 };
 
-use crate::trait_families::{GGLWEAutomorphismKeyEncryptSkFamily, GLWESecretExecModuleFamily};
+use crate::trait_families::{GGLWEAutomorphismKeyEncryptSkFamily, GLWESecretPreparedModuleFamily};
 
 pub fn test_glwe_automorphism<B: Backend>(
     module: &Module<B>,
@@ -34,7 +34,7 @@ pub fn test_glwe_automorphism<B: Backend>(
     sigma: f64,
 ) where
     Module<B>: GGLWEAutomorphismKeyEncryptSkFamily<B>
-        + GLWESecretExecModuleFamily<B>
+        + GLWESecretPreparedModuleFamily<B>
         + GLWEDecryptFamily<B>
         + GLWEKeyswitchFamily<B>
         + VecZnxAutomorphism
@@ -84,7 +84,7 @@ pub fn test_glwe_automorphism<B: Backend>(
 
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
     sk.fill_ternary_prob(0.5, &mut source_xs);
-    let sk_exec: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
+    let sk_prepared: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
 
     autokey.encrypt_sk(
         module,
@@ -99,18 +99,18 @@ pub fn test_glwe_automorphism<B: Backend>(
     ct_in.encrypt_sk(
         module,
         &pt_want,
-        &sk_exec,
+        &sk_prepared,
         &mut source_xa,
         &mut source_xe,
         sigma,
         scratch.borrow(),
     );
 
-    let mut autokey_exec: GGLWEAutomorphismKeyPrepared<Vec<u8>, B> =
+    let mut autokey_prepared: GGLWEAutomorphismKeyPrepared<Vec<u8>, B> =
         GGLWEAutomorphismKeyPrepared::alloc(module, n, basek, k_ksk, rows, digits, rank);
-    autokey_exec.prepare(module, &autokey, scratch.borrow());
+    autokey_prepared.prepare(module, &autokey, scratch.borrow());
 
-    ct_out.automorphism(module, &ct_in, &autokey_exec, scratch.borrow());
+    ct_out.automorphism(module, &ct_in, &autokey_prepared, scratch.borrow());
 
     let max_noise: f64 = log2_std_noise_gglwe_product(
         module.n() as f64,
@@ -127,7 +127,7 @@ pub fn test_glwe_automorphism<B: Backend>(
 
     module.vec_znx_automorphism_inplace(p, &mut pt_want.data, 0);
 
-    ct_out.assert_noise(module, &sk_exec, &pt_want, max_noise + 1.0);
+    ct_out.assert_noise(module, &sk_prepared, &pt_want, max_noise + 1.0);
 }
 
 pub fn test_glwe_automorphism_inplace<B: Backend>(
@@ -141,7 +141,7 @@ pub fn test_glwe_automorphism_inplace<B: Backend>(
     sigma: f64,
 ) where
     Module<B>: GGLWEAutomorphismKeyEncryptSkFamily<B>
-        + GLWESecretExecModuleFamily<B>
+        + GLWESecretPreparedModuleFamily<B>
         + GLWEDecryptFamily<B>
         + GLWEKeyswitchFamily<B>
         + VecZnxAutomorphism
@@ -181,7 +181,7 @@ pub fn test_glwe_automorphism_inplace<B: Backend>(
 
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
     sk.fill_ternary_prob(0.5, &mut source_xs);
-    let sk_exec: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
+    let sk_prepared: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
 
     autokey.encrypt_sk(
         module,
@@ -196,18 +196,18 @@ pub fn test_glwe_automorphism_inplace<B: Backend>(
     ct.encrypt_sk(
         module,
         &pt_want,
-        &sk_exec,
+        &sk_prepared,
         &mut source_xa,
         &mut source_xe,
         sigma,
         scratch.borrow(),
     );
 
-    let mut autokey_exec: GGLWEAutomorphismKeyPrepared<Vec<u8>, B> =
+    let mut autokey_prepared: GGLWEAutomorphismKeyPrepared<Vec<u8>, B> =
         GGLWEAutomorphismKeyPrepared::alloc(module, n, basek, k_ksk, rows, digits, rank);
-    autokey_exec.prepare(module, &autokey, scratch.borrow());
+    autokey_prepared.prepare(module, &autokey, scratch.borrow());
 
-    ct.automorphism_inplace(module, &autokey_exec, scratch.borrow());
+    ct.automorphism_inplace(module, &autokey_prepared, scratch.borrow());
 
     let max_noise: f64 = log2_std_noise_gglwe_product(
         module.n() as f64,
@@ -224,5 +224,5 @@ pub fn test_glwe_automorphism_inplace<B: Backend>(
 
     module.vec_znx_automorphism_inplace(p, &mut pt_want.data, 0);
 
-    ct.assert_noise(module, &sk_exec, &pt_want, max_noise + 1.0);
+    ct.assert_noise(module, &sk_prepared, &pt_want, max_noise + 1.0);
 }

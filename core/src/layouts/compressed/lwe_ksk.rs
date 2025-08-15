@@ -6,7 +6,7 @@ use backend::hal::{
 use crate::layouts::{Infos, LWESwitchingKey, compressed::GGLWESwitchingKeyCompressed};
 use std::fmt;
 
-use crate::trait_families::{Decompress, GGLWEEncryptSkFamily, GLWESecretExecModuleFamily};
+use crate::trait_families::{Decompress, GGLWEEncryptSkFamily, GLWESecretPreparedModuleFamily};
 
 #[derive(PartialEq, Eq, Clone)]
 pub struct LWESwitchingKeyCompressed<D: Data>(pub(crate) GGLWESwitchingKeyCompressed<D>);
@@ -90,7 +90,7 @@ impl LWESwitchingKeyCompressed<Vec<u8>> {
 
     pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, n: usize, basek: usize, k: usize) -> usize
     where
-        Module<B>: GGLWEEncryptSkFamily<B> + GLWESecretExecModuleFamily<B>,
+        Module<B>: GGLWEEncryptSkFamily<B> + GLWESecretPreparedModuleFamily<B>,
     {
         LWESwitchingKey::encrypt_sk_scratch_space(module, n, basek, k)
     }

@@ -138,7 +138,7 @@ where
     Module<B>: VmpPMatAlloc<B> + VmpPMatPrepare<B>,
 {
     fn prepare_alloc(&self, module: &Module<B>, scratch: &mut Scratch<B>) -> GGLWECiphertextPrepared<Vec<u8>, B> {
-        let mut atk_exec: GGLWECiphertextPrepared<Vec<u8>, B> = GGLWECiphertextPrepared::alloc(
+        let mut atk_prepared: GGLWECiphertextPrepared<Vec<u8>, B> = GGLWECiphertextPrepared::alloc(
             module,
             self.n(),
             self.basek(),
@@ -148,7 +148,7 @@ where
             self.rank_in(),
             self.rank_out(),
         );
-        atk_exec.prepare(module, self, scratch);
-        atk_exec
+        atk_prepared.prepare(module, self, scratch);
+        atk_prepared
     }
 }

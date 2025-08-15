@@ -20,7 +20,7 @@ use crate::{
     trait_families::{GLWEDecryptFamily, GLWEExternalProductFamily},
 };
 
-use crate::trait_families::{GGLWEEncryptSkFamily, GGLWESwitchingKeyEncryptSkFamily, GLWESecretExecModuleFamily};
+use crate::trait_families::{GGLWEEncryptSkFamily, GGLWESwitchingKeyEncryptSkFamily, GLWESecretPreparedModuleFamily};
 
 pub fn test_gglwe_switching_key_external_product<B: Backend>(
     module: &Module<B>,
@@ -34,7 +34,7 @@ pub fn test_gglwe_switching_key_external_product<B: Backend>(
     sigma: f64,
 ) where
     Module<B>: GGLWEEncryptSkFamily<B>
-        + GLWESecretExecModuleFamily<B>
+        + GLWESecretPreparedModuleFamily<B>
         + GLWEDecryptFamily<B>
         + VecZnxSwithcDegree
         + VecZnxAddScalarInplace
@@ -91,7 +91,7 @@ pub fn test_gglwe_switching_key_external_product<B: Backend>(
 
     let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank_out);
     sk_out.fill_ternary_prob(var_xs, &mut source_xs);
-    let sk_out_exec: GLWESecretPrepared<Vec<u8>, B> = sk_out.prepare_alloc(module, scratch.borrow());
+    let sk_out_prepared: GLWESecretPrepared<Vec<u8>, B> = sk_out.prepare_alloc(module, scratch.borrow());
 
     // gglwe_{s1}(s0) = s0 -> s1
     ct_gglwe_in.encrypt_sk(
@@ -107,17 +107,17 @@ pub fn test_gglwe_switching_key_external_product<B: Backend>(
     ct_rgsw.encrypt_sk(
         module,
         &pt_rgsw,
-        &sk_out_exec,
+        &sk_out_prepared,
         &mut source_xa,
         &mut source_xe,
         sigma,
         scratch.borrow(),
     );
 
-    let ct_rgsw_exec: GGSWCiphertextPrepared<Vec<u8>, B> = ct_rgsw.prepare_alloc(module, scratch.borrow());
+    let ct_rgsw_prepared: GGSWCiphertextPrepared<Vec<u8>, B> = ct_rgsw.prepare_alloc(module, scratch.borrow());
 
     // gglwe_(m) (x) RGSW_(X^k) = gglwe_(m * X^k)
-    ct_gglwe_out.external_product(module, &ct_gglwe_in, &ct_rgsw_exec, scratch.borrow());
+    ct_gglwe_out.external_product(module, &ct_gglwe_in, &ct_rgsw_prepared, scratch.borrow());
 
     (0..rank_in).for_each(|i| {
         module.vec_znx_rotate_inplace(r as i64, &mut sk_in.data.as_vec_znx_mut(), i); // * X^{r}
@@ -146,7 +146,7 @@ pub fn test_gglwe_switching_key_external_product<B: Backend>(
 
     ct_gglwe_out
         .key
-        .assert_noise(module, &sk_out_exec, &sk_in.data, max_noise + 0.5);
+        .assert_noise(module, &sk_out_prepared, &sk_in.data, max_noise + 0.5);
 }
 
 pub fn test_gglwe_switching_key_external_product_inplace<B: Backend>(
@@ -160,7 +160,7 @@ pub fn test_gglwe_switching_key_external_product_inplace<B: Backend>(
     sigma: f64,
 ) where
     Module<B>: GGLWEEncryptSkFamily<B>
-        + GLWESecretExecModuleFamily<B>
+        + GLWESecretPreparedModuleFamily<B>
         + GLWEDecryptFamily<B>
         + VecZnxSwithcDegree
         + VecZnxAddScalarInplace
@@ -215,7 +215,7 @@ pub fn test_gglwe_switching_key_external_product_inplace<B: Backend>(
 
     let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank_out);
     sk_out.fill_ternary_prob(var_xs, &mut source_xs);
-    let sk_out_exec: GLWESecretPrepared<Vec<u8>, B> = sk_out.prepare_alloc(module, scratch.borrow());
+    let sk_out_prepared: GLWESecretPrepared<Vec<u8>, B> = sk_out.prepare_alloc(module, scratch.borrow());
 
     // gglwe_{s1}(s0) = s0 -> s1
     ct_gglwe.encrypt_sk(
@@ -231,17 +231,17 @@ pub fn test_gglwe_switching_key_external_product_inplace<B: Backend>(
     ct_rgsw.encrypt_sk(
         module,
         &pt_rgsw,
-        &sk_out_exec,
+        &sk_out_prepared,
         &mut source_xa,
         &mut source_xe,
         sigma,
         scratch.borrow(),
     );
 
-    let ct_rgsw_exec: GGSWCiphertextPrepared<Vec<u8>, B> = ct_rgsw.prepare_alloc(module, scratch.borrow());
+    let ct_rgsw_prepared: GGSWCiphertextPrepared<Vec<u8>, B> = ct_rgsw.prepare_alloc(module, scratch.borrow());
 
     // gglwe_(m) (x) RGSW_(X^k) = gglwe_(m * X^k)
-    ct_gglwe.external_product_inplace(module, &ct_rgsw_exec, scratch.borrow());
+    ct_gglwe.external_product_inplace(module, &ct_rgsw_prepared, scratch.borrow());
 
     (0..rank_in).for_each(|i| {
         module.vec_znx_rotate_inplace(r as i64, &mut sk_in.data.as_vec_znx_mut(), i); // * X^{r}
@@ -270,5 +270,5 @@ pub fn test_gglwe_switching_key_external_product_inplace<B: Backend>(
 
     ct_gglwe
         .key
-        .assert_noise(module, &sk_out_exec, &sk_in.data, max_noise + 0.5);
+        .assert_noise(module, &sk_out_prepared, &sk_in.data, max_noise + 0.5);
 }

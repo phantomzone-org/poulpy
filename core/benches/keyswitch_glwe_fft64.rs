@@ -93,10 +93,10 @@ fn bench_keyswitch_glwe_fft64(c: &mut Criterion) {
             scratch.borrow(),
         );
 
-        let ksk_exec: GGLWEAutomorphismKeyPrepared<Vec<u8>, _> = ksk.prepare_alloc(&module, scratch.borrow());
+        let ksk_prepared: GGLWEAutomorphismKeyPrepared<Vec<u8>, _> = ksk.prepare_alloc(&module, scratch.borrow());
 
         move || {
-            black_box(ct_out.automorphism(&module, &ct_in, &ksk_exec, scratch.borrow()));
+            black_box(ct_out.automorphism(&module, &ct_in, &ksk_prepared, scratch.borrow()));
         }
     }
 
@@ -188,10 +188,10 @@ fn bench_keyswitch_glwe_inplace_fft64(c: &mut Criterion) {
             scratch.borrow(),
         );
 
-        let ksk_exec: GGLWESwitchingKeyPrepared<Vec<u8>, FFT64> = ksk.prepare_alloc(&module, scratch.borrow());
+        let ksk_prepared: GGLWESwitchingKeyPrepared<Vec<u8>, FFT64> = ksk.prepare_alloc(&module, scratch.borrow());
 
         move || {
-            black_box(ct.keyswitch_inplace(&module, &ksk_exec, scratch.borrow()));
+            black_box(ct.keyswitch_inplace(&module, &ksk_prepared, scratch.borrow()));
         }
     }
 

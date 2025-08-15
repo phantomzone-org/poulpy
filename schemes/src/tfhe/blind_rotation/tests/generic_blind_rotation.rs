@@ -21,13 +21,13 @@ use core::{
         GLWECiphertext, GLWEPlaintext, GLWESecret, Infos, LWECiphertext, LWECiphertextToRef, LWEPlaintext, LWESecret,
         prepared::{GLWESecretPrepared, PrepareAlloc},
     },
-    trait_families::{GLWEDecryptFamily, GLWESecretExecModuleFamily},
+    trait_families::{GLWEDecryptFamily, GLWESecretPreparedModuleFamily},
 };
 
 pub fn test_blind_rotation<B: Backend>(module: &Module<B>, n_lwe: usize, block_size: usize, extension_factor: usize)
 where
     Module<B>: CCGIBlindRotationFamily<B>
-        + GLWESecretExecModuleFamily<B>
+        + GLWESecretPreparedModuleFamily<B>
         + GLWEDecryptFamily<B>
         + VecZnxFillUniform
         + VecZnxAddNormal
@@ -127,9 +127,9 @@ where
 
     let mut res: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(n, basek, k_res, rank);
 
-    let brk_exec: BlindRotationKeyPrepared<Vec<u8>, CGGI, B> = brk.prepare_alloc(module, scratch.borrow());
+    let brk_prepared: BlindRotationKeyPrepared<Vec<u8>, CGGI, B> = brk.prepare_alloc(module, scratch.borrow());
 
-    brk_exec.execute(module, &mut res, &lwe, &lut, scratch_br.borrow());
+    brk_prepared.execute(module, &mut res, &lwe, &lut, scratch_br.borrow());
 
     let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(n, basek, k_res);
 

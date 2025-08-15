@@ -87,10 +87,10 @@ fn bench_external_product_glwe_fft64(c: &mut Criterion) {
             scratch.borrow(),
         );
 
-        let ggsw_exec: GGSWCiphertextPrepared<Vec<u8>, FFT64> = ct_ggsw.prepare_alloc(&module, scratch.borrow());
+        let ggsw_prepared: GGSWCiphertextPrepared<Vec<u8>, FFT64> = ct_ggsw.prepare_alloc(&module, scratch.borrow());
 
         move || {
-            black_box(ct_glwe_out.external_product(&module, &ct_glwe_in, &ggsw_exec, scratch.borrow()));
+            black_box(ct_glwe_out.external_product(&module, &ct_glwe_in, &ggsw_prepared, scratch.borrow()));
         }
     }
 
@@ -181,11 +181,11 @@ fn bench_external_product_glwe_inplace_fft64(c: &mut Criterion) {
             scratch.borrow(),
         );
 
-        let ggsw_exec: GGSWCiphertextPrepared<Vec<u8>, FFT64> = ct_ggsw.prepare_alloc(&module, scratch.borrow());
+        let ggsw_prepared: GGSWCiphertextPrepared<Vec<u8>, FFT64> = ct_ggsw.prepare_alloc(&module, scratch.borrow());
 
         move || {
             let scratch_borrow = scratch.borrow();
-            black_box(ct_glwe.external_product_inplace(&module, &ggsw_exec, scratch_borrow));
+            black_box(ct_glwe.external_product_inplace(&module, &ggsw_prepared, scratch_borrow));
         }
     }
 

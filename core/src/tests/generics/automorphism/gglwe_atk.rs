@@ -20,7 +20,7 @@ use crate::{
     trait_families::{GLWEDecryptFamily, GLWEKeyswitchFamily},
 };
 
-use crate::trait_families::{GGLWEAutomorphismKeyEncryptSkFamily, GLWESecretExecModuleFamily};
+use crate::trait_families::{GGLWEAutomorphismKeyEncryptSkFamily, GLWESecretPreparedModuleFamily};
 
 pub fn test_gglwe_automorphism_key_automorphism<B: Backend>(
     module: &Module<B>,
@@ -35,7 +35,7 @@ pub fn test_gglwe_automorphism_key_automorphism<B: Backend>(
     rank: usize,
 ) where
     Module<B>: GGLWEAutomorphismKeyEncryptSkFamily<B>
-        + GLWESecretExecModuleFamily<B>
+        + GLWESecretPreparedModuleFamily<B>
         + GLWEKeyswitchFamily<B>
         + VecZnxAutomorphism
         + VecZnxSwithcDegree
@@ -101,13 +101,18 @@ pub fn test_gglwe_automorphism_key_automorphism<B: Backend>(
         scratch.borrow(),
     );
 
-    let mut auto_key_apply_exec: GGLWEAutomorphismKeyPrepared<Vec<u8>, B> =
+    let mut auto_key_apply_prepared: GGLWEAutomorphismKeyPrepared<Vec<u8>, B> =
         GGLWEAutomorphismKeyPrepared::alloc(module, n, basek, k_apply, rows_apply, digits, rank);
 
-    auto_key_apply_exec.prepare(module, &auto_key_apply, scratch.borrow());
+    auto_key_apply_prepared.prepare(module, &auto_key_apply, scratch.borrow());
 
     // gglwe_{s1}(s0) (x) gglwe_{s2}(s1) = gglwe_{s2}(s0)
-    auto_key_out.automorphism(module, &auto_key_in, &auto_key_apply_exec, scratch.borrow());
+    auto_key_out.automorphism(
+        module,
+        &auto_key_in,
+        &auto_key_apply_prepared,
+        scratch.borrow(),
+    );
 
     let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(n, basek, k_out);
 
@@ -175,7 +180,7 @@ pub fn test_gglwe_automorphism_key_automorphism_inplace<B: Backend>(
     rank: usize,
 ) where
     Module<B>: GGLWEAutomorphismKeyEncryptSkFamily<B>
-        + GLWESecretExecModuleFamily<B>
+        + GLWESecretPreparedModuleFamily<B>
         + GLWEKeyswitchFamily<B>
         + VecZnxAutomorphism
         + VecZnxSwithcDegree
@@ -240,13 +245,13 @@ pub fn test_gglwe_automorphism_key_automorphism_inplace<B: Backend>(
         scratch.borrow(),
     );
 
-    let mut auto_key_apply_exec: GGLWEAutomorphismKeyPrepared<Vec<u8>, B> =
+    let mut auto_key_apply_prepared: GGLWEAutomorphismKeyPrepared<Vec<u8>, B> =
         GGLWEAutomorphismKeyPrepared::alloc(module, n, basek, k_apply, rows_apply, digits, rank);
 
-    auto_key_apply_exec.prepare(module, &auto_key_apply, scratch.borrow());
+    auto_key_apply_prepared.prepare(module, &auto_key_apply, scratch.borrow());
 
     // gglwe_{s1}(s0) (x) gglwe_{s2}(s1) = gglwe_{s2}(s0)
-    auto_key.automorphism_inplace(module, &auto_key_apply_exec, scratch.borrow());
+    auto_key.automorphism_inplace(module, &auto_key_apply_prepared, scratch.borrow());
 
     let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(n, basek, k_in);
 

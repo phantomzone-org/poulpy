@@ -19,7 +19,7 @@ use crate::{
     noise::noise_ggsw_product,
 };
 
-use crate::trait_families::{GLWEDecryptFamily, GLWEEncryptSkFamily, GLWEExternalProductFamily, GLWESecretExecModuleFamily};
+use crate::trait_families::{GLWEDecryptFamily, GLWEEncryptSkFamily, GLWEExternalProductFamily, GLWESecretPreparedModuleFamily};
 
 pub fn test_glwe_external_product<B: Backend>(
     module: &Module<B>,
@@ -32,7 +32,7 @@ pub fn test_glwe_external_product<B: Backend>(
     sigma: f64,
 ) where
     Module<B>: GLWEEncryptSkFamily<B>
-        + GLWESecretExecModuleFamily<B>
+        + GLWESecretPreparedModuleFamily<B>
         + GLWEDecryptFamily<B>
         + GLWEExternalProductFamily<B>
         + VecZnxAddScalarInplace
@@ -87,12 +87,12 @@ pub fn test_glwe_external_product<B: Backend>(
 
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
     sk.fill_ternary_prob(0.5, &mut source_xs);
-    let sk_exec: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
+    let sk_prepared: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
 
     ct_ggsw.encrypt_sk(
         module,
         &pt_rgsw,
-        &sk_exec,
+        &sk_prepared,
         &mut source_xa,
         &mut source_xe,
         sigma,
@@ -102,16 +102,16 @@ pub fn test_glwe_external_product<B: Backend>(
     ct_glwe_in.encrypt_sk(
         module,
         &pt_want,
-        &sk_exec,
+        &sk_prepared,
         &mut source_xa,
         &mut source_xe,
         sigma,
         scratch.borrow(),
     );
 
-    let ct_ggsw_exec: GGSWCiphertextPrepared<Vec<u8>, B> = ct_ggsw.prepare_alloc(module, scratch.borrow());
+    let ct_ggsw_prepared: GGSWCiphertextPrepared<Vec<u8>, B> = ct_ggsw.prepare_alloc(module, scratch.borrow());
 
-    ct_glwe_out.external_product(module, &ct_glwe_in, &ct_ggsw_exec, scratch.borrow());
+    ct_glwe_out.external_product(module, &ct_glwe_in, &ct_ggsw_prepared, scratch.borrow());
 
     module.vec_znx_rotate_inplace(k as i64, &mut pt_want.data, 0);
 
@@ -136,7 +136,7 @@ pub fn test_glwe_external_product<B: Backend>(
         k_ggsw,
     );
 
-    ct_glwe_out.assert_noise(module, &sk_exec, &pt_want, max_noise + 0.5);
+    ct_glwe_out.assert_noise(module, &sk_prepared, &pt_want, max_noise + 0.5);
 }
 
 pub fn test_glwe_external_product_inplace<B: Backend>(
@@ -149,7 +149,7 @@ pub fn test_glwe_external_product_inplace<B: Backend>(
     sigma: f64,
 ) where
     Module<B>: GLWEEncryptSkFamily<B>
-        + GLWESecretExecModuleFamily<B>
+        + GLWESecretPreparedModuleFamily<B>
         + GLWEDecryptFamily<B>
         + GLWEExternalProductFamily<B>
         + VecZnxAddScalarInplace
@@ -194,12 +194,12 @@ pub fn test_glwe_external_product_inplace<B: Backend>(
 
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
     sk.fill_ternary_prob(0.5, &mut source_xs);
-    let sk_exec: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
+    let sk_prepared: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
 
     ct_ggsw.encrypt_sk(
         module,
         &pt_rgsw,
-        &sk_exec,
+        &sk_prepared,
         &mut source_xa,
         &mut source_xe,
         sigma,
@@ -209,16 +209,16 @@ pub fn test_glwe_external_product_inplace<B: Backend>(
     ct_glwe.encrypt_sk(
         module,
         &pt_want,
-        &sk_exec,
+        &sk_prepared,
         &mut source_xa,
         &mut source_xe,
         sigma,
         scratch.borrow(),
     );
 
-    let ct_ggsw_exec: GGSWCiphertextPrepared<Vec<u8>, B> = ct_ggsw.prepare_alloc(module, scratch.borrow());
+    let ct_ggsw_prepared: GGSWCiphertextPrepared<Vec<u8>, B> = ct_ggsw.prepare_alloc(module, scratch.borrow());
 
-    ct_glwe.external_product_inplace(module, &ct_ggsw_exec, scratch.borrow());
+    ct_glwe.external_product_inplace(module, &ct_ggsw_prepared, scratch.borrow());
 
     module.vec_znx_rotate_inplace(k as i64, &mut pt_want.data, 0);
 
@@ -243,5 +243,5 @@ pub fn test_glwe_external_product_inplace<B: Backend>(
         k_ggsw,
     );
 
-    ct_glwe.assert_noise(module, &sk_exec, &pt_want, max_noise + 0.5);
+    ct_glwe.assert_noise(module, &sk_prepared, &pt_want, max_noise + 0.5);
 }
