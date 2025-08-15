@@ -1,0 +1,11 @@
+[package]
+name = "schemes"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+backend = {path="../backend"}
+core = {path="../core"}
+sampling = {path="../sampling"}
+itertools = "0.14.0"
+byteorder = "1.5.0"

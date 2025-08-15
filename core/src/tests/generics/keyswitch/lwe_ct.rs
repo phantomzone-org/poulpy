@@ -1,7 +1,7 @@
 use backend::hal::{
     api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxAutomorphismInplace, VecZnxEncodeCoeffsi64,
-        VecZnxSwithcDegree, VmpPMatAlloc, VmpPMatPrepare, ZnxView,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxAutomorphismInplace, VecZnxSwithcDegree,
+        VmpPMatAlloc, VmpPMatPrepare, ZnxView,
     },
     layouts::{Backend, Module, ScratchOwned},
     oep::{
@@ -11,9 +11,12 @@ use backend::hal::{
 };
 use sampling::source::Source;
 
-use crate::layouts::{Infos, LWECiphertext, LWEPlaintext, LWESecret, LWESwitchingKey, prepared::LWESwitchingKeyExec};
+use crate::layouts::{
+    Infos, LWECiphertext, LWEPlaintext, LWESecret, LWESwitchingKey,
+    prepared::{LWESwitchingKeyPrepared, PrepareAlloc},
+};
 
-use crate::trait_families::{GGLWEEncryptSkFamily, GLWEDecryptFamily, GLWEKeyswitchFamily, GLWESecretExecModuleFamily};
+use crate::trait_families::{GGLWEEncryptSkFamily, GLWEDecryptFamily, GLWEKeyswitchFamily, GLWESecretPreparedModuleFamily};
 
 pub fn test_lwe_keyswitch<B: Backend>(module: &Module<B>)
 where
@@ -22,11 +25,10 @@ where
         + VecZnxSwithcDegree
         + VecZnxAddScalarInplace
         + GLWEKeyswitchFamily<B>
-        + VecZnxEncodeCoeffsi64
         + VecZnxAutomorphismInplace
         + VmpPMatAlloc<B>
         + VmpPMatPrepare<B>
-        + GLWESecretExecModuleFamily<B>,
+        + GLWESecretPreparedModuleFamily<B>,
     B: TakeScalarZnxImpl<B>
         + TakeVecZnxDftImpl<B>
         + ScratchAvailableImpl<B>
@@ -65,7 +67,8 @@ where
     let data: i64 = 17;
 
     let mut lwe_pt_in: LWEPlaintext<Vec<u8>> = LWEPlaintext::alloc(basek, k_lwe_pt);
-    module.encode_coeff_i64(basek, &mut lwe_pt_in.data, 0, k_lwe_pt, 0, data, k_lwe_pt);
+
+    lwe_pt_in.encode_i64(data, k_lwe_pt);
 
     let mut lwe_ct_in: LWECiphertext<Vec<u8>> = LWECiphertext::alloc(n_lwe_in, basek, k_lwe_ct);
     lwe_ct_in.encrypt_sk(
@@ -91,9 +94,9 @@ where
 
     let mut lwe_ct_out: LWECiphertext<Vec<u8>> = LWECiphertext::alloc(n_lwe_out, basek, k_lwe_ct);
 
-    let ksk_exec: LWESwitchingKeyExec<Vec<u8>, B> = LWESwitchingKeyExec::from(module, &ksk, scratch.borrow());
+    let ksk_prepared: LWESwitchingKeyPrepared<Vec<u8>, B> = ksk.prepare_alloc(module, scratch.borrow());
 
-    lwe_ct_out.keyswitch(module, &lwe_ct_in, &ksk_exec, scratch.borrow());
+    lwe_ct_out.keyswitch(module, &lwe_ct_in, &ksk_prepared, scratch.borrow());
 
     let mut lwe_pt_out: LWEPlaintext<Vec<u8>> = LWEPlaintext::alloc(basek, k_lwe_ct);
     lwe_ct_out.decrypt(module, &mut lwe_pt_out, &sk_lwe_out);

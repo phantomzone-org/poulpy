@@ -1,5 +1,5 @@
 use backend::hal::{
-    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxCopy, VecZnxDftAlloc, VecZnxFillUniform, VecZnxStd, VecZnxSubABInplace},
+    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxCopy, VecZnxDftAlloc, VecZnxFillUniform, VecZnxSubABInplace},
     layouts::{Backend, Module, ScratchOwned},
     oep::{
         ScratchAvailableImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeScalarZnxImpl, TakeSvpPPolImpl,
@@ -12,16 +12,16 @@ use crate::{
     layouts::{
         GLWECiphertext, GLWEPlaintext, GLWEPublicKey, GLWESecret, Infos,
         compressed::GLWECiphertextCompressed,
-        prepared::{GLWEPublicKeyExec, GLWESecretExec},
+        prepared::{GLWEPublicKeyPrepared, GLWESecretPrepared, PrepareAlloc},
     },
     operations::GLWEOperations,
     trait_families::Decompress,
 };
 
-use crate::trait_families::{GLWEDecryptFamily, GLWEEncryptPkFamily, GLWEEncryptSkFamily, GLWESecretExecModuleFamily};
+use crate::trait_families::{GLWEDecryptFamily, GLWEEncryptPkFamily, GLWEEncryptSkFamily, GLWESecretPreparedModuleFamily};
 
 pub trait EncryptionTestModuleFamily<B: Backend> =
-    GLWEDecryptFamily<B> + VecZnxStd + GLWESecretExecModuleFamily<B> + GLWEEncryptPkFamily<B>;
+    GLWEDecryptFamily<B> + GLWESecretPreparedModuleFamily<B> + GLWEEncryptPkFamily<B>;
 
 pub fn test_glwe_encrypt_sk<B: Backend>(module: &Module<B>, basek: usize, k_ct: usize, k_pt: usize, sigma: f64, rank: usize)
 where
@@ -51,25 +51,25 @@ where
 
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
     sk.fill_ternary_prob(0.5, &mut source_xs);
-    let sk_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk);
+    let sk_prepared: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
 
     module.vec_znx_fill_uniform(basek, &mut pt_want.data, 0, k_pt, &mut source_xa);
 
     ct.encrypt_sk(
         module,
         &pt_want,
-        &sk_exec,
+        &sk_prepared,
         &mut source_xa,
         &mut source_xe,
         sigma,
         scratch.borrow(),
     );
 
-    ct.decrypt(module, &mut pt_have, &sk_exec, scratch.borrow());
+    ct.decrypt(module, &mut pt_have, &sk_prepared, scratch.borrow());
 
     pt_want.sub_inplace_ab(module, &pt_have);
 
-    let noise_have: f64 = module.vec_znx_std(basek, &pt_want.data, 0) * (ct.k() as f64).exp2();
+    let noise_have: f64 = pt_want.data.std(basek, 0) * (ct.k() as f64).exp2();
     let noise_want: f64 = sigma;
 
     assert!(noise_have <= noise_want + 0.2);
@@ -110,7 +110,7 @@ pub fn test_glwe_compressed_encrypt_sk<B: Backend>(
 
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
     sk.fill_ternary_prob(0.5, &mut source_xs);
-    let sk_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk);
+    let sk_prepared: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
 
     module.vec_znx_fill_uniform(basek, &mut pt_want.data, 0, k_pt, &mut source_xa);
 
@@ -119,7 +119,7 @@ pub fn test_glwe_compressed_encrypt_sk<B: Backend>(
     ct_compressed.encrypt_sk(
         module,
         &pt_want,
-        &sk_exec,
+        &sk_prepared,
         seed_xa,
         &mut source_xe,
         sigma,
@@ -129,11 +129,11 @@ pub fn test_glwe_compressed_encrypt_sk<B: Backend>(
     let mut ct: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(n, basek, k_ct, rank);
     ct.decompress(module, &ct_compressed);
 
-    ct.decrypt(module, &mut pt_have, &sk_exec, scratch.borrow());
+    ct.decrypt(module, &mut pt_have, &sk_prepared, scratch.borrow());
 
     pt_want.sub_inplace_ab(module, &pt_have);
 
-    let noise_have: f64 = module.vec_znx_std(basek, &pt_want.data, 0) * (ct.k() as f64).exp2();
+    let noise_have: f64 = pt_want.data.std(basek, 0) * (ct.k() as f64).exp2();
     let noise_want: f64 = sigma;
 
     assert!(
@@ -163,28 +163,28 @@ where
     let mut source_xe: Source = Source::new([1u8; 32]);
     let mut source_xa: Source = Source::new([0u8; 32]);
 
-    let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
-    sk.fill_ternary_prob(0.5, &mut source_xs);
-    let sk_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk);
-
-    let mut ct: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(n, basek, k_ct, rank);
-
     let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
         GLWECiphertext::decrypt_scratch_space(module, n, basek, k_ct)
             | GLWECiphertext::encrypt_sk_scratch_space(module, n, basek, k_ct),
     );
 
+    let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
+    sk.fill_ternary_prob(0.5, &mut source_xs);
+    let sk_prepared: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
+
+    let mut ct: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(n, basek, k_ct, rank);
+
     ct.encrypt_zero_sk(
         module,
-        &sk_exec,
+        &sk_prepared,
         &mut source_xa,
         &mut source_xe,
         sigma,
         scratch.borrow(),
     );
-    ct.decrypt(module, &mut pt, &sk_exec, scratch.borrow());
+    ct.decrypt(module, &mut pt, &sk_prepared, scratch.borrow());
 
-    assert!((sigma - module.vec_znx_std(basek, &pt.data, 0) * (k_ct as f64).exp2()) <= 0.2);
+    assert!((sigma - pt.data.std(basek, 0) * (k_ct as f64).exp2()) <= 0.2);
 }
 
 pub fn test_glwe_encrypt_pk<B: Backend>(module: &Module<B>, basek: usize, k_ct: usize, k_pk: usize, sigma: f64, rank: usize)
@@ -210,38 +210,38 @@ where
     let mut source_xa: Source = Source::new([0u8; 32]);
     let mut source_xu: Source = Source::new([0u8; 32]);
 
-    let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
-    sk.fill_ternary_prob(0.5, &mut source_xs);
-    let sk_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk);
-
-    let mut pk: GLWEPublicKey<Vec<u8>> = GLWEPublicKey::alloc(n, basek, k_pk, rank);
-    pk.generate_from_sk(module, &sk_exec, &mut source_xa, &mut source_xe, sigma);
-
     let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
         GLWECiphertext::encrypt_sk_scratch_space(module, n, basek, ct.k())
             | GLWECiphertext::decrypt_scratch_space(module, n, basek, ct.k())
-            | GLWECiphertext::encrypt_pk_scratch_space(module, n, basek, pk.k()),
+            | GLWECiphertext::encrypt_pk_scratch_space(module, n, basek, k_pk),
     );
+
+    let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
+    sk.fill_ternary_prob(0.5, &mut source_xs);
+    let sk_prepared: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
+
+    let mut pk: GLWEPublicKey<Vec<u8>> = GLWEPublicKey::alloc(n, basek, k_pk, rank);
+    pk.generate_from_sk(module, &sk_prepared, &mut source_xa, &mut source_xe, sigma);
 
     module.vec_znx_fill_uniform(basek, &mut pt_want.data, 0, k_ct, &mut source_xa);
 
-    let pk_exec: GLWEPublicKeyExec<Vec<u8>, B> = GLWEPublicKeyExec::from(module, &pk, scratch.borrow());
+    let pk_prepared: GLWEPublicKeyPrepared<Vec<u8>, B> = pk.prepare_alloc(module, scratch.borrow());
 
     ct.encrypt_pk(
         module,
         &pt_want,
-        &pk_exec,
+        &pk_prepared,
         &mut source_xu,
         &mut source_xe,
         sigma,
         scratch.borrow(),
     );
 
-    ct.decrypt(module, &mut pt_have, &sk_exec, scratch.borrow());
+    ct.decrypt(module, &mut pt_have, &sk_prepared, scratch.borrow());
 
     pt_want.sub_inplace_ab(module, &pt_have);
 
-    let noise_have: f64 = module.vec_znx_std(basek, &pt_want.data, 0).log2();
+    let noise_have: f64 = pt_want.data.std(basek, 0).log2();
     let noise_want: f64 = ((((rank as f64) + 1.0) * n as f64 * 0.5 * sigma * sigma).sqrt()).log2() - (k_ct as f64);
 
     assert!(

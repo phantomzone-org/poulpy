@@ -10,12 +10,14 @@ use backend::hal::{
 };
 use itertools::izip;
 
-use crate::{
-    GLWEOps, Infos, LookUpTableRotationDirection, TakeGLWECt,
-    blind_rotation::{key::BlindRotationKeyCGGIExec, lut::LookUpTable},
-    dist::Distribution,
-    layouts::{GLWECiphertext, GLWECiphertextToMut, LWECiphertext, LWECiphertextToRef},
+use core::{
+    Distribution, GLWEOperations, TakeGLWECt,
+    layouts::{GLWECiphertext, GLWECiphertextToMut, Infos, LWECiphertext, LWECiphertextToRef},
     trait_families::GLWEExternalProductFamily,
+};
+
+use crate::tfhe::blind_rotation::{
+    BlincRotationExecute, BlindRotationKeyPrepared, CGGI, LookUpTable, LookUpTableRotationDirection,
 };
 
 pub trait CCGIBlindRotationFamily<B: Backend> = VecZnxBigAllocBytes
@@ -85,50 +87,47 @@ where
     }
 }
 
-pub fn cggi_blind_rotate<DataRes, DataIn, DataBrk, B: Backend>(
-    module: &Module<B>,
-    res: &mut GLWECiphertext<DataRes>,
-    lwe: &LWECiphertext<DataIn>,
-    lut: &LookUpTable,
-    brk: &BlindRotationKeyCGGIExec<DataBrk, B>,
-    scratch: &mut Scratch<B>,
-) where
-    DataRes: DataMut,
-    DataIn: DataRef,
-    DataBrk: DataRef,
+impl<D: DataRef, B: Backend> BlincRotationExecute<B> for BlindRotationKeyPrepared<D, CGGI, B>
+where
     Module<B>: CCGIBlindRotationFamily<B>,
-    Scratch<B>: TakeVecZnxDftSlice<B> + TakeVecZnxDft<B> + TakeVecZnxBig<B> + TakeVecZnx + ScratchAvailable + TakeVecZnxSlice,
+    Scratch<B>: TakeVecZnxDftSlice<B> + TakeVecZnxDft<B> + TakeVecZnxBig<B> + TakeVecZnxSlice + TakeVecZnx + ScratchAvailable,
 {
-    match brk.dist {
-        Distribution::BinaryBlock(_) | Distribution::BinaryFixed(_) | Distribution::BinaryProb(_) | Distribution::ZERO => {
-            if lut.extension_factor() > 1 {
-                cggi_blind_rotate_block_binary_extended(module, res, lwe, lut, brk, scratch);
-            } else if brk.block_size() > 1 {
-                cggi_blind_rotate_block_binary(module, res, lwe, lut, brk, scratch);
-            } else {
-                cggi_blind_rotate_binary_standard(module, res, lwe, lut, brk, scratch);
+    fn execute<DR: DataMut, DI: DataRef>(
+        &self,
+        module: &Module<B>,
+        res: &mut GLWECiphertext<DR>,
+        lwe: &LWECiphertext<DI>,
+        lut: &LookUpTable,
+        scratch: &mut Scratch<B>,
+    ) {
+        match self.dist {
+            Distribution::BinaryBlock(_) | Distribution::BinaryFixed(_) | Distribution::BinaryProb(_) | Distribution::ZERO => {
+                if lut.extension_factor() > 1 {
+                    execute_block_binary_extended(module, res, lwe, lut, self, scratch)
+                } else if self.block_size() > 1 {
+                    execute_block_binary(module, res, lwe, lut, self, scratch);
+                } else {
+                    execute_standard(module, res, lwe, lut, self, scratch);
+                }
             }
+            _ => panic!("invalid CGGI distribution"),
         }
-        // TODO: ternary distribution ?
-        _ => panic!(
-            "invalid BlindRotationKeyCGGI distribution: must be BinaryBlock, BinaryFixed or BinaryProb (or ZERO for debugging)"
-        ),
     }
 }
 
-pub(crate) fn cggi_blind_rotate_block_binary_extended<DataRes, DataIn, DataBrk, B: Backend>(
+fn execute_block_binary_extended<DataRes, DataIn, DataBrk, B: Backend>(
     module: &Module<B>,
     res: &mut GLWECiphertext<DataRes>,
     lwe: &LWECiphertext<DataIn>,
     lut: &LookUpTable,
-    brk: &BlindRotationKeyCGGIExec<DataBrk, B>,
+    brk: &BlindRotationKeyPrepared<DataBrk, CGGI, B>,
     scratch: &mut Scratch<B>,
 ) where
     DataRes: DataMut,
     DataIn: DataRef,
     DataBrk: DataRef,
     Module<B>: CCGIBlindRotationFamily<B>,
-    Scratch<B>: TakeVecZnxDftSlice<B> + TakeVecZnxDft<B> + TakeVecZnxBig<B> + TakeVecZnxSlice,
+    Scratch<B>: TakeVecZnxDftSlice<B> + TakeVecZnxDft<B> + TakeVecZnxBig<B> + TakeVecZnxSlice + ScratchAvailable + TakeVecZnx,
 {
     let n_glwe: usize = brk.n();
     let extension_factor: usize = lut.extension_factor();
@@ -196,7 +195,7 @@ pub(crate) fn cggi_blind_rotate_block_binary_extended<DataRes, DataIn, DataBrk, 
 
             // vmp_res = DFT(acc) * BRK[i]
             (0..extension_factor).for_each(|i| {
-                module.vmp_apply(&mut vmp_res[i], &acc_dft[i], &skii.data, scratch5);
+                module.vmp_apply(&mut vmp_res[i], &acc_dft[i], skii.data(), scratch5);
             });
 
             // Trivial case: no rotation between polynomials, we can directly multiply with (X^{-ai} - 1)
@@ -261,19 +260,19 @@ pub(crate) fn cggi_blind_rotate_block_binary_extended<DataRes, DataIn, DataBrk, 
     });
 }
 
-pub(crate) fn cggi_blind_rotate_block_binary<DataRes, DataIn, DataBrk, B: Backend>(
+fn execute_block_binary<DataRes, DataIn, DataBrk, B: Backend>(
     module: &Module<B>,
     res: &mut GLWECiphertext<DataRes>,
     lwe: &LWECiphertext<DataIn>,
     lut: &LookUpTable,
-    brk: &BlindRotationKeyCGGIExec<DataBrk, B>,
+    brk: &BlindRotationKeyPrepared<DataBrk, CGGI, B>,
     scratch: &mut Scratch<B>,
 ) where
     DataRes: DataMut,
     DataIn: DataRef,
     DataBrk: DataRef,
     Module<B>: CCGIBlindRotationFamily<B>,
-    Scratch<B>: TakeVecZnxDft<B> + TakeVecZnxBig<B>,
+    Scratch<B>: TakeVecZnxDftSlice<B> + TakeVecZnxDft<B> + TakeVecZnxBig<B> + TakeVecZnxSlice + ScratchAvailable + TakeVecZnx,
 {
     let n_glwe: usize = brk.n();
     let mut lwe_2n: Vec<i64> = vec![0i64; lwe.n() + 1]; // TODO: from scratch space
@@ -331,7 +330,7 @@ pub(crate) fn cggi_blind_rotate_block_binary<DataRes, DataIn, DataBrk, B: Backen
             let ai_pos: usize = ((aii + two_n as i64) & (two_n - 1) as i64) as usize;
 
             // vmp_res = DFT(acc) * BRK[i]
-            module.vmp_apply(&mut vmp_res, &acc_dft, &skii.data, scratch4);
+            module.vmp_apply(&mut vmp_res, &acc_dft, skii.data(), scratch4);
 
             // DFT(X^ai -1) * (DFT(acc) * BRK[i])
             (0..cols).for_each(|i| {
@@ -353,19 +352,19 @@ pub(crate) fn cggi_blind_rotate_block_binary<DataRes, DataIn, DataBrk, B: Backen
     });
 }
 
-pub(crate) fn cggi_blind_rotate_binary_standard<DataRes, DataIn, DataBrk, B: Backend>(
+fn execute_standard<DataRes, DataIn, DataBrk, B: Backend>(
     module: &Module<B>,
     res: &mut GLWECiphertext<DataRes>,
     lwe: &LWECiphertext<DataIn>,
     lut: &LookUpTable,
-    brk: &BlindRotationKeyCGGIExec<DataBrk, B>,
+    brk: &BlindRotationKeyPrepared<DataBrk, CGGI, B>,
     scratch: &mut Scratch<B>,
 ) where
     DataRes: DataMut,
     DataIn: DataRef,
     DataBrk: DataRef,
     Module<B>: CCGIBlindRotationFamily<B>,
-    Scratch<B>: TakeVecZnxDft<B> + TakeVecZnxBig<B> + TakeVecZnx + ScratchAvailable,
+    Scratch<B>: TakeVecZnxDftSlice<B> + TakeVecZnxDft<B> + TakeVecZnxBig<B> + TakeVecZnxSlice + ScratchAvailable + TakeVecZnx,
 {
     #[cfg(debug_assertions)]
     {
@@ -445,7 +444,7 @@ pub(crate) fn mod_switch_2n(n: usize, res: &mut [i64], lwe: &LWECiphertext<&[u8]
 
     let log2n: usize = usize::BITS as usize - (n - 1).leading_zeros() as usize + 1;
 
-    res.copy_from_slice(&lwe.data.at(0, 0));
+    res.copy_from_slice(&lwe.data().at(0, 0));
 
     match rot_dir {
         LookUpTableRotationDirection::Left => {
@@ -465,11 +464,11 @@ pub(crate) fn mod_switch_2n(n: usize, res: &mut [i64], lwe: &LWECiphertext<&[u8]
         (1..size).for_each(|i| {
             if i == size - 1 && rem != basek {
                 let k_rem: usize = basek - rem;
-                izip!(lwe.data.at(0, i).iter(), res.iter_mut()).for_each(|(x, y)| {
+                izip!(lwe.data().at(0, i).iter(), res.iter_mut()).for_each(|(x, y)| {
                     *y = (*y << k_rem) + (x >> rem);
                 });
             } else {
-                izip!(lwe.data.at(0, i).iter(), res.iter_mut()).for_each(|(x, y)| {
+                izip!(lwe.data().at(0, i).iter(), res.iter_mut()).for_each(|(x, y)| {
                     *y = (*y << basek) + x;
                 });
             }

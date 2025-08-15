@@ -1,7 +1,7 @@
 use backend::hal::{
     api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxCopy, VecZnxRotateInplace, VecZnxStd,
-        VecZnxSubABInplace, VmpPMatAlloc, VmpPMatPrepare, ZnxViewMut,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxCopy, VecZnxRotateInplace, VecZnxSubABInplace,
+        VmpPMatAlloc, VmpPMatPrepare, ZnxViewMut,
     },
     layouts::{Backend, Module, ScalarZnx, ScalarZnxToMut, ScratchOwned},
     oep::{
@@ -14,7 +14,7 @@ use sampling::source::Source;
 use crate::{
     layouts::{
         GGSWCiphertext, GLWESecret,
-        prepared::{GGSWCiphertextExec, GLWESecretExec},
+        prepared::{GGSWCiphertextPrepared, GLWESecretPrepared, PrepareAlloc},
     },
     noise::noise_ggsw_product,
     trait_families::GGSWAssertNoiseFamily,
@@ -22,7 +22,7 @@ use crate::{
 
 use crate::trait_families::{
     GGLWESwitchingKeyEncryptSkFamily, GGLWETensorKeyEncryptSkFamily, GGSWEncryptSkFamily, GGSWKeySwitchFamily,
-    GLWESecretExecModuleFamily,
+    GLWESecretPreparedModuleFamily,
 };
 
 pub fn test_ggsw_external_product<B: Backend>(
@@ -35,12 +35,11 @@ pub fn test_ggsw_external_product<B: Backend>(
     rank: usize,
     sigma: f64,
 ) where
-    Module<B>: GLWESecretExecModuleFamily<B>
+    Module<B>: GLWESecretPreparedModuleFamily<B>
         + GGSWEncryptSkFamily<B>
         + GGSWAssertNoiseFamily<B>
         + VecZnxAddScalarInplace
         + VecZnxSubABInplace
-        + VecZnxStd
         + VecZnxCopy
         + VmpPMatAlloc<B>
         + VmpPMatPrepare<B>
@@ -89,12 +88,12 @@ pub fn test_ggsw_external_product<B: Backend>(
 
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
     sk.fill_ternary_prob(0.5, &mut source_xs);
-    let sk_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk);
+    let sk_prepared: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
 
     ct_ggsw_rhs.encrypt_sk(
         module,
         &pt_ggsw_rhs,
-        &sk_exec,
+        &sk_prepared,
         &mut source_xa,
         &mut source_xe,
         sigma,
@@ -104,17 +103,16 @@ pub fn test_ggsw_external_product<B: Backend>(
     ct_ggsw_lhs_in.encrypt_sk(
         module,
         &pt_ggsw_lhs,
-        &sk_exec,
+        &sk_prepared,
         &mut source_xa,
         &mut source_xe,
         sigma,
         scratch.borrow(),
     );
 
-    let mut ct_rhs_exec: GGSWCiphertextExec<Vec<u8>, B> = GGSWCiphertextExec::alloc(module, n, basek, k_ggsw, rows, digits, rank);
-    ct_rhs_exec.prepare(module, &ct_ggsw_rhs, scratch.borrow());
+    let ct_rhs_prepared: GGSWCiphertextPrepared<Vec<u8>, B> = ct_ggsw_rhs.prepare_alloc(module, scratch.borrow());
 
-    ct_ggsw_lhs_out.external_product(module, &ct_ggsw_lhs_in, &ct_rhs_exec, scratch.borrow());
+    ct_ggsw_lhs_out.external_product(module, &ct_ggsw_lhs_in, &ct_rhs_prepared, scratch.borrow());
 
     module.vec_znx_rotate_inplace(k as i64, &mut pt_ggsw_lhs.as_vec_znx_mut(), 0);
 
@@ -141,7 +139,7 @@ pub fn test_ggsw_external_product<B: Backend>(
         ) + 0.5
     };
 
-    ct_ggsw_lhs_out.assert_noise(module, &sk_exec, &pt_ggsw_lhs, &max_noise);
+    ct_ggsw_lhs_out.assert_noise(module, &sk_prepared, &pt_ggsw_lhs, &max_noise);
 }
 
 pub fn test_ggsw_external_product_inplace<B: Backend>(
@@ -153,12 +151,11 @@ pub fn test_ggsw_external_product_inplace<B: Backend>(
     rank: usize,
     sigma: f64,
 ) where
-    Module<B>: GLWESecretExecModuleFamily<B>
+    Module<B>: GLWESecretPreparedModuleFamily<B>
         + GGSWEncryptSkFamily<B>
         + GGSWAssertNoiseFamily<B>
         + VecZnxAddScalarInplace
         + VecZnxSubABInplace
-        + VecZnxStd
         + VecZnxCopy
         + VmpPMatAlloc<B>
         + VmpPMatPrepare<B>
@@ -207,12 +204,12 @@ pub fn test_ggsw_external_product_inplace<B: Backend>(
 
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
     sk.fill_ternary_prob(0.5, &mut source_xs);
-    let sk_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk);
+    let sk_prepared: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
 
     ct_ggsw_rhs.encrypt_sk(
         module,
         &pt_ggsw_rhs,
-        &sk_exec,
+        &sk_prepared,
         &mut source_xa,
         &mut source_xe,
         sigma,
@@ -222,17 +219,16 @@ pub fn test_ggsw_external_product_inplace<B: Backend>(
     ct_ggsw_lhs.encrypt_sk(
         module,
         &pt_ggsw_lhs,
-        &sk_exec,
+        &sk_prepared,
         &mut source_xa,
         &mut source_xe,
         sigma,
         scratch.borrow(),
     );
 
-    let mut ct_rhs_exec: GGSWCiphertextExec<Vec<u8>, B> = GGSWCiphertextExec::alloc(module, n, basek, k_ggsw, rows, digits, rank);
-    ct_rhs_exec.prepare(module, &ct_ggsw_rhs, scratch.borrow());
+    let ct_rhs_prepared: GGSWCiphertextPrepared<Vec<u8>, B> = ct_ggsw_rhs.prepare_alloc(module, scratch.borrow());
 
-    ct_ggsw_lhs.external_product_inplace(module, &ct_rhs_exec, scratch.borrow());
+    ct_ggsw_lhs.external_product_inplace(module, &ct_rhs_prepared, scratch.borrow());
 
     module.vec_znx_rotate_inplace(k as i64, &mut pt_ggsw_lhs.as_vec_znx_mut(), 0);
 
@@ -259,5 +255,5 @@ pub fn test_ggsw_external_product_inplace<B: Backend>(
         ) + 0.5
     };
 
-    ct_ggsw_lhs.assert_noise(module, &sk_exec, &pt_ggsw_lhs, &max_noise);
+    ct_ggsw_lhs.assert_noise(module, &sk_prepared, &pt_ggsw_lhs, &max_noise);
 }

@@ -1,7 +1,7 @@
 use backend::hal::{
     api::{
         ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxAutomorphism, VecZnxAutomorphismInplace, VecZnxCopy,
-        VecZnxStd, VecZnxSubScalarInplace, VecZnxSwithcDegree, VmpPMatAlloc, VmpPMatPrepare,
+        VecZnxSubScalarInplace, VecZnxSwithcDegree, VmpPMatAlloc, VmpPMatPrepare,
     },
     layouts::{Backend, Module, ScratchOwned},
     oep::{
@@ -12,11 +12,15 @@ use backend::hal::{
 use sampling::source::Source;
 
 use crate::{
-    layouts::{GGLWEAutomorphismKey, GLWESecret, compressed::GGLWEAutomorphismKeyCompressed, prepared::GLWESecretExec},
+    layouts::{
+        GGLWEAutomorphismKey, GLWESecret,
+        compressed::GGLWEAutomorphismKeyCompressed,
+        prepared::{GLWESecretPrepared, PrepareAlloc},
+    },
     trait_families::{Decompress, GLWEDecryptFamily, GLWEKeyswitchFamily},
 };
 
-use crate::trait_families::{GGLWEAutomorphismKeyEncryptSkFamily, GLWESecretExecModuleFamily};
+use crate::trait_families::{GGLWEAutomorphismKeyEncryptSkFamily, GLWESecretPreparedModuleFamily};
 
 pub fn test_gglwe_automorphisk_key_encrypt_sk<B: Backend>(
     module: &Module<B>,
@@ -27,7 +31,7 @@ pub fn test_gglwe_automorphisk_key_encrypt_sk<B: Backend>(
     sigma: f64,
 ) where
     Module<B>: GGLWEAutomorphismKeyEncryptSkFamily<B>
-        + GLWESecretExecModuleFamily<B>
+        + GLWESecretPreparedModuleFamily<B>
         + GLWEKeyswitchFamily<B>
         + VecZnxAutomorphism
         + VecZnxSwithcDegree
@@ -36,7 +40,6 @@ pub fn test_gglwe_automorphisk_key_encrypt_sk<B: Backend>(
         + VecZnxAutomorphismInplace
         + GLWEDecryptFamily<B>
         + VecZnxSubScalarInplace
-        + VecZnxStd
         + VecZnxCopy
         + VmpPMatAlloc<B>
         + VmpPMatPrepare<B>,
@@ -87,11 +90,11 @@ pub fn test_gglwe_automorphisk_key_encrypt_sk<B: Backend>(
             i,
         );
     });
-    let sk_out_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk_out);
+    let sk_out_prepared: GLWESecretPrepared<Vec<u8>, B> = sk_out.prepare_alloc(module, scratch.borrow());
 
     atk.key
         .key
-        .assert_noise(module, &sk_out_exec, &sk.data, sigma);
+        .assert_noise(module, &sk_out_prepared, &sk.data, sigma);
 }
 
 pub fn test_gglwe_automorphisk_key_compressed_encrypt_sk<B: Backend>(
@@ -103,7 +106,7 @@ pub fn test_gglwe_automorphisk_key_compressed_encrypt_sk<B: Backend>(
     sigma: f64,
 ) where
     Module<B>: GGLWEAutomorphismKeyEncryptSkFamily<B>
-        + GLWESecretExecModuleFamily<B>
+        + GLWESecretPreparedModuleFamily<B>
         + GLWEKeyswitchFamily<B>
         + VecZnxAutomorphism
         + VecZnxSwithcDegree
@@ -112,7 +115,6 @@ pub fn test_gglwe_automorphisk_key_compressed_encrypt_sk<B: Backend>(
         + VecZnxAutomorphismInplace
         + GLWEDecryptFamily<B>
         + VecZnxSubScalarInplace
-        + VecZnxStd
         + VecZnxCopy
         + VmpPMatAlloc<B>
         + VmpPMatPrepare<B>,
@@ -165,12 +167,12 @@ pub fn test_gglwe_automorphisk_key_compressed_encrypt_sk<B: Backend>(
             i,
         );
     });
-    let sk_out_exec = GLWESecretExec::from(module, &sk_out);
+    let sk_out_prepared = sk_out.prepare_alloc(module, scratch.borrow());
 
     let mut atk: GGLWEAutomorphismKey<Vec<u8>> = GGLWEAutomorphismKey::alloc(n, basek, k_ksk, rows, digits, rank);
     atk.decompress(module, &atk_compressed);
 
     atk.key
         .key
-        .assert_noise(module, &sk_out_exec, &sk.data, sigma);
+        .assert_noise(module, &sk_out_prepared, &sk.data, sigma);
 }

@@ -3,7 +3,7 @@ use backend::hal::{
     layouts::{Data, DataMut, DataRef, MatZnx, ReaderFrom, WriterTo},
 };
 
-use crate::layouts::{GLWECiphertext, GGLWESwitchingKey, Infos};
+use crate::layouts::{GGLWESwitchingKey, GLWECiphertext, Infos};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
 use std::fmt;

@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use backend::hal::layouts::{Backend, DataMut, DataRef, Module, Scratch};
 
 use crate::{
-    layouts::{GLWECiphertext, prepared::GGLWEAutomorphismKeyExec},
+    layouts::{GLWECiphertext, prepared::GGLWEAutomorphismKeyPrepared},
     operations::GLWEOperations,
 };
 
@@ -61,7 +61,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         start: usize,
         end: usize,
         lhs: &GLWECiphertext<DataLhs>,
-        auto_keys: &HashMap<i64, GGLWEAutomorphismKeyExec<DataAK, B>>,
+        auto_keys: &HashMap<i64, GGLWEAutomorphismKeyPrepared<DataAK, B>>,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWETraceModuleFamily<B>,
@@ -76,7 +76,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         module: &Module<B>,
         start: usize,
         end: usize,
-        auto_keys: &HashMap<i64, GGLWEAutomorphismKeyExec<DataAK, B>>,
+        auto_keys: &HashMap<i64, GGLWEAutomorphismKeyPrepared<DataAK, B>>,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWETraceModuleFamily<B>,

@@ -8,19 +8,19 @@ use backend::hal::{
 use sampling::source::Source;
 
 use crate::{
-    TakeGLWESecret, TakeGLWESecretExec,
+    TakeGLWESecret, TakeGLWESecretPrepared,
     layouts::{
         GLWESecret, Infos,
         compressed::{GGLWEAutomorphismKeyCompressed, GGLWESwitchingKeyCompressed},
     },
 };
 
-use crate::trait_families::{GGLWEAutomorphismKeyEncryptSkFamily, GLWESecretExecModuleFamily};
+use crate::trait_families::{GGLWEAutomorphismKeyEncryptSkFamily, GLWESecretPreparedModuleFamily};
 
 impl GGLWEAutomorphismKeyCompressed<Vec<u8>> {
     pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, n: usize, basek: usize, k: usize, rank: usize) -> usize
     where
-        Module<B>: GGLWEAutomorphismKeyEncryptSkFamily<B> + GLWESecretExecModuleFamily<B>,
+        Module<B>: GGLWEAutomorphismKeyEncryptSkFamily<B> + GLWESecretPreparedModuleFamily<B>,
     {
         GGLWESwitchingKeyCompressed::encrypt_sk_scratch_space(module, n, basek, k, rank, rank) + GLWESecret::bytes_of(n, rank)
     }
@@ -41,8 +41,8 @@ impl<DataSelf: DataMut> GGLWEAutomorphismKeyCompressed<DataSelf> {
             + VecZnxSwithcDegree
             + VecZnxAutomorphism
             + VecZnxAddScalarInplace
-            + GLWESecretExecModuleFamily<B>,
-        Scratch<B>: ScratchAvailable + TakeScalarZnx + TakeVecZnxDft<B> + TakeGLWESecretExec<B> + TakeVecZnx,
+            + GLWESecretPreparedModuleFamily<B>,
+        Scratch<B>: ScratchAvailable + TakeScalarZnx + TakeVecZnxDft<B> + TakeGLWESecretPrepared<B> + TakeVecZnx,
     {
         #[cfg(debug_assertions)]
         {

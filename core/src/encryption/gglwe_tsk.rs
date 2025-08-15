@@ -8,19 +8,22 @@ use backend::hal::{
 use sampling::source::Source;
 
 use crate::{
-    TakeGLWESecret, TakeGLWESecretExec,
-    layouts::{GGLWETensorKey, GLWESecret, GGLWESwitchingKey, Infos, prepared::GLWESecretExec},
+    TakeGLWESecret, TakeGLWESecretPrepared,
+    layouts::{
+        GGLWESwitchingKey, GGLWETensorKey, GLWESecret, Infos,
+        prepared::{GLWESecretPrepared, Prepare},
+    },
     trait_families::GLWEDecryptFamily,
 };
 
-use crate::trait_families::{GGLWETensorKeyEncryptSkFamily, GLWESecretExecModuleFamily};
+use crate::trait_families::{GGLWETensorKeyEncryptSkFamily, GLWESecretPreparedModuleFamily};
 
 impl GGLWETensorKey<Vec<u8>> {
     pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, n: usize, basek: usize, k: usize, rank: usize) -> usize
     where
-        Module<B>: GGLWETensorKeyEncryptSkFamily<B> + GLWESecretExecModuleFamily<B>,
+        Module<B>: GGLWETensorKeyEncryptSkFamily<B> + GLWESecretPreparedModuleFamily<B>,
     {
-        GLWESecretExec::bytes_of(module, n, rank)
+        GLWESecretPrepared::bytes_of(module, n, rank)
             + module.vec_znx_dft_alloc_bytes(n, rank, 1)
             + module.vec_znx_big_alloc_bytes(n, 1, 1)
             + module.vec_znx_dft_alloc_bytes(n, 1, 1)
@@ -39,8 +42,10 @@ impl<DataSelf: DataMut> GGLWETensorKey<DataSelf> {
         sigma: f64,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: GGLWETensorKeyEncryptSkFamily<B> + VecZnxSwithcDegree + VecZnxAddScalarInplace + GLWESecretExecModuleFamily<B>,
-        Scratch<B>: ScratchAvailable + TakeVecZnxDft<B> + TakeVecZnxBig<B> + TakeGLWESecretExec<B> + TakeScalarZnx + TakeVecZnx,
+        Module<B>:
+            GGLWETensorKeyEncryptSkFamily<B> + VecZnxSwithcDegree + VecZnxAddScalarInplace + GLWESecretPreparedModuleFamily<B>,
+        Scratch<B>:
+            ScratchAvailable + TakeVecZnxDft<B> + TakeVecZnxBig<B> + TakeGLWESecretPrepared<B> + TakeScalarZnx + TakeVecZnx,
     {
         #[cfg(debug_assertions)]
         {
@@ -52,8 +57,8 @@ impl<DataSelf: DataMut> GGLWETensorKey<DataSelf> {
 
         let rank: usize = self.rank();
 
-        let (mut sk_dft_prep, scratch1) = scratch.take_glwe_secret_exec(n, rank);
-        sk_dft_prep.prepare(module, &sk);
+        let (mut sk_dft_prep, scratch1) = scratch.take_glwe_secret_prepared(n, rank);
+        sk_dft_prep.prepare(module, &sk, scratch1);
 
         let (mut sk_dft, scratch2) = scratch1.take_vec_znx_dft(n, rank, 1);
 

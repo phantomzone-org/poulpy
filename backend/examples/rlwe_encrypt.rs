@@ -3,8 +3,7 @@ use backend::{
         api::{
             ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyInplace, SvpPPolAlloc, SvpPrepare, VecZnxAddNormal,
             VecZnxBigAddSmallInplace, VecZnxBigAlloc, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallBInplace,
-            VecZnxDecodeVeci64, VecZnxDftAlloc, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigTmpA, VecZnxEncodeVeci64,
-            VecZnxFillUniform, VecZnxNormalizeInplace, ZnxInfos,
+            VecZnxDftAlloc, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigTmpA, VecZnxFillUniform, VecZnxNormalizeInplace, ZnxInfos,
         },
         layouts::{Module, ScalarZnx, ScratchOwned, SvpPPol, VecZnx, VecZnxBig, VecZnxDft},
     },
@@ -73,7 +72,7 @@ fn main() {
     let mut want: Vec<i64> = vec![0; n];
     want.iter_mut()
         .for_each(|x| *x = source.next_u64n(16, 15) as i64);
-    module.encode_vec_i64(basek, &mut m, 0, log_scale, &want, 4);
+    m.encode_vec_i64(basek, 0, log_scale, &want, 4);
     module.vec_znx_normalize_inplace(basek, &mut m, 0, scratch.borrow());
 
     // m - BIG(ct[1] * s)
@@ -132,8 +131,7 @@ fn main() {
 
     // have = m * 2^{log_scale} + e
     let mut have: Vec<i64> = vec![i64::default(); n];
-    module.decode_vec_i64(basek, &mut res, 0, ct_size * basek, &mut have);
-
+    res.decode_vec_i64(basek, 0, ct_size * basek, &mut have);
     let scale: f64 = (1 << (res.size() * basek - log_scale)) as f64;
     izip!(want.iter(), have.iter())
         .enumerate()

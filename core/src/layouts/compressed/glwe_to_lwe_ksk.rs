@@ -7,7 +7,7 @@ use backend::hal::{
 
 use crate::layouts::{GLWEToLWESwitchingKey, Infos, compressed::GGLWESwitchingKeyCompressed};
 
-use crate::trait_families::{GGLWEEncryptSkFamily, GLWESecretExecModuleFamily};
+use crate::trait_families::{GGLWEEncryptSkFamily, GLWESecretPreparedModuleFamily};
 
 #[derive(PartialEq, Eq, Clone)]
 pub struct GLWEToLWESwitchingKeyCompressed<D: Data>(pub(crate) GGLWESwitchingKeyCompressed<D>);
@@ -91,7 +91,7 @@ impl GLWEToLWESwitchingKeyCompressed<Vec<u8>> {
 
     pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, n: usize, basek: usize, k: usize, rank_in: usize) -> usize
     where
-        Module<B>: GGLWEEncryptSkFamily<B> + GLWESecretExecModuleFamily<B>,
+        Module<B>: GGLWEEncryptSkFamily<B> + GLWESecretPreparedModuleFamily<B>,
     {
         GLWEToLWESwitchingKey::encrypt_sk_scratch_space(module, n, basek, k, rank_in)
     }

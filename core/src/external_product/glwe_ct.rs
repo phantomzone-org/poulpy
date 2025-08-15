@@ -7,7 +7,7 @@ use backend::hal::{
 };
 
 use crate::{
-    layouts::{GLWECiphertext, Infos, prepared::GGSWCiphertextExec},
+    layouts::{GLWECiphertext, Infos, prepared::GGSWCiphertextPrepared},
     trait_families::GLWEExternalProductFamily,
 };
 
@@ -64,7 +64,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         &mut self,
         module: &Module<B>,
         lhs: &GLWECiphertext<DataLhs>,
-        rhs: &GGSWCiphertextExec<DataRhs, B>,
+        rhs: &GGSWCiphertextPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWEExternalProductFamily<B>,
@@ -141,7 +141,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
     pub fn external_product_inplace<DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
-        rhs: &GGSWCiphertextExec<DataRhs, B>,
+        rhs: &GGSWCiphertextPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWEExternalProductFamily<B>,

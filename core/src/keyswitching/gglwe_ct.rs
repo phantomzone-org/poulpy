@@ -5,8 +5,8 @@ use backend::hal::{
 
 use crate::{
     layouts::{
-        GGLWEAutomorphismKey, GLWECiphertext, GGLWESwitchingKey, Infos,
-        prepared::{GGLWEAutomorphismKeyExec, GGLWESwitchingKeyExec},
+        GGLWEAutomorphismKey, GGLWESwitchingKey, GLWECiphertext, Infos,
+        prepared::{GGLWEAutomorphismKeyPrepared, GGLWESwitchingKeyPrepared},
     },
     trait_families::GLWEKeyswitchFamily,
 };
@@ -49,7 +49,7 @@ impl<DataSelf: DataMut> GGLWEAutomorphismKey<DataSelf> {
         &mut self,
         module: &Module<B>,
         lhs: &GGLWEAutomorphismKey<DataLhs>,
-        rhs: &GGLWESwitchingKeyExec<DataRhs, B>,
+        rhs: &GGLWESwitchingKeyPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWEKeyswitchFamily<B>,
@@ -61,7 +61,7 @@ impl<DataSelf: DataMut> GGLWEAutomorphismKey<DataSelf> {
     pub fn keyswitch_inplace<DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
-        rhs: &GGLWEAutomorphismKeyExec<DataRhs, B>,
+        rhs: &GGLWEAutomorphismKeyPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWEKeyswitchFamily<B>,
@@ -112,7 +112,7 @@ impl<DataSelf: DataMut> GGLWESwitchingKey<DataSelf> {
         &mut self,
         module: &Module<B>,
         lhs: &GGLWESwitchingKey<DataLhs>,
-        rhs: &GGLWESwitchingKeyExec<DataRhs, B>,
+        rhs: &GGLWESwitchingKeyPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWEKeyswitchFamily<B>,
@@ -160,7 +160,7 @@ impl<DataSelf: DataMut> GGLWESwitchingKey<DataSelf> {
     pub fn keyswitch_inplace<DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
-        rhs: &GGLWESwitchingKeyExec<DataRhs, B>,
+        rhs: &GGLWESwitchingKeyPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWEKeyswitchFamily<B>,

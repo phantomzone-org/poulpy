@@ -13,6 +13,18 @@ pub struct LWECiphertext<D: Data> {
     pub(crate) basek: usize,
 }
 
+impl<D: DataRef> LWECiphertext<D> {
+    pub fn data(&self) -> &VecZnx<D> {
+        &self.data
+    }
+}
+
+impl<D: DataMut> LWECiphertext<D> {
+    pub fn data_mut(&mut self) -> &VecZnx<D> {
+        &mut self.data
+    }
+}
+
 impl<D: DataRef> fmt::Debug for LWECiphertext<D> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self)
@@ -31,10 +43,7 @@ impl<D: DataRef> fmt::Display for LWECiphertext<D> {
     }
 }
 
-impl<D: DataMut> Reset for LWECiphertext<D>
-where
-    VecZnx<D>: Reset,
-{
+impl<D: DataMut> Reset for LWECiphertext<D> {
     fn reset(&mut self) {
         self.data.reset();
         self.basek = 0;

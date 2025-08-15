@@ -89,8 +89,8 @@ pub trait GLWEPackingFamily<B: Backend> = GLWEKeyswitchFamily<B>
     + VecZnxAutomorphismInplace
     + VecZnxBigSubSmallBInplace<B>
     + VecZnxBigAutomorphismInplace<B>;
-pub trait GLWESecretExecModuleFamily<B: Backend> = SvpPrepare<B> + SvpPPolAllocBytes + SvpPPolAlloc<B>;
-pub trait GGLWEExecLayoutFamily<B: Backend> = VmpPMatAlloc<B> + VmpPMatAllocBytes + VmpPMatPrepare<B>;
+pub trait GLWESecretPreparedModuleFamily<B: Backend> = SvpPrepare<B> + SvpPPolAllocBytes + SvpPPolAlloc<B>;
+pub trait GGLWEPreparedLayoutFamily<B: Backend> = VmpPMatAlloc<B> + VmpPMatAllocBytes + VmpPMatPrepare<B>;
 pub trait GLWETraceModuleFamily<B: Backend> =
     GLWEKeyswitchFamily<B> + VecZnxCopy + VecZnxRshInplace + VecZnxBigAutomorphismInplace<B>;
 pub trait GLWETraceScratchFamily<B: Backend> = TakeVecZnxDft<B> + ScratchAvailable;

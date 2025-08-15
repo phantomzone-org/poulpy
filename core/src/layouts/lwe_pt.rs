@@ -1,3 +1,5 @@
+use std::fmt;
+
 use backend::hal::layouts::{Data, DataMut, DataRef, VecZnx, VecZnxToMut, VecZnxToRef};
 
 use crate::layouts::{Infos, SetMetaData};
@@ -15,6 +17,18 @@ impl LWEPlaintext<Vec<u8>> {
             k: k,
             basek: basek,
         }
+    }
+}
+
+impl<D: DataRef> fmt::Display for LWEPlaintext<D> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "LWEPlaintext: basek={} k={}: {}",
+            self.basek(),
+            self.k(),
+            self.data
+        )
     }
 }
 

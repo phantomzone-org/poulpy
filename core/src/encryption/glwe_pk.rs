@@ -7,7 +7,7 @@ use sampling::source::Source;
 
 use crate::{
     dist::Distribution,
-    layouts::{GLWECiphertext, GLWEPublicKey, Infos, prepared::GLWESecretExec},
+    layouts::{GLWECiphertext, GLWEPublicKey, Infos, prepared::GLWESecretPrepared},
 };
 
 use crate::trait_families::GLWEEncryptSkFamily;
@@ -16,7 +16,7 @@ impl<D: DataMut> GLWEPublicKey<D> {
     pub fn generate_from_sk<S: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
-        sk: &GLWESecretExec<S, B>,
+        sk: &GLWESecretPrepared<S, B>,
         source_xa: &mut Source,
         source_xe: &mut Source,
         sigma: f64,

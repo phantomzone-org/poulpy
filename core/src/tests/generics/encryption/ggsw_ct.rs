@@ -1,6 +1,6 @@
 use backend::hal::{
     api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxCopy, VecZnxStd, VecZnxSubABInplace, VmpPMatAlloc,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxCopy, VecZnxSubABInplace, VmpPMatAlloc,
         VmpPMatPrepare,
     },
     layouts::{Backend, Module, ScalarZnx, ScratchOwned},
@@ -12,20 +12,23 @@ use backend::hal::{
 use sampling::source::Source;
 
 use crate::{
-    layouts::{GGSWCiphertext, GLWESecret, compressed::GGSWCiphertextCompressed, prepared::GLWESecretExec},
+    layouts::{
+        GGSWCiphertext, GLWESecret,
+        compressed::GGSWCiphertextCompressed,
+        prepared::{GLWESecretPrepared, PrepareAlloc},
+    },
     trait_families::{Decompress, GGSWAssertNoiseFamily},
 };
 
-use crate::trait_families::{GGSWEncryptSkFamily, GLWESecretExecModuleFamily};
+use crate::trait_families::{GGSWEncryptSkFamily, GLWESecretPreparedModuleFamily};
 
 pub fn test_ggsw_encrypt_sk<B: Backend>(module: &Module<B>, basek: usize, k: usize, digits: usize, rank: usize, sigma: f64)
 where
-    Module<B>: GLWESecretExecModuleFamily<B>
+    Module<B>: GLWESecretPreparedModuleFamily<B>
         + GGSWEncryptSkFamily<B>
         + GGSWAssertNoiseFamily<B>
         + VecZnxAddScalarInplace
         + VecZnxSubABInplace
-        + VecZnxStd
         + VecZnxCopy
         + VmpPMatAlloc<B>
         + VmpPMatPrepare<B>,
@@ -60,13 +63,12 @@ where
 
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
     sk.fill_ternary_prob(0.5, &mut source_xs);
-    let mut sk_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk);
-    sk_exec.prepare(module, &sk);
+    let sk_prepared: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
 
     ct.encrypt_sk(
         module,
         &pt_scalar,
-        &sk_exec,
+        &sk_prepared,
         &mut source_xa,
         &mut source_xe,
         sigma,
@@ -75,7 +77,7 @@ where
 
     let noise_f = |_col_i: usize| -(k as f64) + sigma.log2() + 0.5;
 
-    ct.assert_noise(module, &sk_exec, &pt_scalar, &noise_f);
+    ct.assert_noise(module, &sk_prepared, &pt_scalar, &noise_f);
 }
 
 pub fn test_ggsw_compressed_encrypt_sk<B: Backend>(
@@ -86,12 +88,11 @@ pub fn test_ggsw_compressed_encrypt_sk<B: Backend>(
     rank: usize,
     sigma: f64,
 ) where
-    Module<B>: GLWESecretExecModuleFamily<B>
+    Module<B>: GLWESecretPreparedModuleFamily<B>
         + GGSWEncryptSkFamily<B>
         + GGSWAssertNoiseFamily<B>
         + VecZnxAddScalarInplace
         + VecZnxSubABInplace
-        + VecZnxStd
         + VecZnxCopy
         + VmpPMatAlloc<B>
         + VmpPMatPrepare<B>,
@@ -125,15 +126,14 @@ pub fn test_ggsw_compressed_encrypt_sk<B: Backend>(
 
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
     sk.fill_ternary_prob(0.5, &mut source_xs);
-    let mut sk_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk);
-    sk_exec.prepare(module, &sk);
+    let sk_prepared: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
 
     let seed_xa: [u8; 32] = [1u8; 32];
 
     ct_compressed.encrypt_sk(
         module,
         &pt_scalar,
-        &sk_exec,
+        &sk_prepared,
         seed_xa,
         &mut source_xe,
         sigma,
@@ -145,5 +145,5 @@ pub fn test_ggsw_compressed_encrypt_sk<B: Backend>(
     let mut ct: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(n, basek, k, rows, digits, rank);
     ct.decompress(module, &ct_compressed);
 
-    ct.assert_noise(module, &sk_exec, &pt_scalar, &noise_f);
+    ct.assert_noise(module, &sk_prepared, &pt_scalar, &noise_f);
 }

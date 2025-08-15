@@ -4,7 +4,7 @@ use backend::hal::{
 };
 
 use crate::{
-    layouts::{GGLWEAutomorphismKey, GLWECiphertext, Infos, prepared::GGLWEAutomorphismKeyExec},
+    layouts::{GGLWEAutomorphismKey, GLWECiphertext, Infos, prepared::GGLWEAutomorphismKeyPrepared},
     trait_families::GLWEKeyswitchFamily,
 };
 
@@ -46,7 +46,7 @@ impl<DataSelf: DataMut> GGLWEAutomorphismKey<DataSelf> {
         &mut self,
         module: &Module<B>,
         lhs: &GGLWEAutomorphismKey<DataLhs>,
-        rhs: &GGLWEAutomorphismKeyExec<DataRhs, B>,
+        rhs: &GGLWEAutomorphismKeyPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWEKeyswitchFamily<B> + VecZnxAutomorphism + VecZnxAutomorphismInplace,
@@ -120,7 +120,7 @@ impl<DataSelf: DataMut> GGLWEAutomorphismKey<DataSelf> {
     pub fn automorphism_inplace<DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
-        rhs: &GGLWEAutomorphismKeyExec<DataRhs, B>,
+        rhs: &GGLWEAutomorphismKeyPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWEKeyswitchFamily<B> + VecZnxAutomorphism + VecZnxAutomorphismInplace,

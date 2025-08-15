@@ -8,16 +8,16 @@ use backend::hal::{
 use sampling::source::Source;
 
 use crate::{
-    TakeGLWESecret, TakeGLWESecretExec,
-    layouts::{GLWESecret, GGLWESwitchingKey, LWESecret, LWEToGLWESwitchingKey},
+    TakeGLWESecret, TakeGLWESecretPrepared,
+    layouts::{GGLWESwitchingKey, GLWESecret, LWESecret, LWEToGLWESwitchingKey},
 };
 
-use crate::trait_families::{GGLWEEncryptSkFamily, GGLWESwitchingKeyEncryptSkFamily, GLWESecretExecModuleFamily};
+use crate::trait_families::{GGLWEEncryptSkFamily, GGLWESwitchingKeyEncryptSkFamily, GLWESecretPreparedModuleFamily};
 
 impl LWEToGLWESwitchingKey<Vec<u8>> {
     pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, n: usize, basek: usize, k: usize, rank_out: usize) -> usize
     where
-        Module<B>: GGLWEEncryptSkFamily<B> + GLWESecretExecModuleFamily<B>,
+        Module<B>: GGLWEEncryptSkFamily<B> + GLWESecretPreparedModuleFamily<B>,
     {
         GGLWESwitchingKey::encrypt_sk_scratch_space(module, n, basek, k, 1, rank_out) + GLWESecret::bytes_of(n, 1)
     }
@@ -40,8 +40,8 @@ impl<D: DataMut> LWEToGLWESwitchingKey<D> {
             + VecZnxAutomorphismInplace
             + VecZnxSwithcDegree
             + VecZnxAddScalarInplace
-            + GLWESecretExecModuleFamily<B>,
-        Scratch<B>: ScratchAvailable + TakeScalarZnx + TakeVecZnxDft<B> + TakeGLWESecretExec<B> + TakeVecZnx,
+            + GLWESecretPreparedModuleFamily<B>,
+        Scratch<B>: ScratchAvailable + TakeScalarZnx + TakeVecZnxDft<B> + TakeGLWESecretPrepared<B> + TakeVecZnx,
     {
         #[cfg(debug_assertions)]
         {

@@ -7,7 +7,7 @@ use backend::hal::{
 };
 
 use crate::{
-    layouts::{GLWECiphertext, GLWEPlaintext, Infos, prepared::GLWESecretExec},
+    layouts::{GLWECiphertext, GLWEPlaintext, Infos, prepared::GLWESecretPrepared},
     trait_families::GLWEDecryptFamily,
 };
 
@@ -27,7 +27,7 @@ impl<DataSelf: DataRef> GLWECiphertext<DataSelf> {
         &self,
         module: &Module<B>,
         pt: &mut GLWEPlaintext<DataPt>,
-        sk: &GLWESecretExec<DataSk, B>,
+        sk: &GLWESecretPrepared<DataSk, B>,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWEDecryptFamily<B>,

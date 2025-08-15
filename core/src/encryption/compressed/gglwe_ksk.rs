@@ -5,13 +5,14 @@ use backend::hal::{
 use sampling::source::Source;
 
 use crate::{
-    TakeGLWESecretExec,
+    TakeGLWESecretPrepared,
     layouts::{
-        GGLWECiphertext, GLWESecret, GGLWESwitchingKey, Infos, compressed::GGLWESwitchingKeyCompressed, prepared::GLWESecretExec,
+        GGLWECiphertext, GGLWESwitchingKey, GLWESecret, Infos, compressed::GGLWESwitchingKeyCompressed,
+        prepared::GLWESecretPrepared,
     },
 };
 
-use crate::trait_families::{GGLWESwitchingKeyEncryptSkFamily, GLWESecretExecModuleFamily};
+use crate::trait_families::{GGLWESwitchingKeyEncryptSkFamily, GLWESecretPreparedModuleFamily};
 
 impl GGLWESwitchingKeyCompressed<Vec<u8>> {
     pub fn encrypt_sk_scratch_space<B: Backend>(
@@ -23,11 +24,11 @@ impl GGLWESwitchingKeyCompressed<Vec<u8>> {
         rank_out: usize,
     ) -> usize
     where
-        Module<B>: GGLWESwitchingKeyEncryptSkFamily<B> + GLWESecretExecModuleFamily<B>,
+        Module<B>: GGLWESwitchingKeyEncryptSkFamily<B> + GLWESecretPreparedModuleFamily<B>,
     {
         (GGLWECiphertext::encrypt_sk_scratch_space(module, n, basek, k) | ScalarZnx::alloc_bytes(n, 1))
             + ScalarZnx::alloc_bytes(n, rank_in)
-            + GLWESecretExec::bytes_of(module, n, rank_out)
+            + GLWESecretPrepared::bytes_of(module, n, rank_out)
     }
 }
 
@@ -43,8 +44,9 @@ impl<DataSelf: DataMut> GGLWESwitchingKeyCompressed<DataSelf> {
         scratch: &mut Scratch<B>,
     ) where
         Module<B>:
-            GGLWESwitchingKeyEncryptSkFamily<B> + VecZnxSwithcDegree + VecZnxAddScalarInplace + GLWESecretExecModuleFamily<B>,
-        Scratch<B>: ScratchAvailable + TakeScalarZnx + TakeVecZnxDft<B> + TakeGLWESecretExec<B> + ScratchAvailable + TakeVecZnx,
+            GGLWESwitchingKeyEncryptSkFamily<B> + VecZnxSwithcDegree + VecZnxAddScalarInplace + GLWESecretPreparedModuleFamily<B>,
+        Scratch<B>:
+            ScratchAvailable + TakeScalarZnx + TakeVecZnxDft<B> + TakeGLWESecretPrepared<B> + ScratchAvailable + TakeVecZnx,
     {
         #[cfg(debug_assertions)]
         {
@@ -85,7 +87,7 @@ impl<DataSelf: DataMut> GGLWESwitchingKeyCompressed<DataSelf> {
             );
         });
 
-        let (mut sk_out_tmp, scratch2) = scratch1.take_glwe_secret_exec(n, sk_out.rank());
+        let (mut sk_out_tmp, scratch2) = scratch1.take_glwe_secret_prepared(n, sk_out.rank());
         {
             let (mut tmp, _) = scratch2.take_scalar_znx(n, 1);
             (0..sk_out.rank()).for_each(|i| {

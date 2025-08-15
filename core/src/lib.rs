@@ -11,10 +11,12 @@ mod keyswitching;
 mod noise;
 mod operations;
 mod scratch;
+mod utils;
 
 pub use operations::*;
 pub mod layouts;
 pub mod trait_families;
+pub use dist::*;
 pub use glwe_packing::*;
 
 pub use scratch::*;

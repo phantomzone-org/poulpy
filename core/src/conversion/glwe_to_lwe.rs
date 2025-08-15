@@ -5,7 +5,7 @@ use backend::hal::{
 
 use crate::{
     TakeGLWECt,
-    layouts::{GLWECiphertext, Infos, LWECiphertext, prepared::GLWEToLWESwitchingKeyExec},
+    layouts::{GLWECiphertext, Infos, LWECiphertext, prepared::GLWEToLWESwitchingKeyPrepared},
 };
 
 use crate::trait_families::GLWEKeyswitchFamily;
@@ -50,7 +50,7 @@ impl<DLwe: DataMut> LWECiphertext<DLwe> {
         &mut self,
         module: &Module<B>,
         a: &GLWECiphertext<DGlwe>,
-        ks: &GLWEToLWESwitchingKeyExec<DKs, B>,
+        ks: &GLWEToLWESwitchingKeyPrepared<DKs, B>,
         scratch: &mut Scratch<B>,
     ) where
         DGlwe: DataRef,
