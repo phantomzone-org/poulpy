@@ -110,7 +110,7 @@ impl<D: DataRef> GGSWCiphertext<D> {
                 module.vec_znx_sub_ab_inplace(&mut pt_have.data, 0, &pt.data, 0);
 
                 let std_pt: f64 = pt_have.data.std(basek, 0).log2();
-                println!("{}", std_pt);
+                println!("col: {} row: {}: {}", col_j, row_i, std_pt);
                 pt.data.zero();
             });
         });

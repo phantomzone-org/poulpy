@@ -108,7 +108,7 @@ where
     let data: i64 = 1;
 
     let mut pt_lwe: LWEPlaintext<Vec<u8>> = LWEPlaintext::alloc(basek, k_lwe_pt);
-    pt_lwe.encode_i64(data, k_lwe_pt + 2);
+    pt_lwe.encode_i64(data, k_lwe_pt + 1);
 
     println!("pt_lwe: {}", pt_lwe);
 
@@ -268,7 +268,7 @@ where
     let data: i64 = 1;
 
     let mut pt_lwe: LWEPlaintext<Vec<u8>> = LWEPlaintext::alloc(basek, k_lwe_pt);
-    pt_lwe.encode_i64(data, k_lwe_pt + 2);
+    pt_lwe.encode_i64(data, k_lwe_pt + 1);
 
     println!("pt_lwe: {}", pt_lwe);
 

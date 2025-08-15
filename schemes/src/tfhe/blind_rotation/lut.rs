@@ -183,6 +183,7 @@ impl DivRound for usize {
     }
 }
 
+#[allow(dead_code)]
 fn max_bit_size(vec: &[i64]) -> u32 {
     vec.iter()
         .map(|&v| {

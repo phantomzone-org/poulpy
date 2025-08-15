@@ -5,10 +5,7 @@ use backend::hal::{
 };
 use sampling::source::Source;
 
-use crate::{
-    dist::Distribution,
-    layouts::{GLWECiphertext, GLWEPublicKey, Infos, prepared::GLWESecretPrepared},
-};
+use crate::layouts::{GLWECiphertext, GLWEPublicKey, Infos, prepared::GLWESecretPrepared};
 
 use crate::trait_families::GLWEEncryptSkFamily;
 
@@ -30,6 +27,8 @@ impl<D: DataMut> GLWEPublicKey<D> {
     {
         #[cfg(debug_assertions)]
         {
+            use crate::Distribution;
+
             assert_eq!(self.n(), sk.n());
 
             match sk.dist {

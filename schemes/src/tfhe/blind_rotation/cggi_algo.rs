@@ -454,7 +454,7 @@ pub(crate) fn mod_switch_2n(n: usize, res: &mut [i64], lwe: &LWECiphertext<&[u8]
     }
 
     if basek > log2n {
-        let diff: usize = basek - log2n;
+        let diff: usize = basek - (log2n - 1); // additional -1 because we map to [-N/2, N/2) instead of [0, N)
         res.iter_mut().for_each(|x| {
             *x = div_round_by_pow2(x, diff);
         })

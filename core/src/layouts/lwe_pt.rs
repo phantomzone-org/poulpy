@@ -87,3 +87,9 @@ impl<D: DataMut> LWEPlaintextToMut for LWEPlaintext<D> {
         }
     }
 }
+
+impl<D: DataMut> LWEPlaintext<D> {
+    pub fn data_mut(&mut self) -> &mut VecZnx<D> {
+        &mut self.data
+    }
+}

@@ -1,5 +1,5 @@
 use backend::hal::{
-    api::{FillUniform, Reset, VecZnxCopy, VecZnxFillUniform, ZnxInfos},
+    api::{FillUniform, Reset, VecZnxCopy, VecZnxFillUniform},
     layouts::{Backend, Data, DataMut, DataRef, Module, ReaderFrom, VecZnx, WriterTo},
 };
 use sampling::source::Source;
@@ -121,6 +121,8 @@ impl<D: DataMut, B: Backend, DR: DataRef> Decompress<B, GLWECiphertextCompressed
     {
         #[cfg(debug_assertions)]
         {
+            use backend::hal::api::ZnxInfos;
+
             assert_eq!(
                 self.n(),
                 other.data.n(),
@@ -142,9 +144,10 @@ impl<D: DataMut, B: Backend, DR: DataRef> Decompress<B, GLWECiphertextCompressed
                 self.rank(),
                 other.rank()
             );
-            let mut source: Source = Source::new(other.seed);
-            self.decompress_internal(module, other, &mut source);
         }
+
+        let mut source: Source = Source::new(other.seed);
+        self.decompress_internal(module, other, &mut source);
     }
 }
 

@@ -10,7 +10,7 @@ use sampling::source::Source;
 use crate::{
     TakeGLWESecret, TakeGLWESecretPrepared,
     layouts::{
-        GLWESecret, Infos,
+        GLWESecret,
         compressed::{GGLWEAutomorphismKeyCompressed, GGLWESwitchingKeyCompressed},
     },
 };
@@ -46,6 +46,8 @@ impl<DataSelf: DataMut> GGLWEAutomorphismKeyCompressed<DataSelf> {
     {
         #[cfg(debug_assertions)]
         {
+            use crate::layouts::Infos;
+
             assert_eq!(self.n(), sk.n());
             assert_eq!(self.rank_out(), self.rank_in());
             assert_eq!(sk.rank(), self.rank());

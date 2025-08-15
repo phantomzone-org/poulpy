@@ -6,10 +6,7 @@ use sampling::source::Source;
 
 use crate::{
     TakeGLWESecretPrepared,
-    layouts::{
-        GGLWECiphertext, GGLWESwitchingKey, GLWESecret, Infos, compressed::GGLWESwitchingKeyCompressed,
-        prepared::GLWESecretPrepared,
-    },
+    layouts::{GGLWECiphertext, GLWESecret, compressed::GGLWESwitchingKeyCompressed, prepared::GLWESecretPrepared},
 };
 
 use crate::trait_families::{GGLWESwitchingKeyEncryptSkFamily, GLWESecretPreparedModuleFamily};
@@ -50,6 +47,8 @@ impl<DataSelf: DataMut> GGLWESwitchingKeyCompressed<DataSelf> {
     {
         #[cfg(debug_assertions)]
         {
+            use crate::layouts::{GGLWESwitchingKey, Infos};
+
             assert!(sk_in.n() <= module.n());
             assert!(sk_out.n() <= module.n());
             assert!(

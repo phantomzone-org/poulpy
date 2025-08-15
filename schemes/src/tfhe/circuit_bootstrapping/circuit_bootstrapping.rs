@@ -1,4 +1,4 @@
-use std::{collections::HashMap, time::Instant, usize};
+use std::{collections::HashMap, usize};
 
 use backend::hal::{
     api::{
@@ -165,13 +165,9 @@ pub fn circuit_bootstrap_core<DRes, DLwe, DBrk, BRA: BlindRotationAlgo, B: Backe
 
     // TODO: separate GGSW k from output of blind rotation k
     let (mut res_glwe, scratch1) = scratch.take_glwe_ct(n, basek, k, rank);
-    let (mut tmp_gglwe, scratch2) = scratch1.take_gglwe(n, basek, k, rows, 1, rank, rank);
-
-    let now: Instant = Instant::now();
+    let (mut tmp_gglwe, scratch2) = scratch1.take_gglwe(n, basek, k, rows, 1, rank.max(1), rank);
 
     key.brk.execute(module, &mut res_glwe, &lwe, &lut, scratch2);
-
-    println!("blind_rotate: {} ms", now.elapsed().as_millis());
 
     let gap: usize = 2 * lut.drift / lut.extension_factor();
 
@@ -181,8 +177,6 @@ pub fn circuit_bootstrap_core<DRes, DLwe, DBrk, BRA: BlindRotationAlgo, B: Backe
         let mut tmp_glwe: GLWECiphertext<&mut [u8]> = tmp_gglwe.at_mut(i, 0);
 
         if to_exponent {
-            let now: Instant = Instant::now();
-
             // Isolates i-th LUT and moves coefficients according to requested gap.
             post_process(
                 module,
@@ -194,7 +188,6 @@ pub fn circuit_bootstrap_core<DRes, DLwe, DBrk, BRA: BlindRotationAlgo, B: Backe
                 &key.atk,
                 scratch2,
             );
-            println!("post_process: {} ms", now.elapsed().as_millis());
         } else {
             tmp_glwe.trace(module, 0, module.log_n(), &res_glwe, &key.atk, scratch2);
         }
@@ -248,10 +241,7 @@ fn post_process<DataRes, DataA, B: Backend>(
             }
             cts.insert(i as usize * (1 << log_gap_out), res.clone());
         });
-
-        let now: Instant = Instant::now();
         pack(module, &mut cts, log_gap_out, auto_keys, scratch);
-        println!("pack: {} ms", now.elapsed().as_millis());
         let packed: GLWECiphertext<Vec<u8>> = cts.remove(&0).unwrap();
         res.trace(
             module,
@@ -281,8 +271,6 @@ pub fn pack<D: DataMut, B: Backend>(
     let rank: usize = cts.get(&0).unwrap().rank();
 
     (0..log_n - log_gap_out).for_each(|i| {
-        let now: Instant = Instant::now();
-
         let t = 16.min(1 << (log_n - 1 - i));
 
         let auto_key: &GGLWEAutomorphismKeyPrepared<Vec<u8>, B>;
@@ -314,8 +302,6 @@ pub fn pack<D: DataMut, B: Backend>(
                 cts.insert(j, b);
             }
         });
-
-        println!("combine: {} us", now.elapsed().as_micros());
     });
 }
 

@@ -1,0 +1,10 @@
+[package]
+name = "poulpy"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+backend = {path="../backend"}
+core = {path="../core"}
+schemes = {path="../schemes"}
+sampling = {path="../sampling"}

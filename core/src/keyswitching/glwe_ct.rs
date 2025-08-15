@@ -61,6 +61,7 @@ impl GLWECiphertext<Vec<u8>> {
 }
 
 impl<DataSelf: DataRef> GLWECiphertext<DataSelf> {
+    #[allow(dead_code)]
     pub(crate) fn assert_keyswitch<B: Backend, DataLhs, DataRhs>(
         &self,
         module: &Module<B>,

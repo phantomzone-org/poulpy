@@ -9,7 +9,7 @@ use sampling::source::Source;
 
 use crate::{
     TakeGLWESecret, TakeGLWESecretPrepared,
-    layouts::{GGLWEAutomorphismKey, GGLWESwitchingKey, GLWESecret, Infos},
+    layouts::{GGLWEAutomorphismKey, GGLWESwitchingKey, GLWESecret},
 };
 
 use crate::trait_families::{GGLWEAutomorphismKeyEncryptSkFamily, GLWESecretPreparedModuleFamily};
@@ -47,6 +47,8 @@ impl<DataSelf: DataMut> GGLWEAutomorphismKey<DataSelf> {
     {
         #[cfg(debug_assertions)]
         {
+            use crate::layouts::Infos;
+
             assert_eq!(self.n(), sk.n());
             assert_eq!(self.rank_out(), self.rank_in());
             assert_eq!(sk.rank(), self.rank());
