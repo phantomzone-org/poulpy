@@ -17,10 +17,10 @@ use core::trait_families::{
     GGLWEAutomorphismKeyEncryptSkFamily, GGLWETensorKeyEncryptSkFamily, GGSWEncryptSkFamily, GLWESecretExecModuleFamily,
 };
 
-use crate::tfhe::blind_rotation::{BlindRotationKeyCGGI, BlindRotationKeyCGGIExec, BlindRotationKeyCGGIExecLayoutFamily};
+use crate::tfhe::blind_rotation::{BlindRotationKey, BlindRotationKeyExec, BlindRotationKeyExecLayoutFamily};
 
 pub struct CircuitBootstrappingKeyCGGI<D: Data> {
-    pub(crate) brk: BlindRotationKeyCGGI<D>,
+    pub(crate) brk: BlindRotationKey<D>,
     pub(crate) tsk: GGLWETensorKey<Vec<u8>>,
     pub(crate) atk: HashMap<i64, GGLWEAutomorphismKey<Vec<u8>>>,
 }
@@ -67,7 +67,7 @@ impl CircuitBootstrappingKeyCGGI<Vec<u8>> {
 
         let sk_glwe_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk_glwe);
 
-        let mut brk: BlindRotationKeyCGGI<Vec<u8>> = BlindRotationKeyCGGI::alloc(
+        let mut brk: BlindRotationKey<Vec<u8>> = BlindRotationKey::alloc(
             sk_glwe.n(),
             sk_lwe.n(),
             basek,
@@ -97,7 +97,7 @@ impl CircuitBootstrappingKeyCGGI<Vec<u8>> {
 }
 
 pub struct CircuitBootstrappingKeyCGGIExec<D: Data, B: Backend> {
-    pub(crate) brk: BlindRotationKeyCGGIExec<D, B>,
+    pub(crate) brk: BlindRotationKeyExec<D, B>,
     pub(crate) tsk: GGLWETensorKeyExec<Vec<u8>, B>,
     pub(crate) atk: HashMap<i64, GGLWEAutomorphismKeyExec<Vec<u8>, B>>,
 }
@@ -109,9 +109,9 @@ impl<B: Backend> CircuitBootstrappingKeyCGGIExec<Vec<u8>, B> {
         scratch: &mut Scratch<B>,
     ) -> CircuitBootstrappingKeyCGGIExec<Vec<u8>, B>
     where
-        Module<B>: BlindRotationKeyCGGIExecLayoutFamily<B> + VmpPMatAlloc<B> + VmpPMatPrepare<B>,
+        Module<B>: BlindRotationKeyExecLayoutFamily<B> + VmpPMatAlloc<B> + VmpPMatPrepare<B>,
     {
-        let brk: BlindRotationKeyCGGIExec<Vec<u8>, B> = BlindRotationKeyCGGIExec::from(module, &other.brk, scratch);
+        let brk: BlindRotationKeyExec<Vec<u8>, B> = BlindRotationKeyExec::from(module, &other.brk, scratch);
         let tsk: GGLWETensorKeyExec<Vec<u8>, B> = GGLWETensorKeyExec::from(module, &other.tsk, scratch);
         let mut atk: HashMap<i64, GGLWEAutomorphismKeyExec<Vec<u8>, B>> = HashMap::new();
         for (key, value) in &other.atk {

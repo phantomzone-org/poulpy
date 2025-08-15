@@ -12,8 +12,8 @@ use backend::hal::{
 use sampling::source::Source;
 
 use crate::tfhe::blind_rotation::{
-    BlindRotationKeyCGGI, BlindRotationKeyCGGIExec, BlindRotationKeyCGGIExecLayoutFamily, CCGIBlindRotationFamily, LookUpTable,
-    cggi_blind_rotate, cggi_blind_rotate_scratch_space, mod_switch_2n,
+    BlincRotationExecute, BlindRotationKey, BlindRotationKeyExec, BlindRotationKeyExecLayoutFamily, CCGIBlindRotationFamily,
+    CGGI, LookUpTable, cggi_blind_rotate_scratch_space, mod_switch_2n,
 };
 
 use core::{
@@ -27,7 +27,7 @@ use core::{
 pub(crate) trait CGGITestModuleFamily<B: Backend> = CCGIBlindRotationFamily<B>
     + GLWESecretExecModuleFamily<B>
     + GLWEDecryptFamily<B>
-    + BlindRotationKeyCGGIExecLayoutFamily<B>
+    + BlindRotationKeyExecLayoutFamily<B>
     + VecZnxFillUniform
     + VecZnxAddNormal
     + VecZnxAddScalarInplace
@@ -74,7 +74,7 @@ where
     let mut sk_lwe: LWESecret<Vec<u8>> = LWESecret::alloc(n_lwe);
     sk_lwe.fill_binary_block(block_size, &mut source_xs);
 
-    let mut scratch: ScratchOwned<B> = ScratchOwned::<B>::alloc(BlindRotationKeyCGGI::generate_from_sk_scratch_space(
+    let mut scratch: ScratchOwned<B> = ScratchOwned::<B>::alloc(BlindRotationKey::generate_from_sk_scratch_space(
         module, n, basek, k_brk, rank,
     ));
 
@@ -90,7 +90,7 @@ where
         rank,
     ));
 
-    let mut brk: BlindRotationKeyCGGI<Vec<u8>> = BlindRotationKeyCGGI::alloc(n, n_lwe, basek, k_brk, rows_brk, rank);
+    let mut brk: BlindRotationKey<Vec<u8>, CGGI> = BlindRotationKey::<_, CGGI>::alloc(n, n_lwe, basek, k_brk, rows_brk, rank);
 
     brk.generate_from_sk(
         module,
@@ -130,9 +130,9 @@ where
 
     let mut res: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(n, basek, k_res, rank);
 
-    let brk_exec: BlindRotationKeyCGGIExec<Vec<u8>, B> = BlindRotationKeyCGGIExec::from(module, &brk, scratch_br.borrow());
+    let brk_exec: BlindRotationKeyExec<Vec<u8>, CGGI, B> = BlindRotationKeyExec::from(module, &brk, scratch_br.borrow());
 
-    cggi_blind_rotate(module, &mut res, &lwe, &lut, &brk_exec, scratch_br.borrow());
+    brk_exec.execute(module, &mut res, &lwe, &lut, scratch_br.borrow());
 
     let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(n, basek, k_res);
 

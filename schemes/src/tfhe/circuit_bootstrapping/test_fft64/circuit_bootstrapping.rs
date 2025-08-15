@@ -18,7 +18,7 @@ use backend::{
 use sampling::source::Source;
 
 use crate::tfhe::{
-    blind_rotation::BlindRotationKeyCGGIExecLayoutFamily,
+    blind_rotation::BlindRotationKeyExecLayoutFamily,
     circuit_bootstrapping::{
         CGGICircuitBootstrapFamily, CircuitBootstrappingKeyCGGI, CircuitBootstrappingKeyCGGIExec,
         circuit_bootstrap_to_constant_cggi, circuit_bootstrap_to_exponent_cggi,
@@ -52,7 +52,7 @@ where
         + VecZnxAutomorphism
         + VecZnxSwithcDegree
         + GGLWETensorKeyEncryptSkFamily<B>
-        + BlindRotationKeyCGGIExecLayoutFamily<B>
+        + BlindRotationKeyExecLayoutFamily<B>
         + CGGICircuitBootstrapFamily<B>
         + GLWEDecryptFamily<B>
         + GGSWAssertNoiseFamily<B>
@@ -216,7 +216,7 @@ where
         + VecZnxAutomorphism
         + VecZnxSwithcDegree
         + GGLWETensorKeyEncryptSkFamily<B>
-        + BlindRotationKeyCGGIExecLayoutFamily<B>
+        + BlindRotationKeyExecLayoutFamily<B>
         + CGGICircuitBootstrapFamily<B>
         + GLWEDecryptFamily<B>
         + GGSWAssertNoiseFamily<B>
