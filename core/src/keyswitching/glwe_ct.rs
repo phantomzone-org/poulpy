@@ -7,7 +7,7 @@ use backend::hal::{
 };
 
 use crate::{
-    layouts::{GLWECiphertext, Infos, prepared::GGLWESwitchingKeyExec},
+    layouts::{GLWECiphertext, Infos, prepared::GGLWESwitchingKeyPrepared},
     trait_families::GLWEKeyswitchFamily,
 };
 
@@ -65,7 +65,7 @@ impl<DataSelf: DataRef> GLWECiphertext<DataSelf> {
         &self,
         module: &Module<B>,
         lhs: &GLWECiphertext<DataLhs>,
-        rhs: &GGLWESwitchingKeyExec<DataRhs, B>,
+        rhs: &GGLWESwitchingKeyPrepared<DataRhs, B>,
         scratch: &Scratch<B>,
     ) where
         DataLhs: DataRef,
@@ -136,7 +136,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         &mut self,
         module: &Module<B>,
         lhs: &GLWECiphertext<DataLhs>,
-        rhs: &GGLWESwitchingKeyExec<DataRhs, B>,
+        rhs: &GGLWESwitchingKeyPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWEKeyswitchFamily<B>,
@@ -156,7 +156,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
     pub fn keyswitch_inplace<DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
-        rhs: &GGLWESwitchingKeyExec<DataRhs, B>,
+        rhs: &GGLWESwitchingKeyPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWEKeyswitchFamily<B>,
@@ -174,7 +174,7 @@ impl<D: DataRef> GLWECiphertext<D> {
         &self,
         module: &Module<B>,
         res_dft: VecZnxDft<DataRes, B>,
-        rhs: &GGLWESwitchingKeyExec<DataKey, B>,
+        rhs: &GGLWESwitchingKeyPrepared<DataKey, B>,
         scratch: &mut Scratch<B>,
     ) -> VecZnxBig<DataRes, B>
     where

@@ -2,18 +2,17 @@ mod cggi_algo;
 mod cggi_key;
 mod key;
 mod key_compressed;
-mod key_exec;
+mod key_prepared;
 mod lut;
 mod utils;
 
 pub use cggi_algo::*;
 pub use key::*;
 pub use key_compressed::*;
-pub use key_exec::*;
+pub use key_prepared::*;
 pub use lut::*;
 
-#[cfg(test)]
-mod tests;
+pub mod tests;
 
 use backend::hal::layouts::{Backend, DataMut, DataRef, Module, Scratch};
 use core::layouts::{GLWECiphertext, LWECiphertext};

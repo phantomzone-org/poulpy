@@ -13,14 +13,17 @@ use backend::hal::{
 
 use core::{GLWEOperations, TakeGGLWE, TakeGLWECt, layouts::Infos, trait_families::GLWETraceModuleFamily};
 
-use core::layouts::{GGSWCiphertext, GLWECiphertext, LWECiphertext, prepared::GGLWEAutomorphismKeyExec};
+use core::layouts::{GGSWCiphertext, GLWECiphertext, LWECiphertext, prepared::GGLWEAutomorphismKeyPrepared};
 
 use crate::tfhe::{
-    blind_rotation::{CCGIBlindRotationFamily, LookUpTable, LookUpTableRotationDirection, cggi_blind_rotate},
-    circuit_bootstrapping::CircuitBootstrappingKeyCGGIExec,
+    blind_rotation::{
+        BlincRotationExecute, BlindRotationAlgo, BlindRotationKeyPrepared, CCGIBlindRotationFamily, LookUpTable,
+        LookUpTableRotationDirection,
+    },
+    circuit_bootstrapping::{CircuitBootstrappingKeyPrepared, CirtuitBootstrappingExecute},
 };
 
-pub trait CGGICircuitBootstrapFamily<B: Backend> = VecZnxRotateInplace
+pub trait CircuitBootstrapFamily<B: Backend> = VecZnxRotateInplace
     + VecZnxNormalizeInplace<B>
     + VecZnxNormalizeTmpBytes
     + CCGIBlindRotationFamily<B>
@@ -39,19 +42,9 @@ pub trait CGGICircuitBootstrapFamily<B: Backend> = VecZnxRotateInplace
     + VecZnxAutomorphismInplace
     + VecZnxBigSubSmallBInplace<B>;
 
-pub fn circuit_bootstrap_to_constant_cggi<DRes, DLwe, DBrk, B: Backend>(
-    module: &Module<B>,
-    res: &mut GGSWCiphertext<DRes>,
-    lwe: &LWECiphertext<DLwe>,
-    log_domain: usize,
-    extension_factor: usize,
-    key: &CircuitBootstrappingKeyCGGIExec<DBrk, B>,
-    scratch: &mut Scratch<B>,
-) where
-    DRes: DataMut,
-    DLwe: DataRef,
-    DBrk: DataRef,
-    Module<B>: CGGICircuitBootstrapFamily<B>,
+impl<D: DataRef, BRA: BlindRotationAlgo, B: Backend> CirtuitBootstrappingExecute<B> for CircuitBootstrappingKeyPrepared<D, BRA, B>
+where
+    Module<B>: CircuitBootstrapFamily<B>,
     B: ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
     Scratch<B>: TakeVecZnx
         + TakeVecZnxDftSlice<B>
@@ -60,57 +53,55 @@ pub fn circuit_bootstrap_to_constant_cggi<DRes, DLwe, DBrk, B: Backend>(
         + TakeMatZnx
         + ScratchAvailable
         + TakeVecZnxSlice,
+    BlindRotationKeyPrepared<D, BRA, B>: BlincRotationExecute<B>,
 {
-    circuit_bootstrap_core_cggi(
-        false,
-        module,
-        0,
-        res,
-        lwe,
-        log_domain,
-        extension_factor,
-        key,
-        scratch,
-    );
+    fn execute_to_constant<DM: DataMut, DR: DataRef>(
+        &self,
+        module: &Module<B>,
+        res: &mut GGSWCiphertext<DM>,
+        lwe: &LWECiphertext<DR>,
+        log_domain: usize,
+        extension_factor: usize,
+        scratch: &mut Scratch<B>,
+    ) {
+        circuit_bootstrap_core(
+            false,
+            module,
+            0,
+            res,
+            lwe,
+            log_domain,
+            extension_factor,
+            self,
+            scratch,
+        );
+    }
+
+    fn execute_to_exponent<DM: DataMut, DR: DataRef>(
+        &self,
+        module: &Module<B>,
+        log_gap_out: usize,
+        res: &mut GGSWCiphertext<DM>,
+        lwe: &LWECiphertext<DR>,
+        log_domain: usize,
+        extension_factor: usize,
+        scratch: &mut Scratch<B>,
+    ) {
+        circuit_bootstrap_core(
+            true,
+            module,
+            log_gap_out,
+            res,
+            lwe,
+            log_domain,
+            extension_factor,
+            self,
+            scratch,
+        );
+    }
 }
 
-pub fn circuit_bootstrap_to_exponent_cggi<DRes, DLwe, DBrk, B: Backend>(
-    module: &Module<B>,
-    log_gap_out: usize,
-    res: &mut GGSWCiphertext<DRes>,
-    lwe: &LWECiphertext<DLwe>,
-    log_domain: usize,
-    extension_factor: usize,
-    key: &CircuitBootstrappingKeyCGGIExec<DBrk, B>,
-    scratch: &mut Scratch<B>,
-) where
-    DRes: DataMut,
-    DLwe: DataRef,
-    DBrk: DataRef,
-    Module<B>: CGGICircuitBootstrapFamily<B>,
-    B: ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
-    Scratch<B>: TakeVecZnx
-        + TakeVecZnxDftSlice<B>
-        + TakeVecZnxBig<B>
-        + TakeVecZnxDft<B>
-        + TakeMatZnx
-        + ScratchAvailable
-        + TakeVecZnxSlice,
-{
-    circuit_bootstrap_core_cggi(
-        true,
-        module,
-        log_gap_out,
-        res,
-        lwe,
-        log_domain,
-        extension_factor,
-        key,
-        scratch,
-    );
-}
-
-pub fn circuit_bootstrap_core_cggi<DRes, DLwe, DBrk, B: Backend>(
+pub fn circuit_bootstrap_core<DRes, DLwe, DBrk, BRA: BlindRotationAlgo, B: Backend>(
     to_exponent: bool,
     module: &Module<B>,
     log_gap_out: usize,
@@ -118,13 +109,13 @@ pub fn circuit_bootstrap_core_cggi<DRes, DLwe, DBrk, B: Backend>(
     lwe: &LWECiphertext<DLwe>,
     log_domain: usize,
     extension_factor: usize,
-    key: &CircuitBootstrappingKeyCGGIExec<DBrk, B>,
+    key: &CircuitBootstrappingKeyPrepared<DBrk, BRA, B>,
     scratch: &mut Scratch<B>,
 ) where
     DRes: DataMut,
     DLwe: DataRef,
     DBrk: DataRef,
-    Module<B>: CGGICircuitBootstrapFamily<B>,
+    Module<B>: CircuitBootstrapFamily<B>,
     B: ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
     Scratch<B>: TakeVecZnxDftSlice<B>
         + TakeVecZnxBig<B>
@@ -133,6 +124,7 @@ pub fn circuit_bootstrap_core_cggi<DRes, DLwe, DBrk, B: Backend>(
         + ScratchAvailable
         + TakeVecZnxSlice
         + TakeMatZnx,
+    BlindRotationKeyPrepared<DBrk, BRA, B>: BlincRotationExecute<B>,
 {
     #[cfg(debug_assertions)]
     {
@@ -176,8 +168,10 @@ pub fn circuit_bootstrap_core_cggi<DRes, DLwe, DBrk, B: Backend>(
     let (mut tmp_gglwe, scratch2) = scratch1.take_gglwe(n, basek, k, rows, 1, rank, rank);
 
     let now: Instant = Instant::now();
-    cggi_blind_rotate(module, &mut res_glwe, &lwe, &lut, &key.brk, scratch2);
-    println!("cggi_blind_rotate: {} ms", now.elapsed().as_millis());
+
+    key.brk.execute(module, &mut res_glwe, &lwe, &lut, scratch2);
+
+    println!("blind_rotate: {} ms", now.elapsed().as_millis());
 
     let gap: usize = 2 * lut.drift / lut.extension_factor();
 
@@ -221,12 +215,12 @@ fn post_process<DataRes, DataA, B: Backend>(
     log_gap_in: usize,
     log_gap_out: usize,
     log_domain: usize,
-    auto_keys: &HashMap<i64, GGLWEAutomorphismKeyExec<Vec<u8>, B>>,
+    auto_keys: &HashMap<i64, GGLWEAutomorphismKeyPrepared<Vec<u8>, B>>,
     scratch: &mut Scratch<B>,
 ) where
     DataRes: DataMut,
     DataA: DataRef,
-    Module<B>: CGGICircuitBootstrapFamily<B>,
+    Module<B>: CircuitBootstrapFamily<B>,
     Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
 {
     let log_n: usize = module.log_n();
@@ -274,10 +268,10 @@ pub fn pack<D: DataMut, B: Backend>(
     module: &Module<B>,
     cts: &mut HashMap<usize, GLWECiphertext<D>>,
     log_gap_out: usize,
-    auto_keys: &HashMap<i64, GGLWEAutomorphismKeyExec<Vec<u8>, B>>,
+    auto_keys: &HashMap<i64, GGLWEAutomorphismKeyPrepared<Vec<u8>, B>>,
     scratch: &mut Scratch<B>,
 ) where
-    Module<B>: CGGICircuitBootstrapFamily<B>,
+    Module<B>: CircuitBootstrapFamily<B>,
     Scratch<B>: TakeVecZnx + TakeVecZnxDft<B> + ScratchAvailable,
 {
     let log_n: usize = module.log_n();
@@ -291,7 +285,7 @@ pub fn pack<D: DataMut, B: Backend>(
 
         let t = 16.min(1 << (log_n - 1 - i));
 
-        let auto_key: &GGLWEAutomorphismKeyExec<Vec<u8>, B>;
+        let auto_key: &GGLWEAutomorphismKeyPrepared<Vec<u8>, B>;
         if i == 0 {
             auto_key = auto_keys.get(&-1).unwrap()
         } else {
@@ -333,10 +327,10 @@ fn combine<A: DataMut, D: DataMut, DataAK: DataRef, B: Backend>(
     a: Option<&mut GLWECiphertext<A>>,
     b: Option<&mut GLWECiphertext<D>>,
     i: usize,
-    auto_key: &GGLWEAutomorphismKeyExec<DataAK, B>,
+    auto_key: &GGLWEAutomorphismKeyPrepared<DataAK, B>,
     scratch: &mut Scratch<B>,
 ) where
-    Module<B>: CGGICircuitBootstrapFamily<B>,
+    Module<B>: CircuitBootstrapFamily<B>,
     Scratch<B>: TakeVecZnx + TakeVecZnxDft<B> + ScratchAvailable,
 {
     // Goal is to evaluate: a = a + b*X^t + phi(a - b*X^t))

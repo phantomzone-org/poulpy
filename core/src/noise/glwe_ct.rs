@@ -6,7 +6,7 @@ use backend::hal::{
 
 use crate::{
     layouts::GLWEPlaintext,
-    layouts::prepared::GLWESecretExec,
+    layouts::prepared::GLWESecretPrepared,
     layouts::{GLWECiphertext, Infos},
     trait_families::GLWEDecryptFamily,
 };
@@ -15,7 +15,7 @@ impl<D: DataRef> GLWECiphertext<D> {
     pub fn assert_noise<B: Backend, DataSk, DataPt>(
         &self,
         module: &Module<B>,
-        sk_exec: &GLWESecretExec<DataSk, B>,
+        sk_exec: &GLWESecretPrepared<DataSk, B>,
         pt_want: &GLWEPlaintext<DataPt>,
         max_noise: f64,
     ) where

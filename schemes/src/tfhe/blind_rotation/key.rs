@@ -1,18 +1,38 @@
 use backend::hal::{
-    api::{FillUniform, Reset, SvpPPolAlloc, SvpPrepare},
-    layouts::{Backend, Data, DataMut, DataRef, ReaderFrom, SvpPPol, WriterTo},
+    api::{FillUniform, Reset},
+    layouts::{Backend, Data, DataMut, DataRef, Module, ReaderFrom, Scratch, WriterTo},
 };
+use sampling::source::Source;
 
 use std::{fmt, marker::PhantomData};
 
 use core::{
     Distribution,
-    layouts::{GGSWCiphertext, Infos, prepared::GGSWCiphertextExec},
+    layouts::{GGSWCiphertext, Infos, LWESecret, prepared::GLWESecretPrepared},
 };
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
 use crate::tfhe::blind_rotation::BlindRotationAlgo;
+
+pub trait BlindRotationKeyAlloc {
+    fn alloc(n_gglwe: usize, n_lwe: usize, basek: usize, k: usize, rows: usize, rank: usize) -> Self;
+}
+
+pub trait BlindRotationKeyEncryptSk<B: Backend> {
+    fn encrypt_sk<DataSkGLWE, DataSkLWE>(
+        &mut self,
+        module: &Module<B>,
+        sk_glwe: &GLWESecretPrepared<DataSkGLWE, B>,
+        sk_lwe: &LWESecret<DataSkLWE>,
+        source_xa: &mut Source,
+        source_xe: &mut Source,
+        sigma: f64,
+        scratch: &mut Scratch<B>,
+    ) where
+        DataSkGLWE: DataRef,
+        DataSkLWE: DataRef;
+}
 
 #[derive(Clone)]
 pub struct BlindRotationKey<D: Data, BRT: BlindRotationAlgo> {
@@ -133,54 +153,6 @@ impl<D: DataRef, BRT: BlindRotationAlgo> BlindRotationKey<D, BRT> {
     }
 
     #[allow(dead_code)]
-    pub(crate) fn block_size(&self) -> usize {
-        match self.dist {
-            Distribution::BinaryBlock(value) => value,
-            _ => 1,
-        }
-    }
-}
-
-pub trait BlindRotationKeyExecLayoutFamily<B: Backend> = SvpPPolAlloc<B> + SvpPrepare<B>;
-
-#[derive(PartialEq, Eq)]
-pub struct BlindRotationKeyCGGIExec<D: Data, BRT: BlindRotationAlgo, B: Backend> {
-    pub(crate) data: Vec<GGSWCiphertextExec<D, B>>,
-    pub(crate) dist: Distribution,
-    pub(crate) x_pow_a: Option<Vec<SvpPPol<Vec<u8>, B>>>,
-    pub(crate) _phantom: PhantomData<BRT>,
-}
-
-impl<D: Data, BRT: BlindRotationAlgo, B: Backend> BlindRotationKeyCGGIExec<D, BRT, B> {
-    #[allow(dead_code)]
-    pub(crate) fn n(&self) -> usize {
-        self.data[0].n()
-    }
-
-    #[allow(dead_code)]
-    pub(crate) fn rows(&self) -> usize {
-        self.data[0].rows()
-    }
-
-    #[allow(dead_code)]
-    pub(crate) fn k(&self) -> usize {
-        self.data[0].k()
-    }
-
-    #[allow(dead_code)]
-    pub(crate) fn size(&self) -> usize {
-        self.data[0].size()
-    }
-
-    #[allow(dead_code)]
-    pub(crate) fn rank(&self) -> usize {
-        self.data[0].rank()
-    }
-
-    pub(crate) fn basek(&self) -> usize {
-        self.data[0].basek()
-    }
-
     pub(crate) fn block_size(&self) -> usize {
         match self.dist {
             Distribution::BinaryBlock(value) => value,

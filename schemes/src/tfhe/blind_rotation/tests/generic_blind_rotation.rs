@@ -12,45 +12,41 @@ use backend::hal::{
 use sampling::source::Source;
 
 use crate::tfhe::blind_rotation::{
-    BlincRotationExecute, BlindRotationKey, BlindRotationKeyExec, BlindRotationKeyExecLayoutFamily, CCGIBlindRotationFamily,
-    CGGI, LookUpTable, cggi_blind_rotate_scratch_space, mod_switch_2n,
+    BlincRotationExecute, BlindRotationKey, BlindRotationKeyAlloc, BlindRotationKeyEncryptSk, BlindRotationKeyPrepared,
+    CCGIBlindRotationFamily, CGGI, LookUpTable, cggi_blind_rotate_scratch_space, mod_switch_2n,
 };
 
 use core::{
     layouts::{
         GLWECiphertext, GLWEPlaintext, GLWESecret, Infos, LWECiphertext, LWECiphertextToRef, LWEPlaintext, LWESecret,
-        prepared::GLWESecretExec,
+        prepared::{GLWESecretPrepared, PrepareAlloc},
     },
     trait_families::{GLWEDecryptFamily, GLWESecretExecModuleFamily},
 };
 
-pub(crate) trait CGGITestModuleFamily<B: Backend> = CCGIBlindRotationFamily<B>
-    + GLWESecretExecModuleFamily<B>
-    + GLWEDecryptFamily<B>
-    + BlindRotationKeyExecLayoutFamily<B>
-    + VecZnxFillUniform
-    + VecZnxAddNormal
-    + VecZnxAddScalarInplace
-    + VecZnxRotateInplace
-    + VecZnxSwithcDegree
-    + VecZnxSub
-    + VmpPMatAlloc<B>
-    + VmpPMatPrepare<B>;
-pub(crate) trait CGGITestScratchFamily<B: Backend> = VecZnxDftAllocBytesImpl<B>
-    + VecZnxBigAllocBytesImpl<B>
-    + ScratchOwnedAllocImpl<B>
-    + ScratchOwnedBorrowImpl<B>
-    + TakeVecZnxDftImpl<B>
-    + TakeVecZnxBigImpl<B>
-    + TakeVecZnxDftSliceImpl<B>
-    + ScratchAvailableImpl<B>
-    + TakeVecZnxImpl<B>
-    + TakeVecZnxSliceImpl<B>;
-
-pub(crate) fn blind_rotatio_test<B: Backend>(module: &Module<B>, n_lwe: usize, block_size: usize, extension_factor: usize)
+pub fn test_blind_rotation<B: Backend>(module: &Module<B>, n_lwe: usize, block_size: usize, extension_factor: usize)
 where
-    Module<B>: CGGITestModuleFamily<B>,
-    B: CGGITestScratchFamily<B>,
+    Module<B>: CCGIBlindRotationFamily<B>
+        + GLWESecretExecModuleFamily<B>
+        + GLWEDecryptFamily<B>
+        + VecZnxFillUniform
+        + VecZnxAddNormal
+        + VecZnxAddScalarInplace
+        + VecZnxRotateInplace
+        + VecZnxSwithcDegree
+        + VecZnxSub
+        + VmpPMatAlloc<B>
+        + VmpPMatPrepare<B>,
+    B: VecZnxDftAllocBytesImpl<B>
+        + VecZnxBigAllocBytesImpl<B>
+        + ScratchOwnedAllocImpl<B>
+        + ScratchOwnedBorrowImpl<B>
+        + TakeVecZnxDftImpl<B>
+        + TakeVecZnxBigImpl<B>
+        + TakeVecZnxDftSliceImpl<B>
+        + ScratchAvailableImpl<B>
+        + TakeVecZnxImpl<B>
+        + TakeVecZnxSliceImpl<B>,
 {
     let n: usize = module.n();
     let basek: usize = 19;
@@ -67,16 +63,16 @@ where
     let mut source_xe: Source = Source::new([2u8; 32]);
     let mut source_xa: Source = Source::new([1u8; 32]);
 
-    let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
-    sk_glwe.fill_ternary_prob(0.5, &mut source_xs);
-    let sk_glwe_dft: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk_glwe);
-
-    let mut sk_lwe: LWESecret<Vec<u8>> = LWESecret::alloc(n_lwe);
-    sk_lwe.fill_binary_block(block_size, &mut source_xs);
-
     let mut scratch: ScratchOwned<B> = ScratchOwned::<B>::alloc(BlindRotationKey::generate_from_sk_scratch_space(
         module, n, basek, k_brk, rank,
     ));
+
+    let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
+    sk_glwe.fill_ternary_prob(0.5, &mut source_xs);
+    let sk_glwe_dft: GLWESecretPrepared<Vec<u8>, B> = sk_glwe.prepare_alloc(module, scratch.borrow());
+
+    let mut sk_lwe: LWESecret<Vec<u8>> = LWESecret::alloc(n_lwe);
+    sk_lwe.fill_binary_block(block_size, &mut source_xs);
 
     let mut scratch_br: ScratchOwned<B> = ScratchOwned::<B>::alloc(cggi_blind_rotate_scratch_space(
         module,
@@ -90,9 +86,10 @@ where
         rank,
     ));
 
-    let mut brk: BlindRotationKey<Vec<u8>, CGGI> = BlindRotationKey::<_, CGGI>::alloc(n, n_lwe, basek, k_brk, rows_brk, rank);
+    let mut brk: BlindRotationKey<Vec<u8>, CGGI> =
+        BlindRotationKey::<Vec<u8>, CGGI>::alloc(n, n_lwe, basek, k_brk, rows_brk, rank);
 
-    brk.generate_from_sk(
+    brk.encrypt_sk(
         module,
         &sk_glwe_dft,
         &sk_lwe,
@@ -130,7 +127,7 @@ where
 
     let mut res: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(n, basek, k_res, rank);
 
-    let brk_exec: BlindRotationKeyExec<Vec<u8>, CGGI, B> = BlindRotationKeyExec::from(module, &brk, scratch_br.borrow());
+    let brk_exec: BlindRotationKeyPrepared<Vec<u8>, CGGI, B> = brk.prepare_alloc(module, scratch.borrow());
 
     brk_exec.execute(module, &mut res, &lwe, &lut, scratch_br.borrow());
 

@@ -14,7 +14,7 @@ use sampling::source::Source;
 use crate::layouts::{
     GLWECiphertext, GLWEPlaintext, GLWESecret, GLWEToLWESwitchingKey, Infos, LWECiphertext, LWEPlaintext, LWESecret,
     LWEToGLWESwitchingKey,
-    prepared::{GLWESecretExec, GLWEToLWESwitchingKeyExec, LWEToGLWESwitchingKeyExec},
+    prepared::{GLWESecretPrepared, GLWEToLWESwitchingKeyPrepared, LWEToGLWESwitchingKeyPrepared, PrepareAlloc},
 };
 
 use crate::trait_families::{GGLWEEncryptSkFamily, GLWEDecryptFamily, GLWEKeyswitchFamily, GLWESecretExecModuleFamily};
@@ -66,7 +66,7 @@ where
     let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
     sk_glwe.fill_ternary_prob(0.5, &mut source_xs);
 
-    let sk_glwe_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk_glwe);
+    let sk_glwe_exec: GLWESecretPrepared<Vec<u8>, B> = sk_glwe.prepare_alloc(module, scratch.borrow());
 
     let mut sk_lwe: LWESecret<Vec<u8>> = LWESecret::alloc(n_lwe);
     sk_lwe.fill_ternary_prob(0.5, &mut source_xs);
@@ -100,7 +100,7 @@ where
 
     let mut glwe_ct: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(n, basek, k_glwe_ct, rank);
 
-    let ksk_exec: LWEToGLWESwitchingKeyExec<Vec<u8>, B> = LWEToGLWESwitchingKeyExec::from(module, &ksk, scratch.borrow());
+    let ksk_exec: LWEToGLWESwitchingKeyPrepared<Vec<u8>, B> = ksk.prepare_alloc(module, scratch.borrow());
 
     glwe_ct.from_lwe(module, &lwe_ct, &ksk_exec, scratch.borrow());
 
@@ -157,7 +157,7 @@ where
     let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
     sk_glwe.fill_ternary_prob(0.5, &mut source_xs);
 
-    let sk_glwe_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk_glwe);
+    let sk_glwe_exec: GLWESecretPrepared<Vec<u8>, B> = sk_glwe.prepare_alloc(module, scratch.borrow());
 
     let mut sk_lwe = LWESecret::alloc(n_lwe);
     sk_lwe.fill_ternary_prob(0.5, &mut source_xs);
@@ -191,7 +191,7 @@ where
 
     let mut lwe_ct: LWECiphertext<Vec<u8>> = LWECiphertext::alloc(n_lwe, basek, k_lwe_ct);
 
-    let ksk_exec: GLWEToLWESwitchingKeyExec<Vec<u8>, B> = GLWEToLWESwitchingKeyExec::from(module, &ksk, scratch.borrow());
+    let ksk_exec: GLWEToLWESwitchingKeyPrepared<Vec<u8>, B> = ksk.prepare_alloc(module, scratch.borrow());
 
     lwe_ct.from_glwe(module, &glwe_ct, &ksk_exec, scratch.borrow());
 

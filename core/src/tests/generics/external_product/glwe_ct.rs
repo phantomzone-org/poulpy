@@ -14,7 +14,7 @@ use sampling::source::Source;
 use crate::{
     layouts::{
         GGSWCiphertext, GLWECiphertext, GLWEPlaintext, GLWESecret, Infos,
-        prepared::{GGSWCiphertextExec, GLWESecretExec},
+        prepared::{GGSWCiphertextPrepared, GLWESecretPrepared, PrepareAlloc},
     },
     noise::noise_ggsw_product,
 };
@@ -87,7 +87,7 @@ pub fn test_glwe_external_product<B: Backend>(
 
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
     sk.fill_ternary_prob(0.5, &mut source_xs);
-    let sk_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk);
+    let sk_exec: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
 
     ct_ggsw.encrypt_sk(
         module,
@@ -109,7 +109,7 @@ pub fn test_glwe_external_product<B: Backend>(
         scratch.borrow(),
     );
 
-    let ct_ggsw_exec: GGSWCiphertextExec<Vec<u8>, B> = GGSWCiphertextExec::from(module, &ct_ggsw, scratch.borrow());
+    let ct_ggsw_exec: GGSWCiphertextPrepared<Vec<u8>, B> = ct_ggsw.prepare_alloc(module, scratch.borrow());
 
     ct_glwe_out.external_product(module, &ct_glwe_in, &ct_ggsw_exec, scratch.borrow());
 
@@ -194,7 +194,7 @@ pub fn test_glwe_external_product_inplace<B: Backend>(
 
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
     sk.fill_ternary_prob(0.5, &mut source_xs);
-    let sk_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk);
+    let sk_exec: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
 
     ct_ggsw.encrypt_sk(
         module,
@@ -216,7 +216,7 @@ pub fn test_glwe_external_product_inplace<B: Backend>(
         scratch.borrow(),
     );
 
-    let ct_ggsw_exec: GGSWCiphertextExec<Vec<u8>, B> = GGSWCiphertextExec::from(module, &ct_ggsw, scratch.borrow());
+    let ct_ggsw_exec: GGSWCiphertextPrepared<Vec<u8>, B> = ct_ggsw.prepare_alloc(module, scratch.borrow());
 
     ct_glwe.external_product_inplace(module, &ct_ggsw_exec, scratch.borrow());
 

@@ -11,7 +11,10 @@ use backend::hal::{
 };
 use sampling::source::Source;
 
-use crate::layouts::{Infos, LWECiphertext, LWEPlaintext, LWESecret, LWESwitchingKey, prepared::LWESwitchingKeyExec};
+use crate::layouts::{
+    Infos, LWECiphertext, LWEPlaintext, LWESecret, LWESwitchingKey,
+    prepared::{LWESwitchingKeyPrepared, PrepareAlloc},
+};
 
 use crate::trait_families::{GGLWEEncryptSkFamily, GLWEDecryptFamily, GLWEKeyswitchFamily, GLWESecretExecModuleFamily};
 
@@ -91,7 +94,7 @@ where
 
     let mut lwe_ct_out: LWECiphertext<Vec<u8>> = LWECiphertext::alloc(n_lwe_out, basek, k_lwe_ct);
 
-    let ksk_exec: LWESwitchingKeyExec<Vec<u8>, B> = LWESwitchingKeyExec::from(module, &ksk, scratch.borrow());
+    let ksk_exec: LWESwitchingKeyPrepared<Vec<u8>, B> = ksk.prepare_alloc(module, scratch.borrow());
 
     lwe_ct_out.keyswitch(module, &lwe_ct_in, &ksk_exec, scratch.borrow());
 

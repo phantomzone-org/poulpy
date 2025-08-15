@@ -1,6 +1,6 @@
 use core::layouts::{
     GGSWCiphertext, GLWECiphertext, GLWESecret, Infos,
-    prepared::{GGSWCiphertextExec, GLWESecretExec},
+    prepared::{GGSWCiphertextPrepared, GLWESecretPrepared, PrepareAlloc},
 };
 use std::hint::black_box;
 
@@ -66,7 +66,7 @@ fn bench_external_product_glwe_fft64(c: &mut Criterion) {
 
         let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
         sk.fill_ternary_prob(0.5, &mut source_xs);
-        let sk_dft: GLWESecretExec<Vec<u8>, FFT64> = GLWESecretExec::from(&module, &sk);
+        let sk_dft: GLWESecretPrepared<Vec<u8>, FFT64> = sk.prepare_alloc(&module, scratch.borrow());
 
         ct_ggsw.encrypt_sk(
             &module,
@@ -87,7 +87,7 @@ fn bench_external_product_glwe_fft64(c: &mut Criterion) {
             scratch.borrow(),
         );
 
-        let ggsw_exec: GGSWCiphertextExec<Vec<u8>, FFT64> = GGSWCiphertextExec::from(&module, &ct_ggsw, scratch.borrow());
+        let ggsw_exec: GGSWCiphertextPrepared<Vec<u8>, FFT64> = ct_ggsw.prepare_alloc(&module, scratch.borrow());
 
         move || {
             black_box(ct_glwe_out.external_product(&module, &ct_glwe_in, &ggsw_exec, scratch.borrow()));
@@ -160,7 +160,7 @@ fn bench_external_product_glwe_inplace_fft64(c: &mut Criterion) {
 
         let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
         sk.fill_ternary_prob(0.5, &mut source_xs);
-        let sk_dft: GLWESecretExec<Vec<u8>, FFT64> = GLWESecretExec::from(&module, &sk);
+        let sk_dft: GLWESecretPrepared<Vec<u8>, FFT64> = sk.prepare_alloc(&module, scratch.borrow());
 
         ct_ggsw.encrypt_sk(
             &module,
@@ -181,7 +181,7 @@ fn bench_external_product_glwe_inplace_fft64(c: &mut Criterion) {
             scratch.borrow(),
         );
 
-        let ggsw_exec: GGSWCiphertextExec<Vec<u8>, FFT64> = GGSWCiphertextExec::from(&module, &ct_ggsw, scratch.borrow());
+        let ggsw_exec: GGSWCiphertextPrepared<Vec<u8>, FFT64> = ct_ggsw.prepare_alloc(&module, scratch.borrow());
 
         move || {
             let scratch_borrow = scratch.borrow();

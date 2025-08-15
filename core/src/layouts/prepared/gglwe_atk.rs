@@ -3,21 +3,24 @@ use backend::hal::{
     layouts::{Backend, Data, DataMut, DataRef, Module, Scratch, VmpPMat},
 };
 
-use crate::layouts::{GGLWEAutomorphismKey, Infos, prepared::GGLWESwitchingKeyExec};
+use crate::layouts::{
+    GGLWEAutomorphismKey, Infos,
+    prepared::{GGLWESwitchingKeyPrepared, Prepare, PrepareAlloc},
+};
 
 #[derive(PartialEq, Eq)]
-pub struct GGLWEAutomorphismKeyExec<D: Data, B: Backend> {
-    pub(crate) key: GGLWESwitchingKeyExec<D, B>,
+pub struct GGLWEAutomorphismKeyPrepared<D: Data, B: Backend> {
+    pub(crate) key: GGLWESwitchingKeyPrepared<D, B>,
     pub(crate) p: i64,
 }
 
-impl<B: Backend> GGLWEAutomorphismKeyExec<Vec<u8>, B> {
+impl<B: Backend> GGLWEAutomorphismKeyPrepared<Vec<u8>, B> {
     pub fn alloc(module: &Module<B>, n: usize, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self
     where
         Module<B>: VmpPMatAlloc<B>,
     {
-        GGLWEAutomorphismKeyExec::<Vec<u8>, B> {
-            key: GGLWESwitchingKeyExec::alloc(module, n, basek, k, rows, digits, rank, rank),
+        GGLWEAutomorphismKeyPrepared::<Vec<u8>, B> {
+            key: GGLWESwitchingKeyPrepared::alloc(module, n, basek, k, rows, digits, rank, rank),
             p: 0,
         }
     }
@@ -26,28 +29,11 @@ impl<B: Backend> GGLWEAutomorphismKeyExec<Vec<u8>, B> {
     where
         Module<B>: VmpPMatAllocBytes,
     {
-        GGLWESwitchingKeyExec::bytes_of(module, n, basek, k, rows, digits, rank, rank)
-    }
-
-    pub fn from<DataOther: DataRef>(module: &Module<B>, other: &GGLWEAutomorphismKey<DataOther>, scratch: &mut Scratch<B>) -> Self
-    where
-        Module<B>: VmpPMatAlloc<B> + VmpPMatPrepare<B>,
-    {
-        let mut atk_exec: GGLWEAutomorphismKeyExec<Vec<u8>, B> = Self::alloc(
-            module,
-            other.n(),
-            other.basek(),
-            other.k(),
-            other.rows(),
-            other.digits(),
-            other.rank(),
-        );
-        atk_exec.prepare(module, other, scratch);
-        atk_exec
+        GGLWESwitchingKeyPrepared::bytes_of(module, n, basek, k, rows, digits, rank, rank)
     }
 }
 
-impl<D: Data, B: Backend> Infos for GGLWEAutomorphismKeyExec<D, B> {
+impl<D: Data, B: Backend> Infos for GGLWEAutomorphismKeyPrepared<D, B> {
     type Inner = VmpPMat<D, B>;
 
     fn inner(&self) -> &Self::Inner {
@@ -63,7 +49,7 @@ impl<D: Data, B: Backend> Infos for GGLWEAutomorphismKeyExec<D, B> {
     }
 }
 
-impl<D: Data, B: Backend> GGLWEAutomorphismKeyExec<D, B> {
+impl<D: Data, B: Backend> GGLWEAutomorphismKeyPrepared<D, B> {
     pub fn p(&self) -> i64 {
         self.p
     }
@@ -85,13 +71,31 @@ impl<D: Data, B: Backend> GGLWEAutomorphismKeyExec<D, B> {
     }
 }
 
-impl<D: DataMut, B: Backend> GGLWEAutomorphismKeyExec<D, B> {
-    pub fn prepare<DataOther>(&mut self, module: &Module<B>, other: &GGLWEAutomorphismKey<DataOther>, scratch: &mut Scratch<B>)
-    where
-        DataOther: DataRef,
-        Module<B>: VmpPMatPrepare<B>,
-    {
+impl<D: DataMut, DR: DataRef, B: Backend> Prepare<B, GGLWEAutomorphismKey<DR>> for GGLWEAutomorphismKeyPrepared<D, B>
+where
+    Module<B>: VmpPMatPrepare<B>,
+{
+    fn prepare(&mut self, module: &Module<B>, other: &GGLWEAutomorphismKey<DR>, scratch: &mut Scratch<B>) {
         self.key.prepare(module, &other.key, scratch);
         self.p = other.p;
+    }
+}
+
+impl<D: DataRef, B: Backend> PrepareAlloc<B, GGLWEAutomorphismKeyPrepared<Vec<u8>, B>> for GGLWEAutomorphismKey<D>
+where
+    Module<B>: VmpPMatAlloc<B> + VmpPMatPrepare<B>,
+{
+    fn prepare_alloc(&self, module: &Module<B>, scratch: &mut Scratch<B>) -> GGLWEAutomorphismKeyPrepared<Vec<u8>, B> {
+        let mut atk_exec: GGLWEAutomorphismKeyPrepared<Vec<u8>, B> = GGLWEAutomorphismKeyPrepared::alloc(
+            module,
+            self.n(),
+            self.basek(),
+            self.k(),
+            self.rows(),
+            self.digits(),
+            self.rank(),
+        );
+        atk_exec.prepare(module, self, scratch);
+        atk_exec
     }
 }

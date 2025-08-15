@@ -9,7 +9,7 @@ use backend::hal::{
 use crate::{
     layouts::{
         GGLWECiphertext, GGSWCiphertext, GLWECiphertext, Infos,
-        prepared::{GGLWESwitchingKeyExec, GGLWETensorKeyExec},
+        prepared::{GGLWESwitchingKeyPrepared, GGLWETensorKeyPrepared},
     },
     operations::GLWEOperations,
     trait_families::{GGSWKeySwitchFamily, GLWEKeyswitchFamily},
@@ -97,7 +97,7 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
         &mut self,
         module: &Module<B>,
         a: &GGLWECiphertext<DataA>,
-        tsk: &GGLWETensorKeyExec<DataTsk, B>,
+        tsk: &GGLWETensorKeyPrepared<DataTsk, B>,
         scratch: &mut Scratch<B>,
     ) where
         DataA: DataRef,
@@ -123,8 +123,8 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
         &mut self,
         module: &Module<B>,
         lhs: &GGSWCiphertext<DataLhs>,
-        ksk: &GGLWESwitchingKeyExec<DataKsk, B>,
-        tsk: &GGLWETensorKeyExec<DataTsk, B>,
+        ksk: &GGLWESwitchingKeyPrepared<DataKsk, B>,
+        tsk: &GGLWETensorKeyPrepared<DataTsk, B>,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWEKeyswitchFamily<B> + GGSWKeySwitchFamily<B> + VecZnxNormalizeTmpBytes,
@@ -137,8 +137,8 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
     pub fn keyswitch_inplace<DataKsk: DataRef, DataTsk: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
-        ksk: &GGLWESwitchingKeyExec<DataKsk, B>,
-        tsk: &GGLWETensorKeyExec<DataTsk, B>,
+        ksk: &GGLWESwitchingKeyPrepared<DataKsk, B>,
+        tsk: &GGLWETensorKeyPrepared<DataTsk, B>,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWEKeyswitchFamily<B> + GGSWKeySwitchFamily<B> + VecZnxNormalizeTmpBytes,
@@ -153,7 +153,7 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
     pub fn expand_row<DataTsk: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
-        tsk: &GGLWETensorKeyExec<DataTsk, B>,
+        tsk: &GGLWETensorKeyPrepared<DataTsk, B>,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: GGSWKeySwitchFamily<B> + VecZnxNormalizeTmpBytes,
@@ -278,7 +278,7 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
         &mut self,
         module: &Module<B>,
         lhs: &GGSWCiphertext<DataLhs>,
-        ksk: &GGLWESwitchingKeyExec<DataKsk, B>,
+        ksk: &GGLWESwitchingKeyPrepared<DataKsk, B>,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWEKeyswitchFamily<B> + GGSWKeySwitchFamily<B> + VecZnxNormalizeTmpBytes,

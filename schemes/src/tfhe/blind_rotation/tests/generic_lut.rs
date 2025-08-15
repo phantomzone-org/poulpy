@@ -8,7 +8,7 @@ use backend::hal::{
 
 use crate::tfhe::blind_rotation::{DivRound, LookUpTable};
 
-pub(crate) fn test_lut_standard<B: Backend>(module: &Module<B>)
+pub fn test_lut_standard<B: Backend>(module: &Module<B>)
 where
     Module<B>: VecZnxRotateInplace + VecZnxNormalizeInplace<B> + VecZnxNormalizeTmpBytes + VecZnxSwithcDegree + VecZnxCopy,
     B: ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
@@ -44,7 +44,7 @@ where
     });
 }
 
-pub(crate) fn test_lut_extended<B: Backend>(module: &Module<B>)
+pub fn test_lut_extended<B: Backend>(module: &Module<B>)
 where
     Module<B>: VecZnxRotateInplace + VecZnxNormalizeInplace<B> + VecZnxNormalizeTmpBytes + VecZnxSwithcDegree + VecZnxCopy,
     B: ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,

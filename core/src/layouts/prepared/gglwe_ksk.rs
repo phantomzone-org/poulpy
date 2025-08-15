@@ -3,16 +3,19 @@ use backend::hal::{
     layouts::{Backend, Data, DataMut, DataRef, Module, Scratch, VmpPMat},
 };
 
-use crate::layouts::{GGLWESwitchingKey, Infos, prepared::GGLWECiphertextExec};
+use crate::layouts::{
+    GGLWESwitchingKey, Infos,
+    prepared::{GGLWECiphertextPrepared, Prepare, PrepareAlloc},
+};
 
 #[derive(PartialEq, Eq)]
-pub struct GGLWESwitchingKeyExec<D: Data, B: Backend> {
-    pub(crate) key: GGLWECiphertextExec<D, B>,
+pub struct GGLWESwitchingKeyPrepared<D: Data, B: Backend> {
+    pub(crate) key: GGLWECiphertextPrepared<D, B>,
     pub(crate) sk_in_n: usize,  // Degree of sk_in
     pub(crate) sk_out_n: usize, // Degree of sk_out
 }
 
-impl<B: Backend> GGLWESwitchingKeyExec<Vec<u8>, B> {
+impl<B: Backend> GGLWESwitchingKeyPrepared<Vec<u8>, B> {
     pub fn alloc(
         module: &Module<B>,
         n: usize,
@@ -26,8 +29,8 @@ impl<B: Backend> GGLWESwitchingKeyExec<Vec<u8>, B> {
     where
         Module<B>: VmpPMatAlloc<B>,
     {
-        GGLWESwitchingKeyExec::<Vec<u8>, B> {
-            key: GGLWECiphertextExec::alloc(module, n, basek, k, rows, digits, rank_in, rank_out),
+        GGLWESwitchingKeyPrepared::<Vec<u8>, B> {
+            key: GGLWECiphertextPrepared::alloc(module, n, basek, k, rows, digits, rank_in, rank_out),
             sk_in_n: 0,
             sk_out_n: 0,
         }
@@ -46,29 +49,11 @@ impl<B: Backend> GGLWESwitchingKeyExec<Vec<u8>, B> {
     where
         Module<B>: VmpPMatAllocBytes,
     {
-        GGLWECiphertextExec::bytes_of(module, n, basek, k, rows, digits, rank_in, rank_out)
-    }
-
-    pub fn from<DataOther: DataRef>(module: &Module<B>, other: &GGLWESwitchingKey<DataOther>, scratch: &mut Scratch<B>) -> Self
-    where
-        Module<B>: VmpPMatAlloc<B> + VmpPMatPrepare<B>,
-    {
-        let mut ksk_exec: GGLWESwitchingKeyExec<Vec<u8>, B> = Self::alloc(
-            module,
-            other.n(),
-            other.basek(),
-            other.k(),
-            other.rows(),
-            other.digits(),
-            other.rank_in(),
-            other.rank_out(),
-        );
-        ksk_exec.prepare(module, other, scratch);
-        ksk_exec
+        GGLWECiphertextPrepared::bytes_of(module, n, basek, k, rows, digits, rank_in, rank_out)
     }
 }
 
-impl<D: Data, B: Backend> Infos for GGLWESwitchingKeyExec<D, B> {
+impl<D: Data, B: Backend> Infos for GGLWESwitchingKeyPrepared<D, B> {
     type Inner = VmpPMat<D, B>;
 
     fn inner(&self) -> &Self::Inner {
@@ -84,7 +69,7 @@ impl<D: Data, B: Backend> Infos for GGLWESwitchingKeyExec<D, B> {
     }
 }
 
-impl<D: Data, B: Backend> GGLWESwitchingKeyExec<D, B> {
+impl<D: Data, B: Backend> GGLWESwitchingKeyPrepared<D, B> {
     pub fn rank(&self) -> usize {
         self.key.data.cols_out() - 1
     }
@@ -110,14 +95,33 @@ impl<D: Data, B: Backend> GGLWESwitchingKeyExec<D, B> {
     }
 }
 
-impl<D: DataMut, B: Backend> GGLWESwitchingKeyExec<D, B> {
-    pub fn prepare<DataOther>(&mut self, module: &Module<B>, other: &GGLWESwitchingKey<DataOther>, scratch: &mut Scratch<B>)
-    where
-        DataOther: DataRef,
-        Module<B>: VmpPMatPrepare<B>,
-    {
+impl<D: DataMut, DR: DataRef, B: Backend> Prepare<B, GGLWESwitchingKey<DR>> for GGLWESwitchingKeyPrepared<D, B>
+where
+    Module<B>: VmpPMatPrepare<B>,
+{
+    fn prepare(&mut self, module: &Module<B>, other: &GGLWESwitchingKey<DR>, scratch: &mut Scratch<B>) {
         self.key.prepare(module, &other.key, scratch);
         self.sk_in_n = other.sk_in_n;
         self.sk_out_n = other.sk_out_n;
+    }
+}
+
+impl<D: DataRef, B: Backend> PrepareAlloc<B, GGLWESwitchingKeyPrepared<Vec<u8>, B>> for GGLWESwitchingKey<D>
+where
+    Module<B>: VmpPMatAlloc<B> + VmpPMatPrepare<B>,
+{
+    fn prepare_alloc(&self, module: &Module<B>, scratch: &mut Scratch<B>) -> GGLWESwitchingKeyPrepared<Vec<u8>, B> {
+        let mut atk_exec: GGLWESwitchingKeyPrepared<Vec<u8>, B> = GGLWESwitchingKeyPrepared::alloc(
+            module,
+            self.n(),
+            self.basek(),
+            self.k(),
+            self.rows(),
+            self.digits(),
+            self.rank_in(),
+            self.rank_out(),
+        );
+        atk_exec.prepare(module, self, scratch);
+        atk_exec
     }
 }

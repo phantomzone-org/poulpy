@@ -1,47 +1,44 @@
 use std::time::Instant;
 
-use backend::{
-    hal::{
-        api::{
-            ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxAutomorphism,
-            VecZnxFillUniform, VecZnxNormalizeInplace, VecZnxRotateInplace, VecZnxSwithcDegree, VmpPMatAlloc, VmpPMatPrepare,
-            ZnxView, ZnxViewMut,
-        },
-        layouts::{Backend, Module, ScalarZnx, ScratchOwned},
-        oep::{
-            ScratchAvailableImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeMatZnxImpl, TakeScalarZnxImpl,
-            TakeSvpPPolImpl, TakeVecZnxBigImpl, TakeVecZnxDftImpl, TakeVecZnxDftSliceImpl, TakeVecZnxImpl, TakeVecZnxSliceImpl,
-        },
+use backend::hal::{
+    api::{
+        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpPPolAlloc, SvpPrepare, VecZnxAddNormal, VecZnxAddScalarInplace,
+        VecZnxAutomorphism, VecZnxFillUniform, VecZnxNormalizeInplace, VecZnxRotateInplace, VecZnxSwithcDegree, VmpPMatAlloc,
+        VmpPMatPrepare, ZnxView, ZnxViewMut,
     },
-    implementation::cpu_spqlios::FFT64,
+    layouts::{Backend, Module, ScalarZnx, ScratchOwned},
+    oep::{
+        ScratchAvailableImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeMatZnxImpl, TakeScalarZnxImpl, TakeSvpPPolImpl,
+        TakeVecZnxBigImpl, TakeVecZnxDftImpl, TakeVecZnxDftSliceImpl, TakeVecZnxImpl, TakeVecZnxSliceImpl,
+    },
 };
 use sampling::source::Source;
 
 use crate::tfhe::{
-    blind_rotation::BlindRotationKeyExecLayoutFamily,
+    blind_rotation::{
+        BlincRotationExecute, BlindRotationAlgo, BlindRotationKey, BlindRotationKeyAlloc, BlindRotationKeyEncryptSk,
+        BlindRotationKeyPrepared,
+    },
     circuit_bootstrapping::{
-        CGGICircuitBootstrapFamily, CircuitBootstrappingKeyCGGI, CircuitBootstrappingKeyCGGIExec,
-        circuit_bootstrap_to_constant_cggi, circuit_bootstrap_to_exponent_cggi,
+        CircuitBootstrapFamily, CircuitBootstrappingKey, CircuitBootstrappingKeyEncryptSk, CircuitBootstrappingKeyPrepared,
+        CirtuitBootstrappingExecute,
     },
 };
 
-use core::trait_families::{
-    GGLWEAutomorphismKeyEncryptSkFamily, GGLWETensorKeyEncryptSkFamily, GGSWAssertNoiseFamily, GGSWEncryptSkFamily,
-    GLWEDecryptFamily,
+use core::{
+    layouts::prepared::PrepareAlloc,
+    trait_families::{
+        GGLWEAutomorphismKeyEncryptSkFamily, GGLWETensorKeyEncryptSkFamily, GGSWAssertNoiseFamily, GGSWEncryptSkFamily,
+        GLWEDecryptFamily,
+    },
 };
 
 use core::layouts::{
     GGSWCiphertext, GLWECiphertext, GLWEPlaintext, GLWESecret, LWECiphertext, LWEPlaintext, LWESecret,
-    prepared::{GGSWCiphertextExec, GLWESecretExec},
+    prepared::{GGSWCiphertextPrepared, GLWESecretPrepared},
 };
 
-#[test]
-fn test_to_exponent() {
-    let module: Module<FFT64> = Module::<FFT64>::new(256);
-    to_exponent(&module);
-}
-
-fn to_exponent<B: Backend>(module: &Module<B>)
+pub fn test_circuit_bootstrapping_to_exponent<B: Backend, BRA: BlindRotationAlgo>(module: &Module<B>)
 where
     Module<B>: VecZnxFillUniform
         + VecZnxAddNormal
@@ -52,12 +49,13 @@ where
         + VecZnxAutomorphism
         + VecZnxSwithcDegree
         + GGLWETensorKeyEncryptSkFamily<B>
-        + BlindRotationKeyExecLayoutFamily<B>
-        + CGGICircuitBootstrapFamily<B>
+        + CircuitBootstrapFamily<B>
         + GLWEDecryptFamily<B>
         + GGSWAssertNoiseFamily<B>
         + VmpPMatAlloc<B>
-        + VmpPMatPrepare<B>,
+        + VmpPMatPrepare<B>
+        + SvpPrepare<B>
+        + SvpPPolAlloc<B>,
     B: ScratchOwnedAllocImpl<B>
         + ScratchOwnedBorrowImpl<B>
         + TakeVecZnxDftImpl<B>
@@ -69,6 +67,9 @@ where
         + TakeVecZnxDftSliceImpl<B>
         + TakeMatZnxImpl<B>
         + TakeVecZnxSliceImpl<B>,
+    BlindRotationKey<Vec<u8>, BRA>: PrepareAlloc<B, BlindRotationKeyPrepared<Vec<u8>, BRA, B>>,
+    BlindRotationKeyPrepared<Vec<u8>, BRA, B>: BlincRotationExecute<B>,
+    BlindRotationKey<Vec<u8>, BRA>: BlindRotationKeyAlloc + BlindRotationKeyEncryptSk<B>,
 {
     let n: usize = module.n();
     let basek: usize = 17;
@@ -102,7 +103,7 @@ where
     let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
     sk_glwe.fill_ternary_prob(0.5, &mut source_xs);
 
-    let sk_glwe_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk_glwe);
+    let sk_glwe_exec: GLWESecretPrepared<Vec<u8>, B> = sk_glwe.prepare_alloc(module, scratch.borrow());
 
     let data: i64 = 1;
 
@@ -122,7 +123,7 @@ where
     );
 
     let now: Instant = Instant::now();
-    let cbt_key: CircuitBootstrappingKeyCGGI<Vec<u8>> = CircuitBootstrappingKeyCGGI::generate(
+    let cbt_key: CircuitBootstrappingKey<Vec<u8>, BRA> = CircuitBootstrappingKey::encrypt_sk(
         module,
         basek,
         &sk_lwe,
@@ -147,18 +148,16 @@ where
 
     let log_gap_out = 1;
 
-    let cbt_exec: CircuitBootstrappingKeyCGGIExec<Vec<u8>, B> =
-        CircuitBootstrappingKeyCGGIExec::from(module, &cbt_key, scratch.borrow());
+    let cbt_exec: CircuitBootstrappingKeyPrepared<Vec<u8>, BRA, B> = cbt_key.prepare_alloc(module, scratch.borrow());
 
     let now: Instant = Instant::now();
-    circuit_bootstrap_to_exponent_cggi(
+    cbt_exec.execute_to_exponent(
         module,
         log_gap_out,
         &mut res,
         &ct_lwe,
         k_lwe_pt,
         extension_factor,
-        &cbt_exec,
         scratch.borrow(),
     );
     println!("CBT: {} ms", now.elapsed().as_millis());
@@ -186,7 +185,7 @@ where
         scratch.borrow(),
     );
 
-    let res_exec: GGSWCiphertextExec<Vec<u8>, B> = GGSWCiphertextExec::from(module, &res, scratch.borrow());
+    let res_exec: GGSWCiphertextPrepared<Vec<u8>, B> = res.prepare_alloc(module, scratch.borrow());
 
     ct_glwe.external_product_inplace(module, &res_exec, scratch.borrow());
 
@@ -199,13 +198,7 @@ where
     assert_eq!(pt_res.data.at(0, 0), pt_want);
 }
 
-#[test]
-fn test_to_constant() {
-    let module: Module<FFT64> = Module::<FFT64>::new(256);
-    to_constant(&module);
-}
-
-fn to_constant<B: Backend>(module: &Module<B>)
+pub fn test_circuit_bootstrapping_to_constant<B: Backend, BRA: BlindRotationAlgo>(module: &Module<B>)
 where
     Module<B>: VecZnxFillUniform
         + VecZnxAddNormal
@@ -216,12 +209,13 @@ where
         + VecZnxAutomorphism
         + VecZnxSwithcDegree
         + GGLWETensorKeyEncryptSkFamily<B>
-        + BlindRotationKeyExecLayoutFamily<B>
-        + CGGICircuitBootstrapFamily<B>
+        + CircuitBootstrapFamily<B>
         + GLWEDecryptFamily<B>
         + GGSWAssertNoiseFamily<B>
         + VmpPMatAlloc<B>
-        + VmpPMatPrepare<B>,
+        + VmpPMatPrepare<B>
+        + SvpPrepare<B>
+        + SvpPPolAlloc<B>,
     B: ScratchOwnedAllocImpl<B>
         + ScratchOwnedBorrowImpl<B>
         + TakeVecZnxDftImpl<B>
@@ -233,6 +227,9 @@ where
         + TakeVecZnxDftSliceImpl<B>
         + TakeMatZnxImpl<B>
         + TakeVecZnxSliceImpl<B>,
+    BlindRotationKey<Vec<u8>, BRA>: PrepareAlloc<B, BlindRotationKeyPrepared<Vec<u8>, BRA, B>>,
+    BlindRotationKeyPrepared<Vec<u8>, BRA, B>: BlincRotationExecute<B>,
+    BlindRotationKey<Vec<u8>, BRA>: BlindRotationKeyAlloc + BlindRotationKeyEncryptSk<B>,
 {
     let n = module.n();
     let basek: usize = 14;
@@ -266,7 +263,7 @@ where
     let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
     sk_glwe.fill_ternary_prob(0.5, &mut source_xs);
 
-    let sk_glwe_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk_glwe);
+    let sk_glwe_exec: GLWESecretPrepared<Vec<u8>, B> = sk_glwe.prepare_alloc(module, scratch.borrow());
 
     let data: i64 = 1;
 
@@ -286,7 +283,7 @@ where
     );
 
     let now: Instant = Instant::now();
-    let cbt_key: CircuitBootstrappingKeyCGGI<Vec<u8>> = CircuitBootstrappingKeyCGGI::generate(
+    let cbt_key: CircuitBootstrappingKey<Vec<u8>, BRA> = CircuitBootstrappingKey::encrypt_sk(
         module,
         basek,
         &sk_lwe,
@@ -309,17 +306,15 @@ where
 
     let mut res: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(n, basek, k_ggsw_res, rows_ggsw_res, 1, rank);
 
-    let cbt_exec: CircuitBootstrappingKeyCGGIExec<Vec<u8>, B> =
-        CircuitBootstrappingKeyCGGIExec::from(module, &cbt_key, scratch.borrow());
+    let cbt_exec: CircuitBootstrappingKeyPrepared<Vec<u8>, BRA, B> = cbt_key.prepare_alloc(module, scratch.borrow());
 
     let now: Instant = Instant::now();
-    circuit_bootstrap_to_constant_cggi(
+    cbt_exec.execute_to_constant(
         module,
         &mut res,
         &ct_lwe,
         k_lwe_pt,
         extension_factor,
-        &cbt_exec,
         scratch.borrow(),
     );
     println!("CBT: {} ms", now.elapsed().as_millis());
@@ -346,7 +341,7 @@ where
         scratch.borrow(),
     );
 
-    let res_exec: GGSWCiphertextExec<Vec<u8>, B> = GGSWCiphertextExec::from(module, &res, scratch.borrow());
+    let res_exec: GGSWCiphertextPrepared<Vec<u8>, B> = res.prepare_alloc(module, scratch.borrow());
 
     ct_glwe.external_product_inplace(module, &res_exec, scratch.borrow());
 

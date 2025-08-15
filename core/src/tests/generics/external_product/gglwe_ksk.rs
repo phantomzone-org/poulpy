@@ -14,7 +14,7 @@ use sampling::source::Source;
 use crate::{
     layouts::{
         GGLWESwitchingKey, GGSWCiphertext, GLWESecret,
-        prepared::{GGSWCiphertextExec, GLWESecretExec},
+        prepared::{GGSWCiphertextPrepared, GLWESecretPrepared, PrepareAlloc},
     },
     noise::noise_ggsw_product,
     trait_families::{GLWEDecryptFamily, GLWEExternalProductFamily},
@@ -91,7 +91,7 @@ pub fn test_gglwe_switching_key_external_product<B: Backend>(
 
     let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank_out);
     sk_out.fill_ternary_prob(var_xs, &mut source_xs);
-    let sk_out_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk_out);
+    let sk_out_exec: GLWESecretPrepared<Vec<u8>, B> = sk_out.prepare_alloc(module, scratch.borrow());
 
     // gglwe_{s1}(s0) = s0 -> s1
     ct_gglwe_in.encrypt_sk(
@@ -114,10 +114,7 @@ pub fn test_gglwe_switching_key_external_product<B: Backend>(
         scratch.borrow(),
     );
 
-    let mut ct_rgsw_exec: GGSWCiphertextExec<Vec<u8>, B> =
-        GGSWCiphertextExec::alloc(module, n, basek, k_ggsw, rows, digits, rank_out);
-
-    ct_rgsw_exec.prepare(module, &ct_rgsw, scratch.borrow());
+    let ct_rgsw_exec: GGSWCiphertextPrepared<Vec<u8>, B> = ct_rgsw.prepare_alloc(module, scratch.borrow());
 
     // gglwe_(m) (x) RGSW_(X^k) = gglwe_(m * X^k)
     ct_gglwe_out.external_product(module, &ct_gglwe_in, &ct_rgsw_exec, scratch.borrow());
@@ -218,7 +215,7 @@ pub fn test_gglwe_switching_key_external_product_inplace<B: Backend>(
 
     let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank_out);
     sk_out.fill_ternary_prob(var_xs, &mut source_xs);
-    let sk_out_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk_out);
+    let sk_out_exec: GLWESecretPrepared<Vec<u8>, B> = sk_out.prepare_alloc(module, scratch.borrow());
 
     // gglwe_{s1}(s0) = s0 -> s1
     ct_gglwe.encrypt_sk(
@@ -241,10 +238,7 @@ pub fn test_gglwe_switching_key_external_product_inplace<B: Backend>(
         scratch.borrow(),
     );
 
-    let mut ct_rgsw_exec: GGSWCiphertextExec<Vec<u8>, B> =
-        GGSWCiphertextExec::alloc(module, n, basek, k_ggsw, rows, digits, rank_out);
-
-    ct_rgsw_exec.prepare(module, &ct_rgsw, scratch.borrow());
+    let ct_rgsw_exec: GGSWCiphertextPrepared<Vec<u8>, B> = ct_rgsw.prepare_alloc(module, scratch.borrow());
 
     // gglwe_(m) (x) RGSW_(X^k) = gglwe_(m * X^k)
     ct_gglwe.external_product_inplace(module, &ct_rgsw_exec, scratch.borrow());

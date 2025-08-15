@@ -12,7 +12,11 @@ use backend::hal::{
 use sampling::source::Source;
 
 use crate::{
-    layouts::{GGSWCiphertext, GLWESecret, compressed::GGSWCiphertextCompressed, prepared::GLWESecretExec},
+    layouts::{
+        GGSWCiphertext, GLWESecret,
+        compressed::GGSWCiphertextCompressed,
+        prepared::{GLWESecretPrepared, PrepareAlloc},
+    },
     trait_families::{Decompress, GGSWAssertNoiseFamily},
 };
 
@@ -59,8 +63,7 @@ where
 
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
     sk.fill_ternary_prob(0.5, &mut source_xs);
-    let mut sk_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk);
-    sk_exec.prepare(module, &sk);
+    let sk_exec: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
 
     ct.encrypt_sk(
         module,
@@ -123,8 +126,7 @@ pub fn test_ggsw_compressed_encrypt_sk<B: Backend>(
 
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
     sk.fill_ternary_prob(0.5, &mut source_xs);
-    let mut sk_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk);
-    sk_exec.prepare(module, &sk);
+    let sk_exec: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
 
     let seed_xa: [u8; 32] = [1u8; 32];
 

@@ -7,7 +7,7 @@ use backend::hal::{
 };
 
 use crate::{
-    layouts::{GLWECiphertext, Infos, prepared::GGLWEAutomorphismKeyExec},
+    layouts::{GLWECiphertext, Infos, prepared::GGLWEAutomorphismKeyPrepared},
     trait_families::GLWEKeyswitchFamily,
 };
 
@@ -49,7 +49,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         &mut self,
         module: &Module<B>,
         lhs: &GLWECiphertext<DataLhs>,
-        rhs: &GGLWEAutomorphismKeyExec<DataRhs, B>,
+        rhs: &GGLWEAutomorphismKeyPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWEKeyswitchFamily<B> + VecZnxAutomorphismInplace,
@@ -64,7 +64,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
     pub fn automorphism_inplace<DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
-        rhs: &GGLWEAutomorphismKeyExec<DataRhs, B>,
+        rhs: &GGLWEAutomorphismKeyPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWEKeyswitchFamily<B> + VecZnxAutomorphismInplace,
@@ -80,7 +80,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         &mut self,
         module: &Module<B>,
         lhs: &GLWECiphertext<DataLhs>,
-        rhs: &GGLWEAutomorphismKeyExec<DataRhs, B>,
+        rhs: &GGLWEAutomorphismKeyPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWEKeyswitchFamily<B> + VecZnxBigAutomorphismInplace<B>,
@@ -102,7 +102,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
     pub fn automorphism_add_inplace<DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
-        rhs: &GGLWEAutomorphismKeyExec<DataRhs, B>,
+        rhs: &GGLWEAutomorphismKeyPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWEKeyswitchFamily<B> + VecZnxBigAutomorphismInplace<B>,
@@ -118,7 +118,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         &mut self,
         module: &Module<B>,
         lhs: &GLWECiphertext<DataLhs>,
-        rhs: &GGLWEAutomorphismKeyExec<DataRhs, B>,
+        rhs: &GGLWEAutomorphismKeyPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWEKeyswitchFamily<B> + VecZnxBigAutomorphismInplace<B> + VecZnxBigSubSmallAInplace<B>,
@@ -140,7 +140,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
     pub fn automorphism_sub_ab_inplace<DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
-        rhs: &GGLWEAutomorphismKeyExec<DataRhs, B>,
+        rhs: &GGLWEAutomorphismKeyPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWEKeyswitchFamily<B> + VecZnxBigAutomorphismInplace<B> + VecZnxBigSubSmallAInplace<B>,
@@ -156,7 +156,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         &mut self,
         module: &Module<B>,
         lhs: &GLWECiphertext<DataLhs>,
-        rhs: &GGLWEAutomorphismKeyExec<DataRhs, B>,
+        rhs: &GGLWEAutomorphismKeyPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWEKeyswitchFamily<B> + VecZnxBigAutomorphismInplace<B> + VecZnxBigSubSmallBInplace<B>,
@@ -178,7 +178,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
     pub fn automorphism_sub_ba_inplace<DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
-        rhs: &GGLWEAutomorphismKeyExec<DataRhs, B>,
+        rhs: &GGLWEAutomorphismKeyPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWEKeyswitchFamily<B> + VecZnxBigAutomorphismInplace<B> + VecZnxBigSubSmallBInplace<B>,

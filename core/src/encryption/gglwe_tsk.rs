@@ -9,7 +9,10 @@ use sampling::source::Source;
 
 use crate::{
     TakeGLWESecret, TakeGLWESecretExec,
-    layouts::{GGLWESwitchingKey, GGLWETensorKey, GLWESecret, Infos, prepared::GLWESecretExec},
+    layouts::{
+        GGLWESwitchingKey, GGLWETensorKey, GLWESecret, Infos,
+        prepared::{GLWESecretPrepared, Prepare},
+    },
     trait_families::GLWEDecryptFamily,
 };
 
@@ -20,7 +23,7 @@ impl GGLWETensorKey<Vec<u8>> {
     where
         Module<B>: GGLWETensorKeyEncryptSkFamily<B> + GLWESecretExecModuleFamily<B>,
     {
-        GLWESecretExec::bytes_of(module, n, rank)
+        GLWESecretPrepared::bytes_of(module, n, rank)
             + module.vec_znx_dft_alloc_bytes(n, rank, 1)
             + module.vec_znx_big_alloc_bytes(n, 1, 1)
             + module.vec_znx_dft_alloc_bytes(n, 1, 1)
@@ -53,7 +56,7 @@ impl<DataSelf: DataMut> GGLWETensorKey<DataSelf> {
         let rank: usize = self.rank();
 
         let (mut sk_dft_prep, scratch1) = scratch.take_glwe_secret_exec(n, rank);
-        sk_dft_prep.prepare(module, &sk);
+        sk_dft_prep.prepare(module, &sk, scratch1);
 
         let (mut sk_dft, scratch2) = scratch1.take_vec_znx_dft(n, rank, 1);
 

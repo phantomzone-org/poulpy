@@ -1,6 +1,6 @@
 use backend::hal::tests::serialization::test_reader_writer_interface;
 
-use crate::tfhe::blind_rotation::{BlindRotationKey, BlindRotationKeyCompressed, CGGI};
+use crate::tfhe::blind_rotation::{BlindRotationKey, BlindRotationKeyAlloc, BlindRotationKeyCompressed, CGGI};
 
 #[test]
 fn test_cggi_blind_rotation_key_serialization() {

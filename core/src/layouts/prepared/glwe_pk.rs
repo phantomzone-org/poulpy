@@ -5,18 +5,21 @@ use backend::hal::{
 
 use crate::{
     dist::Distribution,
-    layouts::{GLWEPublicKey, Infos},
+    layouts::{
+        GLWEPublicKey, Infos,
+        prepared::{Prepare, PrepareAlloc},
+    },
 };
 
 #[derive(PartialEq, Eq)]
-pub struct GLWEPublicKeyExec<D: Data, B: Backend> {
+pub struct GLWEPublicKeyPrepared<D: Data, B: Backend> {
     pub(crate) data: VecZnxDft<D, B>,
     pub(crate) basek: usize,
     pub(crate) k: usize,
     pub(crate) dist: Distribution,
 }
 
-impl<D: Data, B: Backend> Infos for GLWEPublicKeyExec<D, B> {
+impl<D: Data, B: Backend> Infos for GLWEPublicKeyPrepared<D, B> {
     type Inner = VecZnxDft<D, B>;
 
     fn inner(&self) -> &Self::Inner {
@@ -32,13 +35,13 @@ impl<D: Data, B: Backend> Infos for GLWEPublicKeyExec<D, B> {
     }
 }
 
-impl<D: Data, B: Backend> GLWEPublicKeyExec<D, B> {
+impl<D: Data, B: Backend> GLWEPublicKeyPrepared<D, B> {
     pub fn rank(&self) -> usize {
         self.cols() - 1
     }
 }
 
-impl<B: Backend> GLWEPublicKeyExec<Vec<u8>, B> {
+impl<B: Backend> GLWEPublicKeyPrepared<Vec<u8>, B> {
     pub fn alloc(module: &Module<B>, n: usize, basek: usize, k: usize, rank: usize) -> Self
     where
         Module<B>: VecZnxDftAlloc<B>,
@@ -57,25 +60,25 @@ impl<B: Backend> GLWEPublicKeyExec<Vec<u8>, B> {
     {
         module.vec_znx_dft_alloc_bytes(n, rank + 1, k.div_ceil(basek))
     }
+}
 
-    pub fn from<DataOther>(module: &Module<B>, other: &GLWEPublicKey<DataOther>, scratch: &mut Scratch<B>) -> Self
-    where
-        DataOther: DataRef,
-        Module<B>: VecZnxDftAlloc<B> + VecZnxDftFromVecZnx<B>,
-    {
-        let mut pk_exec: GLWEPublicKeyExec<Vec<u8>, B> =
-            GLWEPublicKeyExec::alloc(module, other.n(), other.basek(), other.k(), other.rank());
-        pk_exec.prepare(module, other, scratch);
+impl<D: DataRef, B: Backend> PrepareAlloc<B, GLWEPublicKeyPrepared<Vec<u8>, B>> for GLWEPublicKey<D>
+where
+    Module<B>: VecZnxDftAlloc<B> + VecZnxDftFromVecZnx<B>,
+{
+    fn prepare_alloc(&self, module: &Module<B>, scratch: &mut Scratch<B>) -> GLWEPublicKeyPrepared<Vec<u8>, B> {
+        let mut pk_exec: GLWEPublicKeyPrepared<Vec<u8>, B> =
+            GLWEPublicKeyPrepared::alloc(module, self.n(), self.basek(), self.k(), self.rank());
+        pk_exec.prepare(module, self, scratch);
         pk_exec
     }
 }
 
-impl<D: DataMut, B: Backend> GLWEPublicKeyExec<D, B> {
-    pub fn prepare<DataOther>(&mut self, module: &Module<B>, other: &GLWEPublicKey<DataOther>, _scratch: &mut Scratch<B>)
-    where
-        DataOther: DataRef,
-        Module<B>: VecZnxDftFromVecZnx<B>,
-    {
+impl<DM: DataMut, DR: DataRef, B: Backend> Prepare<B, GLWEPublicKey<DR>> for GLWEPublicKeyPrepared<DM, B>
+where
+    Module<B>: VecZnxDftFromVecZnx<B>,
+{
+    fn prepare(&mut self, module: &Module<B>, other: &GLWEPublicKey<DR>, _scratch: &mut Scratch<B>) {
         #[cfg(debug_assertions)]
         {
             assert_eq!(self.n(), other.n());

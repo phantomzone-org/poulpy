@@ -14,7 +14,7 @@ use sampling::source::Source;
 use crate::{
     layouts::{
         GGLWESwitchingKey, GGLWETensorKey, GGSWCiphertext, GLWESecret,
-        prepared::{GGLWESwitchingKeyExec, GGLWETensorKeyExec, GLWESecretExec},
+        prepared::{GGLWESwitchingKeyPrepared, GGLWETensorKeyPrepared, GLWESecretPrepared, PrepareAlloc},
     },
     noise::noise_ggsw_keyswitch,
     trait_families::GGSWAssertNoiseFamily,
@@ -92,11 +92,11 @@ pub fn test_ggsw_keyswitch<B: Backend>(
 
     let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
     sk_in.fill_ternary_prob(var_xs, &mut source_xs);
-    let sk_in_dft: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk_in);
+    let sk_in_dft: GLWESecretPrepared<Vec<u8>, B> = sk_in.prepare_alloc(module, scratch.borrow());
 
     let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
     sk_out.fill_ternary_prob(var_xs, &mut source_xs);
-    let sk_out_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk_out);
+    let sk_out_exec: GLWESecretPrepared<Vec<u8>, B> = sk_out.prepare_alloc(module, scratch.borrow());
 
     ksk.encrypt_sk(
         module,
@@ -128,12 +128,8 @@ pub fn test_ggsw_keyswitch<B: Backend>(
         scratch.borrow(),
     );
 
-    let mut ksk_exec: GGLWESwitchingKeyExec<Vec<u8>, B> =
-        GGLWESwitchingKeyExec::alloc(module, n, basek, k_ksk, rows, digits, rank, rank);
-    let mut tsk_exec: GGLWETensorKeyExec<Vec<u8>, B> = GGLWETensorKeyExec::alloc(module, n, basek, k_ksk, rows, digits, rank);
-
-    ksk_exec.prepare(module, &ksk, scratch.borrow());
-    tsk_exec.prepare(module, &tsk, scratch.borrow());
+    let ksk_exec: GGLWESwitchingKeyPrepared<Vec<u8>, B> = ksk.prepare_alloc(module, scratch.borrow());
+    let tsk_exec: GGLWETensorKeyPrepared<Vec<u8>, B> = tsk.prepare_alloc(module, scratch.borrow());
 
     ct_out.keyswitch(module, &ct_in, &ksk_exec, &tsk_exec, scratch.borrow());
 
@@ -216,11 +212,11 @@ pub fn test_ggsw_keyswitch_inplace<B: Backend>(
 
     let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
     sk_in.fill_ternary_prob(var_xs, &mut source_xs);
-    let sk_in_dft: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk_in);
+    let sk_in_dft: GLWESecretPrepared<Vec<u8>, B> = sk_in.prepare_alloc(module, scratch.borrow());
 
     let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
     sk_out.fill_ternary_prob(var_xs, &mut source_xs);
-    let sk_out_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk_out);
+    let sk_out_exec: GLWESecretPrepared<Vec<u8>, B> = sk_out.prepare_alloc(module, scratch.borrow());
 
     ksk.encrypt_sk(
         module,
@@ -252,12 +248,8 @@ pub fn test_ggsw_keyswitch_inplace<B: Backend>(
         scratch.borrow(),
     );
 
-    let mut ksk_exec: GGLWESwitchingKeyExec<Vec<u8>, B> =
-        GGLWESwitchingKeyExec::alloc(module, n, basek, k_ksk, rows, digits, rank, rank);
-    let mut tsk_exec: GGLWETensorKeyExec<Vec<u8>, B> = GGLWETensorKeyExec::alloc(module, n, basek, k_ksk, rows, digits, rank);
-
-    ksk_exec.prepare(module, &ksk, scratch.borrow());
-    tsk_exec.prepare(module, &tsk, scratch.borrow());
+    let ksk_exec: GGLWESwitchingKeyPrepared<Vec<u8>, B> = ksk.prepare_alloc(module, scratch.borrow());
+    let tsk_exec: GGLWETensorKeyPrepared<Vec<u8>, B> = tsk.prepare_alloc(module, scratch.borrow());
 
     ct.keyswitch_inplace(module, &ksk_exec, &tsk_exec, scratch.borrow());
 

@@ -3,14 +3,21 @@ use backend::hal::{
     layouts::{Backend, Data, DataMut, DataRef, Module, SvpPPol},
 };
 
-use crate::{dist::Distribution, layouts::GLWESecret, trait_families::GLWESecretExecModuleFamily};
+use crate::{
+    dist::Distribution,
+    layouts::{
+        GLWESecret,
+        prepared::{Prepare, PrepareAlloc},
+    },
+    trait_families::GLWESecretExecModuleFamily,
+};
 
-pub struct GLWESecretExec<D: Data, B: Backend> {
+pub struct GLWESecretPrepared<D: Data, B: Backend> {
     pub(crate) data: SvpPPol<D, B>,
     pub(crate) dist: Distribution,
 }
 
-impl<B: Backend> GLWESecretExec<Vec<u8>, B> {
+impl<B: Backend> GLWESecretPrepared<Vec<u8>, B> {
     pub fn alloc(module: &Module<B>, n: usize, rank: usize) -> Self
     where
         Module<B>: GLWESecretExecModuleFamily<B>,
@@ -29,19 +36,7 @@ impl<B: Backend> GLWESecretExec<Vec<u8>, B> {
     }
 }
 
-impl<B: Backend> GLWESecretExec<Vec<u8>, B> {
-    pub fn from<D>(module: &Module<B>, sk: &GLWESecret<D>) -> Self
-    where
-        D: DataRef,
-        Module<B>: GLWESecretExecModuleFamily<B>,
-    {
-        let mut sk_dft: GLWESecretExec<Vec<u8>, B> = Self::alloc(module, sk.n(), sk.rank());
-        sk_dft.prepare(module, sk);
-        sk_dft
-    }
-}
-
-impl<D: Data, B: Backend> GLWESecretExec<D, B> {
+impl<D: Data, B: Backend> GLWESecretPrepared<D, B> {
     pub fn n(&self) -> usize {
         self.data.n()
     }
@@ -55,15 +50,29 @@ impl<D: Data, B: Backend> GLWESecretExec<D, B> {
     }
 }
 
-impl<D: DataMut, B: Backend> GLWESecretExec<D, B> {
-    pub(crate) fn prepare<O>(&mut self, module: &Module<B>, sk: &GLWESecret<O>)
-    where
-        O: DataRef,
-        Module<B>: GLWESecretExecModuleFamily<B>,
-    {
+impl<D: DataRef, B: Backend> PrepareAlloc<B, GLWESecretPrepared<Vec<u8>, B>> for GLWESecret<D>
+where
+    Module<B>: SvpPrepare<B> + SvpPPolAllocBytes + SvpPPolAlloc<B>,
+{
+    fn prepare_alloc(
+        &self,
+        module: &Module<B>,
+        scratch: &mut backend::hal::layouts::Scratch<B>,
+    ) -> GLWESecretPrepared<Vec<u8>, B> {
+        let mut sk_dft: GLWESecretPrepared<Vec<u8>, B> = GLWESecretPrepared::alloc(module, self.n(), self.rank());
+        sk_dft.prepare(module, self, scratch);
+        sk_dft
+    }
+}
+
+impl<DM: DataMut, DR: DataRef, B: Backend> Prepare<B, GLWESecret<DR>> for GLWESecretPrepared<DM, B>
+where
+    Module<B>: SvpPrepare<B>,
+{
+    fn prepare(&mut self, module: &Module<B>, other: &GLWESecret<DR>, _scratch: &mut backend::hal::layouts::Scratch<B>) {
         (0..self.rank()).for_each(|i| {
-            module.svp_prepare(&mut self.data, i, &sk.data, i);
+            module.svp_prepare(&mut self.data, i, &other.data, i);
         });
-        self.dist = sk.dist
+        self.dist = other.dist
     }
 }

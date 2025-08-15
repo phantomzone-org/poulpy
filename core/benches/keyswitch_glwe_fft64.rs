@@ -1,6 +1,6 @@
 use core::layouts::{
     GGLWEAutomorphismKey, GGLWESwitchingKey, GLWECiphertext, GLWESecret, Infos,
-    prepared::{GGLWEAutomorphismKeyExec, GGLWESwitchingKeyExec, GLWESecretExec},
+    prepared::{GGLWEAutomorphismKeyPrepared, GGLWESwitchingKeyPrepared, GLWESecretPrepared, PrepareAlloc},
 };
 use std::{hint::black_box, time::Duration};
 
@@ -69,7 +69,7 @@ fn bench_keyswitch_glwe_fft64(c: &mut Criterion) {
 
         let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank_in);
         sk_in.fill_ternary_prob(0.5, &mut source_xs);
-        let sk_in_dft: GLWESecretExec<Vec<u8>, FFT64> = GLWESecretExec::from(&module, &sk_in);
+        let sk_in_dft: GLWESecretPrepared<Vec<u8>, FFT64> = sk_in.prepare_alloc(&module, scratch.borrow());
 
         let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank_out);
         sk_out.fill_ternary_prob(0.5, &mut source_xs);
@@ -93,7 +93,7 @@ fn bench_keyswitch_glwe_fft64(c: &mut Criterion) {
             scratch.borrow(),
         );
 
-        let ksk_exec: GGLWEAutomorphismKeyExec<Vec<u8>, _> = GGLWEAutomorphismKeyExec::from(&module, &ksk, scratch.borrow());
+        let ksk_exec: GGLWEAutomorphismKeyPrepared<Vec<u8>, _> = ksk.prepare_alloc(&module, scratch.borrow());
 
         move || {
             black_box(ct_out.automorphism(&module, &ct_in, &ksk_exec, scratch.borrow()));
@@ -164,7 +164,7 @@ fn bench_keyswitch_glwe_inplace_fft64(c: &mut Criterion) {
 
         let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
         sk_in.fill_ternary_prob(0.5, &mut source_xs);
-        let sk_in_dft: GLWESecretExec<Vec<u8>, FFT64> = GLWESecretExec::from(&module, &sk_in);
+        let sk_in_dft: GLWESecretPrepared<Vec<u8>, FFT64> = sk_in.prepare_alloc(&module, scratch.borrow());
 
         let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
         sk_out.fill_ternary_prob(0.5, &mut source_xs);
@@ -188,7 +188,7 @@ fn bench_keyswitch_glwe_inplace_fft64(c: &mut Criterion) {
             scratch.borrow(),
         );
 
-        let ksk_exec: GGLWESwitchingKeyExec<Vec<u8>, FFT64> = GGLWESwitchingKeyExec::from(&module, &ksk, scratch.borrow());
+        let ksk_exec: GGLWESwitchingKeyPrepared<Vec<u8>, FFT64> = ksk.prepare_alloc(&module, scratch.borrow());
 
         move || {
             black_box(ct.keyswitch_inplace(&module, &ksk_exec, scratch.borrow()));

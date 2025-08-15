@@ -14,7 +14,7 @@ use sampling::source::Source;
 use crate::{
     layouts::{
         GGLWEAutomorphismKey, GLWECiphertext, GLWEPlaintext, GLWESecret, Infos,
-        prepared::{GGLWEAutomorphismKeyExec, GLWESecretExec},
+        prepared::{GGLWEAutomorphismKeyPrepared, GLWESecretPrepared, Prepare, PrepareAlloc},
     },
     noise::log2_std_noise_gglwe_product,
     trait_families::{GLWEDecryptFamily, GLWEKeyswitchFamily},
@@ -84,7 +84,7 @@ pub fn test_glwe_automorphism<B: Backend>(
 
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
     sk.fill_ternary_prob(0.5, &mut source_xs);
-    let sk_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk);
+    let sk_exec: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
 
     autokey.encrypt_sk(
         module,
@@ -106,8 +106,8 @@ pub fn test_glwe_automorphism<B: Backend>(
         scratch.borrow(),
     );
 
-    let mut autokey_exec: GGLWEAutomorphismKeyExec<Vec<u8>, B> =
-        GGLWEAutomorphismKeyExec::alloc(module, n, basek, k_ksk, rows, digits, rank);
+    let mut autokey_exec: GGLWEAutomorphismKeyPrepared<Vec<u8>, B> =
+        GGLWEAutomorphismKeyPrepared::alloc(module, n, basek, k_ksk, rows, digits, rank);
     autokey_exec.prepare(module, &autokey, scratch.borrow());
 
     ct_out.automorphism(module, &ct_in, &autokey_exec, scratch.borrow());
@@ -181,7 +181,7 @@ pub fn test_glwe_automorphism_inplace<B: Backend>(
 
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
     sk.fill_ternary_prob(0.5, &mut source_xs);
-    let sk_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk);
+    let sk_exec: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
 
     autokey.encrypt_sk(
         module,
@@ -203,8 +203,8 @@ pub fn test_glwe_automorphism_inplace<B: Backend>(
         scratch.borrow(),
     );
 
-    let mut autokey_exec: GGLWEAutomorphismKeyExec<Vec<u8>, B> =
-        GGLWEAutomorphismKeyExec::alloc(module, n, basek, k_ksk, rows, digits, rank);
+    let mut autokey_exec: GGLWEAutomorphismKeyPrepared<Vec<u8>, B> =
+        GGLWEAutomorphismKeyPrepared::alloc(module, n, basek, k_ksk, rows, digits, rank);
     autokey_exec.prepare(module, &autokey, scratch.borrow());
 
     ct.automorphism_inplace(module, &autokey_exec, scratch.borrow());

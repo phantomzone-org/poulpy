@@ -9,7 +9,7 @@ use sampling::source::Source;
 
 use crate::{
     TakeGLWEPt,
-    layouts::{GGLWECiphertext, GLWECiphertext, GLWEPlaintext, Infos, prepared::GLWESecretExec},
+    layouts::{GGLWECiphertext, GLWECiphertext, GLWEPlaintext, Infos, prepared::GLWESecretPrepared},
 };
 
 use crate::trait_families::GGLWEEncryptSkFamily;
@@ -33,7 +33,7 @@ impl<DataSelf: DataMut> GGLWECiphertext<DataSelf> {
         &mut self,
         module: &Module<B>,
         pt: &ScalarZnx<DataPt>,
-        sk: &GLWESecretExec<DataSk, B>,
+        sk: &GLWESecretPrepared<DataSk, B>,
         source_xa: &mut Source,
         source_xe: &mut Source,
         sigma: f64,

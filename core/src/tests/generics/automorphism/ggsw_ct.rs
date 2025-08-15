@@ -14,7 +14,7 @@ use sampling::source::Source;
 use crate::{
     layouts::{
         GGLWEAutomorphismKey, GGLWETensorKey, GGSWCiphertext, GLWESecret,
-        prepared::{GGLWEAutomorphismKeyExec, GGLWETensorKeyExec, GLWESecretExec},
+        prepared::{GGLWEAutomorphismKeyPrepared, GGLWETensorKeyPrepared, GLWESecretPrepared, Prepare, PrepareAlloc},
     },
     noise::noise_ggsw_keyswitch,
     trait_families::GGSWAssertNoiseFamily,
@@ -91,7 +91,7 @@ pub fn test_ggsw_automorphism<B: Backend>(
 
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
     sk.fill_ternary_prob(var_xs, &mut source_xs);
-    let sk_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk);
+    let sk_exec: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
 
     auto_key.encrypt_sk(
         module,
@@ -123,11 +123,12 @@ pub fn test_ggsw_automorphism<B: Backend>(
         scratch.borrow(),
     );
 
-    let mut auto_key_exec: GGLWEAutomorphismKeyExec<Vec<u8>, B> =
-        GGLWEAutomorphismKeyExec::alloc(module, n, basek, k_ksk, rows, digits, rank);
+    let mut auto_key_exec: GGLWEAutomorphismKeyPrepared<Vec<u8>, B> =
+        GGLWEAutomorphismKeyPrepared::alloc(module, n, basek, k_ksk, rows, digits, rank);
     auto_key_exec.prepare(module, &auto_key, scratch.borrow());
 
-    let mut tsk_exec: GGLWETensorKeyExec<Vec<u8>, B> = GGLWETensorKeyExec::alloc(module, n, basek, k_tsk, rows, digits, rank);
+    let mut tsk_exec: GGLWETensorKeyPrepared<Vec<u8>, B> =
+        GGLWETensorKeyPrepared::alloc(module, n, basek, k_tsk, rows, digits, rank);
     tsk_exec.prepare(module, &tensor_key, scratch.borrow());
 
     ct_out.automorphism(module, &ct_in, &auto_key_exec, &tsk_exec, scratch.borrow());
@@ -215,7 +216,7 @@ pub fn test_ggsw_automorphism_inplace<B: Backend>(
 
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
     sk.fill_ternary_prob(var_xs, &mut source_xs);
-    let sk_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk);
+    let sk_exec: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
 
     auto_key.encrypt_sk(
         module,
@@ -247,11 +248,12 @@ pub fn test_ggsw_automorphism_inplace<B: Backend>(
         scratch.borrow(),
     );
 
-    let mut auto_key_exec: GGLWEAutomorphismKeyExec<Vec<u8>, B> =
-        GGLWEAutomorphismKeyExec::alloc(module, n, basek, k_ksk, rows, digits, rank);
+    let mut auto_key_exec: GGLWEAutomorphismKeyPrepared<Vec<u8>, B> =
+        GGLWEAutomorphismKeyPrepared::alloc(module, n, basek, k_ksk, rows, digits, rank);
     auto_key_exec.prepare(module, &auto_key, scratch.borrow());
 
-    let mut tsk_exec: GGLWETensorKeyExec<Vec<u8>, B> = GGLWETensorKeyExec::alloc(module, n, basek, k_tsk, rows, digits, rank);
+    let mut tsk_exec: GGLWETensorKeyPrepared<Vec<u8>, B> =
+        GGLWETensorKeyPrepared::alloc(module, n, basek, k_tsk, rows, digits, rank);
     tsk_exec.prepare(module, &tensor_key, scratch.borrow());
 
     ct.automorphism_inplace(module, &auto_key_exec, &tsk_exec, scratch.borrow());

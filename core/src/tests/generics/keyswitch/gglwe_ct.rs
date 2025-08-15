@@ -14,7 +14,7 @@ use sampling::source::Source;
 use crate::{
     layouts::{
         GGLWESwitchingKey, GLWESecret,
-        prepared::{GGLWESwitchingKeyExec, GLWESecretExec},
+        prepared::{GGLWESwitchingKeyPrepared, GLWESecretPrepared, PrepareAlloc},
     },
     noise::log2_std_noise_gglwe_product,
     trait_families::{GLWEDecryptFamily, GLWEKeyswitchFamily},
@@ -108,7 +108,7 @@ pub fn test_gglwe_switching_key_keyswitch<B: Backend>(
 
     let mut sk2: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank_out_s1s2);
     sk2.fill_ternary_prob(0.5, &mut source_xs);
-    let sk2_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk2);
+    let sk2_exec: GLWESecretPrepared<Vec<u8>, B> = sk2.prepare_alloc(module, scratch_apply.borrow());
 
     // gglwe_{s1}(s0) = s0 -> s1
     ct_gglwe_s0s1.encrypt_sk(
@@ -132,8 +132,7 @@ pub fn test_gglwe_switching_key_keyswitch<B: Backend>(
         scratch_enc.borrow(),
     );
 
-    let ct_gglwe_s1s2_exec: GGLWESwitchingKeyExec<Vec<u8>, B> =
-        GGLWESwitchingKeyExec::from(module, &ct_gglwe_s1s2, scratch_apply.borrow());
+    let ct_gglwe_s1s2_exec: GGLWESwitchingKeyPrepared<Vec<u8>, B> = ct_gglwe_s1s2.prepare_alloc(module, scratch_apply.borrow());
 
     // gglwe_{s1}(s0) (x) gglwe_{s2}(s1) = gglwe_{s2}(s0)
     ct_gglwe_s0s2.keyswitch(
@@ -230,7 +229,7 @@ pub fn test_gglwe_switching_key_keyswitch_inplace<B: Backend>(
 
     let mut sk2: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank_out);
     sk2.fill_ternary_prob(var_xs, &mut source_xs);
-    let sk2_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk2);
+    let sk2_exec: GLWESecretPrepared<Vec<u8>, B> = sk2.prepare_alloc(module, scratch_apply.borrow());
 
     // gglwe_{s1}(s0) = s0 -> s1
     ct_gglwe_s0s1.encrypt_sk(
@@ -254,8 +253,7 @@ pub fn test_gglwe_switching_key_keyswitch_inplace<B: Backend>(
         scratch_enc.borrow(),
     );
 
-    let ct_gglwe_s1s2_exec: GGLWESwitchingKeyExec<Vec<u8>, B> =
-        GGLWESwitchingKeyExec::from(module, &ct_gglwe_s1s2, scratch_apply.borrow());
+    let ct_gglwe_s1s2_exec: GGLWESwitchingKeyPrepared<Vec<u8>, B> = ct_gglwe_s1s2.prepare_alloc(module, scratch_apply.borrow());
 
     // gglwe_{s1}(s0) (x) gglwe_{s2}(s1) = gglwe_{s2}(s0)
     ct_gglwe_s0s1.keyswitch_inplace(module, &ct_gglwe_s1s2_exec, scratch_apply.borrow());

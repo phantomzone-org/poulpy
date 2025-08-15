@@ -9,7 +9,7 @@ use sampling::source::Source;
 
 use crate::{
     TakeGLWESecret, TakeGLWESecretExec,
-    layouts::{GGLWETensorKey, GLWESecret, Infos, compressed::GGLWETensorKeyCompressed},
+    layouts::{GGLWETensorKey, GLWESecret, Infos, compressed::GGLWETensorKeyCompressed, prepared::Prepare},
     trait_families::GLWEDecryptFamily,
 };
 
@@ -47,7 +47,7 @@ impl<DataSelf: DataMut> GGLWETensorKeyCompressed<DataSelf> {
         let rank: usize = self.rank();
 
         let (mut sk_dft_prep, scratch1) = scratch.take_glwe_secret_exec(n, rank);
-        sk_dft_prep.prepare(module, &sk);
+        sk_dft_prep.prepare(module, &sk, scratch1);
 
         let (mut sk_dft, scratch2) = scratch1.take_vec_znx_dft(n, rank, 1);
 

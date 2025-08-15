@@ -36,7 +36,7 @@ impl<D: Data, BRT: BlindRotationAlgo> PartialEq for BlindRotationKeyCompressed<D
                 return false;
             }
         }
-        self.dist == other.dist
+        self.dist == other.dist && self._phantom == other._phantom
     }
 }
 

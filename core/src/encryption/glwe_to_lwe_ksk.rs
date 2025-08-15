@@ -9,7 +9,7 @@ use sampling::source::Source;
 
 use crate::{
     TakeGLWESecret, TakeGLWESecretExec,
-    layouts::{GGLWESwitchingKey, GLWESecret, GLWEToLWESwitchingKey, LWESecret, prepared::GLWESecretExec},
+    layouts::{GGLWESwitchingKey, GLWESecret, GLWEToLWESwitchingKey, LWESecret, prepared::GLWESecretPrepared},
 };
 
 use crate::trait_families::{GGLWEEncryptSkFamily, GGLWESwitchingKeyEncryptSkFamily, GLWESecretExecModuleFamily};
@@ -19,7 +19,7 @@ impl GLWEToLWESwitchingKey<Vec<u8>> {
     where
         Module<B>: GGLWEEncryptSkFamily<B> + GLWESecretExecModuleFamily<B>,
     {
-        GLWESecretExec::bytes_of(module, n, rank_in)
+        GLWESecretPrepared::bytes_of(module, n, rank_in)
             + (GGLWESwitchingKey::encrypt_sk_scratch_space(module, n, basek, k, rank_in, 1) | GLWESecret::bytes_of(n, rank_in))
     }
 }

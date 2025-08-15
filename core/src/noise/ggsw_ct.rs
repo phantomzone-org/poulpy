@@ -8,7 +8,7 @@ use backend::hal::{
 };
 
 use crate::{
-    layouts::{GGSWCiphertext, GLWECiphertext, GLWEPlaintext, Infos, prepared::GLWESecretExec},
+    layouts::{GGSWCiphertext, GLWECiphertext, GLWEPlaintext, Infos, prepared::GLWESecretPrepared},
     trait_families::GGSWAssertNoiseFamily,
 };
 
@@ -16,7 +16,7 @@ impl<D: DataRef> GGSWCiphertext<D> {
     pub fn assert_noise<B: Backend, DataSk, DataScalar, F>(
         &self,
         module: &Module<B>,
-        sk_exec: &GLWESecretExec<DataSk, B>,
+        sk_exec: &GLWESecretPrepared<DataSk, B>,
         pt_want: &ScalarZnx<DataScalar>,
         max_noise: F,
     ) where
@@ -71,7 +71,7 @@ impl<D: DataRef> GGSWCiphertext<D> {
     pub fn print_noise<B: Backend, DataSk, DataScalar>(
         &self,
         module: &Module<B>,
-        sk_exec: &GLWESecretExec<DataSk, B>,
+        sk_exec: &GLWESecretPrepared<DataSk, B>,
         pt_want: &ScalarZnx<DataScalar>,
     ) where
         DataSk: DataRef,

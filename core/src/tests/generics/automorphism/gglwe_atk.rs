@@ -14,7 +14,7 @@ use sampling::source::Source;
 use crate::{
     layouts::{
         GGLWEAutomorphismKey, GLWEPlaintext, GLWESecret, Infos,
-        prepared::{GGLWEAutomorphismKeyExec, GLWESecretExec},
+        prepared::{GGLWEAutomorphismKeyPrepared, GLWESecretPrepared, Prepare, PrepareAlloc},
     },
     noise::log2_std_noise_gglwe_product,
     trait_families::{GLWEDecryptFamily, GLWEKeyswitchFamily},
@@ -101,8 +101,8 @@ pub fn test_gglwe_automorphism_key_automorphism<B: Backend>(
         scratch.borrow(),
     );
 
-    let mut auto_key_apply_exec: GGLWEAutomorphismKeyExec<Vec<u8>, B> =
-        GGLWEAutomorphismKeyExec::alloc(module, n, basek, k_apply, rows_apply, digits, rank);
+    let mut auto_key_apply_exec: GGLWEAutomorphismKeyPrepared<Vec<u8>, B> =
+        GGLWEAutomorphismKeyPrepared::alloc(module, n, basek, k_apply, rows_apply, digits, rank);
 
     auto_key_apply_exec.prepare(module, &auto_key_apply, scratch.borrow());
 
@@ -123,7 +123,7 @@ pub fn test_gglwe_automorphism_key_automorphism<B: Backend>(
         );
     });
 
-    let sk_auto_dft: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk_auto);
+    let sk_auto_dft: GLWESecretPrepared<Vec<u8>, B> = sk_auto.prepare_alloc(module, scratch.borrow());
 
     (0..auto_key_out.rank_in()).for_each(|col_i| {
         (0..auto_key_out.rows()).for_each(|row_i| {
@@ -240,8 +240,8 @@ pub fn test_gglwe_automorphism_key_automorphism_inplace<B: Backend>(
         scratch.borrow(),
     );
 
-    let mut auto_key_apply_exec: GGLWEAutomorphismKeyExec<Vec<u8>, B> =
-        GGLWEAutomorphismKeyExec::alloc(module, n, basek, k_apply, rows_apply, digits, rank);
+    let mut auto_key_apply_exec: GGLWEAutomorphismKeyPrepared<Vec<u8>, B> =
+        GGLWEAutomorphismKeyPrepared::alloc(module, n, basek, k_apply, rows_apply, digits, rank);
 
     auto_key_apply_exec.prepare(module, &auto_key_apply, scratch.borrow());
 
@@ -263,7 +263,7 @@ pub fn test_gglwe_automorphism_key_automorphism_inplace<B: Backend>(
         );
     });
 
-    let sk_auto_dft: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk_auto);
+    let sk_auto_dft: GLWESecretPrepared<Vec<u8>, B> = sk_auto.prepare_alloc(module, scratch.borrow());
 
     (0..auto_key.rank_in()).for_each(|col_i| {
         (0..auto_key.rows()).for_each(|row_i| {

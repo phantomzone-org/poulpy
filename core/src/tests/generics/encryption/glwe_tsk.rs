@@ -12,7 +12,11 @@ use backend::hal::{
 use sampling::source::Source;
 
 use crate::{
-    layouts::{GGLWETensorKey, GLWEPlaintext, GLWESecret, Infos, compressed::GGLWETensorKeyCompressed, prepared::GLWESecretExec},
+    layouts::{
+        GGLWETensorKey, GLWEPlaintext, GLWESecret, Infos,
+        compressed::GGLWETensorKeyCompressed,
+        prepared::{GLWESecretPrepared, PrepareAlloc},
+    },
     trait_families::{Decompress, GLWEDecryptFamily},
 };
 
@@ -63,8 +67,7 @@ where
 
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
     sk.fill_ternary_prob(0.5, &mut source_xs);
-    let mut sk_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk);
-    sk_exec.prepare(module, &sk);
+    let sk_exec: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
 
     tensor_key.encrypt_sk(
         module,
@@ -161,8 +164,7 @@ where
 
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
     sk.fill_ternary_prob(0.5, &mut source_xs);
-    let mut sk_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk);
-    sk_exec.prepare(module, &sk);
+    let sk_exec: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
 
     let seed_xa: [u8; 32] = [1u8; 32];
 

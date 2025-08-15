@@ -16,7 +16,9 @@ use core::{
     trait_families::GLWEExternalProductFamily,
 };
 
-use crate::tfhe::blind_rotation::{BlincRotationExecute, BlindRotationKeyExec, CGGI, LookUpTable, LookUpTableRotationDirection};
+use crate::tfhe::blind_rotation::{
+    BlincRotationExecute, BlindRotationKeyPrepared, CGGI, LookUpTable, LookUpTableRotationDirection,
+};
 
 pub trait CCGIBlindRotationFamily<B: Backend> = VecZnxBigAllocBytes
     + VecZnxDftAllocBytes
@@ -85,7 +87,7 @@ where
     }
 }
 
-impl<D: DataRef, B: Backend> BlincRotationExecute<B> for BlindRotationKeyExec<D, CGGI, B>
+impl<D: DataRef, B: Backend> BlincRotationExecute<B> for BlindRotationKeyPrepared<D, CGGI, B>
 where
     Module<B>: CCGIBlindRotationFamily<B>,
     Scratch<B>: TakeVecZnxDftSlice<B> + TakeVecZnxDft<B> + TakeVecZnxBig<B> + TakeVecZnxSlice + TakeVecZnx + ScratchAvailable,
@@ -118,7 +120,7 @@ fn execute_block_binary_extended<DataRes, DataIn, DataBrk, B: Backend>(
     res: &mut GLWECiphertext<DataRes>,
     lwe: &LWECiphertext<DataIn>,
     lut: &LookUpTable,
-    brk: &BlindRotationKeyExec<DataBrk, CGGI, B>,
+    brk: &BlindRotationKeyPrepared<DataBrk, CGGI, B>,
     scratch: &mut Scratch<B>,
 ) where
     DataRes: DataMut,
@@ -263,7 +265,7 @@ fn execute_block_binary<DataRes, DataIn, DataBrk, B: Backend>(
     res: &mut GLWECiphertext<DataRes>,
     lwe: &LWECiphertext<DataIn>,
     lut: &LookUpTable,
-    brk: &BlindRotationKeyExec<DataBrk, CGGI, B>,
+    brk: &BlindRotationKeyPrepared<DataBrk, CGGI, B>,
     scratch: &mut Scratch<B>,
 ) where
     DataRes: DataMut,
@@ -355,7 +357,7 @@ fn execute_standard<DataRes, DataIn, DataBrk, B: Backend>(
     res: &mut GLWECiphertext<DataRes>,
     lwe: &LWECiphertext<DataIn>,
     lut: &LookUpTable,
-    brk: &BlindRotationKeyExec<DataBrk, CGGI, B>,
+    brk: &BlindRotationKeyPrepared<DataBrk, CGGI, B>,
     scratch: &mut Scratch<B>,
 ) where
     DataRes: DataMut,

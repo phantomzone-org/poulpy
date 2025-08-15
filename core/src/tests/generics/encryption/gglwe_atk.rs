@@ -12,7 +12,11 @@ use backend::hal::{
 use sampling::source::Source;
 
 use crate::{
-    layouts::{GGLWEAutomorphismKey, GLWESecret, compressed::GGLWEAutomorphismKeyCompressed, prepared::GLWESecretExec},
+    layouts::{
+        GGLWEAutomorphismKey, GLWESecret,
+        compressed::GGLWEAutomorphismKeyCompressed,
+        prepared::{GLWESecretPrepared, PrepareAlloc},
+    },
     trait_families::{Decompress, GLWEDecryptFamily, GLWEKeyswitchFamily},
 };
 
@@ -86,7 +90,7 @@ pub fn test_gglwe_automorphisk_key_encrypt_sk<B: Backend>(
             i,
         );
     });
-    let sk_out_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk_out);
+    let sk_out_exec: GLWESecretPrepared<Vec<u8>, B> = sk_out.prepare_alloc(module, scratch.borrow());
 
     atk.key
         .key
@@ -163,7 +167,7 @@ pub fn test_gglwe_automorphisk_key_compressed_encrypt_sk<B: Backend>(
             i,
         );
     });
-    let sk_out_exec = GLWESecretExec::from(module, &sk_out);
+    let sk_out_exec = sk_out.prepare_alloc(module, scratch.borrow());
 
     let mut atk: GGLWEAutomorphismKey<Vec<u8>> = GGLWEAutomorphismKey::alloc(n, basek, k_ksk, rows, digits, rank);
     atk.decompress(module, &atk_compressed);

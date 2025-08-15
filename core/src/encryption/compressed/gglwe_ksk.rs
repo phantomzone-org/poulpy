@@ -7,7 +7,8 @@ use sampling::source::Source;
 use crate::{
     TakeGLWESecretExec,
     layouts::{
-        GGLWECiphertext, GGLWESwitchingKey, GLWESecret, Infos, compressed::GGLWESwitchingKeyCompressed, prepared::GLWESecretExec,
+        GGLWECiphertext, GGLWESwitchingKey, GLWESecret, Infos, compressed::GGLWESwitchingKeyCompressed,
+        prepared::GLWESecretPrepared,
     },
 };
 
@@ -27,7 +28,7 @@ impl GGLWESwitchingKeyCompressed<Vec<u8>> {
     {
         (GGLWECiphertext::encrypt_sk_scratch_space(module, n, basek, k) | ScalarZnx::alloc_bytes(n, 1))
             + ScalarZnx::alloc_bytes(n, rank_in)
-            + GLWESecretExec::bytes_of(module, n, rank_out)
+            + GLWESecretPrepared::bytes_of(module, n, rank_out)
     }
 }
 

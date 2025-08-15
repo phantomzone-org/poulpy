@@ -4,7 +4,7 @@ use backend::hal::{
 };
 
 use crate::{
-    layouts::{GGLWESwitchingKey, GLWECiphertext, Infos, prepared::GGSWCiphertextExec},
+    layouts::{GGLWESwitchingKey, GLWECiphertext, Infos, prepared::GGSWCiphertextPrepared},
     trait_families::GLWEExternalProductFamily,
 };
 
@@ -46,7 +46,7 @@ impl<DataSelf: DataMut> GGLWESwitchingKey<DataSelf> {
         &mut self,
         module: &Module<B>,
         lhs: &GGLWESwitchingKey<DataLhs>,
-        rhs: &GGSWCiphertextExec<DataRhs, B>,
+        rhs: &GGSWCiphertextPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWEExternalProductFamily<B>,
@@ -94,7 +94,7 @@ impl<DataSelf: DataMut> GGLWESwitchingKey<DataSelf> {
     pub fn external_product_inplace<DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
-        rhs: &GGSWCiphertextExec<DataRhs, B>,
+        rhs: &GGSWCiphertextPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWEExternalProductFamily<B>,

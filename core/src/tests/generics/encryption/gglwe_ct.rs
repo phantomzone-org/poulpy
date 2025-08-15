@@ -12,7 +12,11 @@ use backend::hal::{
 use sampling::source::Source;
 
 use crate::{
-    layouts::{GGLWESwitchingKey, GLWESecret, compressed::GGLWESwitchingKeyCompressed, prepared::GLWESecretExec},
+    layouts::{
+        GGLWESwitchingKey, GLWESecret,
+        compressed::GGLWESwitchingKeyCompressed,
+        prepared::{GLWESecretPrepared, PrepareAlloc},
+    },
     trait_families::{Decompress, GLWEDecryptFamily},
 };
 
@@ -66,7 +70,7 @@ pub fn test_gglwe_switching_key_encrypt_sk<B: Backend>(
 
     let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank_out);
     sk_out.fill_ternary_prob(0.5, &mut source_xs);
-    let sk_out_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk_out);
+    let sk_out_exec: GLWESecretPrepared<Vec<u8>, B> = sk_out.prepare_alloc(module, scratch.borrow());
 
     ksk.encrypt_sk(
         module,
@@ -130,7 +134,7 @@ pub fn test_gglwe_switching_key_compressed_encrypt_sk<B: Backend>(
 
     let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank_out);
     sk_out.fill_ternary_prob(0.5, &mut source_xs);
-    let sk_out_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk_out);
+    let sk_out_exec: GLWESecretPrepared<Vec<u8>, B> = sk_out.prepare_alloc(module, scratch.borrow());
 
     let seed_xa = [1u8; 32];
 

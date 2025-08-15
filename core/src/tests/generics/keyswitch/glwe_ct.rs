@@ -14,7 +14,7 @@ use sampling::source::Source;
 use crate::{
     layouts::{
         GGLWESwitchingKey, GLWECiphertext, GLWEPlaintext, GLWESecret, Infos,
-        prepared::{GGLWESwitchingKeyExec, GLWESecretExec},
+        prepared::{GGLWESwitchingKeyPrepared, GLWESecretPrepared, PrepareAlloc},
     },
     noise::log2_std_noise_gglwe_product,
     trait_families::{GLWEDecryptFamily, GLWEKeyswitchFamily},
@@ -82,11 +82,11 @@ pub fn test_glwe_keyswitch<B: Backend>(
 
     let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank_in);
     sk_in.fill_ternary_prob(0.5, &mut source_xs);
-    let sk_in_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk_in);
+    let sk_in_exec: GLWESecretPrepared<Vec<u8>, B> = sk_in.prepare_alloc(module, scratch.borrow());
 
     let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank_out);
     sk_out.fill_ternary_prob(0.5, &mut source_xs);
-    let sk_out_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk_out);
+    let sk_out_exec: GLWESecretPrepared<Vec<u8>, B> = sk_out.prepare_alloc(module, scratch.borrow());
 
     ksk.encrypt_sk(
         module,
@@ -108,7 +108,7 @@ pub fn test_glwe_keyswitch<B: Backend>(
         scratch.borrow(),
     );
 
-    let ksk_exec: GGLWESwitchingKeyExec<Vec<u8>, B> = GGLWESwitchingKeyExec::from(module, &ksk, scratch.borrow());
+    let ksk_exec: GGLWESwitchingKeyPrepared<Vec<u8>, B> = ksk.prepare_alloc(module, scratch.borrow());
 
     ct_out.keyswitch(module, &ct_in, &ksk_exec, scratch.borrow());
 
@@ -175,11 +175,11 @@ pub fn test_glwe_keyswitch_inplace<B: Backend>(
 
     let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
     sk_in.fill_ternary_prob(0.5, &mut source_xs);
-    let sk_in_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk_in);
+    let sk_in_exec: GLWESecretPrepared<Vec<u8>, B> = sk_in.prepare_alloc(module, scratch.borrow());
 
     let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
     sk_out.fill_ternary_prob(0.5, &mut source_xs);
-    let sk_out_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk_out);
+    let sk_out_exec: GLWESecretPrepared<Vec<u8>, B> = sk_out.prepare_alloc(module, scratch.borrow());
 
     ksk.encrypt_sk(
         module,
@@ -201,7 +201,7 @@ pub fn test_glwe_keyswitch_inplace<B: Backend>(
         scratch.borrow(),
     );
 
-    let ksk_exec: GGLWESwitchingKeyExec<Vec<u8>, B> = GGLWESwitchingKeyExec::from(module, &ksk, scratch.borrow());
+    let ksk_exec: GGLWESwitchingKeyPrepared<Vec<u8>, B> = ksk.prepare_alloc(module, scratch.borrow());
 
     ct_glwe.keyswitch_inplace(module, &ksk_exec, scratch.borrow());
 

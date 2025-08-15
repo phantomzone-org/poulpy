@@ -1,9 +1,8 @@
 use backend::hal::{
     api::{
-        ScratchAvailable, SvpPPolAlloc, TakeVecZnx, TakeVecZnxDft, VecZnxAddScalarInplace, VmpPMatAlloc, VmpPMatPrepare, ZnxView,
-        ZnxViewMut,
+        ScratchAvailable, TakeVecZnx, TakeVecZnxDft, VecZnxAddScalarInplace, VmpPMatAlloc, VmpPMatPrepare, ZnxView, ZnxViewMut,
     },
-    layouts::{Backend, DataMut, DataRef, Module, ScalarZnx, ScalarZnxToRef, Scratch, SvpPPol},
+    layouts::{Backend, DataMut, DataRef, Module, ScalarZnx, ScalarZnxToRef, Scratch},
 };
 use sampling::source::Source;
 
@@ -14,18 +13,18 @@ use core::{
     layouts::{
         GGSWCiphertext, LWESecret,
         compressed::GGSWCiphertextCompressed,
-        prepared::{GGSWCiphertextExec, GLWESecretExec},
+        prepared::{GGSWCiphertextPrepared, GLWESecretPrepared},
     },
     trait_families::GGSWEncryptSkFamily,
 };
 
 use crate::tfhe::blind_rotation::{
-    BlindRotationKey, BlindRotationKeyCompressed, BlindRotationKeyExec, BlindRotationKeyExecLayoutFamily, CGGI,
-    utils::set_xai_plus_y,
+    BlindRotationKey, BlindRotationKeyAlloc, BlindRotationKeyCompressed, BlindRotationKeyEncryptSk, BlindRotationKeyPrepared,
+    BlindRotationKeyPreparedAlloc, CGGI,
 };
 
-impl BlindRotationKey<Vec<u8>, CGGI> {
-    pub fn alloc(n_gglwe: usize, n_lwe: usize, basek: usize, k: usize, rows: usize, rank: usize) -> Self {
+impl BlindRotationKeyAlloc for BlindRotationKey<Vec<u8>, CGGI> {
+    fn alloc(n_gglwe: usize, n_lwe: usize, basek: usize, k: usize, rows: usize, rank: usize) -> Self {
         let mut data: Vec<GGSWCiphertext<Vec<u8>>> = Vec::with_capacity(n_lwe);
         (0..n_lwe).for_each(|_| data.push(GGSWCiphertext::alloc(n_gglwe, basek, k, rows, 1, rank)));
         Self {
@@ -34,7 +33,9 @@ impl BlindRotationKey<Vec<u8>, CGGI> {
             _phantom: PhantomData,
         }
     }
+}
 
+impl BlindRotationKey<Vec<u8>, CGGI> {
     pub fn generate_from_sk_scratch_space<B: Backend>(module: &Module<B>, n: usize, basek: usize, k: usize, rank: usize) -> usize
     where
         Module<B>: GGSWEncryptSkFamily<B>,
@@ -43,11 +44,15 @@ impl BlindRotationKey<Vec<u8>, CGGI> {
     }
 }
 
-impl<D: DataMut> BlindRotationKey<D, CGGI> {
-    pub fn generate_from_sk<DataSkGLWE, DataSkLWE, B: Backend>(
+impl<D: DataMut, B: Backend> BlindRotationKeyEncryptSk<B> for BlindRotationKey<D, CGGI>
+where
+    Module<B>: GGSWEncryptSkFamily<B> + VecZnxAddScalarInplace,
+    Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
+{
+    fn encrypt_sk<DataSkGLWE, DataSkLWE>(
         &mut self,
         module: &Module<B>,
-        sk_glwe: &GLWESecretExec<DataSkGLWE, B>,
+        sk_glwe: &GLWESecretPrepared<DataSkGLWE, B>,
         sk_lwe: &LWESecret<DataSkLWE>,
         source_xa: &mut Source,
         source_xe: &mut Source,
@@ -56,8 +61,6 @@ impl<D: DataMut> BlindRotationKey<D, CGGI> {
     ) where
         DataSkGLWE: DataRef,
         DataSkLWE: DataRef,
-        Module<B>: GGSWEncryptSkFamily<B> + VecZnxAddScalarInplace,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
     {
         #[cfg(debug_assertions)]
         {
@@ -87,14 +90,14 @@ impl<D: DataMut> BlindRotationKey<D, CGGI> {
     }
 }
 
-impl<B: Backend> BlindRotationKeyExec<Vec<u8>, CGGI, B> {
-    pub fn alloc(module: &Module<B>, n_glwe: usize, n_lwe: usize, basek: usize, k: usize, rows: usize, rank: usize) -> Self
-    where
-        Module<B>: BlindRotationKeyExecLayoutFamily<B> + VmpPMatAlloc<B> + VmpPMatPrepare<B>,
-    {
-        let mut data: Vec<GGSWCiphertextExec<Vec<u8>, B>> = Vec::with_capacity(n_lwe);
+impl<B: Backend> BlindRotationKeyPreparedAlloc<B> for BlindRotationKeyPrepared<Vec<u8>, CGGI, B>
+where
+    Module<B>: VmpPMatAlloc<B> + VmpPMatPrepare<B>,
+{
+    fn alloc(module: &Module<B>, n_glwe: usize, n_lwe: usize, basek: usize, k: usize, rows: usize, rank: usize) -> Self {
+        let mut data: Vec<GGSWCiphertextPrepared<Vec<u8>, B>> = Vec::with_capacity(n_lwe);
         (0..n_lwe).for_each(|_| {
-            data.push(GGSWCiphertextExec::alloc(
+            data.push(GGSWCiphertextPrepared::alloc(
                 module, n_glwe, basek, k, rows, 1, rank,
             ))
         });
@@ -103,62 +106,6 @@ impl<B: Backend> BlindRotationKeyExec<Vec<u8>, CGGI, B> {
             dist: Distribution::NONE,
             x_pow_a: None,
             _phantom: PhantomData,
-        }
-    }
-
-    pub fn from<DataOther>(module: &Module<B>, other: &BlindRotationKey<DataOther, CGGI>, scratch: &mut Scratch<B>) -> Self
-    where
-        DataOther: DataRef,
-        Module<B>: BlindRotationKeyExecLayoutFamily<B> + VmpPMatAlloc<B> + VmpPMatPrepare<B>,
-    {
-        let mut brk: BlindRotationKeyExec<Vec<u8>, CGGI, B> = Self::alloc(
-            module,
-            other.n(),
-            other.keys.len(),
-            other.basek(),
-            other.k(),
-            other.rows(),
-            other.rank(),
-        );
-        brk.prepare(module, other, scratch);
-        brk
-    }
-}
-
-impl<D: DataMut, B: Backend> BlindRotationKeyExec<D, CGGI, B> {
-    pub fn prepare<DataOther>(&mut self, module: &Module<B>, other: &BlindRotationKey<DataOther, CGGI>, scratch: &mut Scratch<B>)
-    where
-        DataOther: DataRef,
-        Module<B>: BlindRotationKeyExecLayoutFamily<B> + VmpPMatAlloc<B> + VmpPMatPrepare<B>,
-    {
-        #[cfg(debug_assertions)]
-        {
-            assert_eq!(self.data.len(), other.keys.len());
-        }
-
-        let n: usize = other.n();
-
-        self.data
-            .iter_mut()
-            .zip(other.keys.iter())
-            .for_each(|(ggsw_exec, other)| {
-                ggsw_exec.prepare(module, other, scratch);
-            });
-
-        self.dist = other.dist;
-
-        match other.dist {
-            Distribution::BinaryBlock(_) => {
-                let mut x_pow_a: Vec<SvpPPol<Vec<u8>, B>> = Vec::with_capacity(n << 1);
-                let mut buf: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n, 1);
-                (0..n << 1).for_each(|i| {
-                    let mut res: SvpPPol<Vec<u8>, B> = module.svp_ppol_alloc(n, 1);
-                    set_xai_plus_y(module, i, 0, &mut res, &mut buf);
-                    x_pow_a.push(res);
-                });
-                self.x_pow_a = Some(x_pow_a);
-            }
-            _ => {}
         }
     }
 }
@@ -187,10 +134,10 @@ impl BlindRotationKeyCompressed<Vec<u8>, CGGI> {
 }
 
 impl<D: DataMut> BlindRotationKeyCompressed<D, CGGI> {
-    pub fn generate_from_sk<DataSkGLWE, DataSkLWE, B: Backend>(
+    pub fn encrypt_sk<DataSkGLWE, DataSkLWE, B: Backend>(
         &mut self,
         module: &Module<B>,
-        sk_glwe: &GLWESecretExec<DataSkGLWE, B>,
+        sk_glwe: &GLWESecretPrepared<DataSkGLWE, B>,
         sk_lwe: &LWESecret<DataSkLWE>,
         seed_xa: [u8; 32],
         source_xe: &mut Source,

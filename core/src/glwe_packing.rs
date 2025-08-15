@@ -7,7 +7,7 @@ use backend::hal::{
 
 use crate::{
     GLWEOperations, TakeGLWECt,
-    layouts::{GLWECiphertext, Infos, prepared::GGLWEAutomorphismKeyExec},
+    layouts::{GLWECiphertext, Infos, prepared::GGLWEAutomorphismKeyPrepared},
 };
 
 use crate::trait_families::{GLWEKeyswitchFamily, GLWEPackingFamily};
@@ -115,7 +115,7 @@ impl GLWEPacker {
         &mut self,
         module: &Module<B>,
         a: Option<&GLWECiphertext<DataA>>,
-        auto_keys: &HashMap<i64, GGLWEAutomorphismKeyExec<DataAK, B>>,
+        auto_keys: &HashMap<i64, GGLWEAutomorphismKeyPrepared<DataAK, B>>,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWEPackingFamily<B>,
@@ -174,7 +174,7 @@ fn pack_core<D: DataRef, DataAK: DataRef, B: Backend>(
     a: Option<&GLWECiphertext<D>>,
     accumulators: &mut [Accumulator],
     i: usize,
-    auto_keys: &HashMap<i64, GGLWEAutomorphismKeyExec<DataAK, B>>,
+    auto_keys: &HashMap<i64, GGLWEAutomorphismKeyPrepared<DataAK, B>>,
     scratch: &mut Scratch<B>,
 ) where
     Module<B>: GLWEPackingFamily<B>,
@@ -252,7 +252,7 @@ fn combine<D: DataRef, DataAK: DataRef, B: Backend>(
     acc: &mut Accumulator,
     b: Option<&GLWECiphertext<D>>,
     i: usize,
-    auto_keys: &HashMap<i64, GGLWEAutomorphismKeyExec<DataAK, B>>,
+    auto_keys: &HashMap<i64, GGLWEAutomorphismKeyPrepared<DataAK, B>>,
     scratch: &mut Scratch<B>,
 ) where
     Module<B>: GLWEPackingFamily<B>,

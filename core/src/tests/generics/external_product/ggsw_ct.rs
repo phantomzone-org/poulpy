@@ -14,7 +14,7 @@ use sampling::source::Source;
 use crate::{
     layouts::{
         GGSWCiphertext, GLWESecret,
-        prepared::{GGSWCiphertextExec, GLWESecretExec},
+        prepared::{GGSWCiphertextPrepared, GLWESecretPrepared, PrepareAlloc},
     },
     noise::noise_ggsw_product,
     trait_families::GGSWAssertNoiseFamily,
@@ -88,7 +88,7 @@ pub fn test_ggsw_external_product<B: Backend>(
 
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
     sk.fill_ternary_prob(0.5, &mut source_xs);
-    let sk_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk);
+    let sk_exec: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
 
     ct_ggsw_rhs.encrypt_sk(
         module,
@@ -110,8 +110,7 @@ pub fn test_ggsw_external_product<B: Backend>(
         scratch.borrow(),
     );
 
-    let mut ct_rhs_exec: GGSWCiphertextExec<Vec<u8>, B> = GGSWCiphertextExec::alloc(module, n, basek, k_ggsw, rows, digits, rank);
-    ct_rhs_exec.prepare(module, &ct_ggsw_rhs, scratch.borrow());
+    let ct_rhs_exec: GGSWCiphertextPrepared<Vec<u8>, B> = ct_ggsw_rhs.prepare_alloc(module, scratch.borrow());
 
     ct_ggsw_lhs_out.external_product(module, &ct_ggsw_lhs_in, &ct_rhs_exec, scratch.borrow());
 
@@ -205,7 +204,7 @@ pub fn test_ggsw_external_product_inplace<B: Backend>(
 
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
     sk.fill_ternary_prob(0.5, &mut source_xs);
-    let sk_exec: GLWESecretExec<Vec<u8>, B> = GLWESecretExec::from(module, &sk);
+    let sk_exec: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
 
     ct_ggsw_rhs.encrypt_sk(
         module,
@@ -227,8 +226,7 @@ pub fn test_ggsw_external_product_inplace<B: Backend>(
         scratch.borrow(),
     );
 
-    let mut ct_rhs_exec: GGSWCiphertextExec<Vec<u8>, B> = GGSWCiphertextExec::alloc(module, n, basek, k_ggsw, rows, digits, rank);
-    ct_rhs_exec.prepare(module, &ct_ggsw_rhs, scratch.borrow());
+    let ct_rhs_exec: GGSWCiphertextPrepared<Vec<u8>, B> = ct_ggsw_rhs.prepare_alloc(module, scratch.borrow());
 
     ct_ggsw_lhs.external_product_inplace(module, &ct_rhs_exec, scratch.borrow());
 
