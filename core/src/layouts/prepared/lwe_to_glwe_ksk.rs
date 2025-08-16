@@ -1,5 +1,5 @@
 use backend::hal::{
-    api::{VmpPMatAlloc, VmpPMatAllocBytes, VmpPMatPrepare},
+    api::{VmpPMatAlloc, VmpPMatAllocBytes, VmpPrepare},
     layouts::{Backend, Data, DataMut, DataRef, Module, Scratch, VmpPMat},
 };
 
@@ -66,7 +66,7 @@ impl<B: Backend> LWEToGLWESwitchingKeyPrepared<Vec<u8>, B> {
 
 impl<D: DataRef, B: Backend> PrepareAlloc<B, LWEToGLWESwitchingKeyPrepared<Vec<u8>, B>> for LWEToGLWESwitchingKey<D>
 where
-    Module<B>: VmpPMatPrepare<B> + VmpPMatAlloc<B>,
+    Module<B>: VmpPrepare<B> + VmpPMatAlloc<B>,
 {
     fn prepare_alloc(&self, module: &Module<B>, scratch: &mut Scratch<B>) -> LWEToGLWESwitchingKeyPrepared<Vec<u8>, B> {
         let mut ksk_prepared: LWEToGLWESwitchingKeyPrepared<Vec<u8>, B> = LWEToGLWESwitchingKeyPrepared::alloc(
@@ -84,7 +84,7 @@ where
 
 impl<DM: DataMut, DR: DataRef, B: Backend> Prepare<B, LWEToGLWESwitchingKey<DR>> for LWEToGLWESwitchingKeyPrepared<DM, B>
 where
-    Module<B>: VmpPMatPrepare<B>,
+    Module<B>: VmpPrepare<B>,
 {
     fn prepare(&mut self, module: &Module<B>, other: &LWEToGLWESwitchingKey<DR>, scratch: &mut Scratch<B>) {
         self.0.prepare(module, &other.0, scratch);

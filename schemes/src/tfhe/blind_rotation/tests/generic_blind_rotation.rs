@@ -1,7 +1,12 @@
 use backend::hal::{
     api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxFillUniform, VecZnxRotateInplace,
-        VecZnxSub, VecZnxSwithcDegree, VmpPMatAlloc, VmpPMatPrepare, ZnxView,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApply, SvpApplyInplace, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare,
+        VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace,
+        VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftAdd, VecZnxDftAddInplace,
+        VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftSubABInplace, VecZnxDftToVecZnxBig, VecZnxDftToVecZnxBigConsume,
+        VecZnxDftToVecZnxBigTmpBytes, VecZnxDftZero, VecZnxFillUniform, VecZnxMulXpMinusOneInplace, VecZnxNormalize,
+        VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace, VecZnxSub, VecZnxSubABInplace,
+        VecZnxSwithcDegree, VmpApply, VmpApplyAdd, VmpApplyTmpBytes, VmpPMatAlloc, VmpPrepare, ZnxView,
     },
     layouts::{Backend, Module, ScratchOwned},
     oep::{
@@ -12,23 +17,45 @@ use backend::hal::{
 use sampling::source::Source;
 
 use crate::tfhe::blind_rotation::{
-    BlincRotationExecute, BlindRotationKey, BlindRotationKeyAlloc, BlindRotationKeyEncryptSk, BlindRotationKeyPrepared,
-    CCGIBlindRotationFamily, CGGI, LookUpTable, cggi_blind_rotate_scratch_space, mod_switch_2n,
+    BlincRotationExecute, BlindRotationKey, BlindRotationKeyAlloc, BlindRotationKeyEncryptSk, BlindRotationKeyPrepared, CGGI,
+    LookUpTable, cggi_blind_rotate_scratch_space, mod_switch_2n,
 };
 
-use core::{
-    layouts::{
-        GLWECiphertext, GLWEPlaintext, GLWESecret, Infos, LWECiphertext, LWECiphertextToRef, LWEPlaintext, LWESecret,
-        prepared::{GLWESecretPrepared, PrepareAlloc},
-    },
-    trait_families::{GLWEDecryptFamily, GLWESecretPreparedModuleFamily},
+use core::layouts::{
+    GLWECiphertext, GLWEPlaintext, GLWESecret, Infos, LWECiphertext, LWECiphertextToRef, LWEPlaintext, LWESecret,
+    prepared::{GLWESecretPrepared, PrepareAlloc},
 };
 
 pub fn test_blind_rotation<B: Backend>(module: &Module<B>, n_lwe: usize, block_size: usize, extension_factor: usize)
 where
-    Module<B>: CCGIBlindRotationFamily<B>
-        + GLWESecretPreparedModuleFamily<B>
-        + GLWEDecryptFamily<B>
+    Module<B>: VecZnxBigAllocBytes
+        + VecZnxDftAllocBytes
+        + SvpPPolAllocBytes
+        + VmpApplyTmpBytes
+        + VecZnxBigNormalizeTmpBytes
+        + VecZnxDftToVecZnxBigTmpBytes
+        + VecZnxDftToVecZnxBig<B>
+        + VecZnxDftAdd<B>
+        + VecZnxDftAddInplace<B>
+        + VecZnxDftFromVecZnx<B>
+        + VecZnxDftZero<B>
+        + SvpApply<B>
+        + VecZnxDftSubABInplace<B>
+        + VecZnxBigAddSmallInplace<B>
+        + VecZnxRotate
+        + VecZnxAddInplace
+        + VecZnxSubABInplace
+        + VecZnxNormalize<B>
+        + VecZnxNormalizeInplace<B>
+        + VecZnxCopy
+        + VecZnxMulXpMinusOneInplace
+        + SvpPrepare<B>
+        + SvpPPolAlloc<B>
+        + SvpApplyInplace<B>
+        + VecZnxDftToVecZnxBigConsume<B>
+        + VecZnxBigAddInplace<B>
+        + VecZnxBigNormalize<B>
+        + VecZnxNormalizeTmpBytes
         + VecZnxFillUniform
         + VecZnxAddNormal
         + VecZnxAddScalarInplace
@@ -36,7 +63,9 @@ where
         + VecZnxSwithcDegree
         + VecZnxSub
         + VmpPMatAlloc<B>
-        + VmpPMatPrepare<B>,
+        + VmpPrepare<B>
+        + VmpApply<B>
+        + VmpApplyAdd<B>,
     B: VecZnxDftAllocBytesImpl<B>
         + VecZnxBigAllocBytesImpl<B>
         + ScratchOwnedAllocImpl<B>

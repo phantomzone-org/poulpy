@@ -3,11 +3,12 @@ use backend::hal::{
     layouts::{Backend, Data, DataMut, DataRef, MatZnx, Module, ReaderFrom, WriterTo},
 };
 
-use crate::layouts::{GGLWETensorKey, Infos, compressed::GGLWESwitchingKeyCompressed};
+use crate::layouts::{
+    GGLWETensorKey, Infos,
+    compressed::{Decompress, GGLWESwitchingKeyCompressed},
+};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::fmt;
-
-use crate::trait_families::Decompress;
 
 #[derive(PartialEq, Eq, Clone)]
 pub struct GGLWETensorKeyCompressed<D: Data> {

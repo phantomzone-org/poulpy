@@ -1,13 +1,14 @@
 use backend::hal::{
-    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxSubScalarInplace, ZnxZero},
+    api::{
+        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace,
+        VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume,
+        VecZnxNormalizeTmpBytes, VecZnxSubScalarInplace, ZnxZero,
+    },
     layouts::{Backend, DataRef, Module, ScalarZnx, ScratchOwned},
     oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeVecZnxBigImpl, TakeVecZnxDftImpl},
 };
 
-use crate::{
-    layouts::{GGLWECiphertext, GLWECiphertext, GLWEPlaintext, Infos, prepared::GLWESecretPrepared},
-    trait_families::GLWEDecryptFamily,
-};
+use crate::layouts::{GGLWECiphertext, GLWECiphertext, GLWEPlaintext, Infos, prepared::GLWESecretPrepared};
 
 impl<D: DataRef> GGLWECiphertext<D> {
     pub fn assert_noise<B: Backend, DataSk, DataWant>(
@@ -19,7 +20,16 @@ impl<D: DataRef> GGLWECiphertext<D> {
     ) where
         DataSk: DataRef,
         DataWant: DataRef,
-        Module<B>: GLWEDecryptFamily<B> + VecZnxSubScalarInplace,
+        Module<B>: VecZnxDftAllocBytes
+            + VecZnxBigAllocBytes
+            + VecZnxDftFromVecZnx<B>
+            + SvpApplyInplace<B>
+            + VecZnxDftToVecZnxBigConsume<B>
+            + VecZnxBigAddInplace<B>
+            + VecZnxBigAddSmallInplace<B>
+            + VecZnxBigNormalize<B>
+            + VecZnxNormalizeTmpBytes
+            + VecZnxSubScalarInplace,
         B: TakeVecZnxDftImpl<B> + TakeVecZnxBigImpl<B> + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
     {
         let digits: usize = self.digits();

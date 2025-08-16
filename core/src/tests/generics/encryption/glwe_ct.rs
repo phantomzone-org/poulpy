@@ -1,5 +1,11 @@
 use backend::hal::{
-    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxCopy, VecZnxDftAlloc, VecZnxFillUniform, VecZnxSubABInplace},
+    api::{
+        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApply, SvpApplyInplace, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare,
+        VecZnxAddInplace, VecZnxAddNormal, VecZnxBigAddInplace, VecZnxBigAddNormal, VecZnxBigAddSmallInplace,
+        VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxCopy, VecZnxDftAlloc, VecZnxDftAllocBytes, VecZnxDftFromVecZnx,
+        VecZnxDftToVecZnxBigConsume, VecZnxFillUniform, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes,
+        VecZnxSub, VecZnxSubABInplace,
+    },
     layouts::{Backend, Module, ScratchOwned},
     oep::{
         ScratchAvailableImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeScalarZnxImpl, TakeSvpPPolImpl,
@@ -11,21 +17,49 @@ use sampling::source::Source;
 use crate::{
     layouts::{
         GLWECiphertext, GLWEPlaintext, GLWEPublicKey, GLWESecret, Infos,
-        compressed::GLWECiphertextCompressed,
+        compressed::{Decompress, GLWECiphertextCompressed},
         prepared::{GLWEPublicKeyPrepared, GLWESecretPrepared, PrepareAlloc},
     },
     operations::GLWEOperations,
-    trait_families::Decompress,
 };
-
-use crate::trait_families::{GLWEDecryptFamily, GLWEEncryptPkFamily, GLWEEncryptSkFamily, GLWESecretPreparedModuleFamily};
-
-pub trait EncryptionTestModuleFamily<B: Backend> =
-    GLWEDecryptFamily<B> + GLWESecretPreparedModuleFamily<B> + GLWEEncryptPkFamily<B>;
 
 pub fn test_glwe_encrypt_sk<B: Backend>(module: &Module<B>, basek: usize, k_ct: usize, k_pt: usize, sigma: f64, rank: usize)
 where
-    Module<B>: EncryptionTestModuleFamily<B> + GLWEEncryptSkFamily<B>,
+    Module<B>: VecZnxDftAllocBytes
+        + VecZnxBigAllocBytes
+        + VecZnxDftFromVecZnx<B>
+        + SvpApplyInplace<B>
+        + VecZnxDftToVecZnxBigConsume<B>
+        + VecZnxBigAddInplace<B>
+        + VecZnxBigAddSmallInplace<B>
+        + VecZnxBigNormalize<B>
+        + VecZnxNormalizeTmpBytes
+        + SvpPrepare<B>
+        + SvpPPolAllocBytes
+        + SvpPPolAlloc<B>
+        + VecZnxDftAllocBytes
+        + VecZnxBigAllocBytes
+        + SvpPPolAllocBytes
+        + SvpPrepare<B>
+        + SvpApply<B>
+        + VecZnxDftToVecZnxBigConsume<B>
+        + VecZnxBigAddNormal<B>
+        + VecZnxBigAddSmallInplace<B>
+        + VecZnxBigNormalize<B>
+        + VecZnxNormalizeTmpBytes
+        + VecZnxDftAllocBytes
+        + VecZnxBigNormalize<B>
+        + VecZnxDftFromVecZnx<B>
+        + SvpApplyInplace<B>
+        + VecZnxDftToVecZnxBigConsume<B>
+        + VecZnxNormalizeTmpBytes
+        + VecZnxFillUniform
+        + VecZnxSubABInplace
+        + VecZnxAddInplace
+        + VecZnxNormalizeInplace<B>
+        + VecZnxAddNormal
+        + VecZnxNormalize<B>
+        + VecZnxSub,
     B: TakeVecZnxDftImpl<B>
         + TakeVecZnxBigImpl<B>
         + TakeSvpPPolImpl<B>
@@ -83,7 +117,42 @@ pub fn test_glwe_compressed_encrypt_sk<B: Backend>(
     sigma: f64,
     rank: usize,
 ) where
-    Module<B>: EncryptionTestModuleFamily<B> + GLWEEncryptSkFamily<B> + VecZnxCopy,
+    Module<B>: VecZnxDftAllocBytes
+        + VecZnxBigAllocBytes
+        + VecZnxDftFromVecZnx<B>
+        + SvpApplyInplace<B>
+        + VecZnxDftToVecZnxBigConsume<B>
+        + VecZnxBigAddInplace<B>
+        + VecZnxBigAddSmallInplace<B>
+        + VecZnxBigNormalize<B>
+        + VecZnxNormalizeTmpBytes
+        + SvpPrepare<B>
+        + SvpPPolAllocBytes
+        + SvpPPolAlloc<B>
+        + VecZnxDftAllocBytes
+        + VecZnxBigAllocBytes
+        + SvpPPolAllocBytes
+        + SvpPrepare<B>
+        + SvpApply<B>
+        + VecZnxDftToVecZnxBigConsume<B>
+        + VecZnxBigAddNormal<B>
+        + VecZnxBigAddSmallInplace<B>
+        + VecZnxBigNormalize<B>
+        + VecZnxNormalizeTmpBytes
+        + VecZnxDftAllocBytes
+        + VecZnxBigNormalize<B>
+        + VecZnxDftFromVecZnx<B>
+        + SvpApplyInplace<B>
+        + VecZnxDftToVecZnxBigConsume<B>
+        + VecZnxNormalizeTmpBytes
+        + VecZnxFillUniform
+        + VecZnxSubABInplace
+        + VecZnxAddInplace
+        + VecZnxNormalizeInplace<B>
+        + VecZnxAddNormal
+        + VecZnxNormalize<B>
+        + VecZnxSub
+        + VecZnxCopy,
     B: TakeVecZnxDftImpl<B>
         + TakeVecZnxBigImpl<B>
         + TakeSvpPPolImpl<B>
@@ -146,7 +215,41 @@ pub fn test_glwe_compressed_encrypt_sk<B: Backend>(
 
 pub fn test_glwe_encrypt_zero_sk<B: Backend>(module: &Module<B>, basek: usize, k_ct: usize, sigma: f64, rank: usize)
 where
-    Module<B>: EncryptionTestModuleFamily<B> + GLWEEncryptSkFamily<B>,
+    Module<B>: VecZnxDftAllocBytes
+        + VecZnxBigAllocBytes
+        + VecZnxDftFromVecZnx<B>
+        + SvpApplyInplace<B>
+        + VecZnxDftToVecZnxBigConsume<B>
+        + VecZnxBigAddInplace<B>
+        + VecZnxBigAddSmallInplace<B>
+        + VecZnxBigNormalize<B>
+        + VecZnxNormalizeTmpBytes
+        + SvpPrepare<B>
+        + SvpPPolAllocBytes
+        + SvpPPolAlloc<B>
+        + VecZnxDftAllocBytes
+        + VecZnxBigAllocBytes
+        + SvpPPolAllocBytes
+        + SvpPrepare<B>
+        + SvpApply<B>
+        + VecZnxDftToVecZnxBigConsume<B>
+        + VecZnxBigAddNormal<B>
+        + VecZnxBigAddSmallInplace<B>
+        + VecZnxBigNormalize<B>
+        + VecZnxNormalizeTmpBytes
+        + VecZnxDftAllocBytes
+        + VecZnxBigNormalize<B>
+        + VecZnxDftFromVecZnx<B>
+        + SvpApplyInplace<B>
+        + VecZnxDftToVecZnxBigConsume<B>
+        + VecZnxNormalizeTmpBytes
+        + VecZnxFillUniform
+        + VecZnxSubABInplace
+        + VecZnxAddInplace
+        + VecZnxNormalizeInplace<B>
+        + VecZnxAddNormal
+        + VecZnxNormalize<B>
+        + VecZnxSub,
     B: TakeVecZnxDftImpl<B>
         + TakeVecZnxBigImpl<B>
         + TakeSvpPPolImpl<B>
@@ -189,8 +292,29 @@ where
 
 pub fn test_glwe_encrypt_pk<B: Backend>(module: &Module<B>, basek: usize, k_ct: usize, k_pk: usize, sigma: f64, rank: usize)
 where
-    Module<B>:
-        EncryptionTestModuleFamily<B> + GLWEEncryptSkFamily<B> + VecZnxDftAlloc<B> + VecZnxFillUniform + VecZnxSubABInplace,
+    Module<B>: VecZnxDftAllocBytes
+        + VecZnxBigNormalize<B>
+        + VecZnxDftFromVecZnx<B>
+        + SvpApplyInplace<B>
+        + VecZnxDftToVecZnxBigConsume<B>
+        + VecZnxNormalizeTmpBytes
+        + VecZnxFillUniform
+        + VecZnxSubABInplace
+        + VecZnxAddInplace
+        + VecZnxNormalizeInplace<B>
+        + VecZnxAddNormal
+        + VecZnxNormalize<B>
+        + VecZnxSub
+        + SvpPrepare<B>
+        + SvpPPolAllocBytes
+        + SvpPPolAlloc<B>
+        + VecZnxBigAddSmallInplace<B>
+        + VecZnxBigAllocBytes
+        + VecZnxBigAddInplace<B>
+        + VecZnxCopy
+        + VecZnxDftAlloc<B>
+        + SvpApply<B>
+        + VecZnxBigAddNormal<B>,
     B: TakeVecZnxDftImpl<B>
         + TakeVecZnxBigImpl<B>
         + TakeSvpPPolImpl<B>

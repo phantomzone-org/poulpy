@@ -1,7 +1,11 @@
 use backend::hal::{
     api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxCopy, VecZnxRotateInplace, VecZnxSubScalarInplace,
-        VecZnxSwithcDegree, VmpPMatAlloc, VmpPMatPrepare, ZnxViewMut,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyInplace, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare, VecZnxAddInplace,
+        VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigAllocBytes,
+        VecZnxBigNormalize, VecZnxCopy, VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume, VecZnxFillUniform,
+        VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotateInplace, VecZnxSub, VecZnxSubABInplace,
+        VecZnxSubScalarInplace, VecZnxSwithcDegree, VmpApply, VmpApplyAdd, VmpApplyTmpBytes, VmpPMatAlloc, VmpPrepare,
+        ZnxViewMut,
     },
     layouts::{Backend, Module, ScalarZnx, ScalarZnxToMut, ScratchOwned},
     oep::{
@@ -17,10 +21,7 @@ use crate::{
         prepared::{GGSWCiphertextPrepared, GLWESecretPrepared, PrepareAlloc},
     },
     noise::noise_ggsw_product,
-    trait_families::{GLWEDecryptFamily, GLWEExternalProductFamily},
 };
-
-use crate::trait_families::{GGLWEEncryptSkFamily, GGLWESwitchingKeyEncryptSkFamily, GLWESecretPreparedModuleFamily};
 
 pub fn test_gglwe_switching_key_external_product<B: Backend>(
     module: &Module<B>,
@@ -33,22 +34,37 @@ pub fn test_gglwe_switching_key_external_product<B: Backend>(
     rank_out: usize,
     sigma: f64,
 ) where
-    Module<B>: GGLWEEncryptSkFamily<B>
-        + GLWESecretPreparedModuleFamily<B>
-        + GLWEDecryptFamily<B>
+    Module<B>: VecZnxDftAllocBytes
+        + VecZnxBigNormalize<B>
+        + VecZnxDftFromVecZnx<B>
+        + SvpApplyInplace<B>
+        + VecZnxDftToVecZnxBigConsume<B>
+        + VecZnxNormalizeTmpBytes
+        + VecZnxFillUniform
+        + VecZnxSubABInplace
+        + VecZnxAddInplace
+        + VecZnxNormalizeInplace<B>
+        + VecZnxAddNormal
+        + VecZnxNormalize<B>
+        + VecZnxSub
+        + SvpPrepare<B>
+        + SvpPPolAllocBytes
+        + SvpPPolAlloc<B>
+        + VecZnxBigAllocBytes
+        + VecZnxBigAddInplace<B>
+        + VecZnxBigAddSmallInplace<B>
         + VecZnxSwithcDegree
         + VecZnxAddScalarInplace
         + VecZnxSubScalarInplace
         + VecZnxCopy
         + VmpPMatAlloc<B>
-        + VmpPMatPrepare<B>
-        + GGLWESwitchingKeyEncryptSkFamily<B>
-        + GLWEExternalProductFamily<B>
-        + GLWEDecryptFamily<B>
-        + VecZnxRotateInplace,
+        + VecZnxRotateInplace
+        + VmpApplyTmpBytes
+        + VmpApply<B>
+        + VmpApplyAdd<B>
+        + VmpPrepare<B>,
     B: TakeVecZnxDftImpl<B>
         + TakeVecZnxBigImpl<B>
-        + TakeSvpPPolImpl<B>
         + ScratchOwnedAllocImpl<B>
         + ScratchOwnedBorrowImpl<B>
         + ScratchAvailableImpl<B>
@@ -159,22 +175,37 @@ pub fn test_gglwe_switching_key_external_product_inplace<B: Backend>(
     rank_out: usize,
     sigma: f64,
 ) where
-    Module<B>: GGLWEEncryptSkFamily<B>
-        + GLWESecretPreparedModuleFamily<B>
-        + GLWEDecryptFamily<B>
+    Module<B>: VecZnxDftAllocBytes
+        + VecZnxBigNormalize<B>
+        + VecZnxDftFromVecZnx<B>
+        + SvpApplyInplace<B>
+        + VecZnxDftToVecZnxBigConsume<B>
+        + VecZnxNormalizeTmpBytes
+        + VecZnxFillUniform
+        + VecZnxSubABInplace
+        + VecZnxAddInplace
+        + VecZnxNormalizeInplace<B>
+        + VecZnxAddNormal
+        + VecZnxNormalize<B>
+        + VecZnxSub
+        + SvpPrepare<B>
+        + SvpPPolAllocBytes
+        + SvpPPolAlloc<B>
+        + VecZnxBigAllocBytes
+        + VecZnxBigAddInplace<B>
+        + VecZnxBigAddSmallInplace<B>
         + VecZnxSwithcDegree
         + VecZnxAddScalarInplace
         + VecZnxSubScalarInplace
         + VecZnxCopy
         + VmpPMatAlloc<B>
-        + VmpPMatPrepare<B>
-        + GGLWESwitchingKeyEncryptSkFamily<B>
-        + GLWEExternalProductFamily<B>
-        + GLWEDecryptFamily<B>
-        + VecZnxRotateInplace,
+        + VecZnxRotateInplace
+        + VmpApplyTmpBytes
+        + VmpApply<B>
+        + VmpApplyAdd<B>
+        + VmpPrepare<B>,
     B: TakeVecZnxDftImpl<B>
         + TakeVecZnxBigImpl<B>
-        + TakeSvpPPolImpl<B>
         + ScratchOwnedAllocImpl<B>
         + ScratchOwnedBorrowImpl<B>
         + ScratchAvailableImpl<B>

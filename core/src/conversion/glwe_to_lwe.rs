@@ -1,5 +1,9 @@
 use backend::hal::{
-    api::{ScratchAvailable, TakeVecZnx, TakeVecZnxDft, ZnxView, ZnxViewMut, ZnxZero},
+    api::{
+        ScratchAvailable, TakeVecZnxDft, VecZnxBigAddSmallInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
+        VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume, VmpApply, VmpApplyAdd, VmpApplyTmpBytes, ZnxView,
+        ZnxViewMut, ZnxZero,
+    },
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
 };
 
@@ -7,8 +11,6 @@ use crate::{
     TakeGLWECt,
     layouts::{GLWECiphertext, Infos, LWECiphertext, prepared::GLWEToLWESwitchingKeyPrepared},
 };
-
-use crate::trait_families::GLWEKeyswitchFamily;
 
 impl LWECiphertext<Vec<u8>> {
     pub fn from_glwe_scratch_space<B: Backend>(
@@ -21,7 +23,7 @@ impl LWECiphertext<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: GLWEKeyswitchFamily<B>,
+        Module<B>: VecZnxDftAllocBytes + VmpApplyTmpBytes + VecZnxBigNormalizeTmpBytes,
     {
         GLWECiphertext::bytes_of(n, basek, k_lwe, 1)
             + GLWECiphertext::keyswitch_scratch_space(module, n, basek, k_lwe, k_glwe, k_ksk, 1, rank, 1)
@@ -55,8 +57,16 @@ impl<DLwe: DataMut> LWECiphertext<DLwe> {
     ) where
         DGlwe: DataRef,
         DKs: DataRef,
-        Module<B>: GLWEKeyswitchFamily<B>,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
+        Module<B>: VecZnxDftAllocBytes
+            + VmpApplyTmpBytes
+            + VecZnxBigNormalizeTmpBytes
+            + VmpApply<B>
+            + VmpApplyAdd<B>
+            + VecZnxDftFromVecZnx<B>
+            + VecZnxDftToVecZnxBigConsume<B>
+            + VecZnxBigAddSmallInplace<B>
+            + VecZnxBigNormalize<B>,
+        Scratch<B>: ScratchAvailable + TakeVecZnxDft<B> + TakeGLWECt,
     {
         #[cfg(debug_assertions)]
         {

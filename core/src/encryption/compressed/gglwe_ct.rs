@@ -1,5 +1,9 @@
 use backend::hal::{
-    api::{ScratchAvailable, TakeVecZnx, TakeVecZnxDft, VecZnxAddScalarInplace, VecZnxNormalizeInplace, ZnxZero},
+    api::{
+        ScratchAvailable, SvpApplyInplace, TakeVecZnx, TakeVecZnxDft, VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace,
+        VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume, VecZnxFillUniform,
+        VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubABInplace, ZnxZero,
+    },
     layouts::{Backend, DataMut, DataRef, Module, ScalarZnx, Scratch},
 };
 use sampling::source::Source;
@@ -10,12 +14,10 @@ use crate::{
     layouts::{GGLWECiphertext, Infos, compressed::GGLWECiphertextCompressed, prepared::GLWESecretPrepared},
 };
 
-use crate::trait_families::{GGLWEEncryptSkFamily, GGLWESwitchingKeyEncryptSkFamily};
-
 impl GGLWECiphertextCompressed<Vec<u8>> {
     pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, n: usize, basek: usize, k: usize) -> usize
     where
-        Module<B>: GGLWESwitchingKeyEncryptSkFamily<B>,
+        Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes + VecZnxNormalizeTmpBytes,
     {
         GGLWECiphertext::encrypt_sk_scratch_space(module, n, basek, k)
     }
@@ -32,7 +34,20 @@ impl<D: DataMut> GGLWECiphertextCompressed<D> {
         sigma: f64,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: GGLWEEncryptSkFamily<B> + VecZnxAddScalarInplace,
+        Module<B>: VecZnxAddScalarInplace
+            + VecZnxDftAllocBytes
+            + VecZnxBigNormalize<B>
+            + VecZnxDftFromVecZnx<B>
+            + SvpApplyInplace<B>
+            + VecZnxDftToVecZnxBigConsume<B>
+            + VecZnxNormalizeTmpBytes
+            + VecZnxFillUniform
+            + VecZnxSubABInplace
+            + VecZnxAddInplace
+            + VecZnxNormalizeInplace<B>
+            + VecZnxAddNormal
+            + VecZnxNormalize<B>
+            + VecZnxSub,
         Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
     {
         #[cfg(debug_assertions)]

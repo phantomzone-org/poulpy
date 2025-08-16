@@ -1,5 +1,9 @@
 use backend::hal::{
-    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxNormalizeInplace, VecZnxSubABInplace},
+    api::{
+        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace,
+        VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume,
+        VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSubABInplace,
+    },
     layouts::{Backend, DataRef, Module, ScratchOwned},
     oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeVecZnxBigImpl, TakeVecZnxDftImpl},
 };
@@ -8,7 +12,6 @@ use crate::{
     layouts::GLWEPlaintext,
     layouts::prepared::GLWESecretPrepared,
     layouts::{GLWECiphertext, Infos},
-    trait_families::GLWEDecryptFamily,
 };
 
 impl<D: DataRef> GLWECiphertext<D> {
@@ -21,7 +24,17 @@ impl<D: DataRef> GLWECiphertext<D> {
     ) where
         DataSk: DataRef,
         DataPt: DataRef,
-        Module<B>: GLWEDecryptFamily<B> + VecZnxSubABInplace + VecZnxNormalizeInplace<B>,
+        Module<B>: VecZnxDftAllocBytes
+            + VecZnxBigAllocBytes
+            + VecZnxDftFromVecZnx<B>
+            + SvpApplyInplace<B>
+            + VecZnxDftToVecZnxBigConsume<B>
+            + VecZnxBigAddInplace<B>
+            + VecZnxBigAddSmallInplace<B>
+            + VecZnxBigNormalize<B>
+            + VecZnxNormalizeTmpBytes
+            + VecZnxSubABInplace
+            + VecZnxNormalizeInplace<B>,
         B: TakeVecZnxDftImpl<B> + TakeVecZnxBigImpl<B> + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
     {
         let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(self.n(), self.basek(), self.k());

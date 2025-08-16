@@ -1,12 +1,17 @@
 use backend::hal::{
-    api::{FillUniform, Reset},
+    api::{
+        FillUniform, Reset, SvpApplyInplace, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare, VecZnxAddInplace, VecZnxAddNormal,
+        VecZnxBigNormalize, VecZnxCopy, VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume, VecZnxFillUniform,
+        VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubABInplace,
+    },
     layouts::{Backend, Data, DataMut, DataRef, MatZnx, Module, ReaderFrom, WriterTo},
 };
 
-use crate::layouts::{Infos, LWESwitchingKey, compressed::GGLWESwitchingKeyCompressed};
+use crate::layouts::{
+    Infos, LWESwitchingKey,
+    compressed::{Decompress, GGLWESwitchingKeyCompressed},
+};
 use std::fmt;
-
-use crate::trait_families::{Decompress, GGLWEEncryptSkFamily, GLWESecretPreparedModuleFamily};
 
 #[derive(PartialEq, Eq, Clone)]
 pub struct LWESwitchingKeyCompressed<D: Data>(pub(crate) GGLWESwitchingKeyCompressed<D>);
@@ -90,7 +95,22 @@ impl LWESwitchingKeyCompressed<Vec<u8>> {
 
     pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, n: usize, basek: usize, k: usize) -> usize
     where
-        Module<B>: GGLWEEncryptSkFamily<B> + GLWESecretPreparedModuleFamily<B>,
+        Module<B>: VecZnxDftAllocBytes
+            + VecZnxBigNormalize<B>
+            + VecZnxDftFromVecZnx<B>
+            + SvpApplyInplace<B>
+            + VecZnxDftToVecZnxBigConsume<B>
+            + VecZnxNormalizeTmpBytes
+            + VecZnxFillUniform
+            + VecZnxSubABInplace
+            + VecZnxAddInplace
+            + VecZnxNormalizeInplace<B>
+            + VecZnxAddNormal
+            + VecZnxNormalize<B>
+            + VecZnxSub
+            + SvpPrepare<B>
+            + SvpPPolAllocBytes
+            + SvpPPolAlloc<B>,
     {
         LWESwitchingKey::encrypt_sk_scratch_space(module, n, basek, k)
     }
@@ -99,7 +119,7 @@ impl LWESwitchingKeyCompressed<Vec<u8>> {
 impl<D: DataMut, DR: DataRef, B: Backend> Decompress<B, LWESwitchingKeyCompressed<DR>> for LWESwitchingKey<D> {
     fn decompress(&mut self, module: &Module<B>, other: &LWESwitchingKeyCompressed<DR>)
     where
-        Module<B>: crate::trait_families::DecompressFamily<B>,
+        Module<B>: VecZnxCopy + VecZnxFillUniform,
     {
         self.0.decompress(module, &other.0);
     }

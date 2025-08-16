@@ -1,7 +1,8 @@
 use backend::hal::{
     api::{
-        ScratchAvailable, TakeVecZnx, TakeVecZnxDft, VecZnxAddScalarInplace, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes,
-        ZnxZero,
+        ScratchAvailable, SvpApplyInplace, TakeVecZnx, TakeVecZnxDft, VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace,
+        VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume, VecZnxFillUniform,
+        VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubABInplace, ZnxZero,
     },
     layouts::{Backend, DataMut, DataRef, Module, ScalarZnx, Scratch},
 };
@@ -12,12 +13,10 @@ use crate::{
     layouts::{GGLWECiphertext, GLWECiphertext, GLWEPlaintext, Infos, prepared::GLWESecretPrepared},
 };
 
-use crate::trait_families::GGLWEEncryptSkFamily;
-
 impl GGLWECiphertext<Vec<u8>> {
     pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, n: usize, basek: usize, k: usize) -> usize
     where
-        Module<B>: GGLWEEncryptSkFamily<B>,
+        Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes + VecZnxNormalizeTmpBytes,
     {
         GLWECiphertext::encrypt_sk_scratch_space(module, n, basek, k)
             + (GLWEPlaintext::byte_of(n, basek, k) | module.vec_znx_normalize_tmp_bytes(n))
@@ -39,7 +38,20 @@ impl<DataSelf: DataMut> GGLWECiphertext<DataSelf> {
         sigma: f64,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: GGLWEEncryptSkFamily<B> + VecZnxAddScalarInplace,
+        Module<B>: VecZnxAddScalarInplace
+            + VecZnxDftAllocBytes
+            + VecZnxBigNormalize<B>
+            + VecZnxDftFromVecZnx<B>
+            + SvpApplyInplace<B>
+            + VecZnxDftToVecZnxBigConsume<B>
+            + VecZnxNormalizeTmpBytes
+            + VecZnxFillUniform
+            + VecZnxSubABInplace
+            + VecZnxAddInplace
+            + VecZnxNormalizeInplace<B>
+            + VecZnxAddNormal
+            + VecZnxNormalize<B>
+            + VecZnxSub,
         Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
     {
         #[cfg(debug_assertions)]

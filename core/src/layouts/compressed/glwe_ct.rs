@@ -4,10 +4,7 @@ use backend::hal::{
 };
 use sampling::source::Source;
 
-use crate::{
-    layouts::{GLWECiphertext, Infos},
-    trait_families::{Decompress, DecompressFamily},
-};
+use crate::layouts::{GLWECiphertext, Infos, compressed::Decompress};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::fmt;
 
@@ -117,7 +114,7 @@ impl<D: DataRef> WriterTo for GLWECiphertextCompressed<D> {
 impl<D: DataMut, B: Backend, DR: DataRef> Decompress<B, GLWECiphertextCompressed<DR>> for GLWECiphertext<D> {
     fn decompress(&mut self, module: &Module<B>, other: &GLWECiphertextCompressed<DR>)
     where
-        Module<B>: DecompressFamily<B>,
+        Module<B>: VecZnxCopy + VecZnxFillUniform,
     {
         #[cfg(debug_assertions)]
         {
@@ -159,7 +156,7 @@ impl<D: DataMut> GLWECiphertext<D> {
         source: &mut Source,
     ) where
         DataOther: DataRef,
-        Module<B>: DecompressFamily<B>,
+        Module<B>: VecZnxCopy + VecZnxFillUniform,
     {
         #[cfg(debug_assertions)]
         {

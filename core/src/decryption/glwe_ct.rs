@@ -6,15 +6,12 @@ use backend::hal::{
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
 };
 
-use crate::{
-    layouts::{GLWECiphertext, GLWEPlaintext, Infos, prepared::GLWESecretPrepared},
-    trait_families::GLWEDecryptFamily,
-};
+use crate::layouts::{GLWECiphertext, GLWEPlaintext, Infos, prepared::GLWESecretPrepared};
 
 impl GLWECiphertext<Vec<u8>> {
     pub fn decrypt_scratch_space<B: Backend>(module: &Module<B>, n: usize, basek: usize, k: usize) -> usize
     where
-        Module<B>: GLWEDecryptFamily<B>,
+        Module<B>: VecZnxDftAllocBytes + VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes,
     {
         let size: usize = k.div_ceil(basek);
         (module.vec_znx_normalize_tmp_bytes(n) | module.vec_znx_dft_alloc_bytes(n, 1, size))
@@ -30,7 +27,12 @@ impl<DataSelf: DataRef> GLWECiphertext<DataSelf> {
         sk: &GLWESecretPrepared<DataSk, B>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: GLWEDecryptFamily<B>,
+        Module<B>: VecZnxDftFromVecZnx<B>
+            + SvpApplyInplace<B>
+            + VecZnxDftToVecZnxBigConsume<B>
+            + VecZnxBigAddInplace<B>
+            + VecZnxBigAddSmallInplace<B>
+            + VecZnxBigNormalize<B>,
         Scratch<B>: TakeVecZnxDft<B> + TakeVecZnxBig<B>,
     {
         #[cfg(debug_assertions)]

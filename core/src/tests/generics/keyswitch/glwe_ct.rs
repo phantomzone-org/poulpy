@@ -1,7 +1,10 @@
 use backend::hal::{
     api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxFillUniform, VecZnxSwithcDegree, VmpPMatAlloc,
-        VmpPMatPrepare,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyInplace, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare, VecZnxAddInplace,
+        VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigAllocBytes,
+        VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume,
+        VecZnxFillUniform, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubABInplace,
+        VecZnxSwithcDegree, VmpApply, VmpApplyAdd, VmpApplyTmpBytes, VmpPMatAlloc, VmpPrepare,
     },
     layouts::{Backend, Module, ScratchOwned},
     oep::{
@@ -17,10 +20,7 @@ use crate::{
         prepared::{GGLWESwitchingKeyPrepared, GLWESecretPrepared, PrepareAlloc},
     },
     noise::log2_std_noise_gglwe_product,
-    trait_families::{GLWEDecryptFamily, GLWEKeyswitchFamily},
 };
-
-use crate::trait_families::{GGLWESwitchingKeyEncryptSkFamily, GLWESecretPreparedModuleFamily};
 
 pub fn test_glwe_keyswitch<B: Backend>(
     module: &Module<B>,
@@ -33,14 +33,33 @@ pub fn test_glwe_keyswitch<B: Backend>(
     rank_out: usize,
     sigma: f64,
 ) where
-    Module<B>: GGLWESwitchingKeyEncryptSkFamily<B>
-        + GLWESecretPreparedModuleFamily<B>
-        + GLWEKeyswitchFamily<B>
-        + GLWEDecryptFamily<B>
-        + VecZnxSwithcDegree
+    Module<B>: VecZnxDftAllocBytes
+        + VecZnxBigNormalize<B>
+        + VecZnxDftFromVecZnx<B>
+        + SvpApplyInplace<B>
+        + VecZnxDftToVecZnxBigConsume<B>
+        + VecZnxFillUniform
+        + VecZnxSubABInplace
+        + VecZnxAddInplace
+        + VecZnxNormalizeInplace<B>
+        + VecZnxAddNormal
+        + VecZnxNormalize<B>
+        + VecZnxSub
+        + SvpPrepare<B>
+        + SvpPPolAllocBytes
+        + SvpPPolAlloc<B>
+        + VecZnxBigAllocBytes
+        + VecZnxBigAddInplace<B>
+        + VecZnxBigAddSmallInplace<B>
+        + VecZnxNormalizeTmpBytes
         + VecZnxAddScalarInplace
         + VmpPMatAlloc<B>
-        + VmpPMatPrepare<B>,
+        + VmpPrepare<B>
+        + VmpApplyTmpBytes
+        + VmpApply<B>
+        + VmpApplyAdd<B>
+        + VecZnxBigNormalizeTmpBytes
+        + VecZnxSwithcDegree,
     B: TakeVecZnxDftImpl<B>
         + TakeVecZnxBigImpl<B>
         + TakeSvpPPolImpl<B>
@@ -137,14 +156,33 @@ pub fn test_glwe_keyswitch_inplace<B: Backend>(
     rank: usize,
     sigma: f64,
 ) where
-    Module<B>: GGLWESwitchingKeyEncryptSkFamily<B>
-        + GLWESecretPreparedModuleFamily<B>
-        + GLWEKeyswitchFamily<B>
-        + GLWEDecryptFamily<B>
-        + VecZnxSwithcDegree
+    Module<B>: VecZnxDftAllocBytes
+        + VecZnxBigNormalize<B>
+        + VecZnxDftFromVecZnx<B>
+        + SvpApplyInplace<B>
+        + VecZnxDftToVecZnxBigConsume<B>
+        + VecZnxFillUniform
+        + VecZnxSubABInplace
+        + VecZnxAddInplace
+        + VecZnxNormalizeInplace<B>
+        + VecZnxAddNormal
+        + VecZnxNormalize<B>
+        + VecZnxSub
+        + SvpPrepare<B>
+        + SvpPPolAllocBytes
+        + SvpPPolAlloc<B>
+        + VecZnxBigAllocBytes
+        + VecZnxBigAddInplace<B>
+        + VecZnxBigAddSmallInplace<B>
+        + VecZnxNormalizeTmpBytes
         + VecZnxAddScalarInplace
         + VmpPMatAlloc<B>
-        + VmpPMatPrepare<B>,
+        + VmpPrepare<B>
+        + VmpApplyTmpBytes
+        + VmpApply<B>
+        + VmpApplyAdd<B>
+        + VecZnxBigNormalizeTmpBytes
+        + VecZnxSwithcDegree,
     B: TakeVecZnxDftImpl<B>
         + TakeVecZnxBigImpl<B>
         + TakeSvpPPolImpl<B>

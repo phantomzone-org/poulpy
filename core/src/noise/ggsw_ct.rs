@@ -1,16 +1,15 @@
 use backend::hal::{
     api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxBigAlloc, VecZnxBigNormalize, VecZnxDftAlloc,
-        VecZnxDftToVecZnxBigTmpA, VecZnxNormalizeTmpBytes, VecZnxSubABInplace, ZnxZero,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyInplace, VecZnxAddScalarInplace, VecZnxBigAddInplace,
+        VecZnxBigAddSmallInplace, VecZnxBigAlloc, VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
+        VecZnxDftAlloc, VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume, VecZnxDftToVecZnxBigTmpA,
+        VecZnxNormalizeTmpBytes, VecZnxSubABInplace, ZnxZero,
     },
     layouts::{Backend, DataRef, Module, ScalarZnx, ScratchOwned, VecZnxBig, VecZnxDft},
     oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeVecZnxBigImpl, TakeVecZnxDftImpl},
 };
 
-use crate::{
-    layouts::{GGSWCiphertext, GLWECiphertext, GLWEPlaintext, Infos, prepared::GLWESecretPrepared},
-    trait_families::GGSWAssertNoiseFamily,
-};
+use crate::layouts::{GGSWCiphertext, GLWECiphertext, GLWEPlaintext, Infos, prepared::GLWESecretPrepared};
 
 impl<D: DataRef> GGSWCiphertext<D> {
     pub fn assert_noise<B: Backend, DataSk, DataScalar, F>(
@@ -22,7 +21,21 @@ impl<D: DataRef> GGSWCiphertext<D> {
     ) where
         DataSk: DataRef,
         DataScalar: DataRef,
-        Module<B>: GGSWAssertNoiseFamily<B> + VecZnxAddScalarInplace + VecZnxSubABInplace,
+        Module<B>: VecZnxDftAllocBytes
+            + VecZnxBigAllocBytes
+            + VecZnxDftFromVecZnx<B>
+            + SvpApplyInplace<B>
+            + VecZnxDftToVecZnxBigConsume<B>
+            + VecZnxBigAddInplace<B>
+            + VecZnxBigAddSmallInplace<B>
+            + VecZnxBigNormalize<B>
+            + VecZnxNormalizeTmpBytes
+            + VecZnxBigAlloc<B>
+            + VecZnxDftAlloc<B>
+            + VecZnxBigNormalizeTmpBytes
+            + VecZnxDftToVecZnxBigTmpA<B>
+            + VecZnxAddScalarInplace
+            + VecZnxSubABInplace,
         B: TakeVecZnxDftImpl<B> + TakeVecZnxBigImpl<B> + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
         F: Fn(usize) -> f64,
     {
@@ -76,7 +89,21 @@ impl<D: DataRef> GGSWCiphertext<D> {
     ) where
         DataSk: DataRef,
         DataScalar: DataRef,
-        Module<B>: GGSWAssertNoiseFamily<B> + VecZnxAddScalarInplace + VecZnxSubABInplace,
+        Module<B>: VecZnxDftAllocBytes
+            + VecZnxBigAllocBytes
+            + VecZnxDftFromVecZnx<B>
+            + SvpApplyInplace<B>
+            + VecZnxDftToVecZnxBigConsume<B>
+            + VecZnxBigAddInplace<B>
+            + VecZnxBigAddSmallInplace<B>
+            + VecZnxBigNormalize<B>
+            + VecZnxNormalizeTmpBytes
+            + VecZnxBigAlloc<B>
+            + VecZnxDftAlloc<B>
+            + VecZnxBigNormalizeTmpBytes
+            + VecZnxDftToVecZnxBigTmpA<B>
+            + VecZnxAddScalarInplace
+            + VecZnxSubABInplace,
         B: TakeVecZnxDftImpl<B> + TakeVecZnxBigImpl<B> + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
     {
         let basek: usize = self.basek();

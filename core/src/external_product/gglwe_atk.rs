@@ -1,12 +1,12 @@
 use backend::hal::{
-    api::{ScratchAvailable, TakeVecZnxDft},
+    api::{
+        ScratchAvailable, TakeVecZnxDft, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftFromVecZnx,
+        VecZnxDftToVecZnxBigConsume, VecZnxNormalizeTmpBytes, VmpApply, VmpApplyAdd, VmpApplyTmpBytes,
+    },
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
 };
 
-use crate::{
-    layouts::{GGLWEAutomorphismKey, GGLWESwitchingKey, prepared::GGSWCiphertextPrepared},
-    trait_families::GLWEExternalProductFamily,
-};
+use crate::layouts::{GGLWEAutomorphismKey, GGLWESwitchingKey, prepared::GGSWCiphertextPrepared};
 
 impl GGLWEAutomorphismKey<Vec<u8>> {
     pub fn external_product_scratch_space<B: Backend>(
@@ -20,7 +20,7 @@ impl GGLWEAutomorphismKey<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: GLWEExternalProductFamily<B>,
+        Module<B>: VecZnxDftAllocBytes + VmpApplyTmpBytes + VecZnxNormalizeTmpBytes,
     {
         GGLWESwitchingKey::external_product_scratch_space(module, n, basek, k_out, k_in, ggsw_k, digits, rank)
     }
@@ -35,7 +35,7 @@ impl GGLWEAutomorphismKey<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: GLWEExternalProductFamily<B>,
+        Module<B>: VecZnxDftAllocBytes + VmpApplyTmpBytes + VecZnxNormalizeTmpBytes,
     {
         GGLWESwitchingKey::external_product_inplace_scratch_space(module, n, basek, k_out, ggsw_k, digits, rank)
     }
@@ -49,7 +49,14 @@ impl<DataSelf: DataMut> GGLWEAutomorphismKey<DataSelf> {
         rhs: &GGSWCiphertextPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: GLWEExternalProductFamily<B>,
+        Module<B>: VecZnxDftAllocBytes
+            + VmpApplyTmpBytes
+            + VecZnxNormalizeTmpBytes
+            + VecZnxDftFromVecZnx<B>
+            + VmpApply<B>
+            + VmpApplyAdd<B>
+            + VecZnxDftToVecZnxBigConsume<B>
+            + VecZnxBigNormalize<B>,
         Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
     {
         self.key.external_product(module, &lhs.key, rhs, scratch);
@@ -61,7 +68,14 @@ impl<DataSelf: DataMut> GGLWEAutomorphismKey<DataSelf> {
         rhs: &GGSWCiphertextPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: GLWEExternalProductFamily<B>,
+        Module<B>: VecZnxDftAllocBytes
+            + VmpApplyTmpBytes
+            + VecZnxNormalizeTmpBytes
+            + VecZnxDftFromVecZnx<B>
+            + VmpApply<B>
+            + VmpApplyAdd<B>
+            + VecZnxDftToVecZnxBigConsume<B>
+            + VecZnxBigNormalize<B>,
         Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
     {
         self.key.external_product_inplace(module, rhs, scratch);

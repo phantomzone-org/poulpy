@@ -6,10 +6,7 @@ use backend::hal::{
     layouts::{Backend, DataMut, DataRef, Module, Scratch, VecZnx, VecZnxBig, VecZnxDft, VmpPMat},
 };
 
-use crate::{
-    layouts::{GLWECiphertext, Infos, prepared::GGLWESwitchingKeyPrepared},
-    trait_families::GLWEKeyswitchFamily,
-};
+use crate::layouts::{GLWECiphertext, Infos, prepared::GGLWESwitchingKeyPrepared};
 
 impl GLWECiphertext<Vec<u8>> {
     pub fn keyswitch_scratch_space<B: Backend>(
@@ -24,7 +21,7 @@ impl GLWECiphertext<Vec<u8>> {
         rank_out: usize,
     ) -> usize
     where
-        Module<B>: GLWEKeyswitchFamily<B>,
+        Module<B>: VecZnxDftAllocBytes + VmpApplyTmpBytes + VecZnxBigNormalizeTmpBytes,
     {
         let in_size: usize = k_in.div_ceil(basek).div_ceil(digits);
         let out_size: usize = k_out.div_ceil(basek);
@@ -54,7 +51,7 @@ impl GLWECiphertext<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: GLWEKeyswitchFamily<B>,
+        Module<B>: VecZnxDftAllocBytes + VmpApplyTmpBytes + VecZnxBigNormalizeTmpBytes,
     {
         Self::keyswitch_scratch_space(module, n, basek, k_out, k_out, k_ksk, digits, rank, rank)
     }
@@ -71,7 +68,7 @@ impl<DataSelf: DataRef> GLWECiphertext<DataSelf> {
     ) where
         DataLhs: DataRef,
         DataRhs: DataRef,
-        Module<B>: GLWEKeyswitchFamily<B>,
+        Module<B>: VecZnxDftAllocBytes + VmpApplyTmpBytes + VecZnxBigNormalizeTmpBytes,
         Scratch<B>: ScratchAvailable,
     {
         let basek: usize = self.basek();
@@ -140,8 +137,17 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         rhs: &GGLWESwitchingKeyPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: GLWEKeyswitchFamily<B>,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
+        Module<B>: VecZnxDftAllocBytes
+            + VmpApplyTmpBytes
+            + VecZnxBigNormalizeTmpBytes
+            + VmpApplyTmpBytes
+            + VmpApply<B>
+            + VmpApplyAdd<B>
+            + VecZnxDftFromVecZnx<B>
+            + VecZnxDftToVecZnxBigConsume<B>
+            + VecZnxBigAddSmallInplace<B>
+            + VecZnxBigNormalize<B>,
+        Scratch<B>: ScratchAvailable + TakeVecZnxDft<B>,
     {
         #[cfg(debug_assertions)]
         {
@@ -160,8 +166,17 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         rhs: &GGLWESwitchingKeyPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: GLWEKeyswitchFamily<B>,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
+        Module<B>: VecZnxDftAllocBytes
+            + VmpApplyTmpBytes
+            + VecZnxBigNormalizeTmpBytes
+            + VmpApplyTmpBytes
+            + VmpApply<B>
+            + VmpApplyAdd<B>
+            + VecZnxDftFromVecZnx<B>
+            + VecZnxDftToVecZnxBigConsume<B>
+            + VecZnxBigAddSmallInplace<B>
+            + VecZnxBigNormalize<B>,
+        Scratch<B>: ScratchAvailable + TakeVecZnxDft<B>,
     {
         unsafe {
             let self_ptr: *mut GLWECiphertext<DataSelf> = self as *mut GLWECiphertext<DataSelf>;
@@ -181,7 +196,16 @@ impl<D: DataRef> GLWECiphertext<D> {
     where
         DataRes: DataMut,
         DataKey: DataRef,
-        Module<B>: GLWEKeyswitchFamily<B>,
+        Module<B>: VecZnxDftAllocBytes
+            + VmpApplyTmpBytes
+            + VecZnxBigNormalizeTmpBytes
+            + VmpApplyTmpBytes
+            + VmpApply<B>
+            + VmpApplyAdd<B>
+            + VecZnxDftFromVecZnx<B>
+            + VecZnxDftToVecZnxBigConsume<B>
+            + VecZnxBigAddSmallInplace<B>
+            + VecZnxBigNormalize<B>,
         Scratch<B>: TakeVecZnxDft<B>,
     {
         if rhs.digits() == 1 {

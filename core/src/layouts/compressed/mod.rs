@@ -19,3 +19,14 @@ pub use glwe_to_lwe_ksk::*;
 pub use lwe_ct::*;
 pub use lwe_ksk::*;
 pub use lwe_to_glwe_ksk::*;
+
+use backend::hal::{
+    api::{VecZnxCopy, VecZnxFillUniform},
+    layouts::{Backend, Module},
+};
+
+pub trait Decompress<B: Backend, C> {
+    fn decompress(&mut self, module: &Module<B>, other: &C)
+    where
+        Module<B>: VecZnxFillUniform + VecZnxCopy;
+}

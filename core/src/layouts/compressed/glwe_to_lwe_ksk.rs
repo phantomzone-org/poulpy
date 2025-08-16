@@ -2,12 +2,15 @@ use std::fmt;
 
 use backend::hal::{
     api::{FillUniform, Reset},
+    api::{
+        SvpApplyInplace, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare, VecZnxAddInplace, VecZnxAddNormal, VecZnxBigNormalize,
+        VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume, VecZnxFillUniform, VecZnxNormalize,
+        VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubABInplace,
+    },
     layouts::{Backend, Data, DataMut, DataRef, MatZnx, Module, ReaderFrom, WriterTo},
 };
 
 use crate::layouts::{GLWEToLWESwitchingKey, Infos, compressed::GGLWESwitchingKeyCompressed};
-
-use crate::trait_families::{GGLWEEncryptSkFamily, GLWESecretPreparedModuleFamily};
 
 #[derive(PartialEq, Eq, Clone)]
 pub struct GLWEToLWESwitchingKeyCompressed<D: Data>(pub(crate) GGLWESwitchingKeyCompressed<D>);
@@ -91,7 +94,22 @@ impl GLWEToLWESwitchingKeyCompressed<Vec<u8>> {
 
     pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, n: usize, basek: usize, k: usize, rank_in: usize) -> usize
     where
-        Module<B>: GGLWEEncryptSkFamily<B> + GLWESecretPreparedModuleFamily<B>,
+        Module<B>: VecZnxDftAllocBytes
+            + VecZnxBigNormalize<B>
+            + VecZnxDftFromVecZnx<B>
+            + SvpApplyInplace<B>
+            + VecZnxDftToVecZnxBigConsume<B>
+            + VecZnxNormalizeTmpBytes
+            + VecZnxFillUniform
+            + VecZnxSubABInplace
+            + VecZnxAddInplace
+            + VecZnxNormalizeInplace<B>
+            + VecZnxAddNormal
+            + VecZnxNormalize<B>
+            + VecZnxSub
+            + SvpPrepare<B>
+            + SvpPPolAllocBytes
+            + SvpPPolAlloc<B>,
     {
         GLWEToLWESwitchingKey::encrypt_sk_scratch_space(module, n, basek, k, rank_in)
     }

@@ -1,4 +1,3 @@
-#![feature(trait_alias)]
 mod automorphism;
 mod conversion;
 mod decryption;
@@ -15,7 +14,6 @@ mod utils;
 
 pub use operations::*;
 pub mod layouts;
-pub mod trait_families;
 pub use dist::*;
 pub use glwe_packing::*;
 

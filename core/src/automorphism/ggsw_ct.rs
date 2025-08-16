@@ -1,14 +1,16 @@
 use backend::hal::{
-    api::{ScratchAvailable, TakeVecZnxBig, TakeVecZnxDft, VecZnxAutomorphismInplace, VecZnxNormalizeTmpBytes},
+    api::{
+        ScratchAvailable, TakeVecZnxBig, TakeVecZnxDft, VecZnxAutomorphismInplace, VecZnxBigAddSmallInplace, VecZnxBigAllocBytes,
+        VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxDftAddInplace, VecZnxDftAllocBytes, VecZnxDftCopy,
+        VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume, VecZnxDftToVecZnxBigTmpA, VecZnxNormalizeTmpBytes, VmpApply,
+        VmpApplyAdd, VmpApplyTmpBytes,
+    },
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
 };
 
-use crate::{
-    layouts::{
-        GGSWCiphertext, GLWECiphertext, Infos,
-        prepared::{GGLWEAutomorphismKeyPrepared, GGLWETensorKeyPrepared},
-    },
-    trait_families::{GGSWKeySwitchFamily, GLWEKeyswitchFamily},
+use crate::layouts::{
+    GGSWCiphertext, GLWECiphertext, Infos,
+    prepared::{GGLWEAutomorphismKeyPrepared, GGLWETensorKeyPrepared},
 };
 
 impl GGSWCiphertext<Vec<u8>> {
@@ -25,7 +27,8 @@ impl GGSWCiphertext<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: GLWEKeyswitchFamily<B> + GGSWKeySwitchFamily<B> + VecZnxNormalizeTmpBytes,
+        Module<B>:
+            VecZnxDftAllocBytes + VmpApplyTmpBytes + VecZnxBigAllocBytes + VecZnxNormalizeTmpBytes + VecZnxBigNormalizeTmpBytes,
     {
         let out_size: usize = k_out.div_ceil(basek);
         let ci_dft: usize = module.vec_znx_dft_alloc_bytes(n, rank + 1, out_size);
@@ -47,7 +50,8 @@ impl GGSWCiphertext<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: GLWEKeyswitchFamily<B> + GGSWKeySwitchFamily<B> + VecZnxNormalizeTmpBytes,
+        Module<B>:
+            VecZnxDftAllocBytes + VmpApplyTmpBytes + VecZnxBigAllocBytes + VecZnxNormalizeTmpBytes + VecZnxBigNormalizeTmpBytes,
     {
         GGSWCiphertext::automorphism_scratch_space(
             module, n, basek, k_out, k_out, k_ksk, digits_ksk, k_tsk, digits_tsk, rank,
@@ -64,8 +68,22 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
         tensor_key: &GGLWETensorKeyPrepared<DataTsk, B>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: GLWEKeyswitchFamily<B> + GGSWKeySwitchFamily<B> + VecZnxAutomorphismInplace + VecZnxNormalizeTmpBytes,
-        Scratch<B>: ScratchAvailable + TakeVecZnxDft<B> + TakeVecZnxBig<B>,
+        Module<B>: VecZnxDftAllocBytes
+            + VmpApplyTmpBytes
+            + VecZnxBigNormalizeTmpBytes
+            + VmpApply<B>
+            + VmpApplyAdd<B>
+            + VecZnxDftFromVecZnx<B>
+            + VecZnxDftToVecZnxBigConsume<B>
+            + VecZnxBigAddSmallInplace<B>
+            + VecZnxBigNormalize<B>
+            + VecZnxAutomorphismInplace
+            + VecZnxBigAllocBytes
+            + VecZnxNormalizeTmpBytes
+            + VecZnxDftCopy<B>
+            + VecZnxDftAddInplace<B>
+            + VecZnxDftToVecZnxBigTmpA<B>,
+        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnxBig<B>,
     {
         #[cfg(debug_assertions)]
         {
@@ -121,8 +139,22 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
         tensor_key: &GGLWETensorKeyPrepared<DataTsk, B>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: GLWEKeyswitchFamily<B> + GGSWKeySwitchFamily<B> + VecZnxAutomorphismInplace + VecZnxNormalizeTmpBytes,
-        Scratch<B>: ScratchAvailable + TakeVecZnxDft<B> + TakeVecZnxBig<B>,
+        Module<B>: VecZnxDftAllocBytes
+            + VmpApplyTmpBytes
+            + VecZnxBigNormalizeTmpBytes
+            + VmpApply<B>
+            + VmpApplyAdd<B>
+            + VecZnxDftFromVecZnx<B>
+            + VecZnxDftToVecZnxBigConsume<B>
+            + VecZnxBigAddSmallInplace<B>
+            + VecZnxBigNormalize<B>
+            + VecZnxAutomorphismInplace
+            + VecZnxBigAllocBytes
+            + VecZnxNormalizeTmpBytes
+            + VecZnxDftCopy<B>
+            + VecZnxDftAddInplace<B>
+            + VecZnxDftToVecZnxBigTmpA<B>,
+        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnxBig<B>,
     {
         unsafe {
             let self_ptr: *mut GGSWCiphertext<DataSelf> = self as *mut GGSWCiphertext<DataSelf>;
@@ -137,8 +169,17 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
         auto_key: &GGLWEAutomorphismKeyPrepared<DataAk, B>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: GLWEKeyswitchFamily<B> + GGSWKeySwitchFamily<B> + VecZnxAutomorphismInplace + VecZnxNormalizeTmpBytes,
-        Scratch<B>: ScratchAvailable + TakeVecZnxDft<B> + TakeVecZnxBig<B>,
+        Module<B>: VecZnxDftAllocBytes
+            + VmpApplyTmpBytes
+            + VecZnxBigNormalizeTmpBytes
+            + VmpApply<B>
+            + VmpApplyAdd<B>
+            + VecZnxDftFromVecZnx<B>
+            + VecZnxDftToVecZnxBigConsume<B>
+            + VecZnxBigAddSmallInplace<B>
+            + VecZnxBigNormalize<B>
+            + VecZnxAutomorphismInplace,
+        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
     {
         // Keyswitch the j-th row of the col 0
         (0..lhs.rows()).for_each(|row_i| {

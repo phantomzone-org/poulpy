@@ -26,7 +26,7 @@ pub trait VmpPrepareTmpBytes {
     fn vmp_prepare_tmp_bytes(&self, n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize;
 }
 
-pub trait VmpPMatPrepare<B: Backend> {
+pub trait VmpPrepare<B: Backend> {
     fn vmp_prepare<R, A>(&self, res: &mut R, a: &A, scratch: &mut Scratch<B>)
     where
         R: VmpPMatToMut<B>,

@@ -1,13 +1,15 @@
 use backend::hal::{
-    api::{ScratchOwnedAlloc, ScratchOwnedBorrow},
+    api::{
+        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyInplace, VecZnxAddInplace, VecZnxAddNormal, VecZnxBigNormalize,
+        VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume, VecZnxFillUniform, VecZnxNormalize,
+        VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubABInplace,
+    },
     layouts::{Backend, DataMut, DataRef, Module, ScratchOwned},
     oep::{ScratchAvailableImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeVecZnxDftImpl, TakeVecZnxImpl},
 };
 use sampling::source::Source;
 
 use crate::layouts::{GLWECiphertext, GLWEPublicKey, Infos, prepared::GLWESecretPrepared};
-
-use crate::trait_families::GLWEEncryptSkFamily;
 
 impl<D: DataMut> GLWEPublicKey<D> {
     pub fn generate_from_sk<S: DataRef, B: Backend>(
@@ -18,7 +20,20 @@ impl<D: DataMut> GLWEPublicKey<D> {
         source_xe: &mut Source,
         sigma: f64,
     ) where
-        Module<B>: GLWEEncryptSkFamily<B>,
+        Module<B>:,
+        Module<B>: VecZnxDftAllocBytes
+            + VecZnxBigNormalize<B>
+            + VecZnxDftFromVecZnx<B>
+            + SvpApplyInplace<B>
+            + VecZnxDftToVecZnxBigConsume<B>
+            + VecZnxNormalizeTmpBytes
+            + VecZnxFillUniform
+            + VecZnxSubABInplace
+            + VecZnxAddInplace
+            + VecZnxNormalizeInplace<B>
+            + VecZnxAddNormal
+            + VecZnxNormalize<B>
+            + VecZnxSub,
         B: ScratchOwnedAllocImpl<B>
             + ScratchOwnedBorrowImpl<B>
             + TakeVecZnxDftImpl<B>

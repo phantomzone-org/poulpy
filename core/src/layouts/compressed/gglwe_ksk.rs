@@ -3,9 +3,9 @@ use backend::hal::{
     layouts::{Backend, Data, DataMut, DataRef, MatZnx, Module, ReaderFrom, WriterTo},
 };
 
-use crate::{
-    layouts::{GGLWESwitchingKey, Infos, compressed::GGLWECiphertextCompressed},
-    trait_families::Decompress,
+use crate::layouts::{
+    GGLWESwitchingKey, Infos,
+    compressed::{Decompress, GGLWECiphertextCompressed},
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::fmt;

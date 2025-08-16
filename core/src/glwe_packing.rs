@@ -1,7 +1,13 @@
 use std::collections::HashMap;
 
 use backend::hal::{
-    api::{ScratchAvailable, TakeVecZnx, TakeVecZnxDft, VecZnxCopy},
+    api::{
+        ScratchAvailable, TakeVecZnx, TakeVecZnxDft, VecZnxAddInplace, VecZnxAutomorphismInplace, VecZnxBigAddSmallInplace,
+        VecZnxBigAutomorphismInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallBInplace, VecZnxCopy,
+        VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume, VecZnxNegateInplace, VecZnxNormalizeInplace,
+        VecZnxRotate, VecZnxRotateInplace, VecZnxRshInplace, VecZnxSub, VecZnxSubABInplace, VmpApply, VmpApplyAdd,
+        VmpApplyTmpBytes,
+    },
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
 };
 
@@ -9,8 +15,6 @@ use crate::{
     GLWEOperations, TakeGLWECt,
     layouts::{GLWECiphertext, Infos, prepared::GGLWEAutomorphismKeyPrepared},
 };
-
-use crate::trait_families::{GLWEKeyswitchFamily, GLWEPackingFamily};
 
 /// [GLWEPacker] enables only the fly GLWE packing
 /// with constant memory of Log(N) ciphertexts.
@@ -93,7 +97,7 @@ impl GLWEPacker {
         rank: usize,
     ) -> usize
     where
-        Module<B>: GLWEKeyswitchFamily<B>,
+        Module<B>: VecZnxDftAllocBytes + VmpApplyTmpBytes + VecZnxBigNormalizeTmpBytes,
     {
         pack_core_scratch_space(module, n, basek, ct_k, k_ksk, digits, rank)
     }
@@ -118,7 +122,27 @@ impl GLWEPacker {
         auto_keys: &HashMap<i64, GGLWEAutomorphismKeyPrepared<DataAK, B>>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: GLWEPackingFamily<B>,
+        Module<B>: VecZnxDftAllocBytes
+            + VmpApplyTmpBytes
+            + VecZnxBigNormalizeTmpBytes
+            + VmpApply<B>
+            + VmpApplyAdd<B>
+            + VecZnxDftFromVecZnx<B>
+            + VecZnxDftToVecZnxBigConsume<B>
+            + VecZnxBigAddSmallInplace<B>
+            + VecZnxBigNormalize<B>
+            + VecZnxCopy
+            + VecZnxRotateInplace
+            + VecZnxSub
+            + VecZnxNegateInplace
+            + VecZnxRshInplace
+            + VecZnxAddInplace
+            + VecZnxNormalizeInplace<B>
+            + VecZnxSubABInplace
+            + VecZnxRotate
+            + VecZnxAutomorphismInplace
+            + VecZnxBigSubSmallBInplace<B>
+            + VecZnxBigAutomorphismInplace<B>,
         Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
     {
         assert!(
@@ -164,7 +188,7 @@ fn pack_core_scratch_space<B: Backend>(
     rank: usize,
 ) -> usize
 where
-    Module<B>: GLWEKeyswitchFamily<B>,
+    Module<B>: VecZnxDftAllocBytes + VmpApplyTmpBytes + VecZnxBigNormalizeTmpBytes,
 {
     combine_scratch_space(module, n, basek, ct_k, k_ksk, digits, rank)
 }
@@ -177,7 +201,27 @@ fn pack_core<D: DataRef, DataAK: DataRef, B: Backend>(
     auto_keys: &HashMap<i64, GGLWEAutomorphismKeyPrepared<DataAK, B>>,
     scratch: &mut Scratch<B>,
 ) where
-    Module<B>: GLWEPackingFamily<B>,
+    Module<B>: VecZnxDftAllocBytes
+        + VmpApplyTmpBytes
+        + VecZnxBigNormalizeTmpBytes
+        + VmpApply<B>
+        + VmpApplyAdd<B>
+        + VecZnxDftFromVecZnx<B>
+        + VecZnxDftToVecZnxBigConsume<B>
+        + VecZnxBigAddSmallInplace<B>
+        + VecZnxBigNormalize<B>
+        + VecZnxCopy
+        + VecZnxRotateInplace
+        + VecZnxSub
+        + VecZnxNegateInplace
+        + VecZnxRshInplace
+        + VecZnxAddInplace
+        + VecZnxNormalizeInplace<B>
+        + VecZnxSubABInplace
+        + VecZnxRotate
+        + VecZnxAutomorphismInplace
+        + VecZnxBigSubSmallBInplace<B>
+        + VecZnxBigAutomorphismInplace<B>,
     Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
 {
     let log_n: usize = module.log_n();
@@ -239,7 +283,7 @@ fn combine_scratch_space<B: Backend>(
     rank: usize,
 ) -> usize
 where
-    Module<B>: GLWEKeyswitchFamily<B>,
+    Module<B>: VecZnxDftAllocBytes + VmpApplyTmpBytes + VecZnxBigNormalizeTmpBytes,
 {
     GLWECiphertext::bytes_of(n, basek, ct_k, rank)
         + (GLWECiphertext::rsh_scratch_space(n)
@@ -255,7 +299,27 @@ fn combine<D: DataRef, DataAK: DataRef, B: Backend>(
     auto_keys: &HashMap<i64, GGLWEAutomorphismKeyPrepared<DataAK, B>>,
     scratch: &mut Scratch<B>,
 ) where
-    Module<B>: GLWEPackingFamily<B>,
+    Module<B>: VecZnxDftAllocBytes
+        + VmpApplyTmpBytes
+        + VecZnxBigNormalizeTmpBytes
+        + VmpApply<B>
+        + VmpApplyAdd<B>
+        + VecZnxDftFromVecZnx<B>
+        + VecZnxDftToVecZnxBigConsume<B>
+        + VecZnxBigAddSmallInplace<B>
+        + VecZnxBigNormalize<B>
+        + VecZnxCopy
+        + VecZnxRotateInplace
+        + VecZnxSub
+        + VecZnxNegateInplace
+        + VecZnxRshInplace
+        + VecZnxAddInplace
+        + VecZnxNormalizeInplace<B>
+        + VecZnxSubABInplace
+        + VecZnxRotate
+        + VecZnxAutomorphismInplace
+        + VecZnxBigSubSmallBInplace<B>
+        + VecZnxBigAutomorphismInplace<B>,
     Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
 {
     let n: usize = acc.data.n();

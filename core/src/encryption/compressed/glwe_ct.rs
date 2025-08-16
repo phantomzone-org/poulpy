@@ -1,5 +1,9 @@
 use backend::hal::{
-    api::{ScratchAvailable, TakeVecZnx, TakeVecZnxDft},
+    api::{
+        ScratchAvailable, SvpApplyInplace, TakeVecZnx, TakeVecZnxDft, VecZnxAddInplace, VecZnxAddNormal, VecZnxBigNormalize,
+        VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume, VecZnxFillUniform, VecZnxNormalize,
+        VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubABInplace,
+    },
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
 };
 use sampling::source::Source;
@@ -9,12 +13,10 @@ use crate::{
     layouts::{GLWECiphertext, GLWEPlaintext, Infos, compressed::GLWECiphertextCompressed, prepared::GLWESecretPrepared},
 };
 
-use crate::trait_families::GLWEEncryptSkFamily;
-
 impl GLWECiphertextCompressed<Vec<u8>> {
     pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, n: usize, basek: usize, k: usize) -> usize
     where
-        Module<B>: GLWEEncryptSkFamily<B>,
+        Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes,
     {
         GLWECiphertext::encrypt_sk_scratch_space(module, n, basek, k)
     }
@@ -31,7 +33,19 @@ impl<D: DataMut> GLWECiphertextCompressed<D> {
         sigma: f64,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: GLWEEncryptSkFamily<B>,
+        Module<B>: VecZnxDftAllocBytes
+            + VecZnxBigNormalize<B>
+            + VecZnxDftFromVecZnx<B>
+            + SvpApplyInplace<B>
+            + VecZnxDftToVecZnxBigConsume<B>
+            + VecZnxNormalizeTmpBytes
+            + VecZnxFillUniform
+            + VecZnxSubABInplace
+            + VecZnxAddInplace
+            + VecZnxNormalizeInplace<B>
+            + VecZnxAddNormal
+            + VecZnxNormalize<B>
+            + VecZnxSub,
         Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
     {
         self.encrypt_sk_internal(
@@ -55,7 +69,19 @@ impl<D: DataMut> GLWECiphertextCompressed<D> {
         sigma: f64,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: GLWEEncryptSkFamily<B>,
+        Module<B>: VecZnxDftAllocBytes
+            + VecZnxBigNormalize<B>
+            + VecZnxDftFromVecZnx<B>
+            + SvpApplyInplace<B>
+            + VecZnxDftToVecZnxBigConsume<B>
+            + VecZnxNormalizeTmpBytes
+            + VecZnxFillUniform
+            + VecZnxSubABInplace
+            + VecZnxAddInplace
+            + VecZnxNormalizeInplace<B>
+            + VecZnxAddNormal
+            + VecZnxNormalize<B>
+            + VecZnxSub,
         Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
     {
         let mut source_xa = Source::new(seed_xa);

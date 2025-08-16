@@ -6,10 +6,7 @@ use backend::hal::{
 };
 use sampling::source::Source;
 
-use crate::{
-    layouts::{Infos, LWECiphertext, SetMetaData},
-    trait_families::Decompress,
-};
+use crate::layouts::{Infos, LWECiphertext, SetMetaData, compressed::Decompress};
 
 #[derive(PartialEq, Eq, Clone)]
 pub struct LWECiphertextCompressed<D: Data> {

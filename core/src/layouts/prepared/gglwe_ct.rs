@@ -1,5 +1,5 @@
 use backend::hal::{
-    api::{VmpPMatAlloc, VmpPMatAllocBytes, VmpPMatPrepare},
+    api::{VmpPMatAlloc, VmpPMatAllocBytes, VmpPrepare},
     layouts::{Backend, Data, DataMut, DataRef, Module, Scratch, VmpPMat},
 };
 
@@ -123,7 +123,7 @@ impl<D: Data, B: Backend> GGLWECiphertextPrepared<D, B> {
 
 impl<D: DataMut, DR: DataRef, B: Backend> Prepare<B, GGLWECiphertext<DR>> for GGLWECiphertextPrepared<D, B>
 where
-    Module<B>: VmpPMatPrepare<B>,
+    Module<B>: VmpPrepare<B>,
 {
     fn prepare(&mut self, module: &Module<B>, other: &GGLWECiphertext<DR>, scratch: &mut Scratch<B>) {
         module.vmp_prepare(&mut self.data, &other.data, scratch);
@@ -135,7 +135,7 @@ where
 
 impl<D: DataRef, B: Backend> PrepareAlloc<B, GGLWECiphertextPrepared<Vec<u8>, B>> for GGLWECiphertext<D>
 where
-    Module<B>: VmpPMatAlloc<B> + VmpPMatPrepare<B>,
+    Module<B>: VmpPMatAlloc<B> + VmpPrepare<B>,
 {
     fn prepare_alloc(&self, module: &Module<B>, scratch: &mut Scratch<B>) -> GGLWECiphertextPrepared<Vec<u8>, B> {
         let mut atk_prepared: GGLWECiphertextPrepared<Vec<u8>, B> = GGLWECiphertextPrepared::alloc(
