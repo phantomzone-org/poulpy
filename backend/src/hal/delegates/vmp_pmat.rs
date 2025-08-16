@@ -1,7 +1,7 @@
 use crate::hal::{
     api::{
         VmpApply, VmpApplyAdd, VmpApplyAddTmpBytes, VmpApplyTmpBytes, VmpPMatAlloc, VmpPMatAllocBytes, VmpPMatFromBytes,
-        VmpPMatPrepare, VmpPrepareTmpBytes,
+        VmpPrepare, VmpPrepareTmpBytes,
     },
     layouts::{Backend, MatZnxToRef, Module, Scratch, VecZnxDftToMut, VecZnxDftToRef, VmpPMatOwned, VmpPMatToMut, VmpPMatToRef},
     oep::{
@@ -54,7 +54,7 @@ where
     }
 }
 
-impl<B> VmpPMatPrepare<B> for Module<B>
+impl<B> VmpPrepare<B> for Module<B>
 where
     B: Backend + VmpPMatPrepareImpl<B>,
 {

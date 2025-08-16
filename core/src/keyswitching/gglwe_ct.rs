@@ -1,14 +1,14 @@
 use backend::hal::{
-    api::{ScratchAvailable, TakeVecZnxDft, ZnxZero},
+    api::{
+        ScratchAvailable, TakeVecZnxDft, VecZnxBigAddSmallInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
+        VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume, VmpApply, VmpApplyAdd, VmpApplyTmpBytes, ZnxZero,
+    },
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
 };
 
-use crate::{
-    layouts::{
-        GGLWEAutomorphismKey, GGLWESwitchingKey, GLWECiphertext, Infos,
-        prepared::{GGLWEAutomorphismKeyPrepared, GGLWESwitchingKeyPrepared},
-    },
-    trait_families::GLWEKeyswitchFamily,
+use crate::layouts::{
+    GGLWEAutomorphismKey, GGLWESwitchingKey, GLWECiphertext, Infos,
+    prepared::{GGLWEAutomorphismKeyPrepared, GGLWESwitchingKeyPrepared},
 };
 
 impl GGLWEAutomorphismKey<Vec<u8>> {
@@ -23,7 +23,7 @@ impl GGLWEAutomorphismKey<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: GLWEKeyswitchFamily<B>,
+        Module<B>: VecZnxDftAllocBytes + VmpApplyTmpBytes + VecZnxBigNormalizeTmpBytes,
     {
         GGLWESwitchingKey::keyswitch_scratch_space(module, n, basek, k_out, k_in, k_ksk, digits, rank, rank)
     }
@@ -38,7 +38,7 @@ impl GGLWEAutomorphismKey<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: GLWEKeyswitchFamily<B>,
+        Module<B>: VecZnxDftAllocBytes + VmpApplyTmpBytes + VecZnxBigNormalizeTmpBytes,
     {
         GGLWESwitchingKey::keyswitch_inplace_scratch_space(module, n, basek, k_out, k_ksk, digits, rank)
     }
@@ -52,7 +52,15 @@ impl<DataSelf: DataMut> GGLWEAutomorphismKey<DataSelf> {
         rhs: &GGLWESwitchingKeyPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: GLWEKeyswitchFamily<B>,
+        Module<B>: VecZnxDftAllocBytes
+            + VmpApplyTmpBytes
+            + VecZnxBigNormalizeTmpBytes
+            + VmpApply<B>
+            + VmpApplyAdd<B>
+            + VecZnxDftFromVecZnx<B>
+            + VecZnxDftToVecZnxBigConsume<B>
+            + VecZnxBigAddSmallInplace<B>
+            + VecZnxBigNormalize<B>,
         Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
     {
         self.key.keyswitch(module, &lhs.key, rhs, scratch);
@@ -64,7 +72,15 @@ impl<DataSelf: DataMut> GGLWEAutomorphismKey<DataSelf> {
         rhs: &GGLWEAutomorphismKeyPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: GLWEKeyswitchFamily<B>,
+        Module<B>: VecZnxDftAllocBytes
+            + VmpApplyTmpBytes
+            + VecZnxBigNormalizeTmpBytes
+            + VmpApply<B>
+            + VmpApplyAdd<B>
+            + VecZnxDftFromVecZnx<B>
+            + VecZnxDftToVecZnxBigConsume<B>
+            + VecZnxBigAddSmallInplace<B>
+            + VecZnxBigNormalize<B>,
         Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
     {
         self.key.keyswitch_inplace(module, &rhs.key, scratch);
@@ -84,7 +100,7 @@ impl GGLWESwitchingKey<Vec<u8>> {
         rank_out: usize,
     ) -> usize
     where
-        Module<B>: GLWEKeyswitchFamily<B>,
+        Module<B>: VecZnxDftAllocBytes + VmpApplyTmpBytes + VecZnxBigNormalizeTmpBytes,
     {
         GLWECiphertext::keyswitch_scratch_space(
             module, n, basek, k_out, k_in, k_ksk, digits, rank_in, rank_out,
@@ -101,7 +117,7 @@ impl GGLWESwitchingKey<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: GLWEKeyswitchFamily<B>,
+        Module<B>: VecZnxDftAllocBytes + VmpApplyTmpBytes + VecZnxBigNormalizeTmpBytes,
     {
         GLWECiphertext::keyswitch_inplace_scratch_space(module, n, basek, k_out, k_ksk, digits, rank)
     }
@@ -115,8 +131,16 @@ impl<DataSelf: DataMut> GGLWESwitchingKey<DataSelf> {
         rhs: &GGLWESwitchingKeyPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: GLWEKeyswitchFamily<B>,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
+        Module<B>: VecZnxDftAllocBytes
+            + VmpApplyTmpBytes
+            + VecZnxBigNormalizeTmpBytes
+            + VmpApply<B>
+            + VmpApplyAdd<B>
+            + VecZnxDftFromVecZnx<B>
+            + VecZnxDftToVecZnxBigConsume<B>
+            + VecZnxBigAddSmallInplace<B>
+            + VecZnxBigNormalize<B>,
+        Scratch<B>: ScratchAvailable + TakeVecZnxDft<B>,
     {
         #[cfg(debug_assertions)]
         {
@@ -163,8 +187,16 @@ impl<DataSelf: DataMut> GGLWESwitchingKey<DataSelf> {
         rhs: &GGLWESwitchingKeyPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: GLWEKeyswitchFamily<B>,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
+        Module<B>: VecZnxDftAllocBytes
+            + VmpApplyTmpBytes
+            + VecZnxBigNormalizeTmpBytes
+            + VmpApply<B>
+            + VmpApplyAdd<B>
+            + VecZnxDftFromVecZnx<B>
+            + VecZnxDftToVecZnxBigConsume<B>
+            + VecZnxBigAddSmallInplace<B>
+            + VecZnxBigNormalize<B>,
+        Scratch<B>: ScratchAvailable + TakeVecZnxDft<B>,
     {
         #[cfg(debug_assertions)]
         {

@@ -1,12 +1,16 @@
 use backend::hal::{
     api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxCopy, VecZnxSubABInplace, VecZnxSwithcDegree,
-        VmpPMatAlloc, VmpPMatPrepare,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApply, SvpApplyInplace, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare,
+        VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigAlloc,
+        VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxDftAddInplace, VecZnxDftAlloc,
+        VecZnxDftAllocBytes, VecZnxDftCopy, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume, VecZnxDftToVecZnxBigTmpA,
+        VecZnxFillUniform, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubABInplace,
+        VecZnxSwithcDegree, VmpApply, VmpApplyAdd, VmpApplyTmpBytes, VmpPMatAlloc, VmpPrepare,
     },
     layouts::{Backend, Module, ScalarZnx, ScratchOwned},
     oep::{
         ScratchAvailableImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeScalarZnxImpl, TakeSvpPPolImpl,
-        TakeVecZnxBigImpl, TakeVecZnxDftImpl, TakeVecZnxImpl, VecZnxBigAllocBytesImpl, VecZnxDftAllocBytesImpl,
+        TakeVecZnxBigImpl, TakeVecZnxDftImpl, TakeVecZnxImpl,
     },
 };
 use sampling::source::Source;
@@ -17,12 +21,6 @@ use crate::{
         prepared::{GGLWESwitchingKeyPrepared, GGLWETensorKeyPrepared, GLWESecretPrepared, PrepareAlloc},
     },
     noise::noise_ggsw_keyswitch,
-    trait_families::GGSWAssertNoiseFamily,
-};
-
-use crate::trait_families::{
-    GGLWESwitchingKeyEncryptSkFamily, GGLWETensorKeyEncryptSkFamily, GGSWEncryptSkFamily, GGSWKeySwitchFamily,
-    GLWESecretPreparedModuleFamily,
 };
 
 pub fn test_ggsw_keyswitch<B: Backend>(
@@ -36,19 +34,39 @@ pub fn test_ggsw_keyswitch<B: Backend>(
     rank: usize,
     sigma: f64,
 ) where
-    Module<B>: GLWESecretPreparedModuleFamily<B>
-        + GGSWEncryptSkFamily<B>
-        + GGSWAssertNoiseFamily<B>
-        + VecZnxAddScalarInplace
+    Module<B>: VecZnxDftAllocBytes
+        + VecZnxBigNormalize<B>
+        + VecZnxDftFromVecZnx<B>
+        + SvpApplyInplace<B>
+        + VecZnxDftToVecZnxBigConsume<B>
+        + VecZnxFillUniform
         + VecZnxSubABInplace
-        + VecZnxCopy
+        + VecZnxAddInplace
+        + VecZnxNormalizeInplace<B>
+        + VecZnxAddNormal
+        + VecZnxNormalize<B>
+        + VecZnxSub
+        + SvpPrepare<B>
+        + SvpPPolAllocBytes
+        + SvpPPolAlloc<B>
+        + VecZnxBigAllocBytes
+        + VecZnxBigAddInplace<B>
+        + VecZnxBigAddSmallInplace<B>
+        + VecZnxNormalizeTmpBytes
+        + VecZnxAddScalarInplace
         + VmpPMatAlloc<B>
-        + VmpPMatPrepare<B>
-        + GGSWAssertNoiseFamily<B>
-        + GGSWKeySwitchFamily<B>
-        + GGLWESwitchingKeyEncryptSkFamily<B>
-        + GGLWETensorKeyEncryptSkFamily<B>
-        + VecZnxSwithcDegree,
+        + VmpPrepare<B>
+        + VmpApplyTmpBytes
+        + VmpApply<B>
+        + VmpApplyAdd<B>
+        + VecZnxBigNormalizeTmpBytes
+        + VecZnxSwithcDegree
+        + SvpApply<B>
+        + VecZnxDftToVecZnxBigTmpA<B>
+        + VecZnxDftCopy<B>
+        + VecZnxDftAddInplace<B>
+        + VecZnxBigAlloc<B>
+        + VecZnxDftAlloc<B>,
     B: TakeVecZnxDftImpl<B>
         + TakeVecZnxBigImpl<B>
         + TakeSvpPPolImpl<B>
@@ -56,13 +74,7 @@ pub fn test_ggsw_keyswitch<B: Backend>(
         + ScratchOwnedBorrowImpl<B>
         + ScratchAvailableImpl<B>
         + TakeScalarZnxImpl<B>
-        + TakeVecZnxImpl<B>
-        + VecZnxDftAllocBytesImpl<B>
-        + VecZnxBigAllocBytesImpl<B>
-        + TakeSvpPPolImpl<B>
-        + VecZnxDftAllocBytesImpl<B>
-        + VecZnxBigAllocBytesImpl<B>
-        + TakeSvpPPolImpl<B>,
+        + TakeVecZnxImpl<B>,
 {
     let n: usize = module.n();
     let rows: usize = k_in.div_ceil(digits * basek);
@@ -168,19 +180,39 @@ pub fn test_ggsw_keyswitch_inplace<B: Backend>(
     rank: usize,
     sigma: f64,
 ) where
-    Module<B>: GLWESecretPreparedModuleFamily<B>
-        + GGSWEncryptSkFamily<B>
-        + GGSWAssertNoiseFamily<B>
-        + VecZnxAddScalarInplace
+    Module<B>: VecZnxDftAllocBytes
+        + VecZnxBigNormalize<B>
+        + VecZnxDftFromVecZnx<B>
+        + SvpApplyInplace<B>
+        + VecZnxDftToVecZnxBigConsume<B>
+        + VecZnxFillUniform
         + VecZnxSubABInplace
-        + VecZnxCopy
+        + VecZnxAddInplace
+        + VecZnxNormalizeInplace<B>
+        + VecZnxAddNormal
+        + VecZnxNormalize<B>
+        + VecZnxSub
+        + SvpPrepare<B>
+        + SvpPPolAllocBytes
+        + SvpPPolAlloc<B>
+        + VecZnxBigAllocBytes
+        + VecZnxBigAddInplace<B>
+        + VecZnxBigAddSmallInplace<B>
+        + VecZnxNormalizeTmpBytes
+        + VecZnxAddScalarInplace
         + VmpPMatAlloc<B>
-        + VmpPMatPrepare<B>
-        + GGSWAssertNoiseFamily<B>
-        + GGSWKeySwitchFamily<B>
-        + GGLWESwitchingKeyEncryptSkFamily<B>
-        + GGLWETensorKeyEncryptSkFamily<B>
-        + VecZnxSwithcDegree,
+        + VmpPrepare<B>
+        + VmpApplyTmpBytes
+        + VmpApply<B>
+        + VmpApplyAdd<B>
+        + VecZnxBigNormalizeTmpBytes
+        + VecZnxSwithcDegree
+        + SvpApply<B>
+        + VecZnxDftToVecZnxBigTmpA<B>
+        + VecZnxDftCopy<B>
+        + VecZnxDftAddInplace<B>
+        + VecZnxBigAlloc<B>
+        + VecZnxDftAlloc<B>,
     B: TakeVecZnxDftImpl<B>
         + TakeVecZnxBigImpl<B>
         + TakeSvpPPolImpl<B>
@@ -188,10 +220,7 @@ pub fn test_ggsw_keyswitch_inplace<B: Backend>(
         + ScratchOwnedBorrowImpl<B>
         + ScratchAvailableImpl<B>
         + TakeScalarZnxImpl<B>
-        + TakeVecZnxImpl<B>
-        + VecZnxDftAllocBytesImpl<B>
-        + VecZnxBigAllocBytesImpl<B>
-        + TakeSvpPPolImpl<B>,
+        + TakeVecZnxImpl<B>,
 {
     let n: usize = module.n();
     let rows: usize = k_ct.div_ceil(digits * basek);

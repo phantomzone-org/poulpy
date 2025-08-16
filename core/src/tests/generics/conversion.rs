@@ -1,7 +1,11 @@
 use backend::hal::{
     api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxAutomorphismInplace, VecZnxSwithcDegree,
-        VmpPMatAlloc, VmpPMatPrepare, ZnxView,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyInplace, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare, VecZnxAddInplace,
+        VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxAutomorphismInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace,
+        VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxDftAllocBytes, VecZnxDftFromVecZnx,
+        VecZnxDftToVecZnxBigConsume, VecZnxFillUniform, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes,
+        VecZnxSub, VecZnxSubABInplace, VecZnxSwithcDegree, VmpApply, VmpApplyAdd, VmpApplyTmpBytes, VmpPMatAlloc, VmpPrepare,
+        ZnxView,
     },
     layouts::{Backend, Module, ScratchOwned},
     oep::{
@@ -17,27 +21,44 @@ use crate::layouts::{
     prepared::{GLWESecretPrepared, GLWEToLWESwitchingKeyPrepared, LWEToGLWESwitchingKeyPrepared, PrepareAlloc},
 };
 
-use crate::trait_families::{GGLWEEncryptSkFamily, GLWEDecryptFamily, GLWEKeyswitchFamily, GLWESecretPreparedModuleFamily};
-
 pub fn test_lwe_to_glwe<B: Backend>(module: &Module<B>)
 where
-    Module<B>: GGLWEEncryptSkFamily<B>
-        + GLWEDecryptFamily<B>
-        + VecZnxSwithcDegree
+    Module<B>: VecZnxDftAllocBytes
+        + VecZnxBigNormalize<B>
+        + VecZnxDftFromVecZnx<B>
+        + SvpApplyInplace<B>
+        + VecZnxDftToVecZnxBigConsume<B>
+        + VecZnxFillUniform
+        + VecZnxSubABInplace
+        + VecZnxAddInplace
+        + VecZnxNormalizeInplace<B>
+        + VecZnxAddNormal
+        + VecZnxNormalize<B>
+        + VecZnxSub
+        + SvpPrepare<B>
+        + SvpPPolAllocBytes
+        + SvpPPolAlloc<B>
+        + VecZnxBigAllocBytes
+        + VecZnxBigAddInplace<B>
+        + VecZnxBigAddSmallInplace<B>
+        + VecZnxNormalizeTmpBytes
         + VecZnxAddScalarInplace
-        + GLWEKeyswitchFamily<B>
-        + VecZnxAutomorphismInplace
         + VmpPMatAlloc<B>
-        + VmpPMatPrepare<B>
-        + GLWESecretPreparedModuleFamily<B>,
-    B: TakeScalarZnxImpl<B>
-        + TakeVecZnxDftImpl<B>
-        + ScratchAvailableImpl<B>
-        + TakeVecZnxImpl<B>
+        + VmpPrepare<B>
+        + VmpApplyTmpBytes
+        + VmpApply<B>
+        + VmpApplyAdd<B>
+        + VecZnxBigNormalizeTmpBytes
+        + VecZnxSwithcDegree
+        + VecZnxAutomorphismInplace,
+    B: TakeVecZnxDftImpl<B>
         + TakeVecZnxBigImpl<B>
         + TakeSvpPPolImpl<B>
         + ScratchOwnedAllocImpl<B>
-        + ScratchOwnedBorrowImpl<B>,
+        + ScratchOwnedBorrowImpl<B>
+        + ScratchAvailableImpl<B>
+        + TakeScalarZnxImpl<B>
+        + TakeVecZnxImpl<B>,
 {
     let n: usize = module.n();
     let basek: usize = 17;
@@ -112,23 +133,42 @@ where
 
 pub fn test_glwe_to_lwe<B: Backend>(module: &Module<B>)
 where
-    Module<B>: GGLWEEncryptSkFamily<B>
-        + GLWEDecryptFamily<B>
-        + VecZnxSwithcDegree
+    Module<B>: VecZnxDftAllocBytes
+        + VecZnxBigNormalize<B>
+        + VecZnxDftFromVecZnx<B>
+        + SvpApplyInplace<B>
+        + VecZnxDftToVecZnxBigConsume<B>
+        + VecZnxFillUniform
+        + VecZnxSubABInplace
+        + VecZnxAddInplace
+        + VecZnxNormalizeInplace<B>
+        + VecZnxAddNormal
+        + VecZnxNormalize<B>
+        + VecZnxSub
+        + SvpPrepare<B>
+        + SvpPPolAllocBytes
+        + SvpPPolAlloc<B>
+        + VecZnxBigAllocBytes
+        + VecZnxBigAddInplace<B>
+        + VecZnxBigAddSmallInplace<B>
+        + VecZnxNormalizeTmpBytes
         + VecZnxAddScalarInplace
-        + GLWEKeyswitchFamily<B>
-        + VecZnxAutomorphismInplace
         + VmpPMatAlloc<B>
-        + VmpPMatPrepare<B>
-        + GLWESecretPreparedModuleFamily<B>,
-    B: TakeScalarZnxImpl<B>
-        + TakeVecZnxDftImpl<B>
-        + ScratchAvailableImpl<B>
-        + TakeVecZnxImpl<B>
+        + VmpPrepare<B>
+        + VmpApplyTmpBytes
+        + VmpApply<B>
+        + VmpApplyAdd<B>
+        + VecZnxBigNormalizeTmpBytes
+        + VecZnxSwithcDegree
+        + VecZnxAutomorphismInplace,
+    B: TakeVecZnxDftImpl<B>
         + TakeVecZnxBigImpl<B>
         + TakeSvpPPolImpl<B>
         + ScratchOwnedAllocImpl<B>
-        + ScratchOwnedBorrowImpl<B>,
+        + ScratchOwnedBorrowImpl<B>
+        + ScratchAvailableImpl<B>
+        + TakeScalarZnxImpl<B>
+        + TakeVecZnxImpl<B>,
 {
     let n: usize = module.n();
     let basek: usize = 17;

@@ -1,5 +1,9 @@
 use backend::hal::{
-    api::{ScratchAvailable, TakeVecZnx, TakeVecZnxDft, ZnxView, ZnxViewMut, ZnxZero},
+    api::{
+        ScratchAvailable, TakeVecZnx, TakeVecZnxDft, VecZnxBigAddSmallInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
+        VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume, VmpApply, VmpApplyAdd, VmpApplyTmpBytes, ZnxView,
+        ZnxViewMut, ZnxZero,
+    },
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
 };
 
@@ -7,8 +11,6 @@ use crate::{
     TakeGLWECt,
     layouts::{GLWECiphertext, Infos, LWECiphertext, prepared::LWESwitchingKeyPrepared},
 };
-
-use crate::trait_families::GLWEKeyswitchFamily;
 
 impl LWECiphertext<Vec<u8>> {
     pub fn keyswitch_scratch_space<B: Backend>(
@@ -20,7 +22,16 @@ impl LWECiphertext<Vec<u8>> {
         k_ksk: usize,
     ) -> usize
     where
-        Module<B>: GLWEKeyswitchFamily<B>,
+        Module<B>: VecZnxDftAllocBytes
+            + VmpApplyTmpBytes
+            + VecZnxBigNormalizeTmpBytes
+            + VmpApplyTmpBytes
+            + VmpApply<B>
+            + VmpApplyAdd<B>
+            + VecZnxDftFromVecZnx<B>
+            + VecZnxDftToVecZnxBigConsume<B>
+            + VecZnxBigAddSmallInplace<B>
+            + VecZnxBigNormalize<B>,
     {
         GLWECiphertext::bytes_of(n, basek, k_lwe_out.max(k_lwe_in), 1)
             + GLWECiphertext::keyswitch_inplace_scratch_space(module, n, basek, k_lwe_out, k_ksk, 1, 1)
@@ -37,7 +48,15 @@ impl<DLwe: DataMut> LWECiphertext<DLwe> {
     ) where
         A: DataRef,
         DKs: DataRef,
-        Module<B>: GLWEKeyswitchFamily<B>,
+        Module<B>: VecZnxDftAllocBytes
+            + VmpApplyTmpBytes
+            + VecZnxBigNormalizeTmpBytes
+            + VmpApply<B>
+            + VmpApplyAdd<B>
+            + VecZnxDftFromVecZnx<B>
+            + VecZnxDftToVecZnxBigConsume<B>
+            + VecZnxBigAddSmallInplace<B>
+            + VecZnxBigNormalize<B>,
         Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
     {
         #[cfg(debug_assertions)]

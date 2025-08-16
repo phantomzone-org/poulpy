@@ -1,12 +1,12 @@
 use backend::hal::{
-    api::{ScratchAvailable, TakeVecZnxDft, ZnxZero},
+    api::{
+        ScratchAvailable, TakeVecZnxDft, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftFromVecZnx,
+        VecZnxDftToVecZnxBigConsume, VecZnxNormalizeTmpBytes, VmpApply, VmpApplyAdd, VmpApplyTmpBytes, ZnxZero,
+    },
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
 };
 
-use crate::{
-    layouts::{GGSWCiphertext, GLWECiphertext, Infos, prepared::GGSWCiphertextPrepared},
-    trait_families::GLWEExternalProductFamily,
-};
+use crate::layouts::{GGSWCiphertext, GLWECiphertext, Infos, prepared::GGSWCiphertextPrepared};
 
 impl GGSWCiphertext<Vec<u8>> {
     pub fn external_product_scratch_space<B: Backend>(
@@ -20,7 +20,7 @@ impl GGSWCiphertext<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: GLWEExternalProductFamily<B>,
+        Module<B>: VecZnxDftAllocBytes + VmpApplyTmpBytes + VecZnxNormalizeTmpBytes,
     {
         GLWECiphertext::external_product_scratch_space(module, n, basek, k_out, k_in, k_ggsw, digits, rank)
     }
@@ -35,7 +35,7 @@ impl GGSWCiphertext<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: GLWEExternalProductFamily<B>,
+        Module<B>: VecZnxDftAllocBytes + VmpApplyTmpBytes + VecZnxNormalizeTmpBytes,
     {
         GLWECiphertext::external_product_inplace_scratch_space(module, n, basek, k_out, k_ggsw, digits, rank)
     }
@@ -49,8 +49,15 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
         rhs: &GGSWCiphertextPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: GLWEExternalProductFamily<B>,
-        Scratch<B>: ScratchAvailable + TakeVecZnxDft<B>,
+        Module<B>: VecZnxDftAllocBytes
+            + VmpApplyTmpBytes
+            + VecZnxNormalizeTmpBytes
+            + VecZnxDftFromVecZnx<B>
+            + VmpApply<B>
+            + VmpApplyAdd<B>
+            + VecZnxDftToVecZnxBigConsume<B>
+            + VecZnxBigNormalize<B>,
+        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
     {
         #[cfg(debug_assertions)]
         {
@@ -108,7 +115,14 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
         rhs: &GGSWCiphertextPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: GLWEExternalProductFamily<B>,
+        Module<B>: VecZnxDftAllocBytes
+            + VmpApplyTmpBytes
+            + VecZnxNormalizeTmpBytes
+            + VecZnxDftFromVecZnx<B>
+            + VmpApply<B>
+            + VmpApplyAdd<B>
+            + VecZnxDftToVecZnxBigConsume<B>
+            + VecZnxBigNormalize<B>,
         Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
     {
         #[cfg(debug_assertions)]

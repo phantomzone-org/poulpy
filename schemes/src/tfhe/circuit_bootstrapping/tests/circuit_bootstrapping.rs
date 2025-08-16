@@ -2,9 +2,14 @@ use std::time::Instant;
 
 use backend::hal::{
     api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpPPolAlloc, SvpPrepare, VecZnxAddNormal, VecZnxAddScalarInplace,
-        VecZnxAutomorphism, VecZnxFillUniform, VecZnxNormalizeInplace, VecZnxRotateInplace, VecZnxSwithcDegree, VmpPMatAlloc,
-        VmpPMatPrepare, ZnxView, ZnxViewMut,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApply, SvpApplyInplace, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare,
+        VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxAutomorphism, VecZnxAutomorphismInplace,
+        VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigAlloc, VecZnxBigAllocBytes, VecZnxBigAutomorphismInplace,
+        VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallBInplace, VecZnxCopy, VecZnxDftAddInplace,
+        VecZnxDftAlloc, VecZnxDftAllocBytes, VecZnxDftCopy, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume,
+        VecZnxDftToVecZnxBigTmpA, VecZnxFillUniform, VecZnxNegateInplace, VecZnxNormalize, VecZnxNormalizeInplace,
+        VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace, VecZnxRshInplace, VecZnxSub, VecZnxSubABInplace,
+        VecZnxSwithcDegree, VmpApply, VmpApplyAdd, VmpApplyTmpBytes, VmpPMatAlloc, VmpPrepare, ZnxView, ZnxViewMut,
     },
     layouts::{Backend, Module, ScalarZnx, ScratchOwned},
     oep::{
@@ -20,18 +25,11 @@ use crate::tfhe::{
         BlindRotationKeyPrepared,
     },
     circuit_bootstrapping::{
-        CircuitBootstrapFamily, CircuitBootstrappingKey, CircuitBootstrappingKeyEncryptSk, CircuitBootstrappingKeyPrepared,
-        CirtuitBootstrappingExecute,
+        CircuitBootstrappingKey, CircuitBootstrappingKeyEncryptSk, CircuitBootstrappingKeyPrepared, CirtuitBootstrappingExecute,
     },
 };
 
-use core::{
-    layouts::prepared::PrepareAlloc,
-    trait_families::{
-        GGLWEAutomorphismKeyEncryptSkFamily, GGLWETensorKeyEncryptSkFamily, GGSWAssertNoiseFamily, GGSWEncryptSkFamily,
-        GLWEDecryptFamily,
-    },
-};
+use core::layouts::prepared::PrepareAlloc;
 
 use core::layouts::{
     GGSWCiphertext, GLWECiphertext, GLWEPlaintext, GLWESecret, LWECiphertext, LWEPlaintext, LWESecret,
@@ -43,19 +41,46 @@ where
     Module<B>: VecZnxFillUniform
         + VecZnxAddNormal
         + VecZnxNormalizeInplace<B>
-        + GGSWEncryptSkFamily<B>
+        + VecZnxDftAllocBytes
+        + VecZnxBigNormalize<B>
+        + VecZnxDftFromVecZnx<B>
+        + SvpApplyInplace<B>
+        + VecZnxDftToVecZnxBigConsume<B>
+        + VecZnxNormalizeTmpBytes
+        + VecZnxSubABInplace
+        + VecZnxAddInplace
+        + VecZnxNormalize<B>
+        + VecZnxSub
         + VecZnxAddScalarInplace
-        + GGLWEAutomorphismKeyEncryptSkFamily<B>
         + VecZnxAutomorphism
         + VecZnxSwithcDegree
-        + GGLWETensorKeyEncryptSkFamily<B>
-        + CircuitBootstrapFamily<B>
-        + GLWEDecryptFamily<B>
-        + GGSWAssertNoiseFamily<B>
+        + VecZnxBigAllocBytes
+        + VecZnxDftToVecZnxBigTmpA<B>
+        + SvpApply<B>
+        + VecZnxBigAddInplace<B>
+        + VecZnxBigAddSmallInplace<B>
+        + VecZnxBigAlloc<B>
+        + VecZnxDftAlloc<B>
+        + VecZnxBigNormalizeTmpBytes
         + VmpPMatAlloc<B>
-        + VmpPMatPrepare<B>
+        + VmpPrepare<B>
         + SvpPrepare<B>
-        + SvpPPolAlloc<B>,
+        + SvpPPolAlloc<B>
+        + VmpApplyTmpBytes
+        + VmpApply<B>
+        + VmpApplyAdd<B>
+        + SvpPPolAllocBytes
+        + VecZnxRotateInplace
+        + VecZnxBigAutomorphismInplace<B>
+        + VecZnxRshInplace
+        + VecZnxDftCopy<B>
+        + VecZnxNegateInplace
+        + VecZnxCopy
+        + VecZnxAutomorphismInplace
+        + VecZnxBigSubSmallBInplace<B>
+        + VecZnxBigAllocBytes
+        + VecZnxDftAddInplace<B>
+        + VecZnxRotate,
     B: ScratchOwnedAllocImpl<B>
         + ScratchOwnedBorrowImpl<B>
         + TakeVecZnxDftImpl<B>
@@ -108,7 +133,7 @@ where
     let data: i64 = 1;
 
     let mut pt_lwe: LWEPlaintext<Vec<u8>> = LWEPlaintext::alloc(basek, k_lwe_pt);
-    pt_lwe.encode_i64(data, k_lwe_pt + 2);
+    pt_lwe.encode_i64(data, k_lwe_pt + 1);
 
     println!("pt_lwe: {}", pt_lwe);
 
@@ -203,19 +228,46 @@ where
     Module<B>: VecZnxFillUniform
         + VecZnxAddNormal
         + VecZnxNormalizeInplace<B>
-        + GGSWEncryptSkFamily<B>
+        + VecZnxDftAllocBytes
+        + VecZnxBigNormalize<B>
+        + VecZnxDftFromVecZnx<B>
+        + SvpApplyInplace<B>
+        + VecZnxDftToVecZnxBigConsume<B>
+        + VecZnxNormalizeTmpBytes
+        + VecZnxSubABInplace
+        + VecZnxAddInplace
+        + VecZnxNormalize<B>
+        + VecZnxSub
         + VecZnxAddScalarInplace
-        + GGLWEAutomorphismKeyEncryptSkFamily<B>
         + VecZnxAutomorphism
         + VecZnxSwithcDegree
-        + GGLWETensorKeyEncryptSkFamily<B>
-        + CircuitBootstrapFamily<B>
-        + GLWEDecryptFamily<B>
-        + GGSWAssertNoiseFamily<B>
+        + VecZnxBigAllocBytes
+        + VecZnxDftToVecZnxBigTmpA<B>
+        + SvpApply<B>
+        + VecZnxBigAddInplace<B>
+        + VecZnxBigAddSmallInplace<B>
+        + VecZnxBigAlloc<B>
+        + VecZnxDftAlloc<B>
+        + VecZnxBigNormalizeTmpBytes
         + VmpPMatAlloc<B>
-        + VmpPMatPrepare<B>
+        + VmpPrepare<B>
         + SvpPrepare<B>
-        + SvpPPolAlloc<B>,
+        + SvpPPolAlloc<B>
+        + VmpApplyTmpBytes
+        + VmpApply<B>
+        + VmpApplyAdd<B>
+        + SvpPPolAllocBytes
+        + VecZnxRotateInplace
+        + VecZnxBigAutomorphismInplace<B>
+        + VecZnxRshInplace
+        + VecZnxDftCopy<B>
+        + VecZnxNegateInplace
+        + VecZnxCopy
+        + VecZnxAutomorphismInplace
+        + VecZnxBigSubSmallBInplace<B>
+        + VecZnxBigAllocBytes
+        + VecZnxDftAddInplace<B>
+        + VecZnxRotate,
     B: ScratchOwnedAllocImpl<B>
         + ScratchOwnedBorrowImpl<B>
         + TakeVecZnxDftImpl<B>
@@ -268,7 +320,7 @@ where
     let data: i64 = 1;
 
     let mut pt_lwe: LWEPlaintext<Vec<u8>> = LWEPlaintext::alloc(basek, k_lwe_pt);
-    pt_lwe.encode_i64(data, k_lwe_pt + 2);
+    pt_lwe.encode_i64(data, k_lwe_pt + 1);
 
     println!("pt_lwe: {}", pt_lwe);
 

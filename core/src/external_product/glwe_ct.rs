@@ -6,10 +6,7 @@ use backend::hal::{
     layouts::{Backend, DataMut, DataRef, Module, Scratch, VecZnxBig},
 };
 
-use crate::{
-    layouts::{GLWECiphertext, Infos, prepared::GGSWCiphertextPrepared},
-    trait_families::GLWEExternalProductFamily,
-};
+use crate::layouts::{GLWECiphertext, Infos, prepared::GGSWCiphertextPrepared};
 
 impl GLWECiphertext<Vec<u8>> {
     pub fn external_product_scratch_space<B: Backend>(
@@ -23,7 +20,7 @@ impl GLWECiphertext<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: GLWEExternalProductFamily<B>,
+        Module<B>: VecZnxDftAllocBytes + VmpApplyTmpBytes + VecZnxNormalizeTmpBytes,
     {
         let in_size: usize = k_in.div_ceil(basek).div_ceil(digits);
         let out_size: usize = k_out.div_ceil(basek);
@@ -53,7 +50,7 @@ impl GLWECiphertext<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: GLWEExternalProductFamily<B>,
+        Module<B>: VecZnxDftAllocBytes + VmpApplyTmpBytes + VecZnxNormalizeTmpBytes,
     {
         Self::external_product_scratch_space(module, n, basek, k_out, k_out, k_ggsw, digits, rank)
     }
@@ -67,7 +64,14 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         rhs: &GGSWCiphertextPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: GLWEExternalProductFamily<B>,
+        Module<B>: VecZnxDftAllocBytes
+            + VmpApplyTmpBytes
+            + VecZnxNormalizeTmpBytes
+            + VecZnxDftFromVecZnx<B>
+            + VmpApply<B>
+            + VmpApplyAdd<B>
+            + VecZnxDftToVecZnxBigConsume<B>
+            + VecZnxBigNormalize<B>,
         Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
     {
         let basek: usize = self.basek();
@@ -144,7 +148,14 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         rhs: &GGSWCiphertextPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: GLWEExternalProductFamily<B>,
+        Module<B>: VecZnxDftAllocBytes
+            + VmpApplyTmpBytes
+            + VecZnxNormalizeTmpBytes
+            + VecZnxDftFromVecZnx<B>
+            + VmpApply<B>
+            + VmpApplyAdd<B>
+            + VecZnxDftToVecZnxBigConsume<B>
+            + VecZnxBigNormalize<B>,
         Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
     {
         unsafe {

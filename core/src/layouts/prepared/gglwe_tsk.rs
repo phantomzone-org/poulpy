@@ -1,5 +1,5 @@
 use backend::hal::{
-    api::{VmpPMatAlloc, VmpPMatAllocBytes, VmpPMatPrepare},
+    api::{VmpPMatAlloc, VmpPMatAllocBytes, VmpPrepare},
     layouts::{Backend, Data, DataMut, DataRef, Module, Scratch, VmpPMat},
 };
 
@@ -95,7 +95,7 @@ impl<D: DataRef, B: Backend> GGLWETensorKeyPrepared<D, B> {
 
 impl<D: DataMut, DR: DataRef, B: Backend> Prepare<B, GGLWETensorKey<DR>> for GGLWETensorKeyPrepared<D, B>
 where
-    Module<B>: VmpPMatPrepare<B>,
+    Module<B>: VmpPrepare<B>,
 {
     fn prepare(&mut self, module: &Module<B>, other: &GGLWETensorKey<DR>, scratch: &mut Scratch<B>) {
         #[cfg(debug_assertions)]
@@ -113,7 +113,7 @@ where
 
 impl<D: DataRef, B: Backend> PrepareAlloc<B, GGLWETensorKeyPrepared<Vec<u8>, B>> for GGLWETensorKey<D>
 where
-    Module<B>: VmpPMatAlloc<B> + VmpPMatPrepare<B>,
+    Module<B>: VmpPMatAlloc<B> + VmpPrepare<B>,
 {
     fn prepare_alloc(&self, module: &Module<B>, scratch: &mut Scratch<B>) -> GGLWETensorKeyPrepared<Vec<u8>, B> {
         let mut tsk_prepared: GGLWETensorKeyPrepared<Vec<u8>, B> = GGLWETensorKeyPrepared::alloc(

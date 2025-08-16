@@ -1,50 +1,58 @@
-use std::{collections::HashMap, time::Instant, usize};
+use std::{collections::HashMap, usize};
 
 use backend::hal::{
     api::{
         ScratchAvailable, TakeMatZnx, TakeVecZnx, TakeVecZnxBig, TakeVecZnxDft, TakeVecZnxDftSlice, TakeVecZnxSlice,
-        VecZnxAddInplace, VecZnxAutomorphismInplace, VecZnxBigAutomorphismInplace, VecZnxBigSubSmallBInplace, VecZnxCopy,
-        VecZnxDftCopy, VecZnxDftToVecZnxBigTmpA, VecZnxNegateInplace, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes,
-        VecZnxRotateInplace, VecZnxRshInplace, VecZnxSub, VecZnxSubABInplace, VecZnxSwithcDegree,
+        VecZnxAddInplace, VecZnxAutomorphismInplace, VecZnxBigAddSmallInplace, VecZnxBigAllocBytes, VecZnxBigAutomorphismInplace,
+        VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallBInplace, VecZnxCopy, VecZnxDftAddInplace,
+        VecZnxDftAllocBytes, VecZnxDftCopy, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume, VecZnxDftToVecZnxBigTmpA,
+        VecZnxNegateInplace, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace,
+        VecZnxRshInplace, VecZnxSub, VecZnxSubABInplace, VecZnxSwithcDegree, VmpApply, VmpApplyAdd, VmpApplyTmpBytes,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
     oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl},
 };
 
-use core::{GLWEOperations, TakeGGLWE, TakeGLWECt, layouts::Infos, trait_families::GLWETraceModuleFamily};
+use core::{GLWEOperations, TakeGGLWE, TakeGLWECt, layouts::Infos};
 
 use core::layouts::{GGSWCiphertext, GLWECiphertext, LWECiphertext, prepared::GGLWEAutomorphismKeyPrepared};
 
 use crate::tfhe::{
     blind_rotation::{
-        BlincRotationExecute, BlindRotationAlgo, BlindRotationKeyPrepared, CCGIBlindRotationFamily, LookUpTable,
-        LookUpTableRotationDirection,
+        BlincRotationExecute, BlindRotationAlgo, BlindRotationKeyPrepared, LookUpTable, LookUpTableRotationDirection,
     },
     circuit_bootstrapping::{CircuitBootstrappingKeyPrepared, CirtuitBootstrappingExecute},
 };
 
-pub trait CircuitBootstrapFamily<B: Backend> = VecZnxRotateInplace
-    + VecZnxNormalizeInplace<B>
-    + VecZnxNormalizeTmpBytes
-    + CCGIBlindRotationFamily<B>
-    + VecZnxSwithcDegree
-    + VecZnxBigAutomorphismInplace<B>
-    + VecZnxRshInplace
-    + VecZnxDftCopy<B>
-    + VecZnxDftToVecZnxBigTmpA<B>
-    + VecZnxSub
-    + VecZnxAddInplace
-    + VecZnxNegateInplace
-    + VecZnxCopy
-    + VecZnxSubABInplace
-    + GLWETraceModuleFamily<B>
-    + VecZnxRotateInplace
-    + VecZnxAutomorphismInplace
-    + VecZnxBigSubSmallBInplace<B>;
-
 impl<D: DataRef, BRA: BlindRotationAlgo, B: Backend> CirtuitBootstrappingExecute<B> for CircuitBootstrappingKeyPrepared<D, BRA, B>
 where
-    Module<B>: CircuitBootstrapFamily<B>,
+    Module<B>: VecZnxRotateInplace
+        + VecZnxNormalizeInplace<B>
+        + VecZnxNormalizeTmpBytes
+        + VecZnxSwithcDegree
+        + VecZnxBigAutomorphismInplace<B>
+        + VecZnxRshInplace
+        + VecZnxDftCopy<B>
+        + VecZnxDftToVecZnxBigTmpA<B>
+        + VecZnxSub
+        + VecZnxAddInplace
+        + VecZnxNegateInplace
+        + VecZnxCopy
+        + VecZnxSubABInplace
+        + VecZnxDftAllocBytes
+        + VmpApplyTmpBytes
+        + VecZnxBigNormalizeTmpBytes
+        + VmpApply<B>
+        + VmpApplyAdd<B>
+        + VecZnxDftFromVecZnx<B>
+        + VecZnxDftToVecZnxBigConsume<B>
+        + VecZnxBigAddSmallInplace<B>
+        + VecZnxBigNormalize<B>
+        + VecZnxAutomorphismInplace
+        + VecZnxBigSubSmallBInplace<B>
+        + VecZnxBigAllocBytes
+        + VecZnxDftAddInplace<B>
+        + VecZnxRotate,
     B: ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
     Scratch<B>: TakeVecZnx
         + TakeVecZnxDftSlice<B>
@@ -115,7 +123,33 @@ pub fn circuit_bootstrap_core<DRes, DLwe, DBrk, BRA: BlindRotationAlgo, B: Backe
     DRes: DataMut,
     DLwe: DataRef,
     DBrk: DataRef,
-    Module<B>: CircuitBootstrapFamily<B>,
+    Module<B>: VecZnxRotateInplace
+        + VecZnxNormalizeInplace<B>
+        + VecZnxNormalizeTmpBytes
+        + VecZnxSwithcDegree
+        + VecZnxBigAutomorphismInplace<B>
+        + VecZnxRshInplace
+        + VecZnxDftCopy<B>
+        + VecZnxDftToVecZnxBigTmpA<B>
+        + VecZnxSub
+        + VecZnxAddInplace
+        + VecZnxNegateInplace
+        + VecZnxCopy
+        + VecZnxSubABInplace
+        + VecZnxDftAllocBytes
+        + VmpApplyTmpBytes
+        + VecZnxBigNormalizeTmpBytes
+        + VmpApply<B>
+        + VmpApplyAdd<B>
+        + VecZnxDftFromVecZnx<B>
+        + VecZnxDftToVecZnxBigConsume<B>
+        + VecZnxBigAddSmallInplace<B>
+        + VecZnxBigNormalize<B>
+        + VecZnxAutomorphismInplace
+        + VecZnxBigSubSmallBInplace<B>
+        + VecZnxBigAllocBytes
+        + VecZnxDftAddInplace<B>
+        + VecZnxRotate,
     B: ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
     Scratch<B>: TakeVecZnxDftSlice<B>
         + TakeVecZnxBig<B>
@@ -165,13 +199,9 @@ pub fn circuit_bootstrap_core<DRes, DLwe, DBrk, BRA: BlindRotationAlgo, B: Backe
 
     // TODO: separate GGSW k from output of blind rotation k
     let (mut res_glwe, scratch1) = scratch.take_glwe_ct(n, basek, k, rank);
-    let (mut tmp_gglwe, scratch2) = scratch1.take_gglwe(n, basek, k, rows, 1, rank, rank);
-
-    let now: Instant = Instant::now();
+    let (mut tmp_gglwe, scratch2) = scratch1.take_gglwe(n, basek, k, rows, 1, rank.max(1), rank);
 
     key.brk.execute(module, &mut res_glwe, &lwe, &lut, scratch2);
-
-    println!("blind_rotate: {} ms", now.elapsed().as_millis());
 
     let gap: usize = 2 * lut.drift / lut.extension_factor();
 
@@ -181,8 +211,6 @@ pub fn circuit_bootstrap_core<DRes, DLwe, DBrk, BRA: BlindRotationAlgo, B: Backe
         let mut tmp_glwe: GLWECiphertext<&mut [u8]> = tmp_gglwe.at_mut(i, 0);
 
         if to_exponent {
-            let now: Instant = Instant::now();
-
             // Isolates i-th LUT and moves coefficients according to requested gap.
             post_process(
                 module,
@@ -194,7 +222,6 @@ pub fn circuit_bootstrap_core<DRes, DLwe, DBrk, BRA: BlindRotationAlgo, B: Backe
                 &key.atk,
                 scratch2,
             );
-            println!("post_process: {} ms", now.elapsed().as_millis());
         } else {
             tmp_glwe.trace(module, 0, module.log_n(), &res_glwe, &key.atk, scratch2);
         }
@@ -220,7 +247,31 @@ fn post_process<DataRes, DataA, B: Backend>(
 ) where
     DataRes: DataMut,
     DataA: DataRef,
-    Module<B>: CircuitBootstrapFamily<B>,
+    Module<B>: VecZnxRotateInplace
+        + VecZnxNormalizeInplace<B>
+        + VecZnxNormalizeTmpBytes
+        + VecZnxSwithcDegree
+        + VecZnxBigAutomorphismInplace<B>
+        + VecZnxRshInplace
+        + VecZnxDftCopy<B>
+        + VecZnxDftToVecZnxBigTmpA<B>
+        + VecZnxSub
+        + VecZnxAddInplace
+        + VecZnxNegateInplace
+        + VecZnxCopy
+        + VecZnxSubABInplace
+        + VecZnxDftAllocBytes
+        + VmpApplyTmpBytes
+        + VecZnxBigNormalizeTmpBytes
+        + VmpApply<B>
+        + VmpApplyAdd<B>
+        + VecZnxDftFromVecZnx<B>
+        + VecZnxDftToVecZnxBigConsume<B>
+        + VecZnxBigAddSmallInplace<B>
+        + VecZnxBigNormalize<B>
+        + VecZnxAutomorphismInplace
+        + VecZnxBigSubSmallBInplace<B>
+        + VecZnxRotate,
     Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
 {
     let log_n: usize = module.log_n();
@@ -248,10 +299,7 @@ fn post_process<DataRes, DataA, B: Backend>(
             }
             cts.insert(i as usize * (1 << log_gap_out), res.clone());
         });
-
-        let now: Instant = Instant::now();
         pack(module, &mut cts, log_gap_out, auto_keys, scratch);
-        println!("pack: {} ms", now.elapsed().as_millis());
         let packed: GLWECiphertext<Vec<u8>> = cts.remove(&0).unwrap();
         res.trace(
             module,
@@ -271,7 +319,31 @@ pub fn pack<D: DataMut, B: Backend>(
     auto_keys: &HashMap<i64, GGLWEAutomorphismKeyPrepared<Vec<u8>, B>>,
     scratch: &mut Scratch<B>,
 ) where
-    Module<B>: CircuitBootstrapFamily<B>,
+    Module<B>: VecZnxRotateInplace
+        + VecZnxNormalizeInplace<B>
+        + VecZnxNormalizeTmpBytes
+        + VecZnxSwithcDegree
+        + VecZnxBigAutomorphismInplace<B>
+        + VecZnxRshInplace
+        + VecZnxDftCopy<B>
+        + VecZnxDftToVecZnxBigTmpA<B>
+        + VecZnxSub
+        + VecZnxAddInplace
+        + VecZnxNegateInplace
+        + VecZnxCopy
+        + VecZnxSubABInplace
+        + VecZnxDftAllocBytes
+        + VmpApplyTmpBytes
+        + VecZnxBigNormalizeTmpBytes
+        + VmpApply<B>
+        + VmpApplyAdd<B>
+        + VecZnxDftFromVecZnx<B>
+        + VecZnxDftToVecZnxBigConsume<B>
+        + VecZnxBigAddSmallInplace<B>
+        + VecZnxBigNormalize<B>
+        + VecZnxAutomorphismInplace
+        + VecZnxBigSubSmallBInplace<B>
+        + VecZnxRotate,
     Scratch<B>: TakeVecZnx + TakeVecZnxDft<B> + ScratchAvailable,
 {
     let log_n: usize = module.log_n();
@@ -281,8 +353,6 @@ pub fn pack<D: DataMut, B: Backend>(
     let rank: usize = cts.get(&0).unwrap().rank();
 
     (0..log_n - log_gap_out).for_each(|i| {
-        let now: Instant = Instant::now();
-
         let t = 16.min(1 << (log_n - 1 - i));
 
         let auto_key: &GGLWEAutomorphismKeyPrepared<Vec<u8>, B>;
@@ -314,8 +384,6 @@ pub fn pack<D: DataMut, B: Backend>(
                 cts.insert(j, b);
             }
         });
-
-        println!("combine: {} us", now.elapsed().as_micros());
     });
 }
 
@@ -330,7 +398,31 @@ fn combine<A: DataMut, D: DataMut, DataAK: DataRef, B: Backend>(
     auto_key: &GGLWEAutomorphismKeyPrepared<DataAK, B>,
     scratch: &mut Scratch<B>,
 ) where
-    Module<B>: CircuitBootstrapFamily<B>,
+    Module<B>: VecZnxRotateInplace
+        + VecZnxNormalizeInplace<B>
+        + VecZnxNormalizeTmpBytes
+        + VecZnxSwithcDegree
+        + VecZnxBigAutomorphismInplace<B>
+        + VecZnxRshInplace
+        + VecZnxDftCopy<B>
+        + VecZnxDftToVecZnxBigTmpA<B>
+        + VecZnxSub
+        + VecZnxAddInplace
+        + VecZnxNegateInplace
+        + VecZnxCopy
+        + VecZnxSubABInplace
+        + VecZnxDftAllocBytes
+        + VmpApplyTmpBytes
+        + VecZnxBigNormalizeTmpBytes
+        + VmpApply<B>
+        + VmpApplyAdd<B>
+        + VecZnxDftFromVecZnx<B>
+        + VecZnxDftToVecZnxBigConsume<B>
+        + VecZnxBigAddSmallInplace<B>
+        + VecZnxBigNormalize<B>
+        + VecZnxAutomorphismInplace
+        + VecZnxBigSubSmallBInplace<B>
+        + VecZnxRotate,
     Scratch<B>: TakeVecZnx + TakeVecZnxDft<B> + ScratchAvailable,
 {
     // Goal is to evaluate: a = a + b*X^t + phi(a - b*X^t))

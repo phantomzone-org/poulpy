@@ -1,13 +1,10 @@
 use backend::hal::{
-    api::{FillUniform, Reset, VecZnxCopy, VecZnxFillUniform, ZnxInfos},
+    api::{FillUniform, Reset, VecZnxCopy, VecZnxFillUniform},
     layouts::{Backend, Data, DataMut, DataRef, Module, ReaderFrom, VecZnx, WriterTo},
 };
 use sampling::source::Source;
 
-use crate::{
-    layouts::{GLWECiphertext, Infos},
-    trait_families::{Decompress, DecompressFamily},
-};
+use crate::layouts::{GLWECiphertext, Infos, compressed::Decompress};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::fmt;
 
@@ -117,10 +114,12 @@ impl<D: DataRef> WriterTo for GLWECiphertextCompressed<D> {
 impl<D: DataMut, B: Backend, DR: DataRef> Decompress<B, GLWECiphertextCompressed<DR>> for GLWECiphertext<D> {
     fn decompress(&mut self, module: &Module<B>, other: &GLWECiphertextCompressed<DR>)
     where
-        Module<B>: DecompressFamily<B>,
+        Module<B>: VecZnxCopy + VecZnxFillUniform,
     {
         #[cfg(debug_assertions)]
         {
+            use backend::hal::api::ZnxInfos;
+
             assert_eq!(
                 self.n(),
                 other.data.n(),
@@ -142,9 +141,10 @@ impl<D: DataMut, B: Backend, DR: DataRef> Decompress<B, GLWECiphertextCompressed
                 self.rank(),
                 other.rank()
             );
-            let mut source: Source = Source::new(other.seed);
-            self.decompress_internal(module, other, &mut source);
         }
+
+        let mut source: Source = Source::new(other.seed);
+        self.decompress_internal(module, other, &mut source);
     }
 }
 
@@ -156,7 +156,7 @@ impl<D: DataMut> GLWECiphertext<D> {
         source: &mut Source,
     ) where
         DataOther: DataRef,
-        Module<B>: DecompressFamily<B>,
+        Module<B>: VecZnxCopy + VecZnxFillUniform,
     {
         #[cfg(debug_assertions)]
         {

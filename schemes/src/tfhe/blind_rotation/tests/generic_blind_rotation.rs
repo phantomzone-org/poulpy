@@ -1,7 +1,12 @@
 use backend::hal::{
     api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxFillUniform, VecZnxRotateInplace,
-        VecZnxSub, VecZnxSwithcDegree, VmpPMatAlloc, VmpPMatPrepare, ZnxView,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApply, SvpApplyInplace, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare,
+        VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace,
+        VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftAdd, VecZnxDftAddInplace,
+        VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftSubABInplace, VecZnxDftToVecZnxBig, VecZnxDftToVecZnxBigConsume,
+        VecZnxDftToVecZnxBigTmpBytes, VecZnxDftZero, VecZnxFillUniform, VecZnxMulXpMinusOneInplace, VecZnxNormalize,
+        VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace, VecZnxSub, VecZnxSubABInplace,
+        VecZnxSwithcDegree, VmpApply, VmpApplyAdd, VmpApplyTmpBytes, VmpPMatAlloc, VmpPrepare, ZnxView,
     },
     layouts::{Backend, Module, ScratchOwned},
     oep::{
@@ -12,23 +17,45 @@ use backend::hal::{
 use sampling::source::Source;
 
 use crate::tfhe::blind_rotation::{
-    BlincRotationExecute, BlindRotationKey, BlindRotationKeyAlloc, BlindRotationKeyEncryptSk, BlindRotationKeyPrepared,
-    CCGIBlindRotationFamily, CGGI, LookUpTable, cggi_blind_rotate_scratch_space, mod_switch_2n,
+    BlincRotationExecute, BlindRotationKey, BlindRotationKeyAlloc, BlindRotationKeyEncryptSk, BlindRotationKeyPrepared, CGGI,
+    LookUpTable, cggi_blind_rotate_scratch_space, mod_switch_2n,
 };
 
-use core::{
-    layouts::{
-        GLWECiphertext, GLWEPlaintext, GLWESecret, Infos, LWECiphertext, LWECiphertextToRef, LWEPlaintext, LWESecret,
-        prepared::{GLWESecretPrepared, PrepareAlloc},
-    },
-    trait_families::{GLWEDecryptFamily, GLWESecretPreparedModuleFamily},
+use core::layouts::{
+    GLWECiphertext, GLWEPlaintext, GLWESecret, Infos, LWECiphertext, LWECiphertextToRef, LWEPlaintext, LWESecret,
+    prepared::{GLWESecretPrepared, PrepareAlloc},
 };
 
 pub fn test_blind_rotation<B: Backend>(module: &Module<B>, n_lwe: usize, block_size: usize, extension_factor: usize)
 where
-    Module<B>: CCGIBlindRotationFamily<B>
-        + GLWESecretPreparedModuleFamily<B>
-        + GLWEDecryptFamily<B>
+    Module<B>: VecZnxBigAllocBytes
+        + VecZnxDftAllocBytes
+        + SvpPPolAllocBytes
+        + VmpApplyTmpBytes
+        + VecZnxBigNormalizeTmpBytes
+        + VecZnxDftToVecZnxBigTmpBytes
+        + VecZnxDftToVecZnxBig<B>
+        + VecZnxDftAdd<B>
+        + VecZnxDftAddInplace<B>
+        + VecZnxDftFromVecZnx<B>
+        + VecZnxDftZero<B>
+        + SvpApply<B>
+        + VecZnxDftSubABInplace<B>
+        + VecZnxBigAddSmallInplace<B>
+        + VecZnxRotate
+        + VecZnxAddInplace
+        + VecZnxSubABInplace
+        + VecZnxNormalize<B>
+        + VecZnxNormalizeInplace<B>
+        + VecZnxCopy
+        + VecZnxMulXpMinusOneInplace
+        + SvpPrepare<B>
+        + SvpPPolAlloc<B>
+        + SvpApplyInplace<B>
+        + VecZnxDftToVecZnxBigConsume<B>
+        + VecZnxBigAddInplace<B>
+        + VecZnxBigNormalize<B>
+        + VecZnxNormalizeTmpBytes
         + VecZnxFillUniform
         + VecZnxAddNormal
         + VecZnxAddScalarInplace
@@ -36,7 +63,9 @@ where
         + VecZnxSwithcDegree
         + VecZnxSub
         + VmpPMatAlloc<B>
-        + VmpPMatPrepare<B>,
+        + VmpPrepare<B>
+        + VmpApply<B>
+        + VmpApplyAdd<B>,
     B: VecZnxDftAllocBytesImpl<B>
         + VecZnxBigAllocBytesImpl<B>
         + ScratchOwnedAllocImpl<B>
@@ -57,7 +86,9 @@ where
     let k_res: usize = 2 * basek;
     let rank: usize = 1;
 
-    let message_modulus: usize = 1 << 4;
+    let log_message_modulus = 4;
+
+    let message_modulus: usize = 1 << log_message_modulus;
 
     let mut source_xs: Source = Source::new([2u8; 32]);
     let mut source_xe: Source = Source::new([2u8; 32]);
@@ -103,10 +134,9 @@ where
 
     let mut pt_lwe: LWEPlaintext<Vec<u8>> = LWEPlaintext::alloc(basek, k_lwe);
 
-    let x: i64 = 2;
-    let bits: usize = 8;
+    let x: i64 = 15 % (message_modulus as i64);
 
-    pt_lwe.encode_i64(x, bits);
+    pt_lwe.encode_i64(x, log_message_modulus + 1);
 
     lwe.encrypt_sk(
         module,
@@ -117,13 +147,16 @@ where
         3.2,
     );
 
-    let mut f: Vec<i64> = vec![0i64; message_modulus];
-    f.iter_mut()
+    let f = |x: i64| -> i64 { 2 * x + 1 };
+
+    let mut f_vec: Vec<i64> = vec![0i64; message_modulus];
+    f_vec
+        .iter_mut()
         .enumerate()
-        .for_each(|(i, x)| *x = 2 * (i as i64) + 1);
+        .for_each(|(i, x)| *x = f(i as i64));
 
     let mut lut: LookUpTable = LookUpTable::alloc(n, basek, k_lut, extension_factor);
-    lut.set(module, &f, message_modulus);
+    lut.set(module, &f_vec, log_message_modulus + 1);
 
     let mut res: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(n, basek, k_res, rank);
 
@@ -157,4 +190,12 @@ where
     // First limb should be exactly equal (test are parameterized such that the noise does not reach
     // the first limb)
     assert_eq!(pt_have.data.at(0, 0), lut.data[0].at(0, 0));
+
+    // Verify that it effectively compute f(x)
+    let mut have: i64 = pt_have.decode_coeff_i64(log_message_modulus + 1, 0);
+
+    // Get positive representative and assert equality
+    have = (have + message_modulus as i64) % (message_modulus as i64);
+
+    assert_eq!(have, f(x) % (message_modulus as i64));
 }

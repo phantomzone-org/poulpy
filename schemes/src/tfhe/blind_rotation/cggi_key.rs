@@ -1,6 +1,9 @@
 use backend::hal::{
     api::{
-        ScratchAvailable, TakeVecZnx, TakeVecZnxDft, VecZnxAddScalarInplace, VmpPMatAlloc, VmpPMatPrepare, ZnxView, ZnxViewMut,
+        ScratchAvailable, SvpApplyInplace, TakeVecZnx, TakeVecZnxDft, VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace,
+        VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume, VecZnxFillUniform,
+        VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubABInplace, VmpPMatAlloc,
+        VmpPrepare, ZnxView, ZnxViewMut,
     },
     layouts::{Backend, DataMut, DataRef, Module, ScalarZnx, ScalarZnxToRef, Scratch},
 };
@@ -15,7 +18,6 @@ use core::{
         compressed::GGSWCiphertextCompressed,
         prepared::{GGSWCiphertextPrepared, GLWESecretPrepared},
     },
-    trait_families::GGSWEncryptSkFamily,
 };
 
 use crate::tfhe::blind_rotation::{
@@ -38,7 +40,7 @@ impl BlindRotationKeyAlloc for BlindRotationKey<Vec<u8>, CGGI> {
 impl BlindRotationKey<Vec<u8>, CGGI> {
     pub fn generate_from_sk_scratch_space<B: Backend>(module: &Module<B>, n: usize, basek: usize, k: usize, rank: usize) -> usize
     where
-        Module<B>: GGSWEncryptSkFamily<B>,
+        Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes,
     {
         GGSWCiphertext::encrypt_sk_scratch_space(module, n, basek, k, rank)
     }
@@ -46,7 +48,20 @@ impl BlindRotationKey<Vec<u8>, CGGI> {
 
 impl<D: DataMut, B: Backend> BlindRotationKeyEncryptSk<B> for BlindRotationKey<D, CGGI>
 where
-    Module<B>: GGSWEncryptSkFamily<B> + VecZnxAddScalarInplace,
+    Module<B>: VecZnxAddScalarInplace
+        + VecZnxDftAllocBytes
+        + VecZnxBigNormalize<B>
+        + VecZnxDftFromVecZnx<B>
+        + SvpApplyInplace<B>
+        + VecZnxDftToVecZnxBigConsume<B>
+        + VecZnxNormalizeTmpBytes
+        + VecZnxFillUniform
+        + VecZnxSubABInplace
+        + VecZnxAddInplace
+        + VecZnxNormalizeInplace<B>
+        + VecZnxAddNormal
+        + VecZnxNormalize<B>
+        + VecZnxSub,
     Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
 {
     fn encrypt_sk<DataSkGLWE, DataSkLWE>(
@@ -92,7 +107,7 @@ where
 
 impl<B: Backend> BlindRotationKeyPreparedAlloc<B> for BlindRotationKeyPrepared<Vec<u8>, CGGI, B>
 where
-    Module<B>: VmpPMatAlloc<B> + VmpPMatPrepare<B>,
+    Module<B>: VmpPMatAlloc<B> + VmpPrepare<B>,
 {
     fn alloc(module: &Module<B>, n_glwe: usize, n_lwe: usize, basek: usize, k: usize, rows: usize, rank: usize) -> Self {
         let mut data: Vec<GGSWCiphertextPrepared<Vec<u8>, B>> = Vec::with_capacity(n_lwe);
@@ -127,7 +142,7 @@ impl BlindRotationKeyCompressed<Vec<u8>, CGGI> {
 
     pub fn generate_from_sk_scratch_space<B: Backend>(module: &Module<B>, n: usize, basek: usize, k: usize, rank: usize) -> usize
     where
-        Module<B>: GGSWEncryptSkFamily<B>,
+        Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes,
     {
         GGSWCiphertextCompressed::encrypt_sk_scratch_space(module, n, basek, k, rank)
     }
@@ -146,7 +161,20 @@ impl<D: DataMut> BlindRotationKeyCompressed<D, CGGI> {
     ) where
         DataSkGLWE: DataRef,
         DataSkLWE: DataRef,
-        Module<B>: GGSWEncryptSkFamily<B> + VecZnxAddScalarInplace,
+        Module<B>: VecZnxAddScalarInplace
+            + VecZnxDftAllocBytes
+            + VecZnxBigNormalize<B>
+            + VecZnxDftFromVecZnx<B>
+            + SvpApplyInplace<B>
+            + VecZnxDftToVecZnxBigConsume<B>
+            + VecZnxNormalizeTmpBytes
+            + VecZnxFillUniform
+            + VecZnxSubABInplace
+            + VecZnxAddInplace
+            + VecZnxNormalizeInplace<B>
+            + VecZnxAddNormal
+            + VecZnxNormalize<B>
+            + VecZnxSub,
         Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
     {
         #[cfg(debug_assertions)]

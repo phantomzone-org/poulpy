@@ -2,9 +2,13 @@ use std::collections::HashMap;
 
 use backend::hal::{
     api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxAutomorphism, VecZnxBigAutomorphismInplace,
-        VecZnxBigSubSmallBInplace, VecZnxCopy, VecZnxFillUniform, VecZnxNormalizeInplace, VecZnxRotateInplace, VecZnxRshInplace,
-        VecZnxSubABInplace, VecZnxSwithcDegree, VmpPMatAlloc, VmpPMatPrepare, ZnxView, ZnxViewMut,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyInplace, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare, VecZnxAddInplace,
+        VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxAutomorphism, VecZnxBigAddInplace, VecZnxBigAddSmallInplace,
+        VecZnxBigAllocBytes, VecZnxBigAutomorphismInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
+        VecZnxBigSubSmallBInplace, VecZnxCopy, VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume,
+        VecZnxFillUniform, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotateInplace,
+        VecZnxRshInplace, VecZnxSub, VecZnxSubABInplace, VecZnxSwithcDegree, VmpApply, VmpApplyAdd, VmpApplyTmpBytes,
+        VmpPMatAlloc, VmpPrepare, ZnxView, ZnxViewMut,
     },
     layouts::{Backend, Module, ScratchOwned},
     oep::{
@@ -20,39 +24,51 @@ use crate::{
         prepared::{GGLWEAutomorphismKeyPrepared, GLWESecretPrepared, PrepareAlloc},
     },
     noise::var_noise_gglwe_product,
-    trait_families::{GLWEDecryptFamily, GLWEKeyswitchFamily},
 };
-
-use crate::trait_families::{GGLWESwitchingKeyEncryptSkFamily, GLWESecretPreparedModuleFamily};
-
-pub trait TraceTestModuleFamily<B: Backend> = GGLWESwitchingKeyEncryptSkFamily<B>
-    + GLWESecretPreparedModuleFamily<B>
-    + GLWEKeyswitchFamily<B>
-    + GLWEDecryptFamily<B>
-    + VecZnxSwithcDegree
-    + VecZnxAddScalarInplace
-    + VecZnxRotateInplace
-    + VecZnxBigSubSmallBInplace<B>
-    + VecZnxBigAutomorphismInplace<B>
-    + VecZnxCopy
-    + VecZnxAutomorphism
-    + VecZnxRshInplace
-    + VmpPMatAlloc<B>
-    + VmpPMatPrepare<B>;
-
-pub trait TraceTestScratchFamily<B: Backend> = TakeVecZnxDftImpl<B>
-    + TakeVecZnxBigImpl<B>
-    + TakeSvpPPolImpl<B>
-    + ScratchOwnedAllocImpl<B>
-    + ScratchOwnedBorrowImpl<B>
-    + ScratchAvailableImpl<B>
-    + TakeScalarZnxImpl<B>
-    + TakeVecZnxImpl<B>;
 
 pub fn test_glwe_trace_inplace<B: Backend>(module: &Module<B>, basek: usize, k: usize, sigma: f64, rank: usize)
 where
-    Module<B>: TraceTestModuleFamily<B>,
-    B: TraceTestScratchFamily<B>,
+    Module<B>: VecZnxDftAllocBytes
+        + VecZnxAutomorphism
+        + VecZnxBigAutomorphismInplace<B>
+        + VecZnxBigSubSmallBInplace<B>
+        + VecZnxRshInplace
+        + VecZnxRotateInplace
+        + VecZnxBigNormalize<B>
+        + VecZnxDftFromVecZnx<B>
+        + SvpApplyInplace<B>
+        + VecZnxDftToVecZnxBigConsume<B>
+        + VecZnxFillUniform
+        + VecZnxSubABInplace
+        + VecZnxAddInplace
+        + VecZnxNormalizeInplace<B>
+        + VecZnxAddNormal
+        + VecZnxNormalize<B>
+        + VecZnxSub
+        + SvpPrepare<B>
+        + SvpPPolAllocBytes
+        + SvpPPolAlloc<B>
+        + VecZnxBigAllocBytes
+        + VecZnxBigAddInplace<B>
+        + VecZnxBigAddSmallInplace<B>
+        + VecZnxNormalizeTmpBytes
+        + VecZnxAddScalarInplace
+        + VmpPMatAlloc<B>
+        + VmpPrepare<B>
+        + VmpApplyTmpBytes
+        + VmpApply<B>
+        + VmpApplyAdd<B>
+        + VecZnxBigNormalizeTmpBytes
+        + VecZnxSwithcDegree
+        + VecZnxCopy,
+    B: TakeVecZnxDftImpl<B>
+        + TakeVecZnxBigImpl<B>
+        + TakeSvpPPolImpl<B>
+        + ScratchOwnedAllocImpl<B>
+        + ScratchOwnedBorrowImpl<B>
+        + ScratchAvailableImpl<B>
+        + TakeScalarZnxImpl<B>
+        + TakeVecZnxImpl<B>,
 {
     let n: usize = module.n();
     let k_autokey: usize = k + basek;

@@ -1,5 +1,5 @@
 use backend::hal::{
-    api::{SvpPPolAlloc, SvpPrepare, VmpPMatAlloc, VmpPMatPrepare},
+    api::{SvpPPolAlloc, SvpPrepare, VmpPMatAlloc, VmpPrepare},
     layouts::{Backend, Data, DataMut, DataRef, Module, ScalarZnx, Scratch, SvpPPol},
 };
 
@@ -89,7 +89,7 @@ where
 impl<DM: DataMut, DR: DataRef, BRA: BlindRotationAlgo, B: Backend> Prepare<B, BlindRotationKey<DR, BRA>>
     for BlindRotationKeyPrepared<DM, BRA, B>
 where
-    Module<B>: VmpPMatAlloc<B> + VmpPMatPrepare<B> + SvpPPolAlloc<B> + SvpPrepare<B>,
+    Module<B>: VmpPMatAlloc<B> + VmpPrepare<B> + SvpPPolAlloc<B> + SvpPrepare<B>,
 {
     fn prepare(&mut self, module: &Module<B>, other: &BlindRotationKey<DR, BRA>, scratch: &mut Scratch<B>) {
         #[cfg(debug_assertions)]

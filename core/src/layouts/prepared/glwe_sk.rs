@@ -9,7 +9,6 @@ use crate::{
         GLWESecret,
         prepared::{Prepare, PrepareAlloc},
     },
-    trait_families::GLWESecretPreparedModuleFamily,
 };
 
 pub struct GLWESecretPrepared<D: Data, B: Backend> {
@@ -20,7 +19,7 @@ pub struct GLWESecretPrepared<D: Data, B: Backend> {
 impl<B: Backend> GLWESecretPrepared<Vec<u8>, B> {
     pub fn alloc(module: &Module<B>, n: usize, rank: usize) -> Self
     where
-        Module<B>: GLWESecretPreparedModuleFamily<B>,
+        Module<B>: SvpPPolAlloc<B>,
     {
         Self {
             data: module.svp_ppol_alloc(n, rank),
@@ -30,7 +29,7 @@ impl<B: Backend> GLWESecretPrepared<Vec<u8>, B> {
 
     pub fn bytes_of(module: &Module<B>, n: usize, rank: usize) -> usize
     where
-        Module<B>: GLWESecretPreparedModuleFamily<B>,
+        Module<B>: SvpPPolAllocBytes,
     {
         module.svp_ppol_alloc_bytes(n, rank)
     }
@@ -52,7 +51,7 @@ impl<D: Data, B: Backend> GLWESecretPrepared<D, B> {
 
 impl<D: DataRef, B: Backend> PrepareAlloc<B, GLWESecretPrepared<Vec<u8>, B>> for GLWESecret<D>
 where
-    Module<B>: SvpPrepare<B> + SvpPPolAllocBytes + SvpPPolAlloc<B>,
+    Module<B>: SvpPrepare<B> + SvpPPolAlloc<B>,
 {
     fn prepare_alloc(
         &self,

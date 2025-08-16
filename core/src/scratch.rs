@@ -21,11 +21,11 @@ pub trait TakeLike<'a, B: Backend, T> {
     fn take_like(&'a mut self, template: &T) -> (Self::Output, &'a mut Self);
 }
 
-pub trait TakeGLWECt<B: Backend> {
+pub trait TakeGLWECt {
     fn take_glwe_ct(&mut self, n: usize, basek: usize, k: usize, rank: usize) -> (GLWECiphertext<&mut [u8]>, &mut Self);
 }
 
-pub trait TakeGLWECtSlice<B: Backend> {
+pub trait TakeGLWECtSlice {
     fn take_glwe_ct_slice(
         &mut self,
         size: usize,
@@ -40,7 +40,7 @@ pub trait TakeGLWEPt<B: Backend> {
     fn take_glwe_pt(&mut self, n: usize, basek: usize, k: usize) -> (GLWEPlaintext<&mut [u8]>, &mut Self);
 }
 
-pub trait TakeGGLWE<B: Backend> {
+pub trait TakeGGLWE {
     fn take_gglwe(
         &mut self,
         n: usize,
@@ -66,7 +66,7 @@ pub trait TakeGGLWEPrepared<B: Backend> {
     ) -> (GGLWECiphertextPrepared<&mut [u8], B>, &mut Self);
 }
 
-pub trait TakeGGSW<B: Backend> {
+pub trait TakeGGSW {
     fn take_ggsw(
         &mut self,
         n: usize,
@@ -90,7 +90,7 @@ pub trait TakeGGSWPrepared<B: Backend> {
     ) -> (GGSWCiphertextPrepared<&mut [u8], B>, &mut Self);
 }
 
-pub trait TakeGLWESecret<B: Backend> {
+pub trait TakeGLWESecret {
     fn take_glwe_secret(&mut self, n: usize, rank: usize) -> (GLWESecret<&mut [u8]>, &mut Self);
 }
 
@@ -98,7 +98,7 @@ pub trait TakeGLWESecretPrepared<B: Backend> {
     fn take_glwe_secret_prepared(&mut self, n: usize, rank: usize) -> (GLWESecretPrepared<&mut [u8], B>, &mut Self);
 }
 
-pub trait TakeGLWEPk<B: Backend> {
+pub trait TakeGLWEPk {
     fn take_glwe_pk(&mut self, n: usize, basek: usize, k: usize, rank: usize) -> (GLWEPublicKey<&mut [u8]>, &mut Self);
 }
 
@@ -112,7 +112,7 @@ pub trait TakeGLWEPkPrepared<B: Backend> {
     ) -> (GLWEPublicKeyPrepared<&mut [u8], B>, &mut Self);
 }
 
-pub trait TakeGLWESwitchingKey<B: Backend> {
+pub trait TakeGLWESwitchingKey {
     fn take_glwe_switching_key(
         &mut self,
         n: usize,
@@ -138,7 +138,7 @@ pub trait TakeGLWESwitchingKeyPrepared<B: Backend> {
     ) -> (GGLWESwitchingKeyPrepared<&mut [u8], B>, &mut Self);
 }
 
-pub trait TakeTensorKey<B: Backend> {
+pub trait TakeTensorKey {
     fn take_tensor_key(
         &mut self,
         n: usize,
@@ -162,7 +162,7 @@ pub trait TakeTensorKeyPrepared<B: Backend> {
     ) -> (GGLWETensorKeyPrepared<&mut [u8], B>, &mut Self);
 }
 
-pub trait TakeAutomorphismKey<B: Backend> {
+pub trait TakeAutomorphismKey {
     fn take_automorphism_key(
         &mut self,
         n: usize,
@@ -186,7 +186,7 @@ pub trait TakeAutomorphismKeyPrepared<B: Backend> {
     ) -> (GGLWEAutomorphismKeyPrepared<&mut [u8], B>, &mut Self);
 }
 
-impl<B: Backend> TakeGLWECt<B> for Scratch<B>
+impl<B: Backend> TakeGLWECt for Scratch<B>
 where
     Scratch<B>: TakeVecZnx,
 {
@@ -216,7 +216,7 @@ where
     }
 }
 
-impl<B: Backend> TakeGLWECtSlice<B> for Scratch<B>
+impl<B: Backend> TakeGLWECtSlice for Scratch<B>
 where
     Scratch<B>: TakeVecZnx,
 {
@@ -269,7 +269,7 @@ where
     }
 }
 
-impl<B: Backend> TakeGGLWE<B> for Scratch<B>
+impl<B: Backend> TakeGGLWE for Scratch<B>
 where
     Scratch<B>: TakeMatZnx,
 {
@@ -391,7 +391,7 @@ where
     }
 }
 
-impl<B: Backend> TakeGGSW<B> for Scratch<B>
+impl<B: Backend> TakeGGSW for Scratch<B>
 where
     Scratch<B>: TakeMatZnx,
 {
@@ -511,7 +511,7 @@ where
     }
 }
 
-impl<B: Backend> TakeGLWEPk<B> for Scratch<B>
+impl<B: Backend> TakeGLWEPk for Scratch<B>
 where
     Scratch<B>: TakeVecZnx,
 {
@@ -595,7 +595,7 @@ where
     }
 }
 
-impl<B: Backend> TakeGLWESecret<B> for Scratch<B>
+impl<B: Backend> TakeGLWESecret for Scratch<B>
 where
     Scratch<B>: TakeScalarZnx,
 {
@@ -665,7 +665,7 @@ where
     }
 }
 
-impl<B: Backend> TakeGLWESwitchingKey<B> for Scratch<B>
+impl<B: Backend> TakeGLWESwitchingKey for Scratch<B>
 where
     Scratch<B>: TakeMatZnx,
 {
@@ -759,7 +759,7 @@ where
     }
 }
 
-impl<B: Backend> TakeAutomorphismKey<B> for Scratch<B>
+impl<B: Backend> TakeAutomorphismKey for Scratch<B>
 where
     Scratch<B>: TakeMatZnx,
 {
@@ -823,7 +823,7 @@ where
     }
 }
 
-impl<B: Backend> TakeTensorKey<B> for Scratch<B>
+impl<B: Backend> TakeTensorKey for Scratch<B>
 where
     Scratch<B>: TakeMatZnx,
 {

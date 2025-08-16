@@ -1,7 +1,11 @@
 use backend::hal::{
     api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddScalarInplace, VecZnxAutomorphism, VecZnxAutomorphismInplace, VecZnxCopy,
-        VecZnxSubScalarInplace, VecZnxSwithcDegree, VmpPMatAlloc, VmpPMatPrepare,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyInplace, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare, VecZnxAddInplace,
+        VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxAutomorphism, VecZnxAutomorphismInplace, VecZnxBigAddInplace,
+        VecZnxBigAddSmallInplace, VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxCopy,
+        VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume, VecZnxFillUniform, VecZnxNormalize,
+        VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubABInplace, VecZnxSubScalarInplace,
+        VecZnxSwithcDegree, VmpApply, VmpApplyAdd, VmpApplyTmpBytes, VmpPMatAlloc, VmpPrepare,
     },
     layouts::{Backend, Module, ScratchOwned},
     oep::{
@@ -17,10 +21,7 @@ use crate::{
         prepared::{GGLWEAutomorphismKeyPrepared, GLWESecretPrepared, Prepare, PrepareAlloc},
     },
     noise::log2_std_noise_gglwe_product,
-    trait_families::{GLWEDecryptFamily, GLWEKeyswitchFamily},
 };
-
-use crate::trait_families::{GGLWEAutomorphismKeyEncryptSkFamily, GLWESecretPreparedModuleFamily};
 
 pub fn test_gglwe_automorphism_key_automorphism<B: Backend>(
     module: &Module<B>,
@@ -34,19 +35,36 @@ pub fn test_gglwe_automorphism_key_automorphism<B: Backend>(
     sigma: f64,
     rank: usize,
 ) where
-    Module<B>: GGLWEAutomorphismKeyEncryptSkFamily<B>
-        + GLWESecretPreparedModuleFamily<B>
-        + GLWEKeyswitchFamily<B>
-        + VecZnxAutomorphism
-        + VecZnxSwithcDegree
-        + VecZnxAddScalarInplace
+    Module<B>: VecZnxDftAllocBytes
+        + VmpApplyTmpBytes
+        + VecZnxBigNormalizeTmpBytes
+        + VmpApply<B>
+        + VmpApplyAdd<B>
+        + VecZnxDftFromVecZnx<B>
+        + VecZnxDftToVecZnxBigConsume<B>
+        + VecZnxBigAddSmallInplace<B>
+        + VecZnxBigNormalize<B>
         + VecZnxAutomorphism
         + VecZnxAutomorphismInplace
-        + GLWEDecryptFamily<B>
-        + VecZnxSubScalarInplace
-        + VecZnxCopy
+        + SvpPPolAllocBytes
+        + VecZnxDftAllocBytes
+        + VecZnxNormalizeTmpBytes
         + VmpPMatAlloc<B>
-        + VmpPMatPrepare<B>,
+        + VmpPrepare<B>
+        + SvpPrepare<B>
+        + SvpApplyInplace<B>
+        + VecZnxAddScalarInplace
+        + VecZnxFillUniform
+        + VecZnxSubABInplace
+        + VecZnxAddInplace
+        + VecZnxNormalizeInplace<B>
+        + VecZnxAddNormal
+        + VecZnxNormalize<B>
+        + VecZnxSub
+        + VecZnxSwithcDegree
+        + SvpPPolAlloc<B>
+        + VecZnxBigAddInplace<B>
+        + VecZnxSubScalarInplace,
     B: ScratchOwnedAllocImpl<B>
         + ScratchOwnedBorrowImpl<B>
         + ScratchAvailableImpl<B>
@@ -179,19 +197,50 @@ pub fn test_gglwe_automorphism_key_automorphism_inplace<B: Backend>(
     sigma: f64,
     rank: usize,
 ) where
-    Module<B>: GGLWEAutomorphismKeyEncryptSkFamily<B>
-        + GLWESecretPreparedModuleFamily<B>
-        + GLWEKeyswitchFamily<B>
+    Module<B>: VecZnxDftAllocBytes
+        + VecZnxBigNormalize<B>
+        + VecZnxDftFromVecZnx<B>
+        + SvpApplyInplace<B>
+        + VecZnxDftToVecZnxBigConsume<B>
+        + VecZnxNormalizeTmpBytes
+        + VecZnxFillUniform
+        + VecZnxSubABInplace
+        + VecZnxAddInplace
+        + VecZnxNormalizeInplace<B>
+        + VecZnxAddNormal
+        + VecZnxNormalize<B>
+        + VecZnxSub
+        + SvpPrepare<B>
+        + SvpPPolAllocBytes
+        + SvpPPolAlloc<B>
+        + VecZnxDftAllocBytes
+        + VmpApplyTmpBytes
+        + VecZnxBigNormalizeTmpBytes
+        + VmpApplyTmpBytes
+        + VmpApply<B>
+        + VmpApplyAdd<B>
+        + VecZnxDftFromVecZnx<B>
+        + VecZnxDftToVecZnxBigConsume<B>
+        + VecZnxBigAddSmallInplace<B>
+        + VecZnxBigNormalize<B>
         + VecZnxAutomorphism
         + VecZnxSwithcDegree
         + VecZnxAddScalarInplace
         + VecZnxAutomorphism
         + VecZnxAutomorphismInplace
-        + GLWEDecryptFamily<B>
+        + VecZnxDftAllocBytes
+        + VecZnxBigAllocBytes
+        + VecZnxDftFromVecZnx<B>
+        + SvpApplyInplace<B>
+        + VecZnxDftToVecZnxBigConsume<B>
+        + VecZnxBigAddInplace<B>
+        + VecZnxBigAddSmallInplace<B>
+        + VecZnxBigNormalize<B>
+        + VecZnxNormalizeTmpBytes
         + VecZnxSubScalarInplace
         + VecZnxCopy
         + VmpPMatAlloc<B>
-        + VmpPMatPrepare<B>,
+        + VmpPrepare<B>,
     B: ScratchOwnedAllocImpl<B>
         + ScratchOwnedBorrowImpl<B>
         + ScratchAvailableImpl<B>

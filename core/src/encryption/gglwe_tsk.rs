@@ -1,7 +1,9 @@
 use backend::hal::{
     api::{
-        ScratchAvailable, SvpApply, TakeScalarZnx, TakeVecZnx, TakeVecZnxBig, TakeVecZnxDft, VecZnxAddScalarInplace,
-        VecZnxBigAllocBytes, VecZnxDftToVecZnxBigTmpA, VecZnxSwithcDegree,
+        ScratchAvailable, SvpApply, SvpApplyInplace, SvpPPolAllocBytes, SvpPrepare, TakeScalarZnx, TakeVecZnx, TakeVecZnxBig,
+        TakeVecZnxDft, VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxBigAllocBytes, VecZnxBigNormalize,
+        VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume, VecZnxDftToVecZnxBigTmpA, VecZnxFillUniform,
+        VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubABInplace, VecZnxSwithcDegree,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
 };
@@ -13,15 +15,13 @@ use crate::{
         GGLWESwitchingKey, GGLWETensorKey, GLWESecret, Infos,
         prepared::{GLWESecretPrepared, Prepare},
     },
-    trait_families::GLWEDecryptFamily,
 };
-
-use crate::trait_families::{GGLWETensorKeyEncryptSkFamily, GLWESecretPreparedModuleFamily};
 
 impl GGLWETensorKey<Vec<u8>> {
     pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, n: usize, basek: usize, k: usize, rank: usize) -> usize
     where
-        Module<B>: GGLWETensorKeyEncryptSkFamily<B> + GLWESecretPreparedModuleFamily<B>,
+        Module<B>:
+            SvpPPolAllocBytes + VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes + VecZnxNormalizeTmpBytes + VecZnxBigAllocBytes,
     {
         GLWESecretPrepared::bytes_of(module, n, rank)
             + module.vec_znx_dft_alloc_bytes(n, rank, 1)
@@ -42,10 +42,27 @@ impl<DataSelf: DataMut> GGLWETensorKey<DataSelf> {
         sigma: f64,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>:
-            GGLWETensorKeyEncryptSkFamily<B> + VecZnxSwithcDegree + VecZnxAddScalarInplace + GLWESecretPreparedModuleFamily<B>,
+        Module<B>: SvpApply<B>
+            + VecZnxDftToVecZnxBigTmpA<B>
+            + VecZnxAddScalarInplace
+            + VecZnxDftAllocBytes
+            + VecZnxBigNormalize<B>
+            + VecZnxDftFromVecZnx<B>
+            + SvpApplyInplace<B>
+            + VecZnxDftToVecZnxBigConsume<B>
+            + VecZnxNormalizeTmpBytes
+            + VecZnxFillUniform
+            + VecZnxSubABInplace
+            + VecZnxAddInplace
+            + VecZnxNormalizeInplace<B>
+            + VecZnxAddNormal
+            + VecZnxNormalize<B>
+            + VecZnxSub
+            + SvpPrepare<B>
+            + VecZnxSwithcDegree
+            + SvpPPolAllocBytes,
         Scratch<B>:
-            ScratchAvailable + TakeVecZnxDft<B> + TakeVecZnxBig<B> + TakeGLWESecretPrepared<B> + TakeScalarZnx + TakeVecZnx,
+            TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx + TakeScalarZnx + TakeGLWESecretPrepared<B> + TakeVecZnxBig<B>,
     {
         #[cfg(debug_assertions)]
         {

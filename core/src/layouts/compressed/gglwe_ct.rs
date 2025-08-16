@@ -3,11 +3,12 @@ use backend::hal::{
     layouts::{Backend, Data, DataMut, DataRef, MatZnx, Module, ReaderFrom, WriterTo},
 };
 
-use crate::layouts::{GGLWECiphertext, Infos, compressed::GLWECiphertextCompressed};
+use crate::layouts::{
+    GGLWECiphertext, Infos,
+    compressed::{Decompress, GLWECiphertextCompressed},
+};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::fmt;
-
-use crate::trait_families::Decompress;
 
 #[derive(PartialEq, Eq, Clone)]
 pub struct GGLWECiphertextCompressed<D: Data> {

@@ -6,16 +6,15 @@ use std::{collections::HashMap, usize};
 
 use backend::hal::{
     api::{
-        ScratchAvailable, TakeScalarZnx, TakeSvpPPol, TakeVecZnx, TakeVecZnxBig, TakeVecZnxDft, VecZnxAddScalarInplace,
-        VecZnxAutomorphism, VecZnxSwithcDegree, VmpPMatAlloc, VmpPMatPrepare,
+        ScratchAvailable, SvpApply, SvpApplyInplace, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare, TakeScalarZnx, TakeSvpPPol,
+        TakeVecZnx, TakeVecZnxBig, TakeVecZnxDft, VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxAutomorphism,
+        VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume, VecZnxDftToVecZnxBigTmpA,
+        VecZnxFillUniform, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubABInplace,
+        VecZnxSwithcDegree, VmpPMatAlloc, VmpPrepare,
     },
     layouts::{Backend, Data, DataRef, Module, Scratch},
 };
 use sampling::source::Source;
-
-use core::trait_families::{
-    GGLWEAutomorphismKeyEncryptSkFamily, GGLWETensorKeyEncryptSkFamily, GGSWEncryptSkFamily, GLWESecretPreparedModuleFamily,
-};
 
 use crate::tfhe::blind_rotation::{
     BlindRotationAlgo, BlindRotationKey, BlindRotationKeyAlloc, BlindRotationKeyEncryptSk, BlindRotationKeyPrepared,
@@ -52,13 +51,27 @@ pub struct CircuitBootstrappingKey<D: Data, BRA: BlindRotationAlgo> {
 impl<BRA: BlindRotationAlgo, B: Backend> CircuitBootstrappingKeyEncryptSk<B> for CircuitBootstrappingKey<Vec<u8>, BRA>
 where
     BlindRotationKey<Vec<u8>, BRA>: BlindRotationKeyAlloc + BlindRotationKeyEncryptSk<B>,
-    Module<B>: GGSWEncryptSkFamily<B>
-        + GLWESecretPreparedModuleFamily<B>
+    Module<B>: SvpApply<B>
+        + VecZnxDftToVecZnxBigTmpA<B>
         + VecZnxAddScalarInplace
-        + GGLWEAutomorphismKeyEncryptSkFamily<B>
-        + VecZnxAutomorphism
+        + VecZnxDftAllocBytes
+        + VecZnxBigNormalize<B>
+        + VecZnxDftFromVecZnx<B>
+        + SvpApplyInplace<B>
+        + VecZnxDftToVecZnxBigConsume<B>
+        + VecZnxNormalizeTmpBytes
+        + VecZnxFillUniform
+        + VecZnxSubABInplace
+        + VecZnxAddInplace
+        + VecZnxNormalizeInplace<B>
+        + VecZnxAddNormal
+        + VecZnxNormalize<B>
+        + VecZnxSub
+        + SvpPrepare<B>
         + VecZnxSwithcDegree
-        + GGLWETensorKeyEncryptSkFamily<B>,
+        + SvpPPolAllocBytes
+        + SvpPPolAlloc<B>
+        + VecZnxAutomorphism,
     Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx + TakeScalarZnx + TakeSvpPPol<B> + TakeVecZnxBig<B>,
 {
     fn encrypt_sk<DLwe, DGlwe>(
@@ -80,6 +93,7 @@ where
     where
         DLwe: DataRef,
         DGlwe: DataRef,
+        Module<B>:,
     {
         let mut auto_keys: HashMap<i64, GGLWEAutomorphismKey<Vec<u8>>> = HashMap::new();
         let gal_els: Vec<i64> = GLWECiphertext::trace_galois_elements(&module);
@@ -133,7 +147,7 @@ pub struct CircuitBootstrappingKeyPrepared<D: Data, BRA: BlindRotationAlgo, B: B
 impl<D: DataRef, BRA: BlindRotationAlgo, B: Backend> PrepareAlloc<B, CircuitBootstrappingKeyPrepared<Vec<u8>, BRA, B>>
     for CircuitBootstrappingKey<D, BRA>
 where
-    Module<B>: VmpPMatAlloc<B> + VmpPMatPrepare<B>,
+    Module<B>: VmpPMatAlloc<B> + VmpPrepare<B>,
     BlindRotationKey<D, BRA>: PrepareAlloc<B, BlindRotationKeyPrepared<Vec<u8>, BRA, B>>,
     GGLWETensorKey<D>: PrepareAlloc<B, GGLWETensorKeyPrepared<Vec<u8>, B>>,
     GGLWEAutomorphismKey<D>: PrepareAlloc<B, GGLWEAutomorphismKeyPrepared<Vec<u8>, B>>,

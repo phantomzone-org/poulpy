@@ -1,5 +1,5 @@
 use backend::hal::{
-    api::{VmpPMatAlloc, VmpPMatAllocBytes, VmpPMatPrepare},
+    api::{VmpPMatAlloc, VmpPMatAllocBytes, VmpPrepare},
     layouts::{Backend, Data, DataMut, DataRef, Module, Scratch, VmpPMat},
 };
 
@@ -73,7 +73,7 @@ impl<D: Data, B: Backend> GGLWEAutomorphismKeyPrepared<D, B> {
 
 impl<D: DataMut, DR: DataRef, B: Backend> Prepare<B, GGLWEAutomorphismKey<DR>> for GGLWEAutomorphismKeyPrepared<D, B>
 where
-    Module<B>: VmpPMatPrepare<B>,
+    Module<B>: VmpPrepare<B>,
 {
     fn prepare(&mut self, module: &Module<B>, other: &GGLWEAutomorphismKey<DR>, scratch: &mut Scratch<B>) {
         self.key.prepare(module, &other.key, scratch);
@@ -83,7 +83,7 @@ where
 
 impl<D: DataRef, B: Backend> PrepareAlloc<B, GGLWEAutomorphismKeyPrepared<Vec<u8>, B>> for GGLWEAutomorphismKey<D>
 where
-    Module<B>: VmpPMatAlloc<B> + VmpPMatPrepare<B>,
+    Module<B>: VmpPMatAlloc<B> + VmpPrepare<B>,
 {
     fn prepare_alloc(&self, module: &Module<B>, scratch: &mut Scratch<B>) -> GGLWEAutomorphismKeyPrepared<Vec<u8>, B> {
         let mut atk_prepared: GGLWEAutomorphismKeyPrepared<Vec<u8>, B> = GGLWEAutomorphismKeyPrepared::alloc(
