@@ -4,17 +4,30 @@ use crate::{
     alloc_aligned,
     hal::{
         api::{DataView, DataViewMut, FillUniform, Reset, ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero},
-        layouts::{Data, DataMut, DataRef, ReaderFrom, WriterTo},
+        layouts::{Data, DataMut, DataRef, ReaderFrom, ToOwnedDeep, WriterTo},
     },
 };
 
-#[derive(PartialEq, Eq, Clone)]
+#[derive(PartialEq, Eq, Clone, Copy)]
 pub struct VecZnx<D: Data> {
     pub(crate) data: D,
     pub(crate) n: usize,
     pub(crate) cols: usize,
     pub(crate) size: usize,
     pub(crate) max_size: usize,
+}
+
+impl<D: DataRef> ToOwnedDeep for VecZnx<D> {
+    type Owned = VecZnx<Vec<u8>>;
+    fn to_owned_deep(&self) -> Self::Owned {
+        VecZnx {
+            data: self.data.as_ref().to_vec(),
+            n: self.n,
+            cols: self.cols,
+            size: self.size,
+            max_size: self.max_size,
+        }
+    }
 }
 
 impl<D: DataRef> fmt::Debug for VecZnx<D> {
@@ -87,7 +100,7 @@ impl VecZnx<Vec<u8>> {
     pub fn alloc(n: usize, cols: usize, size: usize) -> Self {
         let data: Vec<u8> = alloc_aligned::<u8>(Self::alloc_bytes(n, cols, size));
         Self {
-            data: data.into(),
+            data,
             n,
             cols,
             size,
@@ -99,7 +112,7 @@ impl VecZnx<Vec<u8>> {
         let data: Vec<u8> = bytes.into();
         assert!(data.len() == Self::alloc_bytes(n, cols, size));
         Self {
-            data: data.into(),
+            data,
             n,
             cols,
             size,
@@ -203,19 +216,6 @@ impl<D: DataMut> VecZnxToMut for VecZnx<D> {
             cols: self.cols,
             size: self.size,
             max_size: self.max_size,
-        }
-    }
-}
-
-impl<D: DataRef> VecZnx<D> {
-    pub fn clone(&self) -> VecZnx<Vec<u8>> {
-        let self_ref: VecZnx<&[u8]> = self.to_ref();
-        VecZnx {
-            data: self_ref.data.to_vec(),
-            n: self_ref.n,
-            cols: self_ref.cols,
-            size: self_ref.size,
-            max_size: self_ref.max_size,
         }
     }
 }

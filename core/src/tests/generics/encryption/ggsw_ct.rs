@@ -20,7 +20,7 @@ use crate::layouts::{
     prepared::{GLWESecretPrepared, PrepareAlloc},
 };
 
-pub fn test_ggsw_encrypt_sk<B: Backend>(module: &Module<B>, basek: usize, k: usize, digits: usize, rank: usize, sigma: f64)
+pub fn test_ggsw_encrypt_sk<B>(module: &Module<B>, basek: usize, k: usize, digits: usize, rank: usize, sigma: f64)
 where
     Module<B>: VecZnxDftAllocBytes
         + VecZnxBigNormalize<B>
@@ -49,7 +49,8 @@ where
         + VecZnxDftAlloc<B>
         + VecZnxBigNormalizeTmpBytes
         + VecZnxDftToVecZnxBigTmpA<B>,
-    B: TakeVecZnxDftImpl<B>
+    B: Backend
+        + TakeVecZnxDftImpl<B>
         + TakeVecZnxBigImpl<B>
         + TakeSvpPPolImpl<B>
         + ScratchOwnedAllocImpl<B>
@@ -94,17 +95,11 @@ where
 
     let noise_f = |_col_i: usize| -(k as f64) + sigma.log2() + 0.5;
 
-    ct.assert_noise(module, &sk_prepared, &pt_scalar, &noise_f);
+    ct.assert_noise(module, &sk_prepared, &pt_scalar, noise_f);
 }
 
-pub fn test_ggsw_compressed_encrypt_sk<B: Backend>(
-    module: &Module<B>,
-    basek: usize,
-    k: usize,
-    digits: usize,
-    rank: usize,
-    sigma: f64,
-) where
+pub fn test_ggsw_compressed_encrypt_sk<B>(module: &Module<B>, basek: usize, k: usize, digits: usize, rank: usize, sigma: f64)
+where
     Module<B>: VecZnxDftAllocBytes
         + VecZnxBigNormalize<B>
         + VecZnxDftFromVecZnx<B>
@@ -132,7 +127,8 @@ pub fn test_ggsw_compressed_encrypt_sk<B: Backend>(
         + VecZnxDftAlloc<B>
         + VecZnxBigNormalizeTmpBytes
         + VecZnxDftToVecZnxBigTmpA<B>,
-    B: TakeVecZnxDftImpl<B>
+    B: Backend
+        + TakeVecZnxDftImpl<B>
         + TakeVecZnxBigImpl<B>
         + ScratchOwnedAllocImpl<B>
         + ScratchOwnedBorrowImpl<B>
@@ -180,5 +176,5 @@ pub fn test_ggsw_compressed_encrypt_sk<B: Backend>(
     let mut ct: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(n, basek, k, rows, digits, rank);
     ct.decompress(module, &ct_compressed);
 
-    ct.assert_noise(module, &sk_prepared, &pt_scalar, &noise_f);
+    ct.assert_noise(module, &sk_prepared, &pt_scalar, noise_f);
 }

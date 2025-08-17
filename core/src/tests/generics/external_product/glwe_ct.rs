@@ -22,7 +22,8 @@ use crate::{
     noise::noise_ggsw_product,
 };
 
-pub fn test_glwe_external_product<B: Backend>(
+#[allow(clippy::too_many_arguments)]
+pub fn test_glwe_external_product<B>(
     module: &Module<B>,
     basek: usize,
     k_out: usize,
@@ -58,7 +59,8 @@ pub fn test_glwe_external_product<B: Backend>(
         + VmpApplyTmpBytes
         + VmpApply<B>
         + VmpApplyAdd<B>,
-    B: TakeVecZnxDftImpl<B>
+    B: Backend
+        + TakeVecZnxDftImpl<B>
         + TakeVecZnxBigImpl<B>
         + TakeSvpPPolImpl<B>
         + ScratchOwnedAllocImpl<B>
@@ -158,7 +160,8 @@ pub fn test_glwe_external_product<B: Backend>(
     ct_glwe_out.assert_noise(module, &sk_prepared, &pt_want, max_noise + 0.5);
 }
 
-pub fn test_glwe_external_product_inplace<B: Backend>(
+#[allow(clippy::too_many_arguments)]
+pub fn test_glwe_external_product_inplace<B>(
     module: &Module<B>,
     basek: usize,
     k_ct: usize,
@@ -193,7 +196,8 @@ pub fn test_glwe_external_product_inplace<B: Backend>(
         + VmpApplyTmpBytes
         + VmpApply<B>
         + VmpApplyAdd<B>,
-    B: TakeVecZnxDftImpl<B>
+    B: Backend
+        + TakeVecZnxDftImpl<B>
         + TakeVecZnxBigImpl<B>
         + TakeSvpPPolImpl<B>
         + ScratchOwnedAllocImpl<B>

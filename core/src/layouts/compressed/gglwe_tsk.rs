@@ -59,7 +59,7 @@ impl GGLWETensorKeyCompressed<Vec<u8>> {
                 n, basek, k, rows, digits, 1, rank,
             ));
         });
-        Self { keys: keys }
+        Self { keys }
     }
 
     pub fn bytes_of(n: usize, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize {
@@ -72,7 +72,7 @@ impl<D: Data> Infos for GGLWETensorKeyCompressed<D> {
     type Inner = MatZnx<D>;
 
     fn inner(&self) -> &Self::Inner {
-        &self.keys[0].inner()
+        self.keys[0].inner()
     }
 
     fn basek(&self) -> usize {

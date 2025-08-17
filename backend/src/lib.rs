@@ -17,7 +17,7 @@ pub const GALOISGENERATOR: u64 = 5;
 pub const DEFAULTALIGN: usize = 64;
 
 fn is_aligned_custom<T>(ptr: *const T, align: usize) -> bool {
-    (ptr as usize) % align == 0
+    (ptr as usize).is_multiple_of(align)
 }
 
 pub fn is_aligned<T>(ptr: *const T) -> bool {
@@ -37,6 +37,7 @@ pub fn cast<T, V>(data: &[T]) -> &[V] {
     unsafe { std::slice::from_raw_parts(ptr, len) }
 }
 
+#[allow(clippy::mut_from_ref)]
 pub fn cast_mut<T, V>(data: &[T]) -> &mut [V] {
     let ptr: *mut V = data.as_ptr() as *mut V;
     let len: usize = data.len() / size_of::<V>();

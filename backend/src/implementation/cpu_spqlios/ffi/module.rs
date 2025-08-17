@@ -5,6 +5,7 @@ pub struct module_info_t {
 pub type module_type_t = ::std::os::raw::c_uint;
 pub use self::module_type_t as MODULE_TYPE;
 
+#[allow(clippy::upper_case_acronyms)]
 pub type MODULE = module_info_t;
 
 unsafe extern "C" {

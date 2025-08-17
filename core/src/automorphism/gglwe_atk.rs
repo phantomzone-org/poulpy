@@ -10,6 +10,7 @@ use backend::hal::{
 use crate::layouts::{GGLWEAutomorphismKey, GLWECiphertext, Infos, prepared::GGLWEAutomorphismKeyPrepared};
 
 impl GGLWEAutomorphismKey<Vec<u8>> {
+    #[allow(clippy::too_many_arguments)]
     pub fn automorphism_scratch_space<B: Backend>(
         module: &Module<B>,
         n: usize,
@@ -43,7 +44,7 @@ impl GGLWEAutomorphismKey<Vec<u8>> {
 }
 
 impl<DataSelf: DataMut> GGLWEAutomorphismKey<DataSelf> {
-    pub fn automorphism<'a, DataLhs: DataRef, DataRhs: DataRef, B: Backend>(
+    pub fn automorphism<DataLhs: DataRef, DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
         lhs: &GGLWEAutomorphismKey<DataLhs>,
@@ -149,7 +150,7 @@ impl<DataSelf: DataMut> GGLWEAutomorphismKey<DataSelf> {
     {
         unsafe {
             let self_ptr: *mut GGLWEAutomorphismKey<DataSelf> = self as *mut GGLWEAutomorphismKey<DataSelf>;
-            self.automorphism(&module, &*self_ptr, rhs, scratch);
+            self.automorphism(module, &*self_ptr, rhs, scratch);
         }
     }
 }

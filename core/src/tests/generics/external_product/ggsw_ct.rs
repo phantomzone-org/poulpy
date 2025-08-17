@@ -23,7 +23,8 @@ use crate::{
     noise::noise_ggsw_product,
 };
 
-pub fn test_ggsw_external_product<B: Backend>(
+#[allow(clippy::too_many_arguments)]
+pub fn test_ggsw_external_product<B>(
     module: &Module<B>,
     basek: usize,
     k_in: usize,
@@ -64,7 +65,8 @@ pub fn test_ggsw_external_product<B: Backend>(
         + VecZnxDftAlloc<B>
         + VecZnxBigNormalizeTmpBytes
         + VecZnxDftToVecZnxBigTmpA<B>,
-    B: TakeVecZnxDftImpl<B>
+    B: Backend
+        + TakeVecZnxDftImpl<B>
         + TakeVecZnxBigImpl<B>
         + ScratchOwnedAllocImpl<B>
         + ScratchOwnedBorrowImpl<B>
@@ -154,10 +156,11 @@ pub fn test_ggsw_external_product<B: Backend>(
         ) + 0.5
     };
 
-    ct_ggsw_lhs_out.assert_noise(module, &sk_prepared, &pt_ggsw_lhs, &max_noise);
+    ct_ggsw_lhs_out.assert_noise(module, &sk_prepared, &pt_ggsw_lhs, max_noise);
 }
 
-pub fn test_ggsw_external_product_inplace<B: Backend>(
+#[allow(clippy::too_many_arguments)]
+pub fn test_ggsw_external_product_inplace<B>(
     module: &Module<B>,
     basek: usize,
     k_ct: usize,
@@ -197,7 +200,8 @@ pub fn test_ggsw_external_product_inplace<B: Backend>(
         + VecZnxDftAlloc<B>
         + VecZnxBigNormalizeTmpBytes
         + VecZnxDftToVecZnxBigTmpA<B>,
-    B: TakeVecZnxDftImpl<B>
+    B: Backend
+        + TakeVecZnxDftImpl<B>
         + TakeVecZnxBigImpl<B>
         + ScratchOwnedAllocImpl<B>
         + ScratchOwnedBorrowImpl<B>
@@ -287,5 +291,5 @@ pub fn test_ggsw_external_product_inplace<B: Backend>(
         ) + 0.5
     };
 
-    ct_ggsw_lhs.assert_noise(module, &sk_prepared, &pt_ggsw_lhs, &max_noise);
+    ct_ggsw_lhs.assert_noise(module, &sk_prepared, &pt_ggsw_lhs, max_noise);
 }

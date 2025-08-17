@@ -36,7 +36,7 @@ use core::layouts::{
     prepared::{GGSWCiphertextPrepared, GLWESecretPrepared},
 };
 
-pub fn test_circuit_bootstrapping_to_exponent<B: Backend, BRA: BlindRotationAlgo>(module: &Module<B>)
+pub fn test_circuit_bootstrapping_to_exponent<B, BRA: BlindRotationAlgo>(module: &Module<B>)
 where
     Module<B>: VecZnxFillUniform
         + VecZnxAddNormal
@@ -81,7 +81,8 @@ where
         + VecZnxBigAllocBytes
         + VecZnxDftAddInplace<B>
         + VecZnxRotate,
-    B: ScratchOwnedAllocImpl<B>
+    B: Backend
+        + ScratchOwnedAllocImpl<B>
         + ScratchOwnedBorrowImpl<B>
         + TakeVecZnxDftImpl<B>
         + ScratchAvailableImpl<B>
@@ -223,7 +224,7 @@ where
     assert_eq!(pt_res.data.at(0, 0), pt_want);
 }
 
-pub fn test_circuit_bootstrapping_to_constant<B: Backend, BRA: BlindRotationAlgo>(module: &Module<B>)
+pub fn test_circuit_bootstrapping_to_constant<B, BRA: BlindRotationAlgo>(module: &Module<B>)
 where
     Module<B>: VecZnxFillUniform
         + VecZnxAddNormal
@@ -268,7 +269,8 @@ where
         + VecZnxBigAllocBytes
         + VecZnxDftAddInplace<B>
         + VecZnxRotate,
-    B: ScratchOwnedAllocImpl<B>
+    B: Backend
+        + ScratchOwnedAllocImpl<B>
         + ScratchOwnedBorrowImpl<B>
         + TakeVecZnxDftImpl<B>
         + ScratchAvailableImpl<B>

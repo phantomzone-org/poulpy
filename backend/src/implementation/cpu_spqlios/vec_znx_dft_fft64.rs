@@ -91,9 +91,9 @@ unsafe impl VecZnxDftToVecZnxBigImpl<FFT64> for FFT64 {
                 vec_znx_dft::vec_znx_idft(
                     module.ptr(),
                     res.at_mut_ptr(res_col, j) as *mut vec_znx_big::vec_znx_big_t,
-                    1 as u64,
+                    1_u64,
                     a.at_ptr(a_col, j) as *const vec_znx_dft::vec_znx_dft_t,
-                    1 as u64,
+                    1_u64,
                     tmp_bytes.as_mut_ptr(),
                 )
             });
@@ -120,9 +120,9 @@ unsafe impl VecZnxDftToVecZnxBigTmpAImpl<FFT64> for FFT64 {
                 vec_znx_dft::vec_znx_idft_tmp_a(
                     module.ptr(),
                     res_mut.at_mut_ptr(res_col, j) as *mut vec_znx_big::vec_znx_big_t,
-                    1 as u64,
+                    1_u64,
                     a_mut.at_mut_ptr(a_col, j) as *mut vec_znx_dft::vec_znx_dft_t,
-                    1 as u64,
+                    1_u64,
                 )
             });
             (min_size..res_mut.size()).for_each(|j| {
@@ -146,9 +146,9 @@ unsafe impl VecZnxDftToVecZnxBigConsumeImpl<FFT64> for FFT64 {
                     vec_znx_dft::vec_znx_idft_tmp_a(
                         module.ptr(),
                         a_mut.at_mut_ptr(i, j) as *mut vec_znx_big::vec_znx_big_t,
-                        1 as u64,
+                        1_u64,
                         a_mut.at_mut_ptr(i, j) as *mut vec_znx_dft::vec_znx_dft_t,
-                        1 as u64,
+                        1_u64,
                     )
                 });
             });
@@ -182,9 +182,9 @@ unsafe impl VecZnxDftFromVecZnxImpl<FFT64> for FFT64 {
                     vec_znx_dft::vec_znx_dft(
                         module.ptr(),
                         res_mut.at_mut_ptr(res_col, j) as *mut vec_znx_dft::vec_znx_dft_t,
-                        1 as u64,
+                        1_u64,
                         a_ref.at_ptr(a_col, limb),
-                        1 as u64,
+                        1_u64,
                         a_ref.sl() as u64,
                     )
                 }

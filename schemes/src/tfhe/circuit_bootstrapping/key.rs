@@ -2,7 +2,7 @@ use core::layouts::{
     GGLWEAutomorphismKey, GGLWETensorKey, GLWECiphertext, GLWESecret, LWESecret,
     prepared::{GGLWEAutomorphismKeyPrepared, GGLWETensorKeyPrepared, GLWESecretPrepared, PrepareAlloc},
 };
-use std::{collections::HashMap, usize};
+use std::collections::HashMap;
 
 use backend::hal::{
     api::{
@@ -21,6 +21,7 @@ use crate::tfhe::blind_rotation::{
 };
 
 pub trait CircuitBootstrappingKeyEncryptSk<B: Backend> {
+    #[allow(clippy::too_many_arguments)]
     fn encrypt_sk<DLwe, DGlwe>(
         module: &Module<B>,
         basek: usize,
@@ -96,12 +97,12 @@ where
         Module<B>:,
     {
         let mut auto_keys: HashMap<i64, GGLWEAutomorphismKey<Vec<u8>>> = HashMap::new();
-        let gal_els: Vec<i64> = GLWECiphertext::trace_galois_elements(&module);
+        let gal_els: Vec<i64> = GLWECiphertext::trace_galois_elements(module);
         gal_els.iter().for_each(|gal_el| {
             let mut key: GGLWEAutomorphismKey<Vec<u8>> =
                 GGLWEAutomorphismKey::alloc(sk_glwe.n(), basek, k_trace, rows_trace, 1, sk_glwe.rank());
             key.encrypt_sk(
-                &module, *gal_el, &sk_glwe, source_xa, source_xe, sigma, scratch,
+                module, *gal_el, sk_glwe, source_xa, source_xe, sigma, scratch,
             );
             auto_keys.insert(*gal_el, key);
         });
@@ -128,7 +129,7 @@ where
         );
 
         let mut tsk: GGLWETensorKey<Vec<u8>> = GGLWETensorKey::alloc(sk_glwe.n(), basek, k_tsk, rows_tsk, 1, sk_glwe.rank());
-        tsk.encrypt_sk(module, &sk_glwe, source_xa, source_xe, sigma, scratch);
+        tsk.encrypt_sk(module, sk_glwe, source_xa, source_xe, sigma, scratch);
 
         Self {
             brk,

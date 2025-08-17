@@ -15,7 +15,7 @@ use crate::{
 };
 
 impl<D: DataRef> GLWECiphertext<D> {
-    pub fn assert_noise<B: Backend, DataSk, DataPt>(
+    pub fn assert_noise<B, DataSk, DataPt>(
         &self,
         module: &Module<B>,
         sk_prepared: &GLWESecretPrepared<DataSk, B>,
@@ -35,7 +35,7 @@ impl<D: DataRef> GLWECiphertext<D> {
             + VecZnxNormalizeTmpBytes
             + VecZnxSubABInplace
             + VecZnxNormalizeInplace<B>,
-        B: TakeVecZnxDftImpl<B> + TakeVecZnxBigImpl<B> + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
+        B: Backend + TakeVecZnxDftImpl<B> + TakeVecZnxBigImpl<B> + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
     {
         let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(self.n(), self.basek(), self.k());
 
@@ -46,7 +46,7 @@ impl<D: DataRef> GLWECiphertext<D> {
             self.k(),
         ));
 
-        self.decrypt(module, &mut pt_have, &sk_prepared, scratch.borrow());
+        self.decrypt(module, &mut pt_have, sk_prepared, scratch.borrow());
 
         module.vec_znx_sub_ab_inplace(&mut pt_have.data, 0, &pt_want.data, 0);
         module.vec_znx_normalize_inplace(self.basek(), &mut pt_have.data, 0, scratch.borrow());

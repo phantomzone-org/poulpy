@@ -9,6 +9,7 @@ use backend::hal::{
 use crate::layouts::{GLWECiphertext, Infos, prepared::GGLWESwitchingKeyPrepared};
 
 impl GLWECiphertext<Vec<u8>> {
+    #[allow(clippy::too_many_arguments)]
     pub fn keyswitch_scratch_space<B: Backend>(
         module: &Module<B>,
         n: usize,
@@ -38,7 +39,7 @@ impl GLWECiphertext<Vec<u8>> {
             ksk_size,
         ) + module.vec_znx_dft_alloc_bytes(n, rank_in, in_size);
         let normalize: usize = module.vec_znx_big_normalize_tmp_bytes(n);
-        return res_dft + ((ai_dft + vmp) | normalize);
+        res_dft + ((ai_dft + vmp) | normalize)
     }
 
     pub fn keyswitch_inplace_scratch_space<B: Backend>(
@@ -180,7 +181,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
     {
         unsafe {
             let self_ptr: *mut GLWECiphertext<DataSelf> = self as *mut GLWECiphertext<DataSelf>;
-            self.keyswitch(&module, &*self_ptr, rhs, scratch);
+            self.keyswitch(module, &*self_ptr, rhs, scratch);
         }
     }
 }

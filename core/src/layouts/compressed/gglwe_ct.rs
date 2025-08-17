@@ -76,7 +76,7 @@ impl GGLWECiphertextCompressed<Vec<u8>> {
 
         Self {
             data: MatZnx::alloc(n, rows, rank_in, 1, size),
-            basek: basek,
+            basek,
             k,
             rank_out,
             digits,

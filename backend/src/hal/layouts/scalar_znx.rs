@@ -7,7 +7,7 @@ use crate::{
     alloc_aligned,
     hal::{
         api::{DataView, DataViewMut, FillUniform, Reset, ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero},
-        layouts::{Data, DataMut, DataRef, ReaderFrom, VecZnx, WriterTo},
+        layouts::{Data, DataMut, DataRef, ReaderFrom, ToOwnedDeep, VecZnx, WriterTo},
     },
 };
 
@@ -16,6 +16,17 @@ pub struct ScalarZnx<D: Data> {
     pub(crate) data: D,
     pub(crate) n: usize,
     pub(crate) cols: usize,
+}
+
+impl<D: DataRef> ToOwnedDeep for ScalarZnx<D> {
+    type Owned = ScalarZnx<Vec<u8>>;
+    fn to_owned_deep(&self) -> Self::Owned {
+        ScalarZnx {
+            data: self.data.as_ref().to_vec(),
+            n: self.n,
+            cols: self.cols,
+        }
+    }
 }
 
 impl<D: Data> ZnxInfos for ScalarZnx<D> {
@@ -63,7 +74,7 @@ impl<D: DataMut> ScalarZnx<D> {
     pub fn fill_ternary_prob(&mut self, col: usize, prob: f64, source: &mut Source) {
         let choices: [i64; 3] = [-1, 0, 1];
         let weights: [f64; 3] = [prob / 2.0, 1.0 - prob, prob / 2.0];
-        let dist: WeightedIndex<f64> = WeightedIndex::new(&weights).unwrap();
+        let dist: WeightedIndex<f64> = WeightedIndex::new(weights).unwrap();
         self.at_mut(col, 0)
             .iter_mut()
             .for_each(|x: &mut i64| *x = choices[dist.sample(source)]);
@@ -80,7 +91,7 @@ impl<D: DataMut> ScalarZnx<D> {
     pub fn fill_binary_prob(&mut self, col: usize, prob: f64, source: &mut Source) {
         let choices: [i64; 2] = [0, 1];
         let weights: [f64; 2] = [1.0 - prob, prob];
-        let dist: WeightedIndex<f64> = WeightedIndex::new(&weights).unwrap();
+        let dist: WeightedIndex<f64> = WeightedIndex::new(weights).unwrap();
         self.at_mut(col, 0)
             .iter_mut()
             .for_each(|x: &mut i64| *x = choices[dist.sample(source)]);
@@ -95,7 +106,7 @@ impl<D: DataMut> ScalarZnx<D> {
     }
 
     pub fn fill_binary_block(&mut self, col: usize, block_size: usize, source: &mut Source) {
-        assert!(self.n() % block_size == 0);
+        assert!(self.n().is_multiple_of(block_size));
         let max_idx: u64 = (block_size + 1) as u64;
         let mask_idx: u64 = (1 << ((u64::BITS - max_idx.leading_zeros()) as u64)) - 1;
         for block in self.at_mut(col, 0).chunks_mut(block_size) {
@@ -114,21 +125,13 @@ impl ScalarZnx<Vec<u8>> {
 
     pub fn alloc(n: usize, cols: usize) -> Self {
         let data: Vec<u8> = alloc_aligned::<u8>(Self::alloc_bytes(n, cols));
-        Self {
-            data: data.into(),
-            n,
-            cols,
-        }
+        Self { data, n, cols }
     }
 
     pub fn from_bytes(n: usize, cols: usize, bytes: impl Into<Vec<u8>>) -> Self {
         let data: Vec<u8> = bytes.into();
         assert!(data.len() == Self::alloc_bytes(n, cols));
-        Self {
-            data: data.into(),
-            n,
-            cols,
-        }
+        Self { data, n, cols }
     }
 }
 

@@ -20,7 +20,7 @@ use crate::layouts::{
     prepared::{LWESwitchingKeyPrepared, PrepareAlloc},
 };
 
-pub fn test_lwe_keyswitch<B: Backend>(module: &Module<B>)
+pub fn test_lwe_keyswitch<B>(module: &Module<B>)
 where
     Module<B>: VecZnxDftAllocBytes
         + VecZnxBigNormalize<B>
@@ -50,7 +50,8 @@ where
         + VecZnxBigNormalizeTmpBytes
         + VecZnxSwithcDegree
         + VecZnxAutomorphismInplace,
-    B: TakeVecZnxDftImpl<B>
+    B: Backend
+        + TakeVecZnxDftImpl<B>
         + TakeVecZnxBigImpl<B>
         + TakeSvpPPolImpl<B>
         + ScratchOwnedAllocImpl<B>

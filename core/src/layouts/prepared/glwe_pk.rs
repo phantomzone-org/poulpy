@@ -48,8 +48,8 @@ impl<B: Backend> GLWEPublicKeyPrepared<Vec<u8>, B> {
     {
         Self {
             data: module.vec_znx_dft_alloc(n, rank + 1, k.div_ceil(basek)),
-            basek: basek,
-            k: k,
+            basek,
+            k,
             dist: Distribution::NONE,
         }
     }

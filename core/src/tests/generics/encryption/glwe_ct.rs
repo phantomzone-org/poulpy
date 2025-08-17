@@ -23,7 +23,7 @@ use crate::{
     operations::GLWEOperations,
 };
 
-pub fn test_glwe_encrypt_sk<B: Backend>(module: &Module<B>, basek: usize, k_ct: usize, k_pt: usize, sigma: f64, rank: usize)
+pub fn test_glwe_encrypt_sk<B>(module: &Module<B>, basek: usize, k_ct: usize, k_pt: usize, sigma: f64, rank: usize)
 where
     Module<B>: VecZnxDftAllocBytes
         + VecZnxBigAllocBytes
@@ -60,7 +60,8 @@ where
         + VecZnxAddNormal
         + VecZnxNormalize<B>
         + VecZnxSub,
-    B: TakeVecZnxDftImpl<B>
+    B: Backend
+        + TakeVecZnxDftImpl<B>
         + TakeVecZnxBigImpl<B>
         + TakeSvpPPolImpl<B>
         + ScratchOwnedAllocImpl<B>
@@ -109,14 +110,8 @@ where
     assert!(noise_have <= noise_want + 0.2);
 }
 
-pub fn test_glwe_compressed_encrypt_sk<B: Backend>(
-    module: &Module<B>,
-    basek: usize,
-    k_ct: usize,
-    k_pt: usize,
-    sigma: f64,
-    rank: usize,
-) where
+pub fn test_glwe_compressed_encrypt_sk<B>(module: &Module<B>, basek: usize, k_ct: usize, k_pt: usize, sigma: f64, rank: usize)
+where
     Module<B>: VecZnxDftAllocBytes
         + VecZnxBigAllocBytes
         + VecZnxDftFromVecZnx<B>
@@ -153,7 +148,8 @@ pub fn test_glwe_compressed_encrypt_sk<B: Backend>(
         + VecZnxNormalize<B>
         + VecZnxSub
         + VecZnxCopy,
-    B: TakeVecZnxDftImpl<B>
+    B: Backend
+        + TakeVecZnxDftImpl<B>
         + TakeVecZnxBigImpl<B>
         + TakeSvpPPolImpl<B>
         + ScratchOwnedAllocImpl<B>
@@ -213,7 +209,7 @@ pub fn test_glwe_compressed_encrypt_sk<B: Backend>(
     );
 }
 
-pub fn test_glwe_encrypt_zero_sk<B: Backend>(module: &Module<B>, basek: usize, k_ct: usize, sigma: f64, rank: usize)
+pub fn test_glwe_encrypt_zero_sk<B>(module: &Module<B>, basek: usize, k_ct: usize, sigma: f64, rank: usize)
 where
     Module<B>: VecZnxDftAllocBytes
         + VecZnxBigAllocBytes
@@ -250,7 +246,8 @@ where
         + VecZnxAddNormal
         + VecZnxNormalize<B>
         + VecZnxSub,
-    B: TakeVecZnxDftImpl<B>
+    B: Backend
+        + TakeVecZnxDftImpl<B>
         + TakeVecZnxBigImpl<B>
         + TakeSvpPPolImpl<B>
         + ScratchOwnedAllocImpl<B>
@@ -290,7 +287,7 @@ where
     assert!((sigma - pt.data.std(basek, 0) * (k_ct as f64).exp2()) <= 0.2);
 }
 
-pub fn test_glwe_encrypt_pk<B: Backend>(module: &Module<B>, basek: usize, k_ct: usize, k_pk: usize, sigma: f64, rank: usize)
+pub fn test_glwe_encrypt_pk<B>(module: &Module<B>, basek: usize, k_ct: usize, k_pk: usize, sigma: f64, rank: usize)
 where
     Module<B>: VecZnxDftAllocBytes
         + VecZnxBigNormalize<B>
@@ -315,7 +312,8 @@ where
         + VecZnxDftAlloc<B>
         + SvpApply<B>
         + VecZnxBigAddNormal<B>,
-    B: TakeVecZnxDftImpl<B>
+    B: Backend
+        + TakeVecZnxDftImpl<B>
         + TakeVecZnxBigImpl<B>
         + TakeSvpPPolImpl<B>
         + ScratchOwnedAllocImpl<B>

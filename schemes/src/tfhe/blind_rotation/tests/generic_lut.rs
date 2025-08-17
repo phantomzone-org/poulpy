@@ -8,10 +8,10 @@ use backend::hal::{
 
 use crate::tfhe::blind_rotation::{DivRound, LookUpTable};
 
-pub fn test_lut_standard<B: Backend>(module: &Module<B>)
+pub fn test_lut_standard<B>(module: &Module<B>)
 where
     Module<B>: VecZnxRotateInplace + VecZnxNormalizeInplace<B> + VecZnxNormalizeTmpBytes + VecZnxSwithcDegree + VecZnxCopy,
-    B: ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
+    B: Backend + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
 {
     let n: usize = module.n();
     let basek: usize = 20;
@@ -44,10 +44,10 @@ where
     });
 }
 
-pub fn test_lut_extended<B: Backend>(module: &Module<B>)
+pub fn test_lut_extended<B>(module: &Module<B>)
 where
     Module<B>: VecZnxRotateInplace + VecZnxNormalizeInplace<B> + VecZnxNormalizeTmpBytes + VecZnxSwithcDegree + VecZnxCopy,
-    B: ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
+    B: Backend + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
 {
     let n: usize = module.n();
     let basek: usize = 20;
@@ -63,10 +63,10 @@ where
         .for_each(|(i, x)| *x = (i as i64) - 8);
 
     let mut lut: LookUpTable = LookUpTable::alloc(n, basek, k_lut, extension_factor);
-    lut.set(&module, &f, log_scale);
+    lut.set(module, &f, log_scale);
 
     let half_step: i64 = lut.domain_size().div_round(message_modulus << 1) as i64;
-    lut.rotate(&module, half_step);
+    lut.rotate(module, half_step);
 
     let step: usize = module.n().div_round(message_modulus);
 

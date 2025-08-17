@@ -49,6 +49,7 @@ impl GGSWCiphertext<Vec<u8>> {
         tmp_dft_i + ((tmp_a + vmp) | (tmp_idft + norm))
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn keyswitch_scratch_space<B: Backend>(
         module: &Module<B>,
         n: usize,
@@ -74,6 +75,7 @@ impl GGSWCiphertext<Vec<u8>> {
         res_znx + ci_dft + (ks | expand_rows | res_dft)
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn keyswitch_inplace_scratch_space<B: Backend>(
         module: &Module<B>,
         n: usize,

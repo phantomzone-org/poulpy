@@ -23,7 +23,8 @@ use crate::{
     noise::noise_ggsw_keyswitch,
 };
 
-pub fn test_ggsw_keyswitch<B: Backend>(
+#[allow(clippy::too_many_arguments)]
+pub fn test_ggsw_keyswitch<B>(
     module: &Module<B>,
     basek: usize,
     k_out: usize,
@@ -67,7 +68,8 @@ pub fn test_ggsw_keyswitch<B: Backend>(
         + VecZnxDftAddInplace<B>
         + VecZnxBigAlloc<B>
         + VecZnxDftAlloc<B>,
-    B: TakeVecZnxDftImpl<B>
+    B: Backend
+        + TakeVecZnxDftImpl<B>
         + TakeVecZnxBigImpl<B>
         + TakeSvpPPolImpl<B>
         + ScratchOwnedAllocImpl<B>
@@ -167,10 +169,11 @@ pub fn test_ggsw_keyswitch<B: Backend>(
         ) + 0.5
     };
 
-    ct_out.assert_noise(module, &sk_out_prepared, &pt_scalar, &max_noise);
+    ct_out.assert_noise(module, &sk_out_prepared, &pt_scalar, max_noise);
 }
 
-pub fn test_ggsw_keyswitch_inplace<B: Backend>(
+#[allow(clippy::too_many_arguments)]
+pub fn test_ggsw_keyswitch_inplace<B>(
     module: &Module<B>,
     basek: usize,
     k_ct: usize,
@@ -213,7 +216,8 @@ pub fn test_ggsw_keyswitch_inplace<B: Backend>(
         + VecZnxDftAddInplace<B>
         + VecZnxBigAlloc<B>
         + VecZnxDftAlloc<B>,
-    B: TakeVecZnxDftImpl<B>
+    B: Backend
+        + TakeVecZnxDftImpl<B>
         + TakeVecZnxBigImpl<B>
         + TakeSvpPPolImpl<B>
         + ScratchOwnedAllocImpl<B>
@@ -304,5 +308,5 @@ pub fn test_ggsw_keyswitch_inplace<B: Backend>(
         ) + 0.5
     };
 
-    ct.assert_noise(module, &sk_out_prepared, &pt_scalar, &max_noise);
+    ct.assert_noise(module, &sk_out_prepared, &pt_scalar, max_noise);
 }

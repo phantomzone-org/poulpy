@@ -38,7 +38,7 @@ impl<D: Data> Infos for LWEToGLWESwitchingKey<D> {
     type Inner = MatZnx<D>;
 
     fn inner(&self) -> &Self::Inner {
-        &self.0.inner()
+        self.0.inner()
     }
 
     fn basek(&self) -> usize {

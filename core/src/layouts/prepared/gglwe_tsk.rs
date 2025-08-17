@@ -41,7 +41,7 @@ impl<D: Data, B: Backend> Infos for GGLWETensorKeyPrepared<D, B> {
     type Inner = VmpPMat<D, B>;
 
     fn inner(&self) -> &Self::Inner {
-        &self.keys[0].inner()
+        self.keys[0].inner()
     }
 
     fn basek(&self) -> usize {

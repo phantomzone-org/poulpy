@@ -15,8 +15,8 @@ impl GLWEPublicKey<Vec<u8>> {
     pub fn alloc(n: usize, basek: usize, k: usize, rank: usize) -> Self {
         Self {
             data: VecZnx::alloc(n, rank + 1, k.div_ceil(basek)),
-            basek: basek,
-            k: k,
+            basek,
+            k,
             dist: Distribution::NONE,
         }
     }

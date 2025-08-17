@@ -260,7 +260,7 @@ fn take_slice_aligned(data: &mut [u8], take_len: usize) -> (&mut [u8], &mut [u8]
 
             let take_slice: &mut [u8] = &mut *std::ptr::slice_from_raw_parts_mut(ptr.add(aligned_offset), take_len);
 
-            return (take_slice, rem_slice);
+            (take_slice, rem_slice)
         }
     } else {
         panic!(

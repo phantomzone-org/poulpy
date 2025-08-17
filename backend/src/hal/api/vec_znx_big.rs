@@ -19,6 +19,7 @@ pub trait VecZnxBigFromBytes<B: Backend> {
     fn vec_znx_big_from_bytes(&self, n: usize, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxBigOwned<B>;
 }
 
+#[allow(clippy::too_many_arguments)]
 /// Add a discrete normal distribution on res.
 ///
 /// # Arguments
@@ -42,6 +43,7 @@ pub trait VecZnxBigAddNormal<B: Backend> {
     );
 }
 
+#[allow(clippy::too_many_arguments)]
 pub trait VecZnxBigFillNormal<B: Backend> {
     fn vec_znx_big_fill_normal<R: VecZnxBigToMut<B>>(
         &self,
@@ -55,6 +57,7 @@ pub trait VecZnxBigFillNormal<B: Backend> {
     );
 }
 
+#[allow(clippy::too_many_arguments)]
 pub trait VecZnxBigFillDistF64<B: Backend> {
     fn vec_znx_big_fill_dist_f64<R: VecZnxBigToMut<B>, D: Distribution<f64>>(
         &self,
@@ -68,6 +71,7 @@ pub trait VecZnxBigFillDistF64<B: Backend> {
     );
 }
 
+#[allow(clippy::too_many_arguments)]
 pub trait VecZnxBigAddDistF64<B: Backend> {
     fn vec_znx_big_add_dist_f64<R: VecZnxBigToMut<B>, D: Distribution<f64>>(
         &self,

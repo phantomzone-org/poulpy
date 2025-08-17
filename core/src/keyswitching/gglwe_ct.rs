@@ -12,6 +12,7 @@ use crate::layouts::{
 };
 
 impl GGLWEAutomorphismKey<Vec<u8>> {
+    #[allow(clippy::too_many_arguments)]
     pub fn keyswitch_scratch_space<B: Backend>(
         module: &Module<B>,
         n: usize,
@@ -88,6 +89,7 @@ impl<DataSelf: DataMut> GGLWEAutomorphismKey<DataSelf> {
 }
 
 impl GGLWESwitchingKey<Vec<u8>> {
+    #[allow(clippy::too_many_arguments)]
     pub fn keyswitch_scratch_space<B: Backend>(
         module: &Module<B>,
         n: usize,

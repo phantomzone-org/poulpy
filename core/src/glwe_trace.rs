@@ -27,6 +27,7 @@ impl GLWECiphertext<Vec<u8>> {
         gal_els
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn trace_scratch_space<B: Backend>(
         module: &Module<B>,
         n: usize,
@@ -111,12 +112,11 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         (start..end).for_each(|i| {
             self.rsh(module, 1);
 
-            let p: i64;
-            if i == 0 {
-                p = -1;
+            let p: i64 = if i == 0 {
+                -1
             } else {
-                p = module.galois_element(1 << (i - 1));
-            }
+                module.galois_element(1 << (i - 1))
+            };
 
             if let Some(key) = auto_keys.get(&p) {
                 self.automorphism_add_inplace(module, key, scratch);

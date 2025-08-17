@@ -26,7 +26,7 @@ use crate::{
     },
 };
 
-pub fn test_glwe_packing<B: Backend>(module: &Module<B>)
+pub fn test_glwe_packing<B>(module: &Module<B>)
 where
     Module<B>: VecZnxDftAllocBytes
         + VecZnxAutomorphism
@@ -64,7 +64,8 @@ where
         + VecZnxSwithcDegree
         + VecZnxAutomorphismInplace
         + VecZnxCopy,
-    B: TakeVecZnxDftImpl<B>
+    B: Backend
+        + TakeVecZnxDftImpl<B>
         + TakeVecZnxBigImpl<B>
         + TakeSvpPPolImpl<B>
         + ScratchOwnedAllocImpl<B>
@@ -155,7 +156,7 @@ where
 
         pt.rotate_inplace(module, -(1 << log_batch)); // X^-batch * pt
 
-        if reverse_bits_msb(i, log_n as u32) % 5 == 0 {
+        if reverse_bits_msb(i, log_n as u32).is_multiple_of(5) {
             packer.add(module, Some(&ct), &auto_keys, scratch.borrow());
         } else {
             packer.add(
@@ -173,7 +174,7 @@ where
     let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(n, basek, k_ct);
     let mut data: Vec<i64> = vec![0i64; n];
     data.iter_mut().enumerate().for_each(|(i, x)| {
-        if i % 5 == 0 {
+        if i.is_multiple_of(5) {
             *x = reverse_bits_msb(i, log_n as u32) as i64;
         }
     });

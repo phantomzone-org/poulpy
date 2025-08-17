@@ -20,6 +20,7 @@ pub trait BlindRotationKeyAlloc {
 }
 
 pub trait BlindRotationKeyEncryptSk<B: Backend> {
+    #[allow(clippy::too_many_arguments)]
     fn encrypt_sk<DataSkGLWE, DataSkLWE>(
         &mut self,
         module: &Module<B>,

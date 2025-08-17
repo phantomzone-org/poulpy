@@ -64,7 +64,7 @@ impl<DataSelf: DataRef> GLWECiphertext<DataSelf> {
         module.vec_znx_big_add_small_inplace(&mut c0_big, 0, &self.data, 0);
 
         // pt = norm(BIG(m + e))
-        module.vec_znx_big_normalize(self.basek(), &mut pt.data, 0, &mut c0_big, 0, scratch_1);
+        module.vec_znx_big_normalize(self.basek(), &mut pt.data, 0, &c0_big, 0, scratch_1);
 
         pt.basek = self.basek();
         pt.k = pt.k().min(self.k());

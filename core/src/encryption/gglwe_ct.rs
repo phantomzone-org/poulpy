@@ -28,6 +28,7 @@ impl GGLWECiphertext<Vec<u8>> {
 }
 
 impl<DataSelf: DataMut> GGLWECiphertext<DataSelf> {
+    #[allow(clippy::too_many_arguments)]
     pub fn encrypt_sk<DataPt: DataRef, DataSk: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,

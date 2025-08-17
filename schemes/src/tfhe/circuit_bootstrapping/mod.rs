@@ -1,8 +1,8 @@
-mod circuit_bootstrapping;
+mod circuit;
 mod key;
 pub mod tests;
 
-pub use circuit_bootstrapping::*;
+pub use circuit::*;
 pub use key::*;
 
 use core::layouts::{GGSWCiphertext, LWECiphertext};
@@ -20,6 +20,7 @@ pub trait CirtuitBootstrappingExecute<B: Backend> {
         scratch: &mut Scratch<B>,
     );
 
+    #[allow(clippy::too_many_arguments)]
     fn execute_to_exponent<DM: DataMut, DR: DataRef>(
         &self,
         module: &Module<B>,

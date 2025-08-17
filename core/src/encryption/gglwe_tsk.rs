@@ -75,7 +75,7 @@ impl<DataSelf: DataMut> GGLWETensorKey<DataSelf> {
         let rank: usize = self.rank();
 
         let (mut sk_dft_prep, scratch1) = scratch.take_glwe_secret_prepared(n, rank);
-        sk_dft_prep.prepare(module, &sk, scratch1);
+        sk_dft_prep.prepare(module, sk, scratch1);
 
         let (mut sk_dft, scratch2) = scratch1.take_vec_znx_dft(n, rank, 1);
 

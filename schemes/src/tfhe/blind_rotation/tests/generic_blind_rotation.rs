@@ -26,7 +26,7 @@ use core::layouts::{
     prepared::{GLWESecretPrepared, PrepareAlloc},
 };
 
-pub fn test_blind_rotation<B: Backend>(module: &Module<B>, n_lwe: usize, block_size: usize, extension_factor: usize)
+pub fn test_blind_rotation<B>(module: &Module<B>, n_lwe: usize, block_size: usize, extension_factor: usize)
 where
     Module<B>: VecZnxBigAllocBytes
         + VecZnxDftAllocBytes
@@ -66,7 +66,8 @@ where
         + VmpPrepare<B>
         + VmpApply<B>
         + VmpApplyAdd<B>,
-    B: VecZnxDftAllocBytesImpl<B>
+    B: Backend
+        + VecZnxDftAllocBytesImpl<B>
         + VecZnxBigAllocBytesImpl<B>
         + ScratchOwnedAllocImpl<B>
         + ScratchOwnedBorrowImpl<B>
@@ -82,7 +83,7 @@ where
     let k_lwe: usize = 24;
     let k_brk: usize = 3 * basek;
     let rows_brk: usize = 2; // Ensures first limb is noise-free.
-    let k_lut: usize = 1 * basek;
+    let k_lut: usize = basek;
     let k_res: usize = 2 * basek;
     let rank: usize = 1;
 

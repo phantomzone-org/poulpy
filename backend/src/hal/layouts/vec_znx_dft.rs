@@ -94,7 +94,7 @@ where
         let data: Vec<u8> = alloc_aligned::<u8>(Self::bytes_of(n, cols, size));
         Self {
             data: data.into(),
-            n: n,
+            n,
             cols,
             size,
             max_size: size,
@@ -107,7 +107,7 @@ where
         assert!(data.len() == Self::bytes_of(n, cols, size));
         Self {
             data: data.into(),
-            n: n,
+            n,
             cols,
             size,
             max_size: size,

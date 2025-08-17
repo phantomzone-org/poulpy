@@ -41,6 +41,7 @@ pub trait TakeGLWEPt<B: Backend> {
 }
 
 pub trait TakeGGLWE {
+    #[allow(clippy::too_many_arguments)]
     fn take_gglwe(
         &mut self,
         n: usize,
@@ -54,6 +55,7 @@ pub trait TakeGGLWE {
 }
 
 pub trait TakeGGLWEPrepared<B: Backend> {
+    #[allow(clippy::too_many_arguments)]
     fn take_gglwe_prepared(
         &mut self,
         n: usize,
@@ -113,6 +115,7 @@ pub trait TakeGLWEPkPrepared<B: Backend> {
 }
 
 pub trait TakeGLWESwitchingKey {
+    #[allow(clippy::too_many_arguments)]
     fn take_glwe_switching_key(
         &mut self,
         n: usize,
@@ -126,6 +129,7 @@ pub trait TakeGLWESwitchingKey {
 }
 
 pub trait TakeGLWESwitchingKeyPrepared<B: Backend> {
+    #[allow(clippy::too_many_arguments)]
     fn take_glwe_switching_key_prepared(
         &mut self,
         n: usize,
@@ -292,8 +296,8 @@ where
         );
         (
             GGLWECiphertext {
-                data: data,
-                basek: basek,
+                data,
+                basek,
                 k,
                 digits,
             },
@@ -353,8 +357,8 @@ where
         );
         (
             GGLWECiphertextPrepared {
-                data: data,
-                basek: basek,
+                data,
+                basek,
                 k,
                 digits,
             },

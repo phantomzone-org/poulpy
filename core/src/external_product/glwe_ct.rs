@@ -9,6 +9,7 @@ use backend::hal::{
 use crate::layouts::{GLWECiphertext, Infos, prepared::GGSWCiphertextPrepared};
 
 impl GLWECiphertext<Vec<u8>> {
+    #[allow(clippy::too_many_arguments)]
     pub fn external_product_scratch_space<B: Backend>(
         module: &Module<B>,
         n: usize,
@@ -160,7 +161,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
     {
         unsafe {
             let self_ptr: *mut GLWECiphertext<DataSelf> = self as *mut GLWECiphertext<DataSelf>;
-            self.external_product(&module, &*self_ptr, rhs, scratch);
+            self.external_product(module, &*self_ptr, rhs, scratch);
         }
     }
 }

@@ -61,7 +61,7 @@ impl<D: Data> Infos for GGLWEAutomorphismKeyCompressed<D> {
     type Inner = MatZnx<D>;
 
     fn inner(&self) -> &Self::Inner {
-        &self.key.inner()
+        self.key.inner()
     }
 
     fn basek(&self) -> usize {

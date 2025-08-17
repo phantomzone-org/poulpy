@@ -24,7 +24,8 @@ use crate::{
     noise::noise_ggsw_keyswitch,
 };
 
-pub fn test_ggsw_automorphism<B: Backend>(
+#[allow(clippy::too_many_arguments)]
+pub fn test_ggsw_automorphism<B>(
     p: i64,
     module: &Module<B>,
     basek: usize,
@@ -72,7 +73,8 @@ pub fn test_ggsw_automorphism<B: Backend>(
         + VecZnxSwithcDegree
         + VecZnxAutomorphismInplace
         + VecZnxAutomorphism,
-    B: TakeVecZnxDftImpl<B>
+    B: Backend
+        + TakeVecZnxDftImpl<B>
         + TakeVecZnxBigImpl<B>
         + ScratchOwnedAllocImpl<B>
         + ScratchOwnedBorrowImpl<B>
@@ -178,10 +180,11 @@ pub fn test_ggsw_automorphism<B: Backend>(
         ) + 0.5
     };
 
-    ct_out.assert_noise(module, &sk_prepared, &pt_scalar, &max_noise);
+    ct_out.assert_noise(module, &sk_prepared, &pt_scalar, max_noise);
 }
 
-pub fn test_ggsw_automorphism_inplace<B: Backend>(
+#[allow(clippy::too_many_arguments)]
+pub fn test_ggsw_automorphism_inplace<B>(
     p: i64,
     module: &Module<B>,
     basek: usize,
@@ -229,7 +232,8 @@ pub fn test_ggsw_automorphism_inplace<B: Backend>(
         + VecZnxSwithcDegree
         + VecZnxAutomorphismInplace
         + VecZnxAutomorphism,
-    B: TakeVecZnxDftImpl<B>
+    B: Backend
+        + TakeVecZnxDftImpl<B>
         + TakeVecZnxBigImpl<B>
         + ScratchOwnedAllocImpl<B>
         + ScratchOwnedBorrowImpl<B>
@@ -325,5 +329,5 @@ pub fn test_ggsw_automorphism_inplace<B: Backend>(
         ) + 0.5
     };
 
-    ct.assert_noise(module, &sk_prepared, &pt_scalar, &max_noise);
+    ct.assert_noise(module, &sk_prepared, &pt_scalar, max_noise);
 }

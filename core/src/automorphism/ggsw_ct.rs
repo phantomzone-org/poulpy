@@ -14,6 +14,7 @@ use crate::layouts::{
 };
 
 impl GGSWCiphertext<Vec<u8>> {
+    #[allow(clippy::too_many_arguments)]
     pub fn automorphism_scratch_space<B: Backend>(
         module: &Module<B>,
         n: usize,
@@ -38,6 +39,7 @@ impl GGSWCiphertext<Vec<u8>> {
         ci_dft + (ks_internal | expand)
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn automorphism_inplace_scratch_space<B: Backend>(
         module: &Module<B>,
         n: usize,

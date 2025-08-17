@@ -44,6 +44,7 @@ impl GGLWESwitchingKey<Vec<u8>> {
 }
 
 impl<DataSelf: DataMut> GGLWESwitchingKey<DataSelf> {
+    #[allow(clippy::too_many_arguments)]
     pub fn encrypt_sk<DataSkIn: DataRef, DataSkOut: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
