@@ -1,0 +1,16 @@
+[package]
+name = "poulpy-schemes"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+readme = "README.md"
+description = "A crate implementing FHE schemes"
+repository = "https://github.com/phantomzone-org/poulpy"
+homepage = "https://github.com/phantomzone-org/poulpy"
+documentation = "https://docs.rs/poulpy"
+
+[dependencies]
+poulpy-backend = "0.1.0"
+poulpy-core = "0.1.0"
+itertools = "0.14.0"
+byteorder = "1.5.0"

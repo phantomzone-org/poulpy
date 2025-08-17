@@ -1,0 +1,26 @@
+[package]
+name = "poulpy-core"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+description = "A crate implementing RLWE-based encrypted arithmetic"
+repository = "https://github.com/phantomzone-org/poulpy"
+homepage = "https://github.com/phantomzone-org/poulpy"
+documentation = "https://docs.rs/poulpy"
+
+[dependencies]
+rug = {workspace = true}
+criterion = {workspace = true}
+poulpy-backend = "0.1.0"
+rand_distr = {workspace = true}
+itertools = {workspace = true}
+byteorder = {workspace = true}
+rand_core = {workspace = true}
+
+[[bench]]
+name = "external_product_glwe_fft64"
+harness = false
+
+[[bench]]
+name = "keyswitch_glwe_fft64"
+harness = false

@@ -153,7 +153,7 @@ Please see [SECURITY](./SECURITY.md).
 
 ## License
 
-Poulpy is licensed under the Apache 2.0 License. See [NOTICE](./NOTICE) & [LICENSE](./LICENSE).
+Poulpy is licensed under the Apache-2.0 License. See [NOTICE](./NOTICE) & [LICENSE](./LICENSE).
 
 ## Acknowledgement
 
