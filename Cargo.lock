@@ -36,21 +36,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7b7e4c2464d97fe331d41de9d5db0def0a96f4d823b8b32a2efd503578988973"
 
 [[package]]
-name = "backend"
-version = "0.1.0"
-dependencies = [
- "byteorder",
- "cmake",
- "criterion",
- "itertools 0.14.0",
- "rand",
- "rand_core",
- "rand_distr",
- "rug",
- "sampling",
-]
-
-[[package]]
 name = "bitflags"
 version = "2.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -148,20 +133,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e7caa3f9de89ddbe2c607f4101924c5abec803763ae9534e4f4d7d8f84aa81f0"
 dependencies = [
  "cc",
-]
-
-[[package]]
-name = "core"
-version = "0.1.0"
-dependencies = [
- "backend",
- "byteorder",
- "criterion",
- "itertools 0.14.0",
- "rand_core",
- "rand_distr",
- "rug",
- "sampling",
 ]
 
 [[package]]
@@ -375,13 +346,73 @@ dependencies = [
 ]
 
 [[package]]
-name = "poulpy"
+name = "poulpy-backend"
 version = "0.1.0"
 dependencies = [
- "backend",
- "core",
- "sampling",
- "schemes",
+ "byteorder",
+ "cmake",
+ "criterion",
+ "itertools 0.14.0",
+ "rand",
+ "rand_chacha",
+ "rand_core",
+ "rand_distr",
+ "rug",
+]
+
+[[package]]
+name = "poulpy-backend"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d47fbc27d0c03c2bfffd972795c62a243e4a3a3068acdb95ef55fb335a58d00f"
+dependencies = [
+ "byteorder",
+ "cmake",
+ "criterion",
+ "itertools 0.14.0",
+ "rand",
+ "rand_chacha",
+ "rand_core",
+ "rand_distr",
+ "rug",
+]
+
+[[package]]
+name = "poulpy-core"
+version = "0.1.0"
+dependencies = [
+ "byteorder",
+ "criterion",
+ "itertools 0.14.0",
+ "poulpy-backend 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rand_core",
+ "rand_distr",
+ "rug",
+]
+
+[[package]]
+name = "poulpy-core"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4ff4e1acd3f4a84e861b07184fd28fe3143a57360bd51e923aeadbc94b8b38d0"
+dependencies = [
+ "byteorder",
+ "criterion",
+ "itertools 0.14.0",
+ "poulpy-backend 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rand_core",
+ "rand_distr",
+ "rug",
+]
+
+[[package]]
+name = "poulpy-schemes"
+version = "0.1.0"
+dependencies = [
+ "byteorder",
+ "itertools 0.14.0",
+ "poulpy-backend 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "poulpy-core 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -530,26 +561,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "93fc1dc3aaa9bfed95e02e6eadabb4baf7e3078b0bd1b4d7b6b0b68378900502"
 dependencies = [
  "winapi-util",
-]
-
-[[package]]
-name = "sampling"
-version = "0.1.0"
-dependencies = [
- "rand_chacha",
- "rand_core",
- "rand_distr",
-]
-
-[[package]]
-name = "schemes"
-version = "0.1.0"
-dependencies = [
- "backend",
- "byteorder",
- "core",
- "itertools 0.14.0",
- "sampling",
 ]
 
 [[package]]
