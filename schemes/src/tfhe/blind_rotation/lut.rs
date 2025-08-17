@@ -93,7 +93,7 @@ impl LookUpTable {
 
         // Scaling factor
         let mut scale = 1;
-        if k.is_multiple_of(basek) {
+        if !k.is_multiple_of(basek) {
             scale <<= basek - (k % basek);
         }
 
