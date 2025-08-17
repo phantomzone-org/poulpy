@@ -347,12 +347,13 @@ dependencies = [
 
 [[package]]
 name = "poulpy-backend"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "byteorder",
  "cmake",
  "criterion",
  "itertools 0.14.0",
+ "poulpy-hal 0.1.1",
  "rand",
  "rand_chacha",
  "rand_core",
@@ -362,14 +363,15 @@ dependencies = [
 
 [[package]]
 name = "poulpy-backend"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d47fbc27d0c03c2bfffd972795c62a243e4a3a3068acdb95ef55fb335a58d00f"
+checksum = "b582b9ffbb32f6e02b525e2c1d5ae4535553f981b057a7e91a7142c9a9b54673"
 dependencies = [
  "byteorder",
  "cmake",
  "criterion",
  "itertools 0.14.0",
+ "poulpy-hal 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand",
  "rand_chacha",
  "rand_core",
@@ -384,20 +386,38 @@ dependencies = [
  "byteorder",
  "criterion",
  "itertools 0.14.0",
- "poulpy-backend 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "poulpy-backend 0.1.1",
+ "poulpy-hal 0.1.1",
  "rug",
 ]
 
 [[package]]
-name = "poulpy-core"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4ff4e1acd3f4a84e861b07184fd28fe3143a57360bd51e923aeadbc94b8b38d0"
+name = "poulpy-hal"
+version = "0.1.1"
 dependencies = [
  "byteorder",
+ "cmake",
  "criterion",
  "itertools 0.14.0",
- "poulpy-backend 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rand",
+ "rand_chacha",
+ "rand_core",
+ "rand_distr",
+ "rug",
+]
+
+[[package]]
+name = "poulpy-hal"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d748d3de1bf3a228389ad1b6cf20d068ca48eea0fa36c75db6c68cea4f1477bb"
+dependencies = [
+ "byteorder",
+ "cmake",
+ "criterion",
+ "itertools 0.14.0",
+ "rand",
+ "rand_chacha",
  "rand_core",
  "rand_distr",
  "rug",
@@ -409,8 +429,9 @@ version = "0.1.0"
 dependencies = [
  "byteorder",
  "itertools 0.14.0",
- "poulpy-backend 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "poulpy-core 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "poulpy-backend 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "poulpy-core",
+ "poulpy-hal 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]

@@ -1,6 +1,6 @@
 use std::time::Instant;
 
-use poulpy_backend::hal::{
+use poulpy_hal::{
     api::{
         ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApply, SvpApplyInplace, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare,
         VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxAutomorphism, VecZnxAutomorphismInplace,

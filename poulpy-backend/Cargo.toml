@@ -1,15 +1,16 @@
 [package]
 name = "poulpy-backend"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 license = "Apache-2.0"
 readme = "README.md"
-description = "A crate implementing bivariate polynomial arithmetic"
+description = "A crate providing concrete implementations of poulpy-hal through its open extension points"
 repository = "https://github.com/phantomzone-org/poulpy"
 homepage = "https://github.com/phantomzone-org/poulpy"
 documentation = "https://docs.rs/poulpy"
 
 [dependencies]
+poulpy-hal = {path="../poulpy-hal"}
 rug = {workspace = true}
 criterion = {workspace = true}
 itertools = {workspace = true}

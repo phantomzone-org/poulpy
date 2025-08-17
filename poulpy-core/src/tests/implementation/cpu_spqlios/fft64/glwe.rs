@@ -1,7 +1,5 @@
-use poulpy_backend::{
-    hal::{api::ModuleNew, layouts::Module},
-    implementation::cpu_spqlios::FFT64,
-};
+use poulpy_backend::cpu_spqlios::FFT64;
+use poulpy_hal::{api::ModuleNew, layouts::Module};
 
 use crate::tests::generics::{
     automorphism::{test_glwe_automorphism, test_glwe_automorphism_inplace},

@@ -14,8 +14,8 @@ pub use lut::*;
 
 pub mod tests;
 
-use poulpy_backend::hal::layouts::{Backend, DataMut, DataRef, Module, Scratch};
 use poulpy_core::layouts::{GLWECiphertext, LWECiphertext};
+use poulpy_hal::layouts::{Backend, DataMut, DataRef, Module, Scratch};
 
 pub trait BlindRotationAlgo {}
 

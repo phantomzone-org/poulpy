@@ -1,4 +1,4 @@
-use poulpy_backend::hal::{
+use poulpy_hal::{
     api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxNormalizeInplace, ZnxView, ZnxViewMut},
     layouts::{Backend, DataMut, DataRef, Module, ScratchOwned},
     oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl},

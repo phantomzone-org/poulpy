@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use poulpy_backend::hal::{
+use poulpy_hal::{
     api::{
         ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyInplace, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare, VecZnxAddInplace,
         VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxAutomorphism, VecZnxBigAddInplace, VecZnxBigAddSmallInplace,

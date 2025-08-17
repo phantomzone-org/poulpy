@@ -1,4 +1,4 @@
-use poulpy_backend::hal::{
+use poulpy_hal::{
     api::{SvpPPolAlloc, SvpPrepare, VmpPMatAlloc, VmpPrepare},
     layouts::{Backend, Data, DataMut, DataRef, Module, ScalarZnx, Scratch, SvpPPol},
 };

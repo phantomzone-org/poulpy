@@ -1,4 +1,4 @@
-use poulpy_backend::hal::{
+use poulpy_hal::{
     api::{
         ScratchAvailable, SvpApplyInplace, TakeVecZnx, TakeVecZnxDft, VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace,
         VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume, VecZnxFillUniform,
@@ -56,7 +56,7 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
     {
         #[cfg(debug_assertions)]
         {
-            use poulpy_backend::hal::api::ZnxInfos;
+            use poulpy_hal::api::ZnxInfos;
 
             assert_eq!(self.rank(), sk.rank());
             assert_eq!(self.n(), sk.n());

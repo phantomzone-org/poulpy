@@ -5,13 +5,12 @@ use poulpy_core::layouts::{
 use std::hint::black_box;
 
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
-use poulpy_backend::{
-    hal::{
-        api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
-        layouts::{Module, ScalarZnx, ScratchOwned},
-        source::Source,
-    },
-    implementation::cpu_spqlios::FFT64,
+
+use poulpy_backend::cpu_spqlios::FFT64;
+use poulpy_hal::{
+    api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
+    layouts::{Module, ScalarZnx, ScratchOwned},
+    source::Source,
 };
 
 fn bench_external_product_glwe_fft64(c: &mut Criterion) {

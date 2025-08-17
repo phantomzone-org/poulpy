@@ -4,7 +4,7 @@ use poulpy_core::layouts::{
 };
 use std::collections::HashMap;
 
-use poulpy_backend::hal::{
+use poulpy_hal::{
     api::{
         ScratchAvailable, SvpApply, SvpApplyInplace, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare, TakeScalarZnx, TakeSvpPPol,
         TakeVecZnx, TakeVecZnxBig, TakeVecZnxDft, VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxAutomorphism,

@@ -1,4 +1,4 @@
-use poulpy_backend::hal::{
+use poulpy_hal::{
     api::{FillUniform, Reset},
     layouts::{Data, DataMut, DataRef, ReaderFrom, WriterTo},
     source::Source,

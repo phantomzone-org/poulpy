@@ -1,0 +1,156 @@
+use std::marker::PhantomData;
+
+use crate::{
+    alloc_aligned,
+    api::{DataView, DataViewMut, ZnxInfos, ZnxSliceSize, ZnxView},
+    layouts::{Backend, Data, DataMut, DataRef, ReaderFrom, WriterTo},
+    oep::SvpPPolAllocBytesImpl,
+};
+
+#[derive(PartialEq, Eq)]
+pub struct SvpPPol<D: Data, B: Backend> {
+    pub data: D,
+    pub n: usize,
+    pub cols: usize,
+    pub _phantom: PhantomData<B>,
+}
+
+impl<D: Data, B: Backend> ZnxSliceSize for SvpPPol<D, B> {
+    fn sl(&self) -> usize {
+        B::layout_prep_word_count() * self.n()
+    }
+}
+
+impl<D: DataRef, B: Backend> ZnxView for SvpPPol<D, B> {
+    type Scalar = B::ScalarPrep;
+}
+
+impl<D: Data, B: Backend> ZnxInfos for SvpPPol<D, B> {
+    fn cols(&self) -> usize {
+        self.cols
+    }
+
+    fn rows(&self) -> usize {
+        1
+    }
+
+    fn n(&self) -> usize {
+        self.n
+    }
+
+    fn size(&self) -> usize {
+        1
+    }
+}
+
+impl<D: Data, B: Backend> DataView for SvpPPol<D, B> {
+    type D = D;
+    fn data(&self) -> &Self::D {
+        &self.data
+    }
+}
+
+impl<D: Data, B: Backend> DataViewMut for SvpPPol<D, B> {
+    fn data_mut(&mut self) -> &mut Self::D {
+        &mut self.data
+    }
+}
+
+impl<D: Data + From<Vec<u8>>, B: Backend> SvpPPol<D, B>
+where
+    B: SvpPPolAllocBytesImpl<B>,
+{
+    pub fn alloc(n: usize, cols: usize) -> Self {
+        let data: Vec<u8> = alloc_aligned::<u8>(B::svp_ppol_alloc_bytes_impl(n, cols));
+        Self {
+            data: data.into(),
+            n,
+            cols,
+            _phantom: PhantomData,
+        }
+    }
+
+    pub fn from_bytes(n: usize, cols: usize, bytes: impl Into<Vec<u8>>) -> Self {
+        let data: Vec<u8> = bytes.into();
+        assert!(data.len() == B::svp_ppol_alloc_bytes_impl(n, cols));
+        Self {
+            data: data.into(),
+            n,
+            cols,
+            _phantom: PhantomData,
+        }
+    }
+}
+
+pub type SvpPPolOwned<B> = SvpPPol<Vec<u8>, B>;
+
+pub trait SvpPPolToRef<B: Backend> {
+    fn to_ref(&self) -> SvpPPol<&[u8], B>;
+}
+
+impl<D: DataRef, B: Backend> SvpPPolToRef<B> for SvpPPol<D, B> {
+    fn to_ref(&self) -> SvpPPol<&[u8], B> {
+        SvpPPol {
+            data: self.data.as_ref(),
+            n: self.n,
+            cols: self.cols,
+            _phantom: PhantomData,
+        }
+    }
+}
+
+pub trait SvpPPolToMut<B: Backend> {
+    fn to_mut(&mut self) -> SvpPPol<&mut [u8], B>;
+}
+
+impl<D: DataMut, B: Backend> SvpPPolToMut<B> for SvpPPol<D, B> {
+    fn to_mut(&mut self) -> SvpPPol<&mut [u8], B> {
+        SvpPPol {
+            data: self.data.as_mut(),
+            n: self.n,
+            cols: self.cols,
+            _phantom: PhantomData,
+        }
+    }
+}
+
+impl<D: Data, B: Backend> SvpPPol<D, B> {
+    pub fn from_data(data: D, n: usize, cols: usize) -> Self {
+        Self {
+            data,
+            n,
+            cols,
+            _phantom: PhantomData,
+        }
+    }
+}
+
+use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
+
+impl<D: DataMut, B: Backend> ReaderFrom for SvpPPol<D, B> {
+    fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
+        self.n = reader.read_u64::<LittleEndian>()? as usize;
+        self.cols = reader.read_u64::<LittleEndian>()? as usize;
+        let len: usize = reader.read_u64::<LittleEndian>()? as usize;
+        let buf: &mut [u8] = self.data.as_mut();
+        if buf.len() != len {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::UnexpectedEof,
+                format!("self.data.len()={} != read len={}", buf.len(), len),
+            ));
+        }
+        reader.read_exact(&mut buf[..len])?;
+        Ok(())
+    }
+}
+
+impl<D: DataRef, B: Backend> WriterTo for SvpPPol<D, B> {
+    fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
+        writer.write_u64::<LittleEndian>(self.n as u64)?;
+        writer.write_u64::<LittleEndian>(self.cols as u64)?;
+        let buf: &[u8] = self.data.as_ref();
+        writer.write_u64::<LittleEndian>(buf.len() as u64)?;
+        writer.write_all(buf)?;
+        Ok(())
+    }
+}

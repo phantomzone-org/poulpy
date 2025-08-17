@@ -1,0 +1,6 @@
+cmake-build-*
+.idea
+
+build
+.vscode
+.*.sh

@@ -1,5 +1,5 @@
 use crate::layouts::{GLWEPlaintext, Infos, LWEPlaintext};
-use poulpy_backend::hal::layouts::{DataMut, DataRef};
+use poulpy_hal::layouts::{DataMut, DataRef};
 use rug::Float;
 
 impl<D: DataMut> GLWEPlaintext<D> {

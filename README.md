@@ -1,3 +1,4 @@
+
 # 🐙 Poulpy
 
 <p  align="center">
@@ -7,6 +8,19 @@
 [![CI](https://github.com/phantomzone-org/poulpy/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/phantomzone-org/poulpy/actions/workflows/ci.yml)
 
 **Poulpy** is a fast & modular FHE library that implements Ring-Learning-With-Errors based homomorphic encryption. It adopts the bivariate polynomial representation proposed in [Revisiting Key Decomposition Techniques for FHE: Simpler, Faster and More Generic](https://eprint.iacr.org/2023/771). In addition to simpler and more efficient arithmetic than the residue number system (RNS), this representation provides a common plaintext space for all schemes and allows easy switching between any two schemes. Poulpy also decouples the schemes implementations from the polynomial arithmetic backend by being built around a hardware abstraction layer (HAL). This enables user to easily provide or use a custom backend.
+
+## Library Overview
+
+- **`poulpy-hal`**: a crate providing layouts and a trait-based hardware acceleration layer with open extension points, matching the API and types of spqlios-arithmetic.
+  - **`api`**: fixed public low-level polynomial level arithmetic API closely matching spqlios-arithmetic.
+  - **`delegates`**: link between the user facing API and implementation OEP. Each trait of `api` is implemented by calling its corresponding trait on the `oep`.
+  - **`layouts`**: layouts of the front-end algebraic structs matching spqlios-arithmetic types, such as `ScalarZnx`, `VecZnx` or opaque backend prepared struct such as `SvpPPol` and `VmpPMat`.
+  - **`oep`**: open extension points, which can be (re-)implemented by the user to provide a concrete backend.
+  - **`tests`**: backend agnostic & generic tests for the OEP/layouts.
+- **`poulpy-backend`**: a crate providing concrete implementations of **`poulpy-hal`**.
+  - **`cpu_spqlios`**: cpu implementation of **`poulpy-hal`** through the `oep` using bindings on spqlios-arithmetic. This implementation currently supports the `FFT64` backend and will be extended to support the `NTT120` backend once it is available in spqlios-arithmetic.
+- **`poulpy-core`**: a backend agnostic crate implementing scheme agnostic RLWE arithmetic for LWE, GLWE, GGLWE and GGSW ciphertexts using **`poulpy-hal`**.
+- **`poulpy-schemes`**: a backend agnostic crate implementing mainstream FHE schemes using **`poulpy-core`** and **`poulpy-hal`**.
 
 ### Bivariate Polynomial Representation
 
@@ -30,114 +44,13 @@ This provides the following benefits:
 
 In addition to providing a general purpose FHE library over a unified plaintext space, Poulpy is also designed from the ground up around a **hardware abstraction layer** that closely matches the API of [spqlios-arithmetic](https://github.com/tfhe/spqlios-arithmetic). The bivariate representation is by itself hardware friendly as it uses flat, aligned & vectorized memory layout. Finally, generic opaque write only structs (prepared versions) are provided, making it easy for developers to provide hardware focused/optimized operations. This makes possible for anyone to provide or use a custom backend.
 
-## Library Overview
-
-- **`backend/hal`**: hardware abstraction layer. This layer targets users that want to provide their own backend or use a third party backend.
- 
-  - **`api`**: fixed public low-level polynomial level arithmetic API closely matching spqlios-arithmetic. The goal is to eventually freeze this API, in order to decouple it from the OEP traits, ensuring that changes to implementations do not affect the front end API.
-
-	```rust
-	pub trait SvpPrepare<B: Backend> {
-	    fn svp_prepare<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
-	    where
-	        R: SvpPPolToMut<B>,
-	        A: ScalarZnxToRef;
-	}
-	````
-
-  - **`delegates`**: link between the user facing API and implementation OEP. Each trait of `api` is implemented by calling its corresponding trait on the `oep`.
-
-	```rust
-	impl<B> SvpPrepare<B> for Module<B>
-	where
-	    B: Backend + SvpPrepareImpl<B>,
-	{
-	    fn svp_prepare<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
-	    where
-	        R: SvpPPolToMut<B>,
-	        A: ScalarZnxToRef,
-	    {
-	        B::svp_prepare_impl(self, res, res_col, a, a_col);
-	    }
-	}
-	```
-
-  - **`layouts`**: defines the layouts of the front-end algebraic structs matching spqlios-arithmetic definitions, such as `ScalarZnx`, `VecZnx` or opaque backend prepared struct such as `SvpPPol` and `VmpPMat`.
-
-	```rust
-	pub struct SvpPPol<D: Data, B: Backend> {
-	    data: D,
-	    n: usize,
-	    cols: usize,
-	    _phantom: PhantomData<B>,
-	}
-	```
-
-  - **`oep`**: open extension points, which can be implemented by the user to provide a custom backend.
-
-	```rust
-	pub unsafe trait SvpPrepareImpl<B: Backend> {
-	    fn svp_prepare_impl<R, A>(module: &Module<B>, res: &mut R, res_col: usize, a: &A, a_col: usize)
-	    where
-	        R: SvpPPolToMut<B>,
-	        A: ScalarZnxToRef;
-	}
-	```
-
-  - **`tests`**: exported generic tests for the OEP/structs. Their goal is to enable a user to automatically be able to test its backend implementation, without having to re-implement any tests.
-  
-- **`backend/implementation`**:
-  - **`cpu_spqlios`**: concrete cpu implementation of the hal through the oep using bindings on spqlios-arithmetic. This implementation currently supports the `FFT64` backend and will be extended to support the `NTT120` backend once it is available in spqlios-arithmetic.
-
-	```rust
-	unsafe impl SvpPrepareImpl<Self> for FFT64 {
-	    fn svp_prepare_impl<R, A>(module: &Module<Self>, res: &mut R, res_col: usize, a: &A, a_col: usize)
-	    where
-	        R: SvpPPolToMut<Self>,
-	        A: ScalarZnxToRef,
-	    {
-	        unsafe {
-	            svp::svp_prepare(
-	                module.ptr(),
-	                res.to_mut().at_mut_ptr(res_col, 0) as *mut svp::svp_ppol_t,
-	                a.to_ref().at_ptr(a_col, 0),
-	            )
-	        }
-	    }
-	}
-	```
-
-- **`core`**: core of the FHE library, implementing scheme agnostic RLWE arithmetic for LWE, GLWE, GGLWE and GGSW ciphertexts. It notably includes all possible cross-ciphertext operations, for example applying an external product on a GGLWE or an automorphism on a GGSW, as well as blind rotation. This crate is entirely implemented using the hardware abstraction layer API, and is thus solely defined over generic and traits (including tests). As such it will work over any backend, as long as it implements the necessary traits defined in the OEP.
-
-	```rust
-	pub struct GLWESecret<D: Data> {
-	    pub(crate) data: ScalarZnx<D>,
-	    pub(crate) dist: Distribution,
-	}
-
-	pub struct GLWESecrecPrepared<D: Data, B: Backend> {
-	    pub(crate) data: SvpPPol<D, B>,
-	    pub(crate) dist: Distribution,
-	}
- 
-	impl<D: DataMut, B: Backend> GLWESecretPrepared<D, B> {
-	    pub fn prepare<O>(&mut self, module: &Module<B>, sk: &GLWESecret<O>)
-	    where
-	        O: DataRef,
-	        Module<B>: SvpPrepare<B>,
-	    {
-	        (0..self.rank()).for_each(|i| {
-	            module.svp_prepare(&mut self.data, i, &sk.data, i);
-	        });
-	        self.dist = sk.dist
-	    }
-	}
-	```
-
 ## Installation
 
-TBD — currently not published on crates.io. Clone the repository and use via path-based dependencies.
-
+- **`poulpy-hal`**: https://crates.io/crates/poulpy-hal/0.1.0
+- **`poulpy-backend`**: https://crates.io/crates/poulpy-backend/0.1.0
+- **`poulpy-core`**: https://crates.io/crates/poulpy-core/0.1.0
+- **`poulpy-schemes`**: https://crates.io/crates/poulpy-schemes/0.1.0
+- 
 ## Documentation
 
 * Full `cargo doc` documentation is coming soon.

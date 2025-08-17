@@ -1,4 +1,4 @@
-use poulpy_backend::hal::{
+use poulpy_hal::{
     api::{ZnxInfos, ZnxZero},
     layouts::{Data, DataMut, DataRef, ReaderFrom, ScalarZnx, WriterTo},
     source::Source,

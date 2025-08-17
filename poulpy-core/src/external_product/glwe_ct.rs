@@ -1,4 +1,4 @@
-use poulpy_backend::hal::{
+use poulpy_hal::{
     api::{
         DataViewMut, ScratchAvailable, TakeVecZnxDft, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftFromVecZnx,
         VecZnxDftToVecZnxBigConsume, VecZnxNormalizeTmpBytes, VmpApply, VmpApplyAdd, VmpApplyTmpBytes,
@@ -79,7 +79,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
 
         #[cfg(debug_assertions)]
         {
-            use poulpy_backend::hal::api::ScratchAvailable;
+            use poulpy_hal::api::ScratchAvailable;
 
             assert_eq!(rhs.rank(), lhs.rank());
             assert_eq!(rhs.rank(), self.rank());

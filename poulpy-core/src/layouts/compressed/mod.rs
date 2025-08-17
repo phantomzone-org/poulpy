@@ -20,7 +20,7 @@ pub use lwe_ct::*;
 pub use lwe_ksk::*;
 pub use lwe_to_glwe_ksk::*;
 
-use poulpy_backend::hal::{
+use poulpy_hal::{
     api::{VecZnxCopy, VecZnxFillUniform},
     layouts::{Backend, Module},
 };

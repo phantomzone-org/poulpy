@@ -1,4 +1,4 @@
-use poulpy_backend::hal::{
+use poulpy_hal::{
     api::{SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare, ZnxInfos},
     layouts::{Backend, Data, DataMut, DataRef, Module, SvpPPol},
 };
@@ -53,11 +53,7 @@ impl<D: DataRef, B: Backend> PrepareAlloc<B, GLWESecretPrepared<Vec<u8>, B>> for
 where
     Module<B>: SvpPrepare<B> + SvpPPolAlloc<B>,
 {
-    fn prepare_alloc(
-        &self,
-        module: &Module<B>,
-        scratch: &mut poulpy_backend::hal::layouts::Scratch<B>,
-    ) -> GLWESecretPrepared<Vec<u8>, B> {
+    fn prepare_alloc(&self, module: &Module<B>, scratch: &mut poulpy_hal::layouts::Scratch<B>) -> GLWESecretPrepared<Vec<u8>, B> {
         let mut sk_dft: GLWESecretPrepared<Vec<u8>, B> = GLWESecretPrepared::alloc(module, self.n(), self.rank());
         sk_dft.prepare(module, self, scratch);
         sk_dft
@@ -68,7 +64,7 @@ impl<DM: DataMut, DR: DataRef, B: Backend> Prepare<B, GLWESecret<DR>> for GLWESe
 where
     Module<B>: SvpPrepare<B>,
 {
-    fn prepare(&mut self, module: &Module<B>, other: &GLWESecret<DR>, _scratch: &mut poulpy_backend::hal::layouts::Scratch<B>) {
+    fn prepare(&mut self, module: &Module<B>, other: &GLWESecret<DR>, _scratch: &mut poulpy_hal::layouts::Scratch<B>) {
         (0..self.rank()).for_each(|i| {
             module.svp_prepare(&mut self.data, i, &other.data, i);
         });

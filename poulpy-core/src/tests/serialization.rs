@@ -1,4 +1,4 @@
-use poulpy_backend::hal::tests::serialization::test_reader_writer_interface;
+use poulpy_hal::tests::serialization::test_reader_writer_interface;
 
 use crate::layouts::{
     GGLWEAutomorphismKey, GGLWECiphertext, GGLWESwitchingKey, GGLWETensorKey, GGSWCiphertext, GLWECiphertext,
@@ -21,7 +21,7 @@ const DIGITS: usize = 1;
 #[test]
 fn glwe_serialization() {
     let original: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(N_GLWE, BASEK, K, RANK);
-    poulpy_backend::hal::tests::serialization::test_reader_writer_interface(original);
+    poulpy_hal::tests::serialization::test_reader_writer_interface(original);
 }
 
 #[test]

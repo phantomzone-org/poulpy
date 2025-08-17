@@ -3,7 +3,7 @@ name = "poulpy-core"
 version = "0.1.0"
 edition = "2024"
 license = "Apache-2.0"
-description = "A crate implementing RLWE-based encrypted arithmetic"
+description = "A backend agnostic crate implementing RLWE-based encryption & arithmetic."
 repository = "https://github.com/phantomzone-org/poulpy"
 homepage = "https://github.com/phantomzone-org/poulpy"
 documentation = "https://docs.rs/poulpy"
@@ -11,7 +11,8 @@ documentation = "https://docs.rs/poulpy"
 [dependencies]
 rug = {workspace = true}
 criterion = {workspace = true}
-poulpy-backend = "0.1.0"
+poulpy-hal = {path="../poulpy-hal"}
+poulpy-backend = {path="../poulpy-backend"}
 itertools = {workspace = true}
 byteorder = {workspace = true}
 
