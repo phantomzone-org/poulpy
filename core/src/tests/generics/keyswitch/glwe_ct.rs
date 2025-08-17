@@ -22,7 +22,8 @@ use crate::{
     noise::log2_std_noise_gglwe_product,
 };
 
-pub fn test_glwe_keyswitch<B: Backend>(
+#[allow(clippy::too_many_arguments)]
+pub fn test_glwe_keyswitch<B>(
     module: &Module<B>,
     basek: usize,
     k_out: usize,
@@ -60,7 +61,8 @@ pub fn test_glwe_keyswitch<B: Backend>(
         + VmpApplyAdd<B>
         + VecZnxBigNormalizeTmpBytes
         + VecZnxSwithcDegree,
-    B: TakeVecZnxDftImpl<B>
+    B: Backend
+        + TakeVecZnxDftImpl<B>
         + TakeVecZnxBigImpl<B>
         + TakeSvpPPolImpl<B>
         + ScratchOwnedAllocImpl<B>
@@ -147,7 +149,7 @@ pub fn test_glwe_keyswitch<B: Backend>(
     ct_out.assert_noise(module, &sk_out_prepared, &pt_want, max_noise + 0.5);
 }
 
-pub fn test_glwe_keyswitch_inplace<B: Backend>(
+pub fn test_glwe_keyswitch_inplace<B>(
     module: &Module<B>,
     basek: usize,
     k_ct: usize,
@@ -183,7 +185,8 @@ pub fn test_glwe_keyswitch_inplace<B: Backend>(
         + VmpApplyAdd<B>
         + VecZnxBigNormalizeTmpBytes
         + VecZnxSwithcDegree,
-    B: TakeVecZnxDftImpl<B>
+    B: Backend
+        + TakeVecZnxDftImpl<B>
         + TakeVecZnxBigImpl<B>
         + TakeSvpPPolImpl<B>
         + ScratchOwnedAllocImpl<B>

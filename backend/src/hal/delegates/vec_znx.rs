@@ -274,7 +274,7 @@ impl<B> VecZnxSplit<B> for Module<B>
 where
     B: Backend + VecZnxSplitImpl<B>,
 {
-    fn vec_znx_split<R, A>(&self, res: &mut Vec<R>, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch<B>)
+    fn vec_znx_split<R, A>(&self, res: &mut [R], res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch<B>)
     where
         R: VecZnxToMut,
         A: VecZnxToRef,
@@ -287,7 +287,7 @@ impl<B> VecZnxMerge for Module<B>
 where
     B: Backend + VecZnxMergeImpl<B>,
 {
-    fn vec_znx_merge<R, A>(&self, res: &mut R, res_col: usize, a: Vec<A>, a_col: usize)
+    fn vec_znx_merge<R, A>(&self, res: &mut R, res_col: usize, a: &[A], a_col: usize)
     where
         R: VecZnxToMut,
         A: VecZnxToRef,

@@ -88,7 +88,7 @@ impl GGSWCiphertext<Vec<u8>> {
         Self {
             data: MatZnx::alloc(n, rows, rank + 1, rank + 1, k.div_ceil(basek)),
             basek,
-            k: k,
+            k,
             digits,
         }
     }

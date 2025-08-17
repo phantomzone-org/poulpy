@@ -76,7 +76,7 @@ impl GGSWCiphertextCompressed<Vec<u8>> {
         Self {
             data: MatZnx::alloc(n, rows, rank + 1, 1, k.div_ceil(basek)),
             basek,
-            k: k,
+            k,
             digits,
             rank,
             seed: Vec::new(),
@@ -123,7 +123,7 @@ impl<D: DataMut> GGSWCiphertextCompressed<D> {
             data: self.data.at_mut(row, col),
             basek: self.basek,
             k: self.k,
-            rank: rank,
+            rank,
             seed: self.seed[row * (rank + 1) + col],
         }
     }

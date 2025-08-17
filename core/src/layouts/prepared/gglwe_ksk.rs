@@ -16,6 +16,7 @@ pub struct GGLWESwitchingKeyPrepared<D: Data, B: Backend> {
 }
 
 impl<B: Backend> GGLWESwitchingKeyPrepared<Vec<u8>, B> {
+    #[allow(clippy::too_many_arguments)]
     pub fn alloc(
         module: &Module<B>,
         n: usize,
@@ -36,6 +37,7 @@ impl<B: Backend> GGLWESwitchingKeyPrepared<Vec<u8>, B> {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn bytes_of(
         module: &Module<B>,
         n: usize,

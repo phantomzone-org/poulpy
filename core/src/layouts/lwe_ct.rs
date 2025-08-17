@@ -64,8 +64,8 @@ impl LWECiphertext<Vec<u8>> {
     pub fn alloc(n: usize, basek: usize, k: usize) -> Self {
         Self {
             data: VecZnx::alloc(n + 1, 1, k.div_ceil(basek)),
-            k: k,
-            basek: basek,
+            k,
+            basek,
         }
     }
 }

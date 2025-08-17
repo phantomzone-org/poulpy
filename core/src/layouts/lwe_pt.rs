@@ -14,8 +14,8 @@ impl LWEPlaintext<Vec<u8>> {
     pub fn alloc(basek: usize, k: usize) -> Self {
         Self {
             data: VecZnx::alloc(1, 1, k.div_ceil(basek)),
-            k: k,
-            basek: basek,
+            k,
+            basek,
         }
     }
 }

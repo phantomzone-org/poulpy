@@ -12,7 +12,7 @@ use sampling::source::Source;
 use crate::layouts::{GLWECiphertext, GLWEPublicKey, Infos, prepared::GLWESecretPrepared};
 
 impl<D: DataMut> GLWEPublicKey<D> {
-    pub fn generate_from_sk<S: DataRef, B: Backend>(
+    pub fn generate_from_sk<S: DataRef, B>(
         &mut self,
         module: &Module<B>,
         sk: &GLWESecretPrepared<S, B>,
@@ -34,7 +34,8 @@ impl<D: DataMut> GLWEPublicKey<D> {
             + VecZnxAddNormal
             + VecZnxNormalize<B>
             + VecZnxSub,
-        B: ScratchOwnedAllocImpl<B>
+        B: Backend
+            + ScratchOwnedAllocImpl<B>
             + ScratchOwnedBorrowImpl<B>
             + TakeVecZnxDftImpl<B>
             + ScratchAvailableImpl<B>
@@ -46,9 +47,8 @@ impl<D: DataMut> GLWEPublicKey<D> {
 
             assert_eq!(self.n(), sk.n());
 
-            match sk.dist {
-                Distribution::NONE => panic!("invalid sk: SecretDistribution::NONE"),
-                _ => {}
+            if sk.dist == Distribution::NONE {
+                panic!("invalid sk: SecretDistribution::NONE")
             }
         }
 

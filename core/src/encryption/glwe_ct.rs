@@ -38,6 +38,7 @@ impl GLWECiphertext<Vec<u8>> {
 }
 
 impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
+    #[allow(clippy::too_many_arguments)]
     pub fn encrypt_sk<DataPt: DataRef, DataSk: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
@@ -133,6 +134,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         );
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn encrypt_sk_internal<DataPt: DataRef, DataSk: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
@@ -175,6 +177,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         );
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn encrypt_pk<DataPt: DataRef, DataPk: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
@@ -232,6 +235,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         );
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn encrypt_pk_internal<DataPt: DataRef, DataPk: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
@@ -307,10 +311,10 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
             );
 
             // ci_big = u * pk[i] + e + m (if col = i)
-            if let Some((pt, col)) = pt {
-                if col == i {
-                    module.vec_znx_big_add_small_inplace(&mut ci_big, 0, &pt.data, 0);
-                }
+            if let Some((pt, col)) = pt
+                && col == i
+            {
+                module.vec_znx_big_add_small_inplace(&mut ci_big, 0, &pt.data, 0);
             }
 
             // ct[i] = norm(ci_big)
@@ -319,6 +323,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn glwe_encrypt_sk_internal<DataCt: DataMut, DataPt: DataRef, DataSk: DataRef, B: Backend>(
     module: &Module<B>,
     basek: usize,
@@ -373,12 +378,7 @@ pub(crate) fn glwe_encrypt_sk_internal<DataCt: DataMut, DataPt: DataRef, DataSk:
         // ct[i] = uniform
         // ct[0] -= c[i] * s[i],
         (1..cols).for_each(|i| {
-            let col_ct: usize;
-            if compressed {
-                col_ct = 0;
-            } else {
-                col_ct = i;
-            }
+            let col_ct: usize = if compressed { 0 } else { i };
 
             // ct[i] = uniform (+ pt)
             module.vec_znx_fill_uniform(basek, ct, col_ct, k, source_xa);
@@ -415,10 +415,10 @@ pub(crate) fn glwe_encrypt_sk_internal<DataCt: DataMut, DataPt: DataRef, DataSk:
     module.vec_znx_add_normal(basek, &mut c0, 0, k, source_xe, sigma, sigma * SIX_SIGMA);
 
     // c[0] += m if col = 0
-    if let Some((pt, col)) = pt {
-        if col == 0 {
-            module.vec_znx_add_inplace(&mut c0, 0, &pt.data, 0);
-        }
+    if let Some((pt, col)) = pt
+        && col == 0
+    {
+        module.vec_znx_add_inplace(&mut c0, 0, &pt.data, 0);
     }
 
     // c[0] = norm(c[0])

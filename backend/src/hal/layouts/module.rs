@@ -2,6 +2,7 @@ use std::{marker::PhantomData, ptr::NonNull};
 
 use crate::GALOISGENERATOR;
 
+#[allow(clippy::missing_safety_doc)]
 pub trait Backend: Sized {
     type Handle: 'static;
     unsafe fn destroy(handle: NonNull<Self::Handle>);
@@ -17,6 +18,7 @@ impl<B: Backend> Module<B> {
     /// Construct from a raw pointer managed elsewhere.
     /// SAFETY: `ptr` must be non-null and remain valid for the lifetime of this Module.
     #[inline]
+    #[allow(clippy::missing_safety_doc)]
     pub unsafe fn from_raw_parts(ptr: *mut B::Handle, n: u64) -> Self {
         Self {
             ptr: NonNull::new(ptr).expect("null module ptr"),
@@ -25,6 +27,7 @@ impl<B: Backend> Module<B> {
         }
     }
 
+    #[allow(clippy::missing_safety_doc)]
     #[inline]
     pub unsafe fn ptr(&self) -> *mut <B as Backend>::Handle {
         self.ptr.as_ptr()
@@ -55,7 +58,8 @@ impl<B: Backend> Module<B> {
         if generator == 0 {
             return 1;
         }
-        ((mod_exp_u64(GALOISGENERATOR, generator.abs() as usize) & (self.cyclotomic_order() - 1)) as i64) * generator.signum()
+        ((mod_exp_u64(GALOISGENERATOR, generator.unsigned_abs() as usize) & (self.cyclotomic_order() - 1)) as i64)
+            * generator.signum()
     }
 
     // Returns gen^-1
@@ -64,7 +68,10 @@ impl<B: Backend> Module<B> {
         if gal_el == 0 {
             panic!("cannot invert 0")
         }
-        ((mod_exp_u64(gal_el.abs() as u64, (self.cyclotomic_order() - 1) as usize) & (self.cyclotomic_order() - 1)) as i64)
+        ((mod_exp_u64(
+            gal_el.unsigned_abs(),
+            (self.cyclotomic_order() - 1) as usize,
+        ) & (self.cyclotomic_order() - 1)) as i64)
             * gal_el.signum()
     }
 }

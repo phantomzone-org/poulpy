@@ -37,7 +37,7 @@ impl<D: Data, B: Backend> Infos for GGLWEAutomorphismKeyPrepared<D, B> {
     type Inner = VmpPMat<D, B>;
 
     fn inner(&self) -> &Self::Inner {
-        &self.key.inner()
+        self.key.inner()
     }
 
     fn basek(&self) -> usize {

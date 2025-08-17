@@ -26,7 +26,7 @@ use crate::{
     noise::var_noise_gglwe_product,
 };
 
-pub fn test_glwe_trace_inplace<B: Backend>(module: &Module<B>, basek: usize, k: usize, sigma: f64, rank: usize)
+pub fn test_glwe_trace_inplace<B>(module: &Module<B>, basek: usize, k: usize, sigma: f64, rank: usize)
 where
     Module<B>: VecZnxDftAllocBytes
         + VecZnxAutomorphism
@@ -61,7 +61,8 @@ where
         + VecZnxBigNormalizeTmpBytes
         + VecZnxSwithcDegree
         + VecZnxCopy,
-    B: TakeVecZnxDftImpl<B>
+    B: Backend
+        + TakeVecZnxDftImpl<B>
         + TakeVecZnxBigImpl<B>
         + TakeSvpPPolImpl<B>
         + ScratchOwnedAllocImpl<B>

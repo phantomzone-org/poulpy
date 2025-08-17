@@ -3,22 +3,42 @@ use crate::hal::layouts::{
     VecZnxToRef,
 };
 
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See TODO for reference code.
+/// * See TODO for corresponding public API.
+/// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxDftAllocImpl<B: Backend> {
     fn vec_znx_dft_alloc_impl(n: usize, cols: usize, size: usize) -> VecZnxDftOwned<B>;
 }
 
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See TODO for reference code.
+/// * See TODO for corresponding public API.
+/// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxDftFromBytesImpl<B: Backend> {
     fn vec_znx_dft_from_bytes_impl(n: usize, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxDftOwned<B>;
 }
 
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See TODO for reference code.
+/// * See TODO for corresponding public API.
+/// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxDftAllocBytesImpl<B: Backend> {
     fn vec_znx_dft_alloc_bytes_impl(n: usize, cols: usize, size: usize) -> usize;
 }
 
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See TODO for reference code.
+/// * See TODO for corresponding public API.
+/// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxDftToVecZnxBigTmpBytesImpl<B: Backend> {
     fn vec_znx_dft_to_vec_znx_big_tmp_bytes_impl(module: &Module<B>, n: usize) -> usize;
 }
 
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See TODO for reference code.
+/// * See TODO for corresponding public API.
+/// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxDftToVecZnxBigImpl<B: Backend> {
     fn vec_znx_dft_to_vec_znx_big_impl<R, A>(
         module: &Module<B>,
@@ -32,6 +52,10 @@ pub unsafe trait VecZnxDftToVecZnxBigImpl<B: Backend> {
         A: VecZnxDftToRef<B>;
 }
 
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See TODO for reference code.
+/// * See for corresponding public API.
+/// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxDftToVecZnxBigTmpAImpl<B: Backend> {
     fn vec_znx_dft_to_vec_znx_big_tmp_a_impl<R, A>(module: &Module<B>, res: &mut R, res_col: usize, a: &mut A, a_col: usize)
     where
@@ -39,12 +63,20 @@ pub unsafe trait VecZnxDftToVecZnxBigTmpAImpl<B: Backend> {
         A: VecZnxDftToMut<B>;
 }
 
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See TODO for reference code.
+/// * See TODO for corresponding public API.
+/// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxDftToVecZnxBigConsumeImpl<B: Backend> {
     fn vec_znx_dft_to_vec_znx_big_consume_impl<D: Data>(module: &Module<B>, a: VecZnxDft<D, B>) -> VecZnxBig<D, B>
     where
         VecZnxDft<D, B>: VecZnxDftToMut<B>;
 }
 
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See TODO for reference code.
+/// * See TODO for corresponding public API.
+/// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxDftAddImpl<B: Backend> {
     fn vec_znx_dft_add_impl<R, A, D>(module: &Module<B>, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &D, b_col: usize)
     where
@@ -53,6 +85,10 @@ pub unsafe trait VecZnxDftAddImpl<B: Backend> {
         D: VecZnxDftToRef<B>;
 }
 
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See TODO for reference code.
+/// * See TODO for corresponding public API.
+/// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxDftAddInplaceImpl<B: Backend> {
     fn vec_znx_dft_add_inplace_impl<R, A>(module: &Module<B>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
@@ -60,6 +96,10 @@ pub unsafe trait VecZnxDftAddInplaceImpl<B: Backend> {
         A: VecZnxDftToRef<B>;
 }
 
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See TODO for reference code.
+/// * See TODO for corresponding public API.
+/// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxDftSubImpl<B: Backend> {
     fn vec_znx_dft_sub_impl<R, A, D>(module: &Module<B>, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &D, b_col: usize)
     where
@@ -68,6 +108,10 @@ pub unsafe trait VecZnxDftSubImpl<B: Backend> {
         D: VecZnxDftToRef<B>;
 }
 
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See TODO for reference code.
+/// * See TODO for corresponding public API.
+/// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxDftSubABInplaceImpl<B: Backend> {
     fn vec_znx_dft_sub_ab_inplace_impl<R, A>(module: &Module<B>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
@@ -75,6 +119,10 @@ pub unsafe trait VecZnxDftSubABInplaceImpl<B: Backend> {
         A: VecZnxDftToRef<B>;
 }
 
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See TODO for reference code.
+/// * See TODO for corresponding public API.
+/// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxDftSubBAInplaceImpl<B: Backend> {
     fn vec_znx_dft_sub_ba_inplace_impl<R, A>(module: &Module<B>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
@@ -82,6 +130,10 @@ pub unsafe trait VecZnxDftSubBAInplaceImpl<B: Backend> {
         A: VecZnxDftToRef<B>;
 }
 
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See TODO for reference code.
+/// * See TODO for corresponding public API.
+/// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxDftCopyImpl<B: Backend> {
     fn vec_znx_dft_copy_impl<R, A>(
         module: &Module<B>,
@@ -96,6 +148,10 @@ pub unsafe trait VecZnxDftCopyImpl<B: Backend> {
         A: VecZnxDftToRef<B>;
 }
 
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See TODO for reference code.
+/// * See TODO for corresponding public API.
+/// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxDftFromVecZnxImpl<B: Backend> {
     fn vec_znx_dft_from_vec_znx_impl<R, A>(
         module: &Module<B>,
@@ -110,6 +166,10 @@ pub unsafe trait VecZnxDftFromVecZnxImpl<B: Backend> {
         A: VecZnxToRef;
 }
 
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See TODO for reference code.
+/// * See TODO for corresponding public API.
+/// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxDftZeroImpl<B: Backend> {
     fn vec_znx_dft_zero_impl<R>(module: &Module<B>, res: &mut R)
     where

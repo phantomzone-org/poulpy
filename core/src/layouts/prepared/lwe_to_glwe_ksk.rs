@@ -16,7 +16,7 @@ impl<D: Data, B: Backend> Infos for LWEToGLWESwitchingKeyPrepared<D, B> {
     type Inner = VmpPMat<D, B>;
 
     fn inner(&self) -> &Self::Inner {
-        &self.0.inner()
+        self.0.inner()
     }
 
     fn basek(&self) -> usize {

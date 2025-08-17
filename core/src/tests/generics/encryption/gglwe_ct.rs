@@ -20,7 +20,7 @@ use crate::layouts::{
     prepared::{GLWESecretPrepared, PrepareAlloc},
 };
 
-pub fn test_gglwe_switching_key_encrypt_sk<B: Backend>(
+pub fn test_gglwe_switching_key_encrypt_sk<B>(
     module: &Module<B>,
     basek: usize,
     k_ksk: usize,
@@ -54,7 +54,8 @@ pub fn test_gglwe_switching_key_encrypt_sk<B: Backend>(
         + VecZnxCopy
         + VmpPMatAlloc<B>
         + VmpPrepare<B>,
-    B: TakeVecZnxDftImpl<B>
+    B: Backend
+        + TakeVecZnxDftImpl<B>
         + TakeVecZnxBigImpl<B>
         + ScratchOwnedAllocImpl<B>
         + ScratchOwnedBorrowImpl<B>
@@ -99,7 +100,7 @@ pub fn test_gglwe_switching_key_encrypt_sk<B: Backend>(
         .assert_noise(module, &sk_out_prepared, &sk_in.data, sigma);
 }
 
-pub fn test_gglwe_switching_key_compressed_encrypt_sk<B: Backend>(
+pub fn test_gglwe_switching_key_compressed_encrypt_sk<B>(
     module: &Module<B>,
     basek: usize,
     k_ksk: usize,
@@ -133,7 +134,8 @@ pub fn test_gglwe_switching_key_compressed_encrypt_sk<B: Backend>(
         + VecZnxCopy
         + VmpPMatAlloc<B>
         + VmpPrepare<B>,
-    B: TakeVecZnxDftImpl<B>
+    B: Backend
+        + TakeVecZnxDftImpl<B>
         + TakeVecZnxBigImpl<B>
         + ScratchOwnedAllocImpl<B>
         + ScratchOwnedBorrowImpl<B>

@@ -87,7 +87,7 @@ impl GGLWECiphertext<Vec<u8>> {
 
         Self {
             data: MatZnx::alloc(n, rows, rank_in, rank_out + 1, size),
-            basek: basek,
+            basek,
             k,
             digits,
         }

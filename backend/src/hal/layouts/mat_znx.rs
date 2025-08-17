@@ -2,7 +2,7 @@ use crate::{
     alloc_aligned,
     hal::{
         api::{DataView, DataViewMut, FillUniform, Reset, ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero},
-        layouts::{Data, DataMut, DataRef, ReaderFrom, VecZnx, WriterTo},
+        layouts::{Data, DataMut, DataRef, ReaderFrom, ToOwnedDeep, VecZnx, WriterTo},
     },
 };
 use std::fmt;
@@ -19,6 +19,20 @@ pub struct MatZnx<D: Data> {
     rows: usize,
     cols_in: usize,
     cols_out: usize,
+}
+
+impl<D: DataRef> ToOwnedDeep for MatZnx<D> {
+    type Owned = MatZnx<Vec<u8>>;
+    fn to_owned_deep(&self) -> Self::Owned {
+        MatZnx {
+            data: self.data.as_ref().to_vec(),
+            n: self.n,
+            size: self.size,
+            rows: self.rows,
+            cols_in: self.cols_in,
+            cols_out: self.cols_out,
+        }
+    }
 }
 
 impl<D: DataRef> fmt::Debug for MatZnx<D> {
@@ -86,7 +100,7 @@ impl MatZnx<Vec<u8>> {
     pub fn alloc(n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> Self {
         let data: Vec<u8> = alloc_aligned(Self::alloc_bytes(n, rows, cols_in, cols_out, size));
         Self {
-            data: data.into(),
+            data,
             n,
             size,
             rows,
@@ -99,7 +113,7 @@ impl MatZnx<Vec<u8>> {
         let data: Vec<u8> = bytes.into();
         assert!(data.len() == Self::alloc_bytes(n, rows, cols_in, cols_out, size));
         Self {
-            data: data.into(),
+            data,
             n,
             size,
             rows,

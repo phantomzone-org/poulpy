@@ -26,6 +26,7 @@ impl LWESwitchingKey<Vec<u8>> {
 }
 
 impl<D: DataMut> LWESwitchingKey<D> {
+    #[allow(clippy::too_many_arguments)]
     pub fn encrypt_sk<DIn, DOut, B: Backend>(
         &mut self,
         module: &Module<B>,

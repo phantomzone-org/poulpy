@@ -164,7 +164,7 @@ pub trait VecZnxSplit<B: Backend> {
     ///
     /// This method requires that all [crate::hal::layouts::VecZnx] of b have the same ring degree
     /// and that b.n() * b.len() <= a.n()
-    fn vec_znx_split<R, A>(&self, res: &mut Vec<R>, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch<B>)
+    fn vec_znx_split<R, A>(&self, res: &mut [R], res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch<B>)
     where
         R: VecZnxToMut,
         A: VecZnxToRef;
@@ -177,7 +177,7 @@ pub trait VecZnxMerge {
     ///
     /// This method requires that all [crate::hal::layouts::VecZnx] of a have the same ring degree
     /// and that a.n() * a.len() <= b.n()
-    fn vec_znx_merge<R, A>(&self, res: &mut R, res_col: usize, a: Vec<A>, a_col: usize)
+    fn vec_znx_merge<R, A>(&self, res: &mut R, res_col: usize, a: &[A], a_col: usize)
     where
         R: VecZnxToMut,
         A: VecZnxToRef;
@@ -204,6 +204,7 @@ pub trait VecZnxFillUniform {
         R: VecZnxToMut;
 }
 
+#[allow(clippy::too_many_arguments)]
 pub trait VecZnxFillDistF64 {
     fn vec_znx_fill_dist_f64<R, D: Distribution<f64>>(
         &self,
@@ -218,6 +219,7 @@ pub trait VecZnxFillDistF64 {
         R: VecZnxToMut;
 }
 
+#[allow(clippy::too_many_arguments)]
 pub trait VecZnxAddDistF64 {
     /// Adds vector sampled according to the provided distribution, scaled by 2^{-k} and bounded to \[-bound, bound\].
     fn vec_znx_add_dist_f64<R, D: Distribution<f64>>(
@@ -233,6 +235,7 @@ pub trait VecZnxAddDistF64 {
         R: VecZnxToMut;
 }
 
+#[allow(clippy::too_many_arguments)]
 pub trait VecZnxFillNormal {
     fn vec_znx_fill_normal<R>(
         &self,
@@ -247,6 +250,7 @@ pub trait VecZnxFillNormal {
         R: VecZnxToMut;
 }
 
+#[allow(clippy::too_many_arguments)]
 pub trait VecZnxAddNormal {
     /// Adds a discrete normal vector scaled by 2^{-k} with the provided standard deviation and bounded to \[-bound, bound\].
     fn vec_znx_add_normal<R>(

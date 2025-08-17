@@ -1,6 +1,6 @@
 use backend::hal::{
     api::{FillUniform, Reset},
-    layouts::{Data, DataMut, DataRef, ReaderFrom, VecZnx, VecZnxToMut, VecZnxToRef, WriterTo},
+    layouts::{Data, DataMut, DataRef, ReaderFrom, ToOwnedDeep, VecZnx, VecZnxToMut, VecZnxToRef, WriterTo},
 };
 use sampling::source::Source;
 
@@ -13,6 +13,17 @@ pub struct GLWECiphertext<D: Data> {
     pub data: VecZnx<D>,
     pub basek: usize,
     pub k: usize,
+}
+
+impl<D: DataRef> ToOwnedDeep for GLWECiphertext<D> {
+    type Owned = GLWECiphertext<Vec<u8>>;
+    fn to_owned_deep(&self) -> Self::Owned {
+        GLWECiphertext {
+            data: self.data.to_owned_deep(),
+            basek: self.basek,
+            k: self.k,
+        }
+    }
 }
 
 impl<D: DataRef> fmt::Debug for GLWECiphertext<D> {
@@ -83,16 +94,6 @@ impl<D: Data> Infos for GLWECiphertext<D> {
 impl<D: Data> GLWECiphertext<D> {
     pub fn rank(&self) -> usize {
         self.cols() - 1
-    }
-}
-
-impl<D: DataRef> GLWECiphertext<D> {
-    pub fn clone(&self) -> GLWECiphertext<Vec<u8>> {
-        GLWECiphertext {
-            data: self.data.clone(),
-            basek: self.basek(),
-            k: self.k(),
-        }
     }
 }
 

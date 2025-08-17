@@ -57,8 +57,8 @@ impl LWECiphertextCompressed<Vec<u8>> {
     pub fn alloc(basek: usize, k: usize) -> Self {
         Self {
             data: VecZnx::alloc(1, 1, k.div_ceil(basek)),
-            k: k,
-            basek: basek,
+            k,
+            basek,
             seed: [0u8; 32],
         }
     }
@@ -103,7 +103,7 @@ impl<D: DataMut> ReaderFrom for LWECiphertextCompressed<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         self.k = reader.read_u64::<LittleEndian>()? as usize;
         self.basek = reader.read_u64::<LittleEndian>()? as usize;
-        reader.read(&mut self.seed)?;
+        reader.read_exact(&mut self.seed)?;
         self.data.read_from(reader)
     }
 }

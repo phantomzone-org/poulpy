@@ -21,7 +21,7 @@ use crate::layouts::{
     prepared::{GLWESecretPrepared, PrepareAlloc},
 };
 
-pub fn test_gglwe_automorphisk_key_encrypt_sk<B: Backend>(
+pub fn test_gglwe_automorphisk_key_encrypt_sk<B>(
     module: &Module<B>,
     basek: usize,
     k_ksk: usize,
@@ -60,7 +60,8 @@ pub fn test_gglwe_automorphisk_key_encrypt_sk<B: Backend>(
         + VecZnxCopy
         + VmpPMatAlloc<B>
         + VmpPrepare<B>,
-    B: ScratchOwnedAllocImpl<B>
+    B: Backend
+        + ScratchOwnedAllocImpl<B>
         + ScratchOwnedBorrowImpl<B>
         + ScratchAvailableImpl<B>
         + TakeScalarZnxImpl<B>
@@ -114,7 +115,7 @@ pub fn test_gglwe_automorphisk_key_encrypt_sk<B: Backend>(
         .assert_noise(module, &sk_out_prepared, &sk.data, sigma);
 }
 
-pub fn test_gglwe_automorphisk_key_compressed_encrypt_sk<B: Backend>(
+pub fn test_gglwe_automorphisk_key_compressed_encrypt_sk<B>(
     module: &Module<B>,
     basek: usize,
     k_ksk: usize,
@@ -153,7 +154,8 @@ pub fn test_gglwe_automorphisk_key_compressed_encrypt_sk<B: Backend>(
         + VecZnxCopy
         + VmpPMatAlloc<B>
         + VmpPrepare<B>,
-    B: ScratchOwnedAllocImpl<B>
+    B: Backend
+        + ScratchOwnedAllocImpl<B>
         + ScratchOwnedBorrowImpl<B>
         + ScratchAvailableImpl<B>
         + TakeScalarZnxImpl<B>

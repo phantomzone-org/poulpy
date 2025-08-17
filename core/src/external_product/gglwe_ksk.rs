@@ -9,6 +9,7 @@ use backend::hal::{
 use crate::layouts::{GGLWESwitchingKey, GLWECiphertext, Infos, prepared::GGSWCiphertextPrepared};
 
 impl GGLWESwitchingKey<Vec<u8>> {
+    #[allow(clippy::too_many_arguments)]
     pub fn external_product_scratch_space<B: Backend>(
         module: &Module<B>,
         n: usize,

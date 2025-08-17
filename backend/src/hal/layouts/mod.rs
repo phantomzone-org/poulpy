@@ -25,3 +25,8 @@ pub use vmp_pmat::*;
 pub trait Data = PartialEq + Eq + Sized;
 pub trait DataRef = Data + AsRef<[u8]>;
 pub trait DataMut = DataRef + AsMut<[u8]>;
+
+pub trait ToOwnedDeep {
+    type Owned;
+    fn to_owned_deep(&self) -> Self::Owned;
+}

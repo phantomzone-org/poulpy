@@ -33,6 +33,7 @@ pub trait VmpPrepare<B: Backend> {
         A: MatZnxToRef;
 }
 
+#[allow(clippy::too_many_arguments)]
 pub trait VmpApplyTmpBytes {
     fn vmp_apply_tmp_bytes(
         &self,
@@ -78,6 +79,7 @@ pub trait VmpApply<B: Backend> {
         C: VmpPMatToRef<B>;
 }
 
+#[allow(clippy::too_many_arguments)]
 pub trait VmpApplyAddTmpBytes {
     fn vmp_apply_add_tmp_bytes(
         &self,

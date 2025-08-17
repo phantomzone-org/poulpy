@@ -17,6 +17,7 @@ pub struct GGLWECiphertextPrepared<D: Data, B: Backend> {
 }
 
 impl<B: Backend> GGLWECiphertextPrepared<Vec<u8>, B> {
+    #[allow(clippy::too_many_arguments)]
     pub fn alloc(
         module: &Module<B>,
         n: usize,
@@ -48,12 +49,13 @@ impl<B: Backend> GGLWECiphertextPrepared<Vec<u8>, B> {
 
         Self {
             data: module.vmp_pmat_alloc(n, rows, rank_in, rank_out + 1, size),
-            basek: basek,
+            basek,
             k,
             digits,
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn bytes_of(
         module: &Module<B>,
         n: usize,

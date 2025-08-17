@@ -55,7 +55,7 @@ impl GGLWETensorKey<Vec<u8>> {
         (0..pairs).for_each(|_| {
             keys.push(GGLWESwitchingKey::alloc(n, basek, k, rows, digits, 1, rank));
         });
-        Self { keys: keys }
+        Self { keys }
     }
 
     pub fn bytes_of(n: usize, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize {
@@ -68,7 +68,7 @@ impl<D: Data> Infos for GGLWETensorKey<D> {
     type Inner = MatZnx<D>;
 
     fn inner(&self) -> &Self::Inner {
-        &self.keys[0].inner()
+        self.keys[0].inner()
     }
 
     fn basek(&self) -> usize {

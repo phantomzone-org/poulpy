@@ -23,6 +23,7 @@ impl GLWECiphertextCompressed<Vec<u8>> {
 }
 
 impl<D: DataMut> GLWECiphertextCompressed<D> {
+    #[allow(clippy::too_many_arguments)]
     pub fn encrypt_sk<DataPt: DataRef, DataSk: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
@@ -59,6 +60,7 @@ impl<D: DataMut> GLWECiphertextCompressed<D> {
         );
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn encrypt_sk_internal<DataPt: DataRef, DataSk: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,

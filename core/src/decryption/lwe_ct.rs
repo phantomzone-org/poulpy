@@ -10,12 +10,12 @@ impl<DataSelf> LWECiphertext<DataSelf>
 where
     DataSelf: DataRef,
 {
-    pub fn decrypt<DataPt, DataSk, B: Backend>(&self, module: &Module<B>, pt: &mut LWEPlaintext<DataPt>, sk: &LWESecret<DataSk>)
+    pub fn decrypt<DataPt, DataSk, B>(&self, module: &Module<B>, pt: &mut LWEPlaintext<DataPt>, sk: &LWESecret<DataSk>)
     where
         DataPt: DataMut,
         DataSk: DataRef,
         Module<B>: VecZnxNormalizeInplace<B>,
-        B: ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
+        B: Backend + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
     {
         #[cfg(debug_assertions)]
         {

@@ -28,6 +28,7 @@ impl GGLWEAutomorphismKey<Vec<u8>> {
 }
 
 impl<DataSelf: DataMut> GGLWEAutomorphismKey<DataSelf> {
+    #[allow(clippy::too_many_arguments)]
     pub fn encrypt_sk<DataSk: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
@@ -91,7 +92,7 @@ impl<DataSelf: DataMut> GGLWEAutomorphismKey<DataSelf> {
         }
 
         self.key
-            .encrypt_sk(module, &sk, &sk_out, source_xa, source_xe, sigma, scratch_1);
+            .encrypt_sk(module, sk, &sk_out, source_xa, source_xe, sigma, scratch_1);
 
         self.p = p;
     }

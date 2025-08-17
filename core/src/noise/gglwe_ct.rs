@@ -11,7 +11,7 @@ use backend::hal::{
 use crate::layouts::{GGLWECiphertext, GLWECiphertext, GLWEPlaintext, Infos, prepared::GLWESecretPrepared};
 
 impl<D: DataRef> GGLWECiphertext<D> {
-    pub fn assert_noise<B: Backend, DataSk, DataWant>(
+    pub fn assert_noise<B, DataSk, DataWant>(
         self,
         module: &Module<B>,
         sk: &GLWESecretPrepared<DataSk, B>,
@@ -30,7 +30,7 @@ impl<D: DataRef> GGLWECiphertext<D> {
             + VecZnxBigNormalize<B>
             + VecZnxNormalizeTmpBytes
             + VecZnxSubScalarInplace,
-        B: TakeVecZnxDftImpl<B> + TakeVecZnxBigImpl<B> + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
+        B: Backend + TakeVecZnxDftImpl<B> + TakeVecZnxBigImpl<B> + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
     {
         let digits: usize = self.digits();
         let basek: usize = self.basek();
@@ -47,7 +47,7 @@ impl<D: DataRef> GGLWECiphertext<D> {
         (0..self.rank_in()).for_each(|col_i| {
             (0..self.rows()).for_each(|row_i| {
                 self.at(row_i, col_i)
-                    .decrypt(&module, &mut pt, &sk, scratch.borrow());
+                    .decrypt(module, &mut pt, sk, scratch.borrow());
 
                 module.vec_znx_sub_scalar_inplace(
                     &mut pt.data,

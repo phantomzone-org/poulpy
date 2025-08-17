@@ -9,6 +9,7 @@ use backend::hal::{
 use crate::layouts::{GGLWEAutomorphismKey, GGLWESwitchingKey, prepared::GGSWCiphertextPrepared};
 
 impl GGLWEAutomorphismKey<Vec<u8>> {
+    #[allow(clippy::too_many_arguments)]
     pub fn external_product_scratch_space<B: Backend>(
         module: &Module<B>,
         n: usize,

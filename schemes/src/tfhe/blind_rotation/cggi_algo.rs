@@ -20,6 +20,7 @@ use crate::tfhe::blind_rotation::{
     BlincRotationExecute, BlindRotationKeyPrepared, CGGI, LookUpTable, LookUpTableRotationDirection,
 };
 
+#[allow(clippy::too_many_arguments)]
 pub fn cggi_blind_rotate_scratch_space<B: Backend>(
     module: &Module<B>,
     n: usize,
@@ -49,20 +50,17 @@ where
         let vmp_xai: usize = module.vec_znx_dft_alloc_bytes(n, 1, brk_size);
         let acc_dft_add: usize = vmp_res;
         let vmp: usize = module.vmp_apply_tmp_bytes(n, brk_size, rows, rows, 2, 2, brk_size); // GGSW product: (1 x 2) x (2 x 2)
-
-        let acc: usize;
-        if extension_factor > 1 {
-            acc = VecZnx::alloc_bytes(n, cols, k_res.div_ceil(basek)) * extension_factor;
+        let acc: usize = if extension_factor > 1 {
+            VecZnx::alloc_bytes(n, cols, k_res.div_ceil(basek)) * extension_factor
         } else {
-            acc = 0;
-        }
+            0
+        };
 
-        return acc
-            + acc_dft
+        acc + acc_dft
             + acc_dft_add
             + vmp_res
             + vmp_xai
-            + (vmp | (acc_big + (module.vec_znx_big_normalize_tmp_bytes(n) | module.vec_znx_dft_to_vec_znx_big_tmp_bytes(n))));
+            + (vmp | (acc_big + (module.vec_znx_big_normalize_tmp_bytes(n) | module.vec_znx_dft_to_vec_znx_big_tmp_bytes(n))))
     } else {
         GLWECiphertext::bytes_of(n, basek, k_res, rank)
             + GLWECiphertext::external_product_scratch_space(module, n, basek, k_res, k_res, k_brk, 1, rank)
@@ -520,7 +518,7 @@ pub(crate) fn mod_switch_2n(n: usize, res: &mut [i64], lwe: &LWECiphertext<&[u8]
 
     let log2n: usize = usize::BITS as usize - (n - 1).leading_zeros() as usize + 1;
 
-    res.copy_from_slice(&lwe.data().at(0, 0));
+    res.copy_from_slice(lwe.data().at(0, 0));
 
     match rot_dir {
         LookUpTableRotationDirection::Left => {

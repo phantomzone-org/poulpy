@@ -1,4 +1,4 @@
-use std::{collections::HashMap, usize};
+use std::collections::HashMap;
 
 use backend::hal::{
     api::{
@@ -9,7 +9,7 @@ use backend::hal::{
         VecZnxNegateInplace, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace,
         VecZnxRshInplace, VecZnxSub, VecZnxSubABInplace, VecZnxSwithcDegree, VmpApply, VmpApplyAdd, VmpApplyTmpBytes,
     },
-    layouts::{Backend, DataMut, DataRef, Module, Scratch},
+    layouts::{Backend, DataMut, DataRef, Module, Scratch, ToOwnedDeep},
     oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl},
 };
 
@@ -24,7 +24,7 @@ use crate::tfhe::{
     circuit_bootstrapping::{CircuitBootstrappingKeyPrepared, CirtuitBootstrappingExecute},
 };
 
-impl<D: DataRef, BRA: BlindRotationAlgo, B: Backend> CirtuitBootstrappingExecute<B> for CircuitBootstrappingKeyPrepared<D, BRA, B>
+impl<D: DataRef, BRA: BlindRotationAlgo, B> CirtuitBootstrappingExecute<B> for CircuitBootstrappingKeyPrepared<D, BRA, B>
 where
     Module<B>: VecZnxRotateInplace
         + VecZnxNormalizeInplace<B>
@@ -53,7 +53,7 @@ where
         + VecZnxBigAllocBytes
         + VecZnxDftAddInplace<B>
         + VecZnxRotate,
-    B: ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
+    B: Backend + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
     Scratch<B>: TakeVecZnx
         + TakeVecZnxDftSlice<B>
         + TakeVecZnxBig<B>
@@ -109,7 +109,8 @@ where
     }
 }
 
-pub fn circuit_bootstrap_core<DRes, DLwe, DBrk, BRA: BlindRotationAlgo, B: Backend>(
+#[allow(clippy::too_many_arguments)]
+pub fn circuit_bootstrap_core<DRes, DLwe, DBrk, BRA: BlindRotationAlgo, B>(
     to_exponent: bool,
     module: &Module<B>,
     log_gap_out: usize,
@@ -150,7 +151,7 @@ pub fn circuit_bootstrap_core<DRes, DLwe, DBrk, BRA: BlindRotationAlgo, B: Backe
         + VecZnxBigAllocBytes
         + VecZnxDftAddInplace<B>
         + VecZnxRotate,
-    B: ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
+    B: Backend + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
     Scratch<B>: TakeVecZnxDftSlice<B>
         + TakeVecZnxBig<B>
         + TakeVecZnxDft<B>
@@ -201,7 +202,7 @@ pub fn circuit_bootstrap_core<DRes, DLwe, DBrk, BRA: BlindRotationAlgo, B: Backe
     let (mut res_glwe, scratch1) = scratch.take_glwe_ct(n, basek, k, rank);
     let (mut tmp_gglwe, scratch2) = scratch1.take_gglwe(n, basek, k, rows, 1, rank.max(1), rank);
 
-    key.brk.execute(module, &mut res_glwe, &lwe, &lut, scratch2);
+    key.brk.execute(module, &mut res_glwe, lwe, &lut, scratch2);
 
     let gap: usize = 2 * lut.drift / lut.extension_factor();
 
@@ -235,6 +236,7 @@ pub fn circuit_bootstrap_core<DRes, DLwe, DBrk, BRA: BlindRotationAlgo, B: Backe
     res.from_gglwe(module, &tmp_gglwe, &key.tsk, scratch2);
 }
 
+#[allow(clippy::too_many_arguments)]
 fn post_process<DataRes, DataA, B: Backend>(
     module: &Module<B>,
     res: &mut GLWECiphertext<DataRes>,
@@ -282,9 +284,9 @@ fn post_process<DataRes, DataA, B: Backend>(
     // [1, 1, 1, 1, 0, 0, 0, ..., 0, 0, -1, -1, -1, -1] -> [1, 0, 0, 0, 0, 0, 0, ..., 0, 0, 0, 0, 0, 0]
     res.trace(
         module,
-        module.log_n() - log_gap_in as usize + 1,
+        module.log_n() - log_gap_in + 1,
         log_n,
-        &a,
+        a,
         auto_keys,
         scratch,
     );
@@ -297,7 +299,7 @@ fn post_process<DataRes, DataA, B: Backend>(
             if i != 0 {
                 res.rotate_inplace(module, -(1 << log_gap_in));
             }
-            cts.insert(i as usize * (1 << log_gap_out), res.clone());
+            cts.insert(i as usize * (1 << log_gap_out), res.to_owned_deep());
         });
         pack(module, &mut cts, log_gap_out, auto_keys, scratch);
         let packed: GLWECiphertext<Vec<u8>> = cts.remove(&0).unwrap();
@@ -353,14 +355,13 @@ pub fn pack<D: DataMut, B: Backend>(
     let rank: usize = cts.get(&0).unwrap().rank();
 
     (0..log_n - log_gap_out).for_each(|i| {
-        let t = 16.min(1 << (log_n - 1 - i));
+        let t: usize = 16.min(1 << (log_n - 1 - i));
 
-        let auto_key: &GGLWEAutomorphismKeyPrepared<Vec<u8>, B>;
-        if i == 0 {
-            auto_key = auto_keys.get(&-1).unwrap()
+        let auto_key: &GGLWEAutomorphismKeyPrepared<Vec<u8>, B> = if i == 0 {
+            auto_keys.get(&-1).unwrap()
         } else {
-            auto_key = auto_keys.get(&module.galois_element(1 << (i - 1))).unwrap();
-        }
+            auto_keys.get(&module.galois_element(1 << (i - 1))).unwrap()
+        };
 
         (0..t).for_each(|j| {
             let mut a: Option<GLWECiphertext<D>> = cts.remove(&j);
@@ -387,6 +388,7 @@ pub fn pack<D: DataMut, B: Backend>(
     });
 }
 
+#[allow(clippy::too_many_arguments)]
 fn combine<A: DataMut, D: DataMut, DataAK: DataRef, B: Backend>(
     module: &Module<B>,
     basek: usize,
@@ -472,18 +474,16 @@ fn combine<A: DataMut, D: DataMut, DataAK: DataRef, B: Backend>(
             // a = a + phi(a)
             a.automorphism_add_inplace(module, auto_key, scratch);
         }
-    } else {
-        if let Some(b) = b {
-            let n: usize = b.n();
-            let log_n: usize = (u64::BITS - (n - 1).leading_zeros()) as _;
-            let t: i64 = 1 << (log_n - i - 1);
+    } else if let Some(b) = b {
+        let n: usize = b.n();
+        let log_n: usize = (u64::BITS - (n - 1).leading_zeros()) as _;
+        let t: i64 = 1 << (log_n - i - 1);
 
-            let (mut tmp_b, scratch_1) = scratch.take_glwe_ct(n, basek, k, rank);
-            tmp_b.rotate(module, t, b);
-            tmp_b.rsh(module, 1);
+        let (mut tmp_b, scratch_1) = scratch.take_glwe_ct(n, basek, k, rank);
+        tmp_b.rotate(module, t, b);
+        tmp_b.rsh(module, 1);
 
-            // a = (b* X^t - phi(b* X^t))
-            b.automorphism_sub_ba(module, &tmp_b, auto_key, scratch_1);
-        }
+        // a = (b* X^t - phi(b* X^t))
+        b.automorphism_sub_ba(module, &tmp_b, auto_key, scratch_1);
     }
 }

@@ -18,6 +18,8 @@ jobs:
 
     - name: Install Rust nightly
       uses: dtolnay/rust-toolchain@nightly
+      with:
+        components: clippy, rustfmt
 
     - name: Cache cargo dependencies
       uses: actions/cache@v4
@@ -32,6 +34,12 @@ jobs:
 
     - name: Build
       run: cargo build --all-targets
+
+    - name: Clippy (deny warnings)
+      run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+
+    - name: rustfmt (check only)
+      run: cargo fmt --all --check
 
     - name: Run tests
       run: cargo test --all

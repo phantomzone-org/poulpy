@@ -55,14 +55,14 @@ impl Accumulator {
 impl GLWEPacker {
     /// Instantiates a new [GLWEPacker].
     ///
-    /// #Arguments
+    /// # Arguments
     ///
     /// * `module`: static backend FFT tables.
     /// * `log_batch`: packs coefficients which are multiples of X^{N/2^log_batch}.
-    ///                i.e. with `log_batch=0` only the constant coefficient is packed
-    ///                and N GLWE ciphertext can be packed. With `log_batch=2` all coefficients
-    ///                which are multiples of X^{N/4} are packed. Meaning that N/4 ciphertexts
-    ///                can be packed.
+    ///   i.e. with `log_batch=0` only the constant coefficient is packed
+    ///   and N GLWE ciphertext can be packed. With `log_batch=2` all coefficients
+    ///   which are multiples of X^{N/4} are packed. Meaning that N/4 ciphertexts
+    ///   can be packed.
     /// * `basek`: base 2 logarithm of the GLWE ciphertext in memory digit representation.
     /// * `k`: base 2 precision of the GLWE ciphertext precision over the Torus.
     /// * `rank`: rank of the GLWE ciphertext.
@@ -71,7 +71,7 @@ impl GLWEPacker {
         let log_n: usize = (usize::BITS - (n - 1).leading_zeros()) as _;
         (0..log_n - log_batch).for_each(|_| accumulators.push(Accumulator::alloc(n, basek, k, rank)));
         Self {
-            accumulators: accumulators,
+            accumulators,
             log_batch,
             counter: 0,
         }
@@ -111,7 +111,7 @@ impl GLWEPacker {
     ///
     /// * `module`: static backend FFT tables.
     /// * `res`: space to append fully packed ciphertext. Only when the number
-    ///          of packed ciphertexts reaches N/2^log_batch is a result written.
+    ///   of packed ciphertexts reaches N/2^log_batch is a result written.
     /// * `a`: ciphertext to pack. Can optionally give None to pack a 0 ciphertext.
     /// * `auto_keys`: a [HashMap] containing the [AutomorphismKeyExec]s.
     /// * `scratch`: scratch space of size at least [Self::scratch_space].
@@ -329,13 +329,11 @@ fn combine<D: DataRef, DataAK: DataRef, B: Backend>(
     let k: usize = a.k();
     let rank: usize = a.rank();
 
-    let gal_el: i64;
-
-    if i == 0 {
-        gal_el = -1;
+    let gal_el: i64 = if i == 0 {
+        -1
     } else {
-        gal_el = module.galois_element(1 << (i - 1))
-    }
+        module.galois_element(1 << (i - 1))
+    };
 
     let t: i64 = 1 << (log_n - i - 1);
 
@@ -390,20 +388,18 @@ fn combine<D: DataRef, DataAK: DataRef, B: Backend>(
                 panic!("auto_key[{}] not found", gal_el);
             }
         }
-    } else {
-        if let Some(b) = b {
-            let (mut tmp_b, scratch_1) = scratch.take_glwe_ct(n, basek, k, rank);
-            tmp_b.rotate(module, 1 << (log_n - i - 1), b);
-            tmp_b.rsh(module, 1);
+    } else if let Some(b) = b {
+        let (mut tmp_b, scratch_1) = scratch.take_glwe_ct(n, basek, k, rank);
+        tmp_b.rotate(module, 1 << (log_n - i - 1), b);
+        tmp_b.rsh(module, 1);
 
-            // a = (b* X^t - phi(b* X^t))
-            if let Some(key) = auto_keys.get(&gal_el) {
-                a.automorphism_sub_ba(module, &tmp_b, key, scratch_1);
-            } else {
-                panic!("auto_key[{}] not found", gal_el);
-            }
-
-            acc.value = true;
+        // a = (b* X^t - phi(b* X^t))
+        if let Some(key) = auto_keys.get(&gal_el) {
+            a.automorphism_sub_ba(module, &tmp_b, key, scratch_1);
+        } else {
+            panic!("auto_key[{}] not found", gal_el);
         }
+
+        acc.value = true;
     }
 }

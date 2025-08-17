@@ -12,7 +12,7 @@ use backend::hal::{
 use crate::layouts::{GGSWCiphertext, GLWECiphertext, GLWEPlaintext, Infos, prepared::GLWESecretPrepared};
 
 impl<D: DataRef> GGSWCiphertext<D> {
-    pub fn assert_noise<B: Backend, DataSk, DataScalar, F>(
+    pub fn assert_noise<B, DataSk, DataScalar, F>(
         &self,
         module: &Module<B>,
         sk_prepared: &GLWESecretPrepared<DataSk, B>,
@@ -36,7 +36,7 @@ impl<D: DataRef> GGSWCiphertext<D> {
             + VecZnxDftToVecZnxBigTmpA<B>
             + VecZnxAddScalarInplace
             + VecZnxSubABInplace,
-        B: TakeVecZnxDftImpl<B> + TakeVecZnxBigImpl<B> + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
+        B: Backend + TakeVecZnxDftImpl<B> + TakeVecZnxBigImpl<B> + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
         F: Fn(usize) -> f64,
     {
         let basek: usize = self.basek();
@@ -65,7 +65,7 @@ impl<D: DataRef> GGSWCiphertext<D> {
                 }
 
                 self.at(row_i, col_j)
-                    .decrypt(module, &mut pt_have, &sk_prepared, scratch.borrow());
+                    .decrypt(module, &mut pt_have, sk_prepared, scratch.borrow());
 
                 module.vec_znx_sub_ab_inplace(&mut pt_have.data, 0, &pt.data, 0);
 
@@ -81,7 +81,7 @@ impl<D: DataRef> GGSWCiphertext<D> {
 }
 
 impl<D: DataRef> GGSWCiphertext<D> {
-    pub fn print_noise<B: Backend, DataSk, DataScalar>(
+    pub fn print_noise<B, DataSk, DataScalar>(
         &self,
         module: &Module<B>,
         sk_prepared: &GLWESecretPrepared<DataSk, B>,
@@ -104,7 +104,7 @@ impl<D: DataRef> GGSWCiphertext<D> {
             + VecZnxDftToVecZnxBigTmpA<B>
             + VecZnxAddScalarInplace
             + VecZnxSubABInplace,
-        B: TakeVecZnxDftImpl<B> + TakeVecZnxBigImpl<B> + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
+        B: Backend + TakeVecZnxDftImpl<B> + TakeVecZnxBigImpl<B> + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
     {
         let basek: usize = self.basek();
         let k: usize = self.k();
@@ -132,7 +132,7 @@ impl<D: DataRef> GGSWCiphertext<D> {
                 }
 
                 self.at(row_i, col_j)
-                    .decrypt(module, &mut pt_have, &sk_prepared, scratch.borrow());
+                    .decrypt(module, &mut pt_have, sk_prepared, scratch.borrow());
 
                 module.vec_znx_sub_ab_inplace(&mut pt_have.data, 0, &pt.data, 0);
 

@@ -10,6 +10,7 @@ use backend::hal::{
 use crate::layouts::{GLWECiphertext, Infos, prepared::GGLWEAutomorphismKeyPrepared};
 
 impl GLWECiphertext<Vec<u8>> {
+    #[allow(clippy::too_many_arguments)]
     pub fn automorphism_scratch_space<B: Backend>(
         module: &Module<B>,
         n: usize,

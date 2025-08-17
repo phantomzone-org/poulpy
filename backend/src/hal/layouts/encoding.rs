@@ -15,7 +15,7 @@ impl<D: DataMut> VecZnx<D> {
             let a: VecZnx<&mut [u8]> = self.to_mut();
             assert!(
                 size <= a.size(),
-                "invalid argument k: k.div_ceil(basek)={} > a.size()={}",
+                "invalid argument k.div_ceil(basek)={} > a.size()={}",
                 size,
                 a.size()
             );
@@ -69,7 +69,7 @@ impl<D: DataMut> VecZnx<D> {
             assert!(idx < a.n());
             assert!(
                 size <= a.size(),
-                "invalid argument k: k.div_ceil(basek)={} > a.size()={}",
+                "invalid argument k.div_ceil(basek)={} > a.size()={}",
                 size,
                 a.size()
             );

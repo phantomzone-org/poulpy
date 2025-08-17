@@ -20,7 +20,7 @@ use crate::layouts::{
     prepared::{GLWESecretPrepared, PrepareAlloc},
 };
 
-pub fn test_glwe_tensor_key_encrypt_sk<B: Backend>(module: &Module<B>, basek: usize, k: usize, sigma: f64, rank: usize)
+pub fn test_glwe_tensor_key_encrypt_sk<B>(module: &Module<B>, basek: usize, k: usize, sigma: f64, rank: usize)
 where
     Module<B>: VecZnxDftAllocBytes
         + VecZnxBigNormalize<B>
@@ -49,7 +49,8 @@ where
         + VecZnxAddScalarInplace
         + VecZnxSwithcDegree
         + VecZnxSubScalarInplace,
-    B: TakeVecZnxDftImpl<B>
+    B: Backend
+        + TakeVecZnxDftImpl<B>
         + TakeVecZnxBigImpl<B>
         + ScratchOwnedAllocImpl<B>
         + ScratchOwnedBorrowImpl<B>
@@ -130,7 +131,7 @@ where
     })
 }
 
-pub fn test_glwe_tensor_key_compressed_encrypt_sk<B: Backend>(module: &Module<B>, basek: usize, k: usize, sigma: f64, rank: usize)
+pub fn test_glwe_tensor_key_compressed_encrypt_sk<B>(module: &Module<B>, basek: usize, k: usize, sigma: f64, rank: usize)
 where
     Module<B>: VecZnxDftAllocBytes
         + VecZnxBigNormalize<B>
@@ -159,7 +160,8 @@ where
         + VecZnxAddScalarInplace
         + VecZnxSwithcDegree
         + VecZnxSubScalarInplace,
-    B: TakeVecZnxDftImpl<B>
+    B: Backend
+        + TakeVecZnxDftImpl<B>
         + TakeVecZnxBigImpl<B>
         + ScratchOwnedAllocImpl<B>
         + ScratchOwnedBorrowImpl<B>

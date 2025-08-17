@@ -149,6 +149,7 @@ impl BlindRotationKeyCompressed<Vec<u8>, CGGI> {
 }
 
 impl<D: DataMut> BlindRotationKeyCompressed<D, CGGI> {
+    #[allow(clippy::too_many_arguments)]
     pub fn encrypt_sk<DataSkGLWE, DataSkLWE, B: Backend>(
         &mut self,
         module: &Module<B>,

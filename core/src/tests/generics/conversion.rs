@@ -21,7 +21,7 @@ use crate::layouts::{
     prepared::{GLWESecretPrepared, GLWEToLWESwitchingKeyPrepared, LWEToGLWESwitchingKeyPrepared, PrepareAlloc},
 };
 
-pub fn test_lwe_to_glwe<B: Backend>(module: &Module<B>)
+pub fn test_lwe_to_glwe<B>(module: &Module<B>)
 where
     Module<B>: VecZnxDftAllocBytes
         + VecZnxBigNormalize<B>
@@ -51,7 +51,8 @@ where
         + VecZnxBigNormalizeTmpBytes
         + VecZnxSwithcDegree
         + VecZnxAutomorphismInplace,
-    B: TakeVecZnxDftImpl<B>
+    B: Backend
+        + TakeVecZnxDftImpl<B>
         + TakeVecZnxBigImpl<B>
         + TakeSvpPPolImpl<B>
         + ScratchOwnedAllocImpl<B>
@@ -131,7 +132,7 @@ where
     assert_eq!(glwe_pt.data.at(0, 0)[0], lwe_pt.data.at(0, 0)[0]);
 }
 
-pub fn test_glwe_to_lwe<B: Backend>(module: &Module<B>)
+pub fn test_glwe_to_lwe<B>(module: &Module<B>)
 where
     Module<B>: VecZnxDftAllocBytes
         + VecZnxBigNormalize<B>
@@ -161,7 +162,8 @@ where
         + VecZnxBigNormalizeTmpBytes
         + VecZnxSwithcDegree
         + VecZnxAutomorphismInplace,
-    B: TakeVecZnxDftImpl<B>
+    B: Backend
+        + TakeVecZnxDftImpl<B>
         + TakeVecZnxBigImpl<B>
         + TakeSvpPPolImpl<B>
         + ScratchOwnedAllocImpl<B>

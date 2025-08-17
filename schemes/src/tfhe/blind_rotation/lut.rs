@@ -69,10 +69,10 @@ impl LookUpTable {
         self.rot_dir = rot_dir
     }
 
-    pub fn set<B: Backend>(&mut self, module: &Module<B>, f: &Vec<i64>, k: usize)
+    pub fn set<B>(&mut self, module: &Module<B>, f: &[i64], k: usize)
     where
         Module<B>: VecZnxRotateInplace + VecZnxNormalizeInplace<B> + VecZnxNormalizeTmpBytes + VecZnxSwithcDegree + VecZnxCopy,
-        B: ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
+        B: Backend + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
     {
         assert!(f.len() <= module.n());
 
@@ -93,7 +93,7 @@ impl LookUpTable {
 
         // Scaling factor
         let mut scale = 1;
-        if k % basek != 0 {
+        if !k.is_multiple_of(basek) {
             scale <<= basek - (k % basek);
         }
 
@@ -168,7 +168,7 @@ impl LookUpTable {
             module.vec_znx_rotate_inplace(k_hi as i64 + 1, &mut self.data[i], 0);
         });
 
-        self.data.rotate_right(k_lo as usize);
+        self.data.rotate_right(k_lo);
     }
 }
 

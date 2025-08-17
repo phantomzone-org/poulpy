@@ -23,7 +23,8 @@ use crate::{
     noise::noise_ggsw_product,
 };
 
-pub fn test_gglwe_switching_key_external_product<B: Backend>(
+#[allow(clippy::too_many_arguments)]
+pub fn test_gglwe_switching_key_external_product<B>(
     module: &Module<B>,
     basek: usize,
     k_out: usize,
@@ -63,7 +64,8 @@ pub fn test_gglwe_switching_key_external_product<B: Backend>(
         + VmpApply<B>
         + VmpApplyAdd<B>
         + VmpPrepare<B>,
-    B: TakeVecZnxDftImpl<B>
+    B: Backend
+        + TakeVecZnxDftImpl<B>
         + TakeVecZnxBigImpl<B>
         + ScratchOwnedAllocImpl<B>
         + ScratchOwnedBorrowImpl<B>
@@ -165,7 +167,8 @@ pub fn test_gglwe_switching_key_external_product<B: Backend>(
         .assert_noise(module, &sk_out_prepared, &sk_in.data, max_noise + 0.5);
 }
 
-pub fn test_gglwe_switching_key_external_product_inplace<B: Backend>(
+#[allow(clippy::too_many_arguments)]
+pub fn test_gglwe_switching_key_external_product_inplace<B>(
     module: &Module<B>,
     basek: usize,
     k_ct: usize,
@@ -204,7 +207,8 @@ pub fn test_gglwe_switching_key_external_product_inplace<B: Backend>(
         + VmpApply<B>
         + VmpApplyAdd<B>
         + VmpPrepare<B>,
-    B: TakeVecZnxDftImpl<B>
+    B: Backend
+        + TakeVecZnxDftImpl<B>
         + TakeVecZnxBigImpl<B>
         + ScratchOwnedAllocImpl<B>
         + ScratchOwnedBorrowImpl<B>

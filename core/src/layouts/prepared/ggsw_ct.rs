@@ -42,7 +42,7 @@ impl<B: Backend> GGSWCiphertextPrepared<Vec<u8>, B> {
         Self {
             data: module.vmp_pmat_alloc(n, rows, rank + 1, rank + 1, k.div_ceil(basek)),
             basek,
-            k: k,
+            k,
             digits,
         }
     }

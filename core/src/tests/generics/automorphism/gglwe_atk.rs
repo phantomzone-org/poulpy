@@ -23,7 +23,8 @@ use crate::{
     noise::log2_std_noise_gglwe_product,
 };
 
-pub fn test_gglwe_automorphism_key_automorphism<B: Backend>(
+#[allow(clippy::too_many_arguments)]
+pub fn test_gglwe_automorphism_key_automorphism<B>(
     module: &Module<B>,
     p0: i64,
     p1: i64,
@@ -65,7 +66,8 @@ pub fn test_gglwe_automorphism_key_automorphism<B: Backend>(
         + SvpPPolAlloc<B>
         + VecZnxBigAddInplace<B>
         + VecZnxSubScalarInplace,
-    B: ScratchOwnedAllocImpl<B>
+    B: Backend
+        + ScratchOwnedAllocImpl<B>
         + ScratchOwnedBorrowImpl<B>
         + ScratchAvailableImpl<B>
         + TakeScalarZnxImpl<B>
@@ -186,7 +188,8 @@ pub fn test_gglwe_automorphism_key_automorphism<B: Backend>(
     });
 }
 
-pub fn test_gglwe_automorphism_key_automorphism_inplace<B: Backend>(
+#[allow(clippy::too_many_arguments)]
+pub fn test_gglwe_automorphism_key_automorphism_inplace<B>(
     module: &Module<B>,
     p0: i64,
     p1: i64,
@@ -241,7 +244,8 @@ pub fn test_gglwe_automorphism_key_automorphism_inplace<B: Backend>(
         + VecZnxCopy
         + VmpPMatAlloc<B>
         + VmpPrepare<B>,
-    B: ScratchOwnedAllocImpl<B>
+    B: Backend
+        + ScratchOwnedAllocImpl<B>
         + ScratchOwnedBorrowImpl<B>
         + ScratchAvailableImpl<B>
         + TakeScalarZnxImpl<B>

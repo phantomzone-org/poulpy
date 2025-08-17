@@ -13,7 +13,7 @@ use crate::{
 };
 
 impl<DataSelf: DataMut> LWECiphertext<DataSelf> {
-    pub fn encrypt_sk<DataPt, DataSk, B: Backend>(
+    pub fn encrypt_sk<DataPt, DataSk, B>(
         &mut self,
         module: &Module<B>,
         pt: &LWEPlaintext<DataPt>,
@@ -25,7 +25,7 @@ impl<DataSelf: DataMut> LWECiphertext<DataSelf> {
         DataPt: DataRef,
         DataSk: DataRef,
         Module<B>: VecZnxFillUniform + VecZnxAddNormal + VecZnxNormalizeInplace<B>,
-        B: ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
+        B: Backend + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
     {
         #[cfg(debug_assertions)]
         {
