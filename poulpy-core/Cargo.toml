@@ -12,10 +12,8 @@ documentation = "https://docs.rs/poulpy"
 rug = {workspace = true}
 criterion = {workspace = true}
 poulpy-backend = "0.1.0"
-rand_distr = {workspace = true}
 itertools = {workspace = true}
 byteorder = {workspace = true}
-rand_core = {workspace = true}
 
 [[bench]]
 name = "external_product_glwe_fft64"

@@ -385,8 +385,6 @@ dependencies = [
  "criterion",
  "itertools 0.14.0",
  "poulpy-backend 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "rand_core",
- "rand_distr",
  "rug",
 ]
 
