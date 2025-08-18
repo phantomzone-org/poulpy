@@ -22,7 +22,7 @@ pub struct VecZnxBig<D: Data, B: Backend> {
 
 impl<D: Data, B: Backend> ZnxSliceSize for VecZnxBig<D, B> {
     fn sl(&self) -> usize {
-        B::layout_big_word_count() * self.n()
+        B::layout_big_word_count() * self.n() * self.cols()
     }
 }
 

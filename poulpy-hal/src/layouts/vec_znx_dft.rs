@@ -20,7 +20,7 @@ pub struct VecZnxDft<D: Data, B: Backend> {
 
 impl<D: Data, B: Backend> ZnxSliceSize for VecZnxDft<D, B> {
     fn sl(&self) -> usize {
-        B::layout_prep_word_count() * self.n()
+        B::layout_prep_word_count() * self.n() * self.cols()
     }
 }
 

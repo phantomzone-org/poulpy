@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 
 use crate::{
     alloc_aligned,
-    api::{DataView, DataViewMut, ZnxInfos, ZnxSliceSize, ZnxView},
+    api::{DataView, DataViewMut, ZnxInfos, ZnxView},
     layouts::{Backend, Data, DataMut, DataRef},
     oep::VmpPMatAllocBytesImpl,
 };
@@ -16,12 +16,6 @@ pub struct VmpPMat<D: Data, B: Backend> {
     cols_in: usize,
     cols_out: usize,
     _phantom: PhantomData<B>,
-}
-
-impl<D: Data, B: Backend> ZnxSliceSize for VmpPMat<D, B> {
-    fn sl(&self) -> usize {
-        B::layout_prep_word_count() * self.n()
-    }
 }
 
 impl<D: DataRef, B: Backend> ZnxView for VmpPMat<D, B> {
