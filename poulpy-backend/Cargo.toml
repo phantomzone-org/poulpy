@@ -1,6 +1,6 @@
 [package]
 name = "poulpy-backend"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2024"
 license = "Apache-2.0"
 readme = "README.md"
@@ -10,7 +10,7 @@ homepage = "https://github.com/phantomzone-org/poulpy"
 documentation = "https://docs.rs/poulpy"
 
 [dependencies]
-poulpy-hal = {path="../poulpy-hal"}
+poulpy-hal = "0.1.2"
 rug = {workspace = true}
 criterion = {workspace = true}
 itertools = {workspace = true}

@@ -14,9 +14,9 @@ use crate::{
 
 use crate::layouts::Backend;
 
-pub fn test_vmp_apply<B: Backend>()
+pub fn test_vmp_apply<B>()
 where
-    B: ModuleNewImpl<B>
+    B: Backend + ModuleNewImpl<B>
         + VmpApplyTmpBytesImpl<B>
         + VecZnxBigNormalizeTmpBytesImpl<B>
         + VmpPMatAllocImpl<B>
@@ -78,7 +78,7 @@ where
                 (0..mat_cols_in).for_each(|col_in_i| {
                     (0..mat_cols_out).for_each(|col_out_i| {
                         let idx = 1 + col_in_i * mat_cols_out + col_out_i;
-                        mat.at_mut(row_i, col_in_i).at_mut(col_out_i, row_i)[idx] = 1 as i64; // X^{idx}
+                        mat.at_mut(row_i, col_in_i).at_mut(col_out_i, row_i)[idx] = 1_i64; // X^{idx}
                     });
                 });
             });
