@@ -1,7 +1,5 @@
-use poulpy_backend::{
-    hal::{api::ModuleNew, layouts::Module},
-    implementation::cpu_spqlios::FFT64,
-};
+use poulpy_backend::cpu_spqlios::FFT64;
+use poulpy_hal::{api::ModuleNew, layouts::Module};
 
 use crate::tests::generics::{
     automorphism::{test_gglwe_automorphism_key_automorphism, test_gglwe_automorphism_key_automorphism_inplace},
@@ -17,7 +15,7 @@ use crate::tests::generics::{
 #[test]
 fn gglwe_switching_key_encrypt_sk() {
     let log_n: usize = 8;
-    let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
+    let module = Module::<FFT64>::new(1 << log_n);
     let basek: usize = 12;
     let k_ksk: usize = 54;
     let digits: usize = k_ksk / basek;

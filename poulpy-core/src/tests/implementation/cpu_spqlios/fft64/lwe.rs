@@ -1,9 +1,6 @@
-use poulpy_backend::{
-    hal::{api::ModuleNew, layouts::Module},
-    implementation::cpu_spqlios::FFT64,
-};
-
 use crate::tests::generics::{keyswitch::test_lwe_keyswitch, test_glwe_to_lwe, test_lwe_to_glwe};
+use poulpy_backend::cpu_spqlios::FFT64;
+use poulpy_hal::{api::ModuleNew, layouts::Module};
 
 #[test]
 fn lwe_to_glwe() {

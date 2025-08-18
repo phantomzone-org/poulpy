@@ -7,14 +7,13 @@ use poulpy_core::{
 };
 use std::time::Instant;
 
-use poulpy_backend::{
-    hal::{
-        api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxNormalizeInplace, ZnxView, ZnxViewMut},
-        layouts::{Module, ScalarZnx, ScratchOwned},
-        source::Source,
-    },
-    implementation::cpu_spqlios::FFT64,
+use poulpy_hal::{
+    api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxNormalizeInplace, ZnxView, ZnxViewMut},
+    layouts::{Module, ScalarZnx, ScratchOwned},
+    source::Source,
 };
+
+use poulpy_backend::cpu_spqlios::FFT64;
 
 use poulpy_schemes::tfhe::{
     blind_rotation::CGGI,

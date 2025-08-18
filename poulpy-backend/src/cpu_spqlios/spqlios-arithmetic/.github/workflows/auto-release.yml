@@ -1,0 +1,20 @@
+name: Auto-Release
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    name: Auto-Release
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 3 
+#        sparse-checkout: manifest.yaml scripts/auto-release.sh
+
+    - run:
+        ${{github.workspace}}/scripts/auto-release.sh

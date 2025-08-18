@@ -1,5 +1,5 @@
 use itertools::izip;
-use poulpy_backend::hal::{
+use poulpy_hal::{
     api::{
         ScratchAvailable, SvpApply, SvpPPolAllocBytes, TakeVecZnx, TakeVecZnxBig, TakeVecZnxDft, TakeVecZnxDftSlice,
         TakeVecZnxSlice, VecZnxAddInplace, VecZnxBigAddSmallInplace, VecZnxBigAllocBytes, VecZnxBigNormalize,
@@ -513,7 +513,7 @@ fn execute_standard<DataRes, DataIn, DataBrk, B: Backend>(
     out_mut.normalize_inplace(module, scratch1);
 }
 
-pub(crate) fn mod_switch_2n(n: usize, res: &mut [i64], lwe: &LWECiphertext<&[u8]>, rot_dir: LookUpTableRotationDirection) {
+pub fn mod_switch_2n(n: usize, res: &mut [i64], lwe: &LWECiphertext<&[u8]>, rot_dir: LookUpTableRotationDirection) {
     let basek: usize = lwe.basek();
 
     let log2n: usize = usize::BITS as usize - (n - 1).leading_zeros() as usize + 1;

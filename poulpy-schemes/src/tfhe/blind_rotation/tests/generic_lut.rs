@@ -1,6 +1,6 @@
 use std::vec;
 
-use poulpy_backend::hal::{
+use poulpy_hal::{
     api::{VecZnxCopy, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotateInplace, VecZnxSwithcDegree},
     layouts::{Backend, Module},
     oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl},

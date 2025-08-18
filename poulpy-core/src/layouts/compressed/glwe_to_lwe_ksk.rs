@@ -1,6 +1,6 @@
 use std::fmt;
 
-use poulpy_backend::hal::{
+use poulpy_hal::{
     api::{FillUniform, Reset},
     api::{
         SvpApplyInplace, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare, VecZnxAddInplace, VecZnxAddNormal, VecZnxBigNormalize,

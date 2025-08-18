@@ -1,4 +1,4 @@
-use poulpy_backend::hal::{
+use poulpy_hal::{
     api::{FillUniform, Reset, VecZnxCopy, VecZnxFillUniform},
     layouts::{Backend, Data, DataMut, DataRef, Module, ReaderFrom, VecZnx, WriterTo},
 };
@@ -118,7 +118,7 @@ impl<D: DataMut, B: Backend, DR: DataRef> Decompress<B, GLWECiphertextCompressed
     {
         #[cfg(debug_assertions)]
         {
-            use poulpy_backend::hal::api::ZnxInfos;
+            use poulpy_hal::api::ZnxInfos;
 
             assert_eq!(
                 self.n(),

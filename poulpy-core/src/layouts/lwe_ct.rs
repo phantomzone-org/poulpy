@@ -1,6 +1,6 @@
 use std::fmt;
 
-use poulpy_backend::hal::{
+use poulpy_hal::{
     api::{FillUniform, Reset, ZnxInfos},
     layouts::{Data, DataMut, DataRef, ReaderFrom, VecZnx, VecZnxToMut, VecZnxToRef, WriterTo},
     source::Source,

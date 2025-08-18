@@ -1,4 +1,4 @@
-use poulpy_backend::hal::{
+use poulpy_hal::{
     api::{VecZnxDftAlloc, VecZnxDftAllocBytes, VecZnxDftFromVecZnx},
     layouts::{Backend, Data, DataMut, DataRef, Module, Scratch, VecZnxDft},
 };

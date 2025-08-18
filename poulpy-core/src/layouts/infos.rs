@@ -1,4 +1,4 @@
-use poulpy_backend::hal::api::ZnxInfos;
+use poulpy_hal::api::ZnxInfos;
 
 pub trait Infos {
     type Inner: ZnxInfos;

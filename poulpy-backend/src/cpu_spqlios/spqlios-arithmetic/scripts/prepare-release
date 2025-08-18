@@ -1,0 +1,181 @@
+#!/usr/bin/perl
+##
+## This script will help update manifest.yaml and Changelog.md before a release
+## Any merge to master that changes the version line in manifest.yaml 
+## is considered as a new release.
+##
+## When ready to make a release, please run ./scripts/prepare-release
+## and commit push the final result!
+use File::Basename;
+use Cwd 'abs_path';
+
+# find its way to the root of git's repository
+my $scriptsdirname = dirname(abs_path(__FILE__));
+chdir "$scriptsdirname/..";
+print "✓ Entering directory:".`pwd`;
+
+# ensures that the current branch is ahead of origin/main
+my $diff= `git diff`;
+chop $diff;
+if ($diff =~ /./) {
+	die("ERROR: Please commit all the changes before calling the prepare-release script.");
+} else {
+	print("✓ All changes are comitted.\n");
+}
+system("git fetch origin");
+my $vcount = `git rev-list --left-right --count origin/main...HEAD`;
+$vcount =~ /^([0-9]+)[ \t]*([0-9]+)$/;
+if ($2>0) {
+	die("ERROR: the current HEAD is not ahead of origin/main\n. Please use git merge origin/main.");
+} else {
+	print("✓ Current HEAD is up to date with origin/main.\n");
+}
+
+mkdir ".changes";
+my $currentbranch = `git rev-parse --abbrev-ref HEAD`;
+chop $currentbranch;
+$currentbranch =~ s/[^a-zA-Z._-]+/-/g;
+my $changefile=".changes/$currentbranch.md";
+my $origmanifestfile=".changes/$currentbranch--manifest.yaml";
+my $origchangelogfile=".changes/$currentbranch--Changelog.md";
+
+my $exit_code=system("wget -O $origmanifestfile https://raw.githubusercontent.com/tfhe/spqlios-fft/main/manifest.yaml");
+if ($exit_code!=0 or ! -f $origmanifestfile) {
+	die("ERROR: failed to download manifest.yaml");
+}
+$exit_code=system("wget -O $origchangelogfile https://raw.githubusercontent.com/tfhe/spqlios-fft/main/Changelog.md");
+if ($exit_code!=0 or ! -f $origchangelogfile) {
+	die("ERROR: failed to download Changelog.md");
+}
+
+# read the current version (from origin/main manifest)
+my $vmajor = 0;
+my $vminor = 0;
+my $vpatch = 0;
+my $versionline = `grep '^version: ' $origmanifestfile | cut -d" " -f2`;
+chop $versionline;
+if (not $versionline =~ /^([0-9]+)\.([0-9]+)\.([0-9]+)$/) {
+	die("ERROR: invalid version in manifest file: $versionline\n");
+} else {
+	$vmajor = int($1);
+	$vminor = int($2);
+	$vpatch = int($3);
+}
+print "Version in manifest file: $vmajor.$vminor.$vpatch\n";
+
+if (not -f $changefile) {
+	## create a changes file
+	open F,">$changefile";
+	print F "# Changefile for branch $currentbranch\n\n";
+	print F "## Type of release (major,minor,patch)?\n\n";
+	print F "releasetype: patch\n\n";
+	print F "## What has changed (please edit)?\n\n";
+	print F "- This has changed.\n";
+	close F;
+}
+
+system("editor $changefile");
+
+# compute the new version
+my $nvmajor;
+my $nvminor;
+my $nvpatch;
+my $changelog;
+my $recordchangelog=0;
+open F,"$changefile";
+while ($line=<F>) {
+	chop $line;
+	if ($recordchangelog) {
+		($line =~ /^$/) and next;
+		$changelog .= "$line\n";
+		next;
+	}
+	if ($line =~ /^releasetype *: *patch *$/) {
+		$nvmajor=$vmajor;
+		$nvminor=$vminor;
+		$nvpatch=$vpatch+1;
+	}
+	if ($line =~ /^releasetype *: *minor *$/) {
+		$nvmajor=$vmajor;
+		$nvminor=$vminor+1;
+		$nvpatch=0;
+	}
+	if ($line =~ /^releasetype *: *major *$/) {
+		$nvmajor=$vmajor+1;
+		$nvminor=0;
+		$nvpatch=0;
+	}
+	if ($line =~ /^## What has changed/) {
+		$recordchangelog=1;
+	}
+}
+close F;
+print "New version: $nvmajor.$nvminor.$nvpatch\n";
+print "Changes:\n$changelog";
+
+# updating manifest.yaml
+open F,"manifest.yaml";
+open G,">.changes/manifest.yaml";
+while ($line=<F>) {
+	if ($line =~ /^version *: */) {
+		print G "version: $nvmajor.$nvminor.$nvpatch\n";
+		next;
+	}
+	print G $line;
+}
+close F;
+close G;
+# updating Changelog.md
+open F,"$origchangelogfile";
+open G,">.changes/Changelog.md";
+print G <<EOF
+# Changelog
+
+All notable changes to this project will be documented in this file.
+this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+EOF
+;
+print G "## [$nvmajor.$nvminor.$nvpatch] - ".`date '+%Y-%m-%d'`."\n";
+print G "$changelog\n";
+my $skip_section=1;
+while ($line=<F>) {
+	if ($line =~ /^## +\[([0-9]+)\.([0-9]+)\.([0-9]+)\] +/) {
+		if ($1>$nvmajor) {
+			die("ERROR: found larger version $1.$2.$3 in the Changelog.md\n");
+		} elsif ($1<$nvmajor) {
+			$skip_section=0;
+		} elsif ($2>$nvminor) {
+			die("ERROR: found larger version $1.$2.$3 in the Changelog.md\n");
+		} elsif ($2<$nvminor) {
+			$skip_section=0;
+		} elsif ($3>$nvpatch) {
+			die("ERROR: found larger version $1.$2.$3 in the Changelog.md\n");
+		} elsif ($2<$nvpatch) {
+			$skip_section=0;
+		} else {
+			$skip_section=1;
+		}
+	}
+	($skip_section) and next;
+	print G $line;
+}
+close F;
+close G;
+
+print "-------------------------------------\n";
+print "THIS WILL BE UPDATED:\n";
+print "-------------------------------------\n";
+system("diff -u manifest.yaml .changes/manifest.yaml");
+system("diff -u Changelog.md .changes/Changelog.md");
+print "-------------------------------------\n";
+print "To proceed: press <enter> otherwise <CTRL+C>\n";
+my $bla;
+$bla=<STDIN>;
+system("cp -vf .changes/manifest.yaml manifest.yaml");
+system("cp -vf .changes/Changelog.md Changelog.md");
+system("git commit -a -m \"Update version and changelog.\"");
+system("git push");
+print("✓ Changes have been committed and pushed!\n");
+print("✓ A new release will be created when this branch is merged to main.\n");
+

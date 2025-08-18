@@ -7,7 +7,7 @@ pub use key::*;
 
 use poulpy_core::layouts::{GGSWCiphertext, LWECiphertext};
 
-use poulpy_backend::hal::layouts::{Backend, DataMut, DataRef, Module, Scratch};
+use poulpy_hal::layouts::{Backend, DataMut, DataRef, Module, Scratch};
 
 pub trait CirtuitBootstrappingExecute<B: Backend> {
     fn execute_to_constant<DM: DataMut, DR: DataRef>(

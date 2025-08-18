@@ -1,4 +1,4 @@
-use poulpy_backend::hal::{
+use poulpy_hal::{
     api::{SvpPrepare, ZnxInfos, ZnxViewMut},
     layouts::{Backend, DataMut, Module, ScalarZnx, SvpPPol},
 };

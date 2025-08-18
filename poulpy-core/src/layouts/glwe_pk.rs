@@ -1,4 +1,4 @@
-use poulpy_backend::hal::layouts::{Data, DataMut, DataRef, ReaderFrom, VecZnx, WriterTo};
+use poulpy_hal::layouts::{Data, DataMut, DataRef, ReaderFrom, VecZnx, WriterTo};
 
 use crate::{dist::Distribution, layouts::Infos};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
