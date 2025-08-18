@@ -16,7 +16,8 @@ use crate::layouts::Backend;
 
 pub fn test_vmp_apply<B>()
 where
-    B: Backend + ModuleNewImpl<B>
+    B: Backend
+        + ModuleNewImpl<B>
         + VmpApplyTmpBytesImpl<B>
         + VecZnxBigNormalizeTmpBytesImpl<B>
         + VmpPMatAllocImpl<B>
