@@ -24,7 +24,9 @@
 
 ## Library Organization
 
-<img src="docs/lib_diagram.svg">
+<p  align="center">
+<img  src="docs/lib_diagram.png"  />
+</p>
 
 ### Bivariate Polynomial Representation
 
