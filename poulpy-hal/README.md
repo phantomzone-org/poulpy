@@ -8,6 +8,8 @@
 
 This module defines backend agnostic layouts following **spqlios-arithmetic** types. There are two main types to distinguish from, user facing types and backend types, which are opaque write-only backend specific types. User facing types, such as `vec_znx`, serve both as the input and output of computations, while backend opaque types, such as `svp_ppol` (a.k.a. scalar vector product prepared polynomial), are backend specific representation for optimized evaluation. For example in a CPU implementation, an `svp_ppol`, which is the prepared type of `scalar_znx`, could be a `scalar_znx` stored in DFT with an AVX optimized data ordering.
 
+This module also provide various helpers over these types, as well as serialization for the front end types `scalar_znx`, `vec_znx` and `mat_znx`.
+
 #### Module
 
 The `module` is a struct that stores backend-specific pre-computations (e.g. DFT tables).
@@ -57,8 +59,6 @@ flowchart TD
     C[ScalarZnx] -->|prepare|D[SvpPPol]-->E
     E{SvpApply}-->VecZnxDft-->|IDFT|VecZnxBig-->|Normalize|VecZnx
 ```
-
-This module also provide various helpers over these types, as well as serialization for the front end types `scalar_znx`, `vec_znx` and `mat_znx`.
 
 ### **poulpy-hal/api**
 
