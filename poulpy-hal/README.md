@@ -50,6 +50,28 @@ A `vmp_pmat` (vector matrix product prepared matrix) is a backend-specific type 
 
 A `scratch` is a backend agnostic scratch space manager which allows to borrows bytes or structs for intermediate computations.
 
+---------
+
+### **poulpy-hal/api**
+
+This module provides the user facing traits-based API of the hardware acceleration layer. These are the traits used to implement **`poulpy-core`** and **`poulpy-schemes`**. These currently include the `module` instantiation, arithmetic over `vec_znx`, `vec_znx_big`, `vec_znx_dft`, `svp_ppol`, `vmp_pmat` and scratch space management.
+
+
+---------
+
+### **poulpy-hal/oep**
+
+This module provides open extension points, that can be implemented to provide a concrete backend to crates implementing lattice-based arithmetic using **`poulpy-hal/api`** and **`poulpy-hal/layouts`**, such as **`poulpy-core`** and **`poulpy-schemes`** or any other project/application.
+
+
+---------
+
+### **poulpy-hal/delegates**
+
+This module provides a link between the open extension points and public API.
+
+
+---------
 
 ### Pipeline Example
 
@@ -59,15 +81,3 @@ flowchart TD
     C[ScalarZnx] -->|prepare|D[SvpPPol]-->E
     E{SvpApply}-->VecZnxDft-->|IDFT|VecZnxBig-->|Normalize|VecZnx
 ```
-
-### **poulpy-hal/api**
-
-This module provides the user facing traits-based API of the hardware acceleration layer. These are the traits used to implement **`poulpy-core`** and **`poulpy-schemes`**. These currently include the `module` instantiation, arithmetic over `vec_znx`, `vec_znx_big`, `vec_znx_dft`, `svp_ppol`, `vmp_pmat` and scratch space management.
-
-### **poulpy-hal/oep**
-
-This module provides open extension points, that can be implemented to provide a concrete backend to crates implementing lattice-based arithmetic using **`poulpy-hal/api`** and **`poulpy-hal/layouts`**, such as **`poulpy-core`** and **`poulpy-schemes`** or any other project/application.
-
-### **poulpy-hal/delegates**
-
-This module provides a link between the open extension points and public API.
