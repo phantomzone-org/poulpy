@@ -32,9 +32,7 @@ let log_n: usize = 10;
 let module = Module<FFT64> = Module<FFT64>::new(1<<log_n);
 ```
 
----
-
 ## Contributors
 
 To add a backend, implement the open extension traits from **`poulpy-hal/oep`** for a struct that implements the `Backend` trait.  
-This will automatically make your backend compatible with the API of **`poulpy-hal`****`poulpy-core`** and **`poulpy-schemes`**.
+This will automatically make your backend compatible with the API of **`poulpy-hal`**, **`poulpy-core`** and **`poulpy-schemes`**.
