@@ -111,7 +111,6 @@ fn main() {
     // LWE plaintext(data * 2^{- (k_lwe_pt - 1)})
     pt_lwe.encode_i64(data, k_lwe_pt + 1); // +1 for padding bit
 
-
     // Normalize plaintext to nicely print coefficients
     module.vec_znx_normalize_inplace(basek, pt_lwe.data_mut(), 0, scratch.borrow());
     println!("pt_lwe: {}", pt_lwe);
