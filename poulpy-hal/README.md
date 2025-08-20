@@ -1,6 +1,6 @@
 # 🐙 Poulpy-HAL
 
-**Poulpy-HAL** is a Rust crate that provide backend agnostic layouts and trait-based low-level lattice arithmetic matching the API of [**spqlios-arithmetic**](https://github.com/tfhe/spqlios-arithmetic). This allows developpers to implement lattice-based schemes generically, with the ability to plug in optimized backends (e.g. CPU, GPU, FPGA).
+**Poulpy-HAL** is a Rust crate that provide backend agnostic layouts and trait-based low-level lattice arithmetic matching the API of [**spqlios-arithmetic**](https://github.com/tfhe/spqlios-arithmetic). This allows developpers to implement lattice-based schemes generically, with the ability to plug in any optimized backends (e.g. CPU, GPU, FPGA) at runtime.
 
 ## Crate Organization
 

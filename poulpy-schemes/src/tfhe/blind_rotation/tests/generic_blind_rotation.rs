@@ -127,7 +127,6 @@ where
         &sk_lwe,
         &mut source_xa,
         &mut source_xe,
-        3.2,
         scratch.borrow(),
     );
 
@@ -139,14 +138,7 @@ where
 
     pt_lwe.encode_i64(x, log_message_modulus + 1);
 
-    lwe.encrypt_sk(
-        module,
-        &pt_lwe,
-        &sk_lwe,
-        &mut source_xa,
-        &mut source_xe,
-        3.2,
-    );
+    lwe.encrypt_sk(module, &pt_lwe, &sk_lwe, &mut source_xa, &mut source_xe);
 
     let f = |x: i64| -> i64 { 2 * x + 1 };
 

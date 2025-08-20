@@ -71,7 +71,6 @@ where
         sk_lwe: &LWESecret<DataSkLWE>,
         source_xa: &mut Source,
         source_xe: &mut Source,
-        sigma: f64,
         scratch: &mut Scratch<B>,
     ) where
         DataSkGLWE: DataRef,
@@ -100,7 +99,7 @@ where
 
         self.keys.iter_mut().enumerate().for_each(|(i, ggsw)| {
             pt.at_mut(0, 0)[0] = sk_ref.at(0, 0)[i];
-            ggsw.encrypt_sk(module, &pt, sk_glwe, source_xa, source_xe, sigma, scratch);
+            ggsw.encrypt_sk(module, &pt, sk_glwe, source_xa, source_xe, scratch);
         });
     }
 }
@@ -157,7 +156,6 @@ impl<D: DataMut> BlindRotationKeyCompressed<D, CGGI> {
         sk_lwe: &LWESecret<DataSkLWE>,
         seed_xa: [u8; 32],
         source_xe: &mut Source,
-        sigma: f64,
         scratch: &mut Scratch<B>,
     ) where
         DataSkGLWE: DataRef,
@@ -209,7 +207,6 @@ impl<D: DataMut> BlindRotationKeyCompressed<D, CGGI> {
                 sk_glwe,
                 source_xa.new_seed(),
                 source_xe,
-                sigma,
                 scratch,
             );
         });

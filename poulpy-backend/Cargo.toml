@@ -10,7 +10,7 @@ homepage = "https://github.com/phantomzone-org/poulpy"
 documentation = "https://docs.rs/poulpy"
 
 [dependencies]
-poulpy-hal = "0.1.2"
+poulpy-hal = {path="../poulpy-hal"}
 rug = {workspace = true}
 criterion = {workspace = true}
 itertools = {workspace = true}

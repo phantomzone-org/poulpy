@@ -15,10 +15,10 @@
 
 ## Library Crates
 
-- **`poulpy-hal`**: a crate providing layouts and a trait-based hardware acceleration layer with open extension points, matching the API and types of spqlios-arithmetic. This crate does not provide concrete implementations outside of the layouts (e.g. `VecZnx`, `VmpPmat`).
+- **`poulpy-hal`**: a crate providing layouts and a trait-based hardware acceleration layer with open extension points, matching the API and types of spqlios-arithmetic. This crate does not provide concrete implementations other than the layouts (e.g. `VecZnx`, `VmpPmat`).
 - **`poulpy-core`**: a backend agnostic crate implementing scheme agnostic RLWE arithmetic for LWE, GLWE, GGLWE and GGSW ciphertexts using **`poulpy-hal`**. Can be instantiated with any backend provided by **`poulpy-backend`**.
-- **`poulpy-schemes`**: a backend agnostic crate implementing mainstream FHE schemes using **`poulpy-core`** and **`poulpy-hal`**. Can be instantiated with any backend provided by **`poulpy-backend`**.
-- **`poulpy-backend`**: a crate providing concrete implementations of **`poulpy-hal`**.
+- **`poulpy-schemes`**: a backend agnostic crate implementing mainstream FHE schemes using **`poulpy-core`** and **`poulpy-hal`**. The crate can be instantiated with any backend provided by **`poulpy-backend`**.
+- **`poulpy-backend`**: a crate providing concrete implementations of **`poulpy-hal`** for various representations and hardwares.
 
 ## Bivariate Polynomial Representation
 

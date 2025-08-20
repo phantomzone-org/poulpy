@@ -28,7 +28,6 @@ pub trait BlindRotationKeyEncryptSk<B: Backend> {
         sk_lwe: &LWESecret<DataSkLWE>,
         source_xa: &mut Source,
         source_xe: &mut Source,
-        sigma: f64,
         scratch: &mut Scratch<B>,
     ) where
         DataSkGLWE: DataRef,
