@@ -4,7 +4,7 @@
 
 ## Getting Started
 
-See [./examples/circuit_bootstrapping.rs]
+See [./examples/circuit_bootstrapping.rs](./examples/circuit_bootstrapping.rs).
 
 ## Available Schemes
 
