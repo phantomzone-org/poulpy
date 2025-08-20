@@ -169,4 +169,4 @@ ggsw.automorphism(...);
 
 ## Tests
 
-A fully generic test suite is available in [`/tests/generics`](./tests/generics).
+A fully generic test suite is available in [`src/tests/generics`](./src/tests/generics).
