@@ -41,7 +41,6 @@ impl<DataSelf: DataMut> GGLWESwitchingKeyCompressed<DataSelf> {
         sk_out: &GLWESecret<DataSkOut>,
         seed_xa: [u8; 32],
         source_xe: &mut Source,
-        sigma: f64,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: SvpPrepare<B>
@@ -119,7 +118,6 @@ impl<DataSelf: DataMut> GGLWESwitchingKeyCompressed<DataSelf> {
             &sk_out_tmp,
             seed_xa,
             source_xe,
-            sigma,
             scratch2,
         );
         self.sk_in_n = sk_in.n();

@@ -101,7 +101,6 @@ where
     let basek: usize = 17;
     let extension_factor: usize = 1;
     let rank: usize = 1;
-    let sigma: f64 = 3.2;
 
     let n_lwe: usize = 77;
     let k_lwe_pt: usize = 4;
@@ -139,14 +138,7 @@ where
     println!("pt_lwe: {}", pt_lwe);
 
     let mut ct_lwe: LWECiphertext<Vec<u8>> = LWECiphertext::alloc(n_lwe, basek, k_lwe_ct);
-    ct_lwe.encrypt_sk(
-        module,
-        &pt_lwe,
-        &sk_lwe,
-        &mut source_xa,
-        &mut source_xe,
-        sigma,
-    );
+    ct_lwe.encrypt_sk(module, &pt_lwe, &sk_lwe, &mut source_xa, &mut source_xe);
 
     let now: Instant = Instant::now();
     let cbt_key: CircuitBootstrappingKey<Vec<u8>, BRA> = CircuitBootstrappingKey::encrypt_sk(
@@ -162,7 +154,6 @@ where
         rows_tsk,
         &mut source_xa,
         &mut source_xe,
-        sigma,
         scratch.borrow(),
     );
     println!("CBT-KGEN: {} ms", now.elapsed().as_millis());
@@ -207,7 +198,6 @@ where
         &sk_glwe_prepared,
         &mut source_xa,
         &mut source_xe,
-        sigma,
         scratch.borrow(),
     );
 
@@ -285,11 +275,10 @@ where
     BlindRotationKeyPrepared<Vec<u8>, BRA, B>: BlincRotationExecute<B>,
     BlindRotationKey<Vec<u8>, BRA>: BlindRotationKeyAlloc + BlindRotationKeyEncryptSk<B>,
 {
-    let n = module.n();
+    let n: usize = module.n();
     let basek: usize = 14;
     let extension_factor: usize = 1;
     let rank: usize = 2;
-    let sigma: f64 = 3.2;
 
     let n_lwe: usize = 77;
     let k_lwe_pt: usize = 1;
@@ -327,14 +316,7 @@ where
     println!("pt_lwe: {}", pt_lwe);
 
     let mut ct_lwe: LWECiphertext<Vec<u8>> = LWECiphertext::alloc(n_lwe, basek, k_lwe_ct);
-    ct_lwe.encrypt_sk(
-        module,
-        &pt_lwe,
-        &sk_lwe,
-        &mut source_xa,
-        &mut source_xe,
-        sigma,
-    );
+    ct_lwe.encrypt_sk(module, &pt_lwe, &sk_lwe, &mut source_xa, &mut source_xe);
 
     let now: Instant = Instant::now();
     let cbt_key: CircuitBootstrappingKey<Vec<u8>, BRA> = CircuitBootstrappingKey::encrypt_sk(
@@ -350,7 +332,6 @@ where
         rows_tsk,
         &mut source_xa,
         &mut source_xe,
-        sigma,
         scratch.borrow(),
     );
     println!("CBT-KGEN: {} ms", now.elapsed().as_millis());
@@ -391,7 +372,6 @@ where
         &sk_glwe_prepared,
         &mut source_xa,
         &mut source_xe,
-        sigma,
         scratch.borrow(),
     );
 

@@ -37,7 +37,6 @@ fn bench_external_product_glwe_fft64(c: &mut Criterion) {
         let digits: usize = 1;
 
         let rows: usize = 1; //(p.k_ct_in.div_ceil(p.basek);
-        let sigma: f64 = 3.2;
 
         let mut ct_ggsw: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(n, basek, k_ggsw, rows, digits, rank);
         let mut ct_glwe_in: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(n, basek, k_ct_in, rank);
@@ -73,7 +72,6 @@ fn bench_external_product_glwe_fft64(c: &mut Criterion) {
             &sk_dft,
             &mut source_xa,
             &mut source_xe,
-            sigma,
             scratch.borrow(),
         );
 
@@ -82,7 +80,6 @@ fn bench_external_product_glwe_fft64(c: &mut Criterion) {
             &sk_dft,
             &mut source_xa,
             &mut source_xe,
-            sigma,
             scratch.borrow(),
         );
 
@@ -134,7 +131,6 @@ fn bench_external_product_glwe_inplace_fft64(c: &mut Criterion) {
         let digits: usize = 1;
 
         let rows: usize = p.k_ct.div_ceil(p.basek);
-        let sigma: f64 = 3.2;
 
         let mut ct_ggsw: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(n, basek, k_ggsw, rows, digits, rank);
         let mut ct_glwe: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(n, basek, k_glwe, rank);
@@ -168,7 +164,6 @@ fn bench_external_product_glwe_inplace_fft64(c: &mut Criterion) {
             &sk_dft,
             &mut source_xa,
             &mut source_xe,
-            sigma,
             scratch.borrow(),
         );
 
@@ -177,7 +172,6 @@ fn bench_external_product_glwe_inplace_fft64(c: &mut Criterion) {
             &sk_dft,
             &mut source_xa,
             &mut source_xe,
-            sigma,
             scratch.borrow(),
         );
 

@@ -39,7 +39,6 @@ fn bench_keyswitch_glwe_fft64(c: &mut Criterion) {
         let digits: usize = p.digits;
 
         let rows: usize = p.k_ct_in.div_ceil(p.basek * digits);
-        let sigma: f64 = 3.2;
 
         let mut ksk: GGLWEAutomorphismKey<Vec<u8>> = GGLWEAutomorphismKey::alloc(n, basek, k_grlwe, rows, digits, rank_out);
         let mut ct_in: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(n, basek, k_rlwe_in, rank_in);
@@ -78,7 +77,6 @@ fn bench_keyswitch_glwe_fft64(c: &mut Criterion) {
             &sk_in,
             &mut source_xa,
             &mut source_xe,
-            sigma,
             scratch.borrow(),
         );
 
@@ -87,7 +85,6 @@ fn bench_keyswitch_glwe_fft64(c: &mut Criterion) {
             &sk_in_dft,
             &mut source_xa,
             &mut source_xe,
-            sigma,
             scratch.borrow(),
         );
 
@@ -146,7 +143,6 @@ fn bench_keyswitch_glwe_inplace_fft64(c: &mut Criterion) {
         let digits: usize = 1;
 
         let rows: usize = p.k_ct.div_ceil(p.basek);
-        let sigma: f64 = 3.2;
 
         let mut ksk: GGLWESwitchingKey<Vec<u8>> = GGLWESwitchingKey::alloc(n, basek, k_ksk, rows, digits, rank, rank);
         let mut ct: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(n, basek, k_ct, rank);
@@ -174,7 +170,6 @@ fn bench_keyswitch_glwe_inplace_fft64(c: &mut Criterion) {
             &sk_out,
             &mut source_xa,
             &mut source_xe,
-            sigma,
             scratch.borrow(),
         );
 
@@ -183,7 +178,6 @@ fn bench_keyswitch_glwe_inplace_fft64(c: &mut Criterion) {
             &sk_in_dft,
             &mut source_xa,
             &mut source_xe,
-            sigma,
             scratch.borrow(),
         );
 

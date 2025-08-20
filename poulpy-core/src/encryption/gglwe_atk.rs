@@ -36,7 +36,6 @@ impl<DataSelf: DataMut> GGLWEAutomorphismKey<DataSelf> {
         sk: &GLWESecret<DataSk>,
         source_xa: &mut Source,
         source_xe: &mut Source,
-        sigma: f64,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: VecZnxAddScalarInplace
@@ -92,7 +91,7 @@ impl<DataSelf: DataMut> GGLWEAutomorphismKey<DataSelf> {
         }
 
         self.key
-            .encrypt_sk(module, sk, &sk_out, source_xa, source_xe, sigma, scratch_1);
+            .encrypt_sk(module, sk, &sk_out, source_xa, source_xe, scratch_1);
 
         self.p = p;
     }

@@ -16,6 +16,7 @@ use poulpy_hal::{
 };
 
 use crate::{
+    encryption::SIGMA,
     layouts::{
         GGLWESwitchingKey, GGLWETensorKey, GGSWCiphertext, GLWESecret,
         prepared::{GGLWESwitchingKeyPrepared, GGLWETensorKeyPrepared, GLWESecretPrepared, PrepareAlloc},
@@ -33,7 +34,6 @@ pub fn test_ggsw_keyswitch<B>(
     k_tsk: usize,
     digits: usize,
     rank: usize,
-    sigma: f64,
 ) where
     Module<B>: VecZnxDftAllocBytes
         + VecZnxBigNormalize<B>
@@ -118,7 +118,6 @@ pub fn test_ggsw_keyswitch<B>(
         &sk_out,
         &mut source_xa,
         &mut source_xe,
-        sigma,
         scratch.borrow(),
     );
     tsk.encrypt_sk(
@@ -126,7 +125,6 @@ pub fn test_ggsw_keyswitch<B>(
         &sk_out,
         &mut source_xa,
         &mut source_xe,
-        sigma,
         scratch.borrow(),
     );
 
@@ -138,7 +136,6 @@ pub fn test_ggsw_keyswitch<B>(
         &sk_in_dft,
         &mut source_xa,
         &mut source_xe,
-        sigma,
         scratch.borrow(),
     );
 
@@ -160,7 +157,7 @@ pub fn test_ggsw_keyswitch<B>(
             col_j,
             var_xs,
             0f64,
-            sigma * sigma,
+            SIGMA * SIGMA,
             0f64,
             rank as f64,
             k_in,
@@ -181,7 +178,6 @@ pub fn test_ggsw_keyswitch_inplace<B>(
     k_tsk: usize,
     digits: usize,
     rank: usize,
-    sigma: f64,
 ) where
     Module<B>: VecZnxDftAllocBytes
         + VecZnxBigNormalize<B>
@@ -263,7 +259,6 @@ pub fn test_ggsw_keyswitch_inplace<B>(
         &sk_out,
         &mut source_xa,
         &mut source_xe,
-        sigma,
         scratch.borrow(),
     );
     tsk.encrypt_sk(
@@ -271,7 +266,6 @@ pub fn test_ggsw_keyswitch_inplace<B>(
         &sk_out,
         &mut source_xa,
         &mut source_xe,
-        sigma,
         scratch.borrow(),
     );
 
@@ -283,7 +277,6 @@ pub fn test_ggsw_keyswitch_inplace<B>(
         &sk_in_dft,
         &mut source_xa,
         &mut source_xe,
-        sigma,
         scratch.borrow(),
     );
 
@@ -299,7 +292,7 @@ pub fn test_ggsw_keyswitch_inplace<B>(
             col_j,
             var_xs,
             0f64,
-            sigma * sigma,
+            SIGMA * SIGMA,
             0f64,
             rank as f64,
             k_ct,

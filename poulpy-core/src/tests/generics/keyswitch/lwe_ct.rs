@@ -62,7 +62,6 @@ where
 {
     let n: usize = module.n();
     let basek: usize = 17;
-    let sigma: f64 = 3.2;
 
     let n_lwe_in: usize = 22;
     let n_lwe_out: usize = 30;
@@ -99,7 +98,6 @@ where
         &sk_lwe_in,
         &mut source_xa,
         &mut source_xe,
-        sigma,
     );
 
     let mut ksk: LWESwitchingKey<Vec<u8>> = LWESwitchingKey::alloc(n, basek, k_ksk, lwe_ct_in.size());
@@ -110,7 +108,6 @@ where
         &sk_lwe_out,
         &mut source_xa,
         &mut source_xe,
-        sigma,
         scratch.borrow(),
     );
 

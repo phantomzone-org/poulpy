@@ -15,6 +15,7 @@ use poulpy_hal::{
 };
 
 use crate::{
+    encryption::SIGMA,
     layouts::{
         GGLWESwitchingKey, GLWECiphertext, GLWEPlaintext, GLWESecret, Infos,
         prepared::{GGLWESwitchingKeyPrepared, GLWESecretPrepared, PrepareAlloc},
@@ -32,7 +33,6 @@ pub fn test_glwe_keyswitch<B>(
     digits: usize,
     rank_in: usize,
     rank_out: usize,
-    sigma: f64,
 ) where
     Module<B>: VecZnxDftAllocBytes
         + VecZnxBigNormalize<B>
@@ -115,7 +115,6 @@ pub fn test_glwe_keyswitch<B>(
         &sk_out,
         &mut source_xa,
         &mut source_xe,
-        sigma,
         scratch.borrow(),
     );
 
@@ -125,7 +124,6 @@ pub fn test_glwe_keyswitch<B>(
         &sk_in_prepared,
         &mut source_xa,
         &mut source_xe,
-        sigma,
         scratch.borrow(),
     );
 
@@ -139,7 +137,7 @@ pub fn test_glwe_keyswitch<B>(
         0.5,
         0.5,
         0f64,
-        sigma * sigma,
+        SIGMA * SIGMA,
         0f64,
         rank_in as f64,
         k_in,
@@ -149,15 +147,8 @@ pub fn test_glwe_keyswitch<B>(
     ct_out.assert_noise(module, &sk_out_prepared, &pt_want, max_noise + 0.5);
 }
 
-pub fn test_glwe_keyswitch_inplace<B>(
-    module: &Module<B>,
-    basek: usize,
-    k_ct: usize,
-    k_ksk: usize,
-    digits: usize,
-    rank: usize,
-    sigma: f64,
-) where
+pub fn test_glwe_keyswitch_inplace<B>(module: &Module<B>, basek: usize, k_ct: usize, k_ksk: usize, digits: usize, rank: usize)
+where
     Module<B>: VecZnxDftAllocBytes
         + VecZnxBigNormalize<B>
         + VecZnxDftFromVecZnx<B>
@@ -228,7 +219,6 @@ pub fn test_glwe_keyswitch_inplace<B>(
         &sk_out,
         &mut source_xa,
         &mut source_xe,
-        sigma,
         scratch.borrow(),
     );
 
@@ -238,7 +228,6 @@ pub fn test_glwe_keyswitch_inplace<B>(
         &sk_in_prepared,
         &mut source_xa,
         &mut source_xe,
-        sigma,
         scratch.borrow(),
     );
 
@@ -252,7 +241,7 @@ pub fn test_glwe_keyswitch_inplace<B>(
         0.5,
         0.5,
         0f64,
-        sigma * sigma,
+        SIGMA * SIGMA,
         0f64,
         rank as f64,
         k_ct,

@@ -14,10 +14,13 @@ use poulpy_hal::{
     source::Source,
 };
 
-use crate::layouts::{
-    GGLWESwitchingKey, GLWESecret,
-    compressed::{Decompress, GGLWESwitchingKeyCompressed},
-    prepared::{GLWESecretPrepared, PrepareAlloc},
+use crate::{
+    encryption::SIGMA,
+    layouts::{
+        GGLWESwitchingKey, GLWESecret,
+        compressed::{Decompress, GGLWESwitchingKeyCompressed},
+        prepared::{GLWESecretPrepared, PrepareAlloc},
+    },
 };
 
 pub fn test_gglwe_switching_key_encrypt_sk<B>(
@@ -27,7 +30,6 @@ pub fn test_gglwe_switching_key_encrypt_sk<B>(
     digits: usize,
     rank_in: usize,
     rank_out: usize,
-    sigma: f64,
 ) where
     Module<B>: VecZnxDftAllocBytes
         + VecZnxBigNormalize<B>
@@ -92,12 +94,11 @@ pub fn test_gglwe_switching_key_encrypt_sk<B>(
         &sk_out,
         &mut source_xa,
         &mut source_xe,
-        sigma,
         scratch.borrow(),
     );
 
     ksk.key
-        .assert_noise(module, &sk_out_prepared, &sk_in.data, sigma);
+        .assert_noise(module, &sk_out_prepared, &sk_in.data, SIGMA);
 }
 
 pub fn test_gglwe_switching_key_compressed_encrypt_sk<B>(
@@ -107,7 +108,6 @@ pub fn test_gglwe_switching_key_compressed_encrypt_sk<B>(
     digits: usize,
     rank_in: usize,
     rank_out: usize,
-    sigma: f64,
 ) where
     Module<B>: VecZnxDftAllocBytes
         + VecZnxBigNormalize<B>
@@ -174,7 +174,6 @@ pub fn test_gglwe_switching_key_compressed_encrypt_sk<B>(
         &sk_out,
         seed_xa,
         &mut source_xe,
-        sigma,
         scratch.borrow(),
     );
 
@@ -182,5 +181,5 @@ pub fn test_gglwe_switching_key_compressed_encrypt_sk<B>(
     ksk.decompress(module, &ksk_compressed);
 
     ksk.key
-        .assert_noise(module, &sk_out_prepared, &sk_in.data, sigma);
+        .assert_noise(module, &sk_out_prepared, &sk_in.data, SIGMA);
 }

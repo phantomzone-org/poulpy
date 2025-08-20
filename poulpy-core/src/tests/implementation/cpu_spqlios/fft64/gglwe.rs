@@ -26,7 +26,7 @@ fn gglwe_switching_key_encrypt_sk() {
                     "test_gglwe_switching_key_encrypt_sk digits: {} ranks: ({} {})",
                     di, rank_in, rank_out
                 );
-                test_gglwe_switching_key_encrypt_sk(&module, basek, k_ksk, di, rank_in, rank_out, 3.2);
+                test_gglwe_switching_key_encrypt_sk(&module, basek, k_ksk, di, rank_in, rank_out);
             });
         });
     });
@@ -46,7 +46,7 @@ fn gglwe_switching_key_compressed_encrypt_sk() {
                     "test_gglwe_switching_key_compressed_encrypt_sk digits: {} ranks: ({} {})",
                     di, rank_in, rank_out
                 );
-                test_gglwe_switching_key_compressed_encrypt_sk(&module, basek, k_ksk, di, rank_in, rank_out, 3.2);
+                test_gglwe_switching_key_compressed_encrypt_sk(&module, basek, k_ksk, di, rank_in, rank_out);
             });
         });
     });
@@ -79,7 +79,6 @@ fn gglwe_switching_key_keyswitch() {
                         rank_in_s0s1,
                         rank_out_s0s1,
                         rank_out_s1s2,
-                        3.2,
                     );
                 })
             })
@@ -102,16 +101,7 @@ fn gglwe_switching_key_keyswitch_inplace() {
                     "test_gglwe_switching_key_keyswitch_inplace digits: {} ranks: ({},{})",
                     di, rank_in_s0s1, rank_out_s0s1
                 );
-                test_gglwe_switching_key_keyswitch_inplace(
-                    &module,
-                    basek,
-                    k_ct,
-                    k_ksk,
-                    di,
-                    rank_in_s0s1,
-                    rank_out_s0s1,
-                    3.2,
-                );
+                test_gglwe_switching_key_keyswitch_inplace(&module, basek, k_ct, k_ksk, di, rank_in_s0s1, rank_out_s0s1);
             });
         });
     });
@@ -133,9 +123,7 @@ fn gglwe_switching_key_external_product() {
                     di, rank_in, rank_out
                 );
                 let k_out: usize = k_in; // Better capture noise.
-                test_gglwe_switching_key_external_product(
-                    &module, basek, k_out, k_in, k_ggsw, di, rank_in, rank_out, 3.2,
-                );
+                test_gglwe_switching_key_external_product(&module, basek, k_out, k_in, k_ggsw, di, rank_in, rank_out);
             });
         });
     });
@@ -156,7 +144,7 @@ fn gglwe_switching_key_external_product_inplace() {
                     "test_gglwe_switching_key_external_product_inplace digits: {} ranks: ({} {})",
                     di, rank_in, rank_out
                 );
-                test_gglwe_switching_key_external_product_inplace(&module, basek, k_ct, k_ggsw, di, rank_in, rank_out, 3.2);
+                test_gglwe_switching_key_external_product_inplace(&module, basek, k_ct, k_ggsw, di, rank_in, rank_out);
             });
         });
     });
@@ -169,14 +157,13 @@ fn gglwe_automorphisk_key_encrypt_sk() {
     let basek: usize = 12;
     let k: usize = 60;
     let digits: usize = k.div_ceil(basek) - 1;
-    let sigma: f64 = 3.2;
     (1..4).for_each(|rank| {
         (2..digits + 1).for_each(|di| {
             println!(
                 "test_gglwe_automorphisk_key_encrypt_sk digits: {} rank: {}",
                 di, rank
             );
-            test_gglwe_automorphisk_key_encrypt_sk(&module, basek, k, di, rank, sigma);
+            test_gglwe_automorphisk_key_encrypt_sk(&module, basek, k, di, rank);
         });
     });
 }
@@ -188,14 +175,13 @@ fn gglwe_automorphisk_key_compressed_encrypt_sk() {
     let basek: usize = 12;
     let k: usize = 60;
     let digits: usize = k.div_ceil(basek) - 1;
-    let sigma: f64 = 3.2;
     (1..4).for_each(|rank| {
         (2..digits + 1).for_each(|di| {
             println!(
                 "test_gglwe_automorphisk_key_compressed_encrypt_sk digits: {} rank: {}",
                 di, rank
             );
-            test_gglwe_automorphisk_key_compressed_encrypt_sk(&module, basek, k, di, rank, sigma);
+            test_gglwe_automorphisk_key_compressed_encrypt_sk(&module, basek, k, di, rank);
         });
     });
 }
@@ -208,7 +194,6 @@ fn gglwe_automorphism_key_automorphism() {
     let k_in: usize = 60;
     let k_out: usize = 40;
     let digits: usize = k_in.div_ceil(basek);
-    let sigma: f64 = 3.2;
     (1..4).for_each(|rank| {
         (2..digits + 1).for_each(|di| {
             println!(
@@ -216,7 +201,7 @@ fn gglwe_automorphism_key_automorphism() {
                 di, rank
             );
             let k_apply: usize = (digits + di) * basek;
-            test_gglwe_automorphism_key_automorphism(&module, -1, 5, basek, di, k_in, k_out, k_apply, sigma, rank);
+            test_gglwe_automorphism_key_automorphism(&module, -1, 5, basek, di, k_in, k_out, k_apply, rank);
         });
     });
 }
@@ -228,7 +213,6 @@ fn gglwe_automorphism_key_automorphism_inplace() {
     let basek: usize = 12;
     let k_in: usize = 60;
     let digits: usize = k_in.div_ceil(basek);
-    let sigma: f64 = 3.2;
     (1..4).for_each(|rank| {
         (2..digits + 1).for_each(|di| {
             println!(
@@ -236,7 +220,7 @@ fn gglwe_automorphism_key_automorphism_inplace() {
                 di, rank
             );
             let k_apply: usize = (digits + di) * basek;
-            test_gglwe_automorphism_key_automorphism_inplace(&module, -1, 5, basek, di, k_in, k_apply, sigma, rank);
+            test_gglwe_automorphism_key_automorphism_inplace(&module, -1, 5, basek, di, k_in, k_apply, rank);
         });
     });
 }
@@ -247,7 +231,7 @@ fn glwe_tensor_key_encrypt_sk() {
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
     (1..4).for_each(|rank| {
         println!("test_glwe_tensor_key_encrypt_sk rank: {}", rank);
-        test_glwe_tensor_key_encrypt_sk(&module, 16, 54, 3.2, rank);
+        test_glwe_tensor_key_encrypt_sk(&module, 16, 54, rank);
     });
 }
 
@@ -257,6 +241,6 @@ fn glwe_tensor_key_compressed_encrypt_sk() {
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
     (1..4).for_each(|rank| {
         println!("test_glwe_tensor_key_compressed_encrypt_sk rank: {}", rank);
-        test_glwe_tensor_key_compressed_encrypt_sk(&module, 16, 54, 3.2, rank);
+        test_glwe_tensor_key_compressed_encrypt_sk(&module, 16, 54, rank);
     });
 }

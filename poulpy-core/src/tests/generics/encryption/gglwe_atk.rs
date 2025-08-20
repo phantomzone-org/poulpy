@@ -15,20 +15,17 @@ use poulpy_hal::{
     source::Source,
 };
 
-use crate::layouts::{
-    GGLWEAutomorphismKey, GLWESecret,
-    compressed::{Decompress, GGLWEAutomorphismKeyCompressed},
-    prepared::{GLWESecretPrepared, PrepareAlloc},
+use crate::{
+    encryption::SIGMA,
+    layouts::{
+        GGLWEAutomorphismKey, GLWESecret,
+        compressed::{Decompress, GGLWEAutomorphismKeyCompressed},
+        prepared::{GLWESecretPrepared, PrepareAlloc},
+    },
 };
 
-pub fn test_gglwe_automorphisk_key_encrypt_sk<B>(
-    module: &Module<B>,
-    basek: usize,
-    k_ksk: usize,
-    digits: usize,
-    rank: usize,
-    sigma: f64,
-) where
+pub fn test_gglwe_automorphisk_key_encrypt_sk<B>(module: &Module<B>, basek: usize, k_ksk: usize, digits: usize, rank: usize)
+where
     Module<B>: VecZnxDftAllocBytes
         + VecZnxBigNormalize<B>
         + VecZnxDftFromVecZnx<B>
@@ -94,7 +91,6 @@ pub fn test_gglwe_automorphisk_key_encrypt_sk<B>(
         &sk,
         &mut source_xa,
         &mut source_xe,
-        sigma,
         scratch.borrow(),
     );
 
@@ -112,7 +108,7 @@ pub fn test_gglwe_automorphisk_key_encrypt_sk<B>(
 
     atk.key
         .key
-        .assert_noise(module, &sk_out_prepared, &sk.data, sigma);
+        .assert_noise(module, &sk_out_prepared, &sk.data, SIGMA);
 }
 
 pub fn test_gglwe_automorphisk_key_compressed_encrypt_sk<B>(
@@ -121,7 +117,6 @@ pub fn test_gglwe_automorphisk_key_compressed_encrypt_sk<B>(
     k_ksk: usize,
     digits: usize,
     rank: usize,
-    sigma: f64,
 ) where
     Module<B>: VecZnxDftAllocBytes
         + VecZnxBigNormalize<B>
@@ -184,15 +179,7 @@ pub fn test_gglwe_automorphisk_key_compressed_encrypt_sk<B>(
 
     let seed_xa: [u8; 32] = [1u8; 32];
 
-    atk_compressed.encrypt_sk(
-        module,
-        p,
-        &sk,
-        seed_xa,
-        &mut source_xe,
-        sigma,
-        scratch.borrow(),
-    );
+    atk_compressed.encrypt_sk(module, p, &sk, seed_xa, &mut source_xe, scratch.borrow());
 
     let mut sk_out: GLWESecret<Vec<u8>> = sk.clone();
     (0..atk_compressed.rank()).for_each(|i| {
@@ -211,5 +198,5 @@ pub fn test_gglwe_automorphisk_key_compressed_encrypt_sk<B>(
 
     atk.key
         .key
-        .assert_noise(module, &sk_out_prepared, &sk.data, sigma);
+        .assert_noise(module, &sk_out_prepared, &sk.data, SIGMA);
 }

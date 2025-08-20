@@ -9,7 +9,7 @@ use poulpy_hal::{
 };
 
 use crate::{
-    encryption::glwe_ct::glwe_encrypt_sk_internal,
+    encryption::{SIGMA, glwe_ct::glwe_encrypt_sk_internal},
     layouts::{GLWECiphertext, GLWEPlaintext, Infos, compressed::GLWECiphertextCompressed, prepared::GLWESecretPrepared},
 };
 
@@ -31,7 +31,6 @@ impl<D: DataMut> GLWECiphertextCompressed<D> {
         sk: &GLWESecretPrepared<DataSk, B>,
         seed_xa: [u8; 32],
         source_xe: &mut Source,
-        sigma: f64,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: VecZnxDftAllocBytes
@@ -49,15 +48,7 @@ impl<D: DataMut> GLWECiphertextCompressed<D> {
             + VecZnxSub,
         Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
     {
-        self.encrypt_sk_internal(
-            module,
-            Some((pt, 0)),
-            sk,
-            seed_xa,
-            source_xe,
-            sigma,
-            scratch,
-        );
+        self.encrypt_sk_internal(module, Some((pt, 0)), sk, seed_xa, source_xe, scratch);
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -68,7 +59,6 @@ impl<D: DataMut> GLWECiphertextCompressed<D> {
         sk: &GLWESecretPrepared<DataSk, B>,
         seed_xa: [u8; 32],
         source_xe: &mut Source,
-        sigma: f64,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: VecZnxDftAllocBytes
@@ -99,7 +89,7 @@ impl<D: DataMut> GLWECiphertextCompressed<D> {
             sk,
             &mut source_xa,
             source_xe,
-            sigma,
+            SIGMA,
             scratch,
         );
         self.seed = seed_xa;

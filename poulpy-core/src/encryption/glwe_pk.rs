@@ -18,7 +18,6 @@ impl<D: DataMut> GLWEPublicKey<D> {
         sk: &GLWESecretPrepared<S, B>,
         source_xa: &mut Source,
         source_xe: &mut Source,
-        sigma: f64,
     ) where
         Module<B>:,
         Module<B>: VecZnxDftAllocBytes
@@ -61,7 +60,7 @@ impl<D: DataMut> GLWEPublicKey<D> {
         ));
 
         let mut tmp: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(self.n(), self.basek(), self.k(), self.rank());
-        tmp.encrypt_zero_sk(module, sk, source_xa, source_xe, sigma, scratch.borrow());
+        tmp.encrypt_zero_sk(module, sk, source_xa, source_xe, scratch.borrow());
         self.dist = sk.dist;
     }
 }

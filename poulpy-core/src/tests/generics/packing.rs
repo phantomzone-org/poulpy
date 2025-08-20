@@ -83,7 +83,6 @@ where
     let k_ct: usize = 36;
     let pt_k: usize = 18;
     let rank: usize = 3;
-    let sigma: f64 = 3.2;
     let digits: usize = 1;
     let k_ksk: usize = k_ct + basek * digits;
 
@@ -118,7 +117,6 @@ where
             &sk,
             &mut source_xa,
             &mut source_xe,
-            sigma,
             scratch.borrow(),
         );
         let atk_prepared: GGLWEAutomorphismKeyPrepared<Vec<u8>, B> = tmp.prepare_alloc(module, scratch.borrow());
@@ -137,7 +135,6 @@ where
         &sk_dft,
         &mut source_xa,
         &mut source_xe,
-        sigma,
         scratch.borrow(),
     );
 
@@ -150,7 +147,6 @@ where
             &sk_dft,
             &mut source_xa,
             &mut source_xe,
-            sigma,
             scratch.borrow(),
         );
 

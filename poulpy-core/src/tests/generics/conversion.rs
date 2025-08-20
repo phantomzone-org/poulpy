@@ -63,7 +63,6 @@ where
 {
     let n: usize = module.n();
     let basek: usize = 17;
-    let sigma: f64 = 3.2;
 
     let rank: usize = 2;
 
@@ -99,14 +98,7 @@ where
     lwe_pt.encode_i64(data, k_lwe_pt);
 
     let mut lwe_ct: LWECiphertext<Vec<u8>> = LWECiphertext::alloc(n_lwe, basek, k_lwe_ct);
-    lwe_ct.encrypt_sk(
-        module,
-        &lwe_pt,
-        &sk_lwe,
-        &mut source_xa,
-        &mut source_xe,
-        sigma,
-    );
+    lwe_ct.encrypt_sk(module, &lwe_pt, &sk_lwe, &mut source_xa, &mut source_xe);
 
     let mut ksk: LWEToGLWESwitchingKey<Vec<u8>> = LWEToGLWESwitchingKey::alloc(n, basek, k_ksk, lwe_ct.size(), rank);
 
@@ -116,7 +108,6 @@ where
         &sk_glwe,
         &mut source_xa,
         &mut source_xe,
-        sigma,
         scratch.borrow(),
     );
 
@@ -174,7 +165,6 @@ where
 {
     let n: usize = module.n();
     let basek: usize = 17;
-    let sigma: f64 = 3.2;
 
     let rank: usize = 2;
 
@@ -215,7 +205,6 @@ where
         &sk_glwe_prepared,
         &mut source_xa,
         &mut source_xe,
-        sigma,
         scratch.borrow(),
     );
 
@@ -227,7 +216,6 @@ where
         &sk_glwe,
         &mut source_xa,
         &mut source_xe,
-        sigma,
         scratch.borrow(),
     );
 

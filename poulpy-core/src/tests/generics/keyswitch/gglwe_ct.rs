@@ -15,6 +15,7 @@ use poulpy_hal::{
 };
 
 use crate::{
+    encryption::SIGMA,
     layouts::{
         GGLWESwitchingKey, GLWESecret,
         prepared::{GGLWESwitchingKeyPrepared, GLWESecretPrepared, PrepareAlloc},
@@ -33,7 +34,6 @@ pub fn test_gglwe_switching_key_keyswitch<B>(
     rank_in_s0s1: usize,
     rank_out_s0s1: usize,
     rank_out_s1s2: usize,
-    sigma: f64,
 ) where
     Module<B>: VecZnxDftAllocBytes
         + VecZnxBigNormalize<B>
@@ -132,7 +132,6 @@ pub fn test_gglwe_switching_key_keyswitch<B>(
         &sk1,
         &mut source_xa,
         &mut source_xe,
-        sigma,
         scratch_enc.borrow(),
     );
 
@@ -143,7 +142,6 @@ pub fn test_gglwe_switching_key_keyswitch<B>(
         &sk2,
         &mut source_xa,
         &mut source_xe,
-        sigma,
         scratch_enc.borrow(),
     );
 
@@ -164,7 +162,7 @@ pub fn test_gglwe_switching_key_keyswitch<B>(
         0.5,
         0.5,
         0f64,
-        sigma * sigma,
+        SIGMA * SIGMA,
         0f64,
         rank_out_s0s1 as f64,
         k_in,
@@ -185,7 +183,6 @@ pub fn test_gglwe_switching_key_keyswitch_inplace<B>(
     digits: usize,
     rank_in: usize,
     rank_out: usize,
-    sigma: f64,
 ) where
     Module<B>: VecZnxDftAllocBytes
         + VecZnxBigNormalize<B>
@@ -269,7 +266,6 @@ pub fn test_gglwe_switching_key_keyswitch_inplace<B>(
         &sk1,
         &mut source_xa,
         &mut source_xe,
-        sigma,
         scratch_enc.borrow(),
     );
 
@@ -280,7 +276,6 @@ pub fn test_gglwe_switching_key_keyswitch_inplace<B>(
         &sk2,
         &mut source_xa,
         &mut source_xe,
-        sigma,
         scratch_enc.borrow(),
     );
 
@@ -298,7 +293,7 @@ pub fn test_gglwe_switching_key_keyswitch_inplace<B>(
         var_xs,
         var_xs,
         0f64,
-        sigma * sigma,
+        SIGMA * SIGMA,
         0f64,
         rank_out as f64,
         k_ct,

@@ -11,8 +11,8 @@ documentation = "https://docs.rs/poulpy"
 [dependencies]
 rug = {workspace = true}
 criterion = {workspace = true}
-poulpy-hal = "0.1.2"
-poulpy-backend = "0.1.2"
+poulpy-hal = {path="../poulpy-hal"}
+poulpy-backend = {path="../poulpy-backend"}
 itertools = {workspace = true}
 byteorder = {workspace = true}
 

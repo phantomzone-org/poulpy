@@ -16,6 +16,7 @@ use poulpy_hal::{
 };
 
 use crate::{
+    encryption::SIGMA,
     layouts::{
         GGLWEAutomorphismKey, GLWECiphertext, GLWEPlaintext, GLWESecret, Infos,
         prepared::{GGLWEAutomorphismKeyPrepared, GLWESecretPrepared, Prepare, PrepareAlloc},
@@ -33,7 +34,6 @@ pub fn test_glwe_automorphism<B>(
     k_ksk: usize,
     digits: usize,
     rank: usize,
-    sigma: f64,
 ) where
     Module<B>: VecZnxDftAllocBytes
         + VecZnxBigNormalize<B>
@@ -114,7 +114,6 @@ pub fn test_glwe_automorphism<B>(
         &sk,
         &mut source_xa,
         &mut source_xe,
-        sigma,
         scratch.borrow(),
     );
 
@@ -124,7 +123,6 @@ pub fn test_glwe_automorphism<B>(
         &sk_prepared,
         &mut source_xa,
         &mut source_xe,
-        sigma,
         scratch.borrow(),
     );
 
@@ -140,7 +138,7 @@ pub fn test_glwe_automorphism<B>(
         0.5,
         0.5,
         0f64,
-        sigma * sigma,
+        SIGMA * SIGMA,
         0f64,
         rank as f64,
         k_in,
@@ -161,7 +159,6 @@ pub fn test_glwe_automorphism_inplace<B>(
     k_ksk: usize,
     digits: usize,
     rank: usize,
-    sigma: f64,
 ) where
     Module<B>: VecZnxDftAllocBytes
         + VecZnxBigNormalize<B>
@@ -232,7 +229,6 @@ pub fn test_glwe_automorphism_inplace<B>(
         &sk,
         &mut source_xa,
         &mut source_xe,
-        sigma,
         scratch.borrow(),
     );
 
@@ -242,7 +238,6 @@ pub fn test_glwe_automorphism_inplace<B>(
         &sk_prepared,
         &mut source_xa,
         &mut source_xe,
-        sigma,
         scratch.borrow(),
     );
 
@@ -258,7 +253,7 @@ pub fn test_glwe_automorphism_inplace<B>(
         0.5,
         0.5,
         0f64,
-        sigma * sigma,
+        SIGMA * SIGMA,
         0f64,
         rank as f64,
         k_ct,

@@ -8,7 +8,7 @@ use poulpy_hal::{
 };
 
 use crate::{
-    SIX_SIGMA,
+    encryption::{SIGMA, SIGMA_BOUND},
     layouts::{Infos, LWECiphertext, LWEPlaintext, LWESecret},
 };
 
@@ -20,7 +20,6 @@ impl<DataSelf: DataMut> LWECiphertext<DataSelf> {
         sk: &LWESecret<DataSk>,
         source_xa: &mut Source,
         source_xe: &mut Source,
-        sigma: f64,
     ) where
         DataPt: DataRef,
         DataSk: DataRef,
@@ -58,15 +57,7 @@ impl<DataSelf: DataMut> LWECiphertext<DataSelf> {
                 .sum::<i64>();
         });
 
-        module.vec_znx_add_normal(
-            basek,
-            &mut self.data,
-            0,
-            k,
-            source_xe,
-            sigma,
-            sigma * SIX_SIGMA,
-        );
+        module.vec_znx_add_normal(basek, &mut self.data, 0, k, source_xe, SIGMA, SIGMA_BOUND);
 
         module.vec_znx_normalize_inplace(
             basek,

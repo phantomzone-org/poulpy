@@ -16,6 +16,7 @@ use poulpy_hal::{
 };
 
 use crate::{
+    encryption::SIGMA,
     layouts::{
         GGSWCiphertext, GLWESecret,
         prepared::{GGSWCiphertextPrepared, GLWESecretPrepared, PrepareAlloc},
@@ -32,7 +33,6 @@ pub fn test_ggsw_external_product<B>(
     k_ggsw: usize,
     digits: usize,
     rank: usize,
-    sigma: f64,
 ) where
     Module<B>: VecZnxDftAllocBytes
         + VecZnxBigNormalize<B>
@@ -113,7 +113,6 @@ pub fn test_ggsw_external_product<B>(
         &sk_prepared,
         &mut source_xa,
         &mut source_xe,
-        sigma,
         scratch.borrow(),
     );
 
@@ -123,7 +122,6 @@ pub fn test_ggsw_external_product<B>(
         &sk_prepared,
         &mut source_xa,
         &mut source_xe,
-        sigma,
         scratch.borrow(),
     );
 
@@ -133,11 +131,11 @@ pub fn test_ggsw_external_product<B>(
 
     module.vec_znx_rotate_inplace(k as i64, &mut pt_ggsw_lhs.as_vec_znx_mut(), 0);
 
-    let var_gct_err_lhs: f64 = sigma * sigma;
+    let var_gct_err_lhs: f64 = SIGMA * SIGMA;
     let var_gct_err_rhs: f64 = 0f64;
 
     let var_msg: f64 = 1f64 / n as f64; // X^{k}
-    let var_a0_err: f64 = sigma * sigma;
+    let var_a0_err: f64 = SIGMA * SIGMA;
     let var_a1_err: f64 = 1f64 / 12f64;
 
     let max_noise = |_col_j: usize| -> f64 {
@@ -167,7 +165,6 @@ pub fn test_ggsw_external_product_inplace<B>(
     k_ggsw: usize,
     digits: usize,
     rank: usize,
-    sigma: f64,
 ) where
     Module<B>: VecZnxDftAllocBytes
         + VecZnxBigNormalize<B>
@@ -248,7 +245,6 @@ pub fn test_ggsw_external_product_inplace<B>(
         &sk_prepared,
         &mut source_xa,
         &mut source_xe,
-        sigma,
         scratch.borrow(),
     );
 
@@ -258,7 +254,6 @@ pub fn test_ggsw_external_product_inplace<B>(
         &sk_prepared,
         &mut source_xa,
         &mut source_xe,
-        sigma,
         scratch.borrow(),
     );
 
@@ -268,11 +263,11 @@ pub fn test_ggsw_external_product_inplace<B>(
 
     module.vec_znx_rotate_inplace(k as i64, &mut pt_ggsw_lhs.as_vec_znx_mut(), 0);
 
-    let var_gct_err_lhs: f64 = sigma * sigma;
+    let var_gct_err_lhs: f64 = SIGMA * SIGMA;
     let var_gct_err_rhs: f64 = 0f64;
 
     let var_msg: f64 = 1f64 / n as f64; // X^{k}
-    let var_a0_err: f64 = sigma * sigma;
+    let var_a0_err: f64 = SIGMA * SIGMA;
     let var_a1_err: f64 = 1f64 / 12f64;
 
     let max_noise = |_col_j: usize| -> f64 {

@@ -35,7 +35,6 @@ pub trait CircuitBootstrappingKeyEncryptSk<B: Backend> {
         rows_tsk: usize,
         source_xa: &mut Source,
         source_xe: &mut Source,
-        sigma: f64,
         scratch: &mut Scratch<B>,
     ) -> Self
     where
@@ -88,7 +87,6 @@ where
         rows_tsk: usize,
         source_xa: &mut Source,
         source_xe: &mut Source,
-        sigma: f64,
         scratch: &mut Scratch<B>,
     ) -> Self
     where
@@ -101,9 +99,7 @@ where
         gal_els.iter().for_each(|gal_el| {
             let mut key: GGLWEAutomorphismKey<Vec<u8>> =
                 GGLWEAutomorphismKey::alloc(sk_glwe.n(), basek, k_trace, rows_trace, 1, sk_glwe.rank());
-            key.encrypt_sk(
-                module, *gal_el, sk_glwe, source_xa, source_xe, sigma, scratch,
-            );
+            key.encrypt_sk(module, *gal_el, sk_glwe, source_xa, source_xe, scratch);
             auto_keys.insert(*gal_el, key);
         });
 
@@ -124,12 +120,11 @@ where
             sk_lwe,
             source_xa,
             source_xe,
-            sigma,
             scratch,
         );
 
         let mut tsk: GGLWETensorKey<Vec<u8>> = GGLWETensorKey::alloc(sk_glwe.n(), basek, k_tsk, rows_tsk, 1, sk_glwe.rank());
-        tsk.encrypt_sk(module, sk_glwe, source_xa, source_xe, sigma, scratch);
+        tsk.encrypt_sk(module, sk_glwe, source_xa, source_xe, scratch);
 
         Self {
             brk,

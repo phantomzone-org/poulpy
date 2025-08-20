@@ -38,9 +38,6 @@ fn main() {
     // GLWE rank
     let rank: usize = 1;
 
-    // Noise (discrete) standard deviation
-    let sigma: f64 = 3.2;
-
     // LWE degree
     let n_lwe: usize = 574;
 
@@ -110,22 +107,16 @@ fn main() {
 
     // LWE plaintext(data * 2^{- (k_lwe_pt - 1)})
     pt_lwe.encode_i64(data, k_lwe_pt + 1); // +1 for padding bit
-    module.vec_znx_normalize_inplace(basek, pt_lwe.data_mut(), 0, scratch.borrow());
 
+    // Normalize plaintext to nicely print coefficients
+    module.vec_znx_normalize_inplace(basek, pt_lwe.data_mut(), 0, scratch.borrow());
     println!("pt_lwe: {}", pt_lwe);
 
     // LWE ciphertext
     let mut ct_lwe: LWECiphertext<Vec<u8>> = LWECiphertext::alloc(n_lwe, basek, k_lwe_ct);
 
     // Encrypt LWE Plaintext
-    ct_lwe.encrypt_sk(
-        &module,
-        &pt_lwe,
-        &sk_lwe,
-        &mut source_xa,
-        &mut source_xe,
-        sigma,
-    );
+    ct_lwe.encrypt_sk(&module, &pt_lwe, &sk_lwe, &mut source_xa, &mut source_xe);
 
     let now: Instant = Instant::now();
 
@@ -143,7 +134,6 @@ fn main() {
         rows_tsk,
         &mut source_xa,
         &mut source_xe,
-        sigma,
         scratch.borrow(),
     );
     println!("CBT-KGEN: {} ms", now.elapsed().as_millis());
@@ -199,7 +189,6 @@ fn main() {
         &sk_glwe_prepared,
         &mut source_xa,
         &mut source_xe,
-        sigma,
         scratch.borrow(),
     );
 
