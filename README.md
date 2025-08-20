@@ -16,18 +16,9 @@
 ## Library Crates
 
 - **`poulpy-hal`**: a crate providing layouts and a trait-based hardware acceleration layer with open extension points, matching the API and types of spqlios-arithmetic. This crate does not provide concrete implementations outside of the layouts (e.g. `VecZnx`, `VmpPmat`).
-  - **`api`**: fixed user facing public API for low-level polynomial arithmetic closely matching spqlios-arithmetic.
-  - **`delegates`**: link between the user facing API of `api` and implementation OEP of `oep`. 
-  - **`layouts`**: layouts of the front-end algebraic structs matching spqlios-arithmetic types, such as `VecZnx` or opaque backend prepared structs such as `VmpPMat`.
-  - **`oep`**: open extension points, which can be (re-)implemented by the user to provide a concrete backend.
-  - **`tests`**: backend agnostic & generic tests for the public API.
-
 - **`poulpy-core`**: a backend agnostic crate implementing scheme agnostic RLWE arithmetic for LWE, GLWE, GGLWE and GGSW ciphertexts using **`poulpy-hal`**. Can be instantiated with any backend provided by **`poulpy-backend`**.
-
 - **`poulpy-schemes`**: a backend agnostic crate implementing mainstream FHE schemes using **`poulpy-core`** and **`poulpy-hal`**. Can be instantiated with any backend provided by **`poulpy-backend`**.
-
 - **`poulpy-backend`**: a crate providing concrete implementations of **`poulpy-hal`**.
-  - **`cpu_spqlios`**: cpu implementation of **`poulpy-hal`** through the `oep` using bindings on spqlios-arithmetic. This implementation currently supports the `FFT64` backend and will be extended to support the `NTT120` backend once it is available in spqlios-arithmetic.
 
 ## Bivariate Polynomial Representation
 
