@@ -1,4 +1,3 @@
-This already looks very good 👍 — it’s concise, readable, and communicates the essentials clearly. A few **small edits** could make it even cleaner and more professional:
 # 🔒 Security Policy for Poulpy
 
 ## Report a Vulnerability

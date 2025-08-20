@@ -1,4 +1,4 @@
-# 🐙 Poulpy-Core
+# 🐙 Poulpy-Schemes
 
 **Poulpy-Schemes** is a Rust crate built on **`poulpy-hal`** and **`poulpy-core`**, providing backend agnostic RLWE-based FHE schemes implementation.
 
