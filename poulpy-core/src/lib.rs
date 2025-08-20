@@ -17,8 +17,8 @@ pub mod layouts;
 pub use dist::*;
 pub use glwe_packing::*;
 
-pub use scratch::*;
+pub use encryption::SIGMA;
 
-pub(crate) const SIX_SIGMA: f64 = 6.0;
+pub use scratch::*;
 
 pub mod tests;

@@ -10,8 +10,8 @@ use poulpy_hal::{
 };
 
 use crate::{
-    SIX_SIGMA,
     dist::Distribution,
+    encryption::{SIGMA, SIGMA_BOUND},
     layouts::{
         GLWECiphertext, GLWEPlaintext, Infos,
         prepared::{GLWEPublicKeyPrepared, GLWESecretPrepared},
@@ -46,7 +46,6 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         sk: &GLWESecretPrepared<DataSk, B>,
         source_xa: &mut Source,
         source_xe: &mut Source,
-        sigma: f64,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: VecZnxDftAllocBytes
@@ -77,15 +76,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
             )
         }
 
-        self.encrypt_sk_internal(
-            module,
-            Some((pt, 0)),
-            sk,
-            source_xa,
-            source_xe,
-            sigma,
-            scratch,
-        );
+        self.encrypt_sk_internal(module, Some((pt, 0)), sk, source_xa, source_xe, scratch);
     }
 
     pub fn encrypt_zero_sk<DataSk: DataRef, B: Backend>(
@@ -94,7 +85,6 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         sk: &GLWESecretPrepared<DataSk, B>,
         source_xa: &mut Source,
         source_xe: &mut Source,
-        sigma: f64,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: VecZnxDftAllocBytes
@@ -129,7 +119,6 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
             sk,
             source_xa,
             source_xe,
-            sigma,
             scratch,
         );
     }
@@ -142,7 +131,6 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         sk: &GLWESecretPrepared<DataSk, B>,
         source_xa: &mut Source,
         source_xe: &mut Source,
-        sigma: f64,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: VecZnxDftAllocBytes
@@ -172,7 +160,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
             sk,
             source_xa,
             source_xe,
-            sigma,
+            SIGMA,
             scratch,
         );
     }
@@ -185,7 +173,6 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         pk: &GLWEPublicKeyPrepared<DataPk, B>,
         source_xu: &mut Source,
         source_xe: &mut Source,
-        sigma: f64,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: SvpPrepare<B>
@@ -196,15 +183,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
             + VecZnxBigNormalize<B>,
         Scratch<B>: TakeSvpPPol<B> + TakeScalarZnx + TakeVecZnxDft<B>,
     {
-        self.encrypt_pk_internal::<DataPt, DataPk, B>(
-            module,
-            Some((pt, 0)),
-            pk,
-            source_xu,
-            source_xe,
-            sigma,
-            scratch,
-        );
+        self.encrypt_pk_internal::<DataPt, DataPk, B>(module, Some((pt, 0)), pk, source_xu, source_xe, scratch);
     }
 
     pub fn encrypt_zero_pk<DataPk: DataRef, B: Backend>(
@@ -213,7 +192,6 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         pk: &GLWEPublicKeyPrepared<DataPk, B>,
         source_xu: &mut Source,
         source_xe: &mut Source,
-        sigma: f64,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: SvpPrepare<B>
@@ -230,7 +208,6 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
             pk,
             source_xu,
             source_xe,
-            sigma,
             scratch,
         );
     }
@@ -243,7 +220,6 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         pk: &GLWEPublicKeyPrepared<DataPk, B>,
         source_xu: &mut Source,
         source_xe: &mut Source,
-        sigma: f64,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: SvpPrepare<B>
@@ -300,15 +276,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
             let mut ci_big = module.vec_znx_dft_to_vec_znx_big_consume(ci_dft);
 
             // ci_big = u * pk[i] + e
-            module.vec_znx_big_add_normal(
-                basek,
-                &mut ci_big,
-                0,
-                pk.k(),
-                source_xe,
-                sigma,
-                sigma * SIX_SIGMA,
-            );
+            module.vec_znx_big_add_normal(basek, &mut ci_big, 0, pk.k(), source_xe, SIGMA, SIGMA_BOUND);
 
             // ci_big = u * pk[i] + e + m (if col = i)
             if let Some((pt, col)) = pt
@@ -412,7 +380,7 @@ pub(crate) fn glwe_encrypt_sk_internal<DataCt: DataMut, DataPt: DataRef, DataSk:
     }
 
     // c[0] += e
-    module.vec_znx_add_normal(basek, &mut c0, 0, k, source_xe, sigma, sigma * SIX_SIGMA);
+    module.vec_znx_add_normal(basek, &mut c0, 0, k, source_xe, sigma, SIGMA_BOUND);
 
     // c[0] += m if col = 0
     if let Some((pt, col)) = pt

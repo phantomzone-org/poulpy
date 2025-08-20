@@ -12,3 +12,6 @@ mod lwe_ksk;
 mod lwe_to_glwe_ksk;
 
 pub(crate) use glwe_ct::glwe_encrypt_sk_internal;
+
+pub const SIGMA: f64 = 3.2;
+pub(crate) const SIGMA_BOUND: f64 = 6.0 * SIGMA;

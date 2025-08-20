@@ -14,13 +14,16 @@ use poulpy_hal::{
     source::Source,
 };
 
-use crate::layouts::{
-    GGLWETensorKey, GLWEPlaintext, GLWESecret, Infos,
-    compressed::{Decompress, GGLWETensorKeyCompressed},
-    prepared::{GLWESecretPrepared, PrepareAlloc},
+use crate::{
+    encryption::SIGMA,
+    layouts::{
+        GGLWETensorKey, GLWEPlaintext, GLWESecret, Infos,
+        compressed::{Decompress, GGLWETensorKeyCompressed},
+        prepared::{GLWESecretPrepared, PrepareAlloc},
+    },
 };
 
-pub fn test_glwe_tensor_key_encrypt_sk<B>(module: &Module<B>, basek: usize, k: usize, sigma: f64, rank: usize)
+pub fn test_glwe_tensor_key_encrypt_sk<B>(module: &Module<B>, basek: usize, k: usize, rank: usize)
 where
     Module<B>: VecZnxDftAllocBytes
         + VecZnxBigNormalize<B>
@@ -87,7 +90,6 @@ where
         &sk,
         &mut source_xa,
         &mut source_xe,
-        sigma,
         scratch.borrow(),
     );
 
@@ -124,14 +126,14 @@ where
                     module.vec_znx_sub_scalar_inplace(&mut pt.data, 0, row_i, &sk_ij.data, col_i);
 
                     let std_pt: f64 = pt.data.std(basek, 0) * (k as f64).exp2();
-                    assert!((sigma - std_pt).abs() <= 0.5, "{} {}", sigma, std_pt);
+                    assert!((SIGMA - std_pt).abs() <= 0.5, "{} {}", SIGMA, std_pt);
                 });
             });
         })
     })
 }
 
-pub fn test_glwe_tensor_key_compressed_encrypt_sk<B>(module: &Module<B>, basek: usize, k: usize, sigma: f64, rank: usize)
+pub fn test_glwe_tensor_key_compressed_encrypt_sk<B>(module: &Module<B>, basek: usize, k: usize, rank: usize)
 where
     Module<B>: VecZnxDftAllocBytes
         + VecZnxBigNormalize<B>
@@ -195,14 +197,7 @@ where
 
     let seed_xa: [u8; 32] = [1u8; 32];
 
-    tensor_key_compressed.encrypt_sk(
-        module,
-        &sk,
-        seed_xa,
-        &mut source_xe,
-        sigma,
-        scratch.borrow(),
-    );
+    tensor_key_compressed.encrypt_sk(module, &sk, seed_xa, &mut source_xe, scratch.borrow());
 
     let mut tensor_key: GGLWETensorKey<Vec<u8>> = GGLWETensorKey::alloc(n, basek, k, rows, 1, rank);
     tensor_key.decompress(module, &tensor_key_compressed);
@@ -240,7 +235,7 @@ where
                     module.vec_znx_sub_scalar_inplace(&mut pt.data, 0, row_i, &sk_ij.data, col_i);
 
                     let std_pt: f64 = pt.data.std(basek, 0) * (k as f64).exp2();
-                    assert!((sigma - std_pt).abs() <= 0.5, "{} {}", sigma, std_pt);
+                    assert!((SIGMA - std_pt).abs() <= 0.5, "{} {}", SIGMA, std_pt);
                 });
             });
         })

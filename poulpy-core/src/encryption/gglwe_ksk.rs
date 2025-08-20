@@ -52,7 +52,6 @@ impl<DataSelf: DataMut> GGLWESwitchingKey<DataSelf> {
         sk_out: &GLWESecret<DataSkOut>,
         source_xa: &mut Source,
         source_xe: &mut Source,
-        sigma: f64,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: VecZnxAddScalarInplace
@@ -130,7 +129,6 @@ impl<DataSelf: DataMut> GGLWESwitchingKey<DataSelf> {
             &sk_out_tmp,
             source_xa,
             source_xe,
-            sigma,
             scratch2,
         );
         self.sk_in_n = sk_in.n();

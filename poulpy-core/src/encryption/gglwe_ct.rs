@@ -36,7 +36,6 @@ impl<DataSelf: DataMut> GGLWECiphertext<DataSelf> {
         sk: &GLWESecretPrepared<DataSk, B>,
         source_xa: &mut Source,
         source_xe: &mut Source,
-        sigma: f64,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: VecZnxAddScalarInplace
@@ -127,7 +126,7 @@ impl<DataSelf: DataMut> GGLWECiphertext<DataSelf> {
 
                 // rlwe encrypt of vec_znx_pt into vec_znx_ct
                 self.at_mut(row_i, col_i)
-                    .encrypt_sk(module, &tmp_pt, sk, source_xa, source_xe, sigma, scrach_1);
+                    .encrypt_sk(module, &tmp_pt, sk, source_xa, source_xe, scrach_1);
             });
         });
     }

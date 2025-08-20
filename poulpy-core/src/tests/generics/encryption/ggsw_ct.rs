@@ -14,13 +14,16 @@ use poulpy_hal::{
     source::Source,
 };
 
-use crate::layouts::{
-    GGSWCiphertext, GLWESecret,
-    compressed::{Decompress, GGSWCiphertextCompressed},
-    prepared::{GLWESecretPrepared, PrepareAlloc},
+use crate::{
+    encryption::SIGMA,
+    layouts::{
+        GGSWCiphertext, GLWESecret,
+        compressed::{Decompress, GGSWCiphertextCompressed},
+        prepared::{GLWESecretPrepared, PrepareAlloc},
+    },
 };
 
-pub fn test_ggsw_encrypt_sk<B>(module: &Module<B>, basek: usize, k: usize, digits: usize, rank: usize, sigma: f64)
+pub fn test_ggsw_encrypt_sk<B>(module: &Module<B>, basek: usize, k: usize, digits: usize, rank: usize)
 where
     Module<B>: VecZnxDftAllocBytes
         + VecZnxBigNormalize<B>
@@ -89,16 +92,15 @@ where
         &sk_prepared,
         &mut source_xa,
         &mut source_xe,
-        sigma,
         scratch.borrow(),
     );
 
-    let noise_f = |_col_i: usize| -(k as f64) + sigma.log2() + 0.5;
+    let noise_f = |_col_i: usize| -(k as f64) + SIGMA.log2() + 0.5;
 
     ct.assert_noise(module, &sk_prepared, &pt_scalar, noise_f);
 }
 
-pub fn test_ggsw_compressed_encrypt_sk<B>(module: &Module<B>, basek: usize, k: usize, digits: usize, rank: usize, sigma: f64)
+pub fn test_ggsw_compressed_encrypt_sk<B>(module: &Module<B>, basek: usize, k: usize, digits: usize, rank: usize)
 where
     Module<B>: VecZnxDftAllocBytes
         + VecZnxBigNormalize<B>
@@ -167,11 +169,10 @@ where
         &sk_prepared,
         seed_xa,
         &mut source_xe,
-        sigma,
         scratch.borrow(),
     );
 
-    let noise_f = |_col_i: usize| -(k as f64) + sigma.log2() + 0.5;
+    let noise_f = |_col_i: usize| -(k as f64) + SIGMA.log2() + 0.5;
 
     let mut ct: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(n, basek, k, rows, digits, rank);
     ct.decompress(module, &ct_compressed);

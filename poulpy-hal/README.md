@@ -81,3 +81,7 @@ flowchart TD
     C[ScalarZnx] -->|prepare|D[SvpPPol]-->E
     E{SvpApply}-->VecZnxDft-->|IDFT|VecZnxBig-->|Normalize|VecZnx
 ```
+
+## Testing
+
+A full generic and backend agnostic testing suit for the layouts and public API is planned. This will allow to test the correctness of any backend easily.

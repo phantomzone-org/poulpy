@@ -19,6 +19,7 @@ use poulpy_hal::{
 };
 
 use crate::{
+    encryption::SIGMA,
     layouts::{
         GGLWEAutomorphismKey, GLWECiphertext, GLWEPlaintext, GLWESecret, Infos,
         prepared::{GGLWEAutomorphismKeyPrepared, GLWESecretPrepared, PrepareAlloc},
@@ -26,7 +27,7 @@ use crate::{
     noise::var_noise_gglwe_product,
 };
 
-pub fn test_glwe_trace_inplace<B>(module: &Module<B>, basek: usize, k: usize, sigma: f64, rank: usize)
+pub fn test_glwe_trace_inplace<B>(module: &Module<B>, basek: usize, k: usize, rank: usize)
 where
     Module<B>: VecZnxDftAllocBytes
         + VecZnxAutomorphism
@@ -110,7 +111,6 @@ where
         &sk_dft,
         &mut source_xa,
         &mut source_xe,
-        sigma,
         scratch.borrow(),
     );
 
@@ -124,7 +124,6 @@ where
             &sk,
             &mut source_xa,
             &mut source_xe,
-            sigma,
             scratch.borrow(),
         );
         let atk_prepared: GGLWEAutomorphismKeyPrepared<Vec<u8>, B> = tmp.prepare_alloc(module, scratch.borrow());
@@ -149,13 +148,13 @@ where
         0.5,
         0.5,
         1.0 / 12.0,
-        sigma * sigma,
+        SIGMA * SIGMA,
         0.0,
         rank as f64,
         k,
         k_autokey,
     );
-    noise_want += sigma * sigma * (-2.0 * (k) as f64).exp2();
+    noise_want += SIGMA * SIGMA * (-2.0 * (k) as f64).exp2();
     noise_want += n as f64 * 1.0 / 12.0 * 0.5 * rank as f64 * (-2.0 * (k) as f64).exp2();
     noise_want = noise_want.sqrt().log2();
 

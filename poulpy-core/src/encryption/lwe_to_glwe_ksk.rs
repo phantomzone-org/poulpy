@@ -32,7 +32,6 @@ impl<D: DataMut> LWEToGLWESwitchingKey<D> {
         sk_glwe: &GLWESecret<DGlwe>,
         source_xa: &mut Source,
         source_xe: &mut Source,
-        sigma: f64,
         scratch: &mut Scratch<B>,
     ) where
         DLwe: DataRef,
@@ -73,7 +72,6 @@ impl<D: DataMut> LWEToGLWESwitchingKey<D> {
             sk_glwe,
             source_xa,
             source_xe,
-            sigma,
             scratch1,
         );
     }

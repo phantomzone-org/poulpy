@@ -16,6 +16,7 @@ use poulpy_hal::{
 };
 
 use crate::{
+    encryption::SIGMA,
     layouts::{
         GGLWESwitchingKey, GGSWCiphertext, GLWESecret,
         prepared::{GGSWCiphertextPrepared, GLWESecretPrepared, PrepareAlloc},
@@ -33,7 +34,6 @@ pub fn test_gglwe_switching_key_external_product<B>(
     digits: usize,
     rank_in: usize,
     rank_out: usize,
-    sigma: f64,
 ) where
     Module<B>: VecZnxDftAllocBytes
         + VecZnxBigNormalize<B>
@@ -118,7 +118,6 @@ pub fn test_gglwe_switching_key_external_product<B>(
         &sk_out,
         &mut source_xa,
         &mut source_xe,
-        sigma,
         scratch.borrow(),
     );
 
@@ -128,7 +127,6 @@ pub fn test_gglwe_switching_key_external_product<B>(
         &sk_out_prepared,
         &mut source_xa,
         &mut source_xe,
-        sigma,
         scratch.borrow(),
     );
 
@@ -141,11 +139,11 @@ pub fn test_gglwe_switching_key_external_product<B>(
         module.vec_znx_rotate_inplace(r as i64, &mut sk_in.data.as_vec_znx_mut(), i); // * X^{r}
     });
 
-    let var_gct_err_lhs: f64 = sigma * sigma;
+    let var_gct_err_lhs: f64 = SIGMA * SIGMA;
     let var_gct_err_rhs: f64 = 0f64;
 
     let var_msg: f64 = 1f64 / n as f64; // X^{k}
-    let var_a0_err: f64 = sigma * sigma;
+    let var_a0_err: f64 = SIGMA * SIGMA;
     let var_a1_err: f64 = 1f64 / 12f64;
 
     let max_noise: f64 = noise_ggsw_product(
@@ -176,7 +174,6 @@ pub fn test_gglwe_switching_key_external_product_inplace<B>(
     digits: usize,
     rank_in: usize,
     rank_out: usize,
-    sigma: f64,
 ) where
     Module<B>: VecZnxDftAllocBytes
         + VecZnxBigNormalize<B>
@@ -259,7 +256,6 @@ pub fn test_gglwe_switching_key_external_product_inplace<B>(
         &sk_out,
         &mut source_xa,
         &mut source_xe,
-        sigma,
         scratch.borrow(),
     );
 
@@ -269,7 +265,6 @@ pub fn test_gglwe_switching_key_external_product_inplace<B>(
         &sk_out_prepared,
         &mut source_xa,
         &mut source_xe,
-        sigma,
         scratch.borrow(),
     );
 
@@ -282,11 +277,11 @@ pub fn test_gglwe_switching_key_external_product_inplace<B>(
         module.vec_znx_rotate_inplace(r as i64, &mut sk_in.data.as_vec_znx_mut(), i); // * X^{r}
     });
 
-    let var_gct_err_lhs: f64 = sigma * sigma;
+    let var_gct_err_lhs: f64 = SIGMA * SIGMA;
     let var_gct_err_rhs: f64 = 0f64;
 
     let var_msg: f64 = 1f64 / n as f64; // X^{k}
-    let var_a0_err: f64 = sigma * sigma;
+    let var_a0_err: f64 = SIGMA * SIGMA;
     let var_a1_err: f64 = 1f64 / 12f64;
 
     let max_noise: f64 = noise_ggsw_product(

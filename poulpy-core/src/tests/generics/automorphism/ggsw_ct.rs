@@ -17,6 +17,7 @@ use poulpy_hal::{
 };
 
 use crate::{
+    encryption::SIGMA,
     layouts::{
         GGLWEAutomorphismKey, GGLWETensorKey, GGSWCiphertext, GLWESecret,
         prepared::{GGLWEAutomorphismKeyPrepared, GGLWETensorKeyPrepared, GLWESecretPrepared, Prepare, PrepareAlloc},
@@ -35,7 +36,6 @@ pub fn test_ggsw_automorphism<B>(
     k_tsk: usize,
     digits: usize,
     rank: usize,
-    sigma: f64,
 ) where
     Module<B>: VecZnxDftAllocBytes
         + VecZnxBigAllocBytes
@@ -122,7 +122,6 @@ pub fn test_ggsw_automorphism<B>(
         &sk,
         &mut source_xa,
         &mut source_xe,
-        sigma,
         scratch.borrow(),
     );
     tensor_key.encrypt_sk(
@@ -130,7 +129,6 @@ pub fn test_ggsw_automorphism<B>(
         &sk,
         &mut source_xa,
         &mut source_xe,
-        sigma,
         scratch.borrow(),
     );
 
@@ -142,7 +140,6 @@ pub fn test_ggsw_automorphism<B>(
         &sk_prepared,
         &mut source_xa,
         &mut source_xe,
-        sigma,
         scratch.borrow(),
     );
 
@@ -171,7 +168,7 @@ pub fn test_ggsw_automorphism<B>(
             col_j,
             var_xs,
             0f64,
-            sigma * sigma,
+            SIGMA * SIGMA,
             0f64,
             rank as f64,
             k_in,
@@ -193,7 +190,6 @@ pub fn test_ggsw_automorphism_inplace<B>(
     k_tsk: usize,
     digits: usize,
     rank: usize,
-    sigma: f64,
 ) where
     Module<B>: VecZnxDftAllocBytes
         + VecZnxBigAllocBytes
@@ -277,7 +273,6 @@ pub fn test_ggsw_automorphism_inplace<B>(
         &sk,
         &mut source_xa,
         &mut source_xe,
-        sigma,
         scratch.borrow(),
     );
     tensor_key.encrypt_sk(
@@ -285,7 +280,6 @@ pub fn test_ggsw_automorphism_inplace<B>(
         &sk,
         &mut source_xa,
         &mut source_xe,
-        sigma,
         scratch.borrow(),
     );
 
@@ -297,7 +291,6 @@ pub fn test_ggsw_automorphism_inplace<B>(
         &sk_prepared,
         &mut source_xa,
         &mut source_xe,
-        sigma,
         scratch.borrow(),
     );
 
@@ -320,7 +313,7 @@ pub fn test_ggsw_automorphism_inplace<B>(
             col_j,
             var_xs,
             0f64,
-            sigma * sigma,
+            SIGMA * SIGMA,
             0f64,
             rank as f64,
             k_ct,

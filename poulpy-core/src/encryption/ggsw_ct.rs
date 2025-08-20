@@ -35,7 +35,6 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
         sk: &GLWESecretPrepared<DataSk, B>,
         source_xa: &mut Source,
         source_xe: &mut Source,
-        sigma: f64,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: VecZnxAddScalarInplace
@@ -86,7 +85,6 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
                     sk,
                     source_xa,
                     source_xe,
-                    sigma,
                     scratch1,
                 );
             });

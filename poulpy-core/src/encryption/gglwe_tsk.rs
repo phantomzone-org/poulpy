@@ -39,7 +39,6 @@ impl<DataSelf: DataMut> GGLWETensorKey<DataSelf> {
         sk: &GLWESecret<DataSk>,
         source_xa: &mut Source,
         source_xe: &mut Source,
-        sigma: f64,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: SvpApply<B>
@@ -102,7 +101,7 @@ impl<DataSelf: DataMut> GGLWETensorKey<DataSelf> {
                 );
 
                 self.at_mut(i, j)
-                    .encrypt_sk(module, &sk_ij, sk, source_xa, source_xe, sigma, scratch5);
+                    .encrypt_sk(module, &sk_ij, sk, source_xa, source_xe, scratch5);
             });
         })
     }

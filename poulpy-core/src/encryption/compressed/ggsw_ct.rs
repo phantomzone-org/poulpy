@@ -10,7 +10,7 @@ use poulpy_hal::{
 
 use crate::{
     TakeGLWEPt,
-    encryption::glwe_encrypt_sk_internal,
+    encryption::{SIGMA, glwe_encrypt_sk_internal},
     layouts::{GGSWCiphertext, Infos, compressed::GGSWCiphertextCompressed, prepared::GLWESecretPrepared},
 };
 
@@ -32,7 +32,6 @@ impl<DataSelf: DataMut> GGSWCiphertextCompressed<DataSelf> {
         sk: &GLWESecretPrepared<DataSk, B>,
         seed_xa: [u8; 32],
         source_xe: &mut Source,
-        sigma: f64,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: VecZnxAddScalarInplace
@@ -97,7 +96,7 @@ impl<DataSelf: DataMut> GGSWCiphertextCompressed<DataSelf> {
                     sk,
                     &mut source_xa_tmp,
                     source_xe,
-                    sigma,
+                    SIGMA,
                     scratch_1,
                 );
             });

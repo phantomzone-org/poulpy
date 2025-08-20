@@ -18,7 +18,7 @@ fn ggsw_encrypt_sk() {
     (1..4).for_each(|rank| {
         (1..digits + 1).for_each(|di| {
             println!("test_ggsw_encrypt_sk digits: {} rank: {}", di, rank);
-            test_ggsw_encrypt_sk(&module, basek, k_ct, di, rank, 3.2);
+            test_ggsw_encrypt_sk(&module, basek, k_ct, di, rank);
         });
     });
 }
@@ -36,7 +36,7 @@ fn ggsw_compressed_encrypt_sk() {
                 "test_ggsw_compressed_encrypt_sk digits: {} rank: {}",
                 di, rank
             );
-            test_ggsw_compressed_encrypt_sk(&module, basek, k_ct, di, rank, 3.2);
+            test_ggsw_compressed_encrypt_sk(&module, basek, k_ct, di, rank);
         });
     });
 }
@@ -54,7 +54,7 @@ fn ggsw_keyswitch() {
             let k_tsk: usize = k_ksk;
             println!("test_ggsw_keyswitch digits: {} rank: {}", di, rank);
             let k_out: usize = k_ksk; // Better capture noise.
-            test_ggsw_keyswitch(&module, basek, k_out, k_in, k_ksk, k_tsk, di, rank, 3.2);
+            test_ggsw_keyswitch(&module, basek, k_out, k_in, k_ksk, k_tsk, di, rank);
         });
     });
 }
@@ -71,7 +71,7 @@ fn ggsw_keyswitch_inplace() {
             let k_ksk: usize = k_ct + basek * di;
             let k_tsk: usize = k_ksk;
             println!("test_ggsw_keyswitch_inplace digits: {} rank: {}", di, rank);
-            test_ggsw_keyswitch_inplace(&module, basek, k_ct, k_ksk, k_tsk, di, rank, 3.2);
+            test_ggsw_keyswitch_inplace(&module, basek, k_ct, k_ksk, k_tsk, di, rank);
         });
     });
 }
@@ -89,7 +89,7 @@ fn ggsw_automorphism() {
             let k_tsk: usize = k_ksk;
             println!("test_ggsw_automorphism rank: {}", rank);
             let k_out: usize = k_ksk; // Better capture noise.
-            test_ggsw_automorphism(-5, &module, basek, k_out, k_in, k_ksk, k_tsk, di, rank, 3.2);
+            test_ggsw_automorphism(-5, &module, basek, k_out, k_in, k_ksk, k_tsk, di, rank);
         });
     });
 }
@@ -106,7 +106,7 @@ fn ggsw_automorphism_inplace() {
             let k_ksk: usize = k_ct + basek * di;
             let k_tsk: usize = k_ksk;
             println!("test_ggsw_automorphism_inplace rank: {}", rank);
-            test_ggsw_automorphism_inplace(-5, &module, basek, k_ct, k_ksk, k_tsk, di, rank, 3.2);
+            test_ggsw_automorphism_inplace(-5, &module, basek, k_ct, k_ksk, k_tsk, di, rank);
         });
     });
 }
@@ -123,7 +123,7 @@ fn ggsw_external_product() {
             let k_ggsw: usize = k_in + basek * di;
             println!("test external_product digits: {} ranks: {}", di, rank);
             let k_out: usize = k_in; // Better capture noise.
-            test_ggsw_external_product(&module, basek, k_in, k_out, k_ggsw, di, rank, 3.2);
+            test_ggsw_external_product(&module, basek, k_in, k_out, k_ggsw, di, rank);
         });
     });
 }
@@ -142,7 +142,7 @@ fn ggsw_external_product_inplace() {
                 "test_ggsw_external_product_inplace digits: {} rank: {}",
                 di, rank
             );
-            test_ggsw_external_product_inplace(&module, basek, k_ct, k_ggsw, di, rank, 3.2);
+            test_ggsw_external_product_inplace(&module, basek, k_ct, k_ggsw, di, rank);
         });
     });
 }

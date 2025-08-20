@@ -15,7 +15,7 @@ fn glwe_encrypt_sk() {
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
     (1..4).for_each(|rank| {
         println!("test_glwe_encrypt_sk rank: {}", rank);
-        test_glwe_encrypt_sk(&module, 8, 54, 30, 3.2, rank);
+        test_glwe_encrypt_sk(&module, 8, 54, 30, rank);
     });
 }
 
@@ -25,7 +25,7 @@ fn glwe_compressed_encrypt_sk() {
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
     (1..4).for_each(|rank| {
         println!("test_glwe_compressed_encrypt_sk rank: {}", rank);
-        test_glwe_compressed_encrypt_sk(&module, 8, 54, 30, 3.2, rank);
+        test_glwe_compressed_encrypt_sk(&module, 8, 54, 30, rank);
     });
 }
 
@@ -35,7 +35,7 @@ fn glwe_encrypt_zero_sk() {
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
     (1..4).for_each(|rank| {
         println!("test_glwe_encrypt_zero_sk rank: {}", rank);
-        test_glwe_encrypt_zero_sk(&module, 8, 64, 3.2, rank);
+        test_glwe_encrypt_zero_sk(&module, 8, 64, rank);
     });
 }
 
@@ -45,7 +45,7 @@ fn glwe_encrypt_pk() {
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
     (1..4).for_each(|rank| {
         println!("test_glwe_encrypt_pk rank: {}", rank);
-        test_glwe_encrypt_pk(&module, 8, 64, 64, 3.2, rank)
+        test_glwe_encrypt_pk(&module, 8, 64, 64, rank)
     });
 }
 
@@ -65,9 +65,7 @@ fn glwe_keyswitch() {
                     "test_glwe_keyswitch digits: {} rank_in: {} rank_out: {}",
                     di, rank_in, rank_out
                 );
-                test_glwe_keyswitch(
-                    &module, basek, k_out, k_in, k_ksk, di, rank_in, rank_out, 3.2,
-                );
+                test_glwe_keyswitch(&module, basek, k_out, k_in, k_ksk, di, rank_in, rank_out);
             })
         });
     });
@@ -84,7 +82,7 @@ fn glwe_keyswitch_inplace() {
         (1..digits + 1).for_each(|di| {
             let k_ksk: usize = k_ct + basek * di;
             println!("test_glwe_keyswitch_inplace digits: {} rank: {}", di, rank);
-            test_glwe_keyswitch_inplace(&module, basek, k_ct, k_ksk, di, rank, 3.2);
+            test_glwe_keyswitch_inplace(&module, basek, k_ct, k_ksk, di, rank);
         });
     });
 }
@@ -101,7 +99,7 @@ fn glwe_automorphism() {
             let k_ksk: usize = k_in + basek * di;
             let k_out: usize = k_ksk; // Better capture noise.
             println!("test_glwe_automorphism digits: {} rank: {}", di, rank);
-            test_glwe_automorphism(&module, basek, -5, k_out, k_in, k_ksk, di, rank, 3.2);
+            test_glwe_automorphism(&module, basek, -5, k_out, k_in, k_ksk, di, rank);
         })
     });
 }
@@ -120,7 +118,7 @@ fn glwe_automorphism_inplace() {
                 "test_glwe_automorphism_inplace digits: {} rank: {}",
                 di, rank
             );
-            test_glwe_automorphism_inplace(&module, basek, -5, k_ct, k_ksk, di, rank, 3.2);
+            test_glwe_automorphism_inplace(&module, basek, -5, k_ct, k_ksk, di, rank);
         });
     });
 }
@@ -137,7 +135,7 @@ fn glwe_external_product() {
             let k_ggsw: usize = k_in + basek * di;
             let k_out: usize = k_ggsw; // Better capture noise
             println!("test_glwe_external_product digits: {} rank: {}", di, rank);
-            test_glwe_external_product(&module, basek, k_out, k_in, k_ggsw, di, rank, 3.2);
+            test_glwe_external_product(&module, basek, k_out, k_in, k_ggsw, di, rank);
         });
     });
 }
@@ -156,7 +154,7 @@ fn glwe_external_product_inplace() {
                 "test_glwe_external_product_inplace digits: {} rank: {}",
                 di, rank
             );
-            test_glwe_external_product_inplace(&module, basek, k_ct, k_ggsw, di, rank, 3.2);
+            test_glwe_external_product_inplace(&module, basek, k_ct, k_ggsw, di, rank);
         });
     });
 }
@@ -167,7 +165,7 @@ fn glwe_trace_inplace() {
     let module: Module<FFT64> = Module::<FFT64>::new(1 << log_n);
     (1..4).for_each(|rank| {
         println!("test_glwe_trace_inplace rank: {}", rank);
-        test_glwe_trace_inplace(&module, 8, 54, 3.2, rank);
+        test_glwe_trace_inplace(&module, 8, 54, rank);
     });
 }
 

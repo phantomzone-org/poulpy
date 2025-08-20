@@ -15,6 +15,7 @@ use poulpy_hal::{
 };
 
 use crate::{
+    encryption::SIGMA,
     layouts::{
         GLWECiphertext, GLWEPlaintext, GLWEPublicKey, GLWESecret, Infos,
         compressed::{Decompress, GLWECiphertextCompressed},
@@ -23,7 +24,7 @@ use crate::{
     operations::GLWEOperations,
 };
 
-pub fn test_glwe_encrypt_sk<B>(module: &Module<B>, basek: usize, k_ct: usize, k_pt: usize, sigma: f64, rank: usize)
+pub fn test_glwe_encrypt_sk<B>(module: &Module<B>, basek: usize, k_ct: usize, k_pt: usize, rank: usize)
 where
     Module<B>: VecZnxDftAllocBytes
         + VecZnxBigAllocBytes
@@ -96,7 +97,6 @@ where
         &sk_prepared,
         &mut source_xa,
         &mut source_xe,
-        sigma,
         scratch.borrow(),
     );
 
@@ -105,12 +105,12 @@ where
     pt_want.sub_inplace_ab(module, &pt_have);
 
     let noise_have: f64 = pt_want.data.std(basek, 0) * (ct.k() as f64).exp2();
-    let noise_want: f64 = sigma;
+    let noise_want: f64 = SIGMA;
 
     assert!(noise_have <= noise_want + 0.2);
 }
 
-pub fn test_glwe_compressed_encrypt_sk<B>(module: &Module<B>, basek: usize, k_ct: usize, k_pt: usize, sigma: f64, rank: usize)
+pub fn test_glwe_compressed_encrypt_sk<B>(module: &Module<B>, basek: usize, k_ct: usize, k_pt: usize, rank: usize)
 where
     Module<B>: VecZnxDftAllocBytes
         + VecZnxBigAllocBytes
@@ -187,7 +187,6 @@ where
         &sk_prepared,
         seed_xa,
         &mut source_xe,
-        sigma,
         scratch.borrow(),
     );
 
@@ -199,7 +198,7 @@ where
     pt_want.sub_inplace_ab(module, &pt_have);
 
     let noise_have: f64 = pt_want.data.std(basek, 0) * (ct.k() as f64).exp2();
-    let noise_want: f64 = sigma;
+    let noise_want: f64 = SIGMA;
 
     assert!(
         noise_have <= noise_want + 0.2,
@@ -209,7 +208,7 @@ where
     );
 }
 
-pub fn test_glwe_encrypt_zero_sk<B>(module: &Module<B>, basek: usize, k_ct: usize, sigma: f64, rank: usize)
+pub fn test_glwe_encrypt_zero_sk<B>(module: &Module<B>, basek: usize, k_ct: usize, rank: usize)
 where
     Module<B>: VecZnxDftAllocBytes
         + VecZnxBigAllocBytes
@@ -279,15 +278,14 @@ where
         &sk_prepared,
         &mut source_xa,
         &mut source_xe,
-        sigma,
         scratch.borrow(),
     );
     ct.decrypt(module, &mut pt, &sk_prepared, scratch.borrow());
 
-    assert!((sigma - pt.data.std(basek, 0) * (k_ct as f64).exp2()) <= 0.2);
+    assert!((SIGMA - pt.data.std(basek, 0) * (k_ct as f64).exp2()) <= 0.2);
 }
 
-pub fn test_glwe_encrypt_pk<B>(module: &Module<B>, basek: usize, k_ct: usize, k_pk: usize, sigma: f64, rank: usize)
+pub fn test_glwe_encrypt_pk<B>(module: &Module<B>, basek: usize, k_ct: usize, k_pk: usize, rank: usize)
 where
     Module<B>: VecZnxDftAllocBytes
         + VecZnxBigNormalize<B>
@@ -343,7 +341,7 @@ where
     let sk_prepared: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
 
     let mut pk: GLWEPublicKey<Vec<u8>> = GLWEPublicKey::alloc(n, basek, k_pk, rank);
-    pk.generate_from_sk(module, &sk_prepared, &mut source_xa, &mut source_xe, sigma);
+    pk.generate_from_sk(module, &sk_prepared, &mut source_xa, &mut source_xe);
 
     module.vec_znx_fill_uniform(basek, &mut pt_want.data, 0, k_ct, &mut source_xa);
 
@@ -355,7 +353,6 @@ where
         &pk_prepared,
         &mut source_xu,
         &mut source_xe,
-        sigma,
         scratch.borrow(),
     );
 
@@ -364,7 +361,7 @@ where
     pt_want.sub_inplace_ab(module, &pt_have);
 
     let noise_have: f64 = pt_want.data.std(basek, 0).log2();
-    let noise_want: f64 = ((((rank as f64) + 1.0) * n as f64 * 0.5 * sigma * sigma).sqrt()).log2() - (k_ct as f64);
+    let noise_want: f64 = ((((rank as f64) + 1.0) * n as f64 * 0.5 * SIGMA * SIGMA).sqrt()).log2() - (k_ct as f64);
 
     assert!(
         noise_have <= noise_want + 0.2,
