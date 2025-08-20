@@ -16,7 +16,7 @@ fn main() {
     // Ring degree
     let log_n: usize = 10;
 
-    let n: usize = 1<<log_n;
+    let n: usize = 1 << log_n;
 
     // Base-2-k (implicit digit decomposition)
     let basek: usize = 14;
