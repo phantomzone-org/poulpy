@@ -15,7 +15,6 @@ use crate::{
 impl LWECiphertext<Vec<u8>> {
     pub fn keyswitch_scratch_space<B: Backend>(
         module: &Module<B>,
-        n: usize,
         basek: usize,
         k_lwe_out: usize,
         k_lwe_in: usize,
@@ -33,8 +32,8 @@ impl LWECiphertext<Vec<u8>> {
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>,
     {
-        GLWECiphertext::bytes_of(n, basek, k_lwe_out.max(k_lwe_in), 1)
-            + GLWECiphertext::keyswitch_inplace_scratch_space(module, n, basek, k_lwe_out, k_ksk, 1, 1)
+        GLWECiphertext::bytes_of(module.n(), basek, k_lwe_out.max(k_lwe_in), 1)
+            + GLWECiphertext::keyswitch_inplace_scratch_space(module, basek, k_lwe_out, k_ksk, 1, 1)
     }
 }
 

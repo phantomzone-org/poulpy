@@ -569,8 +569,8 @@ unsafe impl VecZnxBigNegateInplaceImpl<Self> for FFT64 {
 }
 
 unsafe impl VecZnxBigNormalizeTmpBytesImpl<Self> for FFT64 {
-    fn vec_znx_big_normalize_tmp_bytes_impl(module: &Module<Self>, n: usize) -> usize {
-        unsafe { vec_znx::vec_znx_normalize_base2k_tmp_bytes(module.ptr(), n as u64) as usize }
+    fn vec_znx_big_normalize_tmp_bytes_impl(module: &Module<Self>) -> usize {
+        unsafe { vec_znx::vec_znx_normalize_base2k_tmp_bytes(module.ptr()) as usize }
     }
 }
 
@@ -598,11 +598,10 @@ where
             assert_eq!(res.n(), a.n());
         }
 
-        let (tmp_bytes, _) = scratch.take_slice(module.vec_znx_big_normalize_tmp_bytes(a.n()));
+        let (tmp_bytes, _) = scratch.take_slice(module.vec_znx_big_normalize_tmp_bytes());
         unsafe {
             vec_znx::vec_znx_normalize_base2k(
                 module.ptr(),
-                a.n() as u64,
                 basek as u64,
                 res.at_mut_ptr(res_col, 0),
                 res.size() as u64,

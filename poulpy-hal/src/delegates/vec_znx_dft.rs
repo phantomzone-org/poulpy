@@ -20,8 +20,8 @@ impl<B> VecZnxDftFromBytes<B> for Module<B>
 where
     B: Backend + VecZnxDftFromBytesImpl<B>,
 {
-    fn vec_znx_dft_from_bytes(&self, n: usize, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxDftOwned<B> {
-        B::vec_znx_dft_from_bytes_impl(n, cols, size, bytes)
+    fn vec_znx_dft_from_bytes(&self, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxDftOwned<B> {
+        B::vec_znx_dft_from_bytes_impl(self.n(), cols, size, bytes)
     }
 }
 
@@ -29,8 +29,8 @@ impl<B> VecZnxDftAllocBytes for Module<B>
 where
     B: Backend + VecZnxDftAllocBytesImpl<B>,
 {
-    fn vec_znx_dft_alloc_bytes(&self, n: usize, cols: usize, size: usize) -> usize {
-        B::vec_znx_dft_alloc_bytes_impl(n, cols, size)
+    fn vec_znx_dft_alloc_bytes(&self, cols: usize, size: usize) -> usize {
+        B::vec_znx_dft_alloc_bytes_impl(self.n(), cols, size)
     }
 }
 
@@ -38,8 +38,8 @@ impl<B> VecZnxDftAlloc<B> for Module<B>
 where
     B: Backend + VecZnxDftAllocImpl<B>,
 {
-    fn vec_znx_dft_alloc(&self, n: usize, cols: usize, size: usize) -> VecZnxDftOwned<B> {
-        B::vec_znx_dft_alloc_impl(n, cols, size)
+    fn vec_znx_dft_alloc(&self, cols: usize, size: usize) -> VecZnxDftOwned<B> {
+        B::vec_znx_dft_alloc_impl(self.n(), cols, size)
     }
 }
 
@@ -47,8 +47,8 @@ impl<B> VecZnxDftToVecZnxBigTmpBytes for Module<B>
 where
     B: Backend + VecZnxDftToVecZnxBigTmpBytesImpl<B>,
 {
-    fn vec_znx_dft_to_vec_znx_big_tmp_bytes(&self, n: usize) -> usize {
-        B::vec_znx_dft_to_vec_znx_big_tmp_bytes_impl(self, n)
+    fn vec_znx_dft_to_vec_znx_big_tmp_bytes(&self) -> usize {
+        B::vec_znx_dft_to_vec_znx_big_tmp_bytes_impl(self)
     }
 }
 

@@ -54,7 +54,6 @@ impl<D: DataMut> GLWEPublicKey<D> {
         // Its ok to allocate scratch space here since pk is usually generated only once.
         let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GLWECiphertext::encrypt_sk_scratch_space(
             module,
-            self.n(),
             self.basek(),
             self.k(),
         ));

@@ -17,7 +17,7 @@ pub struct GGSWCiphertextPrepared<D: Data, B: Backend> {
 }
 
 impl<B: Backend> GGSWCiphertextPrepared<Vec<u8>, B> {
-    pub fn alloc(module: &Module<B>, n: usize, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self
+    pub fn alloc(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self
     where
         Module<B>: VmpPMatAlloc<B>,
     {
@@ -40,14 +40,14 @@ impl<B: Backend> GGSWCiphertextPrepared<Vec<u8>, B> {
         );
 
         Self {
-            data: module.vmp_pmat_alloc(n, rows, rank + 1, rank + 1, k.div_ceil(basek)),
+            data: module.vmp_pmat_alloc(rows, rank + 1, rank + 1, k.div_ceil(basek)),
             basek,
             k,
             digits,
         }
     }
 
-    pub fn bytes_of(module: &Module<B>, n: usize, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize
+    pub fn bytes_of(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize
     where
         Module<B>: VmpPMatAllocBytes,
     {
@@ -67,7 +67,7 @@ impl<B: Backend> GGSWCiphertextPrepared<Vec<u8>, B> {
             size
         );
 
-        module.vmp_pmat_alloc_bytes(n, rows, rank + 1, rank + 1, size)
+        module.vmp_pmat_alloc_bytes(rows, rank + 1, rank + 1, size)
     }
 }
 
@@ -122,7 +122,6 @@ where
     fn prepare_alloc(&self, module: &Module<B>, scratch: &mut Scratch<B>) -> GGSWCiphertextPrepared<Vec<u8>, B> {
         let mut ggsw_prepared: GGSWCiphertextPrepared<Vec<u8>, B> = GGSWCiphertextPrepared::alloc(
             module,
-            self.n(),
             self.basek(),
             self.k(),
             self.rows(),

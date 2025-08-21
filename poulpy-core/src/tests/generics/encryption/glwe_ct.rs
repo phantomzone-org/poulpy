@@ -81,8 +81,8 @@ where
     let mut source_xa: Source = Source::new([0u8; 32]);
 
     let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-        GLWECiphertext::encrypt_sk_scratch_space(module, n, basek, ct.k())
-            | GLWECiphertext::decrypt_scratch_space(module, n, basek, ct.k()),
+        GLWECiphertext::encrypt_sk_scratch_space(module, basek, ct.k())
+            | GLWECiphertext::decrypt_scratch_space(module, basek, ct.k()),
     );
 
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
@@ -169,8 +169,8 @@ where
     let mut source_xa: Source = Source::new([0u8; 32]);
 
     let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-        GLWECiphertextCompressed::encrypt_sk_scratch_space(module, n, basek, k_ct)
-            | GLWECiphertext::decrypt_scratch_space(module, n, basek, k_ct),
+        GLWECiphertextCompressed::encrypt_sk_scratch_space(module, basek, k_ct)
+            | GLWECiphertext::decrypt_scratch_space(module, basek, k_ct),
     );
 
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
@@ -263,8 +263,8 @@ where
     let mut source_xa: Source = Source::new([0u8; 32]);
 
     let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-        GLWECiphertext::decrypt_scratch_space(module, n, basek, k_ct)
-            | GLWECiphertext::encrypt_sk_scratch_space(module, n, basek, k_ct),
+        GLWECiphertext::decrypt_scratch_space(module, basek, k_ct)
+            | GLWECiphertext::encrypt_sk_scratch_space(module, basek, k_ct),
     );
 
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
@@ -331,9 +331,9 @@ where
     let mut source_xu: Source = Source::new([0u8; 32]);
 
     let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-        GLWECiphertext::encrypt_sk_scratch_space(module, n, basek, ct.k())
-            | GLWECiphertext::decrypt_scratch_space(module, n, basek, ct.k())
-            | GLWECiphertext::encrypt_pk_scratch_space(module, n, basek, k_pk),
+        GLWECiphertext::encrypt_sk_scratch_space(module, basek, ct.k())
+            | GLWECiphertext::decrypt_scratch_space(module, basek, ct.k())
+            | GLWECiphertext::encrypt_pk_scratch_space(module, basek, k_pk),
     );
 
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);

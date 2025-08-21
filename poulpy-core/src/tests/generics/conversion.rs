@@ -5,7 +5,7 @@ use poulpy_hal::{
         VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxDftAllocBytes, VecZnxDftFromVecZnx,
         VecZnxDftToVecZnxBigConsume, VecZnxFillUniform, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes,
         VecZnxSub, VecZnxSubABInplace, VecZnxSwithcDegree, VmpApply, VmpApplyAdd, VmpApplyTmpBytes, VmpPMatAlloc, VmpPrepare,
-        ZnxView,
+        ZnAddNormal, ZnFillUniform, ZnNormalizeInplace, ZnxView,
     },
     layouts::{Backend, Module, ScratchOwned},
     oep::{
@@ -50,7 +50,10 @@ where
         + VmpApplyAdd<B>
         + VecZnxBigNormalizeTmpBytes
         + VecZnxSwithcDegree
-        + VecZnxAutomorphismInplace,
+        + VecZnxAutomorphismInplace
+        + ZnNormalizeInplace<B>
+        + ZnFillUniform
+        + ZnAddNormal,
     B: Backend
         + TakeVecZnxDftImpl<B>
         + TakeVecZnxBigImpl<B>
@@ -79,9 +82,9 @@ where
     let mut source_xe: Source = Source::new([0u8; 32]);
 
     let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-        LWEToGLWESwitchingKey::encrypt_sk_scratch_space(module, n, basek, k_ksk, rank)
-            | GLWECiphertext::from_lwe_scratch_space(module, n, basek, k_lwe_ct, k_glwe_ct, k_ksk, rank)
-            | GLWECiphertext::decrypt_scratch_space(module, n, basek, k_glwe_ct),
+        LWEToGLWESwitchingKey::encrypt_sk_scratch_space(module, basek, k_ksk, rank)
+            | GLWECiphertext::from_lwe_scratch_space(module, basek, k_lwe_ct, k_glwe_ct, k_ksk, rank)
+            | GLWECiphertext::decrypt_scratch_space(module, basek, k_glwe_ct),
     );
 
     let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
@@ -152,7 +155,8 @@ where
         + VmpApplyAdd<B>
         + VecZnxBigNormalizeTmpBytes
         + VecZnxSwithcDegree
-        + VecZnxAutomorphismInplace,
+        + VecZnxAutomorphismInplace
+        + ZnNormalizeInplace<B>,
     B: Backend
         + TakeVecZnxDftImpl<B>
         + TakeVecZnxBigImpl<B>
@@ -181,9 +185,9 @@ where
     let mut source_xe: Source = Source::new([0u8; 32]);
 
     let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-        LWEToGLWESwitchingKey::encrypt_sk_scratch_space(module, n, basek, k_ksk, rank)
-            | LWECiphertext::from_glwe_scratch_space(module, n, basek, k_lwe_ct, k_glwe_ct, k_ksk, rank)
-            | GLWECiphertext::decrypt_scratch_space(module, n, basek, k_glwe_ct),
+        LWEToGLWESwitchingKey::encrypt_sk_scratch_space(module, basek, k_ksk, rank)
+            | LWECiphertext::from_glwe_scratch_space(module, basek, k_lwe_ct, k_glwe_ct, k_ksk, rank)
+            | GLWECiphertext::decrypt_scratch_space(module, basek, k_glwe_ct),
     );
 
     let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);

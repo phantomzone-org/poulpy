@@ -75,7 +75,6 @@ where
 
     let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GGLWETensorKey::encrypt_sk_scratch_space(
         module,
-        n,
         basek,
         tensor_key.k(),
         rank,
@@ -95,10 +94,10 @@ where
 
     let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(n, basek, k);
 
-    let mut sk_ij_dft = module.vec_znx_dft_alloc(n, 1, 1);
-    let mut sk_ij_big = module.vec_znx_big_alloc(n, 1, 1);
+    let mut sk_ij_dft = module.vec_znx_dft_alloc(1, 1);
+    let mut sk_ij_big = module.vec_znx_big_alloc(1, 1);
     let mut sk_ij: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, 1);
-    let mut sk_dft: VecZnxDft<Vec<u8>, B> = module.vec_znx_dft_alloc(n, rank, 1);
+    let mut sk_dft: VecZnxDft<Vec<u8>, B> = module.vec_znx_dft_alloc(rank, 1);
 
     (0..rank).for_each(|i| {
         module.vec_znx_dft_from_vec_znx(1, 0, &mut sk_dft, i, &sk.data.as_vec_znx(), i);
@@ -185,7 +184,6 @@ where
 
     let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GGLWETensorKeyCompressed::encrypt_sk_scratch_space(
         module,
-        n,
         basek,
         tensor_key_compressed.k(),
         rank,
@@ -204,10 +202,10 @@ where
 
     let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(n, basek, k);
 
-    let mut sk_ij_dft = module.vec_znx_dft_alloc(n, 1, 1);
-    let mut sk_ij_big = module.vec_znx_big_alloc(n, 1, 1);
+    let mut sk_ij_dft = module.vec_znx_dft_alloc(1, 1);
+    let mut sk_ij_big = module.vec_znx_big_alloc(1, 1);
     let mut sk_ij: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, 1);
-    let mut sk_dft: VecZnxDft<Vec<u8>, B> = module.vec_znx_dft_alloc(n, rank, 1);
+    let mut sk_dft: VecZnxDft<Vec<u8>, B> = module.vec_znx_dft_alloc(rank, 1);
 
     (0..rank).for_each(|i| {
         module.vec_znx_dft_from_vec_znx(1, 0, &mut sk_dft, i, &sk.data.as_vec_znx(), i);

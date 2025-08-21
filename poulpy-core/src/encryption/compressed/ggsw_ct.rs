@@ -15,11 +15,11 @@ use crate::{
 };
 
 impl GGSWCiphertextCompressed<Vec<u8>> {
-    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, n: usize, basek: usize, k: usize, rank: usize) -> usize
+    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize
     where
         Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes,
     {
-        GGSWCiphertext::encrypt_sk_scratch_space(module, n, basek, k, rank)
+        GGSWCiphertext::encrypt_sk_scratch_space(module, basek, k, rank)
     }
 }
 

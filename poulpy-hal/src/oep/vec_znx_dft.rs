@@ -32,7 +32,7 @@ pub unsafe trait VecZnxDftAllocBytesImpl<B: Backend> {
 /// * See TODO for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxDftToVecZnxBigTmpBytesImpl<B: Backend> {
-    fn vec_znx_dft_to_vec_znx_big_tmp_bytes_impl(module: &Module<B>, n: usize) -> usize;
+    fn vec_znx_dft_to_vec_znx_big_tmp_bytes_impl(module: &Module<B>) -> usize;
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)

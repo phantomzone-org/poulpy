@@ -3,7 +3,7 @@ use rug::{Assign, Float};
 
 use crate::{
     api::{ZnxInfos, ZnxView, ZnxViewMut, ZnxZero},
-    layouts::{DataMut, DataRef, VecZnx, VecZnxToMut, VecZnxToRef},
+    layouts::{DataMut, DataRef, VecZnx, VecZnxToMut, VecZnxToRef, Zn, ZnToMut, ZnToRef},
 };
 
 impl<D: DataMut> VecZnx<D> {
@@ -200,5 +200,92 @@ impl<D: DataRef> VecZnx<D> {
                 });
             }
         });
+    }
+}
+
+impl<D: DataMut> Zn<D> {
+    pub fn encode_i64(&mut self, basek: usize, k: usize, data: i64, log_max: usize) {
+        let size: usize = k.div_ceil(basek);
+
+        #[cfg(debug_assertions)]
+        {
+            let a: Zn<&mut [u8]> = self.to_mut();
+            assert!(
+                size <= a.size(),
+                "invalid argument k.div_ceil(basek)={} > a.size()={}",
+                size,
+                a.size()
+            );
+        }
+
+        let k_rem: usize = basek - (k % basek);
+        let mut a: Zn<&mut [u8]> = self.to_mut();
+        (0..a.size()).for_each(|j| a.at_mut(0, j)[0] = 0);
+
+        // If 2^{basek} * 2^{k_rem} < 2^{63}-1, then we can simply copy
+        // values on the last limb.
+        // Else we decompose values base2k.
+        if log_max + k_rem < 63 || k_rem == basek {
+            a.at_mut(0, size - 1)[0] = data;
+        } else {
+            let mask: i64 = (1 << basek) - 1;
+            let steps: usize = size.min(log_max.div_ceil(basek));
+            (size - steps..size)
+                .rev()
+                .enumerate()
+                .for_each(|(j, j_rev)| {
+                    a.at_mut(0, j_rev)[0] = (data >> (j * basek)) & mask;
+                })
+        }
+
+        // Case where prec % k != 0.
+        if k_rem != basek {
+            let steps: usize = size.min(log_max.div_ceil(basek));
+            (size - steps..size).rev().for_each(|j| {
+                a.at_mut(0, j)[0] <<= k_rem;
+            })
+        }
+    }
+}
+
+impl<D: DataRef> Zn<D> {
+    pub fn decode_i64(&self, basek: usize, k: usize) -> i64 {
+        let a: Zn<&[u8]> = self.to_ref();
+        let size: usize = k.div_ceil(basek);
+        let mut res: i64 = 0;
+        let rem: usize = basek - (k % basek);
+        (0..size).for_each(|j| {
+            let x: i64 = a.at(0, j)[0];
+            if j == size - 1 && rem != basek {
+                let k_rem: usize = basek - rem;
+                res = (res << k_rem) + (x >> rem);
+            } else {
+                res = (res << basek) + x;
+            }
+        });
+        res
+    }
+
+    pub fn decode_float(&self, basek: usize) -> Float {
+        let a: Zn<&[u8]> = self.to_ref();
+        let size: usize = a.size();
+        let prec: u32 = (basek * size) as u32;
+
+        // 2^{basek}
+        let base: Float = Float::with_val(prec, (1 << basek) as f64);
+        let mut res: Float = Float::with_val(prec, (1 << basek) as f64);
+
+        // y[i] = sum x[j][i] * 2^{-basek*j}
+        (0..size).for_each(|i| {
+            if i == 0 {
+                res.assign(a.at(0, size - i - 1)[0]);
+                res /= &base;
+            } else {
+                res += Float::with_val(prec, a.at(0, size - i - 1)[0]);
+                res /= &base;
+            }
+        });
+
+        res
     }
 }

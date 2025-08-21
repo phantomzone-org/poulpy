@@ -8,7 +8,7 @@ use poulpy_core::{
 use std::time::Instant;
 
 use poulpy_hal::{
-    api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxNormalizeInplace, ZnxView, ZnxViewMut},
+    api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, ZnNormalizeInplace, ZnxView, ZnxViewMut},
     layouts::{Module, ScalarZnx, ScratchOwned},
     source::Source,
 };
@@ -109,7 +109,7 @@ fn main() {
     pt_lwe.encode_i64(data, k_lwe_pt + 1); // +1 for padding bit
 
     // Normalize plaintext to nicely print coefficients
-    module.vec_znx_normalize_inplace(basek, pt_lwe.data_mut(), 0, scratch.borrow());
+    module.zn_normalize_inplace(pt_lwe.n(), basek, pt_lwe.data_mut(), 0, scratch.borrow());
     println!("pt_lwe: {}", pt_lwe);
 
     // LWE ciphertext

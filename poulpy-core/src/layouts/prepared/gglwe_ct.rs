@@ -18,16 +18,7 @@ pub struct GGLWECiphertextPrepared<D: Data, B: Backend> {
 
 impl<B: Backend> GGLWECiphertextPrepared<Vec<u8>, B> {
     #[allow(clippy::too_many_arguments)]
-    pub fn alloc(
-        module: &Module<B>,
-        n: usize,
-        basek: usize,
-        k: usize,
-        rows: usize,
-        digits: usize,
-        rank_in: usize,
-        rank_out: usize,
-    ) -> Self
+    pub fn alloc(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank_in: usize, rank_out: usize) -> Self
     where
         Module<B>: VmpPMatAlloc<B>,
     {
@@ -48,7 +39,7 @@ impl<B: Backend> GGLWECiphertextPrepared<Vec<u8>, B> {
         );
 
         Self {
-            data: module.vmp_pmat_alloc(n, rows, rank_in, rank_out + 1, size),
+            data: module.vmp_pmat_alloc(rows, rank_in, rank_out + 1, size),
             basek,
             k,
             digits,
@@ -58,7 +49,6 @@ impl<B: Backend> GGLWECiphertextPrepared<Vec<u8>, B> {
     #[allow(clippy::too_many_arguments)]
     pub fn bytes_of(
         module: &Module<B>,
-        n: usize,
         basek: usize,
         k: usize,
         rows: usize,
@@ -85,7 +75,7 @@ impl<B: Backend> GGLWECiphertextPrepared<Vec<u8>, B> {
             size
         );
 
-        module.vmp_pmat_alloc_bytes(n, rows, rank_in, rank_out + 1, rows)
+        module.vmp_pmat_alloc_bytes(rows, rank_in, rank_out + 1, rows)
     }
 }
 
@@ -142,7 +132,6 @@ where
     fn prepare_alloc(&self, module: &Module<B>, scratch: &mut Scratch<B>) -> GGLWECiphertextPrepared<Vec<u8>, B> {
         let mut atk_prepared: GGLWECiphertextPrepared<Vec<u8>, B> = GGLWECiphertextPrepared::alloc(
             module,
-            self.n(),
             self.basek(),
             self.k(),
             self.rows(),

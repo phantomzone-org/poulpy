@@ -51,14 +51,13 @@ where
 
             let mut scratch = ScratchOwned::alloc(
                 module.vmp_apply_tmp_bytes(
-                    n,
                     res_size,
                     a_size,
                     mat_rows,
                     mat_cols_in,
                     mat_cols_out,
                     mat_size,
-                ) | module.vec_znx_big_normalize_tmp_bytes(n),
+                ) | module.vec_znx_big_normalize_tmp_bytes(),
             );
 
             let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(n, a_cols, a_size);
@@ -67,10 +66,10 @@ where
                 a.at_mut(i, a_size - 1)[i + 1] = 1;
             });
 
-            let mut vmp: VmpPMat<Vec<u8>, B> = module.vmp_pmat_alloc(n, mat_rows, mat_cols_in, mat_cols_out, mat_size);
+            let mut vmp: VmpPMat<Vec<u8>, B> = module.vmp_pmat_alloc(mat_rows, mat_cols_in, mat_cols_out, mat_size);
 
-            let mut c_dft: VecZnxDft<Vec<u8>, B> = module.vec_znx_dft_alloc(n, mat_cols_out, mat_size);
-            let mut c_big: VecZnxBig<Vec<u8>, B> = module.vec_znx_big_alloc(n, mat_cols_out, mat_size);
+            let mut c_dft: VecZnxDft<Vec<u8>, B> = module.vec_znx_dft_alloc(mat_cols_out, mat_size);
+            let mut c_big: VecZnxBig<Vec<u8>, B> = module.vec_znx_big_alloc(mat_cols_out, mat_size);
 
             let mut mat: MatZnx<Vec<u8>> = MatZnx::alloc(n, mat_rows, mat_cols_in, mat_cols_out, mat_size);
 
@@ -86,7 +85,7 @@ where
 
             module.vmp_prepare(&mut vmp, &mat, scratch.borrow());
 
-            let mut a_dft: VecZnxDft<Vec<u8>, B> = module.vec_znx_dft_alloc(n, a_cols, a_size);
+            let mut a_dft: VecZnxDft<Vec<u8>, B> = module.vec_znx_dft_alloc(a_cols, a_size);
             (0..a_cols).for_each(|i| {
                 module.vec_znx_dft_from_vec_znx(1, 0, &mut a_dft, i, &a, i);
             });

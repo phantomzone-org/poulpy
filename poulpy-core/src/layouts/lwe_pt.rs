@@ -1,11 +1,11 @@
 use std::fmt;
 
-use poulpy_hal::layouts::{Data, DataMut, DataRef, VecZnx, VecZnxToMut, VecZnxToRef};
+use poulpy_hal::layouts::{Data, DataMut, DataRef, Zn, ZnToMut, ZnToRef};
 
 use crate::layouts::{Infos, SetMetaData};
 
 pub struct LWEPlaintext<D: Data> {
-    pub(crate) data: VecZnx<D>,
+    pub(crate) data: Zn<D>,
     pub(crate) k: usize,
     pub(crate) basek: usize,
 }
@@ -13,7 +13,7 @@ pub struct LWEPlaintext<D: Data> {
 impl LWEPlaintext<Vec<u8>> {
     pub fn alloc(basek: usize, k: usize) -> Self {
         Self {
-            data: VecZnx::alloc(1, 1, k.div_ceil(basek)),
+            data: Zn::alloc(1, 1, k.div_ceil(basek)),
             k,
             basek,
         }
@@ -33,7 +33,7 @@ impl<D: DataRef> fmt::Display for LWEPlaintext<D> {
 }
 
 impl<D: Data> Infos for LWEPlaintext<D> {
-    type Inner = VecZnx<D>;
+    type Inner = Zn<D>;
 
     fn inner(&self) -> &Self::Inner {
         &self.data
@@ -89,7 +89,7 @@ impl<D: DataMut> LWEPlaintextToMut for LWEPlaintext<D> {
 }
 
 impl<D: DataMut> LWEPlaintext<D> {
-    pub fn data_mut(&mut self) -> &mut VecZnx<D> {
+    pub fn data_mut(&mut self) -> &mut Zn<D> {
         &mut self.data
     }
 }

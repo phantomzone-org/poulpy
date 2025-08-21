@@ -14,11 +14,11 @@ use crate::{
 };
 
 impl GLWECiphertextCompressed<Vec<u8>> {
-    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, n: usize, basek: usize, k: usize) -> usize
+    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize) -> usize
     where
         Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes,
     {
-        GLWECiphertext::encrypt_sk_scratch_space(module, n, basek, k)
+        GLWECiphertext::encrypt_sk_scratch_space(module, basek, k)
     }
 }
 

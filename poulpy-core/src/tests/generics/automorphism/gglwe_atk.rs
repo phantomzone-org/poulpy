@@ -92,8 +92,8 @@ pub fn test_gglwe_automorphism_key_automorphism<B>(
     let mut source_xa: Source = Source::new([0u8; 32]);
 
     let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-        GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, n, basek, k_apply, rank)
-            | GGLWEAutomorphismKey::automorphism_scratch_space(module, n, basek, k_out, k_in, k_apply, digits, rank),
+        GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, basek, k_apply, rank)
+            | GGLWEAutomorphismKey::automorphism_scratch_space(module, basek, k_out, k_in, k_apply, digits, rank),
     );
 
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
@@ -120,7 +120,7 @@ pub fn test_gglwe_automorphism_key_automorphism<B>(
     );
 
     let mut auto_key_apply_prepared: GGLWEAutomorphismKeyPrepared<Vec<u8>, B> =
-        GGLWEAutomorphismKeyPrepared::alloc(module, n, basek, k_apply, rows_apply, digits, rank);
+        GGLWEAutomorphismKeyPrepared::alloc(module, basek, k_apply, rows_apply, digits, rank);
 
     auto_key_apply_prepared.prepare(module, &auto_key_apply, scratch.borrow());
 
@@ -266,8 +266,8 @@ pub fn test_gglwe_automorphism_key_automorphism_inplace<B>(
     let mut source_xa: Source = Source::new([0u8; 32]);
 
     let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-        GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, n, basek, k_apply, rank)
-            | GGLWEAutomorphismKey::automorphism_inplace_scratch_space(module, n, basek, k_in, k_apply, digits, rank),
+        GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, basek, k_apply, rank)
+            | GGLWEAutomorphismKey::automorphism_inplace_scratch_space(module, basek, k_in, k_apply, digits, rank),
     );
 
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
@@ -294,7 +294,7 @@ pub fn test_gglwe_automorphism_key_automorphism_inplace<B>(
     );
 
     let mut auto_key_apply_prepared: GGLWEAutomorphismKeyPrepared<Vec<u8>, B> =
-        GGLWEAutomorphismKeyPrepared::alloc(module, n, basek, k_apply, rows_apply, digits, rank);
+        GGLWEAutomorphismKeyPrepared::alloc(module, basek, k_apply, rows_apply, digits, rank);
 
     auto_key_apply_prepared.prepare(module, &auto_key_apply, scratch.borrow());
 

@@ -16,7 +16,7 @@ use poulpy_core::{
 use crate::tfhe::blind_rotation::{BlindRotationAlgo, BlindRotationKey, utils::set_xai_plus_y};
 
 pub trait BlindRotationKeyPreparedAlloc<B: Backend> {
-    fn alloc(module: &Module<B>, n_glwe: usize, n_lwe: usize, basek: usize, k: usize, rows: usize, rank: usize) -> Self;
+    fn alloc(module: &Module<B>, n_lwe: usize, basek: usize, k: usize, rows: usize, rank: usize) -> Self;
 }
 
 #[derive(PartialEq, Eq)]
@@ -74,7 +74,6 @@ where
     fn prepare_alloc(&self, module: &Module<B>, scratch: &mut Scratch<B>) -> BlindRotationKeyPrepared<Vec<u8>, BRA, B> {
         let mut brk: BlindRotationKeyPrepared<Vec<u8>, BRA, B> = BlindRotationKeyPrepared::alloc(
             module,
-            self.n(),
             self.keys.len(),
             self.basek(),
             self.k(),
@@ -112,7 +111,7 @@ where
             let mut x_pow_a: Vec<SvpPPol<Vec<u8>, B>> = Vec::with_capacity(n << 1);
             let mut buf: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n, 1);
             (0..n << 1).for_each(|i| {
-                let mut res: SvpPPol<Vec<u8>, B> = module.svp_ppol_alloc(n, 1);
+                let mut res: SvpPPol<Vec<u8>, B> = module.svp_ppol_alloc(1);
                 set_xai_plus_y(module, i, 0, &mut res, &mut buf);
                 x_pow_a.push(res);
             });

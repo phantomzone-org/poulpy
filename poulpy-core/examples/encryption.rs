@@ -45,8 +45,8 @@ fn main() {
 
     // Scratch space
     let mut scratch: ScratchOwned<FFT64> = ScratchOwned::alloc(
-        GLWECiphertext::encrypt_sk_scratch_space(&module, n, basek, ct.k())
-            | GLWECiphertext::decrypt_scratch_space(&module, n, basek, ct.k()),
+        GLWECiphertext::encrypt_sk_scratch_space(&module, basek, ct.k())
+            | GLWECiphertext::decrypt_scratch_space(&module, basek, ct.k()),
     );
 
     // Generate secret-key

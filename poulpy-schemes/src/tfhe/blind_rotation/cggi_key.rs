@@ -38,11 +38,11 @@ impl BlindRotationKeyAlloc for BlindRotationKey<Vec<u8>, CGGI> {
 }
 
 impl BlindRotationKey<Vec<u8>, CGGI> {
-    pub fn generate_from_sk_scratch_space<B: Backend>(module: &Module<B>, n: usize, basek: usize, k: usize, rank: usize) -> usize
+    pub fn generate_from_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize
     where
         Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes,
     {
-        GGSWCiphertext::encrypt_sk_scratch_space(module, n, basek, k, rank)
+        GGSWCiphertext::encrypt_sk_scratch_space(module, basek, k, rank)
     }
 }
 
@@ -108,11 +108,11 @@ impl<B: Backend> BlindRotationKeyPreparedAlloc<B> for BlindRotationKeyPrepared<V
 where
     Module<B>: VmpPMatAlloc<B> + VmpPrepare<B>,
 {
-    fn alloc(module: &Module<B>, n_glwe: usize, n_lwe: usize, basek: usize, k: usize, rows: usize, rank: usize) -> Self {
+    fn alloc(module: &Module<B>, n_lwe: usize, basek: usize, k: usize, rows: usize, rank: usize) -> Self {
         let mut data: Vec<GGSWCiphertextPrepared<Vec<u8>, B>> = Vec::with_capacity(n_lwe);
         (0..n_lwe).for_each(|_| {
             data.push(GGSWCiphertextPrepared::alloc(
-                module, n_glwe, basek, k, rows, 1, rank,
+                module, basek, k, rows, 1, rank,
             ))
         });
         Self {
@@ -139,11 +139,11 @@ impl BlindRotationKeyCompressed<Vec<u8>, CGGI> {
         }
     }
 
-    pub fn generate_from_sk_scratch_space<B: Backend>(module: &Module<B>, n: usize, basek: usize, k: usize, rank: usize) -> usize
+    pub fn generate_from_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize
     where
         Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes,
     {
-        GGSWCiphertextCompressed::encrypt_sk_scratch_space(module, n, basek, k, rank)
+        GGSWCiphertextCompressed::encrypt_sk_scratch_space(module, basek, k, rank)
     }
 }
 

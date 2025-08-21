@@ -95,7 +95,7 @@ impl LWEToGLWESwitchingKeyCompressed<Vec<u8>> {
         ))
     }
 
-    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, n: usize, basek: usize, k: usize, rank_out: usize) -> usize
+    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank_out: usize) -> usize
     where
         Module<B>: VecZnxDftAllocBytes
             + VecZnxBigNormalize<B>
@@ -114,15 +114,15 @@ impl LWEToGLWESwitchingKeyCompressed<Vec<u8>> {
             + SvpPPolAllocBytes
             + SvpPPolAlloc<B>,
     {
-        LWEToGLWESwitchingKey::encrypt_sk_scratch_space(module, n, basek, k, rank_out)
+        LWEToGLWESwitchingKey::encrypt_sk_scratch_space(module, basek, k, rank_out)
     }
 }
 
-impl<D: DataMut, DR: DataRef, B: Backend> Decompress<B, LWEToGLWESwitchingKeyCompressed<DR>> for LWEToGLWESwitchingKey<D> {
-    fn decompress(&mut self, module: &Module<B>, other: &LWEToGLWESwitchingKeyCompressed<DR>)
-    where
-        Module<B>: VecZnxCopy + VecZnxFillUniform,
-    {
+impl<D: DataMut, DR: DataRef, B: Backend> Decompress<B, LWEToGLWESwitchingKeyCompressed<DR>> for LWEToGLWESwitchingKey<D>
+where
+    Module<B>: VecZnxFillUniform + VecZnxCopy,
+{
+    fn decompress(&mut self, module: &Module<B>, other: &LWEToGLWESwitchingKeyCompressed<DR>) {
         self.0.decompress(module, &other.0);
     }
 }

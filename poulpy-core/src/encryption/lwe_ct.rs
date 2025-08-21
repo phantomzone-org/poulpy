@@ -1,8 +1,6 @@
 use poulpy_hal::{
-    api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddNormal, VecZnxFillUniform, VecZnxNormalizeInplace, ZnxView, ZnxViewMut,
-    },
-    layouts::{Backend, DataMut, DataRef, Module, ScratchOwned, VecZnx},
+    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, ZnAddNormal, ZnFillUniform, ZnNormalizeInplace, ZnxView, ZnxViewMut},
+    layouts::{Backend, DataMut, DataRef, Module, ScratchOwned, Zn},
     oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl},
     source::Source,
 };
@@ -23,7 +21,7 @@ impl<DataSelf: DataMut> LWECiphertext<DataSelf> {
     ) where
         DataPt: DataRef,
         DataSk: DataRef,
-        Module<B>: VecZnxFillUniform + VecZnxAddNormal + VecZnxNormalizeInplace<B>,
+        Module<B>: ZnFillUniform + ZnAddNormal + ZnNormalizeInplace<B>,
         B: Backend + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
     {
         #[cfg(debug_assertions)]
@@ -34,9 +32,9 @@ impl<DataSelf: DataMut> LWECiphertext<DataSelf> {
         let basek: usize = self.basek();
         let k: usize = self.k();
 
-        module.vec_znx_fill_uniform(basek, &mut self.data, 0, k, source_xa);
+        module.zn_fill_uniform(self.n() + 1, basek, &mut self.data, 0, k, source_xa);
 
-        let mut tmp_znx: VecZnx<Vec<u8>> = VecZnx::alloc(1, 1, self.size());
+        let mut tmp_znx: Zn<Vec<u8>> = Zn::alloc(1, 1, self.size());
 
         let min_size = self.size().min(pt.size());
 
@@ -57,9 +55,19 @@ impl<DataSelf: DataMut> LWECiphertext<DataSelf> {
                 .sum::<i64>();
         });
 
-        module.vec_znx_add_normal(basek, &mut self.data, 0, k, source_xe, SIGMA, SIGMA_BOUND);
+        module.zn_add_normal(
+            1,
+            basek,
+            &mut self.data,
+            0,
+            k,
+            source_xe,
+            SIGMA,
+            SIGMA_BOUND,
+        );
 
-        module.vec_znx_normalize_inplace(
+        module.zn_normalize_inplace(
+            1,
             basek,
             &mut tmp_znx,
             0,

@@ -14,15 +14,15 @@ use crate::{
 };
 
 impl GGLWECiphertext<Vec<u8>> {
-    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, n: usize, basek: usize, k: usize) -> usize
+    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize) -> usize
     where
         Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes + VecZnxNormalizeTmpBytes,
     {
-        GLWECiphertext::encrypt_sk_scratch_space(module, n, basek, k)
-            + (GLWEPlaintext::byte_of(n, basek, k) | module.vec_znx_normalize_tmp_bytes(n))
+        GLWECiphertext::encrypt_sk_scratch_space(module, basek, k)
+            + (GLWEPlaintext::byte_of(module.n(), basek, k) | module.vec_znx_normalize_tmp_bytes())
     }
 
-    pub fn encrypt_pk_scratch_space<B: Backend>(_module: &Module<B>, _n: usize, _basek: usize, _k: usize, _rank: usize) -> usize {
+    pub fn encrypt_pk_scratch_space<B: Backend>(_module: &Module<B>, _basek: usize, _k: usize, _rank: usize) -> usize {
         unimplemented!()
     }
 }
@@ -75,12 +75,12 @@ impl<DataSelf: DataMut> GGLWECiphertext<DataSelf> {
             assert_eq!(self.n(), sk.n());
             assert_eq!(pt.n(), sk.n());
             assert!(
-                scratch.available() >= GGLWECiphertext::encrypt_sk_scratch_space(module, sk.n(), self.basek(), self.k()),
+                scratch.available() >= GGLWECiphertext::encrypt_sk_scratch_space(module, self.basek(), self.k()),
                 "scratch.available: {} < GGLWECiphertext::encrypt_sk_scratch_space(module, self.rank()={}, self.size()={}): {}",
                 scratch.available(),
                 self.rank(),
                 self.size(),
-                GGLWECiphertext::encrypt_sk_scratch_space(module, sk.n(), self.basek(), self.k())
+                GGLWECiphertext::encrypt_sk_scratch_space(module, self.basek(), self.k())
             );
             assert!(
                 self.rows() * self.digits() * self.basek() <= self.k(),

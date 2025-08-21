@@ -36,8 +36,8 @@ unsafe impl VecZnxDftAllocImpl<Self> for FFT64 {
 }
 
 unsafe impl VecZnxDftToVecZnxBigTmpBytesImpl<Self> for FFT64 {
-    fn vec_znx_dft_to_vec_znx_big_tmp_bytes_impl(module: &Module<Self>, n: usize) -> usize {
-        unsafe { vec_znx_dft::vec_znx_idft_tmp_bytes(module.ptr(), n as u64) as usize }
+    fn vec_znx_dft_to_vec_znx_big_tmp_bytes_impl(module: &Module<Self>) -> usize {
+        unsafe { vec_znx_dft::vec_znx_idft_tmp_bytes(module.ptr()) as usize }
     }
 }
 
@@ -61,7 +61,7 @@ unsafe impl VecZnxDftToVecZnxBigImpl<Self> for FFT64 {
             assert_eq!(res.n(), a.n())
         }
 
-        let (tmp_bytes, _) = scratch.take_slice(module.vec_znx_dft_to_vec_znx_big_tmp_bytes(a.n()));
+        let (tmp_bytes, _) = scratch.take_slice(module.vec_znx_dft_to_vec_znx_big_tmp_bytes());
 
         let min_size: usize = res.size().min(a.size());
 

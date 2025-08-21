@@ -17,7 +17,6 @@ use crate::{
 impl GGLWESwitchingKey<Vec<u8>> {
     pub fn encrypt_sk_scratch_space<B: Backend>(
         module: &Module<B>,
-        n: usize,
         basek: usize,
         k: usize,
         rank_in: usize,
@@ -26,20 +25,19 @@ impl GGLWESwitchingKey<Vec<u8>> {
     where
         Module<B>: SvpPPolAllocBytes + VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes + VecZnxNormalizeTmpBytes,
     {
-        (GGLWECiphertext::encrypt_sk_scratch_space(module, n, basek, k) | ScalarZnx::alloc_bytes(n, 1))
-            + ScalarZnx::alloc_bytes(n, rank_in)
-            + GLWESecretPrepared::bytes_of(module, n, rank_out)
+        (GGLWECiphertext::encrypt_sk_scratch_space(module, basek, k) | ScalarZnx::alloc_bytes(module.n(), 1))
+            + ScalarZnx::alloc_bytes(module.n(), rank_in)
+            + GLWESecretPrepared::bytes_of(module, rank_out)
     }
 
     pub fn encrypt_pk_scratch_space<B: Backend>(
         module: &Module<B>,
-        _n: usize,
         _basek: usize,
         _k: usize,
         _rank_in: usize,
         _rank_out: usize,
     ) -> usize {
-        GGLWECiphertext::encrypt_pk_scratch_space(module, _n, _basek, _k, _rank_out)
+        GGLWECiphertext::encrypt_pk_scratch_space(module, _basek, _k, _rank_out)
     }
 }
 
@@ -83,7 +81,6 @@ impl<DataSelf: DataMut> GGLWESwitchingKey<DataSelf> {
                 scratch.available()
                     >= GGLWESwitchingKey::encrypt_sk_scratch_space(
                         module,
-                        sk_out.n(),
                         self.basek(),
                         self.k(),
                         self.rank_in(),
@@ -93,7 +90,6 @@ impl<DataSelf: DataMut> GGLWESwitchingKey<DataSelf> {
                 scratch.available(),
                 GGLWESwitchingKey::encrypt_sk_scratch_space(
                     module,
-                    sk_out.n(),
                     self.basek(),
                     self.k(),
                     self.rank_in(),

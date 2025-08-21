@@ -78,7 +78,7 @@ pub fn test_gglwe_switching_key_encrypt_sk<B>(
     let mut source_xa: Source = Source::new([0u8; 32]);
 
     let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GGLWESwitchingKey::encrypt_sk_scratch_space(
-        module, n, basek, k_ksk, rank_in, rank_out,
+        module, basek, k_ksk, rank_in, rank_out,
     ));
 
     let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank_in);
@@ -156,7 +156,7 @@ pub fn test_gglwe_switching_key_compressed_encrypt_sk<B>(
     let mut source_xe: Source = Source::new([0u8; 32]);
 
     let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GGLWESwitchingKeyCompressed::encrypt_sk_scratch_space(
-        module, n, basek, k_ksk, rank_in, rank_out,
+        module, basek, k_ksk, rank_in, rank_out,
     ));
 
     let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank_in);

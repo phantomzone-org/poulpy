@@ -93,9 +93,9 @@ pub fn test_gglwe_switching_key_external_product<B>(
     let mut source_xa: Source = Source::new([0u8; 32]);
 
     let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-        GGLWESwitchingKey::encrypt_sk_scratch_space(module, n, basek, k_in, rank_in, rank_out)
-            | GGLWESwitchingKey::external_product_scratch_space(module, n, basek, k_out, k_in, k_ggsw, digits, rank_out)
-            | GGSWCiphertext::encrypt_sk_scratch_space(module, n, basek, k_ggsw, rank_out),
+        GGLWESwitchingKey::encrypt_sk_scratch_space(module, basek, k_in, rank_in, rank_out)
+            | GGLWESwitchingKey::external_product_scratch_space(module, basek, k_out, k_in, k_ggsw, digits, rank_out)
+            | GGSWCiphertext::encrypt_sk_scratch_space(module, basek, k_ggsw, rank_out),
     );
 
     let r: usize = 1;
@@ -231,9 +231,9 @@ pub fn test_gglwe_switching_key_external_product_inplace<B>(
     let mut source_xa: Source = Source::new([0u8; 32]);
 
     let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-        GGLWESwitchingKey::encrypt_sk_scratch_space(module, n, basek, k_ct, rank_in, rank_out)
-            | GGLWESwitchingKey::external_product_inplace_scratch_space(module, n, basek, k_ct, k_ggsw, digits, rank_out)
-            | GGSWCiphertext::encrypt_sk_scratch_space(module, n, basek, k_ggsw, rank_out),
+        GGLWESwitchingKey::encrypt_sk_scratch_space(module, basek, k_ct, rank_in, rank_out)
+            | GGLWESwitchingKey::external_product_inplace_scratch_space(module, basek, k_ct, k_ggsw, digits, rank_out)
+            | GGSWCiphertext::encrypt_sk_scratch_space(module, basek, k_ggsw, rank_out),
     );
 
     let r: usize = 1;

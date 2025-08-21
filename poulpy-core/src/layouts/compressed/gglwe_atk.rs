@@ -106,11 +106,11 @@ impl<D: DataRef> WriterTo for GGLWEAutomorphismKeyCompressed<D> {
     }
 }
 
-impl<D: DataMut, DR: DataRef, B: Backend> Decompress<B, GGLWEAutomorphismKeyCompressed<DR>> for GGLWEAutomorphismKey<D> {
-    fn decompress(&mut self, module: &Module<B>, other: &GGLWEAutomorphismKeyCompressed<DR>)
-    where
-        Module<B>: VecZnxFillUniform + VecZnxCopy,
-    {
+impl<D: DataMut, DR: DataRef, B: Backend> Decompress<B, GGLWEAutomorphismKeyCompressed<DR>> for GGLWEAutomorphismKey<D>
+where
+    Module<B>: VecZnxFillUniform + VecZnxCopy,
+{
+    fn decompress(&mut self, module: &Module<B>, other: &GGLWEAutomorphismKeyCompressed<DR>) {
         self.key.decompress(module, &other.key);
         self.p = other.p;
     }

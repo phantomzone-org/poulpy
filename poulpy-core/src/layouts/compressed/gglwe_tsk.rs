@@ -139,11 +139,11 @@ impl<D: DataMut> GGLWETensorKeyCompressed<D> {
     }
 }
 
-impl<D: DataMut, DR: DataRef, B: Backend> Decompress<B, GGLWETensorKeyCompressed<DR>> for GGLWETensorKey<D> {
-    fn decompress(&mut self, module: &Module<B>, other: &GGLWETensorKeyCompressed<DR>)
-    where
-        Module<B>: VecZnxFillUniform + VecZnxCopy,
-    {
+impl<D: DataMut, DR: DataRef, B: Backend> Decompress<B, GGLWETensorKeyCompressed<DR>> for GGLWETensorKey<D>
+where
+    Module<B>: VecZnxFillUniform + VecZnxCopy,
+{
+    fn decompress(&mut self, module: &Module<B>, other: &GGLWETensorKeyCompressed<DR>) {
         #[cfg(debug_assertions)]
         {
             assert_eq!(

@@ -97,7 +97,6 @@ pub fn test_gglwe_switching_key_keyswitch<B>(
 
     let mut scratch_enc: ScratchOwned<B> = ScratchOwned::alloc(GGLWESwitchingKey::encrypt_sk_scratch_space(
         module,
-        n,
         basek,
         k_ksk,
         rank_in_s0s1 | rank_out_s0s1,
@@ -105,7 +104,6 @@ pub fn test_gglwe_switching_key_keyswitch<B>(
     ));
     let mut scratch_apply: ScratchOwned<B> = ScratchOwned::alloc(GGLWESwitchingKey::keyswitch_scratch_space(
         module,
-        n,
         basek,
         k_out,
         k_in,
@@ -237,14 +235,13 @@ pub fn test_gglwe_switching_key_keyswitch_inplace<B>(
 
     let mut scratch_enc: ScratchOwned<B> = ScratchOwned::alloc(GGLWESwitchingKey::encrypt_sk_scratch_space(
         module,
-        n,
         basek,
         k_ksk,
         rank_in | rank_out,
         rank_out,
     ));
     let mut scratch_apply: ScratchOwned<B> = ScratchOwned::alloc(GGLWESwitchingKey::keyswitch_inplace_scratch_space(
-        module, n, basek, k_ct, k_ksk, digits, rank_out,
+        module, basek, k_ct, k_ksk, digits, rank_out,
     ));
 
     let var_xs: f64 = 0.5;

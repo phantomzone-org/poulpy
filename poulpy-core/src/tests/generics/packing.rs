@@ -89,9 +89,9 @@ where
     let rows: usize = k_ct.div_ceil(basek * digits);
 
     let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-        GLWECiphertext::encrypt_sk_scratch_space(module, n, basek, k_ct)
-            | GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, n, basek, k_ksk, rank)
-            | GLWEPacker::scratch_space(module, n, basek, k_ct, k_ksk, digits, rank),
+        GLWECiphertext::encrypt_sk_scratch_space(module, basek, k_ct)
+            | GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, basek, k_ksk, rank)
+            | GLWEPacker::scratch_space(module, basek, k_ct, k_ksk, digits, rank),
     );
 
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);

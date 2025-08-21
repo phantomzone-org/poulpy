@@ -22,7 +22,7 @@ pub struct LookUpTable {
 }
 
 impl LookUpTable {
-    pub fn alloc(n: usize, basek: usize, k: usize, extension_factor: usize) -> Self {
+    pub fn alloc<B: Backend>(module: &Module<B>, basek: usize, k: usize, extension_factor: usize) -> Self {
         #[cfg(debug_assertions)]
         {
             assert!(
@@ -34,7 +34,7 @@ impl LookUpTable {
         let size: usize = k.div_ceil(basek);
         let mut data: Vec<VecZnx<Vec<u8>>> = Vec::with_capacity(extension_factor);
         (0..extension_factor).for_each(|_| {
-            data.push(VecZnx::alloc(n, 1, size));
+            data.push(VecZnx::alloc(module.n(), 1, size));
         });
         Self {
             data,
@@ -121,16 +121,6 @@ impl LookUpTable {
         let drift: usize = step >> 1;
 
         // Rotates half the step to the left
-        module.vec_znx_rotate_inplace(-(drift as i64), &mut lut_full, 0);
-
-        let n_large: usize = lut_full.n();
-
-        module.vec_znx_normalize_inplace(
-            self.basek,
-            &mut lut_full,
-            0,
-            ScratchOwned::alloc(module.vec_znx_normalize_tmp_bytes(n_large)).borrow(),
-        );
 
         if self.extension_factor() > 1 {
             (0..self.extension_factor()).for_each(|i| {
@@ -142,6 +132,14 @@ impl LookUpTable {
         } else {
             module.vec_znx_copy(&mut self.data[0], 0, &lut_full, 0);
         }
+
+        let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(module.vec_znx_normalize_tmp_bytes());
+
+        self.data.iter_mut().for_each(|a| {
+            module.vec_znx_normalize_inplace(self.basek, a, 0, scratch.borrow());
+        });
+
+        self.rotate(module, -(drift as i64));
 
         self.drift = drift
     }

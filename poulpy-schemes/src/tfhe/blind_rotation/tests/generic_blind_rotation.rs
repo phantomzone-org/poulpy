@@ -6,7 +6,8 @@ use poulpy_hal::{
         VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftSubABInplace, VecZnxDftToVecZnxBig, VecZnxDftToVecZnxBigConsume,
         VecZnxDftToVecZnxBigTmpBytes, VecZnxDftZero, VecZnxFillUniform, VecZnxMulXpMinusOneInplace, VecZnxNormalize,
         VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace, VecZnxSub, VecZnxSubABInplace,
-        VecZnxSwithcDegree, VmpApply, VmpApplyAdd, VmpApplyTmpBytes, VmpPMatAlloc, VmpPrepare, ZnxView,
+        VecZnxSwithcDegree, VmpApply, VmpApplyAdd, VmpApplyTmpBytes, VmpPMatAlloc, VmpPrepare, ZnAddNormal, ZnFillUniform,
+        ZnNormalizeInplace, ZnxView,
     },
     layouts::{Backend, Module, ScratchOwned},
     oep::{
@@ -65,7 +66,10 @@ where
         + VmpPMatAlloc<B>
         + VmpPrepare<B>
         + VmpApply<B>
-        + VmpApplyAdd<B>,
+        + VmpApplyAdd<B>
+        + ZnFillUniform
+        + ZnAddNormal
+        + ZnNormalizeInplace<B>,
     B: Backend
         + VecZnxDftAllocBytesImpl<B>
         + VecZnxBigAllocBytesImpl<B>
@@ -96,7 +100,7 @@ where
     let mut source_xa: Source = Source::new([1u8; 32]);
 
     let mut scratch: ScratchOwned<B> = ScratchOwned::<B>::alloc(BlindRotationKey::generate_from_sk_scratch_space(
-        module, n, basek, k_brk, rank,
+        module, basek, k_brk, rank,
     ));
 
     let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
@@ -108,7 +112,6 @@ where
 
     let mut scratch_br: ScratchOwned<B> = ScratchOwned::<B>::alloc(cggi_blind_rotate_scratch_space(
         module,
-        n,
         block_size,
         extension_factor,
         basek,
@@ -148,7 +151,7 @@ where
         .enumerate()
         .for_each(|(i, x)| *x = f(i as i64));
 
-    let mut lut: LookUpTable = LookUpTable::alloc(n, basek, k_lut, extension_factor);
+    let mut lut: LookUpTable = LookUpTable::alloc(module, basek, k_lut, extension_factor);
     lut.set(module, &f_vec, log_message_modulus + 1);
 
     let mut res: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(n, basek, k_res, rank);

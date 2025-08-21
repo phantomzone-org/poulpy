@@ -12,7 +12,6 @@ impl GGLWEAutomorphismKey<Vec<u8>> {
     #[allow(clippy::too_many_arguments)]
     pub fn external_product_scratch_space<B: Backend>(
         module: &Module<B>,
-        n: usize,
         basek: usize,
         k_out: usize,
         k_in: usize,
@@ -23,12 +22,11 @@ impl GGLWEAutomorphismKey<Vec<u8>> {
     where
         Module<B>: VecZnxDftAllocBytes + VmpApplyTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        GGLWESwitchingKey::external_product_scratch_space(module, n, basek, k_out, k_in, ggsw_k, digits, rank)
+        GGLWESwitchingKey::external_product_scratch_space(module, basek, k_out, k_in, ggsw_k, digits, rank)
     }
 
     pub fn external_product_inplace_scratch_space<B: Backend>(
         module: &Module<B>,
-        n: usize,
         basek: usize,
         k_out: usize,
         ggsw_k: usize,
@@ -38,7 +36,7 @@ impl GGLWEAutomorphismKey<Vec<u8>> {
     where
         Module<B>: VecZnxDftAllocBytes + VmpApplyTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        GGLWESwitchingKey::external_product_inplace_scratch_space(module, n, basek, k_out, ggsw_k, digits, rank)
+        GGLWESwitchingKey::external_product_inplace_scratch_space(module, basek, k_out, ggsw_k, digits, rank)
     }
 }
 

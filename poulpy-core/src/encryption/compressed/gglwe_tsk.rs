@@ -16,12 +16,12 @@ use crate::{
 };
 
 impl GGLWETensorKeyCompressed<Vec<u8>> {
-    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, n: usize, basek: usize, k: usize, rank: usize) -> usize
+    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize
     where
         Module<B>:
             SvpPPolAllocBytes + VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes + VecZnxNormalizeTmpBytes + VecZnxBigAllocBytes,
     {
-        GGLWETensorKey::encrypt_sk_scratch_space(module, n, basek, k, rank)
+        GGLWETensorKey::encrypt_sk_scratch_space(module, basek, k, rank)
     }
 }
 

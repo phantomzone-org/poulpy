@@ -10,7 +10,7 @@ use crate::{
 /// * See [crate::api::VecZnxNormalizeTmpBytes] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxNormalizeTmpBytesImpl<B: Backend> {
-    fn vec_znx_normalize_tmp_bytes_impl(module: &Module<B>, n: usize) -> usize;
+    fn vec_znx_normalize_tmp_bytes_impl(module: &Module<B>) -> usize;
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)

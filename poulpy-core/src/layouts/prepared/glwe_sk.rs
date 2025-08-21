@@ -17,21 +17,21 @@ pub struct GLWESecretPrepared<D: Data, B: Backend> {
 }
 
 impl<B: Backend> GLWESecretPrepared<Vec<u8>, B> {
-    pub fn alloc(module: &Module<B>, n: usize, rank: usize) -> Self
+    pub fn alloc(module: &Module<B>, rank: usize) -> Self
     where
         Module<B>: SvpPPolAlloc<B>,
     {
         Self {
-            data: module.svp_ppol_alloc(n, rank),
+            data: module.svp_ppol_alloc(rank),
             dist: Distribution::NONE,
         }
     }
 
-    pub fn bytes_of(module: &Module<B>, n: usize, rank: usize) -> usize
+    pub fn bytes_of(module: &Module<B>, rank: usize) -> usize
     where
         Module<B>: SvpPPolAllocBytes,
     {
-        module.svp_ppol_alloc_bytes(n, rank)
+        module.svp_ppol_alloc_bytes(rank)
     }
 }
 
@@ -54,7 +54,7 @@ where
     Module<B>: SvpPrepare<B> + SvpPPolAlloc<B>,
 {
     fn prepare_alloc(&self, module: &Module<B>, scratch: &mut poulpy_hal::layouts::Scratch<B>) -> GLWESecretPrepared<Vec<u8>, B> {
-        let mut sk_dft: GLWESecretPrepared<Vec<u8>, B> = GLWESecretPrepared::alloc(module, self.n(), self.rank());
+        let mut sk_dft: GLWESecretPrepared<Vec<u8>, B> = GLWESecretPrepared::alloc(module, self.rank());
         sk_dft.prepare(module, self, scratch);
         sk_dft
     }

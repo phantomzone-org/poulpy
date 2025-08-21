@@ -19,21 +19,24 @@ use crate::{
 };
 
 impl GLWECiphertext<Vec<u8>> {
-    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, n: usize, basek: usize, k: usize) -> usize
+    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize) -> usize
     where
         Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes,
     {
         let size: usize = k.div_ceil(basek);
-        module.vec_znx_normalize_tmp_bytes(n) + 2 * VecZnx::alloc_bytes(n, 1, size) + module.vec_znx_dft_alloc_bytes(n, 1, size)
+        module.vec_znx_normalize_tmp_bytes()
+            + 2 * VecZnx::alloc_bytes(module.n(), 1, size)
+            + module.vec_znx_dft_alloc_bytes(1, size)
     }
-    pub fn encrypt_pk_scratch_space<B: Backend>(module: &Module<B>, n: usize, basek: usize, k: usize) -> usize
+    pub fn encrypt_pk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize) -> usize
     where
         Module<B>: VecZnxDftAllocBytes + SvpPPolAllocBytes + VecZnxBigAllocBytes + VecZnxNormalizeTmpBytes,
     {
         let size: usize = k.div_ceil(basek);
-        ((module.vec_znx_dft_alloc_bytes(n, 1, size) + module.vec_znx_big_alloc_bytes(n, 1, size)) | ScalarZnx::alloc_bytes(n, 1))
-            + module.svp_ppol_alloc_bytes(n, 1)
-            + module.vec_znx_normalize_tmp_bytes(n)
+        ((module.vec_znx_dft_alloc_bytes(1, size) + module.vec_znx_big_alloc_bytes(1, size))
+            | ScalarZnx::alloc_bytes(module.n(), 1))
+            + module.svp_ppol_alloc_bytes(1)
+            + module.vec_znx_normalize_tmp_bytes()
     }
 }
 
@@ -69,10 +72,10 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
             assert_eq!(sk.n(), self.n());
             assert_eq!(pt.n(), self.n());
             assert!(
-                scratch.available() >= GLWECiphertext::encrypt_sk_scratch_space(module, self.n(), self.basek(), self.k()),
+                scratch.available() >= GLWECiphertext::encrypt_sk_scratch_space(module, self.basek(), self.k()),
                 "scratch.available(): {} < GLWECiphertext::encrypt_sk_scratch_space: {}",
                 scratch.available(),
-                GLWECiphertext::encrypt_sk_scratch_space(module, self.n(), self.basek(), self.k())
+                GLWECiphertext::encrypt_sk_scratch_space(module, self.basek(), self.k())
             )
         }
 
@@ -107,10 +110,10 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
             assert_eq!(self.rank(), sk.rank());
             assert_eq!(sk.n(), self.n());
             assert!(
-                scratch.available() >= GLWECiphertext::encrypt_sk_scratch_space(module, self.n(), self.basek(), self.k()),
+                scratch.available() >= GLWECiphertext::encrypt_sk_scratch_space(module, self.basek(), self.k()),
                 "scratch.available(): {} < GLWECiphertext::encrypt_sk_scratch_space: {}",
                 scratch.available(),
-                GLWECiphertext::encrypt_sk_scratch_space(module, self.n(), self.basek(), self.k())
+                GLWECiphertext::encrypt_sk_scratch_space(module, self.basek(), self.k())
             )
         }
         self.encrypt_sk_internal(

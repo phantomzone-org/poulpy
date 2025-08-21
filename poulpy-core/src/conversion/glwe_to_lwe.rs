@@ -15,7 +15,6 @@ use crate::{
 impl LWECiphertext<Vec<u8>> {
     pub fn from_glwe_scratch_space<B: Backend>(
         module: &Module<B>,
-        n: usize,
         basek: usize,
         k_lwe: usize,
         k_glwe: usize,
@@ -25,8 +24,8 @@ impl LWECiphertext<Vec<u8>> {
     where
         Module<B>: VecZnxDftAllocBytes + VmpApplyTmpBytes + VecZnxBigNormalizeTmpBytes,
     {
-        GLWECiphertext::bytes_of(n, basek, k_lwe, 1)
-            + GLWECiphertext::keyswitch_scratch_space(module, n, basek, k_lwe, k_glwe, k_ksk, 1, rank, 1)
+        GLWECiphertext::bytes_of(module.n(), basek, k_lwe, 1)
+            + GLWECiphertext::keyswitch_scratch_space(module, basek, k_lwe, k_glwe, k_ksk, 1, rank, 1)
     }
 }
 

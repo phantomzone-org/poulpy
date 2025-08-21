@@ -15,7 +15,6 @@ impl GGLWEAutomorphismKey<Vec<u8>> {
     #[allow(clippy::too_many_arguments)]
     pub fn keyswitch_scratch_space<B: Backend>(
         module: &Module<B>,
-        n: usize,
         basek: usize,
         k_out: usize,
         k_in: usize,
@@ -26,12 +25,11 @@ impl GGLWEAutomorphismKey<Vec<u8>> {
     where
         Module<B>: VecZnxDftAllocBytes + VmpApplyTmpBytes + VecZnxBigNormalizeTmpBytes,
     {
-        GGLWESwitchingKey::keyswitch_scratch_space(module, n, basek, k_out, k_in, k_ksk, digits, rank, rank)
+        GGLWESwitchingKey::keyswitch_scratch_space(module, basek, k_out, k_in, k_ksk, digits, rank, rank)
     }
 
     pub fn keyswitch_inplace_scratch_space<B: Backend>(
         module: &Module<B>,
-        n: usize,
         basek: usize,
         k_out: usize,
         k_ksk: usize,
@@ -41,7 +39,7 @@ impl GGLWEAutomorphismKey<Vec<u8>> {
     where
         Module<B>: VecZnxDftAllocBytes + VmpApplyTmpBytes + VecZnxBigNormalizeTmpBytes,
     {
-        GGLWESwitchingKey::keyswitch_inplace_scratch_space(module, n, basek, k_out, k_ksk, digits, rank)
+        GGLWESwitchingKey::keyswitch_inplace_scratch_space(module, basek, k_out, k_ksk, digits, rank)
     }
 }
 
@@ -92,7 +90,6 @@ impl GGLWESwitchingKey<Vec<u8>> {
     #[allow(clippy::too_many_arguments)]
     pub fn keyswitch_scratch_space<B: Backend>(
         module: &Module<B>,
-        n: usize,
         basek: usize,
         k_out: usize,
         k_in: usize,
@@ -104,14 +101,11 @@ impl GGLWESwitchingKey<Vec<u8>> {
     where
         Module<B>: VecZnxDftAllocBytes + VmpApplyTmpBytes + VecZnxBigNormalizeTmpBytes,
     {
-        GLWECiphertext::keyswitch_scratch_space(
-            module, n, basek, k_out, k_in, k_ksk, digits, rank_in, rank_out,
-        )
+        GLWECiphertext::keyswitch_scratch_space(module, basek, k_out, k_in, k_ksk, digits, rank_in, rank_out)
     }
 
     pub fn keyswitch_inplace_scratch_space<B: Backend>(
         module: &Module<B>,
-        n: usize,
         basek: usize,
         k_out: usize,
         k_ksk: usize,
@@ -121,7 +115,7 @@ impl GGLWESwitchingKey<Vec<u8>> {
     where
         Module<B>: VecZnxDftAllocBytes + VmpApplyTmpBytes + VecZnxBigNormalizeTmpBytes,
     {
-        GLWECiphertext::keyswitch_inplace_scratch_space(module, n, basek, k_out, k_ksk, digits, rank)
+        GLWECiphertext::keyswitch_inplace_scratch_space(module, basek, k_out, k_ksk, digits, rank)
     }
 }
 

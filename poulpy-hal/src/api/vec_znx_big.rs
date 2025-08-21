@@ -7,18 +7,18 @@ use crate::{
 
 /// Allocates as [crate::layouts::VecZnxBig].
 pub trait VecZnxBigAlloc<B: Backend> {
-    fn vec_znx_big_alloc(&self, n: usize, cols: usize, size: usize) -> VecZnxBigOwned<B>;
+    fn vec_znx_big_alloc(&self, cols: usize, size: usize) -> VecZnxBigOwned<B>;
 }
 
 /// Returns the size in bytes to allocate a [crate::layouts::VecZnxBig].
 pub trait VecZnxBigAllocBytes {
-    fn vec_znx_big_alloc_bytes(&self, n: usize, cols: usize, size: usize) -> usize;
+    fn vec_znx_big_alloc_bytes(&self, cols: usize, size: usize) -> usize;
 }
 
 /// Consume a vector of bytes into a [crate::layouts::VecZnxBig].
 /// User must ensure that bytes is memory aligned and that it length is equal to [VecZnxBigAllocBytes].
 pub trait VecZnxBigFromBytes<B: Backend> {
-    fn vec_znx_big_from_bytes(&self, n: usize, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxBigOwned<B>;
+    fn vec_znx_big_from_bytes(&self, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxBigOwned<B>;
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -187,7 +187,7 @@ pub trait VecZnxBigNegateInplace<B: Backend> {
 }
 
 pub trait VecZnxBigNormalizeTmpBytes {
-    fn vec_znx_big_normalize_tmp_bytes(&self, n: usize) -> usize;
+    fn vec_znx_big_normalize_tmp_bytes(&self) -> usize;
 }
 
 pub trait VecZnxBigNormalize<B: Backend> {

@@ -185,11 +185,11 @@ impl<D: DataRef> WriterTo for GGSWCiphertextCompressed<D> {
     }
 }
 
-impl<D: DataMut, B: Backend, DR: DataRef> Decompress<B, GGSWCiphertextCompressed<DR>> for GGSWCiphertext<D> {
-    fn decompress(&mut self, module: &Module<B>, other: &GGSWCiphertextCompressed<DR>)
-    where
-        Module<B>: VecZnxFillUniform + VecZnxCopy,
-    {
+impl<D: DataMut, B: Backend, DR: DataRef> Decompress<B, GGSWCiphertextCompressed<DR>> for GGSWCiphertext<D>
+where
+    Module<B>: VecZnxFillUniform + VecZnxCopy,
+{
+    fn decompress(&mut self, module: &Module<B>, other: &GGSWCiphertextCompressed<DR>) {
         #[cfg(debug_assertions)]
         {
             assert_eq!(self.rank(), other.rank())

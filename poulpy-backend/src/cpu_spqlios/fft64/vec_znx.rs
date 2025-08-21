@@ -25,8 +25,8 @@ use crate::cpu_spqlios::{
 };
 
 unsafe impl VecZnxNormalizeTmpBytesImpl<Self> for FFT64 {
-    fn vec_znx_normalize_tmp_bytes_impl(module: &Module<Self>, n: usize) -> usize {
-        unsafe { vec_znx::vec_znx_normalize_base2k_tmp_bytes(module.ptr() as *const module_info_t, n as u64) as usize }
+    fn vec_znx_normalize_tmp_bytes_impl(module: &Module<Self>) -> usize {
+        unsafe { vec_znx::vec_znx_normalize_base2k_tmp_bytes(module.ptr() as *const module_info_t) as usize }
     }
 }
 
@@ -54,12 +54,11 @@ where
             assert_eq!(res.n(), a.n());
         }
 
-        let (tmp_bytes, _) = scratch.take_slice(module.vec_znx_normalize_tmp_bytes(a.n()));
+        let (tmp_bytes, _) = scratch.take_slice(module.vec_znx_normalize_tmp_bytes());
 
         unsafe {
             vec_znx::vec_znx_normalize_base2k(
                 module.ptr() as *const module_info_t,
-                a.n() as u64,
                 basek as u64,
                 res.at_mut_ptr(res_col, 0),
                 res.size() as u64,
@@ -88,12 +87,11 @@ where
     {
         let mut a: VecZnx<&mut [u8]> = a.to_mut();
 
-        let (tmp_bytes, _) = scratch.take_slice(module.vec_znx_normalize_tmp_bytes(a.n()));
+        let (tmp_bytes, _) = scratch.take_slice(module.vec_znx_normalize_tmp_bytes());
 
         unsafe {
             vec_znx::vec_znx_normalize_base2k(
                 module.ptr() as *const module_info_t,
-                a.n() as u64,
                 basek as u64,
                 a.at_mut_ptr(a_col, 0),
                 a.size() as u64,

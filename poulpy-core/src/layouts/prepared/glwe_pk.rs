@@ -42,23 +42,23 @@ impl<D: Data, B: Backend> GLWEPublicKeyPrepared<D, B> {
 }
 
 impl<B: Backend> GLWEPublicKeyPrepared<Vec<u8>, B> {
-    pub fn alloc(module: &Module<B>, n: usize, basek: usize, k: usize, rank: usize) -> Self
+    pub fn alloc(module: &Module<B>, basek: usize, k: usize, rank: usize) -> Self
     where
         Module<B>: VecZnxDftAlloc<B>,
     {
         Self {
-            data: module.vec_znx_dft_alloc(n, rank + 1, k.div_ceil(basek)),
+            data: module.vec_znx_dft_alloc(rank + 1, k.div_ceil(basek)),
             basek,
             k,
             dist: Distribution::NONE,
         }
     }
 
-    pub fn bytes_of(module: &Module<B>, n: usize, basek: usize, k: usize, rank: usize) -> usize
+    pub fn bytes_of(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize
     where
         Module<B>: VecZnxDftAllocBytes,
     {
-        module.vec_znx_dft_alloc_bytes(n, rank + 1, k.div_ceil(basek))
+        module.vec_znx_dft_alloc_bytes(rank + 1, k.div_ceil(basek))
     }
 }
 
@@ -68,7 +68,7 @@ where
 {
     fn prepare_alloc(&self, module: &Module<B>, scratch: &mut Scratch<B>) -> GLWEPublicKeyPrepared<Vec<u8>, B> {
         let mut pk_prepared: GLWEPublicKeyPrepared<Vec<u8>, B> =
-            GLWEPublicKeyPrepared::alloc(module, self.n(), self.basek(), self.k(), self.rank());
+            GLWEPublicKeyPrepared::alloc(module, self.basek(), self.k(), self.rank());
         pk_prepared.prepare(module, self, scratch);
         pk_prepared
     }

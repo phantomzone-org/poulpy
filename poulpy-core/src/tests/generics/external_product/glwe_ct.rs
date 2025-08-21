@@ -92,11 +92,10 @@ pub fn test_glwe_external_product<B>(
     pt_rgsw.raw_mut()[k] = 1; // X^{k}
 
     let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-        GGSWCiphertext::encrypt_sk_scratch_space(module, n, basek, ct_ggsw.k(), rank)
-            | GLWECiphertext::encrypt_sk_scratch_space(module, n, basek, ct_glwe_in.k())
+        GGSWCiphertext::encrypt_sk_scratch_space(module, basek, ct_ggsw.k(), rank)
+            | GLWECiphertext::encrypt_sk_scratch_space(module, basek, ct_glwe_in.k())
             | GLWECiphertext::external_product_scratch_space(
                 module,
-                n,
                 basek,
                 ct_glwe_out.k(),
                 ct_glwe_in.k(),
@@ -225,9 +224,9 @@ pub fn test_glwe_external_product_inplace<B>(
     pt_rgsw.raw_mut()[k] = 1; // X^{k}
 
     let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-        GGSWCiphertext::encrypt_sk_scratch_space(module, n, basek, ct_ggsw.k(), rank)
-            | GLWECiphertext::encrypt_sk_scratch_space(module, n, basek, ct_glwe.k())
-            | GLWECiphertext::external_product_inplace_scratch_space(module, n, basek, ct_glwe.k(), ct_ggsw.k(), digits, rank),
+        GGSWCiphertext::encrypt_sk_scratch_space(module, basek, ct_ggsw.k(), rank)
+            | GLWECiphertext::encrypt_sk_scratch_space(module, basek, ct_glwe.k())
+            | GLWECiphertext::external_product_inplace_scratch_space(module, basek, ct_glwe.k(), ct_ggsw.k(), digits, rank),
     );
 
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);

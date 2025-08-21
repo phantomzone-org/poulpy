@@ -12,7 +12,6 @@ impl GLWECiphertext<Vec<u8>> {
     #[allow(clippy::too_many_arguments)]
     pub fn external_product_scratch_space<B: Backend>(
         module: &Module<B>,
-        n: usize,
         basek: usize,
         k_out: usize,
         k_in: usize,
@@ -26,10 +25,9 @@ impl GLWECiphertext<Vec<u8>> {
         let in_size: usize = k_in.div_ceil(basek).div_ceil(digits);
         let out_size: usize = k_out.div_ceil(basek);
         let ggsw_size: usize = k_ggsw.div_ceil(basek);
-        let res_dft: usize = module.vec_znx_dft_alloc_bytes(n, rank + 1, ggsw_size);
-        let a_dft: usize = module.vec_znx_dft_alloc_bytes(n, rank + 1, in_size);
+        let res_dft: usize = module.vec_znx_dft_alloc_bytes(rank + 1, ggsw_size);
+        let a_dft: usize = module.vec_znx_dft_alloc_bytes(rank + 1, in_size);
         let vmp: usize = module.vmp_apply_tmp_bytes(
-            n,
             out_size,
             in_size,
             in_size,  // rows
@@ -37,13 +35,12 @@ impl GLWECiphertext<Vec<u8>> {
             rank + 1, // cols out
             ggsw_size,
         );
-        let normalize: usize = module.vec_znx_normalize_tmp_bytes(n);
+        let normalize: usize = module.vec_znx_normalize_tmp_bytes();
         res_dft + a_dft + (vmp | normalize)
     }
 
     pub fn external_product_inplace_scratch_space<B: Backend>(
         module: &Module<B>,
-        n: usize,
         basek: usize,
         k_out: usize,
         k_ggsw: usize,
@@ -53,7 +50,7 @@ impl GLWECiphertext<Vec<u8>> {
     where
         Module<B>: VecZnxDftAllocBytes + VmpApplyTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        Self::external_product_scratch_space(module, n, basek, k_out, k_out, k_ggsw, digits, rank)
+        Self::external_product_scratch_space(module, basek, k_out, k_out, k_ggsw, digits, rank)
     }
 }
 
@@ -91,7 +88,6 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
                 scratch.available()
                     >= GLWECiphertext::external_product_scratch_space(
                         module,
-                        self.n(),
                         self.basek(),
                         self.k(),
                         lhs.k(),

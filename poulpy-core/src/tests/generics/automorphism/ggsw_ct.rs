@@ -102,11 +102,11 @@ pub fn test_ggsw_automorphism<B>(
     let mut source_xa: Source = Source::new([0u8; 32]);
 
     let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-        GGSWCiphertext::encrypt_sk_scratch_space(module, n, basek, k_in, rank)
-            | GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, n, basek, k_ksk, rank)
-            | GGLWETensorKey::encrypt_sk_scratch_space(module, n, basek, k_tsk, rank)
+        GGSWCiphertext::encrypt_sk_scratch_space(module, basek, k_in, rank)
+            | GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, basek, k_ksk, rank)
+            | GGLWETensorKey::encrypt_sk_scratch_space(module, basek, k_tsk, rank)
             | GGSWCiphertext::automorphism_scratch_space(
-                module, n, basek, k_out, k_in, k_ksk, digits, k_tsk, digits, rank,
+                module, basek, k_out, k_in, k_ksk, digits, k_tsk, digits, rank,
             ),
     );
 
@@ -144,11 +144,11 @@ pub fn test_ggsw_automorphism<B>(
     );
 
     let mut auto_key_prepared: GGLWEAutomorphismKeyPrepared<Vec<u8>, B> =
-        GGLWEAutomorphismKeyPrepared::alloc(module, n, basek, k_ksk, rows, digits, rank);
+        GGLWEAutomorphismKeyPrepared::alloc(module, basek, k_ksk, rows, digits, rank);
     auto_key_prepared.prepare(module, &auto_key, scratch.borrow());
 
     let mut tsk_prepared: GGLWETensorKeyPrepared<Vec<u8>, B> =
-        GGLWETensorKeyPrepared::alloc(module, n, basek, k_tsk, rows, digits, rank);
+        GGLWETensorKeyPrepared::alloc(module, basek, k_tsk, rows, digits, rank);
     tsk_prepared.prepare(module, &tensor_key, scratch.borrow());
 
     ct_out.automorphism(
@@ -255,10 +255,10 @@ pub fn test_ggsw_automorphism_inplace<B>(
     let mut source_xa: Source = Source::new([0u8; 32]);
 
     let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-        GGSWCiphertext::encrypt_sk_scratch_space(module, n, basek, k_ct, rank)
-            | GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, n, basek, k_ksk, rank)
-            | GGLWETensorKey::encrypt_sk_scratch_space(module, n, basek, k_tsk, rank)
-            | GGSWCiphertext::automorphism_inplace_scratch_space(module, n, basek, k_ct, k_ksk, digits, k_tsk, digits, rank),
+        GGSWCiphertext::encrypt_sk_scratch_space(module, basek, k_ct, rank)
+            | GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, basek, k_ksk, rank)
+            | GGLWETensorKey::encrypt_sk_scratch_space(module, basek, k_tsk, rank)
+            | GGSWCiphertext::automorphism_inplace_scratch_space(module, basek, k_ct, k_ksk, digits, k_tsk, digits, rank),
     );
 
     let var_xs: f64 = 0.5;
@@ -295,11 +295,11 @@ pub fn test_ggsw_automorphism_inplace<B>(
     );
 
     let mut auto_key_prepared: GGLWEAutomorphismKeyPrepared<Vec<u8>, B> =
-        GGLWEAutomorphismKeyPrepared::alloc(module, n, basek, k_ksk, rows, digits, rank);
+        GGLWEAutomorphismKeyPrepared::alloc(module, basek, k_ksk, rows, digits, rank);
     auto_key_prepared.prepare(module, &auto_key, scratch.borrow());
 
     let mut tsk_prepared: GGLWETensorKeyPrepared<Vec<u8>, B> =
-        GGLWETensorKeyPrepared::alloc(module, n, basek, k_tsk, rows, digits, rank);
+        GGLWETensorKeyPrepared::alloc(module, basek, k_tsk, rows, digits, rank);
     tsk_prepared.prepare(module, &tensor_key, scratch.borrow());
 
     ct.automorphism_inplace(module, &auto_key_prepared, &tsk_prepared, scratch.borrow());

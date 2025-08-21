@@ -86,11 +86,10 @@ pub fn test_glwe_keyswitch<B>(
     module.vec_znx_fill_uniform(basek, &mut pt_want.data, 0, k_in, &mut source_xa);
 
     let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-        GGLWESwitchingKey::encrypt_sk_scratch_space(module, n, basek, ksk.k(), rank_in, rank_out)
-            | GLWECiphertext::encrypt_sk_scratch_space(module, n, basek, ct_in.k())
+        GGLWESwitchingKey::encrypt_sk_scratch_space(module, basek, ksk.k(), rank_in, rank_out)
+            | GLWECiphertext::encrypt_sk_scratch_space(module, basek, ct_in.k())
             | GLWECiphertext::keyswitch_scratch_space(
                 module,
-                n,
                 basek,
                 ct_out.k(),
                 ct_in.k(),
@@ -200,9 +199,9 @@ where
     module.vec_znx_fill_uniform(basek, &mut pt_want.data, 0, k_ct, &mut source_xa);
 
     let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-        GGLWESwitchingKey::encrypt_sk_scratch_space(module, n, basek, ksk.k(), rank, rank)
-            | GLWECiphertext::encrypt_sk_scratch_space(module, n, basek, ct_glwe.k())
-            | GLWECiphertext::keyswitch_inplace_scratch_space(module, n, basek, ct_glwe.k(), ksk.k(), digits, rank),
+        GGLWESwitchingKey::encrypt_sk_scratch_space(module, basek, ksk.k(), rank, rank)
+            | GLWECiphertext::encrypt_sk_scratch_space(module, basek, ct_glwe.k())
+            | GLWECiphertext::keyswitch_inplace_scratch_space(module, basek, ct_glwe.k(), ksk.k(), digits, rank),
     );
 
     let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);

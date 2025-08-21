@@ -5,7 +5,7 @@ use poulpy_hal::{
         VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxDftAllocBytes, VecZnxDftFromVecZnx,
         VecZnxDftToVecZnxBigConsume, VecZnxFillUniform, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes,
         VecZnxSub, VecZnxSubABInplace, VecZnxSwithcDegree, VmpApply, VmpApplyAdd, VmpApplyTmpBytes, VmpPMatAlloc, VmpPrepare,
-        ZnxView,
+        ZnAddNormal, ZnFillUniform, ZnNormalizeInplace, ZnxView,
     },
     layouts::{Backend, Module, ScratchOwned},
     oep::{
@@ -49,7 +49,10 @@ where
         + VmpApplyAdd<B>
         + VecZnxBigNormalizeTmpBytes
         + VecZnxSwithcDegree
-        + VecZnxAutomorphismInplace,
+        + VecZnxAutomorphismInplace
+        + ZnNormalizeInplace<B>
+        + ZnFillUniform
+        + ZnAddNormal,
     B: Backend
         + TakeVecZnxDftImpl<B>
         + TakeVecZnxBigImpl<B>
@@ -75,8 +78,8 @@ where
     let mut source_xe: Source = Source::new([0u8; 32]);
 
     let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-        LWESwitchingKey::encrypt_sk_scratch_space(module, n, basek, k_ksk)
-            | LWECiphertext::keyswitch_scratch_space(module, n, basek, k_lwe_ct, k_lwe_ct, k_ksk),
+        LWESwitchingKey::encrypt_sk_scratch_space(module, basek, k_ksk)
+            | LWECiphertext::keyswitch_scratch_space(module, basek, k_lwe_ct, k_lwe_ct, k_ksk),
     );
 
     let mut sk_lwe_in: LWESecret<Vec<u8>> = LWESecret::alloc(n_lwe_in);

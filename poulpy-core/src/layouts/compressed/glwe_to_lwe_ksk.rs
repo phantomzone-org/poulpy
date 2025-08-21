@@ -93,7 +93,7 @@ impl GLWEToLWESwitchingKeyCompressed<Vec<u8>> {
         ))
     }
 
-    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, n: usize, basek: usize, k: usize, rank_in: usize) -> usize
+    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank_in: usize) -> usize
     where
         Module<B>: VecZnxDftAllocBytes
             + VecZnxBigNormalize<B>
@@ -112,6 +112,6 @@ impl GLWEToLWESwitchingKeyCompressed<Vec<u8>> {
             + SvpPPolAllocBytes
             + SvpPPolAlloc<B>,
     {
-        GLWEToLWESwitchingKey::encrypt_sk_scratch_space(module, n, basek, k, rank_in)
+        GLWEToLWESwitchingKey::encrypt_sk_scratch_space(module, basek, k, rank_in)
     }
 }

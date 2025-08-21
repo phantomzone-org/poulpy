@@ -1,7 +1,7 @@
 use std::fmt;
 
 use poulpy_hal::{
-    api::{FillUniform, Reset, VecZnxFillUniform, ZnxInfos, ZnxView, ZnxViewMut},
+    api::{FillUniform, Reset, ZnFillUniform, ZnxInfos, ZnxView, ZnxViewMut},
     layouts::{Backend, Data, DataMut, DataRef, Module, ReaderFrom, VecZnx, WriterTo},
     source::Source,
 };
@@ -117,13 +117,20 @@ impl<D: DataRef> WriterTo for LWECiphertextCompressed<D> {
     }
 }
 
-impl<D: DataMut, B: Backend, DR: DataRef> Decompress<B, LWECiphertextCompressed<DR>> for LWECiphertext<D> {
-    fn decompress(&mut self, module: &Module<B>, other: &LWECiphertextCompressed<DR>)
-    where
-        Module<B>: VecZnxFillUniform,
-    {
-        let mut source = Source::new(other.seed);
-        module.vec_znx_fill_uniform(other.basek(), &mut self.data, 0, other.k(), &mut source);
+impl<D: DataMut, B: Backend, DR: DataRef> Decompress<B, LWECiphertextCompressed<DR>> for LWECiphertext<D>
+where
+    Module<B>: ZnFillUniform,
+{
+    fn decompress(&mut self, module: &Module<B>, other: &LWECiphertextCompressed<DR>) {
+        let mut source: Source = Source::new(other.seed);
+        module.zn_fill_uniform(
+            self.n(),
+            other.basek(),
+            &mut self.data,
+            0,
+            other.k(),
+            &mut source,
+        );
         (0..self.size()).for_each(|i| {
             self.data.at_mut(0, i)[0] = other.data.at(0, i)[0];
         });

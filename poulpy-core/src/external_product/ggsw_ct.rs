@@ -12,7 +12,6 @@ impl GGSWCiphertext<Vec<u8>> {
     #[allow(clippy::too_many_arguments)]
     pub fn external_product_scratch_space<B: Backend>(
         module: &Module<B>,
-        n: usize,
         basek: usize,
         k_out: usize,
         k_in: usize,
@@ -23,12 +22,11 @@ impl GGSWCiphertext<Vec<u8>> {
     where
         Module<B>: VecZnxDftAllocBytes + VmpApplyTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        GLWECiphertext::external_product_scratch_space(module, n, basek, k_out, k_in, k_ggsw, digits, rank)
+        GLWECiphertext::external_product_scratch_space(module, basek, k_out, k_in, k_ggsw, digits, rank)
     }
 
     pub fn external_product_inplace_scratch_space<B: Backend>(
         module: &Module<B>,
-        n: usize,
         basek: usize,
         k_out: usize,
         k_ggsw: usize,
@@ -38,7 +36,7 @@ impl GGSWCiphertext<Vec<u8>> {
     where
         Module<B>: VecZnxDftAllocBytes + VmpApplyTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        GLWECiphertext::external_product_inplace_scratch_space(module, n, basek, k_out, k_ggsw, digits, rank)
+        GLWECiphertext::external_product_inplace_scratch_space(module, basek, k_out, k_ggsw, digits, rank)
     }
 }
 
@@ -86,7 +84,6 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
                 scratch.available()
                     >= GGSWCiphertext::external_product_scratch_space(
                         module,
-                        self.n(),
                         self.basek(),
                         self.k(),
                         lhs.k(),

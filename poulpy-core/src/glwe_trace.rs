@@ -30,7 +30,6 @@ impl GLWECiphertext<Vec<u8>> {
     #[allow(clippy::too_many_arguments)]
     pub fn trace_scratch_space<B: Backend>(
         module: &Module<B>,
-        n: usize,
         basek: usize,
         out_k: usize,
         in_k: usize,
@@ -41,12 +40,11 @@ impl GLWECiphertext<Vec<u8>> {
     where
         Module<B>: VecZnxDftAllocBytes + VmpApplyTmpBytes + VecZnxBigNormalizeTmpBytes,
     {
-        Self::automorphism_inplace_scratch_space(module, n, basek, out_k.min(in_k), ksk_k, digits, rank)
+        Self::automorphism_inplace_scratch_space(module, basek, out_k.min(in_k), ksk_k, digits, rank)
     }
 
     pub fn trace_inplace_scratch_space<B: Backend>(
         module: &Module<B>,
-        n: usize,
         basek: usize,
         out_k: usize,
         ksk_k: usize,
@@ -56,7 +54,7 @@ impl GLWECiphertext<Vec<u8>> {
     where
         Module<B>: VecZnxDftAllocBytes + VmpApplyTmpBytes + VecZnxBigNormalizeTmpBytes,
     {
-        Self::automorphism_inplace_scratch_space(module, n, basek, out_k, ksk_k, digits, rank)
+        Self::automorphism_inplace_scratch_space(module, basek, out_k, ksk_k, digits, rank)
     }
 }
 

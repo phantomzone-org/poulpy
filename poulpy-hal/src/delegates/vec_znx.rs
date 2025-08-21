@@ -22,8 +22,8 @@ impl<B> VecZnxNormalizeTmpBytes for Module<B>
 where
     B: Backend + VecZnxNormalizeTmpBytesImpl<B>,
 {
-    fn vec_znx_normalize_tmp_bytes(&self, n: usize) -> usize {
-        B::vec_znx_normalize_tmp_bytes_impl(self, n)
+    fn vec_znx_normalize_tmp_bytes(&self) -> usize {
+        B::vec_znx_normalize_tmp_bytes_impl(self)
     }
 }
 

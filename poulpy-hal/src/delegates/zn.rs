@@ -1,0 +1,114 @@
+use crate::{
+    api::{ZnAddDistF64, ZnAddNormal, ZnFillDistF64, ZnFillNormal, ZnFillUniform, ZnNormalizeInplace},
+    layouts::{Backend, Module, Scratch, ZnToMut},
+    oep::{ZnAddDistF64Impl, ZnAddNormalImpl, ZnFillDistF64Impl, ZnFillNormalImpl, ZnFillUniformImpl, ZnNormalizeInplaceImpl},
+    source::Source,
+};
+
+impl<B> ZnNormalizeInplace<B> for Module<B>
+where
+    B: Backend + ZnNormalizeInplaceImpl<B>,
+{
+    fn zn_normalize_inplace<A>(&self, n: usize, basek: usize, a: &mut A, a_col: usize, scratch: &mut Scratch<B>)
+    where
+        A: ZnToMut,
+    {
+        B::zn_normalize_inplace_impl(n, basek, a, a_col, scratch)
+    }
+}
+
+impl<B> ZnFillUniform for Module<B>
+where
+    B: Backend + ZnFillUniformImpl<B>,
+{
+    fn zn_fill_uniform<R>(&self, n: usize, basek: usize, res: &mut R, res_col: usize, k: usize, source: &mut Source)
+    where
+        R: ZnToMut,
+    {
+        B::zn_fill_uniform_impl(n, basek, res, res_col, k, source);
+    }
+}
+
+impl<B> ZnFillDistF64 for Module<B>
+where
+    B: Backend + ZnFillDistF64Impl<B>,
+{
+    fn zn_fill_dist_f64<R, D: rand::prelude::Distribution<f64>>(
+        &self,
+        n: usize,
+        basek: usize,
+        res: &mut R,
+        res_col: usize,
+        k: usize,
+        source: &mut Source,
+        dist: D,
+        bound: f64,
+    ) where
+        R: ZnToMut,
+    {
+        B::zn_fill_dist_f64_impl(n, basek, res, res_col, k, source, dist, bound);
+    }
+}
+
+impl<B> ZnAddDistF64 for Module<B>
+where
+    B: Backend + ZnAddDistF64Impl<B>,
+{
+    fn zn_add_dist_f64<R, D: rand::prelude::Distribution<f64>>(
+        &self,
+        n: usize,
+        basek: usize,
+        res: &mut R,
+        res_col: usize,
+        k: usize,
+        source: &mut Source,
+        dist: D,
+        bound: f64,
+    ) where
+        R: ZnToMut,
+    {
+        B::zn_add_dist_f64_impl(n, basek, res, res_col, k, source, dist, bound);
+    }
+}
+
+impl<B> ZnFillNormal for Module<B>
+where
+    B: Backend + ZnFillNormalImpl<B>,
+{
+    fn zn_fill_normal<R>(
+        &self,
+        n: usize,
+        basek: usize,
+        res: &mut R,
+        res_col: usize,
+        k: usize,
+        source: &mut Source,
+        sigma: f64,
+        bound: f64,
+    ) where
+        R: ZnToMut,
+    {
+        B::zn_fill_normal_impl(n, basek, res, res_col, k, source, sigma, bound);
+    }
+}
+
+impl<B> ZnAddNormal for Module<B>
+where
+    B: Backend + ZnAddNormalImpl<B>,
+{
+    fn zn_add_normal<R>(
+        &self,
+        n: usize,
+        basek: usize,
+        res: &mut R,
+        res_col: usize,
+        k: usize,
+        source: &mut Source,
+        sigma: f64,
+        bound: f64,
+    ) where
+        R: ZnToMut,
+    {
+        B::zn_add_normal_impl(n, basek, res, res_col, k, source, sigma, bound);
+    }
+}

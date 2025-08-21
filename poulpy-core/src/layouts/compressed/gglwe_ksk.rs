@@ -115,11 +115,11 @@ impl<D: DataRef> WriterTo for GGLWESwitchingKeyCompressed<D> {
     }
 }
 
-impl<D: DataMut, DR: DataRef, B: Backend> Decompress<B, GGLWESwitchingKeyCompressed<DR>> for GGLWESwitchingKey<D> {
-    fn decompress(&mut self, module: &Module<B>, other: &GGLWESwitchingKeyCompressed<DR>)
-    where
-        Module<B>: VecZnxFillUniform + VecZnxCopy,
-    {
+impl<D: DataMut, DR: DataRef, B: Backend> Decompress<B, GGLWESwitchingKeyCompressed<DR>> for GGLWESwitchingKey<D>
+where
+    Module<B>: VecZnxFillUniform + VecZnxCopy,
+{
+    fn decompress(&mut self, module: &Module<B>, other: &GGLWESwitchingKeyCompressed<DR>) {
         self.key.decompress(module, &other.key);
         self.sk_in_n = other.sk_in_n;
         self.sk_out_n = other.sk_out_n;

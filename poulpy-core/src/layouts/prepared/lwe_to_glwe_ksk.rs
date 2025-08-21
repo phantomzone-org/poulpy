@@ -47,20 +47,20 @@ impl<D: Data, B: Backend> LWEToGLWESwitchingKeyPrepared<D, B> {
 }
 
 impl<B: Backend> LWEToGLWESwitchingKeyPrepared<Vec<u8>, B> {
-    pub fn alloc(module: &Module<B>, n: usize, basek: usize, k: usize, rows: usize, rank_out: usize) -> Self
+    pub fn alloc(module: &Module<B>, basek: usize, k: usize, rows: usize, rank_out: usize) -> Self
     where
         Module<B>: VmpPMatAlloc<B>,
     {
         Self(GGLWESwitchingKeyPrepared::alloc(
-            module, n, basek, k, rows, 1, 1, rank_out,
+            module, basek, k, rows, 1, 1, rank_out,
         ))
     }
 
-    pub fn bytes_of(module: &Module<B>, n: usize, basek: usize, k: usize, rows: usize, digits: usize, rank_out: usize) -> usize
+    pub fn bytes_of(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank_out: usize) -> usize
     where
         Module<B>: VmpPMatAllocBytes,
     {
-        GGLWESwitchingKeyPrepared::<Vec<u8>, B>::bytes_of(module, n, basek, k, rows, digits, 1, rank_out)
+        GGLWESwitchingKeyPrepared::<Vec<u8>, B>::bytes_of(module, basek, k, rows, digits, 1, rank_out)
     }
 }
 
@@ -71,7 +71,6 @@ where
     fn prepare_alloc(&self, module: &Module<B>, scratch: &mut Scratch<B>) -> LWEToGLWESwitchingKeyPrepared<Vec<u8>, B> {
         let mut ksk_prepared: LWEToGLWESwitchingKeyPrepared<Vec<u8>, B> = LWEToGLWESwitchingKeyPrepared::alloc(
             module,
-            self.0.n(),
             self.0.basek(),
             self.0.k(),
             self.0.rows(),

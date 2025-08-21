@@ -77,7 +77,7 @@ where
     let mut source_xa: Source = Source::new([0u8; 32]);
 
     let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GGLWEAutomorphismKey::encrypt_sk_scratch_space(
-        module, n, basek, k_ksk, rank,
+        module, basek, k_ksk, rank,
     ));
 
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
@@ -169,7 +169,7 @@ pub fn test_gglwe_automorphisk_key_compressed_encrypt_sk<B>(
     let mut source_xe: Source = Source::new([0u8; 32]);
 
     let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GGLWEAutomorphismKey::encrypt_sk_scratch_space(
-        module, n, basek, k_ksk, rank,
+        module, basek, k_ksk, rank,
     ));
 
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);

@@ -17,7 +17,6 @@ impl GGSWCiphertext<Vec<u8>> {
     #[allow(clippy::too_many_arguments)]
     pub fn automorphism_scratch_space<B: Backend>(
         module: &Module<B>,
-        n: usize,
         basek: usize,
         k_out: usize,
         k_in: usize,
@@ -32,17 +31,16 @@ impl GGSWCiphertext<Vec<u8>> {
             VecZnxDftAllocBytes + VmpApplyTmpBytes + VecZnxBigAllocBytes + VecZnxNormalizeTmpBytes + VecZnxBigNormalizeTmpBytes,
     {
         let out_size: usize = k_out.div_ceil(basek);
-        let ci_dft: usize = module.vec_znx_dft_alloc_bytes(n, rank + 1, out_size);
+        let ci_dft: usize = module.vec_znx_dft_alloc_bytes(rank + 1, out_size);
         let ks_internal: usize =
-            GLWECiphertext::keyswitch_scratch_space(module, n, basek, k_out, k_in, k_ksk, digits_ksk, rank, rank);
-        let expand: usize = GGSWCiphertext::expand_row_scratch_space(module, n, basek, k_out, k_tsk, digits_tsk, rank);
+            GLWECiphertext::keyswitch_scratch_space(module, basek, k_out, k_in, k_ksk, digits_ksk, rank, rank);
+        let expand: usize = GGSWCiphertext::expand_row_scratch_space(module, basek, k_out, k_tsk, digits_tsk, rank);
         ci_dft + (ks_internal | expand)
     }
 
     #[allow(clippy::too_many_arguments)]
     pub fn automorphism_inplace_scratch_space<B: Backend>(
         module: &Module<B>,
-        n: usize,
         basek: usize,
         k_out: usize,
         k_ksk: usize,
@@ -56,7 +54,7 @@ impl GGSWCiphertext<Vec<u8>> {
             VecZnxDftAllocBytes + VmpApplyTmpBytes + VecZnxBigAllocBytes + VecZnxNormalizeTmpBytes + VecZnxBigNormalizeTmpBytes,
     {
         GGSWCiphertext::automorphism_scratch_space(
-            module, n, basek, k_out, k_out, k_ksk, digits_ksk, k_tsk, digits_tsk, rank,
+            module, basek, k_out, k_out, k_ksk, digits_ksk, k_tsk, digits_tsk, rank,
         )
     }
 }
@@ -117,7 +115,6 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
                 scratch.available()
                     >= GGSWCiphertext::automorphism_scratch_space(
                         module,
-                        self.n(),
                         self.basek(),
                         self.k(),
                         lhs.k(),

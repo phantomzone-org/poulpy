@@ -15,15 +15,15 @@ use crate::{
 };
 
 impl GGLWEAutomorphismKey<Vec<u8>> {
-    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, n: usize, basek: usize, k: usize, rank: usize) -> usize
+    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize
     where
         Module<B>: SvpPPolAllocBytes + VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes + VecZnxNormalizeTmpBytes,
     {
-        GGLWESwitchingKey::encrypt_sk_scratch_space(module, n, basek, k, rank, rank) + GLWESecret::bytes_of(n, rank)
+        GGLWESwitchingKey::encrypt_sk_scratch_space(module, basek, k, rank, rank) + GLWESecret::bytes_of(module.n(), rank)
     }
 
-    pub fn encrypt_pk_scratch_space<B: Backend>(module: &Module<B>, _n: usize, _basek: usize, _k: usize, _rank: usize) -> usize {
-        GGLWESwitchingKey::encrypt_pk_scratch_space(module, _n, _basek, _k, _rank, _rank)
+    pub fn encrypt_pk_scratch_space<B: Backend>(module: &Module<B>, _basek: usize, _k: usize, _rank: usize) -> usize {
+        GGLWESwitchingKey::encrypt_pk_scratch_space(module, _basek, _k, _rank, _rank)
     }
 }
 
@@ -67,12 +67,12 @@ impl<DataSelf: DataMut> GGLWEAutomorphismKey<DataSelf> {
             assert_eq!(sk.rank(), self.rank());
             assert!(
                 scratch.available()
-                    >= GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, sk.n(), self.basek(), self.k(), self.rank()),
+                    >= GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, self.basek(), self.k(), self.rank()),
                 "scratch.available(): {} < AutomorphismKey::encrypt_sk_scratch_space(module, self.rank()={}, self.size()={}): {}",
                 scratch.available(),
                 self.rank(),
                 self.size(),
-                GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, sk.n(), self.basek(), self.k(), self.rank())
+                GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, self.basek(), self.k(), self.rank())
             )
         }
 

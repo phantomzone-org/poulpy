@@ -2,18 +2,18 @@ use crate::layouts::{Backend, ScalarZnxToRef, SvpPPolOwned, SvpPPolToMut, SvpPPo
 
 /// Allocates as [crate::layouts::SvpPPol].
 pub trait SvpPPolAlloc<B: Backend> {
-    fn svp_ppol_alloc(&self, n: usize, cols: usize) -> SvpPPolOwned<B>;
+    fn svp_ppol_alloc(&self, cols: usize) -> SvpPPolOwned<B>;
 }
 
 /// Returns the size in bytes to allocate a [crate::layouts::SvpPPol].
 pub trait SvpPPolAllocBytes {
-    fn svp_ppol_alloc_bytes(&self, n: usize, cols: usize) -> usize;
+    fn svp_ppol_alloc_bytes(&self, cols: usize) -> usize;
 }
 
 /// Consume a vector of bytes into a [crate::layouts::MatZnx].
 /// User must ensure that bytes is memory aligned and that it length is equal to [SvpPPolAllocBytes].
 pub trait SvpPPolFromBytes<B: Backend> {
-    fn svp_ppol_from_bytes(&self, n: usize, cols: usize, bytes: Vec<u8>) -> SvpPPolOwned<B>;
+    fn svp_ppol_from_bytes(&self, cols: usize, bytes: Vec<u8>) -> SvpPPolOwned<B>;
 }
 
 /// Prepare a [crate::layouts::ScalarZnx] into an [crate::layouts::SvpPPol].

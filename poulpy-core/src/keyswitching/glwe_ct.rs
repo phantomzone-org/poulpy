@@ -12,7 +12,6 @@ impl GLWECiphertext<Vec<u8>> {
     #[allow(clippy::too_many_arguments)]
     pub fn keyswitch_scratch_space<B: Backend>(
         module: &Module<B>,
-        n: usize,
         basek: usize,
         k_out: usize,
         k_in: usize,
@@ -27,24 +26,16 @@ impl GLWECiphertext<Vec<u8>> {
         let in_size: usize = k_in.div_ceil(basek).div_ceil(digits);
         let out_size: usize = k_out.div_ceil(basek);
         let ksk_size: usize = k_ksk.div_ceil(basek);
-        let res_dft: usize = module.vec_znx_dft_alloc_bytes(n, rank_out + 1, ksk_size); // TODO OPTIMIZE
-        let ai_dft: usize = module.vec_znx_dft_alloc_bytes(n, rank_in, in_size);
-        let vmp: usize = module.vmp_apply_tmp_bytes(
-            n,
-            out_size,
-            in_size,
-            in_size,
-            rank_in,
-            rank_out + 1,
-            ksk_size,
-        ) + module.vec_znx_dft_alloc_bytes(n, rank_in, in_size);
-        let normalize: usize = module.vec_znx_big_normalize_tmp_bytes(n);
+        let res_dft: usize = module.vec_znx_dft_alloc_bytes(rank_out + 1, ksk_size); // TODO OPTIMIZE
+        let ai_dft: usize = module.vec_znx_dft_alloc_bytes(rank_in, in_size);
+        let vmp: usize = module.vmp_apply_tmp_bytes(out_size, in_size, in_size, rank_in, rank_out + 1, ksk_size)
+            + module.vec_znx_dft_alloc_bytes(rank_in, in_size);
+        let normalize: usize = module.vec_znx_big_normalize_tmp_bytes();
         res_dft + ((ai_dft + vmp) | normalize)
     }
 
     pub fn keyswitch_inplace_scratch_space<B: Backend>(
         module: &Module<B>,
-        n: usize,
         basek: usize,
         k_out: usize,
         k_ksk: usize,
@@ -54,7 +45,7 @@ impl GLWECiphertext<Vec<u8>> {
     where
         Module<B>: VecZnxDftAllocBytes + VmpApplyTmpBytes + VecZnxBigNormalizeTmpBytes,
     {
-        Self::keyswitch_scratch_space(module, n, basek, k_out, k_out, k_ksk, digits, rank, rank)
+        Self::keyswitch_scratch_space(module, basek, k_out, k_out, k_ksk, digits, rank, rank)
     }
 }
 
@@ -95,7 +86,6 @@ impl<DataSelf: DataRef> GLWECiphertext<DataSelf> {
             scratch.available()
                 >= GLWECiphertext::keyswitch_scratch_space(
                     module,
-                    self.n(),
                     self.basek(),
                     self.k(),
                     lhs.k(),
@@ -117,7 +107,6 @@ impl<DataSelf: DataRef> GLWECiphertext<DataSelf> {
             scratch.available(),
             GLWECiphertext::keyswitch_scratch_space(
                 module,
-                self.n(),
                 self.basek(),
                 self.k(),
                 lhs.k(),

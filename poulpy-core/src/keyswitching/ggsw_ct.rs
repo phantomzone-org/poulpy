@@ -19,7 +19,6 @@ use crate::{
 impl GGSWCiphertext<Vec<u8>> {
     pub(crate) fn expand_row_scratch_space<B: Backend>(
         module: &Module<B>,
-        n: usize,
         basek: usize,
         self_k: usize,
         k_tsk: usize,
@@ -33,10 +32,9 @@ impl GGSWCiphertext<Vec<u8>> {
         let self_size_out: usize = self_k.div_ceil(basek);
         let self_size_in: usize = self_size_out.div_ceil(digits);
 
-        let tmp_dft_i: usize = module.vec_znx_dft_alloc_bytes(n, rank + 1, tsk_size);
-        let tmp_a: usize = module.vec_znx_dft_alloc_bytes(n, 1, self_size_in);
+        let tmp_dft_i: usize = module.vec_znx_dft_alloc_bytes(rank + 1, tsk_size);
+        let tmp_a: usize = module.vec_znx_dft_alloc_bytes(1, self_size_in);
         let vmp: usize = module.vmp_apply_tmp_bytes(
-            n,
             self_size_out,
             self_size_in,
             self_size_in,
@@ -44,15 +42,14 @@ impl GGSWCiphertext<Vec<u8>> {
             rank,
             tsk_size,
         );
-        let tmp_idft: usize = module.vec_znx_big_alloc_bytes(n, 1, tsk_size);
-        let norm: usize = module.vec_znx_normalize_tmp_bytes(n);
+        let tmp_idft: usize = module.vec_znx_big_alloc_bytes(1, tsk_size);
+        let norm: usize = module.vec_znx_normalize_tmp_bytes();
         tmp_dft_i + ((tmp_a + vmp) | (tmp_idft + norm))
     }
 
     #[allow(clippy::too_many_arguments)]
     pub fn keyswitch_scratch_space<B: Backend>(
         module: &Module<B>,
-        n: usize,
         basek: usize,
         k_out: usize,
         k_in: usize,
@@ -67,18 +64,17 @@ impl GGSWCiphertext<Vec<u8>> {
             VecZnxDftAllocBytes + VmpApplyTmpBytes + VecZnxBigAllocBytes + VecZnxNormalizeTmpBytes + VecZnxBigNormalizeTmpBytes,
     {
         let out_size: usize = k_out.div_ceil(basek);
-        let res_znx: usize = VecZnx::alloc_bytes(n, rank + 1, out_size);
-        let ci_dft: usize = module.vec_znx_dft_alloc_bytes(n, rank + 1, out_size);
-        let ks: usize = GLWECiphertext::keyswitch_scratch_space(module, n, basek, k_out, k_in, k_ksk, digits_ksk, rank, rank);
-        let expand_rows: usize = GGSWCiphertext::expand_row_scratch_space(module, n, basek, k_out, k_tsk, digits_tsk, rank);
-        let res_dft: usize = module.vec_znx_dft_alloc_bytes(n, rank + 1, out_size);
+        let res_znx: usize = VecZnx::alloc_bytes(module.n(), rank + 1, out_size);
+        let ci_dft: usize = module.vec_znx_dft_alloc_bytes(rank + 1, out_size);
+        let ks: usize = GLWECiphertext::keyswitch_scratch_space(module, basek, k_out, k_in, k_ksk, digits_ksk, rank, rank);
+        let expand_rows: usize = GGSWCiphertext::expand_row_scratch_space(module, basek, k_out, k_tsk, digits_tsk, rank);
+        let res_dft: usize = module.vec_znx_dft_alloc_bytes(rank + 1, out_size);
         res_znx + ci_dft + (ks | expand_rows | res_dft)
     }
 
     #[allow(clippy::too_many_arguments)]
     pub fn keyswitch_inplace_scratch_space<B: Backend>(
         module: &Module<B>,
-        n: usize,
         basek: usize,
         k_out: usize,
         k_ksk: usize,
@@ -92,7 +88,7 @@ impl GGSWCiphertext<Vec<u8>> {
             VecZnxDftAllocBytes + VmpApplyTmpBytes + VecZnxBigAllocBytes + VecZnxNormalizeTmpBytes + VecZnxBigNormalizeTmpBytes,
     {
         GGSWCiphertext::keyswitch_scratch_space(
-            module, n, basek, k_out, k_out, k_ksk, digits_ksk, k_tsk, digits_tsk, rank,
+            module, basek, k_out, k_out, k_ksk, digits_ksk, k_tsk, digits_tsk, rank,
         )
     }
 }
@@ -217,7 +213,6 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
             scratch.available()
                 >= GGSWCiphertext::expand_row_scratch_space(
                     module,
-                    self.n(),
                     self.basek(),
                     self.k(),
                     tsk.k(),

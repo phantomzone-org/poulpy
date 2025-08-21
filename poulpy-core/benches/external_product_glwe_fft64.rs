@@ -44,11 +44,10 @@ fn bench_external_product_glwe_fft64(c: &mut Criterion) {
         let pt_rgsw: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n, 1);
 
         let mut scratch: ScratchOwned<FFT64> = ScratchOwned::alloc(
-            GGSWCiphertext::encrypt_sk_scratch_space(&module, n, basek, ct_ggsw.k(), rank)
-                | GLWECiphertext::encrypt_sk_scratch_space(&module, n, basek, ct_glwe_in.k())
+            GGSWCiphertext::encrypt_sk_scratch_space(&module, basek, ct_ggsw.k(), rank)
+                | GLWECiphertext::encrypt_sk_scratch_space(&module, basek, ct_glwe_in.k())
                 | GLWECiphertext::external_product_scratch_space(
                     &module,
-                    n,
                     basek,
                     ct_glwe_out.k(),
                     ct_glwe_in.k(),
@@ -137,17 +136,9 @@ fn bench_external_product_glwe_inplace_fft64(c: &mut Criterion) {
         let pt_rgsw: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n, 1);
 
         let mut scratch: ScratchOwned<FFT64> = ScratchOwned::alloc(
-            GGSWCiphertext::encrypt_sk_scratch_space(&module, n, basek, ct_ggsw.k(), rank)
-                | GLWECiphertext::encrypt_sk_scratch_space(&module, n, basek, ct_glwe.k())
-                | GLWECiphertext::external_product_inplace_scratch_space(
-                    &module,
-                    n,
-                    basek,
-                    ct_glwe.k(),
-                    ct_ggsw.k(),
-                    digits,
-                    rank,
-                ),
+            GGSWCiphertext::encrypt_sk_scratch_space(&module, basek, ct_ggsw.k(), rank)
+                | GLWECiphertext::encrypt_sk_scratch_space(&module, basek, ct_glwe.k())
+                | GLWECiphertext::external_product_inplace_scratch_space(&module, basek, ct_glwe.k(), ct_ggsw.k(), digits, rank),
         );
 
         let mut source_xs = Source::new([0u8; 32]);

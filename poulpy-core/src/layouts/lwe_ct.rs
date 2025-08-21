@@ -2,25 +2,25 @@ use std::fmt;
 
 use poulpy_hal::{
     api::{FillUniform, Reset, ZnxInfos},
-    layouts::{Data, DataMut, DataRef, ReaderFrom, VecZnx, VecZnxToMut, VecZnxToRef, WriterTo},
+    layouts::{Data, DataMut, DataRef, ReaderFrom, WriterTo, Zn, ZnToMut, ZnToRef},
     source::Source,
 };
 
 #[derive(PartialEq, Eq, Clone)]
 pub struct LWECiphertext<D: Data> {
-    pub(crate) data: VecZnx<D>,
+    pub(crate) data: Zn<D>,
     pub(crate) k: usize,
     pub(crate) basek: usize,
 }
 
 impl<D: DataRef> LWECiphertext<D> {
-    pub fn data(&self) -> &VecZnx<D> {
+    pub fn data(&self) -> &Zn<D> {
         &self.data
     }
 }
 
 impl<D: DataMut> LWECiphertext<D> {
-    pub fn data_mut(&mut self) -> &VecZnx<D> {
+    pub fn data_mut(&mut self) -> &Zn<D> {
         &mut self.data
     }
 }
@@ -53,7 +53,7 @@ impl<D: DataMut> Reset for LWECiphertext<D> {
 
 impl<D: DataMut> FillUniform for LWECiphertext<D>
 where
-    VecZnx<D>: FillUniform,
+    Zn<D>: FillUniform,
 {
     fn fill_uniform(&mut self, source: &mut Source) {
         self.data.fill_uniform(source);
@@ -63,7 +63,7 @@ where
 impl LWECiphertext<Vec<u8>> {
     pub fn alloc(n: usize, basek: usize, k: usize) -> Self {
         Self {
-            data: VecZnx::alloc(n + 1, 1, k.div_ceil(basek)),
+            data: Zn::alloc(n + 1, 1, k.div_ceil(basek)),
             k,
             basek,
         }
@@ -72,9 +72,9 @@ impl LWECiphertext<Vec<u8>> {
 
 impl<D: Data> Infos for LWECiphertext<D>
 where
-    VecZnx<D>: ZnxInfos,
+    Zn<D>: ZnxInfos,
 {
-    type Inner = VecZnx<D>;
+    type Inner = Zn<D>;
 
     fn n(&self) -> usize {
         &self.inner().n() - 1

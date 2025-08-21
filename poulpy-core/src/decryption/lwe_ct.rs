@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxNormalizeInplace, ZnxView, ZnxViewMut},
+    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, ZnNormalizeInplace, ZnxView, ZnxViewMut},
     layouts::{Backend, DataMut, DataRef, Module, ScratchOwned},
     oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl},
 };
@@ -14,7 +14,7 @@ where
     where
         DataPt: DataMut,
         DataSk: DataRef,
-        Module<B>: VecZnxNormalizeInplace<B>,
+        Module<B>: ZnNormalizeInplace<B>,
         B: Backend + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
     {
         #[cfg(debug_assertions)]
@@ -30,7 +30,8 @@ where
                     .map(|(x, y)| x * y)
                     .sum::<i64>();
         });
-        module.vec_znx_normalize_inplace(
+        module.zn_normalize_inplace(
+            pt.n(),
             self.basek(),
             &mut pt.data,
             0,

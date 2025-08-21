@@ -191,7 +191,7 @@ pub fn circuit_bootstrap_core<DRes, DLwe, DBrk, BRA: BlindRotationAlgo, B>(
     }
 
     // Lut precision, basically must be able to hold the decomposition power basis of the GGSW
-    let mut lut: LookUpTable = LookUpTable::alloc(n, basek, basek * rows, extension_factor);
+    let mut lut: LookUpTable = LookUpTable::alloc(module, basek, basek * rows, extension_factor);
     lut.set(module, &f, basek * rows);
 
     if to_exponent {

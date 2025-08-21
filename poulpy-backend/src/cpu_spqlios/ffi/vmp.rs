@@ -79,7 +79,6 @@ unsafe extern "C" {
 unsafe extern "C" {
     pub unsafe fn vmp_apply_dft_to_dft_tmp_bytes(
         module: *const MODULE,
-        nn: u64,
         res_size: u64,
         a_size: u64,
         nrows: u64,
@@ -99,5 +98,5 @@ unsafe extern "C" {
 }
 
 unsafe extern "C" {
-    pub unsafe fn vmp_prepare_tmp_bytes(module: *const MODULE, nn: u64, nrows: u64, ncols: u64) -> u64;
+    pub unsafe fn vmp_prepare_tmp_bytes(module: *const MODULE, nrows: u64, ncols: u64) -> u64;
 }

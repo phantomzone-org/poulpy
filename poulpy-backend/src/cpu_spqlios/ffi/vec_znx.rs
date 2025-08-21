@@ -103,7 +103,6 @@ unsafe extern "C" {
 unsafe extern "C" {
     pub unsafe fn vec_znx_normalize_base2k(
         module: *const MODULE,
-        n: u64,
         base2k: u64,
         res: *mut i64,
         res_size: u64,
@@ -114,6 +113,7 @@ unsafe extern "C" {
         tmp_space: *mut u8,
     );
 }
+
 unsafe extern "C" {
-    pub unsafe fn vec_znx_normalize_base2k_tmp_bytes(module: *const MODULE, n: u64) -> u64;
+    pub unsafe fn vec_znx_normalize_base2k_tmp_bytes(module: *const MODULE) -> u64;
 }

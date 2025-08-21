@@ -18,17 +18,17 @@ use crate::{
 };
 
 impl GGLWETensorKey<Vec<u8>> {
-    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, n: usize, basek: usize, k: usize, rank: usize) -> usize
+    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize
     where
         Module<B>:
             SvpPPolAllocBytes + VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes + VecZnxNormalizeTmpBytes + VecZnxBigAllocBytes,
     {
-        GLWESecretPrepared::bytes_of(module, n, rank)
-            + module.vec_znx_dft_alloc_bytes(n, rank, 1)
-            + module.vec_znx_big_alloc_bytes(n, 1, 1)
-            + module.vec_znx_dft_alloc_bytes(n, 1, 1)
-            + GLWESecret::bytes_of(n, 1)
-            + GGLWESwitchingKey::encrypt_sk_scratch_space(module, n, basek, k, rank, rank)
+        GLWESecretPrepared::bytes_of(module, rank)
+            + module.vec_znx_dft_alloc_bytes(rank, 1)
+            + module.vec_znx_big_alloc_bytes(1, 1)
+            + module.vec_znx_dft_alloc_bytes(1, 1)
+            + GLWESecret::bytes_of(module.n(), 1)
+            + GGLWESwitchingKey::encrypt_sk_scratch_space(module, basek, k, rank, rank)
     }
 }
 

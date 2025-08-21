@@ -7,7 +7,7 @@ use crate::{
 
 pub trait VecZnxNormalizeTmpBytes {
     /// Returns the minimum number of bytes necessary for normalization.
-    fn vec_znx_normalize_tmp_bytes(&self, n: usize) -> usize;
+    fn vec_znx_normalize_tmp_bytes(&self) -> usize;
 }
 
 pub trait VecZnxNormalize<B: Backend> {

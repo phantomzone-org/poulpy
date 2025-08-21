@@ -111,11 +111,11 @@ impl<D: DataRef> WriterTo for GLWECiphertextCompressed<D> {
     }
 }
 
-impl<D: DataMut, B: Backend, DR: DataRef> Decompress<B, GLWECiphertextCompressed<DR>> for GLWECiphertext<D> {
-    fn decompress(&mut self, module: &Module<B>, other: &GLWECiphertextCompressed<DR>)
-    where
-        Module<B>: VecZnxCopy + VecZnxFillUniform,
-    {
+impl<D: DataMut, B: Backend, DR: DataRef> Decompress<B, GLWECiphertextCompressed<DR>> for GLWECiphertext<D>
+where
+    Module<B>: VecZnxFillUniform + VecZnxCopy,
+{
+    fn decompress(&mut self, module: &Module<B>, other: &GLWECiphertextCompressed<DR>) {
         #[cfg(debug_assertions)]
         {
             use poulpy_hal::api::ZnxInfos;

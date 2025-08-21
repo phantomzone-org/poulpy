@@ -87,10 +87,10 @@ where
     let mut source_xa: Source = Source::new([0u8; 32]);
 
     let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-        GLWECiphertext::encrypt_sk_scratch_space(module, n, basek, ct.k())
-            | GLWECiphertext::decrypt_scratch_space(module, n, basek, ct.k())
-            | GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, n, basek, k_autokey, rank)
-            | GLWECiphertext::trace_inplace_scratch_space(module, n, basek, ct.k(), k_autokey, digits, rank),
+        GLWECiphertext::encrypt_sk_scratch_space(module, basek, ct.k())
+            | GLWECiphertext::decrypt_scratch_space(module, basek, ct.k())
+            | GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, basek, k_autokey, rank)
+            | GLWECiphertext::trace_inplace_scratch_space(module, basek, ct.k(), k_autokey, digits, rank),
     );
 
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);

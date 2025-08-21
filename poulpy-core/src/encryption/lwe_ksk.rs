@@ -15,13 +15,13 @@ use crate::{
 };
 
 impl LWESwitchingKey<Vec<u8>> {
-    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, n: usize, basek: usize, k: usize) -> usize
+    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize) -> usize
     where
         Module<B>: SvpPPolAllocBytes + VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes + VecZnxNormalizeTmpBytes,
     {
-        GLWESecret::bytes_of(n, 1)
-            + GLWESecretPrepared::bytes_of(module, n, 1)
-            + GGLWESwitchingKey::encrypt_sk_scratch_space(module, n, basek, k, 1, 1)
+        GLWESecret::bytes_of(module.n(), 1)
+            + GLWESecretPrepared::bytes_of(module, 1)
+            + GGLWESwitchingKey::encrypt_sk_scratch_space(module, basek, k, 1, 1)
     }
 }
 

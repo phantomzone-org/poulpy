@@ -14,7 +14,7 @@ pub struct GGLWETensorKeyPrepared<D: Data, B: Backend> {
 }
 
 impl<B: Backend> GGLWETensorKeyPrepared<Vec<u8>, B> {
-    pub fn alloc(module: &Module<B>, n: usize, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self
+    pub fn alloc(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self
     where
         Module<B>: VmpPMatAlloc<B>,
     {
@@ -22,18 +22,18 @@ impl<B: Backend> GGLWETensorKeyPrepared<Vec<u8>, B> {
         let pairs: usize = (((rank + 1) * rank) >> 1).max(1);
         (0..pairs).for_each(|_| {
             keys.push(GGLWESwitchingKeyPrepared::alloc(
-                module, n, basek, k, rows, digits, 1, rank,
+                module, basek, k, rows, digits, 1, rank,
             ));
         });
         Self { keys }
     }
 
-    pub fn bytes_of(module: &Module<B>, n: usize, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize
+    pub fn bytes_of(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize
     where
         Module<B>: VmpPMatAllocBytes,
     {
         let pairs: usize = (((rank + 1) * rank) >> 1).max(1);
-        pairs * GGLWESwitchingKeyPrepared::bytes_of(module, n, basek, k, rows, digits, 1, rank)
+        pairs * GGLWESwitchingKeyPrepared::bytes_of(module, basek, k, rows, digits, 1, rank)
     }
 }
 
@@ -118,7 +118,6 @@ where
     fn prepare_alloc(&self, module: &Module<B>, scratch: &mut Scratch<B>) -> GGLWETensorKeyPrepared<Vec<u8>, B> {
         let mut tsk_prepared: GGLWETensorKeyPrepared<Vec<u8>, B> = GGLWETensorKeyPrepared::alloc(
             module,
-            self.n(),
             self.basek(),
             self.k(),
             self.rows(),

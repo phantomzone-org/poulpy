@@ -43,7 +43,7 @@ unsafe extern "C" {
     );
 }
 unsafe extern "C" {
-    pub unsafe fn vec_znx_idft_tmp_bytes(module: *const MODULE, n: u64) -> u64;
+    pub unsafe fn vec_znx_idft_tmp_bytes(module: *const MODULE) -> u64;
 }
 unsafe extern "C" {
     pub unsafe fn vec_znx_idft_tmp_a(

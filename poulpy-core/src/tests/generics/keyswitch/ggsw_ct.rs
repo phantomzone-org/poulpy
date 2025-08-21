@@ -94,11 +94,11 @@ pub fn test_ggsw_keyswitch<B>(
     let mut source_xa: Source = Source::new([0u8; 32]);
 
     let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-        GGSWCiphertext::encrypt_sk_scratch_space(module, n, basek, k_in, rank)
-            | GGLWESwitchingKey::encrypt_sk_scratch_space(module, n, basek, k_ksk, rank, rank)
-            | GGLWETensorKey::encrypt_sk_scratch_space(module, n, basek, k_tsk, rank)
+        GGSWCiphertext::encrypt_sk_scratch_space(module, basek, k_in, rank)
+            | GGLWESwitchingKey::encrypt_sk_scratch_space(module, basek, k_ksk, rank, rank)
+            | GGLWETensorKey::encrypt_sk_scratch_space(module, basek, k_tsk, rank)
             | GGSWCiphertext::keyswitch_scratch_space(
-                module, n, basek, k_out, k_in, k_ksk, digits, k_tsk, digits, rank,
+                module, basek, k_out, k_in, k_ksk, digits, k_tsk, digits, rank,
             ),
     );
 
@@ -237,10 +237,10 @@ pub fn test_ggsw_keyswitch_inplace<B>(
     let mut source_xa: Source = Source::new([0u8; 32]);
 
     let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-        GGSWCiphertext::encrypt_sk_scratch_space(module, n, basek, k_ct, rank)
-            | GGLWESwitchingKey::encrypt_sk_scratch_space(module, n, basek, k_ksk, rank, rank)
-            | GGLWETensorKey::encrypt_sk_scratch_space(module, n, basek, k_tsk, rank)
-            | GGSWCiphertext::keyswitch_inplace_scratch_space(module, n, basek, k_ct, k_ksk, digits, k_tsk, digits, rank),
+        GGSWCiphertext::encrypt_sk_scratch_space(module, basek, k_ct, rank)
+            | GGLWESwitchingKey::encrypt_sk_scratch_space(module, basek, k_ksk, rank, rank)
+            | GGLWETensorKey::encrypt_sk_scratch_space(module, basek, k_tsk, rank)
+            | GGSWCiphertext::keyswitch_inplace_scratch_space(module, basek, k_ct, k_ksk, digits, k_tsk, digits, rank),
     );
 
     let var_xs: f64 = 0.5;

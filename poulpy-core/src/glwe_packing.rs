@@ -89,7 +89,6 @@ impl GLWEPacker {
     /// Number of scratch space bytes required to call [Self::add].
     pub fn scratch_space<B: Backend>(
         module: &Module<B>,
-        n: usize,
         basek: usize,
         ct_k: usize,
         k_ksk: usize,
@@ -99,7 +98,7 @@ impl GLWEPacker {
     where
         Module<B>: VecZnxDftAllocBytes + VmpApplyTmpBytes + VecZnxBigNormalizeTmpBytes,
     {
-        pack_core_scratch_space(module, n, basek, ct_k, k_ksk, digits, rank)
+        pack_core_scratch_space(module, basek, ct_k, k_ksk, digits, rank)
     }
 
     pub fn galois_elements<B: Backend>(module: &Module<B>) -> Vec<i64> {
@@ -180,7 +179,6 @@ impl GLWEPacker {
 
 fn pack_core_scratch_space<B: Backend>(
     module: &Module<B>,
-    n: usize,
     basek: usize,
     ct_k: usize,
     k_ksk: usize,
@@ -190,7 +188,7 @@ fn pack_core_scratch_space<B: Backend>(
 where
     Module<B>: VecZnxDftAllocBytes + VmpApplyTmpBytes + VecZnxBigNormalizeTmpBytes,
 {
-    combine_scratch_space(module, n, basek, ct_k, k_ksk, digits, rank)
+    combine_scratch_space(module, basek, ct_k, k_ksk, digits, rank)
 }
 
 fn pack_core<D: DataRef, DataAK: DataRef, B: Backend>(
@@ -275,7 +273,6 @@ fn pack_core<D: DataRef, DataAK: DataRef, B: Backend>(
 
 fn combine_scratch_space<B: Backend>(
     module: &Module<B>,
-    n: usize,
     basek: usize,
     ct_k: usize,
     k_ksk: usize,
@@ -285,9 +282,9 @@ fn combine_scratch_space<B: Backend>(
 where
     Module<B>: VecZnxDftAllocBytes + VmpApplyTmpBytes + VecZnxBigNormalizeTmpBytes,
 {
-    GLWECiphertext::bytes_of(n, basek, ct_k, rank)
-        + (GLWECiphertext::rsh_scratch_space(n)
-            | GLWECiphertext::automorphism_scratch_space(module, n, basek, ct_k, ct_k, k_ksk, digits, rank))
+    GLWECiphertext::bytes_of(module.n(), basek, ct_k, rank)
+        + (GLWECiphertext::rsh_scratch_space(module.n())
+            | GLWECiphertext::automorphism_scratch_space(module, basek, ct_k, ct_k, k_ksk, digits, rank))
 }
 
 /// [combine] merges two ciphertexts together.

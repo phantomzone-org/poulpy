@@ -12,4 +12,6 @@ pub mod vec_znx_dft;
 #[allow(non_camel_case_types)]
 pub mod vmp;
 #[allow(non_camel_case_types)]
+pub mod zn64;
+#[allow(non_camel_case_types)]
 pub mod znx;
