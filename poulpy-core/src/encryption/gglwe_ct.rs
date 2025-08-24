@@ -2,9 +2,9 @@ use poulpy_hal::{
     api::{
         ScratchAvailable, SvpApplyInplace, TakeVecZnx, TakeVecZnxDft, VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace,
         VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume, VecZnxFillUniform,
-        VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubABInplace, ZnxZero,
+        VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubABInplace,
     },
-    layouts::{Backend, DataMut, DataRef, Module, ScalarZnx, Scratch},
+    layouts::{Backend, DataMut, DataRef, Module, ScalarZnx, Scratch, ZnxZero},
     source::Source,
 };
 
@@ -56,7 +56,7 @@ impl<DataSelf: DataMut> GGLWECiphertext<DataSelf> {
     {
         #[cfg(debug_assertions)]
         {
-            use poulpy_hal::api::ZnxInfos;
+            use poulpy_hal::layouts::ZnxInfos;
 
             assert_eq!(
                 self.rank_in(),

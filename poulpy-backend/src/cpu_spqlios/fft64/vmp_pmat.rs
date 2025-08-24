@@ -1,8 +1,8 @@
 use poulpy_hal::{
-    api::{TakeSlice, VmpApplyTmpBytes, VmpPrepareTmpBytes, ZnxInfos, ZnxView, ZnxViewMut},
+    api::{TakeSlice, VmpApplyTmpBytes, VmpPrepareTmpBytes},
     layouts::{
         Backend, MatZnx, MatZnxToRef, Module, Scratch, VecZnxDft, VecZnxDftToMut, VecZnxDftToRef, VmpPMat, VmpPMatOwned,
-        VmpPMatToMut, VmpPMatToRef,
+        VmpPMatToMut, VmpPMatToRef, ZnxInfos, ZnxView, ZnxViewMut,
     },
     oep::{
         VmpApplyAddImpl, VmpApplyAddTmpBytesImpl, VmpApplyImpl, VmpApplyTmpBytesImpl, VmpPMatAllocBytesImpl, VmpPMatAllocImpl,

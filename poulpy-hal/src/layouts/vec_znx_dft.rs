@@ -4,8 +4,9 @@ use rand_distr::num_traits::Zero;
 
 use crate::{
     alloc_aligned,
-    api::{DataView, DataViewMut, ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero},
-    layouts::{Backend, Data, DataMut, DataRef, VecZnxBig},
+    layouts::{
+        Backend, Data, DataMut, DataRef, DataView, DataViewMut, VecZnxBig, ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero,
+    },
     oep::VecZnxBigAllocBytesImpl,
 };
 #[derive(PartialEq, Eq)]

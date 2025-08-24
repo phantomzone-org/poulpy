@@ -1,9 +1,9 @@
 use poulpy_hal::{
     api::{
         ScratchAvailable, TakeVecZnxDft, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftFromVecZnx,
-        VecZnxDftToVecZnxBigConsume, VecZnxNormalizeTmpBytes, VmpApply, VmpApplyAdd, VmpApplyTmpBytes, ZnxZero,
+        VecZnxDftToVecZnxBigConsume, VecZnxNormalizeTmpBytes, VmpApply, VmpApplyAdd, VmpApplyTmpBytes,
     },
-    layouts::{Backend, DataMut, DataRef, Module, Scratch},
+    layouts::{Backend, DataMut, DataRef, Module, Scratch, ZnxZero},
 };
 
 use crate::layouts::{GGSWCiphertext, GLWECiphertext, Infos, prepared::GGSWCiphertextPrepared};

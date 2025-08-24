@@ -1,9 +1,9 @@
 use poulpy_hal::{
     api::{
-        DataViewMut, SvpApplyInplace, TakeVecZnxBig, TakeVecZnxDft, VecZnxBigAddInplace, VecZnxBigAddSmallInplace,
-        VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume, VecZnxNormalizeTmpBytes,
+        SvpApplyInplace, TakeVecZnxBig, TakeVecZnxDft, VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigNormalize,
+        VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume, VecZnxNormalizeTmpBytes,
     },
-    layouts::{Backend, DataMut, DataRef, Module, Scratch},
+    layouts::{Backend, DataMut, DataRef, DataViewMut, Module, Scratch},
 };
 
 use crate::layouts::{GLWECiphertext, GLWEPlaintext, Infos, prepared::GLWESecretPrepared};

@@ -1,6 +1,6 @@
 use poulpy_hal::{
-    api::{SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare, ZnxInfos},
-    layouts::{Backend, Data, DataMut, DataRef, Module, SvpPPol},
+    api::{SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare},
+    layouts::{Backend, Data, DataMut, DataRef, Module, SvpPPol, ZnxInfos},
 };
 
 use crate::{

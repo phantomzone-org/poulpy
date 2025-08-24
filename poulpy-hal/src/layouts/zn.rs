@@ -2,8 +2,10 @@ use std::fmt;
 
 use crate::{
     alloc_aligned,
-    api::{DataView, DataViewMut, FillUniform, Reset, ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero},
-    layouts::{Data, DataMut, DataRef, ReaderFrom, ToOwnedDeep, WriterTo},
+    layouts::{
+        Data, DataMut, DataRef, DataView, DataViewMut, FillUniform, ReaderFrom, Reset, ToOwnedDeep, WriterTo, ZnxInfos,
+        ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero,
+    },
     source::Source,
 };
 

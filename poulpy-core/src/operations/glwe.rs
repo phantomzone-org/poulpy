@@ -2,9 +2,9 @@ use poulpy_hal::{
     api::{
         VecZnxAdd, VecZnxAddInplace, VecZnxCopy, VecZnxMulXpMinusOne, VecZnxMulXpMinusOneInplace, VecZnxNegateInplace,
         VecZnxNormalize, VecZnxNormalizeInplace, VecZnxRotate, VecZnxRotateInplace, VecZnxRshInplace, VecZnxSub,
-        VecZnxSubABInplace, VecZnxSubBAInplace, ZnxZero,
+        VecZnxSubABInplace, VecZnxSubBAInplace,
     },
-    layouts::{Backend, DataMut, Module, Scratch, VecZnx},
+    layouts::{Backend, DataMut, Module, Scratch, VecZnx, ZnxZero},
 };
 
 use crate::layouts::{GLWECiphertext, GLWECiphertextToMut, GLWECiphertextToRef, GLWEPlaintext, Infos, SetMetaData};

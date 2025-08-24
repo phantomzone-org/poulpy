@@ -1,7 +1,9 @@
 use crate::{
     alloc_aligned,
-    api::{DataView, DataViewMut, FillUniform, Reset, ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero},
-    layouts::{Data, DataMut, DataRef, ReaderFrom, ToOwnedDeep, VecZnx, WriterTo},
+    layouts::{
+        Data, DataMut, DataRef, DataView, DataViewMut, FillUniform, ReaderFrom, Reset, ToOwnedDeep, VecZnx, WriterTo, ZnxInfos,
+        ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero,
+    },
     source::Source,
 };
 use std::fmt;

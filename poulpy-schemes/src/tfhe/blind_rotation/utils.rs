@@ -1,6 +1,6 @@
 use poulpy_hal::{
-    api::{SvpPrepare, ZnxInfos, ZnxViewMut},
-    layouts::{Backend, DataMut, Module, ScalarZnx, SvpPPol},
+    api::SvpPrepare,
+    layouts::{Backend, DataMut, Module, ScalarZnx, SvpPPol, ZnxInfos, ZnxViewMut},
 };
 
 pub(crate) fn set_xai_plus_y<A, C, B: Backend>(

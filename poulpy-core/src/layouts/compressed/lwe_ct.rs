@@ -1,8 +1,10 @@
 use std::fmt;
 
 use poulpy_hal::{
-    api::{FillUniform, Reset, ZnFillUniform, ZnxInfos, ZnxView, ZnxViewMut},
-    layouts::{Backend, Data, DataMut, DataRef, Module, ReaderFrom, VecZnx, WriterTo},
+    api::ZnFillUniform,
+    layouts::{
+        Backend, Data, DataMut, DataRef, FillUniform, Module, ReaderFrom, Reset, VecZnx, WriterTo, ZnxInfos, ZnxView, ZnxViewMut,
+    },
     source::Source,
 };
 

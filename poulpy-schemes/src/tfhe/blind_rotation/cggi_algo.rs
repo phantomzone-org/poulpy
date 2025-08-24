@@ -6,9 +6,9 @@ use poulpy_hal::{
         VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftAdd, VecZnxDftAddInplace, VecZnxDftAllocBytes, VecZnxDftFromVecZnx,
         VecZnxDftSubABInplace, VecZnxDftToVecZnxBig, VecZnxDftToVecZnxBigConsume, VecZnxDftToVecZnxBigTmpBytes, VecZnxDftZero,
         VecZnxMulXpMinusOneInplace, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate,
-        VecZnxSubABInplace, VmpApply, VmpApplyAdd, VmpApplyTmpBytes, ZnxView, ZnxZero,
+        VecZnxSubABInplace, VmpApply, VmpApplyAdd, VmpApplyTmpBytes,
     },
-    layouts::{Backend, DataMut, DataRef, Module, Scratch, SvpPPol, VecZnx},
+    layouts::{Backend, DataMut, DataRef, Module, Scratch, SvpPPol, VecZnx, ZnxView, ZnxZero},
 };
 
 use poulpy_core::{

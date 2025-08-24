@@ -1,6 +1,6 @@
 use poulpy_hal::{
-    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, ZnNormalizeInplace, ZnxView, ZnxViewMut},
-    layouts::{Backend, DataMut, DataRef, Module, ScratchOwned},
+    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, ZnNormalizeInplace},
+    layouts::{Backend, DataMut, DataRef, Module, ScratchOwned, ZnxView, ZnxViewMut},
     oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl},
 };
 

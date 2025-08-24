@@ -1,6 +1,6 @@
 use poulpy_hal::{
-    api::{FillUniform, Reset, VecZnxCopy, VecZnxFillUniform},
-    layouts::{Backend, Data, DataMut, DataRef, Module, ReaderFrom, VecZnx, WriterTo},
+    api::{VecZnxCopy, VecZnxFillUniform},
+    layouts::{Backend, Data, DataMut, DataRef, FillUniform, Module, ReaderFrom, Reset, VecZnx, WriterTo},
     source::Source,
 };
 
@@ -118,7 +118,7 @@ where
     fn decompress(&mut self, module: &Module<B>, other: &GLWECiphertextCompressed<DR>) {
         #[cfg(debug_assertions)]
         {
-            use poulpy_hal::api::ZnxInfos;
+            use poulpy_hal::layouts::ZnxInfos;
 
             assert_eq!(
                 self.n(),

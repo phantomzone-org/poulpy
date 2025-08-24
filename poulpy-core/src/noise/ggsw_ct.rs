@@ -3,9 +3,9 @@ use poulpy_hal::{
         ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyInplace, VecZnxAddScalarInplace, VecZnxBigAddInplace,
         VecZnxBigAddSmallInplace, VecZnxBigAlloc, VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
         VecZnxDftAlloc, VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume, VecZnxDftToVecZnxBigTmpA,
-        VecZnxNormalizeTmpBytes, VecZnxSubABInplace, ZnxZero,
+        VecZnxNormalizeTmpBytes, VecZnxSubABInplace,
     },
-    layouts::{Backend, DataRef, Module, ScalarZnx, ScratchOwned, VecZnxBig, VecZnxDft},
+    layouts::{Backend, DataRef, Module, ScalarZnx, ScratchOwned, VecZnxBig, VecZnxDft, ZnxZero},
     oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeVecZnxBigImpl, TakeVecZnxDftImpl},
 };
 

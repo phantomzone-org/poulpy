@@ -2,9 +2,8 @@ use crate::{
     api::{
         ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxBigAlloc, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
         VecZnxDftAlloc, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigTmpA, VmpApply, VmpApplyTmpBytes, VmpPMatAlloc, VmpPrepare,
-        ZnxInfos, ZnxViewMut,
     },
-    layouts::{MatZnx, Module, ScratchOwned, VecZnx, VecZnxBig, VecZnxDft, VmpPMat},
+    layouts::{MatZnx, Module, ScratchOwned, VecZnx, VecZnxBig, VecZnxDft, VmpPMat, ZnxInfos, ZnxViewMut},
     oep::{
         ModuleNewImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, VecZnxBigAllocImpl, VecZnxBigNormalizeImpl,
         VecZnxBigNormalizeTmpBytesImpl, VecZnxDftAllocImpl, VecZnxDftFromVecZnxImpl, VecZnxDftToVecZnxBigTmpAImpl, VmpApplyImpl,

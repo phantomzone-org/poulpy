@@ -1,6 +1,5 @@
-use crate::{
-    api::ZnxInfos,
-    layouts::{Backend, DataRef, MatZnx, ScalarZnx, Scratch, ScratchOwned, SvpPPol, VecZnx, VecZnxBig, VecZnxDft, VmpPMat},
+use crate::layouts::{
+    Backend, DataRef, MatZnx, ScalarZnx, Scratch, ScratchOwned, SvpPPol, VecZnx, VecZnxBig, VecZnxDft, VmpPMat, ZnxInfos,
 };
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)

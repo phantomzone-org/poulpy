@@ -2,9 +2,9 @@ use poulpy_hal::{
     api::{
         ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace,
         VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume,
-        VecZnxNormalizeTmpBytes, VecZnxSubScalarInplace, ZnxZero,
+        VecZnxNormalizeTmpBytes, VecZnxSubScalarInplace,
     },
-    layouts::{Backend, DataRef, Module, ScalarZnx, ScratchOwned},
+    layouts::{Backend, DataRef, Module, ScalarZnx, ScratchOwned, ZnxZero},
     oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeVecZnxBigImpl, TakeVecZnxDftImpl},
 };
 

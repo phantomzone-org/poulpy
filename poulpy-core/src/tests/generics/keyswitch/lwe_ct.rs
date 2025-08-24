@@ -5,9 +5,9 @@ use poulpy_hal::{
         VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxDftAllocBytes, VecZnxDftFromVecZnx,
         VecZnxDftToVecZnxBigConsume, VecZnxFillUniform, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes,
         VecZnxSub, VecZnxSubABInplace, VecZnxSwithcDegree, VmpApply, VmpApplyAdd, VmpApplyTmpBytes, VmpPMatAlloc, VmpPrepare,
-        ZnAddNormal, ZnFillUniform, ZnNormalizeInplace, ZnxView,
+        ZnAddNormal, ZnFillUniform, ZnNormalizeInplace,
     },
-    layouts::{Backend, Module, ScratchOwned},
+    layouts::{Backend, Module, ScratchOwned, ZnxView},
     oep::{
         ScratchAvailableImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeScalarZnxImpl, TakeSvpPPolImpl,
         TakeVecZnxBigImpl, TakeVecZnxDftImpl, TakeVecZnxImpl,

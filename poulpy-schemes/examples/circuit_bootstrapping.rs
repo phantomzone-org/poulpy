@@ -8,8 +8,8 @@ use poulpy_core::{
 use std::time::Instant;
 
 use poulpy_hal::{
-    api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, ZnNormalizeInplace, ZnxView, ZnxViewMut},
-    layouts::{Module, ScalarZnx, ScratchOwned},
+    api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, ZnNormalizeInplace},
+    layouts::{Module, ScalarZnx, ScratchOwned, ZnxView, ZnxViewMut},
     source::Source,
 };
 

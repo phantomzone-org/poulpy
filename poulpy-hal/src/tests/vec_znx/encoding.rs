@@ -1,6 +1,5 @@
 use crate::{
-    api::{ZnxInfos, ZnxViewMut},
-    layouts::VecZnx,
+    layouts::{VecZnx, ZnxInfos, ZnxViewMut},
     source::Source,
 };
 
