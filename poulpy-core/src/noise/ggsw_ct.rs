@@ -1,11 +1,10 @@
 use poulpy_hal::{
     api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyInplace, VecZnxAddScalarInplace, VecZnxBigAddInplace,
-        VecZnxBigAddSmallInplace, VecZnxBigAlloc, VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
-        VecZnxDftAlloc, VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume, VecZnxDftToVecZnxBigTmpA,
-        VecZnxNormalizeTmpBytes, VecZnxSubABInplace, ZnxZero,
+        DFT, IDFTConsume, IDFTTmpA, ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyInplace, VecZnxAddScalarInplace,
+        VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigAlloc, VecZnxBigAllocBytes, VecZnxBigNormalize,
+        VecZnxBigNormalizeTmpBytes, VecZnxDftAlloc, VecZnxDftAllocBytes, VecZnxNormalizeTmpBytes, VecZnxSubABInplace,
     },
-    layouts::{Backend, DataRef, Module, ScalarZnx, ScratchOwned, VecZnxBig, VecZnxDft},
+    layouts::{Backend, DataRef, Module, ScalarZnx, ScratchOwned, VecZnxBig, VecZnxDft, ZnxZero},
     oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeVecZnxBigImpl, TakeVecZnxDftImpl},
 };
 
@@ -23,9 +22,9 @@ impl<D: DataRef> GGSWCiphertext<D> {
         DataScalar: DataRef,
         Module<B>: VecZnxDftAllocBytes
             + VecZnxBigAllocBytes
-            + VecZnxDftFromVecZnx<B>
+            + DFT<B>
             + SvpApplyInplace<B>
-            + VecZnxDftToVecZnxBigConsume<B>
+            + IDFTConsume<B>
             + VecZnxBigAddInplace<B>
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>
@@ -33,7 +32,7 @@ impl<D: DataRef> GGSWCiphertext<D> {
             + VecZnxBigAlloc<B>
             + VecZnxDftAlloc<B>
             + VecZnxBigNormalizeTmpBytes
-            + VecZnxDftToVecZnxBigTmpA<B>
+            + IDFTTmpA<B>
             + VecZnxAddScalarInplace
             + VecZnxSubABInplace,
         B: Backend + TakeVecZnxDftImpl<B> + TakeVecZnxBigImpl<B> + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
@@ -57,9 +56,9 @@ impl<D: DataRef> GGSWCiphertext<D> {
 
                 // mul with sk[col_j-1]
                 if col_j > 0 {
-                    module.vec_znx_dft_from_vec_znx(1, 0, &mut pt_dft, 0, &pt.data, 0);
+                    module.dft(1, 0, &mut pt_dft, 0, &pt.data, 0);
                     module.svp_apply_inplace(&mut pt_dft, 0, &sk_prepared.data, col_j - 1);
-                    module.vec_znx_dft_to_vec_znx_big_tmp_a(&mut pt_big, 0, &mut pt_dft, 0);
+                    module.idft_tmp_a(&mut pt_big, 0, &mut pt_dft, 0);
                     module.vec_znx_big_normalize(basek, &mut pt.data, 0, &pt_big, 0, scratch.borrow());
                 }
 
@@ -90,9 +89,9 @@ impl<D: DataRef> GGSWCiphertext<D> {
         DataScalar: DataRef,
         Module<B>: VecZnxDftAllocBytes
             + VecZnxBigAllocBytes
-            + VecZnxDftFromVecZnx<B>
+            + DFT<B>
             + SvpApplyInplace<B>
-            + VecZnxDftToVecZnxBigConsume<B>
+            + IDFTConsume<B>
             + VecZnxBigAddInplace<B>
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>
@@ -100,7 +99,7 @@ impl<D: DataRef> GGSWCiphertext<D> {
             + VecZnxBigAlloc<B>
             + VecZnxDftAlloc<B>
             + VecZnxBigNormalizeTmpBytes
-            + VecZnxDftToVecZnxBigTmpA<B>
+            + IDFTTmpA<B>
             + VecZnxAddScalarInplace
             + VecZnxSubABInplace,
         B: Backend + TakeVecZnxDftImpl<B> + TakeVecZnxBigImpl<B> + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
@@ -123,9 +122,9 @@ impl<D: DataRef> GGSWCiphertext<D> {
 
                 // mul with sk[col_j-1]
                 if col_j > 0 {
-                    module.vec_znx_dft_from_vec_znx(1, 0, &mut pt_dft, 0, &pt.data, 0);
+                    module.dft(1, 0, &mut pt_dft, 0, &pt.data, 0);
                     module.svp_apply_inplace(&mut pt_dft, 0, &sk_prepared.data, col_j - 1);
-                    module.vec_znx_dft_to_vec_znx_big_tmp_a(&mut pt_big, 0, &mut pt_dft, 0);
+                    module.idft_tmp_a(&mut pt_big, 0, &mut pt_dft, 0);
                     module.vec_znx_big_normalize(basek, &mut pt.data, 0, &pt_big, 0, scratch.borrow());
                 }
 

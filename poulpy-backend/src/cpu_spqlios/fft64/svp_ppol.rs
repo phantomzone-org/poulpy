@@ -1,8 +1,7 @@
 use poulpy_hal::{
-    api::{ZnxInfos, ZnxView, ZnxViewMut},
     layouts::{
         Backend, Module, ScalarZnxToRef, SvpPPol, SvpPPolOwned, SvpPPolToMut, SvpPPolToRef, VecZnxDft, VecZnxDftToMut,
-        VecZnxDftToRef,
+        VecZnxDftToRef, ZnxInfos, ZnxView, ZnxViewMut,
     },
     oep::{SvpApplyImpl, SvpApplyInplaceImpl, SvpPPolAllocBytesImpl, SvpPPolAllocImpl, SvpPPolFromBytesImpl, SvpPrepareImpl},
 };

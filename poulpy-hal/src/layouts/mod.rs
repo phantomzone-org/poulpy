@@ -11,6 +11,7 @@ mod vec_znx_big;
 mod vec_znx_dft;
 mod vmp_pmat;
 mod zn;
+mod znx_base;
 
 pub use mat_znx::*;
 pub use module::*;
@@ -23,6 +24,7 @@ pub use vec_znx_big::*;
 pub use vec_znx_dft::*;
 pub use vmp_pmat::*;
 pub use zn::*;
+pub use znx_base::*;
 
 pub trait Data = PartialEq + Eq + Sized;
 pub trait DataRef = Data + AsRef<[u8]>;

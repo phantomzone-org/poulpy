@@ -1,9 +1,8 @@
 use itertools::izip;
 use rug::{Assign, Float};
 
-use crate::{
-    api::{ZnxInfos, ZnxView, ZnxViewMut, ZnxZero},
-    layouts::{DataMut, DataRef, VecZnx, VecZnxToMut, VecZnxToRef, Zn, ZnToMut, ZnToRef},
+use crate::layouts::{
+    DataMut, DataRef, VecZnx, VecZnxToMut, VecZnxToRef, Zn, ZnToMut, ZnToRef, ZnxInfos, ZnxView, ZnxViewMut, ZnxZero,
 };
 
 impl<D: DataMut> VecZnx<D> {

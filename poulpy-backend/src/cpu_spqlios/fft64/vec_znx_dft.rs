@@ -1,14 +1,13 @@
 use poulpy_hal::{
-    api::{TakeSlice, VecZnxDftToVecZnxBigTmpBytes, ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero},
+    api::{TakeSlice, VecZnxIDFTTmpBytes},
     layouts::{
         Backend, Data, Module, Scratch, VecZnx, VecZnxBig, VecZnxBigToMut, VecZnxDft, VecZnxDftOwned, VecZnxDftToMut,
-        VecZnxDftToRef, VecZnxToRef,
+        VecZnxDftToRef, VecZnxToRef, ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero,
     },
     oep::{
-        VecZnxDftAddImpl, VecZnxDftAddInplaceImpl, VecZnxDftAllocBytesImpl, VecZnxDftAllocImpl, VecZnxDftCopyImpl,
-        VecZnxDftFromBytesImpl, VecZnxDftFromVecZnxImpl, VecZnxDftSubABInplaceImpl, VecZnxDftSubBAInplaceImpl, VecZnxDftSubImpl,
-        VecZnxDftToVecZnxBigConsumeImpl, VecZnxDftToVecZnxBigImpl, VecZnxDftToVecZnxBigTmpAImpl,
-        VecZnxDftToVecZnxBigTmpBytesImpl, VecZnxDftZeroImpl,
+        DFTImpl, IDFTConsumeImpl, IDFTImpl, IDFTTmpAImpl, VecZnxDftAddImpl, VecZnxDftAddInplaceImpl, VecZnxDftAllocBytesImpl,
+        VecZnxDftAllocImpl, VecZnxDftCopyImpl, VecZnxDftFromBytesImpl, VecZnxDftSubABInplaceImpl, VecZnxDftSubBAInplaceImpl,
+        VecZnxDftSubImpl, VecZnxDftZeroImpl, VecZnxIDFTTmpBytesImpl,
     },
 };
 
@@ -35,21 +34,15 @@ unsafe impl VecZnxDftAllocImpl<Self> for FFT64 {
     }
 }
 
-unsafe impl VecZnxDftToVecZnxBigTmpBytesImpl<Self> for FFT64 {
-    fn vec_znx_dft_to_vec_znx_big_tmp_bytes_impl(module: &Module<Self>) -> usize {
+unsafe impl VecZnxIDFTTmpBytesImpl<Self> for FFT64 {
+    fn vec_znx_idft_tmp_bytes_impl(module: &Module<Self>) -> usize {
         unsafe { vec_znx_dft::vec_znx_idft_tmp_bytes(module.ptr()) as usize }
     }
 }
 
-unsafe impl VecZnxDftToVecZnxBigImpl<Self> for FFT64 {
-    fn vec_znx_dft_to_vec_znx_big_impl<R, A>(
-        module: &Module<Self>,
-        res: &mut R,
-        res_col: usize,
-        a: &A,
-        a_col: usize,
-        scratch: &mut Scratch<Self>,
-    ) where
+unsafe impl IDFTImpl<Self> for FFT64 {
+    fn idft_impl<R, A>(module: &Module<Self>, res: &mut R, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch<Self>)
+    where
         R: VecZnxBigToMut<Self>,
         A: VecZnxDftToRef<Self>,
     {
@@ -61,7 +54,7 @@ unsafe impl VecZnxDftToVecZnxBigImpl<Self> for FFT64 {
             assert_eq!(res.n(), a.n())
         }
 
-        let (tmp_bytes, _) = scratch.take_slice(module.vec_znx_dft_to_vec_znx_big_tmp_bytes());
+        let (tmp_bytes, _) = scratch.take_slice(module.vec_znx_idft_tmp_bytes());
 
         let min_size: usize = res.size().min(a.size());
 
@@ -83,8 +76,8 @@ unsafe impl VecZnxDftToVecZnxBigImpl<Self> for FFT64 {
     }
 }
 
-unsafe impl VecZnxDftToVecZnxBigTmpAImpl<Self> for FFT64 {
-    fn vec_znx_dft_to_vec_znx_big_tmp_a_impl<R, A>(module: &Module<Self>, res: &mut R, res_col: usize, a: &mut A, a_col: usize)
+unsafe impl IDFTTmpAImpl<Self> for FFT64 {
+    fn idft_tmp_a_impl<R, A>(module: &Module<Self>, res: &mut R, res_col: usize, a: &mut A, a_col: usize)
     where
         R: VecZnxBigToMut<Self>,
         A: VecZnxDftToMut<Self>,
@@ -111,8 +104,8 @@ unsafe impl VecZnxDftToVecZnxBigTmpAImpl<Self> for FFT64 {
     }
 }
 
-unsafe impl VecZnxDftToVecZnxBigConsumeImpl<Self> for FFT64 {
-    fn vec_znx_dft_to_vec_znx_big_consume_impl<D: Data>(module: &Module<Self>, mut a: VecZnxDft<D, FFT64>) -> VecZnxBig<D, FFT64>
+unsafe impl IDFTConsumeImpl<Self> for FFT64 {
+    fn idft_consume_impl<D: Data>(module: &Module<Self>, mut a: VecZnxDft<D, FFT64>) -> VecZnxBig<D, FFT64>
     where
         VecZnxDft<D, FFT64>: VecZnxDftToMut<Self>,
     {
@@ -137,16 +130,9 @@ unsafe impl VecZnxDftToVecZnxBigConsumeImpl<Self> for FFT64 {
     }
 }
 
-unsafe impl VecZnxDftFromVecZnxImpl<Self> for FFT64 {
-    fn vec_znx_dft_from_vec_znx_impl<R, A>(
-        module: &Module<Self>,
-        step: usize,
-        offset: usize,
-        res: &mut R,
-        res_col: usize,
-        a: &A,
-        a_col: usize,
-    ) where
+unsafe impl DFTImpl<Self> for FFT64 {
+    fn dft_impl<R, A>(module: &Module<Self>, step: usize, offset: usize, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    where
         R: VecZnxDftToMut<Self>,
         A: VecZnxToRef,
     {

@@ -1,6 +1,6 @@
 use poulpy_hal::{
-    api::{TakeSlice, ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut},
-    layouts::{Scratch, Zn, ZnToMut},
+    api::TakeSlice,
+    layouts::{Scratch, Zn, ZnToMut, ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut},
     oep::{
         TakeSliceImpl, ZnAddDistF64Impl, ZnAddNormalImpl, ZnFillDistF64Impl, ZnFillNormalImpl, ZnFillUniformImpl,
         ZnNormalizeInplaceImpl,

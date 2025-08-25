@@ -5,8 +5,7 @@ use std::fmt;
 
 use crate::{
     alloc_aligned,
-    api::{DataView, DataViewMut, ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero},
-    layouts::{Backend, Data, DataMut, DataRef},
+    layouts::{Backend, Data, DataMut, DataRef, DataView, DataViewMut, ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero},
     oep::VecZnxBigAllocBytesImpl,
 };
 

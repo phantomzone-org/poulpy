@@ -1,9 +1,9 @@
 use poulpy_hal::{
     api::{
-        DataViewMut, SvpApplyInplace, TakeVecZnxBig, TakeVecZnxDft, VecZnxBigAddInplace, VecZnxBigAddSmallInplace,
-        VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume, VecZnxNormalizeTmpBytes,
+        DFT, IDFTConsume, SvpApplyInplace, TakeVecZnxBig, TakeVecZnxDft, VecZnxBigAddInplace, VecZnxBigAddSmallInplace,
+        VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxNormalizeTmpBytes,
     },
-    layouts::{Backend, DataMut, DataRef, Module, Scratch},
+    layouts::{Backend, DataMut, DataRef, DataViewMut, Module, Scratch},
 };
 
 use crate::layouts::{GLWECiphertext, GLWEPlaintext, Infos, prepared::GLWESecretPrepared};
@@ -26,9 +26,9 @@ impl<DataSelf: DataRef> GLWECiphertext<DataSelf> {
         sk: &GLWESecretPrepared<DataSk, B>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: VecZnxDftFromVecZnx<B>
+        Module<B>: DFT<B>
             + SvpApplyInplace<B>
-            + VecZnxDftToVecZnxBigConsume<B>
+            + IDFTConsume<B>
             + VecZnxBigAddInplace<B>
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>,
@@ -50,9 +50,9 @@ impl<DataSelf: DataRef> GLWECiphertext<DataSelf> {
             (1..cols).for_each(|i| {
                 // ci_dft = DFT(a[i]) * DFT(s[i])
                 let (mut ci_dft, _) = scratch_1.take_vec_znx_dft(self.n(), 1, self.size()); // TODO optimize size when pt << ct
-                module.vec_znx_dft_from_vec_znx(1, 0, &mut ci_dft, 0, &self.data, i);
+                module.dft(1, 0, &mut ci_dft, 0, &self.data, i);
                 module.svp_apply_inplace(&mut ci_dft, 0, &sk.data, i - 1);
-                let ci_big = module.vec_znx_dft_to_vec_znx_big_consume(ci_dft);
+                let ci_big = module.vec_znx_idft_consume(ci_dft);
 
                 // c0_big += a[i] * s[i]
                 module.vec_znx_big_add_inplace(&mut c0_big, 0, &ci_big, 0);

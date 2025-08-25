@@ -1,14 +1,14 @@
 use itertools::izip;
 use poulpy_hal::{
     api::{
-        ScratchAvailable, SvpApply, SvpPPolAllocBytes, TakeVecZnx, TakeVecZnxBig, TakeVecZnxDft, TakeVecZnxDftSlice,
-        TakeVecZnxSlice, VecZnxAddInplace, VecZnxBigAddSmallInplace, VecZnxBigAllocBytes, VecZnxBigNormalize,
-        VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftAdd, VecZnxDftAddInplace, VecZnxDftAllocBytes, VecZnxDftFromVecZnx,
-        VecZnxDftSubABInplace, VecZnxDftToVecZnxBig, VecZnxDftToVecZnxBigConsume, VecZnxDftToVecZnxBigTmpBytes, VecZnxDftZero,
-        VecZnxMulXpMinusOneInplace, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate,
-        VecZnxSubABInplace, VmpApply, VmpApplyAdd, VmpApplyTmpBytes, ZnxView, ZnxZero,
+        DFT, IDFT, IDFTConsume, ScratchAvailable, SvpApply, SvpPPolAllocBytes, TakeVecZnx, TakeVecZnxBig, TakeVecZnxDft,
+        TakeVecZnxDftSlice, TakeVecZnxSlice, VecZnxAddInplace, VecZnxBigAddSmallInplace, VecZnxBigAllocBytes, VecZnxBigNormalize,
+        VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftAdd, VecZnxDftAddInplace, VecZnxDftAllocBytes, VecZnxDftSubABInplace,
+        VecZnxDftZero, VecZnxIDFTTmpBytes, VecZnxMulXpMinusOneInplace, VecZnxNormalize, VecZnxNormalizeInplace,
+        VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxSubABInplace, VmpApplyDftToDft, VmpApplyDftToDftAdd,
+        VmpApplyDftToDftTmpBytes,
     },
-    layouts::{Backend, DataMut, DataRef, Module, Scratch, SvpPPol, VecZnx},
+    layouts::{Backend, DataMut, DataRef, Module, Scratch, SvpPPol, VecZnx, ZnxView, ZnxZero},
 };
 
 use poulpy_core::{
@@ -33,10 +33,10 @@ pub fn cggi_blind_rotate_scratch_space<B: Backend>(
 ) -> usize
 where
     Module<B>: VecZnxDftAllocBytes
-        + VmpApplyTmpBytes
+        + VmpApplyDftToDftTmpBytes
         + VecZnxNormalizeTmpBytes
         + VecZnxBigAllocBytes
-        + VecZnxDftToVecZnxBigTmpBytes
+        + VecZnxIDFTTmpBytes
         + VecZnxBigNormalizeTmpBytes,
 {
     let brk_size: usize = k_brk.div_ceil(basek);
@@ -48,7 +48,7 @@ where
         let vmp_res: usize = module.vec_znx_dft_alloc_bytes(cols, brk_size) * extension_factor;
         let vmp_xai: usize = module.vec_znx_dft_alloc_bytes(1, brk_size);
         let acc_dft_add: usize = vmp_res;
-        let vmp: usize = module.vmp_apply_tmp_bytes(brk_size, rows, rows, 2, 2, brk_size); // GGSW product: (1 x 2) x (2 x 2)
+        let vmp: usize = module.vmp_apply_dft_to_dft_tmp_bytes(brk_size, rows, rows, 2, 2, brk_size); // GGSW product: (1 x 2) x (2 x 2)
         let acc: usize = if extension_factor > 1 {
             VecZnx::alloc_bytes(module.n(), cols, k_res.div_ceil(basek)) * extension_factor
         } else {
@@ -59,7 +59,7 @@ where
             + acc_dft_add
             + vmp_res
             + vmp_xai
-            + (vmp | (acc_big + (module.vec_znx_big_normalize_tmp_bytes() | module.vec_znx_dft_to_vec_znx_big_tmp_bytes())))
+            + (vmp | (acc_big + (module.vec_znx_big_normalize_tmp_bytes() | module.vec_znx_idft_tmp_bytes())))
     } else {
         GLWECiphertext::bytes_of(module.n(), basek, k_res, rank)
             + GLWECiphertext::external_product_scratch_space(module, basek, k_res, k_res, k_brk, 1, rank)
@@ -71,13 +71,13 @@ where
     Module<B>: VecZnxBigAllocBytes
         + VecZnxDftAllocBytes
         + SvpPPolAllocBytes
-        + VmpApplyTmpBytes
+        + VmpApplyDftToDftTmpBytes
         + VecZnxBigNormalizeTmpBytes
-        + VecZnxDftToVecZnxBigTmpBytes
-        + VecZnxDftToVecZnxBig<B>
+        + VecZnxIDFTTmpBytes
+        + IDFT<B>
         + VecZnxDftAdd<B>
         + VecZnxDftAddInplace<B>
-        + VecZnxDftFromVecZnx<B>
+        + DFT<B>
         + VecZnxDftZero<B>
         + SvpApply<B>
         + VecZnxDftSubABInplace<B>
@@ -89,9 +89,9 @@ where
         + VecZnxNormalizeInplace<B>
         + VecZnxCopy
         + VecZnxMulXpMinusOneInplace
-        + VmpApply<B>
-        + VmpApplyAdd<B>
-        + VecZnxDftToVecZnxBigConsume<B>
+        + VmpApplyDftToDft<B>
+        + VmpApplyDftToDftAdd<B>
+        + IDFTConsume<B>
         + VecZnxBigNormalize<B>
         + VecZnxNormalizeTmpBytes,
     Scratch<B>: TakeVecZnxDftSlice<B> + TakeVecZnxDft<B> + TakeVecZnxBig<B> + TakeVecZnxSlice + TakeVecZnx + ScratchAvailable,
@@ -133,13 +133,13 @@ fn execute_block_binary_extended<DataRes, DataIn, DataBrk, B: Backend>(
     Module<B>: VecZnxBigAllocBytes
         + VecZnxDftAllocBytes
         + SvpPPolAllocBytes
-        + VmpApplyTmpBytes
+        + VmpApplyDftToDftTmpBytes
         + VecZnxBigNormalizeTmpBytes
-        + VecZnxDftToVecZnxBigTmpBytes
-        + VecZnxDftToVecZnxBig<B>
+        + VecZnxIDFTTmpBytes
+        + IDFT<B>
         + VecZnxDftAdd<B>
         + VecZnxDftAddInplace<B>
-        + VecZnxDftFromVecZnx<B>
+        + DFT<B>
         + VecZnxDftZero<B>
         + SvpApply<B>
         + VecZnxDftSubABInplace<B>
@@ -152,7 +152,7 @@ fn execute_block_binary_extended<DataRes, DataIn, DataBrk, B: Backend>(
         + VecZnxCopy
         + VecZnxMulXpMinusOneInplace
         + VecZnxBigNormalize<B>
-        + VmpApply<B>,
+        + VmpApplyDftToDft<B>,
     Scratch<B>: TakeVecZnxDftSlice<B> + TakeVecZnxDft<B> + TakeVecZnxBig<B> + TakeVecZnxSlice + ScratchAvailable + TakeVecZnx,
 {
     let n_glwe: usize = brk.n();
@@ -208,7 +208,7 @@ fn execute_block_binary_extended<DataRes, DataIn, DataBrk, B: Backend>(
     .for_each(|(ai, ski)| {
         (0..extension_factor).for_each(|i| {
             (0..cols).for_each(|j| {
-                module.vec_znx_dft_from_vec_znx(1, 0, &mut acc_dft[i], j, &acc[i], j);
+                module.dft(1, 0, &mut acc_dft[i], j, &acc[i], j);
             });
             module.vec_znx_dft_zero(&mut acc_add_dft[i])
         });
@@ -221,7 +221,7 @@ fn execute_block_binary_extended<DataRes, DataIn, DataBrk, B: Backend>(
 
             // vmp_res = DFT(acc) * BRK[i]
             (0..extension_factor).for_each(|i| {
-                module.vmp_apply(&mut vmp_res[i], &acc_dft[i], skii.data(), scratch5);
+                module.vmp_apply_dft_to_dft(&mut vmp_res[i], &acc_dft[i], skii.data(), scratch5);
             });
 
             // Trivial case: no rotation between polynomials, we can directly multiply with (X^{-ai} - 1)
@@ -273,7 +273,7 @@ fn execute_block_binary_extended<DataRes, DataIn, DataBrk, B: Backend>(
 
             (0..extension_factor).for_each(|j| {
                 (0..cols).for_each(|i| {
-                    module.vec_znx_dft_to_vec_znx_big(&mut acc_add_big, 0, &acc_add_dft[j], i, scratch7);
+                    module.idft(&mut acc_add_big, 0, &acc_add_dft[j], i, scratch7);
                     module.vec_znx_big_add_small_inplace(&mut acc_add_big, 0, &acc[j], i);
                     module.vec_znx_big_normalize(basek, &mut acc[j], i, &acc_add_big, 0, scratch7);
                 });
@@ -300,13 +300,13 @@ fn execute_block_binary<DataRes, DataIn, DataBrk, B: Backend>(
     Module<B>: VecZnxBigAllocBytes
         + VecZnxDftAllocBytes
         + SvpPPolAllocBytes
-        + VmpApplyTmpBytes
+        + VmpApplyDftToDftTmpBytes
         + VecZnxBigNormalizeTmpBytes
-        + VecZnxDftToVecZnxBigTmpBytes
-        + VecZnxDftToVecZnxBig<B>
+        + VecZnxIDFTTmpBytes
+        + IDFT<B>
         + VecZnxDftAdd<B>
         + VecZnxDftAddInplace<B>
-        + VecZnxDftFromVecZnx<B>
+        + DFT<B>
         + VecZnxDftZero<B>
         + SvpApply<B>
         + VecZnxDftSubABInplace<B>
@@ -318,7 +318,7 @@ fn execute_block_binary<DataRes, DataIn, DataBrk, B: Backend>(
         + VecZnxNormalizeInplace<B>
         + VecZnxCopy
         + VecZnxMulXpMinusOneInplace
-        + VmpApply<B>
+        + VmpApplyDftToDft<B>
         + VecZnxBigNormalize<B>,
     Scratch<B>: TakeVecZnxDftSlice<B> + TakeVecZnxDft<B> + TakeVecZnxBig<B> + TakeVecZnxSlice + ScratchAvailable + TakeVecZnx,
 {
@@ -369,7 +369,7 @@ fn execute_block_binary<DataRes, DataIn, DataBrk, B: Backend>(
     )
     .for_each(|(ai, ski)| {
         (0..cols).for_each(|j| {
-            module.vec_znx_dft_from_vec_znx(1, 0, &mut acc_dft, j, &out_mut.data, j);
+            module.dft(1, 0, &mut acc_dft, j, &out_mut.data, j);
         });
 
         module.vec_znx_dft_zero(&mut acc_add_dft);
@@ -378,7 +378,7 @@ fn execute_block_binary<DataRes, DataIn, DataBrk, B: Backend>(
             let ai_pos: usize = ((aii + two_n as i64) & (two_n - 1) as i64) as usize;
 
             // vmp_res = DFT(acc) * BRK[i]
-            module.vmp_apply(&mut vmp_res, &acc_dft, skii.data(), scratch4);
+            module.vmp_apply_dft_to_dft(&mut vmp_res, &acc_dft, skii.data(), scratch4);
 
             // DFT(X^ai -1) * (DFT(acc) * BRK[i])
             (0..cols).for_each(|i| {
@@ -392,7 +392,7 @@ fn execute_block_binary<DataRes, DataIn, DataBrk, B: Backend>(
             let (mut acc_add_big, scratch5) = scratch4.take_vec_znx_big(n_glwe, 1, brk.size());
 
             (0..cols).for_each(|i| {
-                module.vec_znx_dft_to_vec_znx_big(&mut acc_add_big, 0, &acc_add_dft, i, scratch5);
+                module.idft(&mut acc_add_big, 0, &acc_add_dft, i, scratch5);
                 module.vec_znx_big_add_small_inplace(&mut acc_add_big, 0, &out_mut.data, i);
                 module.vec_znx_big_normalize(basek, &mut out_mut.data, i, &acc_add_big, 0, scratch5);
             });
@@ -414,13 +414,13 @@ fn execute_standard<DataRes, DataIn, DataBrk, B: Backend>(
     Module<B>: VecZnxBigAllocBytes
         + VecZnxDftAllocBytes
         + SvpPPolAllocBytes
-        + VmpApplyTmpBytes
+        + VmpApplyDftToDftTmpBytes
         + VecZnxBigNormalizeTmpBytes
-        + VecZnxDftToVecZnxBigTmpBytes
-        + VecZnxDftToVecZnxBig<B>
+        + VecZnxIDFTTmpBytes
+        + IDFT<B>
         + VecZnxDftAdd<B>
         + VecZnxDftAddInplace<B>
-        + VecZnxDftFromVecZnx<B>
+        + DFT<B>
         + VecZnxDftZero<B>
         + SvpApply<B>
         + VecZnxDftSubABInplace<B>
@@ -432,9 +432,9 @@ fn execute_standard<DataRes, DataIn, DataBrk, B: Backend>(
         + VecZnxNormalizeInplace<B>
         + VecZnxCopy
         + VecZnxMulXpMinusOneInplace
-        + VmpApply<B>
-        + VmpApplyAdd<B>
-        + VecZnxDftToVecZnxBigConsume<B>
+        + VmpApplyDftToDft<B>
+        + VmpApplyDftToDftAdd<B>
+        + IDFTConsume<B>
         + VecZnxBigNormalize<B>
         + VecZnxNormalizeTmpBytes,
     Scratch<B>: TakeVecZnxDftSlice<B> + TakeVecZnxDft<B> + TakeVecZnxBig<B> + TakeVecZnxSlice + ScratchAvailable + TakeVecZnx,

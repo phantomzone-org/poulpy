@@ -1,6 +1,5 @@
 use poulpy_hal::{
-    api::{ZnxInfos, ZnxZero},
-    layouts::{Data, DataMut, DataRef, ReaderFrom, ScalarZnx, WriterTo},
+    layouts::{Data, DataMut, DataRef, ReaderFrom, ScalarZnx, WriterTo, ZnxInfos, ZnxZero},
     source::Source,
 };
 

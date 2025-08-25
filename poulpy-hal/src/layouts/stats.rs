@@ -4,10 +4,7 @@ use rug::{
     ops::{AddAssignRound, DivAssignRound, SubAssignRound},
 };
 
-use crate::{
-    api::ZnxInfos,
-    layouts::{DataRef, VecZnx},
-};
+use crate::layouts::{DataRef, VecZnx, ZnxInfos};
 
 impl<D: DataRef> VecZnx<D> {
     pub fn std(&self, basek: usize, col: usize) -> f64 {

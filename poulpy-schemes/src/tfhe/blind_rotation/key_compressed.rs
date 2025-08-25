@@ -1,6 +1,5 @@
 use poulpy_hal::{
-    api::{FillUniform, Reset},
-    layouts::{Data, DataMut, DataRef, ReaderFrom, WriterTo},
+    layouts::{Data, DataMut, DataRef, FillUniform, ReaderFrom, Reset, WriterTo},
     source::Source,
 };
 

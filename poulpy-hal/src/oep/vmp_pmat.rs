@@ -57,8 +57,8 @@ pub unsafe trait VmpPMatPrepareImpl<B: Backend> {
 /// * See TODO for reference code.
 /// * See TODO for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
-pub unsafe trait VmpApplyTmpBytesImpl<B: Backend> {
-    fn vmp_apply_tmp_bytes_impl(
+pub unsafe trait VmpApplyDftToDftTmpBytesImpl<B: Backend> {
+    fn vmp_apply_dft_to_dft_tmp_bytes_impl(
         module: &Module<B>,
         res_size: usize,
         a_size: usize,
@@ -73,8 +73,8 @@ pub unsafe trait VmpApplyTmpBytesImpl<B: Backend> {
 /// * See TODO for reference code.
 /// * See TODO for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
-pub unsafe trait VmpApplyImpl<B: Backend> {
-    fn vmp_apply_impl<R, A, C>(module: &Module<B>, res: &mut R, a: &A, b: &C, scratch: &mut Scratch<B>)
+pub unsafe trait VmpApplyDftToDftImpl<B: Backend> {
+    fn vmp_apply_dft_to_dft_impl<R, A, C>(module: &Module<B>, res: &mut R, a: &A, b: &C, scratch: &mut Scratch<B>)
     where
         R: VecZnxDftToMut<B>,
         A: VecZnxDftToRef<B>,
@@ -86,8 +86,8 @@ pub unsafe trait VmpApplyImpl<B: Backend> {
 /// * See TODO for reference code.
 /// * See TODO for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
-pub unsafe trait VmpApplyAddTmpBytesImpl<B: Backend> {
-    fn vmp_apply_add_tmp_bytes_impl(
+pub unsafe trait VmpApplyDftToDftAddTmpBytesImpl<B: Backend> {
+    fn vmp_apply_dft_to_dft_add_tmp_bytes_impl(
         module: &Module<B>,
         res_size: usize,
         a_size: usize,
@@ -102,10 +102,16 @@ pub unsafe trait VmpApplyAddTmpBytesImpl<B: Backend> {
 /// * See TODO for reference code.
 /// * See TODO for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
-pub unsafe trait VmpApplyAddImpl<B: Backend> {
+pub unsafe trait VmpApplyDftToDftAddImpl<B: Backend> {
     // Same as [MatZnxDftOps::vmp_apply] except result is added on R instead of overwritting R.
-    fn vmp_apply_add_impl<R, A, C>(module: &Module<B>, res: &mut R, a: &A, b: &C, scale: usize, scratch: &mut Scratch<B>)
-    where
+    fn vmp_apply_dft_to_dft_add_impl<R, A, C>(
+        module: &Module<B>,
+        res: &mut R,
+        a: &A,
+        b: &C,
+        scale: usize,
+        scratch: &mut Scratch<B>,
+    ) where
         R: VecZnxDftToMut<B>,
         A: VecZnxDftToRef<B>,
         C: VmpPMatToRef<B>;

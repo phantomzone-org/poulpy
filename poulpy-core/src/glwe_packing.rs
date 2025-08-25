@@ -2,11 +2,11 @@ use std::collections::HashMap;
 
 use poulpy_hal::{
     api::{
-        ScratchAvailable, TakeVecZnx, TakeVecZnxDft, VecZnxAddInplace, VecZnxAutomorphismInplace, VecZnxBigAddSmallInplace,
-        VecZnxBigAutomorphismInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallBInplace, VecZnxCopy,
-        VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume, VecZnxNegateInplace, VecZnxNormalizeInplace,
-        VecZnxRotate, VecZnxRotateInplace, VecZnxRshInplace, VecZnxSub, VecZnxSubABInplace, VmpApply, VmpApplyAdd,
-        VmpApplyTmpBytes,
+        DFT, IDFTConsume, ScratchAvailable, TakeVecZnx, TakeVecZnxDft, VecZnxAddInplace, VecZnxAutomorphismInplace,
+        VecZnxBigAddSmallInplace, VecZnxBigAutomorphismInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
+        VecZnxBigSubSmallBInplace, VecZnxCopy, VecZnxDftAllocBytes, VecZnxNegateInplace, VecZnxNormalizeInplace, VecZnxRotate,
+        VecZnxRotateInplace, VecZnxRshInplace, VecZnxSub, VecZnxSubABInplace, VmpApplyDftToDft, VmpApplyDftToDftAdd,
+        VmpApplyDftToDftTmpBytes,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
 };
@@ -96,7 +96,7 @@ impl GLWEPacker {
         rank: usize,
     ) -> usize
     where
-        Module<B>: VecZnxDftAllocBytes + VmpApplyTmpBytes + VecZnxBigNormalizeTmpBytes,
+        Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes,
     {
         pack_core_scratch_space(module, basek, ct_k, k_ksk, digits, rank)
     }
@@ -122,12 +122,12 @@ impl GLWEPacker {
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: VecZnxDftAllocBytes
-            + VmpApplyTmpBytes
+            + VmpApplyDftToDftTmpBytes
             + VecZnxBigNormalizeTmpBytes
-            + VmpApply<B>
-            + VmpApplyAdd<B>
-            + VecZnxDftFromVecZnx<B>
-            + VecZnxDftToVecZnxBigConsume<B>
+            + VmpApplyDftToDft<B>
+            + VmpApplyDftToDftAdd<B>
+            + DFT<B>
+            + IDFTConsume<B>
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>
             + VecZnxCopy
@@ -186,7 +186,7 @@ fn pack_core_scratch_space<B: Backend>(
     rank: usize,
 ) -> usize
 where
-    Module<B>: VecZnxDftAllocBytes + VmpApplyTmpBytes + VecZnxBigNormalizeTmpBytes,
+    Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes,
 {
     combine_scratch_space(module, basek, ct_k, k_ksk, digits, rank)
 }
@@ -200,12 +200,12 @@ fn pack_core<D: DataRef, DataAK: DataRef, B: Backend>(
     scratch: &mut Scratch<B>,
 ) where
     Module<B>: VecZnxDftAllocBytes
-        + VmpApplyTmpBytes
+        + VmpApplyDftToDftTmpBytes
         + VecZnxBigNormalizeTmpBytes
-        + VmpApply<B>
-        + VmpApplyAdd<B>
-        + VecZnxDftFromVecZnx<B>
-        + VecZnxDftToVecZnxBigConsume<B>
+        + VmpApplyDftToDft<B>
+        + VmpApplyDftToDftAdd<B>
+        + DFT<B>
+        + IDFTConsume<B>
         + VecZnxBigAddSmallInplace<B>
         + VecZnxBigNormalize<B>
         + VecZnxCopy
@@ -280,7 +280,7 @@ fn combine_scratch_space<B: Backend>(
     rank: usize,
 ) -> usize
 where
-    Module<B>: VecZnxDftAllocBytes + VmpApplyTmpBytes + VecZnxBigNormalizeTmpBytes,
+    Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes,
 {
     GLWECiphertext::bytes_of(module.n(), basek, ct_k, rank)
         + (GLWECiphertext::rsh_scratch_space(module.n())
@@ -297,12 +297,12 @@ fn combine<D: DataRef, DataAK: DataRef, B: Backend>(
     scratch: &mut Scratch<B>,
 ) where
     Module<B>: VecZnxDftAllocBytes
-        + VmpApplyTmpBytes
+        + VmpApplyDftToDftTmpBytes
         + VecZnxBigNormalizeTmpBytes
-        + VmpApply<B>
-        + VmpApplyAdd<B>
-        + VecZnxDftFromVecZnx<B>
-        + VecZnxDftToVecZnxBigConsume<B>
+        + VmpApplyDftToDft<B>
+        + VmpApplyDftToDftAdd<B>
+        + DFT<B>
+        + IDFTConsume<B>
         + VecZnxBigAddSmallInplace<B>
         + VecZnxBigNormalize<B>
         + VecZnxCopy

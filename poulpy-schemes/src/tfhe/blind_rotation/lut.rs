@@ -1,9 +1,9 @@
 use poulpy_hal::{
     api::{
         ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxCopy, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotateInplace,
-        VecZnxSwithcDegree, ZnxInfos, ZnxViewMut,
+        VecZnxSwithcDegree,
     },
-    layouts::{Backend, Module, ScratchOwned, VecZnx},
+    layouts::{Backend, Module, ScratchOwned, VecZnx, ZnxInfos, ZnxViewMut},
     oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl},
 };
 

@@ -1,8 +1,7 @@
 use std::fmt::Debug;
 
 use crate::{
-    api::{FillUniform, Reset},
-    layouts::{ReaderFrom, WriterTo},
+    layouts::{FillUniform, ReaderFrom, Reset, WriterTo},
     source::Source,
 };
 

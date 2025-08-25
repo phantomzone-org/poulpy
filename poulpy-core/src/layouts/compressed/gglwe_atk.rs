@@ -1,6 +1,6 @@
 use poulpy_hal::{
-    api::{FillUniform, Reset, VecZnxCopy, VecZnxFillUniform},
-    layouts::{Backend, Data, DataMut, DataRef, MatZnx, Module, ReaderFrom, WriterTo},
+    api::{VecZnxCopy, VecZnxFillUniform},
+    layouts::{Backend, Data, DataMut, DataRef, FillUniform, MatZnx, Module, ReaderFrom, Reset, WriterTo},
     source::Source,
 };
 

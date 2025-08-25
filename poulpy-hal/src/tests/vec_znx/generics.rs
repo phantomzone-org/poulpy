@@ -1,6 +1,6 @@
 use crate::{
-    api::{VecZnxAddNormal, VecZnxFillUniform, ZnxView},
-    layouts::{Backend, Module, VecZnx},
+    api::{VecZnxAddNormal, VecZnxFillUniform},
+    layouts::{Backend, Module, VecZnx, ZnxView},
     source::Source,
 };
 

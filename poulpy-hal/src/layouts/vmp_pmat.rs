@@ -2,8 +2,7 @@ use std::marker::PhantomData;
 
 use crate::{
     alloc_aligned,
-    api::{DataView, DataViewMut, ZnxInfos, ZnxView},
-    layouts::{Backend, Data, DataMut, DataRef},
+    layouts::{Backend, Data, DataMut, DataRef, DataView, DataViewMut, ZnxInfos, ZnxView},
     oep::VmpPMatAllocBytesImpl,
 };
 

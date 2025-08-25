@@ -1,9 +1,9 @@
 use poulpy_hal::{
     api::{
-        ScratchAvailable, SvpApply, SvpApplyInplace, SvpPPolAllocBytes, SvpPrepare, TakeScalarZnx, TakeVecZnx, TakeVecZnxBig,
-        TakeVecZnxDft, VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxBigAllocBytes, VecZnxBigNormalize,
-        VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume, VecZnxDftToVecZnxBigTmpA, VecZnxFillUniform,
-        VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubABInplace, VecZnxSwithcDegree,
+        DFT, IDFTConsume, IDFTTmpA, ScratchAvailable, SvpApply, SvpApplyInplace, SvpPPolAllocBytes, SvpPrepare, TakeScalarZnx,
+        TakeVecZnx, TakeVecZnxBig, TakeVecZnxDft, VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxBigAllocBytes,
+        VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxFillUniform, VecZnxNormalize, VecZnxNormalizeInplace,
+        VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubABInplace, VecZnxSwithcDegree,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
     source::Source,
@@ -42,13 +42,13 @@ impl<DataSelf: DataMut> GGLWETensorKey<DataSelf> {
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: SvpApply<B>
-            + VecZnxDftToVecZnxBigTmpA<B>
+            + IDFTTmpA<B>
             + VecZnxAddScalarInplace
             + VecZnxDftAllocBytes
             + VecZnxBigNormalize<B>
-            + VecZnxDftFromVecZnx<B>
+            + DFT<B>
             + SvpApplyInplace<B>
-            + VecZnxDftToVecZnxBigConsume<B>
+            + IDFTConsume<B>
             + VecZnxNormalizeTmpBytes
             + VecZnxFillUniform
             + VecZnxSubABInplace
@@ -79,7 +79,7 @@ impl<DataSelf: DataMut> GGLWETensorKey<DataSelf> {
         let (mut sk_dft, scratch2) = scratch1.take_vec_znx_dft(n, rank, 1);
 
         (0..rank).for_each(|i| {
-            module.vec_znx_dft_from_vec_znx(1, 0, &mut sk_dft, i, &sk.data.as_vec_znx(), i);
+            module.dft(1, 0, &mut sk_dft, i, &sk.data.as_vec_znx(), i);
         });
 
         let (mut sk_ij_big, scratch3) = scratch2.take_vec_znx_big(n, 1, 1);
@@ -90,7 +90,7 @@ impl<DataSelf: DataMut> GGLWETensorKey<DataSelf> {
             (i..rank).for_each(|j| {
                 module.svp_apply(&mut sk_ij_dft, 0, &sk_dft_prep.data, j, &sk_dft, i);
 
-                module.vec_znx_dft_to_vec_znx_big_tmp_a(&mut sk_ij_big, 0, &mut sk_ij_dft, 0);
+                module.idft_tmp_a(&mut sk_ij_big, 0, &mut sk_ij_dft, 0);
                 module.vec_znx_big_normalize(
                     self.basek(),
                     &mut sk_ij.data.as_vec_znx_mut(),

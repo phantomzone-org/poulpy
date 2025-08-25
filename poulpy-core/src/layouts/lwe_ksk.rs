@@ -1,8 +1,7 @@
 use std::fmt;
 
 use poulpy_hal::{
-    api::{FillUniform, Reset},
-    layouts::{Data, DataMut, DataRef, MatZnx, ReaderFrom, WriterTo},
+    layouts::{Data, DataMut, DataRef, FillUniform, MatZnx, ReaderFrom, Reset, WriterTo},
     source::Source,
 };
 

@@ -2,12 +2,10 @@ use rand_distr::{Distribution, Normal};
 
 use crate::cpu_spqlios::{FFT64, ffi::vec_znx};
 use poulpy_hal::{
-    api::{
-        TakeSlice, VecZnxBigAddDistF64, VecZnxBigFillDistF64, VecZnxBigNormalizeTmpBytes, ZnxInfos, ZnxSliceSize, ZnxView,
-        ZnxViewMut,
-    },
+    api::{TakeSlice, VecZnxBigAddDistF64, VecZnxBigFillDistF64, VecZnxBigNormalizeTmpBytes},
     layouts::{
         Backend, Module, Scratch, VecZnx, VecZnxBig, VecZnxBigOwned, VecZnxBigToMut, VecZnxBigToRef, VecZnxToMut, VecZnxToRef,
+        ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut,
     },
     oep::{
         TakeSliceImpl, VecZnxBigAddDistF64Impl, VecZnxBigAddImpl, VecZnxBigAddInplaceImpl, VecZnxBigAddNormalImpl,
