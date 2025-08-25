@@ -14,26 +14,33 @@ pub trait VecZnxDftAllocBytes {
     fn vec_znx_dft_alloc_bytes(&self, cols: usize, size: usize) -> usize;
 }
 
-pub trait VecZnxDftToVecZnxBigTmpBytes {
-    fn vec_znx_dft_to_vec_znx_big_tmp_bytes(&self) -> usize;
+pub trait DFT<B: Backend> {
+    fn dft<R, A>(&self, step: usize, offset: usize, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    where
+        R: VecZnxDftToMut<B>,
+        A: VecZnxToRef;
 }
 
-pub trait VecZnxDftToVecZnxBig<B: Backend> {
-    fn vec_znx_dft_to_vec_znx_big<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch<B>)
+pub trait VecZnxIDFTTmpBytes {
+    fn vec_znx_idft_tmp_bytes(&self) -> usize;
+}
+
+pub trait IDFT<B: Backend> {
+    fn idft<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch<B>)
     where
         R: VecZnxBigToMut<B>,
         A: VecZnxDftToRef<B>;
 }
 
-pub trait VecZnxDftToVecZnxBigTmpA<B: Backend> {
-    fn vec_znx_dft_to_vec_znx_big_tmp_a<R, A>(&self, res: &mut R, res_col: usize, a: &mut A, a_col: usize)
+pub trait IDFTTmpA<B: Backend> {
+    fn idft_tmp_a<R, A>(&self, res: &mut R, res_col: usize, a: &mut A, a_col: usize)
     where
         R: VecZnxBigToMut<B>,
         A: VecZnxDftToMut<B>;
 }
 
-pub trait VecZnxDftToVecZnxBigConsume<B: Backend> {
-    fn vec_znx_dft_to_vec_znx_big_consume<D: Data>(&self, a: VecZnxDft<D, B>) -> VecZnxBig<D, B>
+pub trait IDFTConsume<B: Backend> {
+    fn vec_znx_idft_consume<D: Data>(&self, a: VecZnxDft<D, B>) -> VecZnxBig<D, B>
     where
         VecZnxDft<D, B>: VecZnxDftToMut<B>;
 }
@@ -80,13 +87,6 @@ pub trait VecZnxDftCopy<B: Backend> {
     where
         R: VecZnxDftToMut<B>,
         A: VecZnxDftToRef<B>;
-}
-
-pub trait VecZnxDftFromVecZnx<B: Backend> {
-    fn vec_znx_dft_from_vec_znx<R, A>(&self, step: usize, offset: usize, res: &mut R, res_col: usize, a: &A, a_col: usize)
-    where
-        R: VecZnxDftToMut<B>,
-        A: VecZnxToRef;
 }
 
 pub trait VecZnxDftZero<B: Backend> {

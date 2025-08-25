@@ -2,11 +2,10 @@ use std::collections::HashMap;
 
 use poulpy_hal::{
     api::{
-        ScratchAvailable, TakeVecZnx, TakeVecZnxDft, VecZnxAddInplace, VecZnxAutomorphismInplace, VecZnxBigAddSmallInplace,
-        VecZnxBigAutomorphismInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallBInplace, VecZnxCopy,
-        VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume, VecZnxNegateInplace, VecZnxNormalizeInplace,
-        VecZnxRotate, VecZnxRotateInplace, VecZnxRshInplace, VecZnxSub, VecZnxSubABInplace, VmpApply, VmpApplyAdd,
-        VmpApplyTmpBytes,
+        DFT, IDFTConsume, ScratchAvailable, TakeVecZnx, TakeVecZnxDft, VecZnxAddInplace, VecZnxAutomorphismInplace,
+        VecZnxBigAddSmallInplace, VecZnxBigAutomorphismInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
+        VecZnxBigSubSmallBInplace, VecZnxCopy, VecZnxDftAllocBytes, VecZnxNegateInplace, VecZnxNormalizeInplace, VecZnxRotate,
+        VecZnxRotateInplace, VecZnxRshInplace, VecZnxSub, VecZnxSubABInplace, VmpApply, VmpApplyAdd, VmpApplyTmpBytes,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
 };
@@ -126,8 +125,8 @@ impl GLWEPacker {
             + VecZnxBigNormalizeTmpBytes
             + VmpApply<B>
             + VmpApplyAdd<B>
-            + VecZnxDftFromVecZnx<B>
-            + VecZnxDftToVecZnxBigConsume<B>
+            + DFT<B>
+            + IDFTConsume<B>
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>
             + VecZnxCopy
@@ -204,8 +203,8 @@ fn pack_core<D: DataRef, DataAK: DataRef, B: Backend>(
         + VecZnxBigNormalizeTmpBytes
         + VmpApply<B>
         + VmpApplyAdd<B>
-        + VecZnxDftFromVecZnx<B>
-        + VecZnxDftToVecZnxBigConsume<B>
+        + DFT<B>
+        + IDFTConsume<B>
         + VecZnxBigAddSmallInplace<B>
         + VecZnxBigNormalize<B>
         + VecZnxCopy
@@ -301,8 +300,8 @@ fn combine<D: DataRef, DataAK: DataRef, B: Backend>(
         + VecZnxBigNormalizeTmpBytes
         + VmpApply<B>
         + VmpApplyAdd<B>
-        + VecZnxDftFromVecZnx<B>
-        + VecZnxDftToVecZnxBigConsume<B>
+        + DFT<B>
+        + IDFTConsume<B>
         + VecZnxBigAddSmallInplace<B>
         + VecZnxBigNormalize<B>
         + VecZnxCopy

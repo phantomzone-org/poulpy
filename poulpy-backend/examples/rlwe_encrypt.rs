@@ -2,9 +2,9 @@ use itertools::izip;
 use poulpy_backend::cpu_spqlios::FFT64;
 use poulpy_hal::{
     api::{
-        ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyInplace, SvpPPolAlloc, SvpPrepare, VecZnxAddNormal,
-        VecZnxBigAddSmallInplace, VecZnxBigAlloc, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallBInplace,
-        VecZnxDftAlloc, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigTmpA, VecZnxFillUniform, VecZnxNormalizeInplace,
+        DFT, IDFTTmpA, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyInplace, SvpPPolAlloc, SvpPrepare,
+        VecZnxAddNormal, VecZnxBigAddSmallInplace, VecZnxBigAlloc, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
+        VecZnxBigSubSmallBInplace, VecZnxDftAlloc, VecZnxFillUniform, VecZnxNormalizeInplace,
     },
     layouts::{Module, ScalarZnx, ScratchOwned, SvpPPol, VecZnx, VecZnxBig, VecZnxDft, ZnxInfos},
     source::Source,
@@ -45,7 +45,7 @@ fn main() {
 
     let mut buf_dft: VecZnxDft<Vec<u8>, FFT64> = module.vec_znx_dft_alloc(1, ct_size);
 
-    module.vec_znx_dft_from_vec_znx(1, 0, &mut buf_dft, 0, &ct, 1);
+    module.dft(1, 0, &mut buf_dft, 0, &ct, 1);
 
     // Applies DFT(ct[1]) * DFT(s)
     module.svp_apply_inplace(
@@ -59,7 +59,7 @@ fn main() {
 
     // BIG(ct[1] * s) <- IDFT(DFT(ct[1] * s)) (not normalized)
     let mut buf_big: VecZnxBig<Vec<u8>, FFT64> = module.vec_znx_big_alloc(1, ct_size);
-    module.vec_znx_dft_to_vec_znx_big_tmp_a(&mut buf_big, 0, &mut buf_dft, 0);
+    module.idft_tmp_a(&mut buf_big, 0, &mut buf_dft, 0);
 
     // Creates a plaintext: VecZnx with 1 column
     let mut m = VecZnx::alloc(
@@ -109,7 +109,7 @@ fn main() {
     // Decryption
 
     // DFT(ct[1] * s)
-    module.vec_znx_dft_from_vec_znx(1, 0, &mut buf_dft, 0, &ct, 1);
+    module.dft(1, 0, &mut buf_dft, 0, &ct, 1);
     module.svp_apply_inplace(
         &mut buf_dft,
         0, // Selects the first column of res.
@@ -118,7 +118,7 @@ fn main() {
     );
 
     // BIG(c1 * s) = IDFT(DFT(c1 * s))
-    module.vec_znx_dft_to_vec_znx_big_tmp_a(&mut buf_big, 0, &mut buf_dft, 0);
+    module.idft_tmp_a(&mut buf_big, 0, &mut buf_dft, 0);
 
     // BIG(c1 * s) + ct[0]
     module.vec_znx_big_add_small_inplace(&mut buf_big, 0, &ct, 0);

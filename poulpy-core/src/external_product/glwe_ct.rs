@@ -1,7 +1,7 @@
 use poulpy_hal::{
     api::{
-        ScratchAvailable, TakeVecZnxDft, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftFromVecZnx,
-        VecZnxDftToVecZnxBigConsume, VecZnxNormalizeTmpBytes, VmpApply, VmpApplyAdd, VmpApplyTmpBytes,
+        DFT, IDFTConsume, ScratchAvailable, TakeVecZnxDft, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxNormalizeTmpBytes,
+        VmpApply, VmpApplyAdd, VmpApplyTmpBytes,
     },
     layouts::{Backend, DataMut, DataRef, DataViewMut, Module, Scratch, VecZnxBig},
 };
@@ -65,10 +65,10 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         Module<B>: VecZnxDftAllocBytes
             + VmpApplyTmpBytes
             + VecZnxNormalizeTmpBytes
-            + VecZnxDftFromVecZnx<B>
+            + DFT<B>
             + VmpApply<B>
             + VmpApplyAdd<B>
-            + VecZnxDftToVecZnxBigConsume<B>
+            + IDFTConsume<B>
             + VecZnxBigNormalize<B>,
         Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
     {
@@ -121,7 +121,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
                 res_dft.set_size(rhs.size() - ((digits - di) as isize - 2).max(0) as usize);
 
                 (0..cols).for_each(|col_i| {
-                    module.vec_znx_dft_from_vec_znx(digits, digits - 1 - di, &mut a_dft, col_i, &lhs.data, col_i);
+                    module.dft(digits, digits - 1 - di, &mut a_dft, col_i, &lhs.data, col_i);
                 });
 
                 if di == 0 {
@@ -132,7 +132,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
             });
         }
 
-        let res_big: VecZnxBig<&mut [u8], B> = module.vec_znx_dft_to_vec_znx_big_consume(res_dft);
+        let res_big: VecZnxBig<&mut [u8], B> = module.vec_znx_idft_consume(res_dft);
 
         (0..cols).for_each(|i| {
             module.vec_znx_big_normalize(basek, &mut self.data, i, &res_big, i, scratch1);
@@ -148,10 +148,10 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         Module<B>: VecZnxDftAllocBytes
             + VmpApplyTmpBytes
             + VecZnxNormalizeTmpBytes
-            + VecZnxDftFromVecZnx<B>
+            + DFT<B>
             + VmpApply<B>
             + VmpApplyAdd<B>
-            + VecZnxDftToVecZnxBigConsume<B>
+            + IDFTConsume<B>
             + VecZnxBigNormalize<B>,
         Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
     {

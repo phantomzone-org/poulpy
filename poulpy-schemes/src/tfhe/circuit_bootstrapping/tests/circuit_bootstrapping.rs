@@ -2,15 +2,14 @@ use std::time::Instant;
 
 use poulpy_hal::{
     api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApply, SvpApplyInplace, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare,
-        VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxAutomorphism, VecZnxAutomorphismInplace,
-        VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigAlloc, VecZnxBigAllocBytes, VecZnxBigAutomorphismInplace,
-        VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallBInplace, VecZnxCopy, VecZnxDftAddInplace,
-        VecZnxDftAlloc, VecZnxDftAllocBytes, VecZnxDftCopy, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume,
-        VecZnxDftToVecZnxBigTmpA, VecZnxFillUniform, VecZnxNegateInplace, VecZnxNormalize, VecZnxNormalizeInplace,
-        VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace, VecZnxRshInplace, VecZnxSub, VecZnxSubABInplace,
-        VecZnxSwithcDegree, VmpApply, VmpApplyAdd, VmpApplyTmpBytes, VmpPMatAlloc, VmpPrepare, ZnAddNormal, ZnFillUniform,
-        ZnNormalizeInplace,
+        DFT, IDFTConsume, IDFTTmpA, ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApply, SvpApplyInplace, SvpPPolAlloc,
+        SvpPPolAllocBytes, SvpPrepare, VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxAutomorphism,
+        VecZnxAutomorphismInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigAlloc, VecZnxBigAllocBytes,
+        VecZnxBigAutomorphismInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallBInplace, VecZnxCopy,
+        VecZnxDftAddInplace, VecZnxDftAlloc, VecZnxDftAllocBytes, VecZnxDftCopy, VecZnxFillUniform, VecZnxNegateInplace,
+        VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace, VecZnxRshInplace,
+        VecZnxSub, VecZnxSubABInplace, VecZnxSwithcDegree, VmpApply, VmpApplyAdd, VmpApplyTmpBytes, VmpPMatAlloc, VmpPrepare,
+        ZnAddNormal, ZnFillUniform, ZnNormalizeInplace,
     },
     layouts::{Backend, Module, ScalarZnx, ScratchOwned, ZnxView, ZnxViewMut},
     oep::{
@@ -44,9 +43,9 @@ where
         + VecZnxNormalizeInplace<B>
         + VecZnxDftAllocBytes
         + VecZnxBigNormalize<B>
-        + VecZnxDftFromVecZnx<B>
+        + DFT<B>
         + SvpApplyInplace<B>
-        + VecZnxDftToVecZnxBigConsume<B>
+        + IDFTConsume<B>
         + VecZnxNormalizeTmpBytes
         + VecZnxSubABInplace
         + VecZnxAddInplace
@@ -56,7 +55,7 @@ where
         + VecZnxAutomorphism
         + VecZnxSwithcDegree
         + VecZnxBigAllocBytes
-        + VecZnxDftToVecZnxBigTmpA<B>
+        + IDFTTmpA<B>
         + SvpApply<B>
         + VecZnxBigAddInplace<B>
         + VecZnxBigAddSmallInplace<B>
@@ -225,9 +224,9 @@ where
         + VecZnxNormalizeInplace<B>
         + VecZnxDftAllocBytes
         + VecZnxBigNormalize<B>
-        + VecZnxDftFromVecZnx<B>
+        + DFT<B>
         + SvpApplyInplace<B>
-        + VecZnxDftToVecZnxBigConsume<B>
+        + IDFTConsume<B>
         + VecZnxNormalizeTmpBytes
         + VecZnxSubABInplace
         + VecZnxAddInplace
@@ -237,7 +236,7 @@ where
         + VecZnxAutomorphism
         + VecZnxSwithcDegree
         + VecZnxBigAllocBytes
-        + VecZnxDftToVecZnxBigTmpA<B>
+        + IDFTTmpA<B>
         + SvpApply<B>
         + VecZnxBigAddInplace<B>
         + VecZnxBigAddSmallInplace<B>

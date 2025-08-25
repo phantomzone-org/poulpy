@@ -1,12 +1,11 @@
 use poulpy_hal::{
     api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApply, SvpApplyInplace, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare,
-        VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxAutomorphism, VecZnxAutomorphismInplace,
-        VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigAlloc, VecZnxBigAllocBytes, VecZnxBigNormalize,
-        VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftAddInplace, VecZnxDftAlloc, VecZnxDftAllocBytes, VecZnxDftCopy,
-        VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume, VecZnxDftToVecZnxBigTmpA, VecZnxFillUniform, VecZnxNormalize,
-        VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubABInplace, VecZnxSwithcDegree, VmpApply,
-        VmpApplyAdd, VmpApplyTmpBytes, VmpPMatAlloc, VmpPrepare,
+        DFT, IDFTConsume, IDFTTmpA, ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApply, SvpApplyInplace, SvpPPolAlloc,
+        SvpPPolAllocBytes, SvpPrepare, VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxAutomorphism,
+        VecZnxAutomorphismInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigAlloc, VecZnxBigAllocBytes,
+        VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftAddInplace, VecZnxDftAlloc, VecZnxDftAllocBytes,
+        VecZnxDftCopy, VecZnxFillUniform, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub,
+        VecZnxSubABInplace, VecZnxSwithcDegree, VmpApply, VmpApplyAdd, VmpApplyTmpBytes, VmpPMatAlloc, VmpPrepare,
     },
     layouts::{Backend, Module, ScalarZnx, ScratchOwned},
     oep::{
@@ -39,9 +38,9 @@ pub fn test_ggsw_automorphism<B>(
 ) where
     Module<B>: VecZnxDftAllocBytes
         + VecZnxBigAllocBytes
-        + VecZnxDftFromVecZnx<B>
+        + DFT<B>
         + SvpApplyInplace<B>
-        + VecZnxDftToVecZnxBigConsume<B>
+        + IDFTConsume<B>
         + VecZnxBigAddInplace<B>
         + VecZnxBigAddSmallInplace<B>
         + VecZnxBigNormalize<B>
@@ -49,7 +48,7 @@ pub fn test_ggsw_automorphism<B>(
         + VecZnxBigAlloc<B>
         + VecZnxDftAlloc<B>
         + VecZnxBigNormalizeTmpBytes
-        + VecZnxDftToVecZnxBigTmpA<B>
+        + IDFTTmpA<B>
         + SvpPrepare<B>
         + SvpPPolAllocBytes
         + SvpPPolAlloc<B>
@@ -193,9 +192,9 @@ pub fn test_ggsw_automorphism_inplace<B>(
 ) where
     Module<B>: VecZnxDftAllocBytes
         + VecZnxBigAllocBytes
-        + VecZnxDftFromVecZnx<B>
+        + DFT<B>
         + SvpApplyInplace<B>
-        + VecZnxDftToVecZnxBigConsume<B>
+        + IDFTConsume<B>
         + VecZnxBigAddInplace<B>
         + VecZnxBigAddSmallInplace<B>
         + VecZnxBigNormalize<B>
@@ -203,7 +202,7 @@ pub fn test_ggsw_automorphism_inplace<B>(
         + VecZnxBigAlloc<B>
         + VecZnxDftAlloc<B>
         + VecZnxBigNormalizeTmpBytes
-        + VecZnxDftToVecZnxBigTmpA<B>
+        + IDFTTmpA<B>
         + SvpPrepare<B>
         + SvpPPolAllocBytes
         + SvpPPolAlloc<B>

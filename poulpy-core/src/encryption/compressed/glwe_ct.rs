@@ -1,8 +1,8 @@
 use poulpy_hal::{
     api::{
-        ScratchAvailable, SvpApplyInplace, TakeVecZnx, TakeVecZnxDft, VecZnxAddInplace, VecZnxAddNormal, VecZnxBigNormalize,
-        VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume, VecZnxFillUniform, VecZnxNormalize,
-        VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubABInplace,
+        DFT, IDFTConsume, ScratchAvailable, SvpApplyInplace, TakeVecZnx, TakeVecZnxDft, VecZnxAddInplace, VecZnxAddNormal,
+        VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxFillUniform, VecZnxNormalize, VecZnxNormalizeInplace,
+        VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubABInplace,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
     source::Source,
@@ -35,9 +35,9 @@ impl<D: DataMut> GLWECiphertextCompressed<D> {
     ) where
         Module<B>: VecZnxDftAllocBytes
             + VecZnxBigNormalize<B>
-            + VecZnxDftFromVecZnx<B>
+            + DFT<B>
             + SvpApplyInplace<B>
-            + VecZnxDftToVecZnxBigConsume<B>
+            + IDFTConsume<B>
             + VecZnxNormalizeTmpBytes
             + VecZnxFillUniform
             + VecZnxSubABInplace
@@ -63,9 +63,9 @@ impl<D: DataMut> GLWECiphertextCompressed<D> {
     ) where
         Module<B>: VecZnxDftAllocBytes
             + VecZnxBigNormalize<B>
-            + VecZnxDftFromVecZnx<B>
+            + DFT<B>
             + SvpApplyInplace<B>
-            + VecZnxDftToVecZnxBigConsume<B>
+            + IDFTConsume<B>
             + VecZnxNormalizeTmpBytes
             + VecZnxFillUniform
             + VecZnxSubABInplace

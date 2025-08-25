@@ -1,9 +1,8 @@
 use poulpy_hal::{
     api::{
-        ScratchAvailable, TakeVecZnxBig, TakeVecZnxDft, VecZnxAutomorphismInplace, VecZnxBigAddSmallInplace, VecZnxBigAllocBytes,
-        VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxDftAddInplace, VecZnxDftAllocBytes, VecZnxDftCopy,
-        VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume, VecZnxDftToVecZnxBigTmpA, VecZnxNormalizeTmpBytes, VmpApply,
-        VmpApplyAdd, VmpApplyTmpBytes,
+        DFT, IDFTConsume, IDFTTmpA, ScratchAvailable, TakeVecZnxBig, TakeVecZnxDft, VecZnxAutomorphismInplace,
+        VecZnxBigAddSmallInplace, VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxDftAddInplace,
+        VecZnxDftAllocBytes, VecZnxDftCopy, VecZnxNormalizeTmpBytes, VmpApply, VmpApplyAdd, VmpApplyTmpBytes,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
 };
@@ -73,8 +72,8 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
             + VecZnxBigNormalizeTmpBytes
             + VmpApply<B>
             + VmpApplyAdd<B>
-            + VecZnxDftFromVecZnx<B>
-            + VecZnxDftToVecZnxBigConsume<B>
+            + DFT<B>
+            + IDFTConsume<B>
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>
             + VecZnxAutomorphismInplace
@@ -82,7 +81,7 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
             + VecZnxNormalizeTmpBytes
             + VecZnxDftCopy<B>
             + VecZnxDftAddInplace<B>
-            + VecZnxDftToVecZnxBigTmpA<B>,
+            + IDFTTmpA<B>,
         Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnxBig<B>,
     {
         #[cfg(debug_assertions)]
@@ -143,8 +142,8 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
             + VecZnxBigNormalizeTmpBytes
             + VmpApply<B>
             + VmpApplyAdd<B>
-            + VecZnxDftFromVecZnx<B>
-            + VecZnxDftToVecZnxBigConsume<B>
+            + DFT<B>
+            + IDFTConsume<B>
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>
             + VecZnxAutomorphismInplace
@@ -152,7 +151,7 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
             + VecZnxNormalizeTmpBytes
             + VecZnxDftCopy<B>
             + VecZnxDftAddInplace<B>
-            + VecZnxDftToVecZnxBigTmpA<B>,
+            + IDFTTmpA<B>,
         Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnxBig<B>,
     {
         unsafe {
@@ -173,8 +172,8 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
             + VecZnxBigNormalizeTmpBytes
             + VmpApply<B>
             + VmpApplyAdd<B>
-            + VecZnxDftFromVecZnx<B>
-            + VecZnxDftToVecZnxBigConsume<B>
+            + DFT<B>
+            + IDFTConsume<B>
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>
             + VecZnxAutomorphismInplace,

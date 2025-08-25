@@ -1,7 +1,7 @@
 use poulpy_hal::{
     api::{
-        ScratchAvailable, TakeVecZnxDft, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftFromVecZnx,
-        VecZnxDftToVecZnxBigConsume, VecZnxNormalizeTmpBytes, VmpApply, VmpApplyAdd, VmpApplyTmpBytes,
+        DFT, IDFTConsume, ScratchAvailable, TakeVecZnxDft, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxNormalizeTmpBytes,
+        VmpApply, VmpApplyAdd, VmpApplyTmpBytes,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch, ZnxZero},
 };
@@ -51,10 +51,10 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
         Module<B>: VecZnxDftAllocBytes
             + VmpApplyTmpBytes
             + VecZnxNormalizeTmpBytes
-            + VecZnxDftFromVecZnx<B>
+            + DFT<B>
             + VmpApply<B>
             + VmpApplyAdd<B>
-            + VecZnxDftToVecZnxBigConsume<B>
+            + IDFTConsume<B>
             + VecZnxBigNormalize<B>,
         Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
     {
@@ -116,10 +116,10 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
         Module<B>: VecZnxDftAllocBytes
             + VmpApplyTmpBytes
             + VecZnxNormalizeTmpBytes
-            + VecZnxDftFromVecZnx<B>
+            + DFT<B>
             + VmpApply<B>
             + VmpApplyAdd<B>
-            + VecZnxDftToVecZnxBigConsume<B>
+            + IDFTConsume<B>
             + VecZnxBigNormalize<B>,
         Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
     {

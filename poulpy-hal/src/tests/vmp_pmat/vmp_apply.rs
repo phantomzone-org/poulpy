@@ -1,13 +1,13 @@
 use crate::{
     api::{
-        ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxBigAlloc, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
-        VecZnxDftAlloc, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigTmpA, VmpApply, VmpApplyTmpBytes, VmpPMatAlloc, VmpPrepare,
+        DFT, IDFTTmpA, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxBigAlloc, VecZnxBigNormalize,
+        VecZnxBigNormalizeTmpBytes, VecZnxDftAlloc, VmpApply, VmpApplyTmpBytes, VmpPMatAlloc, VmpPrepare,
     },
     layouts::{MatZnx, Module, ScratchOwned, VecZnx, VecZnxBig, VecZnxDft, VmpPMat, ZnxInfos, ZnxViewMut},
     oep::{
-        ModuleNewImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, VecZnxBigAllocImpl, VecZnxBigNormalizeImpl,
-        VecZnxBigNormalizeTmpBytesImpl, VecZnxDftAllocImpl, VecZnxDftFromVecZnxImpl, VecZnxDftToVecZnxBigTmpAImpl, VmpApplyImpl,
-        VmpApplyTmpBytesImpl, VmpPMatAllocImpl, VmpPMatPrepareImpl,
+        DFTImpl, IDFTTmpAImpl, ModuleNewImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, VecZnxBigAllocImpl,
+        VecZnxBigNormalizeImpl, VecZnxBigNormalizeTmpBytesImpl, VecZnxDftAllocImpl, VmpApplyImpl, VmpApplyTmpBytesImpl,
+        VmpPMatAllocImpl, VmpPMatPrepareImpl,
     },
 };
 
@@ -23,9 +23,9 @@ where
         + VecZnxDftAllocImpl<B>
         + VecZnxBigAllocImpl<B>
         + VmpPMatPrepareImpl<B>
-        + VecZnxDftFromVecZnxImpl<B>
+        + DFTImpl<B>
         + VmpApplyImpl<B>
-        + VecZnxDftToVecZnxBigTmpAImpl<B>
+        + IDFTTmpAImpl<B>
         + ScratchOwnedAllocImpl<B>
         + ScratchOwnedBorrowImpl<B>
         + VecZnxBigNormalizeImpl<B>,
@@ -86,7 +86,7 @@ where
 
             let mut a_dft: VecZnxDft<Vec<u8>, B> = module.vec_znx_dft_alloc(a_cols, a_size);
             (0..a_cols).for_each(|i| {
-                module.vec_znx_dft_from_vec_znx(1, 0, &mut a_dft, i, &a, i);
+                module.dft(1, 0, &mut a_dft, i, &a, i);
             });
 
             module.vmp_apply(&mut c_dft, &a_dft, &vmp, scratch.borrow());
@@ -95,7 +95,7 @@ where
 
             let mut res_have: VecZnx<Vec<u8>> = VecZnx::alloc(n, res_cols, res_size);
             (0..mat_cols_out).for_each(|i| {
-                module.vec_znx_dft_to_vec_znx_big_tmp_a(&mut c_big, i, &mut c_dft, i);
+                module.idft_tmp_a(&mut c_big, i, &mut c_dft, i);
                 module.vec_znx_big_normalize(basek, &mut res_have, i, &c_big, i, scratch.borrow());
             });
 

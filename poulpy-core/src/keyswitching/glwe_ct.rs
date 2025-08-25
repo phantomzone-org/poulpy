@@ -1,7 +1,7 @@
 use poulpy_hal::{
     api::{
-        ScratchAvailable, TakeVecZnxDft, VecZnxBigAddSmallInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
-        VecZnxDftAllocBytes, VecZnxDftFromVecZnx, VecZnxDftToVecZnxBigConsume, VmpApply, VmpApplyAdd, VmpApplyTmpBytes,
+        DFT, IDFTConsume, ScratchAvailable, TakeVecZnxDft, VecZnxBigAddSmallInplace, VecZnxBigNormalize,
+        VecZnxBigNormalizeTmpBytes, VecZnxDftAllocBytes, VmpApply, VmpApplyAdd, VmpApplyTmpBytes,
     },
     layouts::{Backend, DataMut, DataRef, DataViewMut, Module, Scratch, VecZnx, VecZnxBig, VecZnxDft, VmpPMat, ZnxInfos},
 };
@@ -133,8 +133,8 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
             + VmpApplyTmpBytes
             + VmpApply<B>
             + VmpApplyAdd<B>
-            + VecZnxDftFromVecZnx<B>
-            + VecZnxDftToVecZnxBigConsume<B>
+            + DFT<B>
+            + IDFTConsume<B>
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>,
         Scratch<B>: ScratchAvailable + TakeVecZnxDft<B>,
@@ -162,8 +162,8 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
             + VmpApplyTmpBytes
             + VmpApply<B>
             + VmpApplyAdd<B>
-            + VecZnxDftFromVecZnx<B>
-            + VecZnxDftToVecZnxBigConsume<B>
+            + DFT<B>
+            + IDFTConsume<B>
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>,
         Scratch<B>: ScratchAvailable + TakeVecZnxDft<B>,
@@ -192,8 +192,8 @@ impl<D: DataRef> GLWECiphertext<D> {
             + VmpApplyTmpBytes
             + VmpApply<B>
             + VmpApplyAdd<B>
-            + VecZnxDftFromVecZnx<B>
-            + VecZnxDftToVecZnxBigConsume<B>
+            + DFT<B>
+            + IDFTConsume<B>
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>,
         Scratch<B>: TakeVecZnxDft<B>,
@@ -224,17 +224,16 @@ where
     DataRes: DataMut,
     DataIn: DataRef,
     DataVmp: DataRef,
-    Module<B>:
-        VecZnxDftAllocBytes + VecZnxDftFromVecZnx<B> + VmpApply<B> + VecZnxDftToVecZnxBigConsume<B> + VecZnxBigAddSmallInplace<B>,
+    Module<B>: VecZnxDftAllocBytes + DFT<B> + VmpApply<B> + IDFTConsume<B> + VecZnxBigAddSmallInplace<B>,
     Scratch<B>: TakeVecZnxDft<B>,
 {
     let cols: usize = a.cols();
     let (mut ai_dft, scratch1) = scratch.take_vec_znx_dft(a.n(), cols - 1, a.size());
     (0..cols - 1).for_each(|col_i| {
-        module.vec_znx_dft_from_vec_znx(1, 0, &mut ai_dft, col_i, a, col_i + 1);
+        module.dft(1, 0, &mut ai_dft, col_i, a, col_i + 1);
     });
     module.vmp_apply(&mut res_dft, &ai_dft, mat, scratch1);
-    let mut res_big: VecZnxBig<DataRes, B> = module.vec_znx_dft_to_vec_znx_big_consume(res_dft);
+    let mut res_big: VecZnxBig<DataRes, B> = module.vec_znx_idft_consume(res_dft);
     module.vec_znx_big_add_small_inplace(&mut res_big, 0, a, 0);
     res_big
 }
@@ -251,12 +250,7 @@ where
     DataRes: DataMut,
     DataIn: DataRef,
     DataVmp: DataRef,
-    Module<B>: VecZnxDftAllocBytes
-        + VecZnxDftFromVecZnx<B>
-        + VmpApply<B>
-        + VmpApplyAdd<B>
-        + VecZnxDftToVecZnxBigConsume<B>
-        + VecZnxBigAddSmallInplace<B>,
+    Module<B>: VecZnxDftAllocBytes + DFT<B> + VmpApply<B> + VmpApplyAdd<B> + IDFTConsume<B> + VecZnxBigAddSmallInplace<B>,
     Scratch<B>: TakeVecZnxDft<B>,
 {
     let cols: usize = a.cols();
@@ -278,7 +272,7 @@ where
         res_dft.set_size(mat.size() - ((digits - di) as isize - 2).max(0) as usize);
 
         (0..cols - 1).for_each(|col_i| {
-            module.vec_znx_dft_from_vec_znx(digits, digits - di - 1, &mut ai_dft, col_i, a, col_i + 1);
+            module.dft(digits, digits - di - 1, &mut ai_dft, col_i, a, col_i + 1);
         });
 
         if di == 0 {
@@ -289,7 +283,7 @@ where
     });
 
     res_dft.set_size(res_dft.max_size());
-    let mut res_big: VecZnxBig<DataRes, B> = module.vec_znx_dft_to_vec_znx_big_consume(res_dft);
+    let mut res_big: VecZnxBig<DataRes, B> = module.vec_znx_idft_consume(res_dft);
     module.vec_znx_big_add_small_inplace(&mut res_big, 0, a, 0);
     res_big
 }

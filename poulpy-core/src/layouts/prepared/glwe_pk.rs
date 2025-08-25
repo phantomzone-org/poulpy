@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    api::{VecZnxDftAlloc, VecZnxDftAllocBytes, VecZnxDftFromVecZnx},
+    api::{DFT, VecZnxDftAlloc, VecZnxDftAllocBytes},
     layouts::{Backend, Data, DataMut, DataRef, Module, Scratch, VecZnxDft},
 };
 
@@ -64,7 +64,7 @@ impl<B: Backend> GLWEPublicKeyPrepared<Vec<u8>, B> {
 
 impl<D: DataRef, B: Backend> PrepareAlloc<B, GLWEPublicKeyPrepared<Vec<u8>, B>> for GLWEPublicKey<D>
 where
-    Module<B>: VecZnxDftAlloc<B> + VecZnxDftFromVecZnx<B>,
+    Module<B>: VecZnxDftAlloc<B> + DFT<B>,
 {
     fn prepare_alloc(&self, module: &Module<B>, scratch: &mut Scratch<B>) -> GLWEPublicKeyPrepared<Vec<u8>, B> {
         let mut pk_prepared: GLWEPublicKeyPrepared<Vec<u8>, B> =
@@ -76,7 +76,7 @@ where
 
 impl<DM: DataMut, DR: DataRef, B: Backend> Prepare<B, GLWEPublicKey<DR>> for GLWEPublicKeyPrepared<DM, B>
 where
-    Module<B>: VecZnxDftFromVecZnx<B>,
+    Module<B>: DFT<B>,
 {
     fn prepare(&mut self, module: &Module<B>, other: &GLWEPublicKey<DR>, _scratch: &mut Scratch<B>) {
         #[cfg(debug_assertions)]
@@ -86,7 +86,7 @@ where
         }
 
         (0..self.cols()).for_each(|i| {
-            module.vec_znx_dft_from_vec_znx(1, 0, &mut self.data, i, &other.data, i);
+            module.dft(1, 0, &mut self.data, i, &other.data, i);
         });
         self.k = other.k;
         self.basek = other.basek;
