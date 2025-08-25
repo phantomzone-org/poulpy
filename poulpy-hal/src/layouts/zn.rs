@@ -12,7 +12,7 @@ use crate::{
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use rand::RngCore;
 
-#[derive(PartialEq, Eq, Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy, Hash)]
 pub struct Zn<D: Data> {
     pub data: D,
     pub n: usize,

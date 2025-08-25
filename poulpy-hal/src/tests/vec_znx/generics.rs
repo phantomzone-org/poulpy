@@ -1,8 +1,100 @@
 use crate::{
-    api::{VecZnxAddNormal, VecZnxFillUniform},
-    layouts::{Backend, Module, VecZnx, ZnxView},
+    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddNormal, VecZnxFillUniform, VecZnxNormalize, VecZnxNormalizeTmpBytes},
+    layouts::{Backend, FillUniform, Module, ScratchOwned, VecZnx, ZnxView, ZnxViewMut},
     source::Source,
 };
+
+use rand::RngCore;
+
+pub fn test_vec_znx_normalize<B: Backend>(module: &Module<B>)
+where
+    ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
+    Module<B>: VecZnxNormalizeTmpBytes + VecZnxNormalize<B>,
+{
+    let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(module.vec_znx_normalize_tmp_bytes());
+    let mut source: Source = Source::new([0u8; 32]);
+    let cols: usize = 2;
+    let basek: usize = 17;
+
+    let get_digit = |x: i64| -> i64 { (x << (i64::BITS - basek as u32)) >> (i64::BITS - basek as u32) };
+
+    let get_carry = |x: i64, digit: i64| -> i64 { (x - digit) >> basek };
+
+    for a_size in [1, 2, 6, 11] {
+        let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, a_size);
+        let mut b: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, a_size);
+
+        // Fill a with random i64
+        a.fill_uniform(&mut source);
+
+        // Raw copy on b
+        b.raw_mut().copy_from_slice(a.raw());
+
+        // Reference
+        let mut carry: Vec<i64> = vec![0i64; module.n()];
+        for i in 0..cols {
+            for j in (0..a_size).rev() {
+                if j == a_size - 1 {
+                    b.at_mut(i, j)
+                        .iter_mut()
+                        .zip(carry.iter_mut())
+                        .for_each(|(x, c)| {
+                            let digit: i64 = get_digit(*x);
+                            *c = get_carry(*x, digit);
+                            *x = digit;
+                        });
+                } else if j == 0 {
+                    b.at_mut(i, j)
+                        .iter_mut()
+                        .zip(carry.iter_mut())
+                        .for_each(|(x, c)| {
+                            *x = get_digit(get_digit(*x) + *c);
+                        });
+                } else {
+                    b.at_mut(i, j)
+                        .iter_mut()
+                        .zip(carry.iter_mut())
+                        .for_each(|(x, c)| {
+                            let digit: i64 = get_digit(*x);
+                            let carry: i64 = get_carry(*x, digit);
+                            let digit_plus_c: i64 = digit + *c;
+                            *x = get_digit(digit_plus_c);
+                            *c = carry + get_carry(digit_plus_c, *x);
+                        });
+                }
+            }
+        }
+
+        for c_size in [1, 2, 6, 11] {
+            let mut c: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, c_size);
+
+            // Set scratch to garbage
+            source.fill_bytes(&mut scratch.data);
+
+            // Set c to garbage
+            c.fill_uniform(&mut source);
+
+            // Normalize on c
+            for i in 0..cols {
+                module.vec_znx_normalize(basek, &mut c, i, &a, i, scratch.borrow());
+            }
+
+            let min_size: usize = a_size.min(c_size);
+
+            let zero: Vec<i64> = vec![0i64; module.n()];
+
+            for i in 0..cols {
+                for j in 0..min_size {
+                    assert_eq!(c.at(i, j), b.at(i, j));
+                }
+
+                for j in min_size..c_size {
+                    assert_eq!(c.at(i, j), zero);
+                }
+            }
+        }
+    }
+}
 
 pub fn test_vec_znx_fill_uniform<B: Backend>(module: &Module<B>)
 where

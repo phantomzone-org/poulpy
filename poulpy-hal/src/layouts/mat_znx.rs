@@ -11,7 +11,7 @@ use std::fmt;
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use rand::RngCore;
 
-#[derive(PartialEq, Eq, Clone)]
+#[derive(PartialEq, Eq, Clone, Hash)]
 pub struct MatZnx<D: Data> {
     data: D,
     n: usize,
