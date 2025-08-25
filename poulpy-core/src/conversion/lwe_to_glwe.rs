@@ -1,7 +1,7 @@
 use poulpy_hal::{
     api::{
         DFT, IDFTConsume, ScratchAvailable, TakeVecZnxDft, VecZnxBigAddSmallInplace, VecZnxBigNormalize,
-        VecZnxBigNormalizeTmpBytes, VecZnxDftAllocBytes, VmpApply, VmpApplyAdd, VmpApplyTmpBytes,
+        VecZnxBigNormalizeTmpBytes, VecZnxDftAllocBytes, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch, ZnxView, ZnxViewMut, ZnxZero},
 };
@@ -21,7 +21,7 @@ impl GLWECiphertext<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: VecZnxDftAllocBytes + VmpApplyTmpBytes + VecZnxBigNormalizeTmpBytes,
+        Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes,
     {
         GLWECiphertext::keyswitch_scratch_space(module, basek, k_glwe, k_lwe, k_ksk, 1, 1, rank)
             + GLWECiphertext::bytes_of(module.n(), basek, k_lwe, 1)
@@ -39,10 +39,10 @@ impl<D: DataMut> GLWECiphertext<D> {
         DLwe: DataRef,
         DKsk: DataRef,
         Module<B>: VecZnxDftAllocBytes
-            + VmpApplyTmpBytes
+            + VmpApplyDftToDftTmpBytes
             + VecZnxBigNormalizeTmpBytes
-            + VmpApply<B>
-            + VmpApplyAdd<B>
+            + VmpApplyDftToDft<B>
+            + VmpApplyDftToDftAdd<B>
             + DFT<B>
             + IDFTConsume<B>
             + VecZnxBigAddSmallInplace<B>

@@ -2,7 +2,8 @@ use poulpy_hal::{
     api::{
         DFT, IDFTConsume, IDFTTmpA, ScratchAvailable, TakeVecZnxBig, TakeVecZnxDft, VecZnxBigAddSmallInplace,
         VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftAddInplace,
-        VecZnxDftAllocBytes, VecZnxDftCopy, VecZnxNormalizeTmpBytes, VmpApply, VmpApplyAdd, VmpApplyTmpBytes,
+        VecZnxDftAllocBytes, VecZnxDftCopy, VecZnxNormalizeTmpBytes, VmpApplyDftToDft, VmpApplyDftToDftAdd,
+        VmpApplyDftToDftTmpBytes,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch, VecZnx, VmpPMat, ZnxInfos},
 };
@@ -25,7 +26,7 @@ impl GGSWCiphertext<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: VecZnxDftAllocBytes + VmpApplyTmpBytes + VecZnxBigAllocBytes + VecZnxNormalizeTmpBytes,
+        Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigAllocBytes + VecZnxNormalizeTmpBytes,
     {
         let tsk_size: usize = k_tsk.div_ceil(basek);
         let self_size_out: usize = self_k.div_ceil(basek);
@@ -33,7 +34,7 @@ impl GGSWCiphertext<Vec<u8>> {
 
         let tmp_dft_i: usize = module.vec_znx_dft_alloc_bytes(rank + 1, tsk_size);
         let tmp_a: usize = module.vec_znx_dft_alloc_bytes(1, self_size_in);
-        let vmp: usize = module.vmp_apply_tmp_bytes(
+        let vmp: usize = module.vmp_apply_dft_to_dft_tmp_bytes(
             self_size_out,
             self_size_in,
             self_size_in,
@@ -59,8 +60,11 @@ impl GGSWCiphertext<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>:
-            VecZnxDftAllocBytes + VmpApplyTmpBytes + VecZnxBigAllocBytes + VecZnxNormalizeTmpBytes + VecZnxBigNormalizeTmpBytes,
+        Module<B>: VecZnxDftAllocBytes
+            + VmpApplyDftToDftTmpBytes
+            + VecZnxBigAllocBytes
+            + VecZnxNormalizeTmpBytes
+            + VecZnxBigNormalizeTmpBytes,
     {
         let out_size: usize = k_out.div_ceil(basek);
         let res_znx: usize = VecZnx::alloc_bytes(module.n(), rank + 1, out_size);
@@ -83,8 +87,11 @@ impl GGSWCiphertext<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>:
-            VecZnxDftAllocBytes + VmpApplyTmpBytes + VecZnxBigAllocBytes + VecZnxNormalizeTmpBytes + VecZnxBigNormalizeTmpBytes,
+        Module<B>: VecZnxDftAllocBytes
+            + VmpApplyDftToDftTmpBytes
+            + VecZnxBigAllocBytes
+            + VecZnxNormalizeTmpBytes
+            + VecZnxBigNormalizeTmpBytes,
     {
         GGSWCiphertext::keyswitch_scratch_space(
             module, basek, k_out, k_out, k_ksk, digits_ksk, k_tsk, digits_tsk, rank,
@@ -104,13 +111,13 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
         DataTsk: DataRef,
         Module<B>: VecZnxCopy
             + VecZnxDftAllocBytes
-            + VmpApplyTmpBytes
+            + VmpApplyDftToDftTmpBytes
             + VecZnxBigAllocBytes
             + VecZnxNormalizeTmpBytes
             + DFT<B>
             + VecZnxDftCopy<B>
-            + VmpApply<B>
-            + VmpApplyAdd<B>
+            + VmpApplyDftToDft<B>
+            + VmpApplyDftToDftAdd<B>
             + VecZnxDftAddInplace<B>
             + VecZnxBigNormalize<B>
             + IDFTTmpA<B>,
@@ -139,10 +146,10 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: VecZnxDftAllocBytes
-            + VmpApplyTmpBytes
+            + VmpApplyDftToDftTmpBytes
             + VecZnxBigNormalizeTmpBytes
-            + VmpApply<B>
-            + VmpApplyAdd<B>
+            + VmpApplyDftToDft<B>
+            + VmpApplyDftToDftAdd<B>
             + DFT<B>
             + IDFTConsume<B>
             + VecZnxBigAddSmallInplace<B>
@@ -167,10 +174,10 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: VecZnxDftAllocBytes
-            + VmpApplyTmpBytes
+            + VmpApplyDftToDftTmpBytes
             + VecZnxBigNormalizeTmpBytes
-            + VmpApply<B>
-            + VmpApplyAdd<B>
+            + VmpApplyDftToDft<B>
+            + VmpApplyDftToDftAdd<B>
             + DFT<B>
             + IDFTConsume<B>
             + VecZnxBigAddSmallInplace<B>
@@ -196,13 +203,13 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: VecZnxDftAllocBytes
-            + VmpApplyTmpBytes
+            + VmpApplyDftToDftTmpBytes
             + VecZnxBigAllocBytes
             + VecZnxNormalizeTmpBytes
             + DFT<B>
             + VecZnxDftCopy<B>
-            + VmpApply<B>
-            + VmpApplyAdd<B>
+            + VmpApplyDftToDft<B>
+            + VmpApplyDftToDftAdd<B>
             + VecZnxDftAddInplace<B>
             + VecZnxBigNormalize<B>
             + IDFTTmpA<B>,
@@ -288,9 +295,9 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
 
                             module.vec_znx_dft_copy(digits, digits - 1 - di, &mut tmp_a, 0, &ci_dft, col_i);
                             if di == 0 && col_i == 1 {
-                                module.vmp_apply(&mut tmp_dft_i, &tmp_a, pmat, scratch3);
+                                module.vmp_apply_dft_to_dft(&mut tmp_dft_i, &tmp_a, pmat, scratch3);
                             } else {
-                                module.vmp_apply_add(&mut tmp_dft_i, &tmp_a, pmat, di, scratch3);
+                                module.vmp_apply_dft_to_dft_add(&mut tmp_dft_i, &tmp_a, pmat, di, scratch3);
                             }
                         });
                     });
@@ -330,10 +337,10 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: VecZnxDftAllocBytes
-            + VmpApplyTmpBytes
+            + VmpApplyDftToDftTmpBytes
             + VecZnxBigNormalizeTmpBytes
-            + VmpApply<B>
-            + VmpApplyAdd<B>
+            + VmpApplyDftToDft<B>
+            + VmpApplyDftToDftAdd<B>
             + DFT<B>
             + IDFTConsume<B>
             + VecZnxBigAddSmallInplace<B>

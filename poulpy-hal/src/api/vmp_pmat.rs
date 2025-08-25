@@ -24,8 +24,8 @@ pub trait VmpPrepare<B: Backend> {
 }
 
 #[allow(clippy::too_many_arguments)]
-pub trait VmpApplyTmpBytes {
-    fn vmp_apply_tmp_bytes(
+pub trait VmpApplyDftToDftTmpBytes {
+    fn vmp_apply_dft_to_dft_tmp_bytes(
         &self,
         res_size: usize,
         a_size: usize,
@@ -36,7 +36,7 @@ pub trait VmpApplyTmpBytes {
     ) -> usize;
 }
 
-pub trait VmpApply<B: Backend> {
+pub trait VmpApplyDftToDft<B: Backend> {
     /// Applies the vector matrix product [crate::layouts::VecZnxDft] x [crate::layouts::VmpPMat].
     ///
     /// A vector matrix product numerically equivalent to a sum of [crate::api::SvpApply],
@@ -61,7 +61,7 @@ pub trait VmpApply<B: Backend> {
     /// * `a`: the left operand [crate::layouts::VecZnxDft] of the vector matrix product.
     /// * `b`: the right operand [crate::layouts::VmpPMat] of the vector matrix product.
     /// * `buf`: scratch space, the size can be obtained with [VmpApplyTmpBytes::vmp_apply_tmp_bytes].
-    fn vmp_apply<R, A, C>(&self, res: &mut R, a: &A, b: &C, scratch: &mut Scratch<B>)
+    fn vmp_apply_dft_to_dft<R, A, C>(&self, res: &mut R, a: &A, b: &C, scratch: &mut Scratch<B>)
     where
         R: VecZnxDftToMut<B>,
         A: VecZnxDftToRef<B>,
@@ -69,8 +69,8 @@ pub trait VmpApply<B: Backend> {
 }
 
 #[allow(clippy::too_many_arguments)]
-pub trait VmpApplyAddTmpBytes {
-    fn vmp_apply_add_tmp_bytes(
+pub trait VmpApplyDftToDftAddTmpBytes {
+    fn vmp_apply_dft_to_dft_add_tmp_bytes(
         &self,
         res_size: usize,
         a_size: usize,
@@ -81,8 +81,8 @@ pub trait VmpApplyAddTmpBytes {
     ) -> usize;
 }
 
-pub trait VmpApplyAdd<B: Backend> {
-    fn vmp_apply_add<R, A, C>(&self, res: &mut R, a: &A, b: &C, scale: usize, scratch: &mut Scratch<B>)
+pub trait VmpApplyDftToDftAdd<B: Backend> {
+    fn vmp_apply_dft_to_dft_add<R, A, C>(&self, res: &mut R, a: &A, b: &C, scale: usize, scratch: &mut Scratch<B>)
     where
         R: VecZnxDftToMut<B>,
         A: VecZnxDftToRef<B>,

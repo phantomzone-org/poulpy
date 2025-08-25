@@ -7,7 +7,7 @@ use poulpy_hal::{
         VecZnxBigAutomorphismInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallBInplace, VecZnxCopy,
         VecZnxDftAddInplace, VecZnxDftAllocBytes, VecZnxDftCopy, VecZnxNegateInplace, VecZnxNormalizeInplace,
         VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace, VecZnxRshInplace, VecZnxSub, VecZnxSubABInplace,
-        VecZnxSwithcDegree, VmpApply, VmpApplyAdd, VmpApplyTmpBytes,
+        VecZnxSwithcDegree, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch, ToOwnedDeep},
     oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl},
@@ -40,10 +40,10 @@ where
         + VecZnxCopy
         + VecZnxSubABInplace
         + VecZnxDftAllocBytes
-        + VmpApplyTmpBytes
+        + VmpApplyDftToDftTmpBytes
         + VecZnxBigNormalizeTmpBytes
-        + VmpApply<B>
-        + VmpApplyAdd<B>
+        + VmpApplyDftToDft<B>
+        + VmpApplyDftToDftAdd<B>
         + DFT<B>
         + IDFTConsume<B>
         + VecZnxBigAddSmallInplace<B>
@@ -138,10 +138,10 @@ pub fn circuit_bootstrap_core<DRes, DLwe, DBrk, BRA: BlindRotationAlgo, B>(
         + VecZnxCopy
         + VecZnxSubABInplace
         + VecZnxDftAllocBytes
-        + VmpApplyTmpBytes
+        + VmpApplyDftToDftTmpBytes
         + VecZnxBigNormalizeTmpBytes
-        + VmpApply<B>
-        + VmpApplyAdd<B>
+        + VmpApplyDftToDft<B>
+        + VmpApplyDftToDftAdd<B>
         + DFT<B>
         + IDFTConsume<B>
         + VecZnxBigAddSmallInplace<B>
@@ -263,10 +263,10 @@ fn post_process<DataRes, DataA, B: Backend>(
         + VecZnxCopy
         + VecZnxSubABInplace
         + VecZnxDftAllocBytes
-        + VmpApplyTmpBytes
+        + VmpApplyDftToDftTmpBytes
         + VecZnxBigNormalizeTmpBytes
-        + VmpApply<B>
-        + VmpApplyAdd<B>
+        + VmpApplyDftToDft<B>
+        + VmpApplyDftToDftAdd<B>
         + DFT<B>
         + IDFTConsume<B>
         + VecZnxBigAddSmallInplace<B>
@@ -335,10 +335,10 @@ pub fn pack<D: DataMut, B: Backend>(
         + VecZnxCopy
         + VecZnxSubABInplace
         + VecZnxDftAllocBytes
-        + VmpApplyTmpBytes
+        + VmpApplyDftToDftTmpBytes
         + VecZnxBigNormalizeTmpBytes
-        + VmpApply<B>
-        + VmpApplyAdd<B>
+        + VmpApplyDftToDft<B>
+        + VmpApplyDftToDftAdd<B>
         + DFT<B>
         + IDFTConsume<B>
         + VecZnxBigAddSmallInplace<B>
@@ -414,10 +414,10 @@ fn combine<A: DataMut, D: DataMut, DataAK: DataRef, B: Backend>(
         + VecZnxCopy
         + VecZnxSubABInplace
         + VecZnxDftAllocBytes
-        + VmpApplyTmpBytes
+        + VmpApplyDftToDftTmpBytes
         + VecZnxBigNormalizeTmpBytes
-        + VmpApply<B>
-        + VmpApplyAdd<B>
+        + VmpApplyDftToDft<B>
+        + VmpApplyDftToDftAdd<B>
         + DFT<B>
         + IDFTConsume<B>
         + VecZnxBigAddSmallInplace<B>

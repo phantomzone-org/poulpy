@@ -4,8 +4,8 @@ use poulpy_hal::{
         VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxAutomorphism, VecZnxAutomorphismInplace,
         VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
         VecZnxCopy, VecZnxDftAllocBytes, VecZnxFillUniform, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes,
-        VecZnxSub, VecZnxSubABInplace, VecZnxSubScalarInplace, VecZnxSwithcDegree, VmpApply, VmpApplyAdd, VmpApplyTmpBytes,
-        VmpPMatAlloc, VmpPrepare,
+        VecZnxSub, VecZnxSubABInplace, VecZnxSubScalarInplace, VecZnxSwithcDegree, VmpApplyDftToDft, VmpApplyDftToDftAdd,
+        VmpApplyDftToDftTmpBytes, VmpPMatAlloc, VmpPrepare,
     },
     layouts::{Backend, Module, ScratchOwned},
     oep::{
@@ -42,10 +42,10 @@ where
         + SvpPrepare<B>
         + SvpPPolAllocBytes
         + SvpPPolAlloc<B>
-        + VmpApplyTmpBytes
+        + VmpApplyDftToDftTmpBytes
         + VecZnxBigNormalizeTmpBytes
-        + VmpApply<B>
-        + VmpApplyAdd<B>
+        + VmpApplyDftToDft<B>
+        + VmpApplyDftToDftAdd<B>
         + VecZnxBigAddSmallInplace<B>
         + VecZnxAutomorphism
         + VecZnxSwithcDegree
@@ -134,10 +134,10 @@ pub fn test_gglwe_automorphisk_key_compressed_encrypt_sk<B>(
         + SvpPrepare<B>
         + SvpPPolAllocBytes
         + SvpPPolAlloc<B>
-        + VmpApplyTmpBytes
+        + VmpApplyDftToDftTmpBytes
         + VecZnxBigNormalizeTmpBytes
-        + VmpApply<B>
-        + VmpApplyAdd<B>
+        + VmpApplyDftToDft<B>
+        + VmpApplyDftToDftAdd<B>
         + VecZnxBigAddSmallInplace<B>
         + VecZnxAutomorphism
         + VecZnxSwithcDegree

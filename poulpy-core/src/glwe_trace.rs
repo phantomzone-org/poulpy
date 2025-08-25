@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use poulpy_hal::{
     api::{
         DFT, IDFTConsume, ScratchAvailable, TakeVecZnxDft, VecZnxBigAddSmallInplace, VecZnxBigAutomorphismInplace,
-        VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftAllocBytes, VecZnxRshInplace, VmpApply, VmpApplyAdd,
-        VmpApplyTmpBytes,
+        VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftAllocBytes, VecZnxRshInplace, VmpApplyDftToDft,
+        VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
 };
@@ -38,7 +38,7 @@ impl GLWECiphertext<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: VecZnxDftAllocBytes + VmpApplyTmpBytes + VecZnxBigNormalizeTmpBytes,
+        Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes,
     {
         Self::automorphism_inplace_scratch_space(module, basek, out_k.min(in_k), ksk_k, digits, rank)
     }
@@ -52,7 +52,7 @@ impl GLWECiphertext<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: VecZnxDftAllocBytes + VmpApplyTmpBytes + VecZnxBigNormalizeTmpBytes,
+        Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes,
     {
         Self::automorphism_inplace_scratch_space(module, basek, out_k, ksk_k, digits, rank)
     }
@@ -69,10 +69,10 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: VecZnxDftAllocBytes
-            + VmpApplyTmpBytes
+            + VmpApplyDftToDftTmpBytes
             + VecZnxBigNormalizeTmpBytes
-            + VmpApply<B>
-            + VmpApplyAdd<B>
+            + VmpApplyDftToDft<B>
+            + VmpApplyDftToDftAdd<B>
             + DFT<B>
             + IDFTConsume<B>
             + VecZnxBigAddSmallInplace<B>
@@ -95,10 +95,10 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: VecZnxDftAllocBytes
-            + VmpApplyTmpBytes
+            + VmpApplyDftToDftTmpBytes
             + VecZnxBigNormalizeTmpBytes
-            + VmpApply<B>
-            + VmpApplyAdd<B>
+            + VmpApplyDftToDft<B>
+            + VmpApplyDftToDftAdd<B>
             + DFT<B>
             + IDFTConsume<B>
             + VecZnxBigAddSmallInplace<B>

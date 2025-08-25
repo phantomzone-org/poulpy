@@ -1,13 +1,13 @@
 use crate::{
     api::{
         DFT, IDFTTmpA, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxBigAlloc, VecZnxBigNormalize,
-        VecZnxBigNormalizeTmpBytes, VecZnxDftAlloc, VmpApply, VmpApplyTmpBytes, VmpPMatAlloc, VmpPrepare,
+        VecZnxBigNormalizeTmpBytes, VecZnxDftAlloc, VmpApplyDftToDft, VmpApplyDftToDftTmpBytes, VmpPMatAlloc, VmpPrepare,
     },
     layouts::{MatZnx, Module, ScratchOwned, VecZnx, VecZnxBig, VecZnxDft, VmpPMat, ZnxInfos, ZnxViewMut},
     oep::{
         DFTImpl, IDFTTmpAImpl, ModuleNewImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, VecZnxBigAllocImpl,
-        VecZnxBigNormalizeImpl, VecZnxBigNormalizeTmpBytesImpl, VecZnxDftAllocImpl, VmpApplyImpl, VmpApplyTmpBytesImpl,
-        VmpPMatAllocImpl, VmpPMatPrepareImpl,
+        VecZnxBigNormalizeImpl, VecZnxBigNormalizeTmpBytesImpl, VecZnxDftAllocImpl, VmpApplyDftToDftImpl,
+        VmpApplyDftToDftTmpBytesImpl, VmpPMatAllocImpl, VmpPMatPrepareImpl,
     },
 };
 
@@ -17,14 +17,14 @@ pub fn test_vmp_apply<B>()
 where
     B: Backend
         + ModuleNewImpl<B>
-        + VmpApplyTmpBytesImpl<B>
+        + VmpApplyDftToDftTmpBytesImpl<B>
         + VecZnxBigNormalizeTmpBytesImpl<B>
         + VmpPMatAllocImpl<B>
         + VecZnxDftAllocImpl<B>
         + VecZnxBigAllocImpl<B>
         + VmpPMatPrepareImpl<B>
         + DFTImpl<B>
-        + VmpApplyImpl<B>
+        + VmpApplyDftToDftImpl<B>
         + IDFTTmpAImpl<B>
         + ScratchOwnedAllocImpl<B>
         + ScratchOwnedBorrowImpl<B>
@@ -49,7 +49,7 @@ where
             let mat_cols_out: usize = res_cols;
 
             let mut scratch = ScratchOwned::alloc(
-                module.vmp_apply_tmp_bytes(
+                module.vmp_apply_dft_to_dft_tmp_bytes(
                     res_size,
                     a_size,
                     mat_rows,
@@ -89,7 +89,7 @@ where
                 module.dft(1, 0, &mut a_dft, i, &a, i);
             });
 
-            module.vmp_apply(&mut c_dft, &a_dft, &vmp, scratch.borrow());
+            module.vmp_apply_dft_to_dft(&mut c_dft, &a_dft, &vmp, scratch.borrow());
 
             let mut res_have_vi64: Vec<i64> = vec![i64::default(); n];
 

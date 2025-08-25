@@ -4,7 +4,8 @@ use poulpy_hal::{
         SvpPrepare, VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace,
         VecZnxBigAlloc, VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftAlloc,
         VecZnxDftAllocBytes, VecZnxFillUniform, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes,
-        VecZnxRotateInplace, VecZnxSub, VecZnxSubABInplace, VmpApply, VmpApplyAdd, VmpApplyTmpBytes, VmpPMatAlloc, VmpPrepare,
+        VecZnxRotateInplace, VecZnxSub, VecZnxSubABInplace, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
+        VmpPMatAlloc, VmpPrepare,
     },
     layouts::{Backend, Module, ScalarZnx, ScalarZnxToMut, ScratchOwned, ZnxViewMut},
     oep::{
@@ -56,9 +57,9 @@ pub fn test_ggsw_external_product<B>(
         + VecZnxCopy
         + VmpPMatAlloc<B>
         + VecZnxRotateInplace
-        + VmpApplyTmpBytes
-        + VmpApply<B>
-        + VmpApplyAdd<B>
+        + VmpApplyDftToDftTmpBytes
+        + VmpApplyDftToDft<B>
+        + VmpApplyDftToDftAdd<B>
         + VmpPrepare<B>
         + VecZnxBigAlloc<B>
         + VecZnxDftAlloc<B>
@@ -188,9 +189,9 @@ pub fn test_ggsw_external_product_inplace<B>(
         + VecZnxCopy
         + VmpPMatAlloc<B>
         + VecZnxRotateInplace
-        + VmpApplyTmpBytes
-        + VmpApply<B>
-        + VmpApplyAdd<B>
+        + VmpApplyDftToDftTmpBytes
+        + VmpApplyDftToDft<B>
+        + VmpApplyDftToDftAdd<B>
         + VmpPrepare<B>
         + VecZnxBigAlloc<B>
         + VecZnxDftAlloc<B>

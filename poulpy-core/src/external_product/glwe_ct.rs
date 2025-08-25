@@ -1,7 +1,7 @@
 use poulpy_hal::{
     api::{
         DFT, IDFTConsume, ScratchAvailable, TakeVecZnxDft, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxNormalizeTmpBytes,
-        VmpApply, VmpApplyAdd, VmpApplyTmpBytes,
+        VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
     },
     layouts::{Backend, DataMut, DataRef, DataViewMut, Module, Scratch, VecZnxBig},
 };
@@ -20,14 +20,14 @@ impl GLWECiphertext<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: VecZnxDftAllocBytes + VmpApplyTmpBytes + VecZnxNormalizeTmpBytes,
+        Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxNormalizeTmpBytes,
     {
         let in_size: usize = k_in.div_ceil(basek).div_ceil(digits);
         let out_size: usize = k_out.div_ceil(basek);
         let ggsw_size: usize = k_ggsw.div_ceil(basek);
         let res_dft: usize = module.vec_znx_dft_alloc_bytes(rank + 1, ggsw_size);
         let a_dft: usize = module.vec_znx_dft_alloc_bytes(rank + 1, in_size);
-        let vmp: usize = module.vmp_apply_tmp_bytes(
+        let vmp: usize = module.vmp_apply_dft_to_dft_tmp_bytes(
             out_size,
             in_size,
             in_size,  // rows
@@ -48,7 +48,7 @@ impl GLWECiphertext<Vec<u8>> {
         rank: usize,
     ) -> usize
     where
-        Module<B>: VecZnxDftAllocBytes + VmpApplyTmpBytes + VecZnxNormalizeTmpBytes,
+        Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxNormalizeTmpBytes,
     {
         Self::external_product_scratch_space(module, basek, k_out, k_out, k_ggsw, digits, rank)
     }
@@ -63,11 +63,11 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: VecZnxDftAllocBytes
-            + VmpApplyTmpBytes
+            + VmpApplyDftToDftTmpBytes
             + VecZnxNormalizeTmpBytes
             + DFT<B>
-            + VmpApply<B>
-            + VmpApplyAdd<B>
+            + VmpApplyDftToDft<B>
+            + VmpApplyDftToDftAdd<B>
             + IDFTConsume<B>
             + VecZnxBigNormalize<B>,
         Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
@@ -125,9 +125,9 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
                 });
 
                 if di == 0 {
-                    module.vmp_apply(&mut res_dft, &a_dft, &rhs.data, scratch2);
+                    module.vmp_apply_dft_to_dft(&mut res_dft, &a_dft, &rhs.data, scratch2);
                 } else {
-                    module.vmp_apply_add(&mut res_dft, &a_dft, &rhs.data, di, scratch2);
+                    module.vmp_apply_dft_to_dft_add(&mut res_dft, &a_dft, &rhs.data, di, scratch2);
                 }
             });
         }
@@ -146,11 +146,11 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: VecZnxDftAllocBytes
-            + VmpApplyTmpBytes
+            + VmpApplyDftToDftTmpBytes
             + VecZnxNormalizeTmpBytes
             + DFT<B>
-            + VmpApply<B>
-            + VmpApplyAdd<B>
+            + VmpApplyDftToDft<B>
+            + VmpApplyDftToDftAdd<B>
             + IDFTConsume<B>
             + VecZnxBigNormalize<B>,
         Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,

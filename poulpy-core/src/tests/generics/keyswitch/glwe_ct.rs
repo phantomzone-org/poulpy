@@ -4,7 +4,7 @@ use poulpy_hal::{
         VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace,
         VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxDftAllocBytes, VecZnxFillUniform,
         VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubABInplace, VecZnxSwithcDegree,
-        VmpApply, VmpApplyAdd, VmpApplyTmpBytes, VmpPMatAlloc, VmpPrepare,
+        VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes, VmpPMatAlloc, VmpPrepare,
     },
     layouts::{Backend, Module, ScratchOwned},
     oep::{
@@ -56,9 +56,9 @@ pub fn test_glwe_keyswitch<B>(
         + VecZnxAddScalarInplace
         + VmpPMatAlloc<B>
         + VmpPrepare<B>
-        + VmpApplyTmpBytes
-        + VmpApply<B>
-        + VmpApplyAdd<B>
+        + VmpApplyDftToDftTmpBytes
+        + VmpApplyDftToDft<B>
+        + VmpApplyDftToDftAdd<B>
         + VecZnxBigNormalizeTmpBytes
         + VecZnxSwithcDegree,
     B: Backend
@@ -170,9 +170,9 @@ where
         + VecZnxAddScalarInplace
         + VmpPMatAlloc<B>
         + VmpPrepare<B>
-        + VmpApplyTmpBytes
-        + VmpApply<B>
-        + VmpApplyAdd<B>
+        + VmpApplyDftToDftTmpBytes
+        + VmpApplyDftToDft<B>
+        + VmpApplyDftToDftAdd<B>
         + VecZnxBigNormalizeTmpBytes
         + VecZnxSwithcDegree,
     B: Backend

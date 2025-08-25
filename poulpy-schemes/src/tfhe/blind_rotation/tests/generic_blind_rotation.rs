@@ -5,8 +5,8 @@ use poulpy_hal::{
         VecZnxBigAddSmallInplace, VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftAdd,
         VecZnxDftAddInplace, VecZnxDftAllocBytes, VecZnxDftSubABInplace, VecZnxDftZero, VecZnxFillUniform, VecZnxIDFTTmpBytes,
         VecZnxMulXpMinusOneInplace, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate,
-        VecZnxRotateInplace, VecZnxSub, VecZnxSubABInplace, VecZnxSwithcDegree, VmpApply, VmpApplyAdd, VmpApplyTmpBytes,
-        VmpPMatAlloc, VmpPrepare, ZnAddNormal, ZnFillUniform, ZnNormalizeInplace,
+        VecZnxRotateInplace, VecZnxSub, VecZnxSubABInplace, VecZnxSwithcDegree, VmpApplyDftToDft, VmpApplyDftToDftAdd,
+        VmpApplyDftToDftTmpBytes, VmpPMatAlloc, VmpPrepare, ZnAddNormal, ZnFillUniform, ZnNormalizeInplace,
     },
     layouts::{Backend, Module, ScratchOwned, ZnxView},
     oep::{
@@ -31,7 +31,7 @@ where
     Module<B>: VecZnxBigAllocBytes
         + VecZnxDftAllocBytes
         + SvpPPolAllocBytes
-        + VmpApplyTmpBytes
+        + VmpApplyDftToDftTmpBytes
         + VecZnxBigNormalizeTmpBytes
         + VecZnxIDFTTmpBytes
         + IDFT<B>
@@ -64,8 +64,8 @@ where
         + VecZnxSub
         + VmpPMatAlloc<B>
         + VmpPrepare<B>
-        + VmpApply<B>
-        + VmpApplyAdd<B>
+        + VmpApplyDftToDft<B>
+        + VmpApplyDftToDftAdd<B>
         + ZnFillUniform
         + ZnAddNormal
         + ZnNormalizeInplace<B>,

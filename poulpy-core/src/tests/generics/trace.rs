@@ -7,7 +7,8 @@ use poulpy_hal::{
         VecZnxBigAddSmallInplace, VecZnxBigAllocBytes, VecZnxBigAutomorphismInplace, VecZnxBigNormalize,
         VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallBInplace, VecZnxCopy, VecZnxDftAllocBytes, VecZnxFillUniform,
         VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotateInplace, VecZnxRshInplace, VecZnxSub,
-        VecZnxSubABInplace, VecZnxSwithcDegree, VmpApply, VmpApplyAdd, VmpApplyTmpBytes, VmpPMatAlloc, VmpPrepare,
+        VecZnxSubABInplace, VecZnxSwithcDegree, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes, VmpPMatAlloc,
+        VmpPrepare,
     },
     layouts::{Backend, Module, ScratchOwned, ZnxView, ZnxViewMut},
     oep::{
@@ -55,9 +56,9 @@ where
         + VecZnxAddScalarInplace
         + VmpPMatAlloc<B>
         + VmpPrepare<B>
-        + VmpApplyTmpBytes
-        + VmpApply<B>
-        + VmpApplyAdd<B>
+        + VmpApplyDftToDftTmpBytes
+        + VmpApplyDftToDft<B>
+        + VmpApplyDftToDftAdd<B>
         + VecZnxBigNormalizeTmpBytes
         + VecZnxSwithcDegree
         + VecZnxCopy,

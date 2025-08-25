@@ -4,8 +4,8 @@ use poulpy_hal::{
         SvpPPolAllocBytes, SvpPrepare, VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxBigAddInplace,
         VecZnxBigAddSmallInplace, VecZnxBigAlloc, VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
         VecZnxDftAddInplace, VecZnxDftAlloc, VecZnxDftAllocBytes, VecZnxDftCopy, VecZnxFillUniform, VecZnxNormalize,
-        VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubABInplace, VecZnxSwithcDegree, VmpApply,
-        VmpApplyAdd, VmpApplyTmpBytes, VmpPMatAlloc, VmpPrepare,
+        VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubABInplace, VecZnxSwithcDegree, VmpApplyDftToDft,
+        VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes, VmpPMatAlloc, VmpPrepare,
     },
     layouts::{Backend, Module, ScalarZnx, ScratchOwned},
     oep::{
@@ -57,9 +57,9 @@ pub fn test_ggsw_keyswitch<B>(
         + VecZnxAddScalarInplace
         + VmpPMatAlloc<B>
         + VmpPrepare<B>
-        + VmpApplyTmpBytes
-        + VmpApply<B>
-        + VmpApplyAdd<B>
+        + VmpApplyDftToDftTmpBytes
+        + VmpApplyDftToDft<B>
+        + VmpApplyDftToDftAdd<B>
         + VecZnxBigNormalizeTmpBytes
         + VecZnxSwithcDegree
         + SvpApply<B>
@@ -201,9 +201,9 @@ pub fn test_ggsw_keyswitch_inplace<B>(
         + VecZnxAddScalarInplace
         + VmpPMatAlloc<B>
         + VmpPrepare<B>
-        + VmpApplyTmpBytes
-        + VmpApply<B>
-        + VmpApplyAdd<B>
+        + VmpApplyDftToDftTmpBytes
+        + VmpApplyDftToDft<B>
+        + VmpApplyDftToDftAdd<B>
         + VecZnxBigNormalizeTmpBytes
         + VecZnxSwithcDegree
         + SvpApply<B>

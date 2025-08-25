@@ -8,8 +8,8 @@ use poulpy_hal::{
         VecZnxBigAutomorphismInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallBInplace, VecZnxCopy,
         VecZnxDftAddInplace, VecZnxDftAlloc, VecZnxDftAllocBytes, VecZnxDftCopy, VecZnxFillUniform, VecZnxNegateInplace,
         VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace, VecZnxRshInplace,
-        VecZnxSub, VecZnxSubABInplace, VecZnxSwithcDegree, VmpApply, VmpApplyAdd, VmpApplyTmpBytes, VmpPMatAlloc, VmpPrepare,
-        ZnAddNormal, ZnFillUniform, ZnNormalizeInplace,
+        VecZnxSub, VecZnxSubABInplace, VecZnxSwithcDegree, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
+        VmpPMatAlloc, VmpPrepare, ZnAddNormal, ZnFillUniform, ZnNormalizeInplace,
     },
     layouts::{Backend, Module, ScalarZnx, ScratchOwned, ZnxView, ZnxViewMut},
     oep::{
@@ -66,9 +66,9 @@ where
         + VmpPrepare<B>
         + SvpPrepare<B>
         + SvpPPolAlloc<B>
-        + VmpApplyTmpBytes
-        + VmpApply<B>
-        + VmpApplyAdd<B>
+        + VmpApplyDftToDftTmpBytes
+        + VmpApplyDftToDft<B>
+        + VmpApplyDftToDftAdd<B>
         + SvpPPolAllocBytes
         + VecZnxRotateInplace
         + VecZnxBigAutomorphismInplace<B>
@@ -247,9 +247,9 @@ where
         + VmpPrepare<B>
         + SvpPrepare<B>
         + SvpPPolAlloc<B>
-        + VmpApplyTmpBytes
-        + VmpApply<B>
-        + VmpApplyAdd<B>
+        + VmpApplyDftToDftTmpBytes
+        + VmpApplyDftToDft<B>
+        + VmpApplyDftToDftAdd<B>
         + SvpPPolAllocBytes
         + VecZnxRotateInplace
         + VecZnxBigAutomorphismInplace<B>

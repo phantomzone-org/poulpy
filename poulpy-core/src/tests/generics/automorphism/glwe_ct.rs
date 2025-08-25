@@ -4,7 +4,8 @@ use poulpy_hal::{
         VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxAutomorphism, VecZnxAutomorphismInplace,
         VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
         VecZnxDftAllocBytes, VecZnxFillUniform, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub,
-        VecZnxSubABInplace, VecZnxSwithcDegree, VmpApply, VmpApplyAdd, VmpApplyTmpBytes, VmpPMatAlloc, VmpPrepare,
+        VecZnxSubABInplace, VecZnxSwithcDegree, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes, VmpPMatAlloc,
+        VmpPrepare,
     },
     layouts::{Backend, Module, ScratchOwned},
     oep::{
@@ -53,10 +54,10 @@ pub fn test_glwe_automorphism<B>(
         + VecZnxBigAllocBytes
         + VecZnxBigAddInplace<B>
         + VecZnxBigAddSmallInplace<B>
-        + VmpApplyTmpBytes
+        + VmpApplyDftToDftTmpBytes
         + VecZnxBigNormalizeTmpBytes
-        + VmpApply<B>
-        + VmpApplyAdd<B>
+        + VmpApplyDftToDft<B>
+        + VmpApplyDftToDftAdd<B>
         + VecZnxAutomorphism
         + VecZnxSwithcDegree
         + VecZnxAddScalarInplace
@@ -177,10 +178,10 @@ pub fn test_glwe_automorphism_inplace<B>(
         + VecZnxBigAllocBytes
         + VecZnxBigAddInplace<B>
         + VecZnxBigAddSmallInplace<B>
-        + VmpApplyTmpBytes
+        + VmpApplyDftToDftTmpBytes
         + VecZnxBigNormalizeTmpBytes
-        + VmpApply<B>
-        + VmpApplyAdd<B>
+        + VmpApplyDftToDft<B>
+        + VmpApplyDftToDftAdd<B>
         + VecZnxAutomorphism
         + VecZnxSwithcDegree
         + VecZnxAddScalarInplace
