@@ -7,7 +7,7 @@ use crate::{
     layouts::{
         Backend, Data, DataMut, DataRef, DataView, DataViewMut, VecZnxBig, ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero,
     },
-    oep::VecZnxBigAllocBytesImpl,
+    oep::VecZnxDftAllocBytesImpl,
 };
 #[derive(PartialEq, Eq)]
 pub struct VecZnxDft<D: Data, B: Backend> {
@@ -94,10 +94,10 @@ where
 
 impl<D: DataRef + From<Vec<u8>>, B: Backend> VecZnxDft<D, B>
 where
-    B: VecZnxBigAllocBytesImpl<B>,
+    B: VecZnxDftAllocBytesImpl<B>,
 {
     pub fn alloc(n: usize, cols: usize, size: usize) -> Self {
-        let data: Vec<u8> = alloc_aligned::<u8>(B::vec_znx_big_alloc_bytes_impl(n, cols, size));
+        let data: Vec<u8> = alloc_aligned::<u8>(B::vec_znx_dft_alloc_bytes_impl(n, cols, size));
         Self {
             data: data.into(),
             n,
@@ -110,7 +110,7 @@ where
 
     pub fn from_bytes(n: usize, cols: usize, size: usize, bytes: impl Into<Vec<u8>>) -> Self {
         let data: Vec<u8> = bytes.into();
-        assert!(data.len() == B::vec_znx_big_alloc_bytes_impl(n, cols, size));
+        assert!(data.len() == B::vec_znx_dft_alloc_bytes_impl(n, cols, size));
         Self {
             data: data.into(),
             n,

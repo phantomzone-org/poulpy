@@ -1,9 +1,10 @@
 use crate::{
     api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAdd, VecZnxAddNormal, VecZnxFillUniform, VecZnxNormalize,
-        VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAdd, VecZnxAddNormal, VecZnxFillUniform, VecZnxLshInplace, VecZnxNegate,
+        VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxSub,
     },
     layouts::{Backend, FillUniform, Module, ScratchOwned, VecZnx, ZnxView, ZnxViewMut},
+    reference::vec_znx::{vec_znx_lsh_inplace_ref, vec_znx_normalize_inplace_ref, vec_znx_normalize_ref, vec_znx_rotate_ref},
     source::Source,
 };
 
@@ -21,52 +22,24 @@ where
     let basek: usize = 17;
     let zero: Vec<i64> = vec![0i64; module.n()];
 
-    let get_digit = |x: i64| -> i64 { (x << (i64::BITS - basek as u32)) >> (i64::BITS - basek as u32) };
-    let get_carry = |x: i64, digit: i64| -> i64 { (x - digit) >> basek };
-
     for a_size in [1, 2, 6, 11] {
         let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, a_size);
         let mut b: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, a_size);
 
         // Fill a with random i64
         a.fill_uniform(&mut source);
-
-        // Raw copy on b
-        b.raw_mut().copy_from_slice(a.raw());
+        b.fill_uniform(&mut source);
 
         // Reference
         let mut carry: Vec<i64> = vec![0i64; module.n()];
+
+        // Fill carry with garbage
+        carry.iter_mut().for_each(|x| {
+            *x = source.next_i64();
+        });
+
         for i in 0..cols {
-            for j in (0..a_size).rev() {
-                if j == a_size - 1 {
-                    b.at_mut(i, j)
-                        .iter_mut()
-                        .zip(carry.iter_mut())
-                        .for_each(|(x, c)| {
-                            let digit: i64 = get_digit(*x);
-                            *c = get_carry(*x, digit);
-                            *x = digit;
-                        });
-                } else if j == 0 {
-                    b.at_mut(i, j)
-                        .iter_mut()
-                        .zip(carry.iter_mut())
-                        .for_each(|(x, c)| {
-                            *x = get_digit(get_digit(*x) + *c);
-                        });
-                } else {
-                    b.at_mut(i, j)
-                        .iter_mut()
-                        .zip(carry.iter_mut())
-                        .for_each(|(x, c)| {
-                            let digit: i64 = get_digit(*x);
-                            let carry: i64 = get_carry(*x, digit);
-                            let digit_plus_c: i64 = digit + *c;
-                            *x = get_digit(digit_plus_c);
-                            *c = carry + get_carry(digit_plus_c, *x);
-                        });
-                }
-            }
+            vec_znx_normalize_ref(basek, &mut b, i, &a, i, &mut carry);
         }
 
         for c_size in [1, 2, 6, 11] {
@@ -93,6 +66,52 @@ where
                 for j in min_size..c_size {
                     assert_eq!(c.at(i, j), zero);
                 }
+            }
+        }
+    }
+}
+
+pub fn test_vec_znx_normalize_inplace<B: Backend>(module: &Module<B>)
+where
+    ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
+    Module<B>: VecZnxNormalizeTmpBytes + VecZnxNormalizeInplace<B>,
+{
+    let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(module.vec_znx_normalize_tmp_bytes());
+    let mut source: Source = Source::new([0u8; 32]);
+    let cols: usize = 2;
+    let basek: usize = 17;
+
+    for size in [1, 2, 6, 11] {
+        let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, size);
+        let mut b: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, size);
+
+        // Fill a with random i64
+        a.fill_uniform(&mut source);
+        b.raw_mut().copy_from_slice(a.raw());
+
+        // Reference
+        let mut carry: Vec<i64> = vec![0i64; module.n()];
+
+        // Fill carry with garbage
+        carry.iter_mut().for_each(|x| {
+            *x = source.next_i64();
+        });
+
+        for i in 0..cols {
+            vec_znx_normalize_inplace_ref(basek, &mut a, i, &mut carry);
+        }
+
+        // Set scratch to garbage
+        source.fill_bytes(&mut scratch.data);
+
+        // Normalize on c
+        for i in 0..cols {
+            module.vec_znx_normalize_inplace(basek, &mut b, i, scratch.borrow());
+        }
+
+        for i in 0..cols {
+            for j in 0..size {
+                assert_eq!(a.at(i, j), b.at(i, j));
             }
         }
     }
@@ -247,6 +266,132 @@ where
                         assert_eq!(d.at(i, j), zero);
                     }
                 }
+            }
+        }
+    }
+}
+
+pub fn test_vec_znx_negate<B: Backend>(module: &Module<B>)
+where
+    Module<B>: VecZnxNegate + VecZnxNormalizeInplace<B> + VecZnxNormalizeTmpBytes,
+    ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
+{
+    let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(module.vec_znx_normalize_tmp_bytes());
+    let mut source: Source = Source::new([0u8; 32]);
+    let cols: usize = 2;
+    let zero: Vec<i64> = vec![0i64; module.n()];
+    let basek = 12;
+
+    for a_size in [1, 2, 6, 11] {
+        let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, a_size);
+        let mut b: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, a_size);
+
+        // Fill a with random i64
+        a.fill_uniform(&mut source);
+
+        // Normalize to avoid i64 overflow
+        for i in 0..cols {
+            module.vec_znx_normalize_inplace(basek, &mut a, i, scratch.borrow());
+        }
+
+        // Reference
+        for i in 0..cols {
+            for j in 0..a_size {
+                izip!(a.at(i, j).iter(), b.at_mut(i, j).iter_mut()).for_each(|(ai, bi)| *bi = -*ai);
+            }
+        }
+
+        for d_size in [1, 2, 6, 11] {
+            let mut d: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, d_size);
+
+            // Set d to garbage
+            d.fill_uniform(&mut source);
+
+            // Normalize on c
+            for i in 0..cols {
+                module.vec_znx_negate(&mut d, i, &a, i);
+            }
+
+            let min_size: usize = a_size.min(d_size);
+
+            for i in 0..cols {
+                for j in 0..min_size {
+                    assert_eq!(d.at(i, j), b.at(i, j));
+                }
+
+                for j in min_size..d_size {
+                    assert_eq!(d.at(i, j), zero);
+                }
+            }
+        }
+    }
+}
+
+pub fn test_vec_znx_lsh<B: Backend>(module: &Module<B>)
+where
+    Module<B>: VecZnxLshInplace + VecZnxNormalizeInplace<B> + VecZnxNormalizeTmpBytes,
+    ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
+{
+    let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(module.vec_znx_normalize_tmp_bytes());
+    let mut source: Source = Source::new([0u8; 32]);
+    let cols: usize = 2;
+    let basek = 12;
+    let k: usize = 38;
+
+    for size in [1, 2, 6, 11] {
+        let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, size);
+        let mut b: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, size);
+
+        // Fill a with random i64
+        a.fill_uniform(&mut source);
+
+        // Normalize to avoid i64 overflow
+        for i in 0..cols {
+            module.vec_znx_normalize_inplace(basek, &mut a, i, scratch.borrow());
+        }
+
+        b.raw_mut().copy_from_slice(a.raw());
+
+        // Normalize on c
+        for i in 0..cols {
+            module.vec_znx_lsh_inplace(basek, k, &mut a, i);
+            vec_znx_lsh_inplace_ref(basek, k, &mut b, i);
+        }
+
+        for i in 0..cols {
+            for j in 0..size {
+                assert_eq!(a.at(i, j), b.at(i, j));
+            }
+        }
+    }
+}
+
+pub fn test_vec_znx_rotate<B: Backend>(module: &Module<B>)
+where
+    Module<B>: VecZnxRotate + VecZnxNormalizeInplace<B> + VecZnxNormalizeTmpBytes,
+{
+    let mut source: Source = Source::new([0u8; 32]);
+    let cols: usize = 2;
+
+    for size in [1, 2, 6, 11] {
+        let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, size);
+        let mut r0: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, size);
+        let mut r1: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, size);
+
+        // Fill a with random i64
+        a.fill_uniform(&mut source);
+
+        let p: i64 = -7;
+
+        // Normalize on c
+        for i in 0..cols {
+            module.vec_znx_rotate(p, &mut r0, i, &a, i);
+            vec_znx_rotate_ref(p, &mut r1, i, &a, i);
+        }
+
+        for i in 0..cols {
+            for j in 0..size {
+                assert_eq!(r0.at(i, j), r1.at(i, j));
             }
         }
     }

@@ -21,6 +21,26 @@ pub struct Module<B: Backend> {
 }
 
 impl<B: Backend> Module<B> {
+    #[allow(clippy::missing_safety_doc)]
+    #[inline]
+    pub fn new_marker(n: u64) -> Self {
+        Self {
+            ptr: NonNull::dangling(),
+            n,
+            _marker: PhantomData,
+        }
+    }
+
+    #[allow(clippy::missing_safety_doc)]
+    #[inline]
+    pub unsafe fn from_nonnull(ptr: NonNull<B::Handle>, n: u64) -> Self {
+        Self {
+            ptr,
+            n,
+            _marker: PhantomData,
+        }
+    }
+
     /// Construct from a raw pointer managed elsewhere.
     /// SAFETY: `ptr` must be non-null and remain valid for the lifetime of this Module.
     #[inline]
