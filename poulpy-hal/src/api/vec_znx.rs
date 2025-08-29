@@ -41,7 +41,7 @@ pub trait VecZnxAddInplace {
         R: VecZnxToMut,
         A: VecZnxToRef;
 }
-
+    
 pub trait VecZnxAddScalarInplace {
     /// Adds the selected column of `a` on the selected column and limb of `res`.
     fn vec_znx_add_scalar_inplace<R, A>(&self, res: &mut R, res_col: usize, res_limb: usize, a: &A, a_col: usize)
