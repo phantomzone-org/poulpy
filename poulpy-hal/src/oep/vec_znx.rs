@@ -199,7 +199,7 @@ pub unsafe trait VecZnxRotateInplaceImpl<B: Backend> {
 /// * See [crate::api::VecZnxAutomorphism] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxAutomorphismImpl<B: Backend> {
-    fn vec_znx_automorphism_impl<R, A>(module: &Module<B>, k: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn vec_znx_automorphism_impl<R, A>(module: &Module<B>, p: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxToMut,
         A: VecZnxToRef;

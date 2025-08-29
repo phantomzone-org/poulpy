@@ -1,10 +1,14 @@
 use crate::{
     api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAdd, VecZnxAddNormal, VecZnxFillUniform, VecZnxLshInplace, VecZnxNegate,
-        VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxSub,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAdd, VecZnxAddNormal, VecZnxAutomorphism, VecZnxFillUniform,
+        VecZnxLshInplace, VecZnxNegate, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate,
+        VecZnxSub,
     },
     layouts::{Backend, FillUniform, Module, ScratchOwned, VecZnx, ZnxView, ZnxViewMut},
-    reference::vec_znx::{vec_znx_lsh_inplace_ref, vec_znx_normalize_inplace_ref, vec_znx_normalize_ref, vec_znx_rotate_ref},
+    reference::vec_znx::{
+        vec_znx_automorphism_ref, vec_znx_lsh_inplace_ref, vec_znx_normalize_inplace_ref, vec_znx_normalize_ref,
+        vec_znx_rotate_ref,
+    },
     source::Source,
 };
 
@@ -310,6 +314,54 @@ where
             // Normalize on c
             for i in 0..cols {
                 module.vec_znx_negate(&mut d, i, &a, i);
+            }
+
+            let min_size: usize = a_size.min(d_size);
+
+            for i in 0..cols {
+                for j in 0..min_size {
+                    assert_eq!(d.at(i, j), b.at(i, j));
+                }
+
+                for j in min_size..d_size {
+                    assert_eq!(d.at(i, j), zero);
+                }
+            }
+        }
+    }
+}
+
+pub fn test_vec_znx_automorphism<B: Backend>(module: &Module<B>)
+where
+    Module<B>: VecZnxAutomorphism,
+{
+    let mut source: Source = Source::new([0u8; 32]);
+    let cols: usize = 2;
+    let zero: Vec<i64> = vec![0i64; module.n()];
+
+    for a_size in [1, 2, 6, 11] {
+        let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, a_size);
+        let mut b: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, a_size);
+
+        // Fill a with random i64
+        a.fill_uniform(&mut source);
+
+        let p: i64 = -5;
+
+        // Reference
+        for i in 0..cols {
+            vec_znx_automorphism_ref(p, &mut b, i, &a, i);
+        }
+
+        for d_size in [1, 2, 6, 11] {
+            let mut d: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, d_size);
+
+            // Set d to garbage
+            d.fill_uniform(&mut source);
+
+            // Normalize on c
+            for i in 0..cols {
+                module.vec_znx_automorphism(p, &mut d, i, &a, i);
             }
 
             let min_size: usize = a_size.min(d_size);

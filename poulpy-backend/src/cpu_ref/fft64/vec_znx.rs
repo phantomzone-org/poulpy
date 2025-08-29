@@ -1,10 +1,13 @@
 use poulpy_hal::{
     api::{TakeSlice, VecZnxNormalizeTmpBytes},
     layouts::{Module, Scratch, VecZnxToMut, VecZnxToRef},
-    oep::{TakeSliceImpl, VecZnxAddImpl, VecZnxNormalizeImpl, VecZnxNormalizeInplaceImpl, VecZnxNormalizeTmpBytesImpl},
+    oep::{
+        TakeSliceImpl, VecZnxAddImpl, VecZnxAutomorphismImpl, VecZnxNormalizeImpl, VecZnxNormalizeInplaceImpl,
+        VecZnxNormalizeTmpBytesImpl,
+    },
     reference::vec_znx::{
-        vec_znx_add_avx, vec_znx_add_ref, vec_znx_normalize_avx, vec_znx_normalize_inplace_avx, vec_znx_normalize_inplace_ref,
-        vec_znx_normalize_ref,
+        vec_znx_add_avx, vec_znx_add_ref, vec_znx_automorphism_avx, vec_znx_automorphism_ref, vec_znx_normalize_avx,
+        vec_znx_normalize_inplace_avx, vec_znx_normalize_inplace_ref, vec_znx_normalize_ref,
     },
 };
 
@@ -85,6 +88,22 @@ where
             }
         } else {
             vec_znx_normalize_ref(basek, res, res_col, a, a_col, tmp_bytes);
+        }
+    }
+}
+
+unsafe impl VecZnxAutomorphismImpl<Self> for FFT64 {
+    fn vec_znx_automorphism_impl<R, A>(_module: &Module<Self>, p: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    where
+        R: VecZnxToMut,
+        A: VecZnxToRef,
+    {
+        if std::is_x86_feature_detected!("avx2") {
+            unsafe {
+                vec_znx_automorphism_avx(p, res, res_col, a, a_col);
+            }
+        } else {
+            vec_znx_automorphism_ref(p, res, res_col, a, a_col);
         }
     }
 }
