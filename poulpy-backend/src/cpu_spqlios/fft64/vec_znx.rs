@@ -19,6 +19,7 @@ use poulpy_hal::{
         VecZnxSplitImpl, VecZnxSubABInplaceImpl, VecZnxSubBAInplaceImpl, VecZnxSubImpl, VecZnxSubScalarInplaceImpl,
         VecZnxSwithcDegreeImpl,
     },
+    reference::vec_znx::{vec_znx_lsh_inplace_ref, vec_znx_rsh_inplace_ref},
     source::Source,
 };
 
@@ -385,87 +386,20 @@ unsafe impl VecZnxNegateInplaceImpl<Self> for FFT64 {
 }
 
 unsafe impl VecZnxLshInplaceImpl<Self> for FFT64 {
-    fn vec_znx_lsh_inplace_impl<A>(_module: &Module<Self>, basek: usize, k: usize, a: &mut A)
+    fn vec_znx_lsh_inplace_impl<A>(_module: &Module<Self>, basek: usize, k: usize, a: &mut A, a_col: usize)
     where
         A: VecZnxToMut,
     {
-        vec_znx_lsh_inplace_ref(basek, k, a)
-    }
-}
-
-pub fn vec_znx_lsh_inplace_ref<A>(basek: usize, k: usize, a: &mut A)
-where
-    A: VecZnxToMut,
-{
-    let mut a: VecZnx<&mut [u8]> = a.to_mut();
-
-    let n: usize = a.n();
-    let cols: usize = a.cols();
-    let size: usize = a.size();
-    let steps: usize = k / basek;
-
-    a.raw_mut().rotate_left(n * steps * cols);
-    (0..cols).for_each(|i| {
-        (size - steps..size).for_each(|j| {
-            a.zero_at(i, j);
-        })
-    });
-
-    let k_rem: usize = k % basek;
-
-    if k_rem != 0 {
-        let shift: usize = i64::BITS as usize - k_rem;
-        (0..cols).for_each(|i| {
-            (0..steps).for_each(|j| {
-                a.at_mut(i, j).iter_mut().for_each(|xi| {
-                    *xi <<= shift;
-                });
-            });
-        });
+        vec_znx_lsh_inplace_ref(basek, k, a, a_col)
     }
 }
 
 unsafe impl VecZnxRshInplaceImpl<Self> for FFT64 {
-    fn vec_znx_rsh_inplace_impl<A>(_module: &Module<Self>, basek: usize, k: usize, a: &mut A)
+    fn vec_znx_rsh_inplace_impl<A>(_module: &Module<Self>, basek: usize, k: usize, a: &mut A, a_col: usize)
     where
         A: VecZnxToMut,
     {
-        vec_znx_rsh_inplace_ref(basek, k, a)
-    }
-}
-
-pub fn vec_znx_rsh_inplace_ref<A>(basek: usize, k: usize, a: &mut A)
-where
-    A: VecZnxToMut,
-{
-    let mut a: VecZnx<&mut [u8]> = a.to_mut();
-    let n: usize = a.n();
-    let cols: usize = a.cols();
-    let size: usize = a.size();
-    let steps: usize = k / basek;
-
-    a.raw_mut().rotate_right(n * steps * cols);
-    (0..cols).for_each(|i| {
-        (0..steps).for_each(|j| {
-            a.zero_at(i, j);
-        })
-    });
-
-    let k_rem: usize = k % basek;
-
-    if k_rem != 0 {
-        let mut carry: Vec<i64> = vec![0i64; n]; // ALLOC (but small so OK)
-        let shift: usize = i64::BITS as usize - k_rem;
-        (0..cols).for_each(|i| {
-            carry.fill(0);
-            (steps..size).for_each(|j| {
-                izip!(carry.iter_mut(), a.at_mut(i, j).iter_mut()).for_each(|(ci, xi)| {
-                    *xi += *ci << basek;
-                    *ci = (*xi << shift) >> shift;
-                    *xi = (*xi - *ci) >> k_rem;
-                });
-            });
-        })
+        vec_znx_rsh_inplace_ref(basek, k, a, a_col)
     }
 }
 

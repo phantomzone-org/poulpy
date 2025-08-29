@@ -37,6 +37,10 @@ impl<D: Data, B: Backend> ZnxInfos for VmpPMat<D, B> {
     fn size(&self) -> usize {
         self.size
     }
+
+    fn poly_count(&self) -> usize {
+        self.rows() * self.cols_in() * self.size() * self.cols_out()
+    }
 }
 
 impl<D: Data, B: Backend> DataView for VmpPMat<D, B> {

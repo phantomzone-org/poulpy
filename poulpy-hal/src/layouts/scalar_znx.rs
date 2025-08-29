@@ -11,7 +11,7 @@ use crate::{
     source::Source,
 };
 
-#[derive(PartialEq, Eq, Debug, Clone)]
+#[derive(PartialEq, Eq, Debug, Clone, Hash)]
 pub struct ScalarZnx<D: Data> {
     pub data: D,
     pub n: usize,

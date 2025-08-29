@@ -158,7 +158,7 @@ pub unsafe trait VecZnxNegateInplaceImpl<B: Backend> {
 /// * See [crate::api::VecZnxRshInplace] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxRshInplaceImpl<B: Backend> {
-    fn vec_znx_rsh_inplace_impl<A>(module: &Module<B>, basek: usize, k: usize, a: &mut A)
+    fn vec_znx_rsh_inplace_impl<A>(module: &Module<B>, basek: usize, k: usize, a: &mut A, a_col: usize)
     where
         A: VecZnxToMut;
 }
@@ -168,7 +168,7 @@ pub unsafe trait VecZnxRshInplaceImpl<B: Backend> {
 /// * See [crate::api::VecZnxLshInplace] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxLshInplaceImpl<B: Backend> {
-    fn vec_znx_lsh_inplace_impl<A>(module: &Module<B>, basek: usize, k: usize, a: &mut A)
+    fn vec_znx_lsh_inplace_impl<A>(module: &Module<B>, basek: usize, k: usize, a: &mut A, a_col: usize)
     where
         A: VecZnxToMut;
 }
@@ -199,7 +199,7 @@ pub unsafe trait VecZnxRotateInplaceImpl<B: Backend> {
 /// * See [crate::api::VecZnxAutomorphism] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxAutomorphismImpl<B: Backend> {
-    fn vec_znx_automorphism_impl<R, A>(module: &Module<B>, k: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn vec_znx_automorphism_impl<R, A>(module: &Module<B>, p: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxToMut,
         A: VecZnxToRef;

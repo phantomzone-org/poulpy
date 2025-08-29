@@ -26,3 +26,8 @@ cmake = "0.1.54"
 [package.metadata.docs.rs]
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
+
+
+[[bench]]
+name = "vec_znx"
+harness = false

@@ -273,7 +273,9 @@ pub trait GLWEOperations: GLWECiphertextToMut + SetMetaData + Sized {
         Module<B>: VecZnxRshInplace,
     {
         let basek: usize = self.basek();
-        module.vec_znx_rsh_inplace(basek, k, &mut self.to_mut().data);
+        (0..self.cols()).for_each(|i| {
+            module.vec_znx_rsh_inplace(basek, k, &mut self.to_mut().data, i);
+        })
     }
 
     fn normalize<A, B: Backend>(&mut self, module: &Module<B>, a: &A, scratch: &mut Scratch<B>)

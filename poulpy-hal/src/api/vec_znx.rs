@@ -41,7 +41,7 @@ pub trait VecZnxAddInplace {
         R: VecZnxToMut,
         A: VecZnxToRef;
 }
-
+    
 pub trait VecZnxAddScalarInplace {
     /// Adds the selected column of `a` on the selected column and limb of `res`.
     fn vec_znx_add_scalar_inplace<R, A>(&self, res: &mut R, res_col: usize, res_limb: usize, a: &A, a_col: usize)
@@ -104,21 +104,21 @@ pub trait VecZnxNegateInplace {
 
 pub trait VecZnxLshInplace {
     /// Left shift by k bits all columns of `a`.
-    fn vec_znx_lsh_inplace<A>(&self, basek: usize, k: usize, a: &mut A)
+    fn vec_znx_lsh_inplace<A>(&self, basek: usize, k: usize, a: &mut A, a_col: usize)
     where
         A: VecZnxToMut;
 }
 
 pub trait VecZnxRshInplace {
     /// Right shift by k bits all columns of `a`.
-    fn vec_znx_rsh_inplace<A>(&self, basek: usize, k: usize, a: &mut A)
+    fn vec_znx_rsh_inplace<A>(&self, basek: usize, k: usize, a: &mut A, a_col: usize)
     where
         A: VecZnxToMut;
 }
 
 pub trait VecZnxRotate {
     /// Multiplies the selected column of `a` by X^k and stores the result in `res_col` of `res`.
-    fn vec_znx_rotate<R, A>(&self, k: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn vec_znx_rotate<R, A>(&self, p: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxToMut,
         A: VecZnxToRef;
@@ -126,7 +126,7 @@ pub trait VecZnxRotate {
 
 pub trait VecZnxRotateInplace {
     /// Multiplies the selected column of `a` by X^k.
-    fn vec_znx_rotate_inplace<A>(&self, k: i64, a: &mut A, a_col: usize)
+    fn vec_znx_rotate_inplace<A>(&self, p: i64, a: &mut A, a_col: usize)
     where
         A: VecZnxToMut;
 }

@@ -39,6 +39,10 @@ impl Source {
         min + ((self.next_u64() << 11 >> 11) as f64) / MAXF64 * (max - min)
     }
 
+    pub fn next_i32(&mut self) -> i32 {
+        self.next_u32() as i32
+    }
+
     pub fn next_i64(&mut self) -> i64 {
         self.next_u64() as i64
     }
