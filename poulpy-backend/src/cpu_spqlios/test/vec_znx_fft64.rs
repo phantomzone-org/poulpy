@@ -2,7 +2,9 @@ use poulpy_hal::{
     api::ModuleNew,
     layouts::Module,
     reference::vec_znx::{
-        test_vec_znx_add, test_vec_znx_add_inplace, test_vec_znx_sub, test_vec_znx_sub_ab_inplace, test_vec_znx_sub_ba_inplace,
+        test_vec_znx_add, test_vec_znx_add_inplace, test_vec_znx_add_scalar, test_vec_znx_add_scalar_inplace,
+        test_vec_znx_negate, test_vec_znx_negate_inplace, test_vec_znx_sub, test_vec_znx_sub_ab_inplace,
+        test_vec_znx_sub_ba_inplace,
     },
     tests::vec_znx::{test_vec_znx_add_normal, test_vec_znx_fill_uniform, test_vec_znx_normalize},
 };
@@ -28,6 +30,18 @@ fn test_vec_znx_add_inplace_fft64() {
 }
 
 #[test]
+fn test_vec_znx_add_scalar_fft64() {
+    let module: Module<FFT64> = Module::<FFT64>::new(1 << 5);
+    test_vec_znx_add_scalar(&module);
+}
+
+#[test]
+fn test_vec_znx_add_scalar_inplace_fft64() {
+    let module: Module<FFT64> = Module::<FFT64>::new(1 << 5);
+    test_vec_znx_add_scalar_inplace(&module);
+}
+
+#[test]
 fn test_vec_znx_sub_fft64() {
     let module: Module<FFT64> = Module::<FFT64>::new(1 << 5);
     test_vec_znx_sub(&module);
@@ -43,6 +57,18 @@ fn test_vec_znx_sub_ab_inplace_fft64() {
 fn test_vec_znx_sub_ba_inplace_fft64() {
     let module: Module<FFT64> = Module::<FFT64>::new(1 << 5);
     test_vec_znx_sub_ba_inplace(&module);
+}
+
+#[test]
+fn test_vec_znx_negate_fft64() {
+    let module: Module<FFT64> = Module::<FFT64>::new(1 << 5);
+    test_vec_znx_negate(&module);
+}
+
+#[test]
+fn test_vec_znx_negate_inplace_fft64() {
+    let module: Module<FFT64> = Module::<FFT64>::new(1 << 5);
+    test_vec_znx_negate_inplace(&module);
 }
 
 #[test]

@@ -468,7 +468,6 @@ where
     group.finish();
 }
 
-
 #[cfg(all(test, any(target_arch = "x86_64", target_arch = "x86")))]
 mod tests {
     use super::*;
@@ -544,8 +543,7 @@ mod tests {
                     .raw_mut()
                     .iter_mut()
                     .for_each(|x| *x = source.next_i32() as i64);
-                res_1
-                    .raw_mut().copy_from_slice(res_0.raw());
+                res_1.raw_mut().copy_from_slice(res_0.raw());
 
                 for i in 0..cols {
                     vec_znx_sub_ab_inplace_ref(&mut res_0, i, &a, i);
@@ -587,8 +585,7 @@ mod tests {
                     .raw_mut()
                     .iter_mut()
                     .for_each(|x| *x = source.next_i32() as i64);
-                res_1
-                    .raw_mut().copy_from_slice(res_0.raw());
+                res_1.raw_mut().copy_from_slice(res_0.raw());
 
                 for i in 0..cols {
                     vec_znx_sub_ba_inplace_ref(&mut res_0, i, &a, i);
