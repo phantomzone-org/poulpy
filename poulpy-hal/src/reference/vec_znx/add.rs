@@ -9,7 +9,7 @@ use crate::{
         ZnxZero,
     },
     oep::{ModuleNewImpl, VecZnxAddImpl, VecZnxAddInplaceImpl},
-    reference::znx::{znx_add_i64_ref, znx_add_inplace_i64_ref},
+    reference::znx::{znx_add_i64_ref, znx_add_inplace_i64_ref, znx_copy_ref},
     source::Source,
 };
 
@@ -42,7 +42,7 @@ where
         }
 
         for j in sum_size..cpy_size {
-            res.at_mut(res_col, j).copy_from_slice(b.at(a_col, j));
+            znx_copy_ref(res.at_mut(res_col, j), b.at(b_col, j));
         }
 
         for j in cpy_size..res_size {
@@ -57,7 +57,7 @@ where
         }
 
         for j in sum_size..cpy_size {
-            res.at_mut(res_col, j).copy_from_slice(a.at(a_col, j));
+            znx_copy_ref(res.at_mut(res_col, j), a.at(a_col, j));
         }
 
         for j in cpy_size..res_size {
@@ -100,7 +100,7 @@ where
         }
 
         for j in sum_size..cpy_size {
-            res.at_mut(res_col, j).copy_from_slice(b.at(a_col, j));
+            znx_copy_ref(res.at_mut(res_col, j), b.at(b_col, j));
         }
 
         for j in cpy_size..res_size {
@@ -115,7 +115,7 @@ where
         }
 
         for j in sum_size..cpy_size {
-            res.at_mut(res_col, j).copy_from_slice(a.at(a_col, j));
+            znx_copy_ref(res.at_mut(res_col, j), a.at(a_col, j));
         }
 
         for j in cpy_size..res_size {
@@ -234,7 +234,7 @@ where
         if j == b_limb {
             znx_add_i64_avx(res.at_mut(res_col, j), a.at(a_col, 0), b.at(b_col, j));
         } else {
-            res.at_mut(res_col, j).copy_from_slice(b.at(b_col, j));
+            znx_copy_ref(res.at_mut(res_col, j), b.at(b_col, j));
         }
     }
 }

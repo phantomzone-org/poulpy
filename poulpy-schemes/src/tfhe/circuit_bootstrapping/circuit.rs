@@ -31,7 +31,7 @@ where
         + VecZnxNormalizeTmpBytes
         + VecZnxSwithcDegree
         + VecZnxBigAutomorphismInplace<B>
-        + VecZnxRshInplace
+        + VecZnxRshInplace<B>
         + VecZnxDftCopy<B>
         + IDFTTmpA<B>
         + VecZnxSub
@@ -129,7 +129,7 @@ pub fn circuit_bootstrap_core<DRes, DLwe, DBrk, BRA: BlindRotationAlgo, B>(
         + VecZnxNormalizeTmpBytes
         + VecZnxSwithcDegree
         + VecZnxBigAutomorphismInplace<B>
-        + VecZnxRshInplace
+        + VecZnxRshInplace<B>
         + VecZnxDftCopy<B>
         + IDFTTmpA<B>
         + VecZnxSub
@@ -254,7 +254,7 @@ fn post_process<DataRes, DataA, B: Backend>(
         + VecZnxNormalizeTmpBytes
         + VecZnxSwithcDegree
         + VecZnxBigAutomorphismInplace<B>
-        + VecZnxRshInplace
+        + VecZnxRshInplace<B>
         + VecZnxDftCopy<B>
         + IDFTTmpA<B>
         + VecZnxSub
@@ -326,7 +326,7 @@ pub fn pack<D: DataMut, B: Backend>(
         + VecZnxNormalizeTmpBytes
         + VecZnxSwithcDegree
         + VecZnxBigAutomorphismInplace<B>
-        + VecZnxRshInplace
+        + VecZnxRshInplace<B>
         + VecZnxDftCopy<B>
         + IDFTTmpA<B>
         + VecZnxSub
@@ -405,7 +405,7 @@ fn combine<A: DataMut, D: DataMut, DataAK: DataRef, B: Backend>(
         + VecZnxNormalizeTmpBytes
         + VecZnxSwithcDegree
         + VecZnxBigAutomorphismInplace<B>
-        + VecZnxRshInplace
+        + VecZnxRshInplace<B>
         + VecZnxDftCopy<B>
         + IDFTTmpA<B>
         + VecZnxSub
@@ -450,11 +450,11 @@ fn combine<A: DataMut, D: DataMut, DataAK: DataRef, B: Backend>(
 
             // tmp_b = a * X^-t - b
             tmp_b.sub(module, a, b);
-            tmp_b.rsh(module, 1);
+            tmp_b.rsh(module, 1, scratch_1);
 
             // a = a * X^-t + b
             a.add_inplace(module, b);
-            a.rsh(module, 1);
+            a.rsh(module, 1, scratch_1);
 
             tmp_b.normalize_inplace(module, scratch_1);
 
@@ -470,7 +470,7 @@ fn combine<A: DataMut, D: DataMut, DataAK: DataRef, B: Backend>(
             //   = a + b * X^t + phi(a - b * X^t)
             a.rotate_inplace(module, t);
         } else {
-            a.rsh(module, 1);
+            a.rsh(module, 1, scratch);
             // a = a + phi(a)
             a.automorphism_add_inplace(module, auto_key, scratch);
         }
@@ -481,7 +481,7 @@ fn combine<A: DataMut, D: DataMut, DataAK: DataRef, B: Backend>(
 
         let (mut tmp_b, scratch_1) = scratch.take_glwe_ct(n, basek, k, rank);
         tmp_b.rotate(module, t, b);
-        tmp_b.rsh(module, 1);
+        tmp_b.rsh(module, 1, scratch_1);
 
         // a = (b* X^t - phi(b* X^t))
         b.automorphism_sub_ba(module, &tmp_b, auto_key, scratch_1);

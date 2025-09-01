@@ -185,27 +185,27 @@ where
     }
 }
 
-impl<B> VecZnxLshInplace for Module<B>
+impl<B> VecZnxLshInplace<B> for Module<B>
 where
     B: Backend + VecZnxLshInplaceImpl<B>,
 {
-    fn vec_znx_lsh_inplace<A>(&self, basek: usize, k: usize, a: &mut A, a_col: usize)
+    fn vec_znx_lsh_inplace<A>(&self, basek: usize, k: usize, a: &mut A, a_col: usize, scratch: &mut Scratch<B>)
     where
         A: VecZnxToMut,
     {
-        B::vec_znx_lsh_inplace_impl(self, basek, k, a, a_col)
+        B::vec_znx_lsh_inplace_impl(self, basek, k, a, a_col, scratch)
     }
 }
 
-impl<B> VecZnxRshInplace for Module<B>
+impl<B> VecZnxRshInplace<B> for Module<B>
 where
     B: Backend + VecZnxRshInplaceImpl<B>,
 {
-    fn vec_znx_rsh_inplace<A>(&self, basek: usize, k: usize, a: &mut A, a_col: usize)
+    fn vec_znx_rsh_inplace<A>(&self, basek: usize, k: usize, a: &mut A, a_col: usize, scratch: &mut Scratch<B>)
     where
         A: VecZnxToMut,
     {
-        B::vec_znx_rsh_inplace_impl(self, basek, k, a, a_col)
+        B::vec_znx_rsh_inplace_impl(self, basek, k, a, a_col, scratch)
     }
 }
 

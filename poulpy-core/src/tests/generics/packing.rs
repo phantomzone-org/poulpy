@@ -33,7 +33,7 @@ where
         + VecZnxBigAutomorphismInplace<B>
         + VecZnxBigSubSmallBInplace<B>
         + VecZnxNegateInplace
-        + VecZnxRshInplace
+        + VecZnxRshInplace<B>
         + VecZnxRotateInplace
         + VecZnxBigNormalize<B>
         + DFT<B>

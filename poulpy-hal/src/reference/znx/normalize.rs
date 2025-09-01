@@ -4,99 +4,192 @@ use itertools::izip;
 
 #[inline(always)]
 pub(crate) fn get_digit(basek: usize, x: i64) -> i64 {
-    (x << (i64::BITS - basek as u32)) >> (i64::BITS - basek as u32)
+    (x << (u64::BITS - basek as u32)) >> (u64::BITS - basek as u32)
 }
 
 #[inline(always)]
 pub(crate) fn get_carry(basek: usize, x: i64, digit: i64) -> i64 {
-    (x - digit) >> basek
+    (x.wrapping_sub(digit)) >> basek
 }
 
-pub fn znx_normalize_carry_only_ref(basek: usize, x: &[i64], carry: &mut [i64]) {
+pub fn znx_normalize_carry_only_beg_ref(basek: usize, lsh: usize, x: &[i64], carry: &mut [i64]) {
     #[cfg(debug_assertions)]
     {
-        assert_eq!(x.len(), carry.len())
+        assert_eq!(x.len(), carry.len());
+        assert!(lsh < basek);
     }
 
-    x.iter().zip(carry.iter_mut()).for_each(|(x, c)| {
-        *c = get_carry(basek, *x, get_digit(basek, *x));
-    });
+    if lsh == 0 {
+        x.iter().zip(carry.iter_mut()).for_each(|(x, c)| {
+            *c = get_carry(basek, *x, get_digit(basek, *x));
+        });
+    } else {
+        let basek_lsh: usize = basek - lsh;
+        x.iter().zip(carry.iter_mut()).for_each(|(x, c)| {
+            *c = get_carry(basek_lsh, *x, get_digit(basek_lsh, *x));
+        });
+    }
 }
 
-pub fn znx_normalize_inplace_beg_ref(basek: usize, x: &mut [i64], carry: &mut [i64]) {
+pub fn znx_normalize_inplace_beg_ref(basek: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
     #[cfg(debug_assertions)]
     {
-        assert_eq!(x.len(), carry.len())
+        assert_eq!(x.len(), carry.len());
+        assert!(lsh < basek);
     }
 
-    x.iter_mut().zip(carry.iter_mut()).for_each(|(x, c)| {
-        let digit: i64 = get_digit(basek, *x);
-        *c = get_carry(basek, *x, digit);
-        *x = digit;
-    });
+    if lsh == 0 {
+        x.iter_mut().zip(carry.iter_mut()).for_each(|(x, c)| {
+            let digit: i64 = get_digit(basek, *x);
+            *c = get_carry(basek, *x, digit);
+            *x = digit;
+        });
+    } else {
+        let basek_lsh: usize = basek - lsh;
+        x.iter_mut().zip(carry.iter_mut()).for_each(|(x, c)| {
+            let digit: i64 = get_digit(basek_lsh, *x);
+            *c = get_carry(basek_lsh, *x, digit);
+            *x = digit << lsh;
+        });
+    }
 }
 
-pub fn znx_normalize_beg_ref(basek: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
+pub fn znx_normalize_beg_ref(basek: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
     #[cfg(debug_assertions)]
     {
         assert_eq!(x.len(), carry.len());
         assert_eq!(a.len(), carry.len());
+        assert!(lsh < basek);
     }
 
-    izip!(x.iter_mut(), a.iter(), carry.iter_mut()).for_each(|(x, a, c)| {
-        let digit: i64 = get_digit(basek, *a);
-        *c = get_carry(basek, *a, digit);
-        *x = digit;
-    });
+    if lsh == 0 {
+        izip!(x.iter_mut(), a.iter(), carry.iter_mut()).for_each(|(x, a, c)| {
+            let digit: i64 = get_digit(basek, *a);
+            *c = get_carry(basek, *a, digit);
+            *x = digit;
+        });
+    } else {
+        let basek_lsh: usize = basek - lsh;
+        izip!(x.iter_mut(), a.iter(), carry.iter_mut()).for_each(|(x, a, c)| {
+            let digit: i64 = get_digit(basek_lsh, *a);
+            *c = get_carry(basek_lsh, *a, digit);
+            *x = digit << lsh;
+        });
+    }
 }
 
-pub fn znx_normalize_inplace_mid_ref(basek: usize, x: &mut [i64], carry: &mut [i64]) {
+pub fn znx_normalize_carry_only_mid_ref(basek: usize, lsh: usize, x: &[i64], carry: &mut [i64]) {
     #[cfg(debug_assertions)]
     {
-        assert_eq!(x.len(), carry.len())
+        assert_eq!(x.len(), carry.len());
+        assert!(lsh < basek);
     }
-    x.iter_mut().zip(carry.iter_mut()).for_each(|(x, c)| {
-        let digit: i64 = get_digit(basek, *x);
-        let carry: i64 = get_carry(basek, *x, digit);
-        let digit_plus_c: i64 = digit + *c;
-        *x = get_digit(basek, digit_plus_c);
-        *c = carry + get_carry(basek, digit_plus_c, *x);
-    });
+    if lsh == 0 {
+        x.iter().zip(carry.iter_mut()).for_each(|(x, c)| {
+            let digit: i64 = get_digit(basek, *x);
+            let carry: i64 = get_carry(basek, *x, digit);
+            let digit_plus_c: i64 = digit + *c;
+            *c = carry + get_carry(basek, digit_plus_c, get_digit(basek, digit_plus_c));
+        });
+    } else {
+        let basek_lsh: usize = basek - lsh;
+        x.iter().zip(carry.iter_mut()).for_each(|(x, c)| {
+            let digit: i64 = get_digit(basek_lsh, *x);
+            let carry: i64 = get_carry(basek_lsh, *x, digit);
+            let digit_plus_c: i64 = (digit << lsh) + *c;
+            *c = carry + get_carry(basek, digit_plus_c, get_digit(basek, digit_plus_c));
+        });
+    }
 }
 
-pub fn znx_normalize_mid_ref(basek: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
+pub fn znx_normalize_inplace_mid_ref(basek: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
+    #[cfg(debug_assertions)]
+    {
+        assert_eq!(x.len(), carry.len());
+        assert!(lsh < basek);
+    }
+    if lsh == 0 {
+        x.iter_mut().zip(carry.iter_mut()).for_each(|(x, c)| {
+            let digit: i64 = get_digit(basek, *x);
+            let carry: i64 = get_carry(basek, *x, digit);
+            let digit_plus_c: i64 = digit + *c;
+            *x = get_digit(basek, digit_plus_c);
+            *c = carry + get_carry(basek, digit_plus_c, *x);
+        });
+    } else {
+        let basek_lsh: usize = basek - lsh;
+        x.iter_mut().zip(carry.iter_mut()).for_each(|(x, c)| {
+            let digit: i64 = get_digit(basek_lsh, *x);
+            let carry: i64 = get_carry(basek_lsh, *x, digit);
+            let digit_plus_c: i64 = (digit << lsh) + *c;
+            *x = get_digit(basek, digit_plus_c);
+            *c = carry + get_carry(basek, digit_plus_c, *x);
+        });
+    }
+}
+
+pub fn znx_normalize_mid_ref(basek: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
     #[cfg(debug_assertions)]
     {
         assert_eq!(x.len(), carry.len());
         assert_eq!(a.len(), carry.len());
+        assert!(lsh < basek);
     }
-    izip!(x.iter_mut(), a.iter(), carry.iter_mut()).for_each(|(x, a, c)| {
-        let digit: i64 = get_digit(basek, *a);
-        let carry: i64 = get_carry(basek, *a, digit);
-        let digit_plus_c: i64 = digit + *c;
-        *x = get_digit(basek, digit_plus_c);
-        *c = carry + get_carry(basek, digit_plus_c, *x);
-    });
+    if lsh == 0 {
+        izip!(x.iter_mut(), a.iter(), carry.iter_mut()).for_each(|(x, a, c)| {
+            let digit: i64 = get_digit(basek, *a);
+            let carry: i64 = get_carry(basek, *a, digit);
+            let digit_plus_c: i64 = digit + *c;
+            *x = get_digit(basek, digit_plus_c);
+            *c = carry + get_carry(basek, digit_plus_c, *x);
+        });
+    } else {
+        let basek_lsh: usize = basek - lsh;
+        izip!(x.iter_mut(), a.iter(), carry.iter_mut()).for_each(|(x, a, c)| {
+            let digit: i64 = get_digit(basek_lsh, *a);
+            let carry: i64 = get_carry(basek_lsh, *a, digit);
+            let digit_plus_c: i64 = (digit << lsh) + *c;
+            *x = get_digit(basek, digit_plus_c);
+            *c = carry + get_carry(basek, digit_plus_c, *x);
+        });
+    }
 }
 
-pub fn znx_normalize_inplace_end_ref(basek: usize, x: &mut [i64], carry: &mut [i64]) {
+pub fn znx_normalize_inplace_end_ref(basek: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
     #[cfg(debug_assertions)]
     {
-        assert_eq!(x.len(), carry.len())
+        assert_eq!(x.len(), carry.len());
+        assert!(lsh < basek);
     }
-    x.iter_mut().zip(carry.iter_mut()).for_each(|(x, c)| {
-        *x = get_digit(basek, get_digit(basek, *x) + *c);
-    });
+
+    if lsh == 0 {
+        x.iter_mut().zip(carry.iter_mut()).for_each(|(x, c)| {
+            *x = get_digit(basek, get_digit(basek, *x) + *c);
+        });
+    } else {
+        let basek_lsh: usize = basek - lsh;
+        x.iter_mut().zip(carry.iter_mut()).for_each(|(x, c)| {
+            *x = get_digit(basek, (get_digit(basek_lsh, *x) << lsh) + *c);
+        });
+    }
 }
 
-pub fn znx_normalize_end_ref(basek: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
+pub fn znx_normalize_end_ref(basek: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
     #[cfg(debug_assertions)]
     {
-        assert_eq!(x.len(), carry.len())
+        assert_eq!(x.len(), carry.len());
+        assert!(lsh < basek);
     }
-    izip!(x.iter_mut(), a.iter(), carry.iter_mut()).for_each(|(x, a, c)| {
-        *x = get_digit(basek, get_digit(basek, *a) + *c);
-    });
+    if lsh == 0 {
+        izip!(x.iter_mut(), a.iter(), carry.iter_mut()).for_each(|(x, a, c)| {
+            *x = get_digit(basek, get_digit(basek, *a) + *c);
+        });
+    } else {
+        let basek_lsh: usize = basek - lsh;
+        izip!(x.iter_mut(), a.iter(), carry.iter_mut()).for_each(|(x, a, c)| {
+            *x = get_digit(basek, (get_digit(basek_lsh, *a) << lsh) + *c);
+        });
+    }
 }
 
 /// Vector forms of those constants (broadcast to all lanes)
@@ -149,13 +242,276 @@ unsafe fn get_carry_avx(
 
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2")]
-pub fn znx_normalize_carry_only_avx(basek: usize, x: &[i64], carry: &mut [i64]) {
+pub fn znx_normalize_carry_only_beg_avx(basek: usize, lsh: usize, x: &[i64], carry: &mut [i64]) {
     #[cfg(debug_assertions)]
     {
         assert_eq!(x.len(), carry.len());
+        assert!(lsh < basek);
     }
 
     use std::arch::x86_64::{_mm256_loadu_si256, _mm256_storeu_si256};
+
+    let n: usize = x.len();
+
+    let span: usize = n >> 2;
+
+    unsafe {
+        let mut xx: *const __m256i = x.as_ptr() as *const __m256i;
+        let mut cc: *mut __m256i = carry.as_ptr() as *mut __m256i;
+
+        let (mask, sign, basek_vec, top_mask) = if lsh == 0 {
+            normalize_consts_avx(basek)
+        } else {
+            normalize_consts_avx(basek - lsh)
+        };
+
+        for _ in 0..span {
+            let xx_256: __m256i = _mm256_loadu_si256(xx);
+
+            //  (x << (64 - basek)) >> (64 - basek)
+            let digit_256: __m256i = get_digit_avx(xx_256, mask, sign);
+
+            // (x - digit) >> basek
+            let carry_256: __m256i = get_carry_avx(xx_256, digit_256, basek_vec, top_mask);
+
+            _mm256_storeu_si256(cc, carry_256);
+
+            xx = xx.add(1);
+            cc = cc.add(1);
+        }
+    }
+
+    // tail
+    if !x.len().is_multiple_of(4) {
+        znx_normalize_carry_only_beg_ref(basek, lsh, &x[span << 2..], &mut carry[span << 2..]);
+    }
+}
+
+#[cfg(target_arch = "x86_64")]
+#[target_feature(enable = "avx2")]
+pub fn znx_normalize_inplace_beg_avx(basek: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
+    #[cfg(debug_assertions)]
+    {
+        assert_eq!(x.len(), carry.len());
+        assert!(lsh < basek);
+    }
+
+    use std::arch::x86_64::{_mm256_loadu_si256, _mm256_sllv_epi64, _mm256_storeu_si256};
+
+    let n: usize = x.len();
+
+    let span: usize = n >> 2;
+
+    unsafe {
+        let mut xx: *mut __m256i = x.as_mut_ptr() as *mut __m256i;
+        let mut cc: *mut __m256i = carry.as_ptr() as *mut __m256i;
+
+        if lsh == 0 {
+            let (mask, sign, basek_vec, top_mask) = normalize_consts_avx(basek);
+
+            for _ in 0..span {
+                let xx_256: __m256i = _mm256_loadu_si256(xx);
+
+                //  (x << (64 - basek)) >> (64 - basek)
+                let digit_256: __m256i = get_digit_avx(xx_256, mask, sign);
+
+                // (x - digit) >> basek
+                let carry_256: __m256i = get_carry_avx(xx_256, digit_256, basek_vec, top_mask);
+
+                _mm256_storeu_si256(xx, digit_256);
+                _mm256_storeu_si256(cc, carry_256);
+
+                xx = xx.add(1);
+                cc = cc.add(1);
+            }
+        } else {
+            let (mask, sign, basek_vec, top_mask) = normalize_consts_avx(basek - lsh);
+
+            let lsh_v: __m256i = _mm256_set1_epi64x(lsh as i64);
+
+            for _ in 0..span {
+                let xx_256: __m256i = _mm256_loadu_si256(xx);
+
+                //  (x << (64 - basek)) >> (64 - basek)
+                let digit_256: __m256i = get_digit_avx(xx_256, mask, sign);
+
+                // (x - digit) >> basek
+                let carry_256: __m256i = get_carry_avx(xx_256, digit_256, basek_vec, top_mask);
+
+                _mm256_storeu_si256(xx, _mm256_sllv_epi64(digit_256, lsh_v));
+                _mm256_storeu_si256(cc, carry_256);
+
+                xx = xx.add(1);
+                cc = cc.add(1);
+            }
+        }
+    }
+
+    // tail
+    if !x.len().is_multiple_of(4) {
+        znx_normalize_inplace_beg_ref(basek, lsh, &mut x[span << 2..], &mut carry[span << 2..]);
+    }
+}
+
+#[cfg(target_arch = "x86_64")]
+#[target_feature(enable = "avx2")]
+pub fn znx_normalize_beg_avx(basek: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
+    #[cfg(debug_assertions)]
+    {
+        assert_eq!(x.len(), carry.len());
+        assert_eq!(a.len(), carry.len());
+        assert!(lsh < basek);
+    }
+
+    use std::arch::x86_64::{_mm256_loadu_si256, _mm256_sllv_epi64, _mm256_storeu_si256};
+
+    let n: usize = x.len();
+
+    let span: usize = n >> 2;
+
+    unsafe {
+        let mut xx: *mut __m256i = x.as_mut_ptr() as *mut __m256i;
+        let mut aa: *const __m256i = a.as_ptr() as *const __m256i;
+        let mut cc: *mut __m256i = carry.as_ptr() as *mut __m256i;
+
+        if lsh == 0 {
+            let (mask, sign, basek_vec, top_mask) = normalize_consts_avx(basek);
+
+            for _ in 0..span {
+                let aa_256: __m256i = _mm256_loadu_si256(aa);
+
+                //  (x << (64 - basek)) >> (64 - basek)
+                let digit_256: __m256i = get_digit_avx(aa_256, mask, sign);
+
+                // (x - digit) >> basek
+                let carry_256: __m256i = get_carry_avx(aa_256, digit_256, basek_vec, top_mask);
+
+                _mm256_storeu_si256(xx, digit_256);
+                _mm256_storeu_si256(cc, carry_256);
+
+                xx = xx.add(1);
+                aa = aa.add(1);
+                cc = cc.add(1);
+            }
+        } else {
+            let (mask, sign, basek_vec, top_mask) = normalize_consts_avx(basek - lsh);
+
+            let lsh_v: __m256i = _mm256_set1_epi64x(lsh as i64);
+
+            for _ in 0..span {
+                let aa_256: __m256i = _mm256_loadu_si256(aa);
+
+                //  (x << (64 - basek)) >> (64 - basek)
+                let digit_256: __m256i = get_digit_avx(aa_256, mask, sign);
+
+                // (x - digit) >> basek
+                let carry_256: __m256i = get_carry_avx(aa_256, digit_256, basek_vec, top_mask);
+
+                _mm256_storeu_si256(xx, _mm256_sllv_epi64(digit_256, lsh_v));
+                _mm256_storeu_si256(cc, carry_256);
+
+                xx = xx.add(1);
+                aa = aa.add(1);
+                cc = cc.add(1);
+            }
+        }
+    }
+
+    // tail
+    if !x.len().is_multiple_of(4) {
+        znx_normalize_beg_ref(
+            basek,
+            lsh,
+            &mut x[span << 2..],
+            &a[span << 2..],
+            &mut carry[span << 2..],
+        );
+    }
+}
+
+#[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
+#[target_feature(enable = "avx2")]
+pub fn znx_normalize_inplace_mid_avx(basek: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
+    #[cfg(debug_assertions)]
+    {
+        assert_eq!(x.len(), carry.len());
+        assert!(lsh < basek);
+    }
+
+    use std::arch::x86_64::{_mm256_add_epi64, _mm256_loadu_si256, _mm256_sllv_epi64, _mm256_storeu_si256};
+
+    let n: usize = x.len();
+
+    let span: usize = n >> 2;
+
+    let (mask, sign, basek_vec, top_mask) = normalize_consts_avx(basek);
+
+    unsafe {
+        let mut xx: *mut __m256i = x.as_mut_ptr() as *mut __m256i;
+        let mut cc: *mut __m256i = carry.as_mut_ptr() as *mut __m256i;
+
+        if lsh == 0 {
+            for _ in 0..span {
+                let xx_256: __m256i = _mm256_loadu_si256(xx);
+                let cc_256: __m256i = _mm256_loadu_si256(cc);
+
+                let d0: __m256i = get_digit_avx(xx_256, mask, sign);
+                let c0: __m256i = get_carry_avx(xx_256, d0, basek_vec, top_mask);
+
+                let s: __m256i = _mm256_add_epi64(d0, cc_256);
+                let x1: __m256i = get_digit_avx(s, mask, sign);
+                let c1: __m256i = get_carry_avx(s, x1, basek_vec, top_mask);
+                let cout: __m256i = _mm256_add_epi64(c0, c1);
+
+                _mm256_storeu_si256(xx, x1);
+                _mm256_storeu_si256(cc, cout);
+
+                xx = xx.add(1);
+                cc = cc.add(1);
+            }
+        } else {
+            let (mask_lsh, sign_lsh, basek_vec_lsh, top_mask_lsh) = normalize_consts_avx(basek - lsh);
+
+            let lsh_v: __m256i = _mm256_set1_epi64x(lsh as i64);
+
+            for _ in 0..span {
+                let xx_256: __m256i = _mm256_loadu_si256(xx);
+                let cc_256: __m256i = _mm256_loadu_si256(cc);
+
+                let d0: __m256i = get_digit_avx(xx_256, mask_lsh, sign_lsh);
+                let c0: __m256i = get_carry_avx(xx_256, d0, basek_vec_lsh, top_mask_lsh);
+
+                let d0_lsh: __m256i = _mm256_sllv_epi64(d0, lsh_v);
+
+                let s: __m256i = _mm256_add_epi64(d0_lsh, cc_256);
+                let x1: __m256i = get_digit_avx(s, mask, sign);
+                let c1: __m256i = get_carry_avx(s, x1, basek_vec, top_mask);
+                let cout: __m256i = _mm256_add_epi64(c0, c1);
+
+                _mm256_storeu_si256(xx, x1);
+                _mm256_storeu_si256(cc, cout);
+
+                xx = xx.add(1);
+                cc = cc.add(1);
+            }
+        }
+    }
+
+    if !x.len().is_multiple_of(4) {
+        znx_normalize_inplace_mid_ref(basek, lsh, &mut x[span << 2..], &mut carry[span << 2..]);
+    }
+}
+
+#[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
+#[target_feature(enable = "avx2")]
+pub fn znx_normalize_carry_only_mid_avx(basek: usize, lsh: usize, x: &[i64], carry: &mut [i64]) {
+    #[cfg(debug_assertions)]
+    {
+        assert_eq!(x.len(), carry.len());
+        assert!(lsh < basek);
+    }
+
+    use std::arch::x86_64::{_mm256_add_epi64, _mm256_loadu_si256, _mm256_sllv_epi64, _mm256_storeu_si256};
 
     let n: usize = x.len();
 
@@ -165,83 +521,69 @@ pub fn znx_normalize_carry_only_avx(basek: usize, x: &[i64], carry: &mut [i64]) 
 
     unsafe {
         let mut xx: *const __m256i = x.as_ptr() as *const __m256i;
-        let mut cc: *mut __m256i = carry.as_ptr() as *mut __m256i;
+        let mut cc: *mut __m256i = carry.as_mut_ptr() as *mut __m256i;
 
-        for _ in 0..span {
-            let xx_256: __m256i = _mm256_loadu_si256(xx);
+        if lsh == 0 {
+            for _ in 0..span {
+                let xx_256: __m256i = _mm256_loadu_si256(xx);
+                let cc_256: __m256i = _mm256_loadu_si256(cc);
 
-            //  (x << (64 - basek)) >> (64 - basek)
-            let digit_256: __m256i = get_digit_avx(xx_256, mask, sign);
+                let d0: __m256i = get_digit_avx(xx_256, mask, sign);
+                let c0: __m256i = get_carry_avx(xx_256, d0, basek_vec, top_mask);
 
-            // (x - digit) >> basek
-            let carry_256: __m256i = get_carry_avx(xx_256, digit_256, basek_vec, top_mask);
+                let s: __m256i = _mm256_add_epi64(d0, cc_256);
+                let x1: __m256i = get_digit_avx(s, mask, sign);
+                let c1: __m256i = get_carry_avx(s, x1, basek_vec, top_mask);
+                let cout: __m256i = _mm256_add_epi64(c0, c1);
 
-            _mm256_storeu_si256(cc, carry_256);
+                _mm256_storeu_si256(cc, cout);
 
-            xx = xx.add(1);
-            cc = cc.add(1);
+                xx = xx.add(1);
+                cc = cc.add(1);
+            }
+        } else {
+            let (mask_lsh, sign_lsh, basek_vec_lsh, top_mask_lsh) = normalize_consts_avx(basek - lsh);
+
+            let lsh_v: __m256i = _mm256_set1_epi64x(lsh as i64);
+
+            for _ in 0..span {
+                let xx_256: __m256i = _mm256_loadu_si256(xx);
+                let cc_256: __m256i = _mm256_loadu_si256(cc);
+
+                let d0: __m256i = get_digit_avx(xx_256, mask_lsh, sign_lsh);
+                let c0: __m256i = get_carry_avx(xx_256, d0, basek_vec_lsh, top_mask_lsh);
+
+                let d0_lsh: __m256i = _mm256_sllv_epi64(d0, lsh_v);
+
+                let s: __m256i = _mm256_add_epi64(d0_lsh, cc_256);
+                let x1: __m256i = get_digit_avx(s, mask, sign);
+                let c1: __m256i = get_carry_avx(s, x1, basek_vec, top_mask);
+                let cout: __m256i = _mm256_add_epi64(c0, c1);
+
+                _mm256_storeu_si256(cc, cout);
+
+                xx = xx.add(1);
+                cc = cc.add(1);
+            }
         }
     }
 
-    // tail
     if !x.len().is_multiple_of(4) {
-        znx_normalize_carry_only_ref(basek, &x[span << 2..], &mut carry[span << 2..]);
+        znx_normalize_carry_only_mid_ref(basek, lsh, &x[span << 2..], &mut carry[span << 2..]);
     }
 }
 
-#[cfg(target_arch = "x86_64")]
+#[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
 #[target_feature(enable = "avx2")]
-pub fn znx_normalize_inplace_beg_avx(basek: usize, x: &mut [i64], carry: &mut [i64]) {
-    #[cfg(debug_assertions)]
-    {
-        assert_eq!(x.len(), carry.len());
-    }
-
-    use std::arch::x86_64::{_mm256_loadu_si256, _mm256_storeu_si256};
-
-    let n: usize = x.len();
-
-    let span: usize = n >> 2;
-
-    let (mask, sign, basek_vec, top_mask) = normalize_consts_avx(basek);
-
-    unsafe {
-        let mut xx: *mut __m256i = x.as_mut_ptr() as *mut __m256i;
-        let mut cc: *mut __m256i = carry.as_ptr() as *mut __m256i;
-
-        for _ in 0..span {
-            let xx_256: __m256i = _mm256_loadu_si256(xx);
-
-            //  (x << (64 - basek)) >> (64 - basek)
-            let digit_256: __m256i = get_digit_avx(xx_256, mask, sign);
-
-            // (x - digit) >> basek
-            let carry_256: __m256i = get_carry_avx(xx_256, digit_256, basek_vec, top_mask);
-
-            _mm256_storeu_si256(xx, digit_256);
-            _mm256_storeu_si256(cc, carry_256);
-
-            xx = xx.add(1);
-            cc = cc.add(1);
-        }
-    }
-
-    // tail
-    if !x.len().is_multiple_of(4) {
-        znx_normalize_inplace_beg_ref(basek, &mut x[span << 2..], &mut carry[span << 2..]);
-    }
-}
-
-#[cfg(target_arch = "x86_64")]
-#[target_feature(enable = "avx2")]
-pub fn znx_normalize_beg_avx(basek: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
+pub fn znx_normalize_mid_avx(basek: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
     #[cfg(debug_assertions)]
     {
         assert_eq!(x.len(), carry.len());
         assert_eq!(a.len(), carry.len());
+        assert!(lsh < basek);
     }
 
-    use std::arch::x86_64::{_mm256_loadu_si256, _mm256_storeu_si256};
+    use std::arch::x86_64::{_mm256_add_epi64, _mm256_loadu_si256, _mm256_sllv_epi64, _mm256_storeu_si256};
 
     let n: usize = x.len();
 
@@ -254,126 +596,59 @@ pub fn znx_normalize_beg_avx(basek: usize, x: &mut [i64], a: &[i64], carry: &mut
         let mut aa: *const __m256i = a.as_ptr() as *const __m256i;
         let mut cc: *mut __m256i = carry.as_ptr() as *mut __m256i;
 
-        for _ in 0..span {
-            let aa_256: __m256i = _mm256_loadu_si256(aa);
+        if lsh == 0 {
+            for _ in 0..span {
+                let aa_256: __m256i = _mm256_loadu_si256(aa);
+                let cc_256: __m256i = _mm256_loadu_si256(cc);
 
-            //  (x << (64 - basek)) >> (64 - basek)
-            let digit_256: __m256i = get_digit_avx(aa_256, mask, sign);
+                let d0: __m256i = get_digit_avx(aa_256, mask, sign);
+                let c0: __m256i = get_carry_avx(aa_256, d0, basek_vec, top_mask);
 
-            // (x - digit) >> basek
-            let carry_256: __m256i = get_carry_avx(aa_256, digit_256, basek_vec, top_mask);
+                let s: __m256i = _mm256_add_epi64(d0, cc_256);
+                let x1: __m256i = get_digit_avx(s, mask, sign);
+                let c1: __m256i = get_carry_avx(s, x1, basek_vec, top_mask);
+                let cout: __m256i = _mm256_add_epi64(c0, c1);
 
-            _mm256_storeu_si256(xx, digit_256);
-            _mm256_storeu_si256(cc, carry_256);
+                _mm256_storeu_si256(xx, x1);
+                _mm256_storeu_si256(cc, cout);
 
-            xx = xx.add(1);
-            aa = aa.add(1);
-            cc = cc.add(1);
-        }
-    }
+                xx = xx.add(1);
+                aa = aa.add(1);
+                cc = cc.add(1);
+            }
+        } else {
+            let (mask_lsh, sign_lsh, basek_vec_lsh, top_mask_lsh) = normalize_consts_avx(basek - lsh);
 
-    // tail
-    if !x.len().is_multiple_of(4) {
-        znx_normalize_beg_ref(
-            basek,
-            &mut x[span << 2..],
-            &a[span << 2..],
-            &mut carry[span << 2..],
-        );
-    }
-}
+            let lsh_v: __m256i = _mm256_set1_epi64x(lsh as i64);
 
-#[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
-#[target_feature(enable = "avx2")]
-pub fn znx_normalize_inplace_mid_avx(basek: usize, x: &mut [i64], carry: &mut [i64]) {
-    #[cfg(debug_assertions)]
-    {
-        assert_eq!(x.len(), carry.len());
-    }
+            for _ in 0..span {
+                let aa_256: __m256i = _mm256_loadu_si256(aa);
+                let cc_256: __m256i = _mm256_loadu_si256(cc);
 
-    use std::arch::x86_64::{_mm256_add_epi64, _mm256_loadu_si256, _mm256_storeu_si256};
+                let d0: __m256i = get_digit_avx(aa_256, mask_lsh, sign_lsh);
+                let c0: __m256i = get_carry_avx(aa_256, d0, basek_vec_lsh, top_mask_lsh);
 
-    let n: usize = x.len();
+                let d0_lsh: __m256i = _mm256_sllv_epi64(d0, lsh_v);
 
-    let span: usize = n >> 2;
+                let s: __m256i = _mm256_add_epi64(d0_lsh, cc_256);
+                let x1: __m256i = get_digit_avx(s, mask, sign);
+                let c1: __m256i = get_carry_avx(s, x1, basek_vec, top_mask);
+                let cout: __m256i = _mm256_add_epi64(c0, c1);
 
-    let (mask, sign, basek_vec, top_mask) = normalize_consts_avx(basek);
+                _mm256_storeu_si256(xx, x1);
+                _mm256_storeu_si256(cc, cout);
 
-    unsafe {
-        let mut xx: *mut __m256i = x.as_mut_ptr() as *mut __m256i;
-        let mut cc: *mut __m256i = carry.as_ptr() as *mut __m256i;
-
-        for _ in 0..span {
-            let xx_256: __m256i = _mm256_loadu_si256(xx);
-            let cc_256: __m256i = _mm256_loadu_si256(cc);
-
-            let d0: __m256i = get_digit_avx(xx_256, mask, sign);
-            let c0: __m256i = get_carry_avx(xx_256, d0, basek_vec, top_mask);
-
-            let s: __m256i = _mm256_add_epi64(d0, cc_256);
-            let x1: __m256i = get_digit_avx(s, mask, sign);
-            let c1: __m256i = get_carry_avx(s, x1, basek_vec, top_mask);
-            let cout: __m256i = _mm256_add_epi64(c0, c1);
-
-            _mm256_storeu_si256(xx, x1);
-            _mm256_storeu_si256(cc, cout);
-
-            xx = xx.add(1);
-            cc = cc.add(1);
-        }
-    }
-
-    if !x.len().is_multiple_of(4) {
-        znx_normalize_inplace_mid_ref(basek, &mut x[span << 2..], &mut carry[span << 2..]);
-    }
-}
-
-#[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
-#[target_feature(enable = "avx2")]
-pub fn znx_normalize_mid_avx(basek: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
-    #[cfg(debug_assertions)]
-    {
-        assert_eq!(x.len(), carry.len());
-        assert_eq!(a.len(), carry.len());
-    }
-
-    use std::arch::x86_64::{_mm256_add_epi64, _mm256_loadu_si256, _mm256_storeu_si256};
-
-    let n: usize = x.len();
-
-    let span: usize = n >> 2;
-
-    let (mask, sign, basek_vec, top_mask) = normalize_consts_avx(basek);
-
-    unsafe {
-        let mut xx: *mut __m256i = x.as_mut_ptr() as *mut __m256i;
-        let mut aa: *const __m256i = a.as_ptr() as *const __m256i;
-        let mut cc: *mut __m256i = carry.as_ptr() as *mut __m256i;
-
-        for _ in 0..span {
-            let aa_256: __m256i = _mm256_loadu_si256(aa);
-            let cc_256: __m256i = _mm256_loadu_si256(cc);
-
-            let d0: __m256i = get_digit_avx(aa_256, mask, sign);
-            let c0: __m256i = get_carry_avx(aa_256, d0, basek_vec, top_mask);
-
-            let s: __m256i = _mm256_add_epi64(d0, cc_256);
-            let x1: __m256i = get_digit_avx(s, mask, sign);
-            let c1: __m256i = get_carry_avx(s, x1, basek_vec, top_mask);
-            let cout: __m256i = _mm256_add_epi64(c0, c1);
-
-            _mm256_storeu_si256(xx, x1);
-            _mm256_storeu_si256(cc, cout);
-
-            xx = xx.add(1);
-            aa = aa.add(1);
-            cc = cc.add(1);
+                xx = xx.add(1);
+                aa = aa.add(1);
+                cc = cc.add(1);
+            }
         }
     }
 
     if !x.len().is_multiple_of(4) {
         znx_normalize_mid_ref(
             basek,
+            lsh,
             &mut x[span << 2..],
             &a[span << 2..],
             &mut carry[span << 2..],
@@ -383,13 +658,14 @@ pub fn znx_normalize_mid_avx(basek: usize, x: &mut [i64], a: &[i64], carry: &mut
 
 #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
 #[target_feature(enable = "avx2")]
-pub fn znx_normalize_inplace_end_avx(basek: usize, x: &mut [i64], carry: &mut [i64]) {
+pub fn znx_normalize_inplace_end_avx(basek: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
     #[cfg(debug_assertions)]
     {
         assert_eq!(x.len(), carry.len());
+        assert!(lsh < basek);
     }
 
-    use std::arch::x86_64::{_mm256_add_epi64, _mm256_loadu_si256, _mm256_storeu_si256};
+    use std::arch::x86_64::{_mm256_add_epi64, _mm256_loadu_si256, _mm256_sllv_epi64, _mm256_storeu_si256};
 
     let n: usize = x.len();
 
@@ -401,36 +677,60 @@ pub fn znx_normalize_inplace_end_avx(basek: usize, x: &mut [i64], carry: &mut [i
         let mut xx: *mut __m256i = x.as_mut_ptr() as *mut __m256i;
         let mut cc: *mut __m256i = carry.as_ptr() as *mut __m256i;
 
-        for _ in 0..span {
-            let xv: __m256i = _mm256_loadu_si256(xx);
-            let cv: __m256i = _mm256_loadu_si256(cc);
+        if lsh == 0 {
+            for _ in 0..span {
+                let xv: __m256i = _mm256_loadu_si256(xx);
+                let cv: __m256i = _mm256_loadu_si256(cc);
 
-            let d0: __m256i = get_digit_avx(xv, mask, sign);
-            let s: __m256i = _mm256_add_epi64(d0, cv);
-            let x1: __m256i = get_digit_avx(s, mask, sign);
+                let d0: __m256i = get_digit_avx(xv, mask, sign);
+                let s: __m256i = _mm256_add_epi64(d0, cv);
+                let x1: __m256i = get_digit_avx(s, mask, sign);
 
-            _mm256_storeu_si256(xx, x1);
+                _mm256_storeu_si256(xx, x1);
 
-            xx = xx.add(1);
-            cc = cc.add(1);
+                xx = xx.add(1);
+                cc = cc.add(1);
+            }
+        } else {
+            let (mask_lsh, sign_lsh, _, _) = normalize_consts_avx(basek - lsh);
+
+            let lsh_v: __m256i = _mm256_set1_epi64x(lsh as i64);
+
+            for _ in 0..span {
+                let xv: __m256i = _mm256_loadu_si256(xx);
+                let cv: __m256i = _mm256_loadu_si256(cc);
+
+                let d0: __m256i = get_digit_avx(xv, mask_lsh, sign_lsh);
+
+                let d0_lsh: __m256i = _mm256_sllv_epi64(d0, lsh_v);
+
+                let s: __m256i = _mm256_add_epi64(d0_lsh, cv);
+                let x1: __m256i = get_digit_avx(s, mask, sign);
+
+                _mm256_storeu_si256(xx, x1);
+
+                xx = xx.add(1);
+                cc = cc.add(1);
+            }
         }
     }
 
     if !x.len().is_multiple_of(4) {
-        znx_normalize_inplace_end_ref(basek, &mut x[span << 2..], &mut carry[span << 2..]);
+        znx_normalize_inplace_end_ref(basek, lsh, &mut x[span << 2..], &mut carry[span << 2..]);
     }
 }
 
 #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
 #[target_feature(enable = "avx2")]
-pub fn znx_normalize_end_avx(basek: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
+pub fn znx_normalize_end_avx(basek: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
     #[cfg(debug_assertions)]
     {
         assert_eq!(x.len(), carry.len());
         assert_eq!(a.len(), carry.len());
+        assert!(lsh < basek);
     }
 
-    use std::arch::x86_64::{_mm256_add_epi64, _mm256_loadu_si256, _mm256_storeu_si256};
+    use std::arch::x86_64::{_mm256_add_epi64, _mm256_loadu_si256, _mm256_sllv_epi64, _mm256_storeu_si256};
 
     let n: usize = x.len();
 
@@ -443,24 +743,47 @@ pub fn znx_normalize_end_avx(basek: usize, x: &mut [i64], a: &[i64], carry: &mut
         let mut aa: *mut __m256i = a.as_ptr() as *mut __m256i;
         let mut cc: *mut __m256i = carry.as_ptr() as *mut __m256i;
 
-        for _ in 0..span {
-            let av: __m256i = _mm256_loadu_si256(aa);
-            let cv: __m256i = _mm256_loadu_si256(cc);
+        if lsh == 0 {
+            for _ in 0..span {
+                let av: __m256i = _mm256_loadu_si256(aa);
+                let cv: __m256i = _mm256_loadu_si256(cc);
 
-            let d0: __m256i = get_digit_avx(av, mask, sign);
-            let s: __m256i = _mm256_add_epi64(d0, cv);
-            let x1: __m256i = get_digit_avx(s, mask, sign);
+                let d0: __m256i = get_digit_avx(av, mask, sign);
+                let s: __m256i = _mm256_add_epi64(d0, cv);
+                let x1: __m256i = get_digit_avx(s, mask, sign);
 
-            _mm256_storeu_si256(xx, x1);
+                _mm256_storeu_si256(xx, x1);
 
-            xx = xx.add(1);
-            aa = aa.add(1);
-            cc = cc.add(1);
+                xx = xx.add(1);
+                aa = aa.add(1);
+                cc = cc.add(1);
+            }
+        } else {
+            let (mask_lsh, sign_lsh, _, _) = normalize_consts_avx(basek - lsh);
+
+            let lsh_v: __m256i = _mm256_set1_epi64x(lsh as i64);
+
+            for _ in 0..span {
+                let av: __m256i = _mm256_loadu_si256(aa);
+                let cv: __m256i = _mm256_loadu_si256(cc);
+
+                let d0: __m256i = get_digit_avx(av, mask_lsh, sign_lsh);
+                let d0_lsh: __m256i = _mm256_sllv_epi64(d0, lsh_v);
+
+                let s: __m256i = _mm256_add_epi64(d0_lsh, cv);
+                let x1: __m256i = get_digit_avx(s, mask, sign);
+
+                _mm256_storeu_si256(xx, x1);
+
+                xx = xx.add(1);
+                aa = aa.add(1);
+                cc = cc.add(1);
+            }
         }
     }
 
     if !x.len().is_multiple_of(4) {
-        znx_normalize_inplace_end_ref(basek, &mut x[span << 2..], &mut carry[span << 2..]);
+        znx_normalize_inplace_end_ref(basek, lsh, &mut x[span << 2..], &mut carry[span << 2..]);
     }
 }
 
@@ -564,8 +887,14 @@ mod tests {
 
         let basek = 12;
 
-        znx_normalize_inplace_beg_ref(basek, &mut y0, &mut c0);
-        znx_normalize_inplace_beg_avx(basek, &mut y1, &mut c1);
+        znx_normalize_inplace_beg_ref(basek, 0, &mut y0, &mut c0);
+        znx_normalize_inplace_beg_avx(basek, 0, &mut y1, &mut c1);
+
+        assert_eq!(y0, y1);
+        assert_eq!(c0, c1);
+
+        znx_normalize_inplace_beg_ref(basek, basek - 1, &mut y0, &mut c0);
+        znx_normalize_inplace_beg_avx(basek, basek - 1, &mut y1, &mut c1);
 
         assert_eq!(y0, y1);
         assert_eq!(c0, c1);
@@ -602,8 +931,14 @@ mod tests {
 
         let basek = 12;
 
-        znx_normalize_inplace_mid_ref(basek, &mut y0, &mut c0);
-        znx_normalize_inplace_mid_avx(basek, &mut y1, &mut c1);
+        znx_normalize_inplace_mid_ref(basek, 0, &mut y0, &mut c0);
+        znx_normalize_inplace_mid_avx(basek, 0, &mut y1, &mut c1);
+
+        assert_eq!(y0, y1);
+        assert_eq!(c0, c1);
+
+        znx_normalize_inplace_mid_ref(basek, basek - 1, &mut y0, &mut c0);
+        znx_normalize_inplace_mid_avx(basek, basek - 1, &mut y1, &mut c1);
 
         assert_eq!(y0, y1);
         assert_eq!(c0, c1);
@@ -640,8 +975,14 @@ mod tests {
 
         let basek = 12;
 
-        znx_normalize_inplace_end_ref(basek, &mut y0, &mut c0);
-        znx_normalize_inplace_end_avx(basek, &mut y1, &mut c1);
+        znx_normalize_inplace_end_ref(basek, 0, &mut y0, &mut c0);
+        znx_normalize_inplace_end_avx(basek, 0, &mut y1, &mut c1);
+
+        assert_eq!(y0, y1);
+        assert_eq!(c0, c1);
+
+        znx_normalize_inplace_end_ref(basek, basek - 1, &mut y0, &mut c0);
+        znx_normalize_inplace_end_avx(basek, basek - 1, &mut y1, &mut c1);
 
         assert_eq!(y0, y1);
         assert_eq!(c0, c1);
@@ -679,8 +1020,14 @@ mod tests {
 
         let basek = 12;
 
-        znx_normalize_beg_ref(basek, &mut y0, &a, &mut c0);
-        znx_normalize_beg_avx(basek, &mut y1, &a, &mut c1);
+        znx_normalize_beg_ref(basek, 0, &mut y0, &a, &mut c0);
+        znx_normalize_beg_avx(basek, 0, &mut y1, &a, &mut c1);
+
+        assert_eq!(y0, y1);
+        assert_eq!(c0, c1);
+
+        znx_normalize_beg_ref(basek, basek - 1, &mut y0, &a, &mut c0);
+        znx_normalize_beg_avx(basek, basek - 1, &mut y1, &a, &mut c1);
 
         assert_eq!(y0, y1);
         assert_eq!(c0, c1);
@@ -718,8 +1065,14 @@ mod tests {
 
         let basek = 12;
 
-        znx_normalize_mid_ref(basek, &mut y0, &a, &mut c0);
-        znx_normalize_mid_avx(basek, &mut y1, &a, &mut c1);
+        znx_normalize_mid_ref(basek, 0, &mut y0, &a, &mut c0);
+        znx_normalize_mid_avx(basek, 0, &mut y1, &a, &mut c1);
+
+        assert_eq!(y0, y1);
+        assert_eq!(c0, c1);
+
+        znx_normalize_mid_ref(basek, basek - 1, &mut y0, &a, &mut c0);
+        znx_normalize_mid_avx(basek, basek - 1, &mut y1, &a, &mut c1);
 
         assert_eq!(y0, y1);
         assert_eq!(c0, c1);
@@ -757,8 +1110,14 @@ mod tests {
 
         let basek = 12;
 
-        znx_normalize_end_ref(basek, &mut y0, &a, &mut c0);
-        znx_normalize_end_avx(basek, &mut y1, &a, &mut c1);
+        znx_normalize_end_ref(basek, 0, &mut y0, &a, &mut c0);
+        znx_normalize_end_avx(basek, 0, &mut y1, &a, &mut c1);
+
+        assert_eq!(y0, y1);
+        assert_eq!(c0, c1);
+
+        znx_normalize_end_ref(basek, basek - 1, &mut y0, &a, &mut c0);
+        znx_normalize_end_avx(basek, basek - 1, &mut y1, &a, &mut c1);
 
         assert_eq!(y0, y1);
         assert_eq!(c0, c1);

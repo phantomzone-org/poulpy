@@ -134,7 +134,7 @@ impl GLWEPacker {
             + VecZnxRotateInplace
             + VecZnxSub
             + VecZnxNegateInplace
-            + VecZnxRshInplace
+            + VecZnxRshInplace<B>
             + VecZnxAddInplace
             + VecZnxNormalizeInplace<B>
             + VecZnxSubABInplace
@@ -212,7 +212,7 @@ fn pack_core<D: DataRef, DataAK: DataRef, B: Backend>(
         + VecZnxRotateInplace
         + VecZnxSub
         + VecZnxNegateInplace
-        + VecZnxRshInplace
+        + VecZnxRshInplace<B>
         + VecZnxAddInplace
         + VecZnxNormalizeInplace<B>
         + VecZnxSubABInplace
@@ -309,7 +309,7 @@ fn combine<D: DataRef, DataAK: DataRef, B: Backend>(
         + VecZnxRotateInplace
         + VecZnxSub
         + VecZnxNegateInplace
-        + VecZnxRshInplace
+        + VecZnxRshInplace<B>
         + VecZnxAddInplace
         + VecZnxNormalizeInplace<B>
         + VecZnxSubABInplace
@@ -353,11 +353,11 @@ fn combine<D: DataRef, DataAK: DataRef, B: Backend>(
 
             // tmp_b = a * X^-t - b
             tmp_b.sub(module, a, b);
-            tmp_b.rsh(module, 1);
+            tmp_b.rsh(module, 1, scratch_1);
 
             // a = a * X^-t + b
             a.add_inplace(module, b);
-            a.rsh(module, 1);
+            a.rsh(module, 1, scratch_1);
 
             tmp_b.normalize_inplace(module, scratch_1);
 
@@ -377,7 +377,7 @@ fn combine<D: DataRef, DataAK: DataRef, B: Backend>(
             //   = a + b * X^t + phi(a - b * X^t)
             a.rotate_inplace(module, t);
         } else {
-            a.rsh(module, 1);
+            a.rsh(module, 1, scratch);
             // a = a + phi(a)
             if let Some(key) = auto_keys.get(&gal_el) {
                 a.automorphism_add_inplace(module, key, scratch);
@@ -388,7 +388,7 @@ fn combine<D: DataRef, DataAK: DataRef, B: Backend>(
     } else if let Some(b) = b {
         let (mut tmp_b, scratch_1) = scratch.take_glwe_ct(n, basek, k, rank);
         tmp_b.rotate(module, 1 << (log_n - i - 1), b);
-        tmp_b.rsh(module, 1);
+        tmp_b.rsh(module, 1, scratch_1);
 
         // a = (b* X^t - phi(b* X^t))
         if let Some(key) = auto_keys.get(&gal_el) {

@@ -179,7 +179,7 @@ pub unsafe trait VecZnxNegateInplaceImpl<B: Backend> {
 /// * See [crate::api::VecZnxRshInplace] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxRshInplaceImpl<B: Backend> {
-    fn vec_znx_rsh_inplace_impl<A>(module: &Module<B>, basek: usize, k: usize, a: &mut A, a_col: usize)
+    fn vec_znx_rsh_inplace_impl<A>(module: &Module<B>, basek: usize, k: usize, a: &mut A, a_col: usize, scratch: &mut Scratch<B>)
     where
         A: VecZnxToMut;
 }
@@ -189,7 +189,7 @@ pub unsafe trait VecZnxRshInplaceImpl<B: Backend> {
 /// * See [crate::api::VecZnxLshInplace] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxLshInplaceImpl<B: Backend> {
-    fn vec_znx_lsh_inplace_impl<A>(module: &Module<B>, basek: usize, k: usize, a: &mut A, a_col: usize)
+    fn vec_znx_lsh_inplace_impl<A>(module: &Module<B>, basek: usize, k: usize, a: &mut A, a_col: usize, scratch: &mut Scratch<B>)
     where
         A: VecZnxToMut;
 }

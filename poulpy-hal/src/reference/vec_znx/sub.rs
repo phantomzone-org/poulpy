@@ -7,7 +7,8 @@ use crate::{
     layouts::{Backend, FillUniform, Module, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut, ZnxZero},
     oep::{ModuleNewImpl, VecZnxSubABInplaceImpl, VecZnxSubBAInplaceImpl, VecZnxSubImpl},
     reference::znx::{
-        znx_negate_i64_ref, znx_negate_inplace_i64_ref, znx_sub_ab_inplace_i64_ref, znx_sub_ba_inplace_i64_ref, znx_sub_i64_ref,
+        znx_copy_ref, znx_negate_i64_ref, znx_negate_inplace_i64_ref, znx_sub_ab_inplace_i64_ref, znx_sub_ba_inplace_i64_ref,
+        znx_sub_i64_ref,
     },
     source::Source,
 };
@@ -41,7 +42,7 @@ where
         }
 
         for j in sum_size..cpy_size {
-            znx_negate_i64_ref(res.at_mut(res_col, j), b.at(a_col, j));
+            znx_negate_i64_ref(res.at_mut(res_col, j), b.at(b_col, j));
         }
 
         for j in cpy_size..res_size {
@@ -56,7 +57,7 @@ where
         }
 
         for j in sum_size..cpy_size {
-            res.at_mut(res_col, j).copy_from_slice(a.at(a_col, j));
+            znx_copy_ref(res.at_mut(res_col, j), a.at(a_col, j));
         }
 
         for j in cpy_size..res_size {
@@ -99,7 +100,7 @@ where
         }
 
         for j in sum_size..cpy_size {
-            znx_negate_i64_avx(res.at_mut(res_col, j), b.at(a_col, j));
+            znx_negate_i64_avx(res.at_mut(res_col, j), b.at(b_col, j));
         }
 
         for j in cpy_size..res_size {
@@ -114,7 +115,7 @@ where
         }
 
         for j in sum_size..cpy_size {
-            res.at_mut(res_col, j).copy_from_slice(a.at(a_col, j));
+            znx_copy_ref(res.at_mut(res_col, j), a.at(a_col, j));
         }
 
         for j in cpy_size..res_size {

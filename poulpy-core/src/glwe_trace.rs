@@ -78,7 +78,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>
             + VecZnxBigAutomorphismInplace<B>
-            + VecZnxRshInplace
+            + VecZnxRshInplace<B>
             + VecZnxCopy,
         Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
     {
@@ -104,11 +104,11 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>
             + VecZnxBigAutomorphismInplace<B>
-            + VecZnxRshInplace,
+            + VecZnxRshInplace<B>,
         Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
     {
         (start..end).for_each(|i| {
-            self.rsh(module, 1);
+            self.rsh(module, 1, scratch);
 
             let p: i64 = if i == 0 {
                 -1

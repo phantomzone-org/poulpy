@@ -268,13 +268,13 @@ pub trait GLWEOperations: GLWECiphertextToMut + SetMetaData + Sized {
         self.set_basek(a.basek());
     }
 
-    fn rsh<B: Backend>(&mut self, module: &Module<B>, k: usize)
+    fn rsh<B: Backend>(&mut self, module: &Module<B>, k: usize, scratch: &mut Scratch<B>)
     where
-        Module<B>: VecZnxRshInplace,
+        Module<B>: VecZnxRshInplace<B>,
     {
         let basek: usize = self.basek();
         (0..self.cols()).for_each(|i| {
-            module.vec_znx_rsh_inplace(basek, k, &mut self.to_mut().data, i);
+            module.vec_znx_rsh_inplace(basek, k, &mut self.to_mut().data, i, scratch);
         })
     }
 

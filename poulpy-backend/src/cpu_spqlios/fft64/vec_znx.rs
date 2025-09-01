@@ -438,21 +438,43 @@ unsafe impl VecZnxNegateInplaceImpl<Self> for FFT64 {
     }
 }
 
-unsafe impl VecZnxLshInplaceImpl<Self> for FFT64 {
-    fn vec_znx_lsh_inplace_impl<A>(_module: &Module<Self>, basek: usize, k: usize, a: &mut A, a_col: usize)
-    where
+unsafe impl VecZnxLshInplaceImpl<Self> for FFT64
+where
+    Module<Self>: VecZnxNormalizeTmpBytes,
+    Scratch<Self>: TakeSlice,
+{
+    fn vec_znx_lsh_inplace_impl<A>(
+        module: &Module<Self>,
+        basek: usize,
+        k: usize,
+        a: &mut A,
+        a_col: usize,
+        scratch: &mut Scratch<Self>,
+    ) where
         A: VecZnxToMut,
     {
-        vec_znx_lsh_inplace_ref(basek, k, a, a_col)
+        let (carry, _) = scratch.take_slice(module.vec_znx_normalize_tmp_bytes() / size_of::<i64>());
+        vec_znx_lsh_inplace_ref(basek, k, a, a_col, carry)
     }
 }
 
-unsafe impl VecZnxRshInplaceImpl<Self> for FFT64 {
-    fn vec_znx_rsh_inplace_impl<A>(_module: &Module<Self>, basek: usize, k: usize, a: &mut A, a_col: usize)
-    where
+unsafe impl VecZnxRshInplaceImpl<Self> for FFT64
+where
+    Module<Self>: VecZnxNormalizeTmpBytes,
+    Scratch<Self>: TakeSlice,
+{
+    fn vec_znx_rsh_inplace_impl<A>(
+        module: &Module<Self>,
+        basek: usize,
+        k: usize,
+        a: &mut A,
+        a_col: usize,
+        scratch: &mut Scratch<Self>,
+    ) where
         A: VecZnxToMut,
     {
-        vec_znx_rsh_inplace_ref(basek, k, a, a_col)
+        let (carry, _) = scratch.take_slice(module.vec_znx_normalize_tmp_bytes() / size_of::<i64>());
+        vec_znx_rsh_inplace_ref(basek, k, a, a_col, carry)
     }
 }
 

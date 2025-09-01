@@ -169,7 +169,7 @@ where
 
 pub fn test_vec_znx_lsh<B: Backend>(module: &Module<B>)
 where
-    Module<B>: VecZnxLshInplace + VecZnxNormalizeInplace<B> + VecZnxNormalizeTmpBytes,
+    Module<B>: VecZnxLshInplace<B> + VecZnxNormalizeInplace<B> + VecZnxNormalizeTmpBytes,
     ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
 {
     let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(module.vec_znx_normalize_tmp_bytes());
@@ -192,10 +192,12 @@ where
 
         b.raw_mut().copy_from_slice(a.raw());
 
+        let mut carry: Vec<i64> = vec![0i64; module.n()];
+
         // Normalize on c
         for i in 0..cols {
-            module.vec_znx_lsh_inplace(basek, k, &mut a, i);
-            vec_znx_lsh_inplace_ref(basek, k, &mut b, i);
+            module.vec_znx_lsh_inplace(basek, k, &mut a, i, scratch.borrow());
+            vec_znx_lsh_inplace_ref(basek, k, &mut b, i, &mut carry);
         }
 
         for i in 0..cols {

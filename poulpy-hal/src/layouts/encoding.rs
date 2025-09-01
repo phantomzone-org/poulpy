@@ -183,7 +183,7 @@ impl<D: DataRef> VecZnx<D> {
         let prec: u32 = (basek * size) as u32;
 
         // 2^{basek}
-        let base = Float::with_val(prec, (1 << basek) as f64);
+        let base = Float::with_val(prec, (1u64 << basek) as f64);
 
         // y[i] = sum x[j][i] * 2^{-basek*j}
         (0..size).for_each(|i| {

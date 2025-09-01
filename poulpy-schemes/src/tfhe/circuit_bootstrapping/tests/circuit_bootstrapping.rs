@@ -72,7 +72,7 @@ where
         + SvpPPolAllocBytes
         + VecZnxRotateInplace
         + VecZnxBigAutomorphismInplace<B>
-        + VecZnxRshInplace
+        + VecZnxRshInplace<B>
         + VecZnxDftCopy<B>
         + VecZnxNegateInplace
         + VecZnxCopy
@@ -253,7 +253,7 @@ where
         + SvpPPolAllocBytes
         + VecZnxRotateInplace
         + VecZnxBigAutomorphismInplace<B>
-        + VecZnxRshInplace
+        + VecZnxRshInplace<B>
         + VecZnxDftCopy<B>
         + VecZnxNegateInplace
         + VecZnxCopy
