@@ -60,7 +60,7 @@ pub fn test_glwe_keyswitch<B>(
         + VmpApplyDftToDft<B>
         + VmpApplyDftToDftAdd<B>
         + VecZnxBigNormalizeTmpBytes
-        + VecZnxSwithcDegree,
+        + VecZnxSwithcDegree<B>,
     B: Backend
         + TakeVecZnxDftImpl<B>
         + TakeVecZnxBigImpl<B>
@@ -174,7 +174,7 @@ where
         + VmpApplyDftToDft<B>
         + VmpApplyDftToDftAdd<B>
         + VecZnxBigNormalizeTmpBytes
-        + VecZnxSwithcDegree,
+        + VecZnxSwithcDegree<B>,
     B: Backend
         + TakeVecZnxDftImpl<B>
         + TakeVecZnxBigImpl<B>

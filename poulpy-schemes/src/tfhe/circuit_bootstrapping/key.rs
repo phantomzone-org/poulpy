@@ -68,7 +68,7 @@ where
         + VecZnxNormalize<B>
         + VecZnxSub
         + SvpPrepare<B>
-        + VecZnxSwithcDegree
+        + VecZnxSwithcDegree<B>
         + SvpPPolAllocBytes
         + SvpPPolAlloc<B>
         + VecZnxAutomorphism,

@@ -53,7 +53,7 @@ pub fn test_glwe_external_product<B>(
         + VecZnxBigAddSmallInplace<B>
         + VecZnxNormalizeTmpBytes
         + VecZnxAddScalarInplace
-        + VecZnxRotateInplace
+        + VecZnxRotateInplace<B>
         + VmpPMatAlloc<B>
         + VmpPrepare<B>
         + VmpApplyDftToDftTmpBytes
@@ -131,7 +131,7 @@ pub fn test_glwe_external_product<B>(
 
     ct_glwe_out.external_product(module, &ct_glwe_in, &ct_ggsw_prepared, scratch.borrow());
 
-    module.vec_znx_rotate_inplace(k as i64, &mut pt_want.data, 0);
+    module.vec_znx_rotate_inplace(k as i64, &mut pt_want.data, 0, scratch.borrow());
 
     let var_gct_err_lhs: f64 = SIGMA * SIGMA;
     let var_gct_err_rhs: f64 = 0f64;
@@ -186,7 +186,7 @@ pub fn test_glwe_external_product_inplace<B>(
         + VecZnxBigAddSmallInplace<B>
         + VecZnxNormalizeTmpBytes
         + VecZnxAddScalarInplace
-        + VecZnxRotateInplace
+        + VecZnxRotateInplace<B>
         + VmpPMatAlloc<B>
         + VmpPrepare<B>
         + VmpApplyDftToDftTmpBytes
@@ -255,7 +255,7 @@ pub fn test_glwe_external_product_inplace<B>(
 
     ct_glwe.external_product_inplace(module, &ct_ggsw_prepared, scratch.borrow());
 
-    module.vec_znx_rotate_inplace(k as i64, &mut pt_want.data, 0);
+    module.vec_znx_rotate_inplace(k as i64, &mut pt_want.data, 0, scratch.borrow());
 
     let var_gct_err_lhs: f64 = SIGMA * SIGMA;
     let var_gct_err_rhs: f64 = 0f64;

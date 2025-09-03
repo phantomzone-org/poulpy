@@ -34,7 +34,7 @@ where
         + VecZnxBigAutomorphismInplace<B>
         + VecZnxBigSubSmallBInplace<B>
         + VecZnxRshInplace<B>
-        + VecZnxRotateInplace
+        + VecZnxRotateInplace<B>
         + VecZnxBigNormalize<B>
         + DFT<B>
         + SvpApplyInplace<B>
@@ -60,7 +60,7 @@ where
         + VmpApplyDftToDft<B>
         + VmpApplyDftToDftAdd<B>
         + VecZnxBigNormalizeTmpBytes
-        + VecZnxSwithcDegree
+        + VecZnxSwithcDegree<B>
         + VecZnxCopy,
     B: Backend
         + TakeVecZnxDftImpl<B>

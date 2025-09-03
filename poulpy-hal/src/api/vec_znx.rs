@@ -148,9 +148,13 @@ pub trait VecZnxRotate {
         A: VecZnxToRef;
 }
 
-pub trait VecZnxRotateInplace {
+pub trait VecZnxRotateInplaceTmpBytes {
+    fn vec_znx_rotate_inplace_tmp_bytes(&self) -> usize;
+}
+
+pub trait VecZnxRotateInplace<B: Backend> {
     /// Multiplies the selected column of `a` by X^k.
-    fn vec_znx_rotate_inplace<A>(&self, p: i64, a: &mut A, a_col: usize)
+    fn vec_znx_rotate_inplace<A>(&self, p: i64, a: &mut A, a_col: usize, scratch: &mut Scratch<B>)
     where
         A: VecZnxToMut;
 }
@@ -196,21 +200,21 @@ pub trait VecZnxSplit<B: Backend> {
         A: VecZnxToRef;
 }
 
-pub trait VecZnxMerge {
+pub trait VecZnxMerge<B: Backend> {
     /// Merges the subrings of the selected column of `a` into the selected column of `res`.
     ///
     /// # Panics
     ///
     /// This method requires that all [crate::layouts::VecZnx] of a have the same ring degree
     /// and that a.n() * a.len() <= b.n()
-    fn vec_znx_merge<R, A>(&self, res: &mut R, res_col: usize, a: &[A], a_col: usize)
+    fn vec_znx_merge<R, A>(&self, res: &mut R, res_col: usize, a: &[A], a_col: usize, scratch: &mut Scratch<B>)
     where
         R: VecZnxToMut,
         A: VecZnxToRef;
 }
 
-pub trait VecZnxSwithcDegree {
-    fn vec_znx_switch_degree<R, A>(&self, res: &mut R, res_col: usize, a: &A, col_a: usize)
+pub trait VecZnxSwithcDegree<B: Backend> {
+    fn vec_znx_switch_degree<R, A>(&self, res: &mut R, res_col: usize, a: &A, col_a: usize, scratch: &mut Scratch<B>)
     where
         R: VecZnxToMut,
         A: VecZnxToRef;

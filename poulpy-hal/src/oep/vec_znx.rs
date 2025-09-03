@@ -256,11 +256,19 @@ pub unsafe trait VecZnxRotateImpl<B: Backend> {
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See TODO;
+/// * See [crate::api::VecZnxRotateInplaceTmpBytes] for corresponding public API.
+/// # Safety [crate::doc::backend_safety] for safety contract.
+pub unsafe trait VecZnxRotateInplaceTmpBytesImpl<B: Backend> {
+    fn vec_znx_rotate_inplace_tmp_bytes_impl(module: &Module<B>) -> usize;
+}
+
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
 /// * See [vec_znx_rotate_ref](https://github.com/phantomzone-org/spqlios-arithmetic/blob/32a3f5fcce9863b58e949f2dfd5abc1bfbaa09b4/spqlios/arithmetic/vec_znx.c#L164) for reference code.
 /// * See [crate::api::VecZnxRotateInplace] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxRotateInplaceImpl<B: Backend> {
-    fn vec_znx_rotate_inplace_impl<A>(module: &Module<B>, k: i64, a: &mut A, a_col: usize)
+    fn vec_znx_rotate_inplace_impl<A>(module: &Module<B>, k: i64, a: &mut A, a_col: usize, scratch: &mut Scratch<B>)
     where
         A: VecZnxToMut;
 }
@@ -323,7 +331,7 @@ pub unsafe trait VecZnxSplitImpl<B: Backend> {
 /// * See [crate::api::VecZnxMerge] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxMergeImpl<B: Backend> {
-    fn vec_znx_merge_impl<R, A>(module: &Module<B>, res: &mut R, res_col: usize, a: &[A], a_col: usize)
+    fn vec_znx_merge_impl<R, A>(module: &Module<B>, res: &mut R, res_col: usize, a: &[A], a_col: usize, scratch: &mut Scratch<B>)
     where
         R: VecZnxToMut,
         A: VecZnxToRef;
@@ -340,6 +348,7 @@ pub unsafe trait VecZnxSwithcDegreeImpl<B: Backend> {
         res_col: usize,
         a: &A,
         a_col: usize,
+        scratch: &mut Scratch<B>,
     );
 }
 

@@ -54,12 +54,12 @@ pub fn test_gglwe_switching_key_external_product<B>(
         + VecZnxBigAllocBytes
         + VecZnxBigAddInplace<B>
         + VecZnxBigAddSmallInplace<B>
-        + VecZnxSwithcDegree
+        + VecZnxSwithcDegree<B>
         + VecZnxAddScalarInplace
         + VecZnxSubScalarInplace
         + VecZnxCopy
         + VmpPMatAlloc<B>
-        + VecZnxRotateInplace
+        + VecZnxRotateInplace<B>
         + VmpApplyDftToDftTmpBytes
         + VmpApplyDftToDft<B>
         + VmpApplyDftToDftAdd<B>
@@ -136,7 +136,12 @@ pub fn test_gglwe_switching_key_external_product<B>(
     ct_gglwe_out.external_product(module, &ct_gglwe_in, &ct_rgsw_prepared, scratch.borrow());
 
     (0..rank_in).for_each(|i| {
-        module.vec_znx_rotate_inplace(r as i64, &mut sk_in.data.as_vec_znx_mut(), i); // * X^{r}
+        module.vec_znx_rotate_inplace(
+            r as i64,
+            &mut sk_in.data.as_vec_znx_mut(),
+            i,
+            scratch.borrow(),
+        ); // * X^{r}
     });
 
     let var_gct_err_lhs: f64 = SIGMA * SIGMA;
@@ -194,12 +199,12 @@ pub fn test_gglwe_switching_key_external_product_inplace<B>(
         + VecZnxBigAllocBytes
         + VecZnxBigAddInplace<B>
         + VecZnxBigAddSmallInplace<B>
-        + VecZnxSwithcDegree
+        + VecZnxSwithcDegree<B>
         + VecZnxAddScalarInplace
         + VecZnxSubScalarInplace
         + VecZnxCopy
         + VmpPMatAlloc<B>
-        + VecZnxRotateInplace
+        + VecZnxRotateInplace<B>
         + VmpApplyDftToDftTmpBytes
         + VmpApplyDftToDft<B>
         + VmpApplyDftToDftAdd<B>
@@ -274,7 +279,12 @@ pub fn test_gglwe_switching_key_external_product_inplace<B>(
     ct_gglwe.external_product_inplace(module, &ct_rgsw_prepared, scratch.borrow());
 
     (0..rank_in).for_each(|i| {
-        module.vec_znx_rotate_inplace(r as i64, &mut sk_in.data.as_vec_znx_mut(), i); // * X^{r}
+        module.vec_znx_rotate_inplace(
+            r as i64,
+            &mut sk_in.data.as_vec_znx_mut(),
+            i,
+            scratch.borrow(),
+        ); // * X^{r}
     });
 
     let var_gct_err_lhs: f64 = SIGMA * SIGMA;

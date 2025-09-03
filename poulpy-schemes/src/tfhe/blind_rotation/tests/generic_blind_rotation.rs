@@ -5,8 +5,8 @@ use poulpy_hal::{
         VecZnxBigAddSmallInplace, VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftAdd,
         VecZnxDftAddInplace, VecZnxDftAllocBytes, VecZnxDftSubABInplace, VecZnxDftZero, VecZnxFillUniform, VecZnxIDFTTmpBytes,
         VecZnxMulXpMinusOneInplace, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate,
-        VecZnxRotateInplace, VecZnxSub, VecZnxSubABInplace, VecZnxSwithcDegree, VmpApplyDftToDft, VmpApplyDftToDftAdd,
-        VmpApplyDftToDftTmpBytes, VmpPMatAlloc, VmpPrepare, ZnAddNormal, ZnFillUniform, ZnNormalizeInplace,
+        VecZnxRotateInplace, VecZnxRotateInplaceTmpBytes, VecZnxSub, VecZnxSubABInplace, VecZnxSwithcDegree, VmpApplyDftToDft,
+        VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes, VmpPMatAlloc, VmpPrepare, ZnAddNormal, ZnFillUniform, ZnNormalizeInplace,
     },
     layouts::{Backend, Module, ScratchOwned, ZnxView},
     oep::{
@@ -59,8 +59,8 @@ where
         + VecZnxFillUniform
         + VecZnxAddNormal
         + VecZnxAddScalarInplace
-        + VecZnxRotateInplace
-        + VecZnxSwithcDegree
+        + VecZnxRotateInplace<B>
+        + VecZnxSwithcDegree<B>
         + VecZnxSub
         + VmpPMatAlloc<B>
         + VmpPrepare<B>
@@ -68,6 +68,7 @@ where
         + VmpApplyDftToDftAdd<B>
         + ZnFillUniform
         + ZnAddNormal
+        + VecZnxRotateInplaceTmpBytes
         + ZnNormalizeInplace<B>,
     B: Backend
         + VecZnxDftAllocBytesImpl<B>

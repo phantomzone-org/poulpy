@@ -61,7 +61,7 @@ pub fn test_ggsw_keyswitch<B>(
         + VmpApplyDftToDft<B>
         + VmpApplyDftToDftAdd<B>
         + VecZnxBigNormalizeTmpBytes
-        + VecZnxSwithcDegree
+        + VecZnxSwithcDegree<B>
         + SvpApply<B>
         + IDFTTmpA<B>
         + VecZnxDftCopy<B>
@@ -205,7 +205,7 @@ pub fn test_ggsw_keyswitch_inplace<B>(
         + VmpApplyDftToDft<B>
         + VmpApplyDftToDftAdd<B>
         + VecZnxBigNormalizeTmpBytes
-        + VecZnxSwithcDegree
+        + VecZnxSwithcDegree<B>
         + SvpApply<B>
         + IDFTTmpA<B>
         + VecZnxDftCopy<B>

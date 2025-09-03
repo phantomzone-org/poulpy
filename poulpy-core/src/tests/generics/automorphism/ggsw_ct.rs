@@ -70,7 +70,7 @@ pub fn test_ggsw_automorphism<B>(
         + VecZnxNormalize<B>
         + VecZnxSub
         + SvpApply<B>
-        + VecZnxSwithcDegree
+        + VecZnxSwithcDegree<B>
         + VecZnxAutomorphismInplace
         + VecZnxAutomorphism,
     B: Backend
@@ -225,7 +225,7 @@ pub fn test_ggsw_automorphism_inplace<B>(
         + VecZnxSub
         + VecZnxFillUniform
         + SvpApply<B>
-        + VecZnxSwithcDegree
+        + VecZnxSwithcDegree<B>
         + VecZnxAutomorphismInplace
         + VecZnxAutomorphism,
     B: Backend

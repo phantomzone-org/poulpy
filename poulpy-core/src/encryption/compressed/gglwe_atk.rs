@@ -41,7 +41,7 @@ impl<DataSelf: DataMut> GGLWEAutomorphismKeyCompressed<DataSelf> {
         Module<B>: VecZnxAutomorphism
             + SvpPrepare<B>
             + SvpPPolAllocBytes
-            + VecZnxSwithcDegree
+            + VecZnxSwithcDegree<B>
             + VecZnxDftAllocBytes
             + VecZnxBigNormalize<B>
             + DFT<B>

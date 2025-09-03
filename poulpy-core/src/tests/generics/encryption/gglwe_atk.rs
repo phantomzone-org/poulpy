@@ -48,7 +48,7 @@ where
         + VmpApplyDftToDftAdd<B>
         + VecZnxBigAddSmallInplace<B>
         + VecZnxAutomorphism
-        + VecZnxSwithcDegree
+        + VecZnxSwithcDegree<B>
         + VecZnxAddScalarInplace
         + VecZnxAutomorphismInplace
         + VecZnxBigAllocBytes
@@ -140,7 +140,7 @@ pub fn test_gglwe_automorphisk_key_compressed_encrypt_sk<B>(
         + VmpApplyDftToDftAdd<B>
         + VecZnxBigAddSmallInplace<B>
         + VecZnxAutomorphism
-        + VecZnxSwithcDegree
+        + VecZnxSwithcDegree<B>
         + VecZnxAddScalarInplace
         + VecZnxAutomorphismInplace
         + VecZnxBigAllocBytes

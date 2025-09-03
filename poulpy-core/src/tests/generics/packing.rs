@@ -34,7 +34,7 @@ where
         + VecZnxBigSubSmallBInplace<B>
         + VecZnxNegateInplace
         + VecZnxRshInplace<B>
-        + VecZnxRotateInplace
+        + VecZnxRotateInplace<B>
         + VecZnxBigNormalize<B>
         + DFT<B>
         + VecZnxRotate
@@ -61,7 +61,7 @@ where
         + VmpApplyDftToDft<B>
         + VmpApplyDftToDftAdd<B>
         + VecZnxBigNormalizeTmpBytes
-        + VecZnxSwithcDegree
+        + VecZnxSwithcDegree<B>
         + VecZnxAutomorphismInplace
         + VecZnxCopy,
     B: Backend
@@ -150,7 +150,7 @@ where
             scratch.borrow(),
         );
 
-        pt.rotate_inplace(module, -(1 << log_batch)); // X^-batch * pt
+        pt.rotate_inplace(module, -(1 << log_batch), scratch.borrow()); // X^-batch * pt
 
         if reverse_bits_msb(i, log_n as u32).is_multiple_of(5) {
             packer.add(module, Some(&ct), &auto_keys, scratch.borrow());

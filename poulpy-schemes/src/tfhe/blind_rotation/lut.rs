@@ -1,7 +1,7 @@
 use poulpy_hal::{
     api::{
         ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxCopy, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotateInplace,
-        VecZnxSwithcDegree,
+        VecZnxRotateInplaceTmpBytes, VecZnxSwithcDegree,
     },
     layouts::{Backend, Module, ScratchOwned, VecZnx, ZnxInfos, ZnxViewMut},
     oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl},
@@ -71,12 +71,19 @@ impl LookUpTable {
 
     pub fn set<B>(&mut self, module: &Module<B>, f: &[i64], k: usize)
     where
-        Module<B>: VecZnxRotateInplace + VecZnxNormalizeInplace<B> + VecZnxNormalizeTmpBytes + VecZnxSwithcDegree + VecZnxCopy,
+        Module<B>: VecZnxRotateInplace<B>
+            + VecZnxNormalizeInplace<B>
+            + VecZnxNormalizeTmpBytes
+            + VecZnxSwithcDegree<B>
+            + VecZnxCopy
+            + VecZnxRotateInplaceTmpBytes,
         B: Backend + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
     {
         assert!(f.len() <= module.n());
 
         let basek: usize = self.basek;
+
+        let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(module.vec_znx_normalize_tmp_bytes());
 
         // Get the number minimum limb to store the message modulus
         let limbs: usize = k.div_ceil(basek);
@@ -124,16 +131,14 @@ impl LookUpTable {
 
         if self.extension_factor() > 1 {
             (0..self.extension_factor()).for_each(|i| {
-                module.vec_znx_switch_degree(&mut self.data[i], 0, &lut_full, 0);
+                module.vec_znx_switch_degree(&mut self.data[i], 0, &lut_full, 0, scratch.borrow());
                 if i < self.extension_factor() {
-                    module.vec_znx_rotate_inplace(-1, &mut lut_full, 0);
+                    module.vec_znx_rotate_inplace(-1, &mut lut_full, 0, scratch.borrow());
                 }
             });
         } else {
             module.vec_znx_copy(&mut self.data[0], 0, &lut_full, 0);
         }
-
-        let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(module.vec_znx_normalize_tmp_bytes());
 
         self.data.iter_mut().for_each(|a| {
             module.vec_znx_normalize_inplace(self.basek, a, 0, scratch.borrow());
@@ -147,11 +152,14 @@ impl LookUpTable {
     #[allow(dead_code)]
     pub(crate) fn rotate<B: Backend>(&mut self, module: &Module<B>, k: i64)
     where
-        Module<B>: VecZnxRotateInplace,
+        Module<B>: VecZnxRotateInplace<B> + VecZnxRotateInplaceTmpBytes,
+        B: ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
     {
         let extension_factor: usize = self.extension_factor();
         let two_n: usize = 2 * self.data[0].n();
         let two_n_ext: usize = two_n * extension_factor;
+
+        let mut scratch: ScratchOwned<_> = ScratchOwned::alloc(module.vec_znx_rotate_inplace_tmp_bytes());
 
         let k_pos: usize = ((k + two_n_ext as i64) % two_n_ext as i64) as usize;
 
@@ -159,11 +167,11 @@ impl LookUpTable {
         let k_lo: usize = k_pos % extension_factor;
 
         (0..extension_factor - k_lo).for_each(|i| {
-            module.vec_znx_rotate_inplace(k_hi as i64, &mut self.data[i], 0);
+            module.vec_znx_rotate_inplace(k_hi as i64, &mut self.data[i], 0, scratch.borrow());
         });
 
         (extension_factor - k_lo..extension_factor).for_each(|i| {
-            module.vec_znx_rotate_inplace(k_hi as i64 + 1, &mut self.data[i], 0);
+            module.vec_znx_rotate_inplace(k_hi as i64 + 1, &mut self.data[i], 0, scratch.borrow());
         });
 
         self.data.rotate_right(k_lo);

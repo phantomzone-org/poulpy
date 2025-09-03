@@ -61,7 +61,7 @@ pub fn test_gglwe_switching_key_keyswitch<B>(
         + VmpApplyDftToDft<B>
         + VmpApplyDftToDftAdd<B>
         + VecZnxBigNormalizeTmpBytes
-        + VecZnxSwithcDegree
+        + VecZnxSwithcDegree<B>
         + VecZnxSubScalarInplace,
     B: Backend
         + TakeVecZnxDftImpl<B>
@@ -208,7 +208,7 @@ pub fn test_gglwe_switching_key_keyswitch_inplace<B>(
         + VmpApplyDftToDft<B>
         + VmpApplyDftToDftAdd<B>
         + VecZnxBigNormalizeTmpBytes
-        + VecZnxSwithcDegree
+        + VecZnxSwithcDegree<B>
         + VecZnxSubScalarInplace,
     B: Backend
         + TakeVecZnxDftImpl<B>

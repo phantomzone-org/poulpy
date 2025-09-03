@@ -1,6 +1,6 @@
 use crate::reference::znx::znx_negate_i64_ref;
 
-pub fn znx_rotate_i64(p: i64, res: &mut [i64], src: &[i64]) {
+pub fn znx_rotate_i64_ref(p: i64, res: &mut [i64], src: &[i64]) {
     #[cfg(debug_assertions)]
     {
         assert_eq!(res.len(), src.len());

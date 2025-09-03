@@ -44,7 +44,7 @@ impl<DataSelf: DataMut> GGLWESwitchingKeyCompressed<DataSelf> {
     ) where
         Module<B>: SvpPrepare<B>
             + SvpPPolAllocBytes
-            + VecZnxSwithcDegree
+            + VecZnxSwithcDegree<B>
             + VecZnxDftAllocBytes
             + VecZnxBigNormalize<B>
             + DFT<B>
@@ -97,14 +97,21 @@ impl<DataSelf: DataMut> GGLWESwitchingKeyCompressed<DataSelf> {
                 i,
                 &sk_in.data.as_vec_znx(),
                 i,
+                scratch1,
             );
         });
 
         let (mut sk_out_tmp, scratch2) = scratch1.take_glwe_secret_prepared(n, sk_out.rank());
         {
-            let (mut tmp, _) = scratch2.take_scalar_znx(n, 1);
+            let (mut tmp, scratch_3) = scratch2.take_scalar_znx(n, 1);
             (0..sk_out.rank()).for_each(|i| {
-                module.vec_znx_switch_degree(&mut tmp.as_vec_znx_mut(), 0, &sk_out.data.as_vec_znx(), i);
+                module.vec_znx_switch_degree(
+                    &mut tmp.as_vec_znx_mut(),
+                    0,
+                    &sk_out.data.as_vec_znx(),
+                    i,
+                    scratch_3,
+                );
                 module.svp_prepare(&mut sk_out_tmp.data, i, &tmp, 0);
             });
         }

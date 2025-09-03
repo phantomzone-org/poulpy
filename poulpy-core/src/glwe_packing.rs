@@ -131,7 +131,7 @@ impl GLWEPacker {
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>
             + VecZnxCopy
-            + VecZnxRotateInplace
+            + VecZnxRotateInplace<B>
             + VecZnxSub
             + VecZnxNegateInplace
             + VecZnxRshInplace<B>
@@ -209,7 +209,7 @@ fn pack_core<D: DataRef, DataAK: DataRef, B: Backend>(
         + VecZnxBigAddSmallInplace<B>
         + VecZnxBigNormalize<B>
         + VecZnxCopy
-        + VecZnxRotateInplace
+        + VecZnxRotateInplace<B>
         + VecZnxSub
         + VecZnxNegateInplace
         + VecZnxRshInplace<B>
@@ -306,7 +306,7 @@ fn combine<D: DataRef, DataAK: DataRef, B: Backend>(
         + VecZnxBigAddSmallInplace<B>
         + VecZnxBigNormalize<B>
         + VecZnxCopy
-        + VecZnxRotateInplace
+        + VecZnxRotateInplace<B>
         + VecZnxSub
         + VecZnxNegateInplace
         + VecZnxRshInplace<B>
@@ -349,7 +349,7 @@ fn combine<D: DataRef, DataAK: DataRef, B: Backend>(
             let (mut tmp_b, scratch_1) = scratch.take_glwe_ct(n, basek, k, rank);
 
             // a = a * X^-t
-            a.rotate_inplace(module, -t);
+            a.rotate_inplace(module, -t, scratch_1);
 
             // tmp_b = a * X^-t - b
             tmp_b.sub(module, a, b);
@@ -375,7 +375,7 @@ fn combine<D: DataRef, DataAK: DataRef, B: Backend>(
             // a = a + b * X^t - phi(a * X^-t - b) * X^t
             //   = a + b * X^t - phi(a * X^-t - b) * - phi(X^t)
             //   = a + b * X^t + phi(a - b * X^t)
-            a.rotate_inplace(module, t);
+            a.rotate_inplace(module, t, scratch_1);
         } else {
             a.rsh(module, 1, scratch);
             // a = a + phi(a)

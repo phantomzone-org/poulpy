@@ -1,10 +1,7 @@
 use crate::{
-    api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddNormal, VecZnxAutomorphism, VecZnxFillUniform, VecZnxLshInplace,
-        VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate,
-    },
-    layouts::{Backend, FillUniform, Module, ScratchOwned, VecZnx, ZnxView, ZnxViewMut},
-    reference::vec_znx::{vec_znx_automorphism_ref, vec_znx_lsh_inplace_ref, vec_znx_rotate_ref},
+    api::{VecZnxAddNormal, VecZnxAutomorphism, VecZnxFillUniform},
+    layouts::{Backend, FillUniform, Module, VecZnx, ZnxView},
+    reference::vec_znx::vec_znx_automorphism_ref,
     source::Source,
 };
 
@@ -51,78 +48,6 @@ where
                 for j in min_size..d_size {
                     assert_eq!(d.at(i, j), zero);
                 }
-            }
-        }
-    }
-}
-
-pub fn test_vec_znx_lsh<B: Backend>(module: &Module<B>)
-where
-    Module<B>: VecZnxLshInplace<B> + VecZnxNormalizeInplace<B> + VecZnxNormalizeTmpBytes,
-    ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
-{
-    let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(module.vec_znx_normalize_tmp_bytes());
-    let mut source: Source = Source::new([0u8; 32]);
-    let cols: usize = 2;
-    let basek = 12;
-    let k: usize = 38;
-
-    for size in [1, 2, 6, 11] {
-        let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, size);
-        let mut b: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, size);
-
-        // Fill a with random i64
-        a.fill_uniform(&mut source);
-
-        // Normalize to avoid i64 overflow
-        for i in 0..cols {
-            module.vec_znx_normalize_inplace(basek, &mut a, i, scratch.borrow());
-        }
-
-        b.raw_mut().copy_from_slice(a.raw());
-
-        let mut carry: Vec<i64> = vec![0i64; module.n()];
-
-        // Normalize on c
-        for i in 0..cols {
-            module.vec_znx_lsh_inplace(basek, k, &mut a, i, scratch.borrow());
-            vec_znx_lsh_inplace_ref(basek, k, &mut b, i, &mut carry);
-        }
-
-        for i in 0..cols {
-            for j in 0..size {
-                assert_eq!(a.at(i, j), b.at(i, j));
-            }
-        }
-    }
-}
-
-pub fn test_vec_znx_rotate<B: Backend>(module: &Module<B>)
-where
-    Module<B>: VecZnxRotate + VecZnxNormalizeInplace<B> + VecZnxNormalizeTmpBytes,
-{
-    let mut source: Source = Source::new([0u8; 32]);
-    let cols: usize = 2;
-
-    for size in [1, 2, 6, 11] {
-        let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, size);
-        let mut r0: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, size);
-        let mut r1: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, size);
-
-        // Fill a with random i64
-        a.fill_uniform(&mut source);
-
-        let p: i64 = -7;
-
-        // Normalize on c
-        for i in 0..cols {
-            module.vec_znx_rotate(p, &mut r0, i, &a, i);
-            vec_znx_rotate_ref(p, &mut r1, i, &a, i);
-        }
-
-        for i in 0..cols {
-            for j in 0..size {
-                assert_eq!(r0.at(i, j), r1.at(i, j));
             }
         }
     }

@@ -59,7 +59,7 @@ pub fn test_glwe_automorphism<B>(
         + VmpApplyDftToDft<B>
         + VmpApplyDftToDftAdd<B>
         + VecZnxAutomorphism
-        + VecZnxSwithcDegree
+        + VecZnxSwithcDegree<B>
         + VecZnxAddScalarInplace
         + VecZnxAutomorphismInplace
         + VmpPMatAlloc<B>
@@ -183,7 +183,7 @@ pub fn test_glwe_automorphism_inplace<B>(
         + VmpApplyDftToDft<B>
         + VmpApplyDftToDftAdd<B>
         + VecZnxAutomorphism
-        + VecZnxSwithcDegree
+        + VecZnxSwithcDegree<B>
         + VecZnxAddScalarInplace
         + VecZnxAutomorphismInplace
         + VmpPMatAlloc<B>

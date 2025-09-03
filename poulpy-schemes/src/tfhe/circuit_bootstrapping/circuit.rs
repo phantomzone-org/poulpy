@@ -6,8 +6,8 @@ use poulpy_hal::{
         TakeVecZnxSlice, VecZnxAddInplace, VecZnxAutomorphismInplace, VecZnxBigAddSmallInplace, VecZnxBigAllocBytes,
         VecZnxBigAutomorphismInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallBInplace, VecZnxCopy,
         VecZnxDftAddInplace, VecZnxDftAllocBytes, VecZnxDftCopy, VecZnxNegateInplace, VecZnxNormalizeInplace,
-        VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace, VecZnxRshInplace, VecZnxSub, VecZnxSubABInplace,
-        VecZnxSwithcDegree, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
+        VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace, VecZnxRotateInplaceTmpBytes, VecZnxRshInplace, VecZnxSub,
+        VecZnxSubABInplace, VecZnxSwithcDegree, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch, ToOwnedDeep},
     oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl},
@@ -26,10 +26,10 @@ use crate::tfhe::{
 
 impl<D: DataRef, BRA: BlindRotationAlgo, B> CirtuitBootstrappingExecute<B> for CircuitBootstrappingKeyPrepared<D, BRA, B>
 where
-    Module<B>: VecZnxRotateInplace
+    Module<B>: VecZnxRotateInplace<B>
         + VecZnxNormalizeInplace<B>
         + VecZnxNormalizeTmpBytes
-        + VecZnxSwithcDegree
+        + VecZnxSwithcDegree<B>
         + VecZnxBigAutomorphismInplace<B>
         + VecZnxRshInplace<B>
         + VecZnxDftCopy<B>
@@ -50,6 +50,7 @@ where
         + VecZnxBigNormalize<B>
         + VecZnxAutomorphismInplace
         + VecZnxBigSubSmallBInplace<B>
+        + VecZnxRotateInplaceTmpBytes
         + VecZnxBigAllocBytes
         + VecZnxDftAddInplace<B>
         + VecZnxRotate,
@@ -124,10 +125,10 @@ pub fn circuit_bootstrap_core<DRes, DLwe, DBrk, BRA: BlindRotationAlgo, B>(
     DRes: DataMut,
     DLwe: DataRef,
     DBrk: DataRef,
-    Module<B>: VecZnxRotateInplace
+    Module<B>: VecZnxRotateInplace<B>
         + VecZnxNormalizeInplace<B>
         + VecZnxNormalizeTmpBytes
-        + VecZnxSwithcDegree
+        + VecZnxSwithcDegree<B>
         + VecZnxBigAutomorphismInplace<B>
         + VecZnxRshInplace<B>
         + VecZnxDftCopy<B>
@@ -150,6 +151,7 @@ pub fn circuit_bootstrap_core<DRes, DLwe, DBrk, BRA: BlindRotationAlgo, B>(
         + VecZnxBigSubSmallBInplace<B>
         + VecZnxBigAllocBytes
         + VecZnxDftAddInplace<B>
+        + VecZnxRotateInplaceTmpBytes
         + VecZnxRotate,
     B: Backend + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
     Scratch<B>: TakeVecZnxDftSlice<B>
@@ -200,9 +202,9 @@ pub fn circuit_bootstrap_core<DRes, DLwe, DBrk, BRA: BlindRotationAlgo, B>(
 
     // TODO: separate GGSW k from output of blind rotation k
     let (mut res_glwe, scratch1) = scratch.take_glwe_ct(n, basek, k, rank);
-    let (mut tmp_gglwe, scratch2) = scratch1.take_gglwe(n, basek, k, rows, 1, rank.max(1), rank);
+    let (mut tmp_gglwe, scratch_2) = scratch1.take_gglwe(n, basek, k, rows, 1, rank.max(1), rank);
 
-    key.brk.execute(module, &mut res_glwe, lwe, &lut, scratch2);
+    key.brk.execute(module, &mut res_glwe, lwe, &lut, scratch_2);
 
     let gap: usize = 2 * lut.drift / lut.extension_factor();
 
@@ -221,19 +223,19 @@ pub fn circuit_bootstrap_core<DRes, DLwe, DBrk, BRA: BlindRotationAlgo, B>(
                 log_gap_out,
                 log_domain,
                 &key.atk,
-                scratch2,
+                scratch_2,
             );
         } else {
-            tmp_glwe.trace(module, 0, module.log_n(), &res_glwe, &key.atk, scratch2);
+            tmp_glwe.trace(module, 0, module.log_n(), &res_glwe, &key.atk, scratch_2);
         }
 
         if i < rows {
-            res_glwe.rotate_inplace(module, -(gap as i64));
+            res_glwe.rotate_inplace(module, -(gap as i64), scratch_2);
         }
     });
 
     // Expands GGLWE to GGSW using GGLWE(s^2)
-    res.from_gglwe(module, &tmp_gglwe, &key.tsk, scratch2);
+    res.from_gglwe(module, &tmp_gglwe, &key.tsk, scratch_2);
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -249,10 +251,10 @@ fn post_process<DataRes, DataA, B: Backend>(
 ) where
     DataRes: DataMut,
     DataA: DataRef,
-    Module<B>: VecZnxRotateInplace
+    Module<B>: VecZnxRotateInplace<B>
         + VecZnxNormalizeInplace<B>
         + VecZnxNormalizeTmpBytes
-        + VecZnxSwithcDegree
+        + VecZnxSwithcDegree<B>
         + VecZnxBigAutomorphismInplace<B>
         + VecZnxRshInplace<B>
         + VecZnxDftCopy<B>
@@ -297,7 +299,7 @@ fn post_process<DataRes, DataA, B: Backend>(
         let steps: i32 = 1 << log_domain;
         (0..steps).for_each(|i| {
             if i != 0 {
-                res.rotate_inplace(module, -(1 << log_gap_in));
+                res.rotate_inplace(module, -(1 << log_gap_in), scratch);
             }
             cts.insert(i as usize * (1 << log_gap_out), res.to_owned_deep());
         });
@@ -321,10 +323,10 @@ pub fn pack<D: DataMut, B: Backend>(
     auto_keys: &HashMap<i64, GGLWEAutomorphismKeyPrepared<Vec<u8>, B>>,
     scratch: &mut Scratch<B>,
 ) where
-    Module<B>: VecZnxRotateInplace
+    Module<B>: VecZnxRotateInplace<B>
         + VecZnxNormalizeInplace<B>
         + VecZnxNormalizeTmpBytes
-        + VecZnxSwithcDegree
+        + VecZnxSwithcDegree<B>
         + VecZnxBigAutomorphismInplace<B>
         + VecZnxRshInplace<B>
         + VecZnxDftCopy<B>
@@ -400,10 +402,10 @@ fn combine<A: DataMut, D: DataMut, DataAK: DataRef, B: Backend>(
     auto_key: &GGLWEAutomorphismKeyPrepared<DataAK, B>,
     scratch: &mut Scratch<B>,
 ) where
-    Module<B>: VecZnxRotateInplace
+    Module<B>: VecZnxRotateInplace<B>
         + VecZnxNormalizeInplace<B>
         + VecZnxNormalizeTmpBytes
-        + VecZnxSwithcDegree
+        + VecZnxSwithcDegree<B>
         + VecZnxBigAutomorphismInplace<B>
         + VecZnxRshInplace<B>
         + VecZnxDftCopy<B>
@@ -446,7 +448,7 @@ fn combine<A: DataMut, D: DataMut, DataAK: DataRef, B: Backend>(
             let (mut tmp_b, scratch_1) = scratch.take_glwe_ct(n, basek, k, rank);
 
             // a = a * X^-t
-            a.rotate_inplace(module, -t);
+            a.rotate_inplace(module, -t, scratch_1);
 
             // tmp_b = a * X^-t - b
             tmp_b.sub(module, a, b);
@@ -468,7 +470,7 @@ fn combine<A: DataMut, D: DataMut, DataAK: DataRef, B: Backend>(
             // a = a + b * X^t - phi(a * X^-t - b) * X^t
             //   = a + b * X^t - phi(a * X^-t - b) * - phi(X^t)
             //   = a + b * X^t + phi(a - b * X^t)
-            a.rotate_inplace(module, t);
+            a.rotate_inplace(module, t, scratch_1);
         } else {
             a.rsh(module, 1, scratch);
             // a = a + phi(a)

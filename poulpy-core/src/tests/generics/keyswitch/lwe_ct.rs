@@ -48,7 +48,7 @@ where
         + VmpApplyDftToDft<B>
         + VmpApplyDftToDftAdd<B>
         + VecZnxBigNormalizeTmpBytes
-        + VecZnxSwithcDegree
+        + VecZnxSwithcDegree<B>
         + VecZnxAutomorphismInplace
         + ZnNormalizeInplace<B>
         + ZnFillUniform

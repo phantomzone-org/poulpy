@@ -48,7 +48,7 @@ pub fn test_gglwe_switching_key_encrypt_sk<B>(
         + SvpPPolAllocBytes
         + SvpPPolAlloc<B>
         + VecZnxBigAddSmallInplace<B>
-        + VecZnxSwithcDegree
+        + VecZnxSwithcDegree<B>
         + VecZnxAddScalarInplace
         + VecZnxBigAllocBytes
         + VecZnxBigAddInplace<B>
@@ -126,7 +126,7 @@ pub fn test_gglwe_switching_key_compressed_encrypt_sk<B>(
         + SvpPPolAllocBytes
         + SvpPPolAlloc<B>
         + VecZnxBigAddSmallInplace<B>
-        + VecZnxSwithcDegree
+        + VecZnxSwithcDegree<B>
         + VecZnxAddScalarInplace
         + VecZnxBigAllocBytes
         + VecZnxBigAddInplace<B>

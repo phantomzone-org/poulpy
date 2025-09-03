@@ -50,7 +50,7 @@ where
         + VecZnxBigAlloc<B>
         + IDFTTmpA<B>
         + VecZnxAddScalarInplace
-        + VecZnxSwithcDegree
+        + VecZnxSwithcDegree<B>
         + VecZnxSubScalarInplace,
     B: Backend
         + TakeVecZnxDftImpl<B>
@@ -159,7 +159,7 @@ where
         + VecZnxBigAlloc<B>
         + IDFTTmpA<B>
         + VecZnxAddScalarInplace
-        + VecZnxSwithcDegree
+        + VecZnxSwithcDegree<B>
         + VecZnxSubScalarInplace,
     B: Backend
         + TakeVecZnxDftImpl<B>
