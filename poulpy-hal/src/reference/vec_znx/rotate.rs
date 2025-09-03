@@ -112,25 +112,28 @@ where
     let mut source: Source = Source::new([0u8; 32]);
     let cols: usize = 2;
 
-    for size in [1, 2, 6, 11] {
-        let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, size);
-        let mut r0: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, size);
-        let mut r1: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, size);
+    for a_size in [1, 2, 6, 11] {
+        let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, a_size);
 
         // Fill a with random i64
         a.fill_uniform(&mut source);
 
-        let p: i64 = -7;
+        for res_size in [1, 2, 6, 11] {
+            let mut r0: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, res_size);
+            let mut r1: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, res_size);
 
-        // Normalize on c
-        for i in 0..cols {
-            module.vec_znx_rotate(p, &mut r0, i, &a, i);
-            vec_znx_rotate_ref(p, &mut r1, i, &a, i);
-        }
+            let p: i64 = -1;
 
-        for i in 0..cols {
-            for j in 0..size {
-                assert_eq!(r0.at(i, j), r1.at(i, j));
+            // Normalize on c
+            for i in 0..cols {
+                module.vec_znx_rotate(p, &mut r0, i, &a, i);
+                vec_znx_rotate_ref(p, &mut r1, i, &a, i);
+            }
+
+            for i in 0..cols {
+                for j in 0..res_size {
+                    assert_eq!(r0.at(i, j), r1.at(i, j));
+                }
             }
         }
     }

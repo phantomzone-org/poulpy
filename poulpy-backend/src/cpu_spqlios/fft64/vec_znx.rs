@@ -491,7 +491,8 @@ unsafe impl VecZnxRotateImpl<Self> for FFT64 {
             assert_eq!(res.n(), a.n());
         }
         unsafe {
-            (0..a.size()).for_each(|j| {
+            let min_size = res.size().min(a.size());
+            (0..min_size).for_each(|j| {
                 znx::znx_rotate_i64(
                     a.n() as u64,
                     k,
@@ -499,6 +500,10 @@ unsafe impl VecZnxRotateImpl<Self> for FFT64 {
                     a.at_ptr(a_col, j),
                 );
             });
+
+            (min_size..res.size()).for_each(|j| {
+                res.zero_at(res_col, j);
+            })
         }
     }
 }
