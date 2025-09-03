@@ -3,10 +3,10 @@ use poulpy_hal::{
     layouts::Module,
     reference::vec_znx::{
         test_vec_znx_add, test_vec_znx_add_inplace, test_vec_znx_add_scalar, test_vec_znx_add_scalar_inplace,
-        test_vec_znx_negate, test_vec_znx_negate_inplace, test_vec_znx_sub, test_vec_znx_sub_ab_inplace,
-        test_vec_znx_sub_ba_inplace,
+        test_vec_znx_negate, test_vec_znx_negate_inplace, test_vec_znx_normalize, test_vec_znx_normalize_inplace,
+        test_vec_znx_sub, test_vec_znx_sub_ab_inplace, test_vec_znx_sub_ba_inplace,
     },
-    tests::vec_znx::{test_vec_znx_add_normal, test_vec_znx_fill_uniform, test_vec_znx_normalize},
+    tests::vec_znx::{test_vec_znx_add_normal, test_vec_znx_fill_uniform},
 };
 
 use crate::cpu_spqlios::FFT64;
@@ -15,6 +15,12 @@ use crate::cpu_spqlios::FFT64;
 fn test_vec_znx_normalize_fft64() {
     let module: Module<FFT64> = Module::<FFT64>::new(1 << 5);
     test_vec_znx_normalize(&module);
+}
+
+#[test]
+fn test_vec_znx_normalize_inplace_fft64() {
+    let module: Module<FFT64> = Module::<FFT64>::new(1 << 5);
+    test_vec_znx_normalize_inplace(&module);
 }
 
 #[test]

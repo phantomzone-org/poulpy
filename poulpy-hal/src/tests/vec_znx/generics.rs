@@ -1,123 +1,12 @@
 use crate::{
     api::{
         ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAddNormal, VecZnxAutomorphism, VecZnxFillUniform, VecZnxLshInplace,
-        VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate,
+        VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate,
     },
     layouts::{Backend, FillUniform, Module, ScratchOwned, VecZnx, ZnxView, ZnxViewMut},
-    reference::vec_znx::{
-        vec_znx_automorphism_ref, vec_znx_lsh_inplace_ref, vec_znx_normalize_inplace_ref, vec_znx_normalize_ref,
-        vec_znx_rotate_ref,
-    },
+    reference::vec_znx::{vec_znx_automorphism_ref, vec_znx_lsh_inplace_ref, vec_znx_rotate_ref},
     source::Source,
 };
-
-use rand::RngCore;
-
-pub fn test_vec_znx_normalize<B: Backend>(module: &Module<B>)
-where
-    ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
-    Module<B>: VecZnxNormalizeTmpBytes + VecZnxNormalize<B>,
-{
-    let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(module.vec_znx_normalize_tmp_bytes());
-    let mut source: Source = Source::new([0u8; 32]);
-    let cols: usize = 2;
-    let basek: usize = 17;
-    let zero: Vec<i64> = vec![0i64; module.n()];
-
-    for a_size in [1, 2, 6, 11] {
-        let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, a_size);
-        let mut b: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, a_size);
-
-        // Fill a with random i64
-        a.fill_uniform(&mut source);
-        b.fill_uniform(&mut source);
-
-        // Reference
-        let mut carry: Vec<i64> = vec![0i64; module.n()];
-
-        // Fill carry with garbage
-        carry.iter_mut().for_each(|x| {
-            *x = source.next_i64();
-        });
-
-        for i in 0..cols {
-            vec_znx_normalize_ref(basek, &mut b, i, &a, i, &mut carry);
-        }
-
-        for c_size in [1, 2, 6, 11] {
-            let mut c: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, c_size);
-
-            // Set scratch to garbage
-            source.fill_bytes(&mut scratch.data);
-
-            // Set c to garbage
-            c.fill_uniform(&mut source);
-
-            // Normalize on c
-            for i in 0..cols {
-                module.vec_znx_normalize(basek, &mut c, i, &a, i, scratch.borrow());
-            }
-
-            let min_size: usize = a_size.min(c_size);
-
-            for i in 0..cols {
-                for j in 0..min_size {
-                    assert_eq!(c.at(i, j), b.at(i, j));
-                }
-
-                for j in min_size..c_size {
-                    assert_eq!(c.at(i, j), zero);
-                }
-            }
-        }
-    }
-}
-
-pub fn test_vec_znx_normalize_inplace<B: Backend>(module: &Module<B>)
-where
-    ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
-    Module<B>: VecZnxNormalizeTmpBytes + VecZnxNormalizeInplace<B>,
-{
-    let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(module.vec_znx_normalize_tmp_bytes());
-    let mut source: Source = Source::new([0u8; 32]);
-    let cols: usize = 2;
-    let basek: usize = 17;
-
-    for size in [1, 2, 6, 11] {
-        let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, size);
-        let mut b: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, size);
-
-        // Fill a with random i64
-        a.fill_uniform(&mut source);
-        b.raw_mut().copy_from_slice(a.raw());
-
-        // Reference
-        let mut carry: Vec<i64> = vec![0i64; module.n()];
-
-        // Fill carry with garbage
-        carry.iter_mut().for_each(|x| {
-            *x = source.next_i64();
-        });
-
-        for i in 0..cols {
-            vec_znx_normalize_inplace_ref(basek, &mut a, i, &mut carry);
-        }
-
-        // Set scratch to garbage
-        source.fill_bytes(&mut scratch.data);
-
-        // Normalize on c
-        for i in 0..cols {
-            module.vec_znx_normalize_inplace(basek, &mut b, i, scratch.borrow());
-        }
-
-        for i in 0..cols {
-            for j in 0..size {
-                assert_eq!(a.at(i, j), b.at(i, j));
-            }
-        }
-    }
-}
 
 pub fn test_vec_znx_automorphism<B: Backend>(module: &Module<B>)
 where
