@@ -175,13 +175,57 @@ pub unsafe trait VecZnxNegateInplaceImpl<B: Backend> {
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See [crate::reference::vec_znx::shift::vec_znx_rsh_inplace] for reference code.
+/// * See [crate::api::VecZnxRsh] for corresponding public API.
+/// # Safety [crate::doc::backend_safety] for safety contract.
+pub unsafe trait VecZnxRshImpl<B: Backend> {
+    fn vec_znx_rsh_inplace_impl<R, A>(
+        module: &Module<B>,
+        basek: usize,
+        k: usize,
+        res: &mut R,
+        res_col: usize,
+        a: &A,
+        a_col: usize,
+        scratch: &mut Scratch<B>,
+    ) where
+        R: VecZnxToMut,
+        A: VecZnxToRef;
+}
+
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See [crate::reference::vec_znx::shift::vec_znx_lsh_inplace] for reference code.
+/// * See [crate::api::VecZnxLsh] for corresponding public API.
+/// # Safety [crate::doc::backend_safety] for safety contract.
+pub unsafe trait VecZnxLshImpl<B: Backend> {
+    fn vec_znx_lsh_inplace_impl<R, A>(
+        module: &Module<B>,
+        basek: usize,
+        k: usize,
+        res: &mut R,
+        res_col: usize,
+        a: &A,
+        a_col: usize,
+        scratch: &mut Scratch<B>,
+    ) where
+        R: VecZnxToMut,
+        A: VecZnxToRef;
+}
+
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
 /// * See [crate::cpu_spqlios::vec_znx::vec_znx_rsh_inplace_ref] for reference code.
 /// * See [crate::api::VecZnxRshInplace] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxRshInplaceImpl<B: Backend> {
-    fn vec_znx_rsh_inplace_impl<A>(module: &Module<B>, basek: usize, k: usize, a: &mut A, a_col: usize, scratch: &mut Scratch<B>)
-    where
-        A: VecZnxToMut;
+    fn vec_znx_rsh_inplace_impl<R>(
+        module: &Module<B>,
+        basek: usize,
+        k: usize,
+        res: &mut R,
+        res_col: usize,
+        scratch: &mut Scratch<B>,
+    ) where
+        R: VecZnxToMut;
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
@@ -189,9 +233,15 @@ pub unsafe trait VecZnxRshInplaceImpl<B: Backend> {
 /// * See [crate::api::VecZnxLshInplace] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxLshInplaceImpl<B: Backend> {
-    fn vec_znx_lsh_inplace_impl<A>(module: &Module<B>, basek: usize, k: usize, a: &mut A, a_col: usize, scratch: &mut Scratch<B>)
-    where
-        A: VecZnxToMut;
+    fn vec_znx_lsh_inplace_impl<R>(
+        module: &Module<B>,
+        basek: usize,
+        k: usize,
+        res: &mut R,
+        res_col: usize,
+        scratch: &mut Scratch<B>,
+    ) where
+        R: VecZnxToMut;
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)

@@ -1,5 +1,16 @@
+use std::hint::black_box;
+
+use criterion::{BenchmarkId, Criterion};
+
 use crate::{
-    layouts::{VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut, ZnxZero},
+    api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxLsh, VecZnxLshInplace, VecZnxRsh, VecZnxRshInplace},
+    layouts::{
+        Backend, FillUniform, Module, ScratchOwned, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut, ZnxZero,
+    },
+    oep::{
+        ModuleNewImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, VecZnxLshImpl, VecZnxLshInplaceImpl, VecZnxRshImpl,
+        VecZnxRshInplaceImpl,
+    },
     reference::{
         vec_znx::vec_znx_copy_ref,
         znx::{
@@ -8,6 +19,7 @@ use crate::{
             znx_normalize_mid_ref,
         },
     },
+    source::Source,
 };
 
 pub fn vec_znx_lsh_inplace_ref<R>(basek: usize, k: usize, res: &mut R, res_col: usize, carry: &mut [i64])
@@ -298,6 +310,342 @@ where
             res.zero_at(res_col, j);
         });
     }
+}
+
+pub fn test_vec_znx_lsh<B: Backend>(module: &Module<B>)
+where
+    Module<B>: VecZnxLsh<B>,
+    B: ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
+{
+    let mut source: Source = Source::new([0u8; 32]);
+    let cols: usize = 2;
+    let basek = 50;
+
+    let mut scratch = ScratchOwned::alloc(module.n() * size_of::<i64>());
+    let mut carry = vec![0i64; module.n()];
+
+    for a_size in [1, 2, 6, 11] {
+        let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, a_size);
+        a.raw_mut()
+            .iter_mut()
+            .for_each(|x| *x = source.next_i32() as i64);
+
+        for res_size in [1, 2, 6, 11] {
+            for k in 0..res_size * basek {
+                let mut res_0: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, res_size);
+                let mut res_1: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, res_size);
+
+                // Set d to garbage
+                res_0.fill_uniform(&mut source);
+                res_1.fill_uniform(&mut source);
+
+                // Reference
+                for i in 0..cols {
+                    vec_znx_lsh_ref(basek, k, &mut res_0, i, &a, i, &mut carry);
+                    module.vec_znx_lsh(basek, k, &mut res_1, i, &a, i, scratch.borrow());
+                }
+
+                assert_eq!(res_0.raw(), res_1.raw());
+            }
+        }
+    }
+}
+
+pub fn test_vec_znx_lsh_inplace<B: Backend>(module: &Module<B>)
+where
+    Module<B>: VecZnxLshInplace<B>,
+    B: ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
+{
+    let mut source: Source = Source::new([0u8; 32]);
+    let cols: usize = 2;
+    let basek: usize = 50;
+
+    let mut scratch = ScratchOwned::alloc(module.n() * size_of::<i64>());
+
+    let mut carry = vec![0i64; module.n()];
+
+    for res_size in [1, 2, 6, 11] {
+        for k in 0..basek * res_size {
+            let mut res_0: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, res_size);
+            let mut res_1: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, res_size);
+
+            res_0
+                .raw_mut()
+                .iter_mut()
+                .for_each(|x| *x = source.next_i32() as i64);
+
+            res_1.raw_mut().copy_from_slice(&res_0.raw());
+
+            for i in 0..cols {
+                vec_znx_lsh_inplace_ref(basek, k, &mut res_0, i, &mut carry);
+                module.vec_znx_lsh_inplace(basek, k, &mut res_1, i, scratch.borrow());
+            }
+
+            assert_eq!(res_0.raw(), res_1.raw());
+        }
+    }
+}
+
+pub fn test_vec_znx_rsh<B: Backend>(module: &Module<B>)
+where
+    Module<B>: VecZnxRsh<B>,
+    B: ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
+{
+    let mut source: Source = Source::new([0u8; 32]);
+    let cols: usize = 2;
+    let basek = 50;
+
+    let mut scratch = ScratchOwned::alloc(module.n() * size_of::<i64>());
+    let mut carry = vec![0i64; module.n()];
+
+    for a_size in [1, 2, 6, 11] {
+        let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, a_size);
+        a.raw_mut()
+            .iter_mut()
+            .for_each(|x| *x = source.next_i32() as i64);
+
+        for res_size in [1, 2, 6, 11] {
+            for k in 0..res_size * basek {
+                let mut res_0: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, res_size);
+                let mut res_1: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, res_size);
+
+                // Set d to garbage
+                res_0.fill_uniform(&mut source);
+                res_1.fill_uniform(&mut source);
+
+                // Reference
+                for i in 0..cols {
+                    vec_znx_rsh_ref(basek, k, &mut res_0, i, &a, i, &mut carry);
+                    module.vec_znx_rsh(basek, k, &mut res_1, i, &a, i, scratch.borrow());
+                }
+
+                assert_eq!(res_0.raw(), res_1.raw());
+            }
+        }
+    }
+}
+
+pub fn test_vec_znx_rsh_inplace<B: Backend>(module: &Module<B>)
+where
+    Module<B>: VecZnxRshInplace<B>,
+    B: ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
+{
+    let mut source: Source = Source::new([0u8; 32]);
+    let cols: usize = 2;
+    let basek: usize = 50;
+
+    let mut scratch = ScratchOwned::alloc(module.n() * size_of::<i64>());
+
+    let mut carry = vec![0i64; module.n()];
+
+    for res_size in [1, 2, 6, 11] {
+        for k in 0..basek * res_size {
+            let mut res_0: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, res_size);
+            let mut res_1: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, res_size);
+
+            res_0
+                .raw_mut()
+                .iter_mut()
+                .for_each(|x| *x = source.next_i32() as i64);
+
+            res_1.raw_mut().copy_from_slice(&res_0.raw());
+
+            for i in 0..cols {
+                vec_znx_rsh_inplace_ref(basek, k, &mut res_0, i, &mut carry);
+                module.vec_znx_rsh_inplace(basek, k, &mut res_1, i, scratch.borrow());
+            }
+
+            assert_eq!(res_0.raw(), res_1.raw());
+        }
+    }
+}
+
+pub fn bench_vec_znx_lsh_inplace<B: Backend>(c: &mut Criterion, label: &str)
+where
+    B: ModuleNewImpl<B> + VecZnxLshInplaceImpl<B> + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
+{
+    let group_name: String = format!("vec_znx_lsh_inplace::{}", label);
+
+    let mut group = c.benchmark_group(group_name);
+
+    fn runner<B: Backend>(params: [usize; 3]) -> impl FnMut()
+    where
+        Module<B>: VecZnxLshInplace<B> + ModuleNew<B>,
+        ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
+    {
+        let module: Module<B> = Module::<B>::new(1 << params[0]);
+
+        let cols: usize = params[1];
+        let size: usize = params[2];
+        let basek: usize = 50;
+
+        let mut source: Source = Source::new([0u8; 32]);
+
+        let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, size);
+        let mut b: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, size);
+
+        let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(module.n() * size_of::<i64>());
+
+        // Fill a with random i64
+        a.fill_uniform(&mut source);
+        b.fill_uniform(&mut source);
+
+        move || {
+            for i in 0..cols {
+                module.vec_znx_lsh_inplace(basek, basek - 1, &mut b, i, scratch.borrow());
+            }
+            black_box(());
+        }
+    }
+
+    for params in [[10, 2, 2], [11, 2, 4], [12, 2, 8], [13, 2, 16], [14, 2, 32]] {
+        let id: BenchmarkId = BenchmarkId::from_parameter(format!("{}x({}x{})", 1 << params[0], params[1], params[2]));
+        let mut runner = runner::<B>(params);
+        group.bench_with_input(id, &(), |b, _| b.iter(&mut runner));
+    }
+
+    group.finish();
+}
+
+pub fn bench_vec_znx_lsh<B: Backend>(c: &mut Criterion, label: &str)
+where
+    B: ModuleNewImpl<B> + VecZnxLshImpl<B> + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
+{
+    let group_name: String = format!("vec_znx_lsh::{}", label);
+
+    let mut group = c.benchmark_group(group_name);
+
+    fn runner<B: Backend>(params: [usize; 3]) -> impl FnMut()
+    where
+        Module<B>: VecZnxLsh<B> + ModuleNew<B>,
+        ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
+    {
+        let module: Module<B> = Module::<B>::new(1 << params[0]);
+
+        let cols: usize = params[1];
+        let size: usize = params[2];
+        let basek: usize = 50;
+
+        let mut source: Source = Source::new([0u8; 32]);
+
+        let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, size);
+        let mut res: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, size);
+
+        let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(module.n() * size_of::<i64>());
+
+        // Fill a with random i64
+        a.fill_uniform(&mut source);
+        res.fill_uniform(&mut source);
+
+        move || {
+            for i in 0..cols {
+                module.vec_znx_lsh(basek, basek - 1, &mut res, i, &a, i, scratch.borrow());
+            }
+            black_box(());
+        }
+    }
+
+    for params in [[10, 2, 2], [11, 2, 4], [12, 2, 8], [13, 2, 16], [14, 2, 32]] {
+        let id: BenchmarkId = BenchmarkId::from_parameter(format!("{}x({}x{})", 1 << params[0], params[1], params[2]));
+        let mut runner = runner::<B>(params);
+        group.bench_with_input(id, &(), |b, _| b.iter(&mut runner));
+    }
+
+    group.finish();
+}
+
+pub fn bench_vec_znx_rsh_inplace<B: Backend>(c: &mut Criterion, label: &str)
+where
+    B: ModuleNewImpl<B> + VecZnxRshInplaceImpl<B> + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
+{
+    let group_name: String = format!("vec_znx_rsh_inplace::{}", label);
+
+    let mut group = c.benchmark_group(group_name);
+
+    fn runner<B: Backend>(params: [usize; 3]) -> impl FnMut()
+    where
+        Module<B>: VecZnxRshInplace<B> + ModuleNew<B>,
+        ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
+    {
+        let module: Module<B> = Module::<B>::new(1 << params[0]);
+
+        let cols: usize = params[1];
+        let size: usize = params[2];
+        let basek: usize = 50;
+
+        let mut source: Source = Source::new([0u8; 32]);
+
+        let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, size);
+        let mut b: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, size);
+
+        let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(module.n() * size_of::<i64>());
+
+        // Fill a with random i64
+        a.fill_uniform(&mut source);
+        b.fill_uniform(&mut source);
+
+        move || {
+            for i in 0..cols {
+                module.vec_znx_rsh_inplace(basek, basek - 1, &mut b, i, scratch.borrow());
+            }
+            black_box(());
+        }
+    }
+
+    for params in [[10, 2, 2], [11, 2, 4], [12, 2, 8], [13, 2, 16], [14, 2, 32]] {
+        let id: BenchmarkId = BenchmarkId::from_parameter(format!("{}x({}x{})", 1 << params[0], params[1], params[2]));
+        let mut runner = runner::<B>(params);
+        group.bench_with_input(id, &(), |b, _| b.iter(&mut runner));
+    }
+
+    group.finish();
+}
+
+pub fn bench_vec_znx_rsh<B: Backend>(c: &mut Criterion, label: &str)
+where
+    B: ModuleNewImpl<B> + VecZnxRshImpl<B> + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
+{
+    let group_name: String = format!("vec_znx_rsh::{}", label);
+
+    let mut group = c.benchmark_group(group_name);
+
+    fn runner<B: Backend>(params: [usize; 3]) -> impl FnMut()
+    where
+        Module<B>: VecZnxRsh<B> + ModuleNew<B>,
+        ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
+    {
+        let module: Module<B> = Module::<B>::new(1 << params[0]);
+
+        let cols: usize = params[1];
+        let size: usize = params[2];
+        let basek: usize = 50;
+
+        let mut source: Source = Source::new([0u8; 32]);
+
+        let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, size);
+        let mut res: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, size);
+
+        let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(module.n() * size_of::<i64>());
+
+        // Fill a with random i64
+        a.fill_uniform(&mut source);
+        res.fill_uniform(&mut source);
+
+        move || {
+            for i in 0..cols {
+                module.vec_znx_rsh(basek, basek - 1, &mut res, i, &a, i, scratch.borrow());
+            }
+            black_box(());
+        }
+    }
+
+    for params in [[10, 2, 2], [11, 2, 4], [12, 2, 8], [13, 2, 16], [14, 2, 32]] {
+        let id: BenchmarkId = BenchmarkId::from_parameter(format!("{}x({}x{})", 1 << params[0], params[1], params[2]));
+        let mut runner = runner::<B>(params);
+        group.bench_with_input(id, &(), |b, _| b.iter(&mut runner));
+    }
+
+    group.finish();
 }
 
 #[cfg(test)]

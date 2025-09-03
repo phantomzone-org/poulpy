@@ -110,6 +110,21 @@ pub trait VecZnxNegateInplace {
     where
         A: VecZnxToMut;
 }
+pub trait VecZnxLsh<B: Backend> {
+    /// Left shift by k bits all columns of `a`.
+    fn vec_znx_lsh<R, A>(&self, basek: usize, k: usize, r: &mut R, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch<B>)
+    where
+        R: VecZnxToMut,
+        A: VecZnxToRef;
+}
+
+pub trait VecZnxRsh<B: Backend> {
+    /// Right shift by k bits all columns of `a`.
+    fn vec_znx_rsh<R, A>(&self, basek: usize, k: usize, r: &mut R, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch<B>)
+    where
+        R: VecZnxToMut,
+        A: VecZnxToRef;
+}
 
 pub trait VecZnxLshInplace<B: Backend> {
     /// Left shift by k bits all columns of `a`.
