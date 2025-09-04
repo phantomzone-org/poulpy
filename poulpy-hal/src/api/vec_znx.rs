@@ -234,8 +234,8 @@ pub trait VecZnxMerge<B: Backend> {
         A: VecZnxToRef;
 }
 
-pub trait VecZnxSwithcDegree<B: Backend> {
-    fn vec_znx_switch_degree<R, A>(&self, res: &mut R, res_col: usize, a: &A, col_a: usize, scratch: &mut Scratch<B>)
+pub trait VecZnxSwitchRing<B: Backend> {
+    fn vec_znx_switch_ring<R, A>(&self, res: &mut R, res_col: usize, a: &A, col_a: usize)
     where
         R: VecZnxToMut,
         A: VecZnxToRef;

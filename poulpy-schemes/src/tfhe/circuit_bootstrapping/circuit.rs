@@ -7,7 +7,7 @@ use poulpy_hal::{
         VecZnxBigAutomorphismInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallBInplace, VecZnxCopy,
         VecZnxDftAddInplace, VecZnxDftAllocBytes, VecZnxDftCopy, VecZnxNegateInplace, VecZnxNormalizeInplace,
         VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace, VecZnxRotateInplaceTmpBytes, VecZnxRshInplace, VecZnxSub,
-        VecZnxSubABInplace, VecZnxSwithcDegree, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
+        VecZnxSubABInplace, VecZnxSwitchRing, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch, ToOwnedDeep},
     oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl},
@@ -29,7 +29,7 @@ where
     Module<B>: VecZnxRotateInplace<B>
         + VecZnxNormalizeInplace<B>
         + VecZnxNormalizeTmpBytes
-        + VecZnxSwithcDegree<B>
+        + VecZnxSwitchRing<B>
         + VecZnxBigAutomorphismInplace<B>
         + VecZnxRshInplace<B>
         + VecZnxDftCopy<B>
@@ -128,7 +128,7 @@ pub fn circuit_bootstrap_core<DRes, DLwe, DBrk, BRA: BlindRotationAlgo, B>(
     Module<B>: VecZnxRotateInplace<B>
         + VecZnxNormalizeInplace<B>
         + VecZnxNormalizeTmpBytes
-        + VecZnxSwithcDegree<B>
+        + VecZnxSwitchRing<B>
         + VecZnxBigAutomorphismInplace<B>
         + VecZnxRshInplace<B>
         + VecZnxDftCopy<B>
@@ -254,7 +254,7 @@ fn post_process<DataRes, DataA, B: Backend>(
     Module<B>: VecZnxRotateInplace<B>
         + VecZnxNormalizeInplace<B>
         + VecZnxNormalizeTmpBytes
-        + VecZnxSwithcDegree<B>
+        + VecZnxSwitchRing<B>
         + VecZnxBigAutomorphismInplace<B>
         + VecZnxRshInplace<B>
         + VecZnxDftCopy<B>
@@ -326,7 +326,7 @@ pub fn pack<D: DataMut, B: Backend>(
     Module<B>: VecZnxRotateInplace<B>
         + VecZnxNormalizeInplace<B>
         + VecZnxNormalizeTmpBytes
-        + VecZnxSwithcDegree<B>
+        + VecZnxSwitchRing<B>
         + VecZnxBigAutomorphismInplace<B>
         + VecZnxRshInplace<B>
         + VecZnxDftCopy<B>
@@ -405,7 +405,7 @@ fn combine<A: DataMut, D: DataMut, DataAK: DataRef, B: Backend>(
     Module<B>: VecZnxRotateInplace<B>
         + VecZnxNormalizeInplace<B>
         + VecZnxNormalizeTmpBytes
-        + VecZnxSwithcDegree<B>
+        + VecZnxSwitchRing<B>
         + VecZnxBigAutomorphismInplace<B>
         + VecZnxRshInplace<B>
         + VecZnxDftCopy<B>

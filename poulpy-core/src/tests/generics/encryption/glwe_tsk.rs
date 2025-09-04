@@ -4,7 +4,7 @@ use poulpy_hal::{
         SvpPPolAllocBytes, SvpPrepare, VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxBigAddInplace,
         VecZnxBigAddSmallInplace, VecZnxBigAlloc, VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxCopy, VecZnxDftAlloc,
         VecZnxDftAllocBytes, VecZnxFillUniform, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub,
-        VecZnxSubABInplace, VecZnxSubScalarInplace, VecZnxSwithcDegree,
+        VecZnxSubABInplace, VecZnxSubScalarInplace, VecZnxSwitchRing,
     },
     layouts::{Backend, Module, ScratchOwned, VecZnxDft},
     oep::{
@@ -50,7 +50,7 @@ where
         + VecZnxBigAlloc<B>
         + IDFTTmpA<B>
         + VecZnxAddScalarInplace
-        + VecZnxSwithcDegree<B>
+        + VecZnxSwitchRing<B>
         + VecZnxSubScalarInplace,
     B: Backend
         + TakeVecZnxDftImpl<B>
@@ -159,7 +159,7 @@ where
         + VecZnxBigAlloc<B>
         + IDFTTmpA<B>
         + VecZnxAddScalarInplace
-        + VecZnxSwithcDegree<B>
+        + VecZnxSwitchRing<B>
         + VecZnxSubScalarInplace,
     B: Backend
         + TakeVecZnxDftImpl<B>

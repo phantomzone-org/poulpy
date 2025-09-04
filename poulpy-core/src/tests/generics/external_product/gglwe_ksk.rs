@@ -4,8 +4,8 @@ use poulpy_hal::{
         VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace,
         VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxCopy, VecZnxDftAllocBytes, VecZnxFillUniform, VecZnxNormalize,
         VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotateInplace, VecZnxSub, VecZnxSubABInplace,
-        VecZnxSubScalarInplace, VecZnxSwithcDegree, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
-        VmpPMatAlloc, VmpPrepare,
+        VecZnxSubScalarInplace, VecZnxSwitchRing, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes, VmpPMatAlloc,
+        VmpPrepare,
     },
     layouts::{Backend, Module, ScalarZnx, ScalarZnxToMut, ScratchOwned, ZnxViewMut},
     oep::{
@@ -54,7 +54,7 @@ pub fn test_gglwe_switching_key_external_product<B>(
         + VecZnxBigAllocBytes
         + VecZnxBigAddInplace<B>
         + VecZnxBigAddSmallInplace<B>
-        + VecZnxSwithcDegree<B>
+        + VecZnxSwitchRing<B>
         + VecZnxAddScalarInplace
         + VecZnxSubScalarInplace
         + VecZnxCopy
@@ -199,7 +199,7 @@ pub fn test_gglwe_switching_key_external_product_inplace<B>(
         + VecZnxBigAllocBytes
         + VecZnxBigAddInplace<B>
         + VecZnxBigAddSmallInplace<B>
-        + VecZnxSwithcDegree<B>
+        + VecZnxSwitchRing<B>
         + VecZnxAddScalarInplace
         + VecZnxSubScalarInplace
         + VecZnxCopy

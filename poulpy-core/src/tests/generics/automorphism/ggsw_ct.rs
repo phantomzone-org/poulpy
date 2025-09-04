@@ -5,7 +5,7 @@ use poulpy_hal::{
         VecZnxAutomorphismInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigAlloc, VecZnxBigAllocBytes,
         VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftAddInplace, VecZnxDftAlloc, VecZnxDftAllocBytes,
         VecZnxDftCopy, VecZnxFillUniform, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub,
-        VecZnxSubABInplace, VecZnxSwithcDegree, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes, VmpPMatAlloc,
+        VecZnxSubABInplace, VecZnxSwitchRing, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes, VmpPMatAlloc,
         VmpPrepare,
     },
     layouts::{Backend, Module, ScalarZnx, ScratchOwned},
@@ -70,7 +70,7 @@ pub fn test_ggsw_automorphism<B>(
         + VecZnxNormalize<B>
         + VecZnxSub
         + SvpApply<B>
-        + VecZnxSwithcDegree<B>
+        + VecZnxSwitchRing<B>
         + VecZnxAutomorphismInplace<B>
         + VecZnxAutomorphism,
     B: Backend
@@ -225,7 +225,7 @@ pub fn test_ggsw_automorphism_inplace<B>(
         + VecZnxSub
         + VecZnxFillUniform
         + SvpApply<B>
-        + VecZnxSwithcDegree<B>
+        + VecZnxSwitchRing<B>
         + VecZnxAutomorphismInplace<B>
         + VecZnxAutomorphism,
     B: Backend

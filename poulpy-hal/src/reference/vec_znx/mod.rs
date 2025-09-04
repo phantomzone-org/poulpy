@@ -9,6 +9,7 @@ mod rotate;
 mod shift;
 mod sub;
 mod sub_scalar;
+mod switch_ring;
 
 pub use add::*;
 pub use add_scalar::*;
@@ -21,3 +22,4 @@ pub use rotate::*;
 pub use shift::*;
 pub use sub::*;
 pub use sub_scalar::*;
+pub use switch_ring::*;

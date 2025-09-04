@@ -3,7 +3,7 @@ use poulpy_hal::{
         DFT, IDFTConsume, ScratchAvailable, SvpApplyInplace, SvpPPolAllocBytes, SvpPrepare, TakeScalarZnx, TakeVecZnx,
         TakeVecZnxDft, VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxBigNormalize, VecZnxDftAllocBytes,
         VecZnxFillUniform, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubABInplace,
-        VecZnxSwithcDegree,
+        VecZnxSwitchRing,
     },
     layouts::{Backend, DataMut, DataRef, Module, ScalarZnx, Scratch},
     source::Source,
@@ -67,7 +67,7 @@ impl<DataSelf: DataMut> GGLWESwitchingKey<DataSelf> {
             + VecZnxNormalize<B>
             + VecZnxSub
             + SvpPrepare<B>
-            + VecZnxSwithcDegree<B>
+            + VecZnxSwitchRing<B>
             + SvpPPolAllocBytes,
         Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx + TakeScalarZnx + TakeGLWESecretPrepared<B>,
     {
@@ -102,26 +102,19 @@ impl<DataSelf: DataMut> GGLWESwitchingKey<DataSelf> {
 
         let (mut sk_in_tmp, scratch_1) = scratch.take_scalar_znx(n, sk_in.rank());
         (0..sk_in.rank()).for_each(|i| {
-            module.vec_znx_switch_degree(
+            module.vec_znx_switch_ring(
                 &mut sk_in_tmp.as_vec_znx_mut(),
                 i,
                 &sk_in.data.as_vec_znx(),
                 i,
-                scratch_1,
             );
         });
 
         let (mut sk_out_tmp, scratch_2) = scratch_1.take_glwe_secret_prepared(n, sk_out.rank());
         {
-            let (mut tmp, scratch_3) = scratch_2.take_scalar_znx(n, 1);
+            let (mut tmp, _) = scratch_2.take_scalar_znx(n, 1);
             (0..sk_out.rank()).for_each(|i| {
-                module.vec_znx_switch_degree(
-                    &mut tmp.as_vec_znx_mut(),
-                    0,
-                    &sk_out.data.as_vec_znx(),
-                    i,
-                    scratch_3,
-                );
+                module.vec_znx_switch_ring(&mut tmp.as_vec_znx_mut(), 0, &sk_out.data.as_vec_znx(), i);
                 module.svp_prepare(&mut sk_out_tmp.data, i, &tmp, 0);
             });
         }

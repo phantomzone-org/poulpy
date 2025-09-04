@@ -3,8 +3,8 @@ use poulpy_hal::{
         DFT, IDFTConsume, ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyInplace, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare,
         VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace,
         VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxCopy, VecZnxDftAllocBytes, VecZnxFillUniform, VecZnxNormalize,
-        VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubABInplace, VecZnxSubScalarInplace,
-        VecZnxSwithcDegree, VmpPMatAlloc, VmpPrepare,
+        VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubABInplace, VecZnxSubScalarInplace, VecZnxSwitchRing,
+        VmpPMatAlloc, VmpPrepare,
     },
     layouts::{Backend, Module, ScratchOwned},
     oep::{
@@ -48,7 +48,7 @@ pub fn test_gglwe_switching_key_encrypt_sk<B>(
         + SvpPPolAllocBytes
         + SvpPPolAlloc<B>
         + VecZnxBigAddSmallInplace<B>
-        + VecZnxSwithcDegree<B>
+        + VecZnxSwitchRing<B>
         + VecZnxAddScalarInplace
         + VecZnxBigAllocBytes
         + VecZnxBigAddInplace<B>
@@ -126,7 +126,7 @@ pub fn test_gglwe_switching_key_compressed_encrypt_sk<B>(
         + SvpPPolAllocBytes
         + SvpPPolAlloc<B>
         + VecZnxBigAddSmallInplace<B>
-        + VecZnxSwithcDegree<B>
+        + VecZnxSwitchRing<B>
         + VecZnxAddScalarInplace
         + VecZnxBigAllocBytes
         + VecZnxBigAddInplace<B>

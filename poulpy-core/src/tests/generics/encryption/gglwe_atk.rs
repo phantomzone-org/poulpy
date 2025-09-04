@@ -4,7 +4,7 @@ use poulpy_hal::{
         VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxAutomorphism, VecZnxAutomorphismInplace,
         VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
         VecZnxCopy, VecZnxDftAllocBytes, VecZnxFillUniform, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes,
-        VecZnxSub, VecZnxSubABInplace, VecZnxSubScalarInplace, VecZnxSwithcDegree, VmpApplyDftToDft, VmpApplyDftToDftAdd,
+        VecZnxSub, VecZnxSubABInplace, VecZnxSubScalarInplace, VecZnxSwitchRing, VmpApplyDftToDft, VmpApplyDftToDftAdd,
         VmpApplyDftToDftTmpBytes, VmpPMatAlloc, VmpPrepare,
     },
     layouts::{Backend, Module, ScratchOwned},
@@ -48,7 +48,7 @@ where
         + VmpApplyDftToDftAdd<B>
         + VecZnxBigAddSmallInplace<B>
         + VecZnxAutomorphism
-        + VecZnxSwithcDegree<B>
+        + VecZnxSwitchRing<B>
         + VecZnxAddScalarInplace
         + VecZnxAutomorphismInplace<B>
         + VecZnxBigAllocBytes
@@ -140,7 +140,7 @@ pub fn test_gglwe_automorphisk_key_compressed_encrypt_sk<B>(
         + VmpApplyDftToDftAdd<B>
         + VecZnxBigAddSmallInplace<B>
         + VecZnxAutomorphism
-        + VecZnxSwithcDegree<B>
+        + VecZnxSwitchRing<B>
         + VecZnxAddScalarInplace
         + VecZnxAutomorphismInplace<B>
         + VecZnxBigAllocBytes

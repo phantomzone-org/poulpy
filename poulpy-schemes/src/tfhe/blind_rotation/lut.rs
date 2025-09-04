@@ -1,7 +1,7 @@
 use poulpy_hal::{
     api::{
         ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxCopy, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotateInplace,
-        VecZnxRotateInplaceTmpBytes, VecZnxSwithcDegree,
+        VecZnxRotateInplaceTmpBytes, VecZnxSwitchRing,
     },
     layouts::{Backend, Module, ScratchOwned, VecZnx, ZnxInfos, ZnxViewMut},
 };
@@ -73,7 +73,7 @@ impl LookUpTable {
         Module<B>: VecZnxRotateInplace<B>
             + VecZnxNormalizeInplace<B>
             + VecZnxNormalizeTmpBytes
-            + VecZnxSwithcDegree<B>
+            + VecZnxSwitchRing<B>
             + VecZnxCopy
             + VecZnxRotateInplaceTmpBytes,
         ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
@@ -130,7 +130,7 @@ impl LookUpTable {
 
         if self.extension_factor() > 1 {
             (0..self.extension_factor()).for_each(|i| {
-                module.vec_znx_switch_degree(&mut self.data[i], 0, &lut_full, 0, scratch.borrow());
+                module.vec_znx_switch_ring(&mut self.data[i], 0, &lut_full, 0);
                 if i < self.extension_factor() {
                     module.vec_znx_rotate_inplace(-1, &mut lut_full, 0, scratch.borrow());
                 }

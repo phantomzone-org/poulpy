@@ -3,7 +3,7 @@ use std::vec;
 use poulpy_hal::{
     api::{
         VecZnxCopy, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotateInplace, VecZnxRotateInplaceTmpBytes,
-        VecZnxSwithcDegree,
+        VecZnxSwitchRing,
     },
     layouts::{Backend, Module},
     oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl},
@@ -16,7 +16,7 @@ where
     Module<B>: VecZnxRotateInplace<B>
         + VecZnxNormalizeInplace<B>
         + VecZnxNormalizeTmpBytes
-        + VecZnxSwithcDegree<B>
+        + VecZnxSwitchRing<B>
         + VecZnxCopy
         + VecZnxRotateInplaceTmpBytes,
     B: Backend + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
@@ -56,7 +56,7 @@ where
     Module<B>: VecZnxRotateInplace<B>
         + VecZnxNormalizeInplace<B>
         + VecZnxNormalizeTmpBytes
-        + VecZnxSwithcDegree<B>
+        + VecZnxSwitchRing<B>
         + VecZnxCopy
         + VecZnxRotateInplaceTmpBytes,
     B: Backend + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,

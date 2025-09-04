@@ -9,7 +9,7 @@ use poulpy_hal::{
         DFT, IDFTConsume, IDFTTmpA, ScratchAvailable, SvpApply, SvpApplyInplace, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare,
         TakeScalarZnx, TakeSvpPPol, TakeVecZnx, TakeVecZnxBig, TakeVecZnxDft, VecZnxAddInplace, VecZnxAddNormal,
         VecZnxAddScalarInplace, VecZnxAutomorphism, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxFillUniform, VecZnxNormalize,
-        VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubABInplace, VecZnxSwithcDegree, VmpPMatAlloc,
+        VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubABInplace, VecZnxSwitchRing, VmpPMatAlloc,
         VmpPrepare,
     },
     layouts::{Backend, Data, DataRef, Module, Scratch},
@@ -68,7 +68,7 @@ where
         + VecZnxNormalize<B>
         + VecZnxSub
         + SvpPrepare<B>
-        + VecZnxSwithcDegree<B>
+        + VecZnxSwitchRing<B>
         + SvpPPolAllocBytes
         + SvpPPolAlloc<B>
         + VecZnxAutomorphism,

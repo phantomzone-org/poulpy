@@ -387,14 +387,13 @@ pub unsafe trait VecZnxMergeImpl<B: Backend> {
 /// * See [crate::cpu_spqlios::vec_znx::vec_znx_switch_degree_ref] for reference code.
 /// * See [crate::api::VecZnxSwithcDegree] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
-pub unsafe trait VecZnxSwithcDegreeImpl<B: Backend> {
-    fn vec_znx_switch_degree_impl<R: VecZnxToMut, A: VecZnxToRef>(
+pub unsafe trait VecZnxSwitchRingImpl<B: Backend> {
+    fn vec_znx_switch_ring_impl<R: VecZnxToMut, A: VecZnxToRef>(
         module: &Module<B>,
         res: &mut R,
         res_col: usize,
         a: &A,
         a_col: usize,
-        scratch: &mut Scratch<B>,
     );
 }
 

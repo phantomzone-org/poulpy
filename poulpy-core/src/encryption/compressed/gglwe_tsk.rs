@@ -3,7 +3,7 @@ use poulpy_hal::{
         DFT, IDFTConsume, IDFTTmpA, ScratchAvailable, SvpApply, SvpApplyInplace, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare,
         TakeScalarZnx, TakeVecZnx, TakeVecZnxBig, TakeVecZnxDft, VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace,
         VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxFillUniform, VecZnxNormalize, VecZnxNormalizeInplace,
-        VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubABInplace, VecZnxSwithcDegree,
+        VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubABInplace, VecZnxSwitchRing,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
     source::Source,
@@ -48,7 +48,7 @@ impl<DataSelf: DataMut> GGLWETensorKeyCompressed<DataSelf> {
             + VecZnxAddNormal
             + VecZnxNormalize<B>
             + VecZnxSub
-            + VecZnxSwithcDegree<B>
+            + VecZnxSwitchRing<B>
             + VecZnxAddScalarInplace
             + SvpPrepare<B>
             + SvpPPolAllocBytes

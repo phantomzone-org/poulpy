@@ -6,7 +6,7 @@ use crate::{
         VecZnxMulXpMinusOneInplace, VecZnxMulXpMinusOneInplaceTmpBytes, VecZnxNegate, VecZnxNegateInplace, VecZnxNormalize,
         VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace, VecZnxRotateInplaceTmpBytes,
         VecZnxRsh, VecZnxRshInplace, VecZnxSplit, VecZnxSub, VecZnxSubABInplace, VecZnxSubBAInplace, VecZnxSubScalar,
-        VecZnxSubScalarInplace, VecZnxSwithcDegree,
+        VecZnxSubScalarInplace, VecZnxSwitchRing,
     },
     layouts::{Backend, Module, ScalarZnxToRef, Scratch, VecZnxToMut, VecZnxToRef},
     oep::{
@@ -17,7 +17,7 @@ use crate::{
         VecZnxNegateImpl, VecZnxNegateInplaceImpl, VecZnxNormalizeImpl, VecZnxNormalizeInplaceImpl, VecZnxNormalizeTmpBytesImpl,
         VecZnxRotateImpl, VecZnxRotateInplaceImpl, VecZnxRotateInplaceTmpBytesImpl, VecZnxRshImpl, VecZnxRshInplaceImpl,
         VecZnxSplitImpl, VecZnxSubABInplaceImpl, VecZnxSubBAInplaceImpl, VecZnxSubImpl, VecZnxSubScalarImpl,
-        VecZnxSubScalarInplaceImpl, VecZnxSwithcDegreeImpl,
+        VecZnxSubScalarInplaceImpl, VecZnxSwitchRingImpl,
     },
     source::Source,
 };
@@ -396,16 +396,16 @@ where
     }
 }
 
-impl<B> VecZnxSwithcDegree<B> for Module<B>
+impl<B> VecZnxSwitchRing<B> for Module<B>
 where
-    B: Backend + VecZnxSwithcDegreeImpl<B>,
+    B: Backend + VecZnxSwitchRingImpl<B>,
 {
-    fn vec_znx_switch_degree<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch<B>)
+    fn vec_znx_switch_ring<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxToMut,
         A: VecZnxToRef,
     {
-        B::vec_znx_switch_degree_impl(self, res, res_col, a, a_col, scratch)
+        B::vec_znx_switch_ring_impl(self, res, res_col, a, a_col)
     }
 }
 

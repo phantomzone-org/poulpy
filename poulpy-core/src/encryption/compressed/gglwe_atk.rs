@@ -3,7 +3,7 @@ use poulpy_hal::{
         DFT, IDFTConsume, ScratchAvailable, SvpApplyInplace, SvpPPolAllocBytes, SvpPrepare, TakeScalarZnx, TakeVecZnx,
         TakeVecZnxDft, VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxAutomorphism, VecZnxBigNormalize,
         VecZnxDftAllocBytes, VecZnxFillUniform, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub,
-        VecZnxSubABInplace, VecZnxSwithcDegree,
+        VecZnxSubABInplace, VecZnxSwitchRing,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
     source::Source,
@@ -41,7 +41,7 @@ impl<DataSelf: DataMut> GGLWEAutomorphismKeyCompressed<DataSelf> {
         Module<B>: VecZnxAutomorphism
             + SvpPrepare<B>
             + SvpPPolAllocBytes
-            + VecZnxSwithcDegree<B>
+            + VecZnxSwitchRing<B>
             + VecZnxDftAllocBytes
             + VecZnxBigNormalize<B>
             + DFT<B>

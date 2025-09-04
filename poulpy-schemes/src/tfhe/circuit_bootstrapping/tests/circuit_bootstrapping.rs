@@ -8,7 +8,7 @@ use poulpy_hal::{
         VecZnxBigAutomorphismInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallBInplace, VecZnxCopy,
         VecZnxDftAddInplace, VecZnxDftAlloc, VecZnxDftAllocBytes, VecZnxDftCopy, VecZnxFillUniform, VecZnxNegateInplace,
         VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace,
-        VecZnxRotateInplaceTmpBytes, VecZnxRshInplace, VecZnxSub, VecZnxSubABInplace, VecZnxSwithcDegree, VmpApplyDftToDft,
+        VecZnxRotateInplaceTmpBytes, VecZnxRshInplace, VecZnxSub, VecZnxSubABInplace, VecZnxSwitchRing, VmpApplyDftToDft,
         VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes, VmpPMatAlloc, VmpPrepare, ZnAddNormal, ZnFillUniform, ZnNormalizeInplace,
     },
     layouts::{Backend, Module, ScalarZnx, ScratchOwned, ZnxView, ZnxViewMut},
@@ -53,7 +53,7 @@ where
         + VecZnxSub
         + VecZnxAddScalarInplace
         + VecZnxAutomorphism
-        + VecZnxSwithcDegree<B>
+        + VecZnxSwitchRing<B>
         + VecZnxBigAllocBytes
         + IDFTTmpA<B>
         + SvpApply<B>
@@ -240,7 +240,7 @@ where
         + VecZnxSub
         + VecZnxAddScalarInplace
         + VecZnxAutomorphism
-        + VecZnxSwithcDegree<B>
+        + VecZnxSwitchRing<B>
         + VecZnxBigAllocBytes
         + IDFTTmpA<B>
         + SvpApply<B>
