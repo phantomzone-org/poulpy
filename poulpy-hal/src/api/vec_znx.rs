@@ -88,6 +88,15 @@ pub trait VecZnxSubBAInplace {
         A: VecZnxToRef;
 }
 
+pub trait VecZnxSubScalar {
+    /// Subtracts the selected column of `a` on the selected column and limb of `b` and writes the result on the selected column of `res`.
+    fn vec_znx_sub_scalar<R, A, B>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize, b_limb: usize)
+    where
+        R: VecZnxToMut,
+        A: ScalarZnxToRef,
+        B: VecZnxToRef;
+}
+
 pub trait VecZnxSubScalarInplace {
     /// Subtracts the selected column of `a` on the selected column and limb of `res`.
     fn vec_znx_sub_scalar_inplace<R, A>(&self, res: &mut R, res_col: usize, res_limb: usize, a: &A, a_col: usize)

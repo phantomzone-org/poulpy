@@ -137,6 +137,27 @@ pub unsafe trait VecZnxSubBAInplaceImpl<B: Backend> {
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See TODO.
+/// * See [crate::api::VecZnxAddScalar] for corresponding public API.
+/// # Safety [crate::doc::backend_safety] for safety contract.
+pub unsafe trait VecZnxSubScalarImpl<D: Backend> {
+    /// Adds the selected column of `a` on the selected column and limb of `b` and writes the result on the selected column of `res`.
+    fn vec_znx_sub_scalar_impl<R, A, B>(
+        module: &Module<D>,
+        res: &mut R,
+        res_col: usize,
+        a: &A,
+        a_col: usize,
+        b: &B,
+        b_col: usize,
+        b_limb: usize,
+    ) where
+        R: VecZnxToMut,
+        A: ScalarZnxToRef,
+        B: VecZnxToRef;
+}
+
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
 /// * See [vec_znx_sub_ref](https://github.com/phantomzone-org/spqlios-arithmetic/blob/32a3f5fcce9863b58e949f2dfd5abc1bfbaa09b4/spqlios/arithmetic/vec_znx.c#L125) for reference code.
 /// * See [crate::api::VecZnxSubScalarInplace] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.

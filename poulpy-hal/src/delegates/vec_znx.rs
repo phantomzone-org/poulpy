@@ -5,8 +5,8 @@ use crate::{
         VecZnxFillNormal, VecZnxFillUniform, VecZnxLsh, VecZnxLshInplace, VecZnxMerge, VecZnxMulXpMinusOne,
         VecZnxMulXpMinusOneInplace, VecZnxMulXpMinusOneInplaceTmpBytes, VecZnxNegate, VecZnxNegateInplace, VecZnxNormalize,
         VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace, VecZnxRotateInplaceTmpBytes,
-        VecZnxRsh, VecZnxRshInplace, VecZnxSplit, VecZnxSub, VecZnxSubABInplace, VecZnxSubBAInplace, VecZnxSubScalarInplace,
-        VecZnxSwithcDegree,
+        VecZnxRsh, VecZnxRshInplace, VecZnxSplit, VecZnxSub, VecZnxSubABInplace, VecZnxSubBAInplace, VecZnxSubScalar,
+        VecZnxSubScalarInplace, VecZnxSwithcDegree,
     },
     layouts::{Backend, Module, ScalarZnxToRef, Scratch, VecZnxToMut, VecZnxToRef},
     oep::{
@@ -16,8 +16,8 @@ use crate::{
         VecZnxMergeImpl, VecZnxMulXpMinusOneImpl, VecZnxMulXpMinusOneInplaceImpl, VecZnxMulXpMinusOneInplaceTmpBytesImpl,
         VecZnxNegateImpl, VecZnxNegateInplaceImpl, VecZnxNormalizeImpl, VecZnxNormalizeInplaceImpl, VecZnxNormalizeTmpBytesImpl,
         VecZnxRotateImpl, VecZnxRotateInplaceImpl, VecZnxRotateInplaceTmpBytesImpl, VecZnxRshImpl, VecZnxRshInplaceImpl,
-        VecZnxSplitImpl, VecZnxSubABInplaceImpl, VecZnxSubBAInplaceImpl, VecZnxSubImpl, VecZnxSubScalarInplaceImpl,
-        VecZnxSwithcDegreeImpl,
+        VecZnxSplitImpl, VecZnxSubABInplaceImpl, VecZnxSubBAInplaceImpl, VecZnxSubImpl, VecZnxSubScalarImpl,
+        VecZnxSubScalarInplaceImpl, VecZnxSwithcDegreeImpl,
     },
     source::Source,
 };
@@ -147,6 +147,20 @@ where
         A: VecZnxToRef,
     {
         B::vec_znx_sub_ba_inplace_impl(self, res, res_col, a, a_col)
+    }
+}
+
+impl<B> VecZnxSubScalar for Module<B>
+where
+    B: Backend + VecZnxSubScalarImpl<B>,
+{
+    fn vec_znx_sub_scalar<R, A, D>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &D, b_col: usize, b_limb: usize)
+    where
+        R: VecZnxToMut,
+        A: ScalarZnxToRef,
+        D: VecZnxToRef,
+    {
+        B::vec_znx_sub_scalar_impl(self, res, res_col, a, a_col, b, b_col, b_limb)
     }
 }
 

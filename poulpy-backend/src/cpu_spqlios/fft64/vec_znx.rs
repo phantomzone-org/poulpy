@@ -18,7 +18,7 @@ use poulpy_hal::{
         VecZnxMulXpMinusOneInplaceImpl, VecZnxMulXpMinusOneInplaceTmpBytesImpl, VecZnxNegateImpl, VecZnxNegateInplaceImpl,
         VecZnxNormalizeImpl, VecZnxNormalizeInplaceImpl, VecZnxNormalizeTmpBytesImpl, VecZnxRotateImpl, VecZnxRotateInplaceImpl,
         VecZnxRotateInplaceTmpBytesImpl, VecZnxRshImpl, VecZnxRshInplaceImpl, VecZnxSplitImpl, VecZnxSubABInplaceImpl,
-        VecZnxSubBAInplaceImpl, VecZnxSubImpl, VecZnxSubScalarInplaceImpl, VecZnxSwithcDegreeImpl,
+        VecZnxSubBAInplaceImpl, VecZnxSubImpl, VecZnxSubScalarImpl, VecZnxSubScalarInplaceImpl, VecZnxSwithcDegreeImpl,
     },
     reference::vec_znx::{
         vec_znx_automorphism_inplace_tmp_bytes_ref, vec_znx_lsh_inplace_ref, vec_znx_lsh_ref,
@@ -360,6 +360,59 @@ unsafe impl VecZnxSubBAInplaceImpl<Self> for FFT64 {
     }
 }
 
+unsafe impl VecZnxSubScalarImpl<Self> for FFT64 {
+    fn vec_znx_sub_scalar_impl<R, A, B>(
+        module: &Module<Self>,
+        res: &mut R,
+        res_col: usize,
+        a: &A,
+        a_col: usize,
+        b: &B,
+        b_col: usize,
+        b_limb: usize,
+    ) where
+        R: VecZnxToMut,
+        A: ScalarZnxToRef,
+        B: VecZnxToRef,
+    {
+        let mut res: VecZnx<&mut [u8]> = res.to_mut();
+        let a: ScalarZnx<&[u8]> = a.to_ref();
+        let b: VecZnx<&[u8]> = b.to_ref();
+
+        #[cfg(debug_assertions)]
+        {
+            assert_eq!(a.n(), res.n());
+        }
+
+        let min_size: usize = b.size().min(res.size());
+
+        unsafe {
+            vec_znx::vec_znx_sub(
+                module.ptr() as *const module_info_t,
+                res.at_mut_ptr(res_col, b_limb),
+                1_u64,
+                res.sl() as u64,
+                b.at_ptr(b_col, b_limb),
+                1_u64,
+                b.sl() as u64,
+                a.at_ptr(a_col, 0),
+                a.size() as u64,
+                a.sl() as u64,
+            );
+
+            for j in 0..min_size {
+                if j != b_limb {
+                    res.at_mut(res_col, j).copy_from_slice(b.at(b_col, j))
+                }
+            }
+
+            for j in min_size..res.size() {
+                res.zero_at(res_col, j);
+            }
+        }
+    }
+}
+
 unsafe impl VecZnxSubScalarInplaceImpl<Self> for FFT64 {
     fn vec_znx_sub_scalar_inplace_impl<R, A>(
         module: &Module<Self>,
@@ -386,12 +439,12 @@ unsafe impl VecZnxSubScalarInplaceImpl<Self> for FFT64 {
                 res.at_mut_ptr(res_col, res_limb),
                 1_u64,
                 res.sl() as u64,
-                a.at_ptr(a_col, 0),
-                a.size() as u64,
-                a.sl() as u64,
                 res.at_ptr(res_col, res_limb),
                 1_u64,
                 res.sl() as u64,
+                a.at_ptr(a_col, 0),
+                a.size() as u64,
+                a.sl() as u64,
             )
         }
     }
