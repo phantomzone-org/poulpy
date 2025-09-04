@@ -2,12 +2,7 @@ use poulpy_hal::{
     api::ModuleNew,
     layouts::Module,
     reference::vec_znx::{
-        test_vec_znx_add, test_vec_znx_add_inplace, test_vec_znx_add_scalar, test_vec_znx_add_scalar_inplace,
-        test_vec_znx_automorphism, test_vec_znx_automorphism_inplace, test_vec_znx_lsh, test_vec_znx_lsh_inplace,
-        test_vec_znx_mul_xp_minus_one, test_vec_znx_mul_xp_minus_one_inplace, test_vec_znx_negate, test_vec_znx_negate_inplace,
-        test_vec_znx_normalize, test_vec_znx_normalize_inplace, test_vec_znx_rotate, test_vec_znx_rotate_inplace,
-        test_vec_znx_rsh, test_vec_znx_rsh_inplace, test_vec_znx_sub, test_vec_znx_sub_ab_inplace, test_vec_znx_sub_ba_inplace,
-        test_vec_znx_sub_scalar, test_vec_znx_sub_scalar_inplace, test_vec_znx_switch_ring,
+        test_vec_znx_add, test_vec_znx_add_inplace, test_vec_znx_add_scalar, test_vec_znx_add_scalar_inplace, test_vec_znx_automorphism, test_vec_znx_automorphism_inplace, test_vec_znx_lsh, test_vec_znx_lsh_inplace, test_vec_znx_mul_xp_minus_one, test_vec_znx_mul_xp_minus_one_inplace, test_vec_znx_negate, test_vec_znx_negate_inplace, test_vec_znx_normalize, test_vec_znx_normalize_inplace, test_vec_znx_rotate, test_vec_znx_rotate_inplace, test_vec_znx_rsh, test_vec_znx_rsh_inplace, test_vec_znx_split_ring, test_vec_znx_sub, test_vec_znx_sub_ab_inplace, test_vec_znx_sub_ba_inplace, test_vec_znx_sub_scalar, test_vec_znx_sub_scalar_inplace, test_vec_znx_switch_ring
     },
     tests::vec_znx::{test_vec_znx_add_normal, test_vec_znx_fill_uniform},
 };
@@ -156,6 +151,12 @@ fn test_vec_znx_normalize_inplace_fft64() {
 fn test_vec_znx_switch_ring_fft64() {
     let module: Module<FFT64> = Module::<FFT64>::new(1 << 5);
     test_vec_znx_switch_ring(&module);
+}
+
+#[test]
+fn test_vec_znx_split_ring_fft64() {
+    let module: Module<FFT64> = Module::<FFT64>::new(1 << 5);
+    test_vec_znx_split_ring(&module);
 }
 
 #[test]

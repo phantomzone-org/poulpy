@@ -5,8 +5,8 @@ use crate::{
         VecZnxFillNormal, VecZnxFillUniform, VecZnxLsh, VecZnxLshInplace, VecZnxMerge, VecZnxMulXpMinusOne,
         VecZnxMulXpMinusOneInplace, VecZnxMulXpMinusOneInplaceTmpBytes, VecZnxNegate, VecZnxNegateInplace, VecZnxNormalize,
         VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace, VecZnxRotateInplaceTmpBytes,
-        VecZnxRsh, VecZnxRshInplace, VecZnxSplit, VecZnxSub, VecZnxSubABInplace, VecZnxSubBAInplace, VecZnxSubScalar,
-        VecZnxSubScalarInplace, VecZnxSwitchRing,
+        VecZnxRsh, VecZnxRshInplace, VecZnxSplitRing, VecZnxSplitRingTmpBytes, VecZnxSub, VecZnxSubABInplace, VecZnxSubBAInplace,
+        VecZnxSubScalar, VecZnxSubScalarInplace, VecZnxSwitchRing,
     },
     layouts::{Backend, Module, ScalarZnxToRef, Scratch, VecZnxToMut, VecZnxToRef},
     oep::{
@@ -16,8 +16,8 @@ use crate::{
         VecZnxMergeImpl, VecZnxMulXpMinusOneImpl, VecZnxMulXpMinusOneInplaceImpl, VecZnxMulXpMinusOneInplaceTmpBytesImpl,
         VecZnxNegateImpl, VecZnxNegateInplaceImpl, VecZnxNormalizeImpl, VecZnxNormalizeInplaceImpl, VecZnxNormalizeTmpBytesImpl,
         VecZnxRotateImpl, VecZnxRotateInplaceImpl, VecZnxRotateInplaceTmpBytesImpl, VecZnxRshImpl, VecZnxRshInplaceImpl,
-        VecZnxSplitImpl, VecZnxSubABInplaceImpl, VecZnxSubBAInplaceImpl, VecZnxSubImpl, VecZnxSubScalarImpl,
-        VecZnxSubScalarInplaceImpl, VecZnxSwitchRingImpl,
+        VecZnxSplitRingImpl, VecZnxSplitRingTmpBytesImpl, VecZnxSubABInplaceImpl, VecZnxSubBAInplaceImpl, VecZnxSubImpl,
+        VecZnxSubScalarImpl, VecZnxSubScalarInplaceImpl, VecZnxSwitchRingImpl,
     },
     source::Source,
 };
@@ -370,16 +370,25 @@ where
     }
 }
 
-impl<B> VecZnxSplit<B> for Module<B>
+impl<B> VecZnxSplitRingTmpBytes for Module<B>
 where
-    B: Backend + VecZnxSplitImpl<B>,
+    B: Backend + VecZnxSplitRingTmpBytesImpl<B>,
 {
-    fn vec_znx_split<R, A>(&self, res: &mut [R], res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch<B>)
+    fn vec_znx_split_ring_tmp_bytes(&self) -> usize {
+        B::vec_znx_split_ring_tmp_bytes_impl(self)
+    }
+}
+
+impl<B> VecZnxSplitRing<B> for Module<B>
+where
+    B: Backend + VecZnxSplitRingImpl<B>,
+{
+    fn vec_znx_split_ring<R, A>(&self, res: &mut [R], res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch<B>)
     where
         R: VecZnxToMut,
         A: VecZnxToRef,
     {
-        B::vec_znx_split_impl(self, res, res_col, a, a_col, scratch)
+        B::vec_znx_split_ring_impl(self, res, res_col, a, a_col, scratch)
     }
 }
 

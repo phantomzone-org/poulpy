@@ -43,7 +43,7 @@ where
         .for_each(|(x_in, x_out)| *x_out = *x_in);
     });
 
-    for j in min_size..res.size(){
+    for j in min_size..res.size() {
         res.zero_at(res_col, j);
     }
 }

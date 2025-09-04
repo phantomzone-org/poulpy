@@ -362,12 +362,26 @@ pub unsafe trait VecZnxMulXpMinusOneInplaceImpl<B: Backend> {
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See [crate::cpu_spqlios::vec_znx::vec_znx_split_ref] for reference code.
-/// * See [crate::api::VecZnxSplit] for corresponding public API.
+/// * See TODO;
+/// * See [crate::api::VecZnxSplitRingTmpBytes] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
-pub unsafe trait VecZnxSplitImpl<B: Backend> {
-    fn vec_znx_split_impl<R, A>(module: &Module<B>, res: &mut [R], res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch<B>)
-    where
+pub unsafe trait VecZnxSplitRingTmpBytesImpl<B: Backend> {
+    fn vec_znx_split_ring_tmp_bytes_impl(module: &Module<B>) -> usize;
+}
+
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See [crate::cpu_spqlios::vec_znx::vec_znx_split_ref] for reference code.
+/// * See [crate::api::VecZnxSplitRing] for corresponding public API.
+/// # Safety [crate::doc::backend_safety] for safety contract.
+pub unsafe trait VecZnxSplitRingImpl<B: Backend> {
+    fn vec_znx_split_ring_impl<R, A>(
+        module: &Module<B>,
+        res: &mut [R],
+        res_col: usize,
+        a: &A,
+        a_col: usize,
+        scratch: &mut Scratch<B>,
+    ) where
         R: VecZnxToMut,
         A: VecZnxToRef;
 }

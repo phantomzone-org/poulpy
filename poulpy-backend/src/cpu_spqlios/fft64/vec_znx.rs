@@ -2,7 +2,7 @@ use rand_distr::Normal;
 
 use poulpy_hal::{
     api::{
-        TakeSlice, TakeVecZnx, VecZnxAddDistF64, VecZnxFillDistF64, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace,
+        TakeSlice, VecZnxAddDistF64, VecZnxFillDistF64, VecZnxNormalizeTmpBytes, VecZnxRotateInplace, VecZnxSplitRingTmpBytes,
         VecZnxSwitchRing,
     },
     layouts::{
@@ -10,19 +10,19 @@ use poulpy_hal::{
         ZnxViewMut, ZnxZero,
     },
     oep::{
-        TakeSliceImpl, TakeVecZnxImpl, VecZnxAddDistF64Impl, VecZnxAddImpl, VecZnxAddInplaceImpl, VecZnxAddNormalImpl,
-        VecZnxAddScalarImpl, VecZnxAddScalarInplaceImpl, VecZnxAutomorphismImpl, VecZnxAutomorphismInplaceImpl,
-        VecZnxAutomorphismInplaceTmpBytesImpl, VecZnxCopyImpl, VecZnxFillDistF64Impl, VecZnxFillNormalImpl,
-        VecZnxFillUniformImpl, VecZnxLshImpl, VecZnxLshInplaceImpl, VecZnxMergeImpl, VecZnxMulXpMinusOneImpl,
-        VecZnxMulXpMinusOneInplaceImpl, VecZnxMulXpMinusOneInplaceTmpBytesImpl, VecZnxNegateImpl, VecZnxNegateInplaceImpl,
-        VecZnxNormalizeImpl, VecZnxNormalizeInplaceImpl, VecZnxNormalizeTmpBytesImpl, VecZnxRotateImpl, VecZnxRotateInplaceImpl,
-        VecZnxRotateInplaceTmpBytesImpl, VecZnxRshImpl, VecZnxRshInplaceImpl, VecZnxSplitImpl, VecZnxSubABInplaceImpl,
-        VecZnxSubBAInplaceImpl, VecZnxSubImpl, VecZnxSubScalarImpl, VecZnxSubScalarInplaceImpl, VecZnxSwitchRingImpl,
+        TakeSliceImpl, VecZnxAddDistF64Impl, VecZnxAddImpl, VecZnxAddInplaceImpl, VecZnxAddNormalImpl, VecZnxAddScalarImpl,
+        VecZnxAddScalarInplaceImpl, VecZnxAutomorphismImpl, VecZnxAutomorphismInplaceImpl, VecZnxAutomorphismInplaceTmpBytesImpl,
+        VecZnxCopyImpl, VecZnxFillDistF64Impl, VecZnxFillNormalImpl, VecZnxFillUniformImpl, VecZnxLshImpl, VecZnxLshInplaceImpl,
+        VecZnxMergeImpl, VecZnxMulXpMinusOneImpl, VecZnxMulXpMinusOneInplaceImpl, VecZnxMulXpMinusOneInplaceTmpBytesImpl,
+        VecZnxNegateImpl, VecZnxNegateInplaceImpl, VecZnxNormalizeImpl, VecZnxNormalizeInplaceImpl, VecZnxNormalizeTmpBytesImpl,
+        VecZnxRotateImpl, VecZnxRotateInplaceImpl, VecZnxRotateInplaceTmpBytesImpl, VecZnxRshImpl, VecZnxRshInplaceImpl,
+        VecZnxSplitRingImpl, VecZnxSplitRingTmpBytesImpl, VecZnxSubABInplaceImpl, VecZnxSubBAInplaceImpl, VecZnxSubImpl,
+        VecZnxSubScalarImpl, VecZnxSubScalarInplaceImpl, VecZnxSwitchRingImpl,
     },
     reference::vec_znx::{
         vec_znx_automorphism_inplace_tmp_bytes_ref, vec_znx_lsh_inplace_ref, vec_znx_lsh_ref,
         vec_znx_mul_xp_minus_one_inplace_tmp_bytes_ref, vec_znx_rotate_inplace_tmp_bytes_ref, vec_znx_rsh_inplace_ref,
-        vec_znx_rsh_ref, vec_znx_switch_ring_ref,
+        vec_znx_rsh_ref, vec_znx_split_ring_ref, vec_znx_split_ring_tmp_bytes_ref, vec_znx_switch_ring_ref,
     },
     source::Source,
 };
@@ -763,15 +763,18 @@ unsafe impl VecZnxMulXpMinusOneInplaceImpl<Self> for FFT64 {
     }
 }
 
-unsafe impl VecZnxSplitImpl<Self> for FFT64
+unsafe impl VecZnxSplitRingTmpBytesImpl<Self> for FFT64 {
+    fn vec_znx_split_ring_tmp_bytes_impl(module: &Module<Self>) -> usize {
+        vec_znx_split_ring_tmp_bytes_ref(module.n())
+    }
+}
+
+unsafe impl VecZnxSplitRingImpl<Self> for FFT64
 where
-    Self: TakeVecZnxImpl<Self>
-        + TakeVecZnxImpl<Self>
-        + VecZnxSwitchRingImpl<Self>
-        + VecZnxRotateImpl<Self>
-        + VecZnxRotateInplaceImpl<Self>,
+    Module<Self>: VecZnxSplitRingTmpBytes,
+    Scratch<Self>: TakeSlice,
 {
-    fn vec_znx_split_impl<R, A>(
+    fn vec_znx_split_ring_impl<R, A>(
         module: &Module<Self>,
         res: &mut [R],
         res_col: usize,
@@ -782,49 +785,9 @@ where
         R: VecZnxToMut,
         A: VecZnxToRef,
     {
-        vec_znx_split_ref(module, res, res_col, a, a_col, scratch)
+        let (tmp, _) = scratch.take_slice(module.vec_znx_split_ring_tmp_bytes() / size_of::<i64>());
+        vec_znx_split_ring_ref(res, res_col, a, a_col, tmp)
     }
-}
-
-pub fn vec_znx_split_ref<R, A, B>(
-    module: &Module<B>,
-    res: &mut [R],
-    res_col: usize,
-    a: &A,
-    a_col: usize,
-    scratch: &mut Scratch<B>,
-) where
-    B: Backend + TakeVecZnxImpl<B> + VecZnxSwitchRingImpl<B> + VecZnxRotateImpl<B> + VecZnxRotateInplaceImpl<B>,
-    R: VecZnxToMut,
-    A: VecZnxToRef,
-{
-    let a: VecZnx<&[u8]> = a.to_ref();
-
-    let (n_in, n_out) = (a.n(), res[0].to_mut().n());
-
-    let (mut buf, null) = scratch.take_vec_znx(n_in.max(n_out), 1, a.size());
-
-    debug_assert!(
-        n_out < n_in,
-        "invalid a: output ring degree should be smaller"
-    );
-    res[1..].iter_mut().for_each(|bi| {
-        debug_assert_eq!(
-            bi.to_mut().n(),
-            n_out,
-            "invalid input a: all VecZnx must have the same degree"
-        )
-    });
-
-    res.iter_mut().enumerate().for_each(|(i, bi)| {
-        if i == 0 {
-            module.vec_znx_switch_ring(bi, res_col, &a, a_col);
-            module.vec_znx_rotate(-1, &mut buf, 0, &a, a_col);
-        } else {
-            module.vec_znx_switch_ring(bi, res_col, &buf, a_col);
-            module.vec_znx_rotate_inplace(-1, &mut buf, a_col, null);
-        }
-    })
 }
 
 unsafe impl VecZnxMergeImpl<Self> for FFT64
