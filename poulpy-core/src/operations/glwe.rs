@@ -235,14 +235,14 @@ pub trait GLWEOperations: GLWECiphertextToMut + SetMetaData + Sized {
         self.set_k(set_k_unary(self, a))
     }
 
-    fn mul_xp_minus_one_inplace<B: Backend>(&mut self, module: &Module<B>, k: i64)
+    fn mul_xp_minus_one_inplace<B: Backend>(&mut self, module: &Module<B>, k: i64, scratch: &mut Scratch<B>)
     where
-        Module<B>: VecZnxMulXpMinusOneInplace,
+        Module<B>: VecZnxMulXpMinusOneInplace<B>,
     {
         let self_mut: &mut GLWECiphertext<&mut [u8]> = &mut self.to_mut();
 
         (0..self_mut.rank() + 1).for_each(|i| {
-            module.vec_znx_mul_xp_minus_one_inplace(k, &mut self_mut.data, i);
+            module.vec_znx_mul_xp_minus_one_inplace(k, &mut self_mut.data, i, scratch);
         });
     }
 

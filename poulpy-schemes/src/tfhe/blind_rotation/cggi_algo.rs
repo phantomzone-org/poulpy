@@ -88,7 +88,7 @@ where
         + VecZnxNormalize<B>
         + VecZnxNormalizeInplace<B>
         + VecZnxCopy
-        + VecZnxMulXpMinusOneInplace
+        + VecZnxMulXpMinusOneInplace<B>
         + VmpApplyDftToDft<B>
         + VmpApplyDftToDftAdd<B>
         + IDFTConsume<B>
@@ -150,7 +150,7 @@ fn execute_block_binary_extended<DataRes, DataIn, DataBrk, B: Backend>(
         + VecZnxNormalize<B>
         + VecZnxNormalizeInplace<B>
         + VecZnxCopy
-        + VecZnxMulXpMinusOneInplace
+        + VecZnxMulXpMinusOneInplace<B>
         + VecZnxBigNormalize<B>
         + VmpApplyDftToDft<B>,
     Scratch<B>: TakeVecZnxDftSlice<B> + TakeVecZnxDft<B> + TakeVecZnxBig<B> + TakeVecZnxSlice + ScratchAvailable + TakeVecZnx,
@@ -317,7 +317,7 @@ fn execute_block_binary<DataRes, DataIn, DataBrk, B: Backend>(
         + VecZnxNormalize<B>
         + VecZnxNormalizeInplace<B>
         + VecZnxCopy
-        + VecZnxMulXpMinusOneInplace
+        + VecZnxMulXpMinusOneInplace<B>
         + VmpApplyDftToDft<B>
         + VecZnxBigNormalize<B>,
     Scratch<B>: TakeVecZnxDftSlice<B> + TakeVecZnxDft<B> + TakeVecZnxBig<B> + TakeVecZnxSlice + ScratchAvailable + TakeVecZnx,
@@ -431,7 +431,7 @@ fn execute_standard<DataRes, DataIn, DataBrk, B: Backend>(
         + VecZnxNormalize<B>
         + VecZnxNormalizeInplace<B>
         + VecZnxCopy
-        + VecZnxMulXpMinusOneInplace
+        + VecZnxMulXpMinusOneInplace<B>
         + VmpApplyDftToDft<B>
         + VmpApplyDftToDftAdd<B>
         + IDFTConsume<B>
@@ -501,7 +501,7 @@ fn execute_standard<DataRes, DataIn, DataBrk, B: Backend>(
         acc_tmp.external_product(module, &out_mut, ski, scratch_1);
 
         // acc_tmp = (sk[i] * acc) * (X^{ai} - 1)
-        acc_tmp.mul_xp_minus_one_inplace(module, *ai);
+        acc_tmp.mul_xp_minus_one_inplace(module, *ai, scratch_1);
 
         // acc = acc + (sk[i] * acc) * (X^{ai} - 1)
         out_mut.add_inplace(module, &acc_tmp);

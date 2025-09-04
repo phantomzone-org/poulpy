@@ -185,8 +185,12 @@ pub trait VecZnxMulXpMinusOne {
         A: VecZnxToRef;
 }
 
-pub trait VecZnxMulXpMinusOneInplace {
-    fn vec_znx_mul_xp_minus_one_inplace<R>(&self, p: i64, res: &mut R, res_col: usize)
+pub trait VecZnxMulXpMinusOneInplaceTmpBytes {
+    fn vec_znx_mul_xp_minus_one_inplace_tmp_bytes(&self) -> usize;
+}
+
+pub trait VecZnxMulXpMinusOneInplace<B: Backend> {
+    fn vec_znx_mul_xp_minus_one_inplace<R>(&self, p: i64, res: &mut R, res_col: usize, scratch: &mut Scratch<B>)
     where
         R: VecZnxToMut;
 }

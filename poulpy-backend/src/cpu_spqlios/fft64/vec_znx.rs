@@ -15,14 +15,15 @@ use poulpy_hal::{
         VecZnxAddScalarImpl, VecZnxAddScalarInplaceImpl, VecZnxAutomorphismImpl, VecZnxAutomorphismInplaceImpl,
         VecZnxAutomorphismInplaceTmpBytesImpl, VecZnxCopyImpl, VecZnxFillDistF64Impl, VecZnxFillNormalImpl,
         VecZnxFillUniformImpl, VecZnxLshImpl, VecZnxLshInplaceImpl, VecZnxMergeImpl, VecZnxMulXpMinusOneImpl,
-        VecZnxMulXpMinusOneInplaceImpl, VecZnxNegateImpl, VecZnxNegateInplaceImpl, VecZnxNormalizeImpl,
-        VecZnxNormalizeInplaceImpl, VecZnxNormalizeTmpBytesImpl, VecZnxRotateImpl, VecZnxRotateInplaceImpl,
+        VecZnxMulXpMinusOneInplaceImpl, VecZnxMulXpMinusOneInplaceTmpBytesImpl, VecZnxNegateImpl, VecZnxNegateInplaceImpl,
+        VecZnxNormalizeImpl, VecZnxNormalizeInplaceImpl, VecZnxNormalizeTmpBytesImpl, VecZnxRotateImpl, VecZnxRotateInplaceImpl,
         VecZnxRotateInplaceTmpBytesImpl, VecZnxRshImpl, VecZnxRshInplaceImpl, VecZnxSplitImpl, VecZnxSubABInplaceImpl,
         VecZnxSubBAInplaceImpl, VecZnxSubImpl, VecZnxSubScalarInplaceImpl, VecZnxSwithcDegreeImpl,
     },
     reference::vec_znx::{
         vec_znx_automorphism_inplace_tmp_bytes_ref, vec_znx_lsh_inplace_ref, vec_znx_lsh_ref,
-        vec_znx_rotate_inplace_tmp_bytes_ref, vec_znx_rsh_inplace_ref, vec_znx_rsh_ref,
+        vec_znx_mul_xp_minus_one_inplace_tmp_bytes_ref, vec_znx_rotate_inplace_tmp_bytes_ref, vec_znx_rsh_inplace_ref,
+        vec_znx_rsh_ref,
     },
     source::Source,
 };
@@ -674,9 +675,20 @@ unsafe impl VecZnxMulXpMinusOneImpl<Self> for FFT64 {
     }
 }
 
+unsafe impl VecZnxMulXpMinusOneInplaceTmpBytesImpl<Self> for FFT64 {
+    fn vec_znx_mul_xp_minus_one_inplace_tmp_bytes_impl(module: &Module<Self>) -> usize {
+        vec_znx_mul_xp_minus_one_inplace_tmp_bytes_ref(module.n())
+    }
+}
+
 unsafe impl VecZnxMulXpMinusOneInplaceImpl<Self> for FFT64 {
-    fn vec_znx_mul_xp_minus_one_inplace_impl<R>(module: &Module<Self>, p: i64, res: &mut R, res_col: usize)
-    where
+    fn vec_znx_mul_xp_minus_one_inplace_impl<R>(
+        module: &Module<Self>,
+        p: i64,
+        res: &mut R,
+        res_col: usize,
+        _scratch: &mut Scratch<Self>,
+    ) where
         R: VecZnxToMut,
     {
         let mut res: VecZnx<&mut [u8]> = res.to_mut();

@@ -48,7 +48,7 @@ where
         + VecZnxNormalize<B>
         + VecZnxNormalizeInplace<B>
         + VecZnxCopy
-        + VecZnxMulXpMinusOneInplace
+        + VecZnxMulXpMinusOneInplace<B>
         + SvpPrepare<B>
         + SvpPPolAlloc<B>
         + SvpApplyInplace<B>

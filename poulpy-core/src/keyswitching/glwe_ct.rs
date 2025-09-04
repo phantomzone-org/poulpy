@@ -130,7 +130,6 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         Module<B>: VecZnxDftAllocBytes
             + VmpApplyDftToDftTmpBytes
             + VecZnxBigNormalizeTmpBytes
-            + VmpApplyDftToDftTmpBytes
             + VmpApplyDftToDft<B>
             + VmpApplyDftToDftAdd<B>
             + DFT<B>

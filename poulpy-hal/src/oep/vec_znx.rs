@@ -314,12 +314,25 @@ pub unsafe trait VecZnxMulXpMinusOneImpl<B: Backend> {
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See TODO;
+/// * See [crate::api::VecZnxMulXpMinusOneInplaceTmpBytes] for corresponding public API.
+/// # Safety [crate::doc::backend_safety] for safety contract.
+pub unsafe trait VecZnxMulXpMinusOneInplaceTmpBytesImpl<B: Backend> {
+    fn vec_znx_mul_xp_minus_one_inplace_tmp_bytes_impl(module: &Module<B>) -> usize;
+}
+
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
 /// * See [vec_znx_mul_xp_minus_one_ref](https://github.com/phantomzone-org/spqlios-arithmetic/blob/7160f588da49712a042931ea247b4259b95cefcc/spqlios/arithmetic/vec_znx.c#L200C13-L200C41) for reference code.
 /// * See [crate::api::VecZnxMulXpMinusOneInplace] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxMulXpMinusOneInplaceImpl<B: Backend> {
-    fn vec_znx_mul_xp_minus_one_inplace_impl<R>(module: &Module<B>, p: i64, res: &mut R, res_col: usize)
-    where
+    fn vec_znx_mul_xp_minus_one_inplace_impl<R>(
+        module: &Module<B>,
+        p: i64,
+        res: &mut R,
+        res_col: usize,
+        scratch: &mut Scratch<B>,
+    ) where
         R: VecZnxToMut;
 }
 

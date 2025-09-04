@@ -3,46 +3,32 @@ use std::hint::black_box;
 use criterion::{BenchmarkId, Criterion};
 
 use crate::{
-    api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxRotate, VecZnxRotateInplace, VecZnxRotateInplaceTmpBytes},
-    layouts::{
-        Backend, FillUniform, Module, ScratchOwned, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut, ZnxZero,
+    api::{
+        ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxMulXpMinusOne, VecZnxMulXpMinusOneInplace,
+        VecZnxMulXpMinusOneInplaceTmpBytes,
     },
-    reference::znx::{znx_copy_ref, znx_rotate_i64_avx, znx_rotate_i64_ref},
+    layouts::{Backend, FillUniform, Module, ScratchOwned, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut},
+    reference::{
+        vec_znx::{vec_znx_rotate_ref, vec_znx_sub_ab_inplace_ref},
+        znx::{znx_copy_ref, znx_rotate_i64_avx, znx_rotate_i64_ref, znx_sub_ba_inplace_i64_ref},
+    },
     source::Source,
 };
 
-pub fn vec_znx_rotate_inplace_tmp_bytes_ref(n: usize) -> usize {
+pub fn vec_znx_mul_xp_minus_one_inplace_tmp_bytes_ref(n: usize) -> usize {
     n * size_of::<i64>()
 }
 
-pub fn vec_znx_rotate_ref<R, A>(p: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
+pub fn vec_znx_mul_xp_minus_one_ref<R, A>(p: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
     R: VecZnxToMut,
     A: VecZnxToRef,
 {
-    let mut res: VecZnx<&mut [u8]> = res.to_mut();
-    let a: VecZnx<&[u8]> = a.to_ref();
-
-    #[cfg(debug_assertions)]
-    {
-        assert_eq!(res.n(), a.n())
-    }
-
-    let res_size: usize = res.size();
-    let a_size: usize = a.size();
-
-    let min_size: usize = res_size.min(a_size);
-
-    for j in 0..min_size {
-        znx_rotate_i64_ref(p, res.at_mut(res_col, j), a.at(a_col, j))
-    }
-
-    for j in min_size..res_size {
-        res.zero_at(res_col, j);
-    }
+    vec_znx_rotate_ref(p, res, res_col, a, a_col);
+    vec_znx_sub_ab_inplace_ref(res, res_col, a, a_col);
 }
 
-pub fn vec_znx_rotate_inplace_ref<R>(p: i64, res: &mut R, res_col: usize, tmp: &mut [i64])
+pub fn vec_znx_mul_xp_minus_one_inplace_ref<R>(p: i64, res: &mut R, res_col: usize, tmp: &mut [i64])
 where
     R: VecZnxToMut,
 {
@@ -53,47 +39,31 @@ where
     }
     for j in 0..res.size() {
         znx_rotate_i64_ref(p, tmp, res.at(res_col, j));
-        znx_copy_ref(res.at_mut(res_col, j), tmp);
+        znx_sub_ba_inplace_i64_ref(res.at_mut(res_col, j), tmp);
     }
 }
 
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2")]
-pub fn vec_znx_rotate_avx<R, A>(p: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
+pub fn vec_znx_mul_xp_minus_one_avx<R, A>(p: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
     R: VecZnxToMut,
     A: VecZnxToRef,
 {
-    use crate::reference::znx::znx_rotate_i64_avx;
+    use crate::reference::vec_znx::{vec_znx_rotate_avx, vec_znx_sub_ab_inplace_avx};
 
-    let mut res: VecZnx<&mut [u8]> = res.to_mut();
-    let a: VecZnx<&[u8]> = a.to_ref();
-
-    #[cfg(debug_assertions)]
-    {
-        assert_eq!(res.n(), a.n())
-    }
-
-    let res_size: usize = res.size();
-    let a_size: usize = a.size();
-
-    let min_size: usize = res_size.min(a_size);
-
-    for j in 0..min_size {
-        znx_rotate_i64_avx(p, res.at_mut(res_col, j), a.at(a_col, j))
-    }
-
-    for j in min_size..res_size {
-        res.zero_at(res_col, j);
-    }
+    vec_znx_rotate_avx(p, res, res_col, a, a_col);
+    vec_znx_sub_ab_inplace_avx(res, res_col, a, a_col);
 }
 
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2")]
-pub fn vec_znx_rotate_inplace_avx<R, A>(p: i64, res: &mut R, res_col: usize, tmp: &mut [i64])
+pub fn vec_znx_mul_xp_minus_one_inplace_avx<R, A>(p: i64, res: &mut R, res_col: usize, tmp: &mut [i64])
 where
     R: VecZnxToMut,
 {
+    use crate::reference::znx::znx_sub_ba_inplace_i64_avx;
+
     let mut res: VecZnx<&mut [u8]> = res.to_mut();
     #[cfg(debug_assertions)]
     {
@@ -101,13 +71,13 @@ where
     }
     for j in 0..res.size() {
         znx_rotate_i64_avx(p, tmp, res.at(res_col, j));
-        znx_copy_ref(res.at_mut(res_col, j), tmp);
+        znx_sub_ba_inplace_i64_avx(res.at_mut(res_col, j), tmp);
     }
 }
 
-pub fn test_vec_znx_rotate<B: Backend>(module: &Module<B>)
+pub fn test_vec_znx_mul_xp_minus_one<B: Backend>(module: &Module<B>)
 where
-    Module<B>: VecZnxRotate,
+    Module<B>: VecZnxMulXpMinusOne,
 {
     let mut source: Source = Source::new([0u8; 32]);
     let cols: usize = 2;
@@ -116,7 +86,9 @@ where
         let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, a_size);
 
         // Fill a with random i64
-        a.fill_uniform(&mut source);
+        a.raw_mut()
+            .iter_mut()
+            .for_each(|x| *x = source.next_i32() as i64);
 
         for res_size in [1, 2, 6, 11] {
             let mut r0: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, res_size);
@@ -126,8 +98,8 @@ where
 
             // Normalize on c
             for i in 0..cols {
-                module.vec_znx_rotate(p, &mut r0, i, &a, i);
-                vec_znx_rotate_ref(p, &mut r1, i, &a, i);
+                module.vec_znx_mul_xp_minus_one(p, &mut r0, i, &a, i);
+                vec_znx_mul_xp_minus_one_ref(p, &mut r1, i, &a, i);
             }
 
             for i in 0..cols {
@@ -139,15 +111,15 @@ where
     }
 }
 
-pub fn test_vec_znx_rotate_inplace<B: Backend>(module: &Module<B>)
+pub fn test_vec_znx_mul_xp_minus_one_inplace<B: Backend>(module: &Module<B>)
 where
-    Module<B>: VecZnxRotateInplace<B> + VecZnxRotateInplaceTmpBytes,
+    Module<B>: VecZnxMulXpMinusOneInplace<B> + VecZnxMulXpMinusOneInplaceTmpBytes,
     ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
 {
     let mut source: Source = Source::new([0u8; 32]);
     let cols: usize = 2;
 
-    let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(module.vec_znx_rotate_inplace_tmp_bytes());
+    let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(module.vec_znx_mul_xp_minus_one_inplace_tmp_bytes());
 
     let mut tmp = vec![0i64; module.n()];
 
@@ -156,15 +128,16 @@ where
         let mut r1: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, size);
 
         // Fill a with random i64
-        r0.fill_uniform(&mut source);
+        r0.raw_mut()
+            .iter_mut()
+            .for_each(|x| *x = source.next_i32() as i64);
         znx_copy_ref(r1.raw_mut(), r0.raw());
 
         let p: i64 = -7;
 
-        // Normalize on c
         for i in 0..cols {
-            module.vec_znx_rotate_inplace(p, &mut r0, i, scratch.borrow());
-            vec_znx_rotate_inplace_ref(p, &mut r1, i, &mut tmp);
+            module.vec_znx_mul_xp_minus_one_inplace(p, &mut r0, i, scratch.borrow());
+            vec_znx_mul_xp_minus_one_inplace_ref(p, &mut r1, i, &mut tmp);
         }
 
         for i in 0..cols {
@@ -175,17 +148,17 @@ where
     }
 }
 
-pub fn bench_vec_znx_rotate<B: Backend>(c: &mut Criterion, label: &str)
+pub fn bench_vec_znx_mul_xp_minus_one<B: Backend>(c: &mut Criterion, label: &str)
 where
-    Module<B>: VecZnxRotate + ModuleNew<B>,
+    Module<B>: VecZnxMulXpMinusOne + ModuleNew<B>,
 {
-    let group_name: String = format!("vec_znx_rotate::{}", label);
+    let group_name: String = format!("vec_znx_mul_xp_minus_one::{}", label);
 
     let mut group = c.benchmark_group(group_name);
 
     fn runner<B: Backend>(params: [usize; 3]) -> impl FnMut()
     where
-        Module<B>: VecZnxRotate + ModuleNew<B>,
+        Module<B>: VecZnxMulXpMinusOne + ModuleNew<B>,
     {
         let module: Module<B> = Module::<B>::new(1 << params[0]);
 
@@ -203,7 +176,7 @@ where
 
         move || {
             for i in 0..cols {
-                module.vec_znx_rotate(-7, &mut res, i, &a, i);
+                module.vec_znx_mul_xp_minus_one(-7, &mut res, i, &a, i);
             }
             black_box(());
         }
@@ -218,18 +191,18 @@ where
     group.finish();
 }
 
-pub fn bench_vec_znx_rotate_inplace<B: Backend>(c: &mut Criterion, label: &str)
+pub fn bench_vec_znx_mul_xp_minus_one_inplace<B: Backend>(c: &mut Criterion, label: &str)
 where
-    Module<B>: VecZnxRotateInplace<B> + VecZnxRotateInplaceTmpBytes + ModuleNew<B>,
+    Module<B>: VecZnxMulXpMinusOneInplace<B> + VecZnxMulXpMinusOneInplaceTmpBytes + ModuleNew<B>,
     ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
 {
-    let group_name: String = format!("vec_znx_rotate_inplace::{}", label);
+    let group_name: String = format!("vec_znx_mul_xp_minus_one_inplace::{}", label);
 
     let mut group = c.benchmark_group(group_name);
 
     fn runner<B: Backend>(params: [usize; 3]) -> impl FnMut()
     where
-        Module<B>: VecZnxRotateInplace<B> + ModuleNew<B> + VecZnxRotateInplaceTmpBytes,
+        Module<B>: VecZnxMulXpMinusOneInplace<B> + ModuleNew<B> + VecZnxMulXpMinusOneInplaceTmpBytes,
         ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
     {
         let module: Module<B> = Module::<B>::new(1 << params[0]);
@@ -241,14 +214,14 @@ where
 
         let mut res: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, size);
 
-        let mut scratch = ScratchOwned::alloc(module.vec_znx_rotate_inplace_tmp_bytes());
+        let mut scratch = ScratchOwned::alloc(module.vec_znx_mul_xp_minus_one_inplace_tmp_bytes());
 
         // Fill a with random i64
         res.fill_uniform(&mut source);
 
         move || {
             for i in 0..cols {
-                module.vec_znx_rotate_inplace(-7, &mut res, i, scratch.borrow());
+                module.vec_znx_mul_xp_minus_one_inplace(-7, &mut res, i, scratch.borrow());
             }
             black_box(());
         }

@@ -3,19 +3,21 @@ use crate::{
         VecZnxAdd, VecZnxAddDistF64, VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalar, VecZnxAddScalarInplace,
         VecZnxAutomorphism, VecZnxAutomorphismInplace, VecZnxAutomorphismInplaceTmpBytes, VecZnxCopy, VecZnxFillDistF64,
         VecZnxFillNormal, VecZnxFillUniform, VecZnxLsh, VecZnxLshInplace, VecZnxMerge, VecZnxMulXpMinusOne,
-        VecZnxMulXpMinusOneInplace, VecZnxNegate, VecZnxNegateInplace, VecZnxNormalize, VecZnxNormalizeInplace,
-        VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace, VecZnxRotateInplaceTmpBytes, VecZnxRsh, VecZnxRshInplace,
-        VecZnxSplit, VecZnxSub, VecZnxSubABInplace, VecZnxSubBAInplace, VecZnxSubScalarInplace, VecZnxSwithcDegree,
+        VecZnxMulXpMinusOneInplace, VecZnxMulXpMinusOneInplaceTmpBytes, VecZnxNegate, VecZnxNegateInplace, VecZnxNormalize,
+        VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace, VecZnxRotateInplaceTmpBytes,
+        VecZnxRsh, VecZnxRshInplace, VecZnxSplit, VecZnxSub, VecZnxSubABInplace, VecZnxSubBAInplace, VecZnxSubScalarInplace,
+        VecZnxSwithcDegree,
     },
     layouts::{Backend, Module, ScalarZnxToRef, Scratch, VecZnxToMut, VecZnxToRef},
     oep::{
         VecZnxAddDistF64Impl, VecZnxAddImpl, VecZnxAddInplaceImpl, VecZnxAddNormalImpl, VecZnxAddScalarImpl,
         VecZnxAddScalarInplaceImpl, VecZnxAutomorphismImpl, VecZnxAutomorphismInplaceImpl, VecZnxAutomorphismInplaceTmpBytesImpl,
         VecZnxCopyImpl, VecZnxFillDistF64Impl, VecZnxFillNormalImpl, VecZnxFillUniformImpl, VecZnxLshImpl, VecZnxLshInplaceImpl,
-        VecZnxMergeImpl, VecZnxMulXpMinusOneImpl, VecZnxMulXpMinusOneInplaceImpl, VecZnxNegateImpl, VecZnxNegateInplaceImpl,
-        VecZnxNormalizeImpl, VecZnxNormalizeInplaceImpl, VecZnxNormalizeTmpBytesImpl, VecZnxRotateImpl, VecZnxRotateInplaceImpl,
-        VecZnxRotateInplaceTmpBytesImpl, VecZnxRshImpl, VecZnxRshInplaceImpl, VecZnxSplitImpl, VecZnxSubABInplaceImpl,
-        VecZnxSubBAInplaceImpl, VecZnxSubImpl, VecZnxSubScalarInplaceImpl, VecZnxSwithcDegreeImpl,
+        VecZnxMergeImpl, VecZnxMulXpMinusOneImpl, VecZnxMulXpMinusOneInplaceImpl, VecZnxMulXpMinusOneInplaceTmpBytesImpl,
+        VecZnxNegateImpl, VecZnxNegateInplaceImpl, VecZnxNormalizeImpl, VecZnxNormalizeInplaceImpl, VecZnxNormalizeTmpBytesImpl,
+        VecZnxRotateImpl, VecZnxRotateInplaceImpl, VecZnxRotateInplaceTmpBytesImpl, VecZnxRshImpl, VecZnxRshInplaceImpl,
+        VecZnxSplitImpl, VecZnxSubABInplaceImpl, VecZnxSubBAInplaceImpl, VecZnxSubImpl, VecZnxSubScalarInplaceImpl,
+        VecZnxSwithcDegreeImpl,
     },
     source::Source,
 };
@@ -333,15 +335,24 @@ where
     }
 }
 
-impl<B> VecZnxMulXpMinusOneInplace for Module<B>
+impl<B> VecZnxMulXpMinusOneInplaceTmpBytes for Module<B>
+where
+    B: Backend + VecZnxMulXpMinusOneInplaceTmpBytesImpl<B>,
+{
+    fn vec_znx_mul_xp_minus_one_inplace_tmp_bytes(&self) -> usize {
+        B::vec_znx_mul_xp_minus_one_inplace_tmp_bytes_impl(self)
+    }
+}
+
+impl<B> VecZnxMulXpMinusOneInplace<B> for Module<B>
 where
     B: Backend + VecZnxMulXpMinusOneInplaceImpl<B>,
 {
-    fn vec_znx_mul_xp_minus_one_inplace<R>(&self, p: i64, res: &mut R, res_col: usize)
+    fn vec_znx_mul_xp_minus_one_inplace<R>(&self, p: i64, res: &mut R, res_col: usize, scratch: &mut Scratch<B>)
     where
         R: VecZnxToMut,
     {
-        B::vec_znx_mul_xp_minus_one_inplace_impl(self, p, res, res_col);
+        B::vec_znx_mul_xp_minus_one_inplace_impl(self, p, res, res_col, scratch);
     }
 }
 

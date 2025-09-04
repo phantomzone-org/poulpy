@@ -26,7 +26,7 @@ pub fn znx_rotate_i64_ref(p: i64, res: &mut [i64], src: &[i64]) {
 }
 
 #[cfg(target_arch = "x86_64")]
-#[target_feature(enable = "avx2", enable = "fma")]
+#[target_feature(enable = "avx2")]
 pub fn znx_rotate_i64_avx(p: i64, res: &mut [i64], src: &[i64]) {
     #[cfg(debug_assertions)]
     {
