@@ -7,10 +7,6 @@ use crate::{
     layouts::{
         Backend, FillUniform, Module, ScratchOwned, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut, ZnxZero,
     },
-    oep::{
-        ModuleNewImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, VecZnxNormalizeImpl, VecZnxNormalizeInplaceImpl,
-        VecZnxNormalizeTmpBytesImpl,
-    },
     reference::znx::{
         znx_normalize_beg_ref, znx_normalize_carry_only_beg_ref, znx_normalize_carry_only_mid_ref, znx_normalize_end_ref,
         znx_normalize_inplace_beg_ref, znx_normalize_inplace_end_ref, znx_normalize_inplace_mid_ref, znx_normalize_mid_ref,
@@ -86,6 +82,8 @@ pub fn vec_znx_normalize_inplace_ref<R: VecZnxToMut>(basek: usize, res: &mut R, 
     }
 }
 
+/// # Safety
+/// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2")]
 pub fn vec_znx_normalize_avx<R, A>(basek: usize, res: &mut R, res_col: usize, a: &A, a_col: usize, carry: &mut [i64])
@@ -140,6 +138,8 @@ where
     }
 }
 
+/// # Safety
+/// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2")]
 pub fn vec_znx_normalize_inplace_avx<R: VecZnxToMut>(basek: usize, res: &mut R, res_col: usize, carry: &mut [i64]) {
@@ -168,7 +168,7 @@ pub fn vec_znx_normalize_inplace_avx<R: VecZnxToMut>(basek: usize, res: &mut R, 
 pub fn test_vec_znx_normalize<B: Backend>(module: &Module<B>)
 where
     Module<B>: VecZnxNormalize<B> + VecZnxNormalizeTmpBytes,
-    B: ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
+    ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
 {
     let mut source: Source = Source::new([0u8; 32]);
     let cols: usize = 2;
@@ -206,7 +206,7 @@ where
 pub fn test_vec_znx_normalize_inplace<B: Backend>(module: &Module<B>)
 where
     Module<B>: VecZnxNormalize<B> + VecZnxNormalizeTmpBytes,
-    B: ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
+    ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
 {
     let mut source: Source = Source::new([0u8; 32]);
     let cols: usize = 2;
@@ -243,11 +243,8 @@ where
 
 pub fn bench_vec_znx_normalize<B: Backend>(c: &mut Criterion, label: &str)
 where
-    B: ModuleNewImpl<B>
-        + VecZnxNormalizeTmpBytesImpl<B>
-        + VecZnxNormalizeImpl<B>
-        + ScratchOwnedAllocImpl<B>
-        + ScratchOwnedBorrowImpl<B>,
+    Module<B>: VecZnxNormalize<B> + ModuleNew<B> + VecZnxNormalizeTmpBytes,
+    ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
 {
     let group_name: String = format!("vec_znx_normalize::{}", label);
 
@@ -256,7 +253,7 @@ where
     fn runner<B: Backend>(params: [usize; 3]) -> impl FnMut()
     where
         Module<B>: VecZnxNormalize<B> + ModuleNew<B> + VecZnxNormalizeTmpBytes,
-        B: ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
+        ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
     {
         let module: Module<B> = Module::<B>::new(1 << params[0]);
 
@@ -295,11 +292,8 @@ where
 
 pub fn bench_vec_znx_normalize_inplace<B: Backend>(c: &mut Criterion, label: &str)
 where
-    B: ModuleNewImpl<B>
-        + VecZnxNormalizeTmpBytesImpl<B>
-        + VecZnxNormalizeInplaceImpl<B>
-        + ScratchOwnedAllocImpl<B>
-        + ScratchOwnedBorrowImpl<B>,
+    Module<B>: VecZnxNormalizeInplace<B> + ModuleNew<B> + VecZnxNormalizeTmpBytes,
+    ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
 {
     let group_name: String = format!("vec_znx_normalize_inplace::{}", label);
 
@@ -308,7 +302,7 @@ where
     fn runner<B: Backend>(params: [usize; 3]) -> impl FnMut()
     where
         Module<B>: VecZnxNormalizeInplace<B> + ModuleNew<B> + VecZnxNormalizeTmpBytes,
-        B: ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
+        ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
     {
         let module: Module<B> = Module::<B>::new(1 << params[0]);
 

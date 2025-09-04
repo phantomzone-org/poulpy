@@ -70,6 +70,7 @@ pub unsafe trait VecZnxAddInplaceImpl<B: Backend> {
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxAddScalarImpl<D: Backend> {
     /// Adds the selected column of `a` on the selected column and limb of `b` and writes the result on the selected column of `res`.
+    #[allow(clippy::too_many_arguments)]
     fn vec_znx_add_scalar_impl<R, A, B>(
         module: &Module<D>,
         res: &mut R,
@@ -142,6 +143,7 @@ pub unsafe trait VecZnxSubBAInplaceImpl<B: Backend> {
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxSubScalarImpl<D: Backend> {
     /// Adds the selected column of `a` on the selected column and limb of `b` and writes the result on the selected column of `res`.
+    #[allow(clippy::too_many_arguments)]
     fn vec_znx_sub_scalar_impl<R, A, B>(
         module: &Module<D>,
         res: &mut R,
@@ -200,6 +202,7 @@ pub unsafe trait VecZnxNegateInplaceImpl<B: Backend> {
 /// * See [crate::api::VecZnxRsh] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxRshImpl<B: Backend> {
+    #[allow(clippy::too_many_arguments)]
     fn vec_znx_rsh_inplace_impl<R, A>(
         module: &Module<B>,
         basek: usize,
@@ -219,6 +222,7 @@ pub unsafe trait VecZnxRshImpl<B: Backend> {
 /// * See [crate::api::VecZnxLsh] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxLshImpl<B: Backend> {
+    #[allow(clippy::too_many_arguments)]
     fn vec_znx_lsh_inplace_impl<R, A>(
         module: &Module<B>,
         basek: usize,

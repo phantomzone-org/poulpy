@@ -10,6 +10,9 @@ pub fn znx_negate_i64_ref(res: &mut [i64], src: &[i64]) {
     }
 }
 
+/// # Safety
+/// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
+/// all inputs must have the same length and must not alias.
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2")]
 pub fn znx_negate_i64_avx(res: &mut [i64], src: &[i64]) {
@@ -43,11 +46,14 @@ pub fn znx_negate_i64_avx(res: &mut [i64], src: &[i64]) {
 
 #[inline(always)]
 pub fn znx_negate_inplace_i64_ref(res: &mut [i64]) {
-    for i in 0..res.len() {
-        res[i] = -res[i]
+    for value in res {
+        *value = -*value
     }
 }
 
+/// # Safety
+/// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
+/// all inputs must have the same length and must not alias.
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2")]
 pub fn znx_negate_inplace_i64_avx(res: &mut [i64]) {

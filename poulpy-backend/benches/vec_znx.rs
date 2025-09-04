@@ -1,10 +1,7 @@
 // poulpy-backend/benches/vec_znx_add.rs
 use criterion::{Criterion, criterion_group, criterion_main};
 use poulpy_backend::{cpu_ref, cpu_spqlios};
-use poulpy_hal::{
-    benches::vec_znx::bench_vec_znx_automorphism,
-    reference::vec_znx::{bench_vec_znx_add, bench_vec_znx_normalize_inplace},
-};
+use poulpy_hal::reference::vec_znx::{bench_vec_znx_add, bench_vec_znx_automorphism, bench_vec_znx_normalize_inplace};
 
 #[allow(dead_code)]
 fn bench_vec_znx_add_cpu_spqlios_fft64(c: &mut Criterion) {

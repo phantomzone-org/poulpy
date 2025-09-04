@@ -59,6 +59,8 @@ where
     }
 }
 
+/// # Safety
+/// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2", enable = "fma")]
 pub fn vec_znx_automorphism_avx<R, A>(p: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
@@ -87,6 +89,8 @@ where
     }
 }
 
+/// # Safety
+/// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2", enable = "fma")]
 pub fn vec_znx_automorphism_inplace_avx<R, A>(p: i64, res: &mut R, res_col: usize, tmp: &mut [i64])

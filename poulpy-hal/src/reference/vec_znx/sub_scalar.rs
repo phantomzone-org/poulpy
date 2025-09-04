@@ -42,6 +42,8 @@ where
     }
 }
 
+/// # Safety
+/// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2")]
 pub fn vec_znx_sub_scalar_avx<R, A, B>(res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize, b_limb: usize)
@@ -89,6 +91,8 @@ where
     znx_sub_ab_inplace_i64_ref(res.at_mut(res_col, res_limb), a.at(a_col, 0));
 }
 
+/// # Safety
+/// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2")]
 pub fn vec_znx_sub_scalar_inplace_avx<R, A>(res: &mut R, res_col: usize, res_limb: usize, a: &A, a_col: usize)
@@ -167,7 +171,7 @@ where
             .iter_mut()
             .for_each(|x| *x = source.next_i32() as i64);
 
-        res_1.raw_mut().copy_from_slice(&res_0.raw());
+        res_1.raw_mut().copy_from_slice(res_0.raw());
 
         for i in 0..cols {
             vec_znx_sub_scalar_inplace_ref(&mut res_0, i, res_size - 1, &b, i);

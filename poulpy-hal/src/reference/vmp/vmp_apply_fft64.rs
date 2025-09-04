@@ -1,3 +1,5 @@
+/// # Safety
+/// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx")]
 pub fn fft64_vmp_apply_dft_to_dft_avx(
@@ -25,7 +27,7 @@ pub fn fft64_vmp_apply_dft_to_dft_avx(
         let mat_blk_start: &[f64] = &pmat[blk_i * (8 * nrows * ncols)..];
 
         unsafe {
-            reim4_extract_1blk_from_contiguous_reim_avx(m, row_max, blk_i, extracted_blk, &a_dft);
+            reim4_extract_1blk_from_contiguous_reim_avx(m, row_max, blk_i, extracted_blk, a_dft);
         }
 
         for col_i in (0..col_max - 1).step_by(2) {
@@ -38,7 +40,7 @@ pub fn fft64_vmp_apply_dft_to_dft_avx(
                     extracted_blk,
                     &mat_blk_start[col_offset..],
                 );
-                reim4_save_2blk_to_reim_avx(m, blk_i, &mut res[col_i * n..], &mat2cols_output)
+                reim4_save_2blk_to_reim_avx(m, blk_i, &mut res[col_i * n..], mat2cols_output)
             }
         }
 
@@ -74,6 +76,8 @@ pub fn fft64_vmp_apply_dft_to_dft_avx(
     res[col_max * n..].fill(0f64);
 }
 
+/// # Safety
+/// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx")]
 unsafe fn reim4_extract_1blk_from_contiguous_reim_avx(m: usize, rows: usize, blk: usize, dst: &mut [f64], src: &[f64]) {
@@ -111,6 +115,8 @@ fn reim4_save_2blk_to_reim_scalar(dst: &mut [f64], m: usize, blk: usize, src: &[
     dst[off + 3 * m..off + 3 * m + 4].copy_from_slice(&src[12..16]);
 }
 
+/// # Safety
+/// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2")]
 #[target_feature(enable = "fma")]
@@ -127,6 +133,8 @@ unsafe fn reim4_save_1blk_to_reim_avx(m: usize, blk: usize, dst: &mut [f64], src
     }
 }
 
+/// # Safety
+/// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2")]
 #[target_feature(enable = "fma")]
@@ -193,6 +201,8 @@ pub fn reim4_vec_mat1cols_product_ref(
     }
 }
 
+/// # Safety
+/// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2", enable = "fma")]
 unsafe fn reim4_vec_mat1col_product_avx2(nrows: usize, dst: &mut [f64], u: &[f64], v: &[f64]) {
@@ -207,10 +217,10 @@ unsafe fn reim4_vec_mat1col_product_avx2(nrows: usize, dst: &mut [f64], u: &[f64
         let mut im2: __m256d = _mm256_setzero_pd();
 
         for i in 0..nrows {
-            let ur: __m256d = _mm256_loadu_pd(u.as_ptr().add(8 * i) as *const f64);
-            let ui: __m256d = _mm256_loadu_pd(u.as_ptr().add(8 * i + 4) as *const f64);
-            let vr: __m256d = _mm256_loadu_pd(v.as_ptr().add(8 * i) as *const f64);
-            let vi: __m256d = _mm256_loadu_pd(v.as_ptr().add(8 * i + 4) as *const f64);
+            let ur: __m256d = _mm256_loadu_pd(u.as_ptr().add(8 * i));
+            let ui: __m256d = _mm256_loadu_pd(u.as_ptr().add(8 * i + 4));
+            let vr: __m256d = _mm256_loadu_pd(v.as_ptr().add(8 * i));
+            let vi: __m256d = _mm256_loadu_pd(v.as_ptr().add(8 * i + 4));
 
             // re1 = re1 + ur*vr;
             re1 = _mm256_fmadd_pd(ur, vr, re1);
@@ -283,6 +293,8 @@ pub fn reim4_vec_mat2cols_product_ref(
     }
 }
 
+/// # Safety
+/// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2", enable = "fma")]
 unsafe fn reim4_vec_mat2cols_product_avx2(nrows: usize, dst: &mut [f64], u: &[f64], v: &[f64]) {
@@ -295,13 +307,13 @@ unsafe fn reim4_vec_mat2cols_product_avx2(nrows: usize, dst: &mut [f64], u: &[f6
         let mut im2: __m256d = _mm256_setzero_pd();
 
         for i in 0..nrows {
-            let ur: __m256d = _mm256_loadu_pd(u.as_ptr().add(8 * i) as *const f64);
-            let ui: __m256d = _mm256_loadu_pd(u.as_ptr().add(8 * i + 4) as *const f64);
+            let ur: __m256d = _mm256_loadu_pd(u.as_ptr().add(8 * i));
+            let ui: __m256d = _mm256_loadu_pd(u.as_ptr().add(8 * i + 4));
 
-            let ar: __m256d = _mm256_loadu_pd(v.as_ptr().add(16 * i) as *const f64);
-            let ai: __m256d = _mm256_loadu_pd(v.as_ptr().add(16 * i + 4) as *const f64);
-            let br: __m256d = _mm256_loadu_pd(v.as_ptr().add(16 * i + 8) as *const f64);
-            let bi: __m256d = _mm256_loadu_pd(v.as_ptr().add(16 * i + 12) as *const f64);
+            let ar: __m256d = _mm256_loadu_pd(v.as_ptr().add(16 * i));
+            let ai: __m256d = _mm256_loadu_pd(v.as_ptr().add(16 * i + 4));
+            let br: __m256d = _mm256_loadu_pd(v.as_ptr().add(16 * i + 8));
+            let bi: __m256d = _mm256_loadu_pd(v.as_ptr().add(16 * i + 12));
 
             // re1 = re1 - ui*ai; re2 = re2 - ui*bi;
             re1 = _mm256_fmsub_pd(ui, ai, re1);

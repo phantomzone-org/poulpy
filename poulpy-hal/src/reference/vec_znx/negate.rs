@@ -5,7 +5,6 @@ use criterion::{BenchmarkId, Criterion};
 use crate::{
     api::{ModuleNew, VecZnxNegate, VecZnxNegateInplace},
     layouts::{Backend, FillUniform, Module, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut, ZnxZero},
-    oep::{ModuleNewImpl, VecZnxNegateImpl, VecZnxNegateInplaceImpl},
     reference::znx::{znx_negate_i64_ref, znx_negate_inplace_i64_ref},
     source::Source,
 };
@@ -34,6 +33,8 @@ where
     }
 }
 
+/// # Safety
+/// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2")]
 pub fn vec_znx_negate_avx<R, A>(res: &mut R, res_col: usize, a: &A, a_col: usize)
@@ -72,6 +73,8 @@ where
     }
 }
 
+/// # Safety
+/// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2")]
 pub fn vec_znx_negate_inplace_avx<R>(res: &mut R, res_col: usize)
@@ -107,7 +110,7 @@ where
                 .iter_mut()
                 .for_each(|x| *x = source.next_i32() as i64);
 
-            res_1.raw_mut().copy_from_slice(&res_0.raw());
+            res_1.raw_mut().copy_from_slice(res_0.raw());
 
             for i in 0..cols {
                 vec_znx_negate_ref(&mut res_0, i, &a, i);
@@ -135,7 +138,7 @@ where
             .iter_mut()
             .for_each(|x| *x = source.next_i32() as i64);
 
-        res_1.raw_mut().copy_from_slice(&res_0.raw());
+        res_1.raw_mut().copy_from_slice(res_0.raw());
 
         for i in 0..cols {
             vec_znx_negate_inplace_ref(&mut res_0, i);
@@ -148,7 +151,7 @@ where
 
 pub fn bench_vec_znx_negate<B: Backend>(c: &mut Criterion, label: &str)
 where
-    B: ModuleNewImpl<B> + VecZnxNegateImpl<B>,
+    Module<B>: VecZnxNegate + ModuleNew<B>,
 {
     let group_name: String = format!("vec_znx_negate::{}", label);
 
@@ -191,7 +194,7 @@ where
 
 pub fn bench_vec_znx_negate_inplace<B: Backend>(c: &mut Criterion, label: &str)
 where
-    B: ModuleNewImpl<B> + VecZnxNegateInplaceImpl<B>,
+    Module<B>: VecZnxNegateInplace + ModuleNew<B>,
 {
     let group_name: String = format!("vec_znx_negate_inplace::{}", label);
 
@@ -291,7 +294,7 @@ mod tests {
                 .raw_mut()
                 .iter_mut()
                 .for_each(|x| *x = source.next_i32() as i64);
-            res_1.raw_mut().copy_from_slice(&res_0.raw());
+            res_1.raw_mut().copy_from_slice(res_0.raw());
 
             for i in 0..cols {
                 vec_znx_negate_inplace_ref(&mut res_0, i);

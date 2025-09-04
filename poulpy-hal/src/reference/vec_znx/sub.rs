@@ -66,6 +66,8 @@ where
     }
 }
 
+/// # Safety
+/// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2")]
 pub fn vec_znx_sub_avx<R, A, B>(res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
@@ -147,6 +149,8 @@ where
     }
 }
 
+/// # Safety
+/// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2")]
 pub fn vec_znx_sub_ab_inplace_avx<R, A>(res: &mut R, res_col: usize, a: &A, a_col: usize)
@@ -201,6 +205,8 @@ where
     }
 }
 
+/// # Safety
+/// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2")]
 pub fn vec_znx_sub_ba_inplace_avx<R, A>(res: &mut R, res_col: usize, a: &A, a_col: usize)
@@ -293,7 +299,7 @@ where
                 .iter_mut()
                 .for_each(|x| *x = source.next_i32() as i64);
 
-            res_1.raw_mut().copy_from_slice(&res_0.raw());
+            res_1.raw_mut().copy_from_slice(res_0.raw());
 
             for i in 0..cols {
                 vec_znx_sub_ab_inplace_ref(&mut res_0, i, &a, i);
@@ -327,7 +333,7 @@ where
                 .iter_mut()
                 .for_each(|x| *x = source.next_i32() as i64);
 
-            res_1.raw_mut().copy_from_slice(&res_0.raw());
+            res_1.raw_mut().copy_from_slice(res_0.raw());
 
             for i in 0..cols {
                 vec_znx_sub_ba_inplace_ref(&mut res_0, i, &a, i);
@@ -339,9 +345,9 @@ where
     }
 }
 
-pub fn bench_vec_znx_sub<B: Backend>(c: &mut Criterion, label: &str)
+pub fn bench_vec_znx_sub<B>(c: &mut Criterion, label: &str)
 where
-    B: ModuleNewImpl<B> + VecZnxSubImpl<B>,
+    B: Backend + ModuleNewImpl<B> + VecZnxSubImpl<B>,
 {
     let group_name: String = format!("vec_znx_sub::{}", label);
 
@@ -383,9 +389,9 @@ where
     group.finish();
 }
 
-pub fn bench_vec_znx_sub_ab_inplace<B: Backend>(c: &mut Criterion, label: &str)
+pub fn bench_vec_znx_sub_ab_inplace<B>(c: &mut Criterion, label: &str)
 where
-    B: ModuleNewImpl<B> + VecZnxSubABInplaceImpl<B>,
+    B: Backend + ModuleNewImpl<B> + VecZnxSubABInplaceImpl<B>,
 {
     let group_name: String = format!("vec_znx_sub_ab_inplace::{}", label);
 
@@ -426,9 +432,9 @@ where
     group.finish();
 }
 
-pub fn bench_vec_znx_sub_ba_inplace<B: Backend>(c: &mut Criterion, label: &str)
+pub fn bench_vec_znx_sub_ba_inplace<B>(c: &mut Criterion, label: &str)
 where
-    B: ModuleNewImpl<B> + VecZnxSubBAInplaceImpl<B>,
+    B: Backend + ModuleNewImpl<B> + VecZnxSubBAInplaceImpl<B>,
 {
     let group_name: String = format!("vec_znx_sub_ba_inplace::{}", label);
 

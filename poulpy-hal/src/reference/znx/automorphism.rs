@@ -5,19 +5,17 @@ pub fn znx_automorphism_ref(p: i64, res: &mut [i64], a: &[i64]) {
     }
 
     let n: usize = res.len();
-
-    res[0] = a[0];
-
     let mut k: usize = 0usize;
     let mask: usize = 2 * n - 1;
     let p_2n = (p & mask as i64) as usize;
 
-    for i in 1..n {
+    res[0] = a[0];
+    for ai in a.iter().take(n).skip(1) {
         k = (k + p_2n) & mask;
         if k < n {
-            res[k] = a[i]
+            res[k] = *ai
         } else {
-            res[k - n] = -a[i]
+            res[k - n] = -*ai
         }
     }
 }
@@ -38,6 +36,9 @@ fn inv_mod_pow2(p: usize, bits: u32) -> usize {
     x & ((1usize << bits) - 1)
 }
 
+/// # Safety
+/// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
+/// all inputs must have the same length and must not alias.
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2", enable = "fma")]
 pub fn znx_automorphism_avx(p: i64, res: &mut [i64], a: &[i64]) {
@@ -62,7 +63,7 @@ pub fn znx_automorphism_avx(p: i64, res: &mut [i64], a: &[i64]) {
         let mask_1n: usize = n - 1;
 
         // p mod 2n (positive)
-        let p_2n: usize = ((p & mask_2n as i64 + two_n as i64) as usize) & mask_2n;
+        let p_2n: usize = (((p & mask_2n as i64) + two_n as i64) as usize) & mask_2n;
 
         // p^-1 mod 2n
         let inv: usize = inv_mod_pow2(p_2n, bits);
@@ -115,6 +116,9 @@ pub fn znx_automorphism_avx(p: i64, res: &mut [i64], a: &[i64]) {
     }
 }
 
+/// # Safety
+/// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
+/// all inputs must have the same length and must not alias.
 #[cfg(all(test, any(target_arch = "x86_64", target_arch = "x86")))]
 mod tests {
     use super::*;

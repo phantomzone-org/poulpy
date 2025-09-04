@@ -43,6 +43,8 @@ where
     }
 }
 
+/// # Safety
+/// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2")]
 pub fn vec_znx_mul_xp_minus_one_avx<R, A>(p: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
@@ -56,6 +58,8 @@ where
     vec_znx_sub_ab_inplace_avx(res, res_col, a, a_col);
 }
 
+/// # Safety
+/// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2")]
 pub fn vec_znx_mul_xp_minus_one_inplace_avx<R, A>(p: i64, res: &mut R, res_col: usize, tmp: &mut [i64])

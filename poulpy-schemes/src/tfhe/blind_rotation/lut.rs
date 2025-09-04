@@ -4,7 +4,6 @@ use poulpy_hal::{
         VecZnxRotateInplaceTmpBytes, VecZnxSwithcDegree,
     },
     layouts::{Backend, Module, ScratchOwned, VecZnx, ZnxInfos, ZnxViewMut},
-    oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl},
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -69,7 +68,7 @@ impl LookUpTable {
         self.rot_dir = rot_dir
     }
 
-    pub fn set<B>(&mut self, module: &Module<B>, f: &[i64], k: usize)
+    pub fn set<B: Backend>(&mut self, module: &Module<B>, f: &[i64], k: usize)
     where
         Module<B>: VecZnxRotateInplace<B>
             + VecZnxNormalizeInplace<B>
@@ -77,7 +76,7 @@ impl LookUpTable {
             + VecZnxSwithcDegree<B>
             + VecZnxCopy
             + VecZnxRotateInplaceTmpBytes,
-        B: Backend + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
+        ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
     {
         assert!(f.len() <= module.n());
 
@@ -153,7 +152,7 @@ impl LookUpTable {
     pub(crate) fn rotate<B: Backend>(&mut self, module: &Module<B>, k: i64)
     where
         Module<B>: VecZnxRotateInplace<B> + VecZnxRotateInplaceTmpBytes,
-        B: ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
+        ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
     {
         let extension_factor: usize = self.extension_factor();
         let two_n: usize = 2 * self.data[0].n();

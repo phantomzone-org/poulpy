@@ -44,6 +44,7 @@ pub trait VecZnxAddInplace {
 
 pub trait VecZnxAddScalar {
     /// Adds the selected column of `a` on the selected column and limb of `b` and writes the result on the selected column of `res`.
+    #[allow(clippy::too_many_arguments)]
     fn vec_znx_add_scalar<R, A, B>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize, b_limb: usize)
     where
         R: VecZnxToMut,
@@ -90,6 +91,7 @@ pub trait VecZnxSubBAInplace {
 
 pub trait VecZnxSubScalar {
     /// Subtracts the selected column of `a` on the selected column and limb of `b` and writes the result on the selected column of `res`.
+    #[allow(clippy::too_many_arguments)]
     fn vec_znx_sub_scalar<R, A, B>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize, b_limb: usize)
     where
         R: VecZnxToMut,
@@ -121,6 +123,7 @@ pub trait VecZnxNegateInplace {
 }
 pub trait VecZnxLsh<B: Backend> {
     /// Left shift by k bits all columns of `a`.
+    #[allow(clippy::too_many_arguments)]
     fn vec_znx_lsh<R, A>(&self, basek: usize, k: usize, r: &mut R, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch<B>)
     where
         R: VecZnxToMut,
@@ -129,6 +132,7 @@ pub trait VecZnxLsh<B: Backend> {
 
 pub trait VecZnxRsh<B: Backend> {
     /// Right shift by k bits all columns of `a`.
+    #[allow(clippy::too_many_arguments)]
     fn vec_znx_rsh<R, A>(&self, basek: usize, k: usize, r: &mut R, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch<B>)
     where
         R: VecZnxToMut,

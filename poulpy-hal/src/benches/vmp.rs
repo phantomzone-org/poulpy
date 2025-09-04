@@ -3,25 +3,14 @@ use std::hint::black_box;
 use crate::{
     api::{DFT, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxDftAlloc, VmpApplyDftToDft, VmpPMatAlloc, VmpPrepare},
     layouts::{Backend, FillUniform, MatZnx, Module, ScratchOwned, VecZnx, ZnxInfos},
-    oep::{
-        DFTImpl, ModuleNewImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, VecZnxDftAllocImpl, VmpApplyDftToDftImpl,
-        VmpPMatAllocImpl, VmpPMatPrepareImpl,
-    },
     source::Source,
 };
 use criterion::{BenchmarkId, Criterion};
 
 pub fn bench_vmp_apply_dft_to_dft<B: Backend>(c: &mut Criterion, label: &str)
 where
-    B: ModuleNewImpl<B>
-        + ScratchOwnedBorrowImpl<B>
-        + DFTImpl<B>
-        + VmpPMatPrepareImpl<B>
-        + VmpApplyDftToDftImpl<B>
-        + VecZnxDftAllocImpl<B>
-        + VmpPMatAllocImpl<B>
-        + VmpApplyDftToDftImpl<B>
-        + ScratchOwnedAllocImpl<B>,
+    Module<B>: ModuleNew<B> + VecZnxDftAlloc<B> + VmpPMatAlloc<B> + VmpApplyDftToDft<B> + VmpPrepare<B> + DFT<B>,
+    ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
 {
     let group_name: String = format!("vmp_apply_dft_to_dft::{}", label);
 
@@ -30,7 +19,7 @@ where
     fn runner<B: Backend>(params: [usize; 5]) -> impl FnMut()
     where
         Module<B>: ModuleNew<B> + VecZnxDftAlloc<B> + VmpPMatAlloc<B> + VmpApplyDftToDft<B> + VmpPrepare<B> + DFT<B>,
-        B: ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
+        ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
     {
         let module: Module<B> = Module::<B>::new(1 << params[0]);
 

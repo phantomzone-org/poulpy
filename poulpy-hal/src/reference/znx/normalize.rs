@@ -193,6 +193,10 @@ pub fn znx_normalize_end_ref(basek: usize, lsh: usize, x: &mut [i64], a: &[i64],
 }
 
 /// Vector forms of those constants (broadcast to all lanes)
+///
+/// # Safety
+/// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
+/// all inputs must have the same length and must not alias.
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2")]
 pub fn normalize_consts_avx(basek: usize) -> (__m256i, __m256i, __m256i, __m256i) {
@@ -211,6 +215,10 @@ pub fn normalize_consts_avx(basek: usize) -> (__m256i, __m256i, __m256i, __m256i
 
 /// AVX2 get_digit using masks (no arithmetic shift needed):
 /// digit = ((x & mask_k) ^ sign_k) - sign_k
+///
+/// # Safety
+/// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
+/// all inputs must have the same length and must not alias.
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2")]
 fn get_digit_avx(x: __m256i, mask_k: __m256i, sign_k: __m256i) -> __m256i {
@@ -222,6 +230,10 @@ fn get_digit_avx(x: __m256i, mask_k: __m256i, sign_k: __m256i) -> __m256i {
 
 /// AVX2 get_carry using precomputed shift and topmask:
 /// carry = (x - digit) >>_arith k
+///
+/// # Safety
+/// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
+/// all inputs must have the same length and must not alias.
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2")]
 unsafe fn get_carry_avx(
@@ -240,6 +252,9 @@ unsafe fn get_carry_avx(
     _mm256_or_si256(lsr, fill)
 }
 
+/// # Safety
+/// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
+/// all inputs must have the same length and must not alias.
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2")]
 pub fn znx_normalize_carry_only_beg_avx(basek: usize, lsh: usize, x: &[i64], carry: &mut [i64]) {
@@ -287,6 +302,9 @@ pub fn znx_normalize_carry_only_beg_avx(basek: usize, lsh: usize, x: &[i64], car
     }
 }
 
+/// # Safety
+/// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
+/// all inputs must have the same length and must not alias.
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2")]
 pub fn znx_normalize_inplace_beg_avx(basek: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
@@ -353,6 +371,9 @@ pub fn znx_normalize_inplace_beg_avx(basek: usize, lsh: usize, x: &mut [i64], ca
     }
 }
 
+/// # Safety
+/// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
+/// all inputs must have the same length and must not alias.
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2")]
 pub fn znx_normalize_beg_avx(basek: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
@@ -429,6 +450,9 @@ pub fn znx_normalize_beg_avx(basek: usize, lsh: usize, x: &mut [i64], a: &[i64],
     }
 }
 
+/// # Safety
+/// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
+/// all inputs must have the same length and must not alias.
 #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
 #[target_feature(enable = "avx2")]
 pub fn znx_normalize_inplace_mid_avx(basek: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
@@ -502,6 +526,9 @@ pub fn znx_normalize_inplace_mid_avx(basek: usize, lsh: usize, x: &mut [i64], ca
     }
 }
 
+/// # Safety
+/// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
+/// all inputs must have the same length and must not alias.
 #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
 #[target_feature(enable = "avx2")]
 pub fn znx_normalize_carry_only_mid_avx(basek: usize, lsh: usize, x: &[i64], carry: &mut [i64]) {
@@ -573,6 +600,9 @@ pub fn znx_normalize_carry_only_mid_avx(basek: usize, lsh: usize, x: &[i64], car
     }
 }
 
+/// # Safety
+/// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
+/// all inputs must have the same length and must not alias.
 #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
 #[target_feature(enable = "avx2")]
 pub fn znx_normalize_mid_avx(basek: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
@@ -656,6 +686,9 @@ pub fn znx_normalize_mid_avx(basek: usize, lsh: usize, x: &mut [i64], a: &[i64],
     }
 }
 
+/// # Safety
+/// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
+/// all inputs must have the same length and must not alias.
 #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
 #[target_feature(enable = "avx2")]
 pub fn znx_normalize_inplace_end_avx(basek: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
@@ -720,6 +753,9 @@ pub fn znx_normalize_inplace_end_avx(basek: usize, lsh: usize, x: &mut [i64], ca
     }
 }
 
+/// # Safety
+/// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
+/// all inputs must have the same length and must not alias.
 #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
 #[target_feature(enable = "avx2")]
 pub fn znx_normalize_end_avx(basek: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
@@ -1135,6 +1171,7 @@ mod tests {
     }
 }
 
+/// # Safety: this function is safe.
 #[target_feature(enable = "avx2")]
 fn print_m256i_as_i64x4(v: __m256i) {
     let mut a = [0i64; 4];

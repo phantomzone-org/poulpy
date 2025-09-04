@@ -11,6 +11,9 @@ pub fn znx_sub_i64_ref(res: &mut [i64], a: &[i64], b: &[i64]) {
     }
 }
 
+/// # Safety
+/// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
+/// all inputs must have the same length and must not alias.
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2")]
 pub fn znx_sub_i64_avx(res: &mut [i64], a: &[i64], b: &[i64]) {
@@ -58,6 +61,9 @@ pub fn znx_sub_ab_inplace_i64_ref(res: &mut [i64], a: &[i64]) {
     }
 }
 
+/// # Safety
+/// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
+/// all inputs must have the same length and must not alias.
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2")]
 pub fn znx_sub_ab_inplace_i64_avx(res: &mut [i64], a: &[i64]) {
@@ -102,6 +108,9 @@ pub fn znx_sub_ba_inplace_i64_ref(res: &mut [i64], a: &[i64]) {
     }
 }
 
+/// # Safety
+/// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
+/// all inputs must have the same length and must not alias.
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2")]
 pub fn znx_sub_ba_inplace_i64_avx(res: &mut [i64], a: &[i64]) {

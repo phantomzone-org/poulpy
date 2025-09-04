@@ -7,10 +7,6 @@ use crate::{
     layouts::{
         Backend, FillUniform, Module, ScratchOwned, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut, ZnxZero,
     },
-    oep::{
-        ModuleNewImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, VecZnxLshImpl, VecZnxLshInplaceImpl, VecZnxRshImpl,
-        VecZnxRshInplaceImpl,
-    },
     reference::{
         vec_znx::vec_znx_copy_ref,
         znx::{
@@ -315,7 +311,7 @@ where
 pub fn test_vec_znx_lsh<B: Backend>(module: &Module<B>)
 where
     Module<B>: VecZnxLsh<B>,
-    B: ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
+    ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
 {
     let mut source: Source = Source::new([0u8; 32]);
     let cols: usize = 2;
@@ -354,7 +350,7 @@ where
 pub fn test_vec_znx_lsh_inplace<B: Backend>(module: &Module<B>)
 where
     Module<B>: VecZnxLshInplace<B>,
-    B: ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
+    ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
 {
     let mut source: Source = Source::new([0u8; 32]);
     let cols: usize = 2;
@@ -374,7 +370,7 @@ where
                 .iter_mut()
                 .for_each(|x| *x = source.next_i32() as i64);
 
-            res_1.raw_mut().copy_from_slice(&res_0.raw());
+            res_1.raw_mut().copy_from_slice(res_0.raw());
 
             for i in 0..cols {
                 vec_znx_lsh_inplace_ref(basek, k, &mut res_0, i, &mut carry);
@@ -389,7 +385,7 @@ where
 pub fn test_vec_znx_rsh<B: Backend>(module: &Module<B>)
 where
     Module<B>: VecZnxRsh<B>,
-    B: ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
+    ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
 {
     let mut source: Source = Source::new([0u8; 32]);
     let cols: usize = 2;
@@ -428,7 +424,7 @@ where
 pub fn test_vec_znx_rsh_inplace<B: Backend>(module: &Module<B>)
 where
     Module<B>: VecZnxRshInplace<B>,
-    B: ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
+    ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
 {
     let mut source: Source = Source::new([0u8; 32]);
     let cols: usize = 2;
@@ -448,7 +444,7 @@ where
                 .iter_mut()
                 .for_each(|x| *x = source.next_i32() as i64);
 
-            res_1.raw_mut().copy_from_slice(&res_0.raw());
+            res_1.raw_mut().copy_from_slice(res_0.raw());
 
             for i in 0..cols {
                 vec_znx_rsh_inplace_ref(basek, k, &mut res_0, i, &mut carry);
@@ -462,7 +458,8 @@ where
 
 pub fn bench_vec_znx_lsh_inplace<B: Backend>(c: &mut Criterion, label: &str)
 where
-    B: ModuleNewImpl<B> + VecZnxLshInplaceImpl<B> + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
+    Module<B>: ModuleNew<B> + VecZnxLshInplace<B>,
+    ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
 {
     let group_name: String = format!("vec_znx_lsh_inplace::{}", label);
 
@@ -509,7 +506,8 @@ where
 
 pub fn bench_vec_znx_lsh<B: Backend>(c: &mut Criterion, label: &str)
 where
-    B: ModuleNewImpl<B> + VecZnxLshImpl<B> + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
+    Module<B>: VecZnxLsh<B> + ModuleNew<B>,
+    ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
 {
     let group_name: String = format!("vec_znx_lsh::{}", label);
 
@@ -556,7 +554,8 @@ where
 
 pub fn bench_vec_znx_rsh_inplace<B: Backend>(c: &mut Criterion, label: &str)
 where
-    B: ModuleNewImpl<B> + VecZnxRshInplaceImpl<B> + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
+    Module<B>: VecZnxRshInplace<B> + ModuleNew<B>,
+    ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
 {
     let group_name: String = format!("vec_znx_rsh_inplace::{}", label);
 
@@ -603,7 +602,8 @@ where
 
 pub fn bench_vec_znx_rsh<B: Backend>(c: &mut Criterion, label: &str)
 where
-    B: ModuleNewImpl<B> + VecZnxRshImpl<B> + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
+    Module<B>: VecZnxRsh<B> + ModuleNew<B>,
+    ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
 {
     let group_name: String = format!("vec_znx_rsh::{}", label);
 
