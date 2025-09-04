@@ -70,18 +70,18 @@ impl<DataSelf: DataMut> GGLWETensorKeyCompressed<DataSelf> {
         let n: usize = sk.n();
         let rank: usize = self.rank();
 
-        let (mut sk_dft_prep, scratch1) = scratch.take_glwe_secret_prepared(n, rank);
-        sk_dft_prep.prepare(module, sk, scratch1);
+        let (mut sk_dft_prep, scratch_1) = scratch.take_glwe_secret_prepared(n, rank);
+        sk_dft_prep.prepare(module, sk, scratch_1);
 
-        let (mut sk_dft, scratch2) = scratch1.take_vec_znx_dft(n, rank, 1);
+        let (mut sk_dft, scratch_2) = scratch_1.take_vec_znx_dft(n, rank, 1);
 
         (0..rank).for_each(|i| {
             module.dft(1, 0, &mut sk_dft, i, &sk.data.as_vec_znx(), i);
         });
 
-        let (mut sk_ij_big, scratch3) = scratch2.take_vec_znx_big(n, 1, 1);
-        let (mut sk_ij, scratch4) = scratch3.take_glwe_secret(n, 1);
-        let (mut sk_ij_dft, scratch5) = scratch4.take_vec_znx_dft(n, 1, 1);
+        let (mut sk_ij_big, scratch_3) = scratch_2.take_vec_znx_big(n, 1, 1);
+        let (mut sk_ij, scratch_4) = scratch_3.take_glwe_secret(n, 1);
+        let (mut sk_ij_dft, scratch_5) = scratch_4.take_vec_znx_dft(n, 1, 1);
 
         let mut source_xa: Source = Source::new(seed_xa);
 
@@ -96,13 +96,13 @@ impl<DataSelf: DataMut> GGLWETensorKeyCompressed<DataSelf> {
                     0,
                     &sk_ij_big,
                     0,
-                    scratch5,
+                    scratch_5,
                 );
 
                 let (seed_xa_tmp, _) = source_xa.branch();
 
                 self.at_mut(i, j)
-                    .encrypt_sk(module, &sk_ij, sk, seed_xa_tmp, source_xe, scratch5);
+                    .encrypt_sk(module, &sk_ij, sk, seed_xa_tmp, source_xe, scratch_5);
             });
         })
     }

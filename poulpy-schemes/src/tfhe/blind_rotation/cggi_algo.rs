@@ -161,11 +161,11 @@ fn execute_block_binary_extended<DataRes, DataIn, DataBrk, B: Backend>(
     let rows: usize = brk.rows();
     let cols: usize = res.rank() + 1;
 
-    let (mut acc, scratch1) = scratch.take_vec_znx_slice(extension_factor, n_glwe, cols, res.size());
-    let (mut acc_dft, scratch2) = scratch1.take_vec_znx_dft_slice(extension_factor, n_glwe, cols, rows);
-    let (mut vmp_res, scratch3) = scratch2.take_vec_znx_dft_slice(extension_factor, n_glwe, cols, brk.size());
-    let (mut acc_add_dft, scratch4) = scratch3.take_vec_znx_dft_slice(extension_factor, n_glwe, cols, brk.size());
-    let (mut vmp_xai, scratch5) = scratch4.take_vec_znx_dft(n_glwe, 1, brk.size());
+    let (mut acc, scratch_1) = scratch.take_vec_znx_slice(extension_factor, n_glwe, cols, res.size());
+    let (mut acc_dft, scratch_2) = scratch_1.take_vec_znx_dft_slice(extension_factor, n_glwe, cols, rows);
+    let (mut vmp_res, scratch_3) = scratch_2.take_vec_znx_dft_slice(extension_factor, n_glwe, cols, brk.size());
+    let (mut acc_add_dft, scratch_4) = scratch_3.take_vec_znx_dft_slice(extension_factor, n_glwe, cols, brk.size());
+    let (mut vmp_xai, scratch_5) = scratch_4.take_vec_znx_dft(n_glwe, 1, brk.size());
 
     (0..extension_factor).for_each(|i| {
         acc[i].zero();
@@ -221,7 +221,7 @@ fn execute_block_binary_extended<DataRes, DataIn, DataBrk, B: Backend>(
 
             // vmp_res = DFT(acc) * BRK[i]
             (0..extension_factor).for_each(|i| {
-                module.vmp_apply_dft_to_dft(&mut vmp_res[i], &acc_dft[i], skii.data(), scratch5);
+                module.vmp_apply_dft_to_dft(&mut vmp_res[i], &acc_dft[i], skii.data(), scratch_5);
             });
 
             // Trivial case: no rotation between polynomials, we can directly multiply with (X^{-ai} - 1)
@@ -269,7 +269,7 @@ fn execute_block_binary_extended<DataRes, DataIn, DataBrk, B: Backend>(
         });
 
         {
-            let (mut acc_add_big, scratch7) = scratch5.take_vec_znx_big(n_glwe, 1, brk.size());
+            let (mut acc_add_big, scratch7) = scratch_5.take_vec_znx_big(n_glwe, 1, brk.size());
 
             (0..extension_factor).for_each(|j| {
                 (0..cols).for_each(|i| {
@@ -351,10 +351,10 @@ fn execute_block_binary<DataRes, DataIn, DataBrk, B: Backend>(
 
     // ACC + [sum DFT(X^ai -1) * (DFT(ACC) x BRKi)]
 
-    let (mut acc_dft, scratch1) = scratch.take_vec_znx_dft(n_glwe, cols, rows);
-    let (mut vmp_res, scratch2) = scratch1.take_vec_znx_dft(n_glwe, cols, brk.size());
-    let (mut acc_add_dft, scratch3) = scratch2.take_vec_znx_dft(n_glwe, cols, brk.size());
-    let (mut vmp_xai, scratch4) = scratch3.take_vec_znx_dft(n_glwe, 1, brk.size());
+    let (mut acc_dft, scratch_1) = scratch.take_vec_znx_dft(n_glwe, cols, rows);
+    let (mut vmp_res, scratch_2) = scratch_1.take_vec_znx_dft(n_glwe, cols, brk.size());
+    let (mut acc_add_dft, scratch_3) = scratch_2.take_vec_znx_dft(n_glwe, cols, brk.size());
+    let (mut vmp_xai, scratch_4) = scratch_3.take_vec_znx_dft(n_glwe, 1, brk.size());
 
     let x_pow_a: &Vec<SvpPPol<Vec<u8>, B>>;
     if let Some(b) = &brk.x_pow_a {
@@ -378,7 +378,7 @@ fn execute_block_binary<DataRes, DataIn, DataBrk, B: Backend>(
             let ai_pos: usize = ((aii + two_n as i64) & (two_n - 1) as i64) as usize;
 
             // vmp_res = DFT(acc) * BRK[i]
-            module.vmp_apply_dft_to_dft(&mut vmp_res, &acc_dft, skii.data(), scratch4);
+            module.vmp_apply_dft_to_dft(&mut vmp_res, &acc_dft, skii.data(), scratch_4);
 
             // DFT(X^ai -1) * (DFT(acc) * BRK[i])
             (0..cols).for_each(|i| {
@@ -389,12 +389,12 @@ fn execute_block_binary<DataRes, DataIn, DataBrk, B: Backend>(
         });
 
         {
-            let (mut acc_add_big, scratch5) = scratch4.take_vec_znx_big(n_glwe, 1, brk.size());
+            let (mut acc_add_big, scratch_5) = scratch_4.take_vec_znx_big(n_glwe, 1, brk.size());
 
             (0..cols).for_each(|i| {
-                module.idft(&mut acc_add_big, 0, &acc_add_dft, i, scratch5);
+                module.idft(&mut acc_add_big, 0, &acc_add_dft, i, scratch_5);
                 module.vec_znx_big_add_small_inplace(&mut acc_add_big, 0, &out_mut.data, i);
-                module.vec_znx_big_normalize(basek, &mut out_mut.data, i, &acc_add_big, 0, scratch5);
+                module.vec_znx_big_normalize(basek, &mut out_mut.data, i, &acc_add_big, 0, scratch_5);
             });
         }
     });
@@ -492,13 +492,13 @@ fn execute_standard<DataRes, DataIn, DataBrk, B: Backend>(
     module.vec_znx_rotate(b, &mut out_mut.data, 0, &lut.data[0], 0);
 
     // ACC + [sum DFT(X^ai -1) * (DFT(ACC) x BRKi)]
-    let (mut acc_tmp, scratch1) = scratch.take_glwe_ct(out_mut.n(), basek, out_mut.k(), out_mut.rank());
+    let (mut acc_tmp, scratch_1) = scratch.take_glwe_ct(out_mut.n(), basek, out_mut.k(), out_mut.rank());
 
     // TODO: see if faster by skipping normalization in external product and keeping acc in big coeffs
     // TODO: first iteration can be optimized to be a gglwe product
     izip!(a.iter(), brk.data.iter()).for_each(|(ai, ski)| {
         // acc_tmp = sk[i] * acc
-        acc_tmp.external_product(module, &out_mut, ski, scratch1);
+        acc_tmp.external_product(module, &out_mut, ski, scratch_1);
 
         // acc_tmp = (sk[i] * acc) * (X^{ai} - 1)
         acc_tmp.mul_xp_minus_one_inplace(module, *ai);
@@ -509,7 +509,7 @@ fn execute_standard<DataRes, DataIn, DataBrk, B: Backend>(
 
     // We can normalize only at the end because we add normalized values in [-2^{basek-1}, 2^{basek-1}]
     // on top of each others, thus ~ 2^{63-basek} additions are supported before overflow.
-    out_mut.normalize_inplace(module, scratch1);
+    out_mut.normalize_inplace(module, scratch_1);
 }
 
 pub fn mod_switch_2n(n: usize, res: &mut [i64], lwe: &LWECiphertext<&[u8]>, rot_dir: LookUpTableRotationDirection) {

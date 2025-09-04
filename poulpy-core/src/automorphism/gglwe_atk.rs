@@ -59,7 +59,7 @@ impl<DataSelf: DataMut> GGLWEAutomorphismKey<DataSelf> {
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>
             + VecZnxAutomorphism
-            + VecZnxAutomorphismInplace,
+            + VecZnxAutomorphismInplace<B>,
         Scratch<B>: ScratchAvailable + TakeVecZnxDft<B>,
     {
         #[cfg(debug_assertions)]
@@ -113,7 +113,7 @@ impl<DataSelf: DataMut> GGLWEAutomorphismKey<DataSelf> {
 
                 // Applies back the automorphism X^{-k}: (-pi^{-1}_{k'}(s)a + pi_{k}(s), a) to (-pi^{-1}_{k'+k}(s)a + s, a)
                 (0..cols_out).for_each(|i| {
-                    module.vec_znx_automorphism_inplace(p_inv, &mut res_ct.data, i);
+                    module.vec_znx_automorphism_inplace(p_inv, &mut res_ct.data, i, scratch);
                 });
             });
         });
@@ -143,7 +143,7 @@ impl<DataSelf: DataMut> GGLWEAutomorphismKey<DataSelf> {
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>
             + VecZnxAutomorphism
-            + VecZnxAutomorphismInplace,
+            + VecZnxAutomorphismInplace<B>,
         Scratch<B>: ScratchAvailable + TakeVecZnxDft<B>,
     {
         unsafe {

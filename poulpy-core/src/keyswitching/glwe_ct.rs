@@ -143,10 +143,10 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         {
             self.assert_keyswitch(module, lhs, rhs, scratch);
         }
-        let (res_dft, scratch1) = scratch.take_vec_znx_dft(self.n(), self.cols(), rhs.size()); // Todo optimise
-        let res_big: VecZnxBig<_, B> = lhs.keyswitch_internal(module, res_dft, rhs, scratch1);
+        let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self.n(), self.cols(), rhs.size()); // Todo optimise
+        let res_big: VecZnxBig<_, B> = lhs.keyswitch_internal(module, res_dft, rhs, scratch_1);
         (0..self.cols()).for_each(|i| {
-            module.vec_znx_big_normalize(self.basek(), &mut self.data, i, &res_big, i, scratch1);
+            module.vec_znx_big_normalize(self.basek(), &mut self.data, i, &res_big, i, scratch_1);
         })
     }
 
@@ -228,11 +228,11 @@ where
     Scratch<B>: TakeVecZnxDft<B>,
 {
     let cols: usize = a.cols();
-    let (mut ai_dft, scratch1) = scratch.take_vec_znx_dft(a.n(), cols - 1, a.size());
+    let (mut ai_dft, scratch_1) = scratch.take_vec_znx_dft(a.n(), cols - 1, a.size());
     (0..cols - 1).for_each(|col_i| {
         module.dft(1, 0, &mut ai_dft, col_i, a, col_i + 1);
     });
-    module.vmp_apply_dft_to_dft(&mut res_dft, &ai_dft, mat, scratch1);
+    module.vmp_apply_dft_to_dft(&mut res_dft, &ai_dft, mat, scratch_1);
     let mut res_big: VecZnxBig<DataRes, B> = module.vec_znx_idft_consume(res_dft);
     module.vec_znx_big_add_small_inplace(&mut res_big, 0, a, 0);
     res_big
@@ -260,7 +260,7 @@ where
 {
     let cols: usize = a.cols();
     let size: usize = a.size();
-    let (mut ai_dft, scratch1) = scratch.take_vec_znx_dft(a.n(), cols - 1, size.div_ceil(digits));
+    let (mut ai_dft, scratch_1) = scratch.take_vec_znx_dft(a.n(), cols - 1, size.div_ceil(digits));
 
     ai_dft.data_mut().fill(0);
 
@@ -281,9 +281,9 @@ where
         });
 
         if di == 0 {
-            module.vmp_apply_dft_to_dft(&mut res_dft, &ai_dft, mat, scratch1);
+            module.vmp_apply_dft_to_dft(&mut res_dft, &ai_dft, mat, scratch_1);
         } else {
-            module.vmp_apply_dft_to_dft_add(&mut res_dft, &ai_dft, mat, di, scratch1);
+            module.vmp_apply_dft_to_dft_add(&mut res_dft, &ai_dft, mat, di, scratch_1);
         }
     });
 

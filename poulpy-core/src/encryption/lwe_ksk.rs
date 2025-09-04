@@ -38,7 +38,7 @@ impl<D: DataMut> LWESwitchingKey<D> {
     ) where
         DIn: DataRef,
         DOut: DataRef,
-        Module<B>: VecZnxAutomorphismInplace
+        Module<B>: VecZnxAutomorphismInplace<B>
             + VecZnxAddScalarInplace
             + VecZnxDftAllocBytes
             + VecZnxBigNormalize<B>
@@ -65,16 +65,16 @@ impl<D: DataMut> LWESwitchingKey<D> {
             assert!(self.n() <= module.n());
         }
 
-        let (mut sk_in_glwe, scratch1) = scratch.take_glwe_secret(self.n(), 1);
-        let (mut sk_out_glwe, scratch2) = scratch1.take_glwe_secret(self.n(), 1);
+        let (mut sk_in_glwe, scratch_1) = scratch.take_glwe_secret(self.n(), 1);
+        let (mut sk_out_glwe, scratch_2) = scratch_1.take_glwe_secret(self.n(), 1);
 
         sk_out_glwe.data.at_mut(0, 0)[..sk_lwe_out.n()].copy_from_slice(sk_lwe_out.data.at(0, 0));
         sk_out_glwe.data.at_mut(0, 0)[sk_lwe_out.n()..].fill(0);
-        module.vec_znx_automorphism_inplace(-1, &mut sk_out_glwe.data.as_vec_znx_mut(), 0);
+        module.vec_znx_automorphism_inplace(-1, &mut sk_out_glwe.data.as_vec_znx_mut(), 0, scratch_2);
 
         sk_in_glwe.data.at_mut(0, 0)[..sk_lwe_in.n()].copy_from_slice(sk_lwe_in.data.at(0, 0));
         sk_in_glwe.data.at_mut(0, 0)[sk_lwe_in.n()..].fill(0);
-        module.vec_znx_automorphism_inplace(-1, &mut sk_in_glwe.data.as_vec_znx_mut(), 0);
+        module.vec_znx_automorphism_inplace(-1, &mut sk_in_glwe.data.as_vec_znx_mut(), 0, scratch_2);
 
         self.0.encrypt_sk(
             module,
@@ -82,7 +82,7 @@ impl<D: DataMut> LWESwitchingKey<D> {
             &sk_out_glwe,
             source_xa,
             source_xe,
-            scratch2,
+            scratch_2,
         );
     }
 }

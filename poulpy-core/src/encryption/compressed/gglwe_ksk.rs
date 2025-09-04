@@ -90,20 +90,20 @@ impl<DataSelf: DataMut> GGLWESwitchingKeyCompressed<DataSelf> {
 
         let n: usize = sk_in.n().max(sk_out.n());
 
-        let (mut sk_in_tmp, scratch1) = scratch.take_scalar_znx(n, sk_in.rank());
+        let (mut sk_in_tmp, scratch_1) = scratch.take_scalar_znx(n, sk_in.rank());
         (0..sk_in.rank()).for_each(|i| {
             module.vec_znx_switch_degree(
                 &mut sk_in_tmp.as_vec_znx_mut(),
                 i,
                 &sk_in.data.as_vec_znx(),
                 i,
-                scratch1,
+                scratch_1,
             );
         });
 
-        let (mut sk_out_tmp, scratch2) = scratch1.take_glwe_secret_prepared(n, sk_out.rank());
+        let (mut sk_out_tmp, scratch_2) = scratch_1.take_glwe_secret_prepared(n, sk_out.rank());
         {
-            let (mut tmp, scratch_3) = scratch2.take_scalar_znx(n, 1);
+            let (mut tmp, scratch_3) = scratch_2.take_scalar_znx(n, 1);
             (0..sk_out.rank()).for_each(|i| {
                 module.vec_znx_switch_degree(
                     &mut tmp.as_vec_znx_mut(),
@@ -122,7 +122,7 @@ impl<DataSelf: DataMut> GGLWESwitchingKeyCompressed<DataSelf> {
             &sk_out_tmp,
             seed_xa,
             source_xe,
-            scratch2,
+            scratch_2,
         );
         self.sk_in_n = sk_in.n();
         self.sk_out_n = sk_out.n();

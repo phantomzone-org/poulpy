@@ -61,7 +61,7 @@ pub fn test_glwe_automorphism<B>(
         + VecZnxAutomorphism
         + VecZnxSwithcDegree<B>
         + VecZnxAddScalarInplace
-        + VecZnxAutomorphismInplace
+        + VecZnxAutomorphismInplace<B>
         + VmpPMatAlloc<B>
         + VmpPrepare<B>,
     B: Backend
@@ -144,7 +144,7 @@ pub fn test_glwe_automorphism<B>(
         k_ksk,
     );
 
-    module.vec_znx_automorphism_inplace(p, &mut pt_want.data, 0);
+    module.vec_znx_automorphism_inplace(p, &mut pt_want.data, 0, scratch.borrow());
 
     ct_out.assert_noise(module, &sk_prepared, &pt_want, max_noise + 1.0);
 }
@@ -185,7 +185,7 @@ pub fn test_glwe_automorphism_inplace<B>(
         + VecZnxAutomorphism
         + VecZnxSwithcDegree<B>
         + VecZnxAddScalarInplace
-        + VecZnxAutomorphismInplace
+        + VecZnxAutomorphismInplace<B>
         + VmpPMatAlloc<B>
         + VmpPrepare<B>,
     B: Backend
@@ -259,7 +259,7 @@ pub fn test_glwe_automorphism_inplace<B>(
         k_ksk,
     );
 
-    module.vec_znx_automorphism_inplace(p, &mut pt_want.data, 0);
+    module.vec_znx_automorphism_inplace(p, &mut pt_want.data, 0, scratch.borrow());
 
     ct.assert_noise(module, &sk_prepared, &pt_want, max_noise + 1.0);
 }

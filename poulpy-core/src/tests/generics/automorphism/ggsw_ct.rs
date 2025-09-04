@@ -71,7 +71,7 @@ pub fn test_ggsw_automorphism<B>(
         + VecZnxSub
         + SvpApply<B>
         + VecZnxSwithcDegree<B>
-        + VecZnxAutomorphismInplace
+        + VecZnxAutomorphismInplace<B>
         + VecZnxAutomorphism,
     B: Backend
         + TakeVecZnxDftImpl<B>
@@ -159,7 +159,7 @@ pub fn test_ggsw_automorphism<B>(
         scratch.borrow(),
     );
 
-    module.vec_znx_automorphism_inplace(p, &mut pt_scalar.as_vec_znx_mut(), 0);
+    module.vec_znx_automorphism_inplace(p, &mut pt_scalar.as_vec_znx_mut(), 0, scratch.borrow());
 
     let max_noise = |col_j: usize| -> f64 {
         noise_ggsw_keyswitch(
@@ -226,7 +226,7 @@ pub fn test_ggsw_automorphism_inplace<B>(
         + VecZnxFillUniform
         + SvpApply<B>
         + VecZnxSwithcDegree<B>
-        + VecZnxAutomorphismInplace
+        + VecZnxAutomorphismInplace<B>
         + VecZnxAutomorphism,
     B: Backend
         + TakeVecZnxDftImpl<B>
@@ -304,7 +304,7 @@ pub fn test_ggsw_automorphism_inplace<B>(
 
     ct.automorphism_inplace(module, &auto_key_prepared, &tsk_prepared, scratch.borrow());
 
-    module.vec_znx_automorphism_inplace(p, &mut pt_scalar.as_vec_znx_mut(), 0);
+    module.vec_znx_automorphism_inplace(p, &mut pt_scalar.as_vec_znx_mut(), 0, scratch.borrow());
 
     let max_noise = |col_j: usize| -> f64 {
         noise_ggsw_keyswitch(

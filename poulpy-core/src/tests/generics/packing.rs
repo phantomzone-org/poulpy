@@ -62,7 +62,7 @@ where
         + VmpApplyDftToDftAdd<B>
         + VecZnxBigNormalizeTmpBytes
         + VecZnxSwithcDegree<B>
-        + VecZnxAutomorphismInplace
+        + VecZnxAutomorphismInplace<B>
         + VecZnxCopy,
     B: Backend
         + TakeVecZnxDftImpl<B>

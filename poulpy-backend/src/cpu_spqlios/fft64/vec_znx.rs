@@ -12,14 +12,18 @@ use poulpy_hal::{
     },
     oep::{
         TakeSliceImpl, TakeVecZnxImpl, VecZnxAddDistF64Impl, VecZnxAddImpl, VecZnxAddInplaceImpl, VecZnxAddNormalImpl,
-        VecZnxAddScalarImpl, VecZnxAddScalarInplaceImpl, VecZnxAutomorphismImpl, VecZnxAutomorphismInplaceImpl, VecZnxCopyImpl,
-        VecZnxFillDistF64Impl, VecZnxFillNormalImpl, VecZnxFillUniformImpl, VecZnxLshInplaceImpl, VecZnxMergeImpl,
-        VecZnxMulXpMinusOneImpl, VecZnxMulXpMinusOneInplaceImpl, VecZnxNegateImpl, VecZnxNegateInplaceImpl, VecZnxNormalizeImpl,
+        VecZnxAddScalarImpl, VecZnxAddScalarInplaceImpl, VecZnxAutomorphismImpl, VecZnxAutomorphismInplaceImpl,
+        VecZnxAutomorphismInplaceTmpBytesImpl, VecZnxCopyImpl, VecZnxFillDistF64Impl, VecZnxFillNormalImpl,
+        VecZnxFillUniformImpl, VecZnxLshImpl, VecZnxLshInplaceImpl, VecZnxMergeImpl, VecZnxMulXpMinusOneImpl,
+        VecZnxMulXpMinusOneInplaceImpl, VecZnxNegateImpl, VecZnxNegateInplaceImpl, VecZnxNormalizeImpl,
         VecZnxNormalizeInplaceImpl, VecZnxNormalizeTmpBytesImpl, VecZnxRotateImpl, VecZnxRotateInplaceImpl,
-        VecZnxRotateInplaceTmpBytesImpl, VecZnxRshInplaceImpl, VecZnxSplitImpl, VecZnxSubABInplaceImpl, VecZnxSubBAInplaceImpl,
-        VecZnxSubImpl, VecZnxSubScalarInplaceImpl, VecZnxSwithcDegreeImpl,
+        VecZnxRotateInplaceTmpBytesImpl, VecZnxRshImpl, VecZnxRshInplaceImpl, VecZnxSplitImpl, VecZnxSubABInplaceImpl,
+        VecZnxSubBAInplaceImpl, VecZnxSubImpl, VecZnxSubScalarInplaceImpl, VecZnxSwithcDegreeImpl,
     },
-    reference::vec_znx::{vec_znx_lsh_inplace_ref, vec_znx_rotate_inplace_tmp_bytes_ref, vec_znx_rsh_inplace_ref},
+    reference::vec_znx::{
+        vec_znx_automorphism_inplace_tmp_bytes_ref, vec_znx_lsh_inplace_ref, vec_znx_lsh_ref,
+        vec_znx_rotate_inplace_tmp_bytes_ref, vec_znx_rsh_inplace_ref, vec_znx_rsh_ref,
+    },
     source::Source,
 };
 
@@ -438,6 +442,29 @@ unsafe impl VecZnxNegateInplaceImpl<Self> for FFT64 {
     }
 }
 
+unsafe impl VecZnxLshImpl<Self> for FFT64
+where
+    Module<Self>: VecZnxNormalizeTmpBytes,
+    Scratch<Self>: TakeSlice,
+{
+    fn vec_znx_lsh_inplace_impl<R, A>(
+        module: &Module<Self>,
+        basek: usize,
+        k: usize,
+        res: &mut R,
+        res_col: usize,
+        a: &A,
+        a_col: usize,
+        scratch: &mut Scratch<Self>,
+    ) where
+        R: VecZnxToMut,
+        A: VecZnxToRef,
+    {
+        let (carry, _) = scratch.take_slice(module.vec_znx_normalize_tmp_bytes() / size_of::<i64>());
+        vec_znx_lsh_ref(basek, k, res, res_col, a, a_col, carry)
+    }
+}
+
 unsafe impl VecZnxLshInplaceImpl<Self> for FFT64
 where
     Module<Self>: VecZnxNormalizeTmpBytes,
@@ -455,6 +482,29 @@ where
     {
         let (carry, _) = scratch.take_slice(module.vec_znx_normalize_tmp_bytes() / size_of::<i64>());
         vec_znx_lsh_inplace_ref(basek, k, a, a_col, carry)
+    }
+}
+
+unsafe impl VecZnxRshImpl<Self> for FFT64
+where
+    Module<Self>: VecZnxNormalizeTmpBytes,
+    Scratch<Self>: TakeSlice,
+{
+    fn vec_znx_rsh_inplace_impl<R, A>(
+        module: &Module<Self>,
+        basek: usize,
+        k: usize,
+        res: &mut R,
+        res_col: usize,
+        a: &A,
+        a_col: usize,
+        scratch: &mut Scratch<Self>,
+    ) where
+        R: VecZnxToMut,
+        A: VecZnxToRef,
+    {
+        let (carry, _) = scratch.take_slice(module.vec_znx_normalize_tmp_bytes() / size_of::<i64>());
+        vec_znx_rsh_ref(basek, k, res, res_col, a, a_col, carry)
     }
 }
 
@@ -561,8 +611,14 @@ unsafe impl VecZnxAutomorphismImpl<Self> for FFT64 {
     }
 }
 
+unsafe impl VecZnxAutomorphismInplaceTmpBytesImpl<Self> for FFT64 {
+    fn vec_znx_automorphism_inplace_tmp_bytes_impl(module: &Module<Self>) -> usize {
+        vec_znx_automorphism_inplace_tmp_bytes_ref(module.n())
+    }
+}
+
 unsafe impl VecZnxAutomorphismInplaceImpl<Self> for FFT64 {
-    fn vec_znx_automorphism_inplace_impl<A>(module: &Module<Self>, k: i64, a: &mut A, a_col: usize)
+    fn vec_znx_automorphism_inplace_impl<A>(module: &Module<Self>, k: i64, a: &mut A, a_col: usize, _scratch: &mut Scratch<Self>)
     where
         A: VecZnxToMut,
     {

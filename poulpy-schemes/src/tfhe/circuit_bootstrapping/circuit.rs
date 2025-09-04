@@ -48,7 +48,7 @@ where
         + IDFTConsume<B>
         + VecZnxBigAddSmallInplace<B>
         + VecZnxBigNormalize<B>
-        + VecZnxAutomorphismInplace
+        + VecZnxAutomorphismInplace<B>
         + VecZnxBigSubSmallBInplace<B>
         + VecZnxRotateInplaceTmpBytes
         + VecZnxBigAllocBytes
@@ -147,7 +147,7 @@ pub fn circuit_bootstrap_core<DRes, DLwe, DBrk, BRA: BlindRotationAlgo, B>(
         + IDFTConsume<B>
         + VecZnxBigAddSmallInplace<B>
         + VecZnxBigNormalize<B>
-        + VecZnxAutomorphismInplace
+        + VecZnxAutomorphismInplace<B>
         + VecZnxBigSubSmallBInplace<B>
         + VecZnxBigAllocBytes
         + VecZnxDftAddInplace<B>
@@ -201,8 +201,8 @@ pub fn circuit_bootstrap_core<DRes, DLwe, DBrk, BRA: BlindRotationAlgo, B>(
     }
 
     // TODO: separate GGSW k from output of blind rotation k
-    let (mut res_glwe, scratch1) = scratch.take_glwe_ct(n, basek, k, rank);
-    let (mut tmp_gglwe, scratch_2) = scratch1.take_gglwe(n, basek, k, rows, 1, rank.max(1), rank);
+    let (mut res_glwe, scratch_1) = scratch.take_glwe_ct(n, basek, k, rank);
+    let (mut tmp_gglwe, scratch_2) = scratch_1.take_gglwe(n, basek, k, rows, 1, rank.max(1), rank);
 
     key.brk.execute(module, &mut res_glwe, lwe, &lut, scratch_2);
 
@@ -273,7 +273,7 @@ fn post_process<DataRes, DataA, B: Backend>(
         + IDFTConsume<B>
         + VecZnxBigAddSmallInplace<B>
         + VecZnxBigNormalize<B>
-        + VecZnxAutomorphismInplace
+        + VecZnxAutomorphismInplace<B>
         + VecZnxBigSubSmallBInplace<B>
         + VecZnxRotate,
     Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
@@ -345,7 +345,7 @@ pub fn pack<D: DataMut, B: Backend>(
         + IDFTConsume<B>
         + VecZnxBigAddSmallInplace<B>
         + VecZnxBigNormalize<B>
-        + VecZnxAutomorphismInplace
+        + VecZnxAutomorphismInplace<B>
         + VecZnxBigSubSmallBInplace<B>
         + VecZnxRotate,
     Scratch<B>: TakeVecZnx + TakeVecZnxDft<B> + ScratchAvailable,
@@ -424,7 +424,7 @@ fn combine<A: DataMut, D: DataMut, DataAK: DataRef, B: Backend>(
         + IDFTConsume<B>
         + VecZnxBigAddSmallInplace<B>
         + VecZnxBigNormalize<B>
-        + VecZnxAutomorphismInplace
+        + VecZnxAutomorphismInplace<B>
         + VecZnxBigSubSmallBInplace<B>
         + VecZnxRotate,
     Scratch<B>: TakeVecZnx + TakeVecZnxDft<B> + ScratchAvailable,

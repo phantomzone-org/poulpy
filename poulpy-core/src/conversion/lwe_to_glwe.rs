@@ -55,7 +55,7 @@ impl<D: DataMut> GLWECiphertext<D> {
             assert_eq!(self.basek(), self.basek());
         }
 
-        let (mut glwe, scratch1) = scratch.take_glwe_ct(ksk.n(), lwe.basek(), lwe.k(), 1);
+        let (mut glwe, scratch_1) = scratch.take_glwe_ct(ksk.n(), lwe.basek(), lwe.k(), 1);
         glwe.data.zero();
 
         let n_lwe: usize = lwe.n();
@@ -66,6 +66,6 @@ impl<D: DataMut> GLWECiphertext<D> {
             glwe.data.at_mut(1, i)[..n_lwe].copy_from_slice(&data_lwe[1..]);
         });
 
-        self.keyswitch(module, &glwe, &ksk.0, scratch1);
+        self.keyswitch(module, &glwe, &ksk.0, scratch_1);
     }
 }

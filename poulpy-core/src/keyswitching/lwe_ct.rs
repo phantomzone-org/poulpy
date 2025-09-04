@@ -67,7 +67,7 @@ impl<DLwe: DataMut> LWECiphertext<DLwe> {
         let max_k: usize = self.k().max(a.k());
         let basek: usize = self.basek();
 
-        let (mut glwe, scratch1) = scratch.take_glwe_ct(ksk.n(), basek, max_k, 1);
+        let (mut glwe, scratch_1) = scratch.take_glwe_ct(ksk.n(), basek, max_k, 1);
         glwe.data.zero();
 
         let n_lwe: usize = a.n();
@@ -78,7 +78,7 @@ impl<DLwe: DataMut> LWECiphertext<DLwe> {
             glwe.data.at_mut(1, i)[..n_lwe].copy_from_slice(&data_lwe[1..]);
         });
 
-        glwe.keyswitch_inplace(module, &ksk.0, scratch1);
+        glwe.keyswitch_inplace(module, &ksk.0, scratch_1);
 
         self.sample_extract(&glwe);
     }

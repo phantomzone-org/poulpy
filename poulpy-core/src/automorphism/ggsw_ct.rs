@@ -83,7 +83,7 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
             + IDFTConsume<B>
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>
-            + VecZnxAutomorphismInplace
+            + VecZnxAutomorphismInplace<B>
             + VecZnxBigAllocBytes
             + VecZnxNormalizeTmpBytes
             + VecZnxDftCopy<B>
@@ -153,7 +153,7 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
             + IDFTConsume<B>
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>
-            + VecZnxAutomorphismInplace
+            + VecZnxAutomorphismInplace<B>
             + VecZnxBigAllocBytes
             + VecZnxNormalizeTmpBytes
             + VecZnxDftCopy<B>
@@ -183,7 +183,7 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
             + IDFTConsume<B>
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>
-            + VecZnxAutomorphismInplace,
+            + VecZnxAutomorphismInplace<B>,
         Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
     {
         // Keyswitch the j-th row of the col 0

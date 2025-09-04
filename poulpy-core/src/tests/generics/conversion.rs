@@ -50,7 +50,7 @@ where
         + VmpApplyDftToDftAdd<B>
         + VecZnxBigNormalizeTmpBytes
         + VecZnxSwithcDegree<B>
-        + VecZnxAutomorphismInplace
+        + VecZnxAutomorphismInplace<B>
         + ZnNormalizeInplace<B>
         + ZnFillUniform
         + ZnAddNormal,
@@ -155,7 +155,7 @@ where
         + VmpApplyDftToDftAdd<B>
         + VecZnxBigNormalizeTmpBytes
         + VecZnxSwithcDegree<B>
-        + VecZnxAutomorphismInplace
+        + VecZnxAutomorphismInplace<B>
         + ZnNormalizeInplace<B>,
     B: Backend
         + TakeVecZnxDftImpl<B>

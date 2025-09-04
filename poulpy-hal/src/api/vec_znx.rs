@@ -167,22 +167,26 @@ pub trait VecZnxAutomorphism {
         A: VecZnxToRef;
 }
 
-pub trait VecZnxAutomorphismInplace {
+pub trait VecZnxAutomorphismInplaceTmpBytes {
+    fn vec_znx_automorphism_inplace_tmp_bytes(&self) -> usize;
+}
+
+pub trait VecZnxAutomorphismInplace<B: Backend> {
     /// Applies the automorphism X^i -> X^ik on the selected column of `a`.
-    fn vec_znx_automorphism_inplace<A>(&self, k: i64, a: &mut A, a_col: usize)
+    fn vec_znx_automorphism_inplace<R>(&self, k: i64, res: &mut R, res_col: usize, scratch: &mut Scratch<B>)
     where
-        A: VecZnxToMut;
+        R: VecZnxToMut;
 }
 
 pub trait VecZnxMulXpMinusOne {
-    fn vec_znx_mul_xp_minus_one<R, A>(&self, p: i64, r: &mut R, r_col: usize, a: &A, a_col: usize)
+    fn vec_znx_mul_xp_minus_one<R, A>(&self, p: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxToMut,
         A: VecZnxToRef;
 }
 
 pub trait VecZnxMulXpMinusOneInplace {
-    fn vec_znx_mul_xp_minus_one_inplace<R>(&self, p: i64, r: &mut R, r_col: usize)
+    fn vec_znx_mul_xp_minus_one_inplace<R>(&self, p: i64, res: &mut R, res_col: usize)
     where
         R: VecZnxToMut;
 }

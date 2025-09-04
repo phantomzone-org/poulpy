@@ -50,7 +50,7 @@ where
         + VecZnxAutomorphism
         + VecZnxSwithcDegree<B>
         + VecZnxAddScalarInplace
-        + VecZnxAutomorphismInplace
+        + VecZnxAutomorphismInplace<B>
         + VecZnxBigAllocBytes
         + VecZnxBigAddInplace<B>
         + VecZnxSubScalarInplace
@@ -142,7 +142,7 @@ pub fn test_gglwe_automorphisk_key_compressed_encrypt_sk<B>(
         + VecZnxAutomorphism
         + VecZnxSwithcDegree<B>
         + VecZnxAddScalarInplace
-        + VecZnxAutomorphismInplace
+        + VecZnxAutomorphismInplace<B>
         + VecZnxBigAllocBytes
         + VecZnxBigAddInplace<B>
         + VecZnxSubScalarInplace

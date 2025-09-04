@@ -76,7 +76,7 @@ where
         + VecZnxDftCopy<B>
         + VecZnxNegateInplace
         + VecZnxCopy
-        + VecZnxAutomorphismInplace
+        + VecZnxAutomorphismInplace<B>
         + VecZnxBigSubSmallBInplace<B>
         + VecZnxRotateInplaceTmpBytes
         + VecZnxBigAllocBytes
@@ -264,7 +264,7 @@ where
         + VecZnxDftCopy<B>
         + VecZnxNegateInplace
         + VecZnxCopy
-        + VecZnxAutomorphismInplace
+        + VecZnxAutomorphismInplace<B>
         + VecZnxBigSubSmallBInplace<B>
         + VecZnxBigAllocBytes
         + VecZnxDftAddInplace<B>

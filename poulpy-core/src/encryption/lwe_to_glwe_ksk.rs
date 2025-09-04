@@ -36,7 +36,7 @@ impl<D: DataMut> LWEToGLWESwitchingKey<D> {
     ) where
         DLwe: DataRef,
         DGlwe: DataRef,
-        Module<B>: VecZnxAutomorphismInplace
+        Module<B>: VecZnxAutomorphismInplace<B>
             + VecZnxAddScalarInplace
             + VecZnxDftAllocBytes
             + VecZnxBigNormalize<B>
@@ -61,10 +61,10 @@ impl<D: DataMut> LWEToGLWESwitchingKey<D> {
             assert!(sk_lwe.n() <= module.n());
         }
 
-        let (mut sk_lwe_as_glwe, scratch1) = scratch.take_glwe_secret(sk_glwe.n(), 1);
+        let (mut sk_lwe_as_glwe, scratch_1) = scratch.take_glwe_secret(sk_glwe.n(), 1);
         sk_lwe_as_glwe.data.at_mut(0, 0)[..sk_lwe.n()].copy_from_slice(sk_lwe.data.at(0, 0));
         sk_lwe_as_glwe.data.at_mut(0, 0)[sk_lwe.n()..].fill(0);
-        module.vec_znx_automorphism_inplace(-1, &mut sk_lwe_as_glwe.data.as_vec_znx_mut(), 0);
+        module.vec_znx_automorphism_inplace(-1, &mut sk_lwe_as_glwe.data.as_vec_znx_mut(), 0, scratch_1);
 
         self.0.encrypt_sk(
             module,
@@ -72,7 +72,7 @@ impl<D: DataMut> LWEToGLWESwitchingKey<D> {
             sk_glwe,
             source_xa,
             source_xe,
-            scratch1,
+            scratch_1,
         );
     }
 }

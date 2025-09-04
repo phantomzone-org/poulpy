@@ -39,7 +39,7 @@ fn inv_mod_pow2(p: usize, bits: u32) -> usize {
 }
 
 #[cfg(target_arch = "x86_64")]
-#[target_feature(enable = "avx2")]
+#[target_feature(enable = "avx2", enable = "fma")]
 pub fn znx_automorphism_avx(p: i64, res: &mut [i64], a: &[i64]) {
     debug_assert_eq!(res.len(), a.len());
     let n: usize = res.len();
@@ -119,7 +119,7 @@ pub fn znx_automorphism_avx(p: i64, res: &mut [i64], a: &[i64]) {
 mod tests {
     use super::*;
 
-    #[target_feature(enable = "avx2")]
+    #[target_feature(enable = "avx2", enable = "fma")]
     fn test_znx_automorphism_internal() {
         let a: [i64; 16] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
 

@@ -285,13 +285,21 @@ pub unsafe trait VecZnxAutomorphismImpl<B: Backend> {
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See TODO;
+/// * See [crate::api::VecZnxAutomorphismInplaceTmpBytes] for corresponding public API.
+/// # Safety [crate::doc::backend_safety] for safety contract.
+pub unsafe trait VecZnxAutomorphismInplaceTmpBytesImpl<B: Backend> {
+    fn vec_znx_automorphism_inplace_tmp_bytes_impl(module: &Module<B>) -> usize;
+}
+
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
 /// * See [vec_znx_automorphism_ref](https://github.com/phantomzone-org/spqlios-arithmetic/blob/32a3f5fcce9863b58e949f2dfd5abc1bfbaa09b4/spqlios/arithmetic/vec_znx.c#L188) for reference code.
 /// * See [crate::api::VecZnxAutomorphismInplace] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxAutomorphismInplaceImpl<B: Backend> {
-    fn vec_znx_automorphism_inplace_impl<A>(module: &Module<B>, k: i64, a: &mut A, a_col: usize)
+    fn vec_znx_automorphism_inplace_impl<R>(module: &Module<B>, k: i64, res: &mut R, res_col: usize, scratch: &mut Scratch<B>)
     where
-        A: VecZnxToMut;
+        R: VecZnxToMut;
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)

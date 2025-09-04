@@ -101,8 +101,8 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         let cols: usize = rhs.rank() + 1;
         let digits: usize = rhs.digits();
 
-        let (mut res_dft, scratch1) = scratch.take_vec_znx_dft(self.n(), cols, rhs.size()); // Todo optimise
-        let (mut a_dft, scratch2) = scratch1.take_vec_znx_dft(self.n(), cols, lhs.size().div_ceil(digits));
+        let (mut res_dft, scratch_1) = scratch.take_vec_znx_dft(self.n(), cols, rhs.size()); // Todo optimise
+        let (mut a_dft, scratch_2) = scratch_1.take_vec_znx_dft(self.n(), cols, lhs.size().div_ceil(digits));
 
         a_dft.data_mut().fill(0);
 
@@ -125,9 +125,9 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
                 });
 
                 if di == 0 {
-                    module.vmp_apply_dft_to_dft(&mut res_dft, &a_dft, &rhs.data, scratch2);
+                    module.vmp_apply_dft_to_dft(&mut res_dft, &a_dft, &rhs.data, scratch_2);
                 } else {
-                    module.vmp_apply_dft_to_dft_add(&mut res_dft, &a_dft, &rhs.data, di, scratch2);
+                    module.vmp_apply_dft_to_dft_add(&mut res_dft, &a_dft, &rhs.data, di, scratch_2);
                 }
             });
         }
@@ -135,7 +135,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         let res_big: VecZnxBig<&mut [u8], B> = module.vec_znx_idft_consume(res_dft);
 
         (0..cols).for_each(|i| {
-            module.vec_znx_big_normalize(basek, &mut self.data, i, &res_big, i, scratch1);
+            module.vec_znx_big_normalize(basek, &mut self.data, i, &res_big, i, scratch_1);
         });
     }
 

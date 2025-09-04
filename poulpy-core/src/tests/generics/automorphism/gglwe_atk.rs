@@ -46,7 +46,7 @@ pub fn test_gglwe_automorphism_key_automorphism<B>(
         + VecZnxBigAddSmallInplace<B>
         + VecZnxBigNormalize<B>
         + VecZnxAutomorphism
-        + VecZnxAutomorphismInplace
+        + VecZnxAutomorphismInplace<B>
         + SvpPPolAllocBytes
         + VecZnxDftAllocBytes
         + VecZnxNormalizeTmpBytes
@@ -227,7 +227,7 @@ pub fn test_gglwe_automorphism_key_automorphism_inplace<B>(
         + VecZnxSwithcDegree<B>
         + VecZnxAddScalarInplace
         + VecZnxAutomorphism
-        + VecZnxAutomorphismInplace
+        + VecZnxAutomorphismInplace<B>
         + VecZnxDftAllocBytes
         + VecZnxBigAllocBytes
         + DFT<B>

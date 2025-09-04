@@ -234,7 +234,7 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
         // Keyswitch the j-th row of the col 0
         (0..self.rows()).for_each(|row_i| {
             // Pre-compute DFT of (a0, a1, a2)
-            let (mut ci_dft, scratch1) = scratch.take_vec_znx_dft(n, cols, self.size());
+            let (mut ci_dft, scratch_1) = scratch.take_vec_znx_dft(n, cols, self.size());
             (0..cols).for_each(|i| {
                 module.dft(1, 0, &mut ci_dft, i, &self.at(row_i, 0).data, i);
             });
@@ -262,8 +262,8 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
 
                 let digits: usize = tsk.digits();
 
-                let (mut tmp_dft_i, scratch2) = scratch1.take_vec_znx_dft(n, cols, tsk.size());
-                let (mut tmp_a, scratch3) = scratch2.take_vec_znx_dft(n, 1, ci_dft.size().div_ceil(digits));
+                let (mut tmp_dft_i, scratch_2) = scratch_1.take_vec_znx_dft(n, cols, tsk.size());
+                let (mut tmp_a, scratch_3) = scratch_2.take_vec_znx_dft(n, 1, ci_dft.size().div_ceil(digits));
 
                 {
                     // Performs a key-switch for each combination of s[i]*s[j], i.e. for a0, a1, a2
@@ -295,9 +295,9 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
 
                             module.vec_znx_dft_copy(digits, digits - 1 - di, &mut tmp_a, 0, &ci_dft, col_i);
                             if di == 0 && col_i == 1 {
-                                module.vmp_apply_dft_to_dft(&mut tmp_dft_i, &tmp_a, pmat, scratch3);
+                                module.vmp_apply_dft_to_dft(&mut tmp_dft_i, &tmp_a, pmat, scratch_3);
                             } else {
-                                module.vmp_apply_dft_to_dft_add(&mut tmp_dft_i, &tmp_a, pmat, di, scratch3);
+                                module.vmp_apply_dft_to_dft_add(&mut tmp_dft_i, &tmp_a, pmat, di, scratch_3);
                             }
                         });
                     });
@@ -313,7 +313,7 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
                 // =
                 // (-(x0s0 + x1s1 + x2s2), x0 + M[i], x1, x2)
                 module.vec_znx_dft_add_inplace(&mut tmp_dft_i, col_j, &ci_dft, 0);
-                let (mut tmp_idft, scratch3) = scratch2.take_vec_znx_big(n, 1, tsk.size());
+                let (mut tmp_idft, scratch_3) = scratch_2.take_vec_znx_big(n, 1, tsk.size());
                 (0..cols).for_each(|i| {
                     module.idft_tmp_a(&mut tmp_idft, 0, &mut tmp_dft_i, i);
                     module.vec_znx_big_normalize(
@@ -322,7 +322,7 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
                         i,
                         &tmp_idft,
                         0,
-                        scratch3,
+                        scratch_3,
                     );
                 });
             })

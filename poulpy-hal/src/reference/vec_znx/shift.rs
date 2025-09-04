@@ -86,12 +86,12 @@ where
     let steps: usize = k / basek;
     let k_rem: usize = k % basek;
 
-    if steps >= res_size {
+    if steps >= res_size.min(a_size) {
         res.zero();
         return;
     }
 
-    let min_size: usize = a_size.min(res_size - steps);
+    let min_size: usize = a_size.min(res_size) - steps;
 
     // Simply a left shifted normalization of limbs
     // by k/basek and intra-limb by basek - k%basek

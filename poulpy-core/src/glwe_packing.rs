@@ -139,7 +139,7 @@ impl GLWEPacker {
             + VecZnxNormalizeInplace<B>
             + VecZnxSubABInplace
             + VecZnxRotate
-            + VecZnxAutomorphismInplace
+            + VecZnxAutomorphismInplace<B>
             + VecZnxBigSubSmallBInplace<B>
             + VecZnxBigAutomorphismInplace<B>,
         Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
@@ -217,7 +217,7 @@ fn pack_core<D: DataRef, DataAK: DataRef, B: Backend>(
         + VecZnxNormalizeInplace<B>
         + VecZnxSubABInplace
         + VecZnxRotate
-        + VecZnxAutomorphismInplace
+        + VecZnxAutomorphismInplace<B>
         + VecZnxBigSubSmallBInplace<B>
         + VecZnxBigAutomorphismInplace<B>,
     Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
@@ -314,7 +314,7 @@ fn combine<D: DataRef, DataAK: DataRef, B: Backend>(
         + VecZnxNormalizeInplace<B>
         + VecZnxSubABInplace
         + VecZnxRotate
-        + VecZnxAutomorphismInplace
+        + VecZnxAutomorphismInplace<B>
         + VecZnxBigSubSmallBInplace<B>
         + VecZnxBigAutomorphismInplace<B>,
     Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
