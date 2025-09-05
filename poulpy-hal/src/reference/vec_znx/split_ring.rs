@@ -29,6 +29,7 @@ where
             n_out < n_in,
             "invalid a: output ring degree should be smaller"
         );
+
         res[1..].iter_mut().for_each(|bi| {
             assert_eq!(
                 bi.to_mut().n(),

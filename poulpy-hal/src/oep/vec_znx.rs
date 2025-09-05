@@ -387,12 +387,26 @@ pub unsafe trait VecZnxSplitRingImpl<B: Backend> {
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See TODO;
+/// * See [crate::api::VecZnxMergeRingsTmpBytes] for corresponding public API.
+/// # Safety [crate::doc::backend_safety] for safety contract.
+pub unsafe trait VecZnxMergeRingsTmpBytesImpl<B: Backend> {
+    fn vec_znx_merge_rings_tmp_bytes_impl(module: &Module<B>) -> usize;
+}
+
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
 /// * See [crate::cpu_spqlios::vec_znx::vec_znx_merge_ref] for reference code.
 /// * See [crate::api::VecZnxMerge] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
-pub unsafe trait VecZnxMergeImpl<B: Backend> {
-    fn vec_znx_merge_impl<R, A>(module: &Module<B>, res: &mut R, res_col: usize, a: &[A], a_col: usize, scratch: &mut Scratch<B>)
-    where
+pub unsafe trait VecZnxMergeRingsImpl<B: Backend> {
+    fn vec_znx_merge_rings_impl<R, A>(
+        module: &Module<B>,
+        res: &mut R,
+        res_col: usize,
+        a: &[A],
+        a_col: usize,
+        scratch: &mut Scratch<B>,
+    ) where
         R: VecZnxToMut,
         A: VecZnxToRef;
 }

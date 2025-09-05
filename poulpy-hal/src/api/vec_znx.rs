@@ -225,14 +225,18 @@ pub trait VecZnxSplitRing<B: Backend> {
         A: VecZnxToRef;
 }
 
-pub trait VecZnxMerge<B: Backend> {
+pub trait VecZnxMergeRingsTmpBytes {
+    fn vec_znx_merge_rings_tmp_bytes(&self) -> usize;
+}
+
+pub trait VecZnxMergeRings<B: Backend> {
     /// Merges the subrings of the selected column of `a` into the selected column of `res`.
     ///
     /// # Panics
     ///
     /// This method requires that all [crate::layouts::VecZnx] of a have the same ring degree
     /// and that a.n() * a.len() <= b.n()
-    fn vec_znx_merge<R, A>(&self, res: &mut R, res_col: usize, a: &[A], a_col: usize, scratch: &mut Scratch<B>)
+    fn vec_znx_merge_rings<R, A>(&self, res: &mut R, res_col: usize, a: &[A], a_col: usize, scratch: &mut Scratch<B>)
     where
         R: VecZnxToMut,
         A: VecZnxToRef;
