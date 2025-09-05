@@ -1,6 +1,8 @@
 #[allow(non_camel_case_types)]
 pub mod module;
 #[allow(non_camel_case_types)]
+pub mod reim;
+#[allow(non_camel_case_types)]
 pub mod svp;
 #[allow(non_camel_case_types)]
 pub mod vec_znx;

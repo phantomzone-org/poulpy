@@ -5,5 +5,6 @@ mod ntt120;
 #[cfg(test)]
 mod test;
 
+pub use ffi::*;
 pub use fft64::*;
 pub use ntt120::*;

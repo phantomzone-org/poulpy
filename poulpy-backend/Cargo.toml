@@ -29,5 +29,5 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 
 [[bench]]
-name = "vec_znx"
+name = "fft"
 harness = false
