@@ -1,5 +1,9 @@
+use std::hint::black_box;
+
+use criterion::{BenchmarkId, Criterion};
+
 use crate::{
-    api::{VecZnxBigAdd, VecZnxBigAddInplace, VecZnxBigAddSmall, VecZnxBigAddSmallInplace},
+    api::{ModuleNew, VecZnxBigAdd, VecZnxBigAddInplace, VecZnxBigAddSmall, VecZnxBigAddSmallInplace},
     layouts::{
         Backend, FillUniform, Module, VecZnx, VecZnxBig, VecZnxBigToMut, VecZnxBigToRef, VecZnxToRef, ZnxView, ZnxViewMut,
     },
@@ -269,4 +273,188 @@ where
             assert_eq!(res_0.raw(), res_1.raw());
         }
     }
+}
+
+pub fn bench_vec_znx_big_add<B: Backend>(c: &mut Criterion, label: &str)
+where
+    Module<B>: VecZnxBigAdd<B> + ModuleNew<B>,
+    B: VecZnxBigAllocBytesImpl<B>,
+{
+    let group_name: String = format!("vec_znx_big_add::{}", label);
+
+    let mut group = c.benchmark_group(group_name);
+
+    fn runner<B: Backend>(params: [usize; 3]) -> impl FnMut()
+    where
+        Module<B>: VecZnxBigAdd<B> + ModuleNew<B>,
+        B: VecZnxBigAllocBytesImpl<B>,
+    {
+        let module: Module<B> = Module::<B>::new(1 << params[0]);
+
+        let cols: usize = params[1];
+        let size: usize = params[2];
+
+        let mut source: Source = Source::new([0u8; 32]);
+
+        let mut a: VecZnxBig<Vec<u8>, B> = VecZnxBig::alloc(module.n(), cols, size);
+        let mut b: VecZnxBig<Vec<u8>, B> = VecZnxBig::alloc(module.n(), cols, size);
+        let mut c: VecZnxBig<Vec<u8>, B> = VecZnxBig::alloc(module.n(), cols, size);
+
+        // Fill a with random i64
+        a.fill_uniform(&mut source);
+        b.fill_uniform(&mut source);
+        c.fill_uniform(&mut source);
+
+        move || {
+            for i in 0..cols {
+                module.vec_znx_big_add(&mut c, i, &a, i, &b, i);
+            }
+            black_box(());
+        }
+    }
+
+    for params in [[10, 2, 2], [11, 2, 4], [12, 2, 8], [13, 2, 16], [14, 2, 32]] {
+        let id: BenchmarkId = BenchmarkId::from_parameter(format!("{}x({}x{})", 1 << params[0], params[1], params[2],));
+        let mut runner = runner::<B>(params);
+        group.bench_with_input(id, &(), |b, _| b.iter(&mut runner));
+    }
+
+    group.finish();
+}
+
+pub fn bench_vec_znx_big_add_inplace<B: Backend>(c: &mut Criterion, label: &str)
+where
+    Module<B>: VecZnxBigAddInplace<B> + ModuleNew<B>,
+    B: VecZnxBigAllocBytesImpl<B>,
+{
+    let group_name: String = format!("vec_znx_big_add_inplace::{}", label);
+
+    let mut group = c.benchmark_group(group_name);
+
+    fn runner<B: Backend>(params: [usize; 3]) -> impl FnMut()
+    where
+        Module<B>: VecZnxBigAddInplace<B> + ModuleNew<B>,
+        B: VecZnxBigAllocBytesImpl<B>,
+    {
+        let module: Module<B> = Module::<B>::new(1 << params[0]);
+
+        let cols: usize = params[1];
+        let size: usize = params[2];
+
+        let mut source: Source = Source::new([0u8; 32]);
+
+        let mut a: VecZnxBig<Vec<u8>, B> = VecZnxBig::alloc(module.n(), cols, size);
+        let mut c: VecZnxBig<Vec<u8>, B> = VecZnxBig::alloc(module.n(), cols, size);
+
+        // Fill a with random i64
+        a.fill_uniform(&mut source);
+        c.fill_uniform(&mut source);
+
+        move || {
+            for i in 0..cols {
+                module.vec_znx_big_add_inplace(&mut c, i, &a, i);
+            }
+            black_box(());
+        }
+    }
+
+    for params in [[10, 2, 2], [11, 2, 4], [12, 2, 8], [13, 2, 16], [14, 2, 32]] {
+        let id: BenchmarkId = BenchmarkId::from_parameter(format!("{}x({}x{})", 1 << params[0], params[1], params[2],));
+        let mut runner = runner::<B>(params);
+        group.bench_with_input(id, &(), |b, _| b.iter(&mut runner));
+    }
+
+    group.finish();
+}
+
+pub fn bench_vec_znx_big_add_small<B: Backend>(c: &mut Criterion, label: &str)
+where
+    Module<B>: VecZnxBigAddSmall<B> + ModuleNew<B>,
+    B: VecZnxBigAllocBytesImpl<B>,
+{
+    let group_name: String = format!("vec_znx_big_add_small::{}", label);
+
+    let mut group = c.benchmark_group(group_name);
+
+    fn runner<B: Backend>(params: [usize; 3]) -> impl FnMut()
+    where
+        Module<B>: VecZnxBigAddSmall<B> + ModuleNew<B>,
+        B: VecZnxBigAllocBytesImpl<B>,
+    {
+        let module: Module<B> = Module::<B>::new(1 << params[0]);
+
+        let cols: usize = params[1];
+        let size: usize = params[2];
+
+        let mut source: Source = Source::new([0u8; 32]);
+
+        let mut a: VecZnxBig<Vec<u8>, B> = VecZnxBig::alloc(module.n(), cols, size);
+        let mut b: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, size);
+        let mut c: VecZnxBig<Vec<u8>, B> = VecZnxBig::alloc(module.n(), cols, size);
+
+        // Fill a with random i64
+        a.fill_uniform(&mut source);
+        b.fill_uniform(&mut source);
+        c.fill_uniform(&mut source);
+
+        move || {
+            for i in 0..cols {
+                module.vec_znx_big_add_small(&mut c, i, &a, i, &b, i);
+            }
+            black_box(());
+        }
+    }
+
+    for params in [[10, 2, 2], [11, 2, 4], [12, 2, 8], [13, 2, 16], [14, 2, 32]] {
+        let id: BenchmarkId = BenchmarkId::from_parameter(format!("{}x({}x{})", 1 << params[0], params[1], params[2],));
+        let mut runner = runner::<B>(params);
+        group.bench_with_input(id, &(), |b, _| b.iter(&mut runner));
+    }
+
+    group.finish();
+}
+
+pub fn bench_vec_znx_big_add_small_inplace<B: Backend>(c: &mut Criterion, label: &str)
+where
+    Module<B>: VecZnxBigAddSmallInplace<B> + ModuleNew<B>,
+    B: VecZnxBigAllocBytesImpl<B>,
+{
+    let group_name: String = format!("vec_znx_big_add_small_inplace::{}", label);
+
+    let mut group = c.benchmark_group(group_name);
+
+    fn runner<B: Backend>(params: [usize; 3]) -> impl FnMut()
+    where
+        Module<B>: VecZnxBigAddSmallInplace<B> + ModuleNew<B>,
+        B: VecZnxBigAllocBytesImpl<B>,
+    {
+        let module: Module<B> = Module::<B>::new(1 << params[0]);
+
+        let cols: usize = params[1];
+        let size: usize = params[2];
+
+        let mut source: Source = Source::new([0u8; 32]);
+
+        let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, size);
+        let mut c: VecZnxBig<Vec<u8>, B> = VecZnxBig::alloc(module.n(), cols, size);
+
+        // Fill a with random i64
+        a.fill_uniform(&mut source);
+        c.fill_uniform(&mut source);
+
+        move || {
+            for i in 0..cols {
+                module.vec_znx_big_add_small_inplace(&mut c, i, &a, i);
+            }
+            black_box(());
+        }
+    }
+
+    for params in [[10, 2, 2], [11, 2, 4], [12, 2, 8], [13, 2, 16], [14, 2, 32]] {
+        let id: BenchmarkId = BenchmarkId::from_parameter(format!("{}x({}x{})", 1 << params[0], params[1], params[2],));
+        let mut runner = runner::<B>(params);
+        group.bench_with_input(id, &(), |b, _| b.iter(&mut runner));
+    }
+
+    group.finish();
 }
