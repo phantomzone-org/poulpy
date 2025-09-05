@@ -57,7 +57,7 @@ fn main() {
     let sk_prepared: GLWESecretPrepared<Vec<u8>, FFT64> = sk.prepare_alloc(&module, scratch.borrow());
 
     // Uniform plaintext
-    module.vec_znx_fill_uniform(basek, &mut pt_want.data, 0, k_pt, &mut source_xa);
+    module.vec_znx_fill_uniform(basek, &mut pt_want.data, 0, &mut source_xa);
 
     // Encryption
     ct.encrypt_sk(

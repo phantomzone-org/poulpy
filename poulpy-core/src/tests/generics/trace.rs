@@ -103,7 +103,7 @@ where
         .iter_mut()
         .for_each(|x| *x = source_xa.next_i64() & 0xFF);
 
-    module.vec_znx_fill_uniform(basek, &mut pt_have.data, 0, k, &mut source_xa);
+    module.vec_znx_fill_uniform(basek, &mut pt_have.data, 0, &mut source_xa);
 
     ct.encrypt_sk(
         module,

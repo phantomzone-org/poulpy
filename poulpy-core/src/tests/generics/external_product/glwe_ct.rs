@@ -83,7 +83,7 @@ pub fn test_glwe_external_product<B>(
     let mut source_xa: Source = Source::new([0u8; 32]);
 
     // Random input plaintext
-    module.vec_znx_fill_uniform(basek, &mut pt_want.data, 0, k_in, &mut source_xa);
+    module.vec_znx_fill_uniform(basek, &mut pt_want.data, 0, &mut source_xa);
 
     pt_want.data.at_mut(0, 0)[1] = 1;
 
@@ -215,7 +215,7 @@ pub fn test_glwe_external_product_inplace<B>(
     let mut source_xa: Source = Source::new([0u8; 32]);
 
     // Random input plaintext
-    module.vec_znx_fill_uniform(basek, &mut pt_want.data, 0, k_ct, &mut source_xa);
+    module.vec_znx_fill_uniform(basek, &mut pt_want.data, 0, &mut source_xa);
 
     pt_want.data.at_mut(0, 0)[1] = 1;
 

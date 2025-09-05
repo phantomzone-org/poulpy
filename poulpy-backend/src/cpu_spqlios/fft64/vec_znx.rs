@@ -1,19 +1,14 @@
-use rand_distr::Normal;
-
 use poulpy_hal::{
-    api::{
-        TakeSlice, VecZnxAddDistF64, VecZnxFillDistF64, VecZnxMergeRingsTmpBytes, VecZnxNormalizeTmpBytes,
-        VecZnxSplitRingTmpBytes,
-    },
+    api::{TakeSlice, VecZnxMergeRingsTmpBytes, VecZnxNormalizeTmpBytes, VecZnxSplitRingTmpBytes},
     layouts::{
         Module, ScalarZnx, ScalarZnxToRef, Scratch, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxSliceSize, ZnxView,
         ZnxViewMut, ZnxZero,
     },
     oep::{
-        TakeSliceImpl, VecZnxAddDistF64Impl, VecZnxAddImpl, VecZnxAddInplaceImpl, VecZnxAddNormalImpl, VecZnxAddScalarImpl,
-        VecZnxAddScalarInplaceImpl, VecZnxAutomorphismImpl, VecZnxAutomorphismInplaceImpl, VecZnxAutomorphismInplaceTmpBytesImpl,
-        VecZnxCopyImpl, VecZnxFillDistF64Impl, VecZnxFillNormalImpl, VecZnxFillUniformImpl, VecZnxLshImpl, VecZnxLshInplaceImpl,
-        VecZnxMergeRingsImpl, VecZnxMergeRingsTmpBytesImpl, VecZnxMulXpMinusOneImpl, VecZnxMulXpMinusOneInplaceImpl,
+        TakeSliceImpl, VecZnxAddImpl, VecZnxAddInplaceImpl, VecZnxAddNormalImpl, VecZnxAddScalarImpl, VecZnxAddScalarInplaceImpl,
+        VecZnxAutomorphismImpl, VecZnxAutomorphismInplaceImpl, VecZnxAutomorphismInplaceTmpBytesImpl, VecZnxCopyImpl,
+        VecZnxFillNormalImpl, VecZnxFillUniformImpl, VecZnxLshImpl, VecZnxLshInplaceImpl, VecZnxMergeRingsImpl,
+        VecZnxMergeRingsTmpBytesImpl, VecZnxMulXpMinusOneImpl, VecZnxMulXpMinusOneInplaceImpl,
         VecZnxMulXpMinusOneInplaceTmpBytesImpl, VecZnxNegateImpl, VecZnxNegateInplaceImpl, VecZnxNormalizeImpl,
         VecZnxNormalizeInplaceImpl, VecZnxNormalizeTmpBytesImpl, VecZnxRotateImpl, VecZnxRotateInplaceImpl,
         VecZnxRotateInplaceTmpBytesImpl, VecZnxRshImpl, VecZnxRshInplaceImpl, VecZnxSplitRingImpl, VecZnxSplitRingTmpBytesImpl,
@@ -21,10 +16,10 @@ use poulpy_hal::{
         VecZnxSwitchRingImpl,
     },
     reference::vec_znx::{
-        vec_znx_automorphism_inplace_tmp_bytes_ref, vec_znx_lsh_inplace_ref, vec_znx_lsh_ref, vec_znx_merge_rings_ref,
-        vec_znx_merge_rings_tmp_bytes_ref, vec_znx_mul_xp_minus_one_inplace_tmp_bytes_ref, vec_znx_rotate_inplace_tmp_bytes_ref,
-        vec_znx_rsh_inplace_ref, vec_znx_rsh_ref, vec_znx_split_ring_ref, vec_znx_split_ring_tmp_bytes_ref,
-        vec_znx_switch_ring_ref,
+        vec_znx_add_normal_ref, vec_znx_automorphism_inplace_tmp_bytes_ref, vec_znx_fill_normal_ref, vec_znx_fill_uniform_ref,
+        vec_znx_lsh_inplace_ref, vec_znx_lsh_ref, vec_znx_merge_rings_ref, vec_znx_merge_rings_tmp_bytes_ref,
+        vec_znx_mul_xp_minus_one_inplace_tmp_bytes_ref, vec_znx_rotate_inplace_tmp_bytes_ref, vec_znx_rsh_inplace_ref,
+        vec_znx_rsh_ref, vec_znx_split_ring_ref, vec_znx_split_ring_tmp_bytes_ref, vec_znx_switch_ring_ref,
     },
     source::Source,
 };
@@ -862,120 +857,17 @@ where
 }
 
 unsafe impl VecZnxFillUniformImpl<Self> for FFT64 {
-    fn vec_znx_fill_uniform_impl<R>(
-        _module: &Module<Self>,
-        basek: usize,
-        res: &mut R,
-        res_col: usize,
-        k: usize,
-        source: &mut Source,
-    ) where
+    fn vec_znx_fill_uniform_impl<R>(_module: &Module<Self>, basek: usize, res: &mut R, res_col: usize, source: &mut Source)
+    where
         R: VecZnxToMut,
     {
-        let mut a: VecZnx<&mut [u8]> = res.to_mut();
-        let base2k: u64 = 1 << basek;
-        let mask: u64 = base2k - 1;
-        let base2k_half: i64 = (base2k >> 1) as i64;
-        (0..k.div_ceil(basek)).for_each(|j| {
-            a.at_mut(res_col, j)
-                .iter_mut()
-                .for_each(|x| *x = (source.next_u64n(base2k, mask) as i64) - base2k_half);
-        })
+        vec_znx_fill_uniform_ref(basek, res, res_col, source)
     }
 }
 
-unsafe impl VecZnxFillDistF64Impl<Self> for FFT64 {
-    fn vec_znx_fill_dist_f64_impl<R, D: rand::prelude::Distribution<f64>>(
-        _module: &Module<Self>,
-        basek: usize,
-        res: &mut R,
-        res_col: usize,
-        k: usize,
-        source: &mut Source,
-        dist: D,
-        bound: f64,
-    ) where
-        R: VecZnxToMut,
-    {
-        let mut a: VecZnx<&mut [u8]> = res.to_mut();
-        assert!(
-            (bound.log2().ceil() as i64) < 64,
-            "invalid bound: ceil(log2(bound))={} > 63",
-            (bound.log2().ceil() as i64)
-        );
-
-        let limb: usize = k.div_ceil(basek) - 1;
-        let basek_rem: usize = (limb + 1) * basek - k;
-
-        if basek_rem != 0 {
-            a.at_mut(res_col, limb).iter_mut().for_each(|a| {
-                let mut dist_f64: f64 = dist.sample(source);
-                while dist_f64.abs() > bound {
-                    dist_f64 = dist.sample(source)
-                }
-                *a = (dist_f64.round() as i64) << basek_rem;
-            });
-        } else {
-            a.at_mut(res_col, limb).iter_mut().for_each(|a| {
-                let mut dist_f64: f64 = dist.sample(source);
-                while dist_f64.abs() > bound {
-                    dist_f64 = dist.sample(source)
-                }
-                *a = dist_f64.round() as i64
-            });
-        }
-    }
-}
-
-unsafe impl VecZnxAddDistF64Impl<Self> for FFT64 {
-    fn vec_znx_add_dist_f64_impl<R, D: rand::prelude::Distribution<f64>>(
-        _module: &Module<Self>,
-        basek: usize,
-        res: &mut R,
-        res_col: usize,
-        k: usize,
-        source: &mut Source,
-        dist: D,
-        bound: f64,
-    ) where
-        R: VecZnxToMut,
-    {
-        let mut a: VecZnx<&mut [u8]> = res.to_mut();
-        assert!(
-            (bound.log2().ceil() as i64) < 64,
-            "invalid bound: ceil(log2(bound))={} > 63",
-            (bound.log2().ceil() as i64)
-        );
-
-        let limb: usize = k.div_ceil(basek) - 1;
-        let basek_rem: usize = (limb + 1) * basek - k;
-
-        if basek_rem != 0 {
-            a.at_mut(res_col, limb).iter_mut().for_each(|a| {
-                let mut dist_f64: f64 = dist.sample(source);
-                while dist_f64.abs() > bound {
-                    dist_f64 = dist.sample(source)
-                }
-                *a += (dist_f64.round() as i64) << basek_rem;
-            });
-        } else {
-            a.at_mut(res_col, limb).iter_mut().for_each(|a| {
-                let mut dist_f64: f64 = dist.sample(source);
-                while dist_f64.abs() > bound {
-                    dist_f64 = dist.sample(source)
-                }
-                *a += dist_f64.round() as i64
-            });
-        }
-    }
-}
-
-unsafe impl VecZnxFillNormalImpl<Self> for FFT64
-where
-    Self: VecZnxFillDistF64Impl<Self>,
-{
+unsafe impl VecZnxFillNormalImpl<Self> for FFT64 {
     fn vec_znx_fill_normal_impl<R>(
-        module: &Module<Self>,
+        _module: &Module<Self>,
         basek: usize,
         res: &mut R,
         res_col: usize,
@@ -986,24 +878,13 @@ where
     ) where
         R: VecZnxToMut,
     {
-        module.vec_znx_fill_dist_f64(
-            basek,
-            res,
-            res_col,
-            k,
-            source,
-            Normal::new(0.0, sigma).unwrap(),
-            bound,
-        );
+        vec_znx_fill_normal_ref(basek, res, res_col, k, sigma, bound, source);
     }
 }
 
-unsafe impl VecZnxAddNormalImpl<Self> for FFT64
-where
-    Self: VecZnxAddDistF64Impl<Self>,
-{
+unsafe impl VecZnxAddNormalImpl<Self> for FFT64 {
     fn vec_znx_add_normal_impl<R>(
-        module: &Module<Self>,
+        _module: &Module<Self>,
         basek: usize,
         res: &mut R,
         res_col: usize,
@@ -1014,14 +895,6 @@ where
     ) where
         R: VecZnxToMut,
     {
-        module.vec_znx_add_dist_f64(
-            basek,
-            res,
-            res_col,
-            k,
-            source,
-            Normal::new(0.0, sigma).unwrap(),
-            bound,
-        );
+        vec_znx_add_normal_ref(basek, res, res_col, k, sigma, bound, source);
     }
 }

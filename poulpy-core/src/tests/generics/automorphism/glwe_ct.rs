@@ -86,7 +86,7 @@ pub fn test_glwe_automorphism<B>(
     let mut source_xe: Source = Source::new([0u8; 32]);
     let mut source_xa: Source = Source::new([0u8; 32]);
 
-    module.vec_znx_fill_uniform(basek, &mut pt_want.data, 0, k_in, &mut source_xa);
+    module.vec_znx_fill_uniform(basek, &mut pt_want.data, 0, &mut source_xa);
 
     let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
         GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, basek, autokey.k(), rank)
@@ -209,7 +209,7 @@ pub fn test_glwe_automorphism_inplace<B>(
     let mut source_xe: Source = Source::new([0u8; 32]);
     let mut source_xa: Source = Source::new([0u8; 32]);
 
-    module.vec_znx_fill_uniform(basek, &mut pt_want.data, 0, k_ct, &mut source_xa);
+    module.vec_znx_fill_uniform(basek, &mut pt_want.data, 0, &mut source_xa);
 
     let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
         GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, basek, autokey.k(), rank)

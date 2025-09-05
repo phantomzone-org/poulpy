@@ -1,5 +1,3 @@
-use rand_distr::Distribution;
-
 use crate::{
     layouts::{Backend, ScalarZnxToRef, Scratch, VecZnxToMut, VecZnxToRef},
     source::Source,
@@ -258,39 +256,8 @@ pub trait VecZnxCopy {
 
 pub trait VecZnxFillUniform {
     /// Fills the first `size` size with uniform values in \[-2^{basek-1}, 2^{basek-1}\]
-    fn vec_znx_fill_uniform<R>(&self, basek: usize, res: &mut R, res_col: usize, k: usize, source: &mut Source)
+    fn vec_znx_fill_uniform<R>(&self, basek: usize, res: &mut R, res_col: usize, source: &mut Source)
     where
-        R: VecZnxToMut;
-}
-
-#[allow(clippy::too_many_arguments)]
-pub trait VecZnxFillDistF64 {
-    fn vec_znx_fill_dist_f64<R, D: Distribution<f64>>(
-        &self,
-        basek: usize,
-        res: &mut R,
-        res_col: usize,
-        k: usize,
-        source: &mut Source,
-        dist: D,
-        bound: f64,
-    ) where
-        R: VecZnxToMut;
-}
-
-#[allow(clippy::too_many_arguments)]
-pub trait VecZnxAddDistF64 {
-    /// Adds vector sampled according to the provided distribution, scaled by 2^{-k} and bounded to \[-bound, bound\].
-    fn vec_znx_add_dist_f64<R, D: Distribution<f64>>(
-        &self,
-        basek: usize,
-        res: &mut R,
-        res_col: usize,
-        k: usize,
-        source: &mut Source,
-        dist: D,
-        bound: f64,
-    ) where
         R: VecZnxToMut;
 }
 

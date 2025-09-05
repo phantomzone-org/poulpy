@@ -350,7 +350,7 @@ pub(crate) fn glwe_encrypt_sk_internal<DataCt: DataMut, DataPt: DataRef, DataSk:
             let col_ct: usize = if compressed { 0 } else { i };
 
             // ct[i] = uniform (+ pt)
-            module.vec_znx_fill_uniform(basek, ct, col_ct, k, source_xa);
+            module.vec_znx_fill_uniform(basek, ct, col_ct, source_xa);
 
             let (mut ci_dft, scratch_3) = scratch_2.take_vec_znx_dft(ct.n(), 1, size);
 

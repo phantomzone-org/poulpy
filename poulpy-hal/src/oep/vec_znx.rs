@@ -1,5 +1,3 @@
-use rand_distr::Distribution;
-
 use crate::{
     layouts::{Backend, Module, ScalarZnxToRef, Scratch, VecZnxToMut, VecZnxToRef},
     source::Source,
@@ -440,44 +438,8 @@ pub unsafe trait VecZnxCopyImpl<B: Backend> {
 /// * See [crate::api::VecZnxFillUniform] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxFillUniformImpl<B: Backend> {
-    fn vec_znx_fill_uniform_impl<R>(module: &Module<B>, basek: usize, res: &mut R, res_col: usize, k: usize, source: &mut Source)
+    fn vec_znx_fill_uniform_impl<R>(module: &Module<B>, basek: usize, res: &mut R, res_col: usize, source: &mut Source)
     where
-        R: VecZnxToMut;
-}
-
-#[allow(clippy::too_many_arguments)]
-/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See [crate::api::VecZnxFillDistF64] for corresponding public API.
-/// # Safety [crate::doc::backend_safety] for safety contract.
-pub unsafe trait VecZnxFillDistF64Impl<B: Backend> {
-    fn vec_znx_fill_dist_f64_impl<R, D: Distribution<f64>>(
-        module: &Module<B>,
-        basek: usize,
-        res: &mut R,
-        res_col: usize,
-        k: usize,
-        source: &mut Source,
-        dist: D,
-        bound: f64,
-    ) where
-        R: VecZnxToMut;
-}
-
-#[allow(clippy::too_many_arguments)]
-/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See [crate::api::VecZnxAddDistF64] for corresponding public API.
-/// # Safety [crate::doc::backend_safety] for safety contract.
-pub unsafe trait VecZnxAddDistF64Impl<B: Backend> {
-    fn vec_znx_add_dist_f64_impl<R, D: Distribution<f64>>(
-        module: &Module<B>,
-        basek: usize,
-        res: &mut R,
-        res_col: usize,
-        k: usize,
-        source: &mut Source,
-        dist: D,
-        bound: f64,
-    ) where
         R: VecZnxToMut;
 }
 

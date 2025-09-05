@@ -168,7 +168,7 @@ impl<D: DataMut> GLWECiphertext<D> {
         let cols: usize = other.rank() + 1;
         module.vec_znx_copy(&mut self.data, 0, &other.data, 0);
         (1..cols).for_each(|i| {
-            module.vec_znx_fill_uniform(basek, &mut self.data, i, k, source);
+            module.vec_znx_fill_uniform(basek, &mut self.data, i, source);
         });
 
         self.basek = basek;

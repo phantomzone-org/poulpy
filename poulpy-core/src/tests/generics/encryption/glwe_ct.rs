@@ -88,7 +88,7 @@ where
     sk.fill_ternary_prob(0.5, &mut source_xs);
     let sk_prepared: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
 
-    module.vec_znx_fill_uniform(basek, &mut pt_want.data, 0, k_pt, &mut source_xa);
+    module.vec_znx_fill_uniform(basek, &mut pt_want.data, 0, &mut source_xa);
 
     ct.encrypt_sk(
         module,
@@ -176,7 +176,7 @@ where
     sk.fill_ternary_prob(0.5, &mut source_xs);
     let sk_prepared: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
 
-    module.vec_znx_fill_uniform(basek, &mut pt_want.data, 0, k_pt, &mut source_xa);
+    module.vec_znx_fill_uniform(basek, &mut pt_want.data, 0, &mut source_xa);
 
     let seed_xa: [u8; 32] = [1u8; 32];
 
@@ -342,7 +342,7 @@ where
     let mut pk: GLWEPublicKey<Vec<u8>> = GLWEPublicKey::alloc(n, basek, k_pk, rank);
     pk.generate_from_sk(module, &sk_prepared, &mut source_xa, &mut source_xe);
 
-    module.vec_znx_fill_uniform(basek, &mut pt_want.data, 0, k_ct, &mut source_xa);
+    module.vec_znx_fill_uniform(basek, &mut pt_want.data, 0, &mut source_xa);
 
     let pk_prepared: GLWEPublicKeyPrepared<Vec<u8>, B> = pk.prepare_alloc(module, scratch.borrow());
 

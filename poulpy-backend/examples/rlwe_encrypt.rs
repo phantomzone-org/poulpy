@@ -41,7 +41,7 @@ fn main() {
     );
 
     // Fill the second column with random values: ct = (0, a)
-    module.vec_znx_fill_uniform(basek, &mut ct, 1, ct_size * basek, &mut source);
+    module.vec_znx_fill_uniform(basek, &mut ct, 1, &mut source);
 
     let mut buf_dft: VecZnxDft<Vec<u8>, FFT64> = module.vec_znx_dft_alloc(1, ct_size);
 
