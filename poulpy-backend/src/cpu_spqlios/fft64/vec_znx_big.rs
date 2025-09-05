@@ -8,10 +8,10 @@ use poulpy_hal::{
     oep::{
         TakeSliceImpl, VecZnxBigAddImpl, VecZnxBigAddInplaceImpl, VecZnxBigAddNormalImpl, VecZnxBigAddSmallImpl,
         VecZnxBigAddSmallInplaceImpl, VecZnxBigAllocBytesImpl, VecZnxBigAllocImpl, VecZnxBigAutomorphismImpl,
-        VecZnxBigAutomorphismInplaceImpl, VecZnxBigFromBytesImpl, VecZnxBigNegateImpl, VecZnxBigNegateInplaceImpl,
-        VecZnxBigNormalizeImpl, VecZnxBigNormalizeTmpBytesImpl, VecZnxBigSubABInplaceImpl, VecZnxBigSubBAInplaceImpl,
-        VecZnxBigSubImpl, VecZnxBigSubSmallAImpl, VecZnxBigSubSmallAInplaceImpl, VecZnxBigSubSmallBImpl,
-        VecZnxBigSubSmallBInplaceImpl,
+        VecZnxBigAutomorphismInplaceImpl, VecZnxBigAutomorphismInplaceTmpBytesImpl, VecZnxBigFromBytesImpl, VecZnxBigNegateImpl,
+        VecZnxBigNegateInplaceImpl, VecZnxBigNormalizeImpl, VecZnxBigNormalizeTmpBytesImpl, VecZnxBigSubABInplaceImpl,
+        VecZnxBigSubBAInplaceImpl, VecZnxBigSubImpl, VecZnxBigSubSmallAImpl, VecZnxBigSubSmallAInplaceImpl,
+        VecZnxBigSubSmallBImpl, VecZnxBigSubSmallBInplaceImpl,
     },
     reference::vec_znx::vec_znx_add_normal_ref,
     source::Source,
@@ -560,10 +560,21 @@ unsafe impl VecZnxBigAutomorphismImpl<Self> for FFT64 {
     }
 }
 
+unsafe impl VecZnxBigAutomorphismInplaceTmpBytesImpl<Self> for FFT64 {
+    fn vec_znx_big_automorphism_inplace_tmp_bytes_impl(_module: &Module<Self>) -> usize {
+        0
+    }
+}
+
 unsafe impl VecZnxBigAutomorphismInplaceImpl<Self> for FFT64 {
     /// Applies the automorphism X^i -> X^ik on `a` and stores the result on `a`.
-    fn vec_znx_big_automorphism_inplace_impl<A>(module: &Module<Self>, k: i64, a: &mut A, a_col: usize)
-    where
+    fn vec_znx_big_automorphism_inplace_impl<A>(
+        module: &Module<Self>,
+        k: i64,
+        a: &mut A,
+        a_col: usize,
+        _scratch: &mut Scratch<Self>,
+    ) where
         A: VecZnxBigToMut<Self>,
     {
         let mut a: VecZnxBig<&mut [u8], Self> = a.to_mut();

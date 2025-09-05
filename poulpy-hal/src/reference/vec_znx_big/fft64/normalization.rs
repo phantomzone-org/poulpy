@@ -10,6 +10,10 @@ use crate::{
     source::Source,
 };
 
+pub fn vec_znx_big_normalize_tmp_bytes_ref(n: usize) -> usize {
+    n * size_of::<i64>()
+}
+
 pub fn vec_znx_big_normalize_ref<R, A, BE>(basek: usize, res: &mut R, res_col: usize, a: &A, a_col: usize, carry: &mut [i64])
 where
     R: VecZnxToMut,

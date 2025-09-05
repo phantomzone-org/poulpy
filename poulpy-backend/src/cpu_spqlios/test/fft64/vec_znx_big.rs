@@ -3,8 +3,9 @@ use poulpy_hal::{
     layouts::Module,
     reference::vec_znx_big::{
         test_vec_znx_big_add, test_vec_znx_big_add_inplace, test_vec_znx_big_add_normal, test_vec_znx_big_add_small,
-        test_vec_znx_big_add_small_inplace, test_vec_znx_big_negate, test_vec_znx_big_negate_inplace, test_vec_znx_big_normalize,
-        test_vec_znx_big_sub, test_vec_znx_big_sub_ab_inplace, test_vec_znx_big_sub_ba_inplace, test_vec_znx_big_sub_small_a,
+        test_vec_znx_big_add_small_inplace, test_vec_znx_big_automorphism, test_vec_znx_big_automorphism_inplace,
+        test_vec_znx_big_negate, test_vec_znx_big_negate_inplace, test_vec_znx_big_normalize, test_vec_znx_big_sub,
+        test_vec_znx_big_sub_ab_inplace, test_vec_znx_big_sub_ba_inplace, test_vec_znx_big_sub_small_a,
         test_vec_znx_big_sub_small_a_inplace, test_vec_znx_big_sub_small_b, test_vec_znx_big_sub_small_b_inplace,
     },
 };
@@ -93,6 +94,18 @@ fn test_vec_znx_big_negate_fft64() {
 fn test_vec_znx_big_negate_inplace_fft64() {
     let module: Module<FFT64> = Module::<FFT64>::new(1 << 5);
     test_vec_znx_big_negate_inplace(&module);
+}
+
+#[test]
+fn test_vec_znx_big_automorphism_fft64() {
+    let module: Module<FFT64> = Module::<FFT64>::new(1 << 5);
+    test_vec_znx_big_automorphism(&module);
+}
+
+#[test]
+fn test_vec_znx_big_automorphism_inplace_fft64() {
+    let module: Module<FFT64> = Module::<FFT64>::new(1 << 5);
+    test_vec_znx_big_automorphism_inplace(&module);
 }
 
 #[test]

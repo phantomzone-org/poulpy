@@ -254,8 +254,16 @@ pub unsafe trait VecZnxBigAutomorphismImpl<B: Backend> {
 /// * See TODO for reference code.
 /// * See TODO for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
+pub unsafe trait VecZnxBigAutomorphismInplaceTmpBytesImpl<B: Backend> {
+    fn vec_znx_big_automorphism_inplace_tmp_bytes_impl(module: &Module<B>) -> usize;
+}
+
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See TODO for reference code.
+/// * See TODO for corresponding public API.
+/// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxBigAutomorphismInplaceImpl<B: Backend> {
-    fn vec_znx_big_automorphism_inplace_impl<A>(module: &Module<B>, k: i64, a: &mut A, a_col: usize)
+    fn vec_znx_big_automorphism_inplace_impl<A>(module: &Module<B>, k: i64, a: &mut A, a_col: usize, scratch: &mut Scratch<B>)
     where
         A: VecZnxBigToMut<B>;
 }

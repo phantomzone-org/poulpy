@@ -117,7 +117,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self.n(), self.cols(), rhs.size()); // TODO: optimise size
         let mut res_big: VecZnxBig<_, B> = lhs.keyswitch_internal(module, res_dft, &rhs.key, scratch_1);
         (0..self.cols()).for_each(|i| {
-            module.vec_znx_big_automorphism_inplace(rhs.p(), &mut res_big, i);
+            module.vec_znx_big_automorphism_inplace(rhs.p(), &mut res_big, i, scratch_1);
             module.vec_znx_big_add_small_inplace(&mut res_big, i, &lhs.data, i);
             module.vec_znx_big_normalize(self.basek(), &mut self.data, i, &res_big, i, scratch_1);
         })
@@ -174,7 +174,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self.n(), self.cols(), rhs.size()); // TODO: optimise size
         let mut res_big: VecZnxBig<_, B> = lhs.keyswitch_internal(module, res_dft, &rhs.key, scratch_1);
         (0..self.cols()).for_each(|i| {
-            module.vec_znx_big_automorphism_inplace(rhs.p(), &mut res_big, i);
+            module.vec_znx_big_automorphism_inplace(rhs.p(), &mut res_big, i, scratch_1);
             module.vec_znx_big_sub_small_a_inplace(&mut res_big, i, &lhs.data, i);
             module.vec_znx_big_normalize(self.basek(), &mut self.data, i, &res_big, i, scratch_1);
         })
@@ -232,7 +232,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self.n(), self.cols(), rhs.size()); // TODO: optimise size
         let mut res_big: VecZnxBig<_, B> = lhs.keyswitch_internal(module, res_dft, &rhs.key, scratch_1);
         (0..self.cols()).for_each(|i| {
-            module.vec_znx_big_automorphism_inplace(rhs.p(), &mut res_big, i);
+            module.vec_znx_big_automorphism_inplace(rhs.p(), &mut res_big, i, scratch_1);
             module.vec_znx_big_sub_small_b_inplace(&mut res_big, i, &lhs.data, i);
             module.vec_znx_big_normalize(self.basek(), &mut self.data, i, &res_big, i, scratch_1);
         })

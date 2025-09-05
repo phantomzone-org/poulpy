@@ -167,9 +167,13 @@ pub trait VecZnxBigNormalize<B: Backend> {
         A: VecZnxBigToRef<B>;
 }
 
+pub trait VecZnxBigAutomorphismInplaceTmpBytes {
+    fn vec_znx_big_automorphism_inplace_tmp_bytes(&self) -> usize;
+}
+
 pub trait VecZnxBigAutomorphism<B: Backend> {
     /// Applies the automorphism X^i -> X^ik on `a` and stores the result on `b`.
-    fn vec_znx_big_automorphism<R, A>(&self, k: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn vec_znx_big_automorphism<R, A>(&self, p: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxBigToMut<B>,
         A: VecZnxBigToRef<B>;
@@ -177,7 +181,7 @@ pub trait VecZnxBigAutomorphism<B: Backend> {
 
 pub trait VecZnxBigAutomorphismInplace<B: Backend> {
     /// Applies the automorphism X^i -> X^ik on `a` and stores the result on `a`.
-    fn vec_znx_big_automorphism_inplace<A>(&self, k: i64, a: &mut A, a_col: usize)
+    fn vec_znx_big_automorphism_inplace<R>(&self, p: i64, res: &mut R, res_col: usize, scratch: &mut Scratch<B>)
     where
-        A: VecZnxBigToMut<B>;
+        R: VecZnxBigToMut<B>;
 }

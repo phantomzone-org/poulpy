@@ -1,17 +1,19 @@
 use crate::{
     api::{
         VecZnxBigAdd, VecZnxBigAddInplace, VecZnxBigAddNormal, VecZnxBigAddSmall, VecZnxBigAddSmallInplace, VecZnxBigAlloc,
-        VecZnxBigAllocBytes, VecZnxBigAutomorphism, VecZnxBigAutomorphismInplace, VecZnxBigFromBytes, VecZnxBigNegate,
-        VecZnxBigNegateInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSub, VecZnxBigSubABInplace,
-        VecZnxBigSubBAInplace, VecZnxBigSubSmallA, VecZnxBigSubSmallAInplace, VecZnxBigSubSmallB, VecZnxBigSubSmallBInplace,
+        VecZnxBigAllocBytes, VecZnxBigAutomorphism, VecZnxBigAutomorphismInplace, VecZnxBigAutomorphismInplaceTmpBytes,
+        VecZnxBigFromBytes, VecZnxBigNegate, VecZnxBigNegateInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
+        VecZnxBigSub, VecZnxBigSubABInplace, VecZnxBigSubBAInplace, VecZnxBigSubSmallA, VecZnxBigSubSmallAInplace,
+        VecZnxBigSubSmallB, VecZnxBigSubSmallBInplace,
     },
     layouts::{Backend, Module, Scratch, VecZnxBigOwned, VecZnxBigToMut, VecZnxBigToRef, VecZnxToMut, VecZnxToRef},
     oep::{
         VecZnxBigAddImpl, VecZnxBigAddInplaceImpl, VecZnxBigAddNormalImpl, VecZnxBigAddSmallImpl, VecZnxBigAddSmallInplaceImpl,
         VecZnxBigAllocBytesImpl, VecZnxBigAllocImpl, VecZnxBigAutomorphismImpl, VecZnxBigAutomorphismInplaceImpl,
-        VecZnxBigFromBytesImpl, VecZnxBigNegateImpl, VecZnxBigNegateInplaceImpl, VecZnxBigNormalizeImpl,
-        VecZnxBigNormalizeTmpBytesImpl, VecZnxBigSubABInplaceImpl, VecZnxBigSubBAInplaceImpl, VecZnxBigSubImpl,
-        VecZnxBigSubSmallAImpl, VecZnxBigSubSmallAInplaceImpl, VecZnxBigSubSmallBImpl, VecZnxBigSubSmallBInplaceImpl,
+        VecZnxBigAutomorphismInplaceTmpBytesImpl, VecZnxBigFromBytesImpl, VecZnxBigNegateImpl, VecZnxBigNegateInplaceImpl,
+        VecZnxBigNormalizeImpl, VecZnxBigNormalizeTmpBytesImpl, VecZnxBigSubABInplaceImpl, VecZnxBigSubBAInplaceImpl,
+        VecZnxBigSubImpl, VecZnxBigSubSmallAImpl, VecZnxBigSubSmallAInplaceImpl, VecZnxBigSubSmallBImpl,
+        VecZnxBigSubSmallBInplaceImpl,
     },
     source::Source,
 };
@@ -276,14 +278,23 @@ where
     }
 }
 
+impl<B> VecZnxBigAutomorphismInplaceTmpBytes for Module<B>
+where
+    B: Backend + VecZnxBigAutomorphismInplaceTmpBytesImpl<B>,
+{
+    fn vec_znx_big_automorphism_inplace_tmp_bytes(&self) -> usize {
+        B::vec_znx_big_automorphism_inplace_tmp_bytes_impl(self)
+    }
+}
+
 impl<B> VecZnxBigAutomorphismInplace<B> for Module<B>
 where
     B: Backend + VecZnxBigAutomorphismInplaceImpl<B>,
 {
-    fn vec_znx_big_automorphism_inplace<A>(&self, k: i64, a: &mut A, a_col: usize)
+    fn vec_znx_big_automorphism_inplace<A>(&self, k: i64, a: &mut A, a_col: usize, scratch: &mut Scratch<B>)
     where
         A: VecZnxBigToMut<B>,
     {
-        B::vec_znx_big_automorphism_inplace_impl(self, k, a, a_col);
+        B::vec_znx_big_automorphism_inplace_impl(self, k, a, a_col, scratch);
     }
 }
