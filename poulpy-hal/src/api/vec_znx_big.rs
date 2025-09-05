@@ -1,5 +1,3 @@
-use rand_distr::Distribution;
-
 use crate::{
     layouts::{Backend, Scratch, VecZnxBigOwned, VecZnxBigToMut, VecZnxBigToRef, VecZnxToMut, VecZnxToRef},
     source::Source,
@@ -41,48 +39,6 @@ pub trait VecZnxBigAddNormal<B: Backend> {
         k: usize,
         source: &mut Source,
         sigma: f64,
-        bound: f64,
-    );
-}
-
-#[allow(clippy::too_many_arguments)]
-pub trait VecZnxBigFillNormal<B: Backend> {
-    fn vec_znx_big_fill_normal<R: VecZnxBigToMut<B>>(
-        &self,
-        basek: usize,
-        res: &mut R,
-        res_col: usize,
-        k: usize,
-        source: &mut Source,
-        sigma: f64,
-        bound: f64,
-    );
-}
-
-#[allow(clippy::too_many_arguments)]
-pub trait VecZnxBigFillDistF64<B: Backend> {
-    fn vec_znx_big_fill_dist_f64<R: VecZnxBigToMut<B>, D: Distribution<f64>>(
-        &self,
-        basek: usize,
-        res: &mut R,
-        res_col: usize,
-        k: usize,
-        source: &mut Source,
-        dist: D,
-        bound: f64,
-    );
-}
-
-#[allow(clippy::too_many_arguments)]
-pub trait VecZnxBigAddDistF64<B: Backend> {
-    fn vec_znx_big_add_dist_f64<R: VecZnxBigToMut<B>, D: Distribution<f64>>(
-        &self,
-        basek: usize,
-        res: &mut R,
-        res_col: usize,
-        k: usize,
-        source: &mut Source,
-        dist: D,
         bound: f64,
     );
 }

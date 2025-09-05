@@ -1,12 +1,16 @@
 use std::marker::PhantomData;
 
+use rand::RngCore;
 use rand_distr::num_traits::Zero;
 use std::fmt;
 
 use crate::{
     alloc_aligned,
-    layouts::{Backend, Data, DataMut, DataRef, DataView, DataViewMut, ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero},
+    layouts::{
+        Backend, Data, DataMut, DataRef, DataView, DataViewMut, FillUniform, ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero,
+    },
     oep::VecZnxBigAllocBytesImpl,
+    source::Source,
 };
 
 #[derive(PartialEq, Eq)]
@@ -70,6 +74,12 @@ where
     }
     fn zero_at(&mut self, i: usize, j: usize) {
         self.at_mut(i, j).fill(<Self as ZnxView>::Scalar::zero());
+    }
+}
+
+impl<D: DataMut, B: Backend> FillUniform for VecZnxBig<D, B> {
+    fn fill_uniform(&mut self, source: &mut Source) {
+        source.fill_bytes(self.data.as_mut());
     }
 }
 

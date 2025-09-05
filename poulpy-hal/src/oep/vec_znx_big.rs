@@ -1,5 +1,3 @@
-use rand_distr::Distribution;
-
 use crate::{
     layouts::{Backend, Module, Scratch, VecZnxBigOwned, VecZnxBigToMut, VecZnxBigToRef, VecZnxToMut, VecZnxToRef},
     source::Source,
@@ -43,60 +41,6 @@ pub unsafe trait VecZnxBigAddNormalImpl<B: Backend> {
         k: usize,
         source: &mut Source,
         sigma: f64,
-        bound: f64,
-    );
-}
-
-#[allow(clippy::too_many_arguments)]
-/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See TODO for reference code.
-/// * See TODO for corresponding public API.
-/// # Safety [crate::doc::backend_safety] for safety contract.
-pub unsafe trait VecZnxBigFillNormalImpl<B: Backend> {
-    fn fill_normal_impl<R: VecZnxBigToMut<B>>(
-        module: &Module<B>,
-        basek: usize,
-        res: &mut R,
-        res_col: usize,
-        k: usize,
-        source: &mut Source,
-        sigma: f64,
-        bound: f64,
-    );
-}
-
-#[allow(clippy::too_many_arguments)]
-/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See TODO for reference code.
-/// * See TODO for corresponding public API.
-/// # Safety [crate::doc::backend_safety] for safety contract.
-pub unsafe trait VecZnxBigFillDistF64Impl<B: Backend> {
-    fn fill_dist_f64_impl<R: VecZnxBigToMut<B>, D: Distribution<f64>>(
-        module: &Module<B>,
-        basek: usize,
-        res: &mut R,
-        res_col: usize,
-        k: usize,
-        source: &mut Source,
-        dist: D,
-        bound: f64,
-    );
-}
-
-#[allow(clippy::too_many_arguments)]
-/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See TODO for reference code.
-/// * See TODO for corresponding public API.
-/// # Safety [crate::doc::backend_safety] for safety contract.
-pub unsafe trait VecZnxBigAddDistF64Impl<B: Backend> {
-    fn add_dist_f64_impl<R: VecZnxBigToMut<B>, D: Distribution<f64>>(
-        module: &Module<B>,
-        basek: usize,
-        res: &mut R,
-        res_col: usize,
-        k: usize,
-        source: &mut Source,
-        dist: D,
         bound: f64,
     );
 }

@@ -1,7 +1,7 @@
 use crate::{
-    api::{ZnAddDistF64, ZnAddNormal, ZnFillDistF64, ZnFillNormal, ZnFillUniform, ZnNormalizeInplace},
+    api::{ZnAddNormal, ZnFillNormal, ZnFillUniform, ZnNormalizeInplace},
     layouts::{Backend, Module, Scratch, ZnToMut},
-    oep::{ZnAddDistF64Impl, ZnAddNormalImpl, ZnFillDistF64Impl, ZnFillNormalImpl, ZnFillUniformImpl, ZnNormalizeInplaceImpl},
+    oep::{ZnAddNormalImpl, ZnFillNormalImpl, ZnFillUniformImpl, ZnNormalizeInplaceImpl},
     source::Source,
 };
 
@@ -26,48 +26,6 @@ where
         R: ZnToMut,
     {
         B::zn_fill_uniform_impl(n, basek, res, res_col, k, source);
-    }
-}
-
-impl<B> ZnFillDistF64 for Module<B>
-where
-    B: Backend + ZnFillDistF64Impl<B>,
-{
-    fn zn_fill_dist_f64<R, D: rand::prelude::Distribution<f64>>(
-        &self,
-        n: usize,
-        basek: usize,
-        res: &mut R,
-        res_col: usize,
-        k: usize,
-        source: &mut Source,
-        dist: D,
-        bound: f64,
-    ) where
-        R: ZnToMut,
-    {
-        B::zn_fill_dist_f64_impl(n, basek, res, res_col, k, source, dist, bound);
-    }
-}
-
-impl<B> ZnAddDistF64 for Module<B>
-where
-    B: Backend + ZnAddDistF64Impl<B>,
-{
-    fn zn_add_dist_f64<R, D: rand::prelude::Distribution<f64>>(
-        &self,
-        n: usize,
-        basek: usize,
-        res: &mut R,
-        res_col: usize,
-        k: usize,
-        source: &mut Source,
-        dist: D,
-        bound: f64,
-    ) where
-        R: ZnToMut,
-    {
-        B::zn_add_dist_f64_impl(n, basek, res, res_col, k, source, dist, bound);
     }
 }
 
