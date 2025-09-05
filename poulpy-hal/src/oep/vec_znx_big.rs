@@ -196,6 +196,17 @@ pub unsafe trait VecZnxBigSubSmallBInplaceImpl<B: Backend> {
 /// * See TODO for reference code.
 /// * See TODO for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
+pub unsafe trait VecZnxBigNegateImpl<B: Backend> {
+    fn vec_znx_big_negate_impl<R, A>(module: &Module<B>, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    where
+        R: VecZnxBigToMut<B>,
+        A: VecZnxBigToRef<B>;
+}
+
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See TODO for reference code.
+/// * See TODO for corresponding public API.
+/// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxBigNegateInplaceImpl<B: Backend> {
     fn vec_znx_big_negate_inplace_impl<A>(module: &Module<B>, a: &mut A, a_col: usize)
     where

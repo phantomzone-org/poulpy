@@ -8,9 +8,10 @@ use poulpy_hal::{
     oep::{
         TakeSliceImpl, VecZnxBigAddImpl, VecZnxBigAddInplaceImpl, VecZnxBigAddNormalImpl, VecZnxBigAddSmallImpl,
         VecZnxBigAddSmallInplaceImpl, VecZnxBigAllocBytesImpl, VecZnxBigAllocImpl, VecZnxBigAutomorphismImpl,
-        VecZnxBigAutomorphismInplaceImpl, VecZnxBigFromBytesImpl, VecZnxBigNegateInplaceImpl, VecZnxBigNormalizeImpl,
-        VecZnxBigNormalizeTmpBytesImpl, VecZnxBigSubABInplaceImpl, VecZnxBigSubBAInplaceImpl, VecZnxBigSubImpl,
-        VecZnxBigSubSmallAImpl, VecZnxBigSubSmallAInplaceImpl, VecZnxBigSubSmallBImpl, VecZnxBigSubSmallBInplaceImpl,
+        VecZnxBigAutomorphismInplaceImpl, VecZnxBigFromBytesImpl, VecZnxBigNegateImpl, VecZnxBigNegateInplaceImpl,
+        VecZnxBigNormalizeImpl, VecZnxBigNormalizeTmpBytesImpl, VecZnxBigSubABInplaceImpl, VecZnxBigSubBAInplaceImpl,
+        VecZnxBigSubImpl, VecZnxBigSubSmallAImpl, VecZnxBigSubSmallAInplaceImpl, VecZnxBigSubSmallBImpl,
+        VecZnxBigSubSmallBInplaceImpl,
     },
     reference::vec_znx::vec_znx_add_normal_ref,
     source::Source,
@@ -436,6 +437,28 @@ unsafe impl VecZnxBigSubSmallBInplaceImpl<Self> for FFT64 {
                 res.at_ptr(res_col, 0),
                 res.size() as u64,
                 res.sl() as u64,
+            )
+        }
+    }
+}
+
+unsafe impl VecZnxBigNegateImpl<Self> for FFT64 {
+    fn vec_znx_big_negate_impl<R, A>(module: &Module<Self>, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    where
+        R: VecZnxBigToMut<Self>,
+        A: VecZnxBigToRef<Self>,
+    {
+        let mut res: VecZnxBig<&mut [u8], Self> = res.to_mut();
+        let a: VecZnxBig<&[u8], Self> = a.to_ref();
+        unsafe {
+            vec_znx::vec_znx_negate(
+                module.ptr(),
+                res.at_mut_ptr(res_col, 0),
+                res.size() as u64,
+                res.sl() as u64,
+                a.at_ptr(a_col, 0),
+                a.size() as u64,
+                a.sl() as u64,
             )
         }
     }

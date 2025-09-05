@@ -14,7 +14,7 @@ use crate::{
 
 pub fn vec_znx_big_add_ref<R, A, B, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
 where
-    BE: Backend,
+    BE: Backend<ScalarBig = i64>,
     R: VecZnxBigToMut<BE>,
     A: VecZnxBigToRef<BE>,
     B: VecZnxBigToRef<BE>,
@@ -52,7 +52,7 @@ where
 
 pub fn vec_znx_big_add_inplace_ref<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
-    BE: Backend,
+    BE: Backend<ScalarBig = i64>,
     R: VecZnxBigToMut<BE>,
     A: VecZnxBigToRef<BE>,
 {
@@ -80,7 +80,7 @@ where
 
 pub fn vec_znx_big_add_small_ref<R, A, B, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
 where
-    BE: Backend,
+    BE: Backend<ScalarBig = i64>,
     R: VecZnxBigToMut<BE>,
     A: VecZnxBigToRef<BE>,
     B: VecZnxToRef,
@@ -109,7 +109,7 @@ where
 
 pub fn vec_znx_big_add_small_inplace_ref<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
-    BE: Backend,
+    BE: Backend<ScalarBig = i64>,
     R: VecZnxBigToMut<BE>,
     A: VecZnxToRef,
 {

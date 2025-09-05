@@ -18,7 +18,7 @@ use crate::{
 /// R <- A - B
 pub fn vec_znx_big_sub_ref<R, A, B, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
 where
-    BE: Backend,
+    BE: Backend<ScalarBig = i64>,
     R: VecZnxBigToMut<BE>,
     A: VecZnxBigToRef<BE>,
     B: VecZnxBigToRef<BE>,
@@ -57,7 +57,7 @@ where
 /// R <- A - B
 pub fn vec_znx_big_sub_ab_inplace_ref<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
-    BE: Backend,
+    BE: Backend<ScalarBig = i64>,
     R: VecZnxBigToMut<BE>,
     A: VecZnxBigToRef<BE>,
 {
@@ -86,7 +86,7 @@ where
 /// R <- B - A
 pub fn vec_znx_big_sub_ba_inplace_ref<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
-    BE: Backend,
+    BE: Backend<ScalarBig = i64>,
     R: VecZnxBigToMut<BE>,
     A: VecZnxBigToRef<BE>,
 {
@@ -115,7 +115,7 @@ where
 /// R <- A - B
 pub fn vec_znx_big_sub_small_a_ref<R, A, B, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
 where
-    BE: Backend,
+    BE: Backend<ScalarBig = i64>,
     R: VecZnxBigToMut<BE>,
     A: VecZnxToRef,
     B: VecZnxBigToRef<BE>,
@@ -145,7 +145,7 @@ where
 /// R <- A - B
 pub fn vec_znx_big_sub_small_b_ref<R, A, B, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
 where
-    BE: Backend,
+    BE: Backend<ScalarBig = i64>,
     R: VecZnxBigToMut<BE>,
     A: VecZnxBigToRef<BE>,
     B: VecZnxToRef,
@@ -175,7 +175,7 @@ where
 ///  R <- R - A
 pub fn vec_znx_big_sub_small_a_inplace_ref<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
-    BE: Backend,
+    BE: Backend<ScalarBig = i64>,
     R: VecZnxBigToMut<BE>,
     A: VecZnxToRef,
 {
@@ -195,7 +195,7 @@ where
 /// R <- A - R
 pub fn vec_znx_big_sub_small_b_inplace_ref<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
-    BE: Backend,
+    BE: Backend<ScalarBig = i64>,
     R: VecZnxBigToMut<BE>,
     A: VecZnxToRef,
 {

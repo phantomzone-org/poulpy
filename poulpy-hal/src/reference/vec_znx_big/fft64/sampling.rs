@@ -8,7 +8,7 @@ use crate::{
     source::Source,
 };
 
-pub fn vec_znx_big_add_normal_ref<R, B: Backend + Backend<ScalarBig = i64>>(
+pub fn vec_znx_big_add_normal_ref<R, B: Backend<ScalarBig = i64>>(
     basek: usize,
     res: &mut R,
     res_col: usize,
@@ -39,7 +39,7 @@ pub fn vec_znx_big_add_normal_ref<R, B: Backend + Backend<ScalarBig = i64>>(
 pub fn test_vec_znx_big_add_normal<B>(module: &Module<B>)
 where
     Module<B>: VecZnxBigAddNormal<B>,
-    B: Backend + Backend<ScalarBig = i64> + VecZnxBigAllocBytesImpl<B>,
+    B: Backend<ScalarBig = i64> + VecZnxBigAllocBytesImpl<B>,
 {
     let n: usize = module.n();
     let basek: usize = 17;

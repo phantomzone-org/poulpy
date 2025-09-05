@@ -136,10 +136,17 @@ pub trait VecZnxBigSubSmallBInplace<B: Backend> {
         A: VecZnxToRef;
 }
 
-pub trait VecZnxBigNegateInplace<B: Backend> {
-    fn vec_znx_big_negate_inplace<A>(&self, a: &mut A, a_col: usize)
+pub trait VecZnxBigNegate<B: Backend> {
+    fn vec_znx_big_negate<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
-        A: VecZnxBigToMut<B>;
+        R: VecZnxBigToMut<B>,
+        A: VecZnxBigToRef<B>;
+}
+
+pub trait VecZnxBigNegateInplace<B: Backend> {
+    fn vec_znx_big_negate_inplace<R>(&self, res: &mut R, res_col: usize)
+    where
+        R: VecZnxBigToMut<B>;
 }
 
 pub trait VecZnxBigNormalizeTmpBytes {
