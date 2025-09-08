@@ -225,22 +225,22 @@ fn test_ifft_avx2_fma() {
     #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
     #[target_feature(enable = "avx2,fma")]
     fn internal(log_m: usize) {
-        let m = 1 << log_m;
+        let m: usize = 1 << log_m;
 
-        let table: TableIFFT<f64> = TableIFFT::<f64>::new(m as usize);
+        let table: TableIFFT<f64> = TableIFFT::<f64>::new(m);
 
         let mut values_0: Vec<f64> = vec![0f64; m << 1];
-        let scale: f64 = f64::from(1.0f64 / m as f64);
+        let scale: f64 = 1.0f64 / m as f64;
         values_0
             .iter_mut()
             .enumerate()
-            .for_each(|(i, x)| *x = f64::from((i + 1) as i32) * scale);
+            .for_each(|(i, x)| *x = (i + 1) as f64 * scale);
 
         let mut values_1: Vec<f64> = vec![0f64; m << 1];
         values_1
             .iter_mut()
             .zip(values_0.iter())
-            .for_each(|(y, x)| *y = (*x).into());
+            .for_each(|(y, x)| *y = *x);
 
         table.execute_avx2_fma(&mut values_0);
         table.execute(&mut values_1);
@@ -266,6 +266,5 @@ fn test_ifft_avx2_fma() {
         }
     } else {
         eprintln!("skipping: CPU lacks avx2");
-        return;
     }
 }

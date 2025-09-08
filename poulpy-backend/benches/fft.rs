@@ -5,18 +5,18 @@ use poulpy_backend::cpu_spqlios::reim;
 use poulpy_hal::reference::reim::{TableFFT, TableIFFT};
 
 pub fn bench_fft_ref(c: &mut Criterion) {
-    let group_name: String = format!("fft_ref");
+    let group_name: String = "fft_ref".to_string();
 
     let mut group = c.benchmark_group(group_name);
 
     fn runner(m: usize) -> impl FnMut() {
         let mut values: Vec<f64> = vec![0f64; m << 1];
-        let scale: f64 = f64::from(1.0f64 / (2 * m) as f64);
+        let scale: f64 = 1.0f64 / (2 * m) as f64;
         values
             .iter_mut()
             .enumerate()
             .for_each(|(i, x)| *x = (i + 1) as f64 * scale);
-        let table: TableFFT<f64> = TableFFT::<f64>::new(m as usize);
+        let table: TableFFT<f64> = TableFFT::<f64>::new(m);
         move || {
             table.execute(&mut values);
             black_box(());
@@ -33,7 +33,7 @@ pub fn bench_fft_ref(c: &mut Criterion) {
 }
 
 pub fn bench_fft_avx2_fma(c: &mut Criterion) {
-    let group_name: String = format!("fft_avx2_fma");
+    let group_name: String = "fft_avx2_fma".to_string();
 
     let mut group = c.benchmark_group(group_name);
 
@@ -42,13 +42,13 @@ pub fn bench_fft_avx2_fma(c: &mut Criterion) {
     fn runner(m: usize) -> impl FnMut() {
         let mut values: Vec<f64> = vec![0f64; m << 1];
 
-        let scale = f64::from(1.0f64 / (2 * m) as f64);
+        let scale = 1.0f64 / (2 * m) as f64;
         values
             .iter_mut()
             .enumerate()
             .for_each(|(i, x)| *x = (i + 1) as f64 * scale);
 
-        let table: TableFFT<f64> = TableFFT::<f64>::new(m as usize);
+        let table: TableFFT<f64> = TableFFT::<f64>::new(m);
         move || {
             table.execute_avx2_fma(&mut values);
             black_box(());
@@ -72,14 +72,14 @@ pub fn bench_fft_avx2_fma(c: &mut Criterion) {
 }
 
 pub fn bench_fft_spqlios(c: &mut Criterion) {
-    let group_name: String = format!("fft_spqlios");
+    let group_name: String = "fft_spqlios".to_string();
 
     let mut group = c.benchmark_group(group_name);
 
     fn runner(m: usize) -> impl FnMut() {
         let mut values: Vec<f64> = vec![0f64; m << 1];
 
-        let scale = f64::from(1.0f64 / (2 * m) as f64);
+        let scale = 1.0f64 / (2 * m) as f64;
         values
             .iter_mut()
             .enumerate()
@@ -107,18 +107,18 @@ pub fn bench_fft_spqlios(c: &mut Criterion) {
 }
 
 pub fn bench_ifft_ref(c: &mut Criterion) {
-    let group_name: String = format!("ifft_ref");
+    let group_name: String = "ifft_ref".to_string();
 
     let mut group = c.benchmark_group(group_name);
 
     fn runner(m: usize) -> impl FnMut() {
         let mut values: Vec<f64> = vec![0f64; m << 1];
-        let scale: f64 = f64::from(1.0f64 / (2 * m) as f64);
+        let scale: f64 = 1.0f64 / (2 * m) as f64;
         values
             .iter_mut()
             .enumerate()
             .for_each(|(i, x)| *x = (i + 1) as f64 * scale);
-        let table: TableIFFT<f64> = TableIFFT::<f64>::new(m as usize);
+        let table: TableIFFT<f64> = TableIFFT::<f64>::new(m);
         move || {
             table.execute(&mut values);
             black_box(());
@@ -135,7 +135,7 @@ pub fn bench_ifft_ref(c: &mut Criterion) {
 }
 
 pub fn bench_ifft_avx2_fma(c: &mut Criterion) {
-    let group_name: String = format!("ifft_avx2_fma");
+    let group_name: String = "ifft_avx2_fma".to_string();
 
     let mut group = c.benchmark_group(group_name);
 
@@ -144,13 +144,13 @@ pub fn bench_ifft_avx2_fma(c: &mut Criterion) {
     fn runner(m: usize) -> impl FnMut() {
         let mut values: Vec<f64> = vec![0f64; m << 1];
 
-        let scale = f64::from(1.0f64 / (2 * m) as f64);
+        let scale = 1.0f64 / (2 * m) as f64;
         values
             .iter_mut()
             .enumerate()
             .for_each(|(i, x)| *x = (i + 1) as f64 * scale);
 
-        let table: TableIFFT<f64> = TableIFFT::<f64>::new(m as usize);
+        let table: TableIFFT<f64> = TableIFFT::<f64>::new(m);
         move || {
             table.execute_avx2_fma(&mut values);
             black_box(());
@@ -174,14 +174,14 @@ pub fn bench_ifft_avx2_fma(c: &mut Criterion) {
 }
 
 pub fn bench_ifft_spqlios(c: &mut Criterion) {
-    let group_name: String = format!("ifft_spqlios");
+    let group_name: String = "ifft_spqlios".to_string();
 
     let mut group = c.benchmark_group(group_name);
 
     fn runner(m: usize) -> impl FnMut() {
         let mut values: Vec<f64> = vec![0f64; m << 1];
 
-        let scale = f64::from(1.0f64 / (2 * m) as f64);
+        let scale = 1.0f64 / (2 * m) as f64;
         values
             .iter_mut()
             .enumerate()

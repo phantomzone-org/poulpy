@@ -51,6 +51,9 @@ impl<R: Float + FloatConst + Debug> TableIFFT<R> {
 }
 
 impl TableIFFT<f64> {
+    /// # Safety
+    /// This method is safe to use and will abort with an error
+    /// message if invalid data is given.
     #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
     #[target_feature(enable = "avx2,fma")]
     pub fn execute_avx2_fma(&self, data: &mut [f64]) {

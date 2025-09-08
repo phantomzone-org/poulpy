@@ -1,10 +1,19 @@
-//! ----------------------------------------------------------------------
-//! DISCLAIMER
-//! This module is a direct port of the C implementation from
-//! spqlios-arithmetic (https://github.com/tfhe/spqlios-arithmetic).
-//! Functions have been translated to Rust with minimal changes
-//! to preserve semantics and performance.
-//! ----------------------------------------------------------------------
+// ----------------------------------------------------------------------
+// DISCLAIMER
+//
+// This module contains code that has been directly ported from the
+// spqlios-arithmetic library
+// (https://github.com/tfhe/spqlios-arithmetic), which is licensed
+// under the Apache License, Version 2.0.
+//
+// The porting process from C to Rust was done with minimal changes
+// in order to preserve the semantics and performance characteristics
+// of the original implementation.
+//
+// Both Poulpy and spqlios-arithmetic are distributed under the terms
+// of the Apache License, Version 2.0. See the LICENSE file for details.
+//
+// ----------------------------------------------------------------------
 
 #![allow(bad_asm_style)]
 
@@ -44,8 +53,8 @@ pub(crate) fn frac_rev_bits<R: Float + FloatConst>(x: usize) -> R {
     let half: R = R::from(0.5).unwrap();
 
     match x {
-        0 => return R::zero(),
-        1 => return half,
+        0 => R::zero(),
+        1 => half,
         _ => {
             if x.is_multiple_of(2) {
                 frac_rev_bits::<R>(x >> 1) * half

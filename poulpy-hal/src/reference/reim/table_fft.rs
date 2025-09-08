@@ -51,6 +51,9 @@ impl<R: Float + FloatConst + Debug + 'static> TableFFT<R> {
 }
 
 impl TableFFT<f64> {
+    /// # Safety
+    /// This method is safe to use and will abort with an error
+    /// message if invalid data is given.
     #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
     #[target_feature(enable = "avx2,fma")]
     pub fn execute_avx2_fma(&self, data: &mut [f64]) {
@@ -198,6 +201,6 @@ fn ctwiddle_ref(ra: &mut f64, ia: &mut f64, rb: &mut f64, ib: &mut f64, omg_re: 
     let di: f64 = *rb * omg_im + *ib * omg_re;
     *rb = *ra - dr;
     *ib = *ia - di;
-    *ra = *ra + dr;
-    *ia = *ia + di;
+    *ra += dr;
+    *ia += di;
 }
