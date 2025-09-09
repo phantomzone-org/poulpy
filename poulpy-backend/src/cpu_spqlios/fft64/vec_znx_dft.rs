@@ -9,6 +9,7 @@ use poulpy_hal::{
         VecZnxDftAllocImpl, VecZnxDftCopyImpl, VecZnxDftFromBytesImpl, VecZnxDftSubABInplaceImpl, VecZnxDftSubBAInplaceImpl,
         VecZnxDftSubImpl, VecZnxDftZeroImpl, VecZnxIDFTTmpBytesImpl,
     },
+    reference::reim::{fft_vec_copy_ref, fft_vec_zero_ref},
 };
 
 use crate::cpu_spqlios::{
@@ -168,28 +169,63 @@ unsafe impl VecZnxDftAddImpl<Self> for FFT64 {
         A: VecZnxDftToRef<Self>,
         D: VecZnxDftToRef<Self>,
     {
-        let mut res_mut: VecZnxDft<&mut [u8], FFT64> = res.to_mut();
-        let a_ref: VecZnxDft<&[u8], FFT64> = a.to_ref();
-        let b_ref: VecZnxDft<&[u8], FFT64> = b.to_ref();
+        let mut res: VecZnxDft<&mut [u8], FFT64> = res.to_mut();
+        let a: VecZnxDft<&[u8], FFT64> = a.to_ref();
+        let b: VecZnxDft<&[u8], FFT64> = b.to_ref();
 
-        let min_size: usize = res_mut.size().min(a_ref.size()).min(b_ref.size());
+        let res_size: usize = res.size();
+        let a_size: usize = a.size();
+        let b_size: usize = b.size();
 
         unsafe {
-            (0..min_size).for_each(|j| {
-                vec_znx_dft::vec_dft_add(
-                    module.ptr(),
-                    res_mut.at_mut_ptr(res_col, j) as *mut vec_znx_dft::vec_znx_dft_t,
-                    1,
-                    a_ref.at_ptr(a_col, j) as *const vec_znx_dft::vec_znx_dft_t,
-                    1,
-                    b_ref.at_ptr(b_col, j) as *const vec_znx_dft::vec_znx_dft_t,
-                    1,
-                );
-            });
+            if a_size <= b_size {
+                let sum_size: usize = a_size.min(res_size);
+                let cpy_size: usize = b_size.min(res_size);
+
+                (0..sum_size).for_each(|j| {
+                    vec_znx_dft::vec_dft_add(
+                        module.ptr(),
+                        res.at_mut_ptr(res_col, j) as *mut vec_znx_dft::vec_znx_dft_t,
+                        1,
+                        a.at_ptr(a_col, j) as *const vec_znx_dft::vec_znx_dft_t,
+                        1,
+                        b.at_ptr(b_col, j) as *const vec_znx_dft::vec_znx_dft_t,
+                        1,
+                    );
+                });
+
+                for j in sum_size..cpy_size {
+                    fft_vec_copy_ref(res.at_mut(res_col, j), b.at(b_col, j));
+                }
+
+                for j in cpy_size..res_size {
+                    fft_vec_zero_ref(res.at_mut(res_col, j));
+                }
+            } else {
+                let sum_size: usize = b_size.min(res_size);
+                let cpy_size: usize = a_size.min(res_size);
+
+                (0..sum_size).for_each(|j| {
+                    vec_znx_dft::vec_dft_add(
+                        module.ptr(),
+                        res.at_mut_ptr(res_col, j) as *mut vec_znx_dft::vec_znx_dft_t,
+                        1,
+                        a.at_ptr(a_col, j) as *const vec_znx_dft::vec_znx_dft_t,
+                        1,
+                        b.at_ptr(b_col, j) as *const vec_znx_dft::vec_znx_dft_t,
+                        1,
+                    );
+                });
+
+                for j in sum_size..cpy_size {
+                    fft_vec_copy_ref(res.at_mut(res_col, j), a.at(b_col, j));
+                }
+
+                for j in cpy_size..res_size {
+                    fft_vec_zero_ref(res.at_mut(res_col, j));
+                }
+            }
         }
-        (min_size..res_mut.size()).for_each(|j| {
-            res_mut.zero_at(res_col, j);
-        })
     }
 }
 

@@ -4,8 +4,8 @@ use criterion::{BenchmarkId, Criterion};
 
 use crate::{
     api::{ModuleNew, VecZnxAdd, VecZnxAddInplace},
-    layouts::{Backend, FillUniform, Module, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut, ZnxZero},
-    reference::znx::{znx_add_i64_ref, znx_add_inplace_i64_ref, znx_copy_ref},
+    layouts::{Backend, FillUniform, Module, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut},
+    reference::znx::{znx_add_i64_ref, znx_add_inplace_i64_ref, znx_copy_ref, znx_zero_ref},
     source::Source,
 };
 
@@ -42,7 +42,7 @@ where
         }
 
         for j in cpy_size..res_size {
-            res.zero_at(res_col, j);
+            znx_zero_ref(res.at_mut(res_col, j));
         }
     } else {
         let sum_size: usize = b_size.min(res_size);
@@ -57,7 +57,7 @@ where
         }
 
         for j in cpy_size..res_size {
-            res.zero_at(res_col, j);
+            znx_zero_ref(res.at_mut(res_col, j));
         }
     }
 }
@@ -102,7 +102,7 @@ where
         }
 
         for j in cpy_size..res_size {
-            res.zero_at(res_col, j);
+            znx_zero_ref(res.at_mut(res_col, j));
         }
     } else {
         let sum_size: usize = b_size.min(res_size);
@@ -117,7 +117,7 @@ where
         }
 
         for j in cpy_size..res_size {
-            res.zero_at(res_col, j);
+            znx_zero_ref(res.at_mut(res_col, j));
         }
     }
 }
@@ -339,7 +339,7 @@ mod tests {
     use super::*;
 
     #[target_feature(enable = "avx2")]
-    fn test_znx_add_avx_internal() {
+    fn test_vec_znx_add_avx_internal() {
         let cols: usize = 2;
         let mut source: Source = Source::new([0u8; 32]);
 
@@ -380,18 +380,18 @@ mod tests {
     }
 
     #[test]
-    fn test_znx_add_avx() {
+    fn test_vec_znx_add_avx() {
         if !std::is_x86_feature_detected!("avx2") {
             eprintln!("skipping: CPU lacks avx2");
             return;
         };
         unsafe {
-            test_znx_add_avx_internal();
+            test_vec_znx_add_avx_internal();
         }
     }
 
     #[target_feature(enable = "avx2")]
-    fn test_znx_add_inplace_avx_internal() {
+    fn test_vec_znx_add_inplace_avx_internal() {
         let cols: usize = 2;
         let mut source: Source = Source::new([0u8; 32]);
 
@@ -422,13 +422,13 @@ mod tests {
     }
 
     #[test]
-    fn test_znx_add_inplace_avx() {
+    fn test_vec_znx_add_inplace_avx() {
         if !std::is_x86_feature_detected!("avx2") {
             eprintln!("skipping: CPU lacks avx2");
             return;
         };
         unsafe {
-            test_znx_add_inplace_avx_internal();
+            test_vec_znx_add_inplace_avx_internal();
         }
     }
 }

@@ -17,18 +17,21 @@
 
 #![allow(bad_asm_style)]
 
+mod fft_avx2_fma;
+mod fft_ref;
+mod fft_vec;
+mod fft_vec_avx2_fma;
+mod ifft_avx2_fma;
+mod ifft_ref;
 mod table_fft;
 mod table_ifft;
 
 use std::arch::global_asm;
 
+pub use fft_vec::*;
+pub use fft_vec_avx2_fma::*;
 pub use table_fft::*;
 pub use table_ifft::*;
-
-mod fft_avx2_fma;
-mod fft_ref;
-mod ifft_avx2_fma;
-mod ifft_ref;
 
 global_asm!(
     include_str!("fft16_avx2_fma.s"),
