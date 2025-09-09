@@ -1,8 +1,9 @@
 use poulpy_hal::{
     api::{
-        DFT, IDFTConsume, ScratchAvailable, TakeVecZnxDft, VecZnxAutomorphismInplace, VecZnxBigAddSmallInplace,
-        VecZnxBigAutomorphismInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallAInplace,
-        VecZnxBigSubSmallBInplace, VecZnxDftAllocBytes, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
+        ScratchAvailable, TakeVecZnxDft, VecZnxAutomorphismInplace, VecZnxBigAddSmallInplace, VecZnxBigAutomorphismInplace,
+        VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallAInplace, VecZnxBigSubSmallBInplace,
+        VecZnxDftAllocBytes, VecZnxDftApply, VecZnxIdftApplyConsume, VmpApplyDftToDft, VmpApplyDftToDftAdd,
+        VmpApplyDftToDftTmpBytes,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch, VecZnxBig},
 };
@@ -54,8 +55,8 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
             + VecZnxBigNormalizeTmpBytes
             + VmpApplyDftToDft<B>
             + VmpApplyDftToDftAdd<B>
-            + DFT<B>
-            + IDFTConsume<B>
+            + VecZnxDftApply<B>
+            + VecZnxIdftApplyConsume<B>
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>
             + VecZnxAutomorphismInplace<B>,
@@ -78,8 +79,8 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
             + VecZnxBigNormalizeTmpBytes
             + VmpApplyDftToDft<B>
             + VmpApplyDftToDftAdd<B>
-            + DFT<B>
-            + IDFTConsume<B>
+            + VecZnxDftApply<B>
+            + VecZnxIdftApplyConsume<B>
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>
             + VecZnxAutomorphismInplace<B>,
@@ -103,8 +104,8 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
             + VecZnxBigNormalizeTmpBytes
             + VmpApplyDftToDft<B>
             + VmpApplyDftToDftAdd<B>
-            + DFT<B>
-            + IDFTConsume<B>
+            + VecZnxDftApply<B>
+            + VecZnxIdftApplyConsume<B>
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>
             + VecZnxBigAutomorphismInplace<B>,
@@ -134,8 +135,8 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
             + VecZnxBigNormalizeTmpBytes
             + VmpApplyDftToDft<B>
             + VmpApplyDftToDftAdd<B>
-            + DFT<B>
-            + IDFTConsume<B>
+            + VecZnxDftApply<B>
+            + VecZnxIdftApplyConsume<B>
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>
             + VecZnxBigAutomorphismInplace<B>,
@@ -159,8 +160,8 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
             + VecZnxBigNormalizeTmpBytes
             + VmpApplyDftToDft<B>
             + VmpApplyDftToDftAdd<B>
-            + DFT<B>
-            + IDFTConsume<B>
+            + VecZnxDftApply<B>
+            + VecZnxIdftApplyConsume<B>
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>
             + VecZnxBigAutomorphismInplace<B>
@@ -191,8 +192,8 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
             + VecZnxBigNormalizeTmpBytes
             + VmpApplyDftToDft<B>
             + VmpApplyDftToDftAdd<B>
-            + DFT<B>
-            + IDFTConsume<B>
+            + VecZnxDftApply<B>
+            + VecZnxIdftApplyConsume<B>
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>
             + VecZnxBigAutomorphismInplace<B>
@@ -217,8 +218,8 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
             + VecZnxBigNormalizeTmpBytes
             + VmpApplyDftToDft<B>
             + VmpApplyDftToDftAdd<B>
-            + DFT<B>
-            + IDFTConsume<B>
+            + VecZnxDftApply<B>
+            + VecZnxIdftApplyConsume<B>
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>
             + VecZnxBigAutomorphismInplace<B>
@@ -249,8 +250,8 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
             + VecZnxBigNormalizeTmpBytes
             + VmpApplyDftToDft<B>
             + VmpApplyDftToDftAdd<B>
-            + DFT<B>
-            + IDFTConsume<B>
+            + VecZnxDftApply<B>
+            + VecZnxIdftApplyConsume<B>
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>
             + VecZnxBigAutomorphismInplace<B>

@@ -1,4 +1,4 @@
-pub fn fft_vec_add_ref(res: &mut [f64], a: &[f64], b: &[f64]) {
+pub fn reim_add_ref(res: &mut [f64], a: &[f64], b: &[f64]) {
     #[cfg(debug_assertions)]
     {
         assert_eq!(a.len(), res.len());
@@ -10,7 +10,7 @@ pub fn fft_vec_add_ref(res: &mut [f64], a: &[f64], b: &[f64]) {
     }
 }
 
-pub fn fft_vec_add_inplace_ref(res: &mut [f64], a: &[f64]) {
+pub fn reim_add_inplace_ref(res: &mut [f64], a: &[f64]) {
     #[cfg(debug_assertions)]
     {
         assert_eq!(a.len(), res.len());
@@ -21,7 +21,7 @@ pub fn fft_vec_add_inplace_ref(res: &mut [f64], a: &[f64]) {
     }
 }
 
-pub fn fft_vec_sub_ref(res: &mut [f64], a: &[f64], b: &[f64]) {
+pub fn reim_sub_ref(res: &mut [f64], a: &[f64], b: &[f64]) {
     #[cfg(debug_assertions)]
     {
         assert_eq!(a.len(), res.len());
@@ -33,7 +33,7 @@ pub fn fft_vec_sub_ref(res: &mut [f64], a: &[f64], b: &[f64]) {
     }
 }
 
-pub fn fft_vec_sub_ab_inplace_ref(res: &mut [f64], a: &[f64]) {
+pub fn reim_sub_ab_inplace_ref(res: &mut [f64], a: &[f64]) {
     #[cfg(debug_assertions)]
     {
         assert_eq!(a.len(), res.len());
@@ -44,7 +44,7 @@ pub fn fft_vec_sub_ab_inplace_ref(res: &mut [f64], a: &[f64]) {
     }
 }
 
-pub fn fft_vec_sub_ba_inplace_ref(res: &mut [f64], a: &[f64]) {
+pub fn reim_sub_ba_inplace_ref(res: &mut [f64], a: &[f64]) {
     #[cfg(debug_assertions)]
     {
         assert_eq!(a.len(), res.len());
@@ -55,7 +55,7 @@ pub fn fft_vec_sub_ba_inplace_ref(res: &mut [f64], a: &[f64]) {
     }
 }
 
-pub fn fft_vec_negate_ref(res: &mut [f64], a: &[f64]) {
+pub fn reim_negate_ref(res: &mut [f64], a: &[f64]) {
     #[cfg(debug_assertions)]
     {
         assert_eq!(a.len(), res.len());
@@ -66,25 +66,13 @@ pub fn fft_vec_negate_ref(res: &mut [f64], a: &[f64]) {
     }
 }
 
-pub fn fft_vec_negate_inplace_ref(res: &mut [f64]) {
+pub fn reim_negate_inplace_ref(res: &mut [f64]) {
     for ri in res {
         *ri = -*ri
     }
 }
 
-pub fn fft_vec_copy_ref(res: &mut [f64], a: &[f64]) {
-    #[cfg(debug_assertions)]
-    {
-        assert_eq!(a.len(), res.len());
-    }
-    res.copy_from_slice(a);
-}
-
-pub fn fft_vec_zero_ref(res: &mut [f64]) {
-    res.fill(0.);
-}
-
-pub fn fft_vec_addmul_ref(res: &mut [f64], a: &[f64], b: &[f64]) {
+pub fn reim_addmul_ref(res: &mut [f64], a: &[f64], b: &[f64]) {
     #[cfg(debug_assertions)]
     {
         assert_eq!(a.len(), res.len());
@@ -109,7 +97,7 @@ pub fn fft_vec_addmul_ref(res: &mut [f64], a: &[f64], b: &[f64]) {
     }
 }
 
-pub fn fft_vec_mul_ref(res: &mut [f64], a: &[f64], b: &[f64]) {
+pub fn reim_mul_ref(res: &mut [f64], a: &[f64], b: &[f64]) {
     #[cfg(debug_assertions)]
     {
         assert_eq!(a.len(), res.len());

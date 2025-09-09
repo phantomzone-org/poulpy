@@ -2,7 +2,7 @@ use std::{ffi::c_void, hint::black_box};
 
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use poulpy_backend::cpu_spqlios::reim;
-use poulpy_hal::reference::reim::{TableFFT, TableIFFT};
+use poulpy_hal::reference::reim::{ReimFFTTable, ReimIFFTTable};
 
 pub fn bench_fft_ref(c: &mut Criterion) {
     let group_name: String = "fft_ref".to_string();
@@ -16,7 +16,7 @@ pub fn bench_fft_ref(c: &mut Criterion) {
             .iter_mut()
             .enumerate()
             .for_each(|(i, x)| *x = (i + 1) as f64 * scale);
-        let table: TableFFT<f64> = TableFFT::<f64>::new(m);
+        let table: ReimFFTTable<f64> = ReimFFTTable::<f64>::new(m);
         move || {
             table.execute(&mut values);
             black_box(());
@@ -48,7 +48,7 @@ pub fn bench_fft_avx2_fma(c: &mut Criterion) {
             .enumerate()
             .for_each(|(i, x)| *x = (i + 1) as f64 * scale);
 
-        let table: TableFFT<f64> = TableFFT::<f64>::new(m);
+        let table: ReimFFTTable<f64> = ReimFFTTable::<f64>::new(m);
         move || {
             table.execute_avx2_fma(&mut values);
             black_box(());
@@ -118,7 +118,7 @@ pub fn bench_ifft_ref(c: &mut Criterion) {
             .iter_mut()
             .enumerate()
             .for_each(|(i, x)| *x = (i + 1) as f64 * scale);
-        let table: TableIFFT<f64> = TableIFFT::<f64>::new(m);
+        let table: ReimIFFTTable<f64> = ReimIFFTTable::<f64>::new(m);
         move || {
             table.execute(&mut values);
             black_box(());
@@ -150,7 +150,7 @@ pub fn bench_ifft_avx2_fma(c: &mut Criterion) {
             .enumerate()
             .for_each(|(i, x)| *x = (i + 1) as f64 * scale);
 
-        let table: TableIFFT<f64> = TableIFFT::<f64>::new(m);
+        let table: ReimIFFTTable<f64> = ReimIFFTTable::<f64>::new(m);
         move || {
             table.execute_avx2_fma(&mut values);
             black_box(());

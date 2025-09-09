@@ -1,7 +1,8 @@
 use poulpy_hal::{
     api::{
-        DFT, IDFTConsume, ScratchAvailable, TakeVecZnxDft, VecZnxBigAddSmallInplace, VecZnxBigNormalize,
-        VecZnxBigNormalizeTmpBytes, VecZnxDftAllocBytes, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
+        ScratchAvailable, TakeVecZnxDft, VecZnxBigAddSmallInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
+        VecZnxDftAllocBytes, VecZnxDftApply, VecZnxIdftApplyConsume, VmpApplyDftToDft, VmpApplyDftToDftAdd,
+        VmpApplyDftToDftTmpBytes,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch, ZnxZero},
 };
@@ -56,8 +57,8 @@ impl<DataSelf: DataMut> GGLWEAutomorphismKey<DataSelf> {
             + VecZnxBigNormalizeTmpBytes
             + VmpApplyDftToDft<B>
             + VmpApplyDftToDftAdd<B>
-            + DFT<B>
-            + IDFTConsume<B>
+            + VecZnxDftApply<B>
+            + VecZnxIdftApplyConsume<B>
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>,
         Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
@@ -76,8 +77,8 @@ impl<DataSelf: DataMut> GGLWEAutomorphismKey<DataSelf> {
             + VecZnxBigNormalizeTmpBytes
             + VmpApplyDftToDft<B>
             + VmpApplyDftToDftAdd<B>
-            + DFT<B>
-            + IDFTConsume<B>
+            + VecZnxDftApply<B>
+            + VecZnxIdftApplyConsume<B>
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>,
         Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
@@ -132,8 +133,8 @@ impl<DataSelf: DataMut> GGLWESwitchingKey<DataSelf> {
             + VecZnxBigNormalizeTmpBytes
             + VmpApplyDftToDft<B>
             + VmpApplyDftToDftAdd<B>
-            + DFT<B>
-            + IDFTConsume<B>
+            + VecZnxDftApply<B>
+            + VecZnxIdftApplyConsume<B>
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>,
         Scratch<B>: ScratchAvailable + TakeVecZnxDft<B>,
@@ -188,8 +189,8 @@ impl<DataSelf: DataMut> GGLWESwitchingKey<DataSelf> {
             + VecZnxBigNormalizeTmpBytes
             + VmpApplyDftToDft<B>
             + VmpApplyDftToDftAdd<B>
-            + DFT<B>
-            + IDFTConsume<B>
+            + VecZnxDftApply<B>
+            + VecZnxIdftApplyConsume<B>
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>,
         Scratch<B>: ScratchAvailable + TakeVecZnxDft<B>,

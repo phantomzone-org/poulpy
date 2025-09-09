@@ -1,11 +1,11 @@
 use poulpy_hal::{
     api::{
-        DFT, IDFTConsume, IDFTTmpA, ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApply, SvpApplyInplace, SvpPPolAlloc,
-        SvpPPolAllocBytes, SvpPrepare, VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxBigAddInplace,
-        VecZnxBigAddSmallInplace, VecZnxBigAlloc, VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
-        VecZnxDftAddInplace, VecZnxDftAlloc, VecZnxDftAllocBytes, VecZnxDftCopy, VecZnxFillUniform, VecZnxNormalize,
-        VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubABInplace, VecZnxSwitchRing, VmpApplyDftToDft,
-        VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes, VmpPMatAlloc, VmpPrepare,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApply, SvpApplyInplace, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare,
+        VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigAlloc,
+        VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxDftAddInplace, VecZnxDftAlloc,
+        VecZnxDftAllocBytes, VecZnxDftApply, VecZnxDftCopy, VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA,
+        VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubABInplace, VecZnxSwitchRing,
+        VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes, VmpPMatAlloc, VmpPrepare,
     },
     layouts::{Backend, Module, ScalarZnx, ScratchOwned},
     oep::{
@@ -37,9 +37,9 @@ pub fn test_ggsw_keyswitch<B>(
 ) where
     Module<B>: VecZnxDftAllocBytes
         + VecZnxBigNormalize<B>
-        + DFT<B>
+        + VecZnxDftApply<B>
         + SvpApplyInplace<B>
-        + IDFTConsume<B>
+        + VecZnxIdftApplyConsume<B>
         + VecZnxFillUniform
         + VecZnxSubABInplace
         + VecZnxAddInplace
@@ -63,7 +63,7 @@ pub fn test_ggsw_keyswitch<B>(
         + VecZnxBigNormalizeTmpBytes
         + VecZnxSwitchRing<B>
         + SvpApply<B>
-        + IDFTTmpA<B>
+        + VecZnxIdftApplyTmpA<B>
         + VecZnxDftCopy<B>
         + VecZnxDftAddInplace<B>
         + VecZnxBigAlloc<B>
@@ -181,9 +181,9 @@ pub fn test_ggsw_keyswitch_inplace<B>(
 ) where
     Module<B>: VecZnxDftAllocBytes
         + VecZnxBigNormalize<B>
-        + DFT<B>
+        + VecZnxDftApply<B>
         + SvpApplyInplace<B>
-        + IDFTConsume<B>
+        + VecZnxIdftApplyConsume<B>
         + VecZnxFillUniform
         + VecZnxSubABInplace
         + VecZnxAddInplace
@@ -207,7 +207,7 @@ pub fn test_ggsw_keyswitch_inplace<B>(
         + VecZnxBigNormalizeTmpBytes
         + VecZnxSwitchRing<B>
         + SvpApply<B>
-        + IDFTTmpA<B>
+        + VecZnxIdftApplyTmpA<B>
         + VecZnxDftCopy<B>
         + VecZnxDftAddInplace<B>
         + VecZnxBigAlloc<B>

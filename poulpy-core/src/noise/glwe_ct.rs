@@ -1,8 +1,8 @@
 use poulpy_hal::{
     api::{
-        DFT, IDFTConsume, ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace,
-        VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes,
-        VecZnxSubABInplace,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace,
+        VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftApply, VecZnxIdftApplyConsume,
+        VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSubABInplace,
     },
     layouts::{Backend, DataRef, Module, ScratchOwned},
     oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeVecZnxBigImpl, TakeVecZnxDftImpl},
@@ -26,9 +26,9 @@ impl<D: DataRef> GLWECiphertext<D> {
         DataPt: DataRef,
         Module<B>: VecZnxDftAllocBytes
             + VecZnxBigAllocBytes
-            + DFT<B>
+            + VecZnxDftApply<B>
             + SvpApplyInplace<B>
-            + IDFTConsume<B>
+            + VecZnxIdftApplyConsume<B>
             + VecZnxBigAddInplace<B>
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>

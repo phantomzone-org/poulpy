@@ -8,7 +8,7 @@ use crate::{
     layouts::{Backend, DataViewMut, Module, VecZnxDft, VecZnxDftToMut, VecZnxDftToRef, ZnxInfos, ZnxView, ZnxViewMut},
     oep::VecZnxDftAllocBytesImpl,
     reference::{
-        reim::{fft_vec_add_inplace_ref, fft_vec_add_ref, fft_vec_copy_ref, fft_vec_zero_ref},
+        reim::{reim_add_inplace_ref, reim_add_ref, reim_copy_ref, reim_zero_ref},
         vec_znx_dft::fft64::assert_approx_eq_slice,
     },
     source::Source,
@@ -40,30 +40,30 @@ where
         let cpy_size: usize = b_size.min(res_size);
 
         for j in 0..sum_size {
-            fft_vec_add_ref(res.at_mut(res_col, j), a.at(a_col, j), b.at(b_col, j));
+            reim_add_ref(res.at_mut(res_col, j), a.at(a_col, j), b.at(b_col, j));
         }
 
         for j in sum_size..cpy_size {
-            fft_vec_copy_ref(res.at_mut(res_col, j), b.at(b_col, j));
+            reim_copy_ref(res.at_mut(res_col, j), b.at(b_col, j));
         }
 
         for j in cpy_size..res_size {
-            fft_vec_zero_ref(res.at_mut(res_col, j));
+            reim_zero_ref(res.at_mut(res_col, j));
         }
     } else {
         let sum_size: usize = b_size.min(res_size);
         let cpy_size: usize = a_size.min(res_size);
 
         for j in 0..sum_size {
-            fft_vec_add_ref(res.at_mut(res_col, j), a.at(a_col, j), b.at(b_col, j));
+            reim_add_ref(res.at_mut(res_col, j), a.at(a_col, j), b.at(b_col, j));
         }
 
         for j in sum_size..cpy_size {
-            fft_vec_copy_ref(res.at_mut(res_col, j), a.at(a_col, j));
+            reim_copy_ref(res.at_mut(res_col, j), a.at(a_col, j));
         }
 
         for j in cpy_size..res_size {
-            fft_vec_zero_ref(res.at_mut(res_col, j));
+            reim_zero_ref(res.at_mut(res_col, j));
         }
     }
 }
@@ -79,7 +79,7 @@ where
     A: VecZnxDftToRef<BE>,
     B: VecZnxDftToRef<BE>,
 {
-    use crate::reference::reim::fft_vec_add_avx2_fma;
+    use crate::reference::reim::reim_add_avx2_fma;
 
     let mut res: VecZnxDft<&mut [u8], BE> = res.to_mut();
     let a: VecZnxDft<&[u8], BE> = a.to_ref();
@@ -100,30 +100,30 @@ where
         let cpy_size: usize = b_size.min(res_size);
 
         for j in 0..sum_size {
-            fft_vec_add_avx2_fma(res.at_mut(res_col, j), a.at(a_col, j), b.at(b_col, j));
+            reim_add_avx2_fma(res.at_mut(res_col, j), a.at(a_col, j), b.at(b_col, j));
         }
 
         for j in sum_size..cpy_size {
-            fft_vec_copy_ref(res.at_mut(res_col, j), b.at(b_col, j));
+            reim_copy_ref(res.at_mut(res_col, j), b.at(b_col, j));
         }
 
         for j in cpy_size..res_size {
-            fft_vec_zero_ref(res.at_mut(res_col, j));
+            reim_zero_ref(res.at_mut(res_col, j));
         }
     } else {
         let sum_size: usize = b_size.min(res_size);
         let cpy_size: usize = a_size.min(res_size);
 
         for j in 0..sum_size {
-            fft_vec_add_avx2_fma(res.at_mut(res_col, j), a.at(a_col, j), b.at(b_col, j));
+            reim_add_avx2_fma(res.at_mut(res_col, j), a.at(a_col, j), b.at(b_col, j));
         }
 
         for j in sum_size..cpy_size {
-            fft_vec_copy_ref(res.at_mut(res_col, j), a.at(a_col, j));
+            reim_copy_ref(res.at_mut(res_col, j), a.at(a_col, j));
         }
 
         for j in cpy_size..res_size {
-            fft_vec_zero_ref(res.at_mut(res_col, j));
+            reim_zero_ref(res.at_mut(res_col, j));
         }
     }
 }
@@ -148,7 +148,7 @@ where
     let sum_size: usize = a_size.min(res_size);
 
     for j in 0..sum_size {
-        fft_vec_add_inplace_ref(res.at_mut(res_col, j), a.at(a_col, j));
+        reim_add_inplace_ref(res.at_mut(res_col, j), a.at(a_col, j));
     }
 }
 
@@ -175,10 +175,10 @@ where
 
     let sum_size: usize = a_size.min(res_size);
 
-    use crate::reference::reim::fft_vec_add_inplace_avx2_fma;
+    use crate::reference::reim::reim_add_inplace_avx2_fma;
 
     for j in 0..sum_size {
-        fft_vec_add_inplace_avx2_fma(res.at_mut(res_col, j), a.at(a_col, j));
+        reim_add_inplace_avx2_fma(res.at_mut(res_col, j), a.at(a_col, j));
     }
 }
 

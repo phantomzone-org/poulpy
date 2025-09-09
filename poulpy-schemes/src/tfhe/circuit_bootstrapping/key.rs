@@ -6,11 +6,11 @@ use std::collections::HashMap;
 
 use poulpy_hal::{
     api::{
-        DFT, IDFTConsume, IDFTTmpA, ScratchAvailable, SvpApply, SvpApplyInplace, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare,
-        TakeScalarZnx, TakeSvpPPol, TakeVecZnx, TakeVecZnxBig, TakeVecZnxDft, VecZnxAddInplace, VecZnxAddNormal,
-        VecZnxAddScalarInplace, VecZnxAutomorphism, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxFillUniform, VecZnxNormalize,
-        VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubABInplace, VecZnxSwitchRing, VmpPMatAlloc,
-        VmpPrepare,
+        ScratchAvailable, SvpApply, SvpApplyInplace, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare, TakeScalarZnx, TakeSvpPPol,
+        TakeVecZnx, TakeVecZnxBig, TakeVecZnxDft, VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxAutomorphism,
+        VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftApply, VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA,
+        VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubABInplace, VecZnxSwitchRing,
+        VmpPMatAlloc, VmpPrepare,
     },
     layouts::{Backend, Data, DataRef, Module, Scratch},
     source::Source,
@@ -52,13 +52,13 @@ impl<BRA: BlindRotationAlgo, B: Backend> CircuitBootstrappingKeyEncryptSk<B> for
 where
     BlindRotationKey<Vec<u8>, BRA>: BlindRotationKeyAlloc + BlindRotationKeyEncryptSk<B>,
     Module<B>: SvpApply<B>
-        + IDFTTmpA<B>
+        + VecZnxIdftApplyTmpA<B>
         + VecZnxAddScalarInplace
         + VecZnxDftAllocBytes
         + VecZnxBigNormalize<B>
-        + DFT<B>
+        + VecZnxDftApply<B>
         + SvpApplyInplace<B>
-        + IDFTConsume<B>
+        + VecZnxIdftApplyConsume<B>
         + VecZnxNormalizeTmpBytes
         + VecZnxFillUniform
         + VecZnxSubABInplace

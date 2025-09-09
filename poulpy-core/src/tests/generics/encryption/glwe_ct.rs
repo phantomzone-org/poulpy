@@ -1,9 +1,10 @@
 use poulpy_hal::{
     api::{
-        DFT, IDFTConsume, ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApply, SvpApplyInplace, SvpPPolAlloc, SvpPPolAllocBytes,
-        SvpPrepare, VecZnxAddInplace, VecZnxAddNormal, VecZnxBigAddInplace, VecZnxBigAddNormal, VecZnxBigAddSmallInplace,
-        VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxCopy, VecZnxDftAlloc, VecZnxDftAllocBytes, VecZnxFillUniform,
-        VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubABInplace,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApply, SvpApplyInplace, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare,
+        VecZnxAddInplace, VecZnxAddNormal, VecZnxBigAddInplace, VecZnxBigAddNormal, VecZnxBigAddSmallInplace,
+        VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxCopy, VecZnxDftAlloc, VecZnxDftAllocBytes, VecZnxDftApply,
+        VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub,
+        VecZnxSubABInplace,
     },
     layouts::{Backend, Module, ScratchOwned},
     oep::{
@@ -27,9 +28,9 @@ pub fn test_glwe_encrypt_sk<B>(module: &Module<B>, basek: usize, k_ct: usize, k_
 where
     Module<B>: VecZnxDftAllocBytes
         + VecZnxBigAllocBytes
-        + DFT<B>
+        + VecZnxDftApply<B>
         + SvpApplyInplace<B>
-        + IDFTConsume<B>
+        + VecZnxIdftApplyConsume<B>
         + VecZnxBigAddInplace<B>
         + VecZnxBigAddSmallInplace<B>
         + VecZnxBigNormalize<B>
@@ -42,16 +43,16 @@ where
         + SvpPPolAllocBytes
         + SvpPrepare<B>
         + SvpApply<B>
-        + IDFTConsume<B>
+        + VecZnxIdftApplyConsume<B>
         + VecZnxBigAddNormal<B>
         + VecZnxBigAddSmallInplace<B>
         + VecZnxBigNormalize<B>
         + VecZnxNormalizeTmpBytes
         + VecZnxDftAllocBytes
         + VecZnxBigNormalize<B>
-        + DFT<B>
+        + VecZnxDftApply<B>
         + SvpApplyInplace<B>
-        + IDFTConsume<B>
+        + VecZnxIdftApplyConsume<B>
         + VecZnxNormalizeTmpBytes
         + VecZnxFillUniform
         + VecZnxSubABInplace
@@ -113,9 +114,9 @@ pub fn test_glwe_compressed_encrypt_sk<B>(module: &Module<B>, basek: usize, k_ct
 where
     Module<B>: VecZnxDftAllocBytes
         + VecZnxBigAllocBytes
-        + DFT<B>
+        + VecZnxDftApply<B>
         + SvpApplyInplace<B>
-        + IDFTConsume<B>
+        + VecZnxIdftApplyConsume<B>
         + VecZnxBigAddInplace<B>
         + VecZnxBigAddSmallInplace<B>
         + VecZnxBigNormalize<B>
@@ -128,16 +129,16 @@ where
         + SvpPPolAllocBytes
         + SvpPrepare<B>
         + SvpApply<B>
-        + IDFTConsume<B>
+        + VecZnxIdftApplyConsume<B>
         + VecZnxBigAddNormal<B>
         + VecZnxBigAddSmallInplace<B>
         + VecZnxBigNormalize<B>
         + VecZnxNormalizeTmpBytes
         + VecZnxDftAllocBytes
         + VecZnxBigNormalize<B>
-        + DFT<B>
+        + VecZnxDftApply<B>
         + SvpApplyInplace<B>
-        + IDFTConsume<B>
+        + VecZnxIdftApplyConsume<B>
         + VecZnxNormalizeTmpBytes
         + VecZnxFillUniform
         + VecZnxSubABInplace
@@ -211,9 +212,9 @@ pub fn test_glwe_encrypt_zero_sk<B>(module: &Module<B>, basek: usize, k_ct: usiz
 where
     Module<B>: VecZnxDftAllocBytes
         + VecZnxBigAllocBytes
-        + DFT<B>
+        + VecZnxDftApply<B>
         + SvpApplyInplace<B>
-        + IDFTConsume<B>
+        + VecZnxIdftApplyConsume<B>
         + VecZnxBigAddInplace<B>
         + VecZnxBigAddSmallInplace<B>
         + VecZnxBigNormalize<B>
@@ -226,16 +227,16 @@ where
         + SvpPPolAllocBytes
         + SvpPrepare<B>
         + SvpApply<B>
-        + IDFTConsume<B>
+        + VecZnxIdftApplyConsume<B>
         + VecZnxBigAddNormal<B>
         + VecZnxBigAddSmallInplace<B>
         + VecZnxBigNormalize<B>
         + VecZnxNormalizeTmpBytes
         + VecZnxDftAllocBytes
         + VecZnxBigNormalize<B>
-        + DFT<B>
+        + VecZnxDftApply<B>
         + SvpApplyInplace<B>
-        + IDFTConsume<B>
+        + VecZnxIdftApplyConsume<B>
         + VecZnxNormalizeTmpBytes
         + VecZnxFillUniform
         + VecZnxSubABInplace
@@ -288,9 +289,9 @@ pub fn test_glwe_encrypt_pk<B>(module: &Module<B>, basek: usize, k_ct: usize, k_
 where
     Module<B>: VecZnxDftAllocBytes
         + VecZnxBigNormalize<B>
-        + DFT<B>
+        + VecZnxDftApply<B>
         + SvpApplyInplace<B>
-        + IDFTConsume<B>
+        + VecZnxIdftApplyConsume<B>
         + VecZnxNormalizeTmpBytes
         + VecZnxFillUniform
         + VecZnxSubABInplace

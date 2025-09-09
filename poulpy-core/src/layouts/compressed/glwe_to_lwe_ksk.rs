@@ -2,8 +2,8 @@ use std::fmt;
 
 use poulpy_hal::{
     api::{
-        DFT, IDFTConsume, SvpApplyInplace, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare, VecZnxAddInplace, VecZnxAddNormal,
-        VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxFillUniform, VecZnxNormalize, VecZnxNormalizeInplace,
+        SvpApplyInplace, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare, VecZnxAddInplace, VecZnxAddNormal, VecZnxBigNormalize,
+        VecZnxDftAllocBytes, VecZnxDftApply, VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeInplace,
         VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubABInplace,
     },
     layouts::{Backend, Data, DataMut, DataRef, FillUniform, MatZnx, Module, ReaderFrom, Reset, WriterTo},
@@ -96,9 +96,9 @@ impl GLWEToLWESwitchingKeyCompressed<Vec<u8>> {
     where
         Module<B>: VecZnxDftAllocBytes
             + VecZnxBigNormalize<B>
-            + DFT<B>
+            + VecZnxDftApply<B>
             + SvpApplyInplace<B>
-            + IDFTConsume<B>
+            + VecZnxIdftApplyConsume<B>
             + VecZnxNormalizeTmpBytes
             + VecZnxFillUniform
             + VecZnxSubABInplace

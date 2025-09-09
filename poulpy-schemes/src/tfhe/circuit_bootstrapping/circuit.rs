@@ -2,12 +2,13 @@ use std::collections::HashMap;
 
 use poulpy_hal::{
     api::{
-        DFT, IDFTConsume, IDFTTmpA, ScratchAvailable, TakeMatZnx, TakeVecZnx, TakeVecZnxBig, TakeVecZnxDft, TakeVecZnxDftSlice,
-        TakeVecZnxSlice, VecZnxAddInplace, VecZnxAutomorphismInplace, VecZnxBigAddSmallInplace, VecZnxBigAllocBytes,
-        VecZnxBigAutomorphismInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallBInplace, VecZnxCopy,
-        VecZnxDftAddInplace, VecZnxDftAllocBytes, VecZnxDftCopy, VecZnxNegateInplace, VecZnxNormalizeInplace,
-        VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace, VecZnxRotateInplaceTmpBytes, VecZnxRshInplace, VecZnxSub,
-        VecZnxSubABInplace, VecZnxSwitchRing, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
+        ScratchAvailable, TakeMatZnx, TakeVecZnx, TakeVecZnxBig, TakeVecZnxDft, TakeVecZnxDftSlice, TakeVecZnxSlice,
+        VecZnxAddInplace, VecZnxAutomorphismInplace, VecZnxBigAddSmallInplace, VecZnxBigAllocBytes, VecZnxBigAutomorphismInplace,
+        VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallBInplace, VecZnxCopy, VecZnxDftAddInplace,
+        VecZnxDftAllocBytes, VecZnxDftApply, VecZnxDftCopy, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA, VecZnxNegateInplace,
+        VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace, VecZnxRotateInplaceTmpBytes,
+        VecZnxRshInplace, VecZnxSub, VecZnxSubABInplace, VecZnxSwitchRing, VmpApplyDftToDft, VmpApplyDftToDftAdd,
+        VmpApplyDftToDftTmpBytes,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch, ToOwnedDeep},
     oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl},
@@ -33,7 +34,7 @@ where
         + VecZnxBigAutomorphismInplace<B>
         + VecZnxRshInplace<B>
         + VecZnxDftCopy<B>
-        + IDFTTmpA<B>
+        + VecZnxIdftApplyTmpA<B>
         + VecZnxSub
         + VecZnxAddInplace
         + VecZnxNegateInplace
@@ -44,8 +45,8 @@ where
         + VecZnxBigNormalizeTmpBytes
         + VmpApplyDftToDft<B>
         + VmpApplyDftToDftAdd<B>
-        + DFT<B>
-        + IDFTConsume<B>
+        + VecZnxDftApply<B>
+        + VecZnxIdftApplyConsume<B>
         + VecZnxBigAddSmallInplace<B>
         + VecZnxBigNormalize<B>
         + VecZnxAutomorphismInplace<B>
@@ -132,7 +133,7 @@ pub fn circuit_bootstrap_core<DRes, DLwe, DBrk, BRA: BlindRotationAlgo, B>(
         + VecZnxBigAutomorphismInplace<B>
         + VecZnxRshInplace<B>
         + VecZnxDftCopy<B>
-        + IDFTTmpA<B>
+        + VecZnxIdftApplyTmpA<B>
         + VecZnxSub
         + VecZnxAddInplace
         + VecZnxNegateInplace
@@ -143,8 +144,8 @@ pub fn circuit_bootstrap_core<DRes, DLwe, DBrk, BRA: BlindRotationAlgo, B>(
         + VecZnxBigNormalizeTmpBytes
         + VmpApplyDftToDft<B>
         + VmpApplyDftToDftAdd<B>
-        + DFT<B>
-        + IDFTConsume<B>
+        + VecZnxDftApply<B>
+        + VecZnxIdftApplyConsume<B>
         + VecZnxBigAddSmallInplace<B>
         + VecZnxBigNormalize<B>
         + VecZnxAutomorphismInplace<B>
@@ -258,7 +259,7 @@ fn post_process<DataRes, DataA, B: Backend>(
         + VecZnxBigAutomorphismInplace<B>
         + VecZnxRshInplace<B>
         + VecZnxDftCopy<B>
-        + IDFTTmpA<B>
+        + VecZnxIdftApplyTmpA<B>
         + VecZnxSub
         + VecZnxAddInplace
         + VecZnxNegateInplace
@@ -269,8 +270,8 @@ fn post_process<DataRes, DataA, B: Backend>(
         + VecZnxBigNormalizeTmpBytes
         + VmpApplyDftToDft<B>
         + VmpApplyDftToDftAdd<B>
-        + DFT<B>
-        + IDFTConsume<B>
+        + VecZnxDftApply<B>
+        + VecZnxIdftApplyConsume<B>
         + VecZnxBigAddSmallInplace<B>
         + VecZnxBigNormalize<B>
         + VecZnxAutomorphismInplace<B>
@@ -330,7 +331,7 @@ pub fn pack<D: DataMut, B: Backend>(
         + VecZnxBigAutomorphismInplace<B>
         + VecZnxRshInplace<B>
         + VecZnxDftCopy<B>
-        + IDFTTmpA<B>
+        + VecZnxIdftApplyTmpA<B>
         + VecZnxSub
         + VecZnxAddInplace
         + VecZnxNegateInplace
@@ -341,8 +342,8 @@ pub fn pack<D: DataMut, B: Backend>(
         + VecZnxBigNormalizeTmpBytes
         + VmpApplyDftToDft<B>
         + VmpApplyDftToDftAdd<B>
-        + DFT<B>
-        + IDFTConsume<B>
+        + VecZnxDftApply<B>
+        + VecZnxIdftApplyConsume<B>
         + VecZnxBigAddSmallInplace<B>
         + VecZnxBigNormalize<B>
         + VecZnxAutomorphismInplace<B>
@@ -409,7 +410,7 @@ fn combine<A: DataMut, D: DataMut, DataAK: DataRef, B: Backend>(
         + VecZnxBigAutomorphismInplace<B>
         + VecZnxRshInplace<B>
         + VecZnxDftCopy<B>
-        + IDFTTmpA<B>
+        + VecZnxIdftApplyTmpA<B>
         + VecZnxSub
         + VecZnxAddInplace
         + VecZnxNegateInplace
@@ -420,8 +421,8 @@ fn combine<A: DataMut, D: DataMut, DataAK: DataRef, B: Backend>(
         + VecZnxBigNormalizeTmpBytes
         + VmpApplyDftToDft<B>
         + VmpApplyDftToDftAdd<B>
-        + DFT<B>
-        + IDFTConsume<B>
+        + VecZnxDftApply<B>
+        + VecZnxIdftApplyConsume<B>
         + VecZnxBigAddSmallInplace<B>
         + VecZnxBigNormalize<B>
         + VecZnxAutomorphismInplace<B>

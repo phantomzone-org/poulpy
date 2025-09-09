@@ -2,9 +2,9 @@ use std::collections::HashMap;
 
 use poulpy_hal::{
     api::{
-        DFT, IDFTConsume, ScratchAvailable, TakeVecZnxDft, VecZnxBigAddSmallInplace, VecZnxBigAutomorphismInplace,
-        VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftAllocBytes, VecZnxRshInplace, VmpApplyDftToDft,
-        VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
+        ScratchAvailable, TakeVecZnxDft, VecZnxBigAddSmallInplace, VecZnxBigAutomorphismInplace, VecZnxBigNormalize,
+        VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftAllocBytes, VecZnxDftApply, VecZnxIdftApplyConsume, VecZnxRshInplace,
+        VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
 };
@@ -73,8 +73,8 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
             + VecZnxBigNormalizeTmpBytes
             + VmpApplyDftToDft<B>
             + VmpApplyDftToDftAdd<B>
-            + DFT<B>
-            + IDFTConsume<B>
+            + VecZnxDftApply<B>
+            + VecZnxIdftApplyConsume<B>
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>
             + VecZnxBigAutomorphismInplace<B>
@@ -99,8 +99,8 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
             + VecZnxBigNormalizeTmpBytes
             + VmpApplyDftToDft<B>
             + VmpApplyDftToDftAdd<B>
-            + DFT<B>
-            + IDFTConsume<B>
+            + VecZnxDftApply<B>
+            + VecZnxIdftApplyConsume<B>
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>
             + VecZnxBigAutomorphismInplace<B>

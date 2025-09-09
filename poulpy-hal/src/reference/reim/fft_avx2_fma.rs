@@ -242,7 +242,7 @@ fn test_fft_avx2_fma() {
     fn internal(log_m: usize) {
         let m = 1 << log_m;
 
-        let table: TableFFT<f64> = TableFFT::<f64>::new(m);
+        let table: ReimFFTTable<f64> = ReimFFTTable::<f64>::new(m);
 
         let mut values_0: Vec<f64> = vec![0f64; m << 1];
         let scale: f64 = 1.0f64 / m as f64;

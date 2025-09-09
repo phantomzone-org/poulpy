@@ -42,17 +42,23 @@ pub unsafe trait VecZnxDftAllocBytesImpl<B: Backend> {
 /// * See TODO for reference code.
 /// * See TODO for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
-pub unsafe trait VecZnxIDFTTmpBytesImpl<B: Backend> {
-    fn vec_znx_idft_tmp_bytes_impl(module: &Module<B>) -> usize;
+pub unsafe trait VecZnxIdftApplyTmpBytesImpl<B: Backend> {
+    fn vec_znx_idft_apply_tmp_bytes_impl(module: &Module<B>) -> usize;
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
 /// * See TODO for reference code.
 /// * See TODO for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
-pub unsafe trait IDFTImpl<B: Backend> {
-    fn idft_impl<R, A>(module: &Module<B>, res: &mut R, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch<B>)
-    where
+pub unsafe trait VecZnxIdftApplyImpl<B: Backend> {
+    fn vec_znx_idft_apply_impl<R, A>(
+        module: &Module<B>,
+        res: &mut R,
+        res_col: usize,
+        a: &A,
+        a_col: usize,
+        scratch: &mut Scratch<B>,
+    ) where
         R: VecZnxBigToMut<B>,
         A: VecZnxDftToRef<B>;
 }
@@ -61,8 +67,8 @@ pub unsafe trait IDFTImpl<B: Backend> {
 /// * See TODO for reference code.
 /// * See for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
-pub unsafe trait IDFTTmpAImpl<B: Backend> {
-    fn idft_tmp_a_impl<R, A>(module: &Module<B>, res: &mut R, res_col: usize, a: &mut A, a_col: usize)
+pub unsafe trait VecZnxIdftApplyTmpAImpl<B: Backend> {
+    fn vec_znx_idft_apply_tmpa_impl<R, A>(module: &Module<B>, res: &mut R, res_col: usize, a: &mut A, a_col: usize)
     where
         R: VecZnxBigToMut<B>,
         A: VecZnxDftToMut<B>;
@@ -72,8 +78,8 @@ pub unsafe trait IDFTTmpAImpl<B: Backend> {
 /// * See TODO for reference code.
 /// * See TODO for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
-pub unsafe trait IDFTConsumeImpl<B: Backend> {
-    fn idft_consume_impl<D: Data>(module: &Module<B>, a: VecZnxDft<D, B>) -> VecZnxBig<D, B>
+pub unsafe trait VecZnxIdftApplyConsumeImpl<B: Backend> {
+    fn vec_znx_idft_apply_consume_impl<D: Data>(module: &Module<B>, a: VecZnxDft<D, B>) -> VecZnxBig<D, B>
     where
         VecZnxDft<D, B>: VecZnxDftToMut<B>;
 }

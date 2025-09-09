@@ -2,9 +2,9 @@ use std::collections::HashMap;
 
 use poulpy_hal::{
     api::{
-        DFT, IDFTConsume, ScratchAvailable, TakeVecZnx, TakeVecZnxDft, VecZnxAddInplace, VecZnxAutomorphismInplace,
-        VecZnxBigAddSmallInplace, VecZnxBigAutomorphismInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
-        VecZnxBigSubSmallBInplace, VecZnxCopy, VecZnxDftAllocBytes, VecZnxNegateInplace, VecZnxNormalizeInplace, VecZnxRotate,
+        ScratchAvailable, TakeVecZnx, TakeVecZnxDft, VecZnxAddInplace, VecZnxAutomorphismInplace, VecZnxBigAddSmallInplace,
+        VecZnxBigAutomorphismInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallBInplace, VecZnxCopy,
+        VecZnxDftAllocBytes, VecZnxDftApply, VecZnxIdftApplyConsume, VecZnxNegateInplace, VecZnxNormalizeInplace, VecZnxRotate,
         VecZnxRotateInplace, VecZnxRshInplace, VecZnxSub, VecZnxSubABInplace, VmpApplyDftToDft, VmpApplyDftToDftAdd,
         VmpApplyDftToDftTmpBytes,
     },
@@ -126,8 +126,8 @@ impl GLWEPacker {
             + VecZnxBigNormalizeTmpBytes
             + VmpApplyDftToDft<B>
             + VmpApplyDftToDftAdd<B>
-            + DFT<B>
-            + IDFTConsume<B>
+            + VecZnxDftApply<B>
+            + VecZnxIdftApplyConsume<B>
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>
             + VecZnxCopy
@@ -204,8 +204,8 @@ fn pack_core<D: DataRef, DataAK: DataRef, B: Backend>(
         + VecZnxBigNormalizeTmpBytes
         + VmpApplyDftToDft<B>
         + VmpApplyDftToDftAdd<B>
-        + DFT<B>
-        + IDFTConsume<B>
+        + VecZnxDftApply<B>
+        + VecZnxIdftApplyConsume<B>
         + VecZnxBigAddSmallInplace<B>
         + VecZnxBigNormalize<B>
         + VecZnxCopy
@@ -301,8 +301,8 @@ fn combine<D: DataRef, DataAK: DataRef, B: Backend>(
         + VecZnxBigNormalizeTmpBytes
         + VmpApplyDftToDft<B>
         + VmpApplyDftToDftAdd<B>
-        + DFT<B>
-        + IDFTConsume<B>
+        + VecZnxDftApply<B>
+        + VecZnxIdftApplyConsume<B>
         + VecZnxBigAddSmallInplace<B>
         + VecZnxBigNormalize<B>
         + VecZnxCopy

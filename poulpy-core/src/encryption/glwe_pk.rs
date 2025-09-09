@@ -1,7 +1,7 @@
 use poulpy_hal::{
     api::{
-        DFT, IDFTConsume, ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyInplace, VecZnxAddInplace, VecZnxAddNormal,
-        VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxFillUniform, VecZnxNormalize, VecZnxNormalizeInplace,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyInplace, VecZnxAddInplace, VecZnxAddNormal, VecZnxBigNormalize,
+        VecZnxDftAllocBytes, VecZnxDftApply, VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeInplace,
         VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubABInplace,
     },
     layouts::{Backend, DataMut, DataRef, Module, ScratchOwned},
@@ -22,9 +22,9 @@ impl<D: DataMut> GLWEPublicKey<D> {
         Module<B>:,
         Module<B>: VecZnxDftAllocBytes
             + VecZnxBigNormalize<B>
-            + DFT<B>
+            + VecZnxDftApply<B>
             + SvpApplyInplace<B>
-            + IDFTConsume<B>
+            + VecZnxIdftApplyConsume<B>
             + VecZnxNormalizeTmpBytes
             + VecZnxFillUniform
             + VecZnxSubABInplace

@@ -1,10 +1,10 @@
 use poulpy_hal::{
     api::{
-        DFT, IDFTConsume, IDFTTmpA, ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApply, SvpApplyInplace, SvpPPolAlloc,
-        SvpPPolAllocBytes, SvpPrepare, VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxBigAddInplace,
-        VecZnxBigAddSmallInplace, VecZnxBigAlloc, VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxCopy, VecZnxDftAlloc,
-        VecZnxDftAllocBytes, VecZnxFillUniform, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub,
-        VecZnxSubABInplace, VecZnxSubScalarInplace, VecZnxSwitchRing,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApply, SvpApplyInplace, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare,
+        VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigAlloc,
+        VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxCopy, VecZnxDftAlloc, VecZnxDftAllocBytes, VecZnxDftApply,
+        VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA, VecZnxNormalize, VecZnxNormalizeInplace,
+        VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubABInplace, VecZnxSubScalarInplace, VecZnxSwitchRing,
     },
     layouts::{Backend, Module, ScratchOwned, VecZnxDft},
     oep::{
@@ -27,9 +27,9 @@ pub fn test_glwe_tensor_key_encrypt_sk<B>(module: &Module<B>, basek: usize, k: u
 where
     Module<B>: VecZnxDftAllocBytes
         + VecZnxBigNormalize<B>
-        + DFT<B>
+        + VecZnxDftApply<B>
         + SvpApplyInplace<B>
-        + IDFTConsume<B>
+        + VecZnxIdftApplyConsume<B>
         + VecZnxNormalizeTmpBytes
         + VecZnxFillUniform
         + VecZnxSubABInplace
@@ -48,7 +48,7 @@ where
         + VecZnxDftAlloc<B>
         + SvpApply<B>
         + VecZnxBigAlloc<B>
-        + IDFTTmpA<B>
+        + VecZnxIdftApplyTmpA<B>
         + VecZnxAddScalarInplace
         + VecZnxSwitchRing<B>
         + VecZnxSubScalarInplace,
@@ -100,13 +100,13 @@ where
     let mut sk_dft: VecZnxDft<Vec<u8>, B> = module.vec_znx_dft_alloc(rank, 1);
 
     (0..rank).for_each(|i| {
-        module.dft(1, 0, &mut sk_dft, i, &sk.data.as_vec_znx(), i);
+        module.vec_znx_dft_apply(1, 0, &mut sk_dft, i, &sk.data.as_vec_znx(), i);
     });
 
     (0..rank).for_each(|i| {
         (0..rank).for_each(|j| {
             module.svp_apply(&mut sk_ij_dft, 0, &sk_prepared.data, j, &sk_dft, i);
-            module.idft_tmp_a(&mut sk_ij_big, 0, &mut sk_ij_dft, 0);
+            module.vec_znx_idft_apply_tmpa(&mut sk_ij_big, 0, &mut sk_ij_dft, 0);
             module.vec_znx_big_normalize(
                 basek,
                 &mut sk_ij.data.as_vec_znx_mut(),
@@ -136,9 +136,9 @@ pub fn test_glwe_tensor_key_compressed_encrypt_sk<B>(module: &Module<B>, basek: 
 where
     Module<B>: VecZnxDftAllocBytes
         + VecZnxBigNormalize<B>
-        + DFT<B>
+        + VecZnxDftApply<B>
         + SvpApplyInplace<B>
-        + IDFTConsume<B>
+        + VecZnxIdftApplyConsume<B>
         + VecZnxNormalizeTmpBytes
         + VecZnxFillUniform
         + VecZnxSubABInplace
@@ -157,7 +157,7 @@ where
         + VecZnxDftAlloc<B>
         + SvpApply<B>
         + VecZnxBigAlloc<B>
-        + IDFTTmpA<B>
+        + VecZnxIdftApplyTmpA<B>
         + VecZnxAddScalarInplace
         + VecZnxSwitchRing<B>
         + VecZnxSubScalarInplace,
@@ -208,13 +208,13 @@ where
     let mut sk_dft: VecZnxDft<Vec<u8>, B> = module.vec_znx_dft_alloc(rank, 1);
 
     (0..rank).for_each(|i| {
-        module.dft(1, 0, &mut sk_dft, i, &sk.data.as_vec_znx(), i);
+        module.vec_znx_dft_apply(1, 0, &mut sk_dft, i, &sk.data.as_vec_znx(), i);
     });
 
     (0..rank).for_each(|i| {
         (0..rank).for_each(|j| {
             module.svp_apply(&mut sk_ij_dft, 0, &sk_prepared.data, j, &sk_dft, i);
-            module.idft_tmp_a(&mut sk_ij_big, 0, &mut sk_ij_dft, 0);
+            module.vec_znx_idft_apply_tmpa(&mut sk_ij_big, 0, &mut sk_ij_dft, 0);
             module.vec_znx_big_normalize(
                 basek,
                 &mut sk_ij.data.as_vec_znx_mut(),

@@ -1,8 +1,14 @@
 mod add;
+mod copy;
+mod dft;
 mod sub;
+mod zero;
 
 pub use add::*;
+pub use copy::*;
+pub use dft::*;
 pub use sub::*;
+pub use zero::*;
 
 pub(crate) fn assert_approx_eq_slice(a: &[f64], b: &[f64], tol: f64) {
     assert_eq!(a.len(), b.len(), "Slices have different lengths");

@@ -7,12 +7,12 @@ use crate::{
     reference::reim::{frac_rev_bits, ifft_ref::ifft_ref},
 };
 
-pub struct TableIFFT<R: Float + FloatConst + Debug> {
+pub struct ReimIFFTTable<R: Float + FloatConst + Debug> {
     m: usize,
     omg: Vec<R>,
 }
 
-impl<R: Float + FloatConst + Debug> TableIFFT<R> {
+impl<R: Float + FloatConst + Debug> ReimIFFTTable<R> {
     pub fn new(m: usize) -> Self {
         assert!(m & (m - 1) == 0, "m must be a power of two but is {}", m);
         let mut omg: Vec<R> = alloc_aligned::<R>(2 * m);
@@ -48,9 +48,13 @@ impl<R: Float + FloatConst + Debug> TableIFFT<R> {
     pub fn execute(&self, data: &mut [R]) {
         ifft_ref(self.m, &self.omg, data);
     }
+
+    pub fn m(&self) -> usize {
+        self.m
+    }
 }
 
-impl TableIFFT<f64> {
+impl ReimIFFTTable<f64> {
     /// # Safety
     /// This method is safe to use and will abort with an error
     /// message if invalid data is given.

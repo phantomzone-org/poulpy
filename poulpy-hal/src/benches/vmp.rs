@@ -1,7 +1,10 @@
 use std::hint::black_box;
 
 use crate::{
-    api::{DFT, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxDftAlloc, VmpApplyDftToDft, VmpPMatAlloc, VmpPrepare},
+    api::{
+        ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxDftAlloc, VecZnxDftApply, VmpApplyDftToDft, VmpPMatAlloc,
+        VmpPrepare,
+    },
     layouts::{Backend, FillUniform, MatZnx, Module, ScratchOwned, VecZnx, ZnxInfos},
     source::Source,
 };
@@ -9,7 +12,7 @@ use criterion::{BenchmarkId, Criterion};
 
 pub fn bench_vmp_apply_dft_to_dft<B: Backend>(c: &mut Criterion, label: &str)
 where
-    Module<B>: ModuleNew<B> + VecZnxDftAlloc<B> + VmpPMatAlloc<B> + VmpApplyDftToDft<B> + VmpPrepare<B> + DFT<B>,
+    Module<B>: ModuleNew<B> + VecZnxDftAlloc<B> + VmpPMatAlloc<B> + VmpApplyDftToDft<B> + VmpPrepare<B> + VecZnxDftApply<B>,
     ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
 {
     let group_name: String = format!("vmp_apply_dft_to_dft::{}", label);
@@ -18,7 +21,7 @@ where
 
     fn runner<B: Backend>(params: [usize; 5]) -> impl FnMut()
     where
-        Module<B>: ModuleNew<B> + VecZnxDftAlloc<B> + VmpPMatAlloc<B> + VmpApplyDftToDft<B> + VmpPrepare<B> + DFT<B>,
+        Module<B>: ModuleNew<B> + VecZnxDftAlloc<B> + VmpPMatAlloc<B> + VmpApplyDftToDft<B> + VmpPrepare<B> + VecZnxDftApply<B>,
         ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
     {
         let module: Module<B> = Module::<B>::new(1 << params[0]);
@@ -47,7 +50,7 @@ where
         let mut b_dft: crate::layouts::VecZnxDft<Vec<u8>, _> = module.vec_znx_dft_alloc(cols_in, rows);
 
         for i in 0..cols_in {
-            module.dft(1, 0, &mut b_dft, i, &b, i);
+            module.vec_znx_dft_apply(1, 0, &mut b_dft, i, &b, i);
         }
 
         let mut res: crate::layouts::VecZnxDft<Vec<u8>, _> = module.vec_znx_dft_alloc(cols_out, size);

@@ -1,8 +1,8 @@
 use poulpy_hal::{
     api::{
-        DFT, IDFTConsume, IDFTTmpA, ScratchAvailable, TakeVecZnxBig, TakeVecZnxDft, VecZnxBigAddSmallInplace,
-        VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftAddInplace,
-        VecZnxDftAllocBytes, VecZnxDftCopy, VecZnxNormalizeTmpBytes, VmpApplyDftToDft, VmpApplyDftToDftAdd,
+        ScratchAvailable, TakeVecZnxBig, TakeVecZnxDft, VecZnxBigAddSmallInplace, VecZnxBigAllocBytes, VecZnxBigNormalize,
+        VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftAddInplace, VecZnxDftAllocBytes, VecZnxDftApply, VecZnxDftCopy,
+        VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA, VecZnxNormalizeTmpBytes, VmpApplyDftToDft, VmpApplyDftToDftAdd,
         VmpApplyDftToDftTmpBytes,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch, VecZnx, VmpPMat, ZnxInfos},
@@ -114,13 +114,13 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
             + VmpApplyDftToDftTmpBytes
             + VecZnxBigAllocBytes
             + VecZnxNormalizeTmpBytes
-            + DFT<B>
+            + VecZnxDftApply<B>
             + VecZnxDftCopy<B>
             + VmpApplyDftToDft<B>
             + VmpApplyDftToDftAdd<B>
             + VecZnxDftAddInplace<B>
             + VecZnxBigNormalize<B>
-            + IDFTTmpA<B>,
+            + VecZnxIdftApplyTmpA<B>,
         Scratch<B>: ScratchAvailable + TakeVecZnxDft<B> + TakeVecZnxBig<B>,
     {
         #[cfg(debug_assertions)]
@@ -150,8 +150,8 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
             + VecZnxBigNormalizeTmpBytes
             + VmpApplyDftToDft<B>
             + VmpApplyDftToDftAdd<B>
-            + DFT<B>
-            + IDFTConsume<B>
+            + VecZnxDftApply<B>
+            + VecZnxIdftApplyConsume<B>
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>
             + VecZnxDftAllocBytes
@@ -159,7 +159,7 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
             + VecZnxNormalizeTmpBytes
             + VecZnxDftCopy<B>
             + VecZnxDftAddInplace<B>
-            + IDFTTmpA<B>,
+            + VecZnxIdftApplyTmpA<B>,
         Scratch<B>: ScratchAvailable + TakeVecZnxDft<B> + TakeVecZnxBig<B>,
     {
         self.keyswitch_internal(module, lhs, ksk, scratch);
@@ -178,8 +178,8 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
             + VecZnxBigNormalizeTmpBytes
             + VmpApplyDftToDft<B>
             + VmpApplyDftToDftAdd<B>
-            + DFT<B>
-            + IDFTConsume<B>
+            + VecZnxDftApply<B>
+            + VecZnxIdftApplyConsume<B>
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>
             + VecZnxDftAllocBytes
@@ -187,7 +187,7 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
             + VecZnxNormalizeTmpBytes
             + VecZnxDftCopy<B>
             + VecZnxDftAddInplace<B>
-            + IDFTTmpA<B>,
+            + VecZnxIdftApplyTmpA<B>,
         Scratch<B>: ScratchAvailable + TakeVecZnxDft<B> + TakeVecZnxBig<B>,
     {
         unsafe {
@@ -206,13 +206,13 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
             + VmpApplyDftToDftTmpBytes
             + VecZnxBigAllocBytes
             + VecZnxNormalizeTmpBytes
-            + DFT<B>
+            + VecZnxDftApply<B>
             + VecZnxDftCopy<B>
             + VmpApplyDftToDft<B>
             + VmpApplyDftToDftAdd<B>
             + VecZnxDftAddInplace<B>
             + VecZnxBigNormalize<B>
-            + IDFTTmpA<B>,
+            + VecZnxIdftApplyTmpA<B>,
         Scratch<B>: ScratchAvailable + TakeVecZnxDft<B> + TakeVecZnxBig<B>,
     {
         assert!(
@@ -236,7 +236,7 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
             // Pre-compute DFT of (a0, a1, a2)
             let (mut ci_dft, scratch_1) = scratch.take_vec_znx_dft(n, cols, self.size());
             (0..cols).for_each(|i| {
-                module.dft(1, 0, &mut ci_dft, i, &self.at(row_i, 0).data, i);
+                module.vec_znx_dft_apply(1, 0, &mut ci_dft, i, &self.at(row_i, 0).data, i);
             });
 
             (1..cols).for_each(|col_j| {
@@ -315,7 +315,7 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
                 module.vec_znx_dft_add_inplace(&mut tmp_dft_i, col_j, &ci_dft, 0);
                 let (mut tmp_idft, scratch_3) = scratch_2.take_vec_znx_big(n, 1, tsk.size());
                 (0..cols).for_each(|i| {
-                    module.idft_tmp_a(&mut tmp_idft, 0, &mut tmp_dft_i, i);
+                    module.vec_znx_idft_apply_tmpa(&mut tmp_idft, 0, &mut tmp_dft_i, i);
                     module.vec_znx_big_normalize(
                         self.basek(),
                         &mut self.at_mut(row_i, col_j).data,
@@ -341,8 +341,8 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
             + VecZnxBigNormalizeTmpBytes
             + VmpApplyDftToDft<B>
             + VmpApplyDftToDftAdd<B>
-            + DFT<B>
-            + IDFTConsume<B>
+            + VecZnxDftApply<B>
+            + VecZnxIdftApplyConsume<B>
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>,
         Scratch<B>: ScratchAvailable + TakeVecZnxDft<B>,
