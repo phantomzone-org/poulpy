@@ -6,7 +6,7 @@ use poulpy_hal::{
     },
     oep::{
         VmpApplyDftToDftAddImpl, VmpApplyDftToDftAddTmpBytesImpl, VmpApplyDftToDftImpl, VmpApplyDftToDftTmpBytesImpl,
-        VmpPMatAllocBytesImpl, VmpPMatAllocImpl, VmpPMatFromBytesImpl, VmpPMatPrepareImpl, VmpPrepareTmpBytesImpl,
+        VmpPMatAllocBytesImpl, VmpPMatAllocImpl, VmpPMatFromBytesImpl, VmpPrepareImpl, VmpPrepareTmpBytesImpl,
     },
 };
 
@@ -52,7 +52,7 @@ unsafe impl VmpPrepareTmpBytesImpl<FFT64> for FFT64 {
     }
 }
 
-unsafe impl VmpPMatPrepareImpl<FFT64> for FFT64 {
+unsafe impl VmpPrepareImpl<FFT64> for FFT64 {
     fn vmp_prepare_impl<R, A>(module: &Module<FFT64>, res: &mut R, a: &A, scratch: &mut Scratch<FFT64>)
     where
         R: VmpPMatToMut<FFT64>,

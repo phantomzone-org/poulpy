@@ -1,13 +1,14 @@
 use poulpy_hal::{
     api::{TakeSlice, VmpPrepareTmpBytes},
     layouts::{
-        Backend, MatZnx, MatZnxToRef, Module, Scratch, VmpPMat, VmpPMatOwned, VmpPMatToMut, ZnxInfos, ZnxView, ZnxViewMut,
+        Backend, MatZnx, MatZnxToRef, Module, Scratch, VecZnxDft, VecZnxDftToMut, VecZnxDftToRef, VmpPMat, VmpPMatOwned,
+        VmpPMatToMut, VmpPMatToRef, ZnxInfos, ZnxView, ZnxViewMut,
     },
     oep::{
-        VmpApplyDftToDftImpl, VmpApplyDftToDftTmpBytesImpl, VmpPMatAllocBytesImpl, VmpPMatAllocImpl, VmpPMatPrepareImpl,
+        VmpApplyDftToDftImpl, VmpApplyDftToDftTmpBytesImpl, VmpPMatAllocBytesImpl, VmpPMatAllocImpl, VmpPrepareImpl,
         VmpPrepareTmpBytesImpl,
     },
-    reference::vmp::fft64_vmp_apply_dft_to_dft_avx,
+    reference::vmp::fft64::{vmp_apply_dft_to_dft_avx, vmp_apply_dft_to_dft_ref},
 };
 
 use crate::cpu_ref::{FFT64, ffi::vmp};
@@ -29,42 +30,33 @@ where
     Scratch<Self>: TakeSlice,
     FFT64: VmpApplyDftToDftTmpBytesImpl<Self>,
 {
-    fn vmp_apply_dft_to_dft_impl<R, A, C>(
-        module: &poulpy_hal::layouts::Module<Self>,
-        res: &mut R,
-        a: &A,
-        b: &C,
-        scratch: &mut poulpy_hal::layouts::Scratch<Self>,
-    ) where
-        R: poulpy_hal::layouts::VecZnxDftToMut<Self>,
-        A: poulpy_hal::layouts::VecZnxDftToRef<Self>,
-        C: poulpy_hal::layouts::VmpPMatToRef<Self>,
+    fn vmp_apply_dft_to_dft_impl<R, A, C>(module: &Module<Self>, res: &mut R, a: &A, pmat: &C, scratch: &mut Scratch<Self>)
+    where
+        R: VecZnxDftToMut<Self>,
+        A: VecZnxDftToRef<Self>,
+        C: VmpPMatToRef<Self>,
     {
-        let mut res: poulpy_hal::layouts::VecZnxDft<&mut [u8], FFT64> = res.to_mut();
-        let a: poulpy_hal::layouts::VecZnxDft<&[u8], FFT64> = a.to_ref();
-        let b: poulpy_hal::layouts::VmpPMat<&[u8], FFT64> = b.to_ref();
+        let mut res: VecZnxDft<&mut [u8], FFT64> = res.to_mut();
+        let a: VecZnxDft<&[u8], FFT64> = a.to_ref();
+        let pmat: VmpPMat<&[u8], FFT64> = pmat.to_ref();
 
-        let (tmp_bytes, _) = scratch.take_slice(
+        let (tmp, _) = scratch.take_slice(
             FFT64::vmp_apply_dft_to_dft_tmp_bytes_impl(
                 module,
                 res.size(),
                 a.size(),
-                b.rows(),
-                b.cols_in(),
-                b.cols_out(),
-                b.size(),
+                pmat.rows(),
+                pmat.cols_in(),
+                pmat.cols_out(),
+                pmat.size(),
             ) / size_of::<f64>(),
         );
-        unsafe {
-            fft64_vmp_apply_dft_to_dft_avx(
-                module.n(),
-                res.raw_mut(),
-                a.raw(),
-                b.raw(),
-                b.rows() * b.cols_in(),
-                b.size() * b.cols_out(),
-                tmp_bytes,
-            );
+        if std::is_x86_feature_detected!("avx2") {
+            unsafe {
+                vmp_apply_dft_to_dft_avx(&mut res, &a, &pmat, tmp);
+            }
+        } else {
+            vmp_apply_dft_to_dft_ref(&mut res, &a, &pmat, tmp);
         }
     }
 }
@@ -81,7 +73,7 @@ unsafe impl VmpPrepareTmpBytesImpl<FFT64> for FFT64 {
     }
 }
 
-unsafe impl VmpPMatPrepareImpl<FFT64> for FFT64 {
+unsafe impl VmpPrepareImpl<FFT64> for FFT64 {
     fn vmp_prepare_impl<R, A>(module: &Module<FFT64>, res: &mut R, a: &A, scratch: &mut Scratch<FFT64>)
     where
         R: VmpPMatToMut<FFT64>,

@@ -1,7 +1,7 @@
 // poulpy-backend/benches/vec_znx_add.rs
 use criterion::{Criterion, criterion_group, criterion_main};
 use poulpy_backend::{cpu_ref, cpu_spqlios};
-use poulpy_hal::benches::vmp::bench_vmp_apply_dft_to_dft;
+use poulpy_hal::reference::vmp::fft64::bench_vmp_apply_dft_to_dft;
 
 fn bench_vmp_apply_dft_to_dft_cpu_spqlios_fft64(c: &mut Criterion) {
     bench_vmp_apply_dft_to_dft::<cpu_spqlios::FFT64>(c, "cpu_spqlios::fft64");

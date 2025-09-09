@@ -23,9 +23,16 @@ pub unsafe trait VecZnxDftFromBytesImpl<B: Backend> {
 /// * See TODO for reference code.
 /// * See TODO for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
-pub unsafe trait DFTImpl<B: Backend> {
-    fn dft_impl<R, A>(module: &Module<B>, step: usize, offset: usize, res: &mut R, res_col: usize, a: &A, a_col: usize)
-    where
+pub unsafe trait VecZnxDftApplyImpl<B: Backend> {
+    fn vec_znx_dft_apply_impl<R, A>(
+        module: &Module<B>,
+        step: usize,
+        offset: usize,
+        res: &mut R,
+        res_col: usize,
+        a: &A,
+        a_col: usize,
+    ) where
         R: VecZnxDftToMut<B>,
         A: VecZnxToRef;
 }

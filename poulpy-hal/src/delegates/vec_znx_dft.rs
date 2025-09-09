@@ -9,9 +9,9 @@ use crate::{
         VecZnxToRef,
     },
     oep::{
-        DFTImpl, VecZnxDftAddImpl, VecZnxDftAddInplaceImpl, VecZnxDftAllocBytesImpl, VecZnxDftAllocImpl, VecZnxDftCopyImpl,
-        VecZnxDftFromBytesImpl, VecZnxDftSubABInplaceImpl, VecZnxDftSubBAInplaceImpl, VecZnxDftSubImpl, VecZnxDftZeroImpl,
-        VecZnxIdftApplyConsumeImpl, VecZnxIdftApplyImpl, VecZnxIdftApplyTmpAImpl, VecZnxIdftApplyTmpBytesImpl,
+        VecZnxDftAddImpl, VecZnxDftAddInplaceImpl, VecZnxDftAllocBytesImpl, VecZnxDftAllocImpl, VecZnxDftApplyImpl,
+        VecZnxDftCopyImpl, VecZnxDftFromBytesImpl, VecZnxDftSubABInplaceImpl, VecZnxDftSubBAInplaceImpl, VecZnxDftSubImpl,
+        VecZnxDftZeroImpl, VecZnxIdftApplyConsumeImpl, VecZnxIdftApplyImpl, VecZnxIdftApplyTmpAImpl, VecZnxIdftApplyTmpBytesImpl,
     },
 };
 
@@ -91,14 +91,14 @@ where
 
 impl<B> VecZnxDftApply<B> for Module<B>
 where
-    B: Backend + DFTImpl<B>,
+    B: Backend + VecZnxDftApplyImpl<B>,
 {
     fn vec_znx_dft_apply<R, A>(&self, step: usize, offset: usize, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxDftToMut<B>,
         A: VecZnxToRef,
     {
-        B::dft_impl(self, step, offset, res, res_col, a, a_col);
+        B::vec_znx_dft_apply_impl(self, step, offset, res, res_col, a, a_col);
     }
 }
 

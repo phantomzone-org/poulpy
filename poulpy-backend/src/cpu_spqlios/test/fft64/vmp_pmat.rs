@@ -1,13 +1,8 @@
-use poulpy_hal::tests::vmp_pmat::test_vmp_apply;
+use poulpy_hal::reference::vmp::fft64::test_vmp_apply_dft_to_dft;
 
-use crate::{cpu_ref, cpu_spqlios};
-
-#[test]
-fn vmp_apply_cpu_spqlios_fft64() {
-    test_vmp_apply::<cpu_spqlios::FFT64>();
-}
+use crate::cpu_spqlios;
 
 #[test]
-fn vmp_apply_cpu_ref_fft64() {
-    test_vmp_apply::<cpu_ref::FFT64>();
+fn vmp_apply_dft_to_dftfft64() {
+    test_vmp_apply_dft_to_dft::<cpu_spqlios::FFT64>();
 }

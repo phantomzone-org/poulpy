@@ -5,9 +5,9 @@ use poulpy_hal::{
         VecZnxDftToRef, VecZnxToRef, ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut,
     },
     oep::{
-        DFTImpl, VecZnxDftAddImpl, VecZnxDftAddInplaceImpl, VecZnxDftAllocBytesImpl, VecZnxDftAllocImpl, VecZnxDftCopyImpl,
-        VecZnxDftFromBytesImpl, VecZnxDftSubABInplaceImpl, VecZnxDftSubBAInplaceImpl, VecZnxDftSubImpl, VecZnxDftZeroImpl,
-        VecZnxIdftApplyConsumeImpl, VecZnxIdftApplyImpl, VecZnxIdftApplyTmpAImpl, VecZnxIdftApplyTmpBytesImpl,
+        VecZnxDftAddImpl, VecZnxDftAddInplaceImpl, VecZnxDftAllocBytesImpl, VecZnxDftAllocImpl, VecZnxDftApplyImpl,
+        VecZnxDftCopyImpl, VecZnxDftFromBytesImpl, VecZnxDftSubABInplaceImpl, VecZnxDftSubBAInplaceImpl, VecZnxDftSubImpl,
+        VecZnxDftZeroImpl, VecZnxIdftApplyConsumeImpl, VecZnxIdftApplyImpl, VecZnxIdftApplyTmpAImpl, VecZnxIdftApplyTmpBytesImpl,
     },
     reference::{
         reim::{reim_copy_ref, reim_negate_inplace_ref, reim_negate_ref, reim_zero_ref},
@@ -137,9 +137,16 @@ unsafe impl VecZnxIdftApplyConsumeImpl<Self> for FFT64 {
     }
 }
 
-unsafe impl DFTImpl<Self> for FFT64 {
-    fn dft_impl<R, A>(module: &Module<Self>, step: usize, offset: usize, res: &mut R, res_col: usize, a: &A, a_col: usize)
-    where
+unsafe impl VecZnxDftApplyImpl<Self> for FFT64 {
+    fn vec_znx_dft_apply_impl<R, A>(
+        module: &Module<Self>,
+        step: usize,
+        offset: usize,
+        res: &mut R,
+        res_col: usize,
+        a: &A,
+        a_col: usize,
+    ) where
         R: VecZnxDftToMut<Self>,
         A: VecZnxToRef,
     {
