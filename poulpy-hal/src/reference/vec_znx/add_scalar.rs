@@ -2,9 +2,8 @@ use crate::{
     api::{VecZnxAddScalar, VecZnxAddScalarInplace},
     layouts::{
         Backend, FillUniform, Module, ScalarZnx, ScalarZnxToRef, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut,
-        ZnxZero,
     },
-    reference::znx::{znx_add_i64_ref, znx_add_inplace_i64_ref},
+    reference::znx::{znx_add_i64_ref, znx_add_inplace_i64_ref, znx_copy_ref, znx_zero_ref},
     source::Source,
 };
 
@@ -34,12 +33,12 @@ where
         if j == b_limb {
             znx_add_i64_ref(res.at_mut(res_col, j), a.at(a_col, 0), b.at(b_col, j));
         } else {
-            res.at_mut(res_col, j).copy_from_slice(b.at(b_col, j));
+            znx_copy_ref(res.at_mut(res_col, j), b.at(b_col, j));
         }
     }
 
     for j in min_size..res.size() {
-        res.zero_at(res_col, j);
+        znx_zero_ref(res.at_mut(res_col, j));
     }
 }
 
@@ -73,6 +72,10 @@ where
         } else {
             znx_copy_ref(res.at_mut(res_col, j), b.at(b_col, j));
         }
+    }
+
+    for j in min_size..res.size() {
+        znx_zero_ref(res.at_mut(res_col, j));
     }
 }
 

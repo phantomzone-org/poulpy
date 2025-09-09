@@ -1,8 +1,7 @@
 use poulpy_hal::{
     api::{TakeSlice, VecZnxMergeRingsTmpBytes, VecZnxNormalizeTmpBytes, VecZnxSplitRingTmpBytes},
     layouts::{
-        Module, ScalarZnx, ScalarZnxToRef, Scratch, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxSliceSize, ZnxView,
-        ZnxViewMut, ZnxZero,
+        Module, ScalarZnx, ScalarZnxToRef, Scratch, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut,
     },
     oep::{
         TakeSliceImpl, VecZnxAddImpl, VecZnxAddInplaceImpl, VecZnxAddNormalImpl, VecZnxAddScalarImpl, VecZnxAddScalarInplaceImpl,
@@ -15,11 +14,15 @@ use poulpy_hal::{
         VecZnxSubABInplaceImpl, VecZnxSubBAInplaceImpl, VecZnxSubImpl, VecZnxSubScalarImpl, VecZnxSubScalarInplaceImpl,
         VecZnxSwitchRingImpl,
     },
-    reference::vec_znx::{
-        vec_znx_add_normal_ref, vec_znx_automorphism_inplace_tmp_bytes_ref, vec_znx_fill_normal_ref, vec_znx_fill_uniform_ref,
-        vec_znx_lsh_inplace_ref, vec_znx_lsh_ref, vec_znx_merge_rings_ref, vec_znx_merge_rings_tmp_bytes_ref,
-        vec_znx_mul_xp_minus_one_inplace_tmp_bytes_ref, vec_znx_rotate_inplace_tmp_bytes_ref, vec_znx_rsh_inplace_ref,
-        vec_znx_rsh_ref, vec_znx_split_ring_ref, vec_znx_split_ring_tmp_bytes_ref, vec_znx_switch_ring_ref,
+    reference::{
+        vec_znx::{
+            vec_znx_add_normal_ref, vec_znx_automorphism_inplace_tmp_bytes_ref, vec_znx_fill_normal_ref,
+            vec_znx_fill_uniform_ref, vec_znx_lsh_inplace_ref, vec_znx_lsh_ref, vec_znx_merge_rings_ref,
+            vec_znx_merge_rings_tmp_bytes_ref, vec_znx_mul_xp_minus_one_inplace_tmp_bytes_ref,
+            vec_znx_rotate_inplace_tmp_bytes_ref, vec_znx_rsh_inplace_ref, vec_znx_rsh_ref, vec_znx_split_ring_ref,
+            vec_znx_split_ring_tmp_bytes_ref, vec_znx_switch_ring_ref,
+        },
+        znx::{znx_copy_ref, znx_zero_ref},
     },
     source::Source,
 };
@@ -253,12 +256,12 @@ unsafe impl VecZnxAddScalarImpl<Self> for FFT64 {
 
             for j in 0..min_size {
                 if j != b_limb {
-                    res.at_mut(res_col, j).copy_from_slice(b.at(b_col, j))
+                    znx_copy_ref(res.at_mut(res_col, j), b.at(b_col, j));
                 }
             }
 
             for j in min_size..res.size() {
-                res.zero_at(res_col, j);
+                znx_zero_ref(res.at_mut(res_col, j));
             }
         }
     }
@@ -403,7 +406,7 @@ unsafe impl VecZnxSubScalarImpl<Self> for FFT64 {
             }
 
             for j in min_size..res.size() {
-                res.zero_at(res_col, j);
+                znx_zero_ref(res.at_mut(res_col, j));
             }
         }
     }
@@ -602,7 +605,7 @@ unsafe impl VecZnxRotateImpl<Self> for FFT64 {
             });
 
             (min_size..res.size()).for_each(|j| {
-                res.zero_at(res_col, j);
+                znx_zero_ref(res.at_mut(res_col, j));
             })
         }
     }
@@ -841,18 +844,16 @@ where
     R: VecZnxToMut,
     A: VecZnxToRef,
 {
-    let mut res_mut: VecZnx<&mut [u8]> = res.to_mut();
-    let a_ref: VecZnx<&[u8]> = a.to_ref();
+    let mut res: VecZnx<&mut [u8]> = res.to_mut();
+    let a: VecZnx<&[u8]> = a.to_ref();
 
-    let min_size: usize = res_mut.size().min(a_ref.size());
+    let min_size: usize = res.size().min(a.size());
 
     (0..min_size).for_each(|j| {
-        res_mut
-            .at_mut(res_col, j)
-            .copy_from_slice(a_ref.at(a_col, j));
+        res.at_mut(res_col, j).copy_from_slice(a.at(a_col, j));
     });
-    (min_size..res_mut.size()).for_each(|j| {
-        res_mut.zero_at(res_col, j);
+    (min_size..res.size()).for_each(|j| {
+        znx_zero_ref(res.at_mut(res_col, j));
     })
 }
 

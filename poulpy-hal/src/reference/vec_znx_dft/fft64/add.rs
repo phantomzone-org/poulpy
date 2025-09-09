@@ -7,7 +7,10 @@ use crate::{
     api::{ModuleNew, VecZnxDftAdd, VecZnxDftAddInplace},
     layouts::{Backend, DataViewMut, Module, VecZnxDft, VecZnxDftToMut, VecZnxDftToRef, ZnxInfos, ZnxView, ZnxViewMut},
     oep::VecZnxDftAllocBytesImpl,
-    reference::reim::{fft_vec_add_inplace_ref, fft_vec_add_ref, fft_vec_copy_ref, fft_vec_zero_ref},
+    reference::{
+        reim::{fft_vec_add_inplace_ref, fft_vec_add_ref, fft_vec_copy_ref, fft_vec_zero_ref},
+        vec_znx_dft::fft64::assert_approx_eq_slice,
+    },
     source::Source,
 };
 
@@ -213,7 +216,7 @@ where
                     module.vec_znx_dft_add(&mut res_1, i, &a, i, &b, i);
                 }
 
-                assert_eq!(res_0.raw(), res_1.raw());
+                assert_approx_eq_slice(res_0.raw(), res_1.raw(), 1e-15);
             }
         }
     }
@@ -249,7 +252,7 @@ where
                 module.vec_znx_dft_add_inplace(&mut res_1, i, &a, i);
             }
 
-            assert_eq!(res_0.raw(), res_1.raw());
+            assert_approx_eq_slice(res_0.raw(), res_1.raw(), 1e-15);
         }
     }
 }

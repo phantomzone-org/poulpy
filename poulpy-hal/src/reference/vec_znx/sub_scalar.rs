@@ -2,8 +2,8 @@
 use crate::layouts::{ScalarZnxToRef, VecZnxToMut, VecZnxToRef};
 use crate::{
     api::{VecZnxSubScalar, VecZnxSubScalarInplace},
-    layouts::{Backend, FillUniform, Module, ScalarZnx, VecZnx, ZnxInfos, ZnxView, ZnxViewMut, ZnxZero},
-    reference::znx::{znx_sub_ab_inplace_i64_ref, znx_sub_i64_ref},
+    layouts::{Backend, FillUniform, Module, ScalarZnx, VecZnx, ZnxInfos, ZnxView, ZnxViewMut},
+    reference::znx::{znx_sub_ab_inplace_i64_ref, znx_sub_i64_ref, znx_zero_ref},
     source::Source,
 };
 
@@ -38,7 +38,7 @@ where
     }
 
     for j in min_size..res.size() {
-        res.zero_at(res_col, j);
+        znx_zero_ref(res.at_mut(res_col, j));
     }
 }
 
@@ -72,6 +72,10 @@ where
         } else {
             znx_copy_ref(res.at_mut(res_col, j), b.at(b_col, j));
         }
+    }
+
+    for j in min_size..res.size() {
+        znx_zero_ref(res.at_mut(res_col, j));
     }
 }
 

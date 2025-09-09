@@ -2,8 +2,8 @@ use itertools::izip;
 
 use crate::{
     api::VecZnxSwitchRing,
-    layouts::{Backend, FillUniform, Module, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut, ZnxZero},
-    reference::vec_znx::vec_znx_copy_ref,
+    layouts::{Backend, FillUniform, Module, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut},
+    reference::{vec_znx::vec_znx_copy_ref, znx::znx_zero_ref},
     source::Source,
 };
 
@@ -30,7 +30,9 @@ where
         (gap_in, gap_out) = (n_in / n_out, 1)
     } else {
         (gap_in, gap_out) = (1, n_out / n_in);
-        res.zero();
+        for j in 0..res.size() {
+            znx_zero_ref(res.at_mut(res_col, j));
+        }
     }
 
     let min_size: usize = a.size().min(res.size());
@@ -44,7 +46,7 @@ where
     });
 
     for j in min_size..res.size() {
-        res.zero_at(res_col, j);
+        znx_zero_ref(res.at_mut(res_col, j));
     }
 }
 

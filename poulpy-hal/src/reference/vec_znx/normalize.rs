@@ -4,12 +4,11 @@ use criterion::{BenchmarkId, Criterion};
 
 use crate::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes},
-    layouts::{
-        Backend, FillUniform, Module, ScratchOwned, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut, ZnxZero,
-    },
+    layouts::{Backend, FillUniform, Module, ScratchOwned, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut},
     reference::znx::{
         znx_normalize_beg_ref, znx_normalize_carry_only_beg_ref, znx_normalize_carry_only_mid_ref, znx_normalize_end_ref,
         znx_normalize_inplace_beg_ref, znx_normalize_inplace_end_ref, znx_normalize_inplace_mid_ref, znx_normalize_mid_ref,
+        znx_zero_ref,
     },
     source::Source,
 };
@@ -60,7 +59,7 @@ where
         }
 
         for j in a_size..res_size {
-            res.zero_at(res_col, j);
+            znx_zero_ref(res.at_mut(res_col, j));
         }
     }
 }
@@ -137,7 +136,7 @@ where
         }
 
         for j in a_size..res_size {
-            res.zero_at(res_col, j);
+            znx_zero_ref(res.at_mut(res_col, j));
         }
     }
 }

@@ -1,7 +1,7 @@
 use crate::{
     api::VecZnxCopy,
-    layouts::{Backend, FillUniform, Module, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut, ZnxZero},
-    reference::znx::znx_copy_ref,
+    layouts::{Backend, FillUniform, Module, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut},
+    reference::znx::{znx_copy_ref, znx_zero_ref},
     source::Source,
 };
 
@@ -28,7 +28,7 @@ where
     }
 
     for j in min_size..res_size {
-        res.zero_at(res_col, j);
+        znx_zero_ref(res.at_mut(res_col, j));
     }
 }
 

@@ -4,11 +4,11 @@ use criterion::{BenchmarkId, Criterion};
 
 use crate::{
     api::{ModuleNew, VecZnxSub, VecZnxSubABInplace, VecZnxSubBAInplace},
-    layouts::{Backend, FillUniform, Module, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut, ZnxZero},
+    layouts::{Backend, FillUniform, Module, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut},
     oep::{ModuleNewImpl, VecZnxSubABInplaceImpl, VecZnxSubBAInplaceImpl, VecZnxSubImpl},
     reference::znx::{
         znx_copy_ref, znx_negate_i64_ref, znx_negate_inplace_i64_ref, znx_sub_ab_inplace_i64_ref, znx_sub_ba_inplace_i64_ref,
-        znx_sub_i64_ref,
+        znx_sub_i64_ref, znx_zero_ref,
     },
     source::Source,
 };
@@ -46,7 +46,7 @@ where
         }
 
         for j in cpy_size..res_size {
-            res.zero_at(res_col, j);
+            znx_zero_ref(res.at_mut(res_col, j));
         }
     } else {
         let sum_size: usize = b_size.min(res_size);
@@ -61,7 +61,7 @@ where
         }
 
         for j in cpy_size..res_size {
-            res.zero_at(res_col, j);
+            znx_zero_ref(res.at_mut(res_col, j));
         }
     }
 }
@@ -106,7 +106,7 @@ where
         }
 
         for j in cpy_size..res_size {
-            res.zero_at(res_col, j);
+            znx_zero_ref(res.at_mut(res_col, j));
         }
     } else {
         let sum_size: usize = b_size.min(res_size);
@@ -121,7 +121,7 @@ where
         }
 
         for j in cpy_size..res_size {
-            res.zero_at(res_col, j);
+            znx_zero_ref(res.at_mut(res_col, j));
         }
     }
 }

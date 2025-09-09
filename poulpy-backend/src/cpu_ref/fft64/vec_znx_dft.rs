@@ -2,12 +2,16 @@ use poulpy_hal::{
     api::{TakeSlice, VecZnxIDFTTmpBytes},
     layouts::{
         Backend, Data, Module, Scratch, VecZnx, VecZnxBig, VecZnxBigToMut, VecZnxDft, VecZnxDftOwned, VecZnxDftToMut,
-        VecZnxDftToRef, VecZnxToRef, ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero,
+        VecZnxDftToRef, VecZnxToRef, ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut,
     },
     oep::{
         DFTImpl, IDFTConsumeImpl, IDFTImpl, IDFTTmpAImpl, VecZnxDftAddImpl, VecZnxDftAddInplaceImpl, VecZnxDftAllocBytesImpl,
         VecZnxDftAllocImpl, VecZnxDftCopyImpl, VecZnxDftFromBytesImpl, VecZnxDftSubABInplaceImpl, VecZnxDftSubBAInplaceImpl,
         VecZnxDftSubImpl, VecZnxDftZeroImpl, VecZnxIDFTTmpBytesImpl,
+    },
+    reference::{
+        reim::{fft_vec_copy_ref, fft_vec_zero_ref},
+        znx::znx_zero_ref,
     },
 };
 
@@ -70,7 +74,7 @@ unsafe impl IDFTImpl<Self> for FFT64 {
                 )
             });
             (min_size..res.size()).for_each(|j| {
-                res.zero_at(res_col, j);
+                znx_zero_ref(res.at_mut(res_col, j));
             });
         }
     }
@@ -82,23 +86,23 @@ unsafe impl IDFTTmpAImpl<Self> for FFT64 {
         R: VecZnxBigToMut<Self>,
         A: VecZnxDftToMut<Self>,
     {
-        let mut res_mut: VecZnxBig<&mut [u8], FFT64> = res.to_mut();
+        let mut res: VecZnxBig<&mut [u8], FFT64> = res.to_mut();
         let mut a_mut: VecZnxDft<&mut [u8], FFT64> = a.to_mut();
 
-        let min_size: usize = res_mut.size().min(a_mut.size());
+        let min_size: usize = res.size().min(a_mut.size());
 
         unsafe {
             (0..min_size).for_each(|j| {
                 vec_znx_dft::vec_znx_idft_tmp_a(
                     module.ptr(),
-                    res_mut.at_mut_ptr(res_col, j) as *mut vec_znx_big::vec_znx_big_t,
+                    res.at_mut_ptr(res_col, j) as *mut vec_znx_big::vec_znx_big_t,
                     1_u64,
                     a_mut.at_mut_ptr(a_col, j) as *mut vec_znx_dft::vec_znx_dft_t,
                     1_u64,
                 )
             });
-            (min_size..res_mut.size()).for_each(|j| {
-                res_mut.zero_at(res_col, j);
+            (min_size..res.size()).for_each(|j| {
+                znx_zero_ref(res.at_mut(res_col, j));
             })
         }
     }
@@ -136,26 +140,26 @@ unsafe impl DFTImpl<Self> for FFT64 {
         R: VecZnxDftToMut<Self>,
         A: VecZnxToRef,
     {
-        let mut res_mut: VecZnxDft<&mut [u8], FFT64> = res.to_mut();
-        let a_ref: VecZnx<&[u8]> = a.to_ref();
-        let steps: usize = a_ref.size().div_ceil(step);
-        let min_steps: usize = res_mut.size().min(steps);
+        let mut res: VecZnxDft<&mut [u8], FFT64> = res.to_mut();
+        let a: VecZnx<&[u8]> = a.to_ref();
+        let steps: usize = a.size().div_ceil(step);
+        let min_steps: usize = res.size().min(steps);
         unsafe {
             (0..min_steps).for_each(|j| {
                 let limb: usize = offset + j * step;
-                if limb < a_ref.size() {
+                if limb < a.size() {
                     vec_znx_dft::vec_znx_dft(
                         module.ptr(),
-                        res_mut.at_mut_ptr(res_col, j) as *mut vec_znx_dft::vec_znx_dft_t,
+                        res.at_mut_ptr(res_col, j) as *mut vec_znx_dft::vec_znx_dft_t,
                         1_u64,
-                        a_ref.at_ptr(a_col, limb),
+                        a.at_ptr(a_col, limb),
                         1_u64,
-                        a_ref.sl() as u64,
+                        a.sl() as u64,
                     )
                 }
             });
-            (min_steps..res_mut.size()).for_each(|j| {
-                res_mut.zero_at(res_col, j);
+            (min_steps..res.size()).for_each(|j| {
+                fft_vec_zero_ref(res.at_mut(res_col, j));
             });
         }
     }
@@ -168,27 +172,27 @@ unsafe impl VecZnxDftAddImpl<Self> for FFT64 {
         A: VecZnxDftToRef<Self>,
         D: VecZnxDftToRef<Self>,
     {
-        let mut res_mut: VecZnxDft<&mut [u8], FFT64> = res.to_mut();
-        let a_ref: VecZnxDft<&[u8], FFT64> = a.to_ref();
+        let mut res: VecZnxDft<&mut [u8], FFT64> = res.to_mut();
+        let a: VecZnxDft<&[u8], FFT64> = a.to_ref();
         let b_ref: VecZnxDft<&[u8], FFT64> = b.to_ref();
 
-        let min_size: usize = res_mut.size().min(a_ref.size()).min(b_ref.size());
+        let min_size: usize = res.size().min(a.size()).min(b_ref.size());
 
         unsafe {
             (0..min_size).for_each(|j| {
                 vec_znx_dft::vec_dft_add(
                     module.ptr(),
-                    res_mut.at_mut_ptr(res_col, j) as *mut vec_znx_dft::vec_znx_dft_t,
+                    res.at_mut_ptr(res_col, j) as *mut vec_znx_dft::vec_znx_dft_t,
                     1,
-                    a_ref.at_ptr(a_col, j) as *const vec_znx_dft::vec_znx_dft_t,
+                    a.at_ptr(a_col, j) as *const vec_znx_dft::vec_znx_dft_t,
                     1,
                     b_ref.at_ptr(b_col, j) as *const vec_znx_dft::vec_znx_dft_t,
                     1,
                 );
             });
         }
-        (min_size..res_mut.size()).for_each(|j| {
-            res_mut.zero_at(res_col, j);
+        (min_size..res.size()).for_each(|j| {
+            fft_vec_zero_ref(res.at_mut(res_col, j));
         })
     }
 }
@@ -199,20 +203,20 @@ unsafe impl VecZnxDftAddInplaceImpl<Self> for FFT64 {
         R: VecZnxDftToMut<Self>,
         A: VecZnxDftToRef<Self>,
     {
-        let mut res_mut: VecZnxDft<&mut [u8], FFT64> = res.to_mut();
-        let a_ref: VecZnxDft<&[u8], FFT64> = a.to_ref();
+        let mut res: VecZnxDft<&mut [u8], FFT64> = res.to_mut();
+        let a: VecZnxDft<&[u8], FFT64> = a.to_ref();
 
-        let min_size: usize = res_mut.size().min(a_ref.size());
+        let min_size: usize = res.size().min(a.size());
 
         unsafe {
             (0..min_size).for_each(|j| {
                 vec_znx_dft::vec_dft_add(
                     module.ptr(),
-                    res_mut.at_mut_ptr(res_col, j) as *mut vec_znx_dft::vec_znx_dft_t,
+                    res.at_mut_ptr(res_col, j) as *mut vec_znx_dft::vec_znx_dft_t,
                     1,
-                    res_mut.at_ptr(res_col, j) as *const vec_znx_dft::vec_znx_dft_t,
+                    res.at_ptr(res_col, j) as *const vec_znx_dft::vec_znx_dft_t,
                     1,
-                    a_ref.at_ptr(a_col, j) as *const vec_znx_dft::vec_znx_dft_t,
+                    a.at_ptr(a_col, j) as *const vec_znx_dft::vec_znx_dft_t,
                     1,
                 );
             });
@@ -227,27 +231,27 @@ unsafe impl VecZnxDftSubImpl<Self> for FFT64 {
         A: VecZnxDftToRef<Self>,
         D: VecZnxDftToRef<Self>,
     {
-        let mut res_mut: VecZnxDft<&mut [u8], FFT64> = res.to_mut();
-        let a_ref: VecZnxDft<&[u8], FFT64> = a.to_ref();
+        let mut res: VecZnxDft<&mut [u8], FFT64> = res.to_mut();
+        let a: VecZnxDft<&[u8], FFT64> = a.to_ref();
         let b_ref: VecZnxDft<&[u8], FFT64> = b.to_ref();
 
-        let min_size: usize = res_mut.size().min(a_ref.size()).min(b_ref.size());
+        let min_size: usize = res.size().min(a.size()).min(b_ref.size());
 
         unsafe {
             (0..min_size).for_each(|j| {
                 vec_znx_dft::vec_dft_sub(
                     module.ptr(),
-                    res_mut.at_mut_ptr(res_col, j) as *mut vec_znx_dft::vec_znx_dft_t,
+                    res.at_mut_ptr(res_col, j) as *mut vec_znx_dft::vec_znx_dft_t,
                     1,
-                    a_ref.at_ptr(a_col, j) as *const vec_znx_dft::vec_znx_dft_t,
+                    a.at_ptr(a_col, j) as *const vec_znx_dft::vec_znx_dft_t,
                     1,
                     b_ref.at_ptr(b_col, j) as *const vec_znx_dft::vec_znx_dft_t,
                     1,
                 );
             });
         }
-        (min_size..res_mut.size()).for_each(|j| {
-            res_mut.zero_at(res_col, j);
+        (min_size..res.size()).for_each(|j| {
+            fft_vec_zero_ref(res.at_mut(res_col, j));
         })
     }
 }
@@ -258,20 +262,20 @@ unsafe impl VecZnxDftSubABInplaceImpl<Self> for FFT64 {
         R: VecZnxDftToMut<Self>,
         A: VecZnxDftToRef<Self>,
     {
-        let mut res_mut: VecZnxDft<&mut [u8], FFT64> = res.to_mut();
-        let a_ref: VecZnxDft<&[u8], FFT64> = a.to_ref();
+        let mut res: VecZnxDft<&mut [u8], FFT64> = res.to_mut();
+        let a: VecZnxDft<&[u8], FFT64> = a.to_ref();
 
-        let min_size: usize = res_mut.size().min(a_ref.size());
+        let min_size: usize = res.size().min(a.size());
 
         unsafe {
             (0..min_size).for_each(|j| {
                 vec_znx_dft::vec_dft_sub(
                     module.ptr(),
-                    res_mut.at_mut_ptr(res_col, j) as *mut vec_znx_dft::vec_znx_dft_t,
+                    res.at_mut_ptr(res_col, j) as *mut vec_znx_dft::vec_znx_dft_t,
                     1,
-                    res_mut.at_ptr(res_col, j) as *const vec_znx_dft::vec_znx_dft_t,
+                    res.at_ptr(res_col, j) as *const vec_znx_dft::vec_znx_dft_t,
                     1,
-                    a_ref.at_ptr(a_col, j) as *const vec_znx_dft::vec_znx_dft_t,
+                    a.at_ptr(a_col, j) as *const vec_znx_dft::vec_znx_dft_t,
                     1,
                 );
             });
@@ -285,20 +289,20 @@ unsafe impl VecZnxDftSubBAInplaceImpl<Self> for FFT64 {
         R: VecZnxDftToMut<Self>,
         A: VecZnxDftToRef<Self>,
     {
-        let mut res_mut: VecZnxDft<&mut [u8], FFT64> = res.to_mut();
-        let a_ref: VecZnxDft<&[u8], FFT64> = a.to_ref();
+        let mut res: VecZnxDft<&mut [u8], FFT64> = res.to_mut();
+        let a: VecZnxDft<&[u8], FFT64> = a.to_ref();
 
-        let min_size: usize = res_mut.size().min(a_ref.size());
+        let min_size: usize = res.size().min(a.size());
 
         unsafe {
             (0..min_size).for_each(|j| {
                 vec_znx_dft::vec_dft_sub(
                     module.ptr(),
-                    res_mut.at_mut_ptr(res_col, j) as *mut vec_znx_dft::vec_znx_dft_t,
+                    res.at_mut_ptr(res_col, j) as *mut vec_znx_dft::vec_znx_dft_t,
                     1,
-                    a_ref.at_ptr(a_col, j) as *const vec_znx_dft::vec_znx_dft_t,
+                    a.at_ptr(a_col, j) as *const vec_znx_dft::vec_znx_dft_t,
                     1,
-                    res_mut.at_ptr(res_col, j) as *const vec_znx_dft::vec_znx_dft_t,
+                    res.at_ptr(res_col, j) as *const vec_znx_dft::vec_znx_dft_t,
                     1,
                 );
             });
@@ -319,22 +323,20 @@ unsafe impl VecZnxDftCopyImpl<Self> for FFT64 {
         R: VecZnxDftToMut<Self>,
         A: VecZnxDftToRef<Self>,
     {
-        let mut res_mut: VecZnxDft<&mut [u8], FFT64> = res.to_mut();
-        let a_ref: VecZnxDft<&[u8], FFT64> = a.to_ref();
+        let mut res: VecZnxDft<&mut [u8], FFT64> = res.to_mut();
+        let a: VecZnxDft<&[u8], FFT64> = a.to_ref();
 
-        let steps: usize = a_ref.size().div_ceil(step);
-        let min_steps: usize = res_mut.size().min(steps);
+        let steps: usize = a.size().div_ceil(step);
+        let min_steps: usize = res.size().min(steps);
 
         (0..min_steps).for_each(|j| {
             let limb: usize = offset + j * step;
-            if limb < a_ref.size() {
-                res_mut
-                    .at_mut(res_col, j)
-                    .copy_from_slice(a_ref.at(a_col, limb));
+            if limb < a.size() {
+                fft_vec_copy_ref(res.at_mut(res_col, j), a.at(a_col, limb));
             }
         });
-        (min_steps..res_mut.size()).for_each(|j| {
-            res_mut.zero_at(res_col, j);
+        (min_steps..res.size()).for_each(|j| {
+            fft_vec_zero_ref(res.at_mut(res_col, j));
         })
     }
 }

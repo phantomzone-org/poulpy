@@ -1,9 +1,7 @@
 use crate::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxSplitRing, VecZnxSplitRingTmpBytes},
-    layouts::{
-        Backend, FillUniform, Module, ScratchOwned, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut, ZnxZero,
-    },
-    reference::znx::{znx_rotate_i64_ref, znx_switch_ring_ref},
+    layouts::{Backend, FillUniform, Module, ScratchOwned, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut},
+    reference::znx::{znx_rotate_i64_ref, znx_switch_ring_ref, znx_zero_ref},
     source::Source,
 };
 
@@ -59,7 +57,7 @@ where
         }
 
         for j in min_size..bi.size() {
-            bi.zero_at(res_col, j);
+            znx_zero_ref(bi.at_mut(res_col, j));
         }
     })
 }

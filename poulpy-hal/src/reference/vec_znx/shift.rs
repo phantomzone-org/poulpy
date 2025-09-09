@@ -4,15 +4,13 @@ use criterion::{BenchmarkId, Criterion};
 
 use crate::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxLsh, VecZnxLshInplace, VecZnxRsh, VecZnxRshInplace},
-    layouts::{
-        Backend, FillUniform, Module, ScratchOwned, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut, ZnxZero,
-    },
+    layouts::{Backend, FillUniform, Module, ScratchOwned, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut},
     reference::{
         vec_znx::vec_znx_copy_ref,
         znx::{
             znx_copy_ref, znx_normalize_beg_ref, znx_normalize_carry_only_beg_ref, znx_normalize_carry_only_mid_ref,
             znx_normalize_end_ref, znx_normalize_inplace_beg_ref, znx_normalize_inplace_end_ref, znx_normalize_inplace_mid_ref,
-            znx_normalize_mid_ref,
+            znx_normalize_mid_ref, znx_zero_ref,
         },
     },
     source::Source,
@@ -31,7 +29,9 @@ where
     let k_rem: usize = k % basek;
 
     if steps >= size {
-        res.zero();
+        for j in 0..size {
+            znx_zero_ref(res.at_mut(res_col, j));
+        }
         return;
     }
 
@@ -50,9 +50,9 @@ where
             );
         });
 
-        (size - steps..size).for_each(|j| {
-            res.zero_at(res_col, j);
-        });
+        for j in size - steps..size {
+            znx_zero_ref(res.at_mut(res_col, j));
+        }
     }
 
     // Inplace normalization with left shift of k % basek
@@ -83,7 +83,9 @@ where
     let k_rem: usize = k % basek;
 
     if steps >= res_size.min(a_size) {
-        res.zero();
+        for j in 0..res_size {
+            znx_zero_ref(res.at_mut(res_col, j));
+        }
         return;
     }
 
@@ -127,9 +129,9 @@ where
     }
 
     // Zeroes bottom
-    (min_size..res_size).for_each(|j| {
-        res.zero_at(res_col, j);
-    });
+    for j in min_size..res_size {
+        znx_zero_ref(res.at_mut(res_col, j));
+    }
 }
 
 pub fn vec_znx_rsh_inplace_ref<R>(basek: usize, k: usize, res: &mut R, res_col: usize, carry: &mut [i64])
@@ -149,7 +151,9 @@ where
     }
 
     if steps >= size {
-        res.zero();
+        for j in 0..size {
+            znx_zero_ref(res.at_mut(res_col, j));
+        }
         return;
     }
 
@@ -184,7 +188,7 @@ where
 
         // Propagates carry on the rest of the limbs of res
         for j in (0..steps).rev() {
-            res.zero_at(res_col, j);
+            znx_zero_ref(res.at_mut(res_col, j));
             if j == 0 {
                 znx_normalize_inplace_end_ref(basek, basek - k_rem, res.at_mut(res_col, j), carry);
             } else {
@@ -204,7 +208,7 @@ where
 
         // Zeroes the top
         (0..steps).for_each(|j| {
-            res.zero_at(res_col, j);
+            znx_zero_ref(res.at_mut(res_col, j));
         });
     }
 }
@@ -229,7 +233,9 @@ where
     }
 
     if steps >= res_size {
-        res.zero();
+        for j in 0..res_size {
+            znx_zero_ref(res.at_mut(res_col, j));
+        }
         return;
     }
 
@@ -254,7 +260,7 @@ where
 
         // Zeroes lower limbs of res if a_size + steps < res_size
         (min_size..res_size).for_each(|j| {
-            res.zero_at(res_col, j);
+            znx_zero_ref(res.at_mut(res_col, j));
         });
 
         // Continues with shifted normalization
@@ -281,7 +287,7 @@ where
 
         // Propagates carry on the rest of the limbs of res
         for j in (0..steps).rev() {
-            res.zero_at(res_col, j);
+            znx_zero_ref(res.at_mut(res_col, j));
             if j == 0 {
                 znx_normalize_inplace_end_ref(basek, basek - k_rem, res.at_mut(res_col, j), carry);
             } else {
@@ -293,7 +299,7 @@ where
 
         // Zeroes the top
         (0..steps).for_each(|j| {
-            res.zero_at(res_col, j);
+            znx_zero_ref(res.at_mut(res_col, j));
         });
 
         // Shift a into res, up to the maximum
@@ -303,7 +309,7 @@ where
 
         // Zeroes bottom if a_size + steps < res_size
         (min_size..res_size).for_each(|j| {
-            res.zero_at(res_col, j);
+            znx_zero_ref(res.at_mut(res_col, j));
         });
     }
 }
