@@ -11,17 +11,21 @@ use crate::{
         Backend, FillUniform, Module, VecZnx, VecZnxBig, VecZnxBigToMut, VecZnxBigToRef, VecZnxToRef, ZnxView, ZnxViewMut,
     },
     oep::VecZnxBigAllocBytesImpl,
-    reference::vec_znx::{vec_znx_sub_ab_inplace_ref, vec_znx_sub_ba_inplace_ref, vec_znx_sub_ref},
+    reference::{
+        vec_znx::{vec_znx_sub, vec_znx_sub_ab_inplace, vec_znx_sub_ba_inplace},
+        znx::{ZnxArithmetic, ZnxArithmeticRef},
+    },
     source::Source,
 };
 
 /// R <- A - B
-pub fn vec_znx_big_sub_ref<R, A, B, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
+pub fn vec_znx_big_sub<R, A, B, BE, ZNXARI>(res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
 where
     BE: Backend<ScalarBig = i64>,
     R: VecZnxBigToMut<BE>,
     A: VecZnxBigToRef<BE>,
     B: VecZnxBigToRef<BE>,
+    ZNXARI: ZnxArithmetic,
 {
     let res: VecZnxBig<&mut [u8], BE> = res.to_mut();
     let a: VecZnxBig<&[u8], BE> = a.to_ref();
@@ -51,15 +55,16 @@ where
         max_size: b.max_size,
     };
 
-    vec_znx_sub_ref(&mut res_vznx, res_col, &a_vznx, a_col, &b_vznx, b_col);
+    vec_znx_sub::<_, _, _, ZNXARI>(&mut res_vznx, res_col, &a_vznx, a_col, &b_vznx, b_col);
 }
 
 /// R <- A - B
-pub fn vec_znx_big_sub_ab_inplace_ref<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
+pub fn vec_znx_big_sub_ab_inplace<R, A, BE, ZNXARI>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
     BE: Backend<ScalarBig = i64>,
     R: VecZnxBigToMut<BE>,
     A: VecZnxBigToRef<BE>,
+    ZNXARI: ZnxArithmetic,
 {
     let res: VecZnxBig<&mut [u8], BE> = res.to_mut();
     let a: VecZnxBig<&[u8], BE> = a.to_ref();
@@ -80,15 +85,16 @@ where
         max_size: a.max_size,
     };
 
-    vec_znx_sub_ab_inplace_ref(&mut res_vznx, res_col, &a_vznx, a_col);
+    vec_znx_sub_ab_inplace::<_, _, ZNXARI>(&mut res_vznx, res_col, &a_vznx, a_col);
 }
 
 /// R <- B - A
-pub fn vec_znx_big_sub_ba_inplace_ref<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
+pub fn vec_znx_big_sub_ba_inplace<R, A, BE, ZNXARI>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
     BE: Backend<ScalarBig = i64>,
     R: VecZnxBigToMut<BE>,
     A: VecZnxBigToRef<BE>,
+    ZNXARI: ZnxArithmetic,
 {
     let res: VecZnxBig<&mut [u8], BE> = res.to_mut();
     let a: VecZnxBig<&[u8], BE> = a.to_ref();
@@ -109,16 +115,17 @@ where
         max_size: a.max_size,
     };
 
-    vec_znx_sub_ba_inplace_ref(&mut res_vznx, res_col, &a_vznx, a_col);
+    vec_znx_sub_ba_inplace::<_, _, ZNXARI>(&mut res_vznx, res_col, &a_vznx, a_col);
 }
 
 /// R <- A - B
-pub fn vec_znx_big_sub_small_a_ref<R, A, B, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
+pub fn vec_znx_big_sub_small_a<R, A, B, BE, ZNXARI>(res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
 where
     BE: Backend<ScalarBig = i64>,
     R: VecZnxBigToMut<BE>,
     A: VecZnxToRef,
     B: VecZnxBigToRef<BE>,
+    ZNXARI: ZnxArithmetic,
 {
     let res: VecZnxBig<&mut [u8], BE> = res.to_mut();
     let b: VecZnxBig<&[u8], BE> = b.to_ref();
@@ -139,16 +146,17 @@ where
         max_size: b.max_size,
     };
 
-    vec_znx_sub_ref(&mut res_vznx, res_col, a, a_col, &b_vznx, b_col);
+    vec_znx_sub::<_, _, _, ZNXARI>(&mut res_vznx, res_col, a, a_col, &b_vznx, b_col);
 }
 
 /// R <- A - B
-pub fn vec_znx_big_sub_small_b_ref<R, A, B, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
+pub fn vec_znx_big_sub_small_b<R, A, B, BE, ZNXARI>(res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
 where
     BE: Backend<ScalarBig = i64>,
     R: VecZnxBigToMut<BE>,
     A: VecZnxBigToRef<BE>,
     B: VecZnxToRef,
+    ZNXARI: ZnxArithmetic,
 {
     let res: VecZnxBig<&mut [u8], BE> = res.to_mut();
     let a: VecZnxBig<&[u8], BE> = a.to_ref();
@@ -169,15 +177,16 @@ where
         max_size: a.max_size,
     };
 
-    vec_znx_sub_ref(&mut res_vznx, res_col, &a_vznx, a_col, b, b_col);
+    vec_znx_sub::<_, _, _, ZNXARI>(&mut res_vznx, res_col, &a_vznx, a_col, b, b_col);
 }
 
 ///  R <- R - A
-pub fn vec_znx_big_sub_small_a_inplace_ref<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
+pub fn vec_znx_big_sub_small_a_inplace<R, A, BE, ZNXARI>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
     BE: Backend<ScalarBig = i64>,
     R: VecZnxBigToMut<BE>,
     A: VecZnxToRef,
+    ZNXARI: ZnxArithmetic,
 {
     let res: VecZnxBig<&mut [u8], BE> = res.to_mut();
 
@@ -189,15 +198,16 @@ where
         max_size: res.max_size,
     };
 
-    vec_znx_sub_ab_inplace_ref(&mut res_vznx, res_col, a, a_col);
+    vec_znx_sub_ab_inplace::<_, _, ZNXARI>(&mut res_vznx, res_col, a, a_col);
 }
 
 /// R <- A - R
-pub fn vec_znx_big_sub_small_b_inplace_ref<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
+pub fn vec_znx_big_sub_small_b_inplace<R, A, BE, ZNXARI>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
     BE: Backend<ScalarBig = i64>,
     R: VecZnxBigToMut<BE>,
     A: VecZnxToRef,
+    ZNXARI: ZnxArithmetic,
 {
     let res: VecZnxBig<&mut [u8], BE> = res.to_mut();
 
@@ -209,7 +219,7 @@ where
         max_size: res.max_size,
     };
 
-    vec_znx_sub_ba_inplace_ref(&mut res_vznx, res_col, a, a_col);
+    vec_znx_sub_ba_inplace::<_, _, ZNXARI>(&mut res_vznx, res_col, a, a_col);
 }
 
 pub fn test_vec_znx_big_sub<B>(module: &Module<B>)
@@ -242,7 +252,7 @@ where
 
                 // Reference
                 for i in 0..cols {
-                    vec_znx_big_sub_ref(&mut res_0, i, &a, i, &b, i);
+                    vec_znx_big_sub::<_, _, _, _, ZnxArithmeticRef>(&mut res_0, i, &a, i, &b, i);
                     module.vec_znx_big_sub(&mut res_1, i, &a, i, &b, i);
                 }
 
@@ -278,7 +288,7 @@ where
             res_1.raw_mut().copy_from_slice(res_0.raw());
 
             for i in 0..cols {
-                vec_znx_big_sub_ab_inplace_ref(&mut res_0, i, &a, i);
+                vec_znx_big_sub_ab_inplace::<_, _, _, ZnxArithmeticRef>(&mut res_0, i, &a, i);
                 module.vec_znx_big_sub_ab_inplace(&mut res_1, i, &a, i);
             }
 
@@ -313,7 +323,7 @@ where
             res_1.raw_mut().copy_from_slice(res_0.raw());
 
             for i in 0..cols {
-                vec_znx_big_sub_ba_inplace_ref(&mut res_0, i, &a, i);
+                vec_znx_big_sub_ba_inplace::<_, _, _, ZnxArithmeticRef>(&mut res_0, i, &a, i);
                 module.vec_znx_big_sub_ba_inplace(&mut res_1, i, &a, i);
             }
 
@@ -352,7 +362,7 @@ where
 
                 // Reference
                 for i in 0..cols {
-                    vec_znx_big_sub_small_a_ref(&mut res_0, i, &a, i, &b, i);
+                    vec_znx_big_sub_small_a::<_, _, _, _, ZnxArithmeticRef>(&mut res_0, i, &a, i, &b, i);
                     module.vec_znx_big_sub_small_a(&mut res_1, i, &a, i, &b, i);
                 }
 
@@ -392,7 +402,7 @@ where
 
                 // Reference
                 for i in 0..cols {
-                    vec_znx_big_sub_small_b_ref(&mut res_0, i, &a, i, &b, i);
+                    vec_znx_big_sub_small_b::<_, _, _, _, ZnxArithmeticRef>(&mut res_0, i, &a, i, &b, i);
                     module.vec_znx_big_sub_small_b(&mut res_1, i, &a, i, &b, i);
                 }
 
@@ -428,7 +438,7 @@ where
             res_1.raw_mut().copy_from_slice(res_0.raw());
 
             for i in 0..cols {
-                vec_znx_big_sub_small_a_inplace_ref(&mut res_0, i, &a, i);
+                vec_znx_big_sub_small_a_inplace::<_, _, _, ZnxArithmeticRef>(&mut res_0, i, &a, i);
                 module.vec_znx_big_sub_small_a_inplace(&mut res_1, i, &a, i);
             }
 
@@ -463,7 +473,7 @@ where
             res_1.raw_mut().copy_from_slice(res_0.raw());
 
             for i in 0..cols {
-                vec_znx_big_sub_small_b_inplace_ref(&mut res_0, i, &a, i);
+                vec_znx_big_sub_small_b_inplace::<_, _, _, ZnxArithmeticRef>(&mut res_0, i, &a, i);
                 module.vec_znx_big_sub_small_b_inplace(&mut res_1, i, &a, i);
             }
 

@@ -16,16 +16,16 @@ use crate::{
     oep::{VecZnxBigAllocBytesImpl, VecZnxDftAllocBytesImpl},
     reference::{
         reim::{
-            ReimFFTTable, ReimIFFTTable, reim_copy_ref, reim_from_znx_i64_ref, reim_to_znx_i64_inplace_ref, reim_to_znx_i64_ref,
-            reim_zero_ref,
+            ReimArithmetic, ReimArithmeticRef, ReimConv, ReimConvRef, ReimDFTExecute, ReimFFTRef, ReimFFTTable, ReimIFFTRef,
+            ReimIFFTTable,
         },
         vec_znx_dft::fft64::assert_approx_eq_slice,
-        znx::znx_zero_ref,
+        znx::{ZnxArithmetic, ZnxArithmeticRef},
     },
     source::Source,
 };
 
-pub fn vec_znx_dft_apply_ref<R, A, BE>(
+pub fn vec_znx_dft_apply<R, A, BE, ARI, CONV, FFT>(
     table: &ReimFFTTable<f64>,
     step: usize,
     offset: usize,
@@ -37,6 +37,9 @@ pub fn vec_znx_dft_apply_ref<R, A, BE>(
     BE: Backend<ScalarPrep = f64>,
     R: VecZnxDftToMut<BE>,
     A: VecZnxToRef,
+    ARI: ReimArithmetic,
+    CONV: ReimConv,
+    FFT: ReimDFTExecute<ReimFFTTable<f64>, f64>,
 {
     let mut res: VecZnxDft<&mut [u8], BE> = res.to_mut();
     let a: VecZnx<&[u8]> = a.to_ref();
@@ -57,139 +60,70 @@ pub fn vec_znx_dft_apply_ref<R, A, BE>(
     for j in 0..min_steps {
         let limb = offset + j * step;
         if limb < a_size {
-            reim_from_znx_i64_ref(res.at_mut(res_col, j), a.at(a_col, limb));
-            table.execute(res.at_mut(res_col, j));
+            CONV::reim_from_znx_i64(res.at_mut(res_col, j), a.at(a_col, limb));
+            FFT::reim_dft_execute(table, res.at_mut(res_col, j));
         }
     }
 
     (min_steps..res.size()).for_each(|j| {
-        reim_zero_ref(res.at_mut(res_col, j));
+        ARI::reim_zero(res.at_mut(res_col, j));
     });
 }
 
-/// # Safety
-/// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2,fma")`);
-#[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
-#[target_feature(enable = "avx2,fma")]
-pub fn vec_znx_dft_apply_avx<R, A, BE>(
-    table: &ReimFFTTable<f64>,
-    step: usize,
-    offset: usize,
+pub fn vec_znx_idft_apply<R, A, BE, ZNXARI, REIARI, CONV, IFFT>(
+    table: &ReimIFFTTable<f64>,
     res: &mut R,
     res_col: usize,
     a: &A,
     a_col: usize,
 ) where
-    BE: Backend<ScalarPrep = f64>,
-    R: VecZnxDftToMut<BE>,
-    A: VecZnxToRef,
+    BE: Backend<ScalarPrep = f64, ScalarBig = i64>,
+    R: VecZnxBigToMut<BE>,
+    A: VecZnxDftToRef<BE>,
+    ZNXARI: ZnxArithmetic,
+    REIARI: ReimArithmetic,
+    CONV: ReimConv,
+    IFFT: ReimDFTExecute<ReimIFFTTable<f64>, f64>,
 {
-    let mut res: VecZnxDft<&mut [u8], BE> = res.to_mut();
-    let a: VecZnx<&[u8]> = a.to_ref();
+    let mut res: VecZnxBig<&mut [u8], BE> = res.to_mut();
+    let a: VecZnxDft<&[u8], BE> = a.to_ref();
 
     #[cfg(debug_assertions)]
     {
-        assert!(step > 0);
         assert_eq!(table.m() << 1, res.n());
         assert_eq!(a.n(), res.n());
     }
 
-    let a_size: usize = a.size();
     let res_size: usize = res.size();
-
-    let steps: usize = a_size.div_ceil(step);
-    let min_steps: usize = res_size.min(steps);
-
-    use crate::reference::reim::reim_from_znx_i64_bnd50_fma;
-
-    for j in 0..min_steps {
-        let limb = offset + j * step;
-        if limb < a_size {
-            reim_from_znx_i64_bnd50_fma(res.at_mut(res_col, limb), a.at(a_col, j));
-            table.execute_avx2_fma(res.at_mut(res_col, limb));
-        }
-    }
-
-    (min_steps..res.size()).for_each(|j| {
-        reim_zero_ref(res.at_mut(res_col, j));
-    });
-}
-
-pub fn vec_znx_idft_apply_ref<R, A, BE>(table: &ReimIFFTTable<f64>, res: &mut R, res_col: usize, a: &A, a_col: usize)
-where
-    BE: Backend<ScalarPrep = f64, ScalarBig = i64>,
-    R: VecZnxBigToMut<BE>,
-    A: VecZnxDftToRef<BE>,
-{
-    let mut res: VecZnxBig<&mut [u8], BE> = res.to_mut();
-    let a: VecZnxDft<&[u8], BE> = a.to_ref();
-
-    #[cfg(debug_assertions)]
-    {
-        assert_eq!(table.m() << 1, res.n());
-        assert_eq!(a.n(), res.n());
-    }
-
-    let res_size = res.size();
     let min_size: usize = res_size.min(a.size());
 
     let divisor: f64 = table.m() as f64;
 
     for j in 0..min_size {
         let res_slice_f64: &mut [f64] = cast_slice_mut(res.at_mut(res_col, j));
-        reim_copy_ref(res_slice_f64, a.at(a_col, j));
-        table.execute(res_slice_f64);
-        reim_to_znx_i64_inplace_ref(res_slice_f64, divisor);
+        REIARI::reim_copy(res_slice_f64, a.at(a_col, j));
+        IFFT::reim_dft_execute(table, res_slice_f64);
+        CONV::reim_to_znx_i64_inplace(res_slice_f64, divisor);
     }
 
     for j in min_size..res_size {
-        znx_zero_ref(res.at_mut(res_col, j));
+        ZNXARI::znx_zero(res.at_mut(res_col, j));
     }
 }
 
-/// # Safety
-/// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2,fma")`);
-#[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
-#[target_feature(enable = "avx2,fma")]
-pub fn vec_znx_idft_apply_avx<R, A, BE>(table: &ReimIFFTTable<f64>, res: &mut R, res_col: usize, a: &A, a_col: usize)
-where
-    BE: Backend<ScalarPrep = f64, ScalarBig = i64>,
-    R: VecZnxBigToMut<BE>,
-    A: VecZnxDftToRef<BE>,
-{
-    let mut res: VecZnxBig<&mut [u8], BE> = res.to_mut();
-    let a: VecZnxDft<&[u8], BE> = a.to_ref();
-
-    #[cfg(debug_assertions)]
-    {
-        assert_eq!(table.m() << 1, res.n());
-        assert_eq!(a.n(), res.n());
-    }
-
-    let res_size = res.size();
-    let min_size: usize = res_size.min(a.size());
-
-    let divisor: f64 = table.m() as f64;
-
-    use crate::reference::reim::reim_to_znx_i64_inplace_bnd63_avx2_fma;
-
-    for j in 0..min_size {
-        let res_slice_f64: &mut [f64] = cast_slice_mut(res.at_mut(res_col, j));
-        reim_copy_ref(res_slice_f64, a.at(a_col, j));
-        table.execute_avx2_fma(res_slice_f64);
-        reim_to_znx_i64_inplace_bnd63_avx2_fma(res_slice_f64, divisor);
-    }
-
-    for j in min_size..res_size {
-        znx_zero_ref(res.at_mut(res_col, j));
-    }
-}
-
-pub fn vec_znx_idft_apply_tmpa_ref<R, A, BE>(table: &ReimIFFTTable<f64>, res: &mut R, res_col: usize, a: &mut A, a_col: usize)
-where
+pub fn vec_znx_idft_apply_tmpa<R, A, BE, ZNXARI, CONV, IFFT>(
+    table: &ReimIFFTTable<f64>,
+    res: &mut R,
+    res_col: usize,
+    a: &mut A,
+    a_col: usize,
+) where
     BE: Backend<ScalarPrep = f64, ScalarBig = i64>,
     R: VecZnxBigToMut<BE>,
     A: VecZnxDftToMut<BE>,
+    ZNXARI: ZnxArithmetic,
+    CONV: ReimConv,
+    IFFT: ReimDFTExecute<ReimIFFTTable<f64>, f64>,
 {
     let mut res: VecZnxBig<&mut [u8], BE> = res.to_mut();
     let mut a: VecZnxDft<&mut [u8], BE> = a.to_mut();
@@ -206,55 +140,24 @@ where
     let divisor: f64 = table.m() as f64;
 
     for j in 0..min_size {
-        table.execute(a.at_mut(a_col, j));
-        reim_to_znx_i64_ref(res.at_mut(res_col, j), divisor, a.at(a_col, j));
+        IFFT::reim_dft_execute(table, a.at_mut(a_col, j));
+        CONV::reim_to_znx_i64(res.at_mut(res_col, j), divisor, a.at(a_col, j));
     }
 
     for j in min_size..res_size {
-        znx_zero_ref(res.at_mut(res_col, j));
+        ZNXARI::znx_zero(res.at_mut(res_col, j));
     }
 }
 
-/// # Safety
-/// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2,fma")`);
-#[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
-#[target_feature(enable = "avx2,fma")]
-pub fn vec_znx_idft_apply_tmpa_avx<R, A, BE>(table: &ReimIFFTTable<f64>, res: &mut R, res_col: usize, a: &mut A, a_col: usize)
-where
-    BE: Backend<ScalarPrep = f64, ScalarBig = i64>,
-    R: VecZnxBigToMut<BE>,
-    A: VecZnxDftToMut<BE>,
-{
-    let mut res: VecZnxBig<&mut [u8], BE> = res.to_mut();
-    let mut a: VecZnxDft<&mut [u8], BE> = a.to_mut();
-
-    #[cfg(debug_assertions)]
-    {
-        assert_eq!(table.m() << 1, res.n());
-        assert_eq!(a.n(), res.n());
-    }
-
-    let res_size = res.size();
-    let min_size: usize = res_size.min(a.size());
-
-    let divisor: f64 = table.m() as f64;
-
-    use crate::reference::reim::reim_to_znx_i64_bnd63_avx2_fma;
-
-    for j in 0..min_size {
-        table.execute_avx2_fma(a.at_mut(a_col, j));
-        reim_to_znx_i64_bnd63_avx2_fma(res.at_mut(res_col, j), divisor, a.at(a_col, j));
-    }
-
-    for j in min_size..res_size {
-        znx_zero_ref(res.at_mut(res_col, j));
-    }
-}
-
-pub fn vec_znx_idft_apply_consume_ref<D: Data, BE>(table: &ReimIFFTTable<f64>, mut res: VecZnxDft<D, BE>) -> VecZnxBig<D, BE>
+pub fn vec_znx_idft_apply_consume<D: Data, BE, CONV, IFFT>(
+    table: &ReimIFFTTable<f64>,
+    mut res: VecZnxDft<D, BE>,
+) -> VecZnxBig<D, BE>
 where
     BE: Backend<ScalarPrep = f64, ScalarBig = i64>,
     VecZnxDft<D, BE>: VecZnxDftToMut<BE>,
+    CONV: ReimConv,
+    IFFT: ReimDFTExecute<ReimIFFTTable<f64>, f64>,
 {
     {
         let mut res: VecZnxDft<&mut [u8], BE> = res.to_mut();
@@ -268,39 +171,8 @@ where
 
         for i in 0..res.cols() {
             for j in 0..res.size() {
-                table.execute(res.at_mut(i, j));
-                reim_to_znx_i64_inplace_ref(res.at_mut(i, j), divisor);
-            }
-        }
-    }
-
-    res.into_big()
-}
-
-/// # Safety
-/// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2,fma")`);
-#[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
-#[target_feature(enable = "avx2,fma")]
-pub fn vec_znx_idft_apply_consume_avx<D: Data, BE>(table: &ReimIFFTTable<f64>, mut res: VecZnxDft<D, BE>) -> VecZnxBig<D, BE>
-where
-    BE: Backend<ScalarPrep = f64, ScalarBig = i64>,
-    VecZnxDft<D, BE>: VecZnxDftToMut<BE>,
-{
-    {
-        let mut res: VecZnxDft<&mut [u8], BE> = res.to_mut();
-        use crate::reference::reim::reim_to_znx_i64_inplace_bnd63_avx2_fma;
-
-        #[cfg(debug_assertions)]
-        {
-            assert_eq!(table.m() << 1, res.n());
-        }
-
-        let divisor: f64 = table.m() as f64;
-
-        for i in 0..res.cols() {
-            for j in 0..res.size() {
-                table.execute_avx2_fma(res.at_mut(i, j));
-                reim_to_znx_i64_inplace_bnd63_avx2_fma(res.at_mut(i, j), divisor);
+                IFFT::reim_dft_execute(table, res.at_mut(i, j));
+                CONV::reim_to_znx_i64_inplace(res.at_mut(i, j), divisor);
             }
         }
     }
@@ -334,19 +206,19 @@ where
 
             for i in 0..cols {
                 module.vec_znx_dft_apply(1, 0, &mut res_1, i, &a, i);
-                vec_znx_dft_apply_ref(&table, 1, 0, &mut res_0, i, &a, i);
+                vec_znx_dft_apply::<_, _, _, ReimArithmeticRef, ReimConvRef, ReimFFTRef>(&table, 1, 0, &mut res_0, i, &a, i);
             }
             assert_approx_eq_slice(res_0.raw(), res_1.raw(), 1e-10);
 
             for i in 0..cols {
                 module.vec_znx_dft_apply(1, 1, &mut res_1, i, &a, i);
-                vec_znx_dft_apply_ref(&table, 1, 1, &mut res_0, i, &a, i);
+                vec_znx_dft_apply::<_, _, _, ReimArithmeticRef, ReimConvRef, ReimFFTRef>(&table, 1, 1, &mut res_0, i, &a, i);
             }
             assert_approx_eq_slice(res_0.raw(), res_1.raw(), 1e-10);
 
             for i in 0..cols {
                 module.vec_znx_dft_apply(2, 1, &mut res_1, i, &a, i);
-                vec_znx_dft_apply_ref(&table, 2, 1, &mut res_0, i, &a, i);
+                vec_znx_dft_apply::<_, _, _, ReimArithmeticRef, ReimConvRef, ReimFFTRef>(&table, 2, 1, &mut res_0, i, &a, i);
             }
             assert_approx_eq_slice(res_0.raw(), res_1.raw(), 1e-10);
         }
@@ -382,7 +254,9 @@ where
             // Reference
             for i in 0..cols {
                 module.vec_znx_idft_apply(&mut res_1, i, &a, i, scratch.borrow());
-                vec_znx_idft_apply_ref(&table, &mut res_0, i, &a, i);
+                vec_znx_idft_apply::<_, _, _, ZnxArithmeticRef, ReimArithmeticRef, ReimConvRef, ReimIFFTRef>(
+                    &table, &mut res_0, i, &a, i,
+                );
             }
 
             assert_eq!(res_0.raw(), res_1.raw());
@@ -419,7 +293,9 @@ where
             source.fill_bytes(res_1.data_mut());
 
             for i in 0..cols {
-                vec_znx_idft_apply_tmpa_ref(&table, &mut res_0, i, &mut a_0, i);
+                vec_znx_idft_apply_tmpa::<_, _, _, ZnxArithmeticRef, ReimConvRef, ReimIFFTRef>(
+                    &table, &mut res_0, i, &mut a_0, i,
+                );
                 module.vec_znx_idft_apply_tmpa(&mut res_1, i, &mut a_1, i);
             }
 
@@ -448,7 +324,7 @@ where
         let mut a_1: VecZnxDft<Vec<u8>, B> = VecZnxDft::alloc(module.n(), cols, a_size);
         a_1.raw_mut().copy_from_slice(a_0.raw());
 
-        let res_0: VecZnxBig<Vec<u8>, B> = vec_znx_idft_apply_consume_ref(&table, a_0);
+        let res_0: VecZnxBig<Vec<u8>, B> = vec_znx_idft_apply_consume::<_, _, ReimConvRef, ReimIFFTRef>(&table, a_0);
         let res_1: VecZnxBig<Vec<u8>, B> = module.vec_znx_idft_apply_consume(a_1);
 
         assert_eq!(res_0.raw(), res_1.raw());

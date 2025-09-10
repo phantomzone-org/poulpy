@@ -1,8 +1,7 @@
 use poulpy_hal::{
-    api::{TakeSlice, VecZnxIdftApplyTmpBytes},
     layouts::{
-        Backend, Data, Module, Scratch, VecZnx, VecZnxBig, VecZnxBigToMut, VecZnxDft, VecZnxDftOwned, VecZnxDftToMut,
-        VecZnxDftToRef, VecZnxToRef, ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut,
+        Backend, Data, Module, Scratch, VecZnxBig, VecZnxBigToMut, VecZnxDft, VecZnxDftOwned, VecZnxDftToMut, VecZnxDftToRef,
+        VecZnxToRef,
     },
     oep::{
         VecZnxDftAddImpl, VecZnxDftAddInplaceImpl, VecZnxDftAllocBytesImpl, VecZnxDftAllocImpl, VecZnxDftApplyImpl,
@@ -10,15 +9,19 @@ use poulpy_hal::{
         VecZnxDftZeroImpl, VecZnxIdftApplyConsumeImpl, VecZnxIdftApplyImpl, VecZnxIdftApplyTmpAImpl, VecZnxIdftApplyTmpBytesImpl,
     },
     reference::{
-        reim::{reim_copy_ref, reim_zero_ref},
-        znx::znx_zero_ref,
+        reim::{
+            ReimArithmeticAvx, ReimArithmeticRef, ReimConvAvx, ReimConvRef, ReimFFTAvx, ReimFFTRef, ReimIFFTAvx, ReimIFFTRef,
+        },
+        vec_znx_dft::fft64::{
+            vec_znx_dft_add, vec_znx_dft_add_inplace, vec_znx_dft_apply, vec_znx_dft_copy, vec_znx_dft_sub,
+            vec_znx_dft_sub_ab_inplace, vec_znx_dft_sub_ba_inplace, vec_znx_dft_zero, vec_znx_idft_apply,
+            vec_znx_idft_apply_consume, vec_znx_idft_apply_tmpa,
+        },
+        znx::{ZnxArithmeticAvx, ZnxArithmeticRef},
     },
 };
 
-use crate::cpu_ref::{
-    FFT64,
-    ffi::{vec_znx_big, vec_znx_dft},
-};
+use crate::cpu_ref::{FFT64, fft64::module::FFT64ModuleHandle};
 
 unsafe impl VecZnxDftFromBytesImpl<Self> for FFT64 {
     fn vec_znx_dft_from_bytes_impl(n: usize, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxDftOwned<Self> {
@@ -39,8 +42,8 @@ unsafe impl VecZnxDftAllocImpl<Self> for FFT64 {
 }
 
 unsafe impl VecZnxIdftApplyTmpBytesImpl<Self> for FFT64 {
-    fn vec_znx_idft_apply_tmp_bytes_impl(module: &Module<Self>) -> usize {
-        unsafe { vec_znx_dft::vec_znx_idft_tmp_bytes(module.ptr()) as usize }
+    fn vec_znx_idft_apply_tmp_bytes_impl(_module: &Module<Self>) -> usize {
+        0
     }
 }
 
@@ -51,37 +54,27 @@ unsafe impl VecZnxIdftApplyImpl<Self> for FFT64 {
         res_col: usize,
         a: &A,
         a_col: usize,
-        scratch: &mut Scratch<Self>,
+        _scratch: &mut Scratch<Self>,
     ) where
         R: VecZnxBigToMut<Self>,
         A: VecZnxDftToRef<Self>,
     {
-        let mut res: VecZnxBig<&mut [u8], FFT64> = res.to_mut();
-        let a: VecZnxDft<&[u8], FFT64> = a.to_ref();
-
-        #[cfg(debug_assertions)]
-        {
-            assert_eq!(res.n(), a.n())
-        }
-
-        let (tmp_bytes, _) = scratch.take_slice(module.vec_znx_idft_apply_tmp_bytes());
-
-        let min_size: usize = res.size().min(a.size());
-
-        unsafe {
-            (0..min_size).for_each(|j| {
-                vec_znx_dft::vec_znx_idft(
-                    module.ptr(),
-                    res.at_mut_ptr(res_col, j) as *mut vec_znx_big::vec_znx_big_t,
-                    1_u64,
-                    a.at_ptr(a_col, j) as *const vec_znx_dft::vec_znx_dft_t,
-                    1_u64,
-                    tmp_bytes.as_mut_ptr(),
-                )
-            });
-            (min_size..res.size()).for_each(|j| {
-                znx_zero_ref(res.at_mut(res_col, j));
-            });
+        if std::is_x86_feature_detected!("avx2") {
+            vec_znx_idft_apply::<_, _, _, ZnxArithmeticAvx, ReimArithmeticAvx, ReimConvAvx, ReimIFFTAvx>(
+                module.get_ifft_table(),
+                res,
+                res_col,
+                a,
+                a_col,
+            );
+        } else {
+            vec_znx_idft_apply::<_, _, _, ZnxArithmeticRef, ReimArithmeticRef, ReimConvRef, ReimIFFTRef>(
+                module.get_ifft_table(),
+                res,
+                res_col,
+                a,
+                a_col,
+            );
         }
     }
 }
@@ -92,50 +85,36 @@ unsafe impl VecZnxIdftApplyTmpAImpl<Self> for FFT64 {
         R: VecZnxBigToMut<Self>,
         A: VecZnxDftToMut<Self>,
     {
-        let mut res: VecZnxBig<&mut [u8], FFT64> = res.to_mut();
-        let mut a: VecZnxDft<&mut [u8], FFT64> = a.to_mut();
-
-        let min_size: usize = res.size().min(a.size());
-
-        unsafe {
-            (0..min_size).for_each(|j| {
-                vec_znx_dft::vec_znx_idft_tmp_a(
-                    module.ptr(),
-                    res.at_mut_ptr(res_col, j) as *mut vec_znx_big::vec_znx_big_t,
-                    1_u64,
-                    a.at_mut_ptr(a_col, j) as *mut vec_znx_dft::vec_znx_dft_t,
-                    1_u64,
-                )
-            });
-            (min_size..res.size()).for_each(|j| {
-                znx_zero_ref(res.at_mut(res_col, j));
-            })
+        if std::is_x86_feature_detected!("avx2") {
+            vec_znx_idft_apply_tmpa::<_, _, _, ZnxArithmeticAvx, ReimConvAvx, ReimIFFTAvx>(
+                module.get_ifft_table(),
+                res,
+                res_col,
+                a,
+                a_col,
+            );
+        } else {
+            vec_znx_idft_apply_tmpa::<_, _, _, ZnxArithmeticRef, ReimConvRef, ReimIFFTRef>(
+                module.get_ifft_table(),
+                res,
+                res_col,
+                a,
+                a_col,
+            );
         }
     }
 }
 
 unsafe impl VecZnxIdftApplyConsumeImpl<Self> for FFT64 {
-    fn vec_znx_idft_apply_consume_impl<D: Data>(module: &Module<Self>, mut a: VecZnxDft<D, FFT64>) -> VecZnxBig<D, FFT64>
+    fn vec_znx_idft_apply_consume_impl<D: Data>(module: &Module<Self>, res: VecZnxDft<D, FFT64>) -> VecZnxBig<D, FFT64>
     where
         VecZnxDft<D, FFT64>: VecZnxDftToMut<Self>,
     {
-        unsafe {
-            let mut a: VecZnxDft<&mut [u8], FFT64> = a.to_mut();
-            // Rev col and rows because ZnxDft.sl() >= ZnxBig.sl()
-            (0..a.size()).for_each(|j| {
-                (0..a.cols()).for_each(|i| {
-                    vec_znx_dft::vec_znx_idft_tmp_a(
-                        module.ptr(),
-                        a.at_mut_ptr(i, j) as *mut vec_znx_big::vec_znx_big_t,
-                        1_u64,
-                        a.at_mut_ptr(i, j) as *mut vec_znx_dft::vec_znx_dft_t,
-                        1_u64,
-                    )
-                });
-            });
+        if std::is_x86_feature_detected!("avx2") {
+            vec_znx_idft_apply_consume::<_, _, ReimConvAvx, ReimIFFTAvx>(module.get_ifft_table(), res)
+        } else {
+            vec_znx_idft_apply_consume::<_, _, ReimConvRef, ReimIFFTRef>(module.get_ifft_table(), res)
         }
-
-        a.into_big()
     }
 }
 
@@ -152,172 +131,112 @@ unsafe impl VecZnxDftApplyImpl<Self> for FFT64 {
         R: VecZnxDftToMut<Self>,
         A: VecZnxToRef,
     {
-        let mut res: VecZnxDft<&mut [u8], FFT64> = res.to_mut();
-        let a: VecZnx<&[u8]> = a.to_ref();
-        let steps: usize = a.size().div_ceil(step);
-        let min_steps: usize = res.size().min(steps);
-        unsafe {
-            (0..min_steps).for_each(|j| {
-                let limb: usize = offset + j * step;
-                if limb < a.size() {
-                    vec_znx_dft::vec_znx_dft(
-                        module.ptr(),
-                        res.at_mut_ptr(res_col, j) as *mut vec_znx_dft::vec_znx_dft_t,
-                        1_u64,
-                        a.at_ptr(a_col, limb),
-                        1_u64,
-                        a.sl() as u64,
-                    )
-                }
-            });
-            (min_steps..res.size()).for_each(|j| {
-                reim_zero_ref(res.at_mut(res_col, j));
-            });
+        if std::is_x86_feature_detected!("avx2") {
+            vec_znx_dft_apply::<_, _, _, ReimArithmeticAvx, ReimConvAvx, ReimFFTAvx>(
+                module.get_fft_table(),
+                step,
+                offset,
+                res,
+                res_col,
+                a,
+                a_col,
+            );
+        } else {
+            vec_znx_dft_apply::<_, _, _, ReimArithmeticRef, ReimConvRef, ReimFFTRef>(
+                module.get_fft_table(),
+                step,
+                offset,
+                res,
+                res_col,
+                a,
+                a_col,
+            );
         }
     }
 }
 
 unsafe impl VecZnxDftAddImpl<Self> for FFT64 {
-    fn vec_znx_dft_add_impl<R, A, D>(module: &Module<Self>, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &D, b_col: usize)
-    where
+    fn vec_znx_dft_add_impl<R, A, D>(
+        _module: &Module<Self>,
+        res: &mut R,
+        res_col: usize,
+        a: &A,
+        a_col: usize,
+        b: &D,
+        b_col: usize,
+    ) where
         R: VecZnxDftToMut<Self>,
         A: VecZnxDftToRef<Self>,
         D: VecZnxDftToRef<Self>,
     {
-        let mut res: VecZnxDft<&mut [u8], FFT64> = res.to_mut();
-        let a: VecZnxDft<&[u8], FFT64> = a.to_ref();
-        let b_ref: VecZnxDft<&[u8], FFT64> = b.to_ref();
-
-        let min_size: usize = res.size().min(a.size()).min(b_ref.size());
-
-        unsafe {
-            (0..min_size).for_each(|j| {
-                vec_znx_dft::vec_dft_add(
-                    module.ptr(),
-                    res.at_mut_ptr(res_col, j) as *mut vec_znx_dft::vec_znx_dft_t,
-                    1,
-                    a.at_ptr(a_col, j) as *const vec_znx_dft::vec_znx_dft_t,
-                    1,
-                    b_ref.at_ptr(b_col, j) as *const vec_znx_dft::vec_znx_dft_t,
-                    1,
-                );
-            });
+        if std::is_x86_feature_detected!("avx2") {
+            vec_znx_dft_add::<_, _, _, _, ReimArithmeticAvx>(res, res_col, a, a_col, b, b_col);
+        } else {
+            vec_znx_dft_add::<_, _, _, _, ReimArithmeticRef>(res, res_col, a, a_col, b, b_col);
         }
-        (min_size..res.size()).for_each(|j| {
-            reim_zero_ref(res.at_mut(res_col, j));
-        })
     }
 }
 
 unsafe impl VecZnxDftAddInplaceImpl<Self> for FFT64 {
-    fn vec_znx_dft_add_inplace_impl<R, A>(module: &Module<Self>, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn vec_znx_dft_add_inplace_impl<R, A>(_module: &Module<Self>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxDftToMut<Self>,
         A: VecZnxDftToRef<Self>,
     {
-        let mut res: VecZnxDft<&mut [u8], FFT64> = res.to_mut();
-        let a: VecZnxDft<&[u8], FFT64> = a.to_ref();
-
-        let min_size: usize = res.size().min(a.size());
-
-        unsafe {
-            (0..min_size).for_each(|j| {
-                vec_znx_dft::vec_dft_add(
-                    module.ptr(),
-                    res.at_mut_ptr(res_col, j) as *mut vec_znx_dft::vec_znx_dft_t,
-                    1,
-                    res.at_ptr(res_col, j) as *const vec_znx_dft::vec_znx_dft_t,
-                    1,
-                    a.at_ptr(a_col, j) as *const vec_znx_dft::vec_znx_dft_t,
-                    1,
-                );
-            });
+        if std::is_x86_feature_detected!("avx2") {
+            vec_znx_dft_add_inplace::<_, _, _, ReimArithmeticAvx>(res, res_col, a, a_col);
+        } else {
+            vec_znx_dft_add_inplace::<_, _, _, ReimArithmeticRef>(res, res_col, a, a_col);
         }
     }
 }
 
 unsafe impl VecZnxDftSubImpl<Self> for FFT64 {
-    fn vec_znx_dft_sub_impl<R, A, D>(module: &Module<Self>, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &D, b_col: usize)
-    where
+    fn vec_znx_dft_sub_impl<R, A, D>(
+        _module: &Module<Self>,
+        res: &mut R,
+        res_col: usize,
+        a: &A,
+        a_col: usize,
+        b: &D,
+        b_col: usize,
+    ) where
         R: VecZnxDftToMut<Self>,
         A: VecZnxDftToRef<Self>,
         D: VecZnxDftToRef<Self>,
     {
-        let mut res: VecZnxDft<&mut [u8], FFT64> = res.to_mut();
-        let a: VecZnxDft<&[u8], FFT64> = a.to_ref();
-        let b_ref: VecZnxDft<&[u8], FFT64> = b.to_ref();
-
-        let min_size: usize = res.size().min(a.size()).min(b_ref.size());
-
-        unsafe {
-            (0..min_size).for_each(|j| {
-                vec_znx_dft::vec_dft_sub(
-                    module.ptr(),
-                    res.at_mut_ptr(res_col, j) as *mut vec_znx_dft::vec_znx_dft_t,
-                    1,
-                    a.at_ptr(a_col, j) as *const vec_znx_dft::vec_znx_dft_t,
-                    1,
-                    b_ref.at_ptr(b_col, j) as *const vec_znx_dft::vec_znx_dft_t,
-                    1,
-                );
-            });
+        if std::is_x86_feature_detected!("avx2") {
+            vec_znx_dft_sub::<_, _, _, _, ReimArithmeticAvx>(res, res_col, a, a_col, b, b_col);
+        } else {
+            vec_znx_dft_sub::<_, _, _, _, ReimArithmeticRef>(res, res_col, a, a_col, b, b_col);
         }
-        (min_size..res.size()).for_each(|j| {
-            reim_zero_ref(res.at_mut(res_col, j));
-        })
     }
 }
 
 unsafe impl VecZnxDftSubABInplaceImpl<Self> for FFT64 {
-    fn vec_znx_dft_sub_ab_inplace_impl<R, A>(module: &Module<Self>, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn vec_znx_dft_sub_ab_inplace_impl<R, A>(_module: &Module<Self>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxDftToMut<Self>,
         A: VecZnxDftToRef<Self>,
     {
-        let mut res: VecZnxDft<&mut [u8], FFT64> = res.to_mut();
-        let a: VecZnxDft<&[u8], FFT64> = a.to_ref();
-
-        let min_size: usize = res.size().min(a.size());
-
-        unsafe {
-            (0..min_size).for_each(|j| {
-                vec_znx_dft::vec_dft_sub(
-                    module.ptr(),
-                    res.at_mut_ptr(res_col, j) as *mut vec_znx_dft::vec_znx_dft_t,
-                    1,
-                    res.at_ptr(res_col, j) as *const vec_znx_dft::vec_znx_dft_t,
-                    1,
-                    a.at_ptr(a_col, j) as *const vec_znx_dft::vec_znx_dft_t,
-                    1,
-                );
-            });
+        if std::is_x86_feature_detected!("avx2") {
+            vec_znx_dft_sub_ab_inplace::<_, _, _, ReimArithmeticAvx>(res, res_col, a, a_col);
+        } else {
+            vec_znx_dft_sub_ab_inplace::<_, _, _, ReimArithmeticRef>(res, res_col, a, a_col);
         }
     }
 }
 
 unsafe impl VecZnxDftSubBAInplaceImpl<Self> for FFT64 {
-    fn vec_znx_dft_sub_ba_inplace_impl<R, A>(module: &Module<Self>, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn vec_znx_dft_sub_ba_inplace_impl<R, A>(_module: &Module<Self>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxDftToMut<Self>,
         A: VecZnxDftToRef<Self>,
     {
-        let mut res: VecZnxDft<&mut [u8], FFT64> = res.to_mut();
-        let a: VecZnxDft<&[u8], FFT64> = a.to_ref();
-
-        let min_size: usize = res.size().min(a.size());
-
-        unsafe {
-            (0..min_size).for_each(|j| {
-                vec_znx_dft::vec_dft_sub(
-                    module.ptr(),
-                    res.at_mut_ptr(res_col, j) as *mut vec_znx_dft::vec_znx_dft_t,
-                    1,
-                    a.at_ptr(a_col, j) as *const vec_znx_dft::vec_znx_dft_t,
-                    1,
-                    res.at_ptr(res_col, j) as *const vec_znx_dft::vec_znx_dft_t,
-                    1,
-                );
-            });
+        if std::is_x86_feature_detected!("avx2") {
+            vec_znx_dft_sub_ba_inplace::<_, _, _, ReimArithmeticAvx>(res, res_col, a, a_col);
+        } else {
+            vec_znx_dft_sub_ba_inplace::<_, _, _, ReimArithmeticRef>(res, res_col, a, a_col);
         }
     }
 }
@@ -335,21 +254,11 @@ unsafe impl VecZnxDftCopyImpl<Self> for FFT64 {
         R: VecZnxDftToMut<Self>,
         A: VecZnxDftToRef<Self>,
     {
-        let mut res: VecZnxDft<&mut [u8], FFT64> = res.to_mut();
-        let a: VecZnxDft<&[u8], FFT64> = a.to_ref();
-
-        let steps: usize = a.size().div_ceil(step);
-        let min_steps: usize = res.size().min(steps);
-
-        (0..min_steps).for_each(|j| {
-            let limb: usize = offset + j * step;
-            if limb < a.size() {
-                reim_copy_ref(res.at_mut(res_col, j), a.at(a_col, limb));
-            }
-        });
-        (min_steps..res.size()).for_each(|j| {
-            reim_zero_ref(res.at_mut(res_col, j));
-        })
+        if std::is_x86_feature_detected!("avx2") {
+            vec_znx_dft_copy::<_, _, _, ReimArithmeticAvx>(step, offset, res, res_col, a, a_col);
+        } else {
+            vec_znx_dft_copy::<_, _, _, ReimArithmeticRef>(step, offset, res, res_col, a, a_col);
+        }
     }
 }
 
@@ -358,6 +267,10 @@ unsafe impl VecZnxDftZeroImpl<Self> for FFT64 {
     where
         R: VecZnxDftToMut<Self>,
     {
-        res.to_mut().data.fill(0);
+        if std::is_x86_feature_detected!("avx2") {
+            vec_znx_dft_zero::<_, _, ReimArithmeticAvx>(res);
+        } else {
+            vec_znx_dft_zero::<_, _, ReimArithmeticRef>(res);
+        }
     }
 }

@@ -10,9 +10,9 @@ use poulpy_hal::{
         VecZnxDftZeroImpl, VecZnxIdftApplyConsumeImpl, VecZnxIdftApplyImpl, VecZnxIdftApplyTmpAImpl, VecZnxIdftApplyTmpBytesImpl,
     },
     reference::{
-        reim::{reim_copy_ref, reim_negate_inplace_ref, reim_negate_ref, reim_zero_ref},
-        vec_znx_dft::fft64::vec_znx_dft_copy_ref,
-        znx::znx_zero_ref,
+        reim::{ReimArithmeticRef, reim_copy_ref, reim_negate_inplace_ref, reim_negate_ref, reim_zero_ref},
+        vec_znx_dft::fft64::vec_znx_dft_copy,
+        znx::{ZnxArithmetic, ZnxArithmeticRef},
     },
 };
 
@@ -80,7 +80,7 @@ unsafe impl VecZnxIdftApplyImpl<Self> for FFT64 {
                     tmp_bytes.as_mut_ptr(),
                 )
             });
-            (min_size..res.size()).for_each(|j| znx_zero_ref(res.at_mut(res_col, j)));
+            (min_size..res.size()).for_each(|j| ZnxArithmeticRef::znx_zero(res.at_mut(res_col, j)));
         }
     }
 }
@@ -106,7 +106,7 @@ unsafe impl VecZnxIdftApplyTmpAImpl<Self> for FFT64 {
                     1_u64,
                 )
             });
-            (min_size..res.size()).for_each(|j| znx_zero_ref(res.at_mut(res_col, j)))
+            (min_size..res.size()).for_each(|j| ZnxArithmeticRef::znx_zero(res.at_mut(res_col, j)))
         }
     }
 }
@@ -405,7 +405,7 @@ unsafe impl VecZnxDftCopyImpl<Self> for FFT64 {
         R: VecZnxDftToMut<Self>,
         A: VecZnxDftToRef<Self>,
     {
-        vec_znx_dft_copy_ref(step, offset, res, res_col, a, a_col);
+        vec_znx_dft_copy::<_, _, _, ReimArithmeticRef>(step, offset, res, res_col, a, a_col);
     }
 }
 

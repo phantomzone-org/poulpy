@@ -1,3 +1,44 @@
+use crate::reference::reim4::Reim4Blk;
+
+pub struct Reim4BlkAvx;
+
+impl Reim4Blk for Reim4BlkAvx {
+    #[inline]
+    fn reim4_extract_1blk_from_reim(m: usize, rows: usize, blk: usize, dst: &mut [f64], src: &[f64]) {
+        unsafe {
+            reim4_extract_1blk_from_reim_avx(m, rows, blk, dst, src);
+        }
+    }
+
+    #[inline]
+    fn reim4_save_1blk_to_reim(m: usize, blk: usize, dst: &mut [f64], src: &[f64]) {
+        unsafe {
+            reim4_save_1blk_to_reim_avx(m, blk, dst, src);
+        }
+    }
+
+    #[inline]
+    fn reim4_save_2blk_to_reim(m: usize, blk: usize, dst: &mut [f64], src: &[f64]) {
+        unsafe {
+            reim4_save_2blk_to_reim_avx(m, blk, dst, src);
+        }
+    }
+
+    #[inline]
+    fn reim4_vec_mat1col_product(nrows: usize, dst: &mut [f64], u: &[f64], v: &[f64]) {
+        unsafe {
+            reim4_vec_mat1col_product_avx(nrows, dst, u, v);
+        }
+    }
+
+    #[inline]
+    fn reim4_vec_mat2cols_product(nrows: usize, dst: &mut [f64], u: &[f64], v: &[f64]) {
+        unsafe {
+            reim4_vec_mat2cols_product_avx(nrows, dst, u, v);
+        }
+    }
+}
+
 /// # Safety
 /// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
 #[cfg(target_arch = "x86_64")]

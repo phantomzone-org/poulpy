@@ -8,18 +8,19 @@ use crate::{
         VecZnxAutomorphismInplaceTmpBytes,
     },
     layouts::{Backend, FillUniform, Module, ScratchOwned, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut},
-    reference::znx::{znx_automorphism_avx, znx_automorphism_ref, znx_copy_ref, znx_zero_ref},
+    reference::znx::{ZnxArithmetic, ZnxArithmeticRef, copy::znx_copy_ref},
     source::Source,
 };
 
-pub fn vec_znx_automorphism_inplace_tmp_bytes_ref(n: usize) -> usize {
+pub fn vec_znx_automorphism_inplace_tmp_bytes(n: usize) -> usize {
     n * size_of::<i64>()
 }
 
-pub fn vec_znx_automorphism_ref<R, A>(p: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
+pub fn vec_znx_automorphism<R, A, ZNXARI>(p: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
     R: VecZnxToMut,
     A: VecZnxToRef,
+    ZNXARI: ZnxArithmetic,
 {
     let a: VecZnx<&[u8]> = a.to_ref();
     let mut res: VecZnx<&mut [u8]> = res.to_mut();
@@ -34,17 +35,18 @@ where
     let min_size: usize = res.size().min(a.size());
 
     for j in 0..min_size {
-        znx_automorphism_ref(p, res.at_mut(res_col, j), a.at(a_col, j));
+        ZNXARI::znx_automorphism(p, res.at_mut(res_col, j), a.at(a_col, j));
     }
 
     for j in min_size..res.size() {
-        znx_zero_ref(res.at_mut(res_col, j));
+        ZNXARI::znx_zero(res.at_mut(res_col, j));
     }
 }
 
-pub fn vec_znx_automorphism_inplace_ref<R>(p: i64, res: &mut R, res_col: usize, tmp: &mut [i64])
+pub fn vec_znx_automorphism_inplace<R, ZNXARI>(p: i64, res: &mut R, res_col: usize, tmp: &mut [i64])
 where
     R: VecZnxToMut,
+    ZNXARI: ZnxArithmetic,
 {
     let mut res: VecZnx<&mut [u8]> = res.to_mut();
     #[cfg(debug_assertions)]
@@ -52,57 +54,8 @@ where
         assert_eq!(res.n(), tmp.len());
     }
     for j in 0..res.size() {
-        znx_automorphism_ref(p, tmp, res.at(res_col, j));
-        znx_copy_ref(res.at_mut(res_col, j), tmp);
-    }
-}
-
-/// # Safety
-/// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
-#[cfg(target_arch = "x86_64")]
-#[target_feature(enable = "avx2", enable = "fma")]
-pub fn vec_znx_automorphism_avx<R, A>(p: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
-where
-    R: VecZnxToMut,
-    A: VecZnxToRef,
-{
-    let a: VecZnx<&[u8]> = a.to_ref();
-    let mut res: VecZnx<&mut [u8]> = res.to_mut();
-
-    #[cfg(debug_assertions)]
-    {
-        use crate::layouts::ZnxInfos;
-
-        assert_eq!(a.n(), res.n());
-    }
-
-    let min_size: usize = res.size().min(a.size());
-
-    for j in 0..min_size {
-        znx_automorphism_avx(p, res.at_mut(res_col, j), a.at(a_col, j));
-    }
-
-    for j in min_size..res.size() {
-        znx_zero_ref(res.at_mut(res_col, j));
-    }
-}
-
-/// # Safety
-/// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
-#[cfg(target_arch = "x86_64")]
-#[target_feature(enable = "avx2", enable = "fma")]
-pub fn vec_znx_automorphism_inplace_avx<R, A>(p: i64, res: &mut R, res_col: usize, tmp: &mut [i64])
-where
-    R: VecZnxToMut,
-{
-    let mut res: VecZnx<&mut [u8]> = res.to_mut();
-    #[cfg(debug_assertions)]
-    {
-        assert_eq!(res.n(), tmp.len());
-    }
-    for j in 0..res.size() {
-        znx_automorphism_avx(p, tmp, res.at(res_col, j));
-        znx_copy_ref(res.at_mut(res_col, j), tmp);
+        ZNXARI::znx_automorphism(p, tmp, res.at(res_col, j));
+        ZNXARI::znx_copy(res.at_mut(res_col, j), tmp);
     }
 }
 
@@ -128,7 +81,7 @@ where
             // Normalize on c
             for i in 0..cols {
                 module.vec_znx_automorphism(p, &mut r0, i, &a, i);
-                vec_znx_automorphism_ref(p, &mut r1, i, &a, i);
+                vec_znx_automorphism::<_, _, ZnxArithmeticRef>(p, &mut r1, i, &a, i);
             }
 
             for i in 0..cols {
@@ -165,7 +118,7 @@ where
         // Normalize on c
         for i in 0..cols {
             module.vec_znx_automorphism_inplace(p, &mut r0, i, scratch.borrow());
-            vec_znx_automorphism_inplace_ref(p, &mut r1, i, &mut tmp);
+            vec_znx_automorphism_inplace::<_, ZnxArithmeticRef>(p, &mut r1, i, &mut tmp);
         }
 
         for i in 0..cols {

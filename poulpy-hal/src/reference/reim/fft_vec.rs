@@ -1,3 +1,65 @@
+use crate::reference::reim::{ReimArithmetic, reim_copy_ref, reim_zero_ref};
+
+pub struct ReimArithmeticRef;
+
+impl ReimArithmetic for ReimArithmeticRef {
+    #[inline(always)]
+    fn reim_add(res: &mut [f64], a: &[f64], b: &[f64]) {
+        reim_add_ref(res, a, b);
+    }
+
+    #[inline(always)]
+    fn reim_add_inplace(res: &mut [f64], a: &[f64]) {
+        reim_add_inplace_ref(res, a);
+    }
+
+    #[inline(always)]
+    fn reim_sub(res: &mut [f64], a: &[f64], b: &[f64]) {
+        reim_sub_ref(res, a, b);
+    }
+
+    #[inline(always)]
+    fn reim_sub_ab_inplace(res: &mut [f64], a: &[f64]) {
+        reim_sub_ab_inplace_ref(res, a);
+    }
+
+    #[inline(always)]
+    fn reim_sub_ba_inplace(res: &mut [f64], a: &[f64]) {
+        reim_sub_ba_inplace_ref(res, a);
+    }
+
+    #[inline(always)]
+    fn reim_negate(res: &mut [f64], a: &[f64]) {
+        reim_negate_ref(res, a);
+    }
+
+    #[inline(always)]
+    fn reim_negate_inplace(res: &mut [f64]) {
+        reim_negate_inplace_ref(res);
+    }
+
+    #[inline(always)]
+    fn reim_mul(res: &mut [f64], a: &[f64], b: &[f64]) {
+        reim_mul_ref(res, a, b);
+    }
+
+    #[inline(always)]
+    fn reim_addmul(res: &mut [f64], a: &[f64], b: &[f64]) {
+        reim_addmul_ref(res, a, b);
+    }
+
+    #[inline(always)]
+    fn reim_copy(res: &mut [f64], a: &[f64]) {
+        reim_copy_ref(res, a);
+    }
+
+    #[inline(always)]
+    fn reim_zero(res: &mut [f64]) {
+        reim_zero_ref(res);
+    }
+}
+
+#[inline(always)]
 pub fn reim_add_ref(res: &mut [f64], a: &[f64], b: &[f64]) {
     #[cfg(debug_assertions)]
     {
@@ -10,6 +72,7 @@ pub fn reim_add_ref(res: &mut [f64], a: &[f64], b: &[f64]) {
     }
 }
 
+#[inline(always)]
 pub fn reim_add_inplace_ref(res: &mut [f64], a: &[f64]) {
     #[cfg(debug_assertions)]
     {
@@ -21,6 +84,7 @@ pub fn reim_add_inplace_ref(res: &mut [f64], a: &[f64]) {
     }
 }
 
+#[inline(always)]
 pub fn reim_sub_ref(res: &mut [f64], a: &[f64], b: &[f64]) {
     #[cfg(debug_assertions)]
     {
@@ -33,6 +97,7 @@ pub fn reim_sub_ref(res: &mut [f64], a: &[f64], b: &[f64]) {
     }
 }
 
+#[inline(always)]
 pub fn reim_sub_ab_inplace_ref(res: &mut [f64], a: &[f64]) {
     #[cfg(debug_assertions)]
     {
@@ -44,6 +109,7 @@ pub fn reim_sub_ab_inplace_ref(res: &mut [f64], a: &[f64]) {
     }
 }
 
+#[inline(always)]
 pub fn reim_sub_ba_inplace_ref(res: &mut [f64], a: &[f64]) {
     #[cfg(debug_assertions)]
     {
@@ -55,6 +121,7 @@ pub fn reim_sub_ba_inplace_ref(res: &mut [f64], a: &[f64]) {
     }
 }
 
+#[inline(always)]
 pub fn reim_negate_ref(res: &mut [f64], a: &[f64]) {
     #[cfg(debug_assertions)]
     {
@@ -66,12 +133,14 @@ pub fn reim_negate_ref(res: &mut [f64], a: &[f64]) {
     }
 }
 
+#[inline(always)]
 pub fn reim_negate_inplace_ref(res: &mut [f64]) {
     for ri in res {
         *ri = -*ri
     }
 }
 
+#[inline(always)]
 pub fn reim_addmul_ref(res: &mut [f64], a: &[f64], b: &[f64]) {
     #[cfg(debug_assertions)]
     {
@@ -97,6 +166,7 @@ pub fn reim_addmul_ref(res: &mut [f64], a: &[f64], b: &[f64]) {
     }
 }
 
+#[inline(always)]
 pub fn reim_mul_ref(res: &mut [f64], a: &[f64], b: &[f64]) {
     #[cfg(debug_assertions)]
     {

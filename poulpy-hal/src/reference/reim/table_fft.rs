@@ -4,8 +4,26 @@ use rand_distr::num_traits::{Float, FloatConst};
 
 use crate::{
     alloc_aligned,
-    reference::reim::{fft_avx2_fma::fft_avx2_fma, fft_ref::fft_ref, frac_rev_bits},
+    reference::reim::{ReimDFTExecute, fft_avx2_fma::fft_avx2_fma, fft_ref::fft_ref, frac_rev_bits},
 };
+
+pub struct ReimFFTRef;
+
+impl ReimDFTExecute<ReimFFTTable<f64>, f64> for ReimFFTRef {
+    fn reim_dft_execute(table: &ReimFFTTable<f64>, data: &mut [f64]) {
+        fft_ref(table.m, &table.omg, data);
+    }
+}
+
+pub struct ReimFFTAvx;
+
+impl ReimDFTExecute<ReimFFTTable<f64>, f64> for ReimFFTAvx {
+    fn reim_dft_execute(table: &ReimFFTTable<f64>, data: &mut [f64]) {
+        unsafe {
+            fft_avx2_fma(table.m, &table.omg, data);
+        }
+    }
+}
 
 pub struct ReimFFTTable<R: Float + FloatConst + Debug> {
     m: usize,
@@ -45,23 +63,8 @@ impl<R: Float + FloatConst + Debug + 'static> ReimFFTTable<R> {
         Self { m, omg }
     }
 
-    pub fn execute(&self, data: &mut [R]) {
-        fft_ref(self.m, &self.omg, data);
-    }
-
     pub fn m(&self) -> usize {
         self.m
-    }
-}
-
-impl ReimFFTTable<f64> {
-    /// # Safety
-    /// This method is safe to use and will abort with an error
-    /// message if invalid data is given.
-    #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
-    #[target_feature(enable = "avx2,fma")]
-    pub fn execute_avx2_fma(&self, data: &mut [f64]) {
-        fft_avx2_fma(self.m, &self.omg, data);
     }
 }
 

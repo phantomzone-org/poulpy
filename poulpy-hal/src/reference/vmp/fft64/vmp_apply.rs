@@ -8,7 +8,11 @@ use crate::{
     cast_mut,
     layouts::{DataViewMut, Module, ScratchOwned, VecZnx, VecZnxToRef, ZnxViewMut},
     oep::VecZnxDftAllocBytesImpl,
-    reference::{reim::ReimFFTTable, vec_znx_dft::fft64::vec_znx_dft_apply_ref},
+    reference::{
+        reim::{ReimArithmetic, ReimArithmeticRef, ReimConv, ReimConvRef, ReimDFTExecute, ReimFFTRef, ReimFFTTable},
+        reim4::{Reim4Blk, Reim4BlkRef},
+        vec_znx_dft::fft64::vec_znx_dft_apply,
+    },
     source::Source,
 };
 use criterion::{BenchmarkId, Criterion};
@@ -16,23 +20,26 @@ use rand::RngCore;
 
 use crate::layouts::{Backend, VecZnxDft, VecZnxDftToMut, VecZnxDftToRef, VmpPMat, VmpPMatToRef, ZnxInfos};
 
-use crate::reference::reim::reim_zero_ref;
-use crate::reference::reim4::{
-    reim4_extract_1blk_from_reim_avx, reim4_extract_1blk_from_reim_ref, reim4_save_1blk_to_reim_ref, reim4_save_2blk_to_reim_ref,
-    reim4_vec_mat1cols_product_ref, reim4_vec_mat2cols_product_ref,
-};
-
-pub fn vmp_apply_dft_tmp_bytes_ref(n: usize, a_size: usize, pmat_rows: usize, pmat_cols_in: usize) -> usize {
+pub fn vmp_apply_dft_tmp_bytes(n: usize, a_size: usize, pmat_rows: usize, pmat_cols_in: usize) -> usize {
     let row_max: usize = (a_size).min(pmat_rows);
     (16 + (n + 8) * row_max * pmat_cols_in) * size_of::<f64>()
 }
 
-pub fn vmp_apply_dft_ref<R, A, M, BE>(table: &ReimFFTTable<f64>, res: &mut R, a: &A, pmat: &M, tmp_bytes: &mut [f64])
-where
+pub fn vmp_apply_dft<R, A, M, BE, REIM, CONV, REIM4, FFT>(
+    table: &ReimFFTTable<f64>,
+    res: &mut R,
+    a: &A,
+    pmat: &M,
+    tmp_bytes: &mut [f64],
+) where
     BE: Backend<ScalarPrep = f64> + VecZnxDftAllocBytesImpl<BE>,
     R: VecZnxDftToMut<BE>,
     A: VecZnxToRef,
     M: VmpPMatToRef<BE>,
+    REIM: ReimArithmetic,
+    CONV: ReimConv,
+    REIM4: Reim4Blk,
+    FFT: ReimDFTExecute<ReimFFTTable<f64>, f64>,
 {
     let a: VecZnx<&[u8]> = a.to_ref();
     let pmat: VmpPMat<&[u8], BE> = pmat.to_ref();
@@ -43,7 +50,7 @@ where
 
     #[cfg(debug_assertions)]
     {
-        assert!(tmp_bytes.len() >= vmp_apply_dft_tmp_bytes_ref(n, size, pmat.rows(), cols));
+        assert!(tmp_bytes.len() >= vmp_apply_dft_tmp_bytes(n, size, pmat.rows(), cols));
         assert!(a.cols() <= cols);
     }
 
@@ -53,60 +60,25 @@ where
 
     let offset: usize = cols - a.cols();
     for j in 0..cols {
-        vec_znx_dft_apply_ref(table, 1, 0, &mut a_dft, j, &a, offset + j);
+        vec_znx_dft_apply::<_, _, _, REIM, CONV, FFT>(table, 1, 0, &mut a_dft, j, &a, offset + j);
     }
 
-    vmp_apply_dft_to_dft_ref(res, &a_dft, &pmat, tmp_bytes);
+    vmp_apply_dft_to_dft::<_, _, _, _, REIM, REIM4>(res, &a_dft, &pmat, tmp_bytes);
 }
 
-/// # Safety
-/// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2,fma")`);
-#[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
-#[target_feature(enable = "avx2,fma")]
-pub fn vmp_apply_dft_avx<R, A, M, BE>(table: &ReimFFTTable<f64>, res: &mut R, a: &A, pmat: &M, tmp_bytes: &mut [f64])
-where
-    BE: Backend<ScalarPrep = f64> + VecZnxDftAllocBytesImpl<BE>,
-    R: VecZnxDftToMut<BE>,
-    A: VecZnxToRef,
-    M: VmpPMatToRef<BE>,
-{
-    let a: VecZnx<&[u8]> = a.to_ref();
-    let pmat: VmpPMat<&[u8], BE> = pmat.to_ref();
-
-    let n: usize = a.n();
-    let cols: usize = pmat.cols_in();
-    let size: usize = a.size().min(pmat.rows());
-
-    #[cfg(debug_assertions)]
-    {
-        assert!(tmp_bytes.len() >= vmp_apply_dft_tmp_bytes_ref(n, size, pmat.rows(), cols));
-        assert!(a.cols() <= cols);
-    }
-
-    use crate::reference::vec_znx_dft::fft64::vec_znx_dft_apply_avx;
-
-    let (data, tmp_bytes) = tmp_bytes.split_at_mut(BE::vec_znx_dft_alloc_bytes_impl(n, cols, size));
-
-    let mut a_dft: VecZnxDft<&mut [u8], BE> = VecZnxDft::from_data(cast_mut(data), n, cols, size);
-
-    let offset: usize = cols - a.cols();
-    for j in 0..cols {
-        vec_znx_dft_apply_avx(table, 1, 0, &mut a_dft, j, &a, offset + j);
-    }
-    vmp_apply_dft_to_dft_avx(res, &a_dft, &pmat, tmp_bytes);
-}
-
-pub fn vmp_apply_dft_to_dft_tmp_bytes_ref(a_size: usize, pmat_rows: usize, pmat_cols_in: usize) -> usize {
+pub fn vmp_apply_dft_to_dft_tmp_bytes(a_size: usize, pmat_rows: usize, pmat_cols_in: usize) -> usize {
     let row_max: usize = (a_size).min(pmat_rows);
     (16 + 8 * row_max * pmat_cols_in) * size_of::<f64>()
 }
 
-pub fn vmp_apply_dft_to_dft_ref<R, A, M, BE>(res: &mut R, a: &A, pmat: &M, tmp_bytes: &mut [f64])
+pub fn vmp_apply_dft_to_dft<R, A, M, BE, REIM, REIM4>(res: &mut R, a: &A, pmat: &M, tmp_bytes: &mut [f64])
 where
     BE: Backend<ScalarPrep = f64>,
     R: VecZnxDftToMut<BE>,
     A: VecZnxDftToRef<BE>,
     M: VmpPMatToRef<BE>,
+    REIM: ReimArithmetic,
+    REIM4: Reim4Blk,
 {
     use crate::layouts::{ZnxView, ZnxViewMut};
 
@@ -123,170 +95,87 @@ where
     }
 
     let n: usize = res.n();
-
-    let m: usize = n >> 1;
-
-    let (mat2cols_output, extracted_blk) = tmp_bytes.split_at_mut(16);
-
-    let a_size: usize = a.size() * a.cols();
-    let res_size: usize = res.size() * res.cols();
-
     let nrows: usize = pmat.cols_in() * pmat.rows();
     let ncols: usize = pmat.cols_out() * pmat.size();
-
-    let row_max: usize = nrows.min(a_size);
-    let col_max: usize = ncols.min(res_size);
 
     let pmat_raw: &[f64] = pmat.raw();
     let a_raw: &[f64] = a.raw();
     let res_raw: &mut [f64] = res.raw_mut();
 
-    println!("extracted_blk: {}", extracted_blk.len());
+    vmp_apply_dft_to_dft_core::<REIM, REIM4>(n, res_raw, a_raw, pmat_raw, nrows, ncols, tmp_bytes)
+}
 
-    for blk_i in 0..m >> 2 {
-        let mat_blk_start: &[f64] = &pmat_raw[blk_i * (8 * nrows * ncols)..];
+fn vmp_apply_dft_to_dft_core<REIM, REIM4>(
+    n: usize,
+    res: &mut [f64],
+    a: &[f64],
+    pmat: &[f64],
+    nrows: usize,
+    ncols: usize,
+    tmp_bytes: &mut [f64],
+) where
+    REIM: ReimArithmetic,
+    REIM4: Reim4Blk,
+{
+    #[cfg(debug_assertions)]
+    {
+        assert!(n >= 8);
+        assert!(n.is_power_of_two());
+        assert_eq!(pmat.len(), n * nrows * ncols);
+        assert!(res.len() & (n - 1) == 0);
+        assert!(a.len() & (n - 1) == 0);
+    }
 
-        reim4_extract_1blk_from_reim_ref(m, row_max, blk_i, extracted_blk, a_raw);
+    let a_size: usize = a.len() / n;
+    let res_size: usize = res.len() / n;
+
+    let m: usize = n >> 1;
+
+    let (mat2cols_output, extracted_blk) = tmp_bytes.split_at_mut(16);
+
+    let row_max: usize = nrows.min(a_size);
+    let col_max: usize = ncols.min(res_size);
+
+    for blk_i in 0..(m >> 2) {
+        let mat_blk_start: &[f64] = &pmat[blk_i * (8 * nrows * ncols)..];
+
+        REIM4::reim4_extract_1blk_from_reim(m, row_max, blk_i, extracted_blk, a);
 
         for col_i in (0..col_max - 1).step_by(2) {
             let col_offset: usize = col_i * (8 * nrows);
 
-            reim4_vec_mat2cols_product_ref(
+            REIM4::reim4_vec_mat2cols_product(
                 row_max,
                 mat2cols_output,
                 extracted_blk,
                 &mat_blk_start[col_offset..],
             );
-            reim4_save_2blk_to_reim_ref(m, blk_i, &mut res_raw[col_i * n..], mat2cols_output)
+            REIM4::reim4_save_2blk_to_reim(m, blk_i, &mut res[col_i * n..], mat2cols_output)
         }
 
         if !col_max.is_multiple_of(2) {
             let last_col: usize = col_max - 1;
             let col_offset: usize = last_col * (8 * nrows);
-
             if ncols == col_max {
-                reim4_vec_mat1cols_product_ref(
+                REIM4::reim4_vec_mat1col_product(
                     row_max,
                     mat2cols_output,
                     extracted_blk,
                     &mat_blk_start[col_offset..],
                 );
             } else {
-                reim4_vec_mat2cols_product_ref(
+                REIM4::reim4_vec_mat2cols_product(
                     row_max,
                     mat2cols_output,
                     extracted_blk,
                     &mat_blk_start[col_offset..],
                 );
             }
-            reim4_save_1blk_to_reim_ref(m, blk_i, &mut res_raw[last_col * n..], mat2cols_output);
+            REIM4::reim4_save_1blk_to_reim(m, blk_i, &mut res[last_col * n..], mat2cols_output);
         }
     }
 
-    reim_zero_ref(&mut res_raw[col_max * n..]);
-}
-
-/// # Safety
-/// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
-#[cfg(target_arch = "x86_64")]
-#[target_feature(enable = "avx2")]
-pub fn vmp_apply_dft_to_dft_avx<R, A, M, BE>(res: &mut R, a: &A, pmat: &M, tmp_bytes: &mut [f64])
-where
-    BE: Backend<ScalarPrep = f64>,
-    R: VecZnxDftToMut<BE>,
-    A: VecZnxDftToRef<BE>,
-    M: VmpPMatToRef<BE>,
-{
-    use crate::{
-        layouts::{ZnxView, ZnxViewMut},
-        reference::reim4::{
-            reim4_save_1blk_to_reim_avx, reim4_save_2blk_to_reim_avx, reim4_vec_mat1col_product_avx,
-            reim4_vec_mat2cols_product_avx,
-        },
-    };
-
-    let mut res: VecZnxDft<&mut [u8], BE> = res.to_mut();
-    let a: VecZnxDft<&[u8], BE> = a.to_ref();
-    let pmat: VmpPMat<&[u8], BE> = pmat.to_ref();
-
-    #[cfg(debug_assertions)]
-    {
-        assert_eq!(res.n(), pmat.n());
-        assert_eq!(a.n(), pmat.n());
-        assert_eq!(res.cols(), pmat.cols_out());
-        assert_eq!(a.cols(), pmat.cols_in());
-    }
-
-    let n: usize = res.n();
-
-    let m: usize = n >> 1;
-
-    let (mat2cols_output, extracted_blk) = tmp_bytes.split_at_mut(16);
-
-    let a_size: usize = a.size() * a.cols();
-    let res_size: usize = res.size() * res.cols();
-
-    let nrows: usize = pmat.cols_in() * pmat.rows();
-    let ncols: usize = pmat.cols_out() * pmat.size();
-
-    let row_max: usize = nrows.min(a_size);
-    let col_max: usize = ncols.min(res_size);
-
-    let pmat_raw: &[f64] = pmat.raw();
-    let a_raw: &[f64] = a.raw();
-    let res_raw: &mut [f64] = res.raw_mut();
-
-    println!("extracted_blk_avx: {}", extracted_blk.len());
-
-    for blk_i in 0..m >> 2 {
-        let mat_blk_start: &[f64] = &pmat_raw[blk_i * (8 * nrows * ncols)..];
-
-        reim4_extract_1blk_from_reim_avx(m, row_max, blk_i, extracted_blk, a_raw);
-
-        for col_i in (0..col_max - 1).step_by(2) {
-            let col_offset: usize = col_i * (8 * nrows);
-
-            unsafe {
-                reim4_vec_mat2cols_product_avx(
-                    row_max,
-                    mat2cols_output,
-                    extracted_blk,
-                    &mat_blk_start[col_offset..],
-                );
-                reim4_save_2blk_to_reim_avx(m, blk_i, &mut res_raw[col_i * n..], mat2cols_output)
-            }
-        }
-
-        if !col_max.is_multiple_of(2) {
-            let last_col: usize = col_max - 1;
-            let col_offset: usize = last_col * (8 * nrows);
-
-            if ncols == col_max {
-                unsafe {
-                    reim4_vec_mat1col_product_avx(
-                        row_max,
-                        mat2cols_output,
-                        extracted_blk,
-                        &mat_blk_start[col_offset..],
-                    );
-                }
-            } else {
-                unsafe {
-                    reim4_vec_mat2cols_product_avx(
-                        row_max,
-                        mat2cols_output,
-                        extracted_blk,
-                        &mat_blk_start[col_offset..],
-                    );
-                }
-            }
-            unsafe {
-                reim4_save_1blk_to_reim_avx(m, blk_i, &mut res_raw[last_col * n..], mat2cols_output);
-            }
-        }
-    }
-
-    reim_zero_ref(&mut res_raw[col_max * n..]);
+    REIM::reim_zero(&mut res[col_max * n..]);
 }
 
 pub fn test_vmp_apply_dft<B>()
@@ -316,7 +205,7 @@ where
             let mat_cols_out: usize = res_cols;
 
             let mut tmp_bytes: Vec<f64> =
-                vec![0f64; vmp_apply_dft_tmp_bytes_ref(n, a_size, mat_rows, mat_cols_in) / size_of::<f64>()];
+                vec![0f64; vmp_apply_dft_tmp_bytes(n, a_size, mat_rows, mat_cols_in) / size_of::<f64>()];
             println!(
                 "{}",
                 module.vmp_apply_dft_tmp_bytes(
@@ -362,7 +251,13 @@ where
             source.fill_bytes(res_1.data_mut());
 
             module.vmp_apply_dft(&mut res_1, &a, &pmat, scratch.borrow());
-            vmp_apply_dft_ref(&table, &mut res_0, &a, &pmat, &mut tmp_bytes);
+            vmp_apply_dft::<_, _, _, _, ReimArithmeticRef, ReimConvRef, Reim4BlkRef, ReimFFTRef>(
+                &table,
+                &mut res_0,
+                &a,
+                &pmat,
+                &mut tmp_bytes,
+            );
         });
     });
 }
@@ -456,7 +351,7 @@ where
             let mat_cols_out: usize = res_cols;
 
             let mut tmp_bytes: Vec<f64> =
-                vec![0f64; vmp_apply_dft_to_dft_tmp_bytes_ref(a_size, mat_rows, mat_cols_in) / size_of::<f64>()];
+                vec![0f64; vmp_apply_dft_to_dft_tmp_bytes(a_size, mat_rows, mat_cols_in) / size_of::<f64>()];
 
             let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(module.vmp_apply_dft_to_dft_tmp_bytes(
                 res_size,
@@ -466,12 +361,6 @@ where
                 mat_cols_out,
                 mat_size,
             ));
-
-            let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(n, a_cols, a_size);
-
-            (0..a_cols).for_each(|i| {
-                a.at_mut(i, a_size - 1)[i + 1] = 1;
-            });
 
             let mut pmat: VmpPMat<Vec<u8>, B> = module.vmp_pmat_alloc(mat_rows, mat_cols_in, mat_cols_out, mat_size);
 
@@ -492,7 +381,7 @@ where
             source.fill_bytes(res_1.data_mut());
 
             module.vmp_apply_dft_to_dft(&mut res_1, &a, &pmat, scratch.borrow());
-            vmp_apply_dft_to_dft_ref(&mut res_0, &a, &pmat, &mut tmp_bytes);
+            vmp_apply_dft_to_dft::<_, _, _, _, ReimArithmeticRef, Reim4BlkRef>(&mut res_0, &a, &pmat, &mut tmp_bytes);
         });
     });
 }

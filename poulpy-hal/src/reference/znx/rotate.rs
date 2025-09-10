@@ -1,6 +1,6 @@
-use crate::reference::znx::znx_negate_i64_ref;
+use crate::reference::znx::ZnxArithmetic;
 
-pub fn znx_rotate_i64_ref(p: i64, res: &mut [i64], src: &[i64]) {
+pub fn znx_rotate<ZNXARI: ZnxArithmetic>(p: i64, res: &mut [i64], src: &[i64]) {
     #[cfg(debug_assertions)]
     {
         assert_eq!(res.len(), src.len());
@@ -17,45 +17,10 @@ pub fn znx_rotate_i64_ref(p: i64, res: &mut [i64], src: &[i64]) {
     let (src1, src2) = src.split_at(mp_1n_neg);
 
     if neg_first {
-        znx_negate_i64_ref(dst1, src2);
-        dst2.copy_from_slice(src1);
+        ZNXARI::znx_negate(dst1, src2);
+        ZNXARI::znx_copy(dst2, src1);
     } else {
-        dst1.copy_from_slice(src2);
-        znx_negate_i64_ref(dst2, src1);
-    }
-}
-
-/// # Safety
-/// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
-/// all inputs must have the same length and must not alias.
-#[cfg(target_arch = "x86_64")]
-#[target_feature(enable = "avx2")]
-pub fn znx_rotate_i64_avx(p: i64, res: &mut [i64], src: &[i64]) {
-    #[cfg(debug_assertions)]
-    {
-        assert_eq!(res.len(), src.len());
-    }
-
-    use crate::reference::znx::znx_negate_i64_avx;
-
-    let n: usize = res.len();
-
-    let mp_2n: usize = (p & (2 * n as i64 - 1)) as usize; // -p % 2n
-    let mp_1n: usize = mp_2n & (n - 1); // -p % n
-    let mp_1n_neg: usize = n - mp_1n; //  p % n
-    let neg_first: bool = mp_2n < n;
-
-    let (dst1, dst2) = res.split_at_mut(mp_1n);
-    let (src1, src2) = src.split_at(mp_1n_neg);
-
-    #[allow(unused_unsafe)]
-    unsafe {
-        if !neg_first {
-            znx_negate_i64_avx(dst1, src2);
-            dst2.copy_from_slice(src1);
-        } else {
-            dst1.copy_from_slice(src2);
-            znx_negate_i64_avx(dst2, src1);
-        }
+        ZNXARI::znx_copy(dst1, src2);
+        ZNXARI::znx_negate(dst2, src1);
     }
 }

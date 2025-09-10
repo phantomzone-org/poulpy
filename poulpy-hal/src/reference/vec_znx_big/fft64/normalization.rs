@@ -6,19 +6,30 @@ use crate::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes},
     layouts::{Backend, FillUniform, Module, ScratchOwned, VecZnx, VecZnxBig, VecZnxBigToRef, VecZnxToMut, ZnxView, ZnxViewMut},
     oep::VecZnxBigAllocBytesImpl,
-    reference::vec_znx::vec_znx_normalize_ref,
+    reference::{
+        vec_znx::vec_znx_normalize,
+        znx::{ZnxArithmetic, ZnxArithmeticRef, ZnxNormalize, ZnxNormalizeRef},
+    },
     source::Source,
 };
 
-pub fn vec_znx_big_normalize_tmp_bytes_ref(n: usize) -> usize {
+pub fn vec_znx_big_normalize_tmp_bytes(n: usize) -> usize {
     n * size_of::<i64>()
 }
 
-pub fn vec_znx_big_normalize_ref<R, A, BE>(basek: usize, res: &mut R, res_col: usize, a: &A, a_col: usize, carry: &mut [i64])
-where
+pub fn vec_znx_big_normalize<R, A, BE, ZNXARI, ZNXNORM>(
+    basek: usize,
+    res: &mut R,
+    res_col: usize,
+    a: &A,
+    a_col: usize,
+    carry: &mut [i64],
+) where
     R: VecZnxToMut,
     A: VecZnxBigToRef<BE>,
     BE: Backend<ScalarBig = i64>,
+    ZNXARI: ZnxArithmetic,
+    ZNXNORM: ZnxNormalize,
 {
     let a: VecZnxBig<&[u8], _> = a.to_ref();
     let a_vznx: VecZnx<&[u8]> = VecZnx {
@@ -29,7 +40,7 @@ where
         max_size: a.max_size,
     };
 
-    vec_znx_normalize_ref(basek, res, res_col, &a_vznx, a_col, carry);
+    vec_znx_normalize::<_, _, ZNXARI, ZNXNORM>(basek, res, res_col, &a_vznx, a_col, carry);
 }
 
 pub fn test_vec_znx_big_normalize<B>(module: &Module<B>)
@@ -62,7 +73,7 @@ where
 
             // Reference
             for i in 0..cols {
-                vec_znx_big_normalize_ref(basek, &mut res_0, i, &a, i, &mut carry);
+                vec_znx_big_normalize::<_, _, _, ZnxArithmeticRef, ZnxNormalizeRef>(basek, &mut res_0, i, &a, i, &mut carry);
                 module.vec_znx_big_normalize(basek, &mut res_1, i, &a, i, scratch.borrow());
             }
 

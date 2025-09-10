@@ -1,9 +1,7 @@
 use crate::cpu_ref::FFT64;
 use poulpy_hal::{
     api::{TakeSlice, VecZnxBigAutomorphismInplaceTmpBytes, VecZnxBigNormalizeTmpBytes},
-    layouts::{
-        Backend, Module, Scratch, VecZnx, VecZnxBig, VecZnxBigOwned, VecZnxBigToMut, VecZnxBigToRef, VecZnxToMut, VecZnxToRef,
-    },
+    layouts::{Backend, Module, Scratch, VecZnxBig, VecZnxBigOwned, VecZnxBigToMut, VecZnxBigToRef, VecZnxToMut, VecZnxToRef},
     oep::{
         TakeSliceImpl, VecZnxBigAddImpl, VecZnxBigAddInplaceImpl, VecZnxBigAddNormalImpl, VecZnxBigAddSmallImpl,
         VecZnxBigAddSmallInplaceImpl, VecZnxBigAllocBytesImpl, VecZnxBigAllocImpl, VecZnxBigAutomorphismImpl,
@@ -13,15 +11,14 @@ use poulpy_hal::{
         VecZnxBigSubSmallBImpl, VecZnxBigSubSmallBInplaceImpl,
     },
     reference::{
-        vec_znx::vec_znx_add_normal_ref,
         vec_znx_big::{
-            vec_znx_big_add_inplace_ref, vec_znx_big_add_ref, vec_znx_big_add_small_inplace_ref, vec_znx_big_add_small_ref,
-            vec_znx_big_automorphism_inplace_ref, vec_znx_big_automorphism_inplace_tmp_bytes_ref, vec_znx_big_automorphism_ref,
-            vec_znx_big_negate_inplace_ref, vec_znx_big_negate_ref, vec_znx_big_normalize_ref,
-            vec_znx_big_normalize_tmp_bytes_ref, vec_znx_big_sub_ab_inplace_ref, vec_znx_big_sub_ba_inplace_ref,
-            vec_znx_big_sub_ref, vec_znx_big_sub_small_a_inplace_ref, vec_znx_big_sub_small_a_ref,
-            vec_znx_big_sub_small_b_inplace_ref, vec_znx_big_sub_small_b_ref,
+            vec_znx_big_add, vec_znx_big_add_inplace, vec_znx_big_add_normal_ref, vec_znx_big_add_small,
+            vec_znx_big_add_small_inplace, vec_znx_big_automorphism, vec_znx_big_automorphism_inplace,
+            vec_znx_big_automorphism_inplace_tmp_bytes, vec_znx_big_negate, vec_znx_big_negate_inplace, vec_znx_big_normalize,
+            vec_znx_big_normalize_tmp_bytes, vec_znx_big_sub, vec_znx_big_sub_ab_inplace, vec_znx_big_sub_ba_inplace,
+            vec_znx_big_sub_small_a, vec_znx_big_sub_small_a_inplace, vec_znx_big_sub_small_b, vec_znx_big_sub_small_b_inplace,
         },
+        znx::{ZnxArithmeticAvx, ZnxArithmeticRef, ZnxNormalizeAvx, ZnxNormalizeRef},
     },
     source::Source,
 };
@@ -55,17 +52,7 @@ unsafe impl VecZnxBigAddNormalImpl<Self> for FFT64 {
         sigma: f64,
         bound: f64,
     ) {
-        let res: VecZnxBig<&mut [u8], FFT64> = res.to_mut();
-
-        let mut res_znx: VecZnx<&mut [u8]> = VecZnx {
-            data: res.data,
-            n: res.n,
-            cols: res.cols,
-            size: res.size,
-            max_size: res.max_size,
-        };
-
-        vec_znx_add_normal_ref(basek, &mut res_znx, res_col, k, sigma, bound, source);
+        vec_znx_big_add_normal_ref(basek, res, res_col, k, sigma, bound, source);
     }
 }
 
@@ -84,7 +71,11 @@ unsafe impl VecZnxBigAddImpl<Self> for FFT64 {
         A: VecZnxBigToRef<Self>,
         B: VecZnxBigToRef<Self>,
     {
-        vec_znx_big_add_ref(res, res_col, a, a_col, b, b_col);
+        if std::is_x86_feature_detected!("avx2") {
+            vec_znx_big_add::<_, _, _, _, ZnxArithmeticAvx>(res, res_col, a, a_col, b, b_col);
+        } else {
+            vec_znx_big_add::<_, _, _, _, ZnxArithmeticRef>(res, res_col, a, a_col, b, b_col);
+        }
     }
 }
 
@@ -95,7 +86,11 @@ unsafe impl VecZnxBigAddInplaceImpl<Self> for FFT64 {
         R: VecZnxBigToMut<Self>,
         A: VecZnxBigToRef<Self>,
     {
-        vec_znx_big_add_inplace_ref(res, res_col, a, a_col);
+        if std::is_x86_feature_detected!("avx2") {
+            vec_znx_big_add_inplace::<_, _, _, ZnxArithmeticAvx>(res, res_col, a, a_col);
+        } else {
+            vec_znx_big_add_inplace::<_, _, _, ZnxArithmeticRef>(res, res_col, a, a_col);
+        }
     }
 }
 
@@ -114,7 +109,11 @@ unsafe impl VecZnxBigAddSmallImpl<Self> for FFT64 {
         A: VecZnxBigToRef<Self>,
         B: VecZnxToRef,
     {
-        vec_znx_big_add_small_ref(res, res_col, a, a_col, b, b_col);
+        if std::is_x86_feature_detected!("avx2") {
+            vec_znx_big_add_small::<_, _, _, _, ZnxArithmeticAvx>(res, res_col, a, a_col, b, b_col);
+        } else {
+            vec_znx_big_add_small::<_, _, _, _, ZnxArithmeticRef>(res, res_col, a, a_col, b, b_col);
+        }
     }
 }
 
@@ -125,7 +124,11 @@ unsafe impl VecZnxBigAddSmallInplaceImpl<Self> for FFT64 {
         R: VecZnxBigToMut<Self>,
         A: VecZnxToRef,
     {
-        vec_znx_big_add_small_inplace_ref(res, res_col, a, a_col);
+        if std::is_x86_feature_detected!("avx2") {
+            vec_znx_big_add_small_inplace::<_, _, _, ZnxArithmeticAvx>(res, res_col, a, a_col);
+        } else {
+            vec_znx_big_add_small_inplace::<_, _, _, ZnxArithmeticRef>(res, res_col, a, a_col);
+        }
     }
 }
 
@@ -144,7 +147,11 @@ unsafe impl VecZnxBigSubImpl<Self> for FFT64 {
         A: VecZnxBigToRef<Self>,
         B: VecZnxBigToRef<Self>,
     {
-        vec_znx_big_sub_ref(res, res_col, a, a_col, b, b_col);
+        if std::is_x86_feature_detected!("avx2") {
+            vec_znx_big_sub::<_, _, _, _, ZnxArithmeticAvx>(res, res_col, a, a_col, b, b_col);
+        } else {
+            vec_znx_big_sub::<_, _, _, _, ZnxArithmeticRef>(res, res_col, a, a_col, b, b_col);
+        }
     }
 }
 
@@ -155,7 +162,11 @@ unsafe impl VecZnxBigSubABInplaceImpl<Self> for FFT64 {
         R: VecZnxBigToMut<Self>,
         A: VecZnxBigToRef<Self>,
     {
-        vec_znx_big_sub_ab_inplace_ref(res, res_col, a, a_col);
+        if std::is_x86_feature_detected!("avx2") {
+            vec_znx_big_sub_ab_inplace::<_, _, _, ZnxArithmeticAvx>(res, res_col, a, a_col);
+        } else {
+            vec_znx_big_sub_ab_inplace::<_, _, _, ZnxArithmeticRef>(res, res_col, a, a_col);
+        }
     }
 }
 
@@ -166,7 +177,11 @@ unsafe impl VecZnxBigSubBAInplaceImpl<Self> for FFT64 {
         R: VecZnxBigToMut<Self>,
         A: VecZnxBigToRef<Self>,
     {
-        vec_znx_big_sub_ba_inplace_ref(res, res_col, a, a_col);
+        if std::is_x86_feature_detected!("avx2") {
+            vec_znx_big_sub_ba_inplace::<_, _, _, ZnxArithmeticAvx>(res, res_col, a, a_col);
+        } else {
+            vec_znx_big_sub_ba_inplace::<_, _, _, ZnxArithmeticRef>(res, res_col, a, a_col);
+        }
     }
 }
 
@@ -185,7 +200,11 @@ unsafe impl VecZnxBigSubSmallAImpl<Self> for FFT64 {
         A: VecZnxToRef,
         B: VecZnxBigToRef<Self>,
     {
-        vec_znx_big_sub_small_a_ref(res, res_col, a, a_col, b, b_col);
+        if std::is_x86_feature_detected!("avx2") {
+            vec_znx_big_sub_small_a::<_, _, _, _, ZnxArithmeticAvx>(res, res_col, a, a_col, b, b_col);
+        } else {
+            vec_znx_big_sub_small_a::<_, _, _, _, ZnxArithmeticRef>(res, res_col, a, a_col, b, b_col);
+        }
     }
 }
 
@@ -196,7 +215,11 @@ unsafe impl VecZnxBigSubSmallAInplaceImpl<Self> for FFT64 {
         R: VecZnxBigToMut<Self>,
         A: VecZnxToRef,
     {
-        vec_znx_big_sub_small_a_inplace_ref(res, res_col, a, a_col);
+        if std::is_x86_feature_detected!("avx2") {
+            vec_znx_big_sub_small_a_inplace::<_, _, _, ZnxArithmeticAvx>(res, res_col, a, a_col);
+        } else {
+            vec_znx_big_sub_small_a_inplace::<_, _, _, ZnxArithmeticRef>(res, res_col, a, a_col);
+        }
     }
 }
 
@@ -215,7 +238,11 @@ unsafe impl VecZnxBigSubSmallBImpl<Self> for FFT64 {
         A: VecZnxBigToRef<Self>,
         B: VecZnxToRef,
     {
-        vec_znx_big_sub_small_b_ref(res, res_col, a, a_col, b, b_col);
+        if std::is_x86_feature_detected!("avx2") {
+            vec_znx_big_sub_small_b::<_, _, _, _, ZnxArithmeticAvx>(res, res_col, a, a_col, b, b_col);
+        } else {
+            vec_znx_big_sub_small_b::<_, _, _, _, ZnxArithmeticRef>(res, res_col, a, a_col, b, b_col);
+        }
     }
 }
 
@@ -226,7 +253,11 @@ unsafe impl VecZnxBigSubSmallBInplaceImpl<Self> for FFT64 {
         R: VecZnxBigToMut<Self>,
         A: VecZnxToRef,
     {
-        vec_znx_big_sub_small_b_inplace_ref(res, res_col, a, a_col);
+        if std::is_x86_feature_detected!("avx2") {
+            vec_znx_big_sub_small_b_inplace::<_, _, _, ZnxArithmeticAvx>(res, res_col, a, a_col);
+        } else {
+            vec_znx_big_sub_small_b_inplace::<_, _, _, ZnxArithmeticRef>(res, res_col, a, a_col);
+        }
     }
 }
 
@@ -236,7 +267,11 @@ unsafe impl VecZnxBigNegateImpl<Self> for FFT64 {
         R: VecZnxBigToMut<Self>,
         A: VecZnxBigToRef<Self>,
     {
-        vec_znx_big_negate_ref(res, res_col, a, a_col);
+        if std::is_x86_feature_detected!("avx2") {
+            vec_znx_big_negate::<_, _, _, ZnxArithmeticAvx>(res, res_col, a, a_col);
+        } else {
+            vec_znx_big_negate::<_, _, _, ZnxArithmeticRef>(res, res_col, a, a_col);
+        }
     }
 }
 
@@ -245,13 +280,17 @@ unsafe impl VecZnxBigNegateInplaceImpl<Self> for FFT64 {
     where
         R: VecZnxBigToMut<Self>,
     {
-        vec_znx_big_negate_inplace_ref(res, res_col);
+        if std::is_x86_feature_detected!("avx2") {
+            vec_znx_big_negate_inplace::<_, _, ZnxArithmeticAvx>(res, res_col);
+        } else {
+            vec_znx_big_negate_inplace::<_, _, ZnxArithmeticRef>(res, res_col);
+        }
     }
 }
 
 unsafe impl VecZnxBigNormalizeTmpBytesImpl<Self> for FFT64 {
     fn vec_znx_big_normalize_tmp_bytes_impl(module: &Module<Self>) -> usize {
-        vec_znx_big_normalize_tmp_bytes_ref(module.n())
+        vec_znx_big_normalize_tmp_bytes(module.n())
     }
 }
 
@@ -272,7 +311,12 @@ where
         A: VecZnxBigToRef<Self>,
     {
         let (carry, _) = scratch.take_slice(module.vec_znx_big_normalize_tmp_bytes() / size_of::<i64>());
-        vec_znx_big_normalize_ref(basek, res, res_col, a, a_col, carry);
+
+        if std::is_x86_feature_detected!("avx2") {
+            vec_znx_big_normalize::<_, _, _, ZnxArithmeticAvx, ZnxNormalizeAvx>(basek, res, res_col, a, a_col, carry);
+        } else {
+            vec_znx_big_normalize::<_, _, _, ZnxArithmeticRef, ZnxNormalizeRef>(basek, res, res_col, a, a_col, carry);
+        }
     }
 }
 
@@ -283,13 +327,17 @@ unsafe impl VecZnxBigAutomorphismImpl<Self> for FFT64 {
         R: VecZnxBigToMut<Self>,
         A: VecZnxBigToRef<Self>,
     {
-        vec_znx_big_automorphism_ref(p, res, res_col, a, a_col);
+        if std::is_x86_feature_detected!("avx2") {
+            vec_znx_big_automorphism::<_, _, _, ZnxArithmeticAvx>(p, res, res_col, a, a_col);
+        } else {
+            vec_znx_big_automorphism::<_, _, _, ZnxArithmeticRef>(p, res, res_col, a, a_col);
+        }
     }
 }
 
 unsafe impl VecZnxBigAutomorphismInplaceTmpBytesImpl<Self> for FFT64 {
     fn vec_znx_big_automorphism_inplace_tmp_bytes_impl(module: &Module<Self>) -> usize {
-        vec_znx_big_automorphism_inplace_tmp_bytes_ref(module.n())
+        vec_znx_big_automorphism_inplace_tmp_bytes(module.n())
     }
 }
 
@@ -308,6 +356,11 @@ where
         R: VecZnxBigToMut<Self>,
     {
         let (tmp, _) = scratch.take_slice(module.vec_znx_big_normalize_tmp_bytes() / size_of::<i64>());
-        vec_znx_big_automorphism_inplace_ref(p, res, res_col, tmp);
+
+        if std::is_x86_feature_detected!("avx2") {
+            vec_znx_big_automorphism_inplace::<_, _, ZnxArithmeticAvx>(p, res, res_col, tmp);
+        } else {
+            vec_znx_big_automorphism_inplace::<_, _, ZnxArithmeticRef>(p, res, res_col, tmp);
+        }
     }
 }

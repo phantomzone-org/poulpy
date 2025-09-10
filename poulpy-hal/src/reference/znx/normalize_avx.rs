@@ -1,194 +1,66 @@
-use std::arch::x86_64::{__m256i, _mm256_set1_epi64x, _mm256_storeu_si256};
+#[cfg(target_arch = "x86_64")]
+use std::arch::x86_64::__m256i;
+use std::arch::x86_64::_mm256_storeu_si256;
 
-use itertools::izip;
+use crate::reference::znx::ZnxNormalize;
 
-#[inline(always)]
-pub(crate) fn get_digit(basek: usize, x: i64) -> i64 {
-    (x << (u64::BITS - basek as u32)) >> (u64::BITS - basek as u32)
-}
+pub struct ZnxNormalizeAvx;
 
-#[inline(always)]
-pub(crate) fn get_carry(basek: usize, x: i64, digit: i64) -> i64 {
-    (x.wrapping_sub(digit)) >> basek
-}
-
-pub fn znx_normalize_carry_only_beg_ref(basek: usize, lsh: usize, x: &[i64], carry: &mut [i64]) {
-    #[cfg(debug_assertions)]
-    {
-        assert_eq!(x.len(), carry.len());
-        assert!(lsh < basek);
+impl ZnxNormalize for ZnxNormalizeAvx {
+    #[inline(always)]
+    fn znx_normalize_final_step(basek: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
+        unsafe {
+            znx_normalize_final_step_avx(basek, lsh, x, a, carry);
+        }
     }
 
-    if lsh == 0 {
-        x.iter().zip(carry.iter_mut()).for_each(|(x, c)| {
-            *c = get_carry(basek, *x, get_digit(basek, *x));
-        });
-    } else {
-        let basek_lsh: usize = basek - lsh;
-        x.iter().zip(carry.iter_mut()).for_each(|(x, c)| {
-            *c = get_carry(basek_lsh, *x, get_digit(basek_lsh, *x));
-        });
-    }
-}
-
-pub fn znx_normalize_inplace_beg_ref(basek: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
-    #[cfg(debug_assertions)]
-    {
-        assert_eq!(x.len(), carry.len());
-        assert!(lsh < basek);
+    #[inline(always)]
+    fn znx_normalize_final_step_inplace(basek: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
+        unsafe {
+            znx_normalize_final_step_inplace_avx(basek, lsh, x, carry);
+        }
     }
 
-    if lsh == 0 {
-        x.iter_mut().zip(carry.iter_mut()).for_each(|(x, c)| {
-            let digit: i64 = get_digit(basek, *x);
-            *c = get_carry(basek, *x, digit);
-            *x = digit;
-        });
-    } else {
-        let basek_lsh: usize = basek - lsh;
-        x.iter_mut().zip(carry.iter_mut()).for_each(|(x, c)| {
-            let digit: i64 = get_digit(basek_lsh, *x);
-            *c = get_carry(basek_lsh, *x, digit);
-            *x = digit << lsh;
-        });
-    }
-}
-
-pub fn znx_normalize_beg_ref(basek: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
-    #[cfg(debug_assertions)]
-    {
-        assert_eq!(x.len(), carry.len());
-        assert_eq!(a.len(), carry.len());
-        assert!(lsh < basek);
+    #[inline(always)]
+    fn znx_normalize_first_step(basek: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
+        unsafe {
+            znx_normalize_first_step_avx(basek, lsh, x, a, carry);
+        }
     }
 
-    if lsh == 0 {
-        izip!(x.iter_mut(), a.iter(), carry.iter_mut()).for_each(|(x, a, c)| {
-            let digit: i64 = get_digit(basek, *a);
-            *c = get_carry(basek, *a, digit);
-            *x = digit;
-        });
-    } else {
-        let basek_lsh: usize = basek - lsh;
-        izip!(x.iter_mut(), a.iter(), carry.iter_mut()).for_each(|(x, a, c)| {
-            let digit: i64 = get_digit(basek_lsh, *a);
-            *c = get_carry(basek_lsh, *a, digit);
-            *x = digit << lsh;
-        });
-    }
-}
-
-pub fn znx_normalize_carry_only_mid_ref(basek: usize, lsh: usize, x: &[i64], carry: &mut [i64]) {
-    #[cfg(debug_assertions)]
-    {
-        assert_eq!(x.len(), carry.len());
-        assert!(lsh < basek);
-    }
-    if lsh == 0 {
-        x.iter().zip(carry.iter_mut()).for_each(|(x, c)| {
-            let digit: i64 = get_digit(basek, *x);
-            let carry: i64 = get_carry(basek, *x, digit);
-            let digit_plus_c: i64 = digit + *c;
-            *c = carry + get_carry(basek, digit_plus_c, get_digit(basek, digit_plus_c));
-        });
-    } else {
-        let basek_lsh: usize = basek - lsh;
-        x.iter().zip(carry.iter_mut()).for_each(|(x, c)| {
-            let digit: i64 = get_digit(basek_lsh, *x);
-            let carry: i64 = get_carry(basek_lsh, *x, digit);
-            let digit_plus_c: i64 = (digit << lsh) + *c;
-            *c = carry + get_carry(basek, digit_plus_c, get_digit(basek, digit_plus_c));
-        });
-    }
-}
-
-pub fn znx_normalize_inplace_mid_ref(basek: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
-    #[cfg(debug_assertions)]
-    {
-        assert_eq!(x.len(), carry.len());
-        assert!(lsh < basek);
-    }
-    if lsh == 0 {
-        x.iter_mut().zip(carry.iter_mut()).for_each(|(x, c)| {
-            let digit: i64 = get_digit(basek, *x);
-            let carry: i64 = get_carry(basek, *x, digit);
-            let digit_plus_c: i64 = digit + *c;
-            *x = get_digit(basek, digit_plus_c);
-            *c = carry + get_carry(basek, digit_plus_c, *x);
-        });
-    } else {
-        let basek_lsh: usize = basek - lsh;
-        x.iter_mut().zip(carry.iter_mut()).for_each(|(x, c)| {
-            let digit: i64 = get_digit(basek_lsh, *x);
-            let carry: i64 = get_carry(basek_lsh, *x, digit);
-            let digit_plus_c: i64 = (digit << lsh) + *c;
-            *x = get_digit(basek, digit_plus_c);
-            *c = carry + get_carry(basek, digit_plus_c, *x);
-        });
-    }
-}
-
-pub fn znx_normalize_mid_ref(basek: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
-    #[cfg(debug_assertions)]
-    {
-        assert_eq!(x.len(), carry.len());
-        assert_eq!(a.len(), carry.len());
-        assert!(lsh < basek);
-    }
-    if lsh == 0 {
-        izip!(x.iter_mut(), a.iter(), carry.iter_mut()).for_each(|(x, a, c)| {
-            let digit: i64 = get_digit(basek, *a);
-            let carry: i64 = get_carry(basek, *a, digit);
-            let digit_plus_c: i64 = digit + *c;
-            *x = get_digit(basek, digit_plus_c);
-            *c = carry + get_carry(basek, digit_plus_c, *x);
-        });
-    } else {
-        let basek_lsh: usize = basek - lsh;
-        izip!(x.iter_mut(), a.iter(), carry.iter_mut()).for_each(|(x, a, c)| {
-            let digit: i64 = get_digit(basek_lsh, *a);
-            let carry: i64 = get_carry(basek_lsh, *a, digit);
-            let digit_plus_c: i64 = (digit << lsh) + *c;
-            *x = get_digit(basek, digit_plus_c);
-            *c = carry + get_carry(basek, digit_plus_c, *x);
-        });
-    }
-}
-
-pub fn znx_normalize_inplace_end_ref(basek: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
-    #[cfg(debug_assertions)]
-    {
-        assert_eq!(x.len(), carry.len());
-        assert!(lsh < basek);
+    #[inline(always)]
+    fn znx_normalize_first_step_carry_only(basek: usize, lsh: usize, x: &[i64], carry: &mut [i64]) {
+        unsafe {
+            znx_normalize_first_step_carry_only_avx(basek, lsh, x, carry);
+        }
     }
 
-    if lsh == 0 {
-        x.iter_mut().zip(carry.iter_mut()).for_each(|(x, c)| {
-            *x = get_digit(basek, get_digit(basek, *x) + *c);
-        });
-    } else {
-        let basek_lsh: usize = basek - lsh;
-        x.iter_mut().zip(carry.iter_mut()).for_each(|(x, c)| {
-            *x = get_digit(basek, (get_digit(basek_lsh, *x) << lsh) + *c);
-        });
+    #[inline(always)]
+    fn znx_normalize_first_step_inplace(basek: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
+        unsafe {
+            znx_normalize_first_step_inplace_avx(basek, lsh, x, carry);
+        }
     }
-}
 
-pub fn znx_normalize_end_ref(basek: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
-    #[cfg(debug_assertions)]
-    {
-        assert_eq!(x.len(), carry.len());
-        assert!(lsh < basek);
+    #[inline(always)]
+    fn znx_normalize_middle_step(basek: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
+        unsafe {
+            znx_normalize_middle_step_avx(basek, lsh, x, a, carry);
+        }
     }
-    if lsh == 0 {
-        izip!(x.iter_mut(), a.iter(), carry.iter_mut()).for_each(|(x, a, c)| {
-            *x = get_digit(basek, get_digit(basek, *a) + *c);
-        });
-    } else {
-        let basek_lsh: usize = basek - lsh;
-        izip!(x.iter_mut(), a.iter(), carry.iter_mut()).for_each(|(x, a, c)| {
-            *x = get_digit(basek, (get_digit(basek_lsh, *a) << lsh) + *c);
-        });
+
+    #[inline(always)]
+    fn znx_normalize_middle_step_carry_only(basek: usize, lsh: usize, x: &[i64], carry: &mut [i64]) {
+        unsafe {
+            znx_normalize_middle_step_carry_only_avx(basek, lsh, x, carry);
+        }
+    }
+
+    #[inline(always)]
+    fn znx_normalize_middle_step_inplace(basek: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
+        unsafe {
+            znx_normalize_middle_step_inplace_avx(basek, lsh, x, carry);
+        }
     }
 }
 
@@ -199,7 +71,9 @@ pub fn znx_normalize_end_ref(basek: usize, lsh: usize, x: &mut [i64], a: &[i64],
 /// all inputs must have the same length and must not alias.
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2")]
-pub fn normalize_consts_avx(basek: usize) -> (__m256i, __m256i, __m256i, __m256i) {
+fn normalize_consts_avx(basek: usize) -> (__m256i, __m256i, __m256i, __m256i) {
+    use std::arch::x86_64::_mm256_set1_epi64x;
+
     assert!((1..=63).contains(&basek));
     let mask_k: i64 = ((1u64 << basek) - 1) as i64; // 0..k-1 bits set
     let sign_k: i64 = (1u64 << (basek - 1)) as i64; // bit k-1
@@ -257,7 +131,7 @@ unsafe fn get_carry_avx(
 /// all inputs must have the same length and must not alias.
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2")]
-pub fn znx_normalize_carry_only_beg_avx(basek: usize, lsh: usize, x: &[i64], carry: &mut [i64]) {
+pub fn znx_normalize_first_step_carry_only_avx(basek: usize, lsh: usize, x: &[i64], carry: &mut [i64]) {
     #[cfg(debug_assertions)]
     {
         assert_eq!(x.len(), carry.len());
@@ -298,7 +172,8 @@ pub fn znx_normalize_carry_only_beg_avx(basek: usize, lsh: usize, x: &[i64], car
 
     // tail
     if !x.len().is_multiple_of(4) {
-        znx_normalize_carry_only_beg_ref(basek, lsh, &x[span << 2..], &mut carry[span << 2..]);
+        use crate::reference::znx::znx_normalize_first_step_carry_only_ref;
+        znx_normalize_first_step_carry_only_ref(basek, lsh, &x[span << 2..], &mut carry[span << 2..]);
     }
 }
 
@@ -307,14 +182,14 @@ pub fn znx_normalize_carry_only_beg_avx(basek: usize, lsh: usize, x: &[i64], car
 /// all inputs must have the same length and must not alias.
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2")]
-pub fn znx_normalize_inplace_beg_avx(basek: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
+pub fn znx_normalize_first_step_inplace_avx(basek: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
     #[cfg(debug_assertions)]
     {
         assert_eq!(x.len(), carry.len());
         assert!(lsh < basek);
     }
 
-    use std::arch::x86_64::{_mm256_loadu_si256, _mm256_sllv_epi64, _mm256_storeu_si256};
+    use std::arch::x86_64::{_mm256_loadu_si256, _mm256_set1_epi64x, _mm256_sllv_epi64, _mm256_storeu_si256};
 
     let n: usize = x.len();
 
@@ -367,7 +242,8 @@ pub fn znx_normalize_inplace_beg_avx(basek: usize, lsh: usize, x: &mut [i64], ca
 
     // tail
     if !x.len().is_multiple_of(4) {
-        znx_normalize_inplace_beg_ref(basek, lsh, &mut x[span << 2..], &mut carry[span << 2..]);
+        use crate::reference::znx::znx_normalize_first_step_inplace_ref;
+        znx_normalize_first_step_inplace_ref(basek, lsh, &mut x[span << 2..], &mut carry[span << 2..]);
     }
 }
 
@@ -376,7 +252,7 @@ pub fn znx_normalize_inplace_beg_avx(basek: usize, lsh: usize, x: &mut [i64], ca
 /// all inputs must have the same length and must not alias.
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2")]
-pub fn znx_normalize_beg_avx(basek: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
+pub fn znx_normalize_first_step_avx(basek: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
     #[cfg(debug_assertions)]
     {
         assert_eq!(x.len(), carry.len());
@@ -415,6 +291,8 @@ pub fn znx_normalize_beg_avx(basek: usize, lsh: usize, x: &mut [i64], a: &[i64],
                 cc = cc.add(1);
             }
         } else {
+            use std::arch::x86_64::_mm256_set1_epi64x;
+
             let (mask, sign, basek_vec, top_mask) = normalize_consts_avx(basek - lsh);
 
             let lsh_v: __m256i = _mm256_set1_epi64x(lsh as i64);
@@ -440,7 +318,9 @@ pub fn znx_normalize_beg_avx(basek: usize, lsh: usize, x: &mut [i64], a: &[i64],
 
     // tail
     if !x.len().is_multiple_of(4) {
-        znx_normalize_beg_ref(
+        use crate::reference::znx::znx_normalize_first_step_ref;
+
+        znx_normalize_first_step_ref(
             basek,
             lsh,
             &mut x[span << 2..],
@@ -455,7 +335,7 @@ pub fn znx_normalize_beg_avx(basek: usize, lsh: usize, x: &mut [i64], a: &[i64],
 /// all inputs must have the same length and must not alias.
 #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
 #[target_feature(enable = "avx2")]
-pub fn znx_normalize_inplace_mid_avx(basek: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
+pub fn znx_normalize_middle_step_inplace_avx(basek: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
     #[cfg(debug_assertions)]
     {
         assert_eq!(x.len(), carry.len());
@@ -494,6 +374,8 @@ pub fn znx_normalize_inplace_mid_avx(basek: usize, lsh: usize, x: &mut [i64], ca
                 cc = cc.add(1);
             }
         } else {
+            use std::arch::x86_64::_mm256_set1_epi64x;
+
             let (mask_lsh, sign_lsh, basek_vec_lsh, top_mask_lsh) = normalize_consts_avx(basek - lsh);
 
             let lsh_v: __m256i = _mm256_set1_epi64x(lsh as i64);
@@ -522,7 +404,9 @@ pub fn znx_normalize_inplace_mid_avx(basek: usize, lsh: usize, x: &mut [i64], ca
     }
 
     if !x.len().is_multiple_of(4) {
-        znx_normalize_inplace_mid_ref(basek, lsh, &mut x[span << 2..], &mut carry[span << 2..]);
+        use crate::reference::znx::znx_normalize_middle_step_inplace_ref;
+
+        znx_normalize_middle_step_inplace_ref(basek, lsh, &mut x[span << 2..], &mut carry[span << 2..]);
     }
 }
 
@@ -531,7 +415,7 @@ pub fn znx_normalize_inplace_mid_avx(basek: usize, lsh: usize, x: &mut [i64], ca
 /// all inputs must have the same length and must not alias.
 #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
 #[target_feature(enable = "avx2")]
-pub fn znx_normalize_carry_only_mid_avx(basek: usize, lsh: usize, x: &[i64], carry: &mut [i64]) {
+pub fn znx_normalize_middle_step_carry_only_avx(basek: usize, lsh: usize, x: &[i64], carry: &mut [i64]) {
     #[cfg(debug_assertions)]
     {
         assert_eq!(x.len(), carry.len());
@@ -569,6 +453,8 @@ pub fn znx_normalize_carry_only_mid_avx(basek: usize, lsh: usize, x: &[i64], car
                 cc = cc.add(1);
             }
         } else {
+            use std::arch::x86_64::_mm256_set1_epi64x;
+
             let (mask_lsh, sign_lsh, basek_vec_lsh, top_mask_lsh) = normalize_consts_avx(basek - lsh);
 
             let lsh_v: __m256i = _mm256_set1_epi64x(lsh as i64);
@@ -596,7 +482,9 @@ pub fn znx_normalize_carry_only_mid_avx(basek: usize, lsh: usize, x: &[i64], car
     }
 
     if !x.len().is_multiple_of(4) {
-        znx_normalize_carry_only_mid_ref(basek, lsh, &x[span << 2..], &mut carry[span << 2..]);
+        use crate::reference::znx::znx_normalize_middle_step_carry_only_ref;
+
+        znx_normalize_middle_step_carry_only_ref(basek, lsh, &x[span << 2..], &mut carry[span << 2..]);
     }
 }
 
@@ -605,7 +493,7 @@ pub fn znx_normalize_carry_only_mid_avx(basek: usize, lsh: usize, x: &[i64], car
 /// all inputs must have the same length and must not alias.
 #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
 #[target_feature(enable = "avx2")]
-pub fn znx_normalize_mid_avx(basek: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
+pub fn znx_normalize_middle_step_avx(basek: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
     #[cfg(debug_assertions)]
     {
         assert_eq!(x.len(), carry.len());
@@ -647,6 +535,8 @@ pub fn znx_normalize_mid_avx(basek: usize, lsh: usize, x: &mut [i64], a: &[i64],
                 cc = cc.add(1);
             }
         } else {
+            use std::arch::x86_64::_mm256_set1_epi64x;
+
             let (mask_lsh, sign_lsh, basek_vec_lsh, top_mask_lsh) = normalize_consts_avx(basek - lsh);
 
             let lsh_v: __m256i = _mm256_set1_epi64x(lsh as i64);
@@ -676,7 +566,9 @@ pub fn znx_normalize_mid_avx(basek: usize, lsh: usize, x: &mut [i64], a: &[i64],
     }
 
     if !x.len().is_multiple_of(4) {
-        znx_normalize_mid_ref(
+        use crate::reference::znx::znx_normalize_middle_step_ref;
+
+        znx_normalize_middle_step_ref(
             basek,
             lsh,
             &mut x[span << 2..],
@@ -691,7 +583,7 @@ pub fn znx_normalize_mid_avx(basek: usize, lsh: usize, x: &mut [i64], a: &[i64],
 /// all inputs must have the same length and must not alias.
 #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
 #[target_feature(enable = "avx2")]
-pub fn znx_normalize_inplace_end_avx(basek: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
+pub fn znx_normalize_final_step_inplace_avx(basek: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
     #[cfg(debug_assertions)]
     {
         assert_eq!(x.len(), carry.len());
@@ -725,6 +617,8 @@ pub fn znx_normalize_inplace_end_avx(basek: usize, lsh: usize, x: &mut [i64], ca
                 cc = cc.add(1);
             }
         } else {
+            use std::arch::x86_64::_mm256_set1_epi64x;
+
             let (mask_lsh, sign_lsh, _, _) = normalize_consts_avx(basek - lsh);
 
             let lsh_v: __m256i = _mm256_set1_epi64x(lsh as i64);
@@ -749,7 +643,9 @@ pub fn znx_normalize_inplace_end_avx(basek: usize, lsh: usize, x: &mut [i64], ca
     }
 
     if !x.len().is_multiple_of(4) {
-        znx_normalize_inplace_end_ref(basek, lsh, &mut x[span << 2..], &mut carry[span << 2..]);
+        use crate::reference::znx::znx_normalize_final_step_inplace_ref;
+
+        znx_normalize_final_step_inplace_ref(basek, lsh, &mut x[span << 2..], &mut carry[span << 2..]);
     }
 }
 
@@ -758,7 +654,7 @@ pub fn znx_normalize_inplace_end_avx(basek: usize, lsh: usize, x: &mut [i64], ca
 /// all inputs must have the same length and must not alias.
 #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
 #[target_feature(enable = "avx2")]
-pub fn znx_normalize_end_avx(basek: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
+pub fn znx_normalize_final_step_avx(basek: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
     #[cfg(debug_assertions)]
     {
         assert_eq!(x.len(), carry.len());
@@ -795,6 +691,8 @@ pub fn znx_normalize_end_avx(basek: usize, lsh: usize, x: &mut [i64], a: &[i64],
                 cc = cc.add(1);
             }
         } else {
+            use std::arch::x86_64::_mm256_set1_epi64x;
+
             let (mask_lsh, sign_lsh, _, _) = normalize_consts_avx(basek - lsh);
 
             let lsh_v: __m256i = _mm256_set1_epi64x(lsh as i64);
@@ -819,15 +717,29 @@ pub fn znx_normalize_end_avx(basek: usize, lsh: usize, x: &mut [i64], a: &[i64],
     }
 
     if !x.len().is_multiple_of(4) {
-        znx_normalize_inplace_end_ref(basek, lsh, &mut x[span << 2..], &mut carry[span << 2..]);
+        use crate::reference::znx::znx_normalize_final_step_ref;
+
+        znx_normalize_final_step_ref(
+            basek,
+            lsh,
+            &mut x[span << 2..],
+            &a[span << 2..],
+            &mut carry[span << 2..],
+        );
     }
 }
 
 #[cfg(all(test, any(target_arch = "x86_64", target_arch = "x86")))]
 mod tests {
+    use crate::reference::znx::{
+        get_carry, get_digit, znx_normalize_final_step_inplace_ref, znx_normalize_final_step_ref,
+        znx_normalize_first_step_inplace_ref, znx_normalize_first_step_ref, znx_normalize_middle_step_inplace_ref,
+        znx_normalize_middle_step_ref,
+    };
+
     use super::*;
 
-    use std::arch::x86_64::_mm256_loadu_si256;
+    use std::arch::x86_64::{_mm256_loadu_si256, _mm256_storeu_si256};
 
     #[target_feature(enable = "avx2")]
     fn test_get_digit_avx_internal() {
@@ -904,7 +816,7 @@ mod tests {
     }
 
     #[target_feature(enable = "avx2")]
-    fn test_znx_normalize_inplace_beg_avx_internal() {
+    fn test_znx_normalize_first_step_inplace_avx_internal() {
         let mut y0: [i64; 4] = [
             7638646372408325293,
             -61440197422348985,
@@ -923,32 +835,32 @@ mod tests {
 
         let basek = 12;
 
-        znx_normalize_inplace_beg_ref(basek, 0, &mut y0, &mut c0);
-        znx_normalize_inplace_beg_avx(basek, 0, &mut y1, &mut c1);
+        znx_normalize_first_step_inplace_ref(basek, 0, &mut y0, &mut c0);
+        znx_normalize_first_step_inplace_avx(basek, 0, &mut y1, &mut c1);
 
         assert_eq!(y0, y1);
         assert_eq!(c0, c1);
 
-        znx_normalize_inplace_beg_ref(basek, basek - 1, &mut y0, &mut c0);
-        znx_normalize_inplace_beg_avx(basek, basek - 1, &mut y1, &mut c1);
+        znx_normalize_first_step_inplace_ref(basek, basek - 1, &mut y0, &mut c0);
+        znx_normalize_first_step_inplace_avx(basek, basek - 1, &mut y1, &mut c1);
 
         assert_eq!(y0, y1);
         assert_eq!(c0, c1);
     }
 
     #[test]
-    fn test_znx_normalize_inplace_beg_avx() {
+    fn test_znx_normalize_first_step_inplace_avx() {
         if !std::is_x86_feature_detected!("avx2") {
             eprintln!("skipping: CPU lacks avx2");
             return;
         };
         unsafe {
-            test_znx_normalize_inplace_beg_avx_internal();
+            test_znx_normalize_first_step_inplace_avx_internal();
         }
     }
 
     #[target_feature(enable = "avx2")]
-    fn test_znx_normalize_inplace_mid_avx_internal() {
+    fn test_znx_normalize_middle_step_inplace_avx_internal() {
         let mut y0: [i64; 4] = [
             7638646372408325293,
             -61440197422348985,
@@ -967,32 +879,32 @@ mod tests {
 
         let basek = 12;
 
-        znx_normalize_inplace_mid_ref(basek, 0, &mut y0, &mut c0);
-        znx_normalize_inplace_mid_avx(basek, 0, &mut y1, &mut c1);
+        znx_normalize_middle_step_inplace_ref(basek, 0, &mut y0, &mut c0);
+        znx_normalize_middle_step_inplace_avx(basek, 0, &mut y1, &mut c1);
 
         assert_eq!(y0, y1);
         assert_eq!(c0, c1);
 
-        znx_normalize_inplace_mid_ref(basek, basek - 1, &mut y0, &mut c0);
-        znx_normalize_inplace_mid_avx(basek, basek - 1, &mut y1, &mut c1);
+        znx_normalize_middle_step_inplace_ref(basek, basek - 1, &mut y0, &mut c0);
+        znx_normalize_middle_step_inplace_avx(basek, basek - 1, &mut y1, &mut c1);
 
         assert_eq!(y0, y1);
         assert_eq!(c0, c1);
     }
 
     #[test]
-    fn test_znx_normalize_inplace_mid_avx() {
+    fn test_znx_normalize_middle_step_inplace_avx() {
         if !std::is_x86_feature_detected!("avx2") {
             eprintln!("skipping: CPU lacks avx2");
             return;
         };
         unsafe {
-            test_znx_normalize_inplace_mid_avx_internal();
+            test_znx_normalize_middle_step_inplace_avx_internal();
         }
     }
 
     #[target_feature(enable = "avx2")]
-    fn test_znx_normalize_inplace_end_avx_internal() {
+    fn test_znx_normalize_final_step_inplace_avx_internal() {
         let mut y0: [i64; 4] = [
             7638646372408325293,
             -61440197422348985,
@@ -1011,32 +923,32 @@ mod tests {
 
         let basek = 12;
 
-        znx_normalize_inplace_end_ref(basek, 0, &mut y0, &mut c0);
-        znx_normalize_inplace_end_avx(basek, 0, &mut y1, &mut c1);
+        znx_normalize_final_step_inplace_ref(basek, 0, &mut y0, &mut c0);
+        znx_normalize_final_step_inplace_avx(basek, 0, &mut y1, &mut c1);
 
         assert_eq!(y0, y1);
         assert_eq!(c0, c1);
 
-        znx_normalize_inplace_end_ref(basek, basek - 1, &mut y0, &mut c0);
-        znx_normalize_inplace_end_avx(basek, basek - 1, &mut y1, &mut c1);
+        znx_normalize_final_step_inplace_ref(basek, basek - 1, &mut y0, &mut c0);
+        znx_normalize_final_step_inplace_avx(basek, basek - 1, &mut y1, &mut c1);
 
         assert_eq!(y0, y1);
         assert_eq!(c0, c1);
     }
 
     #[test]
-    fn test_znx_normalize_inplace_end_avx() {
+    fn test_znx_normalize_final_step_inplace_avx() {
         if !std::is_x86_feature_detected!("avx2") {
             eprintln!("skipping: CPU lacks avx2");
             return;
         };
         unsafe {
-            test_znx_normalize_inplace_end_avx_internal();
+            test_znx_normalize_final_step_inplace_avx_internal();
         }
     }
 
     #[target_feature(enable = "avx2")]
-    fn test_znx_normalize_beg_avx_internal() {
+    fn test_znx_normalize_first_step_avx_internal() {
         let mut y0: [i64; 4] = [
             7638646372408325293,
             -61440197422348985,
@@ -1056,32 +968,32 @@ mod tests {
 
         let basek = 12;
 
-        znx_normalize_beg_ref(basek, 0, &mut y0, &a, &mut c0);
-        znx_normalize_beg_avx(basek, 0, &mut y1, &a, &mut c1);
+        znx_normalize_first_step_ref(basek, 0, &mut y0, &a, &mut c0);
+        znx_normalize_first_step_avx(basek, 0, &mut y1, &a, &mut c1);
 
         assert_eq!(y0, y1);
         assert_eq!(c0, c1);
 
-        znx_normalize_beg_ref(basek, basek - 1, &mut y0, &a, &mut c0);
-        znx_normalize_beg_avx(basek, basek - 1, &mut y1, &a, &mut c1);
+        znx_normalize_first_step_ref(basek, basek - 1, &mut y0, &a, &mut c0);
+        znx_normalize_first_step_avx(basek, basek - 1, &mut y1, &a, &mut c1);
 
         assert_eq!(y0, y1);
         assert_eq!(c0, c1);
     }
 
     #[test]
-    fn test_znx_normalize_beg_avx() {
+    fn test_znx_normalize_first_step_avx() {
         if !std::is_x86_feature_detected!("avx2") {
             eprintln!("skipping: CPU lacks avx2");
             return;
         };
         unsafe {
-            test_znx_normalize_beg_avx_internal();
+            test_znx_normalize_first_step_avx_internal();
         }
     }
 
     #[target_feature(enable = "avx2")]
-    fn test_znx_normalize_mid_avx_internal() {
+    fn test_znx_normalize_middle_step_avx_internal() {
         let mut y0: [i64; 4] = [
             7638646372408325293,
             -61440197422348985,
@@ -1101,32 +1013,32 @@ mod tests {
 
         let basek = 12;
 
-        znx_normalize_mid_ref(basek, 0, &mut y0, &a, &mut c0);
-        znx_normalize_mid_avx(basek, 0, &mut y1, &a, &mut c1);
+        znx_normalize_middle_step_ref(basek, 0, &mut y0, &a, &mut c0);
+        znx_normalize_middle_step_avx(basek, 0, &mut y1, &a, &mut c1);
 
         assert_eq!(y0, y1);
         assert_eq!(c0, c1);
 
-        znx_normalize_mid_ref(basek, basek - 1, &mut y0, &a, &mut c0);
-        znx_normalize_mid_avx(basek, basek - 1, &mut y1, &a, &mut c1);
+        znx_normalize_middle_step_ref(basek, basek - 1, &mut y0, &a, &mut c0);
+        znx_normalize_middle_step_avx(basek, basek - 1, &mut y1, &a, &mut c1);
 
         assert_eq!(y0, y1);
         assert_eq!(c0, c1);
     }
 
     #[test]
-    fn test_znx_normalize_mid_avx() {
+    fn test_znx_normalize_middle_step_avx() {
         if !std::is_x86_feature_detected!("avx2") {
             eprintln!("skipping: CPU lacks avx2");
             return;
         };
         unsafe {
-            test_znx_normalize_mid_avx_internal();
+            test_znx_normalize_middle_step_avx_internal();
         }
     }
 
     #[target_feature(enable = "avx2")]
-    fn test_znx_normalize_end_avx_internal() {
+    fn test_znx_normalize_final_step_avx_internal() {
         let mut y0: [i64; 4] = [
             7638646372408325293,
             -61440197422348985,
@@ -1146,27 +1058,27 @@ mod tests {
 
         let basek = 12;
 
-        znx_normalize_end_ref(basek, 0, &mut y0, &a, &mut c0);
-        znx_normalize_end_avx(basek, 0, &mut y1, &a, &mut c1);
+        znx_normalize_final_step_ref(basek, 0, &mut y0, &a, &mut c0);
+        znx_normalize_final_step_avx(basek, 0, &mut y1, &a, &mut c1);
 
         assert_eq!(y0, y1);
         assert_eq!(c0, c1);
 
-        znx_normalize_end_ref(basek, basek - 1, &mut y0, &a, &mut c0);
-        znx_normalize_end_avx(basek, basek - 1, &mut y1, &a, &mut c1);
+        znx_normalize_final_step_ref(basek, basek - 1, &mut y0, &a, &mut c0);
+        znx_normalize_final_step_avx(basek, basek - 1, &mut y1, &a, &mut c1);
 
         assert_eq!(y0, y1);
         assert_eq!(c0, c1);
     }
 
     #[test]
-    fn test_znx_normalize_end_avx() {
+    fn test_znx_normalize_final_step_avx() {
         if !std::is_x86_feature_detected!("avx2") {
             eprintln!("skipping: CPU lacks avx2");
             return;
         };
         unsafe {
-            test_znx_normalize_end_avx_internal();
+            test_znx_normalize_final_step_avx_internal();
         }
     }
 }

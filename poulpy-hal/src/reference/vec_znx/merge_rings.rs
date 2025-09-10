@@ -1,18 +1,22 @@
 use crate::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxMergeRings, VecZnxMergeRingsTmpBytes},
     layouts::{Backend, FillUniform, Module, ScratchOwned, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView},
-    reference::vec_znx::{vec_znx_rotate_inplace_ref, vec_znx_switch_ring_ref},
+    reference::{
+        vec_znx::{vec_znx_rotate_inplace, vec_znx_switch_ring},
+        znx::{ZnxArithmetic, ZnxArithmeticRef},
+    },
     source::Source,
 };
 
-pub fn vec_znx_merge_rings_tmp_bytes_ref(n: usize) -> usize {
+pub fn vec_znx_merge_rings_tmp_bytes(n: usize) -> usize {
     n * size_of::<i64>()
 }
 
-pub fn vec_znx_merge_rings_ref<R, A>(res: &mut R, res_col: usize, a: &[A], a_col: usize, tmp: &mut [i64])
+pub fn vec_znx_merge_rings<R, A, ZNXARI>(res: &mut R, res_col: usize, a: &[A], a_col: usize, tmp: &mut [i64])
 where
     R: VecZnxToMut,
     A: VecZnxToRef,
+    ZNXARI: ZnxArithmetic,
 {
     let mut res: VecZnx<&mut [u8]> = res.to_mut();
 
@@ -39,11 +43,11 @@ where
     }
 
     a.iter().for_each(|ai| {
-        vec_znx_switch_ring_ref(&mut res, res_col, ai, a_col);
-        vec_znx_rotate_inplace_ref(-1, &mut res, res_col, tmp);
+        vec_znx_switch_ring::<_, _, ZNXARI>(&mut res, res_col, ai, a_col);
+        vec_znx_rotate_inplace::<_, ZNXARI>(-1, &mut res, res_col, tmp);
     });
 
-    vec_znx_rotate_inplace_ref(a.len() as i64, &mut res, res_col, tmp);
+    vec_znx_rotate_inplace::<_, ZNXARI>(a.len() as i64, &mut res, res_col, tmp);
 }
 
 pub fn test_vec_znx_merge_rings<B: Backend>(module: &Module<B>)
@@ -75,7 +79,7 @@ where
 
             for i in 0..cols {
                 module.vec_znx_merge_rings(&mut res_0, i, &a, i, scratch.borrow());
-                vec_znx_merge_rings_ref(&mut res_1, i, &a, i, &mut tmp);
+                vec_znx_merge_rings::<_, _, ZnxArithmeticRef>(&mut res_1, i, &a, i, &mut tmp);
             }
 
             for i in 0..cols {

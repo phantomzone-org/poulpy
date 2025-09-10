@@ -4,8 +4,26 @@ use rand_distr::num_traits::{Float, FloatConst};
 
 use crate::{
     alloc_aligned,
-    reference::reim::{frac_rev_bits, ifft_ref::ifft_ref},
+    reference::reim::{ReimDFTExecute, frac_rev_bits, ifft_avx2_fma::ifft_avx2_fma, ifft_ref::ifft_ref},
 };
+
+pub struct ReimIFFTRef;
+
+impl ReimDFTExecute<ReimIFFTTable<f64>, f64> for ReimIFFTRef {
+    fn reim_dft_execute(table: &ReimIFFTTable<f64>, data: &mut [f64]) {
+        ifft_ref(table.m, &table.omg, data);
+    }
+}
+
+pub struct ReimIFFTAvx;
+
+impl ReimDFTExecute<ReimIFFTTable<f64>, f64> for ReimIFFTAvx {
+    fn reim_dft_execute(table: &ReimIFFTTable<f64>, data: &mut [f64]) {
+        unsafe {
+            ifft_avx2_fma(table.m, &table.omg, data);
+        }
+    }
+}
 
 pub struct ReimIFFTTable<R: Float + FloatConst + Debug> {
     m: usize,

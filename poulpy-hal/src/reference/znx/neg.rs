@@ -1,5 +1,5 @@
 #[inline(always)]
-pub fn znx_negate_i64_ref(res: &mut [i64], src: &[i64]) {
+pub fn znx_negate_ref(res: &mut [i64], src: &[i64]) {
     #[cfg(debug_assertions)]
     {
         assert_eq!(res.len(), src.len())
@@ -15,7 +15,7 @@ pub fn znx_negate_i64_ref(res: &mut [i64], src: &[i64]) {
 /// all inputs must have the same length and must not alias.
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2")]
-pub fn znx_negate_i64_avx(res: &mut [i64], src: &[i64]) {
+pub fn znx_negate_avx(res: &mut [i64], src: &[i64]) {
     #[cfg(debug_assertions)]
     {
         assert_eq!(res.len(), src.len())
@@ -40,12 +40,12 @@ pub fn znx_negate_i64_avx(res: &mut [i64], src: &[i64]) {
     }
 
     if !res.len().is_multiple_of(4) {
-        znx_negate_i64_ref(&mut res[span << 2..], &src[span << 2..])
+        znx_negate_ref(&mut res[span << 2..], &src[span << 2..])
     }
 }
 
 #[inline(always)]
-pub fn znx_negate_inplace_i64_ref(res: &mut [i64]) {
+pub fn znx_negate_inplace_ref(res: &mut [i64]) {
     for value in res {
         *value = -*value
     }
@@ -56,7 +56,7 @@ pub fn znx_negate_inplace_i64_ref(res: &mut [i64]) {
 /// all inputs must have the same length and must not alias.
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2")]
-pub fn znx_negate_inplace_i64_avx(res: &mut [i64]) {
+pub fn znx_negate_inplace_avx(res: &mut [i64]) {
     let n: usize = res.len();
 
     use std::arch::x86_64::{__m256i, _mm256_loadu_si256, _mm256_setzero_si256, _mm256_storeu_si256, _mm256_sub_epi64};
@@ -74,6 +74,6 @@ pub fn znx_negate_inplace_i64_avx(res: &mut [i64]) {
     }
 
     if !res.len().is_multiple_of(4) {
-        znx_negate_inplace_i64_ref(&mut res[span << 2..])
+        znx_negate_inplace_ref(&mut res[span << 2..])
     }
 }

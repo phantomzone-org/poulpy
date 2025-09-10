@@ -86,13 +86,20 @@ fn alloc_aligned_custom_u8(size: usize, align: usize) -> Vec<u8> {
 /// Allocates a block of T aligned with [DEFAULTALIGN].
 /// Size of T * size msut be a multiple of [DEFAULTALIGN].
 pub fn alloc_aligned_custom<T>(size: usize, align: usize) -> Vec<T> {
-    assert_eq!(
-        (size * size_of::<T>()) % (align / size_of::<T>()),
-        0,
-        "size={} must be a multiple of align={}",
-        size,
+    assert!(
+        align.is_power_of_two(),
+        "Alignment must be a power of two but is {}",
         align
     );
+
+    assert_eq!(
+        (size * size_of::<T>()) % align,
+        0,
+        "size*size_of::<T>()={} must be a multiple of align={}",
+        size * size_of::<T>(),
+        align
+    );
+
     let mut vec_u8: Vec<u8> = alloc_aligned_custom_u8(size_of::<T>() * size, align);
     let ptr: *mut T = vec_u8.as_mut_ptr() as *mut T;
     let len: usize = vec_u8.len() / size_of::<T>();
@@ -101,11 +108,11 @@ pub fn alloc_aligned_custom<T>(size: usize, align: usize) -> Vec<T> {
     unsafe { Vec::from_raw_parts(ptr, len, cap) }
 }
 
-/// Allocates an aligned vector of size equal to the smallest multiple
-/// of [DEFAULTALIGN]/`size_of::<T>`() that is equal or greater to `size`.
+/// Allocates an aligned vector of the given size.
+/// Padds until it is size in [u8] a multiple of [DEFAULTALIGN].
 pub fn alloc_aligned<T>(size: usize) -> Vec<T> {
     alloc_aligned_custom::<T>(
-        size + (DEFAULTALIGN - (size % (DEFAULTALIGN / size_of::<T>()))) % DEFAULTALIGN,
+        (size * size_of::<T>()).next_multiple_of(DEFAULTALIGN) / size_of::<T>(),
         DEFAULTALIGN,
     )
 }

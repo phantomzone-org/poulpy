@@ -1,12 +1,13 @@
 use crate::{
     layouts::{Backend, VecZnxDftToMut, ZnxViewMut},
-    reference::reim::reim_zero_ref,
+    reference::reim::ReimArithmetic,
 };
 
-pub fn vec_znx_dft_zero_ref<R, BE>(res: &mut R)
+pub fn vec_znx_dft_zero<R, BE, REIMARI>(res: &mut R)
 where
     R: VecZnxDftToMut<BE>,
     BE: Backend<ScalarPrep = f64>,
+    REIMARI: ReimArithmetic,
 {
-    reim_zero_ref(res.to_mut().raw_mut());
+    REIMARI::reim_zero(res.to_mut().raw_mut());
 }

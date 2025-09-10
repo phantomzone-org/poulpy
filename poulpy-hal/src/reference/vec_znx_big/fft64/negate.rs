@@ -6,15 +6,19 @@ use crate::{
     api::{ModuleNew, VecZnxBigNegate, VecZnxBigNegateInplace},
     layouts::{Backend, FillUniform, Module, VecZnx, VecZnxBig, VecZnxBigToMut, VecZnxBigToRef, ZnxView, ZnxViewMut},
     oep::VecZnxBigAllocBytesImpl,
-    reference::vec_znx::{vec_znx_negate_inplace_ref, vec_znx_negate_ref},
+    reference::{
+        vec_znx::{vec_znx_negate, vec_znx_negate_inplace},
+        znx::{ZnxArithmetic, ZnxArithmeticRef},
+    },
     source::Source,
 };
 
-pub fn vec_znx_big_negate_ref<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
+pub fn vec_znx_big_negate<R, A, BE, ZNXARI>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
     BE: Backend<ScalarBig = i64>,
     R: VecZnxBigToMut<BE>,
     A: VecZnxBigToRef<BE>,
+    ZNXARI: ZnxArithmetic,
 {
     let res: VecZnxBig<&mut [u8], _> = res.to_mut();
     let a: VecZnxBig<&[u8], _> = a.to_ref();
@@ -35,13 +39,14 @@ where
         max_size: a.max_size,
     };
 
-    vec_znx_negate_ref(&mut res_vznx, res_col, &a_vznx, a_col);
+    vec_znx_negate::<_, _, ZNXARI>(&mut res_vznx, res_col, &a_vznx, a_col);
 }
 
-pub fn vec_znx_big_negate_inplace_ref<R, BE>(res: &mut R, res_col: usize)
+pub fn vec_znx_big_negate_inplace<R, BE, ZNXARI>(res: &mut R, res_col: usize)
 where
     BE: Backend<ScalarBig = i64>,
     R: VecZnxBigToMut<BE>,
+    ZNXARI: ZnxArithmetic,
 {
     let res: VecZnxBig<&mut [u8], _> = res.to_mut();
 
@@ -53,7 +58,7 @@ where
         max_size: res.max_size,
     };
 
-    vec_znx_negate_inplace_ref(&mut res_vznx, res_col);
+    vec_znx_negate_inplace::<_, ZNXARI>(&mut res_vznx, res_col);
 }
 
 pub fn test_vec_znx_big_negate<B>(module: &Module<B>)
@@ -82,7 +87,7 @@ where
             res_1.raw_mut().copy_from_slice(res_0.raw());
 
             for i in 0..cols {
-                vec_znx_big_negate_ref(&mut res_0, i, &a, i);
+                vec_znx_big_negate::<_, _, _, ZnxArithmeticRef>(&mut res_0, i, &a, i);
                 module.vec_znx_big_negate(&mut res_1, i, &a, i);
             }
 
@@ -111,7 +116,7 @@ where
         res_1.raw_mut().copy_from_slice(res_0.raw());
 
         for i in 0..cols {
-            vec_znx_big_negate_inplace_ref(&mut res_0, i);
+            vec_znx_big_negate_inplace::<_, _, ZnxArithmeticRef>(&mut res_0, i);
             module.vec_znx_big_negate_inplace(&mut res_1, i);
         }
 

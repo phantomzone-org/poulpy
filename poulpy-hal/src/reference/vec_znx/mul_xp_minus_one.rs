@@ -9,28 +9,30 @@ use crate::{
     },
     layouts::{Backend, FillUniform, Module, ScratchOwned, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut},
     reference::{
-        vec_znx::{vec_znx_rotate_ref, vec_znx_sub_ab_inplace_ref},
-        znx::{znx_copy_ref, znx_rotate_i64_avx, znx_rotate_i64_ref, znx_sub_ba_inplace_i64_ref},
+        vec_znx::{vec_znx_rotate, vec_znx_sub_ab_inplace},
+        znx::{ZnxArithmetic, ZnxArithmeticRef, copy::znx_copy_ref},
     },
     source::Source,
 };
 
-pub fn vec_znx_mul_xp_minus_one_inplace_tmp_bytes_ref(n: usize) -> usize {
+pub fn vec_znx_mul_xp_minus_one_inplace_tmp_bytes(n: usize) -> usize {
     n * size_of::<i64>()
 }
 
-pub fn vec_znx_mul_xp_minus_one_ref<R, A>(p: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
+pub fn vec_znx_mul_xp_minus_one<R, A, ZNXARI>(p: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
     R: VecZnxToMut,
     A: VecZnxToRef,
+    ZNXARI: ZnxArithmetic,
 {
-    vec_znx_rotate_ref(p, res, res_col, a, a_col);
-    vec_znx_sub_ab_inplace_ref(res, res_col, a, a_col);
+    vec_znx_rotate::<_, _, ZNXARI>(p, res, res_col, a, a_col);
+    vec_znx_sub_ab_inplace::<_, _, ZNXARI>(res, res_col, a, a_col);
 }
 
-pub fn vec_znx_mul_xp_minus_one_inplace_ref<R>(p: i64, res: &mut R, res_col: usize, tmp: &mut [i64])
+pub fn vec_znx_mul_xp_minus_one_inplace<R, ZNXARI>(p: i64, res: &mut R, res_col: usize, tmp: &mut [i64])
 where
     R: VecZnxToMut,
+    ZNXARI: ZnxArithmetic,
 {
     let mut res: VecZnx<&mut [u8]> = res.to_mut();
     #[cfg(debug_assertions)]
@@ -38,44 +40,8 @@ where
         assert_eq!(res.n(), tmp.len());
     }
     for j in 0..res.size() {
-        znx_rotate_i64_ref(p, tmp, res.at(res_col, j));
-        znx_sub_ba_inplace_i64_ref(res.at_mut(res_col, j), tmp);
-    }
-}
-
-/// # Safety
-/// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
-#[cfg(target_arch = "x86_64")]
-#[target_feature(enable = "avx2")]
-pub fn vec_znx_mul_xp_minus_one_avx<R, A>(p: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
-where
-    R: VecZnxToMut,
-    A: VecZnxToRef,
-{
-    use crate::reference::vec_znx::{vec_znx_rotate_avx, vec_znx_sub_ab_inplace_avx};
-
-    vec_znx_rotate_avx(p, res, res_col, a, a_col);
-    vec_znx_sub_ab_inplace_avx(res, res_col, a, a_col);
-}
-
-/// # Safety
-/// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
-#[cfg(target_arch = "x86_64")]
-#[target_feature(enable = "avx2")]
-pub fn vec_znx_mul_xp_minus_one_inplace_avx<R, A>(p: i64, res: &mut R, res_col: usize, tmp: &mut [i64])
-where
-    R: VecZnxToMut,
-{
-    use crate::reference::znx::znx_sub_ba_inplace_i64_avx;
-
-    let mut res: VecZnx<&mut [u8]> = res.to_mut();
-    #[cfg(debug_assertions)]
-    {
-        assert_eq!(res.n(), tmp.len());
-    }
-    for j in 0..res.size() {
-        znx_rotate_i64_avx(p, tmp, res.at(res_col, j));
-        znx_sub_ba_inplace_i64_avx(res.at_mut(res_col, j), tmp);
+        ZNXARI::znx_rotate(p, tmp, res.at(res_col, j));
+        ZNXARI::znx_sub_ba_inplace(res.at_mut(res_col, j), tmp);
     }
 }
 
@@ -103,7 +69,7 @@ where
             // Normalize on c
             for i in 0..cols {
                 module.vec_znx_mul_xp_minus_one(p, &mut r0, i, &a, i);
-                vec_znx_mul_xp_minus_one_ref(p, &mut r1, i, &a, i);
+                vec_znx_mul_xp_minus_one::<_, _, ZnxArithmeticRef>(p, &mut r1, i, &a, i);
             }
 
             for i in 0..cols {
@@ -141,7 +107,7 @@ where
 
         for i in 0..cols {
             module.vec_znx_mul_xp_minus_one_inplace(p, &mut r0, i, scratch.borrow());
-            vec_znx_mul_xp_minus_one_inplace_ref(p, &mut r1, i, &mut tmp);
+            vec_znx_mul_xp_minus_one_inplace::<_, ZnxArithmeticRef>(p, &mut r1, i, &mut tmp);
         }
 
         for i in 0..cols {

@@ -1,3 +1,82 @@
+use crate::reference::reim::{ReimArithmetic, reim_copy_ref, reim_zero_ref};
+
+pub struct ReimArithmeticAvx;
+
+impl ReimArithmetic for ReimArithmeticAvx {
+    #[inline(always)]
+    fn reim_add(res: &mut [f64], a: &[f64], b: &[f64]) {
+        unsafe {
+            reim_add_avx2_fma(res, a, b);
+        }
+    }
+
+    #[inline(always)]
+    fn reim_add_inplace(res: &mut [f64], a: &[f64]) {
+        unsafe {
+            reim_add_inplace_avx2_fma(res, a);
+        }
+    }
+
+    #[inline(always)]
+    fn reim_sub(res: &mut [f64], a: &[f64], b: &[f64]) {
+        unsafe {
+            reim_sub_avx2_fma(res, a, b);
+        }
+    }
+
+    #[inline(always)]
+    fn reim_sub_ab_inplace(res: &mut [f64], a: &[f64]) {
+        unsafe {
+            reim_sub_ab_inplace_avx2_fma(res, a);
+        }
+    }
+
+    #[inline(always)]
+    fn reim_sub_ba_inplace(res: &mut [f64], a: &[f64]) {
+        unsafe {
+            reim_sub_ba_inplace_avx2_fma(res, a);
+        }
+    }
+
+    #[inline(always)]
+    fn reim_negate(res: &mut [f64], a: &[f64]) {
+        unsafe {
+            reim_negate_avx2_fma(res, a);
+        }
+    }
+
+    #[inline(always)]
+    fn reim_negate_inplace(res: &mut [f64]) {
+        unsafe {
+            reim_negate_inplace_avx2_fma(res);
+        }
+    }
+
+    #[inline(always)]
+    fn reim_mul(res: &mut [f64], a: &[f64], b: &[f64]) {
+        unsafe {
+            reim_mul_avx2_fma(res, a, b);
+        }
+    }
+
+    #[inline(always)]
+    fn reim_addmul(res: &mut [f64], a: &[f64], b: &[f64]) {
+        unsafe {
+            reim_addmul_avx2_fma(res, a, b);
+        }
+    }
+
+    #[inline(always)]
+    fn reim_copy(res: &mut [f64], a: &[f64]) {
+        reim_copy_ref(res, a);
+    }
+
+    #[inline(always)]
+    fn reim_zero(res: &mut [f64]) {
+        reim_zero_ref(res);
+    }
+}
+
 /// # Safety
 /// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
 #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
@@ -202,7 +281,7 @@ pub fn reim_negate_inplace_avx2_fma(res: &mut [f64]) {
 /// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
 #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
 #[target_feature(enable = "avx2,fma")]
-pub fn reim_fftvec_addmul_avx2_fma(res: &mut [f64], a: &[f64], b: &[f64]) {
+pub fn reim_addmul_avx2_fma(res: &mut [f64], a: &[f64], b: &[f64]) {
     #[cfg(debug_assertions)]
     {
         assert_eq!(a.len(), res.len());
@@ -255,7 +334,7 @@ pub fn reim_fftvec_addmul_avx2_fma(res: &mut [f64], a: &[f64], b: &[f64]) {
 /// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
 #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
 #[target_feature(enable = "avx2,fma")]
-pub fn reim_fftvec_mul_avx2_fma(res: &mut [f64], a: &[f64], b: &[f64]) {
+pub fn reim_mul_avx2_fma(res: &mut [f64], a: &[f64], b: &[f64]) {
     #[cfg(debug_assertions)]
     {
         assert_eq!(a.len(), res.len());

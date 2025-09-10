@@ -3,15 +3,23 @@ use crate::layouts::{ScalarZnxToRef, VecZnxToMut, VecZnxToRef};
 use crate::{
     api::{VecZnxSubScalar, VecZnxSubScalarInplace},
     layouts::{Backend, FillUniform, Module, ScalarZnx, VecZnx, ZnxInfos, ZnxView, ZnxViewMut},
-    reference::znx::{znx_sub_ab_inplace_i64_ref, znx_sub_i64_ref, znx_zero_ref},
+    reference::znx::{ZnxArithmetic, ZnxArithmeticRef},
     source::Source,
 };
 
-pub fn vec_znx_sub_scalar_ref<R, A, B>(res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize, b_limb: usize)
-where
+pub fn vec_znx_sub_scalar_ref<R, A, B, ZNXARI>(
+    res: &mut R,
+    res_col: usize,
+    a: &A,
+    a_col: usize,
+    b: &B,
+    b_col: usize,
+    b_limb: usize,
+) where
     R: VecZnxToMut,
     A: ScalarZnxToRef,
     B: VecZnxToRef,
+    ZNXARI: ZnxArithmetic,
 {
     let a: ScalarZnx<&[u8]> = a.to_ref();
     let b: VecZnx<&[u8]> = b.to_ref();
@@ -31,58 +39,22 @@ where
 
     for j in 0..min_size {
         if j == b_limb {
-            znx_sub_i64_ref(res.at_mut(res_col, j), b.at(b_col, j), a.at(a_col, 0));
+            ZNXARI::znx_sub(res.at_mut(res_col, j), b.at(b_col, j), a.at(a_col, 0));
         } else {
             res.at_mut(res_col, j).copy_from_slice(b.at(b_col, j));
         }
     }
 
     for j in min_size..res.size() {
-        znx_zero_ref(res.at_mut(res_col, j));
+        ZNXARI::znx_zero(res.at_mut(res_col, j));
     }
 }
 
-/// # Safety
-/// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
-#[cfg(target_arch = "x86_64")]
-#[target_feature(enable = "avx2")]
-pub fn vec_znx_sub_scalar_avx<R, A, B>(res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize, b_limb: usize)
+pub fn vec_znx_sub_scalar_inplace<R, A, ZNXARI>(res: &mut R, res_col: usize, res_limb: usize, a: &A, a_col: usize)
 where
     R: VecZnxToMut,
     A: ScalarZnxToRef,
-    B: VecZnxToRef,
-{
-    use crate::reference::znx::znx_copy_ref;
-    use crate::reference::znx::znx_sub_i64_avx;
-
-    let a: ScalarZnx<&[u8]> = a.to_ref();
-    let b: VecZnx<&[u8]> = b.to_ref();
-    let mut res: VecZnx<&mut [u8]> = res.to_mut();
-
-    let min_size: usize = a.size().min(res.size());
-
-    #[cfg(debug_assertions)]
-    {
-        assert!(b_limb < min_size);
-    }
-
-    for j in 0..min_size {
-        if j == b_limb {
-            znx_sub_i64_avx(res.at_mut(res_col, j), b.at(b_col, j), a.at(a_col, 0));
-        } else {
-            znx_copy_ref(res.at_mut(res_col, j), b.at(b_col, j));
-        }
-    }
-
-    for j in min_size..res.size() {
-        znx_zero_ref(res.at_mut(res_col, j));
-    }
-}
-
-pub fn vec_znx_sub_scalar_inplace_ref<R, A>(res: &mut R, res_col: usize, res_limb: usize, a: &A, a_col: usize)
-where
-    R: VecZnxToMut,
-    A: ScalarZnxToRef,
+    ZNXARI: ZnxArithmetic,
 {
     let a: ScalarZnx<&[u8]> = a.to_ref();
     let mut res: VecZnx<&mut [u8]> = res.to_mut();
@@ -92,29 +64,7 @@ where
         assert!(res_limb < res.size());
     }
 
-    znx_sub_ab_inplace_i64_ref(res.at_mut(res_col, res_limb), a.at(a_col, 0));
-}
-
-/// # Safety
-/// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
-#[cfg(target_arch = "x86_64")]
-#[target_feature(enable = "avx2")]
-pub fn vec_znx_sub_scalar_inplace_avx<R, A>(res: &mut R, res_col: usize, res_limb: usize, a: &A, a_col: usize)
-where
-    R: VecZnxToMut,
-    A: ScalarZnxToRef,
-{
-    use crate::reference::znx::znx_sub_ab_inplace_i64_avx;
-
-    let a: ScalarZnx<&[u8]> = a.to_ref();
-    let mut res: VecZnx<&mut [u8]> = res.to_mut();
-
-    #[cfg(debug_assertions)]
-    {
-        assert!(res_limb < res.size());
-    }
-
-    znx_sub_ab_inplace_i64_avx(res.at_mut(res_col, res_limb), a.at(a_col, 0));
+    ZNXARI::znx_sub_ab_inplace(res.at_mut(res_col, res_limb), a.at(a_col, 0));
 }
 
 pub fn test_vec_znx_sub_scalar<B: Backend>(module: &Module<B>)
@@ -145,7 +95,7 @@ where
 
             // Reference
             for i in 0..cols {
-                vec_znx_sub_scalar_ref(&mut res_0, i, &a, i, &b, i, (res_size.min(a_size)) - 1);
+                vec_znx_sub_scalar_ref::<_, _, _, ZnxArithmeticRef>(&mut res_0, i, &a, i, &b, i, (res_size.min(a_size)) - 1);
                 module.vec_znx_sub_scalar(&mut res_1, i, &a, i, &b, i, (res_size.min(a_size)) - 1);
             }
 
@@ -178,7 +128,7 @@ where
         res_1.raw_mut().copy_from_slice(res_0.raw());
 
         for i in 0..cols {
-            vec_znx_sub_scalar_inplace_ref(&mut res_0, i, res_size - 1, &b, i);
+            vec_znx_sub_scalar_inplace::<_, _, ZnxArithmeticRef>(&mut res_0, i, res_size - 1, &b, i);
             module.vec_znx_sub_scalar_inplace(&mut res_1, i, res_size - 1, &b, i);
         }
 

@@ -5,22 +5,20 @@ use criterion::{BenchmarkId, Criterion};
 use crate::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes},
     layouts::{Backend, FillUniform, Module, ScratchOwned, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut},
-    reference::znx::{
-        znx_normalize_beg_ref, znx_normalize_carry_only_beg_ref, znx_normalize_carry_only_mid_ref, znx_normalize_end_ref,
-        znx_normalize_inplace_beg_ref, znx_normalize_inplace_end_ref, znx_normalize_inplace_mid_ref, znx_normalize_mid_ref,
-        znx_zero_ref,
-    },
+    reference::znx::{ZnxArithmetic, ZnxArithmeticRef, ZnxNormalize, ZnxNormalizeRef},
     source::Source,
 };
 
-pub fn vec_znx_normalize_tmp_bytes_ref(n: usize) -> usize {
+pub fn vec_znx_normalize_tmp_bytes(n: usize) -> usize {
     n * size_of::<i64>()
 }
 
-pub fn vec_znx_normalize_ref<R, A>(basek: usize, res: &mut R, res_col: usize, a: &A, a_col: usize, carry: &mut [i64])
+pub fn vec_znx_normalize<R, A, ZNXARI, ZNXNORM>(basek: usize, res: &mut R, res_col: usize, a: &A, a_col: usize, carry: &mut [i64])
 where
     R: VecZnxToMut,
     A: VecZnxToRef,
+    ZNXARI: ZnxArithmetic,
+    ZNXNORM: ZnxNormalize,
 {
     let mut res: VecZnx<&mut [u8]> = res.to_mut();
     let a: VecZnx<&[u8]> = a.to_ref();
@@ -36,35 +34,40 @@ where
     if a_size > res_size {
         for j in (res_size..a_size).rev() {
             if j == a_size - 1 {
-                znx_normalize_carry_only_beg_ref(basek, 0, a.at(a_col, j), carry);
+                ZNXNORM::znx_normalize_first_step_carry_only(basek, 0, a.at(a_col, j), carry);
             } else {
-                znx_normalize_carry_only_mid_ref(basek, 0, a.at(a_col, j), carry);
+                ZNXNORM::znx_normalize_middle_step_carry_only(basek, 0, a.at(a_col, j), carry);
             }
         }
 
         for j in (1..res_size).rev() {
-            znx_normalize_mid_ref(basek, 0, res.at_mut(res_col, j), a.at(a_col, j), carry);
+            ZNXNORM::znx_normalize_middle_step(basek, 0, res.at_mut(res_col, j), a.at(a_col, j), carry);
         }
 
-        znx_normalize_end_ref(basek, 0, res.at_mut(res_col, 0), a.at(a_col, 0), carry);
+        ZNXNORM::znx_normalize_final_step(basek, 0, res.at_mut(res_col, 0), a.at(a_col, 0), carry);
     } else {
         for j in (0..a_size).rev() {
             if j == a_size - 1 {
-                znx_normalize_beg_ref(basek, 0, res.at_mut(res_col, j), a.at(a_col, j), carry);
+                ZNXNORM::znx_normalize_first_step(basek, 0, res.at_mut(res_col, j), a.at(a_col, j), carry);
             } else if j == 0 {
-                znx_normalize_end_ref(basek, 0, res.at_mut(res_col, j), a.at(a_col, j), carry);
+                ZNXNORM::znx_normalize_final_step(basek, 0, res.at_mut(res_col, j), a.at(a_col, j), carry);
             } else {
-                znx_normalize_mid_ref(basek, 0, res.at_mut(res_col, j), a.at(a_col, j), carry);
+                ZNXNORM::znx_normalize_middle_step(basek, 0, res.at_mut(res_col, j), a.at(a_col, j), carry);
             }
         }
 
         for j in a_size..res_size {
-            znx_zero_ref(res.at_mut(res_col, j));
+            ZNXARI::znx_zero(res.at_mut(res_col, j));
         }
     }
 }
 
-pub fn vec_znx_normalize_inplace_ref<R: VecZnxToMut>(basek: usize, res: &mut R, res_col: usize, carry: &mut [i64]) {
+pub fn vec_znx_normalize_inplace<R: VecZnxToMut, ZNXNORM: ZnxNormalize>(
+    basek: usize,
+    res: &mut R,
+    res_col: usize,
+    carry: &mut [i64],
+) {
     let mut res: VecZnx<&mut [u8]> = res.to_mut();
 
     #[cfg(debug_assertions)]
@@ -76,94 +79,11 @@ pub fn vec_znx_normalize_inplace_ref<R: VecZnxToMut>(basek: usize, res: &mut R, 
 
     for j in (0..res_size).rev() {
         if j == res_size - 1 {
-            znx_normalize_inplace_beg_ref(basek, 0, res.at_mut(res_col, j), carry);
+            ZNXNORM::znx_normalize_first_step_inplace(basek, 0, res.at_mut(res_col, j), carry);
         } else if j == 0 {
-            znx_normalize_inplace_end_ref(basek, 0, res.at_mut(res_col, j), carry);
+            ZNXNORM::znx_normalize_final_step_inplace(basek, 0, res.at_mut(res_col, j), carry);
         } else {
-            znx_normalize_inplace_mid_ref(basek, 0, res.at_mut(res_col, j), carry);
-        }
-    }
-}
-
-/// # Safety
-/// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
-#[cfg(target_arch = "x86_64")]
-#[target_feature(enable = "avx2")]
-pub fn vec_znx_normalize_avx<R, A>(basek: usize, res: &mut R, res_col: usize, a: &A, a_col: usize, carry: &mut [i64])
-where
-    R: VecZnxToMut,
-    A: VecZnxToRef,
-{
-    let mut res: VecZnx<&mut [u8]> = res.to_mut();
-    let a: VecZnx<&[u8]> = a.to_ref();
-
-    #[cfg(debug_assertions)]
-    {
-        assert_eq!(carry.len(), res.n());
-    }
-
-    let res_size: usize = res.size();
-    let a_size = a.size();
-
-    use crate::reference::znx::{
-        znx_normalize_beg_avx, znx_normalize_carry_only_beg_avx, znx_normalize_carry_only_mid_avx, znx_normalize_end_avx,
-        znx_normalize_mid_avx,
-    };
-
-    if a_size > res_size {
-        for j in (res_size..a_size).rev() {
-            if j == a_size - 1 {
-                znx_normalize_carry_only_beg_avx(basek, 0, a.at(a_col, j), carry);
-            } else {
-                znx_normalize_carry_only_mid_avx(basek, 0, a.at(a_col, j), carry);
-            }
-        }
-
-        for j in (1..res_size).rev() {
-            znx_normalize_mid_avx(basek, 0, res.at_mut(res_col, j), a.at(a_col, j), carry);
-        }
-
-        znx_normalize_end_avx(basek, 0, res.at_mut(res_col, 0), a.at(a_col, 0), carry);
-    } else {
-        for j in (0..a_size).rev() {
-            if j == a_size - 1 {
-                znx_normalize_beg_avx(basek, 0, res.at_mut(res_col, j), a.at(a_col, j), carry);
-            } else if j == 0 {
-                znx_normalize_end_avx(basek, 0, res.at_mut(res_col, 0), a.at(a_col, 0), carry);
-            } else {
-                znx_normalize_mid_avx(basek, 0, res.at_mut(res_col, j), a.at(a_col, j), carry);
-            }
-        }
-
-        for j in a_size..res_size {
-            znx_zero_ref(res.at_mut(res_col, j));
-        }
-    }
-}
-
-/// # Safety
-/// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
-#[cfg(target_arch = "x86_64")]
-#[target_feature(enable = "avx2")]
-pub fn vec_znx_normalize_inplace_avx<R: VecZnxToMut>(basek: usize, res: &mut R, res_col: usize, carry: &mut [i64]) {
-    let mut res: VecZnx<&mut [u8]> = res.to_mut();
-
-    #[cfg(debug_assertions)]
-    {
-        assert_eq!(carry.len(), res.n());
-    }
-
-    let res_size: usize = res.size();
-
-    use crate::reference::znx::{znx_normalize_inplace_beg_avx, znx_normalize_inplace_end_avx, znx_normalize_inplace_mid_avx};
-
-    for j in (0..res_size).rev() {
-        if j == res_size - 1 {
-            znx_normalize_inplace_beg_avx(basek, 0, res.at_mut(res_col, j), carry);
-        } else if j == 0 {
-            znx_normalize_inplace_end_avx(basek, 0, res.at_mut(res_col, j), carry);
-        } else {
-            znx_normalize_inplace_mid_avx(basek, 0, res.at_mut(res_col, j), carry);
+            ZNXNORM::znx_normalize_middle_step_inplace(basek, 0, res.at_mut(res_col, j), carry);
         }
     }
 }
@@ -197,7 +117,7 @@ where
 
             // Reference
             for i in 0..cols {
-                vec_znx_normalize_ref(basek, &mut res_0, i, &a, i, &mut carry);
+                vec_znx_normalize::<_, _, ZnxArithmeticRef, ZnxNormalizeRef>(basek, &mut res_0, i, &a, i, &mut carry);
                 module.vec_znx_normalize(basek, &mut res_1, i, &a, i, scratch.borrow());
             }
 
@@ -208,7 +128,7 @@ where
 
 pub fn test_vec_znx_normalize_inplace<B: Backend>(module: &Module<B>)
 where
-    Module<B>: VecZnxNormalize<B> + VecZnxNormalizeTmpBytes,
+    Module<B>: VecZnxNormalizeInplace<B> + VecZnxNormalizeTmpBytes,
     ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
 {
     let mut source: Source = Source::new([0u8; 32]);
@@ -219,28 +139,23 @@ where
 
     let mut scratch = ScratchOwned::alloc(module.vec_znx_normalize_tmp_bytes());
 
-    for a_size in [1, 2, 6, 11] {
-        let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, a_size);
-        a.raw_mut()
+    for res_size in [1, 2, 6, 11] {
+        let mut res_0: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, res_size);
+        let mut res_1: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, res_size);
+
+        res_0
+            .raw_mut()
             .iter_mut()
             .for_each(|x| *x = source.next_i32() as i64);
+        res_1.raw_mut().copy_from_slice(res_0.raw());
 
-        for res_size in [1, 2, 6, 11] {
-            let mut res_0: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, res_size);
-            let mut res_1: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, res_size);
-
-            // Set d to garbage
-            res_0.fill_uniform(&mut source);
-            res_1.fill_uniform(&mut source);
-
-            // Reference
-            for i in 0..cols {
-                vec_znx_normalize_ref(basek, &mut res_0, i, &a, i, &mut carry);
-                module.vec_znx_normalize(basek, &mut res_1, i, &a, i, scratch.borrow());
-            }
-
-            assert_eq!(res_0.raw(), res_1.raw());
+        // Reference
+        for i in 0..cols {
+            vec_znx_normalize_inplace::<_, ZnxNormalizeRef>(basek, &mut res_0, i, &mut carry);
+            module.vec_znx_normalize_inplace(basek, &mut res_1, i, scratch.borrow());
         }
+
+        assert_eq!(res_0.raw(), res_1.raw());
     }
 }
 

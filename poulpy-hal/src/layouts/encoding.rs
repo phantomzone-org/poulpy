@@ -3,7 +3,7 @@ use rug::{Assign, Float};
 
 use crate::{
     layouts::{DataMut, DataRef, VecZnx, VecZnxToMut, VecZnxToRef, Zn, ZnToMut, ZnToRef, ZnxInfos, ZnxView, ZnxViewMut},
-    reference::znx::znx_zero_ref,
+    reference::znx::zero::znx_zero_ref,
 };
 
 impl<D: DataMut> VecZnx<D> {

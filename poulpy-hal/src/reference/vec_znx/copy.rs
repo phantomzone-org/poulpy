@@ -1,14 +1,15 @@
 use crate::{
     api::VecZnxCopy,
     layouts::{Backend, FillUniform, Module, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut},
-    reference::znx::{znx_copy_ref, znx_zero_ref},
+    reference::znx::{ZnxArithmetic, ZnxArithmeticRef},
     source::Source,
 };
 
-pub fn vec_znx_copy_ref<R, A>(res: &mut R, res_col: usize, a: &A, a_col: usize)
+pub fn vec_znx_copy<R, A, ZNXARI>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
     R: VecZnxToMut,
     A: VecZnxToRef,
+    ZNXARI: ZnxArithmetic,
 {
     let mut res: VecZnx<&mut [u8]> = res.to_mut();
     let a: VecZnx<&[u8]> = a.to_ref();
@@ -24,11 +25,11 @@ where
     let min_size = res_size.min(a_size);
 
     for j in 0..min_size {
-        znx_copy_ref(res.at_mut(res_col, j), a.at(a_col, j));
+        ZNXARI::znx_copy(res.at_mut(res_col, j), a.at(a_col, j));
     }
 
     for j in min_size..res_size {
-        znx_zero_ref(res.at_mut(res_col, j));
+        ZNXARI::znx_zero(res.at_mut(res_col, j));
     }
 }
 
@@ -53,7 +54,7 @@ where
 
             // Reference
             for i in 0..cols {
-                vec_znx_copy_ref(&mut res_0, i, &a, i);
+                vec_znx_copy::<_, _, ZnxArithmeticRef>(&mut res_0, i, &a, i);
                 module.vec_znx_copy(&mut res_1, i, &a, i);
             }
 

@@ -257,8 +257,8 @@ fn test_fft_avx2_fma() {
             .zip(values_0.iter())
             .for_each(|(y, x)| *y = *x);
 
-        table.execute_avx2_fma(&mut values_0);
-        table.execute(&mut values_1);
+        ReimFFTRef::reim_dft_execute(&table, &mut values_0);
+        ReimFFTAvx::reim_dft_execute(&table, &mut values_1);
 
         let max_diff: f64 = 1.0 / ((1u64 << (53 - log_m - 1)) as f64);
 

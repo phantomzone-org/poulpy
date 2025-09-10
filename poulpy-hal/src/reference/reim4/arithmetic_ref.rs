@@ -1,3 +1,34 @@
+use crate::reference::reim4::Reim4Blk;
+
+pub struct Reim4BlkRef;
+
+impl Reim4Blk for Reim4BlkRef {
+    #[inline]
+    fn reim4_extract_1blk_from_reim(m: usize, rows: usize, blk: usize, dst: &mut [f64], src: &[f64]) {
+        reim4_extract_1blk_from_reim_ref(m, rows, blk, dst, src);
+    }
+
+    #[inline]
+    fn reim4_save_1blk_to_reim(m: usize, blk: usize, dst: &mut [f64], src: &[f64]) {
+        reim4_save_1blk_to_reim_ref(m, blk, dst, src);
+    }
+
+    #[inline]
+    fn reim4_save_2blk_to_reim(m: usize, blk: usize, dst: &mut [f64], src: &[f64]) {
+        reim4_save_2blk_to_reim_ref(m, blk, dst, src);
+    }
+
+    #[inline]
+    fn reim4_vec_mat1col_product(nrows: usize, dst: &mut [f64], u: &[f64], v: &[f64]) {
+        reim4_vec_mat1col_product_ref(nrows, dst, u, v);
+    }
+
+    #[inline]
+    fn reim4_vec_mat2cols_product(nrows: usize, dst: &mut [f64], u: &[f64], v: &[f64]) {
+        reim4_vec_mat2cols_product_ref(nrows, dst, u, v);
+    }
+}
+
 #[inline]
 pub fn reim4_extract_1blk_from_reim_ref(m: usize, rows: usize, blk: usize, dst: &mut [f64], src: &[f64]) {
     debug_assert!(blk < (m >> 2));
@@ -38,7 +69,7 @@ pub fn reim4_save_2blk_to_reim_ref(m: usize, blk: usize, dst: &mut [f64], src: &
 }
 
 #[inline]
-pub fn reim4_vec_mat1cols_product_ref(
+pub fn reim4_vec_mat1col_product_ref(
     nrows: usize,
     dst: &mut [f64], // 16 doubles: [re1(4), im1(4), re2(4), im2(4)]
     u: &[f64],       // nrows * 8 doubles: [ur(4) | ui(4)] per row

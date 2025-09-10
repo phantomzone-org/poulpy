@@ -8,18 +8,19 @@ use crate::{
     layouts::{Backend, DataViewMut, Module, VecZnxDft, VecZnxDftToMut, VecZnxDftToRef, ZnxInfos, ZnxView, ZnxViewMut},
     oep::VecZnxDftAllocBytesImpl,
     reference::{
-        reim::{reim_add_inplace_ref, reim_add_ref, reim_copy_ref, reim_zero_ref},
+        reim::{ReimArithmetic, ReimArithmeticRef},
         vec_znx_dft::fft64::assert_approx_eq_slice,
     },
     source::Source,
 };
 
-pub fn vec_znx_dft_add_ref<R, A, B, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
+pub fn vec_znx_dft_add<R, A, B, BE, REIMARI>(res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
 where
     BE: Backend<ScalarPrep = f64>,
     R: VecZnxDftToMut<BE>,
     A: VecZnxDftToRef<BE>,
     B: VecZnxDftToRef<BE>,
+    REIMARI: ReimArithmetic,
 {
     let mut res: VecZnxDft<&mut [u8], BE> = res.to_mut();
     let a: VecZnxDft<&[u8], BE> = a.to_ref();
@@ -40,99 +41,40 @@ where
         let cpy_size: usize = b_size.min(res_size);
 
         for j in 0..sum_size {
-            reim_add_ref(res.at_mut(res_col, j), a.at(a_col, j), b.at(b_col, j));
+            REIMARI::reim_add(res.at_mut(res_col, j), a.at(a_col, j), b.at(b_col, j));
         }
 
         for j in sum_size..cpy_size {
-            reim_copy_ref(res.at_mut(res_col, j), b.at(b_col, j));
+            REIMARI::reim_copy(res.at_mut(res_col, j), b.at(b_col, j));
         }
 
         for j in cpy_size..res_size {
-            reim_zero_ref(res.at_mut(res_col, j));
+            REIMARI::reim_zero(res.at_mut(res_col, j));
         }
     } else {
         let sum_size: usize = b_size.min(res_size);
         let cpy_size: usize = a_size.min(res_size);
 
         for j in 0..sum_size {
-            reim_add_ref(res.at_mut(res_col, j), a.at(a_col, j), b.at(b_col, j));
+            REIMARI::reim_add(res.at_mut(res_col, j), a.at(a_col, j), b.at(b_col, j));
         }
 
         for j in sum_size..cpy_size {
-            reim_copy_ref(res.at_mut(res_col, j), a.at(a_col, j));
+            REIMARI::reim_copy(res.at_mut(res_col, j), a.at(a_col, j));
         }
 
         for j in cpy_size..res_size {
-            reim_zero_ref(res.at_mut(res_col, j));
+            REIMARI::reim_zero(res.at_mut(res_col, j));
         }
     }
 }
 
-/// # Safety
-/// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
-#[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
-#[target_feature(enable = "avx2,fma")]
-pub fn vec_znx_dft_add_avx<R, A, B, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
+pub fn vec_znx_dft_add_inplace<R, A, BE, REIMARI>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
     BE: Backend<ScalarPrep = f64>,
     R: VecZnxDftToMut<BE>,
     A: VecZnxDftToRef<BE>,
-    B: VecZnxDftToRef<BE>,
-{
-    use crate::reference::reim::reim_add_avx2_fma;
-
-    let mut res: VecZnxDft<&mut [u8], BE> = res.to_mut();
-    let a: VecZnxDft<&[u8], BE> = a.to_ref();
-    let b: VecZnxDft<&[u8], BE> = b.to_ref();
-
-    #[cfg(debug_assertions)]
-    {
-        assert_eq!(a.n(), res.n());
-        assert_eq!(b.n(), res.n());
-    }
-
-    let res_size: usize = res.size();
-    let a_size: usize = a.size();
-    let b_size: usize = b.size();
-
-    if a_size <= b_size {
-        let sum_size: usize = a_size.min(res_size);
-        let cpy_size: usize = b_size.min(res_size);
-
-        for j in 0..sum_size {
-            reim_add_avx2_fma(res.at_mut(res_col, j), a.at(a_col, j), b.at(b_col, j));
-        }
-
-        for j in sum_size..cpy_size {
-            reim_copy_ref(res.at_mut(res_col, j), b.at(b_col, j));
-        }
-
-        for j in cpy_size..res_size {
-            reim_zero_ref(res.at_mut(res_col, j));
-        }
-    } else {
-        let sum_size: usize = b_size.min(res_size);
-        let cpy_size: usize = a_size.min(res_size);
-
-        for j in 0..sum_size {
-            reim_add_avx2_fma(res.at_mut(res_col, j), a.at(a_col, j), b.at(b_col, j));
-        }
-
-        for j in sum_size..cpy_size {
-            reim_copy_ref(res.at_mut(res_col, j), a.at(a_col, j));
-        }
-
-        for j in cpy_size..res_size {
-            reim_zero_ref(res.at_mut(res_col, j));
-        }
-    }
-}
-
-pub fn vec_znx_dft_add_inplace_ref<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
-where
-    BE: Backend<ScalarPrep = f64>,
-    R: VecZnxDftToMut<BE>,
-    A: VecZnxDftToRef<BE>,
+    REIMARI: ReimArithmetic,
 {
     let a: VecZnxDft<&[u8], BE> = a.to_ref();
     let mut res: VecZnxDft<&mut [u8], BE> = res.to_mut();
@@ -148,37 +90,7 @@ where
     let sum_size: usize = a_size.min(res_size);
 
     for j in 0..sum_size {
-        reim_add_inplace_ref(res.at_mut(res_col, j), a.at(a_col, j));
-    }
-}
-
-/// # Safety
-/// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
-#[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
-#[target_feature(enable = "avx2,fma")]
-pub fn vec_znx_dft_add_inplace_avx<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
-where
-    BE: Backend<ScalarPrep = f64>,
-    R: VecZnxDftToMut<BE>,
-    A: VecZnxDftToRef<BE>,
-{
-    let a: VecZnxDft<&[u8], BE> = a.to_ref();
-    let mut res: VecZnxDft<&mut [u8], BE> = res.to_mut();
-
-    #[cfg(debug_assertions)]
-    {
-        assert_eq!(a.n(), res.n());
-    }
-
-    let res_size: usize = res.size();
-    let a_size: usize = a.size();
-
-    let sum_size: usize = a_size.min(res_size);
-
-    use crate::reference::reim::reim_add_inplace_avx2_fma;
-
-    for j in 0..sum_size {
-        reim_add_inplace_avx2_fma(res.at_mut(res_col, j), a.at(a_col, j));
+        REIMARI::reim_add_inplace(res.at_mut(res_col, j), a.at(a_col, j));
     }
 }
 
@@ -212,7 +124,7 @@ where
 
                 // Reference
                 for i in 0..cols {
-                    vec_znx_dft_add_ref(&mut res_0, i, &a, i, &b, i);
+                    vec_znx_dft_add::<_, _, _, _, ReimArithmeticRef>(&mut res_0, i, &a, i, &b, i);
                     module.vec_znx_dft_add(&mut res_1, i, &a, i, &b, i);
                 }
 
@@ -248,7 +160,7 @@ where
             res_1.raw_mut().copy_from_slice(res_0.raw());
 
             for i in 0..cols {
-                vec_znx_dft_add_inplace_ref(&mut res_0, i, &a, i);
+                vec_znx_dft_add_inplace::<_, _, _, ReimArithmeticRef>(&mut res_0, i, &a, i);
                 module.vec_znx_dft_add_inplace(&mut res_1, i, &a, i);
             }
 

@@ -5,16 +5,13 @@ use poulpy_hal::{
         TakeSliceImpl, VecZnxAddImpl, VecZnxAutomorphismImpl, VecZnxNormalizeImpl, VecZnxNormalizeInplaceImpl,
         VecZnxNormalizeTmpBytesImpl,
     },
-    reference::vec_znx::{
-        vec_znx_add_avx, vec_znx_add_ref, vec_znx_automorphism_avx, vec_znx_automorphism_ref, vec_znx_normalize_avx,
-        vec_znx_normalize_inplace_avx, vec_znx_normalize_inplace_ref, vec_znx_normalize_ref,
+    reference::{
+        vec_znx::{vec_znx_add, vec_znx_automorphism, vec_znx_normalize, vec_znx_normalize_inplace, vec_znx_normalize_tmp_bytes},
+        znx::{ZnxArithmeticAvx, ZnxArithmeticRef, ZnxNormalizeAvx, ZnxNormalizeRef},
     },
 };
 
-use crate::cpu_ref::{
-    ffi::{module::module_info_t, vec_znx},
-    fft64::FFT64,
-};
+use crate::cpu_ref::fft64::FFT64;
 
 unsafe impl VecZnxAddImpl<Self> for FFT64 {
     fn vec_znx_add_impl<R, A, C>(_module: &Module<Self>, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &C, b_col: usize)
@@ -24,18 +21,16 @@ unsafe impl VecZnxAddImpl<Self> for FFT64 {
         C: VecZnxToRef,
     {
         if std::is_x86_feature_detected!("avx2") {
-            unsafe {
-                vec_znx_add_avx(res, res_col, a, a_col, b, b_col);
-            }
+            vec_znx_add::<_, _, _, ZnxArithmeticAvx>(res, res_col, a, a_col, b, b_col);
         } else {
-            vec_znx_add_ref(res, res_col, a, a_col, b, b_col);
+            vec_znx_add::<_, _, _, ZnxArithmeticRef>(res, res_col, a, a_col, b, b_col);
         }
     }
 }
 
 unsafe impl VecZnxNormalizeTmpBytesImpl<Self> for FFT64 {
     fn vec_znx_normalize_tmp_bytes_impl(module: &Module<Self>) -> usize {
-        unsafe { vec_znx::vec_znx_normalize_base2k_tmp_bytes(module.ptr() as *const module_info_t) as usize }
+        vec_znx_normalize_tmp_bytes(module.n())
     }
 }
 
@@ -55,11 +50,9 @@ where
         let (tmp_bytes, _) = scratch.take_slice(module.vec_znx_normalize_tmp_bytes() / size_of::<i64>());
 
         if std::is_x86_feature_detected!("avx2") {
-            unsafe {
-                vec_znx_normalize_inplace_avx(basek, res, res_col, tmp_bytes);
-            }
+            vec_znx_normalize_inplace::<_, ZnxNormalizeAvx>(basek, res, res_col, tmp_bytes);
         } else {
-            vec_znx_normalize_inplace_ref(basek, res, res_col, tmp_bytes);
+            vec_znx_normalize_inplace::<_, ZnxNormalizeRef>(basek, res, res_col, tmp_bytes);
         }
     }
 }
@@ -80,14 +73,12 @@ where
         R: VecZnxToMut,
         A: VecZnxToRef,
     {
-        let (tmp_bytes, _) = scratch.take_slice(module.vec_znx_normalize_tmp_bytes() / size_of::<i64>());
+        let (carry, _) = scratch.take_slice(module.vec_znx_normalize_tmp_bytes() / size_of::<i64>());
 
         if std::is_x86_feature_detected!("avx2") {
-            unsafe {
-                vec_znx_normalize_avx(basek, res, res_col, a, a_col, tmp_bytes);
-            }
+            vec_znx_normalize::<_, _, ZnxArithmeticAvx, ZnxNormalizeAvx>(basek, res, res_col, a, a_col, carry);
         } else {
-            vec_znx_normalize_ref(basek, res, res_col, a, a_col, tmp_bytes);
+            vec_znx_normalize::<_, _, ZnxArithmeticRef, ZnxNormalizeRef>(basek, res, res_col, a, a_col, carry);
         }
     }
 }
@@ -99,11 +90,9 @@ unsafe impl VecZnxAutomorphismImpl<Self> for FFT64 {
         A: VecZnxToRef,
     {
         if std::is_x86_feature_detected!("avx2") {
-            unsafe {
-                vec_znx_automorphism_avx(p, res, res_col, a, a_col);
-            }
+            vec_znx_automorphism::<_, _, ZnxArithmeticAvx>(p, res, res_col, a, a_col);
         } else {
-            vec_znx_automorphism_ref(p, res, res_col, a, a_col);
+            vec_znx_automorphism::<_, _, ZnxArithmeticRef>(p, res, res_col, a, a_col);
         }
     }
 }

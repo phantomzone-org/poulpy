@@ -11,19 +11,23 @@ use crate::{
         Backend, FillUniform, Module, ScratchOwned, VecZnx, VecZnxBig, VecZnxBigToMut, VecZnxBigToRef, ZnxView, ZnxViewMut,
     },
     oep::VecZnxBigAllocBytesImpl,
-    reference::vec_znx::{vec_znx_automorphism_inplace_ref, vec_znx_automorphism_ref},
+    reference::{
+        vec_znx::{vec_znx_automorphism, vec_znx_automorphism_inplace},
+        znx::{ZnxArithmetic, ZnxArithmeticRef},
+    },
     source::Source,
 };
 
-pub fn vec_znx_big_automorphism_inplace_tmp_bytes_ref(n: usize) -> usize {
+pub fn vec_znx_big_automorphism_inplace_tmp_bytes(n: usize) -> usize {
     n * size_of::<i64>()
 }
 
-pub fn vec_znx_big_automorphism_ref<R, A, BE>(p: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
+pub fn vec_znx_big_automorphism<R, A, BE, ZNXARI>(p: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
     BE: Backend<ScalarBig = i64>,
     R: VecZnxBigToMut<BE>,
     A: VecZnxBigToRef<BE>,
+    ZNXARI: ZnxArithmetic,
 {
     let res: VecZnxBig<&mut [u8], _> = res.to_mut();
     let a: VecZnxBig<&[u8], _> = a.to_ref();
@@ -44,13 +48,14 @@ where
         max_size: a.max_size,
     };
 
-    vec_znx_automorphism_ref(p, &mut res_vznx, res_col, &a_vznx, a_col);
+    vec_znx_automorphism::<_, _, ZNXARI>(p, &mut res_vznx, res_col, &a_vznx, a_col);
 }
 
-pub fn vec_znx_big_automorphism_inplace_ref<R, BE>(p: i64, res: &mut R, res_col: usize, tmp: &mut [i64])
+pub fn vec_znx_big_automorphism_inplace<R, BE, ZNXARI>(p: i64, res: &mut R, res_col: usize, tmp: &mut [i64])
 where
     BE: Backend<ScalarBig = i64>,
     R: VecZnxBigToMut<BE>,
+    ZNXARI: ZnxArithmetic,
 {
     let res: VecZnxBig<&mut [u8], _> = res.to_mut();
 
@@ -62,7 +67,7 @@ where
         max_size: res.max_size,
     };
 
-    vec_znx_automorphism_inplace_ref(p, &mut res_vznx, res_col, tmp);
+    vec_znx_automorphism_inplace::<_, ZNXARI>(p, &mut res_vznx, res_col, tmp);
 }
 
 pub fn test_vec_znx_big_automorphism<B>(module: &Module<B>)
@@ -93,14 +98,14 @@ where
             let p = -7;
 
             for i in 0..cols {
-                vec_znx_big_automorphism_ref(p, &mut res_0, i, &a, i);
+                vec_znx_big_automorphism::<_, _, _, ZnxArithmeticRef>(p, &mut res_0, i, &a, i);
                 module.vec_znx_big_automorphism(p, &mut res_1, i, &a, i);
             }
 
             assert_eq!(res_0.raw(), res_1.raw());
 
             for i in 0..cols {
-                vec_znx_big_automorphism_ref(-p, &mut res_0, i, &a, i);
+                vec_znx_big_automorphism::<_, _, _, ZnxArithmeticRef>(-p, &mut res_0, i, &a, i);
                 module.vec_znx_big_automorphism(-p, &mut res_1, i, &a, i);
             }
 
@@ -136,14 +141,14 @@ where
         let p = -7;
 
         for i in 0..cols {
-            vec_znx_big_automorphism_inplace_ref(p, &mut res_0, i, &mut tmp);
+            vec_znx_big_automorphism_inplace::<_, _, ZnxArithmeticRef>(p, &mut res_0, i, &mut tmp);
             module.vec_znx_big_automorphism_inplace(p, &mut res_1, i, scratch.borrow());
         }
 
         assert_eq!(res_0.raw(), res_1.raw());
 
         for i in 0..cols {
-            vec_znx_big_automorphism_inplace_ref(-p, &mut res_0, i, &mut tmp);
+            vec_znx_big_automorphism_inplace::<_, _, ZnxArithmeticRef>(-p, &mut res_0, i, &mut tmp);
             module.vec_znx_big_automorphism_inplace(-p, &mut res_1, i, scratch.borrow());
         }
 

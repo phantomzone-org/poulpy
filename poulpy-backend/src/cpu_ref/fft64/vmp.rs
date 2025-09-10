@@ -2,16 +2,20 @@ use poulpy_hal::{
     api::{TakeSlice, VmpPrepareTmpBytes},
     layouts::{
         Backend, MatZnx, MatZnxToRef, Module, Scratch, VecZnxDft, VecZnxDftToMut, VecZnxDftToRef, VmpPMat, VmpPMatOwned,
-        VmpPMatToMut, VmpPMatToRef, ZnxInfos, ZnxView, ZnxViewMut,
+        VmpPMatToMut, VmpPMatToRef, ZnxInfos,
     },
     oep::{
         VmpApplyDftToDftImpl, VmpApplyDftToDftTmpBytesImpl, VmpPMatAllocBytesImpl, VmpPMatAllocImpl, VmpPrepareImpl,
         VmpPrepareTmpBytesImpl,
     },
-    reference::vmp::fft64::{vmp_apply_dft_to_dft_avx, vmp_apply_dft_to_dft_ref},
+    reference::{
+        reim::{ReimArithmeticAvx, ReimArithmeticRef, ReimConvAvx, ReimConvRef, ReimFFTAvx, ReimFFTRef},
+        reim4::{Reim4BlkAvx, Reim4BlkRef},
+        vmp::fft64::{vmp_apply_dft_to_dft, vmp_apply_dft_to_dft_tmp_bytes, vmp_prepare, vmp_prepare_tmp_bytes},
+    },
 };
 
-use crate::cpu_ref::{FFT64, ffi::vmp};
+use crate::cpu_ref::{FFT64, fft64::module::FFT64ModuleHandle};
 
 unsafe impl VmpPMatAllocBytesImpl<FFT64> for FFT64 {
     fn vmp_pmat_alloc_bytes_impl(n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize {
@@ -52,24 +56,22 @@ where
             ) / size_of::<f64>(),
         );
         if std::is_x86_feature_detected!("avx2") {
-            unsafe {
-                vmp_apply_dft_to_dft_avx(&mut res, &a, &pmat, tmp);
-            }
+            vmp_apply_dft_to_dft::<_, _, _, _, ReimArithmeticAvx, Reim4BlkAvx>(&mut res, &a, &pmat, tmp);
         } else {
-            vmp_apply_dft_to_dft_ref(&mut res, &a, &pmat, tmp);
+            vmp_apply_dft_to_dft::<_, _, _, _, ReimArithmeticRef, Reim4BlkRef>(&mut res, &a, &pmat, tmp);
         }
     }
 }
 
 unsafe impl VmpPrepareTmpBytesImpl<FFT64> for FFT64 {
-    fn vmp_prepare_tmp_bytes_impl(module: &Module<FFT64>, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize {
-        unsafe {
-            vmp::vmp_prepare_tmp_bytes(
-                module.ptr(),
-                (rows * cols_in) as u64,
-                (cols_out * size) as u64,
-            ) as usize
-        }
+    fn vmp_prepare_tmp_bytes_impl(
+        module: &Module<FFT64>,
+        _rows: usize,
+        _cols_in: usize,
+        _cols_out: usize,
+        _size: usize,
+    ) -> usize {
+        vmp_prepare_tmp_bytes(module.n())
     }
 }
 
@@ -81,73 +83,25 @@ unsafe impl VmpPrepareImpl<FFT64> for FFT64 {
     {
         let mut res: VmpPMat<&mut [u8], FFT64> = res.to_mut();
         let a: MatZnx<&[u8]> = a.to_ref();
-
-        #[cfg(debug_assertions)]
-        {
-            assert_eq!(a.n(), res.n());
-            assert_eq!(
-                res.cols_in(),
-                a.cols_in(),
-                "res.cols_in: {} != a.cols_in: {}",
-                res.cols_in(),
-                a.cols_in()
-            );
-            assert_eq!(
-                res.rows(),
-                a.rows(),
-                "res.rows: {} != a.rows: {}",
-                res.rows(),
-                a.rows()
-            );
-            assert_eq!(
-                res.cols_out(),
-                a.cols_out(),
-                "res.cols_out: {} != a.cols_out: {}",
-                res.cols_out(),
-                a.cols_out()
-            );
-            assert_eq!(
-                res.size(),
-                a.size(),
-                "res.size: {} != a.size: {}",
-                res.size(),
-                a.size()
-            );
-        }
-
-        let (tmp_bytes, _) = scratch.take_slice(module.vmp_prepare_tmp_bytes(a.rows(), a.cols_in(), a.cols_out(), a.size()));
-
-        unsafe {
-            vmp::vmp_prepare_contiguous(
-                module.ptr(),
-                res.as_mut_ptr() as *mut vmp::vmp_pmat_t,
-                a.as_ptr(),
-                (a.rows() * a.cols_in()) as u64,
-                (a.size() * a.cols_out()) as u64,
-                tmp_bytes.as_mut_ptr(),
-            );
+        let (tmp, _) = scratch.take_slice(module.vmp_prepare_tmp_bytes(a.rows(), a.cols_in(), a.cols_out(), a.size()));
+        if std::is_x86_feature_detected!("avx2") {
+            vmp_prepare::<_, _, _, Reim4BlkAvx, ReimConvAvx, ReimFFTAvx>(module.get_fft_table(), &mut res, &a, tmp);
+        } else {
+            vmp_prepare::<_, _, _, Reim4BlkRef, ReimConvRef, ReimFFTRef>(module.get_fft_table(), &mut res, &a, tmp);
         }
     }
 }
 
 unsafe impl VmpApplyDftToDftTmpBytesImpl<FFT64> for FFT64 {
     fn vmp_apply_dft_to_dft_tmp_bytes_impl(
-        module: &Module<FFT64>,
-        res_size: usize,
+        _module: &Module<FFT64>,
+        _res_size: usize,
         a_size: usize,
         b_rows: usize,
         b_cols_in: usize,
-        b_cols_out: usize,
-        b_size: usize,
+        _b_cols_out: usize,
+        _b_size: usize,
     ) -> usize {
-        unsafe {
-            vmp::vmp_apply_dft_to_dft_tmp_bytes(
-                module.ptr(),
-                (res_size * b_cols_out) as u64,
-                (a_size * b_cols_in) as u64,
-                (b_rows * b_cols_in) as u64,
-                (b_size * b_cols_out) as u64,
-            ) as usize
-        }
+        vmp_apply_dft_to_dft_tmp_bytes(a_size, b_rows, b_cols_in)
     }
 }

@@ -6,18 +6,16 @@ use crate::{
     api::{ModuleNew, VecZnxSub, VecZnxSubABInplace, VecZnxSubBAInplace},
     layouts::{Backend, FillUniform, Module, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut},
     oep::{ModuleNewImpl, VecZnxSubABInplaceImpl, VecZnxSubBAInplaceImpl, VecZnxSubImpl},
-    reference::znx::{
-        znx_copy_ref, znx_negate_i64_ref, znx_negate_inplace_i64_ref, znx_sub_ab_inplace_i64_ref, znx_sub_ba_inplace_i64_ref,
-        znx_sub_i64_ref, znx_zero_ref,
-    },
+    reference::znx::{ZnxArithmetic, ZnxArithmeticRef},
     source::Source,
 };
 
-pub fn vec_znx_sub_ref<R, A, B>(res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
+pub fn vec_znx_sub<R, A, B, ZNXARI>(res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
 where
     R: VecZnxToMut,
     A: VecZnxToRef,
     B: VecZnxToRef,
+    ZNXARI: ZnxArithmetic,
 {
     let a: VecZnx<&[u8]> = a.to_ref();
     let b: VecZnx<&[u8]> = b.to_ref();
@@ -38,98 +36,39 @@ where
         let cpy_size: usize = b_size.min(res_size);
 
         for j in 0..sum_size {
-            znx_sub_i64_ref(res.at_mut(res_col, j), a.at(a_col, j), b.at(b_col, j));
+            ZNXARI::znx_sub(res.at_mut(res_col, j), a.at(a_col, j), b.at(b_col, j));
         }
 
         for j in sum_size..cpy_size {
-            znx_negate_i64_ref(res.at_mut(res_col, j), b.at(b_col, j));
+            ZNXARI::znx_negate(res.at_mut(res_col, j), b.at(b_col, j));
         }
 
         for j in cpy_size..res_size {
-            znx_zero_ref(res.at_mut(res_col, j));
+            ZNXARI::znx_zero(res.at_mut(res_col, j));
         }
     } else {
         let sum_size: usize = b_size.min(res_size);
         let cpy_size: usize = a_size.min(res_size);
 
         for j in 0..sum_size {
-            znx_sub_i64_ref(res.at_mut(res_col, j), a.at(a_col, j), b.at(b_col, j));
+            ZNXARI::znx_sub(res.at_mut(res_col, j), a.at(a_col, j), b.at(b_col, j));
         }
 
         for j in sum_size..cpy_size {
-            znx_copy_ref(res.at_mut(res_col, j), a.at(a_col, j));
+            ZNXARI::znx_copy(res.at_mut(res_col, j), a.at(a_col, j));
         }
 
         for j in cpy_size..res_size {
-            znx_zero_ref(res.at_mut(res_col, j));
+            ZNXARI::znx_zero(res.at_mut(res_col, j));
         }
     }
 }
 
-/// # Safety
-/// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
-#[cfg(target_arch = "x86_64")]
-#[target_feature(enable = "avx2")]
-pub fn vec_znx_sub_avx<R, A, B>(res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
+pub fn vec_znx_sub_ab_inplace<R, A, ZNXARI>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
     R: VecZnxToMut,
     A: VecZnxToRef,
-    B: VecZnxToRef,
-{
-    use crate::reference::znx::{znx_negate_i64_avx, znx_sub_i64_avx};
-
-    let a: VecZnx<&[u8]> = a.to_ref();
-    let b: VecZnx<&[u8]> = b.to_ref();
-    let mut res: VecZnx<&mut [u8]> = res.to_mut();
-
-    #[cfg(debug_assertions)]
-    {
-        assert_eq!(a.n(), res.n());
-        assert_eq!(b.n(), res.n());
-        assert_ne!(a.as_ptr(), b.as_ptr());
-    }
-
-    let res_size: usize = res.size();
-    let a_size: usize = a.size();
-    let b_size: usize = b.size();
-
-    if a_size <= b_size {
-        let sum_size: usize = a_size.min(res_size);
-        let cpy_size: usize = b_size.min(res_size);
-
-        for j in 0..sum_size {
-            znx_sub_i64_avx(res.at_mut(res_col, j), a.at(a_col, j), b.at(b_col, j));
-        }
-
-        for j in sum_size..cpy_size {
-            znx_negate_i64_avx(res.at_mut(res_col, j), b.at(b_col, j));
-        }
-
-        for j in cpy_size..res_size {
-            znx_zero_ref(res.at_mut(res_col, j));
-        }
-    } else {
-        let sum_size: usize = b_size.min(res_size);
-        let cpy_size: usize = a_size.min(res_size);
-
-        for j in 0..sum_size {
-            znx_sub_i64_avx(res.at_mut(res_col, j), a.at(a_col, j), b.at(b_col, j));
-        }
-
-        for j in sum_size..cpy_size {
-            znx_copy_ref(res.at_mut(res_col, j), a.at(a_col, j));
-        }
-
-        for j in cpy_size..res_size {
-            znx_zero_ref(res.at_mut(res_col, j));
-        }
-    }
-}
-
-pub fn vec_znx_sub_ab_inplace_ref<R, A>(res: &mut R, res_col: usize, a: &A, a_col: usize)
-where
-    R: VecZnxToMut,
-    A: VecZnxToRef,
+    ZNXARI: ZnxArithmetic,
 {
     let a: VecZnx<&[u8]> = a.to_ref();
     let mut res: VecZnx<&mut [u8]> = res.to_mut();
@@ -145,43 +84,15 @@ where
     let sum_size: usize = a_size.min(res_size);
 
     for j in 0..sum_size {
-        znx_sub_ab_inplace_i64_ref(res.at_mut(res_col, j), a.at(a_col, j));
+        ZNXARI::znx_sub_ab_inplace(res.at_mut(res_col, j), a.at(a_col, j));
     }
 }
 
-/// # Safety
-/// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
-#[cfg(target_arch = "x86_64")]
-#[target_feature(enable = "avx2")]
-pub fn vec_znx_sub_ab_inplace_avx<R, A>(res: &mut R, res_col: usize, a: &A, a_col: usize)
+pub fn vec_znx_sub_ba_inplace<R, A, ZNXARI>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
     R: VecZnxToMut,
     A: VecZnxToRef,
-{
-    use crate::reference::znx::znx_sub_ab_inplace_i64_avx;
-
-    let a: VecZnx<&[u8]> = a.to_ref();
-    let mut res: VecZnx<&mut [u8]> = res.to_mut();
-
-    #[cfg(debug_assertions)]
-    {
-        assert_eq!(a.n(), res.n());
-    }
-
-    let res_size: usize = res.size();
-    let a_size: usize = a.size();
-
-    let sum_size: usize = a_size.min(res_size);
-
-    for j in 0..sum_size {
-        znx_sub_ab_inplace_i64_avx(res.at_mut(res_col, j), a.at(a_col, j));
-    }
-}
-
-pub fn vec_znx_sub_ba_inplace_ref<R, A>(res: &mut R, res_col: usize, a: &A, a_col: usize)
-where
-    R: VecZnxToMut,
-    A: VecZnxToRef,
+    ZNXARI: ZnxArithmetic,
 {
     let a: VecZnx<&[u8]> = a.to_ref();
     let mut res: VecZnx<&mut [u8]> = res.to_mut();
@@ -197,44 +108,11 @@ where
     let sum_size: usize = a_size.min(res_size);
 
     for j in 0..sum_size {
-        znx_sub_ba_inplace_i64_ref(res.at_mut(res_col, j), a.at(a_col, j));
+        ZNXARI::znx_sub_ba_inplace(res.at_mut(res_col, j), a.at(a_col, j));
     }
 
     for j in sum_size..res_size {
-        znx_negate_inplace_i64_ref(res.at_mut(res_col, j));
-    }
-}
-
-/// # Safety
-/// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
-#[cfg(target_arch = "x86_64")]
-#[target_feature(enable = "avx2")]
-pub fn vec_znx_sub_ba_inplace_avx<R, A>(res: &mut R, res_col: usize, a: &A, a_col: usize)
-where
-    R: VecZnxToMut,
-    A: VecZnxToRef,
-{
-    use crate::reference::znx::{znx_negate_inplace_i64_avx, znx_sub_ba_inplace_i64_avx};
-
-    let a: VecZnx<&[u8]> = a.to_ref();
-    let mut res: VecZnx<&mut [u8]> = res.to_mut();
-
-    #[cfg(debug_assertions)]
-    {
-        assert_eq!(a.n(), res.n());
-    }
-
-    let res_size: usize = res.size();
-    let a_size: usize = a.size();
-
-    let sum_size: usize = a_size.min(res_size);
-
-    for j in 0..sum_size {
-        znx_sub_ba_inplace_i64_avx(res.at_mut(res_col, j), a.at(a_col, j));
-    }
-
-    for j in sum_size..res_size {
-        znx_negate_inplace_i64_avx(res.at_mut(res_col, j));
+        ZNXARI::znx_negate_inplace(res.at_mut(res_col, j));
     }
 }
 
@@ -267,7 +145,7 @@ where
 
                 // Reference
                 for i in 0..cols {
-                    vec_znx_sub_ref(&mut res_0, i, &a, i, &b, i);
+                    vec_znx_sub::<_, _, _, ZnxArithmeticRef>(&mut res_0, i, &a, i, &b, i);
                     module.vec_znx_sub(&mut res_1, i, &a, i, &b, i);
                 }
 
@@ -302,7 +180,7 @@ where
             res_1.raw_mut().copy_from_slice(res_0.raw());
 
             for i in 0..cols {
-                vec_znx_sub_ab_inplace_ref(&mut res_0, i, &a, i);
+                vec_znx_sub_ab_inplace::<_, _, ZnxArithmeticRef>(&mut res_0, i, &a, i);
                 module.vec_znx_sub_ab_inplace(&mut res_1, i, &a, i);
             }
 
@@ -336,7 +214,7 @@ where
             res_1.raw_mut().copy_from_slice(res_0.raw());
 
             for i in 0..cols {
-                vec_znx_sub_ba_inplace_ref(&mut res_0, i, &a, i);
+                vec_znx_sub_ba_inplace::<_, _, ZnxArithmeticRef>(&mut res_0, i, &a, i);
                 module.vec_znx_sub_ba_inplace(&mut res_1, i, &a, i);
             }
 
@@ -473,145 +351,4 @@ where
     }
 
     group.finish();
-}
-
-#[cfg(all(test, any(target_arch = "x86_64", target_arch = "x86")))]
-mod tests {
-    use super::*;
-
-    #[target_feature(enable = "avx2")]
-    fn test_znx_sub_avx_internal() {
-        let cols: usize = 2;
-        let mut source: Source = Source::new([0u8; 32]);
-
-        for a_size in [1, 2, 6, 11] {
-            let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(32, cols, a_size);
-            a.raw_mut()
-                .iter_mut()
-                .for_each(|x| *x = source.next_i32() as i64);
-
-            for b_size in [1, 2, 6, 11] {
-                let mut b: VecZnx<Vec<u8>> = VecZnx::alloc(32, cols, b_size);
-                b.raw_mut()
-                    .iter_mut()
-                    .for_each(|x| *x = source.next_i32() as i64);
-
-                for res_size in [1, 2, 6, 11] {
-                    let mut res_0: VecZnx<Vec<u8>> = VecZnx::alloc(32, cols, res_size);
-                    let mut res_1: VecZnx<Vec<u8>> = VecZnx::alloc(32, cols, res_size);
-
-                    res_0
-                        .raw_mut()
-                        .iter_mut()
-                        .for_each(|x| *x = source.next_i32() as i64);
-                    res_1
-                        .raw_mut()
-                        .iter_mut()
-                        .for_each(|x| *x = source.next_i32() as i64);
-
-                    for i in 0..cols {
-                        vec_znx_sub_ref(&mut res_0, i, &a, i, &b, i);
-                        vec_znx_sub_avx(&mut res_1, i, &a, i, &b, i);
-                    }
-
-                    assert_eq!(res_0.raw(), res_1.raw());
-                }
-            }
-        }
-    }
-
-    #[test]
-    fn test_znx_sub_avx() {
-        if !std::is_x86_feature_detected!("avx2") {
-            eprintln!("skipping: CPU lacks avx2");
-            return;
-        };
-        unsafe {
-            test_znx_sub_avx_internal();
-        }
-    }
-
-    #[target_feature(enable = "avx2")]
-    fn test_znx_sub_ab_inplace_avx_internal() {
-        let cols: usize = 2;
-        let mut source: Source = Source::new([0u8; 32]);
-
-        for a_size in [1, 2, 6, 11] {
-            let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(32, cols, a_size);
-            a.raw_mut()
-                .iter_mut()
-                .for_each(|x| *x = source.next_i32() as i64);
-
-            for res_size in [1, 2, 6, 11] {
-                let mut res_0: VecZnx<Vec<u8>> = VecZnx::alloc(32, cols, res_size);
-                let mut res_1: VecZnx<Vec<u8>> = VecZnx::alloc(32, cols, res_size);
-
-                res_0
-                    .raw_mut()
-                    .iter_mut()
-                    .for_each(|x| *x = source.next_i32() as i64);
-                res_1.raw_mut().copy_from_slice(res_0.raw());
-
-                for i in 0..cols {
-                    vec_znx_sub_ab_inplace_ref(&mut res_0, i, &a, i);
-                    vec_znx_sub_ab_inplace_avx(&mut res_1, i, &a, i);
-                }
-
-                assert_eq!(res_0.raw(), res_1.raw());
-            }
-        }
-    }
-
-    #[test]
-    fn test_znx_sub_ab_inplace_avx() {
-        if !std::is_x86_feature_detected!("avx2") {
-            eprintln!("skipping: CPU lacks avx2");
-            return;
-        };
-        unsafe {
-            test_znx_sub_ab_inplace_avx_internal();
-        }
-    }
-
-    #[target_feature(enable = "avx2")]
-    fn test_znx_sub_ba_inplace_avx_internal() {
-        let cols: usize = 2;
-        let mut source: Source = Source::new([0u8; 32]);
-
-        for a_size in [1, 2, 6, 11] {
-            let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(32, cols, a_size);
-            a.raw_mut()
-                .iter_mut()
-                .for_each(|x| *x = source.next_i32() as i64);
-
-            for res_size in [1, 2, 6, 11] {
-                let mut res_0: VecZnx<Vec<u8>> = VecZnx::alloc(32, cols, res_size);
-                let mut res_1: VecZnx<Vec<u8>> = VecZnx::alloc(32, cols, res_size);
-
-                res_0
-                    .raw_mut()
-                    .iter_mut()
-                    .for_each(|x| *x = source.next_i32() as i64);
-                res_1.raw_mut().copy_from_slice(res_0.raw());
-
-                for i in 0..cols {
-                    vec_znx_sub_ba_inplace_ref(&mut res_0, i, &a, i);
-                    vec_znx_sub_ba_inplace_avx(&mut res_1, i, &a, i);
-                }
-
-                assert_eq!(res_0.raw(), res_1.raw());
-            }
-        }
-    }
-
-    #[test]
-    fn test_znx_sub_ba_inplace_avx() {
-        if !std::is_x86_feature_detected!("avx2") {
-            eprintln!("skipping: CPU lacks avx2");
-            return;
-        };
-        unsafe {
-            test_znx_sub_ba_inplace_avx_internal();
-        }
-    }
 }

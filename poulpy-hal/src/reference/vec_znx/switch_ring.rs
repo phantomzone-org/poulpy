@@ -1,19 +1,21 @@
-use itertools::izip;
-
 use crate::{
     api::VecZnxSwitchRing,
     layouts::{Backend, FillUniform, Module, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut},
-    reference::{vec_znx::vec_znx_copy_ref, znx::znx_zero_ref},
+    reference::{
+        vec_znx::vec_znx_copy,
+        znx::{ZnxArithmetic, ZnxArithmeticRef},
+    },
     source::Source,
 };
 
 /// Maps between negacyclic rings by changing the polynomial degree.
 /// Up:  Z[X]/(X^N+1) -> Z[X]/(X^{2^d N}+1) via X ↦ X^{2^d}
 /// Down: Z[X]/(X^N+1) -> Z[X]/(X^{N/2^d}+1) by folding indices.
-pub fn vec_znx_switch_ring_ref<R, A>(res: &mut R, res_col: usize, a: &A, a_col: usize)
+pub fn vec_znx_switch_ring<R, A, ZNXARI>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
     R: VecZnxToMut,
     A: VecZnxToRef,
+    ZNXARI: ZnxArithmetic,
 {
     let a: VecZnx<&[u8]> = a.to_ref();
     let mut res: VecZnx<&mut [u8]> = res.to_mut();
@@ -21,32 +23,18 @@ where
     let (n_in, n_out) = (a.n(), res.n());
 
     if n_in == n_out {
-        vec_znx_copy_ref(&mut res, res_col, &a, a_col);
+        vec_znx_copy::<_, _, ZNXARI>(&mut res, res_col, &a, a_col);
         return;
-    }
-
-    let (gap_in, gap_out): (usize, usize);
-    if n_in > n_out {
-        (gap_in, gap_out) = (n_in / n_out, 1)
-    } else {
-        (gap_in, gap_out) = (1, n_out / n_in);
-        for j in 0..res.size() {
-            znx_zero_ref(res.at_mut(res_col, j));
-        }
     }
 
     let min_size: usize = a.size().min(res.size());
 
-    (0..min_size).for_each(|i| {
-        izip!(
-            a.at(a_col, i).iter().step_by(gap_in),
-            res.at_mut(res_col, i).iter_mut().step_by(gap_out)
-        )
-        .for_each(|(x_in, x_out)| *x_out = *x_in);
-    });
+    for j in 0..min_size {
+        ZNXARI::znx_switch_ring(res.at_mut(res_col, j), a.at(a_col, j));
+    }
 
     for j in min_size..res.size() {
-        znx_zero_ref(res.at_mut(res_col, j));
+        ZNXARI::znx_zero(res.at_mut(res_col, j));
     }
 }
 
@@ -74,7 +62,7 @@ where
                 // Normalize on c
                 for i in 0..cols {
                     module.vec_znx_switch_ring(&mut r0, i, &a, i);
-                    vec_znx_switch_ring_ref(&mut r1, i, &a, i);
+                    vec_znx_switch_ring::<_, _, ZnxArithmeticRef>(&mut r1, i, &a, i);
                 }
 
                 for i in 0..cols {
@@ -94,7 +82,7 @@ where
                 // Normalize on c
                 for i in 0..cols {
                     module.vec_znx_switch_ring(&mut r0, i, &a, i);
-                    vec_znx_switch_ring_ref(&mut r1, i, &a, i);
+                    vec_znx_switch_ring::<_, _, ZnxArithmeticRef>(&mut r1, i, &a, i);
                 }
 
                 for i in 0..cols {

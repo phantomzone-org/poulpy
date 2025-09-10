@@ -1,4 +1,4 @@
-pub fn znx_sub_i64_ref(res: &mut [i64], a: &[i64], b: &[i64]) {
+pub fn znx_sub_ref(res: &mut [i64], a: &[i64], b: &[i64]) {
     #[cfg(debug_assertions)]
     {
         assert_eq!(res.len(), a.len());
@@ -16,7 +16,7 @@ pub fn znx_sub_i64_ref(res: &mut [i64], a: &[i64], b: &[i64]) {
 /// all inputs must have the same length and must not alias.
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2")]
-pub fn znx_sub_i64_avx(res: &mut [i64], a: &[i64], b: &[i64]) {
+pub fn znx_sub_avx(res: &mut [i64], a: &[i64], b: &[i64]) {
     #[cfg(debug_assertions)]
     {
         assert_eq!(res.len(), a.len());
@@ -45,11 +45,11 @@ pub fn znx_sub_i64_avx(res: &mut [i64], a: &[i64], b: &[i64]) {
 
     // tail
     if !res.len().is_multiple_of(4) {
-        znx_sub_i64_ref(&mut res[span << 2..], &a[span << 2..], &b[span << 2..]);
+        znx_sub_ref(&mut res[span << 2..], &a[span << 2..], &b[span << 2..]);
     }
 }
 
-pub fn znx_sub_ab_inplace_i64_ref(res: &mut [i64], a: &[i64]) {
+pub fn znx_sub_ab_inplace_ref(res: &mut [i64], a: &[i64]) {
     #[cfg(debug_assertions)]
     {
         assert_eq!(res.len(), a.len());
@@ -66,7 +66,7 @@ pub fn znx_sub_ab_inplace_i64_ref(res: &mut [i64], a: &[i64]) {
 /// all inputs must have the same length and must not alias.
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2")]
-pub fn znx_sub_ab_inplace_i64_avx(res: &mut [i64], a: &[i64]) {
+pub fn znx_sub_ab_inplace_avx(res: &mut [i64], a: &[i64]) {
     #[cfg(debug_assertions)]
     {
         assert_eq!(res.len(), a.len());
@@ -92,11 +92,11 @@ pub fn znx_sub_ab_inplace_i64_avx(res: &mut [i64], a: &[i64]) {
 
     // tail
     if !res.len().is_multiple_of(4) {
-        znx_sub_ab_inplace_i64_ref(&mut res[span << 2..], &a[span << 2..]);
+        znx_sub_ab_inplace_ref(&mut res[span << 2..], &a[span << 2..]);
     }
 }
 
-pub fn znx_sub_ba_inplace_i64_ref(res: &mut [i64], a: &[i64]) {
+pub fn znx_sub_ba_inplace_ref(res: &mut [i64], a: &[i64]) {
     #[cfg(debug_assertions)]
     {
         assert_eq!(res.len(), a.len());
@@ -113,7 +113,7 @@ pub fn znx_sub_ba_inplace_i64_ref(res: &mut [i64], a: &[i64]) {
 /// all inputs must have the same length and must not alias.
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2")]
-pub fn znx_sub_ba_inplace_i64_avx(res: &mut [i64], a: &[i64]) {
+pub fn znx_sub_ba_inplace_avx(res: &mut [i64], a: &[i64]) {
     #[cfg(debug_assertions)]
     {
         assert_eq!(res.len(), a.len());
@@ -139,6 +139,6 @@ pub fn znx_sub_ba_inplace_i64_avx(res: &mut [i64], a: &[i64]) {
 
     // tail
     if !res.len().is_multiple_of(4) {
-        znx_sub_ba_inplace_i64_ref(&mut res[span << 2..], &a[span << 2..]);
+        znx_sub_ba_inplace_ref(&mut res[span << 2..], &a[span << 2..]);
     }
 }

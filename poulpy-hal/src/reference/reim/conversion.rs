@@ -1,3 +1,25 @@
+use crate::reference::reim::ReimConv;
+
+pub struct ReimConvRef;
+
+impl ReimConv for ReimConvRef {
+    #[inline(always)]
+    fn reim_from_znx_i64(res: &mut [f64], a: &[i64]) {
+        reim_from_znx_i64_ref(res, a);
+    }
+
+    #[inline(always)]
+    fn reim_to_znx_i64(res: &mut [i64], divisor: f64, a: &[f64]) {
+        reim_to_znx_i64_ref(res, divisor, a);
+    }
+
+    #[inline(always)]
+    fn reim_to_znx_i64_inplace(res: &mut [f64], divisor: f64) {
+        reim_to_znx_i64_inplace_ref(res, divisor);
+    }
+}
+
+#[inline(always)]
 pub fn reim_from_znx_i64_ref(res: &mut [f64], a: &[i64]) {
     #[cfg(debug_assertions)]
     {
@@ -6,6 +28,46 @@ pub fn reim_from_znx_i64_ref(res: &mut [f64], a: &[i64]) {
 
     for i in 0..res.len() {
         res[i] = a[i] as f64
+    }
+}
+
+#[inline(always)]
+pub fn reim_to_znx_i64_ref(res: &mut [i64], divisor: f64, a: &[f64]) {
+    #[cfg(debug_assertions)]
+    {
+        assert_eq!(res.len(), a.len())
+    }
+    let inv_div = 1. / divisor;
+    for i in 0..res.len() {
+        res[i] = (a[i] * inv_div).round() as i64
+    }
+}
+
+#[inline(always)]
+pub fn reim_to_znx_i64_inplace_ref(res: &mut [f64], divisor: f64) {
+    let inv_div = 1. / divisor;
+    for ri in res {
+        *ri = f64::from_bits(((*ri * inv_div).round() as i64) as u64)
+    }
+}
+
+pub struct ReimConvAvx;
+
+impl ReimConv for ReimConvAvx {
+    fn reim_from_znx_i64(res: &mut [f64], a: &[i64]) {
+        unsafe {
+            reim_from_znx_i64_bnd50_fma(res, a);
+        }
+    }
+
+    fn reim_to_znx_i64(res: &mut [i64], divisor: f64, a: &[f64]) {
+        unsafe {
+            reim_to_znx_i64_bnd63_avx2_fma(res, divisor, a);
+        }
+    }
+
+    fn reim_to_znx_i64_inplace(res: &mut [f64], divisor: f64) {
+        unsafe { reim_to_znx_i64_inplace_bnd63_avx2_fma(res, divisor) }
     }
 }
 
@@ -54,24 +116,6 @@ pub fn reim_from_znx_i64_bnd50_fma(res: &mut [f64], a: &[i64]) {
             res_ptr = res_ptr.add(4);
             a_ptr = a_ptr.add(1);
         }
-    }
-}
-
-pub fn reim_to_znx_i64_ref(res: &mut [i64], divisor: f64, a: &[f64]) {
-    #[cfg(debug_assertions)]
-    {
-        assert_eq!(res.len(), a.len())
-    }
-    let inv_div = 1. / divisor;
-    for i in 0..res.len() {
-        res[i] = (a[i] * inv_div).round() as i64
-    }
-}
-
-pub fn reim_to_znx_i64_inplace_ref(res: &mut [f64], divisor: f64) {
-    let inv_div = 1. / divisor;
-    for ri in res {
-        *ri = f64::from_bits(((*ri * inv_div).round() as i64) as u64)
     }
 }
 

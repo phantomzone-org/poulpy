@@ -71,3 +71,27 @@ pub(crate) fn frac_rev_bits<R: Float + FloatConst>(x: usize) -> R {
         }
     }
 }
+
+pub trait ReimDFTExecute<D, T> {
+    fn reim_dft_execute(table: &D, data: &mut [T]);
+}
+
+pub trait ReimArithmetic {
+    fn reim_add(res: &mut [f64], a: &[f64], b: &[f64]);
+    fn reim_add_inplace(res: &mut [f64], a: &[f64]);
+    fn reim_sub(res: &mut [f64], a: &[f64], b: &[f64]);
+    fn reim_sub_ab_inplace(res: &mut [f64], a: &[f64]);
+    fn reim_sub_ba_inplace(res: &mut [f64], a: &[f64]);
+    fn reim_negate(res: &mut [f64], a: &[f64]);
+    fn reim_negate_inplace(res: &mut [f64]);
+    fn reim_mul(res: &mut [f64], a: &[f64], b: &[f64]);
+    fn reim_addmul(res: &mut [f64], a: &[f64], b: &[f64]);
+    fn reim_copy(res: &mut [f64], a: &[f64]);
+    fn reim_zero(res: &mut [f64]);
+}
+
+pub trait ReimConv {
+    fn reim_from_znx_i64(res: &mut [f64], a: &[i64]);
+    fn reim_to_znx_i64(res: &mut [i64], divisor: f64, a: &[f64]);
+    fn reim_to_znx_i64_inplace(res: &mut [f64], divisor: f64);
+}

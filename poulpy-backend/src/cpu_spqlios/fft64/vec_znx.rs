@@ -16,13 +16,12 @@ use poulpy_hal::{
     },
     reference::{
         vec_znx::{
-            vec_znx_add_normal_ref, vec_znx_automorphism_inplace_tmp_bytes_ref, vec_znx_fill_normal_ref,
-            vec_znx_fill_uniform_ref, vec_znx_lsh_inplace_ref, vec_znx_lsh_ref, vec_znx_merge_rings_ref,
-            vec_znx_merge_rings_tmp_bytes_ref, vec_znx_mul_xp_minus_one_inplace_tmp_bytes_ref,
-            vec_znx_rotate_inplace_tmp_bytes_ref, vec_znx_rsh_inplace_ref, vec_znx_rsh_ref, vec_znx_split_ring_ref,
-            vec_znx_split_ring_tmp_bytes_ref, vec_znx_switch_ring_ref,
+            vec_znx_add_normal_ref, vec_znx_automorphism_inplace_tmp_bytes, vec_znx_copy, vec_znx_fill_normal_ref,
+            vec_znx_fill_uniform_ref, vec_znx_lsh, vec_znx_lsh_inplace, vec_znx_merge_rings, vec_znx_merge_rings_tmp_bytes,
+            vec_znx_mul_xp_minus_one_inplace_tmp_bytes, vec_znx_rotate_inplace_tmp_bytes, vec_znx_rsh, vec_znx_rsh_inplace,
+            vec_znx_split_ring, vec_znx_split_ring_tmp_bytes, vec_znx_switch_ring,
         },
-        znx::{znx_copy_ref, znx_zero_ref},
+        znx::{ZnxArithmetic, ZnxArithmeticAvx, ZnxArithmeticRef, ZnxNormalizeAvx, ZnxNormalizeRef},
     },
     source::Source,
 };
@@ -256,12 +255,12 @@ unsafe impl VecZnxAddScalarImpl<Self> for FFT64 {
 
             for j in 0..min_size {
                 if j != b_limb {
-                    znx_copy_ref(res.at_mut(res_col, j), b.at(b_col, j));
+                    ZnxArithmeticRef::znx_copy(res.at_mut(res_col, j), b.at(b_col, j));
                 }
             }
 
             for j in min_size..res.size() {
-                znx_zero_ref(res.at_mut(res_col, j));
+                ZnxArithmeticRef::znx_zero(res.at_mut(res_col, j));
             }
         }
     }
@@ -406,7 +405,7 @@ unsafe impl VecZnxSubScalarImpl<Self> for FFT64 {
             }
 
             for j in min_size..res.size() {
-                znx_zero_ref(res.at_mut(res_col, j));
+                ZnxArithmeticRef::znx_zero(res.at_mut(res_col, j));
             }
         }
     }
@@ -514,7 +513,12 @@ where
         A: VecZnxToRef,
     {
         let (carry, _) = scratch.take_slice(module.vec_znx_normalize_tmp_bytes() / size_of::<i64>());
-        vec_znx_lsh_ref(basek, k, res, res_col, a, a_col, carry)
+
+        if std::is_x86_feature_detected!("avx2") {
+            vec_znx_lsh::<_, _, ZnxArithmeticAvx, ZnxNormalizeAvx>(basek, k, res, res_col, a, a_col, carry)
+        } else {
+            vec_znx_lsh::<_, _, ZnxArithmeticRef, ZnxNormalizeRef>(basek, k, res, res_col, a, a_col, carry)
+        }
     }
 }
 
@@ -534,7 +538,12 @@ where
         A: VecZnxToMut,
     {
         let (carry, _) = scratch.take_slice(module.vec_znx_normalize_tmp_bytes() / size_of::<i64>());
-        vec_znx_lsh_inplace_ref(basek, k, a, a_col, carry)
+
+        if std::is_x86_feature_detected!("avx2") {
+            vec_znx_lsh_inplace::<_, ZnxArithmeticAvx, ZnxNormalizeAvx>(basek, k, a, a_col, carry)
+        } else {
+            vec_znx_lsh_inplace::<_, ZnxArithmeticRef, ZnxNormalizeRef>(basek, k, a, a_col, carry)
+        }
     }
 }
 
@@ -557,7 +566,12 @@ where
         A: VecZnxToRef,
     {
         let (carry, _) = scratch.take_slice(module.vec_znx_normalize_tmp_bytes() / size_of::<i64>());
-        vec_znx_rsh_ref(basek, k, res, res_col, a, a_col, carry)
+
+        if std::is_x86_feature_detected!("avx2") {
+            vec_znx_rsh::<_, _, ZnxArithmeticAvx, ZnxNormalizeAvx>(basek, k, res, res_col, a, a_col, carry)
+        } else {
+            vec_znx_rsh::<_, _, ZnxArithmeticRef, ZnxNormalizeRef>(basek, k, res, res_col, a, a_col, carry)
+        }
     }
 }
 
@@ -577,7 +591,11 @@ where
         A: VecZnxToMut,
     {
         let (carry, _) = scratch.take_slice(module.vec_znx_normalize_tmp_bytes() / size_of::<i64>());
-        vec_znx_rsh_inplace_ref(basek, k, a, a_col, carry)
+        if std::is_x86_feature_detected!("avx2") {
+            vec_znx_rsh_inplace::<_, ZnxArithmeticAvx, ZnxNormalizeAvx>(basek, k, a, a_col, carry)
+        } else {
+            vec_znx_rsh_inplace::<_, ZnxArithmeticRef, ZnxNormalizeRef>(basek, k, a, a_col, carry)
+        }
     }
 }
 
@@ -605,7 +623,7 @@ unsafe impl VecZnxRotateImpl<Self> for FFT64 {
             });
 
             (min_size..res.size()).for_each(|j| {
-                znx_zero_ref(res.at_mut(res_col, j));
+                ZnxArithmeticRef::znx_zero(res.at_mut(res_col, j));
             })
         }
     }
@@ -616,7 +634,7 @@ where
     Scratch<Self>: TakeSlice,
 {
     fn vec_znx_rotate_inplace_tmp_bytes_impl(module: &Module<Self>) -> usize {
-        vec_znx_rotate_inplace_tmp_bytes_ref(module.n())
+        vec_znx_rotate_inplace_tmp_bytes(module.n())
     }
 }
 
@@ -666,7 +684,7 @@ unsafe impl VecZnxAutomorphismImpl<Self> for FFT64 {
 
 unsafe impl VecZnxAutomorphismInplaceTmpBytesImpl<Self> for FFT64 {
     fn vec_znx_automorphism_inplace_tmp_bytes_impl(module: &Module<Self>) -> usize {
-        vec_znx_automorphism_inplace_tmp_bytes_ref(module.n())
+        vec_znx_automorphism_inplace_tmp_bytes(module.n())
     }
 }
 
@@ -729,7 +747,7 @@ unsafe impl VecZnxMulXpMinusOneImpl<Self> for FFT64 {
 
 unsafe impl VecZnxMulXpMinusOneInplaceTmpBytesImpl<Self> for FFT64 {
     fn vec_znx_mul_xp_minus_one_inplace_tmp_bytes_impl(module: &Module<Self>) -> usize {
-        vec_znx_mul_xp_minus_one_inplace_tmp_bytes_ref(module.n())
+        vec_znx_mul_xp_minus_one_inplace_tmp_bytes(module.n())
     }
 }
 
@@ -765,7 +783,7 @@ unsafe impl VecZnxMulXpMinusOneInplaceImpl<Self> for FFT64 {
 
 unsafe impl VecZnxSplitRingTmpBytesImpl<Self> for FFT64 {
     fn vec_znx_split_ring_tmp_bytes_impl(module: &Module<Self>) -> usize {
-        vec_znx_split_ring_tmp_bytes_ref(module.n())
+        vec_znx_split_ring_tmp_bytes(module.n())
     }
 }
 
@@ -786,13 +804,17 @@ where
         A: VecZnxToRef,
     {
         let (tmp, _) = scratch.take_slice(module.vec_znx_split_ring_tmp_bytes() / size_of::<i64>());
-        vec_znx_split_ring_ref(res, res_col, a, a_col, tmp)
+        if std::is_x86_feature_detected!("avx2") {
+            vec_znx_split_ring::<_, _, ZnxArithmeticAvx>(res, res_col, a, a_col, tmp);
+        } else {
+            vec_znx_split_ring::<_, _, ZnxArithmeticRef>(res, res_col, a, a_col, tmp);
+        }
     }
 }
 
 unsafe impl VecZnxMergeRingsTmpBytesImpl<Self> for FFT64 {
     fn vec_znx_merge_rings_tmp_bytes_impl(module: &Module<Self>) -> usize {
-        vec_znx_merge_rings_tmp_bytes_ref(module.n())
+        vec_znx_merge_rings_tmp_bytes(module.n())
     }
 }
 
@@ -812,7 +834,11 @@ where
         A: VecZnxToRef,
     {
         let (tmp, _) = scratch.take_slice(module.vec_znx_merge_rings_tmp_bytes() / size_of::<i64>());
-        vec_znx_merge_rings_ref(res, res_col, a, a_col, tmp);
+        if std::is_x86_feature_detected!("avx2") {
+            vec_znx_merge_rings::<_, _, ZnxArithmeticAvx>(res, res_col, a, a_col, tmp);
+        } else {
+            vec_znx_merge_rings::<_, _, ZnxArithmeticRef>(res, res_col, a, a_col, tmp);
+        }
     }
 }
 
@@ -825,7 +851,11 @@ where
         R: VecZnxToMut,
         A: VecZnxToRef,
     {
-        vec_znx_switch_ring_ref(res, res_col, a, a_col)
+        if std::is_x86_feature_detected!("avx2") {
+            vec_znx_switch_ring::<_, _, ZnxArithmeticAvx>(res, res_col, a, a_col);
+        } else {
+            vec_znx_switch_ring::<_, _, ZnxArithmeticRef>(res, res_col, a, a_col);
+        }
     }
 }
 
@@ -835,26 +865,8 @@ unsafe impl VecZnxCopyImpl<Self> for FFT64 {
         R: VecZnxToMut,
         A: VecZnxToRef,
     {
-        vec_znx_copy_ref(res, res_col, a, a_col)
+        vec_znx_copy::<_, _, ZnxArithmeticRef>(res, res_col, a, a_col)
     }
-}
-
-pub fn vec_znx_copy_ref<R, A>(res: &mut R, res_col: usize, a: &A, a_col: usize)
-where
-    R: VecZnxToMut,
-    A: VecZnxToRef,
-{
-    let mut res: VecZnx<&mut [u8]> = res.to_mut();
-    let a: VecZnx<&[u8]> = a.to_ref();
-
-    let min_size: usize = res.size().min(a.size());
-
-    (0..min_size).for_each(|j| {
-        res.at_mut(res_col, j).copy_from_slice(a.at(a_col, j));
-    });
-    (min_size..res.size()).for_each(|j| {
-        znx_zero_ref(res.at_mut(res_col, j));
-    })
 }
 
 unsafe impl VecZnxFillUniformImpl<Self> for FFT64 {

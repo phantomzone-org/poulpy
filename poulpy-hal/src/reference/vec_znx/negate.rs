@@ -5,14 +5,15 @@ use criterion::{BenchmarkId, Criterion};
 use crate::{
     api::{ModuleNew, VecZnxNegate, VecZnxNegateInplace},
     layouts::{Backend, FillUniform, Module, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut},
-    reference::znx::{znx_negate_i64_ref, znx_negate_inplace_i64_ref, znx_zero_ref},
+    reference::znx::{ZnxArithmetic, ZnxArithmeticRef},
     source::Source,
 };
 
-pub fn vec_znx_negate_ref<R, A>(res: &mut R, res_col: usize, a: &A, a_col: usize)
+pub fn vec_znx_negate<R, A, ZNXARI>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
     R: VecZnxToMut,
     A: VecZnxToRef,
+    ZNXARI: ZnxArithmetic,
 {
     let a: VecZnx<&[u8]> = a.to_ref();
     let mut res: VecZnx<&mut [u8]> = res.to_mut();
@@ -25,66 +26,22 @@ where
     let min_size: usize = res.size().min(a.size());
 
     for j in 0..min_size {
-        znx_negate_i64_ref(res.at_mut(res_col, j), a.at(a_col, j));
+        ZNXARI::znx_negate(res.at_mut(res_col, j), a.at(a_col, j));
     }
 
     for j in min_size..res.size() {
-        znx_zero_ref(res.at_mut(res_col, j));
+        ZNXARI::znx_zero(res.at_mut(res_col, j));
     }
 }
 
-/// # Safety
-/// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
-#[cfg(target_arch = "x86_64")]
-#[target_feature(enable = "avx2")]
-pub fn vec_znx_negate_avx<R, A>(res: &mut R, res_col: usize, a: &A, a_col: usize)
+pub fn vec_znx_negate_inplace<R, ZNXARI>(res: &mut R, res_col: usize)
 where
     R: VecZnxToMut,
-    A: VecZnxToRef,
-{
-    use crate::reference::znx::znx_negate_i64_avx;
-
-    let a: VecZnx<&[u8]> = a.to_ref();
-    let mut res: VecZnx<&mut [u8]> = res.to_mut();
-
-    #[cfg(debug_assertions)]
-    {
-        assert_eq!(a.n(), res.n());
-    }
-
-    let min_size: usize = res.size().min(a.size());
-
-    for j in 0..min_size {
-        znx_negate_i64_avx(res.at_mut(res_col, j), a.at(a_col, j));
-    }
-
-    for j in min_size..res.size() {
-        znx_zero_ref(res.at_mut(res_col, j));
-    }
-}
-
-pub fn vec_znx_negate_inplace_ref<R>(res: &mut R, res_col: usize)
-where
-    R: VecZnxToMut,
+    ZNXARI: ZnxArithmetic,
 {
     let mut res: VecZnx<&mut [u8]> = res.to_mut();
     for j in 0..res.size() {
-        znx_negate_inplace_i64_ref(res.at_mut(res_col, j));
-    }
-}
-
-/// # Safety
-/// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
-#[cfg(target_arch = "x86_64")]
-#[target_feature(enable = "avx2")]
-pub fn vec_znx_negate_inplace_avx<R>(res: &mut R, res_col: usize)
-where
-    R: VecZnxToMut,
-{
-    use crate::reference::znx::znx_negate_inplace_i64_avx;
-    let mut res: VecZnx<&mut [u8]> = res.to_mut();
-    for j in 0..res.size() {
-        znx_negate_inplace_i64_avx(res.at_mut(res_col, j));
+        ZNXARI::znx_negate_inplace(res.at_mut(res_col, j));
     }
 }
 
@@ -113,7 +70,7 @@ where
             res_1.raw_mut().copy_from_slice(res_0.raw());
 
             for i in 0..cols {
-                vec_znx_negate_ref(&mut res_0, i, &a, i);
+                vec_znx_negate::<_, _, ZnxArithmeticRef>(&mut res_0, i, &a, i);
                 module.vec_znx_negate(&mut res_1, i, &a, i);
             }
 
@@ -141,7 +98,7 @@ where
         res_1.raw_mut().copy_from_slice(res_0.raw());
 
         for i in 0..cols {
-            vec_znx_negate_inplace_ref(&mut res_0, i);
+            vec_znx_negate_inplace::<_, ZnxArithmeticRef>(&mut res_0, i);
             module.vec_znx_negate_inplace(&mut res_1, i);
         }
 
@@ -230,89 +187,4 @@ where
     }
 
     group.finish();
-}
-
-#[cfg(all(test, any(target_arch = "x86_64", target_arch = "x86")))]
-mod tests {
-    use super::*;
-
-    #[target_feature(enable = "avx2")]
-    fn test_znx_negate_avx_internal() {
-        let cols: usize = 2;
-        let mut source: Source = Source::new([0u8; 32]);
-
-        for a_size in [1, 2, 6, 11] {
-            let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(32, cols, a_size);
-            a.raw_mut()
-                .iter_mut()
-                .for_each(|x| *x = source.next_i32() as i64);
-
-            for res_size in [1, 2, 6, 11] {
-                let mut res_0: VecZnx<Vec<u8>> = VecZnx::alloc(32, cols, res_size);
-                let mut res_1: VecZnx<Vec<u8>> = VecZnx::alloc(32, cols, res_size);
-
-                res_0
-                    .raw_mut()
-                    .iter_mut()
-                    .for_each(|x| *x = source.next_i32() as i64);
-                res_1
-                    .raw_mut()
-                    .iter_mut()
-                    .for_each(|x| *x = source.next_i32() as i64);
-
-                for i in 0..cols {
-                    vec_znx_negate_ref(&mut res_0, i, &a, i);
-                    vec_znx_negate_avx(&mut res_1, i, &a, i);
-                }
-
-                assert_eq!(res_0.raw(), res_1.raw());
-            }
-        }
-    }
-
-    #[test]
-    fn test_znx_negate_avx() {
-        if !std::is_x86_feature_detected!("avx2") {
-            eprintln!("skipping: CPU lacks avx2");
-            return;
-        };
-        unsafe {
-            test_znx_negate_avx_internal();
-        }
-    }
-
-    #[target_feature(enable = "avx2")]
-    fn test_znx_negate_inplace_avx_internal() {
-        let cols: usize = 2;
-        let mut source: Source = Source::new([0u8; 32]);
-
-        for res_size in [1, 2, 6, 11] {
-            let mut res_0: VecZnx<Vec<u8>> = VecZnx::alloc(32, cols, res_size);
-            let mut res_1: VecZnx<Vec<u8>> = VecZnx::alloc(32, cols, res_size);
-
-            res_0
-                .raw_mut()
-                .iter_mut()
-                .for_each(|x| *x = source.next_i32() as i64);
-            res_1.raw_mut().copy_from_slice(res_0.raw());
-
-            for i in 0..cols {
-                vec_znx_negate_inplace_ref(&mut res_0, i);
-                vec_znx_negate_inplace_avx(&mut res_1, i);
-            }
-
-            assert_eq!(res_0.raw(), res_1.raw());
-        }
-    }
-
-    #[test]
-    fn test_znx_negate_inplace_avx() {
-        if !std::is_x86_feature_detected!("avx2") {
-            eprintln!("skipping: CPU lacks avx2");
-            return;
-        };
-        unsafe {
-            test_znx_negate_inplace_avx_internal();
-        }
-    }
 }
