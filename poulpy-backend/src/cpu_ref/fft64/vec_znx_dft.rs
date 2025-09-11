@@ -9,15 +9,13 @@ use poulpy_hal::{
         VecZnxDftZeroImpl, VecZnxIdftApplyConsumeImpl, VecZnxIdftApplyImpl, VecZnxIdftApplyTmpAImpl, VecZnxIdftApplyTmpBytesImpl,
     },
     reference::{
-        reim::{
-            ReimArithmeticAvx, ReimArithmeticRef, ReimConvAvx, ReimConvRef, ReimFFTAvx, ReimFFTRef, ReimIFFTAvx, ReimIFFTRef,
-        },
+        reim::{ReimArithmeticRef, ReimConvRef, ReimFFTRef, ReimIFFTRef},
         vec_znx_dft::fft64::{
             vec_znx_dft_add, vec_znx_dft_add_inplace, vec_znx_dft_apply, vec_znx_dft_copy, vec_znx_dft_sub,
             vec_znx_dft_sub_ab_inplace, vec_znx_dft_sub_ba_inplace, vec_znx_dft_zero, vec_znx_idft_apply,
             vec_znx_idft_apply_consume, vec_znx_idft_apply_tmpa,
         },
-        znx::{ZnxArithmeticAvx, ZnxArithmeticRef},
+        znx::ZnxArithmeticRef,
     },
 };
 
@@ -59,23 +57,13 @@ unsafe impl VecZnxIdftApplyImpl<Self> for FFT64 {
         R: VecZnxBigToMut<Self>,
         A: VecZnxDftToRef<Self>,
     {
-        if std::is_x86_feature_detected!("avx2") {
-            vec_znx_idft_apply::<_, _, _, ZnxArithmeticAvx, ReimArithmeticAvx, ReimConvAvx, ReimIFFTAvx>(
-                module.get_ifft_table(),
-                res,
-                res_col,
-                a,
-                a_col,
-            );
-        } else {
-            vec_znx_idft_apply::<_, _, _, ZnxArithmeticRef, ReimArithmeticRef, ReimConvRef, ReimIFFTRef>(
-                module.get_ifft_table(),
-                res,
-                res_col,
-                a,
-                a_col,
-            );
-        }
+        vec_znx_idft_apply::<_, _, _, ZnxArithmeticRef, ReimArithmeticRef, ReimConvRef, ReimIFFTRef>(
+            module.get_ifft_table(),
+            res,
+            res_col,
+            a,
+            a_col,
+        );
     }
 }
 
@@ -85,23 +73,13 @@ unsafe impl VecZnxIdftApplyTmpAImpl<Self> for FFT64 {
         R: VecZnxBigToMut<Self>,
         A: VecZnxDftToMut<Self>,
     {
-        if std::is_x86_feature_detected!("avx2") {
-            vec_znx_idft_apply_tmpa::<_, _, _, ZnxArithmeticAvx, ReimConvAvx, ReimIFFTAvx>(
-                module.get_ifft_table(),
-                res,
-                res_col,
-                a,
-                a_col,
-            );
-        } else {
-            vec_znx_idft_apply_tmpa::<_, _, _, ZnxArithmeticRef, ReimConvRef, ReimIFFTRef>(
-                module.get_ifft_table(),
-                res,
-                res_col,
-                a,
-                a_col,
-            );
-        }
+        vec_znx_idft_apply_tmpa::<_, _, _, ZnxArithmeticRef, ReimConvRef, ReimIFFTRef>(
+            module.get_ifft_table(),
+            res,
+            res_col,
+            a,
+            a_col,
+        );
     }
 }
 
@@ -110,11 +88,7 @@ unsafe impl VecZnxIdftApplyConsumeImpl<Self> for FFT64 {
     where
         VecZnxDft<D, FFT64>: VecZnxDftToMut<Self>,
     {
-        if std::is_x86_feature_detected!("avx2") {
-            vec_znx_idft_apply_consume::<_, _, ReimConvAvx, ReimIFFTAvx>(module.get_ifft_table(), res)
-        } else {
-            vec_znx_idft_apply_consume::<_, _, ReimConvRef, ReimIFFTRef>(module.get_ifft_table(), res)
-        }
+        vec_znx_idft_apply_consume::<_, _, ReimConvRef, ReimIFFTRef>(module.get_ifft_table(), res)
     }
 }
 
@@ -131,27 +105,15 @@ unsafe impl VecZnxDftApplyImpl<Self> for FFT64 {
         R: VecZnxDftToMut<Self>,
         A: VecZnxToRef,
     {
-        if std::is_x86_feature_detected!("avx2") {
-            vec_znx_dft_apply::<_, _, _, ReimArithmeticAvx, ReimConvAvx, ReimFFTAvx>(
-                module.get_fft_table(),
-                step,
-                offset,
-                res,
-                res_col,
-                a,
-                a_col,
-            );
-        } else {
-            vec_znx_dft_apply::<_, _, _, ReimArithmeticRef, ReimConvRef, ReimFFTRef>(
-                module.get_fft_table(),
-                step,
-                offset,
-                res,
-                res_col,
-                a,
-                a_col,
-            );
-        }
+        vec_znx_dft_apply::<_, _, _, ReimArithmeticRef, ReimConvRef, ReimFFTRef>(
+            module.get_fft_table(),
+            step,
+            offset,
+            res,
+            res_col,
+            a,
+            a_col,
+        );
     }
 }
 
@@ -169,11 +131,7 @@ unsafe impl VecZnxDftAddImpl<Self> for FFT64 {
         A: VecZnxDftToRef<Self>,
         D: VecZnxDftToRef<Self>,
     {
-        if std::is_x86_feature_detected!("avx2") {
-            vec_znx_dft_add::<_, _, _, _, ReimArithmeticAvx>(res, res_col, a, a_col, b, b_col);
-        } else {
-            vec_znx_dft_add::<_, _, _, _, ReimArithmeticRef>(res, res_col, a, a_col, b, b_col);
-        }
+        vec_znx_dft_add::<_, _, _, _, ReimArithmeticRef>(res, res_col, a, a_col, b, b_col);
     }
 }
 
@@ -183,11 +141,7 @@ unsafe impl VecZnxDftAddInplaceImpl<Self> for FFT64 {
         R: VecZnxDftToMut<Self>,
         A: VecZnxDftToRef<Self>,
     {
-        if std::is_x86_feature_detected!("avx2") {
-            vec_znx_dft_add_inplace::<_, _, _, ReimArithmeticAvx>(res, res_col, a, a_col);
-        } else {
-            vec_znx_dft_add_inplace::<_, _, _, ReimArithmeticRef>(res, res_col, a, a_col);
-        }
+        vec_znx_dft_add_inplace::<_, _, _, ReimArithmeticRef>(res, res_col, a, a_col);
     }
 }
 
@@ -205,11 +159,7 @@ unsafe impl VecZnxDftSubImpl<Self> for FFT64 {
         A: VecZnxDftToRef<Self>,
         D: VecZnxDftToRef<Self>,
     {
-        if std::is_x86_feature_detected!("avx2") {
-            vec_znx_dft_sub::<_, _, _, _, ReimArithmeticAvx>(res, res_col, a, a_col, b, b_col);
-        } else {
-            vec_znx_dft_sub::<_, _, _, _, ReimArithmeticRef>(res, res_col, a, a_col, b, b_col);
-        }
+        vec_znx_dft_sub::<_, _, _, _, ReimArithmeticRef>(res, res_col, a, a_col, b, b_col);
     }
 }
 
@@ -219,11 +169,7 @@ unsafe impl VecZnxDftSubABInplaceImpl<Self> for FFT64 {
         R: VecZnxDftToMut<Self>,
         A: VecZnxDftToRef<Self>,
     {
-        if std::is_x86_feature_detected!("avx2") {
-            vec_znx_dft_sub_ab_inplace::<_, _, _, ReimArithmeticAvx>(res, res_col, a, a_col);
-        } else {
-            vec_znx_dft_sub_ab_inplace::<_, _, _, ReimArithmeticRef>(res, res_col, a, a_col);
-        }
+        vec_znx_dft_sub_ab_inplace::<_, _, _, ReimArithmeticRef>(res, res_col, a, a_col);
     }
 }
 
@@ -233,11 +179,7 @@ unsafe impl VecZnxDftSubBAInplaceImpl<Self> for FFT64 {
         R: VecZnxDftToMut<Self>,
         A: VecZnxDftToRef<Self>,
     {
-        if std::is_x86_feature_detected!("avx2") {
-            vec_znx_dft_sub_ba_inplace::<_, _, _, ReimArithmeticAvx>(res, res_col, a, a_col);
-        } else {
-            vec_znx_dft_sub_ba_inplace::<_, _, _, ReimArithmeticRef>(res, res_col, a, a_col);
-        }
+        vec_znx_dft_sub_ba_inplace::<_, _, _, ReimArithmeticRef>(res, res_col, a, a_col);
     }
 }
 
@@ -254,11 +196,7 @@ unsafe impl VecZnxDftCopyImpl<Self> for FFT64 {
         R: VecZnxDftToMut<Self>,
         A: VecZnxDftToRef<Self>,
     {
-        if std::is_x86_feature_detected!("avx2") {
-            vec_znx_dft_copy::<_, _, _, ReimArithmeticAvx>(step, offset, res, res_col, a, a_col);
-        } else {
-            vec_znx_dft_copy::<_, _, _, ReimArithmeticRef>(step, offset, res, res_col, a, a_col);
-        }
+        vec_znx_dft_copy::<_, _, _, ReimArithmeticRef>(step, offset, res, res_col, a, a_col);
     }
 }
 
@@ -267,10 +205,6 @@ unsafe impl VecZnxDftZeroImpl<Self> for FFT64 {
     where
         R: VecZnxDftToMut<Self>,
     {
-        if std::is_x86_feature_detected!("avx2") {
-            vec_znx_dft_zero::<_, _, ReimArithmeticAvx>(res);
-        } else {
-            vec_znx_dft_zero::<_, _, ReimArithmeticRef>(res);
-        }
+        vec_znx_dft_zero::<_, _, ReimArithmeticRef>(res);
     }
 }

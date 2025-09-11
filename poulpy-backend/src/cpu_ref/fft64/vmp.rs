@@ -9,8 +9,8 @@ use poulpy_hal::{
         VmpPrepareTmpBytesImpl,
     },
     reference::{
-        reim::{ReimArithmeticAvx, ReimArithmeticRef, ReimConvAvx, ReimConvRef, ReimFFTAvx, ReimFFTRef},
-        reim4::{Reim4BlkAvx, Reim4BlkRef},
+        reim::{ReimArithmeticRef, ReimConvRef, ReimFFTRef},
+        reim4::Reim4BlkRef,
         vmp::fft64::{vmp_apply_dft_to_dft, vmp_apply_dft_to_dft_tmp_bytes, vmp_prepare, vmp_prepare_tmp_bytes},
     },
 };
@@ -55,11 +55,7 @@ where
                 pmat.size(),
             ) / size_of::<f64>(),
         );
-        if std::is_x86_feature_detected!("avx2") {
-            vmp_apply_dft_to_dft::<_, _, _, _, ReimArithmeticAvx, Reim4BlkAvx>(&mut res, &a, &pmat, tmp);
-        } else {
-            vmp_apply_dft_to_dft::<_, _, _, _, ReimArithmeticRef, Reim4BlkRef>(&mut res, &a, &pmat, tmp);
-        }
+        vmp_apply_dft_to_dft::<_, _, _, _, ReimArithmeticRef, Reim4BlkRef>(&mut res, &a, &pmat, tmp);
     }
 }
 
@@ -84,11 +80,7 @@ unsafe impl VmpPrepareImpl<FFT64> for FFT64 {
         let mut res: VmpPMat<&mut [u8], FFT64> = res.to_mut();
         let a: MatZnx<&[u8]> = a.to_ref();
         let (tmp, _) = scratch.take_slice(module.vmp_prepare_tmp_bytes(a.rows(), a.cols_in(), a.cols_out(), a.size()));
-        if std::is_x86_feature_detected!("avx2") {
-            vmp_prepare::<_, _, _, Reim4BlkAvx, ReimConvAvx, ReimFFTAvx>(module.get_fft_table(), &mut res, &a, tmp);
-        } else {
-            vmp_prepare::<_, _, _, Reim4BlkRef, ReimConvRef, ReimFFTRef>(module.get_fft_table(), &mut res, &a, tmp);
-        }
+        vmp_prepare::<_, _, _, Reim4BlkRef, ReimConvRef, ReimFFTRef>(module.get_fft_table(), &mut res, &a, tmp);
     }
 }
 

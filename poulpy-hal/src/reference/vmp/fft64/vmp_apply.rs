@@ -6,12 +6,12 @@ use crate::{
         VmpApplyDftToDftTmpBytes, VmpPMatAlloc,
     },
     cast_mut,
-    layouts::{DataViewMut, Module, ScratchOwned, VecZnx, VecZnxToRef, ZnxViewMut},
+    layouts::{DataViewMut, Module, ScratchOwned, VecZnx, VecZnxToRef, ZnxView, ZnxViewMut},
     oep::VecZnxDftAllocBytesImpl,
     reference::{
         reim::{ReimArithmetic, ReimArithmeticRef, ReimConv, ReimConvRef, ReimDFTExecute, ReimFFTRef, ReimFFTTable},
         reim4::{Reim4Blk, Reim4BlkRef},
-        vec_znx_dft::fft64::vec_znx_dft_apply,
+        vec_znx_dft::fft64::{assert_approx_eq_slice, vec_znx_dft_apply},
     },
     source::Source,
 };
@@ -382,13 +382,14 @@ where
 
             module.vmp_apply_dft_to_dft(&mut res_1, &a, &pmat, scratch.borrow());
             vmp_apply_dft_to_dft::<_, _, _, _, ReimArithmeticRef, Reim4BlkRef>(&mut res_0, &a, &pmat, &mut tmp_bytes);
+            assert_approx_eq_slice(res_1.raw(), res_0.raw(), 1e-10);
         });
     });
 }
 
 pub fn bench_vmp_apply_dft_to_dft<B: Backend>(c: &mut Criterion, label: &str)
 where
-    Module<B>: ModuleNew<B> + VecZnxDftAlloc<B> + VmpPMatAlloc<B> + VmpApplyDftToDft<B>,
+    Module<B>: ModuleNew<B> + VecZnxDftAlloc<B> + VmpPMatAlloc<B> + VmpApplyDftToDft<B> + VmpApplyDftToDftTmpBytes,
     ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
 {
     let group_name: String = format!("vmp_apply_dft_to_dft::{}", label);
@@ -397,7 +398,7 @@ where
 
     fn runner<B: Backend>(params: [usize; 5]) -> impl FnMut()
     where
-        Module<B>: ModuleNew<B> + VecZnxDftAlloc<B> + VmpPMatAlloc<B> + VmpApplyDftToDft<B>,
+        Module<B>: ModuleNew<B> + VecZnxDftAlloc<B> + VmpPMatAlloc<B> + VmpApplyDftToDft<B> + VmpApplyDftToDftTmpBytes,
         ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
     {
         let module: Module<B> = Module::<B>::new(1 << params[0]);
@@ -409,7 +410,8 @@ where
 
         let mut source: Source = Source::new([0u8; 32]);
 
-        let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(1 << 20);
+        let mut scratch: ScratchOwned<B> =
+            ScratchOwned::alloc(module.vmp_apply_dft_to_dft_tmp_bytes(size, size, rows, cols_in, cols_out, size));
 
         let mut res: VecZnxDft<Vec<u8>, _> = module.vec_znx_dft_alloc(cols_out, size);
         let mut a: VecZnxDft<Vec<u8>, _> = module.vec_znx_dft_alloc(cols_in, size);

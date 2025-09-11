@@ -57,6 +57,10 @@ impl<D: Data> ZnxInfos for MatZnx<D> {
     fn size(&self) -> usize {
         self.size
     }
+
+    fn poly_count(&self) -> usize {
+        self.rows() * self.cols_in() * self.cols_out() * self.size()
+    }
 }
 
 impl<D: Data> ZnxSliceSize for MatZnx<D> {

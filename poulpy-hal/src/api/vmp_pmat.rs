@@ -19,7 +19,7 @@ pub trait VmpPrepareTmpBytes {
 }
 
 pub trait VmpPrepare<B: Backend> {
-    fn vmp_prepare<R, A>(&self, res: &mut R, a: &A, scratch: &mut Scratch<B>)
+    fn vmp_prepare<R, A>(&self, pmat: &mut R, mat: &A, scratch: &mut Scratch<B>)
     where
         R: VmpPMatToMut<B>,
         A: MatZnxToRef;

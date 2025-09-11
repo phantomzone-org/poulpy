@@ -7,7 +7,7 @@ use poulpy_hal::{
     },
     reference::{
         vec_znx::{vec_znx_add, vec_znx_automorphism, vec_znx_normalize, vec_znx_normalize_inplace, vec_znx_normalize_tmp_bytes},
-        znx::{ZnxArithmeticAvx, ZnxArithmeticRef, ZnxNormalizeAvx, ZnxNormalizeRef},
+        znx::{ZnxArithmeticRef, ZnxNormalizeRef},
     },
 };
 
@@ -20,11 +20,7 @@ unsafe impl VecZnxAddImpl<Self> for FFT64 {
         A: VecZnxToRef,
         C: VecZnxToRef,
     {
-        if std::is_x86_feature_detected!("avx2") {
-            vec_znx_add::<_, _, _, ZnxArithmeticAvx>(res, res_col, a, a_col, b, b_col);
-        } else {
-            vec_znx_add::<_, _, _, ZnxArithmeticRef>(res, res_col, a, a_col, b, b_col);
-        }
+        vec_znx_add::<_, _, _, ZnxArithmeticRef>(res, res_col, a, a_col, b, b_col);
     }
 }
 
@@ -48,12 +44,7 @@ where
         R: VecZnxToMut,
     {
         let (tmp_bytes, _) = scratch.take_slice(module.vec_znx_normalize_tmp_bytes() / size_of::<i64>());
-
-        if std::is_x86_feature_detected!("avx2") {
-            vec_znx_normalize_inplace::<_, ZnxNormalizeAvx>(basek, res, res_col, tmp_bytes);
-        } else {
-            vec_znx_normalize_inplace::<_, ZnxNormalizeRef>(basek, res, res_col, tmp_bytes);
-        }
+        vec_znx_normalize_inplace::<_, ZnxNormalizeRef>(basek, res, res_col, tmp_bytes);
     }
 }
 
@@ -74,12 +65,7 @@ where
         A: VecZnxToRef,
     {
         let (carry, _) = scratch.take_slice(module.vec_znx_normalize_tmp_bytes() / size_of::<i64>());
-
-        if std::is_x86_feature_detected!("avx2") {
-            vec_znx_normalize::<_, _, ZnxArithmeticAvx, ZnxNormalizeAvx>(basek, res, res_col, a, a_col, carry);
-        } else {
-            vec_znx_normalize::<_, _, ZnxArithmeticRef, ZnxNormalizeRef>(basek, res, res_col, a, a_col, carry);
-        }
+        vec_znx_normalize::<_, _, ZnxArithmeticRef, ZnxNormalizeRef>(basek, res, res_col, a, a_col, carry);
     }
 }
 
@@ -89,10 +75,6 @@ unsafe impl VecZnxAutomorphismImpl<Self> for FFT64 {
         R: VecZnxToMut,
         A: VecZnxToRef,
     {
-        if std::is_x86_feature_detected!("avx2") {
-            vec_znx_automorphism::<_, _, ZnxArithmeticAvx>(p, res, res_col, a, a_col);
-        } else {
-            vec_znx_automorphism::<_, _, ZnxArithmeticRef>(p, res, res_col, a, a_col);
-        }
+        vec_znx_automorphism::<_, _, ZnxArithmeticRef>(p, res, res_col, a, a_col);
     }
 }
