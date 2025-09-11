@@ -1,11 +1,11 @@
 use poulpy_hal::{
     api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyInplace, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare, VecZnxAddInplace,
-        VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigAllocBytes,
-        VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxDftAllocBytes, VecZnxDftApply, VecZnxFillUniform,
-        VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubABInplace,
-        VecZnxSubScalarInplace, VecZnxSwitchRing, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes, VmpPMatAlloc,
-        VmpPrepare,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare,
+        VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace,
+        VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxDftAllocBytes, VecZnxDftApply,
+        VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub,
+        VecZnxSubABInplace, VecZnxSubScalarInplace, VecZnxSwitchRing, VmpApplyDftToDft, VmpApplyDftToDftAdd,
+        VmpApplyDftToDftTmpBytes, VmpPMatAlloc, VmpPrepare,
     },
     layouts::{Backend, Module, ScratchOwned},
     oep::{
@@ -39,7 +39,7 @@ pub fn test_gglwe_switching_key_keyswitch<B>(
     Module<B>: VecZnxDftAllocBytes
         + VecZnxBigNormalize<B>
         + VecZnxDftApply<B>
-        + SvpApplyInplace<B>
+        + SvpApplyDftToDftInplace<B>
         + VecZnxIdftApplyConsume<B>
         + VecZnxFillUniform
         + VecZnxSubABInplace
@@ -186,7 +186,7 @@ pub fn test_gglwe_switching_key_keyswitch_inplace<B>(
     Module<B>: VecZnxDftAllocBytes
         + VecZnxBigNormalize<B>
         + VecZnxDftApply<B>
-        + SvpApplyInplace<B>
+        + SvpApplyDftToDftInplace<B>
         + VecZnxIdftApplyConsume<B>
         + VecZnxFillUniform
         + VecZnxSubABInplace

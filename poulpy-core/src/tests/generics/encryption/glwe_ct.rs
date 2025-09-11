@@ -1,7 +1,7 @@
 use poulpy_hal::{
     api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApply, SvpApplyInplace, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare,
-        VecZnxAddInplace, VecZnxAddNormal, VecZnxBigAddInplace, VecZnxBigAddNormal, VecZnxBigAddSmallInplace,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolAllocBytes,
+        SvpPrepare, VecZnxAddInplace, VecZnxAddNormal, VecZnxBigAddInplace, VecZnxBigAddNormal, VecZnxBigAddSmallInplace,
         VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxCopy, VecZnxDftAlloc, VecZnxDftAllocBytes, VecZnxDftApply,
         VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub,
         VecZnxSubABInplace,
@@ -29,7 +29,7 @@ where
     Module<B>: VecZnxDftAllocBytes
         + VecZnxBigAllocBytes
         + VecZnxDftApply<B>
-        + SvpApplyInplace<B>
+        + SvpApplyDftToDftInplace<B>
         + VecZnxIdftApplyConsume<B>
         + VecZnxBigAddInplace<B>
         + VecZnxBigAddSmallInplace<B>
@@ -42,7 +42,7 @@ where
         + VecZnxBigAllocBytes
         + SvpPPolAllocBytes
         + SvpPrepare<B>
-        + SvpApply<B>
+        + SvpApplyDftToDft<B>
         + VecZnxIdftApplyConsume<B>
         + VecZnxBigAddNormal<B>
         + VecZnxBigAddSmallInplace<B>
@@ -51,7 +51,7 @@ where
         + VecZnxDftAllocBytes
         + VecZnxBigNormalize<B>
         + VecZnxDftApply<B>
-        + SvpApplyInplace<B>
+        + SvpApplyDftToDftInplace<B>
         + VecZnxIdftApplyConsume<B>
         + VecZnxNormalizeTmpBytes
         + VecZnxFillUniform
@@ -115,7 +115,7 @@ where
     Module<B>: VecZnxDftAllocBytes
         + VecZnxBigAllocBytes
         + VecZnxDftApply<B>
-        + SvpApplyInplace<B>
+        + SvpApplyDftToDftInplace<B>
         + VecZnxIdftApplyConsume<B>
         + VecZnxBigAddInplace<B>
         + VecZnxBigAddSmallInplace<B>
@@ -128,7 +128,7 @@ where
         + VecZnxBigAllocBytes
         + SvpPPolAllocBytes
         + SvpPrepare<B>
-        + SvpApply<B>
+        + SvpApplyDftToDft<B>
         + VecZnxIdftApplyConsume<B>
         + VecZnxBigAddNormal<B>
         + VecZnxBigAddSmallInplace<B>
@@ -137,7 +137,7 @@ where
         + VecZnxDftAllocBytes
         + VecZnxBigNormalize<B>
         + VecZnxDftApply<B>
-        + SvpApplyInplace<B>
+        + SvpApplyDftToDftInplace<B>
         + VecZnxIdftApplyConsume<B>
         + VecZnxNormalizeTmpBytes
         + VecZnxFillUniform
@@ -213,7 +213,7 @@ where
     Module<B>: VecZnxDftAllocBytes
         + VecZnxBigAllocBytes
         + VecZnxDftApply<B>
-        + SvpApplyInplace<B>
+        + SvpApplyDftToDftInplace<B>
         + VecZnxIdftApplyConsume<B>
         + VecZnxBigAddInplace<B>
         + VecZnxBigAddSmallInplace<B>
@@ -226,7 +226,7 @@ where
         + VecZnxBigAllocBytes
         + SvpPPolAllocBytes
         + SvpPrepare<B>
-        + SvpApply<B>
+        + SvpApplyDftToDft<B>
         + VecZnxIdftApplyConsume<B>
         + VecZnxBigAddNormal<B>
         + VecZnxBigAddSmallInplace<B>
@@ -235,7 +235,7 @@ where
         + VecZnxDftAllocBytes
         + VecZnxBigNormalize<B>
         + VecZnxDftApply<B>
-        + SvpApplyInplace<B>
+        + SvpApplyDftToDftInplace<B>
         + VecZnxIdftApplyConsume<B>
         + VecZnxNormalizeTmpBytes
         + VecZnxFillUniform
@@ -290,7 +290,7 @@ where
     Module<B>: VecZnxDftAllocBytes
         + VecZnxBigNormalize<B>
         + VecZnxDftApply<B>
-        + SvpApplyInplace<B>
+        + SvpApplyDftToDftInplace<B>
         + VecZnxIdftApplyConsume<B>
         + VecZnxNormalizeTmpBytes
         + VecZnxFillUniform
@@ -308,7 +308,7 @@ where
         + VecZnxBigAddInplace<B>
         + VecZnxCopy
         + VecZnxDftAlloc<B>
-        + SvpApply<B>
+        + SvpApplyDftToDft<B>
         + VecZnxBigAddNormal<B>,
     B: Backend
         + TakeVecZnxDftImpl<B>

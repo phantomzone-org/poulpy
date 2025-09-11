@@ -1,7 +1,7 @@
 use poulpy_hal::{
     api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApply, SvpApplyInplace, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare,
-        VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxAutomorphism, VecZnxAutomorphismInplace,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolAllocBytes,
+        SvpPrepare, VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxAutomorphism, VecZnxAutomorphismInplace,
         VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigAlloc, VecZnxBigAllocBytes, VecZnxBigNormalize,
         VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftAddInplace, VecZnxDftAlloc, VecZnxDftAllocBytes, VecZnxDftApply,
         VecZnxDftCopy, VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA, VecZnxNormalize, VecZnxNormalizeInplace,
@@ -40,7 +40,7 @@ pub fn test_ggsw_automorphism<B>(
     Module<B>: VecZnxDftAllocBytes
         + VecZnxBigAllocBytes
         + VecZnxDftApply<B>
-        + SvpApplyInplace<B>
+        + SvpApplyDftToDftInplace<B>
         + VecZnxIdftApplyConsume<B>
         + VecZnxBigAddInplace<B>
         + VecZnxBigAddSmallInplace<B>
@@ -69,7 +69,7 @@ pub fn test_ggsw_automorphism<B>(
         + VecZnxAddNormal
         + VecZnxNormalize<B>
         + VecZnxSub
-        + SvpApply<B>
+        + SvpApplyDftToDft<B>
         + VecZnxSwitchRing<B>
         + VecZnxAutomorphismInplace<B>
         + VecZnxAutomorphism,
@@ -194,7 +194,7 @@ pub fn test_ggsw_automorphism_inplace<B>(
     Module<B>: VecZnxDftAllocBytes
         + VecZnxBigAllocBytes
         + VecZnxDftApply<B>
-        + SvpApplyInplace<B>
+        + SvpApplyDftToDftInplace<B>
         + VecZnxIdftApplyConsume<B>
         + VecZnxBigAddInplace<B>
         + VecZnxBigAddSmallInplace<B>
@@ -224,7 +224,7 @@ pub fn test_ggsw_automorphism_inplace<B>(
         + VecZnxNormalize<B>
         + VecZnxSub
         + VecZnxFillUniform
-        + SvpApply<B>
+        + SvpApplyDftToDft<B>
         + VecZnxSwitchRing<B>
         + VecZnxAutomorphismInplace<B>
         + VecZnxAutomorphism,

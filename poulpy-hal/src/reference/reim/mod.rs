@@ -85,6 +85,7 @@ pub trait ReimArithmetic {
     fn reim_negate(res: &mut [f64], a: &[f64]);
     fn reim_negate_inplace(res: &mut [f64]);
     fn reim_mul(res: &mut [f64], a: &[f64], b: &[f64]);
+    fn reim_mul_inplace(res: &mut [f64], a: &[f64]);
     fn reim_addmul(res: &mut [f64], a: &[f64], b: &[f64]);
     fn reim_copy(res: &mut [f64], a: &[f64]);
     fn reim_zero(res: &mut [f64]);

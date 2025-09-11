@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{
-        SvpApplyInplace, TakeVecZnxBig, TakeVecZnxDft, VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigNormalize,
+        SvpApplyDftToDftInplace, TakeVecZnxBig, TakeVecZnxDft, VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigNormalize,
         VecZnxDftAllocBytes, VecZnxDftApply, VecZnxIdftApplyConsume, VecZnxNormalizeTmpBytes,
     },
     layouts::{Backend, DataMut, DataRef, DataViewMut, Module, Scratch},
@@ -27,7 +27,7 @@ impl<DataSelf: DataRef> GLWECiphertext<DataSelf> {
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: VecZnxDftApply<B>
-            + SvpApplyInplace<B>
+            + SvpApplyDftToDftInplace<B>
             + VecZnxIdftApplyConsume<B>
             + VecZnxBigAddInplace<B>
             + VecZnxBigAddSmallInplace<B>
@@ -51,7 +51,7 @@ impl<DataSelf: DataRef> GLWECiphertext<DataSelf> {
                 // ci_dft = DFT(a[i]) * DFT(s[i])
                 let (mut ci_dft, _) = scratch_1.take_vec_znx_dft(self.n(), 1, self.size()); // TODO optimize size when pt << ct
                 module.vec_znx_dft_apply(1, 0, &mut ci_dft, 0, &self.data, i);
-                module.svp_apply_inplace(&mut ci_dft, 0, &sk.data, i - 1);
+                module.svp_apply_dft_to_dft_inplace(&mut ci_dft, 0, &sk.data, i - 1);
                 let ci_big = module.vec_znx_idft_apply_consume(ci_dft);
 
                 // c0_big += a[i] * s[i]

@@ -3,7 +3,10 @@ use poulpy_hal::{
         Backend, Module, ScalarZnxToRef, SvpPPol, SvpPPolOwned, SvpPPolToMut, SvpPPolToRef, VecZnxDft, VecZnxDftToMut,
         VecZnxDftToRef, ZnxInfos, ZnxView, ZnxViewMut,
     },
-    oep::{SvpApplyImpl, SvpApplyInplaceImpl, SvpPPolAllocBytesImpl, SvpPPolAllocImpl, SvpPPolFromBytesImpl, SvpPrepareImpl},
+    oep::{
+        SvpApplyDftToDftImpl, SvpApplyDftToDftInplaceImpl, SvpPPolAllocBytesImpl, SvpPPolAllocImpl, SvpPPolFromBytesImpl,
+        SvpPrepareImpl,
+    },
 };
 
 use crate::cpu_spqlios::{
@@ -45,9 +48,16 @@ unsafe impl SvpPrepareImpl<Self> for FFT64 {
     }
 }
 
-unsafe impl SvpApplyImpl<Self> for FFT64 {
-    fn svp_apply_impl<R, A, B>(module: &Module<Self>, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
-    where
+unsafe impl SvpApplyDftToDftImpl<Self> for FFT64 {
+    fn svp_apply_dft_to_dft_impl<R, A, B>(
+        module: &Module<Self>,
+        res: &mut R,
+        res_col: usize,
+        a: &A,
+        a_col: usize,
+        b: &B,
+        b_col: usize,
+    ) where
         R: VecZnxDftToMut<Self>,
         A: SvpPPolToRef<Self>,
         B: VecZnxDftToRef<Self>,
@@ -70,8 +80,8 @@ unsafe impl SvpApplyImpl<Self> for FFT64 {
     }
 }
 
-unsafe impl SvpApplyInplaceImpl for FFT64 {
-    fn svp_apply_inplace_impl<R, A>(module: &Module<Self>, res: &mut R, res_col: usize, a: &A, a_col: usize)
+unsafe impl SvpApplyDftToDftInplaceImpl for FFT64 {
+    fn svp_apply_dft_to_dft_inplace_impl<R, A>(module: &Module<Self>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxDftToMut<Self>,
         A: SvpPPolToRef<Self>,

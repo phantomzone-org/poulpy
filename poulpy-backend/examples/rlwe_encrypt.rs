@@ -2,7 +2,7 @@ use itertools::izip;
 use poulpy_backend::cpu_spqlios::FFT64;
 use poulpy_hal::{
     api::{
-        ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyInplace, SvpPPolAlloc, SvpPrepare, VecZnxAddNormal,
+        ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPrepare, VecZnxAddNormal,
         VecZnxBigAddSmallInplace, VecZnxBigAlloc, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallBInplace,
         VecZnxDftAlloc, VecZnxDftApply, VecZnxFillUniform, VecZnxIdftApplyTmpA, VecZnxNormalizeInplace,
     },
@@ -48,7 +48,7 @@ fn main() {
     module.vec_znx_dft_apply(1, 0, &mut buf_dft, 0, &ct, 1);
 
     // Applies DFT(ct[1]) * DFT(s)
-    module.svp_apply_inplace(
+    module.svp_apply_dft_to_dft_inplace(
         &mut buf_dft, // DFT(ct[1] * s)
         0,            // Selects the first column of res
         &s_dft,       // DFT(s)
@@ -110,7 +110,7 @@ fn main() {
 
     // DFT(ct[1] * s)
     module.vec_znx_dft_apply(1, 0, &mut buf_dft, 0, &ct, 1);
-    module.svp_apply_inplace(
+    module.svp_apply_dft_to_dft_inplace(
         &mut buf_dft,
         0, // Selects the first column of res.
         &s_dft,

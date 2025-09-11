@@ -1,7 +1,15 @@
 use crate::{
-    api::{SvpApply, SvpApplyInplace, SvpPPolAlloc, SvpPPolAllocBytes, SvpPPolFromBytes, SvpPrepare},
-    layouts::{Backend, Module, ScalarZnxToRef, SvpPPolOwned, SvpPPolToMut, SvpPPolToRef, VecZnxDftToMut, VecZnxDftToRef},
-    oep::{SvpApplyImpl, SvpApplyInplaceImpl, SvpPPolAllocBytesImpl, SvpPPolAllocImpl, SvpPPolFromBytesImpl, SvpPrepareImpl},
+    api::{
+        SvpApplyDft, SvpApplyDftToDft, SvpApplyDftToDftAdd, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolAllocBytes,
+        SvpPPolFromBytes, SvpPrepare,
+    },
+    layouts::{
+        Backend, Module, ScalarZnxToRef, SvpPPolOwned, SvpPPolToMut, SvpPPolToRef, VecZnxDftToMut, VecZnxDftToRef, VecZnxToRef,
+    },
+    oep::{
+        SvpApplyDftImpl, SvpApplyDftToDftAddImpl, SvpApplyDftToDftImpl, SvpApplyDftToDftInplaceImpl, SvpPPolAllocBytesImpl,
+        SvpPPolAllocImpl, SvpPPolFromBytesImpl, SvpPrepareImpl,
+    },
 };
 
 impl<B> SvpPPolFromBytes<B> for Module<B>
@@ -44,29 +52,57 @@ where
     }
 }
 
-impl<B> SvpApply<B> for Module<B>
+impl<B> SvpApplyDft<B> for Module<B>
 where
-    B: Backend + SvpApplyImpl<B>,
+    B: Backend + SvpApplyDftImpl<B>,
 {
-    fn svp_apply<R, A, C>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &C, b_col: usize)
+    fn svp_apply_dft<R, A, C>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &C, b_col: usize)
+    where
+        R: VecZnxDftToMut<B>,
+        A: SvpPPolToRef<B>,
+        C: VecZnxToRef,
+    {
+        B::svp_apply_dft_impl(self, res, res_col, a, a_col, b, b_col);
+    }
+}
+
+impl<B> SvpApplyDftToDft<B> for Module<B>
+where
+    B: Backend + SvpApplyDftToDftImpl<B>,
+{
+    fn svp_apply_dft_to_dft<R, A, C>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &C, b_col: usize)
     where
         R: VecZnxDftToMut<B>,
         A: SvpPPolToRef<B>,
         C: VecZnxDftToRef<B>,
     {
-        B::svp_apply_impl(self, res, res_col, a, a_col, b, b_col);
+        B::svp_apply_dft_to_dft_impl(self, res, res_col, a, a_col, b, b_col);
     }
 }
 
-impl<B> SvpApplyInplace<B> for Module<B>
+impl<B> SvpApplyDftToDftAdd<B> for Module<B>
 where
-    B: Backend + SvpApplyInplaceImpl,
+    B: Backend + SvpApplyDftToDftAddImpl<B>,
 {
-    fn svp_apply_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn svp_apply_dft_to_dft_add<R, A, C>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &C, b_col: usize)
+    where
+        R: VecZnxDftToMut<B>,
+        A: SvpPPolToRef<B>,
+        C: VecZnxDftToRef<B>,
+    {
+        B::svp_apply_dft_to_dft_add_impl(self, res, res_col, a, a_col, b, b_col);
+    }
+}
+
+impl<B> SvpApplyDftToDftInplace<B> for Module<B>
+where
+    B: Backend + SvpApplyDftToDftInplaceImpl,
+{
+    fn svp_apply_dft_to_dft_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxDftToMut<B>,
         A: SvpPPolToRef<B>,
     {
-        B::svp_apply_inplace_impl(self, res, res_col, a, a_col);
+        B::svp_apply_dft_to_dft_inplace_impl(self, res, res_col, a, a_col);
     }
 }

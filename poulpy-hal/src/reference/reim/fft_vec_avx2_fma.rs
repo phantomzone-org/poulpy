@@ -60,6 +60,13 @@ impl ReimArithmetic for ReimArithmeticAvx {
     }
 
     #[inline(always)]
+    fn reim_mul_inplace(res: &mut [f64], a: &[f64]) {
+        unsafe {
+            reim_mul_inplace_avx2_fma(res, a);
+        }
+    }
+
+    #[inline(always)]
     fn reim_addmul(res: &mut [f64], a: &[f64], b: &[f64]) {
         unsafe {
             reim_addmul_avx2_fma(res, a, b);
@@ -378,6 +385,52 @@ pub fn reim_mul_avx2_fma(res: &mut [f64], a: &[f64], b: &[f64]) {
             ai_ptr = ai_ptr.add(4);
             br_ptr = br_ptr.add(4);
             bi_ptr = bi_ptr.add(4);
+        }
+    }
+}
+
+/// # Safety
+/// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
+#[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
+#[target_feature(enable = "avx2,fma")]
+pub fn reim_mul_inplace_avx2_fma(res: &mut [f64], a: &[f64]) {
+    #[cfg(debug_assertions)]
+    {
+        assert_eq!(a.len(), res.len());
+    }
+
+    let m: usize = res.len() >> 1;
+
+    let (rr, ri) = res.split_at_mut(m);
+    let (ar, ai) = a.split_at(m);
+
+    unsafe {
+        let mut rr_ptr: *mut f64 = rr.as_mut_ptr();
+        let mut ri_ptr: *mut f64 = ri.as_mut_ptr();
+        let mut ar_ptr: *const f64 = ar.as_ptr();
+        let mut ai_ptr: *const f64 = ai.as_ptr();
+
+        use std::arch::x86_64::{__m256d, _mm256_fmadd_pd, _mm256_fmsub_pd, _mm256_loadu_pd, _mm256_mul_pd, _mm256_storeu_pd};
+
+        for _ in (0..m >> 2).step_by(4) {
+            let ar: __m256d = _mm256_loadu_pd(ar_ptr);
+            let ai: __m256d = _mm256_loadu_pd(ai_ptr);
+            let br: __m256d = _mm256_loadu_pd(rr_ptr);
+            let bi: __m256d = _mm256_loadu_pd(ri_ptr);
+
+            let t1: __m256d = _mm256_mul_pd(ai, bi);
+            let t2: __m256d = _mm256_mul_pd(ar, bi);
+
+            let rr = _mm256_fmsub_pd(ar, br, t1);
+            let ri = _mm256_fmadd_pd(ai, br, t2);
+
+            _mm256_storeu_pd(rr_ptr, rr);
+            _mm256_storeu_pd(ri_ptr, ri);
+
+            rr_ptr = rr_ptr.add(4);
+            ri_ptr = ri_ptr.add(4);
+            ar_ptr = ar_ptr.add(4);
+            ai_ptr = ai_ptr.add(4);
         }
     }
 }

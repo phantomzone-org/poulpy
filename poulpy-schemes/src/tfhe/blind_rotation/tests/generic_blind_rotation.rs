@@ -1,7 +1,7 @@
 use poulpy_hal::{
     api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApply, SvpApplyInplace, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare,
-        VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolAllocBytes,
+        SvpPrepare, VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace,
         VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftAdd, VecZnxDftAddInplace,
         VecZnxDftAllocBytes, VecZnxDftApply, VecZnxDftSubABInplace, VecZnxDftZero, VecZnxFillUniform, VecZnxIdftApply,
         VecZnxIdftApplyConsume, VecZnxIdftApplyTmpBytes, VecZnxMulXpMinusOneInplace, VecZnxNormalize, VecZnxNormalizeInplace,
@@ -40,7 +40,7 @@ where
         + VecZnxDftAddInplace<B>
         + VecZnxDftApply<B>
         + VecZnxDftZero<B>
-        + SvpApply<B>
+        + SvpApplyDftToDft<B>
         + VecZnxDftSubABInplace<B>
         + VecZnxBigAddSmallInplace<B>
         + VecZnxRotate
@@ -52,7 +52,7 @@ where
         + VecZnxMulXpMinusOneInplace<B>
         + SvpPrepare<B>
         + SvpPPolAlloc<B>
-        + SvpApplyInplace<B>
+        + SvpApplyDftToDftInplace<B>
         + VecZnxIdftApplyConsume<B>
         + VecZnxBigAddInplace<B>
         + VecZnxBigNormalize<B>

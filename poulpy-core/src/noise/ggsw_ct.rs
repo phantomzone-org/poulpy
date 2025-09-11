@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyInplace, VecZnxAddScalarInplace, VecZnxBigAddInplace,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDftInplace, VecZnxAddScalarInplace, VecZnxBigAddInplace,
         VecZnxBigAddSmallInplace, VecZnxBigAlloc, VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
         VecZnxDftAlloc, VecZnxDftAllocBytes, VecZnxDftApply, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA,
         VecZnxNormalizeTmpBytes, VecZnxSubABInplace,
@@ -24,7 +24,7 @@ impl<D: DataRef> GGSWCiphertext<D> {
         Module<B>: VecZnxDftAllocBytes
             + VecZnxBigAllocBytes
             + VecZnxDftApply<B>
-            + SvpApplyInplace<B>
+            + SvpApplyDftToDftInplace<B>
             + VecZnxIdftApplyConsume<B>
             + VecZnxBigAddInplace<B>
             + VecZnxBigAddSmallInplace<B>
@@ -58,7 +58,7 @@ impl<D: DataRef> GGSWCiphertext<D> {
                 // mul with sk[col_j-1]
                 if col_j > 0 {
                     module.vec_znx_dft_apply(1, 0, &mut pt_dft, 0, &pt.data, 0);
-                    module.svp_apply_inplace(&mut pt_dft, 0, &sk_prepared.data, col_j - 1);
+                    module.svp_apply_dft_to_dft_inplace(&mut pt_dft, 0, &sk_prepared.data, col_j - 1);
                     module.vec_znx_idft_apply_tmpa(&mut pt_big, 0, &mut pt_dft, 0);
                     module.vec_znx_big_normalize(basek, &mut pt.data, 0, &pt_big, 0, scratch.borrow());
                 }
@@ -91,7 +91,7 @@ impl<D: DataRef> GGSWCiphertext<D> {
         Module<B>: VecZnxDftAllocBytes
             + VecZnxBigAllocBytes
             + VecZnxDftApply<B>
-            + SvpApplyInplace<B>
+            + SvpApplyDftToDftInplace<B>
             + VecZnxIdftApplyConsume<B>
             + VecZnxBigAddInplace<B>
             + VecZnxBigAddSmallInplace<B>
@@ -124,7 +124,7 @@ impl<D: DataRef> GGSWCiphertext<D> {
                 // mul with sk[col_j-1]
                 if col_j > 0 {
                     module.vec_znx_dft_apply(1, 0, &mut pt_dft, 0, &pt.data, 0);
-                    module.svp_apply_inplace(&mut pt_dft, 0, &sk_prepared.data, col_j - 1);
+                    module.svp_apply_dft_to_dft_inplace(&mut pt_dft, 0, &sk_prepared.data, col_j - 1);
                     module.vec_znx_idft_apply_tmpa(&mut pt_big, 0, &mut pt_dft, 0);
                     module.vec_znx_big_normalize(basek, &mut pt.data, 0, &pt_big, 0, scratch.borrow());
                 }
