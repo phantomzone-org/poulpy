@@ -9,7 +9,7 @@ use crate::{
         Backend, DataViewMut, MatZnx, MatZnxToRef, Module, ScratchOwned, VmpPMat, VmpPMatToMut, ZnxInfos, ZnxView, ZnxViewMut,
     },
     reference::{
-        reim::{ReimConv, ReimConvRef, ReimDFTExecute, ReimFFTRef, ReimFFTTable, as_arr},
+        reim::{ReimConv, ReimConvRef, ReimDFTExecute, ReimFFTRef, ReimFFTTable},
         reim4::{Reim4Blk, Reim4BlkRef},
         vec_znx_dft::fft64::assert_approx_eq_slice,
     },
