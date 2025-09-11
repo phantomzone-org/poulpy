@@ -160,7 +160,8 @@ impl<D: DataMut> GLWECiphertext<D> {
     {
         #[cfg(debug_assertions)]
         {
-            assert_eq!(self.rank(), other.rank())
+            assert_eq!(self.rank(), other.rank());
+            debug_assert_eq!(self.size(), other.size());
         }
 
         let k: usize = other.k;

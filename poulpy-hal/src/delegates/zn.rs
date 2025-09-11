@@ -1,9 +1,18 @@
 use crate::{
-    api::{ZnAddNormal, ZnFillNormal, ZnFillUniform, ZnNormalizeInplace},
+    api::{ZnAddNormal, ZnFillNormal, ZnFillUniform, ZnNormalizeInplace, ZnNormalizeTmpBytes},
     layouts::{Backend, Module, Scratch, ZnToMut},
-    oep::{ZnAddNormalImpl, ZnFillNormalImpl, ZnFillUniformImpl, ZnNormalizeInplaceImpl},
+    oep::{ZnAddNormalImpl, ZnFillNormalImpl, ZnFillUniformImpl, ZnNormalizeInplaceImpl, ZnNormalizeTmpBytesImpl},
     source::Source,
 };
+
+impl<B> ZnNormalizeTmpBytes for Module<B>
+where
+    B: Backend + ZnNormalizeTmpBytesImpl<B>,
+{
+    fn zn_normalize_tmp_bytes(&self, n: usize) -> usize {
+        B::zn_normalize_tmp_bytes_impl(n)
+    }
+}
 
 impl<B> ZnNormalizeInplace<B> for Module<B>
 where
@@ -21,11 +30,11 @@ impl<B> ZnFillUniform for Module<B>
 where
     B: Backend + ZnFillUniformImpl<B>,
 {
-    fn zn_fill_uniform<R>(&self, n: usize, basek: usize, res: &mut R, res_col: usize, k: usize, source: &mut Source)
+    fn zn_fill_uniform<R>(&self, n: usize, basek: usize, res: &mut R, res_col: usize, source: &mut Source)
     where
         R: ZnToMut,
     {
-        B::zn_fill_uniform_impl(n, basek, res, res_col, k, source);
+        B::zn_fill_uniform_impl(n, basek, res, res_col, source);
     }
 }
 
