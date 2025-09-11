@@ -72,7 +72,7 @@ impl<DataSelf: DataMut> GGLWEAutomorphismKey<DataSelf> {
                 lhs.rank_in()
             );
             assert_eq!(
-                lhs.rank_out(),
+                self.rank_out(),
                 rhs.rank_in(),
                 "ksk_in output rank: {} != ksk_apply input rank: {}",
                 self.rank_out(),
@@ -146,9 +146,48 @@ impl<DataSelf: DataMut> GGLWEAutomorphismKey<DataSelf> {
             + VecZnxAutomorphismInplace<B>,
         Scratch<B>: ScratchAvailable + TakeVecZnxDft<B>,
     {
-        unsafe {
-            let self_ptr: *mut GGLWEAutomorphismKey<DataSelf> = self as *mut GGLWEAutomorphismKey<DataSelf>;
-            self.automorphism(module, &*self_ptr, rhs, scratch);
+        #[cfg(debug_assertions)]
+        {
+            assert_eq!(
+                self.rank_out(),
+                rhs.rank_in(),
+                "ksk_in output rank: {} != ksk_apply input rank: {}",
+                self.rank_out(),
+                rhs.rank_in()
+            );
+            assert_eq!(
+                self.rank_out(),
+                rhs.rank_out(),
+                "ksk_out output rank: {} != ksk_apply output rank: {}",
+                self.rank_out(),
+                rhs.rank_out()
+            );
         }
+
+        let cols_out: usize = rhs.rank_out() + 1;
+
+        let p: i64 = self.p();
+        let p_inv = module.galois_element_inv(p);
+
+        (0..self.rank_in()).for_each(|col_i| {
+            (0..self.rows()).for_each(|row_j| {
+                let mut res_ct: GLWECiphertext<&mut [u8]> = self.at_mut(row_j, col_i);
+
+                // Reverts the automorphism X^{-k}: (-pi^{-1}_{k}(s)a + s, a) to (-sa + pi_{k}(s), a)
+                (0..cols_out).for_each(|i| {
+                    module.vec_znx_automorphism_inplace(p_inv, &mut res_ct.data, i, scratch);
+                });
+
+                // Key-switch (-sa + pi_{k}(s), a) to (-pi^{-1}_{k'}(s)a + pi_{k}(s), a)
+                res_ct.keyswitch_inplace(module, &rhs.key, scratch);
+
+                // Applies back the automorphism X^{-k}: (-pi^{-1}_{k'}(s)a + pi_{k}(s), a) to (-pi^{-1}_{k'+k}(s)a + s, a)
+                (0..cols_out).for_each(|i| {
+                    module.vec_znx_automorphism_inplace(p_inv, &mut res_ct.data, i, scratch);
+                });
+            });
+        });
+
+        self.p = (self.p * rhs.p) % (module.cyclotomic_order() as i64);
     }
 }

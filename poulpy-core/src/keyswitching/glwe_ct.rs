@@ -118,6 +118,63 @@ impl<DataSelf: DataRef> GLWECiphertext<DataSelf> {
             )
         );
     }
+
+    #[allow(dead_code)]
+    pub(crate) fn assert_keyswitch_inplace<B: Backend, DataRhs>(
+        &self,
+        module: &Module<B>,
+        rhs: &GGLWESwitchingKeyPrepared<DataRhs, B>,
+        scratch: &Scratch<B>,
+    ) where
+        DataRhs: DataRef,
+        Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes,
+        Scratch<B>: ScratchAvailable,
+    {
+        let basek: usize = self.basek();
+        assert_eq!(
+            self.rank(),
+            rhs.rank_out(),
+            "self.rank(): {} != rhs.rank_out(): {}",
+            self.rank(),
+            rhs.rank_out()
+        );
+        assert_eq!(self.basek(), basek);
+        assert_eq!(rhs.n(), self.n());
+        assert!(
+            scratch.available()
+                >= GLWECiphertext::keyswitch_scratch_space(
+                    module,
+                    self.basek(),
+                    self.k(),
+                    self.k(),
+                    rhs.k(),
+                    rhs.digits(),
+                    rhs.rank_in(),
+                    rhs.rank_out(),
+                ),
+            "scratch.available()={} < GLWECiphertext::keyswitch_scratch_space(
+                    module,
+                    self.basek(),
+                    self.k(),
+                    self.k(),
+                    rhs.k(),
+                    rhs.digits(),
+                    rhs.rank_in(),
+                    rhs.rank_out(),
+                )={}",
+            scratch.available(),
+            GLWECiphertext::keyswitch_scratch_space(
+                module,
+                self.basek(),
+                self.k(),
+                self.k(),
+                rhs.k(),
+                rhs.digits(),
+                rhs.rank_in(),
+                rhs.rank_out(),
+            )
+        );
+    }
 }
 
 impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
@@ -168,10 +225,15 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
             + VecZnxBigNormalize<B>,
         Scratch<B>: ScratchAvailable + TakeVecZnxDft<B>,
     {
-        unsafe {
-            let self_ptr: *mut GLWECiphertext<DataSelf> = self as *mut GLWECiphertext<DataSelf>;
-            self.keyswitch(module, &*self_ptr, rhs, scratch);
+        #[cfg(debug_assertions)]
+        {
+            self.assert_keyswitch_inplace(module, rhs, scratch);
         }
+        let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self.n(), self.cols(), rhs.size()); // Todo optimise
+        let res_big: VecZnxBig<_, B> = self.keyswitch_internal(module, res_dft, rhs, scratch_1);
+        (0..self.cols()).for_each(|i| {
+            module.vec_znx_big_normalize(self.basek(), &mut self.data, i, &res_big, i, scratch_1);
+        })
     }
 }
 

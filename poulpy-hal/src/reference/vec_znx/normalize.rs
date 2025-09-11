@@ -25,7 +25,7 @@ where
 
     #[cfg(debug_assertions)]
     {
-        assert_eq!(carry.len(), res.n());
+        assert!(carry.len() >= res.n());
     }
 
     let res_size: usize = res.size();
@@ -72,7 +72,7 @@ pub fn vec_znx_normalize_inplace<R: VecZnxToMut, ZNXNORM: ZnxNormalize>(
 
     #[cfg(debug_assertions)]
     {
-        assert_eq!(carry.len(), res.n());
+        assert!(carry.len() >= res.n());
     }
 
     let res_size: usize = res.size();

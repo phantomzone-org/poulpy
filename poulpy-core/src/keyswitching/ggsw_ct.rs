@@ -162,7 +162,12 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
             + VecZnxIdftApplyTmpA<B>,
         Scratch<B>: ScratchAvailable + TakeVecZnxDft<B> + TakeVecZnxBig<B>,
     {
-        self.keyswitch_internal(module, lhs, ksk, scratch);
+        (0..lhs.rows()).for_each(|row_i| {
+            // Key-switch column 0, i.e.
+            // col 0: (-(a0s0 + a1s1 + a2s2) + M[i], a0, a1, a2) -> (-(a0s0' + a1s1' + a2s2') + M[i], a0, a1, a2)
+            self.at_mut(row_i, 0)
+                .keyswitch(module, &lhs.at(row_i, 0), ksk, scratch);
+        });
         self.expand_row(module, tsk, scratch);
     }
 
@@ -190,10 +195,13 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
             + VecZnxIdftApplyTmpA<B>,
         Scratch<B>: ScratchAvailable + TakeVecZnxDft<B> + TakeVecZnxBig<B>,
     {
-        unsafe {
-            let self_ptr: *mut GGSWCiphertext<DataSelf> = self as *mut GGSWCiphertext<DataSelf>;
-            self.keyswitch(module, &*self_ptr, ksk, tsk, scratch);
-        }
+        (0..self.rows()).for_each(|row_i| {
+            // Key-switch column 0, i.e.
+            // col 0: (-(a0s0 + a1s1 + a2s2) + M[i], a0, a1, a2) -> (-(a0s0' + a1s1' + a2s2') + M[i], a0, a1, a2)
+            self.at_mut(row_i, 0)
+                .keyswitch_inplace(module, ksk, scratch);
+        });
+        self.expand_row(module, tsk, scratch);
     }
 
     pub fn expand_row<DataTsk: DataRef, B: Backend>(
@@ -326,33 +334,6 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
                     );
                 });
             })
-        })
-    }
-
-    fn keyswitch_internal<DataLhs: DataRef, DataKsk: DataRef, B: Backend>(
-        &mut self,
-        module: &Module<B>,
-        lhs: &GGSWCiphertext<DataLhs>,
-        ksk: &GGLWESwitchingKeyPrepared<DataKsk, B>,
-        scratch: &mut Scratch<B>,
-    ) where
-        Module<B>: VecZnxDftAllocBytes
-            + VmpApplyDftToDftTmpBytes
-            + VecZnxBigNormalizeTmpBytes
-            + VmpApplyDftToDft<B>
-            + VmpApplyDftToDftAdd<B>
-            + VecZnxDftApply<B>
-            + VecZnxIdftApplyConsume<B>
-            + VecZnxBigAddSmallInplace<B>
-            + VecZnxBigNormalize<B>,
-        Scratch<B>: ScratchAvailable + TakeVecZnxDft<B>,
-    {
-        // Keyswitch the j-th row of the col 0
-        (0..lhs.rows()).for_each(|row_i| {
-            // Key-switch column 0, i.e.
-            // col 0: (-(a0s0 + a1s1 + a2s2) + M[i], a0, a1, a2) -> (-(a0s0' + a1s1' + a2s2') + M[i], a0, a1, a2)
-            self.at_mut(row_i, 0)
-                .keyswitch(module, &lhs.at(row_i, 0), ksk, scratch);
         })
     }
 }

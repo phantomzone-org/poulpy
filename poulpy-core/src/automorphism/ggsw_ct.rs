@@ -133,7 +133,13 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
             )
         };
 
-        self.automorphism_internal(module, lhs, auto_key, scratch);
+        // Keyswitch the j-th row of the col 0
+        (0..lhs.rows()).for_each(|row_i| {
+            // Key-switch column 0, i.e.
+            // col 0: (-(a0s0 + a1s1 + a2s2) + M[i], a0, a1, a2) -> (-(a0pi^-1(s0) + a1pi^-1(s1) + a2pi^-1(s2)) + M[i], a0, a1, a2)
+            self.at_mut(row_i, 0)
+                .automorphism(module, &lhs.at(row_i, 0), auto_key, scratch);
+        });
         self.expand_row(module, tensor_key, scratch);
     }
 
@@ -161,37 +167,13 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
             + VecZnxIdftApplyTmpA<B>,
         Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnxBig<B>,
     {
-        unsafe {
-            let self_ptr: *mut GGSWCiphertext<DataSelf> = self as *mut GGSWCiphertext<DataSelf>;
-            self.automorphism(module, &*self_ptr, auto_key, tensor_key, scratch);
-        }
-    }
-
-    fn automorphism_internal<DataLhs: DataRef, DataAk: DataRef, B: Backend>(
-        &mut self,
-        module: &Module<B>,
-        lhs: &GGSWCiphertext<DataLhs>,
-        auto_key: &GGLWEAutomorphismKeyPrepared<DataAk, B>,
-        scratch: &mut Scratch<B>,
-    ) where
-        Module<B>: VecZnxDftAllocBytes
-            + VmpApplyDftToDftTmpBytes
-            + VecZnxBigNormalizeTmpBytes
-            + VmpApplyDftToDft<B>
-            + VmpApplyDftToDftAdd<B>
-            + VecZnxDftApply<B>
-            + VecZnxIdftApplyConsume<B>
-            + VecZnxBigAddSmallInplace<B>
-            + VecZnxBigNormalize<B>
-            + VecZnxAutomorphismInplace<B>,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
-    {
         // Keyswitch the j-th row of the col 0
-        (0..lhs.rows()).for_each(|row_i| {
+        (0..self.rows()).for_each(|row_i| {
             // Key-switch column 0, i.e.
             // col 0: (-(a0s0 + a1s1 + a2s2) + M[i], a0, a1, a2) -> (-(a0pi^-1(s0) + a1pi^-1(s1) + a2pi^-1(s2)) + M[i], a0, a1, a2)
             self.at_mut(row_i, 0)
-                .automorphism(module, &lhs.at(row_i, 0), auto_key, scratch);
+                .automorphism_inplace(module, auto_key, scratch);
         });
+        self.expand_row(module, tensor_key, scratch);
     }
 }

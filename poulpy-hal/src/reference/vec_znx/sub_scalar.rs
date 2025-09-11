@@ -7,15 +7,8 @@ use crate::{
     source::Source,
 };
 
-pub fn vec_znx_sub_scalar_ref<R, A, B, ZNXARI>(
-    res: &mut R,
-    res_col: usize,
-    a: &A,
-    a_col: usize,
-    b: &B,
-    b_col: usize,
-    b_limb: usize,
-) where
+pub fn vec_znx_sub_scalar<R, A, B, ZNXARI>(res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize, b_limb: usize)
+where
     R: VecZnxToMut,
     A: ScalarZnxToRef,
     B: VecZnxToRef,
@@ -95,7 +88,7 @@ where
 
             // Reference
             for i in 0..cols {
-                vec_znx_sub_scalar_ref::<_, _, _, ZnxArithmeticRef>(&mut res_0, i, &a, i, &b, i, (res_size.min(a_size)) - 1);
+                vec_znx_sub_scalar::<_, _, _, ZnxArithmeticRef>(&mut res_0, i, &a, i, &b, i, (res_size.min(a_size)) - 1);
                 module.vec_znx_sub_scalar(&mut res_1, i, &a, i, &b, i, (res_size.min(a_size)) - 1);
             }
 

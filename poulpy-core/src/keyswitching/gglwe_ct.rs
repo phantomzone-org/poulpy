@@ -162,6 +162,12 @@ impl<DataSelf: DataMut> GGLWESwitchingKey<DataSelf> {
                 self.rank_out(),
                 rhs.rank_out()
             );
+            assert!(
+                self.rows() <= lhs.rows(),
+                "self.rows()={} > lhs.rows()={}",
+                self.rows(),
+                lhs.rows()
+            );
         }
 
         (0..self.rank_in()).for_each(|col_i| {

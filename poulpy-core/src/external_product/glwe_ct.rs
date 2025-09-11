@@ -155,9 +155,74 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
             + VecZnxBigNormalize<B>,
         Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
     {
-        unsafe {
-            let self_ptr: *mut GLWECiphertext<DataSelf> = self as *mut GLWECiphertext<DataSelf>;
-            self.external_product(module, &*self_ptr, rhs, scratch);
+        let basek: usize = self.basek();
+
+        #[cfg(debug_assertions)]
+        {
+            use poulpy_hal::api::ScratchAvailable;
+
+            assert_eq!(rhs.rank(), self.rank());
+            assert_eq!(self.basek(), basek);
+            assert_eq!(rhs.n(), self.n());
+            assert!(
+                scratch.available()
+                    >= GLWECiphertext::external_product_scratch_space(
+                        module,
+                        self.basek(),
+                        self.k(),
+                        self.k(),
+                        rhs.k(),
+                        rhs.digits(),
+                        rhs.rank(),
+                    )
+            );
         }
+
+        let cols: usize = rhs.rank() + 1;
+        let digits: usize = rhs.digits();
+
+        let (mut res_dft, scratch_1) = scratch.take_vec_znx_dft(self.n(), cols, rhs.size()); // Todo optimise
+        let (mut a_dft, scratch_2) = scratch_1.take_vec_znx_dft(self.n(), cols, self.size().div_ceil(digits));
+
+        a_dft.data_mut().fill(0);
+
+        {
+            (0..digits).for_each(|di| {
+                // (lhs.size() + di) / digits = (a - (digit - di - 1)).div_ceil(digits)
+                a_dft.set_size((self.size() + di) / digits);
+
+                // Small optimization for digits > 2
+                // VMP produce some error e, and since we aggregate vmp * 2^{di * B}, then
+                // we also aggregate ei * 2^{di * B}, with the largest error being ei * 2^{(digits-1) * B}.
+                // As such we can ignore the last digits-2 limbs safely of the sum of vmp products.
+                // It is possible to further ignore the last digits-1 limbs, but this introduce
+                // ~0.5 to 1 bit of additional noise, and thus not chosen here to ensure that the same
+                // noise is kept with respect to the ideal functionality.
+                res_dft.set_size(rhs.size() - ((digits - di) as isize - 2).max(0) as usize);
+
+                (0..cols).for_each(|col_i| {
+                    module.vec_znx_dft_apply(
+                        digits,
+                        digits - 1 - di,
+                        &mut a_dft,
+                        col_i,
+                        &self.data,
+                        col_i,
+                    );
+                });
+
+                if di == 0 {
+                    module.vmp_apply_dft_to_dft(&mut res_dft, &a_dft, &rhs.data, scratch_2);
+                } else {
+                    module.vmp_apply_dft_to_dft_add(&mut res_dft, &a_dft, &rhs.data, di, scratch_2);
+                }
+            });
+        }
+
+        let res_big: VecZnxBig<&mut [u8], B> = module.vec_znx_idft_apply_consume(res_dft);
+
+        (0..cols).for_each(|i| {
+            module.vec_znx_big_normalize(basek, &mut self.data, i, &res_big, i, scratch_1);
+        });
     }
 }

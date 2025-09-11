@@ -57,7 +57,7 @@ unsafe impl VecZnxIdftApplyImpl<Self> for FFT64 {
         R: VecZnxBigToMut<Self>,
         A: VecZnxDftToRef<Self>,
     {
-        vec_znx_idft_apply::<_, _, _, ZnxArithmeticRef, ReimArithmeticRef, ReimConvRef, ReimIFFTRef>(
+        vec_znx_idft_apply::<R, A, Self, ZnxArithmeticRef, ReimArithmeticRef, ReimConvRef, ReimIFFTRef>(
             module.get_ifft_table(),
             res,
             res_col,
@@ -73,7 +73,7 @@ unsafe impl VecZnxIdftApplyTmpAImpl<Self> for FFT64 {
         R: VecZnxBigToMut<Self>,
         A: VecZnxDftToMut<Self>,
     {
-        vec_znx_idft_apply_tmpa::<_, _, _, ZnxArithmeticRef, ReimConvRef, ReimIFFTRef>(
+        vec_znx_idft_apply_tmpa::<R, A, Self, ZnxArithmeticRef, ReimConvRef, ReimIFFTRef>(
             module.get_ifft_table(),
             res,
             res_col,
@@ -88,7 +88,7 @@ unsafe impl VecZnxIdftApplyConsumeImpl<Self> for FFT64 {
     where
         VecZnxDft<D, FFT64>: VecZnxDftToMut<Self>,
     {
-        vec_znx_idft_apply_consume::<_, _, ReimConvRef, ReimIFFTRef>(module.get_ifft_table(), res)
+        vec_znx_idft_apply_consume::<D, Self, ReimConvRef, ReimIFFTRef>(module.get_ifft_table(), res)
     }
 }
 
@@ -105,7 +105,7 @@ unsafe impl VecZnxDftApplyImpl<Self> for FFT64 {
         R: VecZnxDftToMut<Self>,
         A: VecZnxToRef,
     {
-        vec_znx_dft_apply::<_, _, _, ReimArithmeticRef, ReimConvRef, ReimFFTRef>(
+        vec_znx_dft_apply::<R, A, Self, ReimArithmeticRef, ReimConvRef, ReimFFTRef>(
             module.get_fft_table(),
             step,
             offset,
@@ -118,20 +118,20 @@ unsafe impl VecZnxDftApplyImpl<Self> for FFT64 {
 }
 
 unsafe impl VecZnxDftAddImpl<Self> for FFT64 {
-    fn vec_znx_dft_add_impl<R, A, D>(
+    fn vec_znx_dft_add_impl<R, A, B>(
         _module: &Module<Self>,
         res: &mut R,
         res_col: usize,
         a: &A,
         a_col: usize,
-        b: &D,
+        b: &B,
         b_col: usize,
     ) where
         R: VecZnxDftToMut<Self>,
         A: VecZnxDftToRef<Self>,
-        D: VecZnxDftToRef<Self>,
+        B: VecZnxDftToRef<Self>,
     {
-        vec_znx_dft_add::<_, _, _, _, ReimArithmeticRef>(res, res_col, a, a_col, b, b_col);
+        vec_znx_dft_add::<R, A, B, Self, ReimArithmeticRef>(res, res_col, a, a_col, b, b_col);
     }
 }
 
@@ -141,25 +141,25 @@ unsafe impl VecZnxDftAddInplaceImpl<Self> for FFT64 {
         R: VecZnxDftToMut<Self>,
         A: VecZnxDftToRef<Self>,
     {
-        vec_znx_dft_add_inplace::<_, _, _, ReimArithmeticRef>(res, res_col, a, a_col);
+        vec_znx_dft_add_inplace::<R, A, Self, ReimArithmeticRef>(res, res_col, a, a_col);
     }
 }
 
 unsafe impl VecZnxDftSubImpl<Self> for FFT64 {
-    fn vec_znx_dft_sub_impl<R, A, D>(
+    fn vec_znx_dft_sub_impl<R, A, B>(
         _module: &Module<Self>,
         res: &mut R,
         res_col: usize,
         a: &A,
         a_col: usize,
-        b: &D,
+        b: &B,
         b_col: usize,
     ) where
         R: VecZnxDftToMut<Self>,
         A: VecZnxDftToRef<Self>,
-        D: VecZnxDftToRef<Self>,
+        B: VecZnxDftToRef<Self>,
     {
-        vec_znx_dft_sub::<_, _, _, _, ReimArithmeticRef>(res, res_col, a, a_col, b, b_col);
+        vec_znx_dft_sub::<R, A, B, Self, ReimArithmeticRef>(res, res_col, a, a_col, b, b_col);
     }
 }
 
@@ -169,7 +169,7 @@ unsafe impl VecZnxDftSubABInplaceImpl<Self> for FFT64 {
         R: VecZnxDftToMut<Self>,
         A: VecZnxDftToRef<Self>,
     {
-        vec_znx_dft_sub_ab_inplace::<_, _, _, ReimArithmeticRef>(res, res_col, a, a_col);
+        vec_znx_dft_sub_ab_inplace::<R, A, Self, ReimArithmeticRef>(res, res_col, a, a_col);
     }
 }
 
@@ -179,7 +179,7 @@ unsafe impl VecZnxDftSubBAInplaceImpl<Self> for FFT64 {
         R: VecZnxDftToMut<Self>,
         A: VecZnxDftToRef<Self>,
     {
-        vec_znx_dft_sub_ba_inplace::<_, _, _, ReimArithmeticRef>(res, res_col, a, a_col);
+        vec_znx_dft_sub_ba_inplace::<R, A, Self, ReimArithmeticRef>(res, res_col, a, a_col);
     }
 }
 
@@ -196,7 +196,7 @@ unsafe impl VecZnxDftCopyImpl<Self> for FFT64 {
         R: VecZnxDftToMut<Self>,
         A: VecZnxDftToRef<Self>,
     {
-        vec_znx_dft_copy::<_, _, _, ReimArithmeticRef>(step, offset, res, res_col, a, a_col);
+        vec_znx_dft_copy::<R, A, Self, ReimArithmeticRef>(step, offset, res, res_col, a, a_col);
     }
 }
 
@@ -205,6 +205,6 @@ unsafe impl VecZnxDftZeroImpl<Self> for FFT64 {
     where
         R: VecZnxDftToMut<Self>,
     {
-        vec_znx_dft_zero::<_, _, ReimArithmeticRef>(res);
+        vec_znx_dft_zero::<R, Self, ReimArithmeticRef>(res);
     }
 }

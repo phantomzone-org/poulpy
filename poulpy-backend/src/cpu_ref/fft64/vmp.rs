@@ -5,13 +5,15 @@ use poulpy_hal::{
         VmpPMatToMut, VmpPMatToRef, ZnxInfos,
     },
     oep::{
-        VmpApplyDftToDftImpl, VmpApplyDftToDftTmpBytesImpl, VmpPMatAllocBytesImpl, VmpPMatAllocImpl, VmpPrepareImpl,
-        VmpPrepareTmpBytesImpl,
+        VmpApplyDftToDftAddImpl, VmpApplyDftToDftImpl, VmpApplyDftToDftTmpBytesImpl, VmpPMatAllocBytesImpl, VmpPMatAllocImpl,
+        VmpPrepareImpl, VmpPrepareTmpBytesImpl,
     },
     reference::{
         reim::{ReimArithmeticRef, ReimConvRef, ReimFFTRef},
         reim4::Reim4BlkRef,
-        vmp::fft64::{vmp_apply_dft_to_dft, vmp_apply_dft_to_dft_tmp_bytes, vmp_prepare, vmp_prepare_tmp_bytes},
+        vmp::fft64::{
+            vmp_apply_dft_to_dft, vmp_apply_dft_to_dft_add, vmp_apply_dft_to_dft_tmp_bytes, vmp_prepare, vmp_prepare_tmp_bytes,
+        },
     },
 };
 
@@ -40,12 +42,12 @@ where
         A: VecZnxDftToRef<Self>,
         C: VmpPMatToRef<Self>,
     {
-        let mut res: VecZnxDft<&mut [u8], FFT64> = res.to_mut();
-        let a: VecZnxDft<&[u8], FFT64> = a.to_ref();
-        let pmat: VmpPMat<&[u8], FFT64> = pmat.to_ref();
+        let mut res: VecZnxDft<&mut [u8], Self> = res.to_mut();
+        let a: VecZnxDft<&[u8], Self> = a.to_ref();
+        let pmat: VmpPMat<&[u8], Self> = pmat.to_ref();
 
         let (tmp, _) = scratch.take_slice(
-            FFT64::vmp_apply_dft_to_dft_tmp_bytes_impl(
+            Self::vmp_apply_dft_to_dft_tmp_bytes_impl(
                 module,
                 res.size(),
                 a.size(),
@@ -55,38 +57,76 @@ where
                 pmat.size(),
             ) / size_of::<f64>(),
         );
-        vmp_apply_dft_to_dft::<_, _, _, _, ReimArithmeticRef, Reim4BlkRef>(&mut res, &a, &pmat, tmp);
+        vmp_apply_dft_to_dft::<_, _, _, Self, ReimArithmeticRef, Reim4BlkRef>(&mut res, &a, &pmat, tmp);
     }
 }
 
-unsafe impl VmpPrepareTmpBytesImpl<FFT64> for FFT64 {
-    fn vmp_prepare_tmp_bytes_impl(
-        module: &Module<FFT64>,
-        _rows: usize,
-        _cols_in: usize,
-        _cols_out: usize,
-        _size: usize,
-    ) -> usize {
+unsafe impl VmpApplyDftToDftAddImpl<Self> for FFT64
+where
+    Scratch<Self>: TakeSlice,
+    FFT64: VmpApplyDftToDftTmpBytesImpl<Self>,
+{
+    fn vmp_apply_dft_to_dft_add_impl<R, A, C>(
+        module: &Module<Self>,
+        res: &mut R,
+        a: &A,
+        pmat: &C,
+        limb_offset: usize,
+        scratch: &mut Scratch<Self>,
+    ) where
+        R: VecZnxDftToMut<Self>,
+        A: VecZnxDftToRef<Self>,
+        C: VmpPMatToRef<Self>,
+    {
+        let mut res: VecZnxDft<&mut [u8], Self> = res.to_mut();
+        let a: VecZnxDft<&[u8], Self> = a.to_ref();
+        let pmat: VmpPMat<&[u8], Self> = pmat.to_ref();
+
+        let (tmp, _) = scratch.take_slice(
+            Self::vmp_apply_dft_to_dft_tmp_bytes_impl(
+                module,
+                res.size(),
+                a.size(),
+                pmat.rows(),
+                pmat.cols_in(),
+                pmat.cols_out(),
+                pmat.size(),
+            ) / size_of::<f64>(),
+        );
+        vmp_apply_dft_to_dft_add::<_, _, _, Self, ReimArithmeticRef, Reim4BlkRef>(
+            &mut res,
+            &a,
+            &pmat,
+            limb_offset * pmat.cols_out(),
+            tmp,
+        );
+    }
+}
+
+unsafe impl VmpPrepareTmpBytesImpl<Self> for FFT64 {
+    fn vmp_prepare_tmp_bytes_impl(module: &Module<Self>, _rows: usize, _cols_in: usize, _cols_out: usize, _size: usize) -> usize {
         vmp_prepare_tmp_bytes(module.n())
     }
 }
 
-unsafe impl VmpPrepareImpl<FFT64> for FFT64 {
-    fn vmp_prepare_impl<R, A>(module: &Module<FFT64>, res: &mut R, a: &A, scratch: &mut Scratch<FFT64>)
+unsafe impl VmpPrepareImpl<Self> for FFT64 {
+    fn vmp_prepare_impl<R, A>(module: &Module<Self>, res: &mut R, a: &A, scratch: &mut Scratch<Self>)
     where
-        R: VmpPMatToMut<FFT64>,
+        R: VmpPMatToMut<Self>,
         A: MatZnxToRef,
     {
-        let mut res: VmpPMat<&mut [u8], FFT64> = res.to_mut();
+        {}
+        let mut res: VmpPMat<&mut [u8], Self> = res.to_mut();
         let a: MatZnx<&[u8]> = a.to_ref();
-        let (tmp, _) = scratch.take_slice(module.vmp_prepare_tmp_bytes(a.rows(), a.cols_in(), a.cols_out(), a.size()));
-        vmp_prepare::<_, _, _, Reim4BlkRef, ReimConvRef, ReimFFTRef>(module.get_fft_table(), &mut res, &a, tmp);
+        let (tmp, _) =
+            scratch.take_slice(module.vmp_prepare_tmp_bytes(a.rows(), a.cols_in(), a.cols_out(), a.size()) / size_of::<f64>());
+        vmp_prepare::<_, _, Self, Reim4BlkRef, ReimConvRef, ReimFFTRef>(module.get_fft_table(), &mut res, &a, tmp);
     }
 }
 
-unsafe impl VmpApplyDftToDftTmpBytesImpl<FFT64> for FFT64 {
+unsafe impl VmpApplyDftToDftTmpBytesImpl<Self> for FFT64 {
     fn vmp_apply_dft_to_dft_tmp_bytes_impl(
-        _module: &Module<FFT64>,
+        _module: &Module<Self>,
         _res_size: usize,
         a_size: usize,
         b_rows: usize,

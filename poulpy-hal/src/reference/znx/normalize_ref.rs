@@ -60,7 +60,7 @@ pub(crate) fn get_carry(basek: usize, x: i64, digit: i64) -> i64 {
 pub(crate) fn znx_normalize_first_step_carry_only_ref(basek: usize, lsh: usize, x: &[i64], carry: &mut [i64]) {
     #[cfg(debug_assertions)]
     {
-        assert_eq!(x.len(), carry.len());
+        assert!(x.len() <= carry.len());
         assert!(lsh < basek);
     }
 
@@ -80,7 +80,7 @@ pub(crate) fn znx_normalize_first_step_carry_only_ref(basek: usize, lsh: usize, 
 pub(crate) fn znx_normalize_first_step_inplace_ref(basek: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
     #[cfg(debug_assertions)]
     {
-        assert_eq!(x.len(), carry.len());
+        assert!(x.len() <= carry.len());
         assert!(lsh < basek);
     }
 
@@ -104,8 +104,8 @@ pub(crate) fn znx_normalize_first_step_inplace_ref(basek: usize, lsh: usize, x: 
 pub(crate) fn znx_normalize_first_step_ref(basek: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
     #[cfg(debug_assertions)]
     {
-        assert_eq!(x.len(), carry.len());
-        assert_eq!(a.len(), carry.len());
+        assert_eq!(x.len(), a.len());
+        assert!(x.len() <= carry.len());
         assert!(lsh < basek);
     }
 
@@ -129,7 +129,7 @@ pub(crate) fn znx_normalize_first_step_ref(basek: usize, lsh: usize, x: &mut [i6
 pub(crate) fn znx_normalize_middle_step_carry_only_ref(basek: usize, lsh: usize, x: &[i64], carry: &mut [i64]) {
     #[cfg(debug_assertions)]
     {
-        assert_eq!(x.len(), carry.len());
+        assert!(x.len() <= carry.len());
         assert!(lsh < basek);
     }
     if lsh == 0 {
@@ -154,7 +154,7 @@ pub(crate) fn znx_normalize_middle_step_carry_only_ref(basek: usize, lsh: usize,
 pub(crate) fn znx_normalize_middle_step_inplace_ref(basek: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
     #[cfg(debug_assertions)]
     {
-        assert_eq!(x.len(), carry.len());
+        assert!(x.len() <= carry.len());
         assert!(lsh < basek);
     }
     if lsh == 0 {
@@ -181,8 +181,8 @@ pub(crate) fn znx_normalize_middle_step_inplace_ref(basek: usize, lsh: usize, x:
 pub(crate) fn znx_normalize_middle_step_ref(basek: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
     #[cfg(debug_assertions)]
     {
-        assert_eq!(x.len(), carry.len());
-        assert_eq!(a.len(), carry.len());
+        assert_eq!(x.len(), a.len());
+        assert!(x.len() <= carry.len());
         assert!(lsh < basek);
     }
     if lsh == 0 {
@@ -209,7 +209,7 @@ pub(crate) fn znx_normalize_middle_step_ref(basek: usize, lsh: usize, x: &mut [i
 pub(crate) fn znx_normalize_final_step_inplace_ref(basek: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
     #[cfg(debug_assertions)]
     {
-        assert_eq!(x.len(), carry.len());
+        assert!(x.len() <= carry.len());
         assert!(lsh < basek);
     }
 
@@ -229,7 +229,7 @@ pub(crate) fn znx_normalize_final_step_inplace_ref(basek: usize, lsh: usize, x: 
 pub(crate) fn znx_normalize_final_step_ref(basek: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
     #[cfg(debug_assertions)]
     {
-        assert_eq!(x.len(), carry.len());
+        assert!(x.len() <= carry.len());
         assert!(lsh < basek);
     }
     if lsh == 0 {

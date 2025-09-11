@@ -142,10 +142,17 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
             + VecZnxBigAutomorphismInplace<B>,
         Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
     {
-        unsafe {
-            let self_ptr: *mut GLWECiphertext<DataSelf> = self as *mut GLWECiphertext<DataSelf>;
-            self.automorphism_add(module, &*self_ptr, rhs, scratch);
+        #[cfg(debug_assertions)]
+        {
+            self.assert_keyswitch_inplace(module, &rhs.key, scratch);
         }
+        let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self.n(), self.cols(), rhs.size()); // TODO: optimise size
+        let mut res_big: VecZnxBig<_, B> = self.keyswitch_internal(module, res_dft, &rhs.key, scratch_1);
+        (0..self.cols()).for_each(|i| {
+            module.vec_znx_big_automorphism_inplace(rhs.p(), &mut res_big, i, scratch_1);
+            module.vec_znx_big_add_small_inplace(&mut res_big, i, &self.data, i);
+            module.vec_znx_big_normalize(self.basek(), &mut self.data, i, &res_big, i, scratch_1);
+        })
     }
 
     pub fn automorphism_sub_ab<DataLhs: DataRef, DataRhs: DataRef, B: Backend>(
@@ -200,10 +207,17 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
             + VecZnxBigSubSmallAInplace<B>,
         Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
     {
-        unsafe {
-            let self_ptr: *mut GLWECiphertext<DataSelf> = self as *mut GLWECiphertext<DataSelf>;
-            self.automorphism_sub_ab(module, &*self_ptr, rhs, scratch);
+        #[cfg(debug_assertions)]
+        {
+            self.assert_keyswitch_inplace(module, &rhs.key, scratch);
         }
+        let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self.n(), self.cols(), rhs.size()); // TODO: optimise size
+        let mut res_big: VecZnxBig<_, B> = self.keyswitch_internal(module, res_dft, &rhs.key, scratch_1);
+        (0..self.cols()).for_each(|i| {
+            module.vec_znx_big_automorphism_inplace(rhs.p(), &mut res_big, i, scratch_1);
+            module.vec_znx_big_sub_small_a_inplace(&mut res_big, i, &self.data, i);
+            module.vec_znx_big_normalize(self.basek(), &mut self.data, i, &res_big, i, scratch_1);
+        })
     }
 
     pub fn automorphism_sub_ba<DataLhs: DataRef, DataRhs: DataRef, B: Backend>(
@@ -258,9 +272,16 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
             + VecZnxBigSubSmallBInplace<B>,
         Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
     {
-        unsafe {
-            let self_ptr: *mut GLWECiphertext<DataSelf> = self as *mut GLWECiphertext<DataSelf>;
-            self.automorphism_sub_ba(module, &*self_ptr, rhs, scratch);
+        #[cfg(debug_assertions)]
+        {
+            self.assert_keyswitch_inplace(module, &rhs.key, scratch);
         }
+        let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self.n(), self.cols(), rhs.size()); // TODO: optimise size
+        let mut res_big: VecZnxBig<_, B> = self.keyswitch_internal(module, res_dft, &rhs.key, scratch_1);
+        (0..self.cols()).for_each(|i| {
+            module.vec_znx_big_automorphism_inplace(rhs.p(), &mut res_big, i, scratch_1);
+            module.vec_znx_big_sub_small_b_inplace(&mut res_big, i, &self.data, i);
+            module.vec_znx_big_normalize(self.basek(), &mut self.data, i, &res_big, i, scratch_1);
+        })
     }
 }
