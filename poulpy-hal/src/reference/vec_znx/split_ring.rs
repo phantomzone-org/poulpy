@@ -1,8 +1,6 @@
 use crate::{
-    api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxSplitRing, VecZnxSplitRingTmpBytes},
-    layouts::{Backend, FillUniform, Module, ScratchOwned, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut},
-    reference::znx::{ZnxArithmetic, ZnxArithmeticRef},
-    source::Source,
+    layouts::{VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut},
+    reference::znx::{ZnxRotate, ZnxSwitchRing, ZnxZero},
 };
 
 pub fn vec_znx_split_ring_tmp_bytes(n: usize) -> usize {
@@ -13,7 +11,7 @@ pub fn vec_znx_split_ring<R, A, ZNXARI>(res: &mut [R], res_col: usize, a: &A, a_
 where
     R: VecZnxToMut,
     A: VecZnxToRef,
-    ZNXARI: ZnxArithmetic,
+    ZNXARI: ZnxSwitchRing + ZnxRotate + ZnxZero,
 {
     let a: VecZnx<&[u8]> = a.to_ref();
     let a_size = a.size();
@@ -61,58 +59,4 @@ where
             ZNXARI::znx_zero(bi.at_mut(res_col, j));
         }
     })
-}
-
-pub fn test_vec_znx_split_ring<B: Backend>(module: &Module<B>)
-where
-    Module<B>: VecZnxSplitRing<B> + ModuleNew<B> + VecZnxSplitRingTmpBytes,
-    ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
-{
-    let mut source: Source = Source::new([0u8; 32]);
-    let cols: usize = 2;
-    let mut scratch: ScratchOwned<_> = ScratchOwned::alloc(module.vec_znx_split_ring_tmp_bytes());
-    let mut tmp: Vec<i64> = vec![0i64; module.n()];
-
-    for a_size in [1, 2, 6, 11] {
-        let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, a_size);
-
-        // Fill a with random i64
-        a.fill_uniform(&mut source);
-
-        for res_size in [1, 2, 6, 11] {
-            let mut r0: [VecZnx<Vec<u8>>; 2] = [
-                VecZnx::alloc(module.n() >> 1, cols, res_size),
-                VecZnx::alloc(module.n() >> 1, cols, res_size),
-            ];
-
-            let mut r1: [VecZnx<Vec<u8>>; 2] = [
-                VecZnx::alloc(module.n() >> 1, cols, res_size),
-                VecZnx::alloc(module.n() >> 1, cols, res_size),
-            ];
-
-            r0.iter_mut().for_each(|ri| {
-                ri.fill_uniform(&mut source);
-            });
-
-            r1.iter_mut().for_each(|ri| {
-                ri.fill_uniform(&mut source);
-            });
-
-            for i in 0..cols {
-                module.vec_znx_split_ring(&mut r0, i, &a, i, scratch.borrow());
-            }
-
-            for i in 0..cols {
-                vec_znx_split_ring::<_, _, ZnxArithmeticRef>(&mut r1, i, &a, i, &mut tmp);
-            }
-
-            r0.iter().zip(r1.iter()).for_each(|(r0, r1)| {
-                for i in 0..cols {
-                    for j in 0..res_size {
-                        assert_eq!(r0.at(i, j), r1.at(i, j));
-                    }
-                }
-            });
-        }
-    }
 }

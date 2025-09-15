@@ -32,8 +32,8 @@ impl<D: DataRef> fmt::Display for GGLWESwitchingKey<D> {
 }
 
 impl<D: DataMut> FillUniform for GGLWESwitchingKey<D> {
-    fn fill_uniform(&mut self, source: &mut Source) {
-        self.key.fill_uniform(source);
+    fn fill_uniform(&mut self, log_bound: usize, source: &mut Source) {
+        self.key.fill_uniform(log_bound, source);
     }
 }
 

@@ -196,6 +196,14 @@ pub unsafe trait VecZnxNegateInplaceImpl<B: Backend> {
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See [crate::reference::vec_znx::shift::vec_znx_rsh_tmp_bytes] for reference code.
+/// * See [crate::api::VecZnxRshTmpBytes] for corresponding public API.
+/// # Safety [crate::doc::backend_safety] for safety contract.
+pub unsafe trait VecZnxRshTmpBytesImpl<B: Backend> {
+    fn vec_znx_rsh_tmp_bytes_impl(module: &Module<B>) -> usize;
+}
+
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
 /// * See [crate::reference::vec_znx::shift::vec_znx_rsh_inplace] for reference code.
 /// * See [crate::api::VecZnxRsh] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
@@ -213,6 +221,14 @@ pub unsafe trait VecZnxRshImpl<B: Backend> {
     ) where
         R: VecZnxToMut,
         A: VecZnxToRef;
+}
+
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See [crate::reference::vec_znx::shift::vec_znx_lsh_tmp_bytes] for reference code.
+/// * See [crate::api::VecZnxLshTmpBytes] for corresponding public API.
+/// # Safety [crate::doc::backend_safety] for safety contract.
+pub unsafe trait VecZnxLshTmpBytesImpl<B: Backend> {
+    fn vec_znx_lsh_tmp_bytes_impl(module: &Module<B>) -> usize;
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)

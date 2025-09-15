@@ -48,7 +48,7 @@ impl<DataSelf: DataMut> GGLWETensorKeyCompressed<DataSelf> {
             + VecZnxAddNormal
             + VecZnxNormalize<B>
             + VecZnxSub
-            + VecZnxSwitchRing<B>
+            + VecZnxSwitchRing
             + VecZnxAddScalarInplace
             + SvpPrepare<B>
             + SvpPPolAllocBytes

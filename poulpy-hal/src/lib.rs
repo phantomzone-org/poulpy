@@ -9,7 +9,7 @@ pub mod layouts;
 pub mod oep;
 pub mod reference;
 pub mod source;
-pub mod tests;
+pub mod test_suite;
 
 pub mod doc {
     #[doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/docs/backend_safety_contract.md"))]

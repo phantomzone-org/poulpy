@@ -12,9 +12,9 @@ use poulpy_hal::{
     },
 };
 
-use crate::cpu_spqlios::FFT64;
+use crate::cpu_spqlios::FFT64Spqlios;
 
-unsafe impl<B: Backend> ScratchOwnedAllocImpl<B> for FFT64 {
+unsafe impl<B: Backend> ScratchOwnedAllocImpl<B> for FFT64Spqlios {
     fn scratch_owned_alloc_impl(size: usize) -> ScratchOwned<B> {
         let data: Vec<u8> = alloc_aligned(size);
         ScratchOwned {
@@ -24,7 +24,7 @@ unsafe impl<B: Backend> ScratchOwnedAllocImpl<B> for FFT64 {
     }
 }
 
-unsafe impl<B: Backend> ScratchOwnedBorrowImpl<B> for FFT64
+unsafe impl<B: Backend> ScratchOwnedBorrowImpl<B> for FFT64Spqlios
 where
     B: ScratchFromBytesImpl<B>,
 {
@@ -33,13 +33,13 @@ where
     }
 }
 
-unsafe impl<B: Backend> ScratchFromBytesImpl<B> for FFT64 {
+unsafe impl<B: Backend> ScratchFromBytesImpl<B> for FFT64Spqlios {
     fn scratch_from_bytes_impl(data: &mut [u8]) -> &mut Scratch<B> {
         unsafe { &mut *(data as *mut [u8] as *mut Scratch<B>) }
     }
 }
 
-unsafe impl<B: Backend> ScratchAvailableImpl<B> for FFT64 {
+unsafe impl<B: Backend> ScratchAvailableImpl<B> for FFT64Spqlios {
     fn scratch_available_impl(scratch: &Scratch<B>) -> usize {
         let ptr: *const u8 = scratch.data.as_ptr();
         let self_len: usize = scratch.data.len();
@@ -48,7 +48,7 @@ unsafe impl<B: Backend> ScratchAvailableImpl<B> for FFT64 {
     }
 }
 
-unsafe impl<B: Backend> TakeSliceImpl<B> for FFT64
+unsafe impl<B: Backend> TakeSliceImpl<B> for FFT64Spqlios
 where
     B: ScratchFromBytesImpl<B>,
 {
@@ -64,7 +64,7 @@ where
     }
 }
 
-unsafe impl<B: Backend> TakeScalarZnxImpl<B> for FFT64
+unsafe impl<B: Backend> TakeScalarZnxImpl<B> for FFT64Spqlios
 where
     B: ScratchFromBytesImpl<B>,
 {
@@ -77,7 +77,7 @@ where
     }
 }
 
-unsafe impl<B: Backend> TakeSvpPPolImpl<B> for FFT64
+unsafe impl<B: Backend> TakeSvpPPolImpl<B> for FFT64Spqlios
 where
     B: SvpPPolAllocBytesImpl<B> + ScratchFromBytesImpl<B>,
 {
@@ -90,7 +90,7 @@ where
     }
 }
 
-unsafe impl<B: Backend> TakeVecZnxImpl<B> for FFT64
+unsafe impl<B: Backend> TakeVecZnxImpl<B> for FFT64Spqlios
 where
     B: ScratchFromBytesImpl<B>,
 {
@@ -103,7 +103,7 @@ where
     }
 }
 
-unsafe impl<B: Backend> TakeVecZnxBigImpl<B> for FFT64
+unsafe impl<B: Backend> TakeVecZnxBigImpl<B> for FFT64Spqlios
 where
     B: VecZnxBigAllocBytesImpl<B> + ScratchFromBytesImpl<B>,
 {
@@ -124,7 +124,7 @@ where
     }
 }
 
-unsafe impl<B: Backend> TakeVecZnxDftImpl<B> for FFT64
+unsafe impl<B: Backend> TakeVecZnxDftImpl<B> for FFT64Spqlios
 where
     B: VecZnxDftAllocBytesImpl<B> + ScratchFromBytesImpl<B>,
 {
@@ -146,7 +146,7 @@ where
     }
 }
 
-unsafe impl<B: Backend> TakeVecZnxDftSliceImpl<B> for FFT64
+unsafe impl<B: Backend> TakeVecZnxDftSliceImpl<B> for FFT64Spqlios
 where
     B: VecZnxDftAllocBytesImpl<B> + ScratchFromBytesImpl<B> + TakeVecZnxDftImpl<B>,
 {
@@ -168,7 +168,7 @@ where
     }
 }
 
-unsafe impl<B: Backend> TakeVecZnxSliceImpl<B> for FFT64
+unsafe impl<B: Backend> TakeVecZnxSliceImpl<B> for FFT64Spqlios
 where
     B: ScratchFromBytesImpl<B> + TakeVecZnxImpl<B>,
 {
@@ -190,7 +190,7 @@ where
     }
 }
 
-unsafe impl<B: Backend> TakeVmpPMatImpl<B> for FFT64
+unsafe impl<B: Backend> TakeVmpPMatImpl<B> for FFT64Spqlios
 where
     B: VmpPMatAllocBytesImpl<B> + ScratchFromBytesImpl<B>,
 {
@@ -213,7 +213,7 @@ where
     }
 }
 
-unsafe impl<B: Backend> TakeMatZnxImpl<B> for FFT64
+unsafe impl<B: Backend> TakeMatZnxImpl<B> for FFT64Spqlios
 where
     B: ScratchFromBytesImpl<B>,
 {

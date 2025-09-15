@@ -1,45 +1,104 @@
-pub(crate) mod add;
-pub(crate) mod arithmetic_avx;
-pub(crate) mod arithmetic_ref;
-pub(crate) mod automorphism;
-pub(crate) mod copy;
-pub(crate) mod neg;
-pub(crate) mod normalize_avx;
-pub(crate) mod normalize_ref;
-pub(crate) mod rotate;
-pub(crate) mod sampling;
-pub(crate) mod sub;
-pub(crate) mod switch_ring;
-pub(crate) mod zero;
+mod add;
+mod arithmetic_ref;
+mod automorphism;
+mod copy;
+mod neg;
+mod normalization;
+mod rotate;
+mod sampling;
+mod sub;
+mod switch_ring;
+mod zero;
 
-pub use arithmetic_avx::*;
+pub use add::*;
 pub use arithmetic_ref::*;
-pub use normalize_avx::*;
-pub use normalize_ref::*;
+pub use automorphism::*;
+pub use copy::*;
+pub use neg::*;
+pub use normalization::*;
+pub use rotate::*;
+pub use sub::*;
+pub use switch_ring::*;
+pub use zero::*;
+
 pub use sampling::*;
 
-pub trait ZnxArithmetic {
+pub trait ZnxAdd {
     fn znx_add(res: &mut [i64], a: &[i64], b: &[i64]);
-    fn znx_sub(res: &mut [i64], a: &[i64], b: &[i64]);
-    fn znx_sub_ab_inplace(res: &mut [i64], a: &[i64]);
-    fn znx_sub_ba_inplace(res: &mut [i64], a: &[i64]);
+}
+
+pub trait ZnxAddInplace {
     fn znx_add_inplace(res: &mut [i64], a: &[i64]);
+}
+
+pub trait ZnxSub {
+    fn znx_sub(res: &mut [i64], a: &[i64], b: &[i64]);
+}
+
+pub trait ZnxSubABInplace {
+    fn znx_sub_ab_inplace(res: &mut [i64], a: &[i64]);
+}
+
+pub trait ZnxSubBAInplace {
+    fn znx_sub_ba_inplace(res: &mut [i64], a: &[i64]);
+}
+
+pub trait ZnxAutomorphism {
     fn znx_automorphism(p: i64, res: &mut [i64], a: &[i64]);
+}
+
+pub trait ZnxCopy {
     fn znx_copy(res: &mut [i64], a: &[i64]);
+}
+
+pub trait ZnxNegate {
     fn znx_negate(res: &mut [i64], src: &[i64]);
+}
+
+pub trait ZnxNegateInplace {
     fn znx_negate_inplace(res: &mut [i64]);
+}
+
+pub trait ZnxRotate {
     fn znx_rotate(p: i64, res: &mut [i64], src: &[i64]);
+}
+
+pub trait ZnxZero {
     fn znx_zero(res: &mut [i64]);
+}
+
+pub trait ZnxSwitchRing {
     fn znx_switch_ring(res: &mut [i64], a: &[i64]);
 }
 
-pub trait ZnxNormalize {
+pub trait ZnxNormalizeFirstStepCarryOnly {
     fn znx_normalize_first_step_carry_only(basek: usize, lsh: usize, x: &[i64], carry: &mut [i64]);
+}
+
+pub trait ZnxNormalizeFirstStepInplace {
     fn znx_normalize_first_step_inplace(basek: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]);
+}
+
+pub trait ZnxNormalizeFirstStep {
     fn znx_normalize_first_step(basek: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]);
+}
+
+pub trait ZnxNormalizeMiddleStepCarryOnly {
     fn znx_normalize_middle_step_carry_only(basek: usize, lsh: usize, x: &[i64], carry: &mut [i64]);
+}
+
+pub trait ZnxNormalizeMiddleStepInplace {
     fn znx_normalize_middle_step_inplace(basek: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]);
+}
+
+pub trait ZnxNormalizeMiddleStep {
     fn znx_normalize_middle_step(basek: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]);
+}
+
+pub trait ZnxNormalizeFinalStepInplace {
     fn znx_normalize_final_step_inplace(basek: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]);
+}
+
+pub trait ZnxNormalizeFinalStep {
     fn znx_normalize_final_step(basek: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]);
 }

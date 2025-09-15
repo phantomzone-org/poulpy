@@ -46,7 +46,7 @@ where
         + VecZnxBigAllocBytes
         + VecZnxBigAddInplace<B>
         + VecZnxBigAddSmallInplace<B>
-        + VecZnxSwitchRing<B>
+        + VecZnxSwitchRing
         + VecZnxAddScalarInplace
         + VecZnxSubScalarInplace
         + VecZnxCopy
@@ -196,7 +196,7 @@ where
         + VecZnxBigAllocBytes
         + VecZnxBigAddInplace<B>
         + VecZnxBigAddSmallInplace<B>
-        + VecZnxSwitchRing<B>
+        + VecZnxSwitchRing
         + VecZnxAddScalarInplace
         + VecZnxSubScalarInplace
         + VecZnxCopy

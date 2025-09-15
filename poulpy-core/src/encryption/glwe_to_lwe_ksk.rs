@@ -54,7 +54,7 @@ impl<D: DataMut> GLWEToLWESwitchingKey<D> {
             + VecZnxNormalize<B>
             + VecZnxSub
             + SvpPrepare<B>
-            + VecZnxSwitchRing<B>
+            + VecZnxSwitchRing
             + SvpPPolAllocBytes,
         Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx + TakeScalarZnx + TakeGLWESecretPrepared<B>,
     {

@@ -1,6 +1,6 @@
-use crate::reference::znx::ZnxArithmetic;
+use crate::reference::znx::{ZnxCopy, ZnxNegate};
 
-pub fn znx_rotate<ZNXARI: ZnxArithmetic>(p: i64, res: &mut [i64], src: &[i64]) {
+pub fn znx_rotate<ZNXARI: ZnxNegate + ZnxCopy>(p: i64, res: &mut [i64], src: &[i64]) {
     #[cfg(debug_assertions)]
     {
         assert_eq!(res.len(), src.len());

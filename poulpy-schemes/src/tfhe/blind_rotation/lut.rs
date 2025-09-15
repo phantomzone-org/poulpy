@@ -73,7 +73,7 @@ impl LookUpTable {
         Module<B>: VecZnxRotateInplace<B>
             + VecZnxNormalizeInplace<B>
             + VecZnxNormalizeTmpBytes
-            + VecZnxSwitchRing<B>
+            + VecZnxSwitchRing
             + VecZnxCopy
             + VecZnxRotateInplaceTmpBytes,
         ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,

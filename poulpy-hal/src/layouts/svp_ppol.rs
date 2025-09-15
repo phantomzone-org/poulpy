@@ -1,17 +1,33 @@
-use std::marker::PhantomData;
+use std::{
+    hash::{DefaultHasher, Hasher},
+    marker::PhantomData,
+};
 
 use crate::{
     alloc_aligned,
-    layouts::{Backend, Data, DataMut, DataRef, DataView, DataViewMut, ReaderFrom, WriterTo, ZnxInfos, ZnxSliceSize, ZnxView},
+    layouts::{
+        Backend, Data, DataMut, DataRef, DataView, DataViewMut, DigestU64, ReaderFrom, WriterTo, ZnxInfos, ZnxSliceSize, ZnxView,
+    },
     oep::SvpPPolAllocBytesImpl,
 };
 
-#[derive(PartialEq, Eq)]
+#[repr(C)]
+#[derive(PartialEq, Eq, Hash)]
 pub struct SvpPPol<D: Data, B: Backend> {
     pub data: D,
     pub n: usize,
     pub cols: usize,
     pub _phantom: PhantomData<B>,
+}
+
+impl<D: DataRef, B: Backend> DigestU64 for SvpPPol<D, B> {
+    fn digest_u64(&self) -> u64 {
+        let mut h: DefaultHasher = DefaultHasher::new();
+        h.write(self.data.as_ref());
+        h.write_usize(self.n);
+        h.write_usize(self.cols);
+        h.finish()
+    }
 }
 
 impl<D: Data, B: Backend> ZnxSliceSize for SvpPPol<D, B> {

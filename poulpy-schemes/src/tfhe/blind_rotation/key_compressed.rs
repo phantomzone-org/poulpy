@@ -59,10 +59,10 @@ impl<D: DataMut, BRT: BlindRotationAlgo> Reset for BlindRotationKeyCompressed<D,
 }
 
 impl<D: DataMut, BRT: BlindRotationAlgo> FillUniform for BlindRotationKeyCompressed<D, BRT> {
-    fn fill_uniform(&mut self, source: &mut Source) {
+    fn fill_uniform(&mut self, log_bound: usize, source: &mut Source) {
         self.keys
             .iter_mut()
-            .for_each(|key| key.fill_uniform(source));
+            .for_each(|key| key.fill_uniform(log_bound, source));
     }
 }
 

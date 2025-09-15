@@ -7,4 +7,4 @@ mod vec_znx_dft;
 mod vmp_pmat;
 mod zn;
 
-pub use module::FFT64;
+pub struct FFT64Spqlios;

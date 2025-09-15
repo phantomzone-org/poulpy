@@ -1,25 +1,21 @@
 use poulpy_hal::{
     api::ModuleNew,
     layouts::Module,
-    reference::svp::fft64::{test_svp_apply_dft_to_dft, test_svp_apply_dft_to_dft_inplace, test_svp_prepare},
+    test_suite::svp::{test_svp_apply_dft_to_dft, test_svp_apply_dft_to_dft_inplace},
 };
 
-use crate::cpu_spqlios::FFT64;
-
-#[test]
-fn test_svp_prepare_fft64() {
-    let module: Module<FFT64> = Module::<FFT64>::new(1 << 5);
-    test_svp_prepare(&module);
-}
+use crate::{cpu_fft64_ref::FFT64Ref, cpu_spqlios::FFT64Spqlios};
 
 #[test]
 fn test_svp_apply_dft_to_dft_fft64() {
-    let module: Module<FFT64> = Module::<FFT64>::new(1 << 5);
-    test_svp_apply_dft_to_dft(&module);
+    let module_test: Module<FFT64Spqlios> = Module::<FFT64Spqlios>::new(1 << 5);
+    let module_ref: Module<FFT64Ref> = Module::<FFT64Ref>::new(1 << 5);
+    test_svp_apply_dft_to_dft(12, &module_ref, &module_test);
 }
 
 #[test]
 fn test_svp_apply_dft_to_dft_inplace_fft64() {
-    let module: Module<FFT64> = Module::<FFT64>::new(1 << 5);
-    test_svp_apply_dft_to_dft_inplace(&module);
+    let module_test: Module<FFT64Spqlios> = Module::<FFT64Spqlios>::new(1 << 5);
+    let module_ref: Module<FFT64Ref> = Module::<FFT64Ref>::new(1 << 5);
+    test_svp_apply_dft_to_dft_inplace(12, &module_ref, &module_test);
 }

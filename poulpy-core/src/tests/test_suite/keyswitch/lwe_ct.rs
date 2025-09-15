@@ -48,7 +48,7 @@ where
         + VmpApplyDftToDft<B>
         + VmpApplyDftToDftAdd<B>
         + VecZnxBigNormalizeTmpBytes
-        + VecZnxSwitchRing<B>
+        + VecZnxSwitchRing
         + VecZnxAutomorphismInplace<B>
         + ZnNormalizeInplace<B>
         + ZnFillUniform

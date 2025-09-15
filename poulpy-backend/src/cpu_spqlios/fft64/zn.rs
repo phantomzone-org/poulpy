@@ -6,9 +6,9 @@ use poulpy_hal::{
     source::Source,
 };
 
-use crate::cpu_spqlios::{FFT64, ffi::zn64};
+use crate::cpu_spqlios::{FFT64Spqlios, ffi::zn64};
 
-unsafe impl ZnNormalizeInplaceImpl<Self> for FFT64
+unsafe impl ZnNormalizeInplaceImpl<Self> for FFT64Spqlios
 where
     Self: TakeSliceImpl<Self>,
 {
@@ -36,7 +36,7 @@ where
     }
 }
 
-unsafe impl ZnFillUniformImpl<Self> for FFT64 {
+unsafe impl ZnFillUniformImpl<Self> for FFT64Spqlios {
     fn zn_fill_uniform_impl<R>(n: usize, basek: usize, res: &mut R, res_col: usize, source: &mut Source)
     where
         R: ZnToMut,
@@ -45,7 +45,7 @@ unsafe impl ZnFillUniformImpl<Self> for FFT64 {
     }
 }
 
-unsafe impl ZnFillNormalImpl<Self> for FFT64 {
+unsafe impl ZnFillNormalImpl<Self> for FFT64Spqlios {
     #[allow(clippy::too_many_arguments)]
     fn zn_fill_normal_impl<R>(
         n: usize,
@@ -63,7 +63,7 @@ unsafe impl ZnFillNormalImpl<Self> for FFT64 {
     }
 }
 
-unsafe impl ZnAddNormalImpl<Self> for FFT64 {
+unsafe impl ZnAddNormalImpl<Self> for FFT64Spqlios {
     #[allow(clippy::too_many_arguments)]
     fn zn_add_normal_impl<R>(
         n: usize,

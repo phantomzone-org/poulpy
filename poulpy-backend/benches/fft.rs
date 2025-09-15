@@ -2,7 +2,7 @@ use std::{ffi::c_void, hint::black_box};
 
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use poulpy_backend::cpu_spqlios::reim;
-use poulpy_hal::reference::reim::{ReimDFTExecute, ReimFFTRef, ReimFFTTable, ReimIFFTRef, ReimIFFTTable};
+use poulpy_hal::reference::fft64::reim::{ReimDFTExecute, ReimFFTRef, ReimFFTTable, ReimIFFTRef, ReimIFFTTable};
 
 pub fn bench_fft_ref(c: &mut Criterion) {
     let group_name: String = "fft_ref".to_string();
@@ -40,8 +40,6 @@ pub fn bench_fft_avx2_fma(c: &mut Criterion) {
     #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
     #[target_feature(enable = "avx2,fma")]
     fn runner(m: usize) -> impl FnMut() {
-        use poulpy_hal::reference::reim::ReimFFTAvx;
-
         let mut values: Vec<f64> = vec![0f64; m << 1];
 
         let scale = 1.0f64 / (2 * m) as f64;
@@ -52,6 +50,8 @@ pub fn bench_fft_avx2_fma(c: &mut Criterion) {
 
         let table: ReimFFTTable<f64> = ReimFFTTable::<f64>::new(m);
         move || {
+            use poulpy_backend::cpu_fft64_avx::ReimFFTAvx;
+
             ReimFFTAvx::reim_dft_execute(&table, &mut values);
             black_box(());
         }
@@ -144,8 +144,6 @@ pub fn bench_ifft_avx2_fma(c: &mut Criterion) {
     #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
     #[target_feature(enable = "avx2,fma")]
     fn runner(m: usize) -> impl FnMut() {
-        use poulpy_hal::reference::reim::ReimIFFTAvx;
-
         let mut values: Vec<f64> = vec![0f64; m << 1];
 
         let scale = 1.0f64 / (2 * m) as f64;
@@ -156,6 +154,8 @@ pub fn bench_ifft_avx2_fma(c: &mut Criterion) {
 
         let table: ReimIFFTTable<f64> = ReimIFFTTable::<f64>::new(m);
         move || {
+            use poulpy_backend::cpu_fft64_avx::ReimIFFTAvx;
+
             ReimIFFTAvx::reim_dft_execute(&table, &mut values);
             black_box(());
         }

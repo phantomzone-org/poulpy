@@ -28,8 +28,8 @@ impl<D: DataRef> fmt::Debug for GGLWECiphertextCompressed<D> {
 }
 
 impl<D: DataMut> FillUniform for GGLWECiphertextCompressed<D> {
-    fn fill_uniform(&mut self, source: &mut Source) {
-        self.data.fill_uniform(source);
+    fn fill_uniform(&mut self, log_bound: usize, source: &mut Source) {
+        self.data.fill_uniform(log_bound, source);
     }
 }
 

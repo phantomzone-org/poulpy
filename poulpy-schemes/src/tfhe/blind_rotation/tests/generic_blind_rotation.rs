@@ -61,7 +61,7 @@ where
         + VecZnxAddNormal
         + VecZnxAddScalarInplace
         + VecZnxRotateInplace<B>
-        + VecZnxSwitchRing<B>
+        + VecZnxSwitchRing
         + VecZnxSub
         + VmpPMatAlloc<B>
         + VmpPrepare<B>

@@ -20,10 +20,10 @@ impl<D: DataRef> fmt::Debug for GGLWETensorKey<D> {
 }
 
 impl<D: DataMut> FillUniform for GGLWETensorKey<D> {
-    fn fill_uniform(&mut self, source: &mut Source) {
+    fn fill_uniform(&mut self, log_bound: usize, source: &mut Source) {
         self.keys
             .iter_mut()
-            .for_each(|key: &mut GGLWESwitchingKey<D>| key.fill_uniform(source))
+            .for_each(|key: &mut GGLWESwitchingKey<D>| key.fill_uniform(log_bound, source))
     }
 }
 

@@ -44,7 +44,7 @@ impl<DataSelf: DataMut> GGLWESwitchingKeyCompressed<DataSelf> {
     ) where
         Module<B>: SvpPrepare<B>
             + SvpPPolAllocBytes
-            + VecZnxSwitchRing<B>
+            + VecZnxSwitchRing
             + VecZnxDftAllocBytes
             + VecZnxBigNormalize<B>
             + VecZnxDftApply<B>

@@ -30,7 +30,7 @@ where
     Module<B>: VecZnxRotateInplace<B>
         + VecZnxNormalizeInplace<B>
         + VecZnxNormalizeTmpBytes
-        + VecZnxSwitchRing<B>
+        + VecZnxSwitchRing
         + VecZnxBigAutomorphismInplace<B>
         + VecZnxRshInplace<B>
         + VecZnxDftCopy<B>
@@ -129,7 +129,7 @@ pub fn circuit_bootstrap_core<DRes, DLwe, DBrk, BRA: BlindRotationAlgo, B>(
     Module<B>: VecZnxRotateInplace<B>
         + VecZnxNormalizeInplace<B>
         + VecZnxNormalizeTmpBytes
-        + VecZnxSwitchRing<B>
+        + VecZnxSwitchRing
         + VecZnxBigAutomorphismInplace<B>
         + VecZnxRshInplace<B>
         + VecZnxDftCopy<B>
@@ -255,7 +255,7 @@ fn post_process<DataRes, DataA, B: Backend>(
     Module<B>: VecZnxRotateInplace<B>
         + VecZnxNormalizeInplace<B>
         + VecZnxNormalizeTmpBytes
-        + VecZnxSwitchRing<B>
+        + VecZnxSwitchRing
         + VecZnxBigAutomorphismInplace<B>
         + VecZnxRshInplace<B>
         + VecZnxDftCopy<B>
@@ -327,7 +327,7 @@ pub fn pack<D: DataMut, B: Backend>(
     Module<B>: VecZnxRotateInplace<B>
         + VecZnxNormalizeInplace<B>
         + VecZnxNormalizeTmpBytes
-        + VecZnxSwitchRing<B>
+        + VecZnxSwitchRing
         + VecZnxBigAutomorphismInplace<B>
         + VecZnxRshInplace<B>
         + VecZnxDftCopy<B>
@@ -406,7 +406,7 @@ fn combine<A: DataMut, D: DataMut, DataAK: DataRef, B: Backend>(
     Module<B>: VecZnxRotateInplace<B>
         + VecZnxNormalizeInplace<B>
         + VecZnxNormalizeTmpBytes
-        + VecZnxSwitchRing<B>
+        + VecZnxSwitchRing
         + VecZnxBigAutomorphismInplace<B>
         + VecZnxRshInplace<B>
         + VecZnxDftCopy<B>

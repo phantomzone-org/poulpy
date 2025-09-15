@@ -53,7 +53,7 @@ where
         + VecZnxAddNormal
         + VecZnxNormalize<B>
         + VecZnxSub
-        + VecZnxSwitchRing<B>
+        + VecZnxSwitchRing
         + SvpPPolAlloc<B>
         + VecZnxBigAddInplace<B>
         + VecZnxSubScalarInplace,
@@ -222,7 +222,7 @@ where
         + VecZnxBigAddSmallInplace<B>
         + VecZnxBigNormalize<B>
         + VecZnxAutomorphism
-        + VecZnxSwitchRing<B>
+        + VecZnxSwitchRing
         + VecZnxAddScalarInplace
         + VecZnxAutomorphism
         + VecZnxAutomorphismInplace<B>

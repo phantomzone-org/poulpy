@@ -54,7 +54,7 @@ where
         + VecZnxSub
         + VecZnxAddScalarInplace
         + VecZnxAutomorphism
-        + VecZnxSwitchRing<B>
+        + VecZnxSwitchRing
         + VecZnxBigAllocBytes
         + VecZnxIdftApplyTmpA<B>
         + SvpApplyDftToDft<B>
@@ -241,7 +241,7 @@ where
         + VecZnxSub
         + VecZnxAddScalarInplace
         + VecZnxAutomorphism
-        + VecZnxSwitchRing<B>
+        + VecZnxSwitchRing
         + VecZnxBigAllocBytes
         + VecZnxIdftApplyTmpA<B>
         + SvpApplyDftToDft<B>

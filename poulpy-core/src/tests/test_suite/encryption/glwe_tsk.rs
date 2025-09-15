@@ -50,7 +50,7 @@ where
         + VecZnxBigAlloc<B>
         + VecZnxIdftApplyTmpA<B>
         + VecZnxAddScalarInplace
-        + VecZnxSwitchRing<B>
+        + VecZnxSwitchRing
         + VecZnxSubScalarInplace,
     B: Backend
         + TakeVecZnxDftImpl<B>
@@ -164,7 +164,7 @@ where
         + VecZnxBigAlloc<B>
         + VecZnxIdftApplyTmpA<B>
         + VecZnxAddScalarInplace
-        + VecZnxSwitchRing<B>
+        + VecZnxSwitchRing
         + VecZnxSubScalarInplace,
     B: Backend
         + TakeVecZnxDftImpl<B>

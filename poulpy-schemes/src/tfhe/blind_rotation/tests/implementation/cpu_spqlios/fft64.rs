@@ -1,4 +1,4 @@
-use poulpy_backend::cpu_spqlios::FFT64;
+use poulpy_backend::cpu_spqlios::FFT64Spqlios;
 use poulpy_hal::{api::ModuleNew, layouts::Module};
 
 use crate::tfhe::blind_rotation::tests::{
@@ -8,30 +8,30 @@ use crate::tfhe::blind_rotation::tests::{
 
 #[test]
 fn lut_standard() {
-    let module: Module<FFT64> = Module::<FFT64>::new(32);
+    let module: Module<FFT64Spqlios> = Module::<FFT64Spqlios>::new(32);
     test_lut_standard(&module);
 }
 
 #[test]
 fn lut_extended() {
-    let module: Module<FFT64> = Module::<FFT64>::new(32);
+    let module: Module<FFT64Spqlios> = Module::<FFT64Spqlios>::new(32);
     test_lut_extended(&module);
 }
 
 #[test]
 fn standard() {
-    let module: Module<FFT64> = Module::<FFT64>::new(512);
+    let module: Module<FFT64Spqlios> = Module::<FFT64Spqlios>::new(512);
     test_blind_rotation(&module, 224, 1, 1);
 }
 
 #[test]
 fn block_binary() {
-    let module: Module<FFT64> = Module::<FFT64>::new(512);
+    let module: Module<FFT64Spqlios> = Module::<FFT64Spqlios>::new(512);
     test_blind_rotation(&module, 224, 7, 1);
 }
 
 #[test]
 fn block_binary_extended() {
-    let module: Module<FFT64> = Module::<FFT64>::new(512);
+    let module: Module<FFT64Spqlios> = Module::<FFT64Spqlios>::new(512);
     test_blind_rotation(&module, 224, 7, 2);
 }

@@ -48,7 +48,7 @@ where
         + VmpApplyDftToDftAdd<B>
         + VecZnxBigAddSmallInplace<B>
         + VecZnxAutomorphism
-        + VecZnxSwitchRing<B>
+        + VecZnxSwitchRing
         + VecZnxAddScalarInplace
         + VecZnxAutomorphismInplace<B>
         + VecZnxBigAllocBytes
@@ -142,7 +142,7 @@ where
         + VmpApplyDftToDftAdd<B>
         + VecZnxBigAddSmallInplace<B>
         + VecZnxAutomorphism
-        + VecZnxSwitchRing<B>
+        + VecZnxSwitchRing
         + VecZnxAddScalarInplace
         + VecZnxAutomorphismInplace<B>
         + VecZnxBigAllocBytes

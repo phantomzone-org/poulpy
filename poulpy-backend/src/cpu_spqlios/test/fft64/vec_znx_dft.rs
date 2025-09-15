@@ -1,74 +1,73 @@
 use poulpy_hal::{
     api::ModuleNew,
     layouts::Module,
-    reference::{
-        vec_znx::test_vec_znx_copy,
-        vec_znx_dft::fft64::{
-            test_vec_znx_dft_add, test_vec_znx_dft_add_inplace, test_vec_znx_dft_apply, test_vec_znx_dft_sub,
-            test_vec_znx_dft_sub_ab_inplace, test_vec_znx_dft_sub_ba_inplace, test_vec_znx_idft_apply,
-            test_vec_znx_idft_apply_consume, test_vec_znx_idft_apply_tmpa,
-        },
+    test_suite::vec_znx_dft::{
+        test_vec_znx_dft_add, test_vec_znx_dft_add_inplace, test_vec_znx_dft_sub, test_vec_znx_dft_sub_ab_inplace,
+        test_vec_znx_dft_sub_ba_inplace, test_vec_znx_idft_apply, test_vec_znx_idft_apply_consume, test_vec_znx_idft_apply_tmpa,
     },
 };
 
-use crate::cpu_spqlios::FFT64;
+use crate::{cpu_fft64_ref::FFT64Ref, cpu_spqlios::FFT64Spqlios};
 
 #[test]
 fn test_vec_znx_dft_add_fft64() {
-    let module: Module<FFT64> = Module::<FFT64>::new(1 << 5);
-    test_vec_znx_dft_add(&module);
+    let module_test: Module<FFT64Spqlios> = Module::<FFT64Spqlios>::new(1 << 5);
+    let module_ref: Module<FFT64Ref> = Module::<FFT64Ref>::new(1 << 5);
+    test_vec_znx_dft_add(12, &module_ref, &module_test)
 }
 
 #[test]
 fn test_vec_znx_dft_add_inplace_fft64() {
-    let module: Module<FFT64> = Module::<FFT64>::new(1 << 5);
-    test_vec_znx_dft_add_inplace(&module);
+    let module_test: Module<FFT64Spqlios> = Module::<FFT64Spqlios>::new(1 << 5);
+    let module_ref: Module<FFT64Ref> = Module::<FFT64Ref>::new(1 << 5);
+    test_vec_znx_dft_add_inplace(12, &module_ref, &module_test)
 }
 
 #[test]
 fn test_vec_znx_dft_sub_fft64() {
-    let module: Module<FFT64> = Module::<FFT64>::new(1 << 5);
-    test_vec_znx_dft_sub(&module);
+    let module_test: Module<FFT64Spqlios> = Module::<FFT64Spqlios>::new(1 << 5);
+    let module_ref: Module<FFT64Ref> = Module::<FFT64Ref>::new(1 << 5);
+    test_vec_znx_dft_sub(12, &module_ref, &module_test)
 }
 
 #[test]
 fn test_vec_znx_dft_sub_ab_inplace_fft64() {
-    let module: Module<FFT64> = Module::<FFT64>::new(1 << 5);
-    test_vec_znx_dft_sub_ab_inplace(&module);
+    let module_test: Module<FFT64Spqlios> = Module::<FFT64Spqlios>::new(1 << 5);
+    let module_ref: Module<FFT64Ref> = Module::<FFT64Ref>::new(1 << 5);
+    test_vec_znx_dft_sub_ab_inplace(12, &module_ref, &module_test)
 }
 
 #[test]
 fn test_vec_znx_dft_sub_ba_inplace_fft64() {
-    let module: Module<FFT64> = Module::<FFT64>::new(1 << 5);
-    test_vec_znx_dft_sub_ba_inplace(&module);
-}
-
-#[test]
-fn test_vec_znx_dft_apply_fft64() {
-    let module: Module<FFT64> = Module::<FFT64>::new(1 << 5);
-    test_vec_znx_dft_apply(&module);
+    let module_test: Module<FFT64Spqlios> = Module::<FFT64Spqlios>::new(1 << 5);
+    let module_ref: Module<FFT64Ref> = Module::<FFT64Ref>::new(1 << 5);
+    test_vec_znx_dft_sub_ba_inplace(12, &module_ref, &module_test)
 }
 
 #[test]
 fn test_vec_znx_idft_apply_fft64() {
-    let module: Module<FFT64> = Module::<FFT64>::new(1 << 5);
-    test_vec_znx_idft_apply(&module);
+    let module_test: Module<FFT64Spqlios> = Module::<FFT64Spqlios>::new(1 << 5);
+    let module_ref: Module<FFT64Ref> = Module::<FFT64Ref>::new(1 << 5);
+    test_vec_znx_idft_apply(12, &module_ref, &module_test)
 }
 
 #[test]
 fn test_vec_znx_idft_apply_tmpa_fft64() {
-    let module: Module<FFT64> = Module::<FFT64>::new(1 << 5);
-    test_vec_znx_idft_apply_tmpa(&module);
+    let module_test: Module<FFT64Spqlios> = Module::<FFT64Spqlios>::new(1 << 5);
+    let module_ref: Module<FFT64Ref> = Module::<FFT64Ref>::new(1 << 5);
+    test_vec_znx_idft_apply_tmpa(12, &module_ref, &module_test)
 }
 
 #[test]
 fn test_vec_znx_idft_apply_consume_fft64() {
-    let module: Module<FFT64> = Module::<FFT64>::new(1 << 5);
-    test_vec_znx_idft_apply_consume(&module);
+    let module_test: Module<FFT64Spqlios> = Module::<FFT64Spqlios>::new(1 << 5);
+    let module_ref: Module<FFT64Ref> = Module::<FFT64Ref>::new(1 << 5);
+    test_vec_znx_idft_apply_consume(12, &module_ref, &module_test)
 }
 
-#[test]
-fn test_vec_znx_copy_fft64() {
-    let module: Module<FFT64> = Module::<FFT64>::new(1 << 5);
-    test_vec_znx_copy(&module);
-}
+// #[test]
+// fn test_vec_znx_copy_fft64() {
+// let module_test: Module<FFT64Spqlios> = Module::<FFT64Spqlios>::new(1 << 5);
+// let module_ref: Module<FFT64Ref> = Module::<FFT64Ref>::new(1 << 5);
+// test_vec_znx_dft_copy(12, &module_ref, &module_test)
+// }

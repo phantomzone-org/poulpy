@@ -1,19 +1,21 @@
-use std::marker::PhantomData;
+use std::{
+    hash::{DefaultHasher, Hasher},
+    marker::PhantomData,
+};
 
-use rand::RngCore;
 use rand_distr::num_traits::Zero;
 use std::fmt;
 
 use crate::{
     alloc_aligned,
     layouts::{
-        Backend, Data, DataMut, DataRef, DataView, DataViewMut, FillUniform, ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero,
+        Backend, Data, DataMut, DataRef, DataView, DataViewMut, DigestU64, ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero,
     },
     oep::VecZnxBigAllocBytesImpl,
-    source::Source,
 };
 
-#[derive(PartialEq, Eq)]
+#[repr(C)]
+#[derive(PartialEq, Eq, Hash)]
 pub struct VecZnxBig<D: Data, B: Backend> {
     pub data: D,
     pub n: usize,
@@ -21,6 +23,18 @@ pub struct VecZnxBig<D: Data, B: Backend> {
     pub size: usize,
     pub max_size: usize,
     pub _phantom: PhantomData<B>,
+}
+
+impl<D: DataRef, B: Backend> DigestU64 for VecZnxBig<D, B> {
+    fn digest_u64(&self) -> u64 {
+        let mut h: DefaultHasher = DefaultHasher::new();
+        h.write(self.data.as_ref());
+        h.write_usize(self.n);
+        h.write_usize(self.cols);
+        h.write_usize(self.size);
+        h.write_usize(self.max_size);
+        h.finish()
+    }
 }
 
 impl<D: Data, B: Backend> ZnxSliceSize for VecZnxBig<D, B> {
@@ -74,12 +88,6 @@ where
     }
     fn zero_at(&mut self, i: usize, j: usize) {
         self.at_mut(i, j).fill(<Self as ZnxView>::Scalar::zero());
-    }
-}
-
-impl<D: DataMut, B: Backend> FillUniform for VecZnxBig<D, B> {
-    fn fill_uniform(&mut self, source: &mut Source) {
-        source.fill_bytes(self.data.as_mut());
     }
 }
 

@@ -119,6 +119,11 @@ pub trait VecZnxNegateInplace {
     where
         A: VecZnxToMut;
 }
+
+pub trait VecZnxLshTmpBytes {
+    fn vec_znx_lsh_tmp_bytes(&self) -> usize;
+}
+
 pub trait VecZnxLsh<B: Backend> {
     /// Left shift by k bits all columns of `a`.
     #[allow(clippy::too_many_arguments)]
@@ -126,6 +131,10 @@ pub trait VecZnxLsh<B: Backend> {
     where
         R: VecZnxToMut,
         A: VecZnxToRef;
+}
+
+pub trait VecZnxRshTmpBytes {
+    fn vec_znx_rsh_tmp_bytes(&self) -> usize;
 }
 
 pub trait VecZnxRsh<B: Backend> {
@@ -240,7 +249,7 @@ pub trait VecZnxMergeRings<B: Backend> {
         A: VecZnxToRef;
 }
 
-pub trait VecZnxSwitchRing<B: Backend> {
+pub trait VecZnxSwitchRing {
     fn vec_znx_switch_ring<R, A>(&self, res: &mut R, res_col: usize, a: &A, col_a: usize)
     where
         R: VecZnxToMut,

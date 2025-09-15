@@ -1,4 +1,4 @@
-use poulpy_backend::cpu_spqlios::FFT64;
+use poulpy_backend::cpu_spqlios::FFT64Spqlios;
 use poulpy_hal::{api::ModuleNew, layouts::Module};
 
 use crate::tfhe::{
@@ -10,12 +10,12 @@ use crate::tfhe::{
 
 #[test]
 fn test_to_constant() {
-    let module: Module<FFT64> = Module::<FFT64>::new(256);
-    test_circuit_bootstrapping_to_constant::<FFT64, CGGI>(&module);
+    let module: Module<FFT64Spqlios> = Module::<FFT64Spqlios>::new(256);
+    test_circuit_bootstrapping_to_constant::<FFT64Spqlios, CGGI>(&module);
 }
 
 #[test]
 fn test_to_exponent() {
-    let module: Module<FFT64> = Module::<FFT64>::new(256);
-    test_circuit_bootstrapping_to_exponent::<FFT64, CGGI>(&module);
+    let module: Module<FFT64Spqlios> = Module::<FFT64Spqlios>::new(256);
+    test_circuit_bootstrapping_to_exponent::<FFT64Spqlios, CGGI>(&module);
 }

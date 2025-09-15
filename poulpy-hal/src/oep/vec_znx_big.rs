@@ -7,6 +7,17 @@ use crate::{
 /// * See TODO for reference code.
 /// * See TODO for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
+pub unsafe trait VecZnxBigFromSmallImpl<B: Backend> {
+    fn vec_znx_big_from_small_impl<R, A>(res: &mut R, res_col: usize, a: &A, a_col: usize)
+    where
+        R: VecZnxBigToMut<B>,
+        A: VecZnxToRef;
+}
+
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See TODO for reference code.
+/// * See TODO for corresponding public API.
+/// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxBigAllocImpl<B: Backend> {
     fn vec_znx_big_alloc_impl(n: usize, cols: usize, size: usize) -> VecZnxBigOwned<B>;
 }

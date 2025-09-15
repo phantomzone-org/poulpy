@@ -25,8 +25,8 @@ impl<D: DataRef> fmt::Debug for GGLWESwitchingKeyCompressed<D> {
 }
 
 impl<D: DataMut> FillUniform for GGLWESwitchingKeyCompressed<D> {
-    fn fill_uniform(&mut self, source: &mut Source) {
-        self.key.fill_uniform(source);
+    fn fill_uniform(&mut self, log_bound: usize, source: &mut Source) {
+        self.key.fill_uniform(log_bound, source);
     }
 }
 

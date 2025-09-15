@@ -61,7 +61,7 @@ where
         + VecZnxNormalize<B>
         + VecZnxSub
         + SvpApplyDftToDft<B>
-        + VecZnxSwitchRing<B>
+        + VecZnxSwitchRing
         + VecZnxAutomorphismInplace<B>
         + VecZnxAutomorphism,
     B: Backend
@@ -218,7 +218,7 @@ where
         + VecZnxSub
         + VecZnxFillUniform
         + SvpApplyDftToDft<B>
-        + VecZnxSwitchRing<B>
+        + VecZnxSwitchRing
         + VecZnxAutomorphismInplace<B>
         + VecZnxAutomorphism,
     B: Backend

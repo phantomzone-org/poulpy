@@ -53,7 +53,7 @@ where
         + VmpApplyDftToDft<B>
         + VmpApplyDftToDftAdd<B>
         + VecZnxBigNormalizeTmpBytes
-        + VecZnxSwitchRing<B>,
+        + VecZnxSwitchRing,
     B: Backend
         + TakeVecZnxDftImpl<B>
         + TakeVecZnxBigImpl<B>
@@ -181,7 +181,7 @@ where
         + VmpApplyDftToDft<B>
         + VmpApplyDftToDftAdd<B>
         + VecZnxBigNormalizeTmpBytes
-        + VecZnxSwitchRing<B>,
+        + VecZnxSwitchRing,
     B: Backend
         + TakeVecZnxDftImpl<B>
         + TakeVecZnxBigImpl<B>

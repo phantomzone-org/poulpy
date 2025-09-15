@@ -117,7 +117,7 @@ where
 }
 
 pub trait FillUniform {
-    fn fill_uniform(&mut self, source: &mut Source);
+    fn fill_uniform(&mut self, log_bound: usize, source: &mut Source);
 }
 
 pub trait Reset {

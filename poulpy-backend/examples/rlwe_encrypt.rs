@@ -1,5 +1,5 @@
 use itertools::izip;
-use poulpy_backend::cpu_spqlios::FFT64;
+use poulpy_backend::cpu_spqlios::FFT64Spqlios;
 use poulpy_hal::{
     api::{
         ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPrepare, VecZnxAddNormal,
@@ -16,9 +16,9 @@ fn main() {
     let ct_size: usize = 3;
     let msg_size: usize = 2;
     let log_scale: usize = msg_size * basek - 5;
-    let module: Module<FFT64> = Module::<FFT64>::new(n as u64);
+    let module: Module<FFT64Spqlios> = Module::<FFT64Spqlios>::new(n as u64);
 
-    let mut scratch: ScratchOwned<FFT64> = ScratchOwned::<FFT64>::alloc(module.vec_znx_big_normalize_tmp_bytes());
+    let mut scratch: ScratchOwned<FFT64Spqlios> = ScratchOwned::<FFT64Spqlios>::alloc(module.vec_znx_big_normalize_tmp_bytes());
 
     let seed: [u8; 32] = [0; 32];
     let mut source: Source = Source::new(seed);
@@ -28,7 +28,7 @@ fn main() {
     s.fill_ternary_prob(0, 0.5, &mut source);
 
     // Buffer to store s in the DFT domain
-    let mut s_dft: SvpPPol<Vec<u8>, FFT64> = module.svp_ppol_alloc(s.cols());
+    let mut s_dft: SvpPPol<Vec<u8>, FFT64Spqlios> = module.svp_ppol_alloc(s.cols());
 
     // s_dft <- DFT(s)
     module.svp_prepare(&mut s_dft, 0, &s, 0);
@@ -43,7 +43,7 @@ fn main() {
     // Fill the second column with random values: ct = (0, a)
     module.vec_znx_fill_uniform(basek, &mut ct, 1, &mut source);
 
-    let mut buf_dft: VecZnxDft<Vec<u8>, FFT64> = module.vec_znx_dft_alloc(1, ct_size);
+    let mut buf_dft: VecZnxDft<Vec<u8>, FFT64Spqlios> = module.vec_znx_dft_alloc(1, ct_size);
 
     module.vec_znx_dft_apply(1, 0, &mut buf_dft, 0, &ct, 1);
 
@@ -58,7 +58,7 @@ fn main() {
     // Alias scratch space (VecZnxDft<B> is always at least as big as VecZnxBig<B>)
 
     // BIG(ct[1] * s) <- IDFT(DFT(ct[1] * s)) (not normalized)
-    let mut buf_big: VecZnxBig<Vec<u8>, FFT64> = module.vec_znx_big_alloc(1, ct_size);
+    let mut buf_big: VecZnxBig<Vec<u8>, FFT64Spqlios> = module.vec_znx_big_alloc(1, ct_size);
     module.vec_znx_idft_apply_tmpa(&mut buf_big, 0, &mut buf_dft, 0);
 
     // Creates a plaintext: VecZnx with 1 column

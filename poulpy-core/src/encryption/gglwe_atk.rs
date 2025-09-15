@@ -53,7 +53,7 @@ impl<DataSelf: DataMut> GGLWEAutomorphismKey<DataSelf> {
             + VecZnxNormalize<B>
             + VecZnxSub
             + SvpPrepare<B>
-            + VecZnxSwitchRing<B>
+            + VecZnxSwitchRing
             + SvpPPolAllocBytes
             + VecZnxAutomorphism,
         Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx + TakeScalarZnx + TakeGLWESecretPrepared<B>,

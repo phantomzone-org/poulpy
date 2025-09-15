@@ -1,4 +1,4 @@
-use poulpy_hal::tests::serialization::test_reader_writer_interface;
+use poulpy_hal::test_suite::serialization::test_reader_writer_interface;
 
 use crate::tfhe::blind_rotation::{BlindRotationKey, BlindRotationKeyAlloc, BlindRotationKeyCompressed, CGGI};
 

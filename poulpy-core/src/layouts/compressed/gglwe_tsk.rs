@@ -23,10 +23,10 @@ impl<D: DataRef> fmt::Debug for GGLWETensorKeyCompressed<D> {
 }
 
 impl<D: DataMut> FillUniform for GGLWETensorKeyCompressed<D> {
-    fn fill_uniform(&mut self, source: &mut Source) {
+    fn fill_uniform(&mut self, log_bound: usize, source: &mut Source) {
         self.keys
             .iter_mut()
-            .for_each(|key: &mut GGLWESwitchingKeyCompressed<D>| key.fill_uniform(source))
+            .for_each(|key: &mut GGLWESwitchingKeyCompressed<D>| key.fill_uniform(log_bound, source))
     }
 }
 

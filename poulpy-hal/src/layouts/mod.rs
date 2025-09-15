@@ -34,3 +34,7 @@ pub trait ToOwnedDeep {
     type Owned;
     fn to_owned_deep(&self) -> Self::Owned;
 }
+
+pub trait DigestU64 {
+    fn digest_u64(&self) -> u64;
+}

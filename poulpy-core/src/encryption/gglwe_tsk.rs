@@ -58,7 +58,7 @@ impl<DataSelf: DataMut> GGLWETensorKey<DataSelf> {
             + VecZnxNormalize<B>
             + VecZnxSub
             + SvpPrepare<B>
-            + VecZnxSwitchRing<B>
+            + VecZnxSwitchRing
             + SvpPPolAllocBytes,
         Scratch<B>:
             TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx + TakeScalarZnx + TakeGLWESecretPrepared<B> + TakeVecZnxBig<B>,

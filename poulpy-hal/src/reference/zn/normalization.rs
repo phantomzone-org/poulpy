@@ -1,7 +1,7 @@
 use crate::{
     api::{ScratchOwnedAlloc, ScratchOwnedBorrow, ZnNormalizeInplace, ZnNormalizeTmpBytes},
     layouts::{Backend, Module, ScratchOwned, Zn, ZnToMut, ZnxInfos, ZnxView, ZnxViewMut},
-    reference::znx::{ZnxNormalize, ZnxNormalizeRef},
+    reference::znx::{ZnxNormalizeFinalStepInplace, ZnxNormalizeFirstStepInplace, ZnxNormalizeMiddleStepInplace, ZnxRef},
     source::Source,
 };
 
@@ -9,10 +9,10 @@ pub fn zn_normalize_tmp_bytes(n: usize) -> usize {
     n * size_of::<i64>()
 }
 
-pub fn zn_normalize_inplace<R, ZNXNORM>(n: usize, basek: usize, res: &mut R, res_col: usize, carry: &mut [i64])
+pub fn zn_normalize_inplace<R, ARI>(n: usize, basek: usize, res: &mut R, res_col: usize, carry: &mut [i64])
 where
     R: ZnToMut,
-    ZNXNORM: ZnxNormalize,
+    ARI: ZnxNormalizeFirstStepInplace + ZnxNormalizeFinalStepInplace + ZnxNormalizeMiddleStepInplace,
 {
     let mut res: Zn<&mut [u8]> = res.to_mut();
 
@@ -27,11 +27,11 @@ where
         let out = &mut res.at_mut(res_col, j)[..n];
 
         if j == res_size - 1 {
-            ZNXNORM::znx_normalize_first_step_inplace(basek, 0, out, carry);
+            ARI::znx_normalize_first_step_inplace(basek, 0, out, carry);
         } else if j == 0 {
-            ZNXNORM::znx_normalize_final_step_inplace(basek, 0, out, carry);
+            ARI::znx_normalize_final_step_inplace(basek, 0, out, carry);
         } else {
-            ZNXNORM::znx_normalize_middle_step_inplace(basek, 0, out, carry);
+            ARI::znx_normalize_middle_step_inplace(basek, 0, out, carry);
         }
     }
 }
@@ -63,7 +63,7 @@ where
 
         // Reference
         for i in 0..cols {
-            zn_normalize_inplace::<_, ZnxNormalizeRef>(n, basek, &mut res_0, i, &mut carry);
+            zn_normalize_inplace::<_, ZnxRef>(n, basek, &mut res_0, i, &mut carry);
             module.zn_normalize_inplace(n, basek, &mut res_1, i, scratch.borrow());
         }
 

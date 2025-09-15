@@ -10,42 +10,44 @@ use poulpy_hal::{
         VecZnxDftZeroImpl, VecZnxIdftApplyConsumeImpl, VecZnxIdftApplyImpl, VecZnxIdftApplyTmpAImpl, VecZnxIdftApplyTmpBytesImpl,
     },
     reference::{
-        reim::{ReimArithmeticRef, reim_copy_ref, reim_negate_inplace_ref, reim_negate_ref, reim_zero_ref},
-        vec_znx_dft::fft64::vec_znx_dft_copy,
-        znx::{ZnxArithmetic, ZnxArithmeticRef},
+        fft64::{
+            reim::{ReimCopy, ReimZero, reim_copy_ref, reim_negate_inplace_ref, reim_negate_ref, reim_zero_ref},
+            vec_znx_dft::vec_znx_dft_copy,
+        },
+        znx::{ZnxRef, ZnxZero, znx_zero_ref},
     },
 };
 
 use crate::cpu_spqlios::{
-    FFT64,
+    FFT64Spqlios,
     ffi::{vec_znx_big, vec_znx_dft},
 };
 
-unsafe impl VecZnxDftFromBytesImpl<Self> for FFT64 {
+unsafe impl VecZnxDftFromBytesImpl<Self> for FFT64Spqlios {
     fn vec_znx_dft_from_bytes_impl(n: usize, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxDftOwned<Self> {
-        VecZnxDft::<Vec<u8>, FFT64>::from_bytes(n, cols, size, bytes)
+        VecZnxDft::<Vec<u8>, Self>::from_bytes(n, cols, size, bytes)
     }
 }
 
-unsafe impl VecZnxDftAllocBytesImpl<Self> for FFT64 {
+unsafe impl VecZnxDftAllocBytesImpl<Self> for FFT64Spqlios {
     fn vec_znx_dft_alloc_bytes_impl(n: usize, cols: usize, size: usize) -> usize {
-        FFT64::layout_prep_word_count() * n * cols * size * size_of::<<FFT64 as Backend>::ScalarPrep>()
+        Self::layout_prep_word_count() * n * cols * size * size_of::<<FFT64Spqlios as Backend>::ScalarPrep>()
     }
 }
 
-unsafe impl VecZnxDftAllocImpl<Self> for FFT64 {
+unsafe impl VecZnxDftAllocImpl<Self> for FFT64Spqlios {
     fn vec_znx_dft_alloc_impl(n: usize, cols: usize, size: usize) -> VecZnxDftOwned<Self> {
         VecZnxDftOwned::alloc(n, cols, size)
     }
 }
 
-unsafe impl VecZnxIdftApplyTmpBytesImpl<Self> for FFT64 {
+unsafe impl VecZnxIdftApplyTmpBytesImpl<Self> for FFT64Spqlios {
     fn vec_znx_idft_apply_tmp_bytes_impl(module: &Module<Self>) -> usize {
         unsafe { vec_znx_dft::vec_znx_idft_tmp_bytes(module.ptr()) as usize }
     }
 }
 
-unsafe impl VecZnxIdftApplyImpl<Self> for FFT64 {
+unsafe impl VecZnxIdftApplyImpl<Self> for FFT64Spqlios {
     fn vec_znx_idft_apply_impl<R, A>(
         module: &Module<Self>,
         res: &mut R,
@@ -57,8 +59,8 @@ unsafe impl VecZnxIdftApplyImpl<Self> for FFT64 {
         R: VecZnxBigToMut<Self>,
         A: VecZnxDftToRef<Self>,
     {
-        let mut res: VecZnxBig<&mut [u8], FFT64> = res.to_mut();
-        let a: VecZnxDft<&[u8], FFT64> = a.to_ref();
+        let mut res: VecZnxBig<&mut [u8], Self> = res.to_mut();
+        let a: VecZnxDft<&[u8], Self> = a.to_ref();
 
         #[cfg(debug_assertions)]
         {
@@ -80,19 +82,19 @@ unsafe impl VecZnxIdftApplyImpl<Self> for FFT64 {
                     tmp_bytes.as_mut_ptr(),
                 )
             });
-            (min_size..res.size()).for_each(|j| ZnxArithmeticRef::znx_zero(res.at_mut(res_col, j)));
+            (min_size..res.size()).for_each(|j| znx_zero_ref(res.at_mut(res_col, j)));
         }
     }
 }
 
-unsafe impl VecZnxIdftApplyTmpAImpl<Self> for FFT64 {
+unsafe impl VecZnxIdftApplyTmpAImpl<Self> for FFT64Spqlios {
     fn vec_znx_idft_apply_tmpa_impl<R, A>(module: &Module<Self>, res: &mut R, res_col: usize, a: &mut A, a_col: usize)
     where
         R: VecZnxBigToMut<Self>,
         A: VecZnxDftToMut<Self>,
     {
-        let mut res: VecZnxBig<&mut [u8], FFT64> = res.to_mut();
-        let mut a_mut: VecZnxDft<&mut [u8], FFT64> = a.to_mut();
+        let mut res: VecZnxBig<&mut [u8], Self> = res.to_mut();
+        let mut a_mut: VecZnxDft<&mut [u8], Self> = a.to_mut();
 
         let min_size: usize = res.size().min(a_mut.size());
 
@@ -106,17 +108,17 @@ unsafe impl VecZnxIdftApplyTmpAImpl<Self> for FFT64 {
                     1_u64,
                 )
             });
-            (min_size..res.size()).for_each(|j| ZnxArithmeticRef::znx_zero(res.at_mut(res_col, j)))
+            (min_size..res.size()).for_each(|j| ZnxRef::znx_zero(res.at_mut(res_col, j)))
         }
     }
 }
 
-unsafe impl VecZnxIdftApplyConsumeImpl<Self> for FFT64 {
-    fn vec_znx_idft_apply_consume_impl<D: Data>(module: &Module<Self>, mut a: VecZnxDft<D, FFT64>) -> VecZnxBig<D, FFT64>
+unsafe impl VecZnxIdftApplyConsumeImpl<Self> for FFT64Spqlios {
+    fn vec_znx_idft_apply_consume_impl<D: Data>(module: &Module<Self>, mut a: VecZnxDft<D, Self>) -> VecZnxBig<D, Self>
     where
-        VecZnxDft<D, FFT64>: VecZnxDftToMut<Self>,
+        VecZnxDft<D, Self>: VecZnxDftToMut<Self>,
     {
-        let mut a_mut: VecZnxDft<&mut [u8], FFT64> = a.to_mut();
+        let mut a_mut: VecZnxDft<&mut [u8], Self> = a.to_mut();
 
         unsafe {
             // Rev col and rows because ZnxDft.sl() >= ZnxBig.sl()
@@ -137,7 +139,7 @@ unsafe impl VecZnxIdftApplyConsumeImpl<Self> for FFT64 {
     }
 }
 
-unsafe impl VecZnxDftApplyImpl<Self> for FFT64 {
+unsafe impl VecZnxDftApplyImpl<Self> for FFT64Spqlios {
     fn vec_znx_dft_apply_impl<R, A>(
         module: &Module<Self>,
         step: usize,
@@ -150,7 +152,7 @@ unsafe impl VecZnxDftApplyImpl<Self> for FFT64 {
         R: VecZnxDftToMut<Self>,
         A: VecZnxToRef,
     {
-        let mut res: VecZnxDft<&mut [u8], FFT64> = res.to_mut();
+        let mut res: VecZnxDft<&mut [u8], Self> = res.to_mut();
         let a: VecZnx<&[u8]> = a.to_ref();
         let steps: usize = a.size().div_ceil(step);
         let min_steps: usize = res.size().min(steps);
@@ -173,16 +175,16 @@ unsafe impl VecZnxDftApplyImpl<Self> for FFT64 {
     }
 }
 
-unsafe impl VecZnxDftAddImpl<Self> for FFT64 {
+unsafe impl VecZnxDftAddImpl<Self> for FFT64Spqlios {
     fn vec_znx_dft_add_impl<R, A, D>(module: &Module<Self>, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &D, b_col: usize)
     where
         R: VecZnxDftToMut<Self>,
         A: VecZnxDftToRef<Self>,
         D: VecZnxDftToRef<Self>,
     {
-        let mut res: VecZnxDft<&mut [u8], FFT64> = res.to_mut();
-        let a: VecZnxDft<&[u8], FFT64> = a.to_ref();
-        let b: VecZnxDft<&[u8], FFT64> = b.to_ref();
+        let mut res: VecZnxDft<&mut [u8], Self> = res.to_mut();
+        let a: VecZnxDft<&[u8], Self> = a.to_ref();
+        let b: VecZnxDft<&[u8], Self> = b.to_ref();
 
         let res_size: usize = res.size();
         let a_size: usize = a.size();
@@ -240,14 +242,14 @@ unsafe impl VecZnxDftAddImpl<Self> for FFT64 {
     }
 }
 
-unsafe impl VecZnxDftAddInplaceImpl<Self> for FFT64 {
+unsafe impl VecZnxDftAddInplaceImpl<Self> for FFT64Spqlios {
     fn vec_znx_dft_add_inplace_impl<R, A>(module: &Module<Self>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxDftToMut<Self>,
         A: VecZnxDftToRef<Self>,
     {
-        let mut res: VecZnxDft<&mut [u8], FFT64> = res.to_mut();
-        let a: VecZnxDft<&[u8], FFT64> = a.to_ref();
+        let mut res: VecZnxDft<&mut [u8], Self> = res.to_mut();
+        let a: VecZnxDft<&[u8], Self> = a.to_ref();
 
         let min_size: usize = res.size().min(a.size());
 
@@ -267,16 +269,16 @@ unsafe impl VecZnxDftAddInplaceImpl<Self> for FFT64 {
     }
 }
 
-unsafe impl VecZnxDftSubImpl<Self> for FFT64 {
+unsafe impl VecZnxDftSubImpl<Self> for FFT64Spqlios {
     fn vec_znx_dft_sub_impl<R, A, D>(module: &Module<Self>, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &D, b_col: usize)
     where
         R: VecZnxDftToMut<Self>,
         A: VecZnxDftToRef<Self>,
         D: VecZnxDftToRef<Self>,
     {
-        let mut res: VecZnxDft<&mut [u8], FFT64> = res.to_mut();
-        let a: VecZnxDft<&[u8], FFT64> = a.to_ref();
-        let b: VecZnxDft<&[u8], FFT64> = b.to_ref();
+        let mut res: VecZnxDft<&mut [u8], Self> = res.to_mut();
+        let a: VecZnxDft<&[u8], Self> = a.to_ref();
+        let b: VecZnxDft<&[u8], Self> = b.to_ref();
 
         unsafe {
             let res_size: usize = res.size();
@@ -334,14 +336,14 @@ unsafe impl VecZnxDftSubImpl<Self> for FFT64 {
     }
 }
 
-unsafe impl VecZnxDftSubABInplaceImpl<Self> for FFT64 {
+unsafe impl VecZnxDftSubABInplaceImpl<Self> for FFT64Spqlios {
     fn vec_znx_dft_sub_ab_inplace_impl<R, A>(module: &Module<Self>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxDftToMut<Self>,
         A: VecZnxDftToRef<Self>,
     {
-        let mut res: VecZnxDft<&mut [u8], FFT64> = res.to_mut();
-        let a: VecZnxDft<&[u8], FFT64> = a.to_ref();
+        let mut res: VecZnxDft<&mut [u8], Self> = res.to_mut();
+        let a: VecZnxDft<&[u8], Self> = a.to_ref();
 
         let min_size: usize = res.size().min(a.size());
 
@@ -361,14 +363,14 @@ unsafe impl VecZnxDftSubABInplaceImpl<Self> for FFT64 {
     }
 }
 
-unsafe impl VecZnxDftSubBAInplaceImpl<Self> for FFT64 {
+unsafe impl VecZnxDftSubBAInplaceImpl<Self> for FFT64Spqlios {
     fn vec_znx_dft_sub_ba_inplace_impl<R, A>(module: &Module<Self>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxDftToMut<Self>,
         A: VecZnxDftToRef<Self>,
     {
-        let mut res: VecZnxDft<&mut [u8], FFT64> = res.to_mut();
-        let a: VecZnxDft<&[u8], FFT64> = a.to_ref();
+        let mut res: VecZnxDft<&mut [u8], Self> = res.to_mut();
+        let a: VecZnxDft<&[u8], Self> = a.to_ref();
 
         let min_size: usize = res.size().min(a.size());
 
@@ -392,7 +394,7 @@ unsafe impl VecZnxDftSubBAInplaceImpl<Self> for FFT64 {
     }
 }
 
-unsafe impl VecZnxDftCopyImpl<Self> for FFT64 {
+unsafe impl VecZnxDftCopyImpl<Self> for FFT64Spqlios {
     fn vec_znx_dft_copy_impl<R, A>(
         _module: &Module<Self>,
         step: usize,
@@ -405,11 +407,25 @@ unsafe impl VecZnxDftCopyImpl<Self> for FFT64 {
         R: VecZnxDftToMut<Self>,
         A: VecZnxDftToRef<Self>,
     {
-        vec_znx_dft_copy::<_, _, _, ReimArithmeticRef>(step, offset, res, res_col, a, a_col);
+        vec_znx_dft_copy(step, offset, res, res_col, a, a_col);
     }
 }
 
-unsafe impl VecZnxDftZeroImpl<Self> for FFT64 {
+impl ReimCopy for FFT64Spqlios {
+    #[inline(always)]
+    fn reim_copy(res: &mut [f64], a: &[f64]) {
+        reim_copy_ref(res, a);
+    }
+}
+
+impl ReimZero for FFT64Spqlios {
+    #[inline(always)]
+    fn reim_zero(res: &mut [f64]) {
+        reim_zero_ref(res);
+    }
+}
+
+unsafe impl VecZnxDftZeroImpl<Self> for FFT64Spqlios {
     fn vec_znx_dft_zero_impl<R>(_module: &Module<Self>, res: &mut R)
     where
         R: VecZnxDftToMut<Self>,

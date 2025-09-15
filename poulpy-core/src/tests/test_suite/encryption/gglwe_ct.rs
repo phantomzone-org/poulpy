@@ -42,7 +42,7 @@ where
         + SvpPPolAllocBytes
         + SvpPPolAlloc<B>
         + VecZnxBigAddSmallInplace<B>
-        + VecZnxSwitchRing<B>
+        + VecZnxSwitchRing
         + VecZnxAddScalarInplace
         + VecZnxBigAllocBytes
         + VecZnxBigAddInplace<B>
@@ -123,7 +123,7 @@ where
         + SvpPPolAllocBytes
         + SvpPPolAlloc<B>
         + VecZnxBigAddSmallInplace<B>
-        + VecZnxSwitchRing<B>
+        + VecZnxSwitchRing
         + VecZnxAddScalarInplace
         + VecZnxBigAllocBytes
         + VecZnxBigAddInplace<B>

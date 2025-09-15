@@ -1,11 +1,9 @@
 use crate::{
-    api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxMergeRings, VecZnxMergeRingsTmpBytes},
-    layouts::{Backend, FillUniform, Module, ScratchOwned, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView},
+    layouts::{VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos},
     reference::{
         vec_znx::{vec_znx_rotate_inplace, vec_znx_switch_ring},
-        znx::{ZnxArithmetic, ZnxArithmeticRef},
+        znx::{ZnxCopy, ZnxRotate, ZnxSwitchRing, ZnxZero},
     },
-    source::Source,
 };
 
 pub fn vec_znx_merge_rings_tmp_bytes(n: usize) -> usize {
@@ -16,7 +14,7 @@ pub fn vec_znx_merge_rings<R, A, ZNXARI>(res: &mut R, res_col: usize, a: &[A], a
 where
     R: VecZnxToMut,
     A: VecZnxToRef,
-    ZNXARI: ZnxArithmetic,
+    ZNXARI: ZnxCopy + ZnxSwitchRing + ZnxRotate + ZnxZero,
 {
     let mut res: VecZnx<&mut [u8]> = res.to_mut();
 
@@ -48,45 +46,4 @@ where
     });
 
     vec_znx_rotate_inplace::<_, ZNXARI>(a.len() as i64, &mut res, res_col, tmp);
-}
-
-pub fn test_vec_znx_merge_rings<B: Backend>(module: &Module<B>)
-where
-    Module<B>: VecZnxMergeRings<B> + ModuleNew<B> + VecZnxMergeRingsTmpBytes,
-    ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
-{
-    let mut source: Source = Source::new([0u8; 32]);
-    let cols: usize = 2;
-    let mut scratch: ScratchOwned<_> = ScratchOwned::alloc(module.vec_znx_merge_rings_tmp_bytes());
-    let mut tmp: Vec<i64> = vec![0i64; module.n()];
-
-    for a_size in [1, 2, 6, 11] {
-        let mut a: [VecZnx<Vec<u8>>; 2] = [
-            VecZnx::alloc(module.n() >> 1, cols, a_size),
-            VecZnx::alloc(module.n() >> 1, cols, a_size),
-        ];
-
-        a.iter_mut().for_each(|ai| {
-            ai.fill_uniform(&mut source);
-        });
-
-        for res_size in [1, 2, 6, 11] {
-            let mut res_0: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, res_size);
-            let mut res_1: VecZnx<Vec<u8>> = VecZnx::alloc(module.n(), cols, res_size);
-
-            res_0.fill_uniform(&mut source);
-            res_1.fill_uniform(&mut source);
-
-            for i in 0..cols {
-                module.vec_znx_merge_rings(&mut res_0, i, &a, i, scratch.borrow());
-                vec_znx_merge_rings::<_, _, ZnxArithmeticRef>(&mut res_1, i, &a, i, &mut tmp);
-            }
-
-            for i in 0..cols {
-                for j in 0..res_size {
-                    assert_eq!(res_0.at(i, j), res_1.at(i, j));
-                }
-            }
-        }
-    }
 }

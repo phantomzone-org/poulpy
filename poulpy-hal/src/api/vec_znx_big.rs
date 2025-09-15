@@ -3,6 +3,13 @@ use crate::{
     source::Source,
 };
 
+pub trait VecZnxBigFromSmall<B: Backend> {
+    fn vec_znx_big_from_small<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    where
+        R: VecZnxBigToMut<B>,
+        A: VecZnxToRef;
+}
+
 /// Allocates as [crate::layouts::VecZnxBig].
 pub trait VecZnxBigAlloc<B: Backend> {
     fn vec_znx_big_alloc(&self, cols: usize, size: usize) -> VecZnxBigOwned<B>;
