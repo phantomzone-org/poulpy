@@ -60,7 +60,7 @@ pub fn reim_from_znx_i64_bnd50_fma(res: &mut [f64], a: &[i64]) {
 #[allow(dead_code)]
 #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
 #[target_feature(enable = "avx2,fma")]
-fn reim_to_znx_i64_bnd63_avx2_fma(res: &mut [i64], divisor: f64, a: &[f64]) {
+pub fn reim_to_znx_i64_bnd63_avx2_fma(res: &mut [i64], divisor: f64, a: &[f64]) {
     #[cfg(debug_assertions)]
     {
         assert_eq!(res.len(), a.len())
@@ -68,7 +68,7 @@ fn reim_to_znx_i64_bnd63_avx2_fma(res: &mut [i64], divisor: f64, a: &[f64]) {
 
     let sign_mask: u64 = 0x8000000000000000u64;
     let expo_mask: u64 = 0x7FF0000000000000u64;
-    let mantissa_mask: u64 = u64::MAX ^ expo_mask;
+    let mantissa_mask: u64 = (i64::MAX as u64) ^ expo_mask;
     let mantissa_msb: u64 = 0x0010000000000000u64;
     let divi_bits: f64 = divisor * (1i64 << 52) as f64;
     let offset: f64 = divisor / 2.;
@@ -146,7 +146,7 @@ fn reim_to_znx_i64_bnd63_avx2_fma(res: &mut [i64], divisor: f64, a: &[f64]) {
 pub fn reim_to_znx_i64_inplace_bnd63_avx2_fma(res: &mut [f64], divisor: f64) {
     let sign_mask: u64 = 0x8000000000000000u64;
     let expo_mask: u64 = 0x7FF0000000000000u64;
-    let mantissa_mask: u64 = u64::MAX ^ expo_mask;
+    let mantissa_mask: u64 = (i64::MAX as u64) ^ expo_mask;
     let mantissa_msb: u64 = 0x0010000000000000u64;
     let divi_bits: f64 = divisor * (1i64 << 52) as f64;
     let offset: f64 = divisor / 2.;
@@ -164,8 +164,8 @@ pub fn reim_to_znx_i64_inplace_bnd63_avx2_fma(res: &mut [f64], divisor: f64) {
         let expo_mask_256: __m256i = _mm256_set1_epi64x(expo_mask as i64);
         let mantissa_mask_256: __m256i = _mm256_set1_epi64x(mantissa_mask as i64);
         let mantissa_msb_256: __m256i = _mm256_set1_epi64x(mantissa_msb as i64);
-        let offset_256 = _mm256_set1_pd(offset);
-        let divi_bits_256 = _mm256_castpd_si256(_mm256_set1_pd(divi_bits));
+        let offset_256: __m256d = _mm256_set1_pd(offset);
+        let divi_bits_256: __m256i = _mm256_castpd_si256(_mm256_set1_pd(divi_bits));
 
         let mut res_ptr_4xi64: *mut __m256i = res.as_mut_ptr() as *mut __m256i;
         let mut res_ptr_1xf64: *mut f64 = res.as_mut_ptr();
@@ -214,6 +214,7 @@ pub fn reim_to_znx_i64_inplace_bnd63_avx2_fma(res: &mut [f64], divisor: f64) {
             reim_to_znx_i64_inplace_ref(&mut res[span << 2..], divisor)
         }
     }
+    println!();
 }
 
 /// # Correctness
@@ -222,6 +223,7 @@ pub fn reim_to_znx_i64_inplace_bnd63_avx2_fma(res: &mut [f64], divisor: f64) {
 /// Caller must ensure the CPU supports FMA (e.g., via `is_x86_feature_detected!("fma")`);
 #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
 #[target_feature(enable = "fma")]
+#[allow(dead_code)]
 pub fn reim_to_znx_i64_avx2_bnd50_fma(res: &mut [i64], divisor: f64, a: &[f64]) {
     #[cfg(debug_assertions)]
     {

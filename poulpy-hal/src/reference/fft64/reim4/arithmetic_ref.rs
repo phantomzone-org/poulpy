@@ -111,6 +111,10 @@ pub fn reim4_vec_mat1col_product_ref(
         assert!(u.len() >= nrows * 8, "u must be at least nrows * 8 doubles");
         assert!(v.len() >= nrows * 8, "v must be at least nrows * 8 doubles");
     }
+
+    println!("u_ref: {:?}", &u[..nrows * 8]);
+    println!("v_ref: {:?}", &v[..nrows * 8]);
+
     let mut acc: [f64; 8] = [0f64; 8];
     let mut j = 0;
     for _ in 0..nrows {
@@ -118,6 +122,40 @@ pub fn reim4_vec_mat1col_product_ref(
         j += 8;
     }
     dst[0..8].copy_from_slice(&acc);
+
+    println!("dst_ref: {:?}", &dst[..8]);
+    println!();
+}
+
+#[inline(always)]
+pub fn reim4_vec_mat2cols_product_ref(
+    nrows: usize,
+    dst: &mut [f64], // 16 doubles: [re1(4), im1(4), re2(4), im2(4)]
+    u: &[f64],       // nrows * 8 doubles: [ur(4) | ui(4)] per row
+    v: &[f64],       // nrows * 16 doubles: [ar(4) | ai(4) | br(4) | bi(4)] per row
+) {
+    #[cfg(debug_assertions)]
+    {
+        assert_eq!(dst.len(), 16, "dst must have 16 doubles");
+        assert!(u.len() >= nrows * 8, "u must be at least nrows * 8 doubles");
+        assert!(
+            v.len() >= nrows * 16,
+            "v must be at least nrows * 16 doubles"
+        );
+    }
+
+    // zero accumulators
+    let mut acc_0: [f64; 8] = [0f64; 8];
+    let mut acc_1: [f64; 8] = [0f64; 8];
+    for i in 0..nrows {
+        let _1j: usize = i << 3;
+        let _2j: usize = i << 4;
+        let u_j: &[f64; 8] = as_arr(&u[_1j..]);
+        reim4_add_mul(&mut acc_0, u_j, as_arr(&v[_2j..]));
+        reim4_add_mul(&mut acc_1, u_j, as_arr(&v[_2j + 8..]));
+    }
+    dst[0..8].copy_from_slice(&acc_0);
+    dst[8..16].copy_from_slice(&acc_1);
 }
 
 #[inline(always)]
@@ -156,37 +194,6 @@ pub fn reim4_vec_mat2cols_2ndcol_product_ref(
         reim4_add_mul(&mut acc, as_arr(&u[_1j..]), as_arr(&v[_2j + 8..]));
     }
     dst[0..8].copy_from_slice(&acc);
-}
-
-#[inline(always)]
-pub fn reim4_vec_mat2cols_product_ref(
-    nrows: usize,
-    dst: &mut [f64], // 16 doubles: [re1(4), im1(4), re2(4), im2(4)]
-    u: &[f64],       // nrows * 8 doubles: [ur(4) | ui(4)] per row
-    v: &[f64],       // nrows * 16 doubles: [ar(4) | ai(4) | br(4) | bi(4)] per row
-) {
-    #[cfg(debug_assertions)]
-    {
-        assert_eq!(dst.len(), 16, "dst must have 16 doubles");
-        assert!(u.len() >= nrows * 8, "u must be at least nrows * 8 doubles");
-        assert!(
-            v.len() >= nrows * 16,
-            "v must be at least nrows * 16 doubles"
-        );
-    }
-
-    // zero accumulators
-    let mut acc_0: [f64; 8] = [0f64; 8];
-    let mut acc_1: [f64; 8] = [0f64; 8];
-    for i in 0..nrows {
-        let _1j: usize = i << 3;
-        let _2j: usize = i << 4;
-        let u_j: &[f64; 8] = as_arr(&u[_1j..]);
-        reim4_add_mul(&mut acc_0, u_j, as_arr(&v[_2j..]));
-        reim4_add_mul(&mut acc_1, u_j, as_arr(&v[_2j + 8..]));
-    }
-    dst[0..8].copy_from_slice(&acc_0);
-    dst[8..16].copy_from_slice(&acc_1);
 }
 
 #[inline(always)]

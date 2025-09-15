@@ -517,7 +517,7 @@ pub fn test_vec_znx_big_automorphism_inplace<BR: Backend, BT: Backend>(
         let mut res_big_ref: VecZnxBig<Vec<u8>, BR> = module_ref.vec_znx_big_alloc(cols, res_size);
         let mut res_big_test: VecZnxBig<Vec<u8>, BT> = module_test.vec_znx_big_alloc(cols, res_size);
 
-        for p in [-5, 5]{
+        for p in [-5, 5] {
             for j in 0..cols {
                 module_ref.vec_znx_big_from_small(&mut res_big_ref, j, &res, j);
                 module_test.vec_znx_big_from_small(&mut res_big_test, j, &res, j);

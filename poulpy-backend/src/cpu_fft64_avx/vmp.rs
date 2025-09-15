@@ -5,8 +5,8 @@ use poulpy_hal::{
         VmpPMatToMut, VmpPMatToRef, ZnxInfos,
     },
     oep::{
-        VmpApplyDftToDftAddImpl, VmpApplyDftToDftImpl, VmpApplyDftToDftTmpBytesImpl, VmpPMatAllocBytesImpl, VmpPMatAllocImpl,
-        VmpPrepareImpl, VmpPrepareTmpBytesImpl,
+        VmpApplyDftToDftAddImpl, VmpApplyDftToDftAddTmpBytesImpl, VmpApplyDftToDftImpl, VmpApplyDftToDftTmpBytesImpl,
+        VmpPMatAllocBytesImpl, VmpPMatAllocImpl, VmpPrepareImpl, VmpPrepareTmpBytesImpl,
     },
     reference::fft64::vmp::{
         vmp_apply_dft_to_dft, vmp_apply_dft_to_dft_add, vmp_apply_dft_to_dft_tmp_bytes, vmp_prepare, vmp_prepare_tmp_bytes,
@@ -116,6 +116,20 @@ unsafe impl VmpPrepareImpl<Self> for FFT64Avx {
 
 unsafe impl VmpApplyDftToDftTmpBytesImpl<Self> for FFT64Avx {
     fn vmp_apply_dft_to_dft_tmp_bytes_impl(
+        _module: &Module<Self>,
+        _res_size: usize,
+        a_size: usize,
+        b_rows: usize,
+        b_cols_in: usize,
+        _b_cols_out: usize,
+        _b_size: usize,
+    ) -> usize {
+        vmp_apply_dft_to_dft_tmp_bytes(a_size, b_rows, b_cols_in)
+    }
+}
+
+unsafe impl VmpApplyDftToDftAddTmpBytesImpl<Self> for FFT64Avx {
+    fn vmp_apply_dft_to_dft_add_tmp_bytes_impl(
         _module: &Module<Self>,
         _res_size: usize,
         a_size: usize,

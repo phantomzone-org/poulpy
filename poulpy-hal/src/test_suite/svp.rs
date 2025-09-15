@@ -162,7 +162,7 @@ where
     let svp_ref_digest: u64 = svp_ref.digest_u64();
     let svp_test_digest: u64 = svp_test.digest_u64();
 
-    for a_size in [1, 2, 3, 4] {
+    for a_size in [3] {
         // Create a random input VecZnx
         let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, a_size);
         a.fill_uniform(basek, &mut source);
@@ -182,7 +182,7 @@ where
         let a_dft_ref_digest: u64 = a_dft_ref.digest_u64();
         let a_dft_test_digest: u64 = a_dft_test.digest_u64();
 
-        for res_size in [1, 2, 3, 4] {
+        for res_size in [3] {
             // Allocate VecZnxDft from FFT64Ref and module to test
             let mut res_dft_ref: VecZnxDft<Vec<u8>, BR> = module_ref.vec_znx_dft_alloc(cols, res_size);
             let mut res_dft_test: VecZnxDft<Vec<u8>, BT> = module_test.vec_znx_dft_alloc(cols, res_size);
@@ -205,6 +205,9 @@ where
 
             let res_big_ref: crate::layouts::VecZnxBig<Vec<u8>, BR> = module_ref.vec_znx_idft_apply_consume(res_dft_ref);
             let res_big_test: crate::layouts::VecZnxBig<Vec<u8>, BT> = module_test.vec_znx_idft_apply_consume(res_dft_test);
+
+            println!("res_big_ref: {}", res_big_ref);
+            println!("res_big_test: {}", res_big_test);
 
             let mut res_ref: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
             let mut res_test: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);

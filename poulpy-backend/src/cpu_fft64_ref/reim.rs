@@ -13,7 +13,7 @@ use poulpy_hal::reference::fft64::{
     },
 };
 
-use crate::cpu_fft64_ref::FFT64Ref;
+use crate::FFT64Ref;
 
 impl ReimDFTExecute<ReimFFTTable<f64>, f64> for FFT64Ref {
     fn reim_dft_execute(table: &ReimFFTTable<f64>, data: &mut [f64]) {

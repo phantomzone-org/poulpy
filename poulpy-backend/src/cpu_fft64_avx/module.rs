@@ -28,9 +28,9 @@ use crate::cpu_fft64_avx::{
     reim::{
         ReimFFTAvx, ReimIFFTAvx, reim_add_avx2_fma, reim_add_inplace_avx2_fma, reim_addmul_avx2_fma, reim_from_znx_i64_bnd50_fma,
         reim_mul_avx2_fma, reim_mul_inplace_avx2_fma, reim_negate_avx2_fma, reim_negate_inplace_avx2_fma,
-        reim_sub_ab_inplace_avx2_fma, reim_sub_avx2_fma, reim_sub_ba_inplace_avx2_fma, reim_to_znx_i64_avx2_bnd50_fma,
-        reim_to_znx_i64_inplace_bnd63_avx2_fma,
+        reim_sub_ab_inplace_avx2_fma, reim_sub_avx2_fma, reim_sub_ba_inplace_avx2_fma, reim_to_znx_i64_inplace_bnd63_avx2_fma,
     },
+    reim_to_znx_i64_bnd63_avx2_fma,
     reim4::{
         reim4_extract_1blk_from_reim_avx, reim4_save_1blk_to_reim_avx, reim4_save_2blk_to_reim_avx,
         reim4_vec_mat1col_product_avx, reim4_vec_mat2cols_2ndcol_product_avx, reim4_vec_mat2cols_product_avx,
@@ -305,7 +305,7 @@ impl ReimToZnx for FFT64Avx {
     #[inline(always)]
     fn reim_to_znx(res: &mut [i64], divisor: f64, a: &[f64]) {
         unsafe {
-            reim_to_znx_i64_avx2_bnd50_fma(res, divisor, a);
+            reim_to_znx_i64_bnd63_avx2_fma(res, divisor, a);
         }
     }
 }

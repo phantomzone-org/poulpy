@@ -99,6 +99,13 @@ pub fn reim4_save_2blk_to_reim_avx<const OVERWRITE: bool>(
 pub fn reim4_vec_mat1col_product_avx(nrows: usize, dst: &mut [f64], u: &[f64], v: &[f64]) {
     use core::arch::x86_64::{__m256d, _mm256_fmadd_pd, _mm256_loadu_pd, _mm256_setzero_pd, _mm256_storeu_pd};
 
+    #[cfg(debug_assertions)]
+    {
+        assert!(dst.len() >= 8, "dst must have at least 8 doubles");
+        assert!(u.len() >= nrows * 8, "u must be at least nrows * 8 doubles");
+        assert!(v.len() >= nrows * 8, "v must be at least nrows * 8 doubles");
+    }
+
     unsafe {
         use std::arch::x86_64::{_mm256_add_pd, _mm256_sub_pd};
 
@@ -107,8 +114,8 @@ pub fn reim4_vec_mat1col_product_avx(nrows: usize, dst: &mut [f64], u: &[f64], v
         let mut re2: __m256d = _mm256_setzero_pd();
         let mut im2: __m256d = _mm256_setzero_pd();
 
-        let mut u_ptr = u.as_ptr();
-        let mut v_ptr = v.as_ptr();
+        let mut u_ptr: *const f64 = u.as_ptr();
+        let mut v_ptr: *const f64 = v.as_ptr();
 
         for _ in 0..nrows {
             let ur: __m256d = _mm256_loadu_pd(u_ptr);
@@ -123,7 +130,7 @@ pub fn reim4_vec_mat1col_product_avx(nrows: usize, dst: &mut [f64], u: &[f64], v
             // re2 = re2 + ui*d;
             re2 = _mm256_fmadd_pd(ui, vi, re2);
             // im2 = im2 + ui*vr;
-            im2 = _mm256_fmadd_pd(ui, vr, re1);
+            im2 = _mm256_fmadd_pd(ui, vr, im2);
 
             u_ptr = u_ptr.add(8);
             v_ptr = v_ptr.add(8);
@@ -141,8 +148,29 @@ pub fn reim4_vec_mat1col_product_avx(nrows: usize, dst: &mut [f64], u: &[f64], v
 /// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2", enable = "fma")]
-pub fn reim4_vec_mat2cols_2ndcol_product_avx(nrows: usize, dst: &mut [f64], u: &[f64], v: &[f64]) {
+pub fn reim4_vec_mat2cols_product_avx(nrows: usize, dst: &mut [f64], u: &[f64], v: &[f64]) {
     use core::arch::x86_64::{__m256d, _mm256_fmadd_pd, _mm256_fmsub_pd, _mm256_loadu_pd, _mm256_setzero_pd, _mm256_storeu_pd};
+
+    #[cfg(debug_assertions)]
+    {
+        assert!(
+            dst.len() >= 8,
+            "dst must be at least 8 doubles but is {}",
+            dst.len()
+        );
+        assert!(
+            u.len() >= nrows * 8,
+            "u must be at least nrows={} * 8 doubles but is {}",
+            nrows,
+            u.len()
+        );
+        assert!(
+            v.len() >= nrows * 16,
+            "v must be at least nrows={} * 16 doubles but is {}",
+            nrows,
+            v.len()
+        );
+    }
 
     unsafe {
         let mut re1: __m256d = _mm256_setzero_pd();
@@ -190,15 +218,25 @@ pub fn reim4_vec_mat2cols_2ndcol_product_avx(nrows: usize, dst: &mut [f64], u: &
 /// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2", enable = "fma")]
-pub fn reim4_vec_mat2cols_product_avx(nrows: usize, dst: &mut [f64], u: &[f64], v: &[f64]) {
+pub fn reim4_vec_mat2cols_2ndcol_product_avx(nrows: usize, dst: &mut [f64], u: &[f64], v: &[f64]) {
     use core::arch::x86_64::{__m256d, _mm256_fmadd_pd, _mm256_fmsub_pd, _mm256_loadu_pd, _mm256_setzero_pd, _mm256_storeu_pd};
+
+    #[cfg(debug_assertions)]
+    {
+        assert_eq!(dst.len(), 16, "dst must have 16 doubles");
+        assert!(u.len() >= nrows * 8, "u must be at least nrows * 8 doubles");
+        assert!(
+            v.len() >= nrows * 16,
+            "v must be at least nrows * 16 doubles"
+        );
+    }
 
     unsafe {
         let mut re1: __m256d = _mm256_setzero_pd();
         let mut im1: __m256d = _mm256_setzero_pd();
 
         let mut u_ptr: *const f64 = u.as_ptr();
-        let mut v_ptr: *const f64 = v.as_ptr();
+        let mut v_ptr: *const f64 = v.as_ptr().add(8); // Offset to 2nd column
 
         for _ in 0..nrows {
             let ur: __m256d = _mm256_loadu_pd(u_ptr);

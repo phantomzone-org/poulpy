@@ -18,7 +18,7 @@ pub fn reim_add_avx2_fma(res: &mut [f64], a: &[f64], b: &[f64]) {
         let mut aa: *const f64 = a.as_ptr();
         let mut bb: *const f64 = b.as_ptr();
 
-        for _ in (0..span).step_by(4) {
+        for _ in 0..span {
             let a_256: __m256d = _mm256_loadu_pd(aa);
             let b_256: __m256d = _mm256_loadu_pd(bb);
             _mm256_storeu_pd(rr, _mm256_add_pd(a_256, b_256));
@@ -47,7 +47,7 @@ pub fn reim_add_inplace_avx2_fma(res: &mut [f64], a: &[f64]) {
         let mut rr: *mut f64 = res.as_mut_ptr();
         let mut aa: *const f64 = a.as_ptr();
 
-        for _ in (0..span).step_by(4) {
+        for _ in 0..span {
             let a_256: __m256d = _mm256_loadu_pd(aa);
             let r_256: __m256d = _mm256_loadu_pd(rr);
             _mm256_storeu_pd(rr, _mm256_add_pd(r_256, a_256));
@@ -77,7 +77,7 @@ pub fn reim_sub_avx2_fma(res: &mut [f64], a: &[f64], b: &[f64]) {
         let mut aa: *const f64 = a.as_ptr();
         let mut bb: *const f64 = b.as_ptr();
 
-        for _ in (0..span).step_by(4) {
+        for _ in 0..span {
             let a_256: __m256d = _mm256_loadu_pd(aa);
             let b_256: __m256d = _mm256_loadu_pd(bb);
             _mm256_storeu_pd(rr, _mm256_sub_pd(a_256, b_256));
@@ -106,7 +106,7 @@ pub fn reim_sub_ab_inplace_avx2_fma(res: &mut [f64], a: &[f64]) {
         let mut rr: *mut f64 = res.as_mut_ptr();
         let mut aa: *const f64 = a.as_ptr();
 
-        for _ in (0..span).step_by(4) {
+        for _ in 0..span {
             let a_256: __m256d = _mm256_loadu_pd(aa);
             let r_256: __m256d = _mm256_loadu_pd(rr);
             _mm256_storeu_pd(rr, _mm256_sub_pd(r_256, a_256));
@@ -134,7 +134,7 @@ pub fn reim_sub_ba_inplace_avx2_fma(res: &mut [f64], a: &[f64]) {
         let mut rr: *mut f64 = res.as_mut_ptr();
         let mut aa: *const f64 = a.as_ptr();
 
-        for _ in (0..span).step_by(4) {
+        for _ in 0..span {
             let a_256: __m256d = _mm256_loadu_pd(aa);
             let r_256: __m256d = _mm256_loadu_pd(rr);
             _mm256_storeu_pd(rr, _mm256_sub_pd(a_256, r_256));
@@ -166,7 +166,7 @@ pub fn reim_negate_avx2_fma(res: &mut [f64], a: &[f64]) {
 
         let neg0: __m256d = _mm256_set1_pd(-0.0);
 
-        for _ in (0..span).step_by(4) {
+        for _ in 0..span {
             let a_256: __m256d = _mm256_loadu_pd(aa);
             _mm256_storeu_pd(rr, _mm256_xor_pd(a_256, neg0));
             rr = rr.add(4);
@@ -190,7 +190,7 @@ pub fn reim_negate_inplace_avx2_fma(res: &mut [f64]) {
         let mut rr: *mut f64 = res.as_mut_ptr();
         let neg0: __m256d = _mm256_set1_pd(-0.0);
 
-        for _ in (0..span).step_by(4) {
+        for _ in 0..span {
             let r_256: __m256d = _mm256_loadu_pd(rr);
             _mm256_storeu_pd(rr, _mm256_xor_pd(r_256, neg0));
             rr = rr.add(4);
@@ -225,7 +225,7 @@ pub fn reim_addmul_avx2_fma(res: &mut [f64], a: &[f64], b: &[f64]) {
 
         use std::arch::x86_64::{__m256d, _mm256_fmadd_pd, _mm256_fmsub_pd, _mm256_loadu_pd, _mm256_storeu_pd};
 
-        for _ in (0..m >> 2).step_by(4) {
+        for _ in 0..(m >> 2) {
             let mut rr: __m256d = _mm256_loadu_pd(rr_ptr);
             let mut ri: __m256d = _mm256_loadu_pd(ri_ptr);
             let ar: __m256d = _mm256_loadu_pd(ar_ptr);
@@ -278,7 +278,7 @@ pub fn reim_mul_avx2_fma(res: &mut [f64], a: &[f64], b: &[f64]) {
 
         use std::arch::x86_64::{__m256d, _mm256_fmadd_pd, _mm256_fmsub_pd, _mm256_loadu_pd, _mm256_mul_pd, _mm256_storeu_pd};
 
-        for _ in (0..m >> 2).step_by(4) {
+        for _ in 0..(m >> 2) {
             let ar: __m256d = _mm256_loadu_pd(ar_ptr);
             let ai: __m256d = _mm256_loadu_pd(ai_ptr);
             let br: __m256d = _mm256_loadu_pd(br_ptr);
@@ -287,8 +287,8 @@ pub fn reim_mul_avx2_fma(res: &mut [f64], a: &[f64], b: &[f64]) {
             let t1: __m256d = _mm256_mul_pd(ai, bi);
             let t2: __m256d = _mm256_mul_pd(ar, bi);
 
-            let rr = _mm256_fmsub_pd(ar, br, t1);
-            let ri = _mm256_fmadd_pd(ai, br, t2);
+            let rr: __m256d = _mm256_fmsub_pd(ar, br, t1);
+            let ri: __m256d = _mm256_fmadd_pd(ai, br, t2);
 
             _mm256_storeu_pd(rr_ptr, rr);
             _mm256_storeu_pd(ri_ptr, ri);
@@ -326,7 +326,7 @@ pub fn reim_mul_inplace_avx2_fma(res: &mut [f64], a: &[f64]) {
 
         use std::arch::x86_64::{__m256d, _mm256_fmadd_pd, _mm256_fmsub_pd, _mm256_loadu_pd, _mm256_mul_pd, _mm256_storeu_pd};
 
-        for _ in (0..m >> 2).step_by(4) {
+        for _ in 0..(m >> 2) {
             let ar: __m256d = _mm256_loadu_pd(ar_ptr);
             let ai: __m256d = _mm256_loadu_pd(ai_ptr);
             let br: __m256d = _mm256_loadu_pd(rr_ptr);

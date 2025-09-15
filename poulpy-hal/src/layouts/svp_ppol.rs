@@ -1,4 +1,5 @@
 use std::{
+    fmt,
     hash::{DefaultHasher, Hasher},
     marker::PhantomData,
 };
@@ -166,6 +167,35 @@ impl<D: DataRef, B: Backend> WriterTo for SvpPPol<D, B> {
         let buf: &[u8] = self.data.as_ref();
         writer.write_u64::<LittleEndian>(buf.len() as u64)?;
         writer.write_all(buf)?;
+        Ok(())
+    }
+}
+
+impl<D: DataRef, B: Backend> fmt::Display for SvpPPol<D, B> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "SvpPPol(n={}, cols={})", self.n, self.cols)?;
+
+        for col in 0..self.cols {
+            writeln!(f, "Column {}:", col)?;
+            let coeffs = self.at(col, 0);
+            write!(f, "[")?;
+
+            let max_show = 100;
+            let show_count = coeffs.len().min(max_show);
+
+            for (i, &coeff) in coeffs.iter().take(show_count).enumerate() {
+                if i > 0 {
+                    write!(f, ", ")?;
+                }
+                write!(f, "{}", coeff)?;
+            }
+
+            if coeffs.len() > max_show {
+                write!(f, ", ... ({} more)", coeffs.len() - max_show)?;
+            }
+
+            writeln!(f, "]")?;
+        }
         Ok(())
     }
 }
