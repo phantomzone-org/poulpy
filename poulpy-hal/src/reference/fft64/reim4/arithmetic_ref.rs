@@ -119,7 +119,6 @@ pub fn reim4_vec_mat1col_product_ref(
         j += 8;
     }
     dst[0..8].copy_from_slice(&acc);
-
 }
 
 #[inline(always)]
