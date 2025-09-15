@@ -459,8 +459,6 @@ pub fn test_svp_apply_dft_to_dft_inplace<BR: Backend, BT: Backend>(
             );
         }
 
-
-
         assert_eq!(res_ref, res_test);
     }
 }

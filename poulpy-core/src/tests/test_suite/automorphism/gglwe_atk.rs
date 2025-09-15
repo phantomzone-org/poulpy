@@ -256,7 +256,6 @@ where
     let p1: i64 = -5;
     (1..3).for_each(|rank| {
         (1..digits + 1).for_each(|di| {
-
             let k_apply: usize = (digits + di) * basek;
 
             let n: usize = module.n();

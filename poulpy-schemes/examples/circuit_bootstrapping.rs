@@ -13,7 +13,7 @@ use poulpy_hal::{
     source::Source,
 };
 
-use poulpy_backend::{FFT64Avx};
+use poulpy_backend::FFT64Avx;
 
 use poulpy_schemes::tfhe::{
     blind_rotation::CGGI,
@@ -142,8 +142,7 @@ fn main() {
     let mut res: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(n_glwe, basek, k_ggsw_res, rows_ggsw_res, 1, rank);
 
     // Circuit bootstrapping key prepared (opaque backend dependant write only struct)
-    let cbt_prepared: CircuitBootstrappingKeyPrepared<Vec<u8>, CGGI, FFT64Avx> =
-        cbt_key.prepare_alloc(&module, scratch.borrow());
+    let cbt_prepared: CircuitBootstrappingKeyPrepared<Vec<u8>, CGGI, FFT64Avx> = cbt_key.prepare_alloc(&module, scratch.borrow());
 
     // Apply circuit bootstrapping: LWE(data * 2^{- (k_lwe_pt + 2)}) -> GGSW(data)
     let now: Instant = Instant::now();
