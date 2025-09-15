@@ -15,6 +15,7 @@ poulpy-hal = {path="../poulpy-hal"}
 poulpy-backend = {path="../poulpy-backend"}
 itertools = {workspace = true}
 byteorder = {workspace = true}
+once_cell = {workspace = true}
 
 [[bench]]
 name = "external_product_glwe_fft64"

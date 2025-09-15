@@ -20,6 +20,9 @@ pub struct Module<B: Backend> {
     _marker: PhantomData<B>,
 }
 
+unsafe impl<B: Backend> Sync for Module<B> {}
+unsafe impl<B: Backend> Send for Module<B> {}
+
 impl<B: Backend> Module<B> {
     #[allow(clippy::missing_safety_doc)]
     #[inline]

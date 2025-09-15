@@ -4,113 +4,50 @@ use criterion::{BenchmarkId, Criterion};
 use rand::RngCore;
 
 use crate::{
-    api::{ModuleNew, SvpApplyDft, SvpApplyDftToDft, SvpApplyDftToDftAdd, SvpApplyDftToDftInplace, SvpPPolAlloc, VecZnxDftAlloc},
-    layouts::{
-        Backend, DataViewMut, Module, SvpPPol, SvpPPolToRef, VecZnx, VecZnxDft, VecZnxDftToMut, VecZnxDftToRef, VecZnxToRef,
-        ZnxInfos, ZnxView, ZnxViewMut,
+    api::{
+        ModuleNew, SvpApplyDft, SvpApplyDftToDft, SvpApplyDftToDftAdd, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPrepare,
+        VecZnxDftAlloc,
     },
-    reference::fft64::reim::{ReimAddMul, ReimDFTExecute, ReimFFTTable, ReimFromZnx, ReimMul, ReimMulInplace, ReimZero},
+    layouts::{Backend, DataViewMut, FillUniform, Module, ScalarZnx, SvpPPol, VecZnx, VecZnxDft},
     source::Source,
 };
 
-pub fn svp_apply_dft<R, A, B, BE>(
-    table: &ReimFFTTable<f64>,
-    res: &mut R,
-    res_col: usize,
-    a: &A,
-    a_col: usize,
-    b: &B,
-    b_col: usize,
-) where
-    BE: Backend<ScalarPrep = f64> + ReimDFTExecute<ReimFFTTable<f64>, f64> + ReimZero + ReimFromZnx + ReimMulInplace,
-    R: VecZnxDftToMut<BE>,
-    A: SvpPPolToRef<BE>,
-    B: VecZnxToRef,
-{
-    let mut res: VecZnxDft<&mut [u8], BE> = res.to_mut();
-    let a: SvpPPol<&[u8], BE> = a.to_ref();
-    let b: VecZnx<&[u8]> = b.to_ref();
-
-    let res_size: usize = res.size();
-    let b_size: usize = b.size();
-    let min_size: usize = res_size.min(b_size);
-
-    let ppol: &[f64] = a.at(a_col, 0);
-    for j in 0..min_size {
-        let out: &mut [f64] = res.at_mut(res_col, j);
-        BE::reim_from_znx(out, b.at(b_col, j));
-        BE::reim_dft_execute(table, out);
-        BE::reim_mul_inplace(out, ppol);
-    }
-
-    for j in min_size..res_size {
-        BE::reim_zero(res.at_mut(res_col, j));
-    }
-}
-
-pub fn svp_apply_dft_to_dft<R, A, B, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
+pub fn bench_svp_prepare<B>(c: &mut Criterion, label: &str)
 where
-    BE: Backend<ScalarPrep = f64> + ReimMul + ReimZero,
-    R: VecZnxDftToMut<BE>,
-    A: SvpPPolToRef<BE>,
-    B: VecZnxDftToRef<BE>,
+    Module<B>: SvpPrepare<B> + SvpPPolAlloc<B> + ModuleNew<B>,
+    B: Backend<ScalarPrep = f64>,
 {
-    let mut res: VecZnxDft<&mut [u8], BE> = res.to_mut();
-    let a: SvpPPol<&[u8], BE> = a.to_ref();
-    let b: VecZnxDft<&[u8], BE> = b.to_ref();
+    let group_name: String = format!("svp_prepare::{}", label);
 
-    let res_size: usize = res.size();
-    let b_size: usize = b.size();
-    let min_size: usize = res_size.min(b_size);
+    let mut group = c.benchmark_group(group_name);
 
-    let ppol: &[f64] = a.at(a_col, 0);
-    for j in 0..min_size {
-        BE::reim_mul(res.at_mut(res_col, j), ppol, b.at(b_col, j));
+    fn runner<B>(log_n: usize) -> impl FnMut()
+    where
+        Module<B>: SvpPrepare<B> + SvpPPolAlloc<B> + ModuleNew<B>,
+        B: Backend<ScalarPrep = f64>,
+    {
+        let module: Module<B> = Module::<B>::new(1 << log_n);
+
+        let cols: usize = 2;
+
+        let mut svp: SvpPPol<Vec<u8>, B> = module.svp_ppol_alloc(cols);
+        let mut a: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(module.n(), cols);
+        let mut source = Source::new([0u8; 32]);
+        a.fill_uniform(50, &mut source);
+
+        move || {
+            module.svp_prepare(&mut svp, 0, &a, 0);
+            black_box(());
+        }
     }
 
-    for j in min_size..res_size {
-        BE::reim_zero(res.at_mut(res_col, j));
-    }
-}
-
-pub fn svp_apply_dft_to_dft_add<R, A, B, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
-where
-    BE: Backend<ScalarPrep = f64> + ReimAddMul + ReimZero,
-    R: VecZnxDftToMut<BE>,
-    A: SvpPPolToRef<BE>,
-    B: VecZnxDftToRef<BE>,
-{
-    let mut res: VecZnxDft<&mut [u8], BE> = res.to_mut();
-    let a: SvpPPol<&[u8], BE> = a.to_ref();
-    let b: VecZnxDft<&[u8], BE> = b.to_ref();
-
-    let res_size: usize = res.size();
-    let b_size: usize = b.size();
-    let min_size: usize = res_size.min(b_size);
-
-    let ppol: &[f64] = a.at(a_col, 0);
-    for j in 0..min_size {
-        BE::reim_addmul(res.at_mut(res_col, j), ppol, b.at(b_col, j));
+    for log_n in [10, 11, 12, 13, 14] {
+        let id: BenchmarkId = BenchmarkId::from_parameter(format!("{}", 1 << log_n));
+        let mut runner = runner::<B>(log_n);
+        group.bench_with_input(id, &(), |b, _| b.iter(&mut runner));
     }
 
-    for j in min_size..res_size {
-        BE::reim_zero(res.at_mut(res_col, j));
-    }
-}
-
-pub fn svp_apply_dft_to_dft_inplace<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
-where
-    BE: Backend<ScalarPrep = f64> + ReimMulInplace,
-    R: VecZnxDftToMut<BE>,
-    A: SvpPPolToRef<BE>,
-{
-    let mut res: VecZnxDft<&mut [u8], BE> = res.to_mut();
-    let a: SvpPPol<&[u8], BE> = a.to_ref();
-
-    let ppol: &[f64] = a.at(a_col, 0);
-    for j in 0..res.size() {
-        BE::reim_mul_inplace(res.at_mut(res_col, j), ppol);
-    }
+    group.finish();
 }
 
 pub fn bench_svp_apply_dft<B>(c: &mut Criterion, label: &str)

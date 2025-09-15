@@ -4,6 +4,7 @@
 #![feature(trait_alias)]
 
 pub mod api;
+pub mod bench_suite;
 pub mod delegates;
 pub mod layouts;
 pub mod oep;

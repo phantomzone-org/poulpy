@@ -45,7 +45,7 @@ use crate::cpu_fft64_avx::{
 };
 
 #[repr(C)]
-pub struct FFT64RefHandle {
+pub struct FFT64AvxHandle {
     table_fft: ReimFFTTable<f64>,
     table_ifft: ReimIFFTTable<f64>,
 }
@@ -53,7 +53,7 @@ pub struct FFT64RefHandle {
 impl Backend for FFT64Avx {
     type ScalarPrep = f64;
     type ScalarBig = i64;
-    type Handle = FFT64RefHandle;
+    type Handle = FFT64AvxHandle;
     unsafe fn destroy(handle: NonNull<Self::Handle>) {
         unsafe {
             drop(Box::from_raw(handle.as_ptr()));
@@ -78,12 +78,12 @@ unsafe impl ModuleNewImpl<Self> for FFT64Avx {
             panic!("arch must support avx2, avx and fma")
         }
 
-        let handle: FFT64RefHandle = FFT64RefHandle {
+        let handle: FFT64AvxHandle = FFT64AvxHandle {
             table_fft: ReimFFTTable::new(n as usize >> 1),
             table_ifft: ReimIFFTTable::new(n as usize >> 1),
         };
         // Leak Box to get a stable NonNull pointer
-        let ptr: NonNull<FFT64RefHandle> = NonNull::from(Box::leak(Box::new(handle)));
+        let ptr: NonNull<FFT64AvxHandle> = NonNull::from(Box::leak(Box::new(handle)));
         unsafe { Module::from_nonnull(ptr, n) }
     }
 }
@@ -95,11 +95,11 @@ pub trait FFT64ModuleHandle {
 
 impl FFT64ModuleHandle for Module<FFT64Avx> {
     fn get_fft_table(&self) -> &ReimFFTTable<f64> {
-        let h: &FFT64RefHandle = unsafe { &*self.ptr() };
+        let h: &FFT64AvxHandle = unsafe { &*self.ptr() };
         &h.table_fft
     }
     fn get_ifft_table(&self) -> &ReimIFFTTable<f64> {
-        let h: &FFT64RefHandle = unsafe { &*self.ptr() };
+        let h: &FFT64AvxHandle = unsafe { &*self.ptr() };
         &h.table_ifft
     }
 }

@@ -4,7 +4,7 @@ pub mod test_suite;
 mod serialization;
 
 #[allow(unused_imports)]
-use crate::backend_test_suite;
+use poulpy_hal::backend_test_suite;
 
 #[cfg(test)]
 backend_test_suite!(

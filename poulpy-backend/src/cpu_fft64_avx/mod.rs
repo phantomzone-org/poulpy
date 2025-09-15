@@ -15,4 +15,4 @@ pub struct FFT64Avx {}
 pub use reim::*;
 
 #[cfg(test)]
-pub mod test;
+pub mod tests;
