@@ -182,7 +182,7 @@ where
     pt.sub_inplace_ab(module, &pt_want);
 
     let noise_have: f64 = pt.std().log2();
-    // println!("noise_have: {}", noise_have);
+
     assert!(
         noise_have < -((k_ct - basek) as f64),
         "noise: {}",

@@ -70,7 +70,6 @@ impl<D: DataRef> GGSWCiphertext<D> {
 
                 let std_pt: f64 = pt_have.data.std(basek, 0).log2();
                 let noise: f64 = max_noise(col_j);
-                println!("{} {}", std_pt, noise);
                 assert!(std_pt <= noise, "{} > {}", std_pt, noise);
 
                 pt.data.zero();

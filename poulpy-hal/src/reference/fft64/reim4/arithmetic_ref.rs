@@ -112,9 +112,6 @@ pub fn reim4_vec_mat1col_product_ref(
         assert!(v.len() >= nrows * 8, "v must be at least nrows * 8 doubles");
     }
 
-    println!("u_ref: {:?}", &u[..nrows * 8]);
-    println!("v_ref: {:?}", &v[..nrows * 8]);
-
     let mut acc: [f64; 8] = [0f64; 8];
     let mut j = 0;
     for _ in 0..nrows {
@@ -123,8 +120,6 @@ pub fn reim4_vec_mat1col_product_ref(
     }
     dst[0..8].copy_from_slice(&acc);
 
-    println!("dst_ref: {:?}", &dst[..8]);
-    println!();
 }
 
 #[inline(always)]

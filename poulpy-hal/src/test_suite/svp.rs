@@ -206,9 +206,6 @@ where
             let res_big_ref: crate::layouts::VecZnxBig<Vec<u8>, BR> = module_ref.vec_znx_idft_apply_consume(res_dft_ref);
             let res_big_test: crate::layouts::VecZnxBig<Vec<u8>, BT> = module_test.vec_znx_idft_apply_consume(res_dft_test);
 
-            println!("res_big_ref: {}", res_big_ref);
-            println!("res_big_test: {}", res_big_test);
-
             let mut res_ref: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
             let mut res_test: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
 
@@ -462,8 +459,7 @@ pub fn test_svp_apply_dft_to_dft_inplace<BR: Backend, BT: Backend>(
             );
         }
 
-        println!("res_ref: {}", res_ref);
-        println!("res_test: {}", res_test);
+
 
         assert_eq!(res_ref, res_test);
     }

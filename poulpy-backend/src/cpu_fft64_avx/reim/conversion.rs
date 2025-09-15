@@ -214,7 +214,6 @@ pub fn reim_to_znx_i64_inplace_bnd63_avx2_fma(res: &mut [f64], divisor: f64) {
             reim_to_znx_i64_inplace_ref(&mut res[span << 2..], divisor)
         }
     }
-    println!();
 }
 
 /// # Correctness

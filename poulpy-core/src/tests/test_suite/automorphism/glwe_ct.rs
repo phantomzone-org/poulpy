@@ -201,10 +201,6 @@ where
     (1..4).for_each(|rank| {
         (1..digits + 1).for_each(|di| {
             let k_ksk: usize = k_ct + basek * di;
-            println!(
-                "test_glwe_automorphism_inplace digits: {} rank: {}",
-                di, rank
-            );
 
             let n: usize = module.n();
             let rows: usize = k_ct.div_ceil(basek * digits);

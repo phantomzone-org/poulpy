@@ -76,7 +76,7 @@ where
     (1..3).for_each(|rank| {
         (1..digits + 1).for_each(|di| {
             let k_ggsw: usize = k_in + basek * di;
-            println!("test external_product digits: {} ranks: {}", di, rank);
+
             let k_out: usize = k_in; // Better capture noise.
 
             let n: usize = module.n();
