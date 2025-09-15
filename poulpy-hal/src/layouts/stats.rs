@@ -4,7 +4,7 @@ use rug::{
     ops::{AddAssignRound, DivAssignRound, SubAssignRound},
 };
 
-use crate::layouts::{DataRef, VecZnx, ZnxInfos};
+use crate::layouts::{Backend, DataRef, VecZnx, VecZnxBig, VecZnxBigToRef, ZnxInfos};
 
 impl<D: DataRef> VecZnx<D> {
     pub fn std(&self, basek: usize, col: usize) -> f64 {
@@ -25,5 +25,19 @@ impl<D: DataRef> VecZnx<D> {
         std.div_assign_round(Float::with_val(prec, data.len()), Round::Nearest);
         std = std.sqrt();
         std.to_f64()
+    }
+}
+
+impl<D: DataRef, B: Backend + Backend<ScalarBig = i64>> VecZnxBig<D, B> {
+    pub fn std(&self, basek: usize, col: usize) -> f64 {
+        let self_ref: VecZnxBig<&[u8], B> = self.to_ref();
+        let znx: VecZnx<&[u8]> = VecZnx {
+            data: self_ref.data,
+            n: self_ref.n,
+            cols: self_ref.cols,
+            size: self_ref.size,
+            max_size: self_ref.max_size,
+        };
+        znx.std(basek, col)
     }
 }

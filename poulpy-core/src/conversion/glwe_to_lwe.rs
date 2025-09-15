@@ -1,7 +1,8 @@
 use poulpy_hal::{
     api::{
-        DFT, IDFTConsume, ScratchAvailable, TakeVecZnxDft, VecZnxBigAddSmallInplace, VecZnxBigNormalize,
-        VecZnxBigNormalizeTmpBytes, VecZnxDftAllocBytes, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
+        ScratchAvailable, TakeVecZnxDft, VecZnxBigAddSmallInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
+        VecZnxDftAllocBytes, VecZnxDftApply, VecZnxIdftApplyConsume, VmpApplyDftToDft, VmpApplyDftToDftAdd,
+        VmpApplyDftToDftTmpBytes,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch, ZnxView, ZnxViewMut, ZnxZero},
 };
@@ -60,8 +61,8 @@ impl<DLwe: DataMut> LWECiphertext<DLwe> {
             + VecZnxBigNormalizeTmpBytes
             + VmpApplyDftToDft<B>
             + VmpApplyDftToDftAdd<B>
-            + DFT<B>
-            + IDFTConsume<B>
+            + VecZnxDftApply<B>
+            + VecZnxIdftApplyConsume<B>
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>,
         Scratch<B>: ScratchAvailable + TakeVecZnxDft<B> + TakeGLWECt,
@@ -71,8 +72,8 @@ impl<DLwe: DataMut> LWECiphertext<DLwe> {
             assert_eq!(self.basek(), a.basek());
             assert_eq!(a.n(), ks.n());
         }
-        let (mut tmp_glwe, scratch1) = scratch.take_glwe_ct(a.n(), a.basek(), self.k(), 1);
-        tmp_glwe.keyswitch(module, a, &ks.0, scratch1);
+        let (mut tmp_glwe, scratch_1) = scratch.take_glwe_ct(a.n(), a.basek(), self.k(), 1);
+        tmp_glwe.keyswitch(module, a, &ks.0, scratch_1);
         self.sample_extract(&tmp_glwe);
     }
 }

@@ -6,7 +6,7 @@ use std::hint::black_box;
 
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 
-use poulpy_backend::cpu_spqlios::FFT64;
+use poulpy_backend::cpu_spqlios::FFT64Spqlios;
 use poulpy_hal::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
     layouts::{Module, ScalarZnx, ScratchOwned},
@@ -26,7 +26,7 @@ fn bench_external_product_glwe_fft64(c: &mut Criterion) {
     }
 
     fn runner(p: Params) -> impl FnMut() {
-        let module: Module<FFT64> = Module::<FFT64>::new(1 << p.log_n);
+        let module: Module<FFT64Spqlios> = Module::<FFT64Spqlios>::new(1 << p.log_n);
 
         let n: usize = module.n();
         let basek: usize = p.basek;
@@ -43,7 +43,7 @@ fn bench_external_product_glwe_fft64(c: &mut Criterion) {
         let mut ct_glwe_out: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(n, basek, k_ct_out, rank);
         let pt_rgsw: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n, 1);
 
-        let mut scratch: ScratchOwned<FFT64> = ScratchOwned::alloc(
+        let mut scratch: ScratchOwned<FFT64Spqlios> = ScratchOwned::alloc(
             GGSWCiphertext::encrypt_sk_scratch_space(&module, basek, ct_ggsw.k(), rank)
                 | GLWECiphertext::encrypt_sk_scratch_space(&module, basek, ct_glwe_in.k())
                 | GLWECiphertext::external_product_scratch_space(
@@ -63,7 +63,7 @@ fn bench_external_product_glwe_fft64(c: &mut Criterion) {
 
         let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
         sk.fill_ternary_prob(0.5, &mut source_xs);
-        let sk_dft: GLWESecretPrepared<Vec<u8>, FFT64> = sk.prepare_alloc(&module, scratch.borrow());
+        let sk_dft: GLWESecretPrepared<Vec<u8>, FFT64Spqlios> = sk.prepare_alloc(&module, scratch.borrow());
 
         ct_ggsw.encrypt_sk(
             &module,
@@ -82,7 +82,7 @@ fn bench_external_product_glwe_fft64(c: &mut Criterion) {
             scratch.borrow(),
         );
 
-        let ggsw_prepared: GGSWCiphertextPrepared<Vec<u8>, FFT64> = ct_ggsw.prepare_alloc(&module, scratch.borrow());
+        let ggsw_prepared: GGSWCiphertextPrepared<Vec<u8>, FFT64Spqlios> = ct_ggsw.prepare_alloc(&module, scratch.borrow());
 
         move || {
             ct_glwe_out.external_product(&module, &ct_glwe_in, &ggsw_prepared, scratch.borrow());
@@ -120,7 +120,7 @@ fn bench_external_product_glwe_inplace_fft64(c: &mut Criterion) {
     }
 
     fn runner(p: Params) -> impl FnMut() {
-        let module: Module<FFT64> = Module::<FFT64>::new(1 << p.log_n);
+        let module: Module<FFT64Spqlios> = Module::<FFT64Spqlios>::new(1 << p.log_n);
 
         let n = module.n();
         let basek: usize = p.basek;
@@ -135,7 +135,7 @@ fn bench_external_product_glwe_inplace_fft64(c: &mut Criterion) {
         let mut ct_glwe: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(n, basek, k_glwe, rank);
         let pt_rgsw: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n, 1);
 
-        let mut scratch: ScratchOwned<FFT64> = ScratchOwned::alloc(
+        let mut scratch: ScratchOwned<FFT64Spqlios> = ScratchOwned::alloc(
             GGSWCiphertext::encrypt_sk_scratch_space(&module, basek, ct_ggsw.k(), rank)
                 | GLWECiphertext::encrypt_sk_scratch_space(&module, basek, ct_glwe.k())
                 | GLWECiphertext::external_product_inplace_scratch_space(&module, basek, ct_glwe.k(), ct_ggsw.k(), digits, rank),
@@ -147,7 +147,7 @@ fn bench_external_product_glwe_inplace_fft64(c: &mut Criterion) {
 
         let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
         sk.fill_ternary_prob(0.5, &mut source_xs);
-        let sk_dft: GLWESecretPrepared<Vec<u8>, FFT64> = sk.prepare_alloc(&module, scratch.borrow());
+        let sk_dft: GLWESecretPrepared<Vec<u8>, FFT64Spqlios> = sk.prepare_alloc(&module, scratch.borrow());
 
         ct_ggsw.encrypt_sk(
             &module,
@@ -166,7 +166,7 @@ fn bench_external_product_glwe_inplace_fft64(c: &mut Criterion) {
             scratch.borrow(),
         );
 
-        let ggsw_prepared: GGSWCiphertextPrepared<Vec<u8>, FFT64> = ct_ggsw.prepare_alloc(&module, scratch.borrow());
+        let ggsw_prepared: GGSWCiphertextPrepared<Vec<u8>, FFT64Spqlios> = ct_ggsw.prepare_alloc(&module, scratch.borrow());
 
         move || {
             let scratch_borrow = scratch.borrow();

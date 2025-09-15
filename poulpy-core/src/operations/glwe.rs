@@ -202,14 +202,14 @@ pub trait GLWEOperations: GLWECiphertextToMut + SetMetaData + Sized {
         self.set_k(set_k_unary(self, a))
     }
 
-    fn rotate_inplace<B: Backend>(&mut self, module: &Module<B>, k: i64)
+    fn rotate_inplace<B: Backend>(&mut self, module: &Module<B>, k: i64, scratch: &mut Scratch<B>)
     where
-        Module<B>: VecZnxRotateInplace,
+        Module<B>: VecZnxRotateInplace<B>,
     {
         let self_mut: &mut GLWECiphertext<&mut [u8]> = &mut self.to_mut();
 
         (0..self_mut.rank() + 1).for_each(|i| {
-            module.vec_znx_rotate_inplace(k, &mut self_mut.data, i);
+            module.vec_znx_rotate_inplace(k, &mut self_mut.data, i, scratch);
         });
     }
 
@@ -235,14 +235,14 @@ pub trait GLWEOperations: GLWECiphertextToMut + SetMetaData + Sized {
         self.set_k(set_k_unary(self, a))
     }
 
-    fn mul_xp_minus_one_inplace<B: Backend>(&mut self, module: &Module<B>, k: i64)
+    fn mul_xp_minus_one_inplace<B: Backend>(&mut self, module: &Module<B>, k: i64, scratch: &mut Scratch<B>)
     where
-        Module<B>: VecZnxMulXpMinusOneInplace,
+        Module<B>: VecZnxMulXpMinusOneInplace<B>,
     {
         let self_mut: &mut GLWECiphertext<&mut [u8]> = &mut self.to_mut();
 
         (0..self_mut.rank() + 1).for_each(|i| {
-            module.vec_znx_mul_xp_minus_one_inplace(k, &mut self_mut.data, i);
+            module.vec_znx_mul_xp_minus_one_inplace(k, &mut self_mut.data, i, scratch);
         });
     }
 
@@ -268,12 +268,14 @@ pub trait GLWEOperations: GLWECiphertextToMut + SetMetaData + Sized {
         self.set_basek(a.basek());
     }
 
-    fn rsh<B: Backend>(&mut self, module: &Module<B>, k: usize)
+    fn rsh<B: Backend>(&mut self, module: &Module<B>, k: usize, scratch: &mut Scratch<B>)
     where
-        Module<B>: VecZnxRshInplace,
+        Module<B>: VecZnxRshInplace<B>,
     {
         let basek: usize = self.basek();
-        module.vec_znx_rsh_inplace(basek, k, &mut self.to_mut().data);
+        (0..self.cols()).for_each(|i| {
+            module.vec_znx_rsh_inplace(basek, k, &mut self.to_mut().data, i, scratch);
+        })
     }
 
     fn normalize<A, B: Backend>(&mut self, module: &Module<B>, a: &A, scratch: &mut Scratch<B>)

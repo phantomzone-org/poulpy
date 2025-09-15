@@ -2,14 +2,15 @@ use std::time::Instant;
 
 use poulpy_hal::{
     api::{
-        DFT, IDFTConsume, IDFTTmpA, ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApply, SvpApplyInplace, SvpPPolAlloc,
-        SvpPPolAllocBytes, SvpPrepare, VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxAutomorphism,
-        VecZnxAutomorphismInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigAlloc, VecZnxBigAllocBytes,
-        VecZnxBigAutomorphismInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallBInplace, VecZnxCopy,
-        VecZnxDftAddInplace, VecZnxDftAlloc, VecZnxDftAllocBytes, VecZnxDftCopy, VecZnxFillUniform, VecZnxNegateInplace,
-        VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace, VecZnxRshInplace,
-        VecZnxSub, VecZnxSubABInplace, VecZnxSwithcDegree, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
-        VmpPMatAlloc, VmpPrepare, ZnAddNormal, ZnFillUniform, ZnNormalizeInplace,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolAllocBytes,
+        SvpPrepare, VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxAutomorphism, VecZnxAutomorphismInplace,
+        VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigAlloc, VecZnxBigAllocBytes, VecZnxBigAutomorphismInplace,
+        VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallBInplace, VecZnxCopy, VecZnxDftAddInplace,
+        VecZnxDftAlloc, VecZnxDftAllocBytes, VecZnxDftApply, VecZnxDftCopy, VecZnxFillUniform, VecZnxIdftApplyConsume,
+        VecZnxIdftApplyTmpA, VecZnxNegateInplace, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate,
+        VecZnxRotateInplace, VecZnxRotateInplaceTmpBytes, VecZnxRshInplace, VecZnxSub, VecZnxSubABInplace, VecZnxSwitchRing,
+        VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes, VmpPMatAlloc, VmpPrepare, ZnAddNormal, ZnFillUniform,
+        ZnNormalizeInplace,
     },
     layouts::{Backend, Module, ScalarZnx, ScratchOwned, ZnxView, ZnxViewMut},
     oep::{
@@ -43,9 +44,9 @@ where
         + VecZnxNormalizeInplace<B>
         + VecZnxDftAllocBytes
         + VecZnxBigNormalize<B>
-        + DFT<B>
-        + SvpApplyInplace<B>
-        + IDFTConsume<B>
+        + VecZnxDftApply<B>
+        + SvpApplyDftToDftInplace<B>
+        + VecZnxIdftApplyConsume<B>
         + VecZnxNormalizeTmpBytes
         + VecZnxSubABInplace
         + VecZnxAddInplace
@@ -53,10 +54,10 @@ where
         + VecZnxSub
         + VecZnxAddScalarInplace
         + VecZnxAutomorphism
-        + VecZnxSwithcDegree
+        + VecZnxSwitchRing
         + VecZnxBigAllocBytes
-        + IDFTTmpA<B>
-        + SvpApply<B>
+        + VecZnxIdftApplyTmpA<B>
+        + SvpApplyDftToDft<B>
         + VecZnxBigAddInplace<B>
         + VecZnxBigAddSmallInplace<B>
         + VecZnxBigAlloc<B>
@@ -70,14 +71,15 @@ where
         + VmpApplyDftToDft<B>
         + VmpApplyDftToDftAdd<B>
         + SvpPPolAllocBytes
-        + VecZnxRotateInplace
+        + VecZnxRotateInplace<B>
         + VecZnxBigAutomorphismInplace<B>
-        + VecZnxRshInplace
+        + VecZnxRshInplace<B>
         + VecZnxDftCopy<B>
         + VecZnxNegateInplace
         + VecZnxCopy
-        + VecZnxAutomorphismInplace
+        + VecZnxAutomorphismInplace<B>
         + VecZnxBigSubSmallBInplace<B>
+        + VecZnxRotateInplaceTmpBytes
         + VecZnxBigAllocBytes
         + VecZnxDftAddInplace<B>
         + VecZnxRotate
@@ -185,7 +187,12 @@ where
     // X^{data * 2^log_gap_out}
     let mut pt_ggsw: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n, 1);
     pt_ggsw.at_mut(0, 0)[0] = 1;
-    module.vec_znx_rotate_inplace(data * (1 << log_gap_out), &mut pt_ggsw.as_vec_znx_mut(), 0);
+    module.vec_znx_rotate_inplace(
+        data * (1 << log_gap_out),
+        &mut pt_ggsw.as_vec_znx_mut(),
+        0,
+        scratch.borrow(),
+    );
 
     res.print_noise(module, &sk_glwe_prepared, &pt_ggsw);
 
@@ -224,9 +231,9 @@ where
         + VecZnxNormalizeInplace<B>
         + VecZnxDftAllocBytes
         + VecZnxBigNormalize<B>
-        + DFT<B>
-        + SvpApplyInplace<B>
-        + IDFTConsume<B>
+        + VecZnxDftApply<B>
+        + SvpApplyDftToDftInplace<B>
+        + VecZnxIdftApplyConsume<B>
         + VecZnxNormalizeTmpBytes
         + VecZnxSubABInplace
         + VecZnxAddInplace
@@ -234,10 +241,10 @@ where
         + VecZnxSub
         + VecZnxAddScalarInplace
         + VecZnxAutomorphism
-        + VecZnxSwithcDegree
+        + VecZnxSwitchRing
         + VecZnxBigAllocBytes
-        + IDFTTmpA<B>
-        + SvpApply<B>
+        + VecZnxIdftApplyTmpA<B>
+        + SvpApplyDftToDft<B>
         + VecZnxBigAddInplace<B>
         + VecZnxBigAddSmallInplace<B>
         + VecZnxBigAlloc<B>
@@ -251,13 +258,14 @@ where
         + VmpApplyDftToDft<B>
         + VmpApplyDftToDftAdd<B>
         + SvpPPolAllocBytes
-        + VecZnxRotateInplace
+        + VecZnxRotateInplace<B>
         + VecZnxBigAutomorphismInplace<B>
-        + VecZnxRshInplace
+        + VecZnxRotateInplaceTmpBytes
+        + VecZnxRshInplace<B>
         + VecZnxDftCopy<B>
         + VecZnxNegateInplace
         + VecZnxCopy
-        + VecZnxAutomorphismInplace
+        + VecZnxAutomorphismInplace<B>
         + VecZnxBigSubSmallBInplace<B>
         + VecZnxBigAllocBytes
         + VecZnxDftAddInplace<B>

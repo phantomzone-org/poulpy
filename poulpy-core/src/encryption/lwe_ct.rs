@@ -32,7 +32,7 @@ impl<DataSelf: DataMut> LWECiphertext<DataSelf> {
         let basek: usize = self.basek();
         let k: usize = self.k();
 
-        module.zn_fill_uniform(self.n() + 1, basek, &mut self.data, 0, k, source_xa);
+        module.zn_fill_uniform(self.n() + 1, basek, &mut self.data, 0, source_xa);
 
         let mut tmp_znx: Zn<Vec<u8>> = Zn::alloc(1, 1, self.size());
 

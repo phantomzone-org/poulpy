@@ -1,3 +1,5 @@
+use std::hash::{DefaultHasher, Hasher};
+
 use rand::seq::SliceRandom;
 use rand_core::RngCore;
 use rand_distr::{Distribution, weighted::WeightedIndex};
@@ -5,17 +7,28 @@ use rand_distr::{Distribution, weighted::WeightedIndex};
 use crate::{
     alloc_aligned,
     layouts::{
-        Data, DataMut, DataRef, DataView, DataViewMut, FillUniform, ReaderFrom, Reset, ToOwnedDeep, VecZnx, WriterTo, ZnxInfos,
-        ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero,
+        Data, DataMut, DataRef, DataView, DataViewMut, DigestU64, FillUniform, ReaderFrom, Reset, ToOwnedDeep, VecZnx, WriterTo,
+        ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero,
     },
     source::Source,
 };
 
-#[derive(PartialEq, Eq, Debug, Clone)]
+#[repr(C)]
+#[derive(PartialEq, Eq, Debug, Clone, Hash)]
 pub struct ScalarZnx<D: Data> {
     pub data: D,
     pub n: usize,
     pub cols: usize,
+}
+
+impl<D: DataRef> DigestU64 for ScalarZnx<D> {
+    fn digest_u64(&self) -> u64 {
+        let mut h: DefaultHasher = DefaultHasher::new();
+        h.write(self.data.as_ref());
+        h.write_usize(self.n);
+        h.write_usize(self.cols);
+        h.finish()
+    }
 }
 
 impl<D: DataRef> ToOwnedDeep for ScalarZnx<D> {
@@ -145,8 +158,18 @@ impl<D: DataMut> ZnxZero for ScalarZnx<D> {
 }
 
 impl<D: DataMut> FillUniform for ScalarZnx<D> {
-    fn fill_uniform(&mut self, source: &mut Source) {
-        source.fill_bytes(self.data.as_mut());
+    fn fill_uniform(&mut self, log_bound: usize, source: &mut Source) {
+        match log_bound {
+            64 => source.fill_bytes(self.data.as_mut()),
+            0 => panic!("invalid log_bound, cannot be zero"),
+            _ => {
+                let mask: u64 = (1u64 << log_bound) - 1;
+                for x in self.raw_mut().iter_mut() {
+                    let r = source.next_u64() & mask;
+                    *x = ((r << (64 - log_bound)) as i64) >> (64 - log_bound);
+                }
+            }
+        }
     }
 }
 

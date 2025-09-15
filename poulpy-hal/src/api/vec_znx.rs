@@ -1,5 +1,3 @@
-use rand_distr::Distribution;
-
 use crate::{
     layouts::{Backend, ScalarZnxToRef, Scratch, VecZnxToMut, VecZnxToRef},
     source::Source,
@@ -42,6 +40,16 @@ pub trait VecZnxAddInplace {
         A: VecZnxToRef;
 }
 
+pub trait VecZnxAddScalar {
+    /// Adds the selected column of `a` on the selected column and limb of `b` and writes the result on the selected column of `res`.
+    #[allow(clippy::too_many_arguments)]
+    fn vec_znx_add_scalar<R, A, B>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize, b_limb: usize)
+    where
+        R: VecZnxToMut,
+        A: ScalarZnxToRef,
+        B: VecZnxToRef;
+}
+
 pub trait VecZnxAddScalarInplace {
     /// Adds the selected column of `a` on the selected column and limb of `res`.
     fn vec_znx_add_scalar_inplace<R, A>(&self, res: &mut R, res_col: usize, res_limb: usize, a: &A, a_col: usize)
@@ -79,6 +87,16 @@ pub trait VecZnxSubBAInplace {
         A: VecZnxToRef;
 }
 
+pub trait VecZnxSubScalar {
+    /// Subtracts the selected column of `a` on the selected column and limb of `b` and writes the result on the selected column of `res`.
+    #[allow(clippy::too_many_arguments)]
+    fn vec_znx_sub_scalar<R, A, B>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize, b_limb: usize)
+    where
+        R: VecZnxToMut,
+        A: ScalarZnxToRef,
+        B: VecZnxToRef;
+}
+
 pub trait VecZnxSubScalarInplace {
     /// Subtracts the selected column of `a` on the selected column and limb of `res`.
     fn vec_znx_sub_scalar_inplace<R, A>(&self, res: &mut R, res_col: usize, res_limb: usize, a: &A, a_col: usize)
@@ -102,31 +120,61 @@ pub trait VecZnxNegateInplace {
         A: VecZnxToMut;
 }
 
-pub trait VecZnxLshInplace {
+pub trait VecZnxLshTmpBytes {
+    fn vec_znx_lsh_tmp_bytes(&self) -> usize;
+}
+
+pub trait VecZnxLsh<B: Backend> {
     /// Left shift by k bits all columns of `a`.
-    fn vec_znx_lsh_inplace<A>(&self, basek: usize, k: usize, a: &mut A)
+    #[allow(clippy::too_many_arguments)]
+    fn vec_znx_lsh<R, A>(&self, basek: usize, k: usize, r: &mut R, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch<B>)
+    where
+        R: VecZnxToMut,
+        A: VecZnxToRef;
+}
+
+pub trait VecZnxRshTmpBytes {
+    fn vec_znx_rsh_tmp_bytes(&self) -> usize;
+}
+
+pub trait VecZnxRsh<B: Backend> {
+    /// Right shift by k bits all columns of `a`.
+    #[allow(clippy::too_many_arguments)]
+    fn vec_znx_rsh<R, A>(&self, basek: usize, k: usize, r: &mut R, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch<B>)
+    where
+        R: VecZnxToMut,
+        A: VecZnxToRef;
+}
+
+pub trait VecZnxLshInplace<B: Backend> {
+    /// Left shift by k bits all columns of `a`.
+    fn vec_znx_lsh_inplace<A>(&self, basek: usize, k: usize, a: &mut A, a_col: usize, scratch: &mut Scratch<B>)
     where
         A: VecZnxToMut;
 }
 
-pub trait VecZnxRshInplace {
+pub trait VecZnxRshInplace<B: Backend> {
     /// Right shift by k bits all columns of `a`.
-    fn vec_znx_rsh_inplace<A>(&self, basek: usize, k: usize, a: &mut A)
+    fn vec_znx_rsh_inplace<A>(&self, basek: usize, k: usize, a: &mut A, a_col: usize, scratch: &mut Scratch<B>)
     where
         A: VecZnxToMut;
 }
 
 pub trait VecZnxRotate {
     /// Multiplies the selected column of `a` by X^k and stores the result in `res_col` of `res`.
-    fn vec_znx_rotate<R, A>(&self, k: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn vec_znx_rotate<R, A>(&self, p: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxToMut,
         A: VecZnxToRef;
 }
 
-pub trait VecZnxRotateInplace {
+pub trait VecZnxRotateInplaceTmpBytes {
+    fn vec_znx_rotate_inplace_tmp_bytes(&self) -> usize;
+}
+
+pub trait VecZnxRotateInplace<B: Backend> {
     /// Multiplies the selected column of `a` by X^k.
-    fn vec_znx_rotate_inplace<A>(&self, k: i64, a: &mut A, a_col: usize)
+    fn vec_znx_rotate_inplace<A>(&self, p: i64, a: &mut A, a_col: usize, scratch: &mut Scratch<B>)
     where
         A: VecZnxToMut;
 }
@@ -139,54 +187,70 @@ pub trait VecZnxAutomorphism {
         A: VecZnxToRef;
 }
 
-pub trait VecZnxAutomorphismInplace {
+pub trait VecZnxAutomorphismInplaceTmpBytes {
+    fn vec_znx_automorphism_inplace_tmp_bytes(&self) -> usize;
+}
+
+pub trait VecZnxAutomorphismInplace<B: Backend> {
     /// Applies the automorphism X^i -> X^ik on the selected column of `a`.
-    fn vec_znx_automorphism_inplace<A>(&self, k: i64, a: &mut A, a_col: usize)
+    fn vec_znx_automorphism_inplace<R>(&self, k: i64, res: &mut R, res_col: usize, scratch: &mut Scratch<B>)
     where
-        A: VecZnxToMut;
+        R: VecZnxToMut;
 }
 
 pub trait VecZnxMulXpMinusOne {
-    fn vec_znx_mul_xp_minus_one<R, A>(&self, p: i64, r: &mut R, r_col: usize, a: &A, a_col: usize)
+    fn vec_znx_mul_xp_minus_one<R, A>(&self, p: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxToMut,
         A: VecZnxToRef;
 }
 
-pub trait VecZnxMulXpMinusOneInplace {
-    fn vec_znx_mul_xp_minus_one_inplace<R>(&self, p: i64, r: &mut R, r_col: usize)
+pub trait VecZnxMulXpMinusOneInplaceTmpBytes {
+    fn vec_znx_mul_xp_minus_one_inplace_tmp_bytes(&self) -> usize;
+}
+
+pub trait VecZnxMulXpMinusOneInplace<B: Backend> {
+    fn vec_znx_mul_xp_minus_one_inplace<R>(&self, p: i64, res: &mut R, res_col: usize, scratch: &mut Scratch<B>)
     where
         R: VecZnxToMut;
 }
 
-pub trait VecZnxSplit<B: Backend> {
+pub trait VecZnxSplitRingTmpBytes {
+    fn vec_znx_split_ring_tmp_bytes(&self) -> usize;
+}
+
+pub trait VecZnxSplitRing<B: Backend> {
     /// Splits the selected columns of `b` into subrings and copies them them into the selected column of `res`.
     ///
     /// # Panics
     ///
     /// This method requires that all [crate::layouts::VecZnx] of b have the same ring degree
     /// and that b.n() * b.len() <= a.n()
-    fn vec_znx_split<R, A>(&self, res: &mut [R], res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch<B>)
+    fn vec_znx_split_ring<R, A>(&self, res: &mut [R], res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch<B>)
     where
         R: VecZnxToMut,
         A: VecZnxToRef;
 }
 
-pub trait VecZnxMerge {
+pub trait VecZnxMergeRingsTmpBytes {
+    fn vec_znx_merge_rings_tmp_bytes(&self) -> usize;
+}
+
+pub trait VecZnxMergeRings<B: Backend> {
     /// Merges the subrings of the selected column of `a` into the selected column of `res`.
     ///
     /// # Panics
     ///
     /// This method requires that all [crate::layouts::VecZnx] of a have the same ring degree
     /// and that a.n() * a.len() <= b.n()
-    fn vec_znx_merge<R, A>(&self, res: &mut R, res_col: usize, a: &[A], a_col: usize)
+    fn vec_znx_merge_rings<R, A>(&self, res: &mut R, res_col: usize, a: &[A], a_col: usize, scratch: &mut Scratch<B>)
     where
         R: VecZnxToMut,
         A: VecZnxToRef;
 }
 
-pub trait VecZnxSwithcDegree {
-    fn vec_znx_switch_degree<R, A>(&self, res: &mut R, res_col: usize, a: &A, col_a: usize)
+pub trait VecZnxSwitchRing {
+    fn vec_znx_switch_ring<R, A>(&self, res: &mut R, res_col: usize, a: &A, col_a: usize)
     where
         R: VecZnxToMut,
         A: VecZnxToRef;
@@ -201,39 +265,8 @@ pub trait VecZnxCopy {
 
 pub trait VecZnxFillUniform {
     /// Fills the first `size` size with uniform values in \[-2^{basek-1}, 2^{basek-1}\]
-    fn vec_znx_fill_uniform<R>(&self, basek: usize, res: &mut R, res_col: usize, k: usize, source: &mut Source)
+    fn vec_znx_fill_uniform<R>(&self, basek: usize, res: &mut R, res_col: usize, source: &mut Source)
     where
-        R: VecZnxToMut;
-}
-
-#[allow(clippy::too_many_arguments)]
-pub trait VecZnxFillDistF64 {
-    fn vec_znx_fill_dist_f64<R, D: Distribution<f64>>(
-        &self,
-        basek: usize,
-        res: &mut R,
-        res_col: usize,
-        k: usize,
-        source: &mut Source,
-        dist: D,
-        bound: f64,
-    ) where
-        R: VecZnxToMut;
-}
-
-#[allow(clippy::too_many_arguments)]
-pub trait VecZnxAddDistF64 {
-    /// Adds vector sampled according to the provided distribution, scaled by 2^{-k} and bounded to \[-bound, bound\].
-    fn vec_znx_add_dist_f64<R, D: Distribution<f64>>(
-        &self,
-        basek: usize,
-        res: &mut R,
-        res_col: usize,
-        k: usize,
-        source: &mut Source,
-        dist: D,
-        bound: f64,
-    ) where
         R: VecZnxToMut;
 }
 

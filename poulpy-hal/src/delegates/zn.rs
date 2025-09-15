@@ -1,9 +1,18 @@
 use crate::{
-    api::{ZnAddDistF64, ZnAddNormal, ZnFillDistF64, ZnFillNormal, ZnFillUniform, ZnNormalizeInplace},
+    api::{ZnAddNormal, ZnFillNormal, ZnFillUniform, ZnNormalizeInplace, ZnNormalizeTmpBytes},
     layouts::{Backend, Module, Scratch, ZnToMut},
-    oep::{ZnAddDistF64Impl, ZnAddNormalImpl, ZnFillDistF64Impl, ZnFillNormalImpl, ZnFillUniformImpl, ZnNormalizeInplaceImpl},
+    oep::{ZnAddNormalImpl, ZnFillNormalImpl, ZnFillUniformImpl, ZnNormalizeInplaceImpl, ZnNormalizeTmpBytesImpl},
     source::Source,
 };
+
+impl<B> ZnNormalizeTmpBytes for Module<B>
+where
+    B: Backend + ZnNormalizeTmpBytesImpl<B>,
+{
+    fn zn_normalize_tmp_bytes(&self, n: usize) -> usize {
+        B::zn_normalize_tmp_bytes_impl(n)
+    }
+}
 
 impl<B> ZnNormalizeInplace<B> for Module<B>
 where
@@ -21,53 +30,11 @@ impl<B> ZnFillUniform for Module<B>
 where
     B: Backend + ZnFillUniformImpl<B>,
 {
-    fn zn_fill_uniform<R>(&self, n: usize, basek: usize, res: &mut R, res_col: usize, k: usize, source: &mut Source)
+    fn zn_fill_uniform<R>(&self, n: usize, basek: usize, res: &mut R, res_col: usize, source: &mut Source)
     where
         R: ZnToMut,
     {
-        B::zn_fill_uniform_impl(n, basek, res, res_col, k, source);
-    }
-}
-
-impl<B> ZnFillDistF64 for Module<B>
-where
-    B: Backend + ZnFillDistF64Impl<B>,
-{
-    fn zn_fill_dist_f64<R, D: rand::prelude::Distribution<f64>>(
-        &self,
-        n: usize,
-        basek: usize,
-        res: &mut R,
-        res_col: usize,
-        k: usize,
-        source: &mut Source,
-        dist: D,
-        bound: f64,
-    ) where
-        R: ZnToMut,
-    {
-        B::zn_fill_dist_f64_impl(n, basek, res, res_col, k, source, dist, bound);
-    }
-}
-
-impl<B> ZnAddDistF64 for Module<B>
-where
-    B: Backend + ZnAddDistF64Impl<B>,
-{
-    fn zn_add_dist_f64<R, D: rand::prelude::Distribution<f64>>(
-        &self,
-        n: usize,
-        basek: usize,
-        res: &mut R,
-        res_col: usize,
-        k: usize,
-        source: &mut Source,
-        dist: D,
-        bound: f64,
-    ) where
-        R: ZnToMut,
-    {
-        B::zn_add_dist_f64_impl(n, basek, res, res_col, k, source, dist, bound);
+        B::zn_fill_uniform_impl(n, basek, res, res_col, source);
     }
 }
 

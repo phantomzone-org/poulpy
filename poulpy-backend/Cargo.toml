@@ -18,6 +18,7 @@ rand = {workspace = true}
 rand_distr = {workspace = true}
 rand_core = {workspace = true}
 byteorder = {workspace = true}
+once_cell = {workspace = true}
 rand_chacha = "0.9.0"
 
 [build-dependencies]
@@ -26,3 +27,8 @@ cmake = "0.1.54"
 [package.metadata.docs.rs]
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
+
+
+[[bench]]
+name = "vmp"
+harness = false

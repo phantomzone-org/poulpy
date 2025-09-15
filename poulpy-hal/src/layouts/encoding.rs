@@ -1,8 +1,9 @@
 use itertools::izip;
 use rug::{Assign, Float};
 
-use crate::layouts::{
-    DataMut, DataRef, VecZnx, VecZnxToMut, VecZnxToRef, Zn, ZnToMut, ZnToRef, ZnxInfos, ZnxView, ZnxViewMut, ZnxZero,
+use crate::{
+    layouts::{DataMut, DataRef, VecZnx, VecZnxToMut, VecZnxToRef, Zn, ZnToMut, ZnToRef, ZnxInfos, ZnxView, ZnxViewMut},
+    reference::znx::znx_zero_ref,
 };
 
 impl<D: DataMut> VecZnx<D> {
@@ -28,7 +29,7 @@ impl<D: DataMut> VecZnx<D> {
 
         // Zeroes coefficients of the i-th column
         (0..a.size()).for_each(|i| {
-            a.zero_at(col, i);
+            znx_zero_ref(a.at_mut(col, i));
         });
 
         // If 2^{basek} * 2^{k_rem} < 2^{63}-1, then we can simply copy
@@ -183,7 +184,7 @@ impl<D: DataRef> VecZnx<D> {
         let prec: u32 = (basek * size) as u32;
 
         // 2^{basek}
-        let base = Float::with_val(prec, (1 << basek) as f64);
+        let base = Float::with_val(prec, (1u64 << basek) as f64);
 
         // y[i] = sum x[j][i] * 2^{-basek*j}
         (0..size).for_each(|i| {

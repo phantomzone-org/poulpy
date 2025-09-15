@@ -1,16 +1,17 @@
 use crate::{
     api::{
-        DFT, IDFT, IDFTConsume, IDFTTmpA, VecZnxDftAdd, VecZnxDftAddInplace, VecZnxDftAlloc, VecZnxDftAllocBytes, VecZnxDftCopy,
-        VecZnxDftFromBytes, VecZnxDftSub, VecZnxDftSubABInplace, VecZnxDftSubBAInplace, VecZnxDftZero, VecZnxIDFTTmpBytes,
+        VecZnxDftAdd, VecZnxDftAddInplace, VecZnxDftAlloc, VecZnxDftAllocBytes, VecZnxDftApply, VecZnxDftCopy,
+        VecZnxDftFromBytes, VecZnxDftSub, VecZnxDftSubABInplace, VecZnxDftSubBAInplace, VecZnxDftZero, VecZnxIdftApply,
+        VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA, VecZnxIdftApplyTmpBytes,
     },
     layouts::{
         Backend, Data, Module, Scratch, VecZnxBig, VecZnxBigToMut, VecZnxDft, VecZnxDftOwned, VecZnxDftToMut, VecZnxDftToRef,
         VecZnxToRef,
     },
     oep::{
-        DFTImpl, IDFTConsumeImpl, IDFTImpl, IDFTTmpAImpl, VecZnxDftAddImpl, VecZnxDftAddInplaceImpl, VecZnxDftAllocBytesImpl,
-        VecZnxDftAllocImpl, VecZnxDftCopyImpl, VecZnxDftFromBytesImpl, VecZnxDftSubABInplaceImpl, VecZnxDftSubBAInplaceImpl,
-        VecZnxDftSubImpl, VecZnxDftZeroImpl, VecZnxIDFTTmpBytesImpl,
+        VecZnxDftAddImpl, VecZnxDftAddInplaceImpl, VecZnxDftAllocBytesImpl, VecZnxDftAllocImpl, VecZnxDftApplyImpl,
+        VecZnxDftCopyImpl, VecZnxDftFromBytesImpl, VecZnxDftSubABInplaceImpl, VecZnxDftSubBAInplaceImpl, VecZnxDftSubImpl,
+        VecZnxDftZeroImpl, VecZnxIdftApplyConsumeImpl, VecZnxIdftApplyImpl, VecZnxIdftApplyTmpAImpl, VecZnxIdftApplyTmpBytesImpl,
     },
 };
 
@@ -41,63 +42,63 @@ where
     }
 }
 
-impl<B> VecZnxIDFTTmpBytes for Module<B>
+impl<B> VecZnxIdftApplyTmpBytes for Module<B>
 where
-    B: Backend + VecZnxIDFTTmpBytesImpl<B>,
+    B: Backend + VecZnxIdftApplyTmpBytesImpl<B>,
 {
-    fn vec_znx_idft_tmp_bytes(&self) -> usize {
-        B::vec_znx_idft_tmp_bytes_impl(self)
+    fn vec_znx_idft_apply_tmp_bytes(&self) -> usize {
+        B::vec_znx_idft_apply_tmp_bytes_impl(self)
     }
 }
 
-impl<B> IDFT<B> for Module<B>
+impl<B> VecZnxIdftApply<B> for Module<B>
 where
-    B: Backend + IDFTImpl<B>,
+    B: Backend + VecZnxIdftApplyImpl<B>,
 {
-    fn idft<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch<B>)
+    fn vec_znx_idft_apply<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch<B>)
     where
         R: VecZnxBigToMut<B>,
         A: VecZnxDftToRef<B>,
     {
-        B::idft_impl(self, res, res_col, a, a_col, scratch);
+        B::vec_znx_idft_apply_impl(self, res, res_col, a, a_col, scratch);
     }
 }
 
-impl<B> IDFTTmpA<B> for Module<B>
+impl<B> VecZnxIdftApplyTmpA<B> for Module<B>
 where
-    B: Backend + IDFTTmpAImpl<B>,
+    B: Backend + VecZnxIdftApplyTmpAImpl<B>,
 {
-    fn idft_tmp_a<R, A>(&self, res: &mut R, res_col: usize, a: &mut A, a_col: usize)
+    fn vec_znx_idft_apply_tmpa<R, A>(&self, res: &mut R, res_col: usize, a: &mut A, a_col: usize)
     where
         R: VecZnxBigToMut<B>,
         A: VecZnxDftToMut<B>,
     {
-        B::idft_tmp_a_impl(self, res, res_col, a, a_col);
+        B::vec_znx_idft_apply_tmpa_impl(self, res, res_col, a, a_col);
     }
 }
 
-impl<B> IDFTConsume<B> for Module<B>
+impl<B> VecZnxIdftApplyConsume<B> for Module<B>
 where
-    B: Backend + IDFTConsumeImpl<B>,
+    B: Backend + VecZnxIdftApplyConsumeImpl<B>,
 {
-    fn vec_znx_idft_consume<D: Data>(&self, a: VecZnxDft<D, B>) -> VecZnxBig<D, B>
+    fn vec_znx_idft_apply_consume<D: Data>(&self, a: VecZnxDft<D, B>) -> VecZnxBig<D, B>
     where
         VecZnxDft<D, B>: VecZnxDftToMut<B>,
     {
-        B::idft_consume_impl(self, a)
+        B::vec_znx_idft_apply_consume_impl(self, a)
     }
 }
 
-impl<B> DFT<B> for Module<B>
+impl<B> VecZnxDftApply<B> for Module<B>
 where
-    B: Backend + DFTImpl<B>,
+    B: Backend + VecZnxDftApplyImpl<B>,
 {
-    fn dft<R, A>(&self, step: usize, offset: usize, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn vec_znx_dft_apply<R, A>(&self, step: usize, offset: usize, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxDftToMut<B>,
         A: VecZnxToRef,
     {
-        B::dft_impl(self, step, offset, res, res_col, a, a_col);
+        B::vec_znx_dft_apply_impl(self, step, offset, res, res_col, a, a_col);
     }
 }
 

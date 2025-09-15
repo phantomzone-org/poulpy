@@ -2,9 +2,9 @@ use std::fmt;
 
 use poulpy_hal::{
     api::{
-        DFT, IDFTConsume, SvpApplyInplace, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare, VecZnxAddInplace, VecZnxAddNormal,
-        VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxFillUniform, VecZnxNormalize, VecZnxNormalizeInplace,
-        VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubABInplace,
+        SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare, VecZnxAddInplace, VecZnxAddNormal,
+        VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftApply, VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxNormalize,
+        VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubABInplace,
     },
     layouts::{Backend, Data, DataMut, DataRef, FillUniform, MatZnx, Module, ReaderFrom, Reset, WriterTo},
     source::Source,
@@ -22,8 +22,8 @@ impl<D: DataRef> fmt::Debug for GLWEToLWESwitchingKeyCompressed<D> {
 }
 
 impl<D: DataMut> FillUniform for GLWEToLWESwitchingKeyCompressed<D> {
-    fn fill_uniform(&mut self, source: &mut Source) {
-        self.0.fill_uniform(source);
+    fn fill_uniform(&mut self, log_bound: usize, source: &mut Source) {
+        self.0.fill_uniform(log_bound, source);
     }
 }
 
@@ -96,9 +96,9 @@ impl GLWEToLWESwitchingKeyCompressed<Vec<u8>> {
     where
         Module<B>: VecZnxDftAllocBytes
             + VecZnxBigNormalize<B>
-            + DFT<B>
-            + SvpApplyInplace<B>
-            + IDFTConsume<B>
+            + VecZnxDftApply<B>
+            + SvpApplyDftToDftInplace<B>
+            + VecZnxIdftApplyConsume<B>
             + VecZnxNormalizeTmpBytes
             + VecZnxFillUniform
             + VecZnxSubABInplace

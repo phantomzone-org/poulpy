@@ -6,11 +6,11 @@ use std::collections::HashMap;
 
 use poulpy_hal::{
     api::{
-        DFT, IDFTConsume, IDFTTmpA, ScratchAvailable, SvpApply, SvpApplyInplace, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare,
-        TakeScalarZnx, TakeSvpPPol, TakeVecZnx, TakeVecZnxBig, TakeVecZnxDft, VecZnxAddInplace, VecZnxAddNormal,
-        VecZnxAddScalarInplace, VecZnxAutomorphism, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxFillUniform, VecZnxNormalize,
-        VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubABInplace, VecZnxSwithcDegree, VmpPMatAlloc,
-        VmpPrepare,
+        ScratchAvailable, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare, TakeScalarZnx,
+        TakeSvpPPol, TakeVecZnx, TakeVecZnxBig, TakeVecZnxDft, VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace,
+        VecZnxAutomorphism, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftApply, VecZnxFillUniform, VecZnxIdftApplyConsume,
+        VecZnxIdftApplyTmpA, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubABInplace,
+        VecZnxSwitchRing, VmpPMatAlloc, VmpPrepare,
     },
     layouts::{Backend, Data, DataRef, Module, Scratch},
     source::Source,
@@ -51,14 +51,14 @@ pub struct CircuitBootstrappingKey<D: Data, BRA: BlindRotationAlgo> {
 impl<BRA: BlindRotationAlgo, B: Backend> CircuitBootstrappingKeyEncryptSk<B> for CircuitBootstrappingKey<Vec<u8>, BRA>
 where
     BlindRotationKey<Vec<u8>, BRA>: BlindRotationKeyAlloc + BlindRotationKeyEncryptSk<B>,
-    Module<B>: SvpApply<B>
-        + IDFTTmpA<B>
+    Module<B>: SvpApplyDftToDft<B>
+        + VecZnxIdftApplyTmpA<B>
         + VecZnxAddScalarInplace
         + VecZnxDftAllocBytes
         + VecZnxBigNormalize<B>
-        + DFT<B>
-        + SvpApplyInplace<B>
-        + IDFTConsume<B>
+        + VecZnxDftApply<B>
+        + SvpApplyDftToDftInplace<B>
+        + VecZnxIdftApplyConsume<B>
         + VecZnxNormalizeTmpBytes
         + VecZnxFillUniform
         + VecZnxSubABInplace
@@ -68,7 +68,7 @@ where
         + VecZnxNormalize<B>
         + VecZnxSub
         + SvpPrepare<B>
-        + VecZnxSwithcDegree
+        + VecZnxSwitchRing
         + SvpPPolAllocBytes
         + SvpPPolAlloc<B>
         + VecZnxAutomorphism,

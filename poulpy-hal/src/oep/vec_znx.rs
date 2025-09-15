@@ -1,5 +1,3 @@
-use rand_distr::Distribution;
-
 use crate::{
     layouts::{Backend, Module, ScalarZnxToRef, Scratch, VecZnxToMut, VecZnxToRef},
     source::Source,
@@ -66,6 +64,28 @@ pub unsafe trait VecZnxAddInplaceImpl<B: Backend> {
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
 /// * See [vec_znx_add_ref](https://github.com/phantomzone-org/spqlios-arithmetic/blob/32a3f5fcce9863b58e949f2dfd5abc1bfbaa09b4/spqlios/arithmetic/vec_znx.c#L86) for reference code.
+/// * See [crate::api::VecZnxAddScalar] for corresponding public API.
+/// # Safety [crate::doc::backend_safety] for safety contract.
+pub unsafe trait VecZnxAddScalarImpl<D: Backend> {
+    /// Adds the selected column of `a` on the selected column and limb of `b` and writes the result on the selected column of `res`.
+    #[allow(clippy::too_many_arguments)]
+    fn vec_znx_add_scalar_impl<R, A, B>(
+        module: &Module<D>,
+        res: &mut R,
+        res_col: usize,
+        a: &A,
+        a_col: usize,
+        b: &B,
+        b_col: usize,
+        b_limb: usize,
+    ) where
+        R: VecZnxToMut,
+        A: ScalarZnxToRef,
+        B: VecZnxToRef;
+}
+
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See [vec_znx_add_ref](https://github.com/phantomzone-org/spqlios-arithmetic/blob/32a3f5fcce9863b58e949f2dfd5abc1bfbaa09b4/spqlios/arithmetic/vec_znx.c#L86) for reference code.
 /// * See [crate::api::VecZnxAddScalarInplace] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxAddScalarInplaceImpl<B: Backend> {
@@ -116,6 +136,28 @@ pub unsafe trait VecZnxSubBAInplaceImpl<B: Backend> {
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See TODO.
+/// * See [crate::api::VecZnxAddScalar] for corresponding public API.
+/// # Safety [crate::doc::backend_safety] for safety contract.
+pub unsafe trait VecZnxSubScalarImpl<D: Backend> {
+    /// Adds the selected column of `a` on the selected column and limb of `b` and writes the result on the selected column of `res`.
+    #[allow(clippy::too_many_arguments)]
+    fn vec_znx_sub_scalar_impl<R, A, B>(
+        module: &Module<D>,
+        res: &mut R,
+        res_col: usize,
+        a: &A,
+        a_col: usize,
+        b: &B,
+        b_col: usize,
+        b_limb: usize,
+    ) where
+        R: VecZnxToMut,
+        A: ScalarZnxToRef,
+        B: VecZnxToRef;
+}
+
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
 /// * See [vec_znx_sub_ref](https://github.com/phantomzone-org/spqlios-arithmetic/blob/32a3f5fcce9863b58e949f2dfd5abc1bfbaa09b4/spqlios/arithmetic/vec_znx.c#L125) for reference code.
 /// * See [crate::api::VecZnxSubScalarInplace] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
@@ -154,13 +196,75 @@ pub unsafe trait VecZnxNegateInplaceImpl<B: Backend> {
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See [crate::reference::vec_znx::shift::vec_znx_rsh_tmp_bytes] for reference code.
+/// * See [crate::api::VecZnxRshTmpBytes] for corresponding public API.
+/// # Safety [crate::doc::backend_safety] for safety contract.
+pub unsafe trait VecZnxRshTmpBytesImpl<B: Backend> {
+    fn vec_znx_rsh_tmp_bytes_impl(module: &Module<B>) -> usize;
+}
+
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See [crate::reference::vec_znx::shift::vec_znx_rsh_inplace] for reference code.
+/// * See [crate::api::VecZnxRsh] for corresponding public API.
+/// # Safety [crate::doc::backend_safety] for safety contract.
+pub unsafe trait VecZnxRshImpl<B: Backend> {
+    #[allow(clippy::too_many_arguments)]
+    fn vec_znx_rsh_inplace_impl<R, A>(
+        module: &Module<B>,
+        basek: usize,
+        k: usize,
+        res: &mut R,
+        res_col: usize,
+        a: &A,
+        a_col: usize,
+        scratch: &mut Scratch<B>,
+    ) where
+        R: VecZnxToMut,
+        A: VecZnxToRef;
+}
+
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See [crate::reference::vec_znx::shift::vec_znx_lsh_tmp_bytes] for reference code.
+/// * See [crate::api::VecZnxLshTmpBytes] for corresponding public API.
+/// # Safety [crate::doc::backend_safety] for safety contract.
+pub unsafe trait VecZnxLshTmpBytesImpl<B: Backend> {
+    fn vec_znx_lsh_tmp_bytes_impl(module: &Module<B>) -> usize;
+}
+
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See [crate::reference::vec_znx::shift::vec_znx_lsh_inplace] for reference code.
+/// * See [crate::api::VecZnxLsh] for corresponding public API.
+/// # Safety [crate::doc::backend_safety] for safety contract.
+pub unsafe trait VecZnxLshImpl<B: Backend> {
+    #[allow(clippy::too_many_arguments)]
+    fn vec_znx_lsh_inplace_impl<R, A>(
+        module: &Module<B>,
+        basek: usize,
+        k: usize,
+        res: &mut R,
+        res_col: usize,
+        a: &A,
+        a_col: usize,
+        scratch: &mut Scratch<B>,
+    ) where
+        R: VecZnxToMut,
+        A: VecZnxToRef;
+}
+
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
 /// * See [crate::cpu_spqlios::vec_znx::vec_znx_rsh_inplace_ref] for reference code.
 /// * See [crate::api::VecZnxRshInplace] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxRshInplaceImpl<B: Backend> {
-    fn vec_znx_rsh_inplace_impl<A>(module: &Module<B>, basek: usize, k: usize, a: &mut A)
-    where
-        A: VecZnxToMut;
+    fn vec_znx_rsh_inplace_impl<R>(
+        module: &Module<B>,
+        basek: usize,
+        k: usize,
+        res: &mut R,
+        res_col: usize,
+        scratch: &mut Scratch<B>,
+    ) where
+        R: VecZnxToMut;
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
@@ -168,9 +272,15 @@ pub unsafe trait VecZnxRshInplaceImpl<B: Backend> {
 /// * See [crate::api::VecZnxLshInplace] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxLshInplaceImpl<B: Backend> {
-    fn vec_znx_lsh_inplace_impl<A>(module: &Module<B>, basek: usize, k: usize, a: &mut A)
-    where
-        A: VecZnxToMut;
+    fn vec_znx_lsh_inplace_impl<R>(
+        module: &Module<B>,
+        basek: usize,
+        k: usize,
+        res: &mut R,
+        res_col: usize,
+        scratch: &mut Scratch<B>,
+    ) where
+        R: VecZnxToMut;
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
@@ -185,11 +295,19 @@ pub unsafe trait VecZnxRotateImpl<B: Backend> {
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See TODO;
+/// * See [crate::api::VecZnxRotateInplaceTmpBytes] for corresponding public API.
+/// # Safety [crate::doc::backend_safety] for safety contract.
+pub unsafe trait VecZnxRotateInplaceTmpBytesImpl<B: Backend> {
+    fn vec_znx_rotate_inplace_tmp_bytes_impl(module: &Module<B>) -> usize;
+}
+
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
 /// * See [vec_znx_rotate_ref](https://github.com/phantomzone-org/spqlios-arithmetic/blob/32a3f5fcce9863b58e949f2dfd5abc1bfbaa09b4/spqlios/arithmetic/vec_znx.c#L164) for reference code.
 /// * See [crate::api::VecZnxRotateInplace] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxRotateInplaceImpl<B: Backend> {
-    fn vec_znx_rotate_inplace_impl<A>(module: &Module<B>, k: i64, a: &mut A, a_col: usize)
+    fn vec_znx_rotate_inplace_impl<A>(module: &Module<B>, k: i64, a: &mut A, a_col: usize, scratch: &mut Scratch<B>)
     where
         A: VecZnxToMut;
 }
@@ -199,10 +317,18 @@ pub unsafe trait VecZnxRotateInplaceImpl<B: Backend> {
 /// * See [crate::api::VecZnxAutomorphism] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxAutomorphismImpl<B: Backend> {
-    fn vec_znx_automorphism_impl<R, A>(module: &Module<B>, k: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn vec_znx_automorphism_impl<R, A>(module: &Module<B>, p: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxToMut,
         A: VecZnxToRef;
+}
+
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See TODO;
+/// * See [crate::api::VecZnxAutomorphismInplaceTmpBytes] for corresponding public API.
+/// # Safety [crate::doc::backend_safety] for safety contract.
+pub unsafe trait VecZnxAutomorphismInplaceTmpBytesImpl<B: Backend> {
+    fn vec_znx_automorphism_inplace_tmp_bytes_impl(module: &Module<B>) -> usize;
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
@@ -210,9 +336,9 @@ pub unsafe trait VecZnxAutomorphismImpl<B: Backend> {
 /// * See [crate::api::VecZnxAutomorphismInplace] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxAutomorphismInplaceImpl<B: Backend> {
-    fn vec_znx_automorphism_inplace_impl<A>(module: &Module<B>, k: i64, a: &mut A, a_col: usize)
+    fn vec_znx_automorphism_inplace_impl<R>(module: &Module<B>, k: i64, res: &mut R, res_col: usize, scratch: &mut Scratch<B>)
     where
-        A: VecZnxToMut;
+        R: VecZnxToMut;
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
@@ -227,33 +353,74 @@ pub unsafe trait VecZnxMulXpMinusOneImpl<B: Backend> {
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See TODO;
+/// * See [crate::api::VecZnxMulXpMinusOneInplaceTmpBytes] for corresponding public API.
+/// # Safety [crate::doc::backend_safety] for safety contract.
+pub unsafe trait VecZnxMulXpMinusOneInplaceTmpBytesImpl<B: Backend> {
+    fn vec_znx_mul_xp_minus_one_inplace_tmp_bytes_impl(module: &Module<B>) -> usize;
+}
+
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
 /// * See [vec_znx_mul_xp_minus_one_ref](https://github.com/phantomzone-org/spqlios-arithmetic/blob/7160f588da49712a042931ea247b4259b95cefcc/spqlios/arithmetic/vec_znx.c#L200C13-L200C41) for reference code.
 /// * See [crate::api::VecZnxMulXpMinusOneInplace] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxMulXpMinusOneInplaceImpl<B: Backend> {
-    fn vec_znx_mul_xp_minus_one_inplace_impl<R>(module: &Module<B>, p: i64, res: &mut R, res_col: usize)
-    where
+    fn vec_znx_mul_xp_minus_one_inplace_impl<R>(
+        module: &Module<B>,
+        p: i64,
+        res: &mut R,
+        res_col: usize,
+        scratch: &mut Scratch<B>,
+    ) where
         R: VecZnxToMut;
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See [crate::cpu_spqlios::vec_znx::vec_znx_split_ref] for reference code.
-/// * See [crate::api::VecZnxSplit] for corresponding public API.
+/// * See TODO;
+/// * See [crate::api::VecZnxSplitRingTmpBytes] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
-pub unsafe trait VecZnxSplitImpl<B: Backend> {
-    fn vec_znx_split_impl<R, A>(module: &Module<B>, res: &mut [R], res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch<B>)
-    where
+pub unsafe trait VecZnxSplitRingTmpBytesImpl<B: Backend> {
+    fn vec_znx_split_ring_tmp_bytes_impl(module: &Module<B>) -> usize;
+}
+
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See [crate::cpu_spqlios::vec_znx::vec_znx_split_ref] for reference code.
+/// * See [crate::api::VecZnxSplitRing] for corresponding public API.
+/// # Safety [crate::doc::backend_safety] for safety contract.
+pub unsafe trait VecZnxSplitRingImpl<B: Backend> {
+    fn vec_znx_split_ring_impl<R, A>(
+        module: &Module<B>,
+        res: &mut [R],
+        res_col: usize,
+        a: &A,
+        a_col: usize,
+        scratch: &mut Scratch<B>,
+    ) where
         R: VecZnxToMut,
         A: VecZnxToRef;
+}
+
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See TODO;
+/// * See [crate::api::VecZnxMergeRingsTmpBytes] for corresponding public API.
+/// # Safety [crate::doc::backend_safety] for safety contract.
+pub unsafe trait VecZnxMergeRingsTmpBytesImpl<B: Backend> {
+    fn vec_znx_merge_rings_tmp_bytes_impl(module: &Module<B>) -> usize;
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
 /// * See [crate::cpu_spqlios::vec_znx::vec_znx_merge_ref] for reference code.
 /// * See [crate::api::VecZnxMerge] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
-pub unsafe trait VecZnxMergeImpl<B: Backend> {
-    fn vec_znx_merge_impl<R, A>(module: &Module<B>, res: &mut R, res_col: usize, a: &[A], a_col: usize)
-    where
+pub unsafe trait VecZnxMergeRingsImpl<B: Backend> {
+    fn vec_znx_merge_rings_impl<R, A>(
+        module: &Module<B>,
+        res: &mut R,
+        res_col: usize,
+        a: &[A],
+        a_col: usize,
+        scratch: &mut Scratch<B>,
+    ) where
         R: VecZnxToMut,
         A: VecZnxToRef;
 }
@@ -262,8 +429,8 @@ pub unsafe trait VecZnxMergeImpl<B: Backend> {
 /// * See [crate::cpu_spqlios::vec_znx::vec_znx_switch_degree_ref] for reference code.
 /// * See [crate::api::VecZnxSwithcDegree] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
-pub unsafe trait VecZnxSwithcDegreeImpl<B: Backend> {
-    fn vec_znx_switch_degree_impl<R: VecZnxToMut, A: VecZnxToRef>(
+pub unsafe trait VecZnxSwitchRingImpl<B: Backend> {
+    fn vec_znx_switch_ring_impl<R: VecZnxToMut, A: VecZnxToRef>(
         module: &Module<B>,
         res: &mut R,
         res_col: usize,
@@ -287,44 +454,8 @@ pub unsafe trait VecZnxCopyImpl<B: Backend> {
 /// * See [crate::api::VecZnxFillUniform] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxFillUniformImpl<B: Backend> {
-    fn vec_znx_fill_uniform_impl<R>(module: &Module<B>, basek: usize, res: &mut R, res_col: usize, k: usize, source: &mut Source)
+    fn vec_znx_fill_uniform_impl<R>(module: &Module<B>, basek: usize, res: &mut R, res_col: usize, source: &mut Source)
     where
-        R: VecZnxToMut;
-}
-
-#[allow(clippy::too_many_arguments)]
-/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See [crate::api::VecZnxFillDistF64] for corresponding public API.
-/// # Safety [crate::doc::backend_safety] for safety contract.
-pub unsafe trait VecZnxFillDistF64Impl<B: Backend> {
-    fn vec_znx_fill_dist_f64_impl<R, D: Distribution<f64>>(
-        module: &Module<B>,
-        basek: usize,
-        res: &mut R,
-        res_col: usize,
-        k: usize,
-        source: &mut Source,
-        dist: D,
-        bound: f64,
-    ) where
-        R: VecZnxToMut;
-}
-
-#[allow(clippy::too_many_arguments)]
-/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See [crate::api::VecZnxAddDistF64] for corresponding public API.
-/// # Safety [crate::doc::backend_safety] for safety contract.
-pub unsafe trait VecZnxAddDistF64Impl<B: Backend> {
-    fn vec_znx_add_dist_f64_impl<R, D: Distribution<f64>>(
-        module: &Module<B>,
-        basek: usize,
-        res: &mut R,
-        res_col: usize,
-        k: usize,
-        source: &mut Source,
-        dist: D,
-        bound: f64,
-    ) where
         R: VecZnxToMut;
 }
 

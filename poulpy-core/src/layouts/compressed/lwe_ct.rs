@@ -50,8 +50,8 @@ where
 }
 
 impl<D: DataMut> FillUniform for LWECiphertextCompressed<D> {
-    fn fill_uniform(&mut self, source: &mut Source) {
-        self.data.fill_uniform(source);
+    fn fill_uniform(&mut self, log_bound: usize, source: &mut Source) {
+        self.data.fill_uniform(log_bound, source);
     }
 }
 
@@ -124,15 +124,9 @@ where
     Module<B>: ZnFillUniform,
 {
     fn decompress(&mut self, module: &Module<B>, other: &LWECiphertextCompressed<DR>) {
+        debug_assert_eq!(self.size(), other.size());
         let mut source: Source = Source::new(other.seed);
-        module.zn_fill_uniform(
-            self.n(),
-            other.basek(),
-            &mut self.data,
-            0,
-            other.k(),
-            &mut source,
-        );
+        module.zn_fill_uniform(self.n(), other.basek(), &mut self.data, 0, &mut source);
         (0..self.size()).for_each(|i| {
             self.data.at_mut(0, i)[0] = other.data.at(0, i)[0];
         });

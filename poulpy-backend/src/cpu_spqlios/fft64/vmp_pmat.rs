@@ -6,22 +6,22 @@ use poulpy_hal::{
     },
     oep::{
         VmpApplyDftToDftAddImpl, VmpApplyDftToDftAddTmpBytesImpl, VmpApplyDftToDftImpl, VmpApplyDftToDftTmpBytesImpl,
-        VmpPMatAllocBytesImpl, VmpPMatAllocImpl, VmpPMatFromBytesImpl, VmpPMatPrepareImpl, VmpPrepareTmpBytesImpl,
+        VmpPMatAllocBytesImpl, VmpPMatAllocImpl, VmpPMatFromBytesImpl, VmpPrepareImpl, VmpPrepareTmpBytesImpl,
     },
 };
 
 use crate::cpu_spqlios::{
-    FFT64,
+    FFT64Spqlios,
     ffi::{vec_znx_dft::vec_znx_dft_t, vmp},
 };
 
-unsafe impl VmpPMatAllocBytesImpl<FFT64> for FFT64 {
+unsafe impl VmpPMatAllocBytesImpl<Self> for FFT64Spqlios {
     fn vmp_pmat_alloc_bytes_impl(n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize {
-        FFT64::layout_prep_word_count() * n * rows * cols_in * cols_out * size * size_of::<f64>()
+        Self::layout_prep_word_count() * n * rows * cols_in * cols_out * size * size_of::<f64>()
     }
 }
 
-unsafe impl VmpPMatFromBytesImpl<FFT64> for FFT64 {
+unsafe impl VmpPMatFromBytesImpl<Self> for FFT64Spqlios {
     fn vmp_pmat_from_bytes_impl(
         n: usize,
         rows: usize,
@@ -29,19 +29,19 @@ unsafe impl VmpPMatFromBytesImpl<FFT64> for FFT64 {
         cols_out: usize,
         size: usize,
         bytes: Vec<u8>,
-    ) -> VmpPMatOwned<FFT64> {
+    ) -> VmpPMatOwned<Self> {
         VmpPMatOwned::from_bytes(n, rows, cols_in, cols_out, size, bytes)
     }
 }
 
-unsafe impl VmpPMatAllocImpl<FFT64> for FFT64 {
-    fn vmp_pmat_alloc_impl(n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> VmpPMatOwned<FFT64> {
+unsafe impl VmpPMatAllocImpl<Self> for FFT64Spqlios {
+    fn vmp_pmat_alloc_impl(n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> VmpPMatOwned<Self> {
         VmpPMatOwned::alloc(n, rows, cols_in, cols_out, size)
     }
 }
 
-unsafe impl VmpPrepareTmpBytesImpl<FFT64> for FFT64 {
-    fn vmp_prepare_tmp_bytes_impl(module: &Module<FFT64>, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize {
+unsafe impl VmpPrepareTmpBytesImpl<Self> for FFT64Spqlios {
+    fn vmp_prepare_tmp_bytes_impl(module: &Module<Self>, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize {
         unsafe {
             vmp::vmp_prepare_tmp_bytes(
                 module.ptr(),
@@ -52,13 +52,13 @@ unsafe impl VmpPrepareTmpBytesImpl<FFT64> for FFT64 {
     }
 }
 
-unsafe impl VmpPMatPrepareImpl<FFT64> for FFT64 {
-    fn vmp_prepare_impl<R, A>(module: &Module<FFT64>, res: &mut R, a: &A, scratch: &mut Scratch<FFT64>)
+unsafe impl VmpPrepareImpl<Self> for FFT64Spqlios {
+    fn vmp_prepare_impl<R, A>(module: &Module<Self>, res: &mut R, a: &A, scratch: &mut Scratch<Self>)
     where
-        R: VmpPMatToMut<FFT64>,
+        R: VmpPMatToMut<Self>,
         A: MatZnxToRef,
     {
-        let mut res: VmpPMat<&mut [u8], FFT64> = res.to_mut();
+        let mut res: VmpPMat<&mut [u8], Self> = res.to_mut();
         let a: MatZnx<&[u8]> = a.to_ref();
 
         #[cfg(debug_assertions)]
@@ -109,9 +109,9 @@ unsafe impl VmpPMatPrepareImpl<FFT64> for FFT64 {
     }
 }
 
-unsafe impl VmpApplyDftToDftTmpBytesImpl<FFT64> for FFT64 {
+unsafe impl VmpApplyDftToDftTmpBytesImpl<Self> for FFT64Spqlios {
     fn vmp_apply_dft_to_dft_tmp_bytes_impl(
-        module: &Module<FFT64>,
+        module: &Module<Self>,
         res_size: usize,
         a_size: usize,
         b_rows: usize,
@@ -131,12 +131,12 @@ unsafe impl VmpApplyDftToDftTmpBytesImpl<FFT64> for FFT64 {
     }
 }
 
-unsafe impl VmpApplyDftToDftImpl<FFT64> for FFT64 {
-    fn vmp_apply_dft_to_dft_impl<R, A, C>(module: &Module<FFT64>, res: &mut R, a: &A, b: &C, scratch: &mut Scratch<FFT64>)
+unsafe impl VmpApplyDftToDftImpl<Self> for FFT64Spqlios {
+    fn vmp_apply_dft_to_dft_impl<R, A, C>(module: &Module<Self>, res: &mut R, a: &A, b: &C, scratch: &mut Scratch<Self>)
     where
-        R: VecZnxDftToMut<FFT64>,
-        A: VecZnxDftToRef<FFT64>,
-        C: VmpPMatToRef<FFT64>,
+        R: VecZnxDftToMut<Self>,
+        A: VecZnxDftToRef<Self>,
+        C: VmpPMatToRef<Self>,
     {
         let mut res: VecZnxDft<&mut [u8], _> = res.to_mut();
         let a: VecZnxDft<&[u8], _> = a.to_ref();
@@ -186,9 +186,9 @@ unsafe impl VmpApplyDftToDftImpl<FFT64> for FFT64 {
     }
 }
 
-unsafe impl VmpApplyDftToDftAddTmpBytesImpl<FFT64> for FFT64 {
+unsafe impl VmpApplyDftToDftAddTmpBytesImpl<Self> for FFT64Spqlios {
     fn vmp_apply_dft_to_dft_add_tmp_bytes_impl(
-        module: &Module<FFT64>,
+        module: &Module<Self>,
         res_size: usize,
         a_size: usize,
         b_rows: usize,
@@ -208,18 +208,18 @@ unsafe impl VmpApplyDftToDftAddTmpBytesImpl<FFT64> for FFT64 {
     }
 }
 
-unsafe impl VmpApplyDftToDftAddImpl<FFT64> for FFT64 {
+unsafe impl VmpApplyDftToDftAddImpl<Self> for FFT64Spqlios {
     fn vmp_apply_dft_to_dft_add_impl<R, A, C>(
-        module: &Module<FFT64>,
+        module: &Module<Self>,
         res: &mut R,
         a: &A,
         b: &C,
         scale: usize,
-        scratch: &mut Scratch<FFT64>,
+        scratch: &mut Scratch<Self>,
     ) where
-        R: VecZnxDftToMut<FFT64>,
-        A: VecZnxDftToRef<FFT64>,
-        C: VmpPMatToRef<FFT64>,
+        R: VecZnxDftToMut<Self>,
+        A: VecZnxDftToRef<Self>,
+        C: VmpPMatToRef<Self>,
     {
         let mut res: VecZnxDft<&mut [u8], _> = res.to_mut();
         let a: VecZnxDft<&[u8], _> = a.to_ref();

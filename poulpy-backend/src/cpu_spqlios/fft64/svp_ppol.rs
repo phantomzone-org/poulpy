@@ -3,33 +3,36 @@ use poulpy_hal::{
         Backend, Module, ScalarZnxToRef, SvpPPol, SvpPPolOwned, SvpPPolToMut, SvpPPolToRef, VecZnxDft, VecZnxDftToMut,
         VecZnxDftToRef, ZnxInfos, ZnxView, ZnxViewMut,
     },
-    oep::{SvpApplyImpl, SvpApplyInplaceImpl, SvpPPolAllocBytesImpl, SvpPPolAllocImpl, SvpPPolFromBytesImpl, SvpPrepareImpl},
+    oep::{
+        SvpApplyDftToDftImpl, SvpApplyDftToDftInplaceImpl, SvpPPolAllocBytesImpl, SvpPPolAllocImpl, SvpPPolFromBytesImpl,
+        SvpPrepareImpl,
+    },
 };
 
 use crate::cpu_spqlios::{
-    FFT64,
+    FFT64Spqlios,
     ffi::{svp, vec_znx_dft::vec_znx_dft_t},
 };
 
-unsafe impl SvpPPolFromBytesImpl<Self> for FFT64 {
+unsafe impl SvpPPolFromBytesImpl<Self> for FFT64Spqlios {
     fn svp_ppol_from_bytes_impl(n: usize, cols: usize, bytes: Vec<u8>) -> SvpPPolOwned<Self> {
         SvpPPolOwned::from_bytes(n, cols, bytes)
     }
 }
 
-unsafe impl SvpPPolAllocImpl<Self> for FFT64 {
+unsafe impl SvpPPolAllocImpl<Self> for FFT64Spqlios {
     fn svp_ppol_alloc_impl(n: usize, cols: usize) -> SvpPPolOwned<Self> {
         SvpPPolOwned::alloc(n, cols)
     }
 }
 
-unsafe impl SvpPPolAllocBytesImpl<Self> for FFT64 {
+unsafe impl SvpPPolAllocBytesImpl<Self> for FFT64Spqlios {
     fn svp_ppol_alloc_bytes_impl(n: usize, cols: usize) -> usize {
-        FFT64::layout_prep_word_count() * n * cols * size_of::<f64>()
+        FFT64Spqlios::layout_prep_word_count() * n * cols * size_of::<f64>()
     }
 }
 
-unsafe impl SvpPrepareImpl<Self> for FFT64 {
+unsafe impl SvpPrepareImpl<Self> for FFT64Spqlios {
     fn svp_prepare_impl<R, A>(module: &Module<Self>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: SvpPPolToMut<Self>,
@@ -45,9 +48,16 @@ unsafe impl SvpPrepareImpl<Self> for FFT64 {
     }
 }
 
-unsafe impl SvpApplyImpl<Self> for FFT64 {
-    fn svp_apply_impl<R, A, B>(module: &Module<Self>, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &B, b_col: usize)
-    where
+unsafe impl SvpApplyDftToDftImpl<Self> for FFT64Spqlios {
+    fn svp_apply_dft_to_dft_impl<R, A, B>(
+        module: &Module<Self>,
+        res: &mut R,
+        res_col: usize,
+        a: &A,
+        a_col: usize,
+        b: &B,
+        b_col: usize,
+    ) where
         R: VecZnxDftToMut<Self>,
         A: SvpPPolToRef<Self>,
         B: VecZnxDftToRef<Self>,
@@ -70,8 +80,8 @@ unsafe impl SvpApplyImpl<Self> for FFT64 {
     }
 }
 
-unsafe impl SvpApplyInplaceImpl for FFT64 {
-    fn svp_apply_inplace_impl<R, A>(module: &Module<Self>, res: &mut R, res_col: usize, a: &A, a_col: usize)
+unsafe impl SvpApplyDftToDftInplaceImpl for FFT64Spqlios {
+    fn svp_apply_dft_to_dft_inplace_impl<R, A>(module: &Module<Self>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxDftToMut<Self>,
         A: SvpPPolToRef<Self>,

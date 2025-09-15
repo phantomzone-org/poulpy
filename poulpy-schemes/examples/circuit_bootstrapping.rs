@@ -13,7 +13,7 @@ use poulpy_hal::{
     source::Source,
 };
 
-use poulpy_backend::cpu_spqlios::FFT64;
+use poulpy_backend::cpu_spqlios::FFT64Spqlios;
 
 use poulpy_schemes::tfhe::{
     blind_rotation::CGGI,
@@ -27,7 +27,7 @@ fn main() {
     let n_glwe: usize = 1024;
 
     // Module provides access to the backend arithmetic
-    let module: Module<FFT64> = Module::<FFT64>::new(n_glwe as u64);
+    let module: Module<FFT64Spqlios> = Module::<FFT64Spqlios>::new(n_glwe as u64);
 
     // Base 2 loga
     let basek: usize = 13;
@@ -75,7 +75,7 @@ fn main() {
     let k_tsk: usize = (rows_tsk + 1) * basek;
 
     // Scratch space (4MB)
-    let mut scratch: ScratchOwned<FFT64> = ScratchOwned::alloc(1 << 22);
+    let mut scratch: ScratchOwned<FFT64Spqlios> = ScratchOwned::alloc(1 << 22);
 
     // Secret key sampling source
     let mut source_xs: Source = Source::new([1u8; 32]);
@@ -97,7 +97,7 @@ fn main() {
     // sk_glwe.fill_zero();
 
     // GLWE secret prepared (opaque backend dependant write only struct)
-    let sk_glwe_prepared: GLWESecretPrepared<Vec<u8>, FFT64> = sk_glwe.prepare_alloc(&module, scratch.borrow());
+    let sk_glwe_prepared: GLWESecretPrepared<Vec<u8>, FFT64Spqlios> = sk_glwe.prepare_alloc(&module, scratch.borrow());
 
     // Plaintext value to circuit bootstrap
     let data: i64 = 1 % (1 << k_lwe_pt);
@@ -142,7 +142,8 @@ fn main() {
     let mut res: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(n_glwe, basek, k_ggsw_res, rows_ggsw_res, 1, rank);
 
     // Circuit bootstrapping key prepared (opaque backend dependant write only struct)
-    let cbt_prepared: CircuitBootstrappingKeyPrepared<Vec<u8>, CGGI, FFT64> = cbt_key.prepare_alloc(&module, scratch.borrow());
+    let cbt_prepared: CircuitBootstrappingKeyPrepared<Vec<u8>, CGGI, FFT64Spqlios> =
+        cbt_key.prepare_alloc(&module, scratch.borrow());
 
     // Apply circuit bootstrapping: LWE(data * 2^{- (k_lwe_pt + 2)}) -> GGSW(data)
     let now: Instant = Instant::now();
@@ -193,7 +194,7 @@ fn main() {
     );
 
     // Prepare GGSW output of circuit bootstrapping (opaque backend dependant write only struct)
-    let res_prepared: GGSWCiphertextPrepared<Vec<u8>, FFT64> = res.prepare_alloc(&module, scratch.borrow());
+    let res_prepared: GGSWCiphertextPrepared<Vec<u8>, FFT64Spqlios> = res.prepare_alloc(&module, scratch.borrow());
 
     // Apply GLWE x GGSW
     ct_glwe.external_product_inplace(&module, &res_prepared, scratch.borrow());

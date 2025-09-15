@@ -2,9 +2,9 @@ use std::collections::HashMap;
 
 use poulpy_hal::{
     api::{
-        DFT, IDFTConsume, ScratchAvailable, TakeVecZnx, TakeVecZnxDft, VecZnxAddInplace, VecZnxAutomorphismInplace,
-        VecZnxBigAddSmallInplace, VecZnxBigAutomorphismInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
-        VecZnxBigSubSmallBInplace, VecZnxCopy, VecZnxDftAllocBytes, VecZnxNegateInplace, VecZnxNormalizeInplace, VecZnxRotate,
+        ScratchAvailable, TakeVecZnx, TakeVecZnxDft, VecZnxAddInplace, VecZnxAutomorphismInplace, VecZnxBigAddSmallInplace,
+        VecZnxBigAutomorphismInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallBInplace, VecZnxCopy,
+        VecZnxDftAllocBytes, VecZnxDftApply, VecZnxIdftApplyConsume, VecZnxNegateInplace, VecZnxNormalizeInplace, VecZnxRotate,
         VecZnxRotateInplace, VecZnxRshInplace, VecZnxSub, VecZnxSubABInplace, VmpApplyDftToDft, VmpApplyDftToDftAdd,
         VmpApplyDftToDftTmpBytes,
     },
@@ -126,20 +126,20 @@ impl GLWEPacker {
             + VecZnxBigNormalizeTmpBytes
             + VmpApplyDftToDft<B>
             + VmpApplyDftToDftAdd<B>
-            + DFT<B>
-            + IDFTConsume<B>
+            + VecZnxDftApply<B>
+            + VecZnxIdftApplyConsume<B>
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>
             + VecZnxCopy
-            + VecZnxRotateInplace
+            + VecZnxRotateInplace<B>
             + VecZnxSub
             + VecZnxNegateInplace
-            + VecZnxRshInplace
+            + VecZnxRshInplace<B>
             + VecZnxAddInplace
             + VecZnxNormalizeInplace<B>
             + VecZnxSubABInplace
             + VecZnxRotate
-            + VecZnxAutomorphismInplace
+            + VecZnxAutomorphismInplace<B>
             + VecZnxBigSubSmallBInplace<B>
             + VecZnxBigAutomorphismInplace<B>,
         Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
@@ -204,20 +204,20 @@ fn pack_core<D: DataRef, DataAK: DataRef, B: Backend>(
         + VecZnxBigNormalizeTmpBytes
         + VmpApplyDftToDft<B>
         + VmpApplyDftToDftAdd<B>
-        + DFT<B>
-        + IDFTConsume<B>
+        + VecZnxDftApply<B>
+        + VecZnxIdftApplyConsume<B>
         + VecZnxBigAddSmallInplace<B>
         + VecZnxBigNormalize<B>
         + VecZnxCopy
-        + VecZnxRotateInplace
+        + VecZnxRotateInplace<B>
         + VecZnxSub
         + VecZnxNegateInplace
-        + VecZnxRshInplace
+        + VecZnxRshInplace<B>
         + VecZnxAddInplace
         + VecZnxNormalizeInplace<B>
         + VecZnxSubABInplace
         + VecZnxRotate
-        + VecZnxAutomorphismInplace
+        + VecZnxAutomorphismInplace<B>
         + VecZnxBigSubSmallBInplace<B>
         + VecZnxBigAutomorphismInplace<B>,
     Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
@@ -301,20 +301,20 @@ fn combine<D: DataRef, DataAK: DataRef, B: Backend>(
         + VecZnxBigNormalizeTmpBytes
         + VmpApplyDftToDft<B>
         + VmpApplyDftToDftAdd<B>
-        + DFT<B>
-        + IDFTConsume<B>
+        + VecZnxDftApply<B>
+        + VecZnxIdftApplyConsume<B>
         + VecZnxBigAddSmallInplace<B>
         + VecZnxBigNormalize<B>
         + VecZnxCopy
-        + VecZnxRotateInplace
+        + VecZnxRotateInplace<B>
         + VecZnxSub
         + VecZnxNegateInplace
-        + VecZnxRshInplace
+        + VecZnxRshInplace<B>
         + VecZnxAddInplace
         + VecZnxNormalizeInplace<B>
         + VecZnxSubABInplace
         + VecZnxRotate
-        + VecZnxAutomorphismInplace
+        + VecZnxAutomorphismInplace<B>
         + VecZnxBigSubSmallBInplace<B>
         + VecZnxBigAutomorphismInplace<B>,
     Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
@@ -349,15 +349,15 @@ fn combine<D: DataRef, DataAK: DataRef, B: Backend>(
             let (mut tmp_b, scratch_1) = scratch.take_glwe_ct(n, basek, k, rank);
 
             // a = a * X^-t
-            a.rotate_inplace(module, -t);
+            a.rotate_inplace(module, -t, scratch_1);
 
             // tmp_b = a * X^-t - b
             tmp_b.sub(module, a, b);
-            tmp_b.rsh(module, 1);
+            tmp_b.rsh(module, 1, scratch_1);
 
             // a = a * X^-t + b
             a.add_inplace(module, b);
-            a.rsh(module, 1);
+            a.rsh(module, 1, scratch_1);
 
             tmp_b.normalize_inplace(module, scratch_1);
 
@@ -375,9 +375,9 @@ fn combine<D: DataRef, DataAK: DataRef, B: Backend>(
             // a = a + b * X^t - phi(a * X^-t - b) * X^t
             //   = a + b * X^t - phi(a * X^-t - b) * - phi(X^t)
             //   = a + b * X^t + phi(a - b * X^t)
-            a.rotate_inplace(module, t);
+            a.rotate_inplace(module, t, scratch_1);
         } else {
-            a.rsh(module, 1);
+            a.rsh(module, 1, scratch);
             // a = a + phi(a)
             if let Some(key) = auto_keys.get(&gal_el) {
                 a.automorphism_add_inplace(module, key, scratch);
@@ -388,7 +388,7 @@ fn combine<D: DataRef, DataAK: DataRef, B: Backend>(
     } else if let Some(b) = b {
         let (mut tmp_b, scratch_1) = scratch.take_glwe_ct(n, basek, k, rank);
         tmp_b.rotate(module, 1 << (log_n - i - 1), b);
-        tmp_b.rsh(module, 1);
+        tmp_b.rsh(module, 1, scratch_1);
 
         // a = (b* X^t - phi(b* X^t))
         if let Some(key) = auto_keys.get(&gal_el) {

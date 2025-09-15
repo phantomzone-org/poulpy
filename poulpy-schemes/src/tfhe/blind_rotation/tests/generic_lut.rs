@@ -1,7 +1,10 @@
 use std::vec;
 
 use poulpy_hal::{
-    api::{VecZnxCopy, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotateInplace, VecZnxSwithcDegree},
+    api::{
+        VecZnxCopy, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotateInplace, VecZnxRotateInplaceTmpBytes,
+        VecZnxSwitchRing,
+    },
     layouts::{Backend, Module},
     oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl},
 };
@@ -10,7 +13,12 @@ use crate::tfhe::blind_rotation::{DivRound, LookUpTable};
 
 pub fn test_lut_standard<B>(module: &Module<B>)
 where
-    Module<B>: VecZnxRotateInplace + VecZnxNormalizeInplace<B> + VecZnxNormalizeTmpBytes + VecZnxSwithcDegree + VecZnxCopy,
+    Module<B>: VecZnxRotateInplace<B>
+        + VecZnxNormalizeInplace<B>
+        + VecZnxNormalizeTmpBytes
+        + VecZnxSwitchRing
+        + VecZnxCopy
+        + VecZnxRotateInplaceTmpBytes,
     B: Backend + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
 {
     let basek: usize = 20;
@@ -45,7 +53,12 @@ where
 
 pub fn test_lut_extended<B>(module: &Module<B>)
 where
-    Module<B>: VecZnxRotateInplace + VecZnxNormalizeInplace<B> + VecZnxNormalizeTmpBytes + VecZnxSwithcDegree + VecZnxCopy,
+    Module<B>: VecZnxRotateInplace<B>
+        + VecZnxNormalizeInplace<B>
+        + VecZnxNormalizeTmpBytes
+        + VecZnxSwitchRing
+        + VecZnxCopy
+        + VecZnxRotateInplaceTmpBytes,
     B: Backend + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
 {
     let basek: usize = 20;

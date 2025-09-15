@@ -1,9 +1,9 @@
 use poulpy_hal::{
     api::{
-        DFT, IDFTConsume, IDFTTmpA, ScratchAvailable, SvpApply, SvpApplyInplace, SvpPPolAllocBytes, SvpPrepare, TakeScalarZnx,
-        TakeVecZnx, TakeVecZnxBig, TakeVecZnxDft, VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxBigAllocBytes,
-        VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxFillUniform, VecZnxNormalize, VecZnxNormalizeInplace,
-        VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubABInplace, VecZnxSwithcDegree,
+        ScratchAvailable, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolAllocBytes, SvpPrepare, TakeScalarZnx, TakeVecZnx,
+        TakeVecZnxBig, TakeVecZnxDft, VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxBigAllocBytes,
+        VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftApply, VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA,
+        VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubABInplace, VecZnxSwitchRing,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
     source::Source,
@@ -41,14 +41,14 @@ impl<DataSelf: DataMut> GGLWETensorKey<DataSelf> {
         source_xe: &mut Source,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: SvpApply<B>
-            + IDFTTmpA<B>
+        Module<B>: SvpApplyDftToDft<B>
+            + VecZnxIdftApplyTmpA<B>
             + VecZnxAddScalarInplace
             + VecZnxDftAllocBytes
             + VecZnxBigNormalize<B>
-            + DFT<B>
-            + SvpApplyInplace<B>
-            + IDFTConsume<B>
+            + VecZnxDftApply<B>
+            + SvpApplyDftToDftInplace<B>
+            + VecZnxIdftApplyConsume<B>
             + VecZnxNormalizeTmpBytes
             + VecZnxFillUniform
             + VecZnxSubABInplace
@@ -58,7 +58,7 @@ impl<DataSelf: DataMut> GGLWETensorKey<DataSelf> {
             + VecZnxNormalize<B>
             + VecZnxSub
             + SvpPrepare<B>
-            + VecZnxSwithcDegree
+            + VecZnxSwitchRing
             + SvpPPolAllocBytes,
         Scratch<B>:
             TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx + TakeScalarZnx + TakeGLWESecretPrepared<B> + TakeVecZnxBig<B>,
@@ -73,35 +73,35 @@ impl<DataSelf: DataMut> GGLWETensorKey<DataSelf> {
 
         let rank: usize = self.rank();
 
-        let (mut sk_dft_prep, scratch1) = scratch.take_glwe_secret_prepared(n, rank);
-        sk_dft_prep.prepare(module, sk, scratch1);
+        let (mut sk_dft_prep, scratch_1) = scratch.take_glwe_secret_prepared(n, rank);
+        sk_dft_prep.prepare(module, sk, scratch_1);
 
-        let (mut sk_dft, scratch2) = scratch1.take_vec_znx_dft(n, rank, 1);
+        let (mut sk_dft, scratch_2) = scratch_1.take_vec_znx_dft(n, rank, 1);
 
         (0..rank).for_each(|i| {
-            module.dft(1, 0, &mut sk_dft, i, &sk.data.as_vec_znx(), i);
+            module.vec_znx_dft_apply(1, 0, &mut sk_dft, i, &sk.data.as_vec_znx(), i);
         });
 
-        let (mut sk_ij_big, scratch3) = scratch2.take_vec_znx_big(n, 1, 1);
-        let (mut sk_ij, scratch4) = scratch3.take_glwe_secret(n, 1);
-        let (mut sk_ij_dft, scratch5) = scratch4.take_vec_znx_dft(n, 1, 1);
+        let (mut sk_ij_big, scratch_3) = scratch_2.take_vec_znx_big(n, 1, 1);
+        let (mut sk_ij, scratch_4) = scratch_3.take_glwe_secret(n, 1);
+        let (mut sk_ij_dft, scratch_5) = scratch_4.take_vec_znx_dft(n, 1, 1);
 
         (0..rank).for_each(|i| {
             (i..rank).for_each(|j| {
-                module.svp_apply(&mut sk_ij_dft, 0, &sk_dft_prep.data, j, &sk_dft, i);
+                module.svp_apply_dft_to_dft(&mut sk_ij_dft, 0, &sk_dft_prep.data, j, &sk_dft, i);
 
-                module.idft_tmp_a(&mut sk_ij_big, 0, &mut sk_ij_dft, 0);
+                module.vec_znx_idft_apply_tmpa(&mut sk_ij_big, 0, &mut sk_ij_dft, 0);
                 module.vec_znx_big_normalize(
                     self.basek(),
                     &mut sk_ij.data.as_vec_znx_mut(),
                     0,
                     &sk_ij_big,
                     0,
-                    scratch5,
+                    scratch_5,
                 );
 
                 self.at_mut(i, j)
-                    .encrypt_sk(module, &sk_ij, sk, source_xa, source_xe, scratch5);
+                    .encrypt_sk(module, &sk_ij, sk, source_xa, source_xe, scratch_5);
             });
         })
     }

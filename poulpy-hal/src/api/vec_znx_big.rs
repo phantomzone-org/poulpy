@@ -1,9 +1,14 @@
-use rand_distr::Distribution;
-
 use crate::{
     layouts::{Backend, Scratch, VecZnxBigOwned, VecZnxBigToMut, VecZnxBigToRef, VecZnxToMut, VecZnxToRef},
     source::Source,
 };
+
+pub trait VecZnxBigFromSmall<B: Backend> {
+    fn vec_znx_big_from_small<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    where
+        R: VecZnxBigToMut<B>,
+        A: VecZnxToRef;
+}
 
 /// Allocates as [crate::layouts::VecZnxBig].
 pub trait VecZnxBigAlloc<B: Backend> {
@@ -41,48 +46,6 @@ pub trait VecZnxBigAddNormal<B: Backend> {
         k: usize,
         source: &mut Source,
         sigma: f64,
-        bound: f64,
-    );
-}
-
-#[allow(clippy::too_many_arguments)]
-pub trait VecZnxBigFillNormal<B: Backend> {
-    fn vec_znx_big_fill_normal<R: VecZnxBigToMut<B>>(
-        &self,
-        basek: usize,
-        res: &mut R,
-        res_col: usize,
-        k: usize,
-        source: &mut Source,
-        sigma: f64,
-        bound: f64,
-    );
-}
-
-#[allow(clippy::too_many_arguments)]
-pub trait VecZnxBigFillDistF64<B: Backend> {
-    fn vec_znx_big_fill_dist_f64<R: VecZnxBigToMut<B>, D: Distribution<f64>>(
-        &self,
-        basek: usize,
-        res: &mut R,
-        res_col: usize,
-        k: usize,
-        source: &mut Source,
-        dist: D,
-        bound: f64,
-    );
-}
-
-#[allow(clippy::too_many_arguments)]
-pub trait VecZnxBigAddDistF64<B: Backend> {
-    fn vec_znx_big_add_dist_f64<R: VecZnxBigToMut<B>, D: Distribution<f64>>(
-        &self,
-        basek: usize,
-        res: &mut R,
-        res_col: usize,
-        k: usize,
-        source: &mut Source,
-        dist: D,
         bound: f64,
     );
 }
@@ -180,10 +143,17 @@ pub trait VecZnxBigSubSmallBInplace<B: Backend> {
         A: VecZnxToRef;
 }
 
-pub trait VecZnxBigNegateInplace<B: Backend> {
-    fn vec_znx_big_negate_inplace<A>(&self, a: &mut A, a_col: usize)
+pub trait VecZnxBigNegate<B: Backend> {
+    fn vec_znx_big_negate<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
-        A: VecZnxBigToMut<B>;
+        R: VecZnxBigToMut<B>,
+        A: VecZnxBigToRef<B>;
+}
+
+pub trait VecZnxBigNegateInplace<B: Backend> {
+    fn vec_znx_big_negate_inplace<R>(&self, res: &mut R, res_col: usize)
+    where
+        R: VecZnxBigToMut<B>;
 }
 
 pub trait VecZnxBigNormalizeTmpBytes {
@@ -204,9 +174,13 @@ pub trait VecZnxBigNormalize<B: Backend> {
         A: VecZnxBigToRef<B>;
 }
 
+pub trait VecZnxBigAutomorphismInplaceTmpBytes {
+    fn vec_znx_big_automorphism_inplace_tmp_bytes(&self) -> usize;
+}
+
 pub trait VecZnxBigAutomorphism<B: Backend> {
     /// Applies the automorphism X^i -> X^ik on `a` and stores the result on `b`.
-    fn vec_znx_big_automorphism<R, A>(&self, k: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn vec_znx_big_automorphism<R, A>(&self, p: i64, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxBigToMut<B>,
         A: VecZnxBigToRef<B>;
@@ -214,7 +188,7 @@ pub trait VecZnxBigAutomorphism<B: Backend> {
 
 pub trait VecZnxBigAutomorphismInplace<B: Backend> {
     /// Applies the automorphism X^i -> X^ik on `a` and stores the result on `a`.
-    fn vec_znx_big_automorphism_inplace<A>(&self, k: i64, a: &mut A, a_col: usize)
+    fn vec_znx_big_automorphism_inplace<R>(&self, p: i64, res: &mut R, res_col: usize, scratch: &mut Scratch<B>)
     where
-        A: VecZnxBigToMut<B>;
+        R: VecZnxBigToMut<B>;
 }

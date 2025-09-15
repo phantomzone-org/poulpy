@@ -1,12 +1,16 @@
-use std::marker::PhantomData;
+use std::{
+    hash::{DefaultHasher, Hasher},
+    marker::PhantomData,
+};
 
 use crate::{
     alloc_aligned,
-    layouts::{Backend, Data, DataMut, DataRef, DataView, DataViewMut, ZnxInfos, ZnxView},
+    layouts::{Backend, Data, DataMut, DataRef, DataView, DataViewMut, DigestU64, ZnxInfos, ZnxView},
     oep::VmpPMatAllocBytesImpl,
 };
 
-#[derive(PartialEq, Eq)]
+#[repr(C)]
+#[derive(PartialEq, Eq, Hash)]
 pub struct VmpPMat<D: Data, B: Backend> {
     data: D,
     n: usize,
@@ -15,6 +19,19 @@ pub struct VmpPMat<D: Data, B: Backend> {
     cols_in: usize,
     cols_out: usize,
     _phantom: PhantomData<B>,
+}
+
+impl<D: DataRef, B: Backend> DigestU64 for VmpPMat<D, B> {
+    fn digest_u64(&self) -> u64 {
+        let mut h: DefaultHasher = DefaultHasher::new();
+        h.write(self.data.as_ref());
+        h.write_usize(self.n);
+        h.write_usize(self.size);
+        h.write_usize(self.rows);
+        h.write_usize(self.cols_in);
+        h.write_usize(self.cols_out);
+        h.finish()
+    }
 }
 
 impl<D: DataRef, B: Backend> ZnxView for VmpPMat<D, B> {
@@ -36,6 +53,10 @@ impl<D: Data, B: Backend> ZnxInfos for VmpPMat<D, B> {
 
     fn size(&self) -> usize {
         self.size
+    }
+
+    fn poly_count(&self) -> usize {
+        self.rows() * self.cols_in() * self.size() * self.cols_out()
     }
 }
 

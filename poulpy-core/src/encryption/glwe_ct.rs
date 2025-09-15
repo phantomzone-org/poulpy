@@ -1,9 +1,9 @@
 use poulpy_hal::{
     api::{
-        DFT, IDFTConsume, ScratchAvailable, SvpApply, SvpApplyInplace, SvpPPolAllocBytes, SvpPrepare, TakeScalarZnx, TakeSvpPPol,
+        ScratchAvailable, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolAllocBytes, SvpPrepare, TakeScalarZnx, TakeSvpPPol,
         TakeVecZnx, TakeVecZnxDft, VecZnxAddInplace, VecZnxAddNormal, VecZnxBigAddNormal, VecZnxBigAddSmallInplace,
-        VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxFillUniform, VecZnxNormalize, VecZnxNormalizeInplace,
-        VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubABInplace,
+        VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftApply, VecZnxFillUniform, VecZnxIdftApplyConsume,
+        VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubABInplace,
     },
     layouts::{Backend, DataMut, DataRef, Module, ScalarZnx, Scratch, VecZnx, VecZnxBig, ZnxInfos, ZnxZero},
     source::Source,
@@ -53,9 +53,9 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
     ) where
         Module<B>: VecZnxDftAllocBytes
             + VecZnxBigNormalize<B>
-            + DFT<B>
-            + SvpApplyInplace<B>
-            + IDFTConsume<B>
+            + VecZnxDftApply<B>
+            + SvpApplyDftToDftInplace<B>
+            + VecZnxIdftApplyConsume<B>
             + VecZnxNormalizeTmpBytes
             + VecZnxFillUniform
             + VecZnxSubABInplace
@@ -92,9 +92,9 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
     ) where
         Module<B>: VecZnxDftAllocBytes
             + VecZnxBigNormalize<B>
-            + DFT<B>
-            + SvpApplyInplace<B>
-            + IDFTConsume<B>
+            + VecZnxDftApply<B>
+            + SvpApplyDftToDftInplace<B>
+            + VecZnxIdftApplyConsume<B>
             + VecZnxNormalizeTmpBytes
             + VecZnxFillUniform
             + VecZnxSubABInplace
@@ -138,9 +138,9 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
     ) where
         Module<B>: VecZnxDftAllocBytes
             + VecZnxBigNormalize<B>
-            + DFT<B>
-            + SvpApplyInplace<B>
-            + IDFTConsume<B>
+            + VecZnxDftApply<B>
+            + SvpApplyDftToDftInplace<B>
+            + VecZnxIdftApplyConsume<B>
             + VecZnxNormalizeTmpBytes
             + VecZnxFillUniform
             + VecZnxSubABInplace
@@ -179,8 +179,8 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: SvpPrepare<B>
-            + SvpApply<B>
-            + IDFTConsume<B>
+            + SvpApplyDftToDft<B>
+            + VecZnxIdftApplyConsume<B>
             + VecZnxBigAddNormal<B>
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>,
@@ -198,8 +198,8 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: SvpPrepare<B>
-            + SvpApply<B>
-            + IDFTConsume<B>
+            + SvpApplyDftToDft<B>
+            + VecZnxIdftApplyConsume<B>
             + VecZnxBigAddNormal<B>
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>,
@@ -226,8 +226,8 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: SvpPrepare<B>
-            + SvpApply<B>
-            + IDFTConsume<B>
+            + SvpApplyDftToDft<B>
+            + VecZnxIdftApplyConsume<B>
             + VecZnxBigAddNormal<B>
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>,
@@ -273,10 +273,10 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         (0..cols).for_each(|i| {
             let (mut ci_dft, scratch_2) = scratch_1.take_vec_znx_dft(self.n(), 1, size_pk);
             // ci_dft = DFT(u) * DFT(pk[i])
-            module.svp_apply(&mut ci_dft, 0, &u_dft, 0, &pk.data, i);
+            module.svp_apply_dft_to_dft(&mut ci_dft, 0, &u_dft, 0, &pk.data, i);
 
             // ci_big = u * p[i]
-            let mut ci_big = module.vec_znx_idft_consume(ci_dft);
+            let mut ci_big = module.vec_znx_idft_apply_consume(ci_dft);
 
             // ci_big = u * pk[i] + e
             module.vec_znx_big_add_normal(basek, &mut ci_big, 0, pk.k(), source_xe, SIGMA, SIGMA_BOUND);
@@ -311,9 +311,9 @@ pub(crate) fn glwe_encrypt_sk_internal<DataCt: DataMut, DataPt: DataRef, DataSk:
 ) where
     Module<B>: VecZnxDftAllocBytes
         + VecZnxBigNormalize<B>
-        + DFT<B>
-        + SvpApplyInplace<B>
-        + IDFTConsume<B>
+        + VecZnxDftApply<B>
+        + SvpApplyDftToDftInplace<B>
+        + VecZnxIdftApplyConsume<B>
         + VecZnxNormalizeTmpBytes
         + VecZnxFillUniform
         + VecZnxSubABInplace
@@ -350,7 +350,7 @@ pub(crate) fn glwe_encrypt_sk_internal<DataCt: DataMut, DataPt: DataRef, DataSk:
             let col_ct: usize = if compressed { 0 } else { i };
 
             // ct[i] = uniform (+ pt)
-            module.vec_znx_fill_uniform(basek, ct, col_ct, k, source_xa);
+            module.vec_znx_fill_uniform(basek, ct, col_ct, source_xa);
 
             let (mut ci_dft, scratch_3) = scratch_2.take_vec_znx_dft(ct.n(), 1, size);
 
@@ -361,16 +361,16 @@ pub(crate) fn glwe_encrypt_sk_internal<DataCt: DataMut, DataPt: DataRef, DataSk:
                 if i == col {
                     module.vec_znx_sub(&mut ci, 0, ct, col_ct, &pt.data, 0);
                     module.vec_znx_normalize_inplace(basek, &mut ci, 0, scratch_3);
-                    module.dft(1, 0, &mut ci_dft, 0, &ci, 0);
+                    module.vec_znx_dft_apply(1, 0, &mut ci_dft, 0, &ci, 0);
                 } else {
-                    module.dft(1, 0, &mut ci_dft, 0, ct, col_ct);
+                    module.vec_znx_dft_apply(1, 0, &mut ci_dft, 0, ct, col_ct);
                 }
             } else {
-                module.dft(1, 0, &mut ci_dft, 0, ct, col_ct);
+                module.vec_znx_dft_apply(1, 0, &mut ci_dft, 0, ct, col_ct);
             }
 
-            module.svp_apply_inplace(&mut ci_dft, 0, &sk.data, i - 1);
-            let ci_big: VecZnxBig<&mut [u8], B> = module.vec_znx_idft_consume(ci_dft);
+            module.svp_apply_dft_to_dft_inplace(&mut ci_dft, 0, &sk.data, i - 1);
+            let ci_big: VecZnxBig<&mut [u8], B> = module.vec_znx_idft_apply_consume(ci_dft);
 
             // use c[0] as buffer, which is overwritten later by the normalization step
             module.vec_znx_big_normalize(basek, &mut ci, 0, &ci_big, 0, scratch_3);

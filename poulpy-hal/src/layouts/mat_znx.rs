@@ -1,17 +1,21 @@
 use crate::{
     alloc_aligned,
     layouts::{
-        Data, DataMut, DataRef, DataView, DataViewMut, FillUniform, ReaderFrom, Reset, ToOwnedDeep, VecZnx, WriterTo, ZnxInfos,
-        ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero,
+        Data, DataMut, DataRef, DataView, DataViewMut, DigestU64, FillUniform, ReaderFrom, Reset, ToOwnedDeep, VecZnx, WriterTo,
+        ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero,
     },
     source::Source,
 };
-use std::fmt;
+use std::{
+    fmt,
+    hash::{DefaultHasher, Hasher},
+};
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use rand::RngCore;
 
-#[derive(PartialEq, Eq, Clone)]
+#[repr(C)]
+#[derive(PartialEq, Eq, Clone, Hash)]
 pub struct MatZnx<D: Data> {
     data: D,
     n: usize,
@@ -19,6 +23,19 @@ pub struct MatZnx<D: Data> {
     rows: usize,
     cols_in: usize,
     cols_out: usize,
+}
+
+impl<D: DataRef> DigestU64 for MatZnx<D> {
+    fn digest_u64(&self) -> u64 {
+        let mut h: DefaultHasher = DefaultHasher::new();
+        h.write(self.data.as_ref());
+        h.write_usize(self.n);
+        h.write_usize(self.size);
+        h.write_usize(self.rows);
+        h.write_usize(self.cols_in);
+        h.write_usize(self.cols_out);
+        h.finish()
+    }
 }
 
 impl<D: DataRef> ToOwnedDeep for MatZnx<D> {
@@ -56,6 +73,10 @@ impl<D: Data> ZnxInfos for MatZnx<D> {
 
     fn size(&self) -> usize {
         self.size
+    }
+
+    fn poly_count(&self) -> usize {
+        self.rows() * self.cols_in() * self.cols_out() * self.size()
     }
 }
 
@@ -175,8 +196,18 @@ impl<D: DataMut> MatZnx<D> {
 }
 
 impl<D: DataMut> FillUniform for MatZnx<D> {
-    fn fill_uniform(&mut self, source: &mut Source) {
-        source.fill_bytes(self.data.as_mut());
+    fn fill_uniform(&mut self, log_bound: usize, source: &mut Source) {
+        match log_bound {
+            64 => source.fill_bytes(self.data.as_mut()),
+            0 => panic!("invalid log_bound, cannot be zero"),
+            _ => {
+                let mask: u64 = (1u64 << log_bound) - 1;
+                for x in self.raw_mut().iter_mut() {
+                    let r = source.next_u64() & mask;
+                    *x = ((r << (64 - log_bound)) as i64) >> (64 - log_bound);
+                }
+            }
+        }
     }
 }
 

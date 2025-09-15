@@ -1,17 +1,34 @@
-use std::marker::PhantomData;
+use std::{
+    fmt,
+    hash::{DefaultHasher, Hasher},
+    marker::PhantomData,
+};
 
 use crate::{
     alloc_aligned,
-    layouts::{Backend, Data, DataMut, DataRef, DataView, DataViewMut, ReaderFrom, WriterTo, ZnxInfos, ZnxSliceSize, ZnxView},
+    layouts::{
+        Backend, Data, DataMut, DataRef, DataView, DataViewMut, DigestU64, ReaderFrom, WriterTo, ZnxInfos, ZnxSliceSize, ZnxView,
+    },
     oep::SvpPPolAllocBytesImpl,
 };
 
-#[derive(PartialEq, Eq)]
+#[repr(C)]
+#[derive(PartialEq, Eq, Hash)]
 pub struct SvpPPol<D: Data, B: Backend> {
     pub data: D,
     pub n: usize,
     pub cols: usize,
     pub _phantom: PhantomData<B>,
+}
+
+impl<D: DataRef, B: Backend> DigestU64 for SvpPPol<D, B> {
+    fn digest_u64(&self) -> u64 {
+        let mut h: DefaultHasher = DefaultHasher::new();
+        h.write(self.data.as_ref());
+        h.write_usize(self.n);
+        h.write_usize(self.cols);
+        h.finish()
+    }
 }
 
 impl<D: Data, B: Backend> ZnxSliceSize for SvpPPol<D, B> {
@@ -150,6 +167,35 @@ impl<D: DataRef, B: Backend> WriterTo for SvpPPol<D, B> {
         let buf: &[u8] = self.data.as_ref();
         writer.write_u64::<LittleEndian>(buf.len() as u64)?;
         writer.write_all(buf)?;
+        Ok(())
+    }
+}
+
+impl<D: DataRef, B: Backend> fmt::Display for SvpPPol<D, B> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "SvpPPol(n={}, cols={})", self.n, self.cols)?;
+
+        for col in 0..self.cols {
+            writeln!(f, "Column {}:", col)?;
+            let coeffs = self.at(col, 0);
+            write!(f, "[")?;
+
+            let max_show = 100;
+            let show_count = coeffs.len().min(max_show);
+
+            for (i, &coeff) in coeffs.iter().take(show_count).enumerate() {
+                if i > 0 {
+                    write!(f, ", ")?;
+                }
+                write!(f, "{}", coeff)?;
+            }
+
+            if coeffs.len() > max_show {
+                write!(f, ", ... ({} more)", coeffs.len() - max_show)?;
+            }
+
+            writeln!(f, "]")?;
+        }
         Ok(())
     }
 }

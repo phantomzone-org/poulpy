@@ -1,14 +1,21 @@
-use std::{fmt, marker::PhantomData};
+use std::{
+    fmt,
+    hash::{DefaultHasher, Hasher},
+    marker::PhantomData,
+};
 
 use rand_distr::num_traits::Zero;
 
 use crate::{
     alloc_aligned,
     layouts::{
-        Backend, Data, DataMut, DataRef, DataView, DataViewMut, VecZnxBig, ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero,
+        Backend, Data, DataMut, DataRef, DataView, DataViewMut, DigestU64, VecZnxBig, ZnxInfos, ZnxSliceSize, ZnxView,
+        ZnxViewMut, ZnxZero,
     },
-    oep::VecZnxBigAllocBytesImpl,
+    oep::VecZnxDftAllocBytesImpl,
 };
+
+#[repr(C)]
 #[derive(PartialEq, Eq)]
 pub struct VecZnxDft<D: Data, B: Backend> {
     pub data: D,
@@ -17,6 +24,18 @@ pub struct VecZnxDft<D: Data, B: Backend> {
     pub size: usize,
     pub max_size: usize,
     pub _phantom: PhantomData<B>,
+}
+
+impl<D: DataRef, B: Backend> DigestU64 for VecZnxDft<D, B> {
+    fn digest_u64(&self) -> u64 {
+        let mut h: DefaultHasher = DefaultHasher::new();
+        h.write(self.data.as_ref());
+        h.write_usize(self.n);
+        h.write_usize(self.cols);
+        h.write_usize(self.size);
+        h.write_usize(self.max_size);
+        h.finish()
+    }
 }
 
 impl<D: Data, B: Backend> ZnxSliceSize for VecZnxDft<D, B> {
@@ -94,10 +113,10 @@ where
 
 impl<D: DataRef + From<Vec<u8>>, B: Backend> VecZnxDft<D, B>
 where
-    B: VecZnxBigAllocBytesImpl<B>,
+    B: VecZnxDftAllocBytesImpl<B>,
 {
     pub fn alloc(n: usize, cols: usize, size: usize) -> Self {
-        let data: Vec<u8> = alloc_aligned::<u8>(B::vec_znx_big_alloc_bytes_impl(n, cols, size));
+        let data: Vec<u8> = alloc_aligned::<u8>(B::vec_znx_dft_alloc_bytes_impl(n, cols, size));
         Self {
             data: data.into(),
             n,
@@ -110,7 +129,7 @@ where
 
     pub fn from_bytes(n: usize, cols: usize, size: usize, bytes: impl Into<Vec<u8>>) -> Self {
         let data: Vec<u8> = bytes.into();
-        assert!(data.len() == B::vec_znx_big_alloc_bytes_impl(n, cols, size));
+        assert!(data.len() == B::vec_znx_dft_alloc_bytes_impl(n, cols, size));
         Self {
             data: data.into(),
             n,

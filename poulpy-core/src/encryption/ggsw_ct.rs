@@ -1,8 +1,8 @@
 use poulpy_hal::{
     api::{
-        DFT, IDFTConsume, ScratchAvailable, SvpApplyInplace, TakeVecZnx, TakeVecZnxDft, VecZnxAddInplace, VecZnxAddNormal,
-        VecZnxAddScalarInplace, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxFillUniform, VecZnxNormalize,
-        VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubABInplace,
+        ScratchAvailable, SvpApplyDftToDftInplace, TakeVecZnx, TakeVecZnxDft, VecZnxAddInplace, VecZnxAddNormal,
+        VecZnxAddScalarInplace, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftApply, VecZnxFillUniform,
+        VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubABInplace,
     },
     layouts::{Backend, DataMut, DataRef, Module, ScalarZnx, Scratch, VecZnx, ZnxZero},
     source::Source,
@@ -40,9 +40,9 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
         Module<B>: VecZnxAddScalarInplace
             + VecZnxDftAllocBytes
             + VecZnxBigNormalize<B>
-            + DFT<B>
-            + SvpApplyInplace<B>
-            + IDFTConsume<B>
+            + VecZnxDftApply<B>
+            + SvpApplyDftToDftInplace<B>
+            + VecZnxIdftApplyConsume<B>
             + VecZnxNormalizeTmpBytes
             + VecZnxFillUniform
             + VecZnxSubABInplace
@@ -67,14 +67,14 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
         let rank: usize = self.rank();
         let digits: usize = self.digits();
 
-        let (mut tmp_pt, scratch1) = scratch.take_glwe_pt(self.n(), basek, k);
+        let (mut tmp_pt, scratch_1) = scratch.take_glwe_pt(self.n(), basek, k);
 
         (0..self.rows()).for_each(|row_i| {
             tmp_pt.data.zero();
 
             // Adds the scalar_znx_pt to the i-th limb of the vec_znx_pt
             module.vec_znx_add_scalar_inplace(&mut tmp_pt.data, 0, (digits - 1) + row_i * digits, pt, 0);
-            module.vec_znx_normalize_inplace(basek, &mut tmp_pt.data, 0, scratch1);
+            module.vec_znx_normalize_inplace(basek, &mut tmp_pt.data, 0, scratch_1);
 
             (0..rank + 1).for_each(|col_j| {
                 // rlwe encrypt of vec_znx_pt into vec_znx_ct
@@ -85,7 +85,7 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
                     sk,
                     source_xa,
                     source_xe,
-                    scratch1,
+                    scratch_1,
                 );
             });
         });

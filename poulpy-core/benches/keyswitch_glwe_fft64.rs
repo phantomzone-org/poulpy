@@ -5,7 +5,7 @@ use poulpy_core::layouts::{
 use std::{hint::black_box, time::Duration};
 
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
-use poulpy_backend::cpu_spqlios::FFT64;
+use poulpy_backend::cpu_spqlios::FFT64Spqlios;
 use poulpy_hal::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
     layouts::{Module, ScratchOwned},
@@ -27,7 +27,7 @@ fn bench_keyswitch_glwe_fft64(c: &mut Criterion) {
     }
 
     fn runner(p: Params) -> impl FnMut() {
-        let module: Module<FFT64> = Module::<FFT64>::new(1 << p.log_n);
+        let module: Module<FFT64Spqlios> = Module::<FFT64Spqlios>::new(1 << p.log_n);
 
         let n = module.n();
         let basek: usize = p.basek;
@@ -44,7 +44,7 @@ fn bench_keyswitch_glwe_fft64(c: &mut Criterion) {
         let mut ct_in: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(n, basek, k_rlwe_in, rank_in);
         let mut ct_out: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(n, basek, k_rlwe_out, rank_out);
 
-        let mut scratch: ScratchOwned<FFT64> = ScratchOwned::alloc(
+        let mut scratch: ScratchOwned<FFT64Spqlios> = ScratchOwned::alloc(
             GGLWESwitchingKey::encrypt_sk_scratch_space(&module, basek, ksk.k(), rank_in, rank_out)
                 | GLWECiphertext::encrypt_sk_scratch_space(&module, basek, ct_in.k())
                 | GLWECiphertext::keyswitch_scratch_space(
@@ -65,7 +65,7 @@ fn bench_keyswitch_glwe_fft64(c: &mut Criterion) {
 
         let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank_in);
         sk_in.fill_ternary_prob(0.5, &mut source_xs);
-        let sk_in_dft: GLWESecretPrepared<Vec<u8>, FFT64> = sk_in.prepare_alloc(&module, scratch.borrow());
+        let sk_in_dft: GLWESecretPrepared<Vec<u8>, FFT64Spqlios> = sk_in.prepare_alloc(&module, scratch.borrow());
 
         let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank_out);
         sk_out.fill_ternary_prob(0.5, &mut source_xs);
@@ -132,7 +132,7 @@ fn bench_keyswitch_glwe_inplace_fft64(c: &mut Criterion) {
     }
 
     fn runner(p: Params) -> impl FnMut() {
-        let module: Module<FFT64> = Module::<FFT64>::new(1 << p.log_n);
+        let module: Module<FFT64Spqlios> = Module::<FFT64Spqlios>::new(1 << p.log_n);
 
         let n = module.n();
         let basek: usize = p.basek;
@@ -146,7 +146,7 @@ fn bench_keyswitch_glwe_inplace_fft64(c: &mut Criterion) {
         let mut ksk: GGLWESwitchingKey<Vec<u8>> = GGLWESwitchingKey::alloc(n, basek, k_ksk, rows, digits, rank, rank);
         let mut ct: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(n, basek, k_ct, rank);
 
-        let mut scratch: ScratchOwned<FFT64> = ScratchOwned::alloc(
+        let mut scratch: ScratchOwned<FFT64Spqlios> = ScratchOwned::alloc(
             GGLWESwitchingKey::encrypt_sk_scratch_space(&module, basek, ksk.k(), rank, rank)
                 | GLWECiphertext::encrypt_sk_scratch_space(&module, basek, ct.k())
                 | GLWECiphertext::keyswitch_inplace_scratch_space(&module, basek, ct.k(), ksk.k(), digits, rank),
@@ -158,7 +158,7 @@ fn bench_keyswitch_glwe_inplace_fft64(c: &mut Criterion) {
 
         let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
         sk_in.fill_ternary_prob(0.5, &mut source_xs);
-        let sk_in_dft: GLWESecretPrepared<Vec<u8>, FFT64> = sk_in.prepare_alloc(&module, scratch.borrow());
+        let sk_in_dft: GLWESecretPrepared<Vec<u8>, FFT64Spqlios> = sk_in.prepare_alloc(&module, scratch.borrow());
 
         let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
         sk_out.fill_ternary_prob(0.5, &mut source_xs);
@@ -180,7 +180,7 @@ fn bench_keyswitch_glwe_inplace_fft64(c: &mut Criterion) {
             scratch.borrow(),
         );
 
-        let ksk_prepared: GGLWESwitchingKeyPrepared<Vec<u8>, FFT64> = ksk.prepare_alloc(&module, scratch.borrow());
+        let ksk_prepared: GGLWESwitchingKeyPrepared<Vec<u8>, FFT64Spqlios> = ksk.prepare_alloc(&module, scratch.borrow());
 
         move || {
             ct.keyswitch_inplace(&module, &ksk_prepared, scratch.borrow());
