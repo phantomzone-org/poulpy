@@ -94,7 +94,7 @@ where
             GLWECiphertext::encrypt_sk_scratch_space(module, basek, ct.k())
                 | GLWECiphertext::decrypt_scratch_space(module, basek, ct.k())
                 | GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, basek, k_autokey, rank)
-                | GLWECiphertext::trace_inplace_scratch_space(module, basek, ct.k(), k_autokey, digits, rank),
+                | GLWECiphertext::trace_inplace_scratch_space(module, basek, ct.k(), basek, k_autokey, digits, rank),
         );
 
         let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
@@ -164,9 +164,7 @@ where
 
         assert!(
             (noise_have - noise_want).abs() < 1.0,
-            "{} > {}",
-            noise_have,
-            noise_want
+            "{noise_have} > {noise_want}"
         );
     });
 }

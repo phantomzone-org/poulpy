@@ -1,9 +1,9 @@
 use poulpy_hal::{
     api::{
-        ScratchAvailable, TakeVecZnxDft, VecZnxAutomorphismInplace, VecZnxBigAddSmallInplace, VecZnxBigAutomorphismInplace,
-        VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallAInplace, VecZnxBigSubSmallBInplace,
-        VecZnxDftAllocBytes, VecZnxDftApply, VecZnxIdftApplyConsume, VmpApplyDftToDft, VmpApplyDftToDftAdd,
-        VmpApplyDftToDftTmpBytes,
+        ScratchAvailable, TakeVecZnx, TakeVecZnxDft, VecZnxAutomorphismInplace, VecZnxBigAddSmallInplace,
+        VecZnxBigAutomorphismInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallAInplace,
+        VecZnxBigSubSmallBInplace, VecZnxDftAllocBytes, VecZnxDftApply, VecZnxIdftApplyConsume, VecZnxNormalize,
+        VecZnxNormalizeTmpBytes, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch, VecZnxBig},
 };
@@ -14,31 +14,36 @@ impl GLWECiphertext<Vec<u8>> {
     #[allow(clippy::too_many_arguments)]
     pub fn automorphism_scratch_space<B: Backend>(
         module: &Module<B>,
-        basek: usize,
+        basek_out: usize,
         k_out: usize,
+        basek_in: usize,
         k_in: usize,
+        basek_ksk: usize,
         k_ksk: usize,
         digits: usize,
         rank: usize,
     ) -> usize
     where
-        Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes,
+        Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        Self::keyswitch_scratch_space(module, basek, k_out, k_in, k_ksk, digits, rank, rank)
+        Self::keyswitch_scratch_space(
+            module, basek_out, k_out, basek_in, k_in, basek_ksk, k_ksk, digits, rank, rank,
+        )
     }
 
     pub fn automorphism_inplace_scratch_space<B: Backend>(
         module: &Module<B>,
-        basek: usize,
+        basek_out: usize,
         k_out: usize,
+        basek_ksk: usize,
         k_ksk: usize,
         digits: usize,
         rank: usize,
     ) -> usize
     where
-        Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes,
+        Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        Self::keyswitch_inplace_scratch_space(module, basek, k_out, k_ksk, digits, rank)
+        Self::keyswitch_inplace_scratch_space(module, basek_out, k_out, basek_ksk, k_ksk, digits, rank)
     }
 }
 
@@ -59,8 +64,10 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
             + VecZnxIdftApplyConsume<B>
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>
-            + VecZnxAutomorphismInplace<B>,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
+            + VecZnxAutomorphismInplace<B>
+            + VecZnxNormalize<B>
+            + VecZnxNormalizeTmpBytes,
+        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
     {
         self.keyswitch(module, lhs, &rhs.key, scratch);
         (0..self.rank() + 1).for_each(|i| {
@@ -83,8 +90,10 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
             + VecZnxIdftApplyConsume<B>
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>
-            + VecZnxAutomorphismInplace<B>,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
+            + VecZnxAutomorphismInplace<B>
+            + VecZnxNormalize<B>
+            + VecZnxNormalizeTmpBytes,
+        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
     {
         self.keyswitch_inplace(module, &rhs.key, scratch);
         (0..self.rank() + 1).for_each(|i| {
@@ -108,8 +117,10 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
             + VecZnxIdftApplyConsume<B>
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>
-            + VecZnxBigAutomorphismInplace<B>,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
+            + VecZnxBigAutomorphismInplace<B>
+            + VecZnxNormalizeTmpBytes
+            + VecZnxNormalize<B>,
+        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
     {
         #[cfg(debug_assertions)]
         {
@@ -120,7 +131,15 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         (0..self.cols()).for_each(|i| {
             module.vec_znx_big_automorphism_inplace(rhs.p(), &mut res_big, i, scratch_1);
             module.vec_znx_big_add_small_inplace(&mut res_big, i, &lhs.data, i);
-            module.vec_znx_big_normalize(self.basek(), &mut self.data, i, &res_big, i, scratch_1);
+            module.vec_znx_big_normalize(
+                self.basek(),
+                &mut self.data,
+                i,
+                rhs.basek(),
+                &res_big,
+                i,
+                scratch_1,
+            );
         })
     }
 
@@ -139,8 +158,10 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
             + VecZnxIdftApplyConsume<B>
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>
-            + VecZnxBigAutomorphismInplace<B>,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
+            + VecZnxBigAutomorphismInplace<B>
+            + VecZnxNormalizeTmpBytes
+            + VecZnxNormalize<B>,
+        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
     {
         #[cfg(debug_assertions)]
         {
@@ -151,7 +172,15 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         (0..self.cols()).for_each(|i| {
             module.vec_znx_big_automorphism_inplace(rhs.p(), &mut res_big, i, scratch_1);
             module.vec_znx_big_add_small_inplace(&mut res_big, i, &self.data, i);
-            module.vec_znx_big_normalize(self.basek(), &mut self.data, i, &res_big, i, scratch_1);
+            module.vec_znx_big_normalize(
+                self.basek(),
+                &mut self.data,
+                i,
+                rhs.basek(),
+                &res_big,
+                i,
+                scratch_1,
+            );
         })
     }
 
@@ -172,8 +201,10 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>
             + VecZnxBigAutomorphismInplace<B>
-            + VecZnxBigSubSmallAInplace<B>,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
+            + VecZnxBigSubSmallAInplace<B>
+            + VecZnxNormalizeTmpBytes
+            + VecZnxNormalize<B>,
+        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
     {
         #[cfg(debug_assertions)]
         {
@@ -184,7 +215,15 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         (0..self.cols()).for_each(|i| {
             module.vec_znx_big_automorphism_inplace(rhs.p(), &mut res_big, i, scratch_1);
             module.vec_znx_big_sub_small_a_inplace(&mut res_big, i, &lhs.data, i);
-            module.vec_znx_big_normalize(self.basek(), &mut self.data, i, &res_big, i, scratch_1);
+            module.vec_znx_big_normalize(
+                self.basek(),
+                &mut self.data,
+                i,
+                rhs.basek(),
+                &res_big,
+                i,
+                scratch_1,
+            );
         })
     }
 
@@ -204,8 +243,10 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>
             + VecZnxBigAutomorphismInplace<B>
-            + VecZnxBigSubSmallAInplace<B>,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
+            + VecZnxBigSubSmallAInplace<B>
+            + VecZnxNormalizeTmpBytes
+            + VecZnxNormalize<B>,
+        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
     {
         #[cfg(debug_assertions)]
         {
@@ -216,7 +257,15 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         (0..self.cols()).for_each(|i| {
             module.vec_znx_big_automorphism_inplace(rhs.p(), &mut res_big, i, scratch_1);
             module.vec_znx_big_sub_small_a_inplace(&mut res_big, i, &self.data, i);
-            module.vec_znx_big_normalize(self.basek(), &mut self.data, i, &res_big, i, scratch_1);
+            module.vec_znx_big_normalize(
+                self.basek(),
+                &mut self.data,
+                i,
+                rhs.basek(),
+                &res_big,
+                i,
+                scratch_1,
+            );
         })
     }
 
@@ -237,8 +286,10 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>
             + VecZnxBigAutomorphismInplace<B>
-            + VecZnxBigSubSmallBInplace<B>,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
+            + VecZnxBigSubSmallBInplace<B>
+            + VecZnxNormalizeTmpBytes
+            + VecZnxNormalize<B>,
+        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
     {
         #[cfg(debug_assertions)]
         {
@@ -249,7 +300,15 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         (0..self.cols()).for_each(|i| {
             module.vec_znx_big_automorphism_inplace(rhs.p(), &mut res_big, i, scratch_1);
             module.vec_znx_big_sub_small_b_inplace(&mut res_big, i, &lhs.data, i);
-            module.vec_znx_big_normalize(self.basek(), &mut self.data, i, &res_big, i, scratch_1);
+            module.vec_znx_big_normalize(
+                self.basek(),
+                &mut self.data,
+                i,
+                rhs.basek(),
+                &res_big,
+                i,
+                scratch_1,
+            );
         })
     }
 
@@ -269,8 +328,10 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>
             + VecZnxBigAutomorphismInplace<B>
-            + VecZnxBigSubSmallBInplace<B>,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
+            + VecZnxBigSubSmallBInplace<B>
+            + VecZnxNormalizeTmpBytes
+            + VecZnxNormalize<B>,
+        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
     {
         #[cfg(debug_assertions)]
         {
@@ -281,7 +342,15 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         (0..self.cols()).for_each(|i| {
             module.vec_znx_big_automorphism_inplace(rhs.p(), &mut res_big, i, scratch_1);
             module.vec_znx_big_sub_small_b_inplace(&mut res_big, i, &self.data, i);
-            module.vec_znx_big_normalize(self.basek(), &mut self.data, i, &res_big, i, scratch_1);
+            module.vec_znx_big_normalize(
+                self.basek(),
+                &mut self.data,
+                i,
+                rhs.basek(),
+                &res_big,
+                i,
+                scratch_1,
+            );
         })
     }
 }

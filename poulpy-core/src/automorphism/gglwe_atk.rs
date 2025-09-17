@@ -1,8 +1,8 @@
 use poulpy_hal::{
     api::{
-        ScratchAvailable, TakeVecZnxDft, VecZnxAutomorphism, VecZnxAutomorphismInplace, VecZnxBigAddSmallInplace,
+        ScratchAvailable, TakeVecZnx, TakeVecZnxDft, VecZnxAutomorphism, VecZnxAutomorphismInplace, VecZnxBigAddSmallInplace,
         VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxDftAllocBytes, VecZnxDftApply, VecZnxIdftApplyConsume,
-        VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
+        VecZnxNormalize, VecZnxNormalizeTmpBytes, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch, ZnxZero},
 };
@@ -13,31 +13,38 @@ impl GGLWEAutomorphismKey<Vec<u8>> {
     #[allow(clippy::too_many_arguments)]
     pub fn automorphism_scratch_space<B: Backend>(
         module: &Module<B>,
-        basek: usize,
+        basek_out: usize,
         k_out: usize,
+        basek_in: usize,
         k_in: usize,
+        basek_ksk: usize,
         k_ksk: usize,
         digits: usize,
         rank: usize,
     ) -> usize
     where
-        Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes,
+        Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        GLWECiphertext::keyswitch_scratch_space(module, basek, k_out, k_in, k_ksk, digits, rank, rank)
+        GLWECiphertext::keyswitch_scratch_space(
+            module, basek_out, k_out, basek_in, k_in, basek_ksk, k_ksk, digits, rank, rank,
+        )
     }
 
     pub fn automorphism_inplace_scratch_space<B: Backend>(
         module: &Module<B>,
-        basek: usize,
+        basek_out: usize,
         k_out: usize,
+        basek_ksk: usize,
         k_ksk: usize,
         digits: usize,
         rank: usize,
     ) -> usize
     where
-        Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes,
+        Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        GGLWEAutomorphismKey::automorphism_scratch_space(module, basek, k_out, k_out, k_ksk, digits, rank)
+        GGLWEAutomorphismKey::automorphism_scratch_space(
+            module, basek_out, k_out, basek_out, k_out, basek_ksk, k_ksk, digits, rank,
+        )
     }
 }
 
@@ -59,8 +66,10 @@ impl<DataSelf: DataMut> GGLWEAutomorphismKey<DataSelf> {
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>
             + VecZnxAutomorphism
-            + VecZnxAutomorphismInplace<B>,
-        Scratch<B>: ScratchAvailable + TakeVecZnxDft<B>,
+            + VecZnxAutomorphismInplace<B>
+            + VecZnxNormalize<B>
+            + VecZnxNormalizeTmpBytes,
+        Scratch<B>: ScratchAvailable + TakeVecZnxDft<B> + TakeVecZnx,
     {
         #[cfg(debug_assertions)]
         {
@@ -143,8 +152,10 @@ impl<DataSelf: DataMut> GGLWEAutomorphismKey<DataSelf> {
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>
             + VecZnxAutomorphism
-            + VecZnxAutomorphismInplace<B>,
-        Scratch<B>: ScratchAvailable + TakeVecZnxDft<B>,
+            + VecZnxAutomorphismInplace<B>
+            + VecZnxNormalize<B>
+            + VecZnxNormalizeTmpBytes,
+        Scratch<B>: ScratchAvailable + TakeVecZnxDft<B> + TakeVecZnx,
     {
         #[cfg(debug_assertions)]
         {

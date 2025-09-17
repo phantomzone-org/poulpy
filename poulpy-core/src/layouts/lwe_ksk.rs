@@ -18,7 +18,7 @@ impl LWESwitchingKey<Vec<u8>> {
 
 impl<D: DataRef> fmt::Debug for LWESwitchingKey<D> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self)
+        write!(f, "{self}")
     }
 }
 

@@ -6,9 +6,9 @@ use poulpy_hal::{
         VecZnxAddInplace, VecZnxAutomorphismInplace, VecZnxBigAddSmallInplace, VecZnxBigAllocBytes, VecZnxBigAutomorphismInplace,
         VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallBInplace, VecZnxCopy, VecZnxDftAddInplace,
         VecZnxDftAllocBytes, VecZnxDftApply, VecZnxDftCopy, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA, VecZnxNegateInplace,
-        VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace, VecZnxRotateInplaceTmpBytes,
-        VecZnxRshInplace, VecZnxSub, VecZnxSubABInplace, VecZnxSwitchRing, VmpApplyDftToDft, VmpApplyDftToDftAdd,
-        VmpApplyDftToDftTmpBytes,
+        VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace,
+        VecZnxRotateInplaceTmpBytes, VecZnxRshInplace, VecZnxSub, VecZnxSubABInplace, VecZnxSwitchRing, VmpApplyDftToDft,
+        VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch, ToOwnedDeep},
     oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl},
@@ -54,7 +54,8 @@ where
         + VecZnxRotateInplaceTmpBytes
         + VecZnxBigAllocBytes
         + VecZnxDftAddInplace<B>
-        + VecZnxRotate,
+        + VecZnxRotate
+        + VecZnxNormalize<B>,
     B: Backend + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
     Scratch<B>: TakeVecZnx
         + TakeVecZnxDftSlice<B>
@@ -153,7 +154,8 @@ pub fn circuit_bootstrap_core<DRes, DLwe, DBrk, BRA: BlindRotationAlgo, B>(
         + VecZnxBigAllocBytes
         + VecZnxDftAddInplace<B>
         + VecZnxRotateInplaceTmpBytes
-        + VecZnxRotate,
+        + VecZnxRotate
+        + VecZnxNormalize<B>,
     B: Backend + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
     Scratch<B>: TakeVecZnxDftSlice<B>
         + TakeVecZnxBig<B>
@@ -276,7 +278,8 @@ fn post_process<DataRes, DataA, B: Backend>(
         + VecZnxBigNormalize<B>
         + VecZnxAutomorphismInplace<B>
         + VecZnxBigSubSmallBInplace<B>
-        + VecZnxRotate,
+        + VecZnxRotate
+        + VecZnxNormalize<B>,
     Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
 {
     let log_n: usize = module.log_n();
@@ -348,7 +351,8 @@ pub fn pack<D: DataMut, B: Backend>(
         + VecZnxBigNormalize<B>
         + VecZnxAutomorphismInplace<B>
         + VecZnxBigSubSmallBInplace<B>
-        + VecZnxRotate,
+        + VecZnxRotate
+        + VecZnxNormalize<B>,
     Scratch<B>: TakeVecZnx + TakeVecZnxDft<B> + ScratchAvailable,
 {
     let log_n: usize = module.log_n();
@@ -427,7 +431,8 @@ fn combine<A: DataMut, D: DataMut, DataAK: DataRef, B: Backend>(
         + VecZnxBigNormalize<B>
         + VecZnxAutomorphismInplace<B>
         + VecZnxBigSubSmallBInplace<B>
-        + VecZnxRotate,
+        + VecZnxRotate
+        + VecZnxNormalize<B>,
     Scratch<B>: TakeVecZnx + TakeVecZnxDft<B> + ScratchAvailable,
 {
     // Goal is to evaluate: a = a + b*X^t + phi(a - b*X^t))

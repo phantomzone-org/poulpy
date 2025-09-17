@@ -26,7 +26,7 @@ impl<D: DataMut> LWECiphertext<D> {
 
 impl<D: DataRef> fmt::Debug for LWECiphertext<D> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self)
+        write!(f, "{self}")
     }
 }
 

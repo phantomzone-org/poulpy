@@ -264,9 +264,10 @@ where
 {
     fn vec_znx_big_normalize<R, A>(
         &self,
-        basek: usize,
+        res_basek: usize,
         res: &mut R,
         res_col: usize,
+        a_basek: usize,
         a: &A,
         a_col: usize,
         scratch: &mut Scratch<B>,
@@ -274,7 +275,7 @@ where
         R: VecZnxToMut,
         A: VecZnxBigToRef<B>,
     {
-        B::vec_znx_big_normalize_impl(self, basek, res, res_col, a, a_col, scratch);
+        B::vec_znx_big_normalize_impl(self, res_basek, res, res_col, a_basek, a, a_col, scratch);
     }
 }
 

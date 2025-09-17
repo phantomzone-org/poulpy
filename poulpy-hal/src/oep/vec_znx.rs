@@ -16,11 +16,13 @@ pub unsafe trait VecZnxNormalizeTmpBytesImpl<B: Backend> {
 /// * See [crate::api::VecZnxNormalize] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxNormalizeImpl<B: Backend> {
+    #[allow(clippy::too_many_arguments)]
     fn vec_znx_normalize_impl<R, A>(
         module: &Module<B>,
-        basek: usize,
+        res_basek: usize,
         res: &mut R,
         res_col: usize,
+        a_basek: usize,
         a: &A,
         a_col: usize,
         scratch: &mut Scratch<B>,

@@ -22,7 +22,7 @@ pub struct ReimFFTTable<R: Float + FloatConst + Debug> {
 
 impl<R: Float + FloatConst + Debug + 'static> ReimFFTTable<R> {
     pub fn new(m: usize) -> Self {
-        assert!(m & (m - 1) == 0, "m must be a power of two but is {}", m);
+        assert!(m & (m - 1) == 0, "m must be a power of two but is {m}");
         let mut omg: Vec<R> = alloc_aligned::<R>(2 * m);
 
         let quarter: R = R::from(1. / 4.).unwrap();

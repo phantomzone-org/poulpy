@@ -289,7 +289,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
             }
 
             // ct[i] = norm(ci_big)
-            module.vec_znx_big_normalize(basek, &mut self.data, i, &ci_big, 0, scratch_2);
+            module.vec_znx_big_normalize(basek, &mut self.data, i, basek, &ci_big, 0, scratch_2);
         });
     }
 }
@@ -373,7 +373,7 @@ pub(crate) fn glwe_encrypt_sk_internal<DataCt: DataMut, DataPt: DataRef, DataSk:
             let ci_big: VecZnxBig<&mut [u8], B> = module.vec_znx_idft_apply_consume(ci_dft);
 
             // use c[0] as buffer, which is overwritten later by the normalization step
-            module.vec_znx_big_normalize(basek, &mut ci, 0, &ci_big, 0, scratch_3);
+            module.vec_znx_big_normalize(basek, &mut ci, 0, basek, &ci_big, 0, scratch_3);
 
             // c0_tmp = -c[i] * s[i] (use c[0] as buffer)
             module.vec_znx_sub_ab_inplace(&mut c0, 0, &ci, 0);
@@ -391,5 +391,5 @@ pub(crate) fn glwe_encrypt_sk_internal<DataCt: DataMut, DataPt: DataRef, DataSk:
     }
 
     // c[0] = norm(c[0])
-    module.vec_znx_normalize(basek, ct, 0, &c0, 0, scratch_1);
+    module.vec_znx_normalize(basek, ct, 0, basek, &c0, 0, scratch_1);
 }

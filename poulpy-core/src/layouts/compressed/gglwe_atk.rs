@@ -19,7 +19,7 @@ pub struct GGLWEAutomorphismKeyCompressed<D: Data> {
 
 impl<D: DataRef> fmt::Debug for GGLWEAutomorphismKeyCompressed<D> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self)
+        write!(f, "{self}")
     }
 }
 

@@ -12,7 +12,7 @@ pub struct LWEToGLWESwitchingKey<D: Data>(pub(crate) GGLWESwitchingKey<D>);
 
 impl<D: DataRef> fmt::Debug for LWEToGLWESwitchingKey<D> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self)
+        write!(f, "{self}")
     }
 }
 

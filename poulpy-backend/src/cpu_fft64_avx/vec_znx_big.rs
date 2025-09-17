@@ -280,9 +280,10 @@ where
 {
     fn vec_znx_big_normalize_impl<R, A>(
         module: &Module<Self>,
-        basek: usize,
+        res_basek: usize,
         res: &mut R,
         res_col: usize,
+        a_basek: usize,
         a: &A,
         a_col: usize,
         scratch: &mut Scratch<Self>,
@@ -291,7 +292,7 @@ where
         A: VecZnxBigToRef<Self>,
     {
         let (carry, _) = scratch.take_slice(module.vec_znx_big_normalize_tmp_bytes() / size_of::<i64>());
-        vec_znx_big_normalize(basek, res, res_col, a, a_col, carry);
+        vec_znx_big_normalize(res_basek, res, res_col, a_basek, a, a_col, carry);
     }
 }
 

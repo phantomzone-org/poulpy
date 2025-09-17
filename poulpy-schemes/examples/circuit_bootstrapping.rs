@@ -110,7 +110,7 @@ fn main() {
 
     // Normalize plaintext to nicely print coefficients
     module.zn_normalize_inplace(pt_lwe.n(), basek, pt_lwe.data_mut(), 0, scratch.borrow());
-    println!("pt_lwe: {}", pt_lwe);
+    println!("pt_lwe: {pt_lwe}");
 
     // LWE ciphertext
     let mut ct_lwe: LWECiphertext<Vec<u8>> = LWECiphertext::alloc(n_lwe, basek, k_lwe_ct);

@@ -2,6 +2,7 @@ mod add;
 mod arithmetic_ref;
 mod automorphism;
 mod copy;
+mod mul;
 mod neg;
 mod normalization;
 mod rotate;
@@ -14,6 +15,7 @@ pub use add::*;
 pub use arithmetic_ref::*;
 pub use automorphism::*;
 pub use copy::*;
+pub use mul::*;
 pub use neg::*;
 pub use normalization::*;
 pub use rotate::*;
@@ -67,6 +69,18 @@ pub trait ZnxZero {
     fn znx_zero(res: &mut [i64]);
 }
 
+pub trait ZnxMulPowerOfTwo {
+    fn znx_mul_power_of_two(k: i64, res: &mut [i64], a: &[i64]);
+}
+
+pub trait ZnxMulAddPowerOfTwo {
+    fn znx_muladd_power_of_two(k: i64, res: &mut [i64], a: &[i64]);
+}
+
+pub trait ZnxMulPowerOfTwoInplace {
+    fn znx_mul_power_of_two_inplace(k: i64, res: &mut [i64]);
+}
+
 pub trait ZnxSwitchRing {
     fn znx_switch_ring(res: &mut [i64], a: &[i64]);
 }
@@ -88,7 +102,7 @@ pub trait ZnxNormalizeMiddleStepCarryOnly {
 }
 
 pub trait ZnxNormalizeMiddleStepInplace {
-    fn znx_normalize_middle_step_inplace(basek: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]);
+    fn znx_normalize_middle_step_inplace<const OVERWRITE: bool>(basek: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]);
 }
 
 pub trait ZnxNormalizeMiddleStep {
@@ -96,7 +110,7 @@ pub trait ZnxNormalizeMiddleStep {
 }
 
 pub trait ZnxNormalizeFinalStepInplace {
-    fn znx_normalize_final_step_inplace(basek: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]);
+    fn znx_normalize_final_step_inplace<const OVERWRITE: bool>(basek: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]);
 }
 
 pub trait ZnxNormalizeFinalStep {

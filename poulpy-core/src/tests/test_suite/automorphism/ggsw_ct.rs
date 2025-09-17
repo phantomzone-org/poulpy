@@ -106,7 +106,9 @@ where
                 GGSWCiphertext::encrypt_sk_scratch_space(module, basek, k_in, rank)
                     | GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, basek, k_ksk, rank)
                     | GGLWETensorKey::encrypt_sk_scratch_space(module, basek, k_tsk, rank)
-                    | GGSWCiphertext::automorphism_scratch_space(module, basek, k_out, k_in, k_ksk, di, k_tsk, di, rank),
+                    | GGSWCiphertext::automorphism_scratch_space(
+                        module, basek, k_out, basek, k_in, basek, k_ksk, di, basek, k_tsk, di, rank,
+                    ),
             );
 
             let var_xs: f64 = 0.5;
@@ -260,7 +262,9 @@ where
                 GGSWCiphertext::encrypt_sk_scratch_space(module, basek, k_ct, rank)
                     | GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, basek, k_ksk, rank)
                     | GGLWETensorKey::encrypt_sk_scratch_space(module, basek, k_tsk, rank)
-                    | GGSWCiphertext::automorphism_inplace_scratch_space(module, basek, k_ct, k_ksk, di, k_tsk, di, rank),
+                    | GGSWCiphertext::automorphism_inplace_scratch_space(
+                        module, basek, k_ct, basek, k_ksk, di, basek, k_tsk, di, rank,
+                    ),
             );
 
             let var_xs: f64 = 0.5;

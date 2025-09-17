@@ -96,7 +96,9 @@ where
                             module,
                             basek,
                             ct_out.k(),
+                            basek,
                             ct_in.k(),
+                            basek,
                             ksk.k(),
                             digits,
                             rank_in,
@@ -216,7 +218,7 @@ where
             let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
                 GGLWESwitchingKey::encrypt_sk_scratch_space(module, basek, ksk.k(), rank, rank)
                     | GLWECiphertext::encrypt_sk_scratch_space(module, basek, ct_glwe.k())
-                    | GLWECiphertext::keyswitch_inplace_scratch_space(module, basek, ct_glwe.k(), ksk.k(), digits, rank),
+                    | GLWECiphertext::keyswitch_inplace_scratch_space(module, basek, ct_glwe.k(), basek, ksk.k(), digits, rank),
             );
 
             let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);

@@ -72,17 +72,12 @@ impl GGSWCiphertext<Vec<u8>> {
 
         debug_assert!(
             size > digits,
-            "invalid ggsw: ceil(k/basek): {} <= digits: {}",
-            size,
-            digits
+            "invalid ggsw: ceil(k/basek): {size} <= digits: {digits}"
         );
 
         assert!(
             rows * digits <= size,
-            "invalid ggsw: rows: {} * digits:{} > ceil(k/basek): {}",
-            rows,
-            digits,
-            size
+            "invalid ggsw: rows: {rows} * digits:{digits} > ceil(k/basek): {size}"
         );
 
         Self {
@@ -97,17 +92,12 @@ impl GGSWCiphertext<Vec<u8>> {
         let size: usize = k.div_ceil(basek);
         debug_assert!(
             size > digits,
-            "invalid ggsw: ceil(k/basek): {} <= digits: {}",
-            size,
-            digits
+            "invalid ggsw: ceil(k/basek): {size} <= digits: {digits}"
         );
 
         assert!(
             rows * digits <= size,
-            "invalid ggsw: rows: {} * digits:{} > ceil(k/basek): {}",
-            rows,
-            digits,
-            size
+            "invalid ggsw: rows: {rows} * digits:{digits} > ceil(k/basek): {size}"
         );
 
         MatZnx::alloc_bytes(n, rows, rank + 1, rank + 1, size)

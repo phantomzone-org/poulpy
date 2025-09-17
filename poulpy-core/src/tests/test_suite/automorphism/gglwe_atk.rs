@@ -97,7 +97,9 @@ where
 
             let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
                 GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, basek, k_apply, rank)
-                    | GGLWEAutomorphismKey::automorphism_scratch_space(module, basek, k_out, k_in, k_apply, di, rank),
+                    | GGLWEAutomorphismKey::automorphism_scratch_space(
+                        module, basek, k_out, basek, k_in, basek, k_apply, di, rank,
+                    ),
             );
 
             let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
@@ -182,9 +184,8 @@ where
 
                     assert!(
                         noise_have < noise_want + 0.5,
-                        "{} {}",
-                        noise_have,
-                        noise_want
+                        "{noise_have} {}",
+                        noise_want + 0.5
                     );
                 });
             });
@@ -275,7 +276,7 @@ where
 
             let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
                 GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, basek, k_apply, rank)
-                    | GGLWEAutomorphismKey::automorphism_inplace_scratch_space(module, basek, k_in, k_apply, di, rank),
+                    | GGLWEAutomorphismKey::automorphism_inplace_scratch_space(module, basek, k_in, basek, k_apply, di, rank),
             );
 
             let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
@@ -355,9 +356,8 @@ where
 
                     assert!(
                         noise_have < noise_want + 0.5,
-                        "{} {}",
-                        noise_have,
-                        noise_want
+                        "{noise_have} {}",
+                        noise_want + 0.5
                     );
                 });
             });

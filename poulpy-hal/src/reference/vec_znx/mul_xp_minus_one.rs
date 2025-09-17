@@ -49,7 +49,7 @@ pub fn bench_vec_znx_mul_xp_minus_one<B: Backend>(c: &mut Criterion, label: &str
 where
     Module<B>: VecZnxMulXpMinusOne + ModuleNew<B>,
 {
-    let group_name: String = format!("vec_znx_mul_xp_minus_one::{}", label);
+    let group_name: String = format!("vec_znx_mul_xp_minus_one::{label}");
 
     let mut group = c.benchmark_group(group_name);
 
@@ -94,7 +94,7 @@ where
     Module<B>: VecZnxMulXpMinusOneInplace<B> + VecZnxMulXpMinusOneInplaceTmpBytes + ModuleNew<B>,
     ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
 {
-    let group_name: String = format!("vec_znx_mul_xp_minus_one_inplace::{}", label);
+    let group_name: String = format!("vec_znx_mul_xp_minus_one_inplace::{label}");
 
     let mut group = c.benchmark_group(group_name);
 

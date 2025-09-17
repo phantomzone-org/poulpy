@@ -213,8 +213,7 @@ where
 
         assert!(
             noise_have <= noise_want + 0.2,
-            "{} <= {}",
-            noise_have,
+            "{noise_have} <= {}",
             noise_want + 0.2
         );
     }
@@ -387,9 +386,8 @@ where
 
         assert!(
             noise_have <= noise_want + 0.2,
-            "{} {}",
-            noise_have,
-            noise_want
+            "{noise_have} <= {}",
+            noise_want + 0.2
         );
     }
 }

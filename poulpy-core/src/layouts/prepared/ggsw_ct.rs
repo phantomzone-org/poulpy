@@ -26,17 +26,12 @@ impl<B: Backend> GGSWCiphertextPrepared<Vec<u8>, B> {
 
         debug_assert!(
             size > digits,
-            "invalid ggsw: ceil(k/basek): {} <= digits: {}",
-            size,
-            digits
+            "invalid ggsw: ceil(k/basek): {size} <= digits: {digits}"
         );
 
         assert!(
             rows * digits <= size,
-            "invalid ggsw: rows: {} * digits:{} > ceil(k/basek): {}",
-            rows,
-            digits,
-            size
+            "invalid ggsw: rows: {rows} * digits:{digits} > ceil(k/basek): {size}"
         );
 
         Self {
@@ -54,17 +49,12 @@ impl<B: Backend> GGSWCiphertextPrepared<Vec<u8>, B> {
         let size: usize = k.div_ceil(basek);
         debug_assert!(
             size > digits,
-            "invalid ggsw: ceil(k/basek): {} <= digits: {}",
-            size,
-            digits
+            "invalid ggsw: ceil(k/basek): {size} <= digits: {digits}"
         );
 
         assert!(
             rows * digits <= size,
-            "invalid ggsw: rows: {} * digits:{} > ceil(k/basek): {}",
-            rows,
-            digits,
-            size
+            "invalid ggsw: rows: {rows} * digits:{digits} > ceil(k/basek): {size}"
         );
 
         module.vmp_pmat_alloc_bytes(rows, rank + 1, rank + 1, size)

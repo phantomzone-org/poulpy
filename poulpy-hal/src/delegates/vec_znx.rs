@@ -36,12 +36,21 @@ impl<B> VecZnxNormalize<B> for Module<B>
 where
     B: Backend + VecZnxNormalizeImpl<B>,
 {
-    fn vec_znx_normalize<R, A>(&self, basek: usize, res: &mut R, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch<B>)
-    where
+    #[allow(clippy::too_many_arguments)]
+    fn vec_znx_normalize<R, A>(
+        &self,
+        res_basek: usize,
+        res: &mut R,
+        res_col: usize,
+        a_basek: usize,
+        a: &A,
+        a_col: usize,
+        scratch: &mut Scratch<B>,
+    ) where
         R: VecZnxToMut,
         A: VecZnxToRef,
     {
-        B::vec_znx_normalize_impl(self, basek, res, res_col, a, a_col, scratch)
+        B::vec_znx_normalize_impl(self, res_basek, res, res_col, a_basek, a, a_col, scratch)
     }
 }
 

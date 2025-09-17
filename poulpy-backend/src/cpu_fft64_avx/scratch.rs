@@ -253,9 +253,6 @@ fn take_slice_aligned(data: &mut [u8], take_len: usize) -> (&mut [u8], &mut [u8]
             (take_slice, rem_slice)
         }
     } else {
-        panic!(
-            "Attempted to take {} from scratch with {} aligned bytes left",
-            take_len, aligned_len,
-        );
+        panic!("Attempted to take {take_len} from scratch with {aligned_len} aligned bytes left");
     }
 }

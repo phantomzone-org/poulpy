@@ -2,8 +2,8 @@ use poulpy_hal::{
     api::{
         ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare,
         VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxAutomorphismInplace, VecZnxBigAddInplace,
-        VecZnxBigAddSmallInplace, VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxDftAllocBytes,
-        VecZnxDftApply, VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeInplace,
+        VecZnxBigAddSmallInplace, VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxCopy,
+        VecZnxDftAllocBytes, VecZnxDftApply, VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeInplace,
         VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubABInplace, VecZnxSwitchRing, VmpApplyDftToDft, VmpApplyDftToDftAdd,
         VmpApplyDftToDftTmpBytes, VmpPMatAlloc, VmpPrepare, ZnAddNormal, ZnFillUniform, ZnNormalizeInplace,
     },
@@ -52,7 +52,8 @@ where
         + VecZnxAutomorphismInplace<B>
         + ZnNormalizeInplace<B>
         + ZnFillUniform
-        + ZnAddNormal,
+        + ZnAddNormal
+        + VecZnxCopy,
     B: Backend
         + TakeVecZnxDftImpl<B>
         + TakeVecZnxBigImpl<B>
@@ -79,7 +80,7 @@ where
 
     let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
         LWESwitchingKey::encrypt_sk_scratch_space(module, basek, k_ksk)
-            | LWECiphertext::keyswitch_scratch_space(module, basek, k_lwe_ct, k_lwe_ct, k_ksk),
+            | LWECiphertext::keyswitch_scratch_space(module, basek, k_lwe_ct, basek, k_lwe_ct, basek, k_ksk),
     );
 
     let mut sk_lwe_in: LWESecret<Vec<u8>> = LWESecret::alloc(n_lwe_in);

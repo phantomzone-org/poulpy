@@ -95,6 +95,7 @@ impl<DataSelf: DataMut> GGLWETensorKey<DataSelf> {
                     self.basek(),
                     &mut sk_ij.data.as_vec_znx_mut(),
                     0,
+                    self.basek(),
                     &sk_ij_big,
                     0,
                     scratch_5,

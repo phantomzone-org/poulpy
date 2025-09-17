@@ -25,17 +25,12 @@ impl<B: Backend> GGLWECiphertextPrepared<Vec<u8>, B> {
         let size: usize = k.div_ceil(basek);
         debug_assert!(
             size > digits,
-            "invalid gglwe: ceil(k/basek): {} <= digits: {}",
-            size,
-            digits
+            "invalid gglwe: ceil(k/basek): {size} <= digits: {digits}"
         );
 
         assert!(
             rows * digits <= size,
-            "invalid gglwe: rows: {} * digits:{} > ceil(k/basek): {}",
-            rows,
-            digits,
-            size
+            "invalid gglwe: rows: {rows} * digits:{digits} > ceil(k/basek): {size}"
         );
 
         Self {
@@ -62,17 +57,12 @@ impl<B: Backend> GGLWECiphertextPrepared<Vec<u8>, B> {
         let size: usize = k.div_ceil(basek);
         debug_assert!(
             size > digits,
-            "invalid gglwe: ceil(k/basek): {} <= digits: {}",
-            size,
-            digits
+            "invalid gglwe: ceil(k/basek): {size} <= digits: {digits}"
         );
 
         assert!(
             rows * digits <= size,
-            "invalid gglwe: rows: {} * digits:{} > ceil(k/basek): {}",
-            rows,
-            digits,
-            size
+            "invalid gglwe: rows: {rows} * digits:{digits} > ceil(k/basek): {size}"
         );
 
         module.vmp_pmat_alloc_bytes(rows, rank_in, rank_out + 1, rows)

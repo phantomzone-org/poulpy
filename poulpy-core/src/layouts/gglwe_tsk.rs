@@ -15,7 +15,7 @@ pub struct GGLWETensorKey<D: Data> {
 
 impl<D: DataRef> fmt::Debug for GGLWETensorKey<D> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self)
+        write!(f, "{self}")
     }
 }
 
@@ -42,7 +42,7 @@ impl<D: DataRef> fmt::Display for GGLWETensorKey<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "(GLWETensorKey)",)?;
         for (i, key) in self.keys.iter().enumerate() {
-            write!(f, "{}: {}", i, key)?;
+            write!(f, "{i}: {key}")?;
         }
         Ok(())
     }

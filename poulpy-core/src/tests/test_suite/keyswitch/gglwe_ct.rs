@@ -117,7 +117,9 @@ where
                         module,
                         basek,
                         k_out,
+                        basek,
                         k_in,
+                        basek,
                         k_ksk,
                         di,
                         ct_gglwe_s1s2.rank_in(),
@@ -257,7 +259,7 @@ where
                     rank_out,
                 ));
                 let mut scratch_apply: ScratchOwned<B> = ScratchOwned::alloc(GGLWESwitchingKey::keyswitch_inplace_scratch_space(
-                    module, basek, k_ct, k_ksk, di, rank_out,
+                    module, basek, k_ct, basek, k_ksk, di, rank_out,
                 ));
 
                 let var_xs: f64 = 0.5;

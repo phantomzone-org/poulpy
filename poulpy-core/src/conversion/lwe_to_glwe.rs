@@ -1,10 +1,10 @@
 use poulpy_hal::{
     api::{
-        ScratchAvailable, TakeVecZnxDft, VecZnxBigAddSmallInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
-        VecZnxDftAllocBytes, VecZnxDftApply, VecZnxIdftApplyConsume, VmpApplyDftToDft, VmpApplyDftToDftAdd,
-        VmpApplyDftToDftTmpBytes,
+        ScratchAvailable, TakeVecZnx, TakeVecZnxDft, VecZnxBigAddSmallInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
+        VecZnxDftAllocBytes, VecZnxDftApply, VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeTmpBytes, VmpApplyDftToDft,
+        VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
     },
-    layouts::{Backend, DataMut, DataRef, Module, Scratch, ZnxView, ZnxViewMut, ZnxZero},
+    layouts::{Backend, DataMut, DataRef, Module, Scratch, VecZnx, ZnxView, ZnxViewMut, ZnxZero},
 };
 
 use crate::{
@@ -15,17 +15,25 @@ use crate::{
 impl GLWECiphertext<Vec<u8>> {
     pub fn from_lwe_scratch_space<B: Backend>(
         module: &Module<B>,
-        basek: usize,
+        basek_lwe: usize,
         k_lwe: usize,
+        basek_glwe: usize,
         k_glwe: usize,
+        basek_ksk: usize,
         k_ksk: usize,
         rank: usize,
     ) -> usize
     where
-        Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes,
+        Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        GLWECiphertext::keyswitch_scratch_space(module, basek, k_glwe, k_lwe, k_ksk, 1, 1, rank)
-            + GLWECiphertext::bytes_of(module.n(), basek, k_lwe, 1)
+        let ct: usize = GLWECiphertext::bytes_of(module.n(), basek_ksk, k_lwe.max(k_lwe), 1);
+        let ks: usize = GLWECiphertext::keyswitch_inplace_scratch_space(module, basek_glwe, k_glwe, basek_ksk, k_ksk, 1, rank);
+        if basek_lwe == basek_ksk {
+            ct + ks
+        } else {
+            let a_conv = VecZnx::alloc_bytes(module.n(), 1, k_lwe.div_ceil(basek_lwe)) + module.vec_znx_normalize_tmp_bytes();
+            ct + a_conv + ks
+        }
     }
 }
 
@@ -47,25 +55,63 @@ impl<D: DataMut> GLWECiphertext<D> {
             + VecZnxDftApply<B>
             + VecZnxIdftApplyConsume<B>
             + VecZnxBigAddSmallInplace<B>
-            + VecZnxBigNormalize<B>,
-        Scratch<B>: ScratchAvailable + TakeVecZnxDft<B> + TakeGLWECt,
+            + VecZnxBigNormalize<B>
+            + VecZnxNormalize<B>
+            + VecZnxNormalizeTmpBytes,
+        Scratch<B>: ScratchAvailable + TakeVecZnxDft<B> + TakeGLWECt + TakeVecZnx,
     {
         #[cfg(debug_assertions)]
         {
-            assert!(lwe.n() <= self.n());
-            assert_eq!(self.basek(), self.basek());
+            assert_eq!(self.n(), module.n());
+            assert_eq!(ksk.n(), module.n());
+            assert!(lwe.n() <= module.n());
         }
 
-        let (mut glwe, scratch_1) = scratch.take_glwe_ct(ksk.n(), lwe.basek(), lwe.k(), 1);
+        let (mut glwe, scratch_1) = scratch.take_glwe_ct(ksk.n(), ksk.basek(), lwe.k(), 1);
         glwe.data.zero();
 
         let n_lwe: usize = lwe.n();
 
-        (0..lwe.size()).for_each(|i| {
-            let data_lwe: &[i64] = lwe.data.at(0, i);
-            glwe.data.at_mut(0, i)[0] = data_lwe[0];
-            glwe.data.at_mut(1, i)[..n_lwe].copy_from_slice(&data_lwe[1..]);
-        });
+        if lwe.basek() == ksk.basek() {
+            for i in 0..lwe.size() {
+                let data_lwe: &[i64] = lwe.data.at(0, i);
+                glwe.data.at_mut(0, i)[0] = data_lwe[0];
+                glwe.data.at_mut(1, i)[..n_lwe].copy_from_slice(&data_lwe[1..]);
+            }
+        } else {
+            let (mut a_conv, scratch_2) = scratch_1.take_vec_znx(module.n(), 1, lwe.size());
+            a_conv.zero();
+            for j in 0..lwe.size() {
+                let data_lwe: &[i64] = lwe.data.at(0, j);
+                a_conv.at_mut(0, j)[0] = data_lwe[0]
+            }
+
+            module.vec_znx_normalize(
+                ksk.basek(),
+                &mut glwe.data,
+                0,
+                lwe.basek(),
+                &a_conv,
+                0,
+                scratch_2,
+            );
+
+            a_conv.zero();
+            for j in 0..lwe.size() {
+                let data_lwe: &[i64] = lwe.data.at(0, j);
+                a_conv.at_mut(0, j)[..n_lwe].copy_from_slice(&data_lwe[1..]);
+            }
+
+            module.vec_znx_normalize(
+                ksk.basek(),
+                &mut glwe.data,
+                1,
+                lwe.basek(),
+                &a_conv,
+                0,
+                scratch_2,
+            );
+        }
 
         self.keyswitch(module, &glwe, &ksk.0, scratch_1);
     }

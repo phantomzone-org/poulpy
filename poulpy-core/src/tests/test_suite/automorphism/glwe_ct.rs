@@ -97,7 +97,9 @@ where
                         module,
                         basek,
                         ct_out.k(),
+                        basek,
                         ct_in.k(),
+                        basek,
                         autokey.k(),
                         digits,
                         rank,
@@ -219,7 +221,7 @@ where
                 GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, basek, autokey.k(), rank)
                     | GLWECiphertext::decrypt_scratch_space(module, basek, ct.k())
                     | GLWECiphertext::encrypt_sk_scratch_space(module, basek, ct.k())
-                    | GLWECiphertext::automorphism_inplace_scratch_space(module, basek, ct.k(), autokey.k(), digits, rank),
+                    | GLWECiphertext::automorphism_inplace_scratch_space(module, basek, ct.k(), basek, autokey.k(), digits, rank),
             );
 
             let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);

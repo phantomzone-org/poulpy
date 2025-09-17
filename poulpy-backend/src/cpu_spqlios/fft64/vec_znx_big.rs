@@ -14,6 +14,7 @@ use poulpy_hal::{
         VecZnxBigSubSmallAImpl, VecZnxBigSubSmallAInplaceImpl, VecZnxBigSubSmallBImpl, VecZnxBigSubSmallBInplaceImpl,
     },
     reference::{
+        fft64::vec_znx_big::vec_znx_big_normalize,
         vec_znx::vec_znx_add_normal_ref,
         znx::{znx_copy_ref, znx_zero_ref},
     },
@@ -528,9 +529,10 @@ where
 {
     fn vec_znx_big_normalize_impl<R, A>(
         module: &Module<Self>,
-        basek: usize,
+        res_basek: usize,
         res: &mut R,
         res_col: usize,
+        a_basek: usize,
         a: &A,
         a_col: usize,
         scratch: &mut Scratch<Self>,
@@ -538,28 +540,21 @@ where
         R: VecZnxToMut,
         A: VecZnxBigToRef<Self>,
     {
-        let a: VecZnxBig<&[u8], Self> = a.to_ref();
-        let mut res: VecZnx<&mut [u8]> = res.to_mut();
-
-        #[cfg(debug_assertions)]
-        {
-            assert_eq!(res.n(), a.n());
-        }
-
-        let (tmp_bytes, _) = scratch.take_slice(module.vec_znx_big_normalize_tmp_bytes());
-        unsafe {
-            vec_znx::vec_znx_normalize_base2k(
-                module.ptr(),
-                basek as u64,
-                res.at_mut_ptr(res_col, 0),
-                res.size() as u64,
-                res.sl() as u64,
-                a.at_ptr(a_col, 0),
-                a.size() as u64,
-                a.sl() as u64,
-                tmp_bytes.as_mut_ptr(),
-            );
-        }
+        let (carry, _) = scratch.take_slice(module.vec_znx_big_normalize_tmp_bytes() / size_of::<i64>());
+        // unsafe {
+        // vec_znx::vec_znx_normalize_base2k(
+        // module.ptr(),
+        // basek as u64,
+        // res.at_mut_ptr(res_col, 0),
+        // res.size() as u64,
+        // res.sl() as u64,
+        // a.at_ptr(a_col, 0),
+        // a.size() as u64,
+        // a.sl() as u64,
+        // tmp_bytes.as_mut_ptr(),
+        // );
+        // }
+        vec_znx_big_normalize(res_basek, res, res_col, a_basek, a, a_col, carry);
     }
 }
 

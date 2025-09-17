@@ -95,7 +95,9 @@ where
 
                 let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
                     GGLWESwitchingKey::encrypt_sk_scratch_space(module, basek, k_in, rank_in, rank_out)
-                        | GGLWESwitchingKey::external_product_scratch_space(module, basek, k_out, k_in, k_ggsw, di, rank_out)
+                        | GGLWESwitchingKey::external_product_scratch_space(
+                            module, basek, k_out, basek, k_in, basek, k_ggsw, di, rank_out,
+                        )
                         | GGSWCiphertext::encrypt_sk_scratch_space(module, basek, k_ggsw, rank_out),
                 );
 
@@ -243,7 +245,9 @@ where
 
                 let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
                     GGLWESwitchingKey::encrypt_sk_scratch_space(module, basek, k_ct, rank_in, rank_out)
-                        | GGLWESwitchingKey::external_product_inplace_scratch_space(module, basek, k_ct, k_ggsw, di, rank_out)
+                        | GGLWESwitchingKey::external_product_inplace_scratch_space(
+                            module, basek, k_ct, basek, k_ggsw, di, rank_out,
+                        )
                         | GGSWCiphertext::encrypt_sk_scratch_space(module, basek, k_ggsw, rank_out),
                 );
 

@@ -56,9 +56,7 @@ impl<D: DataRef> GGLWECiphertext<D> {
 
                 assert!(
                     noise_have <= max_noise,
-                    "noise_have: {} > max_noise: {}",
-                    noise_have,
-                    max_noise
+                    "noise_have: {noise_have} > max_noise: {max_noise}"
                 );
 
                 pt.data.zero();

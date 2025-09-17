@@ -20,7 +20,7 @@ pub struct GGLWESwitchingKeyCompressed<D: Data> {
 
 impl<D: DataRef> fmt::Debug for GGLWESwitchingKeyCompressed<D> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self)
+        write!(f, "{self}")
     }
 }
 

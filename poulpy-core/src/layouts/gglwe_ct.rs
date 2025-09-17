@@ -18,7 +18,7 @@ pub struct GGLWECiphertext<D: Data> {
 
 impl<D: DataRef> fmt::Debug for GGLWECiphertext<D> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self)
+        write!(f, "{self}")
     }
 }
 
@@ -72,17 +72,12 @@ impl GGLWECiphertext<Vec<u8>> {
         let size: usize = k.div_ceil(basek);
         debug_assert!(
             size > digits,
-            "invalid gglwe: ceil(k/basek): {} <= digits: {}",
-            size,
-            digits
+            "invalid gglwe: ceil(k/basek): {size} <= digits: {digits}"
         );
 
         assert!(
             rows * digits <= size,
-            "invalid gglwe: rows: {} * digits:{} > ceil(k/basek): {}",
-            rows,
-            digits,
-            size
+            "invalid gglwe: rows: {rows} * digits:{digits} > ceil(k/basek): {size}"
         );
 
         Self {
@@ -97,17 +92,12 @@ impl GGLWECiphertext<Vec<u8>> {
         let size: usize = k.div_ceil(basek);
         debug_assert!(
             size > digits,
-            "invalid gglwe: ceil(k/basek): {} <= digits: {}",
-            size,
-            digits
+            "invalid gglwe: ceil(k/basek): {size} <= digits: {digits}"
         );
 
         assert!(
             rows * digits <= size,
-            "invalid gglwe: rows: {} * digits:{} > ceil(k/basek): {}",
-            rows,
-            digits,
-            size
+            "invalid gglwe: rows: {rows} * digits:{digits} > ceil(k/basek): {size}"
         );
 
         MatZnx::alloc_bytes(n, rows, rank_in, rank_out + 1, rows)

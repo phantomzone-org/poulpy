@@ -15,16 +15,16 @@ use crate::{
 pub fn bench_svp_prepare<B>(c: &mut Criterion, label: &str)
 where
     Module<B>: SvpPrepare<B> + SvpPPolAlloc<B> + ModuleNew<B>,
-    B: Backend<ScalarPrep = f64>,
+    B: Backend,
 {
-    let group_name: String = format!("svp_prepare::{}", label);
+    let group_name: String = format!("svp_prepare::{label}");
 
     let mut group = c.benchmark_group(group_name);
 
     fn runner<B>(log_n: usize) -> impl FnMut()
     where
         Module<B>: SvpPrepare<B> + SvpPPolAlloc<B> + ModuleNew<B>,
-        B: Backend<ScalarPrep = f64>,
+        B: Backend,
     {
         let module: Module<B> = Module::<B>::new(1 << log_n);
 
@@ -53,16 +53,16 @@ where
 pub fn bench_svp_apply_dft<B>(c: &mut Criterion, label: &str)
 where
     Module<B>: SvpApplyDft<B> + SvpPPolAlloc<B> + ModuleNew<B> + VecZnxDftAlloc<B>,
-    B: Backend<ScalarPrep = f64>,
+    B: Backend,
 {
-    let group_name: String = format!("svp_apply_dft::{}", label);
+    let group_name: String = format!("svp_apply_dft::{label}");
 
     let mut group = c.benchmark_group(group_name);
 
     fn runner<B>(params: [usize; 3]) -> impl FnMut()
     where
         Module<B>: SvpApplyDft<B> + SvpPPolAlloc<B> + ModuleNew<B> + VecZnxDftAlloc<B>,
-        B: Backend<ScalarPrep = f64>,
+        B: Backend,
     {
         let n: usize = 1 << params[0];
         let cols: usize = params[1];
@@ -100,16 +100,16 @@ where
 pub fn bench_svp_apply_dft_to_dft<B>(c: &mut Criterion, label: &str)
 where
     Module<B>: SvpApplyDftToDft<B> + SvpPPolAlloc<B> + ModuleNew<B> + VecZnxDftAlloc<B>,
-    B: Backend<ScalarPrep = f64>,
+    B: Backend,
 {
-    let group_name: String = format!("svp_apply_dft_to_dft::{}", label);
+    let group_name: String = format!("svp_apply_dft_to_dft::{label}");
 
     let mut group = c.benchmark_group(group_name);
 
     fn runner<B>(params: [usize; 3]) -> impl FnMut()
     where
         Module<B>: SvpApplyDftToDft<B> + SvpPPolAlloc<B> + ModuleNew<B> + VecZnxDftAlloc<B>,
-        B: Backend<ScalarPrep = f64>,
+        B: Backend,
     {
         let n: usize = 1 << params[0];
         let cols: usize = params[1];
@@ -147,16 +147,16 @@ where
 pub fn bench_svp_apply_dft_to_dft_add<B>(c: &mut Criterion, label: &str)
 where
     Module<B>: SvpApplyDftToDftAdd<B> + SvpPPolAlloc<B> + ModuleNew<B> + VecZnxDftAlloc<B>,
-    B: Backend<ScalarPrep = f64>,
+    B: Backend,
 {
-    let group_name: String = format!("svp_apply_dft_to_dft_add::{}", label);
+    let group_name: String = format!("svp_apply_dft_to_dft_add::{label}");
 
     let mut group = c.benchmark_group(group_name);
 
     fn runner<B>(params: [usize; 3]) -> impl FnMut()
     where
         Module<B>: SvpApplyDftToDftAdd<B> + SvpPPolAlloc<B> + ModuleNew<B> + VecZnxDftAlloc<B>,
-        B: Backend<ScalarPrep = f64>,
+        B: Backend,
     {
         let n: usize = 1 << params[0];
         let cols: usize = params[1];
@@ -194,16 +194,16 @@ where
 pub fn bench_svp_apply_dft_to_dft_inplace<B>(c: &mut Criterion, label: &str)
 where
     Module<B>: SvpApplyDftToDftInplace<B> + SvpPPolAlloc<B> + ModuleNew<B> + VecZnxDftAlloc<B>,
-    B: Backend<ScalarPrep = f64>,
+    B: Backend,
 {
-    let group_name: String = format!("svp_apply_dft_to_dft_inplace::{}", label);
+    let group_name: String = format!("svp_apply_dft_to_dft_inplace::{label}");
 
     let mut group = c.benchmark_group(group_name);
 
     fn runner<B>(params: [usize; 3]) -> impl FnMut()
     where
         Module<B>: SvpApplyDftToDftInplace<B> + SvpPPolAlloc<B> + ModuleNew<B> + VecZnxDftAlloc<B>,
-        B: Backend<ScalarPrep = f64>,
+        B: Backend,
     {
         let n: usize = 1 << params[0];
         let cols: usize = params[1];

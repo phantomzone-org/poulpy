@@ -1,10 +1,10 @@
 use poulpy_hal::{
     api::{
         ScratchAvailable, TakeVecZnx, TakeVecZnxDft, VecZnxBigAddSmallInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
-        VecZnxDftAllocBytes, VecZnxDftApply, VecZnxIdftApplyConsume, VmpApplyDftToDft, VmpApplyDftToDftAdd,
-        VmpApplyDftToDftTmpBytes,
+        VecZnxCopy, VecZnxDftAllocBytes, VecZnxDftApply, VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeTmpBytes,
+        VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
     },
-    layouts::{Backend, DataMut, DataRef, Module, Scratch, ZnxView, ZnxViewMut, ZnxZero},
+    layouts::{Backend, DataMut, DataRef, Module, Scratch, VecZnx, ZnxView, ZnxViewMut, ZnxZero},
 };
 
 use crate::{
@@ -15,9 +15,11 @@ use crate::{
 impl LWECiphertext<Vec<u8>> {
     pub fn keyswitch_scratch_space<B: Backend>(
         module: &Module<B>,
-        basek: usize,
+        basek_out: usize,
         k_lwe_out: usize,
+        basek_in: usize,
         k_lwe_in: usize,
+        basek_ksk: usize,
         k_ksk: usize,
     ) -> usize
     where
@@ -30,10 +32,18 @@ impl LWECiphertext<Vec<u8>> {
             + VecZnxDftApply<B>
             + VecZnxIdftApplyConsume<B>
             + VecZnxBigAddSmallInplace<B>
-            + VecZnxBigNormalize<B>,
+            + VecZnxBigNormalize<B>
+            + VecZnxNormalizeTmpBytes,
     {
-        GLWECiphertext::bytes_of(module.n(), basek, k_lwe_out.max(k_lwe_in), 1)
-            + GLWECiphertext::keyswitch_inplace_scratch_space(module, basek, k_lwe_out, k_ksk, 1, 1)
+        let ct: usize = GLWECiphertext::bytes_of(module.n(), basek_ksk, k_lwe_out.max(k_lwe_in), 1);
+        let ks: usize = GLWECiphertext::keyswitch_inplace_scratch_space(module, basek_out, k_lwe_out, basek_ksk, k_ksk, 1, 1);
+
+        if basek_in == basek_ksk {
+            ct + ks
+        } else {
+            let a_conv = VecZnx::alloc_bytes(module.n(), 1, k_lwe_in.div_ceil(basek_in)) + module.vec_znx_normalize_tmp_bytes();
+            ct + a_conv + ks
+        }
     }
 }
 
@@ -55,7 +65,10 @@ impl<DLwe: DataMut> LWECiphertext<DLwe> {
             + VecZnxDftApply<B>
             + VecZnxIdftApplyConsume<B>
             + VecZnxBigAddSmallInplace<B>
-            + VecZnxBigNormalize<B>,
+            + VecZnxBigNormalize<B>
+            + VecZnxNormalize<B>
+            + VecZnxNormalizeTmpBytes
+            + VecZnxCopy,
         Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
     {
         #[cfg(debug_assertions)]
@@ -66,21 +79,24 @@ impl<DLwe: DataMut> LWECiphertext<DLwe> {
         }
 
         let max_k: usize = self.k().max(a.k());
-        let basek: usize = self.basek();
+        let basek_in: usize = a.basek();
+        let basek_out: usize = self.basek();
 
-        let (mut glwe, scratch_1) = scratch.take_glwe_ct(ksk.n(), basek, max_k, 1);
-        glwe.data.zero();
+        let a_size: usize = a.k().div_ceil(ksk.basek());
+
+        let (mut glwe_in, scratch_1) = scratch.take_glwe_ct(ksk.n(), basek_in, max_k, 1);
+        glwe_in.data.zero();
+        let (mut glwe_out, scratch_1) = scratch_1.take_glwe_ct(ksk.n(), basek_out, max_k, 1);
 
         let n_lwe: usize = a.n();
 
-        (0..a.size()).for_each(|i| {
+        for i in 0..a_size {
             let data_lwe: &[i64] = a.data.at(0, i);
-            glwe.data.at_mut(0, i)[0] = data_lwe[0];
-            glwe.data.at_mut(1, i)[..n_lwe].copy_from_slice(&data_lwe[1..]);
-        });
+            glwe_in.data.at_mut(0, i)[0] = data_lwe[0];
+            glwe_in.data.at_mut(1, i)[..n_lwe].copy_from_slice(&data_lwe[1..]);
+        }
 
-        glwe.keyswitch_inplace(module, &ksk.0, scratch_1);
-
-        self.sample_extract(&glwe);
+        glwe_out.keyswitch(module, &glwe_in, &ksk.0, scratch_1);
+        self.sample_extract(&glwe_out);
     }
 }

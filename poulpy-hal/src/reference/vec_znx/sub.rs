@@ -120,7 +120,7 @@ pub fn bench_vec_znx_sub<B>(c: &mut Criterion, label: &str)
 where
     B: Backend + ModuleNewImpl<B> + VecZnxSubImpl<B>,
 {
-    let group_name: String = format!("vec_znx_sub::{}", label);
+    let group_name: String = format!("vec_znx_sub::{label}");
 
     let mut group = c.benchmark_group(group_name);
 
@@ -165,7 +165,7 @@ pub fn bench_vec_znx_sub_ab_inplace<B>(c: &mut Criterion, label: &str)
 where
     B: Backend + ModuleNewImpl<B> + VecZnxSubABInplaceImpl<B>,
 {
-    let group_name: String = format!("vec_znx_sub_ab_inplace::{}", label);
+    let group_name: String = format!("vec_znx_sub_ab_inplace::{label}");
 
     let mut group = c.benchmark_group(group_name);
 
@@ -209,7 +209,7 @@ pub fn bench_vec_znx_sub_ba_inplace<B>(c: &mut Criterion, label: &str)
 where
     B: Backend + ModuleNewImpl<B> + VecZnxSubBAInplaceImpl<B>,
 {
-    let group_name: String = format!("vec_znx_sub_ba_inplace::{}", label);
+    let group_name: String = format!("vec_znx_sub_ba_inplace::{label}");
 
     let mut group = c.benchmark_group(group_name);
 

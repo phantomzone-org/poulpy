@@ -50,7 +50,9 @@ fn bench_external_product_glwe_fft64(c: &mut Criterion) {
                     &module,
                     basek,
                     ct_glwe_out.k(),
+                    basek,
                     ct_glwe_in.k(),
+                    basek,
                     ct_ggsw.k(),
                     digits,
                     rank,
@@ -138,7 +140,15 @@ fn bench_external_product_glwe_inplace_fft64(c: &mut Criterion) {
         let mut scratch: ScratchOwned<FFT64Spqlios> = ScratchOwned::alloc(
             GGSWCiphertext::encrypt_sk_scratch_space(&module, basek, ct_ggsw.k(), rank)
                 | GLWECiphertext::encrypt_sk_scratch_space(&module, basek, ct_glwe.k())
-                | GLWECiphertext::external_product_inplace_scratch_space(&module, basek, ct_glwe.k(), ct_ggsw.k(), digits, rank),
+                | GLWECiphertext::external_product_inplace_scratch_space(
+                    &module,
+                    basek,
+                    ct_glwe.k(),
+                    basek,
+                    ct_ggsw.k(),
+                    digits,
+                    rank,
+                ),
         );
 
         let mut source_xs = Source::new([0u8; 32]);
