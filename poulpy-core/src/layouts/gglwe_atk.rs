@@ -3,7 +3,7 @@ use poulpy_hal::{
     source::Source,
 };
 
-use crate::layouts::{GGLWESwitchingKey, GLWECiphertext, Infos};
+use crate::layouts::{GGLWEMetadata, GGLWESwitchingKey, GLWECiphertext, Infos};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
 use std::fmt;
@@ -12,6 +12,12 @@ use std::fmt;
 pub struct GGLWEAutomorphismKey<D: Data> {
     pub(crate) key: GGLWESwitchingKey<D>,
     pub(crate) p: i64,
+}
+
+impl<D: Data> GGLWEAutomorphismKey<D> {
+    pub fn metadata(&self) -> GGLWEMetadata {
+        self.key.metadata()
+    }
 }
 
 impl<D: DataRef> fmt::Debug for GGLWEAutomorphismKey<D> {
@@ -43,15 +49,15 @@ impl<D: DataRef> fmt::Display for GGLWEAutomorphismKey<D> {
 }
 
 impl GGLWEAutomorphismKey<Vec<u8>> {
-    pub fn alloc(n: usize, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self {
+    pub fn alloc(n: usize, metadata: GGLWEMetadata) -> Self {
         GGLWEAutomorphismKey {
-            key: GGLWESwitchingKey::alloc(n, basek, k, rows, digits, rank, rank),
+            key: GGLWESwitchingKey::alloc(n, metadata),
             p: 0,
         }
     }
 
-    pub fn bytes_of(n: usize, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize {
-        GGLWESwitchingKey::bytes_of(n, basek, k, rows, digits, rank, rank)
+    pub fn bytes_of(n: usize, metadata: GGLWEMetadata) -> usize {
+        GGLWESwitchingKey::bytes_of(n, metadata)
     }
 }
 

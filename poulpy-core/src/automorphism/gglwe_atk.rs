@@ -7,44 +7,32 @@ use poulpy_hal::{
     layouts::{Backend, DataMut, DataRef, Module, Scratch, ZnxZero},
 };
 
-use crate::layouts::{GGLWEAutomorphismKey, GLWECiphertext, Infos, prepared::GGLWEAutomorphismKeyPrepared};
+use crate::layouts::{
+    GGLWEAutomorphismKey, GGLWEMetadata, GLWECiphertext, GLWEMetadata, Infos, prepared::GGLWEAutomorphismKeyPrepared,
+};
 
 impl GGLWEAutomorphismKey<Vec<u8>> {
-    #[allow(clippy::too_many_arguments)]
     pub fn automorphism_scratch_space<B: Backend>(
         module: &Module<B>,
-        basek_out: usize,
-        k_out: usize,
-        basek_in: usize,
-        k_in: usize,
-        basek_ksk: usize,
-        k_ksk: usize,
-        digits: usize,
-        rank: usize,
+        out_metadata: GLWEMetadata,
+        in_metadata: GLWEMetadata,
+        key_metadata: GGLWEMetadata,
     ) -> usize
     where
         Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        GLWECiphertext::keyswitch_scratch_space(
-            module, basek_out, k_out, basek_in, k_in, basek_ksk, k_ksk, digits, rank, rank,
-        )
+        GLWECiphertext::keyswitch_scratch_space(module, out_metadata, in_metadata, key_metadata)
     }
 
     pub fn automorphism_inplace_scratch_space<B: Backend>(
         module: &Module<B>,
-        basek_out: usize,
-        k_out: usize,
-        basek_ksk: usize,
-        k_ksk: usize,
-        digits: usize,
-        rank: usize,
+        out_metadata: GLWEMetadata,
+        key_metadata: GGLWEMetadata,
     ) -> usize
     where
         Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        GGLWEAutomorphismKey::automorphism_scratch_space(
-            module, basek_out, k_out, basek_out, k_out, basek_ksk, k_ksk, digits, rank,
-        )
+        GGLWEAutomorphismKey::automorphism_scratch_space(module, out_metadata, out_metadata, key_metadata)
     }
 }
 

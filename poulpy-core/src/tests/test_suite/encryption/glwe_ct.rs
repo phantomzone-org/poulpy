@@ -86,8 +86,8 @@ where
         let mut source_xa: Source = Source::new([0u8; 32]);
 
         let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-            GLWECiphertext::encrypt_sk_scratch_space(module, basek, ct.k())
-                | GLWECiphertext::decrypt_scratch_space(module, basek, ct.k()),
+            GLWECiphertext::encrypt_sk_scratch_space(module, ct.metadata())
+                | GLWECiphertext::decrypt_scratch_space(module, ct.metadata()),
         );
 
         let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
@@ -169,7 +169,7 @@ where
     let k_pt: usize = 30;
 
     for rank in 1..3 {
-        let n = module.n();
+        let n: usize = module.n();
         let mut ct_compressed: GLWECiphertextCompressed<Vec<u8>> = GLWECiphertextCompressed::alloc(n, basek, k_ct, rank);
 
         let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(n, basek, k_pt);
@@ -180,8 +180,8 @@ where
         let mut source_xa: Source = Source::new([0u8; 32]);
 
         let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-            GLWECiphertextCompressed::encrypt_sk_scratch_space(module, basek, k_ct)
-                | GLWECiphertext::decrypt_scratch_space(module, basek, k_ct),
+            GLWECiphertextCompressed::encrypt_sk_scratch_space(module, ct_compressed.metadata())
+                | GLWECiphertext::decrypt_scratch_space(module, ct_compressed.metadata()),
         );
 
         let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
@@ -270,7 +270,7 @@ where
     let k_ct: usize = 54;
 
     for rank in 1..3 {
-        let n = module.n();
+        let n: usize = module.n();
         let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(n, basek, k_ct);
 
         let mut source_xs: Source = Source::new([0u8; 32]);

@@ -3,13 +3,19 @@ use poulpy_hal::{
     source::Source,
 };
 
-use crate::layouts::{GGLWESwitchingKey, Infos};
+use crate::layouts::{GGLWEMetadata, GGLWESwitchingKey, Infos};
 
 use std::fmt;
 
 /// A special [GLWESwitchingKey] required to for the conversion from [GLWECiphertext] to [LWECiphertext].
 #[derive(PartialEq, Eq, Clone)]
 pub struct GLWEToLWESwitchingKey<D: Data>(pub(crate) GGLWESwitchingKey<D>);
+
+impl<D: Data> GLWEToLWESwitchingKey<D>{
+    pub fn metadata(&self) -> GGLWEMetadata{
+        self.0.metadata()
+    }
+}
 
 impl<D: DataRef> fmt::Debug for GLWEToLWESwitchingKey<D> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -82,7 +88,9 @@ impl<D: DataRef> WriterTo for GLWEToLWESwitchingKey<D> {
 }
 
 impl GLWEToLWESwitchingKey<Vec<u8>> {
-    pub fn alloc(n: usize, basek: usize, k: usize, rows: usize, rank_in: usize) -> Self {
-        Self(GGLWESwitchingKey::alloc(n, basek, k, rows, 1, rank_in, 1))
+    pub fn alloc(n: usize, metadata: GGLWEMetadata) -> Self {
+        debug_assert_eq!(metadata.rank_in, 1);
+        debug_assert_eq!(metadata.digits, 1);
+        Self(GGLWESwitchingKey::alloc(n, metadata))
     }
 }

@@ -11,7 +11,7 @@ use poulpy_hal::{
 
 use crate::{
     TakeGLWECt,
-    layouts::{GLWECiphertext, Infos, prepared::GGLWEAutomorphismKeyPrepared},
+    layouts::{GGLWEMetadata, GLWECiphertext, GLWEMetadata, Infos, prepared::GGLWEAutomorphismKeyPrepared},
     operations::GLWEOperations,
 };
 
@@ -31,30 +31,23 @@ impl GLWECiphertext<Vec<u8>> {
     #[allow(clippy::too_many_arguments)]
     pub fn trace_scratch_space<B: Backend>(
         module: &Module<B>,
-        basek_out: usize,
-        k_out: usize,
-        basek_in: usize,
-        k_in: usize,
-        basek_ksk: usize,
-        k_ksk: usize,
-        digits: usize,
-        rank: usize,
+        out_metadata: GLWEMetadata,
+        in_metadata: GLWEMetadata,
+        key_metadata: GGLWEMetadata,
     ) -> usize
     where
         Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        let trace = Self::automorphism_inplace_scratch_space(
-            module,
-            basek_out,
-            k_out.min(k_in),
-            basek_ksk,
-            k_ksk,
-            digits,
-            rank,
-        );
-        if basek_in != basek_ksk {
-            let glwe_conv: usize = VecZnx::alloc_bytes(module.n(), rank + 1, k_out.min(k_in).div_ceil(basek_ksk))
-                + module.vec_znx_normalize_tmp_bytes();
+        let trace: usize = Self::automorphism_inplace_scratch_space(module, out_metadata, key_metadata);
+        if in_metadata.basek != key_metadata.basek {
+            let glwe_conv: usize = VecZnx::alloc_bytes(
+                module.n(),
+                key_metadata.rank_out + 1,
+                out_metadata
+                    .k
+                    .min(in_metadata.k)
+                    .div_ceil(key_metadata.basek),
+            ) + module.vec_znx_normalize_tmp_bytes();
             return glwe_conv + trace;
         }
 
@@ -63,19 +56,13 @@ impl GLWECiphertext<Vec<u8>> {
 
     pub fn trace_inplace_scratch_space<B: Backend>(
         module: &Module<B>,
-        basek_out: usize,
-        k_out: usize,
-        basek_ksk: usize,
-        k_ksk: usize,
-        digits: usize,
-        rank: usize,
+        out_metadata: GLWEMetadata,
+        key_metadata: GGLWEMetadata,
     ) -> usize
     where
         Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        Self::trace_scratch_space(
-            module, basek_out, k_out, basek_out, k_out, basek_ksk, k_ksk, digits, rank,
-        )
+        Self::trace_scratch_space(module, out_metadata, out_metadata, key_metadata)
     }
 }
 

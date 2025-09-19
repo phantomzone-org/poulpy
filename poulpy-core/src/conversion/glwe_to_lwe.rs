@@ -9,27 +9,21 @@ use poulpy_hal::{
 
 use crate::{
     TakeGLWECt,
-    layouts::{GLWECiphertext, Infos, LWECiphertext, prepared::GLWEToLWESwitchingKeyPrepared},
+    layouts::{GGLWEMetadata, GLWECiphertext, GLWEMetadata, Infos, LWECiphertext, prepared::GLWEToLWESwitchingKeyPrepared},
 };
 
 impl LWECiphertext<Vec<u8>> {
     pub fn from_glwe_scratch_space<B: Backend>(
         module: &Module<B>,
-        basek_lwe: usize,
-        k_lwe: usize,
-        basek_glwe: usize,
-        k_glwe: usize,
-        basek_ksk: usize,
-        k_ksk: usize,
-        rank: usize,
+        lwe_metadata: GLWEMetadata,
+        glwe_metadata: GLWEMetadata,
+        key_metadata: GGLWEMetadata,
     ) -> usize
     where
         Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        GLWECiphertext::bytes_of(module.n(), basek_lwe, k_lwe, 1)
-            + GLWECiphertext::keyswitch_scratch_space(
-                module, basek_lwe, k_lwe, basek_glwe, k_glwe, basek_ksk, k_ksk, 1, rank, 1,
-            )
+        GLWECiphertext::bytes_of(module.n(), lwe_metadata.basek, lwe_metadata.k, 1)
+            + GLWECiphertext::keyswitch_scratch_space(module, lwe_metadata, glwe_metadata, key_metadata)
     }
 }
 

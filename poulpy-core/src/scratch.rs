@@ -7,12 +7,10 @@ use poulpy_hal::{
 use crate::{
     dist::Distribution,
     layouts::{
-        GGLWEAutomorphismKey, GGLWECiphertext, GGLWESwitchingKey, GGLWETensorKey, GGSWCiphertext, GLWECiphertext, GLWEPlaintext,
-        GLWEPublicKey, GLWESecret, Infos,
         prepared::{
             GGLWEAutomorphismKeyPrepared, GGLWECiphertextPrepared, GGLWESwitchingKeyPrepared, GGLWETensorKeyPrepared,
             GGSWCiphertextPrepared, GLWEPublicKeyPrepared, GLWESecretPrepared,
-        },
+        }, GGLWEAutomorphismKey, GGLWECiphertext, GGLWEMetadata, GGLWESwitchingKey, GGLWETensorKey, GGSWCiphertext, GGSWMetadata, GLWECiphertext, GLWEMetadata, GLWEPlaintext, GLWEPublicKey, GLWESecret, Infos
     },
 };
 
@@ -22,7 +20,7 @@ pub trait TakeLike<'a, B: Backend, T> {
 }
 
 pub trait TakeGLWECt {
-    fn take_glwe_ct(&mut self, n: usize, basek: usize, k: usize, rank: usize) -> (GLWECiphertext<&mut [u8]>, &mut Self);
+    fn take_glwe_ct(&mut self, n: usize, metadata: GLWEMetadata) -> (GLWECiphertext<&mut [u8]>, &mut Self);
 }
 
 pub trait TakeGLWECtSlice {
@@ -30,9 +28,7 @@ pub trait TakeGLWECtSlice {
         &mut self,
         size: usize,
         n: usize,
-        basek: usize,
-        k: usize,
-        rank: usize,
+        metadata: GLWEMetadata,
     ) -> (Vec<GLWECiphertext<&mut [u8]>>, &mut Self);
 }
 
@@ -41,30 +37,18 @@ pub trait TakeGLWEPt<B: Backend> {
 }
 
 pub trait TakeGGLWE {
-    #[allow(clippy::too_many_arguments)]
     fn take_gglwe(
         &mut self,
         n: usize,
-        basek: usize,
-        k: usize,
-        rows: usize,
-        digits: usize,
-        rank_in: usize,
-        rank_out: usize,
+        metadata: GGLWEMetadata
     ) -> (GGLWECiphertext<&mut [u8]>, &mut Self);
 }
 
 pub trait TakeGGLWEPrepared<B: Backend> {
-    #[allow(clippy::too_many_arguments)]
     fn take_gglwe_prepared(
         &mut self,
         n: usize,
-        basek: usize,
-        k: usize,
-        rows: usize,
-        digits: usize,
-        rank_in: usize,
-        rank_out: usize,
+        metadata: GGLWEMetadata
     ) -> (GGLWECiphertextPrepared<&mut [u8], B>, &mut Self);
 }
 
@@ -72,11 +56,7 @@ pub trait TakeGGSW {
     fn take_ggsw(
         &mut self,
         n: usize,
-        basek: usize,
-        k: usize,
-        rows: usize,
-        digits: usize,
-        rank: usize,
+        metatada: GGSWMetadata
     ) -> (GGSWCiphertext<&mut [u8]>, &mut Self);
 }
 
@@ -84,11 +64,7 @@ pub trait TakeGGSWPrepared<B: Backend> {
     fn take_ggsw_prepared(
         &mut self,
         n: usize,
-        basek: usize,
-        k: usize,
-        rows: usize,
-        digits: usize,
-        rank: usize,
+        metadata: GGSWMetadata
     ) -> (GGSWCiphertextPrepared<&mut [u8], B>, &mut Self);
 }
 
@@ -108,9 +84,7 @@ pub trait TakeGLWEPkPrepared<B: Backend> {
     fn take_glwe_pk_prepared(
         &mut self,
         n: usize,
-        basek: usize,
-        k: usize,
-        rank: usize,
+        metadata: GLWEMetadata,
     ) -> (GLWEPublicKeyPrepared<&mut [u8], B>, &mut Self);
 }
 
@@ -119,26 +93,16 @@ pub trait TakeGLWESwitchingKey {
     fn take_glwe_switching_key(
         &mut self,
         n: usize,
-        basek: usize,
-        k: usize,
-        rows: usize,
-        digits: usize,
-        rank_in: usize,
-        rank_out: usize,
+        metadata: GGLWEMetadata,
     ) -> (GGLWESwitchingKey<&mut [u8]>, &mut Self);
 }
 
-pub trait TakeGLWESwitchingKeyPrepared<B: Backend> {
+pub trait TakeGGLWESwitchingKeyPrepared<B: Backend> {
     #[allow(clippy::too_many_arguments)]
-    fn take_glwe_switching_key_prepared(
+    fn take_gglwe_switching_key_prepared(
         &mut self,
         n: usize,
-        basek: usize,
-        k: usize,
-        rows: usize,
-        digits: usize,
-        rank_in: usize,
-        rank_out: usize,
+        metadata: GGLWEMetadata,
     ) -> (GGLWESwitchingKeyPrepared<&mut [u8], B>, &mut Self);
 }
 
@@ -146,47 +110,31 @@ pub trait TakeTensorKey {
     fn take_tensor_key(
         &mut self,
         n: usize,
-        basek: usize,
-        k: usize,
-        rows: usize,
-        digits: usize,
-        rank: usize,
+        metadata: GGLWEMetadata,
     ) -> (GGLWETensorKey<&mut [u8]>, &mut Self);
 }
 
-pub trait TakeTensorKeyPrepared<B: Backend> {
-    fn take_tensor_key_prepared(
+pub trait TakeGGLWETensorKeyPrepared<B: Backend> {
+    fn take_gglwe_tensor_key_prepared(
         &mut self,
         n: usize,
-        basek: usize,
-        k: usize,
-        rows: usize,
-        digits: usize,
-        rank: usize,
+        metadata: GGLWEMetadata,
     ) -> (GGLWETensorKeyPrepared<&mut [u8], B>, &mut Self);
 }
 
-pub trait TakeAutomorphismKey {
-    fn take_automorphism_key(
+pub trait TakeGGLWEAutomorphismKey {
+    fn take_gglwe_automorphism_key(
         &mut self,
         n: usize,
-        basek: usize,
-        k: usize,
-        rows: usize,
-        digits: usize,
-        rank: usize,
+        metadata: GGLWEMetadata
     ) -> (GGLWEAutomorphismKey<&mut [u8]>, &mut Self);
 }
 
-pub trait TakeAutomorphismKeyPrepared<B: Backend> {
-    fn take_automorphism_key_prepared(
+pub trait TakeGGLWEAutomorphismKeyPrepared<B: Backend> {
+    fn take_gglwe_automorphism_key_prepared(
         &mut self,
         n: usize,
-        basek: usize,
-        k: usize,
-        rows: usize,
-        digits: usize,
-        rank: usize,
+        metadata: GGLWEMetadata
     ) -> (GGLWEAutomorphismKeyPrepared<&mut [u8], B>, &mut Self);
 }
 
@@ -194,9 +142,15 @@ impl<B: Backend> TakeGLWECt for Scratch<B>
 where
     Scratch<B>: TakeVecZnx,
 {
-    fn take_glwe_ct(&mut self, n: usize, basek: usize, k: usize, rank: usize) -> (GLWECiphertext<&mut [u8]>, &mut Self) {
-        let (data, scratch) = self.take_vec_znx(n, rank + 1, k.div_ceil(basek));
-        (GLWECiphertext { data, basek, k }, scratch)
+    fn take_glwe_ct(&mut self, n: usize, metadata: GLWEMetadata) -> (GLWECiphertext<&mut [u8]>, &mut Self) {
+        let (data, scratch) = self.take_vec_znx(n, metadata.rank + 1, metadata.k.div_ceil(metadata.basek));
+        (
+            GLWECiphertext {
+                data,
+                metadata,
+            },
+            scratch,
+        )
     }
 }
 
@@ -212,8 +166,7 @@ where
         (
             GLWECiphertext {
                 data,
-                basek: template.basek(),
-                k: template.k(),
+                metadata: template.metadata(),
             },
             scratch,
         )
@@ -228,14 +181,12 @@ where
         &mut self,
         size: usize,
         n: usize,
-        basek: usize,
-        k: usize,
-        rank: usize,
+        metadata: GLWEMetadata,
     ) -> (Vec<GLWECiphertext<&mut [u8]>>, &mut Self) {
         let mut scratch: &mut Scratch<B> = self;
         let mut cts: Vec<GLWECiphertext<&mut [u8]>> = Vec::with_capacity(size);
         for _ in 0..size {
-            let (ct, new_scratch) = scratch.take_glwe_ct(n, basek, k, rank);
+            let (ct, new_scratch) = scratch.take_glwe_ct(n, metadata);
             scratch = new_scratch;
             cts.push(ct);
         }
@@ -280,26 +231,19 @@ where
     fn take_gglwe(
         &mut self,
         n: usize,
-        basek: usize,
-        k: usize,
-        rows: usize,
-        digits: usize,
-        rank_in: usize,
-        rank_out: usize,
+        metadata: GGLWEMetadata,
     ) -> (GGLWECiphertext<&mut [u8]>, &mut Self) {
         let (data, scratch) = self.take_mat_znx(
             n,
-            rows.div_ceil(digits),
-            rank_in,
-            rank_out + 1,
-            k.div_ceil(basek),
+            metadata.rows.div_ceil(metadata.digits),
+            metadata.rank_in,
+            metadata.rank_out + 1,
+            metadata.k.div_ceil(metadata.basek),
         );
         (
             GGLWECiphertext {
                 data,
-                basek,
-                k,
-                digits,
+                metadata,
             },
             scratch,
         )
@@ -325,9 +269,7 @@ where
         (
             GGLWECiphertext {
                 data,
-                basek: template.basek(),
-                k: template.k(),
-                digits: template.digits(),
+                metadata: template.metadata.clone(),
             },
             scratch,
         )
@@ -341,26 +283,19 @@ where
     fn take_gglwe_prepared(
         &mut self,
         n: usize,
-        basek: usize,
-        k: usize,
-        rows: usize,
-        digits: usize,
-        rank_in: usize,
-        rank_out: usize,
+        metadata: GGLWEMetadata,
     ) -> (GGLWECiphertextPrepared<&mut [u8], B>, &mut Self) {
         let (data, scratch) = self.take_vmp_pmat(
             n,
-            rows.div_ceil(digits),
-            rank_in,
-            rank_out + 1,
-            k.div_ceil(basek),
+            metadata.rows.div_ceil(metadata.digits),
+            metadata.rank_in,
+            metadata.rank_out + 1,
+            metadata.k.div_ceil(metadata.basek),
         );
         (
             GGLWECiphertextPrepared {
                 data,
-                basek,
-                k,
-                digits,
+                metadata
             },
             scratch,
         )
@@ -386,9 +321,7 @@ where
         (
             GGLWECiphertextPrepared {
                 data,
-                basek: template.basek(),
-                k: template.k(),
-                digits: template.digits(),
+                metadata: template.metadata(),
             },
             scratch,
         )
@@ -402,25 +335,19 @@ where
     fn take_ggsw(
         &mut self,
         n: usize,
-        basek: usize,
-        k: usize,
-        rows: usize,
-        digits: usize,
-        rank: usize,
+        metadata: GGSWMetadata,
     ) -> (GGSWCiphertext<&mut [u8]>, &mut Self) {
         let (data, scratch) = self.take_mat_znx(
             n,
-            rows.div_ceil(digits),
-            rank + 1,
-            rank + 1,
-            k.div_ceil(basek),
+            metadata.rows.div_ceil(metadata.digits),
+            metadata.rank + 1,
+            metadata.rank + 1,
+            metadata.k.div_ceil(metadata.basek),
         );
         (
             GGSWCiphertext {
                 data,
-                basek,
-                k,
-                digits,
+                metadata,
             },
             scratch,
         )
@@ -446,9 +373,7 @@ where
         (
             GGSWCiphertext {
                 data,
-                basek: template.basek(),
-                k: template.k(),
-                digits: template.digits(),
+                metadata: template.metadata.clone(),
             },
             scratch,
         )
@@ -462,25 +387,19 @@ where
     fn take_ggsw_prepared(
         &mut self,
         n: usize,
-        basek: usize,
-        k: usize,
-        rows: usize,
-        digits: usize,
-        rank: usize,
+        metadata: GGSWMetadata,
     ) -> (GGSWCiphertextPrepared<&mut [u8], B>, &mut Self) {
         let (data, scratch) = self.take_vmp_pmat(
             n,
-            rows.div_ceil(digits),
-            rank + 1,
-            rank + 1,
-            k.div_ceil(basek),
+            metadata.rows.div_ceil(metadata.digits),
+            metadata.rank + 1,
+            metadata.rank + 1,
+            metadata.k.div_ceil(metadata.basek),
         );
         (
             GGSWCiphertextPrepared {
                 data,
-                basek,
-                k,
-                digits,
+                metadata,
             },
             scratch,
         )
@@ -506,9 +425,7 @@ where
         (
             GGSWCiphertextPrepared {
                 data,
-                basek: template.basek(),
-                k: template.k(),
-                digits: template.digits(),
+                metadata: template.metadata(),
             },
             scratch,
         )
@@ -561,16 +478,13 @@ where
     fn take_glwe_pk_prepared(
         &mut self,
         n: usize,
-        basek: usize,
-        k: usize,
-        rank: usize,
+        metadata: GLWEMetadata,
     ) -> (GLWEPublicKeyPrepared<&mut [u8], B>, &mut Self) {
-        let (data, scratch) = self.take_vec_znx_dft(n, rank + 1, k.div_ceil(basek));
+        let (data, scratch) = self.take_vec_znx_dft(n, metadata.rank + 1, metadata.k.div_ceil(metadata.basek));
         (
             GLWEPublicKeyPrepared {
                 data,
-                k,
-                basek,
+                metadata,
                 dist: Distribution::NONE,
             },
             scratch,
@@ -590,8 +504,7 @@ where
         (
             GLWEPublicKeyPrepared {
                 data,
-                basek: template.basek(),
-                k: template.k(),
+                metadata: template.metadata(),
                 dist: template.dist,
             },
             scratch,
@@ -676,14 +589,9 @@ where
     fn take_glwe_switching_key(
         &mut self,
         n: usize,
-        basek: usize,
-        k: usize,
-        rows: usize,
-        digits: usize,
-        rank_in: usize,
-        rank_out: usize,
+        metadata: GGLWEMetadata,
     ) -> (GGLWESwitchingKey<&mut [u8]>, &mut Self) {
-        let (data, scratch) = self.take_gglwe(n, basek, k, rows, digits, rank_in, rank_out);
+        let (data, scratch) = self.take_gglwe(n, metadata);
         (
             GGLWESwitchingKey {
                 key: data,
@@ -716,21 +624,16 @@ where
     }
 }
 
-impl<B: Backend> TakeGLWESwitchingKeyPrepared<B> for Scratch<B>
+impl<B: Backend> TakeGGLWESwitchingKeyPrepared<B> for Scratch<B>
 where
     Scratch<B>: TakeGGLWEPrepared<B>,
 {
-    fn take_glwe_switching_key_prepared(
+    fn take_gglwe_switching_key_prepared(
         &mut self,
         n: usize,
-        basek: usize,
-        k: usize,
-        rows: usize,
-        digits: usize,
-        rank_in: usize,
-        rank_out: usize,
+        metadata: GGLWEMetadata,
     ) -> (GGLWESwitchingKeyPrepared<&mut [u8], B>, &mut Self) {
-        let (data, scratch) = self.take_gglwe_prepared(n, basek, k, rows, digits, rank_in, rank_out);
+        let (data, scratch) = self.take_gglwe_prepared(n, metadata);
         (
             GGLWESwitchingKeyPrepared {
                 key: data,
@@ -763,20 +666,16 @@ where
     }
 }
 
-impl<B: Backend> TakeAutomorphismKey for Scratch<B>
+impl<B: Backend> TakeGGLWEAutomorphismKey for Scratch<B>
 where
     Scratch<B>: TakeMatZnx,
 {
-    fn take_automorphism_key(
+    fn take_gglwe_automorphism_key(
         &mut self,
         n: usize,
-        basek: usize,
-        k: usize,
-        rows: usize,
-        digits: usize,
-        rank: usize,
+        metadata: GGLWEMetadata,
     ) -> (GGLWEAutomorphismKey<&mut [u8]>, &mut Self) {
-        let (data, scratch) = self.take_glwe_switching_key(n, basek, k, rows, digits, rank, rank);
+        let (data, scratch) = self.take_glwe_switching_key(n, metadata);
         (GGLWEAutomorphismKey { key: data, p: 0 }, scratch)
     }
 }
@@ -795,20 +694,16 @@ where
     }
 }
 
-impl<B: Backend> TakeAutomorphismKeyPrepared<B> for Scratch<B>
+impl<B: Backend> TakeGGLWEAutomorphismKeyPrepared<B> for Scratch<B>
 where
-    Scratch<B>: TakeGLWESwitchingKeyPrepared<B>,
+    Scratch<B>: TakeGGLWESwitchingKeyPrepared<B>,
 {
-    fn take_automorphism_key_prepared(
+    fn take_gglwe_automorphism_key_prepared(
         &mut self,
         n: usize,
-        basek: usize,
-        k: usize,
-        rows: usize,
-        digits: usize,
-        rank: usize,
+        metadata: GGLWEMetadata
     ) -> (GGLWEAutomorphismKeyPrepared<&mut [u8], B>, &mut Self) {
-        let (data, scratch) = self.take_glwe_switching_key_prepared(n, basek, k, rows, digits, rank, rank);
+        let (data, scratch) = self.take_gglwe_switching_key_prepared(n, metadata);
         (GGLWEAutomorphismKeyPrepared { key: data, p: 0 }, scratch)
     }
 }
@@ -834,24 +729,23 @@ where
     fn take_tensor_key(
         &mut self,
         n: usize,
-        basek: usize,
-        k: usize,
-        rows: usize,
-        digits: usize,
-        rank: usize,
+        metadata: GGLWEMetadata
     ) -> (GGLWETensorKey<&mut [u8]>, &mut Self) {
+
+        debug_assert_eq!(metadata.rank_in, 1);
+
         let mut keys: Vec<GGLWESwitchingKey<&mut [u8]>> = Vec::new();
-        let pairs: usize = (((rank + 1) * rank) >> 1).max(1);
+        let pairs: usize = (((metadata.rank_out + 1) * metadata.rank_out) >> 1).max(1);
 
         let mut scratch: &mut Scratch<B> = self;
 
         if pairs != 0 {
-            let (gglwe, s) = scratch.take_glwe_switching_key(n, basek, k, rows, digits, 1, rank);
+            let (gglwe, s) = scratch.take_glwe_switching_key(n, metadata);
             scratch = s;
             keys.push(gglwe);
         }
         for _ in 1..pairs {
-            let (gglwe, s) = scratch.take_glwe_switching_key(n, basek, k, rows, digits, 1, rank);
+            let (gglwe, s) = scratch.take_glwe_switching_key(n, metadata);
             scratch = s;
             keys.push(gglwe);
         }
@@ -888,31 +782,27 @@ where
     }
 }
 
-impl<B: Backend> TakeTensorKeyPrepared<B> for Scratch<B>
+impl<B: Backend> TakeGGLWETensorKeyPrepared<B> for Scratch<B>
 where
     Scratch<B>: TakeVmpPMat<B>,
 {
-    fn take_tensor_key_prepared(
+    fn take_gglwe_tensor_key_prepared(
         &mut self,
         n: usize,
-        basek: usize,
-        k: usize,
-        rows: usize,
-        digits: usize,
-        rank: usize,
+        metadata: GGLWEMetadata,
     ) -> (GGLWETensorKeyPrepared<&mut [u8], B>, &mut Self) {
+        debug_assert_eq!(metadata.rank_in, 1);
         let mut keys: Vec<GGLWESwitchingKeyPrepared<&mut [u8], B>> = Vec::new();
-        let pairs: usize = (((rank + 1) * rank) >> 1).max(1);
-
+        let pairs: usize = (((metadata.rank_out + 1) * metadata.rank_out) >> 1).max(1);
         let mut scratch: &mut Scratch<B> = self;
 
         if pairs != 0 {
-            let (gglwe, s) = scratch.take_glwe_switching_key_prepared(n, basek, k, rows, digits, 1, rank);
+            let (gglwe, s) = scratch.take_gglwe_switching_key_prepared(n, metadata);
             scratch = s;
             keys.push(gglwe);
         }
         for _ in 1..pairs {
-            let (gglwe, s) = scratch.take_glwe_switching_key_prepared(n, basek, k, rows, digits, 1, rank);
+            let (gglwe, s) = scratch.take_gglwe_switching_key_prepared(n, metadata);
             scratch = s;
             keys.push(gglwe);
         }

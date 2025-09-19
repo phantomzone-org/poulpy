@@ -5,7 +5,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    GGLWECiphertext, Infos,
+    GGLWECiphertext, GGLWEMetadata, Infos,
     compressed::{Decompress, GLWECiphertextCompressed},
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
@@ -14,11 +14,14 @@ use std::fmt;
 #[derive(PartialEq, Eq, Clone)]
 pub struct GGLWECiphertextCompressed<D: Data> {
     pub(crate) data: MatZnx<D>,
-    pub(crate) basek: usize,
-    pub(crate) k: usize,
-    pub(crate) rank_out: usize,
-    pub(crate) digits: usize,
+    pub(crate) metadata: GGLWEMetadata,
     pub(crate) seed: Vec<[u8; 32]>,
+}
+
+impl<D: Data> GGLWECiphertextCompressed<D> {
+    pub fn metadata(&self) -> GGLWEMetadata {
+        self.metadata
+    }
 }
 
 impl<D: DataRef> fmt::Debug for GGLWECiphertextCompressed<D> {
@@ -39,10 +42,10 @@ where
 {
     fn reset(&mut self) {
         self.data.reset();
-        self.basek = 0;
-        self.k = 0;
-        self.digits = 0;
-        self.rank_out = 0;
+        self.metadata.basek = 0;
+        self.metadata.k = 0;
+        self.metadata.digits = 0;
+        self.metadata.rank_out = 0;
         self.seed = Vec::new();
     }
 }
@@ -52,13 +55,20 @@ impl<D: DataRef> fmt::Display for GGLWECiphertextCompressed<D> {
         write!(
             f,
             "(GGLWECiphertextCompressed: basek={} k={} digits={}) {}",
-            self.basek, self.k, self.digits, self.data
+            self.metadata.basek, self.metadata.k, self.metadata.digits, self.data
         )
     }
 }
 
 impl GGLWECiphertextCompressed<Vec<u8>> {
-    pub fn alloc(n: usize, basek: usize, k: usize, rows: usize, digits: usize, rank_in: usize, rank_out: usize) -> Self {
+    pub fn alloc(n: usize, metadata: GGLWEMetadata) -> Self {
+
+        let k: usize = metadata.k;
+        let basek: usize = metadata.basek;
+        let digits: usize = metadata.digits;
+        let rows: usize = metadata.rows;
+        let rank_in: usize = metadata.rank_in;
+
         let size: usize = k.div_ceil(basek);
         debug_assert!(
             size > digits,
@@ -72,15 +82,18 @@ impl GGLWECiphertextCompressed<Vec<u8>> {
 
         Self {
             data: MatZnx::alloc(n, rows, rank_in, 1, size),
-            basek,
-            k,
-            rank_out,
-            digits,
+            metadata,
             seed: vec![[0u8; 32]; rows * rank_in],
         }
     }
 
-    pub fn bytes_of(n: usize, basek: usize, k: usize, rows: usize, digits: usize, rank_in: usize) -> usize {
+    pub fn bytes_of(n: usize, metadata: GGLWEMetadata) -> usize {
+        let k: usize = metadata.k;
+        let basek: usize = metadata.basek;
+        let digits: usize = metadata.digits;
+        let rows: usize = metadata.rows;
+        let rank_in: usize = metadata.rank_in;
+
         let size: usize = k.div_ceil(basek);
         debug_assert!(
             size > digits,
@@ -104,29 +117,25 @@ impl<D: Data> Infos for GGLWECiphertextCompressed<D> {
     }
 
     fn basek(&self) -> usize {
-        self.basek
+        self.metadata.basek
     }
 
     fn k(&self) -> usize {
-        self.k
+        self.metadata.k
     }
 }
 
 impl<D: Data> GGLWECiphertextCompressed<D> {
-    pub fn rank(&self) -> usize {
-        self.rank_out
-    }
-
     pub fn digits(&self) -> usize {
-        self.digits
+        self.metadata.digits
     }
 
     pub fn rank_in(&self) -> usize {
-        self.data.cols_in()
+        self.metadata.rank_in
     }
 
     pub fn rank_out(&self) -> usize {
-        self.rank_out
+        self.metadata.rank_out
     }
 }
 
@@ -134,9 +143,7 @@ impl<D: DataRef> GGLWECiphertextCompressed<D> {
     pub(crate) fn at(&self, row: usize, col: usize) -> GLWECiphertextCompressed<&[u8]> {
         GLWECiphertextCompressed {
             data: self.data.at(row, col),
-            basek: self.basek,
-            k: self.k,
-            rank: self.rank_out,
+            metadata: self.metadata().as_glwe(),
             seed: self.seed[self.rank_in() * row + col],
         }
     }
@@ -146,10 +153,8 @@ impl<D: DataMut> GGLWECiphertextCompressed<D> {
     pub(crate) fn at_mut(&mut self, row: usize, col: usize) -> GLWECiphertextCompressed<&mut [u8]> {
         let rank_in: usize = self.rank_in();
         GLWECiphertextCompressed {
+            metadata: self.metadata().as_glwe(),
             data: self.data.at_mut(row, col),
-            basek: self.basek,
-            k: self.k,
-            rank: self.rank_out,
             seed: self.seed[rank_in * row + col], // Warning: value is copied and not borrow mut
         }
     }
@@ -157,10 +162,10 @@ impl<D: DataMut> GGLWECiphertextCompressed<D> {
 
 impl<D: DataMut> ReaderFrom for GGLWECiphertextCompressed<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
-        self.k = reader.read_u64::<LittleEndian>()? as usize;
-        self.basek = reader.read_u64::<LittleEndian>()? as usize;
-        self.digits = reader.read_u64::<LittleEndian>()? as usize;
-        self.rank_out = reader.read_u64::<LittleEndian>()? as usize;
+        self.metadata.k = reader.read_u64::<LittleEndian>()? as usize;
+        self.metadata.basek = reader.read_u64::<LittleEndian>()? as usize;
+        self.metadata.digits = reader.read_u64::<LittleEndian>()? as usize;
+        self.metadata.rank_out = reader.read_u64::<LittleEndian>()? as usize;
         let seed_len = reader.read_u64::<LittleEndian>()? as usize;
         self.seed = vec![[0u8; 32]; seed_len];
         for s in &mut self.seed {
@@ -172,10 +177,10 @@ impl<D: DataMut> ReaderFrom for GGLWECiphertextCompressed<D> {
 
 impl<D: DataRef> WriterTo for GGLWECiphertextCompressed<D> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
-        writer.write_u64::<LittleEndian>(self.k as u64)?;
-        writer.write_u64::<LittleEndian>(self.basek as u64)?;
-        writer.write_u64::<LittleEndian>(self.digits as u64)?;
-        writer.write_u64::<LittleEndian>(self.rank_out as u64)?;
+        writer.write_u64::<LittleEndian>(self.metadata.k as u64)?;
+        writer.write_u64::<LittleEndian>(self.metadata.basek as u64)?;
+        writer.write_u64::<LittleEndian>(self.metadata.digits as u64)?;
+        writer.write_u64::<LittleEndian>(self.metadata.rank_out as u64)?;
         writer.write_u64::<LittleEndian>(self.seed.len() as u64)?;
         for s in &self.seed {
             writer.write_all(s)?;

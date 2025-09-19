@@ -4,17 +4,21 @@ use poulpy_hal::{
     source::Source,
 };
 
-use crate::layouts::{GLWECiphertext, Infos, compressed::Decompress};
+use crate::layouts::{GLWECiphertext, GLWEMetadata, Infos, compressed::Decompress};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::fmt;
 
 #[derive(PartialEq, Eq, Clone)]
 pub struct GLWECiphertextCompressed<D: Data> {
     pub(crate) data: VecZnx<D>,
-    pub(crate) basek: usize,
-    pub(crate) k: usize,
-    pub(crate) rank: usize,
+    pub(crate) metadata: GLWEMetadata,
     pub(crate) seed: [u8; 32],
+}
+
+impl<D: Data> GLWECiphertextCompressed<D> {
+    pub fn metadata(&self) -> GLWEMetadata {
+        self.metadata
+    }
 }
 
 impl<D: DataRef> fmt::Debug for GLWECiphertextCompressed<D> {
@@ -30,7 +34,7 @@ impl<D: DataRef> fmt::Display for GLWECiphertextCompressed<D> {
             "GLWECiphertextCompressed: basek={} k={} rank={} seed={:?}: {}",
             self.basek(),
             self.k(),
-            self.rank,
+            self.rank(),
             self.seed,
             self.data
         )
@@ -40,9 +44,9 @@ impl<D: DataRef> fmt::Display for GLWECiphertextCompressed<D> {
 impl<D: DataMut> Reset for GLWECiphertextCompressed<D> {
     fn reset(&mut self) {
         self.data.reset();
-        self.basek = 0;
-        self.k = 0;
-        self.rank = 0;
+        self.metadata.basek = 0;
+        self.metadata.k = 0;
+        self.metadata.rank = 0;
         self.seed = [0u8; 32];
     }
 }
@@ -61,27 +65,25 @@ impl<D: Data> Infos for GLWECiphertextCompressed<D> {
     }
 
     fn basek(&self) -> usize {
-        self.basek
+        self.metadata.basek
     }
 
     fn k(&self) -> usize {
-        self.k
+        self.metadata.k
     }
 }
 
 impl<D: Data> GLWECiphertextCompressed<D> {
     pub fn rank(&self) -> usize {
-        self.rank
+        self.metadata.rank
     }
 }
 
 impl GLWECiphertextCompressed<Vec<u8>> {
-    pub fn alloc(n: usize, basek: usize, k: usize, rank: usize) -> Self {
+    pub fn alloc(n: usize, metadata: GLWEMetadata) -> Self {
         Self {
-            data: VecZnx::alloc(n, 1, k.div_ceil(basek)),
-            basek,
-            k,
-            rank,
+            data: VecZnx::alloc(n, 1, metadata.k.div_ceil(metadata.basek)),
+            metadata,
             seed: [0u8; 32],
         }
     }
@@ -93,9 +95,9 @@ impl GLWECiphertextCompressed<Vec<u8>> {
 
 impl<D: DataMut> ReaderFrom for GLWECiphertextCompressed<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
-        self.k = reader.read_u64::<LittleEndian>()? as usize;
-        self.basek = reader.read_u64::<LittleEndian>()? as usize;
-        self.rank = reader.read_u64::<LittleEndian>()? as usize;
+        self.metadata.k = reader.read_u64::<LittleEndian>()? as usize;
+        self.metadata.basek = reader.read_u64::<LittleEndian>()? as usize;
+        self.metadata.rank = reader.read_u64::<LittleEndian>()? as usize;
         reader.read_exact(&mut self.seed)?;
         self.data.read_from(reader)
     }
@@ -103,9 +105,9 @@ impl<D: DataMut> ReaderFrom for GLWECiphertextCompressed<D> {
 
 impl<D: DataRef> WriterTo for GLWECiphertextCompressed<D> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
-        writer.write_u64::<LittleEndian>(self.k as u64)?;
-        writer.write_u64::<LittleEndian>(self.basek as u64)?;
-        writer.write_u64::<LittleEndian>(self.rank as u64)?;
+        writer.write_u64::<LittleEndian>(self.metadata.k as u64)?;
+        writer.write_u64::<LittleEndian>(self.metadata.basek as u64)?;
+        writer.write_u64::<LittleEndian>(self.metadata.rank as u64)?;
         writer.write_all(&self.seed)?;
         self.data.write_to(writer)
     }
@@ -164,15 +166,15 @@ impl<D: DataMut> GLWECiphertext<D> {
             debug_assert_eq!(self.size(), other.size());
         }
 
-        let k: usize = other.k;
-        let basek: usize = other.basek;
+        let k: usize = other.metadata.k;
+        let basek: usize = other.metadata.basek;
         let cols: usize = other.rank() + 1;
         module.vec_znx_copy(&mut self.data, 0, &other.data, 0);
         (1..cols).for_each(|i| {
             module.vec_znx_fill_uniform(basek, &mut self.data, i, source);
         });
 
-        self.basek = basek;
-        self.k = k;
+        self.metadata.basek = basek;
+        self.metadata.k = k;
     }
 }

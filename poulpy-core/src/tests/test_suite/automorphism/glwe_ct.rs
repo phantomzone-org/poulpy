@@ -18,7 +18,7 @@ use poulpy_hal::{
 use crate::{
     encryption::SIGMA,
     layouts::{
-        GGLWEAutomorphismKey, GLWECiphertext, GLWEPlaintext, GLWESecret, Infos,
+        GGLWEAutomorphismKey, GLWECiphertext, GLWEMetadata, GLWEPlaintext, GLWESecret,
         prepared::{GGLWEAutomorphismKeyPrepared, GLWESecretPrepared, Prepare, PrepareAlloc},
     },
     noise::log2_std_noise_gglwe_product,
@@ -78,9 +78,21 @@ where
             let n: usize = module.n();
             let rows: usize = k_in.div_ceil(basek * digits);
 
+            let ct_in_metadata: GLWEMetadata = GLWEMetadata {
+                basek: basek,
+                k: k_in,
+                rank: rank,
+            };
+
+            let ct_out_metadata: GLWEMetadata = GLWEMetadata {
+                basek: basek,
+                k: k_out,
+                rank: rank,
+            };
+
             let mut autokey: GGLWEAutomorphismKey<Vec<u8>> = GGLWEAutomorphismKey::alloc(n, basek, k_ksk, rows, digits, rank);
-            let mut ct_in: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(n, basek, k_in, rank);
-            let mut ct_out: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(n, basek, k_out, rank);
+            let mut ct_in: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(n, ct_in_metadata);
+            let mut ct_out: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(n, ct_out_metadata);
             let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(n, basek, k_in);
 
             let mut source_xs: Source = Source::new([0u8; 32]);
@@ -90,19 +102,14 @@ where
             module.vec_znx_fill_uniform(basek, &mut pt_want.data, 0, &mut source_xa);
 
             let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-                GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, basek, autokey.k(), rank)
-                    | GLWECiphertext::decrypt_scratch_space(module, basek, ct_out.k())
-                    | GLWECiphertext::encrypt_sk_scratch_space(module, basek, ct_in.k())
+                GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, autokey.metadata())
+                    | GLWECiphertext::decrypt_scratch_space(module, ct_out.metadata())
+                    | GLWECiphertext::encrypt_sk_scratch_space(module, ct_in.metadata())
                     | GLWECiphertext::automorphism_scratch_space(
                         module,
-                        basek,
-                        ct_out.k(),
-                        basek,
-                        ct_in.k(),
-                        basek,
-                        autokey.k(),
-                        digits,
-                        rank,
+                        ct_out.metadata(),
+                        ct_in.metadata(),
+                        autokey.metadata(),
                     ),
             );
 
@@ -218,10 +225,10 @@ where
             module.vec_znx_fill_uniform(basek, &mut pt_want.data, 0, &mut source_xa);
 
             let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-                GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, basek, autokey.k(), rank)
-                    | GLWECiphertext::decrypt_scratch_space(module, basek, ct.k())
-                    | GLWECiphertext::encrypt_sk_scratch_space(module, basek, ct.k())
-                    | GLWECiphertext::automorphism_inplace_scratch_space(module, basek, ct.k(), basek, autokey.k(), digits, rank),
+                GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, autokey.metadata())
+                    | GLWECiphertext::decrypt_scratch_space(module, ct.metadata())
+                    | GLWECiphertext::encrypt_sk_scratch_space(module, ct.metadata())
+                    | GLWECiphertext::automorphism_inplace_scratch_space(module, ct.metadata(), autokey.metadata()),
             );
 
             let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);

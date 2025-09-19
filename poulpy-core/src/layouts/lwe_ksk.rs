@@ -5,14 +5,23 @@ use poulpy_hal::{
     source::Source,
 };
 
-use crate::layouts::{GGLWESwitchingKey, Infos};
+use crate::layouts::{GGLWEMetadata, GGLWESwitchingKey, Infos};
 
 #[derive(PartialEq, Eq, Clone)]
 pub struct LWESwitchingKey<D: Data>(pub(crate) GGLWESwitchingKey<D>);
 
+impl<D: Data> LWESwitchingKey<D> {
+    pub fn metadata(&self) -> GGLWEMetadata {
+        self.0.metadata()
+    }
+}
+
 impl LWESwitchingKey<Vec<u8>> {
-    pub fn alloc(n: usize, basek: usize, k: usize, rows: usize) -> Self {
-        Self(GGLWESwitchingKey::alloc(n, basek, k, rows, 1, 1, 1))
+    pub fn alloc(n: usize, metadata: GGLWEMetadata) -> Self {
+        debug_assert_eq!(metadata.digits, 1);
+        debug_assert_eq!(metadata.rank_in, 1);
+        debug_assert_eq!(metadata.rank_out, 1);
+        Self(GGLWESwitchingKey::alloc(n, metadata))
     }
 }
 

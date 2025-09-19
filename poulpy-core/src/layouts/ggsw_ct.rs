@@ -4,14 +4,36 @@ use poulpy_hal::{
 };
 use std::fmt;
 
-use crate::layouts::{GLWECiphertext, Infos};
+use crate::layouts::{GLWECiphertext, GLWEMetadata, Infos};
 
 #[derive(PartialEq, Eq, Clone)]
 pub struct GGSWCiphertext<D: Data> {
     pub(crate) data: MatZnx<D>,
-    pub(crate) basek: usize,
-    pub(crate) k: usize,
-    pub(crate) digits: usize,
+    pub(crate) metadata: GGSWMetadata,
+}
+impl<D: Data> GGSWCiphertext<D> {
+    pub fn metadata(&self) -> GGSWMetadata {
+        self.metadata
+    }
+}
+
+#[derive(PartialEq, Eq, Copy, Clone, Debug)]
+pub struct GGSWMetadata {
+    pub basek: usize,
+    pub rows: usize,
+    pub k: usize,
+    pub rank: usize,
+    pub digits: usize,
+}
+
+impl GGSWMetadata {
+    pub fn as_glwe(&self) -> GLWEMetadata {
+        GLWEMetadata {
+            basek: self.basek,
+            k: self.k,
+            rank: self.rank,
+        }
+    }
 }
 
 impl<D: DataRef> fmt::Debug for GGSWCiphertext<D> {
@@ -24,8 +46,8 @@ impl<D: DataRef> fmt::Display for GGSWCiphertext<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "(GGSWCiphertext: basek={} k={} digits={}) {}",
-            self.basek, self.k, self.digits, self.data
+            "(GGSWCiphertext: metadata: {:?}) {}",
+            self.metadata, self.data
         )
     }
 }
@@ -33,9 +55,9 @@ impl<D: DataRef> fmt::Display for GGSWCiphertext<D> {
 impl<D: DataMut> Reset for GGSWCiphertext<D> {
     fn reset(&mut self) {
         self.data.reset();
-        self.basek = 0;
-        self.k = 0;
-        self.digits = 0;
+        self.metadata.basek = 0;
+        self.metadata.k = 0;
+        self.metadata.digits = 0;
     }
 }
 
@@ -49,8 +71,7 @@ impl<D: DataRef> GGSWCiphertext<D> {
     pub fn at(&self, row: usize, col: usize) -> GLWECiphertext<&[u8]> {
         GLWECiphertext {
             data: self.data.at(row, col),
-            basek: self.basek,
-            k: self.k,
+            metadata: self.metadata().as_glwe(),
         }
     }
 }
@@ -58,9 +79,8 @@ impl<D: DataRef> GGSWCiphertext<D> {
 impl<D: DataMut> GGSWCiphertext<D> {
     pub fn at_mut(&mut self, row: usize, col: usize) -> GLWECiphertext<&mut [u8]> {
         GLWECiphertext {
+            metadata: self.metadata().as_glwe(),
             data: self.data.at_mut(row, col),
-            basek: self.basek,
-            k: self.k,
         }
     }
 }
@@ -82,9 +102,13 @@ impl GGSWCiphertext<Vec<u8>> {
 
         Self {
             data: MatZnx::alloc(n, rows, rank + 1, rank + 1, k.div_ceil(basek)),
-            basek,
-            k,
-            digits,
+            metadata: GGSWMetadata {
+                basek,
+                rows,
+                k,
+                digits,
+                rank,
+            },
         }
     }
 
@@ -112,11 +136,11 @@ impl<D: Data> Infos for GGSWCiphertext<D> {
     }
 
     fn basek(&self) -> usize {
-        self.basek
+        self.metadata.basek
     }
 
     fn k(&self) -> usize {
-        self.k
+        self.metadata.k
     }
 }
 
@@ -126,7 +150,7 @@ impl<D: Data> GGSWCiphertext<D> {
     }
 
     pub fn digits(&self) -> usize {
-        self.digits
+        self.metadata.digits
     }
 }
 
@@ -134,18 +158,18 @@ use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
 impl<D: DataMut> ReaderFrom for GGSWCiphertext<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
-        self.k = reader.read_u64::<LittleEndian>()? as usize;
-        self.basek = reader.read_u64::<LittleEndian>()? as usize;
-        self.digits = reader.read_u64::<LittleEndian>()? as usize;
+        self.metadata.k = reader.read_u64::<LittleEndian>()? as usize;
+        self.metadata.basek = reader.read_u64::<LittleEndian>()? as usize;
+        self.metadata.digits = reader.read_u64::<LittleEndian>()? as usize;
         self.data.read_from(reader)
     }
 }
 
 impl<D: DataRef> WriterTo for GGSWCiphertext<D> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
-        writer.write_u64::<LittleEndian>(self.k as u64)?;
-        writer.write_u64::<LittleEndian>(self.basek as u64)?;
-        writer.write_u64::<LittleEndian>(self.digits as u64)?;
+        writer.write_u64::<LittleEndian>(self.metadata.k as u64)?;
+        writer.write_u64::<LittleEndian>(self.metadata.basek as u64)?;
+        writer.write_u64::<LittleEndian>(self.metadata.digits as u64)?;
         self.data.write_to(writer)
     }
 }

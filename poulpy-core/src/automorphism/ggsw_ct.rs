@@ -9,25 +9,17 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    GGSWCiphertext, GLWECiphertext, Infos,
-    prepared::{GGLWEAutomorphismKeyPrepared, GGLWETensorKeyPrepared},
+    prepared::{GGLWEAutomorphismKeyPrepared, GGLWETensorKeyPrepared}, GGLWEMetadata, GGSWCiphertext, GGSWMetadata, GLWECiphertext, Infos
 };
 
 impl GGSWCiphertext<Vec<u8>> {
     #[allow(clippy::too_many_arguments)]
     pub fn automorphism_scratch_space<B: Backend>(
         module: &Module<B>,
-        basek_out: usize,
-        k_out: usize,
-        basek_in: usize,
-        k_in: usize,
-        basek_ksk: usize,
-        k_ksk: usize,
-        digits_ksk: usize,
-        basek_tsk: usize,
-        k_tsk: usize,
-        digits_tsk: usize,
-        rank: usize,
+        out_metadata: GGSWMetadata,
+        in_metadata: GGSWMetadata,
+        key_metadata: GGLWEMetadata,
+        tsk_metadata: GGLWEMetadata,
     ) -> usize
     where
         Module<B>: VecZnxDftAllocBytes
@@ -36,27 +28,19 @@ impl GGSWCiphertext<Vec<u8>> {
             + VecZnxNormalizeTmpBytes
             + VecZnxBigNormalizeTmpBytes,
     {
-        let out_size: usize = k_out.div_ceil(basek_out);
-        let ci_dft: usize = module.vec_znx_dft_alloc_bytes(rank + 1, out_size);
-        let ks_internal: usize = GLWECiphertext::keyswitch_scratch_space(
-            module, basek_out, k_out, basek_in, k_in, basek_ksk, k_ksk, digits_ksk, rank, rank,
-        );
-        let expand: usize = GGSWCiphertext::expand_row_scratch_space(module, k_out, basek_tsk, k_tsk, digits_tsk, rank);
+        let out_size: usize = out_metadata.k.div_ceil(out_metadata.basek);
+        let ci_dft: usize = module.vec_znx_dft_alloc_bytes(key_metadata.rank_out + 1, out_size);
+        let ks_internal: usize = GLWECiphertext::keyswitch_scratch_space(module, out_metadata.as_glwe(), in_metadata.as_glwe(), key_metadata);
+        let expand: usize = GGSWCiphertext::expand_row_scratch_space(module, out_metadata, tsk_metadata);
         ci_dft + (ks_internal | expand)
     }
 
     #[allow(clippy::too_many_arguments)]
     pub fn automorphism_inplace_scratch_space<B: Backend>(
         module: &Module<B>,
-        basek_out: usize,
-        k_out: usize,
-        basek_ksk: usize,
-        k_ksk: usize,
-        digits_ksk: usize,
-        basek_tsk: usize,
-        k_tsk: usize,
-        digits_tsk: usize,
-        rank: usize,
+        out_metadata: GGSWMetadata,
+        key_metadata: GGLWEMetadata,
+        tsk_metadata: GGLWEMetadata,
     ) -> usize
     where
         Module<B>: VecZnxDftAllocBytes
@@ -66,7 +50,11 @@ impl GGSWCiphertext<Vec<u8>> {
             + VecZnxBigNormalizeTmpBytes,
     {
         GGSWCiphertext::automorphism_scratch_space(
-            module, basek_out, k_out, basek_out, k_out, basek_ksk, k_ksk, digits_ksk, basek_tsk, k_tsk, digits_tsk, rank,
+            module,
+            out_metadata,
+            out_metadata,
+            key_metadata,
+            tsk_metadata,
         )
     }
 }
@@ -130,17 +118,10 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
                 scratch.available()
                     >= GGSWCiphertext::automorphism_scratch_space(
                         module,
-                        self.basek(),
-                        self.k(),
-                        lhs.basek(),
-                        lhs.k(),
-                        auto_key.basek(),
-                        auto_key.k(),
-                        auto_key.digits(),
-                        tensor_key.basek(),
-                        tensor_key.k(),
-                        tensor_key.digits(),
-                        self.rank(),
+                        self.metadata(),
+                        lhs.metadata(),
+                        auto_key.metadata(),
+                        tensor_key.metadata()
                     )
             )
         };

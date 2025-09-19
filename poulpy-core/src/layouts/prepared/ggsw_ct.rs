@@ -4,23 +4,33 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    GGSWCiphertext, Infos,
-    prepared::{Prepare, PrepareAlloc},
+    prepared::{Prepare, PrepareAlloc}, GGSWCiphertext, GGSWMetadata, Infos
 };
 
 #[derive(PartialEq, Eq)]
 pub struct GGSWCiphertextPrepared<D: Data, B: Backend> {
     pub(crate) data: VmpPMat<D, B>,
-    pub(crate) basek: usize,
-    pub(crate) k: usize,
-    pub(crate) digits: usize,
+    pub(crate) metadata: GGSWMetadata,
+}
+
+impl<D: Data, B: Backend> GGSWCiphertextPrepared<D, B>{
+    pub fn metadata(&self) -> GGSWMetadata{
+        self.metadata
+    }
 }
 
 impl<B: Backend> GGSWCiphertextPrepared<Vec<u8>, B> {
-    pub fn alloc(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self
+    pub fn alloc(module: &Module<B>, metadata: GGSWMetadata) -> Self
     where
         Module<B>: VmpPMatAlloc<B>,
     {
+
+        let k: usize = metadata.k;
+        let digits: usize = metadata.digits;
+        let basek: usize = metadata.basek;
+        let rows: usize = metadata.rows;
+        let rank: usize = metadata.rank;
+
         let size: usize = k.div_ceil(basek);
         debug_assert!(digits > 0, "invalid ggsw: `digits` == 0");
 
@@ -36,9 +46,7 @@ impl<B: Backend> GGSWCiphertextPrepared<Vec<u8>, B> {
 
         Self {
             data: module.vmp_pmat_alloc(rows, rank + 1, rank + 1, k.div_ceil(basek)),
-            basek,
-            k,
-            digits,
+            metadata,
         }
     }
 
@@ -69,21 +77,21 @@ impl<D: Data, B: Backend> Infos for GGSWCiphertextPrepared<D, B> {
     }
 
     fn basek(&self) -> usize {
-        self.basek
+        self.metadata.basek
     }
 
     fn k(&self) -> usize {
-        self.k
+        self.metadata.k
     }
 }
 
 impl<D: Data, B: Backend> GGSWCiphertextPrepared<D, B> {
     pub fn rank(&self) -> usize {
-        self.data.cols_out() - 1
+        self.metadata.rank
     }
 
     pub fn digits(&self) -> usize {
-        self.digits
+        self.metadata.digits
     }
 }
 
@@ -99,9 +107,9 @@ where
 {
     fn prepare(&mut self, module: &Module<B>, other: &GGSWCiphertext<DR>, scratch: &mut Scratch<B>) {
         module.vmp_prepare(&mut self.data, &other.data, scratch);
-        self.k = other.k;
-        self.basek = other.basek;
-        self.digits = other.digits;
+        self.metadata.k = other.metadata.k;
+        self.metadata.basek = other.metadata.basek;
+        self.metadata.digits = other.metadata.digits;
     }
 }
 
@@ -112,11 +120,7 @@ where
     fn prepare_alloc(&self, module: &Module<B>, scratch: &mut Scratch<B>) -> GGSWCiphertextPrepared<Vec<u8>, B> {
         let mut ggsw_prepared: GGSWCiphertextPrepared<Vec<u8>, B> = GGSWCiphertextPrepared::alloc(
             module,
-            self.basek(),
-            self.k(),
-            self.rows(),
-            self.digits(),
-            self.rank(),
+            self.metadata()
         );
         ggsw_prepared.prepare(module, self, scratch);
         ggsw_prepared

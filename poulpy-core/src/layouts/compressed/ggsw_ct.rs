@@ -5,7 +5,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    GGSWCiphertext, Infos,
+    GGSWCiphertext, GGSWMetadata, Infos,
     compressed::{Decompress, GLWECiphertextCompressed},
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
@@ -14,11 +14,14 @@ use std::fmt;
 #[derive(PartialEq, Eq, Clone)]
 pub struct GGSWCiphertextCompressed<D: Data> {
     pub(crate) data: MatZnx<D>,
-    pub(crate) basek: usize,
-    pub(crate) k: usize,
-    pub(crate) digits: usize,
-    pub(crate) rank: usize,
+    pub(crate) metadata: GGSWMetadata,
     pub(crate) seed: Vec<[u8; 32]>,
+}
+
+impl<D: Data> GGSWCiphertextCompressed<D> {
+    pub fn metadata(&self) -> GGSWMetadata {
+        self.metadata
+    }
 }
 
 impl<D: DataRef> fmt::Debug for GGSWCiphertextCompressed<D> {
@@ -32,7 +35,7 @@ impl<D: DataRef> fmt::Display for GGSWCiphertextCompressed<D> {
         write!(
             f,
             "(GGSWCiphertextCompressed: basek={} k={} digits={}) {}",
-            self.basek, self.k, self.digits, self.data
+            self.metadata.basek, self.metadata.k, self.metadata.digits, self.data
         )
     }
 }
@@ -40,10 +43,10 @@ impl<D: DataRef> fmt::Display for GGSWCiphertextCompressed<D> {
 impl<D: DataMut> Reset for GGSWCiphertextCompressed<D> {
     fn reset(&mut self) {
         self.data.reset();
-        self.basek = 0;
-        self.k = 0;
-        self.digits = 0;
-        self.rank = 0;
+        self.metadata.basek = 0;
+        self.metadata.k = 0;
+        self.metadata.digits = 0;
+        self.metadata.rank = 0;
         self.seed = Vec::new();
     }
 }
@@ -55,7 +58,14 @@ impl<D: DataMut> FillUniform for GGSWCiphertextCompressed<D> {
 }
 
 impl GGSWCiphertextCompressed<Vec<u8>> {
-    pub fn alloc(n: usize, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self {
+    pub fn alloc(n: usize, metadata: GGSWMetadata) -> Self {
+
+        let k: usize = metadata.k;
+        let digits: usize = metadata.digits;
+        let basek: usize = metadata.basek;
+        let rows: usize = metadata.rows;
+        let rank: usize = metadata.rank;
+
         let size: usize = k.div_ceil(basek);
         debug_assert!(digits > 0, "invalid ggsw: `digits` == 0");
 
@@ -71,10 +81,7 @@ impl GGSWCiphertextCompressed<Vec<u8>> {
 
         Self {
             data: MatZnx::alloc(n, rows, rank + 1, 1, k.div_ceil(basek)),
-            basek,
-            k,
-            digits,
-            rank,
+            metadata,
             seed: Vec::new(),
         }
     }
@@ -99,9 +106,7 @@ impl<D: DataRef> GGSWCiphertextCompressed<D> {
     pub fn at(&self, row: usize, col: usize) -> GLWECiphertextCompressed<&[u8]> {
         GLWECiphertextCompressed {
             data: self.data.at(row, col),
-            basek: self.basek,
-            k: self.k,
-            rank: self.rank(),
+            metadata: self.metadata().as_glwe(),
             seed: self.seed[row * (self.rank() + 1) + col],
         }
     }
@@ -111,10 +116,8 @@ impl<D: DataMut> GGSWCiphertextCompressed<D> {
     pub fn at_mut(&mut self, row: usize, col: usize) -> GLWECiphertextCompressed<&mut [u8]> {
         let rank: usize = self.rank();
         GLWECiphertextCompressed {
+            metadata: self.metadata().as_glwe(),
             data: self.data.at_mut(row, col),
-            basek: self.basek,
-            k: self.k,
-            rank,
             seed: self.seed[row * (rank + 1) + col],
         }
     }
@@ -128,30 +131,30 @@ impl<D: Data> Infos for GGSWCiphertextCompressed<D> {
     }
 
     fn basek(&self) -> usize {
-        self.basek
+        self.metadata.basek
     }
 
     fn k(&self) -> usize {
-        self.k
+        self.metadata.k
     }
 }
 
 impl<D: Data> GGSWCiphertextCompressed<D> {
     pub fn rank(&self) -> usize {
-        self.rank
+        self.metadata.rank
     }
 
     pub fn digits(&self) -> usize {
-        self.digits
+        self.metadata.digits
     }
 }
 
 impl<D: DataMut> ReaderFrom for GGSWCiphertextCompressed<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
-        self.k = reader.read_u64::<LittleEndian>()? as usize;
-        self.basek = reader.read_u64::<LittleEndian>()? as usize;
-        self.digits = reader.read_u64::<LittleEndian>()? as usize;
-        self.rank = reader.read_u64::<LittleEndian>()? as usize;
+        self.metadata.k = reader.read_u64::<LittleEndian>()? as usize;
+        self.metadata.basek = reader.read_u64::<LittleEndian>()? as usize;
+        self.metadata.digits = reader.read_u64::<LittleEndian>()? as usize;
+        self.metadata.rank = reader.read_u64::<LittleEndian>()? as usize;
         let seed_len = reader.read_u64::<LittleEndian>()? as usize;
         self.seed = vec![[0u8; 32]; seed_len];
         for s in &mut self.seed {
@@ -163,10 +166,10 @@ impl<D: DataMut> ReaderFrom for GGSWCiphertextCompressed<D> {
 
 impl<D: DataRef> WriterTo for GGSWCiphertextCompressed<D> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
-        writer.write_u64::<LittleEndian>(self.k as u64)?;
-        writer.write_u64::<LittleEndian>(self.basek as u64)?;
-        writer.write_u64::<LittleEndian>(self.digits as u64)?;
-        writer.write_u64::<LittleEndian>(self.rank as u64)?;
+        writer.write_u64::<LittleEndian>(self.metadata.k as u64)?;
+        writer.write_u64::<LittleEndian>(self.metadata.basek as u64)?;
+        writer.write_u64::<LittleEndian>(self.metadata.digits as u64)?;
+        writer.write_u64::<LittleEndian>(self.metadata.rank as u64)?;
         writer.write_u64::<LittleEndian>(self.seed.len() as u64)?;
         for s in &self.seed {
             writer.write_all(s)?;

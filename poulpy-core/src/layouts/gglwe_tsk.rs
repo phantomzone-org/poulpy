@@ -3,7 +3,7 @@ use poulpy_hal::{
     source::Source,
 };
 
-use crate::layouts::{GGLWESwitchingKey, Infos};
+use crate::layouts::{GGLWEMetadata, GGLWESwitchingKey, Infos};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
 use std::fmt;
@@ -11,6 +11,12 @@ use std::fmt;
 #[derive(PartialEq, Eq, Clone)]
 pub struct GGLWETensorKey<D: Data> {
     pub(crate) keys: Vec<GGLWESwitchingKey<D>>,
+}
+
+impl<D: Data> GGLWETensorKey<D> {
+    pub fn metadata(&self) -> GGLWEMetadata {
+        self.keys[0].metadata()
+    }
 }
 
 impl<D: DataRef> fmt::Debug for GGLWETensorKey<D> {
@@ -49,18 +55,18 @@ impl<D: DataRef> fmt::Display for GGLWETensorKey<D> {
 }
 
 impl GGLWETensorKey<Vec<u8>> {
-    pub fn alloc(n: usize, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self {
+    pub fn alloc(n: usize, metadata: GGLWEMetadata) -> Self {
         let mut keys: Vec<GGLWESwitchingKey<Vec<u8>>> = Vec::new();
-        let pairs: usize = (((rank + 1) * rank) >> 1).max(1);
+        let pairs: usize = (((metadata.rank_out + 1) * metadata.rank_out) >> 1).max(1);
         (0..pairs).for_each(|_| {
-            keys.push(GGLWESwitchingKey::alloc(n, basek, k, rows, digits, 1, rank));
+            keys.push(GGLWESwitchingKey::alloc(n, metadata));
         });
         Self { keys }
     }
 
-    pub fn bytes_of(n: usize, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize {
-        let pairs: usize = (((rank + 1) * rank) >> 1).max(1);
-        pairs * GGLWESwitchingKey::<Vec<u8>>::bytes_of(n, basek, k, rows, digits, 1, rank)
+    pub fn bytes_of(n: usize, metadata: GGLWEMetadata) -> usize {
+        let pairs: usize = (((metadata.rank_out + 1) * metadata.rank_out) >> 1).max(1);
+        pairs * GGLWESwitchingKey::<Vec<u8>>::bytes_of(n, metadata)
     }
 }
 

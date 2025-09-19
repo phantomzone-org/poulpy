@@ -84,7 +84,8 @@ where
             pt_scalar.fill_ternary_hw(0, n, &mut source_xs);
 
             let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GGSWCiphertext::encrypt_sk_scratch_space(
-                module, basek, k, rank,
+                module,
+                ct.metadata(),
             ));
 
             let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
@@ -167,7 +168,8 @@ where
             pt_scalar.fill_ternary_hw(0, n, &mut source_xs);
 
             let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GGSWCiphertextCompressed::encrypt_sk_scratch_space(
-                module, basek, k, rank,
+                module,
+                ct_compressed.metadata(),
             ));
 
             let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);

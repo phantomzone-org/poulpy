@@ -4,7 +4,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Infos, LWESwitchingKey,
+    GGLWEMetadata, Infos, LWESwitchingKey,
     prepared::{GGLWESwitchingKeyPrepared, Prepare, PrepareAlloc},
 };
 
@@ -46,20 +46,24 @@ impl<D: Data, B: Backend> LWESwitchingKeyPrepared<D, B> {
 }
 
 impl<B: Backend> LWESwitchingKeyPrepared<Vec<u8>, B> {
-    pub fn alloc(module: &Module<B>, basek: usize, k: usize, rows: usize) -> Self
+    pub fn alloc(module: &Module<B>, metadata: GGLWEMetadata) -> Self
     where
         Module<B>: VmpPMatAlloc<B>,
     {
-        Self(GGLWESwitchingKeyPrepared::alloc(
-            module, basek, k, rows, 1, 1, 1,
-        ))
+        debug_assert_eq!(metadata.digits, 1);
+        debug_assert_eq!(metadata.rank_in, 1);
+        debug_assert_eq!(metadata.rank_out, 1);
+        Self(GGLWESwitchingKeyPrepared::alloc(module, metadata))
     }
 
-    pub fn bytes_of(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize) -> usize
+    pub fn bytes_of(module: &Module<B>, metadata: GGLWEMetadata) -> usize
     where
         Module<B>: VmpPMatAllocBytes,
     {
-        GGLWESwitchingKeyPrepared::<Vec<u8>, B>::bytes_of(module, basek, k, rows, digits, 1, 1)
+        debug_assert_eq!(metadata.digits, 1);
+        debug_assert_eq!(metadata.rank_in, 1);
+        debug_assert_eq!(metadata.rank_out, 1);
+        GGLWESwitchingKeyPrepared::<Vec<u8>, B>::bytes_of(module, metadata)
     }
 }
 
@@ -68,8 +72,7 @@ where
     Module<B>: VmpPrepare<B> + VmpPMatAlloc<B>,
 {
     fn prepare_alloc(&self, module: &Module<B>, scratch: &mut Scratch<B>) -> LWESwitchingKeyPrepared<Vec<u8>, B> {
-        let mut ksk_prepared: LWESwitchingKeyPrepared<Vec<u8>, B> =
-            LWESwitchingKeyPrepared::alloc(module, self.0.basek(), self.0.k(), self.0.rows());
+        let mut ksk_prepared: LWESwitchingKeyPrepared<Vec<u8>, B> = LWESwitchingKeyPrepared::alloc(module, self.metadata());
         ksk_prepared.prepare(module, self, scratch);
         ksk_prepared
     }

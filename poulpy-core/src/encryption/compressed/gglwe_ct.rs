@@ -11,15 +11,15 @@ use poulpy_hal::{
 use crate::{
     TakeGLWEPt,
     encryption::{SIGMA, glwe_encrypt_sk_internal},
-    layouts::{GGLWECiphertext, Infos, compressed::GGLWECiphertextCompressed, prepared::GLWESecretPrepared},
+    layouts::{GGLWECiphertext, GGLWEMetadata, Infos, compressed::GGLWECiphertextCompressed, prepared::GLWESecretPrepared},
 };
 
 impl GGLWECiphertextCompressed<Vec<u8>> {
-    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize) -> usize
+    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, metadata: GGLWEMetadata) -> usize
     where
         Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes + VecZnxNormalizeTmpBytes,
     {
-        GGLWECiphertext::encrypt_sk_scratch_space(module, basek, k)
+        GGLWECiphertext::encrypt_sk_scratch_space(module, metadata)
     }
 }
 
@@ -71,12 +71,10 @@ impl<D: DataMut> GGLWECiphertextCompressed<D> {
             assert_eq!(self.n(), sk.n());
             assert_eq!(pt.n(), sk.n());
             assert!(
-                scratch.available() >= GGLWECiphertextCompressed::encrypt_sk_scratch_space(module, self.basek(), self.k()),
-                "scratch.available: {} < GGLWECiphertext::encrypt_sk_scratch_space(module, self.rank()={}, self.size()={}): {}",
+                scratch.available() >= GGLWECiphertextCompressed::encrypt_sk_scratch_space(module, self.metadata()),
+                "scratch.available: {} < GGLWECiphertext::encrypt_sk_scratch_space: {}",
                 scratch.available(),
-                self.rank(),
-                self.size(),
-                GGLWECiphertextCompressed::encrypt_sk_scratch_space(module, self.basek(), self.k())
+                GGLWECiphertextCompressed::encrypt_sk_scratch_space(module, self.metadata())
             );
             assert!(
                 self.rows() * self.digits() * self.basek() <= self.k(),

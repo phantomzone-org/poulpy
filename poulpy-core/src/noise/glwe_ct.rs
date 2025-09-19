@@ -41,8 +41,7 @@ impl<D: DataRef> GLWECiphertext<D> {
 
         let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GLWECiphertext::decrypt_scratch_space(
             module,
-            self.basek(),
-            self.k(),
+            self.metadata(),
         ));
 
         self.decrypt(module, &mut pt_have, sk_prepared, scratch.borrow());

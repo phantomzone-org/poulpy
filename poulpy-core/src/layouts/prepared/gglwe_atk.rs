@@ -4,7 +4,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    GGLWEAutomorphismKey, Infos,
+    GGLWEAutomorphismKey, GGLWEMetadata, Infos,
     prepared::{GGLWESwitchingKeyPrepared, Prepare, PrepareAlloc},
 };
 
@@ -14,22 +14,28 @@ pub struct GGLWEAutomorphismKeyPrepared<D: Data, B: Backend> {
     pub(crate) p: i64,
 }
 
+impl<D: Data, B: Backend> GGLWEAutomorphismKeyPrepared<D, B> {
+    pub fn metadata(&self) -> GGLWEMetadata {
+        self.key.metadata()
+    }
+}
+
 impl<B: Backend> GGLWEAutomorphismKeyPrepared<Vec<u8>, B> {
-    pub fn alloc(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self
+    pub fn alloc(module: &Module<B>, metadata: GGLWEMetadata) -> Self
     where
         Module<B>: VmpPMatAlloc<B>,
     {
         GGLWEAutomorphismKeyPrepared::<Vec<u8>, B> {
-            key: GGLWESwitchingKeyPrepared::alloc(module, basek, k, rows, digits, rank, rank),
+            key: GGLWESwitchingKeyPrepared::alloc(module, metadata),
             p: 0,
         }
     }
 
-    pub fn bytes_of(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize
+    pub fn bytes_of(module: &Module<B>, metadata: GGLWEMetadata) -> usize
     where
         Module<B>: VmpPMatAllocBytes,
     {
-        GGLWESwitchingKeyPrepared::bytes_of(module, basek, k, rows, digits, rank, rank)
+        GGLWESwitchingKeyPrepared::bytes_of(module, metadata)
     }
 }
 
@@ -88,11 +94,7 @@ where
     fn prepare_alloc(&self, module: &Module<B>, scratch: &mut Scratch<B>) -> GGLWEAutomorphismKeyPrepared<Vec<u8>, B> {
         let mut atk_prepared: GGLWEAutomorphismKeyPrepared<Vec<u8>, B> = GGLWEAutomorphismKeyPrepared::alloc(
             module,
-            self.basek(),
-            self.k(),
-            self.rows(),
-            self.digits(),
-            self.rank(),
+            self.metadata(),
         );
         atk_prepared.prepare(module, self, scratch);
         atk_prepared

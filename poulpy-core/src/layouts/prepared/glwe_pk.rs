@@ -6,17 +6,21 @@ use poulpy_hal::{
 use crate::{
     dist::Distribution,
     layouts::{
-        GLWEPublicKey, Infos,
-        prepared::{Prepare, PrepareAlloc},
+        prepared::{Prepare, PrepareAlloc}, GLWEMetadata, GLWEPublicKey, Infos
     },
 };
 
 #[derive(PartialEq, Eq)]
 pub struct GLWEPublicKeyPrepared<D: Data, B: Backend> {
     pub(crate) data: VecZnxDft<D, B>,
-    pub(crate) basek: usize,
-    pub(crate) k: usize,
+    pub(crate) metadata: GLWEMetadata,
     pub(crate) dist: Distribution,
+}
+
+impl<D: Data, B: Backend> GLWEPublicKeyPrepared<D, B>{
+    pub fn metadata(&self) -> GLWEMetadata{
+        self.metadata
+    }
 }
 
 impl<D: Data, B: Backend> Infos for GLWEPublicKeyPrepared<D, B> {
@@ -27,11 +31,11 @@ impl<D: Data, B: Backend> Infos for GLWEPublicKeyPrepared<D, B> {
     }
 
     fn basek(&self) -> usize {
-        self.basek
+        self.metadata.basek
     }
 
     fn k(&self) -> usize {
-        self.k
+        self.metadata.k
     }
 }
 
@@ -42,23 +46,22 @@ impl<D: Data, B: Backend> GLWEPublicKeyPrepared<D, B> {
 }
 
 impl<B: Backend> GLWEPublicKeyPrepared<Vec<u8>, B> {
-    pub fn alloc(module: &Module<B>, basek: usize, k: usize, rank: usize) -> Self
+    pub fn alloc(module: &Module<B>, metadata: GLWEMetadata) -> Self
     where
         Module<B>: VecZnxDftAlloc<B>,
     {
         Self {
-            data: module.vec_znx_dft_alloc(rank + 1, k.div_ceil(basek)),
-            basek,
-            k,
+            data: module.vec_znx_dft_alloc(metadata.rank + 1, metadata.k.div_ceil(metadata.basek)),
+            metadata,
             dist: Distribution::NONE,
         }
     }
 
-    pub fn bytes_of(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize
+    pub fn bytes_of(module: &Module<B>, metadata: GLWEMetadata) -> usize
     where
         Module<B>: VecZnxDftAllocBytes,
     {
-        module.vec_znx_dft_alloc_bytes(rank + 1, k.div_ceil(basek))
+        module.vec_znx_dft_alloc_bytes(metadata.rank + 1, metadata.k.div_ceil(metadata.basek))
     }
 }
 
@@ -68,7 +71,7 @@ where
 {
     fn prepare_alloc(&self, module: &Module<B>, scratch: &mut Scratch<B>) -> GLWEPublicKeyPrepared<Vec<u8>, B> {
         let mut pk_prepared: GLWEPublicKeyPrepared<Vec<u8>, B> =
-            GLWEPublicKeyPrepared::alloc(module, self.basek(), self.k(), self.rank());
+            GLWEPublicKeyPrepared::alloc(module, self.metadata());
         pk_prepared.prepare(module, self, scratch);
         pk_prepared
     }
@@ -88,8 +91,7 @@ where
         (0..self.cols()).for_each(|i| {
             module.vec_znx_dft_apply(1, 0, &mut self.data, i, &other.data, i);
         });
-        self.k = other.k;
-        self.basek = other.basek;
+        self.metadata = other.metadata();
         self.dist = other.dist;
     }
 }

@@ -9,8 +9,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Infos, LWESwitchingKey,
-    compressed::{Decompress, GGLWESwitchingKeyCompressed},
+    compressed::{Decompress, GGLWESwitchingKeyCompressed}, GGLWEMetadata, Infos, LWESwitchingKey
 };
 use std::fmt;
 
@@ -88,13 +87,16 @@ impl<D: DataRef> WriterTo for LWESwitchingKeyCompressed<D> {
 }
 
 impl LWESwitchingKeyCompressed<Vec<u8>> {
-    pub fn alloc(n: usize, basek: usize, k: usize, rows: usize) -> Self {
+    pub fn alloc(n: usize, metadata: GGLWEMetadata) -> Self {
+        debug_assert_eq!(metadata.digits, 1);
+        debug_assert_eq!(metadata.rank_in, 1);
+        debug_assert_eq!(metadata.rank_out, 1);
         Self(GGLWESwitchingKeyCompressed::alloc(
-            n, basek, k, rows, 1, 1, 1,
+            n, metadata,
         ))
     }
 
-    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize) -> usize
+    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, metadata: GGLWEMetadata) -> usize
     where
         Module<B>: VecZnxDftAllocBytes
             + VecZnxBigNormalize<B>
@@ -113,7 +115,7 @@ impl LWESwitchingKeyCompressed<Vec<u8>> {
             + SvpPPolAllocBytes
             + SvpPPolAlloc<B>,
     {
-        LWESwitchingKey::encrypt_sk_scratch_space(module, basek, k)
+        LWESwitchingKey::encrypt_sk_scratch_space(module, metadata)
     }
 }
 

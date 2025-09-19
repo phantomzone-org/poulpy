@@ -96,9 +96,12 @@ where
             let mut source_xa: Source = Source::new([0u8; 32]);
 
             let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-                GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, basek, k_apply, rank)
+                GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, auto_key_in.metadata())
                     | GGLWEAutomorphismKey::automorphism_scratch_space(
-                        module, basek, k_out, basek, k_in, basek, k_apply, di, rank,
+                        module,
+                        auto_key_out.metadata().as_glwe(),
+                        auto_key_in.metadata().as_glwe(),
+                        auto_key_apply.metadata(),
                     ),
             );
 
@@ -275,8 +278,12 @@ where
             let mut source_xa: Source = Source::new([0u8; 32]);
 
             let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-                GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, basek, k_apply, rank)
-                    | GGLWEAutomorphismKey::automorphism_inplace_scratch_space(module, basek, k_in, basek, k_apply, di, rank),
+                GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, auto_key.metadata())
+                    | GGLWEAutomorphismKey::automorphism_inplace_scratch_space(
+                        module,
+                        auto_key.metadata().as_glwe(),
+                        auto_key_apply.metadata(),
+                    ),
             );
 
             let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);

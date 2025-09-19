@@ -9,29 +9,31 @@ use poulpy_hal::{
 
 use crate::{
     TakeGLWECt,
-    layouts::{GLWECiphertext, Infos, LWECiphertext, prepared::LWEToGLWESwitchingKeyPrepared},
+    layouts::{GGLWEMetadata, GLWECiphertext, GLWEMetadata, Infos, LWECiphertext, prepared::LWEToGLWESwitchingKeyPrepared},
 };
 
 impl GLWECiphertext<Vec<u8>> {
     pub fn from_lwe_scratch_space<B: Backend>(
         module: &Module<B>,
-        basek_lwe: usize,
-        k_lwe: usize,
-        basek_glwe: usize,
-        k_glwe: usize,
-        basek_ksk: usize,
-        k_ksk: usize,
-        rank: usize,
+        glwe_metadata: GLWEMetadata,
+        lwe_metadata: GLWEMetadata,
+        key_metadata: GGLWEMetadata,
     ) -> usize
     where
         Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        let ct: usize = GLWECiphertext::bytes_of(module.n(), basek_ksk, k_lwe.max(k_lwe), 1);
-        let ks: usize = GLWECiphertext::keyswitch_inplace_scratch_space(module, basek_glwe, k_glwe, basek_ksk, k_ksk, 1, rank);
-        if basek_lwe == basek_ksk {
+        let ct: usize = GLWECiphertext::bytes_of(
+            module.n(),
+            key_metadata.basek,
+            lwe_metadata.k.max(glwe_metadata.k),
+            1,
+        );
+        let ks: usize = GLWECiphertext::keyswitch_inplace_scratch_space(module, glwe_metadata, key_metadata);
+        if lwe_metadata.basek == key_metadata.basek {
             ct + ks
         } else {
-            let a_conv = VecZnx::alloc_bytes(module.n(), 1, k_lwe.div_ceil(basek_lwe)) + module.vec_znx_normalize_tmp_bytes();
+            let a_conv = VecZnx::alloc_bytes(module.n(), 1, lwe_metadata.k.div_ceil(lwe_metadata.basek))
+                + module.vec_znx_normalize_tmp_bytes();
             ct + a_conv + ks
         }
     }

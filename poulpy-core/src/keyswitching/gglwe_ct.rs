@@ -8,7 +8,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    GGLWEAutomorphismKey, GGLWESwitchingKey, GLWECiphertext, Infos,
+    GGLWEAutomorphismKey, GGLWEMetadata, GGLWESwitchingKey, GLWECiphertext, GLWEMetadata, Infos,
     prepared::{GGLWEAutomorphismKeyPrepared, GGLWESwitchingKeyPrepared},
 };
 
@@ -16,36 +16,25 @@ impl GGLWEAutomorphismKey<Vec<u8>> {
     #[allow(clippy::too_many_arguments)]
     pub fn keyswitch_scratch_space<B: Backend>(
         module: &Module<B>,
-        basek_out: usize,
-        k_out: usize,
-        basek_in: usize,
-        k_in: usize,
-        basek_ksk: usize,
-        k_ksk: usize,
-        digits: usize,
-        rank: usize,
+        out_metadata: GLWEMetadata,
+        in_metadata: GLWEMetadata,
+        key_metadata: GGLWEMetadata,
     ) -> usize
     where
         Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        GGLWESwitchingKey::keyswitch_scratch_space(
-            module, basek_out, k_out, basek_in, k_in, basek_ksk, k_ksk, digits, rank, rank,
-        )
+        GGLWESwitchingKey::keyswitch_scratch_space(module, out_metadata, in_metadata, key_metadata)
     }
 
     pub fn keyswitch_inplace_scratch_space<B: Backend>(
         module: &Module<B>,
-        basek_out: usize,
-        k_out: usize,
-        basek_ksk: usize,
-        k_ksk: usize,
-        digits: usize,
-        rank: usize,
+        out_metadata: GLWEMetadata,
+        key_metadata: GGLWEMetadata,
     ) -> usize
     where
         Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        GGLWESwitchingKey::keyswitch_inplace_scratch_space(module, basek_out, k_out, basek_ksk, k_ksk, digits, rank)
+        GGLWESwitchingKey::keyswitch_inplace_scratch_space(module, out_metadata, key_metadata)
     }
 }
 
@@ -100,37 +89,25 @@ impl GGLWESwitchingKey<Vec<u8>> {
     #[allow(clippy::too_many_arguments)]
     pub fn keyswitch_scratch_space<B: Backend>(
         module: &Module<B>,
-        basek_out: usize,
-        k_out: usize,
-        basek_in: usize,
-        k_in: usize,
-        basek_ksk: usize,
-        k_ksk: usize,
-        digits: usize,
-        rank_in: usize,
-        rank_out: usize,
+        out_metadata: GLWEMetadata,
+        in_metadata: GLWEMetadata,
+        key_metadata: GGLWEMetadata,
     ) -> usize
     where
         Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        GLWECiphertext::keyswitch_scratch_space(
-            module, basek_out, k_out, basek_in, k_in, basek_ksk, k_ksk, digits, rank_in, rank_out,
-        )
+        GLWECiphertext::keyswitch_scratch_space(module, out_metadata, in_metadata, key_metadata)
     }
 
     pub fn keyswitch_inplace_scratch_space<B: Backend>(
         module: &Module<B>,
-        basek_out: usize,
-        k_out: usize,
-        basek_ksk: usize,
-        k_ksk: usize,
-        digits: usize,
-        rank: usize,
+        out_metadata: GLWEMetadata,
+        key_metadata: GGLWEMetadata,
     ) -> usize
     where
         Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        GLWECiphertext::keyswitch_inplace_scratch_space(module, basek_out, k_out, basek_ksk, k_ksk, digits, rank)
+        GLWECiphertext::keyswitch_inplace_scratch_space(module, out_metadata, key_metadata)
     }
 }
 

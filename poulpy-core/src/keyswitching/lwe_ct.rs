@@ -8,19 +8,15 @@ use poulpy_hal::{
 };
 
 use crate::{
-    TakeGLWECt,
-    layouts::{GLWECiphertext, Infos, LWECiphertext, prepared::LWESwitchingKeyPrepared},
+    layouts::{prepared::LWESwitchingKeyPrepared, GGLWEMetadata, GLWECiphertext, GLWEMetadata, Infos, LWECiphertext, LWEMetadata}, TakeGLWECt
 };
 
 impl LWECiphertext<Vec<u8>> {
     pub fn keyswitch_scratch_space<B: Backend>(
         module: &Module<B>,
-        basek_out: usize,
-        k_lwe_out: usize,
-        basek_in: usize,
-        k_lwe_in: usize,
-        basek_ksk: usize,
-        k_ksk: usize,
+        out_metadata: LWEMetadata,
+        in_metadata: LWEMetadata,
+        key_metadata: GGLWEMetadata,
     ) -> usize
     where
         Module<B>: VecZnxDftAllocBytes
@@ -35,13 +31,19 @@ impl LWECiphertext<Vec<u8>> {
             + VecZnxBigNormalize<B>
             + VecZnxNormalizeTmpBytes,
     {
-        let ct: usize = GLWECiphertext::bytes_of(module.n(), basek_ksk, k_lwe_out.max(k_lwe_in), 1);
-        let ks: usize = GLWECiphertext::keyswitch_inplace_scratch_space(module, basek_out, k_lwe_out, basek_ksk, k_ksk, 1, 1);
+        let ct: usize = GLWECiphertext::bytes_of(
+            module.n(),
+            key_metadata.basek,
+            out_metadata.k.max(in_metadata.basek),
+            1,
+        );
+        let ks: usize = GLWECiphertext::keyswitch_inplace_scratch_space(module, out_metadata.as_glwe(), key_metadata);
 
-        if basek_in == basek_ksk {
+        if in_metadata.basek == key_metadata.basek {
             ct + ks
         } else {
-            let a_conv = VecZnx::alloc_bytes(module.n(), 1, k_lwe_in.div_ceil(basek_in)) + module.vec_znx_normalize_tmp_bytes();
+            let a_conv = VecZnx::alloc_bytes(module.n(), 1, in_metadata.k.div_ceil(in_metadata.basek))
+                + module.vec_znx_normalize_tmp_bytes();
             ct + a_conv + ks
         }
     }
@@ -75,7 +77,6 @@ impl<DLwe: DataMut> LWECiphertext<DLwe> {
         {
             assert!(self.n() <= module.n());
             assert!(a.n() <= module.n());
-            assert_eq!(self.basek(), a.basek());
         }
 
         let max_k: usize = self.k().max(a.k());
@@ -84,9 +85,9 @@ impl<DLwe: DataMut> LWECiphertext<DLwe> {
 
         let a_size: usize = a.k().div_ceil(ksk.basek());
 
-        let (mut glwe_in, scratch_1) = scratch.take_glwe_ct(ksk.n(), basek_in, max_k, 1);
+        let (mut glwe_in, scratch_1) = scratch.take_glwe_ct(ksk.n(), GLWEMetadata{basek: basek_in, k: max_k, rank: 1});
         glwe_in.data.zero();
-        let (mut glwe_out, scratch_1) = scratch_1.take_glwe_ct(ksk.n(), basek_out, max_k, 1);
+        let (mut glwe_out, scratch_1) = scratch_1.take_glwe_ct(ksk.n(), GLWEMetadata{basek: basek_out, k: max_k, rank: 1});
 
         let n_lwe: usize = a.n();
 

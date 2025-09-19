@@ -11,19 +11,19 @@ use poulpy_hal::{
 
 use crate::{
     TakeGLWESecret, TakeGLWESecretPrepared,
-    layouts::{GGLWEAutomorphismKey, GGLWESwitchingKey, GLWESecret},
+    layouts::{GGLWEAutomorphismKey, GGLWEMetadata, GGLWESwitchingKey, GLWESecret},
 };
 
 impl GGLWEAutomorphismKey<Vec<u8>> {
-    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize
+    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, metadata: GGLWEMetadata) -> usize
     where
         Module<B>: SvpPPolAllocBytes + VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes + VecZnxNormalizeTmpBytes,
     {
-        GGLWESwitchingKey::encrypt_sk_scratch_space(module, basek, k, rank, rank) + GLWESecret::bytes_of(module.n(), rank)
+        GGLWESwitchingKey::encrypt_sk_scratch_space(module, metadata) + GLWESecret::bytes_of(module.n(), metadata.rank_out)
     }
 
-    pub fn encrypt_pk_scratch_space<B: Backend>(module: &Module<B>, _basek: usize, _k: usize, _rank: usize) -> usize {
-        GGLWESwitchingKey::encrypt_pk_scratch_space(module, _basek, _k, _rank, _rank)
+    pub fn encrypt_pk_scratch_space<B: Backend>(module: &Module<B>, metadata: GGLWEMetadata) -> usize {
+        GGLWESwitchingKey::encrypt_pk_scratch_space(module, metadata)
     }
 }
 
@@ -66,13 +66,10 @@ impl<DataSelf: DataMut> GGLWEAutomorphismKey<DataSelf> {
             assert_eq!(self.rank_out(), self.rank_in());
             assert_eq!(sk.rank(), self.rank());
             assert!(
-                scratch.available()
-                    >= GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, self.basek(), self.k(), self.rank()),
-                "scratch.available(): {} < AutomorphismKey::encrypt_sk_scratch_space(module, self.rank()={}, self.size()={}): {}",
+                scratch.available() >= GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, self.metadata()),
+                "scratch.available(): {} < AutomorphismKey::encrypt_sk_scratch_space: {:?}",
                 scratch.available(),
-                self.rank(),
-                self.size(),
-                GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, self.basek(), self.k(), self.rank())
+                GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, self.metadata())
             )
         }
 

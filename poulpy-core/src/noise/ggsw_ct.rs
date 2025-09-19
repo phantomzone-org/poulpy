@@ -48,8 +48,9 @@ impl<D: DataRef> GGSWCiphertext<D> {
         let mut pt_dft: VecZnxDft<Vec<u8>, B> = module.vec_znx_dft_alloc(1, self.size());
         let mut pt_big: VecZnxBig<Vec<u8>, B> = module.vec_znx_big_alloc(1, self.size());
 
-        let mut scratch: ScratchOwned<B> =
-            ScratchOwned::alloc(GLWECiphertext::decrypt_scratch_space(module, basek, k) | module.vec_znx_normalize_tmp_bytes());
+        let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
+            GLWECiphertext::decrypt_scratch_space(module, self.metadata().as_glwe()) | module.vec_znx_normalize_tmp_bytes(),
+        );
 
         (0..self.rank() + 1).for_each(|col_j| {
             (0..self.rows()).for_each(|row_i| {
@@ -113,8 +114,9 @@ impl<D: DataRef> GGSWCiphertext<D> {
         let mut pt_dft: VecZnxDft<Vec<u8>, B> = module.vec_znx_dft_alloc(1, self.size());
         let mut pt_big: VecZnxBig<Vec<u8>, B> = module.vec_znx_big_alloc(1, self.size());
 
-        let mut scratch: ScratchOwned<B> =
-            ScratchOwned::alloc(GLWECiphertext::decrypt_scratch_space(module, basek, k) | module.vec_znx_normalize_tmp_bytes());
+        let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
+            GLWECiphertext::decrypt_scratch_space(module, self.metadata().as_glwe()) | module.vec_znx_normalize_tmp_bytes(),
+        );
 
         (0..self.rank() + 1).for_each(|col_j| {
             (0..self.rows()).for_each(|row_i| {

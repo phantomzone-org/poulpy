@@ -10,7 +10,7 @@ use poulpy_hal::{
 
 use crate::{
     layouts::{
-        GGLWECiphertext, GGSWCiphertext, GLWECiphertext, Infos,
+        GGLWECiphertext, GGLWEMetadata, GGSWCiphertext, GGSWMetadata, GLWECiphertext, Infos,
         prepared::{GGLWESwitchingKeyPrepared, GGLWETensorKeyPrepared},
     },
     operations::GLWEOperations,
@@ -19,21 +19,28 @@ use crate::{
 impl GGSWCiphertext<Vec<u8>> {
     pub(crate) fn expand_row_scratch_space<B: Backend>(
         module: &Module<B>,
-        k_out: usize,
-        basek_tsk: usize,
-        k_tsk: usize,
-        digits: usize,
-        rank: usize,
+        out_metadata: GGSWMetadata,
+        tsk_metadata: GGLWEMetadata,
     ) -> usize
     where
         Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigAllocBytes + VecZnxNormalizeTmpBytes,
     {
-        let tsk_size: usize = k_tsk.div_ceil(basek_tsk);
-        let size_in = k_out.div_ceil(basek_tsk).div_ceil(digits);
+        let tsk_size: usize = tsk_metadata.k.div_ceil(tsk_metadata.basek);
+        let size_in: usize = out_metadata
+            .k
+            .div_ceil(tsk_metadata.basek)
+            .div_ceil(tsk_metadata.digits);
 
-        let tmp_dft_i: usize = module.vec_znx_dft_alloc_bytes(rank + 1, tsk_size);
+        let tmp_dft_i: usize = module.vec_znx_dft_alloc_bytes(tsk_metadata.rank_out + 1, tsk_size);
         let tmp_a: usize = module.vec_znx_dft_alloc_bytes(1, size_in);
-        let vmp: usize = module.vmp_apply_dft_to_dft_tmp_bytes(tsk_size, size_in, size_in, rank, rank, tsk_size);
+        let vmp: usize = module.vmp_apply_dft_to_dft_tmp_bytes(
+            tsk_size,
+            size_in,
+            size_in,
+            tsk_metadata.rank_in,
+            tsk_metadata.rank_out,
+            tsk_size,
+        );
         let tmp_idft: usize = module.vec_znx_big_alloc_bytes(1, tsk_size);
         let norm: usize = module.vec_znx_normalize_tmp_bytes();
 
@@ -43,17 +50,10 @@ impl GGSWCiphertext<Vec<u8>> {
     #[allow(clippy::too_many_arguments)]
     pub fn keyswitch_scratch_space<B: Backend>(
         module: &Module<B>,
-        basek_out: usize,
-        k_out: usize,
-        basek_in: usize,
-        k_in: usize,
-        basek_ksk: usize,
-        k_ksk: usize,
-        digits_ksk: usize,
-        basek_tsk: usize,
-        k_tsk: usize,
-        digits_tsk: usize,
-        rank: usize,
+        out_metadata: GGSWMetadata,
+        in_metadata: GGSWMetadata,
+        key_metadata: GGLWEMetadata,
+        tsk_metadata: GGLWEMetadata,
     ) -> usize
     where
         Module<B>: VecZnxDftAllocBytes
@@ -62,20 +62,32 @@ impl GGSWCiphertext<Vec<u8>> {
             + VecZnxNormalizeTmpBytes
             + VecZnxBigNormalizeTmpBytes,
     {
-        let size_out: usize = k_out.div_ceil(basek_out);
+        #[cfg(debug_assertions)]
+        {
+            assert_eq!(key_metadata.rank_in, key_metadata.rank_out);
+            assert_eq!(tsk_metadata.rank_in, tsk_metadata.rank_out);
+            assert_eq!(key_metadata.rank_in, tsk_metadata.rank_in);
+        }
+
+        let rank: usize = key_metadata.rank_out;
+
+        let size_out: usize = out_metadata.k.div_ceil(out_metadata.basek);
         let res_znx: usize = VecZnx::alloc_bytes(module.n(), rank + 1, size_out);
         let ci_dft: usize = module.vec_znx_dft_alloc_bytes(rank + 1, size_out);
         let ks: usize = GLWECiphertext::keyswitch_scratch_space(
-            module, basek_out, k_out, basek_in, k_in, basek_ksk, k_ksk, digits_ksk, rank, rank,
+            module,
+            out_metadata.as_glwe(),
+            in_metadata.as_glwe(),
+            key_metadata,
         );
-        let expand_rows: usize = GGSWCiphertext::expand_row_scratch_space(module, k_out, basek_tsk, k_tsk, digits_tsk, rank);
+        let expand_rows: usize = GGSWCiphertext::expand_row_scratch_space(module, out_metadata, tsk_metadata);
         let res_dft: usize = module.vec_znx_dft_alloc_bytes(rank + 1, size_out);
 
-        if basek_in == basek_tsk {
+        if in_metadata.basek == tsk_metadata.basek {
             res_znx + ci_dft + (ks | expand_rows | res_dft)
         } else {
-            let a_conv: usize =
-                VecZnx::alloc_bytes(module.n(), 1, k_in.div_ceil(basek_tsk)) + module.vec_znx_normalize_tmp_bytes();
+            let a_conv: usize = VecZnx::alloc_bytes(module.n(), 1, out_metadata.k.div_ceil(tsk_metadata.basek))
+                + module.vec_znx_normalize_tmp_bytes();
             res_znx + ci_dft + (a_conv | ks | expand_rows | res_dft)
         }
     }
@@ -83,15 +95,9 @@ impl GGSWCiphertext<Vec<u8>> {
     #[allow(clippy::too_many_arguments)]
     pub fn keyswitch_inplace_scratch_space<B: Backend>(
         module: &Module<B>,
-        basek_out: usize,
-        k_out: usize,
-        basek_ksk: usize,
-        k_ksk: usize,
-        digits_ksk: usize,
-        basek_tsk: usize,
-        k_tsk: usize,
-        digits_tsk: usize,
-        rank: usize,
+        out_metadata: GGSWMetadata,
+        key_metadata: GGLWEMetadata,
+        tsk_metadata: GGLWEMetadata,
     ) -> usize
     where
         Module<B>: VecZnxDftAllocBytes
@@ -101,7 +107,11 @@ impl GGSWCiphertext<Vec<u8>> {
             + VecZnxBigNormalizeTmpBytes,
     {
         GGSWCiphertext::keyswitch_scratch_space(
-            module, basek_out, k_out, basek_out, k_out, basek_ksk, k_ksk, digits_ksk, basek_tsk, k_tsk, digits_tsk, rank,
+            module,
+            out_metadata,
+            out_metadata,
+            key_metadata,
+            tsk_metadata,
         )
     }
 }
@@ -237,17 +247,7 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
         let basek_in: usize = self.basek();
         let basek_tsk: usize = tsk.basek();
 
-        assert!(
-            scratch.available()
-                >= GGSWCiphertext::expand_row_scratch_space(
-                    module,
-                    self.k(),
-                    basek_tsk,
-                    tsk.k(),
-                    tsk.digits(),
-                    tsk.rank()
-                )
-        );
+        assert!(scratch.available() >= GGSWCiphertext::expand_row_scratch_space(module, self.metadata(), tsk.metadata()));
 
         let n: usize = self.n();
         let rank: usize = self.rank();

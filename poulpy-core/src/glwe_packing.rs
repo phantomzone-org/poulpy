@@ -13,7 +13,7 @@ use poulpy_hal::{
 
 use crate::{
     GLWEOperations, TakeGLWECt,
-    layouts::{GLWECiphertext, Infos, prepared::GGLWEAutomorphismKeyPrepared},
+    layouts::{GGLWEMetadata, GLWECiphertext, GLWEMetadata, Infos, prepared::GGLWEAutomorphismKeyPrepared},
 };
 
 /// [GLWEPacker] enables only the fly GLWE packing
@@ -43,9 +43,9 @@ impl Accumulator {
     /// * `basek`: base 2 logarithm of the GLWE ciphertext in memory digit representation.
     /// * `k`: base 2 precision of the GLWE ciphertext precision over the Torus.
     /// * `rank`: rank of the GLWE ciphertext.
-    pub fn alloc(n: usize, basek: usize, k: usize, rank: usize) -> Self {
+    pub fn alloc(n: usize, metadata: GLWEMetadata) -> Self {
         Self {
-            data: GLWECiphertext::alloc(n, basek, k, rank),
+            data: GLWECiphertext::alloc(n, metadata),
             value: false,
             control: false,
         }
@@ -66,10 +66,10 @@ impl GLWEPacker {
     /// * `basek`: base 2 logarithm of the GLWE ciphertext in memory digit representation.
     /// * `k`: base 2 precision of the GLWE ciphertext precision over the Torus.
     /// * `rank`: rank of the GLWE ciphertext.
-    pub fn new(n: usize, log_batch: usize, basek: usize, k: usize, rank: usize) -> Self {
+    pub fn new(n: usize, log_batch: usize, metadata: GLWEMetadata) -> Self {
         let mut accumulators: Vec<Accumulator> = Vec::<Accumulator>::new();
         let log_n: usize = (usize::BITS - (n - 1).leading_zeros()) as _;
-        (0..log_n - log_batch).for_each(|_| accumulators.push(Accumulator::alloc(n, basek, k, rank)));
+        (0..log_n - log_batch).for_each(|_| accumulators.push(Accumulator::alloc(n, metadata)));
         Self {
             accumulators,
             log_batch,
@@ -87,19 +87,11 @@ impl GLWEPacker {
     }
 
     /// Number of scratch space bytes required to call [Self::add].
-    pub fn scratch_space<B: Backend>(
-        module: &Module<B>,
-        basek_ct: usize,
-        k_ct: usize,
-        basek_ksk: usize,
-        k_ksk: usize,
-        digits: usize,
-        rank: usize,
-    ) -> usize
+    pub fn scratch_space<B: Backend>(module: &Module<B>, out_metadata: GLWEMetadata, key_metadata: GGLWEMetadata) -> usize
     where
         Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        pack_core_scratch_space(module, basek_ct, k_ct, basek_ksk, k_ksk, digits, rank)
+        pack_core_scratch_space(module, out_metadata, key_metadata)
     }
 
     pub fn galois_elements<B: Backend>(module: &Module<B>) -> Vec<i64> {
@@ -180,19 +172,11 @@ impl GLWEPacker {
     }
 }
 
-fn pack_core_scratch_space<B: Backend>(
-    module: &Module<B>,
-    basek_ct: usize,
-    k_ct: usize,
-    basek_ksk: usize,
-    k_ksk: usize,
-    digits: usize,
-    rank: usize,
-) -> usize
+fn pack_core_scratch_space<B: Backend>(module: &Module<B>, out_metadata: GLWEMetadata, key_metadata: GGLWEMetadata) -> usize
 where
     Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
 {
-    combine_scratch_space(module, basek_ct, k_ct, basek_ksk, k_ksk, digits, rank)
+    combine_scratch_space(module, out_metadata, key_metadata)
 }
 
 fn pack_core<D: DataRef, DataAK: DataRef, B: Backend>(
@@ -277,23 +261,17 @@ fn pack_core<D: DataRef, DataAK: DataRef, B: Backend>(
     }
 }
 
-fn combine_scratch_space<B: Backend>(
-    module: &Module<B>,
-    basek_ct: usize,
-    k_ct: usize,
-    basek_ksk: usize,
-    k_ksk: usize,
-    digits: usize,
-    rank: usize,
-) -> usize
+fn combine_scratch_space<B: Backend>(module: &Module<B>, out_metadata: GLWEMetadata, key_metadata: GGLWEMetadata) -> usize
 where
     Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
 {
-    GLWECiphertext::bytes_of(module.n(), basek_ct, k_ct, rank)
-        + (GLWECiphertext::rsh_scratch_space(module.n())
-            | GLWECiphertext::automorphism_scratch_space(
-                module, basek_ct, k_ct, basek_ct, k_ct, basek_ksk, k_ksk, digits, rank,
-            ))
+    GLWECiphertext::bytes_of(
+        module.n(),
+        out_metadata.basek,
+        out_metadata.k,
+        key_metadata.rank_out,
+    ) + (GLWECiphertext::rsh_scratch_space(module.n())
+        | GLWECiphertext::automorphism_inplace_scratch_space(module, out_metadata, key_metadata))
 }
 
 /// [combine] merges two ciphertexts together.

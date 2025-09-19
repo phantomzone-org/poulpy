@@ -5,8 +5,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    GGLWETensorKey, Infos,
-    compressed::{Decompress, GGLWESwitchingKeyCompressed},
+    compressed::{Decompress, GGLWESwitchingKeyCompressed}, GGLWEMetadata, GGLWETensorKey, Infos
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::fmt;
@@ -52,20 +51,20 @@ impl<D: DataRef> fmt::Display for GGLWETensorKeyCompressed<D> {
 }
 
 impl GGLWETensorKeyCompressed<Vec<u8>> {
-    pub fn alloc(n: usize, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self {
+    pub fn alloc(n: usize, metadata: GGLWEMetadata) -> Self {
+        debug_assert_eq!(metadata.rank_in, 1);
         let mut keys: Vec<GGLWESwitchingKeyCompressed<Vec<u8>>> = Vec::new();
-        let pairs: usize = (((rank + 1) * rank) >> 1).max(1);
+        let pairs: usize = (((metadata.rank_out + 1) * metadata.rank_out) >> 1).max(1);
         (0..pairs).for_each(|_| {
             keys.push(GGLWESwitchingKeyCompressed::alloc(
-                n, basek, k, rows, digits, 1, rank,
-            ));
+                n, metadata));
         });
         Self { keys }
     }
 
-    pub fn bytes_of(n: usize, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize {
-        let pairs: usize = (((rank + 1) * rank) >> 1).max(1);
-        pairs * GGLWESwitchingKeyCompressed::bytes_of(n, basek, k, rows, digits, 1)
+    pub fn bytes_of(n: usize, metadata: GGLWEMetadata) -> usize {
+        let pairs: usize = (((metadata.rank_out + 1) * metadata.rank_out) >> 1).max(1);
+        pairs * GGLWESwitchingKeyCompressed::bytes_of(n, metadata)
     }
 }
 
