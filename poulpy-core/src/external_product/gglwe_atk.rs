@@ -7,42 +7,35 @@ use poulpy_hal::{
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
 };
 
-use crate::layouts::{GGLWEAutomorphismKey, GGLWESwitchingKey, prepared::GGSWCiphertextPrepared};
+use crate::layouts::{GGLWEAutomorphismKey, GGLWELayoutInfos, GGLWESwitchingKey, GGSWInfos, prepared::GGSWCiphertextPrepared};
 
 impl GGLWEAutomorphismKey<Vec<u8>> {
-    #[allow(clippy::too_many_arguments)]
-    pub fn external_product_scratch_space<B: Backend>(
+    pub fn external_product_scratch_space<B: Backend, OUT, IN, GGSW>(
         module: &Module<B>,
-        basek_out: usize,
-        k_out: usize,
-        basek_in: usize,
-        k_in: usize,
-        basek_ggsw: usize,
-        k_ggsw: usize,
-        digits: usize,
-        rank: usize,
+        out_infos: &OUT,
+        in_infos: &IN,
+        ggsw_infos: &GGSW,
     ) -> usize
     where
+        OUT: GGLWELayoutInfos,
+        IN: GGLWELayoutInfos,
+        GGSW: GGSWInfos,
         Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        GGLWESwitchingKey::external_product_scratch_space(
-            module, basek_out, k_out, basek_in, k_in, basek_ggsw, k_ggsw, digits, rank,
-        )
+        GGLWESwitchingKey::external_product_scratch_space(module, out_infos, in_infos, ggsw_infos)
     }
 
-    pub fn external_product_inplace_scratch_space<B: Backend>(
+    pub fn external_product_inplace_scratch_space<B: Backend, OUT, GGSW>(
         module: &Module<B>,
-        basek_out: usize,
-        k_out: usize,
-        basek_ggsw: usize,
-        k_ggsw: usize,
-        digits: usize,
-        rank: usize,
+        out_infos: &OUT,
+        ggsw_infos: &GGSW,
     ) -> usize
     where
+        OUT: GGLWELayoutInfos,
+        GGSW: GGSWInfos,
         Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        GGLWESwitchingKey::external_product_inplace_scratch_space(module, basek_out, k_out, basek_ggsw, k_ggsw, digits, rank)
+        GGLWESwitchingKey::external_product_inplace_scratch_space(module, out_infos, ggsw_infos)
     }
 }
 

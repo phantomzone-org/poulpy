@@ -11,19 +11,33 @@ use poulpy_hal::{
 
 use crate::{
     TakeGLWESecret, TakeGLWESecretPrepared,
-    layouts::{GGLWEAutomorphismKey, GGLWESwitchingKey, GLWESecret},
+    layouts::{GGLWEAutomorphismKey, GGLWELayoutInfos, GGLWESwitchingKey, GLWEInfos, GLWESecret, LWEInfos},
 };
 
 impl GGLWEAutomorphismKey<Vec<u8>> {
-    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize
+    pub fn encrypt_sk_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
+        A: GGLWELayoutInfos,
         Module<B>: SvpPPolAllocBytes + VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes + VecZnxNormalizeTmpBytes,
     {
-        GGLWESwitchingKey::encrypt_sk_scratch_space(module, basek, k, rank, rank) + GLWESecret::bytes_of(module.n(), rank)
+        assert_eq!(
+            infos.rank_in(),
+            infos.rank_out(),
+            "rank_in != rank_out is not supported for GGLWEAutomorphismKey"
+        );
+        GGLWESwitchingKey::encrypt_sk_scratch_space(module, infos) + GLWESecret::alloc_bytes(&infos.glwe_layout())
     }
 
-    pub fn encrypt_pk_scratch_space<B: Backend>(module: &Module<B>, _basek: usize, _k: usize, _rank: usize) -> usize {
-        GGLWESwitchingKey::encrypt_pk_scratch_space(module, _basek, _k, _rank, _rank)
+    pub fn encrypt_pk_scratch_space<B: Backend, A>(module: &Module<B>, _infos: &A) -> usize
+    where
+        A: GGLWELayoutInfos,
+    {
+        assert_eq!(
+            _infos.rank_in(),
+            _infos.rank_out(),
+            "rank_in != rank_out is not supported for GGLWEAutomorphismKey"
+        );
+        GGLWESwitchingKey::encrypt_pk_scratch_space(module, _infos)
     }
 }
 
@@ -60,26 +74,23 @@ impl<DataSelf: DataMut> GGLWEAutomorphismKey<DataSelf> {
     {
         #[cfg(debug_assertions)]
         {
-            use crate::layouts::Infos;
+            use crate::layouts::{GLWEInfos, LWEInfos};
 
             assert_eq!(self.n(), sk.n());
             assert_eq!(self.rank_out(), self.rank_in());
-            assert_eq!(sk.rank(), self.rank());
+            assert_eq!(sk.rank(), self.rank_out());
             assert!(
-                scratch.available()
-                    >= GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, self.basek(), self.k(), self.rank()),
-                "scratch.available(): {} < AutomorphismKey::encrypt_sk_scratch_space(module, self.rank()={}, self.size()={}): {}",
+                scratch.available() >= GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, self),
+                "scratch.available(): {} < AutomorphismKey::encrypt_sk_scratch_space: {:?}",
                 scratch.available(),
-                self.rank(),
-                self.size(),
-                GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, self.basek(), self.k(), self.rank())
+                GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, self)
             )
         }
 
         let (mut sk_out, scratch_1) = scratch.take_glwe_secret(sk.n(), sk.rank());
 
         {
-            (0..self.rank()).for_each(|i| {
+            (0..self.rank_out().into()).for_each(|i| {
                 module.vec_znx_automorphism(
                     module.galois_element_inv(p),
                     &mut sk_out.data.as_vec_znx_mut(),

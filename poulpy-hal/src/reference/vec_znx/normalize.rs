@@ -111,7 +111,7 @@ pub fn vec_znx_normalize<R, A, ZNXARI>(
 
         let mut j: usize = a_min_size - 1;
         for j_tild in (0..res_min_size).rev() {
-            // Accumulate carry until precision is greater than receiver basek
+            // Accumulate carry until precision is greater than receiver base2k
             while j * a_basek + res_basek > (j_tild + 1) * res_basek {
                 ZNXARI::znx_muladd_power_of_two(
                     ((j_tild + 1) * res_basek - j * a_basek) as i64,
@@ -135,7 +135,7 @@ pub fn vec_znx_normalize<R, A, ZNXARI>(
     }
 }
 
-pub fn vec_znx_normalize_inplace<R: VecZnxToMut, ZNXARI>(basek: usize, res: &mut R, res_col: usize, carry: &mut [i64])
+pub fn vec_znx_normalize_inplace<R: VecZnxToMut, ZNXARI>(base2k: usize, res: &mut R, res_col: usize, carry: &mut [i64])
 where
     ZNXARI: ZnxNormalizeFirstStepInplace + ZnxNormalizeMiddleStepInplace + ZnxNormalizeFinalStepInplace,
 {
@@ -150,11 +150,11 @@ where
 
     for j in (0..res_size).rev() {
         if j == res_size - 1 {
-            ZNXARI::znx_normalize_first_step_inplace(basek, 0, res.at_mut(res_col, j), carry);
+            ZNXARI::znx_normalize_first_step_inplace(base2k, 0, res.at_mut(res_col, j), carry);
         } else if j == 0 {
-            ZNXARI::znx_normalize_final_step_inplace::<false>(basek, 0, res.at_mut(res_col, j), carry);
+            ZNXARI::znx_normalize_final_step_inplace::<false>(base2k, 0, res.at_mut(res_col, j), carry);
         } else {
-            ZNXARI::znx_normalize_middle_step_inplace::<false>(basek, 0, res.at_mut(res_col, j), carry);
+            ZNXARI::znx_normalize_middle_step_inplace::<false>(base2k, 0, res.at_mut(res_col, j), carry);
         }
     }
 }
@@ -179,7 +179,7 @@ where
 
         let module: Module<B> = Module::<B>::new(n as u64);
 
-        let basek: usize = 50;
+        let base2k: usize = 50;
 
         let mut source: Source = Source::new([0u8; 32]);
 
@@ -194,7 +194,7 @@ where
 
         move || {
             for i in 0..cols {
-                module.vec_znx_normalize(basek, &mut res, i, basek, &a, i, scratch.borrow());
+                module.vec_znx_normalize(base2k, &mut res, i, base2k, &a, i, scratch.borrow());
             }
             black_box(());
         }
@@ -229,7 +229,7 @@ where
 
         let module: Module<B> = Module::<B>::new(n as u64);
 
-        let basek: usize = 50;
+        let base2k: usize = 50;
 
         let mut source: Source = Source::new([0u8; 32]);
 
@@ -242,7 +242,7 @@ where
 
         move || {
             for i in 0..cols {
-                module.vec_znx_normalize_inplace(basek, &mut a, i, scratch.borrow());
+                module.vec_znx_normalize_inplace(base2k, &mut a, i, scratch.borrow());
             }
             black_box(());
         }

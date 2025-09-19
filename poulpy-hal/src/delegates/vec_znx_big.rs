@@ -64,7 +64,7 @@ where
 {
     fn vec_znx_big_add_normal<R: VecZnxBigToMut<B>>(
         &self,
-        basek: usize,
+        base2k: usize,
         res: &mut R,
         res_col: usize,
         k: usize,
@@ -72,7 +72,7 @@ where
         sigma: f64,
         bound: f64,
     ) {
-        B::add_normal_impl(self, basek, res, res_col, k, source, sigma, bound);
+        B::add_normal_impl(self, base2k, res, res_col, k, source, sigma, bound);
     }
 }
 

@@ -2,7 +2,10 @@ use std::hint::black_box;
 
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use poulpy_backend::{FFT64Avx, FFT64Ref, FFT64Spqlios};
-use poulpy_core::layouts::{GGSWCiphertext, GLWESecret, LWECiphertext, LWESecret, prepared::PrepareAlloc};
+use poulpy_core::layouts::{
+    Digits, GGLWEAutomorphismKeyLayout, GGLWETensorKeyLayout, GGSWCiphertext, GGSWCiphertextLayout, GLWESecret, LWECiphertext,
+    LWECiphertextLayout, LWESecret, prepared::PrepareAlloc,
+};
 use poulpy_hal::{
     api::{
         ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolAlloc,
@@ -25,10 +28,11 @@ use poulpy_hal::{
 use poulpy_schemes::tfhe::{
     blind_rotation::{
         BlincRotationExecute, BlindRotationAlgo, BlindRotationKey, BlindRotationKeyAlloc, BlindRotationKeyEncryptSk,
-        BlindRotationKeyPrepared, CGGI,
+        BlindRotationKeyInfos, BlindRotationKeyLayout, BlindRotationKeyPrepared, CGGI,
     },
     circuit_bootstrapping::{
-        CircuitBootstrappingKey, CircuitBootstrappingKeyEncryptSk, CircuitBootstrappingKeyPrepared, CirtuitBootstrappingExecute,
+        CircuitBootstrappingKey, CircuitBootstrappingKeyEncryptSk, CircuitBootstrappingKeyLayout,
+        CircuitBootstrappingKeyPrepared, CirtuitBootstrappingExecute,
     },
 };
 
@@ -105,22 +109,12 @@ where
 
     struct Params {
         name: String,
-        n_glwe: usize,
-        n_lwe: usize,
-        rank: usize,
-        basek: usize,
         extension_factor: usize,
-        block_size: usize,
-        rows_ggsw: usize,
-        rows_brk: usize,
-        rows_trace: usize,
-        rows_tsk: usize,
         k_pt: usize,
-        k_ggsw: usize,
-        k_lwe: usize,
-        k_brk: usize,
-        k_trace: usize,
-        k_tsk: usize,
+        block_size: usize,
+        lwe_infos: LWECiphertextLayout,
+        ggsw_infos: GGSWCiphertextLayout,
+        cbt_infos: CircuitBootstrappingKeyLayout,
     }
 
     fn runner<B: Backend, BRA: BlindRotationAlgo>(params: &Params) -> impl FnMut()
@@ -189,59 +183,40 @@ where
         BlindRotationKeyPrepared<Vec<u8>, BRA, B>: BlincRotationExecute<B>,
         BlindRotationKey<Vec<u8>, BRA>: BlindRotationKeyAlloc + BlindRotationKeyEncryptSk<B>,
     {
-        let n_glwe: usize = params.n_glwe;
-        let basek: usize = params.basek;
-        let extension_factor: usize = params.extension_factor;
-        let rank: usize = params.rank;
-        let n_lwe: usize = params.n_lwe;
-        let k_pt: usize = params.k_pt;
-        let k_lwe: usize = params.k_lwe;
-        let block_size: usize = params.block_size;
-        let rows_ggsw: usize = params.rows_ggsw;
-        let k_ggsw: usize = params.k_ggsw;
-        let rows_brk: usize = params.rows_brk;
-        let k_brk: usize = params.k_brk;
-        let rows_trace: usize = params.rows_trace;
-        let k_trace: usize = params.k_trace;
-        let rows_tsk: usize = params.rows_tsk;
-        let k_tsk: usize = params.k_tsk;
-
         // Scratch space (4MB)
         let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(1 << 22);
 
-        let module: Module<B> = Module::<B>::new(n_glwe as u64);
+        let n_glwe: poulpy_core::layouts::Degree = params.cbt_infos.layout_brk.n_glwe();
+        let n_lwe: poulpy_core::layouts::Degree = params.cbt_infos.layout_brk.n_lwe();
+        let rank: poulpy_core::layouts::Rank = params.cbt_infos.layout_brk.rank;
+
+        let module: Module<B> = Module::<B>::new(n_glwe.as_u32() as u64);
 
         let mut source_xs: Source = Source::new([1u8; 32]);
         let mut source_xa: Source = Source::new([1u8; 32]);
         let mut source_xe: Source = Source::new([1u8; 32]);
 
         let mut sk_lwe: LWESecret<Vec<u8>> = LWESecret::alloc(n_lwe);
-        sk_lwe.fill_binary_block(block_size, &mut source_xs);
+        sk_lwe.fill_binary_block(params.block_size, &mut source_xs);
         sk_lwe.fill_zero();
 
-        let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc(n_glwe, rank);
+        let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc_with(n_glwe, rank);
         sk_glwe.fill_ternary_prob(0.5, &mut source_xs);
 
-        let ct_lwe: LWECiphertext<Vec<u8>> = LWECiphertext::alloc(n_lwe, basek, k_lwe);
+        let ct_lwe: LWECiphertext<Vec<u8>> = LWECiphertext::alloc(&params.lwe_infos);
 
         // Circuit bootstrapping evaluation key
         let cbt_key: CircuitBootstrappingKey<Vec<u8>, BRA> = CircuitBootstrappingKey::encrypt_sk(
             &module,
-            basek,
             &sk_lwe,
             &sk_glwe,
-            k_brk,
-            rows_brk,
-            k_trace,
-            rows_trace,
-            k_tsk,
-            rows_tsk,
+            &params.cbt_infos,
             &mut source_xa,
             &mut source_xe,
             scratch.borrow(),
         );
 
-        let mut res: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(n_glwe, basek, k_ggsw, rows_ggsw, 1, rank);
+        let mut res: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(&params.ggsw_infos);
         let cbt_prepared: CircuitBootstrappingKeyPrepared<Vec<u8>, BRA, B> = cbt_key.prepare_alloc(&module, scratch.borrow());
 
         move || {
@@ -249,8 +224,8 @@ where
                 &module,
                 &mut res,
                 &ct_lwe,
-                k_pt,
-                extension_factor,
+                params.k_pt,
+                params.extension_factor,
                 scratch.borrow(),
             );
             black_box(());
@@ -259,22 +234,48 @@ where
 
     for params in [Params {
         name: String::from("1-bit"),
-        n_glwe: 1024,
-        basek: 13,
         extension_factor: 1,
-        rank: 2,
-        n_lwe: 574,
         k_pt: 1,
-        k_lwe: 13,
+        lwe_infos: LWECiphertextLayout {
+            n: 574_u32.into(),
+            k: 13_u32.into(),
+            base2k: 13_u32.into(),
+        },
         block_size: 7,
-        rows_ggsw: 2,
-        k_ggsw: 39,
-        rows_brk: 3,
-        k_brk: 52,
-        rows_trace: 3,
-        k_trace: 52,
-        rows_tsk: 3,
-        k_tsk: 52,
+        ggsw_infos: GGSWCiphertextLayout {
+            n: 1024_u32.into(),
+            base2k: 13_u32.into(),
+            k: 26_u32.into(),
+            rows: 2_u32.into(),
+            digits: 1_u32.into(),
+            rank: 2_u32.into(),
+        },
+        cbt_infos: CircuitBootstrappingKeyLayout {
+            layout_brk: BlindRotationKeyLayout {
+                n_glwe: 1024_u32.into(),
+                n_lwe: 574_u32.into(),
+                base2k: 13_u32.into(),
+                k: 52_u32.into(),
+                rows: 3_u32.into(),
+                rank: 2_u32.into(),
+            },
+            layout_atk: GGLWEAutomorphismKeyLayout {
+                n: 1024_u32.into(),
+                base2k: 13_u32.into(),
+                k: 52_u32.into(),
+                rows: 3_u32.into(),
+                digits: Digits(1),
+                rank: 2_u32.into(),
+            },
+            layout_tsk: GGLWETensorKeyLayout {
+                n: 1024_u32.into(),
+                base2k: 13_u32.into(),
+                k: 52_u32.into(),
+                rows: 3_u32.into(),
+                digits: Digits(1),
+                rank: 2_u32.into(),
+            },
+        },
     }] {
         let id: BenchmarkId = BenchmarkId::from_parameter(params.name.clone());
         let mut runner = runner::<B, BRA>(&params);

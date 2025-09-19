@@ -1,7 +1,7 @@
 use crate::{
     alloc_aligned,
     layouts::{
-        Data, DataMut, DataRef, DataView, DataViewMut, DigestU64, FillUniform, ReaderFrom, Reset, ToOwnedDeep, VecZnx, WriterTo,
+        Data, DataMut, DataRef, DataView, DataViewMut, DigestU64, FillUniform, ReaderFrom, ToOwnedDeep, VecZnx, WriterTo,
         ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero,
     },
     source::Source,
@@ -208,17 +208,6 @@ impl<D: DataMut> FillUniform for MatZnx<D> {
                 }
             }
         }
-    }
-}
-
-impl<D: DataMut> Reset for MatZnx<D> {
-    fn reset(&mut self) {
-        self.zero();
-        self.n = 0;
-        self.size = 0;
-        self.rows = 0;
-        self.cols_in = 0;
-        self.cols_out = 0;
     }
 }
 

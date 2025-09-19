@@ -9,27 +9,38 @@ use poulpy_hal::{
 
 use crate::{
     TakeGLWECt,
-    layouts::{GLWECiphertext, Infos, LWECiphertext, prepared::GLWEToLWESwitchingKeyPrepared},
+    layouts::{
+        GGLWELayoutInfos, GLWECiphertext, GLWECiphertextLayout, GLWEInfos, LWECiphertext, LWEInfos, Rank,
+        prepared::GLWEToLWESwitchingKeyPrepared,
+    },
 };
 
 impl LWECiphertext<Vec<u8>> {
-    pub fn from_glwe_scratch_space<B: Backend>(
+    pub fn from_glwe_scratch_space<B: Backend, OUT, IN, KEY>(
         module: &Module<B>,
-        basek_lwe: usize,
-        k_lwe: usize,
-        basek_glwe: usize,
-        k_glwe: usize,
-        basek_ksk: usize,
-        k_ksk: usize,
-        rank: usize,
+        lwe_infos: &OUT,
+        glwe_infos: &IN,
+        key_infos: &KEY,
     ) -> usize
     where
+        OUT: LWEInfos,
+        IN: GLWEInfos,
+        KEY: GGLWELayoutInfos,
         Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        GLWECiphertext::bytes_of(module.n(), basek_lwe, k_lwe, 1)
-            + GLWECiphertext::keyswitch_scratch_space(
-                module, basek_lwe, k_lwe, basek_glwe, k_glwe, basek_ksk, k_ksk, 1, rank, 1,
-            )
+        let glwe_layout: GLWECiphertextLayout = GLWECiphertextLayout {
+            n: module.n().into(),
+            base2k: lwe_infos.base2k(),
+            k: lwe_infos.k(),
+            rank: Rank(1),
+        };
+
+        GLWECiphertext::alloc_bytes_with(
+            module.n().into(),
+            lwe_infos.base2k(),
+            lwe_infos.k(),
+            1u32.into(),
+        ) + GLWECiphertext::keyswitch_scratch_space(module, &glwe_layout, glwe_infos, key_infos)
     }
 }
 
@@ -38,11 +49,11 @@ impl<DLwe: DataMut> LWECiphertext<DLwe> {
         #[cfg(debug_assertions)]
         {
             assert!(self.n() <= a.n());
-            assert!(self.basek() == a.basek());
+            assert!(self.base2k() == a.base2k());
         }
 
         let min_size: usize = self.size().min(a.size());
-        let n: usize = self.n();
+        let n: usize = self.n().into();
 
         self.data.zero();
         (0..min_size).for_each(|i| {
@@ -76,11 +87,19 @@ impl<DLwe: DataMut> LWECiphertext<DLwe> {
     {
         #[cfg(debug_assertions)]
         {
-            assert_eq!(a.n(), module.n());
-            assert_eq!(ks.n(), module.n());
-            assert!(self.n() <= module.n());
+            assert_eq!(a.n(), module.n() as u32);
+            assert_eq!(ks.n(), module.n() as u32);
+            assert!(self.n() <= module.n() as u32);
         }
-        let (mut tmp_glwe, scratch_1) = scratch.take_glwe_ct(module.n(), self.basek(), self.k(), 1);
+
+        let glwe_layout: GLWECiphertextLayout = GLWECiphertextLayout {
+            n: module.n().into(),
+            base2k: self.base2k(),
+            k: self.k(),
+            rank: Rank(1),
+        };
+
+        let (mut tmp_glwe, scratch_1) = scratch.take_glwe_ct(&glwe_layout);
         tmp_glwe.keyswitch(module, a, &ks.0, scratch_1);
         self.sample_extract(&tmp_glwe);
     }

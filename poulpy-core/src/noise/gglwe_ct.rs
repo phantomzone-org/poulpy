@@ -8,11 +8,11 @@ use poulpy_hal::{
     oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeVecZnxBigImpl, TakeVecZnxDftImpl},
 };
 
-use crate::layouts::{GGLWECiphertext, GLWECiphertext, GLWEPlaintext, Infos, prepared::GLWESecretPrepared};
+use crate::layouts::{GGLWECiphertext, GGLWELayoutInfos, GLWECiphertext, GLWEPlaintext, LWEInfos, prepared::GLWESecretPrepared};
 
 impl<D: DataRef> GGLWECiphertext<D> {
     pub fn assert_noise<B, DataSk, DataWant>(
-        self,
+        &self,
         module: &Module<B>,
         sk: &GLWESecretPrepared<DataSk, B>,
         pt_want: &ScalarZnx<DataWant>,
@@ -32,15 +32,14 @@ impl<D: DataRef> GGLWECiphertext<D> {
             + VecZnxSubScalarInplace,
         B: Backend + TakeVecZnxDftImpl<B> + TakeVecZnxBigImpl<B> + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
     {
-        let digits: usize = self.digits();
-        let basek: usize = self.basek();
-        let k: usize = self.k();
+        let digits: usize = self.digits().into();
+        let base2k: usize = self.base2k().into();
 
-        let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GLWECiphertext::decrypt_scratch_space(module, basek, k));
-        let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(self.n(), basek, k);
+        let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GLWECiphertext::decrypt_scratch_space(module, self));
+        let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(self);
 
-        (0..self.rank_in()).for_each(|col_i| {
-            (0..self.rows()).for_each(|row_i| {
+        (0..self.rank_in().into()).for_each(|col_i| {
+            (0..self.rows().into()).for_each(|row_i| {
                 self.at(row_i, col_i)
                     .decrypt(module, &mut pt, sk, scratch.borrow());
 
@@ -52,7 +51,9 @@ impl<D: DataRef> GGLWECiphertext<D> {
                     col_i,
                 );
 
-                let noise_have: f64 = pt.data.std(basek, 0).log2();
+                let noise_have: f64 = pt.data.std(base2k, 0).log2();
+
+                println!("noise_have: {noise_have}");
 
                 assert!(
                     noise_have <= max_noise,

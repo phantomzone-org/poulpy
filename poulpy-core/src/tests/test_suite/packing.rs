@@ -21,7 +21,7 @@ use poulpy_hal::{
 use crate::{
     GLWEOperations, GLWEPacker,
     layouts::{
-        GGLWEAutomorphismKey, GLWECiphertext, GLWEPlaintext, GLWESecret,
+        GGLWEAutomorphismKey, GGLWEAutomorphismKeyLayout, GLWECiphertext, GLWECiphertextLayout, GLWEPlaintext, GLWESecret,
         prepared::{GGLWEAutomorphismKeyPrepared, GLWESecretPrepared, PrepareAlloc},
     },
 };
@@ -79,37 +79,53 @@ where
     let mut source_xa: Source = Source::new([0u8; 32]);
 
     let n: usize = module.n();
-    let basek: usize = 18;
+    let base2k: usize = 18;
     let k_ct: usize = 36;
     let pt_k: usize = 18;
     let rank: usize = 3;
     let digits: usize = 1;
-    let k_ksk: usize = k_ct + basek * digits;
+    let k_ksk: usize = k_ct + base2k * digits;
 
-    let rows: usize = k_ct.div_ceil(basek * digits);
+    let rows: usize = k_ct.div_ceil(base2k * digits);
+
+    let glwe_out_infos: GLWECiphertextLayout = GLWECiphertextLayout {
+        n: n.into(),
+        base2k: base2k.into(),
+        k: k_ct.into(),
+        rank: rank.into(),
+    };
+
+    let key_infos: GGLWEAutomorphismKeyLayout = GGLWEAutomorphismKeyLayout {
+        n: n.into(),
+        base2k: base2k.into(),
+        k: k_ksk.into(),
+        rank: rank.into(),
+        digits: digits.into(),
+        rows: rows.into(),
+    };
 
     let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-        GLWECiphertext::encrypt_sk_scratch_space(module, basek, k_ct)
-            | GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, basek, k_ksk, rank)
-            | GLWEPacker::scratch_space(module, basek, k_ct, basek, k_ksk, digits, rank),
+        GLWECiphertext::encrypt_sk_scratch_space(module, &glwe_out_infos)
+            | GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, &key_infos)
+            | GLWEPacker::scratch_space(module, &glwe_out_infos, &key_infos),
     );
 
-    let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
+    let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(&glwe_out_infos);
     sk.fill_ternary_prob(0.5, &mut source_xs);
     let sk_dft: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
 
-    let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(n, basek, k_ct);
+    let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&glwe_out_infos);
     let mut data: Vec<i64> = vec![0i64; n];
     data.iter_mut().enumerate().for_each(|(i, x)| {
         *x = i as i64;
     });
 
-    pt.encode_vec_i64(&data, pt_k);
+    pt.encode_vec_i64(&data, pt_k.into());
 
     let gal_els: Vec<i64> = GLWEPacker::galois_elements(module);
 
     let mut auto_keys: HashMap<i64, GGLWEAutomorphismKeyPrepared<Vec<u8>, B>> = HashMap::new();
-    let mut tmp: GGLWEAutomorphismKey<Vec<u8>> = GGLWEAutomorphismKey::alloc(n, basek, k_ksk, rows, digits, rank);
+    let mut tmp: GGLWEAutomorphismKey<Vec<u8>> = GGLWEAutomorphismKey::alloc(&key_infos);
     gal_els.iter().for_each(|gal_el| {
         tmp.encrypt_sk(
             module,
@@ -125,9 +141,9 @@ where
 
     let log_batch: usize = 0;
 
-    let mut packer: GLWEPacker = GLWEPacker::new(n, log_batch, basek, k_ct, rank);
+    let mut packer: GLWEPacker = GLWEPacker::new(&glwe_out_infos, log_batch);
 
-    let mut ct: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(n, basek, k_ct, rank);
+    let mut ct: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&glwe_out_infos);
 
     ct.encrypt_sk(
         module,
@@ -164,10 +180,10 @@ where
         }
     });
 
-    let mut res = GLWECiphertext::alloc(n, basek, k_ct, rank);
+    let mut res: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&glwe_out_infos);
     packer.flush(module, &mut res);
 
-    let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(n, basek, k_ct);
+    let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&glwe_out_infos);
     let mut data: Vec<i64> = vec![0i64; n];
     data.iter_mut().enumerate().for_each(|(i, x)| {
         if i.is_multiple_of(5) {
@@ -175,7 +191,7 @@ where
         }
     });
 
-    pt_want.encode_vec_i64(&data, pt_k);
+    pt_want.encode_vec_i64(&data, pt_k.into());
 
     res.decrypt(module, &mut pt, &sk_dft, scratch.borrow());
 
@@ -183,7 +199,10 @@ where
 
     let noise_have: f64 = pt.std().log2();
 
-    assert!(noise_have < -((k_ct - basek) as f64), "noise: {noise_have}");
+    assert!(
+        noise_have < -((k_ct - base2k) as f64),
+        "noise: {noise_have}"
+    );
 }
 
 #[inline(always)]

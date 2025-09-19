@@ -1,29 +1,29 @@
 use itertools::izip;
 
 #[inline(always)]
-pub fn get_digit(basek: usize, x: i64) -> i64 {
-    (x << (u64::BITS - basek as u32)) >> (u64::BITS - basek as u32)
+pub fn get_digit(base2k: usize, x: i64) -> i64 {
+    (x << (u64::BITS - base2k as u32)) >> (u64::BITS - base2k as u32)
 }
 
 #[inline(always)]
-pub fn get_carry(basek: usize, x: i64, digit: i64) -> i64 {
-    (x.wrapping_sub(digit)) >> basek
+pub fn get_carry(base2k: usize, x: i64, digit: i64) -> i64 {
+    (x.wrapping_sub(digit)) >> base2k
 }
 
 #[inline(always)]
-pub fn znx_normalize_first_step_carry_only_ref(basek: usize, lsh: usize, x: &[i64], carry: &mut [i64]) {
+pub fn znx_normalize_first_step_carry_only_ref(base2k: usize, lsh: usize, x: &[i64], carry: &mut [i64]) {
     #[cfg(debug_assertions)]
     {
         assert!(x.len() <= carry.len());
-        assert!(lsh < basek);
+        assert!(lsh < base2k);
     }
 
     if lsh == 0 {
         x.iter().zip(carry.iter_mut()).for_each(|(x, c)| {
-            *c = get_carry(basek, *x, get_digit(basek, *x));
+            *c = get_carry(base2k, *x, get_digit(base2k, *x));
         });
     } else {
-        let basek_lsh: usize = basek - lsh;
+        let basek_lsh: usize = base2k - lsh;
         x.iter().zip(carry.iter_mut()).for_each(|(x, c)| {
             *c = get_carry(basek_lsh, *x, get_digit(basek_lsh, *x));
         });
@@ -31,21 +31,21 @@ pub fn znx_normalize_first_step_carry_only_ref(basek: usize, lsh: usize, x: &[i6
 }
 
 #[inline(always)]
-pub fn znx_normalize_first_step_inplace_ref(basek: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
+pub fn znx_normalize_first_step_inplace_ref(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
     #[cfg(debug_assertions)]
     {
         assert!(x.len() <= carry.len());
-        assert!(lsh < basek);
+        assert!(lsh < base2k);
     }
 
     if lsh == 0 {
         x.iter_mut().zip(carry.iter_mut()).for_each(|(x, c)| {
-            let digit: i64 = get_digit(basek, *x);
-            *c = get_carry(basek, *x, digit);
+            let digit: i64 = get_digit(base2k, *x);
+            *c = get_carry(base2k, *x, digit);
             *x = digit;
         });
     } else {
-        let basek_lsh: usize = basek - lsh;
+        let basek_lsh: usize = base2k - lsh;
         x.iter_mut().zip(carry.iter_mut()).for_each(|(x, c)| {
             let digit: i64 = get_digit(basek_lsh, *x);
             *c = get_carry(basek_lsh, *x, digit);
@@ -55,22 +55,22 @@ pub fn znx_normalize_first_step_inplace_ref(basek: usize, lsh: usize, x: &mut [i
 }
 
 #[inline(always)]
-pub fn znx_normalize_first_step_ref(basek: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
+pub fn znx_normalize_first_step_ref(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
     #[cfg(debug_assertions)]
     {
         assert_eq!(x.len(), a.len());
         assert!(x.len() <= carry.len());
-        assert!(lsh < basek);
+        assert!(lsh < base2k);
     }
 
     if lsh == 0 {
         izip!(x.iter_mut(), a.iter(), carry.iter_mut()).for_each(|(x, a, c)| {
-            let digit: i64 = get_digit(basek, *a);
-            *c = get_carry(basek, *a, digit);
+            let digit: i64 = get_digit(base2k, *a);
+            *c = get_carry(base2k, *a, digit);
             *x = digit;
         });
     } else {
-        let basek_lsh: usize = basek - lsh;
+        let basek_lsh: usize = base2k - lsh;
         izip!(x.iter_mut(), a.iter(), carry.iter_mut()).for_each(|(x, a, c)| {
             let digit: i64 = get_digit(basek_lsh, *a);
             *c = get_carry(basek_lsh, *a, digit);
@@ -80,130 +80,130 @@ pub fn znx_normalize_first_step_ref(basek: usize, lsh: usize, x: &mut [i64], a: 
 }
 
 #[inline(always)]
-pub fn znx_normalize_middle_step_carry_only_ref(basek: usize, lsh: usize, x: &[i64], carry: &mut [i64]) {
+pub fn znx_normalize_middle_step_carry_only_ref(base2k: usize, lsh: usize, x: &[i64], carry: &mut [i64]) {
     #[cfg(debug_assertions)]
     {
         assert!(x.len() <= carry.len());
-        assert!(lsh < basek);
+        assert!(lsh < base2k);
     }
     if lsh == 0 {
         x.iter().zip(carry.iter_mut()).for_each(|(x, c)| {
-            let digit: i64 = get_digit(basek, *x);
-            let carry: i64 = get_carry(basek, *x, digit);
+            let digit: i64 = get_digit(base2k, *x);
+            let carry: i64 = get_carry(base2k, *x, digit);
             let digit_plus_c: i64 = digit + *c;
-            *c = carry + get_carry(basek, digit_plus_c, get_digit(basek, digit_plus_c));
+            *c = carry + get_carry(base2k, digit_plus_c, get_digit(base2k, digit_plus_c));
         });
     } else {
-        let basek_lsh: usize = basek - lsh;
+        let basek_lsh: usize = base2k - lsh;
         x.iter().zip(carry.iter_mut()).for_each(|(x, c)| {
             let digit: i64 = get_digit(basek_lsh, *x);
             let carry: i64 = get_carry(basek_lsh, *x, digit);
             let digit_plus_c: i64 = (digit << lsh) + *c;
-            *c = carry + get_carry(basek, digit_plus_c, get_digit(basek, digit_plus_c));
+            *c = carry + get_carry(base2k, digit_plus_c, get_digit(base2k, digit_plus_c));
         });
     }
 }
 
 #[inline(always)]
-pub fn znx_normalize_middle_step_inplace_ref<const OVERWRITE: bool>(basek: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
+pub fn znx_normalize_middle_step_inplace_ref<const OVERWRITE: bool>(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
     #[cfg(debug_assertions)]
     {
         assert!(x.len() <= carry.len());
-        assert!(lsh < basek);
+        assert!(lsh < base2k);
     }
 
     if OVERWRITE {
         x.iter_mut().zip(carry.iter_mut()).for_each(|(x, c)| {
-            *x = get_digit(basek, *c);
-            *c = get_carry(basek, *c, *x);
+            *x = get_digit(base2k, *c);
+            *c = get_carry(base2k, *c, *x);
         });
     } else if lsh == 0 {
         x.iter_mut().zip(carry.iter_mut()).for_each(|(x, c)| {
-            let digit: i64 = get_digit(basek, *x);
-            let carry: i64 = get_carry(basek, *x, digit);
+            let digit: i64 = get_digit(base2k, *x);
+            let carry: i64 = get_carry(base2k, *x, digit);
             let digit_plus_c: i64 = digit + *c;
-            *x = get_digit(basek, digit_plus_c);
-            *c = carry + get_carry(basek, digit_plus_c, *x);
+            *x = get_digit(base2k, digit_plus_c);
+            *c = carry + get_carry(base2k, digit_plus_c, *x);
         });
     } else {
-        let basek_lsh: usize = basek - lsh;
+        let basek_lsh: usize = base2k - lsh;
         x.iter_mut().zip(carry.iter_mut()).for_each(|(x, c)| {
             let digit: i64 = get_digit(basek_lsh, *x);
             let carry: i64 = get_carry(basek_lsh, *x, digit);
             let digit_plus_c: i64 = (digit << lsh) + *c;
-            *x = get_digit(basek, digit_plus_c);
-            *c = carry + get_carry(basek, digit_plus_c, *x);
+            *x = get_digit(base2k, digit_plus_c);
+            *c = carry + get_carry(base2k, digit_plus_c, *x);
         });
     }
 }
 
 #[inline(always)]
-pub fn znx_normalize_middle_step_ref(basek: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
+pub fn znx_normalize_middle_step_ref(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
     #[cfg(debug_assertions)]
     {
         assert_eq!(x.len(), a.len());
         assert!(x.len() <= carry.len());
-        assert!(lsh < basek);
+        assert!(lsh < base2k);
     }
     if lsh == 0 {
         izip!(x.iter_mut(), a.iter(), carry.iter_mut()).for_each(|(x, a, c)| {
-            let digit: i64 = get_digit(basek, *a);
-            let carry: i64 = get_carry(basek, *a, digit);
+            let digit: i64 = get_digit(base2k, *a);
+            let carry: i64 = get_carry(base2k, *a, digit);
             let digit_plus_c: i64 = digit + *c;
-            *x = get_digit(basek, digit_plus_c);
-            *c = carry + get_carry(basek, digit_plus_c, *x);
+            *x = get_digit(base2k, digit_plus_c);
+            *c = carry + get_carry(base2k, digit_plus_c, *x);
         });
     } else {
-        let basek_lsh: usize = basek - lsh;
+        let basek_lsh: usize = base2k - lsh;
         izip!(x.iter_mut(), a.iter(), carry.iter_mut()).for_each(|(x, a, c)| {
             let digit: i64 = get_digit(basek_lsh, *a);
             let carry: i64 = get_carry(basek_lsh, *a, digit);
             let digit_plus_c: i64 = (digit << lsh) + *c;
-            *x = get_digit(basek, digit_plus_c);
-            *c = carry + get_carry(basek, digit_plus_c, *x);
+            *x = get_digit(base2k, digit_plus_c);
+            *c = carry + get_carry(base2k, digit_plus_c, *x);
         });
     }
 }
 
 #[inline(always)]
-pub fn znx_normalize_final_step_inplace_ref<const OVERWRITE: bool>(basek: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
+pub fn znx_normalize_final_step_inplace_ref<const OVERWRITE: bool>(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
     #[cfg(debug_assertions)]
     {
         assert!(x.len() <= carry.len());
-        assert!(lsh < basek);
+        assert!(lsh < base2k);
     }
 
     if OVERWRITE {
         x.iter_mut().zip(carry.iter_mut()).for_each(|(x, c)| {
-            *x = get_digit(basek, *c);
+            *x = get_digit(base2k, *c);
         });
     } else if lsh == 0 {
         x.iter_mut().zip(carry.iter_mut()).for_each(|(x, c)| {
-            *x = get_digit(basek, get_digit(basek, *x) + *c);
+            *x = get_digit(base2k, get_digit(base2k, *x) + *c);
         });
     } else {
-        let basek_lsh: usize = basek - lsh;
+        let basek_lsh: usize = base2k - lsh;
         x.iter_mut().zip(carry.iter_mut()).for_each(|(x, c)| {
-            *x = get_digit(basek, (get_digit(basek_lsh, *x) << lsh) + *c);
+            *x = get_digit(base2k, (get_digit(basek_lsh, *x) << lsh) + *c);
         });
     }
 }
 
 #[inline(always)]
-pub fn znx_normalize_final_step_ref(basek: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
+pub fn znx_normalize_final_step_ref(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
     #[cfg(debug_assertions)]
     {
         assert!(x.len() <= carry.len());
-        assert!(lsh < basek);
+        assert!(lsh < base2k);
     }
     if lsh == 0 {
         izip!(x.iter_mut(), a.iter(), carry.iter_mut()).for_each(|(x, a, c)| {
-            *x = get_digit(basek, get_digit(basek, *a) + *c);
+            *x = get_digit(base2k, get_digit(base2k, *a) + *c);
         });
     } else {
-        let basek_lsh: usize = basek - lsh;
+        let basek_lsh: usize = base2k - lsh;
         izip!(x.iter_mut(), a.iter(), carry.iter_mut()).for_each(|(x, a, c)| {
-            *x = get_digit(basek, (get_digit(basek_lsh, *a) << lsh) + *c);
+            *x = get_digit(base2k, (get_digit(basek_lsh, *a) << lsh) + *c);
         });
     }
 }

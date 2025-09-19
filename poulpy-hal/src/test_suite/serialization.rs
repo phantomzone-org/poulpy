@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 
 use crate::{
-    layouts::{FillUniform, ReaderFrom, Reset, WriterTo},
+    layouts::{FillUniform, ReaderFrom, WriterTo},
     source::Source,
 };
 
@@ -10,7 +10,7 @@ use crate::{
 /// - `T` must implement I/O traits, zeroing, cloning, and random filling.
 pub fn test_reader_writer_interface<T>(mut original: T)
 where
-    T: WriterTo + ReaderFrom + PartialEq + Eq + Debug + Clone + Reset + FillUniform,
+    T: WriterTo + ReaderFrom + PartialEq + Eq + Debug + Clone + FillUniform,
 {
     // Fill original with uniform random data
     let mut source = Source::new([0u8; 32]);
@@ -20,9 +20,9 @@ where
     let mut buffer = Vec::new();
     original.write_to(&mut buffer).expect("write_to failed");
 
-    // Prepare receiver: same shape, but zeroed
+    // Prepare receiver: same shape, but randomized
     let mut receiver = original.clone();
-    receiver.reset();
+    receiver.fill_uniform(50, &mut source);
 
     // Deserialize from buffer
     let mut reader: &[u8] = &buffer;

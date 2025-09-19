@@ -36,7 +36,7 @@ pub unsafe trait VecZnxNormalizeImpl<B: Backend> {
 /// * See [crate::api::VecZnxNormalizeInplace] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxNormalizeInplaceImpl<B: Backend> {
-    fn vec_znx_normalize_inplace_impl<A>(module: &Module<B>, basek: usize, a: &mut A, a_col: usize, scratch: &mut Scratch<B>)
+    fn vec_znx_normalize_inplace_impl<A>(module: &Module<B>, base2k: usize, a: &mut A, a_col: usize, scratch: &mut Scratch<B>)
     where
         A: VecZnxToMut;
 }
@@ -213,7 +213,7 @@ pub unsafe trait VecZnxRshImpl<B: Backend> {
     #[allow(clippy::too_many_arguments)]
     fn vec_znx_rsh_inplace_impl<R, A>(
         module: &Module<B>,
-        basek: usize,
+        base2k: usize,
         k: usize,
         res: &mut R,
         res_col: usize,
@@ -241,7 +241,7 @@ pub unsafe trait VecZnxLshImpl<B: Backend> {
     #[allow(clippy::too_many_arguments)]
     fn vec_znx_lsh_inplace_impl<R, A>(
         module: &Module<B>,
-        basek: usize,
+        base2k: usize,
         k: usize,
         res: &mut R,
         res_col: usize,
@@ -260,7 +260,7 @@ pub unsafe trait VecZnxLshImpl<B: Backend> {
 pub unsafe trait VecZnxRshInplaceImpl<B: Backend> {
     fn vec_znx_rsh_inplace_impl<R>(
         module: &Module<B>,
-        basek: usize,
+        base2k: usize,
         k: usize,
         res: &mut R,
         res_col: usize,
@@ -276,7 +276,7 @@ pub unsafe trait VecZnxRshInplaceImpl<B: Backend> {
 pub unsafe trait VecZnxLshInplaceImpl<B: Backend> {
     fn vec_znx_lsh_inplace_impl<R>(
         module: &Module<B>,
-        basek: usize,
+        base2k: usize,
         k: usize,
         res: &mut R,
         res_col: usize,
@@ -456,7 +456,7 @@ pub unsafe trait VecZnxCopyImpl<B: Backend> {
 /// * See [crate::api::VecZnxFillUniform] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxFillUniformImpl<B: Backend> {
-    fn vec_znx_fill_uniform_impl<R>(module: &Module<B>, basek: usize, res: &mut R, res_col: usize, source: &mut Source)
+    fn vec_znx_fill_uniform_impl<R>(module: &Module<B>, base2k: usize, res: &mut R, res_col: usize, source: &mut Source)
     where
         R: VecZnxToMut;
 }
@@ -468,7 +468,7 @@ pub unsafe trait VecZnxFillUniformImpl<B: Backend> {
 pub unsafe trait VecZnxFillNormalImpl<B: Backend> {
     fn vec_znx_fill_normal_impl<R>(
         module: &Module<B>,
-        basek: usize,
+        base2k: usize,
         res: &mut R,
         res_col: usize,
         k: usize,
@@ -486,7 +486,7 @@ pub unsafe trait VecZnxFillNormalImpl<B: Backend> {
 pub unsafe trait VecZnxAddNormalImpl<B: Backend> {
     fn vec_znx_add_normal_impl<R>(
         module: &Module<B>,
-        basek: usize,
+        base2k: usize,
         res: &mut R,
         res_col: usize,
         k: usize,

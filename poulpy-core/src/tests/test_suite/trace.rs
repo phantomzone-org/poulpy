@@ -21,7 +21,8 @@ use poulpy_hal::{
 use crate::{
     encryption::SIGMA,
     layouts::{
-        GGLWEAutomorphismKey, GLWECiphertext, GLWEPlaintext, GLWESecret, Infos,
+        GGLWEAutomorphismKey, GGLWEAutomorphismKeyLayout, GLWECiphertext, GLWECiphertextLayout, GLWEPlaintext, GLWESecret,
+        LWEInfos,
         prepared::{GGLWEAutomorphismKeyPrepared, GLWESecretPrepared, PrepareAlloc},
     },
     noise::var_noise_gglwe_product,
@@ -72,32 +73,48 @@ where
         + TakeScalarZnxImpl<B>
         + TakeVecZnxImpl<B>,
 {
-    let basek: usize = 8;
+    let base2k: usize = 8;
     let k: usize = 54;
 
-    (1..3).for_each(|rank| {
+    for rank in 1_usize..3 {
         let n: usize = module.n();
-        let k_autokey: usize = k + basek;
+        let k_autokey: usize = k + base2k;
 
         let digits: usize = 1;
-        let rows: usize = k.div_ceil(basek * digits);
+        let rows: usize = k.div_ceil(base2k * digits);
 
-        let mut ct: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(n, basek, k, rank);
-        let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(n, basek, k);
-        let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(n, basek, k);
+        let glwe_out_infos: GLWECiphertextLayout = GLWECiphertextLayout {
+            n: n.into(),
+            base2k: base2k.into(),
+            k: k.into(),
+            rank: rank.into(),
+        };
+
+        let key_infos: GGLWEAutomorphismKeyLayout = GGLWEAutomorphismKeyLayout {
+            n: n.into(),
+            base2k: base2k.into(),
+            k: k_autokey.into(),
+            rank: rank.into(),
+            digits: digits.into(),
+            rows: rows.into(),
+        };
+
+        let mut glwe_out: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&glwe_out_infos);
+        let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&glwe_out_infos);
+        let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&glwe_out_infos);
 
         let mut source_xs: Source = Source::new([0u8; 32]);
         let mut source_xe: Source = Source::new([0u8; 32]);
         let mut source_xa: Source = Source::new([0u8; 32]);
 
         let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-            GLWECiphertext::encrypt_sk_scratch_space(module, basek, ct.k())
-                | GLWECiphertext::decrypt_scratch_space(module, basek, ct.k())
-                | GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, basek, k_autokey, rank)
-                | GLWECiphertext::trace_inplace_scratch_space(module, basek, ct.k(), basek, k_autokey, digits, rank),
+            GLWECiphertext::encrypt_sk_scratch_space(module, &glwe_out_infos)
+                | GLWECiphertext::decrypt_scratch_space(module, &glwe_out_infos)
+                | GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, &key_infos)
+                | GLWECiphertext::trace_inplace_scratch_space(module, &glwe_out_infos, &key_infos),
         );
 
-        let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
+        let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(&glwe_out_infos);
         sk.fill_ternary_prob(0.5, &mut source_xs);
         let sk_dft: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
 
@@ -107,9 +124,9 @@ where
             .iter_mut()
             .for_each(|x| *x = source_xa.next_i64() & 0xFF);
 
-        module.vec_znx_fill_uniform(basek, &mut pt_have.data, 0, &mut source_xa);
+        module.vec_znx_fill_uniform(base2k, &mut pt_have.data, 0, &mut source_xa);
 
-        ct.encrypt_sk(
+        glwe_out.encrypt_sk(
             module,
             &pt_have,
             &sk_dft,
@@ -120,7 +137,7 @@ where
 
         let mut auto_keys: HashMap<i64, GGLWEAutomorphismKeyPrepared<Vec<u8>, B>> = HashMap::new();
         let gal_els: Vec<i64> = GLWECiphertext::trace_galois_elements(module);
-        let mut tmp: GGLWEAutomorphismKey<Vec<u8>> = GGLWEAutomorphismKey::alloc(n, basek, k_autokey, rows, digits, rank);
+        let mut tmp: GGLWEAutomorphismKey<Vec<u8>> = GGLWEAutomorphismKey::alloc(&key_infos);
         gal_els.iter().for_each(|gal_el| {
             tmp.encrypt_sk(
                 module,
@@ -134,21 +151,21 @@ where
             auto_keys.insert(*gal_el, atk_prepared);
         });
 
-        ct.trace_inplace(module, 0, 5, &auto_keys, scratch.borrow());
-        ct.trace_inplace(module, 5, module.log_n(), &auto_keys, scratch.borrow());
+        glwe_out.trace_inplace(module, 0, 5, &auto_keys, scratch.borrow());
+        glwe_out.trace_inplace(module, 5, module.log_n(), &auto_keys, scratch.borrow());
 
         (0..pt_want.size()).for_each(|i| pt_want.data.at_mut(0, i)[0] = pt_have.data.at(0, i)[0]);
 
-        ct.decrypt(module, &mut pt_have, &sk_dft, scratch.borrow());
+        glwe_out.decrypt(module, &mut pt_have, &sk_dft, scratch.borrow());
 
         module.vec_znx_sub_ab_inplace(&mut pt_want.data, 0, &pt_have.data, 0);
-        module.vec_znx_normalize_inplace(basek, &mut pt_want.data, 0, scratch.borrow());
+        module.vec_znx_normalize_inplace(base2k, &mut pt_want.data, 0, scratch.borrow());
 
         let noise_have: f64 = pt_want.std().log2();
 
         let mut noise_want: f64 = var_noise_gglwe_product(
             n as f64,
-            basek,
+            base2k,
             0.5,
             0.5,
             1.0 / 12.0,
@@ -166,5 +183,5 @@ where
             (noise_have - noise_want).abs() < 1.0,
             "{noise_have} > {noise_want}"
         );
-    });
+    }
 }

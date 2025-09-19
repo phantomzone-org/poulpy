@@ -6,14 +6,15 @@ use poulpy_hal::{
     layouts::{Backend, DataMut, DataRef, DataViewMut, Module, Scratch},
 };
 
-use crate::layouts::{GLWECiphertext, GLWEPlaintext, Infos, prepared::GLWESecretPrepared};
+use crate::layouts::{GLWECiphertext, GLWEInfos, GLWEPlaintext, LWEInfos, prepared::GLWESecretPrepared};
 
 impl GLWECiphertext<Vec<u8>> {
-    pub fn decrypt_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize) -> usize
+    pub fn decrypt_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
+        A: GLWEInfos,
         Module<B>: VecZnxDftAllocBytes + VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes,
     {
-        let size: usize = k.div_ceil(basek);
+        let size: usize = infos.size();
         (module.vec_znx_normalize_tmp_bytes() | module.vec_znx_dft_alloc_bytes(1, size)) + module.vec_znx_dft_alloc_bytes(1, size)
     }
 }
@@ -41,15 +42,15 @@ impl<DataSelf: DataRef> GLWECiphertext<DataSelf> {
             assert_eq!(pt.n(), sk.n());
         }
 
-        let cols: usize = self.rank() + 1;
+        let cols: usize = (self.rank() + 1).into();
 
-        let (mut c0_big, scratch_1) = scratch.take_vec_znx_big(self.n(), 1, self.size()); // TODO optimize size when pt << ct
+        let (mut c0_big, scratch_1) = scratch.take_vec_znx_big(self.n().into(), 1, self.size()); // TODO optimize size when pt << ct
         c0_big.data_mut().fill(0);
 
         {
             (1..cols).for_each(|i| {
                 // ci_dft = DFT(a[i]) * DFT(s[i])
-                let (mut ci_dft, _) = scratch_1.take_vec_znx_dft(self.n(), 1, self.size()); // TODO optimize size when pt << ct
+                let (mut ci_dft, _) = scratch_1.take_vec_znx_dft(self.n().into(), 1, self.size()); // TODO optimize size when pt << ct
                 module.vec_znx_dft_apply(1, 0, &mut ci_dft, 0, &self.data, i);
                 module.svp_apply_dft_to_dft_inplace(&mut ci_dft, 0, &sk.data, i - 1);
                 let ci_big = module.vec_znx_idft_apply_consume(ci_dft);
@@ -64,16 +65,16 @@ impl<DataSelf: DataRef> GLWECiphertext<DataSelf> {
 
         // pt = norm(BIG(m + e))
         module.vec_znx_big_normalize(
-            self.basek(),
+            self.base2k().into(),
             &mut pt.data,
             0,
-            self.basek(),
+            self.base2k().into(),
             &c0_big,
             0,
             scratch_1,
         );
 
-        pt.basek = self.basek();
+        pt.base2k = self.base2k();
         pt.k = pt.k().min(self.k());
     }
 }

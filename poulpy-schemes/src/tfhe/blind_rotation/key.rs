@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    layouts::{Backend, Data, DataMut, DataRef, FillUniform, Module, ReaderFrom, Reset, Scratch, WriterTo},
+    layouts::{Backend, Data, DataMut, DataRef, FillUniform, Module, ReaderFrom, Scratch, WriterTo},
     source::Source,
 };
 
@@ -7,15 +7,78 @@ use std::{fmt, marker::PhantomData};
 
 use poulpy_core::{
     Distribution,
-    layouts::{GGSWCiphertext, Infos, LWESecret, prepared::GLWESecretPrepared},
+    layouts::{
+        Base2K, Degree, Digits, GGSWCiphertext, GGSWInfos, GLWEInfos, LWEInfos, LWESecret, Rank, Rows, TorusPrecision,
+        prepared::GLWESecretPrepared,
+    },
 };
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
 use crate::tfhe::blind_rotation::BlindRotationAlgo;
 
+#[derive(PartialEq, Eq, Copy, Clone, Debug)]
+pub struct BlindRotationKeyLayout {
+    pub n_glwe: Degree,
+    pub n_lwe: Degree,
+    pub base2k: Base2K,
+    pub k: TorusPrecision,
+    pub rows: Rows,
+    pub rank: Rank,
+}
+
+impl BlindRotationKeyInfos for BlindRotationKeyLayout {
+    fn n_glwe(&self) -> Degree {
+        self.n_glwe
+    }
+
+    fn n_lwe(&self) -> Degree {
+        self.n_lwe
+    }
+}
+
+impl GGSWInfos for BlindRotationKeyLayout {
+    fn digits(&self) -> Digits {
+        Digits(1)
+    }
+
+    fn rows(&self) -> Rows {
+        self.rows
+    }
+}
+
+impl GLWEInfos for BlindRotationKeyLayout {
+    fn rank(&self) -> Rank {
+        self.rank
+    }
+}
+
+impl LWEInfos for BlindRotationKeyLayout {
+    fn base2k(&self) -> Base2K {
+        self.base2k
+    }
+
+    fn k(&self) -> TorusPrecision {
+        self.k
+    }
+
+    fn n(&self) -> Degree {
+        self.n_glwe
+    }
+}
+
+pub trait BlindRotationKeyInfos
+where
+    Self: GGSWInfos,
+{
+    fn n_glwe(&self) -> Degree;
+    fn n_lwe(&self) -> Degree;
+}
+
 pub trait BlindRotationKeyAlloc {
-    fn alloc(n_gglwe: usize, n_lwe: usize, basek: usize, k: usize, rows: usize, rank: usize) -> Self;
+    fn alloc<A>(infos: &A) -> Self
+    where
+        A: BlindRotationKeyInfos;
 }
 
 pub trait BlindRotationKeyEncryptSk<B: Backend> {
@@ -72,13 +135,6 @@ impl<D: DataRef, BRT: BlindRotationAlgo> fmt::Display for BlindRotationKey<D, BR
     }
 }
 
-impl<D: DataMut, BRT: BlindRotationAlgo> Reset for BlindRotationKey<D, BRT> {
-    fn reset(&mut self) {
-        self.keys.iter_mut().for_each(|key| key.reset());
-        self.dist = Distribution::NONE;
-    }
-}
-
 impl<D: DataMut, BRT: BlindRotationAlgo> FillUniform for BlindRotationKey<D, BRT> {
     fn fill_uniform(&mut self, log_bound: usize, source: &mut Source) {
         self.keys
@@ -121,41 +177,55 @@ impl<D: DataRef, BRT: BlindRotationAlgo> WriterTo for BlindRotationKey<D, BRT> {
     }
 }
 
+impl<D: DataRef, BRT: BlindRotationAlgo> BlindRotationKeyInfos for BlindRotationKey<D, BRT> {
+    fn n_glwe(&self) -> Degree {
+        self.n()
+    }
+
+    fn n_lwe(&self) -> Degree {
+        Degree(self.keys.len() as u32)
+    }
+}
+
 impl<D: DataRef, BRT: BlindRotationAlgo> BlindRotationKey<D, BRT> {
     #[allow(dead_code)]
-    pub(crate) fn n(&self) -> usize {
-        self.keys[0].n()
-    }
-
-    #[allow(dead_code)]
-    pub(crate) fn rows(&self) -> usize {
-        self.keys[0].rows()
-    }
-
-    #[allow(dead_code)]
-    pub(crate) fn k(&self) -> usize {
-        self.keys[0].k()
-    }
-
-    #[allow(dead_code)]
-    pub(crate) fn size(&self) -> usize {
-        self.keys[0].size()
-    }
-
-    #[allow(dead_code)]
-    pub(crate) fn rank(&self) -> usize {
-        self.keys[0].rank()
-    }
-
-    pub(crate) fn basek(&self) -> usize {
-        self.keys[0].basek()
-    }
-
-    #[allow(dead_code)]
-    pub(crate) fn block_size(&self) -> usize {
+    fn block_size(&self) -> usize {
         match self.dist {
             Distribution::BinaryBlock(value) => value,
             _ => 1,
         }
+    }
+}
+
+impl<D: DataRef, BRT: BlindRotationAlgo> LWEInfos for BlindRotationKey<D, BRT> {
+    fn base2k(&self) -> Base2K {
+        self.keys[0].base2k()
+    }
+
+    fn k(&self) -> TorusPrecision {
+        self.keys[0].k()
+    }
+
+    fn n(&self) -> Degree {
+        self.keys[0].n()
+    }
+
+    fn size(&self) -> usize {
+        self.keys[0].size()
+    }
+}
+
+impl<D: DataRef, BRT: BlindRotationAlgo> GLWEInfos for BlindRotationKey<D, BRT> {
+    fn rank(&self) -> Rank {
+        self.keys[0].rank()
+    }
+}
+impl<D: DataRef, BRT: BlindRotationAlgo> GGSWInfos for BlindRotationKey<D, BRT> {
+    fn digits(&self) -> poulpy_core::layouts::Digits {
+        Digits(1)
+    }
+
+    fn rows(&self) -> Rows {
+        self.keys[0].rows()
     }
 }

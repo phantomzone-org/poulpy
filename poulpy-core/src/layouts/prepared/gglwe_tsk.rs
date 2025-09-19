@@ -1,10 +1,10 @@
 use poulpy_hal::{
     api::{VmpPMatAlloc, VmpPMatAllocBytes, VmpPrepare},
-    layouts::{Backend, Data, DataMut, DataRef, Module, Scratch, VmpPMat},
+    layouts::{Backend, Data, DataMut, DataRef, Module, Scratch},
 };
 
 use crate::layouts::{
-    GGLWETensorKey, Infos,
+    Base2K, Degree, Digits, GGLWELayoutInfos, GGLWETensorKey, GLWEInfos, LWEInfos, Rank, Rows, TorusPrecision,
     prepared::{GGLWESwitchingKeyPrepared, Prepare, PrepareAlloc},
 };
 
@@ -13,61 +13,126 @@ pub struct GGLWETensorKeyPrepared<D: Data, B: Backend> {
     pub(crate) keys: Vec<GGLWESwitchingKeyPrepared<D, B>>,
 }
 
+impl<D: Data, B: Backend> LWEInfos for GGLWETensorKeyPrepared<D, B> {
+    fn n(&self) -> Degree {
+        self.keys[0].n()
+    }
+
+    fn base2k(&self) -> Base2K {
+        self.keys[0].base2k()
+    }
+
+    fn k(&self) -> TorusPrecision {
+        self.keys[0].k()
+    }
+
+    fn size(&self) -> usize {
+        self.keys[0].size()
+    }
+}
+
+impl<D: Data, B: Backend> GLWEInfos for GGLWETensorKeyPrepared<D, B> {
+    fn rank(&self) -> Rank {
+        self.rank_out()
+    }
+}
+
+impl<D: Data, B: Backend> GGLWELayoutInfos for GGLWETensorKeyPrepared<D, B> {
+    fn rank_in(&self) -> Rank {
+        self.rank_out()
+    }
+
+    fn rank_out(&self) -> Rank {
+        self.keys[0].rank_out()
+    }
+
+    fn digits(&self) -> Digits {
+        self.keys[0].digits()
+    }
+
+    fn rows(&self) -> Rows {
+        self.keys[0].rows()
+    }
+}
+
 impl<B: Backend> GGLWETensorKeyPrepared<Vec<u8>, B> {
-    pub fn alloc(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self
+    pub fn alloc<A>(module: &Module<B>, infos: &A) -> Self
+    where
+        A: GGLWELayoutInfos,
+        Module<B>: VmpPMatAlloc<B>,
+    {
+        assert_eq!(
+            infos.rank_in(),
+            infos.rank_out(),
+            "rank_in != rank_out is not supported for GGLWETensorKeyPrepared"
+        );
+        Self::alloc_with(
+            module,
+            infos.base2k(),
+            infos.k(),
+            infos.rows(),
+            infos.digits(),
+            infos.rank_out(),
+        )
+    }
+
+    pub fn alloc_with(module: &Module<B>, base2k: Base2K, k: TorusPrecision, rows: Rows, digits: Digits, rank: Rank) -> Self
     where
         Module<B>: VmpPMatAlloc<B>,
     {
         let mut keys: Vec<GGLWESwitchingKeyPrepared<Vec<u8>, B>> = Vec::new();
-        let pairs: usize = (((rank + 1) * rank) >> 1).max(1);
+        let pairs: u32 = (((rank.0 + 1) * rank.0) >> 1).max(1);
         (0..pairs).for_each(|_| {
-            keys.push(GGLWESwitchingKeyPrepared::alloc(
-                module, basek, k, rows, digits, 1, rank,
+            keys.push(GGLWESwitchingKeyPrepared::alloc_with(
+                module,
+                base2k,
+                k,
+                rows,
+                digits,
+                Rank(1),
+                rank,
             ));
         });
         Self { keys }
     }
 
-    pub fn bytes_of(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize
+    pub fn alloc_bytes<A>(module: &Module<B>, infos: &A) -> usize
+    where
+        A: GGLWELayoutInfos,
+        Module<B>: VmpPMatAllocBytes,
+    {
+        assert_eq!(
+            infos.rank_in(),
+            infos.rank_out(),
+            "rank_in != rank_out is not supported for GGLWETensorKey"
+        );
+        let rank_out: usize = infos.rank_out().into();
+        let pairs: usize = (((rank_out + 1) * rank_out) >> 1).max(1);
+        pairs
+            * GGLWESwitchingKeyPrepared::alloc_bytes_with(
+                module,
+                infos.base2k(),
+                infos.k(),
+                infos.rows(),
+                infos.digits(),
+                Rank(1),
+                infos.rank_out(),
+            )
+    }
+
+    pub fn alloc_bytes_with(
+        module: &Module<B>,
+        base2k: Base2K,
+        k: TorusPrecision,
+        rows: Rows,
+        digits: Digits,
+        rank: Rank,
+    ) -> usize
     where
         Module<B>: VmpPMatAllocBytes,
     {
-        let pairs: usize = (((rank + 1) * rank) >> 1).max(1);
-        pairs * GGLWESwitchingKeyPrepared::bytes_of(module, basek, k, rows, digits, 1, rank)
-    }
-}
-
-impl<D: Data, B: Backend> Infos for GGLWETensorKeyPrepared<D, B> {
-    type Inner = VmpPMat<D, B>;
-
-    fn inner(&self) -> &Self::Inner {
-        self.keys[0].inner()
-    }
-
-    fn basek(&self) -> usize {
-        self.keys[0].basek()
-    }
-
-    fn k(&self) -> usize {
-        self.keys[0].k()
-    }
-}
-
-impl<D: Data, B: Backend> GGLWETensorKeyPrepared<D, B> {
-    pub fn rank(&self) -> usize {
-        self.keys[0].rank()
-    }
-
-    pub fn rank_in(&self) -> usize {
-        self.keys[0].rank_in()
-    }
-
-    pub fn rank_out(&self) -> usize {
-        self.keys[0].rank_out()
-    }
-
-    pub fn digits(&self) -> usize {
-        self.keys[0].digits()
+        let pairs: usize = (((rank.0 + 1) * rank.0) >> 1).max(1) as usize;
+        pairs * GGLWESwitchingKeyPrepared::alloc_bytes_with(module, base2k, k, rows, digits, Rank(1), rank)
     }
 }
 
@@ -77,7 +142,7 @@ impl<D: DataMut, B: Backend> GGLWETensorKeyPrepared<D, B> {
         if i > j {
             std::mem::swap(&mut i, &mut j);
         };
-        let rank: usize = self.rank();
+        let rank: usize = self.rank_out().into();
         &mut self.keys[i * rank + j - (i * (i + 1) / 2)]
     }
 }
@@ -88,7 +153,7 @@ impl<D: DataRef, B: Backend> GGLWETensorKeyPrepared<D, B> {
         if i > j {
             std::mem::swap(&mut i, &mut j);
         };
-        let rank: usize = self.rank();
+        let rank: usize = self.rank_out().into();
         &self.keys[i * rank + j - (i * (i + 1) / 2)]
     }
 }
@@ -116,14 +181,7 @@ where
     Module<B>: VmpPMatAlloc<B> + VmpPrepare<B>,
 {
     fn prepare_alloc(&self, module: &Module<B>, scratch: &mut Scratch<B>) -> GGLWETensorKeyPrepared<Vec<u8>, B> {
-        let mut tsk_prepared: GGLWETensorKeyPrepared<Vec<u8>, B> = GGLWETensorKeyPrepared::alloc(
-            module,
-            self.basek(),
-            self.k(),
-            self.rows(),
-            self.digits(),
-            self.rank(),
-        );
+        let mut tsk_prepared: GGLWETensorKeyPrepared<Vec<u8>, B> = GGLWETensorKeyPrepared::alloc(module, self);
         tsk_prepared.prepare(module, self, scratch);
         tsk_prepared
     }

@@ -9,7 +9,7 @@ pub fn zn_normalize_tmp_bytes(n: usize) -> usize {
     n * size_of::<i64>()
 }
 
-pub fn zn_normalize_inplace<R, ARI>(n: usize, basek: usize, res: &mut R, res_col: usize, carry: &mut [i64])
+pub fn zn_normalize_inplace<R, ARI>(n: usize, base2k: usize, res: &mut R, res_col: usize, carry: &mut [i64])
 where
     R: ZnToMut,
     ARI: ZnxNormalizeFirstStepInplace + ZnxNormalizeFinalStepInplace + ZnxNormalizeMiddleStepInplace,
@@ -27,11 +27,11 @@ where
         let out = &mut res.at_mut(res_col, j)[..n];
 
         if j == res_size - 1 {
-            ARI::znx_normalize_first_step_inplace(basek, 0, out, carry);
+            ARI::znx_normalize_first_step_inplace(base2k, 0, out, carry);
         } else if j == 0 {
-            ARI::znx_normalize_final_step_inplace::<false>(basek, 0, out, carry);
+            ARI::znx_normalize_final_step_inplace::<false>(base2k, 0, out, carry);
         } else {
-            ARI::znx_normalize_middle_step_inplace::<false>(basek, 0, out, carry);
+            ARI::znx_normalize_middle_step_inplace::<false>(base2k, 0, out, carry);
         }
     }
 }
@@ -43,7 +43,7 @@ where
 {
     let mut source: Source = Source::new([0u8; 32]);
     let cols: usize = 2;
-    let basek: usize = 12;
+    let base2k: usize = 12;
 
     let n = 33;
 
@@ -63,8 +63,8 @@ where
 
         // Reference
         for i in 0..cols {
-            zn_normalize_inplace::<_, ZnxRef>(n, basek, &mut res_0, i, &mut carry);
-            module.zn_normalize_inplace(n, basek, &mut res_1, i, scratch.borrow());
+            zn_normalize_inplace::<_, ZnxRef>(n, base2k, &mut res_0, i, &mut carry);
+            module.zn_normalize_inplace(n, base2k, &mut res_1, i, scratch.borrow());
         }
 
         assert_eq!(res_0.raw(), res_1.raw());

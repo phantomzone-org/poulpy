@@ -26,7 +26,7 @@ pub use vmp_pmat::*;
 pub use zn::*;
 pub use znx_base::*;
 
-pub trait Data = PartialEq + Eq + Sized;
+pub trait Data = PartialEq + Eq + Sized + Default;
 pub trait DataRef = Data + AsRef<[u8]>;
 pub trait DataMut = DataRef + AsMut<[u8]>;
 

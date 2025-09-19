@@ -236,72 +236,72 @@ impl ZnxSwitchRing for FFT64Avx {
 
 impl ZnxNormalizeFinalStep for FFT64Avx {
     #[inline(always)]
-    fn znx_normalize_final_step(basek: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
+    fn znx_normalize_final_step(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
         unsafe {
-            znx_normalize_final_step_avx(basek, lsh, x, a, carry);
+            znx_normalize_final_step_avx(base2k, lsh, x, a, carry);
         }
     }
 }
 
 impl ZnxNormalizeFinalStepInplace for FFT64Avx {
     #[inline(always)]
-    fn znx_normalize_final_step_inplace<const OVERWRITE: bool>(basek: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
+    fn znx_normalize_final_step_inplace<const OVERWRITE: bool>(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
         unsafe {
-            znx_normalize_final_step_inplace_avx::<OVERWRITE>(basek, lsh, x, carry);
+            znx_normalize_final_step_inplace_avx::<OVERWRITE>(base2k, lsh, x, carry);
         }
     }
 }
 
 impl ZnxNormalizeFirstStep for FFT64Avx {
     #[inline(always)]
-    fn znx_normalize_first_step(basek: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
+    fn znx_normalize_first_step(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
         unsafe {
-            znx_normalize_first_step_avx(basek, lsh, x, a, carry);
+            znx_normalize_first_step_avx(base2k, lsh, x, a, carry);
         }
     }
 }
 
 impl ZnxNormalizeFirstStepCarryOnly for FFT64Avx {
     #[inline(always)]
-    fn znx_normalize_first_step_carry_only(basek: usize, lsh: usize, x: &[i64], carry: &mut [i64]) {
+    fn znx_normalize_first_step_carry_only(base2k: usize, lsh: usize, x: &[i64], carry: &mut [i64]) {
         unsafe {
-            znx_normalize_first_step_carry_only_avx(basek, lsh, x, carry);
+            znx_normalize_first_step_carry_only_avx(base2k, lsh, x, carry);
         }
     }
 }
 
 impl ZnxNormalizeFirstStepInplace for FFT64Avx {
     #[inline(always)]
-    fn znx_normalize_first_step_inplace(basek: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
+    fn znx_normalize_first_step_inplace(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
         unsafe {
-            znx_normalize_first_step_inplace_avx(basek, lsh, x, carry);
+            znx_normalize_first_step_inplace_avx(base2k, lsh, x, carry);
         }
     }
 }
 
 impl ZnxNormalizeMiddleStep for FFT64Avx {
     #[inline(always)]
-    fn znx_normalize_middle_step(basek: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
+    fn znx_normalize_middle_step(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
         unsafe {
-            znx_normalize_middle_step_avx(basek, lsh, x, a, carry);
+            znx_normalize_middle_step_avx(base2k, lsh, x, a, carry);
         }
     }
 }
 
 impl ZnxNormalizeMiddleStepCarryOnly for FFT64Avx {
     #[inline(always)]
-    fn znx_normalize_middle_step_carry_only(basek: usize, lsh: usize, x: &[i64], carry: &mut [i64]) {
+    fn znx_normalize_middle_step_carry_only(base2k: usize, lsh: usize, x: &[i64], carry: &mut [i64]) {
         unsafe {
-            znx_normalize_middle_step_carry_only_avx(basek, lsh, x, carry);
+            znx_normalize_middle_step_carry_only_avx(base2k, lsh, x, carry);
         }
     }
 }
 
 impl ZnxNormalizeMiddleStepInplace for FFT64Avx {
     #[inline(always)]
-    fn znx_normalize_middle_step_inplace<const OVERWRITE: bool>(basek: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
+    fn znx_normalize_middle_step_inplace<const OVERWRITE: bool>(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
         unsafe {
-            znx_normalize_middle_step_inplace_avx::<OVERWRITE>(basek, lsh, x, carry);
+            znx_normalize_middle_step_inplace_avx::<OVERWRITE>(base2k, lsh, x, carry);
         }
     }
 }

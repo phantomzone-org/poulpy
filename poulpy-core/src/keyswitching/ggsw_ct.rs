@@ -10,30 +10,35 @@ use poulpy_hal::{
 
 use crate::{
     layouts::{
-        GGLWECiphertext, GGSWCiphertext, GLWECiphertext, Infos,
+        GGLWECiphertext, GGLWELayoutInfos, GGSWCiphertext, GGSWInfos, GLWECiphertext, GLWEInfos, LWEInfos,
         prepared::{GGLWESwitchingKeyPrepared, GGLWETensorKeyPrepared},
     },
     operations::GLWEOperations,
 };
 
 impl GGSWCiphertext<Vec<u8>> {
-    pub(crate) fn expand_row_scratch_space<B: Backend>(
-        module: &Module<B>,
-        k_out: usize,
-        basek_tsk: usize,
-        k_tsk: usize,
-        digits: usize,
-        rank: usize,
-    ) -> usize
+    pub(crate) fn expand_row_scratch_space<B: Backend, OUT, TSK>(module: &Module<B>, out_infos: &OUT, tsk_infos: &TSK) -> usize
     where
+        OUT: GGSWInfos,
+        TSK: GGLWELayoutInfos,
         Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigAllocBytes + VecZnxNormalizeTmpBytes,
     {
-        let tsk_size: usize = k_tsk.div_ceil(basek_tsk);
-        let size_in = k_out.div_ceil(basek_tsk).div_ceil(digits);
+        let tsk_size: usize = tsk_infos.k().div_ceil(tsk_infos.base2k()) as usize;
+        let size_in: usize = out_infos
+            .k()
+            .div_ceil(tsk_infos.base2k())
+            .div_ceil(tsk_infos.digits().into()) as usize;
 
-        let tmp_dft_i: usize = module.vec_znx_dft_alloc_bytes(rank + 1, tsk_size);
+        let tmp_dft_i: usize = module.vec_znx_dft_alloc_bytes((tsk_infos.rank_out() + 1).into(), tsk_size);
         let tmp_a: usize = module.vec_znx_dft_alloc_bytes(1, size_in);
-        let vmp: usize = module.vmp_apply_dft_to_dft_tmp_bytes(tsk_size, size_in, size_in, rank, rank, tsk_size);
+        let vmp: usize = module.vmp_apply_dft_to_dft_tmp_bytes(
+            tsk_size,
+            size_in,
+            size_in,
+            (tsk_infos.rank_in()).into(),  // Verify if rank+1
+            (tsk_infos.rank_out()).into(), // Verify if rank+1
+            tsk_size,
+        );
         let tmp_idft: usize = module.vec_znx_big_alloc_bytes(1, tsk_size);
         let norm: usize = module.vec_znx_normalize_tmp_bytes();
 
@@ -41,68 +46,70 @@ impl GGSWCiphertext<Vec<u8>> {
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub fn keyswitch_scratch_space<B: Backend>(
+    pub fn keyswitch_scratch_space<B: Backend, OUT, IN, KEY, TSK>(
         module: &Module<B>,
-        basek_out: usize,
-        k_out: usize,
-        basek_in: usize,
-        k_in: usize,
-        basek_ksk: usize,
-        k_ksk: usize,
-        digits_ksk: usize,
-        basek_tsk: usize,
-        k_tsk: usize,
-        digits_tsk: usize,
-        rank: usize,
+        out_infos: &OUT,
+        in_infos: &IN,
+        apply_infos: &KEY,
+        tsk_infos: &TSK,
     ) -> usize
     where
+        OUT: GGSWInfos,
+        IN: GGSWInfos,
+        KEY: GGLWELayoutInfos,
+        TSK: GGLWELayoutInfos,
         Module<B>: VecZnxDftAllocBytes
             + VmpApplyDftToDftTmpBytes
             + VecZnxBigAllocBytes
             + VecZnxNormalizeTmpBytes
             + VecZnxBigNormalizeTmpBytes,
     {
-        let size_out: usize = k_out.div_ceil(basek_out);
+        #[cfg(debug_assertions)]
+        {
+            assert_eq!(apply_infos.rank_in(), apply_infos.rank_out());
+            assert_eq!(tsk_infos.rank_in(), tsk_infos.rank_out());
+            assert_eq!(apply_infos.rank_in(), tsk_infos.rank_in());
+        }
+
+        let rank: usize = apply_infos.rank_out().into();
+
+        let size_out: usize = out_infos.k().div_ceil(out_infos.base2k()) as usize;
         let res_znx: usize = VecZnx::alloc_bytes(module.n(), rank + 1, size_out);
         let ci_dft: usize = module.vec_znx_dft_alloc_bytes(rank + 1, size_out);
-        let ks: usize = GLWECiphertext::keyswitch_scratch_space(
-            module, basek_out, k_out, basek_in, k_in, basek_ksk, k_ksk, digits_ksk, rank, rank,
-        );
-        let expand_rows: usize = GGSWCiphertext::expand_row_scratch_space(module, k_out, basek_tsk, k_tsk, digits_tsk, rank);
+        let ks: usize = GLWECiphertext::keyswitch_scratch_space(module, out_infos, in_infos, apply_infos);
+        let expand_rows: usize = GGSWCiphertext::expand_row_scratch_space(module, out_infos, tsk_infos);
         let res_dft: usize = module.vec_znx_dft_alloc_bytes(rank + 1, size_out);
 
-        if basek_in == basek_tsk {
+        if in_infos.base2k() == tsk_infos.base2k() {
             res_znx + ci_dft + (ks | expand_rows | res_dft)
         } else {
-            let a_conv: usize =
-                VecZnx::alloc_bytes(module.n(), 1, k_in.div_ceil(basek_tsk)) + module.vec_znx_normalize_tmp_bytes();
+            let a_conv: usize = VecZnx::alloc_bytes(
+                module.n(),
+                1,
+                out_infos.k().div_ceil(tsk_infos.base2k()) as usize,
+            ) + module.vec_znx_normalize_tmp_bytes();
             res_znx + ci_dft + (a_conv | ks | expand_rows | res_dft)
         }
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub fn keyswitch_inplace_scratch_space<B: Backend>(
+    pub fn keyswitch_inplace_scratch_space<B: Backend, OUT, KEY, TSK>(
         module: &Module<B>,
-        basek_out: usize,
-        k_out: usize,
-        basek_ksk: usize,
-        k_ksk: usize,
-        digits_ksk: usize,
-        basek_tsk: usize,
-        k_tsk: usize,
-        digits_tsk: usize,
-        rank: usize,
+        out_infos: &OUT,
+        apply_infos: &KEY,
+        tsk_infos: &TSK,
     ) -> usize
     where
+        OUT: GGSWInfos,
+        KEY: GGLWELayoutInfos,
+        TSK: GGLWELayoutInfos,
         Module<B>: VecZnxDftAllocBytes
             + VmpApplyDftToDftTmpBytes
             + VecZnxBigAllocBytes
             + VecZnxNormalizeTmpBytes
             + VecZnxBigNormalizeTmpBytes,
     {
-        GGSWCiphertext::keyswitch_scratch_space(
-            module, basek_out, k_out, basek_out, k_out, basek_ksk, k_ksk, digits_ksk, basek_tsk, k_tsk, digits_tsk, rank,
-        )
+        GGSWCiphertext::keyswitch_scratch_space(module, out_infos, out_infos, apply_infos, tsk_infos)
     }
 }
 
@@ -133,13 +140,15 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
     {
         #[cfg(debug_assertions)]
         {
-            assert_eq!(self.rank(), a.rank());
+            use crate::layouts::{GLWEInfos, LWEInfos};
+
+            assert_eq!(self.rank(), a.rank_out());
             assert_eq!(self.rows(), a.rows());
-            assert_eq!(self.n(), module.n());
-            assert_eq!(a.n(), module.n());
-            assert_eq!(tsk.n(), module.n());
+            assert_eq!(self.n(), module.n() as u32);
+            assert_eq!(a.n(), module.n() as u32);
+            assert_eq!(tsk.n(), module.n() as u32);
         }
-        (0..self.rows()).for_each(|row_i| {
+        (0..self.rows().into()).for_each(|row_i| {
             self.at_mut(row_i, 0).copy(module, &a.at(row_i, 0));
         });
         self.expand_row(module, tsk, scratch);
@@ -171,7 +180,7 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
             + VecZnxNormalize<B>,
         Scratch<B>: ScratchAvailable + TakeVecZnxDft<B> + TakeVecZnxBig<B> + TakeVecZnx,
     {
-        (0..lhs.rows()).for_each(|row_i| {
+        (0..lhs.rows().into()).for_each(|row_i| {
             // Key-switch column 0, i.e.
             // col 0: (-(a0s0 + a1s1 + a2s2) + M[i], a0, a1, a2) -> (-(a0s0' + a1s1' + a2s2') + M[i], a0, a1, a2)
             self.at_mut(row_i, 0)
@@ -205,7 +214,7 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
             + VecZnxNormalize<B>,
         Scratch<B>: ScratchAvailable + TakeVecZnxDft<B> + TakeVecZnxBig<B> + TakeVecZnx,
     {
-        (0..self.rows()).for_each(|row_i| {
+        (0..self.rows().into()).for_each(|row_i| {
             // Key-switch column 0, i.e.
             // col 0: (-(a0s0 + a1s1 + a2s2) + M[i], a0, a1, a2) -> (-(a0s0' + a1s1' + a2s2') + M[i], a0, a1, a2)
             self.at_mut(row_i, 0)
@@ -234,29 +243,19 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
             + VecZnxNormalize<B>,
         Scratch<B>: ScratchAvailable + TakeVecZnxDft<B> + TakeVecZnxBig<B> + TakeVecZnx,
     {
-        let basek_in: usize = self.basek();
-        let basek_tsk: usize = tsk.basek();
+        let basek_in: usize = self.base2k().into();
+        let basek_tsk: usize = tsk.base2k().into();
 
-        assert!(
-            scratch.available()
-                >= GGSWCiphertext::expand_row_scratch_space(
-                    module,
-                    self.k(),
-                    basek_tsk,
-                    tsk.k(),
-                    tsk.digits(),
-                    tsk.rank()
-                )
-        );
+        assert!(scratch.available() >= GGSWCiphertext::expand_row_scratch_space(module, self, tsk));
 
-        let n: usize = self.n();
-        let rank: usize = self.rank();
+        let n: usize = self.n().into();
+        let rank: usize = self.rank().into();
         let cols: usize = rank + 1;
 
         let a_size: usize = (self.size() * basek_in).div_ceil(basek_tsk);
 
         // Keyswitch the j-th row of the col 0
-        for row_i in 0..self.rows() {
+        for row_i in 0..self.rows().into() {
             let a = &self.at(row_i, 0).data;
 
             // Pre-compute DFT of (a0, a1, a2)
@@ -295,7 +294,7 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
                 // col 2: (-(c0s0 + c1s1 + c2s2)       , c0       , c1 + M[i], c2       )
                 // col 3: (-(d0s0 + d1s1 + d2s2)       , d0       , d1       , d2 + M[i])
 
-                let digits: usize = tsk.digits();
+                let digits: usize = tsk.digits().into();
 
                 let (mut tmp_dft_i, scratch_2) = scratch_1.take_vec_znx_dft(n, cols, tsk.size());
                 let (mut tmp_a, scratch_3) = scratch_2.take_vec_znx_dft(n, 1, ci_dft.size().div_ceil(digits));

@@ -5,7 +5,7 @@ cross_backend_test_suite! {
     backend_ref = crate::cpu_fft64_ref::FFT64Ref,
     backend_test = crate::cpu_fft64_avx::FFT64Avx,
     size = 1 << 5,
-    basek = 12,
+    base2k = 12,
     tests = {
         test_vec_znx_add => poulpy_hal::test_suite::vec_znx::test_vec_znx_add,
         test_vec_znx_add_inplace => poulpy_hal::test_suite::vec_znx::test_vec_znx_add_inplace,
@@ -41,7 +41,7 @@ cross_backend_test_suite! {
     backend_ref = crate::cpu_fft64_ref::FFT64Ref,
     backend_test = crate::cpu_fft64_avx::FFT64Avx,
     size = 1 << 5,
-    basek = 12,
+    base2k = 12,
     tests = {
         test_svp_apply_dft_to_dft => poulpy_hal::test_suite::svp::test_svp_apply_dft_to_dft,
         test_svp_apply_dft_to_dft_inplace => poulpy_hal::test_suite::svp::test_svp_apply_dft_to_dft_inplace,
@@ -53,7 +53,7 @@ cross_backend_test_suite! {
     backend_ref = crate::cpu_fft64_ref::FFT64Ref,
     backend_test = crate::cpu_fft64_avx::FFT64Avx,
     size = 1 << 5,
-    basek = 12,
+    base2k = 12,
     tests = {
         test_vec_znx_big_add => poulpy_hal::test_suite::vec_znx_big::test_vec_znx_big_add,
         test_vec_znx_big_add_inplace => poulpy_hal::test_suite::vec_znx_big::test_vec_znx_big_add_inplace,
@@ -79,7 +79,7 @@ cross_backend_test_suite! {
     backend_ref = crate::cpu_fft64_ref::FFT64Ref,
     backend_test = crate::cpu_fft64_avx::FFT64Avx,
     size = 1 << 5,
-    basek = 12,
+    base2k = 12,
     tests = {
         test_vec_znx_dft_add => poulpy_hal::test_suite::vec_znx_dft::test_vec_znx_dft_add,
         test_vec_znx_dft_add_inplace => poulpy_hal::test_suite::vec_znx_dft::test_vec_znx_dft_add_inplace,
@@ -97,7 +97,7 @@ cross_backend_test_suite! {
     backend_ref = crate::cpu_fft64_ref::FFT64Ref,
     backend_test = crate::cpu_fft64_avx::FFT64Avx,
     size = 1 << 5,
-    basek = 12,
+    base2k = 12,
     tests = {
         test_vmp_apply_dft_to_dft => poulpy_hal::test_suite::vmp::test_vmp_apply_dft_to_dft,
         test_vmp_apply_dft_to_dft_add => poulpy_hal::test_suite::vmp::test_vmp_apply_dft_to_dft_add,

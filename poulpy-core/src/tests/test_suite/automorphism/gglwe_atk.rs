@@ -18,7 +18,7 @@ use poulpy_hal::{
 use crate::{
     encryption::SIGMA,
     layouts::{
-        GGLWEAutomorphismKey, GLWEPlaintext, GLWESecret, Infos,
+        GGLWEAutomorphismKey, GGLWEAutomorphismKeyLayout, GGLWELayoutInfos, GLWEPlaintext, GLWESecret,
         prepared::{GGLWEAutomorphismKeyPrepared, GLWESecretPrepared, Prepare, PrepareAlloc},
     },
     noise::log2_std_noise_gglwe_product,
@@ -67,42 +67,70 @@ where
         + TakeSvpPPolImpl<B>
         + TakeVecZnxBigImpl<B>,
 {
-    let basek: usize = 12;
+    let base2k: usize = 12;
     let k_in: usize = 60;
     let k_out: usize = 40;
-    let digits: usize = k_in.div_ceil(basek);
-    let p0 = -1;
-    let p1 = -5;
-    (1..3).for_each(|rank| {
-        (1..digits + 1).for_each(|di| {
-            let k_apply: usize = (digits + di) * basek;
+    let digits: usize = k_in.div_ceil(base2k).into();
+    let p0: i64 = -1;
+    let p1: i64 = -5;
+    for rank in 1_usize..3 {
+        for di in 1..digits + 1 {
+            let k_apply: usize = (digits + di) * base2k;
 
             let n: usize = module.n();
             let digits_in: usize = 1;
 
-            let rows_in: usize = k_in / (basek * di);
-            let rows_out: usize = k_out / (basek * di);
-            let rows_apply: usize = k_in.div_ceil(basek * di);
+            let rows_in: usize = k_in / (base2k * di);
+            let rows_out: usize = k_out / (base2k * di);
+            let rows_apply: usize = k_in.div_ceil(base2k * di);
 
-            let mut auto_key_in: GGLWEAutomorphismKey<Vec<u8>> =
-                GGLWEAutomorphismKey::alloc(n, basek, k_in, rows_in, digits_in, rank);
-            let mut auto_key_out: GGLWEAutomorphismKey<Vec<u8>> =
-                GGLWEAutomorphismKey::alloc(n, basek, k_out, rows_out, digits_in, rank);
-            let mut auto_key_apply: GGLWEAutomorphismKey<Vec<u8>> =
-                GGLWEAutomorphismKey::alloc(n, basek, k_apply, rows_apply, di, rank);
+            let auto_key_in_infos: GGLWEAutomorphismKeyLayout = GGLWEAutomorphismKeyLayout {
+                n: n.into(),
+                base2k: base2k.into(),
+                k: k_in.into(),
+                rows: rows_in.into(),
+                digits: digits_in.into(),
+                rank: rank.into(),
+            };
+
+            let auto_key_out_infos: GGLWEAutomorphismKeyLayout = GGLWEAutomorphismKeyLayout {
+                n: n.into(),
+                base2k: base2k.into(),
+                k: k_out.into(),
+                rows: rows_out.into(),
+                digits: digits_in.into(),
+                rank: rank.into(),
+            };
+
+            let auto_key_apply_infos: GGLWEAutomorphismKeyLayout = GGLWEAutomorphismKeyLayout {
+                n: n.into(),
+                base2k: base2k.into(),
+                k: k_apply.into(),
+                rows: rows_apply.into(),
+                digits: di.into(),
+                rank: rank.into(),
+            };
+
+            let mut auto_key_in: GGLWEAutomorphismKey<Vec<u8>> = GGLWEAutomorphismKey::alloc(&auto_key_in_infos);
+            let mut auto_key_out: GGLWEAutomorphismKey<Vec<u8>> = GGLWEAutomorphismKey::alloc(&auto_key_out_infos);
+            let mut auto_key_apply: GGLWEAutomorphismKey<Vec<u8>> = GGLWEAutomorphismKey::alloc(&auto_key_apply_infos);
 
             let mut source_xs: Source = Source::new([0u8; 32]);
             let mut source_xe: Source = Source::new([0u8; 32]);
             let mut source_xa: Source = Source::new([0u8; 32]);
 
             let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-                GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, basek, k_apply, rank)
+                GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, &auto_key_in_infos)
+                    | GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, &auto_key_apply_infos)
                     | GGLWEAutomorphismKey::automorphism_scratch_space(
-                        module, basek, k_out, basek, k_in, basek, k_apply, di, rank,
+                        module,
+                        &auto_key_out_infos,
+                        &auto_key_in_infos,
+                        &auto_key_apply_infos,
                     ),
             );
 
-            let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
+            let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(&auto_key_in);
             sk.fill_ternary_prob(0.5, &mut source_xs);
 
             // gglwe_{s1}(s0) = s0 -> s1
@@ -126,7 +154,7 @@ where
             );
 
             let mut auto_key_apply_prepared: GGLWEAutomorphismKeyPrepared<Vec<u8>, B> =
-                GGLWEAutomorphismKeyPrepared::alloc(module, basek, k_apply, rows_apply, di, rank);
+                GGLWEAutomorphismKeyPrepared::alloc(module, &auto_key_apply_infos);
 
             auto_key_apply_prepared.prepare(module, &auto_key_apply, scratch.borrow());
 
@@ -138,11 +166,11 @@ where
                 scratch.borrow(),
             );
 
-            let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(n, basek, k_out);
+            let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&auto_key_out_infos);
 
-            let mut sk_auto: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
+            let mut sk_auto: GLWESecret<Vec<u8>> = GLWESecret::alloc(&auto_key_out_infos);
             sk_auto.fill_zero(); // Necessary to avoid panic of unfilled sk
-            (0..rank).for_each(|i| {
+            for i in 0..rank {
                 module.vec_znx_automorphism(
                     module.galois_element_inv(p0 * p1),
                     &mut sk_auto.data.as_vec_znx_mut(),
@@ -150,12 +178,12 @@ where
                     &sk.data.as_vec_znx(),
                     i,
                 );
-            });
+            }
 
             let sk_auto_dft: GLWESecretPrepared<Vec<u8>, B> = sk_auto.prepare_alloc(module, scratch.borrow());
 
-            (0..auto_key_out.rank_in()).for_each(|col_i| {
-                (0..auto_key_out.rows()).for_each(|row_i| {
+            (0..auto_key_out.rank_in().into()).for_each(|col_i| {
+                (0..auto_key_out.rows().into()).for_each(|row_i| {
                     auto_key_out
                         .at(row_i, col_i)
                         .decrypt(module, &mut pt, &sk_auto_dft, scratch.borrow());
@@ -168,10 +196,10 @@ where
                         col_i,
                     );
 
-                    let noise_have: f64 = pt.data.std(basek, 0).log2();
+                    let noise_have: f64 = pt.data.std(base2k, 0).log2();
                     let noise_want: f64 = log2_std_noise_gglwe_product(
                         n as f64,
-                        basek * di,
+                        base2k * di,
                         0.5,
                         0.5,
                         0f64,
@@ -189,8 +217,8 @@ where
                     );
                 });
             });
-        });
-    });
+        }
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -250,36 +278,53 @@ where
         + TakeSvpPPolImpl<B>
         + TakeVecZnxBigImpl<B>,
 {
-    let basek: usize = 12;
+    let base2k: usize = 12;
     let k_in: usize = 60;
-    let digits: usize = k_in.div_ceil(basek);
+    let digits: usize = k_in.div_ceil(base2k);
     let p0: i64 = -1;
     let p1: i64 = -5;
-    (1..3).for_each(|rank| {
-        (1..digits + 1).for_each(|di| {
-            let k_apply: usize = (digits + di) * basek;
+    for rank in 1_usize..3 {
+        for di in 1..digits + 1 {
+            let k_apply: usize = (digits + di) * base2k;
 
             let n: usize = module.n();
             let digits_in: usize = 1;
 
-            let rows_in: usize = k_in / (basek * di);
-            let rows_apply: usize = k_in.div_ceil(basek * di);
+            let rows_in: usize = k_in / (base2k * di);
+            let rows_apply: usize = k_in.div_ceil(base2k * di);
 
-            let mut auto_key: GGLWEAutomorphismKey<Vec<u8>> =
-                GGLWEAutomorphismKey::alloc(n, basek, k_in, rows_in, digits_in, rank);
-            let mut auto_key_apply: GGLWEAutomorphismKey<Vec<u8>> =
-                GGLWEAutomorphismKey::alloc(n, basek, k_apply, rows_apply, di, rank);
+            let auto_key_layout: GGLWEAutomorphismKeyLayout = GGLWEAutomorphismKeyLayout {
+                n: n.into(),
+                base2k: base2k.into(),
+                k: k_in.into(),
+                rows: rows_in.into(),
+                digits: digits_in.into(),
+                rank: rank.into(),
+            };
+
+            let auto_key_apply_layout: GGLWEAutomorphismKeyLayout = GGLWEAutomorphismKeyLayout {
+                n: n.into(),
+                base2k: base2k.into(),
+                k: k_apply.into(),
+                rows: rows_apply.into(),
+                digits: di.into(),
+                rank: rank.into(),
+            };
+
+            let mut auto_key: GGLWEAutomorphismKey<Vec<u8>> = GGLWEAutomorphismKey::alloc(&auto_key_layout);
+            let mut auto_key_apply: GGLWEAutomorphismKey<Vec<u8>> = GGLWEAutomorphismKey::alloc(&auto_key_apply_layout);
 
             let mut source_xs: Source = Source::new([0u8; 32]);
             let mut source_xe: Source = Source::new([0u8; 32]);
             let mut source_xa: Source = Source::new([0u8; 32]);
 
             let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-                GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, basek, k_apply, rank)
-                    | GGLWEAutomorphismKey::automorphism_inplace_scratch_space(module, basek, k_in, basek, k_apply, di, rank),
+                GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, &auto_key)
+                    | GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, &auto_key_apply)
+                    | GGLWEAutomorphismKey::automorphism_inplace_scratch_space(module, &auto_key, &auto_key_apply),
             );
 
-            let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
+            let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(&auto_key);
             sk.fill_ternary_prob(0.5, &mut source_xs);
 
             // gglwe_{s1}(s0) = s0 -> s1
@@ -303,19 +348,19 @@ where
             );
 
             let mut auto_key_apply_prepared: GGLWEAutomorphismKeyPrepared<Vec<u8>, B> =
-                GGLWEAutomorphismKeyPrepared::alloc(module, basek, k_apply, rows_apply, di, rank);
+                GGLWEAutomorphismKeyPrepared::alloc(module, &auto_key_apply_layout);
 
             auto_key_apply_prepared.prepare(module, &auto_key_apply, scratch.borrow());
 
             // gglwe_{s1}(s0) (x) gglwe_{s2}(s1) = gglwe_{s2}(s0)
             auto_key.automorphism_inplace(module, &auto_key_apply_prepared, scratch.borrow());
 
-            let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(n, basek, k_in);
+            let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&auto_key);
 
-            let mut sk_auto: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
+            let mut sk_auto: GLWESecret<Vec<u8>> = GLWESecret::alloc(&auto_key);
             sk_auto.fill_zero(); // Necessary to avoid panic of unfilled sk
 
-            (0..rank).for_each(|i| {
+            for i in 0..rank {
                 module.vec_znx_automorphism(
                     module.galois_element_inv(p0 * p1),
                     &mut sk_auto.data.as_vec_znx_mut(),
@@ -323,12 +368,12 @@ where
                     &sk.data.as_vec_znx(),
                     i,
                 );
-            });
+            }
 
             let sk_auto_dft: GLWESecretPrepared<Vec<u8>, B> = sk_auto.prepare_alloc(module, scratch.borrow());
 
-            (0..auto_key.rank_in()).for_each(|col_i| {
-                (0..auto_key.rows()).for_each(|row_i| {
+            (0..auto_key.rank_in().into()).for_each(|col_i| {
+                (0..auto_key.rows().into()).for_each(|row_i| {
                     auto_key
                         .at(row_i, col_i)
                         .decrypt(module, &mut pt, &sk_auto_dft, scratch.borrow());
@@ -340,10 +385,10 @@ where
                         col_i,
                     );
 
-                    let noise_have: f64 = pt.data.std(basek, 0).log2();
+                    let noise_have: f64 = pt.data.std(base2k, 0).log2();
                     let noise_want: f64 = log2_std_noise_gglwe_product(
                         n as f64,
-                        basek * di,
+                        base2k * di,
                         0.5,
                         0.5,
                         0f64,
@@ -361,6 +406,6 @@ where
                     );
                 });
             });
-        });
-    });
+        }
+    }
 }

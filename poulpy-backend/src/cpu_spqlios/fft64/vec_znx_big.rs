@@ -71,7 +71,7 @@ unsafe impl VecZnxBigFromSmallImpl<Self> for FFT64Spqlios {
 unsafe impl VecZnxBigAddNormalImpl<Self> for FFT64Spqlios {
     fn add_normal_impl<R: VecZnxBigToMut<Self>>(
         _module: &Module<Self>,
-        basek: usize,
+        base2k: usize,
         res: &mut R,
         res_col: usize,
         k: usize,
@@ -89,7 +89,7 @@ unsafe impl VecZnxBigAddNormalImpl<Self> for FFT64Spqlios {
             max_size: res.max_size,
         };
 
-        vec_znx_add_normal_ref(basek, &mut res_znx, res_col, k, sigma, bound, source);
+        vec_znx_add_normal_ref(base2k, &mut res_znx, res_col, k, sigma, bound, source);
     }
 }
 
@@ -544,7 +544,7 @@ where
         // unsafe {
         // vec_znx::vec_znx_normalize_base2k(
         // module.ptr(),
-        // basek as u64,
+        // base2k as u64,
         // res.at_mut_ptr(res_col, 0),
         // res.size() as u64,
         // res.sl() as u64,

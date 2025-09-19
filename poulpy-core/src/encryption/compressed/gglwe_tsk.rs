@@ -11,16 +11,20 @@ use poulpy_hal::{
 
 use crate::{
     TakeGLWESecret, TakeGLWESecretPrepared,
-    layouts::{GGLWETensorKey, GLWESecret, Infos, compressed::GGLWETensorKeyCompressed, prepared::Prepare},
+    layouts::{
+        GGLWELayoutInfos, GGLWETensorKey, GLWEInfos, GLWESecret, LWEInfos, Rank, compressed::GGLWETensorKeyCompressed,
+        prepared::Prepare,
+    },
 };
 
 impl GGLWETensorKeyCompressed<Vec<u8>> {
-    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize
+    pub fn encrypt_sk_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
+        A: GGLWELayoutInfos,
         Module<B>:
             SvpPPolAllocBytes + VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes + VecZnxNormalizeTmpBytes + VecZnxBigAllocBytes,
     {
-        GGLWETensorKey::encrypt_sk_scratch_space(module, basek, k, rank)
+        GGLWETensorKey::encrypt_sk_scratch_space(module, infos)
     }
 }
 
@@ -63,38 +67,38 @@ impl<DataSelf: DataMut> GGLWETensorKeyCompressed<DataSelf> {
     {
         #[cfg(debug_assertions)]
         {
-            assert_eq!(self.rank(), sk.rank());
+            assert_eq!(self.rank_out(), sk.rank());
             assert_eq!(self.n(), sk.n());
         }
 
-        let n: usize = sk.n();
-        let rank: usize = self.rank();
+        let n: usize = sk.n().into();
+        let rank: usize = self.rank_out().into();
 
-        let (mut sk_dft_prep, scratch_1) = scratch.take_glwe_secret_prepared(n, rank);
+        let (mut sk_dft_prep, scratch_1) = scratch.take_glwe_secret_prepared(sk.n(), self.rank_out());
         sk_dft_prep.prepare(module, sk, scratch_1);
 
         let (mut sk_dft, scratch_2) = scratch_1.take_vec_znx_dft(n, rank, 1);
 
-        (0..rank).for_each(|i| {
+        for i in 0..rank {
             module.vec_znx_dft_apply(1, 0, &mut sk_dft, i, &sk.data.as_vec_znx(), i);
-        });
+        }
 
         let (mut sk_ij_big, scratch_3) = scratch_2.take_vec_znx_big(n, 1, 1);
-        let (mut sk_ij, scratch_4) = scratch_3.take_glwe_secret(n, 1);
+        let (mut sk_ij, scratch_4) = scratch_3.take_glwe_secret(sk.n(), Rank(1));
         let (mut sk_ij_dft, scratch_5) = scratch_4.take_vec_znx_dft(n, 1, 1);
 
         let mut source_xa: Source = Source::new(seed_xa);
 
-        (0..rank).for_each(|i| {
-            (i..rank).for_each(|j| {
+        for i in 0..rank {
+            for j in i..rank {
                 module.svp_apply_dft_to_dft(&mut sk_ij_dft, 0, &sk_dft_prep.data, j, &sk_dft, i);
 
                 module.vec_znx_idft_apply_tmpa(&mut sk_ij_big, 0, &mut sk_ij_dft, 0);
                 module.vec_znx_big_normalize(
-                    self.basek(),
+                    self.base2k().into(),
                     &mut sk_ij.data.as_vec_znx_mut(),
                     0,
-                    self.basek(),
+                    self.base2k().into(),
                     &sk_ij_big,
                     0,
                     scratch_5,
@@ -104,7 +108,7 @@ impl<DataSelf: DataMut> GGLWETensorKeyCompressed<DataSelf> {
 
                 self.at_mut(i, j)
                     .encrypt_sk(module, &sk_ij, sk, seed_xa_tmp, source_xe, scratch_5);
-            });
-        })
+            }
+        }
     }
 }

@@ -30,7 +30,7 @@ pub trait VecZnxBigFromBytes<B: Backend> {
 /// Add a discrete normal distribution on res.
 ///
 /// # Arguments
-/// * `basek`: base two logarithm of the bivariate representation
+/// * `base2k`: base two logarithm of the bivariate representation
 /// * `res`: receiver.
 /// * `res_col`: column of the receiver on which the operation is performed/stored.
 /// * `k`:
@@ -40,7 +40,7 @@ pub trait VecZnxBigFromBytes<B: Backend> {
 pub trait VecZnxBigAddNormal<B: Backend> {
     fn vec_znx_big_add_normal<R: VecZnxBigToMut<B>>(
         &self,
-        basek: usize,
+        base2k: usize,
         res: &mut R,
         res_col: usize,
         k: usize,

@@ -10,19 +10,23 @@ use poulpy_hal::{
 
 use crate::{
     TakeGLWEPt,
-    layouts::{GGLWECiphertext, GLWECiphertext, GLWEPlaintext, Infos, prepared::GLWESecretPrepared},
+    layouts::{GGLWECiphertext, GGLWELayoutInfos, GLWECiphertext, GLWEPlaintext, LWEInfos, prepared::GLWESecretPrepared},
 };
 
 impl GGLWECiphertext<Vec<u8>> {
-    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize) -> usize
+    pub fn encrypt_sk_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
+        A: GGLWELayoutInfos,
         Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes + VecZnxNormalizeTmpBytes,
     {
-        GLWECiphertext::encrypt_sk_scratch_space(module, basek, k)
-            + (GLWEPlaintext::byte_of(module.n(), basek, k) | module.vec_znx_normalize_tmp_bytes())
+        GLWECiphertext::encrypt_sk_scratch_space(module, &infos.glwe_layout())
+            + (GLWEPlaintext::alloc_bytes(&infos.glwe_layout()) | module.vec_znx_normalize_tmp_bytes())
     }
 
-    pub fn encrypt_pk_scratch_space<B: Backend>(_module: &Module<B>, _basek: usize, _k: usize, _rank: usize) -> usize {
+    pub fn encrypt_pk_scratch_space<B: Backend, A>(_module: &Module<B>, _infos: &A) -> usize
+    where
+        A: GGLWELayoutInfos,
+    {
         unimplemented!()
     }
 }
@@ -60,7 +64,7 @@ impl<DataSelf: DataMut> GGLWECiphertext<DataSelf> {
 
             assert_eq!(
                 self.rank_in(),
-                pt.cols(),
+                pt.cols() as u32,
                 "self.rank_in(): {} != pt.cols(): {}",
                 self.rank_in(),
                 pt.cols()
@@ -73,33 +77,32 @@ impl<DataSelf: DataMut> GGLWECiphertext<DataSelf> {
                 sk.rank()
             );
             assert_eq!(self.n(), sk.n());
-            assert_eq!(pt.n(), sk.n());
+            assert_eq!(pt.n() as u32, sk.n());
             assert!(
-                scratch.available() >= GGLWECiphertext::encrypt_sk_scratch_space(module, self.basek(), self.k()),
+                scratch.available() >= GGLWECiphertext::encrypt_sk_scratch_space(module, self),
                 "scratch.available: {} < GGLWECiphertext::encrypt_sk_scratch_space(module, self.rank()={}, self.size()={}): {}",
                 scratch.available(),
-                self.rank(),
+                self.rank_out(),
                 self.size(),
-                GGLWECiphertext::encrypt_sk_scratch_space(module, self.basek(), self.k())
+                GGLWECiphertext::encrypt_sk_scratch_space(module, self)
             );
             assert!(
-                self.rows() * self.digits() * self.basek() <= self.k(),
-                "self.rows() : {} * self.digits() : {} * self.basek() : {} = {} >= self.k() = {}",
+                self.rows().0 * self.digits().0 * self.base2k().0 <= self.k().0,
+                "self.rows() : {} * self.digits() : {} * self.base2k() : {} = {} >= self.k() = {}",
                 self.rows(),
                 self.digits(),
-                self.basek(),
-                self.rows() * self.digits() * self.basek(),
+                self.base2k(),
+                self.rows().0 * self.digits().0 * self.base2k().0,
                 self.k()
             );
         }
 
-        let rows: usize = self.rows();
-        let digits: usize = self.digits();
-        let basek: usize = self.basek();
-        let k: usize = self.k();
-        let rank_in: usize = self.rank_in();
+        let rows: usize = self.rows().into();
+        let digits: usize = self.digits().into();
+        let base2k: usize = self.base2k().into();
+        let rank_in: usize = self.rank_in().into();
 
-        let (mut tmp_pt, scrach_1) = scratch.take_glwe_pt(sk.n(), basek, k);
+        let (mut tmp_pt, scrach_1) = scratch.take_glwe_pt(self);
         // For each input column (i.e. rank) produces a GGLWE ciphertext of rank_out+1 columns
         //
         // Example for ksk rank 2 to rank 3:
@@ -122,7 +125,7 @@ impl<DataSelf: DataMut> GGLWECiphertext<DataSelf> {
                     pt,
                     col_i,
                 );
-                module.vec_znx_normalize_inplace(basek, &mut tmp_pt.data, 0, scrach_1);
+                module.vec_znx_normalize_inplace(base2k, &mut tmp_pt.data, 0, scrach_1);
 
                 // rlwe encrypt of vec_znx_pt into vec_znx_ct
                 self.at_mut(row_i, col_i)

@@ -10,15 +10,18 @@ use poulpy_hal::{
 
 use crate::{
     encryption::{SIGMA, glwe_ct::glwe_encrypt_sk_internal},
-    layouts::{GLWECiphertext, GLWEPlaintext, Infos, compressed::GLWECiphertextCompressed, prepared::GLWESecretPrepared},
+    layouts::{
+        GLWECiphertext, GLWEInfos, GLWEPlaintext, LWEInfos, compressed::GLWECiphertextCompressed, prepared::GLWESecretPrepared,
+    },
 };
 
 impl GLWECiphertextCompressed<Vec<u8>> {
-    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize) -> usize
+    pub fn encrypt_sk_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
+        A: GLWEInfos,
         Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes,
     {
-        GLWECiphertext::encrypt_sk_scratch_space(module, basek, k)
+        GLWECiphertext::encrypt_sk_scratch_space(module, infos)
     }
 }
 
@@ -77,11 +80,11 @@ impl<D: DataMut> GLWECiphertextCompressed<D> {
         Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
     {
         let mut source_xa = Source::new(seed_xa);
-        let cols: usize = self.rank() + 1;
+        let cols: usize = (self.rank() + 1).into();
         glwe_encrypt_sk_internal(
             module,
-            self.basek(),
-            self.k(),
+            self.base2k().into(),
+            self.k().into(),
             &mut self.data,
             cols,
             true,

@@ -18,13 +18,12 @@ use poulpy_hal::{
 use crate::{
     encryption::SIGMA,
     layouts::{
-        GGLWESwitchingKey, GLWESecret,
+        GGLWESwitchingKey, GGLWESwitchingKeyLayout, GLWESecret,
         prepared::{GGLWESwitchingKeyPrepared, GLWESecretPrepared, PrepareAlloc},
     },
     noise::log2_std_noise_gglwe_product,
 };
 
-#[allow(clippy::too_many_arguments)]
 pub fn test_gglwe_switching_key_keyswitch<B>(module: &Module<B>)
 where
     Module<B>: VecZnxDftAllocBytes
@@ -65,79 +64,84 @@ where
         + TakeScalarZnxImpl<B>
         + TakeVecZnxImpl<B>,
 {
-    let basek: usize = 12;
+    let base2k: usize = 12;
     let k_in: usize = 60;
-    let digits: usize = k_in.div_ceil(basek);
+    let digits: usize = k_in.div_ceil(base2k);
 
-    (1..3).for_each(|rank_in_s0s1| {
-        (1..3).for_each(|rank_out_s0s1| {
-            (1..3).for_each(|rank_out_s1s2| {
-                (1..digits + 1).for_each(|di| {
-                    let k_ksk: usize = k_in + basek * di;
+    for rank_in_s0s1 in 1_usize..3 {
+        for rank_out_s0s1 in 1_usize..3 {
+            for rank_out_s1s2 in 1_usize..3 {
+                for di in 1_usize..digits + 1 {
+                    let k_ksk: usize = k_in + base2k * di;
                     let k_out: usize = k_ksk; // Better capture noise.
 
                     let n: usize = module.n();
-                    let rows: usize = k_in / basek;
-                    let rows_apply: usize = k_in.div_ceil(basek * di);
+                    let rows: usize = k_in / base2k;
+                    let rows_apply: usize = k_in.div_ceil(base2k * di);
                     let digits_in: usize = 1;
 
-                    let mut ct_gglwe_s0s1: GGLWESwitchingKey<Vec<u8>> =
-                        GGLWESwitchingKey::alloc(n, basek, k_in, rows, digits_in, rank_in_s0s1, rank_out_s0s1);
-                    let mut ct_gglwe_s1s2: GGLWESwitchingKey<Vec<u8>> = GGLWESwitchingKey::alloc(
-                        n,
-                        basek,
-                        k_ksk,
-                        rows_apply,
-                        di,
-                        rank_out_s0s1,
-                        rank_out_s1s2,
-                    );
-                    let mut ct_gglwe_s0s2: GGLWESwitchingKey<Vec<u8>> = GGLWESwitchingKey::alloc(
-                        n,
-                        basek,
-                        k_out,
-                        rows,
-                        digits_in,
-                        rank_in_s0s1,
-                        rank_out_s1s2,
-                    );
+                    let gglwe_s0s1_infos: GGLWESwitchingKeyLayout = GGLWESwitchingKeyLayout {
+                        n: n.into(),
+                        base2k: base2k.into(),
+                        k: k_in.into(),
+                        rows: rows.into(),
+                        digits: digits_in.into(),
+                        rank_in: rank_in_s0s1.into(),
+                        rank_out: rank_out_s0s1.into(),
+                    };
+
+                    let gglwe_s1s2_infos: GGLWESwitchingKeyLayout = GGLWESwitchingKeyLayout {
+                        n: n.into(),
+                        base2k: base2k.into(),
+                        k: k_ksk.into(),
+                        rows: rows_apply.into(),
+                        digits: di.into(),
+                        rank_in: rank_out_s0s1.into(),
+                        rank_out: rank_out_s1s2.into(),
+                    };
+
+                    let gglwe_s0s2_infos: GGLWESwitchingKeyLayout = GGLWESwitchingKeyLayout {
+                        n: n.into(),
+                        base2k: base2k.into(),
+                        k: k_out.into(),
+                        rows: rows_apply.into(),
+                        digits: digits_in.into(),
+                        rank_in: rank_in_s0s1.into(),
+                        rank_out: rank_out_s1s2.into(),
+                    };
+
+                    let mut gglwe_s0s1: GGLWESwitchingKey<Vec<u8>> = GGLWESwitchingKey::alloc(&gglwe_s0s1_infos);
+                    let mut gglwe_s1s2: GGLWESwitchingKey<Vec<u8>> = GGLWESwitchingKey::alloc(&gglwe_s1s2_infos);
+                    let mut gglwe_s0s2: GGLWESwitchingKey<Vec<u8>> = GGLWESwitchingKey::alloc(&gglwe_s0s2_infos);
 
                     let mut source_xs: Source = Source::new([0u8; 32]);
                     let mut source_xe: Source = Source::new([0u8; 32]);
                     let mut source_xa: Source = Source::new([0u8; 32]);
 
-                    let mut scratch_enc: ScratchOwned<B> = ScratchOwned::alloc(GGLWESwitchingKey::encrypt_sk_scratch_space(
-                        module,
-                        basek,
-                        k_ksk,
-                        rank_in_s0s1 | rank_out_s0s1,
-                        rank_out_s0s1 | rank_out_s1s2,
-                    ));
+                    let mut scratch_enc: ScratchOwned<B> = ScratchOwned::alloc(
+                        GGLWESwitchingKey::encrypt_sk_scratch_space(module, &gglwe_s0s1_infos)
+                            | GGLWESwitchingKey::encrypt_sk_scratch_space(module, &gglwe_s1s2_infos)
+                            | GGLWESwitchingKey::encrypt_sk_scratch_space(module, &gglwe_s0s2_infos),
+                    );
                     let mut scratch_apply: ScratchOwned<B> = ScratchOwned::alloc(GGLWESwitchingKey::keyswitch_scratch_space(
                         module,
-                        basek,
-                        k_out,
-                        basek,
-                        k_in,
-                        basek,
-                        k_ksk,
-                        di,
-                        ct_gglwe_s1s2.rank_in(),
-                        ct_gglwe_s1s2.rank_out(),
+                        &gglwe_s0s1_infos,
+                        &gglwe_s0s2_infos,
+                        &gglwe_s1s2_infos,
                     ));
 
-                    let mut sk0: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank_in_s0s1);
+                    let mut sk0: GLWESecret<Vec<u8>> = GLWESecret::alloc_with(n.into(), rank_in_s0s1.into());
                     sk0.fill_ternary_prob(0.5, &mut source_xs);
 
-                    let mut sk1: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank_out_s0s1);
+                    let mut sk1: GLWESecret<Vec<u8>> = GLWESecret::alloc_with(n.into(), rank_out_s0s1.into());
                     sk1.fill_ternary_prob(0.5, &mut source_xs);
 
-                    let mut sk2: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank_out_s1s2);
+                    let mut sk2: GLWESecret<Vec<u8>> = GLWESecret::alloc_with(n.into(), rank_out_s1s2.into());
                     sk2.fill_ternary_prob(0.5, &mut source_xs);
                     let sk2_prepared: GLWESecretPrepared<Vec<u8>, B> = sk2.prepare_alloc(module, scratch_apply.borrow());
 
                     // gglwe_{s1}(s0) = s0 -> s1
-                    ct_gglwe_s0s1.encrypt_sk(
+                    gglwe_s0s1.encrypt_sk(
                         module,
                         &sk0,
                         &sk1,
@@ -147,7 +151,7 @@ where
                     );
 
                     // gglwe_{s2}(s1) -> s1 -> s2
-                    ct_gglwe_s1s2.encrypt_sk(
+                    gglwe_s1s2.encrypt_sk(
                         module,
                         &sk1,
                         &sk2,
@@ -156,20 +160,20 @@ where
                         scratch_enc.borrow(),
                     );
 
-                    let ct_gglwe_s1s2_prepared: GGLWESwitchingKeyPrepared<Vec<u8>, B> =
-                        ct_gglwe_s1s2.prepare_alloc(module, scratch_apply.borrow());
+                    let gglwe_s1s2_prepared: GGLWESwitchingKeyPrepared<Vec<u8>, B> =
+                        gglwe_s1s2.prepare_alloc(module, scratch_apply.borrow());
 
                     // gglwe_{s1}(s0) (x) gglwe_{s2}(s1) = gglwe_{s2}(s0)
-                    ct_gglwe_s0s2.keyswitch(
+                    gglwe_s0s2.keyswitch(
                         module,
-                        &ct_gglwe_s0s1,
-                        &ct_gglwe_s1s2_prepared,
+                        &gglwe_s0s1,
+                        &gglwe_s1s2_prepared,
                         scratch_apply.borrow(),
                     );
 
                     let max_noise: f64 = log2_std_noise_gglwe_product(
                         n as f64,
-                        basek * di,
+                        base2k * di,
                         0.5,
                         0.5,
                         0f64,
@@ -180,13 +184,13 @@ where
                         k_ksk,
                     );
 
-                    ct_gglwe_s0s2
+                    gglwe_s0s2
                         .key
                         .assert_noise(module, &sk2_prepared, &sk0.data, max_noise + 0.5);
-                });
-            });
-        });
-    });
+                }
+            }
+        }
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -230,52 +234,69 @@ where
         + TakeScalarZnxImpl<B>
         + TakeVecZnxImpl<B>,
 {
-    let basek: usize = 12;
-    let k_ct: usize = 60;
-    let digits: usize = k_ct.div_ceil(basek);
-    (1..3).for_each(|rank_in| {
-        (1..3).for_each(|rank_out| {
-            (1..digits + 1).for_each(|di| {
-                let k_ksk: usize = k_ct + basek * di;
+    let base2k: usize = 12;
+    let k_out: usize = 60;
+    let digits: usize = k_out.div_ceil(base2k);
+    for rank_in in 1_usize..3 {
+        for rank_out in 1_usize..3 {
+            for di in 1_usize..digits + 1 {
+                let k_ksk: usize = k_out + base2k * di;
 
                 let n: usize = module.n();
-                let rows: usize = k_ct.div_ceil(basek * di);
+                let rows: usize = k_out.div_ceil(base2k * di);
                 let digits_in: usize = 1;
 
-                let mut ct_gglwe_s0s1: GGLWESwitchingKey<Vec<u8>> =
-                    GGLWESwitchingKey::alloc(n, basek, k_ct, rows, digits_in, rank_in, rank_out);
-                let mut ct_gglwe_s1s2: GGLWESwitchingKey<Vec<u8>> =
-                    GGLWESwitchingKey::alloc(n, basek, k_ksk, rows, di, rank_out, rank_out);
+                let gglwe_s0s1_infos: GGLWESwitchingKeyLayout = GGLWESwitchingKeyLayout {
+                    n: n.into(),
+                    base2k: base2k.into(),
+                    k: k_out.into(),
+                    rows: rows.into(),
+                    digits: digits_in.into(),
+                    rank_in: rank_in.into(),
+                    rank_out: rank_out.into(),
+                };
+
+                let gglwe_s1s2_infos: GGLWESwitchingKeyLayout = GGLWESwitchingKeyLayout {
+                    n: n.into(),
+                    base2k: base2k.into(),
+                    k: k_ksk.into(),
+                    rows: rows.into(),
+                    digits: di.into(),
+                    rank_in: rank_out.into(),
+                    rank_out: rank_out.into(),
+                };
+
+                let mut gglwe_s0s1: GGLWESwitchingKey<Vec<u8>> = GGLWESwitchingKey::alloc(&gglwe_s0s1_infos);
+                let mut gglwe_s1s2: GGLWESwitchingKey<Vec<u8>> = GGLWESwitchingKey::alloc(&gglwe_s1s2_infos);
 
                 let mut source_xs: Source = Source::new([0u8; 32]);
                 let mut source_xe: Source = Source::new([0u8; 32]);
                 let mut source_xa: Source = Source::new([0u8; 32]);
 
-                let mut scratch_enc: ScratchOwned<B> = ScratchOwned::alloc(GGLWESwitchingKey::encrypt_sk_scratch_space(
-                    module,
-                    basek,
-                    k_ksk,
-                    rank_in | rank_out,
-                    rank_out,
-                ));
+                let mut scratch_enc: ScratchOwned<B> = ScratchOwned::alloc(
+                    GGLWESwitchingKey::encrypt_sk_scratch_space(module, &gglwe_s0s1_infos)
+                        | GGLWESwitchingKey::encrypt_sk_scratch_space(module, &gglwe_s1s2_infos),
+                );
                 let mut scratch_apply: ScratchOwned<B> = ScratchOwned::alloc(GGLWESwitchingKey::keyswitch_inplace_scratch_space(
-                    module, basek, k_ct, basek, k_ksk, di, rank_out,
+                    module,
+                    &gglwe_s0s1_infos,
+                    &gglwe_s1s2_infos,
                 ));
 
                 let var_xs: f64 = 0.5;
 
-                let mut sk0: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank_in);
+                let mut sk0: GLWESecret<Vec<u8>> = GLWESecret::alloc_with(n.into(), rank_in.into());
                 sk0.fill_ternary_prob(var_xs, &mut source_xs);
 
-                let mut sk1: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank_out);
+                let mut sk1: GLWESecret<Vec<u8>> = GLWESecret::alloc_with(n.into(), rank_out.into());
                 sk1.fill_ternary_prob(var_xs, &mut source_xs);
 
-                let mut sk2: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank_out);
+                let mut sk2: GLWESecret<Vec<u8>> = GLWESecret::alloc_with(n.into(), rank_out.into());
                 sk2.fill_ternary_prob(var_xs, &mut source_xs);
                 let sk2_prepared: GLWESecretPrepared<Vec<u8>, B> = sk2.prepare_alloc(module, scratch_apply.borrow());
 
                 // gglwe_{s1}(s0) = s0 -> s1
-                ct_gglwe_s0s1.encrypt_sk(
+                gglwe_s0s1.encrypt_sk(
                     module,
                     &sk0,
                     &sk1,
@@ -285,7 +306,7 @@ where
                 );
 
                 // gglwe_{s2}(s1) -> s1 -> s2
-                ct_gglwe_s1s2.encrypt_sk(
+                gglwe_s1s2.encrypt_sk(
                     module,
                     &sk1,
                     &sk2,
@@ -294,31 +315,31 @@ where
                     scratch_enc.borrow(),
                 );
 
-                let ct_gglwe_s1s2_prepared: GGLWESwitchingKeyPrepared<Vec<u8>, B> =
-                    ct_gglwe_s1s2.prepare_alloc(module, scratch_apply.borrow());
+                let gglwe_s1s2_prepared: GGLWESwitchingKeyPrepared<Vec<u8>, B> =
+                    gglwe_s1s2.prepare_alloc(module, scratch_apply.borrow());
 
                 // gglwe_{s1}(s0) (x) gglwe_{s2}(s1) = gglwe_{s2}(s0)
-                ct_gglwe_s0s1.keyswitch_inplace(module, &ct_gglwe_s1s2_prepared, scratch_apply.borrow());
+                gglwe_s0s1.keyswitch_inplace(module, &gglwe_s1s2_prepared, scratch_apply.borrow());
 
-                let ct_gglwe_s0s2: GGLWESwitchingKey<Vec<u8>> = ct_gglwe_s0s1;
+                let gglwe_s0s2: GGLWESwitchingKey<Vec<u8>> = gglwe_s0s1;
 
                 let max_noise: f64 = log2_std_noise_gglwe_product(
                     n as f64,
-                    basek * di,
+                    base2k * di,
                     var_xs,
                     var_xs,
                     0f64,
                     SIGMA * SIGMA,
                     0f64,
                     rank_out as f64,
-                    k_ct,
+                    k_out,
                     k_ksk,
                 );
 
-                ct_gglwe_s0s2
+                gglwe_s0s2
                     .key
                     .assert_noise(module, &sk2_prepared, &sk0.data, max_noise + 0.5);
-            });
-        });
-    });
+            }
+        }
+    }
 }

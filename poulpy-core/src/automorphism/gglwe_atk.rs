@@ -7,44 +7,36 @@ use poulpy_hal::{
     layouts::{Backend, DataMut, DataRef, Module, Scratch, ZnxZero},
 };
 
-use crate::layouts::{GGLWEAutomorphismKey, GLWECiphertext, Infos, prepared::GGLWEAutomorphismKeyPrepared};
+use crate::layouts::{GGLWEAutomorphismKey, GGLWELayoutInfos, GLWECiphertext, prepared::GGLWEAutomorphismKeyPrepared};
 
 impl GGLWEAutomorphismKey<Vec<u8>> {
-    #[allow(clippy::too_many_arguments)]
-    pub fn automorphism_scratch_space<B: Backend>(
+    pub fn automorphism_scratch_space<B: Backend, OUT, IN, KEY>(
         module: &Module<B>,
-        basek_out: usize,
-        k_out: usize,
-        basek_in: usize,
-        k_in: usize,
-        basek_ksk: usize,
-        k_ksk: usize,
-        digits: usize,
-        rank: usize,
+        out_infos: &OUT,
+        in_infos: &IN,
+        key_infos: &KEY,
     ) -> usize
     where
+        OUT: GGLWELayoutInfos,
+        IN: GGLWELayoutInfos,
+        KEY: GGLWELayoutInfos,
         Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
         GLWECiphertext::keyswitch_scratch_space(
-            module, basek_out, k_out, basek_in, k_in, basek_ksk, k_ksk, digits, rank, rank,
+            module,
+            &out_infos.glwe_layout(),
+            &in_infos.glwe_layout(),
+            key_infos,
         )
     }
 
-    pub fn automorphism_inplace_scratch_space<B: Backend>(
-        module: &Module<B>,
-        basek_out: usize,
-        k_out: usize,
-        basek_ksk: usize,
-        k_ksk: usize,
-        digits: usize,
-        rank: usize,
-    ) -> usize
+    pub fn automorphism_inplace_scratch_space<B: Backend, OUT, KEY>(module: &Module<B>, out_infos: &OUT, key_infos: &KEY) -> usize
     where
+        OUT: GGLWELayoutInfos,
+        KEY: GGLWELayoutInfos,
         Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        GGLWEAutomorphismKey::automorphism_scratch_space(
-            module, basek_out, k_out, basek_out, k_out, basek_ksk, k_ksk, digits, rank,
-        )
+        GGLWEAutomorphismKey::automorphism_scratch_space(module, out_infos, out_infos, key_infos)
     }
 }
 
@@ -73,6 +65,8 @@ impl<DataSelf: DataMut> GGLWEAutomorphismKey<DataSelf> {
     {
         #[cfg(debug_assertions)]
         {
+            use crate::layouts::LWEInfos;
+
             assert_eq!(
                 self.rank_in(),
                 lhs.rank_in(),
@@ -102,13 +96,13 @@ impl<DataSelf: DataMut> GGLWEAutomorphismKey<DataSelf> {
             )
         }
 
-        let cols_out: usize = rhs.rank_out() + 1;
+        let cols_out: usize = (rhs.rank_out() + 1).into();
 
         let p: i64 = lhs.p();
-        let p_inv = module.galois_element_inv(p);
+        let p_inv: i64 = module.galois_element_inv(p);
 
-        (0..self.rank_in()).for_each(|col_i| {
-            (0..self.rows()).for_each(|row_j| {
+        (0..self.rank_in().into()).for_each(|col_i| {
+            (0..self.rows().into()).for_each(|row_j| {
                 let mut res_ct: GLWECiphertext<&mut [u8]> = self.at_mut(row_j, col_i);
                 let lhs_ct: GLWECiphertext<&[u8]> = lhs.at(row_j, col_i);
 
@@ -127,8 +121,8 @@ impl<DataSelf: DataMut> GGLWEAutomorphismKey<DataSelf> {
             });
         });
 
-        (self.rows().min(lhs.rows())..self.rows()).for_each(|row_i| {
-            (0..self.rank_in()).for_each(|col_j| {
+        (self.rows().min(lhs.rows()).into()..self.rows().into()).for_each(|row_i| {
+            (0..self.rank_in().into()).for_each(|col_j| {
                 self.at_mut(row_i, col_j).data.zero();
             });
         });
@@ -175,13 +169,13 @@ impl<DataSelf: DataMut> GGLWEAutomorphismKey<DataSelf> {
             );
         }
 
-        let cols_out: usize = rhs.rank_out() + 1;
+        let cols_out: usize = (rhs.rank_out() + 1).into();
 
         let p: i64 = self.p();
         let p_inv = module.galois_element_inv(p);
 
-        (0..self.rank_in()).for_each(|col_i| {
-            (0..self.rows()).for_each(|row_j| {
+        (0..self.rank_in().into()).for_each(|col_i| {
+            (0..self.rows().into()).for_each(|row_j| {
                 let mut res_ct: GLWECiphertext<&mut [u8]> = self.at_mut(row_j, col_i);
 
                 // Reverts the automorphism X^{-k}: (-pi^{-1}_{k}(s)a + s, a) to (-sa + pi_{k}(s), a)

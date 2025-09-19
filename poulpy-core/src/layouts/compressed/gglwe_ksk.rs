@@ -1,11 +1,11 @@
 use poulpy_hal::{
     api::{VecZnxCopy, VecZnxFillUniform},
-    layouts::{Backend, Data, DataMut, DataRef, FillUniform, MatZnx, Module, ReaderFrom, Reset, WriterTo},
+    layouts::{Backend, Data, DataMut, DataRef, FillUniform, Module, ReaderFrom, WriterTo},
     source::Source,
 };
 
 use crate::layouts::{
-    GGLWESwitchingKey, Infos,
+    Base2K, Degree, Digits, GGLWELayoutInfos, GGLWESwitchingKey, GLWEInfos, LWEInfos, Rank, Rows, TorusPrecision,
     compressed::{Decompress, GGLWECiphertextCompressed},
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
@@ -16,6 +16,47 @@ pub struct GGLWESwitchingKeyCompressed<D: Data> {
     pub(crate) key: GGLWECiphertextCompressed<D>,
     pub(crate) sk_in_n: usize,  // Degree of sk_in
     pub(crate) sk_out_n: usize, // Degree of sk_out
+}
+
+impl<D: Data> LWEInfos for GGLWESwitchingKeyCompressed<D> {
+    fn n(&self) -> Degree {
+        self.key.n()
+    }
+
+    fn base2k(&self) -> Base2K {
+        self.key.base2k()
+    }
+
+    fn k(&self) -> TorusPrecision {
+        self.key.k()
+    }
+
+    fn size(&self) -> usize {
+        self.key.size()
+    }
+}
+impl<D: Data> GLWEInfos for GGLWESwitchingKeyCompressed<D> {
+    fn rank(&self) -> Rank {
+        self.rank_out()
+    }
+}
+
+impl<D: Data> GGLWELayoutInfos for GGLWESwitchingKeyCompressed<D> {
+    fn rank_in(&self) -> Rank {
+        self.key.rank_in()
+    }
+
+    fn rank_out(&self) -> Rank {
+        self.key.rank_out()
+    }
+
+    fn digits(&self) -> Digits {
+        self.key.digits()
+    }
+
+    fn rows(&self) -> Rows {
+        self.key.rows()
+    }
 }
 
 impl<D: DataRef> fmt::Debug for GGLWESwitchingKeyCompressed<D> {
@@ -30,17 +71,6 @@ impl<D: DataMut> FillUniform for GGLWESwitchingKeyCompressed<D> {
     }
 }
 
-impl<D: DataMut> Reset for GGLWESwitchingKeyCompressed<D>
-where
-    MatZnx<D>: Reset,
-{
-    fn reset(&mut self) {
-        self.key.reset();
-        self.sk_in_n = 0;
-        self.sk_out_n = 0;
-    }
-}
-
 impl<D: DataRef> fmt::Display for GGLWESwitchingKeyCompressed<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
@@ -51,51 +81,51 @@ impl<D: DataRef> fmt::Display for GGLWESwitchingKeyCompressed<D> {
     }
 }
 
-impl<D: Data> Infos for GGLWESwitchingKeyCompressed<D> {
-    type Inner = MatZnx<D>;
-
-    fn inner(&self) -> &Self::Inner {
-        self.key.inner()
-    }
-
-    fn basek(&self) -> usize {
-        self.key.basek()
-    }
-
-    fn k(&self) -> usize {
-        self.key.k()
-    }
-}
-
-impl<D: Data> GGLWESwitchingKeyCompressed<D> {
-    pub fn rank(&self) -> usize {
-        self.key.rank()
-    }
-
-    pub fn digits(&self) -> usize {
-        self.key.digits()
-    }
-
-    pub fn rank_in(&self) -> usize {
-        self.key.rank_in()
-    }
-
-    pub fn rank_out(&self) -> usize {
-        self.key.rank_out()
-    }
-}
-
 impl GGLWESwitchingKeyCompressed<Vec<u8>> {
-    pub fn alloc(n: usize, basek: usize, k: usize, rows: usize, digits: usize, rank_in: usize, rank_out: usize) -> Self {
+    pub fn alloc<A>(infos: &A) -> Self
+    where
+        A: GGLWELayoutInfos,
+    {
         GGLWESwitchingKeyCompressed {
-            key: GGLWECiphertextCompressed::alloc(n, basek, k, rows, digits, rank_in, rank_out),
+            key: GGLWECiphertextCompressed::alloc(infos),
             sk_in_n: 0,
             sk_out_n: 0,
         }
     }
 
-    pub fn bytes_of(n: usize, basek: usize, k: usize, rows: usize, digits: usize, rank_in: usize) -> usize {
-        GGLWECiphertextCompressed::bytes_of(n, basek, k, rows, digits, rank_in)
+    pub fn alloc_with(
+        n: Degree,
+        base2k: Base2K,
+        k: TorusPrecision,
+        rows: Rows,
+        digits: Digits,
+        rank_in: Rank,
+        rank_out: Rank,
+    ) -> Self {
+        GGLWESwitchingKeyCompressed {
+            key: GGLWECiphertextCompressed::alloc_with(n, base2k, k, rows, digits, rank_in, rank_out),
+            sk_in_n: 0,
+            sk_out_n: 0,
+        }
+    }
+
+    pub fn alloc_bytes<A>(infos: &A) -> usize
+    where
+        A: GGLWELayoutInfos,
+    {
+        GGLWECiphertextCompressed::alloc_bytes(infos)
+    }
+
+    pub fn alloc_bytes_with(
+        n: Degree,
+        base2k: Base2K,
+        k: TorusPrecision,
+        rows: Rows,
+        digits: Digits,
+        rank_in: Rank,
+        rank_out: Rank,
+    ) -> usize {
+        GGLWECiphertextCompressed::alloc_bytes_with(n, base2k, k, rows, digits, rank_in, rank_out)
     }
 }
 

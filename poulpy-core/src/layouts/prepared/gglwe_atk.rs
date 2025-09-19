@@ -1,10 +1,10 @@
 use poulpy_hal::{
     api::{VmpPMatAlloc, VmpPMatAllocBytes, VmpPrepare},
-    layouts::{Backend, Data, DataMut, DataRef, Module, Scratch, VmpPMat},
+    layouts::{Backend, Data, DataMut, DataRef, Module, Scratch},
 };
 
 use crate::layouts::{
-    GGLWEAutomorphismKey, Infos,
+    Base2K, Degree, Digits, GGLWEAutomorphismKey, GGLWELayoutInfos, GLWEInfos, LWEInfos, Rank, Rows, TorusPrecision,
     prepared::{GGLWESwitchingKeyPrepared, Prepare, PrepareAlloc},
 };
 
@@ -14,60 +14,106 @@ pub struct GGLWEAutomorphismKeyPrepared<D: Data, B: Backend> {
     pub(crate) p: i64,
 }
 
-impl<B: Backend> GGLWEAutomorphismKeyPrepared<Vec<u8>, B> {
-    pub fn alloc(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self
-    where
-        Module<B>: VmpPMatAlloc<B>,
-    {
-        GGLWEAutomorphismKeyPrepared::<Vec<u8>, B> {
-            key: GGLWESwitchingKeyPrepared::alloc(module, basek, k, rows, digits, rank, rank),
-            p: 0,
-        }
-    }
-
-    pub fn bytes_of(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize
-    where
-        Module<B>: VmpPMatAllocBytes,
-    {
-        GGLWESwitchingKeyPrepared::bytes_of(module, basek, k, rows, digits, rank, rank)
-    }
-}
-
-impl<D: Data, B: Backend> Infos for GGLWEAutomorphismKeyPrepared<D, B> {
-    type Inner = VmpPMat<D, B>;
-
-    fn inner(&self) -> &Self::Inner {
-        self.key.inner()
-    }
-
-    fn basek(&self) -> usize {
-        self.key.basek()
-    }
-
-    fn k(&self) -> usize {
-        self.key.k()
-    }
-}
-
 impl<D: Data, B: Backend> GGLWEAutomorphismKeyPrepared<D, B> {
     pub fn p(&self) -> i64 {
         self.p
     }
+}
 
-    pub fn digits(&self) -> usize {
-        self.key.digits()
+impl<D: Data, B: Backend> LWEInfos for GGLWEAutomorphismKeyPrepared<D, B> {
+    fn n(&self) -> Degree {
+        self.key.n()
     }
 
-    pub fn rank(&self) -> usize {
-        self.key.rank()
+    fn base2k(&self) -> Base2K {
+        self.key.base2k()
     }
 
-    pub fn rank_in(&self) -> usize {
+    fn k(&self) -> TorusPrecision {
+        self.key.k()
+    }
+
+    fn size(&self) -> usize {
+        self.key.size()
+    }
+}
+
+impl<D: Data, B: Backend> GLWEInfos for GGLWEAutomorphismKeyPrepared<D, B> {
+    fn rank(&self) -> Rank {
+        self.rank_out()
+    }
+}
+
+impl<D: Data, B: Backend> GGLWELayoutInfos for GGLWEAutomorphismKeyPrepared<D, B> {
+    fn rank_in(&self) -> Rank {
         self.key.rank_in()
     }
 
-    pub fn rank_out(&self) -> usize {
+    fn rank_out(&self) -> Rank {
         self.key.rank_out()
+    }
+
+    fn digits(&self) -> Digits {
+        self.key.digits()
+    }
+
+    fn rows(&self) -> Rows {
+        self.key.rows()
+    }
+}
+
+impl<B: Backend> GGLWEAutomorphismKeyPrepared<Vec<u8>, B> {
+    pub fn alloc<A>(module: &Module<B>, infos: &A) -> Self
+    where
+        A: GGLWELayoutInfos,
+        Module<B>: VmpPMatAlloc<B>,
+    {
+        assert_eq!(
+            infos.rank_in(),
+            infos.rank_out(),
+            "rank_in != rank_out is not supported for GGLWEAutomorphismKeyPrepared"
+        );
+        GGLWEAutomorphismKeyPrepared::<Vec<u8>, B> {
+            key: GGLWESwitchingKeyPrepared::alloc(module, infos),
+            p: 0,
+        }
+    }
+
+    pub fn alloc_with(module: &Module<B>, base2k: Base2K, k: TorusPrecision, rows: Rows, digits: Digits, rank: Rank) -> Self
+    where
+        Module<B>: VmpPMatAlloc<B>,
+    {
+        GGLWEAutomorphismKeyPrepared {
+            key: GGLWESwitchingKeyPrepared::alloc_with(module, base2k, k, rows, digits, rank, rank),
+            p: 0,
+        }
+    }
+
+    pub fn alloc_bytes<A>(module: &Module<B>, infos: &A) -> usize
+    where
+        A: GGLWELayoutInfos,
+        Module<B>: VmpPMatAllocBytes,
+    {
+        assert_eq!(
+            infos.rank_in(),
+            infos.rank_out(),
+            "rank_in != rank_out is not supported for GGLWEAutomorphismKeyPrepared"
+        );
+        GGLWESwitchingKeyPrepared::alloc_bytes(module, infos)
+    }
+
+    pub fn alloc_bytes_with(
+        module: &Module<B>,
+        base2k: Base2K,
+        k: TorusPrecision,
+        rows: Rows,
+        digits: Digits,
+        rank: Rank,
+    ) -> usize
+    where
+        Module<B>: VmpPMatAllocBytes,
+    {
+        GGLWESwitchingKeyPrepared::alloc_bytes_with(module, base2k, k, rows, digits, rank, rank)
     }
 }
 
@@ -86,14 +132,7 @@ where
     Module<B>: VmpPMatAlloc<B> + VmpPrepare<B>,
 {
     fn prepare_alloc(&self, module: &Module<B>, scratch: &mut Scratch<B>) -> GGLWEAutomorphismKeyPrepared<Vec<u8>, B> {
-        let mut atk_prepared: GGLWEAutomorphismKeyPrepared<Vec<u8>, B> = GGLWEAutomorphismKeyPrepared::alloc(
-            module,
-            self.basek(),
-            self.k(),
-            self.rows(),
-            self.digits(),
-            self.rank(),
-        );
+        let mut atk_prepared: GGLWEAutomorphismKeyPrepared<Vec<u8>, B> = GGLWEAutomorphismKeyPrepared::alloc(module, self);
         atk_prepared.prepare(module, self, scratch);
         atk_prepared
     }

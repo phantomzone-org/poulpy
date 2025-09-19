@@ -389,7 +389,7 @@ where
 
         let module: Module<B> = Module::<B>::new(n as u64);
 
-        let basek: usize = 50;
+        let base2k: usize = 50;
 
         let mut source: Source = Source::new([0u8; 32]);
 
@@ -404,7 +404,7 @@ where
 
         move || {
             for i in 0..cols {
-                module.vec_znx_big_normalize(basek, &mut res, i, basek, &a, i, scratch.borrow());
+                module.vec_znx_big_normalize(base2k, &mut res, i, base2k, &a, i, scratch.borrow());
             }
             black_box(());
         }

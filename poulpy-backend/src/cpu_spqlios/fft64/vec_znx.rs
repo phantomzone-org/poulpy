@@ -63,7 +63,7 @@ where
             assert_eq!(res.n(), a.n());
             assert_eq!(
                 res_basek, a_basek,
-                "res_basek != a_basek -> basek conversion is not supported"
+                "res_basek != a_basek -> base2k conversion is not supported"
             )
         }
 
@@ -91,7 +91,7 @@ where
 {
     fn vec_znx_normalize_inplace_impl<A>(
         module: &Module<Self>,
-        basek: usize,
+        base2k: usize,
         a: &mut A,
         a_col: usize,
         scratch: &mut Scratch<Self>,
@@ -105,7 +105,7 @@ where
         unsafe {
             vec_znx::vec_znx_normalize_base2k(
                 module.ptr() as *const module_info_t,
-                basek as u64,
+                base2k as u64,
                 a.at_mut_ptr(a_col, 0),
                 a.size() as u64,
                 a.sl() as u64,
@@ -519,7 +519,7 @@ where
 {
     fn vec_znx_lsh_inplace_impl<R, A>(
         module: &Module<Self>,
-        basek: usize,
+        base2k: usize,
         k: usize,
         res: &mut R,
         res_col: usize,
@@ -531,7 +531,7 @@ where
         A: VecZnxToRef,
     {
         let (carry, _) = scratch.take_slice(module.vec_znx_normalize_tmp_bytes() / size_of::<i64>());
-        vec_znx_lsh::<_, _, FFT64Spqlios>(basek, k, res, res_col, a, a_col, carry)
+        vec_znx_lsh::<_, _, FFT64Spqlios>(base2k, k, res, res_col, a, a_col, carry)
     }
 }
 
@@ -542,7 +542,7 @@ where
 {
     fn vec_znx_lsh_inplace_impl<A>(
         module: &Module<Self>,
-        basek: usize,
+        base2k: usize,
         k: usize,
         a: &mut A,
         a_col: usize,
@@ -551,7 +551,7 @@ where
         A: VecZnxToMut,
     {
         let (carry, _) = scratch.take_slice(module.vec_znx_normalize_tmp_bytes() / size_of::<i64>());
-        vec_znx_lsh_inplace::<_, FFT64Spqlios>(basek, k, a, a_col, carry)
+        vec_znx_lsh_inplace::<_, FFT64Spqlios>(base2k, k, a, a_col, carry)
     }
 }
 
@@ -562,7 +562,7 @@ where
 {
     fn vec_znx_rsh_inplace_impl<R, A>(
         module: &Module<Self>,
-        basek: usize,
+        base2k: usize,
         k: usize,
         res: &mut R,
         res_col: usize,
@@ -574,7 +574,7 @@ where
         A: VecZnxToRef,
     {
         let (carry, _) = scratch.take_slice(module.vec_znx_normalize_tmp_bytes() / size_of::<i64>());
-        vec_znx_rsh::<_, _, FFT64Spqlios>(basek, k, res, res_col, a, a_col, carry)
+        vec_znx_rsh::<_, _, FFT64Spqlios>(base2k, k, res, res_col, a, a_col, carry)
     }
 }
 
@@ -585,7 +585,7 @@ where
 {
     fn vec_znx_rsh_inplace_impl<A>(
         module: &Module<Self>,
-        basek: usize,
+        base2k: usize,
         k: usize,
         a: &mut A,
         a_col: usize,
@@ -594,7 +594,7 @@ where
         A: VecZnxToMut,
     {
         let (carry, _) = scratch.take_slice(module.vec_znx_normalize_tmp_bytes() / size_of::<i64>());
-        vec_znx_rsh_inplace::<_, FFT64Spqlios>(basek, k, a, a_col, carry)
+        vec_znx_rsh_inplace::<_, FFT64Spqlios>(base2k, k, a, a_col, carry)
     }
 }
 
@@ -853,18 +853,18 @@ unsafe impl VecZnxCopyImpl<Self> for FFT64Spqlios {
 }
 
 unsafe impl VecZnxFillUniformImpl<Self> for FFT64Spqlios {
-    fn vec_znx_fill_uniform_impl<R>(_module: &Module<Self>, basek: usize, res: &mut R, res_col: usize, source: &mut Source)
+    fn vec_znx_fill_uniform_impl<R>(_module: &Module<Self>, base2k: usize, res: &mut R, res_col: usize, source: &mut Source)
     where
         R: VecZnxToMut,
     {
-        vec_znx_fill_uniform_ref(basek, res, res_col, source)
+        vec_znx_fill_uniform_ref(base2k, res, res_col, source)
     }
 }
 
 unsafe impl VecZnxFillNormalImpl<Self> for FFT64Spqlios {
     fn vec_znx_fill_normal_impl<R>(
         _module: &Module<Self>,
-        basek: usize,
+        base2k: usize,
         res: &mut R,
         res_col: usize,
         k: usize,
@@ -874,14 +874,14 @@ unsafe impl VecZnxFillNormalImpl<Self> for FFT64Spqlios {
     ) where
         R: VecZnxToMut,
     {
-        vec_znx_fill_normal_ref(basek, res, res_col, k, sigma, bound, source);
+        vec_znx_fill_normal_ref(base2k, res, res_col, k, sigma, bound, source);
     }
 }
 
 unsafe impl VecZnxAddNormalImpl<Self> for FFT64Spqlios {
     fn vec_znx_add_normal_impl<R>(
         _module: &Module<Self>,
-        basek: usize,
+        base2k: usize,
         res: &mut R,
         res_col: usize,
         k: usize,
@@ -891,6 +891,6 @@ unsafe impl VecZnxAddNormalImpl<Self> for FFT64Spqlios {
     ) where
         R: VecZnxToMut,
     {
-        vec_znx_add_normal_ref(basek, res, res_col, k, sigma, bound, source);
+        vec_znx_add_normal_ref(base2k, res, res_col, k, sigma, bound, source);
     }
 }

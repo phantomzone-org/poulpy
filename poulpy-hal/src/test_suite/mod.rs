@@ -41,7 +41,7 @@ macro_rules! cross_backend_test_suite {
         backend_ref = $backend_ref:ty,
         backend_test = $backend_test:ty,
         size = $size:expr,
-        basek = $basek:expr,
+        base2k = $base2k:expr,
         tests = {
             $( $(#[$attr:meta])* $test_name:ident => $impl:path ),+ $(,)?
         }
@@ -60,7 +60,7 @@ macro_rules! cross_backend_test_suite {
                 $(#[$attr])*
                 #[test]
                 fn $test_name() {
-                    ($impl)($basek, &*MODULE_REF, &*MODULE_TEST);
+                    ($impl)($base2k, &*MODULE_REF, &*MODULE_TEST);
                 }
             )+
         }

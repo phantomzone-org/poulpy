@@ -9,29 +9,36 @@ use poulpy_hal::{
 
 use crate::{
     TakeGLWECt,
-    layouts::{GLWECiphertext, Infos, LWECiphertext, prepared::LWEToGLWESwitchingKeyPrepared},
+    layouts::{
+        GGLWELayoutInfos, GLWECiphertext, GLWECiphertextLayout, GLWEInfos, LWECiphertext, LWEInfos,
+        prepared::LWEToGLWESwitchingKeyPrepared,
+    },
 };
 
 impl GLWECiphertext<Vec<u8>> {
-    pub fn from_lwe_scratch_space<B: Backend>(
+    pub fn from_lwe_scratch_space<B: Backend, OUT, IN, KEY>(
         module: &Module<B>,
-        basek_lwe: usize,
-        k_lwe: usize,
-        basek_glwe: usize,
-        k_glwe: usize,
-        basek_ksk: usize,
-        k_ksk: usize,
-        rank: usize,
+        glwe_infos: &OUT,
+        lwe_infos: &IN,
+        key_infos: &KEY,
     ) -> usize
     where
+        OUT: GLWEInfos,
+        IN: LWEInfos,
+        KEY: GGLWELayoutInfos,
         Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        let ct: usize = GLWECiphertext::bytes_of(module.n(), basek_ksk, k_lwe.max(k_lwe), 1);
-        let ks: usize = GLWECiphertext::keyswitch_inplace_scratch_space(module, basek_glwe, k_glwe, basek_ksk, k_ksk, 1, rank);
-        if basek_lwe == basek_ksk {
+        let ct: usize = GLWECiphertext::alloc_bytes_with(
+            module.n().into(),
+            key_infos.base2k(),
+            lwe_infos.k().max(glwe_infos.k()),
+            1u32.into(),
+        );
+        let ks: usize = GLWECiphertext::keyswitch_inplace_scratch_space(module, glwe_infos, key_infos);
+        if lwe_infos.base2k() == key_infos.base2k() {
             ct + ks
         } else {
-            let a_conv = VecZnx::alloc_bytes(module.n(), 1, k_lwe.div_ceil(basek_lwe)) + module.vec_znx_normalize_tmp_bytes();
+            let a_conv = VecZnx::alloc_bytes(module.n(), 1, lwe_infos.size()) + module.vec_znx_normalize_tmp_bytes();
             ct + a_conv + ks
         }
     }
@@ -62,17 +69,22 @@ impl<D: DataMut> GLWECiphertext<D> {
     {
         #[cfg(debug_assertions)]
         {
-            assert_eq!(self.n(), module.n());
-            assert_eq!(ksk.n(), module.n());
-            assert!(lwe.n() <= module.n());
+            assert_eq!(self.n(), module.n() as u32);
+            assert_eq!(ksk.n(), module.n() as u32);
+            assert!(lwe.n() <= module.n() as u32);
         }
 
-        let (mut glwe, scratch_1) = scratch.take_glwe_ct(ksk.n(), ksk.basek(), lwe.k(), 1);
+        let (mut glwe, scratch_1) = scratch.take_glwe_ct(&GLWECiphertextLayout {
+            n: ksk.n(),
+            base2k: ksk.base2k(),
+            k: lwe.k(),
+            rank: 1u32.into(),
+        });
         glwe.data.zero();
 
-        let n_lwe: usize = lwe.n();
+        let n_lwe: usize = lwe.n().into();
 
-        if lwe.basek() == ksk.basek() {
+        if lwe.base2k() == ksk.base2k() {
             for i in 0..lwe.size() {
                 let data_lwe: &[i64] = lwe.data.at(0, i);
                 glwe.data.at_mut(0, i)[0] = data_lwe[0];
@@ -87,10 +99,10 @@ impl<D: DataMut> GLWECiphertext<D> {
             }
 
             module.vec_znx_normalize(
-                ksk.basek(),
+                ksk.base2k().into(),
                 &mut glwe.data,
                 0,
-                lwe.basek(),
+                lwe.base2k().into(),
                 &a_conv,
                 0,
                 scratch_2,
@@ -103,10 +115,10 @@ impl<D: DataMut> GLWECiphertext<D> {
             }
 
             module.vec_znx_normalize(
-                ksk.basek(),
+                ksk.base2k().into(),
                 &mut glwe.data,
                 1,
-                lwe.basek(),
+                lwe.base2k().into(),
                 &a_conv,
                 0,
                 scratch_2,

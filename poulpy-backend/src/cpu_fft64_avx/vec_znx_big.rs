@@ -76,7 +76,7 @@ unsafe impl VecZnxBigFromSmallImpl<Self> for FFT64Avx {
 unsafe impl VecZnxBigAddNormalImpl<Self> for FFT64Avx {
     fn add_normal_impl<R: VecZnxBigToMut<Self>>(
         _module: &Module<Self>,
-        basek: usize,
+        base2k: usize,
         res: &mut R,
         res_col: usize,
         k: usize,
@@ -84,7 +84,7 @@ unsafe impl VecZnxBigAddNormalImpl<Self> for FFT64Avx {
         sigma: f64,
         bound: f64,
     ) {
-        vec_znx_big_add_normal_ref(basek, res, res_col, k, sigma, bound, source);
+        vec_znx_big_add_normal_ref(base2k, res, res_col, k, sigma, bound, source);
     }
 }
 

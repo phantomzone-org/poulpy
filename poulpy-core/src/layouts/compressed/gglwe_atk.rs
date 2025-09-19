@@ -1,11 +1,11 @@
 use poulpy_hal::{
     api::{VecZnxCopy, VecZnxFillUniform},
-    layouts::{Backend, Data, DataMut, DataRef, FillUniform, MatZnx, Module, ReaderFrom, Reset, WriterTo},
+    layouts::{Backend, Data, DataMut, DataRef, FillUniform, Module, ReaderFrom, WriterTo},
     source::Source,
 };
 
 use crate::layouts::{
-    GGLWEAutomorphismKey, Infos,
+    Base2K, Degree, Digits, GGLWEAutomorphismKey, GGLWELayoutInfos, GLWEInfos, LWEInfos, Rank, Rows, TorusPrecision,
     compressed::{Decompress, GGLWESwitchingKeyCompressed},
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
@@ -15,6 +15,47 @@ use std::fmt;
 pub struct GGLWEAutomorphismKeyCompressed<D: Data> {
     pub(crate) key: GGLWESwitchingKeyCompressed<D>,
     pub(crate) p: i64,
+}
+
+impl<D: Data> LWEInfos for GGLWEAutomorphismKeyCompressed<D> {
+    fn n(&self) -> Degree {
+        self.key.n()
+    }
+
+    fn base2k(&self) -> Base2K {
+        self.key.base2k()
+    }
+
+    fn k(&self) -> TorusPrecision {
+        self.key.k()
+    }
+
+    fn size(&self) -> usize {
+        self.key.size()
+    }
+}
+impl<D: Data> GLWEInfos for GGLWEAutomorphismKeyCompressed<D> {
+    fn rank(&self) -> Rank {
+        self.rank_out()
+    }
+}
+
+impl<D: Data> GGLWELayoutInfos for GGLWEAutomorphismKeyCompressed<D> {
+    fn rank_in(&self) -> Rank {
+        self.key.rank_in()
+    }
+
+    fn rank_out(&self) -> Rank {
+        self.key.rank_out()
+    }
+
+    fn digits(&self) -> Digits {
+        self.key.digits()
+    }
+
+    fn rows(&self) -> Rows {
+        self.key.rows()
+    }
 }
 
 impl<D: DataRef> fmt::Debug for GGLWEAutomorphismKeyCompressed<D> {
@@ -29,16 +70,6 @@ impl<D: DataMut> FillUniform for GGLWEAutomorphismKeyCompressed<D> {
     }
 }
 
-impl<D: DataMut> Reset for GGLWEAutomorphismKeyCompressed<D>
-where
-    MatZnx<D>: Reset,
-{
-    fn reset(&mut self) {
-        self.key.reset();
-        self.p = 0;
-    }
-}
-
 impl<D: DataRef> fmt::Display for GGLWEAutomorphismKeyCompressed<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "(AutomorphismKeyCompressed: p={}) {}", self.p, self.key)
@@ -46,49 +77,34 @@ impl<D: DataRef> fmt::Display for GGLWEAutomorphismKeyCompressed<D> {
 }
 
 impl GGLWEAutomorphismKeyCompressed<Vec<u8>> {
-    pub fn alloc(n: usize, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self {
-        GGLWEAutomorphismKeyCompressed {
-            key: GGLWESwitchingKeyCompressed::alloc(n, basek, k, rows, digits, rank, rank),
+    pub fn alloc<A>(infos: &A) -> Self
+    where
+        A: GGLWELayoutInfos,
+    {
+        debug_assert_eq!(infos.rank_in(), infos.rank_out());
+        Self {
+            key: GGLWESwitchingKeyCompressed::alloc(infos),
             p: 0,
         }
     }
 
-    pub fn bytes_of(n: usize, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize {
-        GGLWESwitchingKeyCompressed::<Vec<u8>>::bytes_of(n, basek, k, rows, digits, rank)
-    }
-}
-
-impl<D: Data> Infos for GGLWEAutomorphismKeyCompressed<D> {
-    type Inner = MatZnx<D>;
-
-    fn inner(&self) -> &Self::Inner {
-        self.key.inner()
+    pub fn alloc_with(n: Degree, base2k: Base2K, k: TorusPrecision, rows: Rows, digits: Digits, rank: Rank) -> Self {
+        Self {
+            key: GGLWESwitchingKeyCompressed::alloc_with(n, base2k, k, rows, digits, rank, rank),
+            p: 0,
+        }
     }
 
-    fn basek(&self) -> usize {
-        self.key.basek()
+    pub fn alloc_bytes<A>(infos: &A) -> usize
+    where
+        A: GGLWELayoutInfos,
+    {
+        debug_assert_eq!(infos.rank_in(), infos.rank_out());
+        GGLWESwitchingKeyCompressed::alloc_bytes(infos)
     }
 
-    fn k(&self) -> usize {
-        self.key.k()
-    }
-}
-
-impl<D: Data> GGLWEAutomorphismKeyCompressed<D> {
-    pub fn rank(&self) -> usize {
-        self.key.rank()
-    }
-
-    pub fn digits(&self) -> usize {
-        self.key.digits()
-    }
-
-    pub fn rank_in(&self) -> usize {
-        self.key.rank_in()
-    }
-
-    pub fn rank_out(&self) -> usize {
-        self.key.rank_out()
+    pub fn alloc_bytes_with(n: Degree, base2k: Base2K, k: TorusPrecision, rows: Rows, digits: Digits, rank: Rank) -> usize {
+        GGLWESwitchingKeyCompressed::alloc_bytes_with(n, base2k, k, rows, digits, rank, rank)
     }
 }
 

@@ -6,7 +6,7 @@ use poulpy_hal::{
 use crate::{
     dist::Distribution,
     layouts::{
-        GLWESecret,
+        Base2K, Degree, GLWEInfos, GLWESecret, LWEInfos, Rank, TorusPrecision,
         prepared::{Prepare, PrepareAlloc},
     },
 };
@@ -16,36 +16,72 @@ pub struct GLWESecretPrepared<D: Data, B: Backend> {
     pub(crate) dist: Distribution,
 }
 
+impl<D: Data, B: Backend> LWEInfos for GLWESecretPrepared<D, B> {
+    fn base2k(&self) -> Base2K {
+        Base2K(0)
+    }
+
+    fn k(&self) -> TorusPrecision {
+        TorusPrecision(0)
+    }
+
+    fn n(&self) -> Degree {
+        Degree(self.data.n() as u32)
+    }
+
+    fn size(&self) -> usize {
+        self.data.size()
+    }
+}
+impl<D: Data, B: Backend> GLWEInfos for GLWESecretPrepared<D, B> {
+    fn rank(&self) -> Rank {
+        Rank(self.data.cols() as u32)
+    }
+}
 impl<B: Backend> GLWESecretPrepared<Vec<u8>, B> {
-    pub fn alloc(module: &Module<B>, rank: usize) -> Self
+    pub fn alloc<A>(module: &Module<B>, infos: &A) -> Self
+    where
+        A: GLWEInfos,
+        Module<B>: SvpPPolAlloc<B>,
+    {
+        assert_eq!(module.n() as u32, infos.n());
+        Self::alloc_with(module, infos.rank())
+    }
+
+    pub fn alloc_with(module: &Module<B>, rank: Rank) -> Self
     where
         Module<B>: SvpPPolAlloc<B>,
     {
         Self {
-            data: module.svp_ppol_alloc(rank),
+            data: module.svp_ppol_alloc(rank.into()),
             dist: Distribution::NONE,
         }
     }
 
-    pub fn bytes_of(module: &Module<B>, rank: usize) -> usize
+    pub fn alloc_bytes<A>(module: &Module<B>, infos: &A) -> usize
+    where
+        A: GLWEInfos,
+        Module<B>: SvpPPolAllocBytes,
+    {
+        assert_eq!(module.n() as u32, infos.n());
+        Self::alloc_bytes_with(module, infos.rank())
+    }
+
+    pub fn alloc_bytes_with(module: &Module<B>, rank: Rank) -> usize
     where
         Module<B>: SvpPPolAllocBytes,
     {
-        module.svp_ppol_alloc_bytes(rank)
+        module.svp_ppol_alloc_bytes(rank.into())
     }
 }
 
 impl<D: Data, B: Backend> GLWESecretPrepared<D, B> {
-    pub fn n(&self) -> usize {
-        self.data.n()
+    pub fn n(&self) -> Degree {
+        Degree(self.data.n() as u32)
     }
 
-    pub fn log_n(&self) -> usize {
-        self.data.log_n()
-    }
-
-    pub fn rank(&self) -> usize {
-        self.data.cols()
+    pub fn rank(&self) -> Rank {
+        Rank(self.data.cols() as u32)
     }
 }
 
@@ -54,7 +90,7 @@ where
     Module<B>: SvpPrepare<B> + SvpPPolAlloc<B>,
 {
     fn prepare_alloc(&self, module: &Module<B>, scratch: &mut poulpy_hal::layouts::Scratch<B>) -> GLWESecretPrepared<Vec<u8>, B> {
-        let mut sk_dft: GLWESecretPrepared<Vec<u8>, B> = GLWESecretPrepared::alloc(module, self.rank());
+        let mut sk_dft: GLWESecretPrepared<Vec<u8>, B> = GLWESecretPrepared::alloc(module, self);
         sk_dft.prepare(module, self, scratch);
         sk_dft
     }
@@ -65,7 +101,7 @@ where
     Module<B>: SvpPrepare<B>,
 {
     fn prepare(&mut self, module: &Module<B>, other: &GLWESecret<DR>, _scratch: &mut poulpy_hal::layouts::Scratch<B>) {
-        (0..self.rank()).for_each(|i| {
+        (0..self.rank().into()).for_each(|i| {
             module.svp_prepare(&mut self.data, i, &other.data, i);
         });
         self.dist = other.dist

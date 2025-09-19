@@ -58,11 +58,11 @@ impl<B> VecZnxNormalizeInplace<B> for Module<B>
 where
     B: Backend + VecZnxNormalizeInplaceImpl<B>,
 {
-    fn vec_znx_normalize_inplace<A>(&self, basek: usize, a: &mut A, a_col: usize, scratch: &mut Scratch<B>)
+    fn vec_znx_normalize_inplace<A>(&self, base2k: usize, a: &mut A, a_col: usize, scratch: &mut Scratch<B>)
     where
         A: VecZnxToMut,
     {
-        B::vec_znx_normalize_inplace_impl(self, basek, a, a_col, scratch)
+        B::vec_znx_normalize_inplace_impl(self, base2k, a, a_col, scratch)
     }
 }
 
@@ -236,7 +236,7 @@ where
 {
     fn vec_znx_lsh<R, A>(
         &self,
-        basek: usize,
+        base2k: usize,
         k: usize,
         res: &mut R,
         res_col: usize,
@@ -247,7 +247,7 @@ where
         R: VecZnxToMut,
         A: VecZnxToRef,
     {
-        B::vec_znx_lsh_inplace_impl(self, basek, k, res, res_col, a, a_col, scratch);
+        B::vec_znx_lsh_inplace_impl(self, base2k, k, res, res_col, a, a_col, scratch);
     }
 }
 
@@ -257,7 +257,7 @@ where
 {
     fn vec_znx_rsh<R, A>(
         &self,
-        basek: usize,
+        base2k: usize,
         k: usize,
         res: &mut R,
         res_col: usize,
@@ -268,7 +268,7 @@ where
         R: VecZnxToMut,
         A: VecZnxToRef,
     {
-        B::vec_znx_rsh_inplace_impl(self, basek, k, res, res_col, a, a_col, scratch);
+        B::vec_znx_rsh_inplace_impl(self, base2k, k, res, res_col, a, a_col, scratch);
     }
 }
 
@@ -276,11 +276,11 @@ impl<B> VecZnxLshInplace<B> for Module<B>
 where
     B: Backend + VecZnxLshInplaceImpl<B>,
 {
-    fn vec_znx_lsh_inplace<A>(&self, basek: usize, k: usize, a: &mut A, a_col: usize, scratch: &mut Scratch<B>)
+    fn vec_znx_lsh_inplace<A>(&self, base2k: usize, k: usize, a: &mut A, a_col: usize, scratch: &mut Scratch<B>)
     where
         A: VecZnxToMut,
     {
-        B::vec_znx_lsh_inplace_impl(self, basek, k, a, a_col, scratch)
+        B::vec_znx_lsh_inplace_impl(self, base2k, k, a, a_col, scratch)
     }
 }
 
@@ -288,11 +288,11 @@ impl<B> VecZnxRshInplace<B> for Module<B>
 where
     B: Backend + VecZnxRshInplaceImpl<B>,
 {
-    fn vec_znx_rsh_inplace<A>(&self, basek: usize, k: usize, a: &mut A, a_col: usize, scratch: &mut Scratch<B>)
+    fn vec_znx_rsh_inplace<A>(&self, base2k: usize, k: usize, a: &mut A, a_col: usize, scratch: &mut Scratch<B>)
     where
         A: VecZnxToMut,
     {
-        B::vec_znx_rsh_inplace_impl(self, basek, k, a, a_col, scratch)
+        B::vec_znx_rsh_inplace_impl(self, base2k, k, a, a_col, scratch)
     }
 }
 
@@ -472,11 +472,11 @@ impl<B> VecZnxFillUniform for Module<B>
 where
     B: Backend + VecZnxFillUniformImpl<B>,
 {
-    fn vec_znx_fill_uniform<R>(&self, basek: usize, res: &mut R, res_col: usize, source: &mut Source)
+    fn vec_znx_fill_uniform<R>(&self, base2k: usize, res: &mut R, res_col: usize, source: &mut Source)
     where
         R: VecZnxToMut,
     {
-        B::vec_znx_fill_uniform_impl(self, basek, res, res_col, source);
+        B::vec_znx_fill_uniform_impl(self, base2k, res, res_col, source);
     }
 }
 
@@ -486,7 +486,7 @@ where
 {
     fn vec_znx_fill_normal<R>(
         &self,
-        basek: usize,
+        base2k: usize,
         res: &mut R,
         res_col: usize,
         k: usize,
@@ -496,7 +496,7 @@ where
     ) where
         R: VecZnxToMut,
     {
-        B::vec_znx_fill_normal_impl(self, basek, res, res_col, k, source, sigma, bound);
+        B::vec_znx_fill_normal_impl(self, base2k, res, res_col, k, source, sigma, bound);
     }
 }
 
@@ -506,7 +506,7 @@ where
 {
     fn vec_znx_add_normal<R>(
         &self,
-        basek: usize,
+        base2k: usize,
         res: &mut R,
         res_col: usize,
         k: usize,
@@ -516,6 +516,6 @@ where
     ) where
         R: VecZnxToMut,
     {
-        B::vec_znx_add_normal_impl(self, basek, res, res_col, k, source, sigma, bound);
+        B::vec_znx_add_normal_impl(self, base2k, res, res_col, k, source, sigma, bound);
     }
 }

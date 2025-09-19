@@ -10,7 +10,7 @@ use crate::{
     source::Source,
 };
 
-pub fn test_svp_apply_dft<BR: Backend, BT: Backend>(basek: usize, module_ref: &Module<BR>, module_test: &Module<BT>)
+pub fn test_svp_apply_dft<BR: Backend, BT: Backend>(base2k: usize, module_ref: &Module<BR>, module_test: &Module<BT>)
 where
     Module<BR>: SvpPrepare<BR>
         + SvpApplyDft<BR>
@@ -40,7 +40,7 @@ where
     let mut scratch_test: ScratchOwned<BT> = ScratchOwned::alloc(module_test.vec_znx_big_normalize_tmp_bytes());
 
     let mut scalar: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n, cols);
-    scalar.fill_uniform(basek, &mut source);
+    scalar.fill_uniform(base2k, &mut source);
 
     let scalar_digest: u64 = scalar.digest_u64();
 
@@ -60,7 +60,7 @@ where
     for a_size in [1, 2, 3, 4] {
         // Create a random input VecZnx
         let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, a_size);
-        a.fill_uniform(basek, &mut source);
+        a.fill_uniform(base2k, &mut source);
 
         let a_digest: u64 = a.digest_u64();
 
@@ -91,19 +91,19 @@ where
 
             for j in 0..cols {
                 module_ref.vec_znx_big_normalize(
-                    basek,
+                    base2k,
                     &mut res_ref,
                     j,
-                    basek,
+                    base2k,
                     &res_big_ref,
                     j,
                     scratch_ref.borrow(),
                 );
                 module_test.vec_znx_big_normalize(
-                    basek,
+                    base2k,
                     &mut res_test,
                     j,
-                    basek,
+                    base2k,
                     &res_big_test,
                     j,
                     scratch_test.borrow(),
@@ -115,7 +115,7 @@ where
     }
 }
 
-pub fn test_svp_apply_dft_to_dft<BR: Backend, BT: Backend>(basek: usize, module_ref: &Module<BR>, module_test: &Module<BT>)
+pub fn test_svp_apply_dft_to_dft<BR: Backend, BT: Backend>(base2k: usize, module_ref: &Module<BR>, module_test: &Module<BT>)
 where
     Module<BR>: SvpPrepare<BR>
         + SvpApplyDftToDft<BR>
@@ -147,7 +147,7 @@ where
     let mut scratch_test: ScratchOwned<BT> = ScratchOwned::alloc(module_test.vec_znx_big_normalize_tmp_bytes());
 
     let mut scalar: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n, cols);
-    scalar.fill_uniform(basek, &mut source);
+    scalar.fill_uniform(base2k, &mut source);
 
     let scalar_digest: u64 = scalar.digest_u64();
 
@@ -167,7 +167,7 @@ where
     for a_size in [3] {
         // Create a random input VecZnx
         let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, a_size);
-        a.fill_uniform(basek, &mut source);
+        a.fill_uniform(base2k, &mut source);
 
         let a_digest: u64 = a.digest_u64();
 
@@ -213,19 +213,19 @@ where
 
             for j in 0..cols {
                 module_ref.vec_znx_big_normalize(
-                    basek,
+                    base2k,
                     &mut res_ref,
                     j,
-                    basek,
+                    base2k,
                     &res_big_ref,
                     j,
                     scratch_ref.borrow(),
                 );
                 module_test.vec_znx_big_normalize(
-                    basek,
+                    base2k,
                     &mut res_test,
                     j,
-                    basek,
+                    base2k,
                     &res_big_test,
                     j,
                     scratch_test.borrow(),
@@ -237,7 +237,7 @@ where
     }
 }
 
-pub fn test_svp_apply_dft_to_dft_add<BR: Backend, BT: Backend>(basek: usize, module_ref: &Module<BR>, module_test: &Module<BT>)
+pub fn test_svp_apply_dft_to_dft_add<BR: Backend, BT: Backend>(base2k: usize, module_ref: &Module<BR>, module_test: &Module<BT>)
 where
     Module<BR>: SvpPrepare<BR>
         + SvpApplyDftToDftAdd<BR>
@@ -269,7 +269,7 @@ where
     let mut scratch_test: ScratchOwned<BT> = ScratchOwned::alloc(module_test.vec_znx_big_normalize_tmp_bytes());
 
     let mut scalar: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n, cols);
-    scalar.fill_uniform(basek, &mut source);
+    scalar.fill_uniform(base2k, &mut source);
 
     let scalar_digest: u64 = scalar.digest_u64();
 
@@ -289,7 +289,7 @@ where
     for a_size in [1, 2, 3, 4] {
         // Create a random input VecZnx
         let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, a_size);
-        a.fill_uniform(basek, &mut source);
+        a.fill_uniform(base2k, &mut source);
 
         let a_digest: u64 = a.digest_u64();
 
@@ -306,7 +306,7 @@ where
 
         for res_size in [1, 2, 3, 4] {
             let mut res: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
-            res.fill_uniform(basek, &mut source);
+            res.fill_uniform(base2k, &mut source);
 
             let mut res_dft_ref: VecZnxDft<Vec<u8>, BR> = module_ref.vec_znx_dft_alloc(cols, res_size);
             let mut res_dft_test: VecZnxDft<Vec<u8>, BT> = module_test.vec_znx_dft_alloc(cols, res_size);
@@ -340,19 +340,19 @@ where
 
             for j in 0..cols {
                 module_ref.vec_znx_big_normalize(
-                    basek,
+                    base2k,
                     &mut res_ref,
                     j,
-                    basek,
+                    base2k,
                     &res_big_ref,
                     j,
                     scratch_ref.borrow(),
                 );
                 module_test.vec_znx_big_normalize(
-                    basek,
+                    base2k,
                     &mut res_test,
                     j,
-                    basek,
+                    base2k,
                     &res_big_test,
                     j,
                     scratch_test.borrow(),
@@ -365,7 +365,7 @@ where
 }
 
 pub fn test_svp_apply_dft_to_dft_inplace<BR: Backend, BT: Backend>(
-    basek: usize,
+    base2k: usize,
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
@@ -399,7 +399,7 @@ pub fn test_svp_apply_dft_to_dft_inplace<BR: Backend, BT: Backend>(
     let mut scratch_test: ScratchOwned<BT> = ScratchOwned::alloc(module_test.vec_znx_big_normalize_tmp_bytes());
 
     let mut scalar: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n, cols);
-    scalar.fill_uniform(basek, &mut source);
+    scalar.fill_uniform(base2k, &mut source);
 
     let scalar_digest: u64 = scalar.digest_u64();
 
@@ -418,7 +418,7 @@ pub fn test_svp_apply_dft_to_dft_inplace<BR: Backend, BT: Backend>(
 
     for res_size in [1, 2, 3, 4] {
         let mut res: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
-        res.fill_uniform(basek, &mut source);
+        res.fill_uniform(base2k, &mut source);
         let res_digest: u64 = res.digest_u64();
 
         let mut res_dft_ref: VecZnxDft<Vec<u8>, BR> = module_ref.vec_znx_dft_alloc(cols, res_size);
@@ -448,19 +448,19 @@ pub fn test_svp_apply_dft_to_dft_inplace<BR: Backend, BT: Backend>(
 
         for j in 0..cols {
             module_ref.vec_znx_big_normalize(
-                basek,
+                base2k,
                 &mut res_ref,
                 j,
-                basek,
+                base2k,
                 &res_big_ref,
                 j,
                 scratch_ref.borrow(),
             );
             module_test.vec_znx_big_normalize(
-                basek,
+                base2k,
                 &mut res_test,
                 j,
-                basek,
+                base2k,
                 &res_big_test,
                 j,
                 scratch_test.borrow(),

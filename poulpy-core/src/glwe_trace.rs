@@ -11,7 +11,10 @@ use poulpy_hal::{
 
 use crate::{
     TakeGLWECt,
-    layouts::{GLWECiphertext, Infos, prepared::GGLWEAutomorphismKeyPrepared},
+    layouts::{
+        Base2K, GGLWELayoutInfos, GLWECiphertext, GLWECiphertextLayout, GLWEInfos, LWEInfos,
+        prepared::GGLWEAutomorphismKeyPrepared,
+    },
     operations::GLWEOperations,
 };
 
@@ -28,54 +31,38 @@ impl GLWECiphertext<Vec<u8>> {
         gal_els
     }
 
-    #[allow(clippy::too_many_arguments)]
-    pub fn trace_scratch_space<B: Backend>(
+    pub fn trace_scratch_space<B: Backend, OUT, IN, KEY>(
         module: &Module<B>,
-        basek_out: usize,
-        k_out: usize,
-        basek_in: usize,
-        k_in: usize,
-        basek_ksk: usize,
-        k_ksk: usize,
-        digits: usize,
-        rank: usize,
+        out_infos: &OUT,
+        in_infos: &IN,
+        key_infos: &KEY,
     ) -> usize
     where
+        OUT: GLWEInfos,
+        IN: GLWEInfos,
+        KEY: GGLWELayoutInfos,
         Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        let trace = Self::automorphism_inplace_scratch_space(
-            module,
-            basek_out,
-            k_out.min(k_in),
-            basek_ksk,
-            k_ksk,
-            digits,
-            rank,
-        );
-        if basek_in != basek_ksk {
-            let glwe_conv: usize = VecZnx::alloc_bytes(module.n(), rank + 1, k_out.min(k_in).div_ceil(basek_ksk))
-                + module.vec_znx_normalize_tmp_bytes();
+        let trace: usize = Self::automorphism_inplace_scratch_space(module, out_infos, key_infos);
+        if in_infos.base2k() != key_infos.base2k() {
+            let glwe_conv: usize = VecZnx::alloc_bytes(
+                module.n(),
+                (key_infos.rank_out() + 1).into(),
+                out_infos.k().min(in_infos.k()).div_ceil(key_infos.base2k()) as usize,
+            ) + module.vec_znx_normalize_tmp_bytes();
             return glwe_conv + trace;
         }
 
         trace
     }
 
-    pub fn trace_inplace_scratch_space<B: Backend>(
-        module: &Module<B>,
-        basek_out: usize,
-        k_out: usize,
-        basek_ksk: usize,
-        k_ksk: usize,
-        digits: usize,
-        rank: usize,
-    ) -> usize
+    pub fn trace_inplace_scratch_space<B: Backend, OUT, KEY>(module: &Module<B>, out_infos: &OUT, key_infos: &KEY) -> usize
     where
+        OUT: GLWEInfos,
+        KEY: GGLWELayoutInfos,
         Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        Self::trace_scratch_space(
-            module, basek_out, k_out, basek_out, k_out, basek_ksk, k_ksk, digits, rank,
-        )
+        Self::trace_scratch_space(module, out_infos, out_infos, key_infos)
     }
 }
 
@@ -132,33 +119,38 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
             + VecZnxNormalize<B>,
         Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
     {
-        let basek_ksk: usize = auto_keys
+        let basek_ksk: Base2K = auto_keys
             .get(auto_keys.keys().next().unwrap())
             .unwrap()
-            .basek();
+            .base2k();
 
         #[cfg(debug_assertions)]
         {
-            assert_eq!(self.n(), module.n());
+            assert_eq!(self.n(), module.n() as u32);
             assert!(start < end);
             assert!(end <= module.log_n());
             for (_, key) in auto_keys {
-                assert_eq!(key.n(), module.n());
-                assert_eq!(key.basek(), basek_ksk);
+                assert_eq!(key.n(), module.n() as u32);
+                assert_eq!(key.base2k(), basek_ksk);
                 assert_eq!(key.rank_in(), self.rank());
                 assert_eq!(key.rank_out(), self.rank());
             }
         }
 
-        if self.basek() != basek_ksk {
-            let (mut self_conv, scratch_1) = scratch.take_glwe_ct(module.n(), basek_ksk, self.k(), self.rank());
+        if self.base2k() != basek_ksk {
+            let (mut self_conv, scratch_1) = scratch.take_glwe_ct(&GLWECiphertextLayout {
+                n: module.n().into(),
+                base2k: basek_ksk,
+                k: self.k(),
+                rank: self.rank(),
+            });
 
-            for j in 0..self.cols() {
+            for j in 0..(self.rank() + 1).into() {
                 module.vec_znx_normalize(
-                    basek_ksk,
+                    basek_ksk.into(),
                     &mut self_conv.data,
                     j,
-                    basek_ksk,
+                    basek_ksk.into(),
                     &self.data,
                     j,
                     scratch_1,
@@ -181,12 +173,12 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
                 }
             }
 
-            for j in 0..self.cols() {
+            for j in 0..(self.rank() + 1).into() {
                 module.vec_znx_normalize(
-                    self.basek(),
+                    self.base2k().into(),
                     &mut self.data,
                     j,
-                    basek_ksk,
+                    basek_ksk.into(),
                     &self_conv.data,
                     j,
                     scratch_1,

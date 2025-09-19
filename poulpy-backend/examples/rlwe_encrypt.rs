@@ -12,10 +12,10 @@ use poulpy_hal::{
 
 fn main() {
     let n: usize = 16;
-    let basek: usize = 18;
+    let base2k: usize = 18;
     let ct_size: usize = 3;
     let msg_size: usize = 2;
-    let log_scale: usize = msg_size * basek - 5;
+    let log_scale: usize = msg_size * base2k - 5;
     let module: Module<FFT64Spqlios> = Module::<FFT64Spqlios>::new(n as u64);
 
     let mut scratch: ScratchOwned<FFT64Spqlios> = ScratchOwned::<FFT64Spqlios>::alloc(module.vec_znx_big_normalize_tmp_bytes());
@@ -41,7 +41,7 @@ fn main() {
     );
 
     // Fill the second column with random values: ct = (0, a)
-    module.vec_znx_fill_uniform(basek, &mut ct, 1, &mut source);
+    module.vec_znx_fill_uniform(base2k, &mut ct, 1, &mut source);
 
     let mut buf_dft: VecZnxDft<Vec<u8>, FFT64Spqlios> = module.vec_znx_dft_alloc(1, ct_size);
 
@@ -70,8 +70,8 @@ fn main() {
     let mut want: Vec<i64> = vec![0; n];
     want.iter_mut()
         .for_each(|x| *x = source.next_u64n(16, 15) as i64);
-    m.encode_vec_i64(basek, 0, log_scale, &want, 4);
-    module.vec_znx_normalize_inplace(basek, &mut m, 0, scratch.borrow());
+    m.encode_vec_i64(base2k, 0, log_scale, &want, 4);
+    module.vec_znx_normalize_inplace(base2k, &mut m, 0, scratch.borrow());
 
     // m - BIG(ct[1] * s)
     module.vec_znx_big_sub_small_b_inplace(
@@ -84,10 +84,10 @@ fn main() {
     // Normalizes back to VecZnx
     // ct[0] <- m - BIG(c1 * s)
     module.vec_znx_big_normalize(
-        basek,
+        base2k,
         &mut ct,
         0, // Selects the first column of ct (ct[0])
-        basek,
+        base2k,
         &buf_big,
         0, // Selects the first column of buf_big
         scratch.borrow(),
@@ -96,10 +96,10 @@ fn main() {
     // Add noise to ct[0]
     // ct[0] <- ct[0] + e
     module.vec_znx_add_normal(
-        basek,
+        base2k,
         &mut ct,
-        0,               // Selects the first column of ct (ct[0])
-        basek * ct_size, // Scaling of the noise: 2^{-basek * limbs}
+        0,                // Selects the first column of ct (ct[0])
+        base2k * ct_size, // Scaling of the noise: 2^{-base2k * limbs}
         &mut source,
         3.2,       // Standard deviation
         3.2 * 6.0, // Truncatation bound
@@ -126,12 +126,12 @@ fn main() {
 
     // m + e <- BIG(ct[1] * s + ct[0])
     let mut res = VecZnx::alloc(module.n(), 1, ct_size);
-    module.vec_znx_big_normalize(basek, &mut res, 0, basek, &buf_big, 0, scratch.borrow());
+    module.vec_znx_big_normalize(base2k, &mut res, 0, base2k, &buf_big, 0, scratch.borrow());
 
     // have = m * 2^{log_scale} + e
     let mut have: Vec<i64> = vec![i64::default(); n];
-    res.decode_vec_i64(basek, 0, ct_size * basek, &mut have);
-    let scale: f64 = (1 << (res.size() * basek - log_scale)) as f64;
+    res.decode_vec_i64(base2k, 0, ct_size * base2k, &mut have);
+    let scale: f64 = (1 << (res.size() * base2k - log_scale)) as f64;
     izip!(want.iter(), have.iter())
         .enumerate()
         .for_each(|(i, (a, b))| {

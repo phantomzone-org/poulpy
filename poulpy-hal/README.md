@@ -20,7 +20,7 @@ A `scalar_znx` is a front-end generic and backend agnostic type that stores a si
 
 #### VecZnx
 
-A `vec_znx` is a front-end generic and backend agnostic type that stores a vector of small polynomials (i.e. a vector of scalars). Each polynomial is a `limb` that provides an additional `basek`-bits of precision in the Torus. For example a `vec_znx` with `n`=1024 `basek`=2 with 3 limbs can store 1024 coefficients with 36 bits of precision in the torus. In practice this type is used for LWE and GLWE ciphertexts/plaintexts.
+A `vec_znx` is a front-end generic and backend agnostic type that stores a vector of small polynomials (i.e. a vector of scalars). Each polynomial is a `limb` that provides an additional `base2k`-bits of precision in the Torus. For example a `vec_znx` with `n`=1024 `base2k`=2 with 3 limbs can store 1024 coefficients with 36 bits of precision in the torus. In practice this type is used for LWE and GLWE ciphertexts/plaintexts.
 
 
 #### VecZnxDft
