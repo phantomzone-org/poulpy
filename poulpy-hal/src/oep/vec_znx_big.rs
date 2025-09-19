@@ -46,7 +46,7 @@ pub unsafe trait VecZnxBigAllocBytesImpl<B: Backend> {
 pub unsafe trait VecZnxBigAddNormalImpl<B: Backend> {
     fn add_normal_impl<R: VecZnxBigToMut<B>>(
         module: &Module<B>,
-        basek: usize,
+        res_basek: usize,
         res: &mut R,
         res_col: usize,
         k: usize,
@@ -239,9 +239,10 @@ pub unsafe trait VecZnxBigNormalizeTmpBytesImpl<B: Backend> {
 pub unsafe trait VecZnxBigNormalizeImpl<B: Backend> {
     fn vec_znx_big_normalize_impl<R, A>(
         module: &Module<B>,
-        basek: usize,
+        res_basek: usize,
         res: &mut R,
         res_col: usize,
+        a_basek: usize,
         a: &A,
         a_col: usize,
         scratch: &mut Scratch<B>,

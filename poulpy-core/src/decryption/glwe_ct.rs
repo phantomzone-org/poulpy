@@ -6,14 +6,14 @@ use poulpy_hal::{
     layouts::{Backend, DataMut, DataRef, DataViewMut, Module, Scratch},
 };
 
-use crate::layouts::{GLWECiphertext, GLWEPlaintext, Infos, prepared::GLWESecretPrepared};
+use crate::layouts::{GLWECiphertext, GLWEMetadata, GLWEPlaintext, Infos, prepared::GLWESecretPrepared};
 
 impl GLWECiphertext<Vec<u8>> {
-    pub fn decrypt_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize) -> usize
+    pub fn decrypt_scratch_space<B: Backend>(module: &Module<B>, metadata: GLWEMetadata) -> usize
     where
         Module<B>: VecZnxDftAllocBytes + VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes,
     {
-        let size: usize = k.div_ceil(basek);
+        let size: usize = metadata.k.div_ceil(metadata.basek);
         (module.vec_znx_normalize_tmp_bytes() | module.vec_znx_dft_alloc_bytes(1, size)) + module.vec_znx_dft_alloc_bytes(1, size)
     }
 }
@@ -63,7 +63,15 @@ impl<DataSelf: DataRef> GLWECiphertext<DataSelf> {
         module.vec_znx_big_add_small_inplace(&mut c0_big, 0, &self.data, 0);
 
         // pt = norm(BIG(m + e))
-        module.vec_znx_big_normalize(self.basek(), &mut pt.data, 0, &c0_big, 0, scratch_1);
+        module.vec_znx_big_normalize(
+            self.basek(),
+            &mut pt.data,
+            0,
+            self.basek(),
+            &c0_big,
+            0,
+            scratch_1,
+        );
 
         pt.basek = self.basek();
         pt.k = pt.k().min(self.k());

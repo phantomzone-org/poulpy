@@ -12,9 +12,10 @@ use crate::{
             vec_znx_negate_inplace, vec_znx_normalize, vec_znx_sub, vec_znx_sub_ab_inplace, vec_znx_sub_ba_inplace,
         },
         znx::{
-            ZnxAdd, ZnxAddInplace, ZnxAutomorphism, ZnxCopy, ZnxNegate, ZnxNegateInplace, ZnxNormalizeFinalStep,
-            ZnxNormalizeFirstStep, ZnxNormalizeFirstStepCarryOnly, ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepCarryOnly,
-            ZnxSub, ZnxSubABInplace, ZnxSubBAInplace, ZnxZero, znx_add_normal_f64_ref,
+            ZnxAdd, ZnxAddInplace, ZnxAutomorphism, ZnxCopy, ZnxMulAddPowerOfTwo, ZnxMulPowerOfTwoInplace, ZnxNegate,
+            ZnxNegateInplace, ZnxNormalizeFinalStep, ZnxNormalizeFinalStepInplace, ZnxNormalizeFirstStep,
+            ZnxNormalizeFirstStepCarryOnly, ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepCarryOnly,
+            ZnxNormalizeMiddleStepInplace, ZnxSub, ZnxSubABInplace, ZnxSubBAInplace, ZnxZero, znx_add_normal_f64_ref,
         },
     },
     source::Source,
@@ -233,8 +234,15 @@ pub fn vec_znx_big_normalize_tmp_bytes(n: usize) -> usize {
     n * size_of::<i64>()
 }
 
-pub fn vec_znx_big_normalize<R, A, BE>(basek: usize, res: &mut R, res_col: usize, a: &A, a_col: usize, carry: &mut [i64])
-where
+pub fn vec_znx_big_normalize<R, A, BE>(
+    res_basek: usize,
+    res: &mut R,
+    res_col: usize,
+    a_basek: usize,
+    a: &A,
+    a_col: usize,
+    carry: &mut [i64],
+) where
     R: VecZnxToMut,
     A: VecZnxBigToRef<BE>,
     BE: Backend<ScalarBig = i64>
@@ -243,7 +251,13 @@ where
         + ZnxNormalizeMiddleStep
         + ZnxNormalizeFinalStep
         + ZnxNormalizeFirstStep
-        + ZnxZero,
+        + ZnxZero
+        + ZnxCopy
+        + ZnxMulAddPowerOfTwo
+        + ZnxAddInplace
+        + ZnxMulPowerOfTwoInplace
+        + ZnxNormalizeMiddleStepInplace
+        + ZnxNormalizeFinalStepInplace,
 {
     let a: VecZnxBig<&[u8], _> = a.to_ref();
     let a_vznx: VecZnx<&[u8]> = VecZnx {
@@ -254,7 +268,7 @@ where
         max_size: a.max_size,
     };
 
-    vec_znx_normalize::<_, _, BE>(basek, res, res_col, &a_vznx, a_col, carry);
+    vec_znx_normalize::<_, _, BE>(res_basek, res, res_col, a_basek, &a_vznx, a_col, carry);
 }
 
 pub fn vec_znx_big_add_normal_ref<R, B: Backend<ScalarBig = i64>>(

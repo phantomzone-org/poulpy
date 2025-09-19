@@ -1,175 +1,174 @@
-use crate::reference::znx::{
+use poulpy_hal::reference::znx::{
     ZnxAdd, ZnxAddInplace, ZnxAutomorphism, ZnxCopy, ZnxMulAddPowerOfTwo, ZnxMulPowerOfTwo, ZnxMulPowerOfTwoInplace, ZnxNegate,
     ZnxNegateInplace, ZnxNormalizeFinalStep, ZnxNormalizeFinalStepInplace, ZnxNormalizeFirstStep, ZnxNormalizeFirstStepCarryOnly,
-    ZnxNormalizeFirstStepInplace, ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepCarryOnly, ZnxNormalizeMiddleStepInplace, ZnxSub,
-    ZnxSubABInplace, ZnxSubBAInplace, ZnxSwitchRing, ZnxZero,
-    add::{znx_add_inplace_ref, znx_add_ref},
-    automorphism::znx_automorphism_ref,
-    copy::znx_copy_ref,
-    neg::{znx_negate_inplace_ref, znx_negate_ref},
-    normalization::{
-        znx_normalize_final_step_inplace_ref, znx_normalize_final_step_ref, znx_normalize_first_step_carry_only_ref,
-        znx_normalize_first_step_inplace_ref, znx_normalize_first_step_ref, znx_normalize_middle_step_carry_only_ref,
-        znx_normalize_middle_step_inplace_ref, znx_normalize_middle_step_ref,
-    },
-    sub::{znx_sub_ab_inplace_ref, znx_sub_ba_inplace_ref, znx_sub_ref},
-    switch_ring::znx_switch_ring_ref,
-    zero::znx_zero_ref,
-    znx_mul_add_power_of_two_ref, znx_mul_power_of_two_inplace_ref, znx_mul_power_of_two_ref,
+    ZnxNormalizeFirstStepInplace, ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepCarryOnly, ZnxNormalizeMiddleStepInplace,
+    ZnxRotate, ZnxSub, ZnxSubABInplace, ZnxSubBAInplace, ZnxSwitchRing, ZnxZero, znx_add_inplace_ref, znx_add_ref,
+    znx_automorphism_ref, znx_copy_ref, znx_mul_add_power_of_two_ref, znx_mul_power_of_two_inplace_ref, znx_mul_power_of_two_ref,
+    znx_negate_inplace_ref, znx_negate_ref, znx_normalize_final_step_inplace_ref, znx_normalize_final_step_ref,
+    znx_normalize_first_step_carry_only_ref, znx_normalize_first_step_inplace_ref, znx_normalize_first_step_ref,
+    znx_normalize_middle_step_carry_only_ref, znx_normalize_middle_step_inplace_ref, znx_normalize_middle_step_ref, znx_rotate,
+    znx_sub_ab_inplace_ref, znx_sub_ba_inplace_ref, znx_sub_ref, znx_switch_ring_ref, znx_zero_ref,
 };
 
-pub struct ZnxRef {}
+use crate::FFT64Spqlios;
 
-impl ZnxAdd for ZnxRef {
+impl ZnxAdd for FFT64Spqlios {
     #[inline(always)]
     fn znx_add(res: &mut [i64], a: &[i64], b: &[i64]) {
         znx_add_ref(res, a, b);
     }
 }
 
-impl ZnxAddInplace for ZnxRef {
+impl ZnxAddInplace for FFT64Spqlios {
     #[inline(always)]
     fn znx_add_inplace(res: &mut [i64], a: &[i64]) {
         znx_add_inplace_ref(res, a);
     }
 }
 
-impl ZnxSub for ZnxRef {
+impl ZnxSub for FFT64Spqlios {
     #[inline(always)]
     fn znx_sub(res: &mut [i64], a: &[i64], b: &[i64]) {
         znx_sub_ref(res, a, b);
     }
 }
 
-impl ZnxSubABInplace for ZnxRef {
+impl ZnxSubABInplace for FFT64Spqlios {
     #[inline(always)]
     fn znx_sub_ab_inplace(res: &mut [i64], a: &[i64]) {
         znx_sub_ab_inplace_ref(res, a);
     }
 }
 
-impl ZnxSubBAInplace for ZnxRef {
+impl ZnxSubBAInplace for FFT64Spqlios {
     #[inline(always)]
     fn znx_sub_ba_inplace(res: &mut [i64], a: &[i64]) {
         znx_sub_ba_inplace_ref(res, a);
     }
 }
 
-impl ZnxAutomorphism for ZnxRef {
-    #[inline(always)]
-    fn znx_automorphism(p: i64, res: &mut [i64], a: &[i64]) {
-        znx_automorphism_ref(p, res, a);
-    }
-}
-
-impl ZnxMulPowerOfTwo for ZnxRef {
-    #[inline(always)]
-    fn znx_mul_power_of_two(k: i64, res: &mut [i64], a: &[i64]) {
-        znx_mul_power_of_two_ref(k, res, a);
-    }
-}
-
-impl ZnxMulAddPowerOfTwo for ZnxRef {
+impl ZnxMulAddPowerOfTwo for FFT64Spqlios {
     #[inline(always)]
     fn znx_muladd_power_of_two(k: i64, res: &mut [i64], a: &[i64]) {
         znx_mul_add_power_of_two_ref(k, res, a);
     }
 }
 
-impl ZnxMulPowerOfTwoInplace for ZnxRef {
+impl ZnxMulPowerOfTwo for FFT64Spqlios {
+    #[inline(always)]
+    fn znx_mul_power_of_two(k: i64, res: &mut [i64], a: &[i64]) {
+        znx_mul_power_of_two_ref(k, res, a);
+    }
+}
+
+impl ZnxMulPowerOfTwoInplace for FFT64Spqlios {
     #[inline(always)]
     fn znx_mul_power_of_two_inplace(k: i64, res: &mut [i64]) {
         znx_mul_power_of_two_inplace_ref(k, res);
     }
 }
 
-impl ZnxCopy for ZnxRef {
+impl ZnxAutomorphism for FFT64Spqlios {
+    #[inline(always)]
+    fn znx_automorphism(p: i64, res: &mut [i64], a: &[i64]) {
+        znx_automorphism_ref(p, res, a);
+    }
+}
+
+impl ZnxCopy for FFT64Spqlios {
     #[inline(always)]
     fn znx_copy(res: &mut [i64], a: &[i64]) {
         znx_copy_ref(res, a);
     }
 }
 
-impl ZnxNegate for ZnxRef {
+impl ZnxNegate for FFT64Spqlios {
     #[inline(always)]
     fn znx_negate(res: &mut [i64], src: &[i64]) {
         znx_negate_ref(res, src);
     }
 }
 
-impl ZnxNegateInplace for ZnxRef {
+impl ZnxNegateInplace for FFT64Spqlios {
     #[inline(always)]
     fn znx_negate_inplace(res: &mut [i64]) {
         znx_negate_inplace_ref(res);
     }
 }
 
-impl ZnxZero for ZnxRef {
+impl ZnxRotate for FFT64Spqlios {
+    #[inline(always)]
+    fn znx_rotate(p: i64, res: &mut [i64], src: &[i64]) {
+        znx_rotate::<Self>(p, res, src);
+    }
+}
+
+impl ZnxZero for FFT64Spqlios {
     #[inline(always)]
     fn znx_zero(res: &mut [i64]) {
         znx_zero_ref(res);
     }
 }
 
-impl ZnxSwitchRing for ZnxRef {
+impl ZnxSwitchRing for FFT64Spqlios {
     #[inline(always)]
     fn znx_switch_ring(res: &mut [i64], a: &[i64]) {
         znx_switch_ring_ref(res, a);
     }
 }
 
-impl ZnxNormalizeFinalStep for ZnxRef {
+impl ZnxNormalizeFinalStep for FFT64Spqlios {
     #[inline(always)]
     fn znx_normalize_final_step(basek: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
         znx_normalize_final_step_ref(basek, lsh, x, a, carry);
     }
 }
 
-impl ZnxNormalizeFinalStepInplace for ZnxRef {
+impl ZnxNormalizeFinalStepInplace for FFT64Spqlios {
     #[inline(always)]
     fn znx_normalize_final_step_inplace<const OVERWRITE: bool>(basek: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
-        znx_normalize_final_step_inplace_ref::<OVERWRITE>(basek, lsh, x, carry);
+        znx_normalize_final_step_inplace_ref::<false>(basek, lsh, x, carry);
     }
 }
 
-impl ZnxNormalizeFirstStep for ZnxRef {
+impl ZnxNormalizeFirstStep for FFT64Spqlios {
     #[inline(always)]
     fn znx_normalize_first_step(basek: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
         znx_normalize_first_step_ref(basek, lsh, x, a, carry);
     }
 }
 
-impl ZnxNormalizeFirstStepCarryOnly for ZnxRef {
+impl ZnxNormalizeFirstStepCarryOnly for FFT64Spqlios {
     #[inline(always)]
     fn znx_normalize_first_step_carry_only(basek: usize, lsh: usize, x: &[i64], carry: &mut [i64]) {
         znx_normalize_first_step_carry_only_ref(basek, lsh, x, carry);
     }
 }
 
-impl ZnxNormalizeFirstStepInplace for ZnxRef {
+impl ZnxNormalizeFirstStepInplace for FFT64Spqlios {
     #[inline(always)]
     fn znx_normalize_first_step_inplace(basek: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
         znx_normalize_first_step_inplace_ref(basek, lsh, x, carry);
     }
 }
 
-impl ZnxNormalizeMiddleStep for ZnxRef {
+impl ZnxNormalizeMiddleStep for FFT64Spqlios {
     #[inline(always)]
     fn znx_normalize_middle_step(basek: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
         znx_normalize_middle_step_ref(basek, lsh, x, a, carry);
     }
 }
 
-impl ZnxNormalizeMiddleStepCarryOnly for ZnxRef {
+impl ZnxNormalizeMiddleStepCarryOnly for FFT64Spqlios {
     #[inline(always)]
     fn znx_normalize_middle_step_carry_only(basek: usize, lsh: usize, x: &[i64], carry: &mut [i64]) {
         znx_normalize_middle_step_carry_only_ref(basek, lsh, x, carry);
     }
 }
 
-impl ZnxNormalizeMiddleStepInplace for ZnxRef {
+impl ZnxNormalizeMiddleStepInplace for FFT64Spqlios {
     #[inline(always)]
     fn znx_normalize_middle_step_inplace<const OVERWRITE: bool>(basek: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
-        znx_normalize_middle_step_inplace_ref::<OVERWRITE>(basek, lsh, x, carry);
+        znx_normalize_middle_step_inplace_ref::<false>(basek, lsh, x, carry);
     }
 }

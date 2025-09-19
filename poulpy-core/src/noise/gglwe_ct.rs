@@ -36,7 +36,10 @@ impl<D: DataRef> GGLWECiphertext<D> {
         let basek: usize = self.basek();
         let k: usize = self.k();
 
-        let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GLWECiphertext::decrypt_scratch_space(module, basek, k));
+        let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GLWECiphertext::decrypt_scratch_space(
+            module,
+            self.metadata().as_glwe(),
+        ));
         let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(self.n(), basek, k);
 
         (0..self.rank_in()).for_each(|col_i| {
@@ -56,9 +59,7 @@ impl<D: DataRef> GGLWECiphertext<D> {
 
                 assert!(
                     noise_have <= max_noise,
-                    "noise_have: {} > max_noise: {}",
-                    noise_have,
-                    max_noise
+                    "noise_have: {noise_have} > max_noise: {max_noise}"
                 );
 
                 pt.data.zero();

@@ -1,7 +1,8 @@
 use poulpy_hal::{
     api::{
-        ScratchAvailable, TakeVecZnxDft, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftApply, VecZnxIdftApplyConsume,
-        VecZnxNormalizeTmpBytes, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
+        ScratchAvailable, TakeVecZnx, TakeVecZnxDft, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftApply,
+        VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeTmpBytes, VmpApplyDftToDft, VmpApplyDftToDftAdd,
+        VmpApplyDftToDftTmpBytes,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch, ZnxZero},
 };
@@ -12,9 +13,11 @@ impl GGSWCiphertext<Vec<u8>> {
     #[allow(clippy::too_many_arguments)]
     pub fn external_product_scratch_space<B: Backend>(
         module: &Module<B>,
-        basek: usize,
+        basek_out: usize,
         k_out: usize,
+        basek_in: usize,
         k_in: usize,
+        basek_ggsw: usize,
         k_ggsw: usize,
         digits: usize,
         rank: usize,
@@ -22,13 +25,16 @@ impl GGSWCiphertext<Vec<u8>> {
     where
         Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        GLWECiphertext::external_product_scratch_space(module, basek, k_out, k_in, k_ggsw, digits, rank)
+        GLWECiphertext::external_product_scratch_space(
+            module, basek_out, k_out, basek_in, k_in, basek_ggsw, k_ggsw, digits, rank,
+        )
     }
 
     pub fn external_product_inplace_scratch_space<B: Backend>(
         module: &Module<B>,
-        basek: usize,
+        basek_out: usize,
         k_out: usize,
+        basek_ggsw: usize,
         k_ggsw: usize,
         digits: usize,
         rank: usize,
@@ -36,7 +42,7 @@ impl GGSWCiphertext<Vec<u8>> {
     where
         Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        GLWECiphertext::external_product_inplace_scratch_space(module, basek, k_out, k_ggsw, digits, rank)
+        GLWECiphertext::external_product_inplace_scratch_space(module, basek_out, k_out, basek_ggsw, k_ggsw, digits, rank)
     }
 }
 
@@ -55,8 +61,9 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
             + VmpApplyDftToDft<B>
             + VmpApplyDftToDftAdd<B>
             + VecZnxIdftApplyConsume<B>
-            + VecZnxBigNormalize<B>,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
+            + VecZnxBigNormalize<B>
+            + VecZnxNormalize<B>,
+        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
     {
         #[cfg(debug_assertions)]
         {
@@ -86,7 +93,9 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
                         module,
                         self.basek(),
                         self.k(),
+                        lhs.basek(),
                         lhs.k(),
+                        rhs.basek(),
                         rhs.k(),
                         rhs.digits(),
                         rhs.rank()
@@ -120,8 +129,9 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
             + VmpApplyDftToDft<B>
             + VmpApplyDftToDftAdd<B>
             + VecZnxIdftApplyConsume<B>
-            + VecZnxBigNormalize<B>,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
+            + VecZnxBigNormalize<B>
+            + VecZnxNormalize<B>,
+        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
     {
         #[cfg(debug_assertions)]
         {

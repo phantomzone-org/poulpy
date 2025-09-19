@@ -1,8 +1,9 @@
 use poulpy_hal::reference::znx::{
-    ZnxAdd, ZnxAddInplace, ZnxAutomorphism, ZnxCopy, ZnxNegate, ZnxNegateInplace, ZnxNormalizeFinalStep,
-    ZnxNormalizeFinalStepInplace, ZnxNormalizeFirstStep, ZnxNormalizeFirstStepCarryOnly, ZnxNormalizeFirstStepInplace,
-    ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepCarryOnly, ZnxNormalizeMiddleStepInplace, ZnxRotate, ZnxSub, ZnxSubABInplace,
-    ZnxSubBAInplace, ZnxSwitchRing, ZnxZero, znx_add_inplace_ref, znx_add_ref, znx_automorphism_ref, znx_copy_ref,
+    ZnxAdd, ZnxAddInplace, ZnxAutomorphism, ZnxCopy, ZnxMulAddPowerOfTwo, ZnxMulPowerOfTwo, ZnxMulPowerOfTwoInplace, ZnxNegate,
+    ZnxNegateInplace, ZnxNormalizeFinalStep, ZnxNormalizeFinalStepInplace, ZnxNormalizeFirstStep, ZnxNormalizeFirstStepCarryOnly,
+    ZnxNormalizeFirstStepInplace, ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepCarryOnly, ZnxNormalizeMiddleStepInplace,
+    ZnxRotate, ZnxSub, ZnxSubABInplace, ZnxSubBAInplace, ZnxSwitchRing, ZnxZero, znx_add_inplace_ref, znx_add_ref,
+    znx_automorphism_ref, znx_copy_ref, znx_mul_add_power_of_two_ref, znx_mul_power_of_two_inplace_ref, znx_mul_power_of_two_ref,
     znx_negate_inplace_ref, znx_negate_ref, znx_normalize_final_step_inplace_ref, znx_normalize_final_step_ref,
     znx_normalize_first_step_carry_only_ref, znx_normalize_first_step_inplace_ref, znx_normalize_first_step_ref,
     znx_normalize_middle_step_carry_only_ref, znx_normalize_middle_step_inplace_ref, znx_normalize_middle_step_ref, znx_rotate,
@@ -43,6 +44,27 @@ impl ZnxSubBAInplace for FFT64Ref {
     #[inline(always)]
     fn znx_sub_ba_inplace(res: &mut [i64], a: &[i64]) {
         znx_sub_ba_inplace_ref(res, a);
+    }
+}
+
+impl ZnxMulAddPowerOfTwo for FFT64Ref {
+    #[inline(always)]
+    fn znx_muladd_power_of_two(k: i64, res: &mut [i64], a: &[i64]) {
+        znx_mul_add_power_of_two_ref(k, res, a);
+    }
+}
+
+impl ZnxMulPowerOfTwo for FFT64Ref {
+    #[inline(always)]
+    fn znx_mul_power_of_two(k: i64, res: &mut [i64], a: &[i64]) {
+        znx_mul_power_of_two_ref(k, res, a);
+    }
+}
+
+impl ZnxMulPowerOfTwoInplace for FFT64Ref {
+    #[inline(always)]
+    fn znx_mul_power_of_two_inplace(k: i64, res: &mut [i64]) {
+        znx_mul_power_of_two_inplace_ref(k, res);
     }
 }
 
@@ -104,8 +126,8 @@ impl ZnxNormalizeFinalStep for FFT64Ref {
 
 impl ZnxNormalizeFinalStepInplace for FFT64Ref {
     #[inline(always)]
-    fn znx_normalize_final_step_inplace(basek: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
-        znx_normalize_final_step_inplace_ref(basek, lsh, x, carry);
+    fn znx_normalize_final_step_inplace<const OVERWRITE: bool>(basek: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
+        znx_normalize_final_step_inplace_ref::<false>(basek, lsh, x, carry);
     }
 }
 
@@ -146,7 +168,7 @@ impl ZnxNormalizeMiddleStepCarryOnly for FFT64Ref {
 
 impl ZnxNormalizeMiddleStepInplace for FFT64Ref {
     #[inline(always)]
-    fn znx_normalize_middle_step_inplace(basek: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
-        znx_normalize_middle_step_inplace_ref(basek, lsh, x, carry);
+    fn znx_normalize_middle_step_inplace<const OVERWRITE: bool>(basek: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
+        znx_normalize_middle_step_inplace_ref::<false>(basek, lsh, x, carry);
     }
 }

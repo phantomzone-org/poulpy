@@ -4,7 +4,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    GGLWESwitchingKey, Infos,
+    GGLWEMetadata, GGLWESwitchingKey, Infos,
     prepared::{GGLWECiphertextPrepared, Prepare, PrepareAlloc},
 };
 
@@ -15,33 +15,31 @@ pub struct GGLWESwitchingKeyPrepared<D: Data, B: Backend> {
     pub(crate) sk_out_n: usize, // Degree of sk_out
 }
 
+impl<D: Data, B: Backend> GGLWESwitchingKeyPrepared<D, B> {
+    pub fn metadata(&self) -> GGLWEMetadata {
+        self.key.metadata()
+    }
+}
+
 impl<B: Backend> GGLWESwitchingKeyPrepared<Vec<u8>, B> {
     #[allow(clippy::too_many_arguments)]
-    pub fn alloc(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank_in: usize, rank_out: usize) -> Self
+    pub fn alloc(module: &Module<B>, metadata: GGLWEMetadata) -> Self
     where
         Module<B>: VmpPMatAlloc<B>,
     {
         GGLWESwitchingKeyPrepared::<Vec<u8>, B> {
-            key: GGLWECiphertextPrepared::alloc(module, basek, k, rows, digits, rank_in, rank_out),
+            key: GGLWECiphertextPrepared::alloc(module, metadata),
             sk_in_n: 0,
             sk_out_n: 0,
         }
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub fn bytes_of(
-        module: &Module<B>,
-        basek: usize,
-        k: usize,
-        rows: usize,
-        digits: usize,
-        rank_in: usize,
-        rank_out: usize,
-    ) -> usize
+    pub fn bytes_of(module: &Module<B>, metadata: GGLWEMetadata) -> usize
     where
         Module<B>: VmpPMatAllocBytes,
     {
-        GGLWECiphertextPrepared::bytes_of(module, basek, k, rows, digits, rank_in, rank_out)
+        GGLWECiphertextPrepared::bytes_of(module, metadata)
     }
 }
 
@@ -105,12 +103,7 @@ where
     fn prepare_alloc(&self, module: &Module<B>, scratch: &mut Scratch<B>) -> GGLWESwitchingKeyPrepared<Vec<u8>, B> {
         let mut atk_prepared: GGLWESwitchingKeyPrepared<Vec<u8>, B> = GGLWESwitchingKeyPrepared::alloc(
             module,
-            self.basek(),
-            self.k(),
-            self.rows(),
-            self.digits(),
-            self.rank_in(),
-            self.rank_out(),
+            self.metadata(),
         );
         atk_prepared.prepare(module, self, scratch);
         atk_prepared

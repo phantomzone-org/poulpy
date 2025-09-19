@@ -140,7 +140,7 @@ where
     let mut pt_lwe: LWEPlaintext<Vec<u8>> = LWEPlaintext::alloc(basek, k_lwe_pt);
     pt_lwe.encode_i64(data, k_lwe_pt + 1);
 
-    println!("pt_lwe: {}", pt_lwe);
+    println!("pt_lwe: {pt_lwe}");
 
     let mut ct_lwe: LWECiphertext<Vec<u8>> = LWECiphertext::alloc(n_lwe, basek, k_lwe_ct);
     ct_lwe.encrypt_sk(module, &pt_lwe, &sk_lwe, &mut source_xa, &mut source_xe);
@@ -327,7 +327,7 @@ where
     let mut pt_lwe: LWEPlaintext<Vec<u8>> = LWEPlaintext::alloc(basek, k_lwe_pt);
     pt_lwe.encode_i64(data, k_lwe_pt + 1);
 
-    println!("pt_lwe: {}", pt_lwe);
+    println!("pt_lwe: {pt_lwe}");
 
     let mut ct_lwe: LWECiphertext<Vec<u8>> = LWECiphertext::alloc(n_lwe, basek, k_lwe_ct);
     ct_lwe.encrypt_sk(module, &pt_lwe, &sk_lwe, &mut source_xa, &mut source_xe);

@@ -42,7 +42,7 @@ pub struct BlindRotationKey<D: Data, BRT: BlindRotationAlgo> {
 
 impl<D: DataRef, BRT: BlindRotationAlgo> fmt::Debug for BlindRotationKey<D, BRT> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self)
+        write!(f, "{self}")
     }
 }
 
@@ -66,7 +66,7 @@ impl<D: Data, BRT: BlindRotationAlgo> Eq for BlindRotationKey<D, BRT> {}
 impl<D: DataRef, BRT: BlindRotationAlgo> fmt::Display for BlindRotationKey<D, BRT> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for (i, key) in self.keys.iter().enumerate() {
-            write!(f, "key[{}]: {}", i, key)?;
+            write!(f, "key[{i}]: {key}")?;
         }
         writeln!(f, "{:?}", self.dist)
     }

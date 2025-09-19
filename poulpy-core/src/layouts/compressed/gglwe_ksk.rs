@@ -5,7 +5,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    GGLWESwitchingKey, Infos,
+    GGLWEMetadata, GGLWESwitchingKey, Infos,
     compressed::{Decompress, GGLWECiphertextCompressed},
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
@@ -18,9 +18,15 @@ pub struct GGLWESwitchingKeyCompressed<D: Data> {
     pub(crate) sk_out_n: usize, // Degree of sk_out
 }
 
+impl<D: Data> GGLWESwitchingKeyCompressed<D> {
+    pub fn metadata(&self) -> GGLWEMetadata {
+        self.key.metadata()
+    }
+}
+
 impl<D: DataRef> fmt::Debug for GGLWESwitchingKeyCompressed<D> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self)
+        write!(f, "{self}")
     }
 }
 
@@ -86,16 +92,16 @@ impl<D: Data> GGLWESwitchingKeyCompressed<D> {
 }
 
 impl GGLWESwitchingKeyCompressed<Vec<u8>> {
-    pub fn alloc(n: usize, basek: usize, k: usize, rows: usize, digits: usize, rank_in: usize, rank_out: usize) -> Self {
+    pub fn alloc(n: usize, metadata: GGLWEMetadata) -> Self {
         GGLWESwitchingKeyCompressed {
-            key: GGLWECiphertextCompressed::alloc(n, basek, k, rows, digits, rank_in, rank_out),
+            key: GGLWECiphertextCompressed::alloc(n, metadata),
             sk_in_n: 0,
             sk_out_n: 0,
         }
     }
 
-    pub fn bytes_of(n: usize, basek: usize, k: usize, rows: usize, digits: usize, rank_in: usize) -> usize {
-        GGLWECiphertextCompressed::bytes_of(n, basek, k, rows, digits, rank_in)
+    pub fn bytes_of(n: usize, metadata: GGLWEMetadata) -> usize {
+        GGLWECiphertextCompressed::bytes_of(n, metadata)
     }
 }
 

@@ -293,7 +293,15 @@ pub trait GLWEOperations: GLWECiphertextToMut + SetMetaData + Sized {
         let a_ref: &GLWECiphertext<&[u8]> = &a.to_ref();
 
         (0..self_mut.rank() + 1).for_each(|i| {
-            module.vec_znx_normalize(a.basek(), &mut self_mut.data, i, &a_ref.data, i, scratch);
+            module.vec_znx_normalize(
+                a.basek(),
+                &mut self_mut.data,
+                i,
+                a.basek(),
+                &a_ref.data,
+                i,
+                scratch,
+            );
         });
         self.set_basek(a.basek());
         self.set_k(a.k().min(self.k()));

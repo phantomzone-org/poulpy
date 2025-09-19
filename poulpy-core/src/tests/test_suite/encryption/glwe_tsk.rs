@@ -115,6 +115,7 @@ where
                     basek,
                     &mut sk_ij.data.as_vec_znx_mut(),
                     0,
+                    basek,
                     &sk_ij_big,
                     0,
                     scratch.borrow(),
@@ -129,7 +130,7 @@ where
                         module.vec_znx_sub_scalar_inplace(&mut pt.data, 0, row_i, &sk_ij.data, col_i);
 
                         let std_pt: f64 = pt.data.std(basek, 0) * (k as f64).exp2();
-                        assert!((SIGMA - std_pt).abs() <= 0.5, "{} {}", SIGMA, std_pt);
+                        assert!((SIGMA - std_pt).abs() <= 0.5, "{SIGMA} {std_pt}");
                     });
                 });
             });
@@ -227,6 +228,7 @@ where
                     basek,
                     &mut sk_ij.data.as_vec_znx_mut(),
                     0,
+                    basek,
                     &sk_ij_big,
                     0,
                     scratch.borrow(),
@@ -241,7 +243,7 @@ where
                         module.vec_znx_sub_scalar_inplace(&mut pt.data, 0, row_i, &sk_ij.data, col_i);
 
                         let std_pt: f64 = pt.data.std(basek, 0) * (k as f64).exp2();
-                        assert!((SIGMA - std_pt).abs() <= 0.5, "{} {}", SIGMA, std_pt);
+                        assert!((SIGMA - std_pt).abs() <= 0.5, "{SIGMA} {std_pt}");
                     });
                 });
             });

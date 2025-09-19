@@ -5,7 +5,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    GGLWEAutomorphismKey, Infos,
+    GGLWEAutomorphismKey, GGLWEMetadata, Infos,
     compressed::{Decompress, GGLWESwitchingKeyCompressed},
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
@@ -17,9 +17,15 @@ pub struct GGLWEAutomorphismKeyCompressed<D: Data> {
     pub(crate) p: i64,
 }
 
+impl<D: Data> GGLWEAutomorphismKeyCompressed<D> {
+    pub fn metadata(&self) -> GGLWEMetadata {
+        self.key.metadata()
+    }
+}
+
 impl<D: DataRef> fmt::Debug for GGLWEAutomorphismKeyCompressed<D> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self)
+        write!(f, "{self}")
     }
 }
 
@@ -46,15 +52,17 @@ impl<D: DataRef> fmt::Display for GGLWEAutomorphismKeyCompressed<D> {
 }
 
 impl GGLWEAutomorphismKeyCompressed<Vec<u8>> {
-    pub fn alloc(n: usize, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self {
+    pub fn alloc(n: usize, metadata: GGLWEMetadata) -> Self {
+        debug_assert_eq!(metadata.rank_in, metadata.rank_out);
         GGLWEAutomorphismKeyCompressed {
-            key: GGLWESwitchingKeyCompressed::alloc(n, basek, k, rows, digits, rank, rank),
+            key: GGLWESwitchingKeyCompressed::alloc(n, metadata),
             p: 0,
         }
     }
 
-    pub fn bytes_of(n: usize, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize {
-        GGLWESwitchingKeyCompressed::<Vec<u8>>::bytes_of(n, basek, k, rows, digits, rank)
+    pub fn bytes_of(n: usize, metadata: GGLWEMetadata) -> usize {
+        debug_assert_eq!(metadata.rank_in, metadata.rank_out);
+        GGLWESwitchingKeyCompressed::<Vec<u8>>::bytes_of(n, metadata)
     }
 }
 

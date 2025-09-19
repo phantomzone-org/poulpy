@@ -17,7 +17,7 @@ pub fn bench_vec_znx_dft_add<B: Backend>(c: &mut Criterion, label: &str)
 where
     Module<B>: VecZnxDftAdd<B> + ModuleNew<B> + VecZnxDftAlloc<B>,
 {
-    let group_name: String = format!("vec_znx_dft_add::{}", label);
+    let group_name: String = format!("vec_znx_dft_add::{label}");
 
     let mut group = c.benchmark_group(group_name);
 
@@ -62,7 +62,7 @@ pub fn bench_vec_znx_dft_add_inplace<B: Backend>(c: &mut Criterion, label: &str)
 where
     Module<B>: VecZnxDftAddInplace<B> + ModuleNew<B> + VecZnxDftAlloc<B>,
 {
-    let group_name: String = format!("vec_znx_dft_add_inplace::{}", label);
+    let group_name: String = format!("vec_znx_dft_add_inplace::{label}");
 
     let mut group = c.benchmark_group(group_name);
 
@@ -106,7 +106,7 @@ pub fn bench_vec_znx_dft_apply<B: Backend>(c: &mut Criterion, label: &str)
 where
     Module<B>: VecZnxDftApply<B> + ModuleNew<B> + VecZnxDftAlloc<B>,
 {
-    let group_name: String = format!("vec_znx_dft_apply::{}", label);
+    let group_name: String = format!("vec_znx_dft_apply::{label}");
 
     let mut group = c.benchmark_group(group_name);
 
@@ -149,7 +149,7 @@ where
     Module<B>: VecZnxIdftApply<B> + ModuleNew<B> + VecZnxIdftApplyTmpBytes + VecZnxDftAlloc<B> + VecZnxBigAlloc<B>,
     ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
 {
-    let group_name: String = format!("vec_znx_idft_apply::{}", label);
+    let group_name: String = format!("vec_znx_idft_apply::{label}");
 
     let mut group = c.benchmark_group(group_name);
 
@@ -194,7 +194,7 @@ pub fn bench_vec_znx_idft_apply_tmpa<B: Backend>(c: &mut Criterion, label: &str)
 where
     Module<B>: VecZnxIdftApplyTmpA<B> + ModuleNew<B> + VecZnxDftAlloc<B> + VecZnxBigAlloc<B>,
 {
-    let group_name: String = format!("vec_znx_idft_apply_tmpa::{}", label);
+    let group_name: String = format!("vec_znx_idft_apply_tmpa::{label}");
 
     let mut group = c.benchmark_group(group_name);
 
@@ -235,7 +235,7 @@ pub fn bench_vec_znx_dft_sub<B: Backend>(c: &mut Criterion, label: &str)
 where
     Module<B>: VecZnxDftSub<B> + ModuleNew<B> + VecZnxDftAlloc<B>,
 {
-    let group_name: String = format!("vec_znx_dft_sub::{}", label);
+    let group_name: String = format!("vec_znx_dft_sub::{label}");
 
     let mut group = c.benchmark_group(group_name);
 
@@ -280,7 +280,7 @@ pub fn bench_vec_znx_dft_sub_ab_inplace<B: Backend>(c: &mut Criterion, label: &s
 where
     Module<B>: VecZnxDftSubABInplace<B> + ModuleNew<B> + VecZnxDftAlloc<B>,
 {
-    let group_name: String = format!("vec_znx_dft_sub_ab_inplace::{}", label);
+    let group_name: String = format!("vec_znx_dft_sub_ab_inplace::{label}");
 
     let mut group = c.benchmark_group(group_name);
 
@@ -324,7 +324,7 @@ pub fn bench_vec_znx_dft_sub_ba_inplace<B: Backend>(c: &mut Criterion, label: &s
 where
     Module<B>: VecZnxDftSubBAInplace<B> + ModuleNew<B> + VecZnxDftAlloc<B>,
 {
-    let group_name: String = format!("vec_znx_dft_sub_ba_inplace::{}", label);
+    let group_name: String = format!("vec_znx_dft_sub_ba_inplace::{label}");
 
     let mut group = c.benchmark_group(group_name);
 

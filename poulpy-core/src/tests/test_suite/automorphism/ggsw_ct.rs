@@ -103,10 +103,16 @@ where
             let mut source_xa: Source = Source::new([0u8; 32]);
 
             let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-                GGSWCiphertext::encrypt_sk_scratch_space(module, basek, k_in, rank)
-                    | GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, basek, k_ksk, rank)
-                    | GGLWETensorKey::encrypt_sk_scratch_space(module, basek, k_tsk, rank)
-                    | GGSWCiphertext::automorphism_scratch_space(module, basek, k_out, k_in, k_ksk, di, k_tsk, di, rank),
+                GGSWCiphertext::encrypt_sk_scratch_space(module, ct_in.metadata())
+                    | GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, auto_key.metadata())
+                    | GGLWETensorKey::encrypt_sk_scratch_space(module, tensor_key.metadata())
+                    | GGSWCiphertext::automorphism_scratch_space(
+                        module,
+                        ct_out.metadata().as_glwe(),
+                        ct_in.metadata().as_glwe(),
+                        auto_key.metadata(),
+                        tensor_key.metadata(),
+                    ),
             );
 
             let var_xs: f64 = 0.5;
@@ -257,10 +263,15 @@ where
             let mut source_xa: Source = Source::new([0u8; 32]);
 
             let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-                GGSWCiphertext::encrypt_sk_scratch_space(module, basek, k_ct, rank)
-                    | GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, basek, k_ksk, rank)
-                    | GGLWETensorKey::encrypt_sk_scratch_space(module, basek, k_tsk, rank)
-                    | GGSWCiphertext::automorphism_inplace_scratch_space(module, basek, k_ct, k_ksk, di, k_tsk, di, rank),
+                GGSWCiphertext::encrypt_sk_scratch_space(module, ct.metadata())
+                    | GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, auto_key.metadata())
+                    | GGLWETensorKey::encrypt_sk_scratch_space(module, tensor_key.metadata())
+                    | GGSWCiphertext::automorphism_inplace_scratch_space(
+                        module,
+                        ct.metadata().as_glwe(),
+                        auto_key.metadata(),
+                        tensor_key.metadata(),
+                    ),
             );
 
             let var_xs: f64 = 0.5;

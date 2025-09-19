@@ -10,16 +10,16 @@ use poulpy_hal::{
 
 use crate::{
     TakeGLWEPt,
-    layouts::{GGLWECiphertext, GLWECiphertext, GLWEPlaintext, Infos, prepared::GLWESecretPrepared},
+    layouts::{GGLWECiphertext, GGLWEMetadata, GLWECiphertext, GLWEPlaintext, Infos, prepared::GLWESecretPrepared},
 };
 
 impl GGLWECiphertext<Vec<u8>> {
-    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize) -> usize
+    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, metadata: GGLWEMetadata) -> usize
     where
         Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes + VecZnxNormalizeTmpBytes,
     {
-        GLWECiphertext::encrypt_sk_scratch_space(module, basek, k)
-            + (GLWEPlaintext::byte_of(module.n(), basek, k) | module.vec_znx_normalize_tmp_bytes())
+        GLWECiphertext::encrypt_sk_scratch_space(module, metadata.as_glwe())
+            + (GLWEPlaintext::byte_of(module.n(), metadata.basek, metadata.k) | module.vec_znx_normalize_tmp_bytes())
     }
 
     pub fn encrypt_pk_scratch_space<B: Backend>(_module: &Module<B>, _basek: usize, _k: usize, _rank: usize) -> usize {
@@ -75,12 +75,12 @@ impl<DataSelf: DataMut> GGLWECiphertext<DataSelf> {
             assert_eq!(self.n(), sk.n());
             assert_eq!(pt.n(), sk.n());
             assert!(
-                scratch.available() >= GGLWECiphertext::encrypt_sk_scratch_space(module, self.basek(), self.k()),
+                scratch.available() >= GGLWECiphertext::encrypt_sk_scratch_space(module, self.metadata()),
                 "scratch.available: {} < GGLWECiphertext::encrypt_sk_scratch_space(module, self.rank()={}, self.size()={}): {}",
                 scratch.available(),
                 self.rank(),
                 self.size(),
-                GGLWECiphertext::encrypt_sk_scratch_space(module, self.basek(), self.k())
+                GGLWECiphertext::encrypt_sk_scratch_space(module, self.metadata())
             );
             assert!(
                 self.rows() * self.digits() * self.basek() <= self.k(),

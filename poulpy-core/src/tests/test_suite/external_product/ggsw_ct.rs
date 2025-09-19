@@ -102,7 +102,7 @@ where
 
             let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
                 GGSWCiphertext::encrypt_sk_scratch_space(module, basek, k_ggsw, rank)
-                    | GGSWCiphertext::external_product_scratch_space(module, basek, k_out, k_in, k_ggsw, di, rank),
+                    | GGSWCiphertext::external_product_scratch_space(module, basek, k_out, basek, k_in, basek, k_ggsw, di, rank),
             );
 
             let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
@@ -242,7 +242,7 @@ where
 
             let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
                 GGSWCiphertext::encrypt_sk_scratch_space(module, basek, k_ggsw, rank)
-                    | GGSWCiphertext::external_product_inplace_scratch_space(module, basek, k_ct, k_ggsw, di, rank),
+                    | GGSWCiphertext::external_product_inplace_scratch_space(module, basek, k_ct, basek, k_ggsw, di, rank),
             );
 
             let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);

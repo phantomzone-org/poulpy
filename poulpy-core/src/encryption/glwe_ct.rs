@@ -13,26 +13,26 @@ use crate::{
     dist::Distribution,
     encryption::{SIGMA, SIGMA_BOUND},
     layouts::{
-        GLWECiphertext, GLWEPlaintext, Infos,
+        GLWECiphertext, GLWEMetadata, GLWEPlaintext, Infos,
         prepared::{GLWEPublicKeyPrepared, GLWESecretPrepared},
     },
 };
 
 impl GLWECiphertext<Vec<u8>> {
-    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize) -> usize
+    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, metadata: GLWEMetadata) -> usize
     where
         Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes,
     {
-        let size: usize = k.div_ceil(basek);
+        let size: usize = metadata.k.div_ceil(metadata.basek);
         module.vec_znx_normalize_tmp_bytes()
             + 2 * VecZnx::alloc_bytes(module.n(), 1, size)
             + module.vec_znx_dft_alloc_bytes(1, size)
     }
-    pub fn encrypt_pk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize) -> usize
+    pub fn encrypt_pk_scratch_space<B: Backend>(module: &Module<B>, metadata: GLWEMetadata) -> usize
     where
         Module<B>: VecZnxDftAllocBytes + SvpPPolAllocBytes + VecZnxBigAllocBytes + VecZnxNormalizeTmpBytes,
     {
-        let size: usize = k.div_ceil(basek);
+        let size: usize = metadata.k.div_ceil(metadata.basek);
         ((module.vec_znx_dft_alloc_bytes(1, size) + module.vec_znx_big_alloc_bytes(1, size))
             | ScalarZnx::alloc_bytes(module.n(), 1))
             + module.svp_ppol_alloc_bytes(1)
@@ -72,10 +72,10 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
             assert_eq!(sk.n(), self.n());
             assert_eq!(pt.n(), self.n());
             assert!(
-                scratch.available() >= GLWECiphertext::encrypt_sk_scratch_space(module, self.basek(), self.k()),
+                scratch.available() >= GLWECiphertext::encrypt_sk_scratch_space(module, self.metadata()),
                 "scratch.available(): {} < GLWECiphertext::encrypt_sk_scratch_space: {}",
                 scratch.available(),
-                GLWECiphertext::encrypt_sk_scratch_space(module, self.basek(), self.k())
+                GLWECiphertext::encrypt_sk_scratch_space(module, self.metadata())
             )
         }
 
@@ -110,10 +110,10 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
             assert_eq!(self.rank(), sk.rank());
             assert_eq!(sk.n(), self.n());
             assert!(
-                scratch.available() >= GLWECiphertext::encrypt_sk_scratch_space(module, self.basek(), self.k()),
+                scratch.available() >= GLWECiphertext::encrypt_sk_scratch_space(module, self.metadata()),
                 "scratch.available(): {} < GLWECiphertext::encrypt_sk_scratch_space: {}",
                 scratch.available(),
-                GLWECiphertext::encrypt_sk_scratch_space(module, self.basek(), self.k())
+                GLWECiphertext::encrypt_sk_scratch_space(module, self.metadata())
             )
         }
         self.encrypt_sk_internal(
@@ -289,7 +289,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
             }
 
             // ct[i] = norm(ci_big)
-            module.vec_znx_big_normalize(basek, &mut self.data, i, &ci_big, 0, scratch_2);
+            module.vec_znx_big_normalize(basek, &mut self.data, i, basek, &ci_big, 0, scratch_2);
         });
     }
 }
@@ -373,7 +373,7 @@ pub(crate) fn glwe_encrypt_sk_internal<DataCt: DataMut, DataPt: DataRef, DataSk:
             let ci_big: VecZnxBig<&mut [u8], B> = module.vec_znx_idft_apply_consume(ci_dft);
 
             // use c[0] as buffer, which is overwritten later by the normalization step
-            module.vec_znx_big_normalize(basek, &mut ci, 0, &ci_big, 0, scratch_3);
+            module.vec_znx_big_normalize(basek, &mut ci, 0, basek, &ci_big, 0, scratch_3);
 
             // c0_tmp = -c[i] * s[i] (use c[0] as buffer)
             module.vec_znx_sub_ab_inplace(&mut c0, 0, &ci, 0);
@@ -391,5 +391,5 @@ pub(crate) fn glwe_encrypt_sk_internal<DataCt: DataMut, DataPt: DataRef, DataSk:
     }
 
     // c[0] = norm(c[0])
-    module.vec_znx_normalize(basek, ct, 0, &c0, 0, scratch_1);
+    module.vec_znx_normalize(basek, ct, 0, basek, &c0, 0, scratch_1);
 }

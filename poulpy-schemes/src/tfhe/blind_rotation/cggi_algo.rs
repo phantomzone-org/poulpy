@@ -62,7 +62,7 @@ where
             + (vmp | (acc_big + (module.vec_znx_big_normalize_tmp_bytes() | module.vec_znx_idft_apply_tmp_bytes())))
     } else {
         GLWECiphertext::bytes_of(module.n(), basek, k_res, rank)
-            + GLWECiphertext::external_product_scratch_space(module, basek, k_res, k_res, k_brk, 1, rank)
+            + GLWECiphertext::external_product_scratch_space(module, basek, k_res, basek, k_res, basek, k_brk, 1, rank)
     }
 }
 
@@ -275,7 +275,7 @@ fn execute_block_binary_extended<DataRes, DataIn, DataBrk, B: Backend>(
                 (0..cols).for_each(|i| {
                     module.vec_znx_idft_apply(&mut acc_add_big, 0, &acc_add_dft[j], i, scratch7);
                     module.vec_znx_big_add_small_inplace(&mut acc_add_big, 0, &acc[j], i);
-                    module.vec_znx_big_normalize(basek, &mut acc[j], i, &acc_add_big, 0, scratch7);
+                    module.vec_znx_big_normalize(basek, &mut acc[j], i, basek, &acc_add_big, 0, scratch7);
                 });
             });
         }
@@ -394,7 +394,15 @@ fn execute_block_binary<DataRes, DataIn, DataBrk, B: Backend>(
             (0..cols).for_each(|i| {
                 module.vec_znx_idft_apply(&mut acc_add_big, 0, &acc_add_dft, i, scratch_5);
                 module.vec_znx_big_add_small_inplace(&mut acc_add_big, 0, &out_mut.data, i);
-                module.vec_znx_big_normalize(basek, &mut out_mut.data, i, &acc_add_big, 0, scratch_5);
+                module.vec_znx_big_normalize(
+                    basek,
+                    &mut out_mut.data,
+                    i,
+                    basek,
+                    &acc_add_big,
+                    0,
+                    scratch_5,
+                );
             });
         }
     });

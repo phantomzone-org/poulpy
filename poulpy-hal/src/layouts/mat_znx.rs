@@ -54,7 +54,7 @@ impl<D: DataRef> ToOwnedDeep for MatZnx<D> {
 
 impl<D: DataRef> fmt::Debug for MatZnx<D> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self)
+        write!(f, "{self}")
     }
 }
 
@@ -316,9 +316,9 @@ impl<D: DataRef> fmt::Display for MatZnx<D> {
         )?;
 
         for row_i in 0..self.rows {
-            writeln!(f, "Row {}:", row_i)?;
+            writeln!(f, "Row {row_i}:")?;
             for col_i in 0..self.cols_in {
-                writeln!(f, "cols_in {}:", col_i)?;
+                writeln!(f, "cols_in {col_i}:")?;
                 writeln!(f, "{}:", self.at(row_i, col_i))?;
             }
         }

@@ -105,13 +105,19 @@ pub fn znx_normalize_middle_step_carry_only_ref(basek: usize, lsh: usize, x: &[i
 }
 
 #[inline(always)]
-pub fn znx_normalize_middle_step_inplace_ref(basek: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
+pub fn znx_normalize_middle_step_inplace_ref<const OVERWRITE: bool>(basek: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
     #[cfg(debug_assertions)]
     {
         assert!(x.len() <= carry.len());
         assert!(lsh < basek);
     }
-    if lsh == 0 {
+
+    if OVERWRITE {
+        x.iter_mut().zip(carry.iter_mut()).for_each(|(x, c)| {
+            *x = get_digit(basek, *c);
+            *c = get_carry(basek, *c, *x);
+        });
+    } else if lsh == 0 {
         x.iter_mut().zip(carry.iter_mut()).for_each(|(x, c)| {
             let digit: i64 = get_digit(basek, *x);
             let carry: i64 = get_carry(basek, *x, digit);
@@ -160,14 +166,18 @@ pub fn znx_normalize_middle_step_ref(basek: usize, lsh: usize, x: &mut [i64], a:
 }
 
 #[inline(always)]
-pub fn znx_normalize_final_step_inplace_ref(basek: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
+pub fn znx_normalize_final_step_inplace_ref<const OVERWRITE: bool>(basek: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
     #[cfg(debug_assertions)]
     {
         assert!(x.len() <= carry.len());
         assert!(lsh < basek);
     }
 
-    if lsh == 0 {
+    if OVERWRITE {
+        x.iter_mut().zip(carry.iter_mut()).for_each(|(x, c)| {
+            *x = get_digit(basek, *c);
+        });
+    } else if lsh == 0 {
         x.iter_mut().zip(carry.iter_mut()).for_each(|(x, c)| {
             *x = get_digit(basek, get_digit(basek, *x) + *c);
         });

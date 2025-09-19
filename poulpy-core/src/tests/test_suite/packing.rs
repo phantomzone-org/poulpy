@@ -91,7 +91,7 @@ where
     let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
         GLWECiphertext::encrypt_sk_scratch_space(module, basek, k_ct)
             | GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, basek, k_ksk, rank)
-            | GLWEPacker::scratch_space(module, basek, k_ct, k_ksk, digits, rank),
+            | GLWEPacker::scratch_space(module, basek, k_ct, basek, k_ksk, digits, rank),
     );
 
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
@@ -183,11 +183,7 @@ where
 
     let noise_have: f64 = pt.std().log2();
 
-    assert!(
-        noise_have < -((k_ct - basek) as f64),
-        "noise: {}",
-        noise_have
-    );
+    assert!(noise_have < -((k_ct - basek) as f64), "noise: {noise_have}");
 }
 
 #[inline(always)]

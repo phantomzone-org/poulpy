@@ -1,6 +1,9 @@
 use poulpy_hal::layouts::{Data, DataMut, DataRef, ReaderFrom, VecZnx, WriterTo};
 
-use crate::{dist::Distribution, layouts::Infos};
+use crate::{
+    dist::Distribution,
+    layouts::{GLWEMetadata, Infos},
+};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
 #[derive(PartialEq, Eq)]
@@ -9,6 +12,16 @@ pub struct GLWEPublicKey<D: Data> {
     pub(crate) basek: usize,
     pub(crate) k: usize,
     pub(crate) dist: Distribution,
+}
+
+impl<D: Data> GLWEPublicKey<D> {
+    pub fn metadata(&self) -> GLWEMetadata {
+        GLWEMetadata {
+            basek: self.basek(),
+            k: self.k(),
+            rank: self.rank(),
+        }
+    }
 }
 
 impl GLWEPublicKey<Vec<u8>> {

@@ -11,17 +11,16 @@ use poulpy_hal::{
 
 use crate::{
     TakeGLWESecret, TakeGLWESecretPrepared,
-    layouts::{GGLWESwitchingKey, GLWESecret, GLWEToLWESwitchingKey, LWESecret, prepared::GLWESecretPrepared},
+    layouts::{GGLWEMetadata, GGLWESwitchingKey, GLWESecret, GLWEToLWESwitchingKey, LWESecret, prepared::GLWESecretPrepared},
 };
 
 impl GLWEToLWESwitchingKey<Vec<u8>> {
-    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank_in: usize) -> usize
+    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, metadata: GGLWEMetadata) -> usize
     where
         Module<B>: SvpPPolAllocBytes + VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes + VecZnxNormalizeTmpBytes,
     {
-        GLWESecretPrepared::bytes_of(module, rank_in)
-            + (GGLWESwitchingKey::encrypt_sk_scratch_space(module, basek, k, rank_in, 1)
-                | GLWESecret::bytes_of(module.n(), rank_in))
+        GLWESecretPrepared::bytes_of(module, metadata.rank_in)
+            + (GGLWESwitchingKey::encrypt_sk_scratch_space(module, metadata) | GLWESecret::bytes_of(module.n(), metadata.rank_in))
     }
 }
 

@@ -4,13 +4,19 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Infos, LWEToGLWESwitchingKey,
+    GGLWEMetadata, Infos, LWEToGLWESwitchingKey,
     prepared::{GGLWESwitchingKeyPrepared, Prepare, PrepareAlloc},
 };
 
 /// A special [GLWESwitchingKey] required to for the conversion from [LWECiphertext] to [GLWECiphertext].
 #[derive(PartialEq, Eq)]
 pub struct LWEToGLWESwitchingKeyPrepared<D: Data, B: Backend>(pub(crate) GGLWESwitchingKeyPrepared<D, B>);
+
+impl<D: Data, B: Backend> LWEToGLWESwitchingKeyPrepared<D, B> {
+    pub fn metadata(&self) -> GGLWEMetadata {
+        self.0.metadata()
+    }
+}
 
 impl<D: Data, B: Backend> Infos for LWEToGLWESwitchingKeyPrepared<D, B> {
     type Inner = VmpPMat<D, B>;
@@ -47,20 +53,22 @@ impl<D: Data, B: Backend> LWEToGLWESwitchingKeyPrepared<D, B> {
 }
 
 impl<B: Backend> LWEToGLWESwitchingKeyPrepared<Vec<u8>, B> {
-    pub fn alloc(module: &Module<B>, basek: usize, k: usize, rows: usize, rank_out: usize) -> Self
+    pub fn alloc(module: &Module<B>, metadata: GGLWEMetadata) -> Self
     where
         Module<B>: VmpPMatAlloc<B>,
     {
-        Self(GGLWESwitchingKeyPrepared::alloc(
-            module, basek, k, rows, 1, 1, rank_out,
-        ))
+        debug_assert_eq!(metadata.digits, 1);
+        debug_assert_eq!(metadata.rank_in, 1);
+        Self(GGLWESwitchingKeyPrepared::alloc(module, metadata))
     }
 
-    pub fn bytes_of(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank_out: usize) -> usize
+    pub fn bytes_of(module: &Module<B>, metadata: GGLWEMetadata) -> usize
     where
         Module<B>: VmpPMatAllocBytes,
     {
-        GGLWESwitchingKeyPrepared::<Vec<u8>, B>::bytes_of(module, basek, k, rows, digits, 1, rank_out)
+        debug_assert_eq!(metadata.digits, 1);
+        debug_assert_eq!(metadata.rank_in, 1);
+        GGLWESwitchingKeyPrepared::<Vec<u8>, B>::bytes_of(module, metadata)
     }
 }
 
@@ -69,13 +77,8 @@ where
     Module<B>: VmpPrepare<B> + VmpPMatAlloc<B>,
 {
     fn prepare_alloc(&self, module: &Module<B>, scratch: &mut Scratch<B>) -> LWEToGLWESwitchingKeyPrepared<Vec<u8>, B> {
-        let mut ksk_prepared: LWEToGLWESwitchingKeyPrepared<Vec<u8>, B> = LWEToGLWESwitchingKeyPrepared::alloc(
-            module,
-            self.0.basek(),
-            self.0.k(),
-            self.0.rows(),
-            self.0.rank_out(),
-        );
+        let mut ksk_prepared: LWEToGLWESwitchingKeyPrepared<Vec<u8>, B> =
+            LWEToGLWESwitchingKeyPrepared::alloc(module, self.metadata());
         ksk_prepared.prepare(module, self, scratch);
         ksk_prepared
     }

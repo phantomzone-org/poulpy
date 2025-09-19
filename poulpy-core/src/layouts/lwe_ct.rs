@@ -8,8 +8,23 @@ use poulpy_hal::{
 #[derive(PartialEq, Eq, Clone)]
 pub struct LWECiphertext<D: Data> {
     pub(crate) data: Zn<D>,
-    pub(crate) k: usize,
-    pub(crate) basek: usize,
+    pub(crate) metadata: LWEMetadata,
+}
+
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+pub struct LWEMetadata {
+    pub k: usize,
+    pub basek: usize,
+}
+
+impl LWEMetadata {
+    pub fn as_glwe(&self) -> GLWEMetadata {
+        GLWEMetadata {
+            basek: self.basek,
+            k: self.k,
+            rank: 1,
+        }
+    }
 }
 
 impl<D: DataRef> LWECiphertext<D> {
@@ -26,7 +41,7 @@ impl<D: DataMut> LWECiphertext<D> {
 
 impl<D: DataRef> fmt::Debug for LWECiphertext<D> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self)
+        write!(f, "{self}")
     }
 }
 
@@ -45,8 +60,8 @@ impl<D: DataRef> fmt::Display for LWECiphertext<D> {
 impl<D: DataMut> Reset for LWECiphertext<D> {
     fn reset(&mut self) {
         self.data.reset();
-        self.basek = 0;
-        self.k = 0;
+        self.metadata.basek = 0;
+        self.metadata.k = 0;
     }
 }
 
@@ -60,11 +75,10 @@ where
 }
 
 impl LWECiphertext<Vec<u8>> {
-    pub fn alloc(n: usize, basek: usize, k: usize) -> Self {
+    pub fn alloc(n: usize, metadata: LWEMetadata) -> Self {
         Self {
-            data: Zn::alloc(n + 1, 1, k.div_ceil(basek)),
-            k,
-            basek,
+            data: Zn::alloc(n + 1, 1, metadata.k.div_ceil(metadata.basek)),
+            metadata,
         }
     }
 }
@@ -84,21 +98,21 @@ where
     }
 
     fn basek(&self) -> usize {
-        self.basek
+        self.metadata.basek
     }
 
     fn k(&self) -> usize {
-        self.k
+        self.metadata.k
     }
 }
 
 impl<DataSelf: DataMut> SetMetaData for LWECiphertext<DataSelf> {
     fn set_k(&mut self, k: usize) {
-        self.k = k
+        self.metadata.k = k
     }
 
     fn set_basek(&mut self, basek: usize) {
-        self.basek = basek
+        self.metadata.basek = basek
     }
 }
 
@@ -110,8 +124,7 @@ impl<D: DataRef> LWECiphertextToRef for LWECiphertext<D> {
     fn to_ref(&self) -> LWECiphertext<&[u8]> {
         LWECiphertext {
             data: self.data.to_ref(),
-            basek: self.basek,
-            k: self.k,
+            metadata: self.metadata,
         }
     }
 }
@@ -125,28 +138,27 @@ impl<D: DataMut> LWECiphertextToMut for LWECiphertext<D> {
     fn to_mut(&mut self) -> LWECiphertext<&mut [u8]> {
         LWECiphertext {
             data: self.data.to_mut(),
-            basek: self.basek,
-            k: self.k,
+            metadata: self.metadata,
         }
     }
 }
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
-use crate::layouts::{Infos, SetMetaData};
+use crate::layouts::{GLWEMetadata, Infos, SetMetaData};
 
 impl<D: DataMut> ReaderFrom for LWECiphertext<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
-        self.k = reader.read_u64::<LittleEndian>()? as usize;
-        self.basek = reader.read_u64::<LittleEndian>()? as usize;
+        self.metadata.k = reader.read_u64::<LittleEndian>()? as usize;
+        self.metadata.basek = reader.read_u64::<LittleEndian>()? as usize;
         self.data.read_from(reader)
     }
 }
 
 impl<D: DataRef> WriterTo for LWECiphertext<D> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
-        writer.write_u64::<LittleEndian>(self.k as u64)?;
-        writer.write_u64::<LittleEndian>(self.basek as u64)?;
+        writer.write_u64::<LittleEndian>(self.metadata.k as u64)?;
+        writer.write_u64::<LittleEndian>(self.metadata.basek as u64)?;
         self.data.write_to(writer)
     }
 }

@@ -15,10 +15,11 @@ use poulpy_hal::{
             },
         },
         znx::{
-            ZnxAdd, ZnxAddInplace, ZnxAutomorphism, ZnxCopy, ZnxNegate, ZnxNegateInplace, ZnxNormalizeFinalStep,
-            ZnxNormalizeFinalStepInplace, ZnxNormalizeFirstStep, ZnxNormalizeFirstStepCarryOnly, ZnxNormalizeFirstStepInplace,
-            ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepCarryOnly, ZnxNormalizeMiddleStepInplace, ZnxRotate, ZnxSub,
-            ZnxSubABInplace, ZnxSubBAInplace, ZnxSwitchRing, ZnxZero, znx_copy_ref, znx_rotate, znx_zero_ref,
+            ZnxAdd, ZnxAddInplace, ZnxAutomorphism, ZnxCopy, ZnxMulAddPowerOfTwo, ZnxMulPowerOfTwo, ZnxMulPowerOfTwoInplace,
+            ZnxNegate, ZnxNegateInplace, ZnxNormalizeFinalStep, ZnxNormalizeFinalStepInplace, ZnxNormalizeFirstStep,
+            ZnxNormalizeFirstStepCarryOnly, ZnxNormalizeFirstStepInplace, ZnxNormalizeMiddleStep,
+            ZnxNormalizeMiddleStepCarryOnly, ZnxNormalizeMiddleStepInplace, ZnxRotate, ZnxSub, ZnxSubABInplace, ZnxSubBAInplace,
+            ZnxSwitchRing, ZnxZero, znx_copy_ref, znx_rotate, znx_zero_ref,
         },
     },
 };
@@ -36,11 +37,11 @@ use crate::cpu_fft64_avx::{
         reim4_vec_mat1col_product_avx, reim4_vec_mat2cols_2ndcol_product_avx, reim4_vec_mat2cols_product_avx,
     },
     znx_avx::{
-        znx_add_avx, znx_add_inplace_avx, znx_automorphism_avx, znx_negate_avx, znx_negate_inplace_avx,
-        znx_normalize_final_step_avx, znx_normalize_final_step_inplace_avx, znx_normalize_first_step_avx,
-        znx_normalize_first_step_carry_only_avx, znx_normalize_first_step_inplace_avx, znx_normalize_middle_step_avx,
-        znx_normalize_middle_step_carry_only_avx, znx_normalize_middle_step_inplace_avx, znx_sub_ab_inplace_avx, znx_sub_avx,
-        znx_sub_ba_inplace_avx, znx_switch_ring_avx,
+        znx_add_avx, znx_add_inplace_avx, znx_automorphism_avx, znx_mul_add_power_of_two_avx, znx_mul_power_of_two_avx,
+        znx_mul_power_of_two_inplace_avx, znx_negate_avx, znx_negate_inplace_avx, znx_normalize_final_step_avx,
+        znx_normalize_final_step_inplace_avx, znx_normalize_first_step_avx, znx_normalize_first_step_carry_only_avx,
+        znx_normalize_first_step_inplace_avx, znx_normalize_middle_step_avx, znx_normalize_middle_step_carry_only_avx,
+        znx_normalize_middle_step_inplace_avx, znx_sub_ab_inplace_avx, znx_sub_avx, znx_sub_ba_inplace_avx, znx_switch_ring_avx,
     },
 };
 
@@ -183,6 +184,33 @@ impl ZnxNegateInplace for FFT64Avx {
     }
 }
 
+impl ZnxMulAddPowerOfTwo for FFT64Avx {
+    #[inline(always)]
+    fn znx_muladd_power_of_two(k: i64, res: &mut [i64], a: &[i64]) {
+        unsafe {
+            znx_mul_add_power_of_two_avx(k, res, a);
+        }
+    }
+}
+
+impl ZnxMulPowerOfTwo for FFT64Avx {
+    #[inline(always)]
+    fn znx_mul_power_of_two(k: i64, res: &mut [i64], a: &[i64]) {
+        unsafe {
+            znx_mul_power_of_two_avx(k, res, a);
+        }
+    }
+}
+
+impl ZnxMulPowerOfTwoInplace for FFT64Avx {
+    #[inline(always)]
+    fn znx_mul_power_of_two_inplace(k: i64, res: &mut [i64]) {
+        unsafe {
+            znx_mul_power_of_two_inplace_avx(k, res);
+        }
+    }
+}
+
 impl ZnxRotate for FFT64Avx {
     #[inline(always)]
     fn znx_rotate(p: i64, res: &mut [i64], src: &[i64]) {
@@ -217,9 +245,9 @@ impl ZnxNormalizeFinalStep for FFT64Avx {
 
 impl ZnxNormalizeFinalStepInplace for FFT64Avx {
     #[inline(always)]
-    fn znx_normalize_final_step_inplace(basek: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
+    fn znx_normalize_final_step_inplace<const OVERWRITE: bool>(basek: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
         unsafe {
-            znx_normalize_final_step_inplace_avx(basek, lsh, x, carry);
+            znx_normalize_final_step_inplace_avx::<OVERWRITE>(basek, lsh, x, carry);
         }
     }
 }
@@ -271,9 +299,9 @@ impl ZnxNormalizeMiddleStepCarryOnly for FFT64Avx {
 
 impl ZnxNormalizeMiddleStepInplace for FFT64Avx {
     #[inline(always)]
-    fn znx_normalize_middle_step_inplace(basek: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
+    fn znx_normalize_middle_step_inplace<const OVERWRITE: bool>(basek: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
         unsafe {
-            znx_normalize_middle_step_inplace_avx(basek, lsh, x, carry);
+            znx_normalize_middle_step_inplace_avx::<OVERWRITE>(basek, lsh, x, carry);
         }
     }
 }

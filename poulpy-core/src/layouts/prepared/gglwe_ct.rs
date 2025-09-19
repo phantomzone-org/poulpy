@@ -4,75 +4,73 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    GGLWECiphertext, Infos,
+    GGLWECiphertext, GGLWEMetadata, Infos,
     prepared::{Prepare, PrepareAlloc},
 };
 
 #[derive(PartialEq, Eq)]
 pub struct GGLWECiphertextPrepared<D: Data, B: Backend> {
     pub(crate) data: VmpPMat<D, B>,
-    pub(crate) basek: usize,
-    pub(crate) k: usize,
-    pub(crate) digits: usize,
+    pub(crate) metadata: GGLWEMetadata,
+}
+
+impl<D: Data, B: Backend> GGLWECiphertextPrepared<D, B> {
+    pub fn metadata(&self) -> GGLWEMetadata {
+        self.metadata
+    }
 }
 
 impl<B: Backend> GGLWECiphertextPrepared<Vec<u8>, B> {
     #[allow(clippy::too_many_arguments)]
-    pub fn alloc(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank_in: usize, rank_out: usize) -> Self
+    pub fn alloc(module: &Module<B>, metadata: GGLWEMetadata) -> Self
     where
         Module<B>: VmpPMatAlloc<B>,
     {
+        let k: usize = metadata.k;
+        let digits: usize = metadata.digits;
+        let basek: usize = metadata.basek;
+        let rows: usize = metadata.rows;
+        let rank_in: usize = metadata.rank_in;
+        let rank_out: usize = metadata.rank_out;
+
         let size: usize = k.div_ceil(basek);
         debug_assert!(
             size > digits,
-            "invalid gglwe: ceil(k/basek): {} <= digits: {}",
-            size,
-            digits
+            "invalid gglwe: ceil(k/basek): {size} <= digits: {digits}"
         );
 
         assert!(
             rows * digits <= size,
-            "invalid gglwe: rows: {} * digits:{} > ceil(k/basek): {}",
-            rows,
-            digits,
-            size
+            "invalid gglwe: rows: {rows} * digits:{digits} > ceil(k/basek): {size}"
         );
 
         Self {
             data: module.vmp_pmat_alloc(rows, rank_in, rank_out + 1, size),
-            basek,
-            k,
-            digits,
+            metadata,
         }
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub fn bytes_of(
-        module: &Module<B>,
-        basek: usize,
-        k: usize,
-        rows: usize,
-        digits: usize,
-        rank_in: usize,
-        rank_out: usize,
-    ) -> usize
+    pub fn bytes_of(module: &Module<B>, metadata: GGLWEMetadata) -> usize
     where
         Module<B>: VmpPMatAllocBytes,
     {
+        let k: usize = metadata.k;
+        let digits: usize = metadata.digits;
+        let basek: usize = metadata.basek;
+        let rows: usize = metadata.rows;
+        let rank_in: usize = metadata.rank_in;
+        let rank_out: usize = metadata.rank_out;
+
         let size: usize = k.div_ceil(basek);
         debug_assert!(
             size > digits,
-            "invalid gglwe: ceil(k/basek): {} <= digits: {}",
-            size,
-            digits
+            "invalid gglwe: ceil(k/basek): {size} <= digits: {digits}"
         );
 
         assert!(
             rows * digits <= size,
-            "invalid gglwe: rows: {} * digits:{} > ceil(k/basek): {}",
-            rows,
-            digits,
-            size
+            "invalid gglwe: rows: {rows} * digits:{digits} > ceil(k/basek): {size}"
         );
 
         module.vmp_pmat_alloc_bytes(rows, rank_in, rank_out + 1, rows)
@@ -87,29 +85,25 @@ impl<D: Data, B: Backend> Infos for GGLWECiphertextPrepared<D, B> {
     }
 
     fn basek(&self) -> usize {
-        self.basek
+        self.metadata.basek
     }
 
     fn k(&self) -> usize {
-        self.k
+        self.metadata.k
     }
 }
 
 impl<D: Data, B: Backend> GGLWECiphertextPrepared<D, B> {
-    pub fn rank(&self) -> usize {
-        self.data.cols_out() - 1
-    }
-
     pub fn digits(&self) -> usize {
-        self.digits
+        self.metadata.digits
     }
 
     pub fn rank_in(&self) -> usize {
-        self.data.cols_in()
+        self.metadata.rank_in
     }
 
     pub fn rank_out(&self) -> usize {
-        self.data.cols_out() - 1
+        self.metadata.rank_out
     }
 }
 
@@ -119,9 +113,7 @@ where
 {
     fn prepare(&mut self, module: &Module<B>, other: &GGLWECiphertext<DR>, scratch: &mut Scratch<B>) {
         module.vmp_prepare(&mut self.data, &other.data, scratch);
-        self.basek = other.basek;
-        self.k = other.k;
-        self.digits = other.digits;
+        self.metadata = other.metadata()
     }
 }
 
@@ -130,15 +122,7 @@ where
     Module<B>: VmpPMatAlloc<B> + VmpPrepare<B>,
 {
     fn prepare_alloc(&self, module: &Module<B>, scratch: &mut Scratch<B>) -> GGLWECiphertextPrepared<Vec<u8>, B> {
-        let mut atk_prepared: GGLWECiphertextPrepared<Vec<u8>, B> = GGLWECiphertextPrepared::alloc(
-            module,
-            self.basek(),
-            self.k(),
-            self.rows(),
-            self.digits(),
-            self.rank_in(),
-            self.rank_out(),
-        );
+        let mut atk_prepared: GGLWECiphertextPrepared<Vec<u8>, B> = GGLWECiphertextPrepared::alloc(module, self.metadata());
         atk_prepared.prepare(module, self, scratch);
         atk_prepared
     }

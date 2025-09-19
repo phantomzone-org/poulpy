@@ -4,7 +4,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    GGLWETensorKey, Infos,
+    GGLWEMetadata, GGLWETensorKey, Infos,
     prepared::{GGLWESwitchingKeyPrepared, Prepare, PrepareAlloc},
 };
 
@@ -13,27 +13,35 @@ pub struct GGLWETensorKeyPrepared<D: Data, B: Backend> {
     pub(crate) keys: Vec<GGLWESwitchingKeyPrepared<D, B>>,
 }
 
+impl<D: Data, B: Backend> GGLWETensorKeyPrepared<D, B> {
+    pub fn metadata(&self) -> GGLWEMetadata {
+        self.keys[0].metadata()
+    }
+}
+
 impl<B: Backend> GGLWETensorKeyPrepared<Vec<u8>, B> {
-    pub fn alloc(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self
+    pub fn alloc(module: &Module<B>, metadata: GGLWEMetadata) -> Self
     where
         Module<B>: VmpPMatAlloc<B>,
-    {
+    {   
+        debug_assert_eq!(metadata.rank_in, 1);
         let mut keys: Vec<GGLWESwitchingKeyPrepared<Vec<u8>, B>> = Vec::new();
-        let pairs: usize = (((rank + 1) * rank) >> 1).max(1);
+        let pairs: usize = (((metadata.rank_out + 1) * metadata.rank_out) >> 1).max(1);
         (0..pairs).for_each(|_| {
             keys.push(GGLWESwitchingKeyPrepared::alloc(
-                module, basek, k, rows, digits, 1, rank,
+                module, metadata,
             ));
         });
         Self { keys }
     }
 
-    pub fn bytes_of(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize
+    pub fn bytes_of(module: &Module<B>, metadata: GGLWEMetadata) -> usize
     where
         Module<B>: VmpPMatAllocBytes,
-    {
-        let pairs: usize = (((rank + 1) * rank) >> 1).max(1);
-        pairs * GGLWESwitchingKeyPrepared::bytes_of(module, basek, k, rows, digits, 1, rank)
+    {   
+        debug_assert_eq!(metadata.rank_in, 1);
+        let pairs: usize = (((metadata.rank_out + 1) * metadata.rank_out) >> 1).max(1);
+        pairs * GGLWESwitchingKeyPrepared::bytes_of(module, metadata)
     }
 }
 
@@ -118,11 +126,7 @@ where
     fn prepare_alloc(&self, module: &Module<B>, scratch: &mut Scratch<B>) -> GGLWETensorKeyPrepared<Vec<u8>, B> {
         let mut tsk_prepared: GGLWETensorKeyPrepared<Vec<u8>, B> = GGLWETensorKeyPrepared::alloc(
             module,
-            self.basek(),
-            self.k(),
-            self.rows(),
-            self.digits(),
-            self.rank(),
+            self.metadata()
         );
         tsk_prepared.prepare(module, self, scratch);
         tsk_prepared

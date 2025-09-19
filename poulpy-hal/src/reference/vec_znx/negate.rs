@@ -49,7 +49,7 @@ pub fn bench_vec_znx_negate<B: Backend>(c: &mut Criterion, label: &str)
 where
     Module<B>: VecZnxNegate + ModuleNew<B>,
 {
-    let group_name: String = format!("vec_znx_negate::{}", label);
+    let group_name: String = format!("vec_znx_negate::{label}");
 
     let mut group = c.benchmark_group(group_name);
 
@@ -93,7 +93,7 @@ pub fn bench_vec_znx_negate_inplace<B: Backend>(c: &mut Criterion, label: &str)
 where
     Module<B>: VecZnxNegateInplace + ModuleNew<B>,
 {
-    let group_name: String = format!("vec_znx_negate_inplace::{}", label);
+    let group_name: String = format!("vec_znx_negate_inplace::{label}");
 
     let mut group = c.benchmark_group(group_name);
 

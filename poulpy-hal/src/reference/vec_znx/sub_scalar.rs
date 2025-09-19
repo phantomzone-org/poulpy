@@ -19,12 +19,7 @@ where
 
     #[cfg(debug_assertions)]
     {
-        assert!(
-            b_limb < min_size,
-            "b_limb: {} > min_size: {}",
-            b_limb,
-            min_size
-        );
+        assert!(b_limb < min_size, "b_limb: {b_limb} > min_size: {min_size}");
     }
 
     for j in 0..min_size {

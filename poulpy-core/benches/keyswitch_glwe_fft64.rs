@@ -51,7 +51,9 @@ fn bench_keyswitch_glwe_fft64(c: &mut Criterion) {
                     &module,
                     basek,
                     ct_out.k(),
+                    basek,
                     ct_in.k(),
+                    basek,
                     ksk.k(),
                     digits,
                     rank_in,
@@ -149,7 +151,7 @@ fn bench_keyswitch_glwe_inplace_fft64(c: &mut Criterion) {
         let mut scratch: ScratchOwned<FFT64Spqlios> = ScratchOwned::alloc(
             GGLWESwitchingKey::encrypt_sk_scratch_space(&module, basek, ksk.k(), rank, rank)
                 | GLWECiphertext::encrypt_sk_scratch_space(&module, basek, ct.k())
-                | GLWECiphertext::keyswitch_inplace_scratch_space(&module, basek, ct.k(), ksk.k(), digits, rank),
+                | GLWECiphertext::keyswitch_inplace_scratch_space(&module, basek, ct.k(), basek, ksk.k(), digits, rank),
         );
 
         let mut source_xs: Source = Source::new([0u8; 32]);

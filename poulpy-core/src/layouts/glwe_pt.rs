@@ -2,7 +2,7 @@ use std::fmt;
 
 use poulpy_hal::layouts::{Data, DataMut, DataRef, VecZnx, VecZnxToMut, VecZnxToRef};
 
-use crate::layouts::{GLWECiphertext, GLWECiphertextToMut, GLWECiphertextToRef, Infos, SetMetaData};
+use crate::layouts::{GLWECiphertext, GLWECiphertextToMut, GLWECiphertextToRef, GLWEMetadata, Infos, SetMetaData};
 
 pub struct GLWEPlaintext<D: Data> {
     pub data: VecZnx<D>,
@@ -66,8 +66,11 @@ impl<D: DataRef> GLWECiphertextToRef for GLWEPlaintext<D> {
     fn to_ref(&self) -> GLWECiphertext<&[u8]> {
         GLWECiphertext {
             data: self.data.to_ref(),
-            basek: self.basek,
-            k: self.k,
+            metadata: GLWEMetadata {
+                basek: self.basek,
+                k: self.k,
+                rank: 0,
+            },
         }
     }
 }
@@ -76,8 +79,11 @@ impl<D: DataMut> GLWECiphertextToMut for GLWEPlaintext<D> {
     fn to_mut(&mut self) -> GLWECiphertext<&mut [u8]> {
         GLWECiphertext {
             data: self.data.to_mut(),
-            basek: self.basek,
-            k: self.k,
+            metadata: GLWEMetadata {
+                basek: self.basek,
+                k: self.k,
+                rank: 0,
+            },
         }
     }
 }

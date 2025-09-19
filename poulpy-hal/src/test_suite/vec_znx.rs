@@ -575,8 +575,8 @@ where
 
             // Reference
             for i in 0..cols {
-                module_ref.vec_znx_normalize(basek, &mut res_ref, i, &a, i, scratch_ref.borrow());
-                module_test.vec_znx_normalize(basek, &mut res_test, i, &a, i, scratch_test.borrow());
+                module_ref.vec_znx_normalize(basek, &mut res_ref, i, basek, &a, i, scratch_ref.borrow());
+                module_test.vec_znx_normalize(basek, &mut res_test, i, basek, &a, i, scratch_test.borrow());
             }
 
             assert_eq!(a.digest_u64(), a_digest);
@@ -732,9 +732,7 @@ where
                 let std: f64 = a.std(basek, col_i);
                 assert!(
                     (std - one_12_sqrt).abs() < 0.01,
-                    "std={} ~!= {}",
-                    std,
-                    one_12_sqrt
+                    "std={std} ~!= {one_12_sqrt}",
                 );
             }
         })
@@ -765,7 +763,7 @@ where
                 })
             } else {
                 let std: f64 = a.std(basek, col_i) * k_f64;
-                assert!((std - sigma).abs() < 0.1, "std={} ~!= {}", std, sigma);
+                assert!((std - sigma).abs() < 0.1, "std={std} ~!= {sigma}");
             }
         })
     });
@@ -799,8 +797,7 @@ where
                 let std: f64 = a.std(basek, col_i) * k_f64;
                 assert!(
                     (std - sigma * sqrt2).abs() < 0.1,
-                    "std={} ~!= {}",
-                    std,
+                    "std={std} ~!= {}",
                     sigma * sqrt2
                 );
             }

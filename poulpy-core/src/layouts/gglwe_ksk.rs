@@ -3,7 +3,7 @@ use poulpy_hal::{
     source::Source,
 };
 
-use crate::layouts::{GGLWECiphertext, GLWECiphertext, Infos};
+use crate::layouts::{GGLWECiphertext, GGLWEMetadata, GLWECiphertext, Infos};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
 use std::fmt;
@@ -15,9 +15,15 @@ pub struct GGLWESwitchingKey<D: Data> {
     pub(crate) sk_out_n: usize, // Degree of sk_out
 }
 
+impl<D: Data> GGLWESwitchingKey<D> {
+    pub fn metadata(&self) -> GGLWEMetadata {
+        self.key.metadata()
+    }
+}
+
 impl<D: DataRef> fmt::Debug for GGLWESwitchingKey<D> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self)
+        write!(f, "{self}")
     }
 }
 
@@ -49,16 +55,16 @@ where
 }
 
 impl GGLWESwitchingKey<Vec<u8>> {
-    pub fn alloc(n: usize, basek: usize, k: usize, rows: usize, digits: usize, rank_in: usize, rank_out: usize) -> Self {
+    pub fn alloc(n: usize, metadata: GGLWEMetadata) -> Self {
         GGLWESwitchingKey {
-            key: GGLWECiphertext::alloc(n, basek, k, rows, digits, rank_in, rank_out),
+            key: GGLWECiphertext::alloc(n, metadata),
             sk_in_n: 0,
             sk_out_n: 0,
         }
     }
 
-    pub fn bytes_of(n: usize, basek: usize, k: usize, rows: usize, digits: usize, rank_in: usize, rank_out: usize) -> usize {
-        GGLWECiphertext::<Vec<u8>>::bytes_of(n, basek, k, rows, digits, rank_in, rank_out)
+    pub fn bytes_of(n: usize, metadata: GGLWEMetadata) -> usize {
+        GGLWECiphertext::<Vec<u8>>::bytes_of(n, metadata)
     }
 }
 

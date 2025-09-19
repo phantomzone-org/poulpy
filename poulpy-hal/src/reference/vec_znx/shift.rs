@@ -71,9 +71,9 @@ where
             if j == size - steps - 1 {
                 ZNXARI::znx_normalize_first_step_inplace(basek, k_rem, res.at_mut(res_col, j), carry);
             } else if j == 0 {
-                ZNXARI::znx_normalize_final_step_inplace(basek, k_rem, res.at_mut(res_col, j), carry);
+                ZNXARI::znx_normalize_final_step_inplace::<false>(basek, k_rem, res.at_mut(res_col, j), carry);
             } else {
-                ZNXARI::znx_normalize_middle_step_inplace(basek, k_rem, res.at_mut(res_col, j), carry);
+                ZNXARI::znx_normalize_middle_step_inplace::<false>(basek, k_rem, res.at_mut(res_col, j), carry);
             }
         }
     }
@@ -213,9 +213,9 @@ where
         for j in (0..steps).rev() {
             ZNXARI::znx_zero(res.at_mut(res_col, j));
             if j == 0 {
-                ZNXARI::znx_normalize_final_step_inplace(basek, basek - k_rem, res.at_mut(res_col, j), carry);
+                ZNXARI::znx_normalize_final_step_inplace::<false>(basek, basek - k_rem, res.at_mut(res_col, j), carry);
             } else {
-                ZNXARI::znx_normalize_middle_step_inplace(basek, basek - k_rem, res.at_mut(res_col, j), carry);
+                ZNXARI::znx_normalize_middle_step_inplace::<false>(basek, basek - k_rem, res.at_mut(res_col, j), carry);
             }
         }
     } else {
@@ -321,9 +321,9 @@ where
         for j in (0..steps).rev() {
             ZNXARI::znx_zero(res.at_mut(res_col, j));
             if j == 0 {
-                ZNXARI::znx_normalize_final_step_inplace(basek, basek - k_rem, res.at_mut(res_col, j), carry);
+                ZNXARI::znx_normalize_final_step_inplace::<false>(basek, basek - k_rem, res.at_mut(res_col, j), carry);
             } else {
-                ZNXARI::znx_normalize_middle_step_inplace(basek, basek - k_rem, res.at_mut(res_col, j), carry);
+                ZNXARI::znx_normalize_middle_step_inplace::<false>(basek, basek - k_rem, res.at_mut(res_col, j), carry);
             }
         }
     } else {
@@ -351,7 +351,7 @@ where
     Module<B>: ModuleNew<B> + VecZnxLshInplace<B>,
     ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
 {
-    let group_name: String = format!("vec_znx_lsh_inplace::{}", label);
+    let group_name: String = format!("vec_znx_lsh_inplace::{label}");
 
     let mut group = c.benchmark_group(group_name);
 
@@ -401,7 +401,7 @@ where
     Module<B>: VecZnxLsh<B> + ModuleNew<B>,
     ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
 {
-    let group_name: String = format!("vec_znx_lsh::{}", label);
+    let group_name: String = format!("vec_znx_lsh::{label}");
 
     let mut group = c.benchmark_group(group_name);
 
@@ -451,7 +451,7 @@ where
     Module<B>: VecZnxRshInplace<B> + ModuleNew<B>,
     ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
 {
-    let group_name: String = format!("vec_znx_rsh_inplace::{}", label);
+    let group_name: String = format!("vec_znx_rsh_inplace::{label}");
 
     let mut group = c.benchmark_group(group_name);
 
@@ -501,7 +501,7 @@ where
     Module<B>: VecZnxRsh<B> + ModuleNew<B>,
     ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
 {
-    let group_name: String = format!("vec_znx_rsh::{}", label);
+    let group_name: String = format!("vec_znx_rsh::{label}");
 
     let mut group = c.benchmark_group(group_name);
 

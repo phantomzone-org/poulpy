@@ -2,15 +2,16 @@ use std::collections::HashMap;
 
 use poulpy_hal::{
     api::{
-        ScratchAvailable, TakeVecZnxDft, VecZnxBigAddSmallInplace, VecZnxBigAutomorphismInplace, VecZnxBigNormalize,
-        VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftAllocBytes, VecZnxDftApply, VecZnxIdftApplyConsume, VecZnxRshInplace,
-        VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
+        ScratchAvailable, TakeVecZnx, TakeVecZnxDft, VecZnxBigAddSmallInplace, VecZnxBigAutomorphismInplace, VecZnxBigNormalize,
+        VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftAllocBytes, VecZnxDftApply, VecZnxIdftApplyConsume, VecZnxNormalize,
+        VecZnxNormalizeTmpBytes, VecZnxRshInplace, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
     },
-    layouts::{Backend, DataMut, DataRef, Module, Scratch},
+    layouts::{Backend, DataMut, DataRef, Module, Scratch, VecZnx},
 };
 
 use crate::{
-    layouts::{GLWECiphertext, prepared::GGLWEAutomorphismKeyPrepared},
+    TakeGLWECt,
+    layouts::{GGLWEMetadata, GLWECiphertext, GLWEMetadata, Infos, prepared::GGLWEAutomorphismKeyPrepared},
     operations::GLWEOperations,
 };
 
@@ -30,31 +31,38 @@ impl GLWECiphertext<Vec<u8>> {
     #[allow(clippy::too_many_arguments)]
     pub fn trace_scratch_space<B: Backend>(
         module: &Module<B>,
-        basek: usize,
-        out_k: usize,
-        in_k: usize,
-        ksk_k: usize,
-        digits: usize,
-        rank: usize,
+        out_metadata: GLWEMetadata,
+        in_metadata: GLWEMetadata,
+        key_metadata: GGLWEMetadata,
     ) -> usize
     where
-        Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes,
+        Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        Self::automorphism_inplace_scratch_space(module, basek, out_k.min(in_k), ksk_k, digits, rank)
+        let trace: usize = Self::automorphism_inplace_scratch_space(module, out_metadata, key_metadata);
+        if in_metadata.basek != key_metadata.basek {
+            let glwe_conv: usize = VecZnx::alloc_bytes(
+                module.n(),
+                key_metadata.rank_out + 1,
+                out_metadata
+                    .k
+                    .min(in_metadata.k)
+                    .div_ceil(key_metadata.basek),
+            ) + module.vec_znx_normalize_tmp_bytes();
+            return glwe_conv + trace;
+        }
+
+        trace
     }
 
     pub fn trace_inplace_scratch_space<B: Backend>(
         module: &Module<B>,
-        basek: usize,
-        out_k: usize,
-        ksk_k: usize,
-        digits: usize,
-        rank: usize,
+        out_metadata: GLWEMetadata,
+        key_metadata: GGLWEMetadata,
     ) -> usize
     where
-        Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes,
+        Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        Self::automorphism_inplace_scratch_space(module, basek, out_k, ksk_k, digits, rank)
+        Self::trace_scratch_space(module, out_metadata, out_metadata, key_metadata)
     }
 }
 
@@ -79,8 +87,10 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
             + VecZnxBigNormalize<B>
             + VecZnxBigAutomorphismInplace<B>
             + VecZnxRshInplace<B>
-            + VecZnxCopy,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
+            + VecZnxCopy
+            + VecZnxNormalizeTmpBytes
+            + VecZnxNormalize<B>,
+        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
     {
         self.copy(module, lhs);
         self.trace_inplace(module, start, end, auto_keys, scratch);
@@ -104,23 +114,87 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>
             + VecZnxBigAutomorphismInplace<B>
-            + VecZnxRshInplace<B>,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
+            + VecZnxRshInplace<B>
+            + VecZnxNormalizeTmpBytes
+            + VecZnxNormalize<B>,
+        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
     {
-        (start..end).for_each(|i| {
-            self.rsh(module, 1, scratch);
+        let basek_ksk: usize = auto_keys
+            .get(auto_keys.keys().next().unwrap())
+            .unwrap()
+            .basek();
 
-            let p: i64 = if i == 0 {
-                -1
-            } else {
-                module.galois_element(1 << (i - 1))
-            };
-
-            if let Some(key) = auto_keys.get(&p) {
-                self.automorphism_add_inplace(module, key, scratch);
-            } else {
-                panic!("auto_keys[{}] is empty", p)
+        #[cfg(debug_assertions)]
+        {
+            assert_eq!(self.n(), module.n());
+            assert!(start < end);
+            assert!(end <= module.log_n());
+            for (_, key) in auto_keys {
+                assert_eq!(key.n(), module.n());
+                assert_eq!(key.basek(), basek_ksk);
+                assert_eq!(key.rank_in(), self.rank());
+                assert_eq!(key.rank_out(), self.rank());
             }
-        });
+        }
+
+        if self.basek() != basek_ksk {
+            let (mut self_conv, scratch_1) = scratch.take_glwe_ct(module.n(), basek_ksk, self.k(), self.rank());
+
+            for j in 0..self.cols() {
+                module.vec_znx_normalize(
+                    basek_ksk,
+                    &mut self_conv.data,
+                    j,
+                    basek_ksk,
+                    &self.data,
+                    j,
+                    scratch_1,
+                );
+            }
+
+            for i in start..end {
+                self_conv.rsh(module, 1, scratch_1);
+
+                let p: i64 = if i == 0 {
+                    -1
+                } else {
+                    module.galois_element(1 << (i - 1))
+                };
+
+                if let Some(key) = auto_keys.get(&p) {
+                    self_conv.automorphism_add_inplace(module, key, scratch_1);
+                } else {
+                    panic!("auto_keys[{p}] is empty")
+                }
+            }
+
+            for j in 0..self.cols() {
+                module.vec_znx_normalize(
+                    self.basek(),
+                    &mut self.data,
+                    j,
+                    basek_ksk,
+                    &self_conv.data,
+                    j,
+                    scratch_1,
+                );
+            }
+        } else {
+            for i in start..end {
+                self.rsh(module, 1, scratch);
+
+                let p: i64 = if i == 0 {
+                    -1
+                } else {
+                    module.galois_element(1 << (i - 1))
+                };
+
+                if let Some(key) = auto_keys.get(&p) {
+                    self.automorphism_add_inplace(module, key, scratch);
+                } else {
+                    panic!("auto_keys[{p}] is empty")
+                }
+            }
+        }
     }
 }

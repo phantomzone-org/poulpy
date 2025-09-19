@@ -3,7 +3,7 @@ use poulpy_hal::{
     source::Source,
 };
 
-use crate::layouts::{GLWECiphertext, Infos};
+use crate::layouts::{GLWECiphertext, GLWEMetadata, Infos};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
 use std::fmt;
@@ -11,14 +11,38 @@ use std::fmt;
 #[derive(PartialEq, Eq, Clone)]
 pub struct GGLWECiphertext<D: Data> {
     pub(crate) data: MatZnx<D>,
-    pub(crate) basek: usize,
-    pub(crate) k: usize,
-    pub(crate) digits: usize,
+    pub(crate) metadata: GGLWEMetadata,
+}
+
+#[derive(PartialEq, Eq, Copy, Clone, Debug)]
+pub struct GGLWEMetadata {
+    pub rows: usize,
+    pub basek: usize,
+    pub k: usize,
+    pub digits: usize,
+    pub rank_in: usize,
+    pub rank_out: usize,
+}
+
+impl<D: Data> GGLWECiphertext<D> {
+    pub fn metadata(&self) -> GGLWEMetadata {
+        self.metadata
+    }
+}
+
+impl GGLWEMetadata {
+    pub fn as_glwe(&self) -> GLWEMetadata {
+        GLWEMetadata {
+            basek: self.basek,
+            k: self.k,
+            rank: self.rank_out,
+        }
+    }
 }
 
 impl<D: DataRef> fmt::Debug for GGLWECiphertext<D> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self)
+        write!(f, "{self}")
     }
 }
 
@@ -31,9 +55,9 @@ impl<D: DataMut> FillUniform for GGLWECiphertext<D> {
 impl<D: DataMut> Reset for GGLWECiphertext<D> {
     fn reset(&mut self) {
         self.data.reset();
-        self.basek = 0;
-        self.k = 0;
-        self.digits = 0;
+        self.metadata.basek = 0;
+        self.metadata.k = 0;
+        self.metadata.digits = 0;
     }
 }
 
@@ -41,8 +65,8 @@ impl<D: DataRef> fmt::Display for GGLWECiphertext<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "(GGLWECiphertext: basek={} k={} digits={}) {}",
-            self.basek, self.k, self.digits, self.data
+            "(GGLWECiphertext: metadata={:?}) {}",
+            self.metadata, self.data
         )
     }
 }
@@ -51,8 +75,7 @@ impl<D: DataRef> GGLWECiphertext<D> {
     pub fn at(&self, row: usize, col: usize) -> GLWECiphertext<&[u8]> {
         GLWECiphertext {
             data: self.data.at(row, col),
-            basek: self.basek,
-            k: self.k,
+            metadata: self.metadata().as_glwe(),
         }
     }
 }
@@ -60,54 +83,55 @@ impl<D: DataRef> GGLWECiphertext<D> {
 impl<D: DataMut> GGLWECiphertext<D> {
     pub fn at_mut(&mut self, row: usize, col: usize) -> GLWECiphertext<&mut [u8]> {
         GLWECiphertext {
+            metadata: self.metadata().as_glwe(),
             data: self.data.at_mut(row, col),
-            basek: self.basek,
-            k: self.k,
         }
     }
 }
 
 impl GGLWECiphertext<Vec<u8>> {
-    pub fn alloc(n: usize, basek: usize, k: usize, rows: usize, digits: usize, rank_in: usize, rank_out: usize) -> Self {
+    pub fn alloc(n: usize, metadata: GGLWEMetadata) -> Self {
+        let k: usize = metadata.k;
+        let basek: usize = metadata.basek;
+        let digits: usize = metadata.digits;
+        let rows: usize = metadata.rows;
+        let rank_in: usize = metadata.rank_in;
+        let rank_out: usize = metadata.rank_out;
+
         let size: usize = k.div_ceil(basek);
         debug_assert!(
             size > digits,
-            "invalid gglwe: ceil(k/basek): {} <= digits: {}",
-            size,
-            digits
+            "invalid gglwe: ceil(k/basek): {size} <= digits: {digits}"
         );
 
         assert!(
             rows * digits <= size,
-            "invalid gglwe: rows: {} * digits:{} > ceil(k/basek): {}",
-            rows,
-            digits,
-            size
+            "invalid gglwe: rows: {rows} * digits:{digits} > ceil(k/basek): {size}"
         );
 
         Self {
             data: MatZnx::alloc(n, rows, rank_in, rank_out + 1, size),
-            basek,
-            k,
-            digits,
+            metadata,
         }
     }
 
-    pub fn bytes_of(n: usize, basek: usize, k: usize, rows: usize, digits: usize, rank_in: usize, rank_out: usize) -> usize {
+    pub fn bytes_of(n: usize, metadata: GGLWEMetadata) -> usize {
+        let k: usize = metadata.k;
+        let basek: usize = metadata.basek;
+        let digits: usize = metadata.digits;
+        let rows: usize = metadata.rows;
+        let rank_in: usize = metadata.rank_in;
+        let rank_out: usize = metadata.rank_out;
+
         let size: usize = k.div_ceil(basek);
         debug_assert!(
             size > digits,
-            "invalid gglwe: ceil(k/basek): {} <= digits: {}",
-            size,
-            digits
+            "invalid gglwe: ceil(k/basek): {size} <= digits: {digits}"
         );
 
         assert!(
             rows * digits <= size,
-            "invalid gglwe: rows: {} * digits:{} > ceil(k/basek): {}",
-            rows,
-            digits,
-            size
+            "invalid gglwe: rows: {rows} * digits:{digits} > ceil(k/basek): {size}"
         );
 
         MatZnx::alloc_bytes(n, rows, rank_in, rank_out + 1, rows)
@@ -122,46 +146,42 @@ impl<D: Data> Infos for GGLWECiphertext<D> {
     }
 
     fn basek(&self) -> usize {
-        self.basek
+        self.metadata.basek
     }
 
     fn k(&self) -> usize {
-        self.k
+        self.metadata.k
     }
 }
 
 impl<D: Data> GGLWECiphertext<D> {
-    pub fn rank(&self) -> usize {
-        self.data.cols_out() - 1
-    }
-
     pub fn digits(&self) -> usize {
-        self.digits
+        self.metadata.digits
     }
 
     pub fn rank_in(&self) -> usize {
-        self.data.cols_in()
+        self.metadata.rank_in
     }
 
     pub fn rank_out(&self) -> usize {
-        self.data.cols_out() - 1
+        self.metadata.rank_out
     }
 }
 
 impl<D: DataMut> ReaderFrom for GGLWECiphertext<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
-        self.k = reader.read_u64::<LittleEndian>()? as usize;
-        self.basek = reader.read_u64::<LittleEndian>()? as usize;
-        self.digits = reader.read_u64::<LittleEndian>()? as usize;
+        self.metadata.k = reader.read_u64::<LittleEndian>()? as usize;
+        self.metadata.basek = reader.read_u64::<LittleEndian>()? as usize;
+        self.metadata.digits = reader.read_u64::<LittleEndian>()? as usize;
         self.data.read_from(reader)
     }
 }
 
 impl<D: DataRef> WriterTo for GGLWECiphertext<D> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
-        writer.write_u64::<LittleEndian>(self.k as u64)?;
-        writer.write_u64::<LittleEndian>(self.basek as u64)?;
-        writer.write_u64::<LittleEndian>(self.digits as u64)?;
+        writer.write_u64::<LittleEndian>(self.metadata.k as u64)?;
+        writer.write_u64::<LittleEndian>(self.metadata.basek as u64)?;
+        writer.write_u64::<LittleEndian>(self.metadata.digits as u64)?;
         self.data.write_to(writer)
     }
 }

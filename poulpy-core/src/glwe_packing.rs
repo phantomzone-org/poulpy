@@ -4,16 +4,16 @@ use poulpy_hal::{
     api::{
         ScratchAvailable, TakeVecZnx, TakeVecZnxDft, VecZnxAddInplace, VecZnxAutomorphismInplace, VecZnxBigAddSmallInplace,
         VecZnxBigAutomorphismInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallBInplace, VecZnxCopy,
-        VecZnxDftAllocBytes, VecZnxDftApply, VecZnxIdftApplyConsume, VecZnxNegateInplace, VecZnxNormalizeInplace, VecZnxRotate,
-        VecZnxRotateInplace, VecZnxRshInplace, VecZnxSub, VecZnxSubABInplace, VmpApplyDftToDft, VmpApplyDftToDftAdd,
-        VmpApplyDftToDftTmpBytes,
+        VecZnxDftAllocBytes, VecZnxDftApply, VecZnxIdftApplyConsume, VecZnxNegateInplace, VecZnxNormalize,
+        VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace, VecZnxRshInplace, VecZnxSub,
+        VecZnxSubABInplace, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
 };
 
 use crate::{
     GLWEOperations, TakeGLWECt,
-    layouts::{GLWECiphertext, Infos, prepared::GGLWEAutomorphismKeyPrepared},
+    layouts::{GGLWEMetadata, GLWECiphertext, GLWEMetadata, Infos, prepared::GGLWEAutomorphismKeyPrepared},
 };
 
 /// [GLWEPacker] enables only the fly GLWE packing
@@ -43,9 +43,9 @@ impl Accumulator {
     /// * `basek`: base 2 logarithm of the GLWE ciphertext in memory digit representation.
     /// * `k`: base 2 precision of the GLWE ciphertext precision over the Torus.
     /// * `rank`: rank of the GLWE ciphertext.
-    pub fn alloc(n: usize, basek: usize, k: usize, rank: usize) -> Self {
+    pub fn alloc(n: usize, metadata: GLWEMetadata) -> Self {
         Self {
-            data: GLWECiphertext::alloc(n, basek, k, rank),
+            data: GLWECiphertext::alloc(n, metadata),
             value: false,
             control: false,
         }
@@ -66,10 +66,10 @@ impl GLWEPacker {
     /// * `basek`: base 2 logarithm of the GLWE ciphertext in memory digit representation.
     /// * `k`: base 2 precision of the GLWE ciphertext precision over the Torus.
     /// * `rank`: rank of the GLWE ciphertext.
-    pub fn new(n: usize, log_batch: usize, basek: usize, k: usize, rank: usize) -> Self {
+    pub fn new(n: usize, log_batch: usize, metadata: GLWEMetadata) -> Self {
         let mut accumulators: Vec<Accumulator> = Vec::<Accumulator>::new();
         let log_n: usize = (usize::BITS - (n - 1).leading_zeros()) as _;
-        (0..log_n - log_batch).for_each(|_| accumulators.push(Accumulator::alloc(n, basek, k, rank)));
+        (0..log_n - log_batch).for_each(|_| accumulators.push(Accumulator::alloc(n, metadata)));
         Self {
             accumulators,
             log_batch,
@@ -87,18 +87,11 @@ impl GLWEPacker {
     }
 
     /// Number of scratch space bytes required to call [Self::add].
-    pub fn scratch_space<B: Backend>(
-        module: &Module<B>,
-        basek: usize,
-        ct_k: usize,
-        k_ksk: usize,
-        digits: usize,
-        rank: usize,
-    ) -> usize
+    pub fn scratch_space<B: Backend>(module: &Module<B>, out_metadata: GLWEMetadata, key_metadata: GGLWEMetadata) -> usize
     where
-        Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes,
+        Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        pack_core_scratch_space(module, basek, ct_k, k_ksk, digits, rank)
+        pack_core_scratch_space(module, out_metadata, key_metadata)
     }
 
     pub fn galois_elements<B: Backend>(module: &Module<B>) -> Vec<i64> {
@@ -141,7 +134,9 @@ impl GLWEPacker {
             + VecZnxRotate
             + VecZnxAutomorphismInplace<B>
             + VecZnxBigSubSmallBInplace<B>
-            + VecZnxBigAutomorphismInplace<B>,
+            + VecZnxBigAutomorphismInplace<B>
+            + VecZnxNormalize<B>
+            + VecZnxNormalizeTmpBytes,
         Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
     {
         assert!(
@@ -177,18 +172,11 @@ impl GLWEPacker {
     }
 }
 
-fn pack_core_scratch_space<B: Backend>(
-    module: &Module<B>,
-    basek: usize,
-    ct_k: usize,
-    k_ksk: usize,
-    digits: usize,
-    rank: usize,
-) -> usize
+fn pack_core_scratch_space<B: Backend>(module: &Module<B>, out_metadata: GLWEMetadata, key_metadata: GGLWEMetadata) -> usize
 where
-    Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes,
+    Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
 {
-    combine_scratch_space(module, basek, ct_k, k_ksk, digits, rank)
+    combine_scratch_space(module, out_metadata, key_metadata)
 }
 
 fn pack_core<D: DataRef, DataAK: DataRef, B: Backend>(
@@ -219,7 +207,9 @@ fn pack_core<D: DataRef, DataAK: DataRef, B: Backend>(
         + VecZnxRotate
         + VecZnxAutomorphismInplace<B>
         + VecZnxBigSubSmallBInplace<B>
-        + VecZnxBigAutomorphismInplace<B>,
+        + VecZnxBigAutomorphismInplace<B>
+        + VecZnxNormalize<B>
+        + VecZnxNormalizeTmpBytes,
     Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
 {
     let log_n: usize = module.log_n();
@@ -271,20 +261,17 @@ fn pack_core<D: DataRef, DataAK: DataRef, B: Backend>(
     }
 }
 
-fn combine_scratch_space<B: Backend>(
-    module: &Module<B>,
-    basek: usize,
-    ct_k: usize,
-    k_ksk: usize,
-    digits: usize,
-    rank: usize,
-) -> usize
+fn combine_scratch_space<B: Backend>(module: &Module<B>, out_metadata: GLWEMetadata, key_metadata: GGLWEMetadata) -> usize
 where
-    Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes,
+    Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
 {
-    GLWECiphertext::bytes_of(module.n(), basek, ct_k, rank)
-        + (GLWECiphertext::rsh_scratch_space(module.n())
-            | GLWECiphertext::automorphism_scratch_space(module, basek, ct_k, ct_k, k_ksk, digits, rank))
+    GLWECiphertext::bytes_of(
+        module.n(),
+        out_metadata.basek,
+        out_metadata.k,
+        key_metadata.rank_out,
+    ) + (GLWECiphertext::rsh_scratch_space(module.n())
+        | GLWECiphertext::automorphism_inplace_scratch_space(module, out_metadata, key_metadata))
 }
 
 /// [combine] merges two ciphertexts together.
@@ -316,7 +303,9 @@ fn combine<D: DataRef, DataAK: DataRef, B: Backend>(
         + VecZnxRotate
         + VecZnxAutomorphismInplace<B>
         + VecZnxBigSubSmallBInplace<B>
-        + VecZnxBigAutomorphismInplace<B>,
+        + VecZnxBigAutomorphismInplace<B>
+        + VecZnxNormalize<B>
+        + VecZnxNormalizeTmpBytes,
     Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
 {
     let n: usize = acc.data.n();
@@ -365,7 +354,7 @@ fn combine<D: DataRef, DataAK: DataRef, B: Backend>(
             if let Some(key) = auto_keys.get(&gal_el) {
                 tmp_b.automorphism_inplace(module, key, scratch_1);
             } else {
-                panic!("auto_key[{}] not found", gal_el);
+                panic!("auto_key[{gal_el}] not found");
             }
 
             // a = a * X^-t + b - phi(a * X^-t - b)
@@ -382,7 +371,7 @@ fn combine<D: DataRef, DataAK: DataRef, B: Backend>(
             if let Some(key) = auto_keys.get(&gal_el) {
                 a.automorphism_add_inplace(module, key, scratch);
             } else {
-                panic!("auto_key[{}] not found", gal_el);
+                panic!("auto_key[{gal_el}] not found");
             }
         }
     } else if let Some(b) = b {
@@ -394,7 +383,7 @@ fn combine<D: DataRef, DataAK: DataRef, B: Backend>(
         if let Some(key) = auto_keys.get(&gal_el) {
             a.automorphism_sub_ba(module, &tmp_b, key, scratch_1);
         } else {
-            panic!("auto_key[{}] not found", gal_el);
+            panic!("auto_key[{gal_el}] not found");
         }
 
         acc.value = true;

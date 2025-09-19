@@ -26,8 +26,7 @@ impl LookUpTable {
         {
             assert!(
                 extension_factor & (extension_factor - 1) == 0,
-                "extension_factor must be a power of two but is: {}",
-                extension_factor
+                "extension_factor must be a power of two but is: {extension_factor}"
             );
         }
         let size: usize = k.div_ceil(basek);

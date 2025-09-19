@@ -10,14 +10,14 @@ use poulpy_hal::{
     source::Source,
 };
 
-use crate::layouts::{GLWEToLWESwitchingKey, Infos, compressed::GGLWESwitchingKeyCompressed};
+use crate::layouts::{GGLWEMetadata, GLWEToLWESwitchingKey, Infos, compressed::GGLWESwitchingKeyCompressed};
 
 #[derive(PartialEq, Eq, Clone)]
 pub struct GLWEToLWESwitchingKeyCompressed<D: Data>(pub(crate) GGLWESwitchingKeyCompressed<D>);
 
 impl<D: DataRef> fmt::Debug for GLWEToLWESwitchingKeyCompressed<D> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self)
+        write!(f, "{self}")
     }
 }
 
@@ -86,13 +86,13 @@ impl<D: DataRef> WriterTo for GLWEToLWESwitchingKeyCompressed<D> {
 }
 
 impl GLWEToLWESwitchingKeyCompressed<Vec<u8>> {
-    pub fn alloc(n: usize, basek: usize, k: usize, rows: usize, rank_in: usize) -> Self {
+    pub fn alloc(n: usize, metadata: GGLWEMetadata) -> Self {
         Self(GGLWESwitchingKeyCompressed::alloc(
-            n, basek, k, rows, 1, rank_in, 1,
+            n, metadata,
         ))
     }
 
-    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank_in: usize) -> usize
+    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, metadata: GGLWEMetadata) -> usize
     where
         Module<B>: VecZnxDftAllocBytes
             + VecZnxBigNormalize<B>
@@ -111,6 +111,6 @@ impl GLWEToLWESwitchingKeyCompressed<Vec<u8>> {
             + SvpPPolAllocBytes
             + SvpPPolAlloc<B>,
     {
-        GLWEToLWESwitchingKey::encrypt_sk_scratch_space(module, basek, k, rank_in)
+        GLWEToLWESwitchingKey::encrypt_sk_scratch_space(module, metadata)
     }
 }

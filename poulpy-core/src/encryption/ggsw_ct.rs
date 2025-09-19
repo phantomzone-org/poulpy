@@ -10,19 +10,19 @@ use poulpy_hal::{
 
 use crate::{
     TakeGLWEPt,
-    layouts::{GGSWCiphertext, GLWECiphertext, Infos, prepared::GLWESecretPrepared},
+    layouts::{GGSWCiphertext, GGSWMetadata, GLWECiphertext, Infos, prepared::GLWESecretPrepared},
 };
 
 impl GGSWCiphertext<Vec<u8>> {
-    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank: usize) -> usize
+    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, metadata: GGSWMetadata) -> usize
     where
         Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes,
     {
-        let size = k.div_ceil(basek);
-        GLWECiphertext::encrypt_sk_scratch_space(module, basek, k)
-            + VecZnx::alloc_bytes(module.n(), rank + 1, size)
+        let size = metadata.k.div_ceil(metadata.basek);
+        GLWECiphertext::encrypt_sk_scratch_space(module, metadata.as_glwe())
+            + VecZnx::alloc_bytes(module.n(), metadata.rank + 1, size)
             + VecZnx::alloc_bytes(module.n(), 1, size)
-            + module.vec_znx_dft_alloc_bytes(rank + 1, size)
+            + module.vec_znx_dft_alloc_bytes(metadata.rank + 1, size)
     }
 }
 

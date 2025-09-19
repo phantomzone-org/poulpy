@@ -19,7 +19,7 @@ pub fn bench_vec_znx_big_add<B: Backend>(c: &mut Criterion, label: &str)
 where
     Module<B>: VecZnxBigAdd<B> + ModuleNew<B> + VecZnxBigAlloc<B>,
 {
-    let group_name: String = format!("vec_znx_big_add::{}", label);
+    let group_name: String = format!("vec_znx_big_add::{label}");
 
     let mut group = c.benchmark_group(group_name);
 
@@ -65,7 +65,7 @@ pub fn bench_vec_znx_big_add_inplace<B: Backend>(c: &mut Criterion, label: &str)
 where
     Module<B>: VecZnxBigAddInplace<B> + ModuleNew<B> + VecZnxBigAlloc<B>,
 {
-    let group_name: String = format!("vec_znx_big_add_inplace::{}", label);
+    let group_name: String = format!("vec_znx_big_add_inplace::{label}");
 
     let mut group = c.benchmark_group(group_name);
 
@@ -109,7 +109,7 @@ pub fn bench_vec_znx_big_add_small<B: Backend>(c: &mut Criterion, label: &str)
 where
     Module<B>: VecZnxBigAddSmall<B> + ModuleNew<B> + VecZnxBigAlloc<B>,
 {
-    let group_name: String = format!("vec_znx_big_add_small::{}", label);
+    let group_name: String = format!("vec_znx_big_add_small::{label}");
 
     let mut group = c.benchmark_group(group_name);
 
@@ -155,7 +155,7 @@ pub fn bench_vec_znx_big_add_small_inplace<B: Backend>(c: &mut Criterion, label:
 where
     Module<B>: VecZnxBigAddSmallInplace<B> + ModuleNew<B> + VecZnxBigAlloc<B>,
 {
-    let group_name: String = format!("vec_znx_big_add_small_inplace::{}", label);
+    let group_name: String = format!("vec_znx_big_add_small_inplace::{label}");
 
     let mut group = c.benchmark_group(group_name);
 
@@ -199,7 +199,7 @@ pub fn bench_vec_znx_big_automorphism<B: Backend>(c: &mut Criterion, label: &str
 where
     Module<B>: VecZnxBigAutomorphism<B> + ModuleNew<B> + VecZnxBigAlloc<B>,
 {
-    let group_name: String = format!("vec_znx_big_automorphism::{}", label);
+    let group_name: String = format!("vec_znx_big_automorphism::{label}");
 
     let mut group = c.benchmark_group(group_name);
 
@@ -244,7 +244,7 @@ where
     Module<B>: VecZnxBigAutomorphismInplace<B> + VecZnxBigAutomorphismInplaceTmpBytes + ModuleNew<B> + VecZnxBigAlloc<B>,
     ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
 {
-    let group_name: String = format!("vec_znx_automorphism_inplace::{}", label);
+    let group_name: String = format!("vec_znx_automorphism_inplace::{label}");
 
     let mut group = c.benchmark_group(group_name);
 
@@ -289,7 +289,7 @@ pub fn bench_vec_znx_big_negate<B: Backend>(c: &mut Criterion, label: &str)
 where
     Module<B>: VecZnxBigNegate<B> + ModuleNew<B> + VecZnxBigAlloc<B>,
 {
-    let group_name: String = format!("vec_znx_big_negate::{}", label);
+    let group_name: String = format!("vec_znx_big_negate::{label}");
 
     let mut group = c.benchmark_group(group_name);
 
@@ -332,7 +332,7 @@ pub fn bench_vec_znx_big_negate_inplace<B: Backend>(c: &mut Criterion, label: &s
 where
     Module<B>: VecZnxBigNegateInplace<B> + ModuleNew<B> + VecZnxBigAlloc<B>,
 {
-    let group_name: String = format!("vec_znx_negate_big_inplace::{}", label);
+    let group_name: String = format!("vec_znx_negate_big_inplace::{label}");
 
     let mut group = c.benchmark_group(group_name);
 
@@ -374,7 +374,7 @@ where
     Module<B>: VecZnxBigNormalize<B> + ModuleNew<B> + VecZnxBigNormalizeTmpBytes + VecZnxBigAlloc<B>,
     ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
 {
-    let group_name: String = format!("vec_znx_big_normalize::{}", label);
+    let group_name: String = format!("vec_znx_big_normalize::{label}");
 
     let mut group = c.benchmark_group(group_name);
 
@@ -404,7 +404,7 @@ where
 
         move || {
             for i in 0..cols {
-                module.vec_znx_big_normalize(basek, &mut res, i, &a, i, scratch.borrow());
+                module.vec_znx_big_normalize(basek, &mut res, i, basek, &a, i, scratch.borrow());
             }
             black_box(());
         }
@@ -423,7 +423,7 @@ pub fn bench_vec_znx_big_sub<B: Backend>(c: &mut Criterion, label: &str)
 where
     Module<B>: VecZnxBigSub<B> + ModuleNew<B> + VecZnxBigAlloc<B>,
 {
-    let group_name: String = format!("vec_znx_big_sub::{}", label);
+    let group_name: String = format!("vec_znx_big_sub::{label}");
 
     let mut group = c.benchmark_group(group_name);
 
@@ -468,7 +468,7 @@ pub fn bench_vec_znx_big_sub_ab_inplace<B: Backend>(c: &mut Criterion, label: &s
 where
     Module<B>: VecZnxBigSubABInplace<B> + ModuleNew<B> + VecZnxBigAlloc<B>,
 {
-    let group_name: String = format!("vec_znx_big_sub_inplace::{}", label);
+    let group_name: String = format!("vec_znx_big_sub_inplace::{label}");
 
     let mut group = c.benchmark_group(group_name);
 
@@ -511,7 +511,7 @@ pub fn bench_vec_znx_big_sub_ba_inplace<B: Backend>(c: &mut Criterion, label: &s
 where
     Module<B>: VecZnxBigSubBAInplace<B> + ModuleNew<B> + VecZnxBigAlloc<B>,
 {
-    let group_name: String = format!("vec_znx_big_sub_inplace::{}", label);
+    let group_name: String = format!("vec_znx_big_sub_inplace::{label}");
 
     let mut group = c.benchmark_group(group_name);
 
@@ -554,7 +554,7 @@ pub fn bench_vec_znx_big_sub_small_a<B: Backend>(c: &mut Criterion, label: &str)
 where
     Module<B>: VecZnxBigSubSmallA<B> + ModuleNew<B> + VecZnxBigAlloc<B>,
 {
-    let group_name: String = format!("vec_znx_big_sub_small_a::{}", label);
+    let group_name: String = format!("vec_znx_big_sub_small_a::{label}");
 
     let mut group = c.benchmark_group(group_name);
 
@@ -599,7 +599,7 @@ pub fn bench_vec_znx_big_sub_small_b<B: Backend>(c: &mut Criterion, label: &str)
 where
     Module<B>: VecZnxBigSubSmallB<B> + ModuleNew<B> + VecZnxBigAlloc<B>,
 {
-    let group_name: String = format!("vec_znx_big_sub_small_b::{}", label);
+    let group_name: String = format!("vec_znx_big_sub_small_b::{label}");
 
     let mut group = c.benchmark_group(group_name);
 

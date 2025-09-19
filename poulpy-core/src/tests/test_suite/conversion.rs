@@ -83,7 +83,9 @@ where
 
     let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
         LWEToGLWESwitchingKey::encrypt_sk_scratch_space(module, basek, k_ksk, rank)
-            | GLWECiphertext::from_lwe_scratch_space(module, basek, k_lwe_ct, k_glwe_ct, k_ksk, rank)
+            | GLWECiphertext::from_lwe_scratch_space(
+                module, basek, k_lwe_ct, basek, k_glwe_ct, basek, k_ksk, rank,
+            )
             | GLWECiphertext::decrypt_scratch_space(module, basek, k_glwe_ct),
     );
 
@@ -186,7 +188,9 @@ where
 
     let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
         LWEToGLWESwitchingKey::encrypt_sk_scratch_space(module, basek, k_ksk, rank)
-            | LWECiphertext::from_glwe_scratch_space(module, basek, k_lwe_ct, k_glwe_ct, k_ksk, rank)
+            | LWECiphertext::from_glwe_scratch_space(
+                module, basek, k_lwe_ct, basek, k_glwe_ct, basek, k_ksk, rank,
+            )
             | GLWECiphertext::decrypt_scratch_space(module, basek, k_glwe_ct),
     );
 

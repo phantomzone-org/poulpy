@@ -44,9 +44,10 @@ where
 {
     fn vec_znx_normalize_impl<R, A>(
         module: &Module<Self>,
-        basek: usize,
+        res_basek: usize,
         res: &mut R,
         res_col: usize,
+        a_basek: usize,
         a: &A,
         a_col: usize,
         scratch: &mut Scratch<Self>,
@@ -60,6 +61,10 @@ where
         #[cfg(debug_assertions)]
         {
             assert_eq!(res.n(), a.n());
+            assert_eq!(
+                res_basek, a_basek,
+                "res_basek != a_basek -> basek conversion is not supported"
+            )
         }
 
         let (tmp_bytes, _) = scratch.take_slice(module.vec_znx_normalize_tmp_bytes());
@@ -67,7 +72,7 @@ where
         unsafe {
             vec_znx::vec_znx_normalize_base2k(
                 module.ptr() as *const module_info_t,
-                basek as u64,
+                res_basek as u64,
                 res.at_mut_ptr(res_col, 0),
                 res.size() as u64,
                 res.sl() as u64,
@@ -690,11 +695,7 @@ unsafe impl VecZnxAutomorphismInplaceImpl<Self> for FFT64Spqlios {
         let mut a: VecZnx<&mut [u8]> = a.to_mut();
         #[cfg(debug_assertions)]
         {
-            assert!(
-                k & 1 != 0,
-                "invalid galois element: must be odd but is {}",
-                k
-            );
+            assert!(k & 1 != 0, "invalid galois element: must be odd but is {k}");
         }
         unsafe {
             vec_znx::vec_znx_automorphism(

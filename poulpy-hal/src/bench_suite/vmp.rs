@@ -17,7 +17,7 @@ where
     Module<B>: ModuleNew<B> + VmpPMatAlloc<B> + VmpPrepare<B> + VmpPrepareTmpBytes,
     ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
 {
-    let group_name: String = format!("vmp_prepare::{}", label);
+    let group_name: String = format!("vmp_prepare::{label}");
 
     let mut group = c.benchmark_group(group_name);
 
@@ -76,7 +76,7 @@ where
     Module<B>: ModuleNew<B> + VmpApplyDftTmpBytes + VmpApplyDft<B> + VmpPMatAlloc<B> + VecZnxDftAlloc<B>,
     ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
 {
-    let group_name: String = format!("vmp_apply_dft::{}", label);
+    let group_name: String = format!("vmp_apply_dft::{label}");
 
     let mut group = c.benchmark_group(group_name);
 
@@ -137,7 +137,7 @@ where
     Module<B>: ModuleNew<B> + VecZnxDftAlloc<B> + VmpPMatAlloc<B> + VmpApplyDftToDft<B> + VmpApplyDftToDftTmpBytes,
     ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
 {
-    let group_name: String = format!("vmp_apply_dft_to_dft::{}", label);
+    let group_name: String = format!("vmp_apply_dft_to_dft::{label}");
 
     let mut group = c.benchmark_group(group_name);
 
@@ -200,7 +200,7 @@ where
     Module<B>: ModuleNew<B> + VecZnxDftAlloc<B> + VmpPMatAlloc<B> + VmpApplyDftToDftAdd<B> + VmpApplyDftToDftAddTmpBytes,
     ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
 {
-    let group_name: String = format!("vmp_apply_dft_to_dft_add::{}", label);
+    let group_name: String = format!("vmp_apply_dft_to_dft_add::{label}");
 
     let mut group = c.benchmark_group(group_name);
 

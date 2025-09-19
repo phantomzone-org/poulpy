@@ -48,8 +48,9 @@ impl<D: DataRef> GGSWCiphertext<D> {
         let mut pt_dft: VecZnxDft<Vec<u8>, B> = module.vec_znx_dft_alloc(1, self.size());
         let mut pt_big: VecZnxBig<Vec<u8>, B> = module.vec_znx_big_alloc(1, self.size());
 
-        let mut scratch: ScratchOwned<B> =
-            ScratchOwned::alloc(GLWECiphertext::decrypt_scratch_space(module, basek, k) | module.vec_znx_normalize_tmp_bytes());
+        let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
+            GLWECiphertext::decrypt_scratch_space(module, self.metadata().as_glwe()) | module.vec_znx_normalize_tmp_bytes(),
+        );
 
         (0..self.rank() + 1).for_each(|col_j| {
             (0..self.rows()).for_each(|row_i| {
@@ -60,7 +61,7 @@ impl<D: DataRef> GGSWCiphertext<D> {
                     module.vec_znx_dft_apply(1, 0, &mut pt_dft, 0, &pt.data, 0);
                     module.svp_apply_dft_to_dft_inplace(&mut pt_dft, 0, &sk_prepared.data, col_j - 1);
                     module.vec_znx_idft_apply_tmpa(&mut pt_big, 0, &mut pt_dft, 0);
-                    module.vec_znx_big_normalize(basek, &mut pt.data, 0, &pt_big, 0, scratch.borrow());
+                    module.vec_znx_big_normalize(basek, &mut pt.data, 0, basek, &pt_big, 0, scratch.borrow());
                 }
 
                 self.at(row_i, col_j)
@@ -70,7 +71,7 @@ impl<D: DataRef> GGSWCiphertext<D> {
 
                 let std_pt: f64 = pt_have.data.std(basek, 0).log2();
                 let noise: f64 = max_noise(col_j);
-                assert!(std_pt <= noise, "{} > {}", std_pt, noise);
+                assert!(std_pt <= noise, "{std_pt} > {noise}");
 
                 pt.data.zero();
             });
@@ -113,8 +114,9 @@ impl<D: DataRef> GGSWCiphertext<D> {
         let mut pt_dft: VecZnxDft<Vec<u8>, B> = module.vec_znx_dft_alloc(1, self.size());
         let mut pt_big: VecZnxBig<Vec<u8>, B> = module.vec_znx_big_alloc(1, self.size());
 
-        let mut scratch: ScratchOwned<B> =
-            ScratchOwned::alloc(GLWECiphertext::decrypt_scratch_space(module, basek, k) | module.vec_znx_normalize_tmp_bytes());
+        let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
+            GLWECiphertext::decrypt_scratch_space(module, self.metadata().as_glwe()) | module.vec_znx_normalize_tmp_bytes(),
+        );
 
         (0..self.rank() + 1).for_each(|col_j| {
             (0..self.rows()).for_each(|row_i| {
@@ -125,7 +127,7 @@ impl<D: DataRef> GGSWCiphertext<D> {
                     module.vec_znx_dft_apply(1, 0, &mut pt_dft, 0, &pt.data, 0);
                     module.svp_apply_dft_to_dft_inplace(&mut pt_dft, 0, &sk_prepared.data, col_j - 1);
                     module.vec_znx_idft_apply_tmpa(&mut pt_big, 0, &mut pt_dft, 0);
-                    module.vec_znx_big_normalize(basek, &mut pt.data, 0, &pt_big, 0, scratch.borrow());
+                    module.vec_znx_big_normalize(basek, &mut pt.data, 0, basek, &pt_big, 0, scratch.borrow());
                 }
 
                 self.at(row_i, col_j)
@@ -134,7 +136,7 @@ impl<D: DataRef> GGSWCiphertext<D> {
                 module.vec_znx_sub_ab_inplace(&mut pt_have.data, 0, &pt.data, 0);
 
                 let std_pt: f64 = pt_have.data.std(basek, 0).log2();
-                println!("col: {} row: {}: {}", col_j, row_i, std_pt);
+                println!("col: {col_j} row: {row_i}: {std_pt}");
                 pt.data.zero();
             });
         });
