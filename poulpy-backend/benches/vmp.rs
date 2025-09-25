@@ -16,6 +16,7 @@ mod x86 {
     use super::*;
     use poulpy_backend::FFT64Avx;
 
+    #[allow(dead_code)]
     fn bench_vmp_apply_dft_to_dft_cpu_avx_fft64(c: &mut Criterion) {
         bench_vmp_apply_dft_to_dft::<FFT64Avx>(c, "cpu_avx::fft64");
     }

@@ -134,6 +134,7 @@ pub fn bench_ifft_spqlios(c: &mut Criterion) {
 mod x86 {
     use super::*;
 
+    #[allow(dead_code)]
     pub fn bench_ifft_avx2_fma(c: &mut Criterion) {
         let group_name: String = "ifft_avx2_fma".to_string();
 
@@ -160,10 +161,9 @@ mod x86 {
 
             for log_m in [9, 10, 11, 12, 13, 14, 15] {
                 let id: BenchmarkId = BenchmarkId::from_parameter(format!("n: {}", 2 << log_m));
-                unsafe {
-                    let mut runner = runner(1 << log_m);
-                    group.bench_with_input(id, &(), |b, _| b.iter(&mut runner));
-                }
+
+                let mut runner = runner(1 << log_m);
+                group.bench_with_input(id, &(), |b, _| b.iter(&mut runner));
             }
         } else {
             eprintln!("skipping: CPU lacks avx2");
@@ -173,6 +173,7 @@ mod x86 {
         group.finish();
     }
 
+    #[allow(dead_code)]
     pub fn bench_fft_avx2_fma(c: &mut Criterion) {
         let group_name: String = "fft_avx2_fma".to_string();
 
@@ -199,10 +200,9 @@ mod x86 {
 
             for log_m in [9, 10, 11, 12, 13, 14, 15] {
                 let id: BenchmarkId = BenchmarkId::from_parameter(format!("n: {}", 2 << log_m));
-                unsafe {
-                    let mut runner = runner(1 << log_m);
-                    group.bench_with_input(id, &(), |b, _| b.iter(&mut runner));
-                }
+
+                let mut runner = runner(1 << log_m);
+                group.bench_with_input(id, &(), |b, _| b.iter(&mut runner));
             }
         } else {
             eprintln!("skipping: CPU lacks avx2");

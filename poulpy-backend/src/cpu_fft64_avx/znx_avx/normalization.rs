@@ -667,6 +667,7 @@ mod tests {
 
     use std::arch::x86_64::{_mm256_loadu_si256, _mm256_storeu_si256};
 
+    #[allow(dead_code)]
     #[target_feature(enable = "avx2")]
     fn test_get_digit_avx_internal() {
         let basek: usize = 12;
@@ -703,6 +704,7 @@ mod tests {
         }
     }
 
+    #[allow(dead_code)]
     #[target_feature(enable = "avx2")]
     fn test_get_carry_avx_internal() {
         let basek: usize = 12;
@@ -741,6 +743,7 @@ mod tests {
         }
     }
 
+    #[allow(dead_code)]
     #[target_feature(enable = "avx2")]
     fn test_znx_normalize_first_step_inplace_avx_internal() {
         let mut y0: [i64; 4] = [
@@ -785,6 +788,7 @@ mod tests {
         }
     }
 
+    #[allow(dead_code)]
     #[target_feature(enable = "avx2")]
     fn test_znx_normalize_middle_step_inplace_avx_internal() {
         let mut y0: [i64; 4] = [
@@ -829,6 +833,7 @@ mod tests {
         }
     }
 
+    #[allow(dead_code)]
     #[target_feature(enable = "avx2")]
     fn test_znx_normalize_final_step_inplace_avx_internal() {
         let mut y0: [i64; 4] = [
@@ -873,6 +878,7 @@ mod tests {
         }
     }
 
+    #[allow(dead_code)]
     #[target_feature(enable = "avx2")]
     fn test_znx_normalize_first_step_avx_internal() {
         let mut y0: [i64; 4] = [
@@ -918,6 +924,7 @@ mod tests {
         }
     }
 
+    #[allow(dead_code)]
     #[target_feature(enable = "avx2")]
     fn test_znx_normalize_middle_step_avx_internal() {
         let mut y0: [i64; 4] = [
@@ -963,6 +970,7 @@ mod tests {
         }
     }
 
+    #[allow(dead_code)]
     #[target_feature(enable = "avx2")]
     fn test_znx_normalize_final_step_avx_internal() {
         let mut y0: [i64; 4] = [

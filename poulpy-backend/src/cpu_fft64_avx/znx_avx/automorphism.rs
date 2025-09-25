@@ -103,6 +103,7 @@ mod tests {
 
     use super::*;
 
+    #[allow(dead_code)]
     #[target_feature(enable = "avx2", enable = "fma")]
     fn test_znx_automorphism_internal() {
         let a: [i64; 16] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
