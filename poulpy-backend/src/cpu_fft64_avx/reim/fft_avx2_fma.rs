@@ -5,7 +5,6 @@ use std::arch::x86_64::{
 
 use crate::cpu_fft64_avx::reim::{as_arr, as_arr_mut};
 
-#[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
 #[target_feature(enable = "avx2,fma")]
 pub(crate) fn fft_avx2_fma(m: usize, omg: &[f64], data: &mut [f64]) {
     if m < 16 {
@@ -35,7 +34,6 @@ unsafe extern "sysv64" {
     unsafe fn fft16_avx2_fma_asm(re: *mut f64, im: *mut f64, omg: *const f64);
 }
 
-#[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
 #[target_feature(enable = "avx2,fma")]
 fn fft16_avx2_fma(re: &mut [f64; 16], im: &mut [f64; 16], omg: &[f64; 16]) {
     unsafe {
@@ -43,7 +41,6 @@ fn fft16_avx2_fma(re: &mut [f64; 16], im: &mut [f64; 16], omg: &[f64; 16]) {
     }
 }
 
-#[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
 #[target_feature(enable = "avx2,fma")]
 fn fft_rec_16_avx2_fma(m: usize, re: &mut [f64], im: &mut [f64], omg: &[f64], mut pos: usize) -> usize {
     if m <= 2048 {
@@ -58,7 +55,6 @@ fn fft_rec_16_avx2_fma(m: usize, re: &mut [f64], im: &mut [f64], omg: &[f64], mu
     pos
 }
 
-#[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
 #[target_feature(enable = "avx2,fma")]
 fn fft_bfs_16_avx2_fma(m: usize, re: &mut [f64], im: &mut [f64], omg: &[f64], mut pos: usize) -> usize {
     let log_m: usize = (usize::BITS - (m - 1).leading_zeros()) as usize;
@@ -99,7 +95,6 @@ fn fft_bfs_16_avx2_fma(m: usize, re: &mut [f64], im: &mut [f64], omg: &[f64], mu
     pos
 }
 
-#[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
 #[target_feature(enable = "avx2,fma")]
 fn twiddle_fft_avx2_fma(h: usize, re: &mut [f64], im: &mut [f64], omg: [f64; 2]) {
     unsafe {
@@ -140,7 +135,6 @@ fn twiddle_fft_avx2_fma(h: usize, re: &mut [f64], im: &mut [f64], omg: [f64; 2])
     }
 }
 
-#[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
 #[target_feature(enable = "avx2,fma")]
 fn bitwiddle_fft_avx2_fma(h: usize, re: &mut [f64], im: &mut [f64], omg: &[f64; 4]) {
     unsafe {
@@ -228,7 +222,6 @@ fn bitwiddle_fft_avx2_fma(h: usize, re: &mut [f64], im: &mut [f64], omg: &[f64; 
 fn test_fft_avx2_fma() {
     use super::*;
 
-    #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
     #[target_feature(enable = "avx2,fma")]
     fn internal(log_m: usize) {
         use poulpy_hal::reference::fft64::reim::ReimFFTRef;

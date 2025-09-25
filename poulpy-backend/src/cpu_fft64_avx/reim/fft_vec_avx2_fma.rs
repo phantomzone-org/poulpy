@@ -1,6 +1,5 @@
 /// # Safety
 /// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
-#[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
 #[target_feature(enable = "avx2,fma")]
 pub fn reim_add_avx2_fma(res: &mut [f64], a: &[f64], b: &[f64]) {
     #[cfg(debug_assertions)]
@@ -31,7 +30,6 @@ pub fn reim_add_avx2_fma(res: &mut [f64], a: &[f64], b: &[f64]) {
 
 /// # Safety
 /// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
-#[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
 #[target_feature(enable = "avx2,fma")]
 pub fn reim_add_inplace_avx2_fma(res: &mut [f64], a: &[f64]) {
     #[cfg(debug_assertions)]
@@ -59,7 +57,6 @@ pub fn reim_add_inplace_avx2_fma(res: &mut [f64], a: &[f64]) {
 
 /// # Safety
 /// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
-#[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
 #[target_feature(enable = "avx2,fma")]
 pub fn reim_sub_avx2_fma(res: &mut [f64], a: &[f64], b: &[f64]) {
     #[cfg(debug_assertions)]
@@ -90,7 +87,6 @@ pub fn reim_sub_avx2_fma(res: &mut [f64], a: &[f64], b: &[f64]) {
 
 /// # Safety
 /// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
-#[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
 #[target_feature(enable = "avx2,fma")]
 pub fn reim_sub_ab_inplace_avx2_fma(res: &mut [f64], a: &[f64]) {
     #[cfg(debug_assertions)]
@@ -118,7 +114,6 @@ pub fn reim_sub_ab_inplace_avx2_fma(res: &mut [f64], a: &[f64]) {
 
 /// # Safety
 /// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
-#[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
 #[target_feature(enable = "avx2,fma")]
 pub fn reim_sub_ba_inplace_avx2_fma(res: &mut [f64], a: &[f64]) {
     #[cfg(debug_assertions)]
@@ -146,7 +141,6 @@ pub fn reim_sub_ba_inplace_avx2_fma(res: &mut [f64], a: &[f64]) {
 
 /// # Safety
 /// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
-#[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
 #[target_feature(enable = "avx2,fma")]
 pub fn reim_negate_avx2_fma(res: &mut [f64], a: &[f64]) {
     #[cfg(debug_assertions)]
@@ -177,7 +171,6 @@ pub fn reim_negate_avx2_fma(res: &mut [f64], a: &[f64]) {
 
 /// # Safety
 /// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
-#[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
 #[target_feature(enable = "avx2,fma")]
 pub fn reim_negate_inplace_avx2_fma(res: &mut [f64]) {
     use std::arch::x86_64::{__m256d, _mm256_loadu_pd, _mm256_storeu_pd, _mm256_xor_pd};
@@ -200,7 +193,6 @@ pub fn reim_negate_inplace_avx2_fma(res: &mut [f64]) {
 
 /// # Safety
 /// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
-#[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
 #[target_feature(enable = "avx2,fma")]
 pub fn reim_addmul_avx2_fma(res: &mut [f64], a: &[f64], b: &[f64]) {
     #[cfg(debug_assertions)]
@@ -253,7 +245,6 @@ pub fn reim_addmul_avx2_fma(res: &mut [f64], a: &[f64], b: &[f64]) {
 
 /// # Safety
 /// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
-#[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
 #[target_feature(enable = "avx2,fma")]
 pub fn reim_mul_avx2_fma(res: &mut [f64], a: &[f64], b: &[f64]) {
     #[cfg(debug_assertions)]
@@ -305,7 +296,6 @@ pub fn reim_mul_avx2_fma(res: &mut [f64], a: &[f64], b: &[f64]) {
 
 /// # Safety
 /// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
-#[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
 #[target_feature(enable = "avx2,fma")]
 pub fn reim_mul_inplace_avx2_fma(res: &mut [f64], a: &[f64]) {
     #[cfg(debug_assertions)]

@@ -1,4 +1,3 @@
-#[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2")]
 pub unsafe fn znx_switch_ring_avx(res: &mut [i64], a: &[i64]) {
     unsafe {

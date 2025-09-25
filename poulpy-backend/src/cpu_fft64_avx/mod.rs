@@ -10,7 +10,6 @@ mod vmp;
 mod zn;
 mod znx_avx;
 
-#[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
 pub struct FFT64Avx {}
 pub use reim::*;
 
