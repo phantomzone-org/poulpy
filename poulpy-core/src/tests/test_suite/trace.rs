@@ -5,9 +5,9 @@ use poulpy_hal::{
         ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare,
         VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxAutomorphism, VecZnxBigAddInplace,
         VecZnxBigAddSmallInplace, VecZnxBigAllocBytes, VecZnxBigAutomorphismInplace, VecZnxBigNormalize,
-        VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallBInplace, VecZnxCopy, VecZnxDftAllocBytes, VecZnxDftApply,
+        VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallNegateInplace, VecZnxCopy, VecZnxDftAllocBytes, VecZnxDftApply,
         VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes,
-        VecZnxRotateInplace, VecZnxRshInplace, VecZnxSub, VecZnxSubABInplace, VecZnxSwitchRing, VmpApplyDftToDft,
+        VecZnxRotateInplace, VecZnxRshInplace, VecZnxSub, VecZnxSubInplace, VecZnxSwitchRing, VmpApplyDftToDft,
         VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes, VmpPMatAlloc, VmpPrepare,
     },
     layouts::{Backend, Module, ScratchOwned, ZnxView, ZnxViewMut},
@@ -33,7 +33,7 @@ where
     Module<B>: VecZnxDftAllocBytes
         + VecZnxAutomorphism
         + VecZnxBigAutomorphismInplace<B>
-        + VecZnxBigSubSmallBInplace<B>
+        + VecZnxBigSubSmallNegateInplace<B>
         + VecZnxRshInplace<B>
         + VecZnxRotateInplace<B>
         + VecZnxBigNormalize<B>
@@ -41,7 +41,7 @@ where
         + SvpApplyDftToDftInplace<B>
         + VecZnxIdftApplyConsume<B>
         + VecZnxFillUniform
-        + VecZnxSubABInplace
+        + VecZnxSubInplace
         + VecZnxAddInplace
         + VecZnxNormalizeInplace<B>
         + VecZnxAddNormal
@@ -158,7 +158,7 @@ where
 
         glwe_out.decrypt(module, &mut pt_have, &sk_dft, scratch.borrow());
 
-        module.vec_znx_sub_ab_inplace(&mut pt_want.data, 0, &pt_have.data, 0);
+        module.vec_znx_sub_inplace(&mut pt_want.data, 0, &pt_have.data, 0);
         module.vec_znx_normalize_inplace(base2k, &mut pt_want.data, 0, scratch.borrow());
 
         let noise_have: f64 = pt_want.std().log2();

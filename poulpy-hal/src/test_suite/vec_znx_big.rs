@@ -5,8 +5,8 @@ use crate::{
         ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxBigAdd, VecZnxBigAddInplace, VecZnxBigAddSmall, VecZnxBigAddSmallInplace,
         VecZnxBigAlloc, VecZnxBigAutomorphism, VecZnxBigAutomorphismInplace, VecZnxBigAutomorphismInplaceTmpBytes,
         VecZnxBigFromSmall, VecZnxBigNegate, VecZnxBigNegateInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
-        VecZnxBigSub, VecZnxBigSubABInplace, VecZnxBigSubBAInplace, VecZnxBigSubSmallA, VecZnxBigSubSmallAInplace,
-        VecZnxBigSubSmallB, VecZnxBigSubSmallBInplace,
+        VecZnxBigSub, VecZnxBigSubInplace, VecZnxBigSubNegateInplace, VecZnxBigSubSmallA, VecZnxBigSubSmallB,
+        VecZnxBigSubSmallInplace, VecZnxBigSubSmallNegateInplace,
     },
     layouts::{Backend, DataViewMut, DigestU64, FillUniform, Module, ScratchOwned, VecZnx, VecZnxBig},
     source::Source,
@@ -919,14 +919,14 @@ where
     }
 }
 
-pub fn test_vec_znx_big_sub_ab_inplace<BR: Backend, BT: Backend>(base2k: usize, module_ref: &Module<BR>, module_test: &Module<BT>)
+pub fn test_vec_znx_big_sub_inplace<BR: Backend, BT: Backend>(base2k: usize, module_ref: &Module<BR>, module_test: &Module<BT>)
 where
-    Module<BR>: VecZnxBigSubABInplace<BR>
+    Module<BR>: VecZnxBigSubInplace<BR>
         + VecZnxBigAlloc<BR>
         + VecZnxBigFromSmall<BR>
         + VecZnxBigNormalize<BR>
         + VecZnxBigNormalizeTmpBytes,
-    Module<BT>: VecZnxBigSubABInplace<BT>
+    Module<BT>: VecZnxBigSubInplace<BT>
         + VecZnxBigAlloc<BT>
         + VecZnxBigFromSmall<BT>
         + VecZnxBigNormalize<BT>
@@ -971,8 +971,8 @@ where
             }
 
             for i in 0..cols {
-                module_ref.vec_znx_big_sub_ab_inplace(&mut res_big_ref, i, &a_ref, i);
-                module_test.vec_znx_big_sub_ab_inplace(&mut res_big_test, i, &a_test, i);
+                module_ref.vec_znx_big_sub_inplace(&mut res_big_ref, i, &a_ref, i);
+                module_test.vec_znx_big_sub_inplace(&mut res_big_test, i, &a_test, i);
             }
 
             assert_eq!(a_ref.digest_u64(), a_ref_digest);
@@ -1013,14 +1013,17 @@ where
     }
 }
 
-pub fn test_vec_znx_big_sub_ba_inplace<BR: Backend, BT: Backend>(base2k: usize, module_ref: &Module<BR>, module_test: &Module<BT>)
-where
-    Module<BR>: VecZnxBigSubBAInplace<BR>
+pub fn test_vec_znx_big_sub_negate_inplace<BR: Backend, BT: Backend>(
+    base2k: usize,
+    module_ref: &Module<BR>,
+    module_test: &Module<BT>,
+) where
+    Module<BR>: VecZnxBigSubNegateInplace<BR>
         + VecZnxBigAlloc<BR>
         + VecZnxBigFromSmall<BR>
         + VecZnxBigNormalize<BR>
         + VecZnxBigNormalizeTmpBytes,
-    Module<BT>: VecZnxBigSubBAInplace<BT>
+    Module<BT>: VecZnxBigSubNegateInplace<BT>
         + VecZnxBigAlloc<BT>
         + VecZnxBigFromSmall<BT>
         + VecZnxBigNormalize<BT>
@@ -1065,8 +1068,8 @@ where
             }
 
             for i in 0..cols {
-                module_ref.vec_znx_big_sub_ba_inplace(&mut res_big_ref, i, &a_ref, i);
-                module_test.vec_znx_big_sub_ba_inplace(&mut res_big_test, i, &a_test, i);
+                module_ref.vec_znx_big_sub_negate_inplace(&mut res_big_ref, i, &a_ref, i);
+                module_test.vec_znx_big_sub_negate_inplace(&mut res_big_test, i, &a_test, i);
             }
 
             assert_eq!(a_ref.digest_u64(), a_ref_digest);
@@ -1308,12 +1311,12 @@ pub fn test_vec_znx_big_sub_small_a_inplace<BR: Backend, BT: Backend>(
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    Module<BR>: VecZnxBigSubSmallAInplace<BR>
+    Module<BR>: VecZnxBigSubSmallInplace<BR>
         + VecZnxBigAlloc<BR>
         + VecZnxBigFromSmall<BR>
         + VecZnxBigNormalize<BR>
         + VecZnxBigNormalizeTmpBytes,
-    Module<BT>: VecZnxBigSubSmallAInplace<BT>
+    Module<BT>: VecZnxBigSubSmallInplace<BT>
         + VecZnxBigAlloc<BT>
         + VecZnxBigFromSmall<BT>
         + VecZnxBigNormalize<BT>
@@ -1349,8 +1352,8 @@ pub fn test_vec_znx_big_sub_small_a_inplace<BR: Backend, BT: Backend>(
             }
 
             for i in 0..cols {
-                module_ref.vec_znx_big_sub_small_a_inplace(&mut res_big_ref, i, &a, i);
-                module_test.vec_znx_big_sub_small_a_inplace(&mut res_big_test, i, &a, i);
+                module_ref.vec_znx_big_sub_small_inplace(&mut res_big_ref, i, &a, i);
+                module_test.vec_znx_big_sub_small_inplace(&mut res_big_test, i, &a, i);
             }
 
             assert_eq!(a.digest_u64(), a_digest);
@@ -1395,12 +1398,12 @@ pub fn test_vec_znx_big_sub_small_b_inplace<BR: Backend, BT: Backend>(
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    Module<BR>: VecZnxBigSubSmallBInplace<BR>
+    Module<BR>: VecZnxBigSubSmallNegateInplace<BR>
         + VecZnxBigAlloc<BR>
         + VecZnxBigFromSmall<BR>
         + VecZnxBigNormalize<BR>
         + VecZnxBigNormalizeTmpBytes,
-    Module<BT>: VecZnxBigSubSmallBInplace<BT>
+    Module<BT>: VecZnxBigSubSmallNegateInplace<BT>
         + VecZnxBigAlloc<BT>
         + VecZnxBigFromSmall<BT>
         + VecZnxBigNormalize<BT>
@@ -1436,8 +1439,8 @@ pub fn test_vec_znx_big_sub_small_b_inplace<BR: Backend, BT: Backend>(
             }
 
             for i in 0..cols {
-                module_ref.vec_znx_big_sub_small_b_inplace(&mut res_big_ref, i, &a, i);
-                module_test.vec_znx_big_sub_small_b_inplace(&mut res_big_test, i, &a, i);
+                module_ref.vec_znx_big_sub_small_negate_inplace(&mut res_big_ref, i, &a, i);
+                module_test.vec_znx_big_sub_small_negate_inplace(&mut res_big_test, i, &a, i);
             }
 
             assert_eq!(a.digest_u64(), a_digest);

@@ -1,7 +1,7 @@
 use crate::{
     api::{
         VecZnxDftAdd, VecZnxDftAddInplace, VecZnxDftAlloc, VecZnxDftAllocBytes, VecZnxDftApply, VecZnxDftCopy,
-        VecZnxDftFromBytes, VecZnxDftSub, VecZnxDftSubABInplace, VecZnxDftSubBAInplace, VecZnxDftZero, VecZnxIdftApply,
+        VecZnxDftFromBytes, VecZnxDftSub, VecZnxDftSubInplace, VecZnxDftSubNegateInplace, VecZnxDftZero, VecZnxIdftApply,
         VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA, VecZnxIdftApplyTmpBytes,
     },
     layouts::{
@@ -10,7 +10,7 @@ use crate::{
     },
     oep::{
         VecZnxDftAddImpl, VecZnxDftAddInplaceImpl, VecZnxDftAllocBytesImpl, VecZnxDftAllocImpl, VecZnxDftApplyImpl,
-        VecZnxDftCopyImpl, VecZnxDftFromBytesImpl, VecZnxDftSubABInplaceImpl, VecZnxDftSubBAInplaceImpl, VecZnxDftSubImpl,
+        VecZnxDftCopyImpl, VecZnxDftFromBytesImpl, VecZnxDftSubImpl, VecZnxDftSubInplaceImpl, VecZnxDftSubNegateInplaceImpl,
         VecZnxDftZeroImpl, VecZnxIdftApplyConsumeImpl, VecZnxIdftApplyImpl, VecZnxIdftApplyTmpAImpl, VecZnxIdftApplyTmpBytesImpl,
     },
 };
@@ -143,29 +143,29 @@ where
     }
 }
 
-impl<B> VecZnxDftSubABInplace<B> for Module<B>
+impl<B> VecZnxDftSubInplace<B> for Module<B>
 where
-    B: Backend + VecZnxDftSubABInplaceImpl<B>,
+    B: Backend + VecZnxDftSubInplaceImpl<B>,
 {
-    fn vec_znx_dft_sub_ab_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn vec_znx_dft_sub_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxDftToMut<B>,
         A: VecZnxDftToRef<B>,
     {
-        B::vec_znx_dft_sub_ab_inplace_impl(self, res, res_col, a, a_col);
+        B::vec_znx_dft_sub_inplace_impl(self, res, res_col, a, a_col);
     }
 }
 
-impl<B> VecZnxDftSubBAInplace<B> for Module<B>
+impl<B> VecZnxDftSubNegateInplace<B> for Module<B>
 where
-    B: Backend + VecZnxDftSubBAInplaceImpl<B>,
+    B: Backend + VecZnxDftSubNegateInplaceImpl<B>,
 {
-    fn vec_znx_dft_sub_ba_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn vec_znx_dft_sub_negate_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxDftToMut<B>,
         A: VecZnxDftToRef<B>,
     {
-        B::vec_znx_dft_sub_ba_inplace_impl(self, res, res_col, a, a_col);
+        B::vec_znx_dft_sub_negate_inplace_impl(self, res, res_col, a, a_col);
     }
 }
 

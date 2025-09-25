@@ -3,10 +3,10 @@ use std::collections::HashMap;
 use poulpy_hal::{
     api::{
         ScratchAvailable, TakeVecZnx, TakeVecZnxDft, VecZnxAddInplace, VecZnxAutomorphismInplace, VecZnxBigAddSmallInplace,
-        VecZnxBigAutomorphismInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallBInplace, VecZnxCopy,
+        VecZnxBigAutomorphismInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallNegateInplace, VecZnxCopy,
         VecZnxDftAllocBytes, VecZnxDftApply, VecZnxIdftApplyConsume, VecZnxNegateInplace, VecZnxNormalize,
         VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace, VecZnxRshInplace, VecZnxSub,
-        VecZnxSubABInplace, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
+        VecZnxSubInplace, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
 };
@@ -135,10 +135,10 @@ impl GLWEPacker {
             + VecZnxRshInplace<B>
             + VecZnxAddInplace
             + VecZnxNormalizeInplace<B>
-            + VecZnxSubABInplace
+            + VecZnxSubInplace
             + VecZnxRotate
             + VecZnxAutomorphismInplace<B>
-            + VecZnxBigSubSmallBInplace<B>
+            + VecZnxBigSubSmallNegateInplace<B>
             + VecZnxBigAutomorphismInplace<B>
             + VecZnxNormalize<B>
             + VecZnxNormalizeTmpBytes,
@@ -210,10 +210,10 @@ fn pack_core<D: DataRef, DataAK: DataRef, B: Backend>(
         + VecZnxRshInplace<B>
         + VecZnxAddInplace
         + VecZnxNormalizeInplace<B>
-        + VecZnxSubABInplace
+        + VecZnxSubInplace
         + VecZnxRotate
         + VecZnxAutomorphismInplace<B>
-        + VecZnxBigSubSmallBInplace<B>
+        + VecZnxBigSubSmallNegateInplace<B>
         + VecZnxBigAutomorphismInplace<B>
         + VecZnxNormalize<B>
         + VecZnxNormalizeTmpBytes,
@@ -304,10 +304,10 @@ fn combine<D: DataRef, DataAK: DataRef, B: Backend>(
         + VecZnxRshInplace<B>
         + VecZnxAddInplace
         + VecZnxNormalizeInplace<B>
-        + VecZnxSubABInplace
+        + VecZnxSubInplace
         + VecZnxRotate
         + VecZnxAutomorphismInplace<B>
-        + VecZnxBigSubSmallBInplace<B>
+        + VecZnxBigSubSmallNegateInplace<B>
         + VecZnxBigAutomorphismInplace<B>
         + VecZnxNormalize<B>
         + VecZnxNormalizeTmpBytes,
@@ -382,7 +382,7 @@ fn combine<D: DataRef, DataAK: DataRef, B: Backend>(
 
         // a = (b* X^t - phi(b* X^t))
         if let Some(key) = auto_keys.get(&gal_el) {
-            a.automorphism_sub_ba(module, &tmp_b, key, scratch_1);
+            a.automorphism_sub_negate(module, &tmp_b, key, scratch_1);
         } else {
             panic!("auto_key[{gal_el}] not found");
         }

@@ -5,14 +5,12 @@ use rug::Float;
 impl<D: DataMut> GLWEPlaintext<D> {
     pub fn encode_vec_i64(&mut self, data: &[i64], k: TorusPrecision) {
         let base2k: usize = self.base2k().into();
-        self.data
-            .encode_vec_i64(base2k, 0, k.into(), data, i64::BITS as usize);
+        self.data.encode_vec_i64(base2k, 0, k.into(), data);
     }
 
     pub fn encode_coeff_i64(&mut self, data: i64, k: TorusPrecision, idx: usize) {
         let base2k: usize = self.base2k().into();
-        self.data
-            .encode_coeff_i64(base2k, 0, k.into(), idx, data, i64::BITS as usize);
+        self.data.encode_coeff_i64(base2k, 0, k.into(), idx, data);
     }
 }
 
@@ -39,8 +37,7 @@ impl<D: DataRef> GLWEPlaintext<D> {
 impl<D: DataMut> LWEPlaintext<D> {
     pub fn encode_i64(&mut self, data: i64, k: TorusPrecision) {
         let base2k: usize = self.base2k().into();
-        self.data
-            .encode_i64(base2k, k.into(), data, i64::BITS as usize);
+        self.data.encode_i64(base2k, k.into(), data);
     }
 }
 

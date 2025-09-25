@@ -8,34 +8,14 @@ use crate::{
         VecZnxMergeRingsTmpBytes, VecZnxMulXpMinusOne, VecZnxMulXpMinusOneInplace, VecZnxMulXpMinusOneInplaceTmpBytes,
         VecZnxNegate, VecZnxNegateInplace, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate,
         VecZnxRotateInplace, VecZnxRotateInplaceTmpBytes, VecZnxRsh, VecZnxRshInplace, VecZnxSplitRing, VecZnxSplitRingTmpBytes,
-        VecZnxSub, VecZnxSubABInplace, VecZnxSubBAInplace, VecZnxSubScalar, VecZnxSubScalarInplace, VecZnxSwitchRing,
+        VecZnxSub, VecZnxSubInplace, VecZnxSubNegateInplace, VecZnxSubScalar, VecZnxSubScalarInplace, VecZnxSwitchRing,
     },
     layouts::{Backend, DigestU64, FillUniform, Module, ScalarZnx, ScratchOwned, VecZnx, ZnxInfos, ZnxView, ZnxViewMut},
     reference::znx::znx_copy_ref,
     source::Source,
 };
 
-pub fn test_vec_znx_encode_vec_i64_lo_norm() {
-    let n: usize = 32;
-    let base2k: usize = 17;
-    let size: usize = 5;
-    let k: usize = size * base2k - 5;
-    let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(n, 2, size);
-    let mut source: Source = Source::new([0u8; 32]);
-    let raw: &mut [i64] = a.raw_mut();
-    raw.iter_mut().enumerate().for_each(|(i, x)| *x = i as i64);
-    (0..a.cols()).for_each(|col_i| {
-        let mut have: Vec<i64> = vec![i64::default(); n];
-        have.iter_mut()
-            .for_each(|x| *x = (source.next_i64() << 56) >> 56);
-        a.encode_vec_i64(base2k, col_i, k, &have, 10);
-        let mut want: Vec<i64> = vec![i64::default(); n];
-        a.decode_vec_i64(base2k, col_i, k, &mut want);
-        assert_eq!(have, want, "{:?} != {:?}", &have, &want);
-    });
-}
-
-pub fn test_vec_znx_encode_vec_i64_hi_norm() {
+pub fn test_vec_znx_encode_vec_i64() {
     let n: usize = 32;
     let base2k: usize = 17;
     let size: usize = 5;
@@ -53,7 +33,7 @@ pub fn test_vec_znx_encode_vec_i64_hi_norm() {
                     *x = source.next_i64();
                 }
             });
-            a.encode_vec_i64(base2k, col_i, k, &have, 63);
+            a.encode_vec_i64(base2k, col_i, k, &have);
             let mut want: Vec<i64> = vec![i64::default(); n];
             a.decode_vec_i64(base2k, col_i, k, &mut want);
             assert_eq!(have, want, "{:?} != {:?}", &have, &want);
@@ -1135,10 +1115,10 @@ where
     }
 }
 
-pub fn test_vec_znx_sub_ab_inplace<BR: Backend, BT: Backend>(base2k: usize, module_ref: &Module<BR>, module_test: &Module<BT>)
+pub fn test_vec_znx_sub_inplace<BR: Backend, BT: Backend>(base2k: usize, module_ref: &Module<BR>, module_test: &Module<BT>)
 where
-    Module<BR>: VecZnxSubABInplace,
-    Module<BT>: VecZnxSubABInplace,
+    Module<BR>: VecZnxSubInplace,
+    Module<BT>: VecZnxSubInplace,
 {
     assert_eq!(module_ref.n(), module_test.n());
     let n: usize = module_ref.n();
@@ -1159,8 +1139,8 @@ where
             res_test.raw_mut().copy_from_slice(res_ref.raw());
 
             for i in 0..cols {
-                module_test.vec_znx_sub_ab_inplace(&mut res_ref, i, &a, i);
-                module_ref.vec_znx_sub_ab_inplace(&mut res_test, i, &a, i);
+                module_test.vec_znx_sub_inplace(&mut res_ref, i, &a, i);
+                module_ref.vec_znx_sub_inplace(&mut res_test, i, &a, i);
             }
 
             assert_eq!(a.digest_u64(), a_digest);
@@ -1169,10 +1149,10 @@ where
     }
 }
 
-pub fn test_vec_znx_sub_ba_inplace<BR: Backend, BT: Backend>(base2k: usize, module_ref: &Module<BR>, module_test: &Module<BT>)
+pub fn test_vec_znx_sub_negate_inplace<BR: Backend, BT: Backend>(base2k: usize, module_ref: &Module<BR>, module_test: &Module<BT>)
 where
-    Module<BR>: VecZnxSubBAInplace,
-    Module<BT>: VecZnxSubBAInplace,
+    Module<BR>: VecZnxSubNegateInplace,
+    Module<BT>: VecZnxSubNegateInplace,
 {
     assert_eq!(module_ref.n(), module_test.n());
     let n: usize = module_ref.n();
@@ -1193,8 +1173,8 @@ where
             res_test.raw_mut().copy_from_slice(res_ref.raw());
 
             for i in 0..cols {
-                module_test.vec_znx_sub_ba_inplace(&mut res_ref, i, &a, i);
-                module_ref.vec_znx_sub_ba_inplace(&mut res_test, i, &a, i);
+                module_test.vec_znx_sub_negate_inplace(&mut res_ref, i, &a, i);
+                module_ref.vec_znx_sub_negate_inplace(&mut res_test, i, &a, i);
             }
 
             assert_eq!(a.digest_u64(), a_digest);

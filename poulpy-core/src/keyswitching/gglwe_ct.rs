@@ -161,6 +161,13 @@ impl<DataSelf: DataMut> GGLWESwitchingKey<DataSelf> {
                 self.rows(),
                 lhs.rows()
             );
+            assert_eq!(
+                self.digits(),
+                lhs.digits(),
+                "ksk_out digits: {} != ksk_in digits: {}",
+                self.digits(),
+                lhs.digits()
+            )
         }
 
         (0..self.rank_in().into()).for_each(|col_i| {

@@ -2,7 +2,7 @@ use poulpy_hal::{
     api::{
         ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDftInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace,
         VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftApply, VecZnxIdftApplyConsume,
-        VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSubABInplace,
+        VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSubInplace,
     },
     layouts::{Backend, DataRef, Module, ScratchOwned},
     oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeVecZnxBigImpl, TakeVecZnxDftImpl},
@@ -29,7 +29,7 @@ impl<D: DataRef> GLWECiphertext<D> {
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>
             + VecZnxNormalizeTmpBytes
-            + VecZnxSubABInplace
+            + VecZnxSubInplace
             + VecZnxNormalizeInplace<B>,
         B: Backend + TakeVecZnxDftImpl<B> + TakeVecZnxBigImpl<B> + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
     {
@@ -39,7 +39,7 @@ impl<D: DataRef> GLWECiphertext<D> {
 
         self.decrypt(module, &mut pt_have, sk_prepared, scratch.borrow());
 
-        module.vec_znx_sub_ab_inplace(&mut pt_have.data, 0, &pt_want.data, 0);
+        module.vec_znx_sub_inplace(&mut pt_have.data, 0, &pt_want.data, 0);
         module.vec_znx_normalize_inplace(self.base2k().into(), &mut pt_have.data, 0, scratch.borrow());
 
         let noise_have: f64 = pt_have.data.std(self.base2k().into(), 0).log2();

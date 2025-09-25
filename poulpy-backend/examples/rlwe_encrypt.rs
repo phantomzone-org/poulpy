@@ -3,7 +3,7 @@ use poulpy_backend::cpu_spqlios::FFT64Spqlios;
 use poulpy_hal::{
     api::{
         ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPrepare, VecZnxAddNormal,
-        VecZnxBigAddSmallInplace, VecZnxBigAlloc, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallBInplace,
+        VecZnxBigAddSmallInplace, VecZnxBigAlloc, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallNegateInplace,
         VecZnxDftAlloc, VecZnxDftApply, VecZnxFillUniform, VecZnxIdftApplyTmpA, VecZnxNormalizeInplace,
     },
     layouts::{Module, ScalarZnx, ScratchOwned, SvpPPol, VecZnx, VecZnxBig, VecZnxDft, ZnxInfos},
@@ -70,11 +70,11 @@ fn main() {
     let mut want: Vec<i64> = vec![0; n];
     want.iter_mut()
         .for_each(|x| *x = source.next_u64n(16, 15) as i64);
-    m.encode_vec_i64(base2k, 0, log_scale, &want, 4);
+    m.encode_vec_i64(base2k, 0, log_scale, &want);
     module.vec_znx_normalize_inplace(base2k, &mut m, 0, scratch.borrow());
 
     // m - BIG(ct[1] * s)
-    module.vec_znx_big_sub_small_b_inplace(
+    module.vec_znx_big_sub_small_negate_inplace(
         &mut buf_big,
         0, // Selects the first column of the receiver
         &m,

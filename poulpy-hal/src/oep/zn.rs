@@ -4,7 +4,7 @@ use crate::{
 };
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See TODO
+/// * See [poulpy-backend/src/cpu_fft64_ref/zn.rs](https://github.com/phantomzone-org/poulpy/blob/main/poulpy-backend/src/cpu_fft64_ref/zn.rs) for reference implementation.
 /// * See [crate::api::ZnNormalizeTmpBytes] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait ZnNormalizeTmpBytesImpl<B: Backend> {
@@ -12,7 +12,7 @@ pub unsafe trait ZnNormalizeTmpBytesImpl<B: Backend> {
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See [zn_normalize_base2k_ref](https://github.com/phantomzone-org/spqlios-arithmetic/blob/32a3f5fcce9863b58e949f2dfd5abc1bfbaa09b4/spqlios/arithmetic/zn64.c#L9) for reference code.
+/// * See [poulpy-backend/src/cpu_fft64_ref/zn.rs](https://github.com/phantomzone-org/poulpy/blob/main/poulpy-backend/src/cpu_fft64_ref/zn.rs) for reference implementation.
 /// * See [crate::api::ZnNormalizeInplace] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait ZnNormalizeInplaceImpl<B: Backend> {
@@ -22,6 +22,7 @@ pub unsafe trait ZnNormalizeInplaceImpl<B: Backend> {
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See [poulpy-backend/src/cpu_fft64_ref/zn.rs](https://github.com/phantomzone-org/poulpy/blob/main/poulpy-backend/src/cpu_fft64_ref/zn.rs) for reference implementation.
 /// * See [crate::api::ZnFillUniform] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait ZnFillUniformImpl<B: Backend> {
@@ -32,6 +33,7 @@ pub unsafe trait ZnFillUniformImpl<B: Backend> {
 
 #[allow(clippy::too_many_arguments)]
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See [poulpy-backend/src/cpu_fft64_ref/zn.rs](https://github.com/phantomzone-org/poulpy/blob/main/poulpy-backend/src/cpu_fft64_ref/zn.rs) for reference implementation.
 /// * See [crate::api::ZnFillNormal] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait ZnFillNormalImpl<B: Backend> {
@@ -50,6 +52,7 @@ pub unsafe trait ZnFillNormalImpl<B: Backend> {
 
 #[allow(clippy::too_many_arguments)]
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See [poulpy-backend/src/cpu_fft64_ref/zn.rs](https://github.com/phantomzone-org/poulpy/blob/main/poulpy-backend/src/cpu_fft64_ref/zn.rs) for reference implementation.
 /// * See [crate::api::ZnAddNormal] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait ZnAddNormalImpl<B: Backend> {

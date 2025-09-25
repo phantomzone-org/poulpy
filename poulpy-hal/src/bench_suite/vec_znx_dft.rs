@@ -6,7 +6,7 @@ use rand::RngCore;
 use crate::{
     api::{
         ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxBigAlloc, VecZnxDftAdd, VecZnxDftAddInplace, VecZnxDftAlloc,
-        VecZnxDftApply, VecZnxDftSub, VecZnxDftSubABInplace, VecZnxDftSubBAInplace, VecZnxIdftApply, VecZnxIdftApplyTmpA,
+        VecZnxDftApply, VecZnxDftSub, VecZnxDftSubInplace, VecZnxDftSubNegateInplace, VecZnxIdftApply, VecZnxIdftApplyTmpA,
         VecZnxIdftApplyTmpBytes,
     },
     layouts::{Backend, DataViewMut, Module, ScratchOwned, VecZnx, VecZnxBig, VecZnxDft},
@@ -276,17 +276,17 @@ where
     group.finish();
 }
 
-pub fn bench_vec_znx_dft_sub_ab_inplace<B: Backend>(c: &mut Criterion, label: &str)
+pub fn bench_vec_znx_dft_sub_inplace<B: Backend>(c: &mut Criterion, label: &str)
 where
-    Module<B>: VecZnxDftSubABInplace<B> + ModuleNew<B> + VecZnxDftAlloc<B>,
+    Module<B>: VecZnxDftSubInplace<B> + ModuleNew<B> + VecZnxDftAlloc<B>,
 {
-    let group_name: String = format!("vec_znx_dft_sub_ab_inplace::{label}");
+    let group_name: String = format!("vec_znx_dft_sub_inplace::{label}");
 
     let mut group = c.benchmark_group(group_name);
 
     fn runner<B: Backend>(params: [usize; 3]) -> impl FnMut()
     where
-        Module<B>: VecZnxDftSubABInplace<B> + ModuleNew<B> + VecZnxDftAlloc<B>,
+        Module<B>: VecZnxDftSubInplace<B> + ModuleNew<B> + VecZnxDftAlloc<B>,
     {
         let n: usize = params[0];
         let cols: usize = params[1];
@@ -305,7 +305,7 @@ where
 
         move || {
             for i in 0..cols {
-                module.vec_znx_dft_sub_ab_inplace(&mut c, i, &a, i);
+                module.vec_znx_dft_sub_inplace(&mut c, i, &a, i);
             }
             black_box(());
         }
@@ -320,17 +320,17 @@ where
     group.finish();
 }
 
-pub fn bench_vec_znx_dft_sub_ba_inplace<B: Backend>(c: &mut Criterion, label: &str)
+pub fn bench_vec_znx_dft_sub_negate_inplace<B: Backend>(c: &mut Criterion, label: &str)
 where
-    Module<B>: VecZnxDftSubBAInplace<B> + ModuleNew<B> + VecZnxDftAlloc<B>,
+    Module<B>: VecZnxDftSubNegateInplace<B> + ModuleNew<B> + VecZnxDftAlloc<B>,
 {
-    let group_name: String = format!("vec_znx_dft_sub_ba_inplace::{label}");
+    let group_name: String = format!("vec_znx_dft_sub_negate_inplace::{label}");
 
     let mut group = c.benchmark_group(group_name);
 
     fn runner<B: Backend>(params: [usize; 3]) -> impl FnMut()
     where
-        Module<B>: VecZnxDftSubBAInplace<B> + ModuleNew<B> + VecZnxDftAlloc<B>,
+        Module<B>: VecZnxDftSubNegateInplace<B> + ModuleNew<B> + VecZnxDftAlloc<B>,
     {
         let n: usize = params[0];
         let cols: usize = params[1];
@@ -349,7 +349,7 @@ where
 
         move || {
             for i in 0..cols {
-                module.vec_znx_dft_sub_ba_inplace(&mut c, i, &a, i);
+                module.vec_znx_dft_sub_negate_inplace(&mut c, i, &a, i);
             }
             black_box(());
         }

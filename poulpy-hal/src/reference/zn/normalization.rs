@@ -29,9 +29,9 @@ where
         if j == res_size - 1 {
             ARI::znx_normalize_first_step_inplace(base2k, 0, out, carry);
         } else if j == 0 {
-            ARI::znx_normalize_final_step_inplace::<false>(base2k, 0, out, carry);
+            ARI::znx_normalize_final_step_inplace(base2k, 0, out, carry);
         } else {
-            ARI::znx_normalize_middle_step_inplace::<false>(base2k, 0, out, carry);
+            ARI::znx_normalize_middle_step_inplace(base2k, 0, out, carry);
         }
     }
 }

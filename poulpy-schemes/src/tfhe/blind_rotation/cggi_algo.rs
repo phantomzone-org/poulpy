@@ -4,9 +4,9 @@ use poulpy_hal::{
         ScratchAvailable, SvpApplyDftToDft, SvpPPolAllocBytes, TakeVecZnx, TakeVecZnxBig, TakeVecZnxDft, TakeVecZnxDftSlice,
         TakeVecZnxSlice, VecZnxAddInplace, VecZnxBigAddSmallInplace, VecZnxBigAllocBytes, VecZnxBigNormalize,
         VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftAdd, VecZnxDftAddInplace, VecZnxDftAllocBytes, VecZnxDftApply,
-        VecZnxDftSubABInplace, VecZnxDftZero, VecZnxIdftApply, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpBytes,
+        VecZnxDftSubInplace, VecZnxDftZero, VecZnxIdftApply, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpBytes,
         VecZnxMulXpMinusOneInplace, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate,
-        VecZnxSubABInplace, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
+        VecZnxSubInplace, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch, SvpPPol, VecZnx, ZnxView, ZnxZero},
 };
@@ -80,11 +80,11 @@ where
         + VecZnxDftApply<B>
         + VecZnxDftZero<B>
         + SvpApplyDftToDft<B>
-        + VecZnxDftSubABInplace<B>
+        + VecZnxDftSubInplace<B>
         + VecZnxBigAddSmallInplace<B>
         + VecZnxRotate
         + VecZnxAddInplace
-        + VecZnxSubABInplace
+        + VecZnxSubInplace
         + VecZnxNormalize<B>
         + VecZnxNormalizeInplace<B>
         + VecZnxCopy
@@ -142,11 +142,11 @@ fn execute_block_binary_extended<DataRes, DataIn, DataBrk, B: Backend>(
         + VecZnxDftApply<B>
         + VecZnxDftZero<B>
         + SvpApplyDftToDft<B>
-        + VecZnxDftSubABInplace<B>
+        + VecZnxDftSubInplace<B>
         + VecZnxBigAddSmallInplace<B>
         + VecZnxRotate
         + VecZnxAddInplace
-        + VecZnxSubABInplace
+        + VecZnxSubInplace
         + VecZnxNormalize<B>
         + VecZnxNormalizeInplace<B>
         + VecZnxCopy
@@ -233,7 +233,7 @@ fn execute_block_binary_extended<DataRes, DataIn, DataBrk, B: Backend>(
                         (0..cols).for_each(|i| {
                             module.svp_apply_dft_to_dft(&mut vmp_xai, 0, &x_pow_a[ai_hi], 0, &vmp_res[j], i);
                             module.vec_znx_dft_add_inplace(&mut acc_add_dft[j], i, &vmp_xai, 0);
-                            module.vec_znx_dft_sub_ab_inplace(&mut acc_add_dft[j], i, &vmp_res[j], i);
+                            module.vec_znx_dft_sub_inplace(&mut acc_add_dft[j], i, &vmp_res[j], i);
                         });
                     });
                 }
@@ -249,7 +249,7 @@ fn execute_block_binary_extended<DataRes, DataIn, DataBrk, B: Backend>(
                         (0..cols).for_each(|k| {
                             module.svp_apply_dft_to_dft(&mut vmp_xai, 0, &x_pow_a[ai_hi + 1], 0, &vmp_res[j], k);
                             module.vec_znx_dft_add_inplace(&mut acc_add_dft[i], k, &vmp_xai, 0);
-                            module.vec_znx_dft_sub_ab_inplace(&mut acc_add_dft[i], k, &vmp_res[i], k);
+                            module.vec_znx_dft_sub_inplace(&mut acc_add_dft[i], k, &vmp_res[i], k);
                         });
                     }
                 }
@@ -261,7 +261,7 @@ fn execute_block_binary_extended<DataRes, DataIn, DataBrk, B: Backend>(
                         (0..cols).for_each(|k| {
                             module.svp_apply_dft_to_dft(&mut vmp_xai, 0, &x_pow_a[ai_hi], 0, &vmp_res[j], k);
                             module.vec_znx_dft_add_inplace(&mut acc_add_dft[i], k, &vmp_xai, 0);
-                            module.vec_znx_dft_sub_ab_inplace(&mut acc_add_dft[i], k, &vmp_res[i], k);
+                            module.vec_znx_dft_sub_inplace(&mut acc_add_dft[i], k, &vmp_res[i], k);
                         });
                     }
                 }
@@ -309,11 +309,11 @@ fn execute_block_binary<DataRes, DataIn, DataBrk, B: Backend>(
         + VecZnxDftApply<B>
         + VecZnxDftZero<B>
         + SvpApplyDftToDft<B>
-        + VecZnxDftSubABInplace<B>
+        + VecZnxDftSubInplace<B>
         + VecZnxBigAddSmallInplace<B>
         + VecZnxRotate
         + VecZnxAddInplace
-        + VecZnxSubABInplace
+        + VecZnxSubInplace
         + VecZnxNormalize<B>
         + VecZnxNormalizeInplace<B>
         + VecZnxCopy
@@ -384,7 +384,7 @@ fn execute_block_binary<DataRes, DataIn, DataBrk, B: Backend>(
             (0..cols).for_each(|i| {
                 module.svp_apply_dft_to_dft(&mut vmp_xai, 0, &x_pow_a[ai_pos], 0, &vmp_res, i);
                 module.vec_znx_dft_add_inplace(&mut acc_add_dft, i, &vmp_xai, 0);
-                module.vec_znx_dft_sub_ab_inplace(&mut acc_add_dft, i, &vmp_res, i);
+                module.vec_znx_dft_sub_inplace(&mut acc_add_dft, i, &vmp_res, i);
             });
         });
 
@@ -431,11 +431,11 @@ fn execute_standard<DataRes, DataIn, DataBrk, B: Backend>(
         + VecZnxDftApply<B>
         + VecZnxDftZero<B>
         + SvpApplyDftToDft<B>
-        + VecZnxDftSubABInplace<B>
+        + VecZnxDftSubInplace<B>
         + VecZnxBigAddSmallInplace<B>
         + VecZnxRotate
         + VecZnxAddInplace
-        + VecZnxSubABInplace
+        + VecZnxSubInplace
         + VecZnxNormalize<B>
         + VecZnxNormalizeInplace<B>
         + VecZnxCopy

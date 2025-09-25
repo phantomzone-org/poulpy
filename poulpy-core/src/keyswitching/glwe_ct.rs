@@ -41,16 +41,14 @@ impl GLWECiphertext<Vec<u8>> {
         let normalize_big: usize = module.vec_znx_big_normalize_tmp_bytes();
         if in_infos.base2k() == key_apply.base2k() {
             res_dft + ((ai_dft + vmp) | normalize_big)
+        } else if key_apply.digits() == 1 {
+            // In this case, we only need one column, temporary, that we can drop once a_dft is computed.
+            let normalize_conv: usize = VecZnx::alloc_bytes(module.n(), 1, in_size) + module.vec_znx_normalize_tmp_bytes();
+            res_dft + (((ai_dft + normalize_conv) | vmp) | normalize_big)
         } else {
-            if key_apply.digits() == 1 {
-                // In this case, we only need one column, temporary, that we can drop once a_dft is computed.
-                let normalize_conv: usize = VecZnx::alloc_bytes(module.n(), 1, in_size) + module.vec_znx_normalize_tmp_bytes();
-                res_dft + ((ai_dft + normalize_conv | vmp) | normalize_big)
-            } else {
-                // Since we stride over a to get a_dft when digits > 1, we need to store the full columns of a with in the base conversion.
-                let normalize_conv: usize = VecZnx::alloc_bytes(module.n(), (key_apply.rank_in()).into(), in_size);
-                res_dft + ((ai_dft + normalize_conv + (module.vec_znx_normalize_tmp_bytes() | vmp)) | normalize_big)
-            }
+            // Since we stride over a to get a_dft when digits > 1, we need to store the full columns of a with in the base conversion.
+            let normalize_conv: usize = VecZnx::alloc_bytes(module.n(), (key_apply.rank_in()).into(), in_size);
+            res_dft + ((ai_dft + normalize_conv + (module.vec_znx_normalize_tmp_bytes() | vmp)) | normalize_big)
         }
     }
 
@@ -95,7 +93,7 @@ impl<DataSelf: DataRef> GLWECiphertext<DataSelf> {
         assert_eq!(rhs.n(), self.n());
         assert_eq!(lhs.n(), self.n());
 
-        let scrach_needed = GLWECiphertext::keyswitch_scratch_space(module, self, lhs, rhs);
+        let scrach_needed: usize = GLWECiphertext::keyswitch_scratch_space(module, self, lhs, rhs);
 
         assert!(
             scratch.available() >= scrach_needed,
@@ -327,6 +325,7 @@ where
     res_big
 }
 
+#[allow(clippy::too_many_arguments)]
 fn keyswitch_vmp_multiple_digits<B: Backend, DataRes, DataIn, DataVmp>(
     module: &Module<B>,
     basek_in: usize,

@@ -3,7 +3,7 @@ use poulpy_hal::{
         ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDftInplace, VecZnxAddScalarInplace, VecZnxBigAddInplace,
         VecZnxBigAddSmallInplace, VecZnxBigAlloc, VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
         VecZnxDftAlloc, VecZnxDftAllocBytes, VecZnxDftApply, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA,
-        VecZnxNormalizeTmpBytes, VecZnxSubABInplace,
+        VecZnxNormalizeTmpBytes, VecZnxSubInplace,
     },
     layouts::{Backend, DataRef, Module, ScalarZnx, ScratchOwned, VecZnxBig, VecZnxDft, ZnxZero},
     oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeVecZnxBigImpl, TakeVecZnxDftImpl},
@@ -37,7 +37,7 @@ impl<D: DataRef> GGSWCiphertext<D> {
             + VecZnxBigNormalizeTmpBytes
             + VecZnxIdftApplyTmpA<B>
             + VecZnxAddScalarInplace
-            + VecZnxSubABInplace,
+            + VecZnxSubInplace,
         B: Backend + TakeVecZnxDftImpl<B> + TakeVecZnxBigImpl<B> + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
         F: Fn(usize) -> f64,
     {
@@ -75,7 +75,7 @@ impl<D: DataRef> GGSWCiphertext<D> {
                 self.at(row_i, col_j)
                     .decrypt(module, &mut pt_have, sk_prepared, scratch.borrow());
 
-                module.vec_znx_sub_ab_inplace(&mut pt_have.data, 0, &pt.data, 0);
+                module.vec_znx_sub_inplace(&mut pt_have.data, 0, &pt.data, 0);
 
                 let std_pt: f64 = pt_have.data.std(base2k, 0).log2();
                 let noise: f64 = max_noise(col_j);
@@ -110,7 +110,7 @@ impl<D: DataRef> GGSWCiphertext<D> {
             + VecZnxBigNormalizeTmpBytes
             + VecZnxIdftApplyTmpA<B>
             + VecZnxAddScalarInplace
-            + VecZnxSubABInplace,
+            + VecZnxSubInplace,
         B: Backend + TakeVecZnxDftImpl<B> + TakeVecZnxBigImpl<B> + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
     {
         let base2k: usize = self.base2k().into();
@@ -147,7 +147,7 @@ impl<D: DataRef> GGSWCiphertext<D> {
                 self.at(row_i, col_j)
                     .decrypt(module, &mut pt_have, sk_prepared, scratch.borrow());
 
-                module.vec_znx_sub_ab_inplace(&mut pt_have.data, 0, &pt.data, 0);
+                module.vec_znx_sub_inplace(&mut pt_have.data, 0, &pt.data, 0);
 
                 let std_pt: f64 = pt_have.data.std(base2k, 0).log2();
                 println!("col: {col_j} row: {row_i}: {std_pt}");

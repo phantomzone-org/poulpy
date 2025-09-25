@@ -9,13 +9,13 @@ use crate::{
     reference::{
         vec_znx::{
             vec_znx_add, vec_znx_add_inplace, vec_znx_automorphism, vec_znx_automorphism_inplace, vec_znx_negate,
-            vec_znx_negate_inplace, vec_znx_normalize, vec_znx_sub, vec_znx_sub_ab_inplace, vec_znx_sub_ba_inplace,
+            vec_znx_negate_inplace, vec_znx_normalize, vec_znx_sub, vec_znx_sub_inplace, vec_znx_sub_negate_inplace,
         },
         znx::{
-            ZnxAdd, ZnxAddInplace, ZnxAutomorphism, ZnxCopy, ZnxMulAddPowerOfTwo, ZnxMulPowerOfTwoInplace, ZnxNegate,
-            ZnxNegateInplace, ZnxNormalizeFinalStep, ZnxNormalizeFinalStepInplace, ZnxNormalizeFirstStep,
-            ZnxNormalizeFirstStepCarryOnly, ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepCarryOnly,
-            ZnxNormalizeMiddleStepInplace, ZnxSub, ZnxSubABInplace, ZnxSubBAInplace, ZnxZero, znx_add_normal_f64_ref,
+            ZnxAdd, ZnxAddInplace, ZnxAutomorphism, ZnxCopy, ZnxExtractDigitAddMul, ZnxMulPowerOfTwoInplace, ZnxNegate,
+            ZnxNegateInplace, ZnxNormalizeDigit, ZnxNormalizeFinalStep, ZnxNormalizeFirstStep, ZnxNormalizeFirstStepCarryOnly,
+            ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepCarryOnly, ZnxSub, ZnxSubInplace, ZnxSubNegateInplace, ZnxZero,
+            znx_add_normal_f64_ref,
         },
     },
     source::Source,
@@ -231,7 +231,7 @@ where
 }
 
 pub fn vec_znx_big_normalize_tmp_bytes(n: usize) -> usize {
-    n * size_of::<i64>()
+    2 * n * size_of::<i64>()
 }
 
 pub fn vec_znx_big_normalize<R, A, BE>(
@@ -246,18 +246,17 @@ pub fn vec_znx_big_normalize<R, A, BE>(
     R: VecZnxToMut,
     A: VecZnxBigToRef<BE>,
     BE: Backend<ScalarBig = i64>
+        + ZnxZero
+        + ZnxCopy
+        + ZnxAddInplace
+        + ZnxMulPowerOfTwoInplace
         + ZnxNormalizeFirstStepCarryOnly
         + ZnxNormalizeMiddleStepCarryOnly
         + ZnxNormalizeMiddleStep
         + ZnxNormalizeFinalStep
         + ZnxNormalizeFirstStep
-        + ZnxZero
-        + ZnxCopy
-        + ZnxMulAddPowerOfTwo
-        + ZnxAddInplace
-        + ZnxMulPowerOfTwoInplace
-        + ZnxNormalizeMiddleStepInplace
-        + ZnxNormalizeFinalStepInplace,
+        + ZnxExtractDigitAddMul
+        + ZnxNormalizeDigit,
 {
     let a: VecZnxBig<&[u8], _> = a.to_ref();
     let a_vznx: VecZnx<&[u8]> = VecZnx {
@@ -377,9 +376,9 @@ where
 }
 
 /// R <- A - B
-pub fn vec_znx_big_sub_ab_inplace<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
+pub fn vec_znx_big_sub_inplace<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
-    BE: Backend<ScalarBig = i64> + ZnxSubABInplace,
+    BE: Backend<ScalarBig = i64> + ZnxSubInplace,
     R: VecZnxBigToMut<BE>,
     A: VecZnxBigToRef<BE>,
 {
@@ -402,13 +401,13 @@ where
         max_size: a.max_size,
     };
 
-    vec_znx_sub_ab_inplace::<_, _, BE>(&mut res_vznx, res_col, &a_vznx, a_col);
+    vec_znx_sub_inplace::<_, _, BE>(&mut res_vznx, res_col, &a_vznx, a_col);
 }
 
 /// R <- B - A
-pub fn vec_znx_big_sub_ba_inplace<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
+pub fn vec_znx_big_sub_negate_inplace<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
-    BE: Backend<ScalarBig = i64> + ZnxSubBAInplace + ZnxNegateInplace,
+    BE: Backend<ScalarBig = i64> + ZnxSubNegateInplace + ZnxNegateInplace,
     R: VecZnxBigToMut<BE>,
     A: VecZnxBigToRef<BE>,
 {
@@ -431,7 +430,7 @@ where
         max_size: a.max_size,
     };
 
-    vec_znx_sub_ba_inplace::<_, _, BE>(&mut res_vznx, res_col, &a_vznx, a_col);
+    vec_znx_sub_negate_inplace::<_, _, BE>(&mut res_vznx, res_col, &a_vznx, a_col);
 }
 
 /// R <- A - B
@@ -497,7 +496,7 @@ where
 ///  R <- R - A
 pub fn vec_znx_big_sub_small_a_inplace<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
-    BE: Backend<ScalarBig = i64> + ZnxSubABInplace,
+    BE: Backend<ScalarBig = i64> + ZnxSubInplace,
     R: VecZnxBigToMut<BE>,
     A: VecZnxToRef,
 {
@@ -511,13 +510,13 @@ where
         max_size: res.max_size,
     };
 
-    vec_znx_sub_ab_inplace::<_, _, BE>(&mut res_vznx, res_col, a, a_col);
+    vec_znx_sub_inplace::<_, _, BE>(&mut res_vznx, res_col, a, a_col);
 }
 
 /// R <- A - R
 pub fn vec_znx_big_sub_small_b_inplace<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
-    BE: Backend<ScalarBig = i64> + ZnxSubBAInplace + ZnxNegateInplace,
+    BE: Backend<ScalarBig = i64> + ZnxSubNegateInplace + ZnxNegateInplace,
     R: VecZnxBigToMut<BE>,
     A: VecZnxToRef,
 {
@@ -531,5 +530,5 @@ where
         max_size: res.max_size,
     };
 
-    vec_znx_sub_ba_inplace::<_, _, BE>(&mut res_vznx, res_col, a, a_col);
+    vec_znx_sub_negate_inplace::<_, _, BE>(&mut res_vznx, res_col, a, a_col);
 }

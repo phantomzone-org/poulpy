@@ -37,12 +37,12 @@ pub trait ZnxSub {
     fn znx_sub(res: &mut [i64], a: &[i64], b: &[i64]);
 }
 
-pub trait ZnxSubABInplace {
-    fn znx_sub_ab_inplace(res: &mut [i64], a: &[i64]);
+pub trait ZnxSubInplace {
+    fn znx_sub_inplace(res: &mut [i64], a: &[i64]);
 }
 
-pub trait ZnxSubBAInplace {
-    fn znx_sub_ba_inplace(res: &mut [i64], a: &[i64]);
+pub trait ZnxSubNegateInplace {
+    fn znx_sub_negate_inplace(res: &mut [i64], a: &[i64]);
 }
 
 pub trait ZnxAutomorphism {
@@ -102,7 +102,7 @@ pub trait ZnxNormalizeMiddleStepCarryOnly {
 }
 
 pub trait ZnxNormalizeMiddleStepInplace {
-    fn znx_normalize_middle_step_inplace<const OVERWRITE: bool>(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]);
+    fn znx_normalize_middle_step_inplace(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]);
 }
 
 pub trait ZnxNormalizeMiddleStep {
@@ -110,9 +110,17 @@ pub trait ZnxNormalizeMiddleStep {
 }
 
 pub trait ZnxNormalizeFinalStepInplace {
-    fn znx_normalize_final_step_inplace<const OVERWRITE: bool>(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]);
+    fn znx_normalize_final_step_inplace(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]);
 }
 
 pub trait ZnxNormalizeFinalStep {
     fn znx_normalize_final_step(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]);
+}
+
+pub trait ZnxExtractDigitAddMul {
+    fn znx_extract_digit_addmul(base2k: usize, lsh: usize, res: &mut [i64], src: &mut [i64]);
+}
+
+pub trait ZnxNormalizeDigit {
+    fn znx_normalize_digit(base2k: usize, res: &mut [i64], src: &mut [i64]);
 }

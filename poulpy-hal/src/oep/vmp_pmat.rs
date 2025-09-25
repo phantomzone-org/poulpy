@@ -3,24 +3,24 @@ use crate::layouts::{
 };
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See TODO for reference code.
-/// * See TODO for corresponding public API.
+/// * See [poulpy-backend/src/cpu_fft64_ref/vmp.rs](https://github.com/phantomzone-org/poulpy/blob/main/poulpy-backend/src/cpu_fft64_ref/vmp.rs) for reference implementation.
+/// * See [crate::api::VmpPMatAlloc] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VmpPMatAllocImpl<B: Backend> {
     fn vmp_pmat_alloc_impl(n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> VmpPMatOwned<B>;
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See TODO for reference code.
-/// * See TODO for corresponding public API.
+/// * See [poulpy-backend/src/cpu_fft64_ref/vmp.rs](https://github.com/phantomzone-org/poulpy/blob/main/poulpy-backend/src/cpu_fft64_ref/vmp.rs) for reference implementation.
+/// * See [crate::api::VmpPMatAllocBytes] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VmpPMatAllocBytesImpl<B: Backend> {
     fn vmp_pmat_alloc_bytes_impl(n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize;
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See TODO for reference code.
-/// * See TODO for corresponding public API.
+/// * See [poulpy-backend/src/cpu_fft64_ref/vmp.rs](https://github.com/phantomzone-org/poulpy/blob/main/poulpy-backend/src/cpu_fft64_ref/vmp.rs) for reference implementation.
+/// * See [crate::api::VmpPMatFromBytes] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VmpPMatFromBytesImpl<B: Backend> {
     fn vmp_pmat_from_bytes_impl(
@@ -34,16 +34,16 @@ pub unsafe trait VmpPMatFromBytesImpl<B: Backend> {
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See TODO for reference code.
-/// * See TODO for corresponding public API.
+/// * See [poulpy-backend/src/cpu_fft64_ref/vmp.rs](https://github.com/phantomzone-org/poulpy/blob/main/poulpy-backend/src/cpu_fft64_ref/vmp.rs) for reference implementation.
+/// * See [crate::api::VmpPrepareTmpBytes] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VmpPrepareTmpBytesImpl<B: Backend> {
     fn vmp_prepare_tmp_bytes_impl(module: &Module<B>, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize;
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See TODO for reference code.
-/// * See TODO for corresponding public API.
+/// * See [poulpy-backend/src/cpu_fft64_ref/vmp.rs](https://github.com/phantomzone-org/poulpy/blob/main/poulpy-backend/src/cpu_fft64_ref/vmp.rs) for reference implementation.
+/// * See [crate::api::VmpPrepare] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VmpPrepareImpl<B: Backend> {
     fn vmp_prepare_impl<R, A>(module: &Module<B>, res: &mut R, a: &A, scratch: &mut Scratch<B>)
@@ -54,8 +54,8 @@ pub unsafe trait VmpPrepareImpl<B: Backend> {
 
 #[allow(clippy::too_many_arguments)]
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See TODO for reference code.
-/// * See TODO for corresponding public API.
+/// * See [poulpy-backend/src/cpu_fft64_ref/vmp.rs](https://github.com/phantomzone-org/poulpy/blob/main/poulpy-backend/src/cpu_fft64_ref/vmp.rs) for reference implementation.
+/// * See [crate::api::VmpApplyDftTmpBytes] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VmpApplyDftTmpBytesImpl<B: Backend> {
     fn vmp_apply_dft_tmp_bytes_impl(
@@ -70,8 +70,8 @@ pub unsafe trait VmpApplyDftTmpBytesImpl<B: Backend> {
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See TODO for reference code.
-/// * See TODO for corresponding public API.
+/// * See [poulpy-backend/src/cpu_fft64_ref/vmp.rs](https://github.com/phantomzone-org/poulpy/blob/main/poulpy-backend/src/cpu_fft64_ref/vmp.rs) for reference implementation.
+/// * See [crate::api::VmpApplyDft] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VmpApplyDftImpl<B: Backend> {
     fn vmp_apply_dft_impl<R, A, C>(module: &Module<B>, res: &mut R, a: &A, b: &C, scratch: &mut Scratch<B>)
@@ -83,8 +83,8 @@ pub unsafe trait VmpApplyDftImpl<B: Backend> {
 
 #[allow(clippy::too_many_arguments)]
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See TODO for reference code.
-/// * See TODO for corresponding public API.
+/// * See [poulpy-backend/src/cpu_fft64_ref/vmp.rs](https://github.com/phantomzone-org/poulpy/blob/main/poulpy-backend/src/cpu_fft64_ref/vmp.rs) for reference implementation.
+/// * See [crate::api::VmpApplyDftToDftTmpBytes] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VmpApplyDftToDftTmpBytesImpl<B: Backend> {
     fn vmp_apply_dft_to_dft_tmp_bytes_impl(
@@ -99,8 +99,8 @@ pub unsafe trait VmpApplyDftToDftTmpBytesImpl<B: Backend> {
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See TODO for reference code.
-/// * See TODO for corresponding public API.
+/// * See [poulpy-backend/src/cpu_fft64_ref/vmp.rs](https://github.com/phantomzone-org/poulpy/blob/main/poulpy-backend/src/cpu_fft64_ref/vmp.rs) for reference implementation.
+/// * See [crate::api::VmpApplyDftToDft] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VmpApplyDftToDftImpl<B: Backend> {
     fn vmp_apply_dft_to_dft_impl<R, A, C>(module: &Module<B>, res: &mut R, a: &A, b: &C, scratch: &mut Scratch<B>)
@@ -112,8 +112,8 @@ pub unsafe trait VmpApplyDftToDftImpl<B: Backend> {
 
 #[allow(clippy::too_many_arguments)]
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See TODO for reference code.
-/// * See TODO for corresponding public API.
+/// * See [poulpy-backend/src/cpu_fft64_ref/vmp.rs](https://github.com/phantomzone-org/poulpy/blob/main/poulpy-backend/src/cpu_fft64_ref/vmp.rs) for reference implementation.
+/// * See [crate::api::VmpApplyDftToDftAddTmpBytes] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VmpApplyDftToDftAddTmpBytesImpl<B: Backend> {
     fn vmp_apply_dft_to_dft_add_tmp_bytes_impl(
@@ -128,8 +128,8 @@ pub unsafe trait VmpApplyDftToDftAddTmpBytesImpl<B: Backend> {
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See TODO for reference code.
-/// * See TODO for corresponding public API.
+/// * See [poulpy-backend/src/cpu_fft64_ref/vmp.rs](https://github.com/phantomzone-org/poulpy/blob/main/poulpy-backend/src/cpu_fft64_ref/vmp.rs) for reference implementation.
+/// * See [crate::api::VmpApplyDftToDftAdd] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VmpApplyDftToDftAddImpl<B: Backend> {
     // Same as [MatZnxDftOps::vmp_apply] except result is added on R instead of overwritting R.

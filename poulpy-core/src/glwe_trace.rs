@@ -129,7 +129,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
             assert_eq!(self.n(), module.n() as u32);
             assert!(start < end);
             assert!(end <= module.log_n());
-            for (_, key) in auto_keys {
+            for key in auto_keys.values() {
                 assert_eq!(key.n(), module.n() as u32);
                 assert_eq!(key.base2k(), basek_ksk);
                 assert_eq!(key.rank_in(), self.rank());

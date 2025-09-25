@@ -3,8 +3,8 @@ use rand::RngCore;
 use crate::{
     api::{
         ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxBigAlloc, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxDftAdd,
-        VecZnxDftAddInplace, VecZnxDftAlloc, VecZnxDftApply, VecZnxDftCopy, VecZnxDftSub, VecZnxDftSubABInplace,
-        VecZnxDftSubBAInplace, VecZnxIdftApply, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA, VecZnxIdftApplyTmpBytes,
+        VecZnxDftAddInplace, VecZnxDftAlloc, VecZnxDftApply, VecZnxDftCopy, VecZnxDftSub, VecZnxDftSubInplace,
+        VecZnxDftSubNegateInplace, VecZnxIdftApply, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA, VecZnxIdftApplyTmpBytes,
     },
     layouts::{Backend, DataViewMut, DigestU64, FillUniform, Module, ScratchOwned, VecZnx, VecZnxBig, VecZnxDft},
     source::Source,
@@ -737,15 +737,15 @@ where
     }
 }
 
-pub fn test_vec_znx_dft_sub_ab_inplace<BR: Backend, BT: Backend>(base2k: usize, module_ref: &Module<BR>, module_test: &Module<BT>)
+pub fn test_vec_znx_dft_sub_inplace<BR: Backend, BT: Backend>(base2k: usize, module_ref: &Module<BR>, module_test: &Module<BT>)
 where
-    Module<BR>: VecZnxDftSubABInplace<BR>
+    Module<BR>: VecZnxDftSubInplace<BR>
         + VecZnxDftAlloc<BR>
         + VecZnxDftApply<BR>
         + VecZnxIdftApplyConsume<BR>
         + VecZnxBigNormalize<BR>
         + VecZnxBigNormalizeTmpBytes,
-    Module<BT>: VecZnxDftSubABInplace<BT>
+    Module<BT>: VecZnxDftSubInplace<BT>
         + VecZnxDftAlloc<BT>
         + VecZnxDftApply<BT>
         + VecZnxIdftApplyConsume<BT>
@@ -797,8 +797,8 @@ where
 
             // Reference
             for i in 0..cols {
-                module_ref.vec_znx_dft_sub_ab_inplace(&mut res_dft_ref, i, &a_dft_ref, i);
-                module_test.vec_znx_dft_sub_ab_inplace(&mut res_dft_test, i, &a_dft_test, i);
+                module_ref.vec_znx_dft_sub_inplace(&mut res_dft_ref, i, &a_dft_ref, i);
+                module_test.vec_znx_dft_sub_inplace(&mut res_dft_test, i, &a_dft_test, i);
             }
 
             assert_eq!(a_dft_ref.digest_u64(), a_dft_ref_digest);
@@ -842,15 +842,18 @@ where
     }
 }
 
-pub fn test_vec_znx_dft_sub_ba_inplace<BR: Backend, BT: Backend>(base2k: usize, module_ref: &Module<BR>, module_test: &Module<BT>)
-where
-    Module<BR>: VecZnxDftSubBAInplace<BR>
+pub fn test_vec_znx_dft_sub_negate_inplace<BR: Backend, BT: Backend>(
+    base2k: usize,
+    module_ref: &Module<BR>,
+    module_test: &Module<BT>,
+) where
+    Module<BR>: VecZnxDftSubNegateInplace<BR>
         + VecZnxDftAlloc<BR>
         + VecZnxDftApply<BR>
         + VecZnxIdftApplyConsume<BR>
         + VecZnxBigNormalize<BR>
         + VecZnxBigNormalizeTmpBytes,
-    Module<BT>: VecZnxDftSubBAInplace<BT>
+    Module<BT>: VecZnxDftSubNegateInplace<BT>
         + VecZnxDftAlloc<BT>
         + VecZnxDftApply<BT>
         + VecZnxIdftApplyConsume<BT>
@@ -902,8 +905,8 @@ where
 
             // Reference
             for i in 0..cols {
-                module_ref.vec_znx_dft_sub_ba_inplace(&mut res_dft_ref, i, &a_dft_ref, i);
-                module_test.vec_znx_dft_sub_ba_inplace(&mut res_dft_test, i, &a_dft_test, i);
+                module_ref.vec_znx_dft_sub_negate_inplace(&mut res_dft_ref, i, &a_dft_ref, i);
+                module_test.vec_znx_dft_sub_negate_inplace(&mut res_dft_test, i, &a_dft_test, i);
             }
 
             assert_eq!(a_dft_ref.digest_u64(), a_dft_ref_digest);

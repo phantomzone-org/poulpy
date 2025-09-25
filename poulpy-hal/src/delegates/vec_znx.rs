@@ -5,8 +5,8 @@ use crate::{
         VecZnxLshInplace, VecZnxLshTmpBytes, VecZnxMergeRings, VecZnxMergeRingsTmpBytes, VecZnxMulXpMinusOne,
         VecZnxMulXpMinusOneInplace, VecZnxMulXpMinusOneInplaceTmpBytes, VecZnxNegate, VecZnxNegateInplace, VecZnxNormalize,
         VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace, VecZnxRotateInplaceTmpBytes,
-        VecZnxRsh, VecZnxRshInplace, VecZnxRshTmpBytes, VecZnxSplitRing, VecZnxSplitRingTmpBytes, VecZnxSub, VecZnxSubABInplace,
-        VecZnxSubBAInplace, VecZnxSubScalar, VecZnxSubScalarInplace, VecZnxSwitchRing,
+        VecZnxRsh, VecZnxRshInplace, VecZnxRshTmpBytes, VecZnxSplitRing, VecZnxSplitRingTmpBytes, VecZnxSub, VecZnxSubInplace,
+        VecZnxSubNegateInplace, VecZnxSubScalar, VecZnxSubScalarInplace, VecZnxSwitchRing,
     },
     layouts::{Backend, Module, ScalarZnxToRef, Scratch, VecZnxToMut, VecZnxToRef},
     oep::{
@@ -17,7 +17,7 @@ use crate::{
         VecZnxMulXpMinusOneInplaceTmpBytesImpl, VecZnxNegateImpl, VecZnxNegateInplaceImpl, VecZnxNormalizeImpl,
         VecZnxNormalizeInplaceImpl, VecZnxNormalizeTmpBytesImpl, VecZnxRotateImpl, VecZnxRotateInplaceImpl,
         VecZnxRotateInplaceTmpBytesImpl, VecZnxRshImpl, VecZnxRshInplaceImpl, VecZnxRshTmpBytesImpl, VecZnxSplitRingImpl,
-        VecZnxSplitRingTmpBytesImpl, VecZnxSubABInplaceImpl, VecZnxSubBAInplaceImpl, VecZnxSubImpl, VecZnxSubScalarImpl,
+        VecZnxSplitRingTmpBytesImpl, VecZnxSubImpl, VecZnxSubInplaceImpl, VecZnxSubNegateInplaceImpl, VecZnxSubScalarImpl,
         VecZnxSubScalarInplaceImpl, VecZnxSwitchRingImpl,
     },
     source::Source,
@@ -134,29 +134,29 @@ where
     }
 }
 
-impl<B> VecZnxSubABInplace for Module<B>
+impl<B> VecZnxSubInplace for Module<B>
 where
-    B: Backend + VecZnxSubABInplaceImpl<B>,
+    B: Backend + VecZnxSubInplaceImpl<B>,
 {
-    fn vec_znx_sub_ab_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn vec_znx_sub_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxToMut,
         A: VecZnxToRef,
     {
-        B::vec_znx_sub_ab_inplace_impl(self, res, res_col, a, a_col)
+        B::vec_znx_sub_inplace_impl(self, res, res_col, a, a_col)
     }
 }
 
-impl<B> VecZnxSubBAInplace for Module<B>
+impl<B> VecZnxSubNegateInplace for Module<B>
 where
-    B: Backend + VecZnxSubBAInplaceImpl<B>,
+    B: Backend + VecZnxSubNegateInplaceImpl<B>,
 {
-    fn vec_znx_sub_ba_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn vec_znx_sub_negate_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxToMut,
         A: VecZnxToRef,
     {
-        B::vec_znx_sub_ba_inplace_impl(self, res, res_col, a, a_col)
+        B::vec_znx_sub_negate_inplace_impl(self, res, res_col, a, a_col)
     }
 }
 
@@ -247,7 +247,7 @@ where
         R: VecZnxToMut,
         A: VecZnxToRef,
     {
-        B::vec_znx_lsh_inplace_impl(self, base2k, k, res, res_col, a, a_col, scratch);
+        B::vec_znx_lsh_impl(self, base2k, k, res, res_col, a, a_col, scratch);
     }
 }
 
@@ -268,7 +268,7 @@ where
         R: VecZnxToMut,
         A: VecZnxToRef,
     {
-        B::vec_znx_rsh_inplace_impl(self, base2k, k, res, res_col, a, a_col, scratch);
+        B::vec_znx_rsh_impl(self, base2k, k, res, res_col, a, a_col, scratch);
     }
 }
 

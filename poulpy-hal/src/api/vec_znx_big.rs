@@ -93,17 +93,17 @@ pub trait VecZnxBigSub<B: Backend> {
         C: VecZnxBigToRef<B>;
 }
 
-pub trait VecZnxBigSubABInplace<B: Backend> {
+pub trait VecZnxBigSubInplace<B: Backend> {
     /// Subtracts `a` from `b` and stores the result on `b`.
-    fn vec_znx_big_sub_ab_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn vec_znx_big_sub_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxBigToMut<B>,
         A: VecZnxBigToRef<B>;
 }
 
-pub trait VecZnxBigSubBAInplace<B: Backend> {
+pub trait VecZnxBigSubNegateInplace<B: Backend> {
     /// Subtracts `b` from `a` and stores the result on `b`.
-    fn vec_znx_big_sub_ba_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn vec_znx_big_sub_negate_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxBigToMut<B>,
         A: VecZnxBigToRef<B>;
@@ -118,9 +118,9 @@ pub trait VecZnxBigSubSmallA<B: Backend> {
         C: VecZnxBigToRef<B>;
 }
 
-pub trait VecZnxBigSubSmallAInplace<B: Backend> {
+pub trait VecZnxBigSubSmallInplace<B: Backend> {
     /// Subtracts `a` from `res` and stores the result on `res`.
-    fn vec_znx_big_sub_small_a_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn vec_znx_big_sub_small_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxBigToMut<B>,
         A: VecZnxToRef;
@@ -135,9 +135,9 @@ pub trait VecZnxBigSubSmallB<B: Backend> {
         C: VecZnxToRef;
 }
 
-pub trait VecZnxBigSubSmallBInplace<B: Backend> {
+pub trait VecZnxBigSubSmallNegateInplace<B: Backend> {
     /// Subtracts `res` from `a` and stores the result on `res`.
-    fn vec_znx_big_sub_small_b_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn vec_znx_big_sub_small_negate_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxBigToMut<B>,
         A: VecZnxToRef;
@@ -160,6 +160,7 @@ pub trait VecZnxBigNormalizeTmpBytes {
     fn vec_znx_big_normalize_tmp_bytes(&self) -> usize;
 }
 
+#[allow(clippy::too_many_arguments)]
 pub trait VecZnxBigNormalize<B: Backend> {
     fn vec_znx_big_normalize<R, A>(
         &self,

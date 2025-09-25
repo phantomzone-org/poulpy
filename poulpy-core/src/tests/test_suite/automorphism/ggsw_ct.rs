@@ -5,7 +5,7 @@ use poulpy_hal::{
         VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigAlloc, VecZnxBigAllocBytes, VecZnxBigNormalize,
         VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftAddInplace, VecZnxDftAlloc, VecZnxDftAllocBytes, VecZnxDftApply,
         VecZnxDftCopy, VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA, VecZnxNormalize, VecZnxNormalizeInplace,
-        VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubABInplace, VecZnxSwitchRing, VmpApplyDftToDft, VmpApplyDftToDftAdd,
+        VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubInplace, VecZnxSwitchRing, VmpApplyDftToDft, VmpApplyDftToDftAdd,
         VmpApplyDftToDftTmpBytes, VmpPMatAlloc, VmpPrepare,
     },
     layouts::{Backend, Module, ScalarZnx, ScratchOwned},
@@ -45,7 +45,7 @@ where
         + SvpPPolAlloc<B>
         + VecZnxAddScalarInplace
         + VecZnxCopy
-        + VecZnxSubABInplace
+        + VecZnxSubInplace
         + VmpPMatAlloc<B>
         + VmpPrepare<B>
         + VmpApplyDftToDftTmpBytes
@@ -237,7 +237,7 @@ where
         + SvpPPolAlloc<B>
         + VecZnxAddScalarInplace
         + VecZnxCopy
-        + VecZnxSubABInplace
+        + VecZnxSubInplace
         + VmpPMatAlloc<B>
         + VmpPrepare<B>
         + VmpApplyDftToDftTmpBytes

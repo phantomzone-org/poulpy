@@ -8,7 +8,7 @@ use crate::{
         ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxBigAdd, VecZnxBigAddInplace, VecZnxBigAddSmall,
         VecZnxBigAddSmallInplace, VecZnxBigAlloc, VecZnxBigAutomorphism, VecZnxBigAutomorphismInplace,
         VecZnxBigAutomorphismInplaceTmpBytes, VecZnxBigNegate, VecZnxBigNegateInplace, VecZnxBigNormalize,
-        VecZnxBigNormalizeTmpBytes, VecZnxBigSub, VecZnxBigSubABInplace, VecZnxBigSubBAInplace, VecZnxBigSubSmallA,
+        VecZnxBigNormalizeTmpBytes, VecZnxBigSub, VecZnxBigSubInplace, VecZnxBigSubNegateInplace, VecZnxBigSubSmallA,
         VecZnxBigSubSmallB,
     },
     layouts::{Backend, DataViewMut, Module, ScratchOwned, VecZnx, VecZnxBig},
@@ -464,9 +464,9 @@ where
     group.finish();
 }
 
-pub fn bench_vec_znx_big_sub_ab_inplace<B: Backend>(c: &mut Criterion, label: &str)
+pub fn bench_vec_znx_big_sub_inplace<B: Backend>(c: &mut Criterion, label: &str)
 where
-    Module<B>: VecZnxBigSubABInplace<B> + ModuleNew<B> + VecZnxBigAlloc<B>,
+    Module<B>: VecZnxBigSubInplace<B> + ModuleNew<B> + VecZnxBigAlloc<B>,
 {
     let group_name: String = format!("vec_znx_big_sub_inplace::{label}");
 
@@ -474,7 +474,7 @@ where
 
     fn runner<B: Backend>(params: [usize; 3]) -> impl FnMut()
     where
-        Module<B>: VecZnxBigSubABInplace<B> + ModuleNew<B> + VecZnxBigAlloc<B>,
+        Module<B>: VecZnxBigSubInplace<B> + ModuleNew<B> + VecZnxBigAlloc<B>,
     {
         let module: Module<B> = Module::<B>::new(1 << params[0]);
 
@@ -492,7 +492,7 @@ where
 
         move || {
             for i in 0..cols {
-                module.vec_znx_big_sub_ab_inplace(&mut c, i, &a, i);
+                module.vec_znx_big_sub_inplace(&mut c, i, &a, i);
             }
             black_box(());
         }
@@ -507,9 +507,9 @@ where
     group.finish();
 }
 
-pub fn bench_vec_znx_big_sub_ba_inplace<B: Backend>(c: &mut Criterion, label: &str)
+pub fn bench_vec_znx_big_sub_negate_inplace<B: Backend>(c: &mut Criterion, label: &str)
 where
-    Module<B>: VecZnxBigSubBAInplace<B> + ModuleNew<B> + VecZnxBigAlloc<B>,
+    Module<B>: VecZnxBigSubNegateInplace<B> + ModuleNew<B> + VecZnxBigAlloc<B>,
 {
     let group_name: String = format!("vec_znx_big_sub_inplace::{label}");
 
@@ -517,7 +517,7 @@ where
 
     fn runner<B: Backend>(params: [usize; 3]) -> impl FnMut()
     where
-        Module<B>: VecZnxBigSubBAInplace<B> + ModuleNew<B> + VecZnxBigAlloc<B>,
+        Module<B>: VecZnxBigSubNegateInplace<B> + ModuleNew<B> + VecZnxBigAlloc<B>,
     {
         let module: Module<B> = Module::<B>::new(1 << params[0]);
 
@@ -535,7 +535,7 @@ where
 
         move || {
             for i in 0..cols {
-                module.vec_znx_big_sub_ba_inplace(&mut c, i, &a, i);
+                module.vec_znx_big_sub_negate_inplace(&mut c, i, &a, i);
             }
             black_box(());
         }
