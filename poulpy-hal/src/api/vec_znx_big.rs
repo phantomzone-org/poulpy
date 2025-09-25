@@ -160,6 +160,7 @@ pub trait VecZnxBigNormalizeTmpBytes {
     fn vec_znx_big_normalize_tmp_bytes(&self) -> usize;
 }
 
+#[allow(clippy::too_many_arguments)]
 pub trait VecZnxBigNormalize<B: Backend> {
     fn vec_znx_big_normalize<R, A>(
         &self,

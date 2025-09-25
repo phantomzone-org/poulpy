@@ -232,6 +232,7 @@ pub unsafe trait VecZnxBigNormalizeTmpBytesImpl<B: Backend> {
     fn vec_znx_big_normalize_tmp_bytes_impl(module: &Module<B>) -> usize;
 }
 
+#[allow(clippy::too_many_arguments)]
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
 /// * See TODO for reference code.
 /// * See TODO for corresponding public API.

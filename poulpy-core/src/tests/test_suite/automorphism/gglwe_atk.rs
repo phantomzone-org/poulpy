@@ -70,7 +70,7 @@ where
     let base2k: usize = 12;
     let k_in: usize = 60;
     let k_out: usize = 40;
-    let digits: usize = k_in.div_ceil(base2k).into();
+    let digits: usize = k_in.div_ceil(base2k);
     let p0: i64 = -1;
     let p1: i64 = -5;
     for rank in 1_usize..3 {
