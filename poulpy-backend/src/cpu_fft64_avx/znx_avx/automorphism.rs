@@ -17,7 +17,6 @@ fn inv_mod_pow2(p: usize, bits: u32) -> usize {
 /// # Safety
 /// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
 /// all inputs must have the same length and must not alias.
-#[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2", enable = "fma")]
 pub fn znx_automorphism_avx(p: i64, res: &mut [i64], a: &[i64]) {
     debug_assert_eq!(res.len(), a.len());
@@ -99,7 +98,6 @@ pub fn znx_automorphism_avx(p: i64, res: &mut [i64], a: &[i64]) {
 /// # Safety
 /// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
 /// all inputs must have the same length and must not alias.
-#[cfg(all(test, any(target_arch = "x86_64", target_arch = "x86")))]
 mod tests {
     use poulpy_hal::reference::znx::znx_automorphism_ref;
 

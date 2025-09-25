@@ -32,47 +32,6 @@ pub fn bench_fft_ref(c: &mut Criterion) {
     group.finish();
 }
 
-pub fn bench_fft_avx2_fma(c: &mut Criterion) {
-    let group_name: String = "fft_avx2_fma".to_string();
-
-    let mut group = c.benchmark_group(group_name);
-
-    #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
-    #[target_feature(enable = "avx2,fma")]
-    fn runner(m: usize) -> impl FnMut() {
-        let mut values: Vec<f64> = vec![0f64; m << 1];
-
-        let scale = 1.0f64 / (2 * m) as f64;
-        values
-            .iter_mut()
-            .enumerate()
-            .for_each(|(i, x)| *x = (i + 1) as f64 * scale);
-
-        let table: ReimFFTTable<f64> = ReimFFTTable::<f64>::new(m);
-        move || {
-            use poulpy_backend::cpu_fft64_avx::ReimFFTAvx;
-
-            ReimFFTAvx::reim_dft_execute(&table, &mut values);
-            black_box(());
-        }
-    }
-
-    if std::is_x86_feature_detected!("avx2") {
-        for log_m in [9, 10, 11, 12, 13, 14, 15] {
-            let id: BenchmarkId = BenchmarkId::from_parameter(format!("n: {}", 2 << log_m));
-            unsafe {
-                let mut runner = runner(1 << log_m);
-                group.bench_with_input(id, &(), |b, _| b.iter(&mut runner));
-            }
-        }
-    } else {
-        eprintln!("skipping: CPU lacks avx2");
-        return;
-    }
-
-    group.finish();
-}
-
 pub fn bench_fft_spqlios(c: &mut Criterion) {
     let group_name: String = "fft_spqlios".to_string();
 
@@ -136,47 +95,6 @@ pub fn bench_ifft_ref(c: &mut Criterion) {
     group.finish();
 }
 
-pub fn bench_ifft_avx2_fma(c: &mut Criterion) {
-    let group_name: String = "ifft_avx2_fma".to_string();
-
-    let mut group = c.benchmark_group(group_name);
-
-    #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
-    #[target_feature(enable = "avx2,fma")]
-    fn runner(m: usize) -> impl FnMut() {
-        let mut values: Vec<f64> = vec![0f64; m << 1];
-
-        let scale = 1.0f64 / (2 * m) as f64;
-        values
-            .iter_mut()
-            .enumerate()
-            .for_each(|(i, x)| *x = (i + 1) as f64 * scale);
-
-        let table: ReimIFFTTable<f64> = ReimIFFTTable::<f64>::new(m);
-        move || {
-            use poulpy_backend::cpu_fft64_avx::ReimIFFTAvx;
-
-            ReimIFFTAvx::reim_dft_execute(&table, &mut values);
-            black_box(());
-        }
-    }
-
-    if std::is_x86_feature_detected!("avx2") {
-        for log_m in [9, 10, 11, 12, 13, 14, 15] {
-            let id: BenchmarkId = BenchmarkId::from_parameter(format!("n: {}", 2 << log_m));
-            unsafe {
-                let mut runner = runner(1 << log_m);
-                group.bench_with_input(id, &(), |b, _| b.iter(&mut runner));
-            }
-        }
-    } else {
-        eprintln!("skipping: CPU lacks avx2");
-        return;
-    }
-
-    group.finish();
-}
-
 pub fn bench_ifft_spqlios(c: &mut Criterion) {
     let group_name: String = "ifft_spqlios".to_string();
 
@@ -212,13 +130,98 @@ pub fn bench_ifft_spqlios(c: &mut Criterion) {
     group.finish();
 }
 
+#[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
+mod x86 {
+    use super::*;
+
+    pub fn bench_ifft_avx2_fma(c: &mut Criterion) {
+        let group_name: String = "ifft_avx2_fma".to_string();
+
+        let mut group = c.benchmark_group(group_name);
+
+        if std::is_x86_feature_detected!("avx2") {
+            fn runner(m: usize) -> impl FnMut() {
+                let mut values: Vec<f64> = vec![0f64; m << 1];
+
+                let scale = 1.0f64 / (2 * m) as f64;
+                values
+                    .iter_mut()
+                    .enumerate()
+                    .for_each(|(i, x)| *x = (i + 1) as f64 * scale);
+
+                let table: ReimIFFTTable<f64> = ReimIFFTTable::<f64>::new(m);
+                move || {
+                    use poulpy_backend::cpu_fft64_avx::ReimIFFTAvx;
+
+                    ReimIFFTAvx::reim_dft_execute(&table, &mut values);
+                    black_box(());
+                }
+            }
+
+            for log_m in [9, 10, 11, 12, 13, 14, 15] {
+                let id: BenchmarkId = BenchmarkId::from_parameter(format!("n: {}", 2 << log_m));
+                unsafe {
+                    let mut runner = runner(1 << log_m);
+                    group.bench_with_input(id, &(), |b, _| b.iter(&mut runner));
+                }
+            }
+        } else {
+            eprintln!("skipping: CPU lacks avx2");
+            return;
+        }
+
+        group.finish();
+    }
+
+    pub fn bench_fft_avx2_fma(c: &mut Criterion) {
+        let group_name: String = "fft_avx2_fma".to_string();
+
+        let mut group = c.benchmark_group(group_name);
+
+        if std::is_x86_feature_detected!("avx2") {
+            fn runner(m: usize) -> impl FnMut() {
+                let mut values: Vec<f64> = vec![0f64; m << 1];
+
+                let scale = 1.0f64 / (2 * m) as f64;
+                values
+                    .iter_mut()
+                    .enumerate()
+                    .for_each(|(i, x)| *x = (i + 1) as f64 * scale);
+
+                let table: ReimFFTTable<f64> = ReimFFTTable::<f64>::new(m);
+                move || {
+                    use poulpy_backend::cpu_fft64_avx::ReimFFTAvx;
+
+                    ReimFFTAvx::reim_dft_execute(&table, &mut values);
+                    black_box(());
+                }
+            }
+
+            for log_m in [9, 10, 11, 12, 13, 14, 15] {
+                let id: BenchmarkId = BenchmarkId::from_parameter(format!("n: {}", 2 << log_m));
+                unsafe {
+                    let mut runner = runner(1 << log_m);
+                    group.bench_with_input(id, &(), |b, _| b.iter(&mut runner));
+                }
+            }
+        } else {
+            eprintln!("skipping: CPU lacks avx2");
+            return;
+        }
+
+        group.finish();
+    }
+
+    criterion_group!(benches_x86, bench_fft_avx2_fma, bench_ifft_avx2_fma,);
+    criterion_main!(benches_x86);
+}
+
 criterion_group!(
     benches,
     bench_fft_ref,
-    bench_fft_avx2_fma,
     bench_fft_spqlios,
     bench_ifft_ref,
-    bench_ifft_avx2_fma,
     bench_ifft_spqlios
 );
+
 criterion_main!(benches);

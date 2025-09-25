@@ -122,6 +122,7 @@ backend_test_suite!(
     }
 );
 
+#[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
 #[cfg(test)]
 backend_test_suite!(
     mod cpu_avx,

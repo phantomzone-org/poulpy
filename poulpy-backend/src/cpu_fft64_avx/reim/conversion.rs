@@ -2,7 +2,6 @@
 /// Ensured for inputs absolute value bounded by 2^50-1
 /// # Safety
 /// Caller must ensure the CPU supports FMA (e.g., via `is_x86_feature_detected!("fma")`);
-#[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
 #[target_feature(enable = "fma")]
 pub fn reim_from_znx_i64_bnd50_fma(res: &mut [f64], a: &[i64]) {
     #[cfg(debug_assertions)]
@@ -58,7 +57,6 @@ pub fn reim_from_znx_i64_bnd50_fma(res: &mut [f64], a: &[i64]) {
 /// # Safety
 /// Caller must ensure the CPU supports FMA (e.g., via `is_x86_feature_detected!("fma,avx2")`);
 #[allow(dead_code)]
-#[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
 #[target_feature(enable = "avx2,fma")]
 pub fn reim_to_znx_i64_bnd63_avx2_fma(res: &mut [i64], divisor: f64, a: &[f64]) {
     #[cfg(debug_assertions)]
@@ -141,7 +139,6 @@ pub fn reim_to_znx_i64_bnd63_avx2_fma(res: &mut [i64], divisor: f64, a: &[f64]) 
 /// Only ensured for inputs absoluate value bounded by 2^63-1
 /// # Safety
 /// Caller must ensure the CPU supports FMA (e.g., via `is_x86_feature_detected!("fma,avx2")`);
-#[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
 #[target_feature(enable = "avx2,fma")]
 pub fn reim_to_znx_i64_inplace_bnd63_avx2_fma(res: &mut [f64], divisor: f64) {
     let sign_mask: u64 = 0x8000000000000000u64;
@@ -220,7 +217,6 @@ pub fn reim_to_znx_i64_inplace_bnd63_avx2_fma(res: &mut [f64], divisor: f64) {
 /// Only ensured for inputs absoluate value bounded by 2^50-1
 /// # Safety
 /// Caller must ensure the CPU supports FMA (e.g., via `is_x86_feature_detected!("fma")`);
-#[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
 #[target_feature(enable = "fma")]
 #[allow(dead_code)]
 pub fn reim_to_znx_i64_avx2_bnd50_fma(res: &mut [i64], divisor: f64, a: &[f64]) {
