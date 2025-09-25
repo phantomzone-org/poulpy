@@ -5,9 +5,9 @@ use poulpy_hal::{
         ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare,
         VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxAutomorphism, VecZnxAutomorphismInplace,
         VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigAllocBytes, VecZnxBigAutomorphismInplace, VecZnxBigNormalize,
-        VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallBInplace, VecZnxCopy, VecZnxDftAllocBytes, VecZnxDftApply,
+        VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallNegateInplace, VecZnxCopy, VecZnxDftAllocBytes, VecZnxDftApply,
         VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxNegateInplace, VecZnxNormalize, VecZnxNormalizeInplace,
-        VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace, VecZnxRshInplace, VecZnxSub, VecZnxSubABInplace,
+        VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace, VecZnxRshInplace, VecZnxSub, VecZnxSubInplace,
         VecZnxSwitchRing, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes, VmpPMatAlloc, VmpPrepare,
     },
     layouts::{Backend, Module, ScratchOwned},
@@ -31,7 +31,7 @@ where
     Module<B>: VecZnxDftAllocBytes
         + VecZnxAutomorphism
         + VecZnxBigAutomorphismInplace<B>
-        + VecZnxBigSubSmallBInplace<B>
+        + VecZnxBigSubSmallNegateInplace<B>
         + VecZnxNegateInplace
         + VecZnxRshInplace<B>
         + VecZnxRotateInplace<B>
@@ -41,7 +41,7 @@ where
         + SvpApplyDftToDftInplace<B>
         + VecZnxIdftApplyConsume<B>
         + VecZnxFillUniform
-        + VecZnxSubABInplace
+        + VecZnxSubInplace
         + VecZnxAddInplace
         + VecZnxNormalizeInplace<B>
         + VecZnxAddNormal

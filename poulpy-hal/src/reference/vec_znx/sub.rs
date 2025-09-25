@@ -3,9 +3,9 @@ use std::hint::black_box;
 use criterion::{BenchmarkId, Criterion};
 
 use crate::{
-    api::{ModuleNew, VecZnxSub, VecZnxSubABInplace, VecZnxSubBAInplace},
+    api::{ModuleNew, VecZnxSub, VecZnxSubInplace, VecZnxSubNegateInplace},
     layouts::{Backend, FillUniform, Module, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut},
-    oep::{ModuleNewImpl, VecZnxSubABInplaceImpl, VecZnxSubBAInplaceImpl, VecZnxSubImpl},
+    oep::{ModuleNewImpl, VecZnxSubImpl, VecZnxSubInplaceImpl, VecZnxSubNegateInplaceImpl},
     reference::znx::{ZnxCopy, ZnxNegate, ZnxNegateInplace, ZnxSub, ZnxSubABInplace, ZnxSubBAInplace, ZnxZero},
     source::Source,
 };
@@ -163,7 +163,7 @@ where
 
 pub fn bench_vec_znx_sub_ab_inplace<B>(c: &mut Criterion, label: &str)
 where
-    B: Backend + ModuleNewImpl<B> + VecZnxSubABInplaceImpl<B>,
+    B: Backend + ModuleNewImpl<B> + VecZnxSubInplaceImpl<B>,
 {
     let group_name: String = format!("vec_znx_sub_ab_inplace::{label}");
 
@@ -171,7 +171,7 @@ where
 
     fn runner<B: Backend>(params: [usize; 3]) -> impl FnMut()
     where
-        Module<B>: VecZnxSubABInplace + ModuleNew<B>,
+        Module<B>: VecZnxSubInplace + ModuleNew<B>,
     {
         let n: usize = 1 << params[0];
         let cols: usize = params[1];
@@ -190,7 +190,7 @@ where
 
         move || {
             for i in 0..cols {
-                module.vec_znx_sub_ab_inplace(&mut b, i, &a, i);
+                module.vec_znx_sub_inplace(&mut b, i, &a, i);
             }
             black_box(());
         }
@@ -207,7 +207,7 @@ where
 
 pub fn bench_vec_znx_sub_ba_inplace<B>(c: &mut Criterion, label: &str)
 where
-    B: Backend + ModuleNewImpl<B> + VecZnxSubBAInplaceImpl<B>,
+    B: Backend + ModuleNewImpl<B> + VecZnxSubNegateInplaceImpl<B>,
 {
     let group_name: String = format!("vec_znx_sub_ba_inplace::{label}");
 
@@ -215,7 +215,7 @@ where
 
     fn runner<B: Backend>(params: [usize; 3]) -> impl FnMut()
     where
-        Module<B>: VecZnxSubBAInplace + ModuleNew<B>,
+        Module<B>: VecZnxSubNegateInplace + ModuleNew<B>,
     {
         let n: usize = 1 << params[0];
         let cols: usize = params[1];
@@ -234,7 +234,7 @@ where
 
         move || {
             for i in 0..cols {
-                module.vec_znx_sub_ba_inplace(&mut b, i, &a, i);
+                module.vec_znx_sub_negate_inplace(&mut b, i, &a, i);
             }
             black_box(());
         }

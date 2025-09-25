@@ -3,7 +3,7 @@ use poulpy_hal::{
         ScratchAvailable, SvpApplyDftToDftInplace, SvpPPolAllocBytes, SvpPrepare, TakeScalarZnx, TakeVecZnx, TakeVecZnxDft,
         VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftApply,
         VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub,
-        VecZnxSubABInplace, VecZnxSwitchRing,
+        VecZnxSubInplace, VecZnxSwitchRing,
     },
     layouts::{Backend, DataMut, DataRef, Module, ScalarZnx, Scratch},
     source::Source,
@@ -50,7 +50,7 @@ impl<DataSelf: DataMut> GGLWESwitchingKeyCompressed<DataSelf> {
             + VecZnxIdftApplyConsume<B>
             + VecZnxNormalizeTmpBytes
             + VecZnxFillUniform
-            + VecZnxSubABInplace
+            + VecZnxSubInplace
             + VecZnxAddInplace
             + VecZnxNormalizeInplace<B>
             + VecZnxAddNormal

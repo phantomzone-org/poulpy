@@ -2,7 +2,7 @@ use poulpy_hal::{
     api::{
         VecZnxAdd, VecZnxAddInplace, VecZnxCopy, VecZnxMulXpMinusOne, VecZnxMulXpMinusOneInplace, VecZnxNegateInplace,
         VecZnxNormalize, VecZnxNormalizeInplace, VecZnxRotate, VecZnxRotateInplace, VecZnxRshInplace, VecZnxSub,
-        VecZnxSubABInplace, VecZnxSubBAInplace,
+        VecZnxSubInplace, VecZnxSubNegateInplace,
     },
     layouts::{Backend, DataMut, Module, Scratch, VecZnx, ZnxZero},
 };
@@ -141,7 +141,7 @@ pub trait GLWEOperations: GLWECiphertextToMut + GLWEInfos + GLWELayoutSet + Size
     fn sub_inplace_ab<A, BACKEND: Backend>(&mut self, module: &Module<BACKEND>, a: &A)
     where
         A: GLWECiphertextToRef + GLWEInfos,
-        Module<BACKEND>: VecZnxSubABInplace,
+        Module<BACKEND>: VecZnxSubInplace,
     {
         #[cfg(debug_assertions)]
         {
@@ -154,7 +154,7 @@ pub trait GLWEOperations: GLWECiphertextToMut + GLWEInfos + GLWELayoutSet + Size
         let a_ref: &GLWECiphertext<&[u8]> = &a.to_ref();
 
         (0..(a.rank() + 1).into()).for_each(|i| {
-            module.vec_znx_sub_ab_inplace(&mut self_mut.data, i, &a_ref.data, i);
+            module.vec_znx_sub_inplace(&mut self_mut.data, i, &a_ref.data, i);
         });
 
         self.set_k(set_k_unary(self, a))
@@ -163,7 +163,7 @@ pub trait GLWEOperations: GLWECiphertextToMut + GLWEInfos + GLWELayoutSet + Size
     fn sub_inplace_ba<A, BACKEND: Backend>(&mut self, module: &Module<BACKEND>, a: &A)
     where
         A: GLWECiphertextToRef + GLWEInfos,
-        Module<BACKEND>: VecZnxSubBAInplace,
+        Module<BACKEND>: VecZnxSubNegateInplace,
     {
         #[cfg(debug_assertions)]
         {
@@ -176,7 +176,7 @@ pub trait GLWEOperations: GLWECiphertextToMut + GLWEInfos + GLWELayoutSet + Size
         let a_ref: &GLWECiphertext<&[u8]> = &a.to_ref();
 
         (0..(a.rank() + 1).into()).for_each(|i| {
-            module.vec_znx_sub_ba_inplace(&mut self_mut.data, i, &a_ref.data, i);
+            module.vec_znx_sub_negate_inplace(&mut self_mut.data, i, &a_ref.data, i);
         });
 
         self.set_k(set_k_unary(self, a))

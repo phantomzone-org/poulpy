@@ -76,21 +76,21 @@ pub trait VecZnxSub {
         B: VecZnxToRef;
 }
 
-pub trait VecZnxSubABInplace {
+pub trait VecZnxSubInplace {
     /// Subtracts the selected column of `a` from the selected column of `res` inplace.
     ///
     /// res\[res_col\] -= a\[a_col\]
-    fn vec_znx_sub_ab_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn vec_znx_sub_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxToMut,
         A: VecZnxToRef;
 }
 
-pub trait VecZnxSubBAInplace {
+pub trait VecZnxSubNegateInplace {
     /// Subtracts the selected column of `res` from the selected column of `a` and inplace mutates `res`
     ///
     /// res\[res_col\] = a\[a_col\] - res\[res_col\]
-    fn vec_znx_sub_ba_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn vec_znx_sub_negate_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxToMut,
         A: VecZnxToRef;

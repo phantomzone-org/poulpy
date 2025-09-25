@@ -10,8 +10,8 @@ use poulpy_hal::{
         VecZnxBigAddSmallInplaceImpl, VecZnxBigAllocBytesImpl, VecZnxBigAllocImpl, VecZnxBigAutomorphismImpl,
         VecZnxBigAutomorphismInplaceImpl, VecZnxBigAutomorphismInplaceTmpBytesImpl, VecZnxBigFromBytesImpl,
         VecZnxBigFromSmallImpl, VecZnxBigNegateImpl, VecZnxBigNegateInplaceImpl, VecZnxBigNormalizeImpl,
-        VecZnxBigNormalizeTmpBytesImpl, VecZnxBigSubABInplaceImpl, VecZnxBigSubBAInplaceImpl, VecZnxBigSubImpl,
-        VecZnxBigSubSmallAImpl, VecZnxBigSubSmallAInplaceImpl, VecZnxBigSubSmallBImpl, VecZnxBigSubSmallBInplaceImpl,
+        VecZnxBigNormalizeTmpBytesImpl, VecZnxBigSubImpl, VecZnxBigSubInplaceImpl, VecZnxBigSubNegateInplaceImpl,
+        VecZnxBigSubSmallAImpl, VecZnxBigSubSmallBImpl, VecZnxBigSubSmallInplaceImpl, VecZnxBigSubSmallNegateInplaceImpl,
     },
     reference::{
         fft64::vec_znx_big::{
@@ -167,9 +167,9 @@ unsafe impl VecZnxBigSubImpl<Self> for FFT64Ref {
     }
 }
 
-unsafe impl VecZnxBigSubABInplaceImpl<Self> for FFT64Ref {
+unsafe impl VecZnxBigSubInplaceImpl<Self> for FFT64Ref {
     /// Subtracts `a` from `b` and stores the result on `b`.
-    fn vec_znx_big_sub_ab_inplace_impl<R, A>(_module: &Module<Self>, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn vec_znx_big_sub_inplace_impl<R, A>(_module: &Module<Self>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxBigToMut<Self>,
         A: VecZnxBigToRef<Self>,
@@ -178,9 +178,9 @@ unsafe impl VecZnxBigSubABInplaceImpl<Self> for FFT64Ref {
     }
 }
 
-unsafe impl VecZnxBigSubBAInplaceImpl<Self> for FFT64Ref {
+unsafe impl VecZnxBigSubNegateInplaceImpl<Self> for FFT64Ref {
     /// Subtracts `b` from `a` and stores the result on `b`.
-    fn vec_znx_big_sub_ba_inplace_impl<R, A>(_module: &Module<Self>, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn vec_znx_big_sub_negate_inplace_impl<R, A>(_module: &Module<Self>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxBigToMut<Self>,
         A: VecZnxBigToRef<Self>,
@@ -208,9 +208,9 @@ unsafe impl VecZnxBigSubSmallAImpl<Self> for FFT64Ref {
     }
 }
 
-unsafe impl VecZnxBigSubSmallAInplaceImpl<Self> for FFT64Ref {
+unsafe impl VecZnxBigSubSmallInplaceImpl<Self> for FFT64Ref {
     /// Subtracts `a` from `res` and stores the result on `res`.
-    fn vec_znx_big_sub_small_a_inplace_impl<R, A>(_module: &Module<Self>, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn vec_znx_big_sub_small_inplace_impl<R, A>(_module: &Module<Self>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxBigToMut<Self>,
         A: VecZnxToRef,
@@ -238,9 +238,9 @@ unsafe impl VecZnxBigSubSmallBImpl<Self> for FFT64Ref {
     }
 }
 
-unsafe impl VecZnxBigSubSmallBInplaceImpl<Self> for FFT64Ref {
+unsafe impl VecZnxBigSubSmallNegateInplaceImpl<Self> for FFT64Ref {
     /// Subtracts `res` from `a` and stores the result on `res`.
-    fn vec_znx_big_sub_small_b_inplace_impl<R, A>(_module: &Module<Self>, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn vec_znx_big_sub_small_negate_inplace_impl<R, A>(_module: &Module<Self>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxBigToMut<Self>,
         A: VecZnxToRef,

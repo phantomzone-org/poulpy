@@ -8,7 +8,7 @@ use crate::{
         VecZnxMergeRingsTmpBytes, VecZnxMulXpMinusOne, VecZnxMulXpMinusOneInplace, VecZnxMulXpMinusOneInplaceTmpBytes,
         VecZnxNegate, VecZnxNegateInplace, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate,
         VecZnxRotateInplace, VecZnxRotateInplaceTmpBytes, VecZnxRsh, VecZnxRshInplace, VecZnxSplitRing, VecZnxSplitRingTmpBytes,
-        VecZnxSub, VecZnxSubABInplace, VecZnxSubBAInplace, VecZnxSubScalar, VecZnxSubScalarInplace, VecZnxSwitchRing,
+        VecZnxSub, VecZnxSubInplace, VecZnxSubNegateInplace, VecZnxSubScalar, VecZnxSubScalarInplace, VecZnxSwitchRing,
     },
     layouts::{Backend, DigestU64, FillUniform, Module, ScalarZnx, ScratchOwned, VecZnx, ZnxInfos, ZnxView, ZnxViewMut},
     reference::znx::znx_copy_ref,
@@ -1137,8 +1137,8 @@ where
 
 pub fn test_vec_znx_sub_ab_inplace<BR: Backend, BT: Backend>(base2k: usize, module_ref: &Module<BR>, module_test: &Module<BT>)
 where
-    Module<BR>: VecZnxSubABInplace,
-    Module<BT>: VecZnxSubABInplace,
+    Module<BR>: VecZnxSubInplace,
+    Module<BT>: VecZnxSubInplace,
 {
     assert_eq!(module_ref.n(), module_test.n());
     let n: usize = module_ref.n();
@@ -1159,8 +1159,8 @@ where
             res_test.raw_mut().copy_from_slice(res_ref.raw());
 
             for i in 0..cols {
-                module_test.vec_znx_sub_ab_inplace(&mut res_ref, i, &a, i);
-                module_ref.vec_znx_sub_ab_inplace(&mut res_test, i, &a, i);
+                module_test.vec_znx_sub_inplace(&mut res_ref, i, &a, i);
+                module_ref.vec_znx_sub_inplace(&mut res_test, i, &a, i);
             }
 
             assert_eq!(a.digest_u64(), a_digest);
@@ -1171,8 +1171,8 @@ where
 
 pub fn test_vec_znx_sub_ba_inplace<BR: Backend, BT: Backend>(base2k: usize, module_ref: &Module<BR>, module_test: &Module<BT>)
 where
-    Module<BR>: VecZnxSubBAInplace,
-    Module<BT>: VecZnxSubBAInplace,
+    Module<BR>: VecZnxSubNegateInplace,
+    Module<BT>: VecZnxSubNegateInplace,
 {
     assert_eq!(module_ref.n(), module_test.n());
     let n: usize = module_ref.n();
@@ -1193,8 +1193,8 @@ where
             res_test.raw_mut().copy_from_slice(res_ref.raw());
 
             for i in 0..cols {
-                module_test.vec_znx_sub_ba_inplace(&mut res_ref, i, &a, i);
-                module_ref.vec_znx_sub_ba_inplace(&mut res_test, i, &a, i);
+                module_test.vec_znx_sub_negate_inplace(&mut res_ref, i, &a, i);
+                module_ref.vec_znx_sub_negate_inplace(&mut res_test, i, &a, i);
             }
 
             assert_eq!(a.digest_u64(), a_digest);

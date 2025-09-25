@@ -5,7 +5,7 @@ use poulpy_hal::{
         VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftAdd, VecZnxDftAddInplace,
         VecZnxDftAllocBytes, VecZnxDftApply, VecZnxDftSubABInplace, VecZnxDftZero, VecZnxFillUniform, VecZnxIdftApply,
         VecZnxIdftApplyConsume, VecZnxIdftApplyTmpBytes, VecZnxMulXpMinusOneInplace, VecZnxNormalize, VecZnxNormalizeInplace,
-        VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace, VecZnxRotateInplaceTmpBytes, VecZnxSub, VecZnxSubABInplace,
+        VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace, VecZnxRotateInplaceTmpBytes, VecZnxSub, VecZnxSubInplace,
         VecZnxSwitchRing, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes, VmpPMatAlloc, VmpPrepare, ZnAddNormal,
         ZnFillUniform, ZnNormalizeInplace,
     },
@@ -46,7 +46,7 @@ where
         + VecZnxBigAddSmallInplace<B>
         + VecZnxRotate
         + VecZnxAddInplace
-        + VecZnxSubABInplace
+        + VecZnxSubInplace
         + VecZnxNormalize<B>
         + VecZnxNormalizeInplace<B>
         + VecZnxCopy

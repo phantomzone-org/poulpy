@@ -12,7 +12,7 @@ use poulpy_hal::{
         VecZnxMulXpMinusOneInplaceTmpBytesImpl, VecZnxNegateImpl, VecZnxNegateInplaceImpl, VecZnxNormalizeImpl,
         VecZnxNormalizeInplaceImpl, VecZnxNormalizeTmpBytesImpl, VecZnxRotateImpl, VecZnxRotateInplaceImpl,
         VecZnxRotateInplaceTmpBytesImpl, VecZnxRshImpl, VecZnxRshInplaceImpl, VecZnxRshTmpBytesImpl, VecZnxSplitRingImpl,
-        VecZnxSplitRingTmpBytesImpl, VecZnxSubABInplaceImpl, VecZnxSubBAInplaceImpl, VecZnxSubImpl, VecZnxSubScalarImpl,
+        VecZnxSplitRingTmpBytesImpl, VecZnxSubImpl, VecZnxSubInplaceImpl, VecZnxSubNegateInplaceImpl, VecZnxSubScalarImpl,
         VecZnxSubScalarInplaceImpl, VecZnxSwitchRingImpl,
     },
     reference::vec_znx::{
@@ -144,8 +144,8 @@ unsafe impl VecZnxSubImpl<Self> for FFT64Avx {
     }
 }
 
-unsafe impl VecZnxSubABInplaceImpl<Self> for FFT64Avx {
-    fn vec_znx_sub_ab_inplace_impl<R, A>(_module: &Module<Self>, res: &mut R, res_col: usize, a: &A, a_col: usize)
+unsafe impl VecZnxSubInplaceImpl<Self> for FFT64Avx {
+    fn vec_znx_sub_inplace_impl<R, A>(_module: &Module<Self>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxToMut,
         A: VecZnxToRef,
@@ -154,8 +154,8 @@ unsafe impl VecZnxSubABInplaceImpl<Self> for FFT64Avx {
     }
 }
 
-unsafe impl VecZnxSubBAInplaceImpl<Self> for FFT64Avx {
-    fn vec_znx_sub_ba_inplace_impl<R, A>(_module: &Module<Self>, res: &mut R, res_col: usize, a: &A, a_col: usize)
+unsafe impl VecZnxSubNegateInplaceImpl<Self> for FFT64Avx {
+    fn vec_znx_sub_negate_inplace_impl<R, A>(_module: &Module<Self>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxToMut,
         A: VecZnxToRef,

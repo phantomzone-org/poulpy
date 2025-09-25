@@ -6,7 +6,7 @@ use poulpy_hal::{
         VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftAdd, VecZnxDftAddInplace, VecZnxDftAllocBytes, VecZnxDftApply,
         VecZnxDftSubABInplace, VecZnxDftZero, VecZnxIdftApply, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpBytes,
         VecZnxMulXpMinusOneInplace, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate,
-        VecZnxSubABInplace, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
+        VecZnxSubInplace, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch, SvpPPol, VecZnx, ZnxView, ZnxZero},
 };
@@ -84,7 +84,7 @@ where
         + VecZnxBigAddSmallInplace<B>
         + VecZnxRotate
         + VecZnxAddInplace
-        + VecZnxSubABInplace
+        + VecZnxSubInplace
         + VecZnxNormalize<B>
         + VecZnxNormalizeInplace<B>
         + VecZnxCopy
@@ -146,7 +146,7 @@ fn execute_block_binary_extended<DataRes, DataIn, DataBrk, B: Backend>(
         + VecZnxBigAddSmallInplace<B>
         + VecZnxRotate
         + VecZnxAddInplace
-        + VecZnxSubABInplace
+        + VecZnxSubInplace
         + VecZnxNormalize<B>
         + VecZnxNormalizeInplace<B>
         + VecZnxCopy
@@ -313,7 +313,7 @@ fn execute_block_binary<DataRes, DataIn, DataBrk, B: Backend>(
         + VecZnxBigAddSmallInplace<B>
         + VecZnxRotate
         + VecZnxAddInplace
-        + VecZnxSubABInplace
+        + VecZnxSubInplace
         + VecZnxNormalize<B>
         + VecZnxNormalizeInplace<B>
         + VecZnxCopy
@@ -435,7 +435,7 @@ fn execute_standard<DataRes, DataIn, DataBrk, B: Backend>(
         + VecZnxBigAddSmallInplace<B>
         + VecZnxRotate
         + VecZnxAddInplace
-        + VecZnxSubABInplace
+        + VecZnxSubInplace
         + VecZnxNormalize<B>
         + VecZnxNormalizeInplace<B>
         + VecZnxCopy

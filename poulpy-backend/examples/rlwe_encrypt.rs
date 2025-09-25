@@ -3,7 +3,7 @@ use poulpy_backend::cpu_spqlios::FFT64Spqlios;
 use poulpy_hal::{
     api::{
         ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPrepare, VecZnxAddNormal,
-        VecZnxBigAddSmallInplace, VecZnxBigAlloc, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallBInplace,
+        VecZnxBigAddSmallInplace, VecZnxBigAlloc, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallNegateInplace,
         VecZnxDftAlloc, VecZnxDftApply, VecZnxFillUniform, VecZnxIdftApplyTmpA, VecZnxNormalizeInplace,
     },
     layouts::{Module, ScalarZnx, ScratchOwned, SvpPPol, VecZnx, VecZnxBig, VecZnxDft, ZnxInfos},
@@ -74,7 +74,7 @@ fn main() {
     module.vec_znx_normalize_inplace(base2k, &mut m, 0, scratch.borrow());
 
     // m - BIG(ct[1] * s)
-    module.vec_znx_big_sub_small_b_inplace(
+    module.vec_znx_big_sub_small_negate_inplace(
         &mut buf_big,
         0, // Selects the first column of the receiver
         &m,
