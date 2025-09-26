@@ -1,12 +1,63 @@
 use poulpy_hal::{
-    layouts::{Data, DataMut, DataRef, FillUniform, MatZnx, ReaderFrom, Reset, WriterTo},
+    layouts::{Data, DataMut, DataRef, FillUniform, ReaderFrom, WriterTo},
     source::Source,
 };
 
-use crate::layouts::{GGLWECiphertext, GLWECiphertext, Infos};
+use crate::layouts::{
+    Base2K, Degree, Digits, GGLWECiphertext, GGLWELayoutInfos, GLWECiphertext, GLWEInfos, LWEInfos, Rank, Rows, TorusPrecision,
+};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
 use std::fmt;
+
+#[derive(PartialEq, Eq, Copy, Clone, Debug)]
+pub struct GGLWESwitchingKeyLayout {
+    pub n: Degree,
+    pub base2k: Base2K,
+    pub k: TorusPrecision,
+    pub rows: Rows,
+    pub digits: Digits,
+    pub rank_in: Rank,
+    pub rank_out: Rank,
+}
+
+impl LWEInfos for GGLWESwitchingKeyLayout {
+    fn n(&self) -> Degree {
+        self.n
+    }
+
+    fn base2k(&self) -> Base2K {
+        self.base2k
+    }
+
+    fn k(&self) -> TorusPrecision {
+        self.k
+    }
+}
+
+impl GLWEInfos for GGLWESwitchingKeyLayout {
+    fn rank(&self) -> Rank {
+        self.rank_out()
+    }
+}
+
+impl GGLWELayoutInfos for GGLWESwitchingKeyLayout {
+    fn rank_in(&self) -> Rank {
+        self.rank_in
+    }
+
+    fn rank_out(&self) -> Rank {
+        self.rank_out
+    }
+
+    fn digits(&self) -> Digits {
+        self.digits
+    }
+
+    fn rows(&self) -> Rows {
+        self.rows
+    }
+}
 
 #[derive(PartialEq, Eq, Clone)]
 pub struct GGLWESwitchingKey<D: Data> {
@@ -15,9 +66,51 @@ pub struct GGLWESwitchingKey<D: Data> {
     pub(crate) sk_out_n: usize, // Degree of sk_out
 }
 
+impl<D: Data> LWEInfos for GGLWESwitchingKey<D> {
+    fn n(&self) -> Degree {
+        self.key.n()
+    }
+
+    fn base2k(&self) -> Base2K {
+        self.key.base2k()
+    }
+
+    fn k(&self) -> TorusPrecision {
+        self.key.k()
+    }
+
+    fn size(&self) -> usize {
+        self.key.size()
+    }
+}
+
+impl<D: Data> GLWEInfos for GGLWESwitchingKey<D> {
+    fn rank(&self) -> Rank {
+        self.rank_out()
+    }
+}
+
+impl<D: Data> GGLWELayoutInfos for GGLWESwitchingKey<D> {
+    fn rank_in(&self) -> Rank {
+        self.key.rank_in()
+    }
+
+    fn rank_out(&self) -> Rank {
+        self.key.rank_out()
+    }
+
+    fn digits(&self) -> Digits {
+        self.key.digits()
+    }
+
+    fn rows(&self) -> Rows {
+        self.key.rows()
+    }
+}
+
 impl<D: DataRef> fmt::Debug for GGLWESwitchingKey<D> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self)
+        write!(f, "{self}")
     }
 }
 
@@ -26,7 +119,9 @@ impl<D: DataRef> fmt::Display for GGLWESwitchingKey<D> {
         write!(
             f,
             "(GLWESwitchingKey: sk_in_n={} sk_out_n={}) {}",
-            self.sk_in_n, self.sk_out_n, self.key.data
+            self.sk_in_n,
+            self.sk_out_n,
+            self.key.data()
         )
     }
 }
@@ -37,70 +132,51 @@ impl<D: DataMut> FillUniform for GGLWESwitchingKey<D> {
     }
 }
 
-impl<D: DataMut> Reset for GGLWESwitchingKey<D>
-where
-    MatZnx<D>: Reset,
-{
-    fn reset(&mut self) {
-        self.key.reset();
-        self.sk_in_n = 0;
-        self.sk_out_n = 0;
-    }
-}
-
 impl GGLWESwitchingKey<Vec<u8>> {
-    pub fn alloc(n: usize, basek: usize, k: usize, rows: usize, digits: usize, rank_in: usize, rank_out: usize) -> Self {
+    pub fn alloc<A>(infos: &A) -> Self
+    where
+        A: GGLWELayoutInfos,
+    {
         GGLWESwitchingKey {
-            key: GGLWECiphertext::alloc(n, basek, k, rows, digits, rank_in, rank_out),
+            key: GGLWECiphertext::alloc(infos),
             sk_in_n: 0,
             sk_out_n: 0,
         }
     }
 
-    pub fn bytes_of(n: usize, basek: usize, k: usize, rows: usize, digits: usize, rank_in: usize, rank_out: usize) -> usize {
-        GGLWECiphertext::<Vec<u8>>::bytes_of(n, basek, k, rows, digits, rank_in, rank_out)
-    }
-}
-
-impl<D: Data> Infos for GGLWESwitchingKey<D> {
-    type Inner = MatZnx<D>;
-
-    fn inner(&self) -> &Self::Inner {
-        self.key.inner()
-    }
-
-    fn basek(&self) -> usize {
-        self.key.basek()
-    }
-
-    fn k(&self) -> usize {
-        self.key.k()
-    }
-}
-
-impl<D: Data> GGLWESwitchingKey<D> {
-    pub fn rank(&self) -> usize {
-        self.key.data.cols_out() - 1
+    pub fn alloc_with(
+        n: Degree,
+        base2k: Base2K,
+        k: TorusPrecision,
+        rows: Rows,
+        digits: Digits,
+        rank_in: Rank,
+        rank_out: Rank,
+    ) -> Self {
+        GGLWESwitchingKey {
+            key: GGLWECiphertext::alloc_with(n, base2k, k, rows, digits, rank_in, rank_out),
+            sk_in_n: 0,
+            sk_out_n: 0,
+        }
     }
 
-    pub fn rank_in(&self) -> usize {
-        self.key.data.cols_in()
+    pub fn alloc_bytes<A>(infos: &A) -> usize
+    where
+        A: GGLWELayoutInfos,
+    {
+        GGLWECiphertext::alloc_bytes(infos)
     }
 
-    pub fn rank_out(&self) -> usize {
-        self.key.data.cols_out() - 1
-    }
-
-    pub fn digits(&self) -> usize {
-        self.key.digits()
-    }
-
-    pub fn sk_degree_in(&self) -> usize {
-        self.sk_in_n
-    }
-
-    pub fn sk_degree_out(&self) -> usize {
-        self.sk_out_n
+    pub fn alloc_bytes_with(
+        n: Degree,
+        base2k: Base2K,
+        k: TorusPrecision,
+        rows: Rows,
+        digits: Digits,
+        rank_in: Rank,
+        rank_out: Rank,
+    ) -> usize {
+        GGLWECiphertext::alloc_bytes_with(n, base2k, k, rows, digits, rank_in, rank_out)
     }
 }
 

@@ -13,5 +13,10 @@ documentation = "https://docs.rs/poulpy"
 poulpy-backend = {path="../poulpy-backend"}
 poulpy-hal = {path="../poulpy-hal"}
 poulpy-core = {path="../poulpy-core"}
+criterion = {workspace = true}
 itertools = "0.14.0"
 byteorder = "1.5.0"
+
+[[bench]]
+name = "circuit_bootstrapping"
+harness = false

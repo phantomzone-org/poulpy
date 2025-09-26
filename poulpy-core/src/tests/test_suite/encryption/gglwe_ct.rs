@@ -3,7 +3,7 @@ use poulpy_hal::{
         ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare,
         VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace,
         VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxCopy, VecZnxDftAllocBytes, VecZnxDftApply, VecZnxFillUniform,
-        VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubABInplace,
+        VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubInplace,
         VecZnxSubScalarInplace, VecZnxSwitchRing, VmpPMatAlloc, VmpPrepare,
     },
     layouts::{Backend, Module, ScratchOwned},
@@ -17,7 +17,7 @@ use poulpy_hal::{
 use crate::{
     encryption::SIGMA,
     layouts::{
-        GGLWESwitchingKey, GLWESecret,
+        GGLWECiphertextLayout, GGLWESwitchingKey, GLWESecret,
         compressed::{Decompress, GGLWESwitchingKeyCompressed},
         prepared::{GLWESecretPrepared, PrepareAlloc},
     },
@@ -32,7 +32,7 @@ where
         + VecZnxIdftApplyConsume<B>
         + VecZnxNormalizeTmpBytes
         + VecZnxFillUniform
-        + VecZnxSubABInplace
+        + VecZnxSubInplace
         + VecZnxAddInplace
         + VecZnxNormalizeInplace<B>
         + VecZnxAddNormal
@@ -62,29 +62,40 @@ where
         + VecZnxBigAllocBytesImpl<B>
         + TakeSvpPPolImpl<B>,
 {
-    let basek: usize = 12;
+    let base2k: usize = 12;
     let k_ksk: usize = 54;
-    let digits: usize = k_ksk / basek;
-    (1..3).for_each(|rank_in| {
-        (1..3).for_each(|rank_out| {
-            (1..digits + 1).for_each(|di| {
+    let digits: usize = k_ksk / base2k;
+    for rank_in in 1_usize..3 {
+        for rank_out in 1_usize..3 {
+            for di in 1_usize..digits + 1 {
                 let n: usize = module.n();
-                let rows: usize = (k_ksk - di * basek) / (di * basek);
+                let rows: usize = (k_ksk - di * base2k) / (di * base2k);
 
-                let mut ksk: GGLWESwitchingKey<Vec<u8>> = GGLWESwitchingKey::alloc(n, basek, k_ksk, rows, di, rank_in, rank_out);
+                let gglwe_infos: GGLWECiphertextLayout = GGLWECiphertextLayout {
+                    n: n.into(),
+                    base2k: base2k.into(),
+                    k: k_ksk.into(),
+                    rows: rows.into(),
+                    digits: di.into(),
+                    rank_in: rank_in.into(),
+                    rank_out: rank_out.into(),
+                };
+
+                let mut ksk: GGLWESwitchingKey<Vec<u8>> = GGLWESwitchingKey::alloc(&gglwe_infos);
 
                 let mut source_xs: Source = Source::new([0u8; 32]);
                 let mut source_xe: Source = Source::new([0u8; 32]);
                 let mut source_xa: Source = Source::new([0u8; 32]);
 
                 let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GGLWESwitchingKey::encrypt_sk_scratch_space(
-                    module, basek, k_ksk, rank_in, rank_out,
+                    module,
+                    &gglwe_infos,
                 ));
 
-                let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank_in);
+                let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc_with(n.into(), rank_in.into());
                 sk_in.fill_ternary_prob(0.5, &mut source_xs);
 
-                let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank_out);
+                let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc_with(n.into(), rank_out.into());
                 sk_out.fill_ternary_prob(0.5, &mut source_xs);
                 let sk_out_prepared: GLWESecretPrepared<Vec<u8>, B> = sk_out.prepare_alloc(module, scratch.borrow());
 
@@ -99,9 +110,9 @@ where
 
                 ksk.key
                     .assert_noise(module, &sk_out_prepared, &sk_in.data, SIGMA);
-            });
-        });
-    });
+            }
+        }
+    }
 }
 
 pub fn test_gglwe_switching_key_compressed_encrypt_sk<B>(module: &Module<B>)
@@ -113,7 +124,7 @@ where
         + VecZnxIdftApplyConsume<B>
         + VecZnxNormalizeTmpBytes
         + VecZnxFillUniform
-        + VecZnxSubABInplace
+        + VecZnxSubInplace
         + VecZnxAddInplace
         + VecZnxNormalizeInplace<B>
         + VecZnxAddNormal
@@ -143,29 +154,39 @@ where
         + VecZnxBigAllocBytesImpl<B>
         + TakeSvpPPolImpl<B>,
 {
-    let basek: usize = 12;
+    let base2k: usize = 12;
     let k_ksk: usize = 54;
-    let digits: usize = k_ksk / basek;
-    (1..3).for_each(|rank_in| {
-        (1..3).for_each(|rank_out| {
-            (1..digits + 1).for_each(|di| {
+    let digits: usize = k_ksk / base2k;
+    for rank_in in 1_usize..3 {
+        for rank_out in 1_usize..3 {
+            for di in 1_usize..digits + 1 {
                 let n: usize = module.n();
-                let rows: usize = (k_ksk - di * basek) / (di * basek);
+                let rows: usize = (k_ksk - di * base2k) / (di * base2k);
 
-                let mut ksk_compressed: GGLWESwitchingKeyCompressed<Vec<u8>> =
-                    GGLWESwitchingKeyCompressed::alloc(n, basek, k_ksk, rows, di, rank_in, rank_out);
+                let gglwe_infos: GGLWECiphertextLayout = GGLWECiphertextLayout {
+                    n: n.into(),
+                    base2k: base2k.into(),
+                    k: k_ksk.into(),
+                    rows: rows.into(),
+                    digits: di.into(),
+                    rank_in: rank_in.into(),
+                    rank_out: rank_out.into(),
+                };
+
+                let mut ksk_compressed: GGLWESwitchingKeyCompressed<Vec<u8>> = GGLWESwitchingKeyCompressed::alloc(&gglwe_infos);
 
                 let mut source_xs: Source = Source::new([0u8; 32]);
                 let mut source_xe: Source = Source::new([0u8; 32]);
 
                 let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GGLWESwitchingKeyCompressed::encrypt_sk_scratch_space(
-                    module, basek, k_ksk, rank_in, rank_out,
+                    module,
+                    &gglwe_infos,
                 ));
 
-                let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank_in);
+                let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc_with(n.into(), rank_in.into());
                 sk_in.fill_ternary_prob(0.5, &mut source_xs);
 
-                let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank_out);
+                let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc_with(n.into(), rank_out.into());
                 sk_out.fill_ternary_prob(0.5, &mut source_xs);
                 let sk_out_prepared: GLWESecretPrepared<Vec<u8>, B> = sk_out.prepare_alloc(module, scratch.borrow());
 
@@ -180,12 +201,12 @@ where
                     scratch.borrow(),
                 );
 
-                let mut ksk: GGLWESwitchingKey<Vec<u8>> = GGLWESwitchingKey::alloc(n, basek, k_ksk, rows, di, rank_in, rank_out);
+                let mut ksk: GGLWESwitchingKey<Vec<u8>> = GGLWESwitchingKey::alloc(&gglwe_infos);
                 ksk.decompress(module, &ksk_compressed);
 
                 ksk.key
                     .assert_noise(module, &sk_out_prepared, &sk_in.data, SIGMA);
-            });
-        });
-    });
+            }
+        }
+    }
 }

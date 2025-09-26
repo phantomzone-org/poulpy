@@ -98,10 +98,3 @@ pub trait TakeMatZnx {
         size: usize,
     ) -> (MatZnx<&mut [u8]>, &mut Self);
 }
-
-/// Take a slice of bytes from a [Scratch], wraps it into the template's type and returns it
-/// as well as a new [Scratch] minus the taken array of bytes.
-pub trait TakeLike<'a, B: Backend, T> {
-    type Output;
-    fn take_like(&'a mut self, template: &T) -> (Self::Output, &'a mut Self);
-}

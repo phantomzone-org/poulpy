@@ -9,16 +9,25 @@ pub trait VecZnxNormalizeTmpBytes {
 }
 
 pub trait VecZnxNormalize<B: Backend> {
+    #[allow(clippy::too_many_arguments)]
     /// Normalizes the selected column of `a` and stores the result into the selected column of `res`.
-    fn vec_znx_normalize<R, A>(&self, basek: usize, res: &mut R, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch<B>)
-    where
+    fn vec_znx_normalize<R, A>(
+        &self,
+        res_basek: usize,
+        res: &mut R,
+        res_col: usize,
+        a_basek: usize,
+        a: &A,
+        a_col: usize,
+        scratch: &mut Scratch<B>,
+    ) where
         R: VecZnxToMut,
         A: VecZnxToRef;
 }
 
 pub trait VecZnxNormalizeInplace<B: Backend> {
     /// Normalizes the selected column of `a`.
-    fn vec_znx_normalize_inplace<A>(&self, basek: usize, a: &mut A, a_col: usize, scratch: &mut Scratch<B>)
+    fn vec_znx_normalize_inplace<A>(&self, base2k: usize, a: &mut A, a_col: usize, scratch: &mut Scratch<B>)
     where
         A: VecZnxToMut;
 }
@@ -67,21 +76,21 @@ pub trait VecZnxSub {
         B: VecZnxToRef;
 }
 
-pub trait VecZnxSubABInplace {
+pub trait VecZnxSubInplace {
     /// Subtracts the selected column of `a` from the selected column of `res` inplace.
     ///
     /// res\[res_col\] -= a\[a_col\]
-    fn vec_znx_sub_ab_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn vec_znx_sub_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxToMut,
         A: VecZnxToRef;
 }
 
-pub trait VecZnxSubBAInplace {
+pub trait VecZnxSubNegateInplace {
     /// Subtracts the selected column of `res` from the selected column of `a` and inplace mutates `res`
     ///
     /// res\[res_col\] = a\[a_col\] - res\[res_col\]
-    fn vec_znx_sub_ba_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn vec_znx_sub_negate_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxToMut,
         A: VecZnxToRef;
@@ -127,8 +136,16 @@ pub trait VecZnxLshTmpBytes {
 pub trait VecZnxLsh<B: Backend> {
     /// Left shift by k bits all columns of `a`.
     #[allow(clippy::too_many_arguments)]
-    fn vec_znx_lsh<R, A>(&self, basek: usize, k: usize, r: &mut R, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch<B>)
-    where
+    fn vec_znx_lsh<R, A>(
+        &self,
+        base2k: usize,
+        k: usize,
+        r: &mut R,
+        res_col: usize,
+        a: &A,
+        a_col: usize,
+        scratch: &mut Scratch<B>,
+    ) where
         R: VecZnxToMut,
         A: VecZnxToRef;
 }
@@ -140,22 +157,30 @@ pub trait VecZnxRshTmpBytes {
 pub trait VecZnxRsh<B: Backend> {
     /// Right shift by k bits all columns of `a`.
     #[allow(clippy::too_many_arguments)]
-    fn vec_znx_rsh<R, A>(&self, basek: usize, k: usize, r: &mut R, res_col: usize, a: &A, a_col: usize, scratch: &mut Scratch<B>)
-    where
+    fn vec_znx_rsh<R, A>(
+        &self,
+        base2k: usize,
+        k: usize,
+        r: &mut R,
+        res_col: usize,
+        a: &A,
+        a_col: usize,
+        scratch: &mut Scratch<B>,
+    ) where
         R: VecZnxToMut,
         A: VecZnxToRef;
 }
 
 pub trait VecZnxLshInplace<B: Backend> {
     /// Left shift by k bits all columns of `a`.
-    fn vec_znx_lsh_inplace<A>(&self, basek: usize, k: usize, a: &mut A, a_col: usize, scratch: &mut Scratch<B>)
+    fn vec_znx_lsh_inplace<A>(&self, base2k: usize, k: usize, a: &mut A, a_col: usize, scratch: &mut Scratch<B>)
     where
         A: VecZnxToMut;
 }
 
 pub trait VecZnxRshInplace<B: Backend> {
     /// Right shift by k bits all columns of `a`.
-    fn vec_znx_rsh_inplace<A>(&self, basek: usize, k: usize, a: &mut A, a_col: usize, scratch: &mut Scratch<B>)
+    fn vec_znx_rsh_inplace<A>(&self, base2k: usize, k: usize, a: &mut A, a_col: usize, scratch: &mut Scratch<B>)
     where
         A: VecZnxToMut;
 }
@@ -264,8 +289,8 @@ pub trait VecZnxCopy {
 }
 
 pub trait VecZnxFillUniform {
-    /// Fills the first `size` size with uniform values in \[-2^{basek-1}, 2^{basek-1}\]
-    fn vec_znx_fill_uniform<R>(&self, basek: usize, res: &mut R, res_col: usize, source: &mut Source)
+    /// Fills the first `size` size with uniform values in \[-2^{base2k-1}, 2^{base2k-1}\]
+    fn vec_znx_fill_uniform<R>(&self, base2k: usize, res: &mut R, res_col: usize, source: &mut Source)
     where
         R: VecZnxToMut;
 }
@@ -274,7 +299,7 @@ pub trait VecZnxFillUniform {
 pub trait VecZnxFillNormal {
     fn vec_znx_fill_normal<R>(
         &self,
-        basek: usize,
+        base2k: usize,
         res: &mut R,
         res_col: usize,
         k: usize,
@@ -290,7 +315,7 @@ pub trait VecZnxAddNormal {
     /// Adds a discrete normal vector scaled by 2^{-k} with the provided standard deviation and bounded to \[-bound, bound\].
     fn vec_znx_add_normal<R>(
         &self,
-        basek: usize,
+        base2k: usize,
         res: &mut R,
         res_col: usize,
         k: usize,

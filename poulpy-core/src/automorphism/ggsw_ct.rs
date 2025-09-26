@@ -1,67 +1,66 @@
 use poulpy_hal::{
     api::{
-        ScratchAvailable, TakeVecZnxBig, TakeVecZnxDft, VecZnxAutomorphismInplace, VecZnxBigAddSmallInplace, VecZnxBigAllocBytes,
-        VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxDftAddInplace, VecZnxDftAllocBytes, VecZnxDftApply, VecZnxDftCopy,
-        VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA, VecZnxNormalizeTmpBytes, VmpApplyDftToDft, VmpApplyDftToDftAdd,
-        VmpApplyDftToDftTmpBytes,
+        ScratchAvailable, TakeVecZnx, TakeVecZnxBig, TakeVecZnxDft, VecZnxAutomorphismInplace, VecZnxBigAddSmallInplace,
+        VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxDftAddInplace, VecZnxDftAllocBytes,
+        VecZnxDftApply, VecZnxDftCopy, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA, VecZnxNormalize, VecZnxNormalizeTmpBytes,
+        VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
 };
 
 use crate::layouts::{
-    GGSWCiphertext, GLWECiphertext, Infos,
+    GGLWELayoutInfos, GGSWCiphertext, GGSWInfos, GLWECiphertext,
     prepared::{GGLWEAutomorphismKeyPrepared, GGLWETensorKeyPrepared},
 };
 
 impl GGSWCiphertext<Vec<u8>> {
-    #[allow(clippy::too_many_arguments)]
-    pub fn automorphism_scratch_space<B: Backend>(
+    pub fn automorphism_scratch_space<B: Backend, OUT, IN, KEY, TSK>(
         module: &Module<B>,
-        basek: usize,
-        k_out: usize,
-        k_in: usize,
-        k_ksk: usize,
-        digits_ksk: usize,
-        k_tsk: usize,
-        digits_tsk: usize,
-        rank: usize,
+        out_infos: &OUT,
+        in_infos: &IN,
+        key_infos: &KEY,
+        tsk_infos: &TSK,
     ) -> usize
     where
+        OUT: GGSWInfos,
+        IN: GGSWInfos,
+        KEY: GGLWELayoutInfos,
+        TSK: GGLWELayoutInfos,
         Module<B>: VecZnxDftAllocBytes
             + VmpApplyDftToDftTmpBytes
             + VecZnxBigAllocBytes
             + VecZnxNormalizeTmpBytes
             + VecZnxBigNormalizeTmpBytes,
     {
-        let out_size: usize = k_out.div_ceil(basek);
-        let ci_dft: usize = module.vec_znx_dft_alloc_bytes(rank + 1, out_size);
-        let ks_internal: usize =
-            GLWECiphertext::keyswitch_scratch_space(module, basek, k_out, k_in, k_ksk, digits_ksk, rank, rank);
-        let expand: usize = GGSWCiphertext::expand_row_scratch_space(module, basek, k_out, k_tsk, digits_tsk, rank);
+        let out_size: usize = out_infos.size();
+        let ci_dft: usize = module.vec_znx_dft_alloc_bytes((key_infos.rank_out() + 1).into(), out_size);
+        let ks_internal: usize = GLWECiphertext::keyswitch_scratch_space(
+            module,
+            &out_infos.glwe_layout(),
+            &in_infos.glwe_layout(),
+            key_infos,
+        );
+        let expand: usize = GGSWCiphertext::expand_row_scratch_space(module, out_infos, tsk_infos);
         ci_dft + (ks_internal | expand)
     }
 
-    #[allow(clippy::too_many_arguments)]
-    pub fn automorphism_inplace_scratch_space<B: Backend>(
+    pub fn automorphism_inplace_scratch_space<B: Backend, OUT, KEY, TSK>(
         module: &Module<B>,
-        basek: usize,
-        k_out: usize,
-        k_ksk: usize,
-        digits_ksk: usize,
-        k_tsk: usize,
-        digits_tsk: usize,
-        rank: usize,
+        out_infos: &OUT,
+        key_infos: &KEY,
+        tsk_infos: &TSK,
     ) -> usize
     where
+        OUT: GGSWInfos,
+        KEY: GGLWELayoutInfos,
+        TSK: GGLWELayoutInfos,
         Module<B>: VecZnxDftAllocBytes
             + VmpApplyDftToDftTmpBytes
             + VecZnxBigAllocBytes
             + VecZnxNormalizeTmpBytes
             + VecZnxBigNormalizeTmpBytes,
     {
-        GGSWCiphertext::automorphism_scratch_space(
-            module, basek, k_out, k_out, k_ksk, digits_ksk, k_tsk, digits_tsk, rank,
-        )
+        GGSWCiphertext::automorphism_scratch_space(module, out_infos, out_infos, key_infos, tsk_infos)
     }
 }
 
@@ -88,13 +87,18 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
             + VecZnxNormalizeTmpBytes
             + VecZnxDftCopy<B>
             + VecZnxDftAddInplace<B>
-            + VecZnxIdftApplyTmpA<B>,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnxBig<B>,
+            + VecZnxIdftApplyTmpA<B>
+            + VecZnxNormalize<B>,
+        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnxBig<B> + TakeVecZnx,
     {
         #[cfg(debug_assertions)]
         {
-            assert_eq!(self.n(), auto_key.n());
-            assert_eq!(lhs.n(), auto_key.n());
+            use crate::layouts::{GLWEInfos, LWEInfos};
+
+            assert_eq!(self.n(), module.n() as u32);
+            assert_eq!(lhs.n(), module.n() as u32);
+            assert_eq!(auto_key.n(), module.n() as u32);
+            assert_eq!(tensor_key.n(), module.n() as u32);
 
             assert_eq!(
                 self.rank(),
@@ -105,36 +109,23 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
             );
             assert_eq!(
                 self.rank(),
-                auto_key.rank(),
+                auto_key.rank_out(),
                 "ggsw_in rank: {} != auto_key rank: {}",
                 self.rank(),
-                auto_key.rank()
+                auto_key.rank_out()
             );
             assert_eq!(
                 self.rank(),
-                tensor_key.rank(),
+                tensor_key.rank_out(),
                 "ggsw_in rank: {} != tensor_key rank: {}",
                 self.rank(),
-                tensor_key.rank()
+                tensor_key.rank_out()
             );
-            assert!(
-                scratch.available()
-                    >= GGSWCiphertext::automorphism_scratch_space(
-                        module,
-                        self.basek(),
-                        self.k(),
-                        lhs.k(),
-                        auto_key.k(),
-                        auto_key.digits(),
-                        tensor_key.k(),
-                        tensor_key.digits(),
-                        self.rank(),
-                    )
-            )
+            assert!(scratch.available() >= GGSWCiphertext::automorphism_scratch_space(module, self, lhs, auto_key, tensor_key))
         };
 
         // Keyswitch the j-th row of the col 0
-        (0..lhs.rows()).for_each(|row_i| {
+        (0..lhs.rows().into()).for_each(|row_i| {
             // Key-switch column 0, i.e.
             // col 0: (-(a0s0 + a1s1 + a2s2) + M[i], a0, a1, a2) -> (-(a0pi^-1(s0) + a1pi^-1(s1) + a2pi^-1(s2)) + M[i], a0, a1, a2)
             self.at_mut(row_i, 0)
@@ -164,11 +155,12 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
             + VecZnxNormalizeTmpBytes
             + VecZnxDftCopy<B>
             + VecZnxDftAddInplace<B>
-            + VecZnxIdftApplyTmpA<B>,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnxBig<B>,
+            + VecZnxIdftApplyTmpA<B>
+            + VecZnxNormalize<B>,
+        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnxBig<B> + TakeVecZnx,
     {
         // Keyswitch the j-th row of the col 0
-        (0..self.rows()).for_each(|row_i| {
+        (0..self.rows().into()).for_each(|row_i| {
             // Key-switch column 0, i.e.
             // col 0: (-(a0s0 + a1s1 + a2s2) + M[i], a0, a1, a2) -> (-(a0pi^-1(s0) + a1pi^-1(s1) + a2pi^-1(s2)) + M[i], a0, a1, a2)
             self.at_mut(row_i, 0)

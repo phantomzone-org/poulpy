@@ -3,7 +3,39 @@ use poulpy_hal::{
     source::Source,
 };
 
-use crate::dist::Distribution;
+use crate::{
+    dist::Distribution,
+    layouts::{Base2K, Degree, GLWEInfos, LWEInfos, Rank, TorusPrecision},
+};
+
+#[derive(PartialEq, Eq, Copy, Clone, Debug)]
+pub struct GLWESecretLayout {
+    pub n: Degree,
+    pub rank: Rank,
+}
+
+impl LWEInfos for GLWESecretLayout {
+    fn base2k(&self) -> Base2K {
+        Base2K(0)
+    }
+
+    fn k(&self) -> TorusPrecision {
+        TorusPrecision(0)
+    }
+
+    fn n(&self) -> Degree {
+        self.n
+    }
+
+    fn size(&self) -> usize {
+        1
+    }
+}
+impl GLWEInfos for GLWESecretLayout {
+    fn rank(&self) -> Rank {
+        self.rank
+    }
+}
 
 #[derive(PartialEq, Eq, Clone)]
 pub struct GLWESecret<D: Data> {
@@ -11,64 +43,88 @@ pub struct GLWESecret<D: Data> {
     pub(crate) dist: Distribution,
 }
 
+impl<D: Data> LWEInfos for GLWESecret<D> {
+    fn base2k(&self) -> Base2K {
+        Base2K(0)
+    }
+
+    fn k(&self) -> TorusPrecision {
+        TorusPrecision(0)
+    }
+
+    fn n(&self) -> Degree {
+        Degree(self.data.n() as u32)
+    }
+
+    fn size(&self) -> usize {
+        1
+    }
+}
+
+impl<D: Data> GLWEInfos for GLWESecret<D> {
+    fn rank(&self) -> Rank {
+        Rank(self.data.cols() as u32)
+    }
+}
+
 impl GLWESecret<Vec<u8>> {
-    pub fn alloc(n: usize, rank: usize) -> Self {
+    pub fn alloc<A>(infos: &A) -> Self
+    where
+        A: GLWEInfos,
+    {
+        Self::alloc_with(infos.n(), infos.rank())
+    }
+
+    pub fn alloc_with(n: Degree, rank: Rank) -> Self {
         Self {
-            data: ScalarZnx::alloc(n, rank),
+            data: ScalarZnx::alloc(n.into(), rank.into()),
             dist: Distribution::NONE,
         }
     }
 
-    pub fn bytes_of(n: usize, rank: usize) -> usize {
-        ScalarZnx::alloc_bytes(n, rank)
-    }
-}
-
-impl<D: Data> GLWESecret<D> {
-    pub fn n(&self) -> usize {
-        self.data.n()
+    pub fn alloc_bytes<A>(infos: &A) -> usize
+    where
+        A: GLWEInfos,
+    {
+        Self::alloc_bytes_with(infos.n(), infos.rank())
     }
 
-    pub fn log_n(&self) -> usize {
-        self.data.log_n()
-    }
-
-    pub fn rank(&self) -> usize {
-        self.data.cols()
+    pub fn alloc_bytes_with(n: Degree, rank: Rank) -> usize {
+        ScalarZnx::alloc_bytes(n.into(), rank.into())
     }
 }
 
 impl<D: DataMut> GLWESecret<D> {
     pub fn fill_ternary_prob(&mut self, prob: f64, source: &mut Source) {
-        (0..self.rank()).for_each(|i| {
+        (0..self.rank().into()).for_each(|i| {
             self.data.fill_ternary_prob(i, prob, source);
         });
         self.dist = Distribution::TernaryProb(prob);
     }
 
     pub fn fill_ternary_hw(&mut self, hw: usize, source: &mut Source) {
-        (0..self.rank()).for_each(|i| {
+        (0..self.rank().into()).for_each(|i| {
             self.data.fill_ternary_hw(i, hw, source);
         });
         self.dist = Distribution::TernaryFixed(hw);
     }
 
     pub fn fill_binary_prob(&mut self, prob: f64, source: &mut Source) {
-        (0..self.rank()).for_each(|i| {
+        (0..self.rank().into()).for_each(|i| {
             self.data.fill_binary_prob(i, prob, source);
         });
         self.dist = Distribution::BinaryProb(prob);
     }
 
     pub fn fill_binary_hw(&mut self, hw: usize, source: &mut Source) {
-        (0..self.rank()).for_each(|i| {
+        (0..self.rank().into()).for_each(|i| {
             self.data.fill_binary_hw(i, hw, source);
         });
         self.dist = Distribution::BinaryFixed(hw);
     }
 
     pub fn fill_binary_block(&mut self, block_size: usize, source: &mut Source) {
-        (0..self.rank()).for_each(|i| {
+        (0..self.rank().into()).for_each(|i| {
             self.data.fill_binary_block(i, block_size, source);
         });
         self.dist = Distribution::BinaryBlock(block_size);

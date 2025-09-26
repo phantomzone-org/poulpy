@@ -3,7 +3,7 @@ use poulpy_hal::{
         ScratchAvailable, SvpApplyDftToDftInplace, SvpPPolAllocBytes, SvpPrepare, TakeScalarZnx, TakeVecZnx, TakeVecZnxDft,
         VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxAutomorphismInplace, VecZnxBigNormalize,
         VecZnxDftAllocBytes, VecZnxDftApply, VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeInplace,
-        VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubABInplace, VecZnxSwitchRing,
+        VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubInplace, VecZnxSwitchRing,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch, ZnxView, ZnxViewMut, ZnxZero},
     source::Source,
@@ -11,17 +11,21 @@ use poulpy_hal::{
 
 use crate::{
     TakeGLWESecret, TakeGLWESecretPrepared,
-    layouts::{GGLWESwitchingKey, GLWESecret, GLWEToLWESwitchingKey, LWESecret, prepared::GLWESecretPrepared},
+    layouts::{
+        GGLWELayoutInfos, GGLWESwitchingKey, GLWESecret, GLWEToLWESwitchingKey, LWEInfos, LWESecret, Rank,
+        prepared::GLWESecretPrepared,
+    },
 };
 
 impl GLWEToLWESwitchingKey<Vec<u8>> {
-    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank_in: usize) -> usize
+    pub fn encrypt_sk_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
+        A: GGLWELayoutInfos,
         Module<B>: SvpPPolAllocBytes + VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes + VecZnxNormalizeTmpBytes,
     {
-        GLWESecretPrepared::bytes_of(module, rank_in)
-            + (GGLWESwitchingKey::encrypt_sk_scratch_space(module, basek, k, rank_in, 1)
-                | GLWESecret::bytes_of(module.n(), rank_in))
+        GLWESecretPrepared::alloc_bytes_with(module, infos.rank_in())
+            + (GGLWESwitchingKey::encrypt_sk_scratch_space(module, infos)
+                | GLWESecret::alloc_bytes_with(infos.n(), infos.rank_in()))
     }
 }
 
@@ -47,7 +51,7 @@ impl<D: DataMut> GLWEToLWESwitchingKey<D> {
             + VecZnxIdftApplyConsume<B>
             + VecZnxNormalizeTmpBytes
             + VecZnxFillUniform
-            + VecZnxSubABInplace
+            + VecZnxSubInplace
             + VecZnxAddInplace
             + VecZnxNormalizeInplace<B>
             + VecZnxAddNormal
@@ -60,12 +64,12 @@ impl<D: DataMut> GLWEToLWESwitchingKey<D> {
     {
         #[cfg(debug_assertions)]
         {
-            assert!(sk_lwe.n() <= module.n());
+            assert!(sk_lwe.n().0 <= module.n() as u32);
         }
 
-        let (mut sk_lwe_as_glwe, scratch_1) = scratch.take_glwe_secret(sk_glwe.n(), 1);
+        let (mut sk_lwe_as_glwe, scratch_1) = scratch.take_glwe_secret(sk_glwe.n(), Rank(1));
         sk_lwe_as_glwe.data.zero();
-        sk_lwe_as_glwe.data.at_mut(0, 0)[..sk_lwe.n()].copy_from_slice(sk_lwe.data.at(0, 0));
+        sk_lwe_as_glwe.data.at_mut(0, 0)[..sk_lwe.n().into()].copy_from_slice(sk_lwe.data.at(0, 0));
         module.vec_znx_automorphism_inplace(-1, &mut sk_lwe_as_glwe.data.as_vec_znx_mut(), 0, scratch_1);
 
         self.0.encrypt_sk(

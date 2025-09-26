@@ -1,46 +1,40 @@
 use poulpy_hal::{
     api::{
-        ScratchAvailable, TakeVecZnxDft, VecZnxBigAddSmallInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
-        VecZnxDftAllocBytes, VecZnxDftApply, VecZnxIdftApplyConsume, VmpApplyDftToDft, VmpApplyDftToDftAdd,
-        VmpApplyDftToDftTmpBytes,
+        ScratchAvailable, TakeVecZnx, TakeVecZnxDft, VecZnxBigAddSmallInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
+        VecZnxDftAllocBytes, VecZnxDftApply, VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeTmpBytes, VmpApplyDftToDft,
+        VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch, ZnxZero},
 };
 
 use crate::layouts::{
-    GGLWEAutomorphismKey, GGLWESwitchingKey, GLWECiphertext, Infos,
+    GGLWEAutomorphismKey, GGLWELayoutInfos, GGLWESwitchingKey, GLWECiphertext, GLWEInfos,
     prepared::{GGLWEAutomorphismKeyPrepared, GGLWESwitchingKeyPrepared},
 };
 
 impl GGLWEAutomorphismKey<Vec<u8>> {
-    #[allow(clippy::too_many_arguments)]
-    pub fn keyswitch_scratch_space<B: Backend>(
+    pub fn keyswitch_scratch_space<B: Backend, OUT, IN, KEY>(
         module: &Module<B>,
-        basek: usize,
-        k_out: usize,
-        k_in: usize,
-        k_ksk: usize,
-        digits: usize,
-        rank: usize,
+        out_infos: &OUT,
+        in_infos: &IN,
+        key_infos: &KEY,
     ) -> usize
     where
-        Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes,
+        OUT: GGLWELayoutInfos,
+        IN: GGLWELayoutInfos,
+        KEY: GGLWELayoutInfos,
+        Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        GGLWESwitchingKey::keyswitch_scratch_space(module, basek, k_out, k_in, k_ksk, digits, rank, rank)
+        GGLWESwitchingKey::keyswitch_scratch_space(module, out_infos, in_infos, key_infos)
     }
 
-    pub fn keyswitch_inplace_scratch_space<B: Backend>(
-        module: &Module<B>,
-        basek: usize,
-        k_out: usize,
-        k_ksk: usize,
-        digits: usize,
-        rank: usize,
-    ) -> usize
+    pub fn keyswitch_inplace_scratch_space<B: Backend, OUT, KEY>(module: &Module<B>, out_infos: &OUT, key_infos: &KEY) -> usize
     where
-        Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes,
+        OUT: GGLWELayoutInfos,
+        KEY: GGLWELayoutInfos,
+        Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        GGLWESwitchingKey::keyswitch_inplace_scratch_space(module, basek, k_out, k_ksk, digits, rank)
+        GGLWESwitchingKey::keyswitch_inplace_scratch_space(module, out_infos, key_infos)
     }
 }
 
@@ -60,8 +54,10 @@ impl<DataSelf: DataMut> GGLWEAutomorphismKey<DataSelf> {
             + VecZnxDftApply<B>
             + VecZnxIdftApplyConsume<B>
             + VecZnxBigAddSmallInplace<B>
-            + VecZnxBigNormalize<B>,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
+            + VecZnxBigNormalize<B>
+            + VecZnxNormalize<B>
+            + VecZnxNormalizeTmpBytes,
+        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
     {
         self.key.keyswitch(module, &lhs.key, rhs, scratch);
     }
@@ -80,43 +76,38 @@ impl<DataSelf: DataMut> GGLWEAutomorphismKey<DataSelf> {
             + VecZnxDftApply<B>
             + VecZnxIdftApplyConsume<B>
             + VecZnxBigAddSmallInplace<B>
-            + VecZnxBigNormalize<B>,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
+            + VecZnxBigNormalize<B>
+            + VecZnxNormalize<B>
+            + VecZnxNormalizeTmpBytes,
+        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
     {
         self.key.keyswitch_inplace(module, &rhs.key, scratch);
     }
 }
 
 impl GGLWESwitchingKey<Vec<u8>> {
-    #[allow(clippy::too_many_arguments)]
-    pub fn keyswitch_scratch_space<B: Backend>(
+    pub fn keyswitch_scratch_space<B: Backend, OUT, IN, KEY>(
         module: &Module<B>,
-        basek: usize,
-        k_out: usize,
-        k_in: usize,
-        k_ksk: usize,
-        digits: usize,
-        rank_in: usize,
-        rank_out: usize,
+        out_infos: &OUT,
+        in_infos: &IN,
+        key_apply: &KEY,
     ) -> usize
     where
-        Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes,
+        OUT: GGLWELayoutInfos,
+        IN: GGLWELayoutInfos,
+        KEY: GGLWELayoutInfos,
+        Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        GLWECiphertext::keyswitch_scratch_space(module, basek, k_out, k_in, k_ksk, digits, rank_in, rank_out)
+        GLWECiphertext::keyswitch_scratch_space(module, out_infos, in_infos, key_apply)
     }
 
-    pub fn keyswitch_inplace_scratch_space<B: Backend>(
-        module: &Module<B>,
-        basek: usize,
-        k_out: usize,
-        k_ksk: usize,
-        digits: usize,
-        rank: usize,
-    ) -> usize
+    pub fn keyswitch_inplace_scratch_space<B: Backend, OUT, KEY>(module: &Module<B>, out_infos: &OUT, key_apply: &KEY) -> usize
     where
-        Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes,
+        OUT: GGLWELayoutInfos + GLWEInfos,
+        KEY: GGLWELayoutInfos + GLWEInfos,
+        Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        GLWECiphertext::keyswitch_inplace_scratch_space(module, basek, k_out, k_ksk, digits, rank)
+        GLWECiphertext::keyswitch_inplace_scratch_space(module, out_infos, key_apply)
     }
 }
 
@@ -136,8 +127,10 @@ impl<DataSelf: DataMut> GGLWESwitchingKey<DataSelf> {
             + VecZnxDftApply<B>
             + VecZnxIdftApplyConsume<B>
             + VecZnxBigAddSmallInplace<B>
-            + VecZnxBigNormalize<B>,
-        Scratch<B>: ScratchAvailable + TakeVecZnxDft<B>,
+            + VecZnxBigNormalize<B>
+            + VecZnxNormalize<B>
+            + VecZnxNormalizeTmpBytes,
+        Scratch<B>: ScratchAvailable + TakeVecZnxDft<B> + TakeVecZnx,
     {
         #[cfg(debug_assertions)]
         {
@@ -168,17 +161,24 @@ impl<DataSelf: DataMut> GGLWESwitchingKey<DataSelf> {
                 self.rows(),
                 lhs.rows()
             );
+            assert_eq!(
+                self.digits(),
+                lhs.digits(),
+                "ksk_out digits: {} != ksk_in digits: {}",
+                self.digits(),
+                lhs.digits()
+            )
         }
 
-        (0..self.rank_in()).for_each(|col_i| {
-            (0..self.rows()).for_each(|row_j| {
+        (0..self.rank_in().into()).for_each(|col_i| {
+            (0..self.rows().into()).for_each(|row_j| {
                 self.at_mut(row_j, col_i)
                     .keyswitch(module, &lhs.at(row_j, col_i), rhs, scratch);
             });
         });
 
-        (self.rows().min(lhs.rows())..self.rows()).for_each(|row_i| {
-            (0..self.rank_in()).for_each(|col_j| {
+        (self.rows().min(lhs.rows()).into()..self.rows().into()).for_each(|row_i| {
+            (0..self.rank_in().into()).for_each(|col_j| {
                 self.at_mut(row_i, col_j).data.zero();
             });
         });
@@ -198,8 +198,10 @@ impl<DataSelf: DataMut> GGLWESwitchingKey<DataSelf> {
             + VecZnxDftApply<B>
             + VecZnxIdftApplyConsume<B>
             + VecZnxBigAddSmallInplace<B>
-            + VecZnxBigNormalize<B>,
-        Scratch<B>: ScratchAvailable + TakeVecZnxDft<B>,
+            + VecZnxBigNormalize<B>
+            + VecZnxNormalize<B>
+            + VecZnxNormalizeTmpBytes,
+        Scratch<B>: ScratchAvailable + TakeVecZnxDft<B> + TakeVecZnx,
     {
         #[cfg(debug_assertions)]
         {
@@ -212,8 +214,8 @@ impl<DataSelf: DataMut> GGLWESwitchingKey<DataSelf> {
             );
         }
 
-        (0..self.rank_in()).for_each(|col_i| {
-            (0..self.rows()).for_each(|row_j| {
+        (0..self.rank_in().into()).for_each(|col_i| {
+            (0..self.rows().into()).for_each(|row_j| {
                 self.at_mut(row_j, col_i)
                     .keyswitch_inplace(module, rhs, scratch)
             });

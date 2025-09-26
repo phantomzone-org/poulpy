@@ -3,9 +3,9 @@ use poulpy_hal::{
         ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolAllocBytes,
         SvpPrepare, VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace,
         VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftAdd, VecZnxDftAddInplace,
-        VecZnxDftAllocBytes, VecZnxDftApply, VecZnxDftSubABInplace, VecZnxDftZero, VecZnxFillUniform, VecZnxIdftApply,
+        VecZnxDftAllocBytes, VecZnxDftApply, VecZnxDftSubInplace, VecZnxDftZero, VecZnxFillUniform, VecZnxIdftApply,
         VecZnxIdftApplyConsume, VecZnxIdftApplyTmpBytes, VecZnxMulXpMinusOneInplace, VecZnxNormalize, VecZnxNormalizeInplace,
-        VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace, VecZnxRotateInplaceTmpBytes, VecZnxSub, VecZnxSubABInplace,
+        VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace, VecZnxRotateInplaceTmpBytes, VecZnxSub, VecZnxSubInplace,
         VecZnxSwitchRing, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes, VmpPMatAlloc, VmpPrepare, ZnAddNormal,
         ZnFillUniform, ZnNormalizeInplace,
     },
@@ -18,12 +18,13 @@ use poulpy_hal::{
 };
 
 use crate::tfhe::blind_rotation::{
-    BlincRotationExecute, BlindRotationKey, BlindRotationKeyAlloc, BlindRotationKeyEncryptSk, BlindRotationKeyPrepared, CGGI,
-    LookUpTable, cggi_blind_rotate_scratch_space, mod_switch_2n,
+    BlincRotationExecute, BlindRotationKey, BlindRotationKeyAlloc, BlindRotationKeyEncryptSk, BlindRotationKeyLayout,
+    BlindRotationKeyPrepared, CGGI, LookUpTable, cggi_blind_rotate_scratch_space, mod_switch_2n,
 };
 
 use poulpy_core::layouts::{
-    GLWECiphertext, GLWEPlaintext, GLWESecret, Infos, LWECiphertext, LWECiphertextToRef, LWEPlaintext, LWESecret,
+    GLWECiphertext, GLWECiphertextLayout, GLWEPlaintext, GLWESecret, LWECiphertext, LWECiphertextLayout, LWECiphertextToRef,
+    LWEInfos, LWEPlaintext, LWESecret,
     prepared::{GLWESecretPrepared, PrepareAlloc},
 };
 
@@ -41,11 +42,11 @@ where
         + VecZnxDftApply<B>
         + VecZnxDftZero<B>
         + SvpApplyDftToDft<B>
-        + VecZnxDftSubABInplace<B>
+        + VecZnxDftSubInplace<B>
         + VecZnxBigAddSmallInplace<B>
         + VecZnxRotate
         + VecZnxAddInplace
-        + VecZnxSubABInplace
+        + VecZnxSubInplace
         + VecZnxNormalize<B>
         + VecZnxNormalizeInplace<B>
         + VecZnxCopy
@@ -83,16 +84,16 @@ where
         + TakeVecZnxImpl<B>
         + TakeVecZnxSliceImpl<B>,
 {
-    let n: usize = module.n();
-    let basek: usize = 19;
+    let n_glwe: usize = module.n();
+    let base2k: usize = 19;
     let k_lwe: usize = 24;
-    let k_brk: usize = 3 * basek;
+    let k_brk: usize = 3 * base2k;
     let rows_brk: usize = 2; // Ensures first limb is noise-free.
-    let k_lut: usize = basek;
-    let k_res: usize = 2 * basek;
+    let k_lut: usize = base2k;
+    let k_res: usize = 2 * base2k;
     let rank: usize = 1;
 
-    let log_message_modulus = 4;
+    let log_message_modulus: usize = 4;
 
     let message_modulus: usize = 1 << log_message_modulus;
 
@@ -100,30 +101,48 @@ where
     let mut source_xe: Source = Source::new([2u8; 32]);
     let mut source_xa: Source = Source::new([1u8; 32]);
 
+    let brk_infos: BlindRotationKeyLayout = BlindRotationKeyLayout {
+        n_glwe: n_glwe.into(),
+        n_lwe: n_lwe.into(),
+        base2k: base2k.into(),
+        k: k_brk.into(),
+        rows: rows_brk.into(),
+        rank: rank.into(),
+    };
+
+    let glwe_infos: GLWECiphertextLayout = GLWECiphertextLayout {
+        n: n_glwe.into(),
+        base2k: base2k.into(),
+        k: k_res.into(),
+        rank: rank.into(),
+    };
+
+    let lwe_infos: LWECiphertextLayout = LWECiphertextLayout {
+        n: n_lwe.into(),
+        k: k_lwe.into(),
+        base2k: base2k.into(),
+    };
+
     let mut scratch: ScratchOwned<B> = ScratchOwned::<B>::alloc(BlindRotationKey::generate_from_sk_scratch_space(
-        module, basek, k_brk, rank,
+        module, &brk_infos,
     ));
 
-    let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
+    let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc(&glwe_infos);
     sk_glwe.fill_ternary_prob(0.5, &mut source_xs);
     let sk_glwe_dft: GLWESecretPrepared<Vec<u8>, B> = sk_glwe.prepare_alloc(module, scratch.borrow());
 
-    let mut sk_lwe: LWESecret<Vec<u8>> = LWESecret::alloc(n_lwe);
+    let mut sk_lwe: LWESecret<Vec<u8>> = LWESecret::alloc(n_lwe.into());
     sk_lwe.fill_binary_block(block_size, &mut source_xs);
 
     let mut scratch_br: ScratchOwned<B> = ScratchOwned::<B>::alloc(cggi_blind_rotate_scratch_space(
         module,
         block_size,
         extension_factor,
-        basek,
-        k_res,
-        k_brk,
-        rows_brk,
-        rank,
+        &glwe_infos,
+        &brk_infos,
     ));
 
-    let mut brk: BlindRotationKey<Vec<u8>, CGGI> =
-        BlindRotationKey::<Vec<u8>, CGGI>::alloc(n, n_lwe, basek, k_brk, rows_brk, rank);
+    let mut brk: BlindRotationKey<Vec<u8>, CGGI> = BlindRotationKey::<Vec<u8>, CGGI>::alloc(&brk_infos);
 
     brk.encrypt_sk(
         module,
@@ -134,13 +153,13 @@ where
         scratch.borrow(),
     );
 
-    let mut lwe: LWECiphertext<Vec<u8>> = LWECiphertext::alloc(n_lwe, basek, k_lwe);
+    let mut lwe: LWECiphertext<Vec<u8>> = LWECiphertext::alloc(&lwe_infos);
 
-    let mut pt_lwe: LWEPlaintext<Vec<u8>> = LWEPlaintext::alloc(basek, k_lwe);
+    let mut pt_lwe: LWEPlaintext<Vec<u8>> = LWEPlaintext::alloc(&lwe_infos);
 
     let x: i64 = 15 % (message_modulus as i64);
 
-    pt_lwe.encode_i64(x, log_message_modulus + 1);
+    pt_lwe.encode_i64(x, (log_message_modulus + 1).into());
 
     lwe.encrypt_sk(module, &pt_lwe, &sk_lwe, &mut source_xa, &mut source_xe);
 
@@ -152,20 +171,20 @@ where
         .enumerate()
         .for_each(|(i, x)| *x = f(i as i64));
 
-    let mut lut: LookUpTable = LookUpTable::alloc(module, basek, k_lut, extension_factor);
+    let mut lut: LookUpTable = LookUpTable::alloc(module, base2k, k_lut, extension_factor);
     lut.set(module, &f_vec, log_message_modulus + 1);
 
-    let mut res: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(n, basek, k_res, rank);
+    let mut res: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&glwe_infos);
 
     let brk_prepared: BlindRotationKeyPrepared<Vec<u8>, CGGI, B> = brk.prepare_alloc(module, scratch.borrow());
 
     brk_prepared.execute(module, &mut res, &lwe, &lut, scratch_br.borrow());
 
-    let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(n, basek, k_res);
+    let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&glwe_infos);
 
     res.decrypt(module, &mut pt_have, &sk_glwe_dft, scratch.borrow());
 
-    let mut lwe_2n: Vec<i64> = vec![0i64; lwe.n() + 1]; // TODO: from scratch space
+    let mut lwe_2n: Vec<i64> = vec![0i64; (lwe.n() + 1).into()]; // TODO: from scratch space
 
     mod_switch_2n(
         2 * lut.domain_size(),
@@ -189,7 +208,7 @@ where
     assert_eq!(pt_have.data.at(0, 0), lut.data[0].at(0, 0));
 
     // Verify that it effectively compute f(x)
-    let mut have: i64 = pt_have.decode_coeff_i64(log_message_modulus + 1, 0);
+    let mut have: i64 = pt_have.decode_coeff_i64((log_message_modulus + 1).into(), 0);
 
     // Get positive representative and assert equality
     have = (have + message_modulus as i64) % (message_modulus as i64);

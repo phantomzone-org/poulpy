@@ -1,15 +1,11 @@
 use poulpy_hal::{
-    api::{
-        SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare, VecZnxAddInplace, VecZnxAddNormal,
-        VecZnxBigNormalize, VecZnxCopy, VecZnxDftAllocBytes, VecZnxDftApply, VecZnxFillUniform, VecZnxIdftApplyConsume,
-        VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubABInplace,
-    },
-    layouts::{Backend, Data, DataMut, DataRef, FillUniform, MatZnx, Module, ReaderFrom, Reset, WriterTo},
+    api::{VecZnxCopy, VecZnxFillUniform},
+    layouts::{Backend, Data, DataMut, DataRef, FillUniform, Module, ReaderFrom, WriterTo},
     source::Source,
 };
 
 use crate::layouts::{
-    Infos, LWEToGLWESwitchingKey,
+    Base2K, Degree, Digits, GGLWELayoutInfos, GLWEInfos, LWEInfos, LWEToGLWESwitchingKey, Rank, Rows, TorusPrecision,
     compressed::{Decompress, GGLWESwitchingKeyCompressed},
 };
 use std::fmt;
@@ -17,9 +13,49 @@ use std::fmt;
 #[derive(PartialEq, Eq, Clone)]
 pub struct LWEToGLWESwitchingKeyCompressed<D: Data>(pub(crate) GGLWESwitchingKeyCompressed<D>);
 
+impl<D: Data> LWEInfos for LWEToGLWESwitchingKeyCompressed<D> {
+    fn n(&self) -> Degree {
+        self.0.n()
+    }
+
+    fn base2k(&self) -> Base2K {
+        self.0.base2k()
+    }
+
+    fn k(&self) -> TorusPrecision {
+        self.0.k()
+    }
+    fn size(&self) -> usize {
+        self.0.size()
+    }
+}
+impl<D: Data> GLWEInfos for LWEToGLWESwitchingKeyCompressed<D> {
+    fn rank(&self) -> Rank {
+        self.rank_out()
+    }
+}
+
+impl<D: Data> GGLWELayoutInfos for LWEToGLWESwitchingKeyCompressed<D> {
+    fn digits(&self) -> Digits {
+        self.0.digits()
+    }
+
+    fn rank_in(&self) -> Rank {
+        self.0.rank_in()
+    }
+
+    fn rank_out(&self) -> Rank {
+        self.0.rank_out()
+    }
+
+    fn rows(&self) -> Rows {
+        self.0.rows()
+    }
+}
+
 impl<D: DataRef> fmt::Debug for LWEToGLWESwitchingKeyCompressed<D> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self)
+        write!(f, "{self}")
     }
 }
 
@@ -29,49 +65,9 @@ impl<D: DataMut> FillUniform for LWEToGLWESwitchingKeyCompressed<D> {
     }
 }
 
-impl<D: DataMut> Reset for LWEToGLWESwitchingKeyCompressed<D> {
-    fn reset(&mut self) {
-        self.0.reset();
-    }
-}
-
 impl<D: DataRef> fmt::Display for LWEToGLWESwitchingKeyCompressed<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "(LWEToGLWESwitchingKeyCompressed) {}", self.0)
-    }
-}
-
-impl<D: Data> Infos for LWEToGLWESwitchingKeyCompressed<D> {
-    type Inner = MatZnx<D>;
-
-    fn inner(&self) -> &Self::Inner {
-        self.0.inner()
-    }
-
-    fn basek(&self) -> usize {
-        self.0.basek()
-    }
-
-    fn k(&self) -> usize {
-        self.0.k()
-    }
-}
-
-impl<D: Data> LWEToGLWESwitchingKeyCompressed<D> {
-    pub fn digits(&self) -> usize {
-        self.0.digits()
-    }
-
-    pub fn rank(&self) -> usize {
-        self.0.rank()
-    }
-
-    pub fn rank_in(&self) -> usize {
-        self.0.rank_in()
-    }
-
-    pub fn rank_out(&self) -> usize {
-        self.0.rank_out()
     }
 }
 
@@ -88,32 +84,54 @@ impl<D: DataRef> WriterTo for LWEToGLWESwitchingKeyCompressed<D> {
 }
 
 impl LWEToGLWESwitchingKeyCompressed<Vec<u8>> {
-    pub fn alloc(n: usize, basek: usize, k: usize, rows: usize, rank_out: usize) -> Self {
-        Self(GGLWESwitchingKeyCompressed::alloc(
-            n, basek, k, rows, 1, 1, rank_out,
+    pub fn alloc<A>(infos: &A) -> Self
+    where
+        A: GGLWELayoutInfos,
+    {
+        debug_assert_eq!(
+            infos.digits().0,
+            1,
+            "digits > 1 is not supported for LWEToGLWESwitchingKeyCompressed"
+        );
+        debug_assert_eq!(
+            infos.rank_in().0,
+            1,
+            "rank_in > 1 is not supported for LWEToGLWESwitchingKeyCompressed"
+        );
+        Self(GGLWESwitchingKeyCompressed::alloc(infos))
+    }
+
+    pub fn alloc_with(n: Degree, base2k: Base2K, k: TorusPrecision, rows: Rows, rank_out: Rank) -> Self {
+        Self(GGLWESwitchingKeyCompressed::alloc_with(
+            n,
+            base2k,
+            k,
+            rows,
+            Digits(1),
+            Rank(1),
+            rank_out,
         ))
     }
 
-    pub fn encrypt_sk_scratch_space<B: Backend>(module: &Module<B>, basek: usize, k: usize, rank_out: usize) -> usize
+    pub fn alloc_bytes<A>(infos: &A) -> usize
     where
-        Module<B>: VecZnxDftAllocBytes
-            + VecZnxBigNormalize<B>
-            + VecZnxDftApply<B>
-            + SvpApplyDftToDftInplace<B>
-            + VecZnxIdftApplyConsume<B>
-            + VecZnxNormalizeTmpBytes
-            + VecZnxFillUniform
-            + VecZnxSubABInplace
-            + VecZnxAddInplace
-            + VecZnxNormalizeInplace<B>
-            + VecZnxAddNormal
-            + VecZnxNormalize<B>
-            + VecZnxSub
-            + SvpPrepare<B>
-            + SvpPPolAllocBytes
-            + SvpPPolAlloc<B>,
+        A: GGLWELayoutInfos,
     {
-        LWEToGLWESwitchingKey::encrypt_sk_scratch_space(module, basek, k, rank_out)
+        debug_assert_eq!(
+            infos.rank_in().0,
+            1,
+            "rank_in > 1 is not supported for LWEToGLWESwitchingKey"
+        );
+        debug_assert_eq!(
+            infos.digits().0,
+            1,
+            "digits > 1 is not supported for LWEToGLWESwitchingKey"
+        );
+        GGLWESwitchingKeyCompressed::alloc_bytes(infos)
+    }
+
+    pub fn alloc_bytes_with(n: Degree, base2k: Base2K, k: TorusPrecision, rows: Rows, rank_out: Rank) -> usize {
+        GGLWESwitchingKeyCompressed::alloc_bytes_with(n, base2k, k, rows, Digits(1), Rank(1), rank_out)
     }
 }
 

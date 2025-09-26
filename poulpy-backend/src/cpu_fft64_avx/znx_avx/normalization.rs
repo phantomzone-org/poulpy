@@ -6,14 +6,14 @@ use std::arch::x86_64::__m256i;
 /// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
 /// all inputs must have the same length and must not alias.
 #[target_feature(enable = "avx2")]
-fn normalize_consts_avx(basek: usize) -> (__m256i, __m256i, __m256i, __m256i) {
+fn normalize_consts_avx(base2k: usize) -> (__m256i, __m256i, __m256i, __m256i) {
     use std::arch::x86_64::_mm256_set1_epi64x;
 
-    assert!((1..=63).contains(&basek));
-    let mask_k: i64 = ((1u64 << basek) - 1) as i64; // 0..k-1 bits set
-    let sign_k: i64 = (1u64 << (basek - 1)) as i64; // bit k-1
-    let topmask: i64 = (!0u64 << (64 - basek)) as i64; // top k bits set
-    let sh_k: __m256i = _mm256_set1_epi64x(basek as i64);
+    assert!((1..=63).contains(&base2k));
+    let mask_k: i64 = ((1u64 << base2k) - 1) as i64; // 0..k-1 bits set
+    let sign_k: i64 = (1u64 << (base2k - 1)) as i64; // bit k-1
+    let topmask: i64 = (!0u64 << (64 - base2k)) as i64; // top k bits set
+    let sh_k: __m256i = _mm256_set1_epi64x(base2k as i64);
     (
         _mm256_set1_epi64x(mask_k),  // mask_k_vec
         _mm256_set1_epi64x(sign_k),  // sign_k_vec
@@ -46,14 +46,14 @@ fn get_digit_avx(x: __m256i, mask_k: __m256i, sign_k: __m256i) -> __m256i {
 unsafe fn get_carry_avx(
     x: __m256i,
     digit: __m256i,
-    basek: __m256i,    // _mm256_set1_epi64x(k)
+    base2k: __m256i,   // _mm256_set1_epi64x(k)
     top_mask: __m256i, // (!0 << (64 - k)) broadcast
 ) -> __m256i {
     use std::arch::x86_64::{
         __m256i, _mm256_and_si256, _mm256_cmpgt_epi64, _mm256_or_si256, _mm256_setzero_si256, _mm256_srlv_epi64, _mm256_sub_epi64,
     };
     let diff: __m256i = _mm256_sub_epi64(x, digit);
-    let lsr: __m256i = _mm256_srlv_epi64(diff, basek); // logical >>
+    let lsr: __m256i = _mm256_srlv_epi64(diff, base2k); // logical >>
     let neg: __m256i = _mm256_cmpgt_epi64(_mm256_setzero_si256(), diff); // 0xFFFF.. where v<0
     let fill: __m256i = _mm256_and_si256(neg, top_mask); // top k bits if negative
     _mm256_or_si256(lsr, fill)
@@ -63,11 +63,11 @@ unsafe fn get_carry_avx(
 /// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
 /// all inputs must have the same length and must not alias.
 #[target_feature(enable = "avx2")]
-pub fn znx_normalize_first_step_carry_only_avx(basek: usize, lsh: usize, x: &[i64], carry: &mut [i64]) {
+pub fn znx_normalize_first_step_carry_only_avx(base2k: usize, lsh: usize, x: &[i64], carry: &mut [i64]) {
     #[cfg(debug_assertions)]
     {
         assert_eq!(x.len(), carry.len());
-        assert!(lsh < basek);
+        assert!(lsh < base2k);
     }
 
     use std::arch::x86_64::{_mm256_loadu_si256, _mm256_storeu_si256};
@@ -81,18 +81,18 @@ pub fn znx_normalize_first_step_carry_only_avx(basek: usize, lsh: usize, x: &[i6
         let mut cc: *mut __m256i = carry.as_ptr() as *mut __m256i;
 
         let (mask, sign, basek_vec, top_mask) = if lsh == 0 {
-            normalize_consts_avx(basek)
+            normalize_consts_avx(base2k)
         } else {
-            normalize_consts_avx(basek - lsh)
+            normalize_consts_avx(base2k - lsh)
         };
 
         for _ in 0..span {
             let xx_256: __m256i = _mm256_loadu_si256(xx);
 
-            //  (x << (64 - basek)) >> (64 - basek)
+            //  (x << (64 - base2k)) >> (64 - base2k)
             let digit_256: __m256i = get_digit_avx(xx_256, mask, sign);
 
-            // (x - digit) >> basek
+            // (x - digit) >> base2k
             let carry_256: __m256i = get_carry_avx(xx_256, digit_256, basek_vec, top_mask);
 
             _mm256_storeu_si256(cc, carry_256);
@@ -106,7 +106,7 @@ pub fn znx_normalize_first_step_carry_only_avx(basek: usize, lsh: usize, x: &[i6
     if !x.len().is_multiple_of(4) {
         use poulpy_hal::reference::znx::znx_normalize_first_step_carry_only_ref;
 
-        znx_normalize_first_step_carry_only_ref(basek, lsh, &x[span << 2..], &mut carry[span << 2..]);
+        znx_normalize_first_step_carry_only_ref(base2k, lsh, &x[span << 2..], &mut carry[span << 2..]);
     }
 }
 
@@ -114,11 +114,11 @@ pub fn znx_normalize_first_step_carry_only_avx(basek: usize, lsh: usize, x: &[i6
 /// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
 /// all inputs must have the same length and must not alias.
 #[target_feature(enable = "avx2")]
-pub fn znx_normalize_first_step_inplace_avx(basek: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
+pub fn znx_normalize_first_step_inplace_avx(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
     #[cfg(debug_assertions)]
     {
         assert_eq!(x.len(), carry.len());
-        assert!(lsh < basek);
+        assert!(lsh < base2k);
     }
 
     use std::arch::x86_64::{_mm256_loadu_si256, _mm256_set1_epi64x, _mm256_sllv_epi64, _mm256_storeu_si256};
@@ -132,15 +132,15 @@ pub fn znx_normalize_first_step_inplace_avx(basek: usize, lsh: usize, x: &mut [i
         let mut cc: *mut __m256i = carry.as_ptr() as *mut __m256i;
 
         if lsh == 0 {
-            let (mask, sign, basek_vec, top_mask) = normalize_consts_avx(basek);
+            let (mask, sign, basek_vec, top_mask) = normalize_consts_avx(base2k);
 
             for _ in 0..span {
                 let xx_256: __m256i = _mm256_loadu_si256(xx);
 
-                //  (x << (64 - basek)) >> (64 - basek)
+                //  (x << (64 - base2k)) >> (64 - base2k)
                 let digit_256: __m256i = get_digit_avx(xx_256, mask, sign);
 
-                // (x - digit) >> basek
+                // (x - digit) >> base2k
                 let carry_256: __m256i = get_carry_avx(xx_256, digit_256, basek_vec, top_mask);
 
                 _mm256_storeu_si256(xx, digit_256);
@@ -150,17 +150,17 @@ pub fn znx_normalize_first_step_inplace_avx(basek: usize, lsh: usize, x: &mut [i
                 cc = cc.add(1);
             }
         } else {
-            let (mask, sign, basek_vec, top_mask) = normalize_consts_avx(basek - lsh);
+            let (mask, sign, basek_vec, top_mask) = normalize_consts_avx(base2k - lsh);
 
             let lsh_v: __m256i = _mm256_set1_epi64x(lsh as i64);
 
             for _ in 0..span {
                 let xx_256: __m256i = _mm256_loadu_si256(xx);
 
-                //  (x << (64 - basek)) >> (64 - basek)
+                //  (x << (64 - base2k)) >> (64 - base2k)
                 let digit_256: __m256i = get_digit_avx(xx_256, mask, sign);
 
-                // (x - digit) >> basek
+                // (x - digit) >> base2k
                 let carry_256: __m256i = get_carry_avx(xx_256, digit_256, basek_vec, top_mask);
 
                 _mm256_storeu_si256(xx, _mm256_sllv_epi64(digit_256, lsh_v));
@@ -176,7 +176,7 @@ pub fn znx_normalize_first_step_inplace_avx(basek: usize, lsh: usize, x: &mut [i
     if !x.len().is_multiple_of(4) {
         use poulpy_hal::reference::znx::znx_normalize_first_step_inplace_ref;
 
-        znx_normalize_first_step_inplace_ref(basek, lsh, &mut x[span << 2..], &mut carry[span << 2..]);
+        znx_normalize_first_step_inplace_ref(base2k, lsh, &mut x[span << 2..], &mut carry[span << 2..]);
     }
 }
 
@@ -184,12 +184,12 @@ pub fn znx_normalize_first_step_inplace_avx(basek: usize, lsh: usize, x: &mut [i
 /// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
 /// all inputs must have the same length and must not alias.
 #[target_feature(enable = "avx2")]
-pub fn znx_normalize_first_step_avx(basek: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
+pub fn znx_normalize_first_step_avx(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
     #[cfg(debug_assertions)]
     {
         assert_eq!(x.len(), carry.len());
         assert_eq!(a.len(), carry.len());
-        assert!(lsh < basek);
+        assert!(lsh < base2k);
     }
 
     use std::arch::x86_64::{_mm256_loadu_si256, _mm256_sllv_epi64, _mm256_storeu_si256};
@@ -204,15 +204,15 @@ pub fn znx_normalize_first_step_avx(basek: usize, lsh: usize, x: &mut [i64], a: 
         let mut cc: *mut __m256i = carry.as_ptr() as *mut __m256i;
 
         if lsh == 0 {
-            let (mask, sign, basek_vec, top_mask) = normalize_consts_avx(basek);
+            let (mask, sign, basek_vec, top_mask) = normalize_consts_avx(base2k);
 
             for _ in 0..span {
                 let aa_256: __m256i = _mm256_loadu_si256(aa);
 
-                //  (x << (64 - basek)) >> (64 - basek)
+                //  (x << (64 - base2k)) >> (64 - base2k)
                 let digit_256: __m256i = get_digit_avx(aa_256, mask, sign);
 
-                // (x - digit) >> basek
+                // (x - digit) >> base2k
                 let carry_256: __m256i = get_carry_avx(aa_256, digit_256, basek_vec, top_mask);
 
                 _mm256_storeu_si256(xx, digit_256);
@@ -225,17 +225,17 @@ pub fn znx_normalize_first_step_avx(basek: usize, lsh: usize, x: &mut [i64], a: 
         } else {
             use std::arch::x86_64::_mm256_set1_epi64x;
 
-            let (mask, sign, basek_vec, top_mask) = normalize_consts_avx(basek - lsh);
+            let (mask, sign, basek_vec, top_mask) = normalize_consts_avx(base2k - lsh);
 
             let lsh_v: __m256i = _mm256_set1_epi64x(lsh as i64);
 
             for _ in 0..span {
                 let aa_256: __m256i = _mm256_loadu_si256(aa);
 
-                //  (x << (64 - basek)) >> (64 - basek)
+                //  (x << (64 - base2k)) >> (64 - base2k)
                 let digit_256: __m256i = get_digit_avx(aa_256, mask, sign);
 
-                // (x - digit) >> basek
+                // (x - digit) >> base2k
                 let carry_256: __m256i = get_carry_avx(aa_256, digit_256, basek_vec, top_mask);
 
                 _mm256_storeu_si256(xx, _mm256_sllv_epi64(digit_256, lsh_v));
@@ -253,7 +253,7 @@ pub fn znx_normalize_first_step_avx(basek: usize, lsh: usize, x: &mut [i64], a: 
         use poulpy_hal::reference::znx::znx_normalize_first_step_ref;
 
         znx_normalize_first_step_ref(
-            basek,
+            base2k,
             lsh,
             &mut x[span << 2..],
             &a[span << 2..],
@@ -266,11 +266,11 @@ pub fn znx_normalize_first_step_avx(basek: usize, lsh: usize, x: &mut [i64], a: 
 /// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
 /// all inputs must have the same length and must not alias.
 #[target_feature(enable = "avx2")]
-pub fn znx_normalize_middle_step_inplace_avx(basek: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
+pub fn znx_normalize_middle_step_inplace_avx<const OVERWRITE: bool>(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
     #[cfg(debug_assertions)]
     {
         assert_eq!(x.len(), carry.len());
-        assert!(lsh < basek);
+        assert!(lsh < base2k);
     }
 
     use std::arch::x86_64::{_mm256_add_epi64, _mm256_loadu_si256, _mm256_sllv_epi64, _mm256_storeu_si256};
@@ -279,13 +279,25 @@ pub fn znx_normalize_middle_step_inplace_avx(basek: usize, lsh: usize, x: &mut [
 
     let span: usize = n >> 2;
 
-    let (mask, sign, basek_vec, top_mask) = normalize_consts_avx(basek);
+    let (mask, sign, basek_vec, top_mask) = normalize_consts_avx(base2k);
 
     unsafe {
         let mut xx: *mut __m256i = x.as_mut_ptr() as *mut __m256i;
         let mut cc: *mut __m256i = carry.as_mut_ptr() as *mut __m256i;
 
-        if lsh == 0 {
+        if OVERWRITE {
+            for _ in 0..span {
+                let cc_256: __m256i = _mm256_loadu_si256(cc);
+                let x1: __m256i = get_digit_avx(cc_256, mask, sign);
+                let cout: __m256i = get_carry_avx(cc_256, x1, basek_vec, top_mask);
+
+                _mm256_storeu_si256(xx, x1);
+                _mm256_storeu_si256(cc, cout);
+
+                xx = xx.add(1);
+                cc = cc.add(1);
+            }
+        } else if lsh == 0 {
             for _ in 0..span {
                 let xx_256: __m256i = _mm256_loadu_si256(xx);
                 let cc_256: __m256i = _mm256_loadu_si256(cc);
@@ -307,7 +319,7 @@ pub fn znx_normalize_middle_step_inplace_avx(basek: usize, lsh: usize, x: &mut [
         } else {
             use std::arch::x86_64::_mm256_set1_epi64x;
 
-            let (mask_lsh, sign_lsh, basek_vec_lsh, top_mask_lsh) = normalize_consts_avx(basek - lsh);
+            let (mask_lsh, sign_lsh, basek_vec_lsh, top_mask_lsh) = normalize_consts_avx(base2k - lsh);
 
             let lsh_v: __m256i = _mm256_set1_epi64x(lsh as i64);
 
@@ -337,7 +349,7 @@ pub fn znx_normalize_middle_step_inplace_avx(basek: usize, lsh: usize, x: &mut [
     if !x.len().is_multiple_of(4) {
         use poulpy_hal::reference::znx::znx_normalize_middle_step_inplace_ref;
 
-        znx_normalize_middle_step_inplace_ref(basek, lsh, &mut x[span << 2..], &mut carry[span << 2..]);
+        znx_normalize_middle_step_inplace_ref::<OVERWRITE>(base2k, lsh, &mut x[span << 2..], &mut carry[span << 2..]);
     }
 }
 
@@ -345,11 +357,11 @@ pub fn znx_normalize_middle_step_inplace_avx(basek: usize, lsh: usize, x: &mut [
 /// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
 /// all inputs must have the same length and must not alias.
 #[target_feature(enable = "avx2")]
-pub fn znx_normalize_middle_step_carry_only_avx(basek: usize, lsh: usize, x: &[i64], carry: &mut [i64]) {
+pub fn znx_normalize_middle_step_carry_only_avx(base2k: usize, lsh: usize, x: &[i64], carry: &mut [i64]) {
     #[cfg(debug_assertions)]
     {
         assert_eq!(x.len(), carry.len());
-        assert!(lsh < basek);
+        assert!(lsh < base2k);
     }
 
     use std::arch::x86_64::{_mm256_add_epi64, _mm256_loadu_si256, _mm256_sllv_epi64, _mm256_storeu_si256};
@@ -358,7 +370,7 @@ pub fn znx_normalize_middle_step_carry_only_avx(basek: usize, lsh: usize, x: &[i
 
     let span: usize = n >> 2;
 
-    let (mask, sign, basek_vec, top_mask) = normalize_consts_avx(basek);
+    let (mask, sign, basek_vec, top_mask) = normalize_consts_avx(base2k);
 
     unsafe {
         let mut xx: *const __m256i = x.as_ptr() as *const __m256i;
@@ -385,7 +397,7 @@ pub fn znx_normalize_middle_step_carry_only_avx(basek: usize, lsh: usize, x: &[i
         } else {
             use std::arch::x86_64::_mm256_set1_epi64x;
 
-            let (mask_lsh, sign_lsh, basek_vec_lsh, top_mask_lsh) = normalize_consts_avx(basek - lsh);
+            let (mask_lsh, sign_lsh, basek_vec_lsh, top_mask_lsh) = normalize_consts_avx(base2k - lsh);
 
             let lsh_v: __m256i = _mm256_set1_epi64x(lsh as i64);
 
@@ -414,7 +426,7 @@ pub fn znx_normalize_middle_step_carry_only_avx(basek: usize, lsh: usize, x: &[i
     if !x.len().is_multiple_of(4) {
         use poulpy_hal::reference::znx::znx_normalize_middle_step_carry_only_ref;
 
-        znx_normalize_middle_step_carry_only_ref(basek, lsh, &x[span << 2..], &mut carry[span << 2..]);
+        znx_normalize_middle_step_carry_only_ref(base2k, lsh, &x[span << 2..], &mut carry[span << 2..]);
     }
 }
 
@@ -422,12 +434,12 @@ pub fn znx_normalize_middle_step_carry_only_avx(basek: usize, lsh: usize, x: &[i
 /// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
 /// all inputs must have the same length and must not alias.
 #[target_feature(enable = "avx2")]
-pub fn znx_normalize_middle_step_avx(basek: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
+pub fn znx_normalize_middle_step_avx(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
     #[cfg(debug_assertions)]
     {
         assert_eq!(x.len(), carry.len());
         assert_eq!(a.len(), carry.len());
-        assert!(lsh < basek);
+        assert!(lsh < base2k);
     }
 
     use std::arch::x86_64::{_mm256_add_epi64, _mm256_loadu_si256, _mm256_sllv_epi64, _mm256_storeu_si256};
@@ -436,7 +448,7 @@ pub fn znx_normalize_middle_step_avx(basek: usize, lsh: usize, x: &mut [i64], a:
 
     let span: usize = n >> 2;
 
-    let (mask, sign, basek_vec, top_mask) = normalize_consts_avx(basek);
+    let (mask, sign, basek_vec, top_mask) = normalize_consts_avx(base2k);
 
     unsafe {
         let mut xx: *mut __m256i = x.as_mut_ptr() as *mut __m256i;
@@ -466,7 +478,7 @@ pub fn znx_normalize_middle_step_avx(basek: usize, lsh: usize, x: &mut [i64], a:
         } else {
             use std::arch::x86_64::_mm256_set1_epi64x;
 
-            let (mask_lsh, sign_lsh, basek_vec_lsh, top_mask_lsh) = normalize_consts_avx(basek - lsh);
+            let (mask_lsh, sign_lsh, basek_vec_lsh, top_mask_lsh) = normalize_consts_avx(base2k - lsh);
 
             let lsh_v: __m256i = _mm256_set1_epi64x(lsh as i64);
 
@@ -498,7 +510,7 @@ pub fn znx_normalize_middle_step_avx(basek: usize, lsh: usize, x: &mut [i64], a:
         use poulpy_hal::reference::znx::znx_normalize_middle_step_ref;
 
         znx_normalize_middle_step_ref(
-            basek,
+            base2k,
             lsh,
             &mut x[span << 2..],
             &a[span << 2..],
@@ -511,11 +523,11 @@ pub fn znx_normalize_middle_step_avx(basek: usize, lsh: usize, x: &mut [i64], a:
 /// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
 /// all inputs must have the same length and must not alias.
 #[target_feature(enable = "avx2")]
-pub fn znx_normalize_final_step_inplace_avx(basek: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
+pub fn znx_normalize_final_step_inplace_avx<const OVERWRITE: bool>(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
     #[cfg(debug_assertions)]
     {
         assert_eq!(x.len(), carry.len());
-        assert!(lsh < basek);
+        assert!(lsh < base2k);
     }
 
     use std::arch::x86_64::{_mm256_add_epi64, _mm256_loadu_si256, _mm256_sllv_epi64, _mm256_storeu_si256};
@@ -524,13 +536,22 @@ pub fn znx_normalize_final_step_inplace_avx(basek: usize, lsh: usize, x: &mut [i
 
     let span: usize = n >> 2;
 
-    let (mask, sign, _, _) = normalize_consts_avx(basek);
+    let (mask, sign, _, _) = normalize_consts_avx(base2k);
 
     unsafe {
         let mut xx: *mut __m256i = x.as_mut_ptr() as *mut __m256i;
         let mut cc: *mut __m256i = carry.as_ptr() as *mut __m256i;
 
-        if lsh == 0 {
+        if OVERWRITE {
+            for _ in 0..span {
+                let cv: __m256i = _mm256_loadu_si256(cc);
+                let x1: __m256i = get_digit_avx(cv, mask, sign);
+                _mm256_storeu_si256(xx, x1);
+
+                xx = xx.add(1);
+                cc = cc.add(1);
+            }
+        } else if lsh == 0 {
             for _ in 0..span {
                 let xv: __m256i = _mm256_loadu_si256(xx);
                 let cv: __m256i = _mm256_loadu_si256(cc);
@@ -547,7 +568,7 @@ pub fn znx_normalize_final_step_inplace_avx(basek: usize, lsh: usize, x: &mut [i
         } else {
             use std::arch::x86_64::_mm256_set1_epi64x;
 
-            let (mask_lsh, sign_lsh, _, _) = normalize_consts_avx(basek - lsh);
+            let (mask_lsh, sign_lsh, _, _) = normalize_consts_avx(base2k - lsh);
 
             let lsh_v: __m256i = _mm256_set1_epi64x(lsh as i64);
 
@@ -573,7 +594,7 @@ pub fn znx_normalize_final_step_inplace_avx(basek: usize, lsh: usize, x: &mut [i
     if !x.len().is_multiple_of(4) {
         use poulpy_hal::reference::znx::znx_normalize_final_step_inplace_ref;
 
-        znx_normalize_final_step_inplace_ref(basek, lsh, &mut x[span << 2..], &mut carry[span << 2..]);
+        znx_normalize_final_step_inplace_ref::<OVERWRITE>(base2k, lsh, &mut x[span << 2..], &mut carry[span << 2..]);
     }
 }
 
@@ -581,12 +602,12 @@ pub fn znx_normalize_final_step_inplace_avx(basek: usize, lsh: usize, x: &mut [i
 /// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
 /// all inputs must have the same length and must not alias.
 #[target_feature(enable = "avx2")]
-pub fn znx_normalize_final_step_avx(basek: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
+pub fn znx_normalize_final_step_avx(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
     #[cfg(debug_assertions)]
     {
         assert_eq!(x.len(), carry.len());
         assert_eq!(a.len(), carry.len());
-        assert!(lsh < basek);
+        assert!(lsh < base2k);
     }
 
     use std::arch::x86_64::{_mm256_add_epi64, _mm256_loadu_si256, _mm256_sllv_epi64, _mm256_storeu_si256};
@@ -595,7 +616,7 @@ pub fn znx_normalize_final_step_avx(basek: usize, lsh: usize, x: &mut [i64], a: 
 
     let span: usize = n >> 2;
 
-    let (mask, sign, _, _) = normalize_consts_avx(basek);
+    let (mask, sign, _, _) = normalize_consts_avx(base2k);
 
     unsafe {
         let mut xx: *mut __m256i = x.as_mut_ptr() as *mut __m256i;
@@ -620,7 +641,7 @@ pub fn znx_normalize_final_step_avx(basek: usize, lsh: usize, x: &mut [i64], a: 
         } else {
             use std::arch::x86_64::_mm256_set1_epi64x;
 
-            let (mask_lsh, sign_lsh, _, _) = normalize_consts_avx(basek - lsh);
+            let (mask_lsh, sign_lsh, _, _) = normalize_consts_avx(base2k - lsh);
 
             let lsh_v: __m256i = _mm256_set1_epi64x(lsh as i64);
 
@@ -647,7 +668,7 @@ pub fn znx_normalize_final_step_avx(basek: usize, lsh: usize, x: &mut [i64], a: 
         use poulpy_hal::reference::znx::znx_normalize_final_step_ref;
 
         znx_normalize_final_step_ref(
-            basek,
+            base2k,
             lsh,
             &mut x[span << 2..],
             &a[span << 2..],
@@ -670,7 +691,7 @@ mod tests {
     #[allow(dead_code)]
     #[target_feature(enable = "avx2")]
     fn test_get_digit_avx_internal() {
-        let basek: usize = 12;
+        let base2k: usize = 12;
         let x: [i64; 4] = [
             7638646372408325293,
             -61440197422348985,
@@ -678,15 +699,15 @@ mod tests {
             -4835376105455195188,
         ];
         let y0: Vec<i64> = vec![
-            get_digit(basek, x[0]),
-            get_digit(basek, x[1]),
-            get_digit(basek, x[2]),
-            get_digit(basek, x[3]),
+            get_digit(base2k, x[0]),
+            get_digit(base2k, x[1]),
+            get_digit(base2k, x[2]),
+            get_digit(base2k, x[3]),
         ];
         let mut y1: Vec<i64> = vec![0i64; 4];
         unsafe {
             let x_256: __m256i = _mm256_loadu_si256(x.as_ptr() as *const __m256i);
-            let (mask, sign, _, _) = normalize_consts_avx(basek);
+            let (mask, sign, _, _) = normalize_consts_avx(base2k);
             let digit: __m256i = get_digit_avx(x_256, mask, sign);
             _mm256_storeu_si256(y1.as_mut_ptr() as *mut __m256i, digit);
         }
@@ -707,7 +728,7 @@ mod tests {
     #[allow(dead_code)]
     #[target_feature(enable = "avx2")]
     fn test_get_carry_avx_internal() {
-        let basek: usize = 12;
+        let base2k: usize = 12;
         let x: [i64; 4] = [
             7638646372408325293,
             -61440197422348985,
@@ -716,16 +737,16 @@ mod tests {
         ];
         let carry: [i64; 4] = [1174467039, -144794816, -1466676977, 513122840];
         let y0: Vec<i64> = vec![
-            get_carry(basek, x[0], carry[0]),
-            get_carry(basek, x[1], carry[1]),
-            get_carry(basek, x[2], carry[2]),
-            get_carry(basek, x[3], carry[3]),
+            get_carry(base2k, x[0], carry[0]),
+            get_carry(base2k, x[1], carry[1]),
+            get_carry(base2k, x[2], carry[2]),
+            get_carry(base2k, x[3], carry[3]),
         ];
         let mut y1: Vec<i64> = vec![0i64; 4];
         unsafe {
             let x_256: __m256i = _mm256_loadu_si256(x.as_ptr() as *const __m256i);
             let d_256: __m256i = _mm256_loadu_si256(carry.as_ptr() as *const __m256i);
-            let (_, _, basek_vec, top_mask) = normalize_consts_avx(basek);
+            let (_, _, basek_vec, top_mask) = normalize_consts_avx(base2k);
             let digit: __m256i = get_carry_avx(x_256, d_256, basek_vec, top_mask);
             _mm256_storeu_si256(y1.as_mut_ptr() as *mut __m256i, digit);
         }
@@ -762,16 +783,16 @@ mod tests {
         ];
         let mut c1: [i64; 4] = c0;
 
-        let basek = 12;
+        let base2k = 12;
 
-        znx_normalize_first_step_inplace_ref(basek, 0, &mut y0, &mut c0);
-        znx_normalize_first_step_inplace_avx(basek, 0, &mut y1, &mut c1);
+        znx_normalize_first_step_inplace_ref(base2k, 0, &mut y0, &mut c0);
+        znx_normalize_first_step_inplace_avx(base2k, 0, &mut y1, &mut c1);
 
         assert_eq!(y0, y1);
         assert_eq!(c0, c1);
 
-        znx_normalize_first_step_inplace_ref(basek, basek - 1, &mut y0, &mut c0);
-        znx_normalize_first_step_inplace_avx(basek, basek - 1, &mut y1, &mut c1);
+        znx_normalize_first_step_inplace_ref(base2k, base2k - 1, &mut y0, &mut c0);
+        znx_normalize_first_step_inplace_avx(base2k, base2k - 1, &mut y1, &mut c1);
 
         assert_eq!(y0, y1);
         assert_eq!(c0, c1);
@@ -790,7 +811,7 @@ mod tests {
 
     #[allow(dead_code)]
     #[target_feature(enable = "avx2")]
-    fn test_znx_normalize_middle_step_inplace_avx_internal() {
+    fn test_znx_normalize_middle_step_inplace_avx_internal<const OVERWRITE: bool>() {
         let mut y0: [i64; 4] = [
             7638646372408325293,
             -61440197422348985,
@@ -807,16 +828,16 @@ mod tests {
         ];
         let mut c1: [i64; 4] = c0;
 
-        let basek = 12;
+        let base2k = 12;
 
-        znx_normalize_middle_step_inplace_ref(basek, 0, &mut y0, &mut c0);
-        znx_normalize_middle_step_inplace_avx(basek, 0, &mut y1, &mut c1);
+        znx_normalize_middle_step_inplace_ref::<OVERWRITE>(base2k, 0, &mut y0, &mut c0);
+        znx_normalize_middle_step_inplace_avx::<OVERWRITE>(base2k, 0, &mut y1, &mut c1);
 
         assert_eq!(y0, y1);
         assert_eq!(c0, c1);
 
-        znx_normalize_middle_step_inplace_ref(basek, basek - 1, &mut y0, &mut c0);
-        znx_normalize_middle_step_inplace_avx(basek, basek - 1, &mut y1, &mut c1);
+        znx_normalize_middle_step_inplace_ref::<OVERWRITE>(base2k, base2k - 1, &mut y0, &mut c0);
+        znx_normalize_middle_step_inplace_avx::<OVERWRITE>(base2k, base2k - 1, &mut y1, &mut c1);
 
         assert_eq!(y0, y1);
         assert_eq!(c0, c1);
@@ -829,13 +850,14 @@ mod tests {
             return;
         };
         unsafe {
-            test_znx_normalize_middle_step_inplace_avx_internal();
+            test_znx_normalize_middle_step_inplace_avx_internal::<false>();
+            // test_znx_normalize_middle_step_inplace_avx_internal::<true>();
         }
     }
 
     #[allow(dead_code)]
     #[target_feature(enable = "avx2")]
-    fn test_znx_normalize_final_step_inplace_avx_internal() {
+    fn test_znx_normalize_final_step_inplace_avx_internal<const OVERWRITE: bool>() {
         let mut y0: [i64; 4] = [
             7638646372408325293,
             -61440197422348985,
@@ -852,16 +874,16 @@ mod tests {
         ];
         let mut c1: [i64; 4] = c0;
 
-        let basek = 12;
+        let base2k = 12;
 
-        znx_normalize_final_step_inplace_ref(basek, 0, &mut y0, &mut c0);
-        znx_normalize_final_step_inplace_avx(basek, 0, &mut y1, &mut c1);
+        znx_normalize_final_step_inplace_ref::<OVERWRITE>(base2k, 0, &mut y0, &mut c0);
+        znx_normalize_final_step_inplace_avx::<OVERWRITE>(base2k, 0, &mut y1, &mut c1);
 
         assert_eq!(y0, y1);
         assert_eq!(c0, c1);
 
-        znx_normalize_final_step_inplace_ref(basek, basek - 1, &mut y0, &mut c0);
-        znx_normalize_final_step_inplace_avx(basek, basek - 1, &mut y1, &mut c1);
+        znx_normalize_final_step_inplace_ref::<OVERWRITE>(base2k, base2k - 1, &mut y0, &mut c0);
+        znx_normalize_final_step_inplace_avx::<OVERWRITE>(base2k, base2k - 1, &mut y1, &mut c1);
 
         assert_eq!(y0, y1);
         assert_eq!(c0, c1);
@@ -874,7 +896,8 @@ mod tests {
             return;
         };
         unsafe {
-            test_znx_normalize_final_step_inplace_avx_internal();
+            test_znx_normalize_final_step_inplace_avx_internal::<false>();
+            test_znx_normalize_final_step_inplace_avx_internal::<true>();
         }
     }
 
@@ -898,16 +921,16 @@ mod tests {
         ];
         let mut c1: [i64; 4] = c0;
 
-        let basek = 12;
+        let base2k = 12;
 
-        znx_normalize_first_step_ref(basek, 0, &mut y0, &a, &mut c0);
-        znx_normalize_first_step_avx(basek, 0, &mut y1, &a, &mut c1);
+        znx_normalize_first_step_ref(base2k, 0, &mut y0, &a, &mut c0);
+        znx_normalize_first_step_avx(base2k, 0, &mut y1, &a, &mut c1);
 
         assert_eq!(y0, y1);
         assert_eq!(c0, c1);
 
-        znx_normalize_first_step_ref(basek, basek - 1, &mut y0, &a, &mut c0);
-        znx_normalize_first_step_avx(basek, basek - 1, &mut y1, &a, &mut c1);
+        znx_normalize_first_step_ref(base2k, base2k - 1, &mut y0, &a, &mut c0);
+        znx_normalize_first_step_avx(base2k, base2k - 1, &mut y1, &a, &mut c1);
 
         assert_eq!(y0, y1);
         assert_eq!(c0, c1);
@@ -944,16 +967,16 @@ mod tests {
         ];
         let mut c1: [i64; 4] = c0;
 
-        let basek = 12;
+        let base2k = 12;
 
-        znx_normalize_middle_step_ref(basek, 0, &mut y0, &a, &mut c0);
-        znx_normalize_middle_step_avx(basek, 0, &mut y1, &a, &mut c1);
+        znx_normalize_middle_step_ref(base2k, 0, &mut y0, &a, &mut c0);
+        znx_normalize_middle_step_avx(base2k, 0, &mut y1, &a, &mut c1);
 
         assert_eq!(y0, y1);
         assert_eq!(c0, c1);
 
-        znx_normalize_middle_step_ref(basek, basek - 1, &mut y0, &a, &mut c0);
-        znx_normalize_middle_step_avx(basek, basek - 1, &mut y1, &a, &mut c1);
+        znx_normalize_middle_step_ref(base2k, base2k - 1, &mut y0, &a, &mut c0);
+        znx_normalize_middle_step_avx(base2k, base2k - 1, &mut y1, &a, &mut c1);
 
         assert_eq!(y0, y1);
         assert_eq!(c0, c1);
@@ -990,16 +1013,16 @@ mod tests {
         ];
         let mut c1: [i64; 4] = c0;
 
-        let basek = 12;
+        let base2k = 12;
 
-        znx_normalize_final_step_ref(basek, 0, &mut y0, &a, &mut c0);
-        znx_normalize_final_step_avx(basek, 0, &mut y1, &a, &mut c1);
+        znx_normalize_final_step_ref(base2k, 0, &mut y0, &a, &mut c0);
+        znx_normalize_final_step_avx(base2k, 0, &mut y1, &a, &mut c1);
 
         assert_eq!(y0, y1);
         assert_eq!(c0, c1);
 
-        znx_normalize_final_step_ref(basek, basek - 1, &mut y0, &a, &mut c0);
-        znx_normalize_final_step_avx(basek, basek - 1, &mut y1, &a, &mut c1);
+        znx_normalize_final_step_ref(base2k, base2k - 1, &mut y0, &a, &mut c0);
+        znx_normalize_final_step_avx(base2k, base2k - 1, &mut y1, &a, &mut c1);
 
         assert_eq!(y0, y1);
         assert_eq!(c0, c1);

@@ -1,10 +1,10 @@
 use poulpy_hal::{
     api::{VmpPMatAlloc, VmpPMatAllocBytes, VmpPrepare},
-    layouts::{Backend, Data, DataMut, DataRef, Module, Scratch, VmpPMat},
+    layouts::{Backend, Data, DataMut, DataRef, Module, Scratch},
 };
 
 use crate::layouts::{
-    GGLWESwitchingKey, Infos,
+    Base2K, Degree, Digits, GGLWELayoutInfos, GGLWESwitchingKey, GLWEInfos, LWEInfos, Rank, Rows, TorusPrecision,
     prepared::{GGLWECiphertextPrepared, Prepare, PrepareAlloc},
 };
 
@@ -15,75 +15,103 @@ pub struct GGLWESwitchingKeyPrepared<D: Data, B: Backend> {
     pub(crate) sk_out_n: usize, // Degree of sk_out
 }
 
+impl<D: Data, B: Backend> LWEInfos for GGLWESwitchingKeyPrepared<D, B> {
+    fn n(&self) -> Degree {
+        self.key.n()
+    }
+
+    fn base2k(&self) -> Base2K {
+        self.key.base2k()
+    }
+
+    fn k(&self) -> TorusPrecision {
+        self.key.k()
+    }
+
+    fn size(&self) -> usize {
+        self.key.size()
+    }
+}
+
+impl<D: Data, B: Backend> GLWEInfos for GGLWESwitchingKeyPrepared<D, B> {
+    fn rank(&self) -> Rank {
+        self.rank_out()
+    }
+}
+
+impl<D: Data, B: Backend> GGLWELayoutInfos for GGLWESwitchingKeyPrepared<D, B> {
+    fn rank_in(&self) -> Rank {
+        self.key.rank_in()
+    }
+
+    fn rank_out(&self) -> Rank {
+        self.key.rank_out()
+    }
+
+    fn digits(&self) -> Digits {
+        self.key.digits()
+    }
+
+    fn rows(&self) -> Rows {
+        self.key.rows()
+    }
+}
+
 impl<B: Backend> GGLWESwitchingKeyPrepared<Vec<u8>, B> {
-    #[allow(clippy::too_many_arguments)]
-    pub fn alloc(module: &Module<B>, basek: usize, k: usize, rows: usize, digits: usize, rank_in: usize, rank_out: usize) -> Self
+    pub fn alloc<A>(module: &Module<B>, infos: &A) -> Self
     where
+        A: GGLWELayoutInfos,
         Module<B>: VmpPMatAlloc<B>,
     {
+        debug_assert_eq!(module.n() as u32, infos.n(), "module.n() != infos.n()");
         GGLWESwitchingKeyPrepared::<Vec<u8>, B> {
-            key: GGLWECiphertextPrepared::alloc(module, basek, k, rows, digits, rank_in, rank_out),
+            key: GGLWECiphertextPrepared::alloc(module, infos),
             sk_in_n: 0,
             sk_out_n: 0,
         }
     }
 
-    #[allow(clippy::too_many_arguments)]
-    pub fn bytes_of(
+    pub fn alloc_with(
         module: &Module<B>,
-        basek: usize,
-        k: usize,
-        rows: usize,
-        digits: usize,
-        rank_in: usize,
-        rank_out: usize,
+        base2k: Base2K,
+        k: TorusPrecision,
+        rows: Rows,
+        digits: Digits,
+        rank_in: Rank,
+        rank_out: Rank,
+    ) -> Self
+    where
+        Module<B>: VmpPMatAlloc<B>,
+    {
+        GGLWESwitchingKeyPrepared::<Vec<u8>, B> {
+            key: GGLWECiphertextPrepared::alloc_with(module, base2k, k, rows, digits, rank_in, rank_out),
+            sk_in_n: 0,
+            sk_out_n: 0,
+        }
+    }
+
+    pub fn alloc_bytes<A>(module: &Module<B>, infos: &A) -> usize
+    where
+        A: GGLWELayoutInfos,
+        Module<B>: VmpPMatAllocBytes,
+    {
+        debug_assert_eq!(module.n() as u32, infos.n(), "module.n() != infos.n()");
+        GGLWECiphertextPrepared::alloc_bytes(module, infos)
+    }
+
+    pub fn alloc_bytes_with(
+        module: &Module<B>,
+        base2k: Base2K,
+        k: TorusPrecision,
+        rows: Rows,
+        digits: Digits,
+        rank_in: Rank,
+        rank_out: Rank,
     ) -> usize
     where
         Module<B>: VmpPMatAllocBytes,
     {
-        GGLWECiphertextPrepared::bytes_of(module, basek, k, rows, digits, rank_in, rank_out)
-    }
-}
-
-impl<D: Data, B: Backend> Infos for GGLWESwitchingKeyPrepared<D, B> {
-    type Inner = VmpPMat<D, B>;
-
-    fn inner(&self) -> &Self::Inner {
-        self.key.inner()
-    }
-
-    fn basek(&self) -> usize {
-        self.key.basek()
-    }
-
-    fn k(&self) -> usize {
-        self.key.k()
-    }
-}
-
-impl<D: Data, B: Backend> GGLWESwitchingKeyPrepared<D, B> {
-    pub fn rank(&self) -> usize {
-        self.key.data.cols_out() - 1
-    }
-
-    pub fn rank_in(&self) -> usize {
-        self.key.data.cols_in()
-    }
-
-    pub fn rank_out(&self) -> usize {
-        self.key.data.cols_out() - 1
-    }
-
-    pub fn digits(&self) -> usize {
-        self.key.digits()
-    }
-
-    pub fn sk_degree_in(&self) -> usize {
-        self.sk_in_n
-    }
-
-    pub fn sk_degree_out(&self) -> usize {
-        self.sk_out_n
+        GGLWECiphertextPrepared::alloc_bytes_with(module, base2k, k, rows, digits, rank_in, rank_out)
     }
 }
 
@@ -103,15 +131,7 @@ where
     Module<B>: VmpPMatAlloc<B> + VmpPrepare<B>,
 {
     fn prepare_alloc(&self, module: &Module<B>, scratch: &mut Scratch<B>) -> GGLWESwitchingKeyPrepared<Vec<u8>, B> {
-        let mut atk_prepared: GGLWESwitchingKeyPrepared<Vec<u8>, B> = GGLWESwitchingKeyPrepared::alloc(
-            module,
-            self.basek(),
-            self.k(),
-            self.rows(),
-            self.digits(),
-            self.rank_in(),
-            self.rank_out(),
-        );
+        let mut atk_prepared: GGLWESwitchingKeyPrepared<Vec<u8>, B> = GGLWESwitchingKeyPrepared::alloc(module, self);
         atk_prepared.prepare(module, self, scratch);
         atk_prepared
     }

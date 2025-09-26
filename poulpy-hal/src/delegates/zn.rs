@@ -18,11 +18,11 @@ impl<B> ZnNormalizeInplace<B> for Module<B>
 where
     B: Backend + ZnNormalizeInplaceImpl<B>,
 {
-    fn zn_normalize_inplace<A>(&self, n: usize, basek: usize, a: &mut A, a_col: usize, scratch: &mut Scratch<B>)
+    fn zn_normalize_inplace<A>(&self, n: usize, base2k: usize, a: &mut A, a_col: usize, scratch: &mut Scratch<B>)
     where
         A: ZnToMut,
     {
-        B::zn_normalize_inplace_impl(n, basek, a, a_col, scratch)
+        B::zn_normalize_inplace_impl(n, base2k, a, a_col, scratch)
     }
 }
 
@@ -30,11 +30,11 @@ impl<B> ZnFillUniform for Module<B>
 where
     B: Backend + ZnFillUniformImpl<B>,
 {
-    fn zn_fill_uniform<R>(&self, n: usize, basek: usize, res: &mut R, res_col: usize, source: &mut Source)
+    fn zn_fill_uniform<R>(&self, n: usize, base2k: usize, res: &mut R, res_col: usize, source: &mut Source)
     where
         R: ZnToMut,
     {
-        B::zn_fill_uniform_impl(n, basek, res, res_col, source);
+        B::zn_fill_uniform_impl(n, base2k, res, res_col, source);
     }
 }
 
@@ -45,7 +45,7 @@ where
     fn zn_fill_normal<R>(
         &self,
         n: usize,
-        basek: usize,
+        base2k: usize,
         res: &mut R,
         res_col: usize,
         k: usize,
@@ -55,7 +55,7 @@ where
     ) where
         R: ZnToMut,
     {
-        B::zn_fill_normal_impl(n, basek, res, res_col, k, source, sigma, bound);
+        B::zn_fill_normal_impl(n, base2k, res, res_col, k, source, sigma, bound);
     }
 }
 
@@ -66,7 +66,7 @@ where
     fn zn_add_normal<R>(
         &self,
         n: usize,
-        basek: usize,
+        base2k: usize,
         res: &mut R,
         res_col: usize,
         k: usize,
@@ -76,6 +76,6 @@ where
     ) where
         R: ZnToMut,
     {
-        B::zn_add_normal_impl(n, basek, res, res_col, k, source, sigma, bound);
+        B::zn_add_normal_impl(n, base2k, res, res_col, k, source, sigma, bound);
     }
 }

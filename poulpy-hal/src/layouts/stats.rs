@@ -7,10 +7,10 @@ use rug::{
 use crate::layouts::{Backend, DataRef, VecZnx, VecZnxBig, VecZnxBigToRef, ZnxInfos};
 
 impl<D: DataRef> VecZnx<D> {
-    pub fn std(&self, basek: usize, col: usize) -> f64 {
-        let prec: u32 = (self.size() * basek) as u32;
+    pub fn std(&self, base2k: usize, col: usize) -> f64 {
+        let prec: u32 = (self.size() * base2k) as u32;
         let mut data: Vec<Float> = (0..self.n()).map(|_| Float::with_val(prec, 0)).collect();
-        self.decode_vec_float(basek, col, &mut data);
+        self.decode_vec_float(base2k, col, &mut data);
         // std = sqrt(sum((xi - avg)^2) / n)
         let mut avg: Float = Float::with_val(prec, 0);
         data.iter().for_each(|x| {
@@ -29,7 +29,7 @@ impl<D: DataRef> VecZnx<D> {
 }
 
 impl<D: DataRef, B: Backend + Backend<ScalarBig = i64>> VecZnxBig<D, B> {
-    pub fn std(&self, basek: usize, col: usize) -> f64 {
+    pub fn std(&self, base2k: usize, col: usize) -> f64 {
         let self_ref: VecZnxBig<&[u8], B> = self.to_ref();
         let znx: VecZnx<&[u8]> = VecZnx {
             data: self_ref.data,
@@ -38,6 +38,6 @@ impl<D: DataRef, B: Backend + Backend<ScalarBig = i64>> VecZnxBig<D, B> {
             size: self_ref.size,
             max_size: self_ref.max_size,
         };
-        znx.std(basek, col)
+        znx.std(base2k, col)
     }
 }
