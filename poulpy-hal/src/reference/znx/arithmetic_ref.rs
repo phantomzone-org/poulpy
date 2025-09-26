@@ -2,7 +2,7 @@ use crate::reference::znx::{
     ZnxAdd, ZnxAddInplace, ZnxAutomorphism, ZnxCopy, ZnxMulAddPowerOfTwo, ZnxMulPowerOfTwo, ZnxMulPowerOfTwoInplace, ZnxNegate,
     ZnxNegateInplace, ZnxNormalizeFinalStep, ZnxNormalizeFinalStepInplace, ZnxNormalizeFirstStep, ZnxNormalizeFirstStepCarryOnly,
     ZnxNormalizeFirstStepInplace, ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepCarryOnly, ZnxNormalizeMiddleStepInplace, ZnxSub,
-    ZnxSubABInplace, ZnxSubBAInplace, ZnxSwitchRing, ZnxZero,
+    ZnxSubInplace, ZnxSubNegateInplace, ZnxSwitchRing, ZnxZero,
     add::{znx_add_inplace_ref, znx_add_ref},
     automorphism::znx_automorphism_ref,
     copy::znx_copy_ref,
@@ -12,7 +12,7 @@ use crate::reference::znx::{
         znx_normalize_first_step_inplace_ref, znx_normalize_first_step_ref, znx_normalize_middle_step_carry_only_ref,
         znx_normalize_middle_step_inplace_ref, znx_normalize_middle_step_ref,
     },
-    sub::{znx_sub_ab_inplace_ref, znx_sub_ba_inplace_ref, znx_sub_ref},
+    sub::{znx_sub_inplace_ref, znx_sub_negate_inplace_ref, znx_sub_ref},
     switch_ring::znx_switch_ring_ref,
     zero::znx_zero_ref,
     znx_mul_add_power_of_two_ref, znx_mul_power_of_two_inplace_ref, znx_mul_power_of_two_ref,
@@ -41,17 +41,17 @@ impl ZnxSub for ZnxRef {
     }
 }
 
-impl ZnxSubABInplace for ZnxRef {
+impl ZnxSubInplace for ZnxRef {
     #[inline(always)]
-    fn znx_sub_ab_inplace(res: &mut [i64], a: &[i64]) {
-        znx_sub_ab_inplace_ref(res, a);
+    fn znx_sub_inplace(res: &mut [i64], a: &[i64]) {
+        znx_sub_inplace_ref(res, a);
     }
 }
 
-impl ZnxSubBAInplace for ZnxRef {
+impl ZnxSubNegateInplace for ZnxRef {
     #[inline(always)]
-    fn znx_sub_ba_inplace(res: &mut [i64], a: &[i64]) {
-        znx_sub_ba_inplace_ref(res, a);
+    fn znx_sub_negate_inplace(res: &mut [i64], a: &[i64]) {
+        znx_sub_negate_inplace_ref(res, a);
     }
 }
 

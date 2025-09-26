@@ -1135,7 +1135,7 @@ where
     }
 }
 
-pub fn test_vec_znx_sub_ab_inplace<BR: Backend, BT: Backend>(base2k: usize, module_ref: &Module<BR>, module_test: &Module<BT>)
+pub fn test_vec_znx_sub_inplace<BR: Backend, BT: Backend>(base2k: usize, module_ref: &Module<BR>, module_test: &Module<BT>)
 where
     Module<BR>: VecZnxSubInplace,
     Module<BT>: VecZnxSubInplace,
@@ -1169,7 +1169,7 @@ where
     }
 }
 
-pub fn test_vec_znx_sub_ba_inplace<BR: Backend, BT: Backend>(base2k: usize, module_ref: &Module<BR>, module_test: &Module<BT>)
+pub fn test_vec_znx_sub_negate_inplace<BR: Backend, BT: Backend>(base2k: usize, module_ref: &Module<BR>, module_test: &Module<BT>)
 where
     Module<BR>: VecZnxSubNegateInplace,
     Module<BT>: VecZnxSubNegateInplace,

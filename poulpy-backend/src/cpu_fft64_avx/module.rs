@@ -7,7 +7,7 @@ use poulpy_hal::{
         fft64::{
             reim::{
                 ReimAdd, ReimAddInplace, ReimAddMul, ReimCopy, ReimDFTExecute, ReimFFTTable, ReimFromZnx, ReimIFFTTable, ReimMul,
-                ReimMulInplace, ReimNegate, ReimNegateInplace, ReimSub, ReimSubABInplace, ReimSubBAInplace, ReimToZnx,
+                ReimMulInplace, ReimNegate, ReimNegateInplace, ReimSub, ReimSubInplace, ReimSubNegateInplace, ReimToZnx,
                 ReimToZnxInplace, ReimZero, reim_copy_ref, reim_zero_ref,
             },
             reim4::{
@@ -18,7 +18,7 @@ use poulpy_hal::{
             ZnxAdd, ZnxAddInplace, ZnxAutomorphism, ZnxCopy, ZnxMulAddPowerOfTwo, ZnxMulPowerOfTwo, ZnxMulPowerOfTwoInplace,
             ZnxNegate, ZnxNegateInplace, ZnxNormalizeFinalStep, ZnxNormalizeFinalStepInplace, ZnxNormalizeFirstStep,
             ZnxNormalizeFirstStepCarryOnly, ZnxNormalizeFirstStepInplace, ZnxNormalizeMiddleStep,
-            ZnxNormalizeMiddleStepCarryOnly, ZnxNormalizeMiddleStepInplace, ZnxRotate, ZnxSub, ZnxSubABInplace, ZnxSubBAInplace,
+            ZnxNormalizeMiddleStepCarryOnly, ZnxNormalizeMiddleStepInplace, ZnxRotate, ZnxSub, ZnxSubInplace, ZnxSubNegateInplace,
             ZnxSwitchRing, ZnxZero, znx_copy_ref, znx_rotate, znx_zero_ref,
         },
     },
@@ -29,7 +29,7 @@ use crate::cpu_fft64_avx::{
     reim::{
         ReimFFTAvx, ReimIFFTAvx, reim_add_avx2_fma, reim_add_inplace_avx2_fma, reim_addmul_avx2_fma, reim_from_znx_i64_bnd50_fma,
         reim_mul_avx2_fma, reim_mul_inplace_avx2_fma, reim_negate_avx2_fma, reim_negate_inplace_avx2_fma,
-        reim_sub_ab_inplace_avx2_fma, reim_sub_avx2_fma, reim_sub_ba_inplace_avx2_fma, reim_to_znx_i64_inplace_bnd63_avx2_fma,
+        reim_sub_inplace_avx2_fma, reim_sub_avx2_fma, reim_sub_negate_inplace_avx2_fma, reim_to_znx_i64_inplace_bnd63_avx2_fma,
     },
     reim_to_znx_i64_bnd63_avx2_fma,
     reim4::{
@@ -41,7 +41,7 @@ use crate::cpu_fft64_avx::{
         znx_mul_power_of_two_inplace_avx, znx_negate_avx, znx_negate_inplace_avx, znx_normalize_final_step_avx,
         znx_normalize_final_step_inplace_avx, znx_normalize_first_step_avx, znx_normalize_first_step_carry_only_avx,
         znx_normalize_first_step_inplace_avx, znx_normalize_middle_step_avx, znx_normalize_middle_step_carry_only_avx,
-        znx_normalize_middle_step_inplace_avx, znx_sub_ab_inplace_avx, znx_sub_avx, znx_sub_ba_inplace_avx, znx_switch_ring_avx,
+        znx_normalize_middle_step_inplace_avx, znx_sub_inplace_avx, znx_sub_avx, znx_sub_negate_inplace_avx, znx_switch_ring_avx,
     },
 };
 
@@ -132,20 +132,20 @@ impl ZnxSub for FFT64Avx {
     }
 }
 
-impl ZnxSubABInplace for FFT64Avx {
+impl ZnxSubInplace for FFT64Avx {
     #[inline(always)]
-    fn znx_sub_ab_inplace(res: &mut [i64], a: &[i64]) {
+    fn znx_sub_inplace(res: &mut [i64], a: &[i64]) {
         unsafe {
-            znx_sub_ab_inplace_avx(res, a);
+            znx_sub_inplace_avx(res, a);
         }
     }
 }
 
-impl ZnxSubBAInplace for FFT64Avx {
+impl ZnxSubNegateInplace for FFT64Avx {
     #[inline(always)]
-    fn znx_sub_ba_inplace(res: &mut [i64], a: &[i64]) {
+    fn znx_sub_negate_inplace(res: &mut [i64], a: &[i64]) {
         unsafe {
-            znx_sub_ba_inplace_avx(res, a);
+            znx_sub_negate_inplace_avx(res, a);
         }
     }
 }
@@ -374,20 +374,20 @@ impl ReimSub for FFT64Avx {
     }
 }
 
-impl ReimSubABInplace for FFT64Avx {
+impl ReimSubInplace for FFT64Avx {
     #[inline(always)]
-    fn reim_sub_ab_inplace(res: &mut [f64], a: &[f64]) {
+    fn reim_sub_inplace(res: &mut [f64], a: &[f64]) {
         unsafe {
-            reim_sub_ab_inplace_avx2_fma(res, a);
+            reim_sub_inplace_avx2_fma(res, a);
         }
     }
 }
 
-impl ReimSubBAInplace for FFT64Avx {
+impl ReimSubNegateInplace for FFT64Avx {
     #[inline(always)]
-    fn reim_sub_ba_inplace(res: &mut [f64], a: &[f64]) {
+    fn reim_sub_negate_inplace(res: &mut [f64], a: &[f64]) {
         unsafe {
-            reim_sub_ba_inplace_avx2_fma(res, a);
+            reim_sub_negate_inplace_avx2_fma(res, a);
         }
     }
 }

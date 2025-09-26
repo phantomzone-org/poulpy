@@ -37,12 +37,12 @@ pub trait ZnxSub {
     fn znx_sub(res: &mut [i64], a: &[i64], b: &[i64]);
 }
 
-pub trait ZnxSubABInplace {
-    fn znx_sub_ab_inplace(res: &mut [i64], a: &[i64]);
+pub trait ZnxSubInplace {
+    fn znx_sub_inplace(res: &mut [i64], a: &[i64]);
 }
 
-pub trait ZnxSubBAInplace {
-    fn znx_sub_ba_inplace(res: &mut [i64], a: &[i64]);
+pub trait ZnxSubNegateInplace {
+    fn znx_sub_negate_inplace(res: &mut [i64], a: &[i64]);
 }
 
 pub trait ZnxAutomorphism {

@@ -3,7 +3,7 @@ use rug::{Assign, Float};
 
 use crate::{
     layouts::{DataMut, DataRef, VecZnx, VecZnxToMut, VecZnxToRef, Zn, ZnToMut, ZnToRef, ZnxInfos, ZnxView, ZnxViewMut},
-    reference::znx::znx_zero_ref,
+    reference::{vec_znx::vec_znx_normalize_inplace, znx::{get_digit, znx_zero_ref, ZnxNormalizeFinalStepInplace, ZnxNormalizeFirstStepInplace, ZnxNormalizeMiddleStepInplace, ZnxRef}},
 };
 
 impl<D: DataMut> VecZnx<D> {
@@ -35,29 +35,24 @@ impl<D: DataMut> VecZnx<D> {
         // If 2^{base2k} * 2^{k_rem} < 2^{63}-1, then we can simply copy
         // values on the last limb.
         // Else we decompose values base2k.
-        if log_max + k_rem < 63 || k_rem == base2k {
-            a.at_mut(col, size - 1)[..data_len].copy_from_slice(&data[..data_len]);
-        } else {
-            let mask: i64 = (1 << base2k) - 1;
-            let steps: usize = size.min(log_max.div_ceil(base2k));
-            (size - steps..size)
-                .rev()
-                .enumerate()
-                .for_each(|(i, i_rev)| {
-                    let shift: usize = i * base2k;
-                    izip!(a.at_mut(col, i_rev).iter_mut(), data.iter()).for_each(|(y, x)| *y = (x >> shift) & mask);
-                })
+        a.at_mut(col, size - 1)[..data_len].copy_from_slice(&data[..data_len]);
+
+        let mut carry = vec![0i64; a.n()];
+
+        let a_size: usize = a.size();
+
+        let shift: usize = k_rem%base2k;
+
+        for j in (0..a.size()).rev() {
+            if j == a_size - 1 {
+                ZnxRef::znx_normalize_first_step_inplace(base2k, shift, a.at_mut(col, j), &mut carry);
+            } else if j == 0 {
+                ZnxRef::znx_normalize_final_step_inplace::<false>(base2k, shift, a.at_mut(col, j), &mut carry);
+            } else {
+                ZnxRef::znx_normalize_middle_step_inplace::<false>(base2k, shift, a.at_mut(col, j), &mut carry);
+            }
         }
 
-        // Case where self.prec % self.k != 0.
-        if k_rem != base2k {
-            let steps: usize = size.min(log_max.div_ceil(base2k));
-            (size - steps..size).rev().for_each(|i| {
-                a.at_mut(col, i)[..data_len]
-                    .iter_mut()
-                    .for_each(|x| *x <<= k_rem);
-            })
-        }
     }
 
     pub fn encode_coeff_i64(&mut self, base2k: usize, col: usize, k: usize, idx: usize, data: i64, log_max: usize) {

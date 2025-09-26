@@ -2,12 +2,12 @@ use poulpy_hal::reference::znx::{
     ZnxAdd, ZnxAddInplace, ZnxAutomorphism, ZnxCopy, ZnxMulAddPowerOfTwo, ZnxMulPowerOfTwo, ZnxMulPowerOfTwoInplace, ZnxNegate,
     ZnxNegateInplace, ZnxNormalizeFinalStep, ZnxNormalizeFinalStepInplace, ZnxNormalizeFirstStep, ZnxNormalizeFirstStepCarryOnly,
     ZnxNormalizeFirstStepInplace, ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepCarryOnly, ZnxNormalizeMiddleStepInplace,
-    ZnxRotate, ZnxSub, ZnxSubABInplace, ZnxSubBAInplace, ZnxSwitchRing, ZnxZero, znx_add_inplace_ref, znx_add_ref,
+    ZnxRotate, ZnxSub, ZnxSubInplace, ZnxSubNegateInplace, ZnxSwitchRing, ZnxZero, znx_add_inplace_ref, znx_add_ref,
     znx_automorphism_ref, znx_copy_ref, znx_mul_add_power_of_two_ref, znx_mul_power_of_two_inplace_ref, znx_mul_power_of_two_ref,
     znx_negate_inplace_ref, znx_negate_ref, znx_normalize_final_step_inplace_ref, znx_normalize_final_step_ref,
     znx_normalize_first_step_carry_only_ref, znx_normalize_first_step_inplace_ref, znx_normalize_first_step_ref,
     znx_normalize_middle_step_carry_only_ref, znx_normalize_middle_step_inplace_ref, znx_normalize_middle_step_ref, znx_rotate,
-    znx_sub_ab_inplace_ref, znx_sub_ba_inplace_ref, znx_sub_ref, znx_switch_ring_ref, znx_zero_ref,
+    znx_sub_inplace_ref, znx_sub_negate_inplace_ref, znx_sub_ref, znx_switch_ring_ref, znx_zero_ref,
 };
 
 use crate::cpu_fft64_ref::FFT64Ref;
@@ -33,17 +33,17 @@ impl ZnxSub for FFT64Ref {
     }
 }
 
-impl ZnxSubABInplace for FFT64Ref {
+impl ZnxSubInplace for FFT64Ref {
     #[inline(always)]
-    fn znx_sub_ab_inplace(res: &mut [i64], a: &[i64]) {
-        znx_sub_ab_inplace_ref(res, a);
+    fn znx_sub_inplace(res: &mut [i64], a: &[i64]) {
+        znx_sub_inplace_ref(res, a);
     }
 }
 
-impl ZnxSubBAInplace for FFT64Ref {
+impl ZnxSubNegateInplace for FFT64Ref {
     #[inline(always)]
-    fn znx_sub_ba_inplace(res: &mut [i64], a: &[i64]) {
-        znx_sub_ba_inplace_ref(res, a);
+    fn znx_sub_negate_inplace(res: &mut [i64], a: &[i64]) {
+        znx_sub_negate_inplace_ref(res, a);
     }
 }
 

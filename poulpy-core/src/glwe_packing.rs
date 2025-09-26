@@ -382,7 +382,7 @@ fn combine<D: DataRef, DataAK: DataRef, B: Backend>(
 
         // a = (b* X^t - phi(b* X^t))
         if let Some(key) = auto_keys.get(&gal_el) {
-            a.automorphism_sub_ba(module, &tmp_b, key, scratch_1);
+            a.automorphism_sub_negate(module, &tmp_b, key, scratch_1);
         } else {
             panic!("auto_key[{gal_el}] not found");
         }

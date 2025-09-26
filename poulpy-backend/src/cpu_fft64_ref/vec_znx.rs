@@ -23,7 +23,7 @@ use poulpy_hal::{
         vec_znx_mul_xp_minus_one_inplace_tmp_bytes, vec_znx_negate, vec_znx_negate_inplace, vec_znx_normalize,
         vec_znx_normalize_inplace, vec_znx_normalize_tmp_bytes, vec_znx_rotate, vec_znx_rotate_inplace,
         vec_znx_rotate_inplace_tmp_bytes, vec_znx_rsh, vec_znx_rsh_inplace, vec_znx_rsh_tmp_bytes, vec_znx_split_ring,
-        vec_znx_split_ring_tmp_bytes, vec_znx_sub, vec_znx_sub_ab_inplace, vec_znx_sub_ba_inplace, vec_znx_sub_scalar,
+        vec_znx_split_ring_tmp_bytes, vec_znx_sub, vec_znx_sub_inplace, vec_znx_sub_negate_inplace, vec_znx_sub_scalar,
         vec_znx_sub_scalar_inplace, vec_znx_switch_ring,
     },
     source::Source,
@@ -150,7 +150,7 @@ unsafe impl VecZnxSubInplaceImpl<Self> for FFT64Ref {
         R: VecZnxToMut,
         A: VecZnxToRef,
     {
-        vec_znx_sub_ab_inplace::<R, A, Self>(res, res_col, a, a_col);
+        vec_znx_sub_inplace::<R, A, Self>(res, res_col, a, a_col);
     }
 }
 
@@ -160,7 +160,7 @@ unsafe impl VecZnxSubNegateInplaceImpl<Self> for FFT64Ref {
         R: VecZnxToMut,
         A: VecZnxToRef,
     {
-        vec_znx_sub_ba_inplace::<R, A, Self>(res, res_col, a, a_col);
+        vec_znx_sub_negate_inplace::<R, A, Self>(res, res_col, a, a_col);
     }
 }
 

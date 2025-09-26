@@ -553,7 +553,7 @@ mod tests {
         reference::{
             vec_znx::{
                 vec_znx_copy, vec_znx_lsh, vec_znx_lsh_inplace, vec_znx_normalize_inplace, vec_znx_rsh, vec_znx_rsh_inplace,
-                vec_znx_sub_ab_inplace,
+                vec_znx_sub_inplace,
             },
             znx::ZnxRef,
         },
@@ -656,8 +656,8 @@ mod tests {
                 // res.
                 } else {
                     for j in 0..cols {
-                        vec_znx_sub_ab_inplace::<_, _, ZnxRef>(&mut res_ref, j, &a, j);
-                        vec_znx_sub_ab_inplace::<_, _, ZnxRef>(&mut res_test, j, &a, j);
+                        vec_znx_sub_inplace::<_, _, ZnxRef>(&mut res_ref, j, &a, j);
+                        vec_znx_sub_inplace::<_, _, ZnxRef>(&mut res_test, j, &a, j);
 
                         vec_znx_normalize_inplace::<_, ZnxRef>(base2k, &mut res_ref, j, &mut carry);
                         vec_znx_normalize_inplace::<_, ZnxRef>(base2k, &mut res_test, j, &mut carry);

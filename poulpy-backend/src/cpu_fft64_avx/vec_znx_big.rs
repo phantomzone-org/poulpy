@@ -18,7 +18,7 @@ use poulpy_hal::{
             vec_znx_big_add, vec_znx_big_add_inplace, vec_znx_big_add_normal_ref, vec_znx_big_add_small,
             vec_znx_big_add_small_inplace, vec_znx_big_automorphism, vec_znx_big_automorphism_inplace,
             vec_znx_big_automorphism_inplace_tmp_bytes, vec_znx_big_negate, vec_znx_big_negate_inplace, vec_znx_big_normalize,
-            vec_znx_big_normalize_tmp_bytes, vec_znx_big_sub, vec_znx_big_sub_ab_inplace, vec_znx_big_sub_ba_inplace,
+            vec_znx_big_normalize_tmp_bytes, vec_znx_big_sub, vec_znx_big_sub_inplace, vec_znx_big_sub_negate_inplace,
             vec_znx_big_sub_small_a, vec_znx_big_sub_small_a_inplace, vec_znx_big_sub_small_b, vec_znx_big_sub_small_b_inplace,
         },
         znx::{znx_copy_ref, znx_zero_ref},
@@ -174,7 +174,7 @@ unsafe impl VecZnxBigSubInplaceImpl<Self> for FFT64Avx {
         R: VecZnxBigToMut<Self>,
         A: VecZnxBigToRef<Self>,
     {
-        vec_znx_big_sub_ab_inplace(res, res_col, a, a_col);
+        vec_znx_big_sub_inplace(res, res_col, a, a_col);
     }
 }
 
@@ -185,7 +185,7 @@ unsafe impl VecZnxBigSubNegateInplaceImpl<Self> for FFT64Avx {
         R: VecZnxBigToMut<Self>,
         A: VecZnxBigToRef<Self>,
     {
-        vec_znx_big_sub_ba_inplace(res, res_col, a, a_col);
+        vec_znx_big_sub_negate_inplace(res, res_col, a, a_col);
     }
 }
 

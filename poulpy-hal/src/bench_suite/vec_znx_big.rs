@@ -464,7 +464,7 @@ where
     group.finish();
 }
 
-pub fn bench_vec_znx_big_sub_ab_inplace<B: Backend>(c: &mut Criterion, label: &str)
+pub fn bench_vec_znx_big_sub_inplace<B: Backend>(c: &mut Criterion, label: &str)
 where
     Module<B>: VecZnxBigSubInplace<B> + ModuleNew<B> + VecZnxBigAlloc<B>,
 {
@@ -507,7 +507,7 @@ where
     group.finish();
 }
 
-pub fn bench_vec_znx_big_sub_ba_inplace<B: Backend>(c: &mut Criterion, label: &str)
+pub fn bench_vec_znx_big_sub_negate_inplace<B: Backend>(c: &mut Criterion, label: &str)
 where
     Module<B>: VecZnxBigSubNegateInplace<B> + ModuleNew<B> + VecZnxBigAlloc<B>,
 {

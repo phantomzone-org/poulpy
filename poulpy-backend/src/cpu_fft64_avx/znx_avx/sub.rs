@@ -43,7 +43,7 @@ pub fn znx_sub_avx(res: &mut [i64], a: &[i64], b: &[i64]) {
 /// all inputs must have the same length and must not alias.
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2")]
-pub fn znx_sub_ab_inplace_avx(res: &mut [i64], a: &[i64]) {
+pub fn znx_sub_inplace_avx(res: &mut [i64], a: &[i64]) {
     #[cfg(debug_assertions)]
     {
         assert_eq!(res.len(), a.len());
@@ -69,9 +69,9 @@ pub fn znx_sub_ab_inplace_avx(res: &mut [i64], a: &[i64]) {
 
     // tail
     if !res.len().is_multiple_of(4) {
-        use poulpy_hal::reference::znx::znx_sub_ab_inplace_ref;
+        use poulpy_hal::reference::znx::znx_sub_inplace_ref;
 
-        znx_sub_ab_inplace_ref(&mut res[span << 2..], &a[span << 2..]);
+        znx_sub_inplace_ref(&mut res[span << 2..], &a[span << 2..]);
     }
 }
 
@@ -80,7 +80,7 @@ pub fn znx_sub_ab_inplace_avx(res: &mut [i64], a: &[i64]) {
 /// all inputs must have the same length and must not alias.
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2")]
-pub fn znx_sub_ba_inplace_avx(res: &mut [i64], a: &[i64]) {
+pub fn znx_sub_negate_inplace_avx(res: &mut [i64], a: &[i64]) {
     #[cfg(debug_assertions)]
     {
         assert_eq!(res.len(), a.len());
@@ -106,8 +106,8 @@ pub fn znx_sub_ba_inplace_avx(res: &mut [i64], a: &[i64]) {
 
     // tail
     if !res.len().is_multiple_of(4) {
-        use poulpy_hal::reference::znx::znx_sub_ba_inplace_ref;
+        use poulpy_hal::reference::znx::znx_sub_negate_inplace_ref;
 
-        znx_sub_ba_inplace_ref(&mut res[span << 2..], &a[span << 2..]);
+        znx_sub_negate_inplace_ref(&mut res[span << 2..], &a[span << 2..]);
     }
 }

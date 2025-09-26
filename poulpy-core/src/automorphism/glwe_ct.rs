@@ -216,7 +216,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         })
     }
 
-    pub fn automorphism_sub_ab_inplace<DataRhs: DataRef, B: Backend>(
+    pub fn automorphism_sub_inplace<DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
         rhs: &GGLWEAutomorphismKeyPrepared<DataRhs, B>,
@@ -258,7 +258,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         })
     }
 
-    pub fn automorphism_sub_ba<DataLhs: DataRef, DataRhs: DataRef, B: Backend>(
+    pub fn automorphism_sub_negate<DataLhs: DataRef, DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
         lhs: &GLWECiphertext<DataLhs>,
@@ -301,7 +301,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         })
     }
 
-    pub fn automorphism_sub_ba_inplace<DataRhs: DataRef, B: Backend>(
+    pub fn automorphism_sub_negate_inplace<DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
         rhs: &GGLWEAutomorphismKeyPrepared<DataRhs, B>,

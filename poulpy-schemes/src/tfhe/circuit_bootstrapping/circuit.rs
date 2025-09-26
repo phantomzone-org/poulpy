@@ -487,6 +487,6 @@ fn combine<A: DataMut, D: DataMut, DataAK: DataRef, B: Backend>(
         tmp_b.rsh(module, 1, scratch_1);
 
         // a = (b* X^t - phi(b* X^t))
-        b.automorphism_sub_ba(module, &tmp_b, auto_key, scratch_1);
+        b.automorphism_sub_negate(module, &tmp_b, auto_key, scratch_1);
     }
 }

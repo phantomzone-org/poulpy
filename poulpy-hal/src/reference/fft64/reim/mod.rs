@@ -91,12 +91,12 @@ pub trait ReimSub {
     fn reim_sub(res: &mut [f64], a: &[f64], b: &[f64]);
 }
 
-pub trait ReimSubABInplace {
-    fn reim_sub_ab_inplace(res: &mut [f64], a: &[f64]);
+pub trait ReimSubInplace {
+    fn reim_sub_inplace(res: &mut [f64], a: &[f64]);
 }
 
-pub trait ReimSubBAInplace {
-    fn reim_sub_ba_inplace(res: &mut [f64], a: &[f64]);
+pub trait ReimSubNegateInplace {
+    fn reim_sub_negate_inplace(res: &mut [f64], a: &[f64]);
 }
 
 pub trait ReimNegate {
