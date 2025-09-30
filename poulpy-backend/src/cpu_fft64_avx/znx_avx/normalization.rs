@@ -1,4 +1,3 @@
-#[cfg(target_arch = "x86_64")]
 use std::arch::x86_64::__m256i;
 
 /// Vector forms of those constants (broadcast to all lanes)
@@ -6,7 +5,6 @@ use std::arch::x86_64::__m256i;
 /// # Safety
 /// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
 /// all inputs must have the same length and must not alias.
-#[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2")]
 fn normalize_consts_avx(base2k: usize) -> (__m256i, __m256i, __m256i, __m256i) {
     use std::arch::x86_64::_mm256_set1_epi64x;
@@ -30,7 +28,6 @@ fn normalize_consts_avx(base2k: usize) -> (__m256i, __m256i, __m256i, __m256i) {
 /// # Safety
 /// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
 /// all inputs must have the same length and must not alias.
-#[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2")]
 fn get_digit_avx(x: __m256i, mask_k: __m256i, sign_k: __m256i) -> __m256i {
     use std::arch::x86_64::{_mm256_and_si256, _mm256_sub_epi64, _mm256_xor_si256};
@@ -45,7 +42,6 @@ fn get_digit_avx(x: __m256i, mask_k: __m256i, sign_k: __m256i) -> __m256i {
 /// # Safety
 /// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
 /// all inputs must have the same length and must not alias.
-#[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2")]
 unsafe fn get_carry_avx(
     x: __m256i,
@@ -174,7 +170,6 @@ pub fn znx_normalize_digit_avx(base2k: usize, res: &mut [i64], src: &mut [i64]) 
 /// # Safety
 /// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
 /// all inputs must have the same length and must not alias.
-#[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2")]
 pub fn znx_normalize_first_step_carry_only_avx(base2k: usize, lsh: usize, x: &[i64], carry: &mut [i64]) {
     #[cfg(debug_assertions)]
@@ -226,7 +221,6 @@ pub fn znx_normalize_first_step_carry_only_avx(base2k: usize, lsh: usize, x: &[i
 /// # Safety
 /// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
 /// all inputs must have the same length and must not alias.
-#[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2")]
 pub fn znx_normalize_first_step_inplace_avx(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
     #[cfg(debug_assertions)]
@@ -297,7 +291,6 @@ pub fn znx_normalize_first_step_inplace_avx(base2k: usize, lsh: usize, x: &mut [
 /// # Safety
 /// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
 /// all inputs must have the same length and must not alias.
-#[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx2")]
 pub fn znx_normalize_first_step_avx(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
     #[cfg(debug_assertions)]
@@ -380,7 +373,6 @@ pub fn znx_normalize_first_step_avx(base2k: usize, lsh: usize, x: &mut [i64], a:
 /// # Safety
 /// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
 /// all inputs must have the same length and must not alias.
-#[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
 #[target_feature(enable = "avx2")]
 pub fn znx_normalize_middle_step_inplace_avx(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
     #[cfg(debug_assertions)]
@@ -460,7 +452,6 @@ pub fn znx_normalize_middle_step_inplace_avx(base2k: usize, lsh: usize, x: &mut 
 /// # Safety
 /// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
 /// all inputs must have the same length and must not alias.
-#[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
 #[target_feature(enable = "avx2")]
 pub fn znx_normalize_middle_step_carry_only_avx(base2k: usize, lsh: usize, x: &[i64], carry: &mut [i64]) {
     #[cfg(debug_assertions)]
@@ -538,7 +529,6 @@ pub fn znx_normalize_middle_step_carry_only_avx(base2k: usize, lsh: usize, x: &[
 /// # Safety
 /// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
 /// all inputs must have the same length and must not alias.
-#[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
 #[target_feature(enable = "avx2")]
 pub fn znx_normalize_middle_step_avx(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
     #[cfg(debug_assertions)]
@@ -628,7 +618,6 @@ pub fn znx_normalize_middle_step_avx(base2k: usize, lsh: usize, x: &mut [i64], a
 /// # Safety
 /// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
 /// all inputs must have the same length and must not alias.
-#[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
 #[target_feature(enable = "avx2")]
 pub fn znx_normalize_final_step_inplace_avx(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
     #[cfg(debug_assertions)]
@@ -699,7 +688,6 @@ pub fn znx_normalize_final_step_inplace_avx(base2k: usize, lsh: usize, x: &mut [
 /// # Safety
 /// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
 /// all inputs must have the same length and must not alias.
-#[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
 #[target_feature(enable = "avx2")]
 pub fn znx_normalize_final_step_avx(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
     #[cfg(debug_assertions)]
@@ -776,7 +764,6 @@ pub fn znx_normalize_final_step_avx(base2k: usize, lsh: usize, x: &mut [i64], a:
     }
 }
 
-#[cfg(all(test, any(target_arch = "x86_64", target_arch = "x86")))]
 mod tests {
     use poulpy_hal::reference::znx::{
         get_carry_i64, get_digit_i64, znx_extract_digit_addmul_ref, znx_normalize_digit_ref,
@@ -788,6 +775,7 @@ mod tests {
 
     use std::arch::x86_64::{_mm256_loadu_si256, _mm256_storeu_si256};
 
+    #[allow(dead_code)]
     #[target_feature(enable = "avx2")]
     fn test_get_digit_avx_internal() {
         let base2k: usize = 12;
@@ -824,6 +812,7 @@ mod tests {
         }
     }
 
+    #[allow(dead_code)]
     #[target_feature(enable = "avx2")]
     fn test_get_carry_avx_internal() {
         let base2k: usize = 12;
@@ -862,6 +851,7 @@ mod tests {
         }
     }
 
+    #[allow(dead_code)]
     #[target_feature(enable = "avx2")]
     fn test_znx_normalize_first_step_inplace_avx_internal() {
         let mut y0: [i64; 4] = [
@@ -906,6 +896,7 @@ mod tests {
         }
     }
 
+    #[allow(dead_code)]
     #[target_feature(enable = "avx2")]
     fn test_znx_normalize_middle_step_inplace_avx_internal() {
         let mut y0: [i64; 4] = [
@@ -950,6 +941,7 @@ mod tests {
         }
     }
 
+    #[allow(dead_code)]
     #[target_feature(enable = "avx2")]
     fn test_znx_normalize_final_step_inplace_avx_internal() {
         let mut y0: [i64; 4] = [
@@ -994,6 +986,7 @@ mod tests {
         }
     }
 
+    #[allow(dead_code)]
     #[target_feature(enable = "avx2")]
     fn test_znx_normalize_first_step_avx_internal() {
         let mut y0: [i64; 4] = [
@@ -1039,6 +1032,7 @@ mod tests {
         }
     }
 
+    #[allow(dead_code)]
     #[target_feature(enable = "avx2")]
     fn test_znx_normalize_middle_step_avx_internal() {
         let mut y0: [i64; 4] = [
@@ -1084,6 +1078,7 @@ mod tests {
         }
     }
 
+    #[allow(dead_code)]
     #[target_feature(enable = "avx2")]
     fn test_znx_normalize_final_step_avx_internal() {
         let mut y0: [i64; 4] = [
