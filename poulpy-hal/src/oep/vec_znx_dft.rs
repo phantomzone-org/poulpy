@@ -4,24 +4,24 @@ use crate::layouts::{
 };
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See TODO for reference code.
-/// * See TODO for corresponding public API.
+/// * See the [poulpy-backend/src/cpu_fft64_ref/vec_znx_dft.rs](https://github.com/phantomzone-org/poulpy/blob/main/poulpy-backend/src/cpu_fft64_ref/vec_znx_dft.rs) reference implementation.
+/// * See [crate::api::VecZnxDftAlloc] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxDftAllocImpl<B: Backend> {
     fn vec_znx_dft_alloc_impl(n: usize, cols: usize, size: usize) -> VecZnxDftOwned<B>;
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See TODO for reference code.
-/// * See TODO for corresponding public API.
+/// * See the [poulpy-backend/src/cpu_fft64_ref/vec_znx_dft.rs](https://github.com/phantomzone-org/poulpy/blob/main/poulpy-backend/src/cpu_fft64_ref/vec_znx_dft.rs) reference implementation.
+/// * See [crate::api::VecZnxDftFromBytes] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxDftFromBytesImpl<B: Backend> {
     fn vec_znx_dft_from_bytes_impl(n: usize, cols: usize, size: usize, bytes: Vec<u8>) -> VecZnxDftOwned<B>;
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See TODO for reference code.
-/// * See TODO for corresponding public API.
+/// * See the [poulpy-backend/src/cpu_fft64_ref/vec_znx_dft.rs](https://github.com/phantomzone-org/poulpy/blob/main/poulpy-backend/src/cpu_fft64_ref/vec_znx_dft.rs) reference implementation.
+/// * See [crate::api::VecZnxDftApply] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxDftApplyImpl<B: Backend> {
     fn vec_znx_dft_apply_impl<R, A>(
@@ -38,24 +38,24 @@ pub unsafe trait VecZnxDftApplyImpl<B: Backend> {
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See TODO for reference code.
-/// * See TODO for corresponding public API.
+/// * See the [poulpy-backend/src/cpu_fft64_ref/vec_znx_dft.rs](https://github.com/phantomzone-org/poulpy/blob/main/poulpy-backend/src/cpu_fft64_ref/vec_znx_dft.rs) reference implementation.
+/// * See [crate::api::VecZnxDftAllocBytes] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxDftAllocBytesImpl<B: Backend> {
     fn vec_znx_dft_alloc_bytes_impl(n: usize, cols: usize, size: usize) -> usize;
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See TODO for reference code.
-/// * See TODO for corresponding public API.
+/// * See the [poulpy-backend/src/cpu_fft64_ref/vec_znx_dft.rs](https://github.com/phantomzone-org/poulpy/blob/main/poulpy-backend/src/cpu_fft64_ref/vec_znx_dft.rs) reference implementation.
+/// * See [crate::api::VecZnxIdftApplyTmpBytes] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxIdftApplyTmpBytesImpl<B: Backend> {
     fn vec_znx_idft_apply_tmp_bytes_impl(module: &Module<B>) -> usize;
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See TODO for reference code.
-/// * See TODO for corresponding public API.
+/// * See the [poulpy-backend/src/cpu_fft64_ref/vec_znx_dft.rs](https://github.com/phantomzone-org/poulpy/blob/main/poulpy-backend/src/cpu_fft64_ref/vec_znx_dft.rs) reference implementation.
+/// * See [crate::api::VecZnxIdftApply] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxIdftApplyImpl<B: Backend> {
     fn vec_znx_idft_apply_impl<R, A>(
@@ -71,8 +71,8 @@ pub unsafe trait VecZnxIdftApplyImpl<B: Backend> {
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See TODO for reference code.
-/// * See for corresponding public API.
+/// * See the [poulpy-backend/src/cpu_fft64_ref/vec_znx_dft.rs](https://github.com/phantomzone-org/poulpy/blob/main/poulpy-backend/src/cpu_fft64_ref/vec_znx_dft.rs) reference implementation.
+/// * See [crate::api::VecZnxIdftApplyTmpA] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxIdftApplyTmpAImpl<B: Backend> {
     fn vec_znx_idft_apply_tmpa_impl<R, A>(module: &Module<B>, res: &mut R, res_col: usize, a: &mut A, a_col: usize)
@@ -82,8 +82,8 @@ pub unsafe trait VecZnxIdftApplyTmpAImpl<B: Backend> {
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See TODO for reference code.
-/// * See TODO for corresponding public API.
+/// * See the [poulpy-backend/src/cpu_fft64_ref/vec_znx_dft.rs](https://github.com/phantomzone-org/poulpy/blob/main/poulpy-backend/src/cpu_fft64_ref/vec_znx_dft.rs) reference implementation.
+/// * See [crate::api::VecZnxIdftApplyConsume] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxIdftApplyConsumeImpl<B: Backend> {
     fn vec_znx_idft_apply_consume_impl<D: Data>(module: &Module<B>, a: VecZnxDft<D, B>) -> VecZnxBig<D, B>
@@ -92,8 +92,8 @@ pub unsafe trait VecZnxIdftApplyConsumeImpl<B: Backend> {
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See TODO for reference code.
-/// * See TODO for corresponding public API.
+/// * See the [poulpy-backend/src/cpu_fft64_ref/vec_znx_dft.rs](https://github.com/phantomzone-org/poulpy/blob/main/poulpy-backend/src/cpu_fft64_ref/vec_znx_dft.rs) reference implementation.
+/// * See [crate::api::VecZnxDftAdd] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxDftAddImpl<B: Backend> {
     fn vec_znx_dft_add_impl<R, A, D>(module: &Module<B>, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &D, b_col: usize)
@@ -104,8 +104,8 @@ pub unsafe trait VecZnxDftAddImpl<B: Backend> {
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See TODO for reference code.
-/// * See TODO for corresponding public API.
+/// * See the [poulpy-backend/src/cpu_fft64_ref/vec_znx_dft.rs](https://github.com/phantomzone-org/poulpy/blob/main/poulpy-backend/src/cpu_fft64_ref/vec_znx_dft.rs) reference implementation.
+/// * See [crate::api::VecZnxDftAddInplace] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxDftAddInplaceImpl<B: Backend> {
     fn vec_znx_dft_add_inplace_impl<R, A>(module: &Module<B>, res: &mut R, res_col: usize, a: &A, a_col: usize)
@@ -115,8 +115,8 @@ pub unsafe trait VecZnxDftAddInplaceImpl<B: Backend> {
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See TODO for reference code.
-/// * See TODO for corresponding public API.
+/// * See the [poulpy-backend/src/cpu_fft64_ref/vec_znx_dft.rs](https://github.com/phantomzone-org/poulpy/blob/main/poulpy-backend/src/cpu_fft64_ref/vec_znx_dft.rs) reference implementation.
+/// * See [crate::api::VecZnxDftSub] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxDftSubImpl<B: Backend> {
     fn vec_znx_dft_sub_impl<R, A, D>(module: &Module<B>, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &D, b_col: usize)
@@ -127,30 +127,30 @@ pub unsafe trait VecZnxDftSubImpl<B: Backend> {
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See TODO for reference code.
-/// * See TODO for corresponding public API.
+/// * See the [poulpy-backend/src/cpu_fft64_ref/vec_znx_dft.rs](https://github.com/phantomzone-org/poulpy/blob/main/poulpy-backend/src/cpu_fft64_ref/vec_znx_dft.rs) reference implementation.
+/// * See [crate::api::VecZnxDftSubInplace] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
-pub unsafe trait VecZnxDftSubABInplaceImpl<B: Backend> {
-    fn vec_znx_dft_sub_ab_inplace_impl<R, A>(module: &Module<B>, res: &mut R, res_col: usize, a: &A, a_col: usize)
+pub unsafe trait VecZnxDftSubInplaceImpl<B: Backend> {
+    fn vec_znx_dft_sub_inplace_impl<R, A>(module: &Module<B>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxDftToMut<B>,
         A: VecZnxDftToRef<B>;
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See TODO for reference code.
-/// * See TODO for corresponding public API.
+/// * See the [poulpy-backend/src/cpu_fft64_ref/vec_znx_dft.rs](https://github.com/phantomzone-org/poulpy/blob/main/poulpy-backend/src/cpu_fft64_ref/vec_znx_dft.rs) reference implementation.
+/// * See [crate::api::VecZnxDftSubNegateInplace] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
-pub unsafe trait VecZnxDftSubBAInplaceImpl<B: Backend> {
-    fn vec_znx_dft_sub_ba_inplace_impl<R, A>(module: &Module<B>, res: &mut R, res_col: usize, a: &A, a_col: usize)
+pub unsafe trait VecZnxDftSubNegateInplaceImpl<B: Backend> {
+    fn vec_znx_dft_sub_negate_inplace_impl<R, A>(module: &Module<B>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxDftToMut<B>,
         A: VecZnxDftToRef<B>;
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See TODO for reference code.
-/// * See TODO for corresponding public API.
+/// * See the [poulpy-backend/src/cpu_fft64_ref/vec_znx_dft.rs](https://github.com/phantomzone-org/poulpy/blob/main/poulpy-backend/src/cpu_fft64_ref/vec_znx_dft.rs) reference implementation.
+/// * See [crate::api::VecZnxDftCopy] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxDftCopyImpl<B: Backend> {
     fn vec_znx_dft_copy_impl<R, A>(
@@ -167,8 +167,8 @@ pub unsafe trait VecZnxDftCopyImpl<B: Backend> {
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
-/// * See TODO for reference code.
-/// * See TODO for corresponding public API.
+/// * See the [poulpy-backend/src/cpu_fft64_ref/vec_znx_dft.rs](https://github.com/phantomzone-org/poulpy/blob/main/poulpy-backend/src/cpu_fft64_ref/vec_znx_dft.rs) reference implementation.
+/// * See [crate::api::VecZnxDftZero] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxDftZeroImpl<B: Backend> {
     fn vec_znx_dft_zero_impl<R>(module: &Module<B>, res: &mut R)

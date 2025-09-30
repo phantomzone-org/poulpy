@@ -4,17 +4,20 @@ use poulpy_hal::{
     api::{
         ScratchAvailable, TakeMatZnx, TakeVecZnx, TakeVecZnxBig, TakeVecZnxDft, TakeVecZnxDftSlice, TakeVecZnxSlice,
         VecZnxAddInplace, VecZnxAutomorphismInplace, VecZnxBigAddSmallInplace, VecZnxBigAllocBytes, VecZnxBigAutomorphismInplace,
-        VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallBInplace, VecZnxCopy, VecZnxDftAddInplace,
+        VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallNegateInplace, VecZnxCopy, VecZnxDftAddInplace,
         VecZnxDftAllocBytes, VecZnxDftApply, VecZnxDftCopy, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA, VecZnxNegateInplace,
-        VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace, VecZnxRotateInplaceTmpBytes,
-        VecZnxRshInplace, VecZnxSub, VecZnxSubABInplace, VecZnxSwitchRing, VmpApplyDftToDft, VmpApplyDftToDftAdd,
-        VmpApplyDftToDftTmpBytes,
+        VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace,
+        VecZnxRotateInplaceTmpBytes, VecZnxRshInplace, VecZnxSub, VecZnxSubInplace, VecZnxSwitchRing, VmpApplyDftToDft,
+        VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch, ToOwnedDeep},
     oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl},
 };
 
-use poulpy_core::{GLWEOperations, TakeGGLWE, TakeGLWECt, layouts::Infos};
+use poulpy_core::{
+    GLWEOperations, TakeGGLWE, TakeGLWECt,
+    layouts::{Digits, GGLWECiphertextLayout, GGSWInfos, GLWEInfos, LWEInfos},
+};
 
 use poulpy_core::layouts::{GGSWCiphertext, GLWECiphertext, LWECiphertext, prepared::GGLWEAutomorphismKeyPrepared};
 
@@ -39,7 +42,7 @@ where
         + VecZnxAddInplace
         + VecZnxNegateInplace
         + VecZnxCopy
-        + VecZnxSubABInplace
+        + VecZnxSubInplace
         + VecZnxDftAllocBytes
         + VmpApplyDftToDftTmpBytes
         + VecZnxBigNormalizeTmpBytes
@@ -50,11 +53,12 @@ where
         + VecZnxBigAddSmallInplace<B>
         + VecZnxBigNormalize<B>
         + VecZnxAutomorphismInplace<B>
-        + VecZnxBigSubSmallBInplace<B>
+        + VecZnxBigSubSmallNegateInplace<B>
         + VecZnxRotateInplaceTmpBytes
         + VecZnxBigAllocBytes
         + VecZnxDftAddInplace<B>
-        + VecZnxRotate,
+        + VecZnxRotate
+        + VecZnxNormalize<B>,
     B: Backend + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
     Scratch<B>: TakeVecZnx
         + TakeVecZnxDftSlice<B>
@@ -138,7 +142,7 @@ pub fn circuit_bootstrap_core<DRes, DLwe, DBrk, BRA: BlindRotationAlgo, B>(
         + VecZnxAddInplace
         + VecZnxNegateInplace
         + VecZnxCopy
-        + VecZnxSubABInplace
+        + VecZnxSubInplace
         + VecZnxDftAllocBytes
         + VmpApplyDftToDftTmpBytes
         + VecZnxBigNormalizeTmpBytes
@@ -149,11 +153,12 @@ pub fn circuit_bootstrap_core<DRes, DLwe, DBrk, BRA: BlindRotationAlgo, B>(
         + VecZnxBigAddSmallInplace<B>
         + VecZnxBigNormalize<B>
         + VecZnxAutomorphismInplace<B>
-        + VecZnxBigSubSmallBInplace<B>
+        + VecZnxBigSubSmallNegateInplace<B>
         + VecZnxBigAllocBytes
         + VecZnxDftAddInplace<B>
         + VecZnxRotateInplaceTmpBytes
-        + VecZnxRotate,
+        + VecZnxRotate
+        + VecZnxNormalize<B>,
     B: Backend + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
     Scratch<B>: TakeVecZnxDftSlice<B>
         + TakeVecZnxBig<B>
@@ -166,16 +171,18 @@ pub fn circuit_bootstrap_core<DRes, DLwe, DBrk, BRA: BlindRotationAlgo, B>(
 {
     #[cfg(debug_assertions)]
     {
+        use poulpy_core::layouts::LWEInfos;
+
         assert_eq!(res.n(), key.brk.n());
-        assert_eq!(lwe.basek(), key.brk.basek());
-        assert_eq!(res.basek(), key.brk.basek());
+        assert_eq!(lwe.base2k(), key.brk.base2k());
+        assert_eq!(res.base2k(), key.brk.base2k());
     }
 
-    let n: usize = res.n();
-    let basek: usize = res.basek();
-    let rows: usize = res.rows();
-    let rank: usize = res.rank();
-    let k: usize = res.k();
+    let n: usize = res.n().into();
+    let base2k: usize = res.base2k().into();
+    let rows: usize = res.rows().into();
+    let rank: usize = res.rank().into();
+    let k: usize = res.k().into();
 
     let alpha: usize = rows.next_power_of_two();
 
@@ -183,27 +190,38 @@ pub fn circuit_bootstrap_core<DRes, DLwe, DBrk, BRA: BlindRotationAlgo, B>(
 
     if to_exponent {
         (0..rows).for_each(|i| {
-            f[i] = 1 << (basek * (rows - 1 - i));
+            f[i] = 1 << (base2k * (rows - 1 - i));
         });
     } else {
         (0..1 << log_domain).for_each(|j| {
             (0..rows).for_each(|i| {
-                f[j * alpha + i] = j as i64 * (1 << (basek * (rows - 1 - i)));
+                f[j * alpha + i] = j as i64 * (1 << (base2k * (rows - 1 - i)));
             });
         });
     }
 
     // Lut precision, basically must be able to hold the decomposition power basis of the GGSW
-    let mut lut: LookUpTable = LookUpTable::alloc(module, basek, basek * rows, extension_factor);
-    lut.set(module, &f, basek * rows);
+    let mut lut: LookUpTable = LookUpTable::alloc(module, base2k, base2k * rows, extension_factor);
+    lut.set(module, &f, base2k * rows);
 
     if to_exponent {
         lut.set_rotation_direction(LookUpTableRotationDirection::Right);
     }
 
     // TODO: separate GGSW k from output of blind rotation k
-    let (mut res_glwe, scratch_1) = scratch.take_glwe_ct(n, basek, k, rank);
-    let (mut tmp_gglwe, scratch_2) = scratch_1.take_gglwe(n, basek, k, rows, 1, rank.max(1), rank);
+    let (mut res_glwe, scratch_1) = scratch.take_glwe_ct(res);
+
+    let gglwe_infos: GGLWECiphertextLayout = GGLWECiphertextLayout {
+        n: n.into(),
+        base2k: base2k.into(),
+        k: k.into(),
+        rows: rows.into(),
+        digits: Digits(1),
+        rank_in: rank.max(1).into(),
+        rank_out: rank.into(),
+    };
+
+    let (mut tmp_gglwe, scratch_2) = scratch_1.take_gglwe(&gglwe_infos);
 
     key.brk.execute(module, &mut res_glwe, lwe, &lut, scratch_2);
 
@@ -264,7 +282,7 @@ fn post_process<DataRes, DataA, B: Backend>(
         + VecZnxAddInplace
         + VecZnxNegateInplace
         + VecZnxCopy
-        + VecZnxSubABInplace
+        + VecZnxSubInplace
         + VecZnxDftAllocBytes
         + VmpApplyDftToDftTmpBytes
         + VecZnxBigNormalizeTmpBytes
@@ -275,8 +293,9 @@ fn post_process<DataRes, DataA, B: Backend>(
         + VecZnxBigAddSmallInplace<B>
         + VecZnxBigNormalize<B>
         + VecZnxAutomorphismInplace<B>
-        + VecZnxBigSubSmallBInplace<B>
-        + VecZnxRotate,
+        + VecZnxBigSubSmallNegateInplace<B>
+        + VecZnxRotate
+        + VecZnxNormalize<B>,
     Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
 {
     let log_n: usize = module.log_n();
@@ -336,7 +355,7 @@ pub fn pack<D: DataMut, B: Backend>(
         + VecZnxAddInplace
         + VecZnxNegateInplace
         + VecZnxCopy
-        + VecZnxSubABInplace
+        + VecZnxSubInplace
         + VecZnxDftAllocBytes
         + VmpApplyDftToDftTmpBytes
         + VecZnxBigNormalizeTmpBytes
@@ -347,15 +366,12 @@ pub fn pack<D: DataMut, B: Backend>(
         + VecZnxBigAddSmallInplace<B>
         + VecZnxBigNormalize<B>
         + VecZnxAutomorphismInplace<B>
-        + VecZnxBigSubSmallBInplace<B>
-        + VecZnxRotate,
+        + VecZnxBigSubSmallNegateInplace<B>
+        + VecZnxRotate
+        + VecZnxNormalize<B>,
     Scratch<B>: TakeVecZnx + TakeVecZnxDft<B> + ScratchAvailable,
 {
     let log_n: usize = module.log_n();
-
-    let basek: usize = cts.get(&0).unwrap().basek();
-    let k: usize = cts.get(&0).unwrap().k();
-    let rank: usize = cts.get(&0).unwrap().rank();
 
     (0..log_n - log_gap_out).for_each(|i| {
         let t: usize = 16.min(1 << (log_n - 1 - i));
@@ -370,17 +386,7 @@ pub fn pack<D: DataMut, B: Backend>(
             let mut a: Option<GLWECiphertext<D>> = cts.remove(&j);
             let mut b: Option<GLWECiphertext<D>> = cts.remove(&(j + t));
 
-            combine(
-                module,
-                basek,
-                k,
-                rank,
-                a.as_mut(),
-                b.as_mut(),
-                i,
-                auto_key,
-                scratch,
-            );
+            combine(module, a.as_mut(), b.as_mut(), i, auto_key, scratch);
 
             if let Some(a) = a {
                 cts.insert(j, a);
@@ -394,9 +400,6 @@ pub fn pack<D: DataMut, B: Backend>(
 #[allow(clippy::too_many_arguments)]
 fn combine<A: DataMut, D: DataMut, DataAK: DataRef, B: Backend>(
     module: &Module<B>,
-    basek: usize,
-    k: usize,
-    rank: usize,
     a: Option<&mut GLWECiphertext<A>>,
     b: Option<&mut GLWECiphertext<D>>,
     i: usize,
@@ -415,7 +418,7 @@ fn combine<A: DataMut, D: DataMut, DataAK: DataRef, B: Backend>(
         + VecZnxAddInplace
         + VecZnxNegateInplace
         + VecZnxCopy
-        + VecZnxSubABInplace
+        + VecZnxSubInplace
         + VecZnxDftAllocBytes
         + VmpApplyDftToDftTmpBytes
         + VecZnxBigNormalizeTmpBytes
@@ -426,8 +429,9 @@ fn combine<A: DataMut, D: DataMut, DataAK: DataRef, B: Backend>(
         + VecZnxBigAddSmallInplace<B>
         + VecZnxBigNormalize<B>
         + VecZnxAutomorphismInplace<B>
-        + VecZnxBigSubSmallBInplace<B>
-        + VecZnxRotate,
+        + VecZnxBigSubSmallNegateInplace<B>
+        + VecZnxRotate
+        + VecZnxNormalize<B>,
     Scratch<B>: TakeVecZnx + TakeVecZnxDft<B> + ScratchAvailable,
 {
     // Goal is to evaluate: a = a + b*X^t + phi(a - b*X^t))
@@ -441,12 +445,10 @@ fn combine<A: DataMut, D: DataMut, DataAK: DataRef, B: Backend>(
     // either mapped to garbage or twice their value which vanishes I(X)
     // since 2*(I(X) * Q/2) = I(X) * Q = 0 mod Q.
     if let Some(a) = a {
-        let n: usize = a.n();
-        let log_n: usize = (u64::BITS - (n - 1).leading_zeros()) as _;
-        let t: i64 = 1 << (log_n - i - 1);
+        let t: i64 = 1 << (a.n().log2() - i - 1);
 
         if let Some(b) = b {
-            let (mut tmp_b, scratch_1) = scratch.take_glwe_ct(n, basek, k, rank);
+            let (mut tmp_b, scratch_1) = scratch.take_glwe_ct(a);
 
             // a = a * X^-t
             a.rotate_inplace(module, -t, scratch_1);
@@ -478,15 +480,13 @@ fn combine<A: DataMut, D: DataMut, DataAK: DataRef, B: Backend>(
             a.automorphism_add_inplace(module, auto_key, scratch);
         }
     } else if let Some(b) = b {
-        let n: usize = b.n();
-        let log_n: usize = (u64::BITS - (n - 1).leading_zeros()) as _;
-        let t: i64 = 1 << (log_n - i - 1);
+        let t: i64 = 1 << (b.n().log2() - i - 1);
 
-        let (mut tmp_b, scratch_1) = scratch.take_glwe_ct(n, basek, k, rank);
+        let (mut tmp_b, scratch_1) = scratch.take_glwe_ct(b);
         tmp_b.rotate(module, t, b);
         tmp_b.rsh(module, 1, scratch_1);
 
         // a = (b* X^t - phi(b* X^t))
-        b.automorphism_sub_ba(module, &tmp_b, auto_key, scratch_1);
+        b.automorphism_sub_negate(module, &tmp_b, auto_key, scratch_1);
     }
 }

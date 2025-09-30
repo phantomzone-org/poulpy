@@ -88,7 +88,7 @@ pub fn reim_sub_avx2_fma(res: &mut [f64], a: &[f64], b: &[f64]) {
 /// # Safety
 /// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
 #[target_feature(enable = "avx2,fma")]
-pub fn reim_sub_ab_inplace_avx2_fma(res: &mut [f64], a: &[f64]) {
+pub fn reim_sub_inplace_avx2_fma(res: &mut [f64], a: &[f64]) {
     #[cfg(debug_assertions)]
     {
         assert_eq!(a.len(), res.len());
@@ -115,7 +115,7 @@ pub fn reim_sub_ab_inplace_avx2_fma(res: &mut [f64], a: &[f64]) {
 /// # Safety
 /// Caller must ensure the CPU supports AVX2 (e.g., via `is_x86_feature_detected!("avx2")`);
 #[target_feature(enable = "avx2,fma")]
-pub fn reim_sub_ba_inplace_avx2_fma(res: &mut [f64], a: &[f64]) {
+pub fn reim_sub_negate_inplace_avx2_fma(res: &mut [f64], a: &[f64]) {
     #[cfg(debug_assertions)]
     {
         assert_eq!(a.len(), res.len());

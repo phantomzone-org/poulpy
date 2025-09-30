@@ -7,7 +7,7 @@ use poulpy_hal::{
 
 use crate::{
     encryption::{SIGMA, SIGMA_BOUND},
-    layouts::{Infos, LWECiphertext, LWEPlaintext, LWESecret},
+    layouts::{LWECiphertext, LWEInfos, LWEPlaintext, LWESecret},
 };
 
 impl<DataSelf: DataMut> LWECiphertext<DataSelf> {
@@ -29,10 +29,10 @@ impl<DataSelf: DataMut> LWECiphertext<DataSelf> {
             assert_eq!(self.n(), sk.n())
         }
 
-        let basek: usize = self.basek();
-        let k: usize = self.k();
+        let base2k: usize = self.base2k().into();
+        let k: usize = self.k().into();
 
-        module.zn_fill_uniform(self.n() + 1, basek, &mut self.data, 0, source_xa);
+        module.zn_fill_uniform((self.n() + 1).into(), base2k, &mut self.data, 0, source_xa);
 
         let mut tmp_znx: Zn<Vec<u8>> = Zn::alloc(1, 1, self.size());
 
@@ -57,7 +57,7 @@ impl<DataSelf: DataMut> LWECiphertext<DataSelf> {
 
         module.zn_add_normal(
             1,
-            basek,
+            base2k,
             &mut self.data,
             0,
             k,
@@ -68,7 +68,7 @@ impl<DataSelf: DataMut> LWECiphertext<DataSelf> {
 
         module.zn_normalize_inplace(
             1,
-            basek,
+            base2k,
             &mut tmp_znx,
             0,
             ScratchOwned::alloc(size_of::<i64>()).borrow(),

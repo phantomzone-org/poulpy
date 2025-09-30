@@ -5,14 +5,14 @@ use crate::{
         ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxBigAdd, VecZnxBigAddInplace, VecZnxBigAddSmall, VecZnxBigAddSmallInplace,
         VecZnxBigAlloc, VecZnxBigAutomorphism, VecZnxBigAutomorphismInplace, VecZnxBigAutomorphismInplaceTmpBytes,
         VecZnxBigFromSmall, VecZnxBigNegate, VecZnxBigNegateInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
-        VecZnxBigSub, VecZnxBigSubABInplace, VecZnxBigSubBAInplace, VecZnxBigSubSmallA, VecZnxBigSubSmallAInplace,
-        VecZnxBigSubSmallB, VecZnxBigSubSmallBInplace,
+        VecZnxBigSub, VecZnxBigSubInplace, VecZnxBigSubNegateInplace, VecZnxBigSubSmallA, VecZnxBigSubSmallB,
+        VecZnxBigSubSmallInplace, VecZnxBigSubSmallNegateInplace,
     },
     layouts::{Backend, DataViewMut, DigestU64, FillUniform, Module, ScratchOwned, VecZnx, VecZnxBig},
     source::Source,
 };
 
-pub fn test_vec_znx_big_add<BR: Backend, BT: Backend>(basek: usize, module_ref: &Module<BR>, module_test: &Module<BT>)
+pub fn test_vec_znx_big_add<BR: Backend, BT: Backend>(base2k: usize, module_ref: &Module<BR>, module_test: &Module<BT>)
 where
     Module<BR>:
         VecZnxBigAdd<BR> + VecZnxBigAlloc<BR> + VecZnxBigFromSmall<BR> + VecZnxBigNormalize<BR> + VecZnxBigNormalizeTmpBytes,
@@ -32,7 +32,7 @@ where
 
     for a_size in [1, 2, 3, 4] {
         let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, a_size);
-        a.fill_uniform(basek, &mut source);
+        a.fill_uniform(base2k, &mut source);
         let a_digest = a.digest_u64();
 
         let mut a_ref: VecZnxBig<Vec<u8>, BR> = module_ref.vec_znx_big_alloc(cols, a_size);
@@ -50,7 +50,7 @@ where
 
         for b_size in [1, 2, 3, 4] {
             let mut b: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, b_size);
-            b.fill_uniform(basek, &mut source);
+            b.fill_uniform(base2k, &mut source);
             let b_digest = b.digest_u64();
 
             let mut b_ref: VecZnxBig<Vec<u8>, BR> = module_ref.vec_znx_big_alloc(cols, b_size);
@@ -93,17 +93,19 @@ where
 
                 for j in 0..cols {
                     module_ref.vec_znx_big_normalize(
-                        basek,
+                        base2k,
                         &mut res_small_ref,
                         j,
+                        base2k,
                         &res_big_ref,
                         j,
                         scratch_ref.borrow(),
                     );
                     module_test.vec_znx_big_normalize(
-                        basek,
+                        base2k,
                         &mut res_small_test,
                         j,
+                        base2k,
                         &res_big_test,
                         j,
                         scratch_test.borrow(),
@@ -119,7 +121,7 @@ where
     }
 }
 
-pub fn test_vec_znx_big_add_inplace<BR: Backend, BT: Backend>(basek: usize, module_ref: &Module<BR>, module_test: &Module<BT>)
+pub fn test_vec_znx_big_add_inplace<BR: Backend, BT: Backend>(base2k: usize, module_ref: &Module<BR>, module_test: &Module<BT>)
 where
     Module<BR>: VecZnxBigAddInplace<BR>
         + VecZnxBigAlloc<BR>
@@ -145,7 +147,7 @@ where
 
     for a_size in [1, 2, 3, 4] {
         let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, a_size);
-        a.fill_uniform(basek, &mut source);
+        a.fill_uniform(base2k, &mut source);
 
         let mut a_ref: VecZnxBig<Vec<u8>, BR> = module_ref.vec_znx_big_alloc(cols, a_size);
         let mut a_test: VecZnxBig<Vec<u8>, BT> = module_test.vec_znx_big_alloc(cols, a_size);
@@ -160,7 +162,7 @@ where
 
         for res_size in [1, 2, 3, 4] {
             let mut res: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
-            res.fill_uniform(basek, &mut source);
+            res.fill_uniform(base2k, &mut source);
 
             let mut res_big_ref: VecZnxBig<Vec<u8>, BR> = module_ref.vec_znx_big_alloc(cols, res_size);
             let mut res_big_test: VecZnxBig<Vec<u8>, BT> = module_test.vec_znx_big_alloc(cols, res_size);
@@ -186,17 +188,19 @@ where
 
             for j in 0..cols {
                 module_ref.vec_znx_big_normalize(
-                    basek,
+                    base2k,
                     &mut res_small_ref,
                     j,
+                    base2k,
                     &res_big_ref,
                     j,
                     scratch_ref.borrow(),
                 );
                 module_test.vec_znx_big_normalize(
-                    basek,
+                    base2k,
                     &mut res_small_test,
                     j,
+                    base2k,
                     &res_big_test,
                     j,
                     scratch_test.borrow(),
@@ -211,7 +215,7 @@ where
     }
 }
 
-pub fn test_vec_znx_big_add_small<BR: Backend, BT: Backend>(basek: usize, module_ref: &Module<BR>, module_test: &Module<BT>)
+pub fn test_vec_znx_big_add_small<BR: Backend, BT: Backend>(base2k: usize, module_ref: &Module<BR>, module_test: &Module<BT>)
 where
     Module<BR>:
         VecZnxBigAddSmall<BR> + VecZnxBigAlloc<BR> + VecZnxBigFromSmall<BR> + VecZnxBigNormalize<BR> + VecZnxBigNormalizeTmpBytes,
@@ -231,7 +235,7 @@ where
 
     for a_size in [1, 2, 3, 4] {
         let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, a_size);
-        a.fill_uniform(basek, &mut source);
+        a.fill_uniform(base2k, &mut source);
 
         let mut a_ref: VecZnxBig<Vec<u8>, BR> = module_ref.vec_znx_big_alloc(cols, a_size);
         let mut a_test: VecZnxBig<Vec<u8>, BT> = module_test.vec_znx_big_alloc(cols, a_size);
@@ -246,7 +250,7 @@ where
 
         for b_size in [1, 2, 3, 4] {
             let mut b: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, b_size);
-            b.fill_uniform(basek, &mut source);
+            b.fill_uniform(base2k, &mut source);
             let b_digest: u64 = b.digest_u64();
 
             for res_size in [1, 2, 3, 4] {
@@ -275,17 +279,19 @@ where
 
                 for j in 0..cols {
                     module_ref.vec_znx_big_normalize(
-                        basek,
+                        base2k,
                         &mut res_small_ref,
                         j,
+                        base2k,
                         &res_big_ref,
                         j,
                         scratch_ref.borrow(),
                     );
                     module_test.vec_znx_big_normalize(
-                        basek,
+                        base2k,
                         &mut res_small_test,
                         j,
+                        base2k,
                         &res_big_test,
                         j,
                         scratch_test.borrow(),
@@ -302,7 +308,7 @@ where
 }
 
 pub fn test_vec_znx_big_add_small_inplace<BR: Backend, BT: Backend>(
-    basek: usize,
+    base2k: usize,
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
@@ -330,13 +336,13 @@ pub fn test_vec_znx_big_add_small_inplace<BR: Backend, BT: Backend>(
 
     for a_size in [1, 2, 3, 4] {
         let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, a_size);
-        a.fill_uniform(basek, &mut source);
+        a.fill_uniform(base2k, &mut source);
 
         let a_digest: u64 = a.digest_u64();
 
         for res_size in [1, 2, 3, 4] {
             let mut res: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
-            res.fill_uniform(basek, &mut source);
+            res.fill_uniform(base2k, &mut source);
 
             let mut res_big_ref: VecZnxBig<Vec<u8>, BR> = module_ref.vec_znx_big_alloc(cols, res_size);
             let mut res_big_test: VecZnxBig<Vec<u8>, BT> = module_test.vec_znx_big_alloc(cols, res_size);
@@ -361,17 +367,19 @@ pub fn test_vec_znx_big_add_small_inplace<BR: Backend, BT: Backend>(
 
             for j in 0..cols {
                 module_ref.vec_znx_big_normalize(
-                    basek,
+                    base2k,
                     &mut res_small_ref,
                     j,
+                    base2k,
                     &res_big_ref,
                     j,
                     scratch_ref.borrow(),
                 );
                 module_test.vec_znx_big_normalize(
-                    basek,
+                    base2k,
                     &mut res_small_test,
                     j,
+                    base2k,
                     &res_big_test,
                     j,
                     scratch_test.borrow(),
@@ -386,7 +394,7 @@ pub fn test_vec_znx_big_add_small_inplace<BR: Backend, BT: Backend>(
     }
 }
 
-pub fn test_vec_znx_big_automorphism<BR: Backend, BT: Backend>(basek: usize, module_ref: &Module<BR>, module_test: &Module<BT>)
+pub fn test_vec_znx_big_automorphism<BR: Backend, BT: Backend>(base2k: usize, module_ref: &Module<BR>, module_test: &Module<BT>)
 where
     Module<BR>: VecZnxBigAutomorphism<BR>
         + VecZnxBigAlloc<BR>
@@ -412,7 +420,7 @@ where
 
     for a_size in [1, 2, 3, 4] {
         let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, a_size);
-        a.fill_uniform(basek, &mut source);
+        a.fill_uniform(base2k, &mut source);
 
         let mut a_ref: VecZnxBig<Vec<u8>, BR> = module_ref.vec_znx_big_alloc(cols, a_size);
         let mut a_test: VecZnxBig<Vec<u8>, BT> = module_test.vec_znx_big_alloc(cols, a_size);
@@ -451,17 +459,19 @@ where
 
                 for j in 0..cols {
                     module_ref.vec_znx_big_normalize(
-                        basek,
+                        base2k,
                         &mut res_small_ref,
                         j,
+                        base2k,
                         &res_big_ref,
                         j,
                         scratch_ref.borrow(),
                     );
                     module_test.vec_znx_big_normalize(
-                        basek,
+                        base2k,
                         &mut res_small_test,
                         j,
+                        base2k,
                         &res_big_test,
                         j,
                         scratch_test.borrow(),
@@ -478,7 +488,7 @@ where
 }
 
 pub fn test_vec_znx_big_automorphism_inplace<BR: Backend, BT: Backend>(
-    basek: usize,
+    base2k: usize,
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
@@ -512,7 +522,7 @@ pub fn test_vec_znx_big_automorphism_inplace<BR: Backend, BT: Backend>(
 
     for res_size in [1, 2, 3, 4] {
         let mut res: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
-        res.fill_uniform(basek, &mut source);
+        res.fill_uniform(base2k, &mut source);
 
         let mut res_big_ref: VecZnxBig<Vec<u8>, BR> = module_ref.vec_znx_big_alloc(cols, res_size);
         let mut res_big_test: VecZnxBig<Vec<u8>, BT> = module_test.vec_znx_big_alloc(cols, res_size);
@@ -536,17 +546,19 @@ pub fn test_vec_znx_big_automorphism_inplace<BR: Backend, BT: Backend>(
 
             for j in 0..cols {
                 module_ref.vec_znx_big_normalize(
-                    basek,
+                    base2k,
                     &mut res_small_ref,
                     j,
+                    base2k,
                     &res_big_ref,
                     j,
                     scratch_ref.borrow(),
                 );
                 module_test.vec_znx_big_normalize(
-                    basek,
+                    base2k,
                     &mut res_small_test,
                     j,
+                    base2k,
                     &res_big_test,
                     j,
                     scratch_test.borrow(),
@@ -561,7 +573,7 @@ pub fn test_vec_znx_big_automorphism_inplace<BR: Backend, BT: Backend>(
     }
 }
 
-pub fn test_vec_znx_big_negate<BR: Backend, BT: Backend>(basek: usize, module_ref: &Module<BR>, module_test: &Module<BT>)
+pub fn test_vec_znx_big_negate<BR: Backend, BT: Backend>(base2k: usize, module_ref: &Module<BR>, module_test: &Module<BT>)
 where
     Module<BR>:
         VecZnxBigNegate<BR> + VecZnxBigAlloc<BR> + VecZnxBigFromSmall<BR> + VecZnxBigNormalize<BR> + VecZnxBigNormalizeTmpBytes,
@@ -581,7 +593,7 @@ where
 
     for a_size in [1, 2, 3, 4] {
         let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, a_size);
-        a.fill_uniform(basek, &mut source);
+        a.fill_uniform(base2k, &mut source);
 
         let mut a_ref: VecZnxBig<Vec<u8>, BR> = module_ref.vec_znx_big_alloc(cols, a_size);
         let mut a_test: VecZnxBig<Vec<u8>, BT> = module_test.vec_znx_big_alloc(cols, a_size);
@@ -619,17 +631,19 @@ where
 
             for j in 0..cols {
                 module_ref.vec_znx_big_normalize(
-                    basek,
+                    base2k,
                     &mut res_small_ref,
                     j,
+                    base2k,
                     &res_big_ref,
                     j,
                     scratch_ref.borrow(),
                 );
                 module_test.vec_znx_big_normalize(
-                    basek,
+                    base2k,
                     &mut res_small_test,
                     j,
+                    base2k,
                     &res_big_test,
                     j,
                     scratch_test.borrow(),
@@ -644,7 +658,7 @@ where
     }
 }
 
-pub fn test_vec_znx_big_negate_inplace<BR: Backend, BT: Backend>(basek: usize, module_ref: &Module<BR>, module_test: &Module<BT>)
+pub fn test_vec_znx_big_negate_inplace<BR: Backend, BT: Backend>(base2k: usize, module_ref: &Module<BR>, module_test: &Module<BT>)
 where
     Module<BR>: VecZnxBigNegateInplace<BR>
         + VecZnxBigAlloc<BR>
@@ -672,7 +686,7 @@ where
 
     for res_size in [1, 2, 3, 4] {
         let mut res: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
-        res.fill_uniform(basek, &mut source);
+        res.fill_uniform(base2k, &mut source);
 
         let mut res_big_ref: VecZnxBig<Vec<u8>, BR> = module_ref.vec_znx_big_alloc(cols, res_size);
         let mut res_big_test: VecZnxBig<Vec<u8>, BT> = module_test.vec_znx_big_alloc(cols, res_size);
@@ -695,17 +709,19 @@ where
 
         for j in 0..cols {
             module_ref.vec_znx_big_normalize(
-                basek,
+                base2k,
                 &mut res_small_ref,
                 j,
+                base2k,
                 &res_big_ref,
                 j,
                 scratch_ref.borrow(),
             );
             module_test.vec_znx_big_normalize(
-                basek,
+                base2k,
                 &mut res_small_test,
                 j,
+                base2k,
                 &res_big_test,
                 j,
                 scratch_test.borrow(),
@@ -719,7 +735,7 @@ where
     }
 }
 
-pub fn test_vec_znx_big_normalize<BR: Backend, BT: Backend>(basek: usize, module_ref: &Module<BR>, module_test: &Module<BT>)
+pub fn test_vec_znx_big_normalize<BR: Backend, BT: Backend>(base2k: usize, module_ref: &Module<BR>, module_test: &Module<BT>)
 where
     Module<BR>: VecZnxBigAlloc<BR>
         + VecZnxBigFromSmall<BR>
@@ -772,8 +788,24 @@ where
 
             // Reference
             for j in 0..cols {
-                module_ref.vec_znx_big_normalize(basek, &mut res_ref, j, &a_ref, j, scratch_ref.borrow());
-                module_test.vec_znx_big_normalize(basek, &mut res_test, j, &a_test, j, scratch_test.borrow());
+                module_ref.vec_znx_big_normalize(
+                    base2k,
+                    &mut res_ref,
+                    j,
+                    base2k,
+                    &a_ref,
+                    j,
+                    scratch_ref.borrow(),
+                );
+                module_test.vec_znx_big_normalize(
+                    base2k,
+                    &mut res_test,
+                    j,
+                    base2k,
+                    &a_test,
+                    j,
+                    scratch_test.borrow(),
+                );
             }
 
             assert_eq!(a_ref.digest_u64(), a_ref_digest);
@@ -784,7 +816,7 @@ where
     }
 }
 
-pub fn test_vec_znx_big_sub<BR: Backend, BT: Backend>(basek: usize, module_ref: &Module<BR>, module_test: &Module<BT>)
+pub fn test_vec_znx_big_sub<BR: Backend, BT: Backend>(base2k: usize, module_ref: &Module<BR>, module_test: &Module<BT>)
 where
     Module<BR>:
         VecZnxBigSub<BR> + VecZnxBigAlloc<BR> + VecZnxBigFromSmall<BR> + VecZnxBigNormalize<BR> + VecZnxBigNormalizeTmpBytes,
@@ -804,7 +836,7 @@ where
 
     for a_size in [1, 2, 3, 4] {
         let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, a_size);
-        a.fill_uniform(basek, &mut source);
+        a.fill_uniform(base2k, &mut source);
 
         let mut a_ref: VecZnxBig<Vec<u8>, BR> = module_ref.vec_znx_big_alloc(cols, a_size);
         let mut a_test: VecZnxBig<Vec<u8>, BT> = module_test.vec_znx_big_alloc(cols, a_size);
@@ -819,7 +851,7 @@ where
 
         for b_size in [1, 2, 3, 4] {
             let mut b: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, b_size);
-            b.fill_uniform(basek, &mut source);
+            b.fill_uniform(base2k, &mut source);
 
             let mut b_ref: VecZnxBig<Vec<u8>, BR> = module_ref.vec_znx_big_alloc(cols, b_size);
             let mut b_test: VecZnxBig<Vec<u8>, BT> = module_test.vec_znx_big_alloc(cols, b_size);
@@ -859,17 +891,19 @@ where
 
                 for j in 0..cols {
                     module_ref.vec_znx_big_normalize(
-                        basek,
+                        base2k,
                         &mut res_small_ref,
                         j,
+                        base2k,
                         &res_big_ref,
                         j,
                         scratch_ref.borrow(),
                     );
                     module_test.vec_znx_big_normalize(
-                        basek,
+                        base2k,
                         &mut res_small_test,
                         j,
+                        base2k,
                         &res_big_test,
                         j,
                         scratch_test.borrow(),
@@ -885,14 +919,14 @@ where
     }
 }
 
-pub fn test_vec_znx_big_sub_ab_inplace<BR: Backend, BT: Backend>(basek: usize, module_ref: &Module<BR>, module_test: &Module<BT>)
+pub fn test_vec_znx_big_sub_inplace<BR: Backend, BT: Backend>(base2k: usize, module_ref: &Module<BR>, module_test: &Module<BT>)
 where
-    Module<BR>: VecZnxBigSubABInplace<BR>
+    Module<BR>: VecZnxBigSubInplace<BR>
         + VecZnxBigAlloc<BR>
         + VecZnxBigFromSmall<BR>
         + VecZnxBigNormalize<BR>
         + VecZnxBigNormalizeTmpBytes,
-    Module<BT>: VecZnxBigSubABInplace<BT>
+    Module<BT>: VecZnxBigSubInplace<BT>
         + VecZnxBigAlloc<BT>
         + VecZnxBigFromSmall<BT>
         + VecZnxBigNormalize<BT>
@@ -911,7 +945,7 @@ where
 
     for a_size in [1, 2, 3, 4] {
         let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, a_size);
-        a.fill_uniform(basek, &mut source);
+        a.fill_uniform(base2k, &mut source);
 
         let mut a_ref: VecZnxBig<Vec<u8>, BR> = module_ref.vec_znx_big_alloc(cols, a_size);
         let mut a_test: VecZnxBig<Vec<u8>, BT> = module_test.vec_znx_big_alloc(cols, a_size);
@@ -926,7 +960,7 @@ where
 
         for res_size in [1, 2, 3, 4] {
             let mut res: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
-            res.fill_uniform(basek, &mut source);
+            res.fill_uniform(base2k, &mut source);
 
             let mut res_big_ref: VecZnxBig<Vec<u8>, BR> = module_ref.vec_znx_big_alloc(cols, res_size);
             let mut res_big_test: VecZnxBig<Vec<u8>, BT> = module_test.vec_znx_big_alloc(cols, res_size);
@@ -937,8 +971,8 @@ where
             }
 
             for i in 0..cols {
-                module_ref.vec_znx_big_sub_ab_inplace(&mut res_big_ref, i, &a_ref, i);
-                module_test.vec_znx_big_sub_ab_inplace(&mut res_big_test, i, &a_test, i);
+                module_ref.vec_znx_big_sub_inplace(&mut res_big_ref, i, &a_ref, i);
+                module_test.vec_znx_big_sub_inplace(&mut res_big_test, i, &a_test, i);
             }
 
             assert_eq!(a_ref.digest_u64(), a_ref_digest);
@@ -952,17 +986,19 @@ where
 
             for j in 0..cols {
                 module_ref.vec_znx_big_normalize(
-                    basek,
+                    base2k,
                     &mut res_small_ref,
                     j,
+                    base2k,
                     &res_big_ref,
                     j,
                     scratch_ref.borrow(),
                 );
                 module_test.vec_znx_big_normalize(
-                    basek,
+                    base2k,
                     &mut res_small_test,
                     j,
+                    base2k,
                     &res_big_test,
                     j,
                     scratch_test.borrow(),
@@ -977,14 +1013,17 @@ where
     }
 }
 
-pub fn test_vec_znx_big_sub_ba_inplace<BR: Backend, BT: Backend>(basek: usize, module_ref: &Module<BR>, module_test: &Module<BT>)
-where
-    Module<BR>: VecZnxBigSubBAInplace<BR>
+pub fn test_vec_znx_big_sub_negate_inplace<BR: Backend, BT: Backend>(
+    base2k: usize,
+    module_ref: &Module<BR>,
+    module_test: &Module<BT>,
+) where
+    Module<BR>: VecZnxBigSubNegateInplace<BR>
         + VecZnxBigAlloc<BR>
         + VecZnxBigFromSmall<BR>
         + VecZnxBigNormalize<BR>
         + VecZnxBigNormalizeTmpBytes,
-    Module<BT>: VecZnxBigSubBAInplace<BT>
+    Module<BT>: VecZnxBigSubNegateInplace<BT>
         + VecZnxBigAlloc<BT>
         + VecZnxBigFromSmall<BT>
         + VecZnxBigNormalize<BT>
@@ -1003,7 +1042,7 @@ where
 
     for a_size in [1, 2, 3, 4] {
         let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, a_size);
-        a.fill_uniform(basek, &mut source);
+        a.fill_uniform(base2k, &mut source);
 
         let mut a_ref: VecZnxBig<Vec<u8>, BR> = module_ref.vec_znx_big_alloc(cols, a_size);
         let mut a_test: VecZnxBig<Vec<u8>, BT> = module_test.vec_znx_big_alloc(cols, a_size);
@@ -1018,7 +1057,7 @@ where
 
         for res_size in [1, 2, 3, 4] {
             let mut res: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
-            res.fill_uniform(basek, &mut source);
+            res.fill_uniform(base2k, &mut source);
 
             let mut res_big_ref: VecZnxBig<Vec<u8>, BR> = module_ref.vec_znx_big_alloc(cols, res_size);
             let mut res_big_test: VecZnxBig<Vec<u8>, BT> = module_test.vec_znx_big_alloc(cols, res_size);
@@ -1029,8 +1068,8 @@ where
             }
 
             for i in 0..cols {
-                module_ref.vec_znx_big_sub_ba_inplace(&mut res_big_ref, i, &a_ref, i);
-                module_test.vec_znx_big_sub_ba_inplace(&mut res_big_test, i, &a_test, i);
+                module_ref.vec_znx_big_sub_negate_inplace(&mut res_big_ref, i, &a_ref, i);
+                module_test.vec_znx_big_sub_negate_inplace(&mut res_big_test, i, &a_test, i);
             }
 
             assert_eq!(a_ref.digest_u64(), a_ref_digest);
@@ -1044,17 +1083,19 @@ where
 
             for j in 0..cols {
                 module_ref.vec_znx_big_normalize(
-                    basek,
+                    base2k,
                     &mut res_small_ref,
                     j,
+                    base2k,
                     &res_big_ref,
                     j,
                     scratch_ref.borrow(),
                 );
                 module_test.vec_znx_big_normalize(
-                    basek,
+                    base2k,
                     &mut res_small_test,
                     j,
+                    base2k,
                     &res_big_test,
                     j,
                     scratch_test.borrow(),
@@ -1069,7 +1110,7 @@ where
     }
 }
 
-pub fn test_vec_znx_big_sub_small_a<BR: Backend, BT: Backend>(basek: usize, module_ref: &Module<BR>, module_test: &Module<BT>)
+pub fn test_vec_znx_big_sub_small_a<BR: Backend, BT: Backend>(base2k: usize, module_ref: &Module<BR>, module_test: &Module<BT>)
 where
     Module<BR>: VecZnxBigSubSmallA<BR>
         + VecZnxBigAlloc<BR>
@@ -1095,7 +1136,7 @@ where
 
     for a_size in [1, 2, 3, 4] {
         let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, a_size);
-        a.fill_uniform(basek, &mut source);
+        a.fill_uniform(base2k, &mut source);
 
         let mut a_ref: VecZnxBig<Vec<u8>, BR> = module_ref.vec_znx_big_alloc(cols, a_size);
         let mut a_test: VecZnxBig<Vec<u8>, BT> = module_test.vec_znx_big_alloc(cols, a_size);
@@ -1110,7 +1151,7 @@ where
 
         for b_size in [1, 2, 3, 4] {
             let mut b: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, b_size);
-            b.fill_uniform(basek, &mut source);
+            b.fill_uniform(base2k, &mut source);
             let b_digest: u64 = b.digest_u64();
 
             for res_size in [1, 2, 3, 4] {
@@ -1139,17 +1180,19 @@ where
 
                 for j in 0..cols {
                     module_ref.vec_znx_big_normalize(
-                        basek,
+                        base2k,
                         &mut res_small_ref,
                         j,
+                        base2k,
                         &res_big_ref,
                         j,
                         scratch_ref.borrow(),
                     );
                     module_test.vec_znx_big_normalize(
-                        basek,
+                        base2k,
                         &mut res_small_test,
                         j,
+                        base2k,
                         &res_big_test,
                         j,
                         scratch_test.borrow(),
@@ -1165,7 +1208,7 @@ where
     }
 }
 
-pub fn test_vec_znx_big_sub_small_b<BR: Backend, BT: Backend>(basek: usize, module_ref: &Module<BR>, module_test: &Module<BT>)
+pub fn test_vec_znx_big_sub_small_b<BR: Backend, BT: Backend>(base2k: usize, module_ref: &Module<BR>, module_test: &Module<BT>)
 where
     Module<BR>: VecZnxBigSubSmallB<BR>
         + VecZnxBigAlloc<BR>
@@ -1191,7 +1234,7 @@ where
 
     for a_size in [1, 2, 3, 4] {
         let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, a_size);
-        a.fill_uniform(basek, &mut source);
+        a.fill_uniform(base2k, &mut source);
 
         let mut a_ref: VecZnxBig<Vec<u8>, BR> = module_ref.vec_znx_big_alloc(cols, a_size);
         let mut a_test: VecZnxBig<Vec<u8>, BT> = module_test.vec_znx_big_alloc(cols, a_size);
@@ -1206,7 +1249,7 @@ where
 
         for b_size in [1, 2, 3, 4] {
             let mut b: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, b_size);
-            b.fill_uniform(basek, &mut source);
+            b.fill_uniform(base2k, &mut source);
             let b_digest: u64 = b.digest_u64();
 
             for res_size in [1, 2, 3, 4] {
@@ -1235,17 +1278,19 @@ where
 
                 for j in 0..cols {
                     module_ref.vec_znx_big_normalize(
-                        basek,
+                        base2k,
                         &mut res_small_ref,
                         j,
+                        base2k,
                         &res_big_ref,
                         j,
                         scratch_ref.borrow(),
                     );
                     module_test.vec_znx_big_normalize(
-                        basek,
+                        base2k,
                         &mut res_small_test,
                         j,
+                        base2k,
                         &res_big_test,
                         j,
                         scratch_test.borrow(),
@@ -1262,16 +1307,16 @@ where
 }
 
 pub fn test_vec_znx_big_sub_small_a_inplace<BR: Backend, BT: Backend>(
-    basek: usize,
+    base2k: usize,
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    Module<BR>: VecZnxBigSubSmallAInplace<BR>
+    Module<BR>: VecZnxBigSubSmallInplace<BR>
         + VecZnxBigAlloc<BR>
         + VecZnxBigFromSmall<BR>
         + VecZnxBigNormalize<BR>
         + VecZnxBigNormalizeTmpBytes,
-    Module<BT>: VecZnxBigSubSmallAInplace<BT>
+    Module<BT>: VecZnxBigSubSmallInplace<BT>
         + VecZnxBigAlloc<BT>
         + VecZnxBigFromSmall<BT>
         + VecZnxBigNormalize<BT>
@@ -1290,13 +1335,13 @@ pub fn test_vec_znx_big_sub_small_a_inplace<BR: Backend, BT: Backend>(
 
     for a_size in [1, 2, 3, 4] {
         let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, a_size);
-        a.fill_uniform(basek, &mut source);
+        a.fill_uniform(base2k, &mut source);
 
         let a_digest: u64 = a.digest_u64();
 
         for res_size in [1, 2, 3, 4] {
             let mut res: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
-            res.fill_uniform(basek, &mut source);
+            res.fill_uniform(base2k, &mut source);
 
             let mut res_big_ref: VecZnxBig<Vec<u8>, BR> = module_ref.vec_znx_big_alloc(cols, res_size);
             let mut res_big_test: VecZnxBig<Vec<u8>, BT> = module_test.vec_znx_big_alloc(cols, res_size);
@@ -1307,8 +1352,8 @@ pub fn test_vec_znx_big_sub_small_a_inplace<BR: Backend, BT: Backend>(
             }
 
             for i in 0..cols {
-                module_ref.vec_znx_big_sub_small_a_inplace(&mut res_big_ref, i, &a, i);
-                module_test.vec_znx_big_sub_small_a_inplace(&mut res_big_test, i, &a, i);
+                module_ref.vec_znx_big_sub_small_inplace(&mut res_big_ref, i, &a, i);
+                module_test.vec_znx_big_sub_small_inplace(&mut res_big_test, i, &a, i);
             }
 
             assert_eq!(a.digest_u64(), a_digest);
@@ -1321,17 +1366,19 @@ pub fn test_vec_znx_big_sub_small_a_inplace<BR: Backend, BT: Backend>(
 
             for j in 0..cols {
                 module_ref.vec_znx_big_normalize(
-                    basek,
+                    base2k,
                     &mut res_small_ref,
                     j,
+                    base2k,
                     &res_big_ref,
                     j,
                     scratch_ref.borrow(),
                 );
                 module_test.vec_znx_big_normalize(
-                    basek,
+                    base2k,
                     &mut res_small_test,
                     j,
+                    base2k,
                     &res_big_test,
                     j,
                     scratch_test.borrow(),
@@ -1347,16 +1394,16 @@ pub fn test_vec_znx_big_sub_small_a_inplace<BR: Backend, BT: Backend>(
 }
 
 pub fn test_vec_znx_big_sub_small_b_inplace<BR: Backend, BT: Backend>(
-    basek: usize,
+    base2k: usize,
     module_ref: &Module<BR>,
     module_test: &Module<BT>,
 ) where
-    Module<BR>: VecZnxBigSubSmallBInplace<BR>
+    Module<BR>: VecZnxBigSubSmallNegateInplace<BR>
         + VecZnxBigAlloc<BR>
         + VecZnxBigFromSmall<BR>
         + VecZnxBigNormalize<BR>
         + VecZnxBigNormalizeTmpBytes,
-    Module<BT>: VecZnxBigSubSmallBInplace<BT>
+    Module<BT>: VecZnxBigSubSmallNegateInplace<BT>
         + VecZnxBigAlloc<BT>
         + VecZnxBigFromSmall<BT>
         + VecZnxBigNormalize<BT>
@@ -1375,13 +1422,13 @@ pub fn test_vec_znx_big_sub_small_b_inplace<BR: Backend, BT: Backend>(
 
     for a_size in [1, 2, 3, 4] {
         let mut a: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, a_size);
-        a.fill_uniform(basek, &mut source);
+        a.fill_uniform(base2k, &mut source);
 
         let a_digest: u64 = a.digest_u64();
 
         for res_size in [1, 2, 3, 4] {
             let mut res: VecZnx<Vec<u8>> = VecZnx::alloc(n, cols, res_size);
-            res.fill_uniform(basek, &mut source);
+            res.fill_uniform(base2k, &mut source);
 
             let mut res_big_ref: VecZnxBig<Vec<u8>, BR> = module_ref.vec_znx_big_alloc(cols, res_size);
             let mut res_big_test: VecZnxBig<Vec<u8>, BT> = module_test.vec_znx_big_alloc(cols, res_size);
@@ -1392,8 +1439,8 @@ pub fn test_vec_znx_big_sub_small_b_inplace<BR: Backend, BT: Backend>(
             }
 
             for i in 0..cols {
-                module_ref.vec_znx_big_sub_small_b_inplace(&mut res_big_ref, i, &a, i);
-                module_test.vec_znx_big_sub_small_b_inplace(&mut res_big_test, i, &a, i);
+                module_ref.vec_znx_big_sub_small_negate_inplace(&mut res_big_ref, i, &a, i);
+                module_test.vec_znx_big_sub_small_negate_inplace(&mut res_big_test, i, &a, i);
             }
 
             assert_eq!(a.digest_u64(), a_digest);
@@ -1406,17 +1453,19 @@ pub fn test_vec_znx_big_sub_small_b_inplace<BR: Backend, BT: Backend>(
 
             for j in 0..cols {
                 module_ref.vec_znx_big_normalize(
-                    basek,
+                    base2k,
                     &mut res_small_ref,
                     j,
+                    base2k,
                     &res_big_ref,
                     j,
                     scratch_ref.borrow(),
                 );
                 module_test.vec_znx_big_normalize(
-                    basek,
+                    base2k,
                     &mut res_small_test,
                     j,
+                    base2k,
                     &res_big_test,
                     j,
                     scratch_test.borrow(),

@@ -26,13 +26,13 @@ fn main() {
     let n: usize = 1<<log_n;
 
     // Base-2-k (implicit digit decomposition)
-    let basek: usize = 14;
+    let base2k: usize = 14;
 
     // Ciphertext Torus precision (equivalent to ciphertext modulus)
     let k_ct: usize = 27;
 
     // Plaintext Torus precision (equivament to plaintext modulus)
-    let k_pt: usize = basek;
+    let k_pt: usize = base2k;
 
     // GLWE rank
     let rank: usize = 1;
@@ -41,9 +41,9 @@ fn main() {
     let module: Module<FFT64> = Module::<FFT64>::new(n as u64);
 
     // Allocates ciphertext & plaintexts
-    let mut ct: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(n, basek, k_ct, rank);
-    let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(n, basek, k_pt);
-    let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(n, basek, k_pt);
+    let mut ct: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(n, base2k, k_ct, rank);
+    let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(n, base2k, k_pt);
+    let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(n, base2k, k_pt);
 
     // CPRNG
     let mut source_xs: Source = Source::new([0u8; 32]);
@@ -52,8 +52,8 @@ fn main() {
 
     // Scratch space
     let mut scratch: ScratchOwned<FFT64> = ScratchOwned::alloc(
-        GLWECiphertext::encrypt_sk_scratch_space(&module, n, basek, ct.k())
-            | GLWECiphertext::decrypt_scratch_space(&module, n, basek, ct.k()),
+        GLWECiphertext::encrypt_sk_scratch_space(&module, n, base2k, ct.k())
+            | GLWECiphertext::decrypt_scratch_space(&module, n, base2k, ct.k()),
     );
 
     // Generate secret-key
@@ -64,7 +64,7 @@ fn main() {
     let sk_prepared: GLWESecretPrepared<Vec<u8>, FFT64> = sk.prepare_alloc(&module, scratch.borrow());
 
     // Uniform plaintext
-    module.vec_znx_fill_uniform(basek, &mut pt_want.data, 0, k_pt, &mut source_xa);
+    module.vec_znx_fill_uniform(base2k, &mut pt_want.data, 0, k_pt, &mut source_xa);
 
     // Encryption
     ct.encrypt_sk(
@@ -83,7 +83,7 @@ fn main() {
     pt_want.sub_inplace_ab(&module, &pt_have);
 
     // Ideal vs. actual noise
-    let noise_have: f64 = pt_want.data.std(basek, 0) * (ct.k() as f64).exp2();
+    let noise_have: f64 = pt_want.data.std(base2k, 0) * (ct.k() as f64).exp2();
     let noise_want: f64 = SIGMA;
 
     // Check

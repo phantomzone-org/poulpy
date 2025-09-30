@@ -1,42 +1,46 @@
 use poulpy_hal::{
     api::{
-        ScratchAvailable, TakeVecZnxDft, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftApply, VecZnxIdftApplyConsume,
-        VecZnxNormalizeTmpBytes, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
+        ScratchAvailable, TakeVecZnx, TakeVecZnxDft, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftApply,
+        VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeTmpBytes, VmpApplyDftToDft, VmpApplyDftToDftAdd,
+        VmpApplyDftToDftTmpBytes,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch, ZnxZero},
 };
 
-use crate::layouts::{GGLWESwitchingKey, GLWECiphertext, Infos, prepared::GGSWCiphertextPrepared};
+use crate::layouts::{GGLWELayoutInfos, GGLWESwitchingKey, GGSWInfos, GLWECiphertext, prepared::GGSWCiphertextPrepared};
 
 impl GGLWESwitchingKey<Vec<u8>> {
-    #[allow(clippy::too_many_arguments)]
-    pub fn external_product_scratch_space<B: Backend>(
+    pub fn external_product_scratch_space<B: Backend, OUT, IN, GGSW>(
         module: &Module<B>,
-        basek: usize,
-        k_out: usize,
-        k_in: usize,
-        k_ggsw: usize,
-        digits: usize,
-        rank: usize,
+        out_infos: &OUT,
+        in_infos: &IN,
+        ggsw_infos: &GGSW,
     ) -> usize
     where
+        OUT: GGLWELayoutInfos,
+        IN: GGLWELayoutInfos,
+        GGSW: GGSWInfos,
         Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        GLWECiphertext::external_product_scratch_space(module, basek, k_out, k_in, k_ggsw, digits, rank)
+        GLWECiphertext::external_product_scratch_space(
+            module,
+            &out_infos.glwe_layout(),
+            &in_infos.glwe_layout(),
+            ggsw_infos,
+        )
     }
 
-    pub fn external_product_inplace_scratch_space<B: Backend>(
+    pub fn external_product_inplace_scratch_space<B: Backend, OUT, GGSW>(
         module: &Module<B>,
-        basek: usize,
-        k_out: usize,
-        k_ggsw: usize,
-        digits: usize,
-        rank: usize,
+        out_infos: &OUT,
+        ggsw_infos: &GGSW,
     ) -> usize
     where
+        OUT: GGLWELayoutInfos,
+        GGSW: GGSWInfos,
         Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        GLWECiphertext::external_product_inplace_scratch_space(module, basek, k_out, k_ggsw, digits, rank)
+        GLWECiphertext::external_product_inplace_scratch_space(module, &out_infos.glwe_layout(), ggsw_infos)
     }
 }
 
@@ -55,11 +59,14 @@ impl<DataSelf: DataMut> GGLWESwitchingKey<DataSelf> {
             + VmpApplyDftToDft<B>
             + VmpApplyDftToDftAdd<B>
             + VecZnxIdftApplyConsume<B>
-            + VecZnxBigNormalize<B>,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
+            + VecZnxBigNormalize<B>
+            + VecZnxNormalize<B>,
+        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
     {
         #[cfg(debug_assertions)]
         {
+            use crate::layouts::GLWEInfos;
+
             assert_eq!(
                 self.rank_in(),
                 lhs.rank_in(),
@@ -83,15 +90,15 @@ impl<DataSelf: DataMut> GGLWESwitchingKey<DataSelf> {
             );
         }
 
-        (0..self.rank_in()).for_each(|col_i| {
-            (0..self.rows()).for_each(|row_j| {
+        (0..self.rank_in().into()).for_each(|col_i| {
+            (0..self.rows().into()).for_each(|row_j| {
                 self.at_mut(row_j, col_i)
                     .external_product(module, &lhs.at(row_j, col_i), rhs, scratch);
             });
         });
 
-        (self.rows().min(lhs.rows())..self.rows()).for_each(|row_i| {
-            (0..self.rank_in()).for_each(|col_j| {
+        (self.rows().min(lhs.rows()).into()..self.rows().into()).for_each(|row_i| {
+            (0..self.rank_in().into()).for_each(|col_j| {
                 self.at_mut(row_i, col_j).data.zero();
             });
         });
@@ -110,11 +117,14 @@ impl<DataSelf: DataMut> GGLWESwitchingKey<DataSelf> {
             + VmpApplyDftToDft<B>
             + VmpApplyDftToDftAdd<B>
             + VecZnxIdftApplyConsume<B>
-            + VecZnxBigNormalize<B>,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
+            + VecZnxBigNormalize<B>
+            + VecZnxNormalize<B>,
+        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
     {
         #[cfg(debug_assertions)]
         {
+            use crate::layouts::GLWEInfos;
+
             assert_eq!(
                 self.rank_out(),
                 rhs.rank(),
@@ -124,8 +134,8 @@ impl<DataSelf: DataMut> GGLWESwitchingKey<DataSelf> {
             );
         }
 
-        (0..self.rank_in()).for_each(|col_i| {
-            (0..self.rows()).for_each(|row_j| {
+        (0..self.rank_in().into()).for_each(|col_i| {
+            (0..self.rows().into()).for_each(|row_j| {
                 self.at_mut(row_j, col_i)
                     .external_product_inplace(module, rhs, scratch);
             });

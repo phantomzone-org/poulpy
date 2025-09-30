@@ -1,10 +1,11 @@
 use poulpy_hal::reference::fft64::{
     reim::{
         ReimAdd, ReimAddInplace, ReimAddMul, ReimCopy, ReimDFTExecute, ReimFFTTable, ReimFromZnx, ReimIFFTTable, ReimMul,
-        ReimMulInplace, ReimNegate, ReimNegateInplace, ReimSub, ReimSubABInplace, ReimSubBAInplace, ReimToZnx, ReimToZnxInplace,
-        ReimZero, fft_ref, ifft_ref, reim_add_inplace_ref, reim_add_ref, reim_addmul_ref, reim_copy_ref, reim_from_znx_i64_ref,
-        reim_mul_inplace_ref, reim_mul_ref, reim_negate_inplace_ref, reim_negate_ref, reim_sub_ab_inplace_ref,
-        reim_sub_ba_inplace_ref, reim_sub_ref, reim_to_znx_i64_inplace_ref, reim_to_znx_i64_ref, reim_zero_ref,
+        ReimMulInplace, ReimNegate, ReimNegateInplace, ReimSub, ReimSubInplace, ReimSubNegateInplace, ReimToZnx,
+        ReimToZnxInplace, ReimZero, fft_ref, ifft_ref, reim_add_inplace_ref, reim_add_ref, reim_addmul_ref, reim_copy_ref,
+        reim_from_znx_i64_ref, reim_mul_inplace_ref, reim_mul_ref, reim_negate_inplace_ref, reim_negate_ref,
+        reim_sub_inplace_ref, reim_sub_negate_inplace_ref, reim_sub_ref, reim_to_znx_i64_inplace_ref, reim_to_znx_i64_ref,
+        reim_zero_ref,
     },
     reim4::{
         Reim4Extract1Blk, Reim4Mat1ColProd, Reim4Mat2Cols2ndColProd, Reim4Mat2ColsProd, Reim4Save1Blk, Reim4Save2Blks,
@@ -69,17 +70,17 @@ impl ReimSub for FFT64Ref {
     }
 }
 
-impl ReimSubABInplace for FFT64Ref {
+impl ReimSubInplace for FFT64Ref {
     #[inline(always)]
-    fn reim_sub_ab_inplace(res: &mut [f64], a: &[f64]) {
-        reim_sub_ab_inplace_ref(res, a);
+    fn reim_sub_inplace(res: &mut [f64], a: &[f64]) {
+        reim_sub_inplace_ref(res, a);
     }
 }
 
-impl ReimSubBAInplace for FFT64Ref {
+impl ReimSubNegateInplace for FFT64Ref {
     #[inline(always)]
-    fn reim_sub_ba_inplace(res: &mut [f64], a: &[f64]) {
-        reim_sub_ba_inplace_ref(res, a);
+    fn reim_sub_negate_inplace(res: &mut [f64], a: &[f64]) {
+        reim_sub_negate_inplace_ref(res, a);
     }
 }
 

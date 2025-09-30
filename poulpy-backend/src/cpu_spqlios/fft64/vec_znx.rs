@@ -1,5 +1,8 @@
 use poulpy_hal::{
-    api::{TakeSlice, VecZnxMergeRingsTmpBytes, VecZnxNormalizeTmpBytes, VecZnxSplitRingTmpBytes},
+    api::{
+        TakeSlice, VecZnxLshTmpBytes, VecZnxMergeRingsTmpBytes, VecZnxNormalizeTmpBytes, VecZnxRshTmpBytes,
+        VecZnxSplitRingTmpBytes,
+    },
     layouts::{
         Module, ScalarZnx, ScalarZnxToRef, Scratch, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut,
     },
@@ -11,16 +14,16 @@ use poulpy_hal::{
         VecZnxMulXpMinusOneInplaceTmpBytesImpl, VecZnxNegateImpl, VecZnxNegateInplaceImpl, VecZnxNormalizeImpl,
         VecZnxNormalizeInplaceImpl, VecZnxNormalizeTmpBytesImpl, VecZnxRotateImpl, VecZnxRotateInplaceImpl,
         VecZnxRotateInplaceTmpBytesImpl, VecZnxRshImpl, VecZnxRshInplaceImpl, VecZnxRshTmpBytesImpl, VecZnxSplitRingImpl,
-        VecZnxSplitRingTmpBytesImpl, VecZnxSubABInplaceImpl, VecZnxSubBAInplaceImpl, VecZnxSubImpl, VecZnxSubScalarImpl,
+        VecZnxSplitRingTmpBytesImpl, VecZnxSubImpl, VecZnxSubInplaceImpl, VecZnxSubNegateInplaceImpl, VecZnxSubScalarImpl,
         VecZnxSubScalarInplaceImpl, VecZnxSwitchRingImpl,
     },
     reference::{
         vec_znx::{
             vec_znx_add_normal_ref, vec_znx_automorphism_inplace_tmp_bytes, vec_znx_copy, vec_znx_fill_normal_ref,
             vec_znx_fill_uniform_ref, vec_znx_lsh, vec_znx_lsh_inplace, vec_znx_lsh_tmp_bytes, vec_znx_merge_rings,
-            vec_znx_merge_rings_tmp_bytes, vec_znx_mul_xp_minus_one_inplace_tmp_bytes, vec_znx_rotate_inplace_tmp_bytes,
-            vec_znx_rsh, vec_znx_rsh_inplace, vec_znx_rsh_tmp_bytes, vec_znx_split_ring, vec_znx_split_ring_tmp_bytes,
-            vec_znx_switch_ring,
+            vec_znx_merge_rings_tmp_bytes, vec_znx_mul_xp_minus_one_inplace_tmp_bytes, vec_znx_normalize_tmp_bytes,
+            vec_znx_rotate_inplace_tmp_bytes, vec_znx_rsh, vec_znx_rsh_inplace, vec_znx_rsh_tmp_bytes, vec_znx_split_ring,
+            vec_znx_split_ring_tmp_bytes, vec_znx_switch_ring,
         },
         znx::{znx_copy_ref, znx_zero_ref},
     },
@@ -34,7 +37,7 @@ use crate::cpu_spqlios::{
 
 unsafe impl VecZnxNormalizeTmpBytesImpl<Self> for FFT64Spqlios {
     fn vec_znx_normalize_tmp_bytes_impl(module: &Module<Self>) -> usize {
-        unsafe { vec_znx::vec_znx_normalize_base2k_tmp_bytes(module.ptr() as *const module_info_t) as usize }
+        vec_znx_normalize_tmp_bytes(module.n())
     }
 }
 
@@ -44,9 +47,10 @@ where
 {
     fn vec_znx_normalize_impl<R, A>(
         module: &Module<Self>,
-        basek: usize,
+        res_basek: usize,
         res: &mut R,
         res_col: usize,
+        a_basek: usize,
         a: &A,
         a_col: usize,
         scratch: &mut Scratch<Self>,
@@ -60,6 +64,10 @@ where
         #[cfg(debug_assertions)]
         {
             assert_eq!(res.n(), a.n());
+            assert_eq!(
+                res_basek, a_basek,
+                "res_basek != a_basek -> base2k conversion is not supported"
+            )
         }
 
         let (tmp_bytes, _) = scratch.take_slice(module.vec_znx_normalize_tmp_bytes());
@@ -67,7 +75,7 @@ where
         unsafe {
             vec_znx::vec_znx_normalize_base2k(
                 module.ptr() as *const module_info_t,
-                basek as u64,
+                res_basek as u64,
                 res.at_mut_ptr(res_col, 0),
                 res.size() as u64,
                 res.sl() as u64,
@@ -86,7 +94,7 @@ where
 {
     fn vec_znx_normalize_inplace_impl<A>(
         module: &Module<Self>,
-        basek: usize,
+        base2k: usize,
         a: &mut A,
         a_col: usize,
         scratch: &mut Scratch<Self>,
@@ -100,7 +108,7 @@ where
         unsafe {
             vec_znx::vec_znx_normalize_base2k(
                 module.ptr() as *const module_info_t,
-                basek as u64,
+                base2k as u64,
                 a.at_mut_ptr(a_col, 0),
                 a.size() as u64,
                 a.sl() as u64,
@@ -301,8 +309,8 @@ unsafe impl VecZnxSubImpl<Self> for FFT64Spqlios {
     }
 }
 
-unsafe impl VecZnxSubABInplaceImpl<Self> for FFT64Spqlios {
-    fn vec_znx_sub_ab_inplace_impl<R, A>(module: &Module<Self>, res: &mut R, res_col: usize, a: &A, a_col: usize)
+unsafe impl VecZnxSubInplaceImpl<Self> for FFT64Spqlios {
+    fn vec_znx_sub_inplace_impl<R, A>(module: &Module<Self>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxToMut,
         A: VecZnxToRef,
@@ -330,8 +338,8 @@ unsafe impl VecZnxSubABInplaceImpl<Self> for FFT64Spqlios {
     }
 }
 
-unsafe impl VecZnxSubBAInplaceImpl<Self> for FFT64Spqlios {
-    fn vec_znx_sub_ba_inplace_impl<R, A>(module: &Module<Self>, res: &mut R, res_col: usize, a: &A, a_col: usize)
+unsafe impl VecZnxSubNegateInplaceImpl<Self> for FFT64Spqlios {
+    fn vec_znx_sub_negate_inplace_impl<R, A>(module: &Module<Self>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxToMut,
         A: VecZnxToRef,
@@ -512,9 +520,9 @@ where
     Module<Self>: VecZnxNormalizeTmpBytes,
     Scratch<Self>: TakeSlice,
 {
-    fn vec_znx_lsh_inplace_impl<R, A>(
+    fn vec_znx_lsh_impl<R, A>(
         module: &Module<Self>,
-        basek: usize,
+        base2k: usize,
         k: usize,
         res: &mut R,
         res_col: usize,
@@ -525,8 +533,8 @@ where
         R: VecZnxToMut,
         A: VecZnxToRef,
     {
-        let (carry, _) = scratch.take_slice(module.vec_znx_normalize_tmp_bytes() / size_of::<i64>());
-        vec_znx_lsh::<_, _, FFT64Spqlios>(basek, k, res, res_col, a, a_col, carry)
+        let (carry, _) = scratch.take_slice(module.vec_znx_lsh_tmp_bytes() / size_of::<i64>());
+        vec_znx_lsh::<_, _, FFT64Spqlios>(base2k, k, res, res_col, a, a_col, carry)
     }
 }
 
@@ -537,7 +545,7 @@ where
 {
     fn vec_znx_lsh_inplace_impl<A>(
         module: &Module<Self>,
-        basek: usize,
+        base2k: usize,
         k: usize,
         a: &mut A,
         a_col: usize,
@@ -545,8 +553,8 @@ where
     ) where
         A: VecZnxToMut,
     {
-        let (carry, _) = scratch.take_slice(module.vec_znx_normalize_tmp_bytes() / size_of::<i64>());
-        vec_znx_lsh_inplace::<_, FFT64Spqlios>(basek, k, a, a_col, carry)
+        let (carry, _) = scratch.take_slice(module.vec_znx_lsh_tmp_bytes() / size_of::<i64>());
+        vec_znx_lsh_inplace::<_, FFT64Spqlios>(base2k, k, a, a_col, carry)
     }
 }
 
@@ -555,9 +563,9 @@ where
     Module<Self>: VecZnxNormalizeTmpBytes,
     Scratch<Self>: TakeSlice,
 {
-    fn vec_znx_rsh_inplace_impl<R, A>(
+    fn vec_znx_rsh_impl<R, A>(
         module: &Module<Self>,
-        basek: usize,
+        base2k: usize,
         k: usize,
         res: &mut R,
         res_col: usize,
@@ -568,8 +576,8 @@ where
         R: VecZnxToMut,
         A: VecZnxToRef,
     {
-        let (carry, _) = scratch.take_slice(module.vec_znx_normalize_tmp_bytes() / size_of::<i64>());
-        vec_znx_rsh::<_, _, FFT64Spqlios>(basek, k, res, res_col, a, a_col, carry)
+        let (carry, _) = scratch.take_slice(module.vec_znx_rsh_tmp_bytes() / size_of::<i64>());
+        vec_znx_rsh::<_, _, FFT64Spqlios>(base2k, k, res, res_col, a, a_col, carry)
     }
 }
 
@@ -580,7 +588,7 @@ where
 {
     fn vec_znx_rsh_inplace_impl<A>(
         module: &Module<Self>,
-        basek: usize,
+        base2k: usize,
         k: usize,
         a: &mut A,
         a_col: usize,
@@ -588,8 +596,8 @@ where
     ) where
         A: VecZnxToMut,
     {
-        let (carry, _) = scratch.take_slice(module.vec_znx_normalize_tmp_bytes() / size_of::<i64>());
-        vec_znx_rsh_inplace::<_, FFT64Spqlios>(basek, k, a, a_col, carry)
+        let (carry, _) = scratch.take_slice(module.vec_znx_rsh_tmp_bytes() / size_of::<i64>());
+        vec_znx_rsh_inplace::<_, FFT64Spqlios>(base2k, k, a, a_col, carry)
     }
 }
 
@@ -690,11 +698,7 @@ unsafe impl VecZnxAutomorphismInplaceImpl<Self> for FFT64Spqlios {
         let mut a: VecZnx<&mut [u8]> = a.to_mut();
         #[cfg(debug_assertions)]
         {
-            assert!(
-                k & 1 != 0,
-                "invalid galois element: must be odd but is {}",
-                k
-            );
+            assert!(k & 1 != 0, "invalid galois element: must be odd but is {k}");
         }
         unsafe {
             vec_znx::vec_znx_automorphism(
@@ -852,18 +856,18 @@ unsafe impl VecZnxCopyImpl<Self> for FFT64Spqlios {
 }
 
 unsafe impl VecZnxFillUniformImpl<Self> for FFT64Spqlios {
-    fn vec_znx_fill_uniform_impl<R>(_module: &Module<Self>, basek: usize, res: &mut R, res_col: usize, source: &mut Source)
+    fn vec_znx_fill_uniform_impl<R>(_module: &Module<Self>, base2k: usize, res: &mut R, res_col: usize, source: &mut Source)
     where
         R: VecZnxToMut,
     {
-        vec_znx_fill_uniform_ref(basek, res, res_col, source)
+        vec_znx_fill_uniform_ref(base2k, res, res_col, source)
     }
 }
 
 unsafe impl VecZnxFillNormalImpl<Self> for FFT64Spqlios {
     fn vec_znx_fill_normal_impl<R>(
         _module: &Module<Self>,
-        basek: usize,
+        base2k: usize,
         res: &mut R,
         res_col: usize,
         k: usize,
@@ -873,14 +877,14 @@ unsafe impl VecZnxFillNormalImpl<Self> for FFT64Spqlios {
     ) where
         R: VecZnxToMut,
     {
-        vec_znx_fill_normal_ref(basek, res, res_col, k, sigma, bound, source);
+        vec_znx_fill_normal_ref(base2k, res, res_col, k, sigma, bound, source);
     }
 }
 
 unsafe impl VecZnxAddNormalImpl<Self> for FFT64Spqlios {
     fn vec_znx_add_normal_impl<R>(
         _module: &Module<Self>,
-        basek: usize,
+        base2k: usize,
         res: &mut R,
         res_col: usize,
         k: usize,
@@ -890,6 +894,6 @@ unsafe impl VecZnxAddNormalImpl<Self> for FFT64Spqlios {
     ) where
         R: VecZnxToMut,
     {
-        vec_znx_add_normal_ref(basek, res, res_col, k, sigma, bound, source);
+        vec_znx_add_normal_ref(base2k, res, res_col, k, sigma, bound, source);
     }
 }

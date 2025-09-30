@@ -56,15 +56,12 @@ pub fn cast_mut<T, V>(data: &[T]) -> &mut [V] {
 fn alloc_aligned_custom_u8(size: usize, align: usize) -> Vec<u8> {
     assert!(
         align.is_power_of_two(),
-        "Alignment must be a power of two but is {}",
-        align
+        "Alignment must be a power of two but is {align}"
     );
     assert_eq!(
         (size * size_of::<u8>()) % align,
         0,
-        "size={} must be a multiple of align={}",
-        size,
-        align
+        "size={size} must be a multiple of align={align}"
     );
     unsafe {
         let layout: std::alloc::Layout = std::alloc::Layout::from_size_align(size, align).expect("Invalid alignment");
@@ -74,9 +71,7 @@ fn alloc_aligned_custom_u8(size: usize, align: usize) -> Vec<u8> {
         }
         assert!(
             is_aligned_custom(ptr, align),
-            "Memory allocation at {:p} is not aligned to {} bytes",
-            ptr,
-            align
+            "Memory allocation at {ptr:p} is not aligned to {align} bytes"
         );
         // Init allocated memory to zero
         std::ptr::write_bytes(ptr, 0, size);
@@ -89,16 +84,14 @@ fn alloc_aligned_custom_u8(size: usize, align: usize) -> Vec<u8> {
 pub fn alloc_aligned_custom<T>(size: usize, align: usize) -> Vec<T> {
     assert!(
         align.is_power_of_two(),
-        "Alignment must be a power of two but is {}",
-        align
+        "Alignment must be a power of two but is {align}"
     );
 
     assert_eq!(
         (size * size_of::<T>()) % align,
         0,
-        "size*size_of::<T>()={} must be a multiple of align={}",
+        "size*size_of::<T>()={} must be a multiple of align={align}",
         size * size_of::<T>(),
-        align
     );
 
     let mut vec_u8: Vec<u8> = alloc_aligned_custom_u8(size_of::<T>() * size, align);

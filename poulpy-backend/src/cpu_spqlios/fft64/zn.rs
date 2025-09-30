@@ -12,7 +12,7 @@ unsafe impl ZnNormalizeInplaceImpl<Self> for FFT64Spqlios
 where
     Self: TakeSliceImpl<Self>,
 {
-    fn zn_normalize_inplace_impl<A>(n: usize, basek: usize, a: &mut A, a_col: usize, scratch: &mut Scratch<Self>)
+    fn zn_normalize_inplace_impl<A>(n: usize, base2k: usize, a: &mut A, a_col: usize, scratch: &mut Scratch<Self>)
     where
         A: ZnToMut,
     {
@@ -23,7 +23,7 @@ where
         unsafe {
             zn64::zn64_normalize_base2k_ref(
                 n as u64,
-                basek as u64,
+                base2k as u64,
                 a.at_mut_ptr(a_col, 0),
                 a.size() as u64,
                 a.sl() as u64,
@@ -37,11 +37,11 @@ where
 }
 
 unsafe impl ZnFillUniformImpl<Self> for FFT64Spqlios {
-    fn zn_fill_uniform_impl<R>(n: usize, basek: usize, res: &mut R, res_col: usize, source: &mut Source)
+    fn zn_fill_uniform_impl<R>(n: usize, base2k: usize, res: &mut R, res_col: usize, source: &mut Source)
     where
         R: ZnToMut,
     {
-        zn_fill_uniform(n, basek, res, res_col, source);
+        zn_fill_uniform(n, base2k, res, res_col, source);
     }
 }
 
@@ -49,7 +49,7 @@ unsafe impl ZnFillNormalImpl<Self> for FFT64Spqlios {
     #[allow(clippy::too_many_arguments)]
     fn zn_fill_normal_impl<R>(
         n: usize,
-        basek: usize,
+        base2k: usize,
         res: &mut R,
         res_col: usize,
         k: usize,
@@ -59,7 +59,7 @@ unsafe impl ZnFillNormalImpl<Self> for FFT64Spqlios {
     ) where
         R: ZnToMut,
     {
-        zn_fill_normal(n, basek, res, res_col, k, source, sigma, bound);
+        zn_fill_normal(n, base2k, res, res_col, k, source, sigma, bound);
     }
 }
 
@@ -67,7 +67,7 @@ unsafe impl ZnAddNormalImpl<Self> for FFT64Spqlios {
     #[allow(clippy::too_many_arguments)]
     fn zn_add_normal_impl<R>(
         n: usize,
-        basek: usize,
+        base2k: usize,
         res: &mut R,
         res_col: usize,
         k: usize,
@@ -77,6 +77,6 @@ unsafe impl ZnAddNormalImpl<Self> for FFT64Spqlios {
     ) where
         R: ZnToMut,
     {
-        zn_add_normal(n, basek, res, res_col, k, source, sigma, bound);
+        zn_add_normal(n, base2k, res, res_col, k, source, sigma, bound);
     }
 }

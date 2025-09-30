@@ -68,15 +68,15 @@ pub trait VecZnxDftSub<B: Backend> {
         D: VecZnxDftToRef<B>;
 }
 
-pub trait VecZnxDftSubABInplace<B: Backend> {
-    fn vec_znx_dft_sub_ab_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+pub trait VecZnxDftSubInplace<B: Backend> {
+    fn vec_znx_dft_sub_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxDftToMut<B>,
         A: VecZnxDftToRef<B>;
 }
 
-pub trait VecZnxDftSubBAInplace<B: Backend> {
-    fn vec_znx_dft_sub_ba_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+pub trait VecZnxDftSubNegateInplace<B: Backend> {
+    fn vec_znx_dft_sub_negate_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxDftToMut<B>,
         A: VecZnxDftToRef<B>;

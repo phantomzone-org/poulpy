@@ -1,31 +1,46 @@
 use poulpy_hal::{
     api::{
-        ScratchAvailable, TakeVecZnxDft, VecZnxBigAddSmallInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
-        VecZnxDftAllocBytes, VecZnxDftApply, VecZnxIdftApplyConsume, VmpApplyDftToDft, VmpApplyDftToDftAdd,
-        VmpApplyDftToDftTmpBytes,
+        ScratchAvailable, TakeVecZnx, TakeVecZnxDft, VecZnxBigAddSmallInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
+        VecZnxDftAllocBytes, VecZnxDftApply, VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeTmpBytes, VmpApplyDftToDft,
+        VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
     },
-    layouts::{Backend, DataMut, DataRef, Module, Scratch, ZnxView, ZnxViewMut, ZnxZero},
+    layouts::{Backend, DataMut, DataRef, Module, Scratch, VecZnx, ZnxView, ZnxViewMut, ZnxZero},
 };
 
 use crate::{
     TakeGLWECt,
-    layouts::{GLWECiphertext, Infos, LWECiphertext, prepared::LWEToGLWESwitchingKeyPrepared},
+    layouts::{
+        GGLWELayoutInfos, GLWECiphertext, GLWECiphertextLayout, GLWEInfos, LWECiphertext, LWEInfos,
+        prepared::LWEToGLWESwitchingKeyPrepared,
+    },
 };
 
 impl GLWECiphertext<Vec<u8>> {
-    pub fn from_lwe_scratch_space<B: Backend>(
+    pub fn from_lwe_scratch_space<B: Backend, OUT, IN, KEY>(
         module: &Module<B>,
-        basek: usize,
-        k_lwe: usize,
-        k_glwe: usize,
-        k_ksk: usize,
-        rank: usize,
+        glwe_infos: &OUT,
+        lwe_infos: &IN,
+        key_infos: &KEY,
     ) -> usize
     where
-        Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes,
+        OUT: GLWEInfos,
+        IN: LWEInfos,
+        KEY: GGLWELayoutInfos,
+        Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        GLWECiphertext::keyswitch_scratch_space(module, basek, k_glwe, k_lwe, k_ksk, 1, 1, rank)
-            + GLWECiphertext::bytes_of(module.n(), basek, k_lwe, 1)
+        let ct: usize = GLWECiphertext::alloc_bytes_with(
+            module.n().into(),
+            key_infos.base2k(),
+            lwe_infos.k().max(glwe_infos.k()),
+            1u32.into(),
+        );
+        let ks: usize = GLWECiphertext::keyswitch_inplace_scratch_space(module, glwe_infos, key_infos);
+        if lwe_infos.base2k() == key_infos.base2k() {
+            ct + ks
+        } else {
+            let a_conv = VecZnx::alloc_bytes(module.n(), 1, lwe_infos.size()) + module.vec_znx_normalize_tmp_bytes();
+            ct + a_conv + ks
+        }
     }
 }
 
@@ -47,25 +62,68 @@ impl<D: DataMut> GLWECiphertext<D> {
             + VecZnxDftApply<B>
             + VecZnxIdftApplyConsume<B>
             + VecZnxBigAddSmallInplace<B>
-            + VecZnxBigNormalize<B>,
-        Scratch<B>: ScratchAvailable + TakeVecZnxDft<B> + TakeGLWECt,
+            + VecZnxBigNormalize<B>
+            + VecZnxNormalize<B>
+            + VecZnxNormalizeTmpBytes,
+        Scratch<B>: ScratchAvailable + TakeVecZnxDft<B> + TakeGLWECt + TakeVecZnx,
     {
         #[cfg(debug_assertions)]
         {
-            assert!(lwe.n() <= self.n());
-            assert_eq!(self.basek(), self.basek());
+            assert_eq!(self.n(), module.n() as u32);
+            assert_eq!(ksk.n(), module.n() as u32);
+            assert!(lwe.n() <= module.n() as u32);
         }
 
-        let (mut glwe, scratch_1) = scratch.take_glwe_ct(ksk.n(), lwe.basek(), lwe.k(), 1);
+        let (mut glwe, scratch_1) = scratch.take_glwe_ct(&GLWECiphertextLayout {
+            n: ksk.n(),
+            base2k: ksk.base2k(),
+            k: lwe.k(),
+            rank: 1u32.into(),
+        });
         glwe.data.zero();
 
-        let n_lwe: usize = lwe.n();
+        let n_lwe: usize = lwe.n().into();
 
-        (0..lwe.size()).for_each(|i| {
-            let data_lwe: &[i64] = lwe.data.at(0, i);
-            glwe.data.at_mut(0, i)[0] = data_lwe[0];
-            glwe.data.at_mut(1, i)[..n_lwe].copy_from_slice(&data_lwe[1..]);
-        });
+        if lwe.base2k() == ksk.base2k() {
+            for i in 0..lwe.size() {
+                let data_lwe: &[i64] = lwe.data.at(0, i);
+                glwe.data.at_mut(0, i)[0] = data_lwe[0];
+                glwe.data.at_mut(1, i)[..n_lwe].copy_from_slice(&data_lwe[1..]);
+            }
+        } else {
+            let (mut a_conv, scratch_2) = scratch_1.take_vec_znx(module.n(), 1, lwe.size());
+            a_conv.zero();
+            for j in 0..lwe.size() {
+                let data_lwe: &[i64] = lwe.data.at(0, j);
+                a_conv.at_mut(0, j)[0] = data_lwe[0]
+            }
+
+            module.vec_znx_normalize(
+                ksk.base2k().into(),
+                &mut glwe.data,
+                0,
+                lwe.base2k().into(),
+                &a_conv,
+                0,
+                scratch_2,
+            );
+
+            a_conv.zero();
+            for j in 0..lwe.size() {
+                let data_lwe: &[i64] = lwe.data.at(0, j);
+                a_conv.at_mut(0, j)[..n_lwe].copy_from_slice(&data_lwe[1..]);
+            }
+
+            module.vec_znx_normalize(
+                ksk.base2k().into(),
+                &mut glwe.data,
+                1,
+                lwe.base2k().into(),
+                &a_conv,
+                0,
+                scratch_2,
+            );
+        }
 
         self.keyswitch(module, &glwe, &ksk.0, scratch_1);
     }

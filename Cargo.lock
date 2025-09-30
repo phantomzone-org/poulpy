@@ -403,6 +403,7 @@ name = "poulpy-schemes"
 version = "0.1.1"
 dependencies = [
  "byteorder",
+ "criterion",
  "itertools 0.14.0",
  "poulpy-backend",
  "poulpy-core",

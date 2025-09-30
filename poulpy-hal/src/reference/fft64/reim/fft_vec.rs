@@ -37,7 +37,7 @@ pub fn reim_sub_ref(res: &mut [f64], a: &[f64], b: &[f64]) {
 }
 
 #[inline(always)]
-pub fn reim_sub_ab_inplace_ref(res: &mut [f64], a: &[f64]) {
+pub fn reim_sub_inplace_ref(res: &mut [f64], a: &[f64]) {
     #[cfg(debug_assertions)]
     {
         assert_eq!(a.len(), res.len());
@@ -49,7 +49,7 @@ pub fn reim_sub_ab_inplace_ref(res: &mut [f64], a: &[f64]) {
 }
 
 #[inline(always)]
-pub fn reim_sub_ba_inplace_ref(res: &mut [f64], a: &[f64]) {
+pub fn reim_sub_negate_inplace_ref(res: &mut [f64], a: &[f64]) {
     #[cfg(debug_assertions)]
     {
         assert_eq!(a.len(), res.len());

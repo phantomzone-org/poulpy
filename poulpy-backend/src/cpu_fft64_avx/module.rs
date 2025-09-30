@@ -7,7 +7,7 @@ use poulpy_hal::{
         fft64::{
             reim::{
                 ReimAdd, ReimAddInplace, ReimAddMul, ReimCopy, ReimDFTExecute, ReimFFTTable, ReimFromZnx, ReimIFFTTable, ReimMul,
-                ReimMulInplace, ReimNegate, ReimNegateInplace, ReimSub, ReimSubABInplace, ReimSubBAInplace, ReimToZnx,
+                ReimMulInplace, ReimNegate, ReimNegateInplace, ReimSub, ReimSubInplace, ReimSubNegateInplace, ReimToZnx,
                 ReimToZnxInplace, ReimZero, reim_copy_ref, reim_zero_ref,
             },
             reim4::{
@@ -15,10 +15,11 @@ use poulpy_hal::{
             },
         },
         znx::{
-            ZnxAdd, ZnxAddInplace, ZnxAutomorphism, ZnxCopy, ZnxNegate, ZnxNegateInplace, ZnxNormalizeFinalStep,
+            ZnxAdd, ZnxAddInplace, ZnxAutomorphism, ZnxCopy, ZnxExtractDigitAddMul, ZnxMulAddPowerOfTwo, ZnxMulPowerOfTwo,
+            ZnxMulPowerOfTwoInplace, ZnxNegate, ZnxNegateInplace, ZnxNormalizeDigit, ZnxNormalizeFinalStep,
             ZnxNormalizeFinalStepInplace, ZnxNormalizeFirstStep, ZnxNormalizeFirstStepCarryOnly, ZnxNormalizeFirstStepInplace,
             ZnxNormalizeMiddleStep, ZnxNormalizeMiddleStepCarryOnly, ZnxNormalizeMiddleStepInplace, ZnxRotate, ZnxSub,
-            ZnxSubABInplace, ZnxSubBAInplace, ZnxSwitchRing, ZnxZero, znx_copy_ref, znx_rotate, znx_zero_ref,
+            ZnxSubInplace, ZnxSubNegateInplace, ZnxSwitchRing, ZnxZero, znx_copy_ref, znx_rotate, znx_zero_ref,
         },
     },
 };
@@ -27,8 +28,8 @@ use crate::cpu_fft64_avx::{
     FFT64Avx,
     reim::{
         ReimFFTAvx, ReimIFFTAvx, reim_add_avx2_fma, reim_add_inplace_avx2_fma, reim_addmul_avx2_fma, reim_from_znx_i64_bnd50_fma,
-        reim_mul_avx2_fma, reim_mul_inplace_avx2_fma, reim_negate_avx2_fma, reim_negate_inplace_avx2_fma,
-        reim_sub_ab_inplace_avx2_fma, reim_sub_avx2_fma, reim_sub_ba_inplace_avx2_fma, reim_to_znx_i64_inplace_bnd63_avx2_fma,
+        reim_mul_avx2_fma, reim_mul_inplace_avx2_fma, reim_negate_avx2_fma, reim_negate_inplace_avx2_fma, reim_sub_avx2_fma,
+        reim_sub_inplace_avx2_fma, reim_sub_negate_inplace_avx2_fma, reim_to_znx_i64_inplace_bnd63_avx2_fma,
     },
     reim_to_znx_i64_bnd63_avx2_fma,
     reim4::{
@@ -36,11 +37,12 @@ use crate::cpu_fft64_avx::{
         reim4_vec_mat1col_product_avx, reim4_vec_mat2cols_2ndcol_product_avx, reim4_vec_mat2cols_product_avx,
     },
     znx_avx::{
-        znx_add_avx, znx_add_inplace_avx, znx_automorphism_avx, znx_negate_avx, znx_negate_inplace_avx,
-        znx_normalize_final_step_avx, znx_normalize_final_step_inplace_avx, znx_normalize_first_step_avx,
-        znx_normalize_first_step_carry_only_avx, znx_normalize_first_step_inplace_avx, znx_normalize_middle_step_avx,
-        znx_normalize_middle_step_carry_only_avx, znx_normalize_middle_step_inplace_avx, znx_sub_ab_inplace_avx, znx_sub_avx,
-        znx_sub_ba_inplace_avx, znx_switch_ring_avx,
+        znx_add_avx, znx_add_inplace_avx, znx_automorphism_avx, znx_extract_digit_addmul_avx, znx_mul_add_power_of_two_avx,
+        znx_mul_power_of_two_avx, znx_mul_power_of_two_inplace_avx, znx_negate_avx, znx_negate_inplace_avx,
+        znx_normalize_digit_avx, znx_normalize_final_step_avx, znx_normalize_final_step_inplace_avx,
+        znx_normalize_first_step_avx, znx_normalize_first_step_carry_only_avx, znx_normalize_first_step_inplace_avx,
+        znx_normalize_middle_step_avx, znx_normalize_middle_step_carry_only_avx, znx_normalize_middle_step_inplace_avx,
+        znx_sub_avx, znx_sub_inplace_avx, znx_sub_negate_inplace_avx, znx_switch_ring_avx,
     },
 };
 
@@ -131,20 +133,20 @@ impl ZnxSub for FFT64Avx {
     }
 }
 
-impl ZnxSubABInplace for FFT64Avx {
+impl ZnxSubInplace for FFT64Avx {
     #[inline(always)]
-    fn znx_sub_ab_inplace(res: &mut [i64], a: &[i64]) {
+    fn znx_sub_inplace(res: &mut [i64], a: &[i64]) {
         unsafe {
-            znx_sub_ab_inplace_avx(res, a);
+            znx_sub_inplace_avx(res, a);
         }
     }
 }
 
-impl ZnxSubBAInplace for FFT64Avx {
+impl ZnxSubNegateInplace for FFT64Avx {
     #[inline(always)]
-    fn znx_sub_ba_inplace(res: &mut [i64], a: &[i64]) {
+    fn znx_sub_negate_inplace(res: &mut [i64], a: &[i64]) {
         unsafe {
-            znx_sub_ba_inplace_avx(res, a);
+            znx_sub_negate_inplace_avx(res, a);
         }
     }
 }
@@ -183,6 +185,33 @@ impl ZnxNegateInplace for FFT64Avx {
     }
 }
 
+impl ZnxMulAddPowerOfTwo for FFT64Avx {
+    #[inline(always)]
+    fn znx_muladd_power_of_two(k: i64, res: &mut [i64], a: &[i64]) {
+        unsafe {
+            znx_mul_add_power_of_two_avx(k, res, a);
+        }
+    }
+}
+
+impl ZnxMulPowerOfTwo for FFT64Avx {
+    #[inline(always)]
+    fn znx_mul_power_of_two(k: i64, res: &mut [i64], a: &[i64]) {
+        unsafe {
+            znx_mul_power_of_two_avx(k, res, a);
+        }
+    }
+}
+
+impl ZnxMulPowerOfTwoInplace for FFT64Avx {
+    #[inline(always)]
+    fn znx_mul_power_of_two_inplace(k: i64, res: &mut [i64]) {
+        unsafe {
+            znx_mul_power_of_two_inplace_avx(k, res);
+        }
+    }
+}
+
 impl ZnxRotate for FFT64Avx {
     #[inline(always)]
     fn znx_rotate(p: i64, res: &mut [i64], src: &[i64]) {
@@ -208,72 +237,90 @@ impl ZnxSwitchRing for FFT64Avx {
 
 impl ZnxNormalizeFinalStep for FFT64Avx {
     #[inline(always)]
-    fn znx_normalize_final_step(basek: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
+    fn znx_normalize_final_step(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
         unsafe {
-            znx_normalize_final_step_avx(basek, lsh, x, a, carry);
+            znx_normalize_final_step_avx(base2k, lsh, x, a, carry);
         }
     }
 }
 
 impl ZnxNormalizeFinalStepInplace for FFT64Avx {
     #[inline(always)]
-    fn znx_normalize_final_step_inplace(basek: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
+    fn znx_normalize_final_step_inplace(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
         unsafe {
-            znx_normalize_final_step_inplace_avx(basek, lsh, x, carry);
+            znx_normalize_final_step_inplace_avx(base2k, lsh, x, carry);
         }
     }
 }
 
 impl ZnxNormalizeFirstStep for FFT64Avx {
     #[inline(always)]
-    fn znx_normalize_first_step(basek: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
+    fn znx_normalize_first_step(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
         unsafe {
-            znx_normalize_first_step_avx(basek, lsh, x, a, carry);
+            znx_normalize_first_step_avx(base2k, lsh, x, a, carry);
         }
     }
 }
 
 impl ZnxNormalizeFirstStepCarryOnly for FFT64Avx {
     #[inline(always)]
-    fn znx_normalize_first_step_carry_only(basek: usize, lsh: usize, x: &[i64], carry: &mut [i64]) {
+    fn znx_normalize_first_step_carry_only(base2k: usize, lsh: usize, x: &[i64], carry: &mut [i64]) {
         unsafe {
-            znx_normalize_first_step_carry_only_avx(basek, lsh, x, carry);
+            znx_normalize_first_step_carry_only_avx(base2k, lsh, x, carry);
         }
     }
 }
 
 impl ZnxNormalizeFirstStepInplace for FFT64Avx {
     #[inline(always)]
-    fn znx_normalize_first_step_inplace(basek: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
+    fn znx_normalize_first_step_inplace(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
         unsafe {
-            znx_normalize_first_step_inplace_avx(basek, lsh, x, carry);
+            znx_normalize_first_step_inplace_avx(base2k, lsh, x, carry);
         }
     }
 }
 
 impl ZnxNormalizeMiddleStep for FFT64Avx {
     #[inline(always)]
-    fn znx_normalize_middle_step(basek: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
+    fn znx_normalize_middle_step(base2k: usize, lsh: usize, x: &mut [i64], a: &[i64], carry: &mut [i64]) {
         unsafe {
-            znx_normalize_middle_step_avx(basek, lsh, x, a, carry);
+            znx_normalize_middle_step_avx(base2k, lsh, x, a, carry);
         }
     }
 }
 
 impl ZnxNormalizeMiddleStepCarryOnly for FFT64Avx {
     #[inline(always)]
-    fn znx_normalize_middle_step_carry_only(basek: usize, lsh: usize, x: &[i64], carry: &mut [i64]) {
+    fn znx_normalize_middle_step_carry_only(base2k: usize, lsh: usize, x: &[i64], carry: &mut [i64]) {
         unsafe {
-            znx_normalize_middle_step_carry_only_avx(basek, lsh, x, carry);
+            znx_normalize_middle_step_carry_only_avx(base2k, lsh, x, carry);
         }
     }
 }
 
 impl ZnxNormalizeMiddleStepInplace for FFT64Avx {
     #[inline(always)]
-    fn znx_normalize_middle_step_inplace(basek: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
+    fn znx_normalize_middle_step_inplace(base2k: usize, lsh: usize, x: &mut [i64], carry: &mut [i64]) {
         unsafe {
-            znx_normalize_middle_step_inplace_avx(basek, lsh, x, carry);
+            znx_normalize_middle_step_inplace_avx(base2k, lsh, x, carry);
+        }
+    }
+}
+
+impl ZnxExtractDigitAddMul for FFT64Avx {
+    #[inline(always)]
+    fn znx_extract_digit_addmul(base2k: usize, lsh: usize, res: &mut [i64], src: &mut [i64]) {
+        unsafe {
+            znx_extract_digit_addmul_avx(base2k, lsh, res, src);
+        }
+    }
+}
+
+impl ZnxNormalizeDigit for FFT64Avx {
+    #[inline(always)]
+    fn znx_normalize_digit(base2k: usize, res: &mut [i64], src: &mut [i64]) {
+        unsafe {
+            znx_normalize_digit_avx(base2k, res, src);
         }
     }
 }
@@ -346,20 +393,20 @@ impl ReimSub for FFT64Avx {
     }
 }
 
-impl ReimSubABInplace for FFT64Avx {
+impl ReimSubInplace for FFT64Avx {
     #[inline(always)]
-    fn reim_sub_ab_inplace(res: &mut [f64], a: &[f64]) {
+    fn reim_sub_inplace(res: &mut [f64], a: &[f64]) {
         unsafe {
-            reim_sub_ab_inplace_avx2_fma(res, a);
+            reim_sub_inplace_avx2_fma(res, a);
         }
     }
 }
 
-impl ReimSubBAInplace for FFT64Avx {
+impl ReimSubNegateInplace for FFT64Avx {
     #[inline(always)]
-    fn reim_sub_ba_inplace(res: &mut [f64], a: &[f64]) {
+    fn reim_sub_negate_inplace(res: &mut [f64], a: &[f64]) {
         unsafe {
-            reim_sub_ba_inplace_avx2_fma(res, a);
+            reim_sub_negate_inplace_avx2_fma(res, a);
         }
     }
 }

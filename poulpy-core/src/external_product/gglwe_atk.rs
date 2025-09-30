@@ -1,42 +1,41 @@
 use poulpy_hal::{
     api::{
-        ScratchAvailable, TakeVecZnxDft, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftApply, VecZnxIdftApplyConsume,
-        VecZnxNormalizeTmpBytes, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
+        ScratchAvailable, TakeVecZnx, TakeVecZnxDft, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftApply,
+        VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeTmpBytes, VmpApplyDftToDft, VmpApplyDftToDftAdd,
+        VmpApplyDftToDftTmpBytes,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
 };
 
-use crate::layouts::{GGLWEAutomorphismKey, GGLWESwitchingKey, prepared::GGSWCiphertextPrepared};
+use crate::layouts::{GGLWEAutomorphismKey, GGLWELayoutInfos, GGLWESwitchingKey, GGSWInfos, prepared::GGSWCiphertextPrepared};
 
 impl GGLWEAutomorphismKey<Vec<u8>> {
-    #[allow(clippy::too_many_arguments)]
-    pub fn external_product_scratch_space<B: Backend>(
+    pub fn external_product_scratch_space<B: Backend, OUT, IN, GGSW>(
         module: &Module<B>,
-        basek: usize,
-        k_out: usize,
-        k_in: usize,
-        ggsw_k: usize,
-        digits: usize,
-        rank: usize,
+        out_infos: &OUT,
+        in_infos: &IN,
+        ggsw_infos: &GGSW,
     ) -> usize
     where
+        OUT: GGLWELayoutInfos,
+        IN: GGLWELayoutInfos,
+        GGSW: GGSWInfos,
         Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        GGLWESwitchingKey::external_product_scratch_space(module, basek, k_out, k_in, ggsw_k, digits, rank)
+        GGLWESwitchingKey::external_product_scratch_space(module, out_infos, in_infos, ggsw_infos)
     }
 
-    pub fn external_product_inplace_scratch_space<B: Backend>(
+    pub fn external_product_inplace_scratch_space<B: Backend, OUT, GGSW>(
         module: &Module<B>,
-        basek: usize,
-        k_out: usize,
-        ggsw_k: usize,
-        digits: usize,
-        rank: usize,
+        out_infos: &OUT,
+        ggsw_infos: &GGSW,
     ) -> usize
     where
+        OUT: GGLWELayoutInfos,
+        GGSW: GGSWInfos,
         Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        GGLWESwitchingKey::external_product_inplace_scratch_space(module, basek, k_out, ggsw_k, digits, rank)
+        GGLWESwitchingKey::external_product_inplace_scratch_space(module, out_infos, ggsw_infos)
     }
 }
 
@@ -55,8 +54,9 @@ impl<DataSelf: DataMut> GGLWEAutomorphismKey<DataSelf> {
             + VmpApplyDftToDft<B>
             + VmpApplyDftToDftAdd<B>
             + VecZnxIdftApplyConsume<B>
-            + VecZnxBigNormalize<B>,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
+            + VecZnxBigNormalize<B>
+            + VecZnxNormalize<B>,
+        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
     {
         self.key.external_product(module, &lhs.key, rhs, scratch);
     }
@@ -74,8 +74,9 @@ impl<DataSelf: DataMut> GGLWEAutomorphismKey<DataSelf> {
             + VmpApplyDftToDft<B>
             + VmpApplyDftToDftAdd<B>
             + VecZnxIdftApplyConsume<B>
-            + VecZnxBigNormalize<B>,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable,
+            + VecZnxBigNormalize<B>
+            + VecZnxNormalize<B>,
+        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
     {
         self.key.external_product_inplace(module, rhs, scratch);
     }

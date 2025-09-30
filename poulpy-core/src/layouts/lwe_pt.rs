@@ -1,21 +1,70 @@
 use std::fmt;
 
-use poulpy_hal::layouts::{Data, DataMut, DataRef, Zn, ZnToMut, ZnToRef};
+use poulpy_hal::layouts::{Data, DataMut, DataRef, Zn, ZnToMut, ZnToRef, ZnxInfos};
 
-use crate::layouts::{Infos, SetMetaData};
+use crate::layouts::{Base2K, Degree, LWEInfos, TorusPrecision};
+
+#[derive(PartialEq, Eq, Copy, Clone, Debug)]
+pub struct LWEPlaintextLayout {
+    k: TorusPrecision,
+    base2k: Base2K,
+}
+
+impl LWEInfos for LWEPlaintextLayout {
+    fn base2k(&self) -> Base2K {
+        self.base2k
+    }
+
+    fn k(&self) -> TorusPrecision {
+        self.k
+    }
+
+    fn n(&self) -> Degree {
+        Degree(0)
+    }
+
+    fn size(&self) -> usize {
+        self.k.0.div_ceil(self.base2k.0) as usize
+    }
+}
 
 pub struct LWEPlaintext<D: Data> {
     pub(crate) data: Zn<D>,
-    pub(crate) k: usize,
-    pub(crate) basek: usize,
+    pub(crate) k: TorusPrecision,
+    pub(crate) base2k: Base2K,
+}
+
+impl<D: Data> LWEInfos for LWEPlaintext<D> {
+    fn base2k(&self) -> Base2K {
+        self.base2k
+    }
+
+    fn k(&self) -> TorusPrecision {
+        self.k
+    }
+
+    fn n(&self) -> Degree {
+        Degree(self.data.n() as u32 - 1)
+    }
+
+    fn size(&self) -> usize {
+        self.data.size()
+    }
 }
 
 impl LWEPlaintext<Vec<u8>> {
-    pub fn alloc(basek: usize, k: usize) -> Self {
+    pub fn alloc<A>(infos: &A) -> Self
+    where
+        A: LWEInfos,
+    {
+        Self::alloc_with(infos.base2k(), infos.k())
+    }
+
+    pub fn alloc_with(base2k: Base2K, k: TorusPrecision) -> Self {
         Self {
-            data: Zn::alloc(1, 1, k.div_ceil(basek)),
+            data: Zn::alloc(1, 1, k.0.div_ceil(base2k.0) as usize),
             k,
-            basek,
+            base2k,
         }
     }
 }
@@ -24,37 +73,11 @@ impl<D: DataRef> fmt::Display for LWEPlaintext<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "LWEPlaintext: basek={} k={}: {}",
-            self.basek(),
-            self.k(),
+            "LWEPlaintext: base2k={} k={}: {}",
+            self.base2k().0,
+            self.k().0,
             self.data
         )
-    }
-}
-
-impl<D: Data> Infos for LWEPlaintext<D> {
-    type Inner = Zn<D>;
-
-    fn inner(&self) -> &Self::Inner {
-        &self.data
-    }
-
-    fn basek(&self) -> usize {
-        self.basek
-    }
-
-    fn k(&self) -> usize {
-        self.k
-    }
-}
-
-impl<D: DataMut> SetMetaData for LWEPlaintext<D> {
-    fn set_k(&mut self, k: usize) {
-        self.k = k
-    }
-
-    fn set_basek(&mut self, basek: usize) {
-        self.basek = basek
     }
 }
 
@@ -67,7 +90,7 @@ impl<D: DataRef> LWEPlaintextToRef for LWEPlaintext<D> {
     fn to_ref(&self) -> LWEPlaintext<&[u8]> {
         LWEPlaintext {
             data: self.data.to_ref(),
-            basek: self.basek,
+            base2k: self.base2k,
             k: self.k,
         }
     }
@@ -82,7 +105,7 @@ impl<D: DataMut> LWEPlaintextToMut for LWEPlaintext<D> {
     fn to_mut(&mut self) -> LWEPlaintext<&mut [u8]> {
         LWEPlaintext {
             data: self.data.to_mut(),
-            basek: self.basek,
+            base2k: self.base2k,
             k: self.k,
         }
     }

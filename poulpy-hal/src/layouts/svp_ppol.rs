@@ -176,7 +176,7 @@ impl<D: DataRef, B: Backend> fmt::Display for SvpPPol<D, B> {
         writeln!(f, "SvpPPol(n={}, cols={})", self.n, self.cols)?;
 
         for col in 0..self.cols {
-            writeln!(f, "Column {}:", col)?;
+            writeln!(f, "Column {col}:")?;
             let coeffs = self.at(col, 0);
             write!(f, "[")?;
 
@@ -187,7 +187,7 @@ impl<D: DataRef, B: Backend> fmt::Display for SvpPPol<D, B> {
                 if i > 0 {
                     write!(f, ", ")?;
                 }
-                write!(f, "{}", coeff)?;
+                write!(f, "{coeff}")?;
             }
 
             if coeffs.len() > max_show {

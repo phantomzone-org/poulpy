@@ -3,7 +3,10 @@ use poulpy_hal::{
     source::Source,
 };
 
-use crate::dist::Distribution;
+use crate::{
+    dist::Distribution,
+    layouts::{Base2K, Degree, LWEInfos, TorusPrecision},
+};
 
 pub struct LWESecret<D: Data> {
     pub(crate) data: ScalarZnx<D>,
@@ -11,9 +14,9 @@ pub struct LWESecret<D: Data> {
 }
 
 impl LWESecret<Vec<u8>> {
-    pub fn alloc(n: usize) -> Self {
+    pub fn alloc(n: Degree) -> Self {
         Self {
-            data: ScalarZnx::alloc(n, 1),
+            data: ScalarZnx::alloc(n.into(), 1),
             dist: Distribution::NONE,
         }
     }
@@ -33,17 +36,20 @@ impl<D: DataRef> LWESecret<D> {
     }
 }
 
-impl<D: Data> LWESecret<D> {
-    pub fn n(&self) -> usize {
-        self.data.n()
+impl<D: Data> LWEInfos for LWESecret<D> {
+    fn base2k(&self) -> Base2K {
+        Base2K(0)
+    }
+    fn k(&self) -> TorusPrecision {
+        TorusPrecision(0)
     }
 
-    pub fn log_n(&self) -> usize {
-        self.data.log_n()
+    fn n(&self) -> Degree {
+        Degree(self.data.n() as u32)
     }
 
-    pub fn rank(&self) -> usize {
-        self.data.cols()
+    fn size(&self) -> usize {
+        1
     }
 }
 

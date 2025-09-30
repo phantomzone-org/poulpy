@@ -6,7 +6,7 @@ use poulpy_hal::{
     },
     oep::{
         VecZnxDftAddImpl, VecZnxDftAddInplaceImpl, VecZnxDftAllocBytesImpl, VecZnxDftAllocImpl, VecZnxDftApplyImpl,
-        VecZnxDftCopyImpl, VecZnxDftFromBytesImpl, VecZnxDftSubABInplaceImpl, VecZnxDftSubBAInplaceImpl, VecZnxDftSubImpl,
+        VecZnxDftCopyImpl, VecZnxDftFromBytesImpl, VecZnxDftSubImpl, VecZnxDftSubInplaceImpl, VecZnxDftSubNegateInplaceImpl,
         VecZnxDftZeroImpl, VecZnxIdftApplyConsumeImpl, VecZnxIdftApplyImpl, VecZnxIdftApplyTmpAImpl, VecZnxIdftApplyTmpBytesImpl,
     },
     reference::{
@@ -336,8 +336,8 @@ unsafe impl VecZnxDftSubImpl<Self> for FFT64Spqlios {
     }
 }
 
-unsafe impl VecZnxDftSubABInplaceImpl<Self> for FFT64Spqlios {
-    fn vec_znx_dft_sub_ab_inplace_impl<R, A>(module: &Module<Self>, res: &mut R, res_col: usize, a: &A, a_col: usize)
+unsafe impl VecZnxDftSubInplaceImpl<Self> for FFT64Spqlios {
+    fn vec_znx_dft_sub_inplace_impl<R, A>(module: &Module<Self>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxDftToMut<Self>,
         A: VecZnxDftToRef<Self>,
@@ -363,8 +363,8 @@ unsafe impl VecZnxDftSubABInplaceImpl<Self> for FFT64Spqlios {
     }
 }
 
-unsafe impl VecZnxDftSubBAInplaceImpl<Self> for FFT64Spqlios {
-    fn vec_znx_dft_sub_ba_inplace_impl<R, A>(module: &Module<Self>, res: &mut R, res_col: usize, a: &A, a_col: usize)
+unsafe impl VecZnxDftSubNegateInplaceImpl<Self> for FFT64Spqlios {
+    fn vec_znx_dft_sub_negate_inplace_impl<R, A>(module: &Module<Self>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxDftToMut<Self>,
         A: VecZnxDftToRef<Self>,

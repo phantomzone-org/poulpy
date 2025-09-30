@@ -91,7 +91,7 @@ pub fn bench_vec_znx_add<B: Backend>(c: &mut Criterion, label: &str)
 where
     Module<B>: VecZnxAdd + ModuleNew<B>,
 {
-    let group_name: String = format!("vec_znx_add::{}", label);
+    let group_name: String = format!("vec_znx_add::{label}");
 
     let mut group = c.benchmark_group(group_name);
 
@@ -136,7 +136,7 @@ pub fn bench_vec_znx_add_inplace<B: Backend>(c: &mut Criterion, label: &str)
 where
     Module<B>: VecZnxAddInplace + ModuleNew<B>,
 {
-    let group_name: String = format!("vec_znx_add_inplace::{}", label);
+    let group_name: String = format!("vec_znx_add_inplace::{label}");
 
     let mut group = c.benchmark_group(group_name);
 

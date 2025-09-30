@@ -4,7 +4,7 @@ use poulpy_hal::{
         VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigAlloc,
         VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftAlloc, VecZnxDftAllocBytes,
         VecZnxDftApply, VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA, VecZnxNormalize, VecZnxNormalizeInplace,
-        VecZnxNormalizeTmpBytes, VecZnxRotateInplace, VecZnxSub, VecZnxSubABInplace, VmpApplyDftToDft, VmpApplyDftToDftAdd,
+        VecZnxNormalizeTmpBytes, VecZnxRotateInplace, VecZnxSub, VecZnxSubInplace, VmpApplyDftToDft, VmpApplyDftToDftAdd,
         VmpApplyDftToDftTmpBytes, VmpPMatAlloc, VmpPrepare,
     },
     layouts::{Backend, Module, ScalarZnx, ScalarZnxToMut, ScratchOwned, ZnxViewMut},
@@ -18,7 +18,7 @@ use poulpy_hal::{
 use crate::{
     encryption::SIGMA,
     layouts::{
-        GGSWCiphertext, GLWESecret,
+        GGSWCiphertext, GGSWCiphertextLayout, GLWESecret,
         prepared::{GGSWCiphertextPrepared, GLWESecretPrepared, PrepareAlloc},
     },
     noise::noise_ggsw_product,
@@ -34,7 +34,7 @@ where
         + VecZnxIdftApplyConsume<B>
         + VecZnxNormalizeTmpBytes
         + VecZnxFillUniform
-        + VecZnxSubABInplace
+        + VecZnxSubInplace
         + VecZnxAddInplace
         + VecZnxNormalizeInplace<B>
         + VecZnxAddNormal
@@ -70,73 +70,96 @@ where
         + VecZnxBigAllocBytesImpl<B>
         + TakeSvpPPolImpl<B>,
 {
-    let basek: usize = 12;
+    let base2k: usize = 12;
     let k_in: usize = 60;
-    let digits: usize = k_in.div_ceil(basek);
-    (1..3).for_each(|rank| {
-        (1..digits + 1).for_each(|di| {
-            let k_ggsw: usize = k_in + basek * di;
+    let digits: usize = k_in.div_ceil(base2k);
+    for rank in 1_usize..3 {
+        for di in 1..digits + 1 {
+            let k_apply: usize = k_in + base2k * di;
 
             let k_out: usize = k_in; // Better capture noise.
 
             let n: usize = module.n();
-            let rows: usize = k_in.div_ceil(basek * di);
-            let rows_in: usize = k_in.div_euclid(basek * di);
+            let rows: usize = k_in.div_ceil(base2k * di);
+            let rows_in: usize = k_in.div_euclid(base2k * di);
             let digits_in: usize = 1;
 
-            let mut ct_ggsw_lhs_in: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(n, basek, k_in, rows_in, digits_in, rank);
-            let mut ct_ggsw_lhs_out: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(n, basek, k_out, rows_in, digits_in, rank);
-            let mut ct_ggsw_rhs: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(n, basek, k_ggsw, rows, di, rank);
-            let mut pt_ggsw_lhs: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n, 1);
-            let mut pt_ggsw_rhs: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n, 1);
+            let ggsw_in_infos: GGSWCiphertextLayout = GGSWCiphertextLayout {
+                n: n.into(),
+                base2k: base2k.into(),
+                k: k_in.into(),
+                rows: rows_in.into(),
+                digits: digits_in.into(),
+                rank: rank.into(),
+            };
+
+            let ggsw_out_infos: GGSWCiphertextLayout = GGSWCiphertextLayout {
+                n: n.into(),
+                base2k: base2k.into(),
+                k: k_out.into(),
+                rows: rows_in.into(),
+                digits: digits_in.into(),
+                rank: rank.into(),
+            };
+
+            let ggsw_apply_infos: GGSWCiphertextLayout = GGSWCiphertextLayout {
+                n: n.into(),
+                base2k: base2k.into(),
+                k: k_apply.into(),
+                rows: rows.into(),
+                digits: di.into(),
+                rank: rank.into(),
+            };
+
+            let mut ggsw_in: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(&ggsw_in_infos);
+            let mut ggsw_out: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(&ggsw_out_infos);
+            let mut ggsw_apply: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(&ggsw_apply_infos);
+            let mut pt_in: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n, 1);
+            let mut pt_apply: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n, 1);
 
             let mut source_xs: Source = Source::new([0u8; 32]);
             let mut source_xe: Source = Source::new([0u8; 32]);
             let mut source_xa: Source = Source::new([0u8; 32]);
 
-            pt_ggsw_lhs.fill_ternary_prob(0, 0.5, &mut source_xs);
+            pt_in.fill_ternary_prob(0, 0.5, &mut source_xs);
 
             let k: usize = 1;
 
-            pt_ggsw_rhs.to_mut().raw_mut()[k] = 1; //X^{k}
+            pt_apply.to_mut().raw_mut()[k] = 1; //X^{k}
 
             let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-                GGSWCiphertext::encrypt_sk_scratch_space(module, basek, k_ggsw, rank)
-                    | GGSWCiphertext::external_product_scratch_space(module, basek, k_out, k_in, k_ggsw, di, rank),
+                GGSWCiphertext::encrypt_sk_scratch_space(module, &ggsw_apply_infos)
+                    | GGSWCiphertext::encrypt_sk_scratch_space(module, &ggsw_in_infos)
+                    | GGSWCiphertext::external_product_scratch_space(module, &ggsw_out_infos, &ggsw_in_infos, &ggsw_apply_infos),
             );
 
-            let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
+            let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_with(n.into(), rank.into());
             sk.fill_ternary_prob(0.5, &mut source_xs);
             let sk_prepared: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
 
-            ct_ggsw_rhs.encrypt_sk(
+            ggsw_apply.encrypt_sk(
                 module,
-                &pt_ggsw_rhs,
+                &pt_apply,
                 &sk_prepared,
                 &mut source_xa,
                 &mut source_xe,
                 scratch.borrow(),
             );
 
-            ct_ggsw_lhs_in.encrypt_sk(
+            ggsw_in.encrypt_sk(
                 module,
-                &pt_ggsw_lhs,
+                &pt_in,
                 &sk_prepared,
                 &mut source_xa,
                 &mut source_xe,
                 scratch.borrow(),
             );
 
-            let ct_rhs_prepared: GGSWCiphertextPrepared<Vec<u8>, B> = ct_ggsw_rhs.prepare_alloc(module, scratch.borrow());
+            let ct_rhs_prepared: GGSWCiphertextPrepared<Vec<u8>, B> = ggsw_apply.prepare_alloc(module, scratch.borrow());
 
-            ct_ggsw_lhs_out.external_product(module, &ct_ggsw_lhs_in, &ct_rhs_prepared, scratch.borrow());
+            ggsw_out.external_product(module, &ggsw_in, &ct_rhs_prepared, scratch.borrow());
 
-            module.vec_znx_rotate_inplace(
-                k as i64,
-                &mut pt_ggsw_lhs.as_vec_znx_mut(),
-                0,
-                scratch.borrow(),
-            );
+            module.vec_znx_rotate_inplace(k as i64, &mut pt_in.as_vec_znx_mut(), 0, scratch.borrow());
 
             let var_gct_err_lhs: f64 = SIGMA * SIGMA;
             let var_gct_err_rhs: f64 = 0f64;
@@ -148,7 +171,7 @@ where
             let max_noise = |_col_j: usize| -> f64 {
                 noise_ggsw_product(
                     n as f64,
-                    basek * di,
+                    base2k * di,
                     0.5,
                     var_msg,
                     var_a0_err,
@@ -157,13 +180,13 @@ where
                     var_gct_err_rhs,
                     rank as f64,
                     k_in,
-                    k_ggsw,
+                    k_apply,
                 ) + 0.5
             };
 
-            ct_ggsw_lhs_out.assert_noise(module, &sk_prepared, &pt_ggsw_lhs, max_noise);
-        });
-    });
+            ggsw_out.assert_noise(module, &sk_prepared, &pt_in, max_noise);
+        }
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -176,7 +199,7 @@ where
         + VecZnxIdftApplyConsume<B>
         + VecZnxNormalizeTmpBytes
         + VecZnxFillUniform
-        + VecZnxSubABInplace
+        + VecZnxSubInplace
         + VecZnxAddInplace
         + VecZnxNormalizeInplace<B>
         + VecZnxAddNormal
@@ -212,71 +235,85 @@ where
         + VecZnxBigAllocBytesImpl<B>
         + TakeSvpPPolImpl<B>,
 {
-    let basek: usize = 12;
-    let k_ct: usize = 60;
-    let digits: usize = k_ct.div_ceil(basek);
-    (1..3).for_each(|rank| {
-        (1..digits).for_each(|di| {
-            let k_ggsw: usize = k_ct + basek * di;
+    let base2k: usize = 12;
+    let k_out: usize = 60;
+    let digits: usize = k_out.div_ceil(base2k);
+    for rank in 1_usize..3 {
+        for di in 1..digits + 1 {
+            let k_apply: usize = k_out + base2k * di;
 
             let n: usize = module.n();
-            let rows: usize = k_ct.div_ceil(di * basek);
-            let rows_in: usize = k_ct.div_euclid(basek * di);
+            let rows: usize = k_out.div_ceil(di * base2k);
+            let rows_in: usize = k_out.div_euclid(base2k * di);
             let digits_in: usize = 1;
 
-            let mut ct_ggsw_lhs: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(n, basek, k_ct, rows_in, digits_in, rank);
-            let mut ct_ggsw_rhs: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(n, basek, k_ggsw, rows, di, rank);
+            let ggsw_out_infos: GGSWCiphertextLayout = GGSWCiphertextLayout {
+                n: n.into(),
+                base2k: base2k.into(),
+                k: k_out.into(),
+                rows: rows_in.into(),
+                digits: digits_in.into(),
+                rank: rank.into(),
+            };
 
-            let mut pt_ggsw_lhs: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n, 1);
-            let mut pt_ggsw_rhs: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n, 1);
+            let ggsw_apply_infos: GGSWCiphertextLayout = GGSWCiphertextLayout {
+                n: n.into(),
+                base2k: base2k.into(),
+                k: k_apply.into(),
+                rows: rows.into(),
+                digits: di.into(),
+                rank: rank.into(),
+            };
+
+            let mut ggsw_out: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(&ggsw_out_infos);
+            let mut ggsw_apply: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(&ggsw_apply_infos);
+
+            let mut pt_in: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n, 1);
+            let mut pt_apply: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n, 1);
 
             let mut source_xs: Source = Source::new([0u8; 32]);
             let mut source_xe: Source = Source::new([0u8; 32]);
             let mut source_xa: Source = Source::new([0u8; 32]);
 
-            pt_ggsw_lhs.fill_ternary_prob(0, 0.5, &mut source_xs);
+            pt_in.fill_ternary_prob(0, 0.5, &mut source_xs);
 
             let k: usize = 1;
 
-            pt_ggsw_rhs.to_mut().raw_mut()[k] = 1; //X^{k}
+            pt_apply.to_mut().raw_mut()[k] = 1; //X^{k}
 
             let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-                GGSWCiphertext::encrypt_sk_scratch_space(module, basek, k_ggsw, rank)
-                    | GGSWCiphertext::external_product_inplace_scratch_space(module, basek, k_ct, k_ggsw, di, rank),
+                GGSWCiphertext::encrypt_sk_scratch_space(module, &ggsw_apply_infos)
+                    | GGSWCiphertext::encrypt_sk_scratch_space(module, &ggsw_out_infos)
+                    | GGSWCiphertext::external_product_inplace_scratch_space(module, &ggsw_out_infos, &ggsw_apply_infos),
             );
 
-            let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n, rank);
+            let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_with(n.into(), rank.into());
             sk.fill_ternary_prob(0.5, &mut source_xs);
             let sk_prepared: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
 
-            ct_ggsw_rhs.encrypt_sk(
+            ggsw_apply.encrypt_sk(
                 module,
-                &pt_ggsw_rhs,
+                &pt_apply,
                 &sk_prepared,
                 &mut source_xa,
                 &mut source_xe,
                 scratch.borrow(),
             );
 
-            ct_ggsw_lhs.encrypt_sk(
+            ggsw_out.encrypt_sk(
                 module,
-                &pt_ggsw_lhs,
+                &pt_in,
                 &sk_prepared,
                 &mut source_xa,
                 &mut source_xe,
                 scratch.borrow(),
             );
 
-            let ct_rhs_prepared: GGSWCiphertextPrepared<Vec<u8>, B> = ct_ggsw_rhs.prepare_alloc(module, scratch.borrow());
+            let ct_rhs_prepared: GGSWCiphertextPrepared<Vec<u8>, B> = ggsw_apply.prepare_alloc(module, scratch.borrow());
 
-            ct_ggsw_lhs.external_product_inplace(module, &ct_rhs_prepared, scratch.borrow());
+            ggsw_out.external_product_inplace(module, &ct_rhs_prepared, scratch.borrow());
 
-            module.vec_znx_rotate_inplace(
-                k as i64,
-                &mut pt_ggsw_lhs.as_vec_znx_mut(),
-                0,
-                scratch.borrow(),
-            );
+            module.vec_znx_rotate_inplace(k as i64, &mut pt_in.as_vec_znx_mut(), 0, scratch.borrow());
 
             let var_gct_err_lhs: f64 = SIGMA * SIGMA;
             let var_gct_err_rhs: f64 = 0f64;
@@ -288,7 +325,7 @@ where
             let max_noise = |_col_j: usize| -> f64 {
                 noise_ggsw_product(
                     n as f64,
-                    basek * di,
+                    base2k * di,
                     0.5,
                     var_msg,
                     var_a0_err,
@@ -296,12 +333,12 @@ where
                     var_gct_err_lhs,
                     var_gct_err_rhs,
                     rank as f64,
-                    k_ct,
-                    k_ggsw,
+                    k_out,
+                    k_apply,
                 ) + 0.5
             };
 
-            ct_ggsw_lhs.assert_noise(module, &sk_prepared, &pt_ggsw_lhs, max_noise);
-        });
-    });
+            ggsw_out.assert_noise(module, &sk_prepared, &pt_in, max_noise);
+        }
+    }
 }

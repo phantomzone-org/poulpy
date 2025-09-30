@@ -10,15 +10,15 @@ use poulpy_hal::{
         VecZnxBigAddSmallInplaceImpl, VecZnxBigAllocBytesImpl, VecZnxBigAllocImpl, VecZnxBigAutomorphismImpl,
         VecZnxBigAutomorphismInplaceImpl, VecZnxBigAutomorphismInplaceTmpBytesImpl, VecZnxBigFromBytesImpl,
         VecZnxBigFromSmallImpl, VecZnxBigNegateImpl, VecZnxBigNegateInplaceImpl, VecZnxBigNormalizeImpl,
-        VecZnxBigNormalizeTmpBytesImpl, VecZnxBigSubABInplaceImpl, VecZnxBigSubBAInplaceImpl, VecZnxBigSubImpl,
-        VecZnxBigSubSmallAImpl, VecZnxBigSubSmallAInplaceImpl, VecZnxBigSubSmallBImpl, VecZnxBigSubSmallBInplaceImpl,
+        VecZnxBigNormalizeTmpBytesImpl, VecZnxBigSubImpl, VecZnxBigSubInplaceImpl, VecZnxBigSubNegateInplaceImpl,
+        VecZnxBigSubSmallAImpl, VecZnxBigSubSmallBImpl, VecZnxBigSubSmallInplaceImpl, VecZnxBigSubSmallNegateInplaceImpl,
     },
     reference::{
         fft64::vec_znx_big::{
             vec_znx_big_add, vec_znx_big_add_inplace, vec_znx_big_add_normal_ref, vec_znx_big_add_small,
             vec_znx_big_add_small_inplace, vec_znx_big_automorphism, vec_znx_big_automorphism_inplace,
             vec_znx_big_automorphism_inplace_tmp_bytes, vec_znx_big_negate, vec_znx_big_negate_inplace, vec_znx_big_normalize,
-            vec_znx_big_normalize_tmp_bytes, vec_znx_big_sub, vec_znx_big_sub_ab_inplace, vec_znx_big_sub_ba_inplace,
+            vec_znx_big_normalize_tmp_bytes, vec_znx_big_sub, vec_znx_big_sub_inplace, vec_znx_big_sub_negate_inplace,
             vec_znx_big_sub_small_a, vec_znx_big_sub_small_a_inplace, vec_znx_big_sub_small_b, vec_znx_big_sub_small_b_inplace,
         },
         znx::{znx_copy_ref, znx_zero_ref},
@@ -76,7 +76,7 @@ unsafe impl VecZnxBigFromSmallImpl<Self> for FFT64Ref {
 unsafe impl VecZnxBigAddNormalImpl<Self> for FFT64Ref {
     fn add_normal_impl<R: VecZnxBigToMut<Self>>(
         _module: &Module<Self>,
-        basek: usize,
+        base2k: usize,
         res: &mut R,
         res_col: usize,
         k: usize,
@@ -84,7 +84,7 @@ unsafe impl VecZnxBigAddNormalImpl<Self> for FFT64Ref {
         sigma: f64,
         bound: f64,
     ) {
-        vec_znx_big_add_normal_ref(basek, res, res_col, k, sigma, bound, source);
+        vec_znx_big_add_normal_ref(base2k, res, res_col, k, sigma, bound, source);
     }
 }
 
@@ -167,25 +167,25 @@ unsafe impl VecZnxBigSubImpl<Self> for FFT64Ref {
     }
 }
 
-unsafe impl VecZnxBigSubABInplaceImpl<Self> for FFT64Ref {
+unsafe impl VecZnxBigSubInplaceImpl<Self> for FFT64Ref {
     /// Subtracts `a` from `b` and stores the result on `b`.
-    fn vec_znx_big_sub_ab_inplace_impl<R, A>(_module: &Module<Self>, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn vec_znx_big_sub_inplace_impl<R, A>(_module: &Module<Self>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxBigToMut<Self>,
         A: VecZnxBigToRef<Self>,
     {
-        vec_znx_big_sub_ab_inplace(res, res_col, a, a_col);
+        vec_znx_big_sub_inplace(res, res_col, a, a_col);
     }
 }
 
-unsafe impl VecZnxBigSubBAInplaceImpl<Self> for FFT64Ref {
+unsafe impl VecZnxBigSubNegateInplaceImpl<Self> for FFT64Ref {
     /// Subtracts `b` from `a` and stores the result on `b`.
-    fn vec_znx_big_sub_ba_inplace_impl<R, A>(_module: &Module<Self>, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn vec_znx_big_sub_negate_inplace_impl<R, A>(_module: &Module<Self>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxBigToMut<Self>,
         A: VecZnxBigToRef<Self>,
     {
-        vec_znx_big_sub_ba_inplace(res, res_col, a, a_col);
+        vec_znx_big_sub_negate_inplace(res, res_col, a, a_col);
     }
 }
 
@@ -208,9 +208,9 @@ unsafe impl VecZnxBigSubSmallAImpl<Self> for FFT64Ref {
     }
 }
 
-unsafe impl VecZnxBigSubSmallAInplaceImpl<Self> for FFT64Ref {
+unsafe impl VecZnxBigSubSmallInplaceImpl<Self> for FFT64Ref {
     /// Subtracts `a` from `res` and stores the result on `res`.
-    fn vec_znx_big_sub_small_a_inplace_impl<R, A>(_module: &Module<Self>, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn vec_znx_big_sub_small_inplace_impl<R, A>(_module: &Module<Self>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxBigToMut<Self>,
         A: VecZnxToRef,
@@ -238,9 +238,9 @@ unsafe impl VecZnxBigSubSmallBImpl<Self> for FFT64Ref {
     }
 }
 
-unsafe impl VecZnxBigSubSmallBInplaceImpl<Self> for FFT64Ref {
+unsafe impl VecZnxBigSubSmallNegateInplaceImpl<Self> for FFT64Ref {
     /// Subtracts `res` from `a` and stores the result on `res`.
-    fn vec_znx_big_sub_small_b_inplace_impl<R, A>(_module: &Module<Self>, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn vec_znx_big_sub_small_negate_inplace_impl<R, A>(_module: &Module<Self>, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxBigToMut<Self>,
         A: VecZnxToRef,
@@ -280,9 +280,10 @@ where
 {
     fn vec_znx_big_normalize_impl<R, A>(
         module: &Module<Self>,
-        basek: usize,
+        res_basek: usize,
         res: &mut R,
         res_col: usize,
+        a_basek: usize,
         a: &A,
         a_col: usize,
         scratch: &mut Scratch<Self>,
@@ -291,7 +292,7 @@ where
         A: VecZnxBigToRef<Self>,
     {
         let (carry, _) = scratch.take_slice(module.vec_znx_big_normalize_tmp_bytes() / size_of::<i64>());
-        vec_znx_big_normalize(basek, res, res_col, a, a_col, carry);
+        vec_znx_big_normalize(res_basek, res, res_col, a_basek, a, a_col, carry);
     }
 }
 
@@ -326,7 +327,7 @@ where
     ) where
         R: VecZnxBigToMut<Self>,
     {
-        let (tmp, _) = scratch.take_slice(module.vec_znx_big_normalize_tmp_bytes() / size_of::<i64>());
+        let (tmp, _) = scratch.take_slice(module.vec_znx_big_automorphism_inplace_tmp_bytes() / size_of::<i64>());
         vec_znx_big_automorphism_inplace(p, res, res_col, tmp);
     }
 }

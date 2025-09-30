@@ -6,8 +6,8 @@ use std::{
 use crate::{
     alloc_aligned,
     layouts::{
-        Data, DataMut, DataRef, DataView, DataViewMut, DigestU64, FillUniform, ReaderFrom, Reset, ToOwnedDeep, WriterTo,
-        ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero,
+        Data, DataMut, DataRef, DataView, DataViewMut, DigestU64, FillUniform, ReaderFrom, ToOwnedDeep, WriterTo, ZnxInfos,
+        ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero,
     },
     source::Source,
 };
@@ -52,7 +52,7 @@ impl<D: DataRef> ToOwnedDeep for Zn<D> {
 
 impl<D: DataRef> fmt::Debug for Zn<D> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self)
+        write!(f, "{self}")
     }
 }
 
@@ -162,10 +162,10 @@ impl<D: DataRef> fmt::Display for Zn<D> {
         )?;
 
         for col in 0..self.cols {
-            writeln!(f, "Column {}:", col)?;
+            writeln!(f, "Column {col}:")?;
             for size in 0..self.size {
                 let coeffs = self.at(col, size);
-                write!(f, "  Size {}: [", size)?;
+                write!(f, "  Size {size}: [")?;
 
                 let max_show = 100;
                 let show_count = coeffs.len().min(max_show);
@@ -174,7 +174,7 @@ impl<D: DataRef> fmt::Display for Zn<D> {
                     if i > 0 {
                         write!(f, ", ")?;
                     }
-                    write!(f, "{}", coeff)?;
+                    write!(f, "{coeff}")?;
                 }
 
                 if coeffs.len() > max_show {
@@ -201,16 +201,6 @@ impl<D: DataMut> FillUniform for Zn<D> {
                 }
             }
         }
-    }
-}
-
-impl<D: DataMut> Reset for Zn<D> {
-    fn reset(&mut self) {
-        self.zero();
-        self.n = 0;
-        self.cols = 0;
-        self.size = 0;
-        self.max_size = 0;
     }
 }
 

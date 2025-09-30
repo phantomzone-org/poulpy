@@ -48,6 +48,16 @@ impl Source {
     pub fn next_i64(&mut self) -> i64 {
         self.next_u64() as i64
     }
+
+    #[inline(always)]
+    pub fn next_i128(&mut self) -> i128 {
+        self.next_u128() as i128
+    }
+
+    #[inline(always)]
+    pub fn next_u128(&mut self) -> u128 {
+        (self.next_u64() as u128) << 64 | (self.next_u64() as u128)
+    }
 }
 
 impl RngCore for Source {

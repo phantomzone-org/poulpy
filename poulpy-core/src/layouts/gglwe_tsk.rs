@@ -1,21 +1,113 @@
 use poulpy_hal::{
-    layouts::{Data, DataMut, DataRef, FillUniform, MatZnx, ReaderFrom, Reset, WriterTo},
+    layouts::{Data, DataMut, DataRef, FillUniform, ReaderFrom, WriterTo},
     source::Source,
 };
 
-use crate::layouts::{GGLWESwitchingKey, Infos};
+use crate::layouts::{
+    Base2K, Degree, Digits, GGLWELayoutInfos, GGLWESwitchingKey, GLWEInfos, LWEInfos, Rank, Rows, TorusPrecision,
+};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
 use std::fmt;
+
+#[derive(PartialEq, Eq, Copy, Clone, Debug)]
+pub struct GGLWETensorKeyLayout {
+    pub n: Degree,
+    pub base2k: Base2K,
+    pub k: TorusPrecision,
+    pub rows: Rows,
+    pub digits: Digits,
+    pub rank: Rank,
+}
 
 #[derive(PartialEq, Eq, Clone)]
 pub struct GGLWETensorKey<D: Data> {
     pub(crate) keys: Vec<GGLWESwitchingKey<D>>,
 }
 
+impl<D: Data> LWEInfos for GGLWETensorKey<D> {
+    fn n(&self) -> Degree {
+        self.keys[0].n()
+    }
+
+    fn base2k(&self) -> Base2K {
+        self.keys[0].base2k()
+    }
+
+    fn k(&self) -> TorusPrecision {
+        self.keys[0].k()
+    }
+
+    fn size(&self) -> usize {
+        self.keys[0].size()
+    }
+}
+
+impl<D: Data> GLWEInfos for GGLWETensorKey<D> {
+    fn rank(&self) -> Rank {
+        self.keys[0].rank_out()
+    }
+}
+
+impl<D: Data> GGLWELayoutInfos for GGLWETensorKey<D> {
+    fn rank_in(&self) -> Rank {
+        self.rank_out()
+    }
+
+    fn rank_out(&self) -> Rank {
+        self.keys[0].rank_out()
+    }
+
+    fn digits(&self) -> Digits {
+        self.keys[0].digits()
+    }
+
+    fn rows(&self) -> Rows {
+        self.keys[0].rows()
+    }
+}
+
+impl LWEInfos for GGLWETensorKeyLayout {
+    fn n(&self) -> Degree {
+        self.n
+    }
+
+    fn base2k(&self) -> Base2K {
+        self.base2k
+    }
+
+    fn k(&self) -> TorusPrecision {
+        self.k
+    }
+}
+
+impl GLWEInfos for GGLWETensorKeyLayout {
+    fn rank(&self) -> Rank {
+        self.rank_out()
+    }
+}
+
+impl GGLWELayoutInfos for GGLWETensorKeyLayout {
+    fn rank_in(&self) -> Rank {
+        self.rank
+    }
+
+    fn digits(&self) -> Digits {
+        self.digits
+    }
+
+    fn rank_out(&self) -> Rank {
+        self.rank
+    }
+
+    fn rows(&self) -> Rows {
+        self.rows
+    }
+}
+
 impl<D: DataRef> fmt::Debug for GGLWETensorKey<D> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self)
+        write!(f, "{self}")
     }
 }
 
@@ -27,74 +119,79 @@ impl<D: DataMut> FillUniform for GGLWETensorKey<D> {
     }
 }
 
-impl<D: DataMut> Reset for GGLWETensorKey<D>
-where
-    MatZnx<D>: Reset,
-{
-    fn reset(&mut self) {
-        self.keys
-            .iter_mut()
-            .for_each(|key: &mut GGLWESwitchingKey<D>| key.reset())
-    }
-}
-
 impl<D: DataRef> fmt::Display for GGLWETensorKey<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "(GLWETensorKey)",)?;
         for (i, key) in self.keys.iter().enumerate() {
-            write!(f, "{}: {}", i, key)?;
+            write!(f, "{i}: {key}")?;
         }
         Ok(())
     }
 }
 
 impl GGLWETensorKey<Vec<u8>> {
-    pub fn alloc(n: usize, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> Self {
+    pub fn alloc<A>(infos: &A) -> Self
+    where
+        A: GGLWELayoutInfos,
+    {
+        assert_eq!(
+            infos.rank_in(),
+            infos.rank_out(),
+            "rank_in != rank_out is not supported for GGLWETensorKey"
+        );
+        Self::alloc_with(
+            infos.n(),
+            infos.base2k(),
+            infos.k(),
+            infos.rows(),
+            infos.digits(),
+            infos.rank_out(),
+        )
+    }
+
+    pub fn alloc_with(n: Degree, base2k: Base2K, k: TorusPrecision, rows: Rows, digits: Digits, rank: Rank) -> Self {
         let mut keys: Vec<GGLWESwitchingKey<Vec<u8>>> = Vec::new();
-        let pairs: usize = (((rank + 1) * rank) >> 1).max(1);
+        let pairs: u32 = (((rank.0 + 1) * rank.0) >> 1).max(1);
         (0..pairs).for_each(|_| {
-            keys.push(GGLWESwitchingKey::alloc(n, basek, k, rows, digits, 1, rank));
+            keys.push(GGLWESwitchingKey::alloc_with(
+                n,
+                base2k,
+                k,
+                rows,
+                digits,
+                Rank(1),
+                rank,
+            ));
         });
         Self { keys }
     }
 
-    pub fn bytes_of(n: usize, basek: usize, k: usize, rows: usize, digits: usize, rank: usize) -> usize {
-        let pairs: usize = (((rank + 1) * rank) >> 1).max(1);
-        pairs * GGLWESwitchingKey::<Vec<u8>>::bytes_of(n, basek, k, rows, digits, 1, rank)
-    }
-}
-
-impl<D: Data> Infos for GGLWETensorKey<D> {
-    type Inner = MatZnx<D>;
-
-    fn inner(&self) -> &Self::Inner {
-        self.keys[0].inner()
-    }
-
-    fn basek(&self) -> usize {
-        self.keys[0].basek()
-    }
-
-    fn k(&self) -> usize {
-        self.keys[0].k()
-    }
-}
-
-impl<D: Data> GGLWETensorKey<D> {
-    pub fn rank(&self) -> usize {
-        self.keys[0].rank()
+    pub fn alloc_bytes<A>(infos: &A) -> usize
+    where
+        A: GGLWELayoutInfos,
+    {
+        assert_eq!(
+            infos.rank_in(),
+            infos.rank_out(),
+            "rank_in != rank_out is not supported for GGLWETensorKey"
+        );
+        let rank_out: usize = infos.rank_out().into();
+        let pairs: usize = (((rank_out + 1) * rank_out) >> 1).max(1);
+        pairs
+            * GGLWESwitchingKey::alloc_bytes_with(
+                infos.n(),
+                infos.base2k(),
+                infos.k(),
+                infos.rows(),
+                infos.digits(),
+                Rank(1),
+                infos.rank_out(),
+            )
     }
 
-    pub fn rank_in(&self) -> usize {
-        self.keys[0].rank_in()
-    }
-
-    pub fn rank_out(&self) -> usize {
-        self.keys[0].rank_out()
-    }
-
-    pub fn digits(&self) -> usize {
-        self.keys[0].digits()
+    pub fn alloc_bytes_with(n: Degree, base2k: Base2K, k: TorusPrecision, rows: Rows, digits: Digits, rank: Rank) -> usize {
+        let pairs: usize = (((rank.0 + 1) * rank.0) >> 1).max(1) as usize;
+        pairs * GGLWESwitchingKey::alloc_bytes_with(n, base2k, k, rows, digits, Rank(1), rank)
     }
 }
 
@@ -104,7 +201,7 @@ impl<D: DataMut> GGLWETensorKey<D> {
         if i > j {
             std::mem::swap(&mut i, &mut j);
         };
-        let rank: usize = self.rank();
+        let rank: usize = self.rank_out().into();
         &mut self.keys[i * rank + j - (i * (i + 1) / 2)]
     }
 }
@@ -115,7 +212,7 @@ impl<D: DataRef> GGLWETensorKey<D> {
         if i > j {
             std::mem::swap(&mut i, &mut j);
         };
-        let rank: usize = self.rank();
+        let rank: usize = self.rank_out().into();
         &self.keys[i * rank + j - (i * (i + 1) / 2)]
     }
 }

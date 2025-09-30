@@ -2,14 +2,14 @@ use poulpy_hal::{
     api::{
         ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDftInplace, VecZnxAddInplace, VecZnxAddNormal, VecZnxBigNormalize,
         VecZnxDftAllocBytes, VecZnxDftApply, VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeInplace,
-        VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubABInplace,
+        VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubInplace,
     },
     layouts::{Backend, DataMut, DataRef, Module, ScratchOwned},
     oep::{ScratchAvailableImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeVecZnxDftImpl, TakeVecZnxImpl},
     source::Source,
 };
 
-use crate::layouts::{GLWECiphertext, GLWEPublicKey, Infos, prepared::GLWESecretPrepared};
+use crate::layouts::{GLWECiphertext, GLWEPublicKey, prepared::GLWESecretPrepared};
 
 impl<D: DataMut> GLWEPublicKey<D> {
     pub fn generate_from_sk<S: DataRef, B>(
@@ -27,7 +27,7 @@ impl<D: DataMut> GLWEPublicKey<D> {
             + VecZnxIdftApplyConsume<B>
             + VecZnxNormalizeTmpBytes
             + VecZnxFillUniform
-            + VecZnxSubABInplace
+            + VecZnxSubInplace
             + VecZnxAddInplace
             + VecZnxNormalizeInplace<B>
             + VecZnxAddNormal
@@ -42,7 +42,7 @@ impl<D: DataMut> GLWEPublicKey<D> {
     {
         #[cfg(debug_assertions)]
         {
-            use crate::Distribution;
+            use crate::{Distribution, layouts::LWEInfos};
 
             assert_eq!(self.n(), sk.n());
 
@@ -52,13 +52,9 @@ impl<D: DataMut> GLWEPublicKey<D> {
         }
 
         // Its ok to allocate scratch space here since pk is usually generated only once.
-        let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GLWECiphertext::encrypt_sk_scratch_space(
-            module,
-            self.basek(),
-            self.k(),
-        ));
+        let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GLWECiphertext::encrypt_sk_scratch_space(module, self));
 
-        let mut tmp: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(self.n(), self.basek(), self.k(), self.rank());
+        let mut tmp: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(self);
         tmp.encrypt_zero_sk(module, sk, source_xa, source_xe, scratch.borrow());
         self.dist = sk.dist;
     }

@@ -8,15 +8,17 @@ use std::marker::PhantomData;
 use poulpy_core::{
     Distribution,
     layouts::{
-        Infos,
+        Base2K, Degree, Digits, GGSWInfos, GLWEInfos, LWEInfos, Rank, Rows, TorusPrecision,
         prepared::{GGSWCiphertextPrepared, Prepare, PrepareAlloc},
     },
 };
 
-use crate::tfhe::blind_rotation::{BlindRotationAlgo, BlindRotationKey, utils::set_xai_plus_y};
+use crate::tfhe::blind_rotation::{BlindRotationAlgo, BlindRotationKey, BlindRotationKeyInfos, utils::set_xai_plus_y};
 
 pub trait BlindRotationKeyPreparedAlloc<B: Backend> {
-    fn alloc(module: &Module<B>, n_lwe: usize, basek: usize, k: usize, rows: usize, rank: usize) -> Self;
+    fn alloc<A>(module: &Module<B>, infos: &A) -> Self
+    where
+        A: BlindRotationKeyInfos;
 }
 
 #[derive(PartialEq, Eq)]
@@ -27,37 +29,51 @@ pub struct BlindRotationKeyPrepared<D: Data, BRT: BlindRotationAlgo, B: Backend>
     pub(crate) _phantom: PhantomData<BRT>,
 }
 
-impl<D: Data, BRT: BlindRotationAlgo, B: Backend> BlindRotationKeyPrepared<D, BRT, B> {
-    #[allow(dead_code)]
-    pub(crate) fn n(&self) -> usize {
-        self.data[0].n()
+impl<D: Data, BRT: BlindRotationAlgo, B: Backend> BlindRotationKeyInfos for BlindRotationKeyPrepared<D, BRT, B> {
+    fn n_glwe(&self) -> Degree {
+        self.n()
     }
 
-    #[allow(dead_code)]
-    pub(crate) fn rows(&self) -> usize {
-        self.data[0].rows()
+    fn n_lwe(&self) -> Degree {
+        Degree(self.data.len() as u32)
+    }
+}
+
+impl<D: Data, BRT: BlindRotationAlgo, B: Backend> LWEInfos for BlindRotationKeyPrepared<D, BRT, B> {
+    fn base2k(&self) -> Base2K {
+        self.data[0].base2k()
     }
 
-    #[allow(dead_code)]
-    pub(crate) fn k(&self) -> usize {
+    fn k(&self) -> TorusPrecision {
         self.data[0].k()
     }
 
-    #[allow(dead_code)]
-    pub(crate) fn size(&self) -> usize {
+    fn n(&self) -> Degree {
+        self.data[0].n()
+    }
+
+    fn size(&self) -> usize {
         self.data[0].size()
     }
+}
 
-    #[allow(dead_code)]
-    pub(crate) fn rank(&self) -> usize {
+impl<D: Data, BRT: BlindRotationAlgo, B: Backend> GLWEInfos for BlindRotationKeyPrepared<D, BRT, B> {
+    fn rank(&self) -> Rank {
         self.data[0].rank()
     }
-
-    pub(crate) fn basek(&self) -> usize {
-        self.data[0].basek()
+}
+impl<D: Data, BRT: BlindRotationAlgo, B: Backend> GGSWInfos for BlindRotationKeyPrepared<D, BRT, B> {
+    fn digits(&self) -> poulpy_core::layouts::Digits {
+        Digits(1)
     }
 
-    pub(crate) fn block_size(&self) -> usize {
+    fn rows(&self) -> Rows {
+        self.data[0].rows()
+    }
+}
+
+impl<D: Data, BRT: BlindRotationAlgo, B: Backend> BlindRotationKeyPrepared<D, BRT, B> {
+    pub fn block_size(&self) -> usize {
         match self.dist {
             Distribution::BinaryBlock(value) => value,
             _ => 1,
@@ -72,14 +88,7 @@ where
     BlindRotationKeyPrepared<Vec<u8>, BRA, B>: Prepare<B, BlindRotationKey<D, BRA>>,
 {
     fn prepare_alloc(&self, module: &Module<B>, scratch: &mut Scratch<B>) -> BlindRotationKeyPrepared<Vec<u8>, BRA, B> {
-        let mut brk: BlindRotationKeyPrepared<Vec<u8>, BRA, B> = BlindRotationKeyPrepared::alloc(
-            module,
-            self.keys.len(),
-            self.basek(),
-            self.k(),
-            self.rows(),
-            self.rank(),
-        );
+        let mut brk: BlindRotationKeyPrepared<Vec<u8>, BRA, B> = BlindRotationKeyPrepared::alloc(module, self);
         brk.prepare(module, self, scratch);
         brk
     }
@@ -96,7 +105,7 @@ where
             assert_eq!(self.data.len(), other.keys.len());
         }
 
-        let n: usize = other.n();
+        let n: usize = other.n().as_usize();
 
         self.data
             .iter_mut()

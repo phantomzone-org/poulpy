@@ -4,7 +4,7 @@ use poulpy_hal::{
     oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl},
 };
 
-use crate::layouts::{Infos, LWECiphertext, LWEPlaintext, LWESecret, SetMetaData};
+use crate::layouts::{LWECiphertext, LWEInfos, LWEPlaintext, LWESecret};
 
 impl<DataSelf> LWECiphertext<DataSelf>
 where
@@ -31,13 +31,13 @@ where
                     .sum::<i64>();
         });
         module.zn_normalize_inplace(
-            pt.n(),
-            self.basek(),
+            1,
+            self.base2k().into(),
             &mut pt.data,
             0,
             ScratchOwned::alloc(size_of::<i64>()).borrow(),
         );
-        pt.set_basek(self.basek());
-        pt.set_k(self.k().min(pt.size() * self.basek()));
+        pt.base2k = self.base2k();
+        pt.k = crate::layouts::TorusPrecision(self.k().0.min(pt.size() as u32 * self.base2k().0));
     }
 }

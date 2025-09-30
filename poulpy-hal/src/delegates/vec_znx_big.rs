@@ -3,17 +3,17 @@ use crate::{
         VecZnxBigAdd, VecZnxBigAddInplace, VecZnxBigAddNormal, VecZnxBigAddSmall, VecZnxBigAddSmallInplace, VecZnxBigAlloc,
         VecZnxBigAllocBytes, VecZnxBigAutomorphism, VecZnxBigAutomorphismInplace, VecZnxBigAutomorphismInplaceTmpBytes,
         VecZnxBigFromBytes, VecZnxBigFromSmall, VecZnxBigNegate, VecZnxBigNegateInplace, VecZnxBigNormalize,
-        VecZnxBigNormalizeTmpBytes, VecZnxBigSub, VecZnxBigSubABInplace, VecZnxBigSubBAInplace, VecZnxBigSubSmallA,
-        VecZnxBigSubSmallAInplace, VecZnxBigSubSmallB, VecZnxBigSubSmallBInplace,
+        VecZnxBigNormalizeTmpBytes, VecZnxBigSub, VecZnxBigSubInplace, VecZnxBigSubNegateInplace, VecZnxBigSubSmallA,
+        VecZnxBigSubSmallB, VecZnxBigSubSmallInplace, VecZnxBigSubSmallNegateInplace,
     },
     layouts::{Backend, Module, Scratch, VecZnxBigOwned, VecZnxBigToMut, VecZnxBigToRef, VecZnxToMut, VecZnxToRef},
     oep::{
         VecZnxBigAddImpl, VecZnxBigAddInplaceImpl, VecZnxBigAddNormalImpl, VecZnxBigAddSmallImpl, VecZnxBigAddSmallInplaceImpl,
         VecZnxBigAllocBytesImpl, VecZnxBigAllocImpl, VecZnxBigAutomorphismImpl, VecZnxBigAutomorphismInplaceImpl,
         VecZnxBigAutomorphismInplaceTmpBytesImpl, VecZnxBigFromBytesImpl, VecZnxBigFromSmallImpl, VecZnxBigNegateImpl,
-        VecZnxBigNegateInplaceImpl, VecZnxBigNormalizeImpl, VecZnxBigNormalizeTmpBytesImpl, VecZnxBigSubABInplaceImpl,
-        VecZnxBigSubBAInplaceImpl, VecZnxBigSubImpl, VecZnxBigSubSmallAImpl, VecZnxBigSubSmallAInplaceImpl,
-        VecZnxBigSubSmallBImpl, VecZnxBigSubSmallBInplaceImpl,
+        VecZnxBigNegateInplaceImpl, VecZnxBigNormalizeImpl, VecZnxBigNormalizeTmpBytesImpl, VecZnxBigSubImpl,
+        VecZnxBigSubInplaceImpl, VecZnxBigSubNegateInplaceImpl, VecZnxBigSubSmallAImpl, VecZnxBigSubSmallBImpl,
+        VecZnxBigSubSmallInplaceImpl, VecZnxBigSubSmallNegateInplaceImpl,
     },
     source::Source,
 };
@@ -64,7 +64,7 @@ where
 {
     fn vec_znx_big_add_normal<R: VecZnxBigToMut<B>>(
         &self,
-        basek: usize,
+        base2k: usize,
         res: &mut R,
         res_col: usize,
         k: usize,
@@ -72,7 +72,7 @@ where
         sigma: f64,
         bound: f64,
     ) {
-        B::add_normal_impl(self, basek, res, res_col, k, source, sigma, bound);
+        B::add_normal_impl(self, base2k, res, res_col, k, source, sigma, bound);
     }
 }
 
@@ -144,29 +144,29 @@ where
     }
 }
 
-impl<B> VecZnxBigSubABInplace<B> for Module<B>
+impl<B> VecZnxBigSubInplace<B> for Module<B>
 where
-    B: Backend + VecZnxBigSubABInplaceImpl<B>,
+    B: Backend + VecZnxBigSubInplaceImpl<B>,
 {
-    fn vec_znx_big_sub_ab_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn vec_znx_big_sub_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxBigToMut<B>,
         A: VecZnxBigToRef<B>,
     {
-        B::vec_znx_big_sub_ab_inplace_impl(self, res, res_col, a, a_col);
+        B::vec_znx_big_sub_inplace_impl(self, res, res_col, a, a_col);
     }
 }
 
-impl<B> VecZnxBigSubBAInplace<B> for Module<B>
+impl<B> VecZnxBigSubNegateInplace<B> for Module<B>
 where
-    B: Backend + VecZnxBigSubBAInplaceImpl<B>,
+    B: Backend + VecZnxBigSubNegateInplaceImpl<B>,
 {
-    fn vec_znx_big_sub_ba_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn vec_znx_big_sub_negate_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxBigToMut<B>,
         A: VecZnxBigToRef<B>,
     {
-        B::vec_znx_big_sub_ba_inplace_impl(self, res, res_col, a, a_col);
+        B::vec_znx_big_sub_negate_inplace_impl(self, res, res_col, a, a_col);
     }
 }
 
@@ -184,16 +184,16 @@ where
     }
 }
 
-impl<B> VecZnxBigSubSmallAInplace<B> for Module<B>
+impl<B> VecZnxBigSubSmallInplace<B> for Module<B>
 where
-    B: Backend + VecZnxBigSubSmallAInplaceImpl<B>,
+    B: Backend + VecZnxBigSubSmallInplaceImpl<B>,
 {
-    fn vec_znx_big_sub_small_a_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn vec_znx_big_sub_small_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxBigToMut<B>,
         A: VecZnxToRef,
     {
-        B::vec_znx_big_sub_small_a_inplace_impl(self, res, res_col, a, a_col);
+        B::vec_znx_big_sub_small_inplace_impl(self, res, res_col, a, a_col);
     }
 }
 
@@ -211,16 +211,16 @@ where
     }
 }
 
-impl<B> VecZnxBigSubSmallBInplace<B> for Module<B>
+impl<B> VecZnxBigSubSmallNegateInplace<B> for Module<B>
 where
-    B: Backend + VecZnxBigSubSmallBInplaceImpl<B>,
+    B: Backend + VecZnxBigSubSmallNegateInplaceImpl<B>,
 {
-    fn vec_znx_big_sub_small_b_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
+    fn vec_znx_big_sub_small_negate_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize)
     where
         R: VecZnxBigToMut<B>,
         A: VecZnxToRef,
     {
-        B::vec_znx_big_sub_small_b_inplace_impl(self, res, res_col, a, a_col);
+        B::vec_znx_big_sub_small_negate_inplace_impl(self, res, res_col, a, a_col);
     }
 }
 
@@ -264,9 +264,10 @@ where
 {
     fn vec_znx_big_normalize<R, A>(
         &self,
-        basek: usize,
+        res_basek: usize,
         res: &mut R,
         res_col: usize,
+        a_basek: usize,
         a: &A,
         a_col: usize,
         scratch: &mut Scratch<B>,
@@ -274,7 +275,7 @@ where
         R: VecZnxToMut,
         A: VecZnxBigToRef<B>,
     {
-        B::vec_znx_big_normalize_impl(self, basek, res, res_col, a, a_col, scratch);
+        B::vec_znx_big_normalize_impl(self, res_basek, res, res_col, a_basek, a, a_col, scratch);
     }
 }
 

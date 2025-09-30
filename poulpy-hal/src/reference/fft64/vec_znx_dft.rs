@@ -8,7 +8,7 @@ use crate::{
     reference::{
         fft64::reim::{
             ReimAdd, ReimAddInplace, ReimCopy, ReimDFTExecute, ReimFFTTable, ReimFromZnx, ReimIFFTTable, ReimNegate,
-            ReimNegateInplace, ReimSub, ReimSubABInplace, ReimSubBAInplace, ReimToZnx, ReimToZnxInplace, ReimZero,
+            ReimNegateInplace, ReimSub, ReimSubInplace, ReimSubNegateInplace, ReimToZnx, ReimToZnxInplace, ReimZero,
         },
         znx::ZnxZero,
     },
@@ -308,9 +308,9 @@ where
     }
 }
 
-pub fn vec_znx_dft_sub_ab_inplace<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
+pub fn vec_znx_dft_sub_inplace<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
-    BE: Backend<ScalarPrep = f64> + ReimSubABInplace,
+    BE: Backend<ScalarPrep = f64> + ReimSubInplace,
     R: VecZnxDftToMut<BE>,
     A: VecZnxDftToRef<BE>,
 {
@@ -328,13 +328,13 @@ where
     let sum_size: usize = a_size.min(res_size);
 
     for j in 0..sum_size {
-        BE::reim_sub_ab_inplace(res.at_mut(res_col, j), a.at(a_col, j));
+        BE::reim_sub_inplace(res.at_mut(res_col, j), a.at(a_col, j));
     }
 }
 
-pub fn vec_znx_dft_sub_ba_inplace<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
+pub fn vec_znx_dft_sub_negate_inplace<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
-    BE: Backend<ScalarPrep = f64> + ReimSubBAInplace + ReimNegateInplace,
+    BE: Backend<ScalarPrep = f64> + ReimSubNegateInplace + ReimNegateInplace,
     R: VecZnxDftToMut<BE>,
     A: VecZnxDftToRef<BE>,
 {
@@ -352,7 +352,7 @@ where
     let sum_size: usize = a_size.min(res_size);
 
     for j in 0..sum_size {
-        BE::reim_sub_ba_inplace(res.at_mut(res_col, j), a.at(a_col, j));
+        BE::reim_sub_negate_inplace(res.at_mut(res_col, j), a.at(a_col, j));
     }
 
     for j in sum_size..res_size {

@@ -1,7 +1,7 @@
 use crate::{
     alloc_aligned,
     layouts::{
-        Data, DataMut, DataRef, DataView, DataViewMut, DigestU64, FillUniform, ReaderFrom, Reset, ToOwnedDeep, VecZnx, WriterTo,
+        Data, DataMut, DataRef, DataView, DataViewMut, DigestU64, FillUniform, ReaderFrom, ToOwnedDeep, VecZnx, WriterTo,
         ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero,
     },
     source::Source,
@@ -54,7 +54,7 @@ impl<D: DataRef> ToOwnedDeep for MatZnx<D> {
 
 impl<D: DataRef> fmt::Debug for MatZnx<D> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self)
+        write!(f, "{self}")
     }
 }
 
@@ -211,17 +211,6 @@ impl<D: DataMut> FillUniform for MatZnx<D> {
     }
 }
 
-impl<D: DataMut> Reset for MatZnx<D> {
-    fn reset(&mut self) {
-        self.zero();
-        self.n = 0;
-        self.size = 0;
-        self.rows = 0;
-        self.cols_in = 0;
-        self.cols_out = 0;
-    }
-}
-
 pub type MatZnxOwned = MatZnx<Vec<u8>>;
 pub type MatZnxMut<'a> = MatZnx<&'a mut [u8]>;
 pub type MatZnxRef<'a> = MatZnx<&'a [u8]>;
@@ -316,9 +305,9 @@ impl<D: DataRef> fmt::Display for MatZnx<D> {
         )?;
 
         for row_i in 0..self.rows {
-            writeln!(f, "Row {}:", row_i)?;
+            writeln!(f, "Row {row_i}:")?;
             for col_i in 0..self.cols_in {
-                writeln!(f, "cols_in {}:", col_i)?;
+                writeln!(f, "cols_in {col_i}:")?;
                 writeln!(f, "{}:", self.at(row_i, col_i))?;
             }
         }

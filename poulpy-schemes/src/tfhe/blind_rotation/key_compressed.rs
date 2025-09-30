@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    layouts::{Data, DataMut, DataRef, FillUniform, ReaderFrom, Reset, WriterTo},
+    layouts::{Data, DataMut, DataRef, FillUniform, ReaderFrom, WriterTo},
     source::Source,
 };
 
@@ -8,10 +8,10 @@ use std::{fmt, marker::PhantomData};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use poulpy_core::{
     Distribution,
-    layouts::{Infos, compressed::GGSWCiphertextCompressed},
+    layouts::{Base2K, Degree, Digits, GGSWInfos, GLWEInfos, LWEInfos, TorusPrecision, compressed::GGSWCiphertextCompressed},
 };
 
-use crate::tfhe::blind_rotation::BlindRotationAlgo;
+use crate::tfhe::blind_rotation::{BlindRotationAlgo, BlindRotationKeyInfos};
 
 #[derive(Clone)]
 pub struct BlindRotationKeyCompressed<D: Data, BRT: BlindRotationAlgo> {
@@ -22,7 +22,7 @@ pub struct BlindRotationKeyCompressed<D: Data, BRT: BlindRotationAlgo> {
 
 impl<D: DataRef, BRT: BlindRotationAlgo> fmt::Debug for BlindRotationKeyCompressed<D, BRT> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self)
+        write!(f, "{self}")
     }
 }
 
@@ -45,16 +45,9 @@ impl<D: Data, BRT: BlindRotationAlgo> Eq for BlindRotationKeyCompressed<D, BRT> 
 impl<D: DataRef, BRT: BlindRotationAlgo> fmt::Display for BlindRotationKeyCompressed<D, BRT> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for (i, key) in self.keys.iter().enumerate() {
-            write!(f, "key[{}]: {}", i, key)?;
+            write!(f, "key[{i}]: {key}")?;
         }
         writeln!(f, "{:?}", self.dist)
-    }
-}
-
-impl<D: DataMut, BRT: BlindRotationAlgo> Reset for BlindRotationKeyCompressed<D, BRT> {
-    fn reset(&mut self) {
-        self.keys.iter_mut().for_each(|key| key.reset());
-        self.dist = Distribution::NONE;
     }
 }
 
@@ -100,37 +93,51 @@ impl<D: DataRef, BRT: BlindRotationAlgo> WriterTo for BlindRotationKeyCompressed
     }
 }
 
-impl<D: DataRef, BRA: BlindRotationAlgo> BlindRotationKeyCompressed<D, BRA> {
-    #[allow(dead_code)]
-    pub(crate) fn n(&self) -> usize {
+impl<D: DataRef, BRA: BlindRotationAlgo> BlindRotationKeyInfos for BlindRotationKeyCompressed<D, BRA> {
+    fn n_glwe(&self) -> Degree {
+        self.n()
+    }
+
+    fn n_lwe(&self) -> Degree {
+        Degree(self.keys.len() as u32)
+    }
+}
+
+impl<D: DataRef, BRA: BlindRotationAlgo> LWEInfos for BlindRotationKeyCompressed<D, BRA> {
+    fn n(&self) -> Degree {
         self.keys[0].n()
     }
 
-    #[allow(dead_code)]
-    pub(crate) fn rows(&self) -> usize {
-        self.keys[0].rows()
-    }
-
-    #[allow(dead_code)]
-    pub(crate) fn k(&self) -> usize {
-        self.keys[0].k()
-    }
-
-    #[allow(dead_code)]
-    pub(crate) fn size(&self) -> usize {
+    fn size(&self) -> usize {
         self.keys[0].size()
     }
 
-    #[allow(dead_code)]
-    pub(crate) fn rank(&self) -> usize {
+    fn k(&self) -> TorusPrecision {
+        self.keys[0].k()
+    }
+
+    fn base2k(&self) -> Base2K {
+        self.keys[0].base2k()
+    }
+}
+
+impl<D: DataRef, BRA: BlindRotationAlgo> GLWEInfos for BlindRotationKeyCompressed<D, BRA> {
+    fn rank(&self) -> poulpy_core::layouts::Rank {
         self.keys[0].rank()
     }
+}
 
-    #[allow(dead_code)]
-    pub(crate) fn basek(&self) -> usize {
-        self.keys[0].basek()
+impl<D: DataRef, BRA: BlindRotationAlgo> GGSWInfos for BlindRotationKeyCompressed<D, BRA> {
+    fn rows(&self) -> poulpy_core::layouts::Rows {
+        self.keys[0].rows()
     }
 
+    fn digits(&self) -> poulpy_core::layouts::Digits {
+        Digits(1)
+    }
+}
+
+impl<D: DataRef, BRA: BlindRotationAlgo> BlindRotationKeyCompressed<D, BRA> {
     #[allow(dead_code)]
     pub(crate) fn block_size(&self) -> usize {
         match self.dist {

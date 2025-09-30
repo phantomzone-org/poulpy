@@ -63,7 +63,7 @@ pub fn bench_vec_znx_automorphism<B: Backend>(c: &mut Criterion, label: &str)
 where
     Module<B>: VecZnxAutomorphism + ModuleNew<B>,
 {
-    let group_name: String = format!("vec_znx_automorphism::{}", label);
+    let group_name: String = format!("vec_znx_automorphism::{label}");
 
     let mut group = c.benchmark_group(group_name);
 
@@ -108,7 +108,7 @@ where
     Module<B>: VecZnxAutomorphismInplace<B> + VecZnxAutomorphismInplaceTmpBytes + ModuleNew<B>,
     ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
 {
-    let group_name: String = format!("vec_znx_automorphism_inplace::{}", label);
+    let group_name: String = format!("vec_znx_automorphism_inplace::{label}");
 
     let mut group = c.benchmark_group(group_name);
 

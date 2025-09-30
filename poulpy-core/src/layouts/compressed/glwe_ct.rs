@@ -1,25 +1,48 @@
 use poulpy_hal::{
     api::{VecZnxCopy, VecZnxFillUniform},
-    layouts::{Backend, Data, DataMut, DataRef, FillUniform, Module, ReaderFrom, Reset, VecZnx, WriterTo},
+    layouts::{Backend, Data, DataMut, DataRef, FillUniform, Module, ReaderFrom, VecZnx, WriterTo, ZnxInfos},
     source::Source,
 };
 
-use crate::layouts::{GLWECiphertext, Infos, compressed::Decompress};
+use crate::layouts::{Base2K, Degree, GLWECiphertext, GLWEInfos, LWEInfos, Rank, TorusPrecision, compressed::Decompress};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::fmt;
 
 #[derive(PartialEq, Eq, Clone)]
 pub struct GLWECiphertextCompressed<D: Data> {
     pub(crate) data: VecZnx<D>,
-    pub(crate) basek: usize,
-    pub(crate) k: usize,
-    pub(crate) rank: usize,
+    pub(crate) base2k: Base2K,
+    pub(crate) k: TorusPrecision,
+    pub(crate) rank: Rank,
     pub(crate) seed: [u8; 32],
+}
+
+impl<D: Data> LWEInfos for GLWECiphertextCompressed<D> {
+    fn base2k(&self) -> Base2K {
+        self.base2k
+    }
+
+    fn k(&self) -> TorusPrecision {
+        self.k
+    }
+
+    fn size(&self) -> usize {
+        self.data.size()
+    }
+
+    fn n(&self) -> Degree {
+        Degree(self.data.n() as u32)
+    }
+}
+impl<D: Data> GLWEInfos for GLWECiphertextCompressed<D> {
+    fn rank(&self) -> Rank {
+        self.rank
+    }
 }
 
 impl<D: DataRef> fmt::Debug for GLWECiphertextCompressed<D> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self)
+        write!(f, "{self}")
     }
 }
 
@@ -27,23 +50,13 @@ impl<D: DataRef> fmt::Display for GLWECiphertextCompressed<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "GLWECiphertextCompressed: basek={} k={} rank={} seed={:?}: {}",
-            self.basek(),
+            "GLWECiphertextCompressed: base2k={} k={} rank={} seed={:?}: {}",
+            self.base2k(),
             self.k(),
-            self.rank,
+            self.rank(),
             self.seed,
             self.data
         )
-    }
-}
-
-impl<D: DataMut> Reset for GLWECiphertextCompressed<D> {
-    fn reset(&mut self) {
-        self.data.reset();
-        self.basek = 0;
-        self.k = 0;
-        self.rank = 0;
-        self.seed = [0u8; 32];
     }
 }
 
@@ -53,49 +66,41 @@ impl<D: DataMut> FillUniform for GLWECiphertextCompressed<D> {
     }
 }
 
-impl<D: Data> Infos for GLWECiphertextCompressed<D> {
-    type Inner = VecZnx<D>;
-
-    fn inner(&self) -> &Self::Inner {
-        &self.data
-    }
-
-    fn basek(&self) -> usize {
-        self.basek
-    }
-
-    fn k(&self) -> usize {
-        self.k
-    }
-}
-
-impl<D: Data> GLWECiphertextCompressed<D> {
-    pub fn rank(&self) -> usize {
-        self.rank
-    }
-}
-
 impl GLWECiphertextCompressed<Vec<u8>> {
-    pub fn alloc(n: usize, basek: usize, k: usize, rank: usize) -> Self {
+    pub fn alloc<A>(infos: &A) -> Self
+    where
+        A: GLWEInfos,
+    {
+        Self::alloc_with(infos.n(), infos.base2k(), infos.k(), infos.rank())
+    }
+
+    pub fn alloc_with(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank) -> Self {
         Self {
-            data: VecZnx::alloc(n, 1, k.div_ceil(basek)),
-            basek,
+            data: VecZnx::alloc(n.into(), 1, k.0.div_ceil(base2k.0) as usize),
+            base2k,
             k,
             rank,
             seed: [0u8; 32],
         }
     }
 
-    pub fn bytes_of(n: usize, basek: usize, k: usize) -> usize {
-        GLWECiphertext::bytes_of(n, basek, k, 1)
+    pub fn alloc_bytes<A>(infos: &A) -> usize
+    where
+        A: GLWEInfos,
+    {
+        Self::alloc_bytes_with(infos.n(), infos.base2k(), infos.k())
+    }
+
+    pub fn alloc_bytes_with(n: Degree, base2k: Base2K, k: TorusPrecision) -> usize {
+        VecZnx::alloc_bytes(n.into(), 1, k.0.div_ceil(base2k.0) as usize)
     }
 }
 
 impl<D: DataMut> ReaderFrom for GLWECiphertextCompressed<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
-        self.k = reader.read_u64::<LittleEndian>()? as usize;
-        self.basek = reader.read_u64::<LittleEndian>()? as usize;
-        self.rank = reader.read_u64::<LittleEndian>()? as usize;
+        self.k = TorusPrecision(reader.read_u32::<LittleEndian>()?);
+        self.base2k = Base2K(reader.read_u32::<LittleEndian>()?);
+        self.rank = Rank(reader.read_u32::<LittleEndian>()?);
         reader.read_exact(&mut self.seed)?;
         self.data.read_from(reader)
     }
@@ -103,9 +108,9 @@ impl<D: DataMut> ReaderFrom for GLWECiphertextCompressed<D> {
 
 impl<D: DataRef> WriterTo for GLWECiphertextCompressed<D> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
-        writer.write_u64::<LittleEndian>(self.k as u64)?;
-        writer.write_u64::<LittleEndian>(self.basek as u64)?;
-        writer.write_u64::<LittleEndian>(self.rank as u64)?;
+        writer.write_u32::<LittleEndian>(self.k.into())?;
+        writer.write_u32::<LittleEndian>(self.base2k.into())?;
+        writer.write_u32::<LittleEndian>(self.rank.into())?;
         writer.write_all(&self.seed)?;
         self.data.write_to(writer)
     }
@@ -118,14 +123,12 @@ where
     fn decompress(&mut self, module: &Module<B>, other: &GLWECiphertextCompressed<DR>) {
         #[cfg(debug_assertions)]
         {
-            use poulpy_hal::layouts::ZnxInfos;
-
             assert_eq!(
                 self.n(),
-                other.data.n(),
+                other.n(),
                 "invalid receiver: self.n()={} != other.n()={}",
                 self.n(),
-                other.data.n()
+                other.n()
             );
             assert_eq!(
                 self.size(),
@@ -164,15 +167,12 @@ impl<D: DataMut> GLWECiphertext<D> {
             debug_assert_eq!(self.size(), other.size());
         }
 
-        let k: usize = other.k;
-        let basek: usize = other.basek;
-        let cols: usize = other.rank() + 1;
         module.vec_znx_copy(&mut self.data, 0, &other.data, 0);
-        (1..cols).for_each(|i| {
-            module.vec_znx_fill_uniform(basek, &mut self.data, i, source);
+        (1..(other.rank() + 1).into()).for_each(|i| {
+            module.vec_znx_fill_uniform(other.base2k.into(), &mut self.data, i, source);
         });
 
-        self.basek = basek;
-        self.k = k;
+        self.base2k = other.base2k;
+        self.k = other.k;
     }
 }
