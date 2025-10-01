@@ -4,9 +4,9 @@ use poulpy_hal::{
     api::{
         ScratchAvailable, TakeVecZnx, TakeVecZnxDft, VecZnxAddInplace, VecZnxAutomorphismInplace, VecZnxBigAddSmallInplace,
         VecZnxBigAutomorphismInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallNegateInplace, VecZnxCopy,
-        VecZnxDftAllocBytes, VecZnxDftApply, VecZnxIdftApplyConsume, VecZnxNegateInplace, VecZnxNormalize,
-        VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace, VecZnxRshInplace, VecZnxSub,
-        VecZnxSubInplace, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
+        VecZnxDftAllocBytes, VecZnxDftApply, VecZnxDftCopy, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA, VecZnxNegateInplace,
+        VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace, VecZnxRshInplace,
+        VecZnxSub, VecZnxSubInplace, VecZnxSwitchRing, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
 };
@@ -388,5 +388,167 @@ fn combine<D: DataRef, DataAK: DataRef, B: Backend>(
         }
 
         acc.value = true;
+    }
+}
+
+/// Packs [x_0: GLWE(m_0), x_1: GLWE(m_1), ..., x_i: GLWE(m_i)]
+/// to [0: GLWE(m_0 * X^x_0 + m_1 * X^x_1 + ... + m_i * X^x_i)]
+pub fn glwe_packing<D: DataMut, ATK, B: Backend>(
+    module: &Module<B>,
+    cts: &mut HashMap<usize, &mut GLWECiphertext<D>>,
+    log_gap_out: usize,
+    auto_keys: &HashMap<i64, GGLWEAutomorphismKeyPrepared<ATK, B>>,
+    scratch: &mut Scratch<B>,
+) where
+    ATK: DataRef,
+    Module<B>: VecZnxRotateInplace<B>
+        + VecZnxNormalizeInplace<B>
+        + VecZnxNormalizeTmpBytes
+        + VecZnxSwitchRing
+        + VecZnxBigAutomorphismInplace<B>
+        + VecZnxRshInplace<B>
+        + VecZnxDftCopy<B>
+        + VecZnxIdftApplyTmpA<B>
+        + VecZnxSub
+        + VecZnxAddInplace
+        + VecZnxNegateInplace
+        + VecZnxCopy
+        + VecZnxSubInplace
+        + VecZnxDftAllocBytes
+        + VmpApplyDftToDftTmpBytes
+        + VecZnxBigNormalizeTmpBytes
+        + VmpApplyDftToDft<B>
+        + VmpApplyDftToDftAdd<B>
+        + VecZnxDftApply<B>
+        + VecZnxIdftApplyConsume<B>
+        + VecZnxBigAddSmallInplace<B>
+        + VecZnxBigNormalize<B>
+        + VecZnxAutomorphismInplace<B>
+        + VecZnxBigSubSmallNegateInplace<B>
+        + VecZnxRotate
+        + VecZnxNormalize<B>,
+    Scratch<B>: TakeVecZnx + TakeVecZnxDft<B> + ScratchAvailable,
+{
+    #[cfg(debug_assertions)]
+    {
+        assert!(*cts.keys().max().unwrap() < module.n())
+    }
+
+    let log_n: usize = module.log_n();
+
+    (0..log_n - log_gap_out).for_each(|i| {
+        let t: usize = log_n.min(1 << (log_n - 1 - i));
+
+        let auto_key: &GGLWEAutomorphismKeyPrepared<ATK, B> = if i == 0 {
+            auto_keys.get(&-1).unwrap()
+        } else {
+            auto_keys.get(&module.galois_element(1 << (i - 1))).unwrap()
+        };
+
+        (0..t).for_each(|j| {
+            let mut a: Option<&mut GLWECiphertext<D>> = cts.remove(&j);
+            let mut b: Option<&mut GLWECiphertext<D>> = cts.remove(&(j + t));
+
+            pack_internal(module, &mut a, &mut b, i, auto_key, scratch);
+
+            if let Some(a) = a {
+                cts.insert(j, a);
+            } else if let Some(b) = b {
+                cts.insert(j, b);
+            }
+        });
+    });
+}
+
+#[allow(clippy::too_many_arguments)]
+fn pack_internal<A: DataMut, D: DataMut, DataAK: DataRef, B: Backend>(
+    module: &Module<B>,
+    a: &mut Option<&mut GLWECiphertext<A>>,
+    b: &mut Option<&mut GLWECiphertext<D>>,
+    i: usize,
+    auto_key: &GGLWEAutomorphismKeyPrepared<DataAK, B>,
+    scratch: &mut Scratch<B>,
+) where
+    Module<B>: VecZnxRotateInplace<B>
+        + VecZnxNormalizeInplace<B>
+        + VecZnxNormalizeTmpBytes
+        + VecZnxBigAutomorphismInplace<B>
+        + VecZnxRshInplace<B>
+        + VecZnxDftCopy<B>
+        + VecZnxIdftApplyTmpA<B>
+        + VecZnxSub
+        + VecZnxAddInplace
+        + VecZnxNegateInplace
+        + VecZnxCopy
+        + VecZnxSubInplace
+        + VecZnxDftAllocBytes
+        + VmpApplyDftToDftTmpBytes
+        + VecZnxBigNormalizeTmpBytes
+        + VmpApplyDftToDft<B>
+        + VmpApplyDftToDftAdd<B>
+        + VecZnxDftApply<B>
+        + VecZnxIdftApplyConsume<B>
+        + VecZnxBigAddSmallInplace<B>
+        + VecZnxBigNormalize<B>
+        + VecZnxAutomorphismInplace<B>
+        + VecZnxBigSubSmallNegateInplace<B>
+        + VecZnxRotate
+        + VecZnxNormalize<B>,
+    Scratch<B>: TakeVecZnx + TakeVecZnxDft<B> + ScratchAvailable,
+{
+    // Goal is to evaluate: a = a + b*X^t + phi(a - b*X^t))
+    // We also use the identity: AUTO(a * X^t, g) = -X^t * AUTO(a, g)
+    // where t = 2^(log_n - i - 1) and g = 5^{2^(i - 1)}
+    // Different cases for wether a and/or b are zero.
+    //
+    // Implicite RSH without modulus switch, introduces extra I(X) * Q/2 on decryption.
+    // Necessary so that the scaling of the plaintext remains constant.
+    // It however is ok to do so here because coefficients are eventually
+    // either mapped to garbage or twice their value which vanishes I(X)
+    // since 2*(I(X) * Q/2) = I(X) * Q = 0 mod Q.
+    if let Some(a) = a.as_deref_mut() {
+        let t: i64 = 1 << (a.n().log2() - i - 1);
+
+        if let Some(b) = b.as_deref_mut() {
+            let (mut tmp_b, scratch_1) = scratch.take_glwe_ct(a);
+
+            // a = a * X^-t
+            a.rotate_inplace(module, -t, scratch_1);
+
+            // tmp_b = a * X^-t - b
+            tmp_b.sub(module, a, b);
+            tmp_b.rsh(module, 1, scratch_1);
+
+            // a = a * X^-t + b
+            a.add_inplace(module, b);
+            a.rsh(module, 1, scratch_1);
+
+            tmp_b.normalize_inplace(module, scratch_1);
+
+            // tmp_b = phi(a * X^-t - b)
+            tmp_b.automorphism_inplace(module, auto_key, scratch_1);
+
+            // a = a * X^-t + b - phi(a * X^-t - b)
+            a.sub_inplace_ab(module, &tmp_b);
+            a.normalize_inplace(module, scratch_1);
+
+            // a = a + b * X^t - phi(a * X^-t - b) * X^t
+            //   = a + b * X^t - phi(a * X^-t - b) * - phi(X^t)
+            //   = a + b * X^t + phi(a - b * X^t)
+            a.rotate_inplace(module, t, scratch_1);
+        } else {
+            a.rsh(module, 1, scratch);
+            // a = a + phi(a)
+            a.automorphism_add_inplace(module, auto_key, scratch);
+        }
+    } else if let Some(b) = b.as_deref_mut() {
+        let t: i64 = 1 << (b.n().log2() - i - 1);
+
+        let (mut tmp_b, scratch_1) = scratch.take_glwe_ct(b);
+        tmp_b.rotate(module, t, b);
+        tmp_b.rsh(module, 1, scratch_1);
+
+        // a = (b* X^t - phi(b* X^t))
+        b.automorphism_sub_negate(module, &tmp_b, auto_key, scratch_1);
     }
 }

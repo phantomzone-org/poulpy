@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{VmpPMatAlloc, VmpPMatAllocBytes, VmpPrepare},
-    layouts::{Backend, Data, DataMut, DataRef, Module, Scratch, VmpPMat, ZnxInfos},
+    layouts::{Backend, Data, DataMut, DataRef, Module, Scratch, VmpPMat, VmpPMatToRef, ZnxInfos},
     oep::VmpPMatAllocBytesImpl,
 };
 
@@ -285,5 +285,21 @@ where
         let mut ggsw_prepared: GGSWCiphertextPrepared<Vec<u8>, B> = GGSWCiphertextPrepared::alloc(module, self);
         ggsw_prepared.prepare(module, self, scratch);
         ggsw_prepared
+    }
+}
+
+pub trait GGSWCiphertextPreparedToRef<B: Backend> {
+    fn to_ref(&self) -> GGSWCiphertextPrepared<&[u8], B>;
+}
+
+impl<D: DataRef, B: Backend> GGSWCiphertextPreparedToRef<B> for GGSWCiphertextPrepared<D, B> {
+    fn to_ref(&self) -> GGSWCiphertextPrepared<&[u8], B> {
+        GGSWCiphertextPrepared::builder()
+            .base2k(self.base2k())
+            .digits(self.digits())
+            .k(self.k())
+            .data(self.data.to_ref())
+            .build()
+            .unwrap()
     }
 }

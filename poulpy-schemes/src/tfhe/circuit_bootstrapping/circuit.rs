@@ -19,6 +19,7 @@ use poulpy_core::{
     layouts::{Digits, GGLWECiphertextLayout, GGSWInfos, GLWEInfos, LWEInfos},
 };
 
+use poulpy_core::glwe_packing;
 use poulpy_core::layouts::{GGSWCiphertext, GLWECiphertext, LWECiphertext, prepared::GGLWEAutomorphismKeyPrepared};
 
 use crate::tfhe::{
@@ -300,7 +301,7 @@ fn post_process<DataRes, DataA, B: Backend>(
 {
     let log_n: usize = module.log_n();
 
-    let mut cts: HashMap<usize, GLWECiphertext<Vec<u8>>> = HashMap::new();
+    let mut cts: HashMap<usize, &mut GLWECiphertext<Vec<u8>>> = HashMap::new();
 
     // First partial trace, vanishes all coefficients which are not multiples of gap_in
     // [1, 1, 1, 1, 0, 0, 0, ..., 0, 0, -1, -1, -1, -1] -> [1, 0, 0, 0, 0, 0, 0, ..., 0, 0, 0, 0, 0, 0]
@@ -316,15 +317,24 @@ fn post_process<DataRes, DataA, B: Backend>(
     // TODO: optimize with packing and final partial trace
     // If gap_out < gap_in, then we need to repack, i.e. reduce the cap between coefficients.
     if log_gap_in != log_gap_out {
-        let steps: i32 = 1 << log_domain;
-        (0..steps).for_each(|i| {
+        let steps: usize = 1 << log_domain;
+
+        // TODO: from Scratch
+        let mut cts_vec: Vec<GLWECiphertext<Vec<u8>>> = Vec::new();
+
+        for i in 0..steps {
             if i != 0 {
                 res.rotate_inplace(module, -(1 << log_gap_in), scratch);
             }
-            cts.insert(i as usize * (1 << log_gap_out), res.to_owned_deep());
-        });
-        pack(module, &mut cts, log_gap_out, auto_keys, scratch);
-        let packed: GLWECiphertext<Vec<u8>> = cts.remove(&0).unwrap();
+            cts_vec.push(res.to_owned_deep());
+        }
+
+        for (i, ct) in cts_vec.iter_mut().enumerate().take(steps) {
+            cts.insert(i * (1 << log_gap_out), ct);
+        }
+
+        glwe_packing(module, &mut cts, log_gap_out, auto_keys, scratch);
+        let packed: &mut GLWECiphertext<Vec<u8>> = cts.remove(&0).unwrap();
         res.trace(
             module,
             log_n - log_gap_out,
@@ -333,160 +343,5 @@ fn post_process<DataRes, DataA, B: Backend>(
             auto_keys,
             scratch,
         );
-    }
-}
-
-pub fn pack<D: DataMut, B: Backend>(
-    module: &Module<B>,
-    cts: &mut HashMap<usize, GLWECiphertext<D>>,
-    log_gap_out: usize,
-    auto_keys: &HashMap<i64, GGLWEAutomorphismKeyPrepared<Vec<u8>, B>>,
-    scratch: &mut Scratch<B>,
-) where
-    Module<B>: VecZnxRotateInplace<B>
-        + VecZnxNormalizeInplace<B>
-        + VecZnxNormalizeTmpBytes
-        + VecZnxSwitchRing
-        + VecZnxBigAutomorphismInplace<B>
-        + VecZnxRshInplace<B>
-        + VecZnxDftCopy<B>
-        + VecZnxIdftApplyTmpA<B>
-        + VecZnxSub
-        + VecZnxAddInplace
-        + VecZnxNegateInplace
-        + VecZnxCopy
-        + VecZnxSubInplace
-        + VecZnxDftAllocBytes
-        + VmpApplyDftToDftTmpBytes
-        + VecZnxBigNormalizeTmpBytes
-        + VmpApplyDftToDft<B>
-        + VmpApplyDftToDftAdd<B>
-        + VecZnxDftApply<B>
-        + VecZnxIdftApplyConsume<B>
-        + VecZnxBigAddSmallInplace<B>
-        + VecZnxBigNormalize<B>
-        + VecZnxAutomorphismInplace<B>
-        + VecZnxBigSubSmallNegateInplace<B>
-        + VecZnxRotate
-        + VecZnxNormalize<B>,
-    Scratch<B>: TakeVecZnx + TakeVecZnxDft<B> + ScratchAvailable,
-{
-    let log_n: usize = module.log_n();
-
-    (0..log_n - log_gap_out).for_each(|i| {
-        let t: usize = 16.min(1 << (log_n - 1 - i));
-
-        let auto_key: &GGLWEAutomorphismKeyPrepared<Vec<u8>, B> = if i == 0 {
-            auto_keys.get(&-1).unwrap()
-        } else {
-            auto_keys.get(&module.galois_element(1 << (i - 1))).unwrap()
-        };
-
-        (0..t).for_each(|j| {
-            let mut a: Option<GLWECiphertext<D>> = cts.remove(&j);
-            let mut b: Option<GLWECiphertext<D>> = cts.remove(&(j + t));
-
-            combine(module, a.as_mut(), b.as_mut(), i, auto_key, scratch);
-
-            if let Some(a) = a {
-                cts.insert(j, a);
-            } else if let Some(b) = b {
-                cts.insert(j, b);
-            }
-        });
-    });
-}
-
-#[allow(clippy::too_many_arguments)]
-fn combine<A: DataMut, D: DataMut, DataAK: DataRef, B: Backend>(
-    module: &Module<B>,
-    a: Option<&mut GLWECiphertext<A>>,
-    b: Option<&mut GLWECiphertext<D>>,
-    i: usize,
-    auto_key: &GGLWEAutomorphismKeyPrepared<DataAK, B>,
-    scratch: &mut Scratch<B>,
-) where
-    Module<B>: VecZnxRotateInplace<B>
-        + VecZnxNormalizeInplace<B>
-        + VecZnxNormalizeTmpBytes
-        + VecZnxSwitchRing
-        + VecZnxBigAutomorphismInplace<B>
-        + VecZnxRshInplace<B>
-        + VecZnxDftCopy<B>
-        + VecZnxIdftApplyTmpA<B>
-        + VecZnxSub
-        + VecZnxAddInplace
-        + VecZnxNegateInplace
-        + VecZnxCopy
-        + VecZnxSubInplace
-        + VecZnxDftAllocBytes
-        + VmpApplyDftToDftTmpBytes
-        + VecZnxBigNormalizeTmpBytes
-        + VmpApplyDftToDft<B>
-        + VmpApplyDftToDftAdd<B>
-        + VecZnxDftApply<B>
-        + VecZnxIdftApplyConsume<B>
-        + VecZnxBigAddSmallInplace<B>
-        + VecZnxBigNormalize<B>
-        + VecZnxAutomorphismInplace<B>
-        + VecZnxBigSubSmallNegateInplace<B>
-        + VecZnxRotate
-        + VecZnxNormalize<B>,
-    Scratch<B>: TakeVecZnx + TakeVecZnxDft<B> + ScratchAvailable,
-{
-    // Goal is to evaluate: a = a + b*X^t + phi(a - b*X^t))
-    // We also use the identity: AUTO(a * X^t, g) = -X^t * AUTO(a, g)
-    // where t = 2^(log_n - i - 1) and g = 5^{2^(i - 1)}
-    // Different cases for wether a and/or b are zero.
-    //
-    // Implicite RSH without modulus switch, introduces extra I(X) * Q/2 on decryption.
-    // Necessary so that the scaling of the plaintext remains constant.
-    // It however is ok to do so here because coefficients are eventually
-    // either mapped to garbage or twice their value which vanishes I(X)
-    // since 2*(I(X) * Q/2) = I(X) * Q = 0 mod Q.
-    if let Some(a) = a {
-        let t: i64 = 1 << (a.n().log2() - i - 1);
-
-        if let Some(b) = b {
-            let (mut tmp_b, scratch_1) = scratch.take_glwe_ct(a);
-
-            // a = a * X^-t
-            a.rotate_inplace(module, -t, scratch_1);
-
-            // tmp_b = a * X^-t - b
-            tmp_b.sub(module, a, b);
-            tmp_b.rsh(module, 1, scratch_1);
-
-            // a = a * X^-t + b
-            a.add_inplace(module, b);
-            a.rsh(module, 1, scratch_1);
-
-            tmp_b.normalize_inplace(module, scratch_1);
-
-            // tmp_b = phi(a * X^-t - b)
-            tmp_b.automorphism_inplace(module, auto_key, scratch_1);
-
-            // a = a * X^-t + b - phi(a * X^-t - b)
-            a.sub_inplace_ab(module, &tmp_b);
-            a.normalize_inplace(module, scratch_1);
-
-            // a = a + b * X^t - phi(a * X^-t - b) * X^t
-            //   = a + b * X^t - phi(a * X^-t - b) * - phi(X^t)
-            //   = a + b * X^t + phi(a - b * X^t)
-            a.rotate_inplace(module, t, scratch_1);
-        } else {
-            a.rsh(module, 1, scratch);
-            // a = a + phi(a)
-            a.automorphism_add_inplace(module, auto_key, scratch);
-        }
-    } else if let Some(b) = b {
-        let t: i64 = 1 << (b.n().log2() - i - 1);
-
-        let (mut tmp_b, scratch_1) = scratch.take_glwe_ct(b);
-        tmp_b.rotate(module, t, b);
-        tmp_b.rsh(module, 1, scratch_1);
-
-        // a = (b* X^t - phi(b* X^t))
-        b.automorphism_sub_negate(module, &tmp_b, auto_key, scratch_1);
     }
 }
