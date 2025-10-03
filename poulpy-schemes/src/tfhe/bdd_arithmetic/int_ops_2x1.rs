@@ -12,7 +12,7 @@ use poulpy_hal::{
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
 };
 
-use crate::tfhe::arithmetic::{
+use crate::tfhe::bdd_arithmetic::{
     BitCircuitInfo, Circuit, Helper, add_32::Add32, circuits, execute, sll_32::Sll32, sra_32::Sra32, srl_32::Srl32, sub_32::Sub32,
 };
 

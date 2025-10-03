@@ -1,4 +1,4 @@
-use crate::tfhe::arithmetic::{BitCircuit, BitCircuitInfo, Circuit, Node};
+use crate::tfhe::bdd_arithmetic::{BitCircuit, BitCircuitInfo, Circuit, Node};
 pub(crate) enum Sll32 {
     C8x7(BitCircuit<8, 7>),
     C13x7(BitCircuit<13, 7>),

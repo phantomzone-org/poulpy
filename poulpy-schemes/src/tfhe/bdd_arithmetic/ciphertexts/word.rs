@@ -1,12 +1,9 @@
 use itertools::Itertools;
 use poulpy_core::{
-    GLWEOperations, TakeGGSW, TakeGLWECt, TakeGLWECtSlice, TakeGLWEPt, glwe_packing,
+    GLWEOperations, TakeGLWECtSlice, TakeGLWEPt, glwe_packing,
     layouts::{
-        GGSWCiphertext, GGSWInfos, GLWECiphertext, GLWECiphertextToRef, GLWEInfos, GLWEPlaintextLayout, LWECiphertext, LWEInfos,
-        TorusPrecision,
-        prepared::{
-            GGLWEAutomorphismKeyPrepared, GGSWCiphertextPrepared, GLWESecretPrepared, GLWEToLWESwitchingKeyPrepared, Prepare,
-        },
+        GLWECiphertext, GLWEInfos, GLWEPlaintextLayout, LWEInfos, TorusPrecision,
+        prepared::{GGLWEAutomorphismKeyPrepared, GLWESecretPrepared},
     },
 };
 use poulpy_hal::{
@@ -17,18 +14,14 @@ use poulpy_hal::{
         VecZnxDftAllocBytes, VecZnxDftApply, VecZnxDftCopy, VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA,
         VecZnxNegateInplace, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace,
         VecZnxRshInplace, VecZnxSub, VecZnxSubInplace, VecZnxSwitchRing, VmpApplyDftToDft, VmpApplyDftToDftAdd,
-        VmpApplyDftToDftTmpBytes, VmpPrepare,
+        VmpApplyDftToDftTmpBytes,
     },
     layouts::{Backend, Data, DataMut, DataRef, Module, Scratch},
     source::Source,
 };
 use std::{collections::HashMap, marker::PhantomData};
 
-use crate::tfhe::{
-    arithmetic::{ADD_OP32, FheUintBitsPrep, FromBits, ToBits, UnsignedInteger},
-    blind_rotation::BlindRotationAlgo,
-    circuit_bootstrapping::{CircuitBootstrappingKeyPrepared, CirtuitBootstrappingExecute},
-};
+use crate::tfhe::bdd_arithmetic::{ADD_OP32, FheUintBlocksPrep, FromBits, ToBits, UnsignedInteger};
 
 /// A FHE ciphertext encrypting a [UnsignedInteger].
 pub struct FheUintWord<D: Data, T: UnsignedInteger>(pub(crate) GLWECiphertext<D>, pub(crate) PhantomData<T>);
@@ -37,12 +30,11 @@ impl<D: DataMut, T: UnsignedInteger> FheUintWord<D, T> {
     pub fn add<A, B, ATK, BE: Backend>(
         &mut self,
         module: &Module<BE>,
-        a: &FheUintBitsPrep<A, BE, T>,
-        b: &FheUintBitsPrep<B, BE, T>,
+        a: &FheUintBlocksPrep<A, BE, T>,
+        b: &FheUintBlocksPrep<B, BE, T>,
         auto_keys: &HashMap<i64, GGLWEAutomorphismKeyPrepared<ATK, BE>>,
         scratch: &mut Scratch<BE>,
     ) where
-        [(); T::WORD_SIZE]:,
         A: DataRef,
         B: DataRef,
         ATK: DataRef,
@@ -76,8 +68,8 @@ impl<D: DataMut, T: UnsignedInteger> FheUintWord<D, T> {
     {
         #[cfg(debug_assertions)]
         {
-            assert_eq!(a.0.len(), T::WORD_SIZE);
-            assert_eq!(b.0.len(), T::WORD_SIZE);
+            assert_eq!(a.blocks.len(), T::WORD_SIZE);
+            assert_eq!(b.blocks.len(), T::WORD_SIZE);
         }
 
         // Allocates a temporary list of GLWE (one for each output bit)
@@ -85,7 +77,7 @@ impl<D: DataMut, T: UnsignedInteger> FheUintWord<D, T> {
 
         // Calls the appropriate circuit
         match T::WORD_SIZE {
-            32 => ADD_OP32.execute(module, &mut tmp_res[..], &a.0, &b.0, scratch_1),
+            32 => ADD_OP32.execute(module, &mut tmp_res[..], &a.blocks, &b.blocks, scratch_1),
             _ => unimplemented!(),
         }
 

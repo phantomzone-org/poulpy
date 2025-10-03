@@ -1,4 +1,4 @@
-use crate::tfhe::arithmetic::{BitCircuit, Circuit, Node};
+use crate::tfhe::bdd_arithmetic::{BitCircuit, Circuit, Node};
 
 pub(crate) static OUTPUT_CIRCUIT: Circuit<BitCircuit<97usize, 65usize>, 1> = Circuit([BitCircuit::new(
     [

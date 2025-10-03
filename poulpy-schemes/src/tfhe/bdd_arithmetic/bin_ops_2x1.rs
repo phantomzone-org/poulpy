@@ -9,7 +9,7 @@ use poulpy_hal::{
     layouts::{DataMut, DataRef, Module, Scratch},
 };
 
-use crate::tfhe::arithmetic::{BitCircuitInfo, Circuit, Helper};
+use crate::tfhe::bdd_arithmetic::{BitCircuitInfo, Circuit, Helper};
 
 /// Binary operations 1 x 1 -> 1
 pub(crate) enum BinOps2x1<C: BitCircuitInfo> {

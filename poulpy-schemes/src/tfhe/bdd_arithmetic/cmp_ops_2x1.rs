@@ -12,9 +12,9 @@ use poulpy_hal::{
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
 };
 
-use crate::tfhe::arithmetic::{BitCircuit, BitCircuitInfo, Circuit, Helper, circuits, execute};
+use crate::tfhe::bdd_arithmetic::{BitCircuit, BitCircuitInfo, Circuit, Helper, circuits, execute};
 
-/// Comparison operations Z x Z -> 1
+/// Comparison operations Z x Z -> 1 /// a.op(b)  a<<b
 pub(crate) enum CmpOps2x1<C: BitCircuitInfo + 'static, const WORD_SIZE: usize> {
     SLT(&'static Circuit<C, 1>),
     SLTU(&'static Circuit<C, 1>),

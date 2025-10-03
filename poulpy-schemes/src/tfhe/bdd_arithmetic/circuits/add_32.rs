@@ -1,4 +1,4 @@
-use crate::tfhe::arithmetic::{BitCircuit, BitCircuitInfo, Circuit, Node};
+use crate::tfhe::bdd_arithmetic::{BitCircuit, BitCircuitInfo, Circuit, Node};
 
 pub(crate) enum Add32 {
     C5x3(BitCircuit<5, 3>),
