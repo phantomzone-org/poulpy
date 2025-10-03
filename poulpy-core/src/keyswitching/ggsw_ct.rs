@@ -10,7 +10,7 @@ use poulpy_hal::{
 
 use crate::{
     layouts::{
-        GGLWECiphertext, GGLWELayoutInfos, GGSWCiphertext, GGSWInfos, GLWECiphertext, GLWEInfos, LWEInfos,
+        GGLWECiphertext, GGLWEInfos, GGSWCiphertext, GGSWInfos, GLWECiphertext, GLWEInfos, LWEInfos,
         prepared::{GGLWESwitchingKeyPrepared, GGLWETensorKeyPrepared},
     },
     operations::GLWEOperations,
@@ -20,7 +20,7 @@ impl GGSWCiphertext<Vec<u8>> {
     pub(crate) fn expand_row_scratch_space<B: Backend, OUT, TSK>(module: &Module<B>, out_infos: &OUT, tsk_infos: &TSK) -> usize
     where
         OUT: GGSWInfos,
-        TSK: GGLWELayoutInfos,
+        TSK: GGLWEInfos,
         Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigAllocBytes + VecZnxNormalizeTmpBytes,
     {
         let tsk_size: usize = tsk_infos.k().div_ceil(tsk_infos.base2k()) as usize;
@@ -56,8 +56,8 @@ impl GGSWCiphertext<Vec<u8>> {
     where
         OUT: GGSWInfos,
         IN: GGSWInfos,
-        KEY: GGLWELayoutInfos,
-        TSK: GGLWELayoutInfos,
+        KEY: GGLWEInfos,
+        TSK: GGLWEInfos,
         Module<B>: VecZnxDftAllocBytes
             + VmpApplyDftToDftTmpBytes
             + VecZnxBigAllocBytes
@@ -101,8 +101,8 @@ impl GGSWCiphertext<Vec<u8>> {
     ) -> usize
     where
         OUT: GGSWInfos,
-        KEY: GGLWELayoutInfos,
-        TSK: GGLWELayoutInfos,
+        KEY: GGLWEInfos,
+        TSK: GGLWEInfos,
         Module<B>: VecZnxDftAllocBytes
             + VmpApplyDftToDftTmpBytes
             + VecZnxBigAllocBytes

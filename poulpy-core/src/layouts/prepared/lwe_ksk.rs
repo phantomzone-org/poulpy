@@ -4,7 +4,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Digits, GGLWELayoutInfos, GLWEInfos, LWEInfos, LWESwitchingKey, Rank, Rows, TorusPrecision,
+    Base2K, Degree, Digits, GGLWEInfos, GLWEInfos, LWEInfos, LWESwitchingKey, Rank, Rows, TorusPrecision,
     prepared::{GGLWESwitchingKeyPrepared, Prepare, PrepareAlloc},
 };
 
@@ -34,7 +34,7 @@ impl<D: Data, B: Backend> GLWEInfos for LWESwitchingKeyPrepared<D, B> {
     }
 }
 
-impl<D: Data, B: Backend> GGLWELayoutInfos for LWESwitchingKeyPrepared<D, B> {
+impl<D: Data, B: Backend> GGLWEInfos for LWESwitchingKeyPrepared<D, B> {
     fn digits(&self) -> Digits {
         self.0.digits()
     }
@@ -55,7 +55,7 @@ impl<D: Data, B: Backend> GGLWELayoutInfos for LWESwitchingKeyPrepared<D, B> {
 impl<B: Backend> LWESwitchingKeyPrepared<Vec<u8>, B> {
     pub fn alloc<A>(module: &Module<B>, infos: &A) -> Self
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
         Module<B>: VmpPMatAlloc<B>,
     {
         debug_assert_eq!(
@@ -93,7 +93,7 @@ impl<B: Backend> LWESwitchingKeyPrepared<Vec<u8>, B> {
 
     pub fn alloc_bytes<A>(module: &Module<B>, infos: &A) -> usize
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
         Module<B>: VmpPMatAllocBytes,
     {
         debug_assert_eq!(

@@ -408,6 +408,7 @@ dependencies = [
  "poulpy-backend",
  "poulpy-core",
  "poulpy-hal",
+ "rand",
 ]
 
 [[package]]

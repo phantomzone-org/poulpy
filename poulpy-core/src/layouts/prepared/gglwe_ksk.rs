@@ -4,7 +4,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Digits, GGLWELayoutInfos, GGLWESwitchingKey, GLWEInfos, LWEInfos, Rank, Rows, TorusPrecision,
+    Base2K, Degree, Digits, GGLWEInfos, GGLWESwitchingKey, GLWEInfos, LWEInfos, Rank, Rows, TorusPrecision,
     prepared::{GGLWECiphertextPrepared, Prepare, PrepareAlloc},
 };
 
@@ -39,7 +39,7 @@ impl<D: Data, B: Backend> GLWEInfos for GGLWESwitchingKeyPrepared<D, B> {
     }
 }
 
-impl<D: Data, B: Backend> GGLWELayoutInfos for GGLWESwitchingKeyPrepared<D, B> {
+impl<D: Data, B: Backend> GGLWEInfos for GGLWESwitchingKeyPrepared<D, B> {
     fn rank_in(&self) -> Rank {
         self.key.rank_in()
     }
@@ -60,7 +60,7 @@ impl<D: Data, B: Backend> GGLWELayoutInfos for GGLWESwitchingKeyPrepared<D, B> {
 impl<B: Backend> GGLWESwitchingKeyPrepared<Vec<u8>, B> {
     pub fn alloc<A>(module: &Module<B>, infos: &A) -> Self
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
         Module<B>: VmpPMatAlloc<B>,
     {
         debug_assert_eq!(module.n() as u32, infos.n(), "module.n() != infos.n()");
@@ -92,7 +92,7 @@ impl<B: Backend> GGLWESwitchingKeyPrepared<Vec<u8>, B> {
 
     pub fn alloc_bytes<A>(module: &Module<B>, infos: &A) -> usize
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
         Module<B>: VmpPMatAllocBytes,
     {
         debug_assert_eq!(module.n() as u32, infos.n(), "module.n() != infos.n()");

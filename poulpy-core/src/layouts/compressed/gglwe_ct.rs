@@ -5,7 +5,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Digits, GGLWECiphertext, GGLWELayoutInfos, GLWEInfos, LWEInfos, Rank, Rows, TorusPrecision,
+    Base2K, Degree, Digits, GGLWECiphertext, GGLWEInfos, GLWEInfos, LWEInfos, Rank, Rows, TorusPrecision,
     compressed::{Decompress, GLWECiphertextCompressed},
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
@@ -44,7 +44,7 @@ impl<D: Data> GLWEInfos for GGLWECiphertextCompressed<D> {
     }
 }
 
-impl<D: Data> GGLWELayoutInfos for GGLWECiphertextCompressed<D> {
+impl<D: Data> GGLWEInfos for GGLWECiphertextCompressed<D> {
     fn rank_in(&self) -> Rank {
         Rank(self.data.cols_in() as u32)
     }
@@ -87,7 +87,7 @@ impl<D: DataRef> fmt::Display for GGLWECiphertextCompressed<D> {
 impl GGLWECiphertextCompressed<Vec<u8>> {
     pub fn alloc<A>(infos: &A) -> Self
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
     {
         Self::alloc_with(
             infos.n(),
@@ -141,7 +141,7 @@ impl GGLWECiphertextCompressed<Vec<u8>> {
 
     pub fn alloc_bytes<A>(infos: &A) -> usize
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
     {
         Self::alloc_bytes_with(
             infos.n(),

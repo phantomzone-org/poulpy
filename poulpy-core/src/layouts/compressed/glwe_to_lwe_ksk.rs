@@ -6,8 +6,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Digits, GGLWELayoutInfos, GLWEInfos, LWEInfos, Rank, Rows, TorusPrecision,
-    compressed::GGLWESwitchingKeyCompressed,
+    Base2K, Degree, Digits, GGLWEInfos, GLWEInfos, LWEInfos, Rank, Rows, TorusPrecision, compressed::GGLWESwitchingKeyCompressed,
 };
 
 #[derive(PartialEq, Eq, Clone)]
@@ -36,7 +35,7 @@ impl<D: Data> GLWEInfos for GLWEToLWESwitchingKeyCompressed<D> {
     }
 }
 
-impl<D: Data> GGLWELayoutInfos for GLWEToLWESwitchingKeyCompressed<D> {
+impl<D: Data> GGLWEInfos for GLWEToLWESwitchingKeyCompressed<D> {
     fn rank_in(&self) -> Rank {
         self.0.rank_in()
     }
@@ -87,7 +86,7 @@ impl<D: DataRef> WriterTo for GLWEToLWESwitchingKeyCompressed<D> {
 impl GLWEToLWESwitchingKeyCompressed<Vec<u8>> {
     pub fn alloc<A>(infos: &A) -> Self
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
     {
         debug_assert_eq!(
             infos.rank_out().0,
@@ -116,7 +115,7 @@ impl GLWEToLWESwitchingKeyCompressed<Vec<u8>> {
 
     pub fn alloc_bytes<A>(infos: &A) -> usize
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
     {
         debug_assert_eq!(
             infos.rank_out().0,

@@ -4,7 +4,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Digits, GGLWEAutomorphismKey, GGLWELayoutInfos, GLWEInfos, LWEInfos, Rank, Rows, TorusPrecision,
+    Base2K, Degree, Digits, GGLWEAutomorphismKey, GGLWEInfos, GLWEInfos, LWEInfos, Rank, Rows, TorusPrecision,
     prepared::{GGLWESwitchingKeyPrepared, Prepare, PrepareAlloc},
 };
 
@@ -44,7 +44,7 @@ impl<D: Data, B: Backend> GLWEInfos for GGLWEAutomorphismKeyPrepared<D, B> {
     }
 }
 
-impl<D: Data, B: Backend> GGLWELayoutInfos for GGLWEAutomorphismKeyPrepared<D, B> {
+impl<D: Data, B: Backend> GGLWEInfos for GGLWEAutomorphismKeyPrepared<D, B> {
     fn rank_in(&self) -> Rank {
         self.key.rank_in()
     }
@@ -65,7 +65,7 @@ impl<D: Data, B: Backend> GGLWELayoutInfos for GGLWEAutomorphismKeyPrepared<D, B
 impl<B: Backend> GGLWEAutomorphismKeyPrepared<Vec<u8>, B> {
     pub fn alloc<A>(module: &Module<B>, infos: &A) -> Self
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
         Module<B>: VmpPMatAlloc<B>,
     {
         assert_eq!(
@@ -91,7 +91,7 @@ impl<B: Backend> GGLWEAutomorphismKeyPrepared<Vec<u8>, B> {
 
     pub fn alloc_bytes<A>(module: &Module<B>, infos: &A) -> usize
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
         Module<B>: VmpPMatAllocBytes,
     {
         assert_eq!(

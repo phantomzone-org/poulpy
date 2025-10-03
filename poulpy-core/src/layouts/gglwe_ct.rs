@@ -8,7 +8,7 @@ use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
 use std::fmt;
 
-pub trait GGLWELayoutInfos
+pub trait GGLWEInfos
 where
     Self: GLWEInfos,
 {
@@ -60,7 +60,7 @@ impl GLWEInfos for GGLWECiphertextLayout {
     }
 }
 
-impl GGLWELayoutInfos for GGLWECiphertextLayout {
+impl GGLWEInfos for GGLWECiphertextLayout {
     fn rank_in(&self) -> Rank {
         self.rank_in
     }
@@ -110,7 +110,7 @@ impl<D: Data> GLWEInfos for GGLWECiphertext<D> {
     }
 }
 
-impl<D: Data> GGLWELayoutInfos for GGLWECiphertext<D> {
+impl<D: Data> GGLWEInfos for GGLWECiphertext<D> {
     fn rank_in(&self) -> Rank {
         Rank(self.data.cols_in() as u32)
     }
@@ -151,7 +151,7 @@ impl GGLWECiphertextBuilder<Vec<u8>> {
     #[inline]
     pub fn layout<A>(mut self, infos: &A) -> Self
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
     {
         self.data = Some(MatZnx::alloc(
             infos.n().into(),
@@ -291,7 +291,7 @@ impl<D: DataMut> GGLWECiphertext<D> {
 impl GGLWECiphertext<Vec<u8>> {
     pub fn alloc<A>(infos: &A) -> Self
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
     {
         Self::alloc_with(
             infos.n(),
@@ -343,7 +343,7 @@ impl GGLWECiphertext<Vec<u8>> {
 
     pub fn alloc_bytes<A>(infos: &A) -> usize
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
     {
         Self::alloc_bytes_with(
             infos.n(),

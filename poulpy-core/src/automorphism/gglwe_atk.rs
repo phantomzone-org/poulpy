@@ -7,7 +7,7 @@ use poulpy_hal::{
     layouts::{Backend, DataMut, DataRef, Module, Scratch, ZnxZero},
 };
 
-use crate::layouts::{GGLWEAutomorphismKey, GGLWELayoutInfos, GLWECiphertext, prepared::GGLWEAutomorphismKeyPrepared};
+use crate::layouts::{GGLWEAutomorphismKey, GGLWEInfos, GLWECiphertext, prepared::GGLWEAutomorphismKeyPrepared};
 
 impl GGLWEAutomorphismKey<Vec<u8>> {
     pub fn automorphism_scratch_space<B: Backend, OUT, IN, KEY>(
@@ -17,9 +17,9 @@ impl GGLWEAutomorphismKey<Vec<u8>> {
         key_infos: &KEY,
     ) -> usize
     where
-        OUT: GGLWELayoutInfos,
-        IN: GGLWELayoutInfos,
-        KEY: GGLWELayoutInfos,
+        OUT: GGLWEInfos,
+        IN: GGLWEInfos,
+        KEY: GGLWEInfos,
         Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
         GLWECiphertext::keyswitch_scratch_space(
@@ -32,8 +32,8 @@ impl GGLWEAutomorphismKey<Vec<u8>> {
 
     pub fn automorphism_inplace_scratch_space<B: Backend, OUT, KEY>(module: &Module<B>, out_infos: &OUT, key_infos: &KEY) -> usize
     where
-        OUT: GGLWELayoutInfos,
-        KEY: GGLWELayoutInfos,
+        OUT: GGLWEInfos,
+        KEY: GGLWEInfos,
         Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
         GGLWEAutomorphismKey::automorphism_scratch_space(module, out_infos, out_infos, key_infos)

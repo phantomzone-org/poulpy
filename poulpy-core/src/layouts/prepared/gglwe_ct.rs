@@ -5,7 +5,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, BuildError, Degree, Digits, GGLWECiphertext, GGLWELayoutInfos, GLWEInfos, LWEInfos, Rank, Rows, TorusPrecision,
+    Base2K, BuildError, Degree, Digits, GGLWECiphertext, GGLWEInfos, GLWEInfos, LWEInfos, Rank, Rows, TorusPrecision,
     prepared::{Prepare, PrepareAlloc},
 };
 
@@ -41,7 +41,7 @@ impl<D: Data, B: Backend> GLWEInfos for GGLWECiphertextPrepared<D, B> {
     }
 }
 
-impl<D: Data, B: Backend> GGLWELayoutInfos for GGLWECiphertextPrepared<D, B> {
+impl<D: Data, B: Backend> GGLWEInfos for GGLWECiphertextPrepared<D, B> {
     fn rank_in(&self) -> Rank {
         Rank(self.data.cols_in() as u32)
     }
@@ -82,7 +82,7 @@ impl<B: Backend> GGLWECiphertextPreparedBuilder<Vec<u8>, B> {
     #[inline]
     pub fn layout<A>(mut self, infos: &A) -> Self
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
         B: VmpPMatAllocBytesImpl<B>,
     {
         self.data = Some(VmpPMat::alloc(
@@ -164,7 +164,7 @@ impl<D: Data, B: Backend> GGLWECiphertextPreparedBuilder<D, B> {
 impl<B: Backend> GGLWECiphertextPrepared<Vec<u8>, B> {
     pub fn alloc<A>(module: &Module<B>, infos: &A) -> Self
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
         Module<B>: VmpPMatAlloc<B>,
     {
         debug_assert_eq!(module.n(), infos.n().0 as usize, "module.n() != infos.n()");
@@ -215,7 +215,7 @@ impl<B: Backend> GGLWECiphertextPrepared<Vec<u8>, B> {
 
     pub fn alloc_bytes<A>(module: &Module<B>, infos: &A) -> usize
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
         Module<B>: VmpPMatAllocBytes,
     {
         debug_assert_eq!(module.n(), infos.n().0 as usize, "module.n() != infos.n()");

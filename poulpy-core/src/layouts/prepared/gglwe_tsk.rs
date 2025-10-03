@@ -4,7 +4,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Digits, GGLWELayoutInfos, GGLWETensorKey, GLWEInfos, LWEInfos, Rank, Rows, TorusPrecision,
+    Base2K, Degree, Digits, GGLWEInfos, GGLWETensorKey, GLWEInfos, LWEInfos, Rank, Rows, TorusPrecision,
     prepared::{GGLWESwitchingKeyPrepared, Prepare, PrepareAlloc},
 };
 
@@ -37,7 +37,7 @@ impl<D: Data, B: Backend> GLWEInfos for GGLWETensorKeyPrepared<D, B> {
     }
 }
 
-impl<D: Data, B: Backend> GGLWELayoutInfos for GGLWETensorKeyPrepared<D, B> {
+impl<D: Data, B: Backend> GGLWEInfos for GGLWETensorKeyPrepared<D, B> {
     fn rank_in(&self) -> Rank {
         self.rank_out()
     }
@@ -58,7 +58,7 @@ impl<D: Data, B: Backend> GGLWELayoutInfos for GGLWETensorKeyPrepared<D, B> {
 impl<B: Backend> GGLWETensorKeyPrepared<Vec<u8>, B> {
     pub fn alloc<A>(module: &Module<B>, infos: &A) -> Self
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
         Module<B>: VmpPMatAlloc<B>,
     {
         assert_eq!(
@@ -98,7 +98,7 @@ impl<B: Backend> GGLWETensorKeyPrepared<Vec<u8>, B> {
 
     pub fn alloc_bytes<A>(module: &Module<B>, infos: &A) -> usize
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
         Module<B>: VmpPMatAllocBytes,
     {
         assert_eq!(

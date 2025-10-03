@@ -7,7 +7,7 @@ use poulpy_hal::{
     layouts::{Backend, DataMut, DataRef, Module, Scratch, ZnxZero},
 };
 
-use crate::layouts::{GGLWELayoutInfos, GGLWESwitchingKey, GGSWInfos, GLWECiphertext, prepared::GGSWCiphertextPrepared};
+use crate::layouts::{GGLWEInfos, GGLWESwitchingKey, GGSWInfos, GLWECiphertext, prepared::GGSWCiphertextPrepared};
 
 impl GGLWESwitchingKey<Vec<u8>> {
     pub fn external_product_scratch_space<B: Backend, OUT, IN, GGSW>(
@@ -17,8 +17,8 @@ impl GGLWESwitchingKey<Vec<u8>> {
         ggsw_infos: &GGSW,
     ) -> usize
     where
-        OUT: GGLWELayoutInfos,
-        IN: GGLWELayoutInfos,
+        OUT: GGLWEInfos,
+        IN: GGLWEInfos,
         GGSW: GGSWInfos,
         Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxNormalizeTmpBytes,
     {
@@ -36,7 +36,7 @@ impl GGLWESwitchingKey<Vec<u8>> {
         ggsw_infos: &GGSW,
     ) -> usize
     where
-        OUT: GGLWELayoutInfos,
+        OUT: GGLWEInfos,
         GGSW: GGSWInfos,
         Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxNormalizeTmpBytes,
     {

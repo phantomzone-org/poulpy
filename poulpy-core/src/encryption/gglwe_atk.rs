@@ -11,13 +11,13 @@ use poulpy_hal::{
 
 use crate::{
     TakeGLWESecret, TakeGLWESecretPrepared,
-    layouts::{GGLWEAutomorphismKey, GGLWELayoutInfos, GGLWESwitchingKey, GLWEInfos, GLWESecret, LWEInfos},
+    layouts::{GGLWEAutomorphismKey, GGLWEInfos, GGLWESwitchingKey, GLWEInfos, GLWESecret, LWEInfos},
 };
 
 impl GGLWEAutomorphismKey<Vec<u8>> {
     pub fn encrypt_sk_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
         Module<B>: SvpPPolAllocBytes + VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes + VecZnxNormalizeTmpBytes,
     {
         assert_eq!(
@@ -30,7 +30,7 @@ impl GGLWEAutomorphismKey<Vec<u8>> {
 
     pub fn encrypt_pk_scratch_space<B: Backend, A>(module: &Module<B>, _infos: &A) -> usize
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
     {
         assert_eq!(
             _infos.rank_in(),

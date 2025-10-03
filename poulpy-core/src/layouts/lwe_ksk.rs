@@ -5,9 +5,7 @@ use poulpy_hal::{
     source::Source,
 };
 
-use crate::layouts::{
-    Base2K, Degree, Digits, GGLWELayoutInfos, GGLWESwitchingKey, GLWEInfos, LWEInfos, Rank, Rows, TorusPrecision,
-};
+use crate::layouts::{Base2K, Degree, Digits, GGLWEInfos, GGLWESwitchingKey, GLWEInfos, LWEInfos, Rank, Rows, TorusPrecision};
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub struct LWESwitchingKeyLayout {
@@ -37,7 +35,7 @@ impl GLWEInfos for LWESwitchingKeyLayout {
     }
 }
 
-impl GGLWELayoutInfos for LWESwitchingKeyLayout {
+impl GGLWEInfos for LWESwitchingKeyLayout {
     fn rank_in(&self) -> Rank {
         Rank(1)
     }
@@ -82,7 +80,7 @@ impl<D: Data> GLWEInfos for LWESwitchingKey<D> {
     }
 }
 
-impl<D: Data> GGLWELayoutInfos for LWESwitchingKey<D> {
+impl<D: Data> GGLWEInfos for LWESwitchingKey<D> {
     fn digits(&self) -> Digits {
         self.0.digits()
     }
@@ -103,7 +101,7 @@ impl<D: Data> GGLWELayoutInfos for LWESwitchingKey<D> {
 impl LWESwitchingKey<Vec<u8>> {
     pub fn alloc<A>(infos: &A) -> Self
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
     {
         debug_assert_eq!(
             infos.digits().0,
@@ -137,7 +135,7 @@ impl LWESwitchingKey<Vec<u8>> {
 
     pub fn alloc_bytes<A>(infos: &A) -> usize
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
     {
         debug_assert_eq!(
             infos.digits().0,

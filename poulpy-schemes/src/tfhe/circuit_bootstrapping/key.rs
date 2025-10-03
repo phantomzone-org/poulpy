@@ -1,5 +1,5 @@
 use poulpy_core::layouts::{
-    GGLWEAutomorphismKey, GGLWEAutomorphismKeyLayout, GGLWELayoutInfos, GGLWETensorKey, GGLWETensorKeyLayout, GGSWInfos,
+    GGLWEAutomorphismKey, GGLWEAutomorphismKeyLayout, GGLWEInfos, GGLWETensorKey, GGLWETensorKeyLayout, GGSWInfos,
     GLWECiphertext, GLWEInfos, GLWESecret, LWEInfos, LWESecret,
     prepared::{GGLWEAutomorphismKeyPrepared, GGLWETensorKeyPrepared, GLWESecretPrepared, PrepareAlloc},
 };
@@ -23,11 +23,12 @@ use crate::tfhe::blind_rotation::{
 };
 
 pub trait CircuitBootstrappingKeyInfos {
-    fn layout_brk(&self) -> BlindRotationKeyLayout;
-    fn layout_atk(&self) -> GGLWEAutomorphismKeyLayout;
-    fn layout_tsk(&self) -> GGLWETensorKeyLayout;
+    fn brk_infos(&self) -> BlindRotationKeyLayout;
+    fn atk_infos(&self) -> GGLWEAutomorphismKeyLayout;
+    fn tsk_infos(&self) -> GGLWETensorKeyLayout;
 }
 
+#[derive(Debug, Clone, Copy)]
 pub struct CircuitBootstrappingKeyLayout {
     pub layout_brk: BlindRotationKeyLayout,
     pub layout_atk: GGLWEAutomorphismKeyLayout,
@@ -35,15 +36,15 @@ pub struct CircuitBootstrappingKeyLayout {
 }
 
 impl CircuitBootstrappingKeyInfos for CircuitBootstrappingKeyLayout {
-    fn layout_atk(&self) -> GGLWEAutomorphismKeyLayout {
+    fn atk_infos(&self) -> GGLWEAutomorphismKeyLayout {
         self.layout_atk
     }
 
-    fn layout_brk(&self) -> BlindRotationKeyLayout {
+    fn brk_infos(&self) -> BlindRotationKeyLayout {
         self.layout_brk
     }
 
-    fn layout_tsk(&self) -> GGLWETensorKeyLayout {
+    fn tsk_infos(&self) -> GGLWETensorKeyLayout {
         self.layout_tsk
     }
 }
@@ -110,16 +111,15 @@ where
         INFOS: CircuitBootstrappingKeyInfos,
         DLwe: DataRef,
         DGlwe: DataRef,
-        Module<B>:,
     {
-        assert_eq!(sk_lwe.n(), cbt_infos.layout_brk().n_lwe());
-        assert_eq!(sk_glwe.n(), cbt_infos.layout_brk().n_glwe());
-        assert_eq!(sk_glwe.n(), cbt_infos.layout_atk().n());
-        assert_eq!(sk_glwe.n(), cbt_infos.layout_tsk().n());
+        assert_eq!(sk_lwe.n(), cbt_infos.brk_infos().n_lwe());
+        assert_eq!(sk_glwe.n(), cbt_infos.brk_infos().n_glwe());
+        assert_eq!(sk_glwe.n(), cbt_infos.atk_infos().n());
+        assert_eq!(sk_glwe.n(), cbt_infos.tsk_infos().n());
 
-        let atk_infos: GGLWEAutomorphismKeyLayout = cbt_infos.layout_atk();
-        let brk_infos: BlindRotationKeyLayout = cbt_infos.layout_brk();
-        let trk_infos: GGLWETensorKeyLayout = cbt_infos.layout_tsk();
+        let atk_infos: GGLWEAutomorphismKeyLayout = cbt_infos.atk_infos();
+        let brk_infos: BlindRotationKeyLayout = cbt_infos.brk_infos();
+        let trk_infos: GGLWETensorKeyLayout = cbt_infos.tsk_infos();
 
         let mut auto_keys: HashMap<i64, GGLWEAutomorphismKey<Vec<u8>>> = HashMap::new();
         let gal_els: Vec<i64> = GLWECiphertext::trace_galois_elements(module);
@@ -159,7 +159,7 @@ pub struct CircuitBootstrappingKeyPrepared<D: Data, BRA: BlindRotationAlgo, B: B
 }
 
 impl<D: DataRef, BRA: BlindRotationAlgo, B: Backend> CircuitBootstrappingKeyInfos for CircuitBootstrappingKeyPrepared<D, BRA, B> {
-    fn layout_atk(&self) -> GGLWEAutomorphismKeyLayout {
+    fn atk_infos(&self) -> GGLWEAutomorphismKeyLayout {
         let (_, atk) = self.atk.iter().next().expect("atk is empty");
         GGLWEAutomorphismKeyLayout {
             n: atk.n(),
@@ -171,7 +171,7 @@ impl<D: DataRef, BRA: BlindRotationAlgo, B: Backend> CircuitBootstrappingKeyInfo
         }
     }
 
-    fn layout_brk(&self) -> BlindRotationKeyLayout {
+    fn brk_infos(&self) -> BlindRotationKeyLayout {
         BlindRotationKeyLayout {
             n_glwe: self.brk.n_glwe(),
             n_lwe: self.brk.n_lwe(),
@@ -182,7 +182,7 @@ impl<D: DataRef, BRA: BlindRotationAlgo, B: Backend> CircuitBootstrappingKeyInfo
         }
     }
 
-    fn layout_tsk(&self) -> GGLWETensorKeyLayout {
+    fn tsk_infos(&self) -> GGLWETensorKeyLayout {
         GGLWETensorKeyLayout {
             n: self.tsk.n(),
             base2k: self.tsk.base2k(),

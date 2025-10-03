@@ -4,7 +4,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Digits, GGLWELayoutInfos, GLWEInfos, GLWEToLWESwitchingKey, LWEInfos, Rank, Rows, TorusPrecision,
+    Base2K, Degree, Digits, GGLWEInfos, GLWEInfos, GLWEToLWEKey, LWEInfos, Rank, Rows, TorusPrecision,
     prepared::{GGLWESwitchingKeyPrepared, Prepare, PrepareAlloc},
 };
 
@@ -35,7 +35,7 @@ impl<D: Data, B: Backend> GLWEInfos for GLWEToLWESwitchingKeyPrepared<D, B> {
     }
 }
 
-impl<D: Data, B: Backend> GGLWELayoutInfos for GLWEToLWESwitchingKeyPrepared<D, B> {
+impl<D: Data, B: Backend> GGLWEInfos for GLWEToLWESwitchingKeyPrepared<D, B> {
     fn rank_in(&self) -> Rank {
         self.0.rank_in()
     }
@@ -56,7 +56,7 @@ impl<D: Data, B: Backend> GGLWELayoutInfos for GLWEToLWESwitchingKeyPrepared<D, 
 impl<B: Backend> GLWEToLWESwitchingKeyPrepared<Vec<u8>, B> {
     pub fn alloc<A>(module: &Module<B>, infos: &A) -> Self
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
         Module<B>: VmpPMatAlloc<B>,
     {
         debug_assert_eq!(
@@ -89,7 +89,7 @@ impl<B: Backend> GLWEToLWESwitchingKeyPrepared<Vec<u8>, B> {
 
     pub fn alloc_bytes<A>(module: &Module<B>, infos: &A) -> usize
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
         Module<B>: VmpPMatAllocBytes,
     {
         debug_assert_eq!(
@@ -113,7 +113,7 @@ impl<B: Backend> GLWEToLWESwitchingKeyPrepared<Vec<u8>, B> {
     }
 }
 
-impl<D: DataRef, B: Backend> PrepareAlloc<B, GLWEToLWESwitchingKeyPrepared<Vec<u8>, B>> for GLWEToLWESwitchingKey<D>
+impl<D: DataRef, B: Backend> PrepareAlloc<B, GLWEToLWESwitchingKeyPrepared<Vec<u8>, B>> for GLWEToLWEKey<D>
 where
     Module<B>: VmpPrepare<B> + VmpPMatAlloc<B>,
 {
@@ -124,11 +124,11 @@ where
     }
 }
 
-impl<DM: DataMut, DR: DataRef, B: Backend> Prepare<B, GLWEToLWESwitchingKey<DR>> for GLWEToLWESwitchingKeyPrepared<DM, B>
+impl<DM: DataMut, DR: DataRef, B: Backend> Prepare<B, GLWEToLWEKey<DR>> for GLWEToLWESwitchingKeyPrepared<DM, B>
 where
     Module<B>: VmpPrepare<B>,
 {
-    fn prepare(&mut self, module: &Module<B>, other: &GLWEToLWESwitchingKey<DR>, scratch: &mut Scratch<B>) {
+    fn prepare(&mut self, module: &Module<B>, other: &GLWEToLWEKey<DR>, scratch: &mut Scratch<B>) {
         self.0.prepare(module, &other.0, scratch);
     }
 }

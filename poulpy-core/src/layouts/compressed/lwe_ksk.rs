@@ -5,7 +5,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Digits, GGLWELayoutInfos, GLWEInfos, LWEInfos, LWESwitchingKey, Rank, Rows, TorusPrecision,
+    Base2K, Degree, Digits, GGLWEInfos, GLWEInfos, LWEInfos, LWESwitchingKey, Rank, Rows, TorusPrecision,
     compressed::{Decompress, GGLWESwitchingKeyCompressed},
 };
 use std::fmt;
@@ -35,7 +35,7 @@ impl<D: Data> GLWEInfos for LWESwitchingKeyCompressed<D> {
     }
 }
 
-impl<D: Data> GGLWELayoutInfos for LWESwitchingKeyCompressed<D> {
+impl<D: Data> GGLWEInfos for LWESwitchingKeyCompressed<D> {
     fn digits(&self) -> Digits {
         self.0.digits()
     }
@@ -86,7 +86,7 @@ impl<D: DataRef> WriterTo for LWESwitchingKeyCompressed<D> {
 impl LWESwitchingKeyCompressed<Vec<u8>> {
     pub fn alloc<A>(infos: &A) -> Self
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
     {
         debug_assert_eq!(
             infos.digits().0,
@@ -120,7 +120,7 @@ impl LWESwitchingKeyCompressed<Vec<u8>> {
 
     pub fn alloc_bytes<A>(infos: &A) -> usize
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
     {
         debug_assert_eq!(
             infos.digits().0,

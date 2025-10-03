@@ -4,7 +4,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Digits, GGLWELayoutInfos, GGLWESwitchingKey, GLWECiphertext, GLWEInfos, LWEInfos, Rank, Rows, TorusPrecision,
+    Base2K, Degree, Digits, GGLWEInfos, GGLWESwitchingKey, GLWECiphertext, GLWEInfos, LWEInfos, Rank, Rows, TorusPrecision,
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
@@ -56,7 +56,7 @@ impl<D: Data> GLWEInfos for GGLWEAutomorphismKey<D> {
     }
 }
 
-impl<D: Data> GGLWELayoutInfos for GGLWEAutomorphismKey<D> {
+impl<D: Data> GGLWEInfos for GGLWEAutomorphismKey<D> {
     fn rank_in(&self) -> Rank {
         self.key.rank_in()
     }
@@ -94,7 +94,7 @@ impl GLWEInfos for GGLWEAutomorphismKeyLayout {
     }
 }
 
-impl GGLWELayoutInfos for GGLWEAutomorphismKeyLayout {
+impl GGLWEInfos for GGLWEAutomorphismKeyLayout {
     fn rank_in(&self) -> Rank {
         self.rank
     }
@@ -133,7 +133,7 @@ impl<D: DataRef> fmt::Display for GGLWEAutomorphismKey<D> {
 impl GGLWEAutomorphismKey<Vec<u8>> {
     pub fn alloc<A>(infos: &A) -> Self
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
     {
         assert_eq!(
             infos.rank_in(),
@@ -155,7 +155,7 @@ impl GGLWEAutomorphismKey<Vec<u8>> {
 
     pub fn alloc_bytes<A>(infos: &A) -> usize
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
     {
         assert_eq!(
             infos.rank_in(),

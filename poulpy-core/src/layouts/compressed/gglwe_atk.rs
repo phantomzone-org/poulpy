@@ -5,7 +5,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Digits, GGLWEAutomorphismKey, GGLWELayoutInfos, GLWEInfos, LWEInfos, Rank, Rows, TorusPrecision,
+    Base2K, Degree, Digits, GGLWEAutomorphismKey, GGLWEInfos, GLWEInfos, LWEInfos, Rank, Rows, TorusPrecision,
     compressed::{Decompress, GGLWESwitchingKeyCompressed},
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
@@ -40,7 +40,7 @@ impl<D: Data> GLWEInfos for GGLWEAutomorphismKeyCompressed<D> {
     }
 }
 
-impl<D: Data> GGLWELayoutInfos for GGLWEAutomorphismKeyCompressed<D> {
+impl<D: Data> GGLWEInfos for GGLWEAutomorphismKeyCompressed<D> {
     fn rank_in(&self) -> Rank {
         self.key.rank_in()
     }
@@ -79,7 +79,7 @@ impl<D: DataRef> fmt::Display for GGLWEAutomorphismKeyCompressed<D> {
 impl GGLWEAutomorphismKeyCompressed<Vec<u8>> {
     pub fn alloc<A>(infos: &A) -> Self
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
     {
         debug_assert_eq!(infos.rank_in(), infos.rank_out());
         Self {
@@ -97,7 +97,7 @@ impl GGLWEAutomorphismKeyCompressed<Vec<u8>> {
 
     pub fn alloc_bytes<A>(infos: &A) -> usize
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
     {
         debug_assert_eq!(infos.rank_in(), infos.rank_out());
         GGLWESwitchingKeyCompressed::alloc_bytes(infos)

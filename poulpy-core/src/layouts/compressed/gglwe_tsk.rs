@@ -5,7 +5,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Digits, GGLWELayoutInfos, GGLWETensorKey, GLWEInfos, LWEInfos, Rank, Rows, TorusPrecision,
+    Base2K, Degree, Digits, GGLWEInfos, GGLWETensorKey, GLWEInfos, LWEInfos, Rank, Rows, TorusPrecision,
     compressed::{Decompress, GGLWESwitchingKeyCompressed},
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
@@ -38,7 +38,7 @@ impl<D: Data> GLWEInfos for GGLWETensorKeyCompressed<D> {
     }
 }
 
-impl<D: Data> GGLWELayoutInfos for GGLWETensorKeyCompressed<D> {
+impl<D: Data> GGLWEInfos for GGLWETensorKeyCompressed<D> {
     fn rank_in(&self) -> Rank {
         self.rank_out()
     }
@@ -83,7 +83,7 @@ impl<D: DataRef> fmt::Display for GGLWETensorKeyCompressed<D> {
 impl GGLWETensorKeyCompressed<Vec<u8>> {
     pub fn alloc<A>(infos: &A) -> Self
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
     {
         assert_eq!(
             infos.rank_in(),
@@ -119,7 +119,7 @@ impl GGLWETensorKeyCompressed<Vec<u8>> {
 
     pub fn alloc_bytes<A>(infos: &A) -> usize
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
     {
         assert_eq!(
             infos.rank_in(),

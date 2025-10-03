@@ -7,7 +7,7 @@ use poulpy_hal::{
     layouts::{Backend, DataMut, DataRef, DataViewMut, Module, Scratch, VecZnx, VecZnxBig, VecZnxDft, VmpPMat, ZnxInfos},
 };
 
-use crate::layouts::{GGLWELayoutInfos, GLWECiphertext, GLWEInfos, LWEInfos, prepared::GGLWESwitchingKeyPrepared};
+use crate::layouts::{GGLWEInfos, GLWECiphertext, GLWEInfos, LWEInfos, prepared::GGLWESwitchingKeyPrepared};
 
 impl GLWECiphertext<Vec<u8>> {
     pub fn keyswitch_scratch_space<B: Backend, OUT, IN, KEY>(
@@ -19,7 +19,7 @@ impl GLWECiphertext<Vec<u8>> {
     where
         OUT: GLWEInfos,
         IN: GLWEInfos,
-        KEY: GGLWELayoutInfos,
+        KEY: GGLWEInfos,
         Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
         let in_size: usize = in_infos
@@ -55,7 +55,7 @@ impl GLWECiphertext<Vec<u8>> {
     pub fn keyswitch_inplace_scratch_space<B: Backend, OUT, KEY>(module: &Module<B>, out_infos: &OUT, key_apply: &KEY) -> usize
     where
         OUT: GLWEInfos,
-        KEY: GGLWELayoutInfos,
+        KEY: GGLWEInfos,
         Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
         Self::keyswitch_scratch_space(module, out_infos, out_infos, key_apply)

@@ -18,7 +18,7 @@ use poulpy_hal::{
 use crate::{
     encryption::SIGMA,
     layouts::{
-        GGLWEAutomorphismKey, GGLWEAutomorphismKeyLayout, GGLWELayoutInfos, GLWEPlaintext, GLWESecret,
+        GGLWEAutomorphismKey, GGLWEAutomorphismKeyLayout, GGLWEInfos, GLWEPlaintext, GLWESecret,
         prepared::{GGLWEAutomorphismKeyPrepared, GLWESecretPrepared, Prepare, PrepareAlloc},
     },
     noise::log2_std_noise_gglwe_product,

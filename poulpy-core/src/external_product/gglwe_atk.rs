@@ -7,7 +7,7 @@ use poulpy_hal::{
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
 };
 
-use crate::layouts::{GGLWEAutomorphismKey, GGLWELayoutInfos, GGLWESwitchingKey, GGSWInfos, prepared::GGSWCiphertextPrepared};
+use crate::layouts::{GGLWEAutomorphismKey, GGLWEInfos, GGLWESwitchingKey, GGSWInfos, prepared::GGSWCiphertextPrepared};
 
 impl GGLWEAutomorphismKey<Vec<u8>> {
     pub fn external_product_scratch_space<B: Backend, OUT, IN, GGSW>(
@@ -17,8 +17,8 @@ impl GGLWEAutomorphismKey<Vec<u8>> {
         ggsw_infos: &GGSW,
     ) -> usize
     where
-        OUT: GGLWELayoutInfos,
-        IN: GGLWELayoutInfos,
+        OUT: GGLWEInfos,
+        IN: GGLWEInfos,
         GGSW: GGSWInfos,
         Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxNormalizeTmpBytes,
     {
@@ -31,7 +31,7 @@ impl GGLWEAutomorphismKey<Vec<u8>> {
         ggsw_infos: &GGSW,
     ) -> usize
     where
-        OUT: GGLWELayoutInfos,
+        OUT: GGLWEInfos,
         GGSW: GGSWInfos,
         Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxNormalizeTmpBytes,
     {

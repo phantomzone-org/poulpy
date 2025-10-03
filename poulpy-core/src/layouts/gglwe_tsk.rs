@@ -3,9 +3,7 @@ use poulpy_hal::{
     source::Source,
 };
 
-use crate::layouts::{
-    Base2K, Degree, Digits, GGLWELayoutInfos, GGLWESwitchingKey, GLWEInfos, LWEInfos, Rank, Rows, TorusPrecision,
-};
+use crate::layouts::{Base2K, Degree, Digits, GGLWEInfos, GGLWESwitchingKey, GLWEInfos, LWEInfos, Rank, Rows, TorusPrecision};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
 use std::fmt;
@@ -49,7 +47,7 @@ impl<D: Data> GLWEInfos for GGLWETensorKey<D> {
     }
 }
 
-impl<D: Data> GGLWELayoutInfos for GGLWETensorKey<D> {
+impl<D: Data> GGLWEInfos for GGLWETensorKey<D> {
     fn rank_in(&self) -> Rank {
         self.rank_out()
     }
@@ -87,7 +85,7 @@ impl GLWEInfos for GGLWETensorKeyLayout {
     }
 }
 
-impl GGLWELayoutInfos for GGLWETensorKeyLayout {
+impl GGLWEInfos for GGLWETensorKeyLayout {
     fn rank_in(&self) -> Rank {
         self.rank
     }
@@ -132,7 +130,7 @@ impl<D: DataRef> fmt::Display for GGLWETensorKey<D> {
 impl GGLWETensorKey<Vec<u8>> {
     pub fn alloc<A>(infos: &A) -> Self
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
     {
         assert_eq!(
             infos.rank_in(),
@@ -168,7 +166,7 @@ impl GGLWETensorKey<Vec<u8>> {
 
     pub fn alloc_bytes<A>(infos: &A) -> usize
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
     {
         assert_eq!(
             infos.rank_in(),

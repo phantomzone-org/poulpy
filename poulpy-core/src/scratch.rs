@@ -6,8 +6,8 @@ use poulpy_hal::{
 use crate::{
     dist::Distribution,
     layouts::{
-        Degree, GGLWEAutomorphismKey, GGLWECiphertext, GGLWELayoutInfos, GGLWESwitchingKey, GGLWETensorKey, GGSWCiphertext,
-        GGSWInfos, GLWECiphertext, GLWEInfos, GLWEPlaintext, GLWEPublicKey, GLWESecret, Rank,
+        Degree, GGLWEAutomorphismKey, GGLWECiphertext, GGLWEInfos, GGLWESwitchingKey, GGLWETensorKey, GGSWCiphertext, GGSWInfos,
+        GLWECiphertext, GLWEInfos, GLWEPlaintext, GLWEPublicKey, GLWESecret, Rank,
         prepared::{
             GGLWEAutomorphismKeyPrepared, GGLWECiphertextPrepared, GGLWESwitchingKeyPrepared, GGLWETensorKeyPrepared,
             GGSWCiphertextPrepared, GLWEPublicKeyPrepared, GLWESecretPrepared,
@@ -36,13 +36,13 @@ pub trait TakeGLWEPt<B: Backend> {
 pub trait TakeGGLWE {
     fn take_gglwe<A>(&mut self, infos: &A) -> (GGLWECiphertext<&mut [u8]>, &mut Self)
     where
-        A: GGLWELayoutInfos;
+        A: GGLWEInfos;
 }
 
 pub trait TakeGGLWEPrepared<B: Backend> {
     fn take_gglwe_prepared<A>(&mut self, infos: &A) -> (GGLWECiphertextPrepared<&mut [u8], B>, &mut Self)
     where
-        A: GGLWELayoutInfos;
+        A: GGLWEInfos;
 }
 
 pub trait TakeGGSW {
@@ -80,37 +80,37 @@ pub trait TakeGLWEPkPrepared<B: Backend> {
 pub trait TakeGLWESwitchingKey {
     fn take_glwe_switching_key<A>(&mut self, infos: &A) -> (GGLWESwitchingKey<&mut [u8]>, &mut Self)
     where
-        A: GGLWELayoutInfos;
+        A: GGLWEInfos;
 }
 
 pub trait TakeGGLWESwitchingKeyPrepared<B: Backend> {
     fn take_gglwe_switching_key_prepared<A>(&mut self, infos: &A) -> (GGLWESwitchingKeyPrepared<&mut [u8], B>, &mut Self)
     where
-        A: GGLWELayoutInfos;
+        A: GGLWEInfos;
 }
 
 pub trait TakeTensorKey {
     fn take_tensor_key<A>(&mut self, infos: &A) -> (GGLWETensorKey<&mut [u8]>, &mut Self)
     where
-        A: GGLWELayoutInfos;
+        A: GGLWEInfos;
 }
 
 pub trait TakeGGLWETensorKeyPrepared<B: Backend> {
     fn take_gglwe_tensor_key_prepared<A>(&mut self, infos: &A) -> (GGLWETensorKeyPrepared<&mut [u8], B>, &mut Self)
     where
-        A: GGLWELayoutInfos;
+        A: GGLWEInfos;
 }
 
 pub trait TakeGGLWEAutomorphismKey {
     fn take_gglwe_automorphism_key<A>(&mut self, infos: &A) -> (GGLWEAutomorphismKey<&mut [u8]>, &mut Self)
     where
-        A: GGLWELayoutInfos;
+        A: GGLWEInfos;
 }
 
 pub trait TakeGGLWEAutomorphismKeyPrepared<B: Backend> {
     fn take_gglwe_automorphism_key_prepared<A>(&mut self, infos: &A) -> (GGLWEAutomorphismKeyPrepared<&mut [u8], B>, &mut Self)
     where
-        A: GGLWELayoutInfos;
+        A: GGLWEInfos;
 }
 
 impl<B: Backend> TakeGLWECt for Scratch<B>
@@ -180,7 +180,7 @@ where
 {
     fn take_gglwe<A>(&mut self, infos: &A) -> (GGLWECiphertext<&mut [u8]>, &mut Self)
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
     {
         let (data, scratch) = self.take_mat_znx(
             infos.n().into(),
@@ -208,7 +208,7 @@ where
 {
     fn take_gglwe_prepared<A>(&mut self, infos: &A) -> (GGLWECiphertextPrepared<&mut [u8], B>, &mut Self)
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
     {
         let (data, scratch) = self.take_vmp_pmat(
             infos.n().into(),
@@ -367,7 +367,7 @@ where
 {
     fn take_glwe_switching_key<A>(&mut self, infos: &A) -> (GGLWESwitchingKey<&mut [u8]>, &mut Self)
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
     {
         let (data, scratch) = self.take_gglwe(infos);
         (
@@ -387,7 +387,7 @@ where
 {
     fn take_gglwe_switching_key_prepared<A>(&mut self, infos: &A) -> (GGLWESwitchingKeyPrepared<&mut [u8], B>, &mut Self)
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
     {
         let (data, scratch) = self.take_gglwe_prepared(infos);
         (
@@ -407,7 +407,7 @@ where
 {
     fn take_gglwe_automorphism_key<A>(&mut self, infos: &A) -> (GGLWEAutomorphismKey<&mut [u8]>, &mut Self)
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
     {
         let (data, scratch) = self.take_glwe_switching_key(infos);
         (GGLWEAutomorphismKey { key: data, p: 0 }, scratch)
@@ -420,7 +420,7 @@ where
 {
     fn take_gglwe_automorphism_key_prepared<A>(&mut self, infos: &A) -> (GGLWEAutomorphismKeyPrepared<&mut [u8], B>, &mut Self)
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
     {
         let (data, scratch) = self.take_gglwe_switching_key_prepared(infos);
         (GGLWEAutomorphismKeyPrepared { key: data, p: 0 }, scratch)
@@ -433,7 +433,7 @@ where
 {
     fn take_tensor_key<A>(&mut self, infos: &A) -> (GGLWETensorKey<&mut [u8]>, &mut Self)
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
     {
         assert_eq!(
             infos.rank_in(),
@@ -468,7 +468,7 @@ where
 {
     fn take_gglwe_tensor_key_prepared<A>(&mut self, infos: &A) -> (GGLWETensorKeyPrepared<&mut [u8], B>, &mut Self)
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
     {
         assert_eq!(
             infos.rank_in(),

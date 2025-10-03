@@ -8,7 +8,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    GGLWEAutomorphismKey, GGLWELayoutInfos, GGLWESwitchingKey, GLWECiphertext, GLWEInfos,
+    GGLWEAutomorphismKey, GGLWEInfos, GGLWESwitchingKey, GLWECiphertext, GLWEInfos,
     prepared::{GGLWEAutomorphismKeyPrepared, GGLWESwitchingKeyPrepared},
 };
 
@@ -20,9 +20,9 @@ impl GGLWEAutomorphismKey<Vec<u8>> {
         key_infos: &KEY,
     ) -> usize
     where
-        OUT: GGLWELayoutInfos,
-        IN: GGLWELayoutInfos,
-        KEY: GGLWELayoutInfos,
+        OUT: GGLWEInfos,
+        IN: GGLWEInfos,
+        KEY: GGLWEInfos,
         Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
         GGLWESwitchingKey::keyswitch_scratch_space(module, out_infos, in_infos, key_infos)
@@ -30,8 +30,8 @@ impl GGLWEAutomorphismKey<Vec<u8>> {
 
     pub fn keyswitch_inplace_scratch_space<B: Backend, OUT, KEY>(module: &Module<B>, out_infos: &OUT, key_infos: &KEY) -> usize
     where
-        OUT: GGLWELayoutInfos,
-        KEY: GGLWELayoutInfos,
+        OUT: GGLWEInfos,
+        KEY: GGLWEInfos,
         Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
         GGLWESwitchingKey::keyswitch_inplace_scratch_space(module, out_infos, key_infos)
@@ -93,9 +93,9 @@ impl GGLWESwitchingKey<Vec<u8>> {
         key_apply: &KEY,
     ) -> usize
     where
-        OUT: GGLWELayoutInfos,
-        IN: GGLWELayoutInfos,
-        KEY: GGLWELayoutInfos,
+        OUT: GGLWEInfos,
+        IN: GGLWEInfos,
+        KEY: GGLWEInfos,
         Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
         GLWECiphertext::keyswitch_scratch_space(module, out_infos, in_infos, key_apply)
@@ -103,8 +103,8 @@ impl GGLWESwitchingKey<Vec<u8>> {
 
     pub fn keyswitch_inplace_scratch_space<B: Backend, OUT, KEY>(module: &Module<B>, out_infos: &OUT, key_apply: &KEY) -> usize
     where
-        OUT: GGLWELayoutInfos + GLWEInfos,
-        KEY: GGLWELayoutInfos + GLWEInfos,
+        OUT: GGLWEInfos + GLWEInfos,
+        KEY: GGLWEInfos + GLWEInfos,
         Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
         GLWECiphertext::keyswitch_inplace_scratch_space(module, out_infos, key_apply)

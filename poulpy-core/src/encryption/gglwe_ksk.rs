@@ -12,15 +12,14 @@ use poulpy_hal::{
 use crate::{
     TakeGLWESecretPrepared,
     layouts::{
-        Degree, GGLWECiphertext, GGLWELayoutInfos, GGLWESwitchingKey, GLWEInfos, GLWESecret, LWEInfos,
-        prepared::GLWESecretPrepared,
+        Degree, GGLWECiphertext, GGLWEInfos, GGLWESwitchingKey, GLWEInfos, GLWESecret, LWEInfos, prepared::GLWESecretPrepared,
     },
 };
 
 impl GGLWESwitchingKey<Vec<u8>> {
     pub fn encrypt_sk_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
         Module<B>: SvpPPolAllocBytes + VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes + VecZnxNormalizeTmpBytes,
     {
         (GGLWECiphertext::encrypt_sk_scratch_space(module, infos) | ScalarZnx::alloc_bytes(module.n(), 1))
@@ -30,7 +29,7 @@ impl GGLWESwitchingKey<Vec<u8>> {
 
     pub fn encrypt_pk_scratch_space<B: Backend, A>(module: &Module<B>, _infos: &A) -> usize
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
     {
         GGLWECiphertext::encrypt_pk_scratch_space(module, _infos)
     }

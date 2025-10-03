@@ -9,7 +9,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    GGLWELayoutInfos, GGSWCiphertext, GGSWInfos, GLWECiphertext,
+    GGLWEInfos, GGSWCiphertext, GGSWInfos, GLWECiphertext,
     prepared::{GGLWEAutomorphismKeyPrepared, GGLWETensorKeyPrepared},
 };
 
@@ -24,8 +24,8 @@ impl GGSWCiphertext<Vec<u8>> {
     where
         OUT: GGSWInfos,
         IN: GGSWInfos,
-        KEY: GGLWELayoutInfos,
-        TSK: GGLWELayoutInfos,
+        KEY: GGLWEInfos,
+        TSK: GGLWEInfos,
         Module<B>: VecZnxDftAllocBytes
             + VmpApplyDftToDftTmpBytes
             + VecZnxBigAllocBytes
@@ -52,8 +52,8 @@ impl GGSWCiphertext<Vec<u8>> {
     ) -> usize
     where
         OUT: GGSWInfos,
-        KEY: GGLWELayoutInfos,
-        TSK: GGLWELayoutInfos,
+        KEY: GGLWEInfos,
+        TSK: GGLWEInfos,
         Module<B>: VecZnxDftAllocBytes
             + VmpApplyDftToDftTmpBytes
             + VecZnxBigAllocBytes

@@ -2,7 +2,7 @@ use poulpy_hal::test_suite::serialization::test_reader_writer_interface;
 
 use crate::layouts::{
     Base2K, Degree, Digits, GGLWEAutomorphismKey, GGLWECiphertext, GGLWESwitchingKey, GGLWETensorKey, GGSWCiphertext,
-    GLWECiphertext, GLWEToLWESwitchingKey, LWECiphertext, LWESwitchingKey, LWEToGLWESwitchingKey, Rank, Rows, TorusPrecision,
+    GLWECiphertext, GLWEToLWEKey, LWECiphertext, LWESwitchingKey, LWEToGLWESwitchingKey, Rank, Rows, TorusPrecision,
     compressed::{
         GGLWEAutomorphismKeyCompressed, GGLWECiphertextCompressed, GGLWESwitchingKeyCompressed, GGLWETensorKeyCompressed,
         GGSWCiphertextCompressed, GLWECiphertextCompressed, GLWEToLWESwitchingKeyCompressed, LWECiphertextCompressed,
@@ -95,7 +95,7 @@ fn test_tensor_key_compressed_serialization() {
 
 #[test]
 fn glwe_to_lwe_switching_key_serialization() {
-    let original: GLWEToLWESwitchingKey<Vec<u8>> = GLWEToLWESwitchingKey::alloc_with(N_GLWE, BASE2K, K, ROWS, RANK);
+    let original: GLWEToLWEKey<Vec<u8>> = GLWEToLWEKey::alloc_with(N_GLWE, BASE2K, K, ROWS, RANK);
     test_reader_writer_interface(original);
 }
 

@@ -13,7 +13,7 @@ use poulpy_hal::{
 
 use crate::{
     GLWEOperations, TakeGLWECt,
-    layouts::{GGLWELayoutInfos, GLWECiphertext, GLWEInfos, LWEInfos, prepared::GGLWEAutomorphismKeyPrepared},
+    layouts::{GGLWEInfos, GLWECiphertext, GLWEInfos, LWEInfos, prepared::GGLWEAutomorphismKeyPrepared},
 };
 
 /// [GLWEPacker] enables only the fly GLWE packing
@@ -93,7 +93,7 @@ impl GLWEPacker {
     pub fn scratch_space<B: Backend, OUT, KEY>(module: &Module<B>, out_infos: &OUT, key_infos: &KEY) -> usize
     where
         OUT: GLWEInfos,
-        KEY: GGLWELayoutInfos,
+        KEY: GGLWEInfos,
         Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
         pack_core_scratch_space(module, out_infos, key_infos)
@@ -180,7 +180,7 @@ impl GLWEPacker {
 fn pack_core_scratch_space<B: Backend, OUT, KEY>(module: &Module<B>, out_infos: &OUT, key_infos: &KEY) -> usize
 where
     OUT: GLWEInfos,
-    KEY: GGLWELayoutInfos,
+    KEY: GGLWEInfos,
     Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
 {
     combine_scratch_space(module, out_infos, key_infos)
@@ -271,7 +271,7 @@ fn pack_core<D: DataRef, DataAK: DataRef, B: Backend>(
 fn combine_scratch_space<B: Backend, OUT, KEY>(module: &Module<B>, out_infos: &OUT, key_infos: &KEY) -> usize
 where
     OUT: GLWEInfos,
-    KEY: GGLWELayoutInfos,
+    KEY: GGLWEInfos,
     Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
 {
     GLWECiphertext::alloc_bytes(out_infos)

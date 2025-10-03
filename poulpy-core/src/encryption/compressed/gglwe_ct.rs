@@ -11,13 +11,13 @@ use poulpy_hal::{
 use crate::{
     TakeGLWEPt,
     encryption::{SIGMA, glwe_encrypt_sk_internal},
-    layouts::{GGLWECiphertext, GGLWELayoutInfos, LWEInfos, compressed::GGLWECiphertextCompressed, prepared::GLWESecretPrepared},
+    layouts::{GGLWECiphertext, GGLWEInfos, LWEInfos, compressed::GGLWECiphertextCompressed, prepared::GLWESecretPrepared},
 };
 
 impl GGLWECiphertextCompressed<Vec<u8>> {
     pub fn encrypt_sk_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
         Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes + VecZnxNormalizeTmpBytes,
     {
         GGLWECiphertext::encrypt_sk_scratch_space(module, infos)
