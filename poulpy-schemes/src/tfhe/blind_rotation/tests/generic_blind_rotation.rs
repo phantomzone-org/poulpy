@@ -106,7 +106,7 @@ where
         n_lwe: n_lwe.into(),
         base2k: base2k.into(),
         k: k_brk.into(),
-        rows: rows_brk.into(),
+        dnum: rows_brk.into(),
         rank: rank.into(),
     };
 

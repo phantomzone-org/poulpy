@@ -89,14 +89,14 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
             assert!(scratch.available() >= GGSWCiphertext::external_product_scratch_space(module, self, lhs, rhs))
         }
 
-        let min_rows: usize = self.rows().min(lhs.rows()).into();
+        let min_dnum: usize = self.dnum().min(lhs.dnum()).into();
 
         (0..(self.rank() + 1).into()).for_each(|col_i| {
-            (0..min_rows).for_each(|row_j| {
+            (0..min_dnum).for_each(|row_j| {
                 self.at_mut(row_j, col_i)
                     .external_product(module, &lhs.at(row_j, col_i), rhs, scratch);
             });
-            (min_rows..self.rows().into()).for_each(|row_i| {
+            (min_dnum..self.dnum().into()).for_each(|row_i| {
                 self.at_mut(row_i, col_i).data.zero();
             });
         });
@@ -134,7 +134,7 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
         }
 
         (0..(self.rank() + 1).into()).for_each(|col_i| {
-            (0..self.rows().into()).for_each(|row_j| {
+            (0..self.dnum().into()).for_each(|row_j| {
                 self.at_mut(row_j, col_i)
                     .external_product_inplace(module, rhs, scratch);
             });

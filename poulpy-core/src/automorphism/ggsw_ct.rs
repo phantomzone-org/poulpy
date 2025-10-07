@@ -125,7 +125,7 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
         };
 
         // Keyswitch the j-th row of the col 0
-        (0..lhs.rows().into()).for_each(|row_i| {
+        (0..lhs.dnum().into()).for_each(|row_i| {
             // Key-switch column 0, i.e.
             // col 0: (-(a0s0 + a1s1 + a2s2) + M[i], a0, a1, a2) -> (-(a0pi^-1(s0) + a1pi^-1(s1) + a2pi^-1(s2)) + M[i], a0, a1, a2)
             self.at_mut(row_i, 0)
@@ -160,7 +160,7 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
         Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnxBig<B> + TakeVecZnx,
     {
         // Keyswitch the j-th row of the col 0
-        (0..self.rows().into()).for_each(|row_i| {
+        (0..self.dnum().into()).for_each(|row_i| {
             // Key-switch column 0, i.e.
             // col 0: (-(a0s0 + a1s1 + a2s2) + M[i], a0, a1, a2) -> (-(a0pi^-1(s0) + a1pi^-1(s1) + a2pi^-1(s2)) + M[i], a0, a1, a2)
             self.at_mut(row_i, 0)

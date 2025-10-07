@@ -1,5 +1,5 @@
 use poulpy_core::layouts::{
-    Base2K, Degree, Digits, GGSWCiphertext, GGSWCiphertextLayout, GLWECiphertext, GLWECiphertextLayout, GLWESecret, Rank, Rows,
+    Base2K, Degree, Dsize, GGSWCiphertext, GGSWCiphertextLayout, GLWECiphertext, GLWECiphertextLayout, GLWESecret, Rank, Dnum,
     TorusPrecision,
     prepared::{GGSWCiphertextPrepared, GLWESecretPrepared, PrepareAlloc},
 };
@@ -35,16 +35,16 @@ fn bench_external_product_glwe_fft64(c: &mut Criterion) {
         let k_ct_out: TorusPrecision = p.k_ct_out;
         let k_ggsw: TorusPrecision = p.k_ggsw;
         let rank: Rank = p.rank;
-        let digits: Digits = Digits(1);
+        let dsize: Dsize = Dsize(1);
 
-        let rows: Rows = Rows(1); //(p.k_ct_in.div_ceil(p.base2k);
+        let dnum: Dnum = Dnum(1); //(p.k_ct_in.div_ceil(p.base2k);
 
         let ggsw_layout: GGSWCiphertextLayout = GGSWCiphertextLayout {
             n,
             base2k,
             k: k_ggsw,
-            rows,
-            digits,
+            dnum: dnum,
+            dsize: dsize,
             rank,
         };
 
@@ -143,16 +143,16 @@ fn bench_external_product_glwe_inplace_fft64(c: &mut Criterion) {
         let k_glwe: TorusPrecision = p.k_ct;
         let k_ggsw: TorusPrecision = p.k_ggsw;
         let rank: Rank = p.rank;
-        let digits: Digits = Digits(1);
+        let dsize: Dsize = Dsize(1);
 
-        let rows: Rows = p.k_ct.div_ceil(p.base2k).into();
+        let dnum: Dnum = p.k_ct.div_ceil(p.base2k).into();
 
         let ggsw_layout: GGSWCiphertextLayout = GGSWCiphertextLayout {
             n,
             base2k,
             k: k_ggsw,
-            rows,
-            digits,
+            dnum: dnum,
+            dsize: dsize,
             rank,
         };
 

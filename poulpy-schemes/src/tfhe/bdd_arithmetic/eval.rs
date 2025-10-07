@@ -1,4 +1,4 @@
-use itertools::{Itertools, izip};
+use itertools::Itertools;
 use poulpy_core::{
     GLWEOperations, TakeGLWECtSlice,
     layouts::{
@@ -15,8 +15,16 @@ use poulpy_hal::{
     layouts::{Backend, DataMut, DataRef, Module, Scratch, ZnxZero},
 };
 
+use crate::tfhe::bdd_arithmetic::UnsignedInteger;
+
 pub trait BitCircuitInfo {
     fn info(&self) -> (&[Node], &[usize], usize);
+}
+
+pub trait GetBitCircuitInfo<T: UnsignedInteger> {
+    fn input_size(&self) -> usize;
+    fn output_size(&self) -> usize;
+    fn get_circuit(&self, bit: usize) -> (&[Node], &[usize], usize);
 }
 
 pub(crate) struct BitCircuit<const N: usize, const K: usize> {
@@ -27,7 +35,10 @@ pub(crate) struct BitCircuit<const N: usize, const K: usize> {
 
 pub struct Circuit<C: BitCircuitInfo, const N: usize>(pub [C; N]);
 
-pub trait CircuitExecute<BE: Backend> {
+pub trait CircuitExecute<BE: Backend, T: UnsignedInteger>
+where
+    Self: GetBitCircuitInfo<T>,
+{
     fn execute<R>(
         &self,
         module: &Module<BE>,
@@ -38,8 +49,9 @@ pub trait CircuitExecute<BE: Backend> {
         R: DataMut;
 }
 
-impl<C: BitCircuitInfo, const N: usize, BE: Backend> CircuitExecute<BE> for Circuit<C, N>
+impl<C: BitCircuitInfo, const N: usize, T: UnsignedInteger, BE: Backend> CircuitExecute<BE, T> for Circuit<C, N>
 where
+    Self: GetBitCircuitInfo<T>,
     Module<BE>: VecZnxSub
         + VecZnxCopy
         + VecZnxNegateInplace
@@ -64,10 +76,16 @@ where
     ) where
         R: DataMut,
     {
+        #[cfg(debug_assertions)]
+        {
+            assert_eq!(inputs.len(), self.input_size());
+            assert!(out.len() >= self.output_size());
+        }
+
         let glwe_infos: GLWECiphertextLayout = out[0].glwe_layout();
 
-        for (circuit_i, out_i) in izip!(self.0.iter(), out.iter_mut()) {
-            let (nodes, levels, max_inter_state) = circuit_i.info();
+        for i in 0..self.output_size() {
+            let (nodes, levels, max_inter_state) = self.get_circuit(i);
 
             let (mut level, scratch_1) = scratch.take_glwe_ct_slice(max_inter_state * 2, &glwe_infos);
 
@@ -107,13 +125,17 @@ where
             // handle last output
             // there's always only 1 node at last level
             let node: &Node = nodes.last().unwrap();
-            out_i.cmux(
+            out[i].cmux(
                 module,
                 prev_level[node.high_index],
                 prev_level[node.low_index],
                 &inputs[node.input_index].to_ref(),
                 scratch_1,
             );
+        }
+
+        for i in self.output_size()..out.len() {
+            out[i].data_mut().zero();
         }
     }
 }
@@ -137,7 +159,8 @@ impl<const N: usize, const K: usize> BitCircuitInfo for BitCircuit<N, K> {
     }
 }
 
-pub(crate) struct Node {
+#[derive(Debug)]
+pub struct Node {
     input_index: usize,
     high_index: usize,
     low_index: usize,

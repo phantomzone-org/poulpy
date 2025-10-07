@@ -4,7 +4,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Digits, GGLWEInfos, GGLWESwitchingKey, GLWEInfos, LWEInfos, Rank, Rows, TorusPrecision,
+    Base2K, Degree, Dsize, GGLWEInfos, GGLWESwitchingKey, GLWEInfos, LWEInfos, Rank, Dnum, TorusPrecision,
     prepared::{GGLWECiphertextPrepared, Prepare, PrepareAlloc},
 };
 
@@ -48,12 +48,12 @@ impl<D: Data, B: Backend> GGLWEInfos for GGLWESwitchingKeyPrepared<D, B> {
         self.key.rank_out()
     }
 
-    fn digits(&self) -> Digits {
-        self.key.digits()
+    fn dsize(&self) -> Dsize {
+        self.key.dsize()
     }
 
-    fn rows(&self) -> Rows {
-        self.key.rows()
+    fn dnum(&self) -> Dnum {
+        self.key.dnum()
     }
 }
 
@@ -75,16 +75,16 @@ impl<B: Backend> GGLWESwitchingKeyPrepared<Vec<u8>, B> {
         module: &Module<B>,
         base2k: Base2K,
         k: TorusPrecision,
-        rows: Rows,
-        digits: Digits,
         rank_in: Rank,
         rank_out: Rank,
+        dnum: Dnum,
+        dsize: Dsize,
     ) -> Self
     where
         Module<B>: VmpPMatAlloc<B>,
     {
         GGLWESwitchingKeyPrepared::<Vec<u8>, B> {
-            key: GGLWECiphertextPrepared::alloc_with(module, base2k, k, rows, digits, rank_in, rank_out),
+            key: GGLWECiphertextPrepared::alloc_with(module, base2k, k, rank_in, rank_out, dnum, dsize),
             sk_in_n: 0,
             sk_out_n: 0,
         }
@@ -103,15 +103,15 @@ impl<B: Backend> GGLWESwitchingKeyPrepared<Vec<u8>, B> {
         module: &Module<B>,
         base2k: Base2K,
         k: TorusPrecision,
-        rows: Rows,
-        digits: Digits,
         rank_in: Rank,
         rank_out: Rank,
+        dnum: Dnum,
+        dsize: Dsize,
     ) -> usize
     where
         Module<B>: VmpPMatAllocBytes,
     {
-        GGLWECiphertextPrepared::alloc_bytes_with(module, base2k, k, rows, digits, rank_in, rank_out)
+        GGLWECiphertextPrepared::alloc_bytes_with(module, base2k, k, rank_in, rank_out, dnum, dsize)
     }
 }
 

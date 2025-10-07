@@ -67,15 +67,15 @@ where
 {
     let base2k: usize = 12;
     let k_in: usize = 60;
-    let digits: usize = k_in.div_ceil(base2k);
+    let dsize: usize = k_in.div_ceil(base2k);
     let p: i64 = -5;
     for rank in 1_usize..3 {
-        for di in 1..digits + 1 {
+        for di in 1..dsize + 1 {
             let k_ksk: usize = k_in + base2k * di;
             let k_out: usize = k_ksk; // Better capture noise.
 
             let n: usize = module.n();
-            let rows: usize = k_in.div_ceil(base2k * digits);
+            let dnum: usize = k_in.div_ceil(base2k * dsize);
 
             let ct_in_infos: GLWECiphertextLayout = GLWECiphertextLayout {
                 n: n.into(),
@@ -96,8 +96,8 @@ where
                 base2k: base2k.into(),
                 k: k_out.into(),
                 rank: rank.into(),
-                rows: rows.into(),
-                digits: di.into(),
+                dnum: dnum.into(),
+                dsize: di.into(),
             };
 
             let mut autokey: GGLWEAutomorphismKey<Vec<u8>> = GGLWEAutomorphismKey::alloc(&autokey_infos);
@@ -148,7 +148,7 @@ where
 
             let max_noise: f64 = log2_std_noise_gglwe_product(
                 module.n() as f64,
-                base2k * digits,
+                base2k * dsize,
                 0.5,
                 0.5,
                 0f64,
@@ -210,14 +210,14 @@ where
 {
     let base2k: usize = 12;
     let k_out: usize = 60;
-    let digits: usize = k_out.div_ceil(base2k);
+    let dsize: usize = k_out.div_ceil(base2k);
     let p = -5;
     for rank in 1_usize..3 {
-        for di in 1..digits + 1 {
+        for di in 1..dsize + 1 {
             let k_ksk: usize = k_out + base2k * di;
 
             let n: usize = module.n();
-            let rows: usize = k_out.div_ceil(base2k * digits);
+            let dnum: usize = k_out.div_ceil(base2k * dsize);
 
             let ct_out_infos: GLWECiphertextLayout = GLWECiphertextLayout {
                 n: n.into(),
@@ -231,8 +231,8 @@ where
                 base2k: base2k.into(),
                 k: k_ksk.into(),
                 rank: rank.into(),
-                rows: rows.into(),
-                digits: di.into(),
+                dnum: dnum.into(),
+                dsize: di.into(),
             };
 
             let mut autokey: GGLWEAutomorphismKey<Vec<u8>> = GGLWEAutomorphismKey::alloc(&autokey_infos);
@@ -282,7 +282,7 @@ where
 
             let max_noise: f64 = log2_std_noise_gglwe_product(
                 module.n() as f64,
-                base2k * digits,
+                base2k * dsize,
                 0.5,
                 0.5,
                 0f64,

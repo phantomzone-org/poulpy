@@ -3,7 +3,7 @@ use poulpy_hal::{
     source::Source,
 };
 
-use crate::layouts::{Base2K, Degree, Digits, GGLWEInfos, GGLWESwitchingKey, GLWEInfos, LWEInfos, Rank, Rows, TorusPrecision};
+use crate::layouts::{Base2K, Degree, Dsize, GGLWEInfos, GGLWESwitchingKey, GLWEInfos, LWEInfos, Rank, Dnum, TorusPrecision};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
 use std::fmt;
@@ -13,9 +13,9 @@ pub struct GGLWETensorKeyLayout {
     pub n: Degree,
     pub base2k: Base2K,
     pub k: TorusPrecision,
-    pub rows: Rows,
-    pub digits: Digits,
     pub rank: Rank,
+    pub dnum: Dnum,
+    pub dsize: Dsize,
 }
 
 #[derive(PartialEq, Eq, Clone)]
@@ -56,12 +56,12 @@ impl<D: Data> GGLWEInfos for GGLWETensorKey<D> {
         self.keys[0].rank_out()
     }
 
-    fn digits(&self) -> Digits {
-        self.keys[0].digits()
+    fn dsize(&self) -> Dsize {
+        self.keys[0].dsize()
     }
 
-    fn rows(&self) -> Rows {
-        self.keys[0].rows()
+    fn dnum(&self) -> Dnum {
+        self.keys[0].dnum()
     }
 }
 
@@ -90,16 +90,16 @@ impl GGLWEInfos for GGLWETensorKeyLayout {
         self.rank
     }
 
-    fn digits(&self) -> Digits {
-        self.digits
+    fn dsize(&self) -> Dsize {
+        self.dsize
     }
 
     fn rank_out(&self) -> Rank {
         self.rank
     }
 
-    fn rows(&self) -> Rows {
-        self.rows
+    fn dnum(&self) -> Dnum {
+        self.dnum
     }
 }
 
@@ -141,13 +141,13 @@ impl GGLWETensorKey<Vec<u8>> {
             infos.n(),
             infos.base2k(),
             infos.k(),
-            infos.rows(),
-            infos.digits(),
             infos.rank_out(),
+            infos.dnum(),
+            infos.dsize(),
         )
     }
 
-    pub fn alloc_with(n: Degree, base2k: Base2K, k: TorusPrecision, rows: Rows, digits: Digits, rank: Rank) -> Self {
+    pub fn alloc_with(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> Self {
         let mut keys: Vec<GGLWESwitchingKey<Vec<u8>>> = Vec::new();
         let pairs: u32 = (((rank.0 + 1) * rank.0) >> 1).max(1);
         (0..pairs).for_each(|_| {
@@ -155,10 +155,10 @@ impl GGLWETensorKey<Vec<u8>> {
                 n,
                 base2k,
                 k,
-                rows,
-                digits,
                 Rank(1),
                 rank,
+                dnum,
+                dsize,
             ));
         });
         Self { keys }
@@ -180,16 +180,16 @@ impl GGLWETensorKey<Vec<u8>> {
                 infos.n(),
                 infos.base2k(),
                 infos.k(),
-                infos.rows(),
-                infos.digits(),
                 Rank(1),
                 infos.rank_out(),
+                infos.dnum(),
+                infos.dsize(),
             )
     }
 
-    pub fn alloc_bytes_with(n: Degree, base2k: Base2K, k: TorusPrecision, rows: Rows, digits: Digits, rank: Rank) -> usize {
+    pub fn alloc_bytes_with(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize {
         let pairs: usize = (((rank.0 + 1) * rank.0) >> 1).max(1) as usize;
-        pairs * GGLWESwitchingKey::alloc_bytes_with(n, base2k, k, rows, digits, Rank(1), rank)
+        pairs * GGLWESwitchingKey::alloc_bytes_with(n, base2k, k, Rank(1), rank, dnum, dsize)
     }
 }
 

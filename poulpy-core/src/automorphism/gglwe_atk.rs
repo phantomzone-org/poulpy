@@ -102,7 +102,7 @@ impl<DataSelf: DataMut> GGLWEAutomorphismKey<DataSelf> {
         let p_inv: i64 = module.galois_element_inv(p);
 
         (0..self.rank_in().into()).for_each(|col_i| {
-            (0..self.rows().into()).for_each(|row_j| {
+            (0..self.dnum().into()).for_each(|row_j| {
                 let mut res_ct: GLWECiphertext<&mut [u8]> = self.at_mut(row_j, col_i);
                 let lhs_ct: GLWECiphertext<&[u8]> = lhs.at(row_j, col_i);
 
@@ -121,7 +121,7 @@ impl<DataSelf: DataMut> GGLWEAutomorphismKey<DataSelf> {
             });
         });
 
-        (self.rows().min(lhs.rows()).into()..self.rows().into()).for_each(|row_i| {
+        (self.dnum().min(lhs.dnum()).into()..self.dnum().into()).for_each(|row_i| {
             (0..self.rank_in().into()).for_each(|col_j| {
                 self.at_mut(row_i, col_j).data.zero();
             });
@@ -175,7 +175,7 @@ impl<DataSelf: DataMut> GGLWEAutomorphismKey<DataSelf> {
         let p_inv = module.galois_element_inv(p);
 
         (0..self.rank_in().into()).for_each(|col_i| {
-            (0..self.rows().into()).for_each(|row_j| {
+            (0..self.dnum().into()).for_each(|row_j| {
                 let mut res_ct: GLWECiphertext<&mut [u8]> = self.at_mut(row_j, col_i);
 
                 // Reverts the automorphism X^{-k}: (-pi^{-1}_{k}(s)a + s, a) to (-sa + pi_{k}(s), a)

@@ -8,7 +8,7 @@ use std::{fmt, marker::PhantomData};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use poulpy_core::{
     Distribution,
-    layouts::{Base2K, Degree, Digits, GGSWInfos, GLWEInfos, LWEInfos, TorusPrecision, compressed::GGSWCiphertextCompressed},
+    layouts::{Base2K, Degree, Dsize, GGSWInfos, GLWEInfos, LWEInfos, TorusPrecision, compressed::GGSWCiphertextCompressed},
 };
 
 use crate::tfhe::blind_rotation::{BlindRotationAlgo, BlindRotationKeyInfos};
@@ -128,12 +128,12 @@ impl<D: DataRef, BRA: BlindRotationAlgo> GLWEInfos for BlindRotationKeyCompresse
 }
 
 impl<D: DataRef, BRA: BlindRotationAlgo> GGSWInfos for BlindRotationKeyCompressed<D, BRA> {
-    fn rows(&self) -> poulpy_core::layouts::Rows {
-        self.keys[0].rows()
+    fn dnum(&self) -> poulpy_core::layouts::Dnum {
+        self.keys[0].dnum()
     }
 
-    fn digits(&self) -> poulpy_core::layouts::Digits {
-        Digits(1)
+    fn dsize(&self) -> poulpy_core::layouts::Dsize {
+        Dsize(1)
     }
 }
 

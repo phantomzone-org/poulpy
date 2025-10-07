@@ -184,7 +184,7 @@ where
     {
         let (data, scratch) = self.take_mat_znx(
             infos.n().into(),
-            infos.rows().0.div_ceil(infos.digits().0) as usize,
+            infos.dnum().0.div_ceil(infos.dsize().0) as usize,
             infos.rank_in().into(),
             (infos.rank_out() + 1).into(),
             infos.size(),
@@ -193,7 +193,7 @@ where
             GGLWECiphertext::builder()
                 .base2k(infos.base2k())
                 .k(infos.k())
-                .digits(infos.digits())
+                .dsize(infos.dsize())
                 .data(data)
                 .build()
                 .unwrap(),
@@ -212,7 +212,7 @@ where
     {
         let (data, scratch) = self.take_vmp_pmat(
             infos.n().into(),
-            infos.rows().into(),
+            infos.dnum().into(),
             infos.rank_in().into(),
             (infos.rank_out() + 1).into(),
             infos.size(),
@@ -220,7 +220,7 @@ where
         (
             GGLWECiphertextPrepared::builder()
                 .base2k(infos.base2k())
-                .digits(infos.digits())
+                .dsize(infos.dsize())
                 .k(infos.k())
                 .data(data)
                 .build()
@@ -240,7 +240,7 @@ where
     {
         let (data, scratch) = self.take_mat_znx(
             infos.n().into(),
-            infos.rows().into(),
+            infos.dnum().into(),
             (infos.rank() + 1).into(),
             (infos.rank() + 1).into(),
             infos.size(),
@@ -248,7 +248,7 @@ where
         (
             GGSWCiphertext::builder()
                 .base2k(infos.base2k())
-                .digits(infos.digits())
+                .dsize(infos.dsize())
                 .k(infos.k())
                 .data(data)
                 .build()
@@ -268,7 +268,7 @@ where
     {
         let (data, scratch) = self.take_vmp_pmat(
             infos.n().into(),
-            infos.rows().into(),
+            infos.dnum().into(),
             (infos.rank() + 1).into(),
             (infos.rank() + 1).into(),
             infos.size(),
@@ -276,7 +276,7 @@ where
         (
             GGSWCiphertextPrepared::builder()
                 .base2k(infos.base2k())
-                .digits(infos.digits())
+                .dsize(infos.dsize())
                 .k(infos.k())
                 .data(data)
                 .build()

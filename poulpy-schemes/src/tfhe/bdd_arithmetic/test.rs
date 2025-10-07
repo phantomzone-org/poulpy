@@ -4,7 +4,7 @@ use poulpy_backend::FFT64Avx;
 use poulpy_core::{
     TakeGGSW, TakeGLWEPt,
     layouts::{
-        Digits, GGLWEAutomorphismKeyLayout, GGLWETensorKeyLayout, GGSWCiphertextLayout, GLWECiphertextLayout, GLWESecret,
+        Dsize, GGLWEAutomorphismKeyLayout, GGLWETensorKeyLayout, GGSWCiphertextLayout, GLWECiphertextLayout, GLWESecret,
         GLWEToLWEKeyLayout, LWESecret,
         prepared::{GLWESecretPrepared, PrepareAlloc},
     },
@@ -31,7 +31,10 @@ use poulpy_hal::{
 use rand::RngCore;
 
 use crate::tfhe::{
-    bdd_arithmetic::{Add, BDDKey, BDDKeyLayout, BDDKeyPrepared, FheUintBlocks, FheUintBlocksPrep, FheUintBlocksPrepDebug, Sub},
+    bdd_arithmetic::{
+        Add, And, BDDKey, BDDKeyLayout, BDDKeyPrepared, FheUintBlocks, FheUintBlocksPrep, FheUintBlocksPrepDebug, Or, Slt, Sub,
+        Xor,
+    },
     blind_rotation::{
         BlincRotationExecute, BlindRotationAlgo, BlindRotationKey, BlindRotationKeyAlloc, BlindRotationKeyEncryptSk,
         BlindRotationKeyLayout, BlindRotationKeyPrepared, CGGI,
@@ -110,7 +113,7 @@ where
     let k_glwe: usize = base2k * 2;
     let k_ggsw: usize = base2k * 3;
     let rank: usize = 2_usize;
-    let rows: usize = k_glwe.div_ceil(base2k);
+    let dnum: usize = k_glwe.div_ceil(base2k);
 
     let module: Module<BE> = Module::<BE>::new(n_glwe as u64);
     let mut source: Source = Source::new([6u8; 32]);
@@ -127,6 +130,9 @@ where
     let a: u32 = source.next_u32();
     let b: u32 = source.next_u32();
 
+    println!("a: {a}");
+    println!("b: {b}");
+
     let glwe_infos: GLWECiphertextLayout = GLWECiphertextLayout {
         n: module.n().into(),
         base2k: base2k.into(),
@@ -138,8 +144,8 @@ where
         n: module.n().into(),
         base2k: base2k.into(),
         k: k_ggsw.into(),
-        rows: rows.into(),
-        digits: Digits(1),
+        dnum: dnum.into(),
+        dsize: Dsize(1),
         rank: rank.into(),
     };
 
@@ -193,7 +199,7 @@ where
         n: module.n().into(),
         base2k: base2k.into(),
         k: k_ggsw.into(),
-        rows: rows.into(),
+        dnum: dnum.into(),
         rank_in: rank.into(),
     };
 
@@ -212,23 +218,23 @@ where
             n_lwe: n_lwe.into(),
             base2k: base2k.into(),
             k: k_brk.into(),
-            rows: rows_brk.into(),
+            dnum: rows_brk.into(),
             rank: rank.into(),
         },
         layout_atk: GGLWEAutomorphismKeyLayout {
             n: n_glwe.into(),
             base2k: base2k.into(),
             k: k_atk.into(),
-            rows: rows_atk.into(),
+            dnum: rows_atk.into(),
             rank: rank.into(),
-            digits: Digits(1),
+            dsize: Dsize(1),
         },
         layout_tsk: GGLWETensorKeyLayout {
             n: n_glwe.into(),
             base2k: base2k.into(),
             k: k_tsk.into(),
-            rows: rows_tsk.into(),
-            digits: Digits(1),
+            dnum: rows_tsk.into(),
+            dsize: Dsize(1),
             rank: rank.into(),
         },
     };

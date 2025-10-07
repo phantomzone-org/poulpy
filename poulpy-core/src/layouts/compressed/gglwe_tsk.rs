@@ -5,7 +5,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Digits, GGLWEInfos, GGLWETensorKey, GLWEInfos, LWEInfos, Rank, Rows, TorusPrecision,
+    Base2K, Degree, Dsize, GGLWEInfos, GGLWETensorKey, GLWEInfos, LWEInfos, Rank, Dnum, TorusPrecision,
     compressed::{Decompress, GGLWESwitchingKeyCompressed},
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
@@ -47,12 +47,12 @@ impl<D: Data> GGLWEInfos for GGLWETensorKeyCompressed<D> {
         self.keys[0].rank_out()
     }
 
-    fn digits(&self) -> Digits {
-        self.keys[0].digits()
+    fn dsize(&self) -> Dsize {
+        self.keys[0].dsize()
     }
 
-    fn rows(&self) -> Rows {
-        self.keys[0].rows()
+    fn dnum(&self) -> Dnum {
+        self.keys[0].dnum()
     }
 }
 
@@ -94,13 +94,13 @@ impl GGLWETensorKeyCompressed<Vec<u8>> {
             infos.n(),
             infos.base2k(),
             infos.k(),
-            infos.rows(),
-            infos.digits(),
             infos.rank_out(),
+            infos.dnum(),
+            infos.dsize(),
         )
     }
 
-    pub fn alloc_with(n: Degree, base2k: Base2K, k: TorusPrecision, rows: Rows, digits: Digits, rank: Rank) -> Self {
+    pub fn alloc_with(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> Self {
         let mut keys: Vec<GGLWESwitchingKeyCompressed<Vec<u8>>> = Vec::new();
         let pairs: u32 = (((rank.0 + 1) * rank.0) >> 1).max(1);
         (0..pairs).for_each(|_| {
@@ -108,10 +108,10 @@ impl GGLWETensorKeyCompressed<Vec<u8>> {
                 n,
                 base2k,
                 k,
-                rows,
-                digits,
                 Rank(1),
                 rank,
+                dnum,
+                dsize,
             ));
         });
         Self { keys }
@@ -133,16 +133,15 @@ impl GGLWETensorKeyCompressed<Vec<u8>> {
                 infos.n(),
                 infos.base2k(),
                 infos.k(),
-                infos.rows(),
-                infos.digits(),
                 Rank(1),
-                infos.rank_out(),
+                infos.dnum(),
+                infos.dsize(),
             )
     }
 
-    pub fn alloc_bytes_with(n: Degree, base2k: Base2K, k: TorusPrecision, rows: Rows, digits: Digits, rank: Rank) -> usize {
+    pub fn alloc_bytes_with(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize {
         let pairs: usize = (((rank.0 + 1) * rank.0) >> 1).max(1) as usize;
-        pairs * GGLWESwitchingKeyCompressed::alloc_bytes_with(n, base2k, k, rows, digits, Rank(1), rank)
+        pairs * GGLWESwitchingKeyCompressed::alloc_bytes_with(n, base2k, k, Rank(1), dnum, dsize)
     }
 }
 

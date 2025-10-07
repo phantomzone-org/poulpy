@@ -66,26 +66,26 @@ where
 {
     let base2k: usize = 12;
     let k_in: usize = 60;
-    let digits: usize = k_in.div_ceil(base2k);
+    let dsize: usize = k_in.div_ceil(base2k);
 
     for rank_in_s0s1 in 1_usize..3 {
         for rank_out_s0s1 in 1_usize..3 {
             for rank_out_s1s2 in 1_usize..3 {
-                for di in 1_usize..digits + 1 {
+                for di in 1_usize..dsize + 1 {
                     let k_ksk: usize = k_in + base2k * di;
                     let k_out: usize = k_ksk; // Better capture noise.
 
                     let n: usize = module.n();
-                    let rows: usize = k_in / base2k;
-                    let rows_apply: usize = k_in.div_ceil(base2k * di);
-                    let digits_in: usize = 1;
+                    let dnum: usize = k_in / base2k;
+                    let dnum_apply: usize = k_in.div_ceil(base2k * di);
+                    let dsize_in: usize = 1;
 
                     let gglwe_s0s1_infos: GGLWESwitchingKeyLayout = GGLWESwitchingKeyLayout {
                         n: n.into(),
                         base2k: base2k.into(),
                         k: k_in.into(),
-                        rows: rows.into(),
-                        digits: digits_in.into(),
+                        dnum: dnum.into(),
+                        dsize: dsize_in.into(),
                         rank_in: rank_in_s0s1.into(),
                         rank_out: rank_out_s0s1.into(),
                     };
@@ -94,8 +94,8 @@ where
                         n: n.into(),
                         base2k: base2k.into(),
                         k: k_ksk.into(),
-                        rows: rows_apply.into(),
-                        digits: di.into(),
+                        dnum: dnum_apply.into(),
+                        dsize: di.into(),
                         rank_in: rank_out_s0s1.into(),
                         rank_out: rank_out_s1s2.into(),
                     };
@@ -104,8 +104,8 @@ where
                         n: n.into(),
                         base2k: base2k.into(),
                         k: k_out.into(),
-                        rows: rows_apply.into(),
-                        digits: digits_in.into(),
+                        dnum: dnum_apply.into(),
+                        dsize: dsize_in.into(),
                         rank_in: rank_in_s0s1.into(),
                         rank_out: rank_out_s1s2.into(),
                     };
@@ -236,22 +236,22 @@ where
 {
     let base2k: usize = 12;
     let k_out: usize = 60;
-    let digits: usize = k_out.div_ceil(base2k);
+    let dsize: usize = k_out.div_ceil(base2k);
     for rank_in in 1_usize..3 {
         for rank_out in 1_usize..3 {
-            for di in 1_usize..digits + 1 {
+            for di in 1_usize..dsize + 1 {
                 let k_ksk: usize = k_out + base2k * di;
 
                 let n: usize = module.n();
-                let rows: usize = k_out.div_ceil(base2k * di);
-                let digits_in: usize = 1;
+                let dnum: usize = k_out.div_ceil(base2k * di);
+                let dsize_in: usize = 1;
 
                 let gglwe_s0s1_infos: GGLWESwitchingKeyLayout = GGLWESwitchingKeyLayout {
                     n: n.into(),
                     base2k: base2k.into(),
                     k: k_out.into(),
-                    rows: rows.into(),
-                    digits: digits_in.into(),
+                    dnum: dnum.into(),
+                    dsize: dsize_in.into(),
                     rank_in: rank_in.into(),
                     rank_out: rank_out.into(),
                 };
@@ -260,8 +260,8 @@ where
                     n: n.into(),
                     base2k: base2k.into(),
                     k: k_ksk.into(),
-                    rows: rows.into(),
-                    digits: di.into(),
+                    dnum: dnum.into(),
+                    dsize: di.into(),
                     rank_in: rank_out.into(),
                     rank_out: rank_out.into(),
                 };

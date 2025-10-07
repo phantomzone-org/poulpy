@@ -5,7 +5,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, BuildError, Degree, Digits, GGSWCiphertext, GGSWInfos, GLWEInfos, LWEInfos, Rank, Rows, TorusPrecision,
+    Base2K, BuildError, Degree, Dsize, GGSWCiphertext, GGSWInfos, GLWEInfos, LWEInfos, Rank, Dnum, TorusPrecision,
     prepared::{Prepare, PrepareAlloc},
 };
 
@@ -14,7 +14,7 @@ pub struct GGSWCiphertextPrepared<D: Data, B: Backend> {
     pub(crate) data: VmpPMat<D, B>,
     pub(crate) k: TorusPrecision,
     pub(crate) base2k: Base2K,
-    pub(crate) digits: Digits,
+    pub(crate) dsize: Dsize,
 }
 
 impl<D: Data, B: Backend> LWEInfos for GGSWCiphertextPrepared<D, B> {
@@ -42,12 +42,12 @@ impl<D: Data, B: Backend> GLWEInfos for GGSWCiphertextPrepared<D, B> {
 }
 
 impl<D: Data, B: Backend> GGSWInfos for GGSWCiphertextPrepared<D, B> {
-    fn digits(&self) -> Digits {
-        self.digits
+    fn dsize(&self) -> Dsize {
+        self.dsize
     }
 
-    fn rows(&self) -> Rows {
-        Rows(self.data.rows() as u32)
+    fn dnum(&self) -> Dnum {
+        Dnum(self.data.rows() as u32)
     }
 }
 
@@ -55,7 +55,7 @@ pub struct GGSWCiphertextPreparedBuilder<D: Data, B: Backend> {
     data: Option<VmpPMat<D, B>>,
     base2k: Option<Base2K>,
     k: Option<TorusPrecision>,
-    digits: Option<Digits>,
+    dsize: Option<Dsize>,
 }
 
 impl<D: Data, B: Backend> GGSWCiphertextPrepared<D, B> {
@@ -65,7 +65,7 @@ impl<D: Data, B: Backend> GGSWCiphertextPrepared<D, B> {
             data: None,
             base2k: None,
             k: None,
-            digits: None,
+            dsize: None,
         }
     }
 }
@@ -78,30 +78,30 @@ impl<B: Backend> GGSWCiphertextPreparedBuilder<Vec<u8>, B> {
         B: VmpPMatAllocBytesImpl<B>,
     {
         debug_assert!(
-            infos.size() as u32 > infos.digits().0,
-            "invalid ggsw: ceil(k/base2k): {} <= digits: {}",
+            infos.size() as u32 > infos.dsize().0,
+            "invalid ggsw: ceil(k/base2k): {} <= dsize: {}",
             infos.size(),
-            infos.digits()
+            infos.dsize()
         );
 
         assert!(
-            infos.rows().0 * infos.digits().0 <= infos.size() as u32,
-            "invalid ggsw: rows: {} * digits:{} > ceil(k/base2k): {}",
-            infos.rows(),
-            infos.digits(),
+            infos.dnum().0 * infos.dsize().0 <= infos.size() as u32,
+            "invalid ggsw: dnum: {} * dsize:{} > ceil(k/base2k): {}",
+            infos.dnum(),
+            infos.dsize(),
             infos.size(),
         );
 
         self.data = Some(VmpPMat::alloc(
             infos.n().into(),
-            infos.rows().into(),
+            infos.dnum().into(),
             (infos.rank() + 1).into(),
             (infos.rank() + 1).into(),
             infos.size(),
         ));
         self.base2k = Some(infos.base2k());
         self.k = Some(infos.k());
-        self.digits = Some(infos.digits());
+        self.dsize = Some(infos.dsize());
         self
     }
 }
@@ -124,8 +124,8 @@ impl<D: Data, B: Backend> GGSWCiphertextPreparedBuilder<D, B> {
     }
 
     #[inline]
-    pub fn digits(mut self, digits: Digits) -> Self {
-        self.digits = Some(digits);
+    pub fn dsize(mut self, dsize: Dsize) -> Self {
+        self.dsize = Some(dsize);
         self
     }
 
@@ -133,13 +133,13 @@ impl<D: Data, B: Backend> GGSWCiphertextPreparedBuilder<D, B> {
         let data: VmpPMat<D, B> = self.data.ok_or(BuildError::MissingData)?;
         let base2k: Base2K = self.base2k.ok_or(BuildError::MissingBase2K)?;
         let k: TorusPrecision = self.k.ok_or(BuildError::MissingK)?;
-        let digits: Digits = self.digits.ok_or(BuildError::MissingDigits)?;
+        let dsize: Dsize = self.dsize.ok_or(BuildError::MissingDigits)?;
 
         if base2k == 0_u32 {
             return Err(BuildError::ZeroBase2K);
         }
 
-        if digits == 0_u32 {
+        if dsize == 0_u32 {
             return Err(BuildError::ZeroBase2K);
         }
 
@@ -163,7 +163,7 @@ impl<D: Data, B: Backend> GGSWCiphertextPreparedBuilder<D, B> {
             data,
             base2k,
             k,
-            digits,
+            dsize,
         })
     }
 }
@@ -178,40 +178,40 @@ impl<B: Backend> GGSWCiphertextPrepared<Vec<u8>, B> {
             module,
             infos.base2k(),
             infos.k(),
-            infos.rows(),
-            infos.digits(),
+            infos.dnum(),
+            infos.dsize(),
             infos.rank(),
         )
     }
 
-    pub fn alloc_with(module: &Module<B>, base2k: Base2K, k: TorusPrecision, rows: Rows, digits: Digits, rank: Rank) -> Self
+    pub fn alloc_with(module: &Module<B>, base2k: Base2K, k: TorusPrecision, dnum: Dnum, dsize: Dsize, rank: Rank) -> Self
     where
         Module<B>: VmpPMatAlloc<B>,
     {
         let size: usize = k.0.div_ceil(base2k.0) as usize;
         debug_assert!(
-            size as u32 > digits.0,
-            "invalid ggsw: ceil(k/base2k): {size} <= digits: {}",
-            digits.0
+            size as u32 > dsize.0,
+            "invalid ggsw: ceil(k/base2k): {size} <= dsize: {}",
+            dsize.0
         );
 
         assert!(
-            rows.0 * digits.0 <= size as u32,
-            "invalid ggsw: rows: {} * digits:{} > ceil(k/base2k): {size}",
-            rows.0,
-            digits.0,
+            dnum.0 * dsize.0 <= size as u32,
+            "invalid ggsw: dnum: {} * dsize:{} > ceil(k/base2k): {size}",
+            dnum.0,
+            dsize.0,
         );
 
         Self {
             data: module.vmp_pmat_alloc(
-                rows.into(),
+                dnum.into(),
                 (rank + 1).into(),
                 (rank + 1).into(),
                 k.0.div_ceil(base2k.0) as usize,
             ),
             k,
             base2k,
-            digits,
+            dsize,
         }
     }
 
@@ -224,8 +224,8 @@ impl<B: Backend> GGSWCiphertextPrepared<Vec<u8>, B> {
             module,
             infos.base2k(),
             infos.k(),
-            infos.rows(),
-            infos.digits(),
+            infos.dnum(),
+            infos.dsize(),
             infos.rank(),
         )
     }
@@ -234,8 +234,8 @@ impl<B: Backend> GGSWCiphertextPrepared<Vec<u8>, B> {
         module: &Module<B>,
         base2k: Base2K,
         k: TorusPrecision,
-        rows: Rows,
-        digits: Digits,
+        dnum: Dnum,
+        dsize: Dsize,
         rank: Rank,
     ) -> usize
     where
@@ -243,19 +243,19 @@ impl<B: Backend> GGSWCiphertextPrepared<Vec<u8>, B> {
     {
         let size: usize = k.0.div_ceil(base2k.0) as usize;
         debug_assert!(
-            size as u32 > digits.0,
-            "invalid ggsw: ceil(k/base2k): {size} <= digits: {}",
-            digits.0
+            size as u32 > dsize.0,
+            "invalid ggsw: ceil(k/base2k): {size} <= dsize: {}",
+            dsize.0
         );
 
         assert!(
-            rows.0 * digits.0 <= size as u32,
-            "invalid ggsw: rows: {} * digits:{} > ceil(k/base2k): {size}",
-            rows.0,
-            digits.0,
+            dnum.0 * dsize.0 <= size as u32,
+            "invalid ggsw: dnum: {} * dsize:{} > ceil(k/base2k): {size}",
+            dnum.0,
+            dsize.0,
         );
 
-        module.vmp_pmat_alloc_bytes(rows.into(), (rank + 1).into(), (rank + 1).into(), size)
+        module.vmp_pmat_alloc_bytes(dnum.into(), (rank + 1).into(), (rank + 1).into(), size)
     }
 }
 
@@ -273,7 +273,7 @@ where
         module.vmp_prepare(&mut self.data, &other.data, scratch);
         self.k = other.k;
         self.base2k = other.base2k;
-        self.digits = other.digits;
+        self.dsize = other.dsize;
     }
 }
 
@@ -296,7 +296,7 @@ impl<D: DataRef, B: Backend> GGSWCiphertextPreparedToRef<B> for GGSWCiphertextPr
     fn to_ref(&self) -> GGSWCiphertextPrepared<&[u8], B> {
         GGSWCiphertextPrepared::builder()
             .base2k(self.base2k())
-            .digits(self.digits())
+            .dsize(self.dsize())
             .k(self.k())
             .data(self.data.to_ref())
             .build()

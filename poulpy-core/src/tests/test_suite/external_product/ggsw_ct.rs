@@ -72,24 +72,24 @@ where
 {
     let base2k: usize = 12;
     let k_in: usize = 60;
-    let digits: usize = k_in.div_ceil(base2k);
+    let dsize: usize = k_in.div_ceil(base2k);
     for rank in 1_usize..3 {
-        for di in 1..digits + 1 {
+        for di in 1..dsize + 1 {
             let k_apply: usize = k_in + base2k * di;
 
             let k_out: usize = k_in; // Better capture noise.
 
             let n: usize = module.n();
-            let rows: usize = k_in.div_ceil(base2k * di);
-            let rows_in: usize = k_in.div_euclid(base2k * di);
-            let digits_in: usize = 1;
+            let dnum: usize = k_in.div_ceil(base2k * di);
+            let dnum_in: usize = k_in.div_euclid(base2k * di);
+            let dsize_in: usize = 1;
 
             let ggsw_in_infos: GGSWCiphertextLayout = GGSWCiphertextLayout {
                 n: n.into(),
                 base2k: base2k.into(),
                 k: k_in.into(),
-                rows: rows_in.into(),
-                digits: digits_in.into(),
+                dnum: dnum_in.into(),
+                dsize: dsize_in.into(),
                 rank: rank.into(),
             };
 
@@ -97,8 +97,8 @@ where
                 n: n.into(),
                 base2k: base2k.into(),
                 k: k_out.into(),
-                rows: rows_in.into(),
-                digits: digits_in.into(),
+                dnum: dnum_in.into(),
+                dsize: dsize_in.into(),
                 rank: rank.into(),
             };
 
@@ -106,8 +106,8 @@ where
                 n: n.into(),
                 base2k: base2k.into(),
                 k: k_apply.into(),
-                rows: rows.into(),
-                digits: di.into(),
+                dnum: dnum.into(),
+                dsize: di.into(),
                 rank: rank.into(),
             };
 
@@ -237,22 +237,22 @@ where
 {
     let base2k: usize = 12;
     let k_out: usize = 60;
-    let digits: usize = k_out.div_ceil(base2k);
+    let dsize: usize = k_out.div_ceil(base2k);
     for rank in 1_usize..3 {
-        for di in 1..digits + 1 {
+        for di in 1..dsize + 1 {
             let k_apply: usize = k_out + base2k * di;
 
             let n: usize = module.n();
-            let rows: usize = k_out.div_ceil(di * base2k);
-            let rows_in: usize = k_out.div_euclid(base2k * di);
-            let digits_in: usize = 1;
+            let dnum: usize = k_out.div_ceil(di * base2k);
+            let dnum_in: usize = k_out.div_euclid(base2k * di);
+            let dsize_in: usize = 1;
 
             let ggsw_out_infos: GGSWCiphertextLayout = GGSWCiphertextLayout {
                 n: n.into(),
                 base2k: base2k.into(),
                 k: k_out.into(),
-                rows: rows_in.into(),
-                digits: digits_in.into(),
+                dnum: dnum_in.into(),
+                dsize: dsize_in.into(),
                 rank: rank.into(),
             };
 
@@ -260,8 +260,8 @@ where
                 n: n.into(),
                 base2k: base2k.into(),
                 k: k_apply.into(),
-                rows: rows.into(),
-                digits: di.into(),
+                dnum: dnum.into(),
+                dsize: di.into(),
                 rank: rank.into(),
             };
 

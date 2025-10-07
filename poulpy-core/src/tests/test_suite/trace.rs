@@ -80,8 +80,8 @@ where
         let n: usize = module.n();
         let k_autokey: usize = k + base2k;
 
-        let digits: usize = 1;
-        let rows: usize = k.div_ceil(base2k * digits);
+        let dsize: usize = 1;
+        let dnum: usize = k.div_ceil(base2k * dsize);
 
         let glwe_out_infos: GLWECiphertextLayout = GLWECiphertextLayout {
             n: n.into(),
@@ -95,8 +95,8 @@ where
             base2k: base2k.into(),
             k: k_autokey.into(),
             rank: rank.into(),
-            digits: digits.into(),
-            rows: rows.into(),
+            dsize: dsize.into(),
+            dnum: dnum.into(),
         };
 
         let mut glwe_out: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&glwe_out_infos);

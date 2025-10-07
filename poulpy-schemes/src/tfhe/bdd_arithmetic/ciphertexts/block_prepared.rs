@@ -1,7 +1,7 @@
 use std::marker::PhantomData;
 
 use poulpy_core::layouts::{
-    Base2K, Digits, GGSWCiphertext, GGSWInfos, GLWEInfos, LWEInfos, Rank, Rows, TorusPrecision, prepared::GGSWCiphertextPrepared,
+    Base2K, Dsize, GGSWCiphertext, GGSWInfos, GLWEInfos, LWEInfos, Rank, Dnum, TorusPrecision, prepared::GGSWCiphertextPrepared,
 };
 #[cfg(test)]
 use poulpy_core::{TakeGGSW, layouts::prepared::GLWESecretPrepared};
@@ -40,8 +40,8 @@ impl<T: UnsignedInteger> FheUintBlocksPrepDebug<Vec<u8>, T> {
             module,
             infos.base2k(),
             infos.k(),
-            infos.rows(),
-            infos.digits(),
+            infos.dnum(),
+            infos.dsize(),
             infos.rank(),
         )
     }
@@ -51,13 +51,13 @@ impl<T: UnsignedInteger> FheUintBlocksPrepDebug<Vec<u8>, T> {
         module: &Module<BE>,
         base2k: Base2K,
         k: TorusPrecision,
-        rows: Rows,
-        digits: Digits,
+        dnum: Dnum,
+        dsize: Dsize,
         rank: Rank,
     ) -> Self {
         Self {
             blocks: (0..T::WORD_SIZE)
-                .map(|_| GGSWCiphertext::alloc_with(module.n().into(), base2k, k, rows, digits, rank))
+                .map(|_| GGSWCiphertext::alloc_with(module.n().into(), base2k, k, rank, dnum, dsize))
                 .collect(),
             _base: 1,
             _phantom: PhantomData,
@@ -85,8 +85,8 @@ where
             module,
             infos.base2k(),
             infos.k(),
-            infos.rows(),
-            infos.digits(),
+            infos.dnum(),
+            infos.dsize(),
             infos.rank(),
         )
     }
@@ -96,8 +96,8 @@ where
         module: &Module<BE>,
         base2k: Base2K,
         k: TorusPrecision,
-        rows: Rows,
-        digits: Digits,
+        dnum: Dnum,
+        dsize: Dsize,
         rank: Rank,
     ) -> Self
     where
@@ -105,7 +105,7 @@ where
     {
         Self {
             blocks: (0..T::WORD_SIZE)
-                .map(|_| GGSWCiphertextPrepared::alloc_with(module, base2k, k, rows, digits, rank))
+                .map(|_| GGSWCiphertextPrepared::alloc_with(module, base2k, k, dnum, dsize, rank))
                 .collect(),
             _base: 1,
             _phantom: PhantomData,
@@ -242,12 +242,12 @@ impl<D: DataRef, T: UnsignedInteger, B: Backend> GLWEInfos for FheUintBlocksPrep
 }
 
 impl<D: DataRef, T: UnsignedInteger, B: Backend> GGSWInfos for FheUintBlocksPrep<D, B, T> {
-    fn digits(&self) -> poulpy_core::layouts::Digits {
-        self.blocks[0].digits()
+    fn dsize(&self) -> poulpy_core::layouts::Dsize {
+        self.blocks[0].dsize()
     }
 
-    fn rows(&self) -> poulpy_core::layouts::Rows {
-        self.blocks[0].rows()
+    fn dnum(&self) -> poulpy_core::layouts::Dnum {
+        self.blocks[0].dnum()
     }
 }
 
@@ -272,11 +272,11 @@ impl<D: DataRef, T: UnsignedInteger> GLWEInfos for FheUintBlocksPrepDebug<D, T> 
 }
 
 impl<D: DataRef, T: UnsignedInteger> GGSWInfos for FheUintBlocksPrepDebug<D, T> {
-    fn digits(&self) -> poulpy_core::layouts::Digits {
-        self.blocks[0].digits()
+    fn dsize(&self) -> poulpy_core::layouts::Dsize {
+        self.blocks[0].dsize()
     }
 
-    fn rows(&self) -> poulpy_core::layouts::Rows {
-        self.blocks[0].rows()
+    fn dnum(&self) -> poulpy_core::layouts::Dnum {
+        self.blocks[0].dnum()
     }
 }

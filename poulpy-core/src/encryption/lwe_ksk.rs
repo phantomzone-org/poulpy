@@ -24,9 +24,9 @@ impl LWESwitchingKey<Vec<u8>> {
         Module<B>: SvpPPolAllocBytes + VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes + VecZnxNormalizeTmpBytes,
     {
         debug_assert_eq!(
-            infos.digits().0,
+            infos.dsize().0,
             1,
-            "digits > 1 is not supported for LWESwitchingKey"
+            "dsize > 1 is not supported for LWESwitchingKey"
         );
         debug_assert_eq!(
             infos.rank_in().0,

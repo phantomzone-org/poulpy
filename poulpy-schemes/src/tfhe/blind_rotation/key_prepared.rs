@@ -8,7 +8,7 @@ use std::marker::PhantomData;
 use poulpy_core::{
     Distribution,
     layouts::{
-        Base2K, Degree, Digits, GGSWInfos, GLWEInfos, LWEInfos, Rank, Rows, TorusPrecision,
+        Base2K, Degree, Dsize, GGSWInfos, GLWEInfos, LWEInfos, Rank, Dnum, TorusPrecision,
         prepared::{GGSWCiphertextPrepared, Prepare, PrepareAlloc},
     },
 };
@@ -63,12 +63,12 @@ impl<D: Data, BRT: BlindRotationAlgo, B: Backend> GLWEInfos for BlindRotationKey
     }
 }
 impl<D: Data, BRT: BlindRotationAlgo, B: Backend> GGSWInfos for BlindRotationKeyPrepared<D, BRT, B> {
-    fn digits(&self) -> poulpy_core::layouts::Digits {
-        Digits(1)
+    fn dsize(&self) -> poulpy_core::layouts::Dsize {
+        Dsize(1)
     }
 
-    fn rows(&self) -> Rows {
-        self.data[0].rows()
+    fn dnum(&self) -> Dnum {
+        self.data[0].dnum()
     }
 }
 

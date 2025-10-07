@@ -83,10 +83,10 @@ where
     let k_ct: usize = 36;
     let pt_k: usize = 18;
     let rank: usize = 3;
-    let digits: usize = 1;
-    let k_ksk: usize = k_ct + base2k * digits;
+    let dsize: usize = 1;
+    let k_ksk: usize = k_ct + base2k * dsize;
 
-    let rows: usize = k_ct.div_ceil(base2k * digits);
+    let dnum: usize = k_ct.div_ceil(base2k * dsize);
 
     let glwe_out_infos: GLWECiphertextLayout = GLWECiphertextLayout {
         n: n.into(),
@@ -100,8 +100,8 @@ where
         base2k: base2k.into(),
         k: k_ksk.into(),
         rank: rank.into(),
-        digits: digits.into(),
-        rows: rows.into(),
+        dsize: dsize.into(),
+        dnum: dnum.into(),
     };
 
     let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(

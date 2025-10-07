@@ -209,9 +209,9 @@ macro_rules! newtype_u32 {
 newtype_u32!(Degree);
 newtype_u32!(TorusPrecision);
 newtype_u32!(Base2K);
-newtype_u32!(Rows);
+newtype_u32!(Dnum);
 newtype_u32!(Rank);
-newtype_u32!(Digits);
+newtype_u32!(Dsize);
 
 impl Degree {
     pub fn log2(&self) -> usize {

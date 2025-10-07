@@ -156,28 +156,28 @@ impl<DataSelf: DataMut> GGLWESwitchingKey<DataSelf> {
                 rhs.rank_out()
             );
             assert!(
-                self.rows() <= lhs.rows(),
-                "self.rows()={} > lhs.rows()={}",
-                self.rows(),
-                lhs.rows()
+                self.dnum() <= lhs.dnum(),
+                "self.dnum()={} > lhs.dnum()={}",
+                self.dnum(),
+                lhs.dnum()
             );
             assert_eq!(
-                self.digits(),
-                lhs.digits(),
-                "ksk_out digits: {} != ksk_in digits: {}",
-                self.digits(),
-                lhs.digits()
+                self.dsize(),
+                lhs.dsize(),
+                "ksk_out dsize: {} != ksk_in dsize: {}",
+                self.dsize(),
+                lhs.dsize()
             )
         }
 
         (0..self.rank_in().into()).for_each(|col_i| {
-            (0..self.rows().into()).for_each(|row_j| {
+            (0..self.dnum().into()).for_each(|row_j| {
                 self.at_mut(row_j, col_i)
                     .keyswitch(module, &lhs.at(row_j, col_i), rhs, scratch);
             });
         });
 
-        (self.rows().min(lhs.rows()).into()..self.rows().into()).for_each(|row_i| {
+        (self.dnum().min(lhs.dnum()).into()..self.dnum().into()).for_each(|row_i| {
             (0..self.rank_in().into()).for_each(|col_j| {
                 self.at_mut(row_i, col_j).data.zero();
             });
@@ -215,7 +215,7 @@ impl<DataSelf: DataMut> GGLWESwitchingKey<DataSelf> {
         }
 
         (0..self.rank_in().into()).for_each(|col_i| {
-            (0..self.rows().into()).for_each(|row_j| {
+            (0..self.dnum().into()).for_each(|row_j| {
                 self.at_mut(row_j, col_i)
                     .keyswitch_inplace(module, rhs, scratch)
             });

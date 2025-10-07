@@ -56,25 +56,25 @@ fn main() {
     // LWE block binary key block size
     let block_size: usize = 7;
 
-    // GGSW output number of rows
+    // GGSW output number of dnum
     let rows_ggsw_res: usize = 2;
 
     // GGSW output modulus
     let k_ggsw_res: usize = (rows_ggsw_res + 1) * base2k;
 
-    // Blind rotation key GGSW number of rows
+    // Blind rotation key GGSW number of dnum
     let rows_brk: usize = rows_ggsw_res + 1;
 
     // Blind rotation key GGSW modulus
     let k_brk: usize = (rows_brk + 1) * base2k;
 
-    // GGLWE automorphism keys number of rows
+    // GGLWE automorphism keys number of dnum
     let rows_trace: usize = rows_ggsw_res + 1;
 
     // GGLWE automorphism keys modulus
     let k_trace: usize = (rows_trace + 1) * base2k;
 
-    // GGLWE tensor key number of rows
+    // GGLWE tensor key number of dnum
     let rows_tsk: usize = rows_ggsw_res + 1;
 
     // GGLWE tensor key modulus
@@ -86,23 +86,23 @@ fn main() {
             n_lwe: n_lwe.into(),
             base2k: base2k.into(),
             k: k_brk.into(),
-            rows: rows_brk.into(),
+            dnum: rows_brk.into(),
             rank: rank.into(),
         },
         layout_atk: GGLWEAutomorphismKeyLayout {
             n: n_glwe.into(),
             base2k: base2k.into(),
             k: k_trace.into(),
-            rows: rows_trace.into(),
-            digits: 1_u32.into(),
+            dnum: rows_trace.into(),
+            dsize: 1_u32.into(),
             rank: rank.into(),
         },
         layout_tsk: GGLWETensorKeyLayout {
             n: n_glwe.into(),
             base2k: base2k.into(),
             k: k_tsk.into(),
-            rows: rows_tsk.into(),
-            digits: 1_u32.into(),
+            dnum: rows_tsk.into(),
+            dsize: 1_u32.into(),
             rank: rank.into(),
         },
     };
@@ -111,8 +111,8 @@ fn main() {
         n: n_glwe.into(),
         base2k: base2k.into(),
         k: k_ggsw_res.into(),
-        rows: rows_ggsw_res.into(),
-        digits: 1_u32.into(),
+        dnum: rows_ggsw_res.into(),
+        dsize: 1_u32.into(),
         rank: rank.into(),
     };
 

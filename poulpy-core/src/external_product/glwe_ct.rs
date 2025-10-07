@@ -32,7 +32,7 @@ impl GLWECiphertext<Vec<u8>> {
         let in_size: usize = in_infos
             .k()
             .div_ceil(apply_infos.base2k())
-            .div_ceil(apply_infos.digits().into()) as usize;
+            .div_ceil(apply_infos.dsize().into()) as usize;
         let out_size: usize = out_infos.size();
         let ggsw_size: usize = apply_infos.size();
         let res_dft: usize = module.vec_znx_dft_alloc_bytes((apply_infos.rank() + 1).into(), ggsw_size);
@@ -112,29 +112,29 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         }
 
         let cols: usize = (rhs.rank() + 1).into();
-        let digits: usize = rhs.digits().into();
+        let dsize: usize = rhs.dsize().into();
         let a_size: usize = (self.size() * basek_in).div_ceil(basek_ggsw);
 
         let (mut res_dft, scratch_1) = scratch.take_vec_znx_dft(self.n().into(), cols, rhs.size()); // Todo optimise
-        let (mut a_dft, scratch_2) = scratch_1.take_vec_znx_dft(self.n().into(), cols, a_size.div_ceil(digits));
+        let (mut a_dft, scratch_2) = scratch_1.take_vec_znx_dft(self.n().into(), cols, a_size.div_ceil(dsize));
         a_dft.data_mut().fill(0);
 
         if basek_in == basek_ggsw {
-            for di in 0..digits {
-                // (lhs.size() + di) / digits = (a - (digit - di - 1)).div_ceil(digits)
-                a_dft.set_size((self.size() + di) / digits);
+            for di in 0..dsize {
+                // (lhs.size() + di) / dsize = (a - (digit - di - 1)).div_ceil(dsize)
+                a_dft.set_size((self.size() + di) / dsize);
 
-                // Small optimization for digits > 2
+                // Small optimization for dsize > 2
                 // VMP produce some error e, and since we aggregate vmp * 2^{di * B}, then
-                // we also aggregate ei * 2^{di * B}, with the largest error being ei * 2^{(digits-1) * B}.
-                // As such we can ignore the last digits-2 limbs safely of the sum of vmp products.
-                // It is possible to further ignore the last digits-1 limbs, but this introduce
+                // we also aggregate ei * 2^{di * B}, with the largest error being ei * 2^{(dsize-1) * B}.
+                // As such we can ignore the last dsize-2 limbs safely of the sum of vmp products.
+                // It is possible to further ignore the last dsize-1 limbs, but this introduce
                 // ~0.5 to 1 bit of additional noise, and thus not chosen here to ensure that the same
                 // noise is kept with respect to the ideal functionality.
-                res_dft.set_size(rhs.size() - ((digits - di) as isize - 2).max(0) as usize);
+                res_dft.set_size(rhs.size() - ((dsize - di) as isize - 2).max(0) as usize);
 
                 for j in 0..cols {
-                    module.vec_znx_dft_apply(digits, digits - 1 - di, &mut a_dft, j, &self.data, j);
+                    module.vec_znx_dft_apply(dsize, dsize - 1 - di, &mut a_dft, j, &self.data, j);
                 }
 
                 if di == 0 {
@@ -158,21 +158,21 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
                 );
             }
 
-            for di in 0..digits {
-                // (lhs.size() + di) / digits = (a - (digit - di - 1)).div_ceil(digits)
-                a_dft.set_size((self.size() + di) / digits);
+            for di in 0..dsize {
+                // (lhs.size() + di) / dsize = (a - (digit - di - 1)).div_ceil(dsize)
+                a_dft.set_size((self.size() + di) / dsize);
 
-                // Small optimization for digits > 2
+                // Small optimization for dsize > 2
                 // VMP produce some error e, and since we aggregate vmp * 2^{di * B}, then
-                // we also aggregate ei * 2^{di * B}, with the largest error being ei * 2^{(digits-1) * B}.
-                // As such we can ignore the last digits-2 limbs safely of the sum of vmp products.
-                // It is possible to further ignore the last digits-1 limbs, but this introduce
+                // we also aggregate ei * 2^{di * B}, with the largest error being ei * 2^{(dsize-1) * B}.
+                // As such we can ignore the last dsize-2 limbs safely of the sum of vmp products.
+                // It is possible to further ignore the last dsize-1 limbs, but this introduce
                 // ~0.5 to 1 bit of additional noise, and thus not chosen here to ensure that the same
                 // noise is kept with respect to the ideal functionality.
-                res_dft.set_size(rhs.size() - ((digits - di) as isize - 2).max(0) as usize);
+                res_dft.set_size(rhs.size() - ((dsize - di) as isize - 2).max(0) as usize);
 
                 for j in 0..cols {
-                    module.vec_znx_dft_apply(digits, digits - 1 - di, &mut a_dft, j, &self.data, j);
+                    module.vec_znx_dft_apply(dsize, dsize - 1 - di, &mut a_dft, j, &self.data, j);
                 }
 
                 if di == 0 {
@@ -234,30 +234,30 @@ where
         }
 
         let cols: usize = (rhs.rank() + 1).into();
-        let digits: usize = rhs.digits().into();
+        let dsize: usize = rhs.dsize().into();
 
         let a_size: usize = (lhs.size() * basek_in).div_ceil(basek_ggsw);
 
         let (mut res_dft, scratch_1) = scratch.take_vec_znx_dft(self.n().into(), cols, rhs.size()); // Todo optimise
-        let (mut a_dft, scratch_2) = scratch_1.take_vec_znx_dft(self.n().into(), cols, a_size.div_ceil(digits));
+        let (mut a_dft, scratch_2) = scratch_1.take_vec_znx_dft(self.n().into(), cols, a_size.div_ceil(dsize));
         a_dft.data_mut().fill(0);
 
         if basek_in == basek_ggsw {
-            for di in 0..digits {
-                // (lhs.size() + di) / digits = (a - (digit - di - 1)).div_ceil(digits)
-                a_dft.set_size((lhs.size() + di) / digits);
+            for di in 0..dsize {
+                // (lhs.size() + di) / dsize = (a - (digit - di - 1)).div_ceil(dsize)
+                a_dft.set_size((lhs.size() + di) / dsize);
 
-                // Small optimization for digits > 2
+                // Small optimization for dsize > 2
                 // VMP produce some error e, and since we aggregate vmp * 2^{di * B}, then
-                // we also aggregate ei * 2^{di * B}, with the largest error being ei * 2^{(digits-1) * B}.
-                // As such we can ignore the last digits-2 limbs safely of the sum of vmp products.
-                // It is possible to further ignore the last digits-1 limbs, but this introduce
+                // we also aggregate ei * 2^{di * B}, with the largest error being ei * 2^{(dsize-1) * B}.
+                // As such we can ignore the last dsize-2 limbs safely of the sum of vmp products.
+                // It is possible to further ignore the last dsize-1 limbs, but this introduce
                 // ~0.5 to 1 bit of additional noise, and thus not chosen here to ensure that the same
                 // noise is kept with respect to the ideal functionality.
-                res_dft.set_size(rhs.size() - ((digits - di) as isize - 2).max(0) as usize);
+                res_dft.set_size(rhs.size() - ((dsize - di) as isize - 2).max(0) as usize);
 
                 for j in 0..cols {
-                    self.vec_znx_dft_apply(digits, digits - 1 - di, &mut a_dft, j, &lhs.data, j);
+                    self.vec_znx_dft_apply(dsize, dsize - 1 - di, &mut a_dft, j, &lhs.data, j);
                 }
 
                 if di == 0 {
@@ -281,21 +281,21 @@ where
                 );
             }
 
-            for di in 0..digits {
-                // (lhs.size() + di) / digits = (a - (digit - di - 1)).div_ceil(digits)
-                a_dft.set_size((a_size + di) / digits);
+            for di in 0..dsize {
+                // (lhs.size() + di) / dsize = (a - (digit - di - 1)).div_ceil(dsize)
+                a_dft.set_size((a_size + di) / dsize);
 
-                // Small optimization for digits > 2
+                // Small optimization for dsize > 2
                 // VMP produce some error e, and since we aggregate vmp * 2^{di * B}, then
-                // we also aggregate ei * 2^{di * B}, with the largest error being ei * 2^{(digits-1) * B}.
-                // As such we can ignore the last digits-2 limbs safely of the sum of vmp products.
-                // It is possible to further ignore the last digits-1 limbs, but this introduce
+                // we also aggregate ei * 2^{di * B}, with the largest error being ei * 2^{(dsize-1) * B}.
+                // As such we can ignore the last dsize-2 limbs safely of the sum of vmp products.
+                // It is possible to further ignore the last dsize-1 limbs, but this introduce
                 // ~0.5 to 1 bit of additional noise, and thus not chosen here to ensure that the same
                 // noise is kept with respect to the ideal functionality.
-                res_dft.set_size(rhs.size() - ((digits - di) as isize - 2).max(0) as usize);
+                res_dft.set_size(rhs.size() - ((dsize - di) as isize - 2).max(0) as usize);
 
                 for j in 0..cols {
-                    self.vec_znx_dft_apply(digits, digits - 1 - di, &mut a_dft, j, &a_conv, j);
+                    self.vec_znx_dft_apply(dsize, dsize - 1 - di, &mut a_dft, j, &a_conv, j);
                 }
 
                 if di == 0 {

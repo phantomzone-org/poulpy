@@ -5,14 +5,14 @@ use poulpy_hal::{
     source::Source,
 };
 
-use crate::layouts::{Base2K, Degree, Digits, GGLWEInfos, GGLWESwitchingKey, GLWEInfos, LWEInfos, Rank, Rows, TorusPrecision};
+use crate::layouts::{Base2K, Degree, Dsize, GGLWEInfos, GGLWESwitchingKey, GLWEInfos, LWEInfos, Rank, Dnum, TorusPrecision};
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub struct LWESwitchingKeyLayout {
     pub n: Degree,
     pub base2k: Base2K,
     pub k: TorusPrecision,
-    pub rows: Rows,
+    pub dnum: Dnum,
 }
 
 impl LWEInfos for LWESwitchingKeyLayout {
@@ -40,16 +40,16 @@ impl GGLWEInfos for LWESwitchingKeyLayout {
         Rank(1)
     }
 
-    fn digits(&self) -> Digits {
-        Digits(1)
+    fn dsize(&self) -> Dsize {
+        Dsize(1)
     }
 
     fn rank_out(&self) -> Rank {
         Rank(1)
     }
 
-    fn rows(&self) -> Rows {
-        self.rows
+    fn dnum(&self) -> Dnum {
+        self.dnum
     }
 }
 
@@ -81,8 +81,8 @@ impl<D: Data> GLWEInfos for LWESwitchingKey<D> {
 }
 
 impl<D: Data> GGLWEInfos for LWESwitchingKey<D> {
-    fn digits(&self) -> Digits {
-        self.0.digits()
+    fn dsize(&self) -> Dsize {
+        self.0.dsize()
     }
 
     fn rank_in(&self) -> Rank {
@@ -93,8 +93,8 @@ impl<D: Data> GGLWEInfos for LWESwitchingKey<D> {
         self.0.rank_out()
     }
 
-    fn rows(&self) -> Rows {
-        self.0.rows()
+    fn dnum(&self) -> Dnum {
+        self.0.dnum()
     }
 }
 
@@ -104,9 +104,9 @@ impl LWESwitchingKey<Vec<u8>> {
         A: GGLWEInfos,
     {
         debug_assert_eq!(
-            infos.digits().0,
+            infos.dsize().0,
             1,
-            "digits > 1 is not supported for LWESwitchingKey"
+            "dsize > 1 is not supported for LWESwitchingKey"
         );
         debug_assert_eq!(
             infos.rank_in().0,
@@ -121,15 +121,15 @@ impl LWESwitchingKey<Vec<u8>> {
         Self(GGLWESwitchingKey::alloc(infos))
     }
 
-    pub fn alloc_with(n: Degree, base2k: Base2K, k: TorusPrecision, rows: Rows) -> Self {
+    pub fn alloc_with(n: Degree, base2k: Base2K, k: TorusPrecision, dnum: Dnum) -> Self {
         Self(GGLWESwitchingKey::alloc_with(
             n,
             base2k,
             k,
-            rows,
-            Digits(1),
             Rank(1),
             Rank(1),
+            dnum,
+            Dsize(1),
         ))
     }
 
@@ -138,9 +138,9 @@ impl LWESwitchingKey<Vec<u8>> {
         A: GGLWEInfos,
     {
         debug_assert_eq!(
-            infos.digits().0,
+            infos.dsize().0,
             1,
-            "digits > 1 is not supported for LWESwitchingKey"
+            "dsize > 1 is not supported for LWESwitchingKey"
         );
         debug_assert_eq!(
             infos.rank_in().0,
@@ -155,8 +155,8 @@ impl LWESwitchingKey<Vec<u8>> {
         GGLWESwitchingKey::alloc_bytes(infos)
     }
 
-    pub fn alloc_bytes_with(n: Degree, base2k: Base2K, k: TorusPrecision, rows: Rows) -> usize {
-        GGLWESwitchingKey::alloc_bytes_with(n, base2k, k, rows, Digits(1), Rank(1), Rank(1))
+    pub fn alloc_bytes_with(n: Degree, base2k: Base2K, k: TorusPrecision, dnum: Dnum) -> usize {
+        GGLWESwitchingKey::alloc_bytes_with(n, base2k, k, Rank(1), Rank(1), dnum, Dsize(1))
     }
 }
 

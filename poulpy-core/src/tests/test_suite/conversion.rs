@@ -17,7 +17,7 @@ use poulpy_hal::{
 
 use crate::layouts::{
     Base2K, Degree, GLWECiphertext, GLWECiphertextLayout, GLWEPlaintext, GLWESecret, GLWEToLWEKey, GLWEToLWEKeyLayout,
-    LWECiphertext, LWECiphertextLayout, LWEPlaintext, LWESecret, LWEToGLWESwitchingKey, LWEToGLWESwitchingKeyLayout, Rank, Rows,
+    LWECiphertext, LWECiphertextLayout, LWEPlaintext, LWESecret, LWEToGLWESwitchingKey, LWEToGLWESwitchingKeyLayout, Rank, Dnum,
     TorusPrecision,
     prepared::{GLWESecretPrepared, GLWEToLWESwitchingKeyPrepared, LWEToGLWESwitchingKeyPrepared, PrepareAlloc},
 };
@@ -79,7 +79,7 @@ where
         n: n_glwe,
         base2k: Base2K(17),
         k: TorusPrecision(51),
-        rows: Rows(2),
+        dnum: Dnum(2),
         rank_out: rank,
     };
 
@@ -192,7 +192,7 @@ where
         n: n_glwe,
         base2k: Base2K(17),
         k: TorusPrecision(51),
-        rows: Rows(2),
+        dnum: Dnum(2),
         rank_in: rank,
     };
 

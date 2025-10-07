@@ -4,7 +4,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Digits, GGLWEAutomorphismKey, GGLWEInfos, GLWEInfos, LWEInfos, Rank, Rows, TorusPrecision,
+    Base2K, Degree, Dsize, GGLWEAutomorphismKey, GGLWEInfos, GLWEInfos, LWEInfos, Rank, Dnum, TorusPrecision,
     prepared::{GGLWESwitchingKeyPrepared, Prepare, PrepareAlloc},
 };
 
@@ -53,12 +53,12 @@ impl<D: Data, B: Backend> GGLWEInfos for GGLWEAutomorphismKeyPrepared<D, B> {
         self.key.rank_out()
     }
 
-    fn digits(&self) -> Digits {
-        self.key.digits()
+    fn dsize(&self) -> Dsize {
+        self.key.dsize()
     }
 
-    fn rows(&self) -> Rows {
-        self.key.rows()
+    fn dnum(&self) -> Dnum {
+        self.key.dnum()
     }
 }
 
@@ -79,12 +79,12 @@ impl<B: Backend> GGLWEAutomorphismKeyPrepared<Vec<u8>, B> {
         }
     }
 
-    pub fn alloc_with(module: &Module<B>, base2k: Base2K, k: TorusPrecision, rows: Rows, digits: Digits, rank: Rank) -> Self
+    pub fn alloc_with(module: &Module<B>, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> Self
     where
         Module<B>: VmpPMatAlloc<B>,
     {
         GGLWEAutomorphismKeyPrepared {
-            key: GGLWESwitchingKeyPrepared::alloc_with(module, base2k, k, rows, digits, rank, rank),
+            key: GGLWESwitchingKeyPrepared::alloc_with(module, base2k, k, rank, rank, dnum, dsize),
             p: 0,
         }
     }
@@ -106,14 +106,14 @@ impl<B: Backend> GGLWEAutomorphismKeyPrepared<Vec<u8>, B> {
         module: &Module<B>,
         base2k: Base2K,
         k: TorusPrecision,
-        rows: Rows,
-        digits: Digits,
         rank: Rank,
+        dnum: Dnum,
+        dsize: Dsize,
     ) -> usize
     where
         Module<B>: VmpPMatAllocBytes,
     {
-        GGLWESwitchingKeyPrepared::alloc_bytes_with(module, base2k, k, rows, digits, rank, rank)
+        GGLWESwitchingKeyPrepared::alloc_bytes_with(module, base2k, k, rank, rank, dnum, dsize)
     }
 }
 

@@ -8,7 +8,7 @@ use std::{fmt, marker::PhantomData};
 use poulpy_core::{
     Distribution,
     layouts::{
-        Base2K, Degree, Digits, GGSWCiphertext, GGSWInfos, GLWEInfos, LWEInfos, LWESecret, Rank, Rows, TorusPrecision,
+        Base2K, Degree, Dsize, GGSWCiphertext, GGSWInfos, GLWEInfos, LWEInfos, LWESecret, Rank, Dnum, TorusPrecision,
         prepared::GLWESecretPrepared,
     },
 };
@@ -23,7 +23,7 @@ pub struct BlindRotationKeyLayout {
     pub n_lwe: Degree,
     pub base2k: Base2K,
     pub k: TorusPrecision,
-    pub rows: Rows,
+    pub dnum: Dnum,
     pub rank: Rank,
 }
 
@@ -38,12 +38,12 @@ impl BlindRotationKeyInfos for BlindRotationKeyLayout {
 }
 
 impl GGSWInfos for BlindRotationKeyLayout {
-    fn digits(&self) -> Digits {
-        Digits(1)
+    fn dsize(&self) -> Dsize {
+        Dsize(1)
     }
 
-    fn rows(&self) -> Rows {
-        self.rows
+    fn dnum(&self) -> Dnum {
+        self.dnum
     }
 }
 
@@ -221,11 +221,11 @@ impl<D: DataRef, BRT: BlindRotationAlgo> GLWEInfos for BlindRotationKey<D, BRT> 
     }
 }
 impl<D: DataRef, BRT: BlindRotationAlgo> GGSWInfos for BlindRotationKey<D, BRT> {
-    fn digits(&self) -> poulpy_core::layouts::Digits {
-        Digits(1)
+    fn dsize(&self) -> poulpy_core::layouts::Dsize {
+        Dsize(1)
     }
 
-    fn rows(&self) -> Rows {
-        self.keys[0].rows()
+    fn dnum(&self) -> Dnum {
+        self.keys[0].dnum()
     }
 }

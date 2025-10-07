@@ -4,7 +4,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Digits, GGLWEInfos, GGLWETensorKey, GLWEInfos, LWEInfos, Rank, Rows, TorusPrecision,
+    Base2K, Degree, Dsize, GGLWEInfos, GGLWETensorKey, GLWEInfos, LWEInfos, Rank, Dnum, TorusPrecision,
     prepared::{GGLWESwitchingKeyPrepared, Prepare, PrepareAlloc},
 };
 
@@ -46,12 +46,12 @@ impl<D: Data, B: Backend> GGLWEInfos for GGLWETensorKeyPrepared<D, B> {
         self.keys[0].rank_out()
     }
 
-    fn digits(&self) -> Digits {
-        self.keys[0].digits()
+    fn dsize(&self) -> Dsize {
+        self.keys[0].dsize()
     }
 
-    fn rows(&self) -> Rows {
-        self.keys[0].rows()
+    fn dnum(&self) -> Dnum {
+        self.keys[0].dnum()
     }
 }
 
@@ -70,13 +70,13 @@ impl<B: Backend> GGLWETensorKeyPrepared<Vec<u8>, B> {
             module,
             infos.base2k(),
             infos.k(),
-            infos.rows(),
-            infos.digits(),
+            infos.dnum(),
+            infos.dsize(),
             infos.rank_out(),
         )
     }
 
-    pub fn alloc_with(module: &Module<B>, base2k: Base2K, k: TorusPrecision, rows: Rows, digits: Digits, rank: Rank) -> Self
+    pub fn alloc_with(module: &Module<B>, base2k: Base2K, k: TorusPrecision, dnum: Dnum, dsize: Dsize, rank: Rank) -> Self
     where
         Module<B>: VmpPMatAlloc<B>,
     {
@@ -87,10 +87,10 @@ impl<B: Backend> GGLWETensorKeyPrepared<Vec<u8>, B> {
                 module,
                 base2k,
                 k,
-                rows,
-                digits,
                 Rank(1),
                 rank,
+                dnum,
+                dsize,
             ));
         });
         Self { keys }
@@ -113,10 +113,10 @@ impl<B: Backend> GGLWETensorKeyPrepared<Vec<u8>, B> {
                 module,
                 infos.base2k(),
                 infos.k(),
-                infos.rows(),
-                infos.digits(),
                 Rank(1),
                 infos.rank_out(),
+                infos.dnum(),
+                infos.dsize(),
             )
     }
 
@@ -124,15 +124,15 @@ impl<B: Backend> GGLWETensorKeyPrepared<Vec<u8>, B> {
         module: &Module<B>,
         base2k: Base2K,
         k: TorusPrecision,
-        rows: Rows,
-        digits: Digits,
         rank: Rank,
+        dnum: Dnum,
+        dsize: Dsize,
     ) -> usize
     where
         Module<B>: VmpPMatAllocBytes,
     {
         let pairs: usize = (((rank.0 + 1) * rank.0) >> 1).max(1) as usize;
-        pairs * GGLWESwitchingKeyPrepared::alloc_bytes_with(module, base2k, k, rows, digits, Rank(1), rank)
+        pairs * GGLWESwitchingKeyPrepared::alloc_bytes_with(module, base2k, k, Rank(1), rank, dnum, dsize)
     }
 }
 

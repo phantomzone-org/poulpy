@@ -16,7 +16,7 @@ use poulpy_hal::{
 
 use poulpy_core::{
     GLWEOperations, TakeGGLWE, TakeGLWECt,
-    layouts::{Digits, GGLWECiphertextLayout, GGSWInfos, GLWEInfos, LWEInfos},
+    layouts::{Dsize, GGLWECiphertextLayout, GGSWInfos, GLWEInfos, LWEInfos},
 };
 
 use poulpy_core::glwe_packing;
@@ -181,29 +181,29 @@ pub fn circuit_bootstrap_core<DRes, DLwe, DBrk, BRA: BlindRotationAlgo, B>(
 
     let n: usize = res.n().into();
     let base2k: usize = res.base2k().into();
-    let rows: usize = res.rows().into();
+    let dnum: usize = res.dnum().into();
     let rank: usize = res.rank().into();
     let k: usize = res.k().into();
 
-    let alpha: usize = rows.next_power_of_two();
+    let alpha: usize = dnum.next_power_of_two();
 
     let mut f: Vec<i64> = vec![0i64; (1 << log_domain) * alpha];
 
     if to_exponent {
-        (0..rows).for_each(|i| {
-            f[i] = 1 << (base2k * (rows - 1 - i));
+        (0..dnum).for_each(|i| {
+            f[i] = 1 << (base2k * (dnum - 1 - i));
         });
     } else {
         (0..1 << log_domain).for_each(|j| {
-            (0..rows).for_each(|i| {
-                f[j * alpha + i] = j as i64 * (1 << (base2k * (rows - 1 - i)));
+            (0..dnum).for_each(|i| {
+                f[j * alpha + i] = j as i64 * (1 << (base2k * (dnum - 1 - i)));
             });
         });
     }
 
     // Lut precision, basically must be able to hold the decomposition power basis of the GGSW
-    let mut lut: LookUpTable = LookUpTable::alloc(module, base2k, base2k * rows, extension_factor);
-    lut.set(module, &f, base2k * rows);
+    let mut lut: LookUpTable = LookUpTable::alloc(module, base2k, base2k * dnum, extension_factor);
+    lut.set(module, &f, base2k * dnum);
 
     if to_exponent {
         lut.set_rotation_direction(LookUpTableRotationDirection::Right);
@@ -216,8 +216,8 @@ pub fn circuit_bootstrap_core<DRes, DLwe, DBrk, BRA: BlindRotationAlgo, B>(
         n: n.into(),
         base2k: base2k.into(),
         k: k.into(),
-        rows: rows.into(),
-        digits: Digits(1),
+        dnum: dnum.into(),
+        dsize: Dsize(1),
         rank_in: rank.max(1).into(),
         rank_out: rank.into(),
     };
@@ -230,7 +230,7 @@ pub fn circuit_bootstrap_core<DRes, DLwe, DBrk, BRA: BlindRotationAlgo, B>(
 
     let log_gap_in: usize = (usize::BITS - (gap * alpha - 1).leading_zeros()) as _;
 
-    (0..rows).for_each(|i| {
+    (0..dnum).for_each(|i| {
         let mut tmp_glwe: GLWECiphertext<&mut [u8]> = tmp_gglwe.at_mut(i, 0);
 
         if to_exponent {
@@ -249,7 +249,7 @@ pub fn circuit_bootstrap_core<DRes, DLwe, DBrk, BRA: BlindRotationAlgo, B>(
             tmp_glwe.trace(module, 0, module.log_n(), &res_glwe, &key.atk, scratch_2);
         }
 
-        if i < rows {
+        if i < dnum {
             res_glwe.rotate_inplace(module, -(gap as i64), scratch_2);
         }
     });

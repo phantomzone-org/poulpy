@@ -73,7 +73,7 @@ where
     let k_lwe_pt: usize = 8;
 
     let k_ksk: usize = k_lwe_ct + base2k;
-    let rows: usize = k_lwe_ct.div_ceil(base2k);
+    let dnum: usize = k_lwe_ct.div_ceil(base2k);
 
     let mut source_xs: Source = Source::new([0u8; 32]);
     let mut source_xa: Source = Source::new([0u8; 32]);
@@ -83,7 +83,7 @@ where
         n: n.into(),
         base2k: base2k.into(),
         k: k_ksk.into(),
-        rows: rows.into(),
+        dnum: dnum.into(),
     };
 
     let lwe_in_infos: LWECiphertextLayout = LWECiphertextLayout {

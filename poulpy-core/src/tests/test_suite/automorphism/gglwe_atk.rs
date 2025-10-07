@@ -70,26 +70,26 @@ where
     let base2k: usize = 12;
     let k_in: usize = 60;
     let k_out: usize = 40;
-    let digits: usize = k_in.div_ceil(base2k);
+    let dsize: usize = k_in.div_ceil(base2k);
     let p0: i64 = -1;
     let p1: i64 = -5;
     for rank in 1_usize..3 {
-        for di in 1..digits + 1 {
-            let k_apply: usize = (digits + di) * base2k;
+        for di in 1..dsize + 1 {
+            let k_apply: usize = (dsize + di) * base2k;
 
             let n: usize = module.n();
-            let digits_in: usize = 1;
+            let dsize_in: usize = 1;
 
-            let rows_in: usize = k_in / (base2k * di);
-            let rows_out: usize = k_out / (base2k * di);
-            let rows_apply: usize = k_in.div_ceil(base2k * di);
+            let dnum_in: usize = k_in / (base2k * di);
+            let dnum_out: usize = k_out / (base2k * di);
+            let dnum_apply: usize = k_in.div_ceil(base2k * di);
 
             let auto_key_in_infos: GGLWEAutomorphismKeyLayout = GGLWEAutomorphismKeyLayout {
                 n: n.into(),
                 base2k: base2k.into(),
                 k: k_in.into(),
-                rows: rows_in.into(),
-                digits: digits_in.into(),
+                dnum: dnum_in.into(),
+                dsize: dsize_in.into(),
                 rank: rank.into(),
             };
 
@@ -97,8 +97,8 @@ where
                 n: n.into(),
                 base2k: base2k.into(),
                 k: k_out.into(),
-                rows: rows_out.into(),
-                digits: digits_in.into(),
+                dnum: dnum_out.into(),
+                dsize: dsize_in.into(),
                 rank: rank.into(),
             };
 
@@ -106,8 +106,8 @@ where
                 n: n.into(),
                 base2k: base2k.into(),
                 k: k_apply.into(),
-                rows: rows_apply.into(),
-                digits: di.into(),
+                dnum: dnum_apply.into(),
+                dsize: di.into(),
                 rank: rank.into(),
             };
 
@@ -183,7 +183,7 @@ where
             let sk_auto_dft: GLWESecretPrepared<Vec<u8>, B> = sk_auto.prepare_alloc(module, scratch.borrow());
 
             (0..auto_key_out.rank_in().into()).for_each(|col_i| {
-                (0..auto_key_out.rows().into()).for_each(|row_i| {
+                (0..auto_key_out.dnum().into()).for_each(|row_i| {
                     auto_key_out
                         .at(row_i, col_i)
                         .decrypt(module, &mut pt, &sk_auto_dft, scratch.borrow());
@@ -191,7 +191,7 @@ where
                     module.vec_znx_sub_scalar_inplace(
                         &mut pt.data,
                         0,
-                        (digits_in - 1) + row_i * digits_in,
+                        (dsize_in - 1) + row_i * dsize_in,
                         &sk.data,
                         col_i,
                     );
@@ -280,25 +280,25 @@ where
 {
     let base2k: usize = 12;
     let k_in: usize = 60;
-    let digits: usize = k_in.div_ceil(base2k);
+    let dsize: usize = k_in.div_ceil(base2k);
     let p0: i64 = -1;
     let p1: i64 = -5;
     for rank in 1_usize..3 {
-        for di in 1..digits + 1 {
-            let k_apply: usize = (digits + di) * base2k;
+        for di in 1..dsize + 1 {
+            let k_apply: usize = (dsize + di) * base2k;
 
             let n: usize = module.n();
-            let digits_in: usize = 1;
+            let dsize_in: usize = 1;
 
-            let rows_in: usize = k_in / (base2k * di);
-            let rows_apply: usize = k_in.div_ceil(base2k * di);
+            let dnum_in: usize = k_in / (base2k * di);
+            let dnum_apply: usize = k_in.div_ceil(base2k * di);
 
             let auto_key_layout: GGLWEAutomorphismKeyLayout = GGLWEAutomorphismKeyLayout {
                 n: n.into(),
                 base2k: base2k.into(),
                 k: k_in.into(),
-                rows: rows_in.into(),
-                digits: digits_in.into(),
+                dnum: dnum_in.into(),
+                dsize: dsize_in.into(),
                 rank: rank.into(),
             };
 
@@ -306,8 +306,8 @@ where
                 n: n.into(),
                 base2k: base2k.into(),
                 k: k_apply.into(),
-                rows: rows_apply.into(),
-                digits: di.into(),
+                dnum: dnum_apply.into(),
+                dsize: di.into(),
                 rank: rank.into(),
             };
 
@@ -373,14 +373,14 @@ where
             let sk_auto_dft: GLWESecretPrepared<Vec<u8>, B> = sk_auto.prepare_alloc(module, scratch.borrow());
 
             (0..auto_key.rank_in().into()).for_each(|col_i| {
-                (0..auto_key.rows().into()).for_each(|row_i| {
+                (0..auto_key.dnum().into()).for_each(|row_i| {
                     auto_key
                         .at(row_i, col_i)
                         .decrypt(module, &mut pt, &sk_auto_dft, scratch.borrow());
                     module.vec_znx_sub_scalar_inplace(
                         &mut pt.data,
                         0,
-                        (digits_in - 1) + row_i * digits_in,
+                        (dsize_in - 1) + row_i * dsize_in,
                         &sk.data,
                         col_i,
                     );

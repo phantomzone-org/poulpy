@@ -65,15 +65,15 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
 
         let base2k: usize = self.base2k().into();
         let rank: usize = self.rank().into();
-        let digits: usize = self.digits().into();
+        let dsize: usize = self.dsize().into();
 
         let (mut tmp_pt, scratch_1) = scratch.take_glwe_pt(&self.glwe_layout());
 
-        (0..self.rows().into()).for_each(|row_i| {
+        (0..self.dnum().into()).for_each(|row_i| {
             tmp_pt.data.zero();
 
             // Adds the scalar_znx_pt to the i-th limb of the vec_znx_pt
-            module.vec_znx_add_scalar_inplace(&mut tmp_pt.data, 0, (digits - 1) + row_i * digits, pt, 0);
+            module.vec_znx_add_scalar_inplace(&mut tmp_pt.data, 0, (dsize - 1) + row_i * dsize, pt, 0);
             module.vec_znx_normalize_inplace(base2k, &mut tmp_pt.data, 0, scratch_1);
 
             (0..rank + 1).for_each(|col_j| {

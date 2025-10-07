@@ -64,14 +64,14 @@ where
 {
     let base2k: usize = 12;
     let k_in: usize = 45;
-    let digits: usize = k_in.div_ceil(base2k);
+    let dsize: usize = k_in.div_ceil(base2k);
     for rank in 1_usize..3 {
-        for di in 1..digits + 1 {
+        for di in 1..dsize + 1 {
             let k_ggsw: usize = k_in + base2k * di;
             let k_out: usize = k_ggsw; // Better capture noise
 
             let n: usize = module.n();
-            let rows: usize = k_in.div_ceil(base2k * digits);
+            let dnum: usize = k_in.div_ceil(base2k * dsize);
 
             let glwe_in_infos: GLWECiphertextLayout = GLWECiphertextLayout {
                 n: n.into(),
@@ -91,8 +91,8 @@ where
                 n: n.into(),
                 base2k: base2k.into(),
                 k: k_ggsw.into(),
-                rows: rows.into(),
-                digits: di.into(),
+                dnum: dnum.into(),
+                dsize: di.into(),
                 rank: rank.into(),
             };
 
@@ -158,7 +158,7 @@ where
 
             let max_noise: f64 = noise_ggsw_product(
                 n as f64,
-                base2k * digits,
+                base2k * dsize,
                 0.5,
                 var_msg,
                 var_a0_err,
@@ -216,13 +216,13 @@ where
 {
     let base2k: usize = 12;
     let k_out: usize = 60;
-    let digits: usize = k_out.div_ceil(base2k);
+    let dsize: usize = k_out.div_ceil(base2k);
     for rank in 1_usize..3 {
-        for di in 1..digits + 1 {
+        for di in 1..dsize + 1 {
             let k_ggsw: usize = k_out + base2k * di;
 
             let n: usize = module.n();
-            let rows: usize = k_out.div_ceil(base2k * digits);
+            let dnum: usize = k_out.div_ceil(base2k * dsize);
 
             let glwe_out_infos: GLWECiphertextLayout = GLWECiphertextLayout {
                 n: n.into(),
@@ -235,8 +235,8 @@ where
                 n: n.into(),
                 base2k: base2k.into(),
                 k: k_ggsw.into(),
-                rows: rows.into(),
-                digits: di.into(),
+                dnum: dnum.into(),
+                dsize: di.into(),
                 rank: rank.into(),
             };
 
@@ -301,7 +301,7 @@ where
 
             let max_noise: f64 = noise_ggsw_product(
                 n as f64,
-                base2k * digits,
+                base2k * dsize,
                 0.5,
                 var_msg,
                 var_a0_err,
