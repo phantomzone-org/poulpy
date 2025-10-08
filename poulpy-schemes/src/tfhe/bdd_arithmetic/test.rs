@@ -1,6 +1,6 @@
 use std::time::Instant;
 
-use poulpy_backend::{FFT64Avx, FFT64Ref};
+use poulpy_backend::FFT64Ref;
 use poulpy_core::{
     TakeGGSW, TakeGLWEPt,
     layouts::{
@@ -42,7 +42,7 @@ use crate::tfhe::{
 };
 
 #[test]
-fn test_bdd_2w_to_1w_fft64_avx() {
+fn test_bdd_2w_to_1w_fft64_ref() {
     test_bdd_2w_to_1w::<FFT64Ref, CGGI>()
 }
 
@@ -195,7 +195,7 @@ where
     c_enc_prep_debug.prepare(&module, &c_enc, &bdd_key_prepared, scratch.borrow());
     println!("CBT: {} ms", now.elapsed().as_millis());
 
-    // c_enc_prep_debug.noise(&module, &sk_glwe_prep, a.wrapping_sub(b));
+    c_enc_prep_debug.noise(&module, &sk_glwe_prep, a.wrapping_sub(b));
 
     let now: Instant = Instant::now();
     c_enc_prep.prepare(&module, &c_enc, &bdd_key_prepared, scratch.borrow());

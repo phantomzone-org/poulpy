@@ -158,14 +158,10 @@ impl<D: DataRef, T: UnsignedInteger + FromBits + ToBits> FheUintBlocks<D, T> {
         let base2k: usize = self.base2k().into();
         let scale: f64 = 4.0 / ((1 << base2k) as f64);
 
-        for i in 0..T::WORD_SIZE {
+        for (i, bit) in bits.iter_mut().enumerate().take(T::WORD_SIZE) {
             self.blocks[i].decrypt(module, &mut pt, sk, scratch_1);
-
             let value: i64 = pt.decode_coeff_i64(base2k.into(), 0);
-
-            bits[i] = ((value as f64) * scale).round() as u8;
-            // println!("bit: {}", bits[i]);
-            // println!("pt: {}", pt);
+            *bit = ((value as f64) * scale).round() as u8;
         }
 
         T::from_bits(&bits)
@@ -209,9 +205,9 @@ impl<D: DataRef, T: UnsignedInteger + FromBits + ToBits> FheUintBlocks<D, T> {
 
         let mut noise: Vec<f64> = vec![0f64; T::WORD_SIZE];
 
-        for i in 0..T::WORD_SIZE {
+        for (i, noise_i) in noise.iter_mut().enumerate().take(T::WORD_SIZE) {
             pt_want.encode_coeff_i64(want.bit(i) as i64, TorusPrecision(2), 0);
-            noise[i] = self.blocks[i].noise(module, sk, &pt_want, scratch_1);
+            *noise_i = self.blocks[i].noise(module, sk, &pt_want, scratch_1);
         }
 
         noise

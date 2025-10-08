@@ -341,7 +341,7 @@ fn post_process<DataRes, DataA, B: Backend>(
             module,
             log_n - log_gap_out,
             log_n,
-            &packed,
+            packed,
             auto_keys,
             scratch,
         );

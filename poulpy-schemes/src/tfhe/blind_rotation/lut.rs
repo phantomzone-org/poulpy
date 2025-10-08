@@ -83,7 +83,7 @@ impl LookUpTable {
 
         let base2k: usize = self.base2k;
 
-        let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(module.vec_znx_normalize_tmp_bytes() | self.domain_size() * 8);
+        let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(module.vec_znx_normalize_tmp_bytes() | (self.domain_size() << 3));
 
         // Get the number minimum limb to store the message modulus
         let limbs: usize = k.div_ceil(base2k);
@@ -130,12 +130,12 @@ impl LookUpTable {
         // Rotates half the step to the left
 
         if self.extension_factor() > 1 {
-            let (mut tmp, _) = scratch.borrow().take_slice(lut_full.n());
+            let (tmp, _) = scratch.borrow().take_slice(lut_full.n());
 
             for i in 0..self.extension_factor() {
                 module.vec_znx_switch_ring(&mut self.data[i], 0, &lut_full, 0);
                 if i < self.extension_factor() {
-                    vec_znx_rotate_inplace::<_, ZnxRef>(-1, &mut lut_full, 0, &mut tmp);
+                    vec_znx_rotate_inplace::<_, ZnxRef>(-1, &mut lut_full, 0, tmp);
                 }
             }
         } else {

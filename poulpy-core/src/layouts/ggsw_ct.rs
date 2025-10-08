@@ -216,7 +216,7 @@ impl<D: Data> GGSWCiphertextBuilder<D> {
             data,
             base2k,
             k,
-            dsize: dsize,
+            dsize,
         })
     }
 }
@@ -308,7 +308,7 @@ impl GGSWCiphertext<Vec<u8>> {
             ),
             k,
             base2k,
-            dsize: dsize,
+            dsize,
         }
     }
 

@@ -66,12 +66,10 @@ where
             assert!(out.len() >= self.output_size());
         }
 
-        for i in 0..self.output_size() {
-            let out_i = out[i].to_mut();
-
+        for (i, out_i) in out.iter_mut().enumerate().take(self.output_size()) {
             let (nodes, levels, max_inter_state) = self.get_circuit(i);
 
-            let (mut level, scratch_1) = scratch.take_glwe_ct_slice(max_inter_state * 2, &out_i);
+            let (mut level, scratch_1) = scratch.take_glwe_ct_slice(max_inter_state * 2, out_i);
 
             level.iter_mut().for_each(|ct| ct.data_mut().zero());
 
@@ -80,7 +78,7 @@ where
                 .data_mut()
                 .encode_coeff_i64(out_i.base2k().into(), 0, 2, 0, 1);
 
-            let mut level_ref = level.iter_mut().map(|c| c).collect_vec();
+            let mut level_ref = level.iter_mut().collect_vec();
             let (mut prev_level, mut next_level) = level_ref.split_at_mut(max_inter_state);
 
             for i in 0..levels.len() - 1 {
@@ -110,7 +108,7 @@ where
             // there's always only 1 node at last level
             let node: &Node = nodes.last().unwrap();
             module.cmux(
-                &mut out[i],
+                out_i,
                 prev_level[node.high_index],
                 prev_level[node.low_index],
                 &inputs[node.input_index].to_ref(),
@@ -118,8 +116,8 @@ where
             );
         }
 
-        for i in self.output_size()..out.len() {
-            out[i].to_mut().data_mut().zero();
+        for out_i in out.iter_mut().skip(self.output_size()) {
+            out_i.data_mut().zero();
         }
     }
 }

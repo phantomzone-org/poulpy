@@ -259,8 +259,8 @@ where
 
         let a_size: usize = (lhs.size() * basek_in).div_ceil(basek_ggsw);
 
-        let (mut res_dft, scratch_1) = scratch.take_vec_znx_dft(self.n().into(), cols, rhs.size()); // Todo optimise
-        let (mut a_dft, scratch_2) = scratch_1.take_vec_znx_dft(self.n().into(), cols, a_size.div_ceil(dsize));
+        let (mut res_dft, scratch_1) = scratch.take_vec_znx_dft(self.n(), cols, rhs.size()); // Todo optimise
+        let (mut a_dft, scratch_2) = scratch_1.take_vec_znx_dft(self.n(), cols, a_size.div_ceil(dsize));
         a_dft.data_mut().fill(0);
 
         if basek_in == basek_ggsw {
