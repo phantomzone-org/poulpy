@@ -205,7 +205,7 @@ impl_bdd_2w_to_1w_trait!(
     Or,
     or,
     u32,
-    1,
+    32,
     circuits::u32::or_codegen::AnyBitCircuit,
     circuits::u32::or_codegen::OUTPUT_CIRCUITS
 );
@@ -214,7 +214,7 @@ impl_bdd_2w_to_1w_trait!(
     Xor,
     xor,
     u32,
-    1,
+    32,
     circuits::u32::xor_codegen::AnyBitCircuit,
     circuits::u32::xor_codegen::OUTPUT_CIRCUITS
 );
