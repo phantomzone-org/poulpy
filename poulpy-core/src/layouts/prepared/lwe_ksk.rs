@@ -4,7 +4,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Dsize, GGLWEInfos, GLWEInfos, LWEInfos, LWESwitchingKey, Rank, Dnum, TorusPrecision,
+    Base2K, Degree, Dnum, Dsize, GGLWEInfos, GLWEInfos, LWEInfos, LWESwitchingKey, Rank, TorusPrecision,
     prepared::{GGLWESwitchingKeyPrepared, Prepare, PrepareAlloc},
 };
 
@@ -87,7 +87,7 @@ impl<B: Backend> LWESwitchingKeyPrepared<Vec<u8>, B> {
             Rank(1),
             Rank(1),
             dnum,
-            Dsize(1), 
+            Dsize(1),
         ))
     }
 

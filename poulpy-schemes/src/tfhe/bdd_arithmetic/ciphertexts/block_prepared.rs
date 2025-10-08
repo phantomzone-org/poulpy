@@ -1,10 +1,13 @@
 use std::marker::PhantomData;
 
 use poulpy_core::layouts::{
-    Base2K, Dsize, GGSWCiphertext, GGSWInfos, GLWEInfos, LWEInfos, Rank, Dnum, TorusPrecision, prepared::GGSWCiphertextPrepared,
+    Base2K, Dnum, Dsize, GGSWInfos, GLWEInfos, LWEInfos, Rank, TorusPrecision, prepared::GGSWCiphertextPrepared,
 };
 #[cfg(test)]
-use poulpy_core::{TakeGGSW, layouts::prepared::GLWESecretPrepared};
+use poulpy_core::{
+    TakeGGSW,
+    layouts::{GGSWCiphertext, prepared::GLWESecretPrepared},
+};
 use poulpy_hal::{
     api::VmpPMatAlloc,
     layouts::{Backend, Data, DataMut, DataRef, Module, Scratch},
@@ -24,12 +27,14 @@ use poulpy_hal::{
 
 use crate::tfhe::bdd_arithmetic::{FheUintBlocks, FheUintPrepare, ToBits, UnsignedInteger};
 
+#[cfg(test)]
 pub(crate) struct FheUintBlocksPrepDebug<D: Data, T: UnsignedInteger> {
     pub(crate) blocks: Vec<GGSWCiphertext<D>>,
     pub(crate) _base: u8,
     pub(crate) _phantom: PhantomData<T>,
 }
 
+#[cfg(test)]
 impl<T: UnsignedInteger> FheUintBlocksPrepDebug<Vec<u8>, T> {
     #[allow(dead_code)]
     pub(crate) fn alloc<A, BE: Backend>(module: &Module<BE>, infos: &A) -> Self
@@ -92,14 +97,7 @@ where
     }
 
     #[allow(dead_code)]
-    pub(crate) fn alloc_with(
-        module: &Module<BE>,
-        base2k: Base2K,
-        k: TorusPrecision,
-        dnum: Dnum,
-        dsize: Dsize,
-        rank: Rank,
-    ) -> Self
+    pub(crate) fn alloc_with(module: &Module<BE>, base2k: Base2K, k: TorusPrecision, dnum: Dnum, dsize: Dsize, rank: Rank) -> Self
     where
         Module<BE>: VmpPMatAlloc<BE>,
     {
@@ -173,9 +171,8 @@ impl<D: DataMut, T: UnsignedInteger + ToBits, BE: Backend> FheUintBlocksPrep<D, 
     }
 }
 
+#[cfg(test)]
 impl<D: DataMut, T: UnsignedInteger + ToBits> FheUintBlocksPrepDebug<D, T> {
-    #[allow(dead_code)]
-    #[cfg(test)]
     pub(crate) fn prepare<BIT, KEY, BE: Backend>(
         &mut self,
         module: &Module<BE>,
@@ -190,9 +187,9 @@ impl<D: DataMut, T: UnsignedInteger + ToBits> FheUintBlocksPrepDebug<D, T> {
     }
 }
 
+#[cfg(test)]
 impl<D: DataRef, T: UnsignedInteger + ToBits> FheUintBlocksPrepDebug<D, T> {
     #[allow(dead_code)]
-    #[cfg(test)]
     pub(crate) fn noise<S: DataRef, BE: Backend>(&self, module: &Module<BE>, sk: &GLWESecretPrepared<S, BE>, want: T)
     where
         Module<BE>: VecZnxDftAllocBytes
@@ -251,6 +248,7 @@ impl<D: DataRef, T: UnsignedInteger, B: Backend> GGSWInfos for FheUintBlocksPrep
     }
 }
 
+#[cfg(test)]
 impl<D: DataRef, T: UnsignedInteger> LWEInfos for FheUintBlocksPrepDebug<D, T> {
     fn base2k(&self) -> poulpy_core::layouts::Base2K {
         self.blocks[0].base2k()
@@ -265,12 +263,14 @@ impl<D: DataRef, T: UnsignedInteger> LWEInfos for FheUintBlocksPrepDebug<D, T> {
     }
 }
 
+#[cfg(test)]
 impl<D: DataRef, T: UnsignedInteger> GLWEInfos for FheUintBlocksPrepDebug<D, T> {
     fn rank(&self) -> poulpy_core::layouts::Rank {
         self.blocks[0].rank()
     }
 }
 
+#[cfg(test)]
 impl<D: DataRef, T: UnsignedInteger> GGSWInfos for FheUintBlocksPrepDebug<D, T> {
     fn dsize(&self) -> poulpy_core::layouts::Dsize {
         self.blocks[0].dsize()

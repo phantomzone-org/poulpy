@@ -5,7 +5,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, BuildError, Degree, Dsize, GGLWECiphertext, GGLWEInfos, GLWEInfos, LWEInfos, Rank, Dnum, TorusPrecision,
+    Base2K, BuildError, Degree, Dnum, Dsize, GGLWECiphertext, GGLWEInfos, GLWEInfos, LWEInfos, Rank, TorusPrecision,
     prepared::{Prepare, PrepareAlloc},
 };
 

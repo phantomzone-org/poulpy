@@ -5,7 +5,7 @@ use poulpy_hal::{
     source::Source,
 };
 
-use crate::layouts::{Base2K, Degree, Dsize, GGLWEInfos, GGLWESwitchingKey, GLWEInfos, LWEInfos, Rank, Dnum, TorusPrecision};
+use crate::layouts::{Base2K, Degree, Dnum, Dsize, GGLWEInfos, GGLWESwitchingKey, GLWEInfos, LWEInfos, Rank, TorusPrecision};
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub struct LWESwitchingKeyLayout {

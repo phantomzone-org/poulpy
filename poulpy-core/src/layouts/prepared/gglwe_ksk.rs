@@ -4,7 +4,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Dsize, GGLWEInfos, GGLWESwitchingKey, GLWEInfos, LWEInfos, Rank, Dnum, TorusPrecision,
+    Base2K, Degree, Dnum, Dsize, GGLWEInfos, GGLWESwitchingKey, GLWEInfos, LWEInfos, Rank, TorusPrecision,
     prepared::{GGLWECiphertextPrepared, Prepare, PrepareAlloc},
 };
 

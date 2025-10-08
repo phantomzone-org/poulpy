@@ -16,8 +16,8 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, GLWECiphertext, GLWECiphertextLayout, GLWEPlaintext, GLWESecret, GLWEToLWEKey, GLWEToLWEKeyLayout,
-    LWECiphertext, LWECiphertextLayout, LWEPlaintext, LWESecret, LWEToGLWESwitchingKey, LWEToGLWESwitchingKeyLayout, Rank, Dnum,
+    Base2K, Degree, Dnum, GLWECiphertext, GLWECiphertextLayout, GLWEPlaintext, GLWESecret, GLWEToLWEKey, GLWEToLWEKeyLayout,
+    LWECiphertext, LWECiphertextLayout, LWEPlaintext, LWESecret, LWEToGLWESwitchingKey, LWEToGLWESwitchingKeyLayout, Rank,
     TorusPrecision,
     prepared::{GLWESecretPrepared, GLWEToLWESwitchingKeyPrepared, LWEToGLWESwitchingKeyPrepared, PrepareAlloc},
 };

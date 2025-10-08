@@ -1,17 +1,13 @@
 use itertools::Itertools;
 use poulpy_core::{
-    GLWEOperations, TakeGLWECtSlice,
+    GLWEExternalProductInplace, GLWEOperations, TakeGLWECtSlice,
     layouts::{
-        GLWECiphertext, GLWECiphertextLayout, GLWECiphertextToMut, GLWEInfos, LWEInfos,
+        GLWECiphertext, GLWECiphertextToMut, LWEInfos,
         prepared::{GGSWCiphertextPrepared, GGSWCiphertextPreparedToRef},
     },
 };
 use poulpy_hal::{
-    api::{
-        ScratchAvailable, TakeVecZnx, TakeVecZnxDft, VecZnxAddInplace, VecZnxBigNormalize, VecZnxCopy, VecZnxDftAllocBytes,
-        VecZnxDftApply, VecZnxIdftApplyConsume, VecZnxNegateInplace, VecZnxNormalize, VecZnxNormalizeTmpBytes, VecZnxSub,
-        VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
-    },
+    api::{VecZnxAddInplace, VecZnxCopy, VecZnxNegateInplace, VecZnxSub},
     layouts::{Backend, DataMut, DataRef, Module, Scratch, ZnxZero},
 };
 
@@ -39,42 +35,30 @@ pub trait CircuitExecute<BE: Backend, T: UnsignedInteger>
 where
     Self: GetBitCircuitInfo<T>,
 {
-    fn execute<R>(
+    fn execute<O>(
         &self,
         module: &Module<BE>,
-        out: &mut [GLWECiphertext<R>],
+        out: &mut [GLWECiphertext<O>],
         inputs: &[&dyn GGSWCiphertextPreparedToRef<BE>],
         scratch: &mut Scratch<BE>,
     ) where
-        R: DataMut;
+        O: DataMut;
 }
 
 impl<C: BitCircuitInfo, const N: usize, T: UnsignedInteger, BE: Backend> CircuitExecute<BE, T> for Circuit<C, N>
 where
     Self: GetBitCircuitInfo<T>,
-    Module<BE>: VecZnxSub
-        + VecZnxCopy
-        + VecZnxNegateInplace
-        + VecZnxDftAllocBytes
-        + VecZnxAddInplace
-        + VmpApplyDftToDftTmpBytes
-        + VecZnxNormalizeTmpBytes
-        + VecZnxDftApply<BE>
-        + VmpApplyDftToDft<BE>
-        + VmpApplyDftToDftAdd<BE>
-        + VecZnxIdftApplyConsume<BE>
-        + VecZnxBigNormalize<BE>
-        + VecZnxNormalize<BE>,
-    Scratch<BE>: TakeVecZnxDft<BE> + ScratchAvailable + TakeVecZnx + TakeGLWECtSlice,
+    Module<BE>: Cmux<BE> + VecZnxCopy,
+    Scratch<BE>: TakeGLWECtSlice,
 {
-    fn execute<R>(
+    fn execute<O>(
         &self,
         module: &Module<BE>,
-        out: &mut [GLWECiphertext<R>],
+        out: &mut [GLWECiphertext<O>],
         inputs: &[&dyn GGSWCiphertextPreparedToRef<BE>],
         scratch: &mut Scratch<BE>,
     ) where
-        R: DataMut,
+        O: DataMut,
     {
         #[cfg(debug_assertions)]
         {
@@ -82,19 +66,19 @@ where
             assert!(out.len() >= self.output_size());
         }
 
-        let glwe_infos: GLWECiphertextLayout = out[0].glwe_layout();
-
         for i in 0..self.output_size() {
+            let out_i = out[i].to_mut();
+
             let (nodes, levels, max_inter_state) = self.get_circuit(i);
 
-            let (mut level, scratch_1) = scratch.take_glwe_ct_slice(max_inter_state * 2, &glwe_infos);
+            let (mut level, scratch_1) = scratch.take_glwe_ct_slice(max_inter_state * 2, &out_i);
 
             level.iter_mut().for_each(|ct| ct.data_mut().zero());
 
             // TODO: implement API on GLWE
             level[1]
                 .data_mut()
-                .encode_coeff_i64(glwe_infos.base2k().into(), 0, 2, 0, 1);
+                .encode_coeff_i64(out_i.base2k().into(), 0, 2, 0, 1);
 
             let mut level_ref = level.iter_mut().map(|c| c).collect_vec();
             let (mut prev_level, mut next_level) = level_ref.split_at_mut(max_inter_state);
@@ -109,8 +93,8 @@ where
                     if node.low_index == node.high_index {
                         next_level[j].copy(module, prev_level[node.low_index]);
                     } else {
-                        next_level[j].cmux(
-                            module,
+                        module.cmux(
+                            next_level[j],
                             prev_level[node.high_index],
                             prev_level[node.low_index],
                             &inputs[node.input_index].to_ref(),
@@ -125,8 +109,8 @@ where
             // handle last output
             // there's always only 1 node at last level
             let node: &Node = nodes.last().unwrap();
-            out[i].cmux(
-                module,
+            module.cmux(
+                &mut out[i],
                 prev_level[node.high_index],
                 prev_level[node.low_index],
                 &inputs[node.input_index].to_ref(),
@@ -135,7 +119,7 @@ where
         }
 
         for i in self.output_size()..out.len() {
-            out[i].data_mut().zero();
+            out[i].to_mut().data_mut().zero();
         }
     }
 }
@@ -177,51 +161,40 @@ impl Node {
 }
 
 pub trait Cmux<BE: Backend> {
-    fn cmux<T, F, S>(
-        &mut self,
-        module: &Module<BE>,
+    fn cmux<O, T, F, S>(
+        &self,
+        out: &mut GLWECiphertext<O>,
         t: &GLWECiphertext<T>,
         f: &GLWECiphertext<F>,
         s: &GGSWCiphertextPrepared<S, BE>,
         scratch: &mut Scratch<BE>,
     ) where
+        O: DataMut,
         T: DataRef,
         F: DataRef,
         S: DataRef;
 }
 
-impl<BE: Backend, A: GLWECiphertextToMut> Cmux<BE> for A
+impl<BE: Backend> Cmux<BE> for Module<BE>
 where
-    Module<BE>: VecZnxSub
-        + VecZnxCopy
-        + VecZnxNegateInplace
-        + VecZnxDftAllocBytes
-        + VecZnxAddInplace
-        + VmpApplyDftToDftTmpBytes
-        + VecZnxNormalizeTmpBytes
-        + VecZnxDftApply<BE>
-        + VmpApplyDftToDft<BE>
-        + VmpApplyDftToDftAdd<BE>
-        + VecZnxIdftApplyConsume<BE>
-        + VecZnxBigNormalize<BE>
-        + VecZnxNormalize<BE>,
-    Scratch<BE>: TakeVecZnxDft<BE> + ScratchAvailable + TakeVecZnx,
+    Module<BE>: GLWEExternalProductInplace<BE> + VecZnxSub + VecZnxCopy + VecZnxNegateInplace + VecZnxAddInplace,
 {
-    fn cmux<T, F, S>(
-        &mut self,
-        module: &Module<BE>,
+    fn cmux<O, T, F, S>(
+        &self,
+        out: &mut GLWECiphertext<O>,
         t: &GLWECiphertext<T>,
         f: &GLWECiphertext<F>,
         s: &GGSWCiphertextPrepared<S, BE>,
         scratch: &mut Scratch<BE>,
     ) where
+        O: DataMut,
         T: DataRef,
         F: DataRef,
         S: DataRef,
     {
-        let mut self_mut: GLWECiphertext<&mut [u8]> = self.to_mut();
-        self_mut.sub(module, t, f);
-        self_mut.external_product_inplace(module, s, scratch);
-        self_mut.add_inplace(module, f);
+        // let mut out: GLWECiphertext<&mut [u8]> = out.to_mut();
+        out.sub(self, t, f);
+        out.external_product_inplace(self, s, scratch);
+        out.to_mut().add_inplace(self, f);
     }
 }

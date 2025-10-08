@@ -5,7 +5,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Dsize, GGLWEInfos, GLWEInfos, LWEInfos, LWESwitchingKey, Rank, Dnum, TorusPrecision,
+    Base2K, Degree, Dnum, Dsize, GGLWEInfos, GLWEInfos, LWEInfos, LWESwitchingKey, Rank, TorusPrecision,
     compressed::{Decompress, GGLWESwitchingKeyCompressed},
 };
 use std::fmt;

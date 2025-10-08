@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use poulpy_hal::{
     api::{
-        ScratchAvailable, TakeMatZnx, TakeVecZnx, TakeVecZnxBig, TakeVecZnxDft, TakeVecZnxDftSlice, TakeVecZnxSlice,
+        ScratchAvailable, TakeMatZnx, TakeSlice, TakeVecZnx, TakeVecZnxBig, TakeVecZnxDft, TakeVecZnxDftSlice, TakeVecZnxSlice,
         VecZnxAddInplace, VecZnxAutomorphismInplace, VecZnxBigAddSmallInplace, VecZnxBigAllocBytes, VecZnxBigAutomorphismInplace,
         VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallNegateInplace, VecZnxCopy, VecZnxDftAddInplace,
         VecZnxDftAllocBytes, VecZnxDftApply, VecZnxDftCopy, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA, VecZnxNegateInplace,
@@ -67,7 +67,8 @@ where
         + TakeVecZnxDft<B>
         + TakeMatZnx
         + ScratchAvailable
-        + TakeVecZnxSlice,
+        + TakeVecZnxSlice
+        + TakeSlice,
     BlindRotationKeyPrepared<D, BRA, B>: BlincRotationExecute<B>,
 {
     fn execute_to_constant<DM: DataMut, DR: DataRef>(
@@ -167,7 +168,8 @@ pub fn circuit_bootstrap_core<DRes, DLwe, DBrk, BRA: BlindRotationAlgo, B>(
         + TakeVecZnx
         + ScratchAvailable
         + TakeVecZnxSlice
-        + TakeMatZnx,
+        + TakeMatZnx
+        + TakeSlice,
     BlindRotationKeyPrepared<DBrk, BRA, B>: BlincRotationExecute<B>,
 {
     #[cfg(debug_assertions)]

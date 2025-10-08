@@ -1,5 +1,5 @@
 use poulpy_core::layouts::{
-    Base2K, Degree, Dsize, GGSWCiphertext, GGSWCiphertextLayout, GLWECiphertext, GLWECiphertextLayout, GLWESecret, Rank, Dnum,
+    Base2K, Degree, Dnum, Dsize, GGSWCiphertext, GGSWCiphertextLayout, GLWECiphertext, GLWECiphertextLayout, GLWESecret, Rank,
     TorusPrecision,
     prepared::{GGSWCiphertextPrepared, GLWESecretPrepared, PrepareAlloc},
 };

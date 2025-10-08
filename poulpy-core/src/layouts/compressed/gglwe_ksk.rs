@@ -5,7 +5,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Dsize, GGLWEInfos, GGLWESwitchingKey, GLWEInfos, LWEInfos, Rank, Dnum, TorusPrecision,
+    Base2K, Degree, Dnum, Dsize, GGLWEInfos, GGLWESwitchingKey, GLWEInfos, LWEInfos, Rank, TorusPrecision,
     compressed::{Decompress, GGLWECiphertextCompressed},
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
@@ -116,14 +116,7 @@ impl GGLWESwitchingKeyCompressed<Vec<u8>> {
         GGLWECiphertextCompressed::alloc_bytes(infos)
     }
 
-    pub fn alloc_bytes_with(
-        n: Degree,
-        base2k: Base2K,
-        k: TorusPrecision,
-        rank_in: Rank,
-        dnum: Dnum,
-        dsize: Dsize,
-    ) -> usize {
+    pub fn alloc_bytes_with(n: Degree, base2k: Base2K, k: TorusPrecision, rank_in: Rank, dnum: Dnum, dsize: Dsize) -> usize {
         GGLWECiphertextCompressed::alloc_bytes_with(n, base2k, k, rank_in, dnum, dsize)
     }
 }

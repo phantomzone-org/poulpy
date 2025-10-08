@@ -8,7 +8,7 @@ use std::{fmt, marker::PhantomData};
 use poulpy_core::{
     Distribution,
     layouts::{
-        Base2K, Degree, Dsize, GGSWCiphertext, GGSWInfos, GLWEInfos, LWEInfos, LWESecret, Rank, Dnum, TorusPrecision,
+        Base2K, Degree, Dnum, Dsize, GGSWCiphertext, GGSWInfos, GLWEInfos, LWEInfos, LWESecret, Rank, TorusPrecision,
         prepared::GLWESecretPrepared,
     },
 };

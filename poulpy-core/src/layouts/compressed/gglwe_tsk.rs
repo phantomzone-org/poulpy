@@ -5,7 +5,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Dsize, GGLWEInfos, GGLWETensorKey, GLWEInfos, LWEInfos, Rank, Dnum, TorusPrecision,
+    Base2K, Degree, Dnum, Dsize, GGLWEInfos, GGLWETensorKey, GLWEInfos, LWEInfos, Rank, TorusPrecision,
     compressed::{Decompress, GGLWESwitchingKeyCompressed},
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};

@@ -8,7 +8,7 @@ use std::marker::PhantomData;
 use poulpy_core::{
     Distribution,
     layouts::{
-        Base2K, Degree, Dsize, GGSWInfos, GLWEInfos, LWEInfos, Rank, Dnum, TorusPrecision,
+        Base2K, Degree, Dnum, Dsize, GGSWInfos, GLWEInfos, LWEInfos, Rank, TorusPrecision,
         prepared::{GGSWCiphertextPrepared, Prepare, PrepareAlloc},
     },
 };

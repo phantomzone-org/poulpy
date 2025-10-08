@@ -11,7 +11,7 @@ use poulpy_hal::{
     },
     layouts::{Backend, Module, ScratchOwned, ZnxView},
     oep::{
-        ScratchAvailableImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeVecZnxBigImpl, TakeVecZnxDftImpl,
+        ScratchAvailableImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeSliceImpl, TakeVecZnxBigImpl, TakeVecZnxDftImpl,
         TakeVecZnxDftSliceImpl, TakeVecZnxImpl, TakeVecZnxSliceImpl, VecZnxBigAllocBytesImpl, VecZnxDftAllocBytesImpl,
     },
     source::Source,
@@ -82,7 +82,8 @@ where
         + TakeVecZnxDftSliceImpl<B>
         + ScratchAvailableImpl<B>
         + TakeVecZnxImpl<B>
-        + TakeVecZnxSliceImpl<B>,
+        + TakeVecZnxSliceImpl<B>
+        + TakeSliceImpl<B>,
 {
     let n_glwe: usize = module.n();
     let base2k: usize = 19;

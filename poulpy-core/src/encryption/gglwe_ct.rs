@@ -118,13 +118,7 @@ impl<DataSelf: DataMut> GGLWECiphertext<DataSelf> {
             (0..dnum).for_each(|row_i| {
                 // Adds the scalar_znx_pt to the i-th limb of the vec_znx_pt
                 tmp_pt.data.zero(); // zeroes for next iteration
-                module.vec_znx_add_scalar_inplace(
-                    &mut tmp_pt.data,
-                    0,
-                    (dsize - 1) + row_i * dsize,
-                    pt,
-                    col_i,
-                );
+                module.vec_znx_add_scalar_inplace(&mut tmp_pt.data, 0, (dsize - 1) + row_i * dsize, pt, col_i);
                 module.vec_znx_normalize_inplace(base2k, &mut tmp_pt.data, 0, scrach_1);
 
                 // rlwe encrypt of vec_znx_pt into vec_znx_ct

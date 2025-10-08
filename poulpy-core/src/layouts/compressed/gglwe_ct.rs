@@ -5,7 +5,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Dsize, GGLWECiphertext, GGLWEInfos, GLWEInfos, LWEInfos, Rank, Dnum, TorusPrecision,
+    Base2K, Degree, Dnum, Dsize, GGLWECiphertext, GGLWEInfos, GLWEInfos, LWEInfos, Rank, TorusPrecision,
     compressed::{Decompress, GLWECiphertextCompressed},
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
@@ -153,14 +153,7 @@ impl GGLWECiphertextCompressed<Vec<u8>> {
         )
     }
 
-    pub fn alloc_bytes_with(
-        n: Degree,
-        base2k: Base2K,
-        k: TorusPrecision,
-        rank_in: Rank,
-        dnum: Dnum,
-        dsize: Dsize,
-    ) -> usize {
+    pub fn alloc_bytes_with(n: Degree, base2k: Base2K, k: TorusPrecision, rank_in: Rank, dnum: Dnum, dsize: Dsize) -> usize {
         let size: usize = k.0.div_ceil(base2k.0) as usize;
         debug_assert!(
             size as u32 > dsize.0,

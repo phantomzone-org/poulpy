@@ -1,25 +1,25 @@
 use std::time::Instant;
 
-use poulpy_backend::FFT64Avx;
+use poulpy_backend::{FFT64Avx, FFT64Ref};
 use poulpy_core::{
     TakeGGSW, TakeGLWEPt,
     layouts::{
-        Dsize, GGLWEAutomorphismKeyLayout, GGLWETensorKeyLayout, GGSWCiphertextLayout, GLWECiphertextLayout, GLWESecret,
-        GLWEToLWEKeyLayout, LWESecret,
+        GGSWCiphertextLayout, GLWECiphertextLayout, GLWESecret, LWEInfos, LWESecret,
         prepared::{GLWESecretPrepared, PrepareAlloc},
     },
 };
 use poulpy_hal::{
     api::{
         ModuleNew, ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDft, SvpApplyDftToDftInplace,
-        SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare, TakeScalarZnx, TakeVecZnx, TakeVecZnxBig, TakeVecZnxDft, VecZnxAddInplace,
-        VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxAutomorphism, VecZnxAutomorphismInplace, VecZnxBigAddInplace,
-        VecZnxBigAddSmallInplace, VecZnxBigAlloc, VecZnxBigAllocBytes, VecZnxBigAutomorphismInplace, VecZnxBigNormalize,
-        VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallNegateInplace, VecZnxCopy, VecZnxDftAddInplace, VecZnxDftAlloc,
-        VecZnxDftAllocBytes, VecZnxDftApply, VecZnxDftCopy, VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA,
-        VecZnxNegateInplace, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace,
-        VecZnxRotateInplaceTmpBytes, VecZnxRshInplace, VecZnxSub, VecZnxSubInplace, VecZnxSwitchRing, VmpApplyDftToDft,
-        VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes, VmpPMatAlloc, VmpPrepare, ZnAddNormal, ZnFillUniform, ZnNormalizeInplace,
+        SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare, TakeScalarZnx, TakeSlice, TakeVecZnx, TakeVecZnxBig, TakeVecZnxDft,
+        VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxAutomorphism, VecZnxAutomorphismInplace,
+        VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigAlloc, VecZnxBigAllocBytes, VecZnxBigAutomorphismInplace,
+        VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallNegateInplace, VecZnxCopy, VecZnxDftAddInplace,
+        VecZnxDftAlloc, VecZnxDftAllocBytes, VecZnxDftApply, VecZnxDftCopy, VecZnxFillUniform, VecZnxIdftApplyConsume,
+        VecZnxIdftApplyTmpA, VecZnxNegateInplace, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate,
+        VecZnxRotateInplace, VecZnxRotateInplaceTmpBytes, VecZnxRshInplace, VecZnxSub, VecZnxSubInplace, VecZnxSwitchRing,
+        VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes, VmpPMatAlloc, VmpPrepare, ZnAddNormal, ZnFillUniform,
+        ZnNormalizeInplace,
     },
     layouts::{Backend, Module, Scratch, ScratchOwned},
     oep::{
@@ -32,22 +32,21 @@ use rand::RngCore;
 
 use crate::tfhe::{
     bdd_arithmetic::{
-        Add, And, BDDKey, BDDKeyLayout, BDDKeyPrepared, FheUintBlocks, FheUintBlocksPrep, FheUintBlocksPrepDebug, Or, Slt, Sub,
-        Xor,
+        Add, BDDKey, BDDKeyLayout, BDDKeyPrepared, FheUintBlocks, FheUintBlocksPrep, FheUintBlocksPrepDebug, Sub,
+        TEST_BDD_KEY_LAYOUT, TEST_BLOCK_SIZE, TEST_GGSW_INFOS, TEST_GLWE_INFOS, TEST_N_LWE,
     },
     blind_rotation::{
         BlincRotationExecute, BlindRotationAlgo, BlindRotationKey, BlindRotationKeyAlloc, BlindRotationKeyEncryptSk,
-        BlindRotationKeyLayout, BlindRotationKeyPrepared, CGGI,
+        BlindRotationKeyPrepared, CGGI,
     },
-    circuit_bootstrapping::CircuitBootstrappingKeyLayout,
 };
 
 #[test]
-fn test_int_ops_fft64_avx() {
-    test_int_ops::<FFT64Avx, CGGI>()
+fn test_bdd_2w_to_1w_fft64_avx() {
+    test_bdd_2w_to_1w::<FFT64Ref, CGGI>()
 }
 
-fn test_int_ops<BE: Backend, BRA: BlindRotationAlgo>()
+fn test_bdd_2w_to_1w<BE: Backend, BRA: BlindRotationAlgo>()
 where
     Module<BE>: ModuleNew<BE> + SvpPPolAlloc<BE> + SvpPrepare<BE> + VmpPMatAlloc<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
@@ -66,7 +65,7 @@ where
         + VecZnxNormalize<BE>
         + VecZnxSub
         + VmpPrepare<BE>,
-    Scratch<BE>: TakeVecZnxDft<BE> + ScratchAvailable + TakeVecZnx + TakeGGSW + TakeScalarZnx,
+    Scratch<BE>: TakeVecZnxDft<BE> + ScratchAvailable + TakeVecZnx + TakeGGSW + TakeScalarZnx + TakeSlice,
     Module<BE>: VecZnxCopy + VecZnxNegateInplace + VmpApplyDftToDftTmpBytes + VmpApplyDftToDft<BE> + VmpApplyDftToDftAdd<BE>,
     Module<BE>: VecZnxBigAddInplace<BE> + VecZnxBigAddSmallInplace<BE> + VecZnxBigNormalize<BE>,
     Scratch<BE>: TakeVecZnxDft<BE> + TakeVecZnxBig<BE> + TakeGLWEPt<BE>,
@@ -108,12 +107,10 @@ where
     BlindRotationKeyPrepared<Vec<u8>, BRA, BE>: BlincRotationExecute<BE>,
     BlindRotationKey<Vec<u8>, BRA>: BlindRotationKeyAlloc + BlindRotationKeyEncryptSk<BE>,
 {
-    let n_glwe: usize = 1024;
-    let base2k: usize = 13_usize;
-    let k_glwe: usize = base2k * 2;
-    let k_ggsw: usize = base2k * 3;
-    let rank: usize = 2_usize;
-    let dnum: usize = k_glwe.div_ceil(base2k);
+    let glwe_infos: GLWECiphertextLayout = TEST_GLWE_INFOS;
+    let ggsw_infos: GGSWCiphertextLayout = TEST_GGSW_INFOS;
+
+    let n_glwe: usize = glwe_infos.n().into();
 
     let module: Module<BE> = Module::<BE>::new(n_glwe as u64);
     let mut source: Source = Source::new([6u8; 32]);
@@ -123,7 +120,7 @@ where
 
     let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(1 << 22);
 
-    let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc_with(module.n().into(), rank.into());
+    let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc(&glwe_infos);
     sk_glwe.fill_ternary_prob(0.5, &mut source_xs);
     let sk_glwe_prep: GLWESecretPrepared<Vec<u8>, BE> = sk_glwe.prepare_alloc(&module, scratch.borrow());
 
@@ -132,22 +129,6 @@ where
 
     println!("a: {a}");
     println!("b: {b}");
-
-    let glwe_infos: GLWECiphertextLayout = GLWECiphertextLayout {
-        n: module.n().into(),
-        base2k: base2k.into(),
-        k: k_ggsw.into(),
-        rank: rank.into(),
-    };
-
-    let ggsw_infos: GGSWCiphertextLayout = GGSWCiphertextLayout {
-        n: module.n().into(),
-        base2k: base2k.into(),
-        k: k_ggsw.into(),
-        dnum: dnum.into(),
-        dsize: Dsize(1),
-        rank: rank.into(),
-    };
 
     let mut a_enc_prep: FheUintBlocksPrep<Vec<u8>, BE, u32> = FheUintBlocksPrep::<Vec<u8>, BE, u32>::alloc(&module, &ggsw_infos);
     let mut b_enc_prep: FheUintBlocksPrep<Vec<u8>, BE, u32> = FheUintBlocksPrep::<Vec<u8>, BE, u32>::alloc(&module, &ggsw_infos);
@@ -189,60 +170,13 @@ where
         c_enc.noise(&module, &sk_glwe_prep, a.wrapping_sub(b), scratch.borrow())
     );
 
-    let n_lwe: usize = 574;
-    let block_size: usize = 7;
+    let n_lwe: u32 = TEST_N_LWE;
+    let block_size: u32 = TEST_BLOCK_SIZE;
 
     let mut sk_lwe: LWESecret<Vec<u8>> = LWESecret::alloc(n_lwe.into());
-    sk_lwe.fill_binary_block(block_size, &mut source_xs);
+    sk_lwe.fill_binary_block(block_size as usize, &mut source_xs);
 
-    let lwe_ks_infos: GLWEToLWEKeyLayout = GLWEToLWEKeyLayout {
-        n: module.n().into(),
-        base2k: base2k.into(),
-        k: k_ggsw.into(),
-        dnum: dnum.into(),
-        rank_in: rank.into(),
-    };
-
-    let k_brk: usize = 4 * base2k;
-    let rows_brk: usize = 3;
-
-    let k_atk: usize = 4 * base2k;
-    let rows_atk: usize = 3;
-
-    let k_tsk: usize = 4 * base2k;
-    let rows_tsk: usize = 3;
-
-    let cbt_infos: CircuitBootstrappingKeyLayout = CircuitBootstrappingKeyLayout {
-        layout_brk: BlindRotationKeyLayout {
-            n_glwe: n_glwe.into(),
-            n_lwe: n_lwe.into(),
-            base2k: base2k.into(),
-            k: k_brk.into(),
-            dnum: rows_brk.into(),
-            rank: rank.into(),
-        },
-        layout_atk: GGLWEAutomorphismKeyLayout {
-            n: n_glwe.into(),
-            base2k: base2k.into(),
-            k: k_atk.into(),
-            dnum: rows_atk.into(),
-            rank: rank.into(),
-            dsize: Dsize(1),
-        },
-        layout_tsk: GGLWETensorKeyLayout {
-            n: n_glwe.into(),
-            base2k: base2k.into(),
-            k: k_tsk.into(),
-            dnum: rows_tsk.into(),
-            dsize: Dsize(1),
-            rank: rank.into(),
-        },
-    };
-
-    let bdd_key_infos: BDDKeyLayout = BDDKeyLayout {
-        cbt: cbt_infos,
-        ks: lwe_ks_infos,
-    };
+    let bdd_key_infos: BDDKeyLayout = TEST_BDD_KEY_LAYOUT;
 
     let now: Instant = Instant::now();
     let bdd_key: BDDKey<Vec<u8>, Vec<u8>, BRA> = BDDKey::encrypt_sk(

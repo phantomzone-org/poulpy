@@ -4,7 +4,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Dsize, GGLWEInfos, GGLWETensorKey, GLWEInfos, LWEInfos, Rank, Dnum, TorusPrecision,
+    Base2K, Degree, Dnum, Dsize, GGLWEInfos, GGLWETensorKey, GLWEInfos, LWEInfos, Rank, TorusPrecision,
     prepared::{GGLWESwitchingKeyPrepared, Prepare, PrepareAlloc},
 };
 
@@ -120,14 +120,7 @@ impl<B: Backend> GGLWETensorKeyPrepared<Vec<u8>, B> {
             )
     }
 
-    pub fn alloc_bytes_with(
-        module: &Module<B>,
-        base2k: Base2K,
-        k: TorusPrecision,
-        rank: Rank,
-        dnum: Dnum,
-        dsize: Dsize,
-    ) -> usize
+    pub fn alloc_bytes_with(module: &Module<B>, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize
     where
         Module<B>: VmpPMatAllocBytes,
     {

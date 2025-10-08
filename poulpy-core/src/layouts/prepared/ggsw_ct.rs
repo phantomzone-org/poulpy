@@ -5,7 +5,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, BuildError, Degree, Dsize, GGSWCiphertext, GGSWInfos, GLWEInfos, LWEInfos, Rank, Dnum, TorusPrecision,
+    Base2K, BuildError, Degree, Dnum, Dsize, GGSWCiphertext, GGSWInfos, GLWEInfos, LWEInfos, Rank, TorusPrecision,
     prepared::{Prepare, PrepareAlloc},
 };
 
@@ -230,14 +230,7 @@ impl<B: Backend> GGSWCiphertextPrepared<Vec<u8>, B> {
         )
     }
 
-    pub fn alloc_bytes_with(
-        module: &Module<B>,
-        base2k: Base2K,
-        k: TorusPrecision,
-        dnum: Dnum,
-        dsize: Dsize,
-        rank: Rank,
-    ) -> usize
+    pub fn alloc_bytes_with(module: &Module<B>, base2k: Base2K, k: TorusPrecision, dnum: Dnum, dsize: Dsize, rank: Rank) -> usize
     where
         Module<B>: VmpPMatAllocBytes,
     {

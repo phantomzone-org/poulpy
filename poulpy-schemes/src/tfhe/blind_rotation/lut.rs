@@ -1,9 +1,10 @@
 use poulpy_hal::{
     api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxCopy, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotateInplace,
-        VecZnxRotateInplaceTmpBytes, VecZnxSwitchRing,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, TakeSlice, VecZnxCopy, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes,
+        VecZnxRotateInplace, VecZnxRotateInplaceTmpBytes, VecZnxSwitchRing,
     },
-    layouts::{Backend, Module, ScratchOwned, VecZnx, ZnxInfos, ZnxViewMut},
+    layouts::{Backend, Module, Scratch, ScratchOwned, VecZnx, ZnxInfos, ZnxViewMut},
+    reference::{vec_znx::vec_znx_rotate_inplace, znx::ZnxRef},
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -76,12 +77,13 @@ impl LookUpTable {
             + VecZnxCopy
             + VecZnxRotateInplaceTmpBytes,
         ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
+        Scratch<B>: TakeSlice,
     {
         assert!(f.len() <= module.n());
 
         let base2k: usize = self.base2k;
 
-        let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(module.vec_znx_normalize_tmp_bytes());
+        let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(module.vec_znx_normalize_tmp_bytes() | self.domain_size() * 8);
 
         // Get the number minimum limb to store the message modulus
         let limbs: usize = k.div_ceil(base2k);
@@ -128,19 +130,21 @@ impl LookUpTable {
         // Rotates half the step to the left
 
         if self.extension_factor() > 1 {
-            (0..self.extension_factor()).for_each(|i| {
+            let (mut tmp, _) = scratch.borrow().take_slice(lut_full.n());
+
+            for i in 0..self.extension_factor() {
                 module.vec_znx_switch_ring(&mut self.data[i], 0, &lut_full, 0);
                 if i < self.extension_factor() {
-                    module.vec_znx_rotate_inplace(-1, &mut lut_full, 0, scratch.borrow());
+                    vec_znx_rotate_inplace::<_, ZnxRef>(-1, &mut lut_full, 0, &mut tmp);
                 }
-            });
+            }
         } else {
             module.vec_znx_copy(&mut self.data[0], 0, &lut_full, 0);
         }
 
-        self.data.iter_mut().for_each(|a| {
+        for a in self.data.iter_mut() {
             module.vec_znx_normalize_inplace(self.base2k, a, 0, scratch.borrow());
-        });
+        }
 
         self.rotate(module, -(drift as i64));
 

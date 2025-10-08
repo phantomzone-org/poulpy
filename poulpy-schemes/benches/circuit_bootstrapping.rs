@@ -20,8 +20,8 @@ use poulpy_hal::{
     },
     layouts::{Backend, Module, ScratchOwned},
     oep::{
-        ScratchAvailableImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeMatZnxImpl, TakeScalarZnxImpl, TakeSvpPPolImpl,
-        TakeVecZnxBigImpl, TakeVecZnxDftImpl, TakeVecZnxDftSliceImpl, TakeVecZnxImpl, TakeVecZnxSliceImpl,
+        ScratchAvailableImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeMatZnxImpl, TakeScalarZnxImpl, TakeSliceImpl,
+        TakeSvpPPolImpl, TakeVecZnxBigImpl, TakeVecZnxDftImpl, TakeVecZnxDftSliceImpl, TakeVecZnxImpl, TakeVecZnxSliceImpl,
     },
     source::Source,
 };
@@ -98,7 +98,8 @@ where
         + TakeVecZnxBigImpl<B>
         + TakeVecZnxDftSliceImpl<B>
         + TakeMatZnxImpl<B>
-        + TakeVecZnxSliceImpl<B>,
+        + TakeVecZnxSliceImpl<B>
+        + TakeSliceImpl<B>,
     BlindRotationKey<Vec<u8>, BRA>: PrepareAlloc<B, BlindRotationKeyPrepared<Vec<u8>, BRA, B>>,
     BlindRotationKeyPrepared<Vec<u8>, BRA, B>: BlincRotationExecute<B>,
     BlindRotationKey<Vec<u8>, BRA>: BlindRotationKeyAlloc + BlindRotationKeyEncryptSk<B>,
@@ -178,7 +179,8 @@ where
             + TakeVecZnxBigImpl<B>
             + TakeVecZnxDftSliceImpl<B>
             + TakeMatZnxImpl<B>
-            + TakeVecZnxSliceImpl<B>,
+            + TakeVecZnxSliceImpl<B>
+            + TakeSliceImpl<B>,
         BlindRotationKey<Vec<u8>, BRA>: PrepareAlloc<B, BlindRotationKeyPrepared<Vec<u8>, BRA, B>>,
         BlindRotationKeyPrepared<Vec<u8>, BRA, B>: BlincRotationExecute<B>,
         BlindRotationKey<Vec<u8>, BRA>: BlindRotationKeyAlloc + BlindRotationKeyEncryptSk<B>,

@@ -8,9 +8,9 @@ use poulpy_hal::{
 };
 
 use crate::{
-    external_product::ExternalProduct,
+    GLWEExternalProduct, GLWEExternalProductInplace,
     layouts::{
-        GGSWInfos, GLWECiphertext, GLWEInfos, LWEInfos,
+        GGSWInfos, GLWECiphertext, GLWECiphertextToMut, GLWECiphertextToRef, GLWEInfos, LWEInfos,
         prepared::{GGSWCiphertextPrepared, GGSWCiphertextPreparedToRef},
     },
 };
@@ -77,7 +77,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         rhs: &GGSWCiphertextPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: ExternalProduct<Self, GLWECiphertext<DataLhs>, B>,
+        Module<B>: GLWEExternalProduct<B>,
     {
         module.external_product(self, lhs, rhs, scratch);
     }
@@ -88,118 +88,13 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         rhs: &GGSWCiphertextPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: VecZnxDftAllocBytes
-            + VmpApplyDftToDftTmpBytes
-            + VecZnxNormalizeTmpBytes
-            + VecZnxDftApply<B>
-            + VmpApplyDftToDft<B>
-            + VmpApplyDftToDftAdd<B>
-            + VecZnxIdftApplyConsume<B>
-            + VecZnxBigNormalize<B>
-            + VecZnxNormalize<B>,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
+        Module<B>: GLWEExternalProductInplace<B>,
     {
-        let basek_in: usize = self.base2k().into();
-        let basek_ggsw: usize = rhs.base2k().into();
-
-        #[cfg(debug_assertions)]
-        {
-            use poulpy_hal::api::ScratchAvailable;
-
-            assert_eq!(rhs.rank(), self.rank());
-            assert_eq!(rhs.n(), self.n());
-            assert!(scratch.available() >= GLWECiphertext::external_product_inplace_scratch_space(module, self, rhs,));
-        }
-
-        let cols: usize = (rhs.rank() + 1).into();
-        let dsize: usize = rhs.dsize().into();
-        let a_size: usize = (self.size() * basek_in).div_ceil(basek_ggsw);
-
-        let (mut res_dft, scratch_1) = scratch.take_vec_znx_dft(self.n().into(), cols, rhs.size()); // Todo optimise
-        let (mut a_dft, scratch_2) = scratch_1.take_vec_znx_dft(self.n().into(), cols, a_size.div_ceil(dsize));
-        a_dft.data_mut().fill(0);
-
-        if basek_in == basek_ggsw {
-            for di in 0..dsize {
-                // (lhs.size() + di) / dsize = (a - (digit - di - 1)).div_ceil(dsize)
-                a_dft.set_size((self.size() + di) / dsize);
-
-                // Small optimization for dsize > 2
-                // VMP produce some error e, and since we aggregate vmp * 2^{di * B}, then
-                // we also aggregate ei * 2^{di * B}, with the largest error being ei * 2^{(dsize-1) * B}.
-                // As such we can ignore the last dsize-2 limbs safely of the sum of vmp products.
-                // It is possible to further ignore the last dsize-1 limbs, but this introduce
-                // ~0.5 to 1 bit of additional noise, and thus not chosen here to ensure that the same
-                // noise is kept with respect to the ideal functionality.
-                res_dft.set_size(rhs.size() - ((dsize - di) as isize - 2).max(0) as usize);
-
-                for j in 0..cols {
-                    module.vec_znx_dft_apply(dsize, dsize - 1 - di, &mut a_dft, j, &self.data, j);
-                }
-
-                if di == 0 {
-                    module.vmp_apply_dft_to_dft(&mut res_dft, &a_dft, &rhs.data, scratch_2);
-                } else {
-                    module.vmp_apply_dft_to_dft_add(&mut res_dft, &a_dft, &rhs.data, di, scratch_2);
-                }
-            }
-        } else {
-            let (mut a_conv, scratch_3) = scratch_2.take_vec_znx(module.n(), cols, a_size);
-
-            for j in 0..cols {
-                module.vec_znx_normalize(
-                    basek_ggsw,
-                    &mut a_conv,
-                    j,
-                    basek_in,
-                    &self.data,
-                    j,
-                    scratch_3,
-                );
-            }
-
-            for di in 0..dsize {
-                // (lhs.size() + di) / dsize = (a - (digit - di - 1)).div_ceil(dsize)
-                a_dft.set_size((self.size() + di) / dsize);
-
-                // Small optimization for dsize > 2
-                // VMP produce some error e, and since we aggregate vmp * 2^{di * B}, then
-                // we also aggregate ei * 2^{di * B}, with the largest error being ei * 2^{(dsize-1) * B}.
-                // As such we can ignore the last dsize-2 limbs safely of the sum of vmp products.
-                // It is possible to further ignore the last dsize-1 limbs, but this introduce
-                // ~0.5 to 1 bit of additional noise, and thus not chosen here to ensure that the same
-                // noise is kept with respect to the ideal functionality.
-                res_dft.set_size(rhs.size() - ((dsize - di) as isize - 2).max(0) as usize);
-
-                for j in 0..cols {
-                    module.vec_znx_dft_apply(dsize, dsize - 1 - di, &mut a_dft, j, &self.data, j);
-                }
-
-                if di == 0 {
-                    module.vmp_apply_dft_to_dft(&mut res_dft, &a_dft, &rhs.data, scratch_2);
-                } else {
-                    module.vmp_apply_dft_to_dft_add(&mut res_dft, &a_dft, &rhs.data, di, scratch_2);
-                }
-            }
-        }
-
-        let res_big: VecZnxBig<&mut [u8], B> = module.vec_znx_idft_apply_consume(res_dft);
-
-        for j in 0..cols {
-            module.vec_znx_big_normalize(
-                basek_in,
-                &mut self.data,
-                j,
-                basek_ggsw,
-                &res_big,
-                j,
-                scratch_1,
-            );
-        }
+        module.external_product_inplace(self, rhs, scratch);
     }
 }
 
-impl<DM: DataMut, DR: DataRef, BE: Backend> ExternalProduct<GLWECiphertext<DM>, GLWECiphertext<DR>, BE> for Module<BE>
+impl<BE: Backend> GLWEExternalProductInplace<BE> for Module<BE>
 where
     Module<BE>: VecZnxDftAllocBytes
         + VmpApplyDftToDftTmpBytes
@@ -212,10 +107,136 @@ where
         + VecZnxNormalize<BE>,
     Scratch<BE>: TakeVecZnxDft<BE> + ScratchAvailable + TakeVecZnx,
 {
-    fn external_product<D>(&self, res: &mut GLWECiphertext<DM>, lhs: &GLWECiphertext<DR>, rhs: &D, scratch: &mut Scratch<BE>)
+    fn external_product_inplace<R, D>(&self, res: &mut R, ggsw: &D, scratch: &mut Scratch<BE>)
     where
+        R: GLWECiphertextToMut,
         D: GGSWCiphertextPreparedToRef<BE>,
     {
+        let res: &mut GLWECiphertext<&mut [u8]> = &mut res.to_mut();
+        let rhs: &GGSWCiphertextPrepared<&[u8], BE> = &ggsw.to_ref();
+
+        let basek_in: usize = res.base2k().into();
+        let basek_ggsw: usize = rhs.base2k().into();
+
+        #[cfg(debug_assertions)]
+        {
+            use poulpy_hal::api::ScratchAvailable;
+
+            assert_eq!(rhs.rank(), res.rank());
+            assert_eq!(rhs.n(), res.n());
+            assert!(scratch.available() >= GLWECiphertext::external_product_inplace_scratch_space(self, res, rhs));
+        }
+
+        let cols: usize = (rhs.rank() + 1).into();
+        let dsize: usize = rhs.dsize().into();
+        let a_size: usize = (res.size() * basek_in).div_ceil(basek_ggsw);
+
+        let (mut res_dft, scratch_1) = scratch.take_vec_znx_dft(res.n().into(), cols, rhs.size()); // Todo optimise
+        let (mut a_dft, scratch_2) = scratch_1.take_vec_znx_dft(res.n().into(), cols, a_size.div_ceil(dsize));
+        a_dft.data_mut().fill(0);
+
+        if basek_in == basek_ggsw {
+            for di in 0..dsize {
+                // (lhs.size() + di) / dsize = (a - (digit - di - 1)).div_ceil(dsize)
+                a_dft.set_size((res.size() + di) / dsize);
+
+                // Small optimization for dsize > 2
+                // VMP produce some error e, and since we aggregate vmp * 2^{di * B}, then
+                // we also aggregate ei * 2^{di * B}, with the largest error being ei * 2^{(dsize-1) * B}.
+                // As such we can ignore the last dsize-2 limbs safely of the sum of vmp products.
+                // It is possible to further ignore the last dsize-1 limbs, but this introduce
+                // ~0.5 to 1 bit of additional noise, and thus not chosen here to ensure that the same
+                // noise is kept with respect to the ideal functionality.
+                res_dft.set_size(rhs.size() - ((dsize - di) as isize - 2).max(0) as usize);
+
+                for j in 0..cols {
+                    self.vec_znx_dft_apply(dsize, dsize - 1 - di, &mut a_dft, j, &res.data, j);
+                }
+
+                if di == 0 {
+                    self.vmp_apply_dft_to_dft(&mut res_dft, &a_dft, &rhs.data, scratch_2);
+                } else {
+                    self.vmp_apply_dft_to_dft_add(&mut res_dft, &a_dft, &rhs.data, di, scratch_2);
+                }
+            }
+        } else {
+            let (mut a_conv, scratch_3) = scratch_2.take_vec_znx(self.n(), cols, a_size);
+
+            for j in 0..cols {
+                self.vec_znx_normalize(
+                    basek_ggsw,
+                    &mut a_conv,
+                    j,
+                    basek_in,
+                    &res.data,
+                    j,
+                    scratch_3,
+                );
+            }
+
+            for di in 0..dsize {
+                // (lhs.size() + di) / dsize = (a - (digit - di - 1)).div_ceil(dsize)
+                a_dft.set_size((res.size() + di) / dsize);
+
+                // Small optimization for dsize > 2
+                // VMP produce some error e, and since we aggregate vmp * 2^{di * B}, then
+                // we also aggregate ei * 2^{di * B}, with the largest error being ei * 2^{(dsize-1) * B}.
+                // As such we can ignore the last dsize-2 limbs safely of the sum of vmp products.
+                // It is possible to further ignore the last dsize-1 limbs, but this introduce
+                // ~0.5 to 1 bit of additional noise, and thus not chosen here to ensure that the same
+                // noise is kept with respect to the ideal functionality.
+                res_dft.set_size(rhs.size() - ((dsize - di) as isize - 2).max(0) as usize);
+
+                for j in 0..cols {
+                    self.vec_znx_dft_apply(dsize, dsize - 1 - di, &mut a_dft, j, &res.data, j);
+                }
+
+                if di == 0 {
+                    self.vmp_apply_dft_to_dft(&mut res_dft, &a_dft, &rhs.data, scratch_2);
+                } else {
+                    self.vmp_apply_dft_to_dft_add(&mut res_dft, &a_dft, &rhs.data, di, scratch_2);
+                }
+            }
+        }
+
+        let res_big: VecZnxBig<&mut [u8], BE> = self.vec_znx_idft_apply_consume(res_dft);
+
+        for j in 0..cols {
+            self.vec_znx_big_normalize(
+                basek_in,
+                &mut res.data,
+                j,
+                basek_ggsw,
+                &res_big,
+                j,
+                scratch_1,
+            );
+        }
+    }
+}
+
+impl<BE: Backend> GLWEExternalProduct<BE> for Module<BE>
+where
+    Module<BE>: VecZnxDftAllocBytes
+        + VmpApplyDftToDftTmpBytes
+        + VecZnxNormalizeTmpBytes
+        + VecZnxDftApply<BE>
+        + VmpApplyDftToDft<BE>
+        + VmpApplyDftToDftAdd<BE>
+        + VecZnxIdftApplyConsume<BE>
+        + VecZnxBigNormalize<BE>
+        + VecZnxNormalize<BE>,
+    Scratch<BE>: TakeVecZnxDft<BE> + ScratchAvailable + TakeVecZnx,
+{
+    fn external_product<R, A, D>(&self, res: &mut R, lhs: &A, rhs: &D, scratch: &mut Scratch<BE>)
+    where
+        R: GLWECiphertextToMut,
+        A: GLWECiphertextToRef,
+        D: GGSWCiphertextPreparedToRef<BE>,
+    {
+        let res: &mut GLWECiphertext<&mut [u8]> = &mut res.to_mut();
+        let lhs: &GLWECiphertext<&[u8]> = &lhs.to_ref();
+
         let rhs: &GGSWCiphertextPrepared<&[u8], BE> = &rhs.to_ref();
 
         let basek_in: usize = lhs.base2k().into();

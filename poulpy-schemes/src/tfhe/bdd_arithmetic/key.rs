@@ -1,5 +1,7 @@
+#[cfg(test)]
+use crate::tfhe::bdd_arithmetic::FheUintBlocksPrepDebug;
 use crate::tfhe::{
-    bdd_arithmetic::{FheUintBlocks, FheUintBlocksPrep, FheUintBlocksPrepDebug, UnsignedInteger},
+    bdd_arithmetic::{FheUintBlocks, FheUintBlocksPrep, UnsignedInteger},
     blind_rotation::{BlindRotationAlgo, BlindRotationKey, BlindRotationKeyAlloc, BlindRotationKeyEncryptSk},
     circuit_bootstrapping::{
         CircuitBootstrappingKey, CircuitBootstrappingKeyEncryptSk, CircuitBootstrappingKeyLayout,
@@ -191,6 +193,7 @@ where
     }
 }
 
+#[cfg(test)]
 impl<CBT, OUT, IN, LWE, BRA, BE, T> FheUintPrepare<BE, FheUintBlocksPrepDebug<OUT, T>, FheUintBlocks<IN, T>>
     for BDDKeyPrepared<CBT, LWE, BRA, BE>
 where

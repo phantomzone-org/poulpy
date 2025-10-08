@@ -1,6 +1,6 @@
 use poulpy_core::layouts::{
-    Base2K, Degree, Dsize, GGLWEAutomorphismKey, GGLWEAutomorphismKeyLayout, GGLWESwitchingKey, GGLWESwitchingKeyLayout,
-    GLWECiphertext, GLWECiphertextLayout, GLWESecret, Rank, Dnum, TorusPrecision,
+    Base2K, Degree, Dnum, Dsize, GGLWEAutomorphismKey, GGLWEAutomorphismKeyLayout, GGLWESwitchingKey, GGLWESwitchingKeyLayout,
+    GLWECiphertext, GLWECiphertextLayout, GLWESecret, Rank, TorusPrecision,
     prepared::{GGLWEAutomorphismKeyPrepared, GGLWESwitchingKeyPrepared, GLWESecretPrepared, PrepareAlloc},
 };
 use std::{hint::black_box, time::Duration};

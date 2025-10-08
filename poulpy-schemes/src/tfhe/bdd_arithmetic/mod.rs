@@ -9,8 +9,10 @@ pub use bdd_2w_to_1w::*;
 pub use ciphertexts::*;
 pub(crate) use circuits::*;
 pub(crate) use eval::*;
-pub use parameters::*;
 pub use key::*;
+
+#[cfg(test)]
+pub(crate) use parameters::*;
 
 #[cfg(test)]
 mod test;

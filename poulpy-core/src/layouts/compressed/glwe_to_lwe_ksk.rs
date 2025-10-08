@@ -6,7 +6,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Dsize, GGLWEInfos, GLWEInfos, LWEInfos, Rank, Dnum, TorusPrecision, compressed::GGLWESwitchingKeyCompressed,
+    Base2K, Degree, Dnum, Dsize, GGLWEInfos, GLWEInfos, LWEInfos, Rank, TorusPrecision, compressed::GGLWESwitchingKeyCompressed,
 };
 
 #[derive(PartialEq, Eq, Clone)]

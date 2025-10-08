@@ -43,13 +43,7 @@ impl<D: DataRef> GGLWECiphertext<D> {
                 self.at(row_i, col_i)
                     .decrypt(module, &mut pt, sk, scratch.borrow());
 
-                module.vec_znx_sub_scalar_inplace(
-                    &mut pt.data,
-                    0,
-                    (dsize - 1) + row_i * dsize,
-                    pt_want,
-                    col_i,
-                );
+                module.vec_znx_sub_scalar_inplace(&mut pt.data, 0, (dsize - 1) + row_i * dsize, pt_want, col_i);
 
                 let noise_have: f64 = pt.data.std(base2k, 0).log2();
 

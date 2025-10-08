@@ -437,7 +437,7 @@ pub fn glwe_packing<D: DataMut, ATK, B: Backend>(
     let log_n: usize = module.log_n();
 
     (0..log_n - log_gap_out).for_each(|i| {
-        let t: usize = log_n.min(1 << (log_n - 1 - i));
+        let t: usize = (1 << log_n).min(1 << (log_n - 1 - i));
 
         let auto_key: &GGLWEAutomorphismKeyPrepared<ATK, B> = if i == 0 {
             auto_keys.get(&-1).unwrap()

@@ -3,7 +3,7 @@ use poulpy_hal::{
     source::Source,
 };
 
-use crate::layouts::{Base2K, BuildError, Degree, Dsize, GLWECiphertext, GLWEInfos, LWEInfos, Rank, Dnum, TorusPrecision};
+use crate::layouts::{Base2K, BuildError, Degree, Dnum, Dsize, GLWECiphertext, GLWEInfos, LWEInfos, Rank, TorusPrecision};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
 use std::fmt;

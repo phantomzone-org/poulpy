@@ -101,13 +101,7 @@ impl<D: DataMut> GGLWECiphertextCompressed<D> {
             (0..dnum).for_each(|d_i| {
                 // Adds the scalar_znx_pt to the i-th limb of the vec_znx_pt
                 tmp_pt.data.zero(); // zeroes for next iteration
-                module.vec_znx_add_scalar_inplace(
-                    &mut tmp_pt.data,
-                    0,
-                    (dsize - 1) + d_i * dsize,
-                    pt,
-                    col_i,
-                );
+                module.vec_znx_add_scalar_inplace(&mut tmp_pt.data, 0, (dsize - 1) + d_i * dsize, pt, col_i);
                 module.vec_znx_normalize_inplace(base2k, &mut tmp_pt.data, 0, scrach_1);
 
                 let (seed, mut source_xa_tmp) = source_xa.branch();

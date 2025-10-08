@@ -4,7 +4,7 @@ use poulpy_hal::{
 };
 use std::fmt;
 
-use crate::layouts::{Base2K, BuildError, Degree, Dsize, GLWECiphertext, GLWEInfos, LWEInfos, Rank, Dnum, TorusPrecision};
+use crate::layouts::{Base2K, BuildError, Degree, Dnum, Dsize, GLWECiphertext, GLWEInfos, LWEInfos, Rank, TorusPrecision};
 
 pub trait GGSWInfos
 where
