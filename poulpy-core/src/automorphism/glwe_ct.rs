@@ -8,7 +8,7 @@ use poulpy_hal::{
     layouts::{Backend, DataMut, DataRef, Module, Scratch, VecZnxBig},
 };
 
-use crate::layouts::{GGLWELayoutInfos, GLWECiphertext, GLWEInfos, LWEInfos, prepared::GGLWEAutomorphismKeyPrepared};
+use crate::layouts::{GGLWEInfos, GLWECiphertext, GLWEInfos, LWEInfos, prepared::GGLWEAutomorphismKeyPrepared};
 
 impl GLWECiphertext<Vec<u8>> {
     pub fn automorphism_scratch_space<B: Backend, OUT, IN, KEY>(
@@ -20,7 +20,7 @@ impl GLWECiphertext<Vec<u8>> {
     where
         OUT: GLWEInfos,
         IN: GLWEInfos,
-        KEY: GGLWELayoutInfos,
+        KEY: GGLWEInfos,
         Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
         Self::keyswitch_scratch_space(module, out_infos, in_infos, key_infos)
@@ -29,7 +29,7 @@ impl GLWECiphertext<Vec<u8>> {
     pub fn automorphism_inplace_scratch_space<B: Backend, OUT, KEY>(module: &Module<B>, out_infos: &OUT, key_infos: &KEY) -> usize
     where
         OUT: GLWEInfos,
-        KEY: GGLWELayoutInfos,
+        KEY: GGLWEInfos,
         Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
         Self::keyswitch_inplace_scratch_space(module, out_infos, key_infos)

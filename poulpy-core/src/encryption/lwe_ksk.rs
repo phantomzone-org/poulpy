@@ -12,7 +12,7 @@ use poulpy_hal::{
 use crate::{
     TakeGLWESecret, TakeGLWESecretPrepared,
     layouts::{
-        Degree, GGLWELayoutInfos, GGLWESwitchingKey, GLWESecret, LWEInfos, LWESecret, LWESwitchingKey, Rank,
+        Degree, GGLWEInfos, GGLWESwitchingKey, GLWESecret, LWEInfos, LWESecret, LWESwitchingKey, Rank,
         prepared::GLWESecretPrepared,
     },
 };
@@ -20,13 +20,13 @@ use crate::{
 impl LWESwitchingKey<Vec<u8>> {
     pub fn encrypt_sk_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
         Module<B>: SvpPPolAllocBytes + VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes + VecZnxNormalizeTmpBytes,
     {
         debug_assert_eq!(
-            infos.digits().0,
+            infos.dsize().0,
             1,
-            "digits > 1 is not supported for LWESwitchingKey"
+            "dsize > 1 is not supported for LWESwitchingKey"
         );
         debug_assert_eq!(
             infos.rank_in().0,

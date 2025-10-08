@@ -69,18 +69,18 @@ where
 {
     let base2k: usize = 12;
     let k_ksk: usize = 60;
-    let digits: usize = k_ksk.div_ceil(base2k) - 1;
+    let dsize: usize = k_ksk.div_ceil(base2k) - 1;
     for rank in 1_usize..3 {
-        for di in 1..digits + 1 {
+        for di in 1..dsize + 1 {
             let n: usize = module.n();
-            let rows: usize = (k_ksk - di * base2k) / (di * base2k);
+            let dnum: usize = (k_ksk - di * base2k) / (di * base2k);
 
             let atk_infos: GGLWEAutomorphismKeyLayout = GGLWEAutomorphismKeyLayout {
                 n: n.into(),
                 base2k: base2k.into(),
                 k: k_ksk.into(),
-                rows: rows.into(),
-                digits: di.into(),
+                dnum: dnum.into(),
+                dsize: di.into(),
                 rank: rank.into(),
             };
 
@@ -172,18 +172,18 @@ where
 {
     let base2k: usize = 12;
     let k_ksk: usize = 60;
-    let digits: usize = k_ksk.div_ceil(base2k) - 1;
+    let dsize: usize = k_ksk.div_ceil(base2k) - 1;
     for rank in 1_usize..3 {
-        for di in 1..digits + 1 {
+        for di in 1..dsize + 1 {
             let n: usize = module.n();
-            let rows: usize = (k_ksk - di * base2k) / (di * base2k);
+            let dnum: usize = (k_ksk - di * base2k) / (di * base2k);
 
             let atk_infos: GGLWEAutomorphismKeyLayout = GGLWEAutomorphismKeyLayout {
                 n: n.into(),
                 base2k: base2k.into(),
                 k: k_ksk.into(),
-                rows: rows.into(),
-                digits: di.into(),
+                dnum: dnum.into(),
+                dsize: di.into(),
                 rank: rank.into(),
             };
 

@@ -5,7 +5,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Digits, GGSWCiphertext, GGSWInfos, GLWEInfos, LWEInfos, Rank, Rows, TorusPrecision,
+    Base2K, Degree, Dnum, Dsize, GGSWCiphertext, GGSWInfos, GLWEInfos, LWEInfos, Rank, TorusPrecision,
     compressed::{Decompress, GLWECiphertextCompressed},
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
@@ -16,7 +16,7 @@ pub struct GGSWCiphertextCompressed<D: Data> {
     pub(crate) data: MatZnx<D>,
     pub(crate) k: TorusPrecision,
     pub(crate) base2k: Base2K,
-    pub(crate) digits: Digits,
+    pub(crate) dsize: Dsize,
     pub(crate) rank: Rank,
     pub(crate) seed: Vec<[u8; 32]>,
 }
@@ -44,12 +44,12 @@ impl<D: Data> GLWEInfos for GGSWCiphertextCompressed<D> {
 }
 
 impl<D: Data> GGSWInfos for GGSWCiphertextCompressed<D> {
-    fn digits(&self) -> Digits {
-        self.digits
+    fn dsize(&self) -> Dsize {
+        self.dsize
     }
 
-    fn rows(&self) -> Rows {
-        Rows(self.data.rows() as u32)
+    fn dnum(&self) -> Dnum {
+        Dnum(self.data.rows() as u32)
     }
 }
 
@@ -63,8 +63,8 @@ impl<D: DataRef> fmt::Display for GGSWCiphertextCompressed<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "(GGSWCiphertextCompressed: base2k={} k={} digits={}) {}",
-            self.base2k, self.k, self.digits, self.data
+            "(GGSWCiphertextCompressed: base2k={} k={} dsize={}) {}",
+            self.base2k, self.k, self.dsize, self.data
         )
     }
 }
@@ -84,38 +84,38 @@ impl GGSWCiphertextCompressed<Vec<u8>> {
             infos.n(),
             infos.base2k(),
             infos.k(),
-            infos.rows(),
-            infos.digits(),
             infos.rank(),
+            infos.dnum(),
+            infos.dsize(),
         )
     }
 
-    pub fn alloc_with(n: Degree, base2k: Base2K, k: TorusPrecision, rows: Rows, digits: Digits, rank: Rank) -> Self {
+    pub fn alloc_with(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> Self {
         let size: usize = k.0.div_ceil(base2k.0) as usize;
         debug_assert!(
-            size as u32 > digits.0,
-            "invalid ggsw: ceil(k/base2k): {size} <= digits: {}",
-            digits.0
+            size as u32 > dsize.0,
+            "invalid ggsw: ceil(k/base2k): {size} <= dsize: {}",
+            dsize.0
         );
 
         assert!(
-            rows.0 * digits.0 <= size as u32,
-            "invalid ggsw: rows: {} * digits:{} > ceil(k/base2k): {size}",
-            rows.0,
-            digits.0,
+            dnum.0 * dsize.0 <= size as u32,
+            "invalid ggsw: dnum: {} * dsize:{} > ceil(k/base2k): {size}",
+            dnum.0,
+            dsize.0,
         );
 
         Self {
             data: MatZnx::alloc(
                 n.into(),
-                rows.into(),
+                dnum.into(),
                 (rank + 1).into(),
                 1,
                 k.0.div_ceil(base2k.0) as usize,
             ),
             k,
             base2k,
-            digits,
+            dsize,
             rank,
             seed: Vec::new(),
         }
@@ -129,30 +129,30 @@ impl GGSWCiphertextCompressed<Vec<u8>> {
             infos.n(),
             infos.base2k(),
             infos.k(),
-            infos.rows(),
-            infos.digits(),
             infos.rank(),
+            infos.dnum(),
+            infos.dsize(),
         )
     }
 
-    pub fn alloc_bytes_with(n: Degree, base2k: Base2K, k: TorusPrecision, rows: Rows, digits: Digits, rank: Rank) -> usize {
+    pub fn alloc_bytes_with(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize {
         let size: usize = k.0.div_ceil(base2k.0) as usize;
         debug_assert!(
-            size as u32 > digits.0,
-            "invalid ggsw: ceil(k/base2k): {size} <= digits: {}",
-            digits.0
+            size as u32 > dsize.0,
+            "invalid ggsw: ceil(k/base2k): {size} <= dsize: {}",
+            dsize.0
         );
 
         assert!(
-            rows.0 * digits.0 <= size as u32,
-            "invalid ggsw: rows: {} * digits:{} > ceil(k/base2k): {size}",
-            rows.0,
-            digits.0,
+            dnum.0 * dsize.0 <= size as u32,
+            "invalid ggsw: dnum: {} * dsize:{} > ceil(k/base2k): {size}",
+            dnum.0,
+            dsize.0,
         );
 
         MatZnx::alloc_bytes(
             n.into(),
-            rows.into(),
+            dnum.into(),
             (rank + 1).into(),
             1,
             k.0.div_ceil(base2k.0) as usize,
@@ -190,7 +190,7 @@ impl<D: DataMut> ReaderFrom for GGSWCiphertextCompressed<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         self.k = TorusPrecision(reader.read_u32::<LittleEndian>()?);
         self.base2k = Base2K(reader.read_u32::<LittleEndian>()?);
-        self.digits = Digits(reader.read_u32::<LittleEndian>()?);
+        self.dsize = Dsize(reader.read_u32::<LittleEndian>()?);
         self.rank = Rank(reader.read_u32::<LittleEndian>()?);
         let seed_len: usize = reader.read_u32::<LittleEndian>()? as usize;
         self.seed = vec![[0u8; 32]; seed_len];
@@ -205,7 +205,7 @@ impl<D: DataRef> WriterTo for GGSWCiphertextCompressed<D> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         writer.write_u32::<LittleEndian>(self.k.into())?;
         writer.write_u32::<LittleEndian>(self.base2k.into())?;
-        writer.write_u32::<LittleEndian>(self.digits.into())?;
+        writer.write_u32::<LittleEndian>(self.dsize.into())?;
         writer.write_u32::<LittleEndian>(self.rank.into())?;
         writer.write_u32::<LittleEndian>(self.seed.len() as u32)?;
         for s in &self.seed {
@@ -225,9 +225,9 @@ where
             assert_eq!(self.rank(), other.rank())
         }
 
-        let rows: usize = self.rows().into();
+        let dnum: usize = self.dnum().into();
         let rank: usize = self.rank().into();
-        (0..rows).for_each(|row_i| {
+        (0..dnum).for_each(|row_i| {
             (0..rank + 1).for_each(|col_j| {
                 self.at_mut(row_i, col_j)
                     .decompress(module, &other.at(row_i, col_j));

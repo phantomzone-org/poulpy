@@ -4,7 +4,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Digits, GGLWELayoutInfos, GLWEInfos, LWEInfos, LWESwitchingKey, Rank, Rows, TorusPrecision,
+    Base2K, Degree, Dnum, Dsize, GGLWEInfos, GLWEInfos, LWEInfos, LWESwitchingKey, Rank, TorusPrecision,
     prepared::{GGLWESwitchingKeyPrepared, Prepare, PrepareAlloc},
 };
 
@@ -34,9 +34,9 @@ impl<D: Data, B: Backend> GLWEInfos for LWESwitchingKeyPrepared<D, B> {
     }
 }
 
-impl<D: Data, B: Backend> GGLWELayoutInfos for LWESwitchingKeyPrepared<D, B> {
-    fn digits(&self) -> Digits {
-        self.0.digits()
+impl<D: Data, B: Backend> GGLWEInfos for LWESwitchingKeyPrepared<D, B> {
+    fn dsize(&self) -> Dsize {
+        self.0.dsize()
     }
 
     fn rank_in(&self) -> Rank {
@@ -47,21 +47,21 @@ impl<D: Data, B: Backend> GGLWELayoutInfos for LWESwitchingKeyPrepared<D, B> {
         self.0.rank_out()
     }
 
-    fn rows(&self) -> Rows {
-        self.0.rows()
+    fn dnum(&self) -> Dnum {
+        self.0.dnum()
     }
 }
 
 impl<B: Backend> LWESwitchingKeyPrepared<Vec<u8>, B> {
     pub fn alloc<A>(module: &Module<B>, infos: &A) -> Self
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
         Module<B>: VmpPMatAlloc<B>,
     {
         debug_assert_eq!(
-            infos.digits().0,
+            infos.dsize().0,
             1,
-            "digits > 1 is not supported for LWESwitchingKey"
+            "dsize > 1 is not supported for LWESwitchingKey"
         );
         debug_assert_eq!(
             infos.rank_in().0,
@@ -76,7 +76,7 @@ impl<B: Backend> LWESwitchingKeyPrepared<Vec<u8>, B> {
         Self(GGLWESwitchingKeyPrepared::alloc(module, infos))
     }
 
-    pub fn alloc_with(module: &Module<B>, base2k: Base2K, k: TorusPrecision, rows: Rows) -> Self
+    pub fn alloc_with(module: &Module<B>, base2k: Base2K, k: TorusPrecision, dnum: Dnum) -> Self
     where
         Module<B>: VmpPMatAlloc<B>,
     {
@@ -84,22 +84,22 @@ impl<B: Backend> LWESwitchingKeyPrepared<Vec<u8>, B> {
             module,
             base2k,
             k,
-            rows,
-            Digits(1),
             Rank(1),
             Rank(1),
+            dnum,
+            Dsize(1),
         ))
     }
 
     pub fn alloc_bytes<A>(module: &Module<B>, infos: &A) -> usize
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
         Module<B>: VmpPMatAllocBytes,
     {
         debug_assert_eq!(
-            infos.digits().0,
+            infos.dsize().0,
             1,
-            "digits > 1 is not supported for LWESwitchingKey"
+            "dsize > 1 is not supported for LWESwitchingKey"
         );
         debug_assert_eq!(
             infos.rank_in().0,
@@ -114,11 +114,11 @@ impl<B: Backend> LWESwitchingKeyPrepared<Vec<u8>, B> {
         GGLWESwitchingKeyPrepared::alloc_bytes(module, infos)
     }
 
-    pub fn alloc_bytes_with(module: &Module<B>, base2k: Base2K, k: TorusPrecision, rows: Rows) -> usize
+    pub fn alloc_bytes_with(module: &Module<B>, base2k: Base2K, k: TorusPrecision, dnum: Dnum) -> usize
     where
         Module<B>: VmpPMatAllocBytes,
     {
-        GGLWESwitchingKeyPrepared::alloc_bytes_with(module, base2k, k, rows, Digits(1), Rank(1), Rank(1))
+        GGLWESwitchingKeyPrepared::alloc_bytes_with(module, base2k, k, Rank(1), Rank(1), dnum, Dsize(1))
     }
 }
 

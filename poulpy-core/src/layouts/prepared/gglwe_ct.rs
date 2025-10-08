@@ -5,7 +5,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, BuildError, Degree, Digits, GGLWECiphertext, GGLWELayoutInfos, GLWEInfos, LWEInfos, Rank, Rows, TorusPrecision,
+    Base2K, BuildError, Degree, Dnum, Dsize, GGLWECiphertext, GGLWEInfos, GLWEInfos, LWEInfos, Rank, TorusPrecision,
     prepared::{Prepare, PrepareAlloc},
 };
 
@@ -14,7 +14,7 @@ pub struct GGLWECiphertextPrepared<D: Data, B: Backend> {
     pub(crate) data: VmpPMat<D, B>,
     pub(crate) k: TorusPrecision,
     pub(crate) base2k: Base2K,
-    pub(crate) digits: Digits,
+    pub(crate) dsize: Dsize,
 }
 
 impl<D: Data, B: Backend> LWEInfos for GGLWECiphertextPrepared<D, B> {
@@ -41,7 +41,7 @@ impl<D: Data, B: Backend> GLWEInfos for GGLWECiphertextPrepared<D, B> {
     }
 }
 
-impl<D: Data, B: Backend> GGLWELayoutInfos for GGLWECiphertextPrepared<D, B> {
+impl<D: Data, B: Backend> GGLWEInfos for GGLWECiphertextPrepared<D, B> {
     fn rank_in(&self) -> Rank {
         Rank(self.data.cols_in() as u32)
     }
@@ -50,12 +50,12 @@ impl<D: Data, B: Backend> GGLWELayoutInfos for GGLWECiphertextPrepared<D, B> {
         Rank(self.data.cols_out() as u32 - 1)
     }
 
-    fn digits(&self) -> Digits {
-        self.digits
+    fn dsize(&self) -> Dsize {
+        self.dsize
     }
 
-    fn rows(&self) -> Rows {
-        Rows(self.data.rows() as u32)
+    fn dnum(&self) -> Dnum {
+        Dnum(self.data.rows() as u32)
     }
 }
 
@@ -63,7 +63,7 @@ pub struct GGLWECiphertextPreparedBuilder<D: Data, B: Backend> {
     data: Option<VmpPMat<D, B>>,
     base2k: Option<Base2K>,
     k: Option<TorusPrecision>,
-    digits: Option<Digits>,
+    dsize: Option<Dsize>,
 }
 
 impl<D: Data, B: Backend> GGLWECiphertextPrepared<D, B> {
@@ -73,7 +73,7 @@ impl<D: Data, B: Backend> GGLWECiphertextPrepared<D, B> {
             data: None,
             base2k: None,
             k: None,
-            digits: None,
+            dsize: None,
         }
     }
 }
@@ -82,19 +82,19 @@ impl<B: Backend> GGLWECiphertextPreparedBuilder<Vec<u8>, B> {
     #[inline]
     pub fn layout<A>(mut self, infos: &A) -> Self
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
         B: VmpPMatAllocBytesImpl<B>,
     {
         self.data = Some(VmpPMat::alloc(
             infos.n().into(),
-            infos.rows().into(),
+            infos.dnum().into(),
             infos.rank_in().into(),
             (infos.rank_out() + 1).into(),
             infos.size(),
         ));
         self.base2k = Some(infos.base2k());
         self.k = Some(infos.k());
-        self.digits = Some(infos.digits());
+        self.dsize = Some(infos.dsize());
         self
     }
 }
@@ -117,8 +117,8 @@ impl<D: Data, B: Backend> GGLWECiphertextPreparedBuilder<D, B> {
     }
 
     #[inline]
-    pub fn digits(mut self, digits: Digits) -> Self {
-        self.digits = Some(digits);
+    pub fn dsize(mut self, dsize: Dsize) -> Self {
+        self.dsize = Some(dsize);
         self
     }
 
@@ -126,13 +126,13 @@ impl<D: Data, B: Backend> GGLWECiphertextPreparedBuilder<D, B> {
         let data: VmpPMat<D, B> = self.data.ok_or(BuildError::MissingData)?;
         let base2k: Base2K = self.base2k.ok_or(BuildError::MissingBase2K)?;
         let k: TorusPrecision = self.k.ok_or(BuildError::MissingK)?;
-        let digits: Digits = self.digits.ok_or(BuildError::MissingDigits)?;
+        let dsize: Dsize = self.dsize.ok_or(BuildError::MissingDigits)?;
 
         if base2k == 0_u32 {
             return Err(BuildError::ZeroBase2K);
         }
 
-        if digits == 0_u32 {
+        if dsize == 0_u32 {
             return Err(BuildError::ZeroBase2K);
         }
 
@@ -156,7 +156,7 @@ impl<D: Data, B: Backend> GGLWECiphertextPreparedBuilder<D, B> {
             data,
             base2k,
             k,
-            digits,
+            dsize,
         })
     }
 }
@@ -164,7 +164,7 @@ impl<D: Data, B: Backend> GGLWECiphertextPreparedBuilder<D, B> {
 impl<B: Backend> GGLWECiphertextPrepared<Vec<u8>, B> {
     pub fn alloc<A>(module: &Module<B>, infos: &A) -> Self
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
         Module<B>: VmpPMatAlloc<B>,
     {
         debug_assert_eq!(module.n(), infos.n().0 as usize, "module.n() != infos.n()");
@@ -172,10 +172,10 @@ impl<B: Backend> GGLWECiphertextPrepared<Vec<u8>, B> {
             module,
             infos.base2k(),
             infos.k(),
-            infos.rows(),
-            infos.digits(),
             infos.rank_in(),
             infos.rank_out(),
+            infos.dnum(),
+            infos.dsize(),
         )
     }
 
@@ -183,39 +183,39 @@ impl<B: Backend> GGLWECiphertextPrepared<Vec<u8>, B> {
         module: &Module<B>,
         base2k: Base2K,
         k: TorusPrecision,
-        rows: Rows,
-        digits: Digits,
         rank_in: Rank,
         rank_out: Rank,
+        dnum: Dnum,
+        dsize: Dsize,
     ) -> Self
     where
         Module<B>: VmpPMatAlloc<B>,
     {
         let size: usize = k.0.div_ceil(base2k.0) as usize;
         debug_assert!(
-            size as u32 > digits.0,
-            "invalid gglwe: ceil(k/base2k): {size} <= digits: {}",
-            digits.0
+            size as u32 > dsize.0,
+            "invalid gglwe: ceil(k/base2k): {size} <= dsize: {}",
+            dsize.0
         );
 
         assert!(
-            rows.0 * digits.0 <= size as u32,
-            "invalid gglwe: rows: {} * digits:{} > ceil(k/base2k): {size}",
-            rows.0,
-            digits.0,
+            dnum.0 * dsize.0 <= size as u32,
+            "invalid gglwe: dnum: {} * dsize:{} > ceil(k/base2k): {size}",
+            dnum.0,
+            dsize.0,
         );
 
         Self {
-            data: module.vmp_pmat_alloc(rows.into(), rank_in.into(), (rank_out + 1).into(), size),
+            data: module.vmp_pmat_alloc(dnum.into(), rank_in.into(), (rank_out + 1).into(), size),
             k,
             base2k,
-            digits,
+            dsize,
         }
     }
 
     pub fn alloc_bytes<A>(module: &Module<B>, infos: &A) -> usize
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
         Module<B>: VmpPMatAllocBytes,
     {
         debug_assert_eq!(module.n(), infos.n().0 as usize, "module.n() != infos.n()");
@@ -223,10 +223,10 @@ impl<B: Backend> GGLWECiphertextPrepared<Vec<u8>, B> {
             module,
             infos.base2k(),
             infos.k(),
-            infos.rows(),
-            infos.digits(),
             infos.rank_in(),
             infos.rank_out(),
+            infos.dnum(),
+            infos.dsize(),
         )
     }
 
@@ -234,29 +234,29 @@ impl<B: Backend> GGLWECiphertextPrepared<Vec<u8>, B> {
         module: &Module<B>,
         base2k: Base2K,
         k: TorusPrecision,
-        rows: Rows,
-        digits: Digits,
         rank_in: Rank,
         rank_out: Rank,
+        dnum: Dnum,
+        dsize: Dsize,
     ) -> usize
     where
         Module<B>: VmpPMatAllocBytes,
     {
         let size: usize = k.0.div_ceil(base2k.0) as usize;
         debug_assert!(
-            size as u32 > digits.0,
-            "invalid gglwe: ceil(k/base2k): {size} <= digits: {}",
-            digits.0
+            size as u32 > dsize.0,
+            "invalid gglwe: ceil(k/base2k): {size} <= dsize: {}",
+            dsize.0
         );
 
         assert!(
-            rows.0 * digits.0 <= size as u32,
-            "invalid gglwe: rows: {} * digits:{} > ceil(k/base2k): {size}",
-            rows.0,
-            digits.0,
+            dnum.0 * dsize.0 <= size as u32,
+            "invalid gglwe: dnum: {} * dsize:{} > ceil(k/base2k): {size}",
+            dnum.0,
+            dsize.0,
         );
 
-        module.vmp_pmat_alloc_bytes(rows.into(), rank_in.into(), (rank_out + 1).into(), size)
+        module.vmp_pmat_alloc_bytes(dnum.into(), rank_in.into(), (rank_out + 1).into(), size)
     }
 }
 
@@ -268,7 +268,7 @@ where
         module.vmp_prepare(&mut self.data, &other.data, scratch);
         self.k = other.k;
         self.base2k = other.base2k;
-        self.digits = other.digits;
+        self.dsize = other.dsize;
     }
 }
 

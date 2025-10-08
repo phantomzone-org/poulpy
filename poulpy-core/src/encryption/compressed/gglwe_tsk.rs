@@ -12,7 +12,7 @@ use poulpy_hal::{
 use crate::{
     TakeGLWESecret, TakeGLWESecretPrepared,
     layouts::{
-        GGLWELayoutInfos, GGLWETensorKey, GLWEInfos, GLWESecret, LWEInfos, Rank, compressed::GGLWETensorKeyCompressed,
+        GGLWEInfos, GGLWETensorKey, GLWEInfos, GLWESecret, LWEInfos, Rank, compressed::GGLWETensorKeyCompressed,
         prepared::Prepare,
     },
 };
@@ -20,7 +20,7 @@ use crate::{
 impl GGLWETensorKeyCompressed<Vec<u8>> {
     pub fn encrypt_sk_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
         Module<B>:
             SvpPPolAllocBytes + VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes + VecZnxNormalizeTmpBytes + VecZnxBigAllocBytes,
     {

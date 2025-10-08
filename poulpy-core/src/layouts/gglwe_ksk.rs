@@ -4,7 +4,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Digits, GGLWECiphertext, GGLWELayoutInfos, GLWECiphertext, GLWEInfos, LWEInfos, Rank, Rows, TorusPrecision,
+    Base2K, Degree, Dnum, Dsize, GGLWECiphertext, GGLWEInfos, GLWECiphertext, GLWEInfos, LWEInfos, Rank, TorusPrecision,
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
@@ -15,10 +15,10 @@ pub struct GGLWESwitchingKeyLayout {
     pub n: Degree,
     pub base2k: Base2K,
     pub k: TorusPrecision,
-    pub rows: Rows,
-    pub digits: Digits,
     pub rank_in: Rank,
     pub rank_out: Rank,
+    pub dnum: Dnum,
+    pub dsize: Dsize,
 }
 
 impl LWEInfos for GGLWESwitchingKeyLayout {
@@ -41,7 +41,7 @@ impl GLWEInfos for GGLWESwitchingKeyLayout {
     }
 }
 
-impl GGLWELayoutInfos for GGLWESwitchingKeyLayout {
+impl GGLWEInfos for GGLWESwitchingKeyLayout {
     fn rank_in(&self) -> Rank {
         self.rank_in
     }
@@ -50,12 +50,12 @@ impl GGLWELayoutInfos for GGLWESwitchingKeyLayout {
         self.rank_out
     }
 
-    fn digits(&self) -> Digits {
-        self.digits
+    fn dsize(&self) -> Dsize {
+        self.dsize
     }
 
-    fn rows(&self) -> Rows {
-        self.rows
+    fn dnum(&self) -> Dnum {
+        self.dnum
     }
 }
 
@@ -90,7 +90,7 @@ impl<D: Data> GLWEInfos for GGLWESwitchingKey<D> {
     }
 }
 
-impl<D: Data> GGLWELayoutInfos for GGLWESwitchingKey<D> {
+impl<D: Data> GGLWEInfos for GGLWESwitchingKey<D> {
     fn rank_in(&self) -> Rank {
         self.key.rank_in()
     }
@@ -99,12 +99,12 @@ impl<D: Data> GGLWELayoutInfos for GGLWESwitchingKey<D> {
         self.key.rank_out()
     }
 
-    fn digits(&self) -> Digits {
-        self.key.digits()
+    fn dsize(&self) -> Dsize {
+        self.key.dsize()
     }
 
-    fn rows(&self) -> Rows {
-        self.key.rows()
+    fn dnum(&self) -> Dnum {
+        self.key.dnum()
     }
 }
 
@@ -135,7 +135,7 @@ impl<D: DataMut> FillUniform for GGLWESwitchingKey<D> {
 impl GGLWESwitchingKey<Vec<u8>> {
     pub fn alloc<A>(infos: &A) -> Self
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
     {
         GGLWESwitchingKey {
             key: GGLWECiphertext::alloc(infos),
@@ -148,13 +148,13 @@ impl GGLWESwitchingKey<Vec<u8>> {
         n: Degree,
         base2k: Base2K,
         k: TorusPrecision,
-        rows: Rows,
-        digits: Digits,
         rank_in: Rank,
         rank_out: Rank,
+        dnum: Dnum,
+        dsize: Dsize,
     ) -> Self {
         GGLWESwitchingKey {
-            key: GGLWECiphertext::alloc_with(n, base2k, k, rows, digits, rank_in, rank_out),
+            key: GGLWECiphertext::alloc_with(n, base2k, k, rank_in, rank_out, dnum, dsize),
             sk_in_n: 0,
             sk_out_n: 0,
         }
@@ -162,7 +162,7 @@ impl GGLWESwitchingKey<Vec<u8>> {
 
     pub fn alloc_bytes<A>(infos: &A) -> usize
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
     {
         GGLWECiphertext::alloc_bytes(infos)
     }
@@ -171,12 +171,12 @@ impl GGLWESwitchingKey<Vec<u8>> {
         n: Degree,
         base2k: Base2K,
         k: TorusPrecision,
-        rows: Rows,
-        digits: Digits,
         rank_in: Rank,
         rank_out: Rank,
+        dnum: Dnum,
+        dsize: Dsize,
     ) -> usize {
-        GGLWECiphertext::alloc_bytes_with(n, base2k, k, rows, digits, rank_in, rank_out)
+        GGLWECiphertext::alloc_bytes_with(n, base2k, k, rank_in, rank_out, dnum, dsize)
     }
 }
 

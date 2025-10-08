@@ -5,7 +5,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Digits, GGLWELayoutInfos, GGLWESwitchingKey, GLWEInfos, LWEInfos, Rank, Rows, TorusPrecision,
+    Base2K, Degree, Dnum, Dsize, GGLWEInfos, GGLWESwitchingKey, GLWEInfos, LWEInfos, Rank, TorusPrecision,
     compressed::{Decompress, GGLWECiphertextCompressed},
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
@@ -41,7 +41,7 @@ impl<D: Data> GLWEInfos for GGLWESwitchingKeyCompressed<D> {
     }
 }
 
-impl<D: Data> GGLWELayoutInfos for GGLWESwitchingKeyCompressed<D> {
+impl<D: Data> GGLWEInfos for GGLWESwitchingKeyCompressed<D> {
     fn rank_in(&self) -> Rank {
         self.key.rank_in()
     }
@@ -50,12 +50,12 @@ impl<D: Data> GGLWELayoutInfos for GGLWESwitchingKeyCompressed<D> {
         self.key.rank_out()
     }
 
-    fn digits(&self) -> Digits {
-        self.key.digits()
+    fn dsize(&self) -> Dsize {
+        self.key.dsize()
     }
 
-    fn rows(&self) -> Rows {
-        self.key.rows()
+    fn dnum(&self) -> Dnum {
+        self.key.dnum()
     }
 }
 
@@ -84,7 +84,7 @@ impl<D: DataRef> fmt::Display for GGLWESwitchingKeyCompressed<D> {
 impl GGLWESwitchingKeyCompressed<Vec<u8>> {
     pub fn alloc<A>(infos: &A) -> Self
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
     {
         GGLWESwitchingKeyCompressed {
             key: GGLWECiphertextCompressed::alloc(infos),
@@ -97,13 +97,13 @@ impl GGLWESwitchingKeyCompressed<Vec<u8>> {
         n: Degree,
         base2k: Base2K,
         k: TorusPrecision,
-        rows: Rows,
-        digits: Digits,
         rank_in: Rank,
         rank_out: Rank,
+        dnum: Dnum,
+        dsize: Dsize,
     ) -> Self {
         GGLWESwitchingKeyCompressed {
-            key: GGLWECiphertextCompressed::alloc_with(n, base2k, k, rows, digits, rank_in, rank_out),
+            key: GGLWECiphertextCompressed::alloc_with(n, base2k, k, rank_in, rank_out, dnum, dsize),
             sk_in_n: 0,
             sk_out_n: 0,
         }
@@ -111,21 +111,13 @@ impl GGLWESwitchingKeyCompressed<Vec<u8>> {
 
     pub fn alloc_bytes<A>(infos: &A) -> usize
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
     {
         GGLWECiphertextCompressed::alloc_bytes(infos)
     }
 
-    pub fn alloc_bytes_with(
-        n: Degree,
-        base2k: Base2K,
-        k: TorusPrecision,
-        rows: Rows,
-        digits: Digits,
-        rank_in: Rank,
-        rank_out: Rank,
-    ) -> usize {
-        GGLWECiphertextCompressed::alloc_bytes_with(n, base2k, k, rows, digits, rank_in, rank_out)
+    pub fn alloc_bytes_with(n: Degree, base2k: Base2K, k: TorusPrecision, rank_in: Rank, dnum: Dnum, dsize: Dsize) -> usize {
+        GGLWECiphertextCompressed::alloc_bytes_with(n, base2k, k, rank_in, dnum, dsize)
     }
 }
 

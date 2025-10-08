@@ -5,7 +5,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Digits, GGLWELayoutInfos, GLWEInfos, LWEInfos, LWESwitchingKey, Rank, Rows, TorusPrecision,
+    Base2K, Degree, Dnum, Dsize, GGLWEInfos, GLWEInfos, LWEInfos, LWESwitchingKey, Rank, TorusPrecision,
     compressed::{Decompress, GGLWESwitchingKeyCompressed},
 };
 use std::fmt;
@@ -35,9 +35,9 @@ impl<D: Data> GLWEInfos for LWESwitchingKeyCompressed<D> {
     }
 }
 
-impl<D: Data> GGLWELayoutInfos for LWESwitchingKeyCompressed<D> {
-    fn digits(&self) -> Digits {
-        self.0.digits()
+impl<D: Data> GGLWEInfos for LWESwitchingKeyCompressed<D> {
+    fn dsize(&self) -> Dsize {
+        self.0.dsize()
     }
 
     fn rank_in(&self) -> Rank {
@@ -48,8 +48,8 @@ impl<D: Data> GGLWELayoutInfos for LWESwitchingKeyCompressed<D> {
         self.0.rank_out()
     }
 
-    fn rows(&self) -> Rows {
-        self.0.rows()
+    fn dnum(&self) -> Dnum {
+        self.0.dnum()
     }
 }
 
@@ -86,12 +86,12 @@ impl<D: DataRef> WriterTo for LWESwitchingKeyCompressed<D> {
 impl LWESwitchingKeyCompressed<Vec<u8>> {
     pub fn alloc<A>(infos: &A) -> Self
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
     {
         debug_assert_eq!(
-            infos.digits().0,
+            infos.dsize().0,
             1,
-            "digits > 1 is not supported for LWESwitchingKeyCompressed"
+            "dsize > 1 is not supported for LWESwitchingKeyCompressed"
         );
         debug_assert_eq!(
             infos.rank_in().0,
@@ -106,26 +106,26 @@ impl LWESwitchingKeyCompressed<Vec<u8>> {
         Self(GGLWESwitchingKeyCompressed::alloc(infos))
     }
 
-    pub fn alloc_with(n: Degree, base2k: Base2K, k: TorusPrecision, rows: Rows) -> Self {
+    pub fn alloc_with(n: Degree, base2k: Base2K, k: TorusPrecision, dnum: Dnum) -> Self {
         Self(GGLWESwitchingKeyCompressed::alloc_with(
             n,
             base2k,
             k,
-            rows,
-            Digits(1),
             Rank(1),
             Rank(1),
+            dnum,
+            Dsize(1),
         ))
     }
 
     pub fn alloc_bytes<A>(infos: &A) -> usize
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
     {
         debug_assert_eq!(
-            infos.digits().0,
+            infos.dsize().0,
             1,
-            "digits > 1 is not supported for LWESwitchingKey"
+            "dsize > 1 is not supported for LWESwitchingKey"
         );
         debug_assert_eq!(
             infos.rank_in().0,
@@ -140,8 +140,8 @@ impl LWESwitchingKeyCompressed<Vec<u8>> {
         GGLWESwitchingKeyCompressed::alloc_bytes(infos)
     }
 
-    pub fn alloc_bytes_with(n: Degree, base2k: Base2K, k: TorusPrecision, rows: Rows) -> usize {
-        GGLWESwitchingKeyCompressed::alloc_bytes_with(n, base2k, k, rows, Digits(1), Rank(1), Rank(1))
+    pub fn alloc_bytes_with(n: Degree, base2k: Base2K, k: TorusPrecision, dnum: Dnum) -> usize {
+        GGLWESwitchingKeyCompressed::alloc_bytes_with(n, base2k, k, Rank(1), dnum, Dsize(1))
     }
 }
 

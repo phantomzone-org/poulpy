@@ -2,8 +2,8 @@ use crate::reference::znx::{
     ZnxAdd, ZnxAddInplace, ZnxAutomorphism, ZnxCopy, ZnxExtractDigitAddMul, ZnxMulAddPowerOfTwo, ZnxMulPowerOfTwo,
     ZnxMulPowerOfTwoInplace, ZnxNegate, ZnxNegateInplace, ZnxNormalizeDigit, ZnxNormalizeFinalStep, ZnxNormalizeFinalStepInplace,
     ZnxNormalizeFirstStep, ZnxNormalizeFirstStepCarryOnly, ZnxNormalizeFirstStepInplace, ZnxNormalizeMiddleStep,
-    ZnxNormalizeMiddleStepCarryOnly, ZnxNormalizeMiddleStepInplace, ZnxSub, ZnxSubInplace, ZnxSubNegateInplace, ZnxSwitchRing,
-    ZnxZero,
+    ZnxNormalizeMiddleStepCarryOnly, ZnxNormalizeMiddleStepInplace, ZnxRotate, ZnxSub, ZnxSubInplace, ZnxSubNegateInplace,
+    ZnxSwitchRing, ZnxZero,
     add::{znx_add_inplace_ref, znx_add_ref},
     automorphism::znx_automorphism_ref,
     copy::znx_copy_ref,
@@ -17,7 +17,7 @@ use crate::reference::znx::{
     switch_ring::znx_switch_ring_ref,
     zero::znx_zero_ref,
     znx_extract_digit_addmul_ref, znx_mul_add_power_of_two_ref, znx_mul_power_of_two_inplace_ref, znx_mul_power_of_two_ref,
-    znx_normalize_digit_ref,
+    znx_normalize_digit_ref, znx_rotate,
 };
 
 pub struct ZnxRef {}
@@ -26,6 +26,13 @@ impl ZnxAdd for ZnxRef {
     #[inline(always)]
     fn znx_add(res: &mut [i64], a: &[i64], b: &[i64]) {
         znx_add_ref(res, a, b);
+    }
+}
+
+impl ZnxRotate for ZnxRef {
+    #[inline(always)]
+    fn znx_rotate(p: i64, res: &mut [i64], src: &[i64]) {
+        znx_rotate::<Self>(p, res, src);
     }
 }
 

@@ -10,7 +10,7 @@ use poulpy_hal::{
 use crate::{
     TakeGLWECt,
     layouts::{
-        GGLWELayoutInfos, GLWECiphertext, GLWECiphertextLayout, GLWEInfos, LWECiphertext, LWEInfos, Rank,
+        GGLWEInfos, GLWECiphertext, GLWECiphertextLayout, GLWEInfos, LWECiphertext, LWEInfos, Rank,
         prepared::GLWEToLWESwitchingKeyPrepared,
     },
 };
@@ -25,7 +25,7 @@ impl LWECiphertext<Vec<u8>> {
     where
         OUT: LWEInfos,
         IN: GLWEInfos,
-        KEY: GGLWELayoutInfos,
+        KEY: GGLWEInfos,
         Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
         let glwe_layout: GLWECiphertextLayout = GLWECiphertextLayout {

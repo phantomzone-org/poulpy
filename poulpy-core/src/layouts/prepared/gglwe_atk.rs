@@ -4,7 +4,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Digits, GGLWEAutomorphismKey, GGLWELayoutInfos, GLWEInfos, LWEInfos, Rank, Rows, TorusPrecision,
+    Base2K, Degree, Dnum, Dsize, GGLWEAutomorphismKey, GGLWEInfos, GLWEInfos, LWEInfos, Rank, TorusPrecision,
     prepared::{GGLWESwitchingKeyPrepared, Prepare, PrepareAlloc},
 };
 
@@ -44,7 +44,7 @@ impl<D: Data, B: Backend> GLWEInfos for GGLWEAutomorphismKeyPrepared<D, B> {
     }
 }
 
-impl<D: Data, B: Backend> GGLWELayoutInfos for GGLWEAutomorphismKeyPrepared<D, B> {
+impl<D: Data, B: Backend> GGLWEInfos for GGLWEAutomorphismKeyPrepared<D, B> {
     fn rank_in(&self) -> Rank {
         self.key.rank_in()
     }
@@ -53,19 +53,19 @@ impl<D: Data, B: Backend> GGLWELayoutInfos for GGLWEAutomorphismKeyPrepared<D, B
         self.key.rank_out()
     }
 
-    fn digits(&self) -> Digits {
-        self.key.digits()
+    fn dsize(&self) -> Dsize {
+        self.key.dsize()
     }
 
-    fn rows(&self) -> Rows {
-        self.key.rows()
+    fn dnum(&self) -> Dnum {
+        self.key.dnum()
     }
 }
 
 impl<B: Backend> GGLWEAutomorphismKeyPrepared<Vec<u8>, B> {
     pub fn alloc<A>(module: &Module<B>, infos: &A) -> Self
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
         Module<B>: VmpPMatAlloc<B>,
     {
         assert_eq!(
@@ -79,19 +79,19 @@ impl<B: Backend> GGLWEAutomorphismKeyPrepared<Vec<u8>, B> {
         }
     }
 
-    pub fn alloc_with(module: &Module<B>, base2k: Base2K, k: TorusPrecision, rows: Rows, digits: Digits, rank: Rank) -> Self
+    pub fn alloc_with(module: &Module<B>, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> Self
     where
         Module<B>: VmpPMatAlloc<B>,
     {
         GGLWEAutomorphismKeyPrepared {
-            key: GGLWESwitchingKeyPrepared::alloc_with(module, base2k, k, rows, digits, rank, rank),
+            key: GGLWESwitchingKeyPrepared::alloc_with(module, base2k, k, rank, rank, dnum, dsize),
             p: 0,
         }
     }
 
     pub fn alloc_bytes<A>(module: &Module<B>, infos: &A) -> usize
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
         Module<B>: VmpPMatAllocBytes,
     {
         assert_eq!(
@@ -102,18 +102,11 @@ impl<B: Backend> GGLWEAutomorphismKeyPrepared<Vec<u8>, B> {
         GGLWESwitchingKeyPrepared::alloc_bytes(module, infos)
     }
 
-    pub fn alloc_bytes_with(
-        module: &Module<B>,
-        base2k: Base2K,
-        k: TorusPrecision,
-        rows: Rows,
-        digits: Digits,
-        rank: Rank,
-    ) -> usize
+    pub fn alloc_bytes_with(module: &Module<B>, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize
     where
         Module<B>: VmpPMatAllocBytes,
     {
-        GGLWESwitchingKeyPrepared::alloc_bytes_with(module, base2k, k, rows, digits, rank, rank)
+        GGLWESwitchingKeyPrepared::alloc_bytes_with(module, base2k, k, rank, rank, dnum, dsize)
     }
 }
 

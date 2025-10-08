@@ -3,17 +3,17 @@ use poulpy_hal::{
     source::Source,
 };
 
-use crate::layouts::{Base2K, BuildError, Degree, Digits, GLWECiphertext, GLWEInfos, LWEInfos, Rank, Rows, TorusPrecision};
+use crate::layouts::{Base2K, BuildError, Degree, Dnum, Dsize, GLWECiphertext, GLWEInfos, LWEInfos, Rank, TorusPrecision};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
 use std::fmt;
 
-pub trait GGLWELayoutInfos
+pub trait GGLWEInfos
 where
     Self: GLWEInfos,
 {
-    fn rows(&self) -> Rows;
-    fn digits(&self) -> Digits;
+    fn dnum(&self) -> Dnum;
+    fn dsize(&self) -> Dsize;
     fn rank_in(&self) -> Rank;
     fn rank_out(&self) -> Rank;
     fn layout(&self) -> GGLWECiphertextLayout {
@@ -23,8 +23,8 @@ where
             k: self.k(),
             rank_in: self.rank_in(),
             rank_out: self.rank_out(),
-            digits: self.digits(),
-            rows: self.rows(),
+            dsize: self.dsize(),
+            dnum: self.dnum(),
         }
     }
 }
@@ -34,10 +34,10 @@ pub struct GGLWECiphertextLayout {
     pub n: Degree,
     pub base2k: Base2K,
     pub k: TorusPrecision,
-    pub rows: Rows,
-    pub digits: Digits,
     pub rank_in: Rank,
     pub rank_out: Rank,
+    pub dnum: Dnum,
+    pub dsize: Dsize,
 }
 
 impl LWEInfos for GGLWECiphertextLayout {
@@ -60,21 +60,21 @@ impl GLWEInfos for GGLWECiphertextLayout {
     }
 }
 
-impl GGLWELayoutInfos for GGLWECiphertextLayout {
+impl GGLWEInfos for GGLWECiphertextLayout {
     fn rank_in(&self) -> Rank {
         self.rank_in
     }
 
-    fn digits(&self) -> Digits {
-        self.digits
+    fn dsize(&self) -> Dsize {
+        self.dsize
     }
 
     fn rank_out(&self) -> Rank {
         self.rank_out
     }
 
-    fn rows(&self) -> Rows {
-        self.rows
+    fn dnum(&self) -> Dnum {
+        self.dnum
     }
 }
 
@@ -83,7 +83,7 @@ pub struct GGLWECiphertext<D: Data> {
     pub(crate) data: MatZnx<D>,
     pub(crate) k: TorusPrecision,
     pub(crate) base2k: Base2K,
-    pub(crate) digits: Digits,
+    pub(crate) dsize: Dsize,
 }
 
 impl<D: Data> LWEInfos for GGLWECiphertext<D> {
@@ -110,7 +110,7 @@ impl<D: Data> GLWEInfos for GGLWECiphertext<D> {
     }
 }
 
-impl<D: Data> GGLWELayoutInfos for GGLWECiphertext<D> {
+impl<D: Data> GGLWEInfos for GGLWECiphertext<D> {
     fn rank_in(&self) -> Rank {
         Rank(self.data.cols_in() as u32)
     }
@@ -119,12 +119,12 @@ impl<D: Data> GGLWELayoutInfos for GGLWECiphertext<D> {
         Rank(self.data.cols_out() as u32 - 1)
     }
 
-    fn digits(&self) -> Digits {
-        self.digits
+    fn dsize(&self) -> Dsize {
+        self.dsize
     }
 
-    fn rows(&self) -> Rows {
-        Rows(self.data.rows() as u32)
+    fn dnum(&self) -> Dnum {
+        Dnum(self.data.rows() as u32)
     }
 }
 
@@ -132,7 +132,7 @@ pub struct GGLWECiphertextBuilder<D: Data> {
     data: Option<MatZnx<D>>,
     base2k: Option<Base2K>,
     k: Option<TorusPrecision>,
-    digits: Option<Digits>,
+    dsize: Option<Dsize>,
 }
 
 impl<D: Data> GGLWECiphertext<D> {
@@ -142,7 +142,7 @@ impl<D: Data> GGLWECiphertext<D> {
             data: None,
             base2k: None,
             k: None,
-            digits: None,
+            dsize: None,
         }
     }
 }
@@ -151,18 +151,18 @@ impl GGLWECiphertextBuilder<Vec<u8>> {
     #[inline]
     pub fn layout<A>(mut self, infos: &A) -> Self
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
     {
         self.data = Some(MatZnx::alloc(
             infos.n().into(),
-            infos.rows().into(),
+            infos.dnum().into(),
             infos.rank_in().into(),
             (infos.rank_out() + 1).into(),
             infos.size(),
         ));
         self.base2k = Some(infos.base2k());
         self.k = Some(infos.k());
-        self.digits = Some(infos.digits());
+        self.dsize = Some(infos.dsize());
         self
     }
 }
@@ -185,8 +185,8 @@ impl<D: Data> GGLWECiphertextBuilder<D> {
     }
 
     #[inline]
-    pub fn digits(mut self, digits: Digits) -> Self {
-        self.digits = Some(digits);
+    pub fn dsize(mut self, dsize: Dsize) -> Self {
+        self.dsize = Some(dsize);
         self
     }
 
@@ -194,13 +194,13 @@ impl<D: Data> GGLWECiphertextBuilder<D> {
         let data: MatZnx<D> = self.data.ok_or(BuildError::MissingData)?;
         let base2k: Base2K = self.base2k.ok_or(BuildError::MissingBase2K)?;
         let k: TorusPrecision = self.k.ok_or(BuildError::MissingK)?;
-        let digits: Digits = self.digits.ok_or(BuildError::MissingDigits)?;
+        let dsize: Dsize = self.dsize.ok_or(BuildError::MissingDigits)?;
 
         if base2k == 0_u32 {
             return Err(BuildError::ZeroBase2K);
         }
 
-        if digits == 0_u32 {
+        if dsize == 0_u32 {
             return Err(BuildError::ZeroBase2K);
         }
 
@@ -224,7 +224,7 @@ impl<D: Data> GGLWECiphertextBuilder<D> {
             data,
             base2k,
             k,
-            digits,
+            dsize,
         })
     }
 }
@@ -257,10 +257,10 @@ impl<D: DataRef> fmt::Display for GGLWECiphertext<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "(GGLWECiphertext: k={} base2k={} digits={}) {}",
+            "(GGLWECiphertext: k={} base2k={} dsize={}) {}",
             self.k().0,
             self.base2k().0,
-            self.digits().0,
+            self.dsize().0,
             self.data
         )
     }
@@ -291,16 +291,16 @@ impl<D: DataMut> GGLWECiphertext<D> {
 impl GGLWECiphertext<Vec<u8>> {
     pub fn alloc<A>(infos: &A) -> Self
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
     {
         Self::alloc_with(
             infos.n(),
             infos.base2k(),
             infos.k(),
-            infos.rows(),
-            infos.digits(),
             infos.rank_in(),
             infos.rank_out(),
+            infos.dnum(),
+            infos.dsize(),
         )
     }
 
@@ -308,51 +308,51 @@ impl GGLWECiphertext<Vec<u8>> {
         n: Degree,
         base2k: Base2K,
         k: TorusPrecision,
-        rows: Rows,
-        digits: Digits,
         rank_in: Rank,
         rank_out: Rank,
+        dnum: Dnum,
+        dsize: Dsize,
     ) -> Self {
         let size: usize = k.0.div_ceil(base2k.0) as usize;
         debug_assert!(
-            size as u32 > digits.0,
-            "invalid gglwe: ceil(k/base2k): {size} <= digits: {}",
-            digits.0
+            size as u32 > dsize.0,
+            "invalid gglwe: ceil(k/base2k): {size} <= dsize: {}",
+            dsize.0
         );
 
         assert!(
-            rows.0 * digits.0 <= size as u32,
-            "invalid gglwe: rows: {} * digits:{} > ceil(k/base2k): {size}",
-            rows.0,
-            digits.0,
+            dnum.0 * dsize.0 <= size as u32,
+            "invalid gglwe: dnum: {} * dsize:{} > ceil(k/base2k): {size}",
+            dnum.0,
+            dsize.0,
         );
 
         Self {
             data: MatZnx::alloc(
                 n.into(),
-                rows.into(),
+                dnum.into(),
                 rank_in.into(),
                 (rank_out + 1).into(),
                 k.0.div_ceil(base2k.0) as usize,
             ),
             k,
             base2k,
-            digits,
+            dsize,
         }
     }
 
     pub fn alloc_bytes<A>(infos: &A) -> usize
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
     {
         Self::alloc_bytes_with(
             infos.n(),
             infos.base2k(),
             infos.k(),
-            infos.rows(),
-            infos.digits(),
             infos.rank_in(),
             infos.rank_out(),
+            infos.dnum(),
+            infos.dsize(),
         )
     }
 
@@ -360,28 +360,28 @@ impl GGLWECiphertext<Vec<u8>> {
         n: Degree,
         base2k: Base2K,
         k: TorusPrecision,
-        rows: Rows,
-        digits: Digits,
         rank_in: Rank,
         rank_out: Rank,
+        dnum: Dnum,
+        dsize: Dsize,
     ) -> usize {
         let size: usize = k.0.div_ceil(base2k.0) as usize;
         debug_assert!(
-            size as u32 > digits.0,
-            "invalid gglwe: ceil(k/base2k): {size} <= digits: {}",
-            digits.0
+            size as u32 > dsize.0,
+            "invalid gglwe: ceil(k/base2k): {size} <= dsize: {}",
+            dsize.0
         );
 
         assert!(
-            rows.0 * digits.0 <= size as u32,
-            "invalid gglwe: rows: {} * digits:{} > ceil(k/base2k): {size}",
-            rows.0,
-            digits.0,
+            dnum.0 * dsize.0 <= size as u32,
+            "invalid gglwe: dnum: {} * dsize:{} > ceil(k/base2k): {size}",
+            dnum.0,
+            dsize.0,
         );
 
         MatZnx::alloc_bytes(
             n.into(),
-            rows.into(),
+            dnum.into(),
             rank_in.into(),
             (rank_out + 1).into(),
             k.0.div_ceil(base2k.0) as usize,
@@ -393,7 +393,7 @@ impl<D: DataMut> ReaderFrom for GGLWECiphertext<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         self.k = TorusPrecision(reader.read_u32::<LittleEndian>()?);
         self.base2k = Base2K(reader.read_u32::<LittleEndian>()?);
-        self.digits = Digits(reader.read_u32::<LittleEndian>()?);
+        self.dsize = Dsize(reader.read_u32::<LittleEndian>()?);
         self.data.read_from(reader)
     }
 }
@@ -402,7 +402,7 @@ impl<D: DataRef> WriterTo for GGLWECiphertext<D> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         writer.write_u32::<LittleEndian>(self.k.0)?;
         writer.write_u32::<LittleEndian>(self.base2k.0)?;
-        writer.write_u32::<LittleEndian>(self.digits.0)?;
+        writer.write_u32::<LittleEndian>(self.dsize.0)?;
         self.data.write_to(writer)
     }
 }

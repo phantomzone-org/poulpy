@@ -11,7 +11,7 @@ fn test_cggi_blind_rotation_key_serialization() {
         n_lwe: 64_usize.into(),
         base2k: 12_usize.into(),
         k: 54_usize.into(),
-        rows: 2_usize.into(),
+        dnum: 2_usize.into(),
         rank: 2_usize.into(),
     };
 
@@ -26,7 +26,7 @@ fn test_cggi_blind_rotation_key_compressed_serialization() {
         n_lwe: 64_usize.into(),
         base2k: 12_usize.into(),
         k: 54_usize.into(),
-        rows: 2_usize.into(),
+        dnum: 2_usize.into(),
         rank: 2_usize.into(),
     };
 

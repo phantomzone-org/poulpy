@@ -67,18 +67,18 @@ where
 {
     let base2k: usize = 12;
     let k: usize = 54;
-    let digits: usize = k / base2k;
+    let dsize: usize = k / base2k;
     for rank in 1_usize..3 {
-        for di in 1..digits + 1 {
+        for di in 1..dsize + 1 {
             let n: usize = module.n();
-            let rows: usize = (k - di * base2k) / (di * base2k);
+            let dnum: usize = (k - di * base2k) / (di * base2k);
 
             let ggsw_infos: GGSWCiphertextLayout = GGSWCiphertextLayout {
                 n: n.into(),
                 base2k: base2k.into(),
                 k: k.into(),
-                rows: rows.into(),
-                digits: di.into(),
+                dnum: dnum.into(),
+                dsize: di.into(),
                 rank: rank.into(),
             };
 
@@ -160,18 +160,18 @@ where
 {
     let base2k: usize = 12;
     let k: usize = 54;
-    let digits: usize = k / base2k;
+    let dsize: usize = k / base2k;
     for rank in 1_usize..3 {
-        for di in 1..digits + 1 {
+        for di in 1..dsize + 1 {
             let n: usize = module.n();
-            let rows: usize = (k - di * base2k) / (di * base2k);
+            let dnum: usize = (k - di * base2k) / (di * base2k);
 
             let ggsw_infos: GGSWCiphertextLayout = GGSWCiphertextLayout {
                 n: n.into(),
                 base2k: base2k.into(),
                 k: k.into(),
-                rows: rows.into(),
-                digits: di.into(),
+                dnum: dnum.into(),
+                dsize: di.into(),
                 rank: rank.into(),
             };
 

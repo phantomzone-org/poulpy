@@ -7,7 +7,7 @@ use poulpy_hal::{
     layouts::{Backend, DataMut, DataRef, Module, Scratch, ZnxZero},
 };
 
-use crate::layouts::{GGLWELayoutInfos, GGLWESwitchingKey, GGSWInfos, GLWECiphertext, prepared::GGSWCiphertextPrepared};
+use crate::layouts::{GGLWEInfos, GGLWESwitchingKey, GGSWInfos, GLWECiphertext, prepared::GGSWCiphertextPrepared};
 
 impl GGLWESwitchingKey<Vec<u8>> {
     pub fn external_product_scratch_space<B: Backend, OUT, IN, GGSW>(
@@ -17,8 +17,8 @@ impl GGLWESwitchingKey<Vec<u8>> {
         ggsw_infos: &GGSW,
     ) -> usize
     where
-        OUT: GGLWELayoutInfos,
-        IN: GGLWELayoutInfos,
+        OUT: GGLWEInfos,
+        IN: GGLWEInfos,
         GGSW: GGSWInfos,
         Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxNormalizeTmpBytes,
     {
@@ -36,7 +36,7 @@ impl GGLWESwitchingKey<Vec<u8>> {
         ggsw_infos: &GGSW,
     ) -> usize
     where
-        OUT: GGLWELayoutInfos,
+        OUT: GGLWEInfos,
         GGSW: GGSWInfos,
         Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxNormalizeTmpBytes,
     {
@@ -91,13 +91,13 @@ impl<DataSelf: DataMut> GGLWESwitchingKey<DataSelf> {
         }
 
         (0..self.rank_in().into()).for_each(|col_i| {
-            (0..self.rows().into()).for_each(|row_j| {
+            (0..self.dnum().into()).for_each(|row_j| {
                 self.at_mut(row_j, col_i)
                     .external_product(module, &lhs.at(row_j, col_i), rhs, scratch);
             });
         });
 
-        (self.rows().min(lhs.rows()).into()..self.rows().into()).for_each(|row_i| {
+        (self.dnum().min(lhs.dnum()).into()..self.dnum().into()).for_each(|row_i| {
             (0..self.rank_in().into()).for_each(|col_j| {
                 self.at_mut(row_i, col_j).data.zero();
             });
@@ -135,7 +135,7 @@ impl<DataSelf: DataMut> GGLWESwitchingKey<DataSelf> {
         }
 
         (0..self.rank_in().into()).for_each(|col_i| {
-            (0..self.rows().into()).for_each(|row_j| {
+            (0..self.dnum().into()).for_each(|row_j| {
                 self.at_mut(row_j, col_i)
                     .external_product_inplace(module, rhs, scratch);
             });

@@ -6,7 +6,7 @@ use poulpy_hal::{
         VecZnxSwitchRing,
     },
     layouts::{Backend, Module},
-    oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl},
+    oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeSliceImpl},
 };
 
 use crate::tfhe::blind_rotation::{DivRound, LookUpTable};
@@ -19,7 +19,7 @@ where
         + VecZnxSwitchRing
         + VecZnxCopy
         + VecZnxRotateInplaceTmpBytes,
-    B: Backend + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
+    B: Backend + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B> + TakeSliceImpl<B>,
 {
     let base2k: usize = 20;
     let k_lut: usize = 40;
@@ -59,7 +59,7 @@ where
         + VecZnxSwitchRing
         + VecZnxCopy
         + VecZnxRotateInplaceTmpBytes,
-    B: Backend + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
+    B: Backend + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B> + TakeSliceImpl<B>,
 {
     let base2k: usize = 20;
     let k_lut: usize = 40;

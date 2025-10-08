@@ -15,6 +15,7 @@ mod utils;
 pub use operations::*;
 pub mod layouts;
 pub use dist::*;
+pub use external_product::*;
 pub use glwe_packing::*;
 
 pub use encryption::SIGMA;

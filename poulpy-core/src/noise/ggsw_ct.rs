@@ -42,7 +42,7 @@ impl<D: DataRef> GGSWCiphertext<D> {
         F: Fn(usize) -> f64,
     {
         let base2k: usize = self.base2k().into();
-        let digits: usize = self.digits().into();
+        let dsize: usize = self.dsize().into();
 
         let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(self);
         let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(self);
@@ -53,8 +53,8 @@ impl<D: DataRef> GGSWCiphertext<D> {
             ScratchOwned::alloc(GLWECiphertext::decrypt_scratch_space(module, self) | module.vec_znx_normalize_tmp_bytes());
 
         (0..(self.rank() + 1).into()).for_each(|col_j| {
-            (0..self.rows().into()).for_each(|row_i| {
-                module.vec_znx_add_scalar_inplace(&mut pt.data, 0, (digits - 1) + row_i * digits, pt_want, 0);
+            (0..self.dnum().into()).for_each(|row_i| {
+                module.vec_znx_add_scalar_inplace(&mut pt.data, 0, (dsize - 1) + row_i * dsize, pt_want, 0);
 
                 // mul with sk[col_j-1]
                 if col_j > 0 {
@@ -114,7 +114,7 @@ impl<D: DataRef> GGSWCiphertext<D> {
         B: Backend + TakeVecZnxDftImpl<B> + TakeVecZnxBigImpl<B> + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
     {
         let base2k: usize = self.base2k().into();
-        let digits: usize = self.digits().into();
+        let dsize: usize = self.dsize().into();
 
         let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(self);
         let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(self);
@@ -125,8 +125,8 @@ impl<D: DataRef> GGSWCiphertext<D> {
             ScratchOwned::alloc(GLWECiphertext::decrypt_scratch_space(module, self) | module.vec_znx_normalize_tmp_bytes());
 
         (0..(self.rank() + 1).into()).for_each(|col_j| {
-            (0..self.rows().into()).for_each(|row_i| {
-                module.vec_znx_add_scalar_inplace(&mut pt.data, 0, (digits - 1) + row_i * digits, pt_want, 0);
+            (0..self.dnum().into()).for_each(|row_i| {
+                module.vec_znx_add_scalar_inplace(&mut pt.data, 0, (dsize - 1) + row_i * dsize, pt_want, 0);
 
                 // mul with sk[col_j-1]
                 if col_j > 0 {
@@ -146,12 +146,12 @@ impl<D: DataRef> GGSWCiphertext<D> {
 
                 self.at(row_i, col_j)
                     .decrypt(module, &mut pt_have, sk_prepared, scratch.borrow());
-
                 module.vec_znx_sub_inplace(&mut pt_have.data, 0, &pt.data, 0);
 
                 let std_pt: f64 = pt_have.data.std(base2k, 0).log2();
                 println!("col: {col_j} row: {row_i}: {std_pt}");
                 pt.data.zero();
+                // println!(">>>>>>>>>>>>>>>>");
             });
         });
     }

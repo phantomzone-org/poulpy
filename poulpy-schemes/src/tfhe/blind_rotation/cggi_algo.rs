@@ -42,13 +42,13 @@ where
 
     if block_size > 1 {
         let cols: usize = (brk_infos.rank() + 1).into();
-        let rows: usize = brk_infos.rows().into();
-        let acc_dft: usize = module.vec_znx_dft_alloc_bytes(cols, rows) * extension_factor;
+        let dnum: usize = brk_infos.dnum().into();
+        let acc_dft: usize = module.vec_znx_dft_alloc_bytes(cols, dnum) * extension_factor;
         let acc_big: usize = module.vec_znx_big_alloc_bytes(1, brk_size);
         let vmp_res: usize = module.vec_znx_dft_alloc_bytes(cols, brk_size) * extension_factor;
         let vmp_xai: usize = module.vec_znx_dft_alloc_bytes(1, brk_size);
         let acc_dft_add: usize = vmp_res;
-        let vmp: usize = module.vmp_apply_dft_to_dft_tmp_bytes(brk_size, rows, rows, 2, 2, brk_size); // GGSW product: (1 x 2) x (2 x 2)
+        let vmp: usize = module.vmp_apply_dft_to_dft_tmp_bytes(brk_size, dnum, dnum, 2, 2, brk_size); // GGSW product: (1 x 2) x (2 x 2)
         let acc: usize = if extension_factor > 1 {
             VecZnx::alloc_bytes(module.n(), cols, glwe_infos.size()) * extension_factor
         } else {
@@ -158,11 +158,11 @@ fn execute_block_binary_extended<DataRes, DataIn, DataBrk, B: Backend>(
     let n_glwe: usize = brk.n_glwe().into();
     let extension_factor: usize = lut.extension_factor();
     let base2k: usize = res.base2k().into();
-    let rows: usize = brk.rows().into();
+    let dnum: usize = brk.dnum().into();
     let cols: usize = (res.rank() + 1).into();
 
     let (mut acc, scratch_1) = scratch.take_vec_znx_slice(extension_factor, n_glwe, cols, res.size());
-    let (mut acc_dft, scratch_2) = scratch_1.take_vec_znx_dft_slice(extension_factor, n_glwe, cols, rows);
+    let (mut acc_dft, scratch_2) = scratch_1.take_vec_znx_dft_slice(extension_factor, n_glwe, cols, dnum);
     let (mut vmp_res, scratch_3) = scratch_2.take_vec_znx_dft_slice(extension_factor, n_glwe, cols, brk.size());
     let (mut acc_add_dft, scratch_4) = scratch_3.take_vec_znx_dft_slice(extension_factor, n_glwe, cols, brk.size());
     let (mut vmp_xai, scratch_5) = scratch_4.take_vec_znx_dft(n_glwe, 1, brk.size());
@@ -328,7 +328,7 @@ fn execute_block_binary<DataRes, DataIn, DataBrk, B: Backend>(
     let lwe_ref: LWECiphertext<&[u8]> = lwe.to_ref();
     let two_n: usize = n_glwe << 1;
     let base2k: usize = brk.base2k().into();
-    let rows: usize = brk.rows().into();
+    let dnum: usize = brk.dnum().into();
 
     let cols: usize = (out_mut.rank() + 1).into();
 
@@ -351,7 +351,7 @@ fn execute_block_binary<DataRes, DataIn, DataBrk, B: Backend>(
 
     // ACC + [sum DFT(X^ai -1) * (DFT(ACC) x BRKi)]
 
-    let (mut acc_dft, scratch_1) = scratch.take_vec_znx_dft(n_glwe, cols, rows);
+    let (mut acc_dft, scratch_1) = scratch.take_vec_znx_dft(n_glwe, cols, dnum);
     let (mut vmp_res, scratch_2) = scratch_1.take_vec_znx_dft(n_glwe, cols, brk.size());
     let (mut acc_add_dft, scratch_3) = scratch_2.take_vec_znx_dft(n_glwe, cols, brk.size());
     let (mut vmp_xai, scratch_4) = scratch_3.take_vec_znx_dft(n_glwe, 1, brk.size());

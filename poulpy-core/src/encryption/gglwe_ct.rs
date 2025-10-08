@@ -10,13 +10,13 @@ use poulpy_hal::{
 
 use crate::{
     TakeGLWEPt,
-    layouts::{GGLWECiphertext, GGLWELayoutInfos, GLWECiphertext, GLWEPlaintext, LWEInfos, prepared::GLWESecretPrepared},
+    layouts::{GGLWECiphertext, GGLWEInfos, GLWECiphertext, GLWEPlaintext, LWEInfos, prepared::GLWESecretPrepared},
 };
 
 impl GGLWECiphertext<Vec<u8>> {
     pub fn encrypt_sk_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
         Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes + VecZnxNormalizeTmpBytes,
     {
         GLWECiphertext::encrypt_sk_scratch_space(module, &infos.glwe_layout())
@@ -25,7 +25,7 @@ impl GGLWECiphertext<Vec<u8>> {
 
     pub fn encrypt_pk_scratch_space<B: Backend, A>(_module: &Module<B>, _infos: &A) -> usize
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
     {
         unimplemented!()
     }
@@ -87,18 +87,18 @@ impl<DataSelf: DataMut> GGLWECiphertext<DataSelf> {
                 GGLWECiphertext::encrypt_sk_scratch_space(module, self)
             );
             assert!(
-                self.rows().0 * self.digits().0 * self.base2k().0 <= self.k().0,
-                "self.rows() : {} * self.digits() : {} * self.base2k() : {} = {} >= self.k() = {}",
-                self.rows(),
-                self.digits(),
+                self.dnum().0 * self.dsize().0 * self.base2k().0 <= self.k().0,
+                "self.dnum() : {} * self.dsize() : {} * self.base2k() : {} = {} >= self.k() = {}",
+                self.dnum(),
+                self.dsize(),
                 self.base2k(),
-                self.rows().0 * self.digits().0 * self.base2k().0,
+                self.dnum().0 * self.dsize().0 * self.base2k().0,
                 self.k()
             );
         }
 
-        let rows: usize = self.rows().into();
-        let digits: usize = self.digits().into();
+        let dnum: usize = self.dnum().into();
+        let dsize: usize = self.dsize().into();
         let base2k: usize = self.base2k().into();
         let rank_in: usize = self.rank_in().into();
 
@@ -115,16 +115,10 @@ impl<DataSelf: DataMut> GGLWECiphertext<DataSelf> {
         // (-(a*s) + s0, a)
         // (-(b*s) + s1, b)
         (0..rank_in).for_each(|col_i| {
-            (0..rows).for_each(|row_i| {
+            (0..dnum).for_each(|row_i| {
                 // Adds the scalar_znx_pt to the i-th limb of the vec_znx_pt
                 tmp_pt.data.zero(); // zeroes for next iteration
-                module.vec_znx_add_scalar_inplace(
-                    &mut tmp_pt.data,
-                    0,
-                    (digits - 1) + row_i * digits,
-                    pt,
-                    col_i,
-                );
+                module.vec_znx_add_scalar_inplace(&mut tmp_pt.data, 0, (dsize - 1) + row_i * dsize, pt, col_i);
                 module.vec_znx_normalize_inplace(base2k, &mut tmp_pt.data, 0, scrach_1);
 
                 // rlwe encrypt of vec_znx_pt into vec_znx_ct

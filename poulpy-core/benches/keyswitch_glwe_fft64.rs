@@ -1,6 +1,6 @@
 use poulpy_core::layouts::{
-    Base2K, Degree, Digits, GGLWEAutomorphismKey, GGLWEAutomorphismKeyLayout, GGLWESwitchingKey, GGLWESwitchingKeyLayout,
-    GLWECiphertext, GLWECiphertextLayout, GLWESecret, Rank, Rows, TorusPrecision,
+    Base2K, Degree, Dnum, Dsize, GGLWEAutomorphismKey, GGLWEAutomorphismKeyLayout, GGLWESwitchingKey, GGLWESwitchingKeyLayout,
+    GLWECiphertext, GLWECiphertextLayout, GLWESecret, Rank, TorusPrecision,
     prepared::{GGLWEAutomorphismKeyPrepared, GGLWESwitchingKeyPrepared, GLWESecretPrepared, PrepareAlloc},
 };
 use std::{hint::black_box, time::Duration};
@@ -22,7 +22,7 @@ fn bench_keyswitch_glwe_fft64(c: &mut Criterion) {
         k_ct_in: TorusPrecision,
         k_ct_out: TorusPrecision,
         k_ksk: TorusPrecision,
-        digits: Digits,
+        dsize: Dsize,
         rank: Rank,
     }
 
@@ -35,17 +35,17 @@ fn bench_keyswitch_glwe_fft64(c: &mut Criterion) {
         let k_glwe_out: TorusPrecision = p.k_ct_out;
         let k_gglwe: TorusPrecision = p.k_ksk;
         let rank: Rank = p.rank;
-        let digits: Digits = p.digits;
+        let dsize: Dsize = p.dsize;
 
-        let rows: Rows = p.k_ct_in.div_ceil(p.base2k.0 * digits.0).into();
+        let dnum: Dnum = p.k_ct_in.div_ceil(p.base2k.0 * dsize.0).into();
 
         let gglwe_atk_layout: GGLWEAutomorphismKeyLayout = GGLWEAutomorphismKeyLayout {
             n,
             base2k,
             k: k_gglwe,
-            rows,
+            dnum,
             rank,
-            digits,
+            dsize,
         };
 
         let glwe_in_layout: GLWECiphertextLayout = GLWECiphertextLayout {
@@ -111,15 +111,15 @@ fn bench_keyswitch_glwe_fft64(c: &mut Criterion) {
     }
 
     let base2k: usize = 19;
-    let digits = 1;
+    let dsize = 1;
 
     let params_set: Vec<Params> = vec![Params {
         log_n: 15,
         base2k: base2k.into(),
-        k_ct_in: (874 - digits * base2k).into(),
-        k_ct_out: (874 - digits * base2k).into(),
+        k_ct_in: (874 - dsize * base2k).into(),
+        k_ct_out: (874 - dsize * base2k).into(),
         k_ksk: 874_u32.into(),
-        digits: 1_u32.into(),
+        dsize: 1_u32.into(),
         rank: 1_u32.into(),
     }];
 
@@ -153,16 +153,16 @@ fn bench_keyswitch_glwe_inplace_fft64(c: &mut Criterion) {
         let k_ct: TorusPrecision = p.k_ct;
         let k_ksk: TorusPrecision = p.k_ksk;
         let rank: Rank = p.rank;
-        let digits: Digits = Digits(1);
+        let dsize: Dsize = Dsize(1);
 
-        let rows: Rows = p.k_ct.div_ceil(p.base2k).into();
+        let dnum: Dnum = p.k_ct.div_ceil(p.base2k).into();
 
         let gglwe_layout: GGLWESwitchingKeyLayout = GGLWESwitchingKeyLayout {
             n,
             base2k,
             k: k_ksk,
-            rows,
-            digits,
+            dnum,
+            dsize,
             rank_in: rank,
             rank_out: rank,
         };

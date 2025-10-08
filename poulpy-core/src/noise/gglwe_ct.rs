@@ -8,7 +8,7 @@ use poulpy_hal::{
     oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeVecZnxBigImpl, TakeVecZnxDftImpl},
 };
 
-use crate::layouts::{GGLWECiphertext, GGLWELayoutInfos, GLWECiphertext, GLWEPlaintext, LWEInfos, prepared::GLWESecretPrepared};
+use crate::layouts::{GGLWECiphertext, GGLWEInfos, GLWECiphertext, GLWEPlaintext, LWEInfos, prepared::GLWESecretPrepared};
 
 impl<D: DataRef> GGLWECiphertext<D> {
     pub fn assert_noise<B, DataSk, DataWant>(
@@ -32,24 +32,18 @@ impl<D: DataRef> GGLWECiphertext<D> {
             + VecZnxSubScalarInplace,
         B: Backend + TakeVecZnxDftImpl<B> + TakeVecZnxBigImpl<B> + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
     {
-        let digits: usize = self.digits().into();
+        let dsize: usize = self.dsize().into();
         let base2k: usize = self.base2k().into();
 
         let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GLWECiphertext::decrypt_scratch_space(module, self));
         let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(self);
 
         (0..self.rank_in().into()).for_each(|col_i| {
-            (0..self.rows().into()).for_each(|row_i| {
+            (0..self.dnum().into()).for_each(|row_i| {
                 self.at(row_i, col_i)
                     .decrypt(module, &mut pt, sk, scratch.borrow());
 
-                module.vec_znx_sub_scalar_inplace(
-                    &mut pt.data,
-                    0,
-                    (digits - 1) + row_i * digits,
-                    pt_want,
-                    col_i,
-                );
+                module.vec_znx_sub_scalar_inplace(&mut pt.data, 0, (dsize - 1) + row_i * dsize, pt_want, col_i);
 
                 let noise_have: f64 = pt.data.std(base2k, 0).log2();
 

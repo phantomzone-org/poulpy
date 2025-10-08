@@ -64,19 +64,19 @@ where
 {
     let base2k: usize = 12;
     let k_ksk: usize = 54;
-    let digits: usize = k_ksk / base2k;
+    let dsize: usize = k_ksk / base2k;
     for rank_in in 1_usize..3 {
         for rank_out in 1_usize..3 {
-            for di in 1_usize..digits + 1 {
+            for di in 1_usize..dsize + 1 {
                 let n: usize = module.n();
-                let rows: usize = (k_ksk - di * base2k) / (di * base2k);
+                let dnum: usize = (k_ksk - di * base2k) / (di * base2k);
 
                 let gglwe_infos: GGLWECiphertextLayout = GGLWECiphertextLayout {
                     n: n.into(),
                     base2k: base2k.into(),
                     k: k_ksk.into(),
-                    rows: rows.into(),
-                    digits: di.into(),
+                    dnum: dnum.into(),
+                    dsize: di.into(),
                     rank_in: rank_in.into(),
                     rank_out: rank_out.into(),
                 };
@@ -156,19 +156,19 @@ where
 {
     let base2k: usize = 12;
     let k_ksk: usize = 54;
-    let digits: usize = k_ksk / base2k;
+    let dsize: usize = k_ksk / base2k;
     for rank_in in 1_usize..3 {
         for rank_out in 1_usize..3 {
-            for di in 1_usize..digits + 1 {
+            for di in 1_usize..dsize + 1 {
                 let n: usize = module.n();
-                let rows: usize = (k_ksk - di * base2k) / (di * base2k);
+                let dnum: usize = (k_ksk - di * base2k) / (di * base2k);
 
                 let gglwe_infos: GGLWECiphertextLayout = GGLWECiphertextLayout {
                     n: n.into(),
                     base2k: base2k.into(),
                     k: k_ksk.into(),
-                    rows: rows.into(),
-                    digits: di.into(),
+                    dnum: dnum.into(),
+                    dsize: di.into(),
                     rank_in: rank_in.into(),
                     rank_out: rank_out.into(),
                 };

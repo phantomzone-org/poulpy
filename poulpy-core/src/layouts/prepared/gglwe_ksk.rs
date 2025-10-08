@@ -4,7 +4,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Digits, GGLWELayoutInfos, GGLWESwitchingKey, GLWEInfos, LWEInfos, Rank, Rows, TorusPrecision,
+    Base2K, Degree, Dnum, Dsize, GGLWEInfos, GGLWESwitchingKey, GLWEInfos, LWEInfos, Rank, TorusPrecision,
     prepared::{GGLWECiphertextPrepared, Prepare, PrepareAlloc},
 };
 
@@ -39,7 +39,7 @@ impl<D: Data, B: Backend> GLWEInfos for GGLWESwitchingKeyPrepared<D, B> {
     }
 }
 
-impl<D: Data, B: Backend> GGLWELayoutInfos for GGLWESwitchingKeyPrepared<D, B> {
+impl<D: Data, B: Backend> GGLWEInfos for GGLWESwitchingKeyPrepared<D, B> {
     fn rank_in(&self) -> Rank {
         self.key.rank_in()
     }
@@ -48,19 +48,19 @@ impl<D: Data, B: Backend> GGLWELayoutInfos for GGLWESwitchingKeyPrepared<D, B> {
         self.key.rank_out()
     }
 
-    fn digits(&self) -> Digits {
-        self.key.digits()
+    fn dsize(&self) -> Dsize {
+        self.key.dsize()
     }
 
-    fn rows(&self) -> Rows {
-        self.key.rows()
+    fn dnum(&self) -> Dnum {
+        self.key.dnum()
     }
 }
 
 impl<B: Backend> GGLWESwitchingKeyPrepared<Vec<u8>, B> {
     pub fn alloc<A>(module: &Module<B>, infos: &A) -> Self
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
         Module<B>: VmpPMatAlloc<B>,
     {
         debug_assert_eq!(module.n() as u32, infos.n(), "module.n() != infos.n()");
@@ -75,16 +75,16 @@ impl<B: Backend> GGLWESwitchingKeyPrepared<Vec<u8>, B> {
         module: &Module<B>,
         base2k: Base2K,
         k: TorusPrecision,
-        rows: Rows,
-        digits: Digits,
         rank_in: Rank,
         rank_out: Rank,
+        dnum: Dnum,
+        dsize: Dsize,
     ) -> Self
     where
         Module<B>: VmpPMatAlloc<B>,
     {
         GGLWESwitchingKeyPrepared::<Vec<u8>, B> {
-            key: GGLWECiphertextPrepared::alloc_with(module, base2k, k, rows, digits, rank_in, rank_out),
+            key: GGLWECiphertextPrepared::alloc_with(module, base2k, k, rank_in, rank_out, dnum, dsize),
             sk_in_n: 0,
             sk_out_n: 0,
         }
@@ -92,7 +92,7 @@ impl<B: Backend> GGLWESwitchingKeyPrepared<Vec<u8>, B> {
 
     pub fn alloc_bytes<A>(module: &Module<B>, infos: &A) -> usize
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
         Module<B>: VmpPMatAllocBytes,
     {
         debug_assert_eq!(module.n() as u32, infos.n(), "module.n() != infos.n()");
@@ -103,15 +103,15 @@ impl<B: Backend> GGLWESwitchingKeyPrepared<Vec<u8>, B> {
         module: &Module<B>,
         base2k: Base2K,
         k: TorusPrecision,
-        rows: Rows,
-        digits: Digits,
         rank_in: Rank,
         rank_out: Rank,
+        dnum: Dnum,
+        dsize: Dsize,
     ) -> usize
     where
         Module<B>: VmpPMatAllocBytes,
     {
-        GGLWECiphertextPrepared::alloc_bytes_with(module, base2k, k, rows, digits, rank_in, rank_out)
+        GGLWECiphertextPrepared::alloc_bytes_with(module, base2k, k, rank_in, rank_out, dnum, dsize)
     }
 }
 

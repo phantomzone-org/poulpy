@@ -12,8 +12,7 @@ use poulpy_hal::{
 use crate::{
     TakeGLWECt,
     layouts::{
-        Base2K, GGLWELayoutInfos, GLWECiphertext, GLWECiphertextLayout, GLWEInfos, LWEInfos,
-        prepared::GGLWEAutomorphismKeyPrepared,
+        Base2K, GGLWEInfos, GLWECiphertext, GLWECiphertextLayout, GLWEInfos, LWEInfos, prepared::GGLWEAutomorphismKeyPrepared,
     },
     operations::GLWEOperations,
 };
@@ -40,7 +39,7 @@ impl GLWECiphertext<Vec<u8>> {
     where
         OUT: GLWEInfos,
         IN: GLWEInfos,
-        KEY: GGLWELayoutInfos,
+        KEY: GGLWEInfos,
         Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
         let trace: usize = Self::automorphism_inplace_scratch_space(module, out_infos, key_infos);
@@ -59,7 +58,7 @@ impl GLWECiphertext<Vec<u8>> {
     pub fn trace_inplace_scratch_space<B: Backend, OUT, KEY>(module: &Module<B>, out_infos: &OUT, key_infos: &KEY) -> usize
     where
         OUT: GLWEInfos,
-        KEY: GGLWELayoutInfos,
+        KEY: GGLWEInfos,
         Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
         Self::trace_scratch_space(module, out_infos, out_infos, key_infos)

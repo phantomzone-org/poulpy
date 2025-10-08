@@ -11,16 +11,13 @@ use poulpy_hal::{
 
 use crate::{
     TakeGLWESecret, TakeGLWESecretPrepared,
-    layouts::{
-        GGLWELayoutInfos, GGLWESwitchingKey, GLWESecret, GLWEToLWESwitchingKey, LWEInfos, LWESecret, Rank,
-        prepared::GLWESecretPrepared,
-    },
+    layouts::{GGLWEInfos, GGLWESwitchingKey, GLWESecret, GLWEToLWEKey, LWEInfos, LWESecret, Rank, prepared::GLWESecretPrepared},
 };
 
-impl GLWEToLWESwitchingKey<Vec<u8>> {
+impl GLWEToLWEKey<Vec<u8>> {
     pub fn encrypt_sk_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
         Module<B>: SvpPPolAllocBytes + VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes + VecZnxNormalizeTmpBytes,
     {
         GLWESecretPrepared::alloc_bytes_with(module, infos.rank_in())
@@ -29,7 +26,7 @@ impl GLWEToLWESwitchingKey<Vec<u8>> {
     }
 }
 
-impl<D: DataMut> GLWEToLWESwitchingKey<D> {
+impl<D: DataMut> GLWEToLWEKey<D> {
     #[allow(clippy::too_many_arguments)]
     pub fn encrypt_sk<DLwe, DGlwe, B: Backend>(
         &mut self,

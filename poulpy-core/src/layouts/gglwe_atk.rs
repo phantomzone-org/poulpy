@@ -4,7 +4,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Digits, GGLWELayoutInfos, GGLWESwitchingKey, GLWECiphertext, GLWEInfos, LWEInfos, Rank, Rows, TorusPrecision,
+    Base2K, Degree, Dnum, Dsize, GGLWEInfos, GGLWESwitchingKey, GLWECiphertext, GLWEInfos, LWEInfos, Rank, TorusPrecision,
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
@@ -15,9 +15,9 @@ pub struct GGLWEAutomorphismKeyLayout {
     pub n: Degree,
     pub base2k: Base2K,
     pub k: TorusPrecision,
-    pub rows: Rows,
-    pub digits: Digits,
     pub rank: Rank,
+    pub dnum: Dnum,
+    pub dsize: Dsize,
 }
 
 #[derive(PartialEq, Eq, Clone)]
@@ -56,7 +56,7 @@ impl<D: Data> GLWEInfos for GGLWEAutomorphismKey<D> {
     }
 }
 
-impl<D: Data> GGLWELayoutInfos for GGLWEAutomorphismKey<D> {
+impl<D: Data> GGLWEInfos for GGLWEAutomorphismKey<D> {
     fn rank_in(&self) -> Rank {
         self.key.rank_in()
     }
@@ -65,12 +65,12 @@ impl<D: Data> GGLWELayoutInfos for GGLWEAutomorphismKey<D> {
         self.key.rank_out()
     }
 
-    fn digits(&self) -> Digits {
-        self.key.digits()
+    fn dsize(&self) -> Dsize {
+        self.key.dsize()
     }
 
-    fn rows(&self) -> Rows {
-        self.key.rows()
+    fn dnum(&self) -> Dnum {
+        self.key.dnum()
     }
 }
 
@@ -94,21 +94,21 @@ impl GLWEInfos for GGLWEAutomorphismKeyLayout {
     }
 }
 
-impl GGLWELayoutInfos for GGLWEAutomorphismKeyLayout {
+impl GGLWEInfos for GGLWEAutomorphismKeyLayout {
     fn rank_in(&self) -> Rank {
         self.rank
     }
 
-    fn digits(&self) -> Digits {
-        self.digits
+    fn dsize(&self) -> Dsize {
+        self.dsize
     }
 
     fn rank_out(&self) -> Rank {
         self.rank
     }
 
-    fn rows(&self) -> Rows {
-        self.rows
+    fn dnum(&self) -> Dnum {
+        self.dnum
     }
 }
 
@@ -133,7 +133,7 @@ impl<D: DataRef> fmt::Display for GGLWEAutomorphismKey<D> {
 impl GGLWEAutomorphismKey<Vec<u8>> {
     pub fn alloc<A>(infos: &A) -> Self
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
     {
         assert_eq!(
             infos.rank_in(),
@@ -146,16 +146,16 @@ impl GGLWEAutomorphismKey<Vec<u8>> {
         }
     }
 
-    pub fn alloc_with(n: Degree, base2k: Base2K, k: TorusPrecision, rows: Rows, digits: Digits, rank: Rank) -> Self {
+    pub fn alloc_with(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> Self {
         GGLWEAutomorphismKey {
-            key: GGLWESwitchingKey::alloc_with(n, base2k, k, rows, digits, rank, rank),
+            key: GGLWESwitchingKey::alloc_with(n, base2k, k, rank, rank, dnum, dsize),
             p: 0,
         }
     }
 
     pub fn alloc_bytes<A>(infos: &A) -> usize
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
     {
         assert_eq!(
             infos.rank_in(),
@@ -165,8 +165,8 @@ impl GGLWEAutomorphismKey<Vec<u8>> {
         GGLWESwitchingKey::alloc_bytes(infos)
     }
 
-    pub fn bytes_of(n: Degree, base2k: Base2K, k: TorusPrecision, rows: Rows, digits: Digits, rank: Rank) -> usize {
-        GGLWESwitchingKey::alloc_bytes_with(n, base2k, k, rows, digits, rank, rank)
+    pub fn bytes_of(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize {
+        GGLWESwitchingKey::alloc_bytes_with(n, base2k, k, rank, rank, dnum, dsize)
     }
 }
 

@@ -17,7 +17,7 @@ use poulpy_hal::{
 use crate::{
     encryption::SIGMA,
     layouts::{
-        Digits, GGLWETensorKey, GGLWETensorKeyLayout, GLWEPlaintext, GLWESecret,
+        Dsize, GGLWETensorKey, GGLWETensorKeyLayout, GLWEPlaintext, GLWESecret,
         compressed::{Decompress, GGLWETensorKeyCompressed},
         prepared::{GLWESecretPrepared, PrepareAlloc},
     },
@@ -69,14 +69,14 @@ where
 
     for rank in 1_usize..3 {
         let n: usize = module.n();
-        let rows: usize = k / base2k;
+        let dnum: usize = k / base2k;
 
         let tensor_key_infos = GGLWETensorKeyLayout {
             n: n.into(),
             base2k: base2k.into(),
             k: k.into(),
-            rows: rows.into(),
-            digits: Digits(1),
+            dnum: dnum.into(),
+            dsize: Dsize(1),
             rank: rank.into(),
         };
 
@@ -127,7 +127,7 @@ where
                     0,
                     scratch.borrow(),
                 );
-                for row_i in 0..rows {
+                for row_i in 0..dnum {
                     tensor_key
                         .at(i, j)
                         .at(row_i, 0)
@@ -188,14 +188,14 @@ where
     let k = 54;
     for rank in 1_usize..3 {
         let n: usize = module.n();
-        let rows: usize = k / base2k;
+        let dnum: usize = k / base2k;
 
         let tensor_key_infos: GGLWETensorKeyLayout = GGLWETensorKeyLayout {
             n: n.into(),
             base2k: base2k.into(),
             k: k.into(),
-            rows: rows.into(),
-            digits: Digits(1),
+            dnum: dnum.into(),
+            dsize: Dsize(1),
             rank: rank.into(),
         };
 
@@ -244,7 +244,7 @@ where
                     0,
                     scratch.borrow(),
                 );
-                for row_i in 0..rows {
+                for row_i in 0..dnum {
                     tensor_key
                         .at(i, j)
                         .at(row_i, 0)

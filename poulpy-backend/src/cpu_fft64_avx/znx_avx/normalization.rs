@@ -1124,6 +1124,7 @@ mod tests {
         }
     }
 
+    #[allow(dead_code)]
     #[target_feature(enable = "avx2")]
     fn znx_extract_digit_addmul_internal() {
         let mut y0: [i64; 4] = [
@@ -1168,6 +1169,7 @@ mod tests {
         }
     }
 
+    #[allow(dead_code)]
     #[target_feature(enable = "avx2")]
     fn znx_normalize_digit_internal() {
         let mut y0: [i64; 4] = [

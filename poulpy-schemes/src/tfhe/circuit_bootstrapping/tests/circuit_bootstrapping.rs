@@ -14,8 +14,8 @@ use poulpy_hal::{
     },
     layouts::{Backend, Module, ScalarZnx, ScratchOwned, ZnxView, ZnxViewMut},
     oep::{
-        ScratchAvailableImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeMatZnxImpl, TakeScalarZnxImpl, TakeSvpPPolImpl,
-        TakeVecZnxBigImpl, TakeVecZnxDftImpl, TakeVecZnxDftSliceImpl, TakeVecZnxImpl, TakeVecZnxSliceImpl,
+        ScratchAvailableImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeMatZnxImpl, TakeScalarZnxImpl, TakeSliceImpl,
+        TakeSvpPPolImpl, TakeVecZnxBigImpl, TakeVecZnxDftImpl, TakeVecZnxDftSliceImpl, TakeVecZnxImpl, TakeVecZnxSliceImpl,
     },
     source::Source,
 };
@@ -32,7 +32,7 @@ use crate::tfhe::{
 };
 
 use poulpy_core::layouts::{
-    Digits, GGLWEAutomorphismKeyLayout, GGLWETensorKeyLayout, GGSWCiphertextLayout, LWECiphertextLayout, prepared::PrepareAlloc,
+    Dsize, GGLWEAutomorphismKeyLayout, GGLWETensorKeyLayout, GGSWCiphertextLayout, LWECiphertextLayout, prepared::PrepareAlloc,
 };
 
 use poulpy_core::layouts::{
@@ -100,7 +100,8 @@ where
         + TakeVecZnxBigImpl<B>
         + TakeVecZnxDftSliceImpl<B>
         + TakeMatZnxImpl<B>
-        + TakeVecZnxSliceImpl<B>,
+        + TakeVecZnxSliceImpl<B>
+        + TakeSliceImpl<B>,
     BlindRotationKey<Vec<u8>, BRA>: PrepareAlloc<B, BlindRotationKeyPrepared<Vec<u8>, BRA, B>>,
     BlindRotationKeyPrepared<Vec<u8>, BRA, B>: BlincRotationExecute<B>,
     BlindRotationKey<Vec<u8>, BRA>: BlindRotationKeyAlloc + BlindRotationKeyEncryptSk<B>,
@@ -139,23 +140,23 @@ where
             n_lwe: n_lwe.into(),
             base2k: base2k.into(),
             k: k_brk.into(),
-            rows: rows_brk.into(),
+            dnum: rows_brk.into(),
             rank: rank.into(),
         },
         layout_atk: GGLWEAutomorphismKeyLayout {
             n: n_glwe.into(),
             base2k: base2k.into(),
             k: k_atk.into(),
-            rows: rows_atk.into(),
+            dnum: rows_atk.into(),
             rank: rank.into(),
-            digits: Digits(1),
+            dsize: Dsize(1),
         },
         layout_tsk: GGLWETensorKeyLayout {
             n: n_glwe.into(),
             base2k: base2k.into(),
             k: k_tsk.into(),
-            rows: rows_tsk.into(),
-            digits: Digits(1),
+            dnum: rows_tsk.into(),
+            dsize: Dsize(1),
             rank: rank.into(),
         },
     };
@@ -164,8 +165,8 @@ where
         n: n_glwe.into(),
         base2k: base2k.into(),
         k: k_ggsw_res.into(),
-        rows: rows_ggsw_res.into(),
-        digits: Digits(1),
+        dnum: rows_ggsw_res.into(),
+        dsize: Dsize(1),
         rank: rank.into(),
     };
 
@@ -321,7 +322,8 @@ where
         + TakeVecZnxBigImpl<B>
         + TakeVecZnxDftSliceImpl<B>
         + TakeMatZnxImpl<B>
-        + TakeVecZnxSliceImpl<B>,
+        + TakeVecZnxSliceImpl<B>
+        + TakeSliceImpl<B>,
     BlindRotationKey<Vec<u8>, BRA>: PrepareAlloc<B, BlindRotationKeyPrepared<Vec<u8>, BRA, B>>,
     BlindRotationKeyPrepared<Vec<u8>, BRA, B>: BlincRotationExecute<B>,
     BlindRotationKey<Vec<u8>, BRA>: BlindRotationKeyAlloc + BlindRotationKeyEncryptSk<B>,
@@ -360,23 +362,23 @@ where
             n_lwe: n_lwe.into(),
             base2k: base2k.into(),
             k: k_brk.into(),
-            rows: rows_brk.into(),
+            dnum: rows_brk.into(),
             rank: rank.into(),
         },
         layout_atk: GGLWEAutomorphismKeyLayout {
             n: n_glwe.into(),
             base2k: base2k.into(),
             k: k_atk.into(),
-            rows: rows_atk.into(),
+            dnum: rows_atk.into(),
             rank: rank.into(),
-            digits: Digits(1),
+            dsize: Dsize(1),
         },
         layout_tsk: GGLWETensorKeyLayout {
             n: n_glwe.into(),
             base2k: base2k.into(),
             k: k_tsk.into(),
-            rows: rows_tsk.into(),
-            digits: Digits(1),
+            dnum: rows_tsk.into(),
+            dsize: Dsize(1),
             rank: rank.into(),
         },
     };
@@ -385,8 +387,8 @@ where
         n: n_glwe.into(),
         base2k: base2k.into(),
         k: k_ggsw_res.into(),
-        rows: rows_ggsw_res.into(),
-        digits: Digits(1),
+        dnum: rows_ggsw_res.into(),
+        dsize: Dsize(1),
         rank: rank.into(),
     };
 

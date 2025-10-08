@@ -1,16 +1,44 @@
 use poulpy_hal::{
     api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDftInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace,
-        VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftApply, VecZnxIdftApplyConsume,
-        VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSubInplace,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDftInplace, TakeVecZnxBig, TakeVecZnxDft, VecZnxBigAddInplace,
+        VecZnxBigAddSmallInplace, VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftApply,
+        VecZnxIdftApplyConsume, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSubInplace,
     },
-    layouts::{Backend, DataRef, Module, ScratchOwned},
+    layouts::{Backend, DataRef, Module, Scratch, ScratchOwned},
     oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeVecZnxBigImpl, TakeVecZnxDftImpl},
 };
 
 use crate::layouts::{GLWECiphertext, GLWEPlaintext, LWEInfos, prepared::GLWESecretPrepared};
 
 impl<D: DataRef> GLWECiphertext<D> {
+    pub fn noise<B, DataSk, DataPt>(
+        &self,
+        module: &Module<B>,
+        sk_prepared: &GLWESecretPrepared<DataSk, B>,
+        pt_want: &GLWEPlaintext<DataPt>,
+        scratch: &mut Scratch<B>,
+    ) -> f64
+    where
+        DataSk: DataRef,
+        DataPt: DataRef,
+        B: Backend,
+        Module<B>: VecZnxDftApply<B>
+            + VecZnxSubInplace
+            + VecZnxNormalizeInplace<B>
+            + SvpApplyDftToDftInplace<B>
+            + VecZnxIdftApplyConsume<B>
+            + VecZnxBigAddInplace<B>
+            + VecZnxBigAddSmallInplace<B>
+            + VecZnxBigNormalize<B>,
+        Scratch<B>: TakeVecZnxDft<B> + TakeVecZnxBig<B>,
+    {
+        let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(self);
+        self.decrypt(module, &mut pt_have, sk_prepared, scratch);
+        module.vec_znx_sub_inplace(&mut pt_have.data, 0, &pt_want.data, 0);
+        module.vec_znx_normalize_inplace(self.base2k().into(), &mut pt_have.data, 0, scratch);
+        pt_have.data.std(self.base2k().into(), 0).log2()
+    }
+
     pub fn assert_noise<B, DataSk, DataPt>(
         &self,
         module: &Module<B>,
@@ -33,16 +61,8 @@ impl<D: DataRef> GLWECiphertext<D> {
             + VecZnxNormalizeInplace<B>,
         B: Backend + TakeVecZnxDftImpl<B> + TakeVecZnxBigImpl<B> + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
     {
-        let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(self);
-
         let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GLWECiphertext::decrypt_scratch_space(module, self));
-
-        self.decrypt(module, &mut pt_have, sk_prepared, scratch.borrow());
-
-        module.vec_znx_sub_inplace(&mut pt_have.data, 0, &pt_want.data, 0);
-        module.vec_znx_normalize_inplace(self.base2k().into(), &mut pt_have.data, 0, scratch.borrow());
-
-        let noise_have: f64 = pt_have.data.std(self.base2k().into(), 0).log2();
+        let noise_have: f64 = self.noise(module, sk_prepared, pt_want, scratch.borrow());
         assert!(noise_have <= max_noise, "{noise_have} {max_noise}");
     }
 }

@@ -3,22 +3,20 @@ use poulpy_hal::{
     source::Source,
 };
 
-use crate::layouts::{
-    Base2K, Degree, Digits, GGLWELayoutInfos, GGLWESwitchingKey, GLWEInfos, LWEInfos, Rank, Rows, TorusPrecision,
-};
+use crate::layouts::{Base2K, Degree, Dnum, Dsize, GGLWEInfos, GGLWESwitchingKey, GLWEInfos, LWEInfos, Rank, TorusPrecision};
 
 use std::fmt;
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
-pub struct GLWEToLWESwitchingKeyLayout {
+pub struct GLWEToLWEKeyLayout {
     pub n: Degree,
     pub base2k: Base2K,
     pub k: TorusPrecision,
-    pub rows: Rows,
     pub rank_in: Rank,
+    pub dnum: Dnum,
 }
 
-impl LWEInfos for GLWEToLWESwitchingKeyLayout {
+impl LWEInfos for GLWEToLWEKeyLayout {
     fn n(&self) -> Degree {
         self.n
     }
@@ -32,35 +30,35 @@ impl LWEInfos for GLWEToLWESwitchingKeyLayout {
     }
 }
 
-impl GLWEInfos for GLWEToLWESwitchingKeyLayout {
+impl GLWEInfos for GLWEToLWEKeyLayout {
     fn rank(&self) -> Rank {
         self.rank_out()
     }
 }
 
-impl GGLWELayoutInfos for GLWEToLWESwitchingKeyLayout {
+impl GGLWEInfos for GLWEToLWEKeyLayout {
     fn rank_in(&self) -> Rank {
         self.rank_in
     }
 
-    fn digits(&self) -> Digits {
-        Digits(1)
+    fn dsize(&self) -> Dsize {
+        Dsize(1)
     }
 
     fn rank_out(&self) -> Rank {
         Rank(1)
     }
 
-    fn rows(&self) -> Rows {
-        self.rows
+    fn dnum(&self) -> Dnum {
+        self.dnum
     }
 }
 
 /// A special [GLWESwitchingKey] required to for the conversion from [GLWECiphertext] to [LWECiphertext].
 #[derive(PartialEq, Eq, Clone)]
-pub struct GLWEToLWESwitchingKey<D: Data>(pub(crate) GGLWESwitchingKey<D>);
+pub struct GLWEToLWEKey<D: Data>(pub(crate) GGLWESwitchingKey<D>);
 
-impl<D: Data> LWEInfos for GLWEToLWESwitchingKey<D> {
+impl<D: Data> LWEInfos for GLWEToLWEKey<D> {
     fn base2k(&self) -> Base2K {
         self.0.base2k()
     }
@@ -78,63 +76,63 @@ impl<D: Data> LWEInfos for GLWEToLWESwitchingKey<D> {
     }
 }
 
-impl<D: Data> GLWEInfos for GLWEToLWESwitchingKey<D> {
+impl<D: Data> GLWEInfos for GLWEToLWEKey<D> {
     fn rank(&self) -> Rank {
         self.rank_out()
     }
 }
-impl<D: Data> GGLWELayoutInfos for GLWEToLWESwitchingKey<D> {
+impl<D: Data> GGLWEInfos for GLWEToLWEKey<D> {
     fn rank_in(&self) -> Rank {
         self.0.rank_in()
     }
 
-    fn digits(&self) -> Digits {
-        self.0.digits()
+    fn dsize(&self) -> Dsize {
+        self.0.dsize()
     }
 
     fn rank_out(&self) -> Rank {
         self.0.rank_out()
     }
 
-    fn rows(&self) -> Rows {
-        self.0.rows()
+    fn dnum(&self) -> Dnum {
+        self.0.dnum()
     }
 }
 
-impl<D: DataRef> fmt::Debug for GLWEToLWESwitchingKey<D> {
+impl<D: DataRef> fmt::Debug for GLWEToLWEKey<D> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{self}")
     }
 }
 
-impl<D: DataMut> FillUniform for GLWEToLWESwitchingKey<D> {
+impl<D: DataMut> FillUniform for GLWEToLWEKey<D> {
     fn fill_uniform(&mut self, log_bound: usize, source: &mut Source) {
         self.0.fill_uniform(log_bound, source);
     }
 }
 
-impl<D: DataRef> fmt::Display for GLWEToLWESwitchingKey<D> {
+impl<D: DataRef> fmt::Display for GLWEToLWEKey<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "(GLWEToLWESwitchingKey) {}", self.0)
     }
 }
 
-impl<D: DataMut> ReaderFrom for GLWEToLWESwitchingKey<D> {
+impl<D: DataMut> ReaderFrom for GLWEToLWEKey<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         self.0.read_from(reader)
     }
 }
 
-impl<D: DataRef> WriterTo for GLWEToLWESwitchingKey<D> {
+impl<D: DataRef> WriterTo for GLWEToLWEKey<D> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         self.0.write_to(writer)
     }
 }
 
-impl GLWEToLWESwitchingKey<Vec<u8>> {
+impl GLWEToLWEKey<Vec<u8>> {
     pub fn alloc<A>(infos: &A) -> Self
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
     {
         debug_assert_eq!(
             infos.rank_out().0,
@@ -142,28 +140,28 @@ impl GLWEToLWESwitchingKey<Vec<u8>> {
             "rank_out > 1 is not supported for GLWEToLWESwitchingKey"
         );
         debug_assert_eq!(
-            infos.digits().0,
+            infos.dsize().0,
             1,
-            "digits > 1 is not supported for GLWEToLWESwitchingKey"
+            "dsize > 1 is not supported for GLWEToLWESwitchingKey"
         );
         Self(GGLWESwitchingKey::alloc(infos))
     }
 
-    pub fn alloc_with(n: Degree, base2k: Base2K, k: TorusPrecision, rows: Rows, rank_in: Rank) -> Self {
+    pub fn alloc_with(n: Degree, base2k: Base2K, k: TorusPrecision, rank_in: Rank, dnum: Dnum) -> Self {
         Self(GGLWESwitchingKey::alloc_with(
             n,
             base2k,
             k,
-            rows,
-            Digits(1),
             rank_in,
             Rank(1),
+            dnum,
+            Dsize(1),
         ))
     }
 
     pub fn alloc_bytes<A>(infos: &A) -> usize
     where
-        A: GGLWELayoutInfos,
+        A: GGLWEInfos,
     {
         debug_assert_eq!(
             infos.rank_out().0,
@@ -171,14 +169,14 @@ impl GLWEToLWESwitchingKey<Vec<u8>> {
             "rank_out > 1 is not supported for GLWEToLWESwitchingKey"
         );
         debug_assert_eq!(
-            infos.digits().0,
+            infos.dsize().0,
             1,
-            "digits > 1 is not supported for GLWEToLWESwitchingKey"
+            "dsize > 1 is not supported for GLWEToLWESwitchingKey"
         );
         GGLWESwitchingKey::alloc_bytes(infos)
     }
 
-    pub fn alloc_bytes_with(n: Degree, base2k: Base2K, k: TorusPrecision, rows: Rows, rank_in: Rank) -> usize {
-        GGLWESwitchingKey::alloc_bytes_with(n, base2k, k, rows, Digits(1), rank_in, Rank(1))
+    pub fn alloc_bytes_with(n: Degree, base2k: Base2K, k: TorusPrecision, rank_in: Rank, dnum: Dnum) -> usize {
+        GGLWESwitchingKey::alloc_bytes_with(n, base2k, k, rank_in, Rank(1), dnum, Dsize(1))
     }
 }
