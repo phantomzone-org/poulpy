@@ -1,13 +1,13 @@
 use poulpy_hal::{
     api::{SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare},
-    layouts::{Backend, Data, DataMut, DataRef, Module, SvpPPol, ZnxInfos},
+    layouts::{Backend, Data, DataMut, DataRef, Module, Scratch, SvpPPol, ZnxInfos},
 };
 
 use crate::{
     dist::Distribution,
     layouts::{
         Base2K, Degree, GLWEInfos, GLWESecret, LWEInfos, Rank, TorusPrecision,
-        prepared::{Prepare, PrepareAlloc},
+        prepared::{Prepare, PrepareAlloc, PrepareScratchSpace},
     },
 };
 
@@ -85,13 +85,19 @@ impl<D: Data, B: Backend> GLWESecretPrepared<D, B> {
     }
 }
 
+impl<DR: DataRef, B: Backend, A: GLWEInfos> PrepareScratchSpace<B, A> for GLWESecretPrepared<DR, B> {
+    fn prepare_scratch_space(&self, _module: &Module<B>, _infos: &A) -> usize {
+        0
+    }
+}
+
 impl<D: DataRef, B: Backend> PrepareAlloc<B, GLWESecretPrepared<Vec<u8>, B>> for GLWESecret<D>
 where
     Module<B>: SvpPrepare<B> + SvpPPolAlloc<B>,
 {
-    fn prepare_alloc(&self, module: &Module<B>, scratch: &mut poulpy_hal::layouts::Scratch<B>) -> GLWESecretPrepared<Vec<u8>, B> {
+    fn prepare_alloc(&self, module: &Module<B>, _scratch: &mut Scratch<B>) -> GLWESecretPrepared<Vec<u8>, B> {
         let mut sk_dft: GLWESecretPrepared<Vec<u8>, B> = GLWESecretPrepared::alloc(module, self);
-        sk_dft.prepare(module, self, scratch);
+        sk_dft.prepare(module, self, _scratch);
         sk_dft
     }
 }
@@ -100,7 +106,7 @@ impl<DM: DataMut, DR: DataRef, B: Backend> Prepare<B, GLWESecret<DR>> for GLWESe
 where
     Module<B>: SvpPrepare<B>,
 {
-    fn prepare(&mut self, module: &Module<B>, other: &GLWESecret<DR>, _scratch: &mut poulpy_hal::layouts::Scratch<B>) {
+    fn prepare(&mut self, module: &Module<B>, other: &GLWESecret<DR>, _scratch: &mut Scratch<B>) {
         (0..self.rank().into()).for_each(|i| {
             module.svp_prepare(&mut self.data, i, &other.data, i);
         });

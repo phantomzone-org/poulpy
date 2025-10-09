@@ -8,7 +8,7 @@ use crate::{
     dist::Distribution,
     layouts::{
         Base2K, BuildError, Degree, GLWEInfos, GLWEPublicKey, LWEInfos, Rank, TorusPrecision,
-        prepared::{Prepare, PrepareAlloc},
+        prepared::{Prepare, PrepareAlloc, PrepareScratchSpace},
     },
 };
 
@@ -177,6 +177,12 @@ where
         let mut pk_prepared: GLWEPublicKeyPrepared<Vec<u8>, B> = GLWEPublicKeyPrepared::alloc(module, self);
         pk_prepared.prepare(module, self, scratch);
         pk_prepared
+    }
+}
+
+impl<DR: DataRef, B: Backend, A: GLWEInfos> PrepareScratchSpace<B, A> for GLWEPublicKeyPrepared<DR, B> {
+    fn prepare_scratch_space(&self, _module: &Module<B>, _infos: &A) -> usize {
+        0
     }
 }
 

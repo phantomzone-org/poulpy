@@ -1,12 +1,12 @@
 use poulpy_hal::{
-    api::{VmpPMatAlloc, VmpPMatAllocBytes, VmpPrepare},
+    api::{VmpPMatAlloc, VmpPMatAllocBytes, VmpPrepare, VmpPrepareTmpBytes},
     layouts::{Backend, Data, DataMut, DataRef, Module, Scratch, VmpPMat, ZnxInfos},
     oep::VmpPMatAllocBytesImpl,
 };
 
 use crate::layouts::{
     Base2K, BuildError, Degree, Dnum, Dsize, GGLWECiphertext, GGLWEInfos, GLWEInfos, LWEInfos, Rank, TorusPrecision,
-    prepared::{Prepare, PrepareAlloc},
+    prepared::{Prepare, PrepareAlloc, PrepareScratchSpace},
 };
 
 #[derive(PartialEq, Eq)]
@@ -257,6 +257,20 @@ impl<B: Backend> GGLWECiphertextPrepared<Vec<u8>, B> {
         );
 
         module.vmp_pmat_alloc_bytes(dnum.into(), rank_in.into(), (rank_out + 1).into(), size)
+    }
+}
+
+impl<DR: DataRef, B: Backend, A: GGLWEInfos> PrepareScratchSpace<B, A> for GGLWECiphertextPrepared<DR, B>
+where
+    Module<B>: VmpPrepareTmpBytes,
+{
+    fn prepare_scratch_space(&self, module: &Module<B>, infos: &A) -> usize {
+        module.vmp_prepare_tmp_bytes(
+            infos.dnum().into(),
+            infos.rank_in().into(),
+            (infos.rank() + 1).into(),
+            infos.size(),
+        )
     }
 }
 

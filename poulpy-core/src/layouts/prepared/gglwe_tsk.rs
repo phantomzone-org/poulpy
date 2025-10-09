@@ -5,7 +5,7 @@ use poulpy_hal::{
 
 use crate::layouts::{
     Base2K, Degree, Dnum, Dsize, GGLWEInfos, GGLWETensorKey, GLWEInfos, LWEInfos, Rank, TorusPrecision,
-    prepared::{GGLWESwitchingKeyPrepared, Prepare, PrepareAlloc},
+    prepared::{GGLWESwitchingKeyPrepared, Prepare, PrepareAlloc, PrepareScratchSpace},
 };
 
 #[derive(PartialEq, Eq)]
@@ -148,6 +148,15 @@ impl<D: DataRef, B: Backend> GGLWETensorKeyPrepared<D, B> {
         };
         let rank: usize = self.rank_out().into();
         &self.keys[i * rank + j - (i * (i + 1) / 2)]
+    }
+}
+
+impl<DR: DataRef, B: Backend, A: GGLWEInfos> PrepareScratchSpace<B, A> for GGLWETensorKeyPrepared<DR, B>
+where
+    GGLWESwitchingKeyPrepared<DR, B>: PrepareScratchSpace<B, A>,
+{
+    fn prepare_scratch_space(&self, module: &Module<B>, infos: &A) -> usize {
+        self.keys[0].prepare_scratch_space(module, infos)
     }
 }
 

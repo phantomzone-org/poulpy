@@ -5,7 +5,7 @@ use poulpy_hal::{
 
 use crate::layouts::{
     Base2K, Degree, Dnum, Dsize, GGLWEAutomorphismKey, GGLWEInfos, GLWEInfos, LWEInfos, Rank, TorusPrecision,
-    prepared::{GGLWESwitchingKeyPrepared, Prepare, PrepareAlloc},
+    prepared::{GGLWESwitchingKeyPrepared, Prepare, PrepareAlloc, PrepareScratchSpace},
 };
 
 #[derive(PartialEq, Eq)]
@@ -107,6 +107,15 @@ impl<B: Backend> GGLWEAutomorphismKeyPrepared<Vec<u8>, B> {
         Module<B>: VmpPMatAllocBytes,
     {
         GGLWESwitchingKeyPrepared::alloc_bytes_with(module, base2k, k, rank, rank, dnum, dsize)
+    }
+}
+
+impl<DR: DataRef, B: Backend, A: GGLWEInfos> PrepareScratchSpace<B, A> for GGLWEAutomorphismKeyPrepared<DR, B>
+where
+    GGLWESwitchingKeyPrepared<DR, B>: PrepareScratchSpace<B, A>,
+{
+    fn prepare_scratch_space(&self, module: &Module<B>, infos: &A) -> usize {
+        self.key.prepare_scratch_space(module, infos)
     }
 }
 
