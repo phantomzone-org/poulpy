@@ -180,7 +180,7 @@ where
     }
 }
 
-impl<DR: DataRef, B: Backend, A: GLWEInfos> PrepareScratchSpace<B, A> for GLWEPublicKeyPrepared<DR, B> {
+impl<B: Backend, A: GLWEInfos> PrepareScratchSpace<B, A> for GLWEPublicKeyPrepared<Vec<u8>, B> {
     fn prepare_scratch_space(_module: &Module<B>, _infos: &A) -> usize {
         0
     }

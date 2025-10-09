@@ -151,12 +151,12 @@ impl<D: DataRef, B: Backend> GGLWETensorKeyPrepared<D, B> {
     }
 }
 
-impl<DR: DataRef, B: Backend, A: GGLWEInfos> PrepareScratchSpace<B, A> for GGLWETensorKeyPrepared<DR, B>
+impl<B: Backend, A: GGLWEInfos> PrepareScratchSpace<B, A> for GGLWETensorKeyPrepared<Vec<u8>, B>
 where
-    GGLWESwitchingKeyPrepared<DR, B>: PrepareScratchSpace<B, A>,
+    GGLWESwitchingKeyPrepared<Vec<u8>, B>: PrepareScratchSpace<B, A>,
 {
     fn prepare_scratch_space(module: &Module<B>, infos: &A) -> usize {
-        GGLWESwitchingKeyPrepared::<DR, B>::prepare_scratch_space(module, infos)
+        GGLWESwitchingKeyPrepared::prepare_scratch_space(module, infos)
     }
 }
 

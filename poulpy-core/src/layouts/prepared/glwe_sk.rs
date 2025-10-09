@@ -85,7 +85,7 @@ impl<D: Data, B: Backend> GLWESecretPrepared<D, B> {
     }
 }
 
-impl<DR: DataRef, B: Backend, A: GLWEInfos> PrepareScratchSpace<B, A> for GLWESecretPrepared<DR, B> {
+impl<B: Backend, A: GLWEInfos> PrepareScratchSpace<B, A> for GLWESecretPrepared<Vec<u8>, B> {
     fn prepare_scratch_space(_module: &Module<B>, _infos: &A) -> usize {
         0
     }

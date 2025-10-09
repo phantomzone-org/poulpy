@@ -258,7 +258,7 @@ impl<D: DataRef, B: Backend> GGSWCiphertextPrepared<D, B> {
     }
 }
 
-impl<DR: DataRef, B: Backend, A: GGSWInfos> PrepareScratchSpace<B, A> for GGSWCiphertextPrepared<DR, B>
+impl<B: Backend, A: GGSWInfos> PrepareScratchSpace<B, A> for GGSWCiphertextPrepared<Vec<u8>, B>
 where
     Module<B>: VmpPrepareTmpBytes,
 {

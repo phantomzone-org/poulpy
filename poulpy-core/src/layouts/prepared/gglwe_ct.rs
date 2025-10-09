@@ -260,7 +260,7 @@ impl<B: Backend> GGLWECiphertextPrepared<Vec<u8>, B> {
     }
 }
 
-impl<DR: DataRef, B: Backend, A: GGLWEInfos> PrepareScratchSpace<B, A> for GGLWECiphertextPrepared<DR, B>
+impl<B: Backend, A: GGLWEInfos> PrepareScratchSpace<B, A> for GGLWECiphertextPrepared<Vec<u8>, B>
 where
     Module<B>: VmpPrepareTmpBytes,
 {
