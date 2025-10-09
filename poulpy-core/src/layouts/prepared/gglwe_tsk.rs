@@ -155,8 +155,8 @@ impl<DR: DataRef, B: Backend, A: GGLWEInfos> PrepareScratchSpace<B, A> for GGLWE
 where
     GGLWESwitchingKeyPrepared<DR, B>: PrepareScratchSpace<B, A>,
 {
-    fn prepare_scratch_space(&self, module: &Module<B>, infos: &A) -> usize {
-        self.keys[0].prepare_scratch_space(module, infos)
+    fn prepare_scratch_space(module: &Module<B>, infos: &A) -> usize {
+        GGLWESwitchingKeyPrepared::<DR, B>::prepare_scratch_space(module, infos)
     }
 }
 

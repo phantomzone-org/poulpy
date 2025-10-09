@@ -119,8 +119,8 @@ impl<DR: DataRef, B: Backend, A: GGLWEInfos> PrepareScratchSpace<B, A> for GGLWE
 where
     GGLWECiphertextPrepared<DR, B>: PrepareScratchSpace<B, A>,
 {
-    fn prepare_scratch_space(&self, module: &Module<B>, infos: &A) -> usize {
-        self.key.prepare_scratch_space(module, infos)
+    fn prepare_scratch_space(module: &Module<B>, infos: &A) -> usize {
+        GGLWECiphertextPrepared::<DR, B>::prepare_scratch_space(module, infos)
     }
 }
 

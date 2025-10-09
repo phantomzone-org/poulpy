@@ -262,7 +262,7 @@ impl<DR: DataRef, B: Backend, A: GGSWInfos> PrepareScratchSpace<B, A> for GGSWCi
 where
     Module<B>: VmpPrepareTmpBytes,
 {
-    fn prepare_scratch_space(&self, module: &Module<B>, infos: &A) -> usize {
+    fn prepare_scratch_space(module: &Module<B>, infos: &A) -> usize {
         module.vmp_prepare_tmp_bytes(
             infos.dnum().into(),
             (infos.rank() + 1).into(),

@@ -22,7 +22,7 @@ pub use lwe_to_glwe_ksk::*;
 use poulpy_hal::layouts::{Backend, Module, Scratch};
 
 pub trait PrepareScratchSpace<B: Backend, T> {
-    fn prepare_scratch_space(&self, module: &Module<B>, infos: &T) -> usize;
+    fn prepare_scratch_space(module: &Module<B>, infos: &T) -> usize;
 }
 
 pub trait PrepareAlloc<B: Backend, T> {
