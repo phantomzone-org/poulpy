@@ -57,6 +57,12 @@ pub trait TakeGGSWPrepared<B: Backend> {
         A: GGSWInfos;
 }
 
+pub trait TakeGGSWPreparedSlice<B: Backend> {
+    fn take_ggsw_prepared_slice<A>(&mut self, size: usize, infos: &A) -> (Vec<GGSWCiphertextPrepared<&mut [u8], B>>, &mut Self)
+    where
+        A: GGSWInfos;
+}
+
 pub trait TakeGLWESecret {
     fn take_glwe_secret(&mut self, n: Degree, rank: Rank) -> (GLWESecret<&mut [u8]>, &mut Self);
 }
@@ -283,6 +289,25 @@ where
                 .unwrap(),
             scratch,
         )
+    }
+}
+
+impl<B: Backend> TakeGGSWPreparedSlice<B> for Scratch<B>
+where
+    Scratch<B>: TakeGGSWPrepared<B>,
+{
+    fn take_ggsw_prepared_slice<A>(&mut self, size: usize, infos: &A) -> (Vec<GGSWCiphertextPrepared<&mut [u8], B>>, &mut Self)
+    where
+        A: GGSWInfos,
+    {
+        let mut scratch: &mut Scratch<B> = self;
+        let mut cts: Vec<GGSWCiphertextPrepared<&mut [u8], B>> = Vec::with_capacity(size);
+        for _ in 0..size {
+            let (ct, new_scratch) = scratch.take_ggsw_prepared(infos);
+            scratch = new_scratch;
+            cts.push(ct)
+        }
+        (cts, scratch)
     }
 }
 
