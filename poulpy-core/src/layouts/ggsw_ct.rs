@@ -12,7 +12,7 @@ where
 {
     fn dnum(&self) -> Dnum;
     fn dsize(&self) -> Dsize;
-    fn layout(&self) -> GGSWCiphertextLayout {
+    fn ggsw_layout(&self) -> GGSWCiphertextLayout {
         GGSWCiphertextLayout {
             n: self.n(),
             base2k: self.base2k(),
