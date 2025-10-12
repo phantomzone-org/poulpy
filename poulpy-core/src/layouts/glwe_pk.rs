@@ -1,4 +1,4 @@
-use poulpy_hal::layouts::{Data, DataMut, DataRef, ReaderFrom, VecZnx, WriterTo, ZnxInfos};
+use poulpy_hal::layouts::{Data, DataMut, DataRef, ReaderFrom, VecZnx, VecZnxToMut, VecZnxToRef, WriterTo, ZnxInfos};
 
 use crate::{
     dist::Distribution,
@@ -205,5 +205,35 @@ impl<D: DataRef> WriterTo for GLWEPublicKey<D> {
             Err(e) => return Err(e),
         }
         self.data.write_to(writer)
+    }
+}
+
+pub trait GLWEPublicKeyToRef {
+    fn to_ref(&self) -> GLWEPublicKey<&[u8]>;
+}
+
+impl<D: DataRef> GLWEPublicKeyToRef for GLWEPublicKey<D> {
+    fn to_ref(&self) -> GLWEPublicKey<&[u8]> {
+        GLWEPublicKey {
+            data: self.data.to_ref(),
+            base2k: self.base2k,
+            k: self.k,
+            dist: self.dist,
+        }
+    }
+}
+
+pub trait GLWEPublicKeyToMut {
+    fn to_mut(&mut self) -> GLWEPublicKey<&mut [u8]>;
+}
+
+impl<D: DataMut> GLWEPublicKeyToMut for GLWEPublicKey<D> {
+    fn to_mut(&mut self) -> GLWEPublicKey<&mut [u8]> {
+        GLWEPublicKey {
+            base2k: self.base2k,
+            k: self.k,
+            dist: self.dist,
+            data: self.data.to_mut(),
+        }
     }
 }

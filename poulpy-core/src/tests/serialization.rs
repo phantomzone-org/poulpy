@@ -4,7 +4,7 @@ use crate::layouts::{
     Base2K, Degree, Dnum, Dsize, GGLWEAutomorphismKey, GGLWECiphertext, GGLWESwitchingKey, GGLWETensorKey, GGSWCiphertext,
     GLWECiphertext, GLWEToLWEKey, LWECiphertext, LWESwitchingKey, LWEToGLWESwitchingKey, Rank, TorusPrecision,
     compressed::{
-        GGLWEAutomorphismKeyCompressed, GGLWECiphertextCompressed, GGLWESwitchingKeyCompressed, GGLWETensorKeyCompressed,
+        GGLWEAutomorphismKeyCompressed, GGLWECiphertextCompressed, GGLWEKeyCompressed, GGLWETensorKeyCompressed,
         GGSWCiphertextCompressed, GLWECiphertextCompressed, GLWEToLWESwitchingKeyCompressed, LWECiphertextCompressed,
         LWESwitchingKeyCompressed, LWEToGLWESwitchingKeyCompressed,
     },
@@ -63,8 +63,7 @@ fn test_glwe_switching_key_serialization() {
 
 #[test]
 fn test_glwe_switching_key_compressed_serialization() {
-    let original: GGLWESwitchingKeyCompressed<Vec<u8>> =
-        GGLWESwitchingKeyCompressed::alloc_with(N_GLWE, BASE2K, K, RANK, RANK, DNUM, DSIZE);
+    let original: GGLWEKeyCompressed<Vec<u8>> = GGLWEKeyCompressed::alloc_with(N_GLWE, BASE2K, K, RANK, RANK, DNUM, DSIZE);
     test_reader_writer_interface(original);
 }
 

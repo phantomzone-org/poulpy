@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    layouts::{Data, DataMut, DataRef, FillUniform, MatZnx, ReaderFrom, WriterTo, ZnxInfos},
+    layouts::{Data, DataMut, DataRef, FillUniform, MatZnx, MatZnxToMut, MatZnxToRef, ReaderFrom, WriterTo, ZnxInfos},
     source::Source,
 };
 use std::fmt;
@@ -368,5 +368,37 @@ impl<D: DataRef> WriterTo for GGSWCiphertext<D> {
         writer.write_u32::<LittleEndian>(self.base2k.into())?;
         writer.write_u32::<LittleEndian>(self.dsize.into())?;
         self.data.write_to(writer)
+    }
+}
+
+pub trait GGSWCiphertextToMut {
+    fn to_mut(&mut self) -> GGSWCiphertext<&mut [u8]>;
+}
+
+impl<D: DataMut> GGSWCiphertextToMut for GGSWCiphertext<D> {
+    fn to_mut(&mut self) -> GGSWCiphertext<&mut [u8]> {
+        GGSWCiphertext::builder()
+            .base2k(self.base2k())
+            .dsize(self.dsize())
+            .k(self.k())
+            .data(self.data.to_mut())
+            .build()
+            .unwrap()
+    }
+}
+
+pub trait GGSWCiphertextToRef {
+    fn to_ref(&self) -> GGSWCiphertext<&[u8]>;
+}
+
+impl<D: DataRef> GGSWCiphertextToRef for GGSWCiphertext<D> {
+    fn to_ref(&self) -> GGSWCiphertext<&[u8]> {
+        GGSWCiphertext::builder()
+            .base2k(self.base2k())
+            .dsize(self.dsize())
+            .k(self.k())
+            .data(self.data.to_ref())
+            .build()
+            .unwrap()
     }
 }

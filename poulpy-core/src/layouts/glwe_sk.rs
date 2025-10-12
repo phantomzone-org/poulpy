@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    layouts::{Data, DataMut, DataRef, ReaderFrom, ScalarZnx, WriterTo, ZnxInfos, ZnxZero},
+    layouts::{Data, DataMut, DataRef, ReaderFrom, ScalarZnx, ScalarZnxToMut, ScalarZnxToRef, WriterTo, ZnxInfos, ZnxZero},
     source::Source,
 };
 
@@ -133,6 +133,32 @@ impl<D: DataMut> GLWESecret<D> {
     pub fn fill_zero(&mut self) {
         self.data.zero();
         self.dist = Distribution::ZERO;
+    }
+}
+
+pub trait GLWESecretToMut {
+    fn to_mut(&mut self) -> GLWESecret<&mut [u8]>;
+}
+
+impl<D: DataMut> GLWESecretToMut for GLWESecret<D> {
+    fn to_mut(&mut self) -> GLWESecret<&mut [u8]> {
+        GLWESecret {
+            dist: self.dist,
+            data: self.data.to_mut(),
+        }
+    }
+}
+
+pub trait GLWESecretToRef {
+    fn to_ref(&self) -> GLWESecret<&[u8]>;
+}
+
+impl<D: DataRef> GLWESecretToRef for GLWESecret<D> {
+    fn to_ref(&self) -> GLWESecret<&[u8]> {
+        GLWESecret {
+            data: self.data.to_ref(),
+            dist: self.dist,
+        }
     }
 }
 

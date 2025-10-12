@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{VecZnxDftAlloc, VecZnxDftAllocBytes, VecZnxDftApply},
-    layouts::{Backend, Data, DataMut, DataRef, Module, Scratch, VecZnxDft, ZnxInfos},
+    layouts::{Backend, Data, DataMut, DataRef, Module, Scratch, VecZnxDft, VecZnxDftToMut, VecZnxDftToRef, ZnxInfos},
     oep::VecZnxDftAllocBytesImpl,
 };
 
@@ -203,5 +203,35 @@ where
         self.k = other.k();
         self.base2k = other.base2k();
         self.dist = other.dist;
+    }
+}
+
+pub trait GLWEPublicKeyPreparedToMut<B: Backend> {
+    fn to_mut(&mut self) -> GLWEPublicKeyPrepared<&mut [u8], B>;
+}
+
+impl<D: DataMut, B: Backend> GLWEPublicKeyPreparedToMut<B> for GLWEPublicKeyPrepared<D, B> {
+    fn to_mut(&mut self) -> GLWEPublicKeyPrepared<&mut [u8], B> {
+        GLWEPublicKeyPrepared {
+            dist: self.dist,
+            k: self.k,
+            base2k: self.base2k,
+            data: self.data.to_mut(),
+        }
+    }
+}
+
+pub trait GLWEPublicKeyPreparedToRef<B: Backend> {
+    fn to_ref(&self) -> GLWEPublicKeyPrepared<&[u8], B>;
+}
+
+impl<D: DataRef, B: Backend> GLWEPublicKeyPreparedToRef<B> for GLWEPublicKeyPrepared<D, B> {
+    fn to_ref(&self) -> GLWEPublicKeyPrepared<&[u8], B> {
+        GLWEPublicKeyPrepared {
+            data: self.data.to_ref(),
+            dist: self.dist,
+            k: self.k,
+            base2k: self.base2k,
+        }
     }
 }

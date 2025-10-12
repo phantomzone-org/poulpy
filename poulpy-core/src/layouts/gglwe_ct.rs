@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    layouts::{Data, DataMut, DataRef, FillUniform, MatZnx, ReaderFrom, WriterTo, ZnxInfos},
+    layouts::{Data, DataMut, DataRef, FillUniform, MatZnx, MatZnxToMut, MatZnxToRef, ReaderFrom, WriterTo, ZnxInfos},
     source::Source,
 };
 
@@ -386,6 +386,36 @@ impl GGLWECiphertext<Vec<u8>> {
             (rank_out + 1).into(),
             k.0.div_ceil(base2k.0) as usize,
         )
+    }
+}
+
+pub trait GGLWECiphertextToMut {
+    fn to_mut(&mut self) -> GGLWECiphertext<&mut [u8]>;
+}
+
+impl<D: DataMut> GGLWECiphertextToMut for GGLWECiphertext<D> {
+    fn to_mut(&mut self) -> GGLWECiphertext<&mut [u8]> {
+        GGLWECiphertext {
+            k: self.k(),
+            base2k: self.base2k(),
+            dsize: self.dsize(),
+            data: self.data.to_mut(),
+        }
+    }
+}
+
+pub trait GGLWECiphertextToRef {
+    fn to_ref(&self) -> GGLWECiphertext<&[u8]>;
+}
+
+impl<D: DataMut> GGLWECiphertextToRef for GGLWECiphertext<D> {
+    fn to_ref(&self) -> GGLWECiphertext<&[u8]> {
+        GGLWECiphertext {
+            k: self.k(),
+            base2k: self.base2k(),
+            dsize: self.dsize(),
+            data: self.data.to_ref(),
+        }
     }
 }
 

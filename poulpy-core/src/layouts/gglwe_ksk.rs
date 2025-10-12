@@ -4,7 +4,8 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Dnum, Dsize, GGLWECiphertext, GGLWEInfos, GLWECiphertext, GLWEInfos, LWEInfos, Rank, TorusPrecision,
+    Base2K, Degree, Dnum, Dsize, GGLWECiphertext, GGLWECiphertextToMut, GGLWEInfos, GLWECiphertext, GLWEInfos, LWEInfos, Rank,
+    TorusPrecision,
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
@@ -177,6 +178,23 @@ impl GGLWESwitchingKey<Vec<u8>> {
         dsize: Dsize,
     ) -> usize {
         GGLWECiphertext::alloc_bytes_with(n, base2k, k, rank_in, rank_out, dnum, dsize)
+    }
+}
+
+pub trait GGLWESwitchingKeyToMut {
+    fn to_mut(&mut self) -> GGLWESwitchingKey<&mut [u8]>;
+}
+
+impl<D: DataMut> GGLWESwitchingKeyToMut for GGLWESwitchingKey<D>
+where
+    GGLWECiphertext<D>: GGLWECiphertextToMut,
+{
+    fn to_mut(&mut self) -> GGLWESwitchingKey<&mut [u8]> {
+        GGLWESwitchingKey {
+            key: self.key.to_mut(),
+            sk_in_n: self.sk_in_n,
+            sk_out_n: self.sk_out_n,
+        }
     }
 }
 

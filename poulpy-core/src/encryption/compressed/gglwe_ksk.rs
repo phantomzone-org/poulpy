@@ -1,9 +1,7 @@
 use poulpy_hal::{
     api::{
-        ScratchAvailable, SvpApplyDftToDftInplace, SvpPPolAllocBytes, SvpPrepare, TakeScalarZnx, TakeVecZnx, TakeVecZnxDft,
-        VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftApply,
-        VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub,
-        VecZnxSubInplace, VecZnxSwitchRing,
+        ScratchAvailable, SvpPPolAllocBytes, SvpPrepare, TakeScalarZnx, VecZnxDftAllocBytes, VecZnxNormalizeTmpBytes,
+        VecZnxSwitchRing,
     },
     layouts::{Backend, DataMut, DataRef, Module, ScalarZnx, Scratch},
     source::Source,
@@ -11,13 +9,15 @@ use poulpy_hal::{
 
 use crate::{
     TakeGLWESecretPrepared,
+    encryption::compressed::gglwe_ct::GGLWECompressedEncryptSk,
     layouts::{
-        Degree, GGLWECiphertext, GGLWEInfos, GLWEInfos, GLWESecret, LWEInfos, compressed::GGLWESwitchingKeyCompressed,
+        Degree, GGLWECiphertext, GGLWEInfos, GLWEInfos, GLWESecret, GLWESecretToRef, LWEInfos,
+        compressed::{GGLWEKeyCompressed, GGLWEKeyCompressedToMut},
         prepared::GLWESecretPrepared,
     },
 };
 
-impl GGLWESwitchingKeyCompressed<Vec<u8>> {
+impl GGLWEKeyCompressed<Vec<u8>> {
     pub fn encrypt_sk_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GGLWEInfos,
@@ -29,7 +29,7 @@ impl GGLWESwitchingKeyCompressed<Vec<u8>> {
     }
 }
 
-impl<DataSelf: DataMut> GGLWESwitchingKeyCompressed<DataSelf> {
+impl<DataSelf: DataMut> GGLWEKeyCompressed<DataSelf> {
     #[allow(clippy::too_many_arguments)]
     pub fn encrypt_sk<DataSkIn: DataRef, DataSkOut: DataRef, B: Backend>(
         &mut self,
@@ -40,36 +40,65 @@ impl<DataSelf: DataMut> GGLWESwitchingKeyCompressed<DataSelf> {
         source_xe: &mut Source,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: SvpPrepare<B>
-            + SvpPPolAllocBytes
-            + VecZnxSwitchRing
-            + VecZnxDftAllocBytes
-            + VecZnxBigNormalize<B>
-            + VecZnxDftApply<B>
-            + SvpApplyDftToDftInplace<B>
-            + VecZnxIdftApplyConsume<B>
-            + VecZnxNormalizeTmpBytes
-            + VecZnxFillUniform
-            + VecZnxSubInplace
-            + VecZnxAddInplace
-            + VecZnxNormalizeInplace<B>
-            + VecZnxAddNormal
-            + VecZnxNormalize<B>
-            + VecZnxSub
-            + VecZnxAddScalarInplace,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx + TakeScalarZnx + TakeGLWESecretPrepared<B>,
+        Module<B>: GGLWEKeyCompressedEncryptSk<B>,
     {
+        module.gglwe_key_compressed_encrypt_sk(self, sk_in, sk_out, seed_xa, source_xe, scratch);
+    }
+}
+
+pub trait GGLWEKeyCompressedEncryptSk<B: Backend> {
+    fn gglwe_key_compressed_encrypt_sk<R, SI, SO>(
+        &self,
+        res: &mut R,
+        sk_in: &SI,
+        sk_out: &SO,
+        seed_xa: [u8; 32],
+        source_xe: &mut Source,
+        scratch: &mut Scratch<B>,
+    ) where
+        R: GGLWEKeyCompressedToMut,
+        SI: GLWESecretToRef,
+        SO: GLWESecretToRef;
+}
+
+impl<B: Backend> GGLWEKeyCompressedEncryptSk<B> for Module<B>
+where
+    Module<B>: GGLWECompressedEncryptSk<B>
+        + SvpPPolAllocBytes
+        + VecZnxNormalizeTmpBytes
+        + VecZnxDftAllocBytes
+        + VecZnxSwitchRing
+        + SvpPrepare<B>,
+    Scratch<B>: ScratchAvailable + TakeScalarZnx + TakeGLWESecretPrepared<B>,
+{
+    fn gglwe_key_compressed_encrypt_sk<R, SI, SO>(
+        &self,
+        res: &mut R,
+        sk_in: &SI,
+        sk_out: &SO,
+        seed_xa: [u8; 32],
+        source_xe: &mut Source,
+        scratch: &mut Scratch<B>,
+    ) where
+        R: GGLWEKeyCompressedToMut,
+        SI: GLWESecretToRef,
+        SO: GLWESecretToRef,
+    {
+        let res: &mut GGLWEKeyCompressed<&mut [u8]> = &mut res.to_mut();
+        let sk_in: &GLWESecret<&[u8]> = &sk_in.to_ref();
+        let sk_out: &GLWESecret<&[u8]> = &sk_out.to_ref();
+
         #[cfg(debug_assertions)]
         {
             use crate::layouts::GGLWESwitchingKey;
 
-            assert!(sk_in.n().0 <= module.n() as u32);
-            assert!(sk_out.n().0 <= module.n() as u32);
+            assert!(sk_in.n().0 <= self.n() as u32);
+            assert!(sk_out.n().0 <= self.n() as u32);
             assert!(
-                scratch.available() >= GGLWESwitchingKey::encrypt_sk_scratch_space(module, self),
+                scratch.available() >= GGLWESwitchingKey::encrypt_sk_scratch_space(self, res),
                 "scratch.available()={} < GLWESwitchingKey::encrypt_sk_scratch_space={}",
                 scratch.available(),
-                GGLWESwitchingKey::encrypt_sk_scratch_space(module, self)
+                GGLWESwitchingKey::encrypt_sk_scratch_space(self, res)
             )
         }
 
@@ -77,7 +106,7 @@ impl<DataSelf: DataMut> GGLWESwitchingKeyCompressed<DataSelf> {
 
         let (mut sk_in_tmp, scratch_1) = scratch.take_scalar_znx(n, sk_in.rank().into());
         (0..sk_in.rank().into()).for_each(|i| {
-            module.vec_znx_switch_ring(
+            self.vec_znx_switch_ring(
                 &mut sk_in_tmp.as_vec_znx_mut(),
                 i,
                 &sk_in.data.as_vec_znx(),
@@ -89,20 +118,20 @@ impl<DataSelf: DataMut> GGLWESwitchingKeyCompressed<DataSelf> {
         {
             let (mut tmp, _) = scratch_2.take_scalar_znx(n, 1);
             (0..sk_out.rank().into()).for_each(|i| {
-                module.vec_znx_switch_ring(&mut tmp.as_vec_znx_mut(), 0, &sk_out.data.as_vec_znx(), i);
-                module.svp_prepare(&mut sk_out_tmp.data, i, &tmp, 0);
+                self.vec_znx_switch_ring(&mut tmp.as_vec_znx_mut(), 0, &sk_out.data.as_vec_znx(), i);
+                self.svp_prepare(&mut sk_out_tmp.data, i, &tmp, 0);
             });
         }
 
-        self.key.encrypt_sk(
-            module,
+        self.gglwe_compressed_encrypt_sk(
+            &mut res.key,
             &sk_in_tmp,
             &sk_out_tmp,
             seed_xa,
             source_xe,
             scratch_2,
         );
-        self.sk_in_n = sk_in.n().into();
-        self.sk_out_n = sk_out.n().into();
+        res.sk_in_n = sk_in.n().into();
+        res.sk_out_n = sk_out.n().into();
     }
 }

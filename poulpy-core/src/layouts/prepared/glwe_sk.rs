@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare},
-    layouts::{Backend, Data, DataMut, DataRef, Module, Scratch, SvpPPol, ZnxInfos},
+    layouts::{Backend, Data, DataMut, DataRef, Module, Scratch, SvpPPol, SvpPPolToMut, SvpPPolToRef, ZnxInfos},
 };
 
 use crate::{
@@ -111,5 +111,31 @@ where
             module.svp_prepare(&mut self.data, i, &other.data, i);
         });
         self.dist = other.dist
+    }
+}
+
+pub trait GLWESecretPreparedToRef<B: Backend> {
+    fn to_ref(&self) -> GLWESecretPrepared<&[u8], B>;
+}
+
+impl<D: DataRef, B: Backend> GLWESecretPreparedToRef<B> for GLWESecretPrepared<D, B> {
+    fn to_ref(&self) -> GLWESecretPrepared<&[u8], B> {
+        GLWESecretPrepared {
+            data: self.data.to_ref(),
+            dist: self.dist,
+        }
+    }
+}
+
+pub trait GLWESecretPreparedToMut<B: Backend> {
+    fn to_ref(&mut self) -> GLWESecretPrepared<&mut [u8], B>;
+}
+
+impl<D: DataMut, B: Backend> GLWESecretPreparedToMut<B> for GLWESecretPrepared<D, B> {
+    fn to_ref(&mut self) -> GLWESecretPrepared<&mut [u8], B> {
+        GLWESecretPrepared {
+            dist: self.dist,
+            data: self.data.to_mut(),
+        }
     }
 }

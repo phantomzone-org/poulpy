@@ -1,6 +1,8 @@
 use poulpy_hal::{
     api::{VecZnxCopy, VecZnxFillUniform},
-    layouts::{Backend, Data, DataMut, DataRef, FillUniform, MatZnx, Module, ReaderFrom, WriterTo, ZnxInfos},
+    layouts::{
+        Backend, Data, DataMut, DataRef, FillUniform, MatZnx, MatZnxToMut, MatZnxToRef, Module, ReaderFrom, WriterTo, ZnxInfos,
+    },
     source::Source,
 };
 
@@ -233,5 +235,39 @@ where
                     .decompress(module, &other.at(row_i, col_j));
             });
         });
+    }
+}
+
+pub trait GGSWCiphertextCompressedToMut {
+    fn to_mut(&mut self) -> GGSWCiphertextCompressed<&mut [u8]>;
+}
+
+impl<D: DataMut> GGSWCiphertextCompressedToMut for GGSWCiphertextCompressed<D> {
+    fn to_mut(&mut self) -> GGSWCiphertextCompressed<&mut [u8]> {
+        GGSWCiphertextCompressed {
+            k: self.k(),
+            base2k: self.base2k(),
+            dsize: self.dsize(),
+            rank: self.rank(),
+            seed: self.seed.clone(),
+            data: self.data.to_mut(),
+        }
+    }
+}
+
+pub trait GGSWCiphertextCompressedToRef {
+    fn to_ref(&self) -> GGSWCiphertextCompressed<&[u8]>;
+}
+
+impl<D: DataRef> GGSWCiphertextCompressedToRef for GGSWCiphertextCompressed<D> {
+    fn to_ref(&self) -> GGSWCiphertextCompressed<&[u8]> {
+        GGSWCiphertextCompressed {
+            k: self.k(),
+            base2k: self.base2k(),
+            dsize: self.dsize(),
+            rank: self.rank(),
+            seed: self.seed.clone(),
+            data: self.data.to_ref(),
+        }
     }
 }

@@ -363,7 +363,7 @@ where
         let sk_prepared: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
 
         let mut pk: GLWEPublicKey<Vec<u8>> = GLWEPublicKey::alloc(&glwe_infos);
-        pk.generate_from_sk(module, &sk_prepared, &mut source_xa, &mut source_xe);
+        pk.generate(module, &sk_prepared, &mut source_xa, &mut source_xe);
 
         module.vec_znx_fill_uniform(base2k, &mut pt_want.data, 0, &mut source_xa);
 

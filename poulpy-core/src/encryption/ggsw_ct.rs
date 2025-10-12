@@ -1,16 +1,16 @@
 use poulpy_hal::{
-    api::{
-        ScratchAvailable, SvpApplyDftToDftInplace, TakeVecZnx, TakeVecZnxDft, VecZnxAddInplace, VecZnxAddNormal,
-        VecZnxAddScalarInplace, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftApply, VecZnxFillUniform,
-        VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubInplace,
-    },
-    layouts::{Backend, DataMut, DataRef, Module, ScalarZnx, Scratch, VecZnx, ZnxZero},
+    api::{VecZnxAddScalarInplace, VecZnxDftAllocBytes, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes},
+    layouts::{Backend, DataMut, DataRef, Module, ScalarZnx, ScalarZnxToRef, Scratch, VecZnx, ZnxZero},
     source::Source,
 };
 
 use crate::{
-    TakeGLWEPt,
-    layouts::{GGSWCiphertext, GGSWInfos, GLWECiphertext, GLWEInfos, LWEInfos, prepared::GLWESecretPrepared},
+    SIGMA, TakeGLWEPt,
+    encryption::glwe_ct::GLWEEncryptSkInternal,
+    layouts::{
+        GGSWCiphertext, GGSWCiphertextToMut, GGSWInfos, GLWECiphertext, GLWEInfos, LWEInfos,
+        prepared::{GLWESecretPrepared, GLWESecretPreparedToRef},
+    },
 };
 
 impl GGSWCiphertext<Vec<u8>> {
@@ -27,6 +27,85 @@ impl GGSWCiphertext<Vec<u8>> {
     }
 }
 
+pub trait GGSWEncryptSk<B: Backend> {
+    fn ggsw_encrypt_sk<R, P, S>(
+        &self,
+        res: &mut R,
+        pt: &P,
+        sk: &S,
+        source_xa: &mut Source,
+        source_xe: &mut Source,
+        scratch: &mut Scratch<B>,
+    ) where
+        R: GGSWCiphertextToMut,
+        P: ScalarZnxToRef,
+        S: GLWESecretPreparedToRef<B>;
+}
+
+impl<B: Backend> GGSWEncryptSk<B> for Module<B>
+where
+    Module<B>: GLWEEncryptSkInternal<B> + VecZnxAddScalarInplace + VecZnxNormalizeInplace<B>,
+    Scratch<B>: TakeGLWEPt<B>,
+{
+    fn ggsw_encrypt_sk<R, P, S>(
+        &self,
+        res: &mut R,
+        pt: &P,
+        sk: &S,
+        source_xa: &mut Source,
+        source_xe: &mut Source,
+        scratch: &mut Scratch<B>,
+    ) where
+        R: GGSWCiphertextToMut,
+        P: ScalarZnxToRef,
+        S: GLWESecretPreparedToRef<B>,
+    {
+        let res: &mut GGSWCiphertext<&mut [u8]> = &mut res.to_mut();
+        let pt: &ScalarZnx<&[u8]> = &pt.to_ref();
+        let sk: &GLWESecretPrepared<&[u8], B> = &sk.to_ref();
+
+        #[cfg(debug_assertions)]
+        {
+            use poulpy_hal::layouts::ZnxInfos;
+
+            assert_eq!(res.rank(), sk.rank());
+            assert_eq!(res.n(), self.n() as u32);
+            assert_eq!(pt.n(), self.n());
+            assert_eq!(sk.n(), self.n() as u32);
+        }
+
+        let k: usize = res.k().into();
+        let base2k: usize = res.base2k().into();
+        let rank: usize = res.rank().into();
+        let dsize: usize = res.dsize().into();
+        let cols: usize = (rank + 1).into();
+
+        let (mut tmp_pt, scratch_1) = scratch.take_glwe_pt(&res.glwe_layout());
+
+        for row_i in 0..res.dnum().into() {
+            tmp_pt.data.zero();
+            // Adds the scalar_znx_pt to the i-th limb of the vec_znx_pt
+            self.vec_znx_add_scalar_inplace(&mut tmp_pt.data, 0, (dsize - 1) + row_i * dsize, pt, 0);
+            self.vec_znx_normalize_inplace(base2k, &mut tmp_pt.data, 0, scratch_1);
+            for col_j in 0..rank + 1 {
+                self.glwe_encrypt_sk_internal(
+                    base2k,
+                    k,
+                    res.at_mut(row_i, col_j).data_mut(),
+                    cols,
+                    false,
+                    Some((&tmp_pt, col_j)),
+                    sk,
+                    source_xa,
+                    source_xe,
+                    SIGMA,
+                    scratch_1,
+                );
+            }
+        }
+    }
+}
+
 impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
     #[allow(clippy::too_many_arguments)]
     pub fn encrypt_sk<DataPt: DataRef, DataSk: DataRef, B: Backend>(
@@ -38,56 +117,8 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
         source_xe: &mut Source,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: VecZnxAddScalarInplace
-            + VecZnxDftAllocBytes
-            + VecZnxBigNormalize<B>
-            + VecZnxDftApply<B>
-            + SvpApplyDftToDftInplace<B>
-            + VecZnxIdftApplyConsume<B>
-            + VecZnxNormalizeTmpBytes
-            + VecZnxFillUniform
-            + VecZnxSubInplace
-            + VecZnxAddInplace
-            + VecZnxNormalizeInplace<B>
-            + VecZnxAddNormal
-            + VecZnxNormalize<B>
-            + VecZnxSub,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
+        Module<B>: GGSWEncryptSk<B>,
     {
-        #[cfg(debug_assertions)]
-        {
-            use poulpy_hal::layouts::ZnxInfos;
-
-            assert_eq!(self.rank(), sk.rank());
-            assert_eq!(self.n(), sk.n());
-            assert_eq!(pt.n() as u32, sk.n());
-        }
-
-        let base2k: usize = self.base2k().into();
-        let rank: usize = self.rank().into();
-        let dsize: usize = self.dsize().into();
-
-        let (mut tmp_pt, scratch_1) = scratch.take_glwe_pt(&self.glwe_layout());
-
-        (0..self.dnum().into()).for_each(|row_i| {
-            tmp_pt.data.zero();
-
-            // Adds the scalar_znx_pt to the i-th limb of the vec_znx_pt
-            module.vec_znx_add_scalar_inplace(&mut tmp_pt.data, 0, (dsize - 1) + row_i * dsize, pt, 0);
-            module.vec_znx_normalize_inplace(base2k, &mut tmp_pt.data, 0, scratch_1);
-
-            (0..rank + 1).for_each(|col_j| {
-                // rlwe encrypt of vec_znx_pt into vec_znx_ct
-
-                self.at_mut(row_i, col_j).encrypt_sk_internal(
-                    module,
-                    Some((&tmp_pt, col_j)),
-                    sk,
-                    source_xa,
-                    source_xe,
-                    scratch_1,
-                );
-            });
-        });
+        module.ggsw_encrypt_sk(self, pt, sk, source_xa, source_xe, scratch);
     }
 }

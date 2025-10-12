@@ -6,14 +6,14 @@ use poulpy_hal::{
 
 use crate::layouts::{
     Base2K, Degree, Dnum, Dsize, GGLWEAutomorphismKey, GGLWEInfos, GLWEInfos, LWEInfos, Rank, TorusPrecision,
-    compressed::{Decompress, GGLWESwitchingKeyCompressed},
+    compressed::{Decompress, GGLWEKeyCompressed, GGLWEKeyCompressedToMut, GGLWEKeyCompressedToRef},
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::fmt;
 
 #[derive(PartialEq, Eq, Clone)]
 pub struct GGLWEAutomorphismKeyCompressed<D: Data> {
-    pub(crate) key: GGLWESwitchingKeyCompressed<D>,
+    pub(crate) key: GGLWEKeyCompressed<D>,
     pub(crate) p: i64,
 }
 
@@ -83,14 +83,14 @@ impl GGLWEAutomorphismKeyCompressed<Vec<u8>> {
     {
         debug_assert_eq!(infos.rank_in(), infos.rank_out());
         Self {
-            key: GGLWESwitchingKeyCompressed::alloc(infos),
+            key: GGLWEKeyCompressed::alloc(infos),
             p: 0,
         }
     }
 
     pub fn alloc_with(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> Self {
         Self {
-            key: GGLWESwitchingKeyCompressed::alloc_with(n, base2k, k, rank, rank, dnum, dsize),
+            key: GGLWEKeyCompressed::alloc_with(n, base2k, k, rank, rank, dnum, dsize),
             p: 0,
         }
     }
@@ -100,11 +100,11 @@ impl GGLWEAutomorphismKeyCompressed<Vec<u8>> {
         A: GGLWEInfos,
     {
         debug_assert_eq!(infos.rank_in(), infos.rank_out());
-        GGLWESwitchingKeyCompressed::alloc_bytes(infos)
+        GGLWEKeyCompressed::alloc_bytes(infos)
     }
 
     pub fn alloc_bytes_with(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize {
-        GGLWESwitchingKeyCompressed::alloc_bytes_with(n, base2k, k, rank, dnum, dsize)
+        GGLWEKeyCompressed::alloc_bytes_with(n, base2k, k, rank, dnum, dsize)
     }
 }
 
@@ -129,5 +129,37 @@ where
     fn decompress(&mut self, module: &Module<B>, other: &GGLWEAutomorphismKeyCompressed<DR>) {
         self.key.decompress(module, &other.key);
         self.p = other.p;
+    }
+}
+
+pub trait GGLWEAutomorphismKeyCompressedToRef {
+    fn to_ref(&self) -> GGLWEAutomorphismKeyCompressed<&[u8]>;
+}
+
+impl<D: DataRef> GGLWEAutomorphismKeyCompressedToRef for GGLWEAutomorphismKeyCompressed<D>
+where
+    GGLWEKeyCompressed<D>: GGLWEKeyCompressedToRef,
+{
+    fn to_ref(&self) -> GGLWEAutomorphismKeyCompressed<&[u8]> {
+        GGLWEAutomorphismKeyCompressed {
+            key: self.key.to_ref(),
+            p: self.p,
+        }
+    }
+}
+
+pub trait GGLWEAutomorphismKeyCompressedToMut {
+    fn to_mut(&mut self) -> GGLWEAutomorphismKeyCompressed<&mut [u8]>;
+}
+
+impl<D: DataRef> GGLWEAutomorphismKeyCompressedToMut for GGLWEAutomorphismKeyCompressed<D>
+where
+    GGLWEKeyCompressed<D>: GGLWEKeyCompressedToMut,
+{
+    fn to_mut(&mut self) -> GGLWEAutomorphismKeyCompressed<&mut [u8]> {
+        GGLWEAutomorphismKeyCompressed {
+            p: self.p,
+            key: self.key.to_mut(),
+        }
     }
 }

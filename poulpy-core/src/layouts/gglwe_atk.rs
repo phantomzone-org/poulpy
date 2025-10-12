@@ -4,7 +4,8 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Dnum, Dsize, GGLWEInfos, GGLWESwitchingKey, GLWECiphertext, GLWEInfos, LWEInfos, Rank, TorusPrecision,
+    Base2K, Degree, Dnum, Dsize, GGLWEInfos, GGLWESwitchingKey, GGLWESwitchingKeyToMut, GLWECiphertext, GLWEInfos, LWEInfos,
+    Rank, TorusPrecision,
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
@@ -168,6 +169,26 @@ impl GGLWEAutomorphismKey<Vec<u8>> {
     pub fn bytes_of(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize {
         GGLWESwitchingKey::alloc_bytes_with(n, base2k, k, rank, rank, dnum, dsize)
     }
+}
+
+pub trait GGLWEAutomorphismKeyToMut {
+    fn to_mut(&mut self) -> GGLWEAutomorphismKey<&mut [u8]>;
+}
+
+impl<D: DataMut> GGLWEAutomorphismKeyToMut for GGLWEAutomorphismKey<D>
+where
+    GGLWESwitchingKey<D>: GGLWESwitchingKeyToMut,
+{
+    fn to_mut(&mut self) -> GGLWEAutomorphismKey<&mut [u8]> {
+        GGLWEAutomorphismKey {
+            key: self.key.to_mut(),
+            p: self.p,
+        }
+    }
+}
+
+pub trait GGLWEAutomorphismKeyToRef {
+    fn to_ref(&self) -> GGLWEAutomorphismKey<&[u8]>;
 }
 
 impl<D: DataRef> GGLWEAutomorphismKey<D> {

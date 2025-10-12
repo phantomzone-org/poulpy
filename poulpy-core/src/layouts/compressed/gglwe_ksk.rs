@@ -6,19 +6,19 @@ use poulpy_hal::{
 
 use crate::layouts::{
     Base2K, Degree, Dnum, Dsize, GGLWEInfos, GGLWESwitchingKey, GLWEInfos, LWEInfos, Rank, TorusPrecision,
-    compressed::{Decompress, GGLWECiphertextCompressed},
+    compressed::{Decompress, GGLWECiphertextCompressed, GGLWECiphertextCompressedToMut, GGLWECiphertextCompressedToRef},
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::fmt;
 
 #[derive(PartialEq, Eq, Clone)]
-pub struct GGLWESwitchingKeyCompressed<D: Data> {
+pub struct GGLWEKeyCompressed<D: Data> {
     pub(crate) key: GGLWECiphertextCompressed<D>,
     pub(crate) sk_in_n: usize,  // Degree of sk_in
     pub(crate) sk_out_n: usize, // Degree of sk_out
 }
 
-impl<D: Data> LWEInfos for GGLWESwitchingKeyCompressed<D> {
+impl<D: Data> LWEInfos for GGLWEKeyCompressed<D> {
     fn n(&self) -> Degree {
         self.key.n()
     }
@@ -35,13 +35,13 @@ impl<D: Data> LWEInfos for GGLWESwitchingKeyCompressed<D> {
         self.key.size()
     }
 }
-impl<D: Data> GLWEInfos for GGLWESwitchingKeyCompressed<D> {
+impl<D: Data> GLWEInfos for GGLWEKeyCompressed<D> {
     fn rank(&self) -> Rank {
         self.rank_out()
     }
 }
 
-impl<D: Data> GGLWEInfos for GGLWESwitchingKeyCompressed<D> {
+impl<D: Data> GGLWEInfos for GGLWEKeyCompressed<D> {
     fn rank_in(&self) -> Rank {
         self.key.rank_in()
     }
@@ -59,19 +59,19 @@ impl<D: Data> GGLWEInfos for GGLWESwitchingKeyCompressed<D> {
     }
 }
 
-impl<D: DataRef> fmt::Debug for GGLWESwitchingKeyCompressed<D> {
+impl<D: DataRef> fmt::Debug for GGLWEKeyCompressed<D> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{self}")
     }
 }
 
-impl<D: DataMut> FillUniform for GGLWESwitchingKeyCompressed<D> {
+impl<D: DataMut> FillUniform for GGLWEKeyCompressed<D> {
     fn fill_uniform(&mut self, log_bound: usize, source: &mut Source) {
         self.key.fill_uniform(log_bound, source);
     }
 }
 
-impl<D: DataRef> fmt::Display for GGLWESwitchingKeyCompressed<D> {
+impl<D: DataRef> fmt::Display for GGLWEKeyCompressed<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -81,12 +81,12 @@ impl<D: DataRef> fmt::Display for GGLWESwitchingKeyCompressed<D> {
     }
 }
 
-impl GGLWESwitchingKeyCompressed<Vec<u8>> {
+impl GGLWEKeyCompressed<Vec<u8>> {
     pub fn alloc<A>(infos: &A) -> Self
     where
         A: GGLWEInfos,
     {
-        GGLWESwitchingKeyCompressed {
+        GGLWEKeyCompressed {
             key: GGLWECiphertextCompressed::alloc(infos),
             sk_in_n: 0,
             sk_out_n: 0,
@@ -102,7 +102,7 @@ impl GGLWESwitchingKeyCompressed<Vec<u8>> {
         dnum: Dnum,
         dsize: Dsize,
     ) -> Self {
-        GGLWESwitchingKeyCompressed {
+        GGLWEKeyCompressed {
             key: GGLWECiphertextCompressed::alloc_with(n, base2k, k, rank_in, rank_out, dnum, dsize),
             sk_in_n: 0,
             sk_out_n: 0,
@@ -121,7 +121,7 @@ impl GGLWESwitchingKeyCompressed<Vec<u8>> {
     }
 }
 
-impl<D: DataMut> ReaderFrom for GGLWESwitchingKeyCompressed<D> {
+impl<D: DataMut> ReaderFrom for GGLWEKeyCompressed<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         self.sk_in_n = reader.read_u64::<LittleEndian>()? as usize;
         self.sk_out_n = reader.read_u64::<LittleEndian>()? as usize;
@@ -129,7 +129,7 @@ impl<D: DataMut> ReaderFrom for GGLWESwitchingKeyCompressed<D> {
     }
 }
 
-impl<D: DataRef> WriterTo for GGLWESwitchingKeyCompressed<D> {
+impl<D: DataRef> WriterTo for GGLWEKeyCompressed<D> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         writer.write_u64::<LittleEndian>(self.sk_in_n as u64)?;
         writer.write_u64::<LittleEndian>(self.sk_out_n as u64)?;
@@ -137,13 +137,47 @@ impl<D: DataRef> WriterTo for GGLWESwitchingKeyCompressed<D> {
     }
 }
 
-impl<D: DataMut, DR: DataRef, B: Backend> Decompress<B, GGLWESwitchingKeyCompressed<DR>> for GGLWESwitchingKey<D>
+impl<D: DataMut, DR: DataRef, B: Backend> Decompress<B, GGLWEKeyCompressed<DR>> for GGLWESwitchingKey<D>
 where
     Module<B>: VecZnxFillUniform + VecZnxCopy,
 {
-    fn decompress(&mut self, module: &Module<B>, other: &GGLWESwitchingKeyCompressed<DR>) {
+    fn decompress(&mut self, module: &Module<B>, other: &GGLWEKeyCompressed<DR>) {
         self.key.decompress(module, &other.key);
         self.sk_in_n = other.sk_in_n;
         self.sk_out_n = other.sk_out_n;
+    }
+}
+
+pub trait GGLWEKeyCompressedToMut {
+    fn to_mut(&mut self) -> GGLWEKeyCompressed<&mut [u8]>;
+}
+
+impl<D: DataMut> GGLWEKeyCompressedToMut for GGLWEKeyCompressed<D>
+where
+    GGLWECiphertextCompressed<D>: GGLWECiphertextCompressedToMut,
+{
+    fn to_mut(&mut self) -> GGLWEKeyCompressed<&mut [u8]> {
+        GGLWEKeyCompressed {
+            sk_in_n: self.sk_in_n,
+            sk_out_n: self.sk_out_n,
+            key: self.key.to_mut(),
+        }
+    }
+}
+
+pub trait GGLWEKeyCompressedToRef {
+    fn to_ref(&self) -> GGLWEKeyCompressed<&[u8]>;
+}
+
+impl<D: DataMut> GGLWEKeyCompressedToRef for GGLWEKeyCompressed<D>
+where
+    GGLWECiphertextCompressed<D>: GGLWECiphertextCompressedToRef,
+{
+    fn to_ref(&self) -> GGLWEKeyCompressed<&[u8]> {
+        GGLWEKeyCompressed {
+            sk_in_n: self.sk_in_n,
+            sk_out_n: self.sk_out_n,
+            key: self.key.to_ref(),
+        }
     }
 }

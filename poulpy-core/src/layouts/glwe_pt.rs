@@ -200,3 +200,31 @@ impl<D: DataMut> GLWECiphertextToMut for GLWEPlaintext<D> {
             .unwrap()
     }
 }
+
+pub trait GLWEPlaintextToRef {
+    fn to_ref(&self) -> GLWEPlaintext<&[u8]>;
+}
+
+impl<D: DataRef> GLWEPlaintextToRef for GLWEPlaintext<D> {
+    fn to_ref(&self) -> GLWEPlaintext<&[u8]> {
+        GLWEPlaintext {
+            data: self.data.to_ref(),
+            base2k: self.base2k,
+            k: self.k,
+        }
+    }
+}
+
+pub trait GLWEPlaintextToMut {
+    fn to_ref(&mut self) -> GLWEPlaintext<&mut [u8]>;
+}
+
+impl<D: DataMut> GLWEPlaintextToMut for GLWEPlaintext<D> {
+    fn to_ref(&mut self) -> GLWEPlaintext<&mut [u8]> {
+        GLWEPlaintext {
+            base2k: self.base2k,
+            k: self.k,
+            data: self.data.to_mut(),
+        }
+    }
+}
