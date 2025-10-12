@@ -2,22 +2,19 @@ use std::collections::HashMap;
 
 use poulpy_hal::{
     api::{
-        ScratchAvailable, TakeVecZnx, TakeVecZnxDft, VecZnxBigAddSmallInplace, VecZnxBigAutomorphismInplace, VecZnxBigNormalize,
-        VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftAllocBytes, VecZnxDftApply, VecZnxIdftApplyConsume, VecZnxNormalize,
-        VecZnxNormalizeTmpBytes, VecZnxRshInplace, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
+        ScratchAvailable, VecZnxBigAddSmallInplace, VecZnxBigAutomorphismInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
+        VecZnxCopy, VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeTmpBytes,
+        VecZnxRshInplace, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch, VecZnx},
 };
 
 use crate::{
-    TakeGLWECt,
-    layouts::{
-        Base2K, GGLWEInfos, GLWECiphertext, GLWECiphertextLayout, GLWEInfos, LWEInfos, prepared::GGLWEAutomorphismKeyPrepared,
-    },
+    layouts::{Base2K, GGLWEInfos, GLWE, GLWEInfos, GLWELayout, LWEInfos, prepared::AutomorphismKeyPrepared},
     operations::GLWEOperations,
 };
 
-impl GLWECiphertext<Vec<u8>> {
+impl GLWE<Vec<u8>> {
     pub fn trace_galois_elements<B: Backend>(module: &Module<B>) -> Vec<i64> {
         let mut gal_els: Vec<i64> = Vec::new();
         (0..module.log_n()).for_each(|i| {
@@ -30,21 +27,16 @@ impl GLWECiphertext<Vec<u8>> {
         gal_els
     }
 
-    pub fn trace_scratch_space<B: Backend, OUT, IN, KEY>(
-        module: &Module<B>,
-        out_infos: &OUT,
-        in_infos: &IN,
-        key_infos: &KEY,
-    ) -> usize
+    pub fn trace_tmp_bytes<B: Backend, OUT, IN, KEY>(module: &Module<B>, out_infos: &OUT, in_infos: &IN, key_infos: &KEY) -> usize
     where
         OUT: GLWEInfos,
         IN: GLWEInfos,
         KEY: GGLWEInfos,
-        Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
+        Module<B>: VecZnxDftBytesOf + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        let trace: usize = Self::automorphism_inplace_scratch_space(module, out_infos, key_infos);
+        let trace: usize = Self::automorphism_inplace_tmp_bytes(module, out_infos, key_infos);
         if in_infos.base2k() != key_infos.base2k() {
-            let glwe_conv: usize = VecZnx::alloc_bytes(
+            let glwe_conv: usize = VecZnx::bytes_of(
                 module.n(),
                 (key_infos.rank_out() + 1).into(),
                 out_infos.k().min(in_infos.k()).div_ceil(key_infos.base2k()) as usize,
@@ -55,27 +47,27 @@ impl GLWECiphertext<Vec<u8>> {
         trace
     }
 
-    pub fn trace_inplace_scratch_space<B: Backend, OUT, KEY>(module: &Module<B>, out_infos: &OUT, key_infos: &KEY) -> usize
+    pub fn trace_inplace_tmp_bytes<B: Backend, OUT, KEY>(module: &Module<B>, out_infos: &OUT, key_infos: &KEY) -> usize
     where
         OUT: GLWEInfos,
         KEY: GGLWEInfos,
-        Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
+        Module<B>: VecZnxDftBytesOf + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        Self::trace_scratch_space(module, out_infos, out_infos, key_infos)
+        Self::trace_tmp_bytes(module, out_infos, out_infos, key_infos)
     }
 }
 
-impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
+impl<DataSelf: DataMut> GLWE<DataSelf> {
     pub fn trace<DataLhs: DataRef, DataAK: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
         start: usize,
         end: usize,
-        lhs: &GLWECiphertext<DataLhs>,
-        auto_keys: &HashMap<i64, GGLWEAutomorphismKeyPrepared<DataAK, B>>,
+        lhs: &GLWE<DataLhs>,
+        auto_keys: &HashMap<i64, AutomorphismKeyPrepared<DataAK, B>>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: VecZnxDftAllocBytes
+        Module<B>: VecZnxDftBytesOf
             + VmpApplyDftToDftTmpBytes
             + VecZnxBigNormalizeTmpBytes
             + VmpApplyDftToDft<B>
@@ -89,7 +81,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
             + VecZnxCopy
             + VecZnxNormalizeTmpBytes
             + VecZnxNormalize<B>,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
+        Scratch<B>: ScratchAvailable,
     {
         self.copy(module, lhs);
         self.trace_inplace(module, start, end, auto_keys, scratch);
@@ -100,10 +92,10 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         module: &Module<B>,
         start: usize,
         end: usize,
-        auto_keys: &HashMap<i64, GGLWEAutomorphismKeyPrepared<DataAK, B>>,
+        auto_keys: &HashMap<i64, AutomorphismKeyPrepared<DataAK, B>>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: VecZnxDftAllocBytes
+        Module<B>: VecZnxDftBytesOf
             + VmpApplyDftToDftTmpBytes
             + VecZnxBigNormalizeTmpBytes
             + VmpApplyDftToDft<B>
@@ -116,7 +108,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
             + VecZnxRshInplace<B>
             + VecZnxNormalizeTmpBytes
             + VecZnxNormalize<B>,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
+        Scratch<B>: ScratchAvailable,
     {
         let basek_ksk: Base2K = auto_keys
             .get(auto_keys.keys().next().unwrap())
@@ -137,7 +129,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         }
 
         if self.base2k() != basek_ksk {
-            let (mut self_conv, scratch_1) = scratch.take_glwe_ct(&GLWECiphertextLayout {
+            let (mut self_conv, scratch_1) = scratch.take_glwe_ct(&GLWELayout {
                 n: module.n().into(),
                 base2k: basek_ksk,
                 k: self.k(),

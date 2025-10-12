@@ -1,20 +1,23 @@
 use poulpy_hal::{
-    api::{VecZnxCopy, VecZnxFillUniform},
     layouts::{Backend, Data, DataMut, DataRef, FillUniform, Module, ReaderFrom, WriterTo},
     source::Source,
 };
 
 use crate::layouts::{
-    Base2K, Degree, Dnum, Dsize, GGLWEInfos, GLWEInfos, LWEInfos, LWEToGLWESwitchingKey, Rank, TorusPrecision,
-    compressed::{Decompress, GGLWESwitchingKeyCompressed},
+    Base2K, Dnum, Dsize, GGLWEInfos, GLWEInfos, LWEInfos, LWEToGLWESwitchingKey, LWEToGLWESwitchingKeyToMut, Rank, RingDegree,
+    TorusPrecision,
+    compressed::{
+        GLWESwitchingKeyCompressed, GLWESwitchingKeyCompressedAlloc, GLWESwitchingKeyCompressedToMut,
+        GLWESwitchingKeyCompressedToRef, GLWESwitchingKeyDecompress,
+    },
 };
 use std::fmt;
 
 #[derive(PartialEq, Eq, Clone)]
-pub struct LWEToGLWESwitchingKeyCompressed<D: Data>(pub(crate) GGLWESwitchingKeyCompressed<D>);
+pub struct LWEToGLWESwitchingKeyCompressed<D: Data>(pub(crate) GLWESwitchingKeyCompressed<D>);
 
 impl<D: Data> LWEInfos for LWEToGLWESwitchingKeyCompressed<D> {
-    fn n(&self) -> Degree {
+    fn n(&self) -> RingDegree {
         self.0.n()
     }
 
@@ -83,63 +86,138 @@ impl<D: DataRef> WriterTo for LWEToGLWESwitchingKeyCompressed<D> {
     }
 }
 
-impl LWEToGLWESwitchingKeyCompressed<Vec<u8>> {
-    pub fn alloc<A>(infos: &A) -> Self
+pub trait LWEToGLWESwitchingKeyCompressedAlloc
+where
+    Self: GLWESwitchingKeyCompressedAlloc,
+{
+    fn alloc_lwe_to_glwe_switching_key_compressed(
+        &self,
+        base2k: Base2K,
+        k: TorusPrecision,
+        rank_out: Rank,
+        dnum: Dnum,
+    ) -> LWEToGLWESwitchingKeyCompressed<Vec<u8>> {
+        LWEToGLWESwitchingKeyCompressed(self.alloc_glwe_switching_key_compressed(base2k, k, Rank(1), rank_out, dnum, Dsize(1)))
+    }
+
+    fn alloc_lwe_to_glwe_switching_key_compressed_from_infos<A>(&self, infos: &A) -> LWEToGLWESwitchingKeyCompressed<Vec<u8>>
     where
         A: GGLWEInfos,
     {
-        debug_assert_eq!(
+        assert_eq!(
             infos.dsize().0,
             1,
             "dsize > 1 is not supported for LWEToGLWESwitchingKeyCompressed"
         );
-        debug_assert_eq!(
+        assert_eq!(
             infos.rank_in().0,
             1,
             "rank_in > 1 is not supported for LWEToGLWESwitchingKeyCompressed"
         );
-        Self(GGLWESwitchingKeyCompressed::alloc(infos))
+        self.alloc_lwe_to_glwe_switching_key_compressed(infos.base2k(), infos.k(), infos.rank_out(), infos.dnum())
     }
 
-    pub fn alloc_with(n: Degree, base2k: Base2K, k: TorusPrecision, rank_out: Rank, dnum: Dnum) -> Self {
-        Self(GGLWESwitchingKeyCompressed::alloc_with(
-            n,
-            base2k,
-            k,
-            Rank(1),
-            rank_out,
-            dnum,
-            Dsize(1),
-        ))
+    fn bytes_of_lwe_to_glwe_switching_key_compressed(&self, base2k: Base2K, k: TorusPrecision, dnum: Dnum) -> usize {
+        self.bytes_of_glwe_switching_key_compressed(base2k, k, Rank(1), dnum, Dsize(1))
     }
 
-    pub fn alloc_bytes<A>(infos: &A) -> usize
+    fn bytes_of_lwe_to_glwe_switching_key_compressed_from_infos<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos,
     {
-        debug_assert_eq!(
-            infos.rank_in().0,
-            1,
-            "rank_in > 1 is not supported for LWEToGLWESwitchingKey"
-        );
-        debug_assert_eq!(
+        assert_eq!(
             infos.dsize().0,
             1,
-            "dsize > 1 is not supported for LWEToGLWESwitchingKey"
+            "dsize > 1 is not supported for LWEToGLWESwitchingKeyCompressed"
         );
-        GGLWESwitchingKeyCompressed::alloc_bytes(infos)
-    }
-
-    pub fn alloc_bytes_with(n: Degree, base2k: Base2K, k: TorusPrecision, dnum: Dnum) -> usize {
-        GGLWESwitchingKeyCompressed::alloc_bytes_with(n, base2k, k, Rank(1), dnum, Dsize(1))
+        assert_eq!(
+            infos.rank_in().0,
+            1,
+            "rank_in > 1 is not supported for LWEToGLWESwitchingKeyCompressed"
+        );
+        self.bytes_of_lwe_to_glwe_switching_key_compressed(infos.base2k(), infos.k(), infos.dnum())
     }
 }
 
-impl<D: DataMut, DR: DataRef, B: Backend> Decompress<B, LWEToGLWESwitchingKeyCompressed<DR>> for LWEToGLWESwitchingKey<D>
+impl LWEToGLWESwitchingKeyCompressed<Vec<u8>> {
+    pub fn alloc<A, M>(module: &M, infos: &A) -> Self
+    where
+        A: GGLWEInfos,
+        M: LWEToGLWESwitchingKeyCompressedAlloc,
+    {
+        module.alloc_lwe_to_glwe_switching_key_compressed_from_infos(infos)
+    }
+
+    pub fn alloc_with<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank_out: Rank, dnum: Dnum) -> Self
+    where
+        M: LWEToGLWESwitchingKeyCompressedAlloc,
+    {
+        module.alloc_lwe_to_glwe_switching_key_compressed(base2k, k, rank_out, dnum)
+    }
+
+    pub fn bytes_of_from_infos<A, M>(module: &M, infos: &A) -> usize
+    where
+        A: GGLWEInfos,
+        M: LWEToGLWESwitchingKeyCompressedAlloc,
+    {
+        module.bytes_of_lwe_to_glwe_switching_key_compressed_from_infos(infos)
+    }
+
+    pub fn bytes_of<M>(module: &M, base2k: Base2K, k: TorusPrecision, dnum: Dnum) -> usize
+    where
+        M: LWEToGLWESwitchingKeyCompressedAlloc,
+    {
+        module.bytes_of_lwe_to_glwe_switching_key_compressed(base2k, k, dnum)
+    }
+}
+
+pub trait LWEToGLWESwitchingKeyDecompress
 where
-    Module<B>: VecZnxFillUniform + VecZnxCopy,
+    Self: GLWESwitchingKeyDecompress,
 {
-    fn decompress(&mut self, module: &Module<B>, other: &LWEToGLWESwitchingKeyCompressed<DR>) {
-        self.0.decompress(module, &other.0);
+    fn decompress_lwe_to_glwe_switching_key<R, O>(&self, res: &mut R, other: &O)
+    where
+        R: LWEToGLWESwitchingKeyToMut,
+        O: LWEToGLWESwitchingKeyCompressedToRef,
+    {
+        self.decompress_glwe_switching_key(&mut res.to_mut().0, &other.to_ref().0);
+    }
+}
+
+impl<B: Backend> LWEToGLWESwitchingKeyDecompress for Module<B> where Self: GLWESwitchingKeyDecompress {}
+
+impl<D: DataMut> LWEToGLWESwitchingKey<D> {
+    pub fn decompress<O, M>(&mut self, module: &M, other: &O)
+    where
+        O: LWEToGLWESwitchingKeyCompressedToRef,
+        M: LWEToGLWESwitchingKeyDecompress,
+    {
+        module.decompress_lwe_to_glwe_switching_key(self, other);
+    }
+}
+
+pub trait LWEToGLWESwitchingKeyCompressedToRef {
+    fn to_ref(&self) -> LWEToGLWESwitchingKeyCompressed<&[u8]>;
+}
+
+impl<D: DataRef> LWEToGLWESwitchingKeyCompressedToRef for LWEToGLWESwitchingKeyCompressed<D>
+where
+    GLWESwitchingKeyCompressed<D>: GLWESwitchingKeyCompressedToRef,
+{
+    fn to_ref(&self) -> LWEToGLWESwitchingKeyCompressed<&[u8]> {
+        LWEToGLWESwitchingKeyCompressed(self.0.to_ref())
+    }
+}
+
+pub trait LWEToGLWESwitchingKeyCompressedToMut {
+    fn to_mut(&mut self) -> LWEToGLWESwitchingKeyCompressed<&mut [u8]>;
+}
+
+impl<D: DataMut> LWEToGLWESwitchingKeyCompressedToMut for LWEToGLWESwitchingKeyCompressed<D>
+where
+    GLWESwitchingKeyCompressed<D>: GLWESwitchingKeyCompressedToMut,
+{
+    fn to_mut(&mut self) -> LWEToGLWESwitchingKeyCompressed<&mut [u8]> {
+        LWEToGLWESwitchingKeyCompressed(self.0.to_mut())
     }
 }

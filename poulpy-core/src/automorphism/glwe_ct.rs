@@ -1,17 +1,17 @@
 use poulpy_hal::{
     api::{
-        ScratchAvailable, TakeVecZnx, TakeVecZnxDft, VecZnxAutomorphismInplace, VecZnxBigAddSmallInplace,
-        VecZnxBigAutomorphismInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallInplace,
-        VecZnxBigSubSmallNegateInplace, VecZnxDftAllocBytes, VecZnxDftApply, VecZnxIdftApplyConsume, VecZnxNormalize,
-        VecZnxNormalizeTmpBytes, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
+        ScratchAvailable, VecZnxAutomorphismInplace, VecZnxBigAddSmallInplace, VecZnxBigAutomorphismInplace, VecZnxBigNormalize,
+        VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallInplace, VecZnxBigSubSmallNegateInplace, VecZnxDftApply, VecZnxDftBytesOf,
+        VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeTmpBytes, VmpApplyDftToDft, VmpApplyDftToDftAdd,
+        VmpApplyDftToDftTmpBytes,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch, VecZnxBig},
 };
 
-use crate::layouts::{GGLWEInfos, GLWECiphertext, GLWEInfos, LWEInfos, prepared::GGLWEAutomorphismKeyPrepared};
+use crate::layouts::{GGLWEInfos, GLWE, GLWEInfos, LWEInfos, prepared::AutomorphismKeyPrepared};
 
-impl GLWECiphertext<Vec<u8>> {
-    pub fn automorphism_scratch_space<B: Backend, OUT, IN, KEY>(
+impl GLWE<Vec<u8>> {
+    pub fn automorphism_tmp_bytes<B: Backend, OUT, IN, KEY>(
         module: &Module<B>,
         out_infos: &OUT,
         in_infos: &IN,
@@ -21,30 +21,30 @@ impl GLWECiphertext<Vec<u8>> {
         OUT: GLWEInfos,
         IN: GLWEInfos,
         KEY: GGLWEInfos,
-        Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
+        Module<B>: VecZnxDftBytesOf + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        Self::keyswitch_scratch_space(module, out_infos, in_infos, key_infos)
+        Self::keyswitch_tmp_bytes(module, out_infos, in_infos, key_infos)
     }
 
-    pub fn automorphism_inplace_scratch_space<B: Backend, OUT, KEY>(module: &Module<B>, out_infos: &OUT, key_infos: &KEY) -> usize
+    pub fn automorphism_inplace_tmp_bytes<B: Backend, OUT, KEY>(module: &Module<B>, out_infos: &OUT, key_infos: &KEY) -> usize
     where
         OUT: GLWEInfos,
         KEY: GGLWEInfos,
-        Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
+        Module<B>: VecZnxDftBytesOf + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        Self::keyswitch_inplace_scratch_space(module, out_infos, key_infos)
+        Self::keyswitch_inplace_tmp_bytes(module, out_infos, key_infos)
     }
 }
 
-impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
+impl<DataSelf: DataMut> GLWE<DataSelf> {
     pub fn automorphism<DataLhs: DataRef, DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
-        lhs: &GLWECiphertext<DataLhs>,
-        rhs: &GGLWEAutomorphismKeyPrepared<DataRhs, B>,
+        lhs: &GLWE<DataLhs>,
+        rhs: &AutomorphismKeyPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: VecZnxDftAllocBytes
+        Module<B>: VecZnxDftBytesOf
             + VmpApplyDftToDftTmpBytes
             + VecZnxBigNormalizeTmpBytes
             + VmpApplyDftToDft<B>
@@ -56,7 +56,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
             + VecZnxAutomorphismInplace<B>
             + VecZnxNormalize<B>
             + VecZnxNormalizeTmpBytes,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
+        Scratch<B>: ScratchAvailable,
     {
         self.keyswitch(module, lhs, &rhs.key, scratch);
         (0..(self.rank() + 1).into()).for_each(|i| {
@@ -67,10 +67,10 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
     pub fn automorphism_inplace<DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
-        rhs: &GGLWEAutomorphismKeyPrepared<DataRhs, B>,
+        rhs: &AutomorphismKeyPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: VecZnxDftAllocBytes
+        Module<B>: VecZnxDftBytesOf
             + VmpApplyDftToDftTmpBytes
             + VecZnxBigNormalizeTmpBytes
             + VmpApplyDftToDft<B>
@@ -82,7 +82,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
             + VecZnxAutomorphismInplace<B>
             + VecZnxNormalize<B>
             + VecZnxNormalizeTmpBytes,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
+        Scratch<B>: ScratchAvailable,
     {
         self.keyswitch_inplace(module, &rhs.key, scratch);
         (0..(self.rank() + 1).into()).for_each(|i| {
@@ -93,11 +93,11 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
     pub fn automorphism_add<DataLhs: DataRef, DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
-        lhs: &GLWECiphertext<DataLhs>,
-        rhs: &GGLWEAutomorphismKeyPrepared<DataRhs, B>,
+        lhs: &GLWE<DataLhs>,
+        rhs: &AutomorphismKeyPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: VecZnxDftAllocBytes
+        Module<B>: VecZnxDftBytesOf
             + VmpApplyDftToDftTmpBytes
             + VecZnxBigNormalizeTmpBytes
             + VmpApplyDftToDft<B>
@@ -109,7 +109,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
             + VecZnxBigAutomorphismInplace<B>
             + VecZnxNormalizeTmpBytes
             + VecZnxNormalize<B>,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
+        Scratch<B>: ScratchAvailable,
     {
         #[cfg(debug_assertions)]
         {
@@ -135,10 +135,10 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
     pub fn automorphism_add_inplace<DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
-        rhs: &GGLWEAutomorphismKeyPrepared<DataRhs, B>,
+        rhs: &AutomorphismKeyPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: VecZnxDftAllocBytes
+        Module<B>: VecZnxDftBytesOf
             + VmpApplyDftToDftTmpBytes
             + VecZnxBigNormalizeTmpBytes
             + VmpApplyDftToDft<B>
@@ -150,7 +150,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
             + VecZnxBigAutomorphismInplace<B>
             + VecZnxNormalizeTmpBytes
             + VecZnxNormalize<B>,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
+        Scratch<B>: ScratchAvailable,
     {
         #[cfg(debug_assertions)]
         {
@@ -176,11 +176,11 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
     pub fn automorphism_sub_ab<DataLhs: DataRef, DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
-        lhs: &GLWECiphertext<DataLhs>,
-        rhs: &GGLWEAutomorphismKeyPrepared<DataRhs, B>,
+        lhs: &GLWE<DataLhs>,
+        rhs: &AutomorphismKeyPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: VecZnxDftAllocBytes
+        Module<B>: VecZnxDftBytesOf
             + VmpApplyDftToDftTmpBytes
             + VecZnxBigNormalizeTmpBytes
             + VmpApplyDftToDft<B>
@@ -193,7 +193,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
             + VecZnxBigSubSmallInplace<B>
             + VecZnxNormalizeTmpBytes
             + VecZnxNormalize<B>,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
+        Scratch<B>: ScratchAvailable,
     {
         #[cfg(debug_assertions)]
         {
@@ -219,10 +219,10 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
     pub fn automorphism_sub_inplace<DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
-        rhs: &GGLWEAutomorphismKeyPrepared<DataRhs, B>,
+        rhs: &AutomorphismKeyPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: VecZnxDftAllocBytes
+        Module<B>: VecZnxDftBytesOf
             + VmpApplyDftToDftTmpBytes
             + VecZnxBigNormalizeTmpBytes
             + VmpApplyDftToDft<B>
@@ -235,7 +235,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
             + VecZnxBigSubSmallInplace<B>
             + VecZnxNormalizeTmpBytes
             + VecZnxNormalize<B>,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
+        Scratch<B>: ScratchAvailable,
     {
         #[cfg(debug_assertions)]
         {
@@ -261,11 +261,11 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
     pub fn automorphism_sub_negate<DataLhs: DataRef, DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
-        lhs: &GLWECiphertext<DataLhs>,
-        rhs: &GGLWEAutomorphismKeyPrepared<DataRhs, B>,
+        lhs: &GLWE<DataLhs>,
+        rhs: &AutomorphismKeyPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: VecZnxDftAllocBytes
+        Module<B>: VecZnxDftBytesOf
             + VmpApplyDftToDftTmpBytes
             + VecZnxBigNormalizeTmpBytes
             + VmpApplyDftToDft<B>
@@ -278,7 +278,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
             + VecZnxBigSubSmallNegateInplace<B>
             + VecZnxNormalizeTmpBytes
             + VecZnxNormalize<B>,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
+        Scratch<B>: ScratchAvailable,
     {
         #[cfg(debug_assertions)]
         {
@@ -304,10 +304,10 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
     pub fn automorphism_sub_negate_inplace<DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
-        rhs: &GGLWEAutomorphismKeyPrepared<DataRhs, B>,
+        rhs: &AutomorphismKeyPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: VecZnxDftAllocBytes
+        Module<B>: VecZnxDftBytesOf
             + VmpApplyDftToDftTmpBytes
             + VecZnxBigNormalizeTmpBytes
             + VmpApplyDftToDft<B>
@@ -320,7 +320,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
             + VecZnxBigSubSmallNegateInplace<B>
             + VecZnxNormalizeTmpBytes
             + VecZnxNormalize<B>,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
+        Scratch<B>: ScratchAvailable,
     {
         #[cfg(debug_assertions)]
         {

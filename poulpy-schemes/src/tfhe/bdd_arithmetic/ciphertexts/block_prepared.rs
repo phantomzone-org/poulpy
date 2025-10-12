@@ -1,12 +1,10 @@
 use std::marker::PhantomData;
 
-use poulpy_core::layouts::{
-    Base2K, Dnum, Dsize, GGSWInfos, GLWEInfos, LWEInfos, Rank, TorusPrecision, prepared::GGSWCiphertextPrepared,
-};
+use poulpy_core::layouts::{Base2K, Dnum, Dsize, GGSWInfos, GLWEInfos, LWEInfos, Rank, TorusPrecision, prepared::GGSWPrepared};
 #[cfg(test)]
 use poulpy_core::{
     TakeGGSW,
-    layouts::{GGSWCiphertext, prepared::GLWESecretPrepared},
+    layouts::{GGSW, prepared::GLWESecretPrepared},
 };
 use poulpy_hal::{
     api::VmpPMatAlloc,
@@ -16,8 +14,8 @@ use poulpy_hal::{
 use poulpy_hal::{
     api::{
         ScratchAvailable, SvpApplyDftToDftInplace, TakeScalarZnx, TakeVecZnx, TakeVecZnxDft, VecZnxAddInplace, VecZnxAddNormal,
-        VecZnxAddScalarInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigAlloc, VecZnxBigAllocBytes,
-        VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxDftAlloc, VecZnxDftAllocBytes, VecZnxDftApply, VecZnxFillUniform,
+        VecZnxAddScalarInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigAlloc, VecZnxBigBytesOf,
+        VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxDftAlloc, VecZnxDftApply, VecZnxDftBytesOf, VecZnxFillUniform,
         VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub,
         VecZnxSubInplace, VmpPrepare,
     },
@@ -29,7 +27,7 @@ use crate::tfhe::bdd_arithmetic::{FheUintBlocks, FheUintPrepare, ToBits, Unsigne
 
 #[cfg(test)]
 pub(crate) struct FheUintBlocksPrepDebug<D: Data, T: UnsignedInteger> {
-    pub(crate) blocks: Vec<GGSWCiphertext<D>>,
+    pub(crate) blocks: Vec<GGSW<D>>,
     pub(crate) _base: u8,
     pub(crate) _phantom: PhantomData<T>,
 }
@@ -62,7 +60,7 @@ impl<T: UnsignedInteger> FheUintBlocksPrepDebug<Vec<u8>, T> {
     ) -> Self {
         Self {
             blocks: (0..T::WORD_SIZE)
-                .map(|_| GGSWCiphertext::alloc_with(module.n().into(), base2k, k, rank, dnum, dsize))
+                .map(|_| GGSW::alloc(module.n().into(), base2k, k, rank, dnum, dsize))
                 .collect(),
             _base: 1,
             _phantom: PhantomData,
@@ -72,7 +70,7 @@ impl<T: UnsignedInteger> FheUintBlocksPrepDebug<Vec<u8>, T> {
 
 /// A prepared FHE ciphertext encrypting the bits of an [UnsignedInteger].
 pub struct FheUintBlocksPrep<D: Data, B: Backend, T: UnsignedInteger> {
-    pub(crate) blocks: Vec<GGSWCiphertextPrepared<D, B>>,
+    pub(crate) blocks: Vec<GGSWPrepared<D, B>>,
     pub(crate) _base: u8,
     pub(crate) _phantom: PhantomData<T>,
 }
@@ -103,7 +101,7 @@ where
     {
         Self {
             blocks: (0..T::WORD_SIZE)
-                .map(|_| GGSWCiphertextPrepared::alloc_with(module, base2k, k, dnum, dsize, rank))
+                .map(|_| GGSWPrepared::alloc(module, base2k, k, dnum, dsize, rank))
                 .collect(),
             _base: 1,
             _phantom: PhantomData,
@@ -125,7 +123,7 @@ impl<D: DataMut, T: UnsignedInteger + ToBits, BE: Backend> FheUintBlocksPrep<D, 
     ) where
         S: DataRef,
         Module<BE>: VecZnxAddScalarInplace
-            + VecZnxDftAllocBytes
+            + VecZnxDftBytesOf
             + VecZnxBigNormalize<BE>
             + VecZnxDftApply<BE>
             + SvpApplyDftToDftInplace<BE>
@@ -192,8 +190,8 @@ impl<D: DataRef, T: UnsignedInteger + ToBits> FheUintBlocksPrepDebug<D, T> {
     #[allow(dead_code)]
     pub(crate) fn noise<S: DataRef, BE: Backend>(&self, module: &Module<BE>, sk: &GLWESecretPrepared<S, BE>, want: T)
     where
-        Module<BE>: VecZnxDftAllocBytes
-            + VecZnxBigAllocBytes
+        Module<BE>: VecZnxDftBytesOf
+            + VecZnxBigBytesOf
             + VecZnxDftApply<BE>
             + SvpApplyDftToDftInplace<BE>
             + VecZnxIdftApplyConsume<BE>
@@ -227,7 +225,7 @@ impl<D: DataRef, T: UnsignedInteger, B: Backend> LWEInfos for FheUintBlocksPrep<
         self.blocks[0].k()
     }
 
-    fn n(&self) -> poulpy_core::layouts::Degree {
+    fn n(&self) -> poulpy_core::layouts::RingDegree {
         self.blocks[0].n()
     }
 }
@@ -258,7 +256,7 @@ impl<D: DataRef, T: UnsignedInteger> LWEInfos for FheUintBlocksPrepDebug<D, T> {
         self.blocks[0].k()
     }
 
-    fn n(&self) -> poulpy_core::layouts::Degree {
+    fn n(&self) -> poulpy_core::layouts::RingDegree {
         self.blocks[0].n()
     }
 }

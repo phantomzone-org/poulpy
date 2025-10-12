@@ -1,16 +1,16 @@
 use poulpy_hal::{
     api::{
-        ScratchAvailable, TakeVecZnx, TakeVecZnxDft, VecZnxAutomorphism, VecZnxAutomorphismInplace, VecZnxBigAddSmallInplace,
-        VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxDftAllocBytes, VecZnxDftApply, VecZnxIdftApplyConsume,
-        VecZnxNormalize, VecZnxNormalizeTmpBytes, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
+        ScratchAvailable, VecZnxAutomorphism, VecZnxAutomorphismInplace, VecZnxBigAddSmallInplace, VecZnxBigNormalize,
+        VecZnxBigNormalizeTmpBytes, VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxNormalize,
+        VecZnxNormalizeTmpBytes, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch, ZnxZero},
 };
 
-use crate::layouts::{GGLWEAutomorphismKey, GGLWEInfos, GLWECiphertext, prepared::GGLWEAutomorphismKeyPrepared};
+use crate::layouts::{AutomorphismKey, GGLWEInfos, GLWE, prepared::AutomorphismKeyPrepared};
 
-impl GGLWEAutomorphismKey<Vec<u8>> {
-    pub fn automorphism_scratch_space<B: Backend, OUT, IN, KEY>(
+impl AutomorphismKey<Vec<u8>> {
+    pub fn automorphism_tmp_bytes<B: Backend, OUT, IN, KEY>(
         module: &Module<B>,
         out_infos: &OUT,
         in_infos: &IN,
@@ -20,9 +20,9 @@ impl GGLWEAutomorphismKey<Vec<u8>> {
         OUT: GGLWEInfos,
         IN: GGLWEInfos,
         KEY: GGLWEInfos,
-        Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
+        Module<B>: VecZnxDftBytesOf + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        GLWECiphertext::keyswitch_scratch_space(
+        GLWE::keyswitch_tmp_bytes(
             module,
             &out_infos.glwe_layout(),
             &in_infos.glwe_layout(),
@@ -30,25 +30,25 @@ impl GGLWEAutomorphismKey<Vec<u8>> {
         )
     }
 
-    pub fn automorphism_inplace_scratch_space<B: Backend, OUT, KEY>(module: &Module<B>, out_infos: &OUT, key_infos: &KEY) -> usize
+    pub fn automorphism_inplace_tmp_bytes<B: Backend, OUT, KEY>(module: &Module<B>, out_infos: &OUT, key_infos: &KEY) -> usize
     where
         OUT: GGLWEInfos,
         KEY: GGLWEInfos,
-        Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
+        Module<B>: VecZnxDftBytesOf + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        GGLWEAutomorphismKey::automorphism_scratch_space(module, out_infos, out_infos, key_infos)
+        AutomorphismKey::automorphism_tmp_bytes(module, out_infos, out_infos, key_infos)
     }
 }
 
-impl<DataSelf: DataMut> GGLWEAutomorphismKey<DataSelf> {
+impl<DataSelf: DataMut> AutomorphismKey<DataSelf> {
     pub fn automorphism<DataLhs: DataRef, DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
-        lhs: &GGLWEAutomorphismKey<DataLhs>,
-        rhs: &GGLWEAutomorphismKeyPrepared<DataRhs, B>,
+        lhs: &AutomorphismKey<DataLhs>,
+        rhs: &AutomorphismKeyPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: VecZnxDftAllocBytes
+        Module<B>: VecZnxDftBytesOf
             + VmpApplyDftToDftTmpBytes
             + VecZnxBigNormalizeTmpBytes
             + VmpApplyDftToDft<B>
@@ -61,7 +61,7 @@ impl<DataSelf: DataMut> GGLWEAutomorphismKey<DataSelf> {
             + VecZnxAutomorphismInplace<B>
             + VecZnxNormalize<B>
             + VecZnxNormalizeTmpBytes,
-        Scratch<B>: ScratchAvailable + TakeVecZnxDft<B> + TakeVecZnx,
+        Scratch<B>: ScratchAvailable,
     {
         #[cfg(debug_assertions)]
         {
@@ -103,8 +103,8 @@ impl<DataSelf: DataMut> GGLWEAutomorphismKey<DataSelf> {
 
         (0..self.rank_in().into()).for_each(|col_i| {
             (0..self.dnum().into()).for_each(|row_j| {
-                let mut res_ct: GLWECiphertext<&mut [u8]> = self.at_mut(row_j, col_i);
-                let lhs_ct: GLWECiphertext<&[u8]> = lhs.at(row_j, col_i);
+                let mut res_ct: GLWE<&mut [u8]> = self.at_mut(row_j, col_i);
+                let lhs_ct: GLWE<&[u8]> = lhs.at(row_j, col_i);
 
                 // Reverts the automorphism X^{-k}: (-pi^{-1}_{k}(s)a + s, a) to (-sa + pi_{k}(s), a)
                 (0..cols_out).for_each(|i| {
@@ -133,10 +133,10 @@ impl<DataSelf: DataMut> GGLWEAutomorphismKey<DataSelf> {
     pub fn automorphism_inplace<DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
-        rhs: &GGLWEAutomorphismKeyPrepared<DataRhs, B>,
+        rhs: &AutomorphismKeyPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: VecZnxDftAllocBytes
+        Module<B>: VecZnxDftBytesOf
             + VmpApplyDftToDftTmpBytes
             + VecZnxBigNormalizeTmpBytes
             + VmpApplyDftToDft<B>
@@ -149,7 +149,7 @@ impl<DataSelf: DataMut> GGLWEAutomorphismKey<DataSelf> {
             + VecZnxAutomorphismInplace<B>
             + VecZnxNormalize<B>
             + VecZnxNormalizeTmpBytes,
-        Scratch<B>: ScratchAvailable + TakeVecZnxDft<B> + TakeVecZnx,
+        Scratch<B>: ScratchAvailable,
     {
         #[cfg(debug_assertions)]
         {
@@ -176,7 +176,7 @@ impl<DataSelf: DataMut> GGLWEAutomorphismKey<DataSelf> {
 
         (0..self.rank_in().into()).for_each(|col_i| {
             (0..self.dnum().into()).for_each(|row_j| {
-                let mut res_ct: GLWECiphertext<&mut [u8]> = self.at_mut(row_j, col_i);
+                let mut res_ct: GLWE<&mut [u8]> = self.at_mut(row_j, col_i);
 
                 // Reverts the automorphism X^{-k}: (-pi^{-1}_{k}(s)a + s, a) to (-sa + pi_{k}(s), a)
                 (0..cols_out).for_each(|i| {

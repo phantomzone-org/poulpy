@@ -2,13 +2,13 @@ use std::collections::HashMap;
 
 use poulpy_hal::{
     api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolBytesOf, SvpPrepare,
         VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxAutomorphism, VecZnxBigAddInplace,
-        VecZnxBigAddSmallInplace, VecZnxBigAllocBytes, VecZnxBigAutomorphismInplace, VecZnxBigNormalize,
-        VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallNegateInplace, VecZnxCopy, VecZnxDftAllocBytes, VecZnxDftApply,
-        VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes,
-        VecZnxRotateInplace, VecZnxRshInplace, VecZnxSub, VecZnxSubInplace, VecZnxSwitchRing, VmpApplyDftToDft,
-        VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes, VmpPMatAlloc, VmpPrepare,
+        VecZnxBigAddSmallInplace, VecZnxBigAutomorphismInplace, VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
+        VecZnxBigSubSmallNegateInplace, VecZnxCopy, VecZnxDftApply, VecZnxDftBytesOf, VecZnxFillUniform, VecZnxIdftApplyConsume,
+        VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotateInplace, VecZnxRshInplace, VecZnxSub,
+        VecZnxSubInplace, VecZnxSwitchRing, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes, VmpPMatAlloc,
+        VmpPrepare,
     },
     layouts::{Backend, Module, ScratchOwned, ZnxView, ZnxViewMut},
     oep::{
@@ -21,16 +21,15 @@ use poulpy_hal::{
 use crate::{
     encryption::SIGMA,
     layouts::{
-        GGLWEAutomorphismKey, GGLWEAutomorphismKeyLayout, GLWECiphertext, GLWECiphertextLayout, GLWEPlaintext, GLWESecret,
-        LWEInfos,
-        prepared::{GGLWEAutomorphismKeyPrepared, GLWESecretPrepared, PrepareAlloc},
+        AutomorphismKey, AutomorphismKeyLayout, GLWE, GLWELayout, GLWEPlaintext, GLWESecret, LWEInfos,
+        prepared::{AutomorphismKeyPrepared, GLWESecretPrepared, PrepareAlloc},
     },
     noise::var_noise_gglwe_product,
 };
 
 pub fn test_glwe_trace_inplace<B>(module: &Module<B>)
 where
-    Module<B>: VecZnxDftAllocBytes
+    Module<B>: VecZnxDftBytesOf
         + VecZnxAutomorphism
         + VecZnxBigAutomorphismInplace<B>
         + VecZnxBigSubSmallNegateInplace<B>
@@ -48,9 +47,9 @@ where
         + VecZnxNormalize<B>
         + VecZnxSub
         + SvpPrepare<B>
-        + SvpPPolAllocBytes
+        + SvpPPolBytesOf
         + SvpPPolAlloc<B>
-        + VecZnxBigAllocBytes
+        + VecZnxBigBytesOf
         + VecZnxBigAddInplace<B>
         + VecZnxBigAddSmallInplace<B>
         + VecZnxNormalizeTmpBytes
@@ -83,14 +82,14 @@ where
         let dsize: usize = 1;
         let dnum: usize = k.div_ceil(base2k * dsize);
 
-        let glwe_out_infos: GLWECiphertextLayout = GLWECiphertextLayout {
+        let glwe_out_infos: GLWELayout = GLWELayout {
             n: n.into(),
             base2k: base2k.into(),
             k: k.into(),
             rank: rank.into(),
         };
 
-        let key_infos: GGLWEAutomorphismKeyLayout = GGLWEAutomorphismKeyLayout {
+        let key_infos: AutomorphismKeyLayout = AutomorphismKeyLayout {
             n: n.into(),
             base2k: base2k.into(),
             k: k_autokey.into(),
@@ -99,22 +98,22 @@ where
             dnum: dnum.into(),
         };
 
-        let mut glwe_out: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&glwe_out_infos);
-        let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&glwe_out_infos);
-        let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&glwe_out_infos);
+        let mut glwe_out: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_out_infos);
+        let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_out_infos);
+        let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_out_infos);
 
         let mut source_xs: Source = Source::new([0u8; 32]);
         let mut source_xe: Source = Source::new([0u8; 32]);
         let mut source_xa: Source = Source::new([0u8; 32]);
 
         let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-            GLWECiphertext::encrypt_sk_scratch_space(module, &glwe_out_infos)
-                | GLWECiphertext::decrypt_scratch_space(module, &glwe_out_infos)
-                | GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, &key_infos)
-                | GLWECiphertext::trace_inplace_scratch_space(module, &glwe_out_infos, &key_infos),
+            GLWE::encrypt_sk_tmp_bytes(module, &glwe_out_infos)
+                | GLWE::decrypt_tmp_bytes(module, &glwe_out_infos)
+                | AutomorphismKey::encrypt_sk_tmp_bytes(module, &key_infos)
+                | GLWE::trace_inplace_tmp_bytes(module, &glwe_out_infos, &key_infos),
         );
 
-        let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(&glwe_out_infos);
+        let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_out_infos);
         sk.fill_ternary_prob(0.5, &mut source_xs);
         let sk_dft: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
 
@@ -135,9 +134,9 @@ where
             scratch.borrow(),
         );
 
-        let mut auto_keys: HashMap<i64, GGLWEAutomorphismKeyPrepared<Vec<u8>, B>> = HashMap::new();
-        let gal_els: Vec<i64> = GLWECiphertext::trace_galois_elements(module);
-        let mut tmp: GGLWEAutomorphismKey<Vec<u8>> = GGLWEAutomorphismKey::alloc(&key_infos);
+        let mut auto_keys: HashMap<i64, AutomorphismKeyPrepared<Vec<u8>, B>> = HashMap::new();
+        let gal_els: Vec<i64> = GLWE::trace_galois_elements(module);
+        let mut tmp: AutomorphismKey<Vec<u8>> = AutomorphismKey::alloc_from_infos(&key_infos);
         gal_els.iter().for_each(|gal_el| {
             tmp.encrypt_sk(
                 module,
@@ -147,7 +146,7 @@ where
                 &mut source_xe,
                 scratch.borrow(),
             );
-            let atk_prepared: GGLWEAutomorphismKeyPrepared<Vec<u8>, B> = tmp.prepare_alloc(module, scratch.borrow());
+            let atk_prepared: AutomorphismKeyPrepared<Vec<u8>, B> = tmp.prepare_alloc(module, scratch.borrow());
             auto_keys.insert(*gal_el, atk_prepared);
         });
 

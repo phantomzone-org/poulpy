@@ -1,10 +1,12 @@
 use poulpy_hal::{
-    layouts::{Data, DataMut, DataRef, FillUniform, MatZnx, ReaderFrom, WriterTo, ZnxInfos},
+    layouts::{
+        Backend, Data, DataMut, DataRef, FillUniform, MatZnx, MatZnxToMut, MatZnxToRef, Module, ReaderFrom, WriterTo, ZnxInfos,
+    },
     source::Source,
 };
 use std::fmt;
 
-use crate::layouts::{Base2K, BuildError, Degree, Dnum, Dsize, GLWECiphertext, GLWEInfos, LWEInfos, Rank, TorusPrecision};
+use crate::layouts::{Base2K, Dnum, Dsize, GLWE, GLWEInfos, GetRingDegree, LWEInfos, Rank, RingDegree, TorusPrecision};
 
 pub trait GGSWInfos
 where
@@ -12,8 +14,8 @@ where
 {
     fn dnum(&self) -> Dnum;
     fn dsize(&self) -> Dsize;
-    fn ggsw_layout(&self) -> GGSWCiphertextLayout {
-        GGSWCiphertextLayout {
+    fn ggsw_layout(&self) -> GGSWLayout {
+        GGSWLayout {
             n: self.n(),
             base2k: self.base2k(),
             k: self.k(),
@@ -25,8 +27,8 @@ where
 }
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
-pub struct GGSWCiphertextLayout {
-    pub n: Degree,
+pub struct GGSWLayout {
+    pub n: RingDegree,
     pub base2k: Base2K,
     pub k: TorusPrecision,
     pub rank: Rank,
@@ -34,7 +36,7 @@ pub struct GGSWCiphertextLayout {
     pub dsize: Dsize,
 }
 
-impl LWEInfos for GGSWCiphertextLayout {
+impl LWEInfos for GGSWLayout {
     fn base2k(&self) -> Base2K {
         self.base2k
     }
@@ -43,17 +45,17 @@ impl LWEInfos for GGSWCiphertextLayout {
         self.k
     }
 
-    fn n(&self) -> Degree {
+    fn n(&self) -> RingDegree {
         self.n
     }
 }
-impl GLWEInfos for GGSWCiphertextLayout {
+impl GLWEInfos for GGSWLayout {
     fn rank(&self) -> Rank {
         self.rank
     }
 }
 
-impl GGSWInfos for GGSWCiphertextLayout {
+impl GGSWInfos for GGSWLayout {
     fn dsize(&self) -> Dsize {
         self.dsize
     }
@@ -64,16 +66,16 @@ impl GGSWInfos for GGSWCiphertextLayout {
 }
 
 #[derive(PartialEq, Eq, Clone)]
-pub struct GGSWCiphertext<D: Data> {
+pub struct GGSW<D: Data> {
     pub(crate) data: MatZnx<D>,
     pub(crate) k: TorusPrecision,
     pub(crate) base2k: Base2K,
     pub(crate) dsize: Dsize,
 }
 
-impl<D: Data> LWEInfos for GGSWCiphertext<D> {
-    fn n(&self) -> Degree {
-        Degree(self.data.n() as u32)
+impl<D: Data> LWEInfos for GGSW<D> {
+    fn n(&self) -> RingDegree {
+        RingDegree(self.data.n() as u32)
     }
 
     fn base2k(&self) -> Base2K {
@@ -89,13 +91,13 @@ impl<D: Data> LWEInfos for GGSWCiphertext<D> {
     }
 }
 
-impl<D: Data> GLWEInfos for GGSWCiphertext<D> {
+impl<D: Data> GLWEInfos for GGSW<D> {
     fn rank(&self) -> Rank {
         Rank(self.data.cols_out() as u32 - 1)
     }
 }
 
-impl<D: Data> GGSWInfos for GGSWCiphertext<D> {
+impl<D: Data> GGSWInfos for GGSW<D> {
     fn dsize(&self) -> Dsize {
         self.dsize
     }
@@ -105,133 +107,17 @@ impl<D: Data> GGSWInfos for GGSWCiphertext<D> {
     }
 }
 
-pub struct GGSWCiphertextBuilder<D: Data> {
-    data: Option<MatZnx<D>>,
-    base2k: Option<Base2K>,
-    k: Option<TorusPrecision>,
-    dsize: Option<Dsize>,
-}
-
-impl<D: Data> GGSWCiphertext<D> {
-    #[inline]
-    pub fn builder() -> GGSWCiphertextBuilder<D> {
-        GGSWCiphertextBuilder {
-            data: None,
-            base2k: None,
-            k: None,
-            dsize: None,
-        }
-    }
-}
-
-impl GGSWCiphertextBuilder<Vec<u8>> {
-    #[inline]
-    pub fn layout<A>(mut self, infos: &A) -> Self
-    where
-        A: GGSWInfos,
-    {
-        debug_assert!(
-            infos.size() as u32 > infos.dsize().0,
-            "invalid ggsw: ceil(k/base2k): {} <= dsize: {}",
-            infos.size(),
-            infos.dsize()
-        );
-
-        assert!(
-            infos.dnum().0 * infos.dsize().0 <= infos.size() as u32,
-            "invalid ggsw: dnum: {} * dsize:{} > ceil(k/base2k): {}",
-            infos.dnum(),
-            infos.dsize(),
-            infos.size(),
-        );
-
-        self.data = Some(MatZnx::alloc(
-            infos.n().into(),
-            infos.dnum().into(),
-            (infos.rank() + 1).into(),
-            (infos.rank() + 1).into(),
-            infos.size(),
-        ));
-        self.base2k = Some(infos.base2k());
-        self.k = Some(infos.k());
-        self.dsize = Some(infos.dsize());
-        self
-    }
-}
-
-impl<D: Data> GGSWCiphertextBuilder<D> {
-    #[inline]
-    pub fn data(mut self, data: MatZnx<D>) -> Self {
-        self.data = Some(data);
-        self
-    }
-    #[inline]
-    pub fn base2k(mut self, base2k: Base2K) -> Self {
-        self.base2k = Some(base2k);
-        self
-    }
-    #[inline]
-    pub fn k(mut self, k: TorusPrecision) -> Self {
-        self.k = Some(k);
-        self
-    }
-
-    #[inline]
-    pub fn dsize(mut self, dsize: Dsize) -> Self {
-        self.dsize = Some(dsize);
-        self
-    }
-
-    pub fn build(self) -> Result<GGSWCiphertext<D>, BuildError> {
-        let data: MatZnx<D> = self.data.ok_or(BuildError::MissingData)?;
-        let base2k: Base2K = self.base2k.ok_or(BuildError::MissingBase2K)?;
-        let k: TorusPrecision = self.k.ok_or(BuildError::MissingK)?;
-        let dsize: Dsize = self.dsize.ok_or(BuildError::MissingDigits)?;
-
-        if base2k == 0_u32 {
-            return Err(BuildError::ZeroBase2K);
-        }
-
-        if dsize == 0_u32 {
-            return Err(BuildError::ZeroBase2K);
-        }
-
-        if k == 0_u32 {
-            return Err(BuildError::ZeroTorusPrecision);
-        }
-
-        if data.n() == 0 {
-            return Err(BuildError::ZeroDegree);
-        }
-
-        if data.cols() == 0 {
-            return Err(BuildError::ZeroCols);
-        }
-
-        if data.size() == 0 {
-            return Err(BuildError::ZeroLimbs);
-        }
-
-        Ok(GGSWCiphertext {
-            data,
-            base2k,
-            k,
-            dsize,
-        })
-    }
-}
-
-impl<D: DataRef> fmt::Debug for GGSWCiphertext<D> {
+impl<D: DataRef> fmt::Debug for GGSW<D> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.data)
     }
 }
 
-impl<D: DataRef> fmt::Display for GGSWCiphertext<D> {
+impl<D: DataRef> fmt::Display for GGSW<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "(GGSWCiphertext: k: {} base2k: {} dsize: {}) {}",
+            "(GGSW: k: {} base2k: {} dsize: {}) {}",
             self.k().0,
             self.base2k().0,
             self.dsize().0,
@@ -240,50 +126,39 @@ impl<D: DataRef> fmt::Display for GGSWCiphertext<D> {
     }
 }
 
-impl<D: DataMut> FillUniform for GGSWCiphertext<D> {
+impl<D: DataMut> FillUniform for GGSW<D> {
     fn fill_uniform(&mut self, log_bound: usize, source: &mut Source) {
         self.data.fill_uniform(log_bound, source);
     }
 }
 
-impl<D: DataRef> GGSWCiphertext<D> {
-    pub fn at(&self, row: usize, col: usize) -> GLWECiphertext<&[u8]> {
-        GLWECiphertext::builder()
-            .data(self.data.at(row, col))
-            .base2k(self.base2k())
-            .k(self.k())
-            .build()
-            .unwrap()
+impl<D: DataRef> GGSW<D> {
+    pub fn at(&self, row: usize, col: usize) -> GLWE<&[u8]> {
+        GLWE {
+            k: self.k,
+            base2k: self.base2k,
+            data: self.data.at(row, col),
+        }
     }
 }
 
-impl<D: DataMut> GGSWCiphertext<D> {
-    pub fn at_mut(&mut self, row: usize, col: usize) -> GLWECiphertext<&mut [u8]> {
-        GLWECiphertext::builder()
-            .base2k(self.base2k())
-            .k(self.k())
-            .data(self.data.at_mut(row, col))
-            .build()
-            .unwrap()
+impl<D: DataMut> GGSW<D> {
+    pub fn at_mut(&mut self, row: usize, col: usize) -> GLWE<&mut [u8]> {
+        GLWE {
+            k: self.k,
+            base2k: self.base2k,
+            data: self.data.at_mut(row, col),
+        }
     }
 }
 
-impl GGSWCiphertext<Vec<u8>> {
-    pub fn alloc<A>(infos: &A) -> Self
-    where
-        A: GGSWInfos,
-    {
-        Self::alloc_with(
-            infos.n(),
-            infos.base2k(),
-            infos.k(),
-            infos.rank(),
-            infos.dnum(),
-            infos.dsize(),
-        )
-    }
+impl<B: Backend> GGSWAlloc for Module<B> where Self: GetRingDegree {}
 
-    pub fn alloc_with(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> Self {
+pub trait GGSWAlloc
+where
+    Self: GetRingDegree,
+{
+    fn alloc_ggsw(&self, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> GGSW<Vec<u8>> {
         let size: usize = k.0.div_ceil(base2k.0) as usize;
         debug_assert!(
             size as u32 > dsize.0,
@@ -298,9 +173,9 @@ impl GGSWCiphertext<Vec<u8>> {
             dsize.0,
         );
 
-        Self {
+        GGSW {
             data: MatZnx::alloc(
-                n.into(),
+                self.ring_degree().into(),
                 dnum.into(),
                 (rank + 1).into(),
                 (rank + 1).into(),
@@ -312,12 +187,11 @@ impl GGSWCiphertext<Vec<u8>> {
         }
     }
 
-    pub fn alloc_bytes<A>(infos: &A) -> usize
+    fn alloc_ggsw_from_infos<A>(&self, infos: &A) -> GGSW<Vec<u8>>
     where
         A: GGSWInfos,
     {
-        Self::alloc_bytes_with(
-            infos.n(),
+        self.alloc_ggsw(
             infos.base2k(),
             infos.k(),
             infos.rank(),
@@ -326,7 +200,7 @@ impl GGSWCiphertext<Vec<u8>> {
         )
     }
 
-    pub fn alloc_bytes_with(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize {
+    fn bytes_of_ggsw(&self, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize {
         let size: usize = k.0.div_ceil(base2k.0) as usize;
         debug_assert!(
             size as u32 > dsize.0,
@@ -341,19 +215,64 @@ impl GGSWCiphertext<Vec<u8>> {
             dsize.0,
         );
 
-        MatZnx::alloc_bytes(
-            n.into(),
+        MatZnx::bytes_of(
+            self.ring_degree().into(),
             dnum.into(),
             (rank + 1).into(),
             (rank + 1).into(),
             k.0.div_ceil(base2k.0) as usize,
         )
     }
+
+    fn bytes_of_ggsw_from_infos<A>(&self, infos: &A) -> usize
+    where
+        A: GGSWInfos,
+    {
+        self.bytes_of_ggsw(
+            infos.base2k(),
+            infos.k(),
+            infos.rank(),
+            infos.dnum(),
+            infos.dsize(),
+        )
+    }
+}
+
+impl GGSW<Vec<u8>> {
+    pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
+    where
+        A: GGSWInfos,
+        M: GGSWAlloc,
+    {
+        module.alloc_ggsw_from_infos(infos)
+    }
+
+    pub fn alloc<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> Self
+    where
+        M: GGSWAlloc,
+    {
+        module.alloc_ggsw(base2k, k, rank, dnum, dsize)
+    }
+
+    pub fn bytes_of_from_infos<A, M>(module: &M, infos: &A) -> usize
+    where
+        A: GGSWInfos,
+        M: GGSWAlloc,
+    {
+        module.bytes_of_ggsw_from_infos(infos)
+    }
+
+    pub fn bytes_of<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize
+    where
+        M: GGSWAlloc,
+    {
+        module.bytes_of_ggsw(base2k, k, rank, dnum, dsize)
+    }
 }
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
-impl<D: DataMut> ReaderFrom for GGSWCiphertext<D> {
+impl<D: DataMut> ReaderFrom for GGSW<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         self.k = TorusPrecision(reader.read_u32::<LittleEndian>()?);
         self.base2k = Base2K(reader.read_u32::<LittleEndian>()?);
@@ -362,11 +281,41 @@ impl<D: DataMut> ReaderFrom for GGSWCiphertext<D> {
     }
 }
 
-impl<D: DataRef> WriterTo for GGSWCiphertext<D> {
+impl<D: DataRef> WriterTo for GGSW<D> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         writer.write_u32::<LittleEndian>(self.k.into())?;
         writer.write_u32::<LittleEndian>(self.base2k.into())?;
         writer.write_u32::<LittleEndian>(self.dsize.into())?;
         self.data.write_to(writer)
+    }
+}
+
+pub trait GGSWToMut {
+    fn to_mut(&mut self) -> GGSW<&mut [u8]>;
+}
+
+impl<D: DataMut> GGSWToMut for GGSW<D> {
+    fn to_mut(&mut self) -> GGSW<&mut [u8]> {
+        GGSW {
+            dsize: self.dsize,
+            k: self.k,
+            base2k: self.base2k,
+            data: self.data.to_mut(),
+        }
+    }
+}
+
+pub trait GGSWToRef {
+    fn to_ref(&self) -> GGSW<&[u8]>;
+}
+
+impl<D: DataRef> GGSWToRef for GGSW<D> {
+    fn to_ref(&self) -> GGSW<&[u8]> {
+        GGSW {
+            dsize: self.dsize,
+            k: self.k,
+            base2k: self.base2k,
+            data: self.data.to_ref(),
+        }
     }
 }

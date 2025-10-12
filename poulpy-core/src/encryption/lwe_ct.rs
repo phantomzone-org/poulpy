@@ -7,10 +7,10 @@ use poulpy_hal::{
 
 use crate::{
     encryption::{SIGMA, SIGMA_BOUND},
-    layouts::{LWECiphertext, LWEInfos, LWEPlaintext, LWESecret},
+    layouts::{LWE, LWEInfos, LWEPlaintext, LWESecret},
 };
 
-impl<DataSelf: DataMut> LWECiphertext<DataSelf> {
+impl<DataSelf: DataMut> LWE<DataSelf> {
     pub fn encrypt_sk<DataPt, DataSk, B>(
         &mut self,
         module: &Module<B>,

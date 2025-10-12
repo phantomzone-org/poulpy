@@ -1,9 +1,9 @@
 use itertools::Itertools;
 use poulpy_core::{
-    GLWEExternalProductInplace, GLWEOperations, TakeGLWECtSlice,
+    GLWEExternalProductInplace, GLWEOperations, TakeGLWESlice,
     layouts::{
-        GLWECiphertext, GLWECiphertextToMut, LWEInfos,
-        prepared::{GGSWCiphertextPrepared, GGSWCiphertextPreparedToRef},
+        GLWE, GLWEToMut, LWEInfos,
+        prepared::{GGSWPrepared, GGSWPreparedToRef},
     },
 };
 use poulpy_hal::{
@@ -38,8 +38,8 @@ where
     fn execute<O>(
         &self,
         module: &Module<BE>,
-        out: &mut [GLWECiphertext<O>],
-        inputs: &[&dyn GGSWCiphertextPreparedToRef<BE>],
+        out: &mut [GLWE<O>],
+        inputs: &[&dyn GGSWPreparedToRef<BE>],
         scratch: &mut Scratch<BE>,
     ) where
         O: DataMut;
@@ -49,13 +49,13 @@ impl<C: BitCircuitInfo, const N: usize, T: UnsignedInteger, BE: Backend> Circuit
 where
     Self: GetBitCircuitInfo<T>,
     Module<BE>: Cmux<BE> + VecZnxCopy,
-    Scratch<BE>: TakeGLWECtSlice,
+    Scratch<BE>: TakeGLWESlice,
 {
     fn execute<O>(
         &self,
         module: &Module<BE>,
-        out: &mut [GLWECiphertext<O>],
-        inputs: &[&dyn GGSWCiphertextPreparedToRef<BE>],
+        out: &mut [GLWE<O>],
+        inputs: &[&dyn GGSWPreparedToRef<BE>],
         scratch: &mut Scratch<BE>,
     ) where
         O: DataMut,
@@ -159,14 +159,8 @@ impl Node {
 }
 
 pub trait Cmux<BE: Backend> {
-    fn cmux<O, T, F, S>(
-        &self,
-        out: &mut GLWECiphertext<O>,
-        t: &GLWECiphertext<T>,
-        f: &GLWECiphertext<F>,
-        s: &GGSWCiphertextPrepared<S, BE>,
-        scratch: &mut Scratch<BE>,
-    ) where
+    fn cmux<O, T, F, S>(&self, out: &mut GLWE<O>, t: &GLWE<T>, f: &GLWE<F>, s: &GGSWPrepared<S, BE>, scratch: &mut Scratch<BE>)
+    where
         O: DataMut,
         T: DataRef,
         F: DataRef,
@@ -177,14 +171,8 @@ impl<BE: Backend> Cmux<BE> for Module<BE>
 where
     Module<BE>: GLWEExternalProductInplace<BE> + VecZnxSub + VecZnxCopy + VecZnxNegateInplace + VecZnxAddInplace,
 {
-    fn cmux<O, T, F, S>(
-        &self,
-        out: &mut GLWECiphertext<O>,
-        t: &GLWECiphertext<T>,
-        f: &GLWECiphertext<F>,
-        s: &GGSWCiphertextPrepared<S, BE>,
-        scratch: &mut Scratch<BE>,
-    ) where
+    fn cmux<O, T, F, S>(&self, out: &mut GLWE<O>, t: &GLWE<T>, f: &GLWE<F>, s: &GGSWPrepared<S, BE>, scratch: &mut Scratch<BE>)
+    where
         O: DataMut,
         T: DataRef,
         F: DataRef,

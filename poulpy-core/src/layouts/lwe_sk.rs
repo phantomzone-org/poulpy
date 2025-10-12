@@ -1,11 +1,11 @@
 use poulpy_hal::{
-    layouts::{Data, DataMut, DataRef, ScalarZnx, ZnxInfos, ZnxView, ZnxZero},
+    layouts::{Backend, Data, DataMut, DataRef, Module, ScalarZnx, ScalarZnxToMut, ScalarZnxToRef, ZnxInfos, ZnxView, ZnxZero},
     source::Source,
 };
 
 use crate::{
     dist::Distribution,
-    layouts::{Base2K, Degree, LWEInfos, TorusPrecision},
+    layouts::{Base2K, LWEInfos, RingDegree, TorusPrecision},
 };
 
 pub struct LWESecret<D: Data> {
@@ -13,12 +13,23 @@ pub struct LWESecret<D: Data> {
     pub(crate) dist: Distribution,
 }
 
-impl LWESecret<Vec<u8>> {
-    pub fn alloc(n: Degree) -> Self {
-        Self {
+pub trait LWESecretAlloc {
+    fn alloc_lwe_secret(&self, n: RingDegree) -> LWESecret<Vec<u8>> {
+        LWESecret {
             data: ScalarZnx::alloc(n.into(), 1),
             dist: Distribution::NONE,
         }
+    }
+}
+
+impl<B: Backend> LWESecretAlloc for Module<B> {}
+
+impl LWESecret<Vec<u8>> {
+    pub fn alloc<M>(module: &M, n: RingDegree) -> Self
+    where
+        M: LWESecretAlloc,
+    {
+        module.alloc_lwe_secret(n)
     }
 }
 
@@ -44,8 +55,8 @@ impl<D: Data> LWEInfos for LWESecret<D> {
         TorusPrecision(0)
     }
 
-    fn n(&self) -> Degree {
-        Degree(self.data.n() as u32)
+    fn n(&self) -> RingDegree {
+        RingDegree(self.data.n() as u32)
     }
 
     fn size(&self) -> usize {
@@ -82,5 +93,31 @@ impl<D: DataMut> LWESecret<D> {
     pub fn fill_zero(&mut self) {
         self.data.zero();
         self.dist = Distribution::ZERO;
+    }
+}
+
+pub trait LWESecretToRef {
+    fn to_ref(&self) -> LWESecret<&[u8]>;
+}
+
+impl<D: DataRef> LWESecretToRef for LWESecret<D> {
+    fn to_ref(&self) -> LWESecret<&[u8]> {
+        LWESecret {
+            dist: self.dist,
+            data: self.data.to_ref(),
+        }
+    }
+}
+
+pub trait LWESecretToMut {
+    fn to_mut(&mut self) -> LWESecret<&mut [u8]>;
+}
+
+impl<D: DataMut> LWESecretToMut for LWESecret<D> {
+    fn to_mut(&mut self) -> LWESecret<&mut [u8]> {
+        LWESecret {
+            dist: self.dist,
+            data: self.data.to_mut(),
+        }
     }
 }

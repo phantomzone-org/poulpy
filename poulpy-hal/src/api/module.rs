@@ -4,3 +4,7 @@ use crate::layouts::Backend;
 pub trait ModuleNew<B: Backend> {
     fn new(n: u64) -> Self;
 }
+
+pub trait ModuleN {
+    fn n(&self) -> usize;
+}

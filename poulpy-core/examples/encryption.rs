@@ -2,8 +2,7 @@ use poulpy_backend::cpu_spqlios::FFT64Spqlios;
 use poulpy_core::{
     GLWEOperations, SIGMA,
     layouts::{
-        Base2K, Degree, GLWECiphertext, GLWECiphertextLayout, GLWEPlaintext, GLWEPlaintextLayout, GLWESecret, LWEInfos, Rank,
-        TorusPrecision,
+        Base2K, GLWE, GLWELayout, GLWEPlaintext, GLWEPlaintextLayout, GLWESecret, LWEInfos, Rank, RingDegree, TorusPrecision,
         prepared::{GLWESecretPrepared, PrepareAlloc},
     },
 };
@@ -17,7 +16,7 @@ fn main() {
     // Ring degree
     let log_n: usize = 10;
 
-    let n: Degree = Degree(1 << log_n);
+    let n: RingDegree = RingDegree(1 << log_n);
 
     // Base-2-k (implicit digit decomposition)
     let base2k: Base2K = Base2K(14);
@@ -34,7 +33,7 @@ fn main() {
     // Instantiate Module (DFT Tables)
     let module: Module<FFT64Spqlios> = Module::<FFT64Spqlios>::new(n.0 as u64);
 
-    let glwe_ct_infos: GLWECiphertextLayout = GLWECiphertextLayout {
+    let glwe_ct_infos: GLWELayout = GLWELayout {
         n,
         base2k,
         k: k_ct,
@@ -44,9 +43,9 @@ fn main() {
     let glwe_pt_infos: GLWEPlaintextLayout = GLWEPlaintextLayout { n, base2k, k: k_pt };
 
     // Allocates ciphertext & plaintexts
-    let mut ct: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&glwe_ct_infos);
-    let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&glwe_pt_infos);
-    let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&glwe_pt_infos);
+    let mut ct: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_ct_infos);
+    let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_pt_infos);
+    let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_pt_infos);
 
     // CPRNG
     let mut source_xs: Source = Source::new([0u8; 32]);
@@ -55,12 +54,11 @@ fn main() {
 
     // Scratch space
     let mut scratch: ScratchOwned<FFT64Spqlios> = ScratchOwned::alloc(
-        GLWECiphertext::encrypt_sk_scratch_space(&module, &glwe_ct_infos)
-            | GLWECiphertext::decrypt_scratch_space(&module, &glwe_ct_infos),
+        GLWE::encrypt_sk_tmp_bytes(&module, &glwe_ct_infos) | GLWE::decrypt_tmp_bytes(&module, &glwe_ct_infos),
     );
 
     // Generate secret-key
-    let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(&glwe_ct_infos);
+    let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_ct_infos);
     sk.fill_ternary_prob(0.5, &mut source_xs);
 
     // Backend-prepared secret

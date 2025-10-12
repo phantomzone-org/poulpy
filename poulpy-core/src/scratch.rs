@@ -1,365 +1,230 @@
 use poulpy_hal::{
-    api::{TakeMatZnx, TakeScalarZnx, TakeSvpPPol, TakeVecZnx, TakeVecZnxDft, TakeVmpPMat},
+    api::{ModuleN, ScratchAvailable, ScratchTakeBasic, SvpPPolBytesOf, VecZnxDftBytesOf, VmpPMatBytesOf},
     layouts::{Backend, Scratch},
 };
 
 use crate::{
     dist::Distribution,
     layouts::{
-        Degree, GGLWEAutomorphismKey, GGLWECiphertext, GGLWEInfos, GGLWESwitchingKey, GGLWETensorKey, GGSWCiphertext, GGSWInfos,
-        GLWECiphertext, GLWEInfos, GLWEPlaintext, GLWEPublicKey, GLWESecret, Rank,
+        AutomorphismKey, GGLWE, GGLWEInfos, GGSW, GGSWInfos, GLWE, GLWEInfos, GLWEPlaintext, GLWEPublicKey, GLWESecret,
+        GLWESwitchingKey, Rank, TensorKey,
         prepared::{
-            GGLWEAutomorphismKeyPrepared, GGLWECiphertextPrepared, GGLWESwitchingKeyPrepared, GGLWETensorKeyPrepared,
-            GGSWCiphertextPrepared, GLWEPublicKeyPrepared, GLWESecretPrepared,
+            AutomorphismKeyPrepared, GGLWEPrepared, GGSWPrepared, GLWEPublicKeyPrepared, GLWESecretPrepared,
+            GLWESwitchingKeyPrepared, TensorKeyPrepared,
         },
     },
 };
 
-pub trait TakeGLWECt {
-    fn take_glwe_ct<A>(&mut self, infos: &A) -> (GLWECiphertext<&mut [u8]>, &mut Self)
-    where
-        A: GLWEInfos;
-}
-
-pub trait TakeGLWECtSlice {
-    fn take_glwe_ct_slice<A>(&mut self, size: usize, infos: &A) -> (Vec<GLWECiphertext<&mut [u8]>>, &mut Self)
-    where
-        A: GLWEInfos;
-}
-
-pub trait TakeGLWEPt<B: Backend> {
-    fn take_glwe_pt<A>(&mut self, infos: &A) -> (GLWEPlaintext<&mut [u8]>, &mut Self)
-    where
-        A: GLWEInfos;
-}
-
-pub trait TakeGGLWE {
-    fn take_gglwe<A>(&mut self, infos: &A) -> (GGLWECiphertext<&mut [u8]>, &mut Self)
-    where
-        A: GGLWEInfos;
-}
-
-pub trait TakeGGLWEPrepared<B: Backend> {
-    fn take_gglwe_prepared<A>(&mut self, infos: &A) -> (GGLWECiphertextPrepared<&mut [u8], B>, &mut Self)
-    where
-        A: GGLWEInfos;
-}
-
-pub trait TakeGGSW {
-    fn take_ggsw<A>(&mut self, infos: &A) -> (GGSWCiphertext<&mut [u8]>, &mut Self)
-    where
-        A: GGSWInfos;
-}
-
-pub trait TakeGGSWPrepared<B: Backend> {
-    fn take_ggsw_prepared<A>(&mut self, infos: &A) -> (GGSWCiphertextPrepared<&mut [u8], B>, &mut Self)
-    where
-        A: GGSWInfos;
-}
-
-pub trait TakeGGSWPreparedSlice<B: Backend> {
-    fn take_ggsw_prepared_slice<A>(&mut self, size: usize, infos: &A) -> (Vec<GGSWCiphertextPrepared<&mut [u8], B>>, &mut Self)
-    where
-        A: GGSWInfos;
-}
-
-pub trait TakeGLWESecret {
-    fn take_glwe_secret(&mut self, n: Degree, rank: Rank) -> (GLWESecret<&mut [u8]>, &mut Self);
-}
-
-pub trait TakeGLWESecretPrepared<B: Backend> {
-    fn take_glwe_secret_prepared(&mut self, n: Degree, rank: Rank) -> (GLWESecretPrepared<&mut [u8], B>, &mut Self);
-}
-
-pub trait TakeGLWEPk {
-    fn take_glwe_pk<A>(&mut self, infos: &A) -> (GLWEPublicKey<&mut [u8]>, &mut Self)
-    where
-        A: GLWEInfos;
-}
-
-pub trait TakeGLWEPkPrepared<B: Backend> {
-    fn take_glwe_pk_prepared<A>(&mut self, infos: &A) -> (GLWEPublicKeyPrepared<&mut [u8], B>, &mut Self)
-    where
-        A: GLWEInfos;
-}
-
-pub trait TakeGLWESwitchingKey {
-    fn take_glwe_switching_key<A>(&mut self, infos: &A) -> (GGLWESwitchingKey<&mut [u8]>, &mut Self)
-    where
-        A: GGLWEInfos;
-}
-
-pub trait TakeGGLWESwitchingKeyPrepared<B: Backend> {
-    fn take_gglwe_switching_key_prepared<A>(&mut self, infos: &A) -> (GGLWESwitchingKeyPrepared<&mut [u8], B>, &mut Self)
-    where
-        A: GGLWEInfos;
-}
-
-pub trait TakeTensorKey {
-    fn take_tensor_key<A>(&mut self, infos: &A) -> (GGLWETensorKey<&mut [u8]>, &mut Self)
-    where
-        A: GGLWEInfos;
-}
-
-pub trait TakeGGLWETensorKeyPrepared<B: Backend> {
-    fn take_gglwe_tensor_key_prepared<A>(&mut self, infos: &A) -> (GGLWETensorKeyPrepared<&mut [u8], B>, &mut Self)
-    where
-        A: GGLWEInfos;
-}
-
-pub trait TakeGGLWEAutomorphismKey {
-    fn take_gglwe_automorphism_key<A>(&mut self, infos: &A) -> (GGLWEAutomorphismKey<&mut [u8]>, &mut Self)
-    where
-        A: GGLWEInfos;
-}
-
-pub trait TakeGGLWEAutomorphismKeyPrepared<B: Backend> {
-    fn take_gglwe_automorphism_key_prepared<A>(&mut self, infos: &A) -> (GGLWEAutomorphismKeyPrepared<&mut [u8], B>, &mut Self)
-    where
-        A: GGLWEInfos;
-}
-
-impl<B: Backend> TakeGLWECt for Scratch<B>
+pub trait ScratchTakeCore<B: Backend>
 where
-    Scratch<B>: TakeVecZnx,
+    Self: ScratchTakeBasic + ScratchAvailable,
 {
-    fn take_glwe_ct<A>(&mut self, infos: &A) -> (GLWECiphertext<&mut [u8]>, &mut Self)
+    fn take_glwe_ct<A, M>(&mut self, module: &M, infos: &A) -> (GLWE<&mut [u8]>, &mut Self)
     where
         A: GLWEInfos,
+        M: ModuleN,
     {
-        let (data, scratch) = self.take_vec_znx(infos.n().into(), (infos.rank() + 1).into(), infos.size());
+        assert_eq!(module.n() as u32, infos.n());
+        let (data, scratch) = self.take_vec_znx(module, (infos.rank() + 1).into(), infos.size());
         (
-            GLWECiphertext::builder()
-                .base2k(infos.base2k())
-                .k(infos.k())
-                .data(data)
-                .build()
-                .unwrap(),
+            GLWE {
+                k: infos.k(),
+                base2k: infos.base2k(),
+                data,
+            },
             scratch,
         )
     }
-}
 
-impl<B: Backend> TakeGLWECtSlice for Scratch<B>
-where
-    Scratch<B>: TakeVecZnx,
-{
-    fn take_glwe_ct_slice<A>(&mut self, size: usize, infos: &A) -> (Vec<GLWECiphertext<&mut [u8]>>, &mut Self)
+    fn take_glwe_ct_slice<A, M>(&mut self, module: &M, size: usize, infos: &A) -> (Vec<GLWE<&mut [u8]>>, &mut Self)
     where
         A: GLWEInfos,
+        M: ModuleN,
     {
-        let mut scratch: &mut Scratch<B> = self;
-        let mut cts: Vec<GLWECiphertext<&mut [u8]>> = Vec::with_capacity(size);
+        let mut scratch: &mut Self = self;
+        let mut cts: Vec<GLWE<&mut [u8]>> = Vec::with_capacity(size);
         for _ in 0..size {
-            let (ct, new_scratch) = scratch.take_glwe_ct(infos);
+            let (ct, new_scratch) = scratch.take_glwe_ct(module, infos);
             scratch = new_scratch;
             cts.push(ct);
         }
         (cts, scratch)
     }
-}
 
-impl<B: Backend> TakeGLWEPt<B> for Scratch<B>
-where
-    Scratch<B>: TakeVecZnx,
-{
-    fn take_glwe_pt<A>(&mut self, infos: &A) -> (GLWEPlaintext<&mut [u8]>, &mut Self)
+    fn take_glwe_pt<A, M>(&mut self, module: &M, infos: &A) -> (GLWEPlaintext<&mut [u8]>, &mut Self)
     where
         A: GLWEInfos,
+        M: ModuleN,
     {
-        let (data, scratch) = self.take_vec_znx(infos.n().into(), 1, infos.size());
+        assert_eq!(module.n() as u32, infos.n());
+        let (data, scratch) = self.take_vec_znx(module, 1, infos.size());
         (
-            GLWEPlaintext::builder()
-                .base2k(infos.base2k())
-                .k(infos.k())
-                .data(data)
-                .build()
-                .unwrap(),
+            GLWEPlaintext {
+                k: infos.k(),
+                base2k: infos.base2k(),
+                data,
+            },
             scratch,
         )
     }
-}
 
-impl<B: Backend> TakeGGLWE for Scratch<B>
-where
-    Scratch<B>: TakeMatZnx,
-{
-    fn take_gglwe<A>(&mut self, infos: &A) -> (GGLWECiphertext<&mut [u8]>, &mut Self)
+    fn take_gglwe<A, M>(&mut self, module: &M, infos: &A) -> (GGLWE<&mut [u8]>, &mut Self)
     where
         A: GGLWEInfos,
+        M: ModuleN,
     {
+        assert_eq!(module.n() as u32, infos.n());
         let (data, scratch) = self.take_mat_znx(
-            infos.n().into(),
+            module,
             infos.dnum().0.div_ceil(infos.dsize().0) as usize,
             infos.rank_in().into(),
             (infos.rank_out() + 1).into(),
             infos.size(),
         );
         (
-            GGLWECiphertext::builder()
-                .base2k(infos.base2k())
-                .k(infos.k())
-                .dsize(infos.dsize())
-                .data(data)
-                .build()
-                .unwrap(),
+            GGLWE {
+                k: infos.k(),
+                base2k: infos.base2k(),
+                dsize: infos.dsize(),
+                data,
+            },
             scratch,
         )
     }
-}
 
-impl<B: Backend> TakeGGLWEPrepared<B> for Scratch<B>
-where
-    Scratch<B>: TakeVmpPMat<B>,
-{
-    fn take_gglwe_prepared<A>(&mut self, infos: &A) -> (GGLWECiphertextPrepared<&mut [u8], B>, &mut Self)
+    fn take_gglwe_prepared<A, M>(&mut self, module: &M, infos: &A) -> (GGLWEPrepared<&mut [u8], B>, &mut Self)
     where
         A: GGLWEInfos,
+        M: ModuleN + VmpPMatBytesOf,
     {
+        assert_eq!(module.n() as u32, infos.n());
         let (data, scratch) = self.take_vmp_pmat(
-            infos.n().into(),
+            module,
             infos.dnum().into(),
             infos.rank_in().into(),
             (infos.rank_out() + 1).into(),
             infos.size(),
         );
         (
-            GGLWECiphertextPrepared::builder()
-                .base2k(infos.base2k())
-                .dsize(infos.dsize())
-                .k(infos.k())
-                .data(data)
-                .build()
-                .unwrap(),
+            GGLWEPrepared {
+                k: infos.k(),
+                base2k: infos.base2k(),
+                dsize: infos.dsize(),
+                data,
+            },
             scratch,
         )
     }
-}
 
-impl<B: Backend> TakeGGSW for Scratch<B>
-where
-    Scratch<B>: TakeMatZnx,
-{
-    fn take_ggsw<A>(&mut self, infos: &A) -> (GGSWCiphertext<&mut [u8]>, &mut Self)
+    fn take_ggsw<A, M>(&mut self, module: &M, infos: &A) -> (GGSW<&mut [u8]>, &mut Self)
     where
         A: GGSWInfos,
+        M: ModuleN,
     {
+        assert_eq!(module.n() as u32, infos.n());
         let (data, scratch) = self.take_mat_znx(
-            infos.n().into(),
+            module,
             infos.dnum().into(),
             (infos.rank() + 1).into(),
             (infos.rank() + 1).into(),
             infos.size(),
         );
         (
-            GGSWCiphertext::builder()
-                .base2k(infos.base2k())
-                .dsize(infos.dsize())
-                .k(infos.k())
-                .data(data)
-                .build()
-                .unwrap(),
+            GGSW {
+                k: infos.k(),
+                base2k: infos.base2k(),
+                dsize: infos.dsize(),
+                data,
+            },
             scratch,
         )
     }
-}
 
-impl<B: Backend> TakeGGSWPrepared<B> for Scratch<B>
-where
-    Scratch<B>: TakeVmpPMat<B>,
-{
-    fn take_ggsw_prepared<A>(&mut self, infos: &A) -> (GGSWCiphertextPrepared<&mut [u8], B>, &mut Self)
+    fn take_ggsw_prepared<A, M>(&mut self, module: &M, infos: &A) -> (GGSWPrepared<&mut [u8], B>, &mut Self)
     where
         A: GGSWInfos,
+        M: ModuleN + VmpPMatBytesOf,
     {
+        assert_eq!(module.n() as u32, infos.n());
         let (data, scratch) = self.take_vmp_pmat(
-            infos.n().into(),
+            module,
             infos.dnum().into(),
             (infos.rank() + 1).into(),
             (infos.rank() + 1).into(),
             infos.size(),
         );
         (
-            GGSWCiphertextPrepared::builder()
-                .base2k(infos.base2k())
-                .dsize(infos.dsize())
-                .k(infos.k())
-                .data(data)
-                .build()
-                .unwrap(),
+            GGSWPrepared {
+                k: infos.k(),
+                base2k: infos.base2k(),
+                dsize: infos.dsize(),
+                data,
+            },
             scratch,
         )
     }
-}
 
-impl<B: Backend> TakeGGSWPreparedSlice<B> for Scratch<B>
-where
-    Scratch<B>: TakeGGSWPrepared<B>,
-{
-    fn take_ggsw_prepared_slice<A>(&mut self, size: usize, infos: &A) -> (Vec<GGSWCiphertextPrepared<&mut [u8], B>>, &mut Self)
+    fn take_ggsw_prepared_slice<A, M>(
+        &mut self,
+        module: &M,
+        size: usize,
+        infos: &A,
+    ) -> (Vec<GGSWPrepared<&mut [u8], B>>, &mut Self)
     where
         A: GGSWInfos,
+        M: ModuleN + VmpPMatBytesOf,
     {
-        let mut scratch: &mut Scratch<B> = self;
-        let mut cts: Vec<GGSWCiphertextPrepared<&mut [u8], B>> = Vec::with_capacity(size);
+        let mut scratch: &mut Self = self;
+        let mut cts: Vec<GGSWPrepared<&mut [u8], B>> = Vec::with_capacity(size);
         for _ in 0..size {
-            let (ct, new_scratch) = scratch.take_ggsw_prepared(infos);
+            let (ct, new_scratch) = scratch.take_ggsw_prepared(module, infos);
             scratch = new_scratch;
             cts.push(ct)
         }
         (cts, scratch)
     }
-}
 
-impl<B: Backend> TakeGLWEPk for Scratch<B>
-where
-    Scratch<B>: TakeVecZnx,
-{
-    fn take_glwe_pk<A>(&mut self, infos: &A) -> (GLWEPublicKey<&mut [u8]>, &mut Self)
+    fn take_glwe_pk<A, M>(&mut self, module: &M, infos: &A) -> (GLWEPublicKey<&mut [u8]>, &mut Self)
     where
         A: GLWEInfos,
+        M: ModuleN,
     {
-        let (data, scratch) = self.take_vec_znx(infos.n().into(), (infos.rank() + 1).into(), infos.size());
+        assert_eq!(module.n() as u32, infos.n());
+        let (data, scratch) = self.take_vec_znx(module, (infos.rank() + 1).into(), infos.size());
         (
-            GLWEPublicKey::builder()
-                .base2k(infos.base2k())
-                .k(infos.k())
-                .base2k(infos.base2k())
-                .data(data)
-                .build()
-                .unwrap(),
+            GLWEPublicKey {
+                k: infos.k(),
+                dist: Distribution::NONE,
+                base2k: infos.base2k(),
+                data,
+            },
             scratch,
         )
     }
-}
 
-impl<B: Backend> TakeGLWEPkPrepared<B> for Scratch<B>
-where
-    Scratch<B>: TakeVecZnxDft<B>,
-{
-    fn take_glwe_pk_prepared<A>(&mut self, infos: &A) -> (GLWEPublicKeyPrepared<&mut [u8], B>, &mut Self)
+    fn take_glwe_pk_prepared<A, M>(&mut self, module: &M, infos: &A) -> (GLWEPublicKeyPrepared<&mut [u8], B>, &mut Self)
     where
         A: GLWEInfos,
+        M: ModuleN + VecZnxDftBytesOf,
     {
-        let (data, scratch) = self.take_vec_znx_dft(infos.n().into(), (infos.rank() + 1).into(), infos.size());
+        assert_eq!(module.n() as u32, infos.n());
+        let (data, scratch) = self.take_vec_znx_dft(module, (infos.rank() + 1).into(), infos.size());
         (
-            GLWEPublicKeyPrepared::builder()
-                .base2k(infos.base2k())
-                .k(infos.k())
-                .data(data)
-                .build()
-                .unwrap(),
+            GLWEPublicKeyPrepared {
+                k: infos.k(),
+                dist: Distribution::NONE,
+                base2k: infos.base2k(),
+                data,
+            },
             scratch,
         )
     }
-}
 
-impl<B: Backend> TakeGLWESecret for Scratch<B>
-where
-    Scratch<B>: TakeScalarZnx,
-{
-    fn take_glwe_secret(&mut self, n: Degree, rank: Rank) -> (GLWESecret<&mut [u8]>, &mut Self) {
-        let (data, scratch) = self.take_scalar_znx(n.into(), rank.into());
+    fn take_glwe_secret<M>(&mut self, module: &M, rank: Rank) -> (GLWESecret<&mut [u8]>, &mut Self)
+    where
+        M: ModuleN,
+    {
+        let (data, scratch) = self.take_scalar_znx(module, rank.into());
         (
             GLWESecret {
                 data,
@@ -368,14 +233,12 @@ where
             scratch,
         )
     }
-}
 
-impl<B: Backend> TakeGLWESecretPrepared<B> for Scratch<B>
-where
-    Scratch<B>: TakeSvpPPol<B>,
-{
-    fn take_glwe_secret_prepared(&mut self, n: Degree, rank: Rank) -> (GLWESecretPrepared<&mut [u8], B>, &mut Self) {
-        let (data, scratch) = self.take_svp_ppol(n.into(), rank.into());
+    fn take_glwe_secret_prepared<M>(&mut self, module: &M, rank: Rank) -> (GLWESecretPrepared<&mut [u8], B>, &mut Self)
+    where
+        M: ModuleN + SvpPPolBytesOf,
+    {
+        let (data, scratch) = self.take_svp_ppol(module, rank.into());
         (
             GLWESecretPrepared {
                 data,
@@ -384,19 +247,16 @@ where
             scratch,
         )
     }
-}
 
-impl<B: Backend> TakeGLWESwitchingKey for Scratch<B>
-where
-    Scratch<B>: TakeMatZnx,
-{
-    fn take_glwe_switching_key<A>(&mut self, infos: &A) -> (GGLWESwitchingKey<&mut [u8]>, &mut Self)
+    fn take_glwe_switching_key<A, M>(&mut self, module: &M, infos: &A) -> (GLWESwitchingKey<&mut [u8]>, &mut Self)
     where
         A: GGLWEInfos,
+        M: ModuleN,
     {
-        let (data, scratch) = self.take_gglwe(infos);
+        assert_eq!(module.n() as u32, infos.n());
+        let (data, scratch) = self.take_gglwe(module, infos);
         (
-            GGLWESwitchingKey {
+            GLWESwitchingKey {
                 key: data,
                 sk_in_n: 0,
                 sk_out_n: 0,
@@ -404,19 +264,20 @@ where
             scratch,
         )
     }
-}
 
-impl<B: Backend> TakeGGLWESwitchingKeyPrepared<B> for Scratch<B>
-where
-    Scratch<B>: TakeGGLWEPrepared<B>,
-{
-    fn take_gglwe_switching_key_prepared<A>(&mut self, infos: &A) -> (GGLWESwitchingKeyPrepared<&mut [u8], B>, &mut Self)
+    fn take_gglwe_switching_key_prepared<A, M>(
+        &mut self,
+        module: &M,
+        infos: &A,
+    ) -> (GLWESwitchingKeyPrepared<&mut [u8], B>, &mut Self)
     where
         A: GGLWEInfos,
+        M: ModuleN + VmpPMatBytesOf,
     {
-        let (data, scratch) = self.take_gglwe_prepared(infos);
+        assert_eq!(module.n() as u32, infos.n());
+        let (data, scratch) = self.take_gglwe_prepared(module, infos);
         (
-            GGLWESwitchingKeyPrepared {
+            GLWESwitchingKeyPrepared {
                 key: data,
                 sk_in_n: 0,
                 sk_out_n: 0,
@@ -424,101 +285,95 @@ where
             scratch,
         )
     }
-}
 
-impl<B: Backend> TakeGGLWEAutomorphismKey for Scratch<B>
-where
-    Scratch<B>: TakeMatZnx,
-{
-    fn take_gglwe_automorphism_key<A>(&mut self, infos: &A) -> (GGLWEAutomorphismKey<&mut [u8]>, &mut Self)
+    fn take_gglwe_automorphism_key<A, M>(&mut self, module: &M, infos: &A) -> (AutomorphismKey<&mut [u8]>, &mut Self)
     where
         A: GGLWEInfos,
+        M: ModuleN,
     {
-        let (data, scratch) = self.take_glwe_switching_key(infos);
-        (GGLWEAutomorphismKey { key: data, p: 0 }, scratch)
+        assert_eq!(module.n() as u32, infos.n());
+        let (data, scratch) = self.take_glwe_switching_key(module, infos);
+        (AutomorphismKey { key: data, p: 0 }, scratch)
     }
-}
 
-impl<B: Backend> TakeGGLWEAutomorphismKeyPrepared<B> for Scratch<B>
-where
-    Scratch<B>: TakeGGLWESwitchingKeyPrepared<B>,
-{
-    fn take_gglwe_automorphism_key_prepared<A>(&mut self, infos: &A) -> (GGLWEAutomorphismKeyPrepared<&mut [u8], B>, &mut Self)
+    fn take_gglwe_automorphism_key_prepared<A, M>(
+        &mut self,
+        module: &M,
+        infos: &A,
+    ) -> (AutomorphismKeyPrepared<&mut [u8], B>, &mut Self)
     where
         A: GGLWEInfos,
+        M: ModuleN + VmpPMatBytesOf,
     {
-        let (data, scratch) = self.take_gglwe_switching_key_prepared(infos);
-        (GGLWEAutomorphismKeyPrepared { key: data, p: 0 }, scratch)
+        assert_eq!(module.n() as u32, infos.n());
+        let (data, scratch) = self.take_gglwe_switching_key_prepared(module, infos);
+        (AutomorphismKeyPrepared { key: data, p: 0 }, scratch)
     }
-}
 
-impl<B: Backend> TakeTensorKey for Scratch<B>
-where
-    Scratch<B>: TakeMatZnx,
-{
-    fn take_tensor_key<A>(&mut self, infos: &A) -> (GGLWETensorKey<&mut [u8]>, &mut Self)
+    fn take_tensor_key<A, M>(&mut self, module: &M, infos: &A) -> (TensorKey<&mut [u8]>, &mut Self)
     where
         A: GGLWEInfos,
+        M: ModuleN,
     {
+        assert_eq!(module.n() as u32, infos.n());
         assert_eq!(
             infos.rank_in(),
             infos.rank_out(),
             "rank_in != rank_out is not supported for GGLWETensorKey"
         );
-        let mut keys: Vec<GGLWESwitchingKey<&mut [u8]>> = Vec::new();
+        let mut keys: Vec<GLWESwitchingKey<&mut [u8]>> = Vec::new();
         let pairs: usize = (((infos.rank_out().0 + 1) * infos.rank_out().0) >> 1).max(1) as usize;
 
-        let mut scratch: &mut Scratch<B> = self;
+        let mut scratch: &mut Self = self;
 
-        let mut ksk_infos: crate::layouts::GGLWECiphertextLayout = infos.layout();
+        let mut ksk_infos: crate::layouts::GGLWELayout = infos.gglwe_layout();
         ksk_infos.rank_in = Rank(1);
 
         if pairs != 0 {
-            let (gglwe, s) = scratch.take_glwe_switching_key(&ksk_infos);
+            let (gglwe, s) = scratch.take_glwe_switching_key(module, &ksk_infos);
             scratch = s;
             keys.push(gglwe);
         }
         for _ in 1..pairs {
-            let (gglwe, s) = scratch.take_glwe_switching_key(&ksk_infos);
+            let (gglwe, s) = scratch.take_glwe_switching_key(module, &ksk_infos);
             scratch = s;
             keys.push(gglwe);
         }
-        (GGLWETensorKey { keys }, scratch)
+        (TensorKey { keys }, scratch)
     }
-}
 
-impl<B: Backend> TakeGGLWETensorKeyPrepared<B> for Scratch<B>
-where
-    Scratch<B>: TakeVmpPMat<B>,
-{
-    fn take_gglwe_tensor_key_prepared<A>(&mut self, infos: &A) -> (GGLWETensorKeyPrepared<&mut [u8], B>, &mut Self)
+    fn take_gglwe_tensor_key_prepared<A, M>(&mut self, module: &M, infos: &A) -> (TensorKeyPrepared<&mut [u8], B>, &mut Self)
     where
         A: GGLWEInfos,
+        M: ModuleN + VmpPMatBytesOf,
     {
+        assert_eq!(module.n() as u32, infos.n());
         assert_eq!(
             infos.rank_in(),
             infos.rank_out(),
             "rank_in != rank_out is not supported for GGLWETensorKeyPrepared"
         );
 
-        let mut keys: Vec<GGLWESwitchingKeyPrepared<&mut [u8], B>> = Vec::new();
+        let mut keys: Vec<GLWESwitchingKeyPrepared<&mut [u8], B>> = Vec::new();
         let pairs: usize = (((infos.rank_out().0 + 1) * infos.rank_out().0) >> 1).max(1) as usize;
 
-        let mut scratch: &mut Scratch<B> = self;
+        let mut scratch: &mut Self = self;
 
-        let mut ksk_infos: crate::layouts::GGLWECiphertextLayout = infos.layout();
+        let mut ksk_infos: crate::layouts::GGLWELayout = infos.gglwe_layout();
         ksk_infos.rank_in = Rank(1);
 
         if pairs != 0 {
-            let (gglwe, s) = scratch.take_gglwe_switching_key_prepared(&ksk_infos);
+            let (gglwe, s) = scratch.take_gglwe_switching_key_prepared(module, &ksk_infos);
             scratch = s;
             keys.push(gglwe);
         }
         for _ in 1..pairs {
-            let (gglwe, s) = scratch.take_gglwe_switching_key_prepared(&ksk_infos);
+            let (gglwe, s) = scratch.take_gglwe_switching_key_prepared(module, &ksk_infos);
             scratch = s;
             keys.push(gglwe);
         }
-        (GGLWETensorKeyPrepared { keys }, scratch)
+        (TensorKeyPrepared { keys }, scratch)
     }
 }
+
+impl<B: Backend> ScratchTakeCore<B> for Scratch<B> where Self: ScratchTakeBasic + ScratchAvailable {}

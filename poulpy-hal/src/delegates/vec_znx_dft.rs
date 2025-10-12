@@ -1,8 +1,8 @@
 use crate::{
     api::{
-        VecZnxDftAdd, VecZnxDftAddInplace, VecZnxDftAlloc, VecZnxDftAllocBytes, VecZnxDftApply, VecZnxDftCopy,
-        VecZnxDftFromBytes, VecZnxDftSub, VecZnxDftSubInplace, VecZnxDftSubNegateInplace, VecZnxDftZero, VecZnxIdftApply,
-        VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA, VecZnxIdftApplyTmpBytes,
+        VecZnxDftAdd, VecZnxDftAddInplace, VecZnxDftAlloc, VecZnxDftApply, VecZnxDftBytesOf, VecZnxDftCopy, VecZnxDftFromBytes,
+        VecZnxDftSub, VecZnxDftSubInplace, VecZnxDftSubNegateInplace, VecZnxDftZero, VecZnxIdftApply, VecZnxIdftApplyConsume,
+        VecZnxIdftApplyTmpA, VecZnxIdftApplyTmpBytes,
     },
     layouts::{
         Backend, Data, Module, Scratch, VecZnxBig, VecZnxBigToMut, VecZnxDft, VecZnxDftOwned, VecZnxDftToMut, VecZnxDftToRef,
@@ -24,12 +24,12 @@ where
     }
 }
 
-impl<B> VecZnxDftAllocBytes for Module<B>
+impl<B> VecZnxDftBytesOf for Module<B>
 where
     B: Backend + VecZnxDftAllocBytesImpl<B>,
 {
-    fn vec_znx_dft_alloc_bytes(&self, cols: usize, size: usize) -> usize {
-        B::vec_znx_dft_alloc_bytes_impl(self.n(), cols, size)
+    fn bytes_of_vec_znx_dft(&self, cols: usize, size: usize) -> usize {
+        B::vec_znx_dft_bytes_of_impl(self.n(), cols, size)
     }
 }
 

@@ -8,7 +8,7 @@ use std::{fmt, marker::PhantomData};
 use poulpy_core::{
     Distribution,
     layouts::{
-        Base2K, Degree, Dnum, Dsize, GGSWCiphertext, GGSWInfos, GLWEInfos, LWEInfos, LWESecret, Rank, TorusPrecision,
+        Base2K, Dnum, Dsize, GGSW, GGSWInfos, GLWEInfos, LWEInfos, LWESecret, Rank, RingDegree, TorusPrecision,
         prepared::GLWESecretPrepared,
     },
 };
@@ -19,8 +19,8 @@ use crate::tfhe::blind_rotation::BlindRotationAlgo;
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub struct BlindRotationKeyLayout {
-    pub n_glwe: Degree,
-    pub n_lwe: Degree,
+    pub n_glwe: RingDegree,
+    pub n_lwe: RingDegree,
     pub base2k: Base2K,
     pub k: TorusPrecision,
     pub dnum: Dnum,
@@ -28,11 +28,11 @@ pub struct BlindRotationKeyLayout {
 }
 
 impl BlindRotationKeyInfos for BlindRotationKeyLayout {
-    fn n_glwe(&self) -> Degree {
+    fn n_glwe(&self) -> RingDegree {
         self.n_glwe
     }
 
-    fn n_lwe(&self) -> Degree {
+    fn n_lwe(&self) -> RingDegree {
         self.n_lwe
     }
 }
@@ -62,7 +62,7 @@ impl LWEInfos for BlindRotationKeyLayout {
         self.k
     }
 
-    fn n(&self) -> Degree {
+    fn n(&self) -> RingDegree {
         self.n_glwe
     }
 }
@@ -71,8 +71,8 @@ pub trait BlindRotationKeyInfos
 where
     Self: GGSWInfos,
 {
-    fn n_glwe(&self) -> Degree;
-    fn n_lwe(&self) -> Degree;
+    fn n_glwe(&self) -> RingDegree;
+    fn n_lwe(&self) -> RingDegree;
 }
 
 pub trait BlindRotationKeyAlloc {
@@ -98,7 +98,7 @@ pub trait BlindRotationKeyEncryptSk<B: Backend> {
 
 #[derive(Clone)]
 pub struct BlindRotationKey<D: Data, BRT: BlindRotationAlgo> {
-    pub(crate) keys: Vec<GGSWCiphertext<D>>,
+    pub(crate) keys: Vec<GGSW<D>>,
     pub(crate) dist: Distribution,
     pub(crate) _phantom: PhantomData<BRT>,
 }
@@ -178,12 +178,12 @@ impl<D: DataRef, BRT: BlindRotationAlgo> WriterTo for BlindRotationKey<D, BRT> {
 }
 
 impl<D: DataRef, BRT: BlindRotationAlgo> BlindRotationKeyInfos for BlindRotationKey<D, BRT> {
-    fn n_glwe(&self) -> Degree {
+    fn n_glwe(&self) -> RingDegree {
         self.n()
     }
 
-    fn n_lwe(&self) -> Degree {
-        Degree(self.keys.len() as u32)
+    fn n_lwe(&self) -> RingDegree {
+        RingDegree(self.keys.len() as u32)
     }
 }
 
@@ -206,7 +206,7 @@ impl<D: DataRef, BRT: BlindRotationAlgo> LWEInfos for BlindRotationKey<D, BRT> {
         self.keys[0].k()
     }
 
-    fn n(&self) -> Degree {
+    fn n(&self) -> RingDegree {
         self.keys[0].n()
     }
 

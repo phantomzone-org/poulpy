@@ -6,7 +6,7 @@ use poulpy_hal::{
 use crate::cpu_spqlios::NTT120;
 
 unsafe impl VecZnxDftAllocBytesImpl<NTT120> for NTT120 {
-    fn vec_znx_dft_alloc_bytes_impl(n: usize, cols: usize, size: usize) -> usize {
+    fn vec_znx_dft_bytes_of_impl(n: usize, cols: usize, size: usize) -> usize {
         NTT120::layout_prep_word_count() * n * cols * size * size_of::<i64>()
     }
 }

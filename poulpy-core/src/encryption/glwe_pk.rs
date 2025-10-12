@@ -1,50 +1,43 @@
 use poulpy_hal::{
-    api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDftInplace, VecZnxAddInplace, VecZnxAddNormal, VecZnxBigNormalize,
-        VecZnxDftAllocBytes, VecZnxDftApply, VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeInplace,
-        VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubInplace,
-    },
+    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxDftBytesOf, VecZnxNormalizeTmpBytes},
     layouts::{Backend, DataMut, DataRef, Module, ScratchOwned},
-    oep::{ScratchAvailableImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeVecZnxDftImpl, TakeVecZnxImpl},
     source::Source,
 };
 
-use crate::layouts::{GLWECiphertext, GLWEPublicKey, prepared::GLWESecretPrepared};
+use crate::{
+    encryption::glwe_ct::GLWEEncryptZeroSk,
+    layouts::{
+        GLWE, GLWEPublicKey, GLWEPublicKeyToMut,
+        prepared::{GLWESecretPrepared, GLWESecretPreparedToRef},
+    },
+};
 
-impl<D: DataMut> GLWEPublicKey<D> {
-    pub fn generate_from_sk<S: DataRef, B>(
-        &mut self,
-        module: &Module<B>,
-        sk: &GLWESecretPrepared<S, B>,
-        source_xa: &mut Source,
-        source_xe: &mut Source,
-    ) where
-        Module<B>:,
-        Module<B>: VecZnxDftAllocBytes
-            + VecZnxBigNormalize<B>
-            + VecZnxDftApply<B>
-            + SvpApplyDftToDftInplace<B>
-            + VecZnxIdftApplyConsume<B>
-            + VecZnxNormalizeTmpBytes
-            + VecZnxFillUniform
-            + VecZnxSubInplace
-            + VecZnxAddInplace
-            + VecZnxNormalizeInplace<B>
-            + VecZnxAddNormal
-            + VecZnxNormalize<B>
-            + VecZnxSub,
-        B: Backend
-            + ScratchOwnedAllocImpl<B>
-            + ScratchOwnedBorrowImpl<B>
-            + TakeVecZnxDftImpl<B>
-            + ScratchAvailableImpl<B>
-            + TakeVecZnxImpl<B>,
+pub trait GLWEPublicKeyGenerate<B: Backend> {
+    fn glwe_public_key_generate<R, S>(&self, res: &mut R, sk: &S, source_xa: &mut Source, source_xe: &mut Source)
+    where
+        R: GLWEPublicKeyToMut,
+        S: GLWESecretPreparedToRef<B>;
+}
+
+impl<B: Backend> GLWEPublicKeyGenerate<B> for Module<B>
+where
+    Module<B>: GLWEEncryptZeroSk<B> + VecZnxNormalizeTmpBytes + VecZnxDftBytesOf,
+    ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
+{
+    fn glwe_public_key_generate<R, S>(&self, res: &mut R, sk: &S, source_xa: &mut Source, source_xe: &mut Source)
+    where
+        R: GLWEPublicKeyToMut,
+        S: GLWESecretPreparedToRef<B>,
     {
+        let res: &mut GLWEPublicKey<&mut [u8]> = &mut res.to_mut();
+        let sk: &GLWESecretPrepared<&[u8], B> = &sk.to_ref();
+
         #[cfg(debug_assertions)]
         {
             use crate::{Distribution, layouts::LWEInfos};
 
-            assert_eq!(self.n(), sk.n());
+            assert_eq!(res.n(), self.n() as u32);
+            assert_eq!(sk.n(), self.n() as u32);
 
             if sk.dist == Distribution::NONE {
                 panic!("invalid sk: SecretDistribution::NONE")
@@ -52,10 +45,25 @@ impl<D: DataMut> GLWEPublicKey<D> {
         }
 
         // Its ok to allocate scratch space here since pk is usually generated only once.
-        let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GLWECiphertext::encrypt_sk_scratch_space(module, self));
+        let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GLWE::encrypt_sk_tmp_bytes(self, res));
 
-        let mut tmp: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(self);
-        tmp.encrypt_zero_sk(module, sk, source_xa, source_xe, scratch.borrow());
-        self.dist = sk.dist;
+        let mut tmp: GLWE<Vec<u8>> = GLWE::alloc_from_infos(res);
+
+        tmp.encrypt_zero_sk(self, sk, source_xa, source_xe, scratch.borrow());
+        res.dist = sk.dist;
+    }
+}
+
+impl<D: DataMut> GLWEPublicKey<D> {
+    pub fn generate<S: DataRef, B: Backend>(
+        &mut self,
+        module: &Module<B>,
+        sk: &GLWESecretPrepared<S, B>,
+        source_xa: &mut Source,
+        source_xe: &mut Source,
+    ) where
+        Module<B>: GLWEPublicKeyGenerate<B>,
+    {
+        module.glwe_public_key_generate(self, sk, source_xa, source_xe);
     }
 }

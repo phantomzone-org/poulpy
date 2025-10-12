@@ -24,7 +24,7 @@ unsafe impl VecZnxDftFromBytesImpl<Self> for FFT64Avx {
 }
 
 unsafe impl VecZnxDftAllocBytesImpl<Self> for FFT64Avx {
-    fn vec_znx_dft_alloc_bytes_impl(n: usize, cols: usize, size: usize) -> usize {
+    fn vec_znx_dft_bytes_of_impl(n: usize, cols: usize, size: usize) -> usize {
         Self::layout_prep_word_count() * n * cols * size * size_of::<<FFT64Avx as Backend>::ScalarPrep>()
     }
 }

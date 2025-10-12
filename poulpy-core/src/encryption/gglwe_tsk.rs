@@ -1,39 +1,34 @@
 use poulpy_hal::{
     api::{
-        ScratchAvailable, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolAllocBytes, SvpPrepare, TakeScalarZnx, TakeVecZnx,
-        TakeVecZnxBig, TakeVecZnxDft, VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxBigAllocBytes,
-        VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftApply, VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA,
-        VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubInplace, VecZnxSwitchRing,
+        SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolBytesOf, SvpPrepare, VecZnxAddInplace, VecZnxAddNormal,
+        VecZnxAddScalarInplace, VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxDftApply, VecZnxDftBytesOf, VecZnxFillUniform,
+        VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub,
+        VecZnxSubInplace, VecZnxSwitchRing,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
     source::Source,
 };
 
-use crate::{
-    TakeGLWESecret, TakeGLWESecretPrepared,
-    layouts::{
-        Degree, GGLWEInfos, GGLWESwitchingKey, GGLWETensorKey, GLWEInfos, GLWESecret, LWEInfos, Rank,
-        prepared::{GLWESecretPrepared, Prepare},
-    },
+use crate::layouts::{
+    GGLWEInfos, GLWEInfos, GLWESecret, GLWESwitchingKey, LWEInfos, Rank, RingDegree, TensorKey, prepared::GLWESecretPrepared,
 };
 
-impl GGLWETensorKey<Vec<u8>> {
-    pub fn encrypt_sk_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
+impl TensorKey<Vec<u8>> {
+    pub fn encrypt_sk_tmp_bytes<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GGLWEInfos,
-        Module<B>:
-            SvpPPolAllocBytes + VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes + VecZnxNormalizeTmpBytes + VecZnxBigAllocBytes,
+        Module<B>: SvpPPolBytesOf + VecZnxNormalizeTmpBytes + VecZnxDftBytesOf + VecZnxNormalizeTmpBytes + VecZnxBigBytesOf,
     {
-        GLWESecretPrepared::alloc_bytes_with(module, infos.rank_out())
-            + module.vec_znx_dft_alloc_bytes(infos.rank_out().into(), 1)
-            + module.vec_znx_big_alloc_bytes(1, 1)
-            + module.vec_znx_dft_alloc_bytes(1, 1)
-            + GLWESecret::alloc_bytes_with(Degree(module.n() as u32), Rank(1))
-            + GGLWESwitchingKey::encrypt_sk_scratch_space(module, infos)
+        GLWESecretPrepared::bytes_of(module, infos.rank_out())
+            + module.bytes_of_vec_znx_dft(infos.rank_out().into(), 1)
+            + module.bytes_of_vec_znx_big(1, 1)
+            + module.bytes_of_vec_znx_dft(1, 1)
+            + GLWESecret::bytes_of(RingDegree(module.n() as u32), Rank(1))
+            + GLWESwitchingKey::encrypt_sk_tmp_bytes(module, infos)
     }
 }
 
-impl<DataSelf: DataMut> GGLWETensorKey<DataSelf> {
+impl<DataSelf: DataMut> TensorKey<DataSelf> {
     pub fn encrypt_sk<DataSk: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
@@ -45,7 +40,7 @@ impl<DataSelf: DataMut> GGLWETensorKey<DataSelf> {
         Module<B>: SvpApplyDftToDft<B>
             + VecZnxIdftApplyTmpA<B>
             + VecZnxAddScalarInplace
-            + VecZnxDftAllocBytes
+            + VecZnxDftBytesOf
             + VecZnxBigNormalize<B>
             + VecZnxDftApply<B>
             + SvpApplyDftToDftInplace<B>
@@ -60,9 +55,8 @@ impl<DataSelf: DataMut> GGLWETensorKey<DataSelf> {
             + VecZnxSub
             + SvpPrepare<B>
             + VecZnxSwitchRing
-            + SvpPPolAllocBytes,
-        Scratch<B>:
-            TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx + TakeScalarZnx + TakeGLWESecretPrepared<B> + TakeVecZnxBig<B>,
+            + SvpPPolBytesOf,
+        Scratch<B>:,
     {
         #[cfg(debug_assertions)]
         {
@@ -70,7 +64,7 @@ impl<DataSelf: DataMut> GGLWETensorKey<DataSelf> {
             assert_eq!(self.n(), sk.n());
         }
 
-        let n: Degree = sk.n();
+        let n: RingDegree = sk.n();
         let rank: Rank = self.rank_out();
 
         let (mut sk_dft_prep, scratch_1) = scratch.take_glwe_secret_prepared(n, rank);

@@ -1,9 +1,9 @@
 use poulpy_hal::{
     api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolBytesOf, SvpPrepare,
         VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxAutomorphism, VecZnxAutomorphismInplace,
-        VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
-        VecZnxCopy, VecZnxDftAllocBytes, VecZnxDftApply, VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxNormalize,
+        VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
+        VecZnxCopy, VecZnxDftApply, VecZnxDftBytesOf, VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxNormalize,
         VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubInplace, VecZnxSubScalarInplace, VecZnxSwitchRing,
         VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes, VmpPMatAlloc, VmpPrepare,
     },
@@ -18,15 +18,15 @@ use poulpy_hal::{
 use crate::{
     encryption::SIGMA,
     layouts::{
-        GGLWEAutomorphismKey, GGLWEAutomorphismKeyLayout, GLWEInfos, GLWESecret,
-        compressed::{Decompress, GGLWEAutomorphismKeyCompressed},
+        AutomorphismKey, AutomorphismKeyLayout, GLWEInfos, GLWESecret,
+        compressed::{AutomorphismKeyCompressed, Decompress},
         prepared::{GLWESecretPrepared, PrepareAlloc},
     },
 };
 
 pub fn test_gglwe_automorphisk_key_encrypt_sk<B>(module: &Module<B>)
 where
-    Module<B>: VecZnxDftAllocBytes
+    Module<B>: VecZnxDftBytesOf
         + VecZnxBigNormalize<B>
         + VecZnxDftApply<B>
         + SvpApplyDftToDftInplace<B>
@@ -40,7 +40,7 @@ where
         + VecZnxNormalize<B>
         + VecZnxSub
         + SvpPrepare<B>
-        + SvpPPolAllocBytes
+        + SvpPPolBytesOf
         + SvpPPolAlloc<B>
         + VmpApplyDftToDftTmpBytes
         + VecZnxBigNormalizeTmpBytes
@@ -51,7 +51,7 @@ where
         + VecZnxSwitchRing
         + VecZnxAddScalarInplace
         + VecZnxAutomorphismInplace<B>
-        + VecZnxBigAllocBytes
+        + VecZnxBigBytesOf
         + VecZnxBigAddInplace<B>
         + VecZnxSubScalarInplace
         + VecZnxCopy
@@ -75,7 +75,7 @@ where
             let n: usize = module.n();
             let dnum: usize = (k_ksk - di * base2k) / (di * base2k);
 
-            let atk_infos: GGLWEAutomorphismKeyLayout = GGLWEAutomorphismKeyLayout {
+            let atk_infos: AutomorphismKeyLayout = AutomorphismKeyLayout {
                 n: n.into(),
                 base2k: base2k.into(),
                 k: k_ksk.into(),
@@ -84,17 +84,17 @@ where
                 rank: rank.into(),
             };
 
-            let mut atk: GGLWEAutomorphismKey<Vec<u8>> = GGLWEAutomorphismKey::alloc(&atk_infos);
+            let mut atk: AutomorphismKey<Vec<u8>> = AutomorphismKey::alloc_from_infos(&atk_infos);
 
             let mut source_xs: Source = Source::new([0u8; 32]);
             let mut source_xe: Source = Source::new([0u8; 32]);
             let mut source_xa: Source = Source::new([0u8; 32]);
 
-            let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GGLWEAutomorphismKey::encrypt_sk_scratch_space(
+            let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(AutomorphismKey::encrypt_sk_tmp_bytes(
                 module, &atk_infos,
             ));
 
-            let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(&atk_infos);
+            let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&atk_infos);
             sk.fill_ternary_prob(0.5, &mut source_xs);
 
             let p = -5;
@@ -129,7 +129,7 @@ where
 
 pub fn test_gglwe_automorphisk_key_compressed_encrypt_sk<B>(module: &Module<B>)
 where
-    Module<B>: VecZnxDftAllocBytes
+    Module<B>: VecZnxDftBytesOf
         + VecZnxBigNormalize<B>
         + VecZnxDftApply<B>
         + SvpApplyDftToDftInplace<B>
@@ -143,7 +143,7 @@ where
         + VecZnxNormalize<B>
         + VecZnxSub
         + SvpPrepare<B>
-        + SvpPPolAllocBytes
+        + SvpPPolBytesOf
         + SvpPPolAlloc<B>
         + VmpApplyDftToDftTmpBytes
         + VecZnxBigNormalizeTmpBytes
@@ -154,7 +154,7 @@ where
         + VecZnxSwitchRing
         + VecZnxAddScalarInplace
         + VecZnxAutomorphismInplace<B>
-        + VecZnxBigAllocBytes
+        + VecZnxBigBytesOf
         + VecZnxBigAddInplace<B>
         + VecZnxSubScalarInplace
         + VecZnxCopy
@@ -178,7 +178,7 @@ where
             let n: usize = module.n();
             let dnum: usize = (k_ksk - di * base2k) / (di * base2k);
 
-            let atk_infos: GGLWEAutomorphismKeyLayout = GGLWEAutomorphismKeyLayout {
+            let atk_infos: AutomorphismKeyLayout = AutomorphismKeyLayout {
                 n: n.into(),
                 base2k: base2k.into(),
                 k: k_ksk.into(),
@@ -187,16 +187,16 @@ where
                 rank: rank.into(),
             };
 
-            let mut atk_compressed: GGLWEAutomorphismKeyCompressed<Vec<u8>> = GGLWEAutomorphismKeyCompressed::alloc(&atk_infos);
+            let mut atk_compressed: AutomorphismKeyCompressed<Vec<u8>> = AutomorphismKeyCompressed::alloc_from_infos(&atk_infos);
 
             let mut source_xs: Source = Source::new([0u8; 32]);
             let mut source_xe: Source = Source::new([0u8; 32]);
 
-            let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GGLWEAutomorphismKey::encrypt_sk_scratch_space(
+            let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(AutomorphismKey::encrypt_sk_tmp_bytes(
                 module, &atk_infos,
             ));
 
-            let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(&atk_infos);
+            let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&atk_infos);
             sk.fill_ternary_prob(0.5, &mut source_xs);
 
             let p = -5;
@@ -217,7 +217,7 @@ where
             });
             let sk_out_prepared = sk_out.prepare_alloc(module, scratch.borrow());
 
-            let mut atk: GGLWEAutomorphismKey<Vec<u8>> = GGLWEAutomorphismKey::alloc(&atk_infos);
+            let mut atk: AutomorphismKey<Vec<u8>> = AutomorphismKey::alloc_from_infos(&atk_infos);
             atk.decompress(module, &atk_compressed);
 
             atk.key

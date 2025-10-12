@@ -1,20 +1,20 @@
 use poulpy_hal::{
     api::{
-        ScratchAvailable, TakeVecZnx, TakeVecZnxBig, TakeVecZnxDft, VecZnxAutomorphismInplace, VecZnxBigAddSmallInplace,
-        VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxDftAddInplace, VecZnxDftAllocBytes,
-        VecZnxDftApply, VecZnxDftCopy, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA, VecZnxNormalize, VecZnxNormalizeTmpBytes,
-        VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
+        ScratchAvailable, VecZnxAutomorphismInplace, VecZnxBigAddSmallInplace, VecZnxBigBytesOf, VecZnxBigNormalize,
+        VecZnxBigNormalizeTmpBytes, VecZnxDftAddInplace, VecZnxDftApply, VecZnxDftBytesOf, VecZnxDftCopy, VecZnxIdftApplyConsume,
+        VecZnxIdftApplyTmpA, VecZnxNormalize, VecZnxNormalizeTmpBytes, VmpApplyDftToDft, VmpApplyDftToDftAdd,
+        VmpApplyDftToDftTmpBytes,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
 };
 
 use crate::layouts::{
-    GGLWEInfos, GGSWCiphertext, GGSWInfos, GLWECiphertext,
-    prepared::{GGLWEAutomorphismKeyPrepared, GGLWETensorKeyPrepared},
+    GGLWEInfos, GGSW, GGSWInfos, GLWE,
+    prepared::{AutomorphismKeyPrepared, TensorKeyPrepared},
 };
 
-impl GGSWCiphertext<Vec<u8>> {
-    pub fn automorphism_scratch_space<B: Backend, OUT, IN, KEY, TSK>(
+impl GGSW<Vec<u8>> {
+    pub fn automorphism_tmp_bytes<B: Backend, OUT, IN, KEY, TSK>(
         module: &Module<B>,
         out_infos: &OUT,
         in_infos: &IN,
@@ -26,25 +26,22 @@ impl GGSWCiphertext<Vec<u8>> {
         IN: GGSWInfos,
         KEY: GGLWEInfos,
         TSK: GGLWEInfos,
-        Module<B>: VecZnxDftAllocBytes
-            + VmpApplyDftToDftTmpBytes
-            + VecZnxBigAllocBytes
-            + VecZnxNormalizeTmpBytes
-            + VecZnxBigNormalizeTmpBytes,
+        Module<B>:
+            VecZnxDftBytesOf + VmpApplyDftToDftTmpBytes + VecZnxBigBytesOf + VecZnxNormalizeTmpBytes + VecZnxBigNormalizeTmpBytes,
     {
         let out_size: usize = out_infos.size();
-        let ci_dft: usize = module.vec_znx_dft_alloc_bytes((key_infos.rank_out() + 1).into(), out_size);
-        let ks_internal: usize = GLWECiphertext::keyswitch_scratch_space(
+        let ci_dft: usize = module.bytes_of_vec_znx_dft((key_infos.rank_out() + 1).into(), out_size);
+        let ks_internal: usize = GLWE::keyswitch_tmp_bytes(
             module,
             &out_infos.glwe_layout(),
             &in_infos.glwe_layout(),
             key_infos,
         );
-        let expand: usize = GGSWCiphertext::expand_row_scratch_space(module, out_infos, tsk_infos);
+        let expand: usize = GGSW::expand_row_tmp_bytes(module, out_infos, tsk_infos);
         ci_dft + (ks_internal | expand)
     }
 
-    pub fn automorphism_inplace_scratch_space<B: Backend, OUT, KEY, TSK>(
+    pub fn automorphism_inplace_tmp_bytes<B: Backend, OUT, KEY, TSK>(
         module: &Module<B>,
         out_infos: &OUT,
         key_infos: &KEY,
@@ -54,26 +51,23 @@ impl GGSWCiphertext<Vec<u8>> {
         OUT: GGSWInfos,
         KEY: GGLWEInfos,
         TSK: GGLWEInfos,
-        Module<B>: VecZnxDftAllocBytes
-            + VmpApplyDftToDftTmpBytes
-            + VecZnxBigAllocBytes
-            + VecZnxNormalizeTmpBytes
-            + VecZnxBigNormalizeTmpBytes,
+        Module<B>:
+            VecZnxDftBytesOf + VmpApplyDftToDftTmpBytes + VecZnxBigBytesOf + VecZnxNormalizeTmpBytes + VecZnxBigNormalizeTmpBytes,
     {
-        GGSWCiphertext::automorphism_scratch_space(module, out_infos, out_infos, key_infos, tsk_infos)
+        GGSW::automorphism_tmp_bytes(module, out_infos, out_infos, key_infos, tsk_infos)
     }
 }
 
-impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
+impl<DataSelf: DataMut> GGSW<DataSelf> {
     pub fn automorphism<DataLhs: DataRef, DataAk: DataRef, DataTsk: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
-        lhs: &GGSWCiphertext<DataLhs>,
-        auto_key: &GGLWEAutomorphismKeyPrepared<DataAk, B>,
-        tensor_key: &GGLWETensorKeyPrepared<DataTsk, B>,
+        lhs: &GGSW<DataLhs>,
+        auto_key: &AutomorphismKeyPrepared<DataAk, B>,
+        tensor_key: &TensorKeyPrepared<DataTsk, B>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: VecZnxDftAllocBytes
+        Module<B>: VecZnxDftBytesOf
             + VmpApplyDftToDftTmpBytes
             + VecZnxBigNormalizeTmpBytes
             + VmpApplyDftToDft<B>
@@ -83,13 +77,13 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>
             + VecZnxAutomorphismInplace<B>
-            + VecZnxBigAllocBytes
+            + VecZnxBigBytesOf
             + VecZnxNormalizeTmpBytes
             + VecZnxDftCopy<B>
             + VecZnxDftAddInplace<B>
             + VecZnxIdftApplyTmpA<B>
             + VecZnxNormalize<B>,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnxBig<B> + TakeVecZnx,
+        Scratch<B>: ScratchAvailable,
     {
         #[cfg(debug_assertions)]
         {
@@ -121,7 +115,7 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
                 self.rank(),
                 tensor_key.rank_out()
             );
-            assert!(scratch.available() >= GGSWCiphertext::automorphism_scratch_space(module, self, lhs, auto_key, tensor_key))
+            assert!(scratch.available() >= GGSW::automorphism_tmp_bytes(module, self, lhs, auto_key, tensor_key))
         };
 
         // Keyswitch the j-th row of the col 0
@@ -137,11 +131,11 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
     pub fn automorphism_inplace<DataKsk: DataRef, DataTsk: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
-        auto_key: &GGLWEAutomorphismKeyPrepared<DataKsk, B>,
-        tensor_key: &GGLWETensorKeyPrepared<DataTsk, B>,
+        auto_key: &AutomorphismKeyPrepared<DataKsk, B>,
+        tensor_key: &TensorKeyPrepared<DataTsk, B>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: VecZnxDftAllocBytes
+        Module<B>: VecZnxDftBytesOf
             + VmpApplyDftToDftTmpBytes
             + VecZnxBigNormalizeTmpBytes
             + VmpApplyDftToDft<B>
@@ -151,13 +145,13 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>
             + VecZnxAutomorphismInplace<B>
-            + VecZnxBigAllocBytes
+            + VecZnxBigBytesOf
             + VecZnxNormalizeTmpBytes
             + VecZnxDftCopy<B>
             + VecZnxDftAddInplace<B>
             + VecZnxIdftApplyTmpA<B>
             + VecZnxNormalize<B>,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnxBig<B> + TakeVecZnx,
+        Scratch<B>: ScratchAvailable,
     {
         // Keyswitch the j-th row of the col 0
         (0..self.dnum().into()).for_each(|row_i| {

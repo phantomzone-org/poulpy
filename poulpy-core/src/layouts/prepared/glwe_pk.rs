@@ -1,14 +1,12 @@
 use poulpy_hal::{
-    api::{VecZnxDftAlloc, VecZnxDftAllocBytes, VecZnxDftApply},
-    layouts::{Backend, Data, DataMut, DataRef, Module, Scratch, VecZnxDft, ZnxInfos},
-    oep::VecZnxDftAllocBytesImpl,
+    api::{VecZnxDftAlloc, VecZnxDftApply, VecZnxDftBytesOf},
+    layouts::{Backend, Data, DataMut, DataRef, Module, VecZnxDft, VecZnxDftToMut, VecZnxDftToRef, ZnxInfos},
 };
 
 use crate::{
     dist::Distribution,
     layouts::{
-        Base2K, BuildError, Degree, GLWEInfos, GLWEPublicKey, LWEInfos, Rank, TorusPrecision,
-        prepared::{Prepare, PrepareAlloc, PrepareScratchSpace},
+        Base2K, GLWEInfos, GLWEPublicKey, GLWEPublicKeyToRef, GetDist, GetRingDegree, LWEInfos, Rank, RingDegree, TorusPrecision,
     },
 };
 
@@ -18,6 +16,16 @@ pub struct GLWEPublicKeyPrepared<D: Data, B: Backend> {
     pub(crate) base2k: Base2K,
     pub(crate) k: TorusPrecision,
     pub(crate) dist: Distribution,
+}
+
+pub(crate) trait SetDist {
+    fn set_dist(&mut self, dist: Distribution);
+}
+
+impl<D: Data, B: Backend> SetDist for GLWEPublicKeyPrepared<D, B> {
+    fn set_dist(&mut self, dist: Distribution) {
+        self.dist = dist
+    }
 }
 
 impl<D: Data, B: Backend> LWEInfos for GLWEPublicKeyPrepared<D, B> {
@@ -33,8 +41,8 @@ impl<D: Data, B: Backend> LWEInfos for GLWEPublicKeyPrepared<D, B> {
         self.data.size()
     }
 
-    fn n(&self) -> Degree {
-        Degree(self.data.n() as u32)
+    fn n(&self) -> RingDegree {
+        RingDegree(self.data.n() as u32)
     }
 }
 
@@ -44,164 +52,138 @@ impl<D: Data, B: Backend> GLWEInfos for GLWEPublicKeyPrepared<D, B> {
     }
 }
 
-pub struct GLWEPublicKeyPreparedBuilder<D: Data, B: Backend> {
-    data: Option<VecZnxDft<D, B>>,
-    base2k: Option<Base2K>,
-    k: Option<TorusPrecision>,
-}
-
-impl<D: Data, B: Backend> GLWEPublicKeyPrepared<D, B> {
-    #[inline]
-    pub fn builder() -> GLWEPublicKeyPreparedBuilder<D, B> {
-        GLWEPublicKeyPreparedBuilder {
-            data: None,
-            base2k: None,
-            k: None,
-        }
-    }
-}
-
-impl<B: Backend> GLWEPublicKeyPreparedBuilder<Vec<u8>, B> {
-    #[inline]
-    pub fn layout<A>(mut self, layout: &A) -> Self
-    where
-        A: GLWEInfos,
-        B: VecZnxDftAllocBytesImpl<B>,
-    {
-        self.data = Some(VecZnxDft::alloc(
-            layout.n().into(),
-            (layout.rank() + 1).into(),
-            layout.size(),
-        ));
-        self.base2k = Some(layout.base2k());
-        self.k = Some(layout.k());
-        self
-    }
-}
-
-impl<D: Data, B: Backend> GLWEPublicKeyPreparedBuilder<D, B> {
-    #[inline]
-    pub fn data(mut self, data: VecZnxDft<D, B>) -> Self {
-        self.data = Some(data);
-        self
-    }
-    #[inline]
-    pub fn base2k(mut self, base2k: Base2K) -> Self {
-        self.base2k = Some(base2k);
-        self
-    }
-    #[inline]
-    pub fn k(mut self, k: TorusPrecision) -> Self {
-        self.k = Some(k);
-        self
-    }
-
-    pub fn build(self) -> Result<GLWEPublicKeyPrepared<D, B>, BuildError> {
-        let data: VecZnxDft<D, B> = self.data.ok_or(BuildError::MissingData)?;
-        let base2k: Base2K = self.base2k.ok_or(BuildError::MissingBase2K)?;
-        let k: TorusPrecision = self.k.ok_or(BuildError::MissingK)?;
-
-        if base2k == 0_u32 {
-            return Err(BuildError::ZeroBase2K);
-        }
-
-        if k == 0_u32 {
-            return Err(BuildError::ZeroTorusPrecision);
-        }
-
-        if data.n() == 0 {
-            return Err(BuildError::ZeroDegree);
-        }
-
-        if data.cols() == 0 {
-            return Err(BuildError::ZeroCols);
-        }
-
-        if data.size() == 0 {
-            return Err(BuildError::ZeroLimbs);
-        }
-
-        Ok(GLWEPublicKeyPrepared {
-            data,
+pub trait GLWEPublicKeyPreparedAlloc<B: Backend>
+where
+    Self: GetRingDegree + VecZnxDftAlloc<B> + VecZnxDftBytesOf,
+{
+    fn alloc_glwe_public_key_prepared(&self, base2k: Base2K, k: TorusPrecision, rank: Rank) -> GLWEPublicKeyPrepared<Vec<u8>, B> {
+        GLWEPublicKeyPrepared {
+            data: self.vec_znx_dft_alloc((rank + 1).into(), k.0.div_ceil(base2k.0) as usize),
             base2k,
             k,
             dist: Distribution::NONE,
-        })
+        }
+    }
+
+    fn alloc_glwe_public_key_prepared_from_infos<A>(&self, infos: &A) -> GLWEPublicKeyPrepared<Vec<u8>, B>
+    where
+        A: GLWEInfos,
+    {
+        self.alloc_glwe_public_key_prepared(infos.base2k(), infos.k(), infos.rank())
+    }
+
+    fn bytes_of_glwe_public_key_prepared(&self, base2k: Base2K, k: TorusPrecision, rank: Rank) -> usize {
+        self.bytes_of_vec_znx_dft((rank + 1).into(), k.0.div_ceil(base2k.0) as usize)
+    }
+
+    fn bytes_of_glwe_public_key_prepared_from_infos<A>(&self, infos: &A) -> usize
+    where
+        A: GLWEInfos,
+    {
+        self.bytes_of_glwe_public_key_prepared(infos.base2k(), infos.k(), infos.rank())
     }
 }
+
+impl<B: Backend> GLWEPublicKeyPreparedAlloc<B> for Module<B> where Self: VecZnxDftAlloc<B> + VecZnxDftBytesOf {}
 
 impl<B: Backend> GLWEPublicKeyPrepared<Vec<u8>, B> {
-    pub fn alloc<A>(module: &Module<B>, infos: &A) -> Self
+    pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
     where
         A: GLWEInfos,
-        Module<B>: VecZnxDftAlloc<B>,
+        M: GLWEPublicKeyPreparedAlloc<B>,
     {
-        debug_assert_eq!(module.n(), infos.n().0 as usize, "module.n() != infos.n()");
-        Self::alloc_with(module, infos.base2k(), infos.k(), infos.rank())
+        module.alloc_glwe_public_key_prepared_from_infos(infos)
     }
 
-    pub fn alloc_with(module: &Module<B>, base2k: Base2K, k: TorusPrecision, rank: Rank) -> Self
+    pub fn alloc<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank: Rank) -> Self
     where
-        Module<B>: VecZnxDftAlloc<B>,
+        M: GLWEPublicKeyPreparedAlloc<B>,
     {
-        Self {
-            data: module.vec_znx_dft_alloc((rank + 1).into(), k.0.div_ceil(base2k.0) as usize),
-            base2k,
-            k,
-            dist: Distribution::NONE,
-        }
+        module.alloc_glwe_public_key_prepared(base2k, k, rank)
     }
 
-    pub fn alloc_bytes<A>(module: &Module<B>, infos: &A) -> usize
+    pub fn bytes_of_from_infos<A, M>(module: &M, infos: &A) -> usize
     where
         A: GLWEInfos,
-        Module<B>: VecZnxDftAllocBytes,
+        M: GLWEPublicKeyPreparedAlloc<B>,
     {
-        debug_assert_eq!(module.n(), infos.n().0 as usize, "module.n() != infos.n()");
-        Self::alloc_bytes_with(module, infos.base2k(), infos.k(), infos.rank())
+        module.bytes_of_glwe_public_key_prepared_from_infos(infos)
     }
 
-    pub fn alloc_bytes_with(module: &Module<B>, base2k: Base2K, k: TorusPrecision, rank: Rank) -> usize
+    pub fn bytes_of<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank: Rank) -> usize
     where
-        Module<B>: VecZnxDftAllocBytes,
+        M: GLWEPublicKeyPreparedAlloc<B>,
     {
-        module.vec_znx_dft_alloc_bytes((rank + 1).into(), k.0.div_ceil(base2k.0) as usize)
+        module.bytes_of_glwe_public_key_prepared(base2k, k, rank)
     }
 }
 
-impl<D: DataRef, B: Backend> PrepareAlloc<B, GLWEPublicKeyPrepared<Vec<u8>, B>> for GLWEPublicKey<D>
+pub trait GLWEPublicKeyPrepare<B: Backend>
 where
-    Module<B>: VecZnxDftAlloc<B> + VecZnxDftApply<B>,
+    Self: GetRingDegree + VecZnxDftApply<B>,
 {
-    fn prepare_alloc(&self, module: &Module<B>, scratch: &mut Scratch<B>) -> GLWEPublicKeyPrepared<Vec<u8>, B> {
-        let mut pk_prepared: GLWEPublicKeyPrepared<Vec<u8>, B> = GLWEPublicKeyPrepared::alloc(module, self);
-        pk_prepared.prepare(module, self, scratch);
-        pk_prepared
-    }
-}
-
-impl<B: Backend, A: GLWEInfos> PrepareScratchSpace<B, A> for GLWEPublicKeyPrepared<Vec<u8>, B> {
-    fn prepare_scratch_space(_module: &Module<B>, _infos: &A) -> usize {
-        0
-    }
-}
-
-impl<DM: DataMut, DR: DataRef, B: Backend> Prepare<B, GLWEPublicKey<DR>> for GLWEPublicKeyPrepared<DM, B>
-where
-    Module<B>: VecZnxDftApply<B>,
-{
-    fn prepare(&mut self, module: &Module<B>, other: &GLWEPublicKey<DR>, _scratch: &mut Scratch<B>) {
-        #[cfg(debug_assertions)]
+    fn prepare_glwe_public_key<R, O>(&self, res: &mut R, other: &O)
+    where
+        R: GLWEPublicKeyPreparedToMut<B> + SetDist,
+        O: GLWEPublicKeyToRef + GetDist,
+    {
         {
-            assert_eq!(self.n(), other.n());
-            assert_eq!(self.size(), other.size());
+            let mut res: GLWEPublicKeyPrepared<&mut [u8], B> = res.to_mut();
+            let other: GLWEPublicKey<&[u8]> = other.to_ref();
+
+            assert_eq!(res.n(), self.ring_degree());
+            assert_eq!(other.n(), self.ring_degree());
+            assert_eq!(res.size(), other.size());
+            assert_eq!(res.k(), other.k());
+            assert_eq!(res.base2k(), other.base2k());
+
+            for i in 0..(res.rank() + 1).into() {
+                self.vec_znx_dft_apply(1, 0, &mut res.data, i, &other.data, i);
+            }
         }
 
-        (0..(self.rank() + 1).into()).for_each(|i| {
-            module.vec_znx_dft_apply(1, 0, &mut self.data, i, &other.data, i);
-        });
-        self.k = other.k();
-        self.base2k = other.base2k();
-        self.dist = other.dist;
+        res.set_dist(other.get_dist());
+    }
+}
+
+impl<B: Backend> GLWEPublicKeyPrepare<B> for Module<B> where Self: GetRingDegree + VecZnxDftApply<B> {}
+
+impl<D: DataMut, B: Backend> GLWEPublicKeyPrepared<D, B> {
+    pub fn prepare<O, M>(&mut self, module: &M, other: &O)
+    where
+        O: GLWEPublicKeyToRef + GetDist,
+        M: GLWEPublicKeyPrepare<B>,
+    {
+        module.prepare_glwe_public_key(self, other);
+    }
+}
+
+pub trait GLWEPublicKeyPreparedToMut<B: Backend> {
+    fn to_mut(&mut self) -> GLWEPublicKeyPrepared<&mut [u8], B>;
+}
+
+impl<D: DataMut, B: Backend> GLWEPublicKeyPreparedToMut<B> for GLWEPublicKeyPrepared<D, B> {
+    fn to_mut(&mut self) -> GLWEPublicKeyPrepared<&mut [u8], B> {
+        GLWEPublicKeyPrepared {
+            dist: self.dist,
+            k: self.k,
+            base2k: self.base2k,
+            data: self.data.to_mut(),
+        }
+    }
+}
+
+pub trait GLWEPublicKeyPreparedToRef<B: Backend> {
+    fn to_ref(&self) -> GLWEPublicKeyPrepared<&[u8], B>;
+}
+
+impl<D: DataRef, B: Backend> GLWEPublicKeyPreparedToRef<B> for GLWEPublicKeyPrepared<D, B> {
+    fn to_ref(&self) -> GLWEPublicKeyPrepared<&[u8], B> {
+        GLWEPublicKeyPrepared {
+            data: self.data.to_ref(),
+            dist: self.dist,
+            k: self.k,
+            base2k: self.base2k,
+        }
     }
 }

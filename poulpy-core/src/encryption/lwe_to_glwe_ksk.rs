@@ -1,32 +1,29 @@
 use poulpy_hal::{
     api::{
-        ScratchAvailable, SvpApplyDftToDftInplace, SvpPPolAllocBytes, SvpPrepare, TakeScalarZnx, TakeVecZnx, TakeVecZnxDft,
-        VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxAutomorphismInplace, VecZnxBigNormalize,
-        VecZnxDftAllocBytes, VecZnxDftApply, VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeInplace,
-        VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubInplace, VecZnxSwitchRing,
+        ScratchAvailable, SvpApplyDftToDftInplace, SvpPPolBytesOf, SvpPrepare, VecZnxAddInplace, VecZnxAddNormal,
+        VecZnxAddScalarInplace, VecZnxAutomorphismInplace, VecZnxBigNormalize, VecZnxDftApply, VecZnxDftBytesOf,
+        VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub,
+        VecZnxSubInplace, VecZnxSwitchRing,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch, ZnxView, ZnxViewMut},
     source::Source,
 };
 
-use crate::{
-    TakeGLWESecret, TakeGLWESecretPrepared,
-    layouts::{Degree, GGLWEInfos, GGLWESwitchingKey, GLWESecret, LWEInfos, LWESecret, LWEToGLWESwitchingKey, Rank},
-};
+use crate::layouts::{GGLWEInfos, GLWESecret, GLWESwitchingKey, LWEInfos, LWESecret, LWEToGLWESwitchingKey, Rank, RingDegree};
 
 impl LWEToGLWESwitchingKey<Vec<u8>> {
-    pub fn encrypt_sk_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
+    pub fn encrypt_sk_tmp_bytes<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GGLWEInfos,
-        Module<B>: SvpPPolAllocBytes + VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes + VecZnxNormalizeTmpBytes,
+        Module<B>: SvpPPolBytesOf + VecZnxNormalizeTmpBytes + VecZnxDftBytesOf + VecZnxNormalizeTmpBytes,
     {
         debug_assert_eq!(
             infos.rank_in(),
             Rank(1),
             "rank_in != 1 is not supported for LWEToGLWESwitchingKey"
         );
-        GGLWESwitchingKey::encrypt_sk_scratch_space(module, infos)
-            + GLWESecret::alloc_bytes_with(Degree(module.n() as u32), infos.rank_in())
+        GLWESwitchingKey::encrypt_sk_tmp_bytes(module, infos)
+            + GLWESecret::bytes_of(RingDegree(module.n() as u32), infos.rank_in())
     }
 }
 
@@ -45,7 +42,7 @@ impl<D: DataMut> LWEToGLWESwitchingKey<D> {
         DGlwe: DataRef,
         Module<B>: VecZnxAutomorphismInplace<B>
             + VecZnxAddScalarInplace
-            + VecZnxDftAllocBytes
+            + VecZnxDftBytesOf
             + VecZnxBigNormalize<B>
             + VecZnxDftApply<B>
             + SvpApplyDftToDftInplace<B>
@@ -60,8 +57,8 @@ impl<D: DataMut> LWEToGLWESwitchingKey<D> {
             + VecZnxSub
             + SvpPrepare<B>
             + VecZnxSwitchRing
-            + SvpPPolAllocBytes,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx + TakeScalarZnx + TakeGLWESecretPrepared<B>,
+            + SvpPPolBytesOf,
+        Scratch<B>: ScratchAvailable,
     {
         #[cfg(debug_assertions)]
         {

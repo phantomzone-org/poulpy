@@ -1,9 +1,9 @@
 use std::marker::PhantomData;
 
-use poulpy_core::layouts::{Base2K, GLWECiphertext, GLWEInfos, GLWEPlaintextLayout, LWEInfos, Rank, TorusPrecision};
+use poulpy_core::layouts::{Base2K, GLWE, GLWEInfos, GLWEPlaintextLayout, LWEInfos, Rank, TorusPrecision};
 
-use poulpy_core::{TakeGLWEPt, layouts::prepared::GLWESecretPrepared};
-use poulpy_hal::api::VecZnxBigAllocBytes;
+use poulpy_core::{TakeGLWEPlaintext, layouts::prepared::GLWESecretPrepared};
+use poulpy_hal::api::VecZnxBigBytesOf;
 #[cfg(test)]
 use poulpy_hal::api::{
     ScratchAvailable, TakeVecZnx, VecZnxAddInplace, VecZnxAddNormal, VecZnxFillUniform, VecZnxNormalize, VecZnxSub,
@@ -12,8 +12,8 @@ use poulpy_hal::api::{
 use poulpy_hal::source::Source;
 use poulpy_hal::{
     api::{
-        TakeVecZnxBig, TakeVecZnxDft, VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigNormalize, VecZnxDftAllocBytes,
-        VecZnxDftApply, VecZnxIdftApplyConsume, VecZnxNormalizeTmpBytes,
+        TakeVecZnxBig, TakeVecZnxDft, VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigNormalize, VecZnxDftApply,
+        VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxNormalizeTmpBytes,
     },
     layouts::{Backend, Data, DataMut, DataRef, Module, Scratch},
 };
@@ -24,7 +24,7 @@ use crate::tfhe::bdd_arithmetic::{FromBits, ToBits, UnsignedInteger};
 
 /// An FHE ciphertext encrypting the bits of an [UnsignedInteger].
 pub struct FheUintBlocks<D: Data, T: UnsignedInteger> {
-    pub(crate) blocks: Vec<GLWECiphertext<D>>,
+    pub(crate) blocks: Vec<GLWE<D>>,
     pub(crate) _base: u8,
     pub(crate) _phantom: PhantomData<T>,
 }
@@ -38,7 +38,7 @@ impl<D: DataRef, T: UnsignedInteger> LWEInfos for FheUintBlocks<D, T> {
         self.blocks[0].k()
     }
 
-    fn n(&self) -> poulpy_core::layouts::Degree {
+    fn n(&self) -> poulpy_core::layouts::RingDegree {
         self.blocks[0].n()
     }
 }
@@ -62,7 +62,7 @@ impl<T: UnsignedInteger> FheUintBlocks<Vec<u8>, T> {
     pub(crate) fn alloc_with<BE: Backend>(module: &Module<BE>, base2k: Base2K, k: TorusPrecision, rank: Rank) -> Self {
         Self {
             blocks: (0..T::WORD_SIZE)
-                .map(|_| GLWECiphertext::alloc_with(module.n().into(), base2k, k, rank))
+                .map(|_| GLWE::alloc(module.n().into(), base2k, k, rank))
                 .collect(),
             _base: 1,
             _phantom: PhantomData,
@@ -83,7 +83,7 @@ impl<D: DataMut, T: UnsignedInteger + ToBits> FheUintBlocks<D, T> {
         scratch: &mut Scratch<BE>,
     ) where
         S: DataRef,
-        Module<BE>: VecZnxDftAllocBytes
+        Module<BE>: VecZnxDftBytesOf
             + VecZnxBigNormalize<BE>
             + VecZnxDftApply<BE>
             + SvpApplyDftToDftInplace<BE>
@@ -96,7 +96,7 @@ impl<D: DataMut, T: UnsignedInteger + ToBits> FheUintBlocks<D, T> {
             + VecZnxAddNormal
             + VecZnxNormalize<BE>
             + VecZnxSub,
-        Scratch<BE>: TakeVecZnxDft<BE> + ScratchAvailable + TakeVecZnx + TakeGLWEPt<BE>,
+        Scratch<BE>: TakeVecZnxDft<BE> + ScratchAvailable + TakeVecZnx + TakeGLWEPlaintext<BE>,
     {
         use poulpy_core::layouts::GLWEPlaintextLayout;
 
@@ -136,7 +136,7 @@ impl<D: DataRef, T: UnsignedInteger + FromBits + ToBits> FheUintBlocks<D, T> {
             + VecZnxBigAddInplace<BE>
             + VecZnxBigAddSmallInplace<BE>
             + VecZnxBigNormalize<BE>,
-        Scratch<BE>: TakeVecZnxDft<BE> + TakeVecZnxBig<BE> + TakeGLWEPt<BE>,
+        Scratch<BE>: TakeVecZnxDft<BE> + TakeVecZnxBig<BE> + TakeGLWEPlaintext<BE>,
     {
         #[cfg(debug_assertions)]
         {
@@ -175,8 +175,8 @@ impl<D: DataRef, T: UnsignedInteger + FromBits + ToBits> FheUintBlocks<D, T> {
         scratch: &mut Scratch<BE>,
     ) -> Vec<f64>
     where
-        Module<BE>: VecZnxDftAllocBytes
-            + VecZnxBigAllocBytes
+        Module<BE>: VecZnxDftBytesOf
+            + VecZnxBigBytesOf
             + VecZnxDftApply<BE>
             + SvpApplyDftToDftInplace<BE>
             + VecZnxIdftApplyConsume<BE>
@@ -186,7 +186,7 @@ impl<D: DataRef, T: UnsignedInteger + FromBits + ToBits> FheUintBlocks<D, T> {
             + VecZnxNormalizeTmpBytes
             + VecZnxSubInplace
             + VecZnxNormalizeInplace<BE>,
-        Scratch<BE>: TakeGLWEPt<BE> + TakeVecZnxDft<BE> + TakeVecZnxBig<BE>,
+        Scratch<BE>: TakeGLWEPlaintext<BE> + TakeVecZnxDft<BE> + TakeVecZnxBig<BE>,
     {
         #[cfg(debug_assertions)]
         {

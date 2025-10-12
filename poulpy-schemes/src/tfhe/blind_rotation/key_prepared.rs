@@ -8,8 +8,8 @@ use std::marker::PhantomData;
 use poulpy_core::{
     Distribution,
     layouts::{
-        Base2K, Degree, Dnum, Dsize, GGSWInfos, GLWEInfos, LWEInfos, Rank, TorusPrecision,
-        prepared::{GGSWCiphertextPrepared, Prepare, PrepareAlloc},
+        Base2K, Dnum, Dsize, GGSWInfos, GLWEInfos, LWEInfos, Rank, RingDegree, TorusPrecision,
+        prepared::{GGSWPrepared, Prepare, PrepareAlloc},
     },
 };
 
@@ -23,19 +23,19 @@ pub trait BlindRotationKeyPreparedAlloc<B: Backend> {
 
 #[derive(PartialEq, Eq)]
 pub struct BlindRotationKeyPrepared<D: Data, BRT: BlindRotationAlgo, B: Backend> {
-    pub(crate) data: Vec<GGSWCiphertextPrepared<D, B>>,
+    pub(crate) data: Vec<GGSWPrepared<D, B>>,
     pub(crate) dist: Distribution,
     pub(crate) x_pow_a: Option<Vec<SvpPPol<Vec<u8>, B>>>,
     pub(crate) _phantom: PhantomData<BRT>,
 }
 
 impl<D: Data, BRT: BlindRotationAlgo, B: Backend> BlindRotationKeyInfos for BlindRotationKeyPrepared<D, BRT, B> {
-    fn n_glwe(&self) -> Degree {
+    fn n_glwe(&self) -> RingDegree {
         self.n()
     }
 
-    fn n_lwe(&self) -> Degree {
-        Degree(self.data.len() as u32)
+    fn n_lwe(&self) -> RingDegree {
+        RingDegree(self.data.len() as u32)
     }
 }
 
@@ -48,7 +48,7 @@ impl<D: Data, BRT: BlindRotationAlgo, B: Backend> LWEInfos for BlindRotationKeyP
         self.data[0].k()
     }
 
-    fn n(&self) -> Degree {
+    fn n(&self) -> RingDegree {
         self.data[0].n()
     }
 

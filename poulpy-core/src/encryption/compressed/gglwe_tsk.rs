@@ -1,86 +1,83 @@
 use poulpy_hal::{
     api::{
-        ScratchAvailable, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare, TakeScalarZnx,
-        TakeVecZnx, TakeVecZnxBig, TakeVecZnxDft, VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxBigAllocBytes,
-        VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftApply, VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA,
-        VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubInplace, VecZnxSwitchRing,
+        SvpApplyDftToDft, SvpPPolBytesOf, SvpPrepare, VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxDftApply, VecZnxDftBytesOf,
+        VecZnxIdftApplyTmpA, VecZnxNormalizeTmpBytes,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
     source::Source,
 };
 
 use crate::{
-    TakeGLWESecret, TakeGLWESecretPrepared,
+    encryption::compressed::gglwe_ksk::GGLWEKeyCompressedEncryptSk,
     layouts::{
-        GGLWEInfos, GGLWETensorKey, GLWEInfos, GLWESecret, LWEInfos, Rank, compressed::GGLWETensorKeyCompressed,
-        prepared::Prepare,
+        GGLWEInfos, GLWEInfos, GLWESecret, GLWESecretToRef, LWEInfos, Rank, TensorKey,
+        compressed::{TensorKeyCompressed, TensorKeyCompressedToMut},
     },
 };
 
-impl GGLWETensorKeyCompressed<Vec<u8>> {
-    pub fn encrypt_sk_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
+impl TensorKeyCompressed<Vec<u8>> {
+    pub fn encrypt_sk_tmp_bytes<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GGLWEInfos,
-        Module<B>:
-            SvpPPolAllocBytes + VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes + VecZnxNormalizeTmpBytes + VecZnxBigAllocBytes,
+        Module<B>: SvpPPolBytesOf + VecZnxNormalizeTmpBytes + VecZnxDftBytesOf + VecZnxNormalizeTmpBytes + VecZnxBigBytesOf,
     {
-        GGLWETensorKey::encrypt_sk_scratch_space(module, infos)
+        TensorKey::encrypt_sk_tmp_bytes(module, infos)
     }
 }
 
-impl<DataSelf: DataMut> GGLWETensorKeyCompressed<DataSelf> {
-    pub fn encrypt_sk<DataSk: DataRef, B: Backend>(
-        &mut self,
-        module: &Module<B>,
-        sk: &GLWESecret<DataSk>,
+pub trait GGLWETensorKeyCompressedEncryptSk<B: Backend> {
+    fn gglwe_tensor_key_encrypt_sk<R, S>(
+        &self,
+        res: &mut R,
+        sk: &S,
         seed_xa: [u8; 32],
         source_xe: &mut Source,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: SvpApplyDftToDft<B>
-            + VecZnxIdftApplyTmpA<B>
-            + VecZnxDftAllocBytes
-            + VecZnxBigNormalize<B>
-            + VecZnxDftApply<B>
-            + SvpApplyDftToDftInplace<B>
-            + VecZnxIdftApplyConsume<B>
-            + VecZnxNormalizeTmpBytes
-            + VecZnxFillUniform
-            + VecZnxSubInplace
-            + VecZnxAddInplace
-            + VecZnxNormalizeInplace<B>
-            + VecZnxAddNormal
-            + VecZnxNormalize<B>
-            + VecZnxSub
-            + VecZnxSwitchRing
-            + VecZnxAddScalarInplace
-            + SvpPrepare<B>
-            + SvpPPolAllocBytes
-            + SvpPPolAlloc<B>,
-        Scratch<B>: ScratchAvailable
-            + TakeScalarZnx
-            + TakeVecZnxDft<B>
-            + TakeGLWESecretPrepared<B>
-            + ScratchAvailable
-            + TakeVecZnx
-            + TakeVecZnxBig<B>,
+        R: TensorKeyCompressedToMut,
+        S: GLWESecretToRef;
+}
+
+impl<B: Backend> GGLWETensorKeyCompressedEncryptSk<B> for Module<B>
+where
+    Module<B>: GGLWEKeyCompressedEncryptSk<B>
+        + VecZnxDftApply<B>
+        + SvpApplyDftToDft<B>
+        + VecZnxIdftApplyTmpA<B>
+        + VecZnxBigNormalize<B>
+        + SvpPrepare<B>,
+    Scratch<B>:,
+{
+    fn gglwe_tensor_key_encrypt_sk<R, S>(
+        &self,
+        res: &mut R,
+        sk: &S,
+        seed_xa: [u8; 32],
+        source_xe: &mut Source,
+        scratch: &mut Scratch<B>,
+    ) where
+        R: TensorKeyCompressedToMut,
+        S: GLWESecretToRef,
     {
+        let res: &mut TensorKeyCompressed<&mut [u8]> = &mut res.to_mut();
+        let sk: &GLWESecret<&[u8]> = &sk.to_ref();
+
         #[cfg(debug_assertions)]
         {
-            assert_eq!(self.rank_out(), sk.rank());
-            assert_eq!(self.n(), sk.n());
+            assert_eq!(res.rank_out(), sk.rank());
+            assert_eq!(res.n(), sk.n());
         }
 
         let n: usize = sk.n().into();
-        let rank: usize = self.rank_out().into();
+        let rank: usize = res.rank_out().into();
 
-        let (mut sk_dft_prep, scratch_1) = scratch.take_glwe_secret_prepared(sk.n(), self.rank_out());
-        sk_dft_prep.prepare(module, sk, scratch_1);
+        let (mut sk_dft_prep, scratch_1) = scratch.take_glwe_secret_prepared(sk.n(), res.rank_out());
+        sk_dft_prep.prepare(self, sk, scratch_1);
 
         let (mut sk_dft, scratch_2) = scratch_1.take_vec_znx_dft(n, rank, 1);
 
         for i in 0..rank {
-            module.vec_znx_dft_apply(1, 0, &mut sk_dft, i, &sk.data.as_vec_znx(), i);
+            self.vec_znx_dft_apply(1, 0, &mut sk_dft, i, &sk.data.as_vec_znx(), i);
         }
 
         let (mut sk_ij_big, scratch_3) = scratch_2.take_vec_znx_big(n, 1, 1);
@@ -91,14 +88,14 @@ impl<DataSelf: DataMut> GGLWETensorKeyCompressed<DataSelf> {
 
         for i in 0..rank {
             for j in i..rank {
-                module.svp_apply_dft_to_dft(&mut sk_ij_dft, 0, &sk_dft_prep.data, j, &sk_dft, i);
+                self.svp_apply_dft_to_dft(&mut sk_ij_dft, 0, &sk_dft_prep.data, j, &sk_dft, i);
 
-                module.vec_znx_idft_apply_tmpa(&mut sk_ij_big, 0, &mut sk_ij_dft, 0);
-                module.vec_znx_big_normalize(
-                    self.base2k().into(),
+                self.vec_znx_idft_apply_tmpa(&mut sk_ij_big, 0, &mut sk_ij_dft, 0);
+                self.vec_znx_big_normalize(
+                    res.base2k().into(),
                     &mut sk_ij.data.as_vec_znx_mut(),
                     0,
-                    self.base2k().into(),
+                    res.base2k().into(),
                     &sk_ij_big,
                     0,
                     scratch_5,
@@ -106,9 +103,30 @@ impl<DataSelf: DataMut> GGLWETensorKeyCompressed<DataSelf> {
 
                 let (seed_xa_tmp, _) = source_xa.branch();
 
-                self.at_mut(i, j)
-                    .encrypt_sk(module, &sk_ij, sk, seed_xa_tmp, source_xe, scratch_5);
+                self.gglwe_key_compressed_encrypt_sk(
+                    res.at_mut(i, j),
+                    &sk_ij,
+                    sk,
+                    seed_xa_tmp,
+                    source_xe,
+                    scratch_5,
+                );
             }
         }
+    }
+}
+
+impl<DataSelf: DataMut> TensorKeyCompressed<DataSelf> {
+    pub fn encrypt_sk<DataSk: DataRef, B: Backend>(
+        &mut self,
+        module: &Module<B>,
+        sk: &GLWESecret<DataSk>,
+        seed_xa: [u8; 32],
+        source_xe: &mut Source,
+        scratch: &mut Scratch<B>,
+    ) where
+        Module<B>: GGLWETensorKeyCompressedEncryptSk<B>,
+    {
+        module.gglwe_tensor_key_encrypt_sk(self, sk, seed_xa, source_xe, scratch);
     }
 }

@@ -9,18 +9,18 @@ use crate::tfhe::{
     },
 };
 use poulpy_core::{
-    TakeGGSW, TakeGLWECt,
+    TakeGGSW, TakeGLWE,
     layouts::{
-        GLWESecret, GLWEToLWEKey, GLWEToLWEKeyLayout, LWECiphertext, LWESecret,
+        GLWESecret, GLWEToLWEKeyLayout, GLWEToLWESwitchingKey, LWE, LWESecret,
         prepared::{GLWEToLWESwitchingKeyPrepared, Prepare, PrepareAlloc},
     },
 };
 use poulpy_hal::{
     api::{
-        ScratchAvailable, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare, TakeScalarZnx,
+        ScratchAvailable, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolBytesOf, SvpPrepare, TakeScalarZnx,
         TakeSvpPPol, TakeVecZnx, TakeVecZnxBig, TakeVecZnxDft, VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace,
         VecZnxAutomorphism, VecZnxAutomorphismInplace, VecZnxBigAddSmallInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
-        VecZnxDftAllocBytes, VecZnxDftApply, VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA, VecZnxNormalize,
+        VecZnxDftApply, VecZnxDftBytesOf, VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA, VecZnxNormalize,
         VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxSub, VecZnxSubInplace, VecZnxSwitchRing,
         VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes, VmpPrepare,
     },
@@ -56,7 +56,7 @@ where
     BRA: BlindRotationAlgo,
 {
     cbt: CircuitBootstrappingKey<CBT, BRA>,
-    ks: GLWEToLWEKey<LWE>,
+    ks: GLWEToLWESwitchingKey<LWE>,
 }
 
 impl<BRA: BlindRotationAlgo> BDDKey<Vec<u8>, Vec<u8>, BRA> {
@@ -77,7 +77,7 @@ impl<BRA: BlindRotationAlgo> BDDKey<Vec<u8>, Vec<u8>, BRA> {
         Module<BE>: SvpApplyDftToDft<BE>
             + VecZnxIdftApplyTmpA<BE>
             + VecZnxAddScalarInplace
-            + VecZnxDftAllocBytes
+            + VecZnxDftBytesOf
             + VecZnxBigNormalize<BE>
             + VecZnxDftApply<BE>
             + SvpApplyDftToDftInplace<BE>
@@ -92,13 +92,13 @@ impl<BRA: BlindRotationAlgo> BDDKey<Vec<u8>, Vec<u8>, BRA> {
             + VecZnxSub
             + SvpPrepare<BE>
             + VecZnxSwitchRing
-            + SvpPPolAllocBytes
+            + SvpPPolBytesOf
             + SvpPPolAlloc<BE>
             + VecZnxAutomorphism
             + VecZnxAutomorphismInplace<BE>,
         Scratch<BE>: TakeVecZnxDft<BE> + ScratchAvailable + TakeVecZnx + TakeScalarZnx + TakeSvpPPol<BE> + TakeVecZnxBig<BE>,
     {
-        let mut ks: GLWEToLWEKey<Vec<u8>> = GLWEToLWEKey::alloc(&infos.ks_infos());
+        let mut ks: GLWEToLWESwitchingKey<Vec<u8>> = GLWEToLWESwitchingKey::alloc(&infos.ks_infos());
         ks.encrypt_sk(module, sk_lwe, sk_glwe, source_xa, source_xe, scratch);
 
         Self {
@@ -131,7 +131,7 @@ impl<CBT: DataMut, LWE: DataMut, BRA: BlindRotationAlgo, BE: Backend> PrepareAll
     for BDDKey<CBT, LWE, BRA>
 where
     CircuitBootstrappingKey<CBT, BRA>: PrepareAlloc<BE, CircuitBootstrappingKeyPrepared<CBT, BRA, BE>>,
-    GLWEToLWEKey<LWE>: PrepareAlloc<BE, GLWEToLWESwitchingKeyPrepared<LWE, BE>>,
+    GLWEToLWESwitchingKey<LWE>: PrepareAlloc<BE, GLWEToLWESwitchingKeyPrepared<LWE, BE>>,
 {
     fn prepare_alloc(&self, module: &Module<BE>, scratch: &mut Scratch<BE>) -> BDDKeyPrepared<CBT, LWE, BRA, BE> {
         BDDKeyPrepared {
@@ -157,7 +157,7 @@ where
     BE: Backend,
     Module<BE>: VmpPrepare<BE>
         + VecZnxRotate
-        + VecZnxDftAllocBytes
+        + VecZnxDftBytesOf
         + VmpApplyDftToDftTmpBytes
         + VecZnxBigNormalizeTmpBytes
         + VmpApplyDftToDft<BE>
@@ -168,7 +168,7 @@ where
         + VecZnxBigNormalize<BE>
         + VecZnxNormalize<BE>
         + VecZnxNormalizeTmpBytes,
-    Scratch<BE>: ScratchAvailable + TakeVecZnxDft<BE> + TakeGLWECt + TakeVecZnx + TakeGGSW,
+    Scratch<BE>: ScratchAvailable + TakeVecZnxDft<BE> + TakeGLWE + TakeVecZnx + TakeGGSW,
     CircuitBootstrappingKeyPrepared<CBT, BRA, BE>: CirtuitBootstrappingExecute<BE>,
 {
     fn prepare(
@@ -182,7 +182,7 @@ where
         {
             assert_eq!(out.blocks.len(), bits.blocks.len());
         }
-        let mut lwe: LWECiphertext<Vec<u8>> = LWECiphertext::alloc(&bits.blocks[0]); //TODO: add TakeLWE
+        let mut lwe: LWE<Vec<u8>> = LWE::alloc(&bits.blocks[0]); //TODO: add TakeLWE
         let (mut tmp_ggsw, scratch_1) = scratch.take_ggsw(out);
         for (dst, src) in out.blocks.iter_mut().zip(bits.blocks.iter()) {
             lwe.from_glwe(module, src, &self.ks, scratch_1);
@@ -206,7 +206,7 @@ where
     BE: Backend,
     Module<BE>: VmpPrepare<BE>
         + VecZnxRotate
-        + VecZnxDftAllocBytes
+        + VecZnxDftBytesOf
         + VmpApplyDftToDftTmpBytes
         + VecZnxBigNormalizeTmpBytes
         + VmpApplyDftToDft<BE>
@@ -217,7 +217,7 @@ where
         + VecZnxBigNormalize<BE>
         + VecZnxNormalize<BE>
         + VecZnxNormalizeTmpBytes,
-    Scratch<BE>: ScratchAvailable + TakeVecZnxDft<BE> + TakeGLWECt + TakeVecZnx + TakeGGSW,
+    Scratch<BE>: ScratchAvailable + TakeVecZnxDft<BE> + TakeGLWE + TakeVecZnx + TakeGGSW,
     CircuitBootstrappingKeyPrepared<CBT, BRA, BE>: CirtuitBootstrappingExecute<BE>,
 {
     fn prepare(
@@ -231,7 +231,7 @@ where
         {
             assert_eq!(out.blocks.len(), bits.blocks.len());
         }
-        let mut lwe: LWECiphertext<Vec<u8>> = LWECiphertext::alloc(&bits.blocks[0]); //TODO: add TakeLWE
+        let mut lwe: LWE<Vec<u8>> = LWE::alloc(&bits.blocks[0]); //TODO: add TakeLWE
         for (dst, src) in out.blocks.iter_mut().zip(bits.blocks.iter()) {
             lwe.from_glwe(module, src, &self.ks, scratch);
             self.cbt

@@ -3,9 +3,9 @@ use std::collections::HashMap;
 use poulpy_hal::{
     api::{
         ScratchAvailable, TakeMatZnx, TakeSlice, TakeVecZnx, TakeVecZnxBig, TakeVecZnxDft, TakeVecZnxDftSlice, TakeVecZnxSlice,
-        VecZnxAddInplace, VecZnxAutomorphismInplace, VecZnxBigAddSmallInplace, VecZnxBigAllocBytes, VecZnxBigAutomorphismInplace,
+        VecZnxAddInplace, VecZnxAutomorphismInplace, VecZnxBigAddSmallInplace, VecZnxBigAutomorphismInplace, VecZnxBigBytesOf,
         VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallNegateInplace, VecZnxCopy, VecZnxDftAddInplace,
-        VecZnxDftAllocBytes, VecZnxDftApply, VecZnxDftCopy, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA, VecZnxNegateInplace,
+        VecZnxDftApply, VecZnxDftBytesOf, VecZnxDftCopy, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA, VecZnxNegateInplace,
         VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace,
         VecZnxRotateInplaceTmpBytes, VecZnxRshInplace, VecZnxSub, VecZnxSubInplace, VecZnxSwitchRing, VmpApplyDftToDft,
         VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
@@ -15,12 +15,12 @@ use poulpy_hal::{
 };
 
 use poulpy_core::{
-    GLWEOperations, TakeGGLWE, TakeGLWECt,
-    layouts::{Dsize, GGLWECiphertextLayout, GGSWInfos, GLWEInfos, LWEInfos},
+    GLWEOperations, TakeGGLWE, TakeGLWE,
+    layouts::{Dsize, GGLWELayout, GGSWInfos, GLWEInfos, LWEInfos},
 };
 
 use poulpy_core::glwe_packing;
-use poulpy_core::layouts::{GGSWCiphertext, GLWECiphertext, LWECiphertext, prepared::GGLWEAutomorphismKeyPrepared};
+use poulpy_core::layouts::{GGSW, GLWE, LWE, prepared::AutomorphismKeyPrepared};
 
 use crate::tfhe::{
     blind_rotation::{
@@ -44,7 +44,7 @@ where
         + VecZnxNegateInplace
         + VecZnxCopy
         + VecZnxSubInplace
-        + VecZnxDftAllocBytes
+        + VecZnxDftBytesOf
         + VmpApplyDftToDftTmpBytes
         + VecZnxBigNormalizeTmpBytes
         + VmpApplyDftToDft<B>
@@ -56,7 +56,7 @@ where
         + VecZnxAutomorphismInplace<B>
         + VecZnxBigSubSmallNegateInplace<B>
         + VecZnxRotateInplaceTmpBytes
-        + VecZnxBigAllocBytes
+        + VecZnxBigBytesOf
         + VecZnxDftAddInplace<B>
         + VecZnxRotate
         + VecZnxNormalize<B>,
@@ -74,8 +74,8 @@ where
     fn execute_to_constant<DM: DataMut, DR: DataRef>(
         &self,
         module: &Module<B>,
-        res: &mut GGSWCiphertext<DM>,
-        lwe: &LWECiphertext<DR>,
+        res: &mut GGSW<DM>,
+        lwe: &LWE<DR>,
         log_domain: usize,
         extension_factor: usize,
         scratch: &mut Scratch<B>,
@@ -97,8 +97,8 @@ where
         &self,
         module: &Module<B>,
         log_gap_out: usize,
-        res: &mut GGSWCiphertext<DM>,
-        lwe: &LWECiphertext<DR>,
+        res: &mut GGSW<DM>,
+        lwe: &LWE<DR>,
         log_domain: usize,
         extension_factor: usize,
         scratch: &mut Scratch<B>,
@@ -122,8 +122,8 @@ pub fn circuit_bootstrap_core<DRes, DLwe, DBrk, BRA: BlindRotationAlgo, B>(
     to_exponent: bool,
     module: &Module<B>,
     log_gap_out: usize,
-    res: &mut GGSWCiphertext<DRes>,
-    lwe: &LWECiphertext<DLwe>,
+    res: &mut GGSW<DRes>,
+    lwe: &LWE<DLwe>,
     log_domain: usize,
     extension_factor: usize,
     key: &CircuitBootstrappingKeyPrepared<DBrk, BRA, B>,
@@ -145,7 +145,7 @@ pub fn circuit_bootstrap_core<DRes, DLwe, DBrk, BRA: BlindRotationAlgo, B>(
         + VecZnxNegateInplace
         + VecZnxCopy
         + VecZnxSubInplace
-        + VecZnxDftAllocBytes
+        + VecZnxDftBytesOf
         + VmpApplyDftToDftTmpBytes
         + VecZnxBigNormalizeTmpBytes
         + VmpApplyDftToDft<B>
@@ -156,7 +156,7 @@ pub fn circuit_bootstrap_core<DRes, DLwe, DBrk, BRA: BlindRotationAlgo, B>(
         + VecZnxBigNormalize<B>
         + VecZnxAutomorphismInplace<B>
         + VecZnxBigSubSmallNegateInplace<B>
-        + VecZnxBigAllocBytes
+        + VecZnxBigBytesOf
         + VecZnxDftAddInplace<B>
         + VecZnxRotateInplaceTmpBytes
         + VecZnxRotate
@@ -214,7 +214,7 @@ pub fn circuit_bootstrap_core<DRes, DLwe, DBrk, BRA: BlindRotationAlgo, B>(
     // TODO: separate GGSW k from output of blind rotation k
     let (mut res_glwe, scratch_1) = scratch.take_glwe_ct(res);
 
-    let gglwe_infos: GGLWECiphertextLayout = GGLWECiphertextLayout {
+    let gglwe_infos: GGLWELayout = GGLWELayout {
         n: n.into(),
         base2k: base2k.into(),
         k: k.into(),
@@ -233,7 +233,7 @@ pub fn circuit_bootstrap_core<DRes, DLwe, DBrk, BRA: BlindRotationAlgo, B>(
     let log_gap_in: usize = (usize::BITS - (gap * alpha - 1).leading_zeros()) as _;
 
     (0..dnum).for_each(|i| {
-        let mut tmp_glwe: GLWECiphertext<&mut [u8]> = tmp_gglwe.at_mut(i, 0);
+        let mut tmp_glwe: GLWE<&mut [u8]> = tmp_gglwe.at_mut(i, 0);
 
         if to_exponent {
             // Isolates i-th LUT and moves coefficients according to requested gap.
@@ -263,12 +263,12 @@ pub fn circuit_bootstrap_core<DRes, DLwe, DBrk, BRA: BlindRotationAlgo, B>(
 #[allow(clippy::too_many_arguments)]
 fn post_process<DataRes, DataA, B: Backend>(
     module: &Module<B>,
-    res: &mut GLWECiphertext<DataRes>,
-    a: &GLWECiphertext<DataA>,
+    res: &mut GLWE<DataRes>,
+    a: &GLWE<DataA>,
     log_gap_in: usize,
     log_gap_out: usize,
     log_domain: usize,
-    auto_keys: &HashMap<i64, GGLWEAutomorphismKeyPrepared<Vec<u8>, B>>,
+    auto_keys: &HashMap<i64, AutomorphismKeyPrepared<Vec<u8>, B>>,
     scratch: &mut Scratch<B>,
 ) where
     DataRes: DataMut,
@@ -286,7 +286,7 @@ fn post_process<DataRes, DataA, B: Backend>(
         + VecZnxNegateInplace
         + VecZnxCopy
         + VecZnxSubInplace
-        + VecZnxDftAllocBytes
+        + VecZnxDftBytesOf
         + VmpApplyDftToDftTmpBytes
         + VecZnxBigNormalizeTmpBytes
         + VmpApplyDftToDft<B>
@@ -303,7 +303,7 @@ fn post_process<DataRes, DataA, B: Backend>(
 {
     let log_n: usize = module.log_n();
 
-    let mut cts: HashMap<usize, &mut GLWECiphertext<Vec<u8>>> = HashMap::new();
+    let mut cts: HashMap<usize, &mut GLWE<Vec<u8>>> = HashMap::new();
 
     // First partial trace, vanishes all coefficients which are not multiples of gap_in
     // [1, 1, 1, 1, 0, 0, 0, ..., 0, 0, -1, -1, -1, -1] -> [1, 0, 0, 0, 0, 0, 0, ..., 0, 0, 0, 0, 0, 0]
@@ -322,7 +322,7 @@ fn post_process<DataRes, DataA, B: Backend>(
         let steps: usize = 1 << log_domain;
 
         // TODO: from Scratch
-        let mut cts_vec: Vec<GLWECiphertext<Vec<u8>>> = Vec::new();
+        let mut cts_vec: Vec<GLWE<Vec<u8>>> = Vec::new();
 
         for i in 0..steps {
             if i != 0 {
@@ -336,7 +336,7 @@ fn post_process<DataRes, DataA, B: Backend>(
         }
 
         glwe_packing(module, &mut cts, log_gap_out, auto_keys, scratch);
-        let packed: &mut GLWECiphertext<Vec<u8>> = cts.remove(&0).unwrap();
+        let packed: &mut GLWE<Vec<u8>> = cts.remove(&0).unwrap();
         res.trace(
             module,
             log_n - log_gap_out,

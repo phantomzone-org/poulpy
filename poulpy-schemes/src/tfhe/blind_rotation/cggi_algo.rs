@@ -1,9 +1,9 @@
 use itertools::izip;
 use poulpy_hal::{
     api::{
-        ScratchAvailable, SvpApplyDftToDft, SvpPPolAllocBytes, TakeVecZnx, TakeVecZnxBig, TakeVecZnxDft, TakeVecZnxDftSlice,
-        TakeVecZnxSlice, VecZnxAddInplace, VecZnxBigAddSmallInplace, VecZnxBigAllocBytes, VecZnxBigNormalize,
-        VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftAdd, VecZnxDftAddInplace, VecZnxDftAllocBytes, VecZnxDftApply,
+        ScratchAvailable, SvpApplyDftToDft, SvpPPolBytesOf, TakeVecZnx, TakeVecZnxBig, TakeVecZnxDft, TakeVecZnxDftSlice,
+        TakeVecZnxSlice, VecZnxAddInplace, VecZnxBigAddSmallInplace, VecZnxBigBytesOf, VecZnxBigNormalize,
+        VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftAdd, VecZnxDftAddInplace, VecZnxDftApply, VecZnxDftBytesOf,
         VecZnxDftSubInplace, VecZnxDftZero, VecZnxIdftApply, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpBytes,
         VecZnxMulXpMinusOneInplace, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate,
         VecZnxSubInplace, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
@@ -12,8 +12,8 @@ use poulpy_hal::{
 };
 
 use poulpy_core::{
-    Distribution, GLWEOperations, TakeGLWECt,
-    layouts::{GGSWInfos, GLWECiphertext, GLWECiphertextToMut, GLWEInfos, LWECiphertext, LWECiphertextToRef, LWEInfos},
+    Distribution, GLWEOperations, TakeGLWE,
+    layouts::{GGSWInfos, GLWE, GLWEInfos, GLWEToMut, LWE, LWEInfos, LWEToRef},
 };
 
 use crate::tfhe::blind_rotation::{
@@ -21,7 +21,7 @@ use crate::tfhe::blind_rotation::{
 };
 
 #[allow(clippy::too_many_arguments)]
-pub fn cggi_blind_rotate_scratch_space<B: Backend, OUT, GGSW>(
+pub fn cggi_blind_rotate_tmp_bytes<B: Backend, OUT, GGSW>(
     module: &Module<B>,
     block_size: usize,
     extension_factor: usize,
@@ -31,10 +31,10 @@ pub fn cggi_blind_rotate_scratch_space<B: Backend, OUT, GGSW>(
 where
     OUT: GLWEInfos,
     GGSW: GGSWInfos,
-    Module<B>: VecZnxDftAllocBytes
+    Module<B>: VecZnxDftBytesOf
         + VmpApplyDftToDftTmpBytes
         + VecZnxNormalizeTmpBytes
-        + VecZnxBigAllocBytes
+        + VecZnxBigBytesOf
         + VecZnxIdftApplyTmpBytes
         + VecZnxBigNormalizeTmpBytes,
 {
@@ -43,14 +43,14 @@ where
     if block_size > 1 {
         let cols: usize = (brk_infos.rank() + 1).into();
         let dnum: usize = brk_infos.dnum().into();
-        let acc_dft: usize = module.vec_znx_dft_alloc_bytes(cols, dnum) * extension_factor;
-        let acc_big: usize = module.vec_znx_big_alloc_bytes(1, brk_size);
-        let vmp_res: usize = module.vec_znx_dft_alloc_bytes(cols, brk_size) * extension_factor;
-        let vmp_xai: usize = module.vec_znx_dft_alloc_bytes(1, brk_size);
+        let acc_dft: usize = module.bytes_of_vec_znx_dft(cols, dnum) * extension_factor;
+        let acc_big: usize = module.bytes_of_vec_znx_big(1, brk_size);
+        let vmp_res: usize = module.bytes_of_vec_znx_dft(cols, brk_size) * extension_factor;
+        let vmp_xai: usize = module.bytes_of_vec_znx_dft(1, brk_size);
         let acc_dft_add: usize = vmp_res;
         let vmp: usize = module.vmp_apply_dft_to_dft_tmp_bytes(brk_size, dnum, dnum, 2, 2, brk_size); // GGSW product: (1 x 2) x (2 x 2)
         let acc: usize = if extension_factor > 1 {
-            VecZnx::alloc_bytes(module.n(), cols, glwe_infos.size()) * extension_factor
+            VecZnx::bytes_of(module.n(), cols, glwe_infos.size()) * extension_factor
         } else {
             0
         };
@@ -61,16 +61,15 @@ where
             + vmp_xai
             + (vmp | (acc_big + (module.vec_znx_big_normalize_tmp_bytes() | module.vec_znx_idft_apply_tmp_bytes())))
     } else {
-        GLWECiphertext::alloc_bytes(glwe_infos)
-            + GLWECiphertext::external_product_inplace_scratch_space(module, glwe_infos, brk_infos)
+        GLWE::bytes_of(glwe_infos) + GLWE::external_product_inplace_tmp_bytes(module, glwe_infos, brk_infos)
     }
 }
 
 impl<D: DataRef, B: Backend> BlincRotationExecute<B> for BlindRotationKeyPrepared<D, CGGI, B>
 where
-    Module<B>: VecZnxBigAllocBytes
-        + VecZnxDftAllocBytes
-        + SvpPPolAllocBytes
+    Module<B>: VecZnxBigBytesOf
+        + VecZnxDftBytesOf
+        + SvpPPolBytesOf
         + VmpApplyDftToDftTmpBytes
         + VecZnxBigNormalizeTmpBytes
         + VecZnxIdftApplyTmpBytes
@@ -99,8 +98,8 @@ where
     fn execute<DR: DataMut, DI: DataRef>(
         &self,
         module: &Module<B>,
-        res: &mut GLWECiphertext<DR>,
-        lwe: &LWECiphertext<DI>,
+        res: &mut GLWE<DR>,
+        lwe: &LWE<DI>,
         lut: &LookUpTable,
         scratch: &mut Scratch<B>,
     ) {
@@ -121,8 +120,8 @@ where
 
 fn execute_block_binary_extended<DataRes, DataIn, DataBrk, B: Backend>(
     module: &Module<B>,
-    res: &mut GLWECiphertext<DataRes>,
-    lwe: &LWECiphertext<DataIn>,
+    res: &mut GLWE<DataRes>,
+    lwe: &LWE<DataIn>,
     lut: &LookUpTable,
     brk: &BlindRotationKeyPrepared<DataBrk, CGGI, B>,
     scratch: &mut Scratch<B>,
@@ -130,9 +129,9 @@ fn execute_block_binary_extended<DataRes, DataIn, DataBrk, B: Backend>(
     DataRes: DataMut,
     DataIn: DataRef,
     DataBrk: DataRef,
-    Module<B>: VecZnxBigAllocBytes
-        + VecZnxDftAllocBytes
-        + SvpPPolAllocBytes
+    Module<B>: VecZnxBigBytesOf
+        + VecZnxDftBytesOf
+        + SvpPPolBytesOf
         + VmpApplyDftToDftTmpBytes
         + VecZnxBigNormalizeTmpBytes
         + VecZnxIdftApplyTmpBytes
@@ -179,7 +178,7 @@ fn execute_block_binary_extended<DataRes, DataIn, DataBrk, B: Backend>(
     }
 
     let mut lwe_2n: Vec<i64> = vec![0i64; (lwe.n() + 1).as_usize()]; // TODO: from scratch space
-    let lwe_ref: LWECiphertext<&[u8]> = lwe.to_ref();
+    let lwe_ref: LWE<&[u8]> = lwe.to_ref();
 
     let two_n: usize = 2 * n_glwe;
     let two_n_ext: usize = 2 * lut.domain_size();
@@ -288,8 +287,8 @@ fn execute_block_binary_extended<DataRes, DataIn, DataBrk, B: Backend>(
 
 fn execute_block_binary<DataRes, DataIn, DataBrk, B: Backend>(
     module: &Module<B>,
-    res: &mut GLWECiphertext<DataRes>,
-    lwe: &LWECiphertext<DataIn>,
+    res: &mut GLWE<DataRes>,
+    lwe: &LWE<DataIn>,
     lut: &LookUpTable,
     brk: &BlindRotationKeyPrepared<DataBrk, CGGI, B>,
     scratch: &mut Scratch<B>,
@@ -297,9 +296,9 @@ fn execute_block_binary<DataRes, DataIn, DataBrk, B: Backend>(
     DataRes: DataMut,
     DataIn: DataRef,
     DataBrk: DataRef,
-    Module<B>: VecZnxBigAllocBytes
-        + VecZnxDftAllocBytes
-        + SvpPPolAllocBytes
+    Module<B>: VecZnxBigBytesOf
+        + VecZnxDftBytesOf
+        + SvpPPolBytesOf
         + VmpApplyDftToDftTmpBytes
         + VecZnxBigNormalizeTmpBytes
         + VecZnxIdftApplyTmpBytes
@@ -324,8 +323,8 @@ fn execute_block_binary<DataRes, DataIn, DataBrk, B: Backend>(
 {
     let n_glwe: usize = brk.n_glwe().into();
     let mut lwe_2n: Vec<i64> = vec![0i64; (lwe.n() + 1).into()]; // TODO: from scratch space
-    let mut out_mut: GLWECiphertext<&mut [u8]> = res.to_mut();
-    let lwe_ref: LWECiphertext<&[u8]> = lwe.to_ref();
+    let mut out_mut: GLWE<&mut [u8]> = res.to_mut();
+    let lwe_ref: LWE<&[u8]> = lwe.to_ref();
     let two_n: usize = n_glwe << 1;
     let base2k: usize = brk.base2k().into();
     let dnum: usize = brk.dnum().into();
@@ -410,8 +409,8 @@ fn execute_block_binary<DataRes, DataIn, DataBrk, B: Backend>(
 
 fn execute_standard<DataRes, DataIn, DataBrk, B: Backend>(
     module: &Module<B>,
-    res: &mut GLWECiphertext<DataRes>,
-    lwe: &LWECiphertext<DataIn>,
+    res: &mut GLWE<DataRes>,
+    lwe: &LWE<DataIn>,
     lut: &LookUpTable,
     brk: &BlindRotationKeyPrepared<DataBrk, CGGI, B>,
     scratch: &mut Scratch<B>,
@@ -419,9 +418,9 @@ fn execute_standard<DataRes, DataIn, DataBrk, B: Backend>(
     DataRes: DataMut,
     DataIn: DataRef,
     DataBrk: DataRef,
-    Module<B>: VecZnxBigAllocBytes
-        + VecZnxDftAllocBytes
-        + SvpPPolAllocBytes
+    Module<B>: VecZnxBigBytesOf
+        + VecZnxDftBytesOf
+        + SvpPPolBytesOf
         + VmpApplyDftToDftTmpBytes
         + VecZnxBigNormalizeTmpBytes
         + VecZnxIdftApplyTmpBytes
@@ -480,8 +479,8 @@ fn execute_standard<DataRes, DataIn, DataBrk, B: Backend>(
     }
 
     let mut lwe_2n: Vec<i64> = vec![0i64; (lwe.n() + 1).into()]; // TODO: from scratch space
-    let mut out_mut: GLWECiphertext<&mut [u8]> = res.to_mut();
-    let lwe_ref: LWECiphertext<&[u8]> = lwe.to_ref();
+    let mut out_mut: GLWE<&mut [u8]> = res.to_mut();
+    let lwe_ref: LWE<&[u8]> = lwe.to_ref();
 
     mod_switch_2n(
         2 * lut.domain_size(),
@@ -519,7 +518,7 @@ fn execute_standard<DataRes, DataIn, DataBrk, B: Backend>(
     out_mut.normalize_inplace(module, scratch_1);
 }
 
-pub fn mod_switch_2n(n: usize, res: &mut [i64], lwe: &LWECiphertext<&[u8]>, rot_dir: LookUpTableRotationDirection) {
+pub fn mod_switch_2n(n: usize, res: &mut [i64], lwe: &LWE<&[u8]>, rot_dir: LookUpTableRotationDirection) {
     let base2k: usize = lwe.base2k().into();
 
     let log2n: usize = usize::BITS as usize - (n - 1).leading_zeros() as usize + 1;

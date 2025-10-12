@@ -77,7 +77,7 @@ where
     B: SvpPPolAllocBytesImpl<B>,
 {
     pub fn alloc(n: usize, cols: usize) -> Self {
-        let data: Vec<u8> = alloc_aligned::<u8>(B::svp_ppol_alloc_bytes_impl(n, cols));
+        let data: Vec<u8> = alloc_aligned::<u8>(B::svp_ppol_bytes_of_impl(n, cols));
         Self {
             data: data.into(),
             n,
@@ -88,7 +88,7 @@ where
 
     pub fn from_bytes(n: usize, cols: usize, bytes: impl Into<Vec<u8>>) -> Self {
         let data: Vec<u8> = bytes.into();
-        assert!(data.len() == B::svp_ppol_alloc_bytes_impl(n, cols));
+        assert!(data.len() == B::svp_ppol_bytes_of_impl(n, cols));
         Self {
             data: data.into(),
             n,

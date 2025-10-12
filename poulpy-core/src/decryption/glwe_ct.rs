@@ -1,25 +1,25 @@
 use poulpy_hal::{
     api::{
-        SvpApplyDftToDftInplace, TakeVecZnxBig, TakeVecZnxDft, VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigNormalize,
-        VecZnxDftAllocBytes, VecZnxDftApply, VecZnxIdftApplyConsume, VecZnxNormalizeTmpBytes,
+        SvpApplyDftToDftInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigNormalize, VecZnxDftApply,
+        VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxNormalizeTmpBytes,
     },
     layouts::{Backend, DataMut, DataRef, DataViewMut, Module, Scratch},
 };
 
-use crate::layouts::{GLWECiphertext, GLWEInfos, GLWEPlaintext, LWEInfos, prepared::GLWESecretPrepared};
+use crate::layouts::{GLWE, GLWEInfos, GLWEPlaintext, LWEInfos, prepared::GLWESecretPrepared};
 
-impl GLWECiphertext<Vec<u8>> {
-    pub fn decrypt_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
+impl GLWE<Vec<u8>> {
+    pub fn decrypt_tmp_bytes<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GLWEInfos,
-        Module<B>: VecZnxDftAllocBytes + VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes,
+        Module<B>: VecZnxDftBytesOf + VecZnxNormalizeTmpBytes + VecZnxDftBytesOf,
     {
         let size: usize = infos.size();
-        (module.vec_znx_normalize_tmp_bytes() | module.vec_znx_dft_alloc_bytes(1, size)) + module.vec_znx_dft_alloc_bytes(1, size)
+        (module.vec_znx_normalize_tmp_bytes() | module.bytes_of_vec_znx_dft(1, size)) + module.bytes_of_vec_znx_dft(1, size)
     }
 }
 
-impl<DataSelf: DataRef> GLWECiphertext<DataSelf> {
+impl<DataSelf: DataRef> GLWE<DataSelf> {
     pub fn decrypt<DataPt: DataMut, DataSk: DataRef, B: Backend>(
         &self,
         module: &Module<B>,
@@ -33,7 +33,7 @@ impl<DataSelf: DataRef> GLWECiphertext<DataSelf> {
             + VecZnxBigAddInplace<B>
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>,
-        Scratch<B>: TakeVecZnxDft<B> + TakeVecZnxBig<B>,
+        Scratch<B>:,
     {
         #[cfg(debug_assertions)]
         {

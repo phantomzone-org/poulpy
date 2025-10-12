@@ -1,7 +1,7 @@
 use crate::{
     api::{
         VecZnxBigAdd, VecZnxBigAddInplace, VecZnxBigAddNormal, VecZnxBigAddSmall, VecZnxBigAddSmallInplace, VecZnxBigAlloc,
-        VecZnxBigAllocBytes, VecZnxBigAutomorphism, VecZnxBigAutomorphismInplace, VecZnxBigAutomorphismInplaceTmpBytes,
+        VecZnxBigAutomorphism, VecZnxBigAutomorphismInplace, VecZnxBigAutomorphismInplaceTmpBytes, VecZnxBigBytesOf,
         VecZnxBigFromBytes, VecZnxBigFromSmall, VecZnxBigNegate, VecZnxBigNegateInplace, VecZnxBigNormalize,
         VecZnxBigNormalizeTmpBytes, VecZnxBigSub, VecZnxBigSubInplace, VecZnxBigSubNegateInplace, VecZnxBigSubSmallA,
         VecZnxBigSubSmallB, VecZnxBigSubSmallInplace, VecZnxBigSubSmallNegateInplace,
@@ -49,12 +49,12 @@ where
     }
 }
 
-impl<B> VecZnxBigAllocBytes for Module<B>
+impl<B> VecZnxBigBytesOf for Module<B>
 where
     B: Backend + VecZnxBigAllocBytesImpl<B>,
 {
-    fn vec_znx_big_alloc_bytes(&self, cols: usize, size: usize) -> usize {
-        B::vec_znx_big_alloc_bytes_impl(self.n(), cols, size)
+    fn bytes_of_vec_znx_big(&self, cols: usize, size: usize) -> usize {
+        B::vec_znx_big_bytes_of_impl(self.n(), cols, size)
     }
 }
 

@@ -1,8 +1,8 @@
 use poulpy_hal::{
     api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolBytesOf, SvpPrepare,
         VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace,
-        VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftApply, VecZnxFillUniform, VecZnxIdftApplyConsume,
+        VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxDftApply, VecZnxDftBytesOf, VecZnxFillUniform, VecZnxIdftApplyConsume,
         VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotateInplace, VecZnxSub, VecZnxSubInplace,
         VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes, VmpPMatAlloc, VmpPrepare,
     },
@@ -17,8 +17,8 @@ use poulpy_hal::{
 use crate::{
     encryption::SIGMA,
     layouts::{
-        GGSWCiphertext, GGSWCiphertextLayout, GLWECiphertext, GLWECiphertextLayout, GLWEPlaintext, GLWESecret,
-        prepared::{GGSWCiphertextPrepared, GLWESecretPrepared, PrepareAlloc},
+        GGSW, GGSWCiphertextLayout, GLWE, GLWELayout, GLWEPlaintext, GLWESecret,
+        prepared::{GGSWPrepared, GLWESecretPrepared, PrepareAlloc},
     },
     noise::noise_ggsw_product,
 };
@@ -26,7 +26,7 @@ use crate::{
 #[allow(clippy::too_many_arguments)]
 pub fn test_glwe_external_product<B>(module: &Module<B>)
 where
-    Module<B>: VecZnxDftAllocBytes
+    Module<B>: VecZnxDftBytesOf
         + VecZnxBigNormalize<B>
         + VecZnxDftApply<B>
         + SvpApplyDftToDftInplace<B>
@@ -39,9 +39,9 @@ where
         + VecZnxNormalize<B>
         + VecZnxSub
         + SvpPrepare<B>
-        + SvpPPolAllocBytes
+        + SvpPPolBytesOf
         + SvpPPolAlloc<B>
-        + VecZnxBigAllocBytes
+        + VecZnxBigBytesOf
         + VecZnxBigAddInplace<B>
         + VecZnxBigAddSmallInplace<B>
         + VecZnxNormalizeTmpBytes
@@ -73,14 +73,14 @@ where
             let n: usize = module.n();
             let dnum: usize = k_in.div_ceil(base2k * dsize);
 
-            let glwe_in_infos: GLWECiphertextLayout = GLWECiphertextLayout {
+            let glwe_in_infos: GLWELayout = GLWELayout {
                 n: n.into(),
                 base2k: base2k.into(),
                 k: k_in.into(),
                 rank: rank.into(),
             };
 
-            let glwe_out_infos: GLWECiphertextLayout = GLWECiphertextLayout {
+            let glwe_out_infos: GLWELayout = GLWELayout {
                 n: n.into(),
                 base2k: base2k.into(),
                 k: k_out.into(),
@@ -96,11 +96,11 @@ where
                 rank: rank.into(),
             };
 
-            let mut ggsw_apply: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(&ggsw_apply_infos);
-            let mut glwe_in: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&glwe_in_infos);
-            let mut glwe_out: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&glwe_out_infos);
+            let mut ggsw_apply: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_apply_infos);
+            let mut glwe_in: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_in_infos);
+            let mut glwe_out: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_out_infos);
             let mut pt_ggsw: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n, 1);
-            let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&glwe_in_infos);
+            let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_in_infos);
 
             let mut source_xs: Source = Source::new([0u8; 32]);
             let mut source_xe: Source = Source::new([0u8; 32]);
@@ -116,12 +116,12 @@ where
             pt_ggsw.raw_mut()[k] = 1; // X^{k}
 
             let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-                GGSWCiphertext::encrypt_sk_scratch_space(module, &ggsw_apply_infos)
-                    | GLWECiphertext::encrypt_sk_scratch_space(module, &glwe_in_infos)
-                    | GLWECiphertext::external_product_scratch_space(module, &glwe_out_infos, &glwe_in_infos, &ggsw_apply_infos),
+                GGSW::encrypt_sk_tmp_bytes(module, &ggsw_apply_infos)
+                    | GLWE::encrypt_sk_tmp_bytes(module, &glwe_in_infos)
+                    | GLWE::external_product_tmp_bytes(module, &glwe_out_infos, &glwe_in_infos, &ggsw_apply_infos),
             );
 
-            let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_with(n.into(), rank.into());
+            let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank.into());
             sk.fill_ternary_prob(0.5, &mut source_xs);
             let sk_prepared: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
 
@@ -143,7 +143,7 @@ where
                 scratch.borrow(),
             );
 
-            let ct_ggsw_prepared: GGSWCiphertextPrepared<Vec<u8>, B> = ggsw_apply.prepare_alloc(module, scratch.borrow());
+            let ct_ggsw_prepared: GGSWPrepared<Vec<u8>, B> = ggsw_apply.prepare_alloc(module, scratch.borrow());
 
             glwe_out.external_product(module, &glwe_in, &ct_ggsw_prepared, scratch.borrow());
 
@@ -178,7 +178,7 @@ where
 #[allow(clippy::too_many_arguments)]
 pub fn test_glwe_external_product_inplace<B>(module: &Module<B>)
 where
-    Module<B>: VecZnxDftAllocBytes
+    Module<B>: VecZnxDftBytesOf
         + VecZnxBigNormalize<B>
         + VecZnxDftApply<B>
         + SvpApplyDftToDftInplace<B>
@@ -191,9 +191,9 @@ where
         + VecZnxNormalize<B>
         + VecZnxSub
         + SvpPrepare<B>
-        + SvpPPolAllocBytes
+        + SvpPPolBytesOf
         + SvpPPolAlloc<B>
-        + VecZnxBigAllocBytes
+        + VecZnxBigBytesOf
         + VecZnxBigAddInplace<B>
         + VecZnxBigAddSmallInplace<B>
         + VecZnxNormalizeTmpBytes
@@ -224,7 +224,7 @@ where
             let n: usize = module.n();
             let dnum: usize = k_out.div_ceil(base2k * dsize);
 
-            let glwe_out_infos: GLWECiphertextLayout = GLWECiphertextLayout {
+            let glwe_out_infos: GLWELayout = GLWELayout {
                 n: n.into(),
                 base2k: base2k.into(),
                 k: k_out.into(),
@@ -240,10 +240,10 @@ where
                 rank: rank.into(),
             };
 
-            let mut ggsw_apply: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(&ggsw_apply_infos);
-            let mut glwe_out: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&glwe_out_infos);
+            let mut ggsw_apply: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_apply_infos);
+            let mut glwe_out: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_out_infos);
             let mut pt_ggsw: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n, 1);
-            let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&glwe_out_infos);
+            let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_out_infos);
 
             let mut source_xs: Source = Source::new([0u8; 32]);
             let mut source_xe: Source = Source::new([0u8; 32]);
@@ -259,12 +259,12 @@ where
             pt_ggsw.raw_mut()[k] = 1; // X^{k}
 
             let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-                GGSWCiphertext::encrypt_sk_scratch_space(module, &ggsw_apply_infos)
-                    | GLWECiphertext::encrypt_sk_scratch_space(module, &glwe_out_infos)
-                    | GLWECiphertext::external_product_inplace_scratch_space(module, &glwe_out_infos, &ggsw_apply_infos),
+                GGSW::encrypt_sk_tmp_bytes(module, &ggsw_apply_infos)
+                    | GLWE::encrypt_sk_tmp_bytes(module, &glwe_out_infos)
+                    | GLWE::external_product_inplace_tmp_bytes(module, &glwe_out_infos, &ggsw_apply_infos),
             );
 
-            let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_with(n.into(), rank.into());
+            let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank.into());
             sk.fill_ternary_prob(0.5, &mut source_xs);
             let sk_prepared: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
 
@@ -286,7 +286,7 @@ where
                 scratch.borrow(),
             );
 
-            let ct_ggsw_prepared: GGSWCiphertextPrepared<Vec<u8>, B> = ggsw_apply.prepare_alloc(module, scratch.borrow());
+            let ct_ggsw_prepared: GGSWPrepared<Vec<u8>, B> = ggsw_apply.prepare_alloc(module, scratch.borrow());
 
             glwe_out.external_product_inplace(module, &ct_ggsw_prepared, scratch.borrow());
 

@@ -1,22 +1,16 @@
 use poulpy_hal::{
     api::{
-        ScratchAvailable, TakeVecZnx, TakeVecZnxDft, VecZnxBigAddSmallInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
-        VecZnxDftAllocBytes, VecZnxDftApply, VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeTmpBytes, VmpApplyDftToDft,
-        VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
+        VecZnxBigAddSmallInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxDftApply, VecZnxDftBytesOf,
+        VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeTmpBytes, VmpApplyDftToDft, VmpApplyDftToDftAdd,
+        VmpApplyDftToDftTmpBytes,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch, ZnxView, ZnxViewMut, ZnxZero},
 };
 
-use crate::{
-    TakeGLWECt,
-    layouts::{
-        GGLWEInfos, GLWECiphertext, GLWECiphertextLayout, GLWEInfos, LWECiphertext, LWEInfos, Rank,
-        prepared::GLWEToLWESwitchingKeyPrepared,
-    },
-};
+use crate::layouts::{GGLWEInfos, GLWE, GLWEInfos, GLWELayout, LWE, LWEInfos, Rank, prepared::GLWEToLWESwitchingKeyPrepared};
 
-impl LWECiphertext<Vec<u8>> {
-    pub fn from_glwe_scratch_space<B: Backend, OUT, IN, KEY>(
+impl LWE<Vec<u8>> {
+    pub fn from_glwe_tmp_bytes<B: Backend, OUT, IN, KEY>(
         module: &Module<B>,
         lwe_infos: &OUT,
         glwe_infos: &IN,
@@ -26,26 +20,26 @@ impl LWECiphertext<Vec<u8>> {
         OUT: LWEInfos,
         IN: GLWEInfos,
         KEY: GGLWEInfos,
-        Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
+        Module<B>: VecZnxDftBytesOf + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        let glwe_layout: GLWECiphertextLayout = GLWECiphertextLayout {
+        let glwe_layout: GLWELayout = GLWELayout {
             n: module.n().into(),
             base2k: lwe_infos.base2k(),
             k: lwe_infos.k(),
             rank: Rank(1),
         };
 
-        GLWECiphertext::alloc_bytes_with(
+        GLWE::bytes_of(
             module.n().into(),
             lwe_infos.base2k(),
             lwe_infos.k(),
             1u32.into(),
-        ) + GLWECiphertext::keyswitch_scratch_space(module, &glwe_layout, glwe_infos, key_infos)
+        ) + GLWE::keyswitch_tmp_bytes(module, &glwe_layout, glwe_infos, key_infos)
     }
 }
 
-impl<DLwe: DataMut> LWECiphertext<DLwe> {
-    pub fn sample_extract<DGlwe: DataRef>(&mut self, a: &GLWECiphertext<DGlwe>) {
+impl<DLwe: DataMut> LWE<DLwe> {
+    pub fn sample_extract<DGlwe: DataRef>(&mut self, a: &GLWE<DGlwe>) {
         #[cfg(debug_assertions)]
         {
             assert!(self.n() <= a.n());
@@ -66,13 +60,13 @@ impl<DLwe: DataMut> LWECiphertext<DLwe> {
     pub fn from_glwe<DGlwe, DKs, B: Backend>(
         &mut self,
         module: &Module<B>,
-        a: &GLWECiphertext<DGlwe>,
+        a: &GLWE<DGlwe>,
         ks: &GLWEToLWESwitchingKeyPrepared<DKs, B>,
         scratch: &mut Scratch<B>,
     ) where
         DGlwe: DataRef,
         DKs: DataRef,
-        Module<B>: VecZnxDftAllocBytes
+        Module<B>: VecZnxDftBytesOf
             + VmpApplyDftToDftTmpBytes
             + VecZnxBigNormalizeTmpBytes
             + VmpApplyDftToDft<B>
@@ -83,7 +77,7 @@ impl<DLwe: DataMut> LWECiphertext<DLwe> {
             + VecZnxBigNormalize<B>
             + VecZnxNormalize<B>
             + VecZnxNormalizeTmpBytes,
-        Scratch<B>: ScratchAvailable + TakeVecZnxDft<B> + TakeGLWECt + TakeVecZnx,
+        Scratch<B>:,
     {
         #[cfg(debug_assertions)]
         {
@@ -92,7 +86,7 @@ impl<DLwe: DataMut> LWECiphertext<DLwe> {
             assert!(self.n() <= module.n() as u32);
         }
 
-        let glwe_layout: GLWECiphertextLayout = GLWECiphertextLayout {
+        let glwe_layout: GLWELayout = GLWELayout {
             n: module.n().into(),
             base2k: self.base2k(),
             k: self.k(),

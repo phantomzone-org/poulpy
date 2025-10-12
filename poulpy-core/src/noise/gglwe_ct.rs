@@ -1,16 +1,16 @@
 use poulpy_hal::{
     api::{
         ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDftInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace,
-        VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftApply, VecZnxIdftApplyConsume,
-        VecZnxNormalizeTmpBytes, VecZnxSubScalarInplace,
+        VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxNormalizeTmpBytes,
+        VecZnxSubScalarInplace,
     },
     layouts::{Backend, DataRef, Module, ScalarZnx, ScratchOwned, ZnxZero},
-    oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeVecZnxBigImpl, TakeVecZnxDftImpl},
+    oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl},
 };
 
-use crate::layouts::{GGLWECiphertext, GGLWEInfos, GLWECiphertext, GLWEPlaintext, LWEInfos, prepared::GLWESecretPrepared};
+use crate::layouts::{GGLWE, GGLWEInfos, GLWE, GLWEPlaintext, LWEInfos, prepared::GLWESecretPrepared};
 
-impl<D: DataRef> GGLWECiphertext<D> {
+impl<D: DataRef> GGLWE<D> {
     pub fn assert_noise<B, DataSk, DataWant>(
         &self,
         module: &Module<B>,
@@ -20,8 +20,8 @@ impl<D: DataRef> GGLWECiphertext<D> {
     ) where
         DataSk: DataRef,
         DataWant: DataRef,
-        Module<B>: VecZnxDftAllocBytes
-            + VecZnxBigAllocBytes
+        Module<B>: VecZnxDftBytesOf
+            + VecZnxBigBytesOf
             + VecZnxDftApply<B>
             + SvpApplyDftToDftInplace<B>
             + VecZnxIdftApplyConsume<B>
@@ -30,13 +30,13 @@ impl<D: DataRef> GGLWECiphertext<D> {
             + VecZnxBigNormalize<B>
             + VecZnxNormalizeTmpBytes
             + VecZnxSubScalarInplace,
-        B: Backend + TakeVecZnxDftImpl<B> + TakeVecZnxBigImpl<B> + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
+        B: Backend + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
     {
         let dsize: usize = self.dsize().into();
         let base2k: usize = self.base2k().into();
 
-        let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GLWECiphertext::decrypt_scratch_space(module, self));
-        let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(self);
+        let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GLWE::decrypt_tmp_bytes(module, self));
+        let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(module, self);
 
         (0..self.rank_in().into()).for_each(|col_i| {
             (0..self.dnum().into()).for_each(|row_i| {

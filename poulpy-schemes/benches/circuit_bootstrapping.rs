@@ -3,16 +3,16 @@ use std::hint::black_box;
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use poulpy_backend::{FFT64Avx, FFT64Ref, FFT64Spqlios};
 use poulpy_core::layouts::{
-    Dsize, GGLWEAutomorphismKeyLayout, GGLWETensorKeyLayout, GGSWCiphertext, GGSWCiphertextLayout, GLWESecret, LWECiphertext,
-    LWECiphertextLayout, LWESecret, prepared::PrepareAlloc,
+    AutomorphismKeyLayout, Dsize, GGSW, GGSWLayout, GLWESecret, LWE, LWELayout, LWESecret, TensorKeyLayout,
+    prepared::PrepareAlloc,
 };
 use poulpy_hal::{
     api::{
         ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolAlloc,
-        SvpPPolAllocBytes, SvpPrepare, VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxAutomorphism,
-        VecZnxAutomorphismInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigAlloc, VecZnxBigAllocBytes,
-        VecZnxBigAutomorphismInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallNegateInplace, VecZnxCopy,
-        VecZnxDftAddInplace, VecZnxDftAlloc, VecZnxDftAllocBytes, VecZnxDftApply, VecZnxDftCopy, VecZnxFillUniform,
+        SvpPPolBytesOf, SvpPrepare, VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxAutomorphism,
+        VecZnxAutomorphismInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigAlloc, VecZnxBigAutomorphismInplace,
+        VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallNegateInplace, VecZnxCopy,
+        VecZnxDftAddInplace, VecZnxDftAlloc, VecZnxDftApply, VecZnxDftBytesOf, VecZnxDftCopy, VecZnxFillUniform,
         VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA, VecZnxNegateInplace, VecZnxNormalize, VecZnxNormalizeInplace,
         VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace, VecZnxRotateInplaceTmpBytes, VecZnxRshInplace, VecZnxSub,
         VecZnxSubInplace, VecZnxSwitchRing, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes, VmpPMatAlloc,
@@ -42,7 +42,7 @@ where
         + VecZnxFillUniform
         + VecZnxAddNormal
         + VecZnxNormalizeInplace<B>
-        + VecZnxDftAllocBytes
+        + VecZnxDftBytesOf
         + VecZnxBigNormalize<B>
         + VecZnxDftApply<B>
         + SvpApplyDftToDftInplace<B>
@@ -55,7 +55,7 @@ where
         + VecZnxAddScalarInplace
         + VecZnxAutomorphism
         + VecZnxSwitchRing
-        + VecZnxBigAllocBytes
+        + VecZnxBigBytesOf
         + VecZnxIdftApplyTmpA<B>
         + SvpApplyDftToDft<B>
         + VecZnxBigAddInplace<B>
@@ -70,7 +70,7 @@ where
         + VmpApplyDftToDftTmpBytes
         + VmpApplyDftToDft<B>
         + VmpApplyDftToDftAdd<B>
-        + SvpPPolAllocBytes
+        + SvpPPolBytesOf
         + VecZnxRotateInplace<B>
         + VecZnxBigAutomorphismInplace<B>
         + VecZnxRshInplace<B>
@@ -80,7 +80,7 @@ where
         + VecZnxAutomorphismInplace<B>
         + VecZnxBigSubSmallNegateInplace<B>
         + VecZnxRotateInplaceTmpBytes
-        + VecZnxBigAllocBytes
+        + VecZnxBigBytesOf
         + VecZnxDftAddInplace<B>
         + VecZnxRotate
         + ZnFillUniform
@@ -113,8 +113,8 @@ where
         extension_factor: usize,
         k_pt: usize,
         block_size: usize,
-        lwe_infos: LWECiphertextLayout,
-        ggsw_infos: GGSWCiphertextLayout,
+        lwe_infos: LWELayout,
+        ggsw_infos: GGSWLayout,
         cbt_infos: CircuitBootstrappingKeyLayout,
     }
 
@@ -124,7 +124,7 @@ where
             + VecZnxFillUniform
             + VecZnxAddNormal
             + VecZnxNormalizeInplace<B>
-            + VecZnxDftAllocBytes
+            + VecZnxDftBytesOf
             + VecZnxBigNormalize<B>
             + VecZnxDftApply<B>
             + SvpApplyDftToDftInplace<B>
@@ -137,7 +137,7 @@ where
             + VecZnxAddScalarInplace
             + VecZnxAutomorphism
             + VecZnxSwitchRing
-            + VecZnxBigAllocBytes
+            + VecZnxBigBytesOf
             + VecZnxIdftApplyTmpA<B>
             + SvpApplyDftToDft<B>
             + VecZnxBigAddInplace<B>
@@ -152,7 +152,7 @@ where
             + VmpApplyDftToDftTmpBytes
             + VmpApplyDftToDft<B>
             + VmpApplyDftToDftAdd<B>
-            + SvpPPolAllocBytes
+            + SvpPPolBytesOf
             + VecZnxRotateInplace<B>
             + VecZnxBigAutomorphismInplace<B>
             + VecZnxRshInplace<B>
@@ -162,7 +162,7 @@ where
             + VecZnxAutomorphismInplace<B>
             + VecZnxBigSubSmallNegateInplace<B>
             + VecZnxRotateInplaceTmpBytes
-            + VecZnxBigAllocBytes
+            + VecZnxBigBytesOf
             + VecZnxDftAddInplace<B>
             + VecZnxRotate
             + ZnFillUniform
@@ -188,8 +188,8 @@ where
         // Scratch space (4MB)
         let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(1 << 22);
 
-        let n_glwe: poulpy_core::layouts::Degree = params.cbt_infos.layout_brk.n_glwe();
-        let n_lwe: poulpy_core::layouts::Degree = params.cbt_infos.layout_brk.n_lwe();
+        let n_glwe: poulpy_core::layouts::RingDegree = params.cbt_infos.layout_brk.n_glwe();
+        let n_lwe: poulpy_core::layouts::RingDegree = params.cbt_infos.layout_brk.n_lwe();
         let rank: poulpy_core::layouts::Rank = params.cbt_infos.layout_brk.rank;
 
         let module: Module<B> = Module::<B>::new(n_glwe.as_u32() as u64);
@@ -202,10 +202,10 @@ where
         sk_lwe.fill_binary_block(params.block_size, &mut source_xs);
         sk_lwe.fill_zero();
 
-        let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc_with(n_glwe, rank);
+        let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc(n_glwe, rank);
         sk_glwe.fill_ternary_prob(0.5, &mut source_xs);
 
-        let ct_lwe: LWECiphertext<Vec<u8>> = LWECiphertext::alloc(&params.lwe_infos);
+        let ct_lwe: LWE<Vec<u8>> = LWE::alloc_from_infos(&params.lwe_infos);
 
         // Circuit bootstrapping evaluation key
         let cbt_key: CircuitBootstrappingKey<Vec<u8>, BRA> = CircuitBootstrappingKey::encrypt_sk(
@@ -218,7 +218,7 @@ where
             scratch.borrow(),
         );
 
-        let mut res: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(&params.ggsw_infos);
+        let mut res: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&params.ggsw_infos);
         let cbt_prepared: CircuitBootstrappingKeyPrepared<Vec<u8>, BRA, B> = cbt_key.prepare_alloc(&module, scratch.borrow());
 
         move || {
@@ -238,13 +238,13 @@ where
         name: String::from("1-bit"),
         extension_factor: 1,
         k_pt: 1,
-        lwe_infos: LWECiphertextLayout {
+        lwe_infos: LWELayout {
             n: 574_u32.into(),
             k: 13_u32.into(),
             base2k: 13_u32.into(),
         },
         block_size: 7,
-        ggsw_infos: GGSWCiphertextLayout {
+        ggsw_infos: GGSWLayout {
             n: 1024_u32.into(),
             base2k: 13_u32.into(),
             k: 26_u32.into(),
@@ -261,7 +261,7 @@ where
                 dnum: 3_u32.into(),
                 rank: 2_u32.into(),
             },
-            layout_atk: GGLWEAutomorphismKeyLayout {
+            layout_atk: AutomorphismKeyLayout {
                 n: 1024_u32.into(),
                 base2k: 13_u32.into(),
                 k: 52_u32.into(),
@@ -269,7 +269,7 @@ where
                 dsize: Dsize(1),
                 rank: 2_u32.into(),
             },
-            layout_tsk: GGLWETensorKeyLayout {
+            layout_tsk: TensorKeyLayout {
                 n: 1024_u32.into(),
                 base2k: 13_u32.into(),
                 k: 52_u32.into(),
