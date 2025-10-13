@@ -5,12 +5,21 @@ use poulpy_hal::{
 
 use crate::{
     dist::Distribution,
-    layouts::{Base2K, Degree, GLWEInfos, GLWESecret, LWEInfos, Rank, TorusPrecision},
+    layouts::{
+        Base2K, Degree, GLWEInfos, GLWESecret, GLWESecretToMut, GLWESecretToRef, LWEInfos, Rank, TorusPrecision,
+        prepared::SetDist,
+    },
 };
 
 pub struct GLWESecretPrepared<D: Data, B: Backend> {
     pub(crate) data: SvpPPol<D, B>,
     pub(crate) dist: Distribution,
+}
+
+impl<D: DataRef, B: Backend> SetDist for GLWESecretPrepared<D, B> {
+    fn set_dist(&mut self, dist: Distribution) {
+        self.dist = dist
+    }
 }
 
 impl<D: Data, B: Backend> LWEInfos for GLWESecretPrepared<D, B> {
@@ -82,32 +91,79 @@ impl<D: Data, B: Backend> GLWESecretPrepared<D, B> {
     }
 }
 
-impl<B: Backend, A: GLWEInfos> PrepareScratchSpace<B, A> for GLWESecretPrepared<Vec<u8>, B> {
-    fn prepare_scratch_space(_module: &Module<B>, _infos: &A) -> usize {
+pub trait GLWESecretPrepareTmpBytes {
+    fn glwe_secret_prepare_tmp_bytes<A>(&self, infos: &A)
+    where
+        A: GLWEInfos;
+}
+
+impl<B: Backend> GLWESecretPrepareTmpBytes for Module<B> {
+    fn glwe_secret_prepare_tmp_bytes<A>(&self, infos: &A)
+    where
+        A: GLWEInfos,
+    {
         0
     }
 }
 
-impl<D: DataRef, B: Backend> PrepareAlloc<B, GLWESecretPrepared<Vec<u8>, B>> for GLWESecret<D>
+impl<B: Backend> GLWESecretPrepared<Vec<u8>, B>
 where
-    Module<B>: SvpPrepare<B> + SvpPPolAlloc<B>,
+    Module<B>: GLWESecretPrepareTmpBytes,
 {
-    fn prepare_alloc(&self, module: &Module<B>, _scratch: &mut Scratch<B>) -> GLWESecretPrepared<Vec<u8>, B> {
-        let mut sk_dft: GLWESecretPrepared<Vec<u8>, B> = GLWESecretPrepared::alloc(module, self);
-        sk_dft.prepare(module, self, _scratch);
-        sk_dft
+    fn prepare_tmp_bytes<A>(&self, module: &Module<B>, infos: &A) -> usize
+    where
+        A: GLWEInfos,
+    {
+        0
     }
 }
 
-impl<DM: DataMut, DR: DataRef, B: Backend> Prepare<B, GLWESecret<DR>> for GLWESecretPrepared<DM, B>
+pub trait GLWESecretPrepare<B: Backend> {
+    fn glwe_secret_prepare<R, O>(&self, res: &mut R, other: &O, scratch: &mut Scratch<B>)
+    where
+        R: GLWESecretPreparedToMut<B> + SetDist,
+        O: GLWESecretToRef;
+}
+
+impl<B: Backend> GLWESecretPrepare<B> for Module<B>
 where
     Module<B>: SvpPrepare<B>,
 {
-    fn prepare(&mut self, module: &Module<B>, other: &GLWESecret<DR>, _scratch: &mut Scratch<B>) {
-        (0..self.rank().into()).for_each(|i| {
-            module.svp_prepare(&mut self.data, i, &other.data, i);
-        });
-        self.dist = other.dist
+    fn glwe_secret_prepare<R, O>(&self, res: &mut R, other: &O, scratch: &mut Scratch<B>)
+    where
+        R: GLWESecretPreparedToMut<B> + SetDist,
+        O: GLWESecretToRef,
+    {
+        {
+            let res: GLWESecretPrepared<&mut [u8], _> = res.to_mut();
+            let other: GLWESecret<&[u8]> = other.to_ref();
+
+            for i in 0..self.rank().into() {
+                self.svp_prepare(&mut res.data, i, &other.data, i);
+            }
+        }
+
+        res.set_dist(other.dist);
+    }
+}
+
+pub trait GLWESecretPrepareAlloc<B: Backend> {
+    fn glwe_secret_prepare_alloc<O>(&self, other: &O, scratch: &mut Scratch<B>)
+    where
+        O: GLWESecretToMut;
+}
+
+impl<B: Backend> GLWESecretPrepareAlloc<B> for Module<B>
+where
+    Module<B>: GLWESecretPrepare<B>,
+{
+    fn glwe_secret_prepare_alloc<O>(&self, other: &O, scratch: &mut Scratch<B>)
+    where
+        O: GLWESecretToMut,
+    {
+        let mut ct_prep: GLWESecretPrepared<Vec<u8>, B> = GLWESecretPrepared::alloc(self, self);
+        self.glwe_secret_prepare(&mut ct_prep, other, scratch);
+        ct_prep
     }
 }
 

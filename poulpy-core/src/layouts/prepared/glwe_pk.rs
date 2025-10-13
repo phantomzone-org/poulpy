@@ -6,7 +6,7 @@ use poulpy_hal::{
 
 use crate::{
     dist::Distribution,
-    layouts::{Base2K, BuildError, Degree, GLWEInfos, GLWEPublicKey, LWEInfos, Rank, TorusPrecision},
+    layouts::{Base2K, BuildError, Degree, GLWEInfos, GLWEPublicKey, GLWEPublicKeyToRef, LWEInfos, Rank, TorusPrecision},
 };
 
 #[derive(PartialEq, Eq)]
@@ -15,6 +15,16 @@ pub struct GLWEPublicKeyPrepared<D: Data, B: Backend> {
     pub(crate) base2k: Base2K,
     pub(crate) k: TorusPrecision,
     pub(crate) dist: Distribution,
+}
+
+pub(crate) trait SetDist {
+    fn set_dist(&mut self, dist: Distribution);
+}
+
+impl<D: Data, B: Backend> SetDist for GLWEPublicKeyPrepared<D, B> {
+    fn set_dist(&mut self, dist: Distribution) {
+        self.dist = dist
+    }
 }
 
 impl<D: Data, B: Backend> LWEInfos for GLWEPublicKeyPrepared<D, B> {
@@ -166,40 +176,104 @@ impl<B: Backend> GLWEPublicKeyPrepared<Vec<u8>, B> {
     }
 }
 
-impl<D: DataRef, B: Backend> PrepareAlloc<B, GLWEPublicKeyPrepared<Vec<u8>, B>> for GLWEPublicKey<D>
-where
-    Module<B>: VecZnxDftAlloc<B> + VecZnxDftApply<B>,
-{
-    fn prepare_alloc(&self, module: &Module<B>, scratch: &mut Scratch<B>) -> GLWEPublicKeyPrepared<Vec<u8>, B> {
-        let mut pk_prepared: GLWEPublicKeyPrepared<Vec<u8>, B> = GLWEPublicKeyPrepared::alloc(module, self);
-        pk_prepared.prepare(module, self, scratch);
-        pk_prepared
-    }
+pub trait GLWEPublicKeyPrepareTmpBytes {
+    fn glwe_public_key_prepare_tmp_bytes<A>(&self, infos: &A)
+    where
+        A: GLWEInfos;
 }
 
-impl<B: Backend, A: GLWEInfos> PrepareScratchSpace<B, A> for GLWEPublicKeyPrepared<Vec<u8>, B> {
-    fn prepare_scratch_space(_module: &Module<B>, _infos: &A) -> usize {
+impl<B: Backend> GLWEPublicKeyPrepareTmpBytes for Module<B> {
+    fn glwe_public_key_prepare_tmp_bytes<A>(&self, infos: &A)
+    where
+        A: GLWEInfos,
+    {
         0
     }
 }
 
-impl<DM: DataMut, DR: DataRef, B: Backend> Prepare<B, GLWEPublicKey<DR>> for GLWEPublicKeyPrepared<DM, B>
+impl<B: Backend> GLWEPublicKeyPrepared<Vec<u8>, B> {
+    pub fn prepare_tmp_bytes<A>(&self, module: &Module<B>, infos: &A)
+    where
+        A: GLWEInfos,
+        Module<B>: GLWEPublicKeyPrepareTmpBytes,
+    {
+        module.glwe_public_key_prepare_tmp_bytes(infos);
+    }
+}
+
+pub trait GLWEPublicKeyPrepare<B: Backend> {
+    fn glwe_public_key_prepare<R, O>(&self, res: &mut R, other: &O, scratch: &Scratch<B>)
+    where
+        R: GLWEPublicKeyPreparedToMut<B> + SetDist,
+        O: GLWEPublicKeyToRef;
+}
+
+impl<B: Backend> GLWEPublicKeyPrepare<B> for Module<B>
 where
-    Module<B>: VecZnxDftApply<B>,
+    Module<B>: VecZnxDftAlloc<B> + VecZnxDftApply<B>,
 {
-    fn prepare(&mut self, module: &Module<B>, other: &GLWEPublicKey<DR>, _scratch: &mut Scratch<B>) {
-        #[cfg(debug_assertions)]
+    fn glwe_public_key_prepare<R, O>(&self, res: &mut R, other: &O, scratch: &Scratch<B>)
+    where
+        R: GLWEPublicKeyPreparedToMut<B> + SetDist,
+        O: GLWEPublicKeyToRef,
+    {
         {
-            assert_eq!(self.n(), other.n());
-            assert_eq!(self.size(), other.size());
+            let res: GLWEPublicKeyPrepared<&mut [u8], B> = res.to_mut();
+            let other: GLWEPublicKey<&[u8]> = other.to_ref();
+
+            assert_eq!(res.n(), self.n() as u32);
+            assert_eq!(other.n(), self.n() as u32);
+            assert_eq!(res.size(), other.size());
+            assert_eq!(res.k(), other.k());
+            assert_eq!(res.base2k(), other.base2k());
+
+            for i in 0..(self.rank() + 1).into() {
+                self.vec_znx_dft_apply(1, 0, &mut self.data, i, &other.data, i);
+            }
         }
 
-        (0..(self.rank() + 1).into()).for_each(|i| {
-            module.vec_znx_dft_apply(1, 0, &mut self.data, i, &other.data, i);
-        });
-        self.k = other.k();
-        self.base2k = other.base2k();
-        self.dist = other.dist;
+        res.set_dist(other.dist);
+    }
+}
+
+impl<D: DataMut, B: Backend> GLWEPublicKeyPrepared<D, B>
+where
+    Module<B>: GLWEPublicKeyPrepare<B>,
+{
+    pub fn prepare<O>(&mut self, module: &Module<B>, other: &O, scratch: &mut Scratch<B>)
+    where
+        O: GLWEPublicKeyToRef,
+    {
+        module.glwe_public_key_prepare(self, other, scratch);
+    }
+}
+
+pub trait GLWEPublicKeyPrepareAlloc<B: Backend> {
+    fn glwe_public_key_prepare_alloc<O>(&self, other: &O, scratch: &mut Scratch<B>)
+    where
+        O: GLWEPublicKeyToRef;
+}
+
+impl<B: Backend> GLWEPublicKeyPrepareAlloc<B> for Module<B>
+where
+    Module<B>: GLWEPublicKeyPrepare<B>,
+{
+    fn glwe_public_key_prepare_alloc<O>(&self, other: &O, scratch: &mut Scratch<B>)
+    where
+        O: GLWEPublicKeyToRef,
+    {
+        let mut ct_prepared: GLWEPublicKeyPrepared<Vec<u8>, B> = GLWEPublicKeyPrepared::alloc(self, other);
+        self.glwe_public_key_prepare(&mut ct_prepared, ct_prepared, scratch);
+        ct_prepared
+    }
+}
+
+impl<D: DataRef> GLWEPublicKey<D> {
+    pub fn prepare_alloc<B: Backend>(&self, module: &Module<B>, scratch: &mut Scratch<B>)
+    where
+        Module<B>: GLWEPublicKeyPrepareAlloc<B>,
+    {
+        module.glwe_public_key_prepare_alloc(self, scratch);
     }
 }
 
