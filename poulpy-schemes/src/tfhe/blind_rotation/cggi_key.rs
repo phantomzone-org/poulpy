@@ -122,7 +122,7 @@ where
         A: BlindRotationKeyInfos,
     {
         let mut data: Vec<GGSWPrepared<Vec<u8>, B>> = Vec::with_capacity(infos.n_lwe().into());
-        (0..infos.n_lwe().as_usize()).for_each(|_| data.push(GGSWPrepared::alloc(module, infos)));
+        (0..infos.n_lwe().as_usize()).for_each(|_| data.push(GGSWPrepared::alloc_from_infos(module, infos)));
         Self {
             data,
             dist: Distribution::NONE,

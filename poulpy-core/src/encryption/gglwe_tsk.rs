@@ -23,7 +23,7 @@ impl TensorKey<Vec<u8>> {
         Module<B>:
             SvpPPolAllocBytes + VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes + VecZnxNormalizeTmpBytes + VecZnxBigAllocBytes,
     {
-        GLWESecretPrepared::alloc_bytes_with(module, infos.rank_out())
+        GLWESecretPrepared::alloc_bytes(module, infos.rank_out())
             + module.vec_znx_dft_alloc_bytes(infos.rank_out().into(), 1)
             + module.vec_znx_big_alloc_bytes(1, 1)
             + module.vec_znx_dft_alloc_bytes(1, 1)

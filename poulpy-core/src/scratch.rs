@@ -129,12 +129,11 @@ where
     {
         let (data, scratch) = self.take_vec_znx(infos.n().into(), (infos.rank() + 1).into(), infos.size());
         (
-            GLWECiphertext::builder()
-                .base2k(infos.base2k())
-                .k(infos.k())
-                .data(data)
-                .build()
-                .unwrap(),
+            GLWECiphertext {
+                k: infos.k(),
+                base2k: infos.base2k(),
+                data,
+            },
             scratch,
         )
     }
@@ -169,12 +168,11 @@ where
     {
         let (data, scratch) = self.take_vec_znx(infos.n().into(), 1, infos.size());
         (
-            GLWEPlaintext::builder()
-                .base2k(infos.base2k())
-                .k(infos.k())
-                .data(data)
-                .build()
-                .unwrap(),
+            GLWEPlaintext {
+                k: infos.k(),
+                base2k: infos.base2k(),
+                data,
+            },
             scratch,
         )
     }
@@ -196,13 +194,12 @@ where
             infos.size(),
         );
         (
-            GGLWE::builder()
-                .base2k(infos.base2k())
-                .k(infos.k())
-                .dsize(infos.dsize())
-                .data(data)
-                .build()
-                .unwrap(),
+            GGLWE {
+                k: infos.k(),
+                base2k: infos.base2k(),
+                dsize: infos.dsize(),
+                data,
+            },
             scratch,
         )
     }
@@ -224,13 +221,12 @@ where
             infos.size(),
         );
         (
-            GGLWEPrepared::builder()
-                .base2k(infos.base2k())
-                .dsize(infos.dsize())
-                .k(infos.k())
-                .data(data)
-                .build()
-                .unwrap(),
+            GGLWEPrepared {
+                k: infos.k(),
+                base2k: infos.base2k(),
+                dsize: infos.dsize(),
+                data,
+            },
             scratch,
         )
     }
@@ -252,13 +248,12 @@ where
             infos.size(),
         );
         (
-            GGSW::builder()
-                .base2k(infos.base2k())
-                .dsize(infos.dsize())
-                .k(infos.k())
-                .data(data)
-                .build()
-                .unwrap(),
+            GGSW {
+                k: infos.k(),
+                base2k: infos.base2k(),
+                dsize: infos.dsize(),
+                data,
+            },
             scratch,
         )
     }
@@ -280,13 +275,12 @@ where
             infos.size(),
         );
         (
-            GGSWPrepared::builder()
-                .base2k(infos.base2k())
-                .dsize(infos.dsize())
-                .k(infos.k())
-                .data(data)
-                .build()
-                .unwrap(),
+            GGSWPrepared {
+                k: infos.k(),
+                base2k: infos.base2k(),
+                dsize: infos.dsize(),
+                data,
+            },
             scratch,
         )
     }
@@ -321,13 +315,12 @@ where
     {
         let (data, scratch) = self.take_vec_znx(infos.n().into(), (infos.rank() + 1).into(), infos.size());
         (
-            GLWEPublicKey::builder()
-                .base2k(infos.base2k())
-                .k(infos.k())
-                .base2k(infos.base2k())
-                .data(data)
-                .build()
-                .unwrap(),
+            GLWEPublicKey {
+                k: infos.k(),
+                dist: Distribution::NONE,
+                base2k: infos.base2k(),
+                data,
+            },
             scratch,
         )
     }
@@ -343,12 +336,12 @@ where
     {
         let (data, scratch) = self.take_vec_znx_dft(infos.n().into(), (infos.rank() + 1).into(), infos.size());
         (
-            GLWEPublicKeyPrepared::builder()
-                .base2k(infos.base2k())
-                .k(infos.k())
-                .data(data)
-                .build()
-                .unwrap(),
+            GLWEPublicKeyPrepared {
+                k: infos.k(),
+                dist: Distribution::NONE,
+                base2k: infos.base2k(),
+                data,
+            },
             scratch,
         )
     }

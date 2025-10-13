@@ -4,7 +4,7 @@ use poulpy_hal::{
 };
 use std::fmt;
 
-use crate::layouts::{Base2K, BuildError, Degree, Dnum, Dsize, GLWECiphertext, GLWEInfos, LWEInfos, Rank, TorusPrecision};
+use crate::layouts::{Base2K, Degree, Dnum, Dsize, GLWECiphertext, GLWEInfos, LWEInfos, Rank, TorusPrecision};
 
 pub trait GGSWInfos
 where
@@ -105,122 +105,6 @@ impl<D: Data> GGSWInfos for GGSW<D> {
     }
 }
 
-pub struct GGSWCiphertextBuilder<D: Data> {
-    data: Option<MatZnx<D>>,
-    base2k: Option<Base2K>,
-    k: Option<TorusPrecision>,
-    dsize: Option<Dsize>,
-}
-
-impl<D: Data> GGSW<D> {
-    #[inline]
-    pub fn builder() -> GGSWCiphertextBuilder<D> {
-        GGSWCiphertextBuilder {
-            data: None,
-            base2k: None,
-            k: None,
-            dsize: None,
-        }
-    }
-}
-
-impl GGSWCiphertextBuilder<Vec<u8>> {
-    #[inline]
-    pub fn layout<A>(mut self, infos: &A) -> Self
-    where
-        A: GGSWInfos,
-    {
-        debug_assert!(
-            infos.size() as u32 > infos.dsize().0,
-            "invalid ggsw: ceil(k/base2k): {} <= dsize: {}",
-            infos.size(),
-            infos.dsize()
-        );
-
-        assert!(
-            infos.dnum().0 * infos.dsize().0 <= infos.size() as u32,
-            "invalid ggsw: dnum: {} * dsize:{} > ceil(k/base2k): {}",
-            infos.dnum(),
-            infos.dsize(),
-            infos.size(),
-        );
-
-        self.data = Some(MatZnx::alloc(
-            infos.n().into(),
-            infos.dnum().into(),
-            (infos.rank() + 1).into(),
-            (infos.rank() + 1).into(),
-            infos.size(),
-        ));
-        self.base2k = Some(infos.base2k());
-        self.k = Some(infos.k());
-        self.dsize = Some(infos.dsize());
-        self
-    }
-}
-
-impl<D: Data> GGSWCiphertextBuilder<D> {
-    #[inline]
-    pub fn data(mut self, data: MatZnx<D>) -> Self {
-        self.data = Some(data);
-        self
-    }
-    #[inline]
-    pub fn base2k(mut self, base2k: Base2K) -> Self {
-        self.base2k = Some(base2k);
-        self
-    }
-    #[inline]
-    pub fn k(mut self, k: TorusPrecision) -> Self {
-        self.k = Some(k);
-        self
-    }
-
-    #[inline]
-    pub fn dsize(mut self, dsize: Dsize) -> Self {
-        self.dsize = Some(dsize);
-        self
-    }
-
-    pub fn build(self) -> Result<GGSW<D>, BuildError> {
-        let data: MatZnx<D> = self.data.ok_or(BuildError::MissingData)?;
-        let base2k: Base2K = self.base2k.ok_or(BuildError::MissingBase2K)?;
-        let k: TorusPrecision = self.k.ok_or(BuildError::MissingK)?;
-        let dsize: Dsize = self.dsize.ok_or(BuildError::MissingDigits)?;
-
-        if base2k == 0_u32 {
-            return Err(BuildError::ZeroBase2K);
-        }
-
-        if dsize == 0_u32 {
-            return Err(BuildError::ZeroBase2K);
-        }
-
-        if k == 0_u32 {
-            return Err(BuildError::ZeroTorusPrecision);
-        }
-
-        if data.n() == 0 {
-            return Err(BuildError::ZeroDegree);
-        }
-
-        if data.cols() == 0 {
-            return Err(BuildError::ZeroCols);
-        }
-
-        if data.size() == 0 {
-            return Err(BuildError::ZeroLimbs);
-        }
-
-        Ok(GGSW {
-            data,
-            base2k,
-            k,
-            dsize,
-        })
-    }
-}
-
 impl<D: DataRef> fmt::Debug for GGSW<D> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.data)
@@ -248,23 +132,21 @@ impl<D: DataMut> FillUniform for GGSW<D> {
 
 impl<D: DataRef> GGSW<D> {
     pub fn at(&self, row: usize, col: usize) -> GLWECiphertext<&[u8]> {
-        GLWECiphertext::builder()
-            .data(self.data.at(row, col))
-            .base2k(self.base2k())
-            .k(self.k())
-            .build()
-            .unwrap()
+        GLWECiphertext {
+            k: self.k,
+            base2k: self.base2k,
+            data: self.data.at(row, col),
+        }
     }
 }
 
 impl<D: DataMut> GGSW<D> {
     pub fn at_mut(&mut self, row: usize, col: usize) -> GLWECiphertext<&mut [u8]> {
-        GLWECiphertext::builder()
-            .base2k(self.base2k())
-            .k(self.k())
-            .data(self.data.at_mut(row, col))
-            .build()
-            .unwrap()
+        GLWECiphertext {
+            k: self.k,
+            base2k: self.base2k,
+            data: self.data.at_mut(row, col),
+        }
     }
 }
 

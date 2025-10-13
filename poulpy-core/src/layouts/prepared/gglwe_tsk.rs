@@ -1,13 +1,9 @@
-use poulpy_hal::{
-    api::{VmpPMatAlloc, VmpPMatAllocBytes},
-    layouts::{Backend, Data, DataMut, DataRef, Module, Scratch},
-};
+use poulpy_hal::layouts::{Backend, Data, DataMut, DataRef, Module, Scratch};
 
 use crate::layouts::{
     Base2K, Degree, Dnum, Dsize, GGLWEInfos, GLWEInfos, LWEInfos, Rank, TensorKey, TensorKeyToRef, TorusPrecision,
-    compressed::TensorKeyCompressedToMut,
     prepared::{
-        GLWESwitchingKeyPrepare, GLWESwitchingKeyPrepareTmpBytes, GLWESwitchingKeyPrepared, GLWESwitchingKeyPreparedToMut,
+        GLWESwitchingKeyPrepare, GLWESwitchingKeyPrepared, GLWESwitchingKeyPreparedAlloc, GLWESwitchingKeyPreparedToMut,
         GLWESwitchingKeyPreparedToRef,
     },
 };
@@ -59,19 +55,36 @@ impl<D: Data, B: Backend> GGLWEInfos for TensorKeyPrepared<D, B> {
     }
 }
 
-impl<B: Backend> TensorKeyPrepared<Vec<u8>, B> {
-    pub fn alloc<A>(module: &Module<B>, infos: &A) -> Self
+pub trait TensorKeyPreparedAlloc<B: Backend>
+where
+    Self: GLWESwitchingKeyPreparedAlloc<B>,
+{
+    fn tensor_key_prepared_alloc(
+        &self,
+        base2k: Base2K,
+        k: TorusPrecision,
+        dnum: Dnum,
+        dsize: Dsize,
+        rank: Rank,
+    ) -> TensorKeyPrepared<Vec<u8>, B> {
+        let pairs: u32 = (((rank.as_u32() + 1) * rank.as_u32()) >> 1).max(1);
+        TensorKeyPrepared {
+            keys: (0..pairs)
+                .map(|_| self.glwe_switching_key_prepared_alloc(base2k, k, Rank(1), rank, dnum, dsize))
+                .collect(),
+        }
+    }
+
+    fn tensor_key_prepared_alloc_from_infos<A>(&self, infos: &A) -> TensorKeyPrepared<Vec<u8>, B>
     where
         A: GGLWEInfos,
-        Module<B>: VmpPMatAlloc<B>,
     {
         assert_eq!(
             infos.rank_in(),
             infos.rank_out(),
             "rank_in != rank_out is not supported for GGLWETensorKeyPrepared"
         );
-        Self::alloc_with(
-            module,
+        self.tensor_key_prepared_alloc(
             infos.base2k(),
             infos.k(),
             infos.dnum(),
@@ -80,56 +93,58 @@ impl<B: Backend> TensorKeyPrepared<Vec<u8>, B> {
         )
     }
 
-    pub fn alloc_with(module: &Module<B>, base2k: Base2K, k: TorusPrecision, dnum: Dnum, dsize: Dsize, rank: Rank) -> Self
+    fn tensor_key_prepared_alloc_bytes(&self, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize {
+        let pairs: usize = (((rank.0 + 1) * rank.0) >> 1).max(1) as usize;
+        pairs * self.glwe_switching_key_prepared_alloc_bytes(base2k, k, Rank(1), rank, dnum, dsize)
+    }
+
+    fn tensor_key_prepared_alloc_bytes_from_infos<A>(&self, infos: &A) -> usize
     where
-        Module<B>: VmpPMatAlloc<B>,
+        A: GGLWEInfos,
     {
-        let mut keys: Vec<GLWESwitchingKeyPrepared<Vec<u8>, B>> = Vec::new();
-        let pairs: u32 = (((rank.0 + 1) * rank.0) >> 1).max(1);
-        (0..pairs).for_each(|_| {
-            keys.push(GLWESwitchingKeyPrepared::alloc(
-                module,
-                base2k,
-                k,
-                Rank(1),
-                rank,
-                dnum,
-                dsize,
-            ));
-        });
-        Self { keys }
+        self.tensor_key_prepared_alloc_bytes(
+            infos.base2k(),
+            infos.k(),
+            infos.rank(),
+            infos.dnum(),
+            infos.dsize(),
+        )
+    }
+}
+
+impl<B: Backend> TensorKeyPreparedAlloc<B> for Module<B> where Module<B>: GLWESwitchingKeyPreparedAlloc<B> {}
+
+impl<B: Backend> TensorKeyPrepared<Vec<u8>, B>
+where
+    Module<B>: TensorKeyPreparedAlloc<B>,
+{
+    pub fn alloc_from_infos<A>(module: &Module<B>, infos: &A) -> Self
+    where
+        A: GGLWEInfos,
+    {
+        module.tensor_key_prepared_alloc_from_infos(infos)
+    }
+
+    pub fn alloc_with(module: &Module<B>, base2k: Base2K, k: TorusPrecision, dnum: Dnum, dsize: Dsize, rank: Rank) -> Self {
+        module.tensor_key_prepared_alloc(base2k, k, dnum, dsize, rank)
     }
 
     pub fn alloc_bytes<A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GGLWEInfos,
-        Module<B>: VmpPMatAllocBytes,
     {
-        assert_eq!(
-            infos.rank_in(),
-            infos.rank_out(),
-            "rank_in != rank_out is not supported for GGLWETensorKey"
-        );
-        let rank_out: usize = infos.rank_out().into();
-        let pairs: usize = (((rank_out + 1) * rank_out) >> 1).max(1);
-        pairs
-            * GLWESwitchingKeyPrepared::alloc_bytes(
-                module,
-                infos.base2k(),
-                infos.k(),
-                Rank(1),
-                infos.rank_out(),
-                infos.dnum(),
-                infos.dsize(),
-            )
+        module.tensor_key_prepared_alloc_bytes_from_infos(infos)
     }
 
-    pub fn alloc_bytes_with(module: &Module<B>, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize
-    where
-        Module<B>: VmpPMatAllocBytes,
-    {
-        let pairs: usize = (((rank.0 + 1) * rank.0) >> 1).max(1) as usize;
-        pairs * GLWESwitchingKeyPrepared::alloc_bytes(module, base2k, k, Rank(1), rank, dnum, dsize)
+    pub fn alloc_bytes_with(
+        module: &Module<B>,
+        base2k: Base2K,
+        k: TorusPrecision,
+        rank: Rank,
+        dnum: Dnum,
+        dsize: Dsize,
+    ) -> usize {
+        module.tensor_key_prepared_alloc_bytes(base2k, k, rank, dnum, dsize)
     }
 }
 
@@ -155,55 +170,44 @@ impl<D: DataRef, B: Backend> TensorKeyPrepared<D, B> {
     }
 }
 
-pub trait TensorKeyPrepareTmpBytes {
-    fn tensor_key_prepare_tmp_bytes<A>(&self, infos: &A) -> usize;
-}
-
-impl<B: Backend> TensorKeyPrepareTmpBytes for Module<B>
+pub trait TensorKeyPrepare<B: Backend>
 where
-    Module<B>: GLWESwitchingKeyPrepareTmpBytes,
+    Self: GLWESwitchingKeyPrepare<B>,
 {
-    fn tensor_key_prepare_tmp_bytes<A>(&self, infos: &A) -> usize {
+    fn tensor_key_prepare_tmp_bytes<A>(&self, infos: &A) -> usize
+    where
+        A: GGLWEInfos,
+    {
         self.glwe_switching_key_prepare_tmp_bytes(infos)
+    }
+
+    fn tensor_key_prepare<R, O>(&self, res: &mut R, other: &O, scratch: &mut Scratch<B>)
+    where
+        R: TensorKeyPreparedToMut<B>,
+        O: TensorKeyToRef,
+    {
+        let mut res: TensorKeyPrepared<&mut [u8], B> = res.to_mut();
+        let other: TensorKey<&[u8]> = other.to_ref();
+
+        assert_eq!(res.keys.len(), other.keys.len());
+
+        for (a, b) in res.keys.iter_mut().zip(other.keys.iter()) {
+            self.glwe_switching_prepare(a, b, scratch);
+        }
     }
 }
 
+impl<B: Backend> TensorKeyPrepare<B> for Module<B> where Module<B>: GLWESwitchingKeyPrepare<B> {}
+
 impl<B: Backend> TensorKeyPrepared<Vec<u8>, B>
 where
-    Module<B>: TensorKeyPrepareTmpBytes,
+    Module<B>: TensorKeyPrepare<B>,
 {
     fn prepare_tmp_bytes<A>(&self, module: &Module<B>, infos: &A) -> usize
     where
         A: GGLWEInfos,
     {
         module.tensor_key_prepare_tmp_bytes(infos)
-    }
-}
-
-pub trait TensorKeyPrepare<B: Backend> {
-    fn tensor_key_prepare<R, O>(&self, res: &mut R, other: &O, scratch: &Scratch<B>)
-    where
-        R: TensorKeyPreparedToMut<B>,
-        O: TensorKeyToRef;
-}
-
-impl<B: Backend> TensorKeyPrepare<B> for Module<B>
-where
-    Module<B>: GLWESwitchingKeyPrepare<B>,
-{
-    fn tensor_key_prepare<R, O>(&self, res: &mut R, other: &O, scratch: &Scratch<B>)
-    where
-        R: TensorKeyPreparedToMut<B>,
-        O: TensorKeyToRef,
-    {
-        let res = res.to_mut();
-        let other = other.to_ref();
-
-        assert_eq!(self.keys.len(), other.keys.len());
-
-        for (a, b) in res.keys.iter_mut().zip(other.keys.iter()) {
-            self.glwe_switching_prepare(a, b, scratch);
-        }
     }
 }
 
@@ -216,35 +220,6 @@ where
         O: TensorKeyToRef,
     {
         module.tensor_key_prepare(self, other, scratch);
-    }
-}
-
-pub trait TensorKeyPrepareAlloc<B: Backend> {
-    fn tensor_key_prepare_alloc<O>(&self, other: &O, scratch: &mut Scratch<B>)
-    where
-        O: TensorKeyToRef;
-}
-
-impl<B: Backend> TensorKeyPrepareAlloc<B> for Module<B>
-where
-    Module<B>: TensorKeyPrepare<B>,
-{
-    fn tensor_key_prepare_alloc<O>(&self, other: &O, scratch: &mut Scratch<B>)
-    where
-        O: TensorKeyToRef,
-    {
-        let mut ct_prepared: TensorKeyPrepared<Vec<u8>, B> = TensorKeyPrepared::alloc(self, other);
-        self.tensor_key_prepare(ct_prepared, other, scratch);
-        ct_prepared
-    }
-}
-
-impl<D: DataRef> TensorKey<D> {
-    pub fn prepare_alloc<B: Backend>(&self, module: &Module<B>, scratch: &Scratch<B>)
-    where
-        Module<B>: TensorKeyPrepareAlloc<B>,
-    {
-        module.tensor_key_prepare_alloc(self, scratch);
     }
 }
 

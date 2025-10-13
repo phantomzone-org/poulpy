@@ -3,8 +3,8 @@ use std::fmt;
 use poulpy_hal::layouts::{Data, DataMut, DataRef, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos};
 
 use crate::layouts::{
-    Base2K, BuildError, Degree, GLWECiphertext, GLWECiphertextToMut, GLWECiphertextToRef, GLWEInfos, GLWELayoutSet, LWEInfos,
-    Rank, TorusPrecision,
+    Base2K, Degree, GLWECiphertext, GLWECiphertextToMut, GLWECiphertextToRef, GLWEInfos, GLWELayoutSet, LWEInfos, Rank,
+    TorusPrecision,
 };
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
@@ -74,69 +74,6 @@ impl<D: Data> GLWEInfos for GLWEPlaintext<D> {
     }
 }
 
-pub struct GLWEPlaintextBuilder<D: Data> {
-    data: Option<VecZnx<D>>,
-    base2k: Option<Base2K>,
-    k: Option<TorusPrecision>,
-}
-
-impl<D: Data> GLWEPlaintext<D> {
-    #[inline]
-    pub fn builder() -> GLWEPlaintextBuilder<D> {
-        GLWEPlaintextBuilder {
-            data: None,
-            base2k: None,
-            k: None,
-        }
-    }
-}
-
-impl<D: Data> GLWEPlaintextBuilder<D> {
-    #[inline]
-    pub fn data(mut self, data: VecZnx<D>) -> Self {
-        self.data = Some(data);
-        self
-    }
-    #[inline]
-    pub fn base2k(mut self, base2k: Base2K) -> Self {
-        self.base2k = Some(base2k);
-        self
-    }
-    #[inline]
-    pub fn k(mut self, k: TorusPrecision) -> Self {
-        self.k = Some(k);
-        self
-    }
-
-    pub fn build(self) -> Result<GLWEPlaintext<D>, BuildError> {
-        let data: VecZnx<D> = self.data.ok_or(BuildError::MissingData)?;
-        let base2k: Base2K = self.base2k.ok_or(BuildError::MissingBase2K)?;
-        let k: TorusPrecision = self.k.ok_or(BuildError::MissingK)?;
-
-        if base2k.0 == 0 {
-            return Err(BuildError::ZeroBase2K);
-        }
-
-        if k.0 == 0 {
-            return Err(BuildError::ZeroTorusPrecision);
-        }
-
-        if data.n() == 0 {
-            return Err(BuildError::ZeroDegree);
-        }
-
-        if data.cols() != 1 {
-            return Err(BuildError::ZeroCols);
-        }
-
-        if data.size() == 0 {
-            return Err(BuildError::ZeroLimbs);
-        }
-
-        Ok(GLWEPlaintext { data, base2k, k })
-    }
-}
-
 impl<D: DataRef> fmt::Display for GLWEPlaintext<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
@@ -181,23 +118,21 @@ impl GLWEPlaintext<Vec<u8>> {
 
 impl<D: DataRef> GLWECiphertextToRef for GLWEPlaintext<D> {
     fn to_ref(&self) -> GLWECiphertext<&[u8]> {
-        GLWECiphertext::builder()
-            .data(self.data.to_ref())
-            .k(self.k())
-            .base2k(self.base2k())
-            .build()
-            .unwrap()
+        GLWECiphertext {
+            k: self.k,
+            base2k: self.base2k,
+            data: self.data.to_ref(),
+        }
     }
 }
 
 impl<D: DataMut> GLWECiphertextToMut for GLWEPlaintext<D> {
     fn to_mut(&mut self) -> GLWECiphertext<&mut [u8]> {
-        GLWECiphertext::builder()
-            .k(self.k())
-            .base2k(self.base2k())
-            .data(self.data.to_mut())
-            .build()
-            .unwrap()
+        GLWECiphertext {
+            k: self.k,
+            base2k: self.base2k,
+            data: self.data.to_mut(),
+        }
     }
 }
 

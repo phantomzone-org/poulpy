@@ -33,21 +33,16 @@ pub use lwe_pt::*;
 pub use lwe_sk::*;
 pub use lwe_to_glwe_ksk::*;
 
-#[derive(Debug)]
-pub enum BuildError {
-    MissingData,
-    MissingBase2K,
-    MissingK,
-    MissingDigits,
-    ZeroDegree,
-    NonPowerOfTwoDegree,
-    ZeroBase2K,
-    ZeroTorusPrecision,
-    ZeroCols,
-    ZeroLimbs,
-    ZeroRank,
-    ZeroDigits,
-    VecZnxColsNotOne,
+use poulpy_hal::layouts::{Backend, Module};
+
+pub trait GetDegree {
+    fn n(&self) -> Degree;
+}
+
+impl<B: Backend> GetDegree for Module<B> {
+    fn n(&self) -> Degree {
+        Self::n(&self).into()
+    }
 }
 
 /// Newtype over `u32` with arithmetic and comparisons against same type and `u32`.

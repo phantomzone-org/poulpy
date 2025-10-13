@@ -1,12 +1,12 @@
 use poulpy_hal::{
     api::{SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare},
-    layouts::{Backend, Data, DataMut, DataRef, Module, Scratch, SvpPPol, SvpPPolToMut, SvpPPolToRef, ZnxInfos},
+    layouts::{Backend, Data, DataMut, DataRef, Module, SvpPPol, SvpPPolToMut, SvpPPolToRef, ZnxInfos},
 };
 
 use crate::{
     dist::Distribution,
     layouts::{
-        Base2K, Degree, GLWEInfos, GLWESecret, GLWESecretToMut, GLWESecretToRef, LWEInfos, Rank, TorusPrecision,
+        Base2K, Degree, GLWEInfos, GLWESecret, GLWESecretToRef, GetDegree, GetDist, LWEInfos, Rank, TorusPrecision,
         prepared::SetDist,
     },
 };
@@ -44,40 +44,63 @@ impl<D: Data, B: Backend> GLWEInfos for GLWESecretPrepared<D, B> {
         Rank(self.data.cols() as u32)
     }
 }
-impl<B: Backend> GLWESecretPrepared<Vec<u8>, B> {
-    pub fn alloc<A>(module: &Module<B>, infos: &A) -> Self
-    where
-        A: GLWEInfos,
-        Module<B>: SvpPPolAlloc<B>,
-    {
-        assert_eq!(module.n() as u32, infos.n());
-        Self::alloc_with(module, infos.rank())
-    }
 
-    pub fn alloc_with(module: &Module<B>, rank: Rank) -> Self
-    where
-        Module<B>: SvpPPolAlloc<B>,
-    {
-        Self {
-            data: module.svp_ppol_alloc(rank.into()),
+pub trait GLWESecretPreparedAlloc<B: Backend>
+where
+    Self: GetDegree + SvpPPolAllocBytes + SvpPPolAlloc<B>,
+{
+    fn glwe_secret_prepared_alloc(&self, rank: Rank) -> GLWESecretPrepared<Vec<u8>, B> {
+        GLWESecretPrepared {
+            data: self.svp_ppol_alloc(rank.into()),
             dist: Distribution::NONE,
         }
     }
-
-    pub fn alloc_bytes<A>(module: &Module<B>, infos: &A) -> usize
+    fn glwe_secret_prepared_alloc_from_infos<A>(&self, infos: &A) -> GLWESecretPrepared<Vec<u8>, B>
     where
         A: GLWEInfos,
-        Module<B>: SvpPPolAllocBytes,
     {
-        assert_eq!(module.n() as u32, infos.n());
-        Self::alloc_bytes_with(module, infos.rank())
+        assert_eq!(self.n(), infos.n());
+        self.glwe_secret_prepared_alloc(infos.rank())
     }
 
-    pub fn alloc_bytes_with(module: &Module<B>, rank: Rank) -> usize
+    fn glwe_secret_alloc_bytes(&self, rank: Rank) -> usize {
+        self.svp_ppol_alloc_bytes(rank.into())
+    }
+    fn glwe_secret_alloc_bytes_from_infos<A>(&self, infos: &A) -> usize
     where
-        Module<B>: SvpPPolAllocBytes,
+        A: GLWEInfos,
     {
-        module.svp_ppol_alloc_bytes(rank.into())
+        assert_eq!(self.n(), infos.n());
+        self.glwe_secret_alloc_bytes(infos.rank())
+    }
+}
+
+impl<B: Backend> GLWESecretPreparedAlloc<B> for Module<B> where Self: GetDegree + SvpPPolAllocBytes + SvpPPolAlloc<B> {}
+
+impl<B: Backend> GLWESecretPrepared<Vec<u8>, B>
+where
+    Module<B>: GLWESecretPreparedAlloc<B>,
+{
+    pub fn alloc_from_infos<A>(module: &Module<B>, infos: &A) -> Self
+    where
+        A: GLWEInfos,
+    {
+        module.glwe_secret_prepared_alloc_from_infos(infos)
+    }
+
+    pub fn alloc(module: &Module<B>, rank: Rank) -> Self {
+        module.glwe_secret_prepared_alloc(rank)
+    }
+
+    pub fn alloc_bytes_from_infos<A>(module: &Module<B>, infos: &A) -> usize
+    where
+        A: GLWEInfos,
+    {
+        module.glwe_secret_alloc_bytes_from_infos(infos)
+    }
+
+    pub fn alloc_bytes(module: &Module<B>, rank: Rank) -> usize {
+        module.glwe_secret_alloc_bytes(rank)
     }
 }
 
@@ -91,81 +114,29 @@ impl<D: Data, B: Backend> GLWESecretPrepared<D, B> {
     }
 }
 
-pub trait GLWESecretPrepareTmpBytes {
-    fn glwe_secret_prepare_tmp_bytes<A>(&self, infos: &A)
-    where
-        A: GLWEInfos;
-}
-
-impl<B: Backend> GLWESecretPrepareTmpBytes for Module<B> {
-    fn glwe_secret_prepare_tmp_bytes<A>(&self, infos: &A)
-    where
-        A: GLWEInfos,
-    {
-        0
-    }
-}
-
-impl<B: Backend> GLWESecretPrepared<Vec<u8>, B>
+pub trait GLWESecretPrepare<B: Backend>
 where
-    Module<B>: GLWESecretPrepareTmpBytes,
+    Self: SvpPrepare<B>,
 {
-    fn prepare_tmp_bytes<A>(&self, module: &Module<B>, infos: &A) -> usize
-    where
-        A: GLWEInfos,
-    {
-        0
-    }
-}
-
-pub trait GLWESecretPrepare<B: Backend> {
-    fn glwe_secret_prepare<R, O>(&self, res: &mut R, other: &O, scratch: &mut Scratch<B>)
+    fn glwe_secret_prepare<R, O>(&self, res: &mut R, other: &O)
     where
         R: GLWESecretPreparedToMut<B> + SetDist,
-        O: GLWESecretToRef;
-}
-
-impl<B: Backend> GLWESecretPrepare<B> for Module<B>
-where
-    Module<B>: SvpPrepare<B>,
-{
-    fn glwe_secret_prepare<R, O>(&self, res: &mut R, other: &O, scratch: &mut Scratch<B>)
-    where
-        R: GLWESecretPreparedToMut<B> + SetDist,
-        O: GLWESecretToRef,
+        O: GLWESecretToRef + GetDist,
     {
         {
-            let res: GLWESecretPrepared<&mut [u8], _> = res.to_mut();
+            let mut res: GLWESecretPrepared<&mut [u8], _> = res.to_mut();
             let other: GLWESecret<&[u8]> = other.to_ref();
 
-            for i in 0..self.rank().into() {
+            for i in 0..res.rank().into() {
                 self.svp_prepare(&mut res.data, i, &other.data, i);
             }
         }
 
-        res.set_dist(other.dist);
+        res.set_dist(other.get_dist());
     }
 }
 
-pub trait GLWESecretPrepareAlloc<B: Backend> {
-    fn glwe_secret_prepare_alloc<O>(&self, other: &O, scratch: &mut Scratch<B>)
-    where
-        O: GLWESecretToMut;
-}
-
-impl<B: Backend> GLWESecretPrepareAlloc<B> for Module<B>
-where
-    Module<B>: GLWESecretPrepare<B>,
-{
-    fn glwe_secret_prepare_alloc<O>(&self, other: &O, scratch: &mut Scratch<B>)
-    where
-        O: GLWESecretToMut,
-    {
-        let mut ct_prep: GLWESecretPrepared<Vec<u8>, B> = GLWESecretPrepared::alloc(self, self);
-        self.glwe_secret_prepare(&mut ct_prep, other, scratch);
-        ct_prep
-    }
-}
+impl<B: Backend> GLWESecretPrepare<B> for Module<B> where Self: SvpPrepare<B> {}
 
 pub trait GLWESecretPreparedToRef<B: Backend> {
     fn to_ref(&self) -> GLWESecretPrepared<&[u8], B>;

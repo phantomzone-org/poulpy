@@ -25,7 +25,7 @@ impl GLWESwitchingKeyCompressed<Vec<u8>> {
     {
         (GGLWE::encrypt_sk_scratch_space(module, infos) | ScalarZnx::alloc_bytes(module.n(), 1))
             + ScalarZnx::alloc_bytes(module.n(), infos.rank_in().into())
-            + GLWESecretPrepared::alloc_bytes_with(module, infos.rank_out())
+            + GLWESecretPrepared::alloc_bytes(module, infos.rank_out())
     }
 }
 

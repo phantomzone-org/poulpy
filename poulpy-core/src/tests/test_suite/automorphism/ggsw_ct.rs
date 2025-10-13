@@ -182,7 +182,7 @@ where
                 AutomorphismKeyPrepared::alloc_from_infos(module, &auto_key_layout);
             auto_key_prepared.prepare(module, &auto_key, scratch.borrow());
 
-            let mut tsk_prepared: TensorKeyPrepared<Vec<u8>, B> = TensorKeyPrepared::alloc(module, &tensor_key_layout);
+            let mut tsk_prepared: TensorKeyPrepared<Vec<u8>, B> = TensorKeyPrepared::alloc_from_infos(module, &tensor_key_layout);
             tsk_prepared.prepare(module, &tensor_key, scratch.borrow());
 
             ct_out.automorphism(
@@ -362,7 +362,7 @@ where
                 AutomorphismKeyPrepared::alloc_from_infos(module, &auto_key_layout);
             auto_key_prepared.prepare(module, &auto_key, scratch.borrow());
 
-            let mut tsk_prepared: TensorKeyPrepared<Vec<u8>, B> = TensorKeyPrepared::alloc(module, &tensor_key_layout);
+            let mut tsk_prepared: TensorKeyPrepared<Vec<u8>, B> = TensorKeyPrepared::alloc_from_infos(module, &tensor_key_layout);
             tsk_prepared.prepare(module, &tensor_key, scratch.borrow());
 
             ct.automorphism_inplace(module, &auto_key_prepared, &tsk_prepared, scratch.borrow());

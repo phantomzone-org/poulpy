@@ -101,7 +101,7 @@ where
     {
         Self {
             blocks: (0..T::WORD_SIZE)
-                .map(|_| GGSWPrepared::alloc_with(module, base2k, k, dnum, dsize, rank))
+                .map(|_| GGSWPrepared::alloc(module, base2k, k, dnum, dsize, rank))
                 .collect(),
             _base: 1,
             _phantom: PhantomData,

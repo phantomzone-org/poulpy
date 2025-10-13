@@ -39,7 +39,7 @@ impl LWESwitchingKey<Vec<u8>> {
             "rank_out > 1 is not supported for LWESwitchingKey"
         );
         GLWESecret::alloc_bytes_with(Degree(module.n() as u32), Rank(1))
-            + GLWESecretPrepared::alloc_bytes_with(module, Rank(1))
+            + GLWESecretPrepared::alloc_bytes(module, Rank(1))
             + GLWESwitchingKey::encrypt_sk_scratch_space(module, infos)
     }
 }
