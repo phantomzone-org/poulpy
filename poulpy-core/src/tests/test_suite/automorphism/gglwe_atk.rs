@@ -154,7 +154,7 @@ where
             );
 
             let mut auto_key_apply_prepared: AutomorphismKeyPrepared<Vec<u8>, B> =
-                AutomorphismKeyPrepared::alloc(module, &auto_key_apply_infos);
+                AutomorphismKeyPrepared::alloc_from_infos(module, &auto_key_apply_infos);
 
             auto_key_apply_prepared.prepare(module, &auto_key_apply, scratch.borrow());
 
@@ -348,7 +348,7 @@ where
             );
 
             let mut auto_key_apply_prepared: AutomorphismKeyPrepared<Vec<u8>, B> =
-                AutomorphismKeyPrepared::alloc(module, &auto_key_apply_layout);
+                AutomorphismKeyPrepared::alloc_from_infos(module, &auto_key_apply_layout);
 
             auto_key_apply_prepared.prepare(module, &auto_key_apply, scratch.borrow());
 

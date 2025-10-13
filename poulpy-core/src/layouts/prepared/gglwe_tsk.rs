@@ -87,7 +87,7 @@ impl<B: Backend> TensorKeyPrepared<Vec<u8>, B> {
         let mut keys: Vec<GLWESwitchingKeyPrepared<Vec<u8>, B>> = Vec::new();
         let pairs: u32 = (((rank.0 + 1) * rank.0) >> 1).max(1);
         (0..pairs).for_each(|_| {
-            keys.push(GLWESwitchingKeyPrepared::alloc_with(
+            keys.push(GLWESwitchingKeyPrepared::alloc(
                 module,
                 base2k,
                 k,
@@ -113,7 +113,7 @@ impl<B: Backend> TensorKeyPrepared<Vec<u8>, B> {
         let rank_out: usize = infos.rank_out().into();
         let pairs: usize = (((rank_out + 1) * rank_out) >> 1).max(1);
         pairs
-            * GLWESwitchingKeyPrepared::alloc_bytes_with(
+            * GLWESwitchingKeyPrepared::alloc_bytes(
                 module,
                 infos.base2k(),
                 infos.k(),
@@ -129,7 +129,7 @@ impl<B: Backend> TensorKeyPrepared<Vec<u8>, B> {
         Module<B>: VmpPMatAllocBytes,
     {
         let pairs: usize = (((rank.0 + 1) * rank.0) >> 1).max(1) as usize;
-        pairs * GLWESwitchingKeyPrepared::alloc_bytes_with(module, base2k, k, Rank(1), rank, dnum, dsize)
+        pairs * GLWESwitchingKeyPrepared::alloc_bytes(module, base2k, k, Rank(1), rank, dnum, dsize)
     }
 }
 

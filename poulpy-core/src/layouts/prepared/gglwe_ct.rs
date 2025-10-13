@@ -160,15 +160,70 @@ impl<D: Data, B: Backend> GGLWEPreparedBuilder<D, B> {
     }
 }
 
-impl<B: Backend> GGLWEPrepared<Vec<u8>, B> {
-    pub fn alloc<A>(module: &Module<B>, infos: &A) -> Self
+pub trait GGLWEPreparedAlloc<B: Backend> {
+    fn gglwe_prepared_alloc(
+        &self,
+        base2k: Base2K,
+        k: TorusPrecision,
+        rank_in: Rank,
+        rank_out: Rank,
+        dnum: Dnum,
+        dsize: Dsize,
+    ) -> GGLWEPrepared<Vec<u8>, B>;
+}
+
+impl<B: Backend> GGLWEPreparedAlloc<B> for Module<B>
+where
+    Module<B>: VmpPMatAlloc<B>,
+{
+    fn gglwe_prepared_alloc(
+        &self,
+        base2k: Base2K,
+        k: TorusPrecision,
+        rank_in: Rank,
+        rank_out: Rank,
+        dnum: Dnum,
+        dsize: Dsize,
+    ) -> GGLWEPrepared<Vec<u8>, B> {
+        let size: usize = k.0.div_ceil(base2k.0) as usize;
+        debug_assert!(
+            size as u32 > dsize.0,
+            "invalid gglwe: ceil(k/base2k): {size} <= dsize: {}",
+            dsize.0
+        );
+
+        assert!(
+            dnum.0 * dsize.0 <= size as u32,
+            "invalid gglwe: dnum: {} * dsize:{} > ceil(k/base2k): {size}",
+            dnum.0,
+            dsize.0,
+        );
+
+        GGLWEPrepared {
+            data: self.vmp_pmat_alloc(dnum.into(), rank_in.into(), (rank_out + 1).into(), size),
+            k,
+            base2k,
+            dsize,
+        }
+    }
+}
+
+pub trait GGLWEPreparedAllocFromInfos<B: Backend> {
+    fn gglwe_prepared_alloc_from_infos<A>(&self, infos: &A) -> GGLWEPrepared<Vec<u8>, B>
+    where
+        A: GGLWEInfos;
+}
+
+impl<B: Backend> GGLWEPreparedAllocFromInfos<B> for Module<B>
+where
+    Module<B>: GGLWEPreparedAlloc<B>,
+{
+    fn gglwe_prepared_alloc_from_infos<A>(&self, infos: &A) -> GGLWEPrepared<Vec<u8>, B>
     where
         A: GGLWEInfos,
-        Module<B>: VmpPMatAlloc<B>,
     {
-        debug_assert_eq!(module.n(), infos.n().0 as usize, "module.n() != infos.n()");
-        Self::alloc_with(
-            module,
+        assert_eq!(self.n() as u32, infos.n(), "module.n() != infos.n()");
+        self.gglwe_prepared_alloc(
             infos.base2k(),
             infos.k(),
             infos.rank_in(),
@@ -177,8 +232,87 @@ impl<B: Backend> GGLWEPrepared<Vec<u8>, B> {
             infos.dsize(),
         )
     }
+}
 
-    pub fn alloc_with(
+pub trait GGLWEPreparedAllocBytes<B: Backend> {
+    fn gglwe_prepared_alloc_bytes(
+        &self,
+        base2k: Base2K,
+        k: TorusPrecision,
+        rank_in: Rank,
+        rank_out: Rank,
+        dnum: Dnum,
+        dsize: Dsize,
+    ) -> usize;
+}
+
+impl<B: Backend> GGLWEPreparedAllocBytes<B> for Module<B>
+where
+    Module<B>: VmpPMatAllocBytes,
+{
+    fn gglwe_prepared_alloc_bytes(
+        &self,
+        base2k: Base2K,
+        k: TorusPrecision,
+        rank_in: Rank,
+        rank_out: Rank,
+        dnum: Dnum,
+        dsize: Dsize,
+    ) -> usize {
+        let size: usize = k.0.div_ceil(base2k.0) as usize;
+        debug_assert!(
+            size as u32 > dsize.0,
+            "invalid gglwe: ceil(k/base2k): {size} <= dsize: {}",
+            dsize.0
+        );
+
+        assert!(
+            dnum.0 * dsize.0 <= size as u32,
+            "invalid gglwe: dnum: {} * dsize:{} > ceil(k/base2k): {size}",
+            dnum.0,
+            dsize.0,
+        );
+
+        self.vmp_pmat_alloc_bytes(dnum.into(), rank_in.into(), (rank_out + 1).into(), size)
+    }
+}
+
+pub trait GGLWEPreparedAllocBytesFromInfos<B: Backend> {
+    fn gglwe_prepared_alloc_bytes_from_infos<A>(&self, infos: &A) -> usize
+    where
+        A: GGLWEInfos;
+}
+
+impl<B: Backend> GGLWEPreparedAllocBytesFromInfos<B> for Module<B>
+where
+    Module<B>: GGLWEPreparedAllocBytes<B>,
+{
+    fn gglwe_prepared_alloc_bytes_from_infos<A>(&self, infos: &A) -> usize
+    where
+        A: GGLWEInfos,
+    {
+        assert_eq!(self.n() as u32, infos.n(), "module.n() != infos.n()");
+        self.gglwe_prepared_alloc_bytes(
+            infos.base2k(),
+            infos.k(),
+            infos.rank_in(),
+            infos.rank_out(),
+            infos.dnum(),
+            infos.dsize(),
+        )
+    }
+}
+
+impl<B: Backend> GGLWEPrepared<Vec<u8>, B> {
+    pub fn alloc_from_infos<A>(module: &Module<B>, infos: &A) -> Self
+    where
+        A: GGLWEInfos,
+        Module<B>: GGLWEPreparedAllocFromInfos<B>,
+    {
+        module.gglwe_prepared_alloc_from_infos(infos)
+    }
+
+    pub fn alloc(
         module: &Module<B>,
         base2k: Base2K,
         k: TorusPrecision,
@@ -188,48 +322,20 @@ impl<B: Backend> GGLWEPrepared<Vec<u8>, B> {
         dsize: Dsize,
     ) -> Self
     where
-        Module<B>: VmpPMatAlloc<B>,
+        Module<B>: GGLWEPreparedAlloc<B>,
     {
-        let size: usize = k.0.div_ceil(base2k.0) as usize;
-        debug_assert!(
-            size as u32 > dsize.0,
-            "invalid gglwe: ceil(k/base2k): {size} <= dsize: {}",
-            dsize.0
-        );
-
-        assert!(
-            dnum.0 * dsize.0 <= size as u32,
-            "invalid gglwe: dnum: {} * dsize:{} > ceil(k/base2k): {size}",
-            dnum.0,
-            dsize.0,
-        );
-
-        Self {
-            data: module.vmp_pmat_alloc(dnum.into(), rank_in.into(), (rank_out + 1).into(), size),
-            k,
-            base2k,
-            dsize,
-        }
+        module.gglwe_prepared_alloc(base2k, k, rank_in, rank_out, dnum, dsize)
     }
 
-    pub fn alloc_bytes<A>(module: &Module<B>, infos: &A) -> usize
+    pub fn alloc_bytes_from_infos<A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GGLWEInfos,
-        Module<B>: VmpPMatAllocBytes,
+        Module<B>: GGLWEPreparedAllocBytesFromInfos<B>,
     {
-        debug_assert_eq!(module.n(), infos.n().0 as usize, "module.n() != infos.n()");
-        Self::alloc_bytes_with(
-            module,
-            infos.base2k(),
-            infos.k(),
-            infos.rank_in(),
-            infos.rank_out(),
-            infos.dnum(),
-            infos.dsize(),
-        )
+        module.gglwe_prepared_alloc_bytes_from_infos(infos)
     }
 
-    pub fn alloc_bytes_with(
+    pub fn alloc_bytes(
         module: &Module<B>,
         base2k: Base2K,
         k: TorusPrecision,
@@ -239,23 +345,9 @@ impl<B: Backend> GGLWEPrepared<Vec<u8>, B> {
         dsize: Dsize,
     ) -> usize
     where
-        Module<B>: VmpPMatAllocBytes,
+        Module<B>: GGLWEPreparedAllocBytes<B>,
     {
-        let size: usize = k.0.div_ceil(base2k.0) as usize;
-        debug_assert!(
-            size as u32 > dsize.0,
-            "invalid gglwe: ceil(k/base2k): {size} <= dsize: {}",
-            dsize.0
-        );
-
-        assert!(
-            dnum.0 * dsize.0 <= size as u32,
-            "invalid gglwe: dnum: {} * dsize:{} > ceil(k/base2k): {size}",
-            dnum.0,
-            dsize.0,
-        );
-
-        module.vmp_pmat_alloc_bytes(dnum.into(), rank_in.into(), (rank_out + 1).into(), size)
+        module.gglwe_prepared_alloc_bytes(base2k, k, rank_in, rank_out, dnum, dsize)
     }
 }
 
@@ -283,7 +375,7 @@ where
 }
 
 impl<B: Backend> GGLWEPrepared<Vec<u8>, B> {
-    pub fn prepare_tmp_bytes(&self, module: &Module<B>)
+    pub fn prepare_tmp_bytes(&self, module: &Module<B>) -> usize
     where
         Module<B>: GGLWEPrepareTmpBytes,
     {
@@ -307,7 +399,7 @@ where
         R: GGLWEPreparedToMut<B>,
         O: GGLWEToRef,
     {
-        let mut res: GGLWEPrepared<&mut [u8], B> = self.to_mut();
+        let mut res: GGLWEPrepared<&mut [u8], B> = res.to_mut();
         let other: GGLWE<&[u8]> = other.to_ref();
 
         assert_eq!(res.n(), self.n() as u32);
@@ -329,30 +421,6 @@ where
         O: GGLWEToRef,
     {
         module.gglwe_prepare(self, other, scratch);
-    }
-}
-
-pub trait GGLWEPrepareAlloc<B: Backend> {
-    fn gglwe_prepare_alloc<O>(&self, other: &O, scratch: &mut Scratch<B>) -> GGLWEPrepared<Vec<u8>, B>;
-}
-
-impl<B: Backend> GGLWEPrepareAlloc<B> for Module<B>
-where
-    Module<B>: VmpPMatAlloc<B> + VmpPrepare<B>,
-{
-    fn gglwe_prepare_alloc<O>(&self, other: &O, scratch: &mut Scratch<B>) -> GGLWEPrepared<Vec<u8>, B> {
-        let mut ct_prepared: GGLWEPrepared<Vec<u8>, B> = GGLWEPrepared::alloc(self, &other.to_ref());
-        ct_prepared.prepare(self, &other.to_ref(), scratch);
-        ct_prepared
-    }
-}
-
-impl<D: DataRef> GGLWE<D> {
-    fn prepare_alloc<B: Backend>(&self, module: &Module<B>, scratch: &Scratch<B>) -> GGLWEPrepared<Vec<u8>, B>
-    where
-        Module<B>: GGLWEPrepareAlloc<B>,
-    {
-        module.gglwe_prepare_alloc(self, scratch)
     }
 }
 

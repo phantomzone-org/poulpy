@@ -1,11 +1,12 @@
-use poulpy_hal::{
-    api::{VmpPMatAlloc, VmpPMatAllocBytes},
-    layouts::{Backend, Data, DataMut, DataRef, Module, Scratch},
-};
+use poulpy_hal::layouts::{Backend, Data, DataMut, DataRef, Module, Scratch};
 
 use crate::layouts::{
-    Base2K, Degree, Dnum, Dsize, GGLWEInfos, GLWEInfos, GLWESwitchingKey, GLWESwitchingKeyToRef, LWEInfos, Rank, TorusPrecision,
-    prepared::{GGLWEPrepare, GGLWEPrepareTmpBytes, GGLWEPrepared, GGLWEPreparedToMut, GGLWEPreparedToRef},
+    Base2K, Degree, Dnum, Dsize, GGLWEInfos, GLWEInfos, GLWESwitchingKeySetMetaData, GLWESwitchingKeyToRef,
+    GLWESwtichingKeyGetMetaData, LWEInfos, Rank, TorusPrecision,
+    prepared::{
+        GGLWEPrepare, GGLWEPrepareTmpBytes, GGLWEPrepared, GGLWEPreparedAlloc, GGLWEPreparedAllocBytes,
+        GGLWEPreparedAllocBytesFromInfos, GGLWEPreparedAllocFromInfos, GGLWEPreparedToMut, GGLWEPreparedToRef,
+    },
 };
 
 #[derive(PartialEq, Eq)]
@@ -15,18 +16,23 @@ pub struct GLWESwitchingKeyPrepared<D: Data, B: Backend> {
     pub(crate) sk_out_n: usize, // Degree of sk_out
 }
 
-pub(crate) trait GLWESwitchingKeyPreparedSetMetaData {
-    fn set_sk_in_n(&mut self, sk_in_n: usize);
-    fn set_sk_out_n(&mut self, sk_out_n: usize);
-}
-
-impl<D: DataMut, B: Backend> GLWESwitchingKeyPreparedSetMetaData for GLWESwitchingKeyPrepared<D, B> {
+impl<D: DataMut, B: Backend> GLWESwitchingKeySetMetaData for GLWESwitchingKeyPrepared<D, B> {
     fn set_sk_in_n(&mut self, sk_in_n: usize) {
         self.sk_in_n = sk_in_n
     }
 
     fn set_sk_out_n(&mut self, sk_out_n: usize) {
-        self.sk_out_n = self.sk_out_n
+        self.sk_out_n = sk_out_n
+    }
+}
+
+impl<D: DataRef, B: Backend> GLWESwtichingKeyGetMetaData for GLWESwitchingKeyPrepared<D, B> {
+    fn sk_in_n(&self) -> usize {
+        self.sk_in_n
+    }
+
+    fn sk_out_n(&self) -> usize {
+        self.sk_out_n
     }
 }
 
@@ -72,21 +78,118 @@ impl<D: Data, B: Backend> GGLWEInfos for GLWESwitchingKeyPrepared<D, B> {
     }
 }
 
-impl<B: Backend> GLWESwitchingKeyPrepared<Vec<u8>, B> {
-    pub fn alloc<A>(module: &Module<B>, infos: &A) -> Self
-    where
-        A: GGLWEInfos,
-        Module<B>: VmpPMatAlloc<B>,
-    {
-        debug_assert_eq!(module.n() as u32, infos.n(), "module.n() != infos.n()");
+pub trait GLWESwitchingKeyPreparedAlloc<B: Backend> {
+    fn glwe_switching_key_prepared_alloc(
+        &self,
+        base2k: Base2K,
+        k: TorusPrecision,
+        rank_in: Rank,
+        rank_out: Rank,
+        dnum: Dnum,
+        dsize: Dsize,
+    ) -> GLWESwitchingKeyPrepared<Vec<u8>, B>;
+}
+
+impl<B: Backend> GLWESwitchingKeyPreparedAlloc<B> for Module<B>
+where
+    Module<B>: GGLWEPreparedAlloc<B>,
+{
+    fn glwe_switching_key_prepared_alloc(
+        &self,
+        base2k: Base2K,
+        k: TorusPrecision,
+        rank_in: Rank,
+        rank_out: Rank,
+        dnum: Dnum,
+        dsize: Dsize,
+    ) -> GLWESwitchingKeyPrepared<Vec<u8>, B> {
         GLWESwitchingKeyPrepared::<Vec<u8>, B> {
-            key: GGLWEPrepared::alloc(module, infos),
+            key: self.gglwe_prepared_alloc(base2k, k, rank_in, rank_out, dnum, dsize),
             sk_in_n: 0,
             sk_out_n: 0,
         }
     }
+}
 
-    pub fn alloc_with(
+pub trait GLWESwitchingKeyPreparedAllocFromInfos<B: Backend> {
+    fn glwe_switching_key_prepared_alloc_from_infos<A>(&self, infos: &A) -> GLWESwitchingKeyPrepared<Vec<u8>, B>
+    where
+        A: GGLWEInfos;
+}
+
+impl<B: Backend> GLWESwitchingKeyPreparedAllocFromInfos<B> for Module<B>
+where
+    Module<B>: GGLWEPreparedAllocFromInfos<B>,
+{
+    fn glwe_switching_key_prepared_alloc_from_infos<A>(&self, infos: &A) -> GLWESwitchingKeyPrepared<Vec<u8>, B>
+    where
+        A: GGLWEInfos,
+    {
+        GLWESwitchingKeyPrepared::<Vec<u8>, B> {
+            key: self.gglwe_prepared_alloc_from_infos(infos),
+            sk_in_n: 0,
+            sk_out_n: 0,
+        }
+    }
+}
+
+pub trait GLWESwitchingKeyPreparedAllocBytes<B: Backend> {
+    fn glwe_switching_key_prepared_alloc_bytes(
+        &self,
+        base2k: Base2K,
+        k: TorusPrecision,
+        rank_in: Rank,
+        rank_out: Rank,
+        dnum: Dnum,
+        dsize: Dsize,
+    ) -> usize;
+}
+
+impl<B: Backend> GLWESwitchingKeyPreparedAllocBytes<B> for Module<B>
+where
+    Module<B>: GGLWEPreparedAllocBytes<B>,
+{
+    fn glwe_switching_key_prepared_alloc_bytes(
+        &self,
+        base2k: Base2K,
+        k: TorusPrecision,
+        rank_in: Rank,
+        rank_out: Rank,
+        dnum: Dnum,
+        dsize: Dsize,
+    ) -> usize {
+        self.gglwe_prepared_alloc_bytes(base2k, k, rank_in, rank_out, dnum, dsize)
+    }
+}
+
+pub trait GLWESwitchingKeyPreparedAllocBytesFromInfos<B: Backend> {
+    fn glwe_switching_key_prepared_alloc_bytes_from_infos<A>(&self, infos: &A) -> usize
+    where
+        A: GGLWEInfos;
+}
+
+impl<B: Backend> GLWESwitchingKeyPreparedAllocBytesFromInfos<B> for Module<B>
+where
+    Module<B>: GGLWEPreparedAllocBytesFromInfos<B>,
+{
+    fn glwe_switching_key_prepared_alloc_bytes_from_infos<A>(&self, infos: &A) -> usize
+    where
+        A: GGLWEInfos,
+    {
+        self.gglwe_prepared_alloc_bytes_from_infos(infos)
+    }
+}
+
+impl<B: Backend> GLWESwitchingKeyPrepared<Vec<u8>, B> {
+    pub fn alloc_from_infos<A>(module: &Module<B>, infos: &A) -> Self
+    where
+        A: GGLWEInfos,
+        Module<B>: GLWESwitchingKeyPreparedAllocFromInfos<B>,
+    {
+        module.glwe_switching_key_prepared_alloc_from_infos(infos)
+    }
+
+    pub fn alloc(
         module: &Module<B>,
         base2k: Base2K,
         k: TorusPrecision,
@@ -96,25 +199,20 @@ impl<B: Backend> GLWESwitchingKeyPrepared<Vec<u8>, B> {
         dsize: Dsize,
     ) -> Self
     where
-        Module<B>: VmpPMatAlloc<B>,
+        Module<B>: GLWESwitchingKeyPreparedAlloc<B>,
     {
-        GLWESwitchingKeyPrepared::<Vec<u8>, B> {
-            key: GGLWEPrepared::alloc_with(module, base2k, k, rank_in, rank_out, dnum, dsize),
-            sk_in_n: 0,
-            sk_out_n: 0,
-        }
+        module.glwe_switching_key_prepared_alloc(base2k, k, rank_in, rank_out, dnum, dsize)
     }
 
-    pub fn alloc_bytes<A>(module: &Module<B>, infos: &A) -> usize
+    pub fn alloc_bytes_from_infos<A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GGLWEInfos,
-        Module<B>: VmpPMatAllocBytes,
+        Module<B>: GLWESwitchingKeyPreparedAllocBytesFromInfos<B>,
     {
-        debug_assert_eq!(module.n() as u32, infos.n(), "module.n() != infos.n()");
-        GGLWEPrepared::alloc_bytes(module, infos)
+        module.glwe_switching_key_prepared_alloc_bytes_from_infos(infos)
     }
 
-    pub fn alloc_bytes_with(
+    pub fn alloc_bytes(
         module: &Module<B>,
         base2k: Base2K,
         k: TorusPrecision,
@@ -124,9 +222,9 @@ impl<B: Backend> GLWESwitchingKeyPrepared<Vec<u8>, B> {
         dsize: Dsize,
     ) -> usize
     where
-        Module<B>: VmpPMatAllocBytes,
+        Module<B>: GLWESwitchingKeyPreparedAllocBytes<B>,
     {
-        GGLWEPrepared::alloc_bytes_with(module, base2k, k, rank_in, rank_out, dnum, dsize)
+        module.glwe_switching_key_prepared_alloc_bytes(base2k, k, rank_in, rank_out, dnum, dsize)
     }
 }
 
@@ -158,63 +256,34 @@ where
 }
 
 pub trait GLWESwitchingKeyPrepare<B: Backend> {
-    fn glwe_switching_prepare<R, O>(&self, res: &R, other: &O, scratch: &mut Scratch<B>)
+    fn glwe_switching_prepare<R, O>(&self, res: &mut R, other: &O, scratch: &mut Scratch<B>)
     where
-        R: GLWESwitchingKeyPreparedToMut<B> + GLWESwitchingKeyPreparedSetMetaData,
-        O: GLWESwitchingKeyToRef;
+        R: GLWESwitchingKeyPreparedToMut<B> + GLWESwitchingKeySetMetaData,
+        O: GLWESwitchingKeyToRef + GLWESwtichingKeyGetMetaData;
 }
 
 impl<B: Backend> GLWESwitchingKeyPrepare<B> for Module<B>
 where
     Module<B>: GGLWEPrepare<B>,
 {
-    fn glwe_switching_prepare<R, O>(&self, res: &R, other: &O, scratch: &mut Scratch<B>)
+    fn glwe_switching_prepare<R, O>(&self, res: &mut R, other: &O, scratch: &mut Scratch<B>)
     where
-        R: GLWESwitchingKeyPreparedToMut<B> + GLWESwitchingKeyPreparedSetMetaData,
-        O: GLWESwitchingKeyToRef,
+        R: GLWESwitchingKeyPreparedToMut<B> + GLWESwitchingKeySetMetaData,
+        O: GLWESwitchingKeyToRef + GLWESwtichingKeyGetMetaData,
     {
-        self.gglwe_prepare(&res.to_mut(), other, scratch);
-        res.set_sk_in_n(other.sk_in_n);
-        res.set_sk_out_n(other.sk_out_n);
+        self.gglwe_prepare(&mut res.to_mut().key, &other.to_ref().key, scratch);
+        res.set_sk_in_n(other.sk_in_n());
+        res.set_sk_out_n(other.sk_out_n());
     }
 }
 
 impl<D: DataMut, B: Backend> GLWESwitchingKeyPrepared<D, B> {
     pub fn prepare<O>(&mut self, module: &Module<B>, other: &O, scratch: &mut Scratch<B>)
     where
-        O: GLWESwitchingKeyToRef,
+        O: GLWESwitchingKeyToRef + GLWESwtichingKeyGetMetaData,
         Module<B>: GLWESwitchingKeyPrepare<B>,
     {
         module.glwe_switching_prepare(self, other, scratch);
-    }
-}
-
-pub trait GLWESwitchingKeyPrepareAlloc<B: Backend> {
-    fn glwe_switching_key_prepare_alloc<O>(&self, other: &O, scratch: &mut Scratch<B>)
-    where
-        O: GLWESwitchingKeyToRef;
-}
-
-impl<B: Backend> GLWESwitchingKeyPrepareAlloc<B> for Module<B>
-where
-    Module<B>: GLWESwitchingKeyPrepare<B>,
-{
-    fn glwe_switching_key_prepare_alloc<O>(&self, other: &O, scratch: &mut Scratch<B>)
-    where
-        O: GLWESwitchingKeyToRef,
-    {
-        let mut ct_prepared: GLWESwitchingKeyPrepared<Vec<u8>, B> = GLWESwitchingKeyPrepared::alloc(self, self);
-        self.glwe_switching_prepare(&mut ct_prepared, other, scratch);
-        ct_prepared
-    }
-}
-
-impl<D: DataRef> GLWESwitchingKey<D> {
-    pub fn prepare_alloc<B: Backend>(&self, module: &Module<B>, scratch: &mut Scratch<B>) -> GLWESwitchingKeyPrepared<Vec<u8>, B>
-    where
-        Module<B>: GLWESwitchingKeyPrepareAlloc<B>,
-    {
-        module.glwe_switching_key_prepare_alloc(self, scratch);
     }
 }
 

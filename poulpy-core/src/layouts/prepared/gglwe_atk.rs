@@ -1,12 +1,11 @@
-use poulpy_hal::{
-    api::{VmpPMatAlloc, VmpPMatAllocBytes, VmpPrepare},
-    layouts::{Backend, Data, DataMut, DataRef, Module, Scratch},
-};
+use poulpy_hal::layouts::{Backend, Data, DataMut, DataRef, Module, Scratch};
 
 use crate::layouts::{
     AutomorphismKeyToRef, Base2K, Degree, Dnum, Dsize, GGLWEInfos, GLWEInfos, LWEInfos, Rank, TorusPrecision,
     prepared::{
-        GLWESwitchingKeyPrepareTmpBytes, GLWESwitchingKeyPrepared, GLWESwitchingKeyPreparedToMut, GLWESwitchingKeyPreparedToRef,
+        GLWESwitchingKeyPrepare, GLWESwitchingKeyPrepareTmpBytes, GLWESwitchingKeyPrepared, GLWESwitchingKeyPreparedAlloc,
+        GLWESwitchingKeyPreparedAllocBytes, GLWESwitchingKeyPreparedAllocBytesFromInfos, GLWESwitchingKeyPreparedAllocFromInfos,
+        GLWESwitchingKeyPreparedToMut, GLWESwitchingKeyPreparedToRef,
     },
 };
 
@@ -14,12 +13,6 @@ use crate::layouts::{
 pub struct AutomorphismKeyPrepared<D: Data, B: Backend> {
     pub(crate) key: GLWESwitchingKeyPrepared<D, B>,
     pub(crate) p: i64,
-}
-
-impl<D: Data, B: Backend> AutomorphismKeyPrepared<D, B> {
-    pub fn p(&self) -> i64 {
-        self.p
-    }
 }
 
 impl<D: Data, B: Backend> LWEInfos for AutomorphismKeyPrepared<D, B> {
@@ -40,11 +33,21 @@ impl<D: Data, B: Backend> LWEInfos for AutomorphismKeyPrepared<D, B> {
     }
 }
 
-pub trait SetP {
+pub trait GetAutomorphismGaloisElement {
+    fn p(&self) -> i64;
+}
+
+impl<D: Data, B: Backend> GetAutomorphismGaloisElement for AutomorphismKeyPrepared<D, B> {
+    fn p(&self) -> i64 {
+        self.p
+    }
+}
+
+pub trait SetAutomorphismGaloisElement {
     fn set_p(&mut self, p: i64);
 }
 
-impl<D: Data, B: Backend> SetP for AutomorphismKeyPrepared<D, B> {
+impl<D: Data, B: Backend> SetAutomorphismGaloisElement for AutomorphismKeyPrepared<D, B> {
     fn set_p(&mut self, p: i64) {
         self.p = p
     }
@@ -74,56 +77,146 @@ impl<D: Data, B: Backend> GGLWEInfos for AutomorphismKeyPrepared<D, B> {
     }
 }
 
-impl<B: Backend> AutomorphismKeyPrepared<Vec<u8>, B> {
-    pub fn alloc<A>(module: &Module<B>, infos: &A) -> Self
+pub trait AutomorphismKeyPreparedAlloc<B: Backend> {
+    fn automorphism_key_prepared_alloc(
+        &self,
+        base2k: Base2K,
+        k: TorusPrecision,
+        rank: Rank,
+        dnum: Dnum,
+        dsize: Dsize,
+    ) -> AutomorphismKeyPrepared<Vec<u8>, B>;
+}
+
+impl<B: Backend> AutomorphismKeyPreparedAlloc<B> for Module<B>
+where
+    Module<B>: GLWESwitchingKeyPreparedAlloc<B>,
+{
+    fn automorphism_key_prepared_alloc(
+        &self,
+        base2k: Base2K,
+        k: TorusPrecision,
+        rank: Rank,
+        dnum: Dnum,
+        dsize: Dsize,
+    ) -> AutomorphismKeyPrepared<Vec<u8>, B> {
+        AutomorphismKeyPrepared::<Vec<u8>, B> {
+            key: self.glwe_switching_key_prepared_alloc(base2k, k, rank, rank, dnum, dsize),
+            p: 0,
+        }
+    }
+}
+
+pub trait AutomorphismKeyPreparedAllocFromInfos<B: Backend> {
+    fn automorphism_key_prepared_alloc_from_infos<A>(&self, infos: &A) -> AutomorphismKeyPrepared<Vec<u8>, B>
+    where
+        A: GGLWEInfos;
+}
+
+impl<B: Backend> AutomorphismKeyPreparedAllocFromInfos<B> for Module<B>
+where
+    Module<B>: GLWESwitchingKeyPreparedAllocFromInfos<B>,
+{
+    fn automorphism_key_prepared_alloc_from_infos<A>(&self, infos: &A) -> AutomorphismKeyPrepared<Vec<u8>, B>
     where
         A: GGLWEInfos,
-        Module<B>: VmpPMatAlloc<B>,
+    {
+        assert_eq!(
+            infos.rank_in(),
+            infos.rank_out(),
+            "rank_in != rank_out is not supported for AutomorphismKeyPrepared"
+        );
+        AutomorphismKeyPrepared {
+            key: self.glwe_switching_key_prepared_alloc_from_infos(infos),
+            p: 0,
+        }
+    }
+}
+
+pub trait AutomorphismKeyPreparedAllocBytes<B: Backend> {
+    fn automorphism_key_prepared_alloc_bytes(
+        &self,
+        base2k: Base2K,
+        k: TorusPrecision,
+        rank: Rank,
+        dnum: Dnum,
+        dsize: Dsize,
+    ) -> usize;
+}
+
+impl<B: Backend> AutomorphismKeyPreparedAllocBytes<B> for Module<B>
+where
+    Module<B>: GLWESwitchingKeyPreparedAllocBytes<B>,
+{
+    fn automorphism_key_prepared_alloc_bytes(
+        &self,
+        base2k: Base2K,
+        k: TorusPrecision,
+        rank: Rank,
+        dnum: Dnum,
+        dsize: Dsize,
+    ) -> usize {
+        self.glwe_switching_key_prepared_alloc_bytes(base2k, k, rank, rank, dnum, dsize)
+    }
+}
+
+pub trait AutomorphismKeyPreparedAllocBytesFromInfos<B: Backend> {
+    fn automorphism_key_prepared_alloc_bytes_from_infos<A>(&self, infos: &A) -> usize
+    where
+        A: GGLWEInfos;
+}
+
+impl<B: Backend> AutomorphismKeyPreparedAllocBytesFromInfos<B> for Module<B>
+where
+    Module<B>: GLWESwitchingKeyPreparedAllocBytesFromInfos<B>,
+{
+    fn automorphism_key_prepared_alloc_bytes_from_infos<A>(&self, infos: &A) -> usize
+    where
+        A: GGLWEInfos,
     {
         assert_eq!(
             infos.rank_in(),
             infos.rank_out(),
             "rank_in != rank_out is not supported for GGLWEAutomorphismKeyPrepared"
         );
-        AutomorphismKeyPrepared::<Vec<u8>, B> {
-            key: GLWESwitchingKeyPrepared::alloc(module, infos),
-            p: 0,
-        }
+        self.glwe_switching_key_prepared_alloc_bytes_from_infos(infos)
+    }
+}
+
+impl<B: Backend> AutomorphismKeyPrepared<Vec<u8>, B> {
+    pub fn alloc_from_infos<A>(module: &Module<B>, infos: &A) -> Self
+    where
+        A: GGLWEInfos,
+        Module<B>: AutomorphismKeyPreparedAllocFromInfos<B>,
+    {
+        module.automorphism_key_prepared_alloc_from_infos(infos)
     }
 
     pub fn alloc_with(module: &Module<B>, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> Self
     where
-        Module<B>: VmpPMatAlloc<B>,
+        Module<B>: AutomorphismKeyPreparedAlloc<B>,
     {
-        AutomorphismKeyPrepared {
-            key: GLWESwitchingKeyPrepared::alloc_with(module, base2k, k, rank, rank, dnum, dsize),
-            p: 0,
-        }
+        module.automorphism_key_prepared_alloc(base2k, k, rank, dnum, dsize)
     }
 
     pub fn alloc_bytes<A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GGLWEInfos,
-        Module<B>: VmpPMatAllocBytes,
+        Module<B>: AutomorphismKeyPreparedAllocBytesFromInfos<B>,
     {
-        assert_eq!(
-            infos.rank_in(),
-            infos.rank_out(),
-            "rank_in != rank_out is not supported for GGLWEAutomorphismKeyPrepared"
-        );
-        GLWESwitchingKeyPrepared::alloc_bytes(module, infos)
+        module.automorphism_key_prepared_alloc_bytes_from_infos(infos)
     }
 
     pub fn alloc_bytes_with(module: &Module<B>, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize
     where
-        Module<B>: VmpPMatAllocBytes,
+        Module<B>: AutomorphismKeyPreparedAllocBytes<B>,
     {
-        GLWESwitchingKeyPrepared::alloc_bytes_with(module, base2k, k, rank, rank, dnum, dsize)
+        module.automorphism_key_prepared_alloc_bytes(base2k, k, rank, dnum, dsize)
     }
 }
 
 pub trait AutomorphismKeyPrepareTmpBytes {
-    fn automorphism_key_prepare_tmp_bytes<A>(&self, infos: &A)
+    fn automorphism_key_prepare_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos;
 }
@@ -132,7 +225,7 @@ impl<B: Backend> AutomorphismKeyPrepareTmpBytes for Module<B>
 where
     Module<B>: GLWESwitchingKeyPrepareTmpBytes,
 {
-    fn automorphism_key_prepare_tmp_bytes<A>(&self, infos: &A)
+    fn automorphism_key_prepare_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos,
     {
@@ -145,45 +238,28 @@ impl<D: DataRef, B: Backend> AutomorphismKeyPrepared<D, B> {
     where
         Module<B>: AutomorphismKeyPrepareTmpBytes,
     {
-        module.automorphism_key_prepare_tmp_bytes(self);
+        module.automorphism_key_prepare_tmp_bytes(self)
     }
 }
 
 pub trait AutomorphismKeyPrepare<B: Backend> {
-    fn automorphism_key_prepare<R, O>(&self, res: &R, other: &O, scratch: &Scratch<B>)
+    fn automorphism_key_prepare<R, O>(&self, res: &mut R, other: &O, scratch: &mut Scratch<B>)
     where
-        R: AutomorphismKeyPreparedToMut<B>,
-        O: AutomorphismKeyToRef;
+        R: AutomorphismKeyPreparedToMut<B> + SetAutomorphismGaloisElement,
+        O: AutomorphismKeyToRef + GetAutomorphismGaloisElement;
 }
 
-impl<B: Backend> AutomorphismKeyPrepare<B> for Module<B> {
-    fn automorphism_key_prepare<R, O>(&self, res: &R, other: &O, scratch: &Scratch<B>)
-    where
-        R: AutomorphismKeyPreparedToMut<B>,
-        O: AutomorphismKeyToRef,
-    {
-        self.key.prepare(self, &other.to_ref().key, scratch);
-        self.p = other.p;
-    }
-}
-
-pub trait AutomorphismKeyPrepareAlloc<B: Backend> {
-    fn automorphism_key_prepare_alloc<O>(&self, other: &O, scratch: &mut Scratch<B>) -> AutomorphismKeyPrepared<Vec<u8>, B>
-    where
-        O: AutomorphismKeyToRef;
-}
-
-impl<B: Backend> AutomorphismKeyPrepareAlloc<B> for Module<B>
+impl<B: Backend> AutomorphismKeyPrepare<B> for Module<B>
 where
-    Module<B>: VmpPMatAlloc<B> + VmpPrepare<B>,
+    Module<B>: GLWESwitchingKeyPrepare<B>,
 {
-    fn automorphism_key_prepare_alloc<O>(&self, other: &O, scratch: &mut Scratch<B>) -> AutomorphismKeyPrepared<Vec<u8>, B>
+    fn automorphism_key_prepare<R, O>(&self, res: &mut R, other: &O, scratch: &mut Scratch<B>)
     where
-        O: AutomorphismKeyToRef,
+        R: AutomorphismKeyPreparedToMut<B> + SetAutomorphismGaloisElement,
+        O: AutomorphismKeyToRef + GetAutomorphismGaloisElement,
     {
-        let mut atk_prepared: AutomorphismKeyPrepared<Vec<u8>, B> = AutomorphismKeyPrepared::alloc(self, &other.to_ref());
-        atk_prepared.prepare(self, &other.to_ref(), scratch);
-        atk_prepared
+        self.glwe_switching_prepare(&mut res.to_mut().key, &other.to_ref().key, scratch);
+        res.set_p(other.p());
     }
 }
 

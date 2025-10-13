@@ -193,11 +193,11 @@ impl<D: DataRef> WriterTo for LWESwitchingKey<D> {
     }
 }
 
-pub trait LWEToLWEKeyToRef {
+pub trait LWESwitchingKeyToRef {
     fn to_ref(&self) -> LWESwitchingKey<&[u8]>;
 }
 
-impl<D: DataRef> LWEToLWEKeyToRef for LWESwitchingKey<D>
+impl<D: DataRef> LWESwitchingKeyToRef for LWESwitchingKey<D>
 where
     GLWESwitchingKey<D>: GLWESwitchingKeyToRef,
 {
@@ -206,11 +206,11 @@ where
     }
 }
 
-pub trait LWEToLWEKeyToMut {
+pub trait LWESwitchingKeyToMut {
     fn to_mut(&mut self) -> LWESwitchingKey<&mut [u8]>;
 }
 
-impl<D: DataMut> LWEToLWEKeyToMut for LWESwitchingKey<D>
+impl<D: DataMut> LWESwitchingKeyToMut for LWESwitchingKey<D>
 where
     GLWESwitchingKey<D>: GLWESwitchingKeyToMut,
 {

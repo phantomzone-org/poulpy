@@ -179,7 +179,7 @@ where
             );
 
             let mut auto_key_prepared: AutomorphismKeyPrepared<Vec<u8>, B> =
-                AutomorphismKeyPrepared::alloc(module, &auto_key_layout);
+                AutomorphismKeyPrepared::alloc_from_infos(module, &auto_key_layout);
             auto_key_prepared.prepare(module, &auto_key, scratch.borrow());
 
             let mut tsk_prepared: TensorKeyPrepared<Vec<u8>, B> = TensorKeyPrepared::alloc(module, &tensor_key_layout);
@@ -359,7 +359,7 @@ where
             );
 
             let mut auto_key_prepared: AutomorphismKeyPrepared<Vec<u8>, B> =
-                AutomorphismKeyPrepared::alloc(module, &auto_key_layout);
+                AutomorphismKeyPrepared::alloc_from_infos(module, &auto_key_layout);
             auto_key_prepared.prepare(module, &auto_key, scratch.borrow());
 
             let mut tsk_prepared: TensorKeyPrepared<Vec<u8>, B> = TensorKeyPrepared::alloc(module, &tensor_key_layout);
