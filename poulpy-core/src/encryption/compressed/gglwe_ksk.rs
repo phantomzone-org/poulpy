@@ -11,25 +11,25 @@ use crate::{
     TakeGLWESecretPrepared,
     encryption::compressed::gglwe_ct::GGLWECompressedEncryptSk,
     layouts::{
-        Degree, GGLWECiphertext, GGLWEInfos, GLWEInfos, GLWESecret, GLWESecretToRef, LWEInfos,
-        compressed::{GGLWEKeyCompressed, GGLWEKeyCompressedToMut},
+        Degree, GGLWE, GGLWEInfos, GLWEInfos, GLWESecret, GLWESecretToRef, LWEInfos,
+        compressed::{GLWESwitchingKeyCompressed, GLWESwitchingKeyCompressedToMut},
         prepared::GLWESecretPrepared,
     },
 };
 
-impl GGLWEKeyCompressed<Vec<u8>> {
+impl GLWESwitchingKeyCompressed<Vec<u8>> {
     pub fn encrypt_sk_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GGLWEInfos,
         Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes + VecZnxNormalizeTmpBytes + SvpPPolAllocBytes,
     {
-        (GGLWECiphertext::encrypt_sk_scratch_space(module, infos) | ScalarZnx::alloc_bytes(module.n(), 1))
+        (GGLWE::encrypt_sk_scratch_space(module, infos) | ScalarZnx::alloc_bytes(module.n(), 1))
             + ScalarZnx::alloc_bytes(module.n(), infos.rank_in().into())
             + GLWESecretPrepared::alloc_bytes_with(module, infos.rank_out())
     }
 }
 
-impl<DataSelf: DataMut> GGLWEKeyCompressed<DataSelf> {
+impl<DataSelf: DataMut> GLWESwitchingKeyCompressed<DataSelf> {
     #[allow(clippy::too_many_arguments)]
     pub fn encrypt_sk<DataSkIn: DataRef, DataSkOut: DataRef, B: Backend>(
         &mut self,
@@ -56,7 +56,7 @@ pub trait GGLWEKeyCompressedEncryptSk<B: Backend> {
         source_xe: &mut Source,
         scratch: &mut Scratch<B>,
     ) where
-        R: GGLWEKeyCompressedToMut,
+        R: GLWESwitchingKeyCompressedToMut,
         SI: GLWESecretToRef,
         SO: GLWESecretToRef;
 }
@@ -80,25 +80,25 @@ where
         source_xe: &mut Source,
         scratch: &mut Scratch<B>,
     ) where
-        R: GGLWEKeyCompressedToMut,
+        R: GLWESwitchingKeyCompressedToMut,
         SI: GLWESecretToRef,
         SO: GLWESecretToRef,
     {
-        let res: &mut GGLWEKeyCompressed<&mut [u8]> = &mut res.to_mut();
+        let res: &mut GLWESwitchingKeyCompressed<&mut [u8]> = &mut res.to_mut();
         let sk_in: &GLWESecret<&[u8]> = &sk_in.to_ref();
         let sk_out: &GLWESecret<&[u8]> = &sk_out.to_ref();
 
         #[cfg(debug_assertions)]
         {
-            use crate::layouts::GGLWESwitchingKey;
+            use crate::layouts::GLWESwitchingKey;
 
             assert!(sk_in.n().0 <= self.n() as u32);
             assert!(sk_out.n().0 <= self.n() as u32);
             assert!(
-                scratch.available() >= GGLWESwitchingKey::encrypt_sk_scratch_space(self, res),
+                scratch.available() >= GLWESwitchingKey::encrypt_sk_scratch_space(self, res),
                 "scratch.available()={} < GLWESwitchingKey::encrypt_sk_scratch_space={}",
                 scratch.available(),
-                GGLWESwitchingKey::encrypt_sk_scratch_space(self, res)
+                GLWESwitchingKey::encrypt_sk_scratch_space(self, res)
             )
         }
 

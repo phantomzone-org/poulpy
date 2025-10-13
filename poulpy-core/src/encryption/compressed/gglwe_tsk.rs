@@ -11,20 +11,19 @@ use crate::{
     TakeGLWESecret, TakeGLWESecretPrepared,
     encryption::compressed::gglwe_ksk::GGLWEKeyCompressedEncryptSk,
     layouts::{
-        GGLWEInfos, GGLWETensorKey, GLWEInfos, GLWESecret, GLWESecretToRef, LWEInfos, Rank,
-        compressed::{GGLWETensorKeyCompressed, GGLWETensorKeyCompressedToMut},
-        prepared::Prepare,
+        GGLWEInfos, GLWEInfos, GLWESecret, GLWESecretToRef, LWEInfos, Rank, TensorKey,
+        compressed::{TensorKeyCompressed, TensorKeyCompressedToMut},
     },
 };
 
-impl GGLWETensorKeyCompressed<Vec<u8>> {
+impl TensorKeyCompressed<Vec<u8>> {
     pub fn encrypt_sk_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GGLWEInfos,
         Module<B>:
             SvpPPolAllocBytes + VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes + VecZnxNormalizeTmpBytes + VecZnxBigAllocBytes,
     {
-        GGLWETensorKey::encrypt_sk_scratch_space(module, infos)
+        TensorKey::encrypt_sk_scratch_space(module, infos)
     }
 }
 
@@ -37,7 +36,7 @@ pub trait GGLWETensorKeyCompressedEncryptSk<B: Backend> {
         source_xe: &mut Source,
         scratch: &mut Scratch<B>,
     ) where
-        R: GGLWETensorKeyCompressedToMut,
+        R: TensorKeyCompressedToMut,
         S: GLWESecretToRef;
 }
 
@@ -59,10 +58,10 @@ where
         source_xe: &mut Source,
         scratch: &mut Scratch<B>,
     ) where
-        R: GGLWETensorKeyCompressedToMut,
+        R: TensorKeyCompressedToMut,
         S: GLWESecretToRef,
     {
-        let res: &mut GGLWETensorKeyCompressed<&mut [u8]> = &mut res.to_mut();
+        let res: &mut TensorKeyCompressed<&mut [u8]> = &mut res.to_mut();
         let sk: &GLWESecret<&[u8]> = &sk.to_ref();
 
         #[cfg(debug_assertions)]
@@ -119,7 +118,7 @@ where
     }
 }
 
-impl<DataSelf: DataMut> GGLWETensorKeyCompressed<DataSelf> {
+impl<DataSelf: DataMut> TensorKeyCompressed<DataSelf> {
     pub fn encrypt_sk<DataSk: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,

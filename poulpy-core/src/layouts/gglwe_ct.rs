@@ -29,6 +29,10 @@ where
     }
 }
 
+pub trait SetGGLWEInfos {
+    fn set_dsize(&mut self, dsize: usize);
+}
+
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub struct GGLWECiphertextLayout {
     pub n: Degree,
@@ -79,14 +83,14 @@ impl GGLWEInfos for GGLWECiphertextLayout {
 }
 
 #[derive(PartialEq, Eq, Clone)]
-pub struct GGLWECiphertext<D: Data> {
+pub struct GGLWE<D: Data> {
     pub(crate) data: MatZnx<D>,
     pub(crate) k: TorusPrecision,
     pub(crate) base2k: Base2K,
     pub(crate) dsize: Dsize,
 }
 
-impl<D: Data> LWEInfos for GGLWECiphertext<D> {
+impl<D: Data> LWEInfos for GGLWE<D> {
     fn base2k(&self) -> Base2K {
         self.base2k
     }
@@ -104,13 +108,13 @@ impl<D: Data> LWEInfos for GGLWECiphertext<D> {
     }
 }
 
-impl<D: Data> GLWEInfos for GGLWECiphertext<D> {
+impl<D: Data> GLWEInfos for GGLWE<D> {
     fn rank(&self) -> Rank {
         self.rank_out()
     }
 }
 
-impl<D: Data> GGLWEInfos for GGLWECiphertext<D> {
+impl<D: Data> GGLWEInfos for GGLWE<D> {
     fn rank_in(&self) -> Rank {
         Rank(self.data.cols_in() as u32)
     }
@@ -135,7 +139,7 @@ pub struct GGLWECiphertextBuilder<D: Data> {
     dsize: Option<Dsize>,
 }
 
-impl<D: Data> GGLWECiphertext<D> {
+impl<D: Data> GGLWE<D> {
     #[inline]
     pub fn builder() -> GGLWECiphertextBuilder<D> {
         GGLWECiphertextBuilder {
@@ -190,7 +194,7 @@ impl<D: Data> GGLWECiphertextBuilder<D> {
         self
     }
 
-    pub fn build(self) -> Result<GGLWECiphertext<D>, BuildError> {
+    pub fn build(self) -> Result<GGLWE<D>, BuildError> {
         let data: MatZnx<D> = self.data.ok_or(BuildError::MissingData)?;
         let base2k: Base2K = self.base2k.ok_or(BuildError::MissingBase2K)?;
         let k: TorusPrecision = self.k.ok_or(BuildError::MissingK)?;
@@ -220,7 +224,7 @@ impl<D: Data> GGLWECiphertextBuilder<D> {
             return Err(BuildError::ZeroLimbs);
         }
 
-        Ok(GGLWECiphertext {
+        Ok(GGLWE {
             data,
             base2k,
             k,
@@ -229,31 +233,31 @@ impl<D: Data> GGLWECiphertextBuilder<D> {
     }
 }
 
-impl<D: DataRef> GGLWECiphertext<D> {
+impl<D: DataRef> GGLWE<D> {
     pub fn data(&self) -> &MatZnx<D> {
         &self.data
     }
 }
 
-impl<D: DataMut> GGLWECiphertext<D> {
+impl<D: DataMut> GGLWE<D> {
     pub fn data_mut(&mut self) -> &mut MatZnx<D> {
         &mut self.data
     }
 }
 
-impl<D: DataRef> fmt::Debug for GGLWECiphertext<D> {
+impl<D: DataRef> fmt::Debug for GGLWE<D> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{self}")
     }
 }
 
-impl<D: DataMut> FillUniform for GGLWECiphertext<D> {
+impl<D: DataMut> FillUniform for GGLWE<D> {
     fn fill_uniform(&mut self, log_bound: usize, source: &mut Source) {
         self.data.fill_uniform(log_bound, source);
     }
 }
 
-impl<D: DataRef> fmt::Display for GGLWECiphertext<D> {
+impl<D: DataRef> fmt::Display for GGLWE<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -266,7 +270,7 @@ impl<D: DataRef> fmt::Display for GGLWECiphertext<D> {
     }
 }
 
-impl<D: DataRef> GGLWECiphertext<D> {
+impl<D: DataRef> GGLWE<D> {
     pub fn at(&self, row: usize, col: usize) -> GLWECiphertext<&[u8]> {
         GLWECiphertext::builder()
             .data(self.data.at(row, col))
@@ -277,7 +281,7 @@ impl<D: DataRef> GGLWECiphertext<D> {
     }
 }
 
-impl<D: DataMut> GGLWECiphertext<D> {
+impl<D: DataMut> GGLWE<D> {
     pub fn at_mut(&mut self, row: usize, col: usize) -> GLWECiphertext<&mut [u8]> {
         GLWECiphertext::builder()
             .base2k(self.base2k())
@@ -288,7 +292,7 @@ impl<D: DataMut> GGLWECiphertext<D> {
     }
 }
 
-impl GGLWECiphertext<Vec<u8>> {
+impl GGLWE<Vec<u8>> {
     pub fn alloc<A>(infos: &A) -> Self
     where
         A: GGLWEInfos,
@@ -390,12 +394,12 @@ impl GGLWECiphertext<Vec<u8>> {
 }
 
 pub trait GGLWECiphertextToMut {
-    fn to_mut(&mut self) -> GGLWECiphertext<&mut [u8]>;
+    fn to_mut(&mut self) -> GGLWE<&mut [u8]>;
 }
 
-impl<D: DataMut> GGLWECiphertextToMut for GGLWECiphertext<D> {
-    fn to_mut(&mut self) -> GGLWECiphertext<&mut [u8]> {
-        GGLWECiphertext {
+impl<D: DataMut> GGLWECiphertextToMut for GGLWE<D> {
+    fn to_mut(&mut self) -> GGLWE<&mut [u8]> {
+        GGLWE {
             k: self.k(),
             base2k: self.base2k(),
             dsize: self.dsize(),
@@ -404,13 +408,13 @@ impl<D: DataMut> GGLWECiphertextToMut for GGLWECiphertext<D> {
     }
 }
 
-pub trait GGLWECiphertextToRef {
-    fn to_ref(&self) -> GGLWECiphertext<&[u8]>;
+pub trait GGLWEToRef {
+    fn to_ref(&self) -> GGLWE<&[u8]>;
 }
 
-impl<D: DataMut> GGLWECiphertextToRef for GGLWECiphertext<D> {
-    fn to_ref(&self) -> GGLWECiphertext<&[u8]> {
-        GGLWECiphertext {
+impl<D: DataRef> GGLWEToRef for GGLWE<D> {
+    fn to_ref(&self) -> GGLWE<&[u8]> {
+        GGLWE {
             k: self.k(),
             base2k: self.base2k(),
             dsize: self.dsize(),
@@ -419,7 +423,7 @@ impl<D: DataMut> GGLWECiphertextToRef for GGLWECiphertext<D> {
     }
 }
 
-impl<D: DataMut> ReaderFrom for GGLWECiphertext<D> {
+impl<D: DataMut> ReaderFrom for GGLWE<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         self.k = TorusPrecision(reader.read_u32::<LittleEndian>()?);
         self.base2k = Base2K(reader.read_u32::<LittleEndian>()?);
@@ -428,7 +432,7 @@ impl<D: DataMut> ReaderFrom for GGLWECiphertext<D> {
     }
 }
 
-impl<D: DataRef> WriterTo for GGLWECiphertext<D> {
+impl<D: DataRef> WriterTo for GGLWE<D> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         writer.write_u32::<LittleEndian>(self.k.0)?;
         writer.write_u32::<LittleEndian>(self.base2k.0)?;

@@ -3,8 +3,8 @@ use std::hint::black_box;
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use poulpy_backend::{FFT64Avx, FFT64Ref, FFT64Spqlios};
 use poulpy_core::layouts::{
-    Dsize, GGLWEAutomorphismKeyLayout, GGLWETensorKeyLayout, GGSWCiphertext, GGSWCiphertextLayout, GLWESecret, LWECiphertext,
-    LWECiphertextLayout, LWESecret, prepared::PrepareAlloc,
+    AutomorphismKeyLayout, Dsize, GGSW, GGSWCiphertextLayout, GLWESecret, LWECiphertext, LWECiphertextLayout, LWESecret,
+    TensorKeyLayout, prepared::PrepareAlloc,
 };
 use poulpy_hal::{
     api::{
@@ -218,7 +218,7 @@ where
             scratch.borrow(),
         );
 
-        let mut res: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(&params.ggsw_infos);
+        let mut res: GGSW<Vec<u8>> = GGSW::alloc(&params.ggsw_infos);
         let cbt_prepared: CircuitBootstrappingKeyPrepared<Vec<u8>, BRA, B> = cbt_key.prepare_alloc(&module, scratch.borrow());
 
         move || {
@@ -261,7 +261,7 @@ where
                 dnum: 3_u32.into(),
                 rank: 2_u32.into(),
             },
-            layout_atk: GGLWEAutomorphismKeyLayout {
+            layout_atk: AutomorphismKeyLayout {
                 n: 1024_u32.into(),
                 base2k: 13_u32.into(),
                 k: 52_u32.into(),
@@ -269,7 +269,7 @@ where
                 dsize: Dsize(1),
                 rank: 2_u32.into(),
             },
-            layout_tsk: GGLWETensorKeyLayout {
+            layout_tsk: TensorKeyLayout {
                 n: 1024_u32.into(),
                 base2k: 13_u32.into(),
                 k: 52_u32.into(),

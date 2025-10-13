@@ -47,6 +47,7 @@ pub enum BuildError {
     ZeroLimbs,
     ZeroRank,
     ZeroDigits,
+    VecZnxColsNotOne,
 }
 
 /// Newtype over `u32` with arithmetic and comparisons against same type and `u32`.

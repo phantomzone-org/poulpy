@@ -1,10 +1,14 @@
 use poulpy_hal::{
     api::{VecZnxCopy, VecZnxFillUniform},
-    layouts::{Backend, Data, DataMut, DataRef, FillUniform, Module, ReaderFrom, VecZnx, WriterTo, ZnxInfos},
+    layouts::{
+        Backend, Data, DataMut, DataRef, FillUniform, Module, ReaderFrom, VecZnx, VecZnxToMut, VecZnxToRef, WriterTo, ZnxInfos,
+    },
     source::Source,
 };
 
-use crate::layouts::{Base2K, Degree, GLWECiphertext, GLWEInfos, LWEInfos, Rank, TorusPrecision, compressed::Decompress};
+use crate::layouts::{
+    Base2K, BuildError, Degree, GLWECiphertext, GLWEInfos, LWEInfos, Rank, TorusPrecision, compressed::Decompress,
+};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::fmt;
 
@@ -96,6 +100,101 @@ impl GLWECiphertextCompressed<Vec<u8>> {
     }
 }
 
+pub struct GLWECiphertextCompressedBuilder<D: Data> {
+    data: Option<VecZnx<D>>,
+    base2k: Option<Base2K>,
+    k: Option<TorusPrecision>,
+    rank: Option<Rank>,
+}
+
+impl<D: Data> GLWECiphertextCompressed<D> {
+    #[inline]
+    pub fn builder() -> GLWECiphertextCompressedBuilder<D> {
+        GLWECiphertextCompressedBuilder {
+            data: None,
+            base2k: None,
+            k: None,
+            rank: None,
+        }
+    }
+}
+
+impl GLWECiphertextCompressedBuilder<Vec<u8>> {
+    #[inline]
+    pub fn layout<A>(mut self, layout: &A) -> Self
+    where
+        A: GLWEInfos,
+    {
+        self.data = Some(VecZnx::alloc(layout.n().into(), 1, layout.size()));
+        self.base2k = Some(layout.base2k());
+        self.k = Some(layout.k());
+        self.rank = Some(layout.rank());
+        self
+    }
+}
+
+impl<D: Data> GLWECiphertextCompressedBuilder<D> {
+    #[inline]
+    pub fn data(mut self, data: VecZnx<D>) -> Self {
+        self.data = Some(data);
+        self
+    }
+    #[inline]
+    pub fn base2k(mut self, base2k: Base2K) -> Self {
+        self.base2k = Some(base2k);
+        self
+    }
+    #[inline]
+    pub fn k(mut self, k: TorusPrecision) -> Self {
+        self.k = Some(k);
+        self
+    }
+    #[inline]
+    pub fn rank(mut self, rank: Rank) -> Self {
+        self.rank = Some(rank);
+        self
+    }
+
+    pub fn build(self) -> Result<GLWECiphertextCompressed<D>, BuildError> {
+        let data: VecZnx<D> = self.data.ok_or(BuildError::MissingData)?;
+        let base2k: Base2K = self.base2k.ok_or(BuildError::MissingBase2K)?;
+        let k: TorusPrecision = self.k.ok_or(BuildError::MissingK)?;
+        let rank: Rank = self.rank.ok_or(BuildError::MissingK)?;
+
+        if base2k == 0_u32 {
+            return Err(BuildError::ZeroBase2K);
+        }
+
+        if k == 0_u32 {
+            return Err(BuildError::ZeroTorusPrecision);
+        }
+
+        if rank == 0_u32 {
+            return Err(BuildError::ZeroRank);
+        }
+
+        if data.n() == 0 {
+            return Err(BuildError::ZeroDegree);
+        }
+
+        if data.cols() != 1 {
+            return Err(BuildError::VecZnxColsNotOne);
+        }
+
+        if data.size() == 0 {
+            return Err(BuildError::ZeroLimbs);
+        }
+
+        Ok(GLWECiphertextCompressed {
+            data,
+            base2k,
+            k,
+            rank,
+            seed: [0u8; 32],
+        })
+    }
+}
+
 impl<D: DataMut> ReaderFrom for GLWECiphertextCompressed<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         self.k = TorusPrecision(reader.read_u32::<LittleEndian>()?);
@@ -174,5 +273,37 @@ impl<D: DataMut> GLWECiphertext<D> {
 
         self.base2k = other.base2k;
         self.k = other.k;
+    }
+}
+
+pub trait GLWECiphertextCompressedToRef {
+    fn to_ref(&self) -> GLWECiphertextCompressed<&[u8]>;
+}
+
+impl<D: DataRef> GLWECiphertextCompressedToRef for GLWECiphertextCompressed<D> {
+    fn to_ref(&self) -> GLWECiphertextCompressed<&[u8]> {
+        GLWECiphertextCompressed::builder()
+            .k(self.k())
+            .base2k(self.base2k())
+            .rank(self.rank())
+            .data(self.data.to_ref())
+            .build()
+            .unwrap()
+    }
+}
+
+pub trait GLWECiphertextCompressedToMut {
+    fn to_mut(&mut self) -> GLWECiphertextCompressed<&mut [u8]>;
+}
+
+impl<D: DataMut> GLWECiphertextCompressedToMut for GLWECiphertextCompressed<D> {
+    fn to_mut(&mut self) -> GLWECiphertextCompressed<&mut [u8]> {
+        GLWECiphertextCompressed::builder()
+            .k(self.k())
+            .base2k(self.base2k())
+            .rank(self.rank())
+            .data(self.data.to_mut())
+            .build()
+            .unwrap()
     }
 }

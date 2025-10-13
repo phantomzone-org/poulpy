@@ -5,12 +5,12 @@ use poulpy_hal::{
 
 use crate::layouts::{
     Base2K, Degree, Dnum, Dsize, GGLWEInfos, GLWEInfos, LWEInfos, LWEToGLWESwitchingKey, Rank, TorusPrecision,
-    prepared::{GGLWESwitchingKeyPrepared, Prepare, PrepareAlloc, PrepareScratchSpace},
+    prepared::GLWESwitchingKeyPrepared,
 };
 
 /// A special [GLWESwitchingKey] required to for the conversion from [LWECiphertext] to [GLWECiphertext].
 #[derive(PartialEq, Eq)]
-pub struct LWEToGLWESwitchingKeyPrepared<D: Data, B: Backend>(pub(crate) GGLWESwitchingKeyPrepared<D, B>);
+pub struct LWEToGLWESwitchingKeyPrepared<D: Data, B: Backend>(pub(crate) GLWESwitchingKeyPrepared<D, B>);
 
 impl<D: Data, B: Backend> LWEInfos for LWEToGLWESwitchingKeyPrepared<D, B> {
     fn base2k(&self) -> Base2K {
@@ -70,14 +70,14 @@ impl<B: Backend> LWEToGLWESwitchingKeyPrepared<Vec<u8>, B> {
             1,
             "dsize > 1 is not supported for LWEToGLWESwitchingKey"
         );
-        Self(GGLWESwitchingKeyPrepared::alloc(module, infos))
+        Self(GLWESwitchingKeyPrepared::alloc(module, infos))
     }
 
     pub fn alloc_with(module: &Module<B>, base2k: Base2K, k: TorusPrecision, rank_out: Rank, dnum: Dnum) -> Self
     where
         Module<B>: VmpPMatAlloc<B>,
     {
-        Self(GGLWESwitchingKeyPrepared::alloc_with(
+        Self(GLWESwitchingKeyPrepared::alloc_with(
             module,
             base2k,
             k,
@@ -103,23 +103,23 @@ impl<B: Backend> LWEToGLWESwitchingKeyPrepared<Vec<u8>, B> {
             1,
             "dsize > 1 is not supported for LWEToGLWESwitchingKey"
         );
-        GGLWESwitchingKeyPrepared::alloc_bytes(module, infos)
+        GLWESwitchingKeyPrepared::alloc_bytes(module, infos)
     }
 
     pub fn alloc_bytes_with(module: &Module<B>, base2k: Base2K, k: TorusPrecision, dnum: Dnum, rank_out: Rank) -> usize
     where
         Module<B>: VmpPMatAllocBytes,
     {
-        GGLWESwitchingKeyPrepared::alloc_bytes_with(module, base2k, k, Rank(1), rank_out, dnum, Dsize(1))
+        GLWESwitchingKeyPrepared::alloc_bytes_with(module, base2k, k, Rank(1), rank_out, dnum, Dsize(1))
     }
 }
 
 impl<B: Backend, A: GGLWEInfos> PrepareScratchSpace<B, A> for LWEToGLWESwitchingKeyPrepared<Vec<u8>, B>
 where
-    GGLWESwitchingKeyPrepared<Vec<u8>, B>: PrepareScratchSpace<B, A>,
+    GLWESwitchingKeyPrepared<Vec<u8>, B>: PrepareScratchSpace<B, A>,
 {
     fn prepare_scratch_space(module: &Module<B>, infos: &A) -> usize {
-        GGLWESwitchingKeyPrepared::prepare_scratch_space(module, infos)
+        GLWESwitchingKeyPrepared::prepare_scratch_space(module, infos)
     }
 }
 

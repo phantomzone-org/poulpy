@@ -3,7 +3,10 @@ use poulpy_hal::{
     source::Source,
 };
 
-use crate::layouts::{Base2K, Degree, Dnum, Dsize, GGLWEInfos, GGLWESwitchingKey, GLWEInfos, LWEInfos, Rank, TorusPrecision};
+use crate::layouts::{
+    Base2K, Degree, Dnum, Dsize, GGLWEInfos, GLWEInfos, GLWESwitchingKey, GLWESwitchingKeyToMut, GLWESwitchingKeyToRef, LWEInfos,
+    Rank, TorusPrecision,
+};
 
 use std::fmt;
 
@@ -56,9 +59,9 @@ impl GGLWEInfos for GLWEToLWEKeyLayout {
 
 /// A special [GLWESwitchingKey] required to for the conversion from [GLWECiphertext] to [LWECiphertext].
 #[derive(PartialEq, Eq, Clone)]
-pub struct GLWEToLWEKey<D: Data>(pub(crate) GGLWESwitchingKey<D>);
+pub struct GLWEToLWESwitchingKey<D: Data>(pub(crate) GLWESwitchingKey<D>);
 
-impl<D: Data> LWEInfos for GLWEToLWEKey<D> {
+impl<D: Data> LWEInfos for GLWEToLWESwitchingKey<D> {
     fn base2k(&self) -> Base2K {
         self.0.base2k()
     }
@@ -76,12 +79,12 @@ impl<D: Data> LWEInfos for GLWEToLWEKey<D> {
     }
 }
 
-impl<D: Data> GLWEInfos for GLWEToLWEKey<D> {
+impl<D: Data> GLWEInfos for GLWEToLWESwitchingKey<D> {
     fn rank(&self) -> Rank {
         self.rank_out()
     }
 }
-impl<D: Data> GGLWEInfos for GLWEToLWEKey<D> {
+impl<D: Data> GGLWEInfos for GLWEToLWESwitchingKey<D> {
     fn rank_in(&self) -> Rank {
         self.0.rank_in()
     }
@@ -99,37 +102,37 @@ impl<D: Data> GGLWEInfos for GLWEToLWEKey<D> {
     }
 }
 
-impl<D: DataRef> fmt::Debug for GLWEToLWEKey<D> {
+impl<D: DataRef> fmt::Debug for GLWEToLWESwitchingKey<D> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{self}")
     }
 }
 
-impl<D: DataMut> FillUniform for GLWEToLWEKey<D> {
+impl<D: DataMut> FillUniform for GLWEToLWESwitchingKey<D> {
     fn fill_uniform(&mut self, log_bound: usize, source: &mut Source) {
         self.0.fill_uniform(log_bound, source);
     }
 }
 
-impl<D: DataRef> fmt::Display for GLWEToLWEKey<D> {
+impl<D: DataRef> fmt::Display for GLWEToLWESwitchingKey<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "(GLWEToLWESwitchingKey) {}", self.0)
     }
 }
 
-impl<D: DataMut> ReaderFrom for GLWEToLWEKey<D> {
+impl<D: DataMut> ReaderFrom for GLWEToLWESwitchingKey<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         self.0.read_from(reader)
     }
 }
 
-impl<D: DataRef> WriterTo for GLWEToLWEKey<D> {
+impl<D: DataRef> WriterTo for GLWEToLWESwitchingKey<D> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         self.0.write_to(writer)
     }
 }
 
-impl GLWEToLWEKey<Vec<u8>> {
+impl GLWEToLWESwitchingKey<Vec<u8>> {
     pub fn alloc<A>(infos: &A) -> Self
     where
         A: GGLWEInfos,
@@ -144,11 +147,11 @@ impl GLWEToLWEKey<Vec<u8>> {
             1,
             "dsize > 1 is not supported for GLWEToLWESwitchingKey"
         );
-        Self(GGLWESwitchingKey::alloc(infos))
+        Self(GLWESwitchingKey::alloc(infos))
     }
 
     pub fn alloc_with(n: Degree, base2k: Base2K, k: TorusPrecision, rank_in: Rank, dnum: Dnum) -> Self {
-        Self(GGLWESwitchingKey::alloc_with(
+        Self(GLWESwitchingKey::alloc_with(
             n,
             base2k,
             k,
@@ -173,10 +176,36 @@ impl GLWEToLWEKey<Vec<u8>> {
             1,
             "dsize > 1 is not supported for GLWEToLWESwitchingKey"
         );
-        GGLWESwitchingKey::alloc_bytes(infos)
+        GLWESwitchingKey::alloc_bytes(infos)
     }
 
     pub fn alloc_bytes_with(n: Degree, base2k: Base2K, k: TorusPrecision, rank_in: Rank, dnum: Dnum) -> usize {
-        GGLWESwitchingKey::alloc_bytes_with(n, base2k, k, rank_in, Rank(1), dnum, Dsize(1))
+        GLWESwitchingKey::alloc_bytes_with(n, base2k, k, rank_in, Rank(1), dnum, Dsize(1))
+    }
+}
+
+pub trait GLWEToLWESwitchingKeyToRef {
+    fn to_ref(&self) -> GLWEToLWESwitchingKey<&[u8]>;
+}
+
+impl<D: DataRef> GLWEToLWESwitchingKeyToRef for GLWEToLWESwitchingKey<D>
+where
+    GLWESwitchingKey<D>: GLWESwitchingKeyToRef,
+{
+    fn to_ref(&self) -> GLWEToLWESwitchingKey<&[u8]> {
+        GLWEToLWESwitchingKey(self.0.to_ref())
+    }
+}
+
+pub trait GLWEToLWESwitchingKeyToMut {
+    fn to_mut(&mut self) -> GLWEToLWESwitchingKey<&mut [u8]>;
+}
+
+impl<D: DataMut> GLWEToLWESwitchingKeyToMut for GLWEToLWESwitchingKey<D>
+where
+    GLWESwitchingKey<D>: GLWESwitchingKeyToMut,
+{
+    fn to_mut(&mut self) -> GLWEToLWESwitchingKey<&mut [u8]> {
+        GLWEToLWESwitchingKey(self.0.to_mut())
     }
 }

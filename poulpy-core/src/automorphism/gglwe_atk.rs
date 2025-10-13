@@ -7,9 +7,9 @@ use poulpy_hal::{
     layouts::{Backend, DataMut, DataRef, Module, Scratch, ZnxZero},
 };
 
-use crate::layouts::{GGLWEAutomorphismKey, GGLWEInfos, GLWECiphertext, prepared::GGLWEAutomorphismKeyPrepared};
+use crate::layouts::{AutomorphismKey, GGLWEInfos, GLWECiphertext, prepared::AutomorphismKeyPrepared};
 
-impl GGLWEAutomorphismKey<Vec<u8>> {
+impl AutomorphismKey<Vec<u8>> {
     pub fn automorphism_scratch_space<B: Backend, OUT, IN, KEY>(
         module: &Module<B>,
         out_infos: &OUT,
@@ -36,16 +36,16 @@ impl GGLWEAutomorphismKey<Vec<u8>> {
         KEY: GGLWEInfos,
         Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        GGLWEAutomorphismKey::automorphism_scratch_space(module, out_infos, out_infos, key_infos)
+        AutomorphismKey::automorphism_scratch_space(module, out_infos, out_infos, key_infos)
     }
 }
 
-impl<DataSelf: DataMut> GGLWEAutomorphismKey<DataSelf> {
+impl<DataSelf: DataMut> AutomorphismKey<DataSelf> {
     pub fn automorphism<DataLhs: DataRef, DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
-        lhs: &GGLWEAutomorphismKey<DataLhs>,
-        rhs: &GGLWEAutomorphismKeyPrepared<DataRhs, B>,
+        lhs: &AutomorphismKey<DataLhs>,
+        rhs: &AutomorphismKeyPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: VecZnxDftAllocBytes
@@ -133,7 +133,7 @@ impl<DataSelf: DataMut> GGLWEAutomorphismKey<DataSelf> {
     pub fn automorphism_inplace<DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
-        rhs: &GGLWEAutomorphismKeyPrepared<DataRhs, B>,
+        rhs: &AutomorphismKeyPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: VecZnxDftAllocBytes

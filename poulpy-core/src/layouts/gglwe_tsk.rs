@@ -3,13 +3,16 @@ use poulpy_hal::{
     source::Source,
 };
 
-use crate::layouts::{Base2K, Degree, Dnum, Dsize, GGLWEInfos, GGLWESwitchingKey, GLWEInfos, LWEInfos, Rank, TorusPrecision};
+use crate::layouts::{
+    Base2K, Degree, Dnum, Dsize, GGLWEInfos, GLWEInfos, GLWESwitchingKey, GLWESwitchingKeyToMut, GLWESwitchingKeyToRef, LWEInfos,
+    Rank, TorusPrecision,
+};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
 use std::fmt;
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
-pub struct GGLWETensorKeyLayout {
+pub struct TensorKeyLayout {
     pub n: Degree,
     pub base2k: Base2K,
     pub k: TorusPrecision,
@@ -19,11 +22,11 @@ pub struct GGLWETensorKeyLayout {
 }
 
 #[derive(PartialEq, Eq, Clone)]
-pub struct GGLWETensorKey<D: Data> {
-    pub(crate) keys: Vec<GGLWESwitchingKey<D>>,
+pub struct TensorKey<D: Data> {
+    pub(crate) keys: Vec<GLWESwitchingKey<D>>,
 }
 
-impl<D: Data> LWEInfos for GGLWETensorKey<D> {
+impl<D: Data> LWEInfos for TensorKey<D> {
     fn n(&self) -> Degree {
         self.keys[0].n()
     }
@@ -41,13 +44,13 @@ impl<D: Data> LWEInfos for GGLWETensorKey<D> {
     }
 }
 
-impl<D: Data> GLWEInfos for GGLWETensorKey<D> {
+impl<D: Data> GLWEInfos for TensorKey<D> {
     fn rank(&self) -> Rank {
         self.keys[0].rank_out()
     }
 }
 
-impl<D: Data> GGLWEInfos for GGLWETensorKey<D> {
+impl<D: Data> GGLWEInfos for TensorKey<D> {
     fn rank_in(&self) -> Rank {
         self.rank_out()
     }
@@ -65,7 +68,7 @@ impl<D: Data> GGLWEInfos for GGLWETensorKey<D> {
     }
 }
 
-impl LWEInfos for GGLWETensorKeyLayout {
+impl LWEInfos for TensorKeyLayout {
     fn n(&self) -> Degree {
         self.n
     }
@@ -79,13 +82,13 @@ impl LWEInfos for GGLWETensorKeyLayout {
     }
 }
 
-impl GLWEInfos for GGLWETensorKeyLayout {
+impl GLWEInfos for TensorKeyLayout {
     fn rank(&self) -> Rank {
         self.rank_out()
     }
 }
 
-impl GGLWEInfos for GGLWETensorKeyLayout {
+impl GGLWEInfos for TensorKeyLayout {
     fn rank_in(&self) -> Rank {
         self.rank
     }
@@ -103,21 +106,21 @@ impl GGLWEInfos for GGLWETensorKeyLayout {
     }
 }
 
-impl<D: DataRef> fmt::Debug for GGLWETensorKey<D> {
+impl<D: DataRef> fmt::Debug for TensorKey<D> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{self}")
     }
 }
 
-impl<D: DataMut> FillUniform for GGLWETensorKey<D> {
+impl<D: DataMut> FillUniform for TensorKey<D> {
     fn fill_uniform(&mut self, log_bound: usize, source: &mut Source) {
         self.keys
             .iter_mut()
-            .for_each(|key: &mut GGLWESwitchingKey<D>| key.fill_uniform(log_bound, source))
+            .for_each(|key: &mut GLWESwitchingKey<D>| key.fill_uniform(log_bound, source))
     }
 }
 
-impl<D: DataRef> fmt::Display for GGLWETensorKey<D> {
+impl<D: DataRef> fmt::Display for TensorKey<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "(GLWETensorKey)",)?;
         for (i, key) in self.keys.iter().enumerate() {
@@ -127,7 +130,7 @@ impl<D: DataRef> fmt::Display for GGLWETensorKey<D> {
     }
 }
 
-impl GGLWETensorKey<Vec<u8>> {
+impl TensorKey<Vec<u8>> {
     pub fn alloc<A>(infos: &A) -> Self
     where
         A: GGLWEInfos,
@@ -148,10 +151,10 @@ impl GGLWETensorKey<Vec<u8>> {
     }
 
     pub fn alloc_with(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> Self {
-        let mut keys: Vec<GGLWESwitchingKey<Vec<u8>>> = Vec::new();
+        let mut keys: Vec<GLWESwitchingKey<Vec<u8>>> = Vec::new();
         let pairs: u32 = (((rank.0 + 1) * rank.0) >> 1).max(1);
         (0..pairs).for_each(|_| {
-            keys.push(GGLWESwitchingKey::alloc_with(
+            keys.push(GLWESwitchingKey::alloc_with(
                 n,
                 base2k,
                 k,
@@ -176,7 +179,7 @@ impl GGLWETensorKey<Vec<u8>> {
         let rank_out: usize = infos.rank_out().into();
         let pairs: usize = (((rank_out + 1) * rank_out) >> 1).max(1);
         pairs
-            * GGLWESwitchingKey::alloc_bytes_with(
+            * GLWESwitchingKey::alloc_bytes_with(
                 infos.n(),
                 infos.base2k(),
                 infos.k(),
@@ -189,13 +192,13 @@ impl GGLWETensorKey<Vec<u8>> {
 
     pub fn alloc_bytes_with(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize {
         let pairs: usize = (((rank.0 + 1) * rank.0) >> 1).max(1) as usize;
-        pairs * GGLWESwitchingKey::alloc_bytes_with(n, base2k, k, Rank(1), rank, dnum, dsize)
+        pairs * GLWESwitchingKey::alloc_bytes_with(n, base2k, k, Rank(1), rank, dnum, dsize)
     }
 }
 
-impl<D: DataMut> GGLWETensorKey<D> {
+impl<D: DataMut> TensorKey<D> {
     // Returns a mutable reference to GLWESwitchingKey_{s}(s[i] * s[j])
-    pub fn at_mut(&mut self, mut i: usize, mut j: usize) -> &mut GGLWESwitchingKey<D> {
+    pub fn at_mut(&mut self, mut i: usize, mut j: usize) -> &mut GLWESwitchingKey<D> {
         if i > j {
             std::mem::swap(&mut i, &mut j);
         };
@@ -204,9 +207,9 @@ impl<D: DataMut> GGLWETensorKey<D> {
     }
 }
 
-impl<D: DataRef> GGLWETensorKey<D> {
+impl<D: DataRef> TensorKey<D> {
     // Returns a reference to GLWESwitchingKey_{s}(s[i] * s[j])
-    pub fn at(&self, mut i: usize, mut j: usize) -> &GGLWESwitchingKey<D> {
+    pub fn at(&self, mut i: usize, mut j: usize) -> &GLWESwitchingKey<D> {
         if i > j {
             std::mem::swap(&mut i, &mut j);
         };
@@ -215,7 +218,7 @@ impl<D: DataRef> GGLWETensorKey<D> {
     }
 }
 
-impl<D: DataMut> ReaderFrom for GGLWETensorKey<D> {
+impl<D: DataMut> ReaderFrom for TensorKey<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         let len: usize = reader.read_u64::<LittleEndian>()? as usize;
         if self.keys.len() != len {
@@ -231,12 +234,42 @@ impl<D: DataMut> ReaderFrom for GGLWETensorKey<D> {
     }
 }
 
-impl<D: DataRef> WriterTo for GGLWETensorKey<D> {
+impl<D: DataRef> WriterTo for TensorKey<D> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         writer.write_u64::<LittleEndian>(self.keys.len() as u64)?;
         for key in &self.keys {
             key.write_to(writer)?;
         }
         Ok(())
+    }
+}
+
+pub trait TensorKeyToRef {
+    fn to_ref(&self) -> TensorKey<&[u8]>;
+}
+
+impl<D: DataRef> TensorKeyToRef for TensorKey<D>
+where
+    GLWESwitchingKey<D>: GLWESwitchingKeyToRef,
+{
+    fn to_ref(&self) -> TensorKey<&[u8]> {
+        TensorKey {
+            keys: self.keys.iter().map(|c| c.to_ref()).collect(),
+        }
+    }
+}
+
+pub trait TensorKeyToMut {
+    fn to_ref(&mut self) -> TensorKey<&mut [u8]>;
+}
+
+impl<D: DataMut> TensorKeyToMut for TensorKey<D>
+where
+    GLWESwitchingKey<D>: GLWESwitchingKeyToMut,
+{
+    fn to_ref(&mut self) -> TensorKey<&mut [u8]> {
+        TensorKey {
+            keys: self.keys.iter_mut().map(|c| c.to_mut()).collect(),
+        }
     }
 }

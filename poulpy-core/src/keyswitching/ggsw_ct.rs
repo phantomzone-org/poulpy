@@ -10,13 +10,13 @@ use poulpy_hal::{
 
 use crate::{
     layouts::{
-        GGLWECiphertext, GGLWEInfos, GGSWCiphertext, GGSWInfos, GLWECiphertext, GLWEInfos, LWEInfos,
-        prepared::{GGLWESwitchingKeyPrepared, GGLWETensorKeyPrepared},
+        GGLWE, GGLWEInfos, GGSW, GGSWInfos, GLWECiphertext, GLWEInfos, LWEInfos,
+        prepared::{GLWESwitchingKeyPrepared, TensorKeyPrepared},
     },
     operations::GLWEOperations,
 };
 
-impl GGSWCiphertext<Vec<u8>> {
+impl GGSW<Vec<u8>> {
     pub(crate) fn expand_row_scratch_space<B: Backend, OUT, TSK>(module: &Module<B>, out_infos: &OUT, tsk_infos: &TSK) -> usize
     where
         OUT: GGSWInfos,
@@ -77,7 +77,7 @@ impl GGSWCiphertext<Vec<u8>> {
         let res_znx: usize = VecZnx::alloc_bytes(module.n(), rank + 1, size_out);
         let ci_dft: usize = module.vec_znx_dft_alloc_bytes(rank + 1, size_out);
         let ks: usize = GLWECiphertext::keyswitch_scratch_space(module, out_infos, in_infos, apply_infos);
-        let expand_rows: usize = GGSWCiphertext::expand_row_scratch_space(module, out_infos, tsk_infos);
+        let expand_rows: usize = GGSW::expand_row_scratch_space(module, out_infos, tsk_infos);
         let res_dft: usize = module.vec_znx_dft_alloc_bytes(rank + 1, size_out);
 
         if in_infos.base2k() == tsk_infos.base2k() {
@@ -109,16 +109,16 @@ impl GGSWCiphertext<Vec<u8>> {
             + VecZnxNormalizeTmpBytes
             + VecZnxBigNormalizeTmpBytes,
     {
-        GGSWCiphertext::keyswitch_scratch_space(module, out_infos, out_infos, apply_infos, tsk_infos)
+        GGSW::keyswitch_scratch_space(module, out_infos, out_infos, apply_infos, tsk_infos)
     }
 }
 
-impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
+impl<DataSelf: DataMut> GGSW<DataSelf> {
     pub fn from_gglwe<DataA, DataTsk, B: Backend>(
         &mut self,
         module: &Module<B>,
-        a: &GGLWECiphertext<DataA>,
-        tsk: &GGLWETensorKeyPrepared<DataTsk, B>,
+        a: &GGLWE<DataA>,
+        tsk: &TensorKeyPrepared<DataTsk, B>,
         scratch: &mut Scratch<B>,
     ) where
         DataA: DataRef,
@@ -157,9 +157,9 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
     pub fn keyswitch<DataLhs: DataRef, DataKsk: DataRef, DataTsk: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
-        lhs: &GGSWCiphertext<DataLhs>,
-        ksk: &GGLWESwitchingKeyPrepared<DataKsk, B>,
-        tsk: &GGLWETensorKeyPrepared<DataTsk, B>,
+        lhs: &GGSW<DataLhs>,
+        ksk: &GLWESwitchingKeyPrepared<DataKsk, B>,
+        tsk: &TensorKeyPrepared<DataTsk, B>,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: VecZnxDftAllocBytes
@@ -192,8 +192,8 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
     pub fn keyswitch_inplace<DataKsk: DataRef, DataTsk: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
-        ksk: &GGLWESwitchingKeyPrepared<DataKsk, B>,
-        tsk: &GGLWETensorKeyPrepared<DataTsk, B>,
+        ksk: &GLWESwitchingKeyPrepared<DataKsk, B>,
+        tsk: &TensorKeyPrepared<DataTsk, B>,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: VecZnxDftAllocBytes
@@ -226,7 +226,7 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
     pub fn expand_row<DataTsk: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
-        tsk: &GGLWETensorKeyPrepared<DataTsk, B>,
+        tsk: &TensorKeyPrepared<DataTsk, B>,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: VecZnxDftAllocBytes
@@ -246,7 +246,7 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
         let basek_in: usize = self.base2k().into();
         let basek_tsk: usize = tsk.base2k().into();
 
-        assert!(scratch.available() >= GGSWCiphertext::expand_row_scratch_space(module, self, tsk));
+        assert!(scratch.available() >= GGSW::expand_row_scratch_space(module, self, tsk));
 
         let n: usize = self.n().into();
         let rank: usize = self.rank().into();

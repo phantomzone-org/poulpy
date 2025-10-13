@@ -17,8 +17,8 @@ use poulpy_hal::{
 use crate::{
     encryption::SIGMA,
     layouts::{
-        GGLWECiphertextLayout, GGLWESwitchingKey, GLWESecret,
-        compressed::{Decompress, GGLWEKeyCompressed},
+        GGLWECiphertextLayout, GLWESecret, GLWESwitchingKey,
+        compressed::{Decompress, GLWESwitchingKeyCompressed},
         prepared::{GLWESecretPrepared, PrepareAlloc},
     },
 };
@@ -81,13 +81,13 @@ where
                     rank_out: rank_out.into(),
                 };
 
-                let mut ksk: GGLWESwitchingKey<Vec<u8>> = GGLWESwitchingKey::alloc(&gglwe_infos);
+                let mut ksk: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc(&gglwe_infos);
 
                 let mut source_xs: Source = Source::new([0u8; 32]);
                 let mut source_xe: Source = Source::new([0u8; 32]);
                 let mut source_xa: Source = Source::new([0u8; 32]);
 
-                let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GGLWESwitchingKey::encrypt_sk_scratch_space(
+                let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GLWESwitchingKey::encrypt_sk_scratch_space(
                     module,
                     &gglwe_infos,
                 ));
@@ -173,12 +173,12 @@ where
                     rank_out: rank_out.into(),
                 };
 
-                let mut ksk_compressed: GGLWEKeyCompressed<Vec<u8>> = GGLWEKeyCompressed::alloc(&gglwe_infos);
+                let mut ksk_compressed: GLWESwitchingKeyCompressed<Vec<u8>> = GLWESwitchingKeyCompressed::alloc(&gglwe_infos);
 
                 let mut source_xs: Source = Source::new([0u8; 32]);
                 let mut source_xe: Source = Source::new([0u8; 32]);
 
-                let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GGLWEKeyCompressed::encrypt_sk_scratch_space(
+                let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GLWESwitchingKeyCompressed::encrypt_sk_scratch_space(
                     module,
                     &gglwe_infos,
                 ));
@@ -201,7 +201,7 @@ where
                     scratch.borrow(),
                 );
 
-                let mut ksk: GGLWESwitchingKey<Vec<u8>> = GGLWESwitchingKey::alloc(&gglwe_infos);
+                let mut ksk: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc(&gglwe_infos);
                 ksk.decompress(module, &ksk_compressed);
 
                 ksk.key

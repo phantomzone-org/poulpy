@@ -18,8 +18,8 @@ use poulpy_hal::{
 use crate::{
     encryption::SIGMA,
     layouts::{
-        GGSWCiphertext, GGSWCiphertextLayout, GLWESecret,
-        prepared::{GGSWCiphertextPrepared, GLWESecretPrepared, PrepareAlloc},
+        GGSW, GGSWCiphertextLayout, GLWESecret,
+        prepared::{GGSWPrepared, GLWESecretPrepared, PrepareAlloc},
     },
     noise::noise_ggsw_product,
 };
@@ -111,9 +111,9 @@ where
                 rank: rank.into(),
             };
 
-            let mut ggsw_in: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(&ggsw_in_infos);
-            let mut ggsw_out: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(&ggsw_out_infos);
-            let mut ggsw_apply: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(&ggsw_apply_infos);
+            let mut ggsw_in: GGSW<Vec<u8>> = GGSW::alloc(&ggsw_in_infos);
+            let mut ggsw_out: GGSW<Vec<u8>> = GGSW::alloc(&ggsw_out_infos);
+            let mut ggsw_apply: GGSW<Vec<u8>> = GGSW::alloc(&ggsw_apply_infos);
             let mut pt_in: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n, 1);
             let mut pt_apply: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n, 1);
 
@@ -128,9 +128,9 @@ where
             pt_apply.to_mut().raw_mut()[k] = 1; //X^{k}
 
             let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-                GGSWCiphertext::encrypt_sk_scratch_space(module, &ggsw_apply_infos)
-                    | GGSWCiphertext::encrypt_sk_scratch_space(module, &ggsw_in_infos)
-                    | GGSWCiphertext::external_product_scratch_space(module, &ggsw_out_infos, &ggsw_in_infos, &ggsw_apply_infos),
+                GGSW::encrypt_sk_scratch_space(module, &ggsw_apply_infos)
+                    | GGSW::encrypt_sk_scratch_space(module, &ggsw_in_infos)
+                    | GGSW::external_product_scratch_space(module, &ggsw_out_infos, &ggsw_in_infos, &ggsw_apply_infos),
             );
 
             let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_with(n.into(), rank.into());
@@ -155,7 +155,7 @@ where
                 scratch.borrow(),
             );
 
-            let ct_rhs_prepared: GGSWCiphertextPrepared<Vec<u8>, B> = ggsw_apply.prepare_alloc(module, scratch.borrow());
+            let ct_rhs_prepared: GGSWPrepared<Vec<u8>, B> = ggsw_apply.prepare_alloc(module, scratch.borrow());
 
             ggsw_out.external_product(module, &ggsw_in, &ct_rhs_prepared, scratch.borrow());
 
@@ -265,8 +265,8 @@ where
                 rank: rank.into(),
             };
 
-            let mut ggsw_out: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(&ggsw_out_infos);
-            let mut ggsw_apply: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(&ggsw_apply_infos);
+            let mut ggsw_out: GGSW<Vec<u8>> = GGSW::alloc(&ggsw_out_infos);
+            let mut ggsw_apply: GGSW<Vec<u8>> = GGSW::alloc(&ggsw_apply_infos);
 
             let mut pt_in: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n, 1);
             let mut pt_apply: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n, 1);
@@ -282,9 +282,9 @@ where
             pt_apply.to_mut().raw_mut()[k] = 1; //X^{k}
 
             let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-                GGSWCiphertext::encrypt_sk_scratch_space(module, &ggsw_apply_infos)
-                    | GGSWCiphertext::encrypt_sk_scratch_space(module, &ggsw_out_infos)
-                    | GGSWCiphertext::external_product_inplace_scratch_space(module, &ggsw_out_infos, &ggsw_apply_infos),
+                GGSW::encrypt_sk_scratch_space(module, &ggsw_apply_infos)
+                    | GGSW::encrypt_sk_scratch_space(module, &ggsw_out_infos)
+                    | GGSW::external_product_inplace_scratch_space(module, &ggsw_out_infos, &ggsw_apply_infos),
             );
 
             let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_with(n.into(), rank.into());
@@ -309,7 +309,7 @@ where
                 scratch.borrow(),
             );
 
-            let ct_rhs_prepared: GGSWCiphertextPrepared<Vec<u8>, B> = ggsw_apply.prepare_alloc(module, scratch.borrow());
+            let ct_rhs_prepared: GGSWPrepared<Vec<u8>, B> = ggsw_apply.prepare_alloc(module, scratch.borrow());
 
             ggsw_out.external_product_inplace(module, &ct_rhs_prepared, scratch.borrow());
 

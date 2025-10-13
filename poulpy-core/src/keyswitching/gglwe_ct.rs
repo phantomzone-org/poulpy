@@ -8,11 +8,11 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    GGLWEAutomorphismKey, GGLWEInfos, GGLWESwitchingKey, GLWECiphertext, GLWEInfos,
-    prepared::{GGLWEAutomorphismKeyPrepared, GGLWESwitchingKeyPrepared},
+    AutomorphismKey, GGLWEInfos, GLWECiphertext, GLWEInfos, GLWESwitchingKey,
+    prepared::{AutomorphismKeyPrepared, GLWESwitchingKeyPrepared},
 };
 
-impl GGLWEAutomorphismKey<Vec<u8>> {
+impl AutomorphismKey<Vec<u8>> {
     pub fn keyswitch_scratch_space<B: Backend, OUT, IN, KEY>(
         module: &Module<B>,
         out_infos: &OUT,
@@ -25,7 +25,7 @@ impl GGLWEAutomorphismKey<Vec<u8>> {
         KEY: GGLWEInfos,
         Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        GGLWESwitchingKey::keyswitch_scratch_space(module, out_infos, in_infos, key_infos)
+        GLWESwitchingKey::keyswitch_scratch_space(module, out_infos, in_infos, key_infos)
     }
 
     pub fn keyswitch_inplace_scratch_space<B: Backend, OUT, KEY>(module: &Module<B>, out_infos: &OUT, key_infos: &KEY) -> usize
@@ -34,16 +34,16 @@ impl GGLWEAutomorphismKey<Vec<u8>> {
         KEY: GGLWEInfos,
         Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        GGLWESwitchingKey::keyswitch_inplace_scratch_space(module, out_infos, key_infos)
+        GLWESwitchingKey::keyswitch_inplace_scratch_space(module, out_infos, key_infos)
     }
 }
 
-impl<DataSelf: DataMut> GGLWEAutomorphismKey<DataSelf> {
+impl<DataSelf: DataMut> AutomorphismKey<DataSelf> {
     pub fn keyswitch<DataLhs: DataRef, DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
-        lhs: &GGLWEAutomorphismKey<DataLhs>,
-        rhs: &GGLWESwitchingKeyPrepared<DataRhs, B>,
+        lhs: &AutomorphismKey<DataLhs>,
+        rhs: &GLWESwitchingKeyPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: VecZnxDftAllocBytes
@@ -65,7 +65,7 @@ impl<DataSelf: DataMut> GGLWEAutomorphismKey<DataSelf> {
     pub fn keyswitch_inplace<DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
-        rhs: &GGLWEAutomorphismKeyPrepared<DataRhs, B>,
+        rhs: &AutomorphismKeyPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: VecZnxDftAllocBytes
@@ -85,7 +85,7 @@ impl<DataSelf: DataMut> GGLWEAutomorphismKey<DataSelf> {
     }
 }
 
-impl GGLWESwitchingKey<Vec<u8>> {
+impl GLWESwitchingKey<Vec<u8>> {
     pub fn keyswitch_scratch_space<B: Backend, OUT, IN, KEY>(
         module: &Module<B>,
         out_infos: &OUT,
@@ -111,12 +111,12 @@ impl GGLWESwitchingKey<Vec<u8>> {
     }
 }
 
-impl<DataSelf: DataMut> GGLWESwitchingKey<DataSelf> {
+impl<DataSelf: DataMut> GLWESwitchingKey<DataSelf> {
     pub fn keyswitch<DataLhs: DataRef, DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
-        lhs: &GGLWESwitchingKey<DataLhs>,
-        rhs: &GGLWESwitchingKeyPrepared<DataRhs, B>,
+        lhs: &GLWESwitchingKey<DataLhs>,
+        rhs: &GLWESwitchingKeyPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: VecZnxDftAllocBytes
@@ -187,7 +187,7 @@ impl<DataSelf: DataMut> GGLWESwitchingKey<DataSelf> {
     pub fn keyswitch_inplace<DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
-        rhs: &GGLWESwitchingKeyPrepared<DataRhs, B>,
+        rhs: &GLWESwitchingKeyPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: VecZnxDftAllocBytes

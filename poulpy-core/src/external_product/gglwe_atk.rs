@@ -7,9 +7,9 @@ use poulpy_hal::{
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
 };
 
-use crate::layouts::{GGLWEAutomorphismKey, GGLWEInfos, GGLWESwitchingKey, GGSWInfos, prepared::GGSWCiphertextPrepared};
+use crate::layouts::{AutomorphismKey, GGLWEInfos, GGSWInfos, GLWESwitchingKey, prepared::GGSWPrepared};
 
-impl GGLWEAutomorphismKey<Vec<u8>> {
+impl AutomorphismKey<Vec<u8>> {
     pub fn external_product_scratch_space<B: Backend, OUT, IN, GGSW>(
         module: &Module<B>,
         out_infos: &OUT,
@@ -22,7 +22,7 @@ impl GGLWEAutomorphismKey<Vec<u8>> {
         GGSW: GGSWInfos,
         Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        GGLWESwitchingKey::external_product_scratch_space(module, out_infos, in_infos, ggsw_infos)
+        GLWESwitchingKey::external_product_scratch_space(module, out_infos, in_infos, ggsw_infos)
     }
 
     pub fn external_product_inplace_scratch_space<B: Backend, OUT, GGSW>(
@@ -35,16 +35,16 @@ impl GGLWEAutomorphismKey<Vec<u8>> {
         GGSW: GGSWInfos,
         Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        GGLWESwitchingKey::external_product_inplace_scratch_space(module, out_infos, ggsw_infos)
+        GLWESwitchingKey::external_product_inplace_scratch_space(module, out_infos, ggsw_infos)
     }
 }
 
-impl<DataSelf: DataMut> GGLWEAutomorphismKey<DataSelf> {
+impl<DataSelf: DataMut> AutomorphismKey<DataSelf> {
     pub fn external_product<DataLhs: DataRef, DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
-        lhs: &GGLWEAutomorphismKey<DataLhs>,
-        rhs: &GGSWCiphertextPrepared<DataRhs, B>,
+        lhs: &AutomorphismKey<DataLhs>,
+        rhs: &GGSWPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: VecZnxDftAllocBytes
@@ -64,7 +64,7 @@ impl<DataSelf: DataMut> GGLWEAutomorphismKey<DataSelf> {
     pub fn external_product_inplace<DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
-        rhs: &GGSWCiphertextPrepared<DataRhs, B>,
+        rhs: &GGSWPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: VecZnxDftAllocBytes

@@ -27,6 +27,11 @@ pub trait LWEInfos {
     }
 }
 
+pub trait SetLWEInfos {
+    fn set_k(&mut self, k: TorusPrecision);
+    fn set_base2k(&mut self, base2k: Base2K);
+}
+
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub struct LWECiphertextLayout {
     pub n: Degree,
@@ -47,7 +52,6 @@ impl LWEInfos for LWECiphertextLayout {
         self.n
     }
 }
-
 #[derive(PartialEq, Eq, Clone)]
 pub struct LWECiphertext<D: Data> {
     pub(crate) data: Zn<D>,
@@ -69,6 +73,16 @@ impl<D: Data> LWEInfos for LWECiphertext<D> {
 
     fn size(&self) -> usize {
         self.data.size()
+    }
+}
+
+impl<D: Data> SetLWEInfos for LWECiphertext<D> {
+    fn set_base2k(&mut self, base2k: Base2K) {
+        self.base2k = base2k
+    }
+
+    fn set_k(&mut self, k: TorusPrecision) {
+        self.k = k
     }
 }
 
@@ -221,12 +235,11 @@ pub trait LWECiphertextToRef {
 
 impl<D: DataRef> LWECiphertextToRef for LWECiphertext<D> {
     fn to_ref(&self) -> LWECiphertext<&[u8]> {
-        LWECiphertext::builder()
-            .base2k(self.base2k())
-            .k(self.k())
-            .data(self.data.to_ref())
-            .build()
-            .unwrap()
+        LWECiphertext {
+            k: self.k,
+            base2k: self.base2k,
+            data: self.data.to_ref(),
+        }
     }
 }
 
@@ -237,12 +250,11 @@ pub trait LWECiphertextToMut {
 
 impl<D: DataMut> LWECiphertextToMut for LWECiphertext<D> {
     fn to_mut(&mut self) -> LWECiphertext<&mut [u8]> {
-        LWECiphertext::builder()
-            .base2k(self.base2k())
-            .k(self.k())
-            .data(self.data.to_mut())
-            .build()
-            .unwrap()
+        LWECiphertext {
+            k: self.k,
+            base2k: self.base2k,
+            data: self.data.to_mut(),
+        }
     }
 }
 

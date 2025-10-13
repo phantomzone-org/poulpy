@@ -20,7 +20,7 @@ use poulpy_core::{
 };
 
 use poulpy_core::glwe_packing;
-use poulpy_core::layouts::{GGSWCiphertext, GLWECiphertext, LWECiphertext, prepared::GGLWEAutomorphismKeyPrepared};
+use poulpy_core::layouts::{GGSW, GLWECiphertext, LWECiphertext, prepared::AutomorphismKeyPrepared};
 
 use crate::tfhe::{
     blind_rotation::{
@@ -74,7 +74,7 @@ where
     fn execute_to_constant<DM: DataMut, DR: DataRef>(
         &self,
         module: &Module<B>,
-        res: &mut GGSWCiphertext<DM>,
+        res: &mut GGSW<DM>,
         lwe: &LWECiphertext<DR>,
         log_domain: usize,
         extension_factor: usize,
@@ -97,7 +97,7 @@ where
         &self,
         module: &Module<B>,
         log_gap_out: usize,
-        res: &mut GGSWCiphertext<DM>,
+        res: &mut GGSW<DM>,
         lwe: &LWECiphertext<DR>,
         log_domain: usize,
         extension_factor: usize,
@@ -122,7 +122,7 @@ pub fn circuit_bootstrap_core<DRes, DLwe, DBrk, BRA: BlindRotationAlgo, B>(
     to_exponent: bool,
     module: &Module<B>,
     log_gap_out: usize,
-    res: &mut GGSWCiphertext<DRes>,
+    res: &mut GGSW<DRes>,
     lwe: &LWECiphertext<DLwe>,
     log_domain: usize,
     extension_factor: usize,
@@ -268,7 +268,7 @@ fn post_process<DataRes, DataA, B: Backend>(
     log_gap_in: usize,
     log_gap_out: usize,
     log_domain: usize,
-    auto_keys: &HashMap<i64, GGLWEAutomorphismKeyPrepared<Vec<u8>, B>>,
+    auto_keys: &HashMap<i64, AutomorphismKeyPrepared<Vec<u8>, B>>,
     scratch: &mut Scratch<B>,
 ) where
     DataRes: DataMut,

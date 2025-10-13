@@ -9,11 +9,11 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    GGLWEInfos, GGSWCiphertext, GGSWInfos, GLWECiphertext,
-    prepared::{GGLWEAutomorphismKeyPrepared, GGLWETensorKeyPrepared},
+    GGLWEInfos, GGSW, GGSWInfos, GLWECiphertext,
+    prepared::{AutomorphismKeyPrepared, TensorKeyPrepared},
 };
 
-impl GGSWCiphertext<Vec<u8>> {
+impl GGSW<Vec<u8>> {
     pub fn automorphism_scratch_space<B: Backend, OUT, IN, KEY, TSK>(
         module: &Module<B>,
         out_infos: &OUT,
@@ -40,7 +40,7 @@ impl GGSWCiphertext<Vec<u8>> {
             &in_infos.glwe_layout(),
             key_infos,
         );
-        let expand: usize = GGSWCiphertext::expand_row_scratch_space(module, out_infos, tsk_infos);
+        let expand: usize = GGSW::expand_row_scratch_space(module, out_infos, tsk_infos);
         ci_dft + (ks_internal | expand)
     }
 
@@ -60,17 +60,17 @@ impl GGSWCiphertext<Vec<u8>> {
             + VecZnxNormalizeTmpBytes
             + VecZnxBigNormalizeTmpBytes,
     {
-        GGSWCiphertext::automorphism_scratch_space(module, out_infos, out_infos, key_infos, tsk_infos)
+        GGSW::automorphism_scratch_space(module, out_infos, out_infos, key_infos, tsk_infos)
     }
 }
 
-impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
+impl<DataSelf: DataMut> GGSW<DataSelf> {
     pub fn automorphism<DataLhs: DataRef, DataAk: DataRef, DataTsk: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
-        lhs: &GGSWCiphertext<DataLhs>,
-        auto_key: &GGLWEAutomorphismKeyPrepared<DataAk, B>,
-        tensor_key: &GGLWETensorKeyPrepared<DataTsk, B>,
+        lhs: &GGSW<DataLhs>,
+        auto_key: &AutomorphismKeyPrepared<DataAk, B>,
+        tensor_key: &TensorKeyPrepared<DataTsk, B>,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: VecZnxDftAllocBytes
@@ -121,7 +121,7 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
                 self.rank(),
                 tensor_key.rank_out()
             );
-            assert!(scratch.available() >= GGSWCiphertext::automorphism_scratch_space(module, self, lhs, auto_key, tensor_key))
+            assert!(scratch.available() >= GGSW::automorphism_scratch_space(module, self, lhs, auto_key, tensor_key))
         };
 
         // Keyswitch the j-th row of the col 0
@@ -137,8 +137,8 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
     pub fn automorphism_inplace<DataKsk: DataRef, DataTsk: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
-        auto_key: &GGLWEAutomorphismKeyPrepared<DataKsk, B>,
-        tensor_key: &GGLWETensorKeyPrepared<DataTsk, B>,
+        auto_key: &AutomorphismKeyPrepared<DataKsk, B>,
+        tensor_key: &TensorKeyPrepared<DataTsk, B>,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: VecZnxDftAllocBytes

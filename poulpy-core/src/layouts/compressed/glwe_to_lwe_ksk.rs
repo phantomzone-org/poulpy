@@ -6,11 +6,11 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Dnum, Dsize, GGLWEInfos, GLWEInfos, LWEInfos, Rank, TorusPrecision, compressed::GGLWEKeyCompressed,
+    Base2K, Degree, Dnum, Dsize, GGLWEInfos, GLWEInfos, LWEInfos, Rank, TorusPrecision, compressed::GLWESwitchingKeyCompressed,
 };
 
 #[derive(PartialEq, Eq, Clone)]
-pub struct GLWEToLWESwitchingKeyCompressed<D: Data>(pub(crate) GGLWEKeyCompressed<D>);
+pub struct GLWEToLWESwitchingKeyCompressed<D: Data>(pub(crate) GLWESwitchingKeyCompressed<D>);
 
 impl<D: Data> LWEInfos for GLWEToLWESwitchingKeyCompressed<D> {
     fn base2k(&self) -> Base2K {
@@ -98,11 +98,11 @@ impl GLWEToLWESwitchingKeyCompressed<Vec<u8>> {
             1,
             "dsize > 1 is unsupported for GLWEToLWESwitchingKeyCompressed"
         );
-        Self(GGLWEKeyCompressed::alloc(infos))
+        Self(GLWESwitchingKeyCompressed::alloc(infos))
     }
 
     pub fn alloc_with(n: Degree, base2k: Base2K, k: TorusPrecision, rank_in: Rank, dnum: Dnum) -> Self {
-        Self(GGLWEKeyCompressed::alloc_with(
+        Self(GLWESwitchingKeyCompressed::alloc_with(
             n,
             base2k,
             k,
@@ -127,10 +127,10 @@ impl GLWEToLWESwitchingKeyCompressed<Vec<u8>> {
             1,
             "dsize > 1 is unsupported for GLWEToLWESwitchingKeyCompressed"
         );
-        GGLWEKeyCompressed::alloc_bytes(infos)
+        GLWESwitchingKeyCompressed::alloc_bytes(infos)
     }
 
     pub fn alloc_bytes_with(n: Degree, base2k: Base2K, k: TorusPrecision, dnum: Dnum, rank_in: Rank) -> usize {
-        GGLWEKeyCompressed::alloc_bytes_with(n, base2k, k, rank_in, dnum, Dsize(1))
+        GLWESwitchingKeyCompressed::alloc_bytes_with(n, base2k, k, rank_in, dnum, Dsize(1))
     }
 }

@@ -5,10 +5,7 @@ use poulpy_hal::{
 
 use crate::{
     dist::Distribution,
-    layouts::{
-        Base2K, Degree, GLWEInfos, GLWESecret, LWEInfos, Rank, TorusPrecision,
-        prepared::{Prepare, PrepareAlloc, PrepareScratchSpace},
-    },
+    layouts::{Base2K, Degree, GLWEInfos, GLWESecret, LWEInfos, Rank, TorusPrecision},
 };
 
 pub struct GLWESecretPrepared<D: Data, B: Backend> {
@@ -128,11 +125,11 @@ impl<D: DataRef, B: Backend> GLWESecretPreparedToRef<B> for GLWESecretPrepared<D
 }
 
 pub trait GLWESecretPreparedToMut<B: Backend> {
-    fn to_ref(&mut self) -> GLWESecretPrepared<&mut [u8], B>;
+    fn to_mut(&mut self) -> GLWESecretPrepared<&mut [u8], B>;
 }
 
 impl<D: DataMut, B: Backend> GLWESecretPreparedToMut<B> for GLWESecretPrepared<D, B> {
-    fn to_ref(&mut self) -> GLWESecretPrepared<&mut [u8], B> {
+    fn to_mut(&mut self) -> GLWESecretPrepared<&mut [u8], B> {
         GLWESecretPrepared {
             dist: self.dist,
             data: self.data.to_mut(),

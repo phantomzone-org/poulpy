@@ -11,7 +11,7 @@ use crate::{
     GLWEExternalProduct, GLWEExternalProductInplace,
     layouts::{
         GGSWInfos, GLWECiphertext, GLWECiphertextToMut, GLWECiphertextToRef, GLWEInfos, LWEInfos,
-        prepared::{GGSWCiphertextPrepared, GGSWCiphertextPreparedToRef},
+        prepared::{GGSWCiphertextPreparedToRef, GGSWPrepared},
     },
 };
 
@@ -74,7 +74,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         &mut self,
         module: &Module<B>,
         lhs: &GLWECiphertext<DataLhs>,
-        rhs: &GGSWCiphertextPrepared<DataRhs, B>,
+        rhs: &GGSWPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWEExternalProduct<B>,
@@ -85,7 +85,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
     pub fn external_product_inplace<DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
-        rhs: &GGSWCiphertextPrepared<DataRhs, B>,
+        rhs: &GGSWPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: GLWEExternalProductInplace<B>,
@@ -113,7 +113,7 @@ where
         D: GGSWCiphertextPreparedToRef<BE>,
     {
         let res: &mut GLWECiphertext<&mut [u8]> = &mut res.to_mut();
-        let rhs: &GGSWCiphertextPrepared<&[u8], BE> = &ggsw.to_ref();
+        let rhs: &GGSWPrepared<&[u8], BE> = &ggsw.to_ref();
 
         let basek_in: usize = res.base2k().into();
         let basek_ggsw: usize = rhs.base2k().into();
@@ -237,7 +237,7 @@ where
         let res: &mut GLWECiphertext<&mut [u8]> = &mut res.to_mut();
         let lhs: &GLWECiphertext<&[u8]> = &lhs.to_ref();
 
-        let rhs: &GGSWCiphertextPrepared<&[u8], BE> = &rhs.to_ref();
+        let rhs: &GGSWPrepared<&[u8], BE> = &rhs.to_ref();
 
         let basek_in: usize = lhs.base2k().into();
         let basek_ggsw: usize = rhs.base2k().into();

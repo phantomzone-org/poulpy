@@ -18,8 +18,8 @@ use poulpy_hal::{
 use crate::{
     encryption::SIGMA,
     layouts::{
-        GGLWEAutomorphismKey, GGLWEAutomorphismKeyLayout, GGLWEInfos, GLWEPlaintext, GLWESecret,
-        prepared::{GGLWEAutomorphismKeyPrepared, GLWESecretPrepared, Prepare, PrepareAlloc},
+        AutomorphismKey, AutomorphismKeyLayout, GGLWEInfos, GLWEPlaintext, GLWESecret,
+        prepared::{AutomorphismKeyPrepared, GLWESecretPrepared, Prepare, PrepareAlloc},
     },
     noise::log2_std_noise_gglwe_product,
 };
@@ -84,7 +84,7 @@ where
             let dnum_out: usize = k_out / (base2k * di);
             let dnum_apply: usize = k_in.div_ceil(base2k * di);
 
-            let auto_key_in_infos: GGLWEAutomorphismKeyLayout = GGLWEAutomorphismKeyLayout {
+            let auto_key_in_infos: AutomorphismKeyLayout = AutomorphismKeyLayout {
                 n: n.into(),
                 base2k: base2k.into(),
                 k: k_in.into(),
@@ -93,7 +93,7 @@ where
                 rank: rank.into(),
             };
 
-            let auto_key_out_infos: GGLWEAutomorphismKeyLayout = GGLWEAutomorphismKeyLayout {
+            let auto_key_out_infos: AutomorphismKeyLayout = AutomorphismKeyLayout {
                 n: n.into(),
                 base2k: base2k.into(),
                 k: k_out.into(),
@@ -102,7 +102,7 @@ where
                 rank: rank.into(),
             };
 
-            let auto_key_apply_infos: GGLWEAutomorphismKeyLayout = GGLWEAutomorphismKeyLayout {
+            let auto_key_apply_infos: AutomorphismKeyLayout = AutomorphismKeyLayout {
                 n: n.into(),
                 base2k: base2k.into(),
                 k: k_apply.into(),
@@ -111,18 +111,18 @@ where
                 rank: rank.into(),
             };
 
-            let mut auto_key_in: GGLWEAutomorphismKey<Vec<u8>> = GGLWEAutomorphismKey::alloc(&auto_key_in_infos);
-            let mut auto_key_out: GGLWEAutomorphismKey<Vec<u8>> = GGLWEAutomorphismKey::alloc(&auto_key_out_infos);
-            let mut auto_key_apply: GGLWEAutomorphismKey<Vec<u8>> = GGLWEAutomorphismKey::alloc(&auto_key_apply_infos);
+            let mut auto_key_in: AutomorphismKey<Vec<u8>> = AutomorphismKey::alloc(&auto_key_in_infos);
+            let mut auto_key_out: AutomorphismKey<Vec<u8>> = AutomorphismKey::alloc(&auto_key_out_infos);
+            let mut auto_key_apply: AutomorphismKey<Vec<u8>> = AutomorphismKey::alloc(&auto_key_apply_infos);
 
             let mut source_xs: Source = Source::new([0u8; 32]);
             let mut source_xe: Source = Source::new([0u8; 32]);
             let mut source_xa: Source = Source::new([0u8; 32]);
 
             let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-                GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, &auto_key_in_infos)
-                    | GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, &auto_key_apply_infos)
-                    | GGLWEAutomorphismKey::automorphism_scratch_space(
+                AutomorphismKey::encrypt_sk_scratch_space(module, &auto_key_in_infos)
+                    | AutomorphismKey::encrypt_sk_scratch_space(module, &auto_key_apply_infos)
+                    | AutomorphismKey::automorphism_scratch_space(
                         module,
                         &auto_key_out_infos,
                         &auto_key_in_infos,
@@ -153,8 +153,8 @@ where
                 scratch.borrow(),
             );
 
-            let mut auto_key_apply_prepared: GGLWEAutomorphismKeyPrepared<Vec<u8>, B> =
-                GGLWEAutomorphismKeyPrepared::alloc(module, &auto_key_apply_infos);
+            let mut auto_key_apply_prepared: AutomorphismKeyPrepared<Vec<u8>, B> =
+                AutomorphismKeyPrepared::alloc(module, &auto_key_apply_infos);
 
             auto_key_apply_prepared.prepare(module, &auto_key_apply, scratch.borrow());
 
@@ -293,7 +293,7 @@ where
             let dnum_in: usize = k_in / (base2k * di);
             let dnum_apply: usize = k_in.div_ceil(base2k * di);
 
-            let auto_key_layout: GGLWEAutomorphismKeyLayout = GGLWEAutomorphismKeyLayout {
+            let auto_key_layout: AutomorphismKeyLayout = AutomorphismKeyLayout {
                 n: n.into(),
                 base2k: base2k.into(),
                 k: k_in.into(),
@@ -302,7 +302,7 @@ where
                 rank: rank.into(),
             };
 
-            let auto_key_apply_layout: GGLWEAutomorphismKeyLayout = GGLWEAutomorphismKeyLayout {
+            let auto_key_apply_layout: AutomorphismKeyLayout = AutomorphismKeyLayout {
                 n: n.into(),
                 base2k: base2k.into(),
                 k: k_apply.into(),
@@ -311,17 +311,17 @@ where
                 rank: rank.into(),
             };
 
-            let mut auto_key: GGLWEAutomorphismKey<Vec<u8>> = GGLWEAutomorphismKey::alloc(&auto_key_layout);
-            let mut auto_key_apply: GGLWEAutomorphismKey<Vec<u8>> = GGLWEAutomorphismKey::alloc(&auto_key_apply_layout);
+            let mut auto_key: AutomorphismKey<Vec<u8>> = AutomorphismKey::alloc(&auto_key_layout);
+            let mut auto_key_apply: AutomorphismKey<Vec<u8>> = AutomorphismKey::alloc(&auto_key_apply_layout);
 
             let mut source_xs: Source = Source::new([0u8; 32]);
             let mut source_xe: Source = Source::new([0u8; 32]);
             let mut source_xa: Source = Source::new([0u8; 32]);
 
             let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-                GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, &auto_key)
-                    | GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, &auto_key_apply)
-                    | GGLWEAutomorphismKey::automorphism_inplace_scratch_space(module, &auto_key, &auto_key_apply),
+                AutomorphismKey::encrypt_sk_scratch_space(module, &auto_key)
+                    | AutomorphismKey::encrypt_sk_scratch_space(module, &auto_key_apply)
+                    | AutomorphismKey::automorphism_inplace_scratch_space(module, &auto_key, &auto_key_apply),
             );
 
             let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(&auto_key);
@@ -347,8 +347,8 @@ where
                 scratch.borrow(),
             );
 
-            let mut auto_key_apply_prepared: GGLWEAutomorphismKeyPrepared<Vec<u8>, B> =
-                GGLWEAutomorphismKeyPrepared::alloc(module, &auto_key_apply_layout);
+            let mut auto_key_apply_prepared: AutomorphismKeyPrepared<Vec<u8>, B> =
+                AutomorphismKeyPrepared::alloc(module, &auto_key_apply_layout);
 
             auto_key_apply_prepared.prepare(module, &auto_key_apply, scratch.borrow());
 

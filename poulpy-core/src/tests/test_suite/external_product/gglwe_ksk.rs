@@ -18,8 +18,8 @@ use poulpy_hal::{
 use crate::{
     encryption::SIGMA,
     layouts::{
-        GGLWESwitchingKey, GGLWESwitchingKeyLayout, GGSWCiphertext, GGSWCiphertextLayout, GLWESecret,
-        prepared::{GGSWCiphertextPrepared, GLWESecretPrepared, PrepareAlloc},
+        GGSW, GGSWCiphertextLayout, GLWESecret, GLWESwitchingKey, GLWESwitchingKeyLayout,
+        prepared::{GGSWPrepared, GLWESecretPrepared, PrepareAlloc},
     },
     noise::noise_ggsw_product,
 };
@@ -81,7 +81,7 @@ where
                 let dnum: usize = k_in.div_ceil(base2k * di);
                 let dsize_in: usize = 1;
 
-                let gglwe_in_infos: GGLWESwitchingKeyLayout = GGLWESwitchingKeyLayout {
+                let gglwe_in_infos: GLWESwitchingKeyLayout = GLWESwitchingKeyLayout {
                     n: n.into(),
                     base2k: base2k.into(),
                     k: k_in.into(),
@@ -91,7 +91,7 @@ where
                     rank_out: rank_out.into(),
                 };
 
-                let gglwe_out_infos: GGLWESwitchingKeyLayout = GGLWESwitchingKeyLayout {
+                let gglwe_out_infos: GLWESwitchingKeyLayout = GLWESwitchingKeyLayout {
                     n: n.into(),
                     base2k: base2k.into(),
                     k: k_out.into(),
@@ -110,9 +110,9 @@ where
                     rank: rank_out.into(),
                 };
 
-                let mut ct_gglwe_in: GGLWESwitchingKey<Vec<u8>> = GGLWESwitchingKey::alloc(&gglwe_in_infos);
-                let mut ct_gglwe_out: GGLWESwitchingKey<Vec<u8>> = GGLWESwitchingKey::alloc(&gglwe_out_infos);
-                let mut ct_rgsw: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(&ggsw_infos);
+                let mut ct_gglwe_in: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc(&gglwe_in_infos);
+                let mut ct_gglwe_out: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc(&gglwe_out_infos);
+                let mut ct_rgsw: GGSW<Vec<u8>> = GGSW::alloc(&ggsw_infos);
 
                 let mut pt_rgsw: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n, 1);
 
@@ -121,14 +121,14 @@ where
                 let mut source_xa: Source = Source::new([0u8; 32]);
 
                 let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-                    GGLWESwitchingKey::encrypt_sk_scratch_space(module, &gglwe_in_infos)
-                        | GGLWESwitchingKey::external_product_scratch_space(
+                    GLWESwitchingKey::encrypt_sk_scratch_space(module, &gglwe_in_infos)
+                        | GLWESwitchingKey::external_product_scratch_space(
                             module,
                             &gglwe_out_infos,
                             &gglwe_in_infos,
                             &ggsw_infos,
                         )
-                        | GGSWCiphertext::encrypt_sk_scratch_space(module, &ggsw_infos),
+                        | GGSW::encrypt_sk_scratch_space(module, &ggsw_infos),
                 );
 
                 let r: usize = 1;
@@ -163,7 +163,7 @@ where
                     scratch.borrow(),
                 );
 
-                let ct_rgsw_prepared: GGSWCiphertextPrepared<Vec<u8>, B> = ct_rgsw.prepare_alloc(module, scratch.borrow());
+                let ct_rgsw_prepared: GGSWPrepared<Vec<u8>, B> = ct_rgsw.prepare_alloc(module, scratch.borrow());
 
                 // gglwe_(m) (x) RGSW_(X^k) = gglwe_(m * X^k)
                 ct_gglwe_out.external_product(module, &ct_gglwe_in, &ct_rgsw_prepared, scratch.borrow());
@@ -263,7 +263,7 @@ where
 
                 let dsize_in: usize = 1;
 
-                let gglwe_out_infos: GGLWESwitchingKeyLayout = GGLWESwitchingKeyLayout {
+                let gglwe_out_infos: GLWESwitchingKeyLayout = GLWESwitchingKeyLayout {
                     n: n.into(),
                     base2k: base2k.into(),
                     k: k_out.into(),
@@ -282,8 +282,8 @@ where
                     rank: rank_out.into(),
                 };
 
-                let mut ct_gglwe: GGLWESwitchingKey<Vec<u8>> = GGLWESwitchingKey::alloc(&gglwe_out_infos);
-                let mut ct_rgsw: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(&ggsw_infos);
+                let mut ct_gglwe: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc(&gglwe_out_infos);
+                let mut ct_rgsw: GGSW<Vec<u8>> = GGSW::alloc(&ggsw_infos);
 
                 let mut pt_rgsw: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n, 1);
 
@@ -292,9 +292,9 @@ where
                 let mut source_xa: Source = Source::new([0u8; 32]);
 
                 let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-                    GGLWESwitchingKey::encrypt_sk_scratch_space(module, &gglwe_out_infos)
-                        | GGLWESwitchingKey::external_product_inplace_scratch_space(module, &gglwe_out_infos, &ggsw_infos)
-                        | GGSWCiphertext::encrypt_sk_scratch_space(module, &ggsw_infos),
+                    GLWESwitchingKey::encrypt_sk_scratch_space(module, &gglwe_out_infos)
+                        | GLWESwitchingKey::external_product_inplace_scratch_space(module, &gglwe_out_infos, &ggsw_infos)
+                        | GGSW::encrypt_sk_scratch_space(module, &ggsw_infos),
                 );
 
                 let r: usize = 1;
@@ -329,7 +329,7 @@ where
                     scratch.borrow(),
                 );
 
-                let ct_rgsw_prepared: GGSWCiphertextPrepared<Vec<u8>, B> = ct_rgsw.prepare_alloc(module, scratch.borrow());
+                let ct_rgsw_prepared: GGSWPrepared<Vec<u8>, B> = ct_rgsw.prepare_alloc(module, scratch.borrow());
 
                 // gglwe_(m) (x) RGSW_(X^k) = gglwe_(m * X^k)
                 ct_gglwe.external_product_inplace(module, &ct_rgsw_prepared, scratch.borrow());

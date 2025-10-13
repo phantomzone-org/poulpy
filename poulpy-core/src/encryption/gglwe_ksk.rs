@@ -11,18 +11,16 @@ use poulpy_hal::{
 
 use crate::{
     TakeGLWESecretPrepared,
-    layouts::{
-        Degree, GGLWECiphertext, GGLWEInfos, GGLWESwitchingKey, GLWEInfos, GLWESecret, LWEInfos, prepared::GLWESecretPrepared,
-    },
+    layouts::{Degree, GGLWE, GGLWEInfos, GLWEInfos, GLWESecret, GLWESwitchingKey, LWEInfos, prepared::GLWESecretPrepared},
 };
 
-impl GGLWESwitchingKey<Vec<u8>> {
+impl GLWESwitchingKey<Vec<u8>> {
     pub fn encrypt_sk_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GGLWEInfos,
         Module<B>: SvpPPolAllocBytes + VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes + VecZnxNormalizeTmpBytes,
     {
-        (GGLWECiphertext::encrypt_sk_scratch_space(module, infos) | ScalarZnx::alloc_bytes(module.n(), 1))
+        (GGLWE::encrypt_sk_scratch_space(module, infos) | ScalarZnx::alloc_bytes(module.n(), 1))
             + ScalarZnx::alloc_bytes(module.n(), infos.rank_in().into())
             + GLWESecretPrepared::alloc_bytes(module, &infos.glwe_layout())
     }
@@ -31,11 +29,11 @@ impl GGLWESwitchingKey<Vec<u8>> {
     where
         A: GGLWEInfos,
     {
-        GGLWECiphertext::encrypt_pk_scratch_space(module, _infos)
+        GGLWE::encrypt_pk_scratch_space(module, _infos)
     }
 }
 
-impl<DataSelf: DataMut> GGLWESwitchingKey<DataSelf> {
+impl<DataSelf: DataMut> GLWESwitchingKey<DataSelf> {
     #[allow(clippy::too_many_arguments)]
     pub fn encrypt_sk<DataSkIn: DataRef, DataSkOut: DataRef, B: Backend>(
         &mut self,
@@ -70,10 +68,10 @@ impl<DataSelf: DataMut> GGLWESwitchingKey<DataSelf> {
             assert!(sk_in.n().0 <= module.n() as u32);
             assert!(sk_out.n().0 <= module.n() as u32);
             assert!(
-                scratch.available() >= GGLWESwitchingKey::encrypt_sk_scratch_space(module, self),
+                scratch.available() >= GLWESwitchingKey::encrypt_sk_scratch_space(module, self),
                 "scratch.available()={} < GLWESwitchingKey::encrypt_sk_scratch_space={}",
                 scratch.available(),
-                GGLWESwitchingKey::encrypt_sk_scratch_space(module, self)
+                GLWESwitchingKey::encrypt_sk_scratch_space(module, self)
             )
         }
 

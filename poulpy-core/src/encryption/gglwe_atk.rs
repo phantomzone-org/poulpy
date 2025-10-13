@@ -12,12 +12,11 @@ use poulpy_hal::{
 use crate::{
     TakeGLWESecret, TakeGLWESecretPrepared,
     layouts::{
-        GGLWEAutomorphismKey, GGLWEAutomorphismKeyToMut, GGLWEInfos, GGLWESwitchingKey, GLWEInfos, GLWESecret, GLWESecretToRef,
-        LWEInfos,
+        AutomorphismKey, AutomorphismKeyToMut, GGLWEInfos, GLWEInfos, GLWESecret, GLWESecretToRef, GLWESwitchingKey, LWEInfos,
     },
 };
 
-impl GGLWEAutomorphismKey<Vec<u8>> {
+impl AutomorphismKey<Vec<u8>> {
     pub fn encrypt_sk_scratch_space<BE: Backend, A>(module: &Module<BE>, infos: &A) -> usize
     where
         A: GGLWEInfos,
@@ -28,7 +27,7 @@ impl GGLWEAutomorphismKey<Vec<u8>> {
             infos.rank_out(),
             "rank_in != rank_out is not supported for GGLWEAutomorphismKey"
         );
-        GGLWESwitchingKey::encrypt_sk_scratch_space(module, infos) + GLWESecret::alloc_bytes(&infos.glwe_layout())
+        GLWESwitchingKey::encrypt_sk_scratch_space(module, infos) + GLWESecret::alloc_bytes(&infos.glwe_layout())
     }
 
     pub fn encrypt_pk_scratch_space<BE: Backend, A>(module: &Module<BE>, _infos: &A) -> usize
@@ -40,7 +39,7 @@ impl GGLWEAutomorphismKey<Vec<u8>> {
             _infos.rank_out(),
             "rank_in != rank_out is not supported for GGLWEAutomorphismKey"
         );
-        GGLWESwitchingKey::encrypt_pk_scratch_space(module, _infos)
+        GLWESwitchingKey::encrypt_pk_scratch_space(module, _infos)
     }
 }
 
@@ -54,13 +53,13 @@ pub trait GGLWEAutomorphismKeyEncryptSk<BE: Backend> {
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
-        A: GGLWEAutomorphismKeyToMut,
+        A: AutomorphismKeyToMut,
         B: GLWESecretToRef;
 }
 
-impl<DM: DataMut> GGLWEAutomorphismKey<DM>
+impl<DM: DataMut> AutomorphismKey<DM>
 where
-    Self: GGLWEAutomorphismKeyToMut,
+    Self: AutomorphismKeyToMut,
 {
     pub fn encrypt_sk<S, BE: Backend>(
         &mut self,
@@ -109,10 +108,10 @@ where
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
-        A: GGLWEAutomorphismKeyToMut,
+        A: AutomorphismKeyToMut,
         B: GLWESecretToRef,
     {
-        let res: &mut GGLWEAutomorphismKey<&mut [u8]> = &mut res.to_mut();
+        let res: &mut AutomorphismKey<&mut [u8]> = &mut res.to_mut();
         let sk: &GLWESecret<&[u8]> = &sk.to_ref();
 
         #[cfg(debug_assertions)]
@@ -123,10 +122,10 @@ where
             assert_eq!(res.rank_out(), res.rank_in());
             assert_eq!(sk.rank(), res.rank_out());
             assert!(
-                scratch.available() >= GGLWEAutomorphismKey::encrypt_sk_scratch_space(self, res),
+                scratch.available() >= AutomorphismKey::encrypt_sk_scratch_space(self, res),
                 "scratch.available(): {} < AutomorphismKey::encrypt_sk_scratch_space: {:?}",
                 scratch.available(),
-                GGLWEAutomorphismKey::encrypt_sk_scratch_space(self, res)
+                AutomorphismKey::encrypt_sk_scratch_space(self, res)
             )
         }
 

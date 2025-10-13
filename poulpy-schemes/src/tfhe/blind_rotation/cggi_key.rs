@@ -14,9 +14,9 @@ use std::marker::PhantomData;
 use poulpy_core::{
     Distribution,
     layouts::{
-        GGSWCiphertext, GGSWInfos, LWESecret,
+        GGSW, GGSWInfos, LWESecret,
         compressed::GGSWCiphertextCompressed,
-        prepared::{GGSWCiphertextPrepared, GLWESecretPrepared},
+        prepared::{GGSWPrepared, GLWESecretPrepared},
     },
 };
 
@@ -30,9 +30,9 @@ impl BlindRotationKeyAlloc for BlindRotationKey<Vec<u8>, CGGI> {
     where
         A: BlindRotationKeyInfos,
     {
-        let mut data: Vec<GGSWCiphertext<Vec<u8>>> = Vec::with_capacity(infos.n_lwe().into());
+        let mut data: Vec<GGSW<Vec<u8>>> = Vec::with_capacity(infos.n_lwe().into());
         for _ in 0..infos.n_lwe().as_usize() {
-            data.push(GGSWCiphertext::alloc(infos));
+            data.push(GGSW::alloc(infos));
         }
 
         Self {
@@ -49,7 +49,7 @@ impl BlindRotationKey<Vec<u8>, CGGI> {
         A: GGSWInfos,
         Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes,
     {
-        GGSWCiphertext::encrypt_sk_scratch_space(module, infos)
+        GGSW::encrypt_sk_scratch_space(module, infos)
     }
 }
 
@@ -121,8 +121,8 @@ where
     where
         A: BlindRotationKeyInfos,
     {
-        let mut data: Vec<GGSWCiphertextPrepared<Vec<u8>, B>> = Vec::with_capacity(infos.n_lwe().into());
-        (0..infos.n_lwe().as_usize()).for_each(|_| data.push(GGSWCiphertextPrepared::alloc(module, infos)));
+        let mut data: Vec<GGSWPrepared<Vec<u8>, B>> = Vec::with_capacity(infos.n_lwe().into());
+        (0..infos.n_lwe().as_usize()).for_each(|_| data.push(GGSWPrepared::alloc(module, infos)));
         Self {
             data,
             dist: Distribution::NONE,

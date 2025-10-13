@@ -1,9 +1,9 @@
 use poulpy_core::{
     GLWEOperations,
     layouts::{
-        GGLWEAutomorphismKeyLayout, GGLWETensorKeyLayout, GGSWCiphertext, GGSWCiphertextLayout, GLWECiphertext,
-        GLWECiphertextLayout, GLWEPlaintext, GLWESecret, LWECiphertext, LWECiphertextLayout, LWEInfos, LWEPlaintext, LWESecret,
-        prepared::{GGSWCiphertextPrepared, GLWESecretPrepared, PrepareAlloc},
+        AutomorphismKeyLayout, GGSW, GGSWCiphertextLayout, GLWECiphertext, GLWECiphertextLayout, GLWEPlaintext, GLWESecret,
+        LWECiphertext, LWECiphertextLayout, LWEInfos, LWEPlaintext, LWESecret, TensorKeyLayout,
+        prepared::{GGSWPrepared, GLWESecretPrepared, PrepareAlloc},
     },
 };
 use std::time::Instant;
@@ -89,7 +89,7 @@ fn main() {
             dnum: rows_brk.into(),
             rank: rank.into(),
         },
-        layout_atk: GGLWEAutomorphismKeyLayout {
+        layout_atk: AutomorphismKeyLayout {
             n: n_glwe.into(),
             base2k: base2k.into(),
             k: k_trace.into(),
@@ -97,7 +97,7 @@ fn main() {
             dsize: 1_u32.into(),
             rank: rank.into(),
         },
-        layout_tsk: GGLWETensorKeyLayout {
+        layout_tsk: TensorKeyLayout {
             n: n_glwe.into(),
             base2k: base2k.into(),
             k: k_tsk.into(),
@@ -187,7 +187,7 @@ fn main() {
     println!("CBT-KGEN: {} ms", now.elapsed().as_millis());
 
     // Output GGSW
-    let mut res: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(&ggsw_infos);
+    let mut res: GGSW<Vec<u8>> = GGSW::alloc(&ggsw_infos);
 
     // Circuit bootstrapping key prepared (opaque backend dependant write only struct)
     let cbt_prepared: CircuitBootstrappingKeyPrepared<Vec<u8>, CGGI, BackendImpl> =
@@ -249,7 +249,7 @@ fn main() {
     );
 
     // Prepare GGSW output of circuit bootstrapping (opaque backend dependant write only struct)
-    let res_prepared: GGSWCiphertextPrepared<Vec<u8>, BackendImpl> = res.prepare_alloc(&module, scratch.borrow());
+    let res_prepared: GGSWPrepared<Vec<u8>, BackendImpl> = res.prepare_alloc(&module, scratch.borrow());
 
     // Apply GLWE x GGSW
     ct_glwe.external_product_inplace(&module, &res_prepared, scratch.borrow());

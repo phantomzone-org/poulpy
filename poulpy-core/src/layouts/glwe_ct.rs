@@ -253,36 +253,6 @@ impl GLWECiphertext<Vec<u8>> {
     }
 }
 
-pub trait GLWECiphertextToRef {
-    fn to_ref(&self) -> GLWECiphertext<&[u8]>;
-}
-
-impl<D: DataRef> GLWECiphertextToRef for GLWECiphertext<D> {
-    fn to_ref(&self) -> GLWECiphertext<&[u8]> {
-        GLWECiphertext::builder()
-            .k(self.k())
-            .base2k(self.base2k())
-            .data(self.data.to_ref())
-            .build()
-            .unwrap()
-    }
-}
-
-pub trait GLWECiphertextToMut {
-    fn to_mut(&mut self) -> GLWECiphertext<&mut [u8]>;
-}
-
-impl<D: DataMut> GLWECiphertextToMut for GLWECiphertext<D> {
-    fn to_mut(&mut self) -> GLWECiphertext<&mut [u8]> {
-        GLWECiphertext::builder()
-            .k(self.k())
-            .base2k(self.base2k())
-            .data(self.data.to_mut())
-            .build()
-            .unwrap()
-    }
-}
-
 impl<D: DataMut> ReaderFrom for GLWECiphertext<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         self.k = TorusPrecision(reader.read_u32::<LittleEndian>()?);
@@ -296,5 +266,33 @@ impl<D: DataRef> WriterTo for GLWECiphertext<D> {
         writer.write_u32::<LittleEndian>(self.k.0)?;
         writer.write_u32::<LittleEndian>(self.base2k.0)?;
         self.data.write_to(writer)
+    }
+}
+
+pub trait GLWECiphertextToRef {
+    fn to_ref(&self) -> GLWECiphertext<&[u8]>;
+}
+
+impl<D: DataRef> GLWECiphertextToRef for GLWECiphertext<D> {
+    fn to_ref(&self) -> GLWECiphertext<&[u8]> {
+        GLWECiphertext {
+            k: self.k,
+            base2k: self.base2k,
+            data: self.data.to_ref(),
+        }
+    }
+}
+
+pub trait GLWECiphertextToMut {
+    fn to_mut(&mut self) -> GLWECiphertext<&mut [u8]>;
+}
+
+impl<D: DataMut> GLWECiphertextToMut for GLWECiphertext<D> {
+    fn to_mut(&mut self) -> GLWECiphertext<&mut [u8]> {
+        GLWECiphertext {
+            k: self.k,
+            base2k: self.base2k,
+            data: self.data.to_mut(),
+        }
     }
 }

@@ -9,7 +9,7 @@ use poulpy_core::{
     Distribution,
     layouts::{
         Base2K, Degree, Dnum, Dsize, GGSWInfos, GLWEInfos, LWEInfos, Rank, TorusPrecision,
-        prepared::{GGSWCiphertextPrepared, Prepare, PrepareAlloc},
+        prepared::{GGSWPrepared, Prepare, PrepareAlloc},
     },
 };
 
@@ -23,7 +23,7 @@ pub trait BlindRotationKeyPreparedAlloc<B: Backend> {
 
 #[derive(PartialEq, Eq)]
 pub struct BlindRotationKeyPrepared<D: Data, BRT: BlindRotationAlgo, B: Backend> {
-    pub(crate) data: Vec<GGSWCiphertextPrepared<D, B>>,
+    pub(crate) data: Vec<GGSWPrepared<D, B>>,
     pub(crate) dist: Distribution,
     pub(crate) x_pow_a: Option<Vec<SvpPPol<Vec<u8>, B>>>,
     pub(crate) _phantom: PhantomData<BRT>,

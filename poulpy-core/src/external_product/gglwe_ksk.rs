@@ -7,9 +7,9 @@ use poulpy_hal::{
     layouts::{Backend, DataMut, DataRef, Module, Scratch, ZnxZero},
 };
 
-use crate::layouts::{GGLWEInfos, GGLWESwitchingKey, GGSWInfos, GLWECiphertext, prepared::GGSWCiphertextPrepared};
+use crate::layouts::{GGLWEInfos, GGSWInfos, GLWECiphertext, GLWESwitchingKey, prepared::GGSWPrepared};
 
-impl GGLWESwitchingKey<Vec<u8>> {
+impl GLWESwitchingKey<Vec<u8>> {
     pub fn external_product_scratch_space<B: Backend, OUT, IN, GGSW>(
         module: &Module<B>,
         out_infos: &OUT,
@@ -44,12 +44,12 @@ impl GGLWESwitchingKey<Vec<u8>> {
     }
 }
 
-impl<DataSelf: DataMut> GGLWESwitchingKey<DataSelf> {
+impl<DataSelf: DataMut> GLWESwitchingKey<DataSelf> {
     pub fn external_product<DataLhs: DataRef, DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
-        lhs: &GGLWESwitchingKey<DataLhs>,
-        rhs: &GGSWCiphertextPrepared<DataRhs, B>,
+        lhs: &GLWESwitchingKey<DataLhs>,
+        rhs: &GGSWPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: VecZnxDftAllocBytes
@@ -107,7 +107,7 @@ impl<DataSelf: DataMut> GGLWESwitchingKey<DataSelf> {
     pub fn external_product_inplace<DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
-        rhs: &GGSWCiphertextPrepared<DataRhs, B>,
+        rhs: &GGSWPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: VecZnxDftAllocBytes

@@ -3,7 +3,7 @@ use poulpy_core::{
     GLWEExternalProductInplace, GLWEOperations, TakeGLWECtSlice,
     layouts::{
         GLWECiphertext, GLWECiphertextToMut, LWEInfos,
-        prepared::{GGSWCiphertextPrepared, GGSWCiphertextPreparedToRef},
+        prepared::{GGSWCiphertextPreparedToRef, GGSWPrepared},
     },
 };
 use poulpy_hal::{
@@ -164,7 +164,7 @@ pub trait Cmux<BE: Backend> {
         out: &mut GLWECiphertext<O>,
         t: &GLWECiphertext<T>,
         f: &GLWECiphertext<F>,
-        s: &GGSWCiphertextPrepared<S, BE>,
+        s: &GGSWPrepared<S, BE>,
         scratch: &mut Scratch<BE>,
     ) where
         O: DataMut,
@@ -182,7 +182,7 @@ where
         out: &mut GLWECiphertext<O>,
         t: &GLWECiphertext<T>,
         f: &GLWECiphertext<F>,
-        s: &GGSWCiphertextPrepared<S, BE>,
+        s: &GGSWPrepared<S, BE>,
         scratch: &mut Scratch<BE>,
     ) where
         O: DataMut,

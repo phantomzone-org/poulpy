@@ -8,9 +8,9 @@ use poulpy_hal::{
     oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeVecZnxBigImpl, TakeVecZnxDftImpl},
 };
 
-use crate::layouts::{GGLWECiphertext, GGLWEInfos, GLWECiphertext, GLWEPlaintext, LWEInfos, prepared::GLWESecretPrepared};
+use crate::layouts::{GGLWE, GGLWEInfos, GLWECiphertext, GLWEPlaintext, LWEInfos, prepared::GLWESecretPrepared};
 
-impl<D: DataRef> GGLWECiphertext<D> {
+impl<D: DataRef> GGLWE<D> {
     pub fn assert_noise<B, DataSk, DataWant>(
         &self,
         module: &Module<B>,

@@ -3,7 +3,7 @@ use poulpy_core::{
     GLWEOperations, TakeGLWECtSlice, TakeGLWEPt, glwe_packing,
     layouts::{
         GLWECiphertext, GLWEInfos, GLWEPlaintextLayout, LWEInfos, TorusPrecision,
-        prepared::{GGLWEAutomorphismKeyPrepared, GLWESecretPrepared},
+        prepared::{AutomorphismKeyPrepared, GLWESecretPrepared},
     },
 };
 use poulpy_hal::{
@@ -32,7 +32,7 @@ impl<D: DataMut, T: UnsignedInteger> FheUintWord<D, T> {
         &mut self,
         module: &Module<BE>,
         mut tmp_res: Vec<GLWECiphertext<&mut [u8]>>,
-        auto_keys: &HashMap<i64, GGLWEAutomorphismKeyPrepared<ATK, BE>>,
+        auto_keys: &HashMap<i64, AutomorphismKeyPrepared<ATK, BE>>,
         scratch: &mut Scratch<BE>,
     ) where
         ATK: DataRef,

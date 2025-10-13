@@ -13,7 +13,7 @@ use poulpy_hal::{
 
 use crate::{
     GLWEOperations, TakeGLWECt,
-    layouts::{GGLWEInfos, GLWECiphertext, GLWEInfos, LWEInfos, prepared::GGLWEAutomorphismKeyPrepared},
+    layouts::{GGLWEInfos, GLWECiphertext, GLWEInfos, LWEInfos, prepared::AutomorphismKeyPrepared},
 };
 
 /// [GLWEPacker] enables only the fly GLWE packing
@@ -116,7 +116,7 @@ impl GLWEPacker {
         &mut self,
         module: &Module<B>,
         a: Option<&GLWECiphertext<DataA>>,
-        auto_keys: &HashMap<i64, GGLWEAutomorphismKeyPrepared<DataAK, B>>,
+        auto_keys: &HashMap<i64, AutomorphismKeyPrepared<DataAK, B>>,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: VecZnxDftAllocBytes
@@ -191,7 +191,7 @@ fn pack_core<D: DataRef, DataAK: DataRef, B: Backend>(
     a: Option<&GLWECiphertext<D>>,
     accumulators: &mut [Accumulator],
     i: usize,
-    auto_keys: &HashMap<i64, GGLWEAutomorphismKeyPrepared<DataAK, B>>,
+    auto_keys: &HashMap<i64, AutomorphismKeyPrepared<DataAK, B>>,
     scratch: &mut Scratch<B>,
 ) where
     Module<B>: VecZnxDftAllocBytes
@@ -285,7 +285,7 @@ fn combine<D: DataRef, DataAK: DataRef, B: Backend>(
     acc: &mut Accumulator,
     b: Option<&GLWECiphertext<D>>,
     i: usize,
-    auto_keys: &HashMap<i64, GGLWEAutomorphismKeyPrepared<DataAK, B>>,
+    auto_keys: &HashMap<i64, AutomorphismKeyPrepared<DataAK, B>>,
     scratch: &mut Scratch<B>,
 ) where
     Module<B>: VecZnxDftAllocBytes
@@ -397,7 +397,7 @@ pub fn glwe_packing<D: DataMut, ATK, B: Backend>(
     module: &Module<B>,
     cts: &mut HashMap<usize, &mut GLWECiphertext<D>>,
     log_gap_out: usize,
-    auto_keys: &HashMap<i64, GGLWEAutomorphismKeyPrepared<ATK, B>>,
+    auto_keys: &HashMap<i64, AutomorphismKeyPrepared<ATK, B>>,
     scratch: &mut Scratch<B>,
 ) where
     ATK: DataRef,
@@ -439,7 +439,7 @@ pub fn glwe_packing<D: DataMut, ATK, B: Backend>(
     (0..log_n - log_gap_out).for_each(|i| {
         let t: usize = (1 << log_n).min(1 << (log_n - 1 - i));
 
-        let auto_key: &GGLWEAutomorphismKeyPrepared<ATK, B> = if i == 0 {
+        let auto_key: &AutomorphismKeyPrepared<ATK, B> = if i == 0 {
             auto_keys.get(&-1).unwrap()
         } else {
             auto_keys.get(&module.galois_element(1 << (i - 1))).unwrap()
@@ -466,7 +466,7 @@ fn pack_internal<A: DataMut, D: DataMut, DataAK: DataRef, B: Backend>(
     a: &mut Option<&mut GLWECiphertext<A>>,
     b: &mut Option<&mut GLWECiphertext<D>>,
     i: usize,
-    auto_key: &GGLWEAutomorphismKeyPrepared<DataAK, B>,
+    auto_key: &AutomorphismKeyPrepared<DataAK, B>,
     scratch: &mut Scratch<B>,
 ) where
     Module<B>: VecZnxRotateInplace<B>

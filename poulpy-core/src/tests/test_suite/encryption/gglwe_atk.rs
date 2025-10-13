@@ -18,8 +18,8 @@ use poulpy_hal::{
 use crate::{
     encryption::SIGMA,
     layouts::{
-        GGLWEAutomorphismKey, GGLWEAutomorphismKeyLayout, GLWEInfos, GLWESecret,
-        compressed::{Decompress, GGLWEAutomorphismKeyCompressed},
+        AutomorphismKey, AutomorphismKeyLayout, GLWEInfos, GLWESecret,
+        compressed::{AutomorphismKeyCompressed, Decompress},
         prepared::{GLWESecretPrepared, PrepareAlloc},
     },
 };
@@ -75,7 +75,7 @@ where
             let n: usize = module.n();
             let dnum: usize = (k_ksk - di * base2k) / (di * base2k);
 
-            let atk_infos: GGLWEAutomorphismKeyLayout = GGLWEAutomorphismKeyLayout {
+            let atk_infos: AutomorphismKeyLayout = AutomorphismKeyLayout {
                 n: n.into(),
                 base2k: base2k.into(),
                 k: k_ksk.into(),
@@ -84,13 +84,13 @@ where
                 rank: rank.into(),
             };
 
-            let mut atk: GGLWEAutomorphismKey<Vec<u8>> = GGLWEAutomorphismKey::alloc(&atk_infos);
+            let mut atk: AutomorphismKey<Vec<u8>> = AutomorphismKey::alloc(&atk_infos);
 
             let mut source_xs: Source = Source::new([0u8; 32]);
             let mut source_xe: Source = Source::new([0u8; 32]);
             let mut source_xa: Source = Source::new([0u8; 32]);
 
-            let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GGLWEAutomorphismKey::encrypt_sk_scratch_space(
+            let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(AutomorphismKey::encrypt_sk_scratch_space(
                 module, &atk_infos,
             ));
 
@@ -178,7 +178,7 @@ where
             let n: usize = module.n();
             let dnum: usize = (k_ksk - di * base2k) / (di * base2k);
 
-            let atk_infos: GGLWEAutomorphismKeyLayout = GGLWEAutomorphismKeyLayout {
+            let atk_infos: AutomorphismKeyLayout = AutomorphismKeyLayout {
                 n: n.into(),
                 base2k: base2k.into(),
                 k: k_ksk.into(),
@@ -187,12 +187,12 @@ where
                 rank: rank.into(),
             };
 
-            let mut atk_compressed: GGLWEAutomorphismKeyCompressed<Vec<u8>> = GGLWEAutomorphismKeyCompressed::alloc(&atk_infos);
+            let mut atk_compressed: AutomorphismKeyCompressed<Vec<u8>> = AutomorphismKeyCompressed::alloc(&atk_infos);
 
             let mut source_xs: Source = Source::new([0u8; 32]);
             let mut source_xe: Source = Source::new([0u8; 32]);
 
-            let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GGLWEAutomorphismKey::encrypt_sk_scratch_space(
+            let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(AutomorphismKey::encrypt_sk_scratch_space(
                 module, &atk_infos,
             ));
 
@@ -217,7 +217,7 @@ where
             });
             let sk_out_prepared = sk_out.prepare_alloc(module, scratch.borrow());
 
-            let mut atk: GGLWEAutomorphismKey<Vec<u8>> = GGLWEAutomorphismKey::alloc(&atk_infos);
+            let mut atk: AutomorphismKey<Vec<u8>> = AutomorphismKey::alloc(&atk_infos);
             atk.decompress(module, &atk_compressed);
 
             atk.key

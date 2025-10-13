@@ -32,12 +32,12 @@ use crate::tfhe::{
 };
 
 use poulpy_core::layouts::{
-    Dsize, GGLWEAutomorphismKeyLayout, GGLWETensorKeyLayout, GGSWCiphertextLayout, LWECiphertextLayout, prepared::PrepareAlloc,
+    AutomorphismKeyLayout, Dsize, GGSWCiphertextLayout, LWECiphertextLayout, TensorKeyLayout, prepared::PrepareAlloc,
 };
 
 use poulpy_core::layouts::{
-    GGSWCiphertext, GLWECiphertext, GLWEPlaintext, GLWESecret, LWECiphertext, LWEPlaintext, LWESecret,
-    prepared::{GGSWCiphertextPrepared, GLWESecretPrepared},
+    GGSW, GLWECiphertext, GLWEPlaintext, GLWESecret, LWECiphertext, LWEPlaintext, LWESecret,
+    prepared::{GGSWPrepared, GLWESecretPrepared},
 };
 
 pub fn test_circuit_bootstrapping_to_exponent<B, BRA: BlindRotationAlgo>(module: &Module<B>)
@@ -143,7 +143,7 @@ where
             dnum: rows_brk.into(),
             rank: rank.into(),
         },
-        layout_atk: GGLWEAutomorphismKeyLayout {
+        layout_atk: AutomorphismKeyLayout {
             n: n_glwe.into(),
             base2k: base2k.into(),
             k: k_atk.into(),
@@ -151,7 +151,7 @@ where
             rank: rank.into(),
             dsize: Dsize(1),
         },
-        layout_tsk: GGLWETensorKeyLayout {
+        layout_tsk: TensorKeyLayout {
             n: n_glwe.into(),
             base2k: base2k.into(),
             k: k_tsk.into(),
@@ -206,7 +206,7 @@ where
     );
     println!("CBT-KGEN: {} ms", now.elapsed().as_millis());
 
-    let mut res: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(&ggsw_infos);
+    let mut res: GGSW<Vec<u8>> = GGSW::alloc(&ggsw_infos);
 
     let log_gap_out = 1;
 
@@ -249,7 +249,7 @@ where
         scratch.borrow(),
     );
 
-    let res_prepared: GGSWCiphertextPrepared<Vec<u8>, B> = res.prepare_alloc(module, scratch.borrow());
+    let res_prepared: GGSWPrepared<Vec<u8>, B> = res.prepare_alloc(module, scratch.borrow());
 
     ct_glwe.external_product_inplace(module, &res_prepared, scratch.borrow());
 
@@ -365,7 +365,7 @@ where
             dnum: rows_brk.into(),
             rank: rank.into(),
         },
-        layout_atk: GGLWEAutomorphismKeyLayout {
+        layout_atk: AutomorphismKeyLayout {
             n: n_glwe.into(),
             base2k: base2k.into(),
             k: k_atk.into(),
@@ -373,7 +373,7 @@ where
             rank: rank.into(),
             dsize: Dsize(1),
         },
-        layout_tsk: GGLWETensorKeyLayout {
+        layout_tsk: TensorKeyLayout {
             n: n_glwe.into(),
             base2k: base2k.into(),
             k: k_tsk.into(),
@@ -428,7 +428,7 @@ where
     );
     println!("CBT-KGEN: {} ms", now.elapsed().as_millis());
 
-    let mut res: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(&ggsw_infos);
+    let mut res: GGSW<Vec<u8>> = GGSW::alloc(&ggsw_infos);
 
     let cbt_prepared: CircuitBootstrappingKeyPrepared<Vec<u8>, BRA, B> = cbt_key.prepare_alloc(module, scratch.borrow());
 
@@ -462,7 +462,7 @@ where
         scratch.borrow(),
     );
 
-    let res_prepared: GGSWCiphertextPrepared<Vec<u8>, B> = res.prepare_alloc(module, scratch.borrow());
+    let res_prepared: GGSWPrepared<Vec<u8>, B> = res.prepare_alloc(module, scratch.borrow());
 
     ct_glwe.external_product_inplace(module, &res_prepared, scratch.borrow());
 

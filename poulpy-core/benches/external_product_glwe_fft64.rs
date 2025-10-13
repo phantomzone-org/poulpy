@@ -1,7 +1,7 @@
 use poulpy_core::layouts::{
-    Base2K, Degree, Dnum, Dsize, GGSWCiphertext, GGSWCiphertextLayout, GLWECiphertext, GLWECiphertextLayout, GLWESecret, Rank,
+    Base2K, Degree, Dnum, Dsize, GGSW, GGSWCiphertextLayout, GLWECiphertext, GLWECiphertextLayout, GLWESecret, Rank,
     TorusPrecision,
-    prepared::{GGSWCiphertextPrepared, GLWESecretPrepared, PrepareAlloc},
+    prepared::{GGSWPrepared, GLWESecretPrepared, PrepareAlloc},
 };
 use std::hint::black_box;
 
@@ -62,13 +62,13 @@ fn bench_external_product_glwe_fft64(c: &mut Criterion) {
             rank,
         };
 
-        let mut ct_ggsw: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(&ggsw_layout);
+        let mut ct_ggsw: GGSW<Vec<u8>> = GGSW::alloc(&ggsw_layout);
         let mut ct_glwe_in: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&glwe_in_layout);
         let mut ct_glwe_out: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&glwe_out_layout);
         let pt_rgsw: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n.into(), 1);
 
         let mut scratch: ScratchOwned<FFT64Spqlios> = ScratchOwned::alloc(
-            GGSWCiphertext::encrypt_sk_scratch_space(&module, &ggsw_layout)
+            GGSW::encrypt_sk_scratch_space(&module, &ggsw_layout)
                 | GLWECiphertext::encrypt_sk_scratch_space(&module, &glwe_in_layout)
                 | GLWECiphertext::external_product_scratch_space(&module, &glwe_out_layout, &glwe_in_layout, &ggsw_layout),
         );
@@ -98,7 +98,7 @@ fn bench_external_product_glwe_fft64(c: &mut Criterion) {
             scratch.borrow(),
         );
 
-        let ggsw_prepared: GGSWCiphertextPrepared<Vec<u8>, FFT64Spqlios> = ct_ggsw.prepare_alloc(&module, scratch.borrow());
+        let ggsw_prepared: GGSWPrepared<Vec<u8>, FFT64Spqlios> = ct_ggsw.prepare_alloc(&module, scratch.borrow());
 
         move || {
             ct_glwe_out.external_product(&module, &ct_glwe_in, &ggsw_prepared, scratch.borrow());
@@ -163,12 +163,12 @@ fn bench_external_product_glwe_inplace_fft64(c: &mut Criterion) {
             rank,
         };
 
-        let mut ct_ggsw: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(&ggsw_layout);
+        let mut ct_ggsw: GGSW<Vec<u8>> = GGSW::alloc(&ggsw_layout);
         let mut ct_glwe: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&glwe_layout);
         let pt_rgsw: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n.into(), 1);
 
         let mut scratch: ScratchOwned<FFT64Spqlios> = ScratchOwned::alloc(
-            GGSWCiphertext::encrypt_sk_scratch_space(&module, &ggsw_layout)
+            GGSW::encrypt_sk_scratch_space(&module, &ggsw_layout)
                 | GLWECiphertext::encrypt_sk_scratch_space(&module, &glwe_layout)
                 | GLWECiphertext::external_product_inplace_scratch_space(&module, &glwe_layout, &ggsw_layout),
         );
@@ -198,7 +198,7 @@ fn bench_external_product_glwe_inplace_fft64(c: &mut Criterion) {
             scratch.borrow(),
         );
 
-        let ggsw_prepared: GGSWCiphertextPrepared<Vec<u8>, FFT64Spqlios> = ct_ggsw.prepare_alloc(&module, scratch.borrow());
+        let ggsw_prepared: GGSWPrepared<Vec<u8>, FFT64Spqlios> = ct_ggsw.prepare_alloc(&module, scratch.borrow());
 
         move || {
             let scratch_borrow = scratch.borrow();

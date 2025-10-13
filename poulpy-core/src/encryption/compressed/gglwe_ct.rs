@@ -11,7 +11,7 @@ use crate::{
     TakeGLWEPt,
     encryption::{SIGMA, glwe_ct::GLWEEncryptSkInternal},
     layouts::{
-        GGLWECiphertext, GGLWEInfos, LWEInfos,
+        GGLWE, GGLWEInfos, LWEInfos,
         compressed::{GGLWECiphertextCompressed, GGLWECiphertextCompressedToMut},
         prepared::{GLWESecretPrepared, GLWESecretPreparedToRef},
     },
@@ -40,7 +40,7 @@ impl GGLWECiphertextCompressed<Vec<u8>> {
         A: GGLWEInfos,
         Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes + VecZnxNormalizeTmpBytes,
     {
-        GGLWECiphertext::encrypt_sk_scratch_space(module, infos)
+        GGLWE::encrypt_sk_scratch_space(module, infos)
     }
 }
 

@@ -16,9 +16,9 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Dnum, GLWECiphertext, GLWECiphertextLayout, GLWEPlaintext, GLWESecret, GLWEToLWEKey, GLWEToLWEKeyLayout,
-    LWECiphertext, LWECiphertextLayout, LWEPlaintext, LWESecret, LWEToGLWESwitchingKey, LWEToGLWESwitchingKeyLayout, Rank,
-    TorusPrecision,
+    Base2K, Degree, Dnum, GLWECiphertext, GLWECiphertextLayout, GLWEPlaintext, GLWESecret, GLWEToLWEKeyLayout,
+    GLWEToLWESwitchingKey, LWECiphertext, LWECiphertextLayout, LWEPlaintext, LWESecret, LWEToGLWESwitchingKey,
+    LWEToGLWESwitchingKeyLayout, Rank, TorusPrecision,
     prepared::{GLWESecretPrepared, GLWEToLWESwitchingKeyPrepared, LWEToGLWESwitchingKeyPrepared, PrepareAlloc},
 };
 
@@ -214,7 +214,7 @@ where
     let mut source_xe: Source = Source::new([0u8; 32]);
 
     let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-        GLWEToLWEKey::encrypt_sk_scratch_space(module, &glwe_to_lwe_infos)
+        GLWEToLWESwitchingKey::encrypt_sk_scratch_space(module, &glwe_to_lwe_infos)
             | LWECiphertext::from_glwe_scratch_space(module, &lwe_infos, &glwe_infos, &glwe_to_lwe_infos)
             | GLWECiphertext::decrypt_scratch_space(module, &glwe_infos),
     );
@@ -241,7 +241,7 @@ where
         scratch.borrow(),
     );
 
-    let mut ksk: GLWEToLWEKey<Vec<u8>> = GLWEToLWEKey::alloc(&glwe_to_lwe_infos);
+    let mut ksk: GLWEToLWESwitchingKey<Vec<u8>> = GLWEToLWESwitchingKey::alloc(&glwe_to_lwe_infos);
 
     ksk.encrypt_sk(
         module,

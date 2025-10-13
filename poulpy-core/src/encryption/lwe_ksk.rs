@@ -12,7 +12,7 @@ use poulpy_hal::{
 use crate::{
     TakeGLWESecret, TakeGLWESecretPrepared,
     layouts::{
-        Degree, GGLWEInfos, GGLWESwitchingKey, GLWESecret, LWEInfos, LWESecret, LWESwitchingKey, Rank,
+        Degree, GGLWEInfos, GLWESecret, GLWESwitchingKey, LWEInfos, LWESecret, LWESwitchingKey, Rank,
         prepared::GLWESecretPrepared,
     },
 };
@@ -40,7 +40,7 @@ impl LWESwitchingKey<Vec<u8>> {
         );
         GLWESecret::alloc_bytes_with(Degree(module.n() as u32), Rank(1))
             + GLWESecretPrepared::alloc_bytes_with(module, Rank(1))
-            + GGLWESwitchingKey::encrypt_sk_scratch_space(module, infos)
+            + GLWESwitchingKey::encrypt_sk_scratch_space(module, infos)
     }
 }
 

@@ -12,12 +12,11 @@ use poulpy_hal::{
 use crate::{
     TakeGLWESecret, TakeGLWESecretPrepared,
     layouts::{
-        Degree, GGLWEInfos, GGLWESwitchingKey, GGLWETensorKey, GLWEInfos, GLWESecret, LWEInfos, Rank,
-        prepared::{GLWESecretPrepared, Prepare},
+        Degree, GGLWEInfos, GLWEInfos, GLWESecret, GLWESwitchingKey, LWEInfos, Rank, TensorKey, prepared::GLWESecretPrepared,
     },
 };
 
-impl GGLWETensorKey<Vec<u8>> {
+impl TensorKey<Vec<u8>> {
     pub fn encrypt_sk_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GGLWEInfos,
@@ -29,11 +28,11 @@ impl GGLWETensorKey<Vec<u8>> {
             + module.vec_znx_big_alloc_bytes(1, 1)
             + module.vec_znx_dft_alloc_bytes(1, 1)
             + GLWESecret::alloc_bytes_with(Degree(module.n() as u32), Rank(1))
-            + GGLWESwitchingKey::encrypt_sk_scratch_space(module, infos)
+            + GLWESwitchingKey::encrypt_sk_scratch_space(module, infos)
     }
 }
 
-impl<DataSelf: DataMut> GGLWETensorKey<DataSelf> {
+impl<DataSelf: DataMut> TensorKey<DataSelf> {
     pub fn encrypt_sk<DataSk: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,

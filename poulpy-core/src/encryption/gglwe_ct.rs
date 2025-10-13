@@ -11,12 +11,12 @@ use crate::{
     TakeGLWEPt,
     encryption::glwe_ct::GLWEEncryptSk,
     layouts::{
-        GGLWECiphertext, GGLWECiphertextToMut, GGLWEInfos, GLWECiphertext, GLWEPlaintext, LWEInfos,
+        GGLWE, GGLWECiphertextToMut, GGLWEInfos, GLWECiphertext, GLWEPlaintext, LWEInfos,
         prepared::{GLWESecretPrepared, GLWESecretPreparedToRef},
     },
 };
 
-impl GGLWECiphertext<Vec<u8>> {
+impl GGLWE<Vec<u8>> {
     pub fn encrypt_sk_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GGLWEInfos,
@@ -68,7 +68,7 @@ where
         P: ScalarZnxToRef,
         S: GLWESecretPreparedToRef<B>,
     {
-        let res: &mut GGLWECiphertext<&mut [u8]> = &mut res.to_mut();
+        let res: &mut GGLWE<&mut [u8]> = &mut res.to_mut();
         let pt: &ScalarZnx<&[u8]> = &pt.to_ref();
 
         #[cfg(debug_assertions)]
@@ -93,12 +93,12 @@ where
             assert_eq!(res.n(), sk.n());
             assert_eq!(pt.n() as u32, sk.n());
             assert!(
-                scratch.available() >= GGLWECiphertext::encrypt_sk_scratch_space(self, res),
+                scratch.available() >= GGLWE::encrypt_sk_scratch_space(self, res),
                 "scratch.available: {} < GGLWECiphertext::encrypt_sk_scratch_space(self, res.rank()={}, res.size()={}): {}",
                 scratch.available(),
                 res.rank_out(),
                 res.size(),
-                GGLWECiphertext::encrypt_sk_scratch_space(self, res)
+                GGLWE::encrypt_sk_scratch_space(self, res)
             );
             assert!(
                 res.dnum().0 * res.dsize().0 * res.base2k().0 <= res.k().0,
@@ -148,7 +148,7 @@ where
     }
 }
 
-impl<DataSelf: DataMut> GGLWECiphertext<DataSelf> {
+impl<DataSelf: DataMut> GGLWE<DataSelf> {
     #[allow(clippy::too_many_arguments)]
     pub fn encrypt_sk<DataPt: DataRef, DataSk: DataRef, B: Backend>(
         &mut self,

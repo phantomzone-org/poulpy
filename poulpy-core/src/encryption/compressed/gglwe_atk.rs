@@ -9,18 +9,19 @@ use crate::{
     encryption::compressed::gglwe_ksk::GGLWEKeyCompressedEncryptSk,
     layouts::{
         GGLWEInfos, GLWEInfos, GLWESecret, GLWESecretToRef, LWEInfos,
-        compressed::{GGLWEAutomorphismKeyCompressed, GGLWEAutomorphismKeyCompressedToMut, GGLWEKeyCompressed},
+        compressed::{AutomorphismKeyCompressed, AutomorphismKeyCompressedToMut, GLWESwitchingKeyCompressed},
     },
 };
 
-impl GGLWEAutomorphismKeyCompressed<Vec<u8>> {
+impl AutomorphismKeyCompressed<Vec<u8>> {
     pub fn encrypt_sk_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GGLWEInfos,
         Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes + VecZnxNormalizeTmpBytes + SvpPPolAllocBytes,
     {
         assert_eq!(module.n() as u32, infos.n());
-        GGLWEKeyCompressed::encrypt_sk_scratch_space(module, infos) + GLWESecret::alloc_bytes_with(infos.n(), infos.rank_out())
+        GLWESwitchingKeyCompressed::encrypt_sk_scratch_space(module, infos)
+            + GLWESecret::alloc_bytes_with(infos.n(), infos.rank_out())
     }
 }
 
@@ -34,7 +35,7 @@ pub trait GGLWEAutomorphismKeyCompressedEncryptSk<B: Backend> {
         source_xe: &mut Source,
         scratch: &mut Scratch<B>,
     ) where
-        R: GGLWEAutomorphismKeyCompressedToMut,
+        R: AutomorphismKeyCompressedToMut,
         S: GLWESecretToRef;
 }
 
@@ -53,10 +54,10 @@ where
         source_xe: &mut Source,
         scratch: &mut Scratch<B>,
     ) where
-        R: GGLWEAutomorphismKeyCompressedToMut,
+        R: AutomorphismKeyCompressedToMut,
         S: GLWESecretToRef,
     {
-        let res: &mut GGLWEAutomorphismKeyCompressed<&mut [u8]> = &mut res.to_mut();
+        let res: &mut AutomorphismKeyCompressed<&mut [u8]> = &mut res.to_mut();
         let sk: &GLWESecret<&[u8]> = &sk.to_ref();
 
         #[cfg(debug_assertions)]
@@ -65,10 +66,10 @@ where
             assert_eq!(res.rank_out(), res.rank_in());
             assert_eq!(sk.rank(), res.rank_out());
             assert!(
-                scratch.available() >= GGLWEAutomorphismKeyCompressed::encrypt_sk_scratch_space(self, res),
+                scratch.available() >= AutomorphismKeyCompressed::encrypt_sk_scratch_space(self, res),
                 "scratch.available(): {} < AutomorphismKey::encrypt_sk_scratch_space: {}",
                 scratch.available(),
-                GGLWEAutomorphismKeyCompressed::encrypt_sk_scratch_space(self, res)
+                AutomorphismKeyCompressed::encrypt_sk_scratch_space(self, res)
             )
         }
 
@@ -92,7 +93,7 @@ where
     }
 }
 
-impl<DataSelf: DataMut> GGLWEAutomorphismKeyCompressed<DataSelf> {
+impl<DataSelf: DataMut> AutomorphismKeyCompressed<DataSelf> {
     #[allow(clippy::too_many_arguments)]
     pub fn encrypt_sk<DataSk: DataRef, B: Backend>(
         &mut self,

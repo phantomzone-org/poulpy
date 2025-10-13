@@ -7,7 +7,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Dnum, Dsize, GGLWECiphertext, GGLWEInfos, GLWEInfos, LWEInfos, Rank, TorusPrecision,
+    Base2K, Degree, Dnum, Dsize, GGLWE, GGLWEInfos, GLWEInfos, LWEInfos, Rank, TorusPrecision,
     compressed::{Decompress, GLWECiphertextCompressed},
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
@@ -235,7 +235,7 @@ impl<D: DataRef> WriterTo for GGLWECiphertextCompressed<D> {
     }
 }
 
-impl<D: DataMut, B: Backend, DR: DataRef> Decompress<B, GGLWECiphertextCompressed<DR>> for GGLWECiphertext<D>
+impl<D: DataMut, B: Backend, DR: DataRef> Decompress<B, GGLWECiphertextCompressed<DR>> for GGLWE<D>
 where
     Module<B>: VecZnxFillUniform + VecZnxCopy,
 {
@@ -313,7 +313,7 @@ pub trait GGLWECiphertextCompressedToRef {
     fn to_ref(&self) -> GGLWECiphertextCompressed<&[u8]>;
 }
 
-impl<D: DataMut> GGLWECiphertextCompressedToRef for GGLWECiphertextCompressed<D> {
+impl<D: DataRef> GGLWECiphertextCompressedToRef for GGLWECiphertextCompressed<D> {
     fn to_ref(&self) -> GGLWECiphertextCompressed<&[u8]> {
         GGLWECiphertextCompressed {
             k: self.k(),

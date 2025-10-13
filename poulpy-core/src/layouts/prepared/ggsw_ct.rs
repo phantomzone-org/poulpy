@@ -5,19 +5,18 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, BuildError, Degree, Dnum, Dsize, GGSWCiphertext, GGSWInfos, GLWEInfos, LWEInfos, Rank, TorusPrecision,
-    prepared::{Prepare, PrepareAlloc, PrepareScratchSpace},
+    Base2K, BuildError, Degree, Dnum, Dsize, GGSW, GGSWInfos, GGSWToMut, GGSWToRef, GLWEInfos, LWEInfos, Rank, TorusPrecision,
 };
 
 #[derive(PartialEq, Eq)]
-pub struct GGSWCiphertextPrepared<D: Data, B: Backend> {
+pub struct GGSWPrepared<D: Data, B: Backend> {
     pub(crate) data: VmpPMat<D, B>,
     pub(crate) k: TorusPrecision,
     pub(crate) base2k: Base2K,
     pub(crate) dsize: Dsize,
 }
 
-impl<D: Data, B: Backend> LWEInfos for GGSWCiphertextPrepared<D, B> {
+impl<D: Data, B: Backend> LWEInfos for GGSWPrepared<D, B> {
     fn n(&self) -> Degree {
         Degree(self.data.n() as u32)
     }
@@ -35,13 +34,13 @@ impl<D: Data, B: Backend> LWEInfos for GGSWCiphertextPrepared<D, B> {
     }
 }
 
-impl<D: Data, B: Backend> GLWEInfos for GGSWCiphertextPrepared<D, B> {
+impl<D: Data, B: Backend> GLWEInfos for GGSWPrepared<D, B> {
     fn rank(&self) -> Rank {
         Rank(self.data.cols_out() as u32 - 1)
     }
 }
 
-impl<D: Data, B: Backend> GGSWInfos for GGSWCiphertextPrepared<D, B> {
+impl<D: Data, B: Backend> GGSWInfos for GGSWPrepared<D, B> {
     fn dsize(&self) -> Dsize {
         self.dsize
     }
@@ -58,7 +57,7 @@ pub struct GGSWCiphertextPreparedBuilder<D: Data, B: Backend> {
     dsize: Option<Dsize>,
 }
 
-impl<D: Data, B: Backend> GGSWCiphertextPrepared<D, B> {
+impl<D: Data, B: Backend> GGSWPrepared<D, B> {
     #[inline]
     pub fn builder() -> GGSWCiphertextPreparedBuilder<D, B> {
         GGSWCiphertextPreparedBuilder {
@@ -129,7 +128,7 @@ impl<D: Data, B: Backend> GGSWCiphertextPreparedBuilder<D, B> {
         self
     }
 
-    pub fn build(self) -> Result<GGSWCiphertextPrepared<D, B>, BuildError> {
+    pub fn build(self) -> Result<GGSWPrepared<D, B>, BuildError> {
         let data: VmpPMat<D, B> = self.data.ok_or(BuildError::MissingData)?;
         let base2k: Base2K = self.base2k.ok_or(BuildError::MissingBase2K)?;
         let k: TorusPrecision = self.k.ok_or(BuildError::MissingK)?;
@@ -159,7 +158,7 @@ impl<D: Data, B: Backend> GGSWCiphertextPreparedBuilder<D, B> {
             return Err(BuildError::ZeroLimbs);
         }
 
-        Ok(GGSWCiphertextPrepared {
+        Ok(GGSWPrepared {
             data,
             base2k,
             k,
@@ -168,7 +167,7 @@ impl<D: Data, B: Backend> GGSWCiphertextPreparedBuilder<D, B> {
     }
 }
 
-impl<B: Backend> GGSWCiphertextPrepared<Vec<u8>, B> {
+impl<B: Backend> GGSWPrepared<Vec<u8>, B> {
     pub fn alloc<A>(module: &Module<B>, infos: &A) -> Self
     where
         A: GGSWInfos,
@@ -252,18 +251,27 @@ impl<B: Backend> GGSWCiphertextPrepared<Vec<u8>, B> {
     }
 }
 
-impl<D: DataRef, B: Backend> GGSWCiphertextPrepared<D, B> {
+impl<D: DataRef, B: Backend> GGSWPrepared<D, B> {
     pub fn data(&self) -> &VmpPMat<D, B> {
         &self.data
     }
 }
 
-impl<B: Backend, A: GGSWInfos> PrepareScratchSpace<B, A> for GGSWCiphertextPrepared<Vec<u8>, B>
+pub trait GGSWPrepareTmpBytes {
+    fn ggsw_prepare_tmp_bytes<A>(&self, infos: &A) -> usize
+    where
+        A: GGSWInfos;
+}
+
+impl<B: Backend> GGSWPrepareTmpBytes for Module<B>
 where
     Module<B>: VmpPrepareTmpBytes,
 {
-    fn prepare_scratch_space(module: &Module<B>, infos: &A) -> usize {
-        module.vmp_prepare_tmp_bytes(
+    fn ggsw_prepare_tmp_bytes<A>(&self, infos: &A) -> usize
+    where
+        A: GGSWInfos,
+    {
+        self.vmp_prepare_tmp_bytes(
             infos.dnum().into(),
             (infos.rank() + 1).into(),
             (infos.rank() + 1).into(),
@@ -272,57 +280,110 @@ where
     }
 }
 
-impl<D: DataMut, DR: DataRef, B: Backend> Prepare<B, GGSWCiphertext<DR>> for GGSWCiphertextPrepared<D, B>
+impl<B: Backend> GGSWPrepared<Vec<u8>, B>
+where
+    Module<B>: GGSWPrepareTmpBytes,
+{
+    pub fn prepare_tmp_bytes<A>(&self, module: Module<B>, infos: &A) -> usize
+    where
+        A: GGSWInfos,
+    {
+        module.ggsw_prepare_tmp_bytes(self)
+    }
+}
+
+pub trait GGSWPrepare<B: Backend> {
+    fn ggsw_prepare<R, O>(&self, res: &mut R, other: &O, scratch: &mut Scratch<B>)
+    where
+        R: GGSWPreparedToMut<B>,
+        O: GGSWToRef;
+}
+
+impl<B: Backend> GGSWPrepare<B> for Module<B>
 where
     Module<B>: VmpPrepare<B>,
 {
-    fn prepare(&mut self, module: &Module<B>, other: &GGSWCiphertext<DR>, scratch: &mut Scratch<B>) {
-        module.vmp_prepare(&mut self.data, &other.data, scratch);
-        self.k = other.k;
-        self.base2k = other.base2k;
-        self.dsize = other.dsize;
+    fn ggsw_prepare<R, O>(&self, res: &mut R, other: &O, scratch: &mut Scratch<B>)
+    where
+        R: GGSWPreparedToMut<B>,
+        O: GGSWToRef,
+    {
+        let mut res: GGSWPrepared<&mut [u8], B> = res.to_mut();
+        let other: GGSW<&[u8]> = other.to_ref();
+        assert_eq!(res.k, other.k);
+        assert_eq!(res.base2k, other.base2k);
+        assert_eq!(res.dsize, other.dsize);
+        self.vmp_prepare(&mut res.data, &other.data, scratch);
     }
 }
 
-impl<D: DataRef, B: Backend> PrepareAlloc<B, GGSWCiphertextPrepared<Vec<u8>, B>> for GGSWCiphertext<D>
+impl<D: DataMut, B: Backend> GGSWPrepared<D, B>
 where
-    Module<B>: VmpPMatAlloc<B> + VmpPrepare<B>,
+    Module<B>: GGSWPrepare<B>,
 {
-    fn prepare_alloc(&self, module: &Module<B>, scratch: &mut Scratch<B>) -> GGSWCiphertextPrepared<Vec<u8>, B> {
-        let mut ggsw_prepared: GGSWCiphertextPrepared<Vec<u8>, B> = GGSWCiphertextPrepared::alloc(module, self);
-        ggsw_prepared.prepare(module, self, scratch);
-        ggsw_prepared
+    pub fn prepare<O>(&mut self, module: &Module<B>, other: &O, scratch: &mut Scratch<B>)
+    where
+        O: GGSWToRef,
+    {
+        module.ggsw_prepare(self, other, scratch);
     }
 }
 
-pub trait GGSWCiphertextPreparedToMut<B: Backend> {
-    fn to_ref(&mut self) -> GGSWCiphertextPrepared<&mut [u8], B>;
+pub trait GGSWPrepareAlloc<B: Backend> {
+    fn ggsw_prepare_alloc<O>(&self, other: &O, scratch: &mut Scratch<B>)
+    where
+        O: GGSWToRef;
 }
 
-impl<D: DataMut, B: Backend> GGSWCiphertextPreparedToMut<B> for GGSWCiphertextPrepared<D, B> {
-    fn to_ref(&mut self) -> GGSWCiphertextPrepared<&mut [u8], B> {
-        GGSWCiphertextPrepared::builder()
-            .base2k(self.base2k())
-            .dsize(self.dsize())
-            .k(self.k())
-            .data(self.data.to_mut())
-            .build()
-            .unwrap()
+impl<B: Backend> GGSWPrepareAlloc<B> for Module<B>
+where
+    Module<B>: GGSWPrepare<B>,
+{
+    fn ggsw_prepare_alloc<O>(&self, other: &O, scratch: &mut Scratch<B>)
+    where
+        O: GGSWToRef,
+    {
+        let mut ct_prepared: GGSWPrepared<Vec<u8>, B> = GGSWPrepared::alloc(self, other);
+        self.ggsw_prepare(&mut ct_prepared, other, scratch);
+        ct_prepared
+    }
+}
+
+impl<D: DataRef> GGSW<D> {
+    fn prepare_alloc<B: Backend>(&self, module: &Module<B>, scratch: &mut Scratch<B>)
+    where
+        Module<B>: GGSWPrepareAlloc<B>,
+    {
+        module.ggsw_prepare_alloc(self, scratch);
+    }
+}
+
+pub trait GGSWPreparedToMut<B: Backend> {
+    fn to_mut(&mut self) -> GGSWPrepared<&mut [u8], B>;
+}
+
+impl<D: DataMut, B: Backend> GGSWPreparedToMut<B> for GGSWPrepared<D, B> {
+    fn to_mut(&mut self) -> GGSWPrepared<&mut [u8], B> {
+        GGSWPrepared {
+            base2k: self.base2k,
+            k: self.k,
+            dsize: self.dsize,
+            data: self.data.to_mut(),
+        }
     }
 }
 
 pub trait GGSWCiphertextPreparedToRef<B: Backend> {
-    fn to_ref(&self) -> GGSWCiphertextPrepared<&[u8], B>;
+    fn to_ref(&self) -> GGSWPrepared<&[u8], B>;
 }
 
-impl<D: DataRef, B: Backend> GGSWCiphertextPreparedToRef<B> for GGSWCiphertextPrepared<D, B> {
-    fn to_ref(&self) -> GGSWCiphertextPrepared<&[u8], B> {
-        GGSWCiphertextPrepared::builder()
-            .base2k(self.base2k())
-            .dsize(self.dsize())
-            .k(self.k())
-            .data(self.data.to_ref())
-            .build()
-            .unwrap()
+impl<D: DataRef, B: Backend> GGSWCiphertextPreparedToRef<B> for GGSWPrepared<D, B> {
+    fn to_ref(&self) -> GGSWPrepared<&[u8], B> {
+        GGSWPrepared {
+            base2k: self.base2k,
+            k: self.k,
+            dsize: self.dsize,
+            data: self.data.to_mut(),
+        }
     }
 }

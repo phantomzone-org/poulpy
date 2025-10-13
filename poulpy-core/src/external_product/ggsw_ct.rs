@@ -7,9 +7,9 @@ use poulpy_hal::{
     layouts::{Backend, DataMut, DataRef, Module, Scratch, ZnxZero},
 };
 
-use crate::layouts::{GGSWCiphertext, GGSWInfos, GLWECiphertext, GLWEInfos, prepared::GGSWCiphertextPrepared};
+use crate::layouts::{GGSW, GGSWInfos, GLWECiphertext, GLWEInfos, prepared::GGSWPrepared};
 
-impl GGSWCiphertext<Vec<u8>> {
+impl GGSW<Vec<u8>> {
     #[allow(clippy::too_many_arguments)]
     pub fn external_product_scratch_space<B: Backend, OUT, IN, GGSW>(
         module: &Module<B>,
@@ -45,12 +45,12 @@ impl GGSWCiphertext<Vec<u8>> {
     }
 }
 
-impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
+impl<DataSelf: DataMut> GGSW<DataSelf> {
     pub fn external_product<DataLhs: DataRef, DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
-        lhs: &GGSWCiphertext<DataLhs>,
-        rhs: &GGSWCiphertextPrepared<DataRhs, B>,
+        lhs: &GGSW<DataLhs>,
+        rhs: &GGSWPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: VecZnxDftAllocBytes
@@ -86,7 +86,7 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
                 rhs.rank()
             );
 
-            assert!(scratch.available() >= GGSWCiphertext::external_product_scratch_space(module, self, lhs, rhs))
+            assert!(scratch.available() >= GGSW::external_product_scratch_space(module, self, lhs, rhs))
         }
 
         let min_dnum: usize = self.dnum().min(lhs.dnum()).into();
@@ -105,7 +105,7 @@ impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
     pub fn external_product_inplace<DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
-        rhs: &GGSWCiphertextPrepared<DataRhs, B>,
+        rhs: &GGSWPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: VecZnxDftAllocBytes

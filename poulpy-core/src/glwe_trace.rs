@@ -11,9 +11,7 @@ use poulpy_hal::{
 
 use crate::{
     TakeGLWECt,
-    layouts::{
-        Base2K, GGLWEInfos, GLWECiphertext, GLWECiphertextLayout, GLWEInfos, LWEInfos, prepared::GGLWEAutomorphismKeyPrepared,
-    },
+    layouts::{Base2K, GGLWEInfos, GLWECiphertext, GLWECiphertextLayout, GLWEInfos, LWEInfos, prepared::AutomorphismKeyPrepared},
     operations::GLWEOperations,
 };
 
@@ -72,7 +70,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         start: usize,
         end: usize,
         lhs: &GLWECiphertext<DataLhs>,
-        auto_keys: &HashMap<i64, GGLWEAutomorphismKeyPrepared<DataAK, B>>,
+        auto_keys: &HashMap<i64, AutomorphismKeyPrepared<DataAK, B>>,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: VecZnxDftAllocBytes
@@ -100,7 +98,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         module: &Module<B>,
         start: usize,
         end: usize,
-        auto_keys: &HashMap<i64, GGLWEAutomorphismKeyPrepared<DataAK, B>>,
+        auto_keys: &HashMap<i64, AutomorphismKeyPrepared<DataAK, B>>,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: VecZnxDftAllocBytes

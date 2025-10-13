@@ -4,7 +4,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Dnum, Dsize, GGLWECiphertext, GGLWECiphertextToMut, GGLWEInfos, GLWECiphertext, GLWEInfos, LWEInfos, Rank,
+    Base2K, Degree, Dnum, Dsize, GGLWE, GGLWECiphertextToMut, GGLWEInfos, GGLWEToRef, GLWECiphertext, GLWEInfos, LWEInfos, Rank,
     TorusPrecision,
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
@@ -12,7 +12,7 @@ use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::fmt;
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
-pub struct GGLWESwitchingKeyLayout {
+pub struct GLWESwitchingKeyLayout {
     pub n: Degree,
     pub base2k: Base2K,
     pub k: TorusPrecision,
@@ -22,7 +22,7 @@ pub struct GGLWESwitchingKeyLayout {
     pub dsize: Dsize,
 }
 
-impl LWEInfos for GGLWESwitchingKeyLayout {
+impl LWEInfos for GLWESwitchingKeyLayout {
     fn n(&self) -> Degree {
         self.n
     }
@@ -36,13 +36,13 @@ impl LWEInfos for GGLWESwitchingKeyLayout {
     }
 }
 
-impl GLWEInfos for GGLWESwitchingKeyLayout {
+impl GLWEInfos for GLWESwitchingKeyLayout {
     fn rank(&self) -> Rank {
         self.rank_out()
     }
 }
 
-impl GGLWEInfos for GGLWESwitchingKeyLayout {
+impl GGLWEInfos for GLWESwitchingKeyLayout {
     fn rank_in(&self) -> Rank {
         self.rank_in
     }
@@ -61,13 +61,13 @@ impl GGLWEInfos for GGLWESwitchingKeyLayout {
 }
 
 #[derive(PartialEq, Eq, Clone)]
-pub struct GGLWESwitchingKey<D: Data> {
-    pub(crate) key: GGLWECiphertext<D>,
+pub struct GLWESwitchingKey<D: Data> {
+    pub(crate) key: GGLWE<D>,
     pub(crate) sk_in_n: usize,  // Degree of sk_in
     pub(crate) sk_out_n: usize, // Degree of sk_out
 }
 
-impl<D: Data> LWEInfos for GGLWESwitchingKey<D> {
+impl<D: Data> LWEInfos for GLWESwitchingKey<D> {
     fn n(&self) -> Degree {
         self.key.n()
     }
@@ -85,13 +85,13 @@ impl<D: Data> LWEInfos for GGLWESwitchingKey<D> {
     }
 }
 
-impl<D: Data> GLWEInfos for GGLWESwitchingKey<D> {
+impl<D: Data> GLWEInfos for GLWESwitchingKey<D> {
     fn rank(&self) -> Rank {
         self.rank_out()
     }
 }
 
-impl<D: Data> GGLWEInfos for GGLWESwitchingKey<D> {
+impl<D: Data> GGLWEInfos for GLWESwitchingKey<D> {
     fn rank_in(&self) -> Rank {
         self.key.rank_in()
     }
@@ -109,13 +109,13 @@ impl<D: Data> GGLWEInfos for GGLWESwitchingKey<D> {
     }
 }
 
-impl<D: DataRef> fmt::Debug for GGLWESwitchingKey<D> {
+impl<D: DataRef> fmt::Debug for GLWESwitchingKey<D> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{self}")
     }
 }
 
-impl<D: DataRef> fmt::Display for GGLWESwitchingKey<D> {
+impl<D: DataRef> fmt::Display for GLWESwitchingKey<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -127,19 +127,19 @@ impl<D: DataRef> fmt::Display for GGLWESwitchingKey<D> {
     }
 }
 
-impl<D: DataMut> FillUniform for GGLWESwitchingKey<D> {
+impl<D: DataMut> FillUniform for GLWESwitchingKey<D> {
     fn fill_uniform(&mut self, log_bound: usize, source: &mut Source) {
         self.key.fill_uniform(log_bound, source);
     }
 }
 
-impl GGLWESwitchingKey<Vec<u8>> {
+impl GLWESwitchingKey<Vec<u8>> {
     pub fn alloc<A>(infos: &A) -> Self
     where
         A: GGLWEInfos,
     {
-        GGLWESwitchingKey {
-            key: GGLWECiphertext::alloc(infos),
+        GLWESwitchingKey {
+            key: GGLWE::alloc(infos),
             sk_in_n: 0,
             sk_out_n: 0,
         }
@@ -154,8 +154,8 @@ impl GGLWESwitchingKey<Vec<u8>> {
         dnum: Dnum,
         dsize: Dsize,
     ) -> Self {
-        GGLWESwitchingKey {
-            key: GGLWECiphertext::alloc_with(n, base2k, k, rank_in, rank_out, dnum, dsize),
+        GLWESwitchingKey {
+            key: GGLWE::alloc_with(n, base2k, k, rank_in, rank_out, dnum, dsize),
             sk_in_n: 0,
             sk_out_n: 0,
         }
@@ -165,7 +165,7 @@ impl GGLWESwitchingKey<Vec<u8>> {
     where
         A: GGLWEInfos,
     {
-        GGLWECiphertext::alloc_bytes(infos)
+        GGLWE::alloc_bytes(infos)
     }
 
     pub fn alloc_bytes_with(
@@ -177,20 +177,20 @@ impl GGLWESwitchingKey<Vec<u8>> {
         dnum: Dnum,
         dsize: Dsize,
     ) -> usize {
-        GGLWECiphertext::alloc_bytes_with(n, base2k, k, rank_in, rank_out, dnum, dsize)
+        GGLWE::alloc_bytes_with(n, base2k, k, rank_in, rank_out, dnum, dsize)
     }
 }
 
-pub trait GGLWESwitchingKeyToMut {
-    fn to_mut(&mut self) -> GGLWESwitchingKey<&mut [u8]>;
+pub trait GLWESwitchingKeyToMut {
+    fn to_mut(&mut self) -> GLWESwitchingKey<&mut [u8]>;
 }
 
-impl<D: DataMut> GGLWESwitchingKeyToMut for GGLWESwitchingKey<D>
+impl<D: DataMut> GLWESwitchingKeyToMut for GLWESwitchingKey<D>
 where
-    GGLWECiphertext<D>: GGLWECiphertextToMut,
+    GGLWE<D>: GGLWECiphertextToMut,
 {
-    fn to_mut(&mut self) -> GGLWESwitchingKey<&mut [u8]> {
-        GGLWESwitchingKey {
+    fn to_mut(&mut self) -> GLWESwitchingKey<&mut [u8]> {
+        GLWESwitchingKey {
             key: self.key.to_mut(),
             sk_in_n: self.sk_in_n,
             sk_out_n: self.sk_out_n,
@@ -198,19 +198,36 @@ where
     }
 }
 
-impl<D: DataRef> GGLWESwitchingKey<D> {
+pub trait GLWESwitchingKeyToRef {
+    fn to_ref(&self) -> GLWESwitchingKey<&[u8]>;
+}
+
+impl<D: DataRef> GLWESwitchingKeyToRef for GLWESwitchingKey<D>
+where
+    GGLWE<D>: GGLWEToRef,
+{
+    fn to_ref(&self) -> GLWESwitchingKey<&[u8]> {
+        GLWESwitchingKey {
+            key: self.key.to_ref(),
+            sk_in_n: self.sk_in_n,
+            sk_out_n: self.sk_out_n,
+        }
+    }
+}
+
+impl<D: DataRef> GLWESwitchingKey<D> {
     pub fn at(&self, row: usize, col: usize) -> GLWECiphertext<&[u8]> {
         self.key.at(row, col)
     }
 }
 
-impl<D: DataMut> GGLWESwitchingKey<D> {
+impl<D: DataMut> GLWESwitchingKey<D> {
     pub fn at_mut(&mut self, row: usize, col: usize) -> GLWECiphertext<&mut [u8]> {
         self.key.at_mut(row, col)
     }
 }
 
-impl<D: DataMut> ReaderFrom for GGLWESwitchingKey<D> {
+impl<D: DataMut> ReaderFrom for GLWESwitchingKey<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         self.sk_in_n = reader.read_u64::<LittleEndian>()? as usize;
         self.sk_out_n = reader.read_u64::<LittleEndian>()? as usize;
@@ -218,7 +235,7 @@ impl<D: DataMut> ReaderFrom for GGLWESwitchingKey<D> {
     }
 }
 
-impl<D: DataRef> WriterTo for GGLWESwitchingKey<D> {
+impl<D: DataRef> WriterTo for GLWESwitchingKey<D> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         writer.write_u64::<LittleEndian>(self.sk_in_n as u64)?;
         writer.write_u64::<LittleEndian>(self.sk_out_n as u64)?;

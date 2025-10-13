@@ -1,7 +1,7 @@
 use poulpy_core::layouts::{
-    Base2K, Degree, Dnum, Dsize, GGLWEAutomorphismKey, GGLWEAutomorphismKeyLayout, GGLWESwitchingKey, GGLWESwitchingKeyLayout,
-    GLWECiphertext, GLWECiphertextLayout, GLWESecret, Rank, TorusPrecision,
-    prepared::{GGLWEAutomorphismKeyPrepared, GGLWESwitchingKeyPrepared, GLWESecretPrepared, PrepareAlloc},
+    AutomorphismKey, AutomorphismKeyLayout, Base2K, Degree, Dnum, Dsize, GLWECiphertext, GLWECiphertextLayout, GLWESecret,
+    GLWESwitchingKey, GLWESwitchingKeyLayout, Rank, TorusPrecision,
+    prepared::{AutomorphismKeyPrepared, GLWESecretPrepared, GLWESwitchingKeyPrepared, PrepareAlloc},
 };
 use std::{hint::black_box, time::Duration};
 
@@ -39,7 +39,7 @@ fn bench_keyswitch_glwe_fft64(c: &mut Criterion) {
 
         let dnum: Dnum = p.k_ct_in.div_ceil(p.base2k.0 * dsize.0).into();
 
-        let gglwe_atk_layout: GGLWEAutomorphismKeyLayout = GGLWEAutomorphismKeyLayout {
+        let gglwe_atk_layout: AutomorphismKeyLayout = AutomorphismKeyLayout {
             n,
             base2k,
             k: k_gglwe,
@@ -62,12 +62,12 @@ fn bench_keyswitch_glwe_fft64(c: &mut Criterion) {
             rank,
         };
 
-        let mut ksk: GGLWEAutomorphismKey<Vec<u8>> = GGLWEAutomorphismKey::alloc(&gglwe_atk_layout);
+        let mut ksk: AutomorphismKey<Vec<u8>> = AutomorphismKey::alloc(&gglwe_atk_layout);
         let mut ct_in: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&glwe_in_layout);
         let mut ct_out: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&glwe_out_layout);
 
         let mut scratch: ScratchOwned<FFT64Spqlios> = ScratchOwned::alloc(
-            GGLWESwitchingKey::encrypt_sk_scratch_space(&module, &gglwe_atk_layout)
+            GLWESwitchingKey::encrypt_sk_scratch_space(&module, &gglwe_atk_layout)
                 | GLWECiphertext::encrypt_sk_scratch_space(&module, &glwe_in_layout)
                 | GLWECiphertext::keyswitch_scratch_space(
                     &module,
@@ -102,7 +102,7 @@ fn bench_keyswitch_glwe_fft64(c: &mut Criterion) {
             scratch.borrow(),
         );
 
-        let ksk_prepared: GGLWEAutomorphismKeyPrepared<Vec<u8>, _> = ksk.prepare_alloc(&module, scratch.borrow());
+        let ksk_prepared: AutomorphismKeyPrepared<Vec<u8>, _> = ksk.prepare_alloc(&module, scratch.borrow());
 
         move || {
             ct_out.automorphism(&module, &ct_in, &ksk_prepared, scratch.borrow());
@@ -157,7 +157,7 @@ fn bench_keyswitch_glwe_inplace_fft64(c: &mut Criterion) {
 
         let dnum: Dnum = p.k_ct.div_ceil(p.base2k).into();
 
-        let gglwe_layout: GGLWESwitchingKeyLayout = GGLWESwitchingKeyLayout {
+        let gglwe_layout: GLWESwitchingKeyLayout = GLWESwitchingKeyLayout {
             n,
             base2k,
             k: k_ksk,
@@ -174,11 +174,11 @@ fn bench_keyswitch_glwe_inplace_fft64(c: &mut Criterion) {
             rank,
         };
 
-        let mut ksk: GGLWESwitchingKey<Vec<u8>> = GGLWESwitchingKey::alloc(&gglwe_layout);
+        let mut ksk: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc(&gglwe_layout);
         let mut ct: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&glwe_layout);
 
         let mut scratch: ScratchOwned<FFT64Spqlios> = ScratchOwned::alloc(
-            GGLWESwitchingKey::encrypt_sk_scratch_space(&module, &gglwe_layout)
+            GLWESwitchingKey::encrypt_sk_scratch_space(&module, &gglwe_layout)
                 | GLWECiphertext::encrypt_sk_scratch_space(&module, &glwe_layout)
                 | GLWECiphertext::keyswitch_inplace_scratch_space(&module, &glwe_layout, &gglwe_layout),
         );
@@ -211,7 +211,7 @@ fn bench_keyswitch_glwe_inplace_fft64(c: &mut Criterion) {
             scratch.borrow(),
         );
 
-        let ksk_prepared: GGLWESwitchingKeyPrepared<Vec<u8>, FFT64Spqlios> = ksk.prepare_alloc(&module, scratch.borrow());
+        let ksk_prepared: GLWESwitchingKeyPrepared<Vec<u8>, FFT64Spqlios> = ksk.prepare_alloc(&module, scratch.borrow());
 
         move || {
             ct.keyswitch_inplace(&module, &ksk_prepared, scratch.borrow());

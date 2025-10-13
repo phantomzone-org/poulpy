@@ -64,14 +64,14 @@ impl GGSWInfos for GGSWCiphertextLayout {
 }
 
 #[derive(PartialEq, Eq, Clone)]
-pub struct GGSWCiphertext<D: Data> {
+pub struct GGSW<D: Data> {
     pub(crate) data: MatZnx<D>,
     pub(crate) k: TorusPrecision,
     pub(crate) base2k: Base2K,
     pub(crate) dsize: Dsize,
 }
 
-impl<D: Data> LWEInfos for GGSWCiphertext<D> {
+impl<D: Data> LWEInfos for GGSW<D> {
     fn n(&self) -> Degree {
         Degree(self.data.n() as u32)
     }
@@ -89,13 +89,13 @@ impl<D: Data> LWEInfos for GGSWCiphertext<D> {
     }
 }
 
-impl<D: Data> GLWEInfos for GGSWCiphertext<D> {
+impl<D: Data> GLWEInfos for GGSW<D> {
     fn rank(&self) -> Rank {
         Rank(self.data.cols_out() as u32 - 1)
     }
 }
 
-impl<D: Data> GGSWInfos for GGSWCiphertext<D> {
+impl<D: Data> GGSWInfos for GGSW<D> {
     fn dsize(&self) -> Dsize {
         self.dsize
     }
@@ -112,7 +112,7 @@ pub struct GGSWCiphertextBuilder<D: Data> {
     dsize: Option<Dsize>,
 }
 
-impl<D: Data> GGSWCiphertext<D> {
+impl<D: Data> GGSW<D> {
     #[inline]
     pub fn builder() -> GGSWCiphertextBuilder<D> {
         GGSWCiphertextBuilder {
@@ -182,7 +182,7 @@ impl<D: Data> GGSWCiphertextBuilder<D> {
         self
     }
 
-    pub fn build(self) -> Result<GGSWCiphertext<D>, BuildError> {
+    pub fn build(self) -> Result<GGSW<D>, BuildError> {
         let data: MatZnx<D> = self.data.ok_or(BuildError::MissingData)?;
         let base2k: Base2K = self.base2k.ok_or(BuildError::MissingBase2K)?;
         let k: TorusPrecision = self.k.ok_or(BuildError::MissingK)?;
@@ -212,7 +212,7 @@ impl<D: Data> GGSWCiphertextBuilder<D> {
             return Err(BuildError::ZeroLimbs);
         }
 
-        Ok(GGSWCiphertext {
+        Ok(GGSW {
             data,
             base2k,
             k,
@@ -221,13 +221,13 @@ impl<D: Data> GGSWCiphertextBuilder<D> {
     }
 }
 
-impl<D: DataRef> fmt::Debug for GGSWCiphertext<D> {
+impl<D: DataRef> fmt::Debug for GGSW<D> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.data)
     }
 }
 
-impl<D: DataRef> fmt::Display for GGSWCiphertext<D> {
+impl<D: DataRef> fmt::Display for GGSW<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -240,13 +240,13 @@ impl<D: DataRef> fmt::Display for GGSWCiphertext<D> {
     }
 }
 
-impl<D: DataMut> FillUniform for GGSWCiphertext<D> {
+impl<D: DataMut> FillUniform for GGSW<D> {
     fn fill_uniform(&mut self, log_bound: usize, source: &mut Source) {
         self.data.fill_uniform(log_bound, source);
     }
 }
 
-impl<D: DataRef> GGSWCiphertext<D> {
+impl<D: DataRef> GGSW<D> {
     pub fn at(&self, row: usize, col: usize) -> GLWECiphertext<&[u8]> {
         GLWECiphertext::builder()
             .data(self.data.at(row, col))
@@ -257,7 +257,7 @@ impl<D: DataRef> GGSWCiphertext<D> {
     }
 }
 
-impl<D: DataMut> GGSWCiphertext<D> {
+impl<D: DataMut> GGSW<D> {
     pub fn at_mut(&mut self, row: usize, col: usize) -> GLWECiphertext<&mut [u8]> {
         GLWECiphertext::builder()
             .base2k(self.base2k())
@@ -268,7 +268,7 @@ impl<D: DataMut> GGSWCiphertext<D> {
     }
 }
 
-impl GGSWCiphertext<Vec<u8>> {
+impl GGSW<Vec<u8>> {
     pub fn alloc<A>(infos: &A) -> Self
     where
         A: GGSWInfos,
@@ -353,7 +353,7 @@ impl GGSWCiphertext<Vec<u8>> {
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
-impl<D: DataMut> ReaderFrom for GGSWCiphertext<D> {
+impl<D: DataMut> ReaderFrom for GGSW<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         self.k = TorusPrecision(reader.read_u32::<LittleEndian>()?);
         self.base2k = Base2K(reader.read_u32::<LittleEndian>()?);
@@ -362,7 +362,7 @@ impl<D: DataMut> ReaderFrom for GGSWCiphertext<D> {
     }
 }
 
-impl<D: DataRef> WriterTo for GGSWCiphertext<D> {
+impl<D: DataRef> WriterTo for GGSW<D> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         writer.write_u32::<LittleEndian>(self.k.into())?;
         writer.write_u32::<LittleEndian>(self.base2k.into())?;
@@ -371,34 +371,32 @@ impl<D: DataRef> WriterTo for GGSWCiphertext<D> {
     }
 }
 
-pub trait GGSWCiphertextToMut {
-    fn to_mut(&mut self) -> GGSWCiphertext<&mut [u8]>;
+pub trait GGSWToMut {
+    fn to_mut(&mut self) -> GGSW<&mut [u8]>;
 }
 
-impl<D: DataMut> GGSWCiphertextToMut for GGSWCiphertext<D> {
-    fn to_mut(&mut self) -> GGSWCiphertext<&mut [u8]> {
-        GGSWCiphertext::builder()
-            .base2k(self.base2k())
-            .dsize(self.dsize())
-            .k(self.k())
-            .data(self.data.to_mut())
-            .build()
-            .unwrap()
+impl<D: DataMut> GGSWToMut for GGSW<D> {
+    fn to_mut(&mut self) -> GGSW<&mut [u8]> {
+        GGSW {
+            dsize: self.dsize,
+            k: self.k,
+            base2k: self.base2k,
+            data: self.data.to_mut(),
+        }
     }
 }
 
-pub trait GGSWCiphertextToRef {
-    fn to_ref(&self) -> GGSWCiphertext<&[u8]>;
+pub trait GGSWToRef {
+    fn to_ref(&self) -> GGSW<&[u8]>;
 }
 
-impl<D: DataRef> GGSWCiphertextToRef for GGSWCiphertext<D> {
-    fn to_ref(&self) -> GGSWCiphertext<&[u8]> {
-        GGSWCiphertext::builder()
-            .base2k(self.base2k())
-            .dsize(self.dsize())
-            .k(self.k())
-            .data(self.data.to_ref())
-            .build()
-            .unwrap()
+impl<D: DataRef> GGSWToRef for GGSW<D> {
+    fn to_ref(&self) -> GGSW<&[u8]> {
+        GGSW {
+            dsize: self.dsize,
+            k: self.k,
+            base2k: self.base2k,
+            data: self.data.to_ref(),
+        }
     }
 }

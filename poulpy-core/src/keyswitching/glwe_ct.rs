@@ -7,7 +7,7 @@ use poulpy_hal::{
     layouts::{Backend, DataMut, DataRef, DataViewMut, Module, Scratch, VecZnx, VecZnxBig, VecZnxDft, VmpPMat, ZnxInfos},
 };
 
-use crate::layouts::{GGLWEInfos, GLWECiphertext, GLWEInfos, LWEInfos, prepared::GGLWESwitchingKeyPrepared};
+use crate::layouts::{GGLWEInfos, GLWECiphertext, GLWEInfos, LWEInfos, prepared::GLWESwitchingKeyPrepared};
 
 impl GLWECiphertext<Vec<u8>> {
     pub fn keyswitch_scratch_space<B: Backend, OUT, IN, KEY>(
@@ -68,7 +68,7 @@ impl<DataSelf: DataRef> GLWECiphertext<DataSelf> {
         &self,
         module: &Module<B>,
         lhs: &GLWECiphertext<DataLhs>,
-        rhs: &GGLWESwitchingKeyPrepared<DataRhs, B>,
+        rhs: &GLWESwitchingKeyPrepared<DataRhs, B>,
         scratch: &Scratch<B>,
     ) where
         DataLhs: DataRef,
@@ -117,7 +117,7 @@ impl<DataSelf: DataRef> GLWECiphertext<DataSelf> {
     pub(crate) fn assert_keyswitch_inplace<B: Backend, DataRhs>(
         &self,
         module: &Module<B>,
-        rhs: &GGLWESwitchingKeyPrepared<DataRhs, B>,
+        rhs: &GLWESwitchingKeyPrepared<DataRhs, B>,
         scratch: &Scratch<B>,
     ) where
         DataRhs: DataRef,
@@ -149,7 +149,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         &mut self,
         module: &Module<B>,
         glwe_in: &GLWECiphertext<DataLhs>,
-        rhs: &GGLWESwitchingKeyPrepared<DataRhs, B>,
+        rhs: &GLWESwitchingKeyPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: VecZnxDftAllocBytes
@@ -191,7 +191,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
     pub fn keyswitch_inplace<DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
-        rhs: &GGLWESwitchingKeyPrepared<DataRhs, B>,
+        rhs: &GLWESwitchingKeyPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: VecZnxDftAllocBytes
@@ -237,7 +237,7 @@ impl<D: DataRef> GLWECiphertext<D> {
         &self,
         module: &Module<B>,
         res_dft: VecZnxDft<DataRes, B>,
-        rhs: &GGLWESwitchingKeyPrepared<DataKey, B>,
+        rhs: &GLWESwitchingKeyPrepared<DataKey, B>,
         scratch: &mut Scratch<B>,
     ) -> VecZnxBig<DataRes, B>
     where

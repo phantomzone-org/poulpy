@@ -11,7 +11,7 @@ use crate::tfhe::{
 use poulpy_core::{
     TakeGGSW, TakeGLWECt,
     layouts::{
-        GLWESecret, GLWEToLWEKey, GLWEToLWEKeyLayout, LWECiphertext, LWESecret,
+        GLWESecret, GLWEToLWEKeyLayout, GLWEToLWESwitchingKey, LWECiphertext, LWESecret,
         prepared::{GLWEToLWESwitchingKeyPrepared, Prepare, PrepareAlloc},
     },
 };
@@ -56,7 +56,7 @@ where
     BRA: BlindRotationAlgo,
 {
     cbt: CircuitBootstrappingKey<CBT, BRA>,
-    ks: GLWEToLWEKey<LWE>,
+    ks: GLWEToLWESwitchingKey<LWE>,
 }
 
 impl<BRA: BlindRotationAlgo> BDDKey<Vec<u8>, Vec<u8>, BRA> {
@@ -98,7 +98,7 @@ impl<BRA: BlindRotationAlgo> BDDKey<Vec<u8>, Vec<u8>, BRA> {
             + VecZnxAutomorphismInplace<BE>,
         Scratch<BE>: TakeVecZnxDft<BE> + ScratchAvailable + TakeVecZnx + TakeScalarZnx + TakeSvpPPol<BE> + TakeVecZnxBig<BE>,
     {
-        let mut ks: GLWEToLWEKey<Vec<u8>> = GLWEToLWEKey::alloc(&infos.ks_infos());
+        let mut ks: GLWEToLWESwitchingKey<Vec<u8>> = GLWEToLWESwitchingKey::alloc(&infos.ks_infos());
         ks.encrypt_sk(module, sk_lwe, sk_glwe, source_xa, source_xe, scratch);
 
         Self {
@@ -131,7 +131,7 @@ impl<CBT: DataMut, LWE: DataMut, BRA: BlindRotationAlgo, BE: Backend> PrepareAll
     for BDDKey<CBT, LWE, BRA>
 where
     CircuitBootstrappingKey<CBT, BRA>: PrepareAlloc<BE, CircuitBootstrappingKeyPrepared<CBT, BRA, BE>>,
-    GLWEToLWEKey<LWE>: PrepareAlloc<BE, GLWEToLWESwitchingKeyPrepared<LWE, BE>>,
+    GLWEToLWESwitchingKey<LWE>: PrepareAlloc<BE, GLWEToLWESwitchingKeyPrepared<LWE, BE>>,
 {
     fn prepare_alloc(&self, module: &Module<BE>, scratch: &mut Scratch<BE>) -> BDDKeyPrepared<CBT, LWE, BRA, BE> {
         BDDKeyPrepared {

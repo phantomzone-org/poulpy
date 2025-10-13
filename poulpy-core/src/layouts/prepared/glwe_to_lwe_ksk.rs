@@ -4,12 +4,12 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Dnum, Dsize, GGLWEInfos, GLWEInfos, GLWEToLWEKey, LWEInfos, Rank, TorusPrecision,
-    prepared::{GGLWESwitchingKeyPrepared, Prepare, PrepareAlloc, PrepareScratchSpace},
+    Base2K, Degree, Dnum, Dsize, GGLWEInfos, GLWEInfos, GLWEToLWESwitchingKey, LWEInfos, Rank, TorusPrecision,
+    prepared::GLWESwitchingKeyPrepared,
 };
 
 #[derive(PartialEq, Eq)]
-pub struct GLWEToLWESwitchingKeyPrepared<D: Data, B: Backend>(pub(crate) GGLWESwitchingKeyPrepared<D, B>);
+pub struct GLWEToLWESwitchingKeyPrepared<D: Data, B: Backend>(pub(crate) GLWESwitchingKeyPrepared<D, B>);
 
 impl<D: Data, B: Backend> LWEInfos for GLWEToLWESwitchingKeyPrepared<D, B> {
     fn base2k(&self) -> Base2K {
@@ -69,14 +69,14 @@ impl<B: Backend> GLWEToLWESwitchingKeyPrepared<Vec<u8>, B> {
             1,
             "dsize > 1 is not supported for GLWEToLWESwitchingKeyPrepared"
         );
-        Self(GGLWESwitchingKeyPrepared::alloc(module, infos))
+        Self(GLWESwitchingKeyPrepared::alloc(module, infos))
     }
 
     pub fn alloc_with(module: &Module<B>, base2k: Base2K, k: TorusPrecision, rank_in: Rank, dnum: Dnum) -> Self
     where
         Module<B>: VmpPMatAlloc<B>,
     {
-        Self(GGLWESwitchingKeyPrepared::alloc_with(
+        Self(GLWESwitchingKeyPrepared::alloc_with(
             module,
             base2k,
             k,
@@ -102,27 +102,27 @@ impl<B: Backend> GLWEToLWESwitchingKeyPrepared<Vec<u8>, B> {
             1,
             "dsize > 1 is not supported for GLWEToLWESwitchingKeyPrepared"
         );
-        GGLWESwitchingKeyPrepared::alloc_bytes(module, infos)
+        GLWESwitchingKeyPrepared::alloc_bytes(module, infos)
     }
 
     pub fn alloc_bytes_with(module: &Module<B>, base2k: Base2K, k: TorusPrecision, rank_in: Rank, dnum: Dnum) -> usize
     where
         Module<B>: VmpPMatAllocBytes,
     {
-        GGLWESwitchingKeyPrepared::alloc_bytes_with(module, base2k, k, rank_in, Rank(1), dnum, Dsize(1))
+        GLWESwitchingKeyPrepared::alloc_bytes_with(module, base2k, k, rank_in, Rank(1), dnum, Dsize(1))
     }
 }
 
 impl<B: Backend, A: GGLWEInfos> PrepareScratchSpace<B, A> for GLWEToLWESwitchingKeyPrepared<Vec<u8>, B>
 where
-    GGLWESwitchingKeyPrepared<Vec<u8>, B>: PrepareScratchSpace<B, A>,
+    GLWESwitchingKeyPrepared<Vec<u8>, B>: PrepareScratchSpace<B, A>,
 {
     fn prepare_scratch_space(module: &Module<B>, infos: &A) -> usize {
-        GGLWESwitchingKeyPrepared::prepare_scratch_space(module, infos)
+        GLWESwitchingKeyPrepared::prepare_scratch_space(module, infos)
     }
 }
 
-impl<D: DataRef, B: Backend> PrepareAlloc<B, GLWEToLWESwitchingKeyPrepared<Vec<u8>, B>> for GLWEToLWEKey<D>
+impl<D: DataRef, B: Backend> PrepareAlloc<B, GLWEToLWESwitchingKeyPrepared<Vec<u8>, B>> for GLWEToLWESwitchingKey<D>
 where
     Module<B>: VmpPrepare<B> + VmpPMatAlloc<B>,
 {
@@ -133,11 +133,11 @@ where
     }
 }
 
-impl<DM: DataMut, DR: DataRef, B: Backend> Prepare<B, GLWEToLWEKey<DR>> for GLWEToLWESwitchingKeyPrepared<DM, B>
+impl<DM: DataMut, DR: DataRef, B: Backend> Prepare<B, GLWEToLWESwitchingKey<DR>> for GLWEToLWESwitchingKeyPrepared<DM, B>
 where
     Module<B>: VmpPrepare<B>,
 {
-    fn prepare(&mut self, module: &Module<B>, other: &GLWEToLWEKey<DR>, scratch: &mut Scratch<B>) {
+    fn prepare(&mut self, module: &Module<B>, other: &GLWEToLWESwitchingKey<DR>, scratch: &mut Scratch<B>) {
         self.0.prepare(module, &other.0, scratch);
     }
 }
