@@ -11,7 +11,7 @@ pub trait VecZnxDftFromBytes<B: Backend> {
 }
 
 pub trait VecZnxDftAllocBytes {
-    fn vec_znx_dft_alloc_bytes(&self, cols: usize, size: usize) -> usize;
+    fn vec_znx_dft_bytes_of(&self, cols: usize, size: usize) -> usize;
 }
 
 pub trait VecZnxDftApply<B: Backend> {

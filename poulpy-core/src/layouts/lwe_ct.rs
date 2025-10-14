@@ -1,7 +1,7 @@
 use std::fmt;
 
 use poulpy_hal::{
-    layouts::{Data, DataMut, DataRef, FillUniform, ReaderFrom, WriterTo, Zn, ZnToMut, ZnToRef, ZnxInfos},
+    layouts::{Backend, Data, DataMut, DataRef, FillUniform, Module, ReaderFrom, WriterTo, Zn, ZnToMut, ZnToRef, ZnxInfos},
     source::Source,
 };
 
@@ -53,13 +53,13 @@ impl LWEInfos for LWECiphertextLayout {
     }
 }
 #[derive(PartialEq, Eq, Clone)]
-pub struct LWECiphertext<D: Data> {
+pub struct LWE<D: Data> {
     pub(crate) data: Zn<D>,
     pub(crate) k: TorusPrecision,
     pub(crate) base2k: Base2K,
 }
 
-impl<D: Data> LWEInfos for LWECiphertext<D> {
+impl<D: Data> LWEInfos for LWE<D> {
     fn base2k(&self) -> Base2K {
         self.base2k
     }
@@ -76,7 +76,7 @@ impl<D: Data> LWEInfos for LWECiphertext<D> {
     }
 }
 
-impl<D: Data> SetLWEInfos for LWECiphertext<D> {
+impl<D: Data> SetLWEInfos for LWE<D> {
     fn set_base2k(&mut self, base2k: Base2K) {
         self.base2k = base2k
     }
@@ -86,25 +86,25 @@ impl<D: Data> SetLWEInfos for LWECiphertext<D> {
     }
 }
 
-impl<D: DataRef> LWECiphertext<D> {
+impl<D: DataRef> LWE<D> {
     pub fn data(&self) -> &Zn<D> {
         &self.data
     }
 }
 
-impl<D: DataMut> LWECiphertext<D> {
+impl<D: DataMut> LWE<D> {
     pub fn data_mut(&mut self) -> &Zn<D> {
         &mut self.data
     }
 }
 
-impl<D: DataRef> fmt::Debug for LWECiphertext<D> {
+impl<D: DataRef> fmt::Debug for LWE<D> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{self}")
     }
 }
 
-impl<D: DataRef> fmt::Display for LWECiphertext<D> {
+impl<D: DataRef> fmt::Display for LWE<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -116,7 +116,7 @@ impl<D: DataRef> fmt::Display for LWECiphertext<D> {
     }
 }
 
-impl<D: DataMut> FillUniform for LWECiphertext<D>
+impl<D: DataMut> FillUniform for LWE<D>
 where
     Zn<D>: FillUniform,
 {
@@ -125,41 +125,73 @@ where
     }
 }
 
-impl LWECiphertext<Vec<u8>> {
-    pub fn alloc<A>(infos: &A) -> Self
-    where
-        A: LWEInfos,
-    {
-        Self::alloc_with(infos.n(), infos.base2k(), infos.k())
-    }
-
-    pub fn alloc_with(n: Degree, base2k: Base2K, k: TorusPrecision) -> Self {
-        Self {
+pub trait LWEAlloc {
+    fn alloc_lwe(&self, n: Degree, base2k: Base2K, k: TorusPrecision) -> LWE<Vec<u8>> {
+        LWE {
             data: Zn::alloc((n + 1).into(), 1, k.0.div_ceil(base2k.0) as usize),
             k,
             base2k,
         }
     }
 
-    pub fn alloc_bytes<A>(infos: &A) -> usize
+    fn alloc_lwe_from_infos<A>(&self, infos: &A) -> LWE<Vec<u8>>
     where
         A: LWEInfos,
     {
-        Self::alloc_bytes_with(infos.n(), infos.base2k(), infos.k())
+        self.alloc_lwe(infos.n(), infos.base2k(), infos.k())
     }
 
-    pub fn alloc_bytes_with(n: Degree, base2k: Base2K, k: TorusPrecision) -> usize {
-        Zn::alloc_bytes((n + 1).into(), 1, k.0.div_ceil(base2k.0) as usize)
+    fn bytes_of_lwe(&self, n: Degree, base2k: Base2K, k: TorusPrecision) -> usize {
+        Zn::bytes_of((n + 1).into(), 1, k.0.div_ceil(base2k.0) as usize)
+    }
+
+    fn bytes_of_lwe_from_infos<A>(&self, infos: &A) -> usize
+    where
+        A: LWEInfos,
+    {
+        self.bytes_of_lwe(infos.n(), infos.base2k(), infos.k())
+    }
+}
+
+impl LWE<Vec<u8>> {
+    pub fn alloc_from_infos<A, B: Backend>(module: &Module<B>, infos: &A) -> Self
+    where
+        A: LWEInfos,
+        Module<B>: LWEAlloc,
+    {
+        module.alloc_lwe_from_infos(infos)
+    }
+
+    pub fn alloc<B: Backend>(module: &Module<B>, n: Degree, base2k: Base2K, k: TorusPrecision) -> Self
+    where
+        Module<B>: LWEAlloc,
+    {
+        module.alloc_lwe(n, base2k, k)
+    }
+
+    pub fn bytes_of_from_infos<A, B: Backend>(module: &Module<B>, infos: &A) -> usize
+    where
+        A: LWEInfos,
+        Module<B>: LWEAlloc,
+    {
+        module.bytes_of_lwe_from_infos(infos)
+    }
+
+    pub fn bytes_of<B: Backend>(module: &Module<B>, n: Degree, base2k: Base2K, k: TorusPrecision) -> usize
+    where
+        Module<B>: LWEAlloc,
+    {
+        module.bytes_of_lwe(n, base2k, k)
     }
 }
 
 pub trait LWECiphertextToRef {
-    fn to_ref(&self) -> LWECiphertext<&[u8]>;
+    fn to_ref(&self) -> LWE<&[u8]>;
 }
 
-impl<D: DataRef> LWECiphertextToRef for LWECiphertext<D> {
-    fn to_ref(&self) -> LWECiphertext<&[u8]> {
-        LWECiphertext {
+impl<D: DataRef> LWECiphertextToRef for LWE<D> {
+    fn to_ref(&self) -> LWE<&[u8]> {
+        LWE {
             k: self.k,
             base2k: self.base2k,
             data: self.data.to_ref(),
@@ -167,14 +199,14 @@ impl<D: DataRef> LWECiphertextToRef for LWECiphertext<D> {
     }
 }
 
-pub trait LWECiphertextToMut {
+pub trait LWEToMut {
     #[allow(dead_code)]
-    fn to_mut(&mut self) -> LWECiphertext<&mut [u8]>;
+    fn to_mut(&mut self) -> LWE<&mut [u8]>;
 }
 
-impl<D: DataMut> LWECiphertextToMut for LWECiphertext<D> {
-    fn to_mut(&mut self) -> LWECiphertext<&mut [u8]> {
-        LWECiphertext {
+impl<D: DataMut> LWEToMut for LWE<D> {
+    fn to_mut(&mut self) -> LWE<&mut [u8]> {
+        LWE {
             k: self.k,
             base2k: self.base2k,
             data: self.data.to_mut(),
@@ -182,7 +214,7 @@ impl<D: DataMut> LWECiphertextToMut for LWECiphertext<D> {
     }
 }
 
-impl<D: DataMut> ReaderFrom for LWECiphertext<D> {
+impl<D: DataMut> ReaderFrom for LWE<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         self.k = TorusPrecision(reader.read_u32::<LittleEndian>()?);
         self.base2k = Base2K(reader.read_u32::<LittleEndian>()?);
@@ -190,7 +222,7 @@ impl<D: DataMut> ReaderFrom for LWECiphertext<D> {
     }
 }
 
-impl<D: DataRef> WriterTo for LWECiphertext<D> {
+impl<D: DataRef> WriterTo for LWE<D> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         writer.write_u32::<LittleEndian>(self.k.into())?;
         writer.write_u32::<LittleEndian>(self.base2k.into())?;

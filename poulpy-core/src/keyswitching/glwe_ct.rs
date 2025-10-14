@@ -7,9 +7,9 @@ use poulpy_hal::{
     layouts::{Backend, DataMut, DataRef, DataViewMut, Module, Scratch, VecZnx, VecZnxBig, VecZnxDft, VmpPMat, ZnxInfos},
 };
 
-use crate::layouts::{GGLWEInfos, GLWECiphertext, GLWEInfos, LWEInfos, prepared::GLWESwitchingKeyPrepared};
+use crate::layouts::{GGLWEInfos, GLWE, GLWEInfos, LWEInfos, prepared::GLWESwitchingKeyPrepared};
 
-impl GLWECiphertext<Vec<u8>> {
+impl GLWE<Vec<u8>> {
     pub fn keyswitch_scratch_space<B: Backend, OUT, IN, KEY>(
         module: &Module<B>,
         out_infos: &OUT,
@@ -28,8 +28,8 @@ impl GLWECiphertext<Vec<u8>> {
             .div_ceil(key_apply.dsize().into()) as usize;
         let out_size: usize = out_infos.size();
         let ksk_size: usize = key_apply.size();
-        let res_dft: usize = module.vec_znx_dft_alloc_bytes((key_apply.rank_out() + 1).into(), ksk_size); // TODO OPTIMIZE
-        let ai_dft: usize = module.vec_znx_dft_alloc_bytes((key_apply.rank_in()).into(), in_size);
+        let res_dft: usize = module.vec_znx_dft_bytes_of((key_apply.rank_out() + 1).into(), ksk_size); // TODO OPTIMIZE
+        let ai_dft: usize = module.vec_znx_dft_bytes_of((key_apply.rank_in()).into(), in_size);
         let vmp: usize = module.vmp_apply_dft_to_dft_tmp_bytes(
             out_size,
             in_size,
@@ -37,17 +37,17 @@ impl GLWECiphertext<Vec<u8>> {
             (key_apply.rank_in()).into(),
             (key_apply.rank_out() + 1).into(),
             ksk_size,
-        ) + module.vec_znx_dft_alloc_bytes((key_apply.rank_in()).into(), in_size);
+        ) + module.vec_znx_dft_bytes_of((key_apply.rank_in()).into(), in_size);
         let normalize_big: usize = module.vec_znx_big_normalize_tmp_bytes();
         if in_infos.base2k() == key_apply.base2k() {
             res_dft + ((ai_dft + vmp) | normalize_big)
         } else if key_apply.dsize() == 1 {
             // In this case, we only need one column, temporary, that we can drop once a_dft is computed.
-            let normalize_conv: usize = VecZnx::alloc_bytes(module.n(), 1, in_size) + module.vec_znx_normalize_tmp_bytes();
+            let normalize_conv: usize = VecZnx::bytes_of(module.n(), 1, in_size) + module.vec_znx_normalize_tmp_bytes();
             res_dft + (((ai_dft + normalize_conv) | vmp) | normalize_big)
         } else {
             // Since we stride over a to get a_dft when dsize > 1, we need to store the full columns of a with in the base conversion.
-            let normalize_conv: usize = VecZnx::alloc_bytes(module.n(), (key_apply.rank_in()).into(), in_size);
+            let normalize_conv: usize = VecZnx::bytes_of(module.n(), (key_apply.rank_in()).into(), in_size);
             res_dft + ((ai_dft + normalize_conv + (module.vec_znx_normalize_tmp_bytes() | vmp)) | normalize_big)
         }
     }
@@ -62,12 +62,12 @@ impl GLWECiphertext<Vec<u8>> {
     }
 }
 
-impl<DataSelf: DataRef> GLWECiphertext<DataSelf> {
+impl<DataSelf: DataRef> GLWE<DataSelf> {
     #[allow(dead_code)]
     pub(crate) fn assert_keyswitch<B: Backend, DataLhs, DataRhs>(
         &self,
         module: &Module<B>,
-        lhs: &GLWECiphertext<DataLhs>,
+        lhs: &GLWE<DataLhs>,
         rhs: &GLWESwitchingKeyPrepared<DataRhs, B>,
         scratch: &Scratch<B>,
     ) where
@@ -93,7 +93,7 @@ impl<DataSelf: DataRef> GLWECiphertext<DataSelf> {
         assert_eq!(rhs.n(), self.n());
         assert_eq!(lhs.n(), self.n());
 
-        let scrach_needed: usize = GLWECiphertext::keyswitch_scratch_space(module, self, lhs, rhs);
+        let scrach_needed: usize = GLWE::keyswitch_scratch_space(module, self, lhs, rhs);
 
         assert!(
             scratch.available() >= scrach_needed,
@@ -134,7 +134,7 @@ impl<DataSelf: DataRef> GLWECiphertext<DataSelf> {
 
         assert_eq!(rhs.n(), self.n());
 
-        let scrach_needed: usize = GLWECiphertext::keyswitch_inplace_scratch_space(module, self, rhs);
+        let scrach_needed: usize = GLWE::keyswitch_inplace_scratch_space(module, self, rhs);
 
         assert!(
             scratch.available() >= scrach_needed,
@@ -144,11 +144,11 @@ impl<DataSelf: DataRef> GLWECiphertext<DataSelf> {
     }
 }
 
-impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
+impl<DataSelf: DataMut> GLWE<DataSelf> {
     pub fn keyswitch<DataLhs: DataRef, DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
-        glwe_in: &GLWECiphertext<DataLhs>,
+        glwe_in: &GLWE<DataLhs>,
         rhs: &GLWESwitchingKeyPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
@@ -232,7 +232,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
     }
 }
 
-impl<D: DataRef> GLWECiphertext<D> {
+impl<D: DataRef> GLWE<D> {
     pub(crate) fn keyswitch_internal<B: Backend, DataRes, DataKey>(
         &self,
         module: &Module<B>,

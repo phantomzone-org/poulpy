@@ -12,12 +12,12 @@ use crate::{
     encryption::{SIGMA, glwe_ct::GLWEEncryptSkInternal},
     layouts::{
         GGLWE, GGLWEInfos, LWEInfos,
-        compressed::{GGLWECiphertextCompressed, GGLWECiphertextCompressedToMut},
+        compressed::{GGLWECompressed, GGLWECompressedToMut},
         prepared::{GLWESecretPrepared, GLWESecretPreparedToRef},
     },
 };
 
-impl<D: DataMut> GGLWECiphertextCompressed<D> {
+impl<D: DataMut> GGLWECompressed<D> {
     #[allow(clippy::too_many_arguments)]
     pub fn encrypt_sk<DataPt: DataRef, DataSk: DataRef, B: Backend>(
         &mut self,
@@ -34,7 +34,7 @@ impl<D: DataMut> GGLWECiphertextCompressed<D> {
     }
 }
 
-impl GGLWECiphertextCompressed<Vec<u8>> {
+impl GGLWECompressed<Vec<u8>> {
     pub fn encrypt_sk_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GGLWEInfos,
@@ -54,7 +54,7 @@ pub trait GGLWECompressedEncryptSk<B: Backend> {
         source_xe: &mut Source,
         scratch: &mut Scratch<B>,
     ) where
-        R: GGLWECiphertextCompressedToMut,
+        R: GGLWECompressedToMut,
         P: ScalarZnxToRef,
         S: GLWESecretPreparedToRef<B>;
 }
@@ -78,11 +78,11 @@ where
         source_xe: &mut Source,
         scratch: &mut Scratch<B>,
     ) where
-        R: GGLWECiphertextCompressedToMut,
+        R: GGLWECompressedToMut,
         P: ScalarZnxToRef,
         S: GLWESecretPreparedToRef<B>,
     {
-        let res: &mut GGLWECiphertextCompressed<&mut [u8]> = &mut res.to_mut();
+        let res: &mut GGLWECompressed<&mut [u8]> = &mut res.to_mut();
         let pt: &ScalarZnx<&[u8]> = &pt.to_ref();
 
         #[cfg(debug_assertions)]
@@ -107,10 +107,10 @@ where
             assert_eq!(res.n(), sk.n());
             assert_eq!(pt.n() as u32, sk.n());
             assert!(
-                scratch.available() >= GGLWECiphertextCompressed::encrypt_sk_scratch_space(self, res),
+                scratch.available() >= GGLWECompressed::encrypt_sk_scratch_space(self, res),
                 "scratch.available: {} < GGLWECiphertext::encrypt_sk_scratch_space: {}",
                 scratch.available(),
-                GGLWECiphertextCompressed::encrypt_sk_scratch_space(self, res)
+                GGLWECompressed::encrypt_sk_scratch_space(self, res)
             );
             assert!(
                 res.dnum().0 * res.dsize().0 * res.base2k().0 <= res.k().0,

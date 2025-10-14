@@ -8,7 +8,7 @@ use poulpy_hal::{
     oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeVecZnxBigImpl, TakeVecZnxDftImpl},
 };
 
-use crate::layouts::{GGLWE, GGLWEInfos, GLWECiphertext, GLWEPlaintext, LWEInfos, prepared::GLWESecretPrepared};
+use crate::layouts::{GGLWE, GGLWEInfos, GLWE, GLWEPlaintext, LWEInfos, prepared::GLWESecretPrepared};
 
 impl<D: DataRef> GGLWE<D> {
     pub fn assert_noise<B, DataSk, DataWant>(
@@ -35,8 +35,8 @@ impl<D: DataRef> GGLWE<D> {
         let dsize: usize = self.dsize().into();
         let base2k: usize = self.base2k().into();
 
-        let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GLWECiphertext::decrypt_scratch_space(module, self));
-        let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(self);
+        let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GLWE::decrypt_scratch_space(module, self));
+        let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(self);
 
         (0..self.rank_in().into()).for_each(|col_i| {
             (0..self.dnum().into()).for_each(|row_i| {

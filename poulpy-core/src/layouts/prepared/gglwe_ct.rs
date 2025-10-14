@@ -61,7 +61,7 @@ pub trait GGLWEPreparedAlloc<B: Backend>
 where
     Self: GetDegree + VmpPMatAlloc<B> + VmpPMatAllocBytes,
 {
-    fn gglwe_prepared_alloc(
+    fn alloc_gglwe_prepared(
         &self,
         base2k: Base2K,
         k: TorusPrecision,
@@ -92,12 +92,12 @@ where
         }
     }
 
-    fn gglwe_prepared_alloc_from_infos<A>(&self, infos: &A) -> GGLWEPrepared<Vec<u8>, B>
+    fn alloc_gglwe_prepared_from_infos<A>(&self, infos: &A) -> GGLWEPrepared<Vec<u8>, B>
     where
         A: GGLWEInfos,
     {
         assert_eq!(self.n(), infos.n());
-        self.gglwe_prepared_alloc(
+        self.alloc_gglwe_prepared(
             infos.base2k(),
             infos.k(),
             infos.rank_in(),
@@ -107,7 +107,7 @@ where
         )
     }
 
-    fn gglwe_prepared_alloc_bytes(
+    fn bytes_of_gglwe_prepared(
         &self,
         base2k: Base2K,
         k: TorusPrecision,
@@ -130,15 +130,15 @@ where
             dsize.0,
         );
 
-        self.vmp_pmat_alloc_bytes(dnum.into(), rank_in.into(), (rank_out + 1).into(), size)
+        self.vmp_pmat_bytes_of(dnum.into(), rank_in.into(), (rank_out + 1).into(), size)
     }
 
-    fn gglwe_prepared_alloc_bytes_from_infos<A>(&self, infos: &A) -> usize
+    fn bytes_of_gglwe_prepared_from_infos<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos,
     {
         assert_eq!(self.n(), infos.n());
-        self.gglwe_prepared_alloc_bytes(
+        self.bytes_of_gglwe_prepared(
             infos.base2k(),
             infos.k(),
             infos.rank_in(),
@@ -159,7 +159,7 @@ where
     where
         A: GGLWEInfos,
     {
-        module.gglwe_prepared_alloc_from_infos(infos)
+        module.alloc_gglwe_prepared_from_infos(infos)
     }
 
     pub fn alloc(
@@ -171,17 +171,17 @@ where
         dnum: Dnum,
         dsize: Dsize,
     ) -> Self {
-        module.gglwe_prepared_alloc(base2k, k, rank_in, rank_out, dnum, dsize)
+        module.alloc_gglwe_prepared(base2k, k, rank_in, rank_out, dnum, dsize)
     }
 
-    pub fn alloc_bytes_from_infos<A>(module: &Module<B>, infos: &A) -> usize
+    pub fn bytes_of_from_infos<A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GGLWEInfos,
     {
-        module.gglwe_prepared_alloc_bytes_from_infos(infos)
+        module.bytes_of_gglwe_prepared_from_infos(infos)
     }
 
-    pub fn alloc_bytes(
+    pub fn bytes_of(
         module: &Module<B>,
         base2k: Base2K,
         k: TorusPrecision,
@@ -190,7 +190,7 @@ where
         dnum: Dnum,
         dsize: Dsize,
     ) -> usize {
-        module.gglwe_prepared_alloc_bytes(base2k, k, rank_in, rank_out, dnum, dsize)
+        module.bytes_of_gglwe_prepared(base2k, k, rank_in, rank_out, dnum, dsize)
     }
 }
 
@@ -198,7 +198,7 @@ pub trait GGLWEPrepare<B: Backend>
 where
     Self: GetDegree + VmpPrepareTmpBytes + VmpPrepare<B>,
 {
-    fn gglwe_prepare_tmp_bytes<A>(&self, infos: &A) -> usize
+    fn prepare_gglwe_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos,
     {
@@ -210,7 +210,7 @@ where
         )
     }
 
-    fn gglwe_prepare<R, O>(&self, res: &mut R, other: &O, scratch: &mut Scratch<B>)
+    fn prepare_gglwe<R, O>(&self, res: &mut R, other: &O, scratch: &mut Scratch<B>)
     where
         R: GGLWEPreparedToMut<B>,
         O: GGLWEToRef,
@@ -238,7 +238,7 @@ where
     where
         O: GGLWEToRef,
     {
-        module.gglwe_prepare(self, other, scratch);
+        module.prepare_gglwe(self, other, scratch);
     }
 }
 
@@ -247,7 +247,7 @@ impl<B: Backend> GGLWEPrepared<Vec<u8>, B> {
     where
         Module<B>: GGLWEPrepare<B>,
     {
-        module.gglwe_prepare_tmp_bytes(self)
+        module.prepare_gglwe_tmp_bytes(self)
     }
 }
 

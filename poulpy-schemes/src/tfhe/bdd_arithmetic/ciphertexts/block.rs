@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use poulpy_core::layouts::{Base2K, GLWECiphertext, GLWEInfos, GLWEPlaintextLayout, LWEInfos, Rank, TorusPrecision};
+use poulpy_core::layouts::{Base2K, GLWE, GLWEInfos, GLWEPlaintextLayout, LWEInfos, Rank, TorusPrecision};
 
 use poulpy_core::{TakeGLWEPt, layouts::prepared::GLWESecretPrepared};
 use poulpy_hal::api::VecZnxBigAllocBytes;
@@ -24,7 +24,7 @@ use crate::tfhe::bdd_arithmetic::{FromBits, ToBits, UnsignedInteger};
 
 /// An FHE ciphertext encrypting the bits of an [UnsignedInteger].
 pub struct FheUintBlocks<D: Data, T: UnsignedInteger> {
-    pub(crate) blocks: Vec<GLWECiphertext<D>>,
+    pub(crate) blocks: Vec<GLWE<D>>,
     pub(crate) _base: u8,
     pub(crate) _phantom: PhantomData<T>,
 }
@@ -62,7 +62,7 @@ impl<T: UnsignedInteger> FheUintBlocks<Vec<u8>, T> {
     pub(crate) fn alloc_with<BE: Backend>(module: &Module<BE>, base2k: Base2K, k: TorusPrecision, rank: Rank) -> Self {
         Self {
             blocks: (0..T::WORD_SIZE)
-                .map(|_| GLWECiphertext::alloc_with(module.n().into(), base2k, k, rank))
+                .map(|_| GLWE::alloc(module.n().into(), base2k, k, rank))
                 .collect(),
             _base: 1,
             _phantom: PhantomData,

@@ -1,13 +1,13 @@
 use std::fmt;
 
 use poulpy_hal::{
-    layouts::{Data, DataMut, DataRef, FillUniform, ReaderFrom, WriterTo},
+    layouts::{Backend, Data, DataMut, DataRef, FillUniform, Module, ReaderFrom, WriterTo},
     source::Source,
 };
 
 use crate::layouts::{
-    Base2K, Degree, Dnum, Dsize, GGLWEInfos, GLWEInfos, GLWESwitchingKey, GLWESwitchingKeyToMut, GLWESwitchingKeyToRef, LWEInfos,
-    Rank, TorusPrecision,
+    Base2K, Degree, Dnum, Dsize, GGLWEInfos, GLWEInfos, GLWESwitchingKey, GLWESwitchingKeyAlloc, GLWESwitchingKeyToMut,
+    GLWESwitchingKeyToRef, LWEInfos, Rank, TorusPrecision,
 };
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
@@ -131,55 +131,91 @@ impl<D: DataRef> WriterTo for LWEToGLWESwitchingKey<D> {
     }
 }
 
+pub trait LWEToGLWESwitchingKeyAlloc
+where
+    Self: GLWESwitchingKeyAlloc,
+{
+    fn alloc_lwe_to_glwe_switching_key(
+        &self,
+        base2k: Base2K,
+        k: TorusPrecision,
+        rank_out: Rank,
+        dnum: Dnum,
+    ) -> LWEToGLWESwitchingKey<Vec<u8>> {
+        LWEToGLWESwitchingKey(self.alloc_glwe_switching_key(base2k, k, Rank(1), rank_out, dnum, Dsize(1)))
+    }
+
+    fn alloc_lwe_to_glwe_switching_key_from_infos<A>(&self, infos: &A) -> LWEToGLWESwitchingKey<Vec<u8>>
+    where
+        A: GGLWEInfos,
+    {
+        assert_eq!(
+            infos.rank_in().0,
+            1,
+            "rank_in > 1 is not supported for LWEToGLWESwitchingKey"
+        );
+        assert_eq!(
+            infos.dsize().0,
+            1,
+            "dsize > 1 is not supported for LWEToGLWESwitchingKey"
+        );
+
+        self.alloc_lwe_to_glwe_switching_key(infos.base2k(), infos.k(), infos.rank_out(), infos.dnum())
+    }
+
+    fn bytes_of_lwe_to_glwe_switching_key(&self, base2k: Base2K, k: TorusPrecision, rank_out: Rank, dnum: Dnum) -> usize {
+        self.bytes_of_glwe_switching_key(base2k, k, Rank(1), rank_out, dnum, Dsize(1))
+    }
+
+    fn bytes_of_lwe_to_glwe_switching_key_from_infos<A>(&self, infos: &A) -> usize
+    where
+        A: GGLWEInfos,
+    {
+        assert_eq!(
+            infos.rank_in().0,
+            1,
+            "rank_in > 1 is not supported for LWEToGLWESwitchingKey"
+        );
+        assert_eq!(
+            infos.dsize().0,
+            1,
+            "dsize > 1 is not supported for LWEToGLWESwitchingKey"
+        );
+        self.bytes_of_lwe_to_glwe_switching_key(infos.base2k(), infos.k(), infos.rank_out(), infos.dnum())
+    }
+}
+
+impl<B: Backend> LWEToGLWESwitchingKeyAlloc for Module<B> where Self: GLWESwitchingKeyAlloc {}
+
 impl LWEToGLWESwitchingKey<Vec<u8>> {
-    pub fn alloc<A>(infos: &A) -> Self
+    pub fn alloc_from_infos<A, B: Backend>(module: &Module<B>, infos: &A) -> Self
     where
         A: GGLWEInfos,
+        Module<B>: LWEToGLWESwitchingKeyAlloc,
     {
-        debug_assert_eq!(
-            infos.rank_in().0,
-            1,
-            "rank_in > 1 is not supported for LWEToGLWESwitchingKey"
-        );
-        debug_assert_eq!(
-            infos.dsize().0,
-            1,
-            "dsize > 1 is not supported for LWEToGLWESwitchingKey"
-        );
-        Self(GLWESwitchingKey::alloc(infos))
+        module.alloc_lwe_to_glwe_switching_key_from_infos(infos)
     }
 
-    pub fn alloc_with(n: Degree, base2k: Base2K, k: TorusPrecision, rank_out: Rank, dnum: Dnum) -> Self {
-        Self(GLWESwitchingKey::alloc_with(
-            n,
-            base2k,
-            k,
-            Rank(1),
-            rank_out,
-            dnum,
-            Dsize(1),
-        ))
+    pub fn alloc<B: Backend>(module: &Module<B>, base2k: Base2K, k: TorusPrecision, rank_out: Rank, dnum: Dnum) -> Self
+    where
+        Module<B>: LWEToGLWESwitchingKeyAlloc,
+    {
+        module.alloc_lwe_to_glwe_switching_key(base2k, k, rank_out, dnum)
     }
 
-    pub fn alloc_bytes<A>(infos: &A) -> usize
+    pub fn bytes_of_from_infos<A, B: Backend>(module: &Module<B>, infos: &A) -> usize
     where
         A: GGLWEInfos,
+        Module<B>: LWEToGLWESwitchingKeyAlloc,
     {
-        debug_assert_eq!(
-            infos.rank_in().0,
-            1,
-            "rank_in > 1 is not supported for LWEToGLWESwitchingKey"
-        );
-        debug_assert_eq!(
-            infos.dsize().0,
-            1,
-            "dsize > 1 is not supported for LWEToGLWESwitchingKey"
-        );
-        GLWESwitchingKey::alloc_bytes(infos)
+        module.bytes_of_lwe_to_glwe_switching_key_from_infos(infos)
     }
 
-    pub fn alloc_bytes_with(n: Degree, base2k: Base2K, k: TorusPrecision, dnum: Dnum, rank_out: Rank) -> usize {
-        GLWESwitchingKey::alloc_bytes_with(n, base2k, k, Rank(1), rank_out, dnum, Dsize(1))
+    pub fn bytes_of<B: Backend>(module: &Module<B>, base2k: Base2K, k: TorusPrecision, dnum: Dnum, rank_out: Rank) -> usize
+    where
+        Module<B>: LWEToGLWESwitchingKeyAlloc,
+    {
+        module.bytes_of_lwe_to_glwe_switching_key(base2k, k, rank_out, dnum)
     }
 }
 

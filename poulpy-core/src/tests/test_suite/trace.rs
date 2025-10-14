@@ -21,7 +21,7 @@ use poulpy_hal::{
 use crate::{
     encryption::SIGMA,
     layouts::{
-        AutomorphismKey, AutomorphismKeyLayout, GLWECiphertext, GLWECiphertextLayout, GLWEPlaintext, GLWESecret, LWEInfos,
+        AutomorphismKey, AutomorphismKeyLayout, GLWE, GLWELayout, GLWEPlaintext, GLWESecret, LWEInfos,
         prepared::{AutomorphismKeyPrepared, GLWESecretPrepared, PrepareAlloc},
     },
     noise::var_noise_gglwe_product,
@@ -82,7 +82,7 @@ where
         let dsize: usize = 1;
         let dnum: usize = k.div_ceil(base2k * dsize);
 
-        let glwe_out_infos: GLWECiphertextLayout = GLWECiphertextLayout {
+        let glwe_out_infos: GLWELayout = GLWELayout {
             n: n.into(),
             base2k: base2k.into(),
             k: k.into(),
@@ -98,22 +98,22 @@ where
             dnum: dnum.into(),
         };
 
-        let mut glwe_out: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&glwe_out_infos);
-        let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&glwe_out_infos);
-        let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&glwe_out_infos);
+        let mut glwe_out: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_out_infos);
+        let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_out_infos);
+        let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_out_infos);
 
         let mut source_xs: Source = Source::new([0u8; 32]);
         let mut source_xe: Source = Source::new([0u8; 32]);
         let mut source_xa: Source = Source::new([0u8; 32]);
 
         let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-            GLWECiphertext::encrypt_sk_scratch_space(module, &glwe_out_infos)
-                | GLWECiphertext::decrypt_scratch_space(module, &glwe_out_infos)
+            GLWE::encrypt_sk_scratch_space(module, &glwe_out_infos)
+                | GLWE::decrypt_scratch_space(module, &glwe_out_infos)
                 | AutomorphismKey::encrypt_sk_scratch_space(module, &key_infos)
-                | GLWECiphertext::trace_inplace_scratch_space(module, &glwe_out_infos, &key_infos),
+                | GLWE::trace_inplace_scratch_space(module, &glwe_out_infos, &key_infos),
         );
 
-        let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(&glwe_out_infos);
+        let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_out_infos);
         sk.fill_ternary_prob(0.5, &mut source_xs);
         let sk_dft: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
 
@@ -135,8 +135,8 @@ where
         );
 
         let mut auto_keys: HashMap<i64, AutomorphismKeyPrepared<Vec<u8>, B>> = HashMap::new();
-        let gal_els: Vec<i64> = GLWECiphertext::trace_galois_elements(module);
-        let mut tmp: AutomorphismKey<Vec<u8>> = AutomorphismKey::alloc(&key_infos);
+        let gal_els: Vec<i64> = GLWE::trace_galois_elements(module);
+        let mut tmp: AutomorphismKey<Vec<u8>> = AutomorphismKey::alloc_from_infos(&key_infos);
         gal_els.iter().for_each(|gal_el| {
             tmp.encrypt_sk(
                 module,

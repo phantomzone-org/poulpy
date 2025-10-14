@@ -27,7 +27,7 @@ impl AutomorphismKey<Vec<u8>> {
             infos.rank_out(),
             "rank_in != rank_out is not supported for GGLWEAutomorphismKey"
         );
-        GLWESwitchingKey::encrypt_sk_scratch_space(module, infos) + GLWESecret::alloc_bytes(&infos.glwe_layout())
+        GLWESwitchingKey::encrypt_sk_scratch_space(module, infos) + GLWESecret::bytes_of(&infos.glwe_layout())
     }
 
     pub fn encrypt_pk_scratch_space<BE: Backend, A>(module: &Module<BE>, _infos: &A) -> usize

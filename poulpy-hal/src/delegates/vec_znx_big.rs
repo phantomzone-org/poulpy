@@ -53,8 +53,8 @@ impl<B> VecZnxBigAllocBytes for Module<B>
 where
     B: Backend + VecZnxBigAllocBytesImpl<B>,
 {
-    fn vec_znx_big_alloc_bytes(&self, cols: usize, size: usize) -> usize {
-        B::vec_znx_big_alloc_bytes_impl(self.n(), cols, size)
+    fn vec_znx_big_bytes_of(&self, cols: usize, size: usize) -> usize {
+        B::vec_znx_big_bytes_of_impl(self.n(), cols, size)
     }
 }
 

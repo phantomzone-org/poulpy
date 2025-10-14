@@ -1,11 +1,14 @@
 use poulpy_hal::{
-    layouts::{Data, DataMut, DataRef, ReaderFrom, ScalarZnx, ScalarZnxToMut, ScalarZnxToRef, WriterTo, ZnxInfos, ZnxZero},
+    layouts::{
+        Backend, Data, DataMut, DataRef, Module, ReaderFrom, ScalarZnx, ScalarZnxToMut, ScalarZnxToRef, WriterTo, ZnxInfos,
+        ZnxZero,
+    },
     source::Source,
 };
 
 use crate::{
     dist::Distribution,
-    layouts::{Base2K, Degree, GLWEInfos, LWEInfos, Rank, TorusPrecision},
+    layouts::{Base2K, Degree, GLWEInfos, GetDegree, LWEInfos, Rank, TorusPrecision},
 };
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
@@ -67,30 +70,65 @@ impl<D: Data> GLWEInfos for GLWESecret<D> {
     }
 }
 
-impl GLWESecret<Vec<u8>> {
-    pub fn alloc<A>(infos: &A) -> Self
-    where
-        A: GLWEInfos,
-    {
-        Self::alloc_with(infos.n(), infos.rank())
-    }
-
-    pub fn alloc_with(n: Degree, rank: Rank) -> Self {
-        Self {
-            data: ScalarZnx::alloc(n.into(), rank.into()),
+pub trait GLWESecretAlloc
+where
+    Self: GetDegree,
+{
+    fn alloc_glwe_secret(&self, rank: Rank) -> GLWESecret<Vec<u8>> {
+        GLWESecret {
+            data: ScalarZnx::alloc(self.n().into(), rank.into()),
             dist: Distribution::NONE,
         }
     }
 
-    pub fn alloc_bytes<A>(infos: &A) -> usize
+    fn alloc_glwe_secret_from_infos<A>(&self, infos: &A) -> GLWESecret<Vec<u8>>
     where
         A: GLWEInfos,
     {
-        Self::alloc_bytes_with(infos.n(), infos.rank())
+        self.alloc_glwe_secret(infos.rank())
     }
 
-    pub fn alloc_bytes_with(n: Degree, rank: Rank) -> usize {
-        ScalarZnx::alloc_bytes(n.into(), rank.into())
+    fn bytes_of_glwe_secret(&self, rank: Rank) -> usize {
+        ScalarZnx::bytes_of(self.n().into(), rank.into())
+    }
+
+    fn bytes_of_glwe_secret_from_infos<A>(&self, infos: &A) -> usize
+    where
+        A: GLWEInfos,
+    {
+        self.bytes_of_glwe_secret(infos.rank())
+    }
+}
+
+impl GLWESecret<Vec<u8>> {
+    pub fn alloc_from_infos<A, B: Backend>(module: Module<B>, infos: &A) -> Self
+    where
+        A: GLWEInfos,
+        Module<B>: GLWESecretAlloc,
+    {
+        module.alloc_glwe_secret_from_infos(infos)
+    }
+
+    pub fn alloc<B: Backend>(module: Module<B>, rank: Rank) -> Self
+    where
+        Module<B>: GLWESecretAlloc,
+    {
+        module.alloc_glwe_secret(rank)
+    }
+
+    pub fn bytes_of_from_infos<A, B: Backend>(module: Module<B>, infos: &A) -> usize
+    where
+        A: GLWEInfos,
+        Module<B>: GLWESecretAlloc,
+    {
+        module.bytes_of_glwe_secret_from_infos(infos)
+    }
+
+    pub fn bytes_of<B: Backend>(module: Module<B>, rank: Rank) -> usize
+    where
+        Module<B>: GLWESecretAlloc,
+    {
+        module.bytes_of_glwe_secret(rank)
     }
 }
 

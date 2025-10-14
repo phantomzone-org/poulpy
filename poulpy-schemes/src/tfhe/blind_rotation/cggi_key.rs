@@ -15,7 +15,7 @@ use poulpy_core::{
     Distribution,
     layouts::{
         GGSW, GGSWInfos, LWESecret,
-        compressed::GGSWCiphertextCompressed,
+        compressed::GGSWCompressed,
         prepared::{GGSWPrepared, GLWESecretPrepared},
     },
 };
@@ -32,7 +32,7 @@ impl BlindRotationKeyAlloc for BlindRotationKey<Vec<u8>, CGGI> {
     {
         let mut data: Vec<GGSW<Vec<u8>>> = Vec::with_capacity(infos.n_lwe().into());
         for _ in 0..infos.n_lwe().as_usize() {
-            data.push(GGSW::alloc(infos));
+            data.push(GGSW::alloc_from_infos(infos));
         }
 
         Self {
@@ -137,8 +137,8 @@ impl BlindRotationKeyCompressed<Vec<u8>, CGGI> {
     where
         A: BlindRotationKeyInfos,
     {
-        let mut data: Vec<GGSWCiphertextCompressed<Vec<u8>>> = Vec::with_capacity(infos.n_lwe().into());
-        (0..infos.n_lwe().as_usize()).for_each(|_| data.push(GGSWCiphertextCompressed::alloc(infos)));
+        let mut data: Vec<GGSWCompressed<Vec<u8>>> = Vec::with_capacity(infos.n_lwe().into());
+        (0..infos.n_lwe().as_usize()).for_each(|_| data.push(GGSWCompressed::alloc_from_infos(infos)));
         Self {
             keys: data,
             dist: Distribution::NONE,
@@ -151,7 +151,7 @@ impl BlindRotationKeyCompressed<Vec<u8>, CGGI> {
         A: GGSWInfos,
         Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes,
     {
-        GGSWCiphertextCompressed::encrypt_sk_scratch_space(module, infos)
+        GGSWCompressed::encrypt_sk_scratch_space(module, infos)
     }
 }
 

@@ -23,8 +23,7 @@ use crate::tfhe::blind_rotation::{
 };
 
 use poulpy_core::layouts::{
-    GLWECiphertext, GLWECiphertextLayout, GLWEPlaintext, GLWESecret, LWECiphertext, LWECiphertextLayout, LWECiphertextToRef,
-    LWEInfos, LWEPlaintext, LWESecret,
+    GLWE, GLWELayout, GLWEPlaintext, GLWESecret, LWE, LWECiphertextLayout, LWECiphertextToRef, LWEInfos, LWEPlaintext, LWESecret,
     prepared::{GLWESecretPrepared, PrepareAlloc},
 };
 
@@ -111,7 +110,7 @@ where
         rank: rank.into(),
     };
 
-    let glwe_infos: GLWECiphertextLayout = GLWECiphertextLayout {
+    let glwe_infos: GLWELayout = GLWELayout {
         n: n_glwe.into(),
         base2k: base2k.into(),
         k: k_res.into(),
@@ -128,7 +127,7 @@ where
         module, &brk_infos,
     ));
 
-    let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc(&glwe_infos);
+    let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_infos);
     sk_glwe.fill_ternary_prob(0.5, &mut source_xs);
     let sk_glwe_dft: GLWESecretPrepared<Vec<u8>, B> = sk_glwe.prepare_alloc(module, scratch.borrow());
 
@@ -154,9 +153,9 @@ where
         scratch.borrow(),
     );
 
-    let mut lwe: LWECiphertext<Vec<u8>> = LWECiphertext::alloc(&lwe_infos);
+    let mut lwe: LWE<Vec<u8>> = LWE::alloc_from_infos(&lwe_infos);
 
-    let mut pt_lwe: LWEPlaintext<Vec<u8>> = LWEPlaintext::alloc(&lwe_infos);
+    let mut pt_lwe: LWEPlaintext<Vec<u8>> = LWEPlaintext::alloc_from_infos(&lwe_infos);
 
     let x: i64 = 15 % (message_modulus as i64);
 
@@ -175,13 +174,13 @@ where
     let mut lut: LookUpTable = LookUpTable::alloc(module, base2k, k_lut, extension_factor);
     lut.set(module, &f_vec, log_message_modulus + 1);
 
-    let mut res: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&glwe_infos);
+    let mut res: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_infos);
 
     let brk_prepared: BlindRotationKeyPrepared<Vec<u8>, CGGI, B> = brk.prepare_alloc(module, scratch.borrow());
 
     brk_prepared.execute(module, &mut res, &lwe, &lut, scratch_br.borrow());
 
-    let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&glwe_infos);
+    let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_infos);
 
     res.decrypt(module, &mut pt_have, &sk_glwe_dft, scratch.borrow());
 

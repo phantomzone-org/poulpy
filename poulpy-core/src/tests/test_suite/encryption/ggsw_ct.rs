@@ -18,7 +18,7 @@ use crate::{
     encryption::SIGMA,
     layouts::{
         GGSW, GGSWCiphertextLayout, GLWESecret,
-        compressed::{Decompress, GGSWCiphertextCompressed},
+        compressed::{Decompress, GGSWCompressed},
         prepared::{GLWESecretPrepared, PrepareAlloc},
     },
 };
@@ -45,7 +45,7 @@ where
                 rank: rank.into(),
             };
 
-            let mut ct: GGSW<Vec<u8>> = GGSW::alloc(&ggsw_infos);
+            let mut ct: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_infos);
 
             let mut pt_scalar: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n, 1);
 
@@ -57,7 +57,7 @@ where
 
             let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GGSW::encrypt_sk_scratch_space(module, &ggsw_infos));
 
-            let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(&ggsw_infos);
+            let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&ggsw_infos);
             sk.fill_ternary_prob(0.5, &mut source_xs);
             let sk_prepared: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
 
@@ -135,7 +135,7 @@ where
                 rank: rank.into(),
             };
 
-            let mut ct_compressed: GGSWCiphertextCompressed<Vec<u8>> = GGSWCiphertextCompressed::alloc(&ggsw_infos);
+            let mut ct_compressed: GGSWCompressed<Vec<u8>> = GGSWCompressed::alloc_from_infos(&ggsw_infos);
 
             let mut pt_scalar: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n, 1);
 
@@ -144,12 +144,12 @@ where
 
             pt_scalar.fill_ternary_hw(0, n, &mut source_xs);
 
-            let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GGSWCiphertextCompressed::encrypt_sk_scratch_space(
+            let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GGSWCompressed::encrypt_sk_scratch_space(
                 module,
                 &ggsw_infos,
             ));
 
-            let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(&ggsw_infos);
+            let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&ggsw_infos);
             sk.fill_ternary_prob(0.5, &mut source_xs);
             let sk_prepared: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
 
@@ -166,7 +166,7 @@ where
 
             let noise_f = |_col_i: usize| -(k as f64) + SIGMA.log2() + 0.5;
 
-            let mut ct: GGSW<Vec<u8>> = GGSW::alloc(&ggsw_infos);
+            let mut ct: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_infos);
             ct.decompress(module, &ct_compressed);
 
             ct.assert_noise(module, &sk_prepared, &pt_scalar, noise_f);

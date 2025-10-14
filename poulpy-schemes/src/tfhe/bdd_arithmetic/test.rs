@@ -4,7 +4,7 @@ use poulpy_backend::FFT64Ref;
 use poulpy_core::{
     TakeGGSW, TakeGLWEPt,
     layouts::{
-        GGSWCiphertextLayout, GLWECiphertextLayout, GLWESecret, LWEInfos, LWESecret,
+        GGSWCiphertextLayout, GLWELayout, GLWESecret, LWEInfos, LWESecret,
         prepared::{GLWESecretPrepared, PrepareAlloc},
     },
 };
@@ -107,7 +107,7 @@ where
     BlindRotationKeyPrepared<Vec<u8>, BRA, BE>: BlincRotationExecute<BE>,
     BlindRotationKey<Vec<u8>, BRA>: BlindRotationKeyAlloc + BlindRotationKeyEncryptSk<BE>,
 {
-    let glwe_infos: GLWECiphertextLayout = TEST_GLWE_INFOS;
+    let glwe_infos: GLWELayout = TEST_GLWE_INFOS;
     let ggsw_infos: GGSWCiphertextLayout = TEST_GGSW_INFOS;
 
     let n_glwe: usize = glwe_infos.n().into();
@@ -120,7 +120,7 @@ where
 
     let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(1 << 22);
 
-    let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc(&glwe_infos);
+    let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_infos);
     sk_glwe.fill_ternary_prob(0.5, &mut source_xs);
     let sk_glwe_prep: GLWESecretPrepared<Vec<u8>, BE> = sk_glwe.prepare_alloc(&module, scratch.borrow());
 

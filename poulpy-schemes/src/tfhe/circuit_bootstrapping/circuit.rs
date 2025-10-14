@@ -20,7 +20,7 @@ use poulpy_core::{
 };
 
 use poulpy_core::glwe_packing;
-use poulpy_core::layouts::{GGSW, GLWECiphertext, LWECiphertext, prepared::AutomorphismKeyPrepared};
+use poulpy_core::layouts::{GGSW, GLWE, LWE, prepared::AutomorphismKeyPrepared};
 
 use crate::tfhe::{
     blind_rotation::{
@@ -75,7 +75,7 @@ where
         &self,
         module: &Module<B>,
         res: &mut GGSW<DM>,
-        lwe: &LWECiphertext<DR>,
+        lwe: &LWE<DR>,
         log_domain: usize,
         extension_factor: usize,
         scratch: &mut Scratch<B>,
@@ -98,7 +98,7 @@ where
         module: &Module<B>,
         log_gap_out: usize,
         res: &mut GGSW<DM>,
-        lwe: &LWECiphertext<DR>,
+        lwe: &LWE<DR>,
         log_domain: usize,
         extension_factor: usize,
         scratch: &mut Scratch<B>,
@@ -123,7 +123,7 @@ pub fn circuit_bootstrap_core<DRes, DLwe, DBrk, BRA: BlindRotationAlgo, B>(
     module: &Module<B>,
     log_gap_out: usize,
     res: &mut GGSW<DRes>,
-    lwe: &LWECiphertext<DLwe>,
+    lwe: &LWE<DLwe>,
     log_domain: usize,
     extension_factor: usize,
     key: &CircuitBootstrappingKeyPrepared<DBrk, BRA, B>,
@@ -233,7 +233,7 @@ pub fn circuit_bootstrap_core<DRes, DLwe, DBrk, BRA: BlindRotationAlgo, B>(
     let log_gap_in: usize = (usize::BITS - (gap * alpha - 1).leading_zeros()) as _;
 
     (0..dnum).for_each(|i| {
-        let mut tmp_glwe: GLWECiphertext<&mut [u8]> = tmp_gglwe.at_mut(i, 0);
+        let mut tmp_glwe: GLWE<&mut [u8]> = tmp_gglwe.at_mut(i, 0);
 
         if to_exponent {
             // Isolates i-th LUT and moves coefficients according to requested gap.
@@ -263,8 +263,8 @@ pub fn circuit_bootstrap_core<DRes, DLwe, DBrk, BRA: BlindRotationAlgo, B>(
 #[allow(clippy::too_many_arguments)]
 fn post_process<DataRes, DataA, B: Backend>(
     module: &Module<B>,
-    res: &mut GLWECiphertext<DataRes>,
-    a: &GLWECiphertext<DataA>,
+    res: &mut GLWE<DataRes>,
+    a: &GLWE<DataA>,
     log_gap_in: usize,
     log_gap_out: usize,
     log_domain: usize,
@@ -303,7 +303,7 @@ fn post_process<DataRes, DataA, B: Backend>(
 {
     let log_n: usize = module.log_n();
 
-    let mut cts: HashMap<usize, &mut GLWECiphertext<Vec<u8>>> = HashMap::new();
+    let mut cts: HashMap<usize, &mut GLWE<Vec<u8>>> = HashMap::new();
 
     // First partial trace, vanishes all coefficients which are not multiples of gap_in
     // [1, 1, 1, 1, 0, 0, 0, ..., 0, 0, -1, -1, -1, -1] -> [1, 0, 0, 0, 0, 0, 0, ..., 0, 0, 0, 0, 0, 0]
@@ -322,7 +322,7 @@ fn post_process<DataRes, DataA, B: Backend>(
         let steps: usize = 1 << log_domain;
 
         // TODO: from Scratch
-        let mut cts_vec: Vec<GLWECiphertext<Vec<u8>>> = Vec::new();
+        let mut cts_vec: Vec<GLWE<Vec<u8>>> = Vec::new();
 
         for i in 0..steps {
             if i != 0 {
@@ -336,7 +336,7 @@ fn post_process<DataRes, DataA, B: Backend>(
         }
 
         glwe_packing(module, &mut cts, log_gap_out, auto_keys, scratch);
-        let packed: &mut GLWECiphertext<Vec<u8>> = cts.remove(&0).unwrap();
+        let packed: &mut GLWE<Vec<u8>> = cts.remove(&0).unwrap();
         res.trace(
             module,
             log_n - log_gap_out,

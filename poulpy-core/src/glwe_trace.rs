@@ -11,11 +11,11 @@ use poulpy_hal::{
 
 use crate::{
     TakeGLWECt,
-    layouts::{Base2K, GGLWEInfos, GLWECiphertext, GLWECiphertextLayout, GLWEInfos, LWEInfos, prepared::AutomorphismKeyPrepared},
+    layouts::{Base2K, GGLWEInfos, GLWE, GLWEInfos, GLWELayout, LWEInfos, prepared::AutomorphismKeyPrepared},
     operations::GLWEOperations,
 };
 
-impl GLWECiphertext<Vec<u8>> {
+impl GLWE<Vec<u8>> {
     pub fn trace_galois_elements<B: Backend>(module: &Module<B>) -> Vec<i64> {
         let mut gal_els: Vec<i64> = Vec::new();
         (0..module.log_n()).for_each(|i| {
@@ -42,7 +42,7 @@ impl GLWECiphertext<Vec<u8>> {
     {
         let trace: usize = Self::automorphism_inplace_scratch_space(module, out_infos, key_infos);
         if in_infos.base2k() != key_infos.base2k() {
-            let glwe_conv: usize = VecZnx::alloc_bytes(
+            let glwe_conv: usize = VecZnx::bytes_of(
                 module.n(),
                 (key_infos.rank_out() + 1).into(),
                 out_infos.k().min(in_infos.k()).div_ceil(key_infos.base2k()) as usize,
@@ -63,13 +63,13 @@ impl GLWECiphertext<Vec<u8>> {
     }
 }
 
-impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
+impl<DataSelf: DataMut> GLWE<DataSelf> {
     pub fn trace<DataLhs: DataRef, DataAK: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
         start: usize,
         end: usize,
-        lhs: &GLWECiphertext<DataLhs>,
+        lhs: &GLWE<DataLhs>,
         auto_keys: &HashMap<i64, AutomorphismKeyPrepared<DataAK, B>>,
         scratch: &mut Scratch<B>,
     ) where
@@ -135,7 +135,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         }
 
         if self.base2k() != basek_ksk {
-            let (mut self_conv, scratch_1) = scratch.take_glwe_ct(&GLWECiphertextLayout {
+            let (mut self_conv, scratch_1) = scratch.take_glwe_ct(&GLWELayout {
                 n: module.n().into(),
                 base2k: basek_ksk,
                 k: self.k(),

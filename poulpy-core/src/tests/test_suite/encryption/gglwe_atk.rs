@@ -84,7 +84,7 @@ where
                 rank: rank.into(),
             };
 
-            let mut atk: AutomorphismKey<Vec<u8>> = AutomorphismKey::alloc(&atk_infos);
+            let mut atk: AutomorphismKey<Vec<u8>> = AutomorphismKey::alloc_from_infos(&atk_infos);
 
             let mut source_xs: Source = Source::new([0u8; 32]);
             let mut source_xe: Source = Source::new([0u8; 32]);
@@ -94,7 +94,7 @@ where
                 module, &atk_infos,
             ));
 
-            let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(&atk_infos);
+            let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&atk_infos);
             sk.fill_ternary_prob(0.5, &mut source_xs);
 
             let p = -5;
@@ -187,7 +187,7 @@ where
                 rank: rank.into(),
             };
 
-            let mut atk_compressed: AutomorphismKeyCompressed<Vec<u8>> = AutomorphismKeyCompressed::alloc(&atk_infos);
+            let mut atk_compressed: AutomorphismKeyCompressed<Vec<u8>> = AutomorphismKeyCompressed::alloc_from_infos(&atk_infos);
 
             let mut source_xs: Source = Source::new([0u8; 32]);
             let mut source_xe: Source = Source::new([0u8; 32]);
@@ -196,7 +196,7 @@ where
                 module, &atk_infos,
             ));
 
-            let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(&atk_infos);
+            let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&atk_infos);
             sk.fill_ternary_prob(0.5, &mut source_xs);
 
             let p = -5;
@@ -217,7 +217,7 @@ where
             });
             let sk_out_prepared = sk_out.prepare_alloc(module, scratch.borrow());
 
-            let mut atk: AutomorphismKey<Vec<u8>> = AutomorphismKey::alloc(&atk_infos);
+            let mut atk: AutomorphismKey<Vec<u8>> = AutomorphismKey::alloc_from_infos(&atk_infos);
             atk.decompress(module, &atk_compressed);
 
             atk.key

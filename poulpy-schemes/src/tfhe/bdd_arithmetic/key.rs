@@ -11,7 +11,7 @@ use crate::tfhe::{
 use poulpy_core::{
     TakeGGSW, TakeGLWECt,
     layouts::{
-        GLWESecret, GLWEToLWEKeyLayout, GLWEToLWESwitchingKey, LWECiphertext, LWESecret,
+        GLWESecret, GLWEToLWEKeyLayout, GLWEToLWESwitchingKey, LWE, LWESecret,
         prepared::{GLWEToLWESwitchingKeyPrepared, Prepare, PrepareAlloc},
     },
 };
@@ -182,7 +182,7 @@ where
         {
             assert_eq!(out.blocks.len(), bits.blocks.len());
         }
-        let mut lwe: LWECiphertext<Vec<u8>> = LWECiphertext::alloc(&bits.blocks[0]); //TODO: add TakeLWE
+        let mut lwe: LWE<Vec<u8>> = LWE::alloc(&bits.blocks[0]); //TODO: add TakeLWE
         let (mut tmp_ggsw, scratch_1) = scratch.take_ggsw(out);
         for (dst, src) in out.blocks.iter_mut().zip(bits.blocks.iter()) {
             lwe.from_glwe(module, src, &self.ks, scratch_1);
@@ -231,7 +231,7 @@ where
         {
             assert_eq!(out.blocks.len(), bits.blocks.len());
         }
-        let mut lwe: LWECiphertext<Vec<u8>> = LWECiphertext::alloc(&bits.blocks[0]); //TODO: add TakeLWE
+        let mut lwe: LWE<Vec<u8>> = LWE::alloc(&bits.blocks[0]); //TODO: add TakeLWE
         for (dst, src) in out.blocks.iter_mut().zip(bits.blocks.iter()) {
             lwe.from_glwe(module, src, &self.ks, scratch);
             self.cbt

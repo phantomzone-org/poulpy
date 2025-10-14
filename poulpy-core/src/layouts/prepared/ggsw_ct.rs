@@ -53,7 +53,7 @@ pub trait GGSWPreparedAlloc<B: Backend>
 where
     Self: GetDegree + VmpPMatAlloc<B> + VmpPMatAllocBytes,
 {
-    fn ggsw_prepared_alloc(
+    fn alloc_ggsw_prepared(
         &self,
         base2k: Base2K,
         k: TorusPrecision,
@@ -88,12 +88,12 @@ where
         }
     }
 
-    fn ggsw_prepared_alloc_from_infos<A>(&self, infos: &A) -> GGSWPrepared<Vec<u8>, B>
+    fn alloc_ggsw_prepared_from_infos<A>(&self, infos: &A) -> GGSWPrepared<Vec<u8>, B>
     where
         A: GGSWInfos,
     {
         assert_eq!(self.n(), infos.n());
-        self.ggsw_prepared_alloc(
+        self.alloc_ggsw_prepared(
             infos.base2k(),
             infos.k(),
             infos.dnum(),
@@ -102,7 +102,7 @@ where
         )
     }
 
-    fn ggsw_prepared_alloc_bytes(&self, base2k: Base2K, k: TorusPrecision, dnum: Dnum, dsize: Dsize, rank: Rank) -> usize {
+    fn bytes_of_ggsw_prepared(&self, base2k: Base2K, k: TorusPrecision, dnum: Dnum, dsize: Dsize, rank: Rank) -> usize {
         let size: usize = k.0.div_ceil(base2k.0) as usize;
         debug_assert!(
             size as u32 > dsize.0,
@@ -117,15 +117,15 @@ where
             dsize.0,
         );
 
-        self.vmp_pmat_alloc_bytes(dnum.into(), (rank + 1).into(), (rank + 1).into(), size)
+        self.vmp_pmat_bytes_of(dnum.into(), (rank + 1).into(), (rank + 1).into(), size)
     }
 
-    fn ggsw_prepared_alloc_bytes_from_infos<A>(&self, infos: &A) -> usize
+    fn bytes_of_ggsw_prepared_from_infos<A>(&self, infos: &A) -> usize
     where
         A: GGSWInfos,
     {
         assert_eq!(self.n(), infos.n());
-        self.ggsw_prepared_alloc_bytes(
+        self.bytes_of_ggsw_prepared(
             infos.base2k(),
             infos.k(),
             infos.dnum(),
@@ -145,29 +145,22 @@ where
     where
         A: GGSWInfos,
     {
-        module.ggsw_prepared_alloc_from_infos(infos)
+        module.alloc_ggsw_prepared_from_infos(infos)
     }
 
     pub fn alloc(module: &Module<B>, base2k: Base2K, k: TorusPrecision, dnum: Dnum, dsize: Dsize, rank: Rank) -> Self {
-        module.ggsw_prepared_alloc(base2k, k, dnum, dsize, rank)
+        module.alloc_ggsw_prepared(base2k, k, dnum, dsize, rank)
     }
 
-    pub fn alloc_bytes<A>(module: &Module<B>, infos: &A) -> usize
+    pub fn bytes_of_from_infos<A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GGSWInfos,
     {
-        module.ggsw_prepared_alloc_bytes_from_infos(infos)
+        module.bytes_of_ggsw_prepared_from_infos(infos)
     }
 
-    pub fn alloc_bytes_with(
-        module: &Module<B>,
-        base2k: Base2K,
-        k: TorusPrecision,
-        dnum: Dnum,
-        dsize: Dsize,
-        rank: Rank,
-    ) -> usize {
-        module.ggsw_prepared_alloc_bytes(base2k, k, dnum, dsize, rank)
+    pub fn bytes_of(module: &Module<B>, base2k: Base2K, k: TorusPrecision, dnum: Dnum, dsize: Dsize, rank: Rank) -> usize {
+        module.bytes_of_ggsw_prepared(base2k, k, dnum, dsize, rank)
     }
 }
 

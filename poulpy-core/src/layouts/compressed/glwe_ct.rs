@@ -6,12 +6,12 @@ use poulpy_hal::{
     source::Source,
 };
 
-use crate::layouts::{Base2K, Degree, GLWECiphertext, GLWEInfos, LWEInfos, Rank, TorusPrecision, compressed::Decompress};
+use crate::layouts::{Base2K, Degree, GLWE, GLWEInfos, GLWEToMut, GetDegree, LWEInfos, Rank, SetGLWEInfos, TorusPrecision};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::fmt;
 
 #[derive(PartialEq, Eq, Clone)]
-pub struct GLWECiphertextCompressed<D: Data> {
+pub struct GLWECompressed<D: Data> {
     pub(crate) data: VecZnx<D>,
     pub(crate) base2k: Base2K,
     pub(crate) k: TorusPrecision,
@@ -19,7 +19,7 @@ pub struct GLWECiphertextCompressed<D: Data> {
     pub(crate) seed: [u8; 32],
 }
 
-impl<D: Data> LWEInfos for GLWECiphertextCompressed<D> {
+impl<D: Data> LWEInfos for GLWECompressed<D> {
     fn base2k(&self) -> Base2K {
         self.base2k
     }
@@ -36,23 +36,23 @@ impl<D: Data> LWEInfos for GLWECiphertextCompressed<D> {
         Degree(self.data.n() as u32)
     }
 }
-impl<D: Data> GLWEInfos for GLWECiphertextCompressed<D> {
+impl<D: Data> GLWEInfos for GLWECompressed<D> {
     fn rank(&self) -> Rank {
         self.rank
     }
 }
 
-impl<D: DataRef> fmt::Debug for GLWECiphertextCompressed<D> {
+impl<D: DataRef> fmt::Debug for GLWECompressed<D> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{self}")
     }
 }
 
-impl<D: DataRef> fmt::Display for GLWECiphertextCompressed<D> {
+impl<D: DataRef> fmt::Display for GLWECompressed<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "GLWECiphertextCompressed: base2k={} k={} rank={} seed={:?}: {}",
+            "GLWECompressed: base2k={} k={} rank={} seed={:?}: {}",
             self.base2k(),
             self.k(),
             self.rank(),
@@ -62,23 +62,19 @@ impl<D: DataRef> fmt::Display for GLWECiphertextCompressed<D> {
     }
 }
 
-impl<D: DataMut> FillUniform for GLWECiphertextCompressed<D> {
+impl<D: DataMut> FillUniform for GLWECompressed<D> {
     fn fill_uniform(&mut self, log_bound: usize, source: &mut Source) {
         self.data.fill_uniform(log_bound, source);
     }
 }
 
-impl GLWECiphertextCompressed<Vec<u8>> {
-    pub fn alloc<A>(infos: &A) -> Self
-    where
-        A: GLWEInfos,
-    {
-        Self::alloc_with(infos.n(), infos.base2k(), infos.k(), infos.rank())
-    }
-
-    pub fn alloc_with(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank) -> Self {
-        Self {
-            data: VecZnx::alloc(n.into(), 1, k.0.div_ceil(base2k.0) as usize),
+pub trait GLWECompressedAlloc
+where
+    Self: GetDegree,
+{
+    fn alloc_glwe_compressed(&self, base2k: Base2K, k: TorusPrecision, rank: Rank) -> GLWECompressed<Vec<u8>> {
+        GLWECompressed {
+            data: VecZnx::alloc(self.n().into(), 1, k.0.div_ceil(base2k.0) as usize),
             base2k,
             k,
             rank,
@@ -86,19 +82,62 @@ impl GLWECiphertextCompressed<Vec<u8>> {
         }
     }
 
-    pub fn alloc_bytes<A>(infos: &A) -> usize
+    fn alloc_glwe_compressed_from_infos<A>(&self, infos: &A) -> GLWECompressed<Vec<u8>>
     where
         A: GLWEInfos,
     {
-        Self::alloc_bytes_with(infos.n(), infos.base2k(), infos.k())
+        assert_eq!(self.n(), infos.n());
+        self.alloc_glwe_compressed(infos.base2k(), infos.k(), infos.rank())
     }
 
-    pub fn alloc_bytes_with(n: Degree, base2k: Base2K, k: TorusPrecision) -> usize {
-        VecZnx::alloc_bytes(n.into(), 1, k.0.div_ceil(base2k.0) as usize)
+    fn bytes_of_glwe_compressed(&self, base2k: Base2K, k: TorusPrecision) -> usize {
+        VecZnx::bytes_of(self.n().into(), 1, k.0.div_ceil(base2k.0) as usize)
+    }
+
+    fn bytes_of_glwe_compressed_from_infos<A>(&self, infos: &A) -> usize
+    where
+        A: GLWEInfos,
+    {
+        assert_eq!(self.n(), infos.n());
+        self.bytes_of_glwe_compressed(infos.base2k(), infos.k())
     }
 }
 
-impl<D: DataMut> ReaderFrom for GLWECiphertextCompressed<D> {
+impl<B: Backend> GLWECompressedAlloc for Module<B> where Self: GetDegree {}
+
+impl GLWECompressed<Vec<u8>> {
+    pub fn alloc_from_infos<A, B: Backend>(module: &Module<B>, infos: &A) -> Self
+    where
+        A: GLWEInfos,
+        Module<B>: GLWECompressedAlloc,
+    {
+        module.alloc_glwe_compressed_from_infos(infos)
+    }
+
+    pub fn alloc<B: Backend>(module: &Module<B>, base2k: Base2K, k: TorusPrecision, rank: Rank) -> Self
+    where
+        Module<B>: GLWECompressedAlloc,
+    {
+        module.alloc_glwe_compressed(base2k, k, rank)
+    }
+
+    pub fn bytes_of_from_infos<A, B: Backend>(module: &Module<B>, infos: &A) -> usize
+    where
+        A: GLWEInfos,
+        Module<B>: GLWECompressedAlloc,
+    {
+        module.bytes_of_glwe_compressed_from_infos(infos)
+    }
+
+    pub fn bytes_of<B: Backend>(module: &Module<B>, base2k: Base2K, k: TorusPrecision) -> usize
+    where
+        Module<B>: GLWECompressedAlloc,
+    {
+        module.bytes_of_glwe_compressed(base2k, k)
+    }
+}
+
+impl<D: DataMut> ReaderFrom for GLWECompressed<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         self.k = TorusPrecision(reader.read_u32::<LittleEndian>()?);
         self.base2k = Base2K(reader.read_u32::<LittleEndian>()?);
@@ -108,7 +147,7 @@ impl<D: DataMut> ReaderFrom for GLWECiphertextCompressed<D> {
     }
 }
 
-impl<D: DataRef> WriterTo for GLWECiphertextCompressed<D> {
+impl<D: DataRef> WriterTo for GLWECompressed<D> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         writer.write_u32::<LittleEndian>(self.k.into())?;
         writer.write_u32::<LittleEndian>(self.base2k.into())?;
@@ -118,74 +157,61 @@ impl<D: DataRef> WriterTo for GLWECiphertextCompressed<D> {
     }
 }
 
-impl<D: DataMut, B: Backend, DR: DataRef> Decompress<B, GLWECiphertextCompressed<DR>> for GLWECiphertext<D>
+pub trait GLWEDecompress
 where
-    Module<B>: VecZnxFillUniform + VecZnxCopy,
+    Self: GetDegree + VecZnxFillUniform + VecZnxCopy,
 {
-    fn decompress(&mut self, module: &Module<B>, other: &GLWECiphertextCompressed<DR>) {
-        #[cfg(debug_assertions)]
-        {
-            assert_eq!(
-                self.n(),
-                other.n(),
-                "invalid receiver: self.n()={} != other.n()={}",
-                self.n(),
-                other.n()
-            );
-            assert_eq!(
-                self.size(),
-                other.size(),
-                "invalid receiver: self.size()={} != other.size()={}",
-                self.size(),
-                other.size()
-            );
-            assert_eq!(
-                self.rank(),
-                other.rank(),
-                "invalid receiver: self.rank()={} != other.rank()={}",
-                self.rank(),
-                other.rank()
-            );
-        }
-
-        let mut source: Source = Source::new(other.seed);
-        self.decompress_internal(module, other, &mut source);
-    }
-}
-
-impl<D: DataMut> GLWECiphertext<D> {
-    pub(crate) fn decompress_internal<DataOther, B: Backend>(
-        &mut self,
-        module: &Module<B>,
-        other: &GLWECiphertextCompressed<DataOther>,
-        source: &mut Source,
-    ) where
-        DataOther: DataRef,
-        Module<B>: VecZnxCopy + VecZnxFillUniform,
+    fn decompress_glwe<R, O>(&self, res: &mut R, other: &O)
+    where
+        R: GLWEToMut + SetGLWEInfos,
+        O: GLWECompressedToRef + GLWEInfos,
     {
-        #[cfg(debug_assertions)]
         {
-            assert_eq!(self.rank(), other.rank());
-            debug_assert_eq!(self.size(), other.size());
+            let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
+            let other: &GLWECompressed<&[u8]> = &other.to_ref();
+            assert_eq!(
+                res.n(),
+                self.n(),
+                "invalid receiver: res.n()={} != other.n()={}",
+                res.n(),
+                self.n()
+            );
+
+            assert_eq!(res.lwe_layout(), other.lwe_layout());
+            assert_eq!(res.glwe_layout(), other.glwe_layout());
+
+            let mut source: Source = Source::new(other.seed);
+
+            self.vec_znx_copy(&mut res.data, 0, &other.data, 0);
+            (1..(other.rank() + 1).into()).for_each(|i| {
+                self.vec_znx_fill_uniform(other.base2k.into(), &mut res.data, i, &mut source);
+            });
         }
 
-        module.vec_znx_copy(&mut self.data, 0, &other.data, 0);
-        (1..(other.rank() + 1).into()).for_each(|i| {
-            module.vec_znx_fill_uniform(other.base2k.into(), &mut self.data, i, source);
-        });
-
-        self.base2k = other.base2k;
-        self.k = other.k;
+        res.set_base2k(other.base2k());
+        res.set_k(other.k());
     }
 }
 
-pub trait GLWECiphertextCompressedToRef {
-    fn to_ref(&self) -> GLWECiphertextCompressed<&[u8]>;
+impl<B: Backend> GLWEDecompress for Module<B> where Self: GetDegree + VecZnxFillUniform + VecZnxCopy {}
+
+impl<D: DataMut> GLWE<D> {
+    pub fn decompress<O, B: Backend>(&mut self, module: &Module<B>, other: &O)
+    where
+        O: GLWECompressedToRef + GLWEInfos,
+        Module<B>: GLWEDecompress,
+    {
+        module.decompress_glwe(self, other);
+    }
 }
 
-impl<D: DataRef> GLWECiphertextCompressedToRef for GLWECiphertextCompressed<D> {
-    fn to_ref(&self) -> GLWECiphertextCompressed<&[u8]> {
-        GLWECiphertextCompressed {
+pub trait GLWECompressedToRef {
+    fn to_ref(&self) -> GLWECompressed<&[u8]>;
+}
+
+impl<D: DataRef> GLWECompressedToRef for GLWECompressed<D> {
+    fn to_ref(&self) -> GLWECompressed<&[u8]> {
+        GLWECompressed {
             seed: self.seed.clone(),
             base2k: self.base2k,
             k: self.k,
@@ -195,13 +221,13 @@ impl<D: DataRef> GLWECiphertextCompressedToRef for GLWECiphertextCompressed<D> {
     }
 }
 
-pub trait GLWECiphertextCompressedToMut {
-    fn to_mut(&mut self) -> GLWECiphertextCompressed<&mut [u8]>;
+pub trait GLWECompressedToMut {
+    fn to_mut(&mut self) -> GLWECompressed<&mut [u8]>;
 }
 
-impl<D: DataMut> GLWECiphertextCompressedToMut for GLWECiphertextCompressed<D> {
-    fn to_mut(&mut self) -> GLWECiphertextCompressed<&mut [u8]> {
-        GLWECiphertextCompressed {
+impl<D: DataMut> GLWECompressedToMut for GLWECompressed<D> {
+    fn to_mut(&mut self) -> GLWECompressed<&mut [u8]> {
+        GLWECompressed {
             seed: self.seed.clone(),
             base2k: self.base2k,
             k: self.k,

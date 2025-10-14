@@ -1,6 +1,6 @@
 use poulpy_core::layouts::{
-    AutomorphismKey, AutomorphismKeyLayout, GGLWEInfos, GGSWInfos, GLWECiphertext, GLWEInfos, GLWESecret, LWEInfos, LWESecret,
-    TensorKey, TensorKeyLayout,
+    AutomorphismKey, AutomorphismKeyLayout, GGLWEInfos, GGSWInfos, GLWE, GLWEInfos, GLWESecret, LWEInfos, LWESecret, TensorKey,
+    TensorKeyLayout,
     prepared::{AutomorphismKeyPrepared, GLWESecretPrepared, PrepareAlloc, TensorKeyPrepared},
 };
 use std::collections::HashMap;
@@ -122,9 +122,9 @@ where
         let trk_infos: TensorKeyLayout = cbt_infos.tsk_infos();
 
         let mut auto_keys: HashMap<i64, AutomorphismKey<Vec<u8>>> = HashMap::new();
-        let gal_els: Vec<i64> = GLWECiphertext::trace_galois_elements(module);
+        let gal_els: Vec<i64> = GLWE::trace_galois_elements(module);
         gal_els.iter().for_each(|gal_el| {
-            let mut key: AutomorphismKey<Vec<u8>> = AutomorphismKey::alloc(&atk_infos);
+            let mut key: AutomorphismKey<Vec<u8>> = AutomorphismKey::alloc_from_infos(&atk_infos);
             key.encrypt_sk(module, *gal_el, sk_glwe, source_xa, source_xe, scratch);
             auto_keys.insert(*gal_el, key);
         });
@@ -141,7 +141,7 @@ where
             scratch,
         );
 
-        let mut tsk: TensorKey<Vec<u8>> = TensorKey::alloc(&trk_infos);
+        let mut tsk: TensorKey<Vec<u8>> = TensorKey::alloc_from_infos(&trk_infos);
         tsk.encrypt_sk(module, sk_glwe, source_xa, source_xe, scratch);
 
         Self {

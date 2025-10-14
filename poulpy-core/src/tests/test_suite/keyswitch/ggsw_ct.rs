@@ -121,10 +121,10 @@ where
                 rank_out: rank.into(),
             };
 
-            let mut ggsw_in: GGSW<Vec<u8>> = GGSW::alloc(&ggsw_in_infos);
-            let mut ggsw_out: GGSW<Vec<u8>> = GGSW::alloc(&ggsw_out_infos);
-            let mut tsk: TensorKey<Vec<u8>> = TensorKey::alloc(&tsk_infos);
-            let mut ksk: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc(&ksk_apply_infos);
+            let mut ggsw_in: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_in_infos);
+            let mut ggsw_out: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_out_infos);
+            let mut tsk: TensorKey<Vec<u8>> = TensorKey::alloc_from_infos(&tsk_infos);
+            let mut ksk: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc_from_infos(&ksk_apply_infos);
             let mut pt_scalar: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n, 1);
 
             let mut source_xs: Source = Source::new([0u8; 32]);
@@ -146,11 +146,11 @@ where
 
             let var_xs: f64 = 0.5;
 
-            let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc_with(n.into(), rank.into());
+            let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank.into());
             sk_in.fill_ternary_prob(var_xs, &mut source_xs);
             let sk_in_dft: GLWESecretPrepared<Vec<u8>, B> = sk_in.prepare_alloc(module, scratch.borrow());
 
-            let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc_with(n.into(), rank.into());
+            let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank.into());
             sk_out.fill_ternary_prob(var_xs, &mut source_xs);
             let sk_out_prepared: GLWESecretPrepared<Vec<u8>, B> = sk_out.prepare_alloc(module, scratch.borrow());
 
@@ -300,9 +300,9 @@ where
                 rank_out: rank.into(),
             };
 
-            let mut ggsw_out: GGSW<Vec<u8>> = GGSW::alloc(&ggsw_out_infos);
-            let mut tsk: TensorKey<Vec<u8>> = TensorKey::alloc(&tsk_infos);
-            let mut ksk: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc(&ksk_apply_infos);
+            let mut ggsw_out: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_out_infos);
+            let mut tsk: TensorKey<Vec<u8>> = TensorKey::alloc_from_infos(&tsk_infos);
+            let mut ksk: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc_from_infos(&ksk_apply_infos);
             let mut pt_scalar: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n, 1);
 
             let mut source_xs: Source = Source::new([0u8; 32]);
@@ -318,11 +318,11 @@ where
 
             let var_xs: f64 = 0.5;
 
-            let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc_with(n.into(), rank.into());
+            let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank.into());
             sk_in.fill_ternary_prob(var_xs, &mut source_xs);
             let sk_in_dft: GLWESecretPrepared<Vec<u8>, B> = sk_in.prepare_alloc(module, scratch.borrow());
 
-            let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc_with(n.into(), rank.into());
+            let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank.into());
             sk_out.fill_ternary_prob(var_xs, &mut source_xs);
             let sk_out_prepared: GLWESecretPrepared<Vec<u8>, B> = sk_out.prepare_alloc(module, scratch.borrow());
 

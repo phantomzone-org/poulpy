@@ -6,8 +6,8 @@ use poulpy_hal::{
 use crate::{
     dist::Distribution,
     layouts::{
-        AutomorphismKey, Degree, GGLWE, GGLWEInfos, GGSW, GGSWInfos, GLWECiphertext, GLWEInfos, GLWEPlaintext, GLWEPublicKey,
-        GLWESecret, GLWESwitchingKey, Rank, TensorKey,
+        AutomorphismKey, Degree, GGLWE, GGLWEInfos, GGSW, GGSWInfos, GLWE, GLWEInfos, GLWEPlaintext, GLWEPublicKey, GLWESecret,
+        GLWESwitchingKey, Rank, TensorKey,
         prepared::{
             AutomorphismKeyPrepared, GGLWEPrepared, GGSWPrepared, GLWEPublicKeyPrepared, GLWESecretPrepared,
             GLWESwitchingKeyPrepared, TensorKeyPrepared,
@@ -16,13 +16,13 @@ use crate::{
 };
 
 pub trait TakeGLWECt {
-    fn take_glwe_ct<A>(&mut self, infos: &A) -> (GLWECiphertext<&mut [u8]>, &mut Self)
+    fn take_glwe_ct<A>(&mut self, infos: &A) -> (GLWE<&mut [u8]>, &mut Self)
     where
         A: GLWEInfos;
 }
 
 pub trait TakeGLWECtSlice {
-    fn take_glwe_ct_slice<A>(&mut self, size: usize, infos: &A) -> (Vec<GLWECiphertext<&mut [u8]>>, &mut Self)
+    fn take_glwe_ct_slice<A>(&mut self, size: usize, infos: &A) -> (Vec<GLWE<&mut [u8]>>, &mut Self)
     where
         A: GLWEInfos;
 }
@@ -123,13 +123,13 @@ impl<B: Backend> TakeGLWECt for Scratch<B>
 where
     Scratch<B>: TakeVecZnx,
 {
-    fn take_glwe_ct<A>(&mut self, infos: &A) -> (GLWECiphertext<&mut [u8]>, &mut Self)
+    fn take_glwe_ct<A>(&mut self, infos: &A) -> (GLWE<&mut [u8]>, &mut Self)
     where
         A: GLWEInfos,
     {
         let (data, scratch) = self.take_vec_znx(infos.n().into(), (infos.rank() + 1).into(), infos.size());
         (
-            GLWECiphertext {
+            GLWE {
                 k: infos.k(),
                 base2k: infos.base2k(),
                 data,
@@ -143,12 +143,12 @@ impl<B: Backend> TakeGLWECtSlice for Scratch<B>
 where
     Scratch<B>: TakeVecZnx,
 {
-    fn take_glwe_ct_slice<A>(&mut self, size: usize, infos: &A) -> (Vec<GLWECiphertext<&mut [u8]>>, &mut Self)
+    fn take_glwe_ct_slice<A>(&mut self, size: usize, infos: &A) -> (Vec<GLWE<&mut [u8]>>, &mut Self)
     where
         A: GLWEInfos,
     {
         let mut scratch: &mut Scratch<B> = self;
-        let mut cts: Vec<GLWECiphertext<&mut [u8]>> = Vec::with_capacity(size);
+        let mut cts: Vec<GLWE<&mut [u8]>> = Vec::with_capacity(size);
         for _ in 0..size {
             let (ct, new_scratch) = scratch.take_glwe_ct(infos);
             scratch = new_scratch;
@@ -463,7 +463,7 @@ where
 
         let mut scratch: &mut Scratch<B> = self;
 
-        let mut ksk_infos: crate::layouts::GGLWECiphertextLayout = infos.layout();
+        let mut ksk_infos: crate::layouts::GGLWECiphertextLayout = infos.gglwe_layout();
         ksk_infos.rank_in = Rank(1);
 
         if pairs != 0 {
@@ -499,7 +499,7 @@ where
 
         let mut scratch: &mut Scratch<B> = self;
 
-        let mut ksk_infos: crate::layouts::GGLWECiphertextLayout = infos.layout();
+        let mut ksk_infos: crate::layouts::GGLWECiphertextLayout = infos.gglwe_layout();
         ksk_infos.rank_in = Rank(1);
 
         if pairs != 0 {

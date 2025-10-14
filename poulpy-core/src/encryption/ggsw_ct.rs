@@ -8,7 +8,7 @@ use crate::{
     SIGMA, TakeGLWEPt,
     encryption::glwe_ct::GLWEEncryptSkInternal,
     layouts::{
-        GGSW, GGSWInfos, GGSWToMut, GLWECiphertext, GLWEInfos, LWEInfos,
+        GGSW, GGSWInfos, GGSWToMut, GLWE, GLWEInfos, LWEInfos,
         prepared::{GLWESecretPrepared, GLWESecretPreparedToRef},
     },
 };
@@ -20,10 +20,10 @@ impl GGSW<Vec<u8>> {
         Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes,
     {
         let size = infos.size();
-        GLWECiphertext::encrypt_sk_scratch_space(module, &infos.glwe_layout())
-            + VecZnx::alloc_bytes(module.n(), (infos.rank() + 1).into(), size)
-            + VecZnx::alloc_bytes(module.n(), 1, size)
-            + module.vec_znx_dft_alloc_bytes((infos.rank() + 1).into(), size)
+        GLWE::encrypt_sk_scratch_space(module, &infos.glwe_layout())
+            + VecZnx::bytes_of(module.n(), (infos.rank() + 1).into(), size)
+            + VecZnx::bytes_of(module.n(), 1, size)
+            + module.vec_znx_dft_bytes_of((infos.rank() + 1).into(), size)
     }
 }
 

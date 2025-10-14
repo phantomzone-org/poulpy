@@ -1,9 +1,11 @@
 use poulpy_hal::{
-    layouts::{Data, DataMut, DataRef, FillUniform, MatZnx, MatZnxToMut, MatZnxToRef, ReaderFrom, WriterTo, ZnxInfos},
+    layouts::{
+        Backend, Data, DataMut, DataRef, FillUniform, MatZnx, MatZnxToMut, MatZnxToRef, Module, ReaderFrom, WriterTo, ZnxInfos,
+    },
     source::Source,
 };
 
-use crate::layouts::{Base2K, Degree, Dnum, Dsize, GLWECiphertext, GLWEInfos, LWEInfos, Rank, TorusPrecision};
+use crate::layouts::{Base2K, Degree, Dnum, Dsize, GLWE, GLWEInfos, GetDegree, LWEInfos, Rank, TorusPrecision};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
 use std::fmt;
@@ -16,7 +18,7 @@ where
     fn dsize(&self) -> Dsize;
     fn rank_in(&self) -> Rank;
     fn rank_out(&self) -> Rank;
-    fn layout(&self) -> GGLWECiphertextLayout {
+    fn gglwe_layout(&self) -> GGLWECiphertextLayout {
         GGLWECiphertextLayout {
             n: self.n(),
             base2k: self.base2k(),
@@ -170,8 +172,8 @@ impl<D: DataRef> fmt::Display for GGLWE<D> {
 }
 
 impl<D: DataRef> GGLWE<D> {
-    pub fn at(&self, row: usize, col: usize) -> GLWECiphertext<&[u8]> {
-        GLWECiphertext {
+    pub fn at(&self, row: usize, col: usize) -> GLWE<&[u8]> {
+        GLWE {
             k: self.k,
             base2k: self.base2k,
             data: self.data.at(row, col),
@@ -180,8 +182,8 @@ impl<D: DataRef> GGLWE<D> {
 }
 
 impl<D: DataMut> GGLWE<D> {
-    pub fn at_mut(&mut self, row: usize, col: usize) -> GLWECiphertext<&mut [u8]> {
-        GLWECiphertext {
+    pub fn at_mut(&mut self, row: usize, col: usize) -> GLWE<&mut [u8]> {
+        GLWE {
             k: self.k,
             base2k: self.base2k,
             data: self.data.at_mut(row, col),
@@ -189,31 +191,19 @@ impl<D: DataMut> GGLWE<D> {
     }
 }
 
-impl GGLWE<Vec<u8>> {
-    pub fn alloc<A>(infos: &A) -> Self
-    where
-        A: GGLWEInfos,
-    {
-        Self::alloc_with(
-            infos.n(),
-            infos.base2k(),
-            infos.k(),
-            infos.rank_in(),
-            infos.rank_out(),
-            infos.dnum(),
-            infos.dsize(),
-        )
-    }
-
-    pub fn alloc_with(
-        n: Degree,
+pub trait GGLWEAlloc
+where
+    Self: GetDegree,
+{
+    fn alloc_gglwe(
+        &self,
         base2k: Base2K,
         k: TorusPrecision,
         rank_in: Rank,
         rank_out: Rank,
         dnum: Dnum,
         dsize: Dsize,
-    ) -> Self {
+    ) -> GGLWE<Vec<u8>> {
         let size: usize = k.0.div_ceil(base2k.0) as usize;
         debug_assert!(
             size as u32 > dsize.0,
@@ -228,9 +218,9 @@ impl GGLWE<Vec<u8>> {
             dsize.0,
         );
 
-        Self {
+        GGLWE {
             data: MatZnx::alloc(
-                n.into(),
+                self.n().into(),
                 dnum.into(),
                 rank_in.into(),
                 (rank_out + 1).into(),
@@ -242,12 +232,11 @@ impl GGLWE<Vec<u8>> {
         }
     }
 
-    pub fn alloc_bytes<A>(infos: &A) -> usize
+    fn alloc_glwe_from_infos<A>(&self, infos: &A) -> GGLWE<Vec<u8>>
     where
         A: GGLWEInfos,
     {
-        Self::alloc_bytes_with(
-            infos.n(),
+        self.alloc_gglwe(
             infos.base2k(),
             infos.k(),
             infos.rank_in(),
@@ -257,8 +246,8 @@ impl GGLWE<Vec<u8>> {
         )
     }
 
-    pub fn alloc_bytes_with(
-        n: Degree,
+    fn bytes_of_gglwe(
+        &self,
         base2k: Base2K,
         k: TorusPrecision,
         rank_in: Rank,
@@ -280,21 +269,85 @@ impl GGLWE<Vec<u8>> {
             dsize.0,
         );
 
-        MatZnx::alloc_bytes(
-            n.into(),
+        MatZnx::bytes_of(
+            self.n().into(),
             dnum.into(),
             rank_in.into(),
             (rank_out + 1).into(),
             k.0.div_ceil(base2k.0) as usize,
         )
     }
+
+    fn bytes_of_gglwe_from_infos<A>(&self, infos: &A) -> usize
+    where
+        A: GGLWEInfos,
+    {
+        self.bytes_of_gglwe(
+            infos.base2k(),
+            infos.k(),
+            infos.rank_in(),
+            infos.rank_out(),
+            infos.dnum(),
+            infos.dsize(),
+        )
+    }
 }
 
-pub trait GGLWECiphertextToMut {
+impl<B: Backend> GGLWEAlloc for Module<B> where Self: GetDegree {}
+
+impl GGLWE<Vec<u8>> {
+    pub fn alloc_from_infos<A, B: Backend>(module: Module<B>, infos: &A) -> Self
+    where
+        A: GGLWEInfos,
+        Module<B>: GGLWEAlloc,
+    {
+        module.alloc_glwe_from_infos(infos)
+    }
+
+    pub fn alloc<B: Backend>(
+        module: Module<B>,
+        base2k: Base2K,
+        k: TorusPrecision,
+        rank_in: Rank,
+        rank_out: Rank,
+        dnum: Dnum,
+        dsize: Dsize,
+    ) -> Self
+    where
+        Module<B>: GGLWEAlloc,
+    {
+        module.alloc_gglwe(base2k, k, rank_in, rank_out, dnum, dsize)
+    }
+
+    pub fn bytes_of_from_infos<A, B: Backend>(module: Module<B>, infos: &A) -> usize
+    where
+        A: GGLWEInfos,
+        Module<B>: GGLWEAlloc,
+    {
+        module.bytes_of_gglwe_from_infos(infos)
+    }
+
+    pub fn bytes_of<B: Backend>(
+        module: Module<B>,
+        base2k: Base2K,
+        k: TorusPrecision,
+        rank_in: Rank,
+        rank_out: Rank,
+        dnum: Dnum,
+        dsize: Dsize,
+    ) -> usize
+    where
+        Module<B>: GGLWEAlloc,
+    {
+        module.bytes_of_gglwe(base2k, k, rank_in, rank_out, dnum, dsize)
+    }
+}
+
+pub trait GGLWEToMut {
     fn to_mut(&mut self) -> GGLWE<&mut [u8]>;
 }
 
-impl<D: DataMut> GGLWECiphertextToMut for GGLWE<D> {
+impl<D: DataMut> GGLWEToMut for GGLWE<D> {
     fn to_mut(&mut self) -> GGLWE<&mut [u8]> {
         GGLWE {
             k: self.k(),

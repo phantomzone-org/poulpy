@@ -9,7 +9,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    GGLWEInfos, GGSW, GGSWInfos, GLWECiphertext,
+    GGLWEInfos, GGSW, GGSWInfos, GLWE,
     prepared::{AutomorphismKeyPrepared, TensorKeyPrepared},
 };
 
@@ -33,8 +33,8 @@ impl GGSW<Vec<u8>> {
             + VecZnxBigNormalizeTmpBytes,
     {
         let out_size: usize = out_infos.size();
-        let ci_dft: usize = module.vec_znx_dft_alloc_bytes((key_infos.rank_out() + 1).into(), out_size);
-        let ks_internal: usize = GLWECiphertext::keyswitch_scratch_space(
+        let ci_dft: usize = module.vec_znx_dft_bytes_of((key_infos.rank_out() + 1).into(), out_size);
+        let ks_internal: usize = GLWE::keyswitch_scratch_space(
             module,
             &out_infos.glwe_layout(),
             &in_infos.glwe_layout(),

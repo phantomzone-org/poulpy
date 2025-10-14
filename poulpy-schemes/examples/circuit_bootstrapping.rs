@@ -1,8 +1,8 @@
 use poulpy_core::{
     GLWEOperations,
     layouts::{
-        AutomorphismKeyLayout, GGSW, GGSWCiphertextLayout, GLWECiphertext, GLWECiphertextLayout, GLWEPlaintext, GLWESecret,
-        LWECiphertext, LWECiphertextLayout, LWEInfos, LWEPlaintext, LWESecret, TensorKeyLayout,
+        AutomorphismKeyLayout, GGSW, GGSWCiphertextLayout, GLWE, GLWELayout, GLWEPlaintext, GLWESecret, LWE, LWECiphertextLayout,
+        LWEInfos, LWEPlaintext, LWESecret, TensorKeyLayout,
         prepared::{GGSWPrepared, GLWESecretPrepared, PrepareAlloc},
     },
 };
@@ -140,7 +140,7 @@ fn main() {
     sk_lwe.fill_zero();
 
     // GLWE secret
-    let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc_with(n_glwe.into(), rank.into());
+    let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc(n_glwe.into(), rank.into());
     sk_glwe.fill_ternary_prob(0.5, &mut source_xs);
     // sk_glwe.fill_zero();
 
@@ -151,7 +151,7 @@ fn main() {
     let data: i64 = 1 % (1 << k_lwe_pt);
 
     // LWE plaintext
-    let mut pt_lwe: LWEPlaintext<Vec<u8>> = LWEPlaintext::alloc_with(base2k.into(), k_lwe_pt.into());
+    let mut pt_lwe: LWEPlaintext<Vec<u8>> = LWEPlaintext::alloc(base2k.into(), k_lwe_pt.into());
 
     // LWE plaintext(data * 2^{- (k_lwe_pt - 1)})
     pt_lwe.encode_i64(data, (k_lwe_pt + 1).into()); // +1 for padding bit
@@ -167,7 +167,7 @@ fn main() {
     println!("pt_lwe: {pt_lwe}");
 
     // LWE ciphertext
-    let mut ct_lwe: LWECiphertext<Vec<u8>> = LWECiphertext::alloc(&lwe_infos);
+    let mut ct_lwe: LWE<Vec<u8>> = LWE::alloc_from_infos(&lwe_infos);
 
     // Encrypt LWE Plaintext
     ct_lwe.encrypt_sk(&module, &pt_lwe, &sk_lwe, &mut source_xa, &mut source_xe);
@@ -187,7 +187,7 @@ fn main() {
     println!("CBT-KGEN: {} ms", now.elapsed().as_millis());
 
     // Output GGSW
-    let mut res: GGSW<Vec<u8>> = GGSW::alloc(&ggsw_infos);
+    let mut res: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_infos);
 
     // Circuit bootstrapping key prepared (opaque backend dependant write only struct)
     let cbt_prepared: CircuitBootstrappingKeyPrepared<Vec<u8>, CGGI, BackendImpl> =
@@ -214,7 +214,7 @@ fn main() {
 
     // Tests RLWE(1) * GGSW(data)
 
-    let glwe_infos: GLWECiphertextLayout = GLWECiphertextLayout {
+    let glwe_infos: GLWELayout = GLWELayout {
         n: n_glwe.into(),
         base2k: base2k.into(),
         k: (k_ggsw_res - base2k).into(),
@@ -222,11 +222,11 @@ fn main() {
     };
 
     // GLWE ciphertext modulus
-    let mut ct_glwe: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&glwe_infos);
+    let mut ct_glwe: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_infos);
 
     // Some GLWE plaintext with signed data
     let k_glwe_pt: usize = 3;
-    let mut pt_glwe: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&glwe_infos);
+    let mut pt_glwe: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_infos);
     let mut data_vec: Vec<i64> = vec![0i64; n_glwe];
     data_vec
         .iter_mut()
@@ -255,7 +255,7 @@ fn main() {
     ct_glwe.external_product_inplace(&module, &res_prepared, scratch.borrow());
 
     // Decrypt
-    let mut pt_res: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&glwe_infos);
+    let mut pt_res: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_infos);
     ct_glwe.decrypt(&module, &mut pt_res, &sk_glwe_prepared, scratch.borrow());
 
     println!("pt_res: {:?}", &pt_res.data.at(0, 0)[..64]);

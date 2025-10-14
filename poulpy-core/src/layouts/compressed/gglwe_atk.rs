@@ -1,12 +1,15 @@
 use poulpy_hal::{
-    api::{VecZnxCopy, VecZnxFillUniform},
     layouts::{Backend, Data, DataMut, DataRef, FillUniform, Module, ReaderFrom, WriterTo},
     source::Source,
 };
 
 use crate::layouts::{
-    AutomorphismKey, Base2K, Degree, Dnum, Dsize, GGLWEInfos, GLWEInfos, LWEInfos, Rank, TorusPrecision,
-    compressed::{Decompress, GLWESwitchingKeyCompressed, GLWESwitchingKeyCompressedToMut, GLWESwitchingKeyCompressedToRef},
+    AutomorphismKey, AutomorphismKeyToMut, Base2K, Degree, Dnum, Dsize, GGLWEInfos, GLWEInfos, LWEInfos, Rank, TorusPrecision,
+    compressed::{
+        GLWESwitchingKeyCompressed, GLWESwitchingKeyCompressedAlloc, GLWESwitchingKeyCompressedToMut,
+        GLWESwitchingKeyCompressedToRef, GLWESwitchingKeyDecompress,
+    },
+    prepared::{GetAutomorphismGaloisElement, SetAutomorphismGaloisElement},
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::fmt;
@@ -76,35 +79,100 @@ impl<D: DataRef> fmt::Display for AutomorphismKeyCompressed<D> {
     }
 }
 
+pub trait AutomorphismKeyCompressedAlloc
+where
+    Self: GLWESwitchingKeyCompressedAlloc,
+{
+    fn alloc_automorphism_key_compressed(
+        &self,
+        base2k: Base2K,
+        k: TorusPrecision,
+        rank: Rank,
+        dnum: Dnum,
+        dsize: Dsize,
+    ) -> AutomorphismKeyCompressed<Vec<u8>> {
+        AutomorphismKeyCompressed {
+            key: self.alloc_glwe_switching_key_compressed(base2k, k, rank, rank, dnum, dsize),
+            p: 0,
+        }
+    }
+
+    fn alloc_automorphism_key_compressed_from_infos<A>(&self, infos: &A) -> AutomorphismKeyCompressed<Vec<u8>>
+    where
+        A: GGLWEInfos,
+    {
+        assert_eq!(infos.rank_in(), infos.rank_out());
+        self.alloc_automorphism_key_compressed(
+            infos.base2k(),
+            infos.k(),
+            infos.rank(),
+            infos.dnum(),
+            infos.dsize(),
+        )
+    }
+
+    fn bytes_of_automorphism_key_compressed(
+        &self,
+        base2k: Base2K,
+        k: TorusPrecision,
+        rank: Rank,
+        dnum: Dnum,
+        dsize: Dsize,
+    ) -> usize {
+        self.bytes_of_glwe_switching_key_compressed(base2k, k, rank, dnum, dsize)
+    }
+
+    fn bytes_of_automorphism_key_compressed_from_infos<A>(&self, infos: &A) -> usize
+    where
+        A: GGLWEInfos,
+    {
+        assert_eq!(infos.rank_in(), infos.rank_out());
+        self.bytes_of_automorphism_key_compressed(
+            infos.base2k(),
+            infos.k(),
+            infos.rank(),
+            infos.dnum(),
+            infos.dsize(),
+        )
+    }
+}
+
 impl AutomorphismKeyCompressed<Vec<u8>> {
-    pub fn alloc<A>(infos: &A) -> Self
+    pub fn alloc_from_infos<A, B: Backend>(module: Module<B>, infos: &A) -> Self
     where
         A: GGLWEInfos,
+        Module<B>: AutomorphismKeyCompressedAlloc,
     {
-        debug_assert_eq!(infos.rank_in(), infos.rank_out());
-        Self {
-            key: GLWESwitchingKeyCompressed::alloc(infos),
-            p: 0,
-        }
+        module.alloc_automorphism_key_compressed_from_infos(infos)
     }
 
-    pub fn alloc_with(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> Self {
-        Self {
-            key: GLWESwitchingKeyCompressed::alloc_with(n, base2k, k, rank, rank, dnum, dsize),
-            p: 0,
-        }
+    pub fn alloc<B: Backend>(module: Module<B>, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> Self
+    where
+        Module<B>: AutomorphismKeyCompressedAlloc,
+    {
+        module.alloc_automorphism_key_compressed(base2k, k, rank, dnum, dsize)
     }
 
-    pub fn alloc_bytes<A>(infos: &A) -> usize
+    pub fn bytes_of_from_infos<A, B: Backend>(module: Module<B>, infos: &A) -> usize
     where
         A: GGLWEInfos,
+        Module<B>: AutomorphismKeyCompressedAlloc,
     {
-        debug_assert_eq!(infos.rank_in(), infos.rank_out());
-        GLWESwitchingKeyCompressed::alloc_bytes(infos)
+        module.bytes_of_automorphism_key_compressed_from_infos(infos)
     }
 
-    pub fn alloc_bytes_with(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize {
-        GLWESwitchingKeyCompressed::alloc_bytes_with(n, base2k, k, rank, dnum, dsize)
+    pub fn bytes_of<B: Backend>(
+        module: Module<B>,
+        base2k: Base2K,
+        k: TorusPrecision,
+        rank: Rank,
+        dnum: Dnum,
+        dsize: Dsize,
+    ) -> usize
+    where
+        Module<B>: AutomorphismKeyCompressedAlloc,
+    {
+        module.bytes_of_automorphism_key_compressed(base2k, k, rank, dnum, dsize)
     }
 }
 
@@ -122,13 +190,32 @@ impl<D: DataRef> WriterTo for AutomorphismKeyCompressed<D> {
     }
 }
 
-impl<D: DataMut, DR: DataRef, B: Backend> Decompress<B, AutomorphismKeyCompressed<DR>> for AutomorphismKey<D>
+pub trait AutomorphismKeyDecompress
 where
-    Module<B>: VecZnxFillUniform + VecZnxCopy,
+    Self: GLWESwitchingKeyDecompress,
 {
-    fn decompress(&mut self, module: &Module<B>, other: &AutomorphismKeyCompressed<DR>) {
-        self.key.decompress(module, &other.key);
-        self.p = other.p;
+    fn decompress_automorphism_key<R, O>(&self, res: &mut R, other: &O)
+    where
+        R: AutomorphismKeyToMut + SetAutomorphismGaloisElement,
+        O: AutomorphismKeyCompressedToRef + GetAutomorphismGaloisElement,
+    {
+        self.decompress_glwe_switching_key(&mut res.to_mut().key, &other.to_ref().key);
+        res.set_p(other.p());
+    }
+}
+
+impl<B: Backend> AutomorphismKeyDecompress for Module<B> where Self: AutomorphismKeyDecompress {}
+
+impl<D: DataMut> AutomorphismKey<D>
+where
+    Self: SetAutomorphismGaloisElement,
+{
+    pub fn decompressed<O, B: Backend>(&mut self, module: &Module<B>, other: &O)
+    where
+        O: AutomorphismKeyCompressedToRef + GetAutomorphismGaloisElement,
+        Module<B>: AutomorphismKeyDecompress,
+    {
+        module.decompress_automorphism_key(self, other);
     }
 }
 

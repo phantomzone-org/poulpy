@@ -27,8 +27,8 @@ impl<B> VmpPMatAllocBytes for Module<B>
 where
     B: Backend + VmpPMatAllocBytesImpl<B>,
 {
-    fn vmp_pmat_alloc_bytes(&self, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize {
-        B::vmp_pmat_alloc_bytes_impl(self.n(), rows, cols_in, cols_out, size)
+    fn vmp_pmat_bytes_of(&self, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize {
+        B::vmp_pmat_bytes_of_impl(self.n(), rows, cols_in, cols_out, size)
     }
 }
 

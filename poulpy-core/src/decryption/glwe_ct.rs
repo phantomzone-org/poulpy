@@ -6,20 +6,20 @@ use poulpy_hal::{
     layouts::{Backend, DataMut, DataRef, DataViewMut, Module, Scratch},
 };
 
-use crate::layouts::{GLWECiphertext, GLWEInfos, GLWEPlaintext, LWEInfos, prepared::GLWESecretPrepared};
+use crate::layouts::{GLWE, GLWEInfos, GLWEPlaintext, LWEInfos, prepared::GLWESecretPrepared};
 
-impl GLWECiphertext<Vec<u8>> {
+impl GLWE<Vec<u8>> {
     pub fn decrypt_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GLWEInfos,
         Module<B>: VecZnxDftAllocBytes + VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes,
     {
         let size: usize = infos.size();
-        (module.vec_znx_normalize_tmp_bytes() | module.vec_znx_dft_alloc_bytes(1, size)) + module.vec_znx_dft_alloc_bytes(1, size)
+        (module.vec_znx_normalize_tmp_bytes() | module.vec_znx_dft_bytes_of(1, size)) + module.vec_znx_dft_bytes_of(1, size)
     }
 }
 
-impl<DataSelf: DataRef> GLWECiphertext<DataSelf> {
+impl<DataSelf: DataRef> GLWE<DataSelf> {
     pub fn decrypt<DataPt: DataMut, DataSk: DataRef, B: Backend>(
         &self,
         module: &Module<B>,

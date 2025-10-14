@@ -10,7 +10,7 @@ use poulpy_hal::{
 
 use crate::{
     layouts::{
-        GGLWE, GGLWEInfos, GGSW, GGSWInfos, GLWECiphertext, GLWEInfos, LWEInfos,
+        GGLWE, GGLWEInfos, GGSW, GGSWInfos, GLWE, GLWEInfos, LWEInfos,
         prepared::{GLWESwitchingKeyPrepared, TensorKeyPrepared},
     },
     operations::GLWEOperations,
@@ -29,8 +29,8 @@ impl GGSW<Vec<u8>> {
             .div_ceil(tsk_infos.base2k())
             .div_ceil(tsk_infos.dsize().into()) as usize;
 
-        let tmp_dft_i: usize = module.vec_znx_dft_alloc_bytes((tsk_infos.rank_out() + 1).into(), tsk_size);
-        let tmp_a: usize = module.vec_znx_dft_alloc_bytes(1, size_in);
+        let tmp_dft_i: usize = module.vec_znx_dft_bytes_of((tsk_infos.rank_out() + 1).into(), tsk_size);
+        let tmp_a: usize = module.vec_znx_dft_bytes_of(1, size_in);
         let vmp: usize = module.vmp_apply_dft_to_dft_tmp_bytes(
             tsk_size,
             size_in,
@@ -39,7 +39,7 @@ impl GGSW<Vec<u8>> {
             (tsk_infos.rank_out()).into(), // Verify if rank+1
             tsk_size,
         );
-        let tmp_idft: usize = module.vec_znx_big_alloc_bytes(1, tsk_size);
+        let tmp_idft: usize = module.vec_znx_big_bytes_of(1, tsk_size);
         let norm: usize = module.vec_znx_normalize_tmp_bytes();
 
         tmp_dft_i + ((tmp_a + vmp) | (tmp_idft + norm))
@@ -74,16 +74,16 @@ impl GGSW<Vec<u8>> {
         let rank: usize = apply_infos.rank_out().into();
 
         let size_out: usize = out_infos.k().div_ceil(out_infos.base2k()) as usize;
-        let res_znx: usize = VecZnx::alloc_bytes(module.n(), rank + 1, size_out);
-        let ci_dft: usize = module.vec_znx_dft_alloc_bytes(rank + 1, size_out);
-        let ks: usize = GLWECiphertext::keyswitch_scratch_space(module, out_infos, in_infos, apply_infos);
+        let res_znx: usize = VecZnx::bytes_of(module.n(), rank + 1, size_out);
+        let ci_dft: usize = module.vec_znx_dft_bytes_of(rank + 1, size_out);
+        let ks: usize = GLWE::keyswitch_scratch_space(module, out_infos, in_infos, apply_infos);
         let expand_rows: usize = GGSW::expand_row_scratch_space(module, out_infos, tsk_infos);
-        let res_dft: usize = module.vec_znx_dft_alloc_bytes(rank + 1, size_out);
+        let res_dft: usize = module.vec_znx_dft_bytes_of(rank + 1, size_out);
 
         if in_infos.base2k() == tsk_infos.base2k() {
             res_znx + ci_dft + (ks | expand_rows | res_dft)
         } else {
-            let a_conv: usize = VecZnx::alloc_bytes(
+            let a_conv: usize = VecZnx::bytes_of(
                 module.n(),
                 1,
                 out_infos.k().div_ceil(tsk_infos.base2k()) as usize,

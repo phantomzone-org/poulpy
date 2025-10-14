@@ -7,7 +7,7 @@ use poulpy_hal::{
 use crate::{
     encryption::glwe_ct::GLWEEncryptZeroSk,
     layouts::{
-        GLWECiphertext, GLWEPublicKey, GLWEPublicKeyToMut,
+        GLWE, GLWEPublicKey, GLWEPublicKeyToMut,
         prepared::{GLWESecretPrepared, GLWESecretPreparedToRef},
     },
 };
@@ -45,9 +45,9 @@ where
         }
 
         // Its ok to allocate scratch space here since pk is usually generated only once.
-        let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GLWECiphertext::encrypt_sk_scratch_space(self, res));
+        let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GLWE::encrypt_sk_scratch_space(self, res));
 
-        let mut tmp: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(res);
+        let mut tmp: GLWE<Vec<u8>> = GLWE::alloc_from_infos(res);
 
         tmp.encrypt_zero_sk(self, sk, source_xa, source_xe, scratch.borrow());
         res.dist = sk.dist;

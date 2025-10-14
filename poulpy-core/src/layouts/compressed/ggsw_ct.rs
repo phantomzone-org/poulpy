@@ -1,5 +1,4 @@
 use poulpy_hal::{
-    api::{VecZnxCopy, VecZnxFillUniform},
     layouts::{
         Backend, Data, DataMut, DataRef, FillUniform, MatZnx, MatZnxToMut, MatZnxToRef, Module, ReaderFrom, WriterTo, ZnxInfos,
     },
@@ -7,14 +6,14 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Dnum, Dsize, GGSW, GGSWInfos, GLWEInfos, LWEInfos, Rank, TorusPrecision,
-    compressed::{Decompress, GLWECiphertextCompressed},
+    Base2K, Degree, Dnum, Dsize, GGSW, GGSWInfos, GGSWToMut, GLWEInfos, GetDegree, LWEInfos, Rank, TorusPrecision,
+    compressed::{GLWECompressed, GLWEDecompress},
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::fmt;
 
 #[derive(PartialEq, Eq, Clone)]
-pub struct GGSWCiphertextCompressed<D: Data> {
+pub struct GGSWCompressed<D: Data> {
     pub(crate) data: MatZnx<D>,
     pub(crate) k: TorusPrecision,
     pub(crate) base2k: Base2K,
@@ -23,7 +22,7 @@ pub struct GGSWCiphertextCompressed<D: Data> {
     pub(crate) seed: Vec<[u8; 32]>,
 }
 
-impl<D: Data> LWEInfos for GGSWCiphertextCompressed<D> {
+impl<D: Data> LWEInfos for GGSWCompressed<D> {
     fn n(&self) -> Degree {
         Degree(self.data.n() as u32)
     }
@@ -39,13 +38,13 @@ impl<D: Data> LWEInfos for GGSWCiphertextCompressed<D> {
         self.data.size()
     }
 }
-impl<D: Data> GLWEInfos for GGSWCiphertextCompressed<D> {
+impl<D: Data> GLWEInfos for GGSWCompressed<D> {
     fn rank(&self) -> Rank {
         self.rank
     }
 }
 
-impl<D: Data> GGSWInfos for GGSWCiphertextCompressed<D> {
+impl<D: Data> GGSWInfos for GGSWCompressed<D> {
     fn dsize(&self) -> Dsize {
         self.dsize
     }
@@ -55,46 +54,42 @@ impl<D: Data> GGSWInfos for GGSWCiphertextCompressed<D> {
     }
 }
 
-impl<D: DataRef> fmt::Debug for GGSWCiphertextCompressed<D> {
+impl<D: DataRef> fmt::Debug for GGSWCompressed<D> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.data)
     }
 }
 
-impl<D: DataRef> fmt::Display for GGSWCiphertextCompressed<D> {
+impl<D: DataRef> fmt::Display for GGSWCompressed<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "(GGSWCiphertextCompressed: base2k={} k={} dsize={}) {}",
+            "(GGSWCompressed: base2k={} k={} dsize={}) {}",
             self.base2k, self.k, self.dsize, self.data
         )
     }
 }
 
-impl<D: DataMut> FillUniform for GGSWCiphertextCompressed<D> {
+impl<D: DataMut> FillUniform for GGSWCompressed<D> {
     fn fill_uniform(&mut self, log_bound: usize, source: &mut Source) {
         self.data.fill_uniform(log_bound, source);
     }
 }
 
-impl GGSWCiphertextCompressed<Vec<u8>> {
-    pub fn alloc<A>(infos: &A) -> Self
-    where
-        A: GGSWInfos,
-    {
-        Self::alloc_with(
-            infos.n(),
-            infos.base2k(),
-            infos.k(),
-            infos.rank(),
-            infos.dnum(),
-            infos.dsize(),
-        )
-    }
-
-    pub fn alloc_with(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> Self {
+pub trait GGSWCompressedAlloc
+where
+    Self: GetDegree,
+{
+    fn alloc_ggsw_compressed(
+        &self,
+        base2k: Base2K,
+        k: TorusPrecision,
+        rank: Rank,
+        dnum: Dnum,
+        dsize: Dsize,
+    ) -> GGSWCompressed<Vec<u8>> {
         let size: usize = k.0.div_ceil(base2k.0) as usize;
-        debug_assert!(
+        assert!(
             size as u32 > dsize.0,
             "invalid ggsw: ceil(k/base2k): {size} <= dsize: {}",
             dsize.0
@@ -107,9 +102,9 @@ impl GGSWCiphertextCompressed<Vec<u8>> {
             dsize.0,
         );
 
-        Self {
+        GGSWCompressed {
             data: MatZnx::alloc(
-                n.into(),
+                self.n().into(),
                 dnum.into(),
                 (rank + 1).into(),
                 1,
@@ -123,12 +118,11 @@ impl GGSWCiphertextCompressed<Vec<u8>> {
         }
     }
 
-    pub fn alloc_bytes<A>(infos: &A) -> usize
+    fn alloc_ggsw_compressed_from_infos<A>(&self, infos: &A) -> GGSWCompressed<Vec<u8>>
     where
         A: GGSWInfos,
     {
-        Self::alloc_bytes_with(
-            infos.n(),
+        self.alloc_ggsw_compressed(
             infos.base2k(),
             infos.k(),
             infos.rank(),
@@ -137,9 +131,9 @@ impl GGSWCiphertextCompressed<Vec<u8>> {
         )
     }
 
-    pub fn alloc_bytes_with(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize {
+    fn bytes_of_ggsw_compressed(&self, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize {
         let size: usize = k.0.div_ceil(base2k.0) as usize;
-        debug_assert!(
+        assert!(
             size as u32 > dsize.0,
             "invalid ggsw: ceil(k/base2k): {size} <= dsize: {}",
             dsize.0
@@ -152,20 +146,72 @@ impl GGSWCiphertextCompressed<Vec<u8>> {
             dsize.0,
         );
 
-        MatZnx::alloc_bytes(
-            n.into(),
+        MatZnx::bytes_of(
+            self.n().into(),
             dnum.into(),
             (rank + 1).into(),
             1,
             k.0.div_ceil(base2k.0) as usize,
         )
     }
+
+    fn bytes_of_ggsw_compressed_key_from_infos<A>(&self, infos: &A) -> usize
+    where
+        A: GGSWInfos,
+    {
+        self.bytes_of_ggsw_compressed(
+            infos.base2k(),
+            infos.k(),
+            infos.rank(),
+            infos.dnum(),
+            infos.dsize(),
+        )
+    }
 }
 
-impl<D: DataRef> GGSWCiphertextCompressed<D> {
-    pub fn at(&self, row: usize, col: usize) -> GLWECiphertextCompressed<&[u8]> {
+impl GGSWCompressed<Vec<u8>> {
+    pub fn alloc_from_infos<A, B: Backend>(module: &Module<B>, infos: &A) -> Self
+    where
+        A: GGSWInfos,
+        Module<B>: GGSWCompressedAlloc,
+    {
+        module.alloc_ggsw_compressed_from_infos(infos)
+    }
+
+    pub fn alloc<B: Backend>(module: &Module<B>, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> Self
+    where
+        Module<B>: GGSWCompressedAlloc,
+    {
+        module.alloc_ggsw_compressed(base2k, k, rank, dnum, dsize)
+    }
+
+    pub fn bytes_of_from_infos<A, B: Backend>(module: &Module<B>, infos: &A) -> usize
+    where
+        A: GGSWInfos,
+        Module<B>: GGSWCompressedAlloc,
+    {
+        module.bytes_of_ggsw_compressed_key_from_infos(infos)
+    }
+
+    pub fn bytes_of<B: Backend>(
+        module: &Module<B>,
+        base2k: Base2K,
+        k: TorusPrecision,
+        rank: Rank,
+        dnum: Dnum,
+        dsize: Dsize,
+    ) -> usize
+    where
+        Module<B>: GGSWCompressedAlloc,
+    {
+        module.bytes_of_ggsw_compressed(base2k, k, rank, dnum, dsize)
+    }
+}
+
+impl<D: DataRef> GGSWCompressed<D> {
+    pub fn at(&self, row: usize, col: usize) -> GLWECompressed<&[u8]> {
         let rank: usize = self.rank().into();
-        GLWECiphertextCompressed {
+        GLWECompressed {
             data: self.data.at(row, col),
             k: self.k,
             base2k: self.base2k,
@@ -175,10 +221,10 @@ impl<D: DataRef> GGSWCiphertextCompressed<D> {
     }
 }
 
-impl<D: DataMut> GGSWCiphertextCompressed<D> {
-    pub fn at_mut(&mut self, row: usize, col: usize) -> GLWECiphertextCompressed<&mut [u8]> {
+impl<D: DataMut> GGSWCompressed<D> {
+    pub fn at_mut(&mut self, row: usize, col: usize) -> GLWECompressed<&mut [u8]> {
         let rank: usize = self.rank().into();
-        GLWECiphertextCompressed {
+        GLWECompressed {
             data: self.data.at_mut(row, col),
             k: self.k,
             base2k: self.base2k,
@@ -188,7 +234,7 @@ impl<D: DataMut> GGSWCiphertextCompressed<D> {
     }
 }
 
-impl<D: DataMut> ReaderFrom for GGSWCiphertextCompressed<D> {
+impl<D: DataMut> ReaderFrom for GGSWCompressed<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         self.k = TorusPrecision(reader.read_u32::<LittleEndian>()?);
         self.base2k = Base2K(reader.read_u32::<LittleEndian>()?);
@@ -203,7 +249,7 @@ impl<D: DataMut> ReaderFrom for GGSWCiphertextCompressed<D> {
     }
 }
 
-impl<D: DataRef> WriterTo for GGSWCiphertextCompressed<D> {
+impl<D: DataRef> WriterTo for GGSWCompressed<D> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         writer.write_u32::<LittleEndian>(self.k.into())?;
         writer.write_u32::<LittleEndian>(self.base2k.into())?;
@@ -217,34 +263,49 @@ impl<D: DataRef> WriterTo for GGSWCiphertextCompressed<D> {
     }
 }
 
-impl<D: DataMut, B: Backend, DR: DataRef> Decompress<B, GGSWCiphertextCompressed<DR>> for GGSW<D>
+pub trait GGSWDecompress
 where
-    Module<B>: VecZnxFillUniform + VecZnxCopy,
+    Self: GLWEDecompress,
 {
-    fn decompress(&mut self, module: &Module<B>, other: &GGSWCiphertextCompressed<DR>) {
-        #[cfg(debug_assertions)]
-        {
-            assert_eq!(self.rank(), other.rank())
-        }
+    fn decompress_ggsw<R, O>(&self, res: &mut R, other: &O)
+    where
+        R: GGSWToMut,
+        O: GGSWCompressedToRef,
+    {
+        let res: &mut GGSW<&mut [u8]> = &mut res.to_mut();
+        let other: &GGSWCompressed<&[u8]> = &other.to_ref();
 
-        let dnum: usize = self.dnum().into();
-        let rank: usize = self.rank().into();
-        (0..dnum).for_each(|row_i| {
-            (0..rank + 1).for_each(|col_j| {
-                self.at_mut(row_i, col_j)
-                    .decompress(module, &other.at(row_i, col_j));
-            });
-        });
+        assert_eq!(res.rank(), other.rank());
+        let dnum: usize = res.dnum().into();
+        let rank: usize = res.rank().into();
+
+        for row_i in 0..dnum {
+            for col_j in 0..rank + 1 {
+                self.decompress_glwe(&mut res.at_mut(row_i, col_j), &other.at(row_i, col_j));
+            }
+        }
     }
 }
 
-pub trait GGSWCiphertextCompressedToMut {
-    fn to_mut(&mut self) -> GGSWCiphertextCompressed<&mut [u8]>;
+impl<B: Backend> GGSWDecompress for Module<B> where Self: GGSWDecompress {}
+
+impl<D: DataMut> GGSW<D> {
+    pub fn decompress<O, B: Backend>(&mut self, module: &Module<B>, other: &O)
+    where
+        O: GGSWCompressedToRef,
+        Module<B>: GGSWDecompress,
+    {
+        module.decompress_ggsw(self, other);
+    }
 }
 
-impl<D: DataMut> GGSWCiphertextCompressedToMut for GGSWCiphertextCompressed<D> {
-    fn to_mut(&mut self) -> GGSWCiphertextCompressed<&mut [u8]> {
-        GGSWCiphertextCompressed {
+pub trait GGSWCompressedToMut {
+    fn to_mut(&mut self) -> GGSWCompressed<&mut [u8]>;
+}
+
+impl<D: DataMut> GGSWCompressedToMut for GGSWCompressed<D> {
+    fn to_mut(&mut self) -> GGSWCompressed<&mut [u8]> {
+        GGSWCompressed {
             k: self.k(),
             base2k: self.base2k(),
             dsize: self.dsize(),
@@ -255,13 +316,13 @@ impl<D: DataMut> GGSWCiphertextCompressedToMut for GGSWCiphertextCompressed<D> {
     }
 }
 
-pub trait GGSWCiphertextCompressedToRef {
-    fn to_ref(&self) -> GGSWCiphertextCompressed<&[u8]>;
+pub trait GGSWCompressedToRef {
+    fn to_ref(&self) -> GGSWCompressed<&[u8]>;
 }
 
-impl<D: DataRef> GGSWCiphertextCompressedToRef for GGSWCiphertextCompressed<D> {
-    fn to_ref(&self) -> GGSWCiphertextCompressed<&[u8]> {
-        GGSWCiphertextCompressed {
+impl<D: DataRef> GGSWCompressedToRef for GGSWCompressed<D> {
+    fn to_ref(&self) -> GGSWCompressed<&[u8]> {
+        GGSWCompressed {
             k: self.k(),
             base2k: self.base2k(),
             dsize: self.dsize(),

@@ -8,14 +8,14 @@ use std::{fmt, marker::PhantomData};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use poulpy_core::{
     Distribution,
-    layouts::{Base2K, Degree, Dsize, GGSWInfos, GLWEInfos, LWEInfos, TorusPrecision, compressed::GGSWCiphertextCompressed},
+    layouts::{Base2K, Degree, Dsize, GGSWInfos, GLWEInfos, LWEInfos, TorusPrecision, compressed::GGSWCompressed},
 };
 
 use crate::tfhe::blind_rotation::{BlindRotationAlgo, BlindRotationKeyInfos};
 
 #[derive(Clone)]
 pub struct BlindRotationKeyCompressed<D: Data, BRT: BlindRotationAlgo> {
-    pub(crate) keys: Vec<GGSWCiphertextCompressed<D>>,
+    pub(crate) keys: Vec<GGSWCompressed<D>>,
     pub(crate) dist: Distribution,
     pub(crate) _phantom: PhantomData<BRT>,
 }

@@ -128,10 +128,10 @@ where
                 rank: rank.into(),
             };
 
-            let mut ct_in: GGSW<Vec<u8>> = GGSW::alloc(&ggsw_in_layout);
-            let mut ct_out: GGSW<Vec<u8>> = GGSW::alloc(&ggsw_out_layout);
-            let mut tensor_key: TensorKey<Vec<u8>> = TensorKey::alloc(&tensor_key_layout);
-            let mut auto_key: AutomorphismKey<Vec<u8>> = AutomorphismKey::alloc(&auto_key_layout);
+            let mut ct_in: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_in_layout);
+            let mut ct_out: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_out_layout);
+            let mut tensor_key: TensorKey<Vec<u8>> = TensorKey::alloc_from_infos(&tensor_key_layout);
+            let mut auto_key: AutomorphismKey<Vec<u8>> = AutomorphismKey::alloc_from_infos(&auto_key_layout);
             let mut pt_scalar: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n, 1);
 
             let mut source_xs: Source = Source::new([0u8; 32]);
@@ -147,7 +147,7 @@ where
 
             let var_xs: f64 = 0.5;
 
-            let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(&ct_out);
+            let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&ct_out);
             sk.fill_ternary_prob(var_xs, &mut source_xs);
             let sk_prepared: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
 
@@ -309,9 +309,9 @@ where
                 rank: rank.into(),
             };
 
-            let mut ct: GGSW<Vec<u8>> = GGSW::alloc(&ggsw_out_layout);
-            let mut tensor_key: TensorKey<Vec<u8>> = TensorKey::alloc(&tensor_key_layout);
-            let mut auto_key: AutomorphismKey<Vec<u8>> = AutomorphismKey::alloc(&auto_key_layout);
+            let mut ct: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_out_layout);
+            let mut tensor_key: TensorKey<Vec<u8>> = TensorKey::alloc_from_infos(&tensor_key_layout);
+            let mut auto_key: AutomorphismKey<Vec<u8>> = AutomorphismKey::alloc_from_infos(&auto_key_layout);
             let mut pt_scalar: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n, 1);
 
             let mut source_xs: Source = Source::new([0u8; 32]);
@@ -327,7 +327,7 @@ where
 
             let var_xs: f64 = 0.5;
 
-            let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(&ct);
+            let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&ct);
             sk.fill_ternary_prob(var_xs, &mut source_xs);
             let sk_prepared: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
 

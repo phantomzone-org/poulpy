@@ -1,6 +1,6 @@
 use std::fmt;
 
-use poulpy_hal::layouts::{Data, DataMut, DataRef, Zn, ZnToMut, ZnToRef, ZnxInfos};
+use poulpy_hal::layouts::{Backend, Data, DataMut, DataRef, Module, Zn, ZnToMut, ZnToRef, ZnxInfos};
 
 use crate::layouts::{Base2K, Degree, LWEInfos, TorusPrecision};
 
@@ -52,20 +52,35 @@ impl<D: Data> LWEInfos for LWEPlaintext<D> {
     }
 }
 
-impl LWEPlaintext<Vec<u8>> {
-    pub fn alloc<A>(infos: &A) -> Self
-    where
-        A: LWEInfos,
-    {
-        Self::alloc_with(infos.base2k(), infos.k())
-    }
-
-    pub fn alloc_with(base2k: Base2K, k: TorusPrecision) -> Self {
-        Self {
+pub trait LWEPlaintextAlloc {
+    fn alloc_lwe_plaintext(&self, base2k: Base2K, k: TorusPrecision) -> LWEPlaintext<Vec<u8>> {
+        LWEPlaintext {
             data: Zn::alloc(1, 1, k.0.div_ceil(base2k.0) as usize),
             k,
             base2k,
         }
+    }
+
+    fn alloc_lwe_plaintext_from_infos<A>(&self, infos: &A) -> LWEPlaintext<Vec<u8>>
+    where
+        A: LWEInfos,
+    {
+        self.alloc_lwe_plaintext(infos.base2k(), infos.k())
+    }
+}
+
+impl<B: Backend> LWEPlaintextAlloc for Module<B> {}
+
+impl LWEPlaintext<Vec<u8>> {
+    pub fn alloc_from_infos<A, B: Backend>(module: Module<B>, infos: &A) -> Self
+    where
+        A: LWEInfos,
+    {
+        module.alloc_lwe_plaintext_from_infos(infos)
+    }
+
+    pub fn alloc<B: Backend>(module: Module<B>, base2k: Base2K, k: TorusPrecision) -> Self {
+        module.alloc_lwe_plaintext(base2k, k)
     }
 }
 

@@ -11,7 +11,7 @@ use crate::{
     TakeGLWEPt,
     encryption::glwe_ct::GLWEEncryptSk,
     layouts::{
-        GGLWE, GGLWECiphertextToMut, GGLWEInfos, GLWECiphertext, GLWEPlaintext, LWEInfos,
+        GGLWE, GGLWEInfos, GGLWEToMut, GLWE, GLWEPlaintext, LWEInfos,
         prepared::{GLWESecretPrepared, GLWESecretPreparedToRef},
     },
 };
@@ -22,8 +22,8 @@ impl GGLWE<Vec<u8>> {
         A: GGLWEInfos,
         Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes + VecZnxNormalizeTmpBytes,
     {
-        GLWECiphertext::encrypt_sk_scratch_space(module, &infos.glwe_layout())
-            + (GLWEPlaintext::alloc_bytes(&infos.glwe_layout()) | module.vec_znx_normalize_tmp_bytes())
+        GLWE::encrypt_sk_scratch_space(module, &infos.glwe_layout())
+            + (GLWEPlaintext::bytes_of(&infos.glwe_layout()) | module.vec_znx_normalize_tmp_bytes())
     }
 
     pub fn encrypt_pk_scratch_space<B: Backend, A>(_module: &Module<B>, _infos: &A) -> usize
@@ -44,7 +44,7 @@ pub trait GGLWEEncryptSk<B: Backend> {
         source_xe: &mut Source,
         scratch: &mut Scratch<B>,
     ) where
-        R: GGLWECiphertextToMut,
+        R: GGLWEToMut,
         P: ScalarZnxToRef,
         S: GLWESecretPreparedToRef<B>;
 }
@@ -64,7 +64,7 @@ where
         source_xe: &mut Source,
         scratch: &mut Scratch<B>,
     ) where
-        R: GGLWECiphertextToMut,
+        R: GGLWEToMut,
         P: ScalarZnxToRef,
         S: GLWESecretPreparedToRef<B>,
     {

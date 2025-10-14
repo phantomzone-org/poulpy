@@ -2,7 +2,7 @@ use itertools::Itertools;
 use poulpy_core::{
     GLWEOperations, TakeGLWECtSlice, TakeGLWEPt, glwe_packing,
     layouts::{
-        GLWECiphertext, GLWEInfos, GLWEPlaintextLayout, LWEInfos, TorusPrecision,
+        GLWE, GLWEInfos, GLWEPlaintextLayout, LWEInfos, TorusPrecision,
         prepared::{AutomorphismKeyPrepared, GLWESecretPrepared},
     },
 };
@@ -24,14 +24,14 @@ use std::{collections::HashMap, marker::PhantomData};
 use crate::tfhe::bdd_arithmetic::{FromBits, ToBits, UnsignedInteger};
 
 /// A FHE ciphertext encrypting a [UnsignedInteger].
-pub struct FheUintWord<D: Data, T: UnsignedInteger>(pub(crate) GLWECiphertext<D>, pub(crate) PhantomData<T>);
+pub struct FheUintWord<D: Data, T: UnsignedInteger>(pub(crate) GLWE<D>, pub(crate) PhantomData<T>);
 
 impl<D: DataMut, T: UnsignedInteger> FheUintWord<D, T> {
     #[allow(dead_code)]
     fn post_process<ATK, BE: Backend>(
         &mut self,
         module: &Module<BE>,
-        mut tmp_res: Vec<GLWECiphertext<&mut [u8]>>,
+        mut tmp_res: Vec<GLWE<&mut [u8]>>,
         auto_keys: &HashMap<i64, AutomorphismKeyPrepared<ATK, BE>>,
         scratch: &mut Scratch<BE>,
     ) where
@@ -67,7 +67,7 @@ impl<D: DataMut, T: UnsignedInteger> FheUintWord<D, T> {
         // Repacks the GLWE ciphertexts bits
         let gap: usize = module.n() / T::WORD_SIZE;
         let log_gap: usize = (usize::BITS - (gap - 1).leading_zeros()) as usize;
-        let mut cts: HashMap<usize, &mut GLWECiphertext<&mut [u8]>> = HashMap::new();
+        let mut cts: HashMap<usize, &mut GLWE<&mut [u8]>> = HashMap::new();
         for (i, ct) in tmp_res.iter_mut().enumerate().take(T::WORD_SIZE) {
             cts.insert(i * gap, ct);
         }

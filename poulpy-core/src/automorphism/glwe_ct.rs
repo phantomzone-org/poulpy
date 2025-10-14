@@ -8,9 +8,9 @@ use poulpy_hal::{
     layouts::{Backend, DataMut, DataRef, Module, Scratch, VecZnxBig},
 };
 
-use crate::layouts::{GGLWEInfos, GLWECiphertext, GLWEInfos, LWEInfos, prepared::AutomorphismKeyPrepared};
+use crate::layouts::{GGLWEInfos, GLWE, GLWEInfos, LWEInfos, prepared::AutomorphismKeyPrepared};
 
-impl GLWECiphertext<Vec<u8>> {
+impl GLWE<Vec<u8>> {
     pub fn automorphism_scratch_space<B: Backend, OUT, IN, KEY>(
         module: &Module<B>,
         out_infos: &OUT,
@@ -36,11 +36,11 @@ impl GLWECiphertext<Vec<u8>> {
     }
 }
 
-impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
+impl<DataSelf: DataMut> GLWE<DataSelf> {
     pub fn automorphism<DataLhs: DataRef, DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
-        lhs: &GLWECiphertext<DataLhs>,
+        lhs: &GLWE<DataLhs>,
         rhs: &AutomorphismKeyPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
@@ -93,7 +93,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
     pub fn automorphism_add<DataLhs: DataRef, DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
-        lhs: &GLWECiphertext<DataLhs>,
+        lhs: &GLWE<DataLhs>,
         rhs: &AutomorphismKeyPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
@@ -176,7 +176,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
     pub fn automorphism_sub_ab<DataLhs: DataRef, DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
-        lhs: &GLWECiphertext<DataLhs>,
+        lhs: &GLWE<DataLhs>,
         rhs: &AutomorphismKeyPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
@@ -261,7 +261,7 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
     pub fn automorphism_sub_negate<DataLhs: DataRef, DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
-        lhs: &GLWECiphertext<DataLhs>,
+        lhs: &GLWE<DataLhs>,
         rhs: &AutomorphismKeyPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where

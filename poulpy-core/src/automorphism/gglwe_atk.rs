@@ -7,7 +7,7 @@ use poulpy_hal::{
     layouts::{Backend, DataMut, DataRef, Module, Scratch, ZnxZero},
 };
 
-use crate::layouts::{AutomorphismKey, GGLWEInfos, GLWECiphertext, prepared::AutomorphismKeyPrepared};
+use crate::layouts::{AutomorphismKey, GGLWEInfos, GLWE, prepared::AutomorphismKeyPrepared};
 
 impl AutomorphismKey<Vec<u8>> {
     pub fn automorphism_scratch_space<B: Backend, OUT, IN, KEY>(
@@ -22,7 +22,7 @@ impl AutomorphismKey<Vec<u8>> {
         KEY: GGLWEInfos,
         Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        GLWECiphertext::keyswitch_scratch_space(
+        GLWE::keyswitch_scratch_space(
             module,
             &out_infos.glwe_layout(),
             &in_infos.glwe_layout(),
@@ -103,8 +103,8 @@ impl<DataSelf: DataMut> AutomorphismKey<DataSelf> {
 
         (0..self.rank_in().into()).for_each(|col_i| {
             (0..self.dnum().into()).for_each(|row_j| {
-                let mut res_ct: GLWECiphertext<&mut [u8]> = self.at_mut(row_j, col_i);
-                let lhs_ct: GLWECiphertext<&[u8]> = lhs.at(row_j, col_i);
+                let mut res_ct: GLWE<&mut [u8]> = self.at_mut(row_j, col_i);
+                let lhs_ct: GLWE<&[u8]> = lhs.at(row_j, col_i);
 
                 // Reverts the automorphism X^{-k}: (-pi^{-1}_{k}(s)a + s, a) to (-sa + pi_{k}(s), a)
                 (0..cols_out).for_each(|i| {
@@ -176,7 +176,7 @@ impl<DataSelf: DataMut> AutomorphismKey<DataSelf> {
 
         (0..self.rank_in().into()).for_each(|col_i| {
             (0..self.dnum().into()).for_each(|row_j| {
-                let mut res_ct: GLWECiphertext<&mut [u8]> = self.at_mut(row_j, col_i);
+                let mut res_ct: GLWE<&mut [u8]> = self.at_mut(row_j, col_i);
 
                 // Reverts the automorphism X^{-k}: (-pi^{-1}_{k}(s)a + s, a) to (-sa + pi_{k}(s), a)
                 (0..cols_out).for_each(|i| {

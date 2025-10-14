@@ -7,19 +7,19 @@ use poulpy_hal::{
 use crate::{
     encryption::{SIGMA, glwe_ct::GLWEEncryptSkInternal},
     layouts::{
-        GLWECiphertext, GLWEInfos, GLWEPlaintext, GLWEPlaintextToRef, LWEInfos,
-        compressed::{GLWECiphertextCompressed, GLWECiphertextCompressedToMut},
+        GLWE, GLWEInfos, GLWEPlaintext, GLWEPlaintextToRef, LWEInfos,
+        compressed::{GLWECompressed, GLWECompressedToMut},
         prepared::{GLWESecretPrepared, GLWESecretPreparedToRef},
     },
 };
 
-impl GLWECiphertextCompressed<Vec<u8>> {
+impl GLWECompressed<Vec<u8>> {
     pub fn encrypt_sk_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GLWEInfos,
         Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes,
     {
-        GLWECiphertext::encrypt_sk_scratch_space(module, infos)
+        GLWE::encrypt_sk_scratch_space(module, infos)
     }
 }
 
@@ -33,7 +33,7 @@ pub trait GLWECompressedEncryptSk<B: Backend> {
         source_xe: &mut Source,
         scratch: &mut Scratch<B>,
     ) where
-        R: GLWECiphertextCompressedToMut,
+        R: GLWECompressedToMut,
         P: GLWEPlaintextToRef,
         S: GLWESecretPreparedToRef<B>;
 }
@@ -51,11 +51,11 @@ where
         source_xe: &mut Source,
         scratch: &mut Scratch<B>,
     ) where
-        R: GLWECiphertextCompressedToMut,
+        R: GLWECompressedToMut,
         P: GLWEPlaintextToRef,
         S: GLWESecretPreparedToRef<B>,
     {
-        let res: &mut GLWECiphertextCompressed<&mut [u8]> = &mut res.to_mut();
+        let res: &mut GLWECompressed<&mut [u8]> = &mut res.to_mut();
         let mut source_xa: Source = Source::new(seed_xa);
         let cols: usize = (res.rank() + 1).into();
 
@@ -77,7 +77,7 @@ where
     }
 }
 
-impl<D: DataMut> GLWECiphertextCompressed<D> {
+impl<D: DataMut> GLWECompressed<D> {
     #[allow(clippy::too_many_arguments)]
     pub fn encrypt_sk<DataPt: DataRef, DataSk: DataRef, B: Backend>(
         &mut self,

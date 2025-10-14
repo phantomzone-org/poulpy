@@ -4,9 +4,9 @@ use poulpy_hal::{
     oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl},
 };
 
-use crate::layouts::{LWECiphertext, LWEInfos, LWEPlaintext, LWESecret};
+use crate::layouts::{LWE, LWEInfos, LWEPlaintext, LWESecret};
 
-impl<DataSelf> LWECiphertext<DataSelf>
+impl<DataSelf> LWE<DataSelf>
 where
     DataSelf: DataRef,
 {

@@ -26,7 +26,7 @@ impl LWEToGLWESwitchingKey<Vec<u8>> {
             "rank_in != 1 is not supported for LWEToGLWESwitchingKey"
         );
         GLWESwitchingKey::encrypt_sk_scratch_space(module, infos)
-            + GLWESecret::alloc_bytes_with(Degree(module.n() as u32), infos.rank_in())
+            + GLWESecret::bytes_of(Degree(module.n() as u32), infos.rank_in())
     }
 }
 

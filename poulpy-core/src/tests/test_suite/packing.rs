@@ -21,7 +21,7 @@ use poulpy_hal::{
 use crate::{
     GLWEOperations, GLWEPacker,
     layouts::{
-        AutomorphismKey, AutomorphismKeyLayout, GLWECiphertext, GLWECiphertextLayout, GLWEPlaintext, GLWESecret,
+        AutomorphismKey, AutomorphismKeyLayout, GLWE, GLWELayout, GLWEPlaintext, GLWESecret,
         prepared::{AutomorphismKeyPrepared, GLWESecretPrepared, PrepareAlloc},
     },
 };
@@ -88,7 +88,7 @@ where
 
     let dnum: usize = k_ct.div_ceil(base2k * dsize);
 
-    let glwe_out_infos: GLWECiphertextLayout = GLWECiphertextLayout {
+    let glwe_out_infos: GLWELayout = GLWELayout {
         n: n.into(),
         base2k: base2k.into(),
         k: k_ct.into(),
@@ -105,16 +105,16 @@ where
     };
 
     let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-        GLWECiphertext::encrypt_sk_scratch_space(module, &glwe_out_infos)
+        GLWE::encrypt_sk_scratch_space(module, &glwe_out_infos)
             | AutomorphismKey::encrypt_sk_scratch_space(module, &key_infos)
             | GLWEPacker::scratch_space(module, &glwe_out_infos, &key_infos),
     );
 
-    let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(&glwe_out_infos);
+    let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_out_infos);
     sk.fill_ternary_prob(0.5, &mut source_xs);
     let sk_dft: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
 
-    let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&glwe_out_infos);
+    let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_out_infos);
     let mut data: Vec<i64> = vec![0i64; n];
     data.iter_mut().enumerate().for_each(|(i, x)| {
         *x = i as i64;
@@ -125,7 +125,7 @@ where
     let gal_els: Vec<i64> = GLWEPacker::galois_elements(module);
 
     let mut auto_keys: HashMap<i64, AutomorphismKeyPrepared<Vec<u8>, B>> = HashMap::new();
-    let mut tmp: AutomorphismKey<Vec<u8>> = AutomorphismKey::alloc(&key_infos);
+    let mut tmp: AutomorphismKey<Vec<u8>> = AutomorphismKey::alloc_from_infos(&key_infos);
     gal_els.iter().for_each(|gal_el| {
         tmp.encrypt_sk(
             module,
@@ -143,7 +143,7 @@ where
 
     let mut packer: GLWEPacker = GLWEPacker::new(&glwe_out_infos, log_batch);
 
-    let mut ct: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&glwe_out_infos);
+    let mut ct: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_out_infos);
 
     ct.encrypt_sk(
         module,
@@ -171,19 +171,14 @@ where
         if reverse_bits_msb(i, log_n as u32).is_multiple_of(5) {
             packer.add(module, Some(&ct), &auto_keys, scratch.borrow());
         } else {
-            packer.add(
-                module,
-                None::<&GLWECiphertext<Vec<u8>>>,
-                &auto_keys,
-                scratch.borrow(),
-            )
+            packer.add(module, None::<&GLWE<Vec<u8>>>, &auto_keys, scratch.borrow())
         }
     });
 
-    let mut res: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&glwe_out_infos);
+    let mut res: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_out_infos);
     packer.flush(module, &mut res);
 
-    let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&glwe_out_infos);
+    let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_out_infos);
     let mut data: Vec<i64> = vec![0i64; n];
     data.iter_mut().enumerate().for_each(|(i, x)| {
         if i.is_multiple_of(5) {

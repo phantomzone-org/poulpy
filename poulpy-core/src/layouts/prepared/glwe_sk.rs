@@ -49,29 +49,29 @@ pub trait GLWESecretPreparedAlloc<B: Backend>
 where
     Self: GetDegree + SvpPPolAllocBytes + SvpPPolAlloc<B>,
 {
-    fn glwe_secret_prepared_alloc(&self, rank: Rank) -> GLWESecretPrepared<Vec<u8>, B> {
+    fn alloc_glwe_secret_prepared(&self, rank: Rank) -> GLWESecretPrepared<Vec<u8>, B> {
         GLWESecretPrepared {
             data: self.svp_ppol_alloc(rank.into()),
             dist: Distribution::NONE,
         }
     }
-    fn glwe_secret_prepared_alloc_from_infos<A>(&self, infos: &A) -> GLWESecretPrepared<Vec<u8>, B>
+    fn alloc_glwe_secret_prepared_from_infos<A>(&self, infos: &A) -> GLWESecretPrepared<Vec<u8>, B>
     where
         A: GLWEInfos,
     {
         assert_eq!(self.n(), infos.n());
-        self.glwe_secret_prepared_alloc(infos.rank())
+        self.alloc_glwe_secret_prepared(infos.rank())
     }
 
-    fn glwe_secret_alloc_bytes(&self, rank: Rank) -> usize {
-        self.svp_ppol_alloc_bytes(rank.into())
+    fn bytes_of_glwe_secret(&self, rank: Rank) -> usize {
+        self.svp_ppol_bytes_of(rank.into())
     }
-    fn glwe_secret_alloc_bytes_from_infos<A>(&self, infos: &A) -> usize
+    fn bytes_of_glwe_secret_from_infos<A>(&self, infos: &A) -> usize
     where
         A: GLWEInfos,
     {
         assert_eq!(self.n(), infos.n());
-        self.glwe_secret_alloc_bytes(infos.rank())
+        self.bytes_of_glwe_secret(infos.rank())
     }
 }
 
@@ -85,22 +85,22 @@ where
     where
         A: GLWEInfos,
     {
-        module.glwe_secret_prepared_alloc_from_infos(infos)
+        module.alloc_glwe_secret_prepared_from_infos(infos)
     }
 
     pub fn alloc(module: &Module<B>, rank: Rank) -> Self {
-        module.glwe_secret_prepared_alloc(rank)
+        module.alloc_glwe_secret_prepared(rank)
     }
 
-    pub fn alloc_bytes_from_infos<A>(module: &Module<B>, infos: &A) -> usize
+    pub fn bytes_of_from_infos<A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GLWEInfos,
     {
-        module.glwe_secret_alloc_bytes_from_infos(infos)
+        module.bytes_of_glwe_secret_from_infos(infos)
     }
 
-    pub fn alloc_bytes(module: &Module<B>, rank: Rank) -> usize {
-        module.glwe_secret_alloc_bytes(rank)
+    pub fn bytes_of(module: &Module<B>, rank: Rank) -> usize {
+        module.bytes_of_glwe_secret(rank)
     }
 }
 
@@ -118,7 +118,7 @@ pub trait GLWESecretPrepare<B: Backend>
 where
     Self: SvpPrepare<B>,
 {
-    fn glwe_secret_prepare<R, O>(&self, res: &mut R, other: &O)
+    fn prepare_glwe_secret<R, O>(&self, res: &mut R, other: &O)
     where
         R: GLWESecretPreparedToMut<B> + SetDist,
         O: GLWESecretToRef + GetDist,

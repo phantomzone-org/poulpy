@@ -9,13 +9,10 @@ use poulpy_hal::{
 
 use crate::{
     TakeGLWECt,
-    layouts::{
-        GGLWEInfos, GLWECiphertext, GLWECiphertextLayout, GLWEInfos, LWECiphertext, LWEInfos, Rank,
-        prepared::GLWEToLWESwitchingKeyPrepared,
-    },
+    layouts::{GGLWEInfos, GLWE, GLWEInfos, GLWELayout, LWE, LWEInfos, Rank, prepared::GLWEToLWESwitchingKeyPrepared},
 };
 
-impl LWECiphertext<Vec<u8>> {
+impl LWE<Vec<u8>> {
     pub fn from_glwe_scratch_space<B: Backend, OUT, IN, KEY>(
         module: &Module<B>,
         lwe_infos: &OUT,
@@ -28,24 +25,24 @@ impl LWECiphertext<Vec<u8>> {
         KEY: GGLWEInfos,
         Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        let glwe_layout: GLWECiphertextLayout = GLWECiphertextLayout {
+        let glwe_layout: GLWELayout = GLWELayout {
             n: module.n().into(),
             base2k: lwe_infos.base2k(),
             k: lwe_infos.k(),
             rank: Rank(1),
         };
 
-        GLWECiphertext::alloc_bytes_with(
+        GLWE::bytes_of(
             module.n().into(),
             lwe_infos.base2k(),
             lwe_infos.k(),
             1u32.into(),
-        ) + GLWECiphertext::keyswitch_scratch_space(module, &glwe_layout, glwe_infos, key_infos)
+        ) + GLWE::keyswitch_scratch_space(module, &glwe_layout, glwe_infos, key_infos)
     }
 }
 
-impl<DLwe: DataMut> LWECiphertext<DLwe> {
-    pub fn sample_extract<DGlwe: DataRef>(&mut self, a: &GLWECiphertext<DGlwe>) {
+impl<DLwe: DataMut> LWE<DLwe> {
+    pub fn sample_extract<DGlwe: DataRef>(&mut self, a: &GLWE<DGlwe>) {
         #[cfg(debug_assertions)]
         {
             assert!(self.n() <= a.n());
@@ -66,7 +63,7 @@ impl<DLwe: DataMut> LWECiphertext<DLwe> {
     pub fn from_glwe<DGlwe, DKs, B: Backend>(
         &mut self,
         module: &Module<B>,
-        a: &GLWECiphertext<DGlwe>,
+        a: &GLWE<DGlwe>,
         ks: &GLWEToLWESwitchingKeyPrepared<DKs, B>,
         scratch: &mut Scratch<B>,
     ) where
@@ -92,7 +89,7 @@ impl<DLwe: DataMut> LWECiphertext<DLwe> {
             assert!(self.n() <= module.n() as u32);
         }
 
-        let glwe_layout: GLWECiphertextLayout = GLWECiphertextLayout {
+        let glwe_layout: GLWELayout = GLWELayout {
             n: module.n().into(),
             base2k: self.base2k(),
             k: self.k(),

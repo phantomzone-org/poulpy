@@ -18,7 +18,7 @@ use poulpy_hal::{
 use crate::{
     encryption::SIGMA,
     layouts::{
-        GLWECiphertext, GLWECiphertextLayout, GLWEPlaintext, GLWESecret, GLWESwitchingKey, GLWESwitchingKeyLayout,
+        GLWE, GLWELayout, GLWEPlaintext, GLWESecret, GLWESwitchingKey, GLWESwitchingKeyLayout,
         prepared::{GLWESecretPrepared, GLWESwitchingKeyPrepared, PrepareAlloc},
     },
     noise::log2_std_noise_gglwe_product,
@@ -77,14 +77,14 @@ where
                 let n: usize = module.n();
                 let dnum: usize = k_in.div_ceil(base2k * dsize);
 
-                let glwe_in_infos: GLWECiphertextLayout = GLWECiphertextLayout {
+                let glwe_in_infos: GLWELayout = GLWELayout {
                     n: n.into(),
                     base2k: base2k.into(),
                     k: k_in.into(),
                     rank: rank_in.into(),
                 };
 
-                let glwe_out_infos: GLWECiphertextLayout = GLWECiphertextLayout {
+                let glwe_out_infos: GLWELayout = GLWELayout {
                     n: n.into(),
                     base2k: base2k.into(),
                     k: k_out.into(),
@@ -101,10 +101,10 @@ where
                     rank_out: rank_out.into(),
                 };
 
-                let mut ksk: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc(&key_apply);
-                let mut glwe_in: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&glwe_in_infos);
-                let mut glwe_out: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&glwe_out_infos);
-                let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&glwe_in_infos);
+                let mut ksk: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc_from_infos(&key_apply);
+                let mut glwe_in: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_in_infos);
+                let mut glwe_out: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_out_infos);
+                let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_in_infos);
 
                 let mut source_xs: Source = Source::new([0u8; 32]);
                 let mut source_xe: Source = Source::new([0u8; 32]);
@@ -114,15 +114,15 @@ where
 
                 let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
                     GLWESwitchingKey::encrypt_sk_scratch_space(module, &key_apply)
-                        | GLWECiphertext::encrypt_sk_scratch_space(module, &glwe_in_infos)
-                        | GLWECiphertext::keyswitch_scratch_space(module, &glwe_out_infos, &glwe_in_infos, &key_apply),
+                        | GLWE::encrypt_sk_scratch_space(module, &glwe_in_infos)
+                        | GLWE::keyswitch_scratch_space(module, &glwe_out_infos, &glwe_in_infos, &key_apply),
                 );
 
-                let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc_with(n.into(), rank_in.into());
+                let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank_in.into());
                 sk_in.fill_ternary_prob(0.5, &mut source_xs);
                 let sk_in_prepared: GLWESecretPrepared<Vec<u8>, B> = sk_in.prepare_alloc(module, scratch.borrow());
 
-                let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc_with(n.into(), rank_out.into());
+                let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank_out.into());
                 sk_out.fill_ternary_prob(0.5, &mut source_xs);
                 let sk_out_prepared: GLWESecretPrepared<Vec<u8>, B> = sk_out.prepare_alloc(module, scratch.borrow());
 
@@ -217,7 +217,7 @@ where
             let n: usize = module.n();
             let dnum: usize = k_out.div_ceil(base2k * dsize);
 
-            let glwe_out_infos: GLWECiphertextLayout = GLWECiphertextLayout {
+            let glwe_out_infos: GLWELayout = GLWELayout {
                 n: n.into(),
                 base2k: base2k.into(),
                 k: k_out.into(),
@@ -234,9 +234,9 @@ where
                 rank_out: rank.into(),
             };
 
-            let mut key_apply: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc(&key_apply_infos);
-            let mut glwe_out: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&glwe_out_infos);
-            let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&glwe_out_infos);
+            let mut key_apply: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc_from_infos(&key_apply_infos);
+            let mut glwe_out: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_out_infos);
+            let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_out_infos);
 
             let mut source_xs: Source = Source::new([0u8; 32]);
             let mut source_xe: Source = Source::new([0u8; 32]);
@@ -246,15 +246,15 @@ where
 
             let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
                 GLWESwitchingKey::encrypt_sk_scratch_space(module, &key_apply_infos)
-                    | GLWECiphertext::encrypt_sk_scratch_space(module, &glwe_out_infos)
-                    | GLWECiphertext::keyswitch_inplace_scratch_space(module, &glwe_out_infos, &key_apply_infos),
+                    | GLWE::encrypt_sk_scratch_space(module, &glwe_out_infos)
+                    | GLWE::keyswitch_inplace_scratch_space(module, &glwe_out_infos, &key_apply_infos),
             );
 
-            let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc_with(n.into(), rank.into());
+            let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank.into());
             sk_in.fill_ternary_prob(0.5, &mut source_xs);
             let sk_in_prepared: GLWESecretPrepared<Vec<u8>, B> = sk_in.prepare_alloc(module, scratch.borrow());
 
-            let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc_with(n.into(), rank.into());
+            let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank.into());
             sk_out.fill_ternary_prob(0.5, &mut source_xs);
             let sk_out_prepared: GLWESecretPrepared<Vec<u8>, B> = sk_out.prepare_alloc(module, scratch.borrow());
 

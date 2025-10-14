@@ -1,8 +1,10 @@
-use poulpy_hal::layouts::{Data, DataMut, DataRef, ReaderFrom, VecZnx, VecZnxToMut, VecZnxToRef, WriterTo, ZnxInfos};
+use poulpy_hal::layouts::{
+    Backend, Data, DataMut, DataRef, Module, ReaderFrom, VecZnx, VecZnxToMut, VecZnxToRef, WriterTo, ZnxInfos,
+};
 
 use crate::{
     dist::Distribution,
-    layouts::{Base2K, Degree, GLWEInfos, LWEInfos, Rank, TorusPrecision},
+    layouts::{Base2K, Degree, GLWEInfos, GetDegree, LWEInfos, Rank, TorusPrecision},
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
@@ -80,32 +82,75 @@ impl GLWEInfos for GLWEPublicKeyLayout {
     }
 }
 
-impl GLWEPublicKey<Vec<u8>> {
-    pub fn alloc<A>(infos: &A) -> Self
-    where
-        A: GLWEInfos,
-    {
-        Self::alloc_with(infos.n(), infos.base2k(), infos.k(), infos.rank())
-    }
-
-    pub fn alloc_with(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank) -> Self {
-        Self {
-            data: VecZnx::alloc(n.into(), (rank + 1).into(), k.0.div_ceil(base2k.0) as usize),
+pub trait GLWEPublicKeyAlloc
+where
+    Self: GetDegree,
+{
+    fn alloc_glwe_public_key(&self, base2k: Base2K, k: TorusPrecision, rank: Rank) -> GLWEPublicKey<Vec<u8>> {
+        GLWEPublicKey {
+            data: VecZnx::alloc(
+                self.n().into(),
+                (rank + 1).into(),
+                k.0.div_ceil(base2k.0) as usize,
+            ),
             base2k,
             k,
             dist: Distribution::NONE,
         }
     }
 
-    pub fn alloc_bytes<A>(infos: &A) -> usize
+    fn alloc_glwe_public_key_from_infos<A>(&self, infos: &A) -> GLWEPublicKey<Vec<u8>>
     where
         A: GLWEInfos,
     {
-        Self::alloc_bytes_with(infos.n(), infos.base2k(), infos.k(), infos.rank())
+        self.alloc_glwe_public_key(infos.base2k(), infos.k(), infos.rank())
     }
 
-    pub fn alloc_bytes_with(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank) -> usize {
-        VecZnx::alloc_bytes(n.into(), (rank + 1).into(), k.0.div_ceil(base2k.0) as usize)
+    fn bytes_of_glwe_public_key(&self, base2k: Base2K, k: TorusPrecision, rank: Rank) -> usize {
+        VecZnx::bytes_of(
+            self.n().into(),
+            (rank + 1).into(),
+            k.0.div_ceil(base2k.0) as usize,
+        )
+    }
+
+    fn bytes_of_glwe_public_key_from_infos<A>(&self, infos: &A) -> usize
+    where
+        A: GLWEInfos,
+    {
+        self.bytes_of_glwe_public_key(infos.base2k(), infos.k(), infos.rank())
+    }
+}
+
+impl GLWEPublicKey<Vec<u8>> {
+    pub fn alloc_from_infos<A, B: Backend>(module: Module<B>, infos: &A) -> Self
+    where
+        A: GLWEInfos,
+        Module<B>: GLWEPublicKeyAlloc,
+    {
+        module.alloc_glwe_public_key_from_infos(infos)
+    }
+
+    pub fn alloc<B: Backend>(module: Module<B>, base2k: Base2K, k: TorusPrecision, rank: Rank) -> Self
+    where
+        Module<B>: GLWEPublicKeyAlloc,
+    {
+        module.alloc_glwe_public_key(base2k, k, rank)
+    }
+
+    pub fn bytes_of_from_infos<A, B: Backend>(module: Module<B>, infos: &A) -> usize
+    where
+        A: GLWEInfos,
+        Module<B>: GLWEPublicKeyAlloc,
+    {
+        module.bytes_of_glwe_public_key_from_infos(infos)
+    }
+
+    pub fn bytes_of<B: Backend>(module: Module<B>, base2k: Base2K, k: TorusPrecision, rank: Rank) -> usize
+    where
+        Module<B>: GLWEPublicKeyAlloc,
+    {
+        module.bytes_of_glwe_public_key(base2k, k, rank)
     }
 }
 

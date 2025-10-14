@@ -110,9 +110,9 @@ where
                         rank_out: rank_out_s1s2.into(),
                     };
 
-                    let mut gglwe_s0s1: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc(&gglwe_s0s1_infos);
-                    let mut gglwe_s1s2: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc(&gglwe_s1s2_infos);
-                    let mut gglwe_s0s2: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc(&gglwe_s0s2_infos);
+                    let mut gglwe_s0s1: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc_from_infos(&gglwe_s0s1_infos);
+                    let mut gglwe_s1s2: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc_from_infos(&gglwe_s1s2_infos);
+                    let mut gglwe_s0s2: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc_from_infos(&gglwe_s0s2_infos);
 
                     let mut source_xs: Source = Source::new([0u8; 32]);
                     let mut source_xe: Source = Source::new([0u8; 32]);
@@ -130,13 +130,13 @@ where
                         &gglwe_s1s2_infos,
                     ));
 
-                    let mut sk0: GLWESecret<Vec<u8>> = GLWESecret::alloc_with(n.into(), rank_in_s0s1.into());
+                    let mut sk0: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank_in_s0s1.into());
                     sk0.fill_ternary_prob(0.5, &mut source_xs);
 
-                    let mut sk1: GLWESecret<Vec<u8>> = GLWESecret::alloc_with(n.into(), rank_out_s0s1.into());
+                    let mut sk1: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank_out_s0s1.into());
                     sk1.fill_ternary_prob(0.5, &mut source_xs);
 
-                    let mut sk2: GLWESecret<Vec<u8>> = GLWESecret::alloc_with(n.into(), rank_out_s1s2.into());
+                    let mut sk2: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank_out_s1s2.into());
                     sk2.fill_ternary_prob(0.5, &mut source_xs);
                     let sk2_prepared: GLWESecretPrepared<Vec<u8>, B> = sk2.prepare_alloc(module, scratch_apply.borrow());
 
@@ -266,8 +266,8 @@ where
                     rank_out: rank_out.into(),
                 };
 
-                let mut gglwe_s0s1: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc(&gglwe_s0s1_infos);
-                let mut gglwe_s1s2: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc(&gglwe_s1s2_infos);
+                let mut gglwe_s0s1: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc_from_infos(&gglwe_s0s1_infos);
+                let mut gglwe_s1s2: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc_from_infos(&gglwe_s1s2_infos);
 
                 let mut source_xs: Source = Source::new([0u8; 32]);
                 let mut source_xe: Source = Source::new([0u8; 32]);
@@ -285,13 +285,13 @@ where
 
                 let var_xs: f64 = 0.5;
 
-                let mut sk0: GLWESecret<Vec<u8>> = GLWESecret::alloc_with(n.into(), rank_in.into());
+                let mut sk0: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank_in.into());
                 sk0.fill_ternary_prob(var_xs, &mut source_xs);
 
-                let mut sk1: GLWESecret<Vec<u8>> = GLWESecret::alloc_with(n.into(), rank_out.into());
+                let mut sk1: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank_out.into());
                 sk1.fill_ternary_prob(var_xs, &mut source_xs);
 
-                let mut sk2: GLWESecret<Vec<u8>> = GLWESecret::alloc_with(n.into(), rank_out.into());
+                let mut sk2: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank_out.into());
                 sk2.fill_ternary_prob(var_xs, &mut source_xs);
                 let sk2_prepared: GLWESecretPrepared<Vec<u8>, B> = sk2.prepare_alloc(module, scratch_apply.borrow());
 

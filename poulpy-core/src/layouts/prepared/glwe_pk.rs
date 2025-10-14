@@ -54,7 +54,7 @@ pub trait GLWEPublicKeyPreparedAlloc<B: Backend>
 where
     Self: GetDegree + VecZnxDftAlloc<B> + VecZnxDftAllocBytes,
 {
-    fn glwe_public_key_prepared_alloc(&self, base2k: Base2K, k: TorusPrecision, rank: Rank) -> GLWEPublicKeyPrepared<Vec<u8>, B> {
+    fn alloc_glwe_public_key_prepared(&self, base2k: Base2K, k: TorusPrecision, rank: Rank) -> GLWEPublicKeyPrepared<Vec<u8>, B> {
         GLWEPublicKeyPrepared {
             data: self.vec_znx_dft_alloc((rank + 1).into(), k.0.div_ceil(base2k.0) as usize),
             base2k,
@@ -63,22 +63,22 @@ where
         }
     }
 
-    fn glwe_public_key_alloc_from_infos<A>(&self, infos: &A) -> GLWEPublicKeyPrepared<Vec<u8>, B>
+    fn alloc_glwe_public_key_prepared_from_infos<A>(&self, infos: &A) -> GLWEPublicKeyPrepared<Vec<u8>, B>
     where
         A: GLWEInfos,
     {
-        self.glwe_public_key_prepared_alloc(infos.base2k(), infos.k(), infos.rank())
+        self.alloc_glwe_public_key_prepared(infos.base2k(), infos.k(), infos.rank())
     }
 
-    fn glwe_public_key_prepared_alloc_bytes(&self, base2k: Base2K, k: TorusPrecision, rank: Rank) -> usize {
-        self.vec_znx_dft_alloc_bytes((rank + 1).into(), k.0.div_ceil(base2k.0) as usize)
+    fn bytes_of_glwe_public_key_prepared(&self, base2k: Base2K, k: TorusPrecision, rank: Rank) -> usize {
+        self.vec_znx_dft_bytes_of((rank + 1).into(), k.0.div_ceil(base2k.0) as usize)
     }
 
-    fn glwe_public_key_prepared_alloc_bytes_from_infos<A>(&self, infos: &A) -> usize
+    fn bytes_of_glwe_public_key_prepared_from_infos<A>(&self, infos: &A) -> usize
     where
         A: GLWEInfos,
     {
-        self.glwe_public_key_prepared_alloc_bytes(infos.base2k(), infos.k(), infos.rank())
+        self.bytes_of_glwe_public_key_prepared(infos.base2k(), infos.k(), infos.rank())
     }
 }
 
@@ -92,22 +92,22 @@ where
     where
         A: GLWEInfos,
     {
-        module.glwe_public_key_alloc_from_infos(infos)
+        module.alloc_glwe_public_key_prepared_from_infos(infos)
     }
 
     pub fn alloc(module: &Module<B>, base2k: Base2K, k: TorusPrecision, rank: Rank) -> Self {
-        module.glwe_public_key_prepared_alloc(base2k, k, rank)
+        module.alloc_glwe_public_key_prepared(base2k, k, rank)
     }
 
-    pub fn alloc_bytes_from_infos<A>(module: &Module<B>, infos: &A) -> usize
+    pub fn bytes_of_from_infos<A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GLWEInfos,
     {
-        module.glwe_public_key_prepared_alloc_bytes_from_infos(infos)
+        module.bytes_of_glwe_public_key_prepared_from_infos(infos)
     }
 
-    pub fn alloc_bytes(module: &Module<B>, base2k: Base2K, k: TorusPrecision, rank: Rank) -> usize {
-        module.glwe_public_key_prepared_alloc_bytes(base2k, k, rank)
+    pub fn bytes_of(module: &Module<B>, base2k: Base2K, k: TorusPrecision, rank: Rank) -> usize {
+        module.bytes_of_glwe_public_key_prepared(base2k, k, rank)
     }
 }
 
@@ -115,7 +115,7 @@ pub trait GLWEPublicKeyPrepare<B: Backend>
 where
     Self: GetDegree + VecZnxDftApply<B>,
 {
-    fn glwe_public_key_prepare<R, O>(&self, res: &mut R, other: &O)
+    fn prepare_glwe_public_key<R, O>(&self, res: &mut R, other: &O)
     where
         R: GLWEPublicKeyPreparedToMut<B> + SetDist,
         O: GLWEPublicKeyToRef + GetDist,
@@ -149,7 +149,7 @@ where
     where
         O: GLWEPublicKeyToRef + GetDist,
     {
-        module.glwe_public_key_prepare(self, other);
+        module.prepare_glwe_public_key(self, other);
     }
 }
 

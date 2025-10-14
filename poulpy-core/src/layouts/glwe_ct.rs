@@ -1,11 +1,12 @@
 use poulpy_hal::{
     layouts::{
-        Data, DataMut, DataRef, FillUniform, ReaderFrom, ToOwnedDeep, VecZnx, VecZnxToMut, VecZnxToRef, WriterTo, ZnxInfos,
+        Backend, Data, DataMut, DataRef, FillUniform, Module, ReaderFrom, ToOwnedDeep, VecZnx, VecZnxToMut, VecZnxToRef,
+        WriterTo, ZnxInfos,
     },
     source::Source,
 };
 
-use crate::layouts::{Base2K, Degree, LWEInfos, Rank, TorusPrecision};
+use crate::layouts::{Base2K, Degree, GetDegree, LWEInfos, Rank, TorusPrecision};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::fmt;
 
@@ -14,8 +15,8 @@ where
     Self: LWEInfos,
 {
     fn rank(&self) -> Rank;
-    fn glwe_layout(&self) -> GLWECiphertextLayout {
-        GLWECiphertextLayout {
+    fn glwe_layout(&self) -> GLWELayout {
+        GLWELayout {
             n: self.n(),
             base2k: self.base2k(),
             k: self.k(),
@@ -24,20 +25,20 @@ where
     }
 }
 
-pub trait GLWELayoutSet {
+pub trait SetGLWEInfos {
     fn set_k(&mut self, k: TorusPrecision);
-    fn set_basek(&mut self, base2k: Base2K);
+    fn set_base2k(&mut self, base2k: Base2K);
 }
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
-pub struct GLWECiphertextLayout {
+pub struct GLWELayout {
     pub n: Degree,
     pub base2k: Base2K,
     pub k: TorusPrecision,
     pub rank: Rank,
 }
 
-impl LWEInfos for GLWECiphertextLayout {
+impl LWEInfos for GLWELayout {
     fn n(&self) -> Degree {
         self.n
     }
@@ -51,21 +52,21 @@ impl LWEInfos for GLWECiphertextLayout {
     }
 }
 
-impl GLWEInfos for GLWECiphertextLayout {
+impl GLWEInfos for GLWELayout {
     fn rank(&self) -> Rank {
         self.rank
     }
 }
 
 #[derive(PartialEq, Eq, Clone)]
-pub struct GLWECiphertext<D: Data> {
+pub struct GLWE<D: Data> {
     pub(crate) data: VecZnx<D>,
     pub(crate) base2k: Base2K,
     pub(crate) k: TorusPrecision,
 }
 
-impl<D: DataMut> GLWELayoutSet for GLWECiphertext<D> {
-    fn set_basek(&mut self, base2k: Base2K) {
+impl<D: DataMut> SetGLWEInfos for GLWE<D> {
+    fn set_base2k(&mut self, base2k: Base2K) {
         self.base2k = base2k
     }
 
@@ -74,19 +75,19 @@ impl<D: DataMut> GLWELayoutSet for GLWECiphertext<D> {
     }
 }
 
-impl<D: DataRef> GLWECiphertext<D> {
+impl<D: DataRef> GLWE<D> {
     pub fn data(&self) -> &VecZnx<D> {
         &self.data
     }
 }
 
-impl<D: DataMut> GLWECiphertext<D> {
+impl<D: DataMut> GLWE<D> {
     pub fn data_mut(&mut self) -> &mut VecZnx<D> {
         &mut self.data
     }
 }
 
-impl<D: Data> LWEInfos for GLWECiphertext<D> {
+impl<D: Data> LWEInfos for GLWE<D> {
     fn base2k(&self) -> Base2K {
         self.base2k
     }
@@ -104,16 +105,16 @@ impl<D: Data> LWEInfos for GLWECiphertext<D> {
     }
 }
 
-impl<D: Data> GLWEInfos for GLWECiphertext<D> {
+impl<D: Data> GLWEInfos for GLWE<D> {
     fn rank(&self) -> Rank {
         Rank(self.data.cols() as u32 - 1)
     }
 }
 
-impl<D: DataRef> ToOwnedDeep for GLWECiphertext<D> {
-    type Owned = GLWECiphertext<Vec<u8>>;
+impl<D: DataRef> ToOwnedDeep for GLWE<D> {
+    type Owned = GLWE<Vec<u8>>;
     fn to_owned_deep(&self) -> Self::Owned {
-        GLWECiphertext {
+        GLWE {
             data: self.data.to_owned_deep(),
             k: self.k,
             base2k: self.base2k,
@@ -121,17 +122,17 @@ impl<D: DataRef> ToOwnedDeep for GLWECiphertext<D> {
     }
 }
 
-impl<D: DataRef> fmt::Debug for GLWECiphertext<D> {
+impl<D: DataRef> fmt::Debug for GLWE<D> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{self}")
     }
 }
 
-impl<D: DataRef> fmt::Display for GLWECiphertext<D> {
+impl<D: DataRef> fmt::Display for GLWE<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "GLWECiphertext: base2k={} k={}: {}",
+            "GLWE: base2k={} k={}: {}",
             self.base2k().0,
             self.k().0,
             self.data
@@ -139,41 +140,86 @@ impl<D: DataRef> fmt::Display for GLWECiphertext<D> {
     }
 }
 
-impl<D: DataMut> FillUniform for GLWECiphertext<D> {
+impl<D: DataMut> FillUniform for GLWE<D> {
     fn fill_uniform(&mut self, log_bound: usize, source: &mut Source) {
         self.data.fill_uniform(log_bound, source);
     }
 }
 
-impl GLWECiphertext<Vec<u8>> {
-    pub fn alloc<A>(infos: &A) -> Self
-    where
-        A: GLWEInfos,
-    {
-        Self::alloc_with(infos.n(), infos.base2k(), infos.k(), infos.rank())
-    }
-
-    pub fn alloc_with(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank) -> Self {
-        Self {
-            data: VecZnx::alloc(n.into(), (rank + 1).into(), k.0.div_ceil(base2k.0) as usize),
+pub trait GLWEAlloc
+where
+    Self: GetDegree,
+{
+    fn alloc_glwe(&self, base2k: Base2K, k: TorusPrecision, rank: Rank) -> GLWE<Vec<u8>> {
+        GLWE {
+            data: VecZnx::alloc(
+                self.n().into(),
+                (rank + 1).into(),
+                k.0.div_ceil(base2k.0) as usize,
+            ),
             base2k,
             k,
         }
     }
 
-    pub fn alloc_bytes<A>(infos: &A) -> usize
+    fn alloc_glwe_from_infos<A>(&self, infos: &A) -> GLWE<Vec<u8>>
     where
         A: GLWEInfos,
     {
-        Self::alloc_bytes_with(infos.n(), infos.base2k(), infos.k(), infos.rank())
+        self.alloc_glwe(infos.base2k(), infos.k(), infos.rank())
     }
 
-    pub fn alloc_bytes_with(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank) -> usize {
-        VecZnx::alloc_bytes(n.into(), (rank + 1).into(), k.0.div_ceil(base2k.0) as usize)
+    fn bytes_of_glwe(&self, base2k: Base2K, k: TorusPrecision, rank: Rank) -> usize {
+        VecZnx::bytes_of(
+            self.n().into(),
+            (rank + 1).into(),
+            k.0.div_ceil(base2k.0) as usize,
+        )
+    }
+
+    fn bytes_of_glwe_from_infos<A>(&self, infos: &A) -> usize
+    where
+        A: GLWEInfos,
+    {
+        self.bytes_of_glwe(infos.base2k(), infos.k(), infos.rank())
     }
 }
 
-impl<D: DataMut> ReaderFrom for GLWECiphertext<D> {
+impl<B: Backend> GLWEAlloc for Module<B> where Self: GetDegree {}
+
+impl GLWE<Vec<u8>> {
+    pub fn alloc_from_infos<A, B: Backend>(module: Module<B>, infos: &A) -> Self
+    where
+        A: GLWEInfos,
+        Module<B>: GLWEAlloc,
+    {
+        module.alloc_glwe_from_infos(infos)
+    }
+
+    pub fn alloc<B: Backend>(module: Module<B>, base2k: Base2K, k: TorusPrecision, rank: Rank) -> Self
+    where
+        Module<B>: GLWEAlloc,
+    {
+        module.alloc_glwe(base2k, k, rank)
+    }
+
+    pub fn bytes_of_from_infos<A, B: Backend>(module: Module<B>, infos: &A) -> usize
+    where
+        A: GLWEInfos,
+        Module<B>: GLWEAlloc,
+    {
+        module.bytes_of_glwe_from_infos(infos)
+    }
+
+    pub fn bytes_of<B: Backend>(module: Module<B>, base2k: Base2K, k: TorusPrecision, rank: Rank) -> usize
+    where
+        Module<B>: GLWEAlloc,
+    {
+        module.bytes_of_glwe(base2k, k, rank)
+    }
+}
+
+impl<D: DataMut> ReaderFrom for GLWE<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         self.k = TorusPrecision(reader.read_u32::<LittleEndian>()?);
         self.base2k = Base2K(reader.read_u32::<LittleEndian>()?);
@@ -181,7 +227,7 @@ impl<D: DataMut> ReaderFrom for GLWECiphertext<D> {
     }
 }
 
-impl<D: DataRef> WriterTo for GLWECiphertext<D> {
+impl<D: DataRef> WriterTo for GLWE<D> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         writer.write_u32::<LittleEndian>(self.k.0)?;
         writer.write_u32::<LittleEndian>(self.base2k.0)?;
@@ -189,13 +235,13 @@ impl<D: DataRef> WriterTo for GLWECiphertext<D> {
     }
 }
 
-pub trait GLWECiphertextToRef {
-    fn to_ref(&self) -> GLWECiphertext<&[u8]>;
+pub trait GLWEToRef {
+    fn to_ref(&self) -> GLWE<&[u8]>;
 }
 
-impl<D: DataRef> GLWECiphertextToRef for GLWECiphertext<D> {
-    fn to_ref(&self) -> GLWECiphertext<&[u8]> {
-        GLWECiphertext {
+impl<D: DataRef> GLWEToRef for GLWE<D> {
+    fn to_ref(&self) -> GLWE<&[u8]> {
+        GLWE {
             k: self.k,
             base2k: self.base2k,
             data: self.data.to_ref(),
@@ -203,13 +249,13 @@ impl<D: DataRef> GLWECiphertextToRef for GLWECiphertext<D> {
     }
 }
 
-pub trait GLWECiphertextToMut {
-    fn to_mut(&mut self) -> GLWECiphertext<&mut [u8]>;
+pub trait GLWEToMut {
+    fn to_mut(&mut self) -> GLWE<&mut [u8]>;
 }
 
-impl<D: DataMut> GLWECiphertextToMut for GLWECiphertext<D> {
-    fn to_mut(&mut self) -> GLWECiphertext<&mut [u8]> {
-        GLWECiphertext {
+impl<D: DataMut> GLWEToMut for GLWE<D> {
+    fn to_mut(&mut self) -> GLWE<&mut [u8]> {
+        GLWE {
             k: self.k,
             base2k: self.base2k,
             data: self.data.to_mut(),

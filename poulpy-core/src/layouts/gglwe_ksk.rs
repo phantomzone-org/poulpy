@@ -1,10 +1,10 @@
 use poulpy_hal::{
-    layouts::{Data, DataMut, DataRef, FillUniform, ReaderFrom, WriterTo},
+    layouts::{Backend, Data, DataMut, DataRef, FillUniform, Module, ReaderFrom, WriterTo},
     source::Source,
 };
 
 use crate::layouts::{
-    Base2K, Degree, Dnum, Dsize, GGLWE, GGLWECiphertextToMut, GGLWEInfos, GGLWEToRef, GLWECiphertext, GLWEInfos, LWEInfos, Rank,
+    Base2K, Degree, Dnum, Dsize, GGLWE, GGLWEAlloc, GGLWEInfos, GGLWEToMut, GGLWEToRef, GLWE, GLWEInfos, LWEInfos, Rank,
     TorusPrecision,
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
@@ -163,43 +163,42 @@ impl<D: DataMut> FillUniform for GLWESwitchingKey<D> {
     }
 }
 
-impl GLWESwitchingKey<Vec<u8>> {
-    pub fn alloc<A>(infos: &A) -> Self
-    where
-        A: GGLWEInfos,
-    {
-        GLWESwitchingKey {
-            key: GGLWE::alloc(infos),
-            sk_in_n: 0,
-            sk_out_n: 0,
-        }
-    }
-
-    pub fn alloc_with(
-        n: Degree,
+pub trait GLWESwitchingKeyAlloc
+where
+    Self: GGLWEAlloc,
+{
+    fn alloc_glwe_switching_key(
+        &self,
         base2k: Base2K,
         k: TorusPrecision,
         rank_in: Rank,
         rank_out: Rank,
         dnum: Dnum,
         dsize: Dsize,
-    ) -> Self {
+    ) -> GLWESwitchingKey<Vec<u8>> {
         GLWESwitchingKey {
-            key: GGLWE::alloc_with(n, base2k, k, rank_in, rank_out, dnum, dsize),
+            key: self.alloc_gglwe(base2k, k, rank_in, rank_out, dnum, dsize),
             sk_in_n: 0,
             sk_out_n: 0,
         }
     }
 
-    pub fn alloc_bytes<A>(infos: &A) -> usize
+    fn alloc_glwe_switching_key_from_infos<A>(&self, infos: &A) -> GLWESwitchingKey<Vec<u8>>
     where
         A: GGLWEInfos,
     {
-        GGLWE::alloc_bytes(infos)
+        self.alloc_glwe_switching_key(
+            infos.base2k(),
+            infos.k(),
+            infos.rank_in(),
+            infos.rank_out(),
+            infos.dnum(),
+            infos.dsize(),
+        )
     }
 
-    pub fn alloc_bytes_with(
-        n: Degree,
+    fn bytes_of_glwe_switching_key(
+        &self,
         base2k: Base2K,
         k: TorusPrecision,
         rank_in: Rank,
@@ -207,7 +206,69 @@ impl GLWESwitchingKey<Vec<u8>> {
         dnum: Dnum,
         dsize: Dsize,
     ) -> usize {
-        GGLWE::alloc_bytes_with(n, base2k, k, rank_in, rank_out, dnum, dsize)
+        self.bytes_of_gglwe(base2k, k, rank_in, rank_out, dnum, dsize)
+    }
+
+    fn bytes_of_glwe_switching_key_from_infos<A>(&self, infos: &A) -> usize
+    where
+        A: GGLWEInfos,
+    {
+        self.bytes_of_glwe_switching_key(
+            infos.base2k(),
+            infos.k(),
+            infos.rank_in(),
+            infos.rank_out(),
+            infos.dnum(),
+            infos.dsize(),
+        )
+    }
+}
+
+impl GLWESwitchingKey<Vec<u8>> {
+    pub fn alloc_from_infos<A, B: Backend>(module: &Module<B>, infos: &A) -> Self
+    where
+        A: GGLWEInfos,
+        Module<B>: GLWESwitchingKeyAlloc,
+    {
+        module.alloc_glwe_switching_key_from_infos(infos)
+    }
+
+    pub fn alloc<B: Backend>(
+        module: &Module<B>,
+        base2k: Base2K,
+        k: TorusPrecision,
+        rank_in: Rank,
+        rank_out: Rank,
+        dnum: Dnum,
+        dsize: Dsize,
+    ) -> Self
+    where
+        Module<B>: GLWESwitchingKeyAlloc,
+    {
+        module.alloc_glwe_switching_key(base2k, k, rank_in, rank_out, dnum, dsize)
+    }
+
+    pub fn bytes_of_from_infos<A, B: Backend>(module: &Module<B>, infos: &A) -> usize
+    where
+        A: GGLWEInfos,
+        Module<B>: GLWESwitchingKeyAlloc,
+    {
+        module.bytes_of_glwe_switching_key_from_infos(infos)
+    }
+
+    pub fn bytes_of<B: Backend>(
+        module: &Module<B>,
+        base2k: Base2K,
+        k: TorusPrecision,
+        rank_in: Rank,
+        rank_out: Rank,
+        dnum: Dnum,
+        dsize: Dsize,
+    ) -> usize
+    where
+        Module<B>: GLWESwitchingKeyAlloc,
+    {
+        module.bytes_of_glwe_switching_key(base2k, k, rank_in, rank_out, dnum, dsize)
     }
 }
 
@@ -217,7 +278,7 @@ pub trait GLWESwitchingKeyToMut {
 
 impl<D: DataMut> GLWESwitchingKeyToMut for GLWESwitchingKey<D>
 where
-    GGLWE<D>: GGLWECiphertextToMut,
+    GGLWE<D>: GGLWEToMut,
 {
     fn to_mut(&mut self) -> GLWESwitchingKey<&mut [u8]> {
         GLWESwitchingKey {
@@ -246,13 +307,13 @@ where
 }
 
 impl<D: DataRef> GLWESwitchingKey<D> {
-    pub fn at(&self, row: usize, col: usize) -> GLWECiphertext<&[u8]> {
+    pub fn at(&self, row: usize, col: usize) -> GLWE<&[u8]> {
         self.key.at(row, col)
     }
 }
 
 impl<D: DataMut> GLWESwitchingKey<D> {
-    pub fn at_mut(&mut self, row: usize, col: usize) -> GLWECiphertext<&mut [u8]> {
+    pub fn at_mut(&mut self, row: usize, col: usize) -> GLWE<&mut [u8]> {
         self.key.at_mut(row, col)
     }
 }

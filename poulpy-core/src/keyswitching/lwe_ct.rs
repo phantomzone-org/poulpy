@@ -9,13 +9,10 @@ use poulpy_hal::{
 
 use crate::{
     TakeGLWECt,
-    layouts::{
-        GGLWEInfos, GLWECiphertext, GLWECiphertextLayout, LWECiphertext, LWEInfos, Rank, TorusPrecision,
-        prepared::LWESwitchingKeyPrepared,
-    },
+    layouts::{GGLWEInfos, GLWE, GLWELayout, LWE, LWEInfos, Rank, TorusPrecision, prepared::LWESwitchingKeyPrepared},
 };
 
-impl LWECiphertext<Vec<u8>> {
+impl LWE<Vec<u8>> {
     pub fn keyswitch_scratch_space<B: Backend, OUT, IN, KEY>(
         module: &Module<B>,
         out_infos: &OUT,
@@ -40,33 +37,33 @@ impl LWECiphertext<Vec<u8>> {
     {
         let max_k: TorusPrecision = in_infos.k().max(out_infos.k());
 
-        let glwe_in_infos: GLWECiphertextLayout = GLWECiphertextLayout {
+        let glwe_in_infos: GLWELayout = GLWELayout {
             n: module.n().into(),
             base2k: in_infos.base2k(),
             k: max_k,
             rank: Rank(1),
         };
 
-        let glwe_out_infos: GLWECiphertextLayout = GLWECiphertextLayout {
+        let glwe_out_infos: GLWELayout = GLWELayout {
             n: module.n().into(),
             base2k: out_infos.base2k(),
             k: max_k,
             rank: Rank(1),
         };
 
-        let glwe_in: usize = GLWECiphertext::alloc_bytes(&glwe_in_infos);
-        let glwe_out: usize = GLWECiphertext::alloc_bytes(&glwe_out_infos);
-        let ks: usize = GLWECiphertext::keyswitch_scratch_space(module, &glwe_out_infos, &glwe_in_infos, key_infos);
+        let glwe_in: usize = GLWE::bytes_of(&glwe_in_infos);
+        let glwe_out: usize = GLWE::bytes_of(&glwe_out_infos);
+        let ks: usize = GLWE::keyswitch_scratch_space(module, &glwe_out_infos, &glwe_in_infos, key_infos);
 
         glwe_in + glwe_out + ks
     }
 }
 
-impl<DLwe: DataMut> LWECiphertext<DLwe> {
+impl<DLwe: DataMut> LWE<DLwe> {
     pub fn keyswitch<A, DKs, B: Backend>(
         &mut self,
         module: &Module<B>,
-        a: &LWECiphertext<A>,
+        a: &LWE<A>,
         ksk: &LWESwitchingKeyPrepared<DKs, B>,
         scratch: &mut Scratch<B>,
     ) where
@@ -90,14 +87,14 @@ impl<DLwe: DataMut> LWECiphertext<DLwe> {
         {
             assert!(self.n() <= module.n() as u32);
             assert!(a.n() <= module.n() as u32);
-            assert!(scratch.available() >= LWECiphertext::keyswitch_scratch_space(module, self, a, ksk));
+            assert!(scratch.available() >= LWE::keyswitch_scratch_space(module, self, a, ksk));
         }
 
         let max_k: TorusPrecision = self.k().max(a.k());
 
         let a_size: usize = a.k().div_ceil(ksk.base2k()) as usize;
 
-        let (mut glwe_in, scratch_1) = scratch.take_glwe_ct(&GLWECiphertextLayout {
+        let (mut glwe_in, scratch_1) = scratch.take_glwe_ct(&GLWELayout {
             n: ksk.n(),
             base2k: a.base2k(),
             k: max_k,
@@ -105,7 +102,7 @@ impl<DLwe: DataMut> LWECiphertext<DLwe> {
         });
         glwe_in.data.zero();
 
-        let (mut glwe_out, scratch_1) = scratch_1.take_glwe_ct(&GLWECiphertextLayout {
+        let (mut glwe_out, scratch_1) = scratch_1.take_glwe_ct(&GLWELayout {
             n: ksk.n(),
             base2k: self.base2k(),
             k: max_k,

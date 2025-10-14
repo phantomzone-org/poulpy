@@ -23,11 +23,11 @@ impl TensorKey<Vec<u8>> {
         Module<B>:
             SvpPPolAllocBytes + VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes + VecZnxNormalizeTmpBytes + VecZnxBigAllocBytes,
     {
-        GLWESecretPrepared::alloc_bytes(module, infos.rank_out())
-            + module.vec_znx_dft_alloc_bytes(infos.rank_out().into(), 1)
-            + module.vec_znx_big_alloc_bytes(1, 1)
-            + module.vec_znx_dft_alloc_bytes(1, 1)
-            + GLWESecret::alloc_bytes_with(Degree(module.n() as u32), Rank(1))
+        GLWESecretPrepared::bytes_of(module, infos.rank_out())
+            + module.vec_znx_dft_bytes_of(infos.rank_out().into(), 1)
+            + module.vec_znx_big_bytes_of(1, 1)
+            + module.vec_znx_dft_bytes_of(1, 1)
+            + GLWESecret::bytes_of(Degree(module.n() as u32), Rank(1))
             + GLWESwitchingKey::encrypt_sk_scratch_space(module, infos)
     }
 }

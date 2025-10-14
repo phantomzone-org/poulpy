@@ -36,7 +36,7 @@ use poulpy_core::layouts::{
 };
 
 use poulpy_core::layouts::{
-    GGSW, GLWECiphertext, GLWEPlaintext, GLWESecret, LWECiphertext, LWEPlaintext, LWESecret,
+    GGSW, GLWE, GLWEPlaintext, GLWESecret, LWE, LWEPlaintext, LWESecret,
     prepared::{GGSWPrepared, GLWESecretPrepared},
 };
 
@@ -179,19 +179,19 @@ where
     let mut sk_lwe: LWESecret<Vec<u8>> = LWESecret::alloc(n_lwe.into());
     sk_lwe.fill_binary_block(block_size, &mut source_xs);
 
-    let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc_with(n_glwe.into(), rank.into());
+    let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc(n_glwe.into(), rank.into());
     sk_glwe.fill_ternary_prob(0.5, &mut source_xs);
 
     let sk_glwe_prepared: GLWESecretPrepared<Vec<u8>, B> = sk_glwe.prepare_alloc(module, scratch.borrow());
 
     let data: i64 = 1;
 
-    let mut pt_lwe: LWEPlaintext<Vec<u8>> = LWEPlaintext::alloc_with(base2k.into(), k_lwe_pt.into());
+    let mut pt_lwe: LWEPlaintext<Vec<u8>> = LWEPlaintext::alloc(base2k.into(), k_lwe_pt.into());
     pt_lwe.encode_i64(data, (k_lwe_pt + 1).into());
 
     println!("pt_lwe: {pt_lwe}");
 
-    let mut ct_lwe: LWECiphertext<Vec<u8>> = LWECiphertext::alloc(&lwe_infos);
+    let mut ct_lwe: LWE<Vec<u8>> = LWE::alloc_from_infos(&lwe_infos);
     ct_lwe.encrypt_sk(module, &pt_lwe, &sk_lwe, &mut source_xa, &mut source_xe);
 
     let now: Instant = Instant::now();
@@ -206,7 +206,7 @@ where
     );
     println!("CBT-KGEN: {} ms", now.elapsed().as_millis());
 
-    let mut res: GGSW<Vec<u8>> = GGSW::alloc(&ggsw_infos);
+    let mut res: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_infos);
 
     let log_gap_out = 1;
 
@@ -236,8 +236,8 @@ where
 
     res.print_noise(module, &sk_glwe_prepared, &pt_ggsw);
 
-    let mut ct_glwe: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&ggsw_infos);
-    let mut pt_glwe: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&ggsw_infos);
+    let mut ct_glwe: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&ggsw_infos);
+    let mut pt_glwe: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&ggsw_infos);
     pt_glwe.data.at_mut(0, 0)[0] = 1 << (base2k - 2);
 
     ct_glwe.encrypt_sk(
@@ -253,7 +253,7 @@ where
 
     ct_glwe.external_product_inplace(module, &res_prepared, scratch.borrow());
 
-    let mut pt_res: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&ggsw_infos);
+    let mut pt_res: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&ggsw_infos);
     ct_glwe.decrypt(module, &mut pt_res, &sk_glwe_prepared, scratch.borrow());
 
     // Parameters are set such that the first limb should be noiseless.
@@ -401,19 +401,19 @@ where
     let mut sk_lwe: LWESecret<Vec<u8>> = LWESecret::alloc(n_lwe.into());
     sk_lwe.fill_binary_block(block_size, &mut source_xs);
 
-    let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc_with(n_glwe.into(), rank.into());
+    let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc(n_glwe.into(), rank.into());
     sk_glwe.fill_ternary_prob(0.5, &mut source_xs);
 
     let sk_glwe_prepared: GLWESecretPrepared<Vec<u8>, B> = sk_glwe.prepare_alloc(module, scratch.borrow());
 
     let data: i64 = 1;
 
-    let mut pt_lwe: LWEPlaintext<Vec<u8>> = LWEPlaintext::alloc_with(base2k.into(), k_lwe_pt.into());
+    let mut pt_lwe: LWEPlaintext<Vec<u8>> = LWEPlaintext::alloc(base2k.into(), k_lwe_pt.into());
     pt_lwe.encode_i64(data, (k_lwe_pt + 1).into());
 
     println!("pt_lwe: {pt_lwe}");
 
-    let mut ct_lwe: LWECiphertext<Vec<u8>> = LWECiphertext::alloc(&lwe_infos);
+    let mut ct_lwe: LWE<Vec<u8>> = LWE::alloc_from_infos(&lwe_infos);
     ct_lwe.encrypt_sk(module, &pt_lwe, &sk_lwe, &mut source_xa, &mut source_xe);
 
     let now: Instant = Instant::now();
@@ -428,7 +428,7 @@ where
     );
     println!("CBT-KGEN: {} ms", now.elapsed().as_millis());
 
-    let mut res: GGSW<Vec<u8>> = GGSW::alloc(&ggsw_infos);
+    let mut res: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_infos);
 
     let cbt_prepared: CircuitBootstrappingKeyPrepared<Vec<u8>, BRA, B> = cbt_key.prepare_alloc(module, scratch.borrow());
 
@@ -449,8 +449,8 @@ where
 
     res.print_noise(module, &sk_glwe_prepared, &pt_ggsw);
 
-    let mut ct_glwe: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&ggsw_infos);
-    let mut pt_glwe: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&ggsw_infos);
+    let mut ct_glwe: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&ggsw_infos);
+    let mut pt_glwe: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&ggsw_infos);
     pt_glwe.data.at_mut(0, 0)[0] = 1 << (base2k - k_lwe_pt - 1);
 
     ct_glwe.encrypt_sk(
@@ -466,7 +466,7 @@ where
 
     ct_glwe.external_product_inplace(module, &res_prepared, scratch.borrow());
 
-    let mut pt_res: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&ggsw_infos);
+    let mut pt_res: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&ggsw_infos);
     ct_glwe.decrypt(module, &mut pt_res, &sk_glwe_prepared, scratch.borrow());
 
     // Parameters are set such that the first limb should be noiseless.

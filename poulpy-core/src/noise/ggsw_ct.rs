@@ -9,7 +9,7 @@ use poulpy_hal::{
     oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeVecZnxBigImpl, TakeVecZnxDftImpl},
 };
 
-use crate::layouts::{GGSW, GGSWInfos, GLWECiphertext, GLWEInfos, GLWEPlaintext, LWEInfos, prepared::GLWESecretPrepared};
+use crate::layouts::{GGSW, GGSWInfos, GLWE, GLWEInfos, GLWEPlaintext, LWEInfos, prepared::GLWESecretPrepared};
 
 impl<D: DataRef> GGSW<D> {
     pub fn assert_noise<B, DataSk, DataScalar, F>(
@@ -42,13 +42,13 @@ impl<D: DataRef> GGSW<D> {
         let base2k: usize = self.base2k().into();
         let dsize: usize = self.dsize().into();
 
-        let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(self);
-        let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(self);
+        let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(self);
+        let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(self);
         let mut pt_dft: VecZnxDft<Vec<u8>, B> = module.vec_znx_dft_alloc(1, self.size());
         let mut pt_big: VecZnxBig<Vec<u8>, B> = module.vec_znx_big_alloc(1, self.size());
 
         let mut scratch: ScratchOwned<B> =
-            ScratchOwned::alloc(GLWECiphertext::decrypt_scratch_space(module, self) | module.vec_znx_normalize_tmp_bytes());
+            ScratchOwned::alloc(GLWE::decrypt_scratch_space(module, self) | module.vec_znx_normalize_tmp_bytes());
 
         (0..(self.rank() + 1).into()).for_each(|col_j| {
             (0..self.dnum().into()).for_each(|row_i| {
@@ -114,13 +114,13 @@ impl<D: DataRef> GGSW<D> {
         let base2k: usize = self.base2k().into();
         let dsize: usize = self.dsize().into();
 
-        let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(self);
-        let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(self);
+        let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(self);
+        let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(self);
         let mut pt_dft: VecZnxDft<Vec<u8>, B> = module.vec_znx_dft_alloc(1, self.size());
         let mut pt_big: VecZnxBig<Vec<u8>, B> = module.vec_znx_big_alloc(1, self.size());
 
         let mut scratch: ScratchOwned<B> =
-            ScratchOwned::alloc(GLWECiphertext::decrypt_scratch_space(module, self) | module.vec_znx_normalize_tmp_bytes());
+            ScratchOwned::alloc(GLWE::decrypt_scratch_space(module, self) | module.vec_znx_normalize_tmp_bytes());
 
         (0..(self.rank() + 1).into()).for_each(|col_j| {
             (0..self.dnum().into()).for_each(|row_i| {

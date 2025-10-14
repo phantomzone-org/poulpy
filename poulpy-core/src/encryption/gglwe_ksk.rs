@@ -20,9 +20,9 @@ impl GLWESwitchingKey<Vec<u8>> {
         A: GGLWEInfos,
         Module<B>: SvpPPolAllocBytes + VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes + VecZnxNormalizeTmpBytes,
     {
-        (GGLWE::encrypt_sk_scratch_space(module, infos) | ScalarZnx::alloc_bytes(module.n(), 1))
-            + ScalarZnx::alloc_bytes(module.n(), infos.rank_in().into())
-            + GLWESecretPrepared::alloc_bytes_from_infos(module, &infos.glwe_layout())
+        (GGLWE::encrypt_sk_scratch_space(module, infos) | ScalarZnx::bytes_of(module.n(), 1))
+            + ScalarZnx::bytes_of(module.n(), infos.rank_in().into())
+            + GLWESecretPrepared::bytes_of_from_infos(module, &infos.glwe_layout())
     }
 
     pub fn encrypt_pk_scratch_space<B: Backend, A>(module: &Module<B>, _infos: &A) -> usize

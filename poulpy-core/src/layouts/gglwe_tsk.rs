@@ -1,11 +1,11 @@
 use poulpy_hal::{
-    layouts::{Data, DataMut, DataRef, FillUniform, ReaderFrom, WriterTo},
+    layouts::{Backend, Data, DataMut, DataRef, FillUniform, Module, ReaderFrom, WriterTo},
     source::Source,
 };
 
 use crate::layouts::{
-    Base2K, Degree, Dnum, Dsize, GGLWEInfos, GLWEInfos, GLWESwitchingKey, GLWESwitchingKeyToMut, GLWESwitchingKeyToRef, LWEInfos,
-    Rank, TorusPrecision,
+    Base2K, Degree, Dnum, Dsize, GGLWEInfos, GLWEInfos, GLWESwitchingKey, GLWESwitchingKeyAlloc, GLWESwitchingKeyToMut,
+    GLWESwitchingKeyToRef, LWEInfos, Rank, TorusPrecision,
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
@@ -130,8 +130,20 @@ impl<D: DataRef> fmt::Display for TensorKey<D> {
     }
 }
 
-impl TensorKey<Vec<u8>> {
-    pub fn alloc<A>(infos: &A) -> Self
+pub trait TensorKeyAlloc
+where
+    Self: GLWESwitchingKeyAlloc,
+{
+    fn alloc_tensor_key(&self, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> TensorKey<Vec<u8>> {
+        let pairs: u32 = (((rank.0 + 1) * rank.0) >> 1).max(1);
+        TensorKey {
+            keys: (0..pairs)
+                .map(|_| self.alloc_glwe_switching_key(base2k, k, Rank(1), rank, dnum, dsize))
+                .collect(),
+        }
+    }
+
+    fn alloc_tensor_key_from_infos<A>(&self, infos: &A) -> TensorKey<Vec<u8>>
     where
         A: GGLWEInfos,
     {
@@ -140,34 +152,21 @@ impl TensorKey<Vec<u8>> {
             infos.rank_out(),
             "rank_in != rank_out is not supported for GGLWETensorKey"
         );
-        Self::alloc_with(
-            infos.n(),
+        self.alloc_tensor_key(
             infos.base2k(),
             infos.k(),
-            infos.rank_out(),
+            infos.rank(),
             infos.dnum(),
             infos.dsize(),
         )
     }
 
-    pub fn alloc_with(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> Self {
-        let mut keys: Vec<GLWESwitchingKey<Vec<u8>>> = Vec::new();
-        let pairs: u32 = (((rank.0 + 1) * rank.0) >> 1).max(1);
-        (0..pairs).for_each(|_| {
-            keys.push(GLWESwitchingKey::alloc_with(
-                n,
-                base2k,
-                k,
-                Rank(1),
-                rank,
-                dnum,
-                dsize,
-            ));
-        });
-        Self { keys }
+    fn bytes_of_tensor_key(&self, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize {
+        let pairs: usize = (((rank.0 + 1) * rank.0) >> 1).max(1) as usize;
+        pairs * self.bytes_of_glwe_switching_key(base2k, k, Rank(1), rank, dnum, dsize)
     }
 
-    pub fn alloc_bytes<A>(infos: &A) -> usize
+    fn bytes_of_tensor_key_from_infos<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos,
     {
@@ -176,23 +175,54 @@ impl TensorKey<Vec<u8>> {
             infos.rank_out(),
             "rank_in != rank_out is not supported for GGLWETensorKey"
         );
-        let rank_out: usize = infos.rank_out().into();
-        let pairs: usize = (((rank_out + 1) * rank_out) >> 1).max(1);
-        pairs
-            * GLWESwitchingKey::alloc_bytes_with(
-                infos.n(),
-                infos.base2k(),
-                infos.k(),
-                Rank(1),
-                infos.rank_out(),
-                infos.dnum(),
-                infos.dsize(),
-            )
+        self.bytes_of_tensor_key(
+            infos.base2k(),
+            infos.k(),
+            infos.rank(),
+            infos.dnum(),
+            infos.dsize(),
+        )
+    }
+}
+
+impl<B: Backend> TensorKeyAlloc for Module<B> where Self: GLWESwitchingKeyAlloc {}
+
+impl TensorKey<Vec<u8>> {
+    pub fn alloc_from_infos<A, B: Backend>(module: Module<B>, infos: &A) -> Self
+    where
+        A: GGLWEInfos,
+        Module<B>: TensorKeyAlloc,
+    {
+        module.alloc_tensor_key_from_infos(infos)
     }
 
-    pub fn alloc_bytes_with(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize {
-        let pairs: usize = (((rank.0 + 1) * rank.0) >> 1).max(1) as usize;
-        pairs * GLWESwitchingKey::alloc_bytes_with(n, base2k, k, Rank(1), rank, dnum, dsize)
+    pub fn alloc<B: Backend>(module: Module<B>, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> Self
+    where
+        Module<B>: TensorKeyAlloc,
+    {
+        module.alloc_tensor_key(base2k, k, rank, dnum, dsize)
+    }
+
+    pub fn bytes_of_from_infos<A, B: Backend>(module: Module<B>, infos: &A) -> usize
+    where
+        A: GGLWEInfos,
+        Module<B>: TensorKeyAlloc,
+    {
+        module.bytes_of_tensor_key_from_infos(infos)
+    }
+
+    pub fn bytes_of<B: Backend>(
+        module: Module<B>,
+        base2k: Base2K,
+        k: TorusPrecision,
+        rank: Rank,
+        dnum: Dnum,
+        dsize: Dsize,
+    ) -> usize
+    where
+        Module<B>: TensorKeyAlloc,
+    {
+        module.bytes_of_tensor_key(base2k, k, rank, dnum, dsize)
     }
 }
 
@@ -260,14 +290,14 @@ where
 }
 
 pub trait TensorKeyToMut {
-    fn to_ref(&mut self) -> TensorKey<&mut [u8]>;
+    fn to_mut(&mut self) -> TensorKey<&mut [u8]>;
 }
 
 impl<D: DataMut> TensorKeyToMut for TensorKey<D>
 where
     GLWESwitchingKey<D>: GLWESwitchingKeyToMut,
 {
-    fn to_ref(&mut self) -> TensorKey<&mut [u8]> {
+    fn to_mut(&mut self) -> TensorKey<&mut [u8]> {
         TensorKey {
             keys: self.keys.iter_mut().map(|c| c.to_mut()).collect(),
         }

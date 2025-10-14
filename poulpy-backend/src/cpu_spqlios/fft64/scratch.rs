@@ -69,7 +69,7 @@ where
     B: ScratchFromBytesImpl<B>,
 {
     fn take_scalar_znx_impl(scratch: &mut Scratch<B>, n: usize, cols: usize) -> (ScalarZnx<&mut [u8]>, &mut Scratch<B>) {
-        let (take_slice, rem_slice) = take_slice_aligned(&mut scratch.data, ScalarZnx::alloc_bytes(n, cols));
+        let (take_slice, rem_slice) = take_slice_aligned(&mut scratch.data, ScalarZnx::bytes_of(n, cols));
         (
             ScalarZnx::from_data(take_slice, n, cols),
             Scratch::from_bytes(rem_slice),
@@ -82,7 +82,7 @@ where
     B: SvpPPolAllocBytesImpl<B> + ScratchFromBytesImpl<B>,
 {
     fn take_svp_ppol_impl(scratch: &mut Scratch<B>, n: usize, cols: usize) -> (SvpPPol<&mut [u8], B>, &mut Scratch<B>) {
-        let (take_slice, rem_slice) = take_slice_aligned(&mut scratch.data, B::svp_ppol_alloc_bytes_impl(n, cols));
+        let (take_slice, rem_slice) = take_slice_aligned(&mut scratch.data, B::svp_ppol_bytes_of_impl(n, cols));
         (
             SvpPPol::from_data(take_slice, n, cols),
             Scratch::from_bytes(rem_slice),
@@ -95,7 +95,7 @@ where
     B: ScratchFromBytesImpl<B>,
 {
     fn take_vec_znx_impl(scratch: &mut Scratch<B>, n: usize, cols: usize, size: usize) -> (VecZnx<&mut [u8]>, &mut Scratch<B>) {
-        let (take_slice, rem_slice) = take_slice_aligned(&mut scratch.data, VecZnx::alloc_bytes(n, cols, size));
+        let (take_slice, rem_slice) = take_slice_aligned(&mut scratch.data, VecZnx::bytes_of(n, cols, size));
         (
             VecZnx::from_data(take_slice, n, cols, size),
             Scratch::from_bytes(rem_slice),
@@ -115,7 +115,7 @@ where
     ) -> (VecZnxBig<&mut [u8], B>, &mut Scratch<B>) {
         let (take_slice, rem_slice) = take_slice_aligned(
             &mut scratch.data,
-            B::vec_znx_big_alloc_bytes_impl(n, cols, size),
+            B::vec_znx_big_bytes_of_impl(n, cols, size),
         );
         (
             VecZnxBig::from_data(take_slice, n, cols, size),
@@ -136,7 +136,7 @@ where
     ) -> (VecZnxDft<&mut [u8], B>, &mut Scratch<B>) {
         let (take_slice, rem_slice) = take_slice_aligned(
             &mut scratch.data,
-            B::vec_znx_dft_alloc_bytes_impl(n, cols, size),
+            B::vec_znx_dft_bytes_of_impl(n, cols, size),
         );
 
         (
@@ -204,7 +204,7 @@ where
     ) -> (VmpPMat<&mut [u8], B>, &mut Scratch<B>) {
         let (take_slice, rem_slice) = take_slice_aligned(
             &mut scratch.data,
-            B::vmp_pmat_alloc_bytes_impl(n, rows, cols_in, cols_out, size),
+            B::vmp_pmat_bytes_of_impl(n, rows, cols_in, cols_out, size),
         );
         (
             VmpPMat::from_data(take_slice, n, rows, cols_in, cols_out, size),
@@ -227,7 +227,7 @@ where
     ) -> (MatZnx<&mut [u8]>, &mut Scratch<B>) {
         let (take_slice, rem_slice) = take_slice_aligned(
             &mut scratch.data,
-            MatZnx::alloc_bytes(n, rows, cols_in, cols_out, size),
+            MatZnx::bytes_of(n, rows, cols_in, cols_out, size),
         );
         (
             MatZnx::from_data(take_slice, n, rows, cols_in, cols_out, size),

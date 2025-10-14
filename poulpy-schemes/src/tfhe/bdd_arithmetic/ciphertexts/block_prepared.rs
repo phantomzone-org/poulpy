@@ -60,7 +60,7 @@ impl<T: UnsignedInteger> FheUintBlocksPrepDebug<Vec<u8>, T> {
     ) -> Self {
         Self {
             blocks: (0..T::WORD_SIZE)
-                .map(|_| GGSW::alloc_with(module.n().into(), base2k, k, rank, dnum, dsize))
+                .map(|_| GGSW::alloc(module.n().into(), base2k, k, rank, dnum, dsize))
                 .collect(),
             _base: 1,
             _phantom: PhantomData,

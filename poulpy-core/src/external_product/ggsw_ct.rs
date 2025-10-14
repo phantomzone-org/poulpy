@@ -7,7 +7,7 @@ use poulpy_hal::{
     layouts::{Backend, DataMut, DataRef, Module, Scratch, ZnxZero},
 };
 
-use crate::layouts::{GGSW, GGSWInfos, GLWECiphertext, GLWEInfos, prepared::GGSWPrepared};
+use crate::layouts::{GGSW, GGSWInfos, GLWE, GLWEInfos, prepared::GGSWPrepared};
 
 impl GGSW<Vec<u8>> {
     #[allow(clippy::too_many_arguments)]
@@ -23,7 +23,7 @@ impl GGSW<Vec<u8>> {
         GGSW: GGSWInfos,
         Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        GLWECiphertext::external_product_scratch_space(
+        GLWE::external_product_scratch_space(
             module,
             &out_infos.glwe_layout(),
             &in_infos.glwe_layout(),
@@ -41,7 +41,7 @@ impl GGSW<Vec<u8>> {
         GGSW: GGSWInfos,
         Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        GLWECiphertext::external_product_inplace_scratch_space(module, &out_infos.glwe_layout(), apply_infos)
+        GLWE::external_product_inplace_scratch_space(module, &out_infos.glwe_layout(), apply_infos)
     }
 }
 

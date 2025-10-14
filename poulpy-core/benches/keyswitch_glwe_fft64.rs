@@ -1,6 +1,6 @@
 use poulpy_core::layouts::{
-    AutomorphismKey, AutomorphismKeyLayout, Base2K, Degree, Dnum, Dsize, GLWECiphertext, GLWECiphertextLayout, GLWESecret,
-    GLWESwitchingKey, GLWESwitchingKeyLayout, Rank, TorusPrecision,
+    AutomorphismKey, AutomorphismKeyLayout, Base2K, Degree, Dnum, Dsize, GLWE, GLWELayout, GLWESecret, GLWESwitchingKey,
+    GLWESwitchingKeyLayout, Rank, TorusPrecision,
     prepared::{AutomorphismKeyPrepared, GLWESecretPrepared, GLWESwitchingKeyPrepared, PrepareAlloc},
 };
 use std::{hint::black_box, time::Duration};
@@ -48,28 +48,28 @@ fn bench_keyswitch_glwe_fft64(c: &mut Criterion) {
             dsize,
         };
 
-        let glwe_in_layout: GLWECiphertextLayout = GLWECiphertextLayout {
+        let glwe_in_layout: GLWELayout = GLWELayout {
             n,
             base2k,
             k: k_glwe_in,
             rank,
         };
 
-        let glwe_out_layout: GLWECiphertextLayout = GLWECiphertextLayout {
+        let glwe_out_layout: GLWELayout = GLWELayout {
             n,
             base2k,
             k: k_glwe_out,
             rank,
         };
 
-        let mut ksk: AutomorphismKey<Vec<u8>> = AutomorphismKey::alloc(&gglwe_atk_layout);
-        let mut ct_in: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&glwe_in_layout);
-        let mut ct_out: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&glwe_out_layout);
+        let mut ksk: AutomorphismKey<Vec<u8>> = AutomorphismKey::alloc_from_infos(&gglwe_atk_layout);
+        let mut ct_in: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_in_layout);
+        let mut ct_out: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_out_layout);
 
         let mut scratch: ScratchOwned<FFT64Spqlios> = ScratchOwned::alloc(
             GLWESwitchingKey::encrypt_sk_scratch_space(&module, &gglwe_atk_layout)
-                | GLWECiphertext::encrypt_sk_scratch_space(&module, &glwe_in_layout)
-                | GLWECiphertext::keyswitch_scratch_space(
+                | GLWE::encrypt_sk_scratch_space(&module, &glwe_in_layout)
+                | GLWE::keyswitch_scratch_space(
                     &module,
                     &glwe_out_layout,
                     &glwe_in_layout,
@@ -81,7 +81,7 @@ fn bench_keyswitch_glwe_fft64(c: &mut Criterion) {
         let mut source_xe: Source = Source::new([0u8; 32]);
         let mut source_xa: Source = Source::new([0u8; 32]);
 
-        let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc(&glwe_in_layout);
+        let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_in_layout);
         sk_in.fill_ternary_prob(0.5, &mut source_xs);
         let sk_in_dft: GLWESecretPrepared<Vec<u8>, FFT64Spqlios> = sk_in.prepare_alloc(&module, scratch.borrow());
 
@@ -167,31 +167,31 @@ fn bench_keyswitch_glwe_inplace_fft64(c: &mut Criterion) {
             rank_out: rank,
         };
 
-        let glwe_layout: GLWECiphertextLayout = GLWECiphertextLayout {
+        let glwe_layout: GLWELayout = GLWELayout {
             n,
             base2k,
             k: k_ct,
             rank,
         };
 
-        let mut ksk: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc(&gglwe_layout);
-        let mut ct: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&glwe_layout);
+        let mut ksk: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc_from_infos(&gglwe_layout);
+        let mut ct: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_layout);
 
         let mut scratch: ScratchOwned<FFT64Spqlios> = ScratchOwned::alloc(
             GLWESwitchingKey::encrypt_sk_scratch_space(&module, &gglwe_layout)
-                | GLWECiphertext::encrypt_sk_scratch_space(&module, &glwe_layout)
-                | GLWECiphertext::keyswitch_inplace_scratch_space(&module, &glwe_layout, &gglwe_layout),
+                | GLWE::encrypt_sk_scratch_space(&module, &glwe_layout)
+                | GLWE::keyswitch_inplace_scratch_space(&module, &glwe_layout, &gglwe_layout),
         );
 
         let mut source_xs: Source = Source::new([0u8; 32]);
         let mut source_xe: Source = Source::new([0u8; 32]);
         let mut source_xa: Source = Source::new([0u8; 32]);
 
-        let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc(&glwe_layout);
+        let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_layout);
         sk_in.fill_ternary_prob(0.5, &mut source_xs);
         let sk_in_dft: GLWESecretPrepared<Vec<u8>, FFT64Spqlios> = sk_in.prepare_alloc(&module, scratch.borrow());
 
-        let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(&glwe_layout);
+        let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_layout);
         sk_out.fill_ternary_prob(0.5, &mut source_xs);
 
         ksk.encrypt_sk(

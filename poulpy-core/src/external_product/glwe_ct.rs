@@ -7,15 +7,12 @@ use poulpy_hal::{
     layouts::{Backend, DataMut, DataRef, DataViewMut, Module, Scratch, VecZnx, VecZnxBig},
 };
 
-use crate::{
-    GLWEExternalProduct, GLWEExternalProductInplace,
-    layouts::{
-        GGSWInfos, GLWECiphertext, GLWECiphertextToMut, GLWECiphertextToRef, GLWEInfos, LWEInfos,
-        prepared::{GGSWCiphertextPreparedToRef, GGSWPrepared},
-    },
+use crate::layouts::{
+    GGSWInfos, GLWE, GLWEInfos, GLWEToMut, GLWEToRef, LWEInfos,
+    prepared::{GGSWCiphertextPreparedToRef, GGSWPrepared},
 };
 
-impl GLWECiphertext<Vec<u8>> {
+impl GLWE<Vec<u8>> {
     #[allow(clippy::too_many_arguments)]
     pub fn external_product_scratch_space<B: Backend, OUT, IN, GGSW>(
         module: &Module<B>,
@@ -35,8 +32,8 @@ impl GLWECiphertext<Vec<u8>> {
             .div_ceil(apply_infos.dsize().into()) as usize;
         let out_size: usize = out_infos.size();
         let ggsw_size: usize = apply_infos.size();
-        let res_dft: usize = module.vec_znx_dft_alloc_bytes((apply_infos.rank() + 1).into(), ggsw_size);
-        let a_dft: usize = module.vec_znx_dft_alloc_bytes((apply_infos.rank() + 1).into(), in_size);
+        let res_dft: usize = module.vec_znx_dft_bytes_of((apply_infos.rank() + 1).into(), ggsw_size);
+        let a_dft: usize = module.vec_znx_dft_bytes_of((apply_infos.rank() + 1).into(), in_size);
         let vmp: usize = module.vmp_apply_dft_to_dft_tmp_bytes(
             out_size,
             in_size,
@@ -50,7 +47,7 @@ impl GLWECiphertext<Vec<u8>> {
         if in_infos.base2k() == apply_infos.base2k() {
             res_dft + a_dft + (vmp | normalize_big)
         } else {
-            let normalize_conv: usize = VecZnx::alloc_bytes(module.n(), (apply_infos.rank() + 1).into(), in_size);
+            let normalize_conv: usize = VecZnx::bytes_of(module.n(), (apply_infos.rank() + 1).into(), in_size);
             res_dft + ((a_dft + normalize_conv + (module.vec_znx_normalize_tmp_bytes() | vmp)) | normalize_big)
         }
     }
@@ -69,11 +66,11 @@ impl GLWECiphertext<Vec<u8>> {
     }
 }
 
-impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
+impl<DataSelf: DataMut> GLWE<DataSelf> {
     pub fn external_product<DataLhs: DataRef, DataRhs: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
-        lhs: &GLWECiphertext<DataLhs>,
+        lhs: &GLWE<DataLhs>,
         rhs: &GGSWPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
@@ -88,15 +85,15 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
         rhs: &GGSWPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: GLWEExternalProductInplace<B>,
+        Module<B>: GLWEExternalProduct<B>,
     {
         module.external_product_inplace(self, rhs, scratch);
     }
 }
 
-impl<BE: Backend> GLWEExternalProductInplace<BE> for Module<BE>
+pub trait GLWEExternalProduct<BE: Backend>
 where
-    Module<BE>: VecZnxDftAllocBytes
+    Self: VecZnxDftAllocBytes
         + VmpApplyDftToDftTmpBytes
         + VecZnxNormalizeTmpBytes
         + VecZnxDftApply<BE>
@@ -107,12 +104,12 @@ where
         + VecZnxNormalize<BE>,
     Scratch<BE>: TakeVecZnxDft<BE> + ScratchAvailable + TakeVecZnx,
 {
-    fn external_product_inplace<R, D>(&self, res: &mut R, ggsw: &D, scratch: &mut Scratch<BE>)
+    fn glwe_external_product_inplace<R, D>(&self, res: &mut R, ggsw: &D, scratch: &mut Scratch<BE>)
     where
-        R: GLWECiphertextToMut,
+        R: GLWEToMut,
         D: GGSWCiphertextPreparedToRef<BE>,
     {
-        let res: &mut GLWECiphertext<&mut [u8]> = &mut res.to_mut();
+        let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
         let rhs: &GGSWPrepared<&[u8], BE> = &ggsw.to_ref();
 
         let basek_in: usize = res.base2k().into();
@@ -124,7 +121,7 @@ where
 
             assert_eq!(rhs.rank(), res.rank());
             assert_eq!(rhs.n(), res.n());
-            assert!(scratch.available() >= GLWECiphertext::external_product_inplace_scratch_space(self, res, rhs));
+            assert!(scratch.available() >= GLWE::external_product_inplace_scratch_space(self, res, rhs));
         }
 
         let cols: usize = (rhs.rank() + 1).into();
@@ -213,29 +210,15 @@ where
             );
         }
     }
-}
 
-impl<BE: Backend> GLWEExternalProduct<BE> for Module<BE>
-where
-    Module<BE>: VecZnxDftAllocBytes
-        + VmpApplyDftToDftTmpBytes
-        + VecZnxNormalizeTmpBytes
-        + VecZnxDftApply<BE>
-        + VmpApplyDftToDft<BE>
-        + VmpApplyDftToDftAdd<BE>
-        + VecZnxIdftApplyConsume<BE>
-        + VecZnxBigNormalize<BE>
-        + VecZnxNormalize<BE>,
-    Scratch<BE>: TakeVecZnxDft<BE> + ScratchAvailable + TakeVecZnx,
-{
-    fn external_product<R, A, D>(&self, res: &mut R, lhs: &A, rhs: &D, scratch: &mut Scratch<BE>)
+    fn glwe_external_product<R, A, D>(&self, res: &mut R, lhs: &A, rhs: &D, scratch: &mut Scratch<BE>)
     where
-        R: GLWECiphertextToMut,
-        A: GLWECiphertextToRef,
+        R: GLWEToMut,
+        A: GLWEToRef,
         D: GGSWCiphertextPreparedToRef<BE>,
     {
-        let res: &mut GLWECiphertext<&mut [u8]> = &mut res.to_mut();
-        let lhs: &GLWECiphertext<&[u8]> = &lhs.to_ref();
+        let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
+        let lhs: &GLWE<&[u8]> = &lhs.to_ref();
 
         let rhs: &GGSWPrepared<&[u8], BE> = &rhs.to_ref();
 
@@ -251,7 +234,7 @@ where
             assert_eq!(rhs.rank(), res.rank());
             assert_eq!(rhs.n(), res.n());
             assert_eq!(lhs.n(), res.n());
-            assert!(scratch.available() >= GLWECiphertext::external_product_scratch_space(self, res, lhs, rhs));
+            assert!(scratch.available() >= GLWE::external_product_scratch_space(self, res, lhs, rhs));
         }
 
         let cols: usize = (rhs.rank() + 1).into();
@@ -341,4 +324,19 @@ where
             );
         });
     }
+}
+
+impl<BE: Backend> GLWEExternalProduct<BE> for Module<BE>
+where
+    Self: VecZnxDftAllocBytes
+        + VmpApplyDftToDftTmpBytes
+        + VecZnxNormalizeTmpBytes
+        + VecZnxDftApply<BE>
+        + VmpApplyDftToDft<BE>
+        + VmpApplyDftToDftAdd<BE>
+        + VecZnxIdftApplyConsume<BE>
+        + VecZnxBigNormalize<BE>
+        + VecZnxNormalize<BE>,
+    Scratch<BE>: TakeVecZnxDft<BE> + ScratchAvailable + TakeVecZnx,
+{
 }

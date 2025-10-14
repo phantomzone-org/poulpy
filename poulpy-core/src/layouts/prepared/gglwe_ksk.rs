@@ -79,7 +79,7 @@ pub trait GLWESwitchingKeyPreparedAlloc<B: Backend>
 where
     Self: GGLWEPreparedAlloc<B>,
 {
-    fn glwe_switching_key_prepared_alloc(
+    fn alloc_glwe_switching_key_prepared(
         &self,
         base2k: Base2K,
         k: TorusPrecision,
@@ -89,7 +89,7 @@ where
         dsize: Dsize,
     ) -> GLWESwitchingKeyPrepared<Vec<u8>, B> {
         GLWESwitchingKeyPrepared::<Vec<u8>, B> {
-            key: self.gglwe_prepared_alloc(base2k, k, rank_in, rank_out, dnum, dsize),
+            key: self.alloc_gglwe_prepared(base2k, k, rank_in, rank_out, dnum, dsize),
             sk_in_n: 0,
             sk_out_n: 0,
         }
@@ -99,7 +99,7 @@ where
     where
         A: GGLWEInfos,
     {
-        self.glwe_switching_key_prepared_alloc(
+        self.alloc_glwe_switching_key_prepared(
             infos.base2k(),
             infos.k(),
             infos.rank_in(),
@@ -109,7 +109,7 @@ where
         )
     }
 
-    fn glwe_switching_key_prepared_alloc_bytes(
+    fn bytes_of_glwe_switching_key_prepared(
         &self,
         base2k: Base2K,
         k: TorusPrecision,
@@ -118,14 +118,14 @@ where
         dnum: Dnum,
         dsize: Dsize,
     ) -> usize {
-        self.gglwe_prepared_alloc_bytes(base2k, k, rank_in, rank_out, dnum, dsize)
+        self.bytes_of_gglwe_prepared(base2k, k, rank_in, rank_out, dnum, dsize)
     }
 
-    fn glwe_switching_key_prepared_alloc_bytes_from_infos<A>(&self, infos: &A) -> usize
+    fn glwe_switching_key_prepared_bytes_of_from_infos<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos,
     {
-        self.glwe_switching_key_prepared_alloc_bytes(
+        self.bytes_of_glwe_switching_key_prepared(
             infos.base2k(),
             infos.k(),
             infos.rank_in(),
@@ -158,17 +158,17 @@ where
         dnum: Dnum,
         dsize: Dsize,
     ) -> Self {
-        module.glwe_switching_key_prepared_alloc(base2k, k, rank_in, rank_out, dnum, dsize)
+        module.alloc_glwe_switching_key_prepared(base2k, k, rank_in, rank_out, dnum, dsize)
     }
 
-    pub fn alloc_bytes_from_infos<A>(module: &Module<B>, infos: &A) -> usize
+    pub fn bytes_of_from_infos<A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GGLWEInfos,
     {
-        module.glwe_switching_key_prepared_alloc_bytes_from_infos(infos)
+        module.glwe_switching_key_prepared_bytes_of_from_infos(infos)
     }
 
-    pub fn alloc_bytes(
+    pub fn bytes_of(
         module: &Module<B>,
         base2k: Base2K,
         k: TorusPrecision,
@@ -177,7 +177,7 @@ where
         dnum: Dnum,
         dsize: Dsize,
     ) -> usize {
-        module.glwe_switching_key_prepared_alloc_bytes(base2k, k, rank_in, rank_out, dnum, dsize)
+        module.bytes_of_glwe_switching_key_prepared(base2k, k, rank_in, rank_out, dnum, dsize)
     }
 }
 
@@ -185,19 +185,19 @@ pub trait GLWESwitchingKeyPrepare<B: Backend>
 where
     Self: GGLWEPrepare<B>,
 {
-    fn glwe_switching_key_prepare_tmp_bytes<A>(&self, infos: &A) -> usize
+    fn prepare_glwe_switching_key_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos,
     {
-        self.gglwe_prepare_tmp_bytes(infos)
+        self.prepare_gglwe_tmp_bytes(infos)
     }
 
-    fn glwe_switching_prepare<R, O>(&self, res: &mut R, other: &O, scratch: &mut Scratch<B>)
+    fn prepare_glwe_switching<R, O>(&self, res: &mut R, other: &O, scratch: &mut Scratch<B>)
     where
         R: GLWESwitchingKeyPreparedToMut<B> + GLWESwitchingKeySetMetaData,
         O: GLWESwitchingKeyToRef + GLWESwtichingKeyGetMetaData,
     {
-        self.gglwe_prepare(&mut res.to_mut().key, &other.to_ref().key, scratch);
+        self.prepare_gglwe(&mut res.to_mut().key, &other.to_ref().key, scratch);
         res.set_sk_in_n(other.sk_in_n());
         res.set_sk_out_n(other.sk_out_n());
     }
@@ -211,7 +211,7 @@ impl<D: DataMut, B: Backend> GLWESwitchingKeyPrepared<D, B> {
         O: GLWESwitchingKeyToRef + GLWESwtichingKeyGetMetaData,
         Module<B>: GLWESwitchingKeyPrepare<B>,
     {
-        module.glwe_switching_prepare(self, other, scratch);
+        module.prepare_glwe_switching(self, other, scratch);
     }
 }
 
@@ -220,7 +220,7 @@ where
     Module<B>: GLWESwitchingKeyPrepare<B>,
 {
     pub fn prepare_tmp_bytes(&self, module: &Module<B>) -> usize {
-        module.gglwe_prepare_tmp_bytes(self)
+        module.prepare_gglwe_tmp_bytes(self)
     }
 }
 

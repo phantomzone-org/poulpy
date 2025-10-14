@@ -110,9 +110,9 @@ where
                     rank: rank_out.into(),
                 };
 
-                let mut ct_gglwe_in: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc(&gglwe_in_infos);
-                let mut ct_gglwe_out: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc(&gglwe_out_infos);
-                let mut ct_rgsw: GGSW<Vec<u8>> = GGSW::alloc(&ggsw_infos);
+                let mut ct_gglwe_in: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc_from_infos(&gglwe_in_infos);
+                let mut ct_gglwe_out: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc_from_infos(&gglwe_out_infos);
+                let mut ct_rgsw: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_infos);
 
                 let mut pt_rgsw: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n, 1);
 
@@ -137,10 +137,10 @@ where
 
                 let var_xs: f64 = 0.5;
 
-                let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc_with(n.into(), rank_in.into());
+                let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank_in.into());
                 sk_in.fill_ternary_prob(var_xs, &mut source_xs);
 
-                let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc_with(n.into(), rank_out.into());
+                let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank_out.into());
                 sk_out.fill_ternary_prob(var_xs, &mut source_xs);
                 let sk_out_prepared: GLWESecretPrepared<Vec<u8>, B> = sk_out.prepare_alloc(module, scratch.borrow());
 
@@ -282,8 +282,8 @@ where
                     rank: rank_out.into(),
                 };
 
-                let mut ct_gglwe: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc(&gglwe_out_infos);
-                let mut ct_rgsw: GGSW<Vec<u8>> = GGSW::alloc(&ggsw_infos);
+                let mut ct_gglwe: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc_from_infos(&gglwe_out_infos);
+                let mut ct_rgsw: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_infos);
 
                 let mut pt_rgsw: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n, 1);
 
@@ -303,10 +303,10 @@ where
 
                 let var_xs: f64 = 0.5;
 
-                let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc_with(n.into(), rank_in.into());
+                let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank_in.into());
                 sk_in.fill_ternary_prob(var_xs, &mut source_xs);
 
-                let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc_with(n.into(), rank_out.into());
+                let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank_out.into());
                 sk_out.fill_ternary_prob(var_xs, &mut source_xs);
                 let sk_out_prepared: GLWESecretPrepared<Vec<u8>, B> = sk_out.prepare_alloc(module, scratch.borrow());
 

@@ -1,10 +1,12 @@
 use poulpy_hal::{
-    layouts::{Data, DataMut, DataRef, FillUniform, MatZnx, MatZnxToMut, MatZnxToRef, ReaderFrom, WriterTo, ZnxInfos},
+    layouts::{
+        Backend, Data, DataMut, DataRef, FillUniform, MatZnx, MatZnxToMut, MatZnxToRef, Module, ReaderFrom, WriterTo, ZnxInfos,
+    },
     source::Source,
 };
 use std::fmt;
 
-use crate::layouts::{Base2K, Degree, Dnum, Dsize, GLWECiphertext, GLWEInfos, LWEInfos, Rank, TorusPrecision};
+use crate::layouts::{Base2K, Degree, Dnum, Dsize, GLWE, GLWEInfos, GetDegree, LWEInfos, Rank, TorusPrecision};
 
 pub trait GGSWInfos
 where
@@ -131,8 +133,8 @@ impl<D: DataMut> FillUniform for GGSW<D> {
 }
 
 impl<D: DataRef> GGSW<D> {
-    pub fn at(&self, row: usize, col: usize) -> GLWECiphertext<&[u8]> {
-        GLWECiphertext {
+    pub fn at(&self, row: usize, col: usize) -> GLWE<&[u8]> {
+        GLWE {
             k: self.k,
             base2k: self.base2k,
             data: self.data.at(row, col),
@@ -141,8 +143,8 @@ impl<D: DataRef> GGSW<D> {
 }
 
 impl<D: DataMut> GGSW<D> {
-    pub fn at_mut(&mut self, row: usize, col: usize) -> GLWECiphertext<&mut [u8]> {
-        GLWECiphertext {
+    pub fn at_mut(&mut self, row: usize, col: usize) -> GLWE<&mut [u8]> {
+        GLWE {
             k: self.k,
             base2k: self.base2k,
             data: self.data.at_mut(row, col),
@@ -150,22 +152,13 @@ impl<D: DataMut> GGSW<D> {
     }
 }
 
-impl GGSW<Vec<u8>> {
-    pub fn alloc<A>(infos: &A) -> Self
-    where
-        A: GGSWInfos,
-    {
-        Self::alloc_with(
-            infos.n(),
-            infos.base2k(),
-            infos.k(),
-            infos.rank(),
-            infos.dnum(),
-            infos.dsize(),
-        )
-    }
+impl<B: Backend> GGSWAlloc for Module<B> where Self: GetDegree {}
 
-    pub fn alloc_with(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> Self {
+pub trait GGSWAlloc
+where
+    Self: GetDegree,
+{
+    fn alloc_ggsw(&self, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> GGSW<Vec<u8>> {
         let size: usize = k.0.div_ceil(base2k.0) as usize;
         debug_assert!(
             size as u32 > dsize.0,
@@ -180,9 +173,9 @@ impl GGSW<Vec<u8>> {
             dsize.0,
         );
 
-        Self {
+        GGSW {
             data: MatZnx::alloc(
-                n.into(),
+                self.n().into(),
                 dnum.into(),
                 (rank + 1).into(),
                 (rank + 1).into(),
@@ -194,12 +187,11 @@ impl GGSW<Vec<u8>> {
         }
     }
 
-    pub fn alloc_bytes<A>(infos: &A) -> usize
+    fn alloc_ggsw_from_infos<A>(&self, infos: &A) -> GGSW<Vec<u8>>
     where
         A: GGSWInfos,
     {
-        Self::alloc_bytes_with(
-            infos.n(),
+        self.alloc_ggsw(
             infos.base2k(),
             infos.k(),
             infos.rank(),
@@ -208,7 +200,7 @@ impl GGSW<Vec<u8>> {
         )
     }
 
-    pub fn alloc_bytes_with(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize {
+    fn bytes_of_ggsw(&self, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize {
         let size: usize = k.0.div_ceil(base2k.0) as usize;
         debug_assert!(
             size as u32 > dsize.0,
@@ -223,13 +215,65 @@ impl GGSW<Vec<u8>> {
             dsize.0,
         );
 
-        MatZnx::alloc_bytes(
-            n.into(),
+        MatZnx::bytes_of(
+            self.n().into(),
             dnum.into(),
             (rank + 1).into(),
             (rank + 1).into(),
             k.0.div_ceil(base2k.0) as usize,
         )
+    }
+
+    fn bytes_of_ggsw_from_infos<A>(&self, infos: &A) -> usize
+    where
+        A: GGSWInfos,
+    {
+        self.bytes_of_ggsw(
+            infos.base2k(),
+            infos.k(),
+            infos.rank(),
+            infos.dnum(),
+            infos.dsize(),
+        )
+    }
+}
+
+impl GGSW<Vec<u8>> {
+    pub fn alloc_from_infos<A, B: Backend>(module: Module<B>, infos: &A) -> Self
+    where
+        A: GGSWInfos,
+        Module<B>: GGSWAlloc,
+    {
+        module.alloc_ggsw_from_infos(infos)
+    }
+
+    pub fn alloc<B: Backend>(module: Module<B>, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> Self
+    where
+        Module<B>: GGSWAlloc,
+    {
+        module.alloc_ggsw(base2k, k, rank, dnum, dsize)
+    }
+
+    pub fn bytes_of_from_infos<A, B: Backend>(module: Module<B>, infos: &A) -> usize
+    where
+        A: GGSWInfos,
+        Module<B>: GGSWAlloc,
+    {
+        module.bytes_of_ggsw_from_infos(infos)
+    }
+
+    pub fn bytes_of<B: Backend>(
+        module: Module<B>,
+        base2k: Base2K,
+        k: TorusPrecision,
+        rank: Rank,
+        dnum: Dnum,
+        dsize: Dsize,
+    ) -> usize
+    where
+        Module<B>: GGSWAlloc,
+    {
+        module.bytes_of_ggsw(base2k, k, rank, dnum, dsize)
     }
 }
 

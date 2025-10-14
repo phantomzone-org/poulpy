@@ -9,12 +9,12 @@ use crate::{
     encryption::{SIGMA, glwe_ct::GLWEEncryptSkInternal},
     layouts::{
         GGSW, GGSWInfos, GLWEInfos, LWEInfos,
-        compressed::{GGSWCiphertextCompressed, GGSWCiphertextCompressedToMut},
+        compressed::{GGSWCompressed, GGSWCompressedToMut},
         prepared::{GLWESecretPrepared, GLWESecretPreparedToRef},
     },
 };
 
-impl GGSWCiphertextCompressed<Vec<u8>> {
+impl GGSWCompressed<Vec<u8>> {
     pub fn encrypt_sk_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GGSWInfos,
@@ -34,7 +34,7 @@ pub trait GGSWCompressedEncryptSk<B: Backend> {
         source_xe: &mut Source,
         scratch: &mut Scratch<B>,
     ) where
-        R: GGSWCiphertextCompressedToMut,
+        R: GGSWCompressedToMut,
         P: ScalarZnxToRef,
         S: GLWESecretPreparedToRef<B>;
 }
@@ -53,11 +53,11 @@ where
         source_xe: &mut Source,
         scratch: &mut Scratch<B>,
     ) where
-        R: GGSWCiphertextCompressedToMut,
+        R: GGSWCompressedToMut,
         P: ScalarZnxToRef,
         S: GLWESecretPreparedToRef<B>,
     {
-        let res: &mut GGSWCiphertextCompressed<&mut [u8]> = &mut res.to_mut();
+        let res: &mut GGSWCompressed<&mut [u8]> = &mut res.to_mut();
         let sk: &GLWESecretPrepared<&[u8], B> = &sk.to_ref();
         let pt: &ScalarZnx<&[u8]> = &pt.to_ref();
 
@@ -113,7 +113,7 @@ where
     }
 }
 
-impl<DataSelf: DataMut> GGSWCiphertextCompressed<DataSelf> {
+impl<DataSelf: DataMut> GGSWCompressed<DataSelf> {
     #[allow(clippy::too_many_arguments)]
     pub fn encrypt_sk<DataPt: DataRef, DataSk: DataRef, B: Backend>(
         &mut self,

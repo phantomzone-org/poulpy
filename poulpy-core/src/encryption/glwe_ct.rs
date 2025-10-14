@@ -13,12 +13,12 @@ use crate::{
     dist::Distribution,
     encryption::{SIGMA, SIGMA_BOUND},
     layouts::{
-        GLWECiphertext, GLWECiphertextToMut, GLWEInfos, GLWEPlaintext, GLWEPlaintextToRef, LWEInfos,
+        GLWE, GLWEInfos, GLWEPlaintext, GLWEPlaintextToRef, GLWEToMut, LWEInfos,
         prepared::{GLWEPublicKeyPrepared, GLWEPublicKeyPreparedToRef, GLWESecretPrepared, GLWESecretPreparedToRef},
     },
 };
 
-impl GLWECiphertext<Vec<u8>> {
+impl GLWE<Vec<u8>> {
     pub fn encrypt_sk_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GLWEInfos,
@@ -26,9 +26,7 @@ impl GLWECiphertext<Vec<u8>> {
     {
         let size: usize = infos.size();
         assert_eq!(module.n() as u32, infos.n());
-        module.vec_znx_normalize_tmp_bytes()
-            + 2 * VecZnx::alloc_bytes(module.n(), 1, size)
-            + module.vec_znx_dft_alloc_bytes(1, size)
+        module.vec_znx_normalize_tmp_bytes() + 2 * VecZnx::bytes_of(module.n(), 1, size) + module.vec_znx_dft_bytes_of(1, size)
     }
     pub fn encrypt_pk_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
@@ -37,14 +35,13 @@ impl GLWECiphertext<Vec<u8>> {
     {
         let size: usize = infos.size();
         assert_eq!(module.n() as u32, infos.n());
-        ((module.vec_znx_dft_alloc_bytes(1, size) + module.vec_znx_big_alloc_bytes(1, size))
-            | ScalarZnx::alloc_bytes(module.n(), 1))
-            + module.svp_ppol_alloc_bytes(1)
+        ((module.vec_znx_dft_bytes_of(1, size) + module.vec_znx_big_bytes_of(1, size)) | ScalarZnx::bytes_of(module.n(), 1))
+            + module.svp_ppol_bytes_of(1)
             + module.vec_znx_normalize_tmp_bytes()
     }
 }
 
-impl<D: DataMut> GLWECiphertext<D> {
+impl<D: DataMut> GLWE<D> {
     pub fn encrypt_sk<R, P, S, B: Backend>(
         &mut self,
         module: &Module<B>,
@@ -116,7 +113,7 @@ pub trait GLWEEncryptSk<B: Backend> {
         source_xe: &mut Source,
         scratch: &mut Scratch<B>,
     ) where
-        R: GLWECiphertextToMut,
+        R: GLWEToMut,
         P: GLWEPlaintextToRef,
         S: GLWESecretPreparedToRef<B>;
 }
@@ -135,11 +132,11 @@ where
         source_xe: &mut Source,
         scratch: &mut Scratch<B>,
     ) where
-        R: GLWECiphertextToMut,
+        R: GLWEToMut,
         P: GLWEPlaintextToRef,
         S: GLWESecretPreparedToRef<B>,
     {
-        let mut res: GLWECiphertext<&mut [u8]> = res.to_mut();
+        let mut res: GLWE<&mut [u8]> = res.to_mut();
         let pt: GLWEPlaintext<&[u8]> = pt.to_ref();
 
         #[cfg(debug_assertions)]
@@ -150,10 +147,10 @@ where
             assert_eq!(sk.n(), self.n() as u32);
             assert_eq!(pt.n(), self.n() as u32);
             assert!(
-                scratch.available() >= GLWECiphertext::encrypt_sk_scratch_space(self, &res),
+                scratch.available() >= GLWE::encrypt_sk_scratch_space(self, &res),
                 "scratch.available(): {} < GLWECiphertext::encrypt_sk_scratch_space: {}",
                 scratch.available(),
-                GLWECiphertext::encrypt_sk_scratch_space(self, &res)
+                GLWE::encrypt_sk_scratch_space(self, &res)
             )
         }
 
@@ -183,7 +180,7 @@ pub trait GLWEEncryptZeroSk<B: Backend> {
         source_xe: &mut Source,
         scratch: &mut Scratch<B>,
     ) where
-        R: GLWECiphertextToMut,
+        R: GLWEToMut,
         S: GLWESecretPreparedToRef<B>;
 }
 
@@ -200,10 +197,10 @@ where
         source_xe: &mut Source,
         scratch: &mut Scratch<B>,
     ) where
-        R: GLWECiphertextToMut,
+        R: GLWEToMut,
         S: GLWESecretPreparedToRef<B>,
     {
-        let mut res: GLWECiphertext<&mut [u8]> = res.to_mut();
+        let mut res: GLWE<&mut [u8]> = res.to_mut();
 
         #[cfg(debug_assertions)]
         {
@@ -212,10 +209,10 @@ where
             assert_eq!(res.n(), self.n() as u32);
             assert_eq!(sk.n(), self.n() as u32);
             assert!(
-                scratch.available() >= GLWECiphertext::encrypt_sk_scratch_space(self, &res),
+                scratch.available() >= GLWE::encrypt_sk_scratch_space(self, &res),
                 "scratch.available(): {} < GLWECiphertext::encrypt_sk_scratch_space: {}",
                 scratch.available(),
-                GLWECiphertext::encrypt_sk_scratch_space(self, &res)
+                GLWE::encrypt_sk_scratch_space(self, &res)
             )
         }
 
@@ -246,7 +243,7 @@ pub trait GLWEEncryptPk<B: Backend> {
         source_xe: &mut Source,
         scratch: &mut Scratch<B>,
     ) where
-        R: GLWECiphertextToMut,
+        R: GLWEToMut,
         P: GLWEPlaintextToRef,
         K: GLWEPublicKeyPreparedToRef<B>;
 }
@@ -264,7 +261,7 @@ where
         source_xe: &mut Source,
         scratch: &mut Scratch<B>,
     ) where
-        R: GLWECiphertextToMut,
+        R: GLWEToMut,
         P: GLWEPlaintextToRef,
         K: GLWEPublicKeyPreparedToRef<B>,
     {
@@ -281,7 +278,7 @@ pub trait GLWEEncryptZeroPk<B: Backend> {
         source_xe: &mut Source,
         scratch: &mut Scratch<B>,
     ) where
-        R: GLWECiphertextToMut,
+        R: GLWEToMut,
         K: GLWEPublicKeyPreparedToRef<B>;
 }
 
@@ -297,7 +294,7 @@ where
         source_xe: &mut Source,
         scratch: &mut Scratch<B>,
     ) where
-        R: GLWECiphertextToMut,
+        R: GLWEToMut,
         K: GLWEPublicKeyPreparedToRef<B>,
     {
         self.glwe_encrypt_pk_internal(
@@ -321,7 +318,7 @@ pub(crate) trait GLWEEncryptPkInternal<B: Backend> {
         source_xe: &mut Source,
         scratch: &mut Scratch<B>,
     ) where
-        R: GLWECiphertextToMut,
+        R: GLWEToMut,
         P: GLWEPlaintextToRef,
         K: GLWEPublicKeyPreparedToRef<B>;
 }
@@ -345,11 +342,11 @@ where
         source_xe: &mut Source,
         scratch: &mut Scratch<B>,
     ) where
-        R: GLWECiphertextToMut,
+        R: GLWEToMut,
         P: GLWEPlaintextToRef,
         K: GLWEPublicKeyPreparedToRef<B>,
     {
-        let res: &mut GLWECiphertext<&mut [u8]> = &mut res.to_mut();
+        let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
         let pk: &GLWEPublicKeyPrepared<&[u8], B> = &pk.to_ref();
 
         #[cfg(debug_assertions)]

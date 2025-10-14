@@ -20,8 +20,7 @@ impl AutomorphismKeyCompressed<Vec<u8>> {
         Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes + VecZnxNormalizeTmpBytes + SvpPPolAllocBytes,
     {
         assert_eq!(module.n() as u32, infos.n());
-        GLWESwitchingKeyCompressed::encrypt_sk_scratch_space(module, infos)
-            + GLWESecret::alloc_bytes_with(infos.n(), infos.rank_out())
+        GLWESwitchingKeyCompressed::encrypt_sk_scratch_space(module, infos) + GLWESecret::bytes_of(infos.n(), infos.rank_out())
     }
 }
 

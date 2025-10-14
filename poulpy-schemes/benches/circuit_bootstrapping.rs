@@ -3,8 +3,8 @@ use std::hint::black_box;
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use poulpy_backend::{FFT64Avx, FFT64Ref, FFT64Spqlios};
 use poulpy_core::layouts::{
-    AutomorphismKeyLayout, Dsize, GGSW, GGSWCiphertextLayout, GLWESecret, LWECiphertext, LWECiphertextLayout, LWESecret,
-    TensorKeyLayout, prepared::PrepareAlloc,
+    AutomorphismKeyLayout, Dsize, GGSW, GGSWCiphertextLayout, GLWESecret, LWE, LWECiphertextLayout, LWESecret, TensorKeyLayout,
+    prepared::PrepareAlloc,
 };
 use poulpy_hal::{
     api::{
@@ -202,10 +202,10 @@ where
         sk_lwe.fill_binary_block(params.block_size, &mut source_xs);
         sk_lwe.fill_zero();
 
-        let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc_with(n_glwe, rank);
+        let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc(n_glwe, rank);
         sk_glwe.fill_ternary_prob(0.5, &mut source_xs);
 
-        let ct_lwe: LWECiphertext<Vec<u8>> = LWECiphertext::alloc(&params.lwe_infos);
+        let ct_lwe: LWE<Vec<u8>> = LWE::alloc_from_infos(&params.lwe_infos);
 
         // Circuit bootstrapping evaluation key
         let cbt_key: CircuitBootstrappingKey<Vec<u8>, BRA> = CircuitBootstrappingKey::encrypt_sk(
@@ -218,7 +218,7 @@ where
             scratch.borrow(),
         );
 
-        let mut res: GGSW<Vec<u8>> = GGSW::alloc(&params.ggsw_infos);
+        let mut res: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&params.ggsw_infos);
         let cbt_prepared: CircuitBootstrappingKeyPrepared<Vec<u8>, BRA, B> = cbt_key.prepare_alloc(&module, scratch.borrow());
 
         move || {

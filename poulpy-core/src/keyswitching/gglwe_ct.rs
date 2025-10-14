@@ -8,7 +8,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    AutomorphismKey, GGLWEInfos, GLWECiphertext, GLWEInfos, GLWESwitchingKey,
+    AutomorphismKey, GGLWEInfos, GLWE, GLWEInfos, GLWESwitchingKey,
     prepared::{AutomorphismKeyPrepared, GLWESwitchingKeyPrepared},
 };
 
@@ -98,7 +98,7 @@ impl GLWESwitchingKey<Vec<u8>> {
         KEY: GGLWEInfos,
         Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        GLWECiphertext::keyswitch_scratch_space(module, out_infos, in_infos, key_apply)
+        GLWE::keyswitch_scratch_space(module, out_infos, in_infos, key_apply)
     }
 
     pub fn keyswitch_inplace_scratch_space<B: Backend, OUT, KEY>(module: &Module<B>, out_infos: &OUT, key_apply: &KEY) -> usize
@@ -107,7 +107,7 @@ impl GLWESwitchingKey<Vec<u8>> {
         KEY: GGLWEInfos + GLWEInfos,
         Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        GLWECiphertext::keyswitch_inplace_scratch_space(module, out_infos, key_apply)
+        GLWE::keyswitch_inplace_scratch_space(module, out_infos, key_apply)
     }
 }
 

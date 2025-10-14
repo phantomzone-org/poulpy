@@ -13,7 +13,7 @@ use poulpy_hal::{
 
 use crate::{
     GLWEOperations, TakeGLWECt,
-    layouts::{GGLWEInfos, GLWECiphertext, GLWEInfos, LWEInfos, prepared::AutomorphismKeyPrepared},
+    layouts::{GGLWEInfos, GLWE, GLWEInfos, LWEInfos, prepared::AutomorphismKeyPrepared},
 };
 
 /// [GLWEPacker] enables only the fly GLWE packing
@@ -29,7 +29,7 @@ pub struct GLWEPacker {
 /// [Accumulator] stores intermediate packing result.
 /// There are Log(N) such accumulators in a [GLWEPacker].
 struct Accumulator {
-    data: GLWECiphertext<Vec<u8>>,
+    data: GLWE<Vec<u8>>,
     value: bool,   // Implicit flag for zero ciphertext
     control: bool, // Can be combined with incoming value
 }
@@ -48,7 +48,7 @@ impl Accumulator {
         A: GLWEInfos,
     {
         Self {
-            data: GLWECiphertext::alloc(infos),
+            data: GLWE::alloc_from_infos(infos),
             value: false,
             control: false,
         }
@@ -100,7 +100,7 @@ impl GLWEPacker {
     }
 
     pub fn galois_elements<B: Backend>(module: &Module<B>) -> Vec<i64> {
-        GLWECiphertext::trace_galois_elements(module)
+        GLWE::trace_galois_elements(module)
     }
 
     /// Adds a GLWE ciphertext to the [GLWEPacker].
@@ -115,7 +115,7 @@ impl GLWEPacker {
     pub fn add<DataA: DataRef, DataAK: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
-        a: Option<&GLWECiphertext<DataA>>,
+        a: Option<&GLWE<DataA>>,
         auto_keys: &HashMap<i64, AutomorphismKeyPrepared<DataAK, B>>,
         scratch: &mut Scratch<B>,
     ) where
@@ -162,7 +162,7 @@ impl GLWEPacker {
     }
 
     /// Flush result to`res`.
-    pub fn flush<Data: DataMut, B: Backend>(&mut self, module: &Module<B>, res: &mut GLWECiphertext<Data>)
+    pub fn flush<Data: DataMut, B: Backend>(&mut self, module: &Module<B>, res: &mut GLWE<Data>)
     where
         Module<B>: VecZnxCopy,
     {
@@ -188,7 +188,7 @@ where
 
 fn pack_core<D: DataRef, DataAK: DataRef, B: Backend>(
     module: &Module<B>,
-    a: Option<&GLWECiphertext<D>>,
+    a: Option<&GLWE<D>>,
     accumulators: &mut [Accumulator],
     i: usize,
     auto_keys: &HashMap<i64, AutomorphismKeyPrepared<DataAK, B>>,
@@ -258,7 +258,7 @@ fn pack_core<D: DataRef, DataAK: DataRef, B: Backend>(
         } else {
             pack_core(
                 module,
-                None::<&GLWECiphertext<Vec<u8>>>,
+                None::<&GLWE<Vec<u8>>>,
                 acc_next,
                 i + 1,
                 auto_keys,
@@ -274,16 +274,15 @@ where
     KEY: GGLWEInfos,
     Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
 {
-    GLWECiphertext::alloc_bytes(out_infos)
-        + (GLWECiphertext::rsh_scratch_space(module.n())
-            | GLWECiphertext::automorphism_inplace_scratch_space(module, out_infos, key_infos))
+    GLWE::bytes_of(out_infos)
+        + (GLWE::rsh_scratch_space(module.n()) | GLWE::automorphism_inplace_scratch_space(module, out_infos, key_infos))
 }
 
 /// [combine] merges two ciphertexts together.
 fn combine<D: DataRef, DataAK: DataRef, B: Backend>(
     module: &Module<B>,
     acc: &mut Accumulator,
-    b: Option<&GLWECiphertext<D>>,
+    b: Option<&GLWE<D>>,
     i: usize,
     auto_keys: &HashMap<i64, AutomorphismKeyPrepared<DataAK, B>>,
     scratch: &mut Scratch<B>,
@@ -314,7 +313,7 @@ fn combine<D: DataRef, DataAK: DataRef, B: Backend>(
     Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx + TakeGLWECt,
 {
     let log_n: usize = acc.data.n().log2();
-    let a: &mut GLWECiphertext<Vec<u8>> = &mut acc.data;
+    let a: &mut GLWE<Vec<u8>> = &mut acc.data;
 
     let gal_el: i64 = if i == 0 {
         -1
@@ -395,7 +394,7 @@ fn combine<D: DataRef, DataAK: DataRef, B: Backend>(
 /// to [0: GLWE(m_0 * X^x_0 + m_1 * X^x_1 + ... + m_i * X^x_i)]
 pub fn glwe_packing<D: DataMut, ATK, B: Backend>(
     module: &Module<B>,
-    cts: &mut HashMap<usize, &mut GLWECiphertext<D>>,
+    cts: &mut HashMap<usize, &mut GLWE<D>>,
     log_gap_out: usize,
     auto_keys: &HashMap<i64, AutomorphismKeyPrepared<ATK, B>>,
     scratch: &mut Scratch<B>,
@@ -446,8 +445,8 @@ pub fn glwe_packing<D: DataMut, ATK, B: Backend>(
         };
 
         (0..t).for_each(|j| {
-            let mut a: Option<&mut GLWECiphertext<D>> = cts.remove(&j);
-            let mut b: Option<&mut GLWECiphertext<D>> = cts.remove(&(j + t));
+            let mut a: Option<&mut GLWE<D>> = cts.remove(&j);
+            let mut b: Option<&mut GLWE<D>> = cts.remove(&(j + t));
 
             pack_internal(module, &mut a, &mut b, i, auto_key, scratch);
 
@@ -463,8 +462,8 @@ pub fn glwe_packing<D: DataMut, ATK, B: Backend>(
 #[allow(clippy::too_many_arguments)]
 fn pack_internal<A: DataMut, D: DataMut, DataAK: DataRef, B: Backend>(
     module: &Module<B>,
-    a: &mut Option<&mut GLWECiphertext<A>>,
-    b: &mut Option<&mut GLWECiphertext<D>>,
+    a: &mut Option<&mut GLWE<A>>,
+    b: &mut Option<&mut GLWE<D>>,
     i: usize,
     auto_key: &AutomorphismKeyPrepared<DataAK, B>,
     scratch: &mut Scratch<B>,

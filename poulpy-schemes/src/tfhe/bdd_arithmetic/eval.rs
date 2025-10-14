@@ -2,7 +2,7 @@ use itertools::Itertools;
 use poulpy_core::{
     GLWEExternalProductInplace, GLWEOperations, TakeGLWECtSlice,
     layouts::{
-        GLWECiphertext, GLWECiphertextToMut, LWEInfos,
+        GLWE, GLWEToMut, LWEInfos,
         prepared::{GGSWCiphertextPreparedToRef, GGSWPrepared},
     },
 };
@@ -38,7 +38,7 @@ where
     fn execute<O>(
         &self,
         module: &Module<BE>,
-        out: &mut [GLWECiphertext<O>],
+        out: &mut [GLWE<O>],
         inputs: &[&dyn GGSWCiphertextPreparedToRef<BE>],
         scratch: &mut Scratch<BE>,
     ) where
@@ -54,7 +54,7 @@ where
     fn execute<O>(
         &self,
         module: &Module<BE>,
-        out: &mut [GLWECiphertext<O>],
+        out: &mut [GLWE<O>],
         inputs: &[&dyn GGSWCiphertextPreparedToRef<BE>],
         scratch: &mut Scratch<BE>,
     ) where
@@ -159,14 +159,8 @@ impl Node {
 }
 
 pub trait Cmux<BE: Backend> {
-    fn cmux<O, T, F, S>(
-        &self,
-        out: &mut GLWECiphertext<O>,
-        t: &GLWECiphertext<T>,
-        f: &GLWECiphertext<F>,
-        s: &GGSWPrepared<S, BE>,
-        scratch: &mut Scratch<BE>,
-    ) where
+    fn cmux<O, T, F, S>(&self, out: &mut GLWE<O>, t: &GLWE<T>, f: &GLWE<F>, s: &GGSWPrepared<S, BE>, scratch: &mut Scratch<BE>)
+    where
         O: DataMut,
         T: DataRef,
         F: DataRef,
@@ -177,14 +171,8 @@ impl<BE: Backend> Cmux<BE> for Module<BE>
 where
     Module<BE>: GLWEExternalProductInplace<BE> + VecZnxSub + VecZnxCopy + VecZnxNegateInplace + VecZnxAddInplace,
 {
-    fn cmux<O, T, F, S>(
-        &self,
-        out: &mut GLWECiphertext<O>,
-        t: &GLWECiphertext<T>,
-        f: &GLWECiphertext<F>,
-        s: &GGSWPrepared<S, BE>,
-        scratch: &mut Scratch<BE>,
-    ) where
+    fn cmux<O, T, F, S>(&self, out: &mut GLWE<O>, t: &GLWE<T>, f: &GLWE<F>, s: &GGSWPrepared<S, BE>, scratch: &mut Scratch<BE>)
+    where
         O: DataMut,
         T: DataRef,
         F: DataRef,
