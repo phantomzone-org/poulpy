@@ -3,14 +3,14 @@ use std::collections::HashMap;
 use poulpy_hal::{
     api::{
         ScratchAvailable, TakeVecZnx, TakeVecZnxDft, VecZnxBigAddSmallInplace, VecZnxBigAutomorphismInplace, VecZnxBigNormalize,
-        VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftAllocBytes, VecZnxDftApply, VecZnxIdftApplyConsume, VecZnxNormalize,
+        VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxNormalize,
         VecZnxNormalizeTmpBytes, VecZnxRshInplace, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch, VecZnx},
 };
 
 use crate::{
-    TakeGLWECt,
+    TakeGLWE,
     layouts::{Base2K, GGLWEInfos, GLWE, GLWEInfos, GLWELayout, LWEInfos, prepared::AutomorphismKeyPrepared},
     operations::GLWEOperations,
 };
@@ -38,7 +38,7 @@ impl GLWE<Vec<u8>> {
         OUT: GLWEInfos,
         IN: GLWEInfos,
         KEY: GGLWEInfos,
-        Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
+        Module<B>: VecZnxDftBytesOf + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
         let trace: usize = Self::automorphism_inplace_scratch_space(module, out_infos, key_infos);
         if in_infos.base2k() != key_infos.base2k() {
@@ -57,7 +57,7 @@ impl GLWE<Vec<u8>> {
     where
         OUT: GLWEInfos,
         KEY: GGLWEInfos,
-        Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
+        Module<B>: VecZnxDftBytesOf + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
         Self::trace_scratch_space(module, out_infos, out_infos, key_infos)
     }
@@ -73,7 +73,7 @@ impl<DataSelf: DataMut> GLWE<DataSelf> {
         auto_keys: &HashMap<i64, AutomorphismKeyPrepared<DataAK, B>>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: VecZnxDftAllocBytes
+        Module<B>: VecZnxDftBytesOf
             + VmpApplyDftToDftTmpBytes
             + VecZnxBigNormalizeTmpBytes
             + VmpApplyDftToDft<B>
@@ -101,7 +101,7 @@ impl<DataSelf: DataMut> GLWE<DataSelf> {
         auto_keys: &HashMap<i64, AutomorphismKeyPrepared<DataAK, B>>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: VecZnxDftAllocBytes
+        Module<B>: VecZnxDftBytesOf
             + VmpApplyDftToDftTmpBytes
             + VecZnxBigNormalizeTmpBytes
             + VmpApplyDftToDft<B>

@@ -3,9 +3,9 @@ use std::collections::HashMap;
 use poulpy_hal::{
     api::{
         ScratchAvailable, TakeMatZnx, TakeSlice, TakeVecZnx, TakeVecZnxBig, TakeVecZnxDft, TakeVecZnxDftSlice, TakeVecZnxSlice,
-        VecZnxAddInplace, VecZnxAutomorphismInplace, VecZnxBigAddSmallInplace, VecZnxBigAllocBytes, VecZnxBigAutomorphismInplace,
+        VecZnxAddInplace, VecZnxAutomorphismInplace, VecZnxBigAddSmallInplace, VecZnxBigAutomorphismInplace, VecZnxBigBytesOf,
         VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallNegateInplace, VecZnxCopy, VecZnxDftAddInplace,
-        VecZnxDftAllocBytes, VecZnxDftApply, VecZnxDftCopy, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA, VecZnxNegateInplace,
+        VecZnxDftApply, VecZnxDftBytesOf, VecZnxDftCopy, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA, VecZnxNegateInplace,
         VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace,
         VecZnxRotateInplaceTmpBytes, VecZnxRshInplace, VecZnxSub, VecZnxSubInplace, VecZnxSwitchRing, VmpApplyDftToDft,
         VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
@@ -15,7 +15,7 @@ use poulpy_hal::{
 };
 
 use poulpy_core::{
-    GLWEOperations, TakeGGLWE, TakeGLWECt,
+    GLWEOperations, TakeGGLWE, TakeGLWE,
     layouts::{Dsize, GGLWECiphertextLayout, GGSWInfos, GLWEInfos, LWEInfos},
 };
 
@@ -44,7 +44,7 @@ where
         + VecZnxNegateInplace
         + VecZnxCopy
         + VecZnxSubInplace
-        + VecZnxDftAllocBytes
+        + VecZnxDftBytesOf
         + VmpApplyDftToDftTmpBytes
         + VecZnxBigNormalizeTmpBytes
         + VmpApplyDftToDft<B>
@@ -56,7 +56,7 @@ where
         + VecZnxAutomorphismInplace<B>
         + VecZnxBigSubSmallNegateInplace<B>
         + VecZnxRotateInplaceTmpBytes
-        + VecZnxBigAllocBytes
+        + VecZnxBigBytesOf
         + VecZnxDftAddInplace<B>
         + VecZnxRotate
         + VecZnxNormalize<B>,
@@ -145,7 +145,7 @@ pub fn circuit_bootstrap_core<DRes, DLwe, DBrk, BRA: BlindRotationAlgo, B>(
         + VecZnxNegateInplace
         + VecZnxCopy
         + VecZnxSubInplace
-        + VecZnxDftAllocBytes
+        + VecZnxDftBytesOf
         + VmpApplyDftToDftTmpBytes
         + VecZnxBigNormalizeTmpBytes
         + VmpApplyDftToDft<B>
@@ -156,7 +156,7 @@ pub fn circuit_bootstrap_core<DRes, DLwe, DBrk, BRA: BlindRotationAlgo, B>(
         + VecZnxBigNormalize<B>
         + VecZnxAutomorphismInplace<B>
         + VecZnxBigSubSmallNegateInplace<B>
-        + VecZnxBigAllocBytes
+        + VecZnxBigBytesOf
         + VecZnxDftAddInplace<B>
         + VecZnxRotateInplaceTmpBytes
         + VecZnxRotate
@@ -286,7 +286,7 @@ fn post_process<DataRes, DataA, B: Backend>(
         + VecZnxNegateInplace
         + VecZnxCopy
         + VecZnxSubInplace
-        + VecZnxDftAllocBytes
+        + VecZnxDftBytesOf
         + VmpApplyDftToDftTmpBytes
         + VecZnxBigNormalizeTmpBytes
         + VmpApplyDftToDft<B>

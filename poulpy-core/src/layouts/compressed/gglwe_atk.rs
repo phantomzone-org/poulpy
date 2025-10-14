@@ -210,7 +210,7 @@ impl<D: DataMut> AutomorphismKey<D>
 where
     Self: SetAutomorphismGaloisElement,
 {
-    pub fn decompressed<O, B: Backend>(&mut self, module: &Module<B>, other: &O)
+    pub fn decompress<O, B: Backend>(&mut self, module: &Module<B>, other: &O)
     where
         O: AutomorphismKeyCompressedToRef + GetAutomorphismGaloisElement,
         Module<B>: AutomorphismKeyDecompress,

@@ -1,8 +1,8 @@
 use poulpy_hal::{
     api::{
-        ScratchAvailable, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolAllocBytes, SvpPrepare, TakeScalarZnx, TakeVecZnx,
-        TakeVecZnxBig, TakeVecZnxDft, VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxBigAllocBytes,
-        VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftApply, VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA,
+        ScratchAvailable, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolBytesOf, SvpPrepare, TakeScalarZnx, TakeVecZnx,
+        TakeVecZnxBig, TakeVecZnxDft, VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxBigBytesOf,
+        VecZnxBigNormalize, VecZnxDftApply, VecZnxDftBytesOf, VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA,
         VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubInplace, VecZnxSwitchRing,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
@@ -20,13 +20,12 @@ impl TensorKey<Vec<u8>> {
     pub fn encrypt_sk_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GGLWEInfos,
-        Module<B>:
-            SvpPPolAllocBytes + VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes + VecZnxNormalizeTmpBytes + VecZnxBigAllocBytes,
+        Module<B>: SvpPPolBytesOf + VecZnxNormalizeTmpBytes + VecZnxDftBytesOf + VecZnxNormalizeTmpBytes + VecZnxBigBytesOf,
     {
         GLWESecretPrepared::bytes_of(module, infos.rank_out())
-            + module.vec_znx_dft_bytes_of(infos.rank_out().into(), 1)
-            + module.vec_znx_big_bytes_of(1, 1)
-            + module.vec_znx_dft_bytes_of(1, 1)
+            + module.bytes_of_vec_znx_dft(infos.rank_out().into(), 1)
+            + module.bytes_of_vec_znx_big(1, 1)
+            + module.bytes_of_vec_znx_dft(1, 1)
             + GLWESecret::bytes_of(Degree(module.n() as u32), Rank(1))
             + GLWESwitchingKey::encrypt_sk_scratch_space(module, infos)
     }
@@ -44,7 +43,7 @@ impl<DataSelf: DataMut> TensorKey<DataSelf> {
         Module<B>: SvpApplyDftToDft<B>
             + VecZnxIdftApplyTmpA<B>
             + VecZnxAddScalarInplace
-            + VecZnxDftAllocBytes
+            + VecZnxDftBytesOf
             + VecZnxBigNormalize<B>
             + VecZnxDftApply<B>
             + SvpApplyDftToDftInplace<B>
@@ -59,7 +58,7 @@ impl<DataSelf: DataMut> TensorKey<DataSelf> {
             + VecZnxSub
             + SvpPrepare<B>
             + VecZnxSwitchRing
-            + SvpPPolAllocBytes,
+            + SvpPPolBytesOf,
         Scratch<B>:
             TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx + TakeScalarZnx + TakeGLWESecretPrepared<B> + TakeVecZnxBig<B>,
     {

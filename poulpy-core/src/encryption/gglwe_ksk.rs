@@ -1,7 +1,7 @@
 use poulpy_hal::{
     api::{
-        ScratchAvailable, SvpApplyDftToDftInplace, SvpPPolAllocBytes, SvpPrepare, TakeScalarZnx, TakeVecZnx, TakeVecZnxDft,
-        VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftApply,
+        ScratchAvailable, SvpApplyDftToDftInplace, SvpPPolBytesOf, SvpPrepare, TakeScalarZnx, TakeVecZnx, TakeVecZnxDft,
+        VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxBigNormalize, VecZnxDftApply, VecZnxDftBytesOf,
         VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub,
         VecZnxSubInplace, VecZnxSwitchRing,
     },
@@ -18,7 +18,7 @@ impl GLWESwitchingKey<Vec<u8>> {
     pub fn encrypt_sk_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GGLWEInfos,
-        Module<B>: SvpPPolAllocBytes + VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes + VecZnxNormalizeTmpBytes,
+        Module<B>: SvpPPolBytesOf + VecZnxNormalizeTmpBytes + VecZnxDftBytesOf + VecZnxNormalizeTmpBytes,
     {
         (GGLWE::encrypt_sk_scratch_space(module, infos) | ScalarZnx::bytes_of(module.n(), 1))
             + ScalarZnx::bytes_of(module.n(), infos.rank_in().into())
@@ -45,7 +45,7 @@ impl<DataSelf: DataMut> GLWESwitchingKey<DataSelf> {
         scratch: &mut Scratch<B>,
     ) where
         Module<B>: VecZnxAddScalarInplace
-            + VecZnxDftAllocBytes
+            + VecZnxDftBytesOf
             + VecZnxBigNormalize<B>
             + VecZnxDftApply<B>
             + SvpApplyDftToDftInplace<B>
@@ -60,7 +60,7 @@ impl<DataSelf: DataMut> GLWESwitchingKey<DataSelf> {
             + VecZnxSub
             + SvpPrepare<B>
             + VecZnxSwitchRing
-            + SvpPPolAllocBytes,
+            + SvpPPolBytesOf,
         Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx + TakeScalarZnx + TakeGLWESecretPrepared<B>,
     {
         #[cfg(debug_assertions)]

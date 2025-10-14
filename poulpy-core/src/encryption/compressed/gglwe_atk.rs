@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    api::{ScratchAvailable, SvpPPolAllocBytes, VecZnxAutomorphism, VecZnxDftAllocBytes, VecZnxNormalizeTmpBytes},
+    api::{ScratchAvailable, SvpPPolBytesOf, VecZnxAutomorphism, VecZnxDftBytesOf, VecZnxNormalizeTmpBytes},
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
     source::Source,
 };
@@ -17,7 +17,7 @@ impl AutomorphismKeyCompressed<Vec<u8>> {
     pub fn encrypt_sk_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GGLWEInfos,
-        Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes + VecZnxNormalizeTmpBytes + SvpPPolAllocBytes,
+        Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftBytesOf + VecZnxNormalizeTmpBytes + SvpPPolBytesOf,
     {
         assert_eq!(module.n() as u32, infos.n());
         GLWESwitchingKeyCompressed::encrypt_sk_scratch_space(module, infos) + GLWESecret::bytes_of(infos.n(), infos.rank_out())
@@ -40,8 +40,7 @@ pub trait GGLWEAutomorphismKeyCompressedEncryptSk<B: Backend> {
 
 impl<B: Backend> GGLWEAutomorphismKeyCompressedEncryptSk<B> for Module<B>
 where
-    Module<B>:
-        GGLWEKeyCompressedEncryptSk<B> + VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes + SvpPPolAllocBytes + VecZnxAutomorphism,
+    Module<B>: GGLWEKeyCompressedEncryptSk<B> + VecZnxNormalizeTmpBytes + VecZnxDftBytesOf + SvpPPolBytesOf + VecZnxAutomorphism,
     Scratch<B>: TakeGLWESecret + ScratchAvailable,
 {
     fn gglwe_automorphism_key_compressed_encrypt_sk<R, S>(

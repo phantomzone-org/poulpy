@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    api::{VmpPMatAlloc, VmpPMatAllocBytes, VmpPrepare, VmpPrepareTmpBytes},
+    api::{VmpPMatAlloc, VmpPMatBytesOf, VmpPrepare, VmpPrepareTmpBytes},
     layouts::{Backend, Data, DataMut, DataRef, Module, Scratch, VmpPMat, VmpPMatToMut, VmpPMatToRef, ZnxInfos},
 };
 
@@ -59,7 +59,7 @@ impl<D: Data, B: Backend> GGLWEInfos for GGLWEPrepared<D, B> {
 
 pub trait GGLWEPreparedAlloc<B: Backend>
 where
-    Self: GetDegree + VmpPMatAlloc<B> + VmpPMatAllocBytes,
+    Self: GetDegree + VmpPMatAlloc<B> + VmpPMatBytesOf,
 {
     fn alloc_gglwe_prepared(
         &self,
@@ -130,7 +130,7 @@ where
             dsize.0,
         );
 
-        self.vmp_pmat_bytes_of(dnum.into(), rank_in.into(), (rank_out + 1).into(), size)
+        self.bytes_of_vmp_pmat(dnum.into(), rank_in.into(), (rank_out + 1).into(), size)
     }
 
     fn bytes_of_gglwe_prepared_from_infos<A>(&self, infos: &A) -> usize
@@ -149,7 +149,7 @@ where
     }
 }
 
-impl<B: Backend> GGLWEPreparedAlloc<B> for Module<B> where Module<B>: GetDegree + VmpPMatAlloc<B> + VmpPMatAllocBytes {}
+impl<B: Backend> GGLWEPreparedAlloc<B> for Module<B> where Module<B>: GetDegree + VmpPMatAlloc<B> + VmpPMatBytesOf {}
 
 impl<B: Backend> GGLWEPrepared<Vec<u8>, B>
 where

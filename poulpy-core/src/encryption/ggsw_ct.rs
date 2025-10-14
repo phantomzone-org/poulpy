@@ -1,11 +1,11 @@
 use poulpy_hal::{
-    api::{VecZnxAddScalarInplace, VecZnxDftAllocBytes, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes},
+    api::{VecZnxAddScalarInplace, VecZnxDftBytesOf, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes},
     layouts::{Backend, DataMut, DataRef, Module, ScalarZnx, ScalarZnxToRef, Scratch, VecZnx, ZnxZero},
     source::Source,
 };
 
 use crate::{
-    SIGMA, TakeGLWEPt,
+    SIGMA, TakeGLWEPlaintext,
     encryption::glwe_ct::GLWEEncryptSkInternal,
     layouts::{
         GGSW, GGSWInfos, GGSWToMut, GLWE, GLWEInfos, LWEInfos,
@@ -17,13 +17,13 @@ impl GGSW<Vec<u8>> {
     pub fn encrypt_sk_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GGSWInfos,
-        Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes,
+        Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftBytesOf,
     {
         let size = infos.size();
         GLWE::encrypt_sk_scratch_space(module, &infos.glwe_layout())
             + VecZnx::bytes_of(module.n(), (infos.rank() + 1).into(), size)
             + VecZnx::bytes_of(module.n(), 1, size)
-            + module.vec_znx_dft_bytes_of((infos.rank() + 1).into(), size)
+            + module.bytes_of_vec_znx_dft((infos.rank() + 1).into(), size)
     }
 }
 
@@ -45,7 +45,7 @@ pub trait GGSWEncryptSk<B: Backend> {
 impl<B: Backend> GGSWEncryptSk<B> for Module<B>
 where
     Module<B>: GLWEEncryptSkInternal<B> + VecZnxAddScalarInplace + VecZnxNormalizeInplace<B>,
-    Scratch<B>: TakeGLWEPt<B>,
+    Scratch<B>: TakeGLWEPlaintext<B>,
 {
     fn ggsw_encrypt_sk<R, P, S>(
         &self,

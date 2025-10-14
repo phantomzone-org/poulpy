@@ -1,9 +1,9 @@
 use itertools::izip;
 use poulpy_hal::{
     api::{
-        ScratchAvailable, SvpApplyDftToDft, SvpPPolAllocBytes, TakeVecZnx, TakeVecZnxBig, TakeVecZnxDft, TakeVecZnxDftSlice,
-        TakeVecZnxSlice, VecZnxAddInplace, VecZnxBigAddSmallInplace, VecZnxBigAllocBytes, VecZnxBigNormalize,
-        VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftAdd, VecZnxDftAddInplace, VecZnxDftAllocBytes, VecZnxDftApply,
+        ScratchAvailable, SvpApplyDftToDft, SvpPPolBytesOf, TakeVecZnx, TakeVecZnxBig, TakeVecZnxDft, TakeVecZnxDftSlice,
+        TakeVecZnxSlice, VecZnxAddInplace, VecZnxBigAddSmallInplace, VecZnxBigBytesOf, VecZnxBigNormalize,
+        VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftAdd, VecZnxDftAddInplace, VecZnxDftApply, VecZnxDftBytesOf,
         VecZnxDftSubInplace, VecZnxDftZero, VecZnxIdftApply, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpBytes,
         VecZnxMulXpMinusOneInplace, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate,
         VecZnxSubInplace, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
@@ -12,7 +12,7 @@ use poulpy_hal::{
 };
 
 use poulpy_core::{
-    Distribution, GLWEOperations, TakeGLWECt,
+    Distribution, GLWEOperations, TakeGLWE,
     layouts::{GGSWInfos, GLWE, GLWEInfos, GLWEToMut, LWE, LWECiphertextToRef, LWEInfos},
 };
 
@@ -31,10 +31,10 @@ pub fn cggi_blind_rotate_scratch_space<B: Backend, OUT, GGSW>(
 where
     OUT: GLWEInfos,
     GGSW: GGSWInfos,
-    Module<B>: VecZnxDftAllocBytes
+    Module<B>: VecZnxDftBytesOf
         + VmpApplyDftToDftTmpBytes
         + VecZnxNormalizeTmpBytes
-        + VecZnxBigAllocBytes
+        + VecZnxBigBytesOf
         + VecZnxIdftApplyTmpBytes
         + VecZnxBigNormalizeTmpBytes,
 {
@@ -43,10 +43,10 @@ where
     if block_size > 1 {
         let cols: usize = (brk_infos.rank() + 1).into();
         let dnum: usize = brk_infos.dnum().into();
-        let acc_dft: usize = module.vec_znx_dft_bytes_of(cols, dnum) * extension_factor;
-        let acc_big: usize = module.vec_znx_big_bytes_of(1, brk_size);
-        let vmp_res: usize = module.vec_znx_dft_bytes_of(cols, brk_size) * extension_factor;
-        let vmp_xai: usize = module.vec_znx_dft_bytes_of(1, brk_size);
+        let acc_dft: usize = module.bytes_of_vec_znx_dft(cols, dnum) * extension_factor;
+        let acc_big: usize = module.bytes_of_vec_znx_big(1, brk_size);
+        let vmp_res: usize = module.bytes_of_vec_znx_dft(cols, brk_size) * extension_factor;
+        let vmp_xai: usize = module.bytes_of_vec_znx_dft(1, brk_size);
         let acc_dft_add: usize = vmp_res;
         let vmp: usize = module.vmp_apply_dft_to_dft_tmp_bytes(brk_size, dnum, dnum, 2, 2, brk_size); // GGSW product: (1 x 2) x (2 x 2)
         let acc: usize = if extension_factor > 1 {
@@ -67,9 +67,9 @@ where
 
 impl<D: DataRef, B: Backend> BlincRotationExecute<B> for BlindRotationKeyPrepared<D, CGGI, B>
 where
-    Module<B>: VecZnxBigAllocBytes
-        + VecZnxDftAllocBytes
-        + SvpPPolAllocBytes
+    Module<B>: VecZnxBigBytesOf
+        + VecZnxDftBytesOf
+        + SvpPPolBytesOf
         + VmpApplyDftToDftTmpBytes
         + VecZnxBigNormalizeTmpBytes
         + VecZnxIdftApplyTmpBytes
@@ -129,9 +129,9 @@ fn execute_block_binary_extended<DataRes, DataIn, DataBrk, B: Backend>(
     DataRes: DataMut,
     DataIn: DataRef,
     DataBrk: DataRef,
-    Module<B>: VecZnxBigAllocBytes
-        + VecZnxDftAllocBytes
-        + SvpPPolAllocBytes
+    Module<B>: VecZnxBigBytesOf
+        + VecZnxDftBytesOf
+        + SvpPPolBytesOf
         + VmpApplyDftToDftTmpBytes
         + VecZnxBigNormalizeTmpBytes
         + VecZnxIdftApplyTmpBytes
@@ -296,9 +296,9 @@ fn execute_block_binary<DataRes, DataIn, DataBrk, B: Backend>(
     DataRes: DataMut,
     DataIn: DataRef,
     DataBrk: DataRef,
-    Module<B>: VecZnxBigAllocBytes
-        + VecZnxDftAllocBytes
-        + SvpPPolAllocBytes
+    Module<B>: VecZnxBigBytesOf
+        + VecZnxDftBytesOf
+        + SvpPPolBytesOf
         + VmpApplyDftToDftTmpBytes
         + VecZnxBigNormalizeTmpBytes
         + VecZnxIdftApplyTmpBytes
@@ -418,9 +418,9 @@ fn execute_standard<DataRes, DataIn, DataBrk, B: Backend>(
     DataRes: DataMut,
     DataIn: DataRef,
     DataBrk: DataRef,
-    Module<B>: VecZnxBigAllocBytes
-        + VecZnxDftAllocBytes
-        + SvpPPolAllocBytes
+    Module<B>: VecZnxBigBytesOf
+        + VecZnxDftBytesOf
+        + SvpPPolBytesOf
         + VmpApplyDftToDftTmpBytes
         + VecZnxBigNormalizeTmpBytes
         + VecZnxIdftApplyTmpBytes

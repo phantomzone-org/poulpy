@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{
-        ScratchAvailable, TakeVecZnx, TakeVecZnxDft, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftApply,
+        ScratchAvailable, TakeVecZnx, TakeVecZnxDft, VecZnxBigNormalize, VecZnxDftApply, VecZnxDftBytesOf,
         VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeTmpBytes, VmpApplyDftToDft, VmpApplyDftToDftAdd,
         VmpApplyDftToDftTmpBytes,
     },
@@ -21,7 +21,7 @@ impl GGSW<Vec<u8>> {
         OUT: GGSWInfos,
         IN: GGSWInfos,
         GGSW: GGSWInfos,
-        Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxNormalizeTmpBytes,
+        Module<B>: VecZnxDftBytesOf + VmpApplyDftToDftTmpBytes + VecZnxNormalizeTmpBytes,
     {
         GLWE::external_product_scratch_space(
             module,
@@ -39,7 +39,7 @@ impl GGSW<Vec<u8>> {
     where
         OUT: GGSWInfos,
         GGSW: GGSWInfos,
-        Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxNormalizeTmpBytes,
+        Module<B>: VecZnxDftBytesOf + VmpApplyDftToDftTmpBytes + VecZnxNormalizeTmpBytes,
     {
         GLWE::external_product_inplace_scratch_space(module, &out_infos.glwe_layout(), apply_infos)
     }
@@ -53,7 +53,7 @@ impl<DataSelf: DataMut> GGSW<DataSelf> {
         rhs: &GGSWPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: VecZnxDftAllocBytes
+        Module<B>: VecZnxDftBytesOf
             + VmpApplyDftToDftTmpBytes
             + VecZnxNormalizeTmpBytes
             + VecZnxDftApply<B>
@@ -108,7 +108,7 @@ impl<DataSelf: DataMut> GGSW<DataSelf> {
         rhs: &GGSWPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: VecZnxDftAllocBytes
+        Module<B>: VecZnxDftBytesOf
             + VmpApplyDftToDftTmpBytes
             + VecZnxNormalizeTmpBytes
             + VecZnxDftApply<B>

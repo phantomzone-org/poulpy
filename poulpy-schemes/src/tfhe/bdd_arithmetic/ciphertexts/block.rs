@@ -2,8 +2,8 @@ use std::marker::PhantomData;
 
 use poulpy_core::layouts::{Base2K, GLWE, GLWEInfos, GLWEPlaintextLayout, LWEInfos, Rank, TorusPrecision};
 
-use poulpy_core::{TakeGLWEPt, layouts::prepared::GLWESecretPrepared};
-use poulpy_hal::api::VecZnxBigAllocBytes;
+use poulpy_core::{TakeGLWEPlaintext, layouts::prepared::GLWESecretPrepared};
+use poulpy_hal::api::VecZnxBigBytesOf;
 #[cfg(test)]
 use poulpy_hal::api::{
     ScratchAvailable, TakeVecZnx, VecZnxAddInplace, VecZnxAddNormal, VecZnxFillUniform, VecZnxNormalize, VecZnxSub,
@@ -12,8 +12,8 @@ use poulpy_hal::api::{
 use poulpy_hal::source::Source;
 use poulpy_hal::{
     api::{
-        TakeVecZnxBig, TakeVecZnxDft, VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigNormalize, VecZnxDftAllocBytes,
-        VecZnxDftApply, VecZnxIdftApplyConsume, VecZnxNormalizeTmpBytes,
+        TakeVecZnxBig, TakeVecZnxDft, VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigNormalize, VecZnxDftApply,
+        VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxNormalizeTmpBytes,
     },
     layouts::{Backend, Data, DataMut, DataRef, Module, Scratch},
 };
@@ -83,7 +83,7 @@ impl<D: DataMut, T: UnsignedInteger + ToBits> FheUintBlocks<D, T> {
         scratch: &mut Scratch<BE>,
     ) where
         S: DataRef,
-        Module<BE>: VecZnxDftAllocBytes
+        Module<BE>: VecZnxDftBytesOf
             + VecZnxBigNormalize<BE>
             + VecZnxDftApply<BE>
             + SvpApplyDftToDftInplace<BE>
@@ -96,7 +96,7 @@ impl<D: DataMut, T: UnsignedInteger + ToBits> FheUintBlocks<D, T> {
             + VecZnxAddNormal
             + VecZnxNormalize<BE>
             + VecZnxSub,
-        Scratch<BE>: TakeVecZnxDft<BE> + ScratchAvailable + TakeVecZnx + TakeGLWEPt<BE>,
+        Scratch<BE>: TakeVecZnxDft<BE> + ScratchAvailable + TakeVecZnx + TakeGLWEPlaintext<BE>,
     {
         use poulpy_core::layouts::GLWEPlaintextLayout;
 
@@ -136,7 +136,7 @@ impl<D: DataRef, T: UnsignedInteger + FromBits + ToBits> FheUintBlocks<D, T> {
             + VecZnxBigAddInplace<BE>
             + VecZnxBigAddSmallInplace<BE>
             + VecZnxBigNormalize<BE>,
-        Scratch<BE>: TakeVecZnxDft<BE> + TakeVecZnxBig<BE> + TakeGLWEPt<BE>,
+        Scratch<BE>: TakeVecZnxDft<BE> + TakeVecZnxBig<BE> + TakeGLWEPlaintext<BE>,
     {
         #[cfg(debug_assertions)]
         {
@@ -175,8 +175,8 @@ impl<D: DataRef, T: UnsignedInteger + FromBits + ToBits> FheUintBlocks<D, T> {
         scratch: &mut Scratch<BE>,
     ) -> Vec<f64>
     where
-        Module<BE>: VecZnxDftAllocBytes
-            + VecZnxBigAllocBytes
+        Module<BE>: VecZnxDftBytesOf
+            + VecZnxBigBytesOf
             + VecZnxDftApply<BE>
             + SvpApplyDftToDftInplace<BE>
             + VecZnxIdftApplyConsume<BE>
@@ -186,7 +186,7 @@ impl<D: DataRef, T: UnsignedInteger + FromBits + ToBits> FheUintBlocks<D, T> {
             + VecZnxNormalizeTmpBytes
             + VecZnxSubInplace
             + VecZnxNormalizeInplace<BE>,
-        Scratch<BE>: TakeGLWEPt<BE> + TakeVecZnxDft<BE> + TakeVecZnxBig<BE>,
+        Scratch<BE>: TakeGLWEPlaintext<BE> + TakeVecZnxDft<BE> + TakeVecZnxBig<BE>,
     {
         #[cfg(debug_assertions)]
         {

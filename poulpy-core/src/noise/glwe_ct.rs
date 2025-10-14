@@ -1,8 +1,8 @@
 use poulpy_hal::{
     api::{
         ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDftInplace, TakeVecZnxBig, TakeVecZnxDft, VecZnxBigAddInplace,
-        VecZnxBigAddSmallInplace, VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftApply,
-        VecZnxIdftApplyConsume, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSubInplace,
+        VecZnxBigAddSmallInplace, VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyConsume,
+        VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSubInplace,
     },
     layouts::{Backend, DataRef, Module, Scratch, ScratchOwned},
     oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeVecZnxBigImpl, TakeVecZnxDftImpl},
@@ -48,8 +48,8 @@ impl<D: DataRef> GLWE<D> {
     ) where
         DataSk: DataRef,
         DataPt: DataRef,
-        Module<B>: VecZnxDftAllocBytes
-            + VecZnxBigAllocBytes
+        Module<B>: VecZnxDftBytesOf
+            + VecZnxBigBytesOf
             + VecZnxDftApply<B>
             + SvpApplyDftToDftInplace<B>
             + VecZnxIdftApplyConsume<B>

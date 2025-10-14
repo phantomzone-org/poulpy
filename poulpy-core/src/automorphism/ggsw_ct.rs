@@ -1,9 +1,9 @@
 use poulpy_hal::{
     api::{
         ScratchAvailable, TakeVecZnx, TakeVecZnxBig, TakeVecZnxDft, VecZnxAutomorphismInplace, VecZnxBigAddSmallInplace,
-        VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxDftAddInplace, VecZnxDftAllocBytes,
-        VecZnxDftApply, VecZnxDftCopy, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA, VecZnxNormalize, VecZnxNormalizeTmpBytes,
-        VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
+        VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxDftAddInplace, VecZnxDftApply, VecZnxDftBytesOf,
+        VecZnxDftCopy, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA, VecZnxNormalize, VecZnxNormalizeTmpBytes, VmpApplyDftToDft,
+        VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
 };
@@ -26,14 +26,11 @@ impl GGSW<Vec<u8>> {
         IN: GGSWInfos,
         KEY: GGLWEInfos,
         TSK: GGLWEInfos,
-        Module<B>: VecZnxDftAllocBytes
-            + VmpApplyDftToDftTmpBytes
-            + VecZnxBigAllocBytes
-            + VecZnxNormalizeTmpBytes
-            + VecZnxBigNormalizeTmpBytes,
+        Module<B>:
+            VecZnxDftBytesOf + VmpApplyDftToDftTmpBytes + VecZnxBigBytesOf + VecZnxNormalizeTmpBytes + VecZnxBigNormalizeTmpBytes,
     {
         let out_size: usize = out_infos.size();
-        let ci_dft: usize = module.vec_znx_dft_bytes_of((key_infos.rank_out() + 1).into(), out_size);
+        let ci_dft: usize = module.bytes_of_vec_znx_dft((key_infos.rank_out() + 1).into(), out_size);
         let ks_internal: usize = GLWE::keyswitch_scratch_space(
             module,
             &out_infos.glwe_layout(),
@@ -54,11 +51,8 @@ impl GGSW<Vec<u8>> {
         OUT: GGSWInfos,
         KEY: GGLWEInfos,
         TSK: GGLWEInfos,
-        Module<B>: VecZnxDftAllocBytes
-            + VmpApplyDftToDftTmpBytes
-            + VecZnxBigAllocBytes
-            + VecZnxNormalizeTmpBytes
-            + VecZnxBigNormalizeTmpBytes,
+        Module<B>:
+            VecZnxDftBytesOf + VmpApplyDftToDftTmpBytes + VecZnxBigBytesOf + VecZnxNormalizeTmpBytes + VecZnxBigNormalizeTmpBytes,
     {
         GGSW::automorphism_scratch_space(module, out_infos, out_infos, key_infos, tsk_infos)
     }
@@ -73,7 +67,7 @@ impl<DataSelf: DataMut> GGSW<DataSelf> {
         tensor_key: &TensorKeyPrepared<DataTsk, B>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: VecZnxDftAllocBytes
+        Module<B>: VecZnxDftBytesOf
             + VmpApplyDftToDftTmpBytes
             + VecZnxBigNormalizeTmpBytes
             + VmpApplyDftToDft<B>
@@ -83,7 +77,7 @@ impl<DataSelf: DataMut> GGSW<DataSelf> {
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>
             + VecZnxAutomorphismInplace<B>
-            + VecZnxBigAllocBytes
+            + VecZnxBigBytesOf
             + VecZnxNormalizeTmpBytes
             + VecZnxDftCopy<B>
             + VecZnxDftAddInplace<B>
@@ -141,7 +135,7 @@ impl<DataSelf: DataMut> GGSW<DataSelf> {
         tensor_key: &TensorKeyPrepared<DataTsk, B>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: VecZnxDftAllocBytes
+        Module<B>: VecZnxDftBytesOf
             + VmpApplyDftToDftTmpBytes
             + VecZnxBigNormalizeTmpBytes
             + VmpApplyDftToDft<B>
@@ -151,7 +145,7 @@ impl<DataSelf: DataMut> GGSW<DataSelf> {
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>
             + VecZnxAutomorphismInplace<B>
-            + VecZnxBigAllocBytes
+            + VecZnxBigBytesOf
             + VecZnxNormalizeTmpBytes
             + VecZnxDftCopy<B>
             + VecZnxDftAddInplace<B>

@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{
-        ScratchAvailable, TakeVecZnx, TakeVecZnxDft, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftApply,
+        ScratchAvailable, TakeVecZnx, TakeVecZnxDft, VecZnxBigNormalize, VecZnxDftApply, VecZnxDftBytesOf,
         VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeTmpBytes, VmpApplyDftToDft, VmpApplyDftToDftAdd,
         VmpApplyDftToDftTmpBytes,
     },
@@ -20,7 +20,7 @@ impl GLWESwitchingKey<Vec<u8>> {
         OUT: GGLWEInfos,
         IN: GGLWEInfos,
         GGSW: GGSWInfos,
-        Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxNormalizeTmpBytes,
+        Module<B>: VecZnxDftBytesOf + VmpApplyDftToDftTmpBytes + VecZnxNormalizeTmpBytes,
     {
         GLWE::external_product_scratch_space(
             module,
@@ -38,7 +38,7 @@ impl GLWESwitchingKey<Vec<u8>> {
     where
         OUT: GGLWEInfos,
         GGSW: GGSWInfos,
-        Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxNormalizeTmpBytes,
+        Module<B>: VecZnxDftBytesOf + VmpApplyDftToDftTmpBytes + VecZnxNormalizeTmpBytes,
     {
         GLWE::external_product_inplace_scratch_space(module, &out_infos.glwe_layout(), ggsw_infos)
     }
@@ -52,7 +52,7 @@ impl<DataSelf: DataMut> GLWESwitchingKey<DataSelf> {
         rhs: &GGSWPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: VecZnxDftAllocBytes
+        Module<B>: VecZnxDftBytesOf
             + VmpApplyDftToDftTmpBytes
             + VecZnxNormalizeTmpBytes
             + VecZnxDftApply<B>
@@ -110,7 +110,7 @@ impl<DataSelf: DataMut> GLWESwitchingKey<DataSelf> {
         rhs: &GGSWPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: VecZnxDftAllocBytes
+        Module<B>: VecZnxDftBytesOf
             + VmpApplyDftToDftTmpBytes
             + VecZnxNormalizeTmpBytes
             + VecZnxDftApply<B>

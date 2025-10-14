@@ -1,8 +1,8 @@
 use poulpy_hal::{
     api::{
-        ScratchAvailable, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolAllocBytes, SvpPrepare, TakeScalarZnx, TakeSvpPPol,
+        ScratchAvailable, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolBytesOf, SvpPrepare, TakeScalarZnx, TakeSvpPPol,
         TakeVecZnx, TakeVecZnxDft, VecZnxAddInplace, VecZnxAddNormal, VecZnxBigAddNormal, VecZnxBigAddSmallInplace,
-        VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftApply, VecZnxFillUniform, VecZnxIdftApplyConsume,
+        VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxDftApply, VecZnxDftBytesOf, VecZnxFillUniform, VecZnxIdftApplyConsume,
         VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubInplace,
     },
     layouts::{Backend, DataMut, Module, ScalarZnx, Scratch, VecZnx, VecZnxBig, VecZnxToMut, ZnxInfos, ZnxZero},
@@ -22,21 +22,21 @@ impl GLWE<Vec<u8>> {
     pub fn encrypt_sk_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GLWEInfos,
-        Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes,
+        Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftBytesOf,
     {
         let size: usize = infos.size();
         assert_eq!(module.n() as u32, infos.n());
-        module.vec_znx_normalize_tmp_bytes() + 2 * VecZnx::bytes_of(module.n(), 1, size) + module.vec_znx_dft_bytes_of(1, size)
+        module.vec_znx_normalize_tmp_bytes() + 2 * VecZnx::bytes_of(module.n(), 1, size) + module.bytes_of_vec_znx_dft(1, size)
     }
     pub fn encrypt_pk_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GLWEInfos,
-        Module<B>: VecZnxDftAllocBytes + SvpPPolAllocBytes + VecZnxBigAllocBytes + VecZnxNormalizeTmpBytes,
+        Module<B>: VecZnxDftBytesOf + SvpPPolBytesOf + VecZnxBigBytesOf + VecZnxNormalizeTmpBytes,
     {
         let size: usize = infos.size();
         assert_eq!(module.n() as u32, infos.n());
-        ((module.vec_znx_dft_bytes_of(1, size) + module.vec_znx_big_bytes_of(1, size)) | ScalarZnx::bytes_of(module.n(), 1))
-            + module.svp_ppol_bytes_of(1)
+        ((module.bytes_of_vec_znx_dft(1, size) + module.bytes_of_vec_znx_big(1, size)) | ScalarZnx::bytes_of(module.n(), 1))
+            + module.bytes_of_svp_ppol(1)
             + module.vec_znx_normalize_tmp_bytes()
     }
 }
@@ -120,7 +120,7 @@ pub trait GLWEEncryptSk<B: Backend> {
 
 impl<B: Backend> GLWEEncryptSk<B> for Module<B>
 where
-    Module<B>: GLWEEncryptSkInternal<B> + VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes,
+    Module<B>: GLWEEncryptSkInternal<B> + VecZnxNormalizeTmpBytes + VecZnxDftBytesOf,
     Scratch<B>: ScratchAvailable,
 {
     fn glwe_encrypt_sk<R, P, S>(
@@ -186,7 +186,7 @@ pub trait GLWEEncryptZeroSk<B: Backend> {
 
 impl<B: Backend> GLWEEncryptZeroSk<B> for Module<B>
 where
-    Module<B>: GLWEEncryptSkInternal<B> + VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes,
+    Module<B>: GLWEEncryptSkInternal<B> + VecZnxNormalizeTmpBytes + VecZnxDftBytesOf,
     Scratch<B>: ScratchAvailable,
 {
     fn glwe_encrypt_zero_sk<R, S>(
@@ -440,7 +440,7 @@ pub(crate) trait GLWEEncryptSkInternal<B: Backend> {
 
 impl<B: Backend> GLWEEncryptSkInternal<B> for Module<B>
 where
-    Module<B>: VecZnxDftAllocBytes
+    Module<B>: VecZnxDftBytesOf
         + VecZnxBigNormalize<B>
         + VecZnxDftApply<B>
         + SvpApplyDftToDftInplace<B>

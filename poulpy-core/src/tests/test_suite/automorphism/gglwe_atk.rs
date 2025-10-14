@@ -1,9 +1,9 @@
 use poulpy_hal::{
     api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolBytesOf, SvpPrepare,
         VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxAutomorphism, VecZnxAutomorphismInplace,
-        VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
-        VecZnxCopy, VecZnxDftAllocBytes, VecZnxDftApply, VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxNormalize,
+        VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
+        VecZnxCopy, VecZnxDftApply, VecZnxDftBytesOf, VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxNormalize,
         VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubInplace, VecZnxSubScalarInplace, VecZnxSwitchRing,
         VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes, VmpPMatAlloc, VmpPrepare,
     },
@@ -27,7 +27,7 @@ use crate::{
 #[allow(clippy::too_many_arguments)]
 pub fn test_gglwe_automorphism_key_automorphism<B>(module: &Module<B>)
 where
-    Module<B>: VecZnxDftAllocBytes
+    Module<B>: VecZnxDftBytesOf
         + VmpApplyDftToDftTmpBytes
         + VecZnxBigNormalizeTmpBytes
         + VmpApplyDftToDft<B>
@@ -38,8 +38,8 @@ where
         + VecZnxBigNormalize<B>
         + VecZnxAutomorphism
         + VecZnxAutomorphismInplace<B>
-        + SvpPPolAllocBytes
-        + VecZnxDftAllocBytes
+        + SvpPPolBytesOf
+        + VecZnxDftBytesOf
         + VecZnxNormalizeTmpBytes
         + VmpPMatAlloc<B>
         + VmpPrepare<B>
@@ -224,7 +224,7 @@ where
 #[allow(clippy::too_many_arguments)]
 pub fn test_gglwe_automorphism_key_automorphism_inplace<B>(module: &Module<B>)
 where
-    Module<B>: VecZnxDftAllocBytes
+    Module<B>: VecZnxDftBytesOf
         + VecZnxBigNormalize<B>
         + VecZnxDftApply<B>
         + SvpApplyDftToDftInplace<B>
@@ -238,9 +238,9 @@ where
         + VecZnxNormalize<B>
         + VecZnxSub
         + SvpPrepare<B>
-        + SvpPPolAllocBytes
+        + SvpPPolBytesOf
         + SvpPPolAlloc<B>
-        + VecZnxDftAllocBytes
+        + VecZnxDftBytesOf
         + VmpApplyDftToDftTmpBytes
         + VecZnxBigNormalizeTmpBytes
         + VmpApplyDftToDftTmpBytes
@@ -255,8 +255,8 @@ where
         + VecZnxAddScalarInplace
         + VecZnxAutomorphism
         + VecZnxAutomorphismInplace<B>
-        + VecZnxDftAllocBytes
-        + VecZnxBigAllocBytes
+        + VecZnxDftBytesOf
+        + VecZnxBigBytesOf
         + VecZnxDftApply<B>
         + SvpApplyDftToDftInplace<B>
         + VecZnxIdftApplyConsume<B>

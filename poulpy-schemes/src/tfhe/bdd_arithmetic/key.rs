@@ -9,7 +9,7 @@ use crate::tfhe::{
     },
 };
 use poulpy_core::{
-    TakeGGSW, TakeGLWECt,
+    TakeGGSW, TakeGLWE,
     layouts::{
         GLWESecret, GLWEToLWEKeyLayout, GLWEToLWESwitchingKey, LWE, LWESecret,
         prepared::{GLWEToLWESwitchingKeyPrepared, Prepare, PrepareAlloc},
@@ -17,10 +17,10 @@ use poulpy_core::{
 };
 use poulpy_hal::{
     api::{
-        ScratchAvailable, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare, TakeScalarZnx,
+        ScratchAvailable, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolBytesOf, SvpPrepare, TakeScalarZnx,
         TakeSvpPPol, TakeVecZnx, TakeVecZnxBig, TakeVecZnxDft, VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace,
         VecZnxAutomorphism, VecZnxAutomorphismInplace, VecZnxBigAddSmallInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
-        VecZnxDftAllocBytes, VecZnxDftApply, VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA, VecZnxNormalize,
+        VecZnxDftApply, VecZnxDftBytesOf, VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA, VecZnxNormalize,
         VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxSub, VecZnxSubInplace, VecZnxSwitchRing,
         VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes, VmpPrepare,
     },
@@ -77,7 +77,7 @@ impl<BRA: BlindRotationAlgo> BDDKey<Vec<u8>, Vec<u8>, BRA> {
         Module<BE>: SvpApplyDftToDft<BE>
             + VecZnxIdftApplyTmpA<BE>
             + VecZnxAddScalarInplace
-            + VecZnxDftAllocBytes
+            + VecZnxDftBytesOf
             + VecZnxBigNormalize<BE>
             + VecZnxDftApply<BE>
             + SvpApplyDftToDftInplace<BE>
@@ -92,7 +92,7 @@ impl<BRA: BlindRotationAlgo> BDDKey<Vec<u8>, Vec<u8>, BRA> {
             + VecZnxSub
             + SvpPrepare<BE>
             + VecZnxSwitchRing
-            + SvpPPolAllocBytes
+            + SvpPPolBytesOf
             + SvpPPolAlloc<BE>
             + VecZnxAutomorphism
             + VecZnxAutomorphismInplace<BE>,
@@ -157,7 +157,7 @@ where
     BE: Backend,
     Module<BE>: VmpPrepare<BE>
         + VecZnxRotate
-        + VecZnxDftAllocBytes
+        + VecZnxDftBytesOf
         + VmpApplyDftToDftTmpBytes
         + VecZnxBigNormalizeTmpBytes
         + VmpApplyDftToDft<BE>
@@ -168,7 +168,7 @@ where
         + VecZnxBigNormalize<BE>
         + VecZnxNormalize<BE>
         + VecZnxNormalizeTmpBytes,
-    Scratch<BE>: ScratchAvailable + TakeVecZnxDft<BE> + TakeGLWECt + TakeVecZnx + TakeGGSW,
+    Scratch<BE>: ScratchAvailable + TakeVecZnxDft<BE> + TakeGLWE + TakeVecZnx + TakeGGSW,
     CircuitBootstrappingKeyPrepared<CBT, BRA, BE>: CirtuitBootstrappingExecute<BE>,
 {
     fn prepare(
@@ -206,7 +206,7 @@ where
     BE: Backend,
     Module<BE>: VmpPrepare<BE>
         + VecZnxRotate
-        + VecZnxDftAllocBytes
+        + VecZnxDftBytesOf
         + VmpApplyDftToDftTmpBytes
         + VecZnxBigNormalizeTmpBytes
         + VmpApplyDftToDft<BE>
@@ -217,7 +217,7 @@ where
         + VecZnxBigNormalize<BE>
         + VecZnxNormalize<BE>
         + VecZnxNormalizeTmpBytes,
-    Scratch<BE>: ScratchAvailable + TakeVecZnxDft<BE> + TakeGLWECt + TakeVecZnx + TakeGGSW,
+    Scratch<BE>: ScratchAvailable + TakeVecZnxDft<BE> + TakeGLWE + TakeVecZnx + TakeGGSW,
     CircuitBootstrappingKeyPrepared<CBT, BRA, BE>: CirtuitBootstrappingExecute<BE>,
 {
     fn prepare(

@@ -6,8 +6,8 @@ pub trait VmpPMatAlloc<B: Backend> {
     fn vmp_pmat_alloc(&self, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> VmpPMatOwned<B>;
 }
 
-pub trait VmpPMatAllocBytes {
-    fn vmp_pmat_bytes_of(&self, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize;
+pub trait VmpPMatBytesOf {
+    fn bytes_of_vmp_pmat(&self, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize;
 }
 
 pub trait VmpPMatFromBytes<B: Backend> {

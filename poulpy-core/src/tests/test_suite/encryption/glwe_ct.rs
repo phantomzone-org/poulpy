@@ -1,10 +1,9 @@
 use poulpy_hal::{
     api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolAllocBytes,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolBytesOf,
         SvpPrepare, VecZnxAddInplace, VecZnxAddNormal, VecZnxBigAddInplace, VecZnxBigAddNormal, VecZnxBigAddSmallInplace,
-        VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxCopy, VecZnxDftAlloc, VecZnxDftAllocBytes, VecZnxDftApply,
-        VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub,
-        VecZnxSubInplace,
+        VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxCopy, VecZnxDftAlloc, VecZnxDftApply, VecZnxDftBytesOf, VecZnxFillUniform,
+        VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubInplace,
     },
     layouts::{Backend, Module, ScratchOwned},
     oep::{
@@ -26,8 +25,8 @@ use crate::{
 
 pub fn test_glwe_encrypt_sk<B>(module: &Module<B>)
 where
-    Module<B>: VecZnxDftAllocBytes
-        + VecZnxBigAllocBytes
+    Module<B>: VecZnxDftBytesOf
+        + VecZnxBigBytesOf
         + VecZnxDftApply<B>
         + SvpApplyDftToDftInplace<B>
         + VecZnxIdftApplyConsume<B>
@@ -36,7 +35,7 @@ where
         + VecZnxBigNormalize<B>
         + VecZnxNormalizeTmpBytes
         + SvpPrepare<B>
-        + SvpPPolAllocBytes
+        + SvpPPolBytesOf
         + SvpPPolAlloc<B>
         + SvpApplyDftToDft<B>
         + VecZnxBigAddNormal<B>
@@ -117,8 +116,8 @@ where
 
 pub fn test_glwe_compressed_encrypt_sk<B>(module: &Module<B>)
 where
-    Module<B>: VecZnxDftAllocBytes
-        + VecZnxBigAllocBytes
+    Module<B>: VecZnxDftBytesOf
+        + VecZnxBigBytesOf
         + VecZnxDftApply<B>
         + SvpApplyDftToDftInplace<B>
         + VecZnxIdftApplyConsume<B>
@@ -127,7 +126,7 @@ where
         + VecZnxBigNormalize<B>
         + VecZnxNormalizeTmpBytes
         + SvpPrepare<B>
-        + SvpPPolAllocBytes
+        + SvpPPolBytesOf
         + SvpPPolAlloc<B>
         + SvpApplyDftToDft<B>
         + VecZnxBigAddNormal<B>
@@ -219,8 +218,8 @@ where
 
 pub fn test_glwe_encrypt_zero_sk<B>(module: &Module<B>)
 where
-    Module<B>: VecZnxDftAllocBytes
-        + VecZnxBigAllocBytes
+    Module<B>: VecZnxDftBytesOf
+        + VecZnxBigBytesOf
         + VecZnxDftApply<B>
         + SvpApplyDftToDftInplace<B>
         + VecZnxIdftApplyConsume<B>
@@ -229,7 +228,7 @@ where
         + VecZnxBigNormalize<B>
         + VecZnxNormalizeTmpBytes
         + SvpPrepare<B>
-        + SvpPPolAllocBytes
+        + SvpPPolBytesOf
         + SvpPPolAlloc<B>
         + SvpApplyDftToDft<B>
         + VecZnxBigAddNormal<B>
@@ -294,7 +293,7 @@ where
 
 pub fn test_glwe_encrypt_pk<B>(module: &Module<B>)
 where
-    Module<B>: VecZnxDftAllocBytes
+    Module<B>: VecZnxDftBytesOf
         + VecZnxBigNormalize<B>
         + VecZnxDftApply<B>
         + SvpApplyDftToDftInplace<B>
@@ -308,10 +307,10 @@ where
         + VecZnxNormalize<B>
         + VecZnxSub
         + SvpPrepare<B>
-        + SvpPPolAllocBytes
+        + SvpPPolBytesOf
         + SvpPPolAlloc<B>
         + VecZnxBigAddSmallInplace<B>
-        + VecZnxBigAllocBytes
+        + VecZnxBigBytesOf
         + VecZnxBigAddInplace<B>
         + VecZnxCopy
         + VecZnxDftAlloc<B>

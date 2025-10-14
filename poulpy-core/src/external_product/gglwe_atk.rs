@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{
-        ScratchAvailable, TakeVecZnx, TakeVecZnxDft, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftApply,
+        ScratchAvailable, TakeVecZnx, TakeVecZnxDft, VecZnxBigNormalize, VecZnxDftApply, VecZnxDftBytesOf,
         VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeTmpBytes, VmpApplyDftToDft, VmpApplyDftToDftAdd,
         VmpApplyDftToDftTmpBytes,
     },
@@ -20,7 +20,7 @@ impl AutomorphismKey<Vec<u8>> {
         OUT: GGLWEInfos,
         IN: GGLWEInfos,
         GGSW: GGSWInfos,
-        Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxNormalizeTmpBytes,
+        Module<B>: VecZnxDftBytesOf + VmpApplyDftToDftTmpBytes + VecZnxNormalizeTmpBytes,
     {
         GLWESwitchingKey::external_product_scratch_space(module, out_infos, in_infos, ggsw_infos)
     }
@@ -33,7 +33,7 @@ impl AutomorphismKey<Vec<u8>> {
     where
         OUT: GGLWEInfos,
         GGSW: GGSWInfos,
-        Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxNormalizeTmpBytes,
+        Module<B>: VecZnxDftBytesOf + VmpApplyDftToDftTmpBytes + VecZnxNormalizeTmpBytes,
     {
         GLWESwitchingKey::external_product_inplace_scratch_space(module, out_infos, ggsw_infos)
     }
@@ -47,7 +47,7 @@ impl<DataSelf: DataMut> AutomorphismKey<DataSelf> {
         rhs: &GGSWPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: VecZnxDftAllocBytes
+        Module<B>: VecZnxDftBytesOf
             + VmpApplyDftToDftTmpBytes
             + VecZnxNormalizeTmpBytes
             + VecZnxDftApply<B>
@@ -67,7 +67,7 @@ impl<DataSelf: DataMut> AutomorphismKey<DataSelf> {
         rhs: &GGSWPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: VecZnxDftAllocBytes
+        Module<B>: VecZnxDftBytesOf
             + VmpApplyDftToDftTmpBytes
             + VecZnxNormalizeTmpBytes
             + VecZnxDftApply<B>

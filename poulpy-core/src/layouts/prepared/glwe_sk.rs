@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    api::{SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare},
+    api::{SvpPPolAlloc, SvpPPolBytesOf, SvpPrepare},
     layouts::{Backend, Data, DataMut, DataRef, Module, SvpPPol, SvpPPolToMut, SvpPPolToRef, ZnxInfos},
 };
 
@@ -47,7 +47,7 @@ impl<D: Data, B: Backend> GLWEInfos for GLWESecretPrepared<D, B> {
 
 pub trait GLWESecretPreparedAlloc<B: Backend>
 where
-    Self: GetDegree + SvpPPolAllocBytes + SvpPPolAlloc<B>,
+    Self: GetDegree + SvpPPolBytesOf + SvpPPolAlloc<B>,
 {
     fn alloc_glwe_secret_prepared(&self, rank: Rank) -> GLWESecretPrepared<Vec<u8>, B> {
         GLWESecretPrepared {
@@ -64,7 +64,7 @@ where
     }
 
     fn bytes_of_glwe_secret(&self, rank: Rank) -> usize {
-        self.svp_ppol_bytes_of(rank.into())
+        self.bytes_of_svp_ppol(rank.into())
     }
     fn bytes_of_glwe_secret_from_infos<A>(&self, infos: &A) -> usize
     where
@@ -75,7 +75,7 @@ where
     }
 }
 
-impl<B: Backend> GLWESecretPreparedAlloc<B> for Module<B> where Self: GetDegree + SvpPPolAllocBytes + SvpPPolAlloc<B> {}
+impl<B: Backend> GLWESecretPreparedAlloc<B> for Module<B> where Self: GetDegree + SvpPPolBytesOf + SvpPPolAlloc<B> {}
 
 impl<B: Backend> GLWESecretPrepared<Vec<u8>, B>
 where

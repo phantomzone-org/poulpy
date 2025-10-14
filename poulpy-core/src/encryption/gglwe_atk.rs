@@ -1,8 +1,8 @@
 use poulpy_hal::{
     api::{
-        ScratchAvailable, SvpApplyDftToDftInplace, SvpPPolAllocBytes, SvpPrepare, TakeScalarZnx, TakeVecZnx, TakeVecZnxDft,
-        VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxAutomorphism, VecZnxBigNormalize, VecZnxDftAllocBytes,
-        VecZnxDftApply, VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeInplace,
+        ScratchAvailable, SvpApplyDftToDftInplace, SvpPPolBytesOf, SvpPrepare, TakeScalarZnx, TakeVecZnx, TakeVecZnxDft,
+        VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxAutomorphism, VecZnxBigNormalize, VecZnxDftApply,
+        VecZnxDftBytesOf, VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeInplace,
         VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubInplace, VecZnxSwitchRing,
     },
     layouts::{Backend, DataMut, Module, Scratch},
@@ -20,7 +20,7 @@ impl AutomorphismKey<Vec<u8>> {
     pub fn encrypt_sk_scratch_space<BE: Backend, A>(module: &Module<BE>, infos: &A) -> usize
     where
         A: GGLWEInfos,
-        Module<BE>: SvpPPolAllocBytes + VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes + VecZnxNormalizeTmpBytes,
+        Module<BE>: SvpPPolBytesOf + VecZnxNormalizeTmpBytes + VecZnxDftBytesOf + VecZnxNormalizeTmpBytes,
     {
         assert_eq!(
             infos.rank_in(),
@@ -80,7 +80,7 @@ where
 impl<BE: Backend> GGLWEAutomorphismKeyEncryptSk<BE> for Module<BE>
 where
     Module<BE>: VecZnxAddScalarInplace
-        + VecZnxDftAllocBytes
+        + VecZnxDftBytesOf
         + VecZnxBigNormalize<BE>
         + VecZnxDftApply<BE>
         + SvpApplyDftToDftInplace<BE>
@@ -95,7 +95,7 @@ where
         + VecZnxSub
         + SvpPrepare<BE>
         + VecZnxSwitchRing
-        + SvpPPolAllocBytes
+        + SvpPPolBytesOf
         + VecZnxAutomorphism,
     Scratch<BE>: TakeVecZnxDft<BE> + ScratchAvailable + TakeVecZnx + TakeScalarZnx + TakeGLWESecretPrepared<BE>,
 {

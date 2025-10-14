@@ -1,9 +1,8 @@
 use poulpy_hal::{
     api::{
         ScratchAvailable, SvpApplyDftToDftInplace, TakeVecZnx, TakeVecZnxDft, VecZnxAddInplace, VecZnxAddNormal,
-        VecZnxAddScalarInplace, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftApply, VecZnxFillUniform,
-        VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubInplace,
-        VmpPMatAlloc, VmpPrepare,
+        VecZnxAddScalarInplace, VecZnxBigNormalize, VecZnxDftApply, VecZnxDftBytesOf, VecZnxFillUniform, VecZnxIdftApplyConsume,
+        VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubInplace, VmpPMatAlloc, VmpPrepare,
     },
     layouts::{Backend, DataMut, DataRef, Module, ScalarZnx, ScalarZnxToRef, Scratch, ZnxView, ZnxViewMut},
     source::Source,
@@ -47,7 +46,7 @@ impl BlindRotationKey<Vec<u8>, CGGI> {
     pub fn generate_from_sk_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GGSWInfos,
-        Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes,
+        Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftBytesOf,
     {
         GGSW::encrypt_sk_scratch_space(module, infos)
     }
@@ -56,7 +55,7 @@ impl BlindRotationKey<Vec<u8>, CGGI> {
 impl<D: DataMut, B: Backend> BlindRotationKeyEncryptSk<B> for BlindRotationKey<D, CGGI>
 where
     Module<B>: VecZnxAddScalarInplace
-        + VecZnxDftAllocBytes
+        + VecZnxDftBytesOf
         + VecZnxBigNormalize<B>
         + VecZnxDftApply<B>
         + SvpApplyDftToDftInplace<B>
@@ -149,7 +148,7 @@ impl BlindRotationKeyCompressed<Vec<u8>, CGGI> {
     pub fn generate_from_sk_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GGSWInfos,
-        Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes,
+        Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftBytesOf,
     {
         GGSWCompressed::encrypt_sk_scratch_space(module, infos)
     }
@@ -169,7 +168,7 @@ impl<D: DataMut> BlindRotationKeyCompressed<D, CGGI> {
         DataSkGLWE: DataRef,
         DataSkLWE: DataRef,
         Module<B>: VecZnxAddScalarInplace
-            + VecZnxDftAllocBytes
+            + VecZnxDftBytesOf
             + VecZnxBigNormalize<B>
             + VecZnxDftApply<B>
             + SvpApplyDftToDftInplace<B>

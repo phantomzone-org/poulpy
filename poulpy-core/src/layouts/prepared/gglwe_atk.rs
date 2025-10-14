@@ -176,7 +176,7 @@ impl<B: Backend> AutomorphismKeyPrepared<Vec<u8>, B> {
     }
 }
 
-pub trait AutomorphismKeyPrepare<B: Backend>
+pub trait PrepareAutomorphismKey<B: Backend>
 where
     Self: GLWESwitchingKeyPrepare<B>,
 {
@@ -197,7 +197,7 @@ where
     }
 }
 
-impl<B: Backend> AutomorphismKeyPrepare<B> for Module<B> where Module<B>: GLWESwitchingKeyPrepare<B> {}
+impl<B: Backend> PrepareAutomorphismKey<B> for Module<B> where Module<B>: GLWESwitchingKeyPrepare<B> {}
 
 impl<B: Backend> AutomorphismKeyPrepared<Vec<u8>, B> {
     pub fn prepare_tmp_bytes(&self, module: &Module<B>) -> usize
@@ -212,7 +212,7 @@ impl<D: DataMut, B: Backend> AutomorphismKeyPrepared<D, B> {
     pub fn prepare<O>(&mut self, module: &Module<B>, other: &O, scratch: &mut Scratch<B>)
     where
         O: AutomorphismKeyToRef + GetAutomorphismGaloisElement,
-        Module<B>: AutomorphismKeyPrepare<B>,
+        Module<B>: PrepareAutomorphismKey<B>,
     {
         module.prepare_automorphism_key(self, other, scratch);
     }

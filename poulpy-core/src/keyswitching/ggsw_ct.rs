@@ -1,7 +1,7 @@
 use poulpy_hal::{
     api::{
-        ScratchAvailable, TakeVecZnx, TakeVecZnxBig, TakeVecZnxDft, VecZnxBigAddSmallInplace, VecZnxBigAllocBytes,
-        VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftAddInplace, VecZnxDftAllocBytes, VecZnxDftApply,
+        ScratchAvailable, TakeVecZnx, TakeVecZnxBig, TakeVecZnxDft, VecZnxBigAddSmallInplace, VecZnxBigBytesOf,
+        VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftAddInplace, VecZnxDftApply, VecZnxDftBytesOf,
         VecZnxDftCopy, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA, VecZnxNormalize, VecZnxNormalizeTmpBytes, VmpApplyDftToDft,
         VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
     },
@@ -21,7 +21,7 @@ impl GGSW<Vec<u8>> {
     where
         OUT: GGSWInfos,
         TSK: GGLWEInfos,
-        Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigAllocBytes + VecZnxNormalizeTmpBytes,
+        Module<B>: VecZnxDftBytesOf + VmpApplyDftToDftTmpBytes + VecZnxBigBytesOf + VecZnxNormalizeTmpBytes,
     {
         let tsk_size: usize = tsk_infos.k().div_ceil(tsk_infos.base2k()) as usize;
         let size_in: usize = out_infos
@@ -29,8 +29,8 @@ impl GGSW<Vec<u8>> {
             .div_ceil(tsk_infos.base2k())
             .div_ceil(tsk_infos.dsize().into()) as usize;
 
-        let tmp_dft_i: usize = module.vec_znx_dft_bytes_of((tsk_infos.rank_out() + 1).into(), tsk_size);
-        let tmp_a: usize = module.vec_znx_dft_bytes_of(1, size_in);
+        let tmp_dft_i: usize = module.bytes_of_vec_znx_dft((tsk_infos.rank_out() + 1).into(), tsk_size);
+        let tmp_a: usize = module.bytes_of_vec_znx_dft(1, size_in);
         let vmp: usize = module.vmp_apply_dft_to_dft_tmp_bytes(
             tsk_size,
             size_in,
@@ -39,7 +39,7 @@ impl GGSW<Vec<u8>> {
             (tsk_infos.rank_out()).into(), // Verify if rank+1
             tsk_size,
         );
-        let tmp_idft: usize = module.vec_znx_big_bytes_of(1, tsk_size);
+        let tmp_idft: usize = module.bytes_of_vec_znx_big(1, tsk_size);
         let norm: usize = module.vec_znx_normalize_tmp_bytes();
 
         tmp_dft_i + ((tmp_a + vmp) | (tmp_idft + norm))
@@ -58,11 +58,8 @@ impl GGSW<Vec<u8>> {
         IN: GGSWInfos,
         KEY: GGLWEInfos,
         TSK: GGLWEInfos,
-        Module<B>: VecZnxDftAllocBytes
-            + VmpApplyDftToDftTmpBytes
-            + VecZnxBigAllocBytes
-            + VecZnxNormalizeTmpBytes
-            + VecZnxBigNormalizeTmpBytes,
+        Module<B>:
+            VecZnxDftBytesOf + VmpApplyDftToDftTmpBytes + VecZnxBigBytesOf + VecZnxNormalizeTmpBytes + VecZnxBigNormalizeTmpBytes,
     {
         #[cfg(debug_assertions)]
         {
@@ -75,10 +72,10 @@ impl GGSW<Vec<u8>> {
 
         let size_out: usize = out_infos.k().div_ceil(out_infos.base2k()) as usize;
         let res_znx: usize = VecZnx::bytes_of(module.n(), rank + 1, size_out);
-        let ci_dft: usize = module.vec_znx_dft_bytes_of(rank + 1, size_out);
+        let ci_dft: usize = module.bytes_of_vec_znx_dft(rank + 1, size_out);
         let ks: usize = GLWE::keyswitch_scratch_space(module, out_infos, in_infos, apply_infos);
         let expand_rows: usize = GGSW::expand_row_scratch_space(module, out_infos, tsk_infos);
-        let res_dft: usize = module.vec_znx_dft_bytes_of(rank + 1, size_out);
+        let res_dft: usize = module.bytes_of_vec_znx_dft(rank + 1, size_out);
 
         if in_infos.base2k() == tsk_infos.base2k() {
             res_znx + ci_dft + (ks | expand_rows | res_dft)
@@ -103,11 +100,8 @@ impl GGSW<Vec<u8>> {
         OUT: GGSWInfos,
         KEY: GGLWEInfos,
         TSK: GGLWEInfos,
-        Module<B>: VecZnxDftAllocBytes
-            + VmpApplyDftToDftTmpBytes
-            + VecZnxBigAllocBytes
-            + VecZnxNormalizeTmpBytes
-            + VecZnxBigNormalizeTmpBytes,
+        Module<B>:
+            VecZnxDftBytesOf + VmpApplyDftToDftTmpBytes + VecZnxBigBytesOf + VecZnxNormalizeTmpBytes + VecZnxBigNormalizeTmpBytes,
     {
         GGSW::keyswitch_scratch_space(module, out_infos, out_infos, apply_infos, tsk_infos)
     }
@@ -124,9 +118,9 @@ impl<DataSelf: DataMut> GGSW<DataSelf> {
         DataA: DataRef,
         DataTsk: DataRef,
         Module<B>: VecZnxCopy
-            + VecZnxDftAllocBytes
+            + VecZnxDftBytesOf
             + VmpApplyDftToDftTmpBytes
-            + VecZnxBigAllocBytes
+            + VecZnxBigBytesOf
             + VecZnxNormalizeTmpBytes
             + VecZnxDftApply<B>
             + VecZnxDftCopy<B>
@@ -162,7 +156,7 @@ impl<DataSelf: DataMut> GGSW<DataSelf> {
         tsk: &TensorKeyPrepared<DataTsk, B>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: VecZnxDftAllocBytes
+        Module<B>: VecZnxDftBytesOf
             + VmpApplyDftToDftTmpBytes
             + VecZnxBigNormalizeTmpBytes
             + VmpApplyDftToDft<B>
@@ -171,8 +165,8 @@ impl<DataSelf: DataMut> GGSW<DataSelf> {
             + VecZnxIdftApplyConsume<B>
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>
-            + VecZnxDftAllocBytes
-            + VecZnxBigAllocBytes
+            + VecZnxDftBytesOf
+            + VecZnxBigBytesOf
             + VecZnxNormalizeTmpBytes
             + VecZnxDftCopy<B>
             + VecZnxDftAddInplace<B>
@@ -196,7 +190,7 @@ impl<DataSelf: DataMut> GGSW<DataSelf> {
         tsk: &TensorKeyPrepared<DataTsk, B>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: VecZnxDftAllocBytes
+        Module<B>: VecZnxDftBytesOf
             + VmpApplyDftToDftTmpBytes
             + VecZnxBigNormalizeTmpBytes
             + VmpApplyDftToDft<B>
@@ -205,8 +199,8 @@ impl<DataSelf: DataMut> GGSW<DataSelf> {
             + VecZnxIdftApplyConsume<B>
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>
-            + VecZnxDftAllocBytes
-            + VecZnxBigAllocBytes
+            + VecZnxDftBytesOf
+            + VecZnxBigBytesOf
             + VecZnxNormalizeTmpBytes
             + VecZnxDftCopy<B>
             + VecZnxDftAddInplace<B>
@@ -229,9 +223,9 @@ impl<DataSelf: DataMut> GGSW<DataSelf> {
         tsk: &TensorKeyPrepared<DataTsk, B>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: VecZnxDftAllocBytes
+        Module<B>: VecZnxDftBytesOf
             + VmpApplyDftToDftTmpBytes
-            + VecZnxBigAllocBytes
+            + VecZnxBigBytesOf
             + VecZnxNormalizeTmpBytes
             + VecZnxDftApply<B>
             + VecZnxDftCopy<B>

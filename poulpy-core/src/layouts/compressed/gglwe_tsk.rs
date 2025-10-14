@@ -86,7 +86,7 @@ pub trait TensorKeyCompressedAlloc
 where
     Self: GLWESwitchingKeyCompressedAlloc,
 {
-    fn tensor_key_compressed_alloc(
+    fn alloc_tensor_key_compressed(
         &self,
         base2k: Base2K,
         k: TorusPrecision,
@@ -102,7 +102,7 @@ where
         }
     }
 
-    fn tensor_key_compressed_alloc_from_infos<A>(&self, infos: &A) -> TensorKeyCompressed<Vec<u8>>
+    fn alloc_tensor_key_compressed_from_infos<A>(&self, infos: &A) -> TensorKeyCompressed<Vec<u8>>
     where
         A: GGLWEInfos,
     {
@@ -111,7 +111,7 @@ where
             infos.rank_out(),
             "rank_in != rank_out is not supported for GGLWETensorKeyCompressed"
         );
-        self.tensor_key_compressed_alloc(
+        self.alloc_tensor_key_compressed(
             infos.base2k(),
             infos.k(),
             infos.rank(),
@@ -120,16 +120,16 @@ where
         )
     }
 
-    fn tensor_key_compressed_bytes_of(&self, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize {
+    fn bytes_of_tensor_key_compressed(&self, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize {
         let pairs: usize = (((rank.0 + 1) * rank.0) >> 1).max(1) as usize;
         pairs * self.bytes_of_glwe_switching_key_compressed(base2k, k, Rank(1), dnum, dsize)
     }
 
-    fn tensor_key_compressed_bytes_of_from_infos<A>(&self, infos: &A) -> usize
+    fn bytes_of_tensor_key_compressed_from_infos<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos,
     {
-        self.tensor_key_compressed_bytes_of(
+        self.bytes_of_tensor_key_compressed(
             infos.base2k(),
             infos.k(),
             infos.rank(),
@@ -145,14 +145,14 @@ impl TensorKeyCompressed<Vec<u8>> {
         A: GGLWEInfos,
         Module<B>: TensorKeyCompressedAlloc,
     {
-        module.tensor_key_compressed_alloc_from_infos(infos)
+        module.alloc_tensor_key_compressed_from_infos(infos)
     }
 
     pub fn alloc<B: Backend>(module: Module<B>, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> Self
     where
         Module<B>: TensorKeyCompressedAlloc,
     {
-        module.tensor_key_compressed_alloc(base2k, k, rank, dnum, dsize)
+        module.alloc_tensor_key_compressed(base2k, k, rank, dnum, dsize)
     }
 
     pub fn bytes_of_from_infos<A, B: Backend>(module: Module<B>, infos: &A) -> usize
@@ -160,7 +160,7 @@ impl TensorKeyCompressed<Vec<u8>> {
         A: GGLWEInfos,
         Module<B>: TensorKeyCompressedAlloc,
     {
-        module.tensor_key_compressed_bytes_of_from_infos(infos)
+        module.bytes_of_tensor_key_compressed_from_infos(infos)
     }
 
     pub fn bytes_of<B: Backend>(
@@ -174,7 +174,7 @@ impl TensorKeyCompressed<Vec<u8>> {
     where
         Module<B>: TensorKeyCompressedAlloc,
     {
-        module.tensor_key_compressed_bytes_of(base2k, k, rank, dnum, dsize)
+        module.bytes_of_tensor_key_compressed(base2k, k, rank, dnum, dsize)
     }
 }
 

@@ -1,9 +1,9 @@
 use poulpy_hal::{
     api::{
         ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDftInplace, VecZnxAddScalarInplace, VecZnxBigAddInplace,
-        VecZnxBigAddSmallInplace, VecZnxBigAlloc, VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
-        VecZnxDftAlloc, VecZnxDftAllocBytes, VecZnxDftApply, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA,
-        VecZnxNormalizeTmpBytes, VecZnxSubInplace,
+        VecZnxBigAddSmallInplace, VecZnxBigAlloc, VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
+        VecZnxDftAlloc, VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA, VecZnxNormalizeTmpBytes,
+        VecZnxSubInplace,
     },
     layouts::{Backend, DataRef, Module, ScalarZnx, ScratchOwned, VecZnxBig, VecZnxDft, ZnxZero},
     oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeVecZnxBigImpl, TakeVecZnxDftImpl},
@@ -21,8 +21,8 @@ impl<D: DataRef> GGSW<D> {
     ) where
         DataSk: DataRef,
         DataScalar: DataRef,
-        Module<B>: VecZnxDftAllocBytes
-            + VecZnxBigAllocBytes
+        Module<B>: VecZnxDftBytesOf
+            + VecZnxBigBytesOf
             + VecZnxDftApply<B>
             + SvpApplyDftToDftInplace<B>
             + VecZnxIdftApplyConsume<B>
@@ -94,8 +94,8 @@ impl<D: DataRef> GGSW<D> {
     ) where
         DataSk: DataRef,
         DataScalar: DataRef,
-        Module<B>: VecZnxDftAllocBytes
-            + VecZnxBigAllocBytes
+        Module<B>: VecZnxDftBytesOf
+            + VecZnxBigBytesOf
             + VecZnxDftApply<B>
             + SvpApplyDftToDftInplace<B>
             + VecZnxIdftApplyConsume<B>

@@ -14,8 +14,8 @@ use poulpy_hal::{
 use poulpy_hal::{
     api::{
         ScratchAvailable, SvpApplyDftToDftInplace, TakeScalarZnx, TakeVecZnx, TakeVecZnxDft, VecZnxAddInplace, VecZnxAddNormal,
-        VecZnxAddScalarInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigAlloc, VecZnxBigAllocBytes,
-        VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxDftAlloc, VecZnxDftAllocBytes, VecZnxDftApply, VecZnxFillUniform,
+        VecZnxAddScalarInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigAlloc, VecZnxBigBytesOf,
+        VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxDftAlloc, VecZnxDftApply, VecZnxDftBytesOf, VecZnxFillUniform,
         VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub,
         VecZnxSubInplace, VmpPrepare,
     },
@@ -123,7 +123,7 @@ impl<D: DataMut, T: UnsignedInteger + ToBits, BE: Backend> FheUintBlocksPrep<D, 
     ) where
         S: DataRef,
         Module<BE>: VecZnxAddScalarInplace
-            + VecZnxDftAllocBytes
+            + VecZnxDftBytesOf
             + VecZnxBigNormalize<BE>
             + VecZnxDftApply<BE>
             + SvpApplyDftToDftInplace<BE>
@@ -190,8 +190,8 @@ impl<D: DataRef, T: UnsignedInteger + ToBits> FheUintBlocksPrepDebug<D, T> {
     #[allow(dead_code)]
     pub(crate) fn noise<S: DataRef, BE: Backend>(&self, module: &Module<BE>, sk: &GLWESecretPrepared<S, BE>, want: T)
     where
-        Module<BE>: VecZnxDftAllocBytes
-            + VecZnxBigAllocBytes
+        Module<BE>: VecZnxDftBytesOf
+            + VecZnxBigBytesOf
             + VecZnxDftApply<BE>
             + SvpApplyDftToDftInplace<BE>
             + VecZnxIdftApplyConsume<BE>

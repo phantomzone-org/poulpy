@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{
-        ScratchAvailable, VecZnxAddScalarInplace, VecZnxDftAllocBytes, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes,
+        ScratchAvailable, VecZnxAddScalarInplace, VecZnxDftBytesOf, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes,
         ZnNormalizeInplace,
     },
     layouts::{Backend, DataMut, DataRef, Module, ScalarZnx, ScalarZnxToRef, Scratch, ZnxZero},
@@ -8,7 +8,7 @@ use poulpy_hal::{
 };
 
 use crate::{
-    TakeGLWEPt,
+    TakeGLWEPlaintext,
     encryption::{SIGMA, glwe_ct::GLWEEncryptSkInternal},
     layouts::{
         GGLWE, GGLWEInfos, LWEInfos,
@@ -38,7 +38,7 @@ impl GGLWECompressed<Vec<u8>> {
     pub fn encrypt_sk_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GGLWEInfos,
-        Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes + VecZnxNormalizeTmpBytes,
+        Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftBytesOf + VecZnxNormalizeTmpBytes,
     {
         GGLWE::encrypt_sk_scratch_space(module, infos)
     }
@@ -64,10 +64,10 @@ where
     Module<B>: GLWEEncryptSkInternal<B>
         + VecZnxNormalizeInplace<B>
         + VecZnxNormalizeTmpBytes
-        + VecZnxDftAllocBytes
+        + VecZnxDftBytesOf
         + VecZnxAddScalarInplace
         + ZnNormalizeInplace<B>,
-    Scratch<B>: TakeGLWEPt<B> + ScratchAvailable,
+    Scratch<B>: TakeGLWEPlaintext<B> + ScratchAvailable,
 {
     fn gglwe_compressed_encrypt_sk<R, P, S>(
         &self,

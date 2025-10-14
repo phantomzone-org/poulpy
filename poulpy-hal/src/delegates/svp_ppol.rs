@@ -1,6 +1,6 @@
 use crate::{
     api::{
-        SvpApplyDft, SvpApplyDftToDft, SvpApplyDftToDftAdd, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolAllocBytes,
+        SvpApplyDft, SvpApplyDftToDft, SvpApplyDftToDftAdd, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolBytesOf,
         SvpPPolFromBytes, SvpPrepare,
     },
     layouts::{
@@ -30,11 +30,11 @@ where
     }
 }
 
-impl<B> SvpPPolAllocBytes for Module<B>
+impl<B> SvpPPolBytesOf for Module<B>
 where
     B: Backend + SvpPPolAllocBytesImpl<B>,
 {
-    fn svp_ppol_bytes_of(&self, cols: usize) -> usize {
+    fn bytes_of_svp_ppol(&self, cols: usize) -> usize {
         B::svp_ppol_bytes_of_impl(self.n(), cols)
     }
 }

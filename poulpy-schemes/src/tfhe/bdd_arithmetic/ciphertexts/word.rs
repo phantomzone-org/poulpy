@@ -1,6 +1,6 @@
 use itertools::Itertools;
 use poulpy_core::{
-    GLWEOperations, TakeGLWECtSlice, TakeGLWEPt, glwe_packing,
+    GLWEOperations, TakeGLWEPlaintext, TakeGLWESlice, glwe_packing,
     layouts::{
         GLWE, GLWEInfos, GLWEPlaintextLayout, LWEInfos, TorusPrecision,
         prepared::{AutomorphismKeyPrepared, GLWESecretPrepared},
@@ -11,7 +11,7 @@ use poulpy_hal::{
         ScratchAvailable, SvpApplyDftToDftInplace, TakeVecZnx, TakeVecZnxBig, TakeVecZnxDft, VecZnxAddInplace, VecZnxAddNormal,
         VecZnxAddScalarInplace, VecZnxAutomorphismInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace,
         VecZnxBigAutomorphismInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallNegateInplace, VecZnxCopy,
-        VecZnxDftAllocBytes, VecZnxDftApply, VecZnxDftCopy, VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA,
+        VecZnxDftApply, VecZnxDftBytesOf, VecZnxDftCopy, VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA,
         VecZnxNegateInplace, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace,
         VecZnxRshInplace, VecZnxSub, VecZnxSubInplace, VecZnxSwitchRing, VmpApplyDftToDft, VmpApplyDftToDftAdd,
         VmpApplyDftToDftTmpBytes,
@@ -39,7 +39,7 @@ impl<D: DataMut, T: UnsignedInteger> FheUintWord<D, T> {
         Module<BE>: VecZnxSub
             + VecZnxCopy
             + VecZnxNegateInplace
-            + VecZnxDftAllocBytes
+            + VecZnxDftBytesOf
             + VecZnxAddInplace
             + VmpApplyDftToDftTmpBytes
             + VecZnxNormalizeTmpBytes
@@ -62,7 +62,7 @@ impl<D: DataMut, T: UnsignedInteger> FheUintWord<D, T> {
             + VecZnxAutomorphismInplace<BE>
             + VecZnxBigSubSmallNegateInplace<BE>
             + VecZnxRotate,
-        Scratch<BE>: TakeVecZnxDft<BE> + ScratchAvailable + TakeVecZnx + TakeGLWECtSlice,
+        Scratch<BE>: TakeVecZnxDft<BE> + ScratchAvailable + TakeVecZnx + TakeGLWESlice,
     {
         // Repacks the GLWE ciphertexts bits
         let gap: usize = module.n() / T::WORD_SIZE;
@@ -109,7 +109,7 @@ impl<D: DataMut, T: UnsignedInteger + ToBits> FheUintWord<D, T> {
         scratch: &mut Scratch<BE>,
     ) where
         Module<BE>: VecZnxAddScalarInplace
-            + VecZnxDftAllocBytes
+            + VecZnxDftBytesOf
             + VecZnxBigNormalize<BE>
             + VecZnxDftApply<BE>
             + SvpApplyDftToDftInplace<BE>
@@ -122,7 +122,7 @@ impl<D: DataMut, T: UnsignedInteger + ToBits> FheUintWord<D, T> {
             + VecZnxAddNormal
             + VecZnxNormalize<BE>
             + VecZnxSub,
-        Scratch<BE>: TakeVecZnxDft<BE> + ScratchAvailable + TakeVecZnx + TakeGLWEPt<BE>,
+        Scratch<BE>: TakeVecZnxDft<BE> + ScratchAvailable + TakeVecZnx + TakeGLWEPlaintext<BE>,
     {
         #[cfg(debug_assertions)]
         {
@@ -167,7 +167,7 @@ impl<D: DataRef, T: UnsignedInteger + FromBits> FheUintWord<D, T> {
             + VecZnxBigAddInplace<BE>
             + VecZnxBigAddSmallInplace<BE>
             + VecZnxBigNormalize<BE>,
-        Scratch<BE>: TakeVecZnxDft<BE> + TakeVecZnxBig<BE> + TakeGLWEPt<BE>,
+        Scratch<BE>: TakeVecZnxDft<BE> + TakeVecZnxBig<BE> + TakeGLWEPlaintext<BE>,
     {
         #[cfg(debug_assertions)]
         {

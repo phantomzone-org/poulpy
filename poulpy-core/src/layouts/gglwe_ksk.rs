@@ -224,6 +224,8 @@ where
     }
 }
 
+impl<B: Backend> GLWESwitchingKeyAlloc for Module<B> where Self: GGLWEAlloc {}
+
 impl GLWESwitchingKey<Vec<u8>> {
     pub fn alloc_from_infos<A, B: Backend>(module: &Module<B>, infos: &A) -> Self
     where

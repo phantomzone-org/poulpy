@@ -1,7 +1,7 @@
 use crate::{
     api::{
         VmpApplyDft, VmpApplyDftTmpBytes, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftAddTmpBytes,
-        VmpApplyDftToDftTmpBytes, VmpPMatAlloc, VmpPMatAllocBytes, VmpPMatFromBytes, VmpPrepare, VmpPrepareTmpBytes,
+        VmpApplyDftToDftTmpBytes, VmpPMatAlloc, VmpPMatBytesOf, VmpPMatFromBytes, VmpPrepare, VmpPrepareTmpBytes,
     },
     layouts::{
         Backend, MatZnxToRef, Module, Scratch, VecZnxDftToMut, VecZnxDftToRef, VecZnxToRef, VmpPMatOwned, VmpPMatToMut,
@@ -23,11 +23,11 @@ where
     }
 }
 
-impl<B> VmpPMatAllocBytes for Module<B>
+impl<B> VmpPMatBytesOf for Module<B>
 where
     B: Backend + VmpPMatAllocBytesImpl<B>,
 {
-    fn vmp_pmat_bytes_of(&self, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize {
+    fn bytes_of_vmp_pmat(&self, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize {
         B::vmp_pmat_bytes_of_impl(self.n(), rows, cols_in, cols_out, size)
     }
 }

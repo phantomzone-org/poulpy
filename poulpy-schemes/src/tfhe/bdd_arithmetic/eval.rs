@@ -1,6 +1,6 @@
 use itertools::Itertools;
 use poulpy_core::{
-    GLWEExternalProductInplace, GLWEOperations, TakeGLWECtSlice,
+    GLWEExternalProductInplace, GLWEOperations, TakeGLWESlice,
     layouts::{
         GLWE, GLWEToMut, LWEInfos,
         prepared::{GGSWCiphertextPreparedToRef, GGSWPrepared},
@@ -49,7 +49,7 @@ impl<C: BitCircuitInfo, const N: usize, T: UnsignedInteger, BE: Backend> Circuit
 where
     Self: GetBitCircuitInfo<T>,
     Module<BE>: Cmux<BE> + VecZnxCopy,
-    Scratch<BE>: TakeGLWECtSlice,
+    Scratch<BE>: TakeGLWESlice,
 {
     fn execute<O>(
         &self,

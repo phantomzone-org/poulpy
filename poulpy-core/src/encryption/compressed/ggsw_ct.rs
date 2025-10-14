@@ -1,11 +1,11 @@
 use poulpy_hal::{
-    api::{VecZnxAddScalarInplace, VecZnxDftAllocBytes, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes},
+    api::{VecZnxAddScalarInplace, VecZnxDftBytesOf, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes},
     layouts::{Backend, DataMut, DataRef, Module, ScalarZnx, ScalarZnxToRef, Scratch, ZnxZero},
     source::Source,
 };
 
 use crate::{
-    TakeGLWEPt,
+    TakeGLWEPlaintext,
     encryption::{SIGMA, glwe_ct::GLWEEncryptSkInternal},
     layouts::{
         GGSW, GGSWInfos, GLWEInfos, LWEInfos,
@@ -18,7 +18,7 @@ impl GGSWCompressed<Vec<u8>> {
     pub fn encrypt_sk_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GGSWInfos,
-        Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes,
+        Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftBytesOf,
     {
         GGSW::encrypt_sk_scratch_space(module, infos)
     }
@@ -42,7 +42,7 @@ pub trait GGSWCompressedEncryptSk<B: Backend> {
 impl<B: Backend> GGSWCompressedEncryptSk<B> for Module<B>
 where
     Module<B>: GLWEEncryptSkInternal<B> + VecZnxAddScalarInplace + VecZnxNormalizeInplace<B>,
-    Scratch<B>: TakeGLWEPt<B>,
+    Scratch<B>: TakeGLWEPlaintext<B>,
 {
     fn ggsw_compressed_encrypt_sk<R, P, S>(
         &self,

@@ -1,7 +1,7 @@
 use poulpy_hal::{
     api::{
         ScratchAvailable, TakeVecZnx, TakeVecZnxDft, VecZnxBigAddSmallInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
-        VecZnxDftAllocBytes, VecZnxDftApply, VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeTmpBytes, VmpApplyDftToDft,
+        VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeTmpBytes, VmpApplyDftToDft,
         VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
     },
     layouts::{Backend, DataMut, DataRef, DataViewMut, Module, Scratch, VecZnx, VecZnxBig, VecZnxDft, VmpPMat, ZnxInfos},
@@ -20,7 +20,7 @@ impl GLWE<Vec<u8>> {
         OUT: GLWEInfos,
         IN: GLWEInfos,
         KEY: GGLWEInfos,
-        Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
+        Module<B>: VecZnxDftBytesOf + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
         let in_size: usize = in_infos
             .k()
@@ -28,8 +28,8 @@ impl GLWE<Vec<u8>> {
             .div_ceil(key_apply.dsize().into()) as usize;
         let out_size: usize = out_infos.size();
         let ksk_size: usize = key_apply.size();
-        let res_dft: usize = module.vec_znx_dft_bytes_of((key_apply.rank_out() + 1).into(), ksk_size); // TODO OPTIMIZE
-        let ai_dft: usize = module.vec_znx_dft_bytes_of((key_apply.rank_in()).into(), in_size);
+        let res_dft: usize = module.bytes_of_vec_znx_dft((key_apply.rank_out() + 1).into(), ksk_size); // TODO OPTIMIZE
+        let ai_dft: usize = module.bytes_of_vec_znx_dft((key_apply.rank_in()).into(), in_size);
         let vmp: usize = module.vmp_apply_dft_to_dft_tmp_bytes(
             out_size,
             in_size,
@@ -37,7 +37,7 @@ impl GLWE<Vec<u8>> {
             (key_apply.rank_in()).into(),
             (key_apply.rank_out() + 1).into(),
             ksk_size,
-        ) + module.vec_znx_dft_bytes_of((key_apply.rank_in()).into(), in_size);
+        ) + module.bytes_of_vec_znx_dft((key_apply.rank_in()).into(), in_size);
         let normalize_big: usize = module.vec_znx_big_normalize_tmp_bytes();
         if in_infos.base2k() == key_apply.base2k() {
             res_dft + ((ai_dft + vmp) | normalize_big)
@@ -56,7 +56,7 @@ impl GLWE<Vec<u8>> {
     where
         OUT: GLWEInfos,
         KEY: GGLWEInfos,
-        Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
+        Module<B>: VecZnxDftBytesOf + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
         Self::keyswitch_scratch_space(module, out_infos, out_infos, key_apply)
     }
@@ -73,7 +73,7 @@ impl<DataSelf: DataRef> GLWE<DataSelf> {
     ) where
         DataLhs: DataRef,
         DataRhs: DataRef,
-        Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
+        Module<B>: VecZnxDftBytesOf + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
         Scratch<B>: ScratchAvailable,
     {
         assert_eq!(
@@ -121,7 +121,7 @@ impl<DataSelf: DataRef> GLWE<DataSelf> {
         scratch: &Scratch<B>,
     ) where
         DataRhs: DataRef,
-        Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
+        Module<B>: VecZnxDftBytesOf + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
         Scratch<B>: ScratchAvailable,
     {
         assert_eq!(
@@ -152,7 +152,7 @@ impl<DataSelf: DataMut> GLWE<DataSelf> {
         rhs: &GLWESwitchingKeyPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: VecZnxDftAllocBytes
+        Module<B>: VecZnxDftBytesOf
             + VmpApplyDftToDftTmpBytes
             + VecZnxBigNormalizeTmpBytes
             + VmpApplyDftToDft<B>
@@ -194,7 +194,7 @@ impl<DataSelf: DataMut> GLWE<DataSelf> {
         rhs: &GLWESwitchingKeyPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: VecZnxDftAllocBytes
+        Module<B>: VecZnxDftBytesOf
             + VmpApplyDftToDftTmpBytes
             + VecZnxBigNormalizeTmpBytes
             + VmpApplyDftToDftTmpBytes
@@ -243,7 +243,7 @@ impl<D: DataRef> GLWE<D> {
     where
         DataRes: DataMut,
         DataKey: DataRef,
-        Module<B>: VecZnxDftAllocBytes
+        Module<B>: VecZnxDftBytesOf
             + VmpApplyDftToDftTmpBytes
             + VecZnxBigNormalizeTmpBytes
             + VmpApplyDftToDftTmpBytes
@@ -294,7 +294,7 @@ where
     DataRes: DataMut,
     DataIn: DataRef,
     DataVmp: DataRef,
-    Module<B>: VecZnxDftAllocBytes
+    Module<B>: VecZnxDftBytesOf
         + VecZnxDftApply<B>
         + VmpApplyDftToDft<B>
         + VecZnxIdftApplyConsume<B>
@@ -340,7 +340,7 @@ where
     DataRes: DataMut,
     DataIn: DataRef,
     DataVmp: DataRef,
-    Module<B>: VecZnxDftAllocBytes
+    Module<B>: VecZnxDftBytesOf
         + VecZnxDftApply<B>
         + VmpApplyDftToDft<B>
         + VmpApplyDftToDftAdd<B>

@@ -8,8 +8,8 @@ pub trait SvpPPolAlloc<B: Backend> {
 }
 
 /// Returns the size in bytes to allocate a [crate::layouts::SvpPPol].
-pub trait SvpPPolAllocBytes {
-    fn svp_ppol_bytes_of(&self, cols: usize) -> usize;
+pub trait SvpPPolBytesOf {
+    fn bytes_of_svp_ppol(&self, cols: usize) -> usize;
 }
 
 /// Consume a vector of bytes into a [crate::layouts::MatZnx].

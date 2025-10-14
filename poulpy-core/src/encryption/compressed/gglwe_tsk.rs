@@ -1,7 +1,7 @@
 use poulpy_hal::{
     api::{
-        SvpApplyDftToDft, SvpPPolAllocBytes, SvpPrepare, TakeVecZnxBig, TakeVecZnxDft, VecZnxBigAllocBytes, VecZnxBigNormalize,
-        VecZnxDftAllocBytes, VecZnxDftApply, VecZnxIdftApplyTmpA, VecZnxNormalizeTmpBytes,
+        SvpApplyDftToDft, SvpPPolBytesOf, SvpPrepare, TakeVecZnxBig, TakeVecZnxDft, VecZnxBigBytesOf, VecZnxBigNormalize,
+        VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyTmpA, VecZnxNormalizeTmpBytes,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
     source::Source,
@@ -20,8 +20,7 @@ impl TensorKeyCompressed<Vec<u8>> {
     pub fn encrypt_sk_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GGLWEInfos,
-        Module<B>:
-            SvpPPolAllocBytes + VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes + VecZnxNormalizeTmpBytes + VecZnxBigAllocBytes,
+        Module<B>: SvpPPolBytesOf + VecZnxNormalizeTmpBytes + VecZnxDftBytesOf + VecZnxNormalizeTmpBytes + VecZnxBigBytesOf,
     {
         TensorKey::encrypt_sk_scratch_space(module, infos)
     }

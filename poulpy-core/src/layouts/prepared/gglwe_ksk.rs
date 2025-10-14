@@ -95,7 +95,7 @@ where
         }
     }
 
-    fn glwe_switching_key_prepared_alloc_from_infos<A>(&self, infos: &A) -> GLWESwitchingKeyPrepared<Vec<u8>, B>
+    fn alloc_glwe_switching_key_prepared_from_infos<A>(&self, infos: &A) -> GLWESwitchingKeyPrepared<Vec<u8>, B>
     where
         A: GGLWEInfos,
     {
@@ -121,7 +121,7 @@ where
         self.bytes_of_gglwe_prepared(base2k, k, rank_in, rank_out, dnum, dsize)
     }
 
-    fn glwe_switching_key_prepared_bytes_of_from_infos<A>(&self, infos: &A) -> usize
+    fn bytes_of_glwe_switching_key_prepared_from_infos<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos,
     {
@@ -146,7 +146,7 @@ where
     where
         A: GGLWEInfos,
     {
-        module.glwe_switching_key_prepared_alloc_from_infos(infos)
+        module.alloc_glwe_switching_key_prepared_from_infos(infos)
     }
 
     pub fn alloc(
@@ -165,7 +165,7 @@ where
     where
         A: GGLWEInfos,
     {
-        module.glwe_switching_key_prepared_bytes_of_from_infos(infos)
+        module.bytes_of_glwe_switching_key_prepared_from_infos(infos)
     }
 
     pub fn bytes_of(

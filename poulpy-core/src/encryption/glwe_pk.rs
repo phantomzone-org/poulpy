@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxDftAllocBytes, VecZnxNormalizeTmpBytes},
+    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxDftBytesOf, VecZnxNormalizeTmpBytes},
     layouts::{Backend, DataMut, DataRef, Module, ScratchOwned},
     source::Source,
 };
@@ -21,7 +21,7 @@ pub trait GLWEPublicKeyGenerate<B: Backend> {
 
 impl<B: Backend> GLWEPublicKeyGenerate<B> for Module<B>
 where
-    Module<B>: GLWEEncryptZeroSk<B> + VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes,
+    Module<B>: GLWEEncryptZeroSk<B> + VecZnxNormalizeTmpBytes + VecZnxDftBytesOf,
     ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
 {
     fn glwe_public_key_generate<R, S>(&self, res: &mut R, sk: &S, source_xa: &mut Source, source_xe: &mut Source)

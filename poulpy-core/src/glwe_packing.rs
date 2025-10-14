@@ -4,7 +4,7 @@ use poulpy_hal::{
     api::{
         ScratchAvailable, TakeVecZnx, TakeVecZnxDft, VecZnxAddInplace, VecZnxAutomorphismInplace, VecZnxBigAddSmallInplace,
         VecZnxBigAutomorphismInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallNegateInplace, VecZnxCopy,
-        VecZnxDftAllocBytes, VecZnxDftApply, VecZnxDftCopy, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA, VecZnxNegateInplace,
+        VecZnxDftApply, VecZnxDftBytesOf, VecZnxDftCopy, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA, VecZnxNegateInplace,
         VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace, VecZnxRshInplace,
         VecZnxSub, VecZnxSubInplace, VecZnxSwitchRing, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
     },
@@ -12,7 +12,7 @@ use poulpy_hal::{
 };
 
 use crate::{
-    GLWEOperations, TakeGLWECt,
+    GLWEOperations, TakeGLWE,
     layouts::{GGLWEInfos, GLWE, GLWEInfos, LWEInfos, prepared::AutomorphismKeyPrepared},
 };
 
@@ -94,7 +94,7 @@ impl GLWEPacker {
     where
         OUT: GLWEInfos,
         KEY: GGLWEInfos,
-        Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
+        Module<B>: VecZnxDftBytesOf + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
         pack_core_scratch_space(module, out_infos, key_infos)
     }
@@ -119,7 +119,7 @@ impl GLWEPacker {
         auto_keys: &HashMap<i64, AutomorphismKeyPrepared<DataAK, B>>,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: VecZnxDftAllocBytes
+        Module<B>: VecZnxDftBytesOf
             + VmpApplyDftToDftTmpBytes
             + VecZnxBigNormalizeTmpBytes
             + VmpApplyDftToDft<B>
@@ -181,7 +181,7 @@ fn pack_core_scratch_space<B: Backend, OUT, KEY>(module: &Module<B>, out_infos: 
 where
     OUT: GLWEInfos,
     KEY: GGLWEInfos,
-    Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
+    Module<B>: VecZnxDftBytesOf + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
 {
     combine_scratch_space(module, out_infos, key_infos)
 }
@@ -194,7 +194,7 @@ fn pack_core<D: DataRef, DataAK: DataRef, B: Backend>(
     auto_keys: &HashMap<i64, AutomorphismKeyPrepared<DataAK, B>>,
     scratch: &mut Scratch<B>,
 ) where
-    Module<B>: VecZnxDftAllocBytes
+    Module<B>: VecZnxDftBytesOf
         + VmpApplyDftToDftTmpBytes
         + VecZnxBigNormalizeTmpBytes
         + VmpApplyDftToDft<B>
@@ -272,7 +272,7 @@ fn combine_scratch_space<B: Backend, OUT, KEY>(module: &Module<B>, out_infos: &O
 where
     OUT: GLWEInfos,
     KEY: GGLWEInfos,
-    Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
+    Module<B>: VecZnxDftBytesOf + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
 {
     GLWE::bytes_of(out_infos)
         + (GLWE::rsh_scratch_space(module.n()) | GLWE::automorphism_inplace_scratch_space(module, out_infos, key_infos))
@@ -287,7 +287,7 @@ fn combine<D: DataRef, DataAK: DataRef, B: Backend>(
     auto_keys: &HashMap<i64, AutomorphismKeyPrepared<DataAK, B>>,
     scratch: &mut Scratch<B>,
 ) where
-    Module<B>: VecZnxDftAllocBytes
+    Module<B>: VecZnxDftBytesOf
         + VmpApplyDftToDftTmpBytes
         + VecZnxBigNormalizeTmpBytes
         + VmpApplyDftToDft<B>
@@ -310,7 +310,7 @@ fn combine<D: DataRef, DataAK: DataRef, B: Backend>(
         + VecZnxBigAutomorphismInplace<B>
         + VecZnxNormalize<B>
         + VecZnxNormalizeTmpBytes,
-    Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx + TakeGLWECt,
+    Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx + TakeGLWE,
 {
     let log_n: usize = acc.data.n().log2();
     let a: &mut GLWE<Vec<u8>> = &mut acc.data;
@@ -413,7 +413,7 @@ pub fn glwe_packing<D: DataMut, ATK, B: Backend>(
         + VecZnxNegateInplace
         + VecZnxCopy
         + VecZnxSubInplace
-        + VecZnxDftAllocBytes
+        + VecZnxDftBytesOf
         + VmpApplyDftToDftTmpBytes
         + VecZnxBigNormalizeTmpBytes
         + VmpApplyDftToDft<B>
@@ -480,7 +480,7 @@ fn pack_internal<A: DataMut, D: DataMut, DataAK: DataRef, B: Backend>(
         + VecZnxNegateInplace
         + VecZnxCopy
         + VecZnxSubInplace
-        + VecZnxDftAllocBytes
+        + VecZnxDftBytesOf
         + VmpApplyDftToDftTmpBytes
         + VecZnxBigNormalizeTmpBytes
         + VmpApplyDftToDft<B>

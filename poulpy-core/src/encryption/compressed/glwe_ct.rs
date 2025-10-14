@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    api::{VecZnxDftAllocBytes, VecZnxNormalizeTmpBytes},
+    api::{VecZnxDftBytesOf, VecZnxNormalizeTmpBytes},
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
     source::Source,
 };
@@ -17,7 +17,7 @@ impl GLWECompressed<Vec<u8>> {
     pub fn encrypt_sk_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GLWEInfos,
-        Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes,
+        Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftBytesOf,
     {
         GLWE::encrypt_sk_scratch_space(module, infos)
     }

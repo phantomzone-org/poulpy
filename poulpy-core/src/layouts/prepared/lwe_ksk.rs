@@ -65,7 +65,7 @@ where
         LWESwitchingKeyPrepared(self.alloc_glwe_switching_key_prepared(base2k, k, Rank(1), Rank(1), dnum, Dsize(1)))
     }
 
-    fn lwe_switching_key_prepared_alloc_from_infos<A>(&self, infos: &A) -> LWESwitchingKeyPrepared<Vec<u8>, B>
+    fn alloc_lwe_switching_key_prepared_from_infos<A>(&self, infos: &A) -> LWESwitchingKeyPrepared<Vec<u8>, B>
     where
         A: GGLWEInfos,
     {
@@ -87,11 +87,11 @@ where
         self.alloc_lwe_switching_key_prepared(infos.base2k(), infos.k(), infos.dnum())
     }
 
-    fn lwe_switching_key_prepared_bytes_of(&self, base2k: Base2K, k: TorusPrecision, dnum: Dnum) -> usize {
+    fn bytes_of_lwe_switching_key_prepared(&self, base2k: Base2K, k: TorusPrecision, dnum: Dnum) -> usize {
         self.bytes_of_glwe_switching_key_prepared(base2k, k, Rank(1), Rank(1), dnum, Dsize(1))
     }
 
-    fn lwe_switching_key_prepared_bytes_of_from_infos<A>(&self, infos: &A) -> usize
+    fn bytes_of_lwe_switching_key_prepared_from_infos<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos,
     {
@@ -110,7 +110,7 @@ where
             1,
             "rank_out > 1 is not supported for LWESwitchingKey"
         );
-        self.lwe_switching_key_prepared_bytes_of(infos.base2k(), infos.k(), infos.dnum())
+        self.bytes_of_lwe_switching_key_prepared(infos.base2k(), infos.k(), infos.dnum())
     }
 }
 
@@ -124,7 +124,7 @@ where
     where
         A: GGLWEInfos,
     {
-        module.lwe_switching_key_prepared_alloc_from_infos(infos)
+        module.alloc_lwe_switching_key_prepared_from_infos(infos)
     }
 
     pub fn alloc(module: &Module<B>, base2k: Base2K, k: TorusPrecision, dnum: Dnum) -> Self {
@@ -135,11 +135,11 @@ where
     where
         A: GGLWEInfos,
     {
-        module.lwe_switching_key_prepared_bytes_of_from_infos(infos)
+        module.bytes_of_lwe_switching_key_prepared_from_infos(infos)
     }
 
     pub fn bytes_of(module: &Module<B>, base2k: Base2K, k: TorusPrecision, dnum: Dnum) -> usize {
-        module.lwe_switching_key_prepared_bytes_of(base2k, k, dnum)
+        module.bytes_of_lwe_switching_key_prepared(base2k, k, dnum)
     }
 }
 
@@ -147,13 +147,13 @@ pub trait LWESwitchingKeyPrepare<B: Backend>
 where
     Self: GLWESwitchingKeyPrepare<B>,
 {
-    fn lwe_switching_key_prepare_tmp_bytes<A>(&self, infos: &A)
+    fn prepare_lwe_switching_key_tmp_bytes<A>(&self, infos: &A)
     where
         A: GGLWEInfos,
     {
         self.prepare_glwe_switching_key_tmp_bytes(infos);
     }
-    fn lwe_switching_key_prepare<R, O>(&self, res: &mut R, other: &O, scratch: &mut Scratch<B>)
+    fn prepare_lwe_switching_key<R, O>(&self, res: &mut R, other: &O, scratch: &mut Scratch<B>)
     where
         R: LWESwitchingKeyPreparedToMut<B>,
         O: LWESwitchingKeyToRef,
@@ -170,7 +170,7 @@ impl<B: Backend> LWESwitchingKeyPrepared<Vec<u8>, B> {
         A: GGLWEInfos,
         Module<B>: LWESwitchingKeyPrepare<B>,
     {
-        module.lwe_switching_key_prepare_tmp_bytes(infos);
+        module.prepare_lwe_switching_key_tmp_bytes(infos);
     }
 }
 
@@ -180,7 +180,7 @@ impl<D: DataMut, B: Backend> LWESwitchingKeyPrepared<D, B> {
         O: LWESwitchingKeyToRef,
         Module<B>: LWESwitchingKeyPrepare<B>,
     {
-        module.lwe_switching_key_prepare(self, other, scratch);
+        module.prepare_lwe_switching_key(self, other, scratch);
     }
 }
 

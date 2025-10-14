@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    api::{VecZnxDftAlloc, VecZnxDftAllocBytes, VecZnxDftApply},
+    api::{VecZnxDftAlloc, VecZnxDftApply, VecZnxDftBytesOf},
     layouts::{Backend, Data, DataMut, DataRef, Module, VecZnxDft, VecZnxDftToMut, VecZnxDftToRef, ZnxInfos},
 };
 
@@ -52,7 +52,7 @@ impl<D: Data, B: Backend> GLWEInfos for GLWEPublicKeyPrepared<D, B> {
 
 pub trait GLWEPublicKeyPreparedAlloc<B: Backend>
 where
-    Self: GetDegree + VecZnxDftAlloc<B> + VecZnxDftAllocBytes,
+    Self: GetDegree + VecZnxDftAlloc<B> + VecZnxDftBytesOf,
 {
     fn alloc_glwe_public_key_prepared(&self, base2k: Base2K, k: TorusPrecision, rank: Rank) -> GLWEPublicKeyPrepared<Vec<u8>, B> {
         GLWEPublicKeyPrepared {
@@ -71,7 +71,7 @@ where
     }
 
     fn bytes_of_glwe_public_key_prepared(&self, base2k: Base2K, k: TorusPrecision, rank: Rank) -> usize {
-        self.vec_znx_dft_bytes_of((rank + 1).into(), k.0.div_ceil(base2k.0) as usize)
+        self.bytes_of_vec_znx_dft((rank + 1).into(), k.0.div_ceil(base2k.0) as usize)
     }
 
     fn bytes_of_glwe_public_key_prepared_from_infos<A>(&self, infos: &A) -> usize
@@ -82,7 +82,7 @@ where
     }
 }
 
-impl<B: Backend> GLWEPublicKeyPreparedAlloc<B> for Module<B> where Self: VecZnxDftAlloc<B> + VecZnxDftAllocBytes {}
+impl<B: Backend> GLWEPublicKeyPreparedAlloc<B> for Module<B> where Self: VecZnxDftAlloc<B> + VecZnxDftBytesOf {}
 
 impl<B: Backend> GLWEPublicKeyPrepared<Vec<u8>, B>
 where

@@ -1,7 +1,7 @@
 use poulpy_hal::{
     api::{
         SvpApplyDftToDftInplace, TakeVecZnxBig, TakeVecZnxDft, VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigNormalize,
-        VecZnxDftAllocBytes, VecZnxDftApply, VecZnxIdftApplyConsume, VecZnxNormalizeTmpBytes,
+        VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxNormalizeTmpBytes,
     },
     layouts::{Backend, DataMut, DataRef, DataViewMut, Module, Scratch},
 };
@@ -12,10 +12,10 @@ impl GLWE<Vec<u8>> {
     pub fn decrypt_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GLWEInfos,
-        Module<B>: VecZnxDftAllocBytes + VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes,
+        Module<B>: VecZnxDftBytesOf + VecZnxNormalizeTmpBytes + VecZnxDftBytesOf,
     {
         let size: usize = infos.size();
-        (module.vec_znx_normalize_tmp_bytes() | module.vec_znx_dft_bytes_of(1, size)) + module.vec_znx_dft_bytes_of(1, size)
+        (module.vec_znx_normalize_tmp_bytes() | module.bytes_of_vec_znx_dft(1, size)) + module.bytes_of_vec_znx_dft(1, size)
     }
 }
 
