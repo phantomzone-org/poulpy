@@ -15,7 +15,7 @@ impl GGSW<Vec<u8>> {
         module: &Module<B>,
         out_infos: &OUT,
         in_infos: &IN,
-        apply_infos: &GGSW,
+        ggsw_infos: &GGSW,
     ) -> usize
     where
         OUT: GGSWInfos,
@@ -27,21 +27,21 @@ impl GGSW<Vec<u8>> {
             module,
             &out_infos.glwe_layout(),
             &in_infos.glwe_layout(),
-            apply_infos,
+            ggsw_infos,
         )
     }
 
     pub fn external_product_inplace_scratch_space<B: Backend, OUT, GGSW>(
         module: &Module<B>,
         out_infos: &OUT,
-        apply_infos: &GGSW,
+        ggsw_infos: &GGSW,
     ) -> usize
     where
         OUT: GGSWInfos,
         GGSW: GGSWInfos,
         Module<B>: VecZnxDftBytesOf + VmpApplyDftToDftTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        GLWE::external_product_inplace_scratch_space(module, &out_infos.glwe_layout(), apply_infos)
+        GLWE::external_product_inplace_scratch_space(module, &out_infos.glwe_layout(), ggsw_infos)
     }
 }
 
