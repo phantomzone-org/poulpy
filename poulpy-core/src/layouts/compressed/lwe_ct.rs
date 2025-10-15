@@ -91,33 +91,35 @@ pub trait LWECompressedAlloc {
     }
 }
 
+impl<B: Backend> LWECompressedAlloc for Module<B>{}
+
 impl LWECompressed<Vec<u8>> {
-    pub fn alloc_from_infos<A, B: Backend>(module: &Module<B>, infos: &A) -> Self
+    pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
     where
         A: LWEInfos,
-        Module<B>: LWECompressedAlloc,
+        M: LWECompressedAlloc,
     {
         module.alloc_lwe_compressed_from_infos(infos)
     }
 
-    pub fn alloc<B: Backend>(module: &Module<B>, base2k: Base2K, k: TorusPrecision) -> Self
+    pub fn alloc<M>(module: &M, base2k: Base2K, k: TorusPrecision) -> Self
     where
-        Module<B>: LWECompressedAlloc,
+        M: LWECompressedAlloc,
     {
         module.alloc_lwe_compressed(base2k, k)
     }
 
-    pub fn bytes_of_from_infos<A, B: Backend>(module: &Module<B>, infos: &A) -> usize
+    pub fn bytes_of_from_infos<A, M>(module: &M, infos: &A) -> usize
     where
         A: LWEInfos,
-        Module<B>: LWECompressedAlloc,
+        M: LWECompressedAlloc,
     {
         module.bytes_of_lwe_compressed_from_infos(infos)
     }
 
-    pub fn bytes_of<B: Backend>(module: &Module<B>, base2k: Base2K, k: TorusPrecision) -> usize
+    pub fn bytes_of<M>(module: &M, base2k: Base2K, k: TorusPrecision) -> usize
     where
-        Module<B>: LWECompressedAlloc,
+        M: LWECompressedAlloc,
     {
         module.bytes_of_lwe_compressed(base2k, k)
     }
@@ -174,10 +176,10 @@ where
 impl<B: Backend> LWEDecompress for Module<B> where Self: ZnFillUniform {}
 
 impl<D: DataMut> LWE<D> {
-    pub fn decompress<O, B: Backend>(&mut self, module: &Module<B>, other: &O)
+    pub fn decompress<O, M>(&mut self, module: &M, other: &O)
     where
         O: LWECompressedToRef,
-        Module<B>: LWEDecompress,
+        M: LWEDecompress,
     {
         module.decompress_lwe(self, other);
     }

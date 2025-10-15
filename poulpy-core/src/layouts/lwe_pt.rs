@@ -72,14 +72,18 @@ pub trait LWEPlaintextAlloc {
 impl<B: Backend> LWEPlaintextAlloc for Module<B> {}
 
 impl LWEPlaintext<Vec<u8>> {
-    pub fn alloc_from_infos<A, B: Backend>(module: Module<B>, infos: &A) -> Self
+    pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
     where
         A: LWEInfos,
+        M: LWEPlaintextAlloc,
     {
         module.alloc_lwe_plaintext_from_infos(infos)
     }
 
-    pub fn alloc<B: Backend>(module: Module<B>, base2k: Base2K, k: TorusPrecision) -> Self {
+    pub fn alloc<M>(module: &M, base2k: Base2K, k: TorusPrecision) -> Self
+    where
+        M: LWEPlaintextAlloc,
+    {
         module.alloc_lwe_plaintext(base2k, k)
     }
 }

@@ -1,14 +1,13 @@
 use poulpy_hal::{
     api::{
-        SvpApplyDftToDft, SvpPPolBytesOf, SvpPrepare, TakeVecZnxBig, TakeVecZnxDft, VecZnxBigBytesOf, VecZnxBigNormalize,
-        VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyTmpA, VecZnxNormalizeTmpBytes,
+        SvpApplyDftToDft, SvpPPolBytesOf, SvpPrepare, VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxDftApply, VecZnxDftBytesOf,
+        VecZnxIdftApplyTmpA, VecZnxNormalizeTmpBytes,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
     source::Source,
 };
 
 use crate::{
-    TakeGLWESecret, TakeGLWESecretPrepared,
     encryption::compressed::gglwe_ksk::GGLWEKeyCompressedEncryptSk,
     layouts::{
         GGLWEInfos, GLWEInfos, GLWESecret, GLWESecretToRef, LWEInfos, Rank, TensorKey,
@@ -47,7 +46,7 @@ where
         + VecZnxIdftApplyTmpA<B>
         + VecZnxBigNormalize<B>
         + SvpPrepare<B>,
-    Scratch<B>: TakeGLWESecretPrepared<B> + TakeVecZnxDft<B> + TakeVecZnxBig<B> + TakeGLWESecret,
+    Scratch<B>:,
 {
     fn gglwe_tensor_key_encrypt_sk<R, S>(
         &self,

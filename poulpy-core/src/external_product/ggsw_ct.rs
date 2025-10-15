@@ -1,47 +1,116 @@
 use poulpy_hal::{
-    api::{
-        ScratchAvailable, TakeVecZnx, TakeVecZnxDft, VecZnxBigNormalize, VecZnxDftApply, VecZnxDftBytesOf,
-        VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeTmpBytes, VmpApplyDftToDft, VmpApplyDftToDftAdd,
-        VmpApplyDftToDftTmpBytes,
-    },
+    api::ScratchAvailable,
     layouts::{Backend, DataMut, DataRef, Module, Scratch, ZnxZero},
 };
 
-use crate::layouts::{GGSW, GGSWInfos, GLWE, GLWEInfos, prepared::GGSWPrepared};
+use crate::{
+    GLWEExternalProduct, ScratchTakeCore,
+    layouts::{
+        GGSW, GGSWInfos, GGSWToMut, GGSWToRef, GLWEInfos, LWEInfos,
+        prepared::{GGSWPrepared, GGSWPreparedToRef},
+    },
+};
 
-impl GGSW<Vec<u8>> {
-    #[allow(clippy::too_many_arguments)]
-    pub fn external_product_scratch_space<B: Backend, OUT, IN, GGSW>(
-        module: &Module<B>,
-        out_infos: &OUT,
-        in_infos: &IN,
-        ggsw_infos: &GGSW,
-    ) -> usize
+pub trait GGSWExternalProduct<BE: Backend>
+where
+    Self: GLWEExternalProduct<BE>,
+{
+    fn ggsw_external_product_tmp_bytes<R, A, B>(&self, res_infos: &R, a_infos: &A, b_infos: &B) -> usize
     where
-        OUT: GGSWInfos,
-        IN: GGSWInfos,
-        GGSW: GGSWInfos,
-        Module<B>: VecZnxDftBytesOf + VmpApplyDftToDftTmpBytes + VecZnxNormalizeTmpBytes,
+        R: GGSWInfos,
+        A: GGSWInfos,
+        B: GGSWInfos,
     {
-        GLWE::external_product_scratch_space(
-            module,
-            &out_infos.glwe_layout(),
-            &in_infos.glwe_layout(),
-            ggsw_infos,
-        )
+        self.glwe_external_product_scratch_space(res_infos, a_infos, b_infos)
     }
 
-    pub fn external_product_inplace_scratch_space<B: Backend, OUT, GGSW>(
-        module: &Module<B>,
-        out_infos: &OUT,
-        ggsw_infos: &GGSW,
+    fn ggsw_external_product<R, A, B>(&self, res: &mut R, a: &A, b: &B, scratch: &mut Scratch<BE>)
+    where
+        R: GGSWToMut,
+        A: GGSWToRef,
+        B: GGSWPreparedToRef<BE>,
+        Scratch<BE>: ScratchTakeCore<BE>,
+    {
+        let res: &mut GGSW<&mut [u8]> = &mut res.to_mut();
+        let a: &GGSW<&[u8]> = &a.to_ref();
+        let b: &GGSWPrepared<&[u8], BE> = &b.to_ref();
+
+        assert_eq!(
+            res.rank(),
+            a.rank(),
+            "res rank: {} != a rank: {}",
+            res.rank(),
+            a.rank()
+        );
+        assert_eq!(
+            res.rank(),
+            b.rank(),
+            "res rank: {} != b rank: {}",
+            res.rank(),
+            b.rank()
+        );
+
+        assert!(scratch.available() >= self.ggsw_external_product_tmp_bytes(res, a, b));
+
+        let min_dnum: usize = res.dnum().min(a.dnum()).into();
+
+        for row in 0..min_dnum {
+            for col in 0..(res.rank() + 1).into() {
+                self.glwe_external_product(&mut res.at_mut(row, col), &a.at(row, col), b, scratch);
+            }
+        }
+
+        for row in min_dnum..res.dnum().into() {
+            for col in 0..(res.rank() + 1).into() {
+                res.at_mut(row, col).data.zero();
+            }
+        }
+    }
+
+    fn ggsw_external_product_inplace<R, A>(&self, res: &mut R, a: &A, scratch: &mut Scratch<BE>)
+    where
+        R: GGSWToMut,
+        A: GGSWPreparedToRef<BE>,
+        Scratch<BE>: ScratchTakeCore<BE>,
+    {
+        let res: &mut GGSW<&mut [u8]> = &mut res.to_mut();
+        let a: &GGSWPrepared<&[u8], BE> = &a.to_ref();
+
+        assert_eq!(res.n(), self.n() as u32);
+        assert_eq!(a.n(), self.n() as u32);
+        assert_eq!(
+            res.rank(),
+            a.rank(),
+            "res rank: {} != a rank: {}",
+            res.rank(),
+            a.rank()
+        );
+
+        for row in 0..res.dnum().into() {
+            for col in 0..(res.rank() + 1).into() {
+                self.glwe_external_product_inplace(&mut res.at_mut(row, col), a, scratch);
+            }
+        }
+    }
+}
+
+impl<BE: Backend> GGSWExternalProduct<BE> for Module<BE> where Self: GLWEExternalProduct<BE> {}
+
+impl GGSW<Vec<u8>> {
+    pub fn external_product_tmp_bytes<R, A, B, M, BE: Backend>(
+        &self,
+        module: &M,
+        res_infos: &R,
+        a_infos: &A,
+        b_infos: &B,
     ) -> usize
     where
-        OUT: GGSWInfos,
-        GGSW: GGSWInfos,
-        Module<B>: VecZnxDftBytesOf + VmpApplyDftToDftTmpBytes + VecZnxNormalizeTmpBytes,
+        R: GGSWInfos,
+        A: GGSWInfos,
+        B: GGSWInfos,
+        M: GGSWExternalProduct<BE>,
     {
-        GLWE::external_product_inplace_scratch_space(module, &out_infos.glwe_layout(), ggsw_infos)
+        module.ggsw_external_product_tmp_bytes(res_infos, a_infos, b_infos)
     }
 }
 
@@ -52,54 +121,7 @@ impl<DataSelf: DataMut> GGSW<DataSelf> {
         lhs: &GGSW<DataLhs>,
         rhs: &GGSWPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
-    ) where
-        Module<B>: VecZnxDftBytesOf
-            + VmpApplyDftToDftTmpBytes
-            + VecZnxNormalizeTmpBytes
-            + VecZnxDftApply<B>
-            + VmpApplyDftToDft<B>
-            + VmpApplyDftToDftAdd<B>
-            + VecZnxIdftApplyConsume<B>
-            + VecZnxBigNormalize<B>
-            + VecZnxNormalize<B>,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
-    {
-        #[cfg(debug_assertions)]
-        {
-            use crate::layouts::LWEInfos;
-
-            assert_eq!(lhs.n(), self.n());
-            assert_eq!(rhs.n(), self.n());
-
-            assert_eq!(
-                self.rank(),
-                lhs.rank(),
-                "ggsw_out rank: {} != ggsw_in rank: {}",
-                self.rank(),
-                lhs.rank()
-            );
-            assert_eq!(
-                self.rank(),
-                rhs.rank(),
-                "ggsw_in rank: {} != ggsw_apply rank: {}",
-                self.rank(),
-                rhs.rank()
-            );
-
-            assert!(scratch.available() >= GGSW::external_product_scratch_space(module, self, lhs, rhs))
-        }
-
-        let min_dnum: usize = self.dnum().min(lhs.dnum()).into();
-
-        (0..(self.rank() + 1).into()).for_each(|col_i| {
-            (0..min_dnum).for_each(|row_j| {
-                self.at_mut(row_j, col_i)
-                    .external_product(module, &lhs.at(row_j, col_i), rhs, scratch);
-            });
-            (min_dnum..self.dnum().into()).for_each(|row_i| {
-                self.at_mut(row_i, col_i).data.zero();
-            });
-        });
+    ) {
     }
 
     pub fn external_product_inplace<DataRhs: DataRef, B: Backend>(
@@ -107,37 +129,6 @@ impl<DataSelf: DataMut> GGSW<DataSelf> {
         module: &Module<B>,
         rhs: &GGSWPrepared<DataRhs, B>,
         scratch: &mut Scratch<B>,
-    ) where
-        Module<B>: VecZnxDftBytesOf
-            + VmpApplyDftToDftTmpBytes
-            + VecZnxNormalizeTmpBytes
-            + VecZnxDftApply<B>
-            + VmpApplyDftToDft<B>
-            + VmpApplyDftToDftAdd<B>
-            + VecZnxIdftApplyConsume<B>
-            + VecZnxBigNormalize<B>
-            + VecZnxNormalize<B>,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
-    {
-        #[cfg(debug_assertions)]
-        {
-            use crate::layouts::LWEInfos;
-
-            assert_eq!(rhs.n(), self.n());
-            assert_eq!(
-                self.rank(),
-                rhs.rank(),
-                "ggsw_out rank: {} != ggsw_apply: {}",
-                self.rank(),
-                rhs.rank()
-            );
-        }
-
-        (0..(self.rank() + 1).into()).for_each(|col_i| {
-            (0..self.dnum().into()).for_each(|row_j| {
-                self.at_mut(row_j, col_i)
-                    .external_product_inplace(module, rhs, scratch);
-            });
-        });
+    ) {
     }
 }

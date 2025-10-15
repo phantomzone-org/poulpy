@@ -1,7 +1,7 @@
 use poulpy_hal::{
     api::{
-        SvpApplyDftToDftInplace, TakeVecZnxBig, TakeVecZnxDft, VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigNormalize,
-        VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxNormalizeTmpBytes,
+        SvpApplyDftToDftInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigNormalize, VecZnxDftApply,
+        VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxNormalizeTmpBytes,
     },
     layouts::{Backend, DataMut, DataRef, DataViewMut, Module, Scratch},
 };
@@ -33,7 +33,7 @@ impl<DataSelf: DataRef> GLWE<DataSelf> {
             + VecZnxBigAddInplace<B>
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>,
-        Scratch<B>: TakeVecZnxDft<B> + TakeVecZnxBig<B>,
+        Scratch<B>:,
     {
         #[cfg(debug_assertions)]
         {

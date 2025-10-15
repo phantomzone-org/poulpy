@@ -1,19 +1,16 @@
 use poulpy_hal::{
     api::{
-        ScratchAvailable, SvpApplyDftToDftInplace, SvpPPolBytesOf, SvpPrepare, TakeScalarZnx, TakeVecZnx, TakeVecZnxDft,
-        VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxAutomorphismInplace, VecZnxBigNormalize, VecZnxDftApply,
-        VecZnxDftBytesOf, VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeInplace,
-        VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubInplace, VecZnxSwitchRing,
+        ScratchAvailable, SvpApplyDftToDftInplace, SvpPPolBytesOf, SvpPrepare, VecZnxAddInplace, VecZnxAddNormal,
+        VecZnxAddScalarInplace, VecZnxAutomorphismInplace, VecZnxBigNormalize, VecZnxDftApply, VecZnxDftBytesOf,
+        VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub,
+        VecZnxSubInplace, VecZnxSwitchRing,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch, ZnxView, ZnxViewMut, ZnxZero},
     source::Source,
 };
 
-use crate::{
-    TakeGLWESecret, TakeGLWESecretPrepared,
-    layouts::{
-        GGLWEInfos, GLWESecret, GLWESwitchingKey, GLWEToLWESwitchingKey, LWEInfos, LWESecret, Rank, prepared::GLWESecretPrepared,
-    },
+use crate::layouts::{
+    GGLWEInfos, GLWESecret, GLWESwitchingKey, GLWEToLWESwitchingKey, LWEInfos, LWESecret, Rank, prepared::GLWESecretPrepared,
 };
 
 impl GLWEToLWESwitchingKey<Vec<u8>> {
@@ -58,7 +55,7 @@ impl<D: DataMut> GLWEToLWESwitchingKey<D> {
             + SvpPrepare<B>
             + VecZnxSwitchRing
             + SvpPPolBytesOf,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx + TakeScalarZnx + TakeGLWESecretPrepared<B>,
+        Scratch<B>: ScratchAvailable,
     {
         #[cfg(debug_assertions)]
         {

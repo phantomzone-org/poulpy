@@ -1,14 +1,10 @@
 use poulpy_hal::{
-    api::{
-        ScratchAvailable, TakeVecZnx, TakeVecZnxDft, VecZnxAddScalarInplace, VecZnxDftBytesOf, VecZnxNormalizeInplace,
-        VecZnxNormalizeTmpBytes,
-    },
+    api::{ScratchAvailable, VecZnxAddScalarInplace, VecZnxDftBytesOf, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes},
     layouts::{Backend, DataMut, DataRef, Module, ScalarZnx, ScalarZnxToRef, Scratch, ZnxZero},
     source::Source,
 };
 
 use crate::{
-    TakeGLWEPlaintext,
     encryption::glwe_ct::GLWEEncryptSk,
     layouts::{
         GGLWE, GGLWEInfos, GGLWEToMut, GLWE, GLWEPlaintext, LWEInfos,
@@ -23,7 +19,7 @@ impl GGLWE<Vec<u8>> {
         Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftBytesOf + VecZnxNormalizeTmpBytes,
     {
         GLWE::encrypt_sk_scratch_space(module, &infos.glwe_layout())
-            + (GLWEPlaintext::bytes_of(&infos.glwe_layout()) | module.vec_znx_normalize_tmp_bytes())
+            + (GLWEPlaintext::bytes_of_from_infos(module, &infos.glwe_layout()) | module.vec_znx_normalize_tmp_bytes())
     }
 
     pub fn encrypt_pk_scratch_space<B: Backend, A>(_module: &Module<B>, _infos: &A) -> usize
@@ -52,7 +48,7 @@ pub trait GGLWEEncryptSk<B: Backend> {
 impl<B: Backend> GGLWEEncryptSk<B> for Module<B>
 where
     Module<B>: GLWEEncryptSk<B> + VecZnxNormalizeTmpBytes + VecZnxDftBytesOf + VecZnxAddScalarInplace + VecZnxNormalizeInplace<B>,
-    Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
+    Scratch<B>: ScratchAvailable,
 {
     fn gglwe_encrypt_sk<R, P, S>(
         &self,

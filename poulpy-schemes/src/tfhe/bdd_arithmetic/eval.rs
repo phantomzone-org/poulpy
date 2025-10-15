@@ -3,7 +3,7 @@ use poulpy_core::{
     GLWEExternalProductInplace, GLWEOperations, TakeGLWESlice,
     layouts::{
         GLWE, GLWEToMut, LWEInfos,
-        prepared::{GGSWCiphertextPreparedToRef, GGSWPrepared},
+        prepared::{GGSWPrepared, GGSWPreparedToRef},
     },
 };
 use poulpy_hal::{
@@ -39,7 +39,7 @@ where
         &self,
         module: &Module<BE>,
         out: &mut [GLWE<O>],
-        inputs: &[&dyn GGSWCiphertextPreparedToRef<BE>],
+        inputs: &[&dyn GGSWPreparedToRef<BE>],
         scratch: &mut Scratch<BE>,
     ) where
         O: DataMut;
@@ -55,7 +55,7 @@ where
         &self,
         module: &Module<BE>,
         out: &mut [GLWE<O>],
-        inputs: &[&dyn GGSWCiphertextPreparedToRef<BE>],
+        inputs: &[&dyn GGSWPreparedToRef<BE>],
         scratch: &mut Scratch<BE>,
     ) where
         O: DataMut,

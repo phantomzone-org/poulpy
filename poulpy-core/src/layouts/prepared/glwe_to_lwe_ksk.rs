@@ -105,31 +105,36 @@ where
     }
 }
 
-impl<B: Backend> GLWEToLWESwitchingKeyPreparedAlloc<B> for Module<B> where Module<B>: GLWESwitchingKeyPreparedAlloc<B> {}
+impl<B: Backend> GLWEToLWESwitchingKeyPreparedAlloc<B> for Module<B> where Self: GLWESwitchingKeyPreparedAlloc<B> {}
 
-impl<B: Backend> GLWEToLWESwitchingKeyPrepared<Vec<u8>, B>
-where
-    Module<B>: GLWEToLWESwitchingKeyPreparedAlloc<B>,
-{
-    pub fn alloc_from_infos<A>(module: &Module<B>, infos: &A) -> Self
+impl<B: Backend> GLWEToLWESwitchingKeyPrepared<Vec<u8>, B> {
+    pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
     where
         A: GGLWEInfos,
+        M: GLWEToLWESwitchingKeyPreparedAlloc<B>,
     {
         module.alloc_glwe_to_lwe_switching_key_prepared_from_infos(infos)
     }
 
-    pub fn alloc(module: &Module<B>, base2k: Base2K, k: TorusPrecision, rank_in: Rank, dnum: Dnum) -> Self {
+    pub fn alloc<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank_in: Rank, dnum: Dnum) -> Self
+    where
+        M: GLWEToLWESwitchingKeyPreparedAlloc<B>,
+    {
         module.alloc_glwe_to_lwe_switching_key_prepared(base2k, k, rank_in, dnum)
     }
 
-    pub fn bytes_of_from_infos<A>(module: &Module<B>, infos: &A) -> usize
+    pub fn bytes_of_from_infos<A, M>(module: &M, infos: &A) -> usize
     where
         A: GGLWEInfos,
+        M: GLWEToLWESwitchingKeyPreparedAlloc<B>,
     {
         module.bytes_of_glwe_to_lwe_switching_key_prepared_from_infos(infos)
     }
 
-    pub fn bytes_of(module: &Module<B>, base2k: Base2K, k: TorusPrecision, rank_in: Rank, dnum: Dnum) -> usize {
+    pub fn bytes_of<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank_in: Rank, dnum: Dnum) -> usize
+    where
+        M: GLWEToLWESwitchingKeyPreparedAlloc<B>,
+    {
         module.bytes_of_glwe_to_lwe_switching_key_prepared(base2k, k, rank_in, dnum)
     }
 }
@@ -157,20 +162,20 @@ where
 impl<B: Backend> GLWEToLWESwitchingKeyPrepare<B> for Module<B> where Self: GLWESwitchingKeyPrepare<B> {}
 
 impl<B: Backend> GLWEToLWESwitchingKeyPrepared<Vec<u8>, B> {
-    pub fn prepare_tmp_bytes<A>(&self, module: &Module<B>, infos: &A)
+    pub fn prepare_tmp_bytes<A, M>(&self, module: &M, infos: &A)
     where
         A: GGLWEInfos,
-        Module<B>: GLWEToLWESwitchingKeyPrepare<B>,
+        M: GLWEToLWESwitchingKeyPrepare<B>,
     {
         module.prepare_glwe_to_lwe_switching_key_tmp_bytes(infos);
     }
 }
 
 impl<D: DataMut, B: Backend> GLWEToLWESwitchingKeyPrepared<D, B> {
-    fn prepare<O>(&mut self, module: &Module<B>, other: &O, scratch: &mut Scratch<B>)
+    fn prepare<O, M>(&mut self, module: &M, other: &O, scratch: &mut Scratch<B>)
     where
         O: GLWEToLWESwitchingKeyToRef,
-        Module<B>: GLWEToLWESwitchingKeyPrepare<B>,
+        M: GLWEToLWESwitchingKeyPrepare<B>,
     {
         module.prepare_glwe_to_lwe_switching_key(self, other, scratch);
     }

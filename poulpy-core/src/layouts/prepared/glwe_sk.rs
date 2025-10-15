@@ -77,29 +77,34 @@ where
 
 impl<B: Backend> GLWESecretPreparedAlloc<B> for Module<B> where Self: GetDegree + SvpPPolBytesOf + SvpPPolAlloc<B> {}
 
-impl<B: Backend> GLWESecretPrepared<Vec<u8>, B>
-where
-    Module<B>: GLWESecretPreparedAlloc<B>,
-{
-    pub fn alloc_from_infos<A>(module: &Module<B>, infos: &A) -> Self
+impl<B: Backend> GLWESecretPrepared<Vec<u8>, B> {
+    pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
     where
         A: GLWEInfos,
+        M: GLWESecretPreparedAlloc<B>,
     {
         module.alloc_glwe_secret_prepared_from_infos(infos)
     }
 
-    pub fn alloc(module: &Module<B>, rank: Rank) -> Self {
+    pub fn alloc<M>(module: &M, rank: Rank) -> Self
+    where
+        M: GLWESecretPreparedAlloc<B>,
+    {
         module.alloc_glwe_secret_prepared(rank)
     }
 
-    pub fn bytes_of_from_infos<A>(module: &Module<B>, infos: &A) -> usize
+    pub fn bytes_of_from_infos<A, M>(module: &M, infos: &A) -> usize
     where
         A: GLWEInfos,
+        M: GLWESecretPreparedAlloc<B>,
     {
         module.bytes_of_glwe_secret_from_infos(infos)
     }
 
-    pub fn bytes_of(module: &Module<B>, rank: Rank) -> usize {
+    pub fn bytes_of<M>(module: &M, rank: Rank) -> usize
+    where
+        M: GLWESecretPreparedAlloc<B>,
+    {
         module.bytes_of_glwe_secret(rank)
     }
 }
@@ -137,6 +142,16 @@ where
 }
 
 impl<B: Backend> GLWESecretPrepare<B> for Module<B> where Self: SvpPrepare<B> {}
+
+impl<D: DataMut, B: Backend> GLWESecretPrepared<D, B> {
+    pub fn prepare<M, O>(&mut self, module: &M, other: &O)
+    where
+        M: GLWESecretPrepare<B>,
+        O: GLWESecretToRef + GetDist,
+    {
+        module.prepare_glwe_secret(self, other);
+    }
+}
 
 pub trait GLWESecretPreparedToRef<B: Backend> {
     fn to_ref(&self) -> GLWESecretPrepared<&[u8], B>;

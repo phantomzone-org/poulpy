@@ -2,17 +2,17 @@ use std::collections::HashMap;
 
 use poulpy_hal::{
     api::{
-        ScratchAvailable, TakeVecZnx, TakeVecZnxDft, VecZnxAddInplace, VecZnxAutomorphismInplace, VecZnxBigAddSmallInplace,
-        VecZnxBigAutomorphismInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallNegateInplace, VecZnxCopy,
-        VecZnxDftApply, VecZnxDftBytesOf, VecZnxDftCopy, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA, VecZnxNegateInplace,
-        VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace, VecZnxRshInplace,
-        VecZnxSub, VecZnxSubInplace, VecZnxSwitchRing, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
+        ScratchAvailable, VecZnxAddInplace, VecZnxAutomorphismInplace, VecZnxBigAddSmallInplace, VecZnxBigAutomorphismInplace,
+        VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallNegateInplace, VecZnxCopy, VecZnxDftApply,
+        VecZnxDftBytesOf, VecZnxDftCopy, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA, VecZnxNegateInplace, VecZnxNormalize,
+        VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace, VecZnxRshInplace, VecZnxSub,
+        VecZnxSubInplace, VecZnxSwitchRing, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
 };
 
 use crate::{
-    GLWEOperations, TakeGLWE,
+    GLWEOperations,
     layouts::{GGLWEInfos, GLWE, GLWEInfos, LWEInfos, prepared::AutomorphismKeyPrepared},
 };
 
@@ -43,12 +43,12 @@ impl Accumulator {
     /// * `base2k`: base 2 logarithm of the GLWE ciphertext in memory digit representation.
     /// * `k`: base 2 precision of the GLWE ciphertext precision over the Torus.
     /// * `rank`: rank of the GLWE ciphertext.
-    pub fn alloc<A>(infos: &A) -> Self
+    pub fn alloc<A, B: Backend>(module: &Module<B>, infos: &A) -> Self
     where
         A: GLWEInfos,
     {
         Self {
-            data: GLWE::alloc_from_infos(infos),
+            data: GLWE::alloc_from_infos(module, infos),
             value: false,
             control: false,
         }
@@ -66,13 +66,13 @@ impl GLWEPacker {
     ///   and N GLWE ciphertext can be packed. With `log_batch=2` all coefficients
     ///   which are multiples of X^{N/4} are packed. Meaning that N/4 ciphertexts
     ///   can be packed.
-    pub fn new<A>(infos: &A, log_batch: usize) -> Self
+    pub fn new<A, B: Backend>(module: Module<B>, infos: &A, log_batch: usize) -> Self
     where
         A: GLWEInfos,
     {
         let mut accumulators: Vec<Accumulator> = Vec::<Accumulator>::new();
         let log_n: usize = infos.n().log2();
-        (0..log_n - log_batch).for_each(|_| accumulators.push(Accumulator::alloc(infos)));
+        (0..log_n - log_batch).for_each(|_| accumulators.push(Accumulator::alloc(module, infos)));
         Self {
             accumulators,
             log_batch,
@@ -142,7 +142,7 @@ impl GLWEPacker {
             + VecZnxBigAutomorphismInplace<B>
             + VecZnxNormalize<B>
             + VecZnxNormalizeTmpBytes,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
+        Scratch<B>: ScratchAvailable,
     {
         assert!(
             (self.counter as u32) < self.accumulators[0].data.n(),
@@ -217,7 +217,7 @@ fn pack_core<D: DataRef, DataAK: DataRef, B: Backend>(
         + VecZnxBigAutomorphismInplace<B>
         + VecZnxNormalize<B>
         + VecZnxNormalizeTmpBytes,
-    Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
+    Scratch<B>: ScratchAvailable,
 {
     let log_n: usize = module.log_n();
 
@@ -274,7 +274,7 @@ where
     KEY: GGLWEInfos,
     Module<B>: VecZnxDftBytesOf + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
 {
-    GLWE::bytes_of(out_infos)
+    GLWE::bytes_of_from_infos(module, out_infos)
         + (GLWE::rsh_scratch_space(module.n()) | GLWE::automorphism_inplace_scratch_space(module, out_infos, key_infos))
 }
 
@@ -310,7 +310,7 @@ fn combine<D: DataRef, DataAK: DataRef, B: Backend>(
         + VecZnxBigAutomorphismInplace<B>
         + VecZnxNormalize<B>
         + VecZnxNormalizeTmpBytes,
-    Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx + TakeGLWE,
+    Scratch<B>: ScratchAvailable,
 {
     let log_n: usize = acc.data.n().log2();
     let a: &mut GLWE<Vec<u8>> = &mut acc.data;
@@ -426,7 +426,7 @@ pub fn glwe_packing<D: DataMut, ATK, B: Backend>(
         + VecZnxBigSubSmallNegateInplace<B>
         + VecZnxRotate
         + VecZnxNormalize<B>,
-    Scratch<B>: TakeVecZnx + TakeVecZnxDft<B> + ScratchAvailable,
+    Scratch<B>: ScratchAvailable,
 {
     #[cfg(debug_assertions)]
     {
@@ -493,7 +493,7 @@ fn pack_internal<A: DataMut, D: DataMut, DataAK: DataRef, B: Backend>(
         + VecZnxBigSubSmallNegateInplace<B>
         + VecZnxRotate
         + VecZnxNormalize<B>,
-    Scratch<B>: TakeVecZnx + TakeVecZnxDft<B> + ScratchAvailable,
+    Scratch<B>: ScratchAvailable,
 {
     // Goal is to evaluate: a = a + b*X^t + phi(a - b*X^t))
     // We also use the identity: AUTO(a * X^t, g) = -X^t * AUTO(a, g)

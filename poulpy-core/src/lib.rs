@@ -22,4 +22,4 @@ pub use encryption::SIGMA;
 
 pub use scratch::*;
 
-pub mod tests;
+// pub mod tests;

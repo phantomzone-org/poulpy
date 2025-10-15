@@ -5,7 +5,6 @@ use poulpy_hal::{
 };
 
 use crate::{
-    TakeGLWEPlaintext,
     encryption::{SIGMA, glwe_ct::GLWEEncryptSkInternal},
     layouts::{
         GGSW, GGSWInfos, GLWEInfos, LWEInfos,
@@ -42,7 +41,7 @@ pub trait GGSWCompressedEncryptSk<B: Backend> {
 impl<B: Backend> GGSWCompressedEncryptSk<B> for Module<B>
 where
     Module<B>: GLWEEncryptSkInternal<B> + VecZnxAddScalarInplace + VecZnxNormalizeInplace<B>,
-    Scratch<B>: TakeGLWEPlaintext<B>,
+    Scratch<B>:,
 {
     fn ggsw_compressed_encrypt_sk<R, P, S>(
         &self,

@@ -188,32 +188,32 @@ where
 impl<B: Backend> GLWEAlloc for Module<B> where Self: GetDegree {}
 
 impl GLWE<Vec<u8>> {
-    pub fn alloc_from_infos<A, B: Backend>(module: Module<B>, infos: &A) -> Self
+    pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
     where
         A: GLWEInfos,
-        Module<B>: GLWEAlloc,
+        M: GLWEAlloc,
     {
         module.alloc_glwe_from_infos(infos)
     }
 
-    pub fn alloc<B: Backend>(module: Module<B>, base2k: Base2K, k: TorusPrecision, rank: Rank) -> Self
+    pub fn alloc<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank: Rank) -> Self
     where
-        Module<B>: GLWEAlloc,
+        M: GLWEAlloc,
     {
         module.alloc_glwe(base2k, k, rank)
     }
 
-    pub fn bytes_of_from_infos<A, B: Backend>(module: Module<B>, infos: &A) -> usize
+    pub fn bytes_of_from_infos<A, M>(module: &M, infos: &A) -> usize
     where
         A: GLWEInfos,
-        Module<B>: GLWEAlloc,
+        M: GLWEAlloc,
     {
         module.bytes_of_glwe_from_infos(infos)
     }
 
-    pub fn bytes_of<B: Backend>(module: Module<B>, base2k: Base2K, k: TorusPrecision, rank: Rank) -> usize
+    pub fn bytes_of<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank: Rank) -> usize
     where
-        Module<B>: GLWEAlloc,
+        M: GLWEAlloc,
     {
         module.bytes_of_glwe(base2k, k, rank)
     }

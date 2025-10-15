@@ -135,31 +135,36 @@ where
     }
 }
 
-impl<B: Backend> GGSWPreparedAlloc<B> for Module<B> where Module<B>: GetDegree + VmpPMatAlloc<B> + VmpPMatBytesOf {}
+impl<B: Backend> GGSWPreparedAlloc<B> for Module<B> where Self: GetDegree + VmpPMatAlloc<B> + VmpPMatBytesOf {}
 
-impl<B: Backend> GGSWPrepared<Vec<u8>, B>
-where
-    Module<B>: GGSWPreparedAlloc<B>,
-{
-    pub fn alloc_from_infos<A>(module: &Module<B>, infos: &A) -> Self
+impl<B: Backend> GGSWPrepared<Vec<u8>, B> {
+    pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
     where
         A: GGSWInfos,
+        M: GGSWPreparedAlloc<B>,
     {
         module.alloc_ggsw_prepared_from_infos(infos)
     }
 
-    pub fn alloc(module: &Module<B>, base2k: Base2K, k: TorusPrecision, dnum: Dnum, dsize: Dsize, rank: Rank) -> Self {
+    pub fn alloc<M>(module: &M, base2k: Base2K, k: TorusPrecision, dnum: Dnum, dsize: Dsize, rank: Rank) -> Self
+    where
+        M: GGSWPreparedAlloc<B>,
+    {
         module.alloc_ggsw_prepared(base2k, k, dnum, dsize, rank)
     }
 
-    pub fn bytes_of_from_infos<A>(module: &Module<B>, infos: &A) -> usize
+    pub fn bytes_of_from_infos<A, M>(module: &M, infos: &A) -> usize
     where
         A: GGSWInfos,
+        M: GGSWPreparedAlloc<B>,
     {
         module.bytes_of_ggsw_prepared_from_infos(infos)
     }
 
-    pub fn bytes_of(module: &Module<B>, base2k: Base2K, k: TorusPrecision, dnum: Dnum, dsize: Dsize, rank: Rank) -> usize {
+    pub fn bytes_of<M>(module: &M, base2k: Base2K, k: TorusPrecision, dnum: Dnum, dsize: Dsize, rank: Rank) -> usize
+    where
+        M: GGSWPreparedAlloc<B>,
+    {
         module.bytes_of_ggsw_prepared(base2k, k, dnum, dsize, rank)
     }
 }
@@ -204,25 +209,21 @@ where
 
 impl<B: Backend> GGSWPrepare<B> for Module<B> where Self: GetDegree + VmpPrepareTmpBytes + VmpPrepare<B> {}
 
-impl<B: Backend> GGSWPrepared<Vec<u8>, B>
-where
-    Module<B>: GGSWPrepare<B>,
-{
-    pub fn prepare_tmp_bytes<A>(&self, module: Module<B>, infos: &A) -> usize
+impl<B: Backend> GGSWPrepared<Vec<u8>, B> {
+    pub fn prepare_tmp_bytes<A, M>(&self, module: &M, infos: &A) -> usize
     where
         A: GGSWInfos,
+        M: GGSWPrepare<B>,
     {
         module.ggsw_prepare_tmp_bytes(infos)
     }
 }
 
-impl<D: DataMut, B: Backend> GGSWPrepared<D, B>
-where
-    Module<B>: GGSWPrepare<B>,
-{
-    pub fn prepare<O>(&mut self, module: &Module<B>, other: &O, scratch: &mut Scratch<B>)
+impl<D: DataMut, B: Backend> GGSWPrepared<D, B> {
+    pub fn prepare<O, M>(&mut self, module: &M, other: &O, scratch: &mut Scratch<B>)
     where
         O: GGSWToRef,
+        M: GGSWPrepare<B>,
     {
         module.ggsw_prepare(self, other, scratch);
     }
@@ -243,11 +244,11 @@ impl<D: DataMut, B: Backend> GGSWPreparedToMut<B> for GGSWPrepared<D, B> {
     }
 }
 
-pub trait GGSWCiphertextPreparedToRef<B: Backend> {
+pub trait GGSWPreparedToRef<B: Backend> {
     fn to_ref(&self) -> GGSWPrepared<&[u8], B>;
 }
 
-impl<D: DataRef, B: Backend> GGSWCiphertextPreparedToRef<B> for GGSWPrepared<D, B> {
+impl<D: DataRef, B: Backend> GGSWPreparedToRef<B> for GGSWPrepared<D, B> {
     fn to_ref(&self) -> GGSWPrepared<&[u8], B> {
         GGSWPrepared {
             base2k: self.base2k,

@@ -153,33 +153,35 @@ pub trait LWEAlloc {
     }
 }
 
+impl<B: Backend> LWEAlloc for Module<B> {}
+
 impl LWE<Vec<u8>> {
-    pub fn alloc_from_infos<A, B: Backend>(module: &Module<B>, infos: &A) -> Self
+    pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
     where
         A: LWEInfos,
-        Module<B>: LWEAlloc,
+        M: LWEAlloc,
     {
         module.alloc_lwe_from_infos(infos)
     }
 
-    pub fn alloc<B: Backend>(module: &Module<B>, n: Degree, base2k: Base2K, k: TorusPrecision) -> Self
+    pub fn alloc<M>(module: &M, n: Degree, base2k: Base2K, k: TorusPrecision) -> Self
     where
-        Module<B>: LWEAlloc,
+        M: LWEAlloc,
     {
         module.alloc_lwe(n, base2k, k)
     }
 
-    pub fn bytes_of_from_infos<A, B: Backend>(module: &Module<B>, infos: &A) -> usize
+    pub fn bytes_of_from_infos<A, M>(module: &M, infos: &A) -> usize
     where
         A: LWEInfos,
-        Module<B>: LWEAlloc,
+        M: LWEAlloc,
     {
         module.bytes_of_lwe_from_infos(infos)
     }
 
-    pub fn bytes_of<B: Backend>(module: &Module<B>, n: Degree, base2k: Base2K, k: TorusPrecision) -> usize
+    pub fn bytes_of<M>(module: &M, n: Degree, base2k: Base2K, k: TorusPrecision) -> usize
     where
-        Module<B>: LWEAlloc,
+        M: LWEAlloc,
     {
         module.bytes_of_lwe(n, base2k, k)
     }

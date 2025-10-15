@@ -140,32 +140,32 @@ where
 }
 
 impl LWEToGLWESwitchingKeyCompressed<Vec<u8>> {
-    pub fn alloc<A, B: Backend>(module: &Module<B>, infos: &A) -> Self
+    pub fn alloc<A, M>(module: &M, infos: &A) -> Self
     where
         A: GGLWEInfos,
-        Module<B>: LWEToGLWESwitchingKeyCompressedAlloc,
+        M: LWEToGLWESwitchingKeyCompressedAlloc,
     {
         module.alloc_lwe_to_glwe_switching_key_compressed_from_infos(infos)
     }
 
-    pub fn alloc_with<B: Backend>(module: &Module<B>, base2k: Base2K, k: TorusPrecision, rank_out: Rank, dnum: Dnum) -> Self
+    pub fn alloc_with<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank_out: Rank, dnum: Dnum) -> Self
     where
-        Module<B>: LWEToGLWESwitchingKeyCompressedAlloc,
+        M: LWEToGLWESwitchingKeyCompressedAlloc,
     {
         module.alloc_lwe_to_glwe_switching_key_compressed(base2k, k, rank_out, dnum)
     }
 
-    pub fn bytes_of_from_infos<A, B: Backend>(module: &Module<B>, infos: &A) -> usize
+    pub fn bytes_of_from_infos<A, M>(module: &M, infos: &A) -> usize
     where
         A: GGLWEInfos,
-        Module<B>: LWEToGLWESwitchingKeyCompressedAlloc,
+        M: LWEToGLWESwitchingKeyCompressedAlloc,
     {
         module.bytes_of_lwe_to_glwe_switching_key_compressed_from_infos(infos)
     }
 
-    pub fn bytes_of<B: Backend>(module: &Module<B>, base2k: Base2K, k: TorusPrecision, dnum: Dnum) -> usize
+    pub fn bytes_of<M>(module: &M, base2k: Base2K, k: TorusPrecision, dnum: Dnum) -> usize
     where
-        Module<B>: LWEToGLWESwitchingKeyCompressedAlloc,
+        M: LWEToGLWESwitchingKeyCompressedAlloc,
     {
         module.bytes_of_lwe_to_glwe_switching_key_compressed(base2k, k, dnum)
     }
@@ -187,10 +187,10 @@ where
 impl<B: Backend> LWEToGLWESwitchingKeyDecompress for Module<B> where Self: GLWESwitchingKeyDecompress {}
 
 impl<D: DataMut> LWEToGLWESwitchingKey<D> {
-    pub fn decompress<O, B: Backend>(&mut self, module: &Module<B>, other: &O)
+    pub fn decompress<O, M>(&mut self, module: &M, other: &O)
     where
         O: LWEToGLWESwitchingKeyCompressedToRef,
-        Module<B>: LWEToGLWESwitchingKeyDecompress,
+        M: LWEToGLWESwitchingKeyDecompress,
     {
         module.decompress_lwe_to_glwe_switching_key(self, other);
     }

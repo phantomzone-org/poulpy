@@ -106,32 +106,32 @@ where
 impl<B: Backend> GLWECompressedAlloc for Module<B> where Self: GetDegree {}
 
 impl GLWECompressed<Vec<u8>> {
-    pub fn alloc_from_infos<A, B: Backend>(module: &Module<B>, infos: &A) -> Self
+    pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
     where
         A: GLWEInfos,
-        Module<B>: GLWECompressedAlloc,
+        M: GLWECompressedAlloc,
     {
         module.alloc_glwe_compressed_from_infos(infos)
     }
 
-    pub fn alloc<B: Backend>(module: &Module<B>, base2k: Base2K, k: TorusPrecision, rank: Rank) -> Self
+    pub fn alloc<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank: Rank) -> Self
     where
-        Module<B>: GLWECompressedAlloc,
+        M: GLWECompressedAlloc,
     {
         module.alloc_glwe_compressed(base2k, k, rank)
     }
 
-    pub fn bytes_of_from_infos<A, B: Backend>(module: &Module<B>, infos: &A) -> usize
+    pub fn bytes_of_from_infos<A, M>(module: &M, infos: &A) -> usize
     where
         A: GLWEInfos,
-        Module<B>: GLWECompressedAlloc,
+        M: GLWECompressedAlloc,
     {
         module.bytes_of_glwe_compressed_from_infos(infos)
     }
 
-    pub fn bytes_of<B: Backend>(module: &Module<B>, base2k: Base2K, k: TorusPrecision) -> usize
+    pub fn bytes_of<M>(module: &M, base2k: Base2K, k: TorusPrecision) -> usize
     where
-        Module<B>: GLWECompressedAlloc,
+        M: GLWECompressedAlloc,
     {
         module.bytes_of_glwe_compressed(base2k, k)
     }
@@ -196,10 +196,10 @@ where
 impl<B: Backend> GLWEDecompress for Module<B> where Self: GetDegree + VecZnxFillUniform + VecZnxCopy {}
 
 impl<D: DataMut> GLWE<D> {
-    pub fn decompress<O, B: Backend>(&mut self, module: &Module<B>, other: &O)
+    pub fn decompress<O, M>(&mut self, module: &M, other: &O)
     where
         O: GLWECompressedToRef + GLWEInfos,
-        Module<B>: GLWEDecompress,
+        M: GLWEDecompress,
     {
         module.decompress_glwe(self, other);
     }

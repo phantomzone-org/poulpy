@@ -1,9 +1,9 @@
 use poulpy_hal::{
     api::{
-        ScratchAvailable, TakeVecZnx, TakeVecZnxDft, VecZnxAutomorphismInplace, VecZnxBigAddSmallInplace,
-        VecZnxBigAutomorphismInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallInplace,
-        VecZnxBigSubSmallNegateInplace, VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxNormalize,
-        VecZnxNormalizeTmpBytes, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
+        ScratchAvailable, VecZnxAutomorphismInplace, VecZnxBigAddSmallInplace, VecZnxBigAutomorphismInplace, VecZnxBigNormalize,
+        VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallInplace, VecZnxBigSubSmallNegateInplace, VecZnxDftApply, VecZnxDftBytesOf,
+        VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeTmpBytes, VmpApplyDftToDft, VmpApplyDftToDftAdd,
+        VmpApplyDftToDftTmpBytes,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch, VecZnxBig},
 };
@@ -56,7 +56,7 @@ impl<DataSelf: DataMut> GLWE<DataSelf> {
             + VecZnxAutomorphismInplace<B>
             + VecZnxNormalize<B>
             + VecZnxNormalizeTmpBytes,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
+        Scratch<B>: ScratchAvailable,
     {
         self.keyswitch(module, lhs, &rhs.key, scratch);
         (0..(self.rank() + 1).into()).for_each(|i| {
@@ -82,7 +82,7 @@ impl<DataSelf: DataMut> GLWE<DataSelf> {
             + VecZnxAutomorphismInplace<B>
             + VecZnxNormalize<B>
             + VecZnxNormalizeTmpBytes,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
+        Scratch<B>: ScratchAvailable,
     {
         self.keyswitch_inplace(module, &rhs.key, scratch);
         (0..(self.rank() + 1).into()).for_each(|i| {
@@ -109,7 +109,7 @@ impl<DataSelf: DataMut> GLWE<DataSelf> {
             + VecZnxBigAutomorphismInplace<B>
             + VecZnxNormalizeTmpBytes
             + VecZnxNormalize<B>,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
+        Scratch<B>: ScratchAvailable,
     {
         #[cfg(debug_assertions)]
         {
@@ -150,7 +150,7 @@ impl<DataSelf: DataMut> GLWE<DataSelf> {
             + VecZnxBigAutomorphismInplace<B>
             + VecZnxNormalizeTmpBytes
             + VecZnxNormalize<B>,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
+        Scratch<B>: ScratchAvailable,
     {
         #[cfg(debug_assertions)]
         {
@@ -193,7 +193,7 @@ impl<DataSelf: DataMut> GLWE<DataSelf> {
             + VecZnxBigSubSmallInplace<B>
             + VecZnxNormalizeTmpBytes
             + VecZnxNormalize<B>,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
+        Scratch<B>: ScratchAvailable,
     {
         #[cfg(debug_assertions)]
         {
@@ -235,7 +235,7 @@ impl<DataSelf: DataMut> GLWE<DataSelf> {
             + VecZnxBigSubSmallInplace<B>
             + VecZnxNormalizeTmpBytes
             + VecZnxNormalize<B>,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
+        Scratch<B>: ScratchAvailable,
     {
         #[cfg(debug_assertions)]
         {
@@ -278,7 +278,7 @@ impl<DataSelf: DataMut> GLWE<DataSelf> {
             + VecZnxBigSubSmallNegateInplace<B>
             + VecZnxNormalizeTmpBytes
             + VecZnxNormalize<B>,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
+        Scratch<B>: ScratchAvailable,
     {
         #[cfg(debug_assertions)]
         {
@@ -320,7 +320,7 @@ impl<DataSelf: DataMut> GLWE<DataSelf> {
             + VecZnxBigSubSmallNegateInplace<B>
             + VecZnxNormalizeTmpBytes
             + VecZnxNormalize<B>,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
+        Scratch<B>: ScratchAvailable,
     {
         #[cfg(debug_assertions)]
         {

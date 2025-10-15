@@ -1,11 +1,11 @@
 use poulpy_hal::{
     api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDftInplace, TakeVecZnxBig, TakeVecZnxDft, VecZnxBigAddInplace,
-        VecZnxBigAddSmallInplace, VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyConsume,
-        VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSubInplace,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDftInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace,
+        VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxNormalizeInplace,
+        VecZnxNormalizeTmpBytes, VecZnxSubInplace,
     },
     layouts::{Backend, DataRef, Module, Scratch, ScratchOwned},
-    oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeVecZnxBigImpl, TakeVecZnxDftImpl},
+    oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl},
 };
 
 use crate::layouts::{GLWE, GLWEPlaintext, LWEInfos, prepared::GLWESecretPrepared};
@@ -30,9 +30,9 @@ impl<D: DataRef> GLWE<D> {
             + VecZnxBigAddInplace<B>
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>,
-        Scratch<B>: TakeVecZnxDft<B> + TakeVecZnxBig<B>,
+        Scratch<B>:,
     {
-        let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(self);
+        let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(module, self);
         self.decrypt(module, &mut pt_have, sk_prepared, scratch);
         module.vec_znx_sub_inplace(&mut pt_have.data, 0, &pt_want.data, 0);
         module.vec_znx_normalize_inplace(self.base2k().into(), &mut pt_have.data, 0, scratch);
@@ -59,7 +59,7 @@ impl<D: DataRef> GLWE<D> {
             + VecZnxNormalizeTmpBytes
             + VecZnxSubInplace
             + VecZnxNormalizeInplace<B>,
-        B: Backend + TakeVecZnxDftImpl<B> + TakeVecZnxBigImpl<B> + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
+        B: Backend + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
     {
         let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GLWE::decrypt_scratch_space(module, self));
         let noise_have: f64 = self.noise(module, sk_prepared, pt_want, scratch.borrow());

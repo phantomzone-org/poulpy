@@ -151,45 +151,50 @@ where
 
 impl<B: Backend> GGLWEPreparedAlloc<B> for Module<B> where Module<B>: GetDegree + VmpPMatAlloc<B> + VmpPMatBytesOf {}
 
-impl<B: Backend> GGLWEPrepared<Vec<u8>, B>
-where
-    Module<B>: GGLWEPreparedAlloc<B>,
-{
-    pub fn alloc_from_infos<A>(module: &Module<B>, infos: &A) -> Self
+impl<B: Backend> GGLWEPrepared<Vec<u8>, B> {
+    pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
     where
         A: GGLWEInfos,
+        M: GGLWEPreparedAlloc<B>,
     {
         module.alloc_gglwe_prepared_from_infos(infos)
     }
 
-    pub fn alloc(
-        module: &Module<B>,
+    pub fn alloc<M>(
+        module: &M,
         base2k: Base2K,
         k: TorusPrecision,
         rank_in: Rank,
         rank_out: Rank,
         dnum: Dnum,
         dsize: Dsize,
-    ) -> Self {
+    ) -> Self
+    where
+        M: GGLWEPreparedAlloc<B>,
+    {
         module.alloc_gglwe_prepared(base2k, k, rank_in, rank_out, dnum, dsize)
     }
 
-    pub fn bytes_of_from_infos<A>(module: &Module<B>, infos: &A) -> usize
+    pub fn bytes_of_from_infos<A, M>(module: &M, infos: &A) -> usize
     where
         A: GGLWEInfos,
+        M: GGLWEPreparedAlloc<B>,
     {
         module.bytes_of_gglwe_prepared_from_infos(infos)
     }
 
-    pub fn bytes_of(
-        module: &Module<B>,
+    pub fn bytes_of<M>(
+        module: &M,
         base2k: Base2K,
         k: TorusPrecision,
         rank_in: Rank,
         rank_out: Rank,
         dnum: Dnum,
         dsize: Dsize,
-    ) -> usize {
+    ) -> usize
+    where
+        M: GGLWEPreparedAlloc<B>,
+    {
         module.bytes_of_gglwe_prepared(base2k, k, rank_in, rank_out, dnum, dsize)
     }
 }
@@ -230,22 +235,20 @@ where
 
 impl<B: Backend> GGLWEPrepare<B> for Module<B> where Self: GetDegree + VmpPrepareTmpBytes + VmpPrepare<B> {}
 
-impl<D: DataMut, B: Backend> GGLWEPrepared<D, B>
-where
-    Module<B>: GGLWEPrepare<B>,
-{
-    pub fn prepare<O>(&mut self, module: &Module<B>, other: &O, scratch: &mut Scratch<B>)
+impl<D: DataMut, B: Backend> GGLWEPrepared<D, B> {
+    pub fn prepare<O, M>(&mut self, module: &M, other: &O, scratch: &mut Scratch<B>)
     where
         O: GGLWEToRef,
+        M: GGLWEPrepare<B>,
     {
         module.prepare_gglwe(self, other, scratch);
     }
 }
 
 impl<B: Backend> GGLWEPrepared<Vec<u8>, B> {
-    pub fn prepare_tmp_bytes(&self, module: &Module<B>) -> usize
+    pub fn prepare_tmp_bytes<M>(&self, module: &M) -> usize
     where
-        Module<B>: GGLWEPrepare<B>,
+        M: GGLWEPrepare<B>,
     {
         module.prepare_gglwe_tmp_bytes(self)
     }

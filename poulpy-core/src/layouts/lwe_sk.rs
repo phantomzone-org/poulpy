@@ -25,9 +25,9 @@ pub trait LWESecretAlloc {
 impl<B: Backend> LWESecretAlloc for Module<B> {}
 
 impl LWESecret<Vec<u8>> {
-    pub fn alloc<B: Backend>(module: &Module<B>, n: Degree) -> Self
+    pub fn alloc<M>(module: &M, n: Degree) -> Self
     where
-        Module<B>: LWESecretAlloc,
+        M: LWESecretAlloc,
     {
         module.alloc_lwe_secret(n)
     }

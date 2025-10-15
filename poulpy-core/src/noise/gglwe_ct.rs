@@ -5,7 +5,7 @@ use poulpy_hal::{
         VecZnxSubScalarInplace,
     },
     layouts::{Backend, DataRef, Module, ScalarZnx, ScratchOwned, ZnxZero},
-    oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeVecZnxBigImpl, TakeVecZnxDftImpl},
+    oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl},
 };
 
 use crate::layouts::{GGLWE, GGLWEInfos, GLWE, GLWEPlaintext, LWEInfos, prepared::GLWESecretPrepared};
@@ -30,13 +30,13 @@ impl<D: DataRef> GGLWE<D> {
             + VecZnxBigNormalize<B>
             + VecZnxNormalizeTmpBytes
             + VecZnxSubScalarInplace,
-        B: Backend + TakeVecZnxDftImpl<B> + TakeVecZnxBigImpl<B> + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
+        B: Backend + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
     {
         let dsize: usize = self.dsize().into();
         let base2k: usize = self.base2k().into();
 
         let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GLWE::decrypt_scratch_space(module, self));
-        let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(self);
+        let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(module, self);
 
         (0..self.rank_in().into()).for_each(|col_i| {
             (0..self.dnum().into()).for_each(|row_i| {

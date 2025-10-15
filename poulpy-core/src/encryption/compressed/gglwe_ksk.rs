@@ -1,13 +1,10 @@
 use poulpy_hal::{
-    api::{
-        ScratchAvailable, SvpPPolBytesOf, SvpPrepare, TakeScalarZnx, VecZnxDftBytesOf, VecZnxNormalizeTmpBytes, VecZnxSwitchRing,
-    },
+    api::{ScratchAvailable, SvpPPolBytesOf, SvpPrepare, VecZnxDftBytesOf, VecZnxNormalizeTmpBytes, VecZnxSwitchRing},
     layouts::{Backend, DataMut, DataRef, Module, ScalarZnx, Scratch},
     source::Source,
 };
 
 use crate::{
-    TakeGLWESecretPrepared,
     encryption::compressed::gglwe_ct::GGLWECompressedEncryptSk,
     layouts::{
         Degree, GGLWE, GGLWEInfos, GLWEInfos, GLWESecret, GLWESecretToRef, LWEInfos,
@@ -68,7 +65,7 @@ where
         + VecZnxDftBytesOf
         + VecZnxSwitchRing
         + SvpPrepare<B>,
-    Scratch<B>: ScratchAvailable + TakeScalarZnx + TakeGLWESecretPrepared<B>,
+    Scratch<B>: ScratchAvailable,
 {
     fn gglwe_key_compressed_encrypt_sk<R, SI, SO>(
         &self,

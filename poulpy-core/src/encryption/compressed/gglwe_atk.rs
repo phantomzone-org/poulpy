@@ -5,7 +5,6 @@ use poulpy_hal::{
 };
 
 use crate::{
-    TakeGLWESecret,
     encryption::compressed::gglwe_ksk::GGLWEKeyCompressedEncryptSk,
     layouts::{
         GGLWEInfos, GLWEInfos, GLWESecret, GLWESecretToRef, LWEInfos,
@@ -41,7 +40,7 @@ pub trait GGLWEAutomorphismKeyCompressedEncryptSk<B: Backend> {
 impl<B: Backend> GGLWEAutomorphismKeyCompressedEncryptSk<B> for Module<B>
 where
     Module<B>: GGLWEKeyCompressedEncryptSk<B> + VecZnxNormalizeTmpBytes + VecZnxDftBytesOf + SvpPPolBytesOf + VecZnxAutomorphism,
-    Scratch<B>: TakeGLWESecret + ScratchAvailable,
+    Scratch<B>: ScratchAvailable,
 {
     fn gglwe_automorphism_key_compressed_encrypt_sk<R, S>(
         &self,

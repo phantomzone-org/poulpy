@@ -1,7 +1,7 @@
 use poulpy_hal::{
     api::{
-        ScratchAvailable, TakeVecZnx, TakeVecZnxDft, VecZnxBigAddSmallInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
-        VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeTmpBytes, VmpApplyDftToDft,
+        ScratchAvailable, VecZnxBigAddSmallInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxDftApply,
+        VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeTmpBytes, VmpApplyDftToDft,
         VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
     },
     layouts::{Backend, DataMut, DataRef, DataViewMut, Module, Scratch, VecZnx, VecZnxBig, VecZnxDft, VmpPMat, ZnxInfos},
@@ -163,7 +163,7 @@ impl<DataSelf: DataMut> GLWE<DataSelf> {
             + VecZnxBigNormalize<B>
             + VecZnxNormalize<B>
             + VecZnxNormalizeTmpBytes,
-        Scratch<B>: ScratchAvailable + TakeVecZnxDft<B> + TakeVecZnx,
+        Scratch<B>: ScratchAvailable,
     {
         #[cfg(debug_assertions)]
         {
@@ -206,7 +206,7 @@ impl<DataSelf: DataMut> GLWE<DataSelf> {
             + VecZnxBigNormalize<B>
             + VecZnxNormalize<B>
             + VecZnxNormalizeTmpBytes,
-        Scratch<B>: ScratchAvailable + TakeVecZnxDft<B> + TakeVecZnx,
+        Scratch<B>: ScratchAvailable,
     {
         #[cfg(debug_assertions)]
         {
@@ -254,7 +254,7 @@ impl<D: DataRef> GLWE<D> {
             + VecZnxBigAddSmallInplace<B>
             + VecZnxBigNormalize<B>
             + VecZnxNormalize<B>,
-        Scratch<B>: TakeVecZnxDft<B> + TakeVecZnx,
+        Scratch<B>:,
     {
         if rhs.dsize() == 1 {
             return keyswitch_vmp_one_digit(
@@ -300,7 +300,7 @@ where
         + VecZnxIdftApplyConsume<B>
         + VecZnxBigAddSmallInplace<B>
         + VecZnxNormalize<B>,
-    Scratch<B>: TakeVecZnxDft<B> + TakeVecZnx,
+    Scratch<B>:,
 {
     let cols: usize = a.cols();
 
@@ -347,7 +347,7 @@ where
         + VecZnxIdftApplyConsume<B>
         + VecZnxBigAddSmallInplace<B>
         + VecZnxNormalize<B>,
-    Scratch<B>: TakeVecZnxDft<B> + TakeVecZnx,
+    Scratch<B>:,
 {
     let cols: usize = a.cols();
     let a_size: usize = (a.size() * basek_in).div_ceil(basek_ksk);

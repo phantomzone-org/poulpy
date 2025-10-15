@@ -1,9 +1,8 @@
 use poulpy_hal::{
     api::{
-        ScratchAvailable, TakeVecZnx, TakeVecZnxBig, TakeVecZnxDft, VecZnxBigAddSmallInplace, VecZnxBigBytesOf,
-        VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftAddInplace, VecZnxDftApply, VecZnxDftBytesOf,
-        VecZnxDftCopy, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA, VecZnxNormalize, VecZnxNormalizeTmpBytes, VmpApplyDftToDft,
-        VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
+        ScratchAvailable, VecZnxBigAddSmallInplace, VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxCopy,
+        VecZnxDftAddInplace, VecZnxDftApply, VecZnxDftBytesOf, VecZnxDftCopy, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA,
+        VecZnxNormalize, VecZnxNormalizeTmpBytes, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch, VecZnx, VmpPMat, ZnxInfos},
 };
@@ -130,7 +129,7 @@ impl<DataSelf: DataMut> GGSW<DataSelf> {
             + VecZnxBigNormalize<B>
             + VecZnxIdftApplyTmpA<B>
             + VecZnxNormalize<B>,
-        Scratch<B>: ScratchAvailable + TakeVecZnxDft<B> + TakeVecZnxBig<B> + TakeVecZnx,
+        Scratch<B>: ScratchAvailable,
     {
         #[cfg(debug_assertions)]
         {
@@ -172,7 +171,7 @@ impl<DataSelf: DataMut> GGSW<DataSelf> {
             + VecZnxDftAddInplace<B>
             + VecZnxIdftApplyTmpA<B>
             + VecZnxNormalize<B>,
-        Scratch<B>: ScratchAvailable + TakeVecZnxDft<B> + TakeVecZnxBig<B> + TakeVecZnx,
+        Scratch<B>: ScratchAvailable,
     {
         (0..lhs.dnum().into()).for_each(|row_i| {
             // Key-switch column 0, i.e.
@@ -206,7 +205,7 @@ impl<DataSelf: DataMut> GGSW<DataSelf> {
             + VecZnxDftAddInplace<B>
             + VecZnxIdftApplyTmpA<B>
             + VecZnxNormalize<B>,
-        Scratch<B>: ScratchAvailable + TakeVecZnxDft<B> + TakeVecZnxBig<B> + TakeVecZnx,
+        Scratch<B>: ScratchAvailable,
     {
         (0..self.dnum().into()).for_each(|row_i| {
             // Key-switch column 0, i.e.
@@ -235,7 +234,7 @@ impl<DataSelf: DataMut> GGSW<DataSelf> {
             + VecZnxBigNormalize<B>
             + VecZnxIdftApplyTmpA<B>
             + VecZnxNormalize<B>,
-        Scratch<B>: ScratchAvailable + TakeVecZnxDft<B> + TakeVecZnxBig<B> + TakeVecZnx,
+        Scratch<B>: ScratchAvailable,
     {
         let basek_in: usize = self.base2k().into();
         let basek_tsk: usize = tsk.base2k().into();

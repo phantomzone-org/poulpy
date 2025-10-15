@@ -186,16 +186,16 @@ where
 impl<B: Backend> GGLWECompressedAlloc for Module<B> where Self: GetDegree {}
 
 impl GGLWECompressed<Vec<u8>> {
-    pub fn alloc_from_infos<A, B: Backend>(module: &Module<B>, infos: &A) -> Self
+    pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
     where
         A: GGLWEInfos,
-        Module<B>: GGLWECompressedAlloc,
+        M: GGLWECompressedAlloc,
     {
         module.alloc_gglwe_compressed_from_infos(infos)
     }
 
-    pub fn alloc<B: Backend>(
-        module: &Module<B>,
+    pub fn alloc<M>(
+        module: &M,
         base2k: Base2K,
         k: TorusPrecision,
         rank_in: Rank,
@@ -204,21 +204,21 @@ impl GGLWECompressed<Vec<u8>> {
         dsize: Dsize,
     ) -> Self
     where
-        Module<B>: GGLWECompressedAlloc,
+        M: GGLWECompressedAlloc,
     {
         module.alloc_gglwe_compressed(base2k, k, rank_in, rank_out, dnum, dsize)
     }
 
-    pub fn bytes_of_from_infos<A, B: Backend>(module: &Module<B>, infos: &A) -> usize
+    pub fn bytes_of_from_infos<A, M>(module: &M, infos: &A) -> usize
     where
         A: GGLWEInfos,
-        Module<B>: GGLWECompressedAlloc,
+        M: GGLWECompressedAlloc,
     {
         module.bytes_of_gglwe_compressed_from_infos(infos)
     }
 
-    pub fn byte_of<B: Backend>(
-        module: &Module<B>,
+    pub fn byte_of<M>(
+        module: &M,
         base2k: Base2K,
         k: TorusPrecision,
         rank_in: Rank,
@@ -226,7 +226,7 @@ impl GGLWECompressed<Vec<u8>> {
         dsize: Dsize,
     ) -> usize
     where
-        Module<B>: GGLWECompressedAlloc,
+        M: GGLWECompressedAlloc,
     {
         module.bytes_of_gglwe_compressed(base2k, k, rank_in, dnum, dsize)
     }
@@ -315,10 +315,10 @@ where
 impl<B: Backend> GGLWEDecompress for Module<B> where Self: VecZnxFillUniform + VecZnxCopy {}
 
 impl<D: DataMut> GGLWE<D> {
-    pub fn decompress<O, B: Backend>(&mut self, module: &Module<B>, other: &O)
+    pub fn decompress<O, M>(&mut self, module: &M, other: &O)
     where
         O: GGLWECompressedToRef,
-        Module<B>: GGLWEDecompress,
+        M: GGLWEDecompress,
     {
         module.decompress_gglwe(self, other);
     }

@@ -1,16 +1,13 @@
 use poulpy_hal::{
     api::{
-        ScratchAvailable, TakeVecZnx, TakeVecZnxDft, VecZnxBigAddSmallInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
-        VecZnxCopy, VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeTmpBytes,
-        VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
+        ScratchAvailable, VecZnxBigAddSmallInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftApply,
+        VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeTmpBytes, VmpApplyDftToDft,
+        VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch, ZnxView, ZnxViewMut, ZnxZero},
 };
 
-use crate::{
-    TakeGLWE,
-    layouts::{GGLWEInfos, GLWE, GLWELayout, LWE, LWEInfos, Rank, TorusPrecision, prepared::LWESwitchingKeyPrepared},
-};
+use crate::layouts::{GGLWEInfos, GLWE, GLWELayout, LWE, LWEInfos, Rank, TorusPrecision, prepared::LWESwitchingKeyPrepared};
 
 impl LWE<Vec<u8>> {
     pub fn keyswitch_scratch_space<B: Backend, OUT, IN, KEY>(
@@ -51,8 +48,8 @@ impl LWE<Vec<u8>> {
             rank: Rank(1),
         };
 
-        let glwe_in: usize = GLWE::bytes_of(&glwe_in_infos);
-        let glwe_out: usize = GLWE::bytes_of(&glwe_out_infos);
+        let glwe_in: usize = GLWE::bytes_of_from_infos(module, &glwe_in_infos);
+        let glwe_out: usize = GLWE::bytes_of_from_infos(module, &glwe_out_infos);
         let ks: usize = GLWE::keyswitch_scratch_space(module, &glwe_out_infos, &glwe_in_infos, key_infos);
 
         glwe_in + glwe_out + ks
@@ -81,7 +78,7 @@ impl<DLwe: DataMut> LWE<DLwe> {
             + VecZnxNormalize<B>
             + VecZnxNormalizeTmpBytes
             + VecZnxCopy,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
+        Scratch<B>: ScratchAvailable,
     {
         #[cfg(debug_assertions)]
         {

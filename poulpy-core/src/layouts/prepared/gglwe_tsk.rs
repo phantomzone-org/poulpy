@@ -114,29 +114,34 @@ where
 
 impl<B: Backend> TensorKeyPreparedAlloc<B> for Module<B> where Module<B>: GLWESwitchingKeyPreparedAlloc<B> {}
 
-impl<B: Backend> TensorKeyPrepared<Vec<u8>, B>
-where
-    Module<B>: TensorKeyPreparedAlloc<B>,
-{
-    pub fn alloc_from_infos<A>(module: &Module<B>, infos: &A) -> Self
+impl<B: Backend> TensorKeyPrepared<Vec<u8>, B> {
+    pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
     where
         A: GGLWEInfos,
+        M: TensorKeyPreparedAlloc<B>,
     {
         module.alloc_tensor_key_prepared_from_infos(infos)
     }
 
-    pub fn alloc_with(module: &Module<B>, base2k: Base2K, k: TorusPrecision, dnum: Dnum, dsize: Dsize, rank: Rank) -> Self {
+    pub fn alloc_with<M>(module: &M, base2k: Base2K, k: TorusPrecision, dnum: Dnum, dsize: Dsize, rank: Rank) -> Self
+    where
+        M: TensorKeyPreparedAlloc<B>,
+    {
         module.alloc_tensor_key_prepared(base2k, k, dnum, dsize, rank)
     }
 
-    pub fn bytes_of_from_infos<A>(module: &Module<B>, infos: &A) -> usize
+    pub fn bytes_of_from_infos<A, M>(module: &M, infos: &A) -> usize
     where
         A: GGLWEInfos,
+        M: TensorKeyPreparedAlloc<B>,
     {
         module.bytes_of_tensor_key_prepared_from_infos(infos)
     }
 
-    pub fn bytes_of(module: &Module<B>, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize {
+    pub fn bytes_of<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize
+    where
+        M: TensorKeyPreparedAlloc<B>,
+    {
         module.bytes_of_tensor_key_prepared(base2k, k, rank, dnum, dsize)
     }
 }
@@ -190,27 +195,23 @@ where
     }
 }
 
-impl<B: Backend> TensorKeyPrepare<B> for Module<B> where Module<B>: GLWESwitchingKeyPrepare<B> {}
+impl<B: Backend> TensorKeyPrepare<B> for Module<B> where Self: GLWESwitchingKeyPrepare<B> {}
 
-impl<B: Backend> TensorKeyPrepared<Vec<u8>, B>
-where
-    Module<B>: TensorKeyPrepare<B>,
-{
-    fn prepare_tmp_bytes<A>(&self, module: &Module<B>, infos: &A) -> usize
+impl<B: Backend> TensorKeyPrepared<Vec<u8>, B> {
+    fn prepare_tmp_bytes<A, M>(&self, module: &M, infos: &A) -> usize
     where
         A: GGLWEInfos,
+        M: TensorKeyPrepare<B>,
     {
         module.prepare_tensor_key_tmp_bytes(infos)
     }
 }
 
-impl<D: DataMut, B: Backend> TensorKeyPrepared<D, B>
-where
-    Module<B>: TensorKeyPrepare<B>,
-{
-    fn prepare<O>(&mut self, module: &Module<B>, other: &O, scratch: &mut Scratch<B>)
+impl<D: DataMut, B: Backend> TensorKeyPrepared<D, B> {
+    fn prepare<O, M>(&mut self, module: &M, other: &O, scratch: &mut Scratch<B>)
     where
         O: TensorKeyToRef,
+        M: TensorKeyPrepare<B>,
     {
         module.prepare_tensor_key(self, other, scratch);
     }

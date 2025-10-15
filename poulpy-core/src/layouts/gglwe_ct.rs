@@ -296,39 +296,31 @@ where
 impl<B: Backend> GGLWEAlloc for Module<B> where Self: GetDegree {}
 
 impl GGLWE<Vec<u8>> {
-    pub fn alloc_from_infos<A, B: Backend>(module: Module<B>, infos: &A) -> Self
+    pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
     where
         A: GGLWEInfos,
-        Module<B>: GGLWEAlloc,
+        M: GGLWEAlloc,
     {
         module.alloc_glwe_from_infos(infos)
     }
 
-    pub fn alloc<B: Backend>(
-        module: Module<B>,
-        base2k: Base2K,
-        k: TorusPrecision,
-        rank_in: Rank,
-        rank_out: Rank,
-        dnum: Dnum,
-        dsize: Dsize,
-    ) -> Self
+    pub fn alloc<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank_in: Rank, rank_out: Rank, dnum: Dnum, dsize: Dsize) -> Self
     where
-        Module<B>: GGLWEAlloc,
+        M: GGLWEAlloc,
     {
         module.alloc_gglwe(base2k, k, rank_in, rank_out, dnum, dsize)
     }
 
-    pub fn bytes_of_from_infos<A, B: Backend>(module: Module<B>, infos: &A) -> usize
+    pub fn bytes_of_from_infos<A, M>(module: &M, infos: &A) -> usize
     where
         A: GGLWEInfos,
-        Module<B>: GGLWEAlloc,
+        M: GGLWEAlloc,
     {
         module.bytes_of_gglwe_from_infos(infos)
     }
 
-    pub fn bytes_of<B: Backend>(
-        module: Module<B>,
+    pub fn bytes_of<M>(
+        module: &M,
         base2k: Base2K,
         k: TorusPrecision,
         rank_in: Rank,
@@ -337,7 +329,7 @@ impl GGLWE<Vec<u8>> {
         dsize: Dsize,
     ) -> usize
     where
-        Module<B>: GGLWEAlloc,
+        M: GGLWEAlloc,
     {
         module.bytes_of_gglwe(base2k, k, rank_in, rank_out, dnum, dsize)
     }

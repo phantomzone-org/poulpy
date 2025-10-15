@@ -1,8 +1,7 @@
 use poulpy_hal::{
     api::{
-        ScratchAvailable, TakeVecZnx, TakeVecZnxDft, VecZnxBigNormalize, VecZnxDftApply, VecZnxDftBytesOf,
-        VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeTmpBytes, VmpApplyDftToDft, VmpApplyDftToDftAdd,
-        VmpApplyDftToDftTmpBytes,
+        ScratchAvailable, VecZnxBigNormalize, VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxNormalize,
+        VecZnxNormalizeTmpBytes, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
 };
@@ -56,7 +55,7 @@ impl<DataSelf: DataMut> AutomorphismKey<DataSelf> {
             + VecZnxIdftApplyConsume<B>
             + VecZnxBigNormalize<B>
             + VecZnxNormalize<B>,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
+        Scratch<B>: ScratchAvailable,
     {
         self.key.external_product(module, &lhs.key, rhs, scratch);
     }
@@ -76,7 +75,7 @@ impl<DataSelf: DataMut> AutomorphismKey<DataSelf> {
             + VecZnxIdftApplyConsume<B>
             + VecZnxBigNormalize<B>
             + VecZnxNormalize<B>,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
+        Scratch<B>: ScratchAvailable,
     {
         self.key.external_product_inplace(module, rhs, scratch);
     }

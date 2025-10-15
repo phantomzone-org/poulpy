@@ -8,7 +8,6 @@ use poulpy_hal::{
 };
 
 use crate::{
-    TakeGLWEPlaintext,
     encryption::{SIGMA, glwe_ct::GLWEEncryptSkInternal},
     layouts::{
         GGLWE, GGLWEInfos, LWEInfos,
@@ -67,7 +66,7 @@ where
         + VecZnxDftBytesOf
         + VecZnxAddScalarInplace
         + ZnNormalizeInplace<B>,
-    Scratch<B>: TakeGLWEPlaintext<B> + ScratchAvailable,
+    Scratch<B>: ScratchAvailable,
 {
     fn gglwe_compressed_encrypt_sk<R, P, S>(
         &self,

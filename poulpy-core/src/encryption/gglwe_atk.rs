@@ -1,19 +1,16 @@
 use poulpy_hal::{
     api::{
-        ScratchAvailable, SvpApplyDftToDftInplace, SvpPPolBytesOf, SvpPrepare, TakeScalarZnx, TakeVecZnx, TakeVecZnxDft,
-        VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxAutomorphism, VecZnxBigNormalize, VecZnxDftApply,
-        VecZnxDftBytesOf, VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeInplace,
-        VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubInplace, VecZnxSwitchRing,
+        ScratchAvailable, SvpApplyDftToDftInplace, SvpPPolBytesOf, SvpPrepare, VecZnxAddInplace, VecZnxAddNormal,
+        VecZnxAddScalarInplace, VecZnxAutomorphism, VecZnxBigNormalize, VecZnxDftApply, VecZnxDftBytesOf, VecZnxFillUniform,
+        VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubInplace,
+        VecZnxSwitchRing,
     },
     layouts::{Backend, DataMut, Module, Scratch},
     source::Source,
 };
 
-use crate::{
-    TakeGLWESecret, TakeGLWESecretPrepared,
-    layouts::{
-        AutomorphismKey, AutomorphismKeyToMut, GGLWEInfos, GLWEInfos, GLWESecret, GLWESecretToRef, GLWESwitchingKey, LWEInfos,
-    },
+use crate::layouts::{
+    AutomorphismKey, AutomorphismKeyToMut, GGLWEInfos, GLWEInfos, GLWESecret, GLWESecretToRef, GLWESwitchingKey, LWEInfos,
 };
 
 impl AutomorphismKey<Vec<u8>> {
@@ -27,7 +24,7 @@ impl AutomorphismKey<Vec<u8>> {
             infos.rank_out(),
             "rank_in != rank_out is not supported for GGLWEAutomorphismKey"
         );
-        GLWESwitchingKey::encrypt_sk_scratch_space(module, infos) + GLWESecret::bytes_of(&infos.glwe_layout())
+        GLWESwitchingKey::encrypt_sk_scratch_space(module, infos) + GLWESecret::bytes_of_from_infos(module, &infos.glwe_layout())
     }
 
     pub fn encrypt_pk_scratch_space<BE: Backend, A>(module: &Module<BE>, _infos: &A) -> usize
@@ -97,7 +94,7 @@ where
         + VecZnxSwitchRing
         + SvpPPolBytesOf
         + VecZnxAutomorphism,
-    Scratch<BE>: TakeVecZnxDft<BE> + ScratchAvailable + TakeVecZnx + TakeScalarZnx + TakeGLWESecretPrepared<BE>,
+    Scratch<BE>: ScratchAvailable,
 {
     fn gglwe_automorphism_key_encrypt_sk<A, B>(
         &self,

@@ -84,29 +84,34 @@ where
 
 impl<B: Backend> GLWEPublicKeyPreparedAlloc<B> for Module<B> where Self: VecZnxDftAlloc<B> + VecZnxDftBytesOf {}
 
-impl<B: Backend> GLWEPublicKeyPrepared<Vec<u8>, B>
-where
-    Module<B>: GLWEPublicKeyPreparedAlloc<B>,
-{
-    pub fn alloc_from_infos<A>(module: &Module<B>, infos: &A) -> Self
+impl<B: Backend> GLWEPublicKeyPrepared<Vec<u8>, B> {
+    pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
     where
         A: GLWEInfos,
+        M: GLWEPublicKeyPreparedAlloc<B>,
     {
         module.alloc_glwe_public_key_prepared_from_infos(infos)
     }
 
-    pub fn alloc(module: &Module<B>, base2k: Base2K, k: TorusPrecision, rank: Rank) -> Self {
+    pub fn alloc<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank: Rank) -> Self
+    where
+        M: GLWEPublicKeyPreparedAlloc<B>,
+    {
         module.alloc_glwe_public_key_prepared(base2k, k, rank)
     }
 
-    pub fn bytes_of_from_infos<A>(module: &Module<B>, infos: &A) -> usize
+    pub fn bytes_of_from_infos<A, M>(module: &M, infos: &A) -> usize
     where
         A: GLWEInfos,
+        M: GLWEPublicKeyPreparedAlloc<B>,
     {
         module.bytes_of_glwe_public_key_prepared_from_infos(infos)
     }
 
-    pub fn bytes_of(module: &Module<B>, base2k: Base2K, k: TorusPrecision, rank: Rank) -> usize {
+    pub fn bytes_of<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank: Rank) -> usize
+    where
+        M: GLWEPublicKeyPreparedAlloc<B>,
+    {
         module.bytes_of_glwe_public_key_prepared(base2k, k, rank)
     }
 }
@@ -141,13 +146,11 @@ where
 
 impl<B: Backend> GLWEPublicKeyPrepare<B> for Module<B> where Self: GetDegree + VecZnxDftApply<B> {}
 
-impl<D: DataMut, B: Backend> GLWEPublicKeyPrepared<D, B>
-where
-    Module<B>: GLWEPublicKeyPrepare<B>,
-{
-    pub fn prepare<O>(&mut self, module: &Module<B>, other: &O)
+impl<D: DataMut, B: Backend> GLWEPublicKeyPrepared<D, B> {
+    pub fn prepare<O, M>(&mut self, module: &M, other: &O)
     where
         O: GLWEPublicKeyToRef + GetDist,
+        M: GLWEPublicKeyPrepare<B>,
     {
         module.prepare_glwe_public_key(self, other);
     }
