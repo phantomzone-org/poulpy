@@ -4,40 +4,64 @@ use poulpy_hal::{
     oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl},
 };
 
-use crate::layouts::{LWE, LWEInfos, LWEPlaintext, LWESecret};
+use crate::layouts::{LWE, LWEInfos, LWEPlaintext, LWESecret, LWEToMut, LWEPlaintextToMut, LWESecretToRef};
 
-impl<DataSelf> LWE<DataSelf>
-where
-    DataSelf: DataRef,
+impl<DataSelf: DataRef + DataMut> LWE<DataSelf>
 {
-    pub fn decrypt<DataPt, DataSk, B>(&self, module: &Module<B>, pt: &mut LWEPlaintext<DataPt>, sk: &LWESecret<DataSk>)
+    pub fn decrypt<P, S, M, B>(&mut self, module: &M, pt: &mut P, sk: S)
     where
-        DataPt: DataMut,
-        DataSk: DataRef,
-        Module<B>: ZnNormalizeInplace<B>,
+        P: LWEPlaintextToMut,
+        S: LWESecretToRef,
+        M: LWEDecrypt<B>,
         B: Backend + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
     {
+        module.lwe_decrypt(self, pt, sk);
+    }
+}
+
+pub trait LWEDecrypt<BE: Backend>
+where
+    Self: Sized + ZnNormalizeInplace<BE>
+{
+    fn lwe_decrypt<R, P, S>(&self, res: &mut R, pt: &mut P, sk: S)
+    where
+            R: LWEToMut,
+            P: LWEPlaintextToMut,
+            S: LWESecretToRef,
+            BE: Backend + ScratchOwnedAllocImpl<BE> + ScratchOwnedBorrowImpl<BE>,
+    {
+
+        let res: &mut LWE<&mut [u8]> = &mut res.to_mut();
+        let pt: &mut LWEPlaintext<&mut [u8]> = &mut pt.to_mut();
+        let sk: LWESecret<&[u8]> = sk.to_ref();
+
         #[cfg(debug_assertions)]
         {
-            assert_eq!(self.n(), sk.n());
+            assert_eq!(res.n(), sk.n());
         }
 
-        (0..pt.size().min(self.size())).for_each(|i| {
-            pt.data.at_mut(0, i)[0] = self.data.at(0, i)[0]
-                + self.data.at(0, i)[1..]
+        (0..pt.size().min(res.size())).for_each(|i| {
+            pt.data.at_mut(0, i)[0] = res.data.at(0, i)[0]
+                + res.data.at(0, i)[1..]
                     .iter()
                     .zip(sk.data.at(0, 0))
                     .map(|(x, y)| x * y)
                     .sum::<i64>();
         });
-        module.zn_normalize_inplace(
+        self.zn_normalize_inplace(
             1,
-            self.base2k().into(),
+            res.base2k().into(),
             &mut pt.data,
             0,
             ScratchOwned::alloc(size_of::<i64>()).borrow(),
         );
-        pt.base2k = self.base2k();
-        pt.k = crate::layouts::TorusPrecision(self.k().0.min(pt.size() as u32 * self.base2k().0));
+        pt.base2k = res.base2k();
+        pt.k = crate::layouts::TorusPrecision(res.k().0.min(pt.size() as u32 * res.base2k().0));
     }
+}
+
+impl<BE: Backend> LWEDecrypt<BE> for Module<BE> where 
+    Self: Sized + ZnNormalizeInplace<BE>
+{
+    
 }
