@@ -114,7 +114,7 @@ where
 
 impl<B: Backend> LWEToGLWESwitchingKeyPreparedAlloc<B> for Module<B> where Self: GLWESwitchingKeyPreparedAlloc<B> {}
 
-impl<B: Backend> LWEToGLWESwitchingKeyPrepared<Vec<u8>, B>{
+impl<B: Backend> LWEToGLWESwitchingKeyPrepared<Vec<u8>, B> {
     pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
     where
         A: GGLWEInfos,
@@ -123,7 +123,10 @@ impl<B: Backend> LWEToGLWESwitchingKeyPrepared<Vec<u8>, B>{
         module.alloc_lwe_to_glwe_switching_key_prepared_from_infos(infos)
     }
 
-    pub fn alloc<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank_out: Rank, dnum: Dnum) -> Self where M: LWEToGLWESwitchingKeyPreparedAlloc<B>, {
+    pub fn alloc<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank_out: Rank, dnum: Dnum) -> Self
+    where
+        M: LWEToGLWESwitchingKeyPreparedAlloc<B>,
+    {
         module.alloc_lwe_to_glwe_switching_key_prepared(base2k, k, rank_out, dnum)
     }
 
@@ -135,7 +138,10 @@ impl<B: Backend> LWEToGLWESwitchingKeyPrepared<Vec<u8>, B>{
         module.bytes_of_lwe_to_glwe_switching_key_prepared_from_infos(infos)
     }
 
-    pub fn bytes_of<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank_out: Rank, dnum: Dnum) -> usize where M: LWEToGLWESwitchingKeyPreparedAlloc<B>,{
+    pub fn bytes_of<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank_out: Rank, dnum: Dnum) -> usize
+    where
+        M: LWEToGLWESwitchingKeyPreparedAlloc<B>,
+    {
         module.bytes_of_lwe_to_glwe_switching_key_prepared(base2k, k, rank_out, dnum)
     }
 }

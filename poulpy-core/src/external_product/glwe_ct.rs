@@ -15,35 +15,30 @@ use crate::{
 };
 
 impl<DataSelf: DataMut> GLWE<DataSelf> {
-    pub fn external_product_scratch_space<R, A, B, BE: Backend>(
-        module: Module<BE>,
-        res_infos: &R,
-        a_infos: &A,
-        b_infos: &B,
-    ) -> usize
+    pub fn external_product_scratch_space<R, A, B, M, BE: Backend>(module: &M, res_infos: &R, a_infos: &A, b_infos: &B) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos,
         B: GGSWInfos,
-        Module<BE>: GLWEExternalProduct<BE>,
+        M: GLWEExternalProduct<BE>,
     {
         module.glwe_external_product_scratch_space(res_infos, a_infos, b_infos)
     }
 
-    pub fn external_product<A, B, BE: Backend>(&mut self, module: &Module<BE>, a: &A, b: &B, scratch: &mut Scratch<BE>)
+    pub fn external_product<A, B, M, BE: Backend>(&mut self, module: &M, a: &A, b: &B, scratch: &mut Scratch<BE>)
     where
         A: GLWEToRef,
         B: GGSWPreparedToRef<BE>,
-        Module<BE>: GLWEExternalProduct<BE>,
+        M: GLWEExternalProduct<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         module.glwe_external_product(self, a, b, scratch);
     }
 
-    pub fn external_product_inplace<A, BE: Backend>(&mut self, module: &Module<BE>, a: &A, scratch: &mut Scratch<BE>)
+    pub fn external_product_inplace<A, M, BE: Backend>(&mut self, module: &M, a: &A, scratch: &mut Scratch<BE>)
     where
         A: GGSWPreparedToRef<BE>,
-        Module<BE>: GLWEExternalProduct<BE>,
+        M: GLWEExternalProduct<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         module.glwe_external_product_inplace(self, a, scratch);

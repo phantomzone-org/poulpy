@@ -304,7 +304,15 @@ impl GGLWE<Vec<u8>> {
         module.alloc_glwe_from_infos(infos)
     }
 
-    pub fn alloc<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank_in: Rank, rank_out: Rank, dnum: Dnum, dsize: Dsize) -> Self
+    pub fn alloc<M>(
+        module: &M,
+        base2k: Base2K,
+        k: TorusPrecision,
+        rank_in: Rank,
+        rank_out: Rank,
+        dnum: Dnum,
+        dsize: Dsize,
+    ) -> Self
     where
         M: GGLWEAlloc,
     {

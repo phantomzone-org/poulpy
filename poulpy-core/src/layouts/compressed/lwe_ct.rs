@@ -91,7 +91,7 @@ pub trait LWECompressedAlloc {
     }
 }
 
-impl<B: Backend> LWECompressedAlloc for Module<B>{}
+impl<B: Backend> LWECompressedAlloc for Module<B> {}
 
 impl LWECompressed<Vec<u8>> {
     pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self

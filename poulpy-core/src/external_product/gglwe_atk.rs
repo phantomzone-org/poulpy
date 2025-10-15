@@ -1,82 +1,46 @@
-use poulpy_hal::{
-    api::{
-        ScratchAvailable, VecZnxBigNormalize, VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxNormalize,
-        VecZnxNormalizeTmpBytes, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
-    },
-    layouts::{Backend, DataMut, DataRef, Module, Scratch},
+use poulpy_hal::layouts::{Backend, DataMut, Scratch};
+
+use crate::{
+    ScratchTakeCore,
+    external_product::gglwe_ksk::GGLWEExternalProduct,
+    layouts::{AutomorphismKey, AutomorphismKeyToRef, GGLWEInfos, GGSWInfos, prepared::GGSWPreparedToRef},
 };
 
-use crate::layouts::{AutomorphismKey, GGLWEInfos, GGSWInfos, GLWESwitchingKey, prepared::GGSWPrepared};
-
 impl AutomorphismKey<Vec<u8>> {
-    pub fn external_product_scratch_space<B: Backend, OUT, IN, GGSW>(
-        module: &Module<B>,
-        out_infos: &OUT,
-        in_infos: &IN,
-        ggsw_infos: &GGSW,
+    pub fn external_product_tmp_bytes<R, A, B, M, BE: Backend>(
+        &self,
+        module: &M,
+        res_infos: &R,
+        a_infos: &A,
+        b_infos: &B,
     ) -> usize
     where
-        OUT: GGLWEInfos,
-        IN: GGLWEInfos,
-        GGSW: GGSWInfos,
-        Module<B>: VecZnxDftBytesOf + VmpApplyDftToDftTmpBytes + VecZnxNormalizeTmpBytes,
+        R: GGLWEInfos,
+        A: GGLWEInfos,
+        B: GGSWInfos,
+        M: GGLWEExternalProduct<BE>,
     {
-        GLWESwitchingKey::external_product_scratch_space(module, out_infos, in_infos, ggsw_infos)
-    }
-
-    pub fn external_product_inplace_scratch_space<B: Backend, OUT, GGSW>(
-        module: &Module<B>,
-        out_infos: &OUT,
-        ggsw_infos: &GGSW,
-    ) -> usize
-    where
-        OUT: GGLWEInfos,
-        GGSW: GGSWInfos,
-        Module<B>: VecZnxDftBytesOf + VmpApplyDftToDftTmpBytes + VecZnxNormalizeTmpBytes,
-    {
-        GLWESwitchingKey::external_product_inplace_scratch_space(module, out_infos, ggsw_infos)
+        module.gglwe_external_product_tmp_bytes(res_infos, a_infos, b_infos)
     }
 }
 
 impl<DataSelf: DataMut> AutomorphismKey<DataSelf> {
-    pub fn external_product<DataLhs: DataRef, DataRhs: DataRef, B: Backend>(
-        &mut self,
-        module: &Module<B>,
-        lhs: &AutomorphismKey<DataLhs>,
-        rhs: &GGSWPrepared<DataRhs, B>,
-        scratch: &mut Scratch<B>,
-    ) where
-        Module<B>: VecZnxDftBytesOf
-            + VmpApplyDftToDftTmpBytes
-            + VecZnxNormalizeTmpBytes
-            + VecZnxDftApply<B>
-            + VmpApplyDftToDft<B>
-            + VmpApplyDftToDftAdd<B>
-            + VecZnxIdftApplyConsume<B>
-            + VecZnxBigNormalize<B>
-            + VecZnxNormalize<B>,
-        Scratch<B>: ScratchAvailable,
+    pub fn external_product<A, B, M, BE: Backend>(&mut self, module: &M, a: &A, b: &B, scratch: &mut Scratch<BE>)
+    where
+        M: GGLWEExternalProduct<BE>,
+        A: AutomorphismKeyToRef,
+        B: GGSWPreparedToRef<BE>,
+        Scratch<BE>: ScratchTakeCore<BE>,
     {
-        self.key.external_product(module, &lhs.key, rhs, scratch);
+        module.gglwe_external_product(&mut self.key.key, &a.to_ref().key.key, b, scratch);
     }
 
-    pub fn external_product_inplace<DataRhs: DataRef, B: Backend>(
-        &mut self,
-        module: &Module<B>,
-        rhs: &GGSWPrepared<DataRhs, B>,
-        scratch: &mut Scratch<B>,
-    ) where
-        Module<B>: VecZnxDftBytesOf
-            + VmpApplyDftToDftTmpBytes
-            + VecZnxNormalizeTmpBytes
-            + VecZnxDftApply<B>
-            + VmpApplyDftToDft<B>
-            + VmpApplyDftToDftAdd<B>
-            + VecZnxIdftApplyConsume<B>
-            + VecZnxBigNormalize<B>
-            + VecZnxNormalize<B>,
-        Scratch<B>: ScratchAvailable,
+    pub fn external_product_inplace<A, M, BE: Backend>(&mut self, module: &M, a: &A, scratch: &mut Scratch<BE>)
+    where
+        M: GGLWEExternalProduct<BE>,
+        A: GGSWPreparedToRef<BE>,
+        Scratch<BE>: ScratchTakeCore<BE>,
     {
-        self.key.external_product_inplace(module, rhs, scratch);
+        module.gglwe_external_product_inplace(&mut self.key.key, a, scratch);
     }
 }

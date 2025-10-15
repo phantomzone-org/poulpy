@@ -166,14 +166,7 @@ impl GLWESwitchingKeyCompressed<Vec<u8>> {
         module.bytes_of_glwe_switching_key_compressed_from_infos(infos)
     }
 
-    pub fn bytes_of<M>(
-        module: &M,
-        base2k: Base2K,
-        k: TorusPrecision,
-        rank_in: Rank,
-        dnum: Dnum,
-        dsize: Dsize,
-    ) -> usize
+    pub fn bytes_of<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank_in: Rank, dnum: Dnum, dsize: Dsize) -> usize
     where
         M: GLWESwitchingKeyCompressedAlloc,
     {

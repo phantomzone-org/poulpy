@@ -193,14 +193,7 @@ impl GGSWCompressed<Vec<u8>> {
         module.bytes_of_ggsw_compressed_key_from_infos(infos)
     }
 
-    pub fn bytes_of<M>(
-        module: &M,
-        base2k: Base2K,
-        k: TorusPrecision,
-        rank: Rank,
-        dnum: Dnum,
-        dsize: Dsize,
-    ) -> usize
+    pub fn bytes_of<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize
     where
         M: GGSWCompressedAlloc,
     {

@@ -1,143 +1,134 @@
-use poulpy_hal::{
-    api::{
-        ScratchAvailable, VecZnxBigNormalize, VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxNormalize,
-        VecZnxNormalizeTmpBytes, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
+use poulpy_hal::layouts::{Backend, DataMut, Module, Scratch, ZnxZero};
+
+use crate::{
+    GLWEExternalProduct, ScratchTakeCore,
+    layouts::{
+        GGLWE, GGLWEInfos, GGLWEToMut, GGLWEToRef, GGSWInfos, GLWEInfos, GLWESwitchingKey, GLWESwitchingKeyToRef,
+        prepared::{GGSWPrepared, GGSWPreparedToRef},
     },
-    layouts::{Backend, DataMut, DataRef, Module, Scratch, ZnxZero},
 };
 
-use crate::layouts::{GGLWEInfos, GGSWInfos, GLWE, GLWESwitchingKey, prepared::GGSWPrepared};
-
-impl GLWESwitchingKey<Vec<u8>> {
-    pub fn external_product_scratch_space<B: Backend, OUT, IN, GGSW>(
-        module: &Module<B>,
-        out_infos: &OUT,
-        in_infos: &IN,
-        ggsw_infos: &GGSW,
-    ) -> usize
+pub trait GGLWEExternalProduct<BE: Backend>
+where
+    Self: GLWEExternalProduct<BE>,
+{
+    fn gglwe_external_product_tmp_bytes<R, A, B>(&self, res_infos: &R, a_infos: &A, b_infos: &B) -> usize
     where
-        OUT: GGLWEInfos,
-        IN: GGLWEInfos,
-        GGSW: GGSWInfos,
-        Module<B>: VecZnxDftBytesOf + VmpApplyDftToDftTmpBytes + VecZnxNormalizeTmpBytes,
+        R: GGLWEInfos,
+        A: GGLWEInfos,
+        B: GGSWInfos,
     {
-        GLWE::external_product_scratch_space(
-            module,
-            &out_infos.glwe_layout(),
-            &in_infos.glwe_layout(),
-            ggsw_infos,
-        )
+        self.glwe_external_product_scratch_space(res_infos, a_infos, b_infos)
     }
 
-    pub fn external_product_inplace_scratch_space<B: Backend, OUT, GGSW>(
-        module: &Module<B>,
-        out_infos: &OUT,
-        ggsw_infos: &GGSW,
+    fn gglwe_external_product<R, A, B>(&self, res: &mut R, a: &A, b: &B, scratch: &mut Scratch<BE>)
+    where
+        R: GGLWEToMut,
+        A: GGLWEToRef,
+        B: GGSWPreparedToRef<BE>,
+        Scratch<BE>: ScratchTakeCore<BE>,
+    {
+        let res: &mut GGLWE<&mut [u8]> = &mut res.to_mut();
+        let a: &GGLWE<&[u8]> = &a.to_ref();
+        let b: &GGSWPrepared<&[u8], BE> = &b.to_ref();
+
+        assert_eq!(
+            res.rank_in(),
+            a.rank_in(),
+            "res input rank_in: {} != a input rank_in: {}",
+            res.rank_in(),
+            a.rank_in()
+        );
+        assert_eq!(
+            a.rank_out(),
+            b.rank(),
+            "a output rank_out: {} != b rank: {}",
+            a.rank_out(),
+            b.rank()
+        );
+        assert_eq!(
+            res.rank_out(),
+            b.rank(),
+            "res output rank_out: {} != b rank: {}",
+            res.rank_out(),
+            b.rank()
+        );
+
+        for row in 0..res.dnum().into() {
+            for col in 0..res.rank_in().into() {
+                self.glwe_external_product(&mut res.at_mut(row, col), &a.at(row, col), b, scratch);
+            }
+        }
+
+        for row in res.dnum().min(a.dnum()).into()..res.dnum().into() {
+            for col in 0..res.rank_in().into() {
+                res.at_mut(row, col).data_mut().zero();
+            }
+        }
+    }
+
+    fn gglwe_external_product_inplace<R, A>(&self, res: &mut R, a: &A, scratch: &mut Scratch<BE>)
+    where
+        R: GGLWEToMut,
+        A: GGSWPreparedToRef<BE>,
+        Scratch<BE>: ScratchTakeCore<BE>,
+    {
+        let res: &mut GGLWE<&mut [u8]> = &mut res.to_mut();
+        let a: &GGSWPrepared<&[u8], BE> = &a.to_ref();
+
+        assert_eq!(
+            res.rank_out(),
+            a.rank(),
+            "res output rank: {} != a rank: {}",
+            res.rank_out(),
+            a.rank()
+        );
+
+        for row in 0..res.dnum().into() {
+            for col in 0..res.rank_in().into() {
+                self.glwe_external_product_inplace(&mut res.at_mut(row, col), a, scratch);
+            }
+        }
+    }
+}
+
+impl<BE: Backend> GGLWEExternalProduct<BE> for Module<BE> where Self: GLWEExternalProduct<BE> {}
+
+impl GLWESwitchingKey<Vec<u8>> {
+    pub fn external_product_tmp_bytes<R, A, B, M, BE: Backend>(
+        &self,
+        module: &M,
+        res_infos: &R,
+        a_infos: &A,
+        b_infos: &B,
     ) -> usize
     where
-        OUT: GGLWEInfos,
-        GGSW: GGSWInfos,
-        Module<B>: VecZnxDftBytesOf + VmpApplyDftToDftTmpBytes + VecZnxNormalizeTmpBytes,
+        R: GGLWEInfos,
+        A: GGLWEInfos,
+        B: GGSWInfos,
+        M: GGLWEExternalProduct<BE>,
     {
-        GLWE::external_product_inplace_scratch_space(module, &out_infos.glwe_layout(), ggsw_infos)
+        module.gglwe_external_product_tmp_bytes(res_infos, a_infos, b_infos)
     }
 }
 
 impl<DataSelf: DataMut> GLWESwitchingKey<DataSelf> {
-    pub fn external_product<DataLhs: DataRef, DataRhs: DataRef, B: Backend>(
-        &mut self,
-        module: &Module<B>,
-        lhs: &GLWESwitchingKey<DataLhs>,
-        rhs: &GGSWPrepared<DataRhs, B>,
-        scratch: &mut Scratch<B>,
-    ) where
-        Module<B>: VecZnxDftBytesOf
-            + VmpApplyDftToDftTmpBytes
-            + VecZnxNormalizeTmpBytes
-            + VecZnxDftApply<B>
-            + VmpApplyDftToDft<B>
-            + VmpApplyDftToDftAdd<B>
-            + VecZnxIdftApplyConsume<B>
-            + VecZnxBigNormalize<B>
-            + VecZnxNormalize<B>,
-        Scratch<B>: ScratchAvailable,
+    pub fn external_product<A, B, M, BE: Backend>(&mut self, module: &M, a: &A, b: &B, scratch: &mut Scratch<BE>)
+    where
+        M: GGLWEExternalProduct<BE>,
+        A: GLWESwitchingKeyToRef,
+        B: GGSWPreparedToRef<BE>,
+        Scratch<BE>: ScratchTakeCore<BE>,
     {
-        #[cfg(debug_assertions)]
-        {
-            use crate::layouts::GLWEInfos;
-
-            assert_eq!(
-                self.rank_in(),
-                lhs.rank_in(),
-                "ksk_out input rank: {} != ksk_in input rank: {}",
-                self.rank_in(),
-                lhs.rank_in()
-            );
-            assert_eq!(
-                lhs.rank_out(),
-                rhs.rank(),
-                "ksk_in output rank: {} != ggsw rank: {}",
-                self.rank_out(),
-                rhs.rank()
-            );
-            assert_eq!(
-                self.rank_out(),
-                rhs.rank(),
-                "ksk_out output rank: {} != ggsw rank: {}",
-                self.rank_out(),
-                rhs.rank()
-            );
-        }
-
-        (0..self.rank_in().into()).for_each(|col_i| {
-            (0..self.dnum().into()).for_each(|row_j| {
-                self.at_mut(row_j, col_i)
-                    .external_product(module, &lhs.at(row_j, col_i), rhs, scratch);
-            });
-        });
-
-        (self.dnum().min(lhs.dnum()).into()..self.dnum().into()).for_each(|row_i| {
-            (0..self.rank_in().into()).for_each(|col_j| {
-                self.at_mut(row_i, col_j).data.zero();
-            });
-        });
+        module.gglwe_external_product(&mut self.key, &a.to_ref().key, b, scratch);
     }
 
-    pub fn external_product_inplace<DataRhs: DataRef, B: Backend>(
-        &mut self,
-        module: &Module<B>,
-        rhs: &GGSWPrepared<DataRhs, B>,
-        scratch: &mut Scratch<B>,
-    ) where
-        Module<B>: VecZnxDftBytesOf
-            + VmpApplyDftToDftTmpBytes
-            + VecZnxNormalizeTmpBytes
-            + VecZnxDftApply<B>
-            + VmpApplyDftToDft<B>
-            + VmpApplyDftToDftAdd<B>
-            + VecZnxIdftApplyConsume<B>
-            + VecZnxBigNormalize<B>
-            + VecZnxNormalize<B>,
-        Scratch<B>: ScratchAvailable,
+    pub fn external_product_inplace<A, M, BE: Backend>(&mut self, module: &M, a: &A, scratch: &mut Scratch<BE>)
+    where
+        M: GGLWEExternalProduct<BE>,
+        A: GGSWPreparedToRef<BE>,
+        Scratch<BE>: ScratchTakeCore<BE>,
     {
-        #[cfg(debug_assertions)]
-        {
-            use crate::layouts::GLWEInfos;
-
-            assert_eq!(
-                self.rank_out(),
-                rhs.rank(),
-                "ksk_out output rank: {} != ggsw rank: {}",
-                self.rank_out(),
-                rhs.rank()
-            );
-        }
-
-        (0..self.rank_in().into()).for_each(|col_i| {
-            (0..self.dnum().into()).for_each(|row_j| {
-                self.at_mut(row_j, col_i)
-                    .external_product_inplace(module, rhs, scratch);
-            });
-        });
+        module.gglwe_external_product_inplace(&mut self.key, a, scratch);
     }
 }

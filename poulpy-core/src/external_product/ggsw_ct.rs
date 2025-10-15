@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::ScratchAvailable,
-    layouts::{Backend, DataMut, DataRef, Module, Scratch, ZnxZero},
+    layouts::{Backend, DataMut, Module, Scratch, ZnxZero},
 };
 
 use crate::{
@@ -115,20 +115,22 @@ impl GGSW<Vec<u8>> {
 }
 
 impl<DataSelf: DataMut> GGSW<DataSelf> {
-    pub fn external_product<DataLhs: DataRef, DataRhs: DataRef, B: Backend>(
-        &mut self,
-        module: &Module<B>,
-        lhs: &GGSW<DataLhs>,
-        rhs: &GGSWPrepared<DataRhs, B>,
-        scratch: &mut Scratch<B>,
-    ) {
+    pub fn external_product<A, B, M, BE: Backend>(&mut self, module: &M, a: &A, b: &B, scratch: &mut Scratch<BE>)
+    where
+        M: GGSWExternalProduct<BE>,
+        A: GGSWToRef,
+        B: GGSWPreparedToRef<BE>,
+        Scratch<BE>: ScratchTakeCore<BE>,
+    {
+        module.ggsw_external_product(self, a, b, scratch);
     }
 
-    pub fn external_product_inplace<DataRhs: DataRef, B: Backend>(
-        &mut self,
-        module: &Module<B>,
-        rhs: &GGSWPrepared<DataRhs, B>,
-        scratch: &mut Scratch<B>,
-    ) {
+    pub fn external_product_inplace<A, M, BE: Backend>(&mut self, module: &M, a: &A, scratch: &mut Scratch<BE>)
+    where
+        M: GGSWExternalProduct<BE>,
+        A: GGSWPreparedToRef<BE>,
+        Scratch<BE>: ScratchTakeCore<BE>,
+    {
+        module.ggsw_external_product_inplace(self, a, scratch);
     }
 }

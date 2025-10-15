@@ -147,7 +147,7 @@ where
     }
 }
 
-impl<B: Backend> LWESwitchingKeyCompressedAlloc for Module<B> where Self: GLWESwitchingKeyCompressedAlloc{}
+impl<B: Backend> LWESwitchingKeyCompressedAlloc for Module<B> where Self: GLWESwitchingKeyCompressedAlloc {}
 
 impl LWESwitchingKeyCompressed<Vec<u8>> {
     pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
