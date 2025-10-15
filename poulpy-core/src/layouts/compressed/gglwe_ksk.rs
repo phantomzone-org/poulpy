@@ -4,8 +4,8 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Dnum, Dsize, GGLWEInfos, GLWEInfos, GLWESwitchingKey, GLWESwitchingKeySetMetaData, GLWESwitchingKeyToMut,
-    LWEInfos, Rank, TorusPrecision,
+    Base2K, Dnum, Dsize, GGLWEInfos, GLWEInfos, GLWESwitchingKey, GLWESwitchingKeySetMetaData, GLWESwitchingKeyToMut, LWEInfos,
+    Rank, RingDegree, TorusPrecision,
     compressed::{GGLWECompressed, GGLWECompressedAlloc, GGLWECompressedToMut, GGLWECompressedToRef, GGLWEDecompress},
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
@@ -19,7 +19,7 @@ pub struct GLWESwitchingKeyCompressed<D: Data> {
 }
 
 impl<D: Data> LWEInfos for GLWESwitchingKeyCompressed<D> {
-    fn n(&self) -> Degree {
+    fn n(&self) -> RingDegree {
         self.key.n()
     }
 

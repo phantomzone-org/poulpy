@@ -4,7 +4,7 @@ use poulpy_hal::layouts::{
 
 use crate::{
     dist::Distribution,
-    layouts::{Base2K, Degree, GLWEInfos, GetDegree, LWEInfos, Rank, TorusPrecision},
+    layouts::{Base2K, GLWEInfos, GetRingDegree, LWEInfos, Rank, RingDegree, TorusPrecision},
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
@@ -18,7 +18,7 @@ pub struct GLWEPublicKey<D: Data> {
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub struct GLWEPublicKeyLayout {
-    pub n: Degree,
+    pub n: RingDegree,
     pub base2k: Base2K,
     pub k: TorusPrecision,
     pub rank: Rank,
@@ -43,8 +43,8 @@ impl<D: Data> LWEInfos for GLWEPublicKey<D> {
         self.k
     }
 
-    fn n(&self) -> Degree {
-        Degree(self.data.n() as u32)
+    fn n(&self) -> RingDegree {
+        RingDegree(self.data.n() as u32)
     }
 
     fn size(&self) -> usize {
@@ -67,7 +67,7 @@ impl LWEInfos for GLWEPublicKeyLayout {
         self.k
     }
 
-    fn n(&self) -> Degree {
+    fn n(&self) -> RingDegree {
         self.n
     }
 
@@ -84,12 +84,12 @@ impl GLWEInfos for GLWEPublicKeyLayout {
 
 pub trait GLWEPublicKeyAlloc
 where
-    Self: GetDegree,
+    Self: GetRingDegree,
 {
     fn alloc_glwe_public_key(&self, base2k: Base2K, k: TorusPrecision, rank: Rank) -> GLWEPublicKey<Vec<u8>> {
         GLWEPublicKey {
             data: VecZnx::alloc(
-                self.n().into(),
+                self.ring_degree().into(),
                 (rank + 1).into(),
                 k.0.div_ceil(base2k.0) as usize,
             ),
@@ -108,7 +108,7 @@ where
 
     fn bytes_of_glwe_public_key(&self, base2k: Base2K, k: TorusPrecision, rank: Rank) -> usize {
         VecZnx::bytes_of(
-            self.n().into(),
+            self.ring_degree().into(),
             (rank + 1).into(),
             k.0.div_ceil(base2k.0) as usize,
         )
@@ -122,7 +122,7 @@ where
     }
 }
 
-impl<B: Backend> GLWEPublicKeyAlloc for Module<B> where Self: GetDegree {}
+impl<B: Backend> GLWEPublicKeyAlloc for Module<B> where Self: GetRingDegree {}
 
 impl GLWEPublicKey<Vec<u8>> {
     pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self

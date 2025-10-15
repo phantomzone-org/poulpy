@@ -1,5 +1,5 @@
 use poulpy_core::layouts::{
-    Base2K, Degree, Dnum, Dsize, GGSW, GGSWLayout, GLWE, GLWELayout, GLWESecret, Rank, TorusPrecision,
+    Base2K, Dnum, Dsize, GGSW, GGSWLayout, GLWE, GLWELayout, GLWESecret, Rank, RingDegree, TorusPrecision,
     prepared::{GGSWPrepared, GLWESecretPrepared, PrepareAlloc},
 };
 use std::hint::black_box;
@@ -28,7 +28,7 @@ fn bench_external_product_glwe_fft64(c: &mut Criterion) {
     fn runner(p: Params) -> impl FnMut() {
         let module: Module<FFT64Spqlios> = Module::<FFT64Spqlios>::new(1 << p.log_n);
 
-        let n: Degree = Degree(module.n() as u32);
+        let n: RingDegree = RingDegree(module.n() as u32);
         let base2k: Base2K = p.base2k;
         let k_ct_in: TorusPrecision = p.k_ct_in;
         let k_ct_out: TorusPrecision = p.k_ct_out;
@@ -137,7 +137,7 @@ fn bench_external_product_glwe_inplace_fft64(c: &mut Criterion) {
     fn runner(p: Params) -> impl FnMut() {
         let module: Module<FFT64Spqlios> = Module::<FFT64Spqlios>::new(1 << p.log_n);
 
-        let n: Degree = Degree(module.n() as u32);
+        let n: RingDegree = RingDegree(module.n() as u32);
         let base2k: Base2K = p.base2k;
         let k_glwe: TorusPrecision = p.k_ct;
         let k_ggsw: TorusPrecision = p.k_ggsw;

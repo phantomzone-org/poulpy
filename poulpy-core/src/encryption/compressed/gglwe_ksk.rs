@@ -7,7 +7,7 @@ use poulpy_hal::{
 use crate::{
     encryption::compressed::gglwe_ct::GGLWECompressedEncryptSk,
     layouts::{
-        Degree, GGLWE, GGLWEInfos, GLWEInfos, GLWESecret, GLWESecretToRef, LWEInfos,
+        GGLWE, GGLWEInfos, GLWEInfos, GLWESecret, GLWESecretToRef, LWEInfos, RingDegree,
         compressed::{GLWESwitchingKeyCompressed, GLWESwitchingKeyCompressedToMut},
         prepared::GLWESecretPrepared,
     },
@@ -110,7 +110,7 @@ where
             );
         });
 
-        let (mut sk_out_tmp, scratch_2) = scratch_1.take_glwe_secret_prepared(Degree(n as u32), sk_out.rank());
+        let (mut sk_out_tmp, scratch_2) = scratch_1.take_glwe_secret_prepared(RingDegree(n as u32), sk_out.rank());
         {
             let (mut tmp, _) = scratch_2.take_scalar_znx(n, 1);
             (0..sk_out.rank().into()).for_each(|i| {

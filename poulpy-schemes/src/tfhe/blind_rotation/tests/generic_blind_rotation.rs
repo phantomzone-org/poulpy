@@ -23,7 +23,7 @@ use crate::tfhe::blind_rotation::{
 };
 
 use poulpy_core::layouts::{
-    GLWE, GLWELayout, GLWEPlaintext, GLWESecret, LWE, LWELayout, LWEToRef, LWEInfos, LWEPlaintext, LWESecret,
+    GLWE, GLWELayout, GLWEPlaintext, GLWESecret, LWE, LWEInfos, LWELayout, LWEPlaintext, LWESecret, LWEToRef,
     prepared::{GLWESecretPrepared, PrepareAlloc},
 };
 

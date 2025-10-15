@@ -1,8 +1,8 @@
 use poulpy_core::{
     GLWEOperations,
     layouts::{
-        AutomorphismKeyLayout, GGSW, GGSWLayout, GLWE, GLWELayout, GLWEPlaintext, GLWESecret, LWE, LWELayout,
-        LWEInfos, LWEPlaintext, LWESecret, TensorKeyLayout,
+        AutomorphismKeyLayout, GGSW, GGSWLayout, GLWE, GLWELayout, GLWEPlaintext, GLWESecret, LWE, LWEInfos, LWELayout,
+        LWEPlaintext, LWESecret, TensorKeyLayout,
         prepared::{GGSWPrepared, GLWESecretPrepared, PrepareAlloc},
     },
 };

@@ -7,7 +7,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Dnum, Dsize, GGLWE, GGLWEInfos, GGLWEToMut, GLWEInfos, GetDegree, LWEInfos, Rank, TorusPrecision,
+    Base2K, Dnum, Dsize, GGLWE, GGLWEInfos, GGLWEToMut, GLWEInfos, GetRingDegree, LWEInfos, Rank, RingDegree, TorusPrecision,
     compressed::{GLWECompressed, GLWEDecompress},
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
@@ -24,8 +24,8 @@ pub struct GGLWECompressed<D: Data> {
 }
 
 impl<D: Data> LWEInfos for GGLWECompressed<D> {
-    fn n(&self) -> Degree {
-        Degree(self.data.n() as u32)
+    fn n(&self) -> RingDegree {
+        RingDegree(self.data.n() as u32)
     }
 
     fn base2k(&self) -> Base2K {
@@ -88,7 +88,7 @@ impl<D: DataRef> fmt::Display for GGLWECompressed<D> {
 
 pub trait GGLWECompressedAlloc
 where
-    Self: GetDegree,
+    Self: GetRingDegree,
 {
     fn alloc_gglwe_compressed(
         &self,
@@ -115,7 +115,7 @@ where
 
         GGLWECompressed {
             data: MatZnx::alloc(
-                self.n().into(),
+                self.ring_degree().into(),
                 dnum.into(),
                 rank_in.into(),
                 1,
@@ -133,7 +133,7 @@ where
     where
         A: GGLWEInfos,
     {
-        assert_eq!(infos.n(), self.n());
+        assert_eq!(infos.n(), self.ring_degree());
         self.alloc_gglwe_compressed(
             infos.base2k(),
             infos.k(),
@@ -160,7 +160,7 @@ where
         );
 
         MatZnx::bytes_of(
-            self.n().into(),
+            self.ring_degree().into(),
             dnum.into(),
             rank_in.into(),
             1,
@@ -172,7 +172,7 @@ where
     where
         A: GGLWEInfos,
     {
-        assert_eq!(infos.n(), self.n());
+        assert_eq!(infos.n(), self.ring_degree());
         self.bytes_of_gglwe_compressed(
             infos.base2k(),
             infos.k(),
@@ -183,7 +183,7 @@ where
     }
 }
 
-impl<B: Backend> GGLWECompressedAlloc for Module<B> where Self: GetDegree {}
+impl<B: Backend> GGLWECompressedAlloc for Module<B> where Self: GetRingDegree {}
 
 impl GGLWECompressed<Vec<u8>> {
     pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self

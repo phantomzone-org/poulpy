@@ -4,7 +4,8 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    AutomorphismKey, AutomorphismKeyToMut, Base2K, Degree, Dnum, Dsize, GGLWEInfos, GLWEInfos, LWEInfos, Rank, TorusPrecision,
+    AutomorphismKey, AutomorphismKeyToMut, Base2K, Dnum, Dsize, GGLWEInfos, GLWEInfos, LWEInfos, Rank, RingDegree,
+    TorusPrecision,
     compressed::{
         GLWESwitchingKeyCompressed, GLWESwitchingKeyCompressedAlloc, GLWESwitchingKeyCompressedToMut,
         GLWESwitchingKeyCompressedToRef, GLWESwitchingKeyDecompress,
@@ -21,7 +22,7 @@ pub struct AutomorphismKeyCompressed<D: Data> {
 }
 
 impl<D: Data> LWEInfos for AutomorphismKeyCompressed<D> {
-    fn n(&self) -> Degree {
+    fn n(&self) -> RingDegree {
         self.key.n()
     }
 

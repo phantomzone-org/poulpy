@@ -5,7 +5,7 @@ use poulpy_hal::{
 
 use crate::{
     dist::Distribution,
-    layouts::{Base2K, Degree, LWEInfos, TorusPrecision},
+    layouts::{Base2K, LWEInfos, RingDegree, TorusPrecision},
 };
 
 pub struct LWESecret<D: Data> {
@@ -14,7 +14,7 @@ pub struct LWESecret<D: Data> {
 }
 
 pub trait LWESecretAlloc {
-    fn alloc_lwe_secret(&self, n: Degree) -> LWESecret<Vec<u8>> {
+    fn alloc_lwe_secret(&self, n: RingDegree) -> LWESecret<Vec<u8>> {
         LWESecret {
             data: ScalarZnx::alloc(n.into(), 1),
             dist: Distribution::NONE,
@@ -25,7 +25,7 @@ pub trait LWESecretAlloc {
 impl<B: Backend> LWESecretAlloc for Module<B> {}
 
 impl LWESecret<Vec<u8>> {
-    pub fn alloc<M>(module: &M, n: Degree) -> Self
+    pub fn alloc<M>(module: &M, n: RingDegree) -> Self
     where
         M: LWESecretAlloc,
     {
@@ -55,8 +55,8 @@ impl<D: Data> LWEInfos for LWESecret<D> {
         TorusPrecision(0)
     }
 
-    fn n(&self) -> Degree {
-        Degree(self.data.n() as u32)
+    fn n(&self) -> RingDegree {
+        RingDegree(self.data.n() as u32)
     }
 
     fn size(&self) -> usize {

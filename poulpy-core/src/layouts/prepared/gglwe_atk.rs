@@ -1,7 +1,7 @@
 use poulpy_hal::layouts::{Backend, Data, DataMut, DataRef, Module, Scratch};
 
 use crate::layouts::{
-    AutomorphismKeyToRef, Base2K, Degree, Dnum, Dsize, GGLWEInfos, GLWEInfos, LWEInfos, Rank, TorusPrecision,
+    AutomorphismKeyToRef, Base2K, Dnum, Dsize, GGLWEInfos, GLWEInfos, LWEInfos, Rank, RingDegree, TorusPrecision,
     prepared::{
         GLWESwitchingKeyPrepare, GLWESwitchingKeyPrepared, GLWESwitchingKeyPreparedAlloc, GLWESwitchingKeyPreparedToMut,
         GLWESwitchingKeyPreparedToRef,
@@ -15,7 +15,7 @@ pub struct AutomorphismKeyPrepared<D: Data, B: Backend> {
 }
 
 impl<D: Data, B: Backend> LWEInfos for AutomorphismKeyPrepared<D, B> {
-    fn n(&self) -> Degree {
+    fn n(&self) -> RingDegree {
         self.key.n()
     }
 

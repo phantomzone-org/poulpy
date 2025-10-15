@@ -1,8 +1,8 @@
 use poulpy_hal::layouts::{Backend, Data, DataMut, DataRef, Module, Scratch};
 
 use crate::layouts::{
-    Base2K, Degree, Dnum, Dsize, GGLWEInfos, GLWEInfos, GLWESwitchingKeySetMetaData, GLWESwitchingKeyToRef,
-    GLWESwtichingKeyGetMetaData, LWEInfos, Rank, TorusPrecision,
+    Base2K, Dnum, Dsize, GGLWEInfos, GLWEInfos, GLWESwitchingKeySetMetaData, GLWESwitchingKeyToRef, GLWESwtichingKeyGetMetaData,
+    LWEInfos, Rank, RingDegree, TorusPrecision,
     prepared::{GGLWEPrepare, GGLWEPrepared, GGLWEPreparedAlloc, GGLWEPreparedToMut, GGLWEPreparedToRef},
 };
 
@@ -34,7 +34,7 @@ impl<D: DataRef, B: Backend> GLWESwtichingKeyGetMetaData for GLWESwitchingKeyPre
 }
 
 impl<D: Data, B: Backend> LWEInfos for GLWESwitchingKeyPrepared<D, B> {
-    fn n(&self) -> Degree {
+    fn n(&self) -> RingDegree {
         self.key.n()
     }
 

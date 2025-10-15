@@ -10,7 +10,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Degree, GGLWEInfos, GLWEInfos, GLWESecret, GLWESwitchingKey, LWEInfos, Rank, TensorKey, prepared::GLWESecretPrepared,
+    GGLWEInfos, GLWEInfos, GLWESecret, GLWESwitchingKey, LWEInfos, Rank, RingDegree, TensorKey, prepared::GLWESecretPrepared,
 };
 
 impl TensorKey<Vec<u8>> {
@@ -23,7 +23,7 @@ impl TensorKey<Vec<u8>> {
             + module.bytes_of_vec_znx_dft(infos.rank_out().into(), 1)
             + module.bytes_of_vec_znx_big(1, 1)
             + module.bytes_of_vec_znx_dft(1, 1)
-            + GLWESecret::bytes_of(Degree(module.n() as u32), Rank(1))
+            + GLWESecret::bytes_of(RingDegree(module.n() as u32), Rank(1))
             + GLWESwitchingKey::encrypt_sk_tmp_bytes(module, infos)
     }
 }
@@ -64,7 +64,7 @@ impl<DataSelf: DataMut> TensorKey<DataSelf> {
             assert_eq!(self.n(), sk.n());
         }
 
-        let n: Degree = sk.n();
+        let n: RingDegree = sk.n();
         let rank: Rank = self.rank_out();
 
         let (mut sk_dft_prep, scratch_1) = scratch.take_glwe_secret_prepared(n, rank);

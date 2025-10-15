@@ -1,7 +1,7 @@
 #[cfg(test)]
 use poulpy_core::layouts::{
-    AutomorphismKeyLayout, Base2K, Degree, Dnum, Dsize, GGSWLayout, GLWELayout, GLWEToLWEKeyLayout, Rank,
-    TensorKeyLayout, TorusPrecision,
+    AutomorphismKeyLayout, Base2K, Dnum, Dsize, GGSWLayout, GLWELayout, GLWEToLWEKeyLayout, Rank, RingDegree, TensorKeyLayout,
+    TorusPrecision,
 };
 
 #[cfg(test)]
@@ -26,7 +26,7 @@ pub(crate) const TEST_RANK: u32 = 2;
 
 #[cfg(test)]
 pub(crate) static TEST_GLWE_INFOS: GLWELayout = GLWELayout {
-    n: Degree(TEST_N_GLWE),
+    n: RingDegree(TEST_N_GLWE),
     base2k: Base2K(TEST_BASE2K),
     k: TorusPrecision(TEST_K_GLWE),
     rank: Rank(TEST_RANK),
@@ -34,7 +34,7 @@ pub(crate) static TEST_GLWE_INFOS: GLWELayout = GLWELayout {
 
 #[cfg(test)]
 pub(crate) static TEST_GGSW_INFOS: GGSWLayout = GGSWLayout {
-    n: Degree(TEST_N_GLWE),
+    n: RingDegree(TEST_N_GLWE),
     base2k: Base2K(TEST_BASE2K),
     k: TorusPrecision(TEST_K_GGSW),
     rank: Rank(TEST_RANK),
@@ -46,15 +46,15 @@ pub(crate) static TEST_GGSW_INFOS: GGSWLayout = GGSWLayout {
 pub(crate) static TEST_BDD_KEY_LAYOUT: BDDKeyLayout = BDDKeyLayout {
     cbt: CircuitBootstrappingKeyLayout {
         layout_brk: BlindRotationKeyLayout {
-            n_glwe: Degree(TEST_N_GLWE),
-            n_lwe: Degree(TEST_N_LWE),
+            n_glwe: RingDegree(TEST_N_GLWE),
+            n_lwe: RingDegree(TEST_N_LWE),
             base2k: Base2K(TEST_BASE2K),
             k: TorusPrecision(52),
             dnum: Dnum(3),
             rank: Rank(TEST_RANK),
         },
         layout_atk: AutomorphismKeyLayout {
-            n: Degree(TEST_N_GLWE),
+            n: RingDegree(TEST_N_GLWE),
             base2k: Base2K(TEST_BASE2K),
             k: TorusPrecision(52),
             rank: Rank(TEST_RANK),
@@ -62,7 +62,7 @@ pub(crate) static TEST_BDD_KEY_LAYOUT: BDDKeyLayout = BDDKeyLayout {
             dsize: Dsize(1),
         },
         layout_tsk: TensorKeyLayout {
-            n: Degree(TEST_N_GLWE),
+            n: RingDegree(TEST_N_GLWE),
             base2k: Base2K(TEST_BASE2K),
             k: TorusPrecision(52),
             rank: Rank(TEST_RANK),
@@ -71,7 +71,7 @@ pub(crate) static TEST_BDD_KEY_LAYOUT: BDDKeyLayout = BDDKeyLayout {
         },
     },
     ks: GLWEToLWEKeyLayout {
-        n: Degree(TEST_N_GLWE),
+        n: RingDegree(TEST_N_GLWE),
         base2k: Base2K(TEST_BASE2K),
         k: TorusPrecision(39),
         rank_in: Rank(TEST_RANK),

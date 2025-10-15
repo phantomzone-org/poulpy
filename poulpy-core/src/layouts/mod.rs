@@ -35,12 +35,12 @@ pub use lwe_to_glwe_ksk::*;
 
 use poulpy_hal::layouts::{Backend, Module};
 
-pub trait GetDegree {
-    fn n(&self) -> Degree;
+pub trait GetRingDegree {
+    fn ring_degree(&self) -> RingDegree;
 }
 
-impl<B: Backend> GetDegree for Module<B> {
-    fn n(&self) -> Degree {
+impl<B: Backend> GetRingDegree for Module<B> {
+    fn ring_degree(&self) -> RingDegree {
         Self::n(&self).into()
     }
 }
@@ -202,14 +202,14 @@ macro_rules! newtype_u32 {
     };
 }
 
-newtype_u32!(Degree);
+newtype_u32!(RingDegree);
 newtype_u32!(TorusPrecision);
 newtype_u32!(Base2K);
 newtype_u32!(Dnum);
 newtype_u32!(Rank);
 newtype_u32!(Dsize);
 
-impl Degree {
+impl RingDegree {
     pub fn log2(&self) -> usize {
         let n: usize = self.0 as usize;
         (usize::BITS - (n - 1).leading_zeros()) as _

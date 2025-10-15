@@ -225,7 +225,7 @@ impl<D: DataRef, T: UnsignedInteger, B: Backend> LWEInfos for FheUintBlocksPrep<
         self.blocks[0].k()
     }
 
-    fn n(&self) -> poulpy_core::layouts::Degree {
+    fn n(&self) -> poulpy_core::layouts::RingDegree {
         self.blocks[0].n()
     }
 }
@@ -256,7 +256,7 @@ impl<D: DataRef, T: UnsignedInteger> LWEInfos for FheUintBlocksPrepDebug<D, T> {
         self.blocks[0].k()
     }
 
-    fn n(&self) -> poulpy_core::layouts::Degree {
+    fn n(&self) -> poulpy_core::layouts::RingDegree {
         self.blocks[0].n()
     }
 }

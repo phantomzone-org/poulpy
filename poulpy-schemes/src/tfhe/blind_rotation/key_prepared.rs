@@ -8,7 +8,7 @@ use std::marker::PhantomData;
 use poulpy_core::{
     Distribution,
     layouts::{
-        Base2K, Degree, Dnum, Dsize, GGSWInfos, GLWEInfos, LWEInfos, Rank, TorusPrecision,
+        Base2K, Dnum, Dsize, GGSWInfos, GLWEInfos, LWEInfos, Rank, RingDegree, TorusPrecision,
         prepared::{GGSWPrepared, Prepare, PrepareAlloc},
     },
 };
@@ -30,12 +30,12 @@ pub struct BlindRotationKeyPrepared<D: Data, BRT: BlindRotationAlgo, B: Backend>
 }
 
 impl<D: Data, BRT: BlindRotationAlgo, B: Backend> BlindRotationKeyInfos for BlindRotationKeyPrepared<D, BRT, B> {
-    fn n_glwe(&self) -> Degree {
+    fn n_glwe(&self) -> RingDegree {
         self.n()
     }
 
-    fn n_lwe(&self) -> Degree {
-        Degree(self.data.len() as u32)
+    fn n_lwe(&self) -> RingDegree {
+        RingDegree(self.data.len() as u32)
     }
 }
 
@@ -48,7 +48,7 @@ impl<D: Data, BRT: BlindRotationAlgo, B: Backend> LWEInfos for BlindRotationKeyP
         self.data[0].k()
     }
 
-    fn n(&self) -> Degree {
+    fn n(&self) -> RingDegree {
         self.data[0].n()
     }
 

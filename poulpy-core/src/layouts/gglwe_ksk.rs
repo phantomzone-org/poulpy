@@ -4,7 +4,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Dnum, Dsize, GGLWE, GGLWEAlloc, GGLWEInfos, GGLWEToMut, GGLWEToRef, GLWE, GLWEInfos, LWEInfos, Rank,
+    Base2K, Dnum, Dsize, GGLWE, GGLWEAlloc, GGLWEInfos, GGLWEToMut, GGLWEToRef, GLWE, GLWEInfos, LWEInfos, Rank, RingDegree,
     TorusPrecision,
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
@@ -13,7 +13,7 @@ use std::fmt;
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub struct GLWESwitchingKeyLayout {
-    pub n: Degree,
+    pub n: RingDegree,
     pub base2k: Base2K,
     pub k: TorusPrecision,
     pub rank_in: Rank,
@@ -23,7 +23,7 @@ pub struct GLWESwitchingKeyLayout {
 }
 
 impl LWEInfos for GLWESwitchingKeyLayout {
-    fn n(&self) -> Degree {
+    fn n(&self) -> RingDegree {
         self.n
     }
 
@@ -98,7 +98,7 @@ impl<D: DataRef> GLWESwtichingKeyGetMetaData for GLWESwitchingKey<D> {
 }
 
 impl<D: Data> LWEInfos for GLWESwitchingKey<D> {
-    fn n(&self) -> Degree {
+    fn n(&self) -> RingDegree {
         self.key.n()
     }
 

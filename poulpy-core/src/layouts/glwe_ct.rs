@@ -6,7 +6,7 @@ use poulpy_hal::{
     source::Source,
 };
 
-use crate::layouts::{Base2K, Degree, GetDegree, LWEInfos, Rank, TorusPrecision};
+use crate::layouts::{Base2K, GetRingDegree, LWEInfos, Rank, RingDegree, TorusPrecision};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::fmt;
 
@@ -32,14 +32,14 @@ pub trait SetGLWEInfos {
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub struct GLWELayout {
-    pub n: Degree,
+    pub n: RingDegree,
     pub base2k: Base2K,
     pub k: TorusPrecision,
     pub rank: Rank,
 }
 
 impl LWEInfos for GLWELayout {
-    fn n(&self) -> Degree {
+    fn n(&self) -> RingDegree {
         self.n
     }
 
@@ -96,8 +96,8 @@ impl<D: Data> LWEInfos for GLWE<D> {
         self.k
     }
 
-    fn n(&self) -> Degree {
-        Degree(self.data.n() as u32)
+    fn n(&self) -> RingDegree {
+        RingDegree(self.data.n() as u32)
     }
 
     fn size(&self) -> usize {
@@ -148,12 +148,12 @@ impl<D: DataMut> FillUniform for GLWE<D> {
 
 pub trait GLWEAlloc
 where
-    Self: GetDegree,
+    Self: GetRingDegree,
 {
     fn alloc_glwe(&self, base2k: Base2K, k: TorusPrecision, rank: Rank) -> GLWE<Vec<u8>> {
         GLWE {
             data: VecZnx::alloc(
-                self.n().into(),
+                self.ring_degree().into(),
                 (rank + 1).into(),
                 k.0.div_ceil(base2k.0) as usize,
             ),
@@ -171,7 +171,7 @@ where
 
     fn bytes_of_glwe(&self, base2k: Base2K, k: TorusPrecision, rank: Rank) -> usize {
         VecZnx::bytes_of(
-            self.n().into(),
+            self.ring_degree().into(),
             (rank + 1).into(),
             k.0.div_ceil(base2k.0) as usize,
         )
@@ -185,7 +185,7 @@ where
     }
 }
 
-impl<B: Backend> GLWEAlloc for Module<B> where Self: GetDegree {}
+impl<B: Backend> GLWEAlloc for Module<B> where Self: GetRingDegree {}
 
 impl GLWE<Vec<u8>> {
     pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self

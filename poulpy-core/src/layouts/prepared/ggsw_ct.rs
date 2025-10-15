@@ -4,7 +4,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Dnum, Dsize, GGSW, GGSWInfos, GGSWToRef, GLWEInfos, GetDegree, LWEInfos, Rank, TorusPrecision,
+    Base2K, Dnum, Dsize, GGSW, GGSWInfos, GGSWToRef, GLWEInfos, GetRingDegree, LWEInfos, Rank, RingDegree, TorusPrecision,
 };
 
 #[derive(PartialEq, Eq)]
@@ -16,8 +16,8 @@ pub struct GGSWPrepared<D: Data, B: Backend> {
 }
 
 impl<D: Data, B: Backend> LWEInfos for GGSWPrepared<D, B> {
-    fn n(&self) -> Degree {
-        Degree(self.data.n() as u32)
+    fn n(&self) -> RingDegree {
+        RingDegree(self.data.n() as u32)
     }
 
     fn base2k(&self) -> Base2K {
@@ -51,7 +51,7 @@ impl<D: Data, B: Backend> GGSWInfos for GGSWPrepared<D, B> {
 
 pub trait GGSWPreparedAlloc<B: Backend>
 where
-    Self: GetDegree + VmpPMatAlloc<B> + VmpPMatBytesOf,
+    Self: GetRingDegree + VmpPMatAlloc<B> + VmpPMatBytesOf,
 {
     fn alloc_ggsw_prepared(
         &self,
@@ -92,7 +92,7 @@ where
     where
         A: GGSWInfos,
     {
-        assert_eq!(self.n(), infos.n());
+        assert_eq!(self.ring_degree(), infos.n());
         self.alloc_ggsw_prepared(
             infos.base2k(),
             infos.k(),
@@ -124,7 +124,7 @@ where
     where
         A: GGSWInfos,
     {
-        assert_eq!(self.n(), infos.n());
+        assert_eq!(self.ring_degree(), infos.n());
         self.bytes_of_ggsw_prepared(
             infos.base2k(),
             infos.k(),
@@ -135,7 +135,7 @@ where
     }
 }
 
-impl<B: Backend> GGSWPreparedAlloc<B> for Module<B> where Self: GetDegree + VmpPMatAlloc<B> + VmpPMatBytesOf {}
+impl<B: Backend> GGSWPreparedAlloc<B> for Module<B> where Self: GetRingDegree + VmpPMatAlloc<B> + VmpPMatBytesOf {}
 
 impl<B: Backend> GGSWPrepared<Vec<u8>, B> {
     pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
@@ -177,13 +177,13 @@ impl<D: DataRef, B: Backend> GGSWPrepared<D, B> {
 
 pub trait GGSWPrepare<B: Backend>
 where
-    Self: GetDegree + VmpPrepareTmpBytes + VmpPrepare<B>,
+    Self: GetRingDegree + VmpPrepareTmpBytes + VmpPrepare<B>,
 {
     fn ggsw_prepare_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GGSWInfos,
     {
-        assert_eq!(self.n(), infos.n());
+        assert_eq!(self.ring_degree(), infos.n());
         self.vmp_prepare_tmp_bytes(
             infos.dnum().into(),
             (infos.rank() + 1).into(),
@@ -198,8 +198,8 @@ where
     {
         let mut res: GGSWPrepared<&mut [u8], B> = res.to_mut();
         let other: GGSW<&[u8]> = other.to_ref();
-        assert_eq!(res.n(), self.n());
-        assert_eq!(other.n(), self.n());
+        assert_eq!(res.n(), self.ring_degree());
+        assert_eq!(other.n(), self.ring_degree());
         assert_eq!(res.k, other.k);
         assert_eq!(res.base2k, other.base2k);
         assert_eq!(res.dsize, other.dsize);
@@ -207,7 +207,7 @@ where
     }
 }
 
-impl<B: Backend> GGSWPrepare<B> for Module<B> where Self: GetDegree + VmpPrepareTmpBytes + VmpPrepare<B> {}
+impl<B: Backend> GGSWPrepare<B> for Module<B> where Self: GetRingDegree + VmpPrepareTmpBytes + VmpPrepare<B> {}
 
 impl<B: Backend> GGSWPrepared<Vec<u8>, B> {
     pub fn prepare_tmp_bytes<A, M>(&self, module: &M, infos: &A) -> usize

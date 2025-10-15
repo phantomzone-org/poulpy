@@ -8,12 +8,12 @@ use poulpy_hal::{
 
 use crate::{
     dist::Distribution,
-    layouts::{Base2K, Degree, GLWEInfos, GetDegree, LWEInfos, Rank, TorusPrecision},
+    layouts::{Base2K, GLWEInfos, GetRingDegree, LWEInfos, Rank, RingDegree, TorusPrecision},
 };
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub struct GLWESecretLayout {
-    pub n: Degree,
+    pub n: RingDegree,
     pub rank: Rank,
 }
 
@@ -26,7 +26,7 @@ impl LWEInfos for GLWESecretLayout {
         TorusPrecision(0)
     }
 
-    fn n(&self) -> Degree {
+    fn n(&self) -> RingDegree {
         self.n
     }
 
@@ -55,8 +55,8 @@ impl<D: Data> LWEInfos for GLWESecret<D> {
         TorusPrecision(0)
     }
 
-    fn n(&self) -> Degree {
-        Degree(self.data.n() as u32)
+    fn n(&self) -> RingDegree {
+        RingDegree(self.data.n() as u32)
     }
 
     fn size(&self) -> usize {
@@ -72,11 +72,11 @@ impl<D: Data> GLWEInfos for GLWESecret<D> {
 
 pub trait GLWESecretAlloc
 where
-    Self: GetDegree,
+    Self: GetRingDegree,
 {
     fn alloc_glwe_secret(&self, rank: Rank) -> GLWESecret<Vec<u8>> {
         GLWESecret {
-            data: ScalarZnx::alloc(self.n().into(), rank.into()),
+            data: ScalarZnx::alloc(self.ring_degree().into(), rank.into()),
             dist: Distribution::NONE,
         }
     }
@@ -89,7 +89,7 @@ where
     }
 
     fn bytes_of_glwe_secret(&self, rank: Rank) -> usize {
-        ScalarZnx::bytes_of(self.n().into(), rank.into())
+        ScalarZnx::bytes_of(self.ring_degree().into(), rank.into())
     }
 
     fn bytes_of_glwe_secret_from_infos<A>(&self, infos: &A) -> usize
@@ -100,7 +100,7 @@ where
     }
 }
 
-impl<B: Backend> GLWESecretAlloc for Module<B> where Self: GetDegree {}
+impl<B: Backend> GLWESecretAlloc for Module<B> where Self: GetRingDegree {}
 
 impl GLWESecret<Vec<u8>> {
     pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self

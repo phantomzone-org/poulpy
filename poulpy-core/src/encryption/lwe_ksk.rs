@@ -10,7 +10,8 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Degree, GGLWEInfos, GLWESecret, GLWESwitchingKey, LWEInfos, LWESecret, LWESwitchingKey, Rank, prepared::GLWESecretPrepared,
+    GGLWEInfos, GLWESecret, GLWESwitchingKey, LWEInfos, LWESecret, LWESwitchingKey, Rank, RingDegree,
+    prepared::GLWESecretPrepared,
 };
 
 impl LWESwitchingKey<Vec<u8>> {
@@ -34,7 +35,7 @@ impl LWESwitchingKey<Vec<u8>> {
             1,
             "rank_out > 1 is not supported for LWESwitchingKey"
         );
-        GLWESecret::bytes_of(Degree(module.n() as u32), Rank(1))
+        GLWESecret::bytes_of(RingDegree(module.n() as u32), Rank(1))
             + GLWESecretPrepared::bytes_of(module, Rank(1))
             + GLWESwitchingKey::encrypt_sk_tmp_bytes(module, infos)
     }

@@ -9,7 +9,7 @@ use poulpy_hal::{
     source::Source,
 };
 
-use crate::layouts::{Base2K, Degree, LWE, LWEInfos, LWEToMut, TorusPrecision};
+use crate::layouts::{Base2K, LWE, LWEInfos, LWEToMut, RingDegree, TorusPrecision};
 
 #[derive(PartialEq, Eq, Clone)]
 pub struct LWECompressed<D: Data> {
@@ -28,8 +28,8 @@ impl<D: Data> LWEInfos for LWECompressed<D> {
         self.k
     }
 
-    fn n(&self) -> Degree {
-        Degree(self.data.n() as u32)
+    fn n(&self) -> RingDegree {
+        RingDegree(self.data.n() as u32)
     }
 
     fn size(&self) -> usize {

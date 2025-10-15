@@ -4,7 +4,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Dnum, Dsize, GGLWE, GGLWEInfos, GGLWEToRef, GLWEInfos, GetDegree, LWEInfos, Rank, TorusPrecision,
+    Base2K, Dnum, Dsize, GGLWE, GGLWEInfos, GGLWEToRef, GLWEInfos, GetRingDegree, LWEInfos, Rank, RingDegree, TorusPrecision,
 };
 
 #[derive(PartialEq, Eq)]
@@ -16,8 +16,8 @@ pub struct GGLWEPrepared<D: Data, B: Backend> {
 }
 
 impl<D: Data, B: Backend> LWEInfos for GGLWEPrepared<D, B> {
-    fn n(&self) -> Degree {
-        Degree(self.data.n() as u32)
+    fn n(&self) -> RingDegree {
+        RingDegree(self.data.n() as u32)
     }
 
     fn base2k(&self) -> Base2K {
@@ -59,7 +59,7 @@ impl<D: Data, B: Backend> GGLWEInfos for GGLWEPrepared<D, B> {
 
 pub trait GGLWEPreparedAlloc<B: Backend>
 where
-    Self: GetDegree + VmpPMatAlloc<B> + VmpPMatBytesOf,
+    Self: GetRingDegree + VmpPMatAlloc<B> + VmpPMatBytesOf,
 {
     fn alloc_gglwe_prepared(
         &self,
@@ -96,7 +96,7 @@ where
     where
         A: GGLWEInfos,
     {
-        assert_eq!(self.n(), infos.n());
+        assert_eq!(self.ring_degree(), infos.n());
         self.alloc_gglwe_prepared(
             infos.base2k(),
             infos.k(),
@@ -137,7 +137,7 @@ where
     where
         A: GGLWEInfos,
     {
-        assert_eq!(self.n(), infos.n());
+        assert_eq!(self.ring_degree(), infos.n());
         self.bytes_of_gglwe_prepared(
             infos.base2k(),
             infos.k(),
@@ -149,7 +149,7 @@ where
     }
 }
 
-impl<B: Backend> GGLWEPreparedAlloc<B> for Module<B> where Module<B>: GetDegree + VmpPMatAlloc<B> + VmpPMatBytesOf {}
+impl<B: Backend> GGLWEPreparedAlloc<B> for Module<B> where Module<B>: GetRingDegree + VmpPMatAlloc<B> + VmpPMatBytesOf {}
 
 impl<B: Backend> GGLWEPrepared<Vec<u8>, B> {
     pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
@@ -201,7 +201,7 @@ impl<B: Backend> GGLWEPrepared<Vec<u8>, B> {
 
 pub trait GGLWEPrepare<B: Backend>
 where
-    Self: GetDegree + VmpPrepareTmpBytes + VmpPrepare<B>,
+    Self: GetRingDegree + VmpPrepareTmpBytes + VmpPrepare<B>,
 {
     fn prepare_gglwe_tmp_bytes<A>(&self, infos: &A) -> usize
     where
@@ -223,8 +223,8 @@ where
         let mut res: GGLWEPrepared<&mut [u8], B> = res.to_mut();
         let other: GGLWE<&[u8]> = other.to_ref();
 
-        assert_eq!(res.n(), self.n());
-        assert_eq!(other.n(), self.n());
+        assert_eq!(res.n(), self.ring_degree());
+        assert_eq!(other.n(), self.ring_degree());
         assert_eq!(res.base2k, other.base2k);
         assert_eq!(res.k, other.k);
         assert_eq!(res.dsize, other.dsize);
@@ -233,7 +233,7 @@ where
     }
 }
 
-impl<B: Backend> GGLWEPrepare<B> for Module<B> where Self: GetDegree + VmpPrepareTmpBytes + VmpPrepare<B> {}
+impl<B: Backend> GGLWEPrepare<B> for Module<B> where Self: GetRingDegree + VmpPrepareTmpBytes + VmpPrepare<B> {}
 
 impl<D: DataMut, B: Backend> GGLWEPrepared<D, B> {
     pub fn prepare<O, M>(&mut self, module: &M, other: &O, scratch: &mut Scratch<B>)

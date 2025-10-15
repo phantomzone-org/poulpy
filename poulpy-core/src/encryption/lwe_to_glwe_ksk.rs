@@ -9,7 +9,7 @@ use poulpy_hal::{
     source::Source,
 };
 
-use crate::layouts::{Degree, GGLWEInfos, GLWESecret, GLWESwitchingKey, LWEInfos, LWESecret, LWEToGLWESwitchingKey, Rank};
+use crate::layouts::{GGLWEInfos, GLWESecret, GLWESwitchingKey, LWEInfos, LWESecret, LWEToGLWESwitchingKey, Rank, RingDegree};
 
 impl LWEToGLWESwitchingKey<Vec<u8>> {
     pub fn encrypt_sk_tmp_bytes<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
@@ -22,7 +22,8 @@ impl LWEToGLWESwitchingKey<Vec<u8>> {
             Rank(1),
             "rank_in != 1 is not supported for LWEToGLWESwitchingKey"
         );
-        GLWESwitchingKey::encrypt_sk_tmp_bytes(module, infos) + GLWESecret::bytes_of(Degree(module.n() as u32), infos.rank_in())
+        GLWESwitchingKey::encrypt_sk_tmp_bytes(module, infos)
+            + GLWESecret::bytes_of(RingDegree(module.n() as u32), infos.rank_in())
     }
 }
 

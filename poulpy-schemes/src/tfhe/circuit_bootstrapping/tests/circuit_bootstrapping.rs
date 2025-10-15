@@ -31,9 +31,7 @@ use crate::tfhe::{
     },
 };
 
-use poulpy_core::layouts::{
-    AutomorphismKeyLayout, Dsize, GGSWLayout, LWELayout, TensorKeyLayout, prepared::PrepareAlloc,
-};
+use poulpy_core::layouts::{AutomorphismKeyLayout, Dsize, GGSWLayout, LWELayout, TensorKeyLayout, prepared::PrepareAlloc};
 
 use poulpy_core::layouts::{
     GGSW, GLWE, GLWEPlaintext, GLWESecret, LWE, LWEPlaintext, LWESecret,

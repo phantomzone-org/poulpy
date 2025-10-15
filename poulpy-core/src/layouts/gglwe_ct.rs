@@ -5,7 +5,7 @@ use poulpy_hal::{
     source::Source,
 };
 
-use crate::layouts::{Base2K, Degree, Dnum, Dsize, GLWE, GLWEInfos, GetDegree, LWEInfos, Rank, TorusPrecision};
+use crate::layouts::{Base2K, Dnum, Dsize, GLWE, GLWEInfos, GetRingDegree, LWEInfos, Rank, RingDegree, TorusPrecision};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
 use std::fmt;
@@ -37,7 +37,7 @@ pub trait SetGGLWEInfos {
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub struct GGLWELayout {
-    pub n: Degree,
+    pub n: RingDegree,
     pub base2k: Base2K,
     pub k: TorusPrecision,
     pub rank_in: Rank,
@@ -55,7 +55,7 @@ impl LWEInfos for GGLWELayout {
         self.k
     }
 
-    fn n(&self) -> Degree {
+    fn n(&self) -> RingDegree {
         self.n
     }
 }
@@ -101,8 +101,8 @@ impl<D: Data> LWEInfos for GGLWE<D> {
         self.k
     }
 
-    fn n(&self) -> Degree {
-        Degree(self.data.n() as u32)
+    fn n(&self) -> RingDegree {
+        RingDegree(self.data.n() as u32)
     }
 
     fn size(&self) -> usize {
@@ -162,7 +162,7 @@ impl<D: DataRef> fmt::Display for GGLWE<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "(GGLWECiphertext: k={} base2k={} dsize={}) {}",
+            "(GGLWE: k={} base2k={} dsize={}) {}",
             self.k().0,
             self.base2k().0,
             self.dsize().0,
@@ -193,7 +193,7 @@ impl<D: DataMut> GGLWE<D> {
 
 pub trait GGLWEAlloc
 where
-    Self: GetDegree,
+    Self: GetRingDegree,
 {
     fn alloc_gglwe(
         &self,
@@ -220,7 +220,7 @@ where
 
         GGLWE {
             data: MatZnx::alloc(
-                self.n().into(),
+                self.ring_degree().into(),
                 dnum.into(),
                 rank_in.into(),
                 (rank_out + 1).into(),
@@ -270,7 +270,7 @@ where
         );
 
         MatZnx::bytes_of(
-            self.n().into(),
+            self.ring_degree().into(),
             dnum.into(),
             rank_in.into(),
             (rank_out + 1).into(),
@@ -293,7 +293,7 @@ where
     }
 }
 
-impl<B: Backend> GGLWEAlloc for Module<B> where Self: GetDegree {}
+impl<B: Backend> GGLWEAlloc for Module<B> where Self: GetRingDegree {}
 
 impl GGLWE<Vec<u8>> {
     pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self

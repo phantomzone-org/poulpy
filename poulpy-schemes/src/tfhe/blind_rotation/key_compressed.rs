@@ -8,7 +8,7 @@ use std::{fmt, marker::PhantomData};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use poulpy_core::{
     Distribution,
-    layouts::{Base2K, Degree, Dsize, GGSWInfos, GLWEInfos, LWEInfos, TorusPrecision, compressed::GGSWCompressed},
+    layouts::{Base2K, Dsize, GGSWInfos, GLWEInfos, LWEInfos, RingDegree, TorusPrecision, compressed::GGSWCompressed},
 };
 
 use crate::tfhe::blind_rotation::{BlindRotationAlgo, BlindRotationKeyInfos};
@@ -94,17 +94,17 @@ impl<D: DataRef, BRT: BlindRotationAlgo> WriterTo for BlindRotationKeyCompressed
 }
 
 impl<D: DataRef, BRA: BlindRotationAlgo> BlindRotationKeyInfos for BlindRotationKeyCompressed<D, BRA> {
-    fn n_glwe(&self) -> Degree {
+    fn n_glwe(&self) -> RingDegree {
         self.n()
     }
 
-    fn n_lwe(&self) -> Degree {
-        Degree(self.keys.len() as u32)
+    fn n_lwe(&self) -> RingDegree {
+        RingDegree(self.keys.len() as u32)
     }
 }
 
 impl<D: DataRef, BRA: BlindRotationAlgo> LWEInfos for BlindRotationKeyCompressed<D, BRA> {
-    fn n(&self) -> Degree {
+    fn n(&self) -> RingDegree {
         self.keys[0].n()
     }
 

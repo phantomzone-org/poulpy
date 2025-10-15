@@ -4,7 +4,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Dnum, Dsize, GGLWEInfos, GLWEInfos, LWEInfos, Rank, TensorKey, TensorKeyToMut, TorusPrecision,
+    Base2K, Dnum, Dsize, GGLWEInfos, GLWEInfos, LWEInfos, Rank, RingDegree, TensorKey, TensorKeyToMut, TorusPrecision,
     compressed::{
         GLWESwitchingKeyCompressed, GLWESwitchingKeyCompressedAlloc, GLWESwitchingKeyCompressedToMut,
         GLWESwitchingKeyCompressedToRef, GLWESwitchingKeyDecompress,
@@ -19,7 +19,7 @@ pub struct TensorKeyCompressed<D: Data> {
 }
 
 impl<D: Data> LWEInfos for TensorKeyCompressed<D> {
-    fn n(&self) -> Degree {
+    fn n(&self) -> RingDegree {
         self.keys[0].n()
     }
 

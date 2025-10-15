@@ -1,22 +1,48 @@
 use poulpy_hal::{
-    api::{
-        ScratchAvailable, VecZnxBigAddSmallInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftApply,
-        VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeTmpBytes, VmpApplyDftToDft,
-        VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
-    },
-    layouts::{Backend, DataMut, DataRef, Module, Scratch, ZnxView, ZnxViewMut, ZnxZero},
+    api::ScratchAvailable,
+    layouts::{Backend, DataMut, Module, Scratch, ZnxView, ZnxViewMut, ZnxZero},
 };
 
 use crate::{
+    ScratchTakeCore,
     keyswitching::glwe_ct::GLWEKeySwitch,
-    layouts::{prepared::LWESwitchingKeyPrepared, GGLWEInfos, GLWEAlloc, GLWELayout, GetDegree, LWEToRef, LWEInfos, Rank, TorusPrecision, GLWE, LWE},
+    layouts::{
+        GGLWEInfos, GLWE, GLWEAlloc, GLWELayout, LWE, LWEInfos, LWEToMut, LWEToRef, Rank, TorusPrecision,
+        prepared::{LWESwitchingKeyPrepared, LWESwitchingKeyPreparedToRef},
+    },
 };
+
+impl LWE<Vec<u8>> {
+    pub fn keyswitch_tmp_bytes<M, R, A, K, BE: Backend>(module: &M, res_infos: &R, a_infos: &A, key_infos: &K) -> usize
+    where
+        R: LWEInfos,
+        A: LWEInfos,
+        K: GGLWEInfos,
+        M: LWEKeySwitch<BE>,
+    {
+        module.lwe_keyswitch_tmp_bytes(res_infos, a_infos, key_infos)
+    }
+}
+
+impl<D: DataMut> LWE<D> {
+    pub fn keyswitch<M, A, K, BE: Backend>(&mut self, module: &M, a: &A, ksk: &K, scratch: &mut Scratch<BE>)
+    where
+        A: LWEToRef,
+        K: LWESwitchingKeyPreparedToRef<BE>,
+        Scratch<BE>: ScratchTakeCore<BE>,
+        M: LWEKeySwitch<BE>,
+    {
+        module.lwe_keyswitch(self, a, ksk, scratch);
+    }
+}
+
+impl<BE: Backend> LWEKeySwitch<BE> for Module<BE> where Self: LWEKeySwitch<BE> {}
 
 pub trait LWEKeySwitch<BE: Backend>
 where
     Self: GLWEKeySwitch<BE> + GLWEAlloc,
 {
-    fn keyswitch_tmp_bytes<B: Backend, R, A, K>(&self, res_infos: &R, a_infos: &A, key_infos: &K) -> usize
+    fn lwe_keyswitch_tmp_bytes<R, A, K>(&self, res_infos: &R, a_infos: &A, key_infos: &K) -> usize
     where
         R: LWEInfos,
         A: LWEInfos,
@@ -25,14 +51,14 @@ where
         let max_k: TorusPrecision = a_infos.k().max(res_infos.k());
 
         let glwe_a_infos: GLWELayout = GLWELayout {
-            n: GetDegree::n(self),
+            n: self.ring_degree(),
             base2k: a_infos.base2k(),
             k: max_k,
             rank: Rank(1),
         };
 
         let glwe_res_infos: GLWELayout = GLWELayout {
-            n: GetDegree::n(self),
+            n: self.ring_degree(),
             base2k: res_infos.base2k(),
             k: max_k,
             rank: Rank(1),
@@ -45,39 +71,46 @@ where
         glwe_in + glwe_out + ks
     }
 
-    fn keyswitch<A, DKs, B: Backend>(
-        &mut self,
-        module: &Module<B>,
-        a: &A,
-        ksk: &K,
-        scratch: &mut Scratch<B>,
-    ) where
+    fn lwe_keyswitch<R, A, K>(&self, res: &mut R, a: &A, ksk: &K, scratch: &mut Scratch<BE>)
+    where
+        R: LWEToMut,
         A: LWEToRef,
-        DKs: DataRef,
-        Scratch<B>: ScratchAvailable,
+        K: LWESwitchingKeyPreparedToRef<BE>,
+        Scratch<BE>: ScratchTakeCore<BE>,
     {
-        assert!(self.n() <= module.n() as u32);
-            assert!(a.n() <= module.n() as u32);
-            assert!(scratch.available() >= LWE::keyswitch_tmp_bytes(module, self, a, ksk));
+        let res: &mut LWE<&mut [u8]> = &mut res.to_mut();
+        let a: &LWE<&[u8]> = &a.to_ref();
+        let ksk: &LWESwitchingKeyPrepared<&[u8], BE> = &ksk.to_ref();
 
-        let max_k: TorusPrecision = self.k().max(a.k());
+        assert!(res.n().as_usize() <= self.n());
+        assert!(a.n().as_usize() <= self.n());
+        assert_eq!(ksk.n(), self.n() as u32);
+        assert!(scratch.available() >= self.lwe_keyswitch_tmp_bytes(res, a, ksk));
+
+        let max_k: TorusPrecision = res.k().max(a.k());
 
         let a_size: usize = a.k().div_ceil(ksk.base2k()) as usize;
 
-        let (mut glwe_in, scratch_1) = scratch.take_glwe_ct(&GLWELayout {
-            n: ksk.n(),
-            base2k: a.base2k(),
-            k: max_k,
-            rank: Rank(1),
-        });
+        let (mut glwe_in, scratch_1) = scratch.take_glwe_ct(
+            self,
+            &GLWELayout {
+                n: ksk.n(),
+                base2k: a.base2k(),
+                k: max_k,
+                rank: Rank(1),
+            },
+        );
         glwe_in.data.zero();
 
-        let (mut glwe_out, scratch_1) = scratch_1.take_glwe_ct(&GLWELayout {
-            n: ksk.n(),
-            base2k: self.base2k(),
-            k: max_k,
-            rank: Rank(1),
-        });
+        let (mut glwe_out, scratch_1) = scratch_1.take_glwe_ct(
+            self,
+            &GLWELayout {
+                n: ksk.n(),
+                base2k: res.base2k(),
+                k: max_k,
+                rank: Rank(1),
+            },
+        );
 
         let n_lwe: usize = a.n().into();
 
@@ -87,13 +120,7 @@ where
             glwe_in.data.at_mut(1, i)[..n_lwe].copy_from_slice(&data_lwe[1..]);
         }
 
-        glwe_out.keyswitch(module, &glwe_in, &ksk.0, scratch_1);
-        self.sample_extract(&glwe_out);
+        self.glwe_keyswitch(&mut glwe_out, &glwe_in, &ksk.0, scratch_1);
+        res.sample_extract(&glwe_out);
     }
-}
-
-impl LWE<Vec<u8>> {}
-
-impl<DLwe: DataMut> LWE<DLwe> {
- 
 }
