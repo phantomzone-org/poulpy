@@ -14,7 +14,7 @@ use crate::{
     },
 };
 
-impl<DataSelf: DataMut> GLWE<DataSelf> {
+impl GLWE<Vec<u8>> {
     pub fn external_product_scratch_space<R, A, B, M, BE: Backend>(module: &M, res_infos: &R, a_infos: &A, b_infos: &B) -> usize
     where
         R: GLWEInfos,
@@ -24,7 +24,9 @@ impl<DataSelf: DataMut> GLWE<DataSelf> {
     {
         module.glwe_external_product_scratch_space(res_infos, a_infos, b_infos)
     }
+}
 
+impl<DataSelf: DataMut> GLWE<DataSelf> {
     pub fn external_product<A, B, M, BE: Backend>(&mut self, module: &M, a: &A, b: &B, scratch: &mut Scratch<BE>)
     where
         A: GLWEToRef,
