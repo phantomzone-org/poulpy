@@ -10,7 +10,7 @@ use poulpy_hal::{
 use crate::layouts::{GGLWEInfos, GLWE, GLWEInfos, GLWELayout, LWE, LWEInfos, Rank, prepared::GLWEToLWESwitchingKeyPrepared};
 
 impl LWE<Vec<u8>> {
-    pub fn from_glwe_scratch_space<B: Backend, OUT, IN, KEY>(
+    pub fn from_glwe_tmp_bytes<B: Backend, OUT, IN, KEY>(
         module: &Module<B>,
         lwe_infos: &OUT,
         glwe_infos: &IN,
@@ -34,7 +34,7 @@ impl LWE<Vec<u8>> {
             lwe_infos.base2k(),
             lwe_infos.k(),
             1u32.into(),
-        ) + GLWE::keyswitch_scratch_space(module, &glwe_layout, glwe_infos, key_infos)
+        ) + GLWE::keyswitch_tmp_bytes(module, &glwe_layout, glwe_infos, key_infos)
     }
 }
 

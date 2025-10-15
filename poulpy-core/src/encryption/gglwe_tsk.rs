@@ -14,7 +14,7 @@ use crate::layouts::{
 };
 
 impl TensorKey<Vec<u8>> {
-    pub fn encrypt_sk_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
+    pub fn encrypt_sk_tmp_bytes<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GGLWEInfos,
         Module<B>: SvpPPolBytesOf + VecZnxNormalizeTmpBytes + VecZnxDftBytesOf + VecZnxNormalizeTmpBytes + VecZnxBigBytesOf,
@@ -24,7 +24,7 @@ impl TensorKey<Vec<u8>> {
             + module.bytes_of_vec_znx_big(1, 1)
             + module.bytes_of_vec_znx_dft(1, 1)
             + GLWESecret::bytes_of(Degree(module.n() as u32), Rank(1))
-            + GLWESwitchingKey::encrypt_sk_scratch_space(module, infos)
+            + GLWESwitchingKey::encrypt_sk_tmp_bytes(module, infos)
     }
 }
 

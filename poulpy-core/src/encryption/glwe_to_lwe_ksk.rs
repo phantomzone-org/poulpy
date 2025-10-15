@@ -14,13 +14,13 @@ use crate::layouts::{
 };
 
 impl GLWEToLWESwitchingKey<Vec<u8>> {
-    pub fn encrypt_sk_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
+    pub fn encrypt_sk_tmp_bytes<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GGLWEInfos,
         Module<B>: SvpPPolBytesOf + VecZnxNormalizeTmpBytes + VecZnxDftBytesOf + VecZnxNormalizeTmpBytes,
     {
         GLWESecretPrepared::bytes_of(module, infos.rank_in())
-            + (GLWESwitchingKey::encrypt_sk_scratch_space(module, infos) | GLWESecret::bytes_of(infos.n(), infos.rank_in()))
+            + (GLWESwitchingKey::encrypt_sk_tmp_bytes(module, infos) | GLWESecret::bytes_of(infos.n(), infos.rank_in()))
     }
 }
 

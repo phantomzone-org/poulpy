@@ -112,10 +112,10 @@ where
             module.vec_znx_fill_uniform(base2k, &mut pt_want.data, 0, &mut source_xa);
 
             let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-                AutomorphismKey::encrypt_sk_scratch_space(module, &autokey)
-                    | GLWE::decrypt_scratch_space(module, &ct_out)
-                    | GLWE::encrypt_sk_scratch_space(module, &ct_in)
-                    | GLWE::automorphism_scratch_space(module, &ct_out, &ct_in, &autokey),
+                AutomorphismKey::encrypt_sk_tmp_bytes(module, &autokey)
+                    | GLWE::decrypt_tmp_bytes(module, &ct_out)
+                    | GLWE::encrypt_sk_tmp_bytes(module, &ct_in)
+                    | GLWE::automorphism_tmp_bytes(module, &ct_out, &ct_in, &autokey),
             );
 
             let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&ct_out);
@@ -246,10 +246,10 @@ where
             module.vec_znx_fill_uniform(base2k, &mut pt_want.data, 0, &mut source_xa);
 
             let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-                AutomorphismKey::encrypt_sk_scratch_space(module, &autokey)
-                    | GLWE::decrypt_scratch_space(module, &ct)
-                    | GLWE::encrypt_sk_scratch_space(module, &ct)
-                    | GLWE::automorphism_inplace_scratch_space(module, &ct, &autokey),
+                AutomorphismKey::encrypt_sk_tmp_bytes(module, &autokey)
+                    | GLWE::decrypt_tmp_bytes(module, &ct)
+                    | GLWE::encrypt_sk_tmp_bytes(module, &ct)
+                    | GLWE::automorphism_inplace_tmp_bytes(module, &ct, &autokey),
             );
 
             let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&ct);

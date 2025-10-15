@@ -14,7 +14,7 @@ use crate::layouts::{
 };
 
 impl GGSW<Vec<u8>> {
-    pub fn automorphism_scratch_space<B: Backend, OUT, IN, KEY, TSK>(
+    pub fn automorphism_tmp_bytes<B: Backend, OUT, IN, KEY, TSK>(
         module: &Module<B>,
         out_infos: &OUT,
         in_infos: &IN,
@@ -31,17 +31,17 @@ impl GGSW<Vec<u8>> {
     {
         let out_size: usize = out_infos.size();
         let ci_dft: usize = module.bytes_of_vec_znx_dft((key_infos.rank_out() + 1).into(), out_size);
-        let ks_internal: usize = GLWE::keyswitch_scratch_space(
+        let ks_internal: usize = GLWE::keyswitch_tmp_bytes(
             module,
             &out_infos.glwe_layout(),
             &in_infos.glwe_layout(),
             key_infos,
         );
-        let expand: usize = GGSW::expand_row_scratch_space(module, out_infos, tsk_infos);
+        let expand: usize = GGSW::expand_row_tmp_bytes(module, out_infos, tsk_infos);
         ci_dft + (ks_internal | expand)
     }
 
-    pub fn automorphism_inplace_scratch_space<B: Backend, OUT, KEY, TSK>(
+    pub fn automorphism_inplace_tmp_bytes<B: Backend, OUT, KEY, TSK>(
         module: &Module<B>,
         out_infos: &OUT,
         key_infos: &KEY,
@@ -54,7 +54,7 @@ impl GGSW<Vec<u8>> {
         Module<B>:
             VecZnxDftBytesOf + VmpApplyDftToDftTmpBytes + VecZnxBigBytesOf + VecZnxNormalizeTmpBytes + VecZnxBigNormalizeTmpBytes,
     {
-        GGSW::automorphism_scratch_space(module, out_infos, out_infos, key_infos, tsk_infos)
+        GGSW::automorphism_tmp_bytes(module, out_infos, out_infos, key_infos, tsk_infos)
     }
 }
 
@@ -115,7 +115,7 @@ impl<DataSelf: DataMut> GGSW<DataSelf> {
                 self.rank(),
                 tensor_key.rank_out()
             );
-            assert!(scratch.available() >= GGSW::automorphism_scratch_space(module, self, lhs, auto_key, tensor_key))
+            assert!(scratch.available() >= GGSW::automorphism_tmp_bytes(module, self, lhs, auto_key, tensor_key))
         };
 
         // Keyswitch the j-th row of the col 0

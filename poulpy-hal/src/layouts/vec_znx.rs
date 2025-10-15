@@ -110,7 +110,7 @@ impl<D: DataRef> ZnxView for VecZnx<D> {
 }
 
 impl VecZnx<Vec<u8>> {
-    pub fn rsh_scratch_space(n: usize) -> usize {
+    pub fn rsh_tmp_bytes(n: usize) -> usize {
         n * std::mem::size_of::<i64>()
     }
 }

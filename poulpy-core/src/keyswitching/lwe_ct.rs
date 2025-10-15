@@ -10,7 +10,7 @@ use poulpy_hal::{
 use crate::layouts::{GGLWEInfos, GLWE, GLWELayout, LWE, LWEInfos, Rank, TorusPrecision, prepared::LWESwitchingKeyPrepared};
 
 impl LWE<Vec<u8>> {
-    pub fn keyswitch_scratch_space<B: Backend, OUT, IN, KEY>(
+    pub fn keyswitch_tmp_bytes<B: Backend, OUT, IN, KEY>(
         module: &Module<B>,
         out_infos: &OUT,
         in_infos: &IN,
@@ -50,7 +50,7 @@ impl LWE<Vec<u8>> {
 
         let glwe_in: usize = GLWE::bytes_of_from_infos(module, &glwe_in_infos);
         let glwe_out: usize = GLWE::bytes_of_from_infos(module, &glwe_out_infos);
-        let ks: usize = GLWE::keyswitch_scratch_space(module, &glwe_out_infos, &glwe_in_infos, key_infos);
+        let ks: usize = GLWE::keyswitch_tmp_bytes(module, &glwe_out_infos, &glwe_in_infos, key_infos);
 
         glwe_in + glwe_out + ks
     }
@@ -84,7 +84,7 @@ impl<DLwe: DataMut> LWE<DLwe> {
         {
             assert!(self.n() <= module.n() as u32);
             assert!(a.n() <= module.n() as u32);
-            assert!(scratch.available() >= LWE::keyswitch_scratch_space(module, self, a, ksk));
+            assert!(scratch.available() >= LWE::keyswitch_tmp_bytes(module, self, a, ksk));
         }
 
         let max_k: TorusPrecision = self.k().max(a.k());

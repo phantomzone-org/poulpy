@@ -11,7 +11,7 @@ use poulpy_hal::{
 use crate::layouts::{GGLWEInfos, GLWE, GLWEInfos, LWEInfos, prepared::AutomorphismKeyPrepared};
 
 impl GLWE<Vec<u8>> {
-    pub fn automorphism_scratch_space<B: Backend, OUT, IN, KEY>(
+    pub fn automorphism_tmp_bytes<B: Backend, OUT, IN, KEY>(
         module: &Module<B>,
         out_infos: &OUT,
         in_infos: &IN,
@@ -23,16 +23,16 @@ impl GLWE<Vec<u8>> {
         KEY: GGLWEInfos,
         Module<B>: VecZnxDftBytesOf + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        Self::keyswitch_scratch_space(module, out_infos, in_infos, key_infos)
+        Self::keyswitch_tmp_bytes(module, out_infos, in_infos, key_infos)
     }
 
-    pub fn automorphism_inplace_scratch_space<B: Backend, OUT, KEY>(module: &Module<B>, out_infos: &OUT, key_infos: &KEY) -> usize
+    pub fn automorphism_inplace_tmp_bytes<B: Backend, OUT, KEY>(module: &Module<B>, out_infos: &OUT, key_infos: &KEY) -> usize
     where
         OUT: GLWEInfos,
         KEY: GGLWEInfos,
         Module<B>: VecZnxDftBytesOf + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        Self::keyswitch_inplace_scratch_space(module, out_infos, key_infos)
+        Self::keyswitch_inplace_tmp_bytes(module, out_infos, key_infos)
     }
 }
 

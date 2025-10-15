@@ -54,7 +54,7 @@ fn main() {
 
     // Scratch space
     let mut scratch: ScratchOwned<FFT64Spqlios> = ScratchOwned::alloc(
-        GLWE::encrypt_sk_scratch_space(&module, &glwe_ct_infos) | GLWE::decrypt_scratch_space(&module, &glwe_ct_infos),
+        GLWE::encrypt_sk_tmp_bytes(&module, &glwe_ct_infos) | GLWE::decrypt_tmp_bytes(&module, &glwe_ct_infos),
     );
 
     // Generate secret-key

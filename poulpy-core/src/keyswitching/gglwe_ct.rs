@@ -13,7 +13,7 @@ use crate::layouts::{
 };
 
 impl AutomorphismKey<Vec<u8>> {
-    pub fn keyswitch_scratch_space<B: Backend, OUT, IN, KEY>(
+    pub fn keyswitch_tmp_bytes<B: Backend, OUT, IN, KEY>(
         module: &Module<B>,
         out_infos: &OUT,
         in_infos: &IN,
@@ -25,16 +25,16 @@ impl AutomorphismKey<Vec<u8>> {
         KEY: GGLWEInfos,
         Module<B>: VecZnxDftBytesOf + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        GLWESwitchingKey::keyswitch_scratch_space(module, out_infos, in_infos, key_infos)
+        GLWESwitchingKey::keyswitch_tmp_bytes(module, out_infos, in_infos, key_infos)
     }
 
-    pub fn keyswitch_inplace_scratch_space<B: Backend, OUT, KEY>(module: &Module<B>, out_infos: &OUT, key_infos: &KEY) -> usize
+    pub fn keyswitch_inplace_tmp_bytes<B: Backend, OUT, KEY>(module: &Module<B>, out_infos: &OUT, key_infos: &KEY) -> usize
     where
         OUT: GGLWEInfos,
         KEY: GGLWEInfos,
         Module<B>: VecZnxDftBytesOf + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        GLWESwitchingKey::keyswitch_inplace_scratch_space(module, out_infos, key_infos)
+        GLWESwitchingKey::keyswitch_inplace_tmp_bytes(module, out_infos, key_infos)
     }
 }
 
@@ -86,7 +86,7 @@ impl<DataSelf: DataMut> AutomorphismKey<DataSelf> {
 }
 
 impl GLWESwitchingKey<Vec<u8>> {
-    pub fn keyswitch_scratch_space<B: Backend, OUT, IN, KEY>(
+    pub fn keyswitch_tmp_bytes<B: Backend, OUT, IN, KEY>(
         module: &Module<B>,
         out_infos: &OUT,
         in_infos: &IN,
@@ -98,16 +98,16 @@ impl GLWESwitchingKey<Vec<u8>> {
         KEY: GGLWEInfos,
         Module<B>: VecZnxDftBytesOf + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        GLWE::keyswitch_scratch_space(module, out_infos, in_infos, key_apply)
+        GLWE::keyswitch_tmp_bytes(module, out_infos, in_infos, key_apply)
     }
 
-    pub fn keyswitch_inplace_scratch_space<B: Backend, OUT, KEY>(module: &Module<B>, out_infos: &OUT, key_apply: &KEY) -> usize
+    pub fn keyswitch_inplace_tmp_bytes<B: Backend, OUT, KEY>(module: &Module<B>, out_infos: &OUT, key_apply: &KEY) -> usize
     where
         OUT: GGLWEInfos + GLWEInfos,
         KEY: GGLWEInfos + GLWEInfos,
         Module<B>: VecZnxDftBytesOf + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        GLWE::keyswitch_inplace_scratch_space(module, out_infos, key_apply)
+        GLWE::keyswitch_inplace_tmp_bytes(module, out_infos, key_apply)
     }
 }
 

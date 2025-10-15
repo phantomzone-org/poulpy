@@ -14,7 +14,7 @@ use crate::layouts::{
 };
 
 impl AutomorphismKey<Vec<u8>> {
-    pub fn encrypt_sk_scratch_space<BE: Backend, A>(module: &Module<BE>, infos: &A) -> usize
+    pub fn encrypt_sk_tmp_bytes<BE: Backend, A>(module: &Module<BE>, infos: &A) -> usize
     where
         A: GGLWEInfos,
         Module<BE>: SvpPPolBytesOf + VecZnxNormalizeTmpBytes + VecZnxDftBytesOf + VecZnxNormalizeTmpBytes,
@@ -24,10 +24,10 @@ impl AutomorphismKey<Vec<u8>> {
             infos.rank_out(),
             "rank_in != rank_out is not supported for GGLWEAutomorphismKey"
         );
-        GLWESwitchingKey::encrypt_sk_scratch_space(module, infos) + GLWESecret::bytes_of_from_infos(module, &infos.glwe_layout())
+        GLWESwitchingKey::encrypt_sk_tmp_bytes(module, infos) + GLWESecret::bytes_of_from_infos(module, &infos.glwe_layout())
     }
 
-    pub fn encrypt_pk_scratch_space<BE: Backend, A>(module: &Module<BE>, _infos: &A) -> usize
+    pub fn encrypt_pk_tmp_bytes<BE: Backend, A>(module: &Module<BE>, _infos: &A) -> usize
     where
         A: GGLWEInfos,
     {
@@ -36,7 +36,7 @@ impl AutomorphismKey<Vec<u8>> {
             _infos.rank_out(),
             "rank_in != rank_out is not supported for GGLWEAutomorphismKey"
         );
-        GLWESwitchingKey::encrypt_pk_scratch_space(module, _infos)
+        GLWESwitchingKey::encrypt_pk_tmp_bytes(module, _infos)
     }
 }
 
@@ -119,10 +119,10 @@ where
             assert_eq!(res.rank_out(), res.rank_in());
             assert_eq!(sk.rank(), res.rank_out());
             assert!(
-                scratch.available() >= AutomorphismKey::encrypt_sk_scratch_space(self, res),
-                "scratch.available(): {} < AutomorphismKey::encrypt_sk_scratch_space: {:?}",
+                scratch.available() >= AutomorphismKey::encrypt_sk_tmp_bytes(self, res),
+                "scratch.available(): {} < AutomorphismKey::encrypt_sk_tmp_bytes: {:?}",
                 scratch.available(),
-                AutomorphismKey::encrypt_sk_scratch_space(self, res)
+                AutomorphismKey::encrypt_sk_tmp_bytes(self, res)
             )
         }
 

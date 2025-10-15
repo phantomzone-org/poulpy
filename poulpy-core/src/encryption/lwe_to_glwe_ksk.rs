@@ -12,7 +12,7 @@ use poulpy_hal::{
 use crate::layouts::{Degree, GGLWEInfos, GLWESecret, GLWESwitchingKey, LWEInfos, LWESecret, LWEToGLWESwitchingKey, Rank};
 
 impl LWEToGLWESwitchingKey<Vec<u8>> {
-    pub fn encrypt_sk_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
+    pub fn encrypt_sk_tmp_bytes<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GGLWEInfos,
         Module<B>: SvpPPolBytesOf + VecZnxNormalizeTmpBytes + VecZnxDftBytesOf + VecZnxNormalizeTmpBytes,
@@ -22,8 +22,7 @@ impl LWEToGLWESwitchingKey<Vec<u8>> {
             Rank(1),
             "rank_in != 1 is not supported for LWEToGLWESwitchingKey"
         );
-        GLWESwitchingKey::encrypt_sk_scratch_space(module, infos)
-            + GLWESecret::bytes_of(Degree(module.n() as u32), infos.rank_in())
+        GLWESwitchingKey::encrypt_sk_tmp_bytes(module, infos) + GLWESecret::bytes_of(Degree(module.n() as u32), infos.rank_in())
     }
 }
 

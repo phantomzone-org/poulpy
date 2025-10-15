@@ -121,14 +121,14 @@ where
                 let mut source_xa: Source = Source::new([0u8; 32]);
 
                 let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-                    GLWESwitchingKey::encrypt_sk_scratch_space(module, &gglwe_in_infos)
-                        | GLWESwitchingKey::external_product_scratch_space(
+                    GLWESwitchingKey::encrypt_sk_tmp_bytes(module, &gglwe_in_infos)
+                        | GLWESwitchingKey::external_product_tmp_bytes(
                             module,
                             &gglwe_out_infos,
                             &gglwe_in_infos,
                             &ggsw_infos,
                         )
-                        | GGSW::encrypt_sk_scratch_space(module, &ggsw_infos),
+                        | GGSW::encrypt_sk_tmp_bytes(module, &ggsw_infos),
                 );
 
                 let r: usize = 1;
@@ -292,9 +292,9 @@ where
                 let mut source_xa: Source = Source::new([0u8; 32]);
 
                 let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-                    GLWESwitchingKey::encrypt_sk_scratch_space(module, &gglwe_out_infos)
-                        | GLWESwitchingKey::external_product_inplace_scratch_space(module, &gglwe_out_infos, &ggsw_infos)
-                        | GGSW::encrypt_sk_scratch_space(module, &ggsw_infos),
+                    GLWESwitchingKey::encrypt_sk_tmp_bytes(module, &gglwe_out_infos)
+                        | GLWESwitchingKey::external_product_inplace_tmp_bytes(module, &gglwe_out_infos, &ggsw_infos)
+                        | GGSW::encrypt_sk_tmp_bytes(module, &ggsw_infos),
                 );
 
                 let r: usize = 1;

@@ -90,7 +90,7 @@ where
             let mut source_xe: Source = Source::new([0u8; 32]);
             let mut source_xa: Source = Source::new([0u8; 32]);
 
-            let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(AutomorphismKey::encrypt_sk_scratch_space(
+            let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(AutomorphismKey::encrypt_sk_tmp_bytes(
                 module, &atk_infos,
             ));
 
@@ -192,7 +192,7 @@ where
             let mut source_xs: Source = Source::new([0u8; 32]);
             let mut source_xe: Source = Source::new([0u8; 32]);
 
-            let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(AutomorphismKey::encrypt_sk_scratch_space(
+            let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(AutomorphismKey::encrypt_sk_tmp_bytes(
                 module, &atk_infos,
             ));
 

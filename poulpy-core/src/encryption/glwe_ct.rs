@@ -19,7 +19,7 @@ use crate::{
 };
 
 impl GLWE<Vec<u8>> {
-    pub fn encrypt_sk_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
+    pub fn encrypt_sk_tmp_bytes<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GLWEInfos,
         Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftBytesOf,
@@ -28,7 +28,7 @@ impl GLWE<Vec<u8>> {
         assert_eq!(module.n() as u32, infos.n());
         module.vec_znx_normalize_tmp_bytes() + 2 * VecZnx::bytes_of(module.n(), 1, size) + module.bytes_of_vec_znx_dft(1, size)
     }
-    pub fn encrypt_pk_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
+    pub fn encrypt_pk_tmp_bytes<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GLWEInfos,
         Module<B>: VecZnxDftBytesOf + SvpPPolBytesOf + VecZnxBigBytesOf + VecZnxNormalizeTmpBytes,
@@ -147,10 +147,10 @@ where
             assert_eq!(sk.n(), self.n() as u32);
             assert_eq!(pt.n(), self.n() as u32);
             assert!(
-                scratch.available() >= GLWE::encrypt_sk_scratch_space(self, &res),
-                "scratch.available(): {} < GLWECiphertext::encrypt_sk_scratch_space: {}",
+                scratch.available() >= GLWE::encrypt_sk_tmp_bytes(self, &res),
+                "scratch.available(): {} < GLWECiphertext::encrypt_sk_tmp_bytes: {}",
                 scratch.available(),
-                GLWE::encrypt_sk_scratch_space(self, &res)
+                GLWE::encrypt_sk_tmp_bytes(self, &res)
             )
         }
 
@@ -209,10 +209,10 @@ where
             assert_eq!(res.n(), self.n() as u32);
             assert_eq!(sk.n(), self.n() as u32);
             assert!(
-                scratch.available() >= GLWE::encrypt_sk_scratch_space(self, &res),
-                "scratch.available(): {} < GLWECiphertext::encrypt_sk_scratch_space: {}",
+                scratch.available() >= GLWE::encrypt_sk_tmp_bytes(self, &res),
+                "scratch.available(): {} < GLWECiphertext::encrypt_sk_tmp_bytes: {}",
                 scratch.available(),
-                GLWE::encrypt_sk_scratch_space(self, &res)
+                GLWE::encrypt_sk_tmp_bytes(self, &res)
             )
         }
 

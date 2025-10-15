@@ -13,21 +13,21 @@ use crate::layouts::{
 };
 
 impl GLWESwitchingKey<Vec<u8>> {
-    pub fn encrypt_sk_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
+    pub fn encrypt_sk_tmp_bytes<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GGLWEInfos,
         Module<B>: SvpPPolBytesOf + VecZnxNormalizeTmpBytes + VecZnxDftBytesOf + VecZnxNormalizeTmpBytes,
     {
-        (GGLWE::encrypt_sk_scratch_space(module, infos) | ScalarZnx::bytes_of(module.n(), 1))
+        (GGLWE::encrypt_sk_tmp_bytes(module, infos) | ScalarZnx::bytes_of(module.n(), 1))
             + ScalarZnx::bytes_of(module.n(), infos.rank_in().into())
             + GLWESecretPrepared::bytes_of_from_infos(module, &infos.glwe_layout())
     }
 
-    pub fn encrypt_pk_scratch_space<B: Backend, A>(module: &Module<B>, _infos: &A) -> usize
+    pub fn encrypt_pk_tmp_bytes<B: Backend, A>(module: &Module<B>, _infos: &A) -> usize
     where
         A: GGLWEInfos,
     {
-        GGLWE::encrypt_pk_scratch_space(module, _infos)
+        GGLWE::encrypt_pk_tmp_bytes(module, _infos)
     }
 }
 
@@ -66,10 +66,10 @@ impl<DataSelf: DataMut> GLWESwitchingKey<DataSelf> {
             assert!(sk_in.n().0 <= module.n() as u32);
             assert!(sk_out.n().0 <= module.n() as u32);
             assert!(
-                scratch.available() >= GLWESwitchingKey::encrypt_sk_scratch_space(module, self),
-                "scratch.available()={} < GLWESwitchingKey::encrypt_sk_scratch_space={}",
+                scratch.available() >= GLWESwitchingKey::encrypt_sk_tmp_bytes(module, self),
+                "scratch.available()={} < GLWESwitchingKey::encrypt_sk_tmp_bytes={}",
                 scratch.available(),
-                GLWESwitchingKey::encrypt_sk_scratch_space(module, self)
+                GLWESwitchingKey::encrypt_sk_tmp_bytes(module, self)
             )
         }
 

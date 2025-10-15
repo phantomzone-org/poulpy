@@ -112,9 +112,9 @@ where
                 module.vec_znx_fill_uniform(base2k, &mut pt_want.data, 0, &mut source_xa);
 
                 let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-                    GLWESwitchingKey::encrypt_sk_scratch_space(module, &key_apply)
-                        | GLWE::encrypt_sk_scratch_space(module, &glwe_in_infos)
-                        | GLWE::keyswitch_scratch_space(module, &glwe_out_infos, &glwe_in_infos, &key_apply),
+                    GLWESwitchingKey::encrypt_sk_tmp_bytes(module, &key_apply)
+                        | GLWE::encrypt_sk_tmp_bytes(module, &glwe_in_infos)
+                        | GLWE::keyswitch_tmp_bytes(module, &glwe_out_infos, &glwe_in_infos, &key_apply),
                 );
 
                 let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank_in.into());
@@ -244,9 +244,9 @@ where
             module.vec_znx_fill_uniform(base2k, &mut pt_want.data, 0, &mut source_xa);
 
             let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-                GLWESwitchingKey::encrypt_sk_scratch_space(module, &key_apply_infos)
-                    | GLWE::encrypt_sk_scratch_space(module, &glwe_out_infos)
-                    | GLWE::keyswitch_inplace_scratch_space(module, &glwe_out_infos, &key_apply_infos),
+                GLWESwitchingKey::encrypt_sk_tmp_bytes(module, &key_apply_infos)
+                    | GLWE::encrypt_sk_tmp_bytes(module, &glwe_out_infos)
+                    | GLWE::keyswitch_inplace_tmp_bytes(module, &glwe_out_infos, &key_apply_infos),
             );
 
             let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank.into());

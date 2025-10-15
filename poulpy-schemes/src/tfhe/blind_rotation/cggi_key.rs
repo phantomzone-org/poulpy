@@ -43,12 +43,12 @@ impl BlindRotationKeyAlloc for BlindRotationKey<Vec<u8>, CGGI> {
 }
 
 impl BlindRotationKey<Vec<u8>, CGGI> {
-    pub fn generate_from_sk_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
+    pub fn generate_from_sk_tmp_bytes<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GGSWInfos,
         Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftBytesOf,
     {
-        GGSW::encrypt_sk_scratch_space(module, infos)
+        GGSW::encrypt_sk_tmp_bytes(module, infos)
     }
 }
 
@@ -145,12 +145,12 @@ impl BlindRotationKeyCompressed<Vec<u8>, CGGI> {
         }
     }
 
-    pub fn generate_from_sk_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
+    pub fn generate_from_sk_tmp_bytes<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GGSWInfos,
         Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftBytesOf,
     {
-        GGSWCompressed::encrypt_sk_scratch_space(module, infos)
+        GGSWCompressed::encrypt_sk_tmp_bytes(module, infos)
     }
 }
 

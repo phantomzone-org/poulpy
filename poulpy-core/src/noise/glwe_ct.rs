@@ -61,7 +61,7 @@ impl<D: DataRef> GLWE<D> {
             + VecZnxNormalizeInplace<B>,
         B: Backend + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
     {
-        let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GLWE::decrypt_scratch_space(module, self));
+        let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GLWE::decrypt_tmp_bytes(module, self));
         let noise_have: f64 = self.noise(module, sk_prepared, pt_want, scratch.borrow());
         assert!(noise_have <= max_noise, "{noise_have} {max_noise}");
     }

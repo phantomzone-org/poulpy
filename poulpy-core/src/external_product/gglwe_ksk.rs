@@ -18,7 +18,7 @@ where
         A: GGLWEInfos,
         B: GGSWInfos,
     {
-        self.glwe_external_product_scratch_space(res_infos, a_infos, b_infos)
+        self.glwe_external_product_tmp_bytes(res_infos, a_infos, b_infos)
     }
 
     fn gglwe_external_product<R, A, B>(&self, res: &mut R, a: &A, b: &B, scratch: &mut Scratch<BE>)

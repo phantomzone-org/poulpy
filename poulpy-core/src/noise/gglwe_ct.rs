@@ -35,7 +35,7 @@ impl<D: DataRef> GGLWE<D> {
         let dsize: usize = self.dsize().into();
         let base2k: usize = self.base2k().into();
 
-        let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GLWE::decrypt_scratch_space(module, self));
+        let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GLWE::decrypt_tmp_bytes(module, self));
         let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(module, self);
 
         (0..self.rank_in().into()).for_each(|col_i| {

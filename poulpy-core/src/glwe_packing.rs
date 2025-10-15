@@ -90,13 +90,13 @@ impl GLWEPacker {
     }
 
     /// Number of scratch space bytes required to call [Self::add].
-    pub fn scratch_space<B: Backend, OUT, KEY>(module: &Module<B>, out_infos: &OUT, key_infos: &KEY) -> usize
+    pub fn tmp_bytes<B: Backend, OUT, KEY>(module: &Module<B>, out_infos: &OUT, key_infos: &KEY) -> usize
     where
         OUT: GLWEInfos,
         KEY: GGLWEInfos,
         Module<B>: VecZnxDftBytesOf + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        pack_core_scratch_space(module, out_infos, key_infos)
+        pack_core_tmp_bytes(module, out_infos, key_infos)
     }
 
     pub fn galois_elements<B: Backend>(module: &Module<B>) -> Vec<i64> {
@@ -111,7 +111,7 @@ impl GLWEPacker {
     ///   of packed ciphertexts reaches N/2^log_batch is a result written.
     /// * `a`: ciphertext to pack. Can optionally give None to pack a 0 ciphertext.
     /// * `auto_keys`: a [HashMap] containing the [AutomorphismKeyExec]s.
-    /// * `scratch`: scratch space of size at least [Self::scratch_space].
+    /// * `scratch`: scratch space of size at least [Self::tmp_bytes].
     pub fn add<DataA: DataRef, DataAK: DataRef, B: Backend>(
         &mut self,
         module: &Module<B>,
@@ -177,13 +177,13 @@ impl GLWEPacker {
     }
 }
 
-fn pack_core_scratch_space<B: Backend, OUT, KEY>(module: &Module<B>, out_infos: &OUT, key_infos: &KEY) -> usize
+fn pack_core_tmp_bytes<B: Backend, OUT, KEY>(module: &Module<B>, out_infos: &OUT, key_infos: &KEY) -> usize
 where
     OUT: GLWEInfos,
     KEY: GGLWEInfos,
     Module<B>: VecZnxDftBytesOf + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
 {
-    combine_scratch_space(module, out_infos, key_infos)
+    combine_tmp_bytes(module, out_infos, key_infos)
 }
 
 fn pack_core<D: DataRef, DataAK: DataRef, B: Backend>(
@@ -268,14 +268,14 @@ fn pack_core<D: DataRef, DataAK: DataRef, B: Backend>(
     }
 }
 
-fn combine_scratch_space<B: Backend, OUT, KEY>(module: &Module<B>, out_infos: &OUT, key_infos: &KEY) -> usize
+fn combine_tmp_bytes<B: Backend, OUT, KEY>(module: &Module<B>, out_infos: &OUT, key_infos: &KEY) -> usize
 where
     OUT: GLWEInfos,
     KEY: GGLWEInfos,
     Module<B>: VecZnxDftBytesOf + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
 {
     GLWE::bytes_of_from_infos(module, out_infos)
-        + (GLWE::rsh_scratch_space(module.n()) | GLWE::automorphism_inplace_scratch_space(module, out_infos, key_infos))
+        + (GLWE::rsh_tmp_bytes(module.n()) | GLWE::automorphism_inplace_tmp_bytes(module, out_infos, key_infos))
 }
 
 /// [combine] merges two ciphertexts together.

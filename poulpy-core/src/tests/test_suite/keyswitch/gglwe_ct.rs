@@ -119,11 +119,11 @@ where
                     let mut source_xa: Source = Source::new([0u8; 32]);
 
                     let mut scratch_enc: ScratchOwned<B> = ScratchOwned::alloc(
-                        GLWESwitchingKey::encrypt_sk_scratch_space(module, &gglwe_s0s1_infos)
-                            | GLWESwitchingKey::encrypt_sk_scratch_space(module, &gglwe_s1s2_infos)
-                            | GLWESwitchingKey::encrypt_sk_scratch_space(module, &gglwe_s0s2_infos),
+                        GLWESwitchingKey::encrypt_sk_tmp_bytes(module, &gglwe_s0s1_infos)
+                            | GLWESwitchingKey::encrypt_sk_tmp_bytes(module, &gglwe_s1s2_infos)
+                            | GLWESwitchingKey::encrypt_sk_tmp_bytes(module, &gglwe_s0s2_infos),
                     );
-                    let mut scratch_apply: ScratchOwned<B> = ScratchOwned::alloc(GLWESwitchingKey::keyswitch_scratch_space(
+                    let mut scratch_apply: ScratchOwned<B> = ScratchOwned::alloc(GLWESwitchingKey::keyswitch_tmp_bytes(
                         module,
                         &gglwe_s0s1_infos,
                         &gglwe_s0s2_infos,
@@ -274,10 +274,10 @@ where
                 let mut source_xa: Source = Source::new([0u8; 32]);
 
                 let mut scratch_enc: ScratchOwned<B> = ScratchOwned::alloc(
-                    GLWESwitchingKey::encrypt_sk_scratch_space(module, &gglwe_s0s1_infos)
-                        | GLWESwitchingKey::encrypt_sk_scratch_space(module, &gglwe_s1s2_infos),
+                    GLWESwitchingKey::encrypt_sk_tmp_bytes(module, &gglwe_s0s1_infos)
+                        | GLWESwitchingKey::encrypt_sk_tmp_bytes(module, &gglwe_s1s2_infos),
                 );
-                let mut scratch_apply: ScratchOwned<B> = ScratchOwned::alloc(GLWESwitchingKey::keyswitch_inplace_scratch_space(
+                let mut scratch_apply: ScratchOwned<B> = ScratchOwned::alloc(GLWESwitchingKey::keyswitch_inplace_tmp_bytes(
                     module,
                     &gglwe_s0s1_infos,
                     &gglwe_s1s2_infos,

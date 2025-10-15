@@ -132,10 +132,10 @@ where
             let mut source_xa: Source = Source::new([0u8; 32]);
 
             let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-                GGSW::encrypt_sk_scratch_space(module, &ggsw_in_infos)
-                    | GLWESwitchingKey::encrypt_sk_scratch_space(module, &ksk_apply_infos)
-                    | TensorKey::encrypt_sk_scratch_space(module, &tsk_infos)
-                    | GGSW::keyswitch_scratch_space(
+                GGSW::encrypt_sk_tmp_bytes(module, &ggsw_in_infos)
+                    | GLWESwitchingKey::encrypt_sk_tmp_bytes(module, &ksk_apply_infos)
+                    | TensorKey::encrypt_sk_tmp_bytes(module, &tsk_infos)
+                    | GGSW::keyswitch_tmp_bytes(
                         module,
                         &ggsw_out_infos,
                         &ggsw_in_infos,
@@ -310,10 +310,10 @@ where
             let mut source_xa: Source = Source::new([0u8; 32]);
 
             let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-                GGSW::encrypt_sk_scratch_space(module, &ggsw_out_infos)
-                    | GLWESwitchingKey::encrypt_sk_scratch_space(module, &ksk_apply_infos)
-                    | TensorKey::encrypt_sk_scratch_space(module, &tsk_infos)
-                    | GGSW::keyswitch_inplace_scratch_space(module, &ggsw_out_infos, &ksk_apply_infos, &tsk_infos),
+                GGSW::encrypt_sk_tmp_bytes(module, &ggsw_out_infos)
+                    | GLWESwitchingKey::encrypt_sk_tmp_bytes(module, &ksk_apply_infos)
+                    | TensorKey::encrypt_sk_tmp_bytes(module, &tsk_infos)
+                    | GGSW::keyswitch_inplace_tmp_bytes(module, &ggsw_out_infos, &ksk_apply_infos, &tsk_infos),
             );
 
             let var_xs: f64 = 0.5;

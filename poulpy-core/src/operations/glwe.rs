@@ -246,10 +246,10 @@ pub trait GLWEOperations: GLWEToMut + GLWEInfos + SetGLWEInfos + Sized {
         });
     }
 
-    fn copy<A, B: Backend>(&mut self, module: &Module<B>, a: &A)
+    fn copy<A, M>(&mut self, module: &M, a: &A)
     where
         A: GLWEToRef + GLWEInfos,
-        Module<B>: VecZnxCopy,
+        M: VecZnxCopy,
     {
         #[cfg(debug_assertions)]
         {
@@ -319,8 +319,8 @@ pub trait GLWEOperations: GLWEToMut + GLWEInfos + SetGLWEInfos + Sized {
 }
 
 impl GLWE<Vec<u8>> {
-    pub fn rsh_scratch_space(n: usize) -> usize {
-        VecZnx::rsh_scratch_space(n)
+    pub fn rsh_tmp_bytes(n: usize) -> usize {
+        VecZnx::rsh_tmp_bytes(n)
     }
 }
 

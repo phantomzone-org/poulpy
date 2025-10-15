@@ -14,12 +14,12 @@ use crate::{
 };
 
 impl GLWESwitchingKeyCompressed<Vec<u8>> {
-    pub fn encrypt_sk_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
+    pub fn encrypt_sk_tmp_bytes<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GGLWEInfos,
         Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftBytesOf + VecZnxNormalizeTmpBytes + SvpPPolBytesOf,
     {
-        (GGLWE::encrypt_sk_scratch_space(module, infos) | ScalarZnx::bytes_of(module.n(), 1))
+        (GGLWE::encrypt_sk_tmp_bytes(module, infos) | ScalarZnx::bytes_of(module.n(), 1))
             + ScalarZnx::bytes_of(module.n(), infos.rank_in().into())
             + GLWESecretPrepared::bytes_of(module, infos.rank_out())
     }
@@ -91,10 +91,10 @@ where
             assert!(sk_in.n().0 <= self.n() as u32);
             assert!(sk_out.n().0 <= self.n() as u32);
             assert!(
-                scratch.available() >= GLWESwitchingKey::encrypt_sk_scratch_space(self, res),
-                "scratch.available()={} < GLWESwitchingKey::encrypt_sk_scratch_space={}",
+                scratch.available() >= GLWESwitchingKey::encrypt_sk_tmp_bytes(self, res),
+                "scratch.available()={} < GLWESwitchingKey::encrypt_sk_tmp_bytes={}",
                 scratch.available(),
-                GLWESwitchingKey::encrypt_sk_scratch_space(self, res)
+                GLWESwitchingKey::encrypt_sk_tmp_bytes(self, res)
             )
         }
 

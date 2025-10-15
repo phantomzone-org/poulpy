@@ -27,19 +27,14 @@ impl GLWE<Vec<u8>> {
         gal_els
     }
 
-    pub fn trace_scratch_space<B: Backend, OUT, IN, KEY>(
-        module: &Module<B>,
-        out_infos: &OUT,
-        in_infos: &IN,
-        key_infos: &KEY,
-    ) -> usize
+    pub fn trace_tmp_bytes<B: Backend, OUT, IN, KEY>(module: &Module<B>, out_infos: &OUT, in_infos: &IN, key_infos: &KEY) -> usize
     where
         OUT: GLWEInfos,
         IN: GLWEInfos,
         KEY: GGLWEInfos,
         Module<B>: VecZnxDftBytesOf + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        let trace: usize = Self::automorphism_inplace_scratch_space(module, out_infos, key_infos);
+        let trace: usize = Self::automorphism_inplace_tmp_bytes(module, out_infos, key_infos);
         if in_infos.base2k() != key_infos.base2k() {
             let glwe_conv: usize = VecZnx::bytes_of(
                 module.n(),
@@ -52,13 +47,13 @@ impl GLWE<Vec<u8>> {
         trace
     }
 
-    pub fn trace_inplace_scratch_space<B: Backend, OUT, KEY>(module: &Module<B>, out_infos: &OUT, key_infos: &KEY) -> usize
+    pub fn trace_inplace_tmp_bytes<B: Backend, OUT, KEY>(module: &Module<B>, out_infos: &OUT, key_infos: &KEY) -> usize
     where
         OUT: GLWEInfos,
         KEY: GGLWEInfos,
         Module<B>: VecZnxDftBytesOf + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
     {
-        Self::trace_scratch_space(module, out_infos, out_infos, key_infos)
+        Self::trace_tmp_bytes(module, out_infos, out_infos, key_infos)
     }
 }
 

@@ -15,14 +15,14 @@ use crate::{
 };
 
 impl GLWE<Vec<u8>> {
-    pub fn external_product_scratch_space<R, A, B, M, BE: Backend>(module: &M, res_infos: &R, a_infos: &A, b_infos: &B) -> usize
+    pub fn external_product_tmp_bytes<R, A, B, M, BE: Backend>(module: &M, res_infos: &R, a_infos: &A, b_infos: &B) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos,
         B: GGSWInfos,
         M: GLWEExternalProduct<BE>,
     {
-        module.glwe_external_product_scratch_space(res_infos, a_infos, b_infos)
+        module.glwe_external_product_tmp_bytes(res_infos, a_infos, b_infos)
     }
 }
 
@@ -61,7 +61,7 @@ where
         + VecZnxBigNormalize<BE>
         + VecZnxNormalize<BE>,
 {
-    fn glwe_external_product_scratch_space<R, A, B>(&self, res_infos: &R, a_infos: &A, b_infos: &B) -> usize
+    fn glwe_external_product_tmp_bytes<R, A, B>(&self, res_infos: &R, a_infos: &A, b_infos: &B) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos,
@@ -111,7 +111,7 @@ where
 
             assert_eq!(rhs.rank(), res.rank());
             assert_eq!(rhs.n(), res.n());
-            assert!(scratch.available() >= self.glwe_external_product_scratch_space(res, res, rhs));
+            assert!(scratch.available() >= self.glwe_external_product_tmp_bytes(res, res, rhs));
         }
 
         let cols: usize = (rhs.rank() + 1).into();
@@ -225,7 +225,7 @@ where
             assert_eq!(rhs.rank(), res.rank());
             assert_eq!(rhs.n(), res.n());
             assert_eq!(lhs.n(), res.n());
-            assert!(scratch.available() >= self.glwe_external_product_scratch_space(res, lhs, rhs));
+            assert!(scratch.available() >= self.glwe_external_product_tmp_bytes(res, lhs, rhs));
         }
 
         let cols: usize = (rhs.rank() + 1).into();

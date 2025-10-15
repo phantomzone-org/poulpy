@@ -105,9 +105,9 @@ where
     };
 
     let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-        GLWE::encrypt_sk_scratch_space(module, &glwe_out_infos)
-            | AutomorphismKey::encrypt_sk_scratch_space(module, &key_infos)
-            | GLWEPacker::scratch_space(module, &glwe_out_infos, &key_infos),
+        GLWE::encrypt_sk_tmp_bytes(module, &glwe_out_infos)
+            | AutomorphismKey::encrypt_sk_tmp_bytes(module, &key_infos)
+            | GLWEPacker::tmp_bytes(module, &glwe_out_infos, &key_infos),
     );
 
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_out_infos);

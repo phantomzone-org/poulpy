@@ -48,7 +48,7 @@ impl<D: DataRef> GGSW<D> {
         let mut pt_big: VecZnxBig<Vec<u8>, B> = module.vec_znx_big_alloc(1, self.size());
 
         let mut scratch: ScratchOwned<B> =
-            ScratchOwned::alloc(GLWE::decrypt_scratch_space(module, self) | module.vec_znx_normalize_tmp_bytes());
+            ScratchOwned::alloc(GLWE::decrypt_tmp_bytes(module, self) | module.vec_znx_normalize_tmp_bytes());
 
         (0..(self.rank() + 1).into()).for_each(|col_j| {
             (0..self.dnum().into()).for_each(|row_i| {
@@ -120,7 +120,7 @@ impl<D: DataRef> GGSW<D> {
         let mut pt_big: VecZnxBig<Vec<u8>, B> = module.vec_znx_big_alloc(1, self.size());
 
         let mut scratch: ScratchOwned<B> =
-            ScratchOwned::alloc(GLWE::decrypt_scratch_space(module, self) | module.vec_znx_normalize_tmp_bytes());
+            ScratchOwned::alloc(GLWE::decrypt_tmp_bytes(module, self) | module.vec_znx_normalize_tmp_bytes());
 
         (0..(self.rank() + 1).into()).for_each(|col_j| {
             (0..self.dnum().into()).for_each(|row_i| {

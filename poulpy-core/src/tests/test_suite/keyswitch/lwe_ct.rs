@@ -99,8 +99,8 @@ where
     };
 
     let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-        LWESwitchingKey::encrypt_sk_scratch_space(module, &key_apply_infos)
-            | LWE::keyswitch_scratch_space(module, &lwe_out_infos, &lwe_in_infos, &key_apply_infos),
+        LWESwitchingKey::encrypt_sk_tmp_bytes(module, &key_apply_infos)
+            | LWE::keyswitch_tmp_bytes(module, &lwe_out_infos, &lwe_in_infos, &key_apply_infos),
     );
 
     let mut sk_lwe_in: LWESecret<Vec<u8>> = LWESecret::alloc(n_lwe_in.into());

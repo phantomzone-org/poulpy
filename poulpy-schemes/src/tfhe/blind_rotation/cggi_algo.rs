@@ -21,7 +21,7 @@ use crate::tfhe::blind_rotation::{
 };
 
 #[allow(clippy::too_many_arguments)]
-pub fn cggi_blind_rotate_scratch_space<B: Backend, OUT, GGSW>(
+pub fn cggi_blind_rotate_tmp_bytes<B: Backend, OUT, GGSW>(
     module: &Module<B>,
     block_size: usize,
     extension_factor: usize,
@@ -61,7 +61,7 @@ where
             + vmp_xai
             + (vmp | (acc_big + (module.vec_znx_big_normalize_tmp_bytes() | module.vec_znx_idft_apply_tmp_bytes())))
     } else {
-        GLWE::bytes_of(glwe_infos) + GLWE::external_product_inplace_scratch_space(module, glwe_infos, brk_infos)
+        GLWE::bytes_of(glwe_infos) + GLWE::external_product_inplace_tmp_bytes(module, glwe_infos, brk_infos)
     }
 }
 

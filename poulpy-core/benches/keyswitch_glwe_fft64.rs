@@ -67,9 +67,9 @@ fn bench_keyswitch_glwe_fft64(c: &mut Criterion) {
         let mut ct_out: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_out_layout);
 
         let mut scratch: ScratchOwned<FFT64Spqlios> = ScratchOwned::alloc(
-            GLWESwitchingKey::encrypt_sk_scratch_space(&module, &gglwe_atk_layout)
-                | GLWE::encrypt_sk_scratch_space(&module, &glwe_in_layout)
-                | GLWE::keyswitch_scratch_space(
+            GLWESwitchingKey::encrypt_sk_tmp_bytes(&module, &gglwe_atk_layout)
+                | GLWE::encrypt_sk_tmp_bytes(&module, &glwe_in_layout)
+                | GLWE::keyswitch_tmp_bytes(
                     &module,
                     &glwe_out_layout,
                     &glwe_in_layout,
@@ -178,9 +178,9 @@ fn bench_keyswitch_glwe_inplace_fft64(c: &mut Criterion) {
         let mut ct: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_layout);
 
         let mut scratch: ScratchOwned<FFT64Spqlios> = ScratchOwned::alloc(
-            GLWESwitchingKey::encrypt_sk_scratch_space(&module, &gglwe_layout)
-                | GLWE::encrypt_sk_scratch_space(&module, &glwe_layout)
-                | GLWE::keyswitch_inplace_scratch_space(&module, &glwe_layout, &gglwe_layout),
+            GLWESwitchingKey::encrypt_sk_tmp_bytes(&module, &gglwe_layout)
+                | GLWE::encrypt_sk_tmp_bytes(&module, &glwe_layout)
+                | GLWE::keyswitch_inplace_tmp_bytes(&module, &glwe_layout, &gglwe_layout),
         );
 
         let mut source_xs: Source = Source::new([0u8; 32]);

@@ -34,12 +34,12 @@ impl<D: DataMut> GGLWECompressed<D> {
 }
 
 impl GGLWECompressed<Vec<u8>> {
-    pub fn encrypt_sk_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
+    pub fn encrypt_sk_tmp_bytes<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GGLWEInfos,
         Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftBytesOf + VecZnxNormalizeTmpBytes,
     {
-        GGLWE::encrypt_sk_scratch_space(module, infos)
+        GGLWE::encrypt_sk_tmp_bytes(module, infos)
     }
 }
 
@@ -106,10 +106,10 @@ where
             assert_eq!(res.n(), sk.n());
             assert_eq!(pt.n() as u32, sk.n());
             assert!(
-                scratch.available() >= GGLWECompressed::encrypt_sk_scratch_space(self, res),
-                "scratch.available: {} < GGLWECiphertext::encrypt_sk_scratch_space: {}",
+                scratch.available() >= GGLWECompressed::encrypt_sk_tmp_bytes(self, res),
+                "scratch.available: {} < GGLWECiphertext::encrypt_sk_tmp_bytes: {}",
                 scratch.available(),
-                GGLWECompressed::encrypt_sk_scratch_space(self, res)
+                GGLWECompressed::encrypt_sk_tmp_bytes(self, res)
             );
             assert!(
                 res.dnum().0 * res.dsize().0 * res.base2k().0 <= res.k().0,

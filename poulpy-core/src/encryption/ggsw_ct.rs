@@ -14,13 +14,13 @@ use crate::{
 };
 
 impl GGSW<Vec<u8>> {
-    pub fn encrypt_sk_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
+    pub fn encrypt_sk_tmp_bytes<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GGSWInfos,
         Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftBytesOf,
     {
         let size = infos.size();
-        GLWE::encrypt_sk_scratch_space(module, &infos.glwe_layout())
+        GLWE::encrypt_sk_tmp_bytes(module, &infos.glwe_layout())
             + VecZnx::bytes_of(module.n(), (infos.rank() + 1).into(), size)
             + VecZnx::bytes_of(module.n(), 1, size)
             + module.bytes_of_vec_znx_dft((infos.rank() + 1).into(), size)

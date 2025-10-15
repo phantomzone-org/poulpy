@@ -96,9 +96,9 @@ where
     };
 
     let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-        LWEToGLWESwitchingKey::encrypt_sk_scratch_space(module, &lwe_to_glwe_infos)
-            | GLWE::from_lwe_scratch_space(module, &glwe_infos, &lwe_infos, &lwe_to_glwe_infos)
-            | GLWE::decrypt_scratch_space(module, &glwe_infos),
+        LWEToGLWESwitchingKey::encrypt_sk_tmp_bytes(module, &lwe_to_glwe_infos)
+            | GLWE::from_lwe_tmp_bytes(module, &glwe_infos, &lwe_infos, &lwe_to_glwe_infos)
+            | GLWE::decrypt_tmp_bytes(module, &glwe_infos),
     );
 
     let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_infos);
@@ -213,9 +213,9 @@ where
     let mut source_xe: Source = Source::new([0u8; 32]);
 
     let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-        GLWEToLWESwitchingKey::encrypt_sk_scratch_space(module, &glwe_to_lwe_infos)
-            | LWE::from_glwe_scratch_space(module, &lwe_infos, &glwe_infos, &glwe_to_lwe_infos)
-            | GLWE::decrypt_scratch_space(module, &glwe_infos),
+        GLWEToLWESwitchingKey::encrypt_sk_tmp_bytes(module, &glwe_to_lwe_infos)
+            | LWE::from_glwe_tmp_bytes(module, &lwe_infos, &glwe_infos, &glwe_to_lwe_infos)
+            | GLWE::decrypt_tmp_bytes(module, &glwe_infos),
     );
 
     let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_infos);

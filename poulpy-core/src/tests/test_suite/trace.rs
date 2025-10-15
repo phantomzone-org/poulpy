@@ -107,10 +107,10 @@ where
         let mut source_xa: Source = Source::new([0u8; 32]);
 
         let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-            GLWE::encrypt_sk_scratch_space(module, &glwe_out_infos)
-                | GLWE::decrypt_scratch_space(module, &glwe_out_infos)
-                | AutomorphismKey::encrypt_sk_scratch_space(module, &key_infos)
-                | GLWE::trace_inplace_scratch_space(module, &glwe_out_infos, &key_infos),
+            GLWE::encrypt_sk_tmp_bytes(module, &glwe_out_infos)
+                | GLWE::decrypt_tmp_bytes(module, &glwe_out_infos)
+                | AutomorphismKey::encrypt_sk_tmp_bytes(module, &key_infos)
+                | GLWE::trace_inplace_tmp_bytes(module, &glwe_out_infos, &key_infos),
         );
 
         let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_out_infos);

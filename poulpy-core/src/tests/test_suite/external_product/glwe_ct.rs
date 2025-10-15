@@ -116,9 +116,9 @@ where
             pt_ggsw.raw_mut()[k] = 1; // X^{k}
 
             let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-                GGSW::encrypt_sk_scratch_space(module, &ggsw_apply_infos)
-                    | GLWE::encrypt_sk_scratch_space(module, &glwe_in_infos)
-                    | GLWE::external_product_scratch_space(module, &glwe_out_infos, &glwe_in_infos, &ggsw_apply_infos),
+                GGSW::encrypt_sk_tmp_bytes(module, &ggsw_apply_infos)
+                    | GLWE::encrypt_sk_tmp_bytes(module, &glwe_in_infos)
+                    | GLWE::external_product_tmp_bytes(module, &glwe_out_infos, &glwe_in_infos, &ggsw_apply_infos),
             );
 
             let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank.into());
@@ -259,9 +259,9 @@ where
             pt_ggsw.raw_mut()[k] = 1; // X^{k}
 
             let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-                GGSW::encrypt_sk_scratch_space(module, &ggsw_apply_infos)
-                    | GLWE::encrypt_sk_scratch_space(module, &glwe_out_infos)
-                    | GLWE::external_product_inplace_scratch_space(module, &glwe_out_infos, &ggsw_apply_infos),
+                GGSW::encrypt_sk_tmp_bytes(module, &ggsw_apply_infos)
+                    | GLWE::encrypt_sk_tmp_bytes(module, &glwe_out_infos)
+                    | GLWE::external_product_inplace_tmp_bytes(module, &glwe_out_infos, &ggsw_apply_infos),
             );
 
             let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank.into());

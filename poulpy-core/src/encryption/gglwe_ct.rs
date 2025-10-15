@@ -13,16 +13,16 @@ use crate::{
 };
 
 impl GGLWE<Vec<u8>> {
-    pub fn encrypt_sk_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
+    pub fn encrypt_sk_tmp_bytes<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GGLWEInfos,
         Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftBytesOf + VecZnxNormalizeTmpBytes,
     {
-        GLWE::encrypt_sk_scratch_space(module, &infos.glwe_layout())
+        GLWE::encrypt_sk_tmp_bytes(module, &infos.glwe_layout())
             + (GLWEPlaintext::bytes_of_from_infos(module, &infos.glwe_layout()) | module.vec_znx_normalize_tmp_bytes())
     }
 
-    pub fn encrypt_pk_scratch_space<B: Backend, A>(_module: &Module<B>, _infos: &A) -> usize
+    pub fn encrypt_pk_tmp_bytes<B: Backend, A>(_module: &Module<B>, _infos: &A) -> usize
     where
         A: GGLWEInfos,
     {
@@ -88,12 +88,12 @@ where
             assert_eq!(res.n(), sk.n());
             assert_eq!(pt.n() as u32, sk.n());
             assert!(
-                scratch.available() >= GGLWE::encrypt_sk_scratch_space(self, res),
-                "scratch.available: {} < GGLWECiphertext::encrypt_sk_scratch_space(self, res.rank()={}, res.size()={}): {}",
+                scratch.available() >= GGLWE::encrypt_sk_tmp_bytes(self, res),
+                "scratch.available: {} < GGLWECiphertext::encrypt_sk_tmp_bytes(self, res.rank()={}, res.size()={}): {}",
                 scratch.available(),
                 res.rank_out(),
                 res.size(),
-                GGLWE::encrypt_sk_scratch_space(self, res)
+                GGLWE::encrypt_sk_tmp_bytes(self, res)
             );
             assert!(
                 res.dnum().0 * res.dsize().0 * res.base2k().0 <= res.k().0,

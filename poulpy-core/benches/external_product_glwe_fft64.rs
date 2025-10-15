@@ -67,9 +67,9 @@ fn bench_external_product_glwe_fft64(c: &mut Criterion) {
         let pt_rgsw: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n.into(), 1);
 
         let mut scratch: ScratchOwned<FFT64Spqlios> = ScratchOwned::alloc(
-            GGSW::encrypt_sk_scratch_space(&module, &ggsw_layout)
-                | GLWE::encrypt_sk_scratch_space(&module, &glwe_in_layout)
-                | GLWE::external_product_scratch_space(&module, &glwe_out_layout, &glwe_in_layout, &ggsw_layout),
+            GGSW::encrypt_sk_tmp_bytes(&module, &ggsw_layout)
+                | GLWE::encrypt_sk_tmp_bytes(&module, &glwe_in_layout)
+                | GLWE::external_product_tmp_bytes(&module, &glwe_out_layout, &glwe_in_layout, &ggsw_layout),
         );
 
         let mut source_xs = Source::new([0u8; 32]);
@@ -167,9 +167,9 @@ fn bench_external_product_glwe_inplace_fft64(c: &mut Criterion) {
         let pt_rgsw: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n.into(), 1);
 
         let mut scratch: ScratchOwned<FFT64Spqlios> = ScratchOwned::alloc(
-            GGSW::encrypt_sk_scratch_space(&module, &ggsw_layout)
-                | GLWE::encrypt_sk_scratch_space(&module, &glwe_layout)
-                | GLWE::external_product_inplace_scratch_space(&module, &glwe_layout, &ggsw_layout),
+            GGSW::encrypt_sk_tmp_bytes(&module, &ggsw_layout)
+                | GLWE::encrypt_sk_tmp_bytes(&module, &glwe_layout)
+                | GLWE::external_product_inplace_tmp_bytes(&module, &glwe_layout, &ggsw_layout),
         );
 
         let mut source_xs: Source = Source::new([0u8; 32]);

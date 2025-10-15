@@ -9,7 +9,7 @@ use poulpy_hal::{
 use crate::layouts::{GLWE, GLWEInfos, GLWEPlaintext, LWEInfos, prepared::GLWESecretPrepared};
 
 impl GLWE<Vec<u8>> {
-    pub fn decrypt_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
+    pub fn decrypt_tmp_bytes<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GLWEInfos,
         Module<B>: VecZnxDftBytesOf + VecZnxNormalizeTmpBytes + VecZnxDftBytesOf,

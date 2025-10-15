@@ -13,13 +13,13 @@ use crate::{
 };
 
 impl AutomorphismKeyCompressed<Vec<u8>> {
-    pub fn encrypt_sk_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
+    pub fn encrypt_sk_tmp_bytes<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GGLWEInfos,
         Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftBytesOf + VecZnxNormalizeTmpBytes + SvpPPolBytesOf,
     {
         assert_eq!(module.n() as u32, infos.n());
-        GLWESwitchingKeyCompressed::encrypt_sk_scratch_space(module, infos) + GLWESecret::bytes_of(infos.n(), infos.rank_out())
+        GLWESwitchingKeyCompressed::encrypt_sk_tmp_bytes(module, infos) + GLWESecret::bytes_of(infos.n(), infos.rank_out())
     }
 }
 
@@ -63,10 +63,10 @@ where
             assert_eq!(res.rank_out(), res.rank_in());
             assert_eq!(sk.rank(), res.rank_out());
             assert!(
-                scratch.available() >= AutomorphismKeyCompressed::encrypt_sk_scratch_space(self, res),
-                "scratch.available(): {} < AutomorphismKey::encrypt_sk_scratch_space: {}",
+                scratch.available() >= AutomorphismKeyCompressed::encrypt_sk_tmp_bytes(self, res),
+                "scratch.available(): {} < AutomorphismKey::encrypt_sk_tmp_bytes: {}",
                 scratch.available(),
-                AutomorphismKeyCompressed::encrypt_sk_scratch_space(self, res)
+                AutomorphismKeyCompressed::encrypt_sk_tmp_bytes(self, res)
             )
         }
 

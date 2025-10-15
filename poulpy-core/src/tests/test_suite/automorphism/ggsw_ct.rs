@@ -139,10 +139,10 @@ where
             let mut source_xa: Source = Source::new([0u8; 32]);
 
             let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-                GGSW::encrypt_sk_scratch_space(module, &ct_in)
-                    | AutomorphismKey::encrypt_sk_scratch_space(module, &auto_key)
-                    | TensorKey::encrypt_sk_scratch_space(module, &tensor_key)
-                    | GGSW::automorphism_scratch_space(module, &ct_out, &ct_in, &auto_key, &tensor_key),
+                GGSW::encrypt_sk_tmp_bytes(module, &ct_in)
+                    | AutomorphismKey::encrypt_sk_tmp_bytes(module, &auto_key)
+                    | TensorKey::encrypt_sk_tmp_bytes(module, &tensor_key)
+                    | GGSW::automorphism_tmp_bytes(module, &ct_out, &ct_in, &auto_key, &tensor_key),
             );
 
             let var_xs: f64 = 0.5;
@@ -319,10 +319,10 @@ where
             let mut source_xa: Source = Source::new([0u8; 32]);
 
             let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-                GGSW::encrypt_sk_scratch_space(module, &ct)
-                    | AutomorphismKey::encrypt_sk_scratch_space(module, &auto_key)
-                    | TensorKey::encrypt_sk_scratch_space(module, &tensor_key)
-                    | GGSW::automorphism_inplace_scratch_space(module, &ct, &auto_key, &tensor_key),
+                GGSW::encrypt_sk_tmp_bytes(module, &ct)
+                    | AutomorphismKey::encrypt_sk_tmp_bytes(module, &auto_key)
+                    | TensorKey::encrypt_sk_tmp_bytes(module, &tensor_key)
+                    | GGSW::automorphism_inplace_tmp_bytes(module, &ct, &auto_key, &tensor_key),
             );
 
             let var_xs: f64 = 0.5;

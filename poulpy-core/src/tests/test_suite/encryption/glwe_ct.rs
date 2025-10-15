@@ -85,7 +85,7 @@ where
         let mut source_xa: Source = Source::new([0u8; 32]);
 
         let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-            GLWE::encrypt_sk_scratch_space(module, &glwe_infos) | GLWE::decrypt_scratch_space(module, &glwe_infos),
+            GLWE::encrypt_sk_tmp_bytes(module, &glwe_infos) | GLWE::decrypt_tmp_bytes(module, &glwe_infos),
         );
 
         let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_infos);
@@ -178,7 +178,7 @@ where
         let mut source_xa: Source = Source::new([0u8; 32]);
 
         let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-            GLWECompressed::encrypt_sk_scratch_space(module, &glwe_infos) | GLWE::decrypt_scratch_space(module, &glwe_infos),
+            GLWECompressed::encrypt_sk_tmp_bytes(module, &glwe_infos) | GLWE::decrypt_tmp_bytes(module, &glwe_infos),
         );
 
         let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_infos);
@@ -269,7 +269,7 @@ where
         let mut source_xa: Source = Source::new([0u8; 32]);
 
         let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-            GLWE::decrypt_scratch_space(module, &glwe_infos) | GLWE::encrypt_sk_scratch_space(module, &glwe_infos),
+            GLWE::decrypt_tmp_bytes(module, &glwe_infos) | GLWE::encrypt_sk_tmp_bytes(module, &glwe_infos),
         );
 
         let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_infos);
@@ -349,9 +349,9 @@ where
         let mut source_xu: Source = Source::new([0u8; 32]);
 
         let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-            GLWE::encrypt_sk_scratch_space(module, &glwe_infos)
-                | GLWE::decrypt_scratch_space(module, &glwe_infos)
-                | GLWE::encrypt_pk_scratch_space(module, &glwe_infos),
+            GLWE::encrypt_sk_tmp_bytes(module, &glwe_infos)
+                | GLWE::decrypt_tmp_bytes(module, &glwe_infos)
+                | GLWE::encrypt_pk_tmp_bytes(module, &glwe_infos),
         );
 
         let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_infos);
