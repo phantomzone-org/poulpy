@@ -23,7 +23,7 @@ use crate::tfhe::blind_rotation::{
 };
 
 use poulpy_core::layouts::{
-    GLWE, GLWELayout, GLWEPlaintext, GLWESecret, LWE, LWECiphertextLayout, LWECiphertextToRef, LWEInfos, LWEPlaintext, LWESecret,
+    GLWE, GLWELayout, GLWEPlaintext, GLWESecret, LWE, LWELayout, LWEToRef, LWEInfos, LWEPlaintext, LWESecret,
     prepared::{GLWESecretPrepared, PrepareAlloc},
 };
 
@@ -117,7 +117,7 @@ where
         rank: rank.into(),
     };
 
-    let lwe_infos: LWECiphertextLayout = LWECiphertextLayout {
+    let lwe_infos: LWELayout = LWELayout {
         n: n_lwe.into(),
         k: k_lwe.into(),
         base2k: base2k.into(),

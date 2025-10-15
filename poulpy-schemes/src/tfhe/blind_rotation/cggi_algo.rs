@@ -13,7 +13,7 @@ use poulpy_hal::{
 
 use poulpy_core::{
     Distribution, GLWEOperations, TakeGLWE,
-    layouts::{GGSWInfos, GLWE, GLWEInfos, GLWEToMut, LWE, LWECiphertextToRef, LWEInfos},
+    layouts::{GGSWInfos, GLWE, GLWEInfos, GLWEToMut, LWE, LWEToRef, LWEInfos},
 };
 
 use crate::tfhe::blind_rotation::{

@@ -8,7 +8,7 @@ use crate::layouts::{
     },
 };
 
-/// A special [GLWESwitchingKey] required to for the conversion from [LWECiphertext] to [GLWECiphertext].
+/// A special [GLWESwitchingKey] required to for the conversion from [LWE] to [GLWE].
 #[derive(PartialEq, Eq)]
 pub struct LWEToGLWESwitchingKeyPrepared<D: Data, B: Backend>(pub(crate) GLWESwitchingKeyPrepared<D, B>);
 

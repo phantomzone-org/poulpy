@@ -2,7 +2,7 @@ use poulpy_hal::layouts::{Backend, DataMut, Scratch, VecZnx};
 
 use crate::{
     GGSWExpandRows, ScratchTakeCore,
-    keyswitching::glwe_ct::GLWEKeySwitching,
+    keyswitching::glwe_ct::GLWEKeySwitch,
     layouts::{
         GGLWEInfos, GGSW, GGSWInfos, GGSWToMut, GGSWToRef,
         prepared::{GLWESwitchingKeyPreparedToRef, TensorKeyPreparedToRef},
@@ -53,7 +53,7 @@ impl<D: DataMut> GGSW<D> {
 
 pub trait GGSWKeySwitch<BE: Backend>
 where
-    Self: GLWEKeySwitching<BE> + GGSWExpandRows<BE>,
+    Self: GLWEKeySwitch<BE> + GGSWExpandRows<BE>,
 {
     fn ggsw_keyswitch_tmp_bytes<R, A, K, T>(&self, res_infos: &R, a_infos: &A, key_infos: &K, tsk_infos: &T) -> usize
     where

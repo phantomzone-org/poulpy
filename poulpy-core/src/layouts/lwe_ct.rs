@@ -18,8 +18,8 @@ pub trait LWEInfos {
     fn size(&self) -> usize {
         self.k().0.div_ceil(self.base2k().0) as usize
     }
-    fn lwe_layout(&self) -> LWECiphertextLayout {
-        LWECiphertextLayout {
+    fn lwe_layout(&self) -> LWELayout {
+        LWELayout {
             n: self.n(),
             k: self.k(),
             base2k: self.base2k(),
@@ -33,13 +33,13 @@ pub trait SetLWEInfos {
 }
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
-pub struct LWECiphertextLayout {
+pub struct LWELayout {
     pub n: Degree,
     pub k: TorusPrecision,
     pub base2k: Base2K,
 }
 
-impl LWEInfos for LWECiphertextLayout {
+impl LWEInfos for LWELayout {
     fn base2k(&self) -> Base2K {
         self.base2k
     }
@@ -108,7 +108,7 @@ impl<D: DataRef> fmt::Display for LWE<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "LWECiphertext: base2k={} k={}: {}",
+            "LWE: base2k={} k={}: {}",
             self.base2k().0,
             self.k().0,
             self.data
@@ -187,11 +187,11 @@ impl LWE<Vec<u8>> {
     }
 }
 
-pub trait LWECiphertextToRef {
+pub trait LWEToRef {
     fn to_ref(&self) -> LWE<&[u8]>;
 }
 
-impl<D: DataRef> LWECiphertextToRef for LWE<D> {
+impl<D: DataRef> LWEToRef for LWE<D> {
     fn to_ref(&self) -> LWE<&[u8]> {
         LWE {
             k: self.k,

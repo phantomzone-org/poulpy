@@ -326,7 +326,7 @@ where
 
         let mut scratch: &mut Self = self;
 
-        let mut ksk_infos: crate::layouts::GGLWECiphertextLayout = infos.gglwe_layout();
+        let mut ksk_infos: crate::layouts::GGLWELayout = infos.gglwe_layout();
         ksk_infos.rank_in = Rank(1);
 
         if pairs != 0 {
@@ -359,7 +359,7 @@ where
 
         let mut scratch: &mut Self = self;
 
-        let mut ksk_infos: crate::layouts::GGLWECiphertextLayout = infos.gglwe_layout();
+        let mut ksk_infos: crate::layouts::GGLWELayout = infos.gglwe_layout();
         ksk_infos.rank_in = Rank(1);
 
         if pairs != 0 {

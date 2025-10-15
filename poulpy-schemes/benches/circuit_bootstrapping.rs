@@ -3,7 +3,7 @@ use std::hint::black_box;
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use poulpy_backend::{FFT64Avx, FFT64Ref, FFT64Spqlios};
 use poulpy_core::layouts::{
-    AutomorphismKeyLayout, Dsize, GGSW, GGSWCiphertextLayout, GLWESecret, LWE, LWECiphertextLayout, LWESecret, TensorKeyLayout,
+    AutomorphismKeyLayout, Dsize, GGSW, GGSWLayout, GLWESecret, LWE, LWELayout, LWESecret, TensorKeyLayout,
     prepared::PrepareAlloc,
 };
 use poulpy_hal::{
@@ -113,8 +113,8 @@ where
         extension_factor: usize,
         k_pt: usize,
         block_size: usize,
-        lwe_infos: LWECiphertextLayout,
-        ggsw_infos: GGSWCiphertextLayout,
+        lwe_infos: LWELayout,
+        ggsw_infos: GGSWLayout,
         cbt_infos: CircuitBootstrappingKeyLayout,
     }
 
@@ -238,13 +238,13 @@ where
         name: String::from("1-bit"),
         extension_factor: 1,
         k_pt: 1,
-        lwe_infos: LWECiphertextLayout {
+        lwe_infos: LWELayout {
             n: 574_u32.into(),
             k: 13_u32.into(),
             base2k: 13_u32.into(),
         },
         block_size: 7,
-        ggsw_infos: GGSWCiphertextLayout {
+        ggsw_infos: GGSWLayout {
             n: 1024_u32.into(),
             base2k: 13_u32.into(),
             k: 26_u32.into(),

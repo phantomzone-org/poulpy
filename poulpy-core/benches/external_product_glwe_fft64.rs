@@ -1,5 +1,5 @@
 use poulpy_core::layouts::{
-    Base2K, Degree, Dnum, Dsize, GGSW, GGSWCiphertextLayout, GLWE, GLWELayout, GLWESecret, Rank, TorusPrecision,
+    Base2K, Degree, Dnum, Dsize, GGSW, GGSWLayout, GLWE, GLWELayout, GLWESecret, Rank, TorusPrecision,
     prepared::{GGSWPrepared, GLWESecretPrepared, PrepareAlloc},
 };
 use std::hint::black_box;
@@ -38,7 +38,7 @@ fn bench_external_product_glwe_fft64(c: &mut Criterion) {
 
         let dnum: Dnum = Dnum(1); //(p.k_ct_in.div_ceil(p.base2k);
 
-        let ggsw_layout: GGSWCiphertextLayout = GGSWCiphertextLayout {
+        let ggsw_layout: GGSWLayout = GGSWLayout {
             n,
             base2k,
             k: k_ggsw,
@@ -146,7 +146,7 @@ fn bench_external_product_glwe_inplace_fft64(c: &mut Criterion) {
 
         let dnum: Dnum = p.k_ct.div_ceil(p.base2k).into();
 
-        let ggsw_layout: GGSWCiphertextLayout = GGSWCiphertextLayout {
+        let ggsw_layout: GGSWLayout = GGSWLayout {
             n,
             base2k,
             k: k_ggsw,

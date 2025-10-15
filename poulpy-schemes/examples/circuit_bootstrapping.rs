@@ -1,7 +1,7 @@
 use poulpy_core::{
     GLWEOperations,
     layouts::{
-        AutomorphismKeyLayout, GGSW, GGSWCiphertextLayout, GLWE, GLWELayout, GLWEPlaintext, GLWESecret, LWE, LWECiphertextLayout,
+        AutomorphismKeyLayout, GGSW, GGSWLayout, GLWE, GLWELayout, GLWEPlaintext, GLWESecret, LWE, LWELayout,
         LWEInfos, LWEPlaintext, LWESecret, TensorKeyLayout,
         prepared::{GGSWPrepared, GLWESecretPrepared, PrepareAlloc},
     },
@@ -107,7 +107,7 @@ fn main() {
         },
     };
 
-    let ggsw_infos: GGSWCiphertextLayout = GGSWCiphertextLayout {
+    let ggsw_infos: GGSWLayout = GGSWLayout {
         n: n_glwe.into(),
         base2k: base2k.into(),
         k: k_ggsw_res.into(),
@@ -116,7 +116,7 @@ fn main() {
         rank: rank.into(),
     };
 
-    let lwe_infos = LWECiphertextLayout {
+    let lwe_infos = LWELayout {
         n: n_lwe.into(),
         k: k_lwe_ct.into(),
         base2k: base2k.into(),

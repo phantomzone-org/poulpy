@@ -18,8 +18,8 @@ where
     fn dsize(&self) -> Dsize;
     fn rank_in(&self) -> Rank;
     fn rank_out(&self) -> Rank;
-    fn gglwe_layout(&self) -> GGLWECiphertextLayout {
-        GGLWECiphertextLayout {
+    fn gglwe_layout(&self) -> GGLWELayout {
+        GGLWELayout {
             n: self.n(),
             base2k: self.base2k(),
             k: self.k(),
@@ -36,7 +36,7 @@ pub trait SetGGLWEInfos {
 }
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
-pub struct GGLWECiphertextLayout {
+pub struct GGLWELayout {
     pub n: Degree,
     pub base2k: Base2K,
     pub k: TorusPrecision,
@@ -46,7 +46,7 @@ pub struct GGLWECiphertextLayout {
     pub dsize: Dsize,
 }
 
-impl LWEInfos for GGLWECiphertextLayout {
+impl LWEInfos for GGLWELayout {
     fn base2k(&self) -> Base2K {
         self.base2k
     }
@@ -60,13 +60,13 @@ impl LWEInfos for GGLWECiphertextLayout {
     }
 }
 
-impl GLWEInfos for GGLWECiphertextLayout {
+impl GLWEInfos for GGLWELayout {
     fn rank(&self) -> Rank {
         self.rank_out
     }
 }
 
-impl GGLWEInfos for GGLWECiphertextLayout {
+impl GGLWEInfos for GGLWELayout {
     fn rank_in(&self) -> Rank {
         self.rank_in
     }

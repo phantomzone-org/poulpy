@@ -16,7 +16,7 @@ use poulpy_hal::{
 
 use poulpy_core::{
     GLWEOperations, TakeGGLWE, TakeGLWE,
-    layouts::{Dsize, GGLWECiphertextLayout, GGSWInfos, GLWEInfos, LWEInfos},
+    layouts::{Dsize, GGLWELayout, GGSWInfos, GLWEInfos, LWEInfos},
 };
 
 use poulpy_core::glwe_packing;
@@ -214,7 +214,7 @@ pub fn circuit_bootstrap_core<DRes, DLwe, DBrk, BRA: BlindRotationAlgo, B>(
     // TODO: separate GGSW k from output of blind rotation k
     let (mut res_glwe, scratch_1) = scratch.take_glwe_ct(res);
 
-    let gglwe_infos: GGLWECiphertextLayout = GGLWECiphertextLayout {
+    let gglwe_infos: GGLWELayout = GGLWELayout {
         n: n.into(),
         base2k: base2k.into(),
         k: k.into(),

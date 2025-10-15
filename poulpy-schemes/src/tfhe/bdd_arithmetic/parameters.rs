@@ -1,6 +1,6 @@
 #[cfg(test)]
 use poulpy_core::layouts::{
-    AutomorphismKeyLayout, Base2K, Degree, Dnum, Dsize, GGSWCiphertextLayout, GLWELayout, GLWEToLWEKeyLayout, Rank,
+    AutomorphismKeyLayout, Base2K, Degree, Dnum, Dsize, GGSWLayout, GLWELayout, GLWEToLWEKeyLayout, Rank,
     TensorKeyLayout, TorusPrecision,
 };
 
@@ -33,7 +33,7 @@ pub(crate) static TEST_GLWE_INFOS: GLWELayout = GLWELayout {
 };
 
 #[cfg(test)]
-pub(crate) static TEST_GGSW_INFOS: GGSWCiphertextLayout = GGSWCiphertextLayout {
+pub(crate) static TEST_GGSW_INFOS: GGSWLayout = GGSWLayout {
     n: Degree(TEST_N_GLWE),
     base2k: Base2K(TEST_BASE2K),
     k: TorusPrecision(TEST_K_GGSW),

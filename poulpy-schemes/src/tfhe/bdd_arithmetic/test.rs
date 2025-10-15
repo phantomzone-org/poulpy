@@ -4,7 +4,7 @@ use poulpy_backend::FFT64Ref;
 use poulpy_core::{
     TakeGGSW, TakeGLWEPlaintext,
     layouts::{
-        GGSWCiphertextLayout, GLWELayout, GLWESecret, LWEInfos, LWESecret,
+        GGSWLayout, GLWELayout, GLWESecret, LWEInfos, LWESecret,
         prepared::{GLWESecretPrepared, PrepareAlloc},
     },
 };
@@ -108,7 +108,7 @@ where
     BlindRotationKey<Vec<u8>, BRA>: BlindRotationKeyAlloc + BlindRotationKeyEncryptSk<BE>,
 {
     let glwe_infos: GLWELayout = TEST_GLWE_INFOS;
-    let ggsw_infos: GGSWCiphertextLayout = TEST_GGSW_INFOS;
+    let ggsw_infos: GGSWLayout = TEST_GGSW_INFOS;
 
     let n_glwe: usize = glwe_infos.n().into();
 

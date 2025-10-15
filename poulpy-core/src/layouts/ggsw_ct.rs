@@ -14,8 +14,8 @@ where
 {
     fn dnum(&self) -> Dnum;
     fn dsize(&self) -> Dsize;
-    fn ggsw_layout(&self) -> GGSWCiphertextLayout {
-        GGSWCiphertextLayout {
+    fn ggsw_layout(&self) -> GGSWLayout {
+        GGSWLayout {
             n: self.n(),
             base2k: self.base2k(),
             k: self.k(),
@@ -27,7 +27,7 @@ where
 }
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
-pub struct GGSWCiphertextLayout {
+pub struct GGSWLayout {
     pub n: Degree,
     pub base2k: Base2K,
     pub k: TorusPrecision,
@@ -36,7 +36,7 @@ pub struct GGSWCiphertextLayout {
     pub dsize: Dsize,
 }
 
-impl LWEInfos for GGSWCiphertextLayout {
+impl LWEInfos for GGSWLayout {
     fn base2k(&self) -> Base2K {
         self.base2k
     }
@@ -49,13 +49,13 @@ impl LWEInfos for GGSWCiphertextLayout {
         self.n
     }
 }
-impl GLWEInfos for GGSWCiphertextLayout {
+impl GLWEInfos for GGSWLayout {
     fn rank(&self) -> Rank {
         self.rank
     }
 }
 
-impl GGSWInfos for GGSWCiphertextLayout {
+impl GGSWInfos for GGSWLayout {
     fn dsize(&self) -> Dsize {
         self.dsize
     }
@@ -117,7 +117,7 @@ impl<D: DataRef> fmt::Display for GGSW<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "(GGSWCiphertext: k: {} base2k: {} dsize: {}) {}",
+            "(GGSW: k: {} base2k: {} dsize: {}) {}",
             self.k().0,
             self.base2k().0,
             self.dsize().0,

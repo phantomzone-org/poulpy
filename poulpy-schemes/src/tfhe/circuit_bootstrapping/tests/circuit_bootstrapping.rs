@@ -32,7 +32,7 @@ use crate::tfhe::{
 };
 
 use poulpy_core::layouts::{
-    AutomorphismKeyLayout, Dsize, GGSWCiphertextLayout, LWECiphertextLayout, TensorKeyLayout, prepared::PrepareAlloc,
+    AutomorphismKeyLayout, Dsize, GGSWLayout, LWELayout, TensorKeyLayout, prepared::PrepareAlloc,
 };
 
 use poulpy_core::layouts::{
@@ -128,7 +128,7 @@ where
     let k_ggsw_res: usize = 4 * base2k;
     let rows_ggsw_res: usize = 2;
 
-    let lwe_infos: LWECiphertextLayout = LWECiphertextLayout {
+    let lwe_infos: LWELayout = LWELayout {
         n: n_lwe.into(),
         k: k_lwe_ct.into(),
         base2k: base2k.into(),
@@ -161,7 +161,7 @@ where
         },
     };
 
-    let ggsw_infos: GGSWCiphertextLayout = GGSWCiphertextLayout {
+    let ggsw_infos: GGSWLayout = GGSWLayout {
         n: n_glwe.into(),
         base2k: base2k.into(),
         k: k_ggsw_res.into(),
@@ -350,7 +350,7 @@ where
     let k_ggsw_res: usize = 4 * base2k;
     let rows_ggsw_res: usize = 3;
 
-    let lwe_infos: LWECiphertextLayout = LWECiphertextLayout {
+    let lwe_infos: LWELayout = LWELayout {
         n: n_lwe.into(),
         k: k_lwe_ct.into(),
         base2k: base2k.into(),
@@ -383,7 +383,7 @@ where
         },
     };
 
-    let ggsw_infos: GGSWCiphertextLayout = GGSWCiphertextLayout {
+    let ggsw_infos: GGSWLayout = GGSWLayout {
         n: n_glwe.into(),
         base2k: base2k.into(),
         k: k_ggsw_res.into(),

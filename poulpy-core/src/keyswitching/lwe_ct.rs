@@ -7,85 +7,58 @@ use poulpy_hal::{
     layouts::{Backend, DataMut, DataRef, Module, Scratch, ZnxView, ZnxViewMut, ZnxZero},
 };
 
-use crate::layouts::{GGLWEInfos, GLWE, GLWELayout, LWE, LWEInfos, Rank, TorusPrecision, prepared::LWESwitchingKeyPrepared};
+use crate::{
+    keyswitching::glwe_ct::GLWEKeySwitch,
+    layouts::{prepared::LWESwitchingKeyPrepared, GGLWEInfos, GLWEAlloc, GLWELayout, GetDegree, LWEToRef, LWEInfos, Rank, TorusPrecision, GLWE, LWE},
+};
 
-impl LWE<Vec<u8>> {
-    pub fn keyswitch_tmp_bytes<B: Backend, OUT, IN, KEY>(
-        module: &Module<B>,
-        out_infos: &OUT,
-        in_infos: &IN,
-        key_infos: &KEY,
-    ) -> usize
+pub trait LWEKeySwitch<BE: Backend>
+where
+    Self: GLWEKeySwitch<BE> + GLWEAlloc,
+{
+    fn keyswitch_tmp_bytes<B: Backend, R, A, K>(&self, res_infos: &R, a_infos: &A, key_infos: &K) -> usize
     where
-        OUT: LWEInfos,
-        IN: LWEInfos,
-        KEY: GGLWEInfos,
-        Module<B>: VecZnxDftBytesOf
-            + VmpApplyDftToDftTmpBytes
-            + VecZnxBigNormalizeTmpBytes
-            + VmpApplyDftToDftTmpBytes
-            + VmpApplyDftToDft<B>
-            + VmpApplyDftToDftAdd<B>
-            + VecZnxDftApply<B>
-            + VecZnxIdftApplyConsume<B>
-            + VecZnxBigAddSmallInplace<B>
-            + VecZnxBigNormalize<B>
-            + VecZnxNormalizeTmpBytes,
+        R: LWEInfos,
+        A: LWEInfos,
+        K: GGLWEInfos,
     {
-        let max_k: TorusPrecision = in_infos.k().max(out_infos.k());
+        let max_k: TorusPrecision = a_infos.k().max(res_infos.k());
 
-        let glwe_in_infos: GLWELayout = GLWELayout {
-            n: module.n().into(),
-            base2k: in_infos.base2k(),
+        let glwe_a_infos: GLWELayout = GLWELayout {
+            n: GetDegree::n(self),
+            base2k: a_infos.base2k(),
             k: max_k,
             rank: Rank(1),
         };
 
-        let glwe_out_infos: GLWELayout = GLWELayout {
-            n: module.n().into(),
-            base2k: out_infos.base2k(),
+        let glwe_res_infos: GLWELayout = GLWELayout {
+            n: GetDegree::n(self),
+            base2k: res_infos.base2k(),
             k: max_k,
             rank: Rank(1),
         };
 
-        let glwe_in: usize = GLWE::bytes_of_from_infos(module, &glwe_in_infos);
-        let glwe_out: usize = GLWE::bytes_of_from_infos(module, &glwe_out_infos);
-        let ks: usize = GLWE::keyswitch_tmp_bytes(module, &glwe_out_infos, &glwe_in_infos, key_infos);
+        let glwe_in: usize = GLWE::bytes_of_from_infos(self, &glwe_a_infos);
+        let glwe_out: usize = GLWE::bytes_of_from_infos(self, &glwe_res_infos);
+        let ks: usize = self.glwe_keyswitch_tmp_bytes(&glwe_res_infos, &glwe_a_infos, key_infos);
 
         glwe_in + glwe_out + ks
     }
-}
 
-impl<DLwe: DataMut> LWE<DLwe> {
-    pub fn keyswitch<A, DKs, B: Backend>(
+    fn keyswitch<A, DKs, B: Backend>(
         &mut self,
         module: &Module<B>,
-        a: &LWE<A>,
-        ksk: &LWESwitchingKeyPrepared<DKs, B>,
+        a: &A,
+        ksk: &K,
         scratch: &mut Scratch<B>,
     ) where
-        A: DataRef,
+        A: LWEToRef,
         DKs: DataRef,
-        Module<B>: VecZnxDftBytesOf
-            + VmpApplyDftToDftTmpBytes
-            + VecZnxBigNormalizeTmpBytes
-            + VmpApplyDftToDft<B>
-            + VmpApplyDftToDftAdd<B>
-            + VecZnxDftApply<B>
-            + VecZnxIdftApplyConsume<B>
-            + VecZnxBigAddSmallInplace<B>
-            + VecZnxBigNormalize<B>
-            + VecZnxNormalize<B>
-            + VecZnxNormalizeTmpBytes
-            + VecZnxCopy,
         Scratch<B>: ScratchAvailable,
     {
-        #[cfg(debug_assertions)]
-        {
-            assert!(self.n() <= module.n() as u32);
+        assert!(self.n() <= module.n() as u32);
             assert!(a.n() <= module.n() as u32);
             assert!(scratch.available() >= LWE::keyswitch_tmp_bytes(module, self, a, ksk));
-        }
 
         let max_k: TorusPrecision = self.k().max(a.k());
 
@@ -117,4 +90,10 @@ impl<DLwe: DataMut> LWE<DLwe> {
         glwe_out.keyswitch(module, &glwe_in, &ksk.0, scratch_1);
         self.sample_extract(&glwe_out);
     }
+}
+
+impl LWE<Vec<u8>> {}
+
+impl<DLwe: DataMut> LWE<DLwe> {
+ 
 }
