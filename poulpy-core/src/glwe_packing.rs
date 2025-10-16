@@ -1,12 +1,13 @@
 use std::collections::HashMap;
 
 use poulpy_hal::{
-    api::{ModuleLogN, VecZnxCopy, VecZnxRotateInplace},
-    layouts::{Backend, DataMut, DataRef, GaloisElement, Module, Scratch},
+    api::ModuleLogN,
+    layouts::{Backend, GaloisElement, Module, Scratch},
 };
 
 use crate::{
-    GLWEAdd, GLWEAutomorphism, GLWENormalize, GLWERotate, GLWEShift, GLWESub, ScratchTakeCore,
+    GLWEAdd, GLWEAutomorphism, GLWECopy, GLWENormalize, GLWERotate, GLWEShift, GLWESub, ScratchTakeCore,
+    glwe_trace::GLWETrace,
     layouts::{
         GGLWEInfos, GLWE, GLWEAlloc, GLWEInfos, GLWEToMut, GLWEToRef, LWEInfos,
         prepared::{AutomorphismKeyPreparedToRef, GetAutomorphismGaloisElement},
@@ -40,10 +41,10 @@ impl Accumulator {
     /// * `base2k`: base 2 logarithm of the GLWE ciphertext in memory digit representation.
     /// * `k`: base 2 precision of the GLWE ciphertext precision over the Torus.
     /// * `rank`: rank of the GLWE ciphertext.
-    pub fn alloc<A, M>(module: &M, infos: &A) -> Self
+    pub fn alloc<A, M, BE: Backend>(module: &M, infos: &A) -> Self
     where
         A: GLWEInfos,
-        M: GLWEAlloc,
+        M: GLWEPacking<BE>,
     {
         Self {
             data: GLWE::alloc_from_infos(module, infos),
@@ -64,15 +65,15 @@ impl GLWEPacker {
     ///   and N GLWE ciphertext can be packed. With `log_batch=2` all coefficients
     ///   which are multiples of X^{N/4} are packed. Meaning that N/4 ciphertexts
     ///   can be packed.
-    pub fn new<A, M>(module: &M, infos: &A, log_batch: usize) -> Self
+    pub fn alloc<A, M, BE: Backend>(module: &M, infos: &A, log_batch: usize) -> Self
     where
         A: GLWEInfos,
-        M: GLWEAlloc,
+        M: GLWEPacking<BE>,
     {
         let mut accumulators: Vec<Accumulator> = Vec::<Accumulator>::new();
         let log_n: usize = infos.n().log2();
         (0..log_n - log_batch).for_each(|_| accumulators.push(Accumulator::alloc(module, infos)));
-        Self {
+        GLWEPacker {
             accumulators,
             log_batch,
             counter: 0,
@@ -93,13 +94,19 @@ impl GLWEPacker {
     where
         R: GLWEInfos,
         K: GGLWEInfos,
-        M: GLWEAlloc + GLWEAutomorphism<BE>,
+        M: GLWEPacking<BE>,
     {
-        pack_core_tmp_bytes(module, res_infos, key_infos)
+        module.bytes_of_glwe_from_infos(res_infos)
+            + module
+                .glwe_rsh_tmp_byte()
+                .max(module.glwe_automorphism_tmp_bytes(res_infos, res_infos, key_infos))
     }
 
-    pub fn galois_elements<B: Backend>(module: &Module<B>) -> Vec<i64> {
-        GLWE::trace_galois_elements(module)
+    pub fn galois_elements<M, BE: Backend>(module: &M) -> Vec<i64>
+    where
+        M: GLWETrace<BE>,
+    {
+        module.glwe_trace_galois_elements()
     }
 
     /// Adds a GLWE ciphertext to the [GLWEPacker].
@@ -111,11 +118,11 @@ impl GLWEPacker {
     /// * `a`: ciphertext to pack. Can optionally give None to pack a 0 ciphertext.
     /// * `auto_keys`: a [HashMap] containing the [AutomorphismKeyExec]s.
     /// * `scratch`: scratch space of size at least [Self::tmp_bytes].
-    pub fn add<A, K, M, BE: Backend>(&mut self, module: &M, a: Option<&A>, auto_keys: &HashMap<i64, K>, scratch: &mut Scratch<B>)
+    pub fn add<A, K, M, BE: Backend>(&mut self, module: &M, a: Option<&A>, auto_keys: &HashMap<i64, K>, scratch: &mut Scratch<BE>)
     where
-        A: GLWEToRef,
-        K: AutomorphismKeyPreparedToRef<BE>,
-        M: GLWEAutomorphism<BE>,
+        A: GLWEToRef + GLWEInfos,
+        K: AutomorphismKeyPreparedToRef<BE> + GetAutomorphismGaloisElement,
+        M: GLWEPacking<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         assert!(
@@ -136,14 +143,15 @@ impl GLWEPacker {
     }
 
     /// Flush result to`res`.
-    pub fn flush<Data: DataMut, B: Backend>(&mut self, module: &Module<B>, res: &mut GLWE<Data>)
+    pub fn flush<R, M, BE: Backend>(&mut self, module: &M, res: &mut R)
     where
-        Module<B>: VecZnxCopy,
+        R: GLWEToMut,
+        M: GLWEPacking<BE>,
     {
         assert!(self.counter as u32 == self.accumulators[0].data.n());
         // Copy result GLWE into res GLWE
-        res.copy(
-            module,
+        module.glwe_copy(
+            res,
             &self.accumulators[module.log_n() - self.log_batch - 1].data,
         );
 
@@ -151,13 +159,76 @@ impl GLWEPacker {
     }
 }
 
-fn pack_core_tmp_bytes<R, K, M, BE: Backend>(module: &M, res_infos: &R, key_infos: &K) -> usize
-where
-    R: GLWEInfos,
-    K: GGLWEInfos,
-    M: GLWEAlloc + GLWEAutomorphism<BE>,
+impl<BE: Backend> GLWEPacking<BE> for Module<BE> where
+    Self: GLWEAutomorphism<BE>
+        + GaloisElement
+        + ModuleLogN
+        + GLWERotate<BE>
+        + GLWESub
+        + GLWEShift<BE>
+        + GLWEAdd
+        + GLWENormalize<BE>
+        + GLWECopy
+        + GLWEAlloc
 {
-    combine_tmp_bytes(module, res_infos, key_infos)
+}
+
+pub trait GLWEPacking<BE: Backend>
+where
+    Self: GLWEAutomorphism<BE>
+        + GaloisElement
+        + ModuleLogN
+        + GLWERotate<BE>
+        + GLWESub
+        + GLWEShift<BE>
+        + GLWEAdd
+        + GLWENormalize<BE>
+        + GLWECopy
+        + GLWEAlloc,
+{
+    /// Packs [x_0: GLWE(m_0), x_1: GLWE(m_1), ..., x_i: GLWE(m_i)]
+    /// to [0: GLWE(m_0 * X^x_0 + m_1 * X^x_1 + ... + m_i * X^x_i)]
+    fn glwe_pack<R, K>(
+        &self,
+        cts: &mut HashMap<usize, &mut R>,
+        log_gap_out: usize,
+        keys: &HashMap<i64, K>,
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: GLWEToMut + GLWEToRef + GLWEInfos,
+        K: AutomorphismKeyPreparedToRef<BE> + GetAutomorphismGaloisElement,
+        Scratch<BE>: ScratchTakeCore<BE>,
+    {
+        #[cfg(debug_assertions)]
+        {
+            assert!(*cts.keys().max().unwrap() < self.n())
+        }
+
+        let log_n: usize = self.log_n();
+
+        for i in 0..(log_n - log_gap_out) {
+            let t: usize = (1 << log_n).min(1 << (log_n - 1 - i));
+
+            let key: &K = if i == 0 {
+                keys.get(&-1).unwrap()
+            } else {
+                keys.get(&self.galois_element(1 << (i - 1))).unwrap()
+            };
+
+            for j in 0..t {
+                let mut a: Option<&mut R> = cts.remove(&j);
+                let mut b: Option<&mut R> = cts.remove(&(j + t));
+
+                pack_internal(self, &mut a, &mut b, i, key, scratch);
+
+                if let Some(a) = a {
+                    cts.insert(j, a);
+                } else if let Some(b) = b {
+                    cts.insert(j, b);
+                }
+            }
+        }
+    }
 }
 
 fn pack_core<A, K, M, BE: Backend>(
@@ -169,8 +240,16 @@ fn pack_core<A, K, M, BE: Backend>(
     scratch: &mut Scratch<BE>,
 ) where
     A: GLWEToRef + GLWEInfos,
-    K: AutomorphismKeyPreparedToRef<BE>,
-    M: GLWEAutomorphism<BE> + ModuleLogN + VecZnxCopy,
+    K: AutomorphismKeyPreparedToRef<BE> + GetAutomorphismGaloisElement,
+    M: ModuleLogN
+        + GLWEAutomorphism<BE>
+        + GaloisElement
+        + GLWERotate<BE>
+        + GLWESub
+        + GLWEShift<BE>
+        + GLWEAdd
+        + GLWENormalize<BE>
+        + GLWECopy,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     let log_n: usize = module.log_n();
@@ -188,7 +267,7 @@ fn pack_core<A, K, M, BE: Backend>(
 
         // No previous value -> copies and sets flags accordingly
         if let Some(a_ref) = a {
-            acc_mut_ref.data.copy(module, a_ref);
+            module.glwe_copy(&mut acc_mut_ref.data, a_ref);
             acc_mut_ref.value = true
         } else {
             acc_mut_ref.value = false
@@ -222,16 +301,6 @@ fn pack_core<A, K, M, BE: Backend>(
     }
 }
 
-fn combine_tmp_bytes<R, K, M, BE: Backend>(module: &M, res_infos: &R, key_infos: &K) -> usize
-where
-    R: GLWEInfos,
-    K: GGLWEInfos,
-    M: GLWEAlloc + GLWEAutomorphism<BE>,
-{
-    GLWE::bytes_of_from_infos(module, res_infos)
-        + (GLWE::rsh_tmp_bytes(module.n()) | module.glwe_automorphism_tmp_bytes(res_infos, res_infos, key_infos))
-}
-
 /// [combine] merges two ciphertexts together.
 fn combine<B, M, K, BE: Backend>(
     module: &M,
@@ -242,8 +311,9 @@ fn combine<B, M, K, BE: Backend>(
     scratch: &mut Scratch<BE>,
 ) where
     B: GLWEToRef + GLWEInfos,
-    K: AutomorphismKeyPreparedToRef<BE>,
-    M: GLWEAutomorphism<BE> + GaloisElement + VecZnxRotateInplace<BE>,
+    M: GLWEAutomorphism<BE> + GaloisElement + GLWERotate<BE> + GLWESub + GLWEShift<BE> + GLWEAdd + GLWENormalize<BE>,
+    B: GLWEToRef + GLWEInfos,
+    K: AutomorphismKeyPreparedToRef<BE> + GetAutomorphismGaloisElement,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     let log_n: usize = acc.data.n().log2();
@@ -272,111 +342,55 @@ fn combine<B, M, K, BE: Backend>(
             let (mut tmp_b, scratch_1) = scratch.take_glwe_ct(module, a);
 
             // a = a * X^-t
-            a.rotate_inplace(module, -t, scratch_1);
+            module.glwe_rotate_inplace(-t, a, scratch_1);
 
             // tmp_b = a * X^-t - b
-            tmp_b.sub(module, a, b);
-            tmp_b.rsh(module, 1, scratch_1);
+            module.glwe_sub(&mut tmp_b, a, b);
+            module.glwe_rsh(1, &mut tmp_b, scratch_1);
 
             // a = a * X^-t + b
-            a.add_inplace(module, b);
-            a.rsh(module, 1, scratch_1);
+            module.glwe_add_inplace(a, b);
+            module.glwe_rsh(1, a, scratch_1);
 
-            tmp_b.normalize_inplace(module, scratch_1);
+            module.glwe_normalize_inplace(&mut tmp_b, scratch_1);
 
             // tmp_b = phi(a * X^-t - b)
-            if let Some(key) = auto_keys.get(&gal_el) {
-                tmp_b.automorphism_inplace(module, key, scratch_1);
+            if let Some(auto_key) = auto_keys.get(&gal_el) {
+                module.glwe_automorphism_inplace(&mut tmp_b, auto_key, scratch_1);
             } else {
                 panic!("auto_key[{gal_el}] not found");
             }
 
             // a = a * X^-t + b - phi(a * X^-t - b)
-            a.sub_inplace_ab(module, &tmp_b);
-            a.normalize_inplace(module, scratch_1);
+            module.glwe_sub_inplace(a, &tmp_b);
+            module.glwe_normalize_inplace(a, scratch_1);
 
             // a = a + b * X^t - phi(a * X^-t - b) * X^t
             //   = a + b * X^t - phi(a * X^-t - b) * - phi(X^t)
             //   = a + b * X^t + phi(a - b * X^t)
-            a.rotate_inplace(module, t, scratch_1);
+            module.glwe_rotate_inplace(t, a, scratch_1);
         } else {
-            a.rsh(module, 1, scratch);
+            module.glwe_rsh(1, a, scratch);
             // a = a + phi(a)
-            if let Some(key) = auto_keys.get(&gal_el) {
-                a.automorphism_add_inplace(module, key, scratch);
+            if let Some(auto_key) = auto_keys.get(&gal_el) {
+                module.glwe_automorphism_add_inplace(a, auto_key, scratch);
             } else {
                 panic!("auto_key[{gal_el}] not found");
             }
         }
     } else if let Some(b) = b {
-        let (mut tmp_b, scratch_1) = scratch.take_glwe_ct(a);
-        tmp_b.rotate(module, 1 << (log_n - i - 1), b);
-        tmp_b.rsh(module, 1, scratch_1);
+        let (mut tmp_b, scratch_1) = scratch.take_glwe_ct(module, a);
+        module.glwe_rotate(t, &mut tmp_b, b);
+        module.glwe_rsh(1, &mut tmp_b, scratch_1);
 
         // a = (b* X^t - phi(b* X^t))
-        if let Some(key) = auto_keys.get(&gal_el) {
-            a.automorphism_sub_negate(module, &tmp_b, key, scratch_1);
+        if let Some(auto_key) = auto_keys.get(&gal_el) {
+            module.glwe_automorphism_sub_negate(a, &tmp_b, auto_key, scratch_1);
         } else {
             panic!("auto_key[{gal_el}] not found");
         }
 
         acc.value = true;
-    }
-}
-
-pub trait GLWEPacking<BE: Backend>
-where
-    Self: GLWEAutomorphism<BE>
-        + GaloisElement
-        + ModuleLogN
-        + GLWERotate<BE>
-        + GLWESub
-        + GLWEShift<BE>
-        + GLWEAdd
-        + GLWENormalize<BE>,
-{
-    /// Packs [x_0: GLWE(m_0), x_1: GLWE(m_1), ..., x_i: GLWE(m_i)]
-    /// to [0: GLWE(m_0 * X^x_0 + m_1 * X^x_1 + ... + m_i * X^x_i)]
-    fn glwe_pack<R, K>(
-        &self,
-        cts: &mut HashMap<usize, &mut R>,
-        log_gap_out: usize,
-        keys: &HashMap<i64, K>,
-        scratch: &mut Scratch<BE>,
-    ) where
-        R: GLWEToMut + GLWEToRef + GLWEInfos,
-        K: AutomorphismKeyPreparedToRef<BE> + GetAutomorphismGaloisElement,
-        Scratch<BE>: ScratchTakeCore<BE>,
-    {
-        #[cfg(debug_assertions)]
-        {
-            assert!(*cts.keys().max().unwrap() < self.n())
-        }
-
-        let log_n: usize = self.log_n();
-
-        for i in 0..(log_n - log_gap_out){
-            let t: usize = (1 << log_n).min(1 << (log_n - 1 - i));
-
-            let key: &K = if i == 0 {
-                keys.get(&-1).unwrap()
-            } else {
-                keys.get(&self.galois_element(1 << (i - 1))).unwrap()
-            };
-
-            for j in 0..t{
-                let mut a: Option<&mut R> = cts.remove(&j);
-                let mut b: Option<&mut R> = cts.remove(&(j + t));
-
-                pack_internal(self, &mut a, &mut b, i, key, scratch);
-
-                if let Some(a) = a {
-                    cts.insert(j, a);
-                } else if let Some(b) = b {
-                    cts.insert(j, b);
-                }
-            };
-        };
     }
 }
 
