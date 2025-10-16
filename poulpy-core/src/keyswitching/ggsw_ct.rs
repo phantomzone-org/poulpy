@@ -22,7 +22,7 @@ impl GGSW<Vec<u8>> {
         A: GGSWInfos,
         K: GGLWEInfos,
         T: GGLWEInfos,
-        M: GGSWKeySwitch<BE>,
+        M: GGSWKeyswitch<BE>,
     {
         module.ggsw_keyswitch_tmp_bytes(res_infos, a_infos, key_infos, tsk_infos)
     }
@@ -35,7 +35,7 @@ impl<D: DataMut> GGSW<D> {
         K: GLWESwitchingKeyPreparedToRef<BE>,
         T: TensorKeyPreparedToRef<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
-        M: GGSWKeySwitch<BE>,
+        M: GGSWKeyswitch<BE>,
     {
         module.ggsw_keyswitch(self, a, key, tsk, scratch);
     }
@@ -45,13 +45,13 @@ impl<D: DataMut> GGSW<D> {
         K: GLWESwitchingKeyPreparedToRef<BE>,
         T: TensorKeyPreparedToRef<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
-        M: GGSWKeySwitch<BE>,
+        M: GGSWKeyswitch<BE>,
     {
         module.ggsw_keyswitch_inplace(self, key, tsk, scratch);
     }
 }
 
-pub trait GGSWKeySwitch<BE: Backend>
+pub trait GGSWKeyswitch<BE: Backend>
 where
     Self: GLWEKeyswitch<BE> + GGSWExpandRows<BE>,
 {

@@ -6,6 +6,7 @@ use poulpy_hal::{
 use crate::layouts::{
     Base2K, Dnum, Dsize, GGLWEInfos, GLWE, GLWEInfos, GLWESwitchingKey, GLWESwitchingKeyAlloc, GLWESwitchingKeyToMut,
     GLWESwitchingKeyToRef, LWEInfos, Rank, RingDegree, TorusPrecision,
+    prepared::{GetAutomorphismGaloisElement, SetAutomorphismGaloisElement},
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
@@ -25,6 +26,18 @@ pub struct AutomorphismKeyLayout {
 pub struct AutomorphismKey<D: Data> {
     pub(crate) key: GLWESwitchingKey<D>,
     pub(crate) p: i64,
+}
+
+impl<D: DataMut> SetAutomorphismGaloisElement for AutomorphismKey<D> {
+    fn set_p(&mut self, p: i64) {
+        self.p = p
+    }
+}
+
+impl<D: DataRef> GetAutomorphismGaloisElement for AutomorphismKey<D> {
+    fn p(&self) -> i64 {
+        self.p
+    }
 }
 
 impl<D: Data> AutomorphismKey<D> {
