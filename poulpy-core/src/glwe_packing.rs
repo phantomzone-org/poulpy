@@ -1,14 +1,13 @@
 use std::collections::HashMap;
 
 use poulpy_hal::{
-    api::{
-        ModuleLogN, ModuleN, ScratchAvailable, VecZnxAddInplace, VecZnxAutomorphismInplace, VecZnxBigAddSmallInplace, VecZnxBigAutomorphismInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallNegateInplace, VecZnxCopy, VecZnxDftApply, VecZnxDftBytesOf, VecZnxDftCopy, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA, VecZnxNegateInplace, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace, VecZnxRshInplace, VecZnxSub, VecZnxSubInplace, VecZnxSwitchRing, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes
-    },
+    api::{ModuleLogN, VecZnxCopy, VecZnxRotateInplace},
     layouts::{Backend, DataMut, DataRef, GaloisElement, Module, Scratch},
 };
 
 use crate::{
-    layouts::{prepared::{AutomorphismKeyPrepared, AutomorphismKeyPreparedToRef}, GGLWEInfos, GLWEAlloc, GLWEInfos, GLWEToRef, LWEInfos, GLWE}, GLWEAutomorphism, GLWEOperations, ScratchTakeCore
+    GLWEAutomorphism, ScratchTakeCore,
+    layouts::{GGLWEInfos, GLWE, GLWEAlloc, GLWEInfos, GLWEToMut, GLWEToRef, LWEInfos, prepared::AutomorphismKeyPreparedToRef},
 };
 
 /// [GLWEPacker] enables only the fly GLWE packing
@@ -41,7 +40,7 @@ impl Accumulator {
     pub fn alloc<A, M>(module: &M, infos: &A) -> Self
     where
         A: GLWEInfos,
-        M: GLWEAlloc
+        M: GLWEAlloc,
     {
         Self {
             data: GLWE::alloc_from_infos(module, infos),
@@ -65,7 +64,7 @@ impl GLWEPacker {
     pub fn new<A, M>(module: &M, infos: &A, log_batch: usize) -> Self
     where
         A: GLWEInfos,
-        M: GLWEAlloc
+        M: GLWEAlloc,
     {
         let mut accumulators: Vec<Accumulator> = Vec::<Accumulator>::new();
         let log_n: usize = infos.n().log2();
@@ -109,13 +108,8 @@ impl GLWEPacker {
     /// * `a`: ciphertext to pack. Can optionally give None to pack a 0 ciphertext.
     /// * `auto_keys`: a [HashMap] containing the [AutomorphismKeyExec]s.
     /// * `scratch`: scratch space of size at least [Self::tmp_bytes].
-    pub fn add<A, K, M, BE: Backend>(
-        &mut self,
-        module: &M,
-        a: Option<&A>,
-        auto_keys: &HashMap<i64, K>,
-        scratch: &mut Scratch<B>,
-    ) where
+    pub fn add<A, K, M, BE: Backend>(&mut self, module: &M, a: Option<&A>, auto_keys: &HashMap<i64, K>, scratch: &mut Scratch<B>)
+    where
         A: GLWEToRef,
         K: AutomorphismKeyPreparedToRef<BE>,
         M: GLWEAutomorphism<BE>,
@@ -327,110 +321,69 @@ fn combine<B, M, K, BE: Backend>(
     }
 }
 
-/// Packs [x_0: GLWE(m_0), x_1: GLWE(m_1), ..., x_i: GLWE(m_i)]
-/// to [0: GLWE(m_0 * X^x_0 + m_1 * X^x_1 + ... + m_i * X^x_i)]
-pub fn glwe_packing<D: DataMut, ATK, B: Backend>(
-    module: &Module<B>,
-    cts: &mut HashMap<usize, &mut GLWE<D>>,
-    log_gap_out: usize,
-    auto_keys: &HashMap<i64, AutomorphismKeyPrepared<ATK, B>>,
-    scratch: &mut Scratch<B>,
-) where
-    ATK: DataRef,
-    Module<B>: VecZnxRotateInplace<B>
-        + VecZnxNormalizeInplace<B>
-        + VecZnxNormalizeTmpBytes
-        + VecZnxSwitchRing
-        + VecZnxBigAutomorphismInplace<B>
-        + VecZnxRshInplace<B>
-        + VecZnxDftCopy<B>
-        + VecZnxIdftApplyTmpA<B>
-        + VecZnxSub
-        + VecZnxAddInplace
-        + VecZnxNegateInplace
-        + VecZnxCopy
-        + VecZnxSubInplace
-        + VecZnxDftBytesOf
-        + VmpApplyDftToDftTmpBytes
-        + VecZnxBigNormalizeTmpBytes
-        + VmpApplyDftToDft<B>
-        + VmpApplyDftToDftAdd<B>
-        + VecZnxDftApply<B>
-        + VecZnxIdftApplyConsume<B>
-        + VecZnxBigAddSmallInplace<B>
-        + VecZnxBigNormalize<B>
-        + VecZnxAutomorphismInplace<B>
-        + VecZnxBigSubSmallNegateInplace<B>
-        + VecZnxRotate
-        + VecZnxNormalize<B>,
-    Scratch<B>: ScratchAvailable,
+pub trait GLWEPacking<BE: Backend>
+where
+    Self: GLWEAutomorphism<BE> + GaloisElement + ModuleLogN,
 {
-    #[cfg(debug_assertions)]
+    /// Packs [x_0: GLWE(m_0), x_1: GLWE(m_1), ..., x_i: GLWE(m_i)]
+    /// to [0: GLWE(m_0 * X^x_0 + m_1 * X^x_1 + ... + m_i * X^x_i)]
+    fn glwe_pack<R, K>(
+        &self,
+        cts: &mut HashMap<usize, &mut R>,
+        log_gap_out: usize,
+        keys: &HashMap<i64, K>,
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: GLWEToMut,
+        K: AutomorphismKeyPreparedToRef<BE>,
+        Scratch<BE>: ScratchTakeCore<BE>,
     {
-        assert!(*cts.keys().max().unwrap() < module.n())
-    }
+        #[cfg(debug_assertions)]
+        {
+            assert!(*cts.keys().max().unwrap() < self.n())
+        }
 
-    let log_n: usize = module.log_n();
+        let log_n: usize = self.log_n();
 
-    (0..log_n - log_gap_out).for_each(|i| {
-        let t: usize = (1 << log_n).min(1 << (log_n - 1 - i));
+        (0..log_n - log_gap_out).for_each(|i| {
+            let t: usize = (1 << log_n).min(1 << (log_n - 1 - i));
 
-        let auto_key: &AutomorphismKeyPrepared<ATK, B> = if i == 0 {
-            auto_keys.get(&-1).unwrap()
-        } else {
-            auto_keys.get(&module.galois_element(1 << (i - 1))).unwrap()
-        };
+            let key: &K = if i == 0 {
+                keys.get(&-1).unwrap()
+            } else {
+                keys.get(&self.galois_element(1 << (i - 1))).unwrap()
+            };
 
-        (0..t).for_each(|j| {
-            let mut a: Option<&mut GLWE<D>> = cts.remove(&j);
-            let mut b: Option<&mut GLWE<D>> = cts.remove(&(j + t));
+            (0..t).for_each(|j| {
+                let mut a: Option<&mut R> = cts.remove(&j);
+                let mut b: Option<&mut R> = cts.remove(&(j + t));
 
-            pack_internal(module, &mut a, &mut b, i, auto_key, scratch);
+                pack_internal(self, &mut a, &mut b, i, key, scratch);
 
-            if let Some(a) = a {
-                cts.insert(j, a);
-            } else if let Some(b) = b {
-                cts.insert(j, b);
-            }
+                if let Some(a) = a {
+                    cts.insert(j, a);
+                } else if let Some(b) = b {
+                    cts.insert(j, b);
+                }
+            });
         });
-    });
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
-fn pack_internal<A: DataMut, D: DataMut, DataAK: DataRef, B: Backend>(
-    module: &Module<B>,
-    a: &mut Option<&mut GLWE<A>>,
-    b: &mut Option<&mut GLWE<D>>,
+fn pack_internal<M, A, B, K, BE: Backend>(
+    module: &M,
+    a: &mut Option<&mut A>,
+    b: &mut Option<&mut B>,
     i: usize,
-    auto_key: &AutomorphismKeyPrepared<DataAK, B>,
-    scratch: &mut Scratch<B>,
+    auto_key: &K,
+    scratch: &mut Scratch<BE>,
 ) where
-    Module<B>: VecZnxRotateInplace<B>
-        + VecZnxNormalizeInplace<B>
-        + VecZnxNormalizeTmpBytes
-        + VecZnxBigAutomorphismInplace<B>
-        + VecZnxRshInplace<B>
-        + VecZnxDftCopy<B>
-        + VecZnxIdftApplyTmpA<B>
-        + VecZnxSub
-        + VecZnxAddInplace
-        + VecZnxNegateInplace
-        + VecZnxCopy
-        + VecZnxSubInplace
-        + VecZnxDftBytesOf
-        + VmpApplyDftToDftTmpBytes
-        + VecZnxBigNormalizeTmpBytes
-        + VmpApplyDftToDft<B>
-        + VmpApplyDftToDftAdd<B>
-        + VecZnxDftApply<B>
-        + VecZnxIdftApplyConsume<B>
-        + VecZnxBigAddSmallInplace<B>
-        + VecZnxBigNormalize<B>
-        + VecZnxAutomorphismInplace<B>
-        + VecZnxBigSubSmallNegateInplace<B>
-        + VecZnxRotate
-        + VecZnxNormalize<B>,
-    Scratch<B>: ScratchAvailable,
+    M: GLWEAutomorphism<BE>,
+    A: GLWEToMut + GLWEInfos,
+    B: GLWEToMut + GLWEInfos,
+    K: AutomorphismKeyPreparedToRef<BE>,
+    Scratch<BE>: ScratchTakeCore<BE>,
 {
     // Goal is to evaluate: a = a + b*X^t + phi(a - b*X^t))
     // We also use the identity: AUTO(a * X^t, g) = -X^t * AUTO(a, g)
@@ -446,7 +399,7 @@ fn pack_internal<A: DataMut, D: DataMut, DataAK: DataRef, B: Backend>(
         let t: i64 = 1 << (a.n().log2() - i - 1);
 
         if let Some(b) = b.as_deref_mut() {
-            let (mut tmp_b, scratch_1) = scratch.take_glwe_ct(a);
+            let (mut tmp_b, scratch_1) = scratch.take_glwe_ct(module, a);
 
             // a = a * X^-t
             a.rotate_inplace(module, -t, scratch_1);

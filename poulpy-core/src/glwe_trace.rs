@@ -9,10 +9,7 @@ use poulpy_hal::{
     layouts::{Backend, DataMut, DataRef, Module, Scratch, VecZnx},
 };
 
-use crate::{
-    layouts::{Base2K, GGLWEInfos, GLWE, GLWEInfos, GLWELayout, LWEInfos, prepared::AutomorphismKeyPrepared},
-    operations::GLWEOperations,
-};
+use crate::layouts::{Base2K, GGLWEInfos, GLWE, GLWEInfos, GLWELayout, LWEInfos, prepared::AutomorphismKeyPrepared};
 
 impl GLWE<Vec<u8>> {
     pub fn trace_galois_elements<B: Backend>(module: &Module<B>) -> Vec<i64> {

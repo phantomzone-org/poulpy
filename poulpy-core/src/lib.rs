@@ -14,12 +14,12 @@ mod utils;
 
 pub use operations::*;
 pub mod layouts;
+pub use automorphism::*;
 pub use conversion::*;
 pub use dist::*;
 pub use external_product::*;
 pub use glwe_packing::*;
 pub use keyswitching::*;
-pub use automorphism::*;
 
 pub use encryption::SIGMA;
 

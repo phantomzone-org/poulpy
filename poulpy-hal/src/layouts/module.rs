@@ -2,7 +2,10 @@ use std::{fmt::Display, marker::PhantomData, ptr::NonNull};
 
 use rand_distr::num_traits::Zero;
 
-use crate::{api::{ModuleLogN, ModuleN}, GALOISGENERATOR};
+use crate::{
+    GALOISGENERATOR,
+    api::{ModuleLogN, ModuleN},
+};
 
 #[allow(clippy::missing_safety_doc)]
 pub trait Backend: Sized {
@@ -86,7 +89,7 @@ where
     }
 }
 
-impl<BE: Backend> ModuleLogN for Module<BE> where Self: ModuleN{}
+impl<BE: Backend> ModuleLogN for Module<BE> where Self: ModuleN {}
 
 impl<BE: Backend> CyclotomicOrder for Module<BE> where Self: ModuleN {}
 
