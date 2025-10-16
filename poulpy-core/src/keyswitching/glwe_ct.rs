@@ -21,7 +21,7 @@ impl GLWE<Vec<u8>> {
         R: GLWEInfos,
         A: GLWEInfos,
         B: GGLWEInfos,
-        M: GLWEKeySwitch<BE>,
+        M: GLWEKeyswitch<BE>,
     {
         module.glwe_keyswitch_tmp_bytes(res_infos, a_infos, b_infos)
     }
@@ -32,7 +32,7 @@ impl<D: DataMut> GLWE<D> {
     where
         A: GLWEToRef,
         B: GLWESwitchingKeyPreparedToRef<BE>,
-        M: GLWEKeySwitch<BE>,
+        M: GLWEKeyswitch<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         module.glwe_keyswitch(self, a, b, scratch);
@@ -41,14 +41,14 @@ impl<D: DataMut> GLWE<D> {
     pub fn keyswitch_inplace<A, M, BE: Backend>(&mut self, module: &M, a: &A, scratch: &mut Scratch<BE>)
     where
         A: GLWESwitchingKeyPreparedToRef<BE>,
-        M: GLWEKeySwitch<BE>,
+        M: GLWEKeyswitch<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         module.glwe_keyswitch_inplace(self, a, scratch);
     }
 }
 
-impl<BE: Backend> GLWEKeySwitch<BE> for Module<BE> where
+impl<BE: Backend> GLWEKeyswitch<BE> for Module<BE> where
     Self: Sized
         + ModuleN
         + VecZnxDftBytesOf
@@ -69,7 +69,7 @@ impl<BE: Backend> GLWEKeySwitch<BE> for Module<BE> where
 {
 }
 
-pub trait GLWEKeySwitch<BE: Backend>
+pub trait GLWEKeyswitch<BE: Backend>
 where
     Self: Sized
         + ModuleN
@@ -239,7 +239,7 @@ impl GLWE<Vec<u8>> {}
 
 impl<DataSelf: DataMut> GLWE<DataSelf> {}
 
-fn keyswitch_internal<BE: Backend, M, DR, DA, DB>(
+pub(crate) fn keyswitch_internal<BE: Backend, M, DR, DA, DB>(
     module: &M,
     mut res: VecZnxDft<DR, BE>,
     a: &GLWE<DA>,

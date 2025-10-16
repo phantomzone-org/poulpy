@@ -5,7 +5,7 @@ use poulpy_hal::{
 
 use crate::{
     ScratchTakeCore,
-    keyswitching::glwe_ct::GLWEKeySwitch,
+    keyswitching::glwe_ct::GLWEKeyswitch,
     layouts::{
         GGLWEInfos, GLWE, GLWEAlloc, GLWELayout, LWE, LWEInfos, LWEToMut, LWEToRef, Rank, TorusPrecision,
         prepared::{LWESwitchingKeyPrepared, LWESwitchingKeyPreparedToRef},
@@ -40,7 +40,7 @@ impl<BE: Backend> LWEKeySwitch<BE> for Module<BE> where Self: LWEKeySwitch<BE> {
 
 pub trait LWEKeySwitch<BE: Backend>
 where
-    Self: GLWEKeySwitch<BE> + GLWEAlloc,
+    Self: GLWEKeyswitch<BE> + GLWEAlloc,
 {
     fn lwe_keyswitch_tmp_bytes<R, A, K>(&self, res_infos: &R, a_infos: &A, key_infos: &K) -> usize
     where

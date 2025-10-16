@@ -2,7 +2,7 @@ use poulpy_hal::layouts::{Backend, DataMut, Module, Scratch};
 
 use crate::{
     ScratchTakeCore,
-    keyswitching::glwe_ct::GLWEKeySwitch,
+    keyswitching::glwe_ct::GLWEKeyswitch,
     layouts::{
         AutomorphismKey, AutomorphismKeyToRef, GGLWE, GGLWEInfos, GGLWEToMut, GGLWEToRef, GLWESwitchingKey,
         GLWESwitchingKeyToRef,
@@ -109,11 +109,11 @@ impl<DataSelf: DataMut> GGLWE<DataSelf> {
     }
 }
 
-impl<BE: Backend> GGLWEKeySwitch<BE> for Module<BE> where Self: GLWEKeySwitch<BE> {}
+impl<BE: Backend> GGLWEKeySwitch<BE> for Module<BE> where Self: GLWEKeyswitch<BE> {}
 
 pub trait GGLWEKeySwitch<BE: Backend>
 where
-    Self: GLWEKeySwitch<BE>,
+    Self: GLWEKeyswitch<BE>,
 {
     fn gglwe_keyswitch_tmp_bytes<R, A, K>(&self, res_infos: &R, a_infos: &A, key_infos: &K) -> usize
     where
