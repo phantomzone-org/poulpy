@@ -1,22 +1,26 @@
 use poulpy_hal::{
     api::{
-        ScratchAvailable, SvpApplyDftToDftInplace, SvpPPolBytesOf, SvpPrepare, VecZnxAddInplace, VecZnxAddNormal,
+        ModuleN, ScratchAvailable, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolBytesOf, SvpPrepare, VecZnxAddInplace, VecZnxAddNormal,
         VecZnxAddScalarInplace, VecZnxBigNormalize, VecZnxDftApply, VecZnxDftBytesOf, VecZnxFillUniform, VecZnxIdftApplyConsume,
         VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubInplace, VecZnxSwitchRing,
+        ScratchTakeBasic,
     },
     layouts::{Backend, DataMut, DataRef, Module, ScalarZnx, Scratch},
     source::Source,
 };
 
-use crate::layouts::{
+use crate::{
+    ScratchTakeCore,
+    layouts::{
     GGLWE, GGLWEInfos, GLWEInfos, GLWESecret, GLWESwitchingKey, LWEInfos, RingDegree, prepared::GLWESecretPrepared,
+    },
 };
 
 impl GLWESwitchingKey<Vec<u8>> {
     pub fn encrypt_sk_tmp_bytes<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GGLWEInfos,
-        Module<B>: SvpPPolBytesOf + VecZnxNormalizeTmpBytes + VecZnxDftBytesOf + VecZnxNormalizeTmpBytes,
+        Module<B>: ModuleN + SvpPPolBytesOf + VecZnxNormalizeTmpBytes + VecZnxDftBytesOf + VecZnxNormalizeTmpBytes + SvpPPolAlloc<B>,
     {
         (GGLWE::encrypt_sk_tmp_bytes(module, infos) | ScalarZnx::bytes_of(module.n(), 1))
             + ScalarZnx::bytes_of(module.n(), infos.rank_in().into())
@@ -42,7 +46,8 @@ impl<DataSelf: DataMut> GLWESwitchingKey<DataSelf> {
         source_xe: &mut Source,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: VecZnxAddScalarInplace
+        Module<B>: ModuleN
+            + VecZnxAddScalarInplace
             + VecZnxDftBytesOf
             + VecZnxBigNormalize<B>
             + VecZnxDftApply<B>
@@ -58,8 +63,9 @@ impl<DataSelf: DataMut> GLWESwitchingKey<DataSelf> {
             + VecZnxSub
             + SvpPrepare<B>
             + VecZnxSwitchRing
-            + SvpPPolBytesOf,
-        Scratch<B>: ScratchAvailable,
+            + SvpPPolBytesOf
+            + SvpPPolAlloc<B>,
+        Scratch<B>: ScratchAvailable + ScratchTakeBasic + ScratchTakeCore<B>,
     {
         #[cfg(debug_assertions)]
         {
@@ -75,7 +81,7 @@ impl<DataSelf: DataMut> GLWESwitchingKey<DataSelf> {
 
         let n: usize = sk_in.n().max(sk_out.n()).into();
 
-        let (mut sk_in_tmp, scratch_1) = scratch.take_scalar_znx(n, sk_in.rank().into());
+        let (mut sk_in_tmp, scratch_1) = scratch.take_scalar_znx(module, sk_in.rank().into());
         (0..sk_in.rank().into()).for_each(|i| {
             module.vec_znx_switch_ring(
                 &mut sk_in_tmp.as_vec_znx_mut(),
@@ -85,9 +91,9 @@ impl<DataSelf: DataMut> GLWESwitchingKey<DataSelf> {
             );
         });
 
-        let (mut sk_out_tmp, scratch_2) = scratch_1.take_glwe_secret_prepared(RingDegree(n as u32), sk_out.rank());
+        let (mut sk_out_tmp, scratch_2) = scratch_1.take_glwe_secret_prepared(module, sk_out.rank());
         {
-            let (mut tmp, _) = scratch_2.take_scalar_znx(n, 1);
+            let (mut tmp, _) = scratch_2.take_scalar_znx(module, 1);
             (0..sk_out.rank().into()).for_each(|i| {
                 module.vec_znx_switch_ring(&mut tmp.as_vec_znx_mut(), 0, &sk_out.data.as_vec_znx(), i);
                 module.svp_prepare(&mut sk_out_tmp.data, i, &tmp, 0);

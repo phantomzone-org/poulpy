@@ -1,9 +1,9 @@
 use poulpy_hal::{
     api::{
-        ScratchAvailable, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolBytesOf, SvpPrepare, VecZnxAddInplace,
+        ModuleN, ScratchAvailable, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolBytesOf, SvpPrepare, VecZnxAddInplace,
         VecZnxAddNormal, VecZnxBigAddNormal, VecZnxBigAddSmallInplace, VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxDftApply,
         VecZnxDftBytesOf, VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeInplace,
-        VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubInplace,
+        VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubInplace, ScratchTakeBasic,
     },
     layouts::{Backend, DataMut, Module, ScalarZnx, Scratch, VecZnx, VecZnxBig, VecZnxToMut, ZnxInfos, ZnxZero},
     source::Source,
@@ -19,19 +19,19 @@ use crate::{
 };
 
 impl GLWE<Vec<u8>> {
-    pub fn encrypt_sk_tmp_bytes<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
+    pub fn encrypt_sk_tmp_bytes<BE: Backend, A>(module: &Module<BE>, infos: &A) -> usize
     where
         A: GLWEInfos,
-        Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftBytesOf,
+        Module<BE>: VecZnxNormalizeTmpBytes + VecZnxDftBytesOf,
     {
         let size: usize = infos.size();
         assert_eq!(module.n() as u32, infos.n());
         module.vec_znx_normalize_tmp_bytes() + 2 * VecZnx::bytes_of(module.n(), 1, size) + module.bytes_of_vec_znx_dft(1, size)
     }
-    pub fn encrypt_pk_tmp_bytes<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
+    pub fn encrypt_pk_tmp_bytes<BE: Backend, A>(module: &Module<BE>, infos: &A) -> usize
     where
         A: GLWEInfos,
-        Module<B>: VecZnxDftBytesOf + SvpPPolBytesOf + VecZnxBigBytesOf + VecZnxNormalizeTmpBytes,
+        Module<BE>: VecZnxDftBytesOf + SvpPPolBytesOf + VecZnxBigBytesOf + VecZnxNormalizeTmpBytes,
     {
         let size: usize = infos.size();
         assert_eq!(module.n() as u32, infos.n());
@@ -42,68 +42,68 @@ impl GLWE<Vec<u8>> {
 }
 
 impl<D: DataMut> GLWE<D> {
-    pub fn encrypt_sk<R, P, S, B: Backend>(
+    pub fn encrypt_sk<R, P, S, BE: Backend>(
         &mut self,
-        module: &Module<B>,
+        module: &Module<BE>,
         pt: &P,
         sk: &S,
         source_xa: &mut Source,
         source_xe: &mut Source,
-        scratch: &mut Scratch<B>,
+        scratch: &mut Scratch<BE>,
     ) where
         P: GLWEPlaintextToRef,
-        S: GLWESecretPreparedToRef<B>,
-        Module<B>: GLWEEncryptSk<B>,
+        S: GLWESecretPreparedToRef<BE>,
+        Module<BE>: GLWEEncryptSk<BE>,
     {
         module.glwe_encrypt_sk(self, pt, sk, source_xa, source_xe, scratch);
     }
 
-    pub fn encrypt_zero_sk<S, B: Backend>(
+    pub fn encrypt_zero_sk<S, BE: Backend>(
         &mut self,
-        module: &Module<B>,
+        module: &Module<BE>,
         sk: &S,
         source_xa: &mut Source,
         source_xe: &mut Source,
-        scratch: &mut Scratch<B>,
+        scratch: &mut Scratch<BE>,
     ) where
-        S: GLWESecretPreparedToRef<B>,
-        Module<B>: GLWEEncryptZeroSk<B>,
+        S: GLWESecretPreparedToRef<BE>,
+        Module<BE>: GLWEEncryptZeroSk<BE>,
     {
         module.glwe_encrypt_zero_sk(self, sk, source_xa, source_xe, scratch);
     }
 
-    pub fn encrypt_pk<P, K, B: Backend>(
+    pub fn encrypt_pk<P, K, BE: Backend>(
         &mut self,
-        module: &Module<B>,
+        module: &Module<BE>,
         pt: &P,
         pk: &K,
         source_xu: &mut Source,
         source_xe: &mut Source,
-        scratch: &mut Scratch<B>,
+        scratch: &mut Scratch<BE>,
     ) where
         P: GLWEPlaintextToRef,
-        K: GLWEPublicKeyPreparedToRef<B>,
-        Module<B>: GLWEEncryptPk<B>,
+        K: GLWEPublicKeyPreparedToRef<BE>,
+        Module<BE>: GLWEEncryptPk<BE>,
     {
         module.glwe_encrypt_pk(self, pt, pk, source_xu, source_xe, scratch);
     }
 
-    pub fn encrypt_zero_pk<K, B: Backend>(
+    pub fn encrypt_zero_pk<K, BE: Backend>(
         &mut self,
-        module: &Module<B>,
+        module: &Module<BE>,
         pk: &K,
         source_xu: &mut Source,
         source_xe: &mut Source,
-        scratch: &mut Scratch<B>,
+        scratch: &mut Scratch<BE>,
     ) where
-        K: GLWEPublicKeyPreparedToRef<B>,
-        Module<B>: GLWEEncryptZeroPk<B>,
+        K: GLWEPublicKeyPreparedToRef<BE>,
+        Module<BE>: GLWEEncryptZeroPk<BE>,
     {
         module.glwe_encrypt_zero_pk(self, pk, source_xu, source_xe, scratch);
     }
 }
 
-pub trait GLWEEncryptSk<B: Backend> {
+pub trait GLWEEncryptSk<BE: Backend> {
     fn glwe_encrypt_sk<R, P, S>(
         &self,
         res: &mut R,
@@ -111,17 +111,17 @@ pub trait GLWEEncryptSk<B: Backend> {
         sk: &S,
         source_xa: &mut Source,
         source_xe: &mut Source,
-        scratch: &mut Scratch<B>,
+        scratch: &mut Scratch<BE>,
     ) where
         R: GLWEToMut,
         P: GLWEPlaintextToRef,
-        S: GLWESecretPreparedToRef<B>;
+        S: GLWESecretPreparedToRef<BE>;
 }
 
-impl<B: Backend> GLWEEncryptSk<B> for Module<B>
+impl<BE: Backend> GLWEEncryptSk<BE> for Module<BE>
 where
-    Module<B>: GLWEEncryptSkInternal<B> + VecZnxNormalizeTmpBytes + VecZnxDftBytesOf,
-    Scratch<B>: ScratchAvailable,
+    Module<BE>: GLWEEncryptSkInternal<BE> + VecZnxNormalizeTmpBytes + VecZnxDftBytesOf,
+    Scratch<BE>: ScratchAvailable,
 {
     fn glwe_encrypt_sk<R, P, S>(
         &self,
@@ -130,18 +130,18 @@ where
         sk: &S,
         source_xa: &mut Source,
         source_xe: &mut Source,
-        scratch: &mut Scratch<B>,
+        scratch: &mut Scratch<BE>,
     ) where
         R: GLWEToMut,
         P: GLWEPlaintextToRef,
-        S: GLWESecretPreparedToRef<B>,
+        S: GLWESecretPreparedToRef<BE>,
     {
         let mut res: GLWE<&mut [u8]> = res.to_mut();
         let pt: GLWEPlaintext<&[u8]> = pt.to_ref();
 
         #[cfg(debug_assertions)]
         {
-            let sk: GLWESecretPrepared<&[u8], B> = sk.to_ref();
+            let sk: GLWESecretPrepared<&[u8], BE> = sk.to_ref();
             assert_eq!(res.rank(), sk.rank());
             assert_eq!(res.n(), self.n() as u32);
             assert_eq!(sk.n(), self.n() as u32);
@@ -171,23 +171,23 @@ where
     }
 }
 
-pub trait GLWEEncryptZeroSk<B: Backend> {
+pub trait GLWEEncryptZeroSk<BE: Backend> {
     fn glwe_encrypt_zero_sk<R, S>(
         &self,
         res: &mut R,
         sk: &S,
         source_xa: &mut Source,
         source_xe: &mut Source,
-        scratch: &mut Scratch<B>,
+        scratch: &mut Scratch<BE>,
     ) where
         R: GLWEToMut,
-        S: GLWESecretPreparedToRef<B>;
+        S: GLWESecretPreparedToRef<BE>;
 }
 
-impl<B: Backend> GLWEEncryptZeroSk<B> for Module<B>
+impl<BE: Backend> GLWEEncryptZeroSk<BE> for Module<BE>
 where
-    Module<B>: GLWEEncryptSkInternal<B> + VecZnxNormalizeTmpBytes + VecZnxDftBytesOf,
-    Scratch<B>: ScratchAvailable,
+    Module<BE>: GLWEEncryptSkInternal<BE> + VecZnxNormalizeTmpBytes + VecZnxDftBytesOf,
+    Scratch<BE>: ScratchAvailable,
 {
     fn glwe_encrypt_zero_sk<R, S>(
         &self,
@@ -195,16 +195,16 @@ where
         sk: &S,
         source_xa: &mut Source,
         source_xe: &mut Source,
-        scratch: &mut Scratch<B>,
+        scratch: &mut Scratch<BE>,
     ) where
         R: GLWEToMut,
-        S: GLWESecretPreparedToRef<B>,
+        S: GLWESecretPreparedToRef<BE>,
     {
         let mut res: GLWE<&mut [u8]> = res.to_mut();
 
         #[cfg(debug_assertions)]
         {
-            let sk: GLWESecretPrepared<&[u8], B> = sk.to_ref();
+            let sk: GLWESecretPrepared<&[u8], BE> = sk.to_ref();
             assert_eq!(res.rank(), sk.rank());
             assert_eq!(res.n(), self.n() as u32);
             assert_eq!(sk.n(), self.n() as u32);
@@ -233,7 +233,7 @@ where
     }
 }
 
-pub trait GLWEEncryptPk<B: Backend> {
+pub trait GLWEEncryptPk<BE: Backend> {
     fn glwe_encrypt_pk<R, P, K>(
         &self,
         res: &mut R,
@@ -241,16 +241,16 @@ pub trait GLWEEncryptPk<B: Backend> {
         pk: &K,
         source_xu: &mut Source,
         source_xe: &mut Source,
-        scratch: &mut Scratch<B>,
+        scratch: &mut Scratch<BE>,
     ) where
         R: GLWEToMut,
         P: GLWEPlaintextToRef,
-        K: GLWEPublicKeyPreparedToRef<B>;
+        K: GLWEPublicKeyPreparedToRef<BE>;
 }
 
-impl<B: Backend> GLWEEncryptPk<B> for Module<B>
+impl<BE: Backend> GLWEEncryptPk<BE> for Module<BE>
 where
-    Module<B>: GLWEEncryptPkInternal<B>,
+    Module<BE>: GLWEEncryptPkInternal<BE>,
 {
     fn glwe_encrypt_pk<R, P, K>(
         &self,
@@ -259,32 +259,32 @@ where
         pk: &K,
         source_xu: &mut Source,
         source_xe: &mut Source,
-        scratch: &mut Scratch<B>,
+        scratch: &mut Scratch<BE>,
     ) where
         R: GLWEToMut,
         P: GLWEPlaintextToRef,
-        K: GLWEPublicKeyPreparedToRef<B>,
+        K: GLWEPublicKeyPreparedToRef<BE>,
     {
         self.glwe_encrypt_pk_internal(res, Some((pt, 0)), pk, source_xu, source_xe, scratch);
     }
 }
 
-pub trait GLWEEncryptZeroPk<B: Backend> {
+pub trait GLWEEncryptZeroPk<BE: Backend> {
     fn glwe_encrypt_zero_pk<R, K>(
         &self,
         res: &mut R,
         pk: &K,
         source_xu: &mut Source,
         source_xe: &mut Source,
-        scratch: &mut Scratch<B>,
+        scratch: &mut Scratch<BE>,
     ) where
         R: GLWEToMut,
-        K: GLWEPublicKeyPreparedToRef<B>;
+        K: GLWEPublicKeyPreparedToRef<BE>;
 }
 
-impl<B: Backend> GLWEEncryptZeroPk<B> for Module<B>
+impl<BE: Backend> GLWEEncryptZeroPk<BE> for Module<BE>
 where
-    Module<B>: GLWEEncryptPkInternal<B>,
+    Module<BE>: GLWEEncryptPkInternal<BE>,
 {
     fn glwe_encrypt_zero_pk<R, K>(
         &self,
@@ -292,10 +292,10 @@ where
         pk: &K,
         source_xu: &mut Source,
         source_xe: &mut Source,
-        scratch: &mut Scratch<B>,
+        scratch: &mut Scratch<BE>,
     ) where
         R: GLWEToMut,
-        K: GLWEPublicKeyPreparedToRef<B>,
+        K: GLWEPublicKeyPreparedToRef<BE>,
     {
         self.glwe_encrypt_pk_internal(
             res,
@@ -308,7 +308,7 @@ where
     }
 }
 
-pub(crate) trait GLWEEncryptPkInternal<B: Backend> {
+pub(crate) trait GLWEEncryptPkInternal<BE: Backend> {
     fn glwe_encrypt_pk_internal<R, P, K>(
         &self,
         res: &mut R,
@@ -316,22 +316,25 @@ pub(crate) trait GLWEEncryptPkInternal<B: Backend> {
         pk: &K,
         source_xu: &mut Source,
         source_xe: &mut Source,
-        scratch: &mut Scratch<B>,
+        scratch: &mut Scratch<BE>,
     ) where
         R: GLWEToMut,
         P: GLWEPlaintextToRef,
-        K: GLWEPublicKeyPreparedToRef<B>;
+        K: GLWEPublicKeyPreparedToRef<BE>;
 }
 
-impl<B: Backend> GLWEEncryptPkInternal<B> for Module<B>
+impl<BE: Backend> GLWEEncryptPkInternal<BE> for Module<BE>
 where
-    Module<B>: SvpPrepare<B>
-        + SvpApplyDftToDft<B>
-        + VecZnxIdftApplyConsume<B>
-        + VecZnxBigAddNormal<B>
-        + VecZnxBigAddSmallInplace<B>
-        + VecZnxBigNormalize<B>,
-    Scratch<B>:,
+    Module<BE>: SvpPrepare<BE>
+        + SvpApplyDftToDft<BE>
+        + VecZnxIdftApplyConsume<BE>
+        + VecZnxBigAddNormal<BE>
+        + VecZnxBigAddSmallInplace<BE>
+        + VecZnxBigNormalize<BE>
+        + SvpPPolBytesOf
+        + ModuleN
+        + VecZnxDftBytesOf,
+    Scratch<BE>: ScratchTakeBasic,
 {
     fn glwe_encrypt_pk_internal<R, P, K>(
         &self,
@@ -340,14 +343,14 @@ where
         pk: &K,
         source_xu: &mut Source,
         source_xe: &mut Source,
-        scratch: &mut Scratch<B>,
+        scratch: &mut Scratch<BE>,
     ) where
         R: GLWEToMut,
         P: GLWEPlaintextToRef,
-        K: GLWEPublicKeyPreparedToRef<B>,
+        K: GLWEPublicKeyPreparedToRef<BE>,
     {
         let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
-        let pk: &GLWEPublicKeyPrepared<&[u8], B> = &pk.to_ref();
+        let pk: &GLWEPublicKeyPrepared<&[u8], BE> = &pk.to_ref();
 
         #[cfg(debug_assertions)]
         {
@@ -365,10 +368,10 @@ where
         let cols: usize = (res.rank() + 1).into();
 
         // Generates u according to the underlying secret distribution.
-        let (mut u_dft, scratch_1) = scratch.take_svp_ppol(res.n().into(), 1);
+        let (mut u_dft, scratch_1) = scratch.take_svp_ppol(self, 1);
 
         {
-            let (mut u, _) = scratch_1.take_scalar_znx(res.n().into(), 1);
+            let (mut u, _) = scratch_1.take_scalar_znx(self, 1);
             match pk.dist {
                 Distribution::NONE => panic!(
                     "invalid public key: SecretDistribution::NONE, ensure it has been correctly intialized through \
@@ -387,7 +390,7 @@ where
 
         // ct[i] = pk[i] * u + ei (+ m if col = i)
         (0..cols).for_each(|i| {
-            let (mut ci_dft, scratch_2) = scratch_1.take_vec_znx_dft(res.n().into(), 1, size_pk);
+            let (mut ci_dft, scratch_2) = scratch_1.take_vec_znx_dft(self, 1, size_pk);
             // ci_dft = DFT(u) * DFT(pk[i])
             self.svp_apply_dft_to_dft(&mut ci_dft, 0, &u_dft, 0, &pk.data, i);
 
@@ -418,7 +421,7 @@ where
     }
 }
 
-pub(crate) trait GLWEEncryptSkInternal<B: Backend> {
+pub(crate) trait GLWEEncryptSkInternal<BE: Backend> {
     fn glwe_encrypt_sk_internal<R, P, S>(
         &self,
         base2k: usize,
@@ -431,29 +434,30 @@ pub(crate) trait GLWEEncryptSkInternal<B: Backend> {
         source_xa: &mut Source,
         source_xe: &mut Source,
         sigma: f64,
-        scratch: &mut Scratch<B>,
+        scratch: &mut Scratch<BE>,
     ) where
         R: VecZnxToMut,
         P: GLWEPlaintextToRef,
-        S: GLWESecretPreparedToRef<B>;
+        S: GLWESecretPreparedToRef<BE>;
 }
 
-impl<B: Backend> GLWEEncryptSkInternal<B> for Module<B>
+impl<BE: Backend> GLWEEncryptSkInternal<BE> for Module<BE>
 where
-    Module<B>: VecZnxDftBytesOf
-        + VecZnxBigNormalize<B>
-        + VecZnxDftApply<B>
-        + SvpApplyDftToDftInplace<B>
-        + VecZnxIdftApplyConsume<B>
+    Module<BE>: ModuleN
+        + VecZnxDftBytesOf
+        + VecZnxBigNormalize<BE>
+        + VecZnxDftApply<BE>
+        + SvpApplyDftToDftInplace<BE>
+        + VecZnxIdftApplyConsume<BE>
         + VecZnxNormalizeTmpBytes
         + VecZnxFillUniform
         + VecZnxSubInplace
         + VecZnxAddInplace
-        + VecZnxNormalizeInplace<B>
+        + VecZnxNormalizeInplace<BE>
         + VecZnxAddNormal
-        + VecZnxNormalize<B>
+        + VecZnxNormalize<BE>
         + VecZnxSub,
-    Scratch<B>: ScratchAvailable,
+    Scratch<BE>: ScratchAvailable + ScratchTakeBasic,
 {
     fn glwe_encrypt_sk_internal<R, P, S>(
         &self,
@@ -467,14 +471,14 @@ where
         source_xa: &mut Source,
         source_xe: &mut Source,
         sigma: f64,
-        scratch: &mut Scratch<B>,
+        scratch: &mut Scratch<BE>,
     ) where
         R: VecZnxToMut,
         P: GLWEPlaintextToRef,
-        S: GLWESecretPreparedToRef<B>,
+        S: GLWESecretPreparedToRef<BE>,
     {
         let ct: &mut VecZnx<&mut [u8]> = &mut res.to_mut();
-        let sk: GLWESecretPrepared<&[u8], B> = sk.to_ref();
+        let sk: GLWESecretPrepared<&[u8], BE> = sk.to_ref();
 
         #[cfg(debug_assertions)]
         {
@@ -490,11 +494,11 @@ where
 
         let size: usize = ct.size();
 
-        let (mut c0, scratch_1) = scratch.take_vec_znx(ct.n(), 1, size);
+        let (mut c0, scratch_1) = scratch.take_vec_znx(self, 1, size);
         c0.zero();
 
         {
-            let (mut ci, scratch_2) = scratch_1.take_vec_znx(ct.n(), 1, size);
+            let (mut ci, scratch_2) = scratch_1.take_vec_znx(self, 1, size);
 
             // ct[i] = uniform
             // ct[0] -= c[i] * s[i],
@@ -504,7 +508,7 @@ where
                 // ct[i] = uniform (+ pt)
                 self.vec_znx_fill_uniform(base2k, ct, col_ct, source_xa);
 
-                let (mut ci_dft, scratch_3) = scratch_2.take_vec_znx_dft(ct.n(), 1, size);
+                let (mut ci_dft, scratch_3) = scratch_2.take_vec_znx_dft(self, 1, size);
 
                 // ci = ct[i] - pt
                 // i.e. we act as we sample ct[i] already as uniform + pt
@@ -522,7 +526,7 @@ where
                 }
 
                 self.svp_apply_dft_to_dft_inplace(&mut ci_dft, 0, &sk.data, i - 1);
-                let ci_big: VecZnxBig<&mut [u8], B> = self.vec_znx_idft_apply_consume(ci_dft);
+                let ci_big: VecZnxBig<&mut [u8], BE> = self.vec_znx_idft_apply_consume(ci_dft);
 
                 // use c[0] as buffer, which is overwritten later by the normalization step
                 self.vec_znx_big_normalize(base2k, &mut ci, 0, base2k, &ci_big, 0, scratch_3);

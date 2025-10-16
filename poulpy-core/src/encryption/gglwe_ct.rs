@@ -1,11 +1,11 @@
 use poulpy_hal::{
-    api::{ScratchAvailable, VecZnxAddScalarInplace, VecZnxDftBytesOf, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes},
+    api::{ModuleN, ScratchAvailable, VecZnxAddScalarInplace, VecZnxDftBytesOf, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes},
     layouts::{Backend, DataMut, DataRef, Module, ScalarZnx, ScalarZnxToRef, Scratch, ZnxZero},
     source::Source,
 };
 
 use crate::{
-    encryption::glwe_ct::GLWEEncryptSk,
+    encryption::glwe_ct::GLWEEncryptSk, layouts::GLWEInfos, ScratchTakeCore,
     layouts::{
         GGLWE, GGLWEInfos, GGLWEToMut, GLWE, GLWEPlaintext, LWEInfos,
         prepared::{GLWESecretPrepared, GLWESecretPreparedToRef},
@@ -47,8 +47,8 @@ pub trait GGLWEEncryptSk<B: Backend> {
 
 impl<B: Backend> GGLWEEncryptSk<B> for Module<B>
 where
-    Module<B>: GLWEEncryptSk<B> + VecZnxNormalizeTmpBytes + VecZnxDftBytesOf + VecZnxAddScalarInplace + VecZnxNormalizeInplace<B>,
-    Scratch<B>: ScratchAvailable,
+    Module<B>: ModuleN + GLWEEncryptSk<B> + VecZnxNormalizeTmpBytes + VecZnxDftBytesOf + VecZnxAddScalarInplace + VecZnxNormalizeInplace<B>,
+    Scratch<B>: ScratchAvailable + ScratchTakeCore<B>,
 {
     fn gglwe_encrypt_sk<R, P, S>(
         &self,
@@ -111,7 +111,7 @@ where
         let base2k: usize = res.base2k().into();
         let rank_in: usize = res.rank_in().into();
 
-        let (mut tmp_pt, scrach_1) = scratch.take_glwe_pt(res);
+        let (mut tmp_pt, scrach_1) = scratch.take_glwe_pt(self, &res.glwe_layout());
         // For each input column (i.e. rank) produces a GGLWE ciphertext of rank_out+1 columns
         //
         // Example for ksk rank 2 to rank 3:

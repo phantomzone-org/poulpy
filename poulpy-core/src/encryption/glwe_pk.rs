@@ -47,7 +47,7 @@ where
         // Its ok to allocate scratch space here since pk is usually generated only once.
         let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GLWE::encrypt_sk_tmp_bytes(self, res));
 
-        let mut tmp: GLWE<Vec<u8>> = GLWE::alloc_from_infos(res);
+        let mut tmp: GLWE<Vec<u8>> = GLWE::alloc_from_infos(self, res);
 
         tmp.encrypt_zero_sk(self, sk, source_xa, source_xe, scratch.borrow());
         res.dist = sk.dist;

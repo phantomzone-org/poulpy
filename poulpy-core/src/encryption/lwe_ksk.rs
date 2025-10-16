@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{
-        SvpApplyDftToDftInplace, SvpPPolBytesOf, SvpPrepare, VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace,
+        ModuleN, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolBytesOf, SvpPrepare, VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace,
         VecZnxAutomorphismInplace, VecZnxBigNormalize, VecZnxDftApply, VecZnxDftBytesOf, VecZnxFillUniform,
         VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubInplace,
         VecZnxSwitchRing,
@@ -9,16 +9,19 @@ use poulpy_hal::{
     source::Source,
 };
 
-use crate::layouts::{
-    GGLWEInfos, GLWESecret, GLWESwitchingKey, LWEInfos, LWESecret, LWESwitchingKey, Rank, RingDegree,
+use crate::{
+    ScratchTakeCore,
+    layouts::{
+    GGLWEInfos, GLWESecret, GLWESwitchingKey, LWEInfos, LWESecret, LWESwitchingKey, Rank,
     prepared::GLWESecretPrepared,
+    },
 };
 
 impl LWESwitchingKey<Vec<u8>> {
     pub fn encrypt_sk_tmp_bytes<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GGLWEInfos,
-        Module<B>: SvpPPolBytesOf + VecZnxNormalizeTmpBytes + VecZnxDftBytesOf + VecZnxNormalizeTmpBytes,
+        Module<B>: ModuleN + SvpPPolBytesOf + SvpPPolAlloc<B> + VecZnxNormalizeTmpBytes + VecZnxDftBytesOf + VecZnxNormalizeTmpBytes,
     {
         debug_assert_eq!(
             infos.dsize().0,
@@ -35,7 +38,7 @@ impl LWESwitchingKey<Vec<u8>> {
             1,
             "rank_out > 1 is not supported for LWESwitchingKey"
         );
-        GLWESecret::bytes_of(RingDegree(module.n() as u32), Rank(1))
+        GLWESecret::bytes_of(module, Rank(1))
             + GLWESecretPrepared::bytes_of(module, Rank(1))
             + GLWESwitchingKey::encrypt_sk_tmp_bytes(module, infos)
     }
@@ -54,7 +57,8 @@ impl<D: DataMut> LWESwitchingKey<D> {
     ) where
         DIn: DataRef,
         DOut: DataRef,
-        Module<B>: VecZnxAutomorphismInplace<B>
+        Module<B>: ModuleN
+            + VecZnxAutomorphismInplace<B>
             + VecZnxAddScalarInplace
             + VecZnxDftBytesOf
             + VecZnxBigNormalize<B>
@@ -71,8 +75,9 @@ impl<D: DataMut> LWESwitchingKey<D> {
             + VecZnxSub
             + SvpPrepare<B>
             + VecZnxSwitchRing
-            + SvpPPolBytesOf,
-        Scratch<B>:,
+            + SvpPPolBytesOf
+            + SvpPPolAlloc<B>,
+        Scratch<B>: ScratchTakeCore<B>,
     {
         #[cfg(debug_assertions)]
         {
@@ -81,8 +86,8 @@ impl<D: DataMut> LWESwitchingKey<D> {
             assert!(self.n().0 <= module.n() as u32);
         }
 
-        let (mut sk_in_glwe, scratch_1) = scratch.take_glwe_secret(self.n(), Rank(1));
-        let (mut sk_out_glwe, scratch_2) = scratch_1.take_glwe_secret(self.n(), Rank(1));
+        let (mut sk_in_glwe, scratch_1) = scratch.take_glwe_secret(module, Rank(1));
+        let (mut sk_out_glwe, scratch_2) = scratch_1.take_glwe_secret(module, Rank(1));
 
         sk_out_glwe.data.at_mut(0, 0)[..sk_lwe_out.n().into()].copy_from_slice(sk_lwe_out.data.at(0, 0));
         sk_out_glwe.data.at_mut(0, 0)[sk_lwe_out.n().into()..].fill(0);

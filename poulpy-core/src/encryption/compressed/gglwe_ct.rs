@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{
-        ScratchAvailable, VecZnxAddScalarInplace, VecZnxDftBytesOf, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes,
+        ModuleN, ScratchAvailable, VecZnxAddScalarInplace, VecZnxDftBytesOf, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes,
         ZnNormalizeInplace,
     },
     layouts::{Backend, DataMut, DataRef, Module, ScalarZnx, ScalarZnxToRef, Scratch, ZnxZero},
@@ -8,6 +8,7 @@ use poulpy_hal::{
 };
 
 use crate::{
+    ScratchTakeCore,
     encryption::{SIGMA, glwe_ct::GLWEEncryptSkInternal},
     layouts::{
         GGLWE, GGLWEInfos, LWEInfos,
@@ -60,13 +61,14 @@ pub trait GGLWECompressedEncryptSk<B: Backend> {
 
 impl<B: Backend> GGLWECompressedEncryptSk<B> for Module<B>
 where
-    Module<B>: GLWEEncryptSkInternal<B>
+    Module<B>: ModuleN
+        + GLWEEncryptSkInternal<B>
         + VecZnxNormalizeInplace<B>
         + VecZnxNormalizeTmpBytes
         + VecZnxDftBytesOf
         + VecZnxAddScalarInplace
         + ZnNormalizeInplace<B>,
-    Scratch<B>: ScratchAvailable,
+    Scratch<B>: ScratchAvailable + ScratchTakeCore<B>,
 {
     fn gglwe_compressed_encrypt_sk<R, P, S>(
         &self,
@@ -130,7 +132,7 @@ where
 
         let mut source_xa = Source::new(seed);
 
-        let (mut tmp_pt, scrach_1) = scratch.take_glwe_pt(res);
+        let (mut tmp_pt, scrach_1) = scratch.take_glwe_pt(self, res);
         (0..rank_in).for_each(|col_i| {
             (0..dnum).for_each(|d_i| {
                 // Adds the scalar_znx_pt to the i-th limb of the vec_znx_pt

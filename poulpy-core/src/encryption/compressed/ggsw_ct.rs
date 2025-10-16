@@ -1,10 +1,11 @@
 use poulpy_hal::{
-    api::{VecZnxAddScalarInplace, VecZnxDftBytesOf, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes},
+    api::{ModuleN, VecZnxAddScalarInplace, VecZnxDftBytesOf, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes},
     layouts::{Backend, DataMut, DataRef, Module, ScalarZnx, ScalarZnxToRef, Scratch, ZnxZero},
     source::Source,
 };
 
 use crate::{
+    ScratchTakeCore,
     encryption::{SIGMA, glwe_ct::GLWEEncryptSkInternal},
     layouts::{
         GGSW, GGSWInfos, GLWEInfos, LWEInfos,
@@ -40,8 +41,8 @@ pub trait GGSWCompressedEncryptSk<B: Backend> {
 
 impl<B: Backend> GGSWCompressedEncryptSk<B> for Module<B>
 where
-    Module<B>: GLWEEncryptSkInternal<B> + VecZnxAddScalarInplace + VecZnxNormalizeInplace<B>,
-    Scratch<B>:,
+    Module<B>: ModuleN + GLWEEncryptSkInternal<B> + VecZnxAddScalarInplace + VecZnxNormalizeInplace<B>,
+    Scratch<B>: ScratchTakeCore<B>,
 {
     fn ggsw_compressed_encrypt_sk<R, P, S>(
         &self,
@@ -74,7 +75,7 @@ where
         let cols: usize = rank + 1;
         let dsize: usize = res.dsize().into();
 
-        let (mut tmp_pt, scratch_1) = scratch.take_glwe_pt(&res.glwe_layout());
+        let (mut tmp_pt, scratch_1) = scratch.take_glwe_pt(self, &res.glwe_layout());
 
         let mut source = Source::new(seed_xa);
 

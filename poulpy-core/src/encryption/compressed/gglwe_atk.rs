@@ -1,10 +1,11 @@
 use poulpy_hal::{
-    api::{ScratchAvailable, SvpPPolBytesOf, VecZnxAutomorphism, VecZnxDftBytesOf, VecZnxNormalizeTmpBytes},
+    api::{ModuleN, ScratchAvailable, ScratchTakeBasic, SvpPPolAlloc, SvpPPolBytesOf, VecZnxAutomorphism, VecZnxDftBytesOf, VecZnxNormalizeTmpBytes},
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
     source::Source,
 };
 
 use crate::{
+    ScratchTakeCore,
     encryption::compressed::gglwe_ksk::GGLWEKeyCompressedEncryptSk,
     layouts::{
         GGLWEInfos, GLWEInfos, GLWESecret, GLWESecretToRef, LWEInfos,
@@ -16,10 +17,10 @@ impl AutomorphismKeyCompressed<Vec<u8>> {
     pub fn encrypt_sk_tmp_bytes<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GGLWEInfos,
-        Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftBytesOf + VecZnxNormalizeTmpBytes + SvpPPolBytesOf,
+        Module<B>: ModuleN + SvpPPolAlloc<B> + VecZnxNormalizeTmpBytes + VecZnxDftBytesOf + VecZnxNormalizeTmpBytes + SvpPPolBytesOf,
     {
         assert_eq!(module.n() as u32, infos.n());
-        GLWESwitchingKeyCompressed::encrypt_sk_tmp_bytes(module, infos) + GLWESecret::bytes_of(infos.n(), infos.rank_out())
+        GLWESwitchingKeyCompressed::encrypt_sk_tmp_bytes(module, infos) + GLWESecret::bytes_of(module, infos.rank_out())
     }
 }
 
@@ -39,8 +40,14 @@ pub trait GGLWEAutomorphismKeyCompressedEncryptSk<B: Backend> {
 
 impl<B: Backend> GGLWEAutomorphismKeyCompressedEncryptSk<B> for Module<B>
 where
-    Module<B>: GGLWEKeyCompressedEncryptSk<B> + VecZnxNormalizeTmpBytes + VecZnxDftBytesOf + SvpPPolBytesOf + VecZnxAutomorphism,
-    Scratch<B>: ScratchAvailable,
+    Module<B>: ModuleN
+        + GGLWEKeyCompressedEncryptSk<B>
+        + VecZnxNormalizeTmpBytes
+        + VecZnxDftBytesOf
+        + SvpPPolBytesOf
+        + VecZnxAutomorphism
+        + SvpPPolAlloc<B>,
+    Scratch<B>: ScratchAvailable + ScratchTakeBasic + ScratchTakeCore<B>,
 {
     fn gglwe_automorphism_key_compressed_encrypt_sk<R, S>(
         &self,
@@ -70,7 +77,7 @@ where
             )
         }
 
-        let (mut sk_out, scratch_1) = scratch.take_glwe_secret(sk.n(), sk.rank());
+        let (mut sk_out, scratch_1) = scratch.take_glwe_secret(self, sk.rank());
 
         {
             (0..res.rank_out().into()).for_each(|i| {

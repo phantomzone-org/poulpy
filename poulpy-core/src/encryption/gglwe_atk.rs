@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{
-        ScratchAvailable, SvpApplyDftToDftInplace, SvpPPolBytesOf, SvpPrepare, VecZnxAddInplace, VecZnxAddNormal,
+        ModuleN, ScratchAvailable, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolBytesOf, SvpPrepare, VecZnxAddInplace, VecZnxAddNormal,
         VecZnxAddScalarInplace, VecZnxAutomorphism, VecZnxBigNormalize, VecZnxDftApply, VecZnxDftBytesOf, VecZnxFillUniform,
         VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubInplace,
         VecZnxSwitchRing,
@@ -9,15 +9,18 @@ use poulpy_hal::{
     source::Source,
 };
 
-use crate::layouts::{
-    AutomorphismKey, AutomorphismKeyToMut, GGLWEInfos, GLWEInfos, GLWESecret, GLWESecretToRef, GLWESwitchingKey, LWEInfos,
+use crate::{
+    ScratchTakeCore,
+    layouts::{
+        AutomorphismKey, AutomorphismKeyToMut, GGLWEInfos, GLWEInfos, GLWESecret, GLWESecretToRef, GLWESwitchingKey, LWEInfos,
+    },
 };
 
 impl AutomorphismKey<Vec<u8>> {
     pub fn encrypt_sk_tmp_bytes<BE: Backend, A>(module: &Module<BE>, infos: &A) -> usize
     where
         A: GGLWEInfos,
-        Module<BE>: SvpPPolBytesOf + VecZnxNormalizeTmpBytes + VecZnxDftBytesOf + VecZnxNormalizeTmpBytes,
+        Module<BE>: ModuleN + SvpPPolBytesOf + VecZnxNormalizeTmpBytes + VecZnxDftBytesOf + VecZnxNormalizeTmpBytes + SvpPPolAlloc<BE>,
     {
         assert_eq!(
             infos.rank_in(),
@@ -76,7 +79,8 @@ where
 
 impl<BE: Backend> GGLWEAutomorphismKeyEncryptSk<BE> for Module<BE>
 where
-    Module<BE>: VecZnxAddScalarInplace
+    Module<BE>: ModuleN 
+        + VecZnxAddScalarInplace
         + VecZnxDftBytesOf
         + VecZnxBigNormalize<BE>
         + VecZnxDftApply<BE>
@@ -93,8 +97,10 @@ where
         + SvpPrepare<BE>
         + VecZnxSwitchRing
         + SvpPPolBytesOf
-        + VecZnxAutomorphism,
-    Scratch<BE>: ScratchAvailable,
+        + VecZnxAutomorphism
+        + SvpPPolAlloc<BE>
+        + SvpPPolBytesOf,
+    Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
     fn gglwe_automorphism_key_encrypt_sk<A, B>(
         &self,
@@ -126,7 +132,7 @@ where
             )
         }
 
-        let (mut sk_out, scratch_1) = scratch.take_glwe_secret(sk.n(), sk.rank());
+        let (mut sk_out, scratch_1) = scratch.take_glwe_secret(self, sk.rank());
 
         {
             (0..res.rank_out().into()).for_each(|i| {

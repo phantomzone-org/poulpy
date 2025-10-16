@@ -1,29 +1,33 @@
 use poulpy_hal::{
     api::{
-        SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolBytesOf, SvpPrepare, VecZnxAddInplace, VecZnxAddNormal,
+        ModuleN, ScratchTakeBasic, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolBytesOf, SvpPrepare, VecZnxAddInplace, VecZnxAddNormal,
         VecZnxAddScalarInplace, VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxDftApply, VecZnxDftBytesOf, VecZnxFillUniform,
         VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub,
         VecZnxSubInplace, VecZnxSwitchRing,
     },
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
+    oep::VecZnxBigAllocBytesImpl,
     source::Source,
 };
 
-use crate::layouts::{
-    GGLWEInfos, GLWEInfos, GLWESecret, GLWESwitchingKey, LWEInfos, Rank, RingDegree, TensorKey, prepared::GLWESecretPrepared,
+use crate::{
+    ScratchTakeCore,
+    layouts::{
+        GetDist, GGLWEInfos, GLWEInfos, GLWESecret, GLWESwitchingKey, LWEInfos, Rank, TensorKey, prepared::GLWESecretPrepared,
+    },
 };
 
 impl TensorKey<Vec<u8>> {
     pub fn encrypt_sk_tmp_bytes<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GGLWEInfos,
-        Module<B>: SvpPPolBytesOf + VecZnxNormalizeTmpBytes + VecZnxDftBytesOf + VecZnxNormalizeTmpBytes + VecZnxBigBytesOf,
+        Module<B>: ModuleN + SvpPPolBytesOf + SvpPPolAlloc<B> + VecZnxNormalizeTmpBytes + VecZnxDftBytesOf + VecZnxNormalizeTmpBytes + VecZnxBigBytesOf,
     {
         GLWESecretPrepared::bytes_of(module, infos.rank_out())
             + module.bytes_of_vec_znx_dft(infos.rank_out().into(), 1)
             + module.bytes_of_vec_znx_big(1, 1)
             + module.bytes_of_vec_znx_dft(1, 1)
-            + GLWESecret::bytes_of(RingDegree(module.n() as u32), Rank(1))
+            + GLWESecret::bytes_of(module, Rank(1))
             + GLWESwitchingKey::encrypt_sk_tmp_bytes(module, infos)
     }
 }
@@ -37,7 +41,9 @@ impl<DataSelf: DataMut> TensorKey<DataSelf> {
         source_xe: &mut Source,
         scratch: &mut Scratch<B>,
     ) where
-        Module<B>: SvpApplyDftToDft<B>
+        GLWESecret<DataSk>: GetDist,
+        Module<B>: ModuleN
+            + SvpApplyDftToDft<B>
             + VecZnxIdftApplyTmpA<B>
             + VecZnxAddScalarInplace
             + VecZnxDftBytesOf
@@ -55,8 +61,11 @@ impl<DataSelf: DataMut> TensorKey<DataSelf> {
             + VecZnxSub
             + SvpPrepare<B>
             + VecZnxSwitchRing
-            + SvpPPolBytesOf,
-        Scratch<B>:,
+            + SvpPPolBytesOf
+            + VecZnxBigAllocBytesImpl<B>
+            + VecZnxBigBytesOf
+            + SvpPPolAlloc<B>,
+        Scratch<B>: ScratchTakeBasic + ScratchTakeCore<B>,
     {
         #[cfg(debug_assertions)]
         {
@@ -64,21 +73,21 @@ impl<DataSelf: DataMut> TensorKey<DataSelf> {
             assert_eq!(self.n(), sk.n());
         }
 
-        let n: RingDegree = sk.n();
+        // let n: RingDegree = sk.n();
         let rank: Rank = self.rank_out();
 
-        let (mut sk_dft_prep, scratch_1) = scratch.take_glwe_secret_prepared(n, rank);
-        sk_dft_prep.prepare(module, sk, scratch_1);
+        let (mut sk_dft_prep, scratch_1) = scratch.take_glwe_secret_prepared(module, rank);
+        sk_dft_prep.prepare(module, sk);
 
-        let (mut sk_dft, scratch_2) = scratch_1.take_vec_znx_dft(n.into(), rank.into(), 1);
+        let (mut sk_dft, scratch_2) = scratch_1.take_vec_znx_dft(module, rank.into(), 1);
 
         (0..rank.into()).for_each(|i| {
             module.vec_znx_dft_apply(1, 0, &mut sk_dft, i, &sk.data.as_vec_znx(), i);
         });
 
-        let (mut sk_ij_big, scratch_3) = scratch_2.take_vec_znx_big(n.into(), 1, 1);
-        let (mut sk_ij, scratch_4) = scratch_3.take_glwe_secret(n, Rank(1));
-        let (mut sk_ij_dft, scratch_5) = scratch_4.take_vec_znx_dft(n.into(), 1, 1);
+        let (mut sk_ij_big, scratch_3) = scratch_2.take_vec_znx_big(module, 1, 1);
+        let (mut sk_ij, scratch_4) = scratch_3.take_glwe_secret(module, Rank(1));
+        let (mut sk_ij_dft, scratch_5) = scratch_4.take_vec_znx_dft(module, 1, 1);
 
         (0..rank.into()).for_each(|i| {
             (i..rank.into()).for_each(|j| {

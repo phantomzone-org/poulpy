@@ -1,10 +1,11 @@
 use poulpy_hal::{
-    api::{ScratchAvailable, SvpPPolBytesOf, SvpPrepare, VecZnxDftBytesOf, VecZnxNormalizeTmpBytes, VecZnxSwitchRing},
+    api::{ModuleN, ScratchAvailable, ScratchTakeBasic, SvpPPolAlloc, SvpPPolBytesOf, SvpPrepare, VecZnxDftBytesOf, VecZnxNormalizeTmpBytes, VecZnxSwitchRing},
     layouts::{Backend, DataMut, DataRef, Module, ScalarZnx, Scratch},
     source::Source,
 };
 
 use crate::{
+    ScratchTakeCore,
     encryption::compressed::gglwe_ct::GGLWECompressedEncryptSk,
     layouts::{
         GGLWE, GGLWEInfos, GLWEInfos, GLWESecret, GLWESecretToRef, LWEInfos, RingDegree,
@@ -17,7 +18,7 @@ impl GLWESwitchingKeyCompressed<Vec<u8>> {
     pub fn encrypt_sk_tmp_bytes<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GGLWEInfos,
-        Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftBytesOf + VecZnxNormalizeTmpBytes + SvpPPolBytesOf,
+        Module<B>: ModuleN + SvpPPolAlloc<B> + VecZnxNormalizeTmpBytes + VecZnxDftBytesOf + VecZnxNormalizeTmpBytes + SvpPPolBytesOf,
     {
         (GGLWE::encrypt_sk_tmp_bytes(module, infos) | ScalarZnx::bytes_of(module.n(), 1))
             + ScalarZnx::bytes_of(module.n(), infos.rank_in().into())
@@ -59,13 +60,15 @@ pub trait GGLWEKeyCompressedEncryptSk<B: Backend> {
 
 impl<B: Backend> GGLWEKeyCompressedEncryptSk<B> for Module<B>
 where
-    Module<B>: GGLWECompressedEncryptSk<B>
+    Module<B>: ModuleN
+        + GGLWECompressedEncryptSk<B>
         + SvpPPolBytesOf
         + VecZnxNormalizeTmpBytes
         + VecZnxDftBytesOf
         + VecZnxSwitchRing
-        + SvpPrepare<B>,
-    Scratch<B>: ScratchAvailable,
+        + SvpPrepare<B>
+        + SvpPPolAlloc<B>,
+    Scratch<B>: ScratchAvailable + ScratchTakeBasic + ScratchTakeCore<B>,
 {
     fn gglwe_key_compressed_encrypt_sk<R, SI, SO>(
         &self,
@@ -100,7 +103,7 @@ where
 
         let n: usize = sk_in.n().max(sk_out.n()).into();
 
-        let (mut sk_in_tmp, scratch_1) = scratch.take_scalar_znx(n, sk_in.rank().into());
+        let (mut sk_in_tmp, scratch_1) = scratch.take_scalar_znx(self, sk_in.rank().into());
         (0..sk_in.rank().into()).for_each(|i| {
             self.vec_znx_switch_ring(
                 &mut sk_in_tmp.as_vec_znx_mut(),
@@ -110,9 +113,9 @@ where
             );
         });
 
-        let (mut sk_out_tmp, scratch_2) = scratch_1.take_glwe_secret_prepared(RingDegree(n as u32), sk_out.rank());
+        let (mut sk_out_tmp, scratch_2) = scratch_1.take_glwe_secret_prepared(self, sk_out.rank());
         {
-            let (mut tmp, _) = scratch_2.take_scalar_znx(n, 1);
+            let (mut tmp, _) = scratch_2.take_scalar_znx(self, 1);
             (0..sk_out.rank().into()).for_each(|i| {
                 self.vec_znx_switch_ring(&mut tmp.as_vec_znx_mut(), 0, &sk_out.data.as_vec_znx(), i);
                 self.svp_prepare(&mut sk_out_tmp.data, i, &tmp, 0);
