@@ -6,6 +6,7 @@ use poulpy_hal::{
         VecZnxSwitchRing,
     },
     layouts::{Backend, DataMut, Module, Scratch},
+    layouts::{Backend, DataMut, Module, Scratch},
     source::Source,
 };
 
@@ -18,6 +19,8 @@ use crate::{
 
 impl AutomorphismKey<Vec<u8>> {
     pub fn encrypt_sk_tmp_bytes<BE: Backend, A>(module: &Module<BE>, infos: &A) -> usize
+impl AutomorphismKey<Vec<u8>> {
+    pub fn encrypt_sk_tmp_bytes<BE: Backend, A>(module: &Module<BE>, infos: &A) -> usize
     where
         A: GGLWEInfos,
         Module<BE>: ModuleN + SvpPPolBytesOf + VecZnxNormalizeTmpBytes + VecZnxDftBytesOf + VecZnxNormalizeTmpBytes + SvpPPolAlloc<BE>,
@@ -28,8 +31,10 @@ impl AutomorphismKey<Vec<u8>> {
             "rank_in != rank_out is not supported for GGLWEAutomorphismKey"
         );
         GLWESwitchingKey::encrypt_sk_tmp_bytes(module, infos) + GLWESecret::bytes_of_from_infos(module, &infos.glwe_layout())
+        GLWESwitchingKey::encrypt_sk_tmp_bytes(module, infos) + GLWESecret::bytes_of_from_infos(module, &infos.glwe_layout())
     }
 
+    pub fn encrypt_pk_tmp_bytes<BE: Backend, A>(module: &Module<BE>, _infos: &A) -> usize
     pub fn encrypt_pk_tmp_bytes<BE: Backend, A>(module: &Module<BE>, _infos: &A) -> usize
     where
         A: GGLWEInfos,
@@ -39,6 +44,7 @@ impl AutomorphismKey<Vec<u8>> {
             _infos.rank_out(),
             "rank_in != rank_out is not supported for GGLWEAutomorphismKey"
         );
+        GLWESwitchingKey::encrypt_pk_tmp_bytes(module, _infos)
         GLWESwitchingKey::encrypt_pk_tmp_bytes(module, _infos)
     }
 }
@@ -62,12 +68,34 @@ where
     Self: AutomorphismKeyToMut,
 {
     pub fn encrypt_sk<S, BE: Backend>(
+pub trait GGLWEAutomorphismKeyEncryptSk<BE: Backend> {
+    fn gglwe_automorphism_key_encrypt_sk<A, B>(
+        &self,
+        res: &mut A,
+        p: i64,
+        sk: &B,
+        source_xa: &mut Source,
+        source_xe: &mut Source,
+        scratch: &mut Scratch<BE>,
+    ) where
+        A: AutomorphismKeyToMut,
+        B: GLWESecretToRef;
+}
+
+impl<DM: DataMut> AutomorphismKey<DM>
+where
+    Self: AutomorphismKeyToMut,
+{
+    pub fn encrypt_sk<S, BE: Backend>(
         &mut self,
+        module: &Module<BE>,
         module: &Module<BE>,
         p: i64,
         sk: &S,
+        sk: &S,
         source_xa: &mut Source,
         source_xe: &mut Source,
+        scratch: &mut Scratch<BE>,
         scratch: &mut Scratch<BE>,
     ) where
         S: GLWESecretToRef,
@@ -124,10 +152,16 @@ where
             assert_eq!(res.n(), sk.n());
             assert_eq!(res.rank_out(), res.rank_in());
             assert_eq!(sk.rank(), res.rank_out());
+            assert_eq!(res.n(), sk.n());
+            assert_eq!(res.rank_out(), res.rank_in());
+            assert_eq!(sk.rank(), res.rank_out());
             assert!(
                 scratch.available() >= AutomorphismKey::encrypt_sk_tmp_bytes(self, res),
                 "scratch.available(): {} < AutomorphismKey::encrypt_sk_tmp_bytes: {:?}",
+                scratch.available() >= AutomorphismKey::encrypt_sk_tmp_bytes(self, res),
+                "scratch.available(): {} < AutomorphismKey::encrypt_sk_tmp_bytes: {:?}",
                 scratch.available(),
+                AutomorphismKey::encrypt_sk_tmp_bytes(self, res)
                 AutomorphismKey::encrypt_sk_tmp_bytes(self, res)
             )
         }
@@ -135,6 +169,9 @@ where
         let (mut sk_out, scratch_1) = scratch.take_glwe_secret(self, sk.rank());
 
         {
+            (0..res.rank_out().into()).for_each(|i| {
+                self.vec_znx_automorphism(
+                    self.galois_element_inv(p),
             (0..res.rank_out().into()).for_each(|i| {
                 self.vec_znx_automorphism(
                     self.galois_element_inv(p),
@@ -148,7 +185,10 @@ where
 
         res.key
             .encrypt_sk(self, sk, &sk_out, source_xa, source_xe, scratch_1);
+        res.key
+            .encrypt_sk(self, sk, &sk_out, source_xa, source_xe, scratch_1);
 
+        res.p = p;
         res.p = p;
     }
 }

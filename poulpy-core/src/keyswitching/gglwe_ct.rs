@@ -2,7 +2,7 @@ use poulpy_hal::layouts::{Backend, DataMut, Module, Scratch};
 
 use crate::{
     ScratchTakeCore,
-    keyswitching::glwe_ct::GLWEKeySwitch,
+    keyswitching::glwe_ct::GLWEKeyswitch,
     layouts::{
         AutomorphismKey, AutomorphismKeyToRef, GGLWE, GGLWEInfos, GGLWEToMut, GGLWEToRef, GLWESwitchingKey,
         GLWESwitchingKeyToRef,
@@ -16,7 +16,7 @@ impl AutomorphismKey<Vec<u8>> {
         R: GGLWEInfos,
         A: GGLWEInfos,
         K: GGLWEInfos,
-        M: GGLWEKeySwitch<BE>,
+        M: GGLWEKeyswitch<BE>,
     {
         module.glwe_keyswitch_tmp_bytes(res_infos, a_infos, key_infos)
     }
@@ -28,7 +28,7 @@ impl<DataSelf: DataMut> AutomorphismKey<DataSelf> {
         A: AutomorphismKeyToRef,
         B: GLWESwitchingKeyPreparedToRef<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
-        M: GGLWEKeySwitch<BE>,
+        M: GGLWEKeyswitch<BE>,
     {
         module.gglwe_keyswitch(&mut self.key.key, &a.to_ref().key.key, b, scratch);
     }
@@ -37,7 +37,7 @@ impl<DataSelf: DataMut> AutomorphismKey<DataSelf> {
     where
         A: GLWESwitchingKeyPreparedToRef<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
-        M: GGLWEKeySwitch<BE>,
+        M: GGLWEKeyswitch<BE>,
     {
         module.gglwe_keyswitch_inplace(&mut self.key.key, a, scratch);
     }
@@ -49,7 +49,7 @@ impl GLWESwitchingKey<Vec<u8>> {
         R: GGLWEInfos,
         A: GGLWEInfos,
         K: GGLWEInfos,
-        M: GGLWEKeySwitch<BE>,
+        M: GGLWEKeyswitch<BE>,
     {
         module.glwe_keyswitch_tmp_bytes(res_infos, a_infos, key_infos)
     }
@@ -61,7 +61,7 @@ impl<DataSelf: DataMut> GLWESwitchingKey<DataSelf> {
         A: GLWESwitchingKeyToRef,
         B: GLWESwitchingKeyPreparedToRef<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
-        M: GGLWEKeySwitch<BE>,
+        M: GGLWEKeyswitch<BE>,
     {
         module.gglwe_keyswitch(&mut self.key, &a.to_ref().key, b, scratch);
     }
@@ -70,7 +70,7 @@ impl<DataSelf: DataMut> GLWESwitchingKey<DataSelf> {
     where
         A: GLWESwitchingKeyPreparedToRef<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
-        M: GGLWEKeySwitch<BE>,
+        M: GGLWEKeyswitch<BE>,
     {
         module.gglwe_keyswitch_inplace(&mut self.key, a, scratch);
     }
@@ -82,7 +82,7 @@ impl GGLWE<Vec<u8>> {
         R: GGLWEInfos,
         A: GGLWEInfos,
         K: GGLWEInfos,
-        M: GGLWEKeySwitch<BE>,
+        M: GGLWEKeyswitch<BE>,
     {
         module.glwe_keyswitch_tmp_bytes(res_infos, a_infos, key_infos)
     }
@@ -94,7 +94,7 @@ impl<DataSelf: DataMut> GGLWE<DataSelf> {
         A: GGLWEToRef,
         B: GLWESwitchingKeyPreparedToRef<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
-        M: GGLWEKeySwitch<BE>,
+        M: GGLWEKeyswitch<BE>,
     {
         module.gglwe_keyswitch(self, a, b, scratch);
     }
@@ -103,17 +103,17 @@ impl<DataSelf: DataMut> GGLWE<DataSelf> {
     where
         A: GLWESwitchingKeyPreparedToRef<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
-        M: GGLWEKeySwitch<BE>,
+        M: GGLWEKeyswitch<BE>,
     {
         module.gglwe_keyswitch_inplace(self, a, scratch);
     }
 }
 
-impl<BE: Backend> GGLWEKeySwitch<BE> for Module<BE> where Self: GLWEKeySwitch<BE> {}
+impl<BE: Backend> GGLWEKeyswitch<BE> for Module<BE> where Self: GLWEKeyswitch<BE> {}
 
-pub trait GGLWEKeySwitch<BE: Backend>
+pub trait GGLWEKeyswitch<BE: Backend>
 where
-    Self: GLWEKeySwitch<BE>,
+    Self: GLWEKeyswitch<BE>,
 {
     fn gglwe_keyswitch_tmp_bytes<R, A, K>(&self, res_infos: &R, a_infos: &A, key_infos: &K) -> usize
     where

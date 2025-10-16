@@ -141,3 +141,18 @@ impl<DataSelf: DataMut> TensorKeyCompressed<DataSelf> {
         module.gglwe_tensor_key_encrypt_sk(self, sk, seed_xa, source_xe, scratch);
     }
 }
+
+impl<DataSelf: DataMut> TensorKeyCompressed<DataSelf> {
+    pub fn encrypt_sk<DataSk: DataRef, B: Backend>(
+        &mut self,
+        module: &Module<B>,
+        sk: &GLWESecret<DataSk>,
+        seed_xa: [u8; 32],
+        source_xe: &mut Source,
+        scratch: &mut Scratch<B>,
+    ) where
+        Module<B>: GGLWETensorKeyCompressedEncryptSk<B>,
+    {
+        module.gglwe_tensor_key_encrypt_sk(self, sk, seed_xa, source_xe, scratch);
+    }
+}

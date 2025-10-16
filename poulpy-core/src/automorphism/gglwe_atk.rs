@@ -1,198 +1,169 @@
 use poulpy_hal::{
-    api::{
-        ScratchAvailable, VecZnxAutomorphism, VecZnxAutomorphismInplace, VecZnxBigAddSmallInplace, VecZnxBigNormalize,
-        VecZnxBigNormalizeTmpBytes, VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxNormalize,
-        VecZnxNormalizeTmpBytes, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
-    },
-    layouts::{Backend, DataMut, DataRef, Module, Scratch, ZnxZero},
+    api::VecZnxAutomorphism,
+    layouts::{Backend, DataMut, GaloisElement, Module, Scratch},
 };
 
-use crate::layouts::{AutomorphismKey, GGLWEInfos, GLWE, prepared::AutomorphismKeyPrepared};
+use crate::{
+    ScratchTakeCore,
+    automorphism::glwe_ct::GLWEAutomorphism,
+    layouts::{
+        AutomorphismKey, AutomorphismKeyToMut, AutomorphismKeyToRef, GGLWEInfos, GLWE, GLWEInfos,
+        prepared::{
+            AutomorphismKeyPrepared, AutomorphismKeyPreparedToRef, GetAutomorphismGaloisElement, SetAutomorphismGaloisElement,
+        },
+    },
+};
 
 impl AutomorphismKey<Vec<u8>> {
-    pub fn automorphism_tmp_bytes<B: Backend, OUT, IN, KEY>(
-        module: &Module<B>,
-        out_infos: &OUT,
-        in_infos: &IN,
-        key_infos: &KEY,
-    ) -> usize
+    pub fn automorphism_tmp_bytes<R, A, K, M, BE: Backend>(module: &M, res_infos: &R, a_infos: &A, key_infos: &K) -> usize
     where
-        OUT: GGLWEInfos,
-        IN: GGLWEInfos,
-        KEY: GGLWEInfos,
-        Module<B>: VecZnxDftBytesOf + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
+        R: GGLWEInfos,
+        A: GGLWEInfos,
+        K: GGLWEInfos,
+        M: AutomorphismKeyAutomorphism<BE>,
     {
-        GLWE::keyswitch_tmp_bytes(
-            module,
-            &out_infos.glwe_layout(),
-            &in_infos.glwe_layout(),
-            key_infos,
-        )
-    }
-
-    pub fn automorphism_inplace_tmp_bytes<B: Backend, OUT, KEY>(module: &Module<B>, out_infos: &OUT, key_infos: &KEY) -> usize
-    where
-        OUT: GGLWEInfos,
-        KEY: GGLWEInfos,
-        Module<B>: VecZnxDftBytesOf + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
-    {
-        AutomorphismKey::automorphism_tmp_bytes(module, out_infos, out_infos, key_infos)
+        module.automorphism_key_automorphism_tmp_bytes(res_infos, a_infos, key_infos)
     }
 }
 
 impl<DataSelf: DataMut> AutomorphismKey<DataSelf> {
-    pub fn automorphism<DataLhs: DataRef, DataRhs: DataRef, B: Backend>(
-        &mut self,
-        module: &Module<B>,
-        lhs: &AutomorphismKey<DataLhs>,
-        rhs: &AutomorphismKeyPrepared<DataRhs, B>,
-        scratch: &mut Scratch<B>,
-    ) where
-        Module<B>: VecZnxDftBytesOf
-            + VmpApplyDftToDftTmpBytes
-            + VecZnxBigNormalizeTmpBytes
-            + VmpApplyDftToDft<B>
-            + VmpApplyDftToDftAdd<B>
-            + VecZnxDftApply<B>
-            + VecZnxIdftApplyConsume<B>
-            + VecZnxBigAddSmallInplace<B>
-            + VecZnxBigNormalize<B>
-            + VecZnxAutomorphism
-            + VecZnxAutomorphismInplace<B>
-            + VecZnxNormalize<B>
-            + VecZnxNormalizeTmpBytes,
-        Scratch<B>: ScratchAvailable,
+    pub fn automorphism<A, K, M, BE: Backend>(&mut self, module: &M, a: &A, key: &K, scratch: &mut Scratch<BE>)
+    where
+        A: AutomorphismKeyToRef + GetAutomorphismGaloisElement,
+        K: AutomorphismKeyPreparedToRef<BE> + GetAutomorphismGaloisElement,
+        Scratch<BE>: ScratchTakeCore<BE>,
+        M: AutomorphismKeyAutomorphism<BE>,
     {
-        #[cfg(debug_assertions)]
-        {
-            use crate::layouts::LWEInfos;
-
-            assert_eq!(
-                self.rank_in(),
-                lhs.rank_in(),
-                "ksk_out input rank: {} != ksk_in input rank: {}",
-                self.rank_in(),
-                lhs.rank_in()
-            );
-            assert_eq!(
-                self.rank_out(),
-                rhs.rank_in(),
-                "ksk_in output rank: {} != ksk_apply input rank: {}",
-                self.rank_out(),
-                rhs.rank_in()
-            );
-            assert_eq!(
-                self.rank_out(),
-                rhs.rank_out(),
-                "ksk_out output rank: {} != ksk_apply output rank: {}",
-                self.rank_out(),
-                rhs.rank_out()
-            );
-            assert!(
-                self.k() <= lhs.k(),
-                "output k={} cannot be greater than input k={}",
-                self.k(),
-                lhs.k()
-            )
-        }
-
-        let cols_out: usize = (rhs.rank_out() + 1).into();
-
-        let p: i64 = lhs.p();
-        let p_inv: i64 = module.galois_element_inv(p);
-
-        (0..self.rank_in().into()).for_each(|col_i| {
-            (0..self.dnum().into()).for_each(|row_j| {
-                let mut res_ct: GLWE<&mut [u8]> = self.at_mut(row_j, col_i);
-                let lhs_ct: GLWE<&[u8]> = lhs.at(row_j, col_i);
-
-                // Reverts the automorphism X^{-k}: (-pi^{-1}_{k}(s)a + s, a) to (-sa + pi_{k}(s), a)
-                (0..cols_out).for_each(|i| {
-                    module.vec_znx_automorphism(lhs.p(), &mut res_ct.data, i, &lhs_ct.data, i);
-                });
-
-                // Key-switch (-sa + pi_{k}(s), a) to (-pi^{-1}_{k'}(s)a + pi_{k}(s), a)
-                res_ct.keyswitch_inplace(module, &rhs.key, scratch);
-
-                // Applies back the automorphism X^{-k}: (-pi^{-1}_{k'}(s)a + pi_{k}(s), a) to (-pi^{-1}_{k'+k}(s)a + s, a)
-                (0..cols_out).for_each(|i| {
-                    module.vec_znx_automorphism_inplace(p_inv, &mut res_ct.data, i, scratch);
-                });
-            });
-        });
-
-        (self.dnum().min(lhs.dnum()).into()..self.dnum().into()).for_each(|row_i| {
-            (0..self.rank_in().into()).for_each(|col_j| {
-                self.at_mut(row_i, col_j).data.zero();
-            });
-        });
-
-        self.p = (lhs.p * rhs.p) % (module.cyclotomic_order() as i64);
+        module.automorphism_key_automorphism(self, a, key, scratch);
     }
 
-    pub fn automorphism_inplace<DataRhs: DataRef, B: Backend>(
-        &mut self,
-        module: &Module<B>,
-        rhs: &AutomorphismKeyPrepared<DataRhs, B>,
-        scratch: &mut Scratch<B>,
-    ) where
-        Module<B>: VecZnxDftBytesOf
-            + VmpApplyDftToDftTmpBytes
-            + VecZnxBigNormalizeTmpBytes
-            + VmpApplyDftToDft<B>
-            + VmpApplyDftToDftAdd<B>
-            + VecZnxDftApply<B>
-            + VecZnxIdftApplyConsume<B>
-            + VecZnxBigAddSmallInplace<B>
-            + VecZnxBigNormalize<B>
-            + VecZnxAutomorphism
-            + VecZnxAutomorphismInplace<B>
-            + VecZnxNormalize<B>
-            + VecZnxNormalizeTmpBytes,
-        Scratch<B>: ScratchAvailable,
+    pub fn automorphism_inplace<K, M, BE: Backend>(&mut self, module: &M, key: &K, scratch: &mut Scratch<BE>)
+    where
+        K: AutomorphismKeyPreparedToRef<BE> + GetAutomorphismGaloisElement,
+        Scratch<BE>: ScratchTakeCore<BE>,
+        M: AutomorphismKeyAutomorphism<BE>,
     {
-        #[cfg(debug_assertions)]
+        module.automorphism_key_automorphism_inplace(self, key, scratch);
+    }
+}
+
+impl<BE: Backend> AutomorphismKeyAutomorphism<BE> for Module<BE> where
+    Self: GaloisElement + GLWEAutomorphism<BE> + VecZnxAutomorphism
+{
+}
+
+pub trait AutomorphismKeyAutomorphism<BE: Backend>
+where
+    Self: GaloisElement + GLWEAutomorphism<BE> + VecZnxAutomorphism,
+{
+    fn automorphism_key_automorphism_tmp_bytes<R, A, K>(&self, res_infos: &R, a_infos: &A, key_infos: &K) -> usize
+    where
+        R: GGLWEInfos,
+        A: GGLWEInfos,
+        K: GGLWEInfos,
+    {
+        self.glwe_keyswitch_tmp_bytes(res_infos, a_infos, key_infos)
+    }
+
+    fn automorphism_key_automorphism<R, A, K>(&self, res: &mut R, a: &A, key: &K, scratch: &mut Scratch<BE>)
+    where
+        R: AutomorphismKeyToMut + SetAutomorphismGaloisElement,
+        A: AutomorphismKeyToRef + GetAutomorphismGaloisElement,
+        K: AutomorphismKeyPreparedToRef<BE> + GetAutomorphismGaloisElement,
+        Scratch<BE>: ScratchTakeCore<BE>,
+    {
         {
-            assert_eq!(
-                self.rank_out(),
-                rhs.rank_in(),
-                "ksk_in output rank: {} != ksk_apply input rank: {}",
-                self.rank_out(),
-                rhs.rank_in()
+            let res: &mut AutomorphismKey<&mut [u8]> = &mut res.to_mut();
+            let a: &AutomorphismKey<&[u8]> = &a.to_ref();
+            let key: &AutomorphismKeyPrepared<&[u8], _> = &key.to_ref();
+
+            assert!(
+                res.dnum().as_u32() <= a.dnum().as_u32(),
+                "res dnum: {} > a dnum: {}",
+                res.dnum(),
+                a.dnum()
             );
+
             assert_eq!(
-                self.rank_out(),
-                rhs.rank_out(),
-                "ksk_out output rank: {} != ksk_apply output rank: {}",
-                self.rank_out(),
-                rhs.rank_out()
+                res.dsize(),
+                a.dsize(),
+                "res dnum: {} != a dnum: {}",
+                res.dsize(),
+                a.dsize()
             );
+
+            let cols_out: usize = (key.rank_out() + 1).into();
+
+            let p: i64 = a.p();
+            let p_inv: i64 = self.galois_element_inv(p);
+
+            for row in 0..res.dnum().as_usize() {
+                for col in 0..cols_out {
+                    let mut res_tmp: GLWE<&mut [u8]> = res.at_mut(row, col);
+                    let a_ct: GLWE<&[u8]> = a.at(row, col);
+
+                    // Reverts the automorphism X^{-k}: (-pi^{-1}_{k}(s)a + s, a) to (-sa + pi_{k}(s), a)
+                    for i in 0..cols_out {
+                        self.vec_znx_automorphism(a.p(), res_tmp.data_mut(), i, &a_ct.data, i);
+                    }
+
+                    // Key-switch (-sa + pi_{k}(s), a) to (-pi^{-1}_{k'}(s)a + pi_{k}(s), a)
+                    self.glwe_keyswitch_inplace(&mut res_tmp, &key.key, scratch);
+
+                    // Applies back the automorphism X^{-k}: (-pi^{-1}_{k'}(s)a + pi_{k}(s), a) to (-pi^{-1}_{k'+k}(s)a + s, a)
+                    (0..cols_out).for_each(|i| {
+                        self.vec_znx_automorphism_inplace(p_inv, res_tmp.data_mut(), i, scratch);
+                    });
+                }
+            }
         }
 
-        let cols_out: usize = (rhs.rank_out() + 1).into();
+        res.set_p((a.p() * key.p()) % (self.cyclotomic_order() as i64));
+    }
 
-        let p: i64 = self.p();
-        let p_inv = module.galois_element_inv(p);
+    fn automorphism_key_automorphism_inplace<R, K>(&self, res: &mut R, key: &K, scratch: &mut Scratch<BE>)
+    where
+        R: AutomorphismKeyToMut + SetAutomorphismGaloisElement + GetAutomorphismGaloisElement,
+        K: AutomorphismKeyPreparedToRef<BE> + GetAutomorphismGaloisElement,
+        Scratch<BE>: ScratchTakeCore<BE>,
+    {
+        {
+            let res: &mut AutomorphismKey<&mut [u8]> = &mut res.to_mut();
+            let key: &AutomorphismKeyPrepared<&[u8], _> = &key.to_ref();
 
-        (0..self.rank_in().into()).for_each(|col_i| {
-            (0..self.dnum().into()).for_each(|row_j| {
-                let mut res_ct: GLWE<&mut [u8]> = self.at_mut(row_j, col_i);
+            assert_eq!(
+                res.rank(),
+                key.rank(),
+                "key rank: {} != key rank: {}",
+                res.rank(),
+                key.rank()
+            );
 
-                // Reverts the automorphism X^{-k}: (-pi^{-1}_{k}(s)a + s, a) to (-sa + pi_{k}(s), a)
-                (0..cols_out).for_each(|i| {
-                    module.vec_znx_automorphism_inplace(p_inv, &mut res_ct.data, i, scratch);
-                });
+            let cols_out: usize = (key.rank_out() + 1).into();
 
-                // Key-switch (-sa + pi_{k}(s), a) to (-pi^{-1}_{k'}(s)a + pi_{k}(s), a)
-                res_ct.keyswitch_inplace(module, &rhs.key, scratch);
+            let p: i64 = res.p();
+            let p_inv: i64 = self.galois_element_inv(p);
 
-                // Applies back the automorphism X^{-k}: (-pi^{-1}_{k'}(s)a + pi_{k}(s), a) to (-pi^{-1}_{k'+k}(s)a + s, a)
-                (0..cols_out).for_each(|i| {
-                    module.vec_znx_automorphism_inplace(p_inv, &mut res_ct.data, i, scratch);
-                });
-            });
-        });
+            for row in 0..res.dnum().as_usize() {
+                for col in 0..cols_out {
+                    let mut res_tmp: GLWE<&mut [u8]> = res.at_mut(row, col);
 
-        self.p = (self.p * rhs.p) % (module.cyclotomic_order() as i64);
+                    // Reverts the automorphism X^{-k}: (-pi^{-1}_{k}(s)a + s, a) to (-sa + pi_{k}(s), a)
+                    for i in 0..cols_out {
+                        self.vec_znx_automorphism_inplace(p_inv, res_tmp.data_mut(), i, scratch);
+                    }
+
+                    // Key-switch (-sa + pi_{k}(s), a) to (-pi^{-1}_{k'}(s)a + pi_{k}(s), a)
+                    self.glwe_keyswitch_inplace(&mut res_tmp, &key.key, scratch);
+
+                    // Applies back the automorphism X^{-k}: (-pi^{-1}_{k'}(s)a + pi_{k}(s), a) to (-pi^{-1}_{k'+k}(s)a + s, a)
+                    for i in 0..cols_out {
+                        self.vec_znx_automorphism_inplace(p_inv, res_tmp.data_mut(), i, scratch);
+                    }
+                }
+            }
+        }
+
+        res.set_p((res.p() * key.p()) % (self.cyclotomic_order() as i64));
     }
 }

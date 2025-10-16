@@ -2,7 +2,10 @@ use std::{fmt::Display, marker::PhantomData, ptr::NonNull};
 
 use rand_distr::num_traits::Zero;
 
-use crate::GALOISGENERATOR;
+use crate::{
+    GALOISGENERATOR,
+    api::{ModuleLogN, ModuleN},
+};
 
 #[allow(clippy::missing_safety_doc)]
 pub trait Backend: Sized {
@@ -75,35 +78,48 @@ impl<B: Backend> Module<B> {
     pub fn log_n(&self) -> usize {
         (usize::BITS - (self.n() - 1).leading_zeros()) as _
     }
+}
 
-    #[inline]
-    pub fn cyclotomic_order(&self) -> u64 {
+pub trait CyclotomicOrder
+where
+    Self: ModuleN,
+{
+    fn cyclotomic_order(&self) -> i64 {
         (self.n() << 1) as _
     }
+}
 
+impl<BE: Backend> ModuleLogN for Module<BE> where Self: ModuleN {}
+
+impl<BE: Backend> CyclotomicOrder for Module<BE> where Self: ModuleN {}
+
+pub trait GaloisElement
+where
+    Self: CyclotomicOrder,
+{
     // Returns GALOISGENERATOR^|generator| * sign(generator)
-    #[inline]
-    pub fn galois_element(&self, generator: i64) -> i64 {
+    fn galois_element(&self, generator: i64) -> i64 {
         if generator == 0 {
             return 1;
         }
-        ((mod_exp_u64(GALOISGENERATOR, generator.unsigned_abs() as usize) & (self.cyclotomic_order() - 1)) as i64)
-            * generator.signum()
+
+        let g_exp: u64 = mod_exp_u64(GALOISGENERATOR, generator.unsigned_abs() as usize) & (self.cyclotomic_order() - 1) as u64;
+        g_exp as i64 * generator.signum()
     }
 
     // Returns gen^-1
-    #[inline]
-    pub fn galois_element_inv(&self, gal_el: i64) -> i64 {
+    fn galois_element_inv(&self, gal_el: i64) -> i64 {
         if gal_el == 0 {
             panic!("cannot invert 0")
         }
-        ((mod_exp_u64(
-            gal_el.unsigned_abs(),
-            (self.cyclotomic_order() - 1) as usize,
-        ) & (self.cyclotomic_order() - 1)) as i64)
-            * gal_el.signum()
+
+        let g_exp: u64 =
+            mod_exp_u64(GALOISGENERATOR, (self.cyclotomic_order() - 1) as usize) & (self.cyclotomic_order() - 1) as u64;
+        g_exp as i64 * gal_el.signum()
     }
 }
+
+impl<BE: Backend> GaloisElement for Module<BE> where Self: CyclotomicOrder {}
 
 impl<B: Backend> Drop for Module<B> {
     fn drop(&mut self) {

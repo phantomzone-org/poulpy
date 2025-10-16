@@ -2,7 +2,7 @@ use poulpy_hal::layouts::{Backend, DataMut, Scratch, VecZnx};
 
 use crate::{
     GGSWExpandRows, ScratchTakeCore,
-    keyswitching::glwe_ct::GLWEKeySwitch,
+    keyswitching::glwe_ct::GLWEKeyswitch,
     layouts::{
         GGLWEInfos, GGSW, GGSWInfos, GGSWToMut, GGSWToRef,
         prepared::{GLWESwitchingKeyPreparedToRef, TensorKeyPreparedToRef},
@@ -22,7 +22,7 @@ impl GGSW<Vec<u8>> {
         A: GGSWInfos,
         K: GGLWEInfos,
         T: GGLWEInfos,
-        M: GGSWKeySwitch<BE>,
+        M: GGSWKeyswitch<BE>,
     {
         module.ggsw_keyswitch_tmp_bytes(res_infos, a_infos, key_infos, tsk_infos)
     }
@@ -35,7 +35,7 @@ impl<D: DataMut> GGSW<D> {
         K: GLWESwitchingKeyPreparedToRef<BE>,
         T: TensorKeyPreparedToRef<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
-        M: GGSWKeySwitch<BE>,
+        M: GGSWKeyswitch<BE>,
     {
         module.ggsw_keyswitch(self, a, key, tsk, scratch);
     }
@@ -45,15 +45,15 @@ impl<D: DataMut> GGSW<D> {
         K: GLWESwitchingKeyPreparedToRef<BE>,
         T: TensorKeyPreparedToRef<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
-        M: GGSWKeySwitch<BE>,
+        M: GGSWKeyswitch<BE>,
     {
         module.ggsw_keyswitch_inplace(self, key, tsk, scratch);
     }
 }
 
-pub trait GGSWKeySwitch<BE: Backend>
+pub trait GGSWKeyswitch<BE: Backend>
 where
-    Self: GLWEKeySwitch<BE> + GGSWExpandRows<BE>,
+    Self: GLWEKeyswitch<BE> + GGSWExpandRows<BE>,
 {
     fn ggsw_keyswitch_tmp_bytes<R, A, K, T>(&self, res_infos: &R, a_infos: &A, key_infos: &K, tsk_infos: &T) -> usize
     where
@@ -127,5 +127,3 @@ where
         self.ggsw_expand_row(res, tsk, scratch);
     }
 }
-
-impl<DataSelf: DataMut> GGSW<DataSelf> {}

@@ -1,19 +1,18 @@
 use poulpy_hal::{
     api::{
-        ModuleN, ScratchAvailable, ScratchTakeBasic, VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxCopy, VecZnxDftAddInplace,
-        VecZnxDftApply, VecZnxDftBytesOf, VecZnxDftCopy, VecZnxIdftApplyTmpA, VecZnxNormalize, VecZnxNormalizeTmpBytes,
-        VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
+        ModuleN, ScratchAvailable, ScratchTakeBasic, VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxDftAddInplace, VecZnxDftApply,
+        VecZnxDftBytesOf, VecZnxDftCopy, VecZnxIdftApplyTmpA, VecZnxNormalize, VecZnxNormalizeTmpBytes, VmpApplyDftToDft,
+        VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
     },
     layouts::{Backend, DataMut, Module, Scratch, VmpPMat, ZnxInfos},
 };
 
 use crate::{
-    ScratchTakeCore,
+    GLWECopy, ScratchTakeCore,
     layouts::{
         GGLWE, GGLWEInfos, GGLWEToRef, GGSW, GGSWInfos, GGSWToMut, GLWEInfos, LWEInfos,
         prepared::{TensorKeyPrepared, TensorKeyPreparedToRef},
     },
-    operations::GLWEOperations,
 };
 
 impl GGLWE<Vec<u8>> {
@@ -39,11 +38,11 @@ impl<D: DataMut> GGSW<D> {
     }
 }
 
-impl<BE: Backend> GGSWFromGGLWE<BE> for Module<BE> where Self: GGSWExpandRows<BE> + VecZnxCopy {}
+impl<BE: Backend> GGSWFromGGLWE<BE> for Module<BE> where Self: GGSWExpandRows<BE> + GLWECopy {}
 
 pub trait GGSWFromGGLWE<BE: Backend>
 where
-    Self: GGSWExpandRows<BE> + VecZnxCopy,
+    Self: GGSWExpandRows<BE> + GLWECopy,
 {
     fn ggsw_from_gglwe_tmp_bytes<R, A>(&self, res_infos: &R, tsk_infos: &A) -> usize
     where
@@ -71,7 +70,7 @@ where
         assert_eq!(tsk.n(), self.n() as u32);
 
         for row in 0..res.dnum().into() {
-            res.at_mut(row, 0).copy(self, &a.at(row, 0));
+            self.glwe_copy(&mut res.at_mut(row, 0), &a.at(row, 0));
         }
 
         self.ggsw_expand_row(res, tsk, scratch);

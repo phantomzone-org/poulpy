@@ -1,345 +1,331 @@
 use poulpy_hal::{
     api::{
-        ScratchAvailable, VecZnxAutomorphismInplace, VecZnxBigAddSmallInplace, VecZnxBigAutomorphismInplace, VecZnxBigNormalize,
-        VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallInplace, VecZnxBigSubSmallNegateInplace, VecZnxDftApply, VecZnxDftBytesOf,
-        VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeTmpBytes, VmpApplyDftToDft, VmpApplyDftToDftAdd,
-        VmpApplyDftToDftTmpBytes,
+        ScratchTakeBasic, VecZnxAutomorphismInplace, VecZnxBigAutomorphismInplace, VecZnxBigSubSmallInplace,
+        VecZnxBigSubSmallNegateInplace,
     },
-    layouts::{Backend, DataMut, DataRef, Module, Scratch, VecZnxBig},
+    layouts::{Backend, DataMut, Module, Scratch, VecZnxBig},
 };
 
-use crate::layouts::{GGLWEInfos, GLWE, GLWEInfos, LWEInfos, prepared::AutomorphismKeyPrepared};
+use crate::{
+    GLWEKeyswitch, ScratchTakeCore, keyswitch_internal,
+    layouts::{
+        GGLWEInfos, GLWE, GLWEInfos, GLWEToMut, GLWEToRef, LWEInfos,
+        prepared::{AutomorphismKeyPrepared, AutomorphismKeyPreparedToRef, GetAutomorphismGaloisElement},
+    },
+};
 
 impl GLWE<Vec<u8>> {
-    pub fn automorphism_tmp_bytes<B: Backend, OUT, IN, KEY>(
-        module: &Module<B>,
-        out_infos: &OUT,
-        in_infos: &IN,
-        key_infos: &KEY,
-    ) -> usize
+    pub fn automorphism_tmp_bytes<M, R, A, K, BE: Backend>(module: &M, res_infos: &R, a_infos: &A, key_infos: &K) -> usize
     where
-        OUT: GLWEInfos,
-        IN: GLWEInfos,
-        KEY: GGLWEInfos,
-        Module<B>: VecZnxDftBytesOf + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
+        R: GLWEInfos,
+        A: GLWEInfos,
+        K: GGLWEInfos,
+        M: GLWEAutomorphism<BE>,
     {
-        Self::keyswitch_tmp_bytes(module, out_infos, in_infos, key_infos)
-    }
-
-    pub fn automorphism_inplace_tmp_bytes<B: Backend, OUT, KEY>(module: &Module<B>, out_infos: &OUT, key_infos: &KEY) -> usize
-    where
-        OUT: GLWEInfos,
-        KEY: GGLWEInfos,
-        Module<B>: VecZnxDftBytesOf + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
-    {
-        Self::keyswitch_inplace_tmp_bytes(module, out_infos, key_infos)
+        module.glwe_automorphism_tmp_bytes(res_infos, a_infos, key_infos)
     }
 }
 
 impl<DataSelf: DataMut> GLWE<DataSelf> {
-    pub fn automorphism<DataLhs: DataRef, DataRhs: DataRef, B: Backend>(
-        &mut self,
-        module: &Module<B>,
-        lhs: &GLWE<DataLhs>,
-        rhs: &AutomorphismKeyPrepared<DataRhs, B>,
-        scratch: &mut Scratch<B>,
-    ) where
-        Module<B>: VecZnxDftBytesOf
-            + VmpApplyDftToDftTmpBytes
-            + VecZnxBigNormalizeTmpBytes
-            + VmpApplyDftToDft<B>
-            + VmpApplyDftToDftAdd<B>
-            + VecZnxDftApply<B>
-            + VecZnxIdftApplyConsume<B>
-            + VecZnxBigAddSmallInplace<B>
-            + VecZnxBigNormalize<B>
-            + VecZnxAutomorphismInplace<B>
-            + VecZnxNormalize<B>
-            + VecZnxNormalizeTmpBytes,
-        Scratch<B>: ScratchAvailable,
+    pub fn automorphism<M, A, K, BE: Backend>(&mut self, module: &M, a: &A, key: &K, scratch: &mut Scratch<BE>)
+    where
+        M: GLWEAutomorphism<BE>,
+        A: GLWEToRef,
+        K: AutomorphismKeyPreparedToRef<BE> + GetAutomorphismGaloisElement,
+        Scratch<BE>: ScratchTakeCore<BE>,
     {
-        self.keyswitch(module, lhs, &rhs.key, scratch);
-        (0..(self.rank() + 1).into()).for_each(|i| {
-            module.vec_znx_automorphism_inplace(rhs.p(), &mut self.data, i, scratch);
-        })
+        module.glwe_automorphism(self, a, key, scratch);
     }
 
-    pub fn automorphism_inplace<DataRhs: DataRef, B: Backend>(
-        &mut self,
-        module: &Module<B>,
-        rhs: &AutomorphismKeyPrepared<DataRhs, B>,
-        scratch: &mut Scratch<B>,
-    ) where
-        Module<B>: VecZnxDftBytesOf
-            + VmpApplyDftToDftTmpBytes
-            + VecZnxBigNormalizeTmpBytes
-            + VmpApplyDftToDft<B>
-            + VmpApplyDftToDftAdd<B>
-            + VecZnxDftApply<B>
-            + VecZnxIdftApplyConsume<B>
-            + VecZnxBigAddSmallInplace<B>
-            + VecZnxBigNormalize<B>
-            + VecZnxAutomorphismInplace<B>
-            + VecZnxNormalize<B>
-            + VecZnxNormalizeTmpBytes,
-        Scratch<B>: ScratchAvailable,
+    pub fn automorphism_add<M, A, K, BE: Backend>(&mut self, module: &M, a: &A, key: &K, scratch: &mut Scratch<BE>)
+    where
+        M: GLWEAutomorphism<BE>,
+        A: GLWEToRef,
+        K: AutomorphismKeyPreparedToRef<BE> + GetAutomorphismGaloisElement,
+        Scratch<BE>: ScratchTakeCore<BE>,
     {
-        self.keyswitch_inplace(module, &rhs.key, scratch);
-        (0..(self.rank() + 1).into()).for_each(|i| {
-            module.vec_znx_automorphism_inplace(rhs.p(), &mut self.data, i, scratch);
-        })
+        module.glwe_automorphism_add(self, a, key, scratch);
     }
 
-    pub fn automorphism_add<DataLhs: DataRef, DataRhs: DataRef, B: Backend>(
-        &mut self,
-        module: &Module<B>,
-        lhs: &GLWE<DataLhs>,
-        rhs: &AutomorphismKeyPrepared<DataRhs, B>,
-        scratch: &mut Scratch<B>,
-    ) where
-        Module<B>: VecZnxDftBytesOf
-            + VmpApplyDftToDftTmpBytes
-            + VecZnxBigNormalizeTmpBytes
-            + VmpApplyDftToDft<B>
-            + VmpApplyDftToDftAdd<B>
-            + VecZnxDftApply<B>
-            + VecZnxIdftApplyConsume<B>
-            + VecZnxBigAddSmallInplace<B>
-            + VecZnxBigNormalize<B>
-            + VecZnxBigAutomorphismInplace<B>
-            + VecZnxNormalizeTmpBytes
-            + VecZnxNormalize<B>,
-        Scratch<B>: ScratchAvailable,
+    pub fn automorphism_sub<M, A, K, BE: Backend>(&mut self, module: &M, a: &A, key: &K, scratch: &mut Scratch<BE>)
+    where
+        M: GLWEAutomorphism<BE>,
+        A: GLWEToRef,
+        K: AutomorphismKeyPreparedToRef<BE> + GetAutomorphismGaloisElement,
+        Scratch<BE>: ScratchTakeCore<BE>,
     {
-        #[cfg(debug_assertions)]
-        {
-            self.assert_keyswitch(module, lhs, &rhs.key, scratch);
+        module.glwe_automorphism_sub(self, a, key, scratch);
+    }
+
+    pub fn glwe_automorphism_sub_negate<M, A, K, BE: Backend>(&mut self, module: &M, a: &A, key: &K, scratch: &mut Scratch<BE>)
+    where
+        M: GLWEAutomorphism<BE>,
+        A: GLWEToRef,
+        K: AutomorphismKeyPreparedToRef<BE> + GetAutomorphismGaloisElement,
+        Scratch<BE>: ScratchTakeCore<BE>,
+    {
+        module.glwe_automorphism_sub_negate(self, a, key, scratch);
+    }
+
+    pub fn automorphism_inplace<M, K, BE: Backend>(&mut self, module: &M, key: &K, scratch: &mut Scratch<BE>)
+    where
+        M: GLWEAutomorphism<BE>,
+        K: AutomorphismKeyPreparedToRef<BE> + GetAutomorphismGaloisElement,
+        Scratch<BE>: ScratchTakeCore<BE>,
+    {
+        module.glwe_automorphism_inplace(self, key, scratch);
+    }
+
+    pub fn automorphism_add_inplace<M, K, BE: Backend>(&mut self, module: &M, key: &K, scratch: &mut Scratch<BE>)
+    where
+        M: GLWEAutomorphism<BE>,
+        K: AutomorphismKeyPreparedToRef<BE> + GetAutomorphismGaloisElement,
+        Scratch<BE>: ScratchTakeCore<BE>,
+    {
+        module.glwe_automorphism_add_inplace(self, key, scratch);
+    }
+
+    pub fn automorphism_sub_inplace<M, K, BE: Backend>(&mut self, module: &M, key: &K, scratch: &mut Scratch<BE>)
+    where
+        M: GLWEAutomorphism<BE>,
+        K: AutomorphismKeyPreparedToRef<BE> + GetAutomorphismGaloisElement,
+        Scratch<BE>: ScratchTakeCore<BE>,
+    {
+        module.glwe_automorphism_sub_inplace(self, key, scratch);
+    }
+
+    pub fn automorphism_sub_negate_inplace<M, K, BE: Backend>(&mut self, module: &M, key: &K, scratch: &mut Scratch<BE>)
+    where
+        M: GLWEAutomorphism<BE>,
+        K: AutomorphismKeyPreparedToRef<BE> + GetAutomorphismGaloisElement,
+        Scratch<BE>: ScratchTakeCore<BE>,
+    {
+        module.glwe_automorphism_sub_negate_inplace(self, key, scratch);
+    }
+}
+
+pub trait GLWEAutomorphism<BE: Backend>
+where
+    Self: GLWEKeyswitch<BE>
+        + VecZnxAutomorphismInplace<BE>
+        + VecZnxBigAutomorphismInplace<BE>
+        + VecZnxBigSubSmallInplace<BE>
+        + VecZnxBigSubSmallNegateInplace<BE>,
+{
+    fn glwe_automorphism_tmp_bytes<R, A, K>(&self, res_infos: &R, a_infos: &A, key_infos: &K) -> usize
+    where
+        R: GLWEInfos,
+        A: GLWEInfos,
+        K: GGLWEInfos,
+    {
+        self.glwe_keyswitch_tmp_bytes(res_infos, a_infos, key_infos)
+    }
+
+    fn glwe_automorphism<R, A, K>(&self, res: &mut R, a: &A, key: &K, scratch: &mut Scratch<BE>)
+    where
+        R: GLWEToMut,
+        A: GLWEToRef,
+        K: AutomorphismKeyPreparedToRef<BE> + GetAutomorphismGaloisElement,
+        Scratch<BE>: ScratchTakeCore<BE>,
+    {
+        self.glwe_keyswitch(res, a, &key.to_ref().key, scratch);
+
+        let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
+
+        for i in 0..res.rank().as_usize() + 1 {
+            self.vec_znx_automorphism_inplace(key.p(), res.data_mut(), i, scratch);
         }
-        let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self.n().into(), (self.rank() + 1).into(), rhs.size()); // TODO: optimise size
-        let mut res_big: VecZnxBig<_, B> = lhs.keyswitch_internal(module, res_dft, &rhs.key, scratch_1);
-        (0..(self.rank() + 1).into()).for_each(|i| {
-            module.vec_znx_big_automorphism_inplace(rhs.p(), &mut res_big, i, scratch_1);
-            module.vec_znx_big_add_small_inplace(&mut res_big, i, &lhs.data, i);
-            module.vec_znx_big_normalize(
-                self.base2k().into(),
-                &mut self.data,
+    }
+
+    fn glwe_automorphism_inplace<R, K>(&self, res: &mut R, key: &K, scratch: &mut Scratch<BE>)
+    where
+        R: GLWEToMut,
+        K: AutomorphismKeyPreparedToRef<BE> + GetAutomorphismGaloisElement,
+        Scratch<BE>: ScratchTakeCore<BE>,
+    {
+        self.glwe_keyswitch_inplace(res, &key.to_ref().key, scratch);
+
+        let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
+
+        for i in 0..res.rank().as_usize() + 1 {
+            self.vec_znx_automorphism_inplace(key.p(), res.data_mut(), i, scratch);
+        }
+    }
+
+    fn glwe_automorphism_add<R, A, K>(&self, res: &mut R, a: &A, key: &K, scratch: &mut Scratch<BE>)
+    where
+        R: GLWEToMut,
+        A: GLWEToRef,
+        K: AutomorphismKeyPreparedToRef<BE> + GetAutomorphismGaloisElement,
+        Scratch<BE>: ScratchTakeCore<BE>,
+    {
+        let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
+        let a: &GLWE<&[u8]> = &a.to_ref();
+        let key: &AutomorphismKeyPrepared<&[u8], BE> = &key.to_ref();
+
+        let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), key.size()); // TODO: optimise size
+        let mut res_big: VecZnxBig<_, BE> = keyswitch_internal(self, res_dft, a, &key.key, scratch_1);
+
+        for i in 0..res.rank().as_usize() + 1 {
+            self.vec_znx_big_automorphism_inplace(key.p(), &mut res_big, i, scratch_1);
+            self.vec_znx_big_add_small_inplace(&mut res_big, i, a.data(), i);
+            self.vec_znx_big_normalize(
+                res.base2k().into(),
+                res.data_mut(),
                 i,
-                rhs.base2k().into(),
+                key.base2k().into(),
                 &res_big,
                 i,
                 scratch_1,
             );
-        })
+        }
     }
 
-    pub fn automorphism_add_inplace<DataRhs: DataRef, B: Backend>(
-        &mut self,
-        module: &Module<B>,
-        rhs: &AutomorphismKeyPrepared<DataRhs, B>,
-        scratch: &mut Scratch<B>,
-    ) where
-        Module<B>: VecZnxDftBytesOf
-            + VmpApplyDftToDftTmpBytes
-            + VecZnxBigNormalizeTmpBytes
-            + VmpApplyDftToDft<B>
-            + VmpApplyDftToDftAdd<B>
-            + VecZnxDftApply<B>
-            + VecZnxIdftApplyConsume<B>
-            + VecZnxBigAddSmallInplace<B>
-            + VecZnxBigNormalize<B>
-            + VecZnxBigAutomorphismInplace<B>
-            + VecZnxNormalizeTmpBytes
-            + VecZnxNormalize<B>,
-        Scratch<B>: ScratchAvailable,
+    fn glwe_automorphism_add_inplace<R, K>(&self, res: &mut R, key: &K, scratch: &mut Scratch<BE>)
+    where
+        R: GLWEToMut,
+        K: AutomorphismKeyPreparedToRef<BE> + GetAutomorphismGaloisElement,
+        Scratch<BE>: ScratchTakeCore<BE>,
     {
-        #[cfg(debug_assertions)]
-        {
-            self.assert_keyswitch_inplace(module, &rhs.key, scratch);
-        }
-        let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self.n().into(), (self.rank() + 1).into(), rhs.size()); // TODO: optimise size
-        let mut res_big: VecZnxBig<_, B> = self.keyswitch_internal(module, res_dft, &rhs.key, scratch_1);
-        (0..(self.rank() + 1).into()).for_each(|i| {
-            module.vec_znx_big_automorphism_inplace(rhs.p(), &mut res_big, i, scratch_1);
-            module.vec_znx_big_add_small_inplace(&mut res_big, i, &self.data, i);
-            module.vec_znx_big_normalize(
-                self.base2k().into(),
-                &mut self.data,
+        let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
+        let key: &AutomorphismKeyPrepared<&[u8], BE> = &key.to_ref();
+
+        let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), key.size()); // TODO: optimise size
+        let mut res_big: VecZnxBig<_, BE> = keyswitch_internal(self, res_dft, res, &key.key, scratch_1);
+
+        for i in 0..res.rank().as_usize() + 1 {
+            self.vec_znx_big_automorphism_inplace(key.p(), &mut res_big, i, scratch_1);
+            self.vec_znx_big_add_small_inplace(&mut res_big, i, res.data(), i);
+            self.vec_znx_big_normalize(
+                res.base2k().into(),
+                res.data_mut(),
                 i,
-                rhs.base2k().into(),
+                key.base2k().into(),
                 &res_big,
                 i,
                 scratch_1,
             );
-        })
+        }
     }
 
-    pub fn automorphism_sub_ab<DataLhs: DataRef, DataRhs: DataRef, B: Backend>(
-        &mut self,
-        module: &Module<B>,
-        lhs: &GLWE<DataLhs>,
-        rhs: &AutomorphismKeyPrepared<DataRhs, B>,
-        scratch: &mut Scratch<B>,
-    ) where
-        Module<B>: VecZnxDftBytesOf
-            + VmpApplyDftToDftTmpBytes
-            + VecZnxBigNormalizeTmpBytes
-            + VmpApplyDftToDft<B>
-            + VmpApplyDftToDftAdd<B>
-            + VecZnxDftApply<B>
-            + VecZnxIdftApplyConsume<B>
-            + VecZnxBigAddSmallInplace<B>
-            + VecZnxBigNormalize<B>
-            + VecZnxBigAutomorphismInplace<B>
-            + VecZnxBigSubSmallInplace<B>
-            + VecZnxNormalizeTmpBytes
-            + VecZnxNormalize<B>,
-        Scratch<B>: ScratchAvailable,
+    fn glwe_automorphism_sub<R, A, K>(&self, res: &mut R, a: &A, key: &K, scratch: &mut Scratch<BE>)
+    where
+        R: GLWEToMut,
+        A: GLWEToRef,
+        K: AutomorphismKeyPreparedToRef<BE> + GetAutomorphismGaloisElement,
+        Scratch<BE>: ScratchTakeCore<BE>,
     {
-        #[cfg(debug_assertions)]
-        {
-            self.assert_keyswitch(module, lhs, &rhs.key, scratch);
-        }
-        let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self.n().into(), (self.rank() + 1).into(), rhs.size()); // TODO: optimise size
-        let mut res_big: VecZnxBig<_, B> = lhs.keyswitch_internal(module, res_dft, &rhs.key, scratch_1);
-        (0..(self.rank() + 1).into()).for_each(|i| {
-            module.vec_znx_big_automorphism_inplace(rhs.p(), &mut res_big, i, scratch_1);
-            module.vec_znx_big_sub_small_inplace(&mut res_big, i, &lhs.data, i);
-            module.vec_znx_big_normalize(
-                self.base2k().into(),
-                &mut self.data,
+        let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
+        let a: &GLWE<&[u8]> = &a.to_ref();
+        let key: &AutomorphismKeyPrepared<&[u8], BE> = &key.to_ref();
+
+        let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), key.size()); // TODO: optimise size
+        let mut res_big: VecZnxBig<_, BE> = keyswitch_internal(self, res_dft, a, &key.key, scratch_1);
+
+        for i in 0..res.rank().as_usize() + 1 {
+            self.vec_znx_big_automorphism_inplace(key.p(), &mut res_big, i, scratch_1);
+            self.vec_znx_big_sub_small_inplace(&mut res_big, i, a.data(), i);
+            self.vec_znx_big_normalize(
+                res.base2k().into(),
+                res.data_mut(),
                 i,
-                rhs.base2k().into(),
+                key.base2k().into(),
                 &res_big,
                 i,
                 scratch_1,
             );
-        })
+        }
     }
 
-    pub fn automorphism_sub_inplace<DataRhs: DataRef, B: Backend>(
-        &mut self,
-        module: &Module<B>,
-        rhs: &AutomorphismKeyPrepared<DataRhs, B>,
-        scratch: &mut Scratch<B>,
-    ) where
-        Module<B>: VecZnxDftBytesOf
-            + VmpApplyDftToDftTmpBytes
-            + VecZnxBigNormalizeTmpBytes
-            + VmpApplyDftToDft<B>
-            + VmpApplyDftToDftAdd<B>
-            + VecZnxDftApply<B>
-            + VecZnxIdftApplyConsume<B>
-            + VecZnxBigAddSmallInplace<B>
-            + VecZnxBigNormalize<B>
-            + VecZnxBigAutomorphismInplace<B>
-            + VecZnxBigSubSmallInplace<B>
-            + VecZnxNormalizeTmpBytes
-            + VecZnxNormalize<B>,
-        Scratch<B>: ScratchAvailable,
+    fn glwe_automorphism_sub_negate<R, A, K>(&self, res: &mut R, a: &A, key: &K, scratch: &mut Scratch<BE>)
+    where
+        R: GLWEToMut,
+        A: GLWEToRef,
+        K: AutomorphismKeyPreparedToRef<BE> + GetAutomorphismGaloisElement,
+        Scratch<BE>: ScratchTakeCore<BE>,
     {
-        #[cfg(debug_assertions)]
-        {
-            self.assert_keyswitch_inplace(module, &rhs.key, scratch);
-        }
-        let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self.n().into(), (self.rank() + 1).into(), rhs.size()); // TODO: optimise size
-        let mut res_big: VecZnxBig<_, B> = self.keyswitch_internal(module, res_dft, &rhs.key, scratch_1);
-        (0..(self.rank() + 1).into()).for_each(|i| {
-            module.vec_znx_big_automorphism_inplace(rhs.p(), &mut res_big, i, scratch_1);
-            module.vec_znx_big_sub_small_inplace(&mut res_big, i, &self.data, i);
-            module.vec_znx_big_normalize(
-                self.base2k().into(),
-                &mut self.data,
+        let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
+        let a: &GLWE<&[u8]> = &a.to_ref();
+        let key: &AutomorphismKeyPrepared<&[u8], BE> = &key.to_ref();
+
+        let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), key.size()); // TODO: optimise size
+        let mut res_big: VecZnxBig<_, BE> = keyswitch_internal(self, res_dft, a, &key.key, scratch_1);
+
+        for i in 0..res.rank().as_usize() + 1 {
+            self.vec_znx_big_automorphism_inplace(key.p(), &mut res_big, i, scratch_1);
+            self.vec_znx_big_sub_small_negate_inplace(&mut res_big, i, a.data(), i);
+            self.vec_znx_big_normalize(
+                res.base2k().into(),
+                res.data_mut(),
                 i,
-                rhs.base2k().into(),
+                key.base2k().into(),
                 &res_big,
                 i,
                 scratch_1,
             );
-        })
+        }
     }
 
-    pub fn automorphism_sub_negate<DataLhs: DataRef, DataRhs: DataRef, B: Backend>(
-        &mut self,
-        module: &Module<B>,
-        lhs: &GLWE<DataLhs>,
-        rhs: &AutomorphismKeyPrepared<DataRhs, B>,
-        scratch: &mut Scratch<B>,
-    ) where
-        Module<B>: VecZnxDftBytesOf
-            + VmpApplyDftToDftTmpBytes
-            + VecZnxBigNormalizeTmpBytes
-            + VmpApplyDftToDft<B>
-            + VmpApplyDftToDftAdd<B>
-            + VecZnxDftApply<B>
-            + VecZnxIdftApplyConsume<B>
-            + VecZnxBigAddSmallInplace<B>
-            + VecZnxBigNormalize<B>
-            + VecZnxBigAutomorphismInplace<B>
-            + VecZnxBigSubSmallNegateInplace<B>
-            + VecZnxNormalizeTmpBytes
-            + VecZnxNormalize<B>,
-        Scratch<B>: ScratchAvailable,
+    fn glwe_automorphism_sub_inplace<R, K>(&self, res: &mut R, key: &K, scratch: &mut Scratch<BE>)
+    where
+        R: GLWEToMut,
+        K: AutomorphismKeyPreparedToRef<BE> + GetAutomorphismGaloisElement,
+        Scratch<BE>: ScratchTakeCore<BE>,
     {
-        #[cfg(debug_assertions)]
-        {
-            self.assert_keyswitch(module, lhs, &rhs.key, scratch);
-        }
-        let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self.n().into(), (self.rank() + 1).into(), rhs.size()); // TODO: optimise size
-        let mut res_big: VecZnxBig<_, B> = lhs.keyswitch_internal(module, res_dft, &rhs.key, scratch_1);
-        (0..(self.rank() + 1).into()).for_each(|i| {
-            module.vec_znx_big_automorphism_inplace(rhs.p(), &mut res_big, i, scratch_1);
-            module.vec_znx_big_sub_small_negate_inplace(&mut res_big, i, &lhs.data, i);
-            module.vec_znx_big_normalize(
-                self.base2k().into(),
-                &mut self.data,
+        let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
+        let key: &AutomorphismKeyPrepared<&[u8], BE> = &key.to_ref();
+
+        let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), key.size()); // TODO: optimise size
+        let mut res_big: VecZnxBig<_, BE> = keyswitch_internal(self, res_dft, res, &key.key, scratch_1);
+
+        for i in 0..res.rank().as_usize() + 1 {
+            self.vec_znx_big_automorphism_inplace(key.p(), &mut res_big, i, scratch_1);
+            self.vec_znx_big_sub_small_inplace(&mut res_big, i, res.data(), i);
+            self.vec_znx_big_normalize(
+                res.base2k().into(),
+                res.data_mut(),
                 i,
-                rhs.base2k().into(),
+                key.base2k().into(),
                 &res_big,
                 i,
                 scratch_1,
             );
-        })
+        }
     }
 
-    pub fn automorphism_sub_negate_inplace<DataRhs: DataRef, B: Backend>(
-        &mut self,
-        module: &Module<B>,
-        rhs: &AutomorphismKeyPrepared<DataRhs, B>,
-        scratch: &mut Scratch<B>,
-    ) where
-        Module<B>: VecZnxDftBytesOf
-            + VmpApplyDftToDftTmpBytes
-            + VecZnxBigNormalizeTmpBytes
-            + VmpApplyDftToDft<B>
-            + VmpApplyDftToDftAdd<B>
-            + VecZnxDftApply<B>
-            + VecZnxIdftApplyConsume<B>
-            + VecZnxBigAddSmallInplace<B>
-            + VecZnxBigNormalize<B>
-            + VecZnxBigAutomorphismInplace<B>
-            + VecZnxBigSubSmallNegateInplace<B>
-            + VecZnxNormalizeTmpBytes
-            + VecZnxNormalize<B>,
-        Scratch<B>: ScratchAvailable,
+    fn glwe_automorphism_sub_negate_inplace<R, K>(&self, res: &mut R, key: &K, scratch: &mut Scratch<BE>)
+    where
+        R: GLWEToMut,
+        K: AutomorphismKeyPreparedToRef<BE> + GetAutomorphismGaloisElement,
+        Scratch<BE>: ScratchTakeCore<BE>,
     {
-        #[cfg(debug_assertions)]
-        {
-            self.assert_keyswitch_inplace(module, &rhs.key, scratch);
-        }
-        let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self.n().into(), (self.rank() + 1).into(), rhs.size()); // TODO: optimise size
-        let mut res_big: VecZnxBig<_, B> = self.keyswitch_internal(module, res_dft, &rhs.key, scratch_1);
-        (0..(self.rank() + 1).into()).for_each(|i| {
-            module.vec_znx_big_automorphism_inplace(rhs.p(), &mut res_big, i, scratch_1);
-            module.vec_znx_big_sub_small_negate_inplace(&mut res_big, i, &self.data, i);
-            module.vec_znx_big_normalize(
-                self.base2k().into(),
-                &mut self.data,
+        let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
+        let key: &AutomorphismKeyPrepared<&[u8], BE> = &key.to_ref();
+
+        let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), key.size()); // TODO: optimise size
+        let mut res_big: VecZnxBig<_, BE> = keyswitch_internal(self, res_dft, res, &key.key, scratch_1);
+
+        for i in 0..res.rank().as_usize() + 1 {
+            self.vec_znx_big_automorphism_inplace(key.p(), &mut res_big, i, scratch_1);
+            self.vec_znx_big_sub_small_negate_inplace(&mut res_big, i, res.data(), i);
+            self.vec_znx_big_normalize(
+                res.base2k().into(),
+                res.data_mut(),
                 i,
-                rhs.base2k().into(),
+                key.base2k().into(),
                 &res_big,
                 i,
                 scratch_1,
             );
-        })
+        }
     }
+}
+
+impl<BE: Backend> GLWEAutomorphism<BE> for Module<BE> where
+    Self: GLWEKeyswitch<BE>
+        + VecZnxAutomorphismInplace<BE>
+        + VecZnxBigAutomorphismInplace<BE>
+        + VecZnxBigSubSmallInplace<BE>
+        + VecZnxBigSubSmallNegateInplace<BE>
+{
 }
