@@ -6,8 +6,11 @@ use poulpy_hal::{
 };
 
 use crate::{
-    GLWEAutomorphism, ScratchTakeCore,
-    layouts::{GGLWEInfos, GLWE, GLWEAlloc, GLWEInfos, GLWEToMut, GLWEToRef, LWEInfos, prepared::AutomorphismKeyPreparedToRef},
+    GLWEAdd, GLWEAutomorphism, GLWENormalize, GLWERotate, GLWEShift, GLWESub, ScratchTakeCore,
+    layouts::{
+        GGLWEInfos, GLWE, GLWEAlloc, GLWEInfos, GLWEToMut, GLWEToRef, LWEInfos,
+        prepared::{AutomorphismKeyPreparedToRef, GetAutomorphismGaloisElement},
+    },
 };
 
 /// [GLWEPacker] enables only the fly GLWE packing
@@ -323,7 +326,14 @@ fn combine<B, M, K, BE: Backend>(
 
 pub trait GLWEPacking<BE: Backend>
 where
-    Self: GLWEAutomorphism<BE> + GaloisElement + ModuleLogN,
+    Self: GLWEAutomorphism<BE>
+        + GaloisElement
+        + ModuleLogN
+        + GLWERotate<BE>
+        + GLWESub
+        + GLWEShift<BE>
+        + GLWEAdd
+        + GLWENormalize<BE>,
 {
     /// Packs [x_0: GLWE(m_0), x_1: GLWE(m_1), ..., x_i: GLWE(m_i)]
     /// to [0: GLWE(m_0 * X^x_0 + m_1 * X^x_1 + ... + m_i * X^x_i)]
@@ -334,8 +344,8 @@ where
         keys: &HashMap<i64, K>,
         scratch: &mut Scratch<BE>,
     ) where
-        R: GLWEToMut,
-        K: AutomorphismKeyPreparedToRef<BE>,
+        R: GLWEToMut + GLWEToRef + GLWEInfos,
+        K: AutomorphismKeyPreparedToRef<BE> + GetAutomorphismGaloisElement,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         #[cfg(debug_assertions)]
@@ -345,7 +355,7 @@ where
 
         let log_n: usize = self.log_n();
 
-        (0..log_n - log_gap_out).for_each(|i| {
+        for i in 0..(log_n - log_gap_out){
             let t: usize = (1 << log_n).min(1 << (log_n - 1 - i));
 
             let key: &K = if i == 0 {
@@ -354,7 +364,7 @@ where
                 keys.get(&self.galois_element(1 << (i - 1))).unwrap()
             };
 
-            (0..t).for_each(|j| {
+            for j in 0..t{
                 let mut a: Option<&mut R> = cts.remove(&j);
                 let mut b: Option<&mut R> = cts.remove(&(j + t));
 
@@ -365,8 +375,8 @@ where
                 } else if let Some(b) = b {
                     cts.insert(j, b);
                 }
-            });
-        });
+            };
+        };
     }
 }
 
@@ -379,10 +389,10 @@ fn pack_internal<M, A, B, K, BE: Backend>(
     auto_key: &K,
     scratch: &mut Scratch<BE>,
 ) where
-    M: GLWEAutomorphism<BE>,
-    A: GLWEToMut + GLWEInfos,
-    B: GLWEToMut + GLWEInfos,
-    K: AutomorphismKeyPreparedToRef<BE>,
+    M: GLWEAutomorphism<BE> + GLWERotate<BE> + GLWESub + GLWEShift<BE> + GLWEAdd + GLWENormalize<BE>,
+    A: GLWEToMut + GLWEToRef + GLWEInfos,
+    B: GLWEToMut + GLWEToRef + GLWEInfos,
+    K: AutomorphismKeyPreparedToRef<BE> + GetAutomorphismGaloisElement,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     // Goal is to evaluate: a = a + b*X^t + phi(a - b*X^t))
@@ -402,42 +412,42 @@ fn pack_internal<M, A, B, K, BE: Backend>(
             let (mut tmp_b, scratch_1) = scratch.take_glwe_ct(module, a);
 
             // a = a * X^-t
-            a.rotate_inplace(module, -t, scratch_1);
+            module.glwe_rotate_inplace(-t, a, scratch_1);
 
             // tmp_b = a * X^-t - b
-            tmp_b.sub(module, a, b);
-            tmp_b.rsh(module, 1, scratch_1);
+            module.glwe_sub(&mut tmp_b, a, b);
+            module.glwe_rsh(1, &mut tmp_b, scratch_1);
 
             // a = a * X^-t + b
-            a.add_inplace(module, b);
-            a.rsh(module, 1, scratch_1);
+            module.glwe_add_inplace(a, b);
+            module.glwe_rsh(1, a, scratch_1);
 
-            tmp_b.normalize_inplace(module, scratch_1);
+            module.glwe_normalize_inplace(&mut tmp_b, scratch_1);
 
             // tmp_b = phi(a * X^-t - b)
-            tmp_b.automorphism_inplace(module, auto_key, scratch_1);
+            module.glwe_automorphism_inplace(&mut tmp_b, auto_key, scratch_1);
 
             // a = a * X^-t + b - phi(a * X^-t - b)
-            a.sub_inplace_ab(module, &tmp_b);
-            a.normalize_inplace(module, scratch_1);
+            module.glwe_sub_inplace(a, &tmp_b);
+            module.glwe_normalize_inplace(a, scratch_1);
 
             // a = a + b * X^t - phi(a * X^-t - b) * X^t
             //   = a + b * X^t - phi(a * X^-t - b) * - phi(X^t)
             //   = a + b * X^t + phi(a - b * X^t)
-            a.rotate_inplace(module, t, scratch_1);
+            module.glwe_rotate_inplace(t, a, scratch_1);
         } else {
-            a.rsh(module, 1, scratch);
+            module.glwe_rsh(1, a, scratch);
             // a = a + phi(a)
-            a.automorphism_add_inplace(module, auto_key, scratch);
+            module.glwe_automorphism_add_inplace(a, auto_key, scratch);
         }
     } else if let Some(b) = b.as_deref_mut() {
         let t: i64 = 1 << (b.n().log2() - i - 1);
 
-        let (mut tmp_b, scratch_1) = scratch.take_glwe_ct(b);
-        tmp_b.rotate(module, t, b);
-        tmp_b.rsh(module, 1, scratch_1);
+        let (mut tmp_b, scratch_1) = scratch.take_glwe_ct(module, b);
+        module.glwe_rotate(t, &mut tmp_b, b);
+        module.glwe_rsh(1, &mut tmp_b, scratch_1);
 
         // a = (b* X^t - phi(b* X^t))
-        b.automorphism_sub_negate(module, &tmp_b, auto_key, scratch_1);
+        module.glwe_automorphism_sub_negate(b, &tmp_b, auto_key, scratch_1);
     }
 }

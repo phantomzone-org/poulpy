@@ -328,7 +328,7 @@ where
         res.set_k(a.k().min(res.k()));
     }
 
-    fn glwe_normalize_inplace<R>(&mut self, res: &mut R, scratch: &mut Scratch<BE>)
+    fn glwe_normalize_inplace<R>(&self, res: &mut R, scratch: &mut Scratch<BE>)
     where
         R: GLWEToMut,
         Scratch<BE>: ScratchTakeCore<BE>,
