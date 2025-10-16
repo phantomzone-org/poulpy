@@ -4,7 +4,7 @@ use poulpy_hal::{
         VecZnxNormalize, VecZnxNormalizeInplace, VecZnxRotate, VecZnxRotateInplace, VecZnxRshInplace, VecZnxSub,
         VecZnxSubInplace, VecZnxSubNegateInplace,
     },
-    layouts::{Backend, DataMut, Module, Scratch, VecZnx, ZnxZero},
+    layouts::{Backend, DataMut, Scratch, VecZnx, ZnxZero},
 };
 
 use crate::layouts::{GLWE, GLWEInfos, GLWEPlaintext, GLWEToMut, GLWEToRef, LWEInfos, SetGLWEInfos, TorusPrecision};
@@ -19,11 +19,11 @@ where
 impl<D: DataMut> GLWEOperations for GLWE<D> where GLWE<D>: GLWEToMut + GLWEInfos {}
 
 pub trait GLWEOperations: GLWEToMut + GLWEInfos + SetGLWEInfos + Sized {
-    fn add<A, B, BACKEND: Backend>(&mut self, module: &Module<BACKEND>, a: &A, b: &B)
+    fn add<A, B, M>(&mut self, module: &M, a: &A, b: &B)
     where
         A: GLWEToRef + GLWEInfos,
         B: GLWEToRef + GLWEInfos,
-        Module<BACKEND>: VecZnxAdd + VecZnxCopy,
+        M: VecZnxAdd + VecZnxCopy,
     {
         #[cfg(debug_assertions)]
         {
@@ -66,10 +66,10 @@ pub trait GLWEOperations: GLWEToMut + GLWEInfos + SetGLWEInfos + Sized {
         self.set_k(set_k_binary(self, a, b));
     }
 
-    fn add_inplace<A, BACKEND: Backend>(&mut self, module: &Module<BACKEND>, a: &A)
+    fn add_inplace<A, M>(&mut self, module: &M, a: &A)
     where
         A: GLWEToRef + GLWEInfos,
-        Module<BACKEND>: VecZnxAddInplace,
+        M: VecZnxAddInplace,
     {
         #[cfg(debug_assertions)]
         {
@@ -88,11 +88,11 @@ pub trait GLWEOperations: GLWEToMut + GLWEInfos + SetGLWEInfos + Sized {
         self.set_k(set_k_unary(self, a))
     }
 
-    fn sub<A, B, BACKEND: Backend>(&mut self, module: &Module<BACKEND>, a: &A, b: &B)
+    fn sub<A, B, M>(&mut self, module: &M, a: &A, b: &B)
     where
         A: GLWEToRef + GLWEInfos,
         B: GLWEToRef + GLWEInfos,
-        Module<BACKEND>: VecZnxSub + VecZnxCopy + VecZnxNegateInplace,
+        M: VecZnxSub + VecZnxCopy + VecZnxNegateInplace,
     {
         #[cfg(debug_assertions)]
         {
@@ -136,10 +136,10 @@ pub trait GLWEOperations: GLWEToMut + GLWEInfos + SetGLWEInfos + Sized {
         self.set_k(set_k_binary(self, a, b));
     }
 
-    fn sub_inplace_ab<A, BACKEND: Backend>(&mut self, module: &Module<BACKEND>, a: &A)
+    fn sub_inplace_ab<A, M>(&mut self, module: &M, a: &A)
     where
         A: GLWEToRef + GLWEInfos,
-        Module<BACKEND>: VecZnxSubInplace,
+        M: VecZnxSubInplace,
     {
         #[cfg(debug_assertions)]
         {
@@ -158,10 +158,10 @@ pub trait GLWEOperations: GLWEToMut + GLWEInfos + SetGLWEInfos + Sized {
         self.set_k(set_k_unary(self, a))
     }
 
-    fn sub_inplace_ba<A, BACKEND: Backend>(&mut self, module: &Module<BACKEND>, a: &A)
+    fn sub_inplace_ba<A, M>(&mut self, module: &M, a: &A)
     where
         A: GLWEToRef + GLWEInfos,
-        Module<BACKEND>: VecZnxSubNegateInplace,
+        M: VecZnxSubNegateInplace,
     {
         #[cfg(debug_assertions)]
         {
@@ -180,10 +180,10 @@ pub trait GLWEOperations: GLWEToMut + GLWEInfos + SetGLWEInfos + Sized {
         self.set_k(set_k_unary(self, a))
     }
 
-    fn rotate<A, B: Backend>(&mut self, module: &Module<B>, k: i64, a: &A)
+    fn rotate<A, M>(&mut self, module: &M, k: i64, a: &A)
     where
         A: GLWEToRef + GLWEInfos,
-        Module<B>: VecZnxRotate,
+        M: VecZnxRotate,
     {
         #[cfg(debug_assertions)]
         {
@@ -202,9 +202,9 @@ pub trait GLWEOperations: GLWEToMut + GLWEInfos + SetGLWEInfos + Sized {
         self.set_k(set_k_unary(self, a))
     }
 
-    fn rotate_inplace<B: Backend>(&mut self, module: &Module<B>, k: i64, scratch: &mut Scratch<B>)
+    fn rotate_inplace<M, BE: Backend>(&mut self, module: &M, k: i64, scratch: &mut Scratch<BE>)
     where
-        Module<B>: VecZnxRotateInplace<B>,
+        M: VecZnxRotateInplace<BE>,
     {
         let self_mut: &mut GLWE<&mut [u8]> = &mut self.to_mut();
 
@@ -213,10 +213,10 @@ pub trait GLWEOperations: GLWEToMut + GLWEInfos + SetGLWEInfos + Sized {
         });
     }
 
-    fn mul_xp_minus_one<A, B: Backend>(&mut self, module: &Module<B>, k: i64, a: &A)
+    fn mul_xp_minus_one<A, M>(&mut self, module: &M, k: i64, a: &A)
     where
         A: GLWEToRef + GLWEInfos,
-        Module<B>: VecZnxMulXpMinusOne,
+        M: VecZnxMulXpMinusOne,
     {
         #[cfg(debug_assertions)]
         {
@@ -235,9 +235,9 @@ pub trait GLWEOperations: GLWEToMut + GLWEInfos + SetGLWEInfos + Sized {
         self.set_k(set_k_unary(self, a))
     }
 
-    fn mul_xp_minus_one_inplace<B: Backend>(&mut self, module: &Module<B>, k: i64, scratch: &mut Scratch<B>)
+    fn mul_xp_minus_one_inplace<M, BE: Backend>(&mut self, module: &M, k: i64, scratch: &mut Scratch<BE>)
     where
-        Module<B>: VecZnxMulXpMinusOneInplace<B>,
+        M: VecZnxMulXpMinusOneInplace<BE>,
     {
         let self_mut: &mut GLWE<&mut [u8]> = &mut self.to_mut();
 
@@ -268,9 +268,9 @@ pub trait GLWEOperations: GLWEToMut + GLWEInfos + SetGLWEInfos + Sized {
         self.set_base2k(a.base2k());
     }
 
-    fn rsh<B: Backend>(&mut self, module: &Module<B>, k: usize, scratch: &mut Scratch<B>)
+    fn rsh<M, BE: Backend>(&mut self, module: &M, k: usize, scratch: &mut Scratch<BE>)
     where
-        Module<B>: VecZnxRshInplace<B>,
+        M: VecZnxRshInplace<BE>,
     {
         let base2k: usize = self.base2k().into();
         (0..(self.rank() + 1).into()).for_each(|i| {
@@ -278,10 +278,10 @@ pub trait GLWEOperations: GLWEToMut + GLWEInfos + SetGLWEInfos + Sized {
         })
     }
 
-    fn normalize<A, B: Backend>(&mut self, module: &Module<B>, a: &A, scratch: &mut Scratch<B>)
+    fn normalize<A, M, BE: Backend>(&mut self, module: &M, a: &A, scratch: &mut Scratch<BE>)
     where
         A: GLWEToRef + GLWEInfos,
-        Module<B>: VecZnxNormalize<B>,
+        M: VecZnxNormalize<BE>,
     {
         #[cfg(debug_assertions)]
         {
@@ -307,9 +307,9 @@ pub trait GLWEOperations: GLWEToMut + GLWEInfos + SetGLWEInfos + Sized {
         self.set_k(a.k().min(self.k()));
     }
 
-    fn normalize_inplace<B: Backend>(&mut self, module: &Module<B>, scratch: &mut Scratch<B>)
+    fn normalize_inplace<M, BE: Backend>(&mut self, module: &M, scratch: &mut Scratch<BE>)
     where
-        Module<B>: VecZnxNormalizeInplace<B>,
+        M: VecZnxNormalizeInplace<BE>,
     {
         let self_mut: &mut GLWE<&mut [u8]> = &mut self.to_mut();
         (0..(self_mut.rank() + 1).into()).for_each(|i| {

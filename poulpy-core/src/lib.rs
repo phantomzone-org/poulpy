@@ -19,6 +19,7 @@ pub use dist::*;
 pub use external_product::*;
 pub use glwe_packing::*;
 pub use keyswitching::*;
+pub use automorphism::*;
 
 pub use encryption::SIGMA;
 
