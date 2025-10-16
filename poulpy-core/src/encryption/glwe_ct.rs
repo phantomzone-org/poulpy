@@ -19,25 +19,21 @@ use crate::{
 };
 
 impl GLWE<Vec<u8>> {
-    pub fn encrypt_sk_tmp_bytes<BE: Backend, A>(module: &Module<BE>, infos: &A) -> usize
+
+    pub fn encrypt_sk_tmp_bytes<M, A, BE: Backend>(module: &M, infos: &A) -> usize
     where
         A: GLWEInfos,
-        Module<BE>: VecZnxNormalizeTmpBytes + VecZnxDftBytesOf,
+        M: GLWEEncryptSk<BE>,
     {
-        let size: usize = infos.size();
-        assert_eq!(module.n() as u32, infos.n());
-        module.vec_znx_normalize_tmp_bytes() + 2 * VecZnx::bytes_of(module.n(), 1, size) + module.bytes_of_vec_znx_dft(1, size)
+        module.glwe_encrypt_sk_tmp_bytes(infos)
     }
-    pub fn encrypt_pk_tmp_bytes<BE: Backend, A>(module: &Module<BE>, infos: &A) -> usize
+
+    pub fn encrypt_pk_tmp_bytes<M, A, BE: Backend>(module: &M, infos: &A) -> usize
     where
         A: GLWEInfos,
-        Module<BE>: VecZnxDftBytesOf + SvpPPolBytesOf + VecZnxBigBytesOf + VecZnxNormalizeTmpBytes,
+        M: GLWEEncryptPk<BE>
     {
-        let size: usize = infos.size();
-        assert_eq!(module.n() as u32, infos.n());
-        ((module.bytes_of_vec_znx_dft(1, size) + module.bytes_of_vec_znx_big(1, size)) | ScalarZnx::bytes_of(module.n(), 1))
-            + module.bytes_of_svp_ppol(1)
-            + module.vec_znx_normalize_tmp_bytes()
+        module.glwe_encrypt_pk_tmp_bytes(infos)
     }
 }
 
@@ -67,7 +63,7 @@ impl<D: DataMut> GLWE<D> {
         scratch: &mut Scratch<BE>,
     ) where
         S: GLWESecretPreparedToRef<BE>,
-        Module<BE>: GLWEEncryptZeroSk<BE>,
+        Module<BE>: GLWEEncryptSk<BE>,
     {
         module.glwe_encrypt_zero_sk(self, sk, source_xa, source_xe, scratch);
     }
@@ -97,13 +93,20 @@ impl<D: DataMut> GLWE<D> {
         scratch: &mut Scratch<BE>,
     ) where
         K: GLWEPublicKeyPreparedToRef<BE>,
-        Module<BE>: GLWEEncryptZeroPk<BE>,
+        Module<BE>: GLWEEncryptPk<BE>,
     {
         module.glwe_encrypt_zero_pk(self, pk, source_xu, source_xe, scratch);
     }
 }
 
 pub trait GLWEEncryptSk<BE: Backend> {
+    fn glwe_encrypt_sk_tmp_bytes<A>(
+        &self,
+        infos: &A,
+    ) -> usize
+    where
+        A: GLWEInfos;
+
     fn glwe_encrypt_sk<R, P, S>(
         &self,
         res: &mut R,
@@ -116,13 +119,40 @@ pub trait GLWEEncryptSk<BE: Backend> {
         R: GLWEToMut,
         P: GLWEPlaintextToRef,
         S: GLWESecretPreparedToRef<BE>;
+
+    fn glwe_encrypt_zero_sk<R, S>(
+        &self,
+        res: &mut R,
+        sk: &S,
+        source_xa: &mut Source,
+        source_xe: &mut Source,
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: GLWEToMut,
+        S: GLWESecretPreparedToRef<BE>;        
 }
 
 impl<BE: Backend> GLWEEncryptSk<BE> for Module<BE>
 where
-    Module<BE>: GLWEEncryptSkInternal<BE> + VecZnxNormalizeTmpBytes + VecZnxDftBytesOf,
+    Module<BE>: Sized
+        + ModuleN
+        + VecZnxNormalizeTmpBytes
+        + VecZnxDftBytesOf
+        + GLWEEncryptSkInternal<BE>,
     Scratch<BE>: ScratchAvailable,
 {
+    fn glwe_encrypt_sk_tmp_bytes<A>(
+        &self,
+        infos: &A,
+    ) -> usize
+    where
+        A: GLWEInfos,
+    {
+        let size: usize = infos.size();
+        assert_eq!(self.n() as u32, infos.n());
+        self.vec_znx_normalize_tmp_bytes() + 2 * VecZnx::bytes_of(self.n(), 1, size) + self.bytes_of_vec_znx_dft(1, size)
+    }
+
     fn glwe_encrypt_sk<R, P, S>(
         &self,
         res: &mut R,
@@ -169,26 +199,7 @@ where
             scratch,
         );
     }
-}
 
-pub trait GLWEEncryptZeroSk<BE: Backend> {
-    fn glwe_encrypt_zero_sk<R, S>(
-        &self,
-        res: &mut R,
-        sk: &S,
-        source_xa: &mut Source,
-        source_xe: &mut Source,
-        scratch: &mut Scratch<BE>,
-    ) where
-        R: GLWEToMut,
-        S: GLWESecretPreparedToRef<BE>;
-}
-
-impl<BE: Backend> GLWEEncryptZeroSk<BE> for Module<BE>
-where
-    Module<BE>: GLWEEncryptSkInternal<BE> + VecZnxNormalizeTmpBytes + VecZnxDftBytesOf,
-    Scratch<BE>: ScratchAvailable,
-{
     fn glwe_encrypt_zero_sk<R, S>(
         &self,
         res: &mut R,
@@ -209,10 +220,10 @@ where
             assert_eq!(res.n(), self.n() as u32);
             assert_eq!(sk.n(), self.n() as u32);
             assert!(
-                scratch.available() >= GLWE::encrypt_sk_tmp_bytes(self, &res),
+                scratch.available() >= self.glwe_encrypt_sk_tmp_bytes(&res),
                 "scratch.available(): {} < GLWECiphertext::encrypt_sk_tmp_bytes: {}",
                 scratch.available(),
-                GLWE::encrypt_sk_tmp_bytes(self, &res)
+                self.glwe_encrypt_sk_tmp_bytes(&res)
             )
         }
 
@@ -230,10 +241,17 @@ where
             SIGMA,
             scratch,
         );
-    }
+    }    
 }
 
 pub trait GLWEEncryptPk<BE: Backend> {
+    fn glwe_encrypt_pk_tmp_bytes<A>(
+        &self,
+        infos: &A,
+    ) -> usize
+    where
+        A: GLWEInfos;
+
     fn glwe_encrypt_pk<R, P, K>(
         &self,
         res: &mut R,
@@ -246,12 +264,43 @@ pub trait GLWEEncryptPk<BE: Backend> {
         R: GLWEToMut,
         P: GLWEPlaintextToRef,
         K: GLWEPublicKeyPreparedToRef<BE>;
+
+    fn glwe_encrypt_zero_pk<R, K>(
+        &self,
+        res: &mut R,
+        pk: &K,
+        source_xu: &mut Source,
+        source_xe: &mut Source,
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: GLWEToMut,
+        K: GLWEPublicKeyPreparedToRef<BE>;    
+
+
 }
 
 impl<BE: Backend> GLWEEncryptPk<BE> for Module<BE>
 where
-    Module<BE>: GLWEEncryptPkInternal<BE>,
+    Module<BE>: GLWEEncryptPkInternal<BE>
+        + VecZnxDftBytesOf
+        + SvpPPolBytesOf
+        + VecZnxBigBytesOf
+        + VecZnxNormalizeTmpBytes,
 {
+    fn glwe_encrypt_pk_tmp_bytes<A>(
+        &self,
+        infos: &A,
+    ) -> usize
+    where
+        A: GLWEInfos,
+    {
+        let size: usize = infos.size();
+        assert_eq!(self.n() as u32, infos.n());
+        ((self.bytes_of_vec_znx_dft(1, size) + self.bytes_of_vec_znx_big(1, size)) | ScalarZnx::bytes_of(self.n(), 1))
+            + self.bytes_of_svp_ppol(1)
+            + self.vec_znx_normalize_tmp_bytes()
+    }
+
     fn glwe_encrypt_pk<R, P, K>(
         &self,
         res: &mut R,
@@ -267,25 +316,7 @@ where
     {
         self.glwe_encrypt_pk_internal(res, Some((pt, 0)), pk, source_xu, source_xe, scratch);
     }
-}
 
-pub trait GLWEEncryptZeroPk<BE: Backend> {
-    fn glwe_encrypt_zero_pk<R, K>(
-        &self,
-        res: &mut R,
-        pk: &K,
-        source_xu: &mut Source,
-        source_xe: &mut Source,
-        scratch: &mut Scratch<BE>,
-    ) where
-        R: GLWEToMut,
-        K: GLWEPublicKeyPreparedToRef<BE>;
-}
-
-impl<BE: Backend> GLWEEncryptZeroPk<BE> for Module<BE>
-where
-    Module<BE>: GLWEEncryptPkInternal<BE>,
-{
     fn glwe_encrypt_zero_pk<R, K>(
         &self,
         res: &mut R,

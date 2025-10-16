@@ -23,9 +23,19 @@ impl<DataSelf: DataMut> LWE<DataSelf> {
     }
 }
 
-
 pub trait LWEEncryptSk<BE: Backend>
 where
+    Self: Sized + ZnFillUniform + ZnAddNormal + ZnNormalizeInplace<BE>,
+{
+    fn lwe_encrypt_sk<R, P, S>(&self, res: &mut R, pt: &P, sk: &S, source_xa: &mut Source, source_xe: &mut Source)
+    where
+        R: LWEToMut,
+        P: LWEPlaintextToRef,
+        S: LWESecretToRef,
+        BE: Backend + ScratchOwnedAllocImpl<BE> + ScratchOwnedBorrowImpl<BE>;
+}
+
+impl<BE: Backend> LWEEncryptSk<BE> for Module<BE> where
     Self: Sized + ZnFillUniform + ZnAddNormal + ZnNormalizeInplace<BE>,
 {
     fn lwe_encrypt_sk<R, P, S>(&self, res: &mut R, pt: &P, sk: &S, source_xa: &mut Source, source_xe: &mut Source)
@@ -93,9 +103,4 @@ where
             res.data.at_mut(0, i)[0] = tmp_znx.at(0, i)[0];
         });        
     }
-}
-
-impl<BE: Backend> LWEEncryptSk<BE> for Module<BE> where
-    Self: Sized + ZnFillUniform + ZnAddNormal + ZnNormalizeInplace<BE>,
-{
 }

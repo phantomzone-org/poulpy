@@ -5,12 +5,26 @@ use poulpy_hal::{
 };
 
 use crate::{
-    encryption::glwe_ct::GLWEEncryptZeroSk,
+    encryption::glwe_ct::{GLWEEncryptSk},
     layouts::{
         GLWE, GLWEPublicKey, GLWEPublicKeyToMut,
         prepared::{GLWESecretPrepared, GLWESecretPreparedToRef},
     },
 };
+
+impl<D: DataMut> GLWEPublicKey<D> {
+    pub fn generate<S: DataRef, B: Backend>(
+        &mut self,
+        module: &Module<B>,
+        sk: &GLWESecretPrepared<S, B>,
+        source_xa: &mut Source,
+        source_xe: &mut Source,
+    ) where
+        Module<B>: GLWEPublicKeyGenerate<B>,
+    {
+        module.glwe_public_key_generate(self, sk, source_xa, source_xe);
+    }
+}
 
 pub trait GLWEPublicKeyGenerate<B: Backend> {
     fn glwe_public_key_generate<R, S>(&self, res: &mut R, sk: &S, source_xa: &mut Source, source_xe: &mut Source)
@@ -21,7 +35,7 @@ pub trait GLWEPublicKeyGenerate<B: Backend> {
 
 impl<B: Backend> GLWEPublicKeyGenerate<B> for Module<B>
 where
-    Module<B>: GLWEEncryptZeroSk<B> + VecZnxNormalizeTmpBytes + VecZnxDftBytesOf,
+    Module<B>: GLWEEncryptSk<B> + VecZnxNormalizeTmpBytes + VecZnxDftBytesOf,
     ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
 {
     fn glwe_public_key_generate<R, S>(&self, res: &mut R, sk: &S, source_xa: &mut Source, source_xe: &mut Source)
@@ -45,25 +59,11 @@ where
         }
 
         // Its ok to allocate scratch space here since pk is usually generated only once.
-        let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GLWE::encrypt_sk_tmp_bytes(self, res));
+        let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(self.glwe_encrypt_sk_tmp_bytes(res));
 
         let mut tmp: GLWE<Vec<u8>> = GLWE::alloc_from_infos(self, res);
 
         tmp.encrypt_zero_sk(self, sk, source_xa, source_xe, scratch.borrow());
         res.dist = sk.dist;
-    }
-}
-
-impl<D: DataMut> GLWEPublicKey<D> {
-    pub fn generate<S: DataRef, B: Backend>(
-        &mut self,
-        module: &Module<B>,
-        sk: &GLWESecretPrepared<S, B>,
-        source_xa: &mut Source,
-        source_xe: &mut Source,
-    ) where
-        Module<B>: GLWEPublicKeyGenerate<B>,
-    {
-        module.glwe_public_key_generate(self, sk, source_xa, source_xe);
     }
 }

@@ -10,38 +10,47 @@ use poulpy_hal::{
 };
 
 use crate::{
-    ScratchTakeCore,
     layouts::{
-    GGLWEInfos, GLWESecret, GLWESwitchingKey, LWEInfos, LWESecret, LWESwitchingKey, Rank,
-    prepared::GLWESecretPrepared,
+        GLWESecretAlloc,
+        GGLWEInfos, GLWESecret, GLWESwitchingKey, LWEInfos, LWESecret, LWESwitchingKey, Rank,
+        prepared::{GLWESecretPrepared, GLWESecretPreparedAlloc},
     },
+    ScratchTakeCore, 
 };
 
 impl LWESwitchingKey<Vec<u8>> {
-    pub fn encrypt_sk_tmp_bytes<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
+    pub fn encrypt_sk_tmp_bytes<M, A, BE: Backend>(module: &M, infos: &A) -> usize
     where
         A: GGLWEInfos,
-        Module<B>: ModuleN + SvpPPolBytesOf + SvpPPolAlloc<B> + VecZnxNormalizeTmpBytes + VecZnxDftBytesOf + VecZnxNormalizeTmpBytes,
+        M: LWESwitchingKeyEncrypt<BE>,
     {
-        debug_assert_eq!(
-            infos.dsize().0,
-            1,
-            "dsize > 1 is not supported for LWESwitchingKey"
-        );
-        debug_assert_eq!(
-            infos.rank_in().0,
-            1,
-            "rank_in > 1 is not supported for LWESwitchingKey"
-        );
-        debug_assert_eq!(
-            infos.rank_out().0,
-            1,
-            "rank_out > 1 is not supported for LWESwitchingKey"
-        );
-        GLWESecret::bytes_of(module, Rank(1))
-            + GLWESecretPrepared::bytes_of(module, Rank(1))
-            + GLWESwitchingKey::encrypt_sk_tmp_bytes(module, infos)
+        module.lwe_switching_key_encrypt_sk_tmp_bytes(infos)
     }
+    
+    // pub fn encrypt_sk_tmp_bytes<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
+    // where
+    //     A: GGLWEInfos,
+    //     Module<B>: ModuleN + SvpPPolBytesOf + SvpPPolAlloc<B> + VecZnxNormalizeTmpBytes + VecZnxDftBytesOf + VecZnxNormalizeTmpBytes,
+    // {
+    //     debug_assert_eq!(
+    //         infos.dsize().0,
+    //         1,
+    //         "dsize > 1 is not supported for LWESwitchingKey"
+    //     );
+    //     debug_assert_eq!(
+    //         infos.rank_in().0,
+    //         1,
+    //         "rank_in > 1 is not supported for LWESwitchingKey"
+    //     );
+    //     debug_assert_eq!(
+    //         infos.rank_out().0,
+    //         1,
+    //         "rank_out > 1 is not supported for LWESwitchingKey"
+    //     );
+    //     GLWESecret::bytes_of(module, Rank(1))
+    //         + GLWESecretPrepared::bytes_of(module, Rank(1))
+    //         + GLWESwitchingKey::encrypt_sk_tmp_bytes(module, infos)
+    // }
 }
 
 impl<D: DataMut> LWESwitchingKey<D> {
@@ -105,5 +114,85 @@ impl<D: DataMut> LWESwitchingKey<D> {
             source_xe,
             scratch_2,
         );
+    }
+}
+
+pub trait LWESwitchingKeyEncrypt<BE: Backend>
+where 
+    Self: Sized
+        + ModuleN
+        + SvpPPolBytesOf
+        + SvpPPolAlloc<BE>
+        + VecZnxNormalizeTmpBytes
+        + VecZnxDftBytesOf
+        + VecZnxAutomorphismInplace<BE>
+        + VecZnxAddScalarInplace
+        + VecZnxBigNormalize<BE>
+        + VecZnxDftApply<BE>
+        + SvpApplyDftToDftInplace<BE>
+        + VecZnxIdftApplyConsume<BE>
+        + VecZnxFillUniform
+        + VecZnxSubInplace
+        + VecZnxAddInplace
+        + VecZnxNormalizeInplace<BE>
+        + VecZnxAddNormal
+        + VecZnxNormalize<BE>
+        + VecZnxSub
+        + SvpPrepare<BE>
+        + VecZnxSwitchRing
+        + GLWESecretAlloc
+        + GLWESecretPreparedAlloc<BE>
+{
+    fn lwe_switching_key_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
+    where
+        A: GGLWEInfos;
+}
+
+impl<BE:Backend> LWESwitchingKeyEncrypt<BE> for Module<BE> where 
+    Self: ModuleN
+        + SvpPPolBytesOf
+        + SvpPPolAlloc<BE>
+        + VecZnxNormalizeTmpBytes
+        + VecZnxDftBytesOf
+        + VecZnxAutomorphismInplace<BE>
+        + VecZnxAddScalarInplace
+        + VecZnxBigNormalize<BE>
+        + VecZnxDftApply<BE>
+        + SvpApplyDftToDftInplace<BE>
+        + VecZnxIdftApplyConsume<BE>
+        + VecZnxFillUniform
+        + VecZnxSubInplace
+        + VecZnxAddInplace
+        + VecZnxNormalizeInplace<BE>
+        + VecZnxAddNormal
+        + VecZnxNormalize<BE>
+        + VecZnxSub
+        + SvpPrepare<BE>
+        + VecZnxSwitchRing
+        + GLWESecretAlloc
+        + GLWESecretPreparedAlloc<BE>
+{
+    fn lwe_switching_key_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
+    where
+        A: GGLWEInfos
+    {
+        debug_assert_eq!(
+            infos.dsize().0,
+            1,
+            "dsize > 1 is not supported for LWESwitchingKey"
+        );
+        debug_assert_eq!(
+            infos.rank_in().0,
+            1,
+            "rank_in > 1 is not supported for LWESwitchingKey"
+        );
+        debug_assert_eq!(
+            infos.rank_out().0,
+            1,
+            "rank_out > 1 is not supported for LWESwitchingKey"
+        );
+        GLWESecret::bytes_of(self, Rank(1))
+            + GLWESecretPrepared::bytes_of(self, Rank(1))
+            + GLWESwitchingKey::encrypt_sk_tmp_bytes(self, infos)
     }
 }

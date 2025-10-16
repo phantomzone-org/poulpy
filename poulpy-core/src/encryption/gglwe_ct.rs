@@ -1,5 +1,6 @@
 use poulpy_hal::{
     api::{ModuleN, ScratchAvailable, VecZnxAddScalarInplace, VecZnxDftBytesOf, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes},
+    // oep::SvpPPolAllocBytesImpl,
     layouts::{Backend, DataMut, DataRef, Module, ScalarZnx, ScalarZnxToRef, Scratch, ZnxZero},
     source::Source,
 };
@@ -13,24 +14,34 @@ use crate::{
 };
 
 impl GGLWE<Vec<u8>> {
-    pub fn encrypt_sk_tmp_bytes<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
+
+    pub fn encrypt_sk_tmp_bytes<M, A, BE: Backend>(module: &M, infos: &A) -> usize
     where
         A: GGLWEInfos,
-        Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftBytesOf + VecZnxNormalizeTmpBytes,
+        M: GGLWEEncryptSk<BE>,
     {
-        GLWE::encrypt_sk_tmp_bytes(module, &infos.glwe_layout())
-            + (GLWEPlaintext::bytes_of_from_infos(module, &infos.glwe_layout()) | module.vec_znx_normalize_tmp_bytes())
+        module.gglwe_encrypt_sk_tmp_bytes(infos)
     }
 
-    pub fn encrypt_pk_tmp_bytes<B: Backend, A>(_module: &Module<B>, _infos: &A) -> usize
+    pub fn encrypt_pk_tmp_bytes<M, A, BE: Backend>(module: &M, infos: &A) -> usize
     where
         A: GGLWEInfos,
+        M: GGLWEEncryptSk<BE>,
     {
-        unimplemented!()
+        module.gglwe_encrypt_sk_tmp_bytes(infos)
     }
 }
 
 pub trait GGLWEEncryptSk<B: Backend> {
+
+    fn gglwe_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
+    where
+        A: GGLWEInfos;
+
+    fn gglwe_encrypt_pk_tmp_bytes<A>(&self, infos: &A) -> usize
+        where
+            A: GGLWEInfos;        
+
     fn gglwe_encrypt_sk<R, P, S>(
         &self,
         res: &mut R,
@@ -47,9 +58,34 @@ pub trait GGLWEEncryptSk<B: Backend> {
 
 impl<B: Backend> GGLWEEncryptSk<B> for Module<B>
 where
-    Module<B>: ModuleN + GLWEEncryptSk<B> + VecZnxNormalizeTmpBytes + VecZnxDftBytesOf + VecZnxAddScalarInplace + VecZnxNormalizeInplace<B>,
+    Module<B>: ModuleN
+        + GLWEEncryptSk<B>
+        + VecZnxNormalizeTmpBytes
+        + VecZnxDftBytesOf
+        + VecZnxAddScalarInplace
+        + VecZnxNormalizeInplace<B>,
+    // + SvpPPolAllocBytesImpl<B>,
     Scratch<B>: ScratchAvailable + ScratchTakeCore<B>,
 {
+    fn gglwe_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
+    where
+        A: GGLWEInfos,
+    {
+        GLWE::encrypt_sk_tmp_bytes(self, &infos.glwe_layout())
+            + (GLWEPlaintext::bytes_of_from_infos(self, &infos.glwe_layout()) | self.vec_znx_normalize_tmp_bytes())
+    }
+
+    fn gglwe_encrypt_pk_tmp_bytes<A>(&self, _infos: &A) -> usize
+    where
+        A: GGLWEInfos,
+    {
+        unimplemented!()
+        // TODO: Is this correct?
+        // GLWE::encrypt_pk_tmp_bytes(self, &infos.glwe_layout())
+        //     + (GLWEPlaintext::bytes_of_from_infos(self, &infos.glwe_layout()) | self.vec_znx_normalize_tmp_bytes())
+
+    }
+
     fn gglwe_encrypt_sk<R, P, S>(
         &self,
         res: &mut R,

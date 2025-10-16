@@ -12,27 +12,45 @@ use poulpy_hal::{
 use crate::{
     ScratchTakeCore,
     layouts::{
-    GGLWE, GGLWEInfos, GLWEInfos, GLWESecret, GLWESwitchingKey, LWEInfos, RingDegree, prepared::GLWESecretPrepared,
+        GGLWE, GGLWEInfos, GLWEInfos, GLWESecret, GLWESwitchingKey, LWEInfos, RingDegree, prepared::GLWESecretPrepared,
     },
+    encryption::gglwe_ct::GGLWEEncryptSk,
 };
 
 impl GLWESwitchingKey<Vec<u8>> {
-    pub fn encrypt_sk_tmp_bytes<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
+    pub fn encrypt_sk_tmp_bytes<M, A, BE: Backend>(module: &M, infos: &A) -> usize
     where
         A: GGLWEInfos,
-        Module<B>: ModuleN + SvpPPolBytesOf + VecZnxNormalizeTmpBytes + VecZnxDftBytesOf + VecZnxNormalizeTmpBytes + SvpPPolAlloc<B>,
+        M: GLWESwitchingKeyEncryptSk<BE>,
     {
-        (GGLWE::encrypt_sk_tmp_bytes(module, infos) | ScalarZnx::bytes_of(module.n(), 1))
-            + ScalarZnx::bytes_of(module.n(), infos.rank_in().into())
-            + GLWESecretPrepared::bytes_of_from_infos(module, &infos.glwe_layout())
+        module.glwe_switching_key_encrypt_sk_tmp_bytes(infos)
     }
 
-    pub fn encrypt_pk_tmp_bytes<B: Backend, A>(module: &Module<B>, _infos: &A) -> usize
+
+    pub fn encrypt_pk_tmp_bytes<M, A, BE: Backend>(module: &M, infos: &A) -> usize
     where
         A: GGLWEInfos,
+        M: GLWESwitchingKeyEncryptSk<BE>,
     {
-        GGLWE::encrypt_pk_tmp_bytes(module, _infos)
+        module.glwe_switching_key_encrypt_pk_tmp_bytes(infos)
     }
+
+    // pub fn encrypt_sk_tmp_bytes<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
+    // where
+    //     A: GGLWEInfos,
+    //     Module<B>: ModuleN + SvpPPolBytesOf + VecZnxNormalizeTmpBytes + VecZnxDftBytesOf + VecZnxNormalizeTmpBytes + SvpPPolAlloc<B>,
+    // {
+    //     (GGLWE::encrypt_sk_tmp_bytes(module, infos) | ScalarZnx::bytes_of(module.n(), 1))
+    //         + ScalarZnx::bytes_of(module.n(), infos.rank_in().into())
+    //         + GLWESecretPrepared::bytes_of_from_infos(module, &infos.glwe_layout())
+    // }
+
+    // pub fn encrypt_pk_tmp_bytes<B: Backend, A>(module: &Module<B>, _infos: &A) -> usize
+    // where
+    //     A: GGLWEInfos,
+    // {
+    //     GGLWE::encrypt_pk_tmp_bytes(module, _infos)
+    // }
 }
 
 impl<DataSelf: DataMut> GLWESwitchingKey<DataSelf> {
@@ -111,4 +129,51 @@ impl<DataSelf: DataMut> GLWESwitchingKey<DataSelf> {
         self.sk_in_n = sk_in.n().into();
         self.sk_out_n = sk_out.n().into();
     }
+}
+
+
+pub trait GLWESwitchingKeyEncryptSk<BE: Backend> 
+where
+    Self: Sized
+        + ModuleN
+        + SvpPPolBytesOf
+        + VecZnxDftBytesOf
+        + VecZnxNormalizeTmpBytes
+        + SvpPPolAlloc<BE>
+        + GGLWEEncryptSk<BE>,
+{
+    fn glwe_switching_key_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
+    where
+        A: GGLWEInfos;
+
+    fn glwe_switching_key_encrypt_pk_tmp_bytes<A>(&self, infos: &A) -> usize
+    where
+        A: GGLWEInfos;
+}
+
+impl<BE: Backend> GLWESwitchingKeyEncryptSk<BE> for Module<BE> where
+    Self: ModuleN
+        + SvpPPolBytesOf
+        + VecZnxDftBytesOf
+        + VecZnxNormalizeTmpBytes
+        + SvpPPolAlloc<BE>
+        + GGLWEEncryptSk<BE>,
+{
+
+    fn glwe_switching_key_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
+    where
+        A: GGLWEInfos,
+    {
+        (GGLWE::encrypt_sk_tmp_bytes(self, infos) | ScalarZnx::bytes_of(self.n(), 1))
+            + ScalarZnx::bytes_of(self.n(), infos.rank_in().into())
+            + GLWESecretPrepared::bytes_of_from_infos(self, &infos.glwe_layout())
+    }
+
+    fn glwe_switching_key_encrypt_pk_tmp_bytes<A>(&self, infos: &A) -> usize
+    where
+        A: GGLWEInfos,
+    {
+        GGLWE::encrypt_pk_tmp_bytes(self, infos)
+    }
+
 }
