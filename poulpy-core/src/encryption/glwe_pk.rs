@@ -1,13 +1,14 @@
 use poulpy_hal::{
-    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxDftBytesOf, VecZnxNormalizeTmpBytes},
-    layouts::{Backend, DataMut, DataRef, Module, ScratchOwned},
+    api::{ScratchOwnedAlloc, ScratchOwnedBorrow},
+    layouts::{Backend, DataMut, DataRef, Module, Scratch, ScratchOwned},
     source::Source,
 };
 
 use crate::{
-    encryption::glwe_ct::{GLWEEncryptSk},
+    Distribution, ScratchTakeCore,
+    encryption::glwe_ct::GLWEEncryptSk,
     layouts::{
-        GLWE, GLWEPublicKey, GLWEPublicKeyToMut,
+        GLWE, GLWEPublicKey, GLWEPublicKeyToMut, LWEInfos,
         prepared::{GLWESecretPrepared, GLWESecretPreparedToRef},
     },
 };
@@ -33,33 +34,29 @@ pub trait GLWEPublicKeyGenerate<B: Backend> {
         S: GLWESecretPreparedToRef<B>;
 }
 
-impl<B: Backend> GLWEPublicKeyGenerate<B> for Module<B>
+impl<BE: Backend> GLWEPublicKeyGenerate<BE> for Module<BE>
 where
-    Module<B>: GLWEEncryptSk<B> + VecZnxNormalizeTmpBytes + VecZnxDftBytesOf,
-    ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
+    Module<BE>: GLWEEncryptSk<BE>,
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
+    Scratch<BE>: ScratchTakeCore<BE>,
 {
     fn glwe_public_key_generate<R, S>(&self, res: &mut R, sk: &S, source_xa: &mut Source, source_xe: &mut Source)
     where
         R: GLWEPublicKeyToMut,
-        S: GLWESecretPreparedToRef<B>,
+        S: GLWESecretPreparedToRef<BE>,
     {
         let res: &mut GLWEPublicKey<&mut [u8]> = &mut res.to_mut();
-        let sk: &GLWESecretPrepared<&[u8], B> = &sk.to_ref();
+        let sk: &GLWESecretPrepared<&[u8], BE> = &sk.to_ref();
 
-        #[cfg(debug_assertions)]
-        {
-            use crate::{Distribution, layouts::LWEInfos};
+        assert_eq!(res.n(), self.n() as u32);
+        assert_eq!(sk.n(), self.n() as u32);
 
-            assert_eq!(res.n(), self.n() as u32);
-            assert_eq!(sk.n(), self.n() as u32);
-
-            if sk.dist == Distribution::NONE {
-                panic!("invalid sk: SecretDistribution::NONE")
-            }
+        if sk.dist == Distribution::NONE {
+            panic!("invalid sk: SecretDistribution::NONE")
         }
 
         // Its ok to allocate scratch space here since pk is usually generated only once.
-        let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(self.glwe_encrypt_sk_tmp_bytes(res));
+        let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(self.glwe_encrypt_sk_tmp_bytes(res));
 
         let mut tmp: GLWE<Vec<u8>> = GLWE::alloc_from_infos(self, res);
 

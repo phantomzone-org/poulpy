@@ -1,10 +1,10 @@
 use poulpy_hal::{
     api::{
-        ModuleN, ScratchTakeBasic, SvpApplyDftToDft, SvpPPolAlloc, SvpPPolBytesOf, SvpPrepare, VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxDftApply, VecZnxDftBytesOf,
-        VecZnxIdftApplyTmpA, VecZnxNormalizeTmpBytes,
+        ModuleN, ScratchTakeBasic, SvpApplyDftToDft, SvpPPolAlloc, SvpPPolBytesOf, SvpPrepare, VecZnxBigBytesOf,
+        VecZnxBigNormalize, VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyTmpA, VecZnxNormalizeTmpBytes,
     },
-    oep::{SvpPPolAllocBytesImpl, VecZnxBigAllocBytesImpl, VecZnxDftAllocBytesImpl},
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
+    oep::{SvpPPolAllocBytesImpl, VecZnxBigAllocBytesImpl, VecZnxDftAllocBytesImpl},
     source::Source,
 };
 
@@ -12,7 +12,7 @@ use crate::{
     ScratchTakeCore,
     encryption::compressed::gglwe_ksk::GGLWEKeyCompressedEncryptSk,
     layouts::{
-        GetDist, GGLWEInfos, GLWEInfos, GLWESecret, GLWESecretToRef, LWEInfos, Rank, TensorKey,
+        GGLWEInfos, GLWEInfos, GLWESecret, GLWESecretToRef, GetDist, LWEInfos, Rank, TensorKey,
         compressed::{TensorKeyCompressed, TensorKeyCompressedToMut},
     },
 };
@@ -21,7 +21,13 @@ impl TensorKeyCompressed<Vec<u8>> {
     pub fn encrypt_sk_tmp_bytes<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GGLWEInfos,
-        Module<B>: ModuleN + SvpPPolBytesOf + SvpPPolAlloc<B> + VecZnxNormalizeTmpBytes + VecZnxDftBytesOf + VecZnxNormalizeTmpBytes + VecZnxBigBytesOf,
+        Module<B>: ModuleN
+            + SvpPPolBytesOf
+            + SvpPPolAlloc<B>
+            + VecZnxNormalizeTmpBytes
+            + VecZnxDftBytesOf
+            + VecZnxNormalizeTmpBytes
+            + VecZnxBigBytesOf,
     {
         TensorKey::encrypt_sk_tmp_bytes(module, infos)
     }

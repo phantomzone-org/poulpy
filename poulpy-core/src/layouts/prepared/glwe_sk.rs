@@ -66,7 +66,7 @@ where
     fn bytes_of_glwe_secret(&self, rank: Rank) -> usize {
         self.bytes_of_svp_ppol(rank.into())
     }
-    fn bytes_of_glwe_secret_from_infos<A>(&self, infos: &A) -> usize
+    fn bytes_of_glwe_secret_prepared_from_infos<A>(&self, infos: &A) -> usize
     where
         A: GLWEInfos,
     {
@@ -98,7 +98,7 @@ impl<B: Backend> GLWESecretPrepared<Vec<u8>, B> {
         A: GLWEInfos,
         M: GLWESecretPreparedAlloc<B>,
     {
-        module.bytes_of_glwe_secret_from_infos(infos)
+        module.bytes_of_glwe_secret_prepared_from_infos(infos)
     }
 
     pub fn bytes_of<M>(module: &M, rank: Rank) -> usize

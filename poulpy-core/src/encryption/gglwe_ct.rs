@@ -1,20 +1,20 @@
 use poulpy_hal::{
     api::{ModuleN, ScratchAvailable, VecZnxAddScalarInplace, VecZnxDftBytesOf, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes},
-    // oep::SvpPPolAllocBytesImpl,
-    layouts::{Backend, DataMut, DataRef, Module, ScalarZnx, ScalarZnxToRef, Scratch, ZnxZero},
+    layouts::{Backend, DataMut, Module, ScalarZnx, ScalarZnxToRef, Scratch, ZnxInfos, ZnxZero},
     source::Source,
 };
 
 use crate::{
-    encryption::glwe_ct::GLWEEncryptSk, layouts::GLWEInfos, ScratchTakeCore,
+    ScratchTakeCore,
+    encryption::glwe_ct::GLWEEncryptSk,
+    layouts::GLWEInfos,
     layouts::{
-        GGLWE, GGLWEInfos, GGLWEToMut, GLWE, GLWEPlaintext, LWEInfos,
+        GGLWE, GGLWEInfos, GGLWEToMut, GLWEPlaintext, LWEInfos,
         prepared::{GLWESecretPrepared, GLWESecretPreparedToRef},
     },
 };
 
 impl GGLWE<Vec<u8>> {
-
     pub fn encrypt_sk_tmp_bytes<M, A, BE: Backend>(module: &M, infos: &A) -> usize
     where
         A: GGLWEInfos,
@@ -32,15 +32,30 @@ impl GGLWE<Vec<u8>> {
     }
 }
 
-pub trait GGLWEEncryptSk<B: Backend> {
+impl<D: DataMut> GGLWE<D> {
+    #[allow(clippy::too_many_arguments)]
+    pub fn encrypt_sk<P, S, M, BE: Backend>(
+        &mut self,
+        module: &M,
+        pt: &P,
+        sk: &S,
+        source_xa: &mut Source,
+        source_xe: &mut Source,
+        scratch: &mut Scratch<BE>,
+    ) where
+        P: ScalarZnxToRef,
+        S: GLWESecretPreparedToRef<BE>,
+        M: GGLWEEncryptSk<BE>,
+        Scratch<BE>: ScratchTakeCore<BE>,
+    {
+        module.gglwe_encrypt_sk(self, pt, sk, source_xa, source_xe, scratch);
+    }
+}
 
+pub trait GGLWEEncryptSk<BE: Backend> {
     fn gglwe_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos;
-
-    fn gglwe_encrypt_pk_tmp_bytes<A>(&self, infos: &A) -> usize
-        where
-            A: GGLWEInfos;        
 
     fn gglwe_encrypt_sk<R, P, S>(
         &self,
@@ -49,40 +64,29 @@ pub trait GGLWEEncryptSk<B: Backend> {
         sk: &S,
         source_xa: &mut Source,
         source_xe: &mut Source,
-        scratch: &mut Scratch<B>,
+        scratch: &mut Scratch<BE>,
     ) where
         R: GGLWEToMut,
         P: ScalarZnxToRef,
-        S: GLWESecretPreparedToRef<B>;
+        S: GLWESecretPreparedToRef<BE>;
 }
 
-impl<B: Backend> GGLWEEncryptSk<B> for Module<B>
+impl<BE: Backend> GGLWEEncryptSk<BE> for Module<BE>
 where
-    Module<B>: ModuleN
-        + GLWEEncryptSk<B>
+    Module<BE>: ModuleN
+        + GLWEEncryptSk<BE>
         + VecZnxNormalizeTmpBytes
         + VecZnxDftBytesOf
         + VecZnxAddScalarInplace
-        + VecZnxNormalizeInplace<B>,
-    Scratch<B>: ScratchAvailable + ScratchTakeCore<B>,
+        + VecZnxNormalizeInplace<BE>,
+    Scratch<BE>: ScratchTakeCore<BE>,
 {
     fn gglwe_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos,
     {
-        GLWE::encrypt_sk_tmp_bytes(self, &infos.glwe_layout())
-            + (GLWEPlaintext::bytes_of_from_infos(self, &infos.glwe_layout()) | self.vec_znx_normalize_tmp_bytes())
-    }
-
-    fn gglwe_encrypt_pk_tmp_bytes<A>(&self, _infos: &A) -> usize
-    where
-        A: GGLWEInfos,
-    {
-        unimplemented!()
-        // TODO: Is this correct?
-        // GLWE::encrypt_pk_tmp_bytes(self, &infos.glwe_layout())
-        //     + (GLWEPlaintext::bytes_of_from_infos(self, &infos.glwe_layout()) | self.vec_znx_normalize_tmp_bytes())
-
+        self.glwe_encrypt_sk_tmp_bytes(infos)
+            + GLWEPlaintext::bytes_of_from_infos(self, infos).max(self.vec_znx_normalize_tmp_bytes())
     }
 
     fn gglwe_encrypt_sk<R, P, S>(
@@ -92,54 +96,49 @@ where
         sk: &S,
         source_xa: &mut Source,
         source_xe: &mut Source,
-        scratch: &mut Scratch<B>,
+        scratch: &mut Scratch<BE>,
     ) where
         R: GGLWEToMut,
         P: ScalarZnxToRef,
-        S: GLWESecretPreparedToRef<B>,
+        S: GLWESecretPreparedToRef<BE>,
     {
         let res: &mut GGLWE<&mut [u8]> = &mut res.to_mut();
         let pt: &ScalarZnx<&[u8]> = &pt.to_ref();
+        let sk: &GLWESecretPrepared<&[u8], BE> = &sk.to_ref();
 
-        #[cfg(debug_assertions)]
-        {
-            use poulpy_hal::layouts::ZnxInfos;
-            let sk: GLWESecretPrepared<&[u8], B> = sk.to_ref();
-
-            assert_eq!(
-                res.rank_in(),
-                pt.cols() as u32,
-                "res.rank_in(): {} != pt.cols(): {}",
-                res.rank_in(),
-                pt.cols()
-            );
-            assert_eq!(
-                res.rank_out(),
-                sk.rank(),
-                "res.rank_out(): {} != sk.rank(): {}",
-                res.rank_out(),
-                sk.rank()
-            );
-            assert_eq!(res.n(), sk.n());
-            assert_eq!(pt.n() as u32, sk.n());
-            assert!(
-                scratch.available() >= GGLWE::encrypt_sk_tmp_bytes(self, res),
-                "scratch.available: {} < GGLWECiphertext::encrypt_sk_tmp_bytes(self, res.rank()={}, res.size()={}): {}",
-                scratch.available(),
-                res.rank_out(),
-                res.size(),
-                GGLWE::encrypt_sk_tmp_bytes(self, res)
-            );
-            assert!(
-                res.dnum().0 * res.dsize().0 * res.base2k().0 <= res.k().0,
-                "res.dnum() : {} * res.dsize() : {} * res.base2k() : {} = {} >= res.k() = {}",
-                res.dnum(),
-                res.dsize(),
-                res.base2k(),
-                res.dnum().0 * res.dsize().0 * res.base2k().0,
-                res.k()
-            );
-        }
+        assert_eq!(
+            res.rank_in(),
+            pt.cols() as u32,
+            "res.rank_in(): {} != pt.cols(): {}",
+            res.rank_in(),
+            pt.cols()
+        );
+        assert_eq!(
+            res.rank_out(),
+            sk.rank(),
+            "res.rank_out(): {} != sk.rank(): {}",
+            res.rank_out(),
+            sk.rank()
+        );
+        assert_eq!(res.n(), sk.n());
+        assert_eq!(pt.n() as u32, sk.n());
+        assert!(
+            scratch.available() >= self.gglwe_encrypt_sk_tmp_bytes(res),
+            "scratch.available: {} < GGLWE::encrypt_sk_tmp_bytes(self, res.rank()={}, res.size()={}): {}",
+            scratch.available(),
+            res.rank_out(),
+            res.size(),
+            self.gglwe_encrypt_sk_tmp_bytes(res)
+        );
+        assert!(
+            res.dnum().0 * res.dsize().0 * res.base2k().0 <= res.k().0,
+            "res.dnum() : {} * res.dsize() : {} * res.base2k() : {} = {} >= res.k() = {}",
+            res.dnum(),
+            res.dsize(),
+            res.base2k(),
+            res.dnum().0 * res.dsize().0 * res.base2k().0,
+            res.k()
+        );
 
         let dnum: usize = res.dnum().into();
         let dsize: usize = res.dsize().into();
@@ -147,7 +146,7 @@ where
         let rank_in: usize = res.rank_in().into();
 
         let (mut tmp_pt, scrach_1) = scratch.take_glwe_pt(self, &res.glwe_layout());
-        // For each input column (i.e. rank) produces a GGLWE ciphertext of rank_out+1 columns
+        // For each input column (i.e. rank) produces a GGLWE of rank_out+1 columns
         //
         // Example for ksk rank 2 to rank 3:
         //
@@ -175,22 +174,5 @@ where
                 );
             }
         }
-    }
-}
-
-impl<DataSelf: DataMut> GGLWE<DataSelf> {
-    #[allow(clippy::too_many_arguments)]
-    pub fn encrypt_sk<DataPt: DataRef, DataSk: DataRef, B: Backend>(
-        &mut self,
-        module: &Module<B>,
-        pt: &ScalarZnx<DataPt>,
-        sk: &GLWESecretPrepared<DataSk, B>,
-        source_xa: &mut Source,
-        source_xe: &mut Source,
-        scratch: &mut Scratch<B>,
-    ) where
-        Module<B>: GGLWEEncryptSk<B>,
-    {
-        module.gglwe_encrypt_sk(self, pt, sk, source_xa, source_xe, scratch);
     }
 }

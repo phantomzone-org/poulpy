@@ -1,17 +1,14 @@
 use poulpy_hal::{
     api::{
-        ModuleN, ScratchTakeBasic,
-        SvpApplyDftToDftInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigNormalize, VecZnxDftApply, VecZnxBigBytesOf,
-        VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxNormalizeTmpBytes,
+        ModuleN, ScratchTakeBasic, SvpApplyDftToDftInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigBytesOf,
+        VecZnxBigNormalize, VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxNormalizeTmpBytes,
     },
     layouts::{Backend, DataMut, DataViewMut, Module, Scratch},
 };
 
-use crate::{
-    layouts::{
-        GLWE, GLWEInfos, GLWEPlaintext, LWEInfos, GLWEToMut, GLWEPlaintextToMut,
-        prepared::{GLWESecretPreparedToRef, GLWESecretPrepared},
-    }
+use crate::layouts::{
+    GLWE, GLWEInfos, GLWEPlaintext, GLWEPlaintextToMut, GLWEToMut, LWEInfos,
+    prepared::{GLWESecretPrepared, GLWESecretPreparedToRef},
 };
 
 impl GLWE<Vec<u8>> {
@@ -25,12 +22,12 @@ impl GLWE<Vec<u8>> {
 }
 
 impl<DataSelf: DataMut> GLWE<DataSelf> {
-    pub fn decrypt<P, S, M, BE: Backend>(&mut self, module: &M, pt: &mut P, sk: &S, scratch: &mut Scratch<BE>) 
+    pub fn decrypt<P, S, M, BE: Backend>(&mut self, module: &M, pt: &mut P, sk: &S, scratch: &mut Scratch<BE>)
     where
         P: GLWEPlaintextToMut,
         S: GLWESecretPreparedToRef<BE>,
         M: GLWEDecryption<BE>,
-        Scratch<BE>: ScratchTakeBasic, 
+        Scratch<BE>: ScratchTakeBasic,
     {
         module.glwe_decrypt(self, pt, sk, scratch);
     }
@@ -48,29 +45,23 @@ where
         + VecZnxIdftApplyConsume<BE>
         + VecZnxBigAddInplace<BE>
         + VecZnxBigAddSmallInplace<BE>
-        + VecZnxBigNormalize<BE>
+        + VecZnxBigNormalize<BE>,
 {
     fn glwe_decrypt_tmp_bytes<A>(&self, infos: &A) -> usize
     where
-        A: GLWEInfos
+        A: GLWEInfos,
     {
         let size: usize = infos.size();
         (self.vec_znx_normalize_tmp_bytes() | self.bytes_of_vec_znx_dft(1, size)) + self.bytes_of_vec_znx_dft(1, size)
     }
 
-    fn glwe_decrypt<R, P, S>(
-        &self,
-        res: &mut R,
-        pt: &mut P,
-        sk: &S,
-        scratch: &mut Scratch<BE>,
-    ) where
+    fn glwe_decrypt<R, P, S>(&self, res: &mut R, pt: &mut P, sk: &S, scratch: &mut Scratch<BE>)
+    where
         R: GLWEToMut,
         P: GLWEPlaintextToMut,
         S: GLWESecretPreparedToRef<BE>,
         Scratch<BE>: ScratchTakeBasic,
     {
-
         let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
         let pt: &mut GLWEPlaintext<&mut [u8]> = &mut pt.to_ref();
         let sk: &GLWESecretPrepared<&[u8], BE> = &sk.to_ref();
@@ -117,10 +108,9 @@ where
         pt.base2k = res.base2k();
         pt.k = pt.k().min(res.k());
     }
-    
 }
 
-impl <BE: Backend> GLWEDecryption<BE> for Module<BE> where
+impl<BE: Backend> GLWEDecryption<BE> for Module<BE> where
     Self: ModuleN
         + VecZnxDftBytesOf
         + VecZnxNormalizeTmpBytes

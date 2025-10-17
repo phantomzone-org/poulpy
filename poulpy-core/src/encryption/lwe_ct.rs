@@ -7,11 +7,10 @@ use poulpy_hal::{
 
 use crate::{
     encryption::{SIGMA, SIGMA_BOUND},
-    layouts::{LWE, LWEInfos, LWEPlaintext, LWESecret, LWEToMut, LWEPlaintextToRef, LWESecretToRef},
+    layouts::{LWE, LWEInfos, LWEPlaintext, LWEPlaintextToRef, LWESecret, LWESecretToRef, LWEToMut},
 };
 
 impl<DataSelf: DataMut> LWE<DataSelf> {
-
     pub fn encrypt_sk<P, S, M, BE: Backend>(&mut self, module: &M, pt: &P, sk: &S, source_xa: &mut Source, source_xe: &mut Source)
     where
         P: LWEPlaintextToRef,
@@ -23,27 +22,24 @@ impl<DataSelf: DataMut> LWE<DataSelf> {
     }
 }
 
-pub trait LWEEncryptSk<BE: Backend>
-where
-    Self: Sized + ZnFillUniform + ZnAddNormal + ZnNormalizeInplace<BE>,
-{
+pub trait LWEEncryptSk<BE: Backend> {
     fn lwe_encrypt_sk<R, P, S>(&self, res: &mut R, pt: &P, sk: &S, source_xa: &mut Source, source_xe: &mut Source)
     where
         R: LWEToMut,
         P: LWEPlaintextToRef,
-        S: LWESecretToRef,
-        BE: Backend + ScratchOwnedAllocImpl<BE> + ScratchOwnedBorrowImpl<BE>;
+        S: LWESecretToRef;
 }
 
-impl<BE: Backend> LWEEncryptSk<BE> for Module<BE> where
+impl<BE: Backend> LWEEncryptSk<BE> for Module<BE>
+where
     Self: Sized + ZnFillUniform + ZnAddNormal + ZnNormalizeInplace<BE>,
+    BE: ScratchOwnedAllocImpl<BE> + ScratchOwnedBorrowImpl<BE>,
 {
     fn lwe_encrypt_sk<R, P, S>(&self, res: &mut R, pt: &P, sk: &S, source_xa: &mut Source, source_xe: &mut Source)
     where
         R: LWEToMut,
         P: LWEPlaintextToRef,
         S: LWESecretToRef,
-        BE: Backend + ScratchOwnedAllocImpl<BE> + ScratchOwnedBorrowImpl<BE>,
     {
         let res: &mut LWE<&mut [u8]> = &mut res.to_mut();
         let pt: &LWEPlaintext<&[u8]> = &pt.to_ref();
@@ -101,6 +97,6 @@ impl<BE: Backend> LWEEncryptSk<BE> for Module<BE> where
 
         (0..res.size()).for_each(|i| {
             res.data.at_mut(0, i)[0] = tmp_znx.at(0, i)[0];
-        });        
+        });
     }
 }

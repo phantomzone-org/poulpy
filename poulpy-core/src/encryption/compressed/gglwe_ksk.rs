@@ -1,5 +1,8 @@
 use poulpy_hal::{
-    api::{ModuleN, ScratchAvailable, ScratchTakeBasic, SvpPPolAlloc, SvpPPolBytesOf, SvpPrepare, VecZnxDftBytesOf, VecZnxNormalizeTmpBytes, VecZnxSwitchRing},
+    api::{
+        ModuleN, ScratchAvailable, ScratchTakeBasic, SvpPPolAlloc, SvpPPolBytesOf, SvpPrepare, VecZnxDftBytesOf,
+        VecZnxNormalizeTmpBytes, VecZnxSwitchRing,
+    },
     layouts::{Backend, DataMut, DataRef, Module, ScalarZnx, Scratch},
     source::Source,
 };
@@ -18,7 +21,8 @@ impl GLWESwitchingKeyCompressed<Vec<u8>> {
     pub fn encrypt_sk_tmp_bytes<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GGLWEInfos,
-        Module<B>: ModuleN + SvpPPolAlloc<B> + VecZnxNormalizeTmpBytes + VecZnxDftBytesOf + VecZnxNormalizeTmpBytes + SvpPPolBytesOf,
+        Module<B>:
+            ModuleN + SvpPPolAlloc<B> + VecZnxNormalizeTmpBytes + VecZnxDftBytesOf + VecZnxNormalizeTmpBytes + SvpPPolBytesOf,
     {
         (GGLWE::encrypt_sk_tmp_bytes(module, infos) | ScalarZnx::bytes_of(module.n(), 1))
             + ScalarZnx::bytes_of(module.n(), infos.rank_in().into())

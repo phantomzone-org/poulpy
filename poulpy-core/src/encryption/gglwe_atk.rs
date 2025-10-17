@@ -1,37 +1,30 @@
 use poulpy_hal::{
-    api::{
-        ModuleN, ScratchAvailable, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolBytesOf, SvpPrepare, VecZnxAddInplace, VecZnxAddNormal,
-        VecZnxAddScalarInplace, VecZnxAutomorphism, VecZnxBigNormalize, VecZnxDftApply, VecZnxDftBytesOf, VecZnxFillUniform,
-        VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubInplace,
-        VecZnxSwitchRing,
-    },
+    api::{ScratchAvailable, VecZnxAutomorphism},
     layouts::{Backend, DataMut, GaloisElement, Module, Scratch},
     source::Source,
 };
 
 use crate::{
     ScratchTakeCore,
-    layouts::{
-        AutomorphismKey, AutomorphismKeyToMut, GGLWEInfos, GLWEInfos, GLWESecret, GLWESecretToRef, GLWESwitchingKey,
-    },
+    encryption::gglwe_ksk::GLWESwitchingKeyEncryptSk,
+    layouts::{AutomorphismKey, AutomorphismKeyToMut, GGLWEInfos, GLWEInfos, GLWESecret, GLWESecretToRef, LWEInfos},
 };
 
 impl AutomorphismKey<Vec<u8>> {
-
     pub fn encrypt_sk_tmp_bytes<M, A, BE: Backend>(module: &M, infos: &A) -> usize
     where
         A: GGLWEInfos,
-        M: GGLWEAutomorphismKeyEncryptSk<BE>
+        M: AutomorphismKeyEncryptSk<BE>,
     {
-        module.gglwe_automorphism_key_encrypt_sk_tmp_bytes(infos)
+        module.automorphism_key_encrypt_sk_tmp_bytes(infos)
     }
 
     pub fn encrypt_pk_tmp_bytes<M, A, BE: Backend>(module: &M, infos: &A) -> usize
     where
         A: GGLWEInfos,
-        M: GGLWEAutomorphismKeyEncryptPk<BE>
+        M: GGLWEAutomorphismKeyEncryptPk<BE>,
     {
-        module.gglwe_automorphism_key_encrypt_pk_tmp_bytes(infos)
+        module.automorphism_key_encrypt_pk_tmp_bytes(infos)
     }
 }
 
@@ -39,9 +32,9 @@ impl<DM: DataMut> AutomorphismKey<DM>
 where
     Self: AutomorphismKeyToMut,
 {
-    pub fn encrypt_sk<S, BE: Backend>(
+    pub fn encrypt_sk<S, M, BE: Backend>(
         &mut self,
-        module: &Module<BE>,
+        module: &M,
         p: i64,
         sk: &S,
         source_xa: &mut Source,
@@ -49,57 +42,36 @@ where
         scratch: &mut Scratch<BE>,
     ) where
         S: GLWESecretToRef,
-        Module<BE>: GGLWEAutomorphismKeyEncryptSk<BE>,
+        M: AutomorphismKeyEncryptSk<BE>,
     {
-        module.gglwe_automorphism_key_encrypt_sk(self, p, sk, source_xa, source_xe, scratch);
+        module.automorphism_key_encrypt_sk(self, p, sk, source_xa, source_xe, scratch);
     }
 }
 
-pub trait GGLWEAutomorphismKeyEncryptSk<BE: Backend> {
-    fn gglwe_automorphism_key_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
+pub trait AutomorphismKeyEncryptSk<BE: Backend> {
+    fn automorphism_key_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos;
 
-    fn gglwe_automorphism_key_encrypt_sk<A, B>(
+    fn automorphism_key_encrypt_sk<R, S>(
         &self,
-        res: &mut A,
+        res: &mut R,
         p: i64,
-        sk: &B,
+        sk: &S,
         source_xa: &mut Source,
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
-        A: AutomorphismKeyToMut,
-        B: GLWESecretToRef;
+        R: AutomorphismKeyToMut,
+        S: GLWESecretToRef;
 }
 
-impl<BE: Backend> GGLWEAutomorphismKeyEncryptSk<BE> for Module<BE>
+impl<BE: Backend> AutomorphismKeyEncryptSk<BE> for Module<BE>
 where
-    Module<BE>: ModuleN 
-        + VecZnxAddScalarInplace
-        + VecZnxDftBytesOf
-        + VecZnxBigNormalize<BE>
-        + VecZnxDftApply<BE>
-        + SvpApplyDftToDftInplace<BE>
-        + VecZnxIdftApplyConsume<BE>
-        + VecZnxNormalizeTmpBytes
-        + VecZnxFillUniform
-        + VecZnxSubInplace
-        + VecZnxAddInplace
-        + VecZnxNormalizeInplace<BE>
-        + VecZnxAddNormal
-        + VecZnxNormalize<BE>
-        + VecZnxSub
-        + SvpPrepare<BE>
-        + VecZnxSwitchRing
-        + SvpPPolBytesOf
-        + VecZnxAutomorphism
-        + SvpPPolAlloc<BE>
-        + GaloisElement,
-    Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+    Module<BE>: GLWESwitchingKeyEncryptSk<BE> + VecZnxAutomorphism + GaloisElement,
+    Scratch<BE>: ScratchTakeCore<BE>,
 {
-
-    fn gglwe_automorphism_key_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
+    fn automorphism_key_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos,
     {
@@ -108,38 +80,33 @@ where
             infos.rank_out(),
             "rank_in != rank_out is not supported for GGLWEAutomorphismKey"
         );
-        GLWESwitchingKey::encrypt_sk_tmp_bytes(self, infos) + GLWESecret::bytes_of_from_infos(self, &infos.glwe_layout())
+        self.glwe_switching_key_encrypt_sk_tmp_bytes(infos) + GLWESecret::bytes_of_from_infos(self, infos)
     }
 
-    fn gglwe_automorphism_key_encrypt_sk<A, B>(
+    fn automorphism_key_encrypt_sk<R, S>(
         &self,
-        res: &mut A,
+        res: &mut R,
         p: i64,
-        sk: &B,
+        sk: &S,
         source_xa: &mut Source,
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
-        A: AutomorphismKeyToMut,
-        B: GLWESecretToRef,
+        R: AutomorphismKeyToMut,
+        S: GLWESecretToRef,
     {
         let res: &mut AutomorphismKey<&mut [u8]> = &mut res.to_mut();
         let sk: &GLWESecret<&[u8]> = &sk.to_ref();
 
-        #[cfg(debug_assertions)]
-        {
-            use crate::layouts::{GLWEInfos, LWEInfos};
-
-            assert_eq!(res.n(), sk.n());
-            assert_eq!(res.rank_out(), res.rank_in());
-            assert_eq!(sk.rank(), res.rank_out());
-            assert!(
-                scratch.available() >= AutomorphismKey::encrypt_sk_tmp_bytes(self, res),
-                "scratch.available(): {} < AutomorphismKey::encrypt_sk_tmp_bytes: {:?}",
-                scratch.available(),
-                AutomorphismKey::encrypt_sk_tmp_bytes(self, res)
-            )
-        }
+        assert_eq!(res.n(), sk.n());
+        assert_eq!(res.rank_out(), res.rank_in());
+        assert_eq!(sk.rank(), res.rank_out());
+        assert!(
+            scratch.available() >= self.automorphism_key_encrypt_sk_tmp_bytes(res),
+            "scratch.available(): {} < AutomorphismKey::encrypt_sk_tmp_bytes: {:?}",
+            scratch.available(),
+            self.automorphism_key_encrypt_sk_tmp_bytes(res)
+        );
 
         let (mut sk_out, scratch_1) = scratch.take_glwe_secret(self, sk.rank());
 
@@ -162,45 +129,21 @@ where
     }
 }
 
-
 pub trait GGLWEAutomorphismKeyEncryptPk<BE: Backend> {
-    fn gglwe_automorphism_key_encrypt_pk_tmp_bytes<A>(&self, infos: &A) -> usize
+    fn automorphism_key_encrypt_pk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos;
-
 }
 
 impl<BE: Backend> GGLWEAutomorphismKeyEncryptPk<BE> for Module<BE>
 where
-    Module<BE>: ModuleN 
-        + VecZnxAddScalarInplace
-        + VecZnxDftBytesOf
-        + VecZnxBigNormalize<BE>
-        + VecZnxDftApply<BE>
-        + SvpApplyDftToDftInplace<BE>
-        + VecZnxIdftApplyConsume<BE>
-        + VecZnxNormalizeTmpBytes
-        + VecZnxFillUniform
-        + VecZnxSubInplace
-        + VecZnxAddInplace
-        + VecZnxNormalizeInplace<BE>
-        + VecZnxAddNormal
-        + VecZnxNormalize<BE>
-        + VecZnxSub
-        + SvpPPolBytesOf
-        + SvpPPolAlloc<BE>,
-    Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+    Module<BE>:,
+    Scratch<BE>: ScratchTakeCore<BE>,
 {
-
-    fn gglwe_automorphism_key_encrypt_pk_tmp_bytes<A>(&self, infos: &A) -> usize
+    fn automorphism_key_encrypt_pk_tmp_bytes<A>(&self, _infos: &A) -> usize
     where
         A: GGLWEInfos,
     {
-        assert_eq!(
-            infos.rank_in(),
-            infos.rank_out(),
-            "rank_in != rank_out is not supported for GGLWEAutomorphismKey"
-        );
-        GLWESwitchingKey::encrypt_pk_tmp_bytes(self, infos)
+        unimplemented!()
     }
 }

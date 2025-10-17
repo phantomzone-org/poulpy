@@ -1,14 +1,14 @@
 use poulpy_hal::{
-    api::{ModuleN, VecZnxAddScalarInplace, VecZnxDftBytesOf, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes},
-    layouts::{Backend, DataMut, DataRef, Module, ScalarZnx, ScalarZnxToRef, Scratch, VecZnx, ZnxZero},
+    api::{ModuleN, VecZnxAddScalarInplace, VecZnxDftBytesOf, VecZnxNormalizeInplace},
+    layouts::{Backend, DataMut, Module, ScalarZnx, ScalarZnxToRef, Scratch, VecZnx, ZnxInfos, ZnxZero},
     source::Source,
 };
 
 use crate::{
     SIGMA, ScratchTakeCore,
-    encryption::glwe_ct::GLWEEncryptSkInternal,
+    encryption::glwe_ct::{GLWEEncryptSk, GLWEEncryptSkInternal},
     layouts::{
-        GGSW, GGSWInfos, GGSWToMut, GLWE, GLWEInfos, LWEInfos,
+        GGSW, GGSWInfos, GGSWToMut, GLWEInfos, LWEInfos,
         prepared::{GLWESecretPrepared, GLWESecretPreparedToRef},
     },
 };
@@ -21,31 +21,23 @@ impl GGSW<Vec<u8>> {
     {
         module.ggsw_encrypt_sk_tmp_bytes(infos)
     }
-    // pub fn encrypt_sk_tmp_bytes<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
-    // where
-    //     A: GGSWInfos,
-    //     Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftBytesOf,
-    // {
-    //     let size = infos.size();
-    //     GLWE::encrypt_sk_tmp_bytes(module, &infos.glwe_layout())
-    //         + VecZnx::bytes_of(module.n(), (infos.rank() + 1).into(), size)
-    //         + VecZnx::bytes_of(module.n(), 1, size)
-    //         + module.bytes_of_vec_znx_dft((infos.rank() + 1).into(), size)
-    // }
 }
 
-impl<DataSelf: DataMut> GGSW<DataSelf> {
+impl<D: DataMut> GGSW<D> {
     #[allow(clippy::too_many_arguments)]
-    pub fn encrypt_sk<DataPt: DataRef, DataSk: DataRef, B: Backend>(
+    pub fn encrypt_sk<P, S, M, BE: Backend>(
         &mut self,
-        module: &Module<B>,
-        pt: &ScalarZnx<DataPt>,
-        sk: &GLWESecretPrepared<DataSk, B>,
+        module: &M,
+        pt: &P,
+        sk: &S,
         source_xa: &mut Source,
         source_xe: &mut Source,
-        scratch: &mut Scratch<B>,
+        scratch: &mut Scratch<BE>,
     ) where
-        Module<B>: GGSWEncryptSk<B>,
+        P: ScalarZnxToRef,
+        S: GLWESecretPreparedToRef<BE>,
+        M: GGSWEncryptSk<BE>,
+        Scratch<BE>: ScratchTakeCore<BE>,
     {
         module.ggsw_encrypt_sk(self, pt, sk, source_xa, source_xe, scratch);
     }
@@ -55,7 +47,7 @@ pub trait GGSWEncryptSk<B: Backend> {
     fn ggsw_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GGSWInfos;
-    
+
     fn ggsw_encrypt_sk<R, P, S>(
         &self,
         res: &mut R,
@@ -74,19 +66,18 @@ impl<B: Backend> GGSWEncryptSk<B> for Module<B>
 where
     Module<B>: ModuleN
         + GLWEEncryptSkInternal<B>
-        + VecZnxAddScalarInplace
-        + VecZnxNormalizeInplace<B>
+        + GLWEEncryptSk<B>
         + VecZnxDftBytesOf
-        + VecZnxNormalizeTmpBytes,
+        + VecZnxNormalizeInplace<B>
+        + VecZnxAddScalarInplace,
     Scratch<B>: ScratchTakeCore<B>,
 {
-
     fn ggsw_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GGSWInfos,
     {
         let size = infos.size();
-        GLWE::encrypt_sk_tmp_bytes(self, &infos.glwe_layout())
+        self.glwe_encrypt_sk_tmp_bytes(infos)
             + VecZnx::bytes_of(self.n(), (infos.rank() + 1).into(), size)
             + VecZnx::bytes_of(self.n(), 1, size)
             + self.bytes_of_vec_znx_dft((infos.rank() + 1).into(), size)
@@ -109,15 +100,10 @@ where
         let pt: &ScalarZnx<&[u8]> = &pt.to_ref();
         let sk: &GLWESecretPrepared<&[u8], B> = &sk.to_ref();
 
-        #[cfg(debug_assertions)]
-        {
-            use poulpy_hal::layouts::ZnxInfos;
-
-            assert_eq!(res.rank(), sk.rank());
-            assert_eq!(res.n(), self.n() as u32);
-            assert_eq!(pt.n(), self.n());
-            assert_eq!(sk.n(), self.n() as u32);
-        }
+        assert_eq!(res.rank(), sk.rank());
+        assert_eq!(res.n(), self.n() as u32);
+        assert_eq!(pt.n(), self.n());
+        assert_eq!(sk.n(), self.n() as u32);
 
         let k: usize = res.k().into();
         let base2k: usize = res.base2k().into();

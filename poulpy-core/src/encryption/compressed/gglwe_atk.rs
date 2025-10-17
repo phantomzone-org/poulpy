@@ -1,5 +1,8 @@
 use poulpy_hal::{
-    api::{ModuleN, ScratchAvailable, ScratchTakeBasic, SvpPPolAlloc, SvpPPolBytesOf, VecZnxAutomorphism, VecZnxDftBytesOf, VecZnxNormalizeTmpBytes},
+    api::{
+        ModuleN, ScratchAvailable, ScratchTakeBasic, SvpPPolAlloc, SvpPPolBytesOf, VecZnxAutomorphism, VecZnxDftBytesOf,
+        VecZnxNormalizeTmpBytes,
+    },
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
     source::Source,
 };
@@ -17,7 +20,8 @@ impl AutomorphismKeyCompressed<Vec<u8>> {
     pub fn encrypt_sk_tmp_bytes<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GGLWEInfos,
-        Module<B>: ModuleN + SvpPPolAlloc<B> + VecZnxNormalizeTmpBytes + VecZnxDftBytesOf + VecZnxNormalizeTmpBytes + SvpPPolBytesOf,
+        Module<B>:
+            ModuleN + SvpPPolAlloc<B> + VecZnxNormalizeTmpBytes + VecZnxDftBytesOf + VecZnxNormalizeTmpBytes + SvpPPolBytesOf,
     {
         assert_eq!(module.n() as u32, infos.n());
         GLWESwitchingKeyCompressed::encrypt_sk_tmp_bytes(module, infos) + GLWESecret::bytes_of(module, infos.rank_out())
