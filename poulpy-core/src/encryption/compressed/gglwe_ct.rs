@@ -1,50 +1,56 @@
 use poulpy_hal::{
-    api::{
-        ModuleN, ScratchAvailable, VecZnxAddScalarInplace, VecZnxDftBytesOf, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes,
-        ZnNormalizeInplace,
-    },
-    layouts::{Backend, DataMut, DataRef, Module, ScalarZnx, ScalarZnxToRef, Scratch, ZnxZero},
+    api::{ModuleN, ScratchAvailable, VecZnxAddScalarInplace, VecZnxDftBytesOf, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes},
+    layouts::{Backend, DataMut, Module, ScalarZnx, ScalarZnxToRef, Scratch, ZnxInfos, ZnxZero},
     source::Source,
 };
 
 use crate::{
     ScratchTakeCore,
-    encryption::{SIGMA, glwe_ct::GLWEEncryptSkInternal},
+    encryption::{
+        SIGMA,
+        glwe_ct::{GLWEEncryptSk, GLWEEncryptSkInternal},
+    },
     layouts::{
-        GGLWE, GGLWEInfos, LWEInfos,
+        GGLWEInfos, GLWEPlaintextAlloc, LWEInfos,
         compressed::{GGLWECompressed, GGLWECompressedToMut},
-        prepared::{GLWESecretPrepared, GLWESecretPreparedToRef},
+        prepared::GLWESecretPreparedToRef,
     },
 };
 
 impl<D: DataMut> GGLWECompressed<D> {
     #[allow(clippy::too_many_arguments)]
-    pub fn encrypt_sk<DataPt: DataRef, DataSk: DataRef, B: Backend>(
+    pub fn encrypt_sk<M, P, S, BE: Backend>(
         &mut self,
-        module: &Module<B>,
-        pt: &ScalarZnx<DataPt>,
-        sk: &GLWESecretPrepared<DataSk, B>,
+        module: &M,
+        pt: &P,
+        sk: &S,
         seed: [u8; 32],
         source_xe: &mut Source,
-        scratch: &mut Scratch<B>,
+        scratch: &mut Scratch<BE>,
     ) where
-        Module<B>: GGLWECompressedEncryptSk<B>,
+        P: ScalarZnxToRef,
+        S: GLWESecretPreparedToRef<BE>,
+        M: GGLWECompressedEncryptSk<BE>,
     {
         module.gglwe_compressed_encrypt_sk(self, pt, sk, seed, source_xe, scratch);
     }
 }
 
 impl GGLWECompressed<Vec<u8>> {
-    pub fn encrypt_sk_tmp_bytes<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
+    pub fn encrypt_sk_tmp_bytes<M, BE: Backend, A>(module: &M, infos: &A) -> usize
     where
         A: GGLWEInfos,
-        Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftBytesOf + VecZnxNormalizeTmpBytes,
+        M: GGLWECompressedEncryptSk<BE>,
     {
-        GGLWE::encrypt_sk_tmp_bytes(module, infos)
+        module.gglwe_compressed_encrypt_sk_tmp_bytes(infos)
     }
 }
 
-pub trait GGLWECompressedEncryptSk<B: Backend> {
+pub trait GGLWECompressedEncryptSk<BE: Backend> {
+    fn gglwe_compressed_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
+    where
+        A: GGLWEInfos;
+
     fn gglwe_compressed_encrypt_sk<R, P, S>(
         &self,
         res: &mut R,
@@ -52,24 +58,33 @@ pub trait GGLWECompressedEncryptSk<B: Backend> {
         sk: &S,
         seed: [u8; 32],
         source_xe: &mut Source,
-        scratch: &mut Scratch<B>,
+        scratch: &mut Scratch<BE>,
     ) where
         R: GGLWECompressedToMut,
         P: ScalarZnxToRef,
-        S: GLWESecretPreparedToRef<B>;
+        S: GLWESecretPreparedToRef<BE>;
 }
 
-impl<B: Backend> GGLWECompressedEncryptSk<B> for Module<B>
+impl<BE: Backend> GGLWECompressedEncryptSk<BE> for Module<BE>
 where
-    Module<B>: ModuleN
-        + GLWEEncryptSkInternal<B>
-        + VecZnxNormalizeInplace<B>
-        + VecZnxNormalizeTmpBytes
+    Module<BE>: ModuleN
+        + GLWEEncryptSkInternal<BE>
+        + GLWEEncryptSk<BE>
         + VecZnxDftBytesOf
+        + VecZnxNormalizeInplace<BE>
         + VecZnxAddScalarInplace
-        + ZnNormalizeInplace<B>,
-    Scratch<B>: ScratchAvailable + ScratchTakeCore<B>,
+        + VecZnxNormalizeTmpBytes,
+    Scratch<BE>: ScratchTakeCore<BE>,
 {
+    fn gglwe_compressed_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
+    where
+        A: GGLWEInfos,
+    {
+        self.glwe_encrypt_sk_tmp_bytes(infos)
+            .max(self.vec_znx_normalize_tmp_bytes())
+            + self.bytes_of_glwe_plaintext_from_infos(infos)
+    }
+
     fn gglwe_compressed_encrypt_sk<R, P, S>(
         &self,
         res: &mut R,
@@ -77,52 +92,48 @@ where
         sk: &S,
         seed: [u8; 32],
         source_xe: &mut Source,
-        scratch: &mut Scratch<B>,
+        scratch: &mut Scratch<BE>,
     ) where
         R: GGLWECompressedToMut,
         P: ScalarZnxToRef,
-        S: GLWESecretPreparedToRef<B>,
+        S: GLWESecretPreparedToRef<BE>,
     {
         let res: &mut GGLWECompressed<&mut [u8]> = &mut res.to_mut();
         let pt: &ScalarZnx<&[u8]> = &pt.to_ref();
 
-        #[cfg(debug_assertions)]
-        {
-            use poulpy_hal::layouts::ZnxInfos;
-            let sk = &sk.to_ref();
+        let sk = &sk.to_ref();
 
-            assert_eq!(
-                res.rank_in(),
-                pt.cols() as u32,
-                "res.rank_in(): {} != pt.cols(): {}",
-                res.rank_in(),
-                pt.cols()
-            );
-            assert_eq!(
-                res.rank_out(),
-                sk.rank(),
-                "res.rank_out(): {} != sk.rank(): {}",
-                res.rank_out(),
-                sk.rank()
-            );
-            assert_eq!(res.n(), sk.n());
-            assert_eq!(pt.n() as u32, sk.n());
-            assert!(
-                scratch.available() >= GGLWECompressed::encrypt_sk_tmp_bytes(self, res),
-                "scratch.available: {} < GGLWECiphertext::encrypt_sk_tmp_bytes: {}",
-                scratch.available(),
-                GGLWECompressed::encrypt_sk_tmp_bytes(self, res)
-            );
-            assert!(
-                res.dnum().0 * res.dsize().0 * res.base2k().0 <= res.k().0,
-                "res.dnum() : {} * res.dsize() : {} * res.base2k() : {} = {} >= res.k() = {}",
-                res.dnum(),
-                res.dsize(),
-                res.base2k(),
-                res.dnum().0 * res.dsize().0 * res.base2k().0,
-                res.k()
-            );
-        }
+        assert_eq!(
+            res.rank_in(),
+            pt.cols() as u32,
+            "res.rank_in(): {} != pt.cols(): {}",
+            res.rank_in(),
+            pt.cols()
+        );
+        assert_eq!(
+            res.rank_out(),
+            sk.rank(),
+            "res.rank_out(): {} != sk.rank(): {}",
+            res.rank_out(),
+            sk.rank()
+        );
+        assert_eq!(res.n(), sk.n());
+        assert_eq!(pt.n() as u32, sk.n());
+        assert!(
+            scratch.available() >= GGLWECompressed::encrypt_sk_tmp_bytes(self, res),
+            "scratch.available: {} < GGLWECiphertext::encrypt_sk_tmp_bytes: {}",
+            scratch.available(),
+            GGLWECompressed::encrypt_sk_tmp_bytes(self, res)
+        );
+        assert!(
+            res.dnum().0 * res.dsize().0 * res.base2k().0 <= res.k().0,
+            "res.dnum() : {} * res.dsize() : {} * res.base2k() : {} = {} >= res.k() = {}",
+            res.dnum(),
+            res.dsize(),
+            res.base2k(),
+            res.dnum().0 * res.dsize().0 * res.base2k().0,
+            res.k()
+        );
 
         let dnum: usize = res.dnum().into();
         let dsize: usize = res.dsize().into();
