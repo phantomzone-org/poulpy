@@ -10,7 +10,7 @@ use poulpy_hal::{
 
 use crate::{
     ScratchTakeCore,
-    encryption::compressed::gglwe_ksk::GGLWEKeyCompressedEncryptSk,
+    encryption::compressed::gglwe_ksk::GLWESwitchingKeyCompressedEncryptSk,
     layouts::{
         GGLWEInfos, GLWEInfos, GLWESecret, GLWESecretToRef, GetDist, LWEInfos, Rank, TensorKey,
         compressed::{TensorKeyCompressed, TensorKeyCompressedToMut},
@@ -49,7 +49,7 @@ pub trait GGLWETensorKeyCompressedEncryptSk<B: Backend> {
 impl<B: Backend> GGLWETensorKeyCompressedEncryptSk<B> for Module<B>
 where
     Module<B>: ModuleN
-        + GGLWEKeyCompressedEncryptSk<B>
+        + GLWESwitchingKeyCompressedEncryptSk<B>
         + VecZnxDftApply<B>
         + SvpApplyDftToDft<B>
         + VecZnxIdftApplyTmpA<B>
@@ -119,7 +119,7 @@ where
 
                 let (seed_xa_tmp, _) = source_xa.branch();
 
-                self.gglwe_key_compressed_encrypt_sk(
+                self.glwe_switching_key_compressed_encrypt_sk(
                     res.at_mut(i, j),
                     &sk_ij,
                     sk,
