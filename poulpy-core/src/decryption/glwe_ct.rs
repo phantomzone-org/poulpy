@@ -7,7 +7,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    GLWE, GLWEInfos, GLWEPlaintext, GLWEPlaintextToMut, GLWEToMut, LWEInfos,
+    GLWE, GLWEInfos, GLWEPlaintext, GLWEPlaintextToMut, GLWEToRef, LWEInfos,
     prepared::{GLWESecretPrepared, GLWESecretPreparedToRef},
 };
 
@@ -55,14 +55,14 @@ where
         (self.vec_znx_normalize_tmp_bytes() | self.bytes_of_vec_znx_dft(1, size)) + self.bytes_of_vec_znx_dft(1, size)
     }
 
-    fn glwe_decrypt<R, P, S>(&self, res: &mut R, pt: &mut P, sk: &S, scratch: &mut Scratch<BE>)
+    fn glwe_decrypt<R, P, S>(&self, res: &R, pt: &mut P, sk: &S, scratch: &mut Scratch<BE>)
     where
-        R: GLWEToMut,
+        R: GLWEToRef,
         P: GLWEPlaintextToMut,
         S: GLWESecretPreparedToRef<BE>,
         Scratch<BE>: ScratchTakeBasic,
     {
-        let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
+        let res: &GLWE<&[u8]> = &res.to_ref();
         let pt: &mut GLWEPlaintext<&mut [u8]> = &mut pt.to_ref();
         let sk: &GLWESecretPrepared<&[u8], BE> = &sk.to_ref();
 

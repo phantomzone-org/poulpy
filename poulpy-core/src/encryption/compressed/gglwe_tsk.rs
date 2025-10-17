@@ -11,6 +11,7 @@ use poulpy_hal::{
 use crate::{
     ScratchTakeCore,
     encryption::compressed::gglwe_ksk::GLWESwitchingKeyCompressedEncryptSk,
+    encryption::gglwe_tsk::TensorKeyEncryptSk,
     layouts::{
         GGLWEInfos, GLWEInfos, GLWESecret, GLWESecretToRef, GetDist, LWEInfos, Rank, TensorKey,
         compressed::{TensorKeyCompressed, TensorKeyCompressedToMut},
@@ -18,58 +19,81 @@ use crate::{
 };
 
 impl TensorKeyCompressed<Vec<u8>> {
-    pub fn encrypt_sk_tmp_bytes<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
+    pub fn encrypt_sk_tmp_bytes<M, A, BE: Backend>(module: &M, infos: &A) -> usize
     where
         A: GGLWEInfos,
-        Module<B>: ModuleN
-            + SvpPPolBytesOf
-            + SvpPPolAlloc<B>
-            + VecZnxNormalizeTmpBytes
-            + VecZnxDftBytesOf
-            + VecZnxNormalizeTmpBytes
-            + VecZnxBigBytesOf,
+        M: GGLWETensorKeyCompressedEncryptSk<BE>,
     {
-        TensorKey::encrypt_sk_tmp_bytes(module, infos)
+        module.gglwe_tensor_key_compressed_encrypt_sk_tmp_bytes(infos)
     }
 }
 
-pub trait GGLWETensorKeyCompressedEncryptSk<B: Backend> {
+impl<DataSelf: DataMut> TensorKeyCompressed<DataSelf> {
+    pub fn encrypt_sk<DataSk: DataRef, BE: Backend>(
+        &mut self,
+        module: &Module<BE>,
+        sk: &GLWESecret<DataSk>,
+        seed_xa: [u8; 32],
+        source_xe: &mut Source,
+        scratch: &mut Scratch<BE>,
+    ) where
+        GLWESecret<DataSk>: GetDist,
+        Module<BE>: GGLWETensorKeyCompressedEncryptSk<BE>,
+    {
+        module.gglwe_tensor_key_encrypt_sk(self, sk, seed_xa, source_xe, scratch);
+    }
+}
+
+pub trait GGLWETensorKeyCompressedEncryptSk<BE: Backend> {
+
+    fn gglwe_tensor_key_compressed_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
+    where
+        A: GGLWEInfos;
+
     fn gglwe_tensor_key_encrypt_sk<R, S>(
         &self,
         res: &mut R,
         sk: &S,
         seed_xa: [u8; 32],
         source_xe: &mut Source,
-        scratch: &mut Scratch<B>,
+        scratch: &mut Scratch<BE>,
     ) where
         R: TensorKeyCompressedToMut,
         S: GLWESecretToRef + GetDist;
 }
 
-impl<B: Backend> GGLWETensorKeyCompressedEncryptSk<B> for Module<B>
+impl<BE: Backend> GGLWETensorKeyCompressedEncryptSk<BE> for Module<BE>
 where
-    Module<B>: ModuleN
-        + GLWESwitchingKeyCompressedEncryptSk<B>
-        + VecZnxDftApply<B>
-        + SvpApplyDftToDft<B>
-        + VecZnxIdftApplyTmpA<B>
-        + VecZnxBigNormalize<B>
-        + SvpPrepare<B>
-        + SvpPPolAllocBytesImpl<B>
+    Module<BE>: ModuleN
+        + GLWESwitchingKeyCompressedEncryptSk<BE>
+        + TensorKeyEncryptSk<BE>
+        + VecZnxDftApply<BE>
+        + SvpApplyDftToDft<BE>
+        + VecZnxIdftApplyTmpA<BE>
+        + VecZnxBigNormalize<BE>
+        + SvpPrepare<BE>
+        + SvpPPolAllocBytesImpl<BE>
         + SvpPPolBytesOf
-        + VecZnxDftAllocBytesImpl<B>
-        + VecZnxBigAllocBytesImpl<B>
+        + VecZnxDftAllocBytesImpl<BE>
+        + VecZnxBigAllocBytesImpl<BE>
         + VecZnxDftBytesOf
         + VecZnxBigBytesOf,
-    Scratch<B>: ScratchTakeBasic + ScratchTakeCore<B>,
+    Scratch<BE>: ScratchTakeBasic + ScratchTakeCore<BE>,
 {
+    fn gglwe_tensor_key_compressed_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
+    where
+        A: GGLWEInfos
+    {
+        self.tensor_key_encrypt_sk_tmp_bytes(infos)
+    }
+
     fn gglwe_tensor_key_encrypt_sk<R, S>(
         &self,
         res: &mut R,
         sk: &S,
         seed_xa: [u8; 32],
         source_xe: &mut Source,
-        scratch: &mut Scratch<B>,
+        scratch: &mut Scratch<BE>,
     ) where
         R: TensorKeyCompressedToMut,
         S: GLWESecretToRef + GetDist,
@@ -129,36 +153,5 @@ where
                 );
             }
         }
-    }
-}
-
-impl<DataSelf: DataMut> TensorKeyCompressed<DataSelf> {
-    pub fn encrypt_sk<DataSk: DataRef, B: Backend>(
-        &mut self,
-        module: &Module<B>,
-        sk: &GLWESecret<DataSk>,
-        seed_xa: [u8; 32],
-        source_xe: &mut Source,
-        scratch: &mut Scratch<B>,
-    ) where
-        GLWESecret<DataSk>: GetDist,
-        Module<B>: GGLWETensorKeyCompressedEncryptSk<B>,
-    {
-        module.gglwe_tensor_key_encrypt_sk(self, sk, seed_xa, source_xe, scratch);
-    }
-}
-
-impl<DataSelf: DataMut> TensorKeyCompressed<DataSelf> {
-    pub fn encrypt_sk<DataSk: DataRef, B: Backend>(
-        &mut self,
-        module: &Module<B>,
-        sk: &GLWESecret<DataSk>,
-        seed_xa: [u8; 32],
-        source_xe: &mut Source,
-        scratch: &mut Scratch<B>,
-    ) where
-        Module<B>: GGLWETensorKeyCompressedEncryptSk<B>,
-    {
-        module.gglwe_tensor_key_encrypt_sk(self, sk, seed_xa, source_xe, scratch);
     }
 }

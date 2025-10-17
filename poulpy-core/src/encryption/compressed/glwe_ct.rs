@@ -5,7 +5,7 @@ use poulpy_hal::{
 };
 
 use crate::{
-    encryption::{SIGMA, glwe_ct::GLWEEncryptSkInternal},
+    encryption::{SIGMA, glwe_ct::{GLWEEncryptSk, GLWEEncryptSkInternal}},
     layouts::{
         GLWE, GLWEInfos, GLWEPlaintext, GLWEPlaintextToRef, LWEInfos,
         compressed::{GLWECompressed, GLWECompressedToMut},
@@ -14,34 +14,38 @@ use crate::{
 };
 
 impl GLWECompressed<Vec<u8>> {
-    pub fn encrypt_sk_tmp_bytes<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
+    pub fn encrypt_sk_tmp_bytes<M, A, BE: Backend>(module: &M, infos: &A) -> usize
     where
         A: GLWEInfos,
-        Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftBytesOf,
+        M: GLWECompressedEncryptSk<BE>,
     {
-        GLWE::encrypt_sk_tmp_bytes(module, infos)
+        module.glwe_compressed_encrypt_sk_tmp_bytes(infos)
     }
 }
 
-pub trait GLWECompressedEncryptSk<B: Backend> {
-    fn glwe_compressed_encrypt_sk<R, P, S>(
-        &self,
-        res: &mut R,
-        pt: &P,
-        sk: &S,
+impl<D: DataMut> GLWECompressed<D> {
+    #[allow(clippy::too_many_arguments)]
+    pub fn encrypt_sk<DataPt: DataRef, DataSk: DataRef, BE: Backend>(
+        &mut self,
+        module: &Module<BE>,
+        pt: &GLWEPlaintext<DataPt>,
+        sk: &GLWESecretPrepared<DataSk, BE>,
         seed_xa: [u8; 32],
         source_xe: &mut Source,
-        scratch: &mut Scratch<B>,
+        scratch: &mut Scratch<BE>,
     ) where
-        R: GLWECompressedToMut,
-        P: GLWEPlaintextToRef,
-        S: GLWESecretPreparedToRef<B>;
+        Module<BE>: GLWECompressedEncryptSk<BE>,
+    {
+        module.glwe_compressed_encrypt_sk(self, pt, sk, seed_xa, source_xe, scratch);
+    }
 }
 
-impl<B: Backend> GLWECompressedEncryptSk<B> for Module<B>
-where
-    Module<B>: GLWEEncryptSkInternal<B>,
-{
+
+pub trait GLWECompressedEncryptSk<BE: Backend> {
+    fn glwe_compressed_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
+    where
+        A: GLWEInfos;
+
     fn glwe_compressed_encrypt_sk<R, P, S>(
         &self,
         res: &mut R,
@@ -49,11 +53,37 @@ where
         sk: &S,
         seed_xa: [u8; 32],
         source_xe: &mut Source,
-        scratch: &mut Scratch<B>,
+        scratch: &mut Scratch<BE>,
     ) where
         R: GLWECompressedToMut,
         P: GLWEPlaintextToRef,
-        S: GLWESecretPreparedToRef<B>,
+        S: GLWESecretPreparedToRef<BE>;
+}
+
+impl<BE: Backend> GLWECompressedEncryptSk<BE> for Module<BE>
+where
+    Module<BE>: GLWEEncryptSkInternal<BE> + GLWEEncryptSk<BE>,
+{
+
+    fn glwe_compressed_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
+    where
+        A: GLWEInfos,
+    {
+        self.glwe_encrypt_sk_tmp_bytes(infos)
+    }
+
+    fn glwe_compressed_encrypt_sk<R, P, S>(
+        &self,
+        res: &mut R,
+        pt: &P,
+        sk: &S,
+        seed_xa: [u8; 32],
+        source_xe: &mut Source,
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: GLWECompressedToMut,
+        P: GLWEPlaintextToRef,
+        S: GLWESecretPreparedToRef<BE>,
     {
         let res: &mut GLWECompressed<&mut [u8]> = &mut res.to_mut();
         let mut source_xa: Source = Source::new(seed_xa);
@@ -74,22 +104,5 @@ where
         );
 
         res.seed = seed_xa;
-    }
-}
-
-impl<D: DataMut> GLWECompressed<D> {
-    #[allow(clippy::too_many_arguments)]
-    pub fn encrypt_sk<DataPt: DataRef, DataSk: DataRef, B: Backend>(
-        &mut self,
-        module: &Module<B>,
-        pt: &GLWEPlaintext<DataPt>,
-        sk: &GLWESecretPrepared<DataSk, B>,
-        seed_xa: [u8; 32],
-        source_xe: &mut Source,
-        scratch: &mut Scratch<B>,
-    ) where
-        Module<B>: GLWECompressedEncryptSk<B>,
-    {
-        module.glwe_compressed_encrypt_sk(self, pt, sk, seed_xa, source_xe, scratch);
     }
 }

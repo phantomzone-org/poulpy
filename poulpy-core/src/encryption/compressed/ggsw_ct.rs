@@ -1,49 +1,52 @@
 use poulpy_hal::{
-    api::{ModuleN, VecZnxAddScalarInplace, VecZnxDftBytesOf, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes},
+    api::{ModuleN, VecZnxAddScalarInplace, VecZnxNormalizeInplace},
     layouts::{Backend, DataMut, DataRef, Module, ScalarZnx, ScalarZnxToRef, Scratch, ZnxZero},
     source::Source,
 };
 
 use crate::{
     ScratchTakeCore,
-    encryption::{SIGMA, glwe_ct::GLWEEncryptSkInternal},
+    encryption::{SIGMA, ggsw_ct::GGSWEncryptSk, glwe_ct::GLWEEncryptSkInternal},
     layouts::{
-        GGSW, GGSWInfos, GLWEInfos, LWEInfos,
+        GGSWInfos, GLWEInfos, LWEInfos,
         compressed::{GGSWCompressed, GGSWCompressedToMut},
         prepared::{GLWESecretPrepared, GLWESecretPreparedToRef},
     },
 };
 
 impl GGSWCompressed<Vec<u8>> {
-    pub fn encrypt_sk_tmp_bytes<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
+    pub fn encrypt_sk_tmp_bytes<M, A, BE: Backend>(module: &M, infos: &A) -> usize
     where
         A: GGSWInfos,
-        Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftBytesOf,
+        M: GGSWCompressedEncryptSk<BE>,
     {
-        GGSW::encrypt_sk_tmp_bytes(module, infos)
+        module.ggsw_compressed_encrypt_sk_tmp_bytes(infos)
     }
 }
 
-pub trait GGSWCompressedEncryptSk<B: Backend> {
-    fn ggsw_compressed_encrypt_sk<R, P, S>(
-        &self,
-        res: &mut R,
-        pt: &P,
-        sk: &S,
+impl<DataSelf: DataMut> GGSWCompressed<DataSelf> {
+    #[allow(clippy::too_many_arguments)]
+    pub fn encrypt_sk<DataPt: DataRef, DataSk: DataRef, BE: Backend>(
+        &mut self,
+        module: &Module<BE>,
+        pt: &ScalarZnx<DataPt>,
+        sk: &GLWESecretPrepared<DataSk, BE>,
         seed_xa: [u8; 32],
         source_xe: &mut Source,
-        scratch: &mut Scratch<B>,
+        scratch: &mut Scratch<BE>,
     ) where
-        R: GGSWCompressedToMut,
-        P: ScalarZnxToRef,
-        S: GLWESecretPreparedToRef<B>;
+        Module<BE>: GGSWCompressedEncryptSk<BE>,
+    {
+        module.ggsw_compressed_encrypt_sk(self, pt, sk, seed_xa, source_xe, scratch);
+    }
 }
 
-impl<B: Backend> GGSWCompressedEncryptSk<B> for Module<B>
-where
-    Module<B>: ModuleN + GLWEEncryptSkInternal<B> + VecZnxAddScalarInplace + VecZnxNormalizeInplace<B>,
-    Scratch<B>: ScratchTakeCore<B>,
-{
+
+pub trait GGSWCompressedEncryptSk<BE: Backend> {
+    fn ggsw_compressed_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
+    where
+        A: GGSWInfos;
+
     fn ggsw_compressed_encrypt_sk<R, P, S>(
         &self,
         res: &mut R,
@@ -51,14 +54,39 @@ where
         sk: &S,
         seed_xa: [u8; 32],
         source_xe: &mut Source,
-        scratch: &mut Scratch<B>,
+        scratch: &mut Scratch<BE>,
     ) where
         R: GGSWCompressedToMut,
         P: ScalarZnxToRef,
-        S: GLWESecretPreparedToRef<B>,
+        S: GLWESecretPreparedToRef<BE>;
+}
+
+impl<BE: Backend> GGSWCompressedEncryptSk<BE> for Module<BE>
+where
+    Module<BE>: ModuleN + GLWEEncryptSkInternal<BE> + GGSWEncryptSk<BE> + VecZnxAddScalarInplace + VecZnxNormalizeInplace<BE>,
+    Scratch<BE>: ScratchTakeCore<BE>,
+{
+    fn ggsw_compressed_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
+        where A: GGSWInfos,
+    {
+        self.ggsw_encrypt_sk_tmp_bytes(infos)
+    }
+
+    fn ggsw_compressed_encrypt_sk<R, P, S>(
+        &self,
+        res: &mut R,
+        pt: &P,
+        sk: &S,
+        seed_xa: [u8; 32],
+        source_xe: &mut Source,
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: GGSWCompressedToMut,
+        P: ScalarZnxToRef,
+        S: GLWESecretPreparedToRef<BE>,
     {
         let res: &mut GGSWCompressed<&mut [u8]> = &mut res.to_mut();
-        let sk: &GLWESecretPrepared<&[u8], B> = &sk.to_ref();
+        let sk: &GLWESecretPrepared<&[u8], BE> = &sk.to_ref();
         let pt: &ScalarZnx<&[u8]> = &pt.to_ref();
 
         #[cfg(debug_assertions)]
@@ -110,22 +138,5 @@ where
                 );
             }
         }
-    }
-}
-
-impl<DataSelf: DataMut> GGSWCompressed<DataSelf> {
-    #[allow(clippy::too_many_arguments)]
-    pub fn encrypt_sk<DataPt: DataRef, DataSk: DataRef, B: Backend>(
-        &mut self,
-        module: &Module<B>,
-        pt: &ScalarZnx<DataPt>,
-        sk: &GLWESecretPrepared<DataSk, B>,
-        seed_xa: [u8; 32],
-        source_xe: &mut Source,
-        scratch: &mut Scratch<B>,
-    ) where
-        Module<B>: GGSWCompressedEncryptSk<B>,
-    {
-        module.ggsw_compressed_encrypt_sk(self, pt, sk, seed_xa, source_xe, scratch);
     }
 }

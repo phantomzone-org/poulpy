@@ -14,24 +14,24 @@ use crate::{
 };
 
 impl<D: DataMut> GLWEPublicKey<D> {
-    pub fn generate<S: DataRef, B: Backend>(
+    pub fn generate<S: DataRef, BE: Backend>(
         &mut self,
-        module: &Module<B>,
-        sk: &GLWESecretPrepared<S, B>,
+        module: &Module<BE>,
+        sk: &GLWESecretPrepared<S, BE>,
         source_xa: &mut Source,
         source_xe: &mut Source,
     ) where
-        Module<B>: GLWEPublicKeyGenerate<B>,
+        Module<BE>: GLWEPublicKeyGenerate<BE>,
     {
         module.glwe_public_key_generate(self, sk, source_xa, source_xe);
     }
 }
 
-pub trait GLWEPublicKeyGenerate<B: Backend> {
+pub trait GLWEPublicKeyGenerate<BE: Backend> {
     fn glwe_public_key_generate<R, S>(&self, res: &mut R, sk: &S, source_xa: &mut Source, source_xe: &mut Source)
     where
         R: GLWEPublicKeyToMut,
-        S: GLWESecretPreparedToRef<B>;
+        S: GLWESecretPreparedToRef<BE>;
 }
 
 impl<BE: Backend> GLWEPublicKeyGenerate<BE> for Module<BE>
