@@ -277,6 +277,10 @@ pub trait GLWEShift<BE: Backend>
 where
     Self: ModuleN + VecZnxRshInplace<BE>,
 {
+    fn glwe_rsh_tmp_byte(&self) -> usize {
+        VecZnx::rsh_tmp_bytes(self.n())
+    }
+
     fn glwe_rsh<R>(&self, k: usize, res: &mut R, scratch: &mut Scratch<BE>)
     where
         R: GLWEToMut,
@@ -291,8 +295,11 @@ where
 }
 
 impl GLWE<Vec<u8>> {
-    pub fn rsh_tmp_bytes(n: usize) -> usize {
-        VecZnx::rsh_tmp_bytes(n)
+    pub fn rsh_tmp_bytes<M, BE: Backend>(module: &M) -> usize
+    where
+        M: GLWEShift<BE>,
+    {
+        module.glwe_rsh_tmp_byte()
     }
 }
 
