@@ -64,7 +64,6 @@ where
         + VecZnxDftBytesOf
         + VecZnxAddScalarInplace
         + VecZnxNormalizeInplace<B>,
-    // + SvpPPolAllocBytesImpl<B>,
     Scratch<B>: ScratchAvailable + ScratchTakeCore<B>,
 {
     fn gglwe_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize

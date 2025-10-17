@@ -15,6 +15,7 @@ use crate::{
         GGLWEInfos, GLWESecret, GLWESwitchingKey, LWEInfos, LWESecret, LWESwitchingKey, Rank,
         prepared::{GLWESecretPrepared, GLWESecretPreparedAlloc},
     },
+    encryption::gglwe_ksk::GLWESwitchingKeyEncryptSk,
     ScratchTakeCore, 
 };
 
@@ -27,30 +28,6 @@ impl LWESwitchingKey<Vec<u8>> {
         module.lwe_switching_key_encrypt_sk_tmp_bytes(infos)
     }
     
-    // pub fn encrypt_sk_tmp_bytes<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
-    // where
-    //     A: GGLWEInfos,
-    //     Module<B>: ModuleN + SvpPPolBytesOf + SvpPPolAlloc<B> + VecZnxNormalizeTmpBytes + VecZnxDftBytesOf + VecZnxNormalizeTmpBytes,
-    // {
-    //     debug_assert_eq!(
-    //         infos.dsize().0,
-    //         1,
-    //         "dsize > 1 is not supported for LWESwitchingKey"
-    //     );
-    //     debug_assert_eq!(
-    //         infos.rank_in().0,
-    //         1,
-    //         "rank_in > 1 is not supported for LWESwitchingKey"
-    //     );
-    //     debug_assert_eq!(
-    //         infos.rank_out().0,
-    //         1,
-    //         "rank_out > 1 is not supported for LWESwitchingKey"
-    //     );
-    //     GLWESecret::bytes_of(module, Rank(1))
-    //         + GLWESecretPrepared::bytes_of(module, Rank(1))
-    //         + GLWESwitchingKey::encrypt_sk_tmp_bytes(module, infos)
-    // }
 }
 
 impl<D: DataMut> LWESwitchingKey<D> {
@@ -171,6 +148,8 @@ impl<BE:Backend> LWESwitchingKeyEncrypt<BE> for Module<BE> where
         + VecZnxSwitchRing
         + GLWESecretAlloc
         + GLWESecretPreparedAlloc<BE>
+        + GLWESwitchingKeyEncryptSk<BE>
+        ,
 {
     fn lwe_switching_key_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where

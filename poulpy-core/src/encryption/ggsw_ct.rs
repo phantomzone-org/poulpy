@@ -14,20 +14,48 @@ use crate::{
 };
 
 impl GGSW<Vec<u8>> {
-    pub fn encrypt_sk_tmp_bytes<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
+    pub fn encrypt_sk_tmp_bytes<M, A, BE: Backend>(module: &M, infos: &A) -> usize
     where
         A: GGSWInfos,
-        Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftBytesOf,
+        M: GGSWEncryptSk<BE>,
     {
-        let size = infos.size();
-        GLWE::encrypt_sk_tmp_bytes(module, &infos.glwe_layout())
-            + VecZnx::bytes_of(module.n(), (infos.rank() + 1).into(), size)
-            + VecZnx::bytes_of(module.n(), 1, size)
-            + module.bytes_of_vec_znx_dft((infos.rank() + 1).into(), size)
+        module.ggsw_encrypt_sk_tmp_bytes(infos)
+    }
+    // pub fn encrypt_sk_tmp_bytes<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
+    // where
+    //     A: GGSWInfos,
+    //     Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftBytesOf,
+    // {
+    //     let size = infos.size();
+    //     GLWE::encrypt_sk_tmp_bytes(module, &infos.glwe_layout())
+    //         + VecZnx::bytes_of(module.n(), (infos.rank() + 1).into(), size)
+    //         + VecZnx::bytes_of(module.n(), 1, size)
+    //         + module.bytes_of_vec_znx_dft((infos.rank() + 1).into(), size)
+    // }
+}
+
+impl<DataSelf: DataMut> GGSW<DataSelf> {
+    #[allow(clippy::too_many_arguments)]
+    pub fn encrypt_sk<DataPt: DataRef, DataSk: DataRef, B: Backend>(
+        &mut self,
+        module: &Module<B>,
+        pt: &ScalarZnx<DataPt>,
+        sk: &GLWESecretPrepared<DataSk, B>,
+        source_xa: &mut Source,
+        source_xe: &mut Source,
+        scratch: &mut Scratch<B>,
+    ) where
+        Module<B>: GGSWEncryptSk<B>,
+    {
+        module.ggsw_encrypt_sk(self, pt, sk, source_xa, source_xe, scratch);
     }
 }
 
 pub trait GGSWEncryptSk<B: Backend> {
+    fn ggsw_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
+    where
+        A: GGSWInfos;
+    
     fn ggsw_encrypt_sk<R, P, S>(
         &self,
         res: &mut R,
@@ -44,9 +72,26 @@ pub trait GGSWEncryptSk<B: Backend> {
 
 impl<B: Backend> GGSWEncryptSk<B> for Module<B>
 where
-    Module<B>: ModuleN + GLWEEncryptSkInternal<B> + VecZnxAddScalarInplace + VecZnxNormalizeInplace<B>,
+    Module<B>: ModuleN
+        + GLWEEncryptSkInternal<B>
+        + VecZnxAddScalarInplace
+        + VecZnxNormalizeInplace<B>
+        + VecZnxDftBytesOf
+        + VecZnxNormalizeTmpBytes,
     Scratch<B>: ScratchTakeCore<B>,
 {
+
+    fn ggsw_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
+    where
+        A: GGSWInfos,
+    {
+        let size = infos.size();
+        GLWE::encrypt_sk_tmp_bytes(self, &infos.glwe_layout())
+            + VecZnx::bytes_of(self.n(), (infos.rank() + 1).into(), size)
+            + VecZnx::bytes_of(self.n(), 1, size)
+            + self.bytes_of_vec_znx_dft((infos.rank() + 1).into(), size)
+    }
+
     fn ggsw_encrypt_sk<R, P, S>(
         &self,
         res: &mut R,
@@ -103,22 +148,5 @@ where
                 );
             }
         }
-    }
-}
-
-impl<DataSelf: DataMut> GGSW<DataSelf> {
-    #[allow(clippy::too_many_arguments)]
-    pub fn encrypt_sk<DataPt: DataRef, DataSk: DataRef, B: Backend>(
-        &mut self,
-        module: &Module<B>,
-        pt: &ScalarZnx<DataPt>,
-        sk: &GLWESecretPrepared<DataSk, B>,
-        source_xa: &mut Source,
-        source_xe: &mut Source,
-        scratch: &mut Scratch<B>,
-    ) where
-        Module<B>: GGSWEncryptSk<B>,
-    {
-        module.ggsw_encrypt_sk(self, pt, sk, source_xa, source_xe, scratch);
     }
 }
