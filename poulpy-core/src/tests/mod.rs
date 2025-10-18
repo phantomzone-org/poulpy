@@ -1,4 +1,4 @@
-// pub mod test_suite;
+pub mod test_suite;
 
 #[cfg(test)]
 mod serialization;

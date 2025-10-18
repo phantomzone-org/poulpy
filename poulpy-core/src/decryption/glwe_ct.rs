@@ -15,7 +15,7 @@ impl GLWE<Vec<u8>> {
     pub fn decrypt_tmp_bytes<A, M, BE: Backend>(module: &M, a_infos: &A) -> usize
     where
         A: GLWEInfos,
-        M: GLWEDecryption<BE>,
+        M: GLWEDecrypt<BE>,
     {
         module.glwe_decrypt_tmp_bytes(a_infos)
     }
@@ -26,14 +26,14 @@ impl<DataSelf: DataMut> GLWE<DataSelf> {
     where
         P: GLWEPlaintextToMut,
         S: GLWESecretPreparedToRef<BE>,
-        M: GLWEDecryption<BE>,
+        M: GLWEDecrypt<BE>,
         Scratch<BE>: ScratchTakeBasic,
     {
         module.glwe_decrypt(self, pt, sk, scratch);
     }
 }
 
-pub trait GLWEDecryption<BE: Backend>
+pub trait GLWEDecrypt<BE: Backend>
 where
     Self: Sized
         + ModuleN
@@ -110,7 +110,7 @@ where
     }
 }
 
-impl<BE: Backend> GLWEDecryption<BE> for Module<BE> where
+impl<BE: Backend> GLWEDecrypt<BE> for Module<BE> where
     Self: ModuleN
         + VecZnxDftBytesOf
         + VecZnxNormalizeTmpBytes

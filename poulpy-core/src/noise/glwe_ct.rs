@@ -9,7 +9,7 @@ use poulpy_hal::{
 };
 
 use crate::{
-    decryption::GLWEDecryption,
+    decryption::GLWEDecrypt,
     layouts::{
         GLWE, GLWEPlaintext, GLWEPlaintextToRef, GLWEToRef, LWEInfos,
         prepared::{GLWESecretPrepared, GLWESecretPreparedToRef},
@@ -124,7 +124,7 @@ where
         + VecZnxNormalizeTmpBytes
         + VecZnxSubInplace
         + VecZnxNormalizeInplace<BE>
-        + GLWEDecryption<BE>,
+        + GLWEDecrypt<BE>,
     Scratch<BE>: ScratchTakeBasic
         + ScratchOwnedAllocImpl<BE>
         + ScratchOwnedBorrowImpl<BE>

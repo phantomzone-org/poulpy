@@ -9,7 +9,7 @@ use poulpy_hal::{
     oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl},
 };
 
-use crate::decryption::GLWEDecryption;
+use crate::decryption::GLWEDecrypt;
 use crate::layouts::prepared::GLWESecretPreparedToRef;
 use crate::layouts::{GGSW, GGSWInfos, GGSWToRef, GLWEInfos, GLWEPlaintext, LWEInfos, prepared::GLWESecretPrepared};
 
@@ -79,7 +79,7 @@ where
         + VecZnxIdftApplyTmpA<BE>
         + VecZnxAddScalarInplace
         + VecZnxSubInplace
-        + GLWEDecryption<BE>,
+        + GLWEDecrypt<BE>,
     Scratch<BE>: ScratchTakeBasic,
 {
     fn ggsw_assert_noise<R, S, P, F>(&self, res: &R, sk_prepared: &S, pt_want: &P, max_noise: F)

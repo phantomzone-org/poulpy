@@ -4,7 +4,7 @@ use poulpy_hal::{
     oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, VecZnxSubScalarInplaceImpl},
 };
 
-use crate::decryption::GLWEDecryption;
+use crate::decryption::GLWEDecrypt;
 use crate::layouts::{
     GGLWE, GGLWEInfos, GGLWEToRef, GLWEPlaintext, LWEInfos,
     prepared::{GLWESecretPrepared, GLWESecretPreparedToRef},
@@ -90,7 +90,7 @@ pub trait GGLWENoise<BE: Backend> {
 
 impl<BE: Backend> GGLWENoise<BE> for Module<BE>
 where
-    Module<BE>: GLWEDecryption<BE>,
+    Module<BE>: GLWEDecrypt<BE>,
     Scratch<BE>: ScratchTakeBasic
         + ScratchOwnedAllocImpl<BE>
         + ScratchOwnedBorrowImpl<BE>

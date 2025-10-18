@@ -17,6 +17,7 @@ pub mod layouts;
 pub use automorphism::*;
 pub use conversion::*;
 pub use dist::*;
+pub use encryption::*;
 pub use external_product::*;
 pub use glwe_packing::*;
 pub use keyswitching::*;
