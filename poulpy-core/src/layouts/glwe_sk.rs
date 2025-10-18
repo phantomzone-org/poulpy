@@ -1,11 +1,14 @@
 use poulpy_hal::{
-    layouts::{Data, DataMut, DataRef, ReaderFrom, ScalarZnx, WriterTo, ZnxInfos, ZnxZero},
+    layouts::{
+        Backend, Data, DataMut, DataRef, Module, ReaderFrom, ScalarZnx, ScalarZnxToMut, ScalarZnxToRef, WriterTo, ZnxInfos,
+        ZnxZero,
+    },
     source::Source,
 };
 
 use crate::{
     dist::Distribution,
-    layouts::{Base2K, Degree, GLWEInfos, LWEInfos, Rank, TorusPrecision},
+    layouts::{Base2K, Degree, GLWEInfos, GetDegree, GetDist, LWEInfos, Rank, TorusPrecision},
 };
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
@@ -61,36 +64,79 @@ impl<D: Data> LWEInfos for GLWESecret<D> {
     }
 }
 
+impl<D: Data> GetDist for GLWESecret<D> {
+    fn get_dist(&self) -> Distribution {
+        self.dist
+    }
+}
+
 impl<D: Data> GLWEInfos for GLWESecret<D> {
     fn rank(&self) -> Rank {
         Rank(self.data.cols() as u32)
     }
 }
 
-impl GLWESecret<Vec<u8>> {
-    pub fn alloc<A>(infos: &A) -> Self
-    where
-        A: GLWEInfos,
-    {
-        Self::alloc_with(infos.n(), infos.rank())
-    }
-
-    pub fn alloc_with(n: Degree, rank: Rank) -> Self {
-        Self {
-            data: ScalarZnx::alloc(n.into(), rank.into()),
+pub trait GLWESecretAlloc
+where
+    Self: GetDegree,
+{
+    fn alloc_glwe_secret(&self, rank: Rank) -> GLWESecret<Vec<u8>> {
+        GLWESecret {
+            data: ScalarZnx::alloc(self.ring_degree().into(), rank.into()),
             dist: Distribution::NONE,
         }
     }
 
-    pub fn alloc_bytes<A>(infos: &A) -> usize
+    fn alloc_glwe_secret_from_infos<A>(&self, infos: &A) -> GLWESecret<Vec<u8>>
     where
         A: GLWEInfos,
     {
-        Self::alloc_bytes_with(infos.n(), infos.rank())
+        self.alloc_glwe_secret(infos.rank())
     }
 
-    pub fn alloc_bytes_with(n: Degree, rank: Rank) -> usize {
-        ScalarZnx::alloc_bytes(n.into(), rank.into())
+    fn bytes_of_glwe_secret(&self, rank: Rank) -> usize {
+        ScalarZnx::bytes_of(self.ring_degree().into(), rank.into())
+    }
+
+    fn bytes_of_glwe_secret_from_infos<A>(&self, infos: &A) -> usize
+    where
+        A: GLWEInfos,
+    {
+        self.bytes_of_glwe_secret(infos.rank())
+    }
+}
+
+impl<B: Backend> GLWESecretAlloc for Module<B> where Self: GetDegree {}
+
+impl GLWESecret<Vec<u8>> {
+    pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
+    where
+        A: GLWEInfos,
+        M: GLWESecretAlloc,
+    {
+        module.alloc_glwe_secret_from_infos(infos)
+    }
+
+    pub fn alloc<M>(module: &M, rank: Rank) -> Self
+    where
+        M: GLWESecretAlloc,
+    {
+        module.alloc_glwe_secret(rank)
+    }
+
+    pub fn bytes_of_from_infos<A, M>(module: &M, infos: &A) -> usize
+    where
+        A: GLWEInfos,
+        M: GLWESecretAlloc,
+    {
+        module.bytes_of_glwe_secret_from_infos(infos)
+    }
+
+    pub fn bytes_of<M>(module: &M, rank: Rank) -> usize
+    where
+        M: GLWESecretAlloc,
+    {
+        module.bytes_of_glwe_secret(rank)
     }
 }
 
@@ -133,6 +179,32 @@ impl<D: DataMut> GLWESecret<D> {
     pub fn fill_zero(&mut self) {
         self.data.zero();
         self.dist = Distribution::ZERO;
+    }
+}
+
+pub trait GLWESecretToMut {
+    fn to_mut(&mut self) -> GLWESecret<&mut [u8]>;
+}
+
+impl<D: DataMut> GLWESecretToMut for GLWESecret<D> {
+    fn to_mut(&mut self) -> GLWESecret<&mut [u8]> {
+        GLWESecret {
+            dist: self.dist,
+            data: self.data.to_mut(),
+        }
+    }
+}
+
+pub trait GLWESecretToRef {
+    fn to_ref(&self) -> GLWESecret<&[u8]>;
+}
+
+impl<D: DataRef> GLWESecretToRef for GLWESecret<D> {
+    fn to_ref(&self) -> GLWESecret<&[u8]> {
+        GLWESecret {
+            data: self.data.to_ref(),
+            dist: self.dist,
+        }
     }
 }
 

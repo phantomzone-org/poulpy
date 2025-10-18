@@ -35,7 +35,7 @@ pub unsafe trait VecZnxBigFromBytesImpl<B: Backend> {
 /// * See [crate::api::VecZnxBigAllocBytes] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxBigAllocBytesImpl<B: Backend> {
-    fn vec_znx_big_alloc_bytes_impl(n: usize, cols: usize, size: usize) -> usize;
+    fn vec_znx_big_bytes_of_impl(n: usize, cols: usize, size: usize) -> usize;
 }
 
 #[allow(clippy::too_many_arguments)]

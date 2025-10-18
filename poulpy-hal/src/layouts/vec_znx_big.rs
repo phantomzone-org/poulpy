@@ -96,7 +96,7 @@ where
     B: VecZnxBigAllocBytesImpl<B>,
 {
     pub fn alloc(n: usize, cols: usize, size: usize) -> Self {
-        let data = alloc_aligned::<u8>(B::vec_znx_big_alloc_bytes_impl(n, cols, size));
+        let data = alloc_aligned::<u8>(B::vec_znx_big_bytes_of_impl(n, cols, size));
         Self {
             data: data.into(),
             n,
@@ -109,7 +109,7 @@ where
 
     pub fn from_bytes(n: usize, cols: usize, size: usize, bytes: impl Into<Vec<u8>>) -> Self {
         let data: Vec<u8> = bytes.into();
-        assert!(data.len() == B::vec_znx_big_alloc_bytes_impl(n, cols, size));
+        assert!(data.len() == B::vec_znx_big_bytes_of_impl(n, cols, size));
         Self {
             data: data.into(),
             n,

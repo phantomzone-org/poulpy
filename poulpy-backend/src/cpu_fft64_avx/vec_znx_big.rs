@@ -27,7 +27,7 @@ use poulpy_hal::{
 };
 
 unsafe impl VecZnxBigAllocBytesImpl<Self> for FFT64Avx {
-    fn vec_znx_big_alloc_bytes_impl(n: usize, cols: usize, size: usize) -> usize {
+    fn vec_znx_big_bytes_of_impl(n: usize, cols: usize, size: usize) -> usize {
         Self::layout_big_word_count() * n * cols * size * size_of::<f64>()
     }
 }

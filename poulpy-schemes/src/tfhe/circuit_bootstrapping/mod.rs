@@ -5,7 +5,7 @@ pub mod tests;
 pub use circuit::*;
 pub use key::*;
 
-use poulpy_core::layouts::{GGSWCiphertext, LWECiphertext};
+use poulpy_core::layouts::{GGSW, LWE};
 
 use poulpy_hal::layouts::{Backend, DataMut, DataRef, Module, Scratch};
 
@@ -13,8 +13,8 @@ pub trait CirtuitBootstrappingExecute<B: Backend> {
     fn execute_to_constant<DM: DataMut, DR: DataRef>(
         &self,
         module: &Module<B>,
-        res: &mut GGSWCiphertext<DM>,
-        lwe: &LWECiphertext<DR>,
+        res: &mut GGSW<DM>,
+        lwe: &LWE<DR>,
         log_domain: usize,
         extension_factor: usize,
         scratch: &mut Scratch<B>,
@@ -25,8 +25,8 @@ pub trait CirtuitBootstrappingExecute<B: Backend> {
         &self,
         module: &Module<B>,
         log_gap_out: usize,
-        res: &mut GGSWCiphertext<DM>,
-        lwe: &LWECiphertext<DR>,
+        res: &mut GGSW<DM>,
+        lwe: &LWE<DR>,
         log_domain: usize,
         extension_factor: usize,
         scratch: &mut Scratch<B>,

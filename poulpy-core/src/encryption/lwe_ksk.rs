@@ -1,102 +1,130 @@
 use poulpy_hal::{
-    api::{
-        ScratchAvailable, SvpApplyDftToDftInplace, SvpPPolAllocBytes, SvpPrepare, TakeScalarZnx, TakeVecZnx, TakeVecZnxDft,
-        VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxAutomorphismInplace, VecZnxBigNormalize,
-        VecZnxDftAllocBytes, VecZnxDftApply, VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeInplace,
-        VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubInplace, VecZnxSwitchRing,
-    },
-    layouts::{Backend, DataMut, DataRef, Module, Scratch, ZnxView, ZnxViewMut},
+    api::{ModuleN, VecZnxAutomorphismInplace},
+    layouts::{Backend, DataMut, Module, Scratch, ZnxView, ZnxViewMut},
     source::Source,
 };
 
 use crate::{
-    TakeGLWESecret, TakeGLWESecretPrepared,
+    ScratchTakeCore,
+    encryption::gglwe_ksk::GLWESwitchingKeyEncryptSk,
     layouts::{
-        Degree, GGLWEInfos, GGLWESwitchingKey, GLWESecret, LWEInfos, LWESecret, LWESwitchingKey, Rank,
-        prepared::GLWESecretPrepared,
+        GGLWEInfos, GLWESecret, GLWESwitchingKey, LWEInfos, LWESecret, LWESecretToRef, LWESwitchingKey, LWESwitchingKeyToMut,
+        Rank,
+        prepared::{GLWESecretPrepared, GLWESecretPreparedAlloc},
     },
 };
 
 impl LWESwitchingKey<Vec<u8>> {
-    pub fn encrypt_sk_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
+    pub fn encrypt_sk_tmp_bytes<M, A, BE: Backend>(module: &M, infos: &A) -> usize
     where
         A: GGLWEInfos,
-        Module<B>: SvpPPolAllocBytes + VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes + VecZnxNormalizeTmpBytes,
+        M: LWESwitchingKeyEncrypt<BE>,
     {
-        debug_assert_eq!(
-            infos.dsize().0,
-            1,
-            "dsize > 1 is not supported for LWESwitchingKey"
-        );
-        debug_assert_eq!(
-            infos.rank_in().0,
-            1,
-            "rank_in > 1 is not supported for LWESwitchingKey"
-        );
-        debug_assert_eq!(
-            infos.rank_out().0,
-            1,
-            "rank_out > 1 is not supported for LWESwitchingKey"
-        );
-        GLWESecret::alloc_bytes_with(Degree(module.n() as u32), Rank(1))
-            + GLWESecretPrepared::alloc_bytes_with(module, Rank(1))
-            + GGLWESwitchingKey::encrypt_sk_scratch_space(module, infos)
+        module.lwe_switching_key_encrypt_sk_tmp_bytes(infos)
     }
 }
 
 impl<D: DataMut> LWESwitchingKey<D> {
-    #[allow(clippy::too_many_arguments)]
-    pub fn encrypt_sk<DIn, DOut, B: Backend>(
+    pub fn encrypt_sk<S1, S2, M, BE: Backend>(
         &mut self,
-        module: &Module<B>,
-        sk_lwe_in: &LWESecret<DIn>,
-        sk_lwe_out: &LWESecret<DOut>,
+        module: &M,
+        sk_lwe_in: &S1,
+        sk_lwe_out: &S2,
         source_xa: &mut Source,
         source_xe: &mut Source,
-        scratch: &mut Scratch<B>,
+        scratch: &mut Scratch<BE>,
     ) where
-        DIn: DataRef,
-        DOut: DataRef,
-        Module<B>: VecZnxAutomorphismInplace<B>
-            + VecZnxAddScalarInplace
-            + VecZnxDftAllocBytes
-            + VecZnxBigNormalize<B>
-            + VecZnxDftApply<B>
-            + SvpApplyDftToDftInplace<B>
-            + VecZnxIdftApplyConsume<B>
-            + VecZnxNormalizeTmpBytes
-            + VecZnxFillUniform
-            + VecZnxSubInplace
-            + VecZnxAddInplace
-            + VecZnxNormalizeInplace<B>
-            + VecZnxAddNormal
-            + VecZnxNormalize<B>
-            + VecZnxSub
-            + SvpPrepare<B>
-            + VecZnxSwitchRing
-            + SvpPPolAllocBytes,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx + TakeScalarZnx + TakeGLWESecretPrepared<B>,
+        S1: LWESecretToRef,
+        S2: LWESecretToRef,
+        M: LWESwitchingKeyEncrypt<BE>,
     {
-        #[cfg(debug_assertions)]
-        {
-            assert!(sk_lwe_in.n().0 <= self.n().0);
-            assert!(sk_lwe_out.n().0 <= self.n().0);
-            assert!(self.n().0 <= module.n() as u32);
-        }
+        module.lwe_switching_key_encrypt_sk(self, sk_lwe_in, sk_lwe_out, source_xa, source_xe, scratch);
+    }
+}
 
-        let (mut sk_in_glwe, scratch_1) = scratch.take_glwe_secret(self.n(), Rank(1));
-        let (mut sk_out_glwe, scratch_2) = scratch_1.take_glwe_secret(self.n(), Rank(1));
+pub trait LWESwitchingKeyEncrypt<BE: Backend> {
+    fn lwe_switching_key_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
+    where
+        A: GGLWEInfos;
+
+    fn lwe_switching_key_encrypt_sk<R, S1, S2>(
+        &self,
+        res: &mut R,
+        sk_lwe_in: &S1,
+        sk_lwe_out: &S2,
+        source_xa: &mut Source,
+        source_xe: &mut Source,
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: LWESwitchingKeyToMut,
+        S1: LWESecretToRef,
+        S2: LWESecretToRef;
+}
+
+impl<BE: Backend> LWESwitchingKeyEncrypt<BE> for Module<BE>
+where
+    Self: ModuleN + GLWESwitchingKeyEncryptSk<BE> + GLWESecretPreparedAlloc<BE> + VecZnxAutomorphismInplace<BE>,
+    Scratch<BE>: ScratchTakeCore<BE>,
+{
+    fn lwe_switching_key_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
+    where
+        A: GGLWEInfos,
+    {
+        assert_eq!(
+            infos.dsize().0,
+            1,
+            "dsize > 1 is not supported for LWESwitchingKey"
+        );
+        assert_eq!(
+            infos.rank_in().0,
+            1,
+            "rank_in > 1 is not supported for LWESwitchingKey"
+        );
+        assert_eq!(
+            infos.rank_out().0,
+            1,
+            "rank_out > 1 is not supported for LWESwitchingKey"
+        );
+        GLWESecret::bytes_of(self, Rank(1))
+            + GLWESecretPrepared::bytes_of(self, Rank(1))
+            + GLWESwitchingKey::encrypt_sk_tmp_bytes(self, infos)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn lwe_switching_key_encrypt_sk<R, S1, S2>(
+        &self,
+        res: &mut R,
+        sk_lwe_in: &S1,
+        sk_lwe_out: &S2,
+        source_xa: &mut Source,
+        source_xe: &mut Source,
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: LWESwitchingKeyToMut,
+        S1: LWESecretToRef,
+        S2: LWESecretToRef,
+    {
+        let res: &mut LWESwitchingKey<&mut [u8]> = &mut res.to_mut();
+        let sk_lwe_in: &LWESecret<&[u8]> = &sk_lwe_in.to_ref();
+        let sk_lwe_out = &sk_lwe_out.to_ref();
+
+        assert!(sk_lwe_in.n().0 <= res.n().0);
+        assert!(sk_lwe_out.n().0 <= res.n().0);
+        assert!(res.n() <= self.n() as u32);
+
+        let (mut sk_in_glwe, scratch_1) = scratch.take_glwe_secret(self, Rank(1));
+        let (mut sk_out_glwe, scratch_2) = scratch_1.take_glwe_secret(self, Rank(1));
 
         sk_out_glwe.data.at_mut(0, 0)[..sk_lwe_out.n().into()].copy_from_slice(sk_lwe_out.data.at(0, 0));
         sk_out_glwe.data.at_mut(0, 0)[sk_lwe_out.n().into()..].fill(0);
-        module.vec_znx_automorphism_inplace(-1, &mut sk_out_glwe.data.as_vec_znx_mut(), 0, scratch_2);
+        self.vec_znx_automorphism_inplace(-1, &mut sk_out_glwe.data.as_vec_znx_mut(), 0, scratch_2);
 
         sk_in_glwe.data.at_mut(0, 0)[..sk_lwe_in.n().into()].copy_from_slice(sk_lwe_in.data.at(0, 0));
         sk_in_glwe.data.at_mut(0, 0)[sk_lwe_in.n().into()..].fill(0);
-        module.vec_znx_automorphism_inplace(-1, &mut sk_in_glwe.data.as_vec_znx_mut(), 0, scratch_2);
+        self.vec_znx_automorphism_inplace(-1, &mut sk_in_glwe.data.as_vec_znx_mut(), 0, scratch_2);
 
-        self.0.encrypt_sk(
-            module,
+        self.glwe_switching_key_encrypt_sk(
+            &mut res.0,
             &sk_in_glwe,
             &sk_out_glwe,
             source_xa,

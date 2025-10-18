@@ -16,8 +16,8 @@ pub trait VecZnxBigAlloc<B: Backend> {
 }
 
 /// Returns the size in bytes to allocate a [crate::layouts::VecZnxBig].
-pub trait VecZnxBigAllocBytes {
-    fn vec_znx_big_alloc_bytes(&self, cols: usize, size: usize) -> usize;
+pub trait VecZnxBigBytesOf {
+    fn bytes_of_vec_znx_big(&self, cols: usize, size: usize) -> usize;
 }
 
 /// Consume a vector of bytes into a [crate::layouts::VecZnxBig].

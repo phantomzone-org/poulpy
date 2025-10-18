@@ -19,9 +19,3 @@ pub use glwe_to_lwe_ksk::*;
 pub use lwe_ct::*;
 pub use lwe_ksk::*;
 pub use lwe_to_glwe_ksk::*;
-
-use poulpy_hal::layouts::{Backend, Module};
-
-pub trait Decompress<B: Backend, C> {
-    fn decompress(&mut self, module: &Module<B>, other: &C);
-}

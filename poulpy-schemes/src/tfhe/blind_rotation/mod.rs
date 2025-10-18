@@ -14,7 +14,7 @@ pub use lut::*;
 
 pub mod tests;
 
-use poulpy_core::layouts::{GLWECiphertext, LWECiphertext};
+use poulpy_core::layouts::{GLWE, LWE};
 use poulpy_hal::layouts::{Backend, DataMut, DataRef, Module, Scratch};
 
 pub trait BlindRotationAlgo {}
@@ -27,8 +27,8 @@ pub trait BlincRotationExecute<B: Backend> {
     fn execute<DR: DataMut, DI: DataRef>(
         &self,
         module: &Module<B>,
-        res: &mut GLWECiphertext<DR>,
-        lwe: &LWECiphertext<DI>,
+        res: &mut GLWE<DR>,
+        lwe: &LWE<DI>,
         lut: &LookUpTable,
         scratch: &mut Scratch<B>,
     );

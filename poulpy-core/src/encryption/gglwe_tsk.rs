@@ -1,108 +1,142 @@
 use poulpy_hal::{
     api::{
-        ScratchAvailable, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolAllocBytes, SvpPrepare, TakeScalarZnx, TakeVecZnx,
-        TakeVecZnxBig, TakeVecZnxDft, VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxBigAllocBytes,
-        VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftApply, VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA,
-        VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubInplace, VecZnxSwitchRing,
+        ModuleN, ScratchTakeBasic, SvpApplyDftToDft, VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxDftApply, VecZnxDftBytesOf,
+        VecZnxIdftApplyTmpA,
     },
-    layouts::{Backend, DataMut, DataRef, Module, Scratch},
+    layouts::{Backend, DataMut, Module, Scratch},
     source::Source,
 };
 
 use crate::{
-    TakeGLWESecret, TakeGLWESecretPrepared,
+    ScratchTakeCore,
+    encryption::gglwe_ksk::GLWESwitchingKeyEncryptSk,
     layouts::{
-        Degree, GGLWEInfos, GGLWESwitchingKey, GGLWETensorKey, GLWEInfos, GLWESecret, LWEInfos, Rank,
-        prepared::{GLWESecretPrepared, Prepare},
+        GGLWEInfos, GLWEInfos, GLWESecret, GLWESecretToRef, GLWESwitchingKey, GetDist, LWEInfos, Rank, TensorKey, TensorKeyToMut,
+        prepared::{GLWESecretPrepare, GLWESecretPrepared, GLWESecretPreparedAlloc},
     },
 };
 
-impl GGLWETensorKey<Vec<u8>> {
-    pub fn encrypt_sk_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
+impl TensorKey<Vec<u8>> {
+    pub fn encrypt_sk_tmp_bytes<M, A, BE: Backend>(module: &M, infos: &A) -> usize
     where
         A: GGLWEInfos,
-        Module<B>:
-            SvpPPolAllocBytes + VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes + VecZnxNormalizeTmpBytes + VecZnxBigAllocBytes,
+        M: TensorKeyEncryptSk<BE>,
     {
-        GLWESecretPrepared::alloc_bytes_with(module, infos.rank_out())
-            + module.vec_znx_dft_alloc_bytes(infos.rank_out().into(), 1)
-            + module.vec_znx_big_alloc_bytes(1, 1)
-            + module.vec_znx_dft_alloc_bytes(1, 1)
-            + GLWESecret::alloc_bytes_with(Degree(module.n() as u32), Rank(1))
-            + GGLWESwitchingKey::encrypt_sk_scratch_space(module, infos)
+        module.tensor_key_encrypt_sk_tmp_bytes(infos)
     }
 }
 
-impl<DataSelf: DataMut> GGLWETensorKey<DataSelf> {
-    pub fn encrypt_sk<DataSk: DataRef, B: Backend>(
+impl<DataSelf: DataMut> TensorKey<DataSelf> {
+    pub fn encrypt_sk<M, S, BE: Backend>(
         &mut self,
-        module: &Module<B>,
-        sk: &GLWESecret<DataSk>,
+        module: &M,
+        sk: &S,
         source_xa: &mut Source,
         source_xe: &mut Source,
-        scratch: &mut Scratch<B>,
+        scratch: &mut Scratch<BE>,
     ) where
-        Module<B>: SvpApplyDftToDft<B>
-            + VecZnxIdftApplyTmpA<B>
-            + VecZnxAddScalarInplace
-            + VecZnxDftAllocBytes
-            + VecZnxBigNormalize<B>
-            + VecZnxDftApply<B>
-            + SvpApplyDftToDftInplace<B>
-            + VecZnxIdftApplyConsume<B>
-            + VecZnxNormalizeTmpBytes
-            + VecZnxFillUniform
-            + VecZnxSubInplace
-            + VecZnxAddInplace
-            + VecZnxNormalizeInplace<B>
-            + VecZnxAddNormal
-            + VecZnxNormalize<B>
-            + VecZnxSub
-            + SvpPrepare<B>
-            + VecZnxSwitchRing
-            + SvpPPolAllocBytes,
-        Scratch<B>:
-            TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx + TakeScalarZnx + TakeGLWESecretPrepared<B> + TakeVecZnxBig<B>,
+        M: TensorKeyEncryptSk<BE>,
+        S: GLWESecretToRef + GetDist,
+        Scratch<BE>: ScratchTakeCore<BE>,
     {
-        #[cfg(debug_assertions)]
-        {
-            assert_eq!(self.rank_out(), sk.rank());
-            assert_eq!(self.n(), sk.n());
-        }
+        module.tensor_key_encrypt_sk(self, sk, source_xa, source_xe, scratch);
+    }
+}
 
-        let n: Degree = sk.n();
-        let rank: Rank = self.rank_out();
+pub trait TensorKeyEncryptSk<BE: Backend> {
+    fn tensor_key_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
+    where
+        A: GGLWEInfos;
 
-        let (mut sk_dft_prep, scratch_1) = scratch.take_glwe_secret_prepared(n, rank);
-        sk_dft_prep.prepare(module, sk, scratch_1);
+    fn tensor_key_encrypt_sk<R, S>(
+        &self,
+        res: &mut R,
+        sk: &S,
+        source_xa: &mut Source,
+        source_xe: &mut Source,
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: TensorKeyToMut,
+        S: GLWESecretToRef + GetDist;
+}
 
-        let (mut sk_dft, scratch_2) = scratch_1.take_vec_znx_dft(n.into(), rank.into(), 1);
+impl<BE: Backend> TensorKeyEncryptSk<BE> for Module<BE>
+where
+    Self: ModuleN
+        + GLWESwitchingKeyEncryptSk<BE>
+        + VecZnxDftBytesOf
+        + VecZnxBigBytesOf
+        + GLWESecretPreparedAlloc<BE>
+        + GLWESecretPrepare<BE>
+        + VecZnxDftApply<BE>
+        + SvpApplyDftToDft<BE>
+        + VecZnxIdftApplyTmpA<BE>
+        + VecZnxBigNormalize<BE>,
+    Scratch<BE>: ScratchTakeCore<BE>,
+{
+    fn tensor_key_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
+    where
+        A: GGLWEInfos,
+    {
+        GLWESecretPrepared::bytes_of(self, infos.rank_out())
+            + self.bytes_of_vec_znx_dft(infos.rank_out().into(), 1)
+            + self.bytes_of_vec_znx_big(1, 1)
+            + self.bytes_of_vec_znx_dft(1, 1)
+            + GLWESecret::bytes_of(self, Rank(1))
+            + GLWESwitchingKey::encrypt_sk_tmp_bytes(self, infos)
+    }
+
+    fn tensor_key_encrypt_sk<R, S>(
+        &self,
+        res: &mut R,
+        sk: &S,
+        source_xa: &mut Source,
+        source_xe: &mut Source,
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: TensorKeyToMut,
+        S: GLWESecretToRef + GetDist,
+    {
+        let res: &mut TensorKey<&mut [u8]> = &mut res.to_mut();
+
+        // let n: RingDegree = sk.n();
+        let rank: Rank = res.rank_out();
+
+        let (mut sk_dft_prep, scratch_1) = scratch.take_glwe_secret_prepared(self, rank);
+        sk_dft_prep.prepare(self, sk);
+
+        let sk: &GLWESecret<&[u8]> = &sk.to_ref();
+
+        assert_eq!(res.rank_out(), sk.rank());
+        assert_eq!(res.n(), sk.n());
+
+        let (mut sk_dft, scratch_2) = scratch_1.take_vec_znx_dft(self, rank.into(), 1);
 
         (0..rank.into()).for_each(|i| {
-            module.vec_znx_dft_apply(1, 0, &mut sk_dft, i, &sk.data.as_vec_znx(), i);
+            self.vec_znx_dft_apply(1, 0, &mut sk_dft, i, &sk.data.as_vec_znx(), i);
         });
 
-        let (mut sk_ij_big, scratch_3) = scratch_2.take_vec_znx_big(n.into(), 1, 1);
-        let (mut sk_ij, scratch_4) = scratch_3.take_glwe_secret(n, Rank(1));
-        let (mut sk_ij_dft, scratch_5) = scratch_4.take_vec_znx_dft(n.into(), 1, 1);
+        let (mut sk_ij_big, scratch_3) = scratch_2.take_vec_znx_big(self, 1, 1);
+        let (mut sk_ij, scratch_4) = scratch_3.take_glwe_secret(self, Rank(1));
+        let (mut sk_ij_dft, scratch_5) = scratch_4.take_vec_znx_dft(self, 1, 1);
 
         (0..rank.into()).for_each(|i| {
             (i..rank.into()).for_each(|j| {
-                module.svp_apply_dft_to_dft(&mut sk_ij_dft, 0, &sk_dft_prep.data, j, &sk_dft, i);
+                self.svp_apply_dft_to_dft(&mut sk_ij_dft, 0, &sk_dft_prep.data, j, &sk_dft, i);
 
-                module.vec_znx_idft_apply_tmpa(&mut sk_ij_big, 0, &mut sk_ij_dft, 0);
-                module.vec_znx_big_normalize(
-                    self.base2k().into(),
+                self.vec_znx_idft_apply_tmpa(&mut sk_ij_big, 0, &mut sk_ij_dft, 0);
+                self.vec_znx_big_normalize(
+                    res.base2k().into(),
                     &mut sk_ij.data.as_vec_znx_mut(),
                     0,
-                    self.base2k().into(),
+                    res.base2k().into(),
                     &sk_ij_big,
                     0,
                     scratch_5,
                 );
 
-                self.at_mut(i, j)
-                    .encrypt_sk(module, &sk_ij, sk, source_xa, source_xe, scratch_5);
+                res.at_mut(i, j)
+                    .encrypt_sk(self, &sk_ij, sk, source_xa, source_xe, scratch_5);
             });
         })
     }

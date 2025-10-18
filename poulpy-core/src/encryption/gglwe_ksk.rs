@@ -1,112 +1,158 @@
 use poulpy_hal::{
-    api::{
-        ScratchAvailable, SvpApplyDftToDftInplace, SvpPPolAllocBytes, SvpPrepare, TakeScalarZnx, TakeVecZnx, TakeVecZnxDft,
-        VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftApply,
-        VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub,
-        VecZnxSubInplace, VecZnxSwitchRing,
-    },
-    layouts::{Backend, DataMut, DataRef, Module, ScalarZnx, Scratch},
+    api::{ModuleN, ScratchAvailable, ScratchTakeBasic, SvpPrepare, VecZnxSwitchRing},
+    layouts::{Backend, DataMut, Module, ScalarZnx, Scratch},
     source::Source,
 };
 
 use crate::{
-    TakeGLWESecretPrepared,
+    ScratchTakeCore,
+    encryption::gglwe_ct::GGLWEEncryptSk,
     layouts::{
-        Degree, GGLWECiphertext, GGLWEInfos, GGLWESwitchingKey, GLWEInfos, GLWESecret, LWEInfos, prepared::GLWESecretPrepared,
+        GGLWEInfos, GLWEInfos, GLWESecret, GLWESecretToRef, GLWESwitchingKey, GLWESwitchingKeyToMut, LWEInfos,
+        prepared::GLWESecretPreparedAlloc,
     },
 };
 
-impl GGLWESwitchingKey<Vec<u8>> {
-    pub fn encrypt_sk_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
+impl GLWESwitchingKey<Vec<u8>> {
+    pub fn encrypt_sk_tmp_bytes<M, A, BE: Backend>(module: &M, infos: &A) -> usize
     where
         A: GGLWEInfos,
-        Module<B>: SvpPPolAllocBytes + VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes + VecZnxNormalizeTmpBytes,
+        M: GLWESwitchingKeyEncryptSk<BE>,
     {
-        (GGLWECiphertext::encrypt_sk_scratch_space(module, infos) | ScalarZnx::alloc_bytes(module.n(), 1))
-            + ScalarZnx::alloc_bytes(module.n(), infos.rank_in().into())
-            + GLWESecretPrepared::alloc_bytes(module, &infos.glwe_layout())
+        module.glwe_switching_key_encrypt_sk_tmp_bytes(infos)
     }
 
-    pub fn encrypt_pk_scratch_space<B: Backend, A>(module: &Module<B>, _infos: &A) -> usize
+    pub fn encrypt_pk_tmp_bytes<M, A, BE: Backend>(module: &M, infos: &A) -> usize
     where
         A: GGLWEInfos,
+        M: GLWESwitchingKeyEncryptPk<BE>,
     {
-        GGLWECiphertext::encrypt_pk_scratch_space(module, _infos)
+        module.glwe_switching_key_encrypt_pk_tmp_bytes(infos)
     }
 }
 
-impl<DataSelf: DataMut> GGLWESwitchingKey<DataSelf> {
-    #[allow(clippy::too_many_arguments)]
-    pub fn encrypt_sk<DataSkIn: DataRef, DataSkOut: DataRef, B: Backend>(
+impl<DataSelf: DataMut> GLWESwitchingKey<DataSelf> {
+    pub fn encrypt_sk<M, S1, S2, BE: Backend>(
         &mut self,
-        module: &Module<B>,
-        sk_in: &GLWESecret<DataSkIn>,
-        sk_out: &GLWESecret<DataSkOut>,
+        module: &M,
+        sk_in: &S1,
+        sk_out: &S2,
         source_xa: &mut Source,
         source_xe: &mut Source,
-        scratch: &mut Scratch<B>,
+        scratch: &mut Scratch<BE>,
     ) where
-        Module<B>: VecZnxAddScalarInplace
-            + VecZnxDftAllocBytes
-            + VecZnxBigNormalize<B>
-            + VecZnxDftApply<B>
-            + SvpApplyDftToDftInplace<B>
-            + VecZnxIdftApplyConsume<B>
-            + VecZnxNormalizeTmpBytes
-            + VecZnxFillUniform
-            + VecZnxSubInplace
-            + VecZnxAddInplace
-            + VecZnxNormalizeInplace<B>
-            + VecZnxAddNormal
-            + VecZnxNormalize<B>
-            + VecZnxSub
-            + SvpPrepare<B>
-            + VecZnxSwitchRing
-            + SvpPPolAllocBytes,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx + TakeScalarZnx + TakeGLWESecretPrepared<B>,
+        S1: GLWESecretToRef,
+        S2: GLWESecretToRef,
+        M: GLWESwitchingKeyEncryptSk<BE>,
+        Scratch<BE>: ScratchTakeCore<BE>,
     {
-        #[cfg(debug_assertions)]
-        {
-            assert!(sk_in.n().0 <= module.n() as u32);
-            assert!(sk_out.n().0 <= module.n() as u32);
-            assert!(
-                scratch.available() >= GGLWESwitchingKey::encrypt_sk_scratch_space(module, self),
-                "scratch.available()={} < GLWESwitchingKey::encrypt_sk_scratch_space={}",
-                scratch.available(),
-                GGLWESwitchingKey::encrypt_sk_scratch_space(module, self)
-            )
-        }
+        module.glwe_switching_key_encrypt_sk(self, sk_in, sk_out, source_xa, source_xe, scratch);
+    }
+}
 
-        let n: usize = sk_in.n().max(sk_out.n()).into();
+pub trait GLWESwitchingKeyEncryptSk<BE: Backend> {
+    fn glwe_switching_key_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
+    where
+        A: GGLWEInfos;
 
-        let (mut sk_in_tmp, scratch_1) = scratch.take_scalar_znx(n, sk_in.rank().into());
-        (0..sk_in.rank().into()).for_each(|i| {
-            module.vec_znx_switch_ring(
+    fn glwe_switching_key_encrypt_sk<R, S1, S2>(
+        &self,
+        res: &mut R,
+        sk_in: &S1,
+        sk_out: &S2,
+        source_xa: &mut Source,
+        source_xe: &mut Source,
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: GLWESwitchingKeyToMut,
+        S1: GLWESecretToRef,
+        S2: GLWESecretToRef;
+}
+
+impl<BE: Backend> GLWESwitchingKeyEncryptSk<BE> for Module<BE>
+where
+    Self: ModuleN + GGLWEEncryptSk<BE> + GLWESecretPreparedAlloc<BE> + VecZnxSwitchRing + SvpPrepare<BE>,
+    Scratch<BE>: ScratchTakeCore<BE>,
+{
+    fn glwe_switching_key_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
+    where
+        A: GGLWEInfos,
+    {
+        self.gglwe_encrypt_sk_tmp_bytes(infos)
+            .max(ScalarZnx::bytes_of(self.n(), 1))
+            + ScalarZnx::bytes_of(self.n(), infos.rank_in().into())
+            + self.bytes_of_glwe_secret_prepared_from_infos(infos)
+    }
+
+    fn glwe_switching_key_encrypt_sk<R, S1, S2>(
+        &self,
+        res: &mut R,
+        sk_in: &S1,
+        sk_out: &S2,
+        source_xa: &mut Source,
+        source_xe: &mut Source,
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: GLWESwitchingKeyToMut,
+        S1: GLWESecretToRef,
+        S2: GLWESecretToRef,
+    {
+        let res: &mut GLWESwitchingKey<&mut [u8]> = &mut res.to_mut();
+        let sk_in: &GLWESecret<&[u8]> = &sk_in.to_ref();
+        let sk_out: &GLWESecret<&[u8]> = &sk_out.to_ref();
+
+        assert!(sk_in.n().0 <= self.n() as u32);
+        assert!(sk_out.n().0 <= self.n() as u32);
+        assert!(
+            scratch.available() >= self.glwe_switching_key_encrypt_sk_tmp_bytes(res),
+            "scratch.available()={} < GLWESwitchingKey::encrypt_sk_tmp_bytes={}",
+            scratch.available(),
+            self.glwe_switching_key_encrypt_sk_tmp_bytes(res)
+        );
+
+        let (mut sk_in_tmp, scratch_1) = scratch.take_scalar_znx(self, sk_in.rank().into());
+        for i in 0..sk_in.rank().into() {
+            self.vec_znx_switch_ring(
                 &mut sk_in_tmp.as_vec_znx_mut(),
                 i,
                 &sk_in.data.as_vec_znx(),
                 i,
             );
-        });
-
-        let (mut sk_out_tmp, scratch_2) = scratch_1.take_glwe_secret_prepared(Degree(n as u32), sk_out.rank());
-        {
-            let (mut tmp, _) = scratch_2.take_scalar_znx(n, 1);
-            (0..sk_out.rank().into()).for_each(|i| {
-                module.vec_znx_switch_ring(&mut tmp.as_vec_znx_mut(), 0, &sk_out.data.as_vec_znx(), i);
-                module.svp_prepare(&mut sk_out_tmp.data, i, &tmp, 0);
-            });
         }
 
-        self.key.encrypt_sk(
-            module,
+        let (mut sk_out_tmp, scratch_2) = scratch_1.take_glwe_secret_prepared(self, sk_out.rank());
+        {
+            let (mut tmp, _) = scratch_2.take_scalar_znx(self, 1);
+            for i in 0..sk_out.rank().into() {
+                self.vec_znx_switch_ring(&mut tmp.as_vec_znx_mut(), 0, &sk_out.data.as_vec_znx(), i);
+                self.svp_prepare(&mut sk_out_tmp.data, i, &tmp, 0);
+            }
+        }
+
+        res.key.encrypt_sk(
+            self,
             &sk_in_tmp,
             &sk_out_tmp,
             source_xa,
             source_xe,
             scratch_2,
         );
-        self.sk_in_n = sk_in.n().into();
-        self.sk_out_n = sk_out.n().into();
+        res.sk_in_n = sk_in.n().into();
+        res.sk_out_n = sk_out.n().into();
+    }
+}
+
+pub trait GLWESwitchingKeyEncryptPk<BE: Backend> {
+    fn glwe_switching_key_encrypt_pk_tmp_bytes<A>(&self, infos: &A) -> usize
+    where
+        A: GGLWEInfos;
+}
+
+impl<BE: Backend> GLWESwitchingKeyEncryptPk<BE> for Module<BE> {
+    fn glwe_switching_key_encrypt_pk_tmp_bytes<A>(&self, _infos: &A) -> usize
+    where
+        A: GGLWEInfos,
+    {
+        unimplemented!()
     }
 }

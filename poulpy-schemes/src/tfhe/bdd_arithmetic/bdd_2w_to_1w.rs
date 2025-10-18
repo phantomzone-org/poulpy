@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use poulpy_core::layouts::prepared::GGSWCiphertextPreparedToRef;
+use poulpy_core::layouts::prepared::GGSWPreparedToRef;
 use poulpy_hal::layouts::{Backend, DataMut, DataRef, Module, Scratch};
 
 use crate::tfhe::bdd_arithmetic::{
@@ -60,15 +60,11 @@ pub fn eval_bdd_2w_to_1w<R: DataMut, A: DataRef, B: DataRef, T: UnsignedInteger,
     }
 
     // Collects inputs into a single array
-    let inputs: Vec<&dyn GGSWCiphertextPreparedToRef<BE>> = a
+    let inputs: Vec<&dyn GGSWPreparedToRef<BE>> = a
         .blocks
         .iter()
-        .map(|x| x as &dyn GGSWCiphertextPreparedToRef<BE>)
-        .chain(
-            b.blocks
-                .iter()
-                .map(|x| x as &dyn GGSWCiphertextPreparedToRef<BE>),
-        )
+        .map(|x| x as &dyn GGSWPreparedToRef<BE>)
+        .chain(b.blocks.iter().map(|x| x as &dyn GGSWPreparedToRef<BE>))
         .collect_vec();
 
     // Evaluates out[i] = circuit[i](a, b)

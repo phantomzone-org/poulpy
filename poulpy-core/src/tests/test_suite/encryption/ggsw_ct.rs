@@ -1,10 +1,10 @@
 use poulpy_hal::{
     api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolBytesOf, SvpPrepare,
         VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigAlloc,
-        VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftAlloc, VecZnxDftAllocBytes,
-        VecZnxDftApply, VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA, VecZnxNormalize, VecZnxNormalizeInplace,
-        VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubInplace, VmpPMatAlloc, VmpPrepare,
+        VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftAlloc, VecZnxDftApply,
+        VecZnxDftBytesOf, VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA, VecZnxNormalize,
+        VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubInplace, VmpPMatAlloc, VmpPrepare,
     },
     layouts::{Backend, Module, ScalarZnx, ScratchOwned},
     oep::{
@@ -17,53 +17,16 @@ use poulpy_hal::{
 use crate::{
     encryption::SIGMA,
     layouts::{
-        GGSWCiphertext, GGSWCiphertextLayout, GLWESecret,
-        compressed::{Decompress, GGSWCiphertextCompressed},
+        GGSW, GGSWCiphertextLayout, GLWESecret,
+        compressed::{Decompress, GGSWCompressed},
         prepared::{GLWESecretPrepared, PrepareAlloc},
     },
 };
 
-pub fn test_ggsw_encrypt_sk<B>(module: &Module<B>)
+pub fn test_ggsw_encrypt_sk<B: Backend>(module: &Module<B>)
 where
-    Module<B>: VecZnxDftAllocBytes
-        + VecZnxBigNormalize<B>
-        + VecZnxDftApply<B>
-        + SvpApplyDftToDftInplace<B>
-        + VecZnxIdftApplyConsume<B>
-        + VecZnxNormalizeTmpBytes
-        + VecZnxFillUniform
-        + VecZnxSubInplace
-        + VecZnxAddInplace
-        + VecZnxNormalizeInplace<B>
-        + VecZnxAddNormal
-        + VecZnxNormalize<B>
-        + VecZnxSub
-        + SvpPrepare<B>
-        + SvpPPolAllocBytes
-        + SvpPPolAlloc<B>
-        + VecZnxBigAddSmallInplace<B>
-        + VecZnxAddScalarInplace
-        + VecZnxBigAllocBytes
-        + VecZnxBigAddInplace<B>
-        + VecZnxCopy
-        + VmpPMatAlloc<B>
-        + VmpPrepare<B>
-        + VecZnxBigAlloc<B>
-        + VecZnxDftAlloc<B>
-        + VecZnxBigNormalizeTmpBytes
-        + VecZnxIdftApplyTmpA<B>,
-    B: Backend
-        + TakeVecZnxDftImpl<B>
-        + TakeVecZnxBigImpl<B>
-        + TakeSvpPPolImpl<B>
-        + ScratchOwnedAllocImpl<B>
-        + ScratchOwnedBorrowImpl<B>
-        + ScratchAvailableImpl<B>
-        + TakeScalarZnxImpl<B>
-        + TakeVecZnxImpl<B>
-        + VecZnxDftAllocBytesImpl<B>
-        + VecZnxBigAllocBytesImpl<B>
-        + TakeSvpPPolImpl<B>,
+    ScratchOwned<B>: ScratchOwnedAlloc<B>,
+    Module<B>: SvpPrepare<B>,
 {
     let base2k: usize = 12;
     let k: usize = 54;
@@ -82,7 +45,7 @@ where
                 rank: rank.into(),
             };
 
-            let mut ct: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(&ggsw_infos);
+            let mut ct: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_infos);
 
             let mut pt_scalar: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n, 1);
 
@@ -92,12 +55,9 @@ where
 
             pt_scalar.fill_ternary_hw(0, n, &mut source_xs);
 
-            let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GGSWCiphertext::encrypt_sk_scratch_space(
-                module,
-                &ggsw_infos,
-            ));
+            let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GGSW::encrypt_sk_tmp_bytes(module, &ggsw_infos));
 
-            let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(&ggsw_infos);
+            let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&ggsw_infos);
             sk.fill_ternary_prob(0.5, &mut source_xs);
             let sk_prepared: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
 
@@ -119,7 +79,7 @@ where
 
 pub fn test_ggsw_compressed_encrypt_sk<B>(module: &Module<B>)
 where
-    Module<B>: VecZnxDftAllocBytes
+    Module<B>: VecZnxDftBytesOf
         + VecZnxBigNormalize<B>
         + VecZnxDftApply<B>
         + SvpApplyDftToDftInplace<B>
@@ -133,11 +93,11 @@ where
         + VecZnxNormalize<B>
         + VecZnxSub
         + SvpPrepare<B>
-        + SvpPPolAllocBytes
+        + SvpPPolBytesOf
         + SvpPPolAlloc<B>
         + VecZnxBigAddSmallInplace<B>
         + VecZnxAddScalarInplace
-        + VecZnxBigAllocBytes
+        + VecZnxBigBytesOf
         + VecZnxBigAddInplace<B>
         + VecZnxCopy
         + VmpPMatAlloc<B>
@@ -175,7 +135,7 @@ where
                 rank: rank.into(),
             };
 
-            let mut ct_compressed: GGSWCiphertextCompressed<Vec<u8>> = GGSWCiphertextCompressed::alloc(&ggsw_infos);
+            let mut ct_compressed: GGSWCompressed<Vec<u8>> = GGSWCompressed::alloc_from_infos(&ggsw_infos);
 
             let mut pt_scalar: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n, 1);
 
@@ -184,12 +144,12 @@ where
 
             pt_scalar.fill_ternary_hw(0, n, &mut source_xs);
 
-            let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GGSWCiphertextCompressed::encrypt_sk_scratch_space(
+            let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GGSWCompressed::encrypt_sk_tmp_bytes(
                 module,
                 &ggsw_infos,
             ));
 
-            let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(&ggsw_infos);
+            let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&ggsw_infos);
             sk.fill_ternary_prob(0.5, &mut source_xs);
             let sk_prepared: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
 
@@ -206,7 +166,7 @@ where
 
             let noise_f = |_col_i: usize| -(k as f64) + SIGMA.log2() + 0.5;
 
-            let mut ct: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(&ggsw_infos);
+            let mut ct: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_infos);
             ct.decompress(module, &ct_compressed);
 
             ct.assert_noise(module, &sk_prepared, &pt_scalar, noise_f);

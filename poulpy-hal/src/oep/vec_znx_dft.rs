@@ -42,7 +42,7 @@ pub unsafe trait VecZnxDftApplyImpl<B: Backend> {
 /// * See [crate::api::VecZnxDftAllocBytes] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxDftAllocBytesImpl<B: Backend> {
-    fn vec_znx_dft_alloc_bytes_impl(n: usize, cols: usize, size: usize) -> usize;
+    fn vec_znx_dft_bytes_of_impl(n: usize, cols: usize, size: usize) -> usize;
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)

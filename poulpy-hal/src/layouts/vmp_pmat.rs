@@ -88,9 +88,7 @@ where
     B: VmpPMatAllocBytesImpl<B>,
 {
     pub fn alloc(n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> Self {
-        let data: Vec<u8> = alloc_aligned(B::vmp_pmat_alloc_bytes_impl(
-            n, rows, cols_in, cols_out, size,
-        ));
+        let data: Vec<u8> = alloc_aligned(B::vmp_pmat_bytes_of_impl(n, rows, cols_in, cols_out, size));
         Self {
             data: data.into(),
             n,
@@ -104,7 +102,7 @@ where
 
     pub fn from_bytes(n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize, bytes: impl Into<Vec<u8>>) -> Self {
         let data: Vec<u8> = bytes.into();
-        assert!(data.len() == B::vmp_pmat_alloc_bytes_impl(n, rows, cols_in, cols_out, size));
+        assert!(data.len() == B::vmp_pmat_bytes_of_impl(n, rows, cols_in, cols_out, size));
         Self {
             data: data.into(),
             n,

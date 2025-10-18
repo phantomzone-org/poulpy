@@ -8,7 +8,7 @@ use std::{fmt, marker::PhantomData};
 use poulpy_core::{
     Distribution,
     layouts::{
-        Base2K, Degree, Dnum, Dsize, GGSWCiphertext, GGSWInfos, GLWEInfos, LWEInfos, LWESecret, Rank, TorusPrecision,
+        Base2K, Degree, Dnum, Dsize, GGSW, GGSWInfos, GLWEInfos, LWEInfos, LWESecret, Rank, TorusPrecision,
         prepared::GLWESecretPrepared,
     },
 };
@@ -98,7 +98,7 @@ pub trait BlindRotationKeyEncryptSk<B: Backend> {
 
 #[derive(Clone)]
 pub struct BlindRotationKey<D: Data, BRT: BlindRotationAlgo> {
-    pub(crate) keys: Vec<GGSWCiphertext<D>>,
+    pub(crate) keys: Vec<GGSW<D>>,
     pub(crate) dist: Distribution,
     pub(crate) _phantom: PhantomData<BRT>,
 }

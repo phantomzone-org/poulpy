@@ -1,12 +1,13 @@
-use poulpy_hal::test_suite::serialization::test_reader_writer_interface;
+use poulpy_backend::FFT64Ref;
+use poulpy_hal::{api::ModuleNew, layouts::Module, test_suite::serialization::test_reader_writer_interface};
 
 use crate::layouts::{
-    Base2K, Degree, Dnum, Dsize, GGLWEAutomorphismKey, GGLWECiphertext, GGLWESwitchingKey, GGLWETensorKey, GGSWCiphertext,
-    GLWECiphertext, GLWEToLWEKey, LWECiphertext, LWESwitchingKey, LWEToGLWESwitchingKey, Rank, TorusPrecision,
+    AutomorphismKey, Base2K, Degree, Dnum, Dsize, GGLWE, GGSW, GLWE, GLWESwitchingKey, GLWEToLWESwitchingKey, LWE,
+    LWESwitchingKey, LWEToGLWESwitchingKey, Rank, TensorKey, TorusPrecision,
     compressed::{
-        GGLWEAutomorphismKeyCompressed, GGLWECiphertextCompressed, GGLWESwitchingKeyCompressed, GGLWETensorKeyCompressed,
-        GGSWCiphertextCompressed, GLWECiphertextCompressed, GLWEToLWESwitchingKeyCompressed, LWECiphertextCompressed,
-        LWESwitchingKeyCompressed, LWEToGLWESwitchingKeyCompressed,
+        AutomorphismKeyCompressed, GGLWECompressed, GGSWCompressed, GLWECompressed, GLWESwitchingKeyCompressed,
+        GLWEToLWESwitchingKeyCompressed, LWECompressed, LWESwitchingKeyCompressed, LWEToGLWESwitchingKeyCompressed,
+        TensorKeyCompressed,
     },
 };
 
@@ -20,125 +21,143 @@ const DSIZE: Dsize = Dsize(1);
 
 #[test]
 fn glwe_serialization() {
-    let original: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc_with(N_GLWE, BASE2K, K, RANK);
+    let module: Module<FFT64Ref> = Module::<FFT64Ref>::new(N_GLWE.as_u32() as u64);
+    let original: GLWE<Vec<u8>> = GLWE::alloc(&module, BASE2K, K, RANK);
     poulpy_hal::test_suite::serialization::test_reader_writer_interface(original);
 }
 
 #[test]
 fn glwe_compressed_serialization() {
-    let original: GLWECiphertextCompressed<Vec<u8>> = GLWECiphertextCompressed::alloc_with(N_GLWE, BASE2K, K, RANK);
+    let module: Module<FFT64Ref> = Module::<FFT64Ref>::new(N_GLWE.as_u32() as u64);
+    let original: GLWECompressed<Vec<u8>> = GLWECompressed::alloc(&module, BASE2K, K, RANK);
     test_reader_writer_interface(original);
 }
 
 #[test]
 fn lwe_serialization() {
-    let original: LWECiphertext<Vec<u8>> = LWECiphertext::alloc_with(N_LWE, BASE2K, K);
+    let module: Module<FFT64Ref> = Module::<FFT64Ref>::new(N_GLWE.as_u32() as u64);
+    let original: LWE<Vec<u8>> = LWE::alloc(&module, N_LWE, BASE2K, K);
     test_reader_writer_interface(original);
 }
 
 #[test]
 fn lwe_compressed_serialization() {
-    let original: LWECiphertextCompressed<Vec<u8>> = LWECiphertextCompressed::alloc_with(BASE2K, K);
+    let module: Module<FFT64Ref> = Module::<FFT64Ref>::new(N_GLWE.as_u32() as u64);
+    let original: LWECompressed<Vec<u8>> = LWECompressed::alloc(&module, BASE2K, K);
     test_reader_writer_interface(original);
 }
 
 #[test]
 fn test_gglwe_serialization() {
-    let original: GGLWECiphertext<Vec<u8>> = GGLWECiphertext::alloc_with(N_GLWE, BASE2K, K, RANK, RANK, DNUM, DSIZE);
+    let module: Module<FFT64Ref> = Module::<FFT64Ref>::new(N_GLWE.as_u32() as u64);
+    let original: GGLWE<Vec<u8>> = GGLWE::alloc(&module, BASE2K, K, RANK, RANK, DNUM, DSIZE);
     test_reader_writer_interface(original);
 }
 
 #[test]
 fn test_gglwe_compressed_serialization() {
-    let original: GGLWECiphertextCompressed<Vec<u8>> =
-        GGLWECiphertextCompressed::alloc_with(N_GLWE, BASE2K, K, RANK, RANK, DNUM, DSIZE);
+    let module: Module<FFT64Ref> = Module::<FFT64Ref>::new(N_GLWE.as_u32() as u64);
+    let original: GGLWECompressed<Vec<u8>> = GGLWECompressed::alloc(&module, BASE2K, K, RANK, RANK, DNUM, DSIZE);
     test_reader_writer_interface(original);
 }
 
 #[test]
 fn test_glwe_switching_key_serialization() {
-    let original: GGLWESwitchingKey<Vec<u8>> = GGLWESwitchingKey::alloc_with(N_GLWE, BASE2K, K, RANK, RANK, DNUM, DSIZE);
+    let module: Module<FFT64Ref> = Module::<FFT64Ref>::new(N_GLWE.as_u32() as u64);
+    let original: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc(&module, BASE2K, K, RANK, RANK, DNUM, DSIZE);
     test_reader_writer_interface(original);
 }
 
 #[test]
 fn test_glwe_switching_key_compressed_serialization() {
-    let original: GGLWESwitchingKeyCompressed<Vec<u8>> =
-        GGLWESwitchingKeyCompressed::alloc_with(N_GLWE, BASE2K, K, RANK, RANK, DNUM, DSIZE);
+    let module: Module<FFT64Ref> = Module::<FFT64Ref>::new(N_GLWE.as_u32() as u64);
+    let original: GLWESwitchingKeyCompressed<Vec<u8>> =
+        GLWESwitchingKeyCompressed::alloc(&module, BASE2K, K, RANK, RANK, DNUM, DSIZE);
     test_reader_writer_interface(original);
 }
 
 #[test]
 fn test_automorphism_key_serialization() {
-    let original: GGLWEAutomorphismKey<Vec<u8>> = GGLWEAutomorphismKey::alloc_with(N_GLWE, BASE2K, K, RANK, DNUM, DSIZE);
+    let module: Module<FFT64Ref> = Module::<FFT64Ref>::new(N_GLWE.as_u32() as u64);
+    let original: AutomorphismKey<Vec<u8>> = AutomorphismKey::alloc_with(&module, BASE2K, K, RANK, DNUM, DSIZE);
     test_reader_writer_interface(original);
 }
 
 #[test]
 fn test_automorphism_key_compressed_serialization() {
-    let original: GGLWEAutomorphismKeyCompressed<Vec<u8>> =
-        GGLWEAutomorphismKeyCompressed::alloc_with(N_GLWE, BASE2K, K, RANK, DNUM, DSIZE);
+    let module: Module<FFT64Ref> = Module::<FFT64Ref>::new(N_GLWE.as_u32() as u64);
+    let original: AutomorphismKeyCompressed<Vec<u8>> = AutomorphismKeyCompressed::alloc(&module, BASE2K, K, RANK, DNUM, DSIZE);
     test_reader_writer_interface(original);
 }
 
 #[test]
 fn test_tensor_key_serialization() {
-    let original: GGLWETensorKey<Vec<u8>> = GGLWETensorKey::alloc_with(N_GLWE, BASE2K, K, RANK, DNUM, DSIZE);
+    let module: Module<FFT64Ref> = Module::<FFT64Ref>::new(N_GLWE.as_u32() as u64);
+    let original: TensorKey<Vec<u8>> = TensorKey::alloc(&module, BASE2K, K, RANK, DNUM, DSIZE);
     test_reader_writer_interface(original);
 }
 
 #[test]
 fn test_tensor_key_compressed_serialization() {
-    let original: GGLWETensorKeyCompressed<Vec<u8>> = GGLWETensorKeyCompressed::alloc_with(N_GLWE, BASE2K, K, RANK, DNUM, DSIZE);
+    let module: Module<FFT64Ref> = Module::<FFT64Ref>::new(N_GLWE.as_u32() as u64);
+    let original: TensorKeyCompressed<Vec<u8>> = TensorKeyCompressed::alloc(&module, BASE2K, K, RANK, DNUM, DSIZE);
     test_reader_writer_interface(original);
 }
 
 #[test]
 fn glwe_to_lwe_switching_key_serialization() {
-    let original: GLWEToLWEKey<Vec<u8>> = GLWEToLWEKey::alloc_with(N_GLWE, BASE2K, K, RANK, DNUM);
+    let module: Module<FFT64Ref> = Module::<FFT64Ref>::new(N_GLWE.as_u32() as u64);
+    let original: GLWEToLWESwitchingKey<Vec<u8>> = GLWEToLWESwitchingKey::alloc(&module, BASE2K, K, RANK, DNUM);
     test_reader_writer_interface(original);
 }
 
 #[test]
 fn glwe_to_lwe_switching_key_compressed_serialization() {
+    let module: Module<FFT64Ref> = Module::<FFT64Ref>::new(N_GLWE.as_u32() as u64);
     let original: GLWEToLWESwitchingKeyCompressed<Vec<u8>> =
-        GLWEToLWESwitchingKeyCompressed::alloc_with(N_GLWE, BASE2K, K, RANK, DNUM);
+        GLWEToLWESwitchingKeyCompressed::alloc(&module, BASE2K, K, RANK, DNUM);
     test_reader_writer_interface(original);
 }
 
 #[test]
 fn lwe_to_glwe_switching_key_serialization() {
-    let original: LWEToGLWESwitchingKey<Vec<u8>> = LWEToGLWESwitchingKey::alloc_with(N_GLWE, BASE2K, K, RANK, DNUM);
+    let module: Module<FFT64Ref> = Module::<FFT64Ref>::new(N_GLWE.as_u32() as u64);
+    let original: LWEToGLWESwitchingKey<Vec<u8>> = LWEToGLWESwitchingKey::alloc(&module, BASE2K, K, RANK, DNUM);
     test_reader_writer_interface(original);
 }
 
 #[test]
 fn lwe_to_glwe_switching_key_compressed_serialization() {
+    let module: Module<FFT64Ref> = Module::<FFT64Ref>::new(N_GLWE.as_u32() as u64);
     let original: LWEToGLWESwitchingKeyCompressed<Vec<u8>> =
-        LWEToGLWESwitchingKeyCompressed::alloc_with(N_GLWE, BASE2K, K, RANK, DNUM);
+        LWEToGLWESwitchingKeyCompressed::alloc_with(&module, BASE2K, K, RANK, DNUM);
     test_reader_writer_interface(original);
 }
 
 #[test]
 fn lwe_switching_key_serialization() {
-    let original: LWESwitchingKey<Vec<u8>> = LWESwitchingKey::alloc_with(N_GLWE, BASE2K, K, DNUM);
+    let module: Module<FFT64Ref> = Module::<FFT64Ref>::new(N_GLWE.as_u32() as u64);
+    let original: LWESwitchingKey<Vec<u8>> = LWESwitchingKey::alloc(&module, BASE2K, K, DNUM);
     test_reader_writer_interface(original);
 }
 
 #[test]
 fn lwe_switching_key_compressed_serialization() {
-    let original: LWESwitchingKeyCompressed<Vec<u8>> = LWESwitchingKeyCompressed::alloc_with(N_GLWE, BASE2K, K, DNUM);
+    let module: Module<FFT64Ref> = Module::<FFT64Ref>::new(N_GLWE.as_u32() as u64);
+    let original: LWESwitchingKeyCompressed<Vec<u8>> = LWESwitchingKeyCompressed::alloc(&module, BASE2K, K, DNUM);
     test_reader_writer_interface(original);
 }
 
 #[test]
 fn ggsw_serialization() {
-    let original: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc_with(N_GLWE, BASE2K, K, RANK, DNUM, DSIZE);
+    let module: Module<FFT64Ref> = Module::<FFT64Ref>::new(N_GLWE.as_u32() as u64);
+    let original: GGSW<Vec<u8>> = GGSW::alloc(&module, BASE2K, K, RANK, DNUM, DSIZE);
     test_reader_writer_interface(original);
 }
 
 #[test]
 fn ggsw_compressed_serialization() {
-    let original: GGSWCiphertextCompressed<Vec<u8>> = GGSWCiphertextCompressed::alloc_with(N_GLWE, BASE2K, K, RANK, DNUM, DSIZE);
+    let module: Module<FFT64Ref> = Module::<FFT64Ref>::new(N_GLWE.as_u32() as u64);
+    let original: GGSWCompressed<Vec<u8>> = GGSWCompressed::alloc(&module, BASE2K, K, RANK, DNUM, DSIZE);
     test_reader_writer_interface(original);
 }

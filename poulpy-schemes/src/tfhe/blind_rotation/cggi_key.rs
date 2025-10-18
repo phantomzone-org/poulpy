@@ -1,9 +1,8 @@
 use poulpy_hal::{
     api::{
         ScratchAvailable, SvpApplyDftToDftInplace, TakeVecZnx, TakeVecZnxDft, VecZnxAddInplace, VecZnxAddNormal,
-        VecZnxAddScalarInplace, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftApply, VecZnxFillUniform,
-        VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubInplace,
-        VmpPMatAlloc, VmpPrepare,
+        VecZnxAddScalarInplace, VecZnxBigNormalize, VecZnxDftApply, VecZnxDftBytesOf, VecZnxFillUniform, VecZnxIdftApplyConsume,
+        VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubInplace, VmpPMatAlloc, VmpPrepare,
     },
     layouts::{Backend, DataMut, DataRef, Module, ScalarZnx, ScalarZnxToRef, Scratch, ZnxView, ZnxViewMut},
     source::Source,
@@ -14,9 +13,9 @@ use std::marker::PhantomData;
 use poulpy_core::{
     Distribution,
     layouts::{
-        GGSWCiphertext, GGSWInfos, LWESecret,
-        compressed::GGSWCiphertextCompressed,
-        prepared::{GGSWCiphertextPrepared, GLWESecretPrepared},
+        GGSW, GGSWInfos, LWESecret,
+        compressed::GGSWCompressed,
+        prepared::{GGSWPrepared, GLWESecretPrepared},
     },
 };
 
@@ -30,9 +29,9 @@ impl BlindRotationKeyAlloc for BlindRotationKey<Vec<u8>, CGGI> {
     where
         A: BlindRotationKeyInfos,
     {
-        let mut data: Vec<GGSWCiphertext<Vec<u8>>> = Vec::with_capacity(infos.n_lwe().into());
+        let mut data: Vec<GGSW<Vec<u8>>> = Vec::with_capacity(infos.n_lwe().into());
         for _ in 0..infos.n_lwe().as_usize() {
-            data.push(GGSWCiphertext::alloc(infos));
+            data.push(GGSW::alloc_from_infos(infos));
         }
 
         Self {
@@ -44,19 +43,19 @@ impl BlindRotationKeyAlloc for BlindRotationKey<Vec<u8>, CGGI> {
 }
 
 impl BlindRotationKey<Vec<u8>, CGGI> {
-    pub fn generate_from_sk_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
+    pub fn generate_from_sk_tmp_bytes<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GGSWInfos,
-        Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes,
+        Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftBytesOf,
     {
-        GGSWCiphertext::encrypt_sk_scratch_space(module, infos)
+        GGSW::encrypt_sk_tmp_bytes(module, infos)
     }
 }
 
 impl<D: DataMut, B: Backend> BlindRotationKeyEncryptSk<B> for BlindRotationKey<D, CGGI>
 where
     Module<B>: VecZnxAddScalarInplace
-        + VecZnxDftAllocBytes
+        + VecZnxDftBytesOf
         + VecZnxBigNormalize<B>
         + VecZnxDftApply<B>
         + SvpApplyDftToDftInplace<B>
@@ -121,8 +120,8 @@ where
     where
         A: BlindRotationKeyInfos,
     {
-        let mut data: Vec<GGSWCiphertextPrepared<Vec<u8>, B>> = Vec::with_capacity(infos.n_lwe().into());
-        (0..infos.n_lwe().as_usize()).for_each(|_| data.push(GGSWCiphertextPrepared::alloc(module, infos)));
+        let mut data: Vec<GGSWPrepared<Vec<u8>, B>> = Vec::with_capacity(infos.n_lwe().into());
+        (0..infos.n_lwe().as_usize()).for_each(|_| data.push(GGSWPrepared::alloc_from_infos(module, infos)));
         Self {
             data,
             dist: Distribution::NONE,
@@ -137,8 +136,8 @@ impl BlindRotationKeyCompressed<Vec<u8>, CGGI> {
     where
         A: BlindRotationKeyInfos,
     {
-        let mut data: Vec<GGSWCiphertextCompressed<Vec<u8>>> = Vec::with_capacity(infos.n_lwe().into());
-        (0..infos.n_lwe().as_usize()).for_each(|_| data.push(GGSWCiphertextCompressed::alloc(infos)));
+        let mut data: Vec<GGSWCompressed<Vec<u8>>> = Vec::with_capacity(infos.n_lwe().into());
+        (0..infos.n_lwe().as_usize()).for_each(|_| data.push(GGSWCompressed::alloc_from_infos(infos)));
         Self {
             keys: data,
             dist: Distribution::NONE,
@@ -146,12 +145,12 @@ impl BlindRotationKeyCompressed<Vec<u8>, CGGI> {
         }
     }
 
-    pub fn generate_from_sk_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
+    pub fn generate_from_sk_tmp_bytes<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
     where
         A: GGSWInfos,
-        Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes,
+        Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftBytesOf,
     {
-        GGSWCiphertextCompressed::encrypt_sk_scratch_space(module, infos)
+        GGSWCompressed::encrypt_sk_tmp_bytes(module, infos)
     }
 }
 
@@ -169,7 +168,7 @@ impl<D: DataMut> BlindRotationKeyCompressed<D, CGGI> {
         DataSkGLWE: DataRef,
         DataSkLWE: DataRef,
         Module<B>: VecZnxAddScalarInplace
-            + VecZnxDftAllocBytes
+            + VecZnxDftBytesOf
             + VecZnxBigNormalize<B>
             + VecZnxDftApply<B>
             + SvpApplyDftToDftInplace<B>

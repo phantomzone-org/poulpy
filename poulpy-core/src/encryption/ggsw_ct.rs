@@ -1,93 +1,137 @@
 use poulpy_hal::{
-    api::{
-        ScratchAvailable, SvpApplyDftToDftInplace, TakeVecZnx, TakeVecZnxDft, VecZnxAddInplace, VecZnxAddNormal,
-        VecZnxAddScalarInplace, VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftApply, VecZnxFillUniform,
-        VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubInplace,
-    },
-    layouts::{Backend, DataMut, DataRef, Module, ScalarZnx, Scratch, VecZnx, ZnxZero},
+    api::{ModuleN, VecZnxAddScalarInplace, VecZnxDftBytesOf, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes},
+    layouts::{Backend, DataMut, Module, ScalarZnx, ScalarZnxToRef, Scratch, ZnxInfos, ZnxZero},
     source::Source,
 };
 
 use crate::{
-    TakeGLWEPt,
-    layouts::{GGSWCiphertext, GGSWInfos, GLWECiphertext, GLWEInfos, LWEInfos, prepared::GLWESecretPrepared},
+    SIGMA, ScratchTakeCore,
+    encryption::glwe_ct::{GLWEEncryptSk, GLWEEncryptSkInternal},
+    layouts::{
+        GGSW, GGSWInfos, GGSWToMut, GLWEInfos, GLWEPlaintextAlloc, LWEInfos,
+        prepared::{GLWESecretPrepared, GLWESecretPreparedToRef},
+    },
 };
 
-impl GGSWCiphertext<Vec<u8>> {
-    pub fn encrypt_sk_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
+impl GGSW<Vec<u8>> {
+    pub fn encrypt_sk_tmp_bytes<M, A, BE: Backend>(module: &M, infos: &A) -> usize
     where
         A: GGSWInfos,
-        Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes,
+        M: GGSWEncryptSk<BE>,
     {
-        let size = infos.size();
-        GLWECiphertext::encrypt_sk_scratch_space(module, &infos.glwe_layout())
-            + VecZnx::alloc_bytes(module.n(), (infos.rank() + 1).into(), size)
-            + VecZnx::alloc_bytes(module.n(), 1, size)
-            + module.vec_znx_dft_alloc_bytes((infos.rank() + 1).into(), size)
+        module.ggsw_encrypt_sk_tmp_bytes(infos)
     }
 }
 
-impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
+impl<D: DataMut> GGSW<D> {
     #[allow(clippy::too_many_arguments)]
-    pub fn encrypt_sk<DataPt: DataRef, DataSk: DataRef, B: Backend>(
+    pub fn encrypt_sk<P, S, M, BE: Backend>(
         &mut self,
-        module: &Module<B>,
-        pt: &ScalarZnx<DataPt>,
-        sk: &GLWESecretPrepared<DataSk, B>,
+        module: &M,
+        pt: &P,
+        sk: &S,
         source_xa: &mut Source,
         source_xe: &mut Source,
-        scratch: &mut Scratch<B>,
+        scratch: &mut Scratch<BE>,
     ) where
-        Module<B>: VecZnxAddScalarInplace
-            + VecZnxDftAllocBytes
-            + VecZnxBigNormalize<B>
-            + VecZnxDftApply<B>
-            + SvpApplyDftToDftInplace<B>
-            + VecZnxIdftApplyConsume<B>
-            + VecZnxNormalizeTmpBytes
-            + VecZnxFillUniform
-            + VecZnxSubInplace
-            + VecZnxAddInplace
-            + VecZnxNormalizeInplace<B>
-            + VecZnxAddNormal
-            + VecZnxNormalize<B>
-            + VecZnxSub,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
+        P: ScalarZnxToRef,
+        S: GLWESecretPreparedToRef<BE>,
+        M: GGSWEncryptSk<BE>,
+        Scratch<BE>: ScratchTakeCore<BE>,
     {
-        #[cfg(debug_assertions)]
-        {
-            use poulpy_hal::layouts::ZnxInfos;
+        module.ggsw_encrypt_sk(self, pt, sk, source_xa, source_xe, scratch);
+    }
+}
 
-            assert_eq!(self.rank(), sk.rank());
-            assert_eq!(self.n(), sk.n());
-            assert_eq!(pt.n() as u32, sk.n());
-        }
+pub trait GGSWEncryptSk<BE: Backend> {
+    fn ggsw_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
+    where
+        A: GGSWInfos;
 
-        let base2k: usize = self.base2k().into();
-        let rank: usize = self.rank().into();
-        let dsize: usize = self.dsize().into();
+    fn ggsw_encrypt_sk<R, P, S>(
+        &self,
+        res: &mut R,
+        pt: &P,
+        sk: &S,
+        source_xa: &mut Source,
+        source_xe: &mut Source,
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: GGSWToMut,
+        P: ScalarZnxToRef,
+        S: GLWESecretPreparedToRef<BE>;
+}
 
-        let (mut tmp_pt, scratch_1) = scratch.take_glwe_pt(&self.glwe_layout());
+impl<BE: Backend> GGSWEncryptSk<BE> for Module<BE>
+where
+    Self: ModuleN
+        + GLWEEncryptSkInternal<BE>
+        + GLWEEncryptSk<BE>
+        + VecZnxDftBytesOf
+        + VecZnxNormalizeInplace<BE>
+        + VecZnxAddScalarInplace
+        + VecZnxNormalizeTmpBytes,
+    Scratch<BE>: ScratchTakeCore<BE>,
+{
+    fn ggsw_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
+    where
+        A: GGSWInfos,
+    {
+        self.glwe_encrypt_sk_tmp_bytes(infos)
+            .max(self.vec_znx_normalize_tmp_bytes())
+            + self.bytes_of_glwe_plaintext_from_infos(infos)
+    }
 
-        (0..self.dnum().into()).for_each(|row_i| {
+    fn ggsw_encrypt_sk<R, P, S>(
+        &self,
+        res: &mut R,
+        pt: &P,
+        sk: &S,
+        source_xa: &mut Source,
+        source_xe: &mut Source,
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: GGSWToMut,
+        P: ScalarZnxToRef,
+        S: GLWESecretPreparedToRef<BE>,
+    {
+        let res: &mut GGSW<&mut [u8]> = &mut res.to_mut();
+        let pt: &ScalarZnx<&[u8]> = &pt.to_ref();
+        let sk: &GLWESecretPrepared<&[u8], BE> = &sk.to_ref();
+
+        assert_eq!(res.rank(), sk.rank());
+        assert_eq!(res.n(), self.n() as u32);
+        assert_eq!(pt.n(), self.n());
+        assert_eq!(sk.n(), self.n() as u32);
+
+        let k: usize = res.k().into();
+        let base2k: usize = res.base2k().into();
+        let rank: usize = res.rank().into();
+        let dsize: usize = res.dsize().into();
+        let cols: usize = (rank + 1).into();
+
+        let (mut tmp_pt, scratch_1) = scratch.take_glwe_pt(self, res);
+
+        for row_i in 0..res.dnum().into() {
             tmp_pt.data.zero();
-
             // Adds the scalar_znx_pt to the i-th limb of the vec_znx_pt
-            module.vec_znx_add_scalar_inplace(&mut tmp_pt.data, 0, (dsize - 1) + row_i * dsize, pt, 0);
-            module.vec_znx_normalize_inplace(base2k, &mut tmp_pt.data, 0, scratch_1);
-
-            (0..rank + 1).for_each(|col_j| {
-                // rlwe encrypt of vec_znx_pt into vec_znx_ct
-
-                self.at_mut(row_i, col_j).encrypt_sk_internal(
-                    module,
+            self.vec_znx_add_scalar_inplace(&mut tmp_pt.data, 0, (dsize - 1) + row_i * dsize, pt, 0);
+            self.vec_znx_normalize_inplace(base2k, &mut tmp_pt.data, 0, scratch_1);
+            for col_j in 0..rank + 1 {
+                self.glwe_encrypt_sk_internal(
+                    base2k,
+                    k,
+                    res.at_mut(row_i, col_j).data_mut(),
+                    cols,
+                    false,
                     Some((&tmp_pt, col_j)),
                     sk,
                     source_xa,
                     source_xe,
+                    SIGMA,
                     scratch_1,
                 );
-            });
-        });
+            }
+        }
     }
 }

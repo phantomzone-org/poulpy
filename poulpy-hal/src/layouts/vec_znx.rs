@@ -110,7 +110,7 @@ impl<D: DataRef> ZnxView for VecZnx<D> {
 }
 
 impl VecZnx<Vec<u8>> {
-    pub fn rsh_scratch_space(n: usize) -> usize {
+    pub fn rsh_tmp_bytes(n: usize) -> usize {
         n * std::mem::size_of::<i64>()
     }
 }
@@ -125,12 +125,12 @@ impl<D: DataMut> ZnxZero for VecZnx<D> {
 }
 
 impl VecZnx<Vec<u8>> {
-    pub fn alloc_bytes(n: usize, cols: usize, size: usize) -> usize {
+    pub fn bytes_of(n: usize, cols: usize, size: usize) -> usize {
         n * cols * size * size_of::<i64>()
     }
 
     pub fn alloc(n: usize, cols: usize, size: usize) -> Self {
-        let data: Vec<u8> = alloc_aligned::<u8>(Self::alloc_bytes(n, cols, size));
+        let data: Vec<u8> = alloc_aligned::<u8>(Self::bytes_of(n, cols, size));
         Self {
             data,
             n,
@@ -142,7 +142,7 @@ impl VecZnx<Vec<u8>> {
 
     pub fn from_bytes<Scalar: Sized>(n: usize, cols: usize, size: usize, bytes: impl Into<Vec<u8>>) -> Self {
         let data: Vec<u8> = bytes.into();
-        assert!(data.len() == Self::alloc_bytes(n, cols, size));
+        assert!(data.len() == Self::bytes_of(n, cols, size));
         Self {
             data,
             n,

@@ -2,20 +2,20 @@ use std::time::Instant;
 
 use poulpy_backend::FFT64Ref;
 use poulpy_core::{
-    TakeGGSW, TakeGLWEPt,
+    TakeGGSW, TakeGLWEPlaintext,
     layouts::{
-        GGSWCiphertextLayout, GLWECiphertextLayout, GLWESecret, LWEInfos, LWESecret,
+        GGSWLayout, GLWELayout, GLWESecret, LWEInfos, LWESecret,
         prepared::{GLWESecretPrepared, PrepareAlloc},
     },
 };
 use poulpy_hal::{
     api::{
         ModuleNew, ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDft, SvpApplyDftToDftInplace,
-        SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare, TakeScalarZnx, TakeSlice, TakeVecZnx, TakeVecZnxBig, TakeVecZnxDft,
+        SvpPPolAlloc, SvpPPolBytesOf, SvpPrepare, TakeScalarZnx, TakeSlice, TakeVecZnx, TakeVecZnxBig, TakeVecZnxDft,
         VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxAutomorphism, VecZnxAutomorphismInplace,
-        VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigAlloc, VecZnxBigAllocBytes, VecZnxBigAutomorphismInplace,
+        VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigAlloc, VecZnxBigAutomorphismInplace, VecZnxBigBytesOf,
         VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallNegateInplace, VecZnxCopy, VecZnxDftAddInplace,
-        VecZnxDftAlloc, VecZnxDftAllocBytes, VecZnxDftApply, VecZnxDftCopy, VecZnxFillUniform, VecZnxIdftApplyConsume,
+        VecZnxDftAlloc, VecZnxDftApply, VecZnxDftBytesOf, VecZnxDftCopy, VecZnxFillUniform, VecZnxIdftApplyConsume,
         VecZnxIdftApplyTmpA, VecZnxNegateInplace, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate,
         VecZnxRotateInplace, VecZnxRotateInplaceTmpBytes, VecZnxRshInplace, VecZnxSub, VecZnxSubInplace, VecZnxSwitchRing,
         VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes, VmpPMatAlloc, VmpPrepare, ZnAddNormal, ZnFillUniform,
@@ -51,7 +51,7 @@ where
     Module<BE>: ModuleNew<BE> + SvpPPolAlloc<BE> + SvpPrepare<BE> + VmpPMatAlloc<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Module<BE>: VecZnxAddScalarInplace
-        + VecZnxDftAllocBytes
+        + VecZnxDftBytesOf
         + VecZnxBigNormalize<BE>
         + VecZnxDftApply<BE>
         + SvpApplyDftToDftInplace<BE>
@@ -68,16 +68,16 @@ where
     Scratch<BE>: TakeVecZnxDft<BE> + ScratchAvailable + TakeVecZnx + TakeGGSW + TakeScalarZnx + TakeSlice,
     Module<BE>: VecZnxCopy + VecZnxNegateInplace + VmpApplyDftToDftTmpBytes + VmpApplyDftToDft<BE> + VmpApplyDftToDftAdd<BE>,
     Module<BE>: VecZnxBigAddInplace<BE> + VecZnxBigAddSmallInplace<BE> + VecZnxBigNormalize<BE>,
-    Scratch<BE>: TakeVecZnxDft<BE> + TakeVecZnxBig<BE> + TakeGLWEPt<BE>,
+    Scratch<BE>: TakeVecZnxDft<BE> + TakeVecZnxBig<BE> + TakeGLWEPlaintext<BE>,
     Module<BE>: VecZnxAutomorphism
         + VecZnxSwitchRing
-        + VecZnxBigAllocBytes
+        + VecZnxBigBytesOf
         + VecZnxIdftApplyTmpA<BE>
         + SvpApplyDftToDft<BE>
         + VecZnxBigAlloc<BE>
         + VecZnxDftAlloc<BE>
         + VecZnxBigNormalizeTmpBytes
-        + SvpPPolAllocBytes
+        + SvpPPolBytesOf
         + VecZnxRotateInplace<BE>
         + VecZnxBigAutomorphismInplace<BE>
         + VecZnxRshInplace<BE>
@@ -85,7 +85,7 @@ where
         + VecZnxAutomorphismInplace<BE>
         + VecZnxBigSubSmallNegateInplace<BE>
         + VecZnxRotateInplaceTmpBytes
-        + VecZnxBigAllocBytes
+        + VecZnxBigBytesOf
         + VecZnxDftAddInplace<BE>
         + VecZnxRotate
         + ZnFillUniform
@@ -107,8 +107,8 @@ where
     BlindRotationKeyPrepared<Vec<u8>, BRA, BE>: BlincRotationExecute<BE>,
     BlindRotationKey<Vec<u8>, BRA>: BlindRotationKeyAlloc + BlindRotationKeyEncryptSk<BE>,
 {
-    let glwe_infos: GLWECiphertextLayout = TEST_GLWE_INFOS;
-    let ggsw_infos: GGSWCiphertextLayout = TEST_GGSW_INFOS;
+    let glwe_infos: GLWELayout = TEST_GLWE_INFOS;
+    let ggsw_infos: GGSWLayout = TEST_GGSW_INFOS;
 
     let n_glwe: usize = glwe_infos.n().into();
 
@@ -120,7 +120,7 @@ where
 
     let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(1 << 22);
 
-    let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc(&glwe_infos);
+    let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_infos);
     sk_glwe.fill_ternary_prob(0.5, &mut source_xs);
     let sk_glwe_prep: GLWESecretPrepared<Vec<u8>, BE> = sk_glwe.prepare_alloc(&module, scratch.borrow());
 

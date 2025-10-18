@@ -1,9 +1,9 @@
 use poulpy_hal::{
     api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolAllocBytes,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolBytesOf,
         SvpPrepare, VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace,
-        VecZnxBigAlloc, VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxDftAddInplace, VecZnxDftAlloc,
-        VecZnxDftAllocBytes, VecZnxDftApply, VecZnxDftCopy, VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA,
+        VecZnxBigAlloc, VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxDftAddInplace, VecZnxDftAlloc,
+        VecZnxDftApply, VecZnxDftBytesOf, VecZnxDftCopy, VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA,
         VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubInplace, VecZnxSwitchRing,
         VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes, VmpPMatAlloc, VmpPrepare,
     },
@@ -18,9 +18,8 @@ use poulpy_hal::{
 use crate::{
     encryption::SIGMA,
     layouts::{
-        GGLWESwitchingKey, GGLWESwitchingKeyLayout, GGLWETensorKey, GGLWETensorKeyLayout, GGSWCiphertext, GGSWCiphertextLayout,
-        GLWESecret,
-        prepared::{GGLWESwitchingKeyPrepared, GGLWETensorKeyPrepared, GLWESecretPrepared, PrepareAlloc},
+        GGSW, GGSWCiphertextLayout, GLWESecret, GLWESwitchingKey, GLWESwitchingKeyLayout, TensorKey, TensorKeyLayout,
+        prepared::{GLWESecretPrepared, GLWESwitchingKeyPrepared, PrepareAlloc, TensorKeyPrepared},
     },
     noise::noise_ggsw_keyswitch,
 };
@@ -28,7 +27,7 @@ use crate::{
 #[allow(clippy::too_many_arguments)]
 pub fn test_ggsw_keyswitch<B>(module: &Module<B>)
 where
-    Module<B>: VecZnxDftAllocBytes
+    Module<B>: VecZnxDftBytesOf
         + VecZnxBigNormalize<B>
         + VecZnxDftApply<B>
         + SvpApplyDftToDftInplace<B>
@@ -41,9 +40,9 @@ where
         + VecZnxNormalize<B>
         + VecZnxSub
         + SvpPrepare<B>
-        + SvpPPolAllocBytes
+        + SvpPPolBytesOf
         + SvpPPolAlloc<B>
-        + VecZnxBigAllocBytes
+        + VecZnxBigBytesOf
         + VecZnxBigAddInplace<B>
         + VecZnxBigAddSmallInplace<B>
         + VecZnxNormalizeTmpBytes
@@ -103,7 +102,7 @@ where
                 rank: rank.into(),
             };
 
-            let tsk_infos: GGLWETensorKeyLayout = GGLWETensorKeyLayout {
+            let tsk_infos: TensorKeyLayout = TensorKeyLayout {
                 n: n.into(),
                 base2k: base2k.into(),
                 k: k_tsk.into(),
@@ -112,7 +111,7 @@ where
                 rank: rank.into(),
             };
 
-            let ksk_apply_infos: GGLWESwitchingKeyLayout = GGLWESwitchingKeyLayout {
+            let ksk_apply_infos: GLWESwitchingKeyLayout = GLWESwitchingKeyLayout {
                 n: n.into(),
                 base2k: base2k.into(),
                 k: k_ksk.into(),
@@ -122,10 +121,10 @@ where
                 rank_out: rank.into(),
             };
 
-            let mut ggsw_in: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(&ggsw_in_infos);
-            let mut ggsw_out: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(&ggsw_out_infos);
-            let mut tsk: GGLWETensorKey<Vec<u8>> = GGLWETensorKey::alloc(&tsk_infos);
-            let mut ksk: GGLWESwitchingKey<Vec<u8>> = GGLWESwitchingKey::alloc(&ksk_apply_infos);
+            let mut ggsw_in: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_in_infos);
+            let mut ggsw_out: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_out_infos);
+            let mut tsk: TensorKey<Vec<u8>> = TensorKey::alloc_from_infos(&tsk_infos);
+            let mut ksk: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc_from_infos(&ksk_apply_infos);
             let mut pt_scalar: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n, 1);
 
             let mut source_xs: Source = Source::new([0u8; 32]);
@@ -133,10 +132,10 @@ where
             let mut source_xa: Source = Source::new([0u8; 32]);
 
             let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-                GGSWCiphertext::encrypt_sk_scratch_space(module, &ggsw_in_infos)
-                    | GGLWESwitchingKey::encrypt_sk_scratch_space(module, &ksk_apply_infos)
-                    | GGLWETensorKey::encrypt_sk_scratch_space(module, &tsk_infos)
-                    | GGSWCiphertext::keyswitch_scratch_space(
+                GGSW::encrypt_sk_tmp_bytes(module, &ggsw_in_infos)
+                    | GLWESwitchingKey::encrypt_sk_tmp_bytes(module, &ksk_apply_infos)
+                    | TensorKey::encrypt_sk_tmp_bytes(module, &tsk_infos)
+                    | GGSW::keyswitch_tmp_bytes(
                         module,
                         &ggsw_out_infos,
                         &ggsw_in_infos,
@@ -147,11 +146,11 @@ where
 
             let var_xs: f64 = 0.5;
 
-            let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc_with(n.into(), rank.into());
+            let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank.into());
             sk_in.fill_ternary_prob(var_xs, &mut source_xs);
             let sk_in_dft: GLWESecretPrepared<Vec<u8>, B> = sk_in.prepare_alloc(module, scratch.borrow());
 
-            let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc_with(n.into(), rank.into());
+            let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank.into());
             sk_out.fill_ternary_prob(var_xs, &mut source_xs);
             let sk_out_prepared: GLWESecretPrepared<Vec<u8>, B> = sk_out.prepare_alloc(module, scratch.borrow());
 
@@ -182,8 +181,8 @@ where
                 scratch.borrow(),
             );
 
-            let ksk_prepared: GGLWESwitchingKeyPrepared<Vec<u8>, B> = ksk.prepare_alloc(module, scratch.borrow());
-            let tsk_prepared: GGLWETensorKeyPrepared<Vec<u8>, B> = tsk.prepare_alloc(module, scratch.borrow());
+            let ksk_prepared: GLWESwitchingKeyPrepared<Vec<u8>, B> = ksk.prepare_alloc(module, scratch.borrow());
+            let tsk_prepared: TensorKeyPrepared<Vec<u8>, B> = tsk.prepare_alloc(module, scratch.borrow());
 
             ggsw_out.keyswitch(
                 module,
@@ -217,7 +216,7 @@ where
 #[allow(clippy::too_many_arguments)]
 pub fn test_ggsw_keyswitch_inplace<B>(module: &Module<B>)
 where
-    Module<B>: VecZnxDftAllocBytes
+    Module<B>: VecZnxDftBytesOf
         + VecZnxBigNormalize<B>
         + VecZnxDftApply<B>
         + SvpApplyDftToDftInplace<B>
@@ -230,9 +229,9 @@ where
         + VecZnxNormalize<B>
         + VecZnxSub
         + SvpPrepare<B>
-        + SvpPPolAllocBytes
+        + SvpPPolBytesOf
         + SvpPPolAlloc<B>
-        + VecZnxBigAllocBytes
+        + VecZnxBigBytesOf
         + VecZnxBigAddInplace<B>
         + VecZnxBigAddSmallInplace<B>
         + VecZnxNormalizeTmpBytes
@@ -282,7 +281,7 @@ where
                 rank: rank.into(),
             };
 
-            let tsk_infos: GGLWETensorKeyLayout = GGLWETensorKeyLayout {
+            let tsk_infos: TensorKeyLayout = TensorKeyLayout {
                 n: n.into(),
                 base2k: base2k.into(),
                 k: k_tsk.into(),
@@ -291,7 +290,7 @@ where
                 rank: rank.into(),
             };
 
-            let ksk_apply_infos: GGLWESwitchingKeyLayout = GGLWESwitchingKeyLayout {
+            let ksk_apply_infos: GLWESwitchingKeyLayout = GLWESwitchingKeyLayout {
                 n: n.into(),
                 base2k: base2k.into(),
                 k: k_ksk.into(),
@@ -301,9 +300,9 @@ where
                 rank_out: rank.into(),
             };
 
-            let mut ggsw_out: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(&ggsw_out_infos);
-            let mut tsk: GGLWETensorKey<Vec<u8>> = GGLWETensorKey::alloc(&tsk_infos);
-            let mut ksk: GGLWESwitchingKey<Vec<u8>> = GGLWESwitchingKey::alloc(&ksk_apply_infos);
+            let mut ggsw_out: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_out_infos);
+            let mut tsk: TensorKey<Vec<u8>> = TensorKey::alloc_from_infos(&tsk_infos);
+            let mut ksk: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc_from_infos(&ksk_apply_infos);
             let mut pt_scalar: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n, 1);
 
             let mut source_xs: Source = Source::new([0u8; 32]);
@@ -311,19 +310,19 @@ where
             let mut source_xa: Source = Source::new([0u8; 32]);
 
             let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-                GGSWCiphertext::encrypt_sk_scratch_space(module, &ggsw_out_infos)
-                    | GGLWESwitchingKey::encrypt_sk_scratch_space(module, &ksk_apply_infos)
-                    | GGLWETensorKey::encrypt_sk_scratch_space(module, &tsk_infos)
-                    | GGSWCiphertext::keyswitch_inplace_scratch_space(module, &ggsw_out_infos, &ksk_apply_infos, &tsk_infos),
+                GGSW::encrypt_sk_tmp_bytes(module, &ggsw_out_infos)
+                    | GLWESwitchingKey::encrypt_sk_tmp_bytes(module, &ksk_apply_infos)
+                    | TensorKey::encrypt_sk_tmp_bytes(module, &tsk_infos)
+                    | GGSW::keyswitch_inplace_tmp_bytes(module, &ggsw_out_infos, &ksk_apply_infos, &tsk_infos),
             );
 
             let var_xs: f64 = 0.5;
 
-            let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc_with(n.into(), rank.into());
+            let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank.into());
             sk_in.fill_ternary_prob(var_xs, &mut source_xs);
             let sk_in_dft: GLWESecretPrepared<Vec<u8>, B> = sk_in.prepare_alloc(module, scratch.borrow());
 
-            let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc_with(n.into(), rank.into());
+            let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank.into());
             sk_out.fill_ternary_prob(var_xs, &mut source_xs);
             let sk_out_prepared: GLWESecretPrepared<Vec<u8>, B> = sk_out.prepare_alloc(module, scratch.borrow());
 
@@ -354,8 +353,8 @@ where
                 scratch.borrow(),
             );
 
-            let ksk_prepared: GGLWESwitchingKeyPrepared<Vec<u8>, B> = ksk.prepare_alloc(module, scratch.borrow());
-            let tsk_prepared: GGLWETensorKeyPrepared<Vec<u8>, B> = tsk.prepare_alloc(module, scratch.borrow());
+            let ksk_prepared: GLWESwitchingKeyPrepared<Vec<u8>, B> = ksk.prepare_alloc(module, scratch.borrow());
+            let tsk_prepared: TensorKeyPrepared<Vec<u8>, B> = tsk.prepare_alloc(module, scratch.borrow());
 
             ggsw_out.keyswitch_inplace(module, &ksk_prepared, &tsk_prepared, scratch.borrow());
 

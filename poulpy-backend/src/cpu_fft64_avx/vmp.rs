@@ -16,7 +16,7 @@ use poulpy_hal::{
 use crate::cpu_fft64_avx::{FFT64Avx, module::FFT64ModuleHandle};
 
 unsafe impl VmpPMatAllocBytesImpl<Self> for FFT64Avx {
-    fn vmp_pmat_alloc_bytes_impl(n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize {
+    fn vmp_pmat_bytes_of_impl(n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize {
         Self::layout_prep_word_count() * n * rows * cols_in * cols_out * size * size_of::<f64>()
     }
 }

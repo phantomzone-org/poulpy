@@ -19,16 +19,3 @@ pub use glwe_sk::*;
 pub use glwe_to_lwe_ksk::*;
 pub use lwe_ksk::*;
 pub use lwe_to_glwe_ksk::*;
-use poulpy_hal::layouts::{Backend, Module, Scratch};
-
-pub trait PrepareScratchSpace<B: Backend, T> {
-    fn prepare_scratch_space(module: &Module<B>, infos: &T) -> usize;
-}
-
-pub trait PrepareAlloc<B: Backend, T> {
-    fn prepare_alloc(&self, module: &Module<B>, scratch: &mut Scratch<B>) -> T;
-}
-
-pub trait Prepare<B: Backend, T> {
-    fn prepare(&mut self, module: &Module<B>, other: &T, scratch: &mut Scratch<B>);
-}
