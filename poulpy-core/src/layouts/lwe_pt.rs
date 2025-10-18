@@ -2,7 +2,7 @@ use std::fmt;
 
 use poulpy_hal::layouts::{Backend, Data, DataMut, DataRef, Module, Zn, ZnToMut, ZnToRef, ZnxInfos};
 
-use crate::layouts::{Base2K, LWEInfos, RingDegree, TorusPrecision};
+use crate::layouts::{Base2K, Degree, LWEInfos, TorusPrecision};
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub struct LWEPlaintextLayout {
@@ -19,8 +19,8 @@ impl LWEInfos for LWEPlaintextLayout {
         self.k
     }
 
-    fn n(&self) -> RingDegree {
-        RingDegree(0)
+    fn n(&self) -> Degree {
+        Degree(0)
     }
 
     fn size(&self) -> usize {
@@ -43,8 +43,8 @@ impl<D: Data> LWEInfos for LWEPlaintext<D> {
         self.k
     }
 
-    fn n(&self) -> RingDegree {
-        RingDegree(self.data.n() as u32 - 1)
+    fn n(&self) -> Degree {
+        Degree(self.data.n() as u32 - 1)
     }
 
     fn size(&self) -> usize {

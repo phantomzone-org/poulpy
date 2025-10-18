@@ -8,12 +8,12 @@ use poulpy_hal::{
 
 use crate::{
     dist::Distribution,
-    layouts::{Base2K, GLWEInfos, GetDist, GetRingDegree, LWEInfos, Rank, RingDegree, TorusPrecision},
+    layouts::{Base2K, Degree, GLWEInfos, GetDegree, GetDist, LWEInfos, Rank, TorusPrecision},
 };
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub struct GLWESecretLayout {
-    pub n: RingDegree,
+    pub n: Degree,
     pub rank: Rank,
 }
 
@@ -26,7 +26,7 @@ impl LWEInfos for GLWESecretLayout {
         TorusPrecision(0)
     }
 
-    fn n(&self) -> RingDegree {
+    fn n(&self) -> Degree {
         self.n
     }
 
@@ -55,8 +55,8 @@ impl<D: Data> LWEInfos for GLWESecret<D> {
         TorusPrecision(0)
     }
 
-    fn n(&self) -> RingDegree {
-        RingDegree(self.data.n() as u32)
+    fn n(&self) -> Degree {
+        Degree(self.data.n() as u32)
     }
 
     fn size(&self) -> usize {
@@ -78,7 +78,7 @@ impl<D: Data> GLWEInfos for GLWESecret<D> {
 
 pub trait GLWESecretAlloc
 where
-    Self: GetRingDegree,
+    Self: GetDegree,
 {
     fn alloc_glwe_secret(&self, rank: Rank) -> GLWESecret<Vec<u8>> {
         GLWESecret {
@@ -106,7 +106,7 @@ where
     }
 }
 
-impl<B: Backend> GLWESecretAlloc for Module<B> where Self: GetRingDegree {}
+impl<B: Backend> GLWESecretAlloc for Module<B> where Self: GetDegree {}
 
 impl GLWESecret<Vec<u8>> {
     pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self

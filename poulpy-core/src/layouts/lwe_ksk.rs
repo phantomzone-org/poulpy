@@ -6,20 +6,20 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Dnum, Dsize, GGLWEInfos, GLWEInfos, GLWESwitchingKey, GLWESwitchingKeyAlloc, GLWESwitchingKeyToMut,
-    GLWESwitchingKeyToRef, LWEInfos, Rank, RingDegree, TorusPrecision,
+    Base2K, Degree, Dnum, Dsize, GGLWEInfos, GLWEInfos, GLWESwitchingKey, GLWESwitchingKeyAlloc, GLWESwitchingKeyToMut,
+    GLWESwitchingKeyToRef, LWEInfos, Rank, TorusPrecision,
 };
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub struct LWESwitchingKeyLayout {
-    pub n: RingDegree,
+    pub n: Degree,
     pub base2k: Base2K,
     pub k: TorusPrecision,
     pub dnum: Dnum,
 }
 
 impl LWEInfos for LWESwitchingKeyLayout {
-    fn n(&self) -> RingDegree {
+    fn n(&self) -> Degree {
         self.n
     }
 
@@ -68,7 +68,7 @@ impl<D: Data> LWEInfos for LWESwitchingKey<D> {
         self.0.k()
     }
 
-    fn n(&self) -> RingDegree {
+    fn n(&self) -> Degree {
         self.0.n()
     }
 

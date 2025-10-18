@@ -4,8 +4,8 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Dnum, Dsize, GGLWEInfos, GLWE, GLWEInfos, GLWESwitchingKey, GLWESwitchingKeyAlloc, GLWESwitchingKeyToMut,
-    GLWESwitchingKeyToRef, LWEInfos, Rank, RingDegree, TorusPrecision,
+    Base2K, Degree, Dnum, Dsize, GGLWEInfos, GLWE, GLWEInfos, GLWESwitchingKey, GLWESwitchingKeyAlloc, GLWESwitchingKeyToMut,
+    GLWESwitchingKeyToRef, LWEInfos, Rank, TorusPrecision,
     prepared::{GetAutomorphismGaloisElement, SetAutomorphismGaloisElement},
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
@@ -14,7 +14,7 @@ use std::fmt;
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub struct AutomorphismKeyLayout {
-    pub n: RingDegree,
+    pub n: Degree,
     pub base2k: Base2K,
     pub k: TorusPrecision,
     pub rank: Rank,
@@ -47,7 +47,7 @@ impl<D: Data> AutomorphismKey<D> {
 }
 
 impl<D: Data> LWEInfos for AutomorphismKey<D> {
-    fn n(&self) -> RingDegree {
+    fn n(&self) -> Degree {
         self.key.n()
     }
 
@@ -97,7 +97,7 @@ impl LWEInfos for AutomorphismKeyLayout {
         self.k
     }
 
-    fn n(&self) -> RingDegree {
+    fn n(&self) -> Degree {
         self.n
     }
 }

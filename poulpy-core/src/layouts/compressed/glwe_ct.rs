@@ -6,9 +6,7 @@ use poulpy_hal::{
     source::Source,
 };
 
-use crate::layouts::{
-    Base2K, GLWE, GLWEInfos, GLWEToMut, GetRingDegree, LWEInfos, Rank, RingDegree, SetGLWEInfos, TorusPrecision,
-};
+use crate::layouts::{Base2K, Degree, GLWE, GLWEInfos, GLWEToMut, GetDegree, LWEInfos, Rank, SetGLWEInfos, TorusPrecision};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::fmt;
 
@@ -34,8 +32,8 @@ impl<D: Data> LWEInfos for GLWECompressed<D> {
         self.data.size()
     }
 
-    fn n(&self) -> RingDegree {
-        RingDegree(self.data.n() as u32)
+    fn n(&self) -> Degree {
+        Degree(self.data.n() as u32)
     }
 }
 impl<D: Data> GLWEInfos for GLWECompressed<D> {
@@ -72,7 +70,7 @@ impl<D: DataMut> FillUniform for GLWECompressed<D> {
 
 pub trait GLWECompressedAlloc
 where
-    Self: GetRingDegree,
+    Self: GetDegree,
 {
     fn alloc_glwe_compressed(&self, base2k: Base2K, k: TorusPrecision, rank: Rank) -> GLWECompressed<Vec<u8>> {
         GLWECompressed {
@@ -113,7 +111,7 @@ where
     }
 }
 
-impl<B: Backend> GLWECompressedAlloc for Module<B> where Self: GetRingDegree {}
+impl<B: Backend> GLWECompressedAlloc for Module<B> where Self: GetDegree {}
 
 impl GLWECompressed<Vec<u8>> {
     pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
@@ -169,7 +167,7 @@ impl<D: DataRef> WriterTo for GLWECompressed<D> {
 
 pub trait GLWEDecompress
 where
-    Self: GetRingDegree + VecZnxFillUniform + VecZnxCopy,
+    Self: GetDegree + VecZnxFillUniform + VecZnxCopy,
 {
     fn decompress_glwe<R, O>(&self, res: &mut R, other: &O)
     where
@@ -203,7 +201,7 @@ where
     }
 }
 
-impl<B: Backend> GLWEDecompress for Module<B> where Self: GetRingDegree + VecZnxFillUniform + VecZnxCopy {}
+impl<B: Backend> GLWEDecompress for Module<B> where Self: GetDegree + VecZnxFillUniform + VecZnxCopy {}
 
 impl<D: DataMut> GLWE<D> {
     pub fn decompress<O, M>(&mut self, module: &M, other: &O)

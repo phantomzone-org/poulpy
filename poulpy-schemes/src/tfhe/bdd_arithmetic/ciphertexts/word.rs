@@ -87,7 +87,7 @@ impl<D: DataRef, T: UnsignedInteger> LWEInfos for FheUintWord<D, T> {
         self.0.k()
     }
 
-    fn n(&self) -> poulpy_core::layouts::RingDegree {
+    fn n(&self) -> poulpy_core::layouts::Degree {
         self.0.n()
     }
 }

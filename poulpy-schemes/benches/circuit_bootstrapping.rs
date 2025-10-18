@@ -188,8 +188,8 @@ where
         // Scratch space (4MB)
         let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(1 << 22);
 
-        let n_glwe: poulpy_core::layouts::RingDegree = params.cbt_infos.layout_brk.n_glwe();
-        let n_lwe: poulpy_core::layouts::RingDegree = params.cbt_infos.layout_brk.n_lwe();
+        let n_glwe: poulpy_core::layouts::Degree = params.cbt_infos.layout_brk.n_glwe();
+        let n_lwe: poulpy_core::layouts::Degree = params.cbt_infos.layout_brk.n_lwe();
         let rank: poulpy_core::layouts::Rank = params.cbt_infos.layout_brk.rank;
 
         let module: Module<B> = Module::<B>::new(n_glwe.as_u32() as u64);

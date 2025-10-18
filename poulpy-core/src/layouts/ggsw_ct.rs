@@ -6,7 +6,7 @@ use poulpy_hal::{
 };
 use std::fmt;
 
-use crate::layouts::{Base2K, Dnum, Dsize, GLWE, GLWEInfos, GetRingDegree, LWEInfos, Rank, RingDegree, TorusPrecision};
+use crate::layouts::{Base2K, Degree, Dnum, Dsize, GLWE, GLWEInfos, GetDegree, LWEInfos, Rank, TorusPrecision};
 
 pub trait GGSWInfos
 where
@@ -28,7 +28,7 @@ where
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub struct GGSWLayout {
-    pub n: RingDegree,
+    pub n: Degree,
     pub base2k: Base2K,
     pub k: TorusPrecision,
     pub rank: Rank,
@@ -45,7 +45,7 @@ impl LWEInfos for GGSWLayout {
         self.k
     }
 
-    fn n(&self) -> RingDegree {
+    fn n(&self) -> Degree {
         self.n
     }
 }
@@ -74,8 +74,8 @@ pub struct GGSW<D: Data> {
 }
 
 impl<D: Data> LWEInfos for GGSW<D> {
-    fn n(&self) -> RingDegree {
-        RingDegree(self.data.n() as u32)
+    fn n(&self) -> Degree {
+        Degree(self.data.n() as u32)
     }
 
     fn base2k(&self) -> Base2K {
@@ -152,11 +152,11 @@ impl<D: DataMut> GGSW<D> {
     }
 }
 
-impl<B: Backend> GGSWAlloc for Module<B> where Self: GetRingDegree {}
+impl<B: Backend> GGSWAlloc for Module<B> where Self: GetDegree {}
 
 pub trait GGSWAlloc
 where
-    Self: GetRingDegree,
+    Self: GetDegree,
 {
     fn alloc_ggsw(&self, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> GGSW<Vec<u8>> {
         let size: usize = k.0.div_ceil(base2k.0) as usize;

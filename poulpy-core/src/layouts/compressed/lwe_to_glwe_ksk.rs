@@ -4,7 +4,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Dnum, Dsize, GGLWEInfos, GLWEInfos, LWEInfos, LWEToGLWESwitchingKey, LWEToGLWESwitchingKeyToMut, Rank, RingDegree,
+    Base2K, Degree, Dnum, Dsize, GGLWEInfos, GLWEInfos, LWEInfos, LWEToGLWESwitchingKey, LWEToGLWESwitchingKeyToMut, Rank,
     TorusPrecision,
     compressed::{
         GLWESwitchingKeyCompressed, GLWESwitchingKeyCompressedAlloc, GLWESwitchingKeyCompressedToMut,
@@ -17,7 +17,7 @@ use std::fmt;
 pub struct LWEToGLWESwitchingKeyCompressed<D: Data>(pub(crate) GLWESwitchingKeyCompressed<D>);
 
 impl<D: Data> LWEInfos for LWEToGLWESwitchingKeyCompressed<D> {
-    fn n(&self) -> RingDegree {
+    fn n(&self) -> Degree {
         self.0.n()
     }
 
@@ -85,6 +85,8 @@ impl<D: DataRef> WriterTo for LWEToGLWESwitchingKeyCompressed<D> {
         self.0.write_to(writer)
     }
 }
+
+impl<BE: Backend> LWEToGLWESwitchingKeyCompressedAlloc for Module<BE> where Self: GLWESwitchingKeyCompressedAlloc {}
 
 pub trait LWEToGLWESwitchingKeyCompressedAlloc
 where

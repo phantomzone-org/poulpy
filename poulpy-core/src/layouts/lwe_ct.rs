@@ -5,11 +5,11 @@ use poulpy_hal::{
     source::Source,
 };
 
-use crate::layouts::{Base2K, RingDegree, TorusPrecision};
+use crate::layouts::{Base2K, Degree, TorusPrecision};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
 pub trait LWEInfos {
-    fn n(&self) -> RingDegree;
+    fn n(&self) -> Degree;
     fn k(&self) -> TorusPrecision;
     fn max_k(&self) -> TorusPrecision {
         TorusPrecision(self.k().0 * self.size() as u32)
@@ -34,7 +34,7 @@ pub trait SetLWEInfos {
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub struct LWELayout {
-    pub n: RingDegree,
+    pub n: Degree,
     pub k: TorusPrecision,
     pub base2k: Base2K,
 }
@@ -48,7 +48,7 @@ impl LWEInfos for LWELayout {
         self.k
     }
 
-    fn n(&self) -> RingDegree {
+    fn n(&self) -> Degree {
         self.n
     }
 }
@@ -67,8 +67,8 @@ impl<D: Data> LWEInfos for LWE<D> {
     fn k(&self) -> TorusPrecision {
         self.k
     }
-    fn n(&self) -> RingDegree {
-        RingDegree(self.data.n() as u32 - 1)
+    fn n(&self) -> Degree {
+        Degree(self.data.n() as u32 - 1)
     }
 
     fn size(&self) -> usize {
@@ -126,7 +126,7 @@ where
 }
 
 pub trait LWEAlloc {
-    fn alloc_lwe(&self, n: RingDegree, base2k: Base2K, k: TorusPrecision) -> LWE<Vec<u8>> {
+    fn alloc_lwe(&self, n: Degree, base2k: Base2K, k: TorusPrecision) -> LWE<Vec<u8>> {
         LWE {
             data: Zn::alloc((n + 1).into(), 1, k.0.div_ceil(base2k.0) as usize),
             k,
@@ -141,7 +141,7 @@ pub trait LWEAlloc {
         self.alloc_lwe(infos.n(), infos.base2k(), infos.k())
     }
 
-    fn bytes_of_lwe(&self, n: RingDegree, base2k: Base2K, k: TorusPrecision) -> usize {
+    fn bytes_of_lwe(&self, n: Degree, base2k: Base2K, k: TorusPrecision) -> usize {
         Zn::bytes_of((n + 1).into(), 1, k.0.div_ceil(base2k.0) as usize)
     }
 
@@ -164,7 +164,7 @@ impl LWE<Vec<u8>> {
         module.alloc_lwe_from_infos(infos)
     }
 
-    pub fn alloc<M>(module: &M, n: RingDegree, base2k: Base2K, k: TorusPrecision) -> Self
+    pub fn alloc<M>(module: &M, n: Degree, base2k: Base2K, k: TorusPrecision) -> Self
     where
         M: LWEAlloc,
     {
@@ -179,7 +179,7 @@ impl LWE<Vec<u8>> {
         module.bytes_of_lwe_from_infos(infos)
     }
 
-    pub fn bytes_of<M>(module: &M, n: RingDegree, base2k: Base2K, k: TorusPrecision) -> usize
+    pub fn bytes_of<M>(module: &M, n: Degree, base2k: Base2K, k: TorusPrecision) -> usize
     where
         M: LWEAlloc,
     {

@@ -38,7 +38,7 @@ impl<D: DataRef, T: UnsignedInteger> LWEInfos for FheUintBlocks<D, T> {
         self.blocks[0].k()
     }
 
-    fn n(&self) -> poulpy_core::layouts::RingDegree {
+    fn n(&self) -> poulpy_core::layouts::Degree {
         self.blocks[0].n()
     }
 }

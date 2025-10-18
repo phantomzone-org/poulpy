@@ -1,6 +1,6 @@
 use poulpy_core::layouts::{
-    AutomorphismKey, AutomorphismKeyLayout, Base2K, Dnum, Dsize, GLWE, GLWELayout, GLWESecret, GLWESwitchingKey,
-    GLWESwitchingKeyLayout, GLWESwitchingKeyPrepared, Rank, RingDegree, TorusPrecision,
+    AutomorphismKey, AutomorphismKeyLayout, Base2K, Degree, Dnum, Dsize, GLWE, GLWELayout, GLWESecret, GLWESwitchingKey,
+    GLWESwitchingKeyLayout, GLWESwitchingKeyPrepared, Rank, TorusPrecision,
     prepared::{AutomorphismKeyPrepared, GLWESecretPrepared},
 };
 use std::{hint::black_box, time::Duration};
@@ -29,7 +29,7 @@ fn bench_keyswitch_glwe_fft64(c: &mut Criterion) {
     fn runner(p: Params) -> impl FnMut() {
         let module: Module<FFT64Spqlios> = Module::<FFT64Spqlios>::new(1 << p.log_n);
 
-        let n: RingDegree = RingDegree(module.n() as u32);
+        let n: Degree = Degree(module.n() as u32);
         let base2k: Base2K = p.base2k;
         let k_glwe_in: TorusPrecision = p.k_ct_in;
         let k_glwe_out: TorusPrecision = p.k_ct_out;
@@ -151,7 +151,7 @@ fn bench_keyswitch_glwe_inplace_fft64(c: &mut Criterion) {
     fn runner(p: Params) -> impl FnMut() {
         let module: Module<FFT64Spqlios> = Module::<FFT64Spqlios>::new(1 << p.log_n);
 
-        let n: RingDegree = RingDegree(module.n() as u32);
+        let n: Degree = Degree(module.n() as u32);
         let base2k: Base2K = p.base2k;
         let k_ct: TorusPrecision = p.k_ct;
         let k_ksk: TorusPrecision = p.k_ksk;

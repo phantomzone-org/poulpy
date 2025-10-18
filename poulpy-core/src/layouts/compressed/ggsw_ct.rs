@@ -6,7 +6,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Dnum, Dsize, GGSW, GGSWInfos, GGSWToMut, GLWEInfos, GetRingDegree, LWEInfos, Rank, RingDegree, TorusPrecision,
+    Base2K, Degree, Dnum, Dsize, GGSW, GGSWInfos, GGSWToMut, GLWEInfos, GetDegree, LWEInfos, Rank, TorusPrecision,
     compressed::{GLWECompressed, GLWEDecompress},
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
@@ -23,8 +23,8 @@ pub struct GGSWCompressed<D: Data> {
 }
 
 impl<D: Data> LWEInfos for GGSWCompressed<D> {
-    fn n(&self) -> RingDegree {
-        RingDegree(self.data.n() as u32)
+    fn n(&self) -> Degree {
+        Degree(self.data.n() as u32)
     }
 
     fn base2k(&self) -> Base2K {
@@ -76,9 +76,11 @@ impl<D: DataMut> FillUniform for GGSWCompressed<D> {
     }
 }
 
+impl<BE: Backend> GGSWCompressedAlloc for Module<BE> where Self: GetDegree {}
+
 pub trait GGSWCompressedAlloc
 where
-    Self: GetRingDegree,
+    Self: GetDegree,
 {
     fn alloc_ggsw_compressed(
         &self,

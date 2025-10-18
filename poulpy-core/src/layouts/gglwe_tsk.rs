@@ -4,8 +4,8 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Dnum, Dsize, GGLWEInfos, GLWEInfos, GLWESwitchingKey, GLWESwitchingKeyAlloc, GLWESwitchingKeyToMut,
-    GLWESwitchingKeyToRef, LWEInfos, Rank, RingDegree, TorusPrecision,
+    Base2K, Degree, Dnum, Dsize, GGLWEInfos, GLWEInfos, GLWESwitchingKey, GLWESwitchingKeyAlloc, GLWESwitchingKeyToMut,
+    GLWESwitchingKeyToRef, LWEInfos, Rank, TorusPrecision,
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
@@ -13,7 +13,7 @@ use std::fmt;
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub struct TensorKeyLayout {
-    pub n: RingDegree,
+    pub n: Degree,
     pub base2k: Base2K,
     pub k: TorusPrecision,
     pub rank: Rank,
@@ -27,7 +27,7 @@ pub struct TensorKey<D: Data> {
 }
 
 impl<D: Data> LWEInfos for TensorKey<D> {
-    fn n(&self) -> RingDegree {
+    fn n(&self) -> Degree {
         self.keys[0].n()
     }
 
@@ -69,7 +69,7 @@ impl<D: Data> GGLWEInfos for TensorKey<D> {
 }
 
 impl LWEInfos for TensorKeyLayout {
-    fn n(&self) -> RingDegree {
+    fn n(&self) -> Degree {
         self.n
     }
 

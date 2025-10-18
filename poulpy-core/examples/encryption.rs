@@ -2,7 +2,7 @@ use poulpy_backend::cpu_spqlios::FFT64Spqlios;
 use poulpy_core::{
     GLWESub, SIGMA,
     layouts::{
-        Base2K, GLWE, GLWELayout, GLWEPlaintext, GLWEPlaintextLayout, GLWESecret, LWEInfos, Rank, RingDegree, TorusPrecision,
+        Base2K, Degree, GLWE, GLWELayout, GLWEPlaintext, GLWEPlaintextLayout, GLWESecret, LWEInfos, Rank, TorusPrecision,
         prepared::GLWESecretPrepared,
     },
 };
@@ -16,7 +16,7 @@ fn main() {
     // Ring degree
     let log_n: usize = 10;
 
-    let n: RingDegree = RingDegree(1 << log_n);
+    let n: Degree = Degree(1 << log_n);
 
     // Base-2-k (implicit digit decomposition)
     let base2k: Base2K = Base2K(14);

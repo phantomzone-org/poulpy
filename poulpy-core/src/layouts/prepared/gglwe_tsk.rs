@@ -1,7 +1,7 @@
 use poulpy_hal::layouts::{Backend, Data, DataMut, DataRef, Module, Scratch};
 
 use crate::layouts::{
-    Base2K, Dnum, Dsize, GGLWEInfos, GLWEInfos, LWEInfos, Rank, RingDegree, TensorKey, TensorKeyToRef, TorusPrecision,
+    Base2K, Degree, Dnum, Dsize, GGLWEInfos, GLWEInfos, LWEInfos, Rank, TensorKey, TensorKeyToRef, TorusPrecision,
     prepared::{
         GLWESwitchingKeyPrepare, GLWESwitchingKeyPrepared, GLWESwitchingKeyPreparedAlloc, GLWESwitchingKeyPreparedToMut,
         GLWESwitchingKeyPreparedToRef,
@@ -14,7 +14,7 @@ pub struct TensorKeyPrepared<D: Data, B: Backend> {
 }
 
 impl<D: Data, B: Backend> LWEInfos for TensorKeyPrepared<D, B> {
-    fn n(&self) -> RingDegree {
+    fn n(&self) -> Degree {
         self.keys[0].n()
     }
 

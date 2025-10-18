@@ -4,7 +4,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Dnum, Dsize, GGSW, GGSWInfos, GGSWToRef, GLWEInfos, GetRingDegree, LWEInfos, Rank, RingDegree, TorusPrecision,
+    Base2K, Degree, Dnum, Dsize, GGSW, GGSWInfos, GGSWToRef, GLWEInfos, GetDegree, LWEInfos, Rank, TorusPrecision,
 };
 
 #[derive(PartialEq, Eq)]
@@ -16,8 +16,8 @@ pub struct GGSWPrepared<D: Data, B: Backend> {
 }
 
 impl<D: Data, B: Backend> LWEInfos for GGSWPrepared<D, B> {
-    fn n(&self) -> RingDegree {
-        RingDegree(self.data.n() as u32)
+    fn n(&self) -> Degree {
+        Degree(self.data.n() as u32)
     }
 
     fn base2k(&self) -> Base2K {
@@ -51,7 +51,7 @@ impl<D: Data, B: Backend> GGSWInfos for GGSWPrepared<D, B> {
 
 pub trait GGSWPreparedAlloc<B: Backend>
 where
-    Self: GetRingDegree + VmpPMatAlloc<B> + VmpPMatBytesOf,
+    Self: GetDegree + VmpPMatAlloc<B> + VmpPMatBytesOf,
 {
     fn alloc_ggsw_prepared(
         &self,
@@ -135,7 +135,7 @@ where
     }
 }
 
-impl<B: Backend> GGSWPreparedAlloc<B> for Module<B> where Self: GetRingDegree + VmpPMatAlloc<B> + VmpPMatBytesOf {}
+impl<B: Backend> GGSWPreparedAlloc<B> for Module<B> where Self: GetDegree + VmpPMatAlloc<B> + VmpPMatBytesOf {}
 
 impl<B: Backend> GGSWPrepared<Vec<u8>, B> {
     pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
@@ -177,7 +177,7 @@ impl<D: DataRef, B: Backend> GGSWPrepared<D, B> {
 
 pub trait GGSWPrepare<B: Backend>
 where
-    Self: GetRingDegree + VmpPrepareTmpBytes + VmpPrepare<B>,
+    Self: GetDegree + VmpPrepareTmpBytes + VmpPrepare<B>,
 {
     fn ggsw_prepare_tmp_bytes<A>(&self, infos: &A) -> usize
     where
@@ -207,7 +207,7 @@ where
     }
 }
 
-impl<B: Backend> GGSWPrepare<B> for Module<B> where Self: GetRingDegree + VmpPrepareTmpBytes + VmpPrepare<B> {}
+impl<B: Backend> GGSWPrepare<B> for Module<B> where Self: GetDegree + VmpPrepareTmpBytes + VmpPrepare<B> {}
 
 impl<B: Backend> GGSWPrepared<Vec<u8>, B> {
     pub fn prepare_tmp_bytes<A, M>(&self, module: &M, infos: &A) -> usize

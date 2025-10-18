@@ -3,12 +3,12 @@ use std::fmt;
 use poulpy_hal::layouts::{Backend, Data, DataMut, DataRef, Module, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos};
 
 use crate::layouts::{
-    Base2K, GLWE, GLWEInfos, GLWEToMut, GLWEToRef, GetRingDegree, LWEInfos, Rank, RingDegree, SetGLWEInfos, TorusPrecision,
+    Base2K, Degree, GLWE, GLWEInfos, GLWEToMut, GLWEToRef, GetDegree, LWEInfos, Rank, SetGLWEInfos, TorusPrecision,
 };
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub struct GLWEPlaintextLayout {
-    pub n: RingDegree,
+    pub n: Degree,
     pub base2k: Base2K,
     pub k: TorusPrecision,
 }
@@ -22,7 +22,7 @@ impl LWEInfos for GLWEPlaintextLayout {
         self.k
     }
 
-    fn n(&self) -> RingDegree {
+    fn n(&self) -> Degree {
         self.n
     }
 }
@@ -62,8 +62,8 @@ impl<D: Data> LWEInfos for GLWEPlaintext<D> {
         self.data.size()
     }
 
-    fn n(&self) -> RingDegree {
-        RingDegree(self.data.n() as u32)
+    fn n(&self) -> Degree {
+        Degree(self.data.n() as u32)
     }
 }
 
@@ -87,7 +87,7 @@ impl<D: DataRef> fmt::Display for GLWEPlaintext<D> {
 
 pub trait GLWEPlaintextAlloc
 where
-    Self: GetRingDegree,
+    Self: GetDegree,
 {
     fn alloc_glwe_plaintext(&self, base2k: Base2K, k: TorusPrecision) -> GLWEPlaintext<Vec<u8>> {
         GLWEPlaintext {
@@ -124,7 +124,7 @@ where
     }
 }
 
-impl<B: Backend> GLWEPlaintextAlloc for Module<B> where Self: GetRingDegree {}
+impl<B: Backend> GLWEPlaintextAlloc for Module<B> where Self: GetDegree {}
 
 impl GLWEPlaintext<Vec<u8>> {
     pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self

@@ -5,9 +5,7 @@ use poulpy_hal::{
 
 use crate::{
     dist::Distribution,
-    layouts::{
-        Base2K, GLWEInfos, GLWEPublicKey, GLWEPublicKeyToRef, GetDist, GetRingDegree, LWEInfos, Rank, RingDegree, TorusPrecision,
-    },
+    layouts::{Base2K, Degree, GLWEInfos, GLWEPublicKey, GLWEPublicKeyToRef, GetDegree, GetDist, LWEInfos, Rank, TorusPrecision},
 };
 
 #[derive(PartialEq, Eq)]
@@ -41,8 +39,8 @@ impl<D: Data, B: Backend> LWEInfos for GLWEPublicKeyPrepared<D, B> {
         self.data.size()
     }
 
-    fn n(&self) -> RingDegree {
-        RingDegree(self.data.n() as u32)
+    fn n(&self) -> Degree {
+        Degree(self.data.n() as u32)
     }
 }
 
@@ -54,7 +52,7 @@ impl<D: Data, B: Backend> GLWEInfos for GLWEPublicKeyPrepared<D, B> {
 
 pub trait GLWEPublicKeyPreparedAlloc<B: Backend>
 where
-    Self: GetRingDegree + VecZnxDftAlloc<B> + VecZnxDftBytesOf,
+    Self: GetDegree + VecZnxDftAlloc<B> + VecZnxDftBytesOf,
 {
     fn alloc_glwe_public_key_prepared(&self, base2k: Base2K, k: TorusPrecision, rank: Rank) -> GLWEPublicKeyPrepared<Vec<u8>, B> {
         GLWEPublicKeyPrepared {
@@ -120,7 +118,7 @@ impl<B: Backend> GLWEPublicKeyPrepared<Vec<u8>, B> {
 
 pub trait GLWEPublicKeyPrepare<B: Backend>
 where
-    Self: GetRingDegree + VecZnxDftApply<B>,
+    Self: GetDegree + VecZnxDftApply<B>,
 {
     fn prepare_glwe_public_key<R, O>(&self, res: &mut R, other: &O)
     where
@@ -146,7 +144,7 @@ where
     }
 }
 
-impl<B: Backend> GLWEPublicKeyPrepare<B> for Module<B> where Self: GetRingDegree + VecZnxDftApply<B> {}
+impl<B: Backend> GLWEPublicKeyPrepare<B> for Module<B> where Self: GetDegree + VecZnxDftApply<B> {}
 
 impl<D: DataMut, B: Backend> GLWEPublicKeyPrepared<D, B> {
     pub fn prepare<O, M>(&mut self, module: &M, other: &O)

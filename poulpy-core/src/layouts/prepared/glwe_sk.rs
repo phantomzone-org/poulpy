@@ -6,7 +6,7 @@ use poulpy_hal::{
 use crate::{
     dist::Distribution,
     layouts::{
-        Base2K, GLWEInfos, GLWESecret, GLWESecretToRef, GetDist, GetRingDegree, LWEInfos, Rank, RingDegree, TorusPrecision,
+        Base2K, Degree, GLWEInfos, GLWESecret, GLWESecretToRef, GetDegree, GetDist, LWEInfos, Rank, TorusPrecision,
         prepared::SetDist,
     },
 };
@@ -31,8 +31,8 @@ impl<D: Data, B: Backend> LWEInfos for GLWESecretPrepared<D, B> {
         TorusPrecision(0)
     }
 
-    fn n(&self) -> RingDegree {
-        RingDegree(self.data.n() as u32)
+    fn n(&self) -> Degree {
+        Degree(self.data.n() as u32)
     }
 
     fn size(&self) -> usize {
@@ -47,7 +47,7 @@ impl<D: Data, B: Backend> GLWEInfos for GLWESecretPrepared<D, B> {
 
 pub trait GLWESecretPreparedAlloc<B: Backend>
 where
-    Self: GetRingDegree + SvpPPolBytesOf + SvpPPolAlloc<B>,
+    Self: GetDegree + SvpPPolBytesOf + SvpPPolAlloc<B>,
 {
     fn alloc_glwe_secret_prepared(&self, rank: Rank) -> GLWESecretPrepared<Vec<u8>, B> {
         GLWESecretPrepared {
@@ -75,7 +75,7 @@ where
     }
 }
 
-impl<B: Backend> GLWESecretPreparedAlloc<B> for Module<B> where Self: GetRingDegree + SvpPPolBytesOf + SvpPPolAlloc<B> {}
+impl<B: Backend> GLWESecretPreparedAlloc<B> for Module<B> where Self: GetDegree + SvpPPolBytesOf + SvpPPolAlloc<B> {}
 
 impl<B: Backend> GLWESecretPrepared<Vec<u8>, B> {
     pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
@@ -110,8 +110,8 @@ impl<B: Backend> GLWESecretPrepared<Vec<u8>, B> {
 }
 
 impl<D: Data, B: Backend> GLWESecretPrepared<D, B> {
-    pub fn n(&self) -> RingDegree {
-        RingDegree(self.data.n() as u32)
+    pub fn n(&self) -> Degree {
+        Degree(self.data.n() as u32)
     }
 
     pub fn rank(&self) -> Rank {

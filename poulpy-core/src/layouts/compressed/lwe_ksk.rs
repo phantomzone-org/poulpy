@@ -4,8 +4,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Dnum, Dsize, GGLWEInfos, GLWEInfos, LWEInfos, LWESwitchingKey, LWESwitchingKeyToMut, Rank, RingDegree,
-    TorusPrecision,
+    Base2K, Degree, Dnum, Dsize, GGLWEInfos, GLWEInfos, LWEInfos, LWESwitchingKey, LWESwitchingKeyToMut, Rank, TorusPrecision,
     compressed::{
         GLWESwitchingKeyCompressed, GLWESwitchingKeyCompressedAlloc, GLWESwitchingKeyCompressedToMut,
         GLWESwitchingKeyCompressedToRef, GLWESwitchingKeyDecompress,
@@ -25,7 +24,7 @@ impl<D: Data> LWEInfos for LWESwitchingKeyCompressed<D> {
         self.0.k()
     }
 
-    fn n(&self) -> RingDegree {
+    fn n(&self) -> Degree {
         self.0.n()
     }
     fn size(&self) -> usize {

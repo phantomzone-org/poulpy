@@ -4,7 +4,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Dnum, Dsize, GGLWE, GGLWEInfos, GGLWEToRef, GLWEInfos, GetRingDegree, LWEInfos, Rank, RingDegree, TorusPrecision,
+    Base2K, Degree, Dnum, Dsize, GGLWE, GGLWEInfos, GGLWEToRef, GLWEInfos, GetDegree, LWEInfos, Rank, TorusPrecision,
 };
 
 #[derive(PartialEq, Eq)]
@@ -16,8 +16,8 @@ pub struct GGLWEPrepared<D: Data, B: Backend> {
 }
 
 impl<D: Data, B: Backend> LWEInfos for GGLWEPrepared<D, B> {
-    fn n(&self) -> RingDegree {
-        RingDegree(self.data.n() as u32)
+    fn n(&self) -> Degree {
+        Degree(self.data.n() as u32)
     }
 
     fn base2k(&self) -> Base2K {
@@ -59,7 +59,7 @@ impl<D: Data, B: Backend> GGLWEInfos for GGLWEPrepared<D, B> {
 
 pub trait GGLWEPreparedAlloc<B: Backend>
 where
-    Self: GetRingDegree + VmpPMatAlloc<B> + VmpPMatBytesOf,
+    Self: GetDegree + VmpPMatAlloc<B> + VmpPMatBytesOf,
 {
     fn alloc_gglwe_prepared(
         &self,
@@ -149,7 +149,7 @@ where
     }
 }
 
-impl<B: Backend> GGLWEPreparedAlloc<B> for Module<B> where Module<B>: GetRingDegree + VmpPMatAlloc<B> + VmpPMatBytesOf {}
+impl<B: Backend> GGLWEPreparedAlloc<B> for Module<B> where Module<B>: GetDegree + VmpPMatAlloc<B> + VmpPMatBytesOf {}
 
 impl<B: Backend> GGLWEPrepared<Vec<u8>, B> {
     pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
@@ -201,7 +201,7 @@ impl<B: Backend> GGLWEPrepared<Vec<u8>, B> {
 
 pub trait GGLWEPrepare<B: Backend>
 where
-    Self: GetRingDegree + VmpPrepareTmpBytes + VmpPrepare<B>,
+    Self: GetDegree + VmpPrepareTmpBytes + VmpPrepare<B>,
 {
     fn prepare_gglwe_tmp_bytes<A>(&self, infos: &A) -> usize
     where
@@ -233,7 +233,7 @@ where
     }
 }
 
-impl<B: Backend> GGLWEPrepare<B> for Module<B> where Self: GetRingDegree + VmpPrepareTmpBytes + VmpPrepare<B> {}
+impl<B: Backend> GGLWEPrepare<B> for Module<B> where Self: GetDegree + VmpPrepareTmpBytes + VmpPrepare<B> {}
 
 impl<D: DataMut, B: Backend> GGLWEPrepared<D, B> {
     pub fn prepare<O, M>(&mut self, module: &M, other: &O, scratch: &mut Scratch<B>)

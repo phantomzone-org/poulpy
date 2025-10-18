@@ -4,7 +4,7 @@ use poulpy_hal::layouts::{
 
 use crate::{
     dist::Distribution,
-    layouts::{Base2K, GLWEInfos, GetRingDegree, LWEInfos, Rank, RingDegree, TorusPrecision},
+    layouts::{Base2K, Degree, GLWEInfos, GetDegree, LWEInfos, Rank, TorusPrecision},
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
@@ -18,7 +18,7 @@ pub struct GLWEPublicKey<D: Data> {
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub struct GLWEPublicKeyLayout {
-    pub n: RingDegree,
+    pub n: Degree,
     pub base2k: Base2K,
     pub k: TorusPrecision,
     pub rank: Rank,
@@ -43,8 +43,8 @@ impl<D: Data> LWEInfos for GLWEPublicKey<D> {
         self.k
     }
 
-    fn n(&self) -> RingDegree {
-        RingDegree(self.data.n() as u32)
+    fn n(&self) -> Degree {
+        Degree(self.data.n() as u32)
     }
 
     fn size(&self) -> usize {
@@ -67,7 +67,7 @@ impl LWEInfos for GLWEPublicKeyLayout {
         self.k
     }
 
-    fn n(&self) -> RingDegree {
+    fn n(&self) -> Degree {
         self.n
     }
 
@@ -84,7 +84,7 @@ impl GLWEInfos for GLWEPublicKeyLayout {
 
 pub trait GLWEPublicKeyAlloc
 where
-    Self: GetRingDegree,
+    Self: GetDegree,
 {
     fn alloc_glwe_public_key(&self, base2k: Base2K, k: TorusPrecision, rank: Rank) -> GLWEPublicKey<Vec<u8>> {
         GLWEPublicKey {
@@ -122,7 +122,7 @@ where
     }
 }
 
-impl<B: Backend> GLWEPublicKeyAlloc for Module<B> where Self: GetRingDegree {}
+impl<B: Backend> GLWEPublicKeyAlloc for Module<B> where Self: GetDegree {}
 
 impl GLWEPublicKey<Vec<u8>> {
     pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self

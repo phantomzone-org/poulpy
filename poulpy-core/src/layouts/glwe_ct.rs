@@ -6,7 +6,7 @@ use poulpy_hal::{
     source::Source,
 };
 
-use crate::layouts::{Base2K, GetRingDegree, LWEInfos, Rank, RingDegree, TorusPrecision};
+use crate::layouts::{Base2K, Degree, GetDegree, LWEInfos, Rank, TorusPrecision};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::fmt;
 
@@ -32,14 +32,14 @@ pub trait SetGLWEInfos {
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub struct GLWELayout {
-    pub n: RingDegree,
+    pub n: Degree,
     pub base2k: Base2K,
     pub k: TorusPrecision,
     pub rank: Rank,
 }
 
 impl LWEInfos for GLWELayout {
-    fn n(&self) -> RingDegree {
+    fn n(&self) -> Degree {
         self.n
     }
 
@@ -96,8 +96,8 @@ impl<D: Data> LWEInfos for GLWE<D> {
         self.k
     }
 
-    fn n(&self) -> RingDegree {
-        RingDegree(self.data.n() as u32)
+    fn n(&self) -> Degree {
+        Degree(self.data.n() as u32)
     }
 
     fn size(&self) -> usize {
@@ -148,7 +148,7 @@ impl<D: DataMut> FillUniform for GLWE<D> {
 
 pub trait GLWEAlloc
 where
-    Self: GetRingDegree,
+    Self: GetDegree,
 {
     fn alloc_glwe(&self, base2k: Base2K, k: TorusPrecision, rank: Rank) -> GLWE<Vec<u8>> {
         GLWE {
@@ -185,7 +185,7 @@ where
     }
 }
 
-impl<B: Backend> GLWEAlloc for Module<B> where Self: GetRingDegree {}
+impl<B: Backend> GLWEAlloc for Module<B> where Self: GetDegree {}
 
 impl GLWE<Vec<u8>> {
     pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
