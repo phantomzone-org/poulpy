@@ -91,8 +91,7 @@ where
         + ZnFillUniform
         + ZnAddNormal
         + ZnNormalizeInplace<BE>,
-    BE: Backend
-        + ScratchOwnedAllocImpl<BE>
+    BE: ScratchOwnedAllocImpl<BE>
         + ScratchOwnedBorrowImpl<BE>
         + TakeVecZnxDftImpl<BE>
         + ScratchAvailableImpl<BE>
@@ -202,7 +201,21 @@ where
     println!("CBT: {} ms", now.elapsed().as_millis());
 
     let start: Instant = Instant::now();
-    c_enc.add(&module, &c_enc_prep, &b_enc_prep, scratch.borrow());
+
+    // For the bug to trigger
+    let d = source.next_u32();
+    let mut d_enc_prep: FheUintBlocksPrep<Vec<u8>, BE, u32> = FheUintBlocksPrep::<Vec<u8>, BE, u32>::alloc(&module, &ggsw_infos);
+    d_enc_prep.encrypt_sk(
+        &module,
+        d,
+        &sk_glwe_prep,
+        &mut source_xa,
+        &mut source_xe,
+        scratch.borrow(),
+    );
+
+    // d + (a-b)
+    c_enc.add(&module, &c_enc_prep, &d_enc_prep, scratch.borrow());
 
     let duration: std::time::Duration = start.elapsed();
     println!("add: {} ms", duration.as_millis());
@@ -211,14 +224,48 @@ where
         "have: {}",
         c_enc.decrypt(&module, &sk_glwe_prep, scratch.borrow())
     );
-    println!("want: {}", b.wrapping_add(a.wrapping_sub(b)));
+    println!("want: {}", d.wrapping_add(a.wrapping_sub(b)));
+    // println!("not want: {}", b.wrapping_add(a.wrapping_sub(b)));
     println!(
         "noise: {:?}",
         c_enc.noise(
             &module,
             &sk_glwe_prep,
-            b.wrapping_add(a.wrapping_sub(b)),
+            d.wrapping_add(a.wrapping_sub(b)),
             scratch.borrow()
         )
     );
+}
+
+#[test]
+fn test_fn() {
+    let glwe_infos: GLWECiphertextLayout = TEST_GLWE_INFOS;
+
+    let n_glwe: usize = glwe_infos.n().into();
+
+    let module = Module::<FFT64Ref>::new(n_glwe as u64);
+    let mut source: Source = Source::new([6u8; 32]);
+    let mut source_xs: Source = Source::new([1u8; 32]);
+    let mut source_xa: Source = Source::new([2u8; 32]);
+    let mut source_xe: Source = Source::new([3u8; 32]);
+
+    let mut scratch: ScratchOwned<FFT64Ref> = ScratchOwned::alloc(1 << 22);
+
+    let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc(&glwe_infos);
+    sk_glwe.fill_ternary_prob(0.5, &mut source_xs);
+    let sk_glwe_prep: GLWESecretPrepared<Vec<u8>, FFT64Ref> = sk_glwe.prepare_alloc(&module, scratch.borrow());
+
+    let a: u32 = source.next_u32();
+
+    let mut a_enc = FheUintBlocks::<Vec<u8>, u32>::alloc(&module, &glwe_infos);
+    a_enc.encrypt_sk(
+        &module,
+        a,
+        &sk_glwe_prep,
+        &mut source_xa,
+        &mut source_xe,
+        scratch.borrow(),
+    );
+
+    assert_eq!(a, a_enc.decrypt(&module, &sk_glwe_prep, scratch.borrow()));
 }

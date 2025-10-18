@@ -3,7 +3,6 @@ use std::marker::PhantomData;
 use poulpy_core::layouts::{
     Base2K, Dnum, Dsize, GGSWInfos, GLWEInfos, LWEInfos, Rank, TorusPrecision, prepared::GGSWCiphertextPrepared,
 };
-#[cfg(test)]
 use poulpy_core::{
     TakeGGSW,
     layouts::{GGSWCiphertext, prepared::GLWESecretPrepared},
@@ -12,7 +11,6 @@ use poulpy_hal::{
     api::VmpPMatAlloc,
     layouts::{Backend, Data, DataMut, DataRef, Module, Scratch},
 };
-#[cfg(test)]
 use poulpy_hal::{
     api::{
         ScratchAvailable, SvpApplyDftToDftInplace, TakeScalarZnx, TakeVecZnx, TakeVecZnxDft, VecZnxAddInplace, VecZnxAddNormal,
@@ -81,8 +79,7 @@ impl<T: UnsignedInteger, BE: Backend> FheUintBlocksPrep<Vec<u8>, BE, T>
 where
     Module<BE>: VmpPMatAlloc<BE>,
 {
-    #[allow(dead_code)]
-    pub(crate) fn alloc<A>(module: &Module<BE>, infos: &A) -> Self
+    pub fn alloc<A>(module: &Module<BE>, infos: &A) -> Self
     where
         A: GGSWInfos,
     {
@@ -96,8 +93,7 @@ where
         )
     }
 
-    #[allow(dead_code)]
-    pub(crate) fn alloc_with(module: &Module<BE>, base2k: Base2K, k: TorusPrecision, dnum: Dnum, dsize: Dsize, rank: Rank) -> Self
+    pub fn alloc_with(module: &Module<BE>, base2k: Base2K, k: TorusPrecision, dnum: Dnum, dsize: Dsize, rank: Rank) -> Self
     where
         Module<BE>: VmpPMatAlloc<BE>,
     {
@@ -113,8 +109,7 @@ where
 
 impl<D: DataMut, T: UnsignedInteger + ToBits, BE: Backend> FheUintBlocksPrep<D, BE, T> {
     #[allow(dead_code)]
-    #[cfg(test)]
-    pub(crate) fn encrypt_sk<S>(
+    pub fn encrypt_sk<S>(
         &mut self,
         module: &Module<BE>,
         value: T,
@@ -173,7 +168,7 @@ impl<D: DataMut, T: UnsignedInteger + ToBits, BE: Backend> FheUintBlocksPrep<D, 
 
 #[cfg(test)]
 impl<D: DataMut, T: UnsignedInteger + ToBits> FheUintBlocksPrepDebug<D, T> {
-    pub(crate) fn prepare<BIT, KEY, BE: Backend>(
+    pub fn prepare<BIT, KEY, BE: Backend>(
         &mut self,
         module: &Module<BE>,
         bits: &FheUintBlocks<BIT, T>,

@@ -4,11 +4,9 @@ use poulpy_core::layouts::{Base2K, GLWECiphertext, GLWEInfos, GLWEPlaintextLayou
 
 use poulpy_core::{TakeGLWEPt, layouts::prepared::GLWESecretPrepared};
 use poulpy_hal::api::VecZnxBigAllocBytes;
-#[cfg(test)]
 use poulpy_hal::api::{
     ScratchAvailable, TakeVecZnx, VecZnxAddInplace, VecZnxAddNormal, VecZnxFillUniform, VecZnxNormalize, VecZnxSub,
 };
-#[cfg(test)]
 use poulpy_hal::source::Source;
 use poulpy_hal::{
     api::{
@@ -51,7 +49,7 @@ impl<D: DataRef, T: UnsignedInteger> GLWEInfos for FheUintBlocks<D, T> {
 
 impl<T: UnsignedInteger> FheUintBlocks<Vec<u8>, T> {
     #[allow(dead_code)]
-    pub(crate) fn alloc<A, BE: Backend>(module: &Module<BE>, infos: &A) -> Self
+    pub fn alloc<A, BE: Backend>(module: &Module<BE>, infos: &A) -> Self
     where
         A: GLWEInfos,
     {
@@ -72,8 +70,7 @@ impl<T: UnsignedInteger> FheUintBlocks<Vec<u8>, T> {
 
 impl<D: DataMut, T: UnsignedInteger + ToBits> FheUintBlocks<D, T> {
     #[allow(dead_code)]
-    #[cfg(test)]
-    pub(crate) fn encrypt_sk<S, BE: Backend>(
+    pub fn encrypt_sk<S, BE: Backend>(
         &mut self,
         module: &Module<BE>,
         value: T,
