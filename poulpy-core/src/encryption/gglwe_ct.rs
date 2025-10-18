@@ -73,7 +73,7 @@ pub trait GGLWEEncryptSk<BE: Backend> {
 
 impl<BE: Backend> GGLWEEncryptSk<BE> for Module<BE>
 where
-    Module<BE>: ModuleN
+    Self: ModuleN
         + GLWEEncryptSk<BE>
         + VecZnxNormalizeTmpBytes
         + VecZnxDftBytesOf

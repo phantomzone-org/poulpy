@@ -38,7 +38,7 @@ impl GLWE<Vec<u8>> {
 }
 
 impl<D: DataMut> GLWE<D> {
-    pub fn encrypt_sk<R, P, S, M, BE: Backend>(
+    pub fn encrypt_sk<P, S, M, BE: Backend>(
         &mut self,
         module: &M,
         pt: &P,
@@ -133,7 +133,7 @@ pub trait GLWEEncryptSk<BE: Backend> {
 
 impl<BE: Backend> GLWEEncryptSk<BE> for Module<BE>
 where
-    Module<BE>: Sized + ModuleN + VecZnxNormalizeTmpBytes + VecZnxDftBytesOf + GLWEEncryptSkInternal<BE>,
+    Self: Sized + ModuleN + VecZnxNormalizeTmpBytes + VecZnxDftBytesOf + GLWEEncryptSkInternal<BE>,
     Scratch<BE>: ScratchAvailable,
 {
     fn glwe_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
@@ -262,7 +262,7 @@ pub trait GLWEEncryptPk<BE: Backend> {
 
 impl<BE: Backend> GLWEEncryptPk<BE> for Module<BE>
 where
-    Module<BE>: GLWEEncryptPkInternal<BE> + VecZnxDftBytesOf + SvpPPolBytesOf + VecZnxBigBytesOf + VecZnxNormalizeTmpBytes,
+    Self: GLWEEncryptPkInternal<BE> + VecZnxDftBytesOf + SvpPPolBytesOf + VecZnxBigBytesOf + VecZnxNormalizeTmpBytes,
 {
     fn glwe_encrypt_pk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
@@ -330,7 +330,7 @@ pub(crate) trait GLWEEncryptPkInternal<BE: Backend> {
 
 impl<BE: Backend> GLWEEncryptPkInternal<BE> for Module<BE>
 where
-    Module<BE>: SvpPrepare<BE>
+    Self: SvpPrepare<BE>
         + SvpApplyDftToDft<BE>
         + VecZnxIdftApplyConsume<BE>
         + VecZnxBigAddNormal<BE>
@@ -445,7 +445,7 @@ pub(crate) trait GLWEEncryptSkInternal<BE: Backend> {
 
 impl<BE: Backend> GLWEEncryptSkInternal<BE> for Module<BE>
 where
-    Module<BE>: ModuleN
+    Self: ModuleN
         + VecZnxDftBytesOf
         + VecZnxBigNormalize<BE>
         + VecZnxDftApply<BE>
@@ -459,7 +459,7 @@ where
         + VecZnxAddNormal
         + VecZnxNormalize<BE>
         + VecZnxSub,
-    Scratch<BE>: ScratchAvailable + ScratchTakeBasic,
+    Scratch<BE>: ScratchTakeBasic,
 {
     fn glwe_encrypt_sk_internal<R, P, S>(
         &self,

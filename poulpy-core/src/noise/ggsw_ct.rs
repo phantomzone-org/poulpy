@@ -1,18 +1,17 @@
 use poulpy_hal::{
     api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDftInplace, VecZnxAddScalarInplace, VecZnxBigAddInplace,
-        VecZnxBigAddSmallInplace, VecZnxBigAlloc, VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
-        VecZnxDftAlloc, VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA, VecZnxNormalizeTmpBytes,
-        VecZnxSubInplace,
-        ScratchTakeBasic,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, ScratchTakeBasic, SvpApplyDftToDftInplace, VecZnxAddScalarInplace,
+        VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigAlloc, VecZnxBigBytesOf, VecZnxBigNormalize,
+        VecZnxBigNormalizeTmpBytes, VecZnxDftAlloc, VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyConsume,
+        VecZnxIdftApplyTmpA, VecZnxNormalizeTmpBytes, VecZnxSubInplace,
     },
     layouts::{Backend, DataRef, Module, ScalarZnx, ScalarZnxToRef, Scratch, ScratchOwned, VecZnxBig, VecZnxDft, ZnxZero},
     oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl},
 };
 
-use crate::layouts::{GGSW, GGSWInfos, GLWEInfos, GLWEPlaintext, LWEInfos, prepared::GLWESecretPrepared, GGSWToRef};
-use crate::layouts::prepared::GLWESecretPreparedToRef;
 use crate::decryption::GLWEDecryption;
+use crate::layouts::prepared::GLWESecretPreparedToRef;
+use crate::layouts::{GGSW, GGSWInfos, GGSWToRef, GLWEInfos, GLWEPlaintext, LWEInfos, prepared::GLWESecretPrepared};
 
 impl<D: DataRef> GGSW<D> {
     pub fn assert_noise<M, BE, DataSk, DataScalar, F>(
@@ -20,7 +19,7 @@ impl<D: DataRef> GGSW<D> {
         module: &M,
         sk_prepared: &GLWESecretPrepared<DataSk, BE>,
         pt_want: &ScalarZnx<DataScalar>,
-        max_noise: F
+        max_noise: F,
     ) where
         DataSk: DataRef,
         DataScalar: DataRef,
@@ -91,7 +90,6 @@ where
         BE: ScratchOwnedAllocImpl<BE> + ScratchOwnedBorrowImpl<BE> + ScratchOwnedBorrow<BE>,
         F: Fn(usize) -> f64,
     {
-
         let res: &GGSW<&[u8]> = &res.to_ref();
         let sk_prepared: &GLWESecretPrepared<&[u8], BE> = &sk_prepared.to_ref();
 
@@ -126,7 +124,12 @@ where
                     );
                 }
 
-                self.glwe_decrypt(&res.at(row_i, col_j), &mut pt_have, sk_prepared, scratch.borrow());
+                self.glwe_decrypt(
+                    &res.at(row_i, col_j),
+                    &mut pt_have,
+                    sk_prepared,
+                    scratch.borrow(),
+                );
 
                 self.vec_znx_sub_inplace(&mut pt_have.data, 0, &pt.data, 0);
 
@@ -136,7 +139,7 @@ where
 
                 pt.data.zero();
             });
-        });       
+        });
     }
 
     fn ggsw_print_noise<R, S, P>(&self, res: &R, sk_prepared: &S, pt_want: &P)
@@ -180,7 +183,12 @@ where
                     );
                 }
 
-                self.glwe_decrypt(&res.at(row_i, col_j), &mut pt_have, sk_prepared, scratch.borrow());
+                self.glwe_decrypt(
+                    &res.at(row_i, col_j),
+                    &mut pt_have,
+                    sk_prepared,
+                    scratch.borrow(),
+                );
                 self.vec_znx_sub_inplace(&mut pt_have.data, 0, &pt.data, 0);
 
                 let std_pt: f64 = pt_have.data.std(base2k, 0).log2();
@@ -188,5 +196,5 @@ where
                 pt.data.zero();
             });
         });
-    }   
+    }
 }

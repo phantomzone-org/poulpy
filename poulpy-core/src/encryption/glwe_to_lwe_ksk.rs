@@ -64,7 +64,7 @@ pub trait GLWEToLWESwitchingKeyEncrypt<BE: Backend> {
 
 impl<BE: Backend> GLWEToLWESwitchingKeyEncrypt<BE> for Module<BE>
 where
-    Module<BE>: ModuleN + GLWESwitchingKeyEncryptSk<BE> + GLWESecretPreparedAlloc<BE> + VecZnxAutomorphismInplace<BE>,
+    Self: ModuleN + GLWESwitchingKeyEncryptSk<BE> + GLWESecretPreparedAlloc<BE> + VecZnxAutomorphismInplace<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     fn glwe_to_lwe_switching_key_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize

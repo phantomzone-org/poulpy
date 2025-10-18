@@ -1,9 +1,9 @@
 use poulpy_hal::{
     api::{
-        ModuleN, ScratchTakeBasic, SvpApplyDftToDft, SvpPPolAlloc, SvpPPolBytesOf, SvpPrepare, VecZnxBigBytesOf,
-        VecZnxBigNormalize, VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyTmpA, VecZnxNormalizeTmpBytes,
+        ModuleN, ScratchTakeBasic, SvpApplyDftToDft, SvpPPolBytesOf, SvpPrepare, VecZnxBigBytesOf, VecZnxBigNormalize,
+        VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyTmpA,
     },
-    layouts::{Backend, DataMut, DataRef, Module, Scratch},
+    layouts::{Backend, DataMut, Module, Scratch},
     oep::{SvpPPolAllocBytesImpl, VecZnxBigAllocBytesImpl, VecZnxDftAllocBytesImpl},
     source::Source,
 };
@@ -13,7 +13,7 @@ use crate::{
     encryption::compressed::gglwe_ksk::GLWESwitchingKeyCompressedEncryptSk,
     encryption::gglwe_tsk::TensorKeyEncryptSk,
     layouts::{
-        GGLWEInfos, GLWEInfos, GLWESecret, GLWESecretToRef, GetDist, LWEInfos, Rank, TensorKey,
+        GGLWEInfos, GLWEInfos, GLWESecret, GLWESecretToRef, GetDist, LWEInfos, Rank,
         compressed::{TensorKeyCompressed, TensorKeyCompressedToMut},
     },
 };
@@ -29,23 +29,22 @@ impl TensorKeyCompressed<Vec<u8>> {
 }
 
 impl<DataSelf: DataMut> TensorKeyCompressed<DataSelf> {
-    pub fn encrypt_sk<DataSk: DataRef, BE: Backend>(
+    pub fn encrypt_sk<S, M, BE: Backend>(
         &mut self,
-        module: &Module<BE>,
-        sk: &GLWESecret<DataSk>,
+        module: &M,
+        sk: &S,
         seed_xa: [u8; 32],
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
-        GLWESecret<DataSk>: GetDist,
-        Module<BE>: GGLWETensorKeyCompressedEncryptSk<BE>,
+        S: GLWESecretToRef + GetDist,
+        M: GGLWETensorKeyCompressedEncryptSk<BE>,
     {
         module.gglwe_tensor_key_encrypt_sk(self, sk, seed_xa, source_xe, scratch);
     }
 }
 
 pub trait GGLWETensorKeyCompressedEncryptSk<BE: Backend> {
-
     fn gglwe_tensor_key_compressed_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos;
@@ -64,7 +63,7 @@ pub trait GGLWETensorKeyCompressedEncryptSk<BE: Backend> {
 
 impl<BE: Backend> GGLWETensorKeyCompressedEncryptSk<BE> for Module<BE>
 where
-    Module<BE>: ModuleN
+    Self: ModuleN
         + GLWESwitchingKeyCompressedEncryptSk<BE>
         + TensorKeyEncryptSk<BE>
         + VecZnxDftApply<BE>
@@ -82,7 +81,7 @@ where
 {
     fn gglwe_tensor_key_compressed_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
-        A: GGLWEInfos
+        A: GGLWEInfos,
     {
         self.tensor_key_encrypt_sk_tmp_bytes(infos)
     }

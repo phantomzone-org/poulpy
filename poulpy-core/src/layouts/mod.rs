@@ -17,6 +17,7 @@ mod lwe_to_glwe_ksk;
 pub mod compressed;
 pub mod prepared;
 
+pub use compressed::*;
 pub use gglwe_atk::*;
 pub use gglwe_ct::*;
 pub use gglwe_ksk::*;
@@ -32,6 +33,7 @@ pub use lwe_ksk::*;
 pub use lwe_pt::*;
 pub use lwe_sk::*;
 pub use lwe_to_glwe_ksk::*;
+pub use prepared::*;
 
 use poulpy_hal::layouts::{Backend, Module};
 

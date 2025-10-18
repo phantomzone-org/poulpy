@@ -61,7 +61,7 @@ pub trait AutomorphismKeyCompressedEncryptSk<BE: Backend> {
 
 impl<BE: Backend> AutomorphismKeyCompressedEncryptSk<BE> for Module<BE>
 where
-    Module<BE>: ModuleN + GaloisElement + VecZnxAutomorphism + GLWESwitchingKeyCompressedEncryptSk<BE>,
+    Self: ModuleN + GaloisElement + VecZnxAutomorphism + GLWESwitchingKeyCompressedEncryptSk<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     fn automorphism_key_compressed_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
@@ -99,7 +99,7 @@ where
         let (mut sk_out, scratch_1) = scratch.take_glwe_secret(self, sk.rank());
 
         {
-            for i in 0..res.rank_out().into(){
+            for i in 0..res.rank_out().into() {
                 self.vec_znx_automorphism(
                     self.galois_element_inv(p),
                     &mut sk_out.data.as_vec_znx_mut(),
@@ -107,7 +107,7 @@ where
                     &sk.data.as_vec_znx(),
                     i,
                 );
-            };
+            }
         }
 
         self.glwe_switching_key_compressed_encrypt_sk(&mut res.key, sk, &sk_out, seed_xa, source_xe, scratch_1);

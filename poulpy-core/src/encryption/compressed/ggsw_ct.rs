@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{ModuleN, VecZnxAddScalarInplace, VecZnxNormalizeInplace},
-    layouts::{Backend, DataMut, DataRef, Module, ScalarZnx, ScalarZnxToRef, Scratch, ZnxZero},
+    layouts::{Backend, DataMut, Module, ScalarZnx, ScalarZnxToRef, Scratch, ZnxZero},
     source::Source,
 };
 
@@ -26,21 +26,22 @@ impl GGSWCompressed<Vec<u8>> {
 
 impl<DataSelf: DataMut> GGSWCompressed<DataSelf> {
     #[allow(clippy::too_many_arguments)]
-    pub fn encrypt_sk<DataPt: DataRef, DataSk: DataRef, BE: Backend>(
+    pub fn encrypt_sk<P, S, M, BE: Backend>(
         &mut self,
-        module: &Module<BE>,
-        pt: &ScalarZnx<DataPt>,
-        sk: &GLWESecretPrepared<DataSk, BE>,
+        module: &M,
+        pt: &P,
+        sk: &S,
         seed_xa: [u8; 32],
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
-        Module<BE>: GGSWCompressedEncryptSk<BE>,
+        P: ScalarZnxToRef,
+        S: GLWESecretPreparedToRef<BE>,
+        M: GGSWCompressedEncryptSk<BE>,
     {
         module.ggsw_compressed_encrypt_sk(self, pt, sk, seed_xa, source_xe, scratch);
     }
 }
-
 
 pub trait GGSWCompressedEncryptSk<BE: Backend> {
     fn ggsw_compressed_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
@@ -63,11 +64,12 @@ pub trait GGSWCompressedEncryptSk<BE: Backend> {
 
 impl<BE: Backend> GGSWCompressedEncryptSk<BE> for Module<BE>
 where
-    Module<BE>: ModuleN + GLWEEncryptSkInternal<BE> + GGSWEncryptSk<BE> + VecZnxAddScalarInplace + VecZnxNormalizeInplace<BE>,
+    Self: ModuleN + GLWEEncryptSkInternal<BE> + GGSWEncryptSk<BE> + VecZnxAddScalarInplace + VecZnxNormalizeInplace<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     fn ggsw_compressed_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
-        where A: GGSWInfos,
+    where
+        A: GGSWInfos,
     {
         self.ggsw_encrypt_sk_tmp_bytes(infos)
     }

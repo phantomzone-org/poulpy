@@ -66,8 +66,7 @@ pub trait GLWESwitchingKeyEncryptSk<BE: Backend> {
     ) where
         R: GLWESwitchingKeyToMut,
         S1: GLWESecretToRef,
-        S2: GLWESecretToRef,
-        Scratch<BE>: ScratchTakeCore<BE>;
+        S2: GLWESecretToRef;
 }
 
 impl<BE: Backend> GLWESwitchingKeyEncryptSk<BE> for Module<BE>

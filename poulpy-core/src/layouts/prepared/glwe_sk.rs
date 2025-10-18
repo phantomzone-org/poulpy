@@ -63,7 +63,7 @@ where
         self.alloc_glwe_secret_prepared(infos.rank())
     }
 
-    fn bytes_of_glwe_secret(&self, rank: Rank) -> usize {
+    fn bytes_of_glwe_secret_prepared(&self, rank: Rank) -> usize {
         self.bytes_of_svp_ppol(rank.into())
     }
     fn bytes_of_glwe_secret_prepared_from_infos<A>(&self, infos: &A) -> usize
@@ -71,7 +71,7 @@ where
         A: GLWEInfos,
     {
         assert_eq!(self.ring_degree(), infos.n());
-        self.bytes_of_glwe_secret(infos.rank())
+        self.bytes_of_glwe_secret_prepared(infos.rank())
     }
 }
 
@@ -105,7 +105,7 @@ impl<B: Backend> GLWESecretPrepared<Vec<u8>, B> {
     where
         M: GLWESecretPreparedAlloc<B>,
     {
-        module.bytes_of_glwe_secret(rank)
+        module.bytes_of_glwe_secret_prepared(rank)
     }
 }
 

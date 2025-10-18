@@ -64,7 +64,7 @@ pub trait GLWESwitchingKeyCompressedEncryptSk<BE: Backend> {
 
 impl<BE: Backend> GLWESwitchingKeyCompressedEncryptSk<BE> for Module<BE>
 where
-    Module<BE>: ModuleN + GGLWECompressedEncryptSk<BE> + GLWESecretPreparedAlloc<BE> + GLWESecretPrepare<BE> + VecZnxSwitchRing,
+    Self: ModuleN + GGLWECompressedEncryptSk<BE> + GLWESecretPreparedAlloc<BE> + GLWESecretPrepare<BE> + VecZnxSwitchRing,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     fn glwe_switching_key_compressed_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize

@@ -67,7 +67,7 @@ pub struct GLWESwitchingKey<D: Data> {
     pub(crate) sk_out_n: usize, // Degree of sk_out
 }
 
-pub(crate) trait GLWESwitchingKeySetMetaData {
+pub trait GLWESwitchingKeySetMetaData {
     fn set_sk_in_n(&mut self, sk_in_n: usize);
     fn set_sk_out_n(&mut self, sk_out_n: usize);
 }
@@ -82,7 +82,7 @@ impl<D: DataMut> GLWESwitchingKeySetMetaData for GLWESwitchingKey<D> {
     }
 }
 
-pub(crate) trait GLWESwtichingKeyGetMetaData {
+pub trait GLWESwtichingKeyGetMetaData {
     fn sk_in_n(&self) -> usize;
     fn sk_out_n(&self) -> usize;
 }

@@ -1,6 +1,6 @@
 use poulpy_core::layouts::{
     Base2K, Dnum, Dsize, GGSW, GGSWLayout, GLWE, GLWELayout, GLWESecret, Rank, RingDegree, TorusPrecision,
-    prepared::{GGSWPrepared, GLWESecretPrepared, PrepareAlloc},
+    prepared::{GGSWPrepared, GLWESecretPrepared},
 };
 use std::hint::black_box;
 
@@ -61,9 +61,9 @@ fn bench_external_product_glwe_fft64(c: &mut Criterion) {
             rank,
         };
 
-        let mut ct_ggsw: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_layout);
-        let mut ct_glwe_in: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_in_layout);
-        let mut ct_glwe_out: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_out_layout);
+        let mut ct_ggsw: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&module, &ggsw_layout);
+        let mut ct_glwe_in: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&module, &glwe_in_layout);
+        let mut ct_glwe_out: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&module, &glwe_out_layout);
         let pt_rgsw: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n.into(), 1);
 
         let mut scratch: ScratchOwned<FFT64Spqlios> = ScratchOwned::alloc(
@@ -76,9 +76,11 @@ fn bench_external_product_glwe_fft64(c: &mut Criterion) {
         let mut source_xe = Source::new([0u8; 32]);
         let mut source_xa = Source::new([0u8; 32]);
 
-        let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_in_layout);
+        let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&module, &glwe_in_layout);
         sk.fill_ternary_prob(0.5, &mut source_xs);
-        let sk_dft: GLWESecretPrepared<Vec<u8>, FFT64Spqlios> = sk.prepare_alloc(&module, scratch.borrow());
+
+        let mut sk_dft: GLWESecretPrepared<Vec<u8>, FFT64Spqlios> = GLWESecretPrepared::alloc(&module, rank);
+        sk_dft.prepare(&module, &sk);
 
         ct_ggsw.encrypt_sk(
             &module,
@@ -97,7 +99,8 @@ fn bench_external_product_glwe_fft64(c: &mut Criterion) {
             scratch.borrow(),
         );
 
-        let ggsw_prepared: GGSWPrepared<Vec<u8>, FFT64Spqlios> = ct_ggsw.prepare_alloc(&module, scratch.borrow());
+        let mut ggsw_prepared: GGSWPrepared<Vec<u8>, FFT64Spqlios> = GGSWPrepared::alloc_from_infos(&module, &ct_ggsw);
+        ggsw_prepared.prepare(&module, &ct_ggsw, scratch.borrow());
 
         move || {
             ct_glwe_out.external_product(&module, &ct_glwe_in, &ggsw_prepared, scratch.borrow());
@@ -162,23 +165,25 @@ fn bench_external_product_glwe_inplace_fft64(c: &mut Criterion) {
             rank,
         };
 
-        let mut ct_ggsw: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_layout);
-        let mut ct_glwe: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_layout);
+        let mut ct_ggsw: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&module, &ggsw_layout);
+        let mut ct_glwe: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&module, &glwe_layout);
         let pt_rgsw: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(n.into(), 1);
 
         let mut scratch: ScratchOwned<FFT64Spqlios> = ScratchOwned::alloc(
             GGSW::encrypt_sk_tmp_bytes(&module, &ggsw_layout)
                 | GLWE::encrypt_sk_tmp_bytes(&module, &glwe_layout)
-                | GLWE::external_product_inplace_tmp_bytes(&module, &glwe_layout, &ggsw_layout),
+                | GLWE::external_product_tmp_bytes(&module, &glwe_layout, &glwe_layout, &ggsw_layout),
         );
 
         let mut source_xs: Source = Source::new([0u8; 32]);
         let mut source_xe: Source = Source::new([0u8; 32]);
         let mut source_xa: Source = Source::new([0u8; 32]);
 
-        let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_layout);
+        let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&module, &glwe_layout);
         sk.fill_ternary_prob(0.5, &mut source_xs);
-        let sk_dft: GLWESecretPrepared<Vec<u8>, FFT64Spqlios> = sk.prepare_alloc(&module, scratch.borrow());
+
+        let mut sk_dft: GLWESecretPrepared<Vec<u8>, FFT64Spqlios> = GLWESecretPrepared::alloc(&module, rank);
+        sk_dft.prepare(&module, &sk);
 
         ct_ggsw.encrypt_sk(
             &module,
@@ -197,8 +202,8 @@ fn bench_external_product_glwe_inplace_fft64(c: &mut Criterion) {
             scratch.borrow(),
         );
 
-        let ggsw_prepared: GGSWPrepared<Vec<u8>, FFT64Spqlios> = ct_ggsw.prepare_alloc(&module, scratch.borrow());
-
+        let mut ggsw_prepared: GGSWPrepared<Vec<u8>, FFT64Spqlios> = GGSWPrepared::alloc_from_infos(&module, &ct_ggsw);
+        ggsw_prepared.prepare(&module, &ct_ggsw, scratch.borrow());
         move || {
             let scratch_borrow = scratch.borrow();
             ct_glwe.external_product_inplace(&module, &ggsw_prepared, scratch_borrow);

@@ -198,7 +198,7 @@ where
 impl<B: Backend> TensorKeyPrepare<B> for Module<B> where Self: GLWESwitchingKeyPrepare<B> {}
 
 impl<B: Backend> TensorKeyPrepared<Vec<u8>, B> {
-    fn prepare_tmp_bytes<A, M>(&self, module: &M, infos: &A) -> usize
+    pub fn prepare_tmp_bytes<A, M>(&self, module: &M, infos: &A) -> usize
     where
         A: GGLWEInfos,
         M: TensorKeyPrepare<B>,
@@ -208,7 +208,7 @@ impl<B: Backend> TensorKeyPrepared<Vec<u8>, B> {
 }
 
 impl<D: DataMut, B: Backend> TensorKeyPrepared<D, B> {
-    fn prepare<O, M>(&mut self, module: &M, other: &O, scratch: &mut Scratch<B>)
+    pub fn prepare<O, M>(&mut self, module: &M, other: &O, scratch: &mut Scratch<B>)
     where
         O: TensorKeyToRef,
         M: TensorKeyPrepare<B>,

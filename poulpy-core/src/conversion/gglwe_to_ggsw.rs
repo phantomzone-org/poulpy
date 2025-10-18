@@ -38,9 +38,7 @@ impl<D: DataMut> GGSW<D> {
     }
 }
 
-impl<BE: Backend> GGSWFromGGLWE<BE> for Module<BE> where Self: GGSWExpandRows<BE> + GLWECopy {}
-
-pub trait GGSWFromGGLWE<BE: Backend>
+impl<BE: Backend> GGSWFromGGLWE<BE> for Module<BE>
 where
     Self: GGSWExpandRows<BE> + GLWECopy,
 {
@@ -77,6 +75,20 @@ where
     }
 }
 
+pub trait GGSWFromGGLWE<BE: Backend> {
+    fn ggsw_from_gglwe_tmp_bytes<R, A>(&self, res_infos: &R, tsk_infos: &A) -> usize
+    where
+        R: GGSWInfos,
+        A: GGLWEInfos;
+
+    fn ggsw_from_gglwe<R, A, T>(&self, res: &mut R, a: &A, tsk: &T, scratch: &mut Scratch<BE>)
+    where
+        R: GGSWToMut,
+        A: GGLWEToRef,
+        T: TensorKeyPreparedToRef<BE>,
+        Scratch<BE>: ScratchTakeCore<BE>;
+}
+
 impl<BE: Backend> GGSWExpandRows<BE> for Module<BE> where
     Self: Sized
         + ModuleN
@@ -99,7 +111,7 @@ impl<BE: Backend> GGSWExpandRows<BE> for Module<BE> where
 {
 }
 
-pub(crate) trait GGSWExpandRows<BE: Backend>
+pub trait GGSWExpandRows<BE: Backend>
 where
     Self: Sized
         + ModuleN

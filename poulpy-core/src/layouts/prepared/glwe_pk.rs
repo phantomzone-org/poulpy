@@ -18,7 +18,7 @@ pub struct GLWEPublicKeyPrepared<D: Data, B: Backend> {
     pub(crate) dist: Distribution,
 }
 
-pub(crate) trait SetDist {
+pub trait SetDist {
     fn set_dist(&mut self, dist: Distribution);
 }
 

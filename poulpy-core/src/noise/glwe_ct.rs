@@ -1,8 +1,8 @@
 use poulpy_hal::{
     api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDftInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace,
-        VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxNormalizeInplace,
-        VecZnxNormalizeTmpBytes, VecZnxSubInplace, ScratchTakeBasic,
+        ScratchOwnedAlloc, ScratchOwnedBorrow, ScratchTakeBasic, SvpApplyDftToDftInplace, VecZnxBigAddInplace,
+        VecZnxBigAddSmallInplace, VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyConsume,
+        VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSubInplace,
     },
     layouts::{Backend, DataRef, Module, Scratch, ScratchOwned},
     oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl},
@@ -96,7 +96,6 @@ impl<D: DataRef> GLWE<D> {
     // }
 }
 
-
 pub trait GLWENoise<BE: Backend> {
     fn glwe_noise<R, S, P>(&self, res: &R, sk_prepared: &S, pt_want: &P, scratch: &mut Scratch<BE>) -> f64
     where
@@ -126,7 +125,11 @@ where
         + VecZnxSubInplace
         + VecZnxNormalizeInplace<BE>
         + GLWEDecryption<BE>,
-    Scratch<BE>: ScratchTakeBasic + ScratchOwnedAllocImpl<BE> + ScratchOwnedBorrowImpl<BE> + ScratchOwnedBorrowImpl<BE> + ScratchOwnedBorrow<BE>,
+    Scratch<BE>: ScratchTakeBasic
+        + ScratchOwnedAllocImpl<BE>
+        + ScratchOwnedBorrowImpl<BE>
+        + ScratchOwnedBorrowImpl<BE>
+        + ScratchOwnedBorrow<BE>,
 {
     fn glwe_noise<R, S, P>(&self, res: &R, sk_prepared: &S, pt_want: &P, scratch: &mut Scratch<BE>) -> f64
     where

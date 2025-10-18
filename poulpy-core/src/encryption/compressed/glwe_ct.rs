@@ -1,15 +1,17 @@
 use poulpy_hal::{
-    api::{VecZnxDftBytesOf, VecZnxNormalizeTmpBytes},
-    layouts::{Backend, DataMut, DataRef, Module, Scratch},
+    layouts::{Backend, DataMut, Module, Scratch},
     source::Source,
 };
 
 use crate::{
-    encryption::{SIGMA, glwe_ct::{GLWEEncryptSk, GLWEEncryptSkInternal}},
+    encryption::{
+        SIGMA,
+        glwe_ct::{GLWEEncryptSk, GLWEEncryptSkInternal},
+    },
     layouts::{
-        GLWE, GLWEInfos, GLWEPlaintext, GLWEPlaintextToRef, LWEInfos,
+        GLWEInfos, GLWEPlaintextToRef, LWEInfos,
         compressed::{GLWECompressed, GLWECompressedToMut},
-        prepared::{GLWESecretPrepared, GLWESecretPreparedToRef},
+        prepared::GLWESecretPreparedToRef,
     },
 };
 
@@ -25,21 +27,22 @@ impl GLWECompressed<Vec<u8>> {
 
 impl<D: DataMut> GLWECompressed<D> {
     #[allow(clippy::too_many_arguments)]
-    pub fn encrypt_sk<DataPt: DataRef, DataSk: DataRef, BE: Backend>(
+    pub fn encrypt_sk<M, P, S, BE: Backend>(
         &mut self,
-        module: &Module<BE>,
-        pt: &GLWEPlaintext<DataPt>,
-        sk: &GLWESecretPrepared<DataSk, BE>,
+        module: &M,
+        pt: &P,
+        sk: &S,
         seed_xa: [u8; 32],
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
-        Module<BE>: GLWECompressedEncryptSk<BE>,
+        M: GLWECompressedEncryptSk<BE>,
+        P: GLWEPlaintextToRef,
+        S: GLWESecretPreparedToRef<BE>,
     {
         module.glwe_compressed_encrypt_sk(self, pt, sk, seed_xa, source_xe, scratch);
     }
 }
-
 
 pub trait GLWECompressedEncryptSk<BE: Backend> {
     fn glwe_compressed_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
@@ -62,9 +65,8 @@ pub trait GLWECompressedEncryptSk<BE: Backend> {
 
 impl<BE: Backend> GLWECompressedEncryptSk<BE> for Module<BE>
 where
-    Module<BE>: GLWEEncryptSkInternal<BE> + GLWEEncryptSk<BE>,
+    Self: GLWEEncryptSkInternal<BE> + GLWEEncryptSk<BE>,
 {
-
     fn glwe_compressed_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GLWEInfos,

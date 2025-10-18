@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, DataMut, DataRef, Module, Scratch, ScratchOwned},
+    layouts::{Backend, DataMut, Module, Scratch, ScratchOwned},
     source::Source,
 };
 
@@ -14,14 +14,10 @@ use crate::{
 };
 
 impl<D: DataMut> GLWEPublicKey<D> {
-    pub fn generate<S: DataRef, BE: Backend>(
-        &mut self,
-        module: &Module<BE>,
-        sk: &GLWESecretPrepared<S, BE>,
-        source_xa: &mut Source,
-        source_xe: &mut Source,
-    ) where
-        Module<BE>: GLWEPublicKeyGenerate<BE>,
+    pub fn generate<S, M, BE: Backend>(&mut self, module: &M, sk: &S, source_xa: &mut Source, source_xe: &mut Source)
+    where
+        S: GLWESecretPreparedToRef<BE>,
+        M: GLWEPublicKeyGenerate<BE>,
     {
         module.glwe_public_key_generate(self, sk, source_xa, source_xe);
     }
@@ -36,7 +32,7 @@ pub trait GLWEPublicKeyGenerate<BE: Backend> {
 
 impl<BE: Backend> GLWEPublicKeyGenerate<BE> for Module<BE>
 where
-    Module<BE>: GLWEEncryptSk<BE>,
+    Self: GLWEEncryptSk<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {

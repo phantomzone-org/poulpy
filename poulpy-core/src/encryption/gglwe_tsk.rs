@@ -1,7 +1,7 @@
 use poulpy_hal::{
     api::{
-        ModuleN, ScratchAvailable, ScratchTakeBasic, SvpApplyDftToDft, VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxDftApply,
-        VecZnxDftBytesOf, VecZnxIdftApplyTmpA,
+        ModuleN, ScratchTakeBasic, SvpApplyDftToDft, VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxDftApply, VecZnxDftBytesOf,
+        VecZnxIdftApplyTmpA,
     },
     layouts::{Backend, DataMut, Module, Scratch},
     source::Source,
@@ -37,7 +37,7 @@ impl<DataSelf: DataMut> TensorKey<DataSelf> {
     ) where
         M: TensorKeyEncryptSk<BE>,
         S: GLWESecretToRef + GetDist,
-        Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+        Scratch<BE>: ScratchTakeCore<BE>,
     {
         module.tensor_key_encrypt_sk(self, sk, source_xa, source_xe, scratch);
     }
@@ -62,7 +62,7 @@ pub trait TensorKeyEncryptSk<BE: Backend> {
 
 impl<BE: Backend> TensorKeyEncryptSk<BE> for Module<BE>
 where
-    Module<BE>: ModuleN
+    Self: ModuleN
         + GLWESwitchingKeyEncryptSk<BE>
         + VecZnxDftBytesOf
         + VecZnxBigBytesOf

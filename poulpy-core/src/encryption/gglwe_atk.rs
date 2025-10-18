@@ -68,7 +68,7 @@ pub trait AutomorphismKeyEncryptSk<BE: Backend> {
 
 impl<BE: Backend> AutomorphismKeyEncryptSk<BE> for Module<BE>
 where
-    Module<BE>: GLWESwitchingKeyEncryptSk<BE> + VecZnxAutomorphism + GaloisElement,
+    Self: GLWESwitchingKeyEncryptSk<BE> + VecZnxAutomorphism + GaloisElement,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     fn automorphism_key_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
@@ -137,7 +137,7 @@ pub trait GGLWEAutomorphismKeyEncryptPk<BE: Backend> {
 
 impl<BE: Backend> GGLWEAutomorphismKeyEncryptPk<BE> for Module<BE>
 where
-    Module<BE>:,
+    Self:,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     fn automorphism_key_encrypt_pk_tmp_bytes<A>(&self, _infos: &A) -> usize

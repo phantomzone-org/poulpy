@@ -1,19 +1,16 @@
 use poulpy_hal::{
-    api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, ScratchTakeBasic, VecZnxSubScalarInplace,
-    },
-    layouts::{Backend, DataRef, Module, Scratch, ScratchOwned, ScalarZnx, ScalarZnxToRef, ZnxZero},
+    api::{ScratchOwnedAlloc, ScratchOwnedBorrow, ScratchTakeBasic, VecZnxSubScalarInplace},
+    layouts::{Backend, DataRef, Module, ScalarZnx, ScalarZnxToRef, Scratch, ScratchOwned, ZnxZero},
     oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, VecZnxSubScalarInplaceImpl},
 };
 
+use crate::decryption::GLWEDecryption;
 use crate::layouts::{
-    GGLWE, GGLWEToRef, GGLWEInfos, GLWEPlaintext, LWEInfos,
+    GGLWE, GGLWEInfos, GGLWEToRef, GLWEPlaintext, LWEInfos,
     prepared::{GLWESecretPrepared, GLWESecretPreparedToRef},
 };
-use crate::decryption::GLWEDecryption;
 
 impl<D: DataRef> GGLWE<D> {
-
     pub fn assert_noise<M, BE, DataSk, DataWant>(
         &self,
         module: &M,
@@ -24,11 +21,14 @@ impl<D: DataRef> GGLWE<D> {
         DataSk: DataRef,
         DataWant: DataRef,
         M: GGLWENoise<BE>,
-        BE: Backend + ScratchOwnedAllocImpl<BE> + ScratchOwnedBorrowImpl<BE> + ScratchOwnedBorrow<BE> + VecZnxSubScalarInplaceImpl<BE>,
+        BE: Backend
+            + ScratchOwnedAllocImpl<BE>
+            + ScratchOwnedBorrowImpl<BE>
+            + ScratchOwnedBorrow<BE>
+            + VecZnxSubScalarInplaceImpl<BE>,
     {
         module.gglwe_assert_noise(self, sk_prepared, pt_want, max_noise);
     }
-
 
     // pub fn assert_noise<B, DataSk, DataWant>(
     //     &self,
@@ -79,7 +79,6 @@ impl<D: DataRef> GGLWE<D> {
     // }
 }
 
-
 pub trait GGLWENoise<BE: Backend> {
     fn gglwe_assert_noise<R, S, P>(&self, res: &R, sk_prepared: &S, pt_want: &P, max_noise: f64)
     where
@@ -89,10 +88,14 @@ pub trait GGLWENoise<BE: Backend> {
         BE: ScratchOwnedAllocImpl<BE> + ScratchOwnedBorrowImpl<BE> + ScratchOwnedBorrow<BE> + VecZnxSubScalarInplaceImpl<BE>;
 }
 
-impl<BE: Backend> GGLWENoise<BE> for Module<BE> 
+impl<BE: Backend> GGLWENoise<BE> for Module<BE>
 where
     Module<BE>: GLWEDecryption<BE>,
-    Scratch<BE>: ScratchTakeBasic + ScratchOwnedAllocImpl<BE> + ScratchOwnedBorrowImpl<BE> + ScratchOwnedBorrowImpl<BE> + ScratchOwnedBorrow<BE>,
+    Scratch<BE>: ScratchTakeBasic
+        + ScratchOwnedAllocImpl<BE>
+        + ScratchOwnedBorrowImpl<BE>
+        + ScratchOwnedBorrowImpl<BE>
+        + ScratchOwnedBorrow<BE>,
 {
     fn gglwe_assert_noise<R, S, P>(&self, res: &R, sk_prepared: &S, pt_want: &P, max_noise: f64)
     where
@@ -101,9 +104,8 @@ where
         P: ScalarZnxToRef,
         BE: ScratchOwnedAllocImpl<BE> + ScratchOwnedBorrowImpl<BE> + ScratchOwnedBorrow<BE> + VecZnxSubScalarInplaceImpl<BE>,
     {
-
         let res: &GGLWE<&[u8]> = &res.to_ref();
-        
+
         let dsize: usize = res.dsize().into();
         let base2k: usize = res.base2k().into();
 
@@ -112,7 +114,12 @@ where
 
         (0..res.rank_in().into()).for_each(|col_i| {
             (0..res.dnum().into()).for_each(|row_i| {
-                self.glwe_decrypt(&res.at(row_i, col_i), &mut pt, sk_prepared, scratch.borrow());
+                self.glwe_decrypt(
+                    &res.at(row_i, col_i),
+                    &mut pt,
+                    sk_prepared,
+                    scratch.borrow(),
+                );
 
                 self.vec_znx_sub_scalar_inplace(&mut pt.data, 0, (dsize - 1) + row_i * dsize, pt_want, col_i);
 

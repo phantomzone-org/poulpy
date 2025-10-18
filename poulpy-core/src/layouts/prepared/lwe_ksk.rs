@@ -180,7 +180,7 @@ impl<B: Backend> LWESwitchingKeyPrepared<Vec<u8>, B> {
 }
 
 impl<D: DataMut, B: Backend> LWESwitchingKeyPrepared<D, B> {
-    fn prepare<O, M>(&mut self, module: &M, other: &O, scratch: &mut Scratch<B>)
+    pub fn prepare<O, M>(&mut self, module: &M, other: &O, scratch: &mut Scratch<B>)
     where
         O: LWESwitchingKeyToRef,
         M: LWESwitchingKeyPrepare<B>,

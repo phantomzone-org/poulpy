@@ -67,7 +67,7 @@ pub trait GGLWECompressedEncryptSk<BE: Backend> {
 
 impl<BE: Backend> GGLWECompressedEncryptSk<BE> for Module<BE>
 where
-    Module<BE>: ModuleN
+    Self: ModuleN
         + GLWEEncryptSkInternal<BE>
         + GLWEEncryptSk<BE>
         + VecZnxDftBytesOf

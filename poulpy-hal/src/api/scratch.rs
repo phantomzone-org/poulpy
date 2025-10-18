@@ -28,6 +28,8 @@ pub trait TakeSlice {
     fn take_slice<T>(&mut self, len: usize) -> (&mut [T], &mut Self);
 }
 
+impl<B: Backend> ScratchTakeBasic for Scratch<B> where Self: TakeSlice {}
+
 pub trait ScratchTakeBasic
 where
     Self: TakeSlice,
