@@ -3,6 +3,7 @@ use poulpy_hal::layouts::{
 };
 
 use crate::{
+    GetDistribution, GetDistributionMut,
     dist::Distribution,
     layouts::{Base2K, Degree, GLWEInfos, GetDegree, LWEInfos, Rank, TorusPrecision},
 };
@@ -16,22 +17,24 @@ pub struct GLWEPublicKey<D: Data> {
     pub(crate) dist: Distribution,
 }
 
+impl<D: DataMut> GetDistributionMut for GLWEPublicKey<D> {
+    fn dist_mut(&mut self) -> &mut Distribution {
+        &mut self.dist
+    }
+}
+
+impl<D: DataRef> GetDistribution for GLWEPublicKey<D> {
+    fn dist(&self) -> &Distribution {
+        &self.dist
+    }
+}
+
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub struct GLWEPublicKeyLayout {
     pub n: Degree,
     pub base2k: Base2K,
     pub k: TorusPrecision,
     pub rank: Rank,
-}
-
-pub trait GetDist {
-    fn get_dist(&self) -> Distribution;
-}
-
-impl<D: DataRef> GetDist for GLWEPublicKey<D> {
-    fn get_dist(&self) -> Distribution {
-        self.dist
-    }
 }
 
 impl<D: Data> LWEInfos for GLWEPublicKey<D> {

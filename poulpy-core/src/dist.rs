@@ -1,5 +1,13 @@
 use std::io::{Read, Result, Write};
 
+pub trait GetDistribution {
+    fn dist(&self) -> &Distribution;
+}
+
+pub trait GetDistributionMut {
+    fn dist_mut(&mut self) -> &mut Distribution;
+}
+
 #[derive(Clone, Copy, Debug)]
 pub enum Distribution {
     TernaryFixed(usize), // Ternary with fixed Hamming weight

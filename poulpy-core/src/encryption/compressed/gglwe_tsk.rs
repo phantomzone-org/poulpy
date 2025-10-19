@@ -9,11 +9,10 @@ use poulpy_hal::{
 };
 
 use crate::{
-    ScratchTakeCore,
-    encryption::compressed::gglwe_ksk::GLWESwitchingKeyCompressedEncryptSk,
-    encryption::gglwe_tsk::TensorKeyEncryptSk,
+    GetDistribution, ScratchTakeCore,
+    encryption::{compressed::gglwe_ksk::GLWESwitchingKeyCompressedEncryptSk, gglwe_tsk::TensorKeyEncryptSk},
     layouts::{
-        GGLWEInfos, GLWEInfos, GLWESecret, GLWESecretToRef, GetDist, LWEInfos, Rank,
+        GGLWEInfos, GLWEInfos, GLWESecret, GLWESecretToRef, LWEInfos, Rank,
         compressed::{TensorKeyCompressed, TensorKeyCompressedToMut},
     },
 };
@@ -37,7 +36,7 @@ impl<DataSelf: DataMut> TensorKeyCompressed<DataSelf> {
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
-        S: GLWESecretToRef + GetDist,
+        S: GLWESecretToRef + GetDistribution,
         M: GGLWETensorKeyCompressedEncryptSk<BE>,
     {
         module.gglwe_tensor_key_encrypt_sk(self, sk, seed_xa, source_xe, scratch);
@@ -58,7 +57,7 @@ pub trait GGLWETensorKeyCompressedEncryptSk<BE: Backend> {
         scratch: &mut Scratch<BE>,
     ) where
         R: TensorKeyCompressedToMut,
-        S: GLWESecretToRef + GetDist;
+        S: GLWESecretToRef + GetDistribution;
 }
 
 impl<BE: Backend> GGLWETensorKeyCompressedEncryptSk<BE> for Module<BE>
@@ -95,7 +94,7 @@ where
         scratch: &mut Scratch<BE>,
     ) where
         R: TensorKeyCompressedToMut,
-        S: GLWESecretToRef + GetDist,
+        S: GLWESecretToRef + GetDistribution,
     {
         let res: &mut TensorKeyCompressed<&mut [u8]> = &mut res.to_mut();
 

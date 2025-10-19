@@ -4,8 +4,9 @@ use poulpy_hal::{
 };
 
 use crate::{
+    GetDistribution, GetDistributionMut,
     dist::Distribution,
-    layouts::{Base2K, Degree, GLWEInfos, GLWEPublicKey, GLWEPublicKeyToRef, GetDegree, GetDist, LWEInfos, Rank, TorusPrecision},
+    layouts::{Base2K, Degree, GLWEInfos, GLWEPublicKey, GLWEPublicKeyToRef, GetDegree, LWEInfos, Rank, TorusPrecision},
 };
 
 #[derive(PartialEq, Eq)]
@@ -16,13 +17,15 @@ pub struct GLWEPublicKeyPrepared<D: Data, B: Backend> {
     pub(crate) dist: Distribution,
 }
 
-pub trait SetDist {
-    fn set_dist(&mut self, dist: Distribution);
+impl<D: DataRef, BE: Backend> GetDistribution for GLWEPublicKeyPrepared<D, BE> {
+    fn dist(&self) -> &Distribution {
+        &self.dist
+    }
 }
 
-impl<D: Data, B: Backend> SetDist for GLWEPublicKeyPrepared<D, B> {
-    fn set_dist(&mut self, dist: Distribution) {
-        self.dist = dist
+impl<D: DataMut, BE: Backend> GetDistributionMut for GLWEPublicKeyPrepared<D, BE> {
+    fn dist_mut(&mut self) -> &mut Distribution {
+        &mut self.dist
     }
 }
 
@@ -122,8 +125,8 @@ where
 {
     fn prepare_glwe_public_key<R, O>(&self, res: &mut R, other: &O)
     where
-        R: GLWEPublicKeyPreparedToMut<B> + SetDist,
-        O: GLWEPublicKeyToRef + GetDist,
+        R: GLWEPublicKeyPreparedToMut<B> + GetDistributionMut,
+        O: GLWEPublicKeyToRef + GetDistribution,
     {
         {
             let mut res: GLWEPublicKeyPrepared<&mut [u8], B> = res.to_mut();
@@ -140,7 +143,7 @@ where
             }
         }
 
-        res.set_dist(other.get_dist());
+        *res.dist_mut() = *other.dist();
     }
 }
 
@@ -149,7 +152,7 @@ impl<B: Backend> GLWEPublicKeyPrepare<B> for Module<B> where Self: GetDegree + V
 impl<D: DataMut, B: Backend> GLWEPublicKeyPrepared<D, B> {
     pub fn prepare<O, M>(&mut self, module: &M, other: &O)
     where
-        O: GLWEPublicKeyToRef + GetDist,
+        O: GLWEPublicKeyToRef + GetDistribution,
         M: GLWEPublicKeyPrepare<B>,
     {
         module.prepare_glwe_public_key(self, other);

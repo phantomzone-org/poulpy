@@ -14,7 +14,7 @@ backend_test_suite!(
  tests = {
  //GLWE Encryption
  glwe_encrypt_sk => crate::tests::test_suite::encryption::test_glwe_encrypt_sk,
- lwe_compressed_encrypt_sk => crate::tests::test_suite::encryption::test_glwe_compressed_encrypt_sk,
+ glwe_compressed_encrypt_sk => crate::tests::test_suite::encryption::test_glwe_compressed_encrypt_sk,
  glwe_encrypt_zero_sk => crate::tests::test_suite::encryption::test_glwe_encrypt_zero_sk,
  glwe_encrypt_pk => crate::tests::test_suite::encryption::test_glwe_encrypt_pk,
 // GLWE Keyswitch

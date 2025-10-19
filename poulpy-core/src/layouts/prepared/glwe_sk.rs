@@ -4,11 +4,9 @@ use poulpy_hal::{
 };
 
 use crate::{
+    GetDistribution, GetDistributionMut,
     dist::Distribution,
-    layouts::{
-        Base2K, Degree, GLWEInfos, GLWESecret, GLWESecretToRef, GetDegree, GetDist, LWEInfos, Rank, TorusPrecision,
-        prepared::SetDist,
-    },
+    layouts::{Base2K, Degree, GLWEInfos, GLWESecret, GLWESecretToRef, GetDegree, LWEInfos, Rank, TorusPrecision},
 };
 
 pub struct GLWESecretPrepared<D: Data, B: Backend> {
@@ -16,9 +14,15 @@ pub struct GLWESecretPrepared<D: Data, B: Backend> {
     pub(crate) dist: Distribution,
 }
 
-impl<D: DataRef, B: Backend> SetDist for GLWESecretPrepared<D, B> {
-    fn set_dist(&mut self, dist: Distribution) {
-        self.dist = dist
+impl<D: DataRef, BE: Backend> GetDistribution for GLWESecretPrepared<D, BE> {
+    fn dist(&self) -> &Distribution {
+        &self.dist
+    }
+}
+
+impl<D: DataMut, BE: Backend> GetDistributionMut for GLWESecretPrepared<D, BE> {
+    fn dist_mut(&mut self) -> &mut Distribution {
+        &mut self.dist
     }
 }
 
@@ -125,8 +129,8 @@ where
 {
     fn prepare_glwe_secret<R, O>(&self, res: &mut R, other: &O)
     where
-        R: GLWESecretPreparedToMut<B> + SetDist,
-        O: GLWESecretToRef + GetDist,
+        R: GLWESecretPreparedToMut<B> + GetDistributionMut,
+        O: GLWESecretToRef + GetDistribution,
     {
         {
             let mut res: GLWESecretPrepared<&mut [u8], _> = res.to_mut();
@@ -137,7 +141,7 @@ where
             }
         }
 
-        res.set_dist(other.get_dist());
+        *res.dist_mut() = *other.dist();
     }
 }
 
@@ -147,7 +151,7 @@ impl<D: DataMut, B: Backend> GLWESecretPrepared<D, B> {
     pub fn prepare<M, O>(&mut self, module: &M, other: &O)
     where
         M: GLWESecretPrepare<B>,
-        O: GLWESecretToRef + GetDist,
+        O: GLWESecretToRef + GetDistribution,
     {
         module.prepare_glwe_secret(self, other);
     }

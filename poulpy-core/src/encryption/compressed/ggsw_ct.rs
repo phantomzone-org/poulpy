@@ -8,7 +8,7 @@ use crate::{
     ScratchTakeCore,
     encryption::{SIGMA, ggsw_ct::GGSWEncryptSk, glwe_ct::GLWEEncryptSkInternal},
     layouts::{
-        GGSWInfos, GLWEInfos, LWEInfos,
+        GGSWCompressedSeedMut, GGSWInfos, GLWEInfos, LWEInfos,
         compressed::{GGSWCompressed, GGSWCompressedToMut},
         prepared::{GLWESecretPrepared, GLWESecretPreparedToRef},
     },
@@ -57,7 +57,7 @@ pub trait GGSWCompressedEncryptSk<BE: Backend> {
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
-        R: GGSWCompressedToMut,
+        R: GGSWCompressedToMut + GGSWCompressedSeedMut,
         P: ScalarZnxToRef,
         S: GLWESecretPreparedToRef<BE>;
 }
@@ -83,62 +83,66 @@ where
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
-        R: GGSWCompressedToMut,
+        R: GGSWCompressedToMut + GGSWCompressedSeedMut,
         P: ScalarZnxToRef,
         S: GLWESecretPreparedToRef<BE>,
     {
-        let res: &mut GGSWCompressed<&mut [u8]> = &mut res.to_mut();
-        let sk: &GLWESecretPrepared<&[u8], BE> = &sk.to_ref();
-        let pt: &ScalarZnx<&[u8]> = &pt.to_ref();
+        let mut seeds: Vec<[u8; 32]> = vec![[0u8; 32]; res.seed_mut().len()];
 
-        #[cfg(debug_assertions)]
         {
-            use poulpy_hal::layouts::ZnxInfos;
+            let res: &mut GGSWCompressed<&mut [u8]> = &mut res.to_mut();
+            let sk: &GLWESecretPrepared<&[u8], BE> = &sk.to_ref();
+            let pt: &ScalarZnx<&[u8]> = &pt.to_ref();
 
-            assert_eq!(res.rank(), sk.rank());
-            assert_eq!(res.n(), sk.n());
-            assert_eq!(pt.n() as u32, sk.n());
-        }
+            #[cfg(debug_assertions)]
+            {
+                use poulpy_hal::layouts::ZnxInfos;
 
-        let base2k: usize = res.base2k().into();
-        let rank: usize = res.rank().into();
-        let cols: usize = rank + 1;
-        let dsize: usize = res.dsize().into();
+                assert_eq!(res.rank(), sk.rank());
+                assert_eq!(res.n(), sk.n());
+                assert_eq!(pt.n() as u32, sk.n());
+            }
 
-        let (mut tmp_pt, scratch_1) = scratch.take_glwe_pt(self, &res.glwe_layout());
+            let base2k: usize = res.base2k().into();
+            let rank: usize = res.rank().into();
+            let cols: usize = rank + 1;
+            let dsize: usize = res.dsize().into();
 
-        let mut source = Source::new(seed_xa);
+            let (mut tmp_pt, scratch_1) = scratch.take_glwe_pt(self, &res.glwe_layout());
 
-        res.seed = vec![[0u8; 32]; res.dnum().0 as usize * cols];
+            let mut source = Source::new(seed_xa);
 
-        for row_i in 0..res.dnum().into() {
-            tmp_pt.data.zero();
+            for row_i in 0..res.dnum().into() {
+                tmp_pt.data.zero();
 
-            // Adds the scalar_znx_pt to the i-th limb of the vec_znx_pt
-            self.vec_znx_add_scalar_inplace(&mut tmp_pt.data, 0, (dsize - 1) + row_i * dsize, pt, 0);
-            self.vec_znx_normalize_inplace(base2k, &mut tmp_pt.data, 0, scratch_1);
+                // Adds the scalar_znx_pt to the i-th limb of the vec_znx_pt
+                self.vec_znx_add_scalar_inplace(&mut tmp_pt.data, 0, (dsize - 1) + row_i * dsize, pt, 0);
+                self.vec_znx_normalize_inplace(base2k, &mut tmp_pt.data, 0, scratch_1);
 
-            for col_j in 0..rank + 1 {
-                // rlwe encrypt of vec_znx_pt into vec_znx_ct
+                for col_j in 0..rank + 1 {
+                    // rlwe encrypt of vec_znx_pt into vec_znx_ct
 
-                let (seed, mut source_xa_tmp) = source.branch();
+                    let (seed, mut source_xa_tmp) = source.branch();
 
-                res.seed[row_i * cols + col_j] = seed;
+                    seeds[row_i * cols + col_j] = seed;
 
-                self.glwe_encrypt_sk_internal(
-                    res.base2k().into(),
-                    res.k().into(),
-                    &mut res.at_mut(row_i, col_j).data,
-                    cols,
-                    true,
-                    Some((&tmp_pt, col_j)),
-                    sk,
-                    &mut source_xa_tmp,
-                    source_xe,
-                    SIGMA,
-                    scratch_1,
-                );
+                    self.glwe_encrypt_sk_internal(
+                        res.base2k().into(),
+                        res.k().into(),
+                        &mut res.at_mut(row_i, col_j).data,
+                        cols,
+                        true,
+                        Some((&tmp_pt, col_j)),
+                        sk,
+                        &mut source_xa_tmp,
+                        source_xe,
+                        SIGMA,
+                        scratch_1,
+                    );
+                }
             }
         }
+
+        res.seed_mut().copy_from_slice(&seeds);
     }
 }

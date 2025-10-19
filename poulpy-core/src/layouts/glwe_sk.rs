@@ -7,8 +7,9 @@ use poulpy_hal::{
 };
 
 use crate::{
+    GetDistribution,
     dist::Distribution,
-    layouts::{Base2K, Degree, GLWEInfos, GetDegree, GetDist, LWEInfos, Rank, TorusPrecision},
+    layouts::{Base2K, Degree, GLWEInfos, GetDegree, LWEInfos, Rank, TorusPrecision},
 };
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
@@ -64,9 +65,9 @@ impl<D: Data> LWEInfos for GLWESecret<D> {
     }
 }
 
-impl<D: Data> GetDist for GLWESecret<D> {
-    fn get_dist(&self) -> Distribution {
-        self.dist
+impl<D: Data> GetDistribution for GLWESecret<D> {
+    fn dist(&self) -> &Distribution {
+        &self.dist
     }
 }
 

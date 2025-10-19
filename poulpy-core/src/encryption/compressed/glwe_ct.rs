@@ -9,7 +9,7 @@ use crate::{
         glwe_ct::{GLWEEncryptSk, GLWEEncryptSkInternal},
     },
     layouts::{
-        GLWEInfos, GLWEPlaintextToRef, LWEInfos,
+        GLWECompressedSeedMut, GLWEInfos, GLWEPlaintextToRef, LWEInfos,
         compressed::{GLWECompressed, GLWECompressedToMut},
         prepared::GLWESecretPreparedToRef,
     },
@@ -58,7 +58,7 @@ pub trait GLWECompressedEncryptSk<BE: Backend> {
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
-        R: GLWECompressedToMut,
+        R: GLWECompressedToMut + GLWECompressedSeedMut,
         P: GLWEPlaintextToRef,
         S: GLWESecretPreparedToRef<BE>;
 }
@@ -83,28 +83,30 @@ where
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
-        R: GLWECompressedToMut,
+        R: GLWECompressedToMut + GLWECompressedSeedMut,
         P: GLWEPlaintextToRef,
         S: GLWESecretPreparedToRef<BE>,
     {
-        let res: &mut GLWECompressed<&mut [u8]> = &mut res.to_mut();
-        let mut source_xa: Source = Source::new(seed_xa);
-        let cols: usize = (res.rank() + 1).into();
+        {
+            let res: &mut GLWECompressed<&mut [u8]> = &mut res.to_mut();
+            let mut source_xa: Source = Source::new(seed_xa);
+            let cols: usize = (res.rank() + 1).into();
 
-        self.glwe_encrypt_sk_internal(
-            res.base2k().into(),
-            res.k().into(),
-            &mut res.data,
-            cols,
-            true,
-            Some((pt, 0)),
-            sk,
-            &mut source_xa,
-            source_xe,
-            SIGMA,
-            scratch,
-        );
+            self.glwe_encrypt_sk_internal(
+                res.base2k().into(),
+                res.k().into(),
+                &mut res.data,
+                cols,
+                true,
+                Some((pt, 0)),
+                sk,
+                &mut source_xa,
+                source_xe,
+                SIGMA,
+                scratch,
+            );
+        }
 
-        res.seed = seed_xa;
+        res.seed_mut().copy_from_slice(&seed_xa);
     }
 }

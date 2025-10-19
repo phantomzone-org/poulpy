@@ -8,10 +8,10 @@ use poulpy_hal::{
 };
 
 use crate::{
-    ScratchTakeCore,
+    GetDistribution, ScratchTakeCore,
     encryption::gglwe_ksk::GLWESwitchingKeyEncryptSk,
     layouts::{
-        GGLWEInfos, GLWEInfos, GLWESecret, GLWESecretToRef, GLWESwitchingKey, GetDist, LWEInfos, Rank, TensorKey, TensorKeyToMut,
+        GGLWEInfos, GLWEInfos, GLWESecret, GLWESecretToRef, GLWESwitchingKey, LWEInfos, Rank, TensorKey, TensorKeyToMut,
         prepared::{GLWESecretPrepare, GLWESecretPrepared, GLWESecretPreparedAlloc},
     },
 };
@@ -36,7 +36,7 @@ impl<DataSelf: DataMut> TensorKey<DataSelf> {
         scratch: &mut Scratch<BE>,
     ) where
         M: TensorKeyEncryptSk<BE>,
-        S: GLWESecretToRef + GetDist,
+        S: GLWESecretToRef + GetDistribution,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         module.tensor_key_encrypt_sk(self, sk, source_xa, source_xe, scratch);
@@ -57,7 +57,7 @@ pub trait TensorKeyEncryptSk<BE: Backend> {
         scratch: &mut Scratch<BE>,
     ) where
         R: TensorKeyToMut,
-        S: GLWESecretToRef + GetDist;
+        S: GLWESecretToRef + GetDistribution;
 }
 
 impl<BE: Backend> TensorKeyEncryptSk<BE> for Module<BE>
@@ -95,7 +95,7 @@ where
         scratch: &mut Scratch<BE>,
     ) where
         R: TensorKeyToMut,
-        S: GLWESecretToRef + GetDist,
+        S: GLWESecretToRef + GetDistribution,
     {
         let res: &mut TensorKey<&mut [u8]> = &mut res.to_mut();
 

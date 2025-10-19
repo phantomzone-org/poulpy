@@ -19,6 +19,26 @@ pub struct GLWECompressed<D: Data> {
     pub(crate) seed: [u8; 32],
 }
 
+pub trait GLWECompressedSeedMut {
+    fn seed_mut(&mut self) -> &mut [u8; 32];
+}
+
+impl<D: DataMut> GLWECompressedSeedMut for GLWECompressed<D> {
+    fn seed_mut(&mut self) -> &mut [u8; 32] {
+        &mut self.seed
+    }
+}
+
+pub trait GLWECompressedSeed {
+    fn seed(&self) -> &[u8; 32];
+}
+
+impl<D: DataRef> GLWECompressedSeed for GLWECompressed<D> {
+    fn seed(&self) -> &[u8; 32] {
+        &self.seed
+    }
+}
+
 impl<D: Data> LWEInfos for GLWECompressed<D> {
     fn base2k(&self) -> Base2K {
         self.base2k

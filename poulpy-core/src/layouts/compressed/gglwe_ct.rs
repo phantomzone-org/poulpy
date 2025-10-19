@@ -23,6 +23,25 @@ pub struct GGLWECompressed<D: Data> {
     pub(crate) seed: Vec<[u8; 32]>,
 }
 
+pub trait GGLWECompressedSeedMut {
+    fn seed_mut(&mut self) -> &mut Vec<[u8; 32]>;
+}
+
+impl<D: DataMut> GGLWECompressedSeedMut for GGLWECompressed<D> {
+    fn seed_mut(&mut self) -> &mut Vec<[u8; 32]> {
+        &mut self.seed
+    }
+}
+
+pub trait GGLWECompressedSeed {
+    fn seed(&self) -> &Vec<[u8; 32]>;
+}
+
+impl<D: DataRef> GGLWECompressedSeed for GGLWECompressed<D> {
+    fn seed(&self) -> &Vec<[u8; 32]> {
+        &self.seed
+    }
+}
 impl<D: Data> LWEInfos for GGLWECompressed<D> {
     fn n(&self) -> Degree {
         Degree(self.data.n() as u32)
