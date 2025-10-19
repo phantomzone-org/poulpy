@@ -3,20 +3,20 @@ pub mod test_suite;
 #[cfg(test)]
 mod serialization;
 
-//#[allow(unused_imports)]
-// use poulpy_hal::backend_test_suite;
+#[allow(unused_imports)]
+use poulpy_hal::backend_test_suite;
 
-// #[cfg(test)]
-// backend_test_suite!(
-// mod cpu_spqlios,
-// backend = poulpy_backend::cpu_spqlios::FFT64Spqlios,
-// size = 1<<8,
-// tests = {
-// GLWE Encryption
-// glwe_encrypt_sk => crate::tests::test_suite::encryption::test_glwe_encrypt_sk,
-// glwe_compressed_encrypt_sk => crate::tests::test_suite::encryption::test_glwe_compressed_encrypt_sk,
-// glwe_encrypt_zero_sk => crate::tests::test_suite::encryption::test_glwe_encrypt_zero_sk,
-// glwe_encrypt_pk => crate::tests::test_suite::encryption::test_glwe_encrypt_pk,
+#[cfg(test)]
+backend_test_suite!(
+ mod cpu_spqlios,
+ backend = poulpy_backend::cpu_spqlios::FFT64Spqlios,
+ size = 1<<8,
+ tests = {
+ //GLWE Encryption
+ glwe_encrypt_sk => crate::tests::test_suite::encryption::test_glwe_encrypt_sk,
+ lwe_compressed_encrypt_sk => crate::tests::test_suite::encryption::test_glwe_compressed_encrypt_sk,
+ glwe_encrypt_zero_sk => crate::tests::test_suite::encryption::test_glwe_encrypt_zero_sk,
+ glwe_encrypt_pk => crate::tests::test_suite::encryption::test_glwe_encrypt_pk,
 // GLWE Keyswitch
 // glwe_keyswitch => crate::tests::test_suite::keyswitch::test_glwe_keyswitch,
 // glwe_keyswitch_inplace => crate::tests::test_suite::keyswitch::test_glwe_keyswitch_inplace,
@@ -61,9 +61,8 @@ mod serialization;
 // lwe_keyswitch => crate::tests::test_suite::keyswitch::test_lwe_keyswitch,
 // glwe_to_lwe => crate::tests::test_suite::test_glwe_to_lwe,
 // lwe_to_glwe => crate::tests::test_suite::test_lwe_to_glwe,
-// }
-// );
-//
+}
+);
 // #[cfg(test)]
 // backend_test_suite!(
 // mod cpu_ref,
