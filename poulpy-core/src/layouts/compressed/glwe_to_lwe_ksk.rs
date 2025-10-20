@@ -6,11 +6,9 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Dnum, Dsize, GGLWEInfos, GLWEInfos, GLWEToLWESwitchingKey, GLWEToLWESwitchingKeyToMut, LWEInfos, Rank,
-    TorusPrecision,
-    compressed::{
-        GLWESwitchingKeyCompressed, GLWESwitchingKeyCompressedToMut, GLWESwitchingKeyCompressedToRef, GLWESwitchingKeyDecompress,
-    },
+    Base2K, Degree, Dnum, Dsize, GGLWECompressed, GGLWECompressedToMut, GGLWECompressedToRef, GGLWEInfos, GGLWEToMut, GLWEInfos,
+    GLWESwitchingKeyDegrees, GLWESwitchingKeyDegreesMut, GLWEToLWESwitchingKey, LWEInfos, Rank, TorusPrecision,
+    compressed::{GLWESwitchingKeyCompressed, GLWESwitchingKeyDecompress},
 };
 
 #[derive(PartialEq, Eq, Clone)]
@@ -151,10 +149,10 @@ where
 {
     fn decompress_glwe_to_lwe_switching_key<R, O>(&self, res: &mut R, other: &O)
     where
-        R: GLWEToLWESwitchingKeyToMut,
-        O: GLWEToLWESwitchingKeyCompressedToRef,
+        R: GGLWEToMut + GLWESwitchingKeyDegreesMut,
+        O: GGLWECompressedToRef + GLWESwitchingKeyDegrees,
     {
-        self.decompress_glwe_switching_key(&mut res.to_mut().0, &other.to_ref().0);
+        self.decompress_glwe_switching_key(res, other);
     }
 }
 
@@ -163,35 +161,21 @@ impl<B: Backend> GLWEToLWESwitchingKeyDecompress for Module<B> where Self: GLWES
 impl<D: DataMut> GLWEToLWESwitchingKey<D> {
     pub fn decompress<O, M>(&mut self, module: &M, other: &O)
     where
-        O: GLWEToLWESwitchingKeyCompressedToRef,
+        O: GGLWECompressedToRef + GLWESwitchingKeyDegrees,
         M: GLWEToLWESwitchingKeyDecompress,
     {
         module.decompress_glwe_to_lwe_switching_key(self, other);
     }
 }
 
-pub trait GLWEToLWESwitchingKeyCompressedToRef {
-    fn to_ref(&self) -> GLWEToLWESwitchingKeyCompressed<&[u8]>;
-}
-
-impl<D: DataRef> GLWEToLWESwitchingKeyCompressedToRef for GLWEToLWESwitchingKeyCompressed<D>
-where
-    GLWESwitchingKeyCompressed<D>: GLWESwitchingKeyCompressedToRef,
-{
-    fn to_ref(&self) -> GLWEToLWESwitchingKeyCompressed<&[u8]> {
-        GLWEToLWESwitchingKeyCompressed(self.0.to_ref())
+impl<D: DataRef> GGLWECompressedToRef for GLWEToLWESwitchingKeyCompressed<D> {
+    fn to_ref(&self) -> GGLWECompressed<&[u8]> {
+        self.0.to_ref()
     }
 }
 
-pub trait GLWEToLWESwitchingKeyCompressedToMut {
-    fn to_mut(&mut self) -> GLWEToLWESwitchingKeyCompressed<&mut [u8]>;
-}
-
-impl<D: DataMut> GLWEToLWESwitchingKeyCompressedToMut for GLWEToLWESwitchingKeyCompressed<D>
-where
-    GLWESwitchingKeyCompressed<D>: GLWESwitchingKeyCompressedToMut,
-{
-    fn to_mut(&mut self) -> GLWEToLWESwitchingKeyCompressed<&mut [u8]> {
-        GLWEToLWESwitchingKeyCompressed(self.0.to_mut())
+impl<D: DataMut> GGLWECompressedToMut for GLWEToLWESwitchingKeyCompressed<D> {
+    fn to_mut(&mut self) -> GGLWECompressed<&mut [u8]> {
+        self.0.to_mut()
     }
 }

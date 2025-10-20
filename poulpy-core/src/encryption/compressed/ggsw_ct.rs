@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{ModuleN, VecZnxAddScalarInplace, VecZnxNormalizeInplace},
-    layouts::{Backend, DataMut, Module, ScalarZnx, ScalarZnxToRef, Scratch, ZnxZero},
+    layouts::{Backend, DataMut, Module, ScalarZnx, ScalarZnxToRef, Scratch, ZnxInfos, ZnxZero},
     source::Source,
 };
 
@@ -57,7 +57,7 @@ pub trait GGSWCompressedEncryptSk<BE: Backend> {
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
-        R: GGSWCompressedToMut + GGSWCompressedSeedMut,
+        R: GGSWCompressedToMut + GGSWCompressedSeedMut + GGSWInfos,
         P: ScalarZnxToRef,
         S: GLWESecretPreparedToRef<BE>;
 }
@@ -83,30 +83,29 @@ where
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
-        R: GGSWCompressedToMut + GGSWCompressedSeedMut,
+        R: GGSWCompressedToMut + GGSWCompressedSeedMut + GGSWInfos,
         P: ScalarZnxToRef,
         S: GLWESecretPreparedToRef<BE>,
     {
-        let mut seeds: Vec<[u8; 32]> = vec![[0u8; 32]; res.seed_mut().len()];
+        let base2k: usize = res.base2k().into();
+        let rank: usize = res.rank().into();
+        let cols: usize = rank + 1;
+        let dsize: usize = res.dsize().into();
+
+        let sk: &GLWESecretPrepared<&[u8], BE> = &sk.to_ref();
+        let pt: &ScalarZnx<&[u8]> = &pt.to_ref();
+
+        assert_eq!(res.rank(), sk.rank());
+        assert_eq!(pt.n(), self.n());
+        assert_eq!(res.n(), self.n() as u32);
+        assert_eq!(sk.n(), self.n() as u32);
+
+        let mut seeds: Vec<[u8; 32]> = vec![[0u8; 32]; res.dnum().as_usize() * (res.rank().as_usize() + 1)];
 
         {
             let res: &mut GGSWCompressed<&mut [u8]> = &mut res.to_mut();
-            let sk: &GLWESecretPrepared<&[u8], BE> = &sk.to_ref();
-            let pt: &ScalarZnx<&[u8]> = &pt.to_ref();
 
-            #[cfg(debug_assertions)]
-            {
-                use poulpy_hal::layouts::ZnxInfos;
-
-                assert_eq!(res.rank(), sk.rank());
-                assert_eq!(res.n(), sk.n());
-                assert_eq!(pt.n() as u32, sk.n());
-            }
-
-            let base2k: usize = res.base2k().into();
-            let rank: usize = res.rank().into();
-            let cols: usize = rank + 1;
-            let dsize: usize = res.dsize().into();
+            println!("res.seed: {:?}", res.seed);
 
             let (mut tmp_pt, scratch_1) = scratch.take_glwe_pt(self, &res.glwe_layout());
 

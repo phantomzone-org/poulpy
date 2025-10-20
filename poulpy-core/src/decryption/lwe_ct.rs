@@ -1,33 +1,39 @@
 use poulpy_hal::{
     api::{ScratchOwnedAlloc, ScratchOwnedBorrow, ZnNormalizeInplace},
     layouts::{Backend, DataMut, DataRef, Module, ScratchOwned, ZnxView, ZnxViewMut},
-    oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl},
 };
 
 use crate::layouts::{LWE, LWEInfos, LWEPlaintext, LWEPlaintextToMut, LWESecret, LWESecretToRef, LWEToMut};
 
 impl<DataSelf: DataRef + DataMut> LWE<DataSelf> {
-    pub fn decrypt<P, S, M, B>(&mut self, module: &M, pt: &mut P, sk: S)
+    pub fn decrypt<P, S, M, B: Backend>(&mut self, module: &M, pt: &mut P, sk: &S)
     where
         P: LWEPlaintextToMut,
         S: LWESecretToRef,
         M: LWEDecrypt<B>,
-        B: Backend + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
     {
         module.lwe_decrypt(self, pt, sk);
     }
 }
 
-pub trait LWEDecrypt<BE: Backend>
+pub trait LWEDecrypt<BE: Backend> {
+    fn lwe_decrypt<R, P, S>(&self, res: &mut R, pt: &mut P, sk: &S)
+    where
+        R: LWEToMut,
+        P: LWEPlaintextToMut,
+        S: LWESecretToRef;
+}
+
+impl<BE: Backend> LWEDecrypt<BE> for Module<BE>
 where
     Self: Sized + ZnNormalizeInplace<BE>,
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
 {
-    fn lwe_decrypt<R, P, S>(&self, res: &mut R, pt: &mut P, sk: S)
+    fn lwe_decrypt<R, P, S>(&self, res: &mut R, pt: &mut P, sk: &S)
     where
         R: LWEToMut,
         P: LWEPlaintextToMut,
         S: LWESecretToRef,
-        BE: Backend + ScratchOwnedAllocImpl<BE> + ScratchOwnedBorrowImpl<BE>,
     {
         let res: &mut LWE<&mut [u8]> = &mut res.to_mut();
         let pt: &mut LWEPlaintext<&mut [u8]> = &mut pt.to_mut();
@@ -57,5 +63,3 @@ where
         pt.k = crate::layouts::TorusPrecision(res.k().0.min(pt.size() as u32 * res.base2k().0));
     }
 }
-
-impl<BE: Backend> LWEDecrypt<BE> for Module<BE> where Self: Sized + ZnNormalizeInplace<BE> {}

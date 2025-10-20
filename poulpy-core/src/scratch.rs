@@ -6,8 +6,8 @@ use poulpy_hal::{
 use crate::{
     dist::Distribution,
     layouts::{
-        AutomorphismKey, GGLWE, GGLWEInfos, GGSW, GGSWInfos, GLWE, GLWEInfos, GLWEPlaintext, GLWEPublicKey, GLWESecret,
-        GLWESwitchingKey, Rank, TensorKey,
+        AutomorphismKey, Degree, GGLWE, GGLWEInfos, GGLWELayout, GGSW, GGSWInfos, GLWE, GLWEInfos, GLWEPlaintext, GLWEPublicKey,
+        GLWESecret, GLWESwitchingKey, Rank, TensorKey,
         prepared::{
             AutomorphismKeyPrepared, GGLWEPrepared, GGSWPrepared, GLWEPublicKeyPrepared, GLWESecretPrepared,
             GLWESwitchingKeyPrepared, TensorKeyPrepared,
@@ -258,8 +258,8 @@ where
         (
             GLWESwitchingKey {
                 key: data,
-                sk_in_n: 0,
-                sk_out_n: 0,
+                input_degree: Degree(0),
+                output_degree: Degree(0),
             },
             scratch,
         )
@@ -279,8 +279,8 @@ where
         (
             GLWESwitchingKeyPrepared {
                 key: data,
-                sk_in_n: 0,
-                sk_out_n: 0,
+                input_degree: Degree(0),
+                output_degree: Degree(0),
             },
             scratch,
         )
@@ -292,7 +292,7 @@ where
         M: ModuleN,
     {
         assert_eq!(module.n() as u32, infos.n());
-        let (data, scratch) = self.take_glwe_switching_key(module, infos);
+        let (data, scratch) = self.take_gglwe(module, infos);
         (AutomorphismKey { key: data, p: 0 }, scratch)
     }
 
@@ -306,7 +306,7 @@ where
         M: ModuleN + VmpPMatBytesOf,
     {
         assert_eq!(module.n() as u32, infos.n());
-        let (data, scratch) = self.take_gglwe_switching_key_prepared(module, infos);
+        let (data, scratch) = self.take_gglwe_prepared(module, infos);
         (AutomorphismKeyPrepared { key: data, p: 0 }, scratch)
     }
 
@@ -321,21 +321,21 @@ where
             infos.rank_out(),
             "rank_in != rank_out is not supported for GGLWETensorKey"
         );
-        let mut keys: Vec<GLWESwitchingKey<&mut [u8]>> = Vec::new();
+        let mut keys: Vec<GGLWE<&mut [u8]>> = Vec::new();
         let pairs: usize = (((infos.rank_out().0 + 1) * infos.rank_out().0) >> 1).max(1) as usize;
 
         let mut scratch: &mut Self = self;
 
-        let mut ksk_infos: crate::layouts::GGLWELayout = infos.gglwe_layout();
+        let mut ksk_infos: GGLWELayout = infos.gglwe_layout();
         ksk_infos.rank_in = Rank(1);
 
         if pairs != 0 {
-            let (gglwe, s) = scratch.take_glwe_switching_key(module, &ksk_infos);
+            let (gglwe, s) = scratch.take_gglwe(module, &ksk_infos);
             scratch = s;
             keys.push(gglwe);
         }
         for _ in 1..pairs {
-            let (gglwe, s) = scratch.take_glwe_switching_key(module, &ksk_infos);
+            let (gglwe, s) = scratch.take_gglwe(module, &ksk_infos);
             scratch = s;
             keys.push(gglwe);
         }
@@ -354,21 +354,21 @@ where
             "rank_in != rank_out is not supported for GGLWETensorKeyPrepared"
         );
 
-        let mut keys: Vec<GLWESwitchingKeyPrepared<&mut [u8], B>> = Vec::new();
+        let mut keys: Vec<GGLWEPrepared<&mut [u8], B>> = Vec::new();
         let pairs: usize = (((infos.rank_out().0 + 1) * infos.rank_out().0) >> 1).max(1) as usize;
 
         let mut scratch: &mut Self = self;
 
-        let mut ksk_infos: crate::layouts::GGLWELayout = infos.gglwe_layout();
+        let mut ksk_infos: GGLWELayout = infos.gglwe_layout();
         ksk_infos.rank_in = Rank(1);
 
         if pairs != 0 {
-            let (gglwe, s) = scratch.take_gglwe_switching_key_prepared(module, &ksk_infos);
+            let (gglwe, s) = scratch.take_gglwe_prepared(module, &ksk_infos);
             scratch = s;
             keys.push(gglwe);
         }
         for _ in 1..pairs {
-            let (gglwe, s) = scratch.take_gglwe_switching_key_prepared(module, &ksk_infos);
+            let (gglwe, s) = scratch.take_gglwe_prepared(module, &ksk_infos);
             scratch = s;
             keys.push(gglwe);
         }

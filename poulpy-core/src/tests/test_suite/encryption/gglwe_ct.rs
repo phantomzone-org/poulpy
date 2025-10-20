@@ -31,7 +31,7 @@ where
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
-    let n = module.n();
+    let n: usize = module.n();
     let base2k: usize = 12;
     let k_ksk: usize = 54;
     let dsize: usize = k_ksk / base2k;

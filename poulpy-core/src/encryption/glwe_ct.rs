@@ -79,7 +79,7 @@ impl<D: DataMut> GLWE<D> {
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
-        P: GLWEPlaintextToRef,
+        P: GLWEPlaintextToRef + GLWEInfos,
         K: GLWEPublicKeyPreparedToRef<BE>,
         M: GLWEEncryptPk<BE>,
     {
@@ -245,7 +245,7 @@ pub trait GLWEEncryptPk<BE: Backend> {
         scratch: &mut Scratch<BE>,
     ) where
         R: GLWEToMut,
-        P: GLWEPlaintextToRef,
+        P: GLWEPlaintextToRef + GLWEInfos,
         K: GLWEPublicKeyPreparedToRef<BE>;
 
     fn glwe_encrypt_zero_pk<R, K>(
@@ -285,7 +285,7 @@ where
         scratch: &mut Scratch<BE>,
     ) where
         R: GLWEToMut,
-        P: GLWEPlaintextToRef,
+        P: GLWEPlaintextToRef + GLWEInfos,
         K: GLWEPublicKeyPreparedToRef<BE>,
     {
         self.glwe_encrypt_pk_internal(res, Some((pt, 0)), pk, source_xu, source_xe, scratch);
@@ -324,7 +324,7 @@ pub(crate) trait GLWEEncryptPkInternal<BE: Backend> {
         scratch: &mut Scratch<BE>,
     ) where
         R: GLWEToMut,
-        P: GLWEPlaintextToRef,
+        P: GLWEPlaintextToRef + GLWEInfos,
         K: GLWEPublicKeyPreparedToRef<BE>;
 }
 
@@ -351,7 +351,7 @@ where
         scratch: &mut Scratch<BE>,
     ) where
         R: GLWEToMut,
-        P: GLWEPlaintextToRef,
+        P: GLWEPlaintextToRef + GLWEInfos,
         K: GLWEPublicKeyPreparedToRef<BE>,
     {
         let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
@@ -361,8 +361,8 @@ where
         assert_eq!(res.n(), pk.n());
         assert_eq!(res.rank(), pk.rank());
         if let Some((pt, _)) = pt {
-            assert_eq!(pt.to_ref().base2k(), pk.base2k());
-            assert_eq!(pt.to_ref().n(), pk.n());
+            assert_eq!(pt.base2k(), pk.base2k());
+            assert_eq!(pt.n(), pk.n());
         }
 
         let base2k: usize = pk.base2k().into();

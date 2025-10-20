@@ -1,4 +1,4 @@
-use std::{fmt::Display, marker::PhantomData, ptr::NonNull};
+use std::{fmt::{Debug, Display}, marker::PhantomData, ptr::NonNull};
 
 use rand_distr::num_traits::Zero;
 
@@ -9,8 +9,8 @@ use crate::{
 
 #[allow(clippy::missing_safety_doc)]
 pub trait Backend: Sized {
-    type ScalarBig: Copy + Zero + Display;
-    type ScalarPrep: Copy + Zero + Display;
+    type ScalarBig: Copy + Zero + Display + Debug;
+    type ScalarPrep: Copy + Zero + Display + Debug;
     type Handle: 'static;
     fn layout_prep_word_count() -> usize;
     fn layout_big_word_count() -> usize;

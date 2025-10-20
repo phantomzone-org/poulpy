@@ -5,11 +5,10 @@ use poulpy_hal::{
 };
 
 use crate::{
-    ScratchTakeCore,
-    encryption::compressed::gglwe_ksk::GLWESwitchingKeyCompressedEncryptSk,
+    GGLWECompressedEncryptSk, ScratchTakeCore,
     layouts::{
-        GGLWEInfos, GLWEInfos, GLWESecret, GLWESecretToRef, LWEInfos,
-        compressed::{AutomorphismKeyCompressed, AutomorphismKeyCompressedToMut},
+        GGLWECompressedSeedMut, GGLWECompressedToMut, GGLWEInfos, GLWEInfos, GLWESecret, GLWESecretPrepare, GLWESecretPrepared,
+        GLWESecretPreparedAlloc, GLWESecretToRef, LWEInfos, SetAutomorphismGaloisElement, compressed::AutomorphismKeyCompressed,
     },
 };
 
@@ -34,7 +33,7 @@ impl<DataSelf: DataMut> AutomorphismKeyCompressed<DataSelf> {
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
-        S: GLWESecretToRef,
+        S: GLWESecretToRef + GLWEInfos,
         M: AutomorphismKeyCompressedEncryptSk<BE>,
     {
         module.automorphism_key_compressed_encrypt_sk(self, p, sk, seed_xa, source_xe, scratch);
@@ -55,20 +54,28 @@ pub trait AutomorphismKeyCompressedEncryptSk<BE: Backend> {
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
-        R: AutomorphismKeyCompressedToMut,
-        S: GLWESecretToRef;
+        R: GGLWECompressedToMut + GGLWECompressedSeedMut + SetAutomorphismGaloisElement + GGLWEInfos,
+        S: GLWESecretToRef + GLWEInfos;
 }
 
 impl<BE: Backend> AutomorphismKeyCompressedEncryptSk<BE> for Module<BE>
 where
-    Self: ModuleN + GaloisElement + VecZnxAutomorphism + GLWESwitchingKeyCompressedEncryptSk<BE>,
+    Self: ModuleN
+        + GaloisElement
+        + VecZnxAutomorphism
+        + GGLWECompressedEncryptSk<BE>
+        + GLWESecretPreparedAlloc<BE>
+        + GLWESecretPrepare<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     fn automorphism_key_compressed_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos,
     {
-        self.glwe_switching_key_compressed_encrypt_sk_tmp_bytes(infos) + GLWESecret::bytes_of(self.n().into(), infos.rank())
+        assert_eq!(self.n() as u32, infos.n());
+        self.gglwe_compressed_encrypt_sk_tmp_bytes(infos)
+            .max(GLWESecret::bytes_of_from_infos(infos))
+            + GLWESecretPrepared::bytes_of_from_infos(self, infos)
     }
 
     fn automorphism_key_compressed_encrypt_sk<R, S>(
@@ -80,12 +87,10 @@ where
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
-        R: AutomorphismKeyCompressedToMut,
-        S: GLWESecretToRef,
+        R: GGLWECompressedToMut + GGLWECompressedSeedMut + SetAutomorphismGaloisElement + GGLWEInfos,
+        S: GLWESecretToRef + GLWEInfos,
     {
-        let res: &mut AutomorphismKeyCompressed<&mut [u8]> = &mut res.to_mut();
         let sk: &GLWESecret<&[u8]> = &sk.to_ref();
-
         assert_eq!(res.n(), sk.n());
         assert_eq!(res.rank_out(), res.rank_in());
         assert_eq!(sk.rank(), res.rank_out());
@@ -96,9 +101,9 @@ where
             AutomorphismKeyCompressed::encrypt_sk_tmp_bytes(self, res)
         );
 
-        let (mut sk_out, scratch_1) = scratch.take_glwe_secret(self, sk.rank());
-
+        let (mut sk_out_prepared, scratch_1) = scratch.take_glwe_secret_prepared(self, sk.rank());
         {
+            let (mut sk_out, _) = scratch_1.take_glwe_secret(self, sk.rank());
             for i in 0..res.rank_out().into() {
                 self.vec_znx_automorphism(
                     self.galois_element_inv(p),
@@ -108,10 +113,18 @@ where
                     i,
                 );
             }
+            sk_out_prepared.prepare(self, &sk_out);
         }
 
-        self.glwe_switching_key_compressed_encrypt_sk(&mut res.key, sk, &sk_out, seed_xa, source_xe, scratch_1);
+        self.gglwe_compressed_encrypt_sk(
+            res,
+            &sk.data,
+            &sk_out_prepared,
+            seed_xa,
+            source_xe,
+            scratch_1,
+        );
 
-        res.p = p;
+        res.set_p(p);
     }
 }

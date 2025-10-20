@@ -3,7 +3,7 @@ use poulpy_hal::layouts::{Backend, DataMut, Module, Scratch, ZnxZero};
 use crate::{
     GLWEExternalProduct, ScratchTakeCore,
     layouts::{
-        GGLWE, GGLWEInfos, GGLWEToMut, GGLWEToRef, GGSWInfos, GLWEInfos, GLWESwitchingKey, GLWESwitchingKeyToRef,
+        GGLWE, GGLWEInfos, GGLWEToMut, GGLWEToRef, GGSWInfos, GLWEInfos, GLWESwitchingKey,
         prepared::{GGSWPrepared, GGSWPreparedToRef},
     },
 };
@@ -116,11 +116,11 @@ impl<DataSelf: DataMut> GLWESwitchingKey<DataSelf> {
     pub fn external_product<A, B, M, BE: Backend>(&mut self, module: &M, a: &A, b: &B, scratch: &mut Scratch<BE>)
     where
         M: GGLWEExternalProduct<BE>,
-        A: GLWESwitchingKeyToRef,
+        A: GGLWEToRef,
         B: GGSWPreparedToRef<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        module.gglwe_external_product(&mut self.key, &a.to_ref().key, b, scratch);
+        module.gglwe_external_product(self, a, b, scratch);
     }
 
     pub fn external_product_inplace<A, M, BE: Backend>(&mut self, module: &M, a: &A, scratch: &mut Scratch<BE>)
@@ -129,6 +129,6 @@ impl<DataSelf: DataMut> GLWESwitchingKey<DataSelf> {
         A: GGSWPreparedToRef<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        module.gglwe_external_product_inplace(&mut self.key, a, scratch);
+        module.gglwe_external_product_inplace(self, a, scratch);
     }
 }

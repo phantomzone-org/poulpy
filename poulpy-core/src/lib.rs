@@ -16,6 +16,7 @@ pub use operations::*;
 pub mod layouts;
 pub use automorphism::*;
 pub use conversion::*;
+pub use decryption::*;
 pub use dist::*;
 pub use encryption::*;
 pub use external_product::*;

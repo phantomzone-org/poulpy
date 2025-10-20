@@ -4,8 +4,8 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Dnum, Dsize, GGLWEInfos, GLWEInfos, GLWESwitchingKey, GLWESwitchingKeyToMut, GLWESwitchingKeyToRef, LWEInfos,
-    Rank, TorusPrecision,
+    Base2K, Degree, Dnum, Dsize, GGLWE, GGLWEInfos, GGLWEToMut, GGLWEToRef, GLWEInfos, GLWESwitchingKey,
+    GLWESwitchingKeyDegreesMut, LWEInfos, Rank, TorusPrecision,
 };
 
 use std::fmt;
@@ -196,28 +196,24 @@ impl GLWEToLWESwitchingKey<Vec<u8>> {
     }
 }
 
-pub trait GLWEToLWESwitchingKeyToRef {
-    fn to_ref(&self) -> GLWEToLWESwitchingKey<&[u8]>;
-}
-
-impl<D: DataRef> GLWEToLWESwitchingKeyToRef for GLWEToLWESwitchingKey<D>
-where
-    GLWESwitchingKey<D>: GLWESwitchingKeyToRef,
-{
-    fn to_ref(&self) -> GLWEToLWESwitchingKey<&[u8]> {
-        GLWEToLWESwitchingKey(self.0.to_ref())
+impl<D: DataRef> GGLWEToRef for GLWEToLWESwitchingKey<D> {
+    fn to_ref(&self) -> GGLWE<&[u8]> {
+        self.0.to_ref()
     }
 }
 
-pub trait GLWEToLWESwitchingKeyToMut {
-    fn to_mut(&mut self) -> GLWEToLWESwitchingKey<&mut [u8]>;
+impl<D: DataMut> GGLWEToMut for GLWEToLWESwitchingKey<D> {
+    fn to_mut(&mut self) -> GGLWE<&mut [u8]> {
+        self.0.to_mut()
+    }
 }
 
-impl<D: DataMut> GLWEToLWESwitchingKeyToMut for GLWEToLWESwitchingKey<D>
-where
-    GLWESwitchingKey<D>: GLWESwitchingKeyToMut,
-{
-    fn to_mut(&mut self) -> GLWEToLWESwitchingKey<&mut [u8]> {
-        GLWEToLWESwitchingKey(self.0.to_mut())
+impl<D: DataMut> GLWESwitchingKeyDegreesMut for GLWEToLWESwitchingKey<D> {
+    fn input_degree(&mut self) -> &mut Degree {
+        &mut self.0.input_degree
+    }
+
+    fn output_degree(&mut self) -> &mut Degree {
+        &mut self.0.output_degree
     }
 }

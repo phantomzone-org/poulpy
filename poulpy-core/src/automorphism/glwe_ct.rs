@@ -9,8 +9,7 @@ use poulpy_hal::{
 use crate::{
     GLWEKeyswitch, ScratchTakeCore, keyswitch_internal,
     layouts::{
-        GGLWEInfos, GLWE, GLWEInfos, GLWEToMut, GLWEToRef, LWEInfos,
-        prepared::{AutomorphismKeyPrepared, AutomorphismKeyPreparedToRef, GetAutomorphismGaloisElement},
+        GGLWEInfos, GGLWEPreparedToRef, GLWE, GLWEInfos, GLWEToMut, GLWEToRef, LWEInfos, prepared::GetAutomorphismGaloisElement,
     },
 };
 
@@ -31,7 +30,7 @@ impl<DataSelf: DataMut> GLWE<DataSelf> {
     where
         M: GLWEAutomorphism<BE>,
         A: GLWEToRef,
-        K: AutomorphismKeyPreparedToRef<BE> + GetAutomorphismGaloisElement,
+        K: GetAutomorphismGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         module.glwe_automorphism(self, a, key, scratch);
@@ -41,7 +40,7 @@ impl<DataSelf: DataMut> GLWE<DataSelf> {
     where
         M: GLWEAutomorphism<BE>,
         A: GLWEToRef,
-        K: AutomorphismKeyPreparedToRef<BE> + GetAutomorphismGaloisElement,
+        K: GetAutomorphismGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         module.glwe_automorphism_add(self, a, key, scratch);
@@ -51,7 +50,7 @@ impl<DataSelf: DataMut> GLWE<DataSelf> {
     where
         M: GLWEAutomorphism<BE>,
         A: GLWEToRef,
-        K: AutomorphismKeyPreparedToRef<BE> + GetAutomorphismGaloisElement,
+        K: GetAutomorphismGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         module.glwe_automorphism_sub(self, a, key, scratch);
@@ -61,7 +60,7 @@ impl<DataSelf: DataMut> GLWE<DataSelf> {
     where
         M: GLWEAutomorphism<BE>,
         A: GLWEToRef,
-        K: AutomorphismKeyPreparedToRef<BE> + GetAutomorphismGaloisElement,
+        K: GetAutomorphismGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         module.glwe_automorphism_sub_negate(self, a, key, scratch);
@@ -70,7 +69,7 @@ impl<DataSelf: DataMut> GLWE<DataSelf> {
     pub fn automorphism_inplace<M, K, BE: Backend>(&mut self, module: &M, key: &K, scratch: &mut Scratch<BE>)
     where
         M: GLWEAutomorphism<BE>,
-        K: AutomorphismKeyPreparedToRef<BE> + GetAutomorphismGaloisElement,
+        K: GetAutomorphismGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         module.glwe_automorphism_inplace(self, key, scratch);
@@ -79,7 +78,7 @@ impl<DataSelf: DataMut> GLWE<DataSelf> {
     pub fn automorphism_add_inplace<M, K, BE: Backend>(&mut self, module: &M, key: &K, scratch: &mut Scratch<BE>)
     where
         M: GLWEAutomorphism<BE>,
-        K: AutomorphismKeyPreparedToRef<BE> + GetAutomorphismGaloisElement,
+        K: GetAutomorphismGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         module.glwe_automorphism_add_inplace(self, key, scratch);
@@ -88,7 +87,7 @@ impl<DataSelf: DataMut> GLWE<DataSelf> {
     pub fn automorphism_sub_inplace<M, K, BE: Backend>(&mut self, module: &M, key: &K, scratch: &mut Scratch<BE>)
     where
         M: GLWEAutomorphism<BE>,
-        K: AutomorphismKeyPreparedToRef<BE> + GetAutomorphismGaloisElement,
+        K: GetAutomorphismGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         module.glwe_automorphism_sub_inplace(self, key, scratch);
@@ -97,7 +96,7 @@ impl<DataSelf: DataMut> GLWE<DataSelf> {
     pub fn automorphism_sub_negate_inplace<M, K, BE: Backend>(&mut self, module: &M, key: &K, scratch: &mut Scratch<BE>)
     where
         M: GLWEAutomorphism<BE>,
-        K: AutomorphismKeyPreparedToRef<BE> + GetAutomorphismGaloisElement,
+        K: GetAutomorphismGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         module.glwe_automorphism_sub_negate_inplace(self, key, scratch);
@@ -125,10 +124,10 @@ where
     where
         R: GLWEToMut,
         A: GLWEToRef,
-        K: AutomorphismKeyPreparedToRef<BE> + GetAutomorphismGaloisElement,
+        K: GetAutomorphismGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        self.glwe_keyswitch(res, a, &key.to_ref().key, scratch);
+        self.glwe_keyswitch(res, a, key, scratch);
 
         let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
 
@@ -140,10 +139,10 @@ where
     fn glwe_automorphism_inplace<R, K>(&self, res: &mut R, key: &K, scratch: &mut Scratch<BE>)
     where
         R: GLWEToMut,
-        K: AutomorphismKeyPreparedToRef<BE> + GetAutomorphismGaloisElement,
+        K: GetAutomorphismGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        self.glwe_keyswitch_inplace(res, &key.to_ref().key, scratch);
+        self.glwe_keyswitch_inplace(res, key, scratch);
 
         let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
 
@@ -156,15 +155,14 @@ where
     where
         R: GLWEToMut,
         A: GLWEToRef,
-        K: AutomorphismKeyPreparedToRef<BE> + GetAutomorphismGaloisElement,
+        K: GetAutomorphismGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
         let a: &GLWE<&[u8]> = &a.to_ref();
-        let key: &AutomorphismKeyPrepared<&[u8], BE> = &key.to_ref();
 
         let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), key.size()); // TODO: optimise size
-        let mut res_big: VecZnxBig<_, BE> = keyswitch_internal(self, res_dft, a, &key.key, scratch_1);
+        let mut res_big: VecZnxBig<_, BE> = keyswitch_internal(self, res_dft, a, key, scratch_1);
 
         for i in 0..res.rank().as_usize() + 1 {
             self.vec_znx_big_automorphism_inplace(key.p(), &mut res_big, i, scratch_1);
@@ -184,14 +182,13 @@ where
     fn glwe_automorphism_add_inplace<R, K>(&self, res: &mut R, key: &K, scratch: &mut Scratch<BE>)
     where
         R: GLWEToMut,
-        K: AutomorphismKeyPreparedToRef<BE> + GetAutomorphismGaloisElement,
+        K: GetAutomorphismGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
-        let key: &AutomorphismKeyPrepared<&[u8], BE> = &key.to_ref();
 
         let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), key.size()); // TODO: optimise size
-        let mut res_big: VecZnxBig<_, BE> = keyswitch_internal(self, res_dft, res, &key.key, scratch_1);
+        let mut res_big: VecZnxBig<_, BE> = keyswitch_internal(self, res_dft, res, key, scratch_1);
 
         for i in 0..res.rank().as_usize() + 1 {
             self.vec_znx_big_automorphism_inplace(key.p(), &mut res_big, i, scratch_1);
@@ -212,15 +209,14 @@ where
     where
         R: GLWEToMut,
         A: GLWEToRef,
-        K: AutomorphismKeyPreparedToRef<BE> + GetAutomorphismGaloisElement,
+        K: GetAutomorphismGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
         let a: &GLWE<&[u8]> = &a.to_ref();
-        let key: &AutomorphismKeyPrepared<&[u8], BE> = &key.to_ref();
 
         let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), key.size()); // TODO: optimise size
-        let mut res_big: VecZnxBig<_, BE> = keyswitch_internal(self, res_dft, a, &key.key, scratch_1);
+        let mut res_big: VecZnxBig<_, BE> = keyswitch_internal(self, res_dft, a, key, scratch_1);
 
         for i in 0..res.rank().as_usize() + 1 {
             self.vec_znx_big_automorphism_inplace(key.p(), &mut res_big, i, scratch_1);
@@ -241,15 +237,14 @@ where
     where
         R: GLWEToMut,
         A: GLWEToRef,
-        K: AutomorphismKeyPreparedToRef<BE> + GetAutomorphismGaloisElement,
+        K: GetAutomorphismGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
         let a: &GLWE<&[u8]> = &a.to_ref();
-        let key: &AutomorphismKeyPrepared<&[u8], BE> = &key.to_ref();
 
         let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), key.size()); // TODO: optimise size
-        let mut res_big: VecZnxBig<_, BE> = keyswitch_internal(self, res_dft, a, &key.key, scratch_1);
+        let mut res_big: VecZnxBig<_, BE> = keyswitch_internal(self, res_dft, a, key, scratch_1);
 
         for i in 0..res.rank().as_usize() + 1 {
             self.vec_znx_big_automorphism_inplace(key.p(), &mut res_big, i, scratch_1);
@@ -269,14 +264,13 @@ where
     fn glwe_automorphism_sub_inplace<R, K>(&self, res: &mut R, key: &K, scratch: &mut Scratch<BE>)
     where
         R: GLWEToMut,
-        K: AutomorphismKeyPreparedToRef<BE> + GetAutomorphismGaloisElement,
+        K: GetAutomorphismGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
-        let key: &AutomorphismKeyPrepared<&[u8], BE> = &key.to_ref();
 
         let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), key.size()); // TODO: optimise size
-        let mut res_big: VecZnxBig<_, BE> = keyswitch_internal(self, res_dft, res, &key.key, scratch_1);
+        let mut res_big: VecZnxBig<_, BE> = keyswitch_internal(self, res_dft, res, key, scratch_1);
 
         for i in 0..res.rank().as_usize() + 1 {
             self.vec_znx_big_automorphism_inplace(key.p(), &mut res_big, i, scratch_1);
@@ -296,14 +290,13 @@ where
     fn glwe_automorphism_sub_negate_inplace<R, K>(&self, res: &mut R, key: &K, scratch: &mut Scratch<BE>)
     where
         R: GLWEToMut,
-        K: AutomorphismKeyPreparedToRef<BE> + GetAutomorphismGaloisElement,
+        K: GetAutomorphismGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
-        let key: &AutomorphismKeyPrepared<&[u8], BE> = &key.to_ref();
 
         let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), key.size()); // TODO: optimise size
-        let mut res_big: VecZnxBig<_, BE> = keyswitch_internal(self, res_dft, res, &key.key, scratch_1);
+        let mut res_big: VecZnxBig<_, BE> = keyswitch_internal(self, res_dft, res, key, scratch_1);
 
         for i in 0..res.rank().as_usize() + 1 {
             self.vec_znx_big_automorphism_inplace(key.p(), &mut res_big, i, scratch_1);

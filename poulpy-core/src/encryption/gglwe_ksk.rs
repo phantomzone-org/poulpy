@@ -8,7 +8,7 @@ use crate::{
     ScratchTakeCore,
     encryption::gglwe_ct::GGLWEEncryptSk,
     layouts::{
-        GGLWEInfos, GLWEInfos, GLWESecret, GLWESecretToRef, GLWESwitchingKey, GLWESwitchingKeyToMut, LWEInfos,
+        GGLWEInfos, GGLWEToMut, GLWEInfos, GLWESecret, GLWESecretToRef, GLWESwitchingKey, GLWESwitchingKeyDegreesMut, LWEInfos,
         prepared::GLWESecretPreparedAlloc,
     },
 };
@@ -64,7 +64,7 @@ pub trait GLWESwitchingKeyEncryptSk<BE: Backend> {
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
-        R: GLWESwitchingKeyToMut,
+        R: GGLWEToMut + GLWESwitchingKeyDegreesMut + GGLWEInfos,
         S1: GLWESecretToRef,
         S2: GLWESecretToRef;
 }
@@ -93,11 +93,10 @@ where
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
-        R: GLWESwitchingKeyToMut,
+        R: GGLWEToMut + GLWESwitchingKeyDegreesMut + GGLWEInfos,
         S1: GLWESecretToRef,
         S2: GLWESecretToRef,
     {
-        let res: &mut GLWESwitchingKey<&mut [u8]> = &mut res.to_mut();
         let sk_in: &GLWESecret<&[u8]> = &sk_in.to_ref();
         let sk_out: &GLWESecret<&[u8]> = &sk_out.to_ref();
 
@@ -129,16 +128,17 @@ where
             }
         }
 
-        res.key.encrypt_sk(
-            self,
+        self.gglwe_encrypt_sk(
+            res,
             &sk_in_tmp,
             &sk_out_tmp,
             source_xa,
             source_xe,
             scratch_2,
         );
-        res.sk_in_n = sk_in.n().into();
-        res.sk_out_n = sk_out.n().into();
+
+        *res.input_degree() = sk_in.n();
+        *res.output_degree() = sk_out.n();
     }
 }
 

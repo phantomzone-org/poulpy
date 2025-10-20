@@ -4,8 +4,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Dnum, Dsize, GGLWEInfos, GLWE, GLWEInfos, GLWESwitchingKey, GLWESwitchingKeyToMut, GLWESwitchingKeyToRef,
-    LWEInfos, Rank, TorusPrecision,
+    Base2K, Degree, Dnum, Dsize, GGLWE, GGLWEInfos, GGLWEToMut, GGLWEToRef, GLWE, GLWEInfos, LWEInfos, Rank, TorusPrecision,
     prepared::{GetAutomorphismGaloisElement, SetAutomorphismGaloisElement},
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
@@ -24,7 +23,7 @@ pub struct AutomorphismKeyLayout {
 
 #[derive(PartialEq, Eq, Clone)]
 pub struct AutomorphismKey<D: Data> {
-    pub(crate) key: GLWESwitchingKey<D>,
+    pub(crate) key: GGLWE<D>,
     pub(crate) p: i64,
 }
 
@@ -161,7 +160,7 @@ impl AutomorphismKey<Vec<u8>> {
 
     pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> Self {
         AutomorphismKey {
-            key: GLWESwitchingKey::alloc(n, base2k, k, rank, rank, dnum, dsize),
+            key: GGLWE::alloc(n, base2k, k, rank, rank, dnum, dsize),
             p: 0,
         }
     }
@@ -186,39 +185,19 @@ impl AutomorphismKey<Vec<u8>> {
     }
 
     pub fn bytes_of(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize {
-        GLWESwitchingKey::bytes_of(n, base2k, k, rank, rank, dnum, dsize)
+        GGLWE::bytes_of(n, base2k, k, rank, rank, dnum, dsize)
     }
 }
 
-pub trait AutomorphismKeyToMut {
-    fn to_mut(&mut self) -> AutomorphismKey<&mut [u8]>;
-}
-
-impl<D: DataMut> AutomorphismKeyToMut for AutomorphismKey<D>
-where
-    GLWESwitchingKey<D>: GLWESwitchingKeyToMut,
-{
-    fn to_mut(&mut self) -> AutomorphismKey<&mut [u8]> {
-        AutomorphismKey {
-            key: self.key.to_mut(),
-            p: self.p,
-        }
+impl<D: DataMut> GGLWEToMut for AutomorphismKey<D> {
+    fn to_mut(&mut self) -> GGLWE<&mut [u8]> {
+        self.key.to_mut()
     }
 }
 
-pub trait AutomorphismKeyToRef {
-    fn to_ref(&self) -> AutomorphismKey<&[u8]>;
-}
-
-impl<D: DataRef> AutomorphismKeyToRef for AutomorphismKey<D>
-where
-    GLWESwitchingKey<D>: GLWESwitchingKeyToRef,
-{
-    fn to_ref(&self) -> AutomorphismKey<&[u8]> {
-        AutomorphismKey {
-            p: self.p,
-            key: self.key.to_ref(),
-        }
+impl<D: DataMut> GGLWEToRef for AutomorphismKey<D> {
+    fn to_ref(&self) -> GGLWE<&[u8]> {
+        self.key.to_ref()
     }
 }
 

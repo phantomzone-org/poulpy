@@ -9,7 +9,8 @@ use crate::{
     encryption::SIGMA,
     layouts::{
         GGSW, GGSWLayout, GLWESecret, GLWESecretPrepare, GLWESecretPreparedAlloc, GLWESwitchingKey, GLWESwitchingKeyLayout,
-        GLWESwitchingKeyPreparedAlloc, TensorKey, TensorKeyLayout, TensorKeyPreparedAlloc,
+        GLWESwitchingKeyPrepare, GLWESwitchingKeyPreparedAlloc, TensorKey, TensorKeyLayout, TensorKeyPrepare,
+        TensorKeyPreparedAlloc,
         prepared::{GLWESecretPrepared, GLWESwitchingKeyPrepared, TensorKeyPrepared},
     },
     noise::noise_ggsw_keyswitch,
@@ -26,7 +27,9 @@ where
         + GLWESecretPrepare<BE>
         + TensorKeyPreparedAlloc<BE>
         + GLWESwitchingKeyPreparedAlloc<BE>
-        + GGSWNoise<BE>,
+        + GGSWNoise<BE>
+        + GLWESwitchingKeyPrepare<BE>
+        + TensorKeyPrepare<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
@@ -145,8 +148,12 @@ where
                 scratch.borrow(),
             );
 
-            let ksk_prepared: GLWESwitchingKeyPrepared<Vec<u8>, BE> = GLWESwitchingKeyPrepared::alloc_from_infos(module, &ksk);
-            let tsk_prepared: TensorKeyPrepared<Vec<u8>, BE> = TensorKeyPrepared::alloc_from_infos(module, &tsk);
+            let mut ksk_prepared: GLWESwitchingKeyPrepared<Vec<u8>, BE> =
+                GLWESwitchingKeyPrepared::alloc_from_infos(module, &ksk);
+            ksk_prepared.prepare(module, &ksk, scratch.borrow());
+
+            let mut tsk_prepared: TensorKeyPrepared<Vec<u8>, BE> = TensorKeyPrepared::alloc_from_infos(module, &tsk);
+            tsk_prepared.prepare(module, &tsk, scratch.borrow());
 
             ggsw_out.keyswitch(
                 module,
@@ -188,7 +195,9 @@ where
         + GLWESecretPrepare<BE>
         + TensorKeyPreparedAlloc<BE>
         + GLWESwitchingKeyPreparedAlloc<BE>
-        + GGSWNoise<BE>,
+        + GGSWNoise<BE>
+        + GLWESwitchingKeyPrepare<BE>
+        + TensorKeyPrepare<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
@@ -259,6 +268,7 @@ where
 
             let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank.into());
             sk_in.fill_ternary_prob(var_xs, &mut source_xs);
+
             let mut sk_in_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(module, rank.into());
             sk_in_prepared.prepare(module, &sk_in);
 
@@ -295,8 +305,12 @@ where
                 scratch.borrow(),
             );
 
-            let ksk_prepared: GLWESwitchingKeyPrepared<Vec<u8>, BE> = GLWESwitchingKeyPrepared::alloc_from_infos(module, &ksk);
-            let tsk_prepared: TensorKeyPrepared<Vec<u8>, BE> = TensorKeyPrepared::alloc_from_infos(module, &tsk);
+            let mut ksk_prepared: GLWESwitchingKeyPrepared<Vec<u8>, BE> =
+                GLWESwitchingKeyPrepared::alloc_from_infos(module, &ksk);
+            ksk_prepared.prepare(module, &ksk, scratch.borrow());
+
+            let mut tsk_prepared: TensorKeyPrepared<Vec<u8>, BE> = TensorKeyPrepared::alloc_from_infos(module, &tsk);
+            tsk_prepared.prepare(module, &tsk, scratch.borrow());
 
             ggsw_out.keyswitch_inplace(module, &ksk_prepared, &tsk_prepared, scratch.borrow());
 

@@ -5,10 +5,7 @@ use poulpy_hal::{
 
 use crate::{
     GLWEKeyswitch, ScratchTakeCore,
-    layouts::{
-        GGLWEInfos, GLWE, GLWEInfos, GLWELayout, GLWEToMut, LWE, LWEInfos, LWEToRef,
-        prepared::{LWEToGLWESwitchingKeyPrepared, LWEToGLWESwitchingKeyPreparedToRef},
-    },
+    layouts::{GGLWEInfos, GGLWEPreparedToRef, GLWE, GLWEInfos, GLWELayout, GLWEToMut, LWE, LWEInfos, LWEToRef},
 };
 
 impl<BE: Backend> GLWEFromLWE<BE> for Module<BE> where Self: GLWEKeyswitch<BE> {}
@@ -43,12 +40,11 @@ where
     where
         R: GLWEToMut,
         A: LWEToRef,
-        K: LWEToGLWESwitchingKeyPreparedToRef<BE>,
+        K: GGLWEPreparedToRef<BE> + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
         let lwe: &LWE<&[u8]> = &lwe.to_ref();
-        let ksk: &LWEToGLWESwitchingKeyPrepared<&[u8], BE> = &ksk.to_ref();
 
         assert_eq!(res.n(), self.n() as u32);
         assert_eq!(ksk.n(), self.n() as u32);
@@ -108,7 +104,7 @@ where
             );
         }
 
-        self.glwe_keyswitch(res, &glwe, &ksk.0, scratch_1);
+        self.glwe_keyswitch(res, &glwe, ksk, scratch_1);
     }
 }
 
@@ -129,7 +125,7 @@ impl<D: DataMut> GLWE<D> {
     where
         M: GLWEFromLWE<BE>,
         A: LWEToRef,
-        K: LWEToGLWESwitchingKeyPreparedToRef<BE>,
+        K: GGLWEPreparedToRef<BE> + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         module.glwe_from_lwe(self, lwe, ksk, scratch);

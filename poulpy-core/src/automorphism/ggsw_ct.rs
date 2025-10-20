@@ -7,8 +7,8 @@ use crate::{
     GGSWExpandRows, ScratchTakeCore,
     automorphism::glwe_ct::GLWEAutomorphism,
     layouts::{
-        GGLWEInfos, GGSW, GGSWInfos, GGSWToMut, GGSWToRef, GLWEInfos, LWEInfos,
-        prepared::{AutomorphismKeyPrepared, AutomorphismKeyPreparedToRef, TensorKeyPrepared, TensorKeyPreparedToRef},
+        GGLWEInfos, GGLWEPreparedToRef, GGSW, GGSWInfos, GGSWToMut, GGSWToRef, GetAutomorphismGaloisElement,
+        prepared::{TensorKeyPrepared, TensorKeyPreparedToRef},
     },
 };
 
@@ -35,7 +35,7 @@ impl<D: DataMut> GGSW<D> {
     pub fn automorphism<A, K, T, M, BE: Backend>(&mut self, module: &M, a: &A, key: &K, tsk: &T, scratch: &mut Scratch<BE>)
     where
         A: GGSWToRef,
-        K: AutomorphismKeyPreparedToRef<BE>,
+        K: GetAutomorphismGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
         T: TensorKeyPreparedToRef<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
         M: GGSWAutomorphism<BE>,
@@ -45,7 +45,7 @@ impl<D: DataMut> GGSW<D> {
 
     pub fn automorphism_inplace<K, T, M, BE: Backend>(&mut self, module: &M, key: &K, tsk: &T, scratch: &mut Scratch<BE>)
     where
-        K: AutomorphismKeyPreparedToRef<BE>,
+        K: GetAutomorphismGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
         T: TensorKeyPreparedToRef<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
         M: GGSWAutomorphism<BE>,
@@ -78,18 +78,16 @@ where
     where
         R: GGSWToMut,
         A: GGSWToRef,
-        K: AutomorphismKeyPreparedToRef<BE>,
+        K: GetAutomorphismGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
         T: TensorKeyPreparedToRef<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         let res: &mut GGSW<&mut [u8]> = &mut res.to_mut();
         let a: &GGSW<&[u8]> = &a.to_ref();
-        let key: &AutomorphismKeyPrepared<&[u8], BE> = &key.to_ref();
         let tsk: &TensorKeyPrepared<&[u8], BE> = &tsk.to_ref();
 
-        assert_eq!(res.ggsw_layout(), a.ggsw_layout());
-        assert_eq!(res.glwe_layout(), a.glwe_layout());
-        assert_eq!(res.lwe_layout(), a.lwe_layout());
+        assert_eq!(res.dsize(), a.dsize());
+        assert!(res.dnum() <= a.dnum());
         assert!(scratch.available() >= self.ggsw_automorphism_tmp_bytes(res, a, key, tsk));
 
         // Keyswitch the j-th row of the col 0
@@ -105,12 +103,11 @@ where
     fn ggsw_automorphism_inplace<R, K, T>(&self, res: &mut R, key: &K, tsk: &T, scratch: &mut Scratch<BE>)
     where
         R: GGSWToMut,
-        K: AutomorphismKeyPreparedToRef<BE>,
+        K: GetAutomorphismGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
         T: TensorKeyPreparedToRef<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         let res: &mut GGSW<&mut [u8]> = &mut res.to_mut();
-        let key: &AutomorphismKeyPrepared<&[u8], BE> = &key.to_ref();
         let tsk: &TensorKeyPrepared<&[u8], BE> = &tsk.to_ref();
 
         // Keyswitch the j-th row of the col 0

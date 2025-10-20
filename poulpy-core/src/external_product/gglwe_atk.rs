@@ -3,7 +3,7 @@ use poulpy_hal::layouts::{Backend, DataMut, Scratch};
 use crate::{
     ScratchTakeCore,
     external_product::gglwe_ksk::GGLWEExternalProduct,
-    layouts::{AutomorphismKey, AutomorphismKeyToRef, GGLWEInfos, GGSWInfos, prepared::GGSWPreparedToRef},
+    layouts::{AutomorphismKey, GGLWEInfos, GGLWEToRef, GGSWInfos, prepared::GGSWPreparedToRef},
 };
 
 impl AutomorphismKey<Vec<u8>> {
@@ -28,11 +28,11 @@ impl<DataSelf: DataMut> AutomorphismKey<DataSelf> {
     pub fn external_product<A, B, M, BE: Backend>(&mut self, module: &M, a: &A, b: &B, scratch: &mut Scratch<BE>)
     where
         M: GGLWEExternalProduct<BE>,
-        A: AutomorphismKeyToRef,
+        A: GGLWEToRef,
         B: GGSWPreparedToRef<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        module.gglwe_external_product(&mut self.key.key, &a.to_ref().key.key, b, scratch);
+        module.gglwe_external_product(self, a, b, scratch);
     }
 
     pub fn external_product_inplace<A, M, BE: Backend>(&mut self, module: &M, a: &A, scratch: &mut Scratch<BE>)
@@ -41,6 +41,6 @@ impl<DataSelf: DataMut> AutomorphismKey<DataSelf> {
         A: GGSWPreparedToRef<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        module.gglwe_external_product_inplace(&mut self.key.key, a, scratch);
+        module.gglwe_external_product_inplace(self, a, scratch);
     }
 }

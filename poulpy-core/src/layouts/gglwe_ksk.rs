@@ -62,37 +62,37 @@ impl GGLWEInfos for GLWESwitchingKeyLayout {
 #[derive(PartialEq, Eq, Clone)]
 pub struct GLWESwitchingKey<D: Data> {
     pub(crate) key: GGLWE<D>,
-    pub(crate) sk_in_n: usize,  // Degree of sk_in
-    pub(crate) sk_out_n: usize, // Degree of sk_out
+    pub(crate) input_degree: Degree,  // Degree of sk_in
+    pub(crate) output_degree: Degree, // Degree of sk_out
 }
 
-pub trait GLWESwitchingKeySetMetaData {
-    fn set_sk_in_n(&mut self, sk_in_n: usize);
-    fn set_sk_out_n(&mut self, sk_out_n: usize);
+pub trait GLWESwitchingKeyDegrees {
+    fn input_degree(&self) -> &Degree;
+    fn output_degree(&self) -> &Degree;
 }
 
-impl<D: DataMut> GLWESwitchingKeySetMetaData for GLWESwitchingKey<D> {
-    fn set_sk_in_n(&mut self, sk_in_n: usize) {
-        self.sk_in_n = sk_in_n
+impl<D: DataRef> GLWESwitchingKeyDegrees for GLWESwitchingKey<D> {
+    fn output_degree(&self) -> &Degree {
+        &self.output_degree
     }
 
-    fn set_sk_out_n(&mut self, sk_out_n: usize) {
-        self.sk_out_n = sk_out_n
+    fn input_degree(&self) -> &Degree {
+        &self.input_degree
     }
 }
 
-pub trait GLWESwtichingKeyGetMetaData {
-    fn sk_in_n(&self) -> usize;
-    fn sk_out_n(&self) -> usize;
+pub trait GLWESwitchingKeyDegreesMut {
+    fn input_degree(&mut self) -> &mut Degree;
+    fn output_degree(&mut self) -> &mut Degree;
 }
 
-impl<D: DataRef> GLWESwtichingKeyGetMetaData for GLWESwitchingKey<D> {
-    fn sk_in_n(&self) -> usize {
-        self.sk_in_n
+impl<D: DataMut> GLWESwitchingKeyDegreesMut for GLWESwitchingKey<D> {
+    fn output_degree(&mut self) -> &mut Degree {
+        &mut self.output_degree
     }
 
-    fn sk_out_n(&self) -> usize {
-        self.sk_out_n
+    fn input_degree(&mut self) -> &mut Degree {
+        &mut self.input_degree
     }
 }
 
@@ -149,8 +149,8 @@ impl<D: DataRef> fmt::Display for GLWESwitchingKey<D> {
         write!(
             f,
             "(GLWESwitchingKey: sk_in_n={} sk_out_n={}) {}",
-            self.sk_in_n,
-            self.sk_out_n,
+            self.input_degree,
+            self.output_degree,
             self.key.data()
         )
     }
@@ -181,8 +181,8 @@ impl GLWESwitchingKey<Vec<u8>> {
     pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank_in: Rank, rank_out: Rank, dnum: Dnum, dsize: Dsize) -> Self {
         GLWESwitchingKey {
             key: GGLWE::alloc(n, base2k, k, rank_in, rank_out, dnum, dsize),
-            sk_in_n: 0,
-            sk_out_n: 0,
+            input_degree: Degree(0),
+            output_degree: Degree(0),
         }
     }
 
@@ -214,37 +214,15 @@ impl GLWESwitchingKey<Vec<u8>> {
     }
 }
 
-pub trait GLWESwitchingKeyToMut {
-    fn to_mut(&mut self) -> GLWESwitchingKey<&mut [u8]>;
-}
-
-impl<D: DataMut> GLWESwitchingKeyToMut for GLWESwitchingKey<D>
-where
-    GGLWE<D>: GGLWEToMut,
-{
-    fn to_mut(&mut self) -> GLWESwitchingKey<&mut [u8]> {
-        GLWESwitchingKey {
-            key: self.key.to_mut(),
-            sk_in_n: self.sk_in_n,
-            sk_out_n: self.sk_out_n,
-        }
+impl<D: DataMut> GGLWEToMut for GLWESwitchingKey<D> {
+    fn to_mut(&mut self) -> GGLWE<&mut [u8]> {
+        self.key.to_mut()
     }
 }
 
-pub trait GLWESwitchingKeyToRef {
-    fn to_ref(&self) -> GLWESwitchingKey<&[u8]>;
-}
-
-impl<D: DataRef> GLWESwitchingKeyToRef for GLWESwitchingKey<D>
-where
-    GGLWE<D>: GGLWEToRef,
-{
-    fn to_ref(&self) -> GLWESwitchingKey<&[u8]> {
-        GLWESwitchingKey {
-            key: self.key.to_ref(),
-            sk_in_n: self.sk_in_n,
-            sk_out_n: self.sk_out_n,
-        }
+impl<D: DataRef> GGLWEToRef for GLWESwitchingKey<D> {
+    fn to_ref(&self) -> GGLWE<&[u8]> {
+        self.key.to_ref()
     }
 }
 
@@ -262,16 +240,16 @@ impl<D: DataMut> GLWESwitchingKey<D> {
 
 impl<D: DataMut> ReaderFrom for GLWESwitchingKey<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
-        self.sk_in_n = reader.read_u64::<LittleEndian>()? as usize;
-        self.sk_out_n = reader.read_u64::<LittleEndian>()? as usize;
+        self.input_degree = Degree(reader.read_u32::<LittleEndian>()? as u32);
+        self.output_degree = Degree(reader.read_u32::<LittleEndian>()? as u32);
         self.key.read_from(reader)
     }
 }
 
 impl<D: DataRef> WriterTo for GLWESwitchingKey<D> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
-        writer.write_u64::<LittleEndian>(self.sk_in_n as u64)?;
-        writer.write_u64::<LittleEndian>(self.sk_out_n as u64)?;
+        writer.write_u32::<LittleEndian>(self.input_degree.into())?;
+        writer.write_u32::<LittleEndian>(self.output_degree.into())?;
         self.key.write_to(writer)
     }
 }

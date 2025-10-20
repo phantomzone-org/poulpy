@@ -9,8 +9,7 @@ use crate::{
     GLWEAdd, GLWEAutomorphism, GLWECopy, GLWENormalize, GLWERotate, GLWEShift, GLWESub, ScratchTakeCore,
     glwe_trace::GLWETrace,
     layouts::{
-        GGLWEInfos, GLWE, GLWEInfos, GLWEToMut, GLWEToRef, LWEInfos,
-        prepared::{AutomorphismKeyPreparedToRef, GetAutomorphismGaloisElement},
+        GGLWEInfos, GGLWEPreparedToRef, GLWE, GLWEInfos, GLWEToMut, GLWEToRef, LWEInfos, prepared::GetAutomorphismGaloisElement,
     },
 };
 
@@ -118,7 +117,7 @@ impl GLWEPacker {
     pub fn add<A, K, M, BE: Backend>(&mut self, module: &M, a: Option<&A>, auto_keys: &HashMap<i64, K>, scratch: &mut Scratch<BE>)
     where
         A: GLWEToRef + GLWEInfos,
-        K: AutomorphismKeyPreparedToRef<BE> + GetAutomorphismGaloisElement,
+        K: GGLWEPreparedToRef<BE> + GetAutomorphismGaloisElement + GGLWEInfos,
         M: GLWEPacking<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
@@ -191,7 +190,7 @@ where
         scratch: &mut Scratch<BE>,
     ) where
         R: GLWEToMut + GLWEToRef + GLWEInfos,
-        K: AutomorphismKeyPreparedToRef<BE> + GetAutomorphismGaloisElement,
+        K: GGLWEPreparedToRef<BE> + GetAutomorphismGaloisElement + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         #[cfg(debug_assertions)]
@@ -235,7 +234,7 @@ fn pack_core<A, K, M, BE: Backend>(
     scratch: &mut Scratch<BE>,
 ) where
     A: GLWEToRef + GLWEInfos,
-    K: AutomorphismKeyPreparedToRef<BE> + GetAutomorphismGaloisElement,
+    K: GGLWEPreparedToRef<BE> + GetAutomorphismGaloisElement + GGLWEInfos,
     M: ModuleLogN
         + GLWEAutomorphism<BE>
         + GaloisElement
@@ -308,7 +307,7 @@ fn combine<B, M, K, BE: Backend>(
     B: GLWEToRef + GLWEInfos,
     M: GLWEAutomorphism<BE> + GaloisElement + GLWERotate<BE> + GLWESub + GLWEShift<BE> + GLWEAdd + GLWENormalize<BE>,
     B: GLWEToRef + GLWEInfos,
-    K: AutomorphismKeyPreparedToRef<BE> + GetAutomorphismGaloisElement,
+    K: GGLWEPreparedToRef<BE> + GetAutomorphismGaloisElement + GGLWEInfos,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     let log_n: usize = acc.data.n().log2();
@@ -401,7 +400,7 @@ fn pack_internal<M, A, B, K, BE: Backend>(
     M: GLWEAutomorphism<BE> + GLWERotate<BE> + GLWESub + GLWEShift<BE> + GLWEAdd + GLWENormalize<BE>,
     A: GLWEToMut + GLWEToRef + GLWEInfos,
     B: GLWEToMut + GLWEToRef + GLWEInfos,
-    K: AutomorphismKeyPreparedToRef<BE> + GetAutomorphismGaloisElement,
+    K: GGLWEPreparedToRef<BE> + GetAutomorphismGaloisElement + GGLWEInfos,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     // Goal is to evaluate: a = a + b*X^t + phi(a - b*X^t))

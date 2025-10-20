@@ -5,7 +5,8 @@ use poulpy_hal::{
 };
 
 use crate::{
-    GGLWEEncryptSk, GGLWEKeyswitch, GLWESwitchingKeyCompressedEncryptSk, GLWESwitchingKeyEncryptSk, ScratchTakeCore,
+    AutomorphismKeyCompressedEncryptSk, AutomorphismKeyEncryptSk, GGLWEKeyswitch, GLWESwitchingKeyCompressedEncryptSk,
+    GLWESwitchingKeyEncryptSk, ScratchTakeCore,
     encryption::SIGMA,
     layouts::{
         AutomorphismKey, AutomorphismKeyDecompress, AutomorphismKeyLayout, GLWEInfos, GLWESecret, GLWESecretPrepare,
@@ -16,7 +17,7 @@ use crate::{
 
 pub fn test_gglwe_automorphism_key_encrypt_sk<BE: Backend>(module: &Module<BE>)
 where
-    Module<BE>: GGLWEEncryptSk<BE>
+    Module<BE>: AutomorphismKeyEncryptSk<BE>
         + GGLWEKeyswitch<BE>
         + GLWESecretPreparedAlloc<BE>
         + GLWESecretPrepare<BE>
@@ -82,7 +83,6 @@ where
             sk_out_prepared.prepare(module, &sk_out);
 
             atk.key
-                .key
                 .assert_noise(module, &sk_out_prepared, &sk.data, SIGMA);
         }
     }
@@ -90,7 +90,7 @@ where
 
 pub fn test_gglwe_automorphism_key_compressed_encrypt_sk<BE: Backend>(module: &Module<BE>)
 where
-    Module<BE>: GGLWEEncryptSk<BE>
+    Module<BE>: AutomorphismKeyCompressedEncryptSk<BE>
         + GGLWEKeyswitch<BE>
         + GLWESecretPreparedAlloc<BE>
         + GLWESecretPrepare<BE>
@@ -125,7 +125,9 @@ where
             let mut source_xs: Source = Source::new([0u8; 32]);
             let mut source_xe: Source = Source::new([0u8; 32]);
 
-            let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(AutomorphismKey::encrypt_sk_tmp_bytes(module, &atk_infos));
+            let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(AutomorphismKeyCompressed::encrypt_sk_tmp_bytes(
+                module, &atk_infos,
+            ));
 
             let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&atk_infos);
             sk.fill_ternary_prob(0.5, &mut source_xs);
@@ -153,7 +155,6 @@ where
             atk.decompress(module, &atk_compressed);
 
             atk.key
-                .key
                 .assert_noise(module, &sk_out_prepared, &sk.data, SIGMA);
         }
     }

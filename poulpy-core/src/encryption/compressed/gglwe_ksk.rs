@@ -8,8 +8,9 @@ use crate::{
     ScratchTakeCore,
     encryption::compressed::gglwe_ct::GGLWECompressedEncryptSk,
     layouts::{
-        GGLWEInfos, GLWEInfos, GLWESecret, GLWESecretToRef, LWEInfos,
-        compressed::{GLWESwitchingKeyCompressed, GLWESwitchingKeyCompressedToMut},
+        GGLWECompressedSeedMut, GGLWECompressedToMut, GGLWEInfos, GLWEInfos, GLWESecret, GLWESecretToRef,
+        GLWESwitchingKeyDegreesMut, LWEInfos,
+        compressed::GLWESwitchingKeyCompressed,
         prepared::{GLWESecretPrepare, GLWESecretPrepared, GLWESecretPreparedAlloc},
     },
 };
@@ -57,7 +58,7 @@ pub trait GLWESwitchingKeyCompressedEncryptSk<BE: Backend> {
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
-        R: GLWESwitchingKeyCompressedToMut,
+        R: GGLWECompressedToMut + GGLWECompressedSeedMut + GLWESwitchingKeyDegreesMut + GGLWEInfos,
         S1: GLWESecretToRef,
         S2: GLWESecretToRef;
 }
@@ -86,11 +87,10 @@ where
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
-        R: GLWESwitchingKeyCompressedToMut,
+        R: GGLWECompressedToMut + GGLWECompressedSeedMut + GLWESwitchingKeyDegreesMut + GGLWEInfos,
         S1: GLWESecretToRef,
         S2: GLWESecretToRef,
     {
-        let res: &mut GLWESwitchingKeyCompressed<&mut [u8]> = &mut res.to_mut();
         let sk_in: &GLWESecret<&[u8]> = &sk_in.to_ref();
         let sk_out: &GLWESecret<&[u8]> = &sk_out.to_ref();
 
@@ -122,15 +122,9 @@ where
             }
         }
 
-        self.gglwe_compressed_encrypt_sk(
-            &mut res.key,
-            &sk_in_tmp,
-            &sk_out_tmp,
-            seed_xa,
-            source_xe,
-            scratch_2,
-        );
-        res.sk_in_n = sk_in.n().into();
-        res.sk_out_n = sk_out.n().into();
+        self.gglwe_compressed_encrypt_sk(res, &sk_in_tmp, &sk_out_tmp, seed_xa, source_xe, scratch_2);
+
+        *res.input_degree() = sk_in.n();
+        *res.output_degree() = sk_out.n();
     }
 }

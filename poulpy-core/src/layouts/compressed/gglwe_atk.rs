@@ -4,10 +4,9 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    AutomorphismKey, AutomorphismKeyToMut, Base2K, Degree, Dnum, Dsize, GGLWEInfos, GLWEInfos, LWEInfos, Rank, TorusPrecision,
-    compressed::{
-        GLWESwitchingKeyCompressed, GLWESwitchingKeyCompressedToMut, GLWESwitchingKeyCompressedToRef, GLWESwitchingKeyDecompress,
-    },
+    AutomorphismKey, Base2K, Degree, Dnum, Dsize, GGLWECompressed, GGLWECompressedSeedMut, GGLWECompressedToMut,
+    GGLWECompressedToRef, GGLWEDecompress, GGLWEInfos, GGLWEToMut, GLWECompressed, GLWECompressedToMut, GLWECompressedToRef,
+    GLWEDecompress, GLWEInfos, LWEInfos, Rank, TorusPrecision,
     prepared::{GetAutomorphismGaloisElement, SetAutomorphismGaloisElement},
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
@@ -15,7 +14,7 @@ use std::fmt;
 
 #[derive(PartialEq, Eq, Clone)]
 pub struct AutomorphismKeyCompressed<D: Data> {
-    pub(crate) key: GLWESwitchingKeyCompressed<D>,
+    pub(crate) key: GGLWECompressed<D>,
     pub(crate) p: i64,
 }
 
@@ -102,7 +101,7 @@ impl AutomorphismKeyCompressed<Vec<u8>> {
 
     pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> Self {
         AutomorphismKeyCompressed {
-            key: GLWESwitchingKeyCompressed::alloc(n, base2k, k, rank, rank, dnum, dsize),
+            key: GGLWECompressed::alloc(n, base2k, k, rank, rank, dnum, dsize),
             p: 0,
         }
     }
@@ -122,7 +121,7 @@ impl AutomorphismKeyCompressed<Vec<u8>> {
     }
 
     pub fn bytes_of(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize {
-        GLWESwitchingKeyCompressed::bytes_of(n, base2k, k, rank, dnum, dsize)
+        GGLWECompressed::bytes_of(n, base2k, k, rank, dnum, dsize)
     }
 }
 
@@ -142,19 +141,19 @@ impl<D: DataRef> WriterTo for AutomorphismKeyCompressed<D> {
 
 pub trait AutomorphismKeyDecompress
 where
-    Self: GLWESwitchingKeyDecompress,
+    Self: GGLWEDecompress,
 {
     fn decompress_automorphism_key<R, O>(&self, res: &mut R, other: &O)
     where
-        R: AutomorphismKeyToMut + SetAutomorphismGaloisElement,
-        O: AutomorphismKeyCompressedToRef + GetAutomorphismGaloisElement,
+        R: GGLWEToMut + SetAutomorphismGaloisElement,
+        O: GGLWECompressedToRef + GetAutomorphismGaloisElement,
     {
-        self.decompress_glwe_switching_key(&mut res.to_mut().key, &other.to_ref().key);
+        self.decompress_gglwe(res, other);
         res.set_p(other.p());
     }
 }
 
-impl<B: Backend> AutomorphismKeyDecompress for Module<B> where Self: GLWESwitchingKeyDecompress {}
+impl<B: Backend> AutomorphismKeyDecompress for Module<B> where Self: GLWEDecompress {}
 
 impl<D: DataMut> AutomorphismKey<D>
 where
@@ -162,10 +161,22 @@ where
 {
     pub fn decompress<O, M>(&mut self, module: &M, other: &O)
     where
-        O: AutomorphismKeyCompressedToRef + GetAutomorphismGaloisElement,
+        O: GGLWECompressedToRef + GetAutomorphismGaloisElement,
         M: AutomorphismKeyDecompress,
     {
         module.decompress_automorphism_key(self, other);
+    }
+}
+
+impl<D: DataRef> GGLWECompressedToRef for AutomorphismKeyCompressed<D> {
+    fn to_ref(&self) -> GGLWECompressed<&[u8]> {
+        self.key.to_ref()
+    }
+}
+
+impl<D: DataMut> GGLWECompressedToMut for AutomorphismKeyCompressed<D> {
+    fn to_mut(&mut self) -> GGLWECompressed<&mut [u8]> {
+        self.key.to_mut()
     }
 }
 
@@ -175,7 +186,7 @@ pub trait AutomorphismKeyCompressedToRef {
 
 impl<D: DataRef> AutomorphismKeyCompressedToRef for AutomorphismKeyCompressed<D>
 where
-    GLWESwitchingKeyCompressed<D>: GLWESwitchingKeyCompressedToRef,
+    GLWECompressed<D>: GLWECompressedToRef,
 {
     fn to_ref(&self) -> AutomorphismKeyCompressed<&[u8]> {
         AutomorphismKeyCompressed {
@@ -191,12 +202,24 @@ pub trait AutomorphismKeyCompressedToMut {
 
 impl<D: DataMut> AutomorphismKeyCompressedToMut for AutomorphismKeyCompressed<D>
 where
-    GLWESwitchingKeyCompressed<D>: GLWESwitchingKeyCompressedToMut,
+    GLWECompressed<D>: GLWECompressedToMut,
 {
     fn to_mut(&mut self) -> AutomorphismKeyCompressed<&mut [u8]> {
         AutomorphismKeyCompressed {
             p: self.p,
             key: self.key.to_mut(),
         }
+    }
+}
+
+impl<D: DataMut> GGLWECompressedSeedMut for AutomorphismKeyCompressed<D> {
+    fn seed_mut(&mut self) -> &mut Vec<[u8; 32]> {
+        &mut self.key.seed
+    }
+}
+
+impl<D: DataMut> SetAutomorphismGaloisElement for AutomorphismKeyCompressed<D> {
+    fn set_p(&mut self, p: i64) {
+        self.p = p
     }
 }

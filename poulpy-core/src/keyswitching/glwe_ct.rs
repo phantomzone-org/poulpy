@@ -4,15 +4,12 @@ use poulpy_hal::{
         VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeTmpBytes, VmpApplyDftToDft,
         VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
     },
-    layouts::{Backend, DataMut, DataRef, DataViewMut, Module, Scratch, VecZnx, VecZnxBig, VecZnxDft, VmpPMat, ZnxInfos},
+    layouts::{Backend, DataMut, DataViewMut, Module, Scratch, VecZnx, VecZnxBig, VecZnxDft, VmpPMat, ZnxInfos},
 };
 
 use crate::{
     ScratchTakeCore,
-    layouts::{
-        GGLWEInfos, GLWE, GLWEInfos, GLWEToMut, GLWEToRef, LWEInfos,
-        prepared::{GLWESwitchingKeyPrepared, GLWESwitchingKeyPreparedToRef},
-    },
+    layouts::{GGLWEInfos, GGLWEPrepared, GGLWEPreparedToRef, GLWE, GLWEInfos, GLWEToMut, GLWEToRef, LWEInfos},
 };
 
 impl GLWE<Vec<u8>> {
@@ -31,7 +28,7 @@ impl<D: DataMut> GLWE<D> {
     pub fn keyswitch<A, B, M, BE: Backend>(&mut self, module: &M, a: &A, b: &B, scratch: &mut Scratch<BE>)
     where
         A: GLWEToRef,
-        B: GLWESwitchingKeyPreparedToRef<BE>,
+        B: GGLWEPreparedToRef<BE>,
         M: GLWEKeyswitch<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
@@ -40,7 +37,7 @@ impl<D: DataMut> GLWE<D> {
 
     pub fn keyswitch_inplace<A, M, BE: Backend>(&mut self, module: &M, a: &A, scratch: &mut Scratch<BE>)
     where
-        A: GLWESwitchingKeyPreparedToRef<BE>,
+        A: GGLWEPreparedToRef<BE>,
         M: GLWEKeyswitch<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
@@ -129,12 +126,12 @@ where
     where
         R: GLWEToMut,
         A: GLWEToRef,
-        K: GLWESwitchingKeyPreparedToRef<BE>,
+        K: GGLWEPreparedToRef<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
         let a: &GLWE<&[u8]> = &a.to_ref();
-        let b: &GLWESwitchingKeyPrepared<&[u8], BE> = &key.to_ref();
+        let b: &GGLWEPrepared<&[u8], BE> = &key.to_ref();
 
         assert_eq!(
             a.rank(),
@@ -184,11 +181,11 @@ where
     fn glwe_keyswitch_inplace<R, K>(&self, res: &mut R, key: &K, scratch: &mut Scratch<BE>)
     where
         R: GLWEToMut,
-        K: GLWESwitchingKeyPreparedToRef<BE>,
+        K: GGLWEPreparedToRef<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
-        let a: &GLWESwitchingKeyPrepared<&[u8], BE> = &key.to_ref();
+        let a: &GGLWEPrepared<&[u8], BE> = &key.to_ref();
 
         assert_eq!(
             res.rank(),
@@ -239,17 +236,17 @@ impl GLWE<Vec<u8>> {}
 
 impl<DataSelf: DataMut> GLWE<DataSelf> {}
 
-pub(crate) fn keyswitch_internal<BE: Backend, M, DR, DA, DB>(
+pub(crate) fn keyswitch_internal<BE: Backend, M, DR, A, K>(
     module: &M,
     mut res: VecZnxDft<DR, BE>,
-    a: &GLWE<DA>,
-    key: &GLWESwitchingKeyPrepared<DB, BE>,
+    a: &A,
+    key: &K,
     scratch: &mut Scratch<BE>,
 ) -> VecZnxBig<DR, BE>
 where
     DR: DataMut,
-    DA: DataRef,
-    DB: DataRef,
+    A: GLWEToRef,
+    K: GGLWEPreparedToRef<BE>,
     M: ModuleN
         + VecZnxDftBytesOf
         + VmpApplyDftToDftTmpBytes
@@ -264,11 +261,14 @@ where
         + VecZnxNormalize<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
+    let a: &GLWE<&[u8]> = &a.to_ref();
+    let key: &GGLWEPrepared<&[u8], BE> = &key.to_ref();
+
     let base2k_in: usize = a.base2k().into();
     let base2k_out: usize = key.base2k().into();
     let cols: usize = (a.rank() + 1).into();
     let a_size: usize = (a.size() * base2k_in).div_ceil(base2k_out);
-    let pmat: &VmpPMat<DB, BE> = &key.key.data;
+    let pmat: &VmpPMat<&[u8], BE> = &key.data;
 
     if key.dsize() == 1 {
         let (mut ai_dft, scratch_1) = scratch.take_vec_znx_dft(module, cols - 1, a.size());

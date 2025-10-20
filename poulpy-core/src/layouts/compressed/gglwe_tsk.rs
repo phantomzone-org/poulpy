@@ -4,17 +4,15 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Dnum, Dsize, GGLWEInfos, GLWEInfos, LWEInfos, Rank, TensorKey, TensorKeyToMut, TorusPrecision,
-    compressed::{
-        GLWESwitchingKeyCompressed, GLWESwitchingKeyCompressedToMut, GLWESwitchingKeyCompressedToRef, GLWESwitchingKeyDecompress,
-    },
+    Base2K, Degree, Dnum, Dsize, GGLWECompressed, GGLWECompressedToMut, GGLWECompressedToRef, GGLWEDecompress, GGLWEInfos,
+    GLWEInfos, LWEInfos, Rank, TensorKey, TensorKeyToMut, TorusPrecision,
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::fmt;
 
 #[derive(PartialEq, Eq, Clone)]
 pub struct TensorKeyCompressed<D: Data> {
-    pub(crate) keys: Vec<GLWESwitchingKeyCompressed<D>>,
+    pub(crate) keys: Vec<GGLWECompressed<D>>,
 }
 
 impl<D: Data> LWEInfos for TensorKeyCompressed<D> {
@@ -67,7 +65,7 @@ impl<D: DataMut> FillUniform for TensorKeyCompressed<D> {
     fn fill_uniform(&mut self, log_bound: usize, source: &mut Source) {
         self.keys
             .iter_mut()
-            .for_each(|key: &mut GLWESwitchingKeyCompressed<D>| key.fill_uniform(log_bound, source))
+            .for_each(|key: &mut GGLWECompressed<D>| key.fill_uniform(log_bound, source))
     }
 }
 
@@ -100,7 +98,7 @@ impl TensorKeyCompressed<Vec<u8>> {
         let pairs: u32 = (((rank.as_u32() + 1) * rank.as_u32()) >> 1).max(1);
         TensorKeyCompressed {
             keys: (0..pairs)
-                .map(|_| GLWESwitchingKeyCompressed::alloc(n, base2k, k, Rank(1), rank, dnum, dsize))
+                .map(|_| GGLWECompressed::alloc(n, base2k, k, Rank(1), rank, dnum, dsize))
                 .collect(),
         }
     }
@@ -121,7 +119,7 @@ impl TensorKeyCompressed<Vec<u8>> {
 
     pub fn bytes_of(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize {
         let pairs: usize = (((rank.0 + 1) * rank.0) >> 1).max(1) as usize;
-        pairs * GLWESwitchingKeyCompressed::bytes_of(n, base2k, k, Rank(1), dnum, dsize)
+        pairs * GGLWECompressed::bytes_of(n, base2k, k, Rank(1), dnum, dsize)
     }
 }
 
@@ -151,8 +149,26 @@ impl<D: DataRef> WriterTo for TensorKeyCompressed<D> {
     }
 }
 
-impl<D: DataMut> TensorKeyCompressed<D> {
-    pub(crate) fn at_mut(&mut self, mut i: usize, mut j: usize) -> &mut GLWESwitchingKeyCompressed<D> {
+pub trait TensorKeyCompressedAtRef<D: DataRef> {
+    fn at(&self, i: usize, j: usize) -> &GGLWECompressed<D>;
+}
+
+impl<D: DataRef> TensorKeyCompressedAtRef<D> for TensorKeyCompressed<D> {
+    fn at(&self, mut i: usize, mut j: usize) -> &GGLWECompressed<D> {
+        if i > j {
+            std::mem::swap(&mut i, &mut j);
+        };
+        let rank: usize = self.rank_out().into();
+        &self.keys[i * rank + j - (i * (i + 1) / 2)]
+    }
+}
+
+pub trait TensorKeyCompressedAtMut<D: DataMut> {
+    fn at_mut(&mut self, i: usize, j: usize) -> &mut GGLWECompressed<D>;
+}
+
+impl<D: DataMut> TensorKeyCompressedAtMut<D> for TensorKeyCompressed<D> {
+    fn at_mut(&mut self, mut i: usize, mut j: usize) -> &mut GGLWECompressed<D> {
         if i > j {
             std::mem::swap(&mut i, &mut j);
         };
@@ -163,7 +179,7 @@ impl<D: DataMut> TensorKeyCompressed<D> {
 
 pub trait TensorKeyDecompress
 where
-    Self: GLWESwitchingKeyDecompress,
+    Self: GGLWEDecompress,
 {
     fn decompress_tensor_key<R, O>(&self, res: &mut R, other: &O)
     where
@@ -182,12 +198,12 @@ where
         );
 
         for (a, b) in res.keys.iter_mut().zip(other.keys.iter()) {
-            self.decompress_glwe_switching_key(a, b);
+            self.decompress_gglwe(a, b);
         }
     }
 }
 
-impl<B: Backend> TensorKeyDecompress for Module<B> where Self: GLWESwitchingKeyDecompress {}
+impl<B: Backend> TensorKeyDecompress for Module<B> where Self: GGLWEDecompress {}
 
 impl<D: DataMut> TensorKey<D> {
     pub fn decompress<O, M>(&mut self, module: &M, other: &O)
@@ -205,7 +221,7 @@ pub trait TensorKeyCompressedToMut {
 
 impl<D: DataMut> TensorKeyCompressedToMut for TensorKeyCompressed<D>
 where
-    GLWESwitchingKeyCompressed<D>: GLWESwitchingKeyCompressedToMut,
+    GGLWECompressed<D>: GGLWECompressedToMut,
 {
     fn to_mut(&mut self) -> TensorKeyCompressed<&mut [u8]> {
         TensorKeyCompressed {
@@ -220,7 +236,7 @@ pub trait TensorKeyCompressedToRef {
 
 impl<D: DataRef> TensorKeyCompressedToRef for TensorKeyCompressed<D>
 where
-    GLWESwitchingKeyCompressed<D>: GLWESwitchingKeyCompressedToRef,
+    GGLWECompressed<D>: GGLWECompressedToRef,
 {
     fn to_ref(&self) -> TensorKeyCompressed<&[u8]> {
         TensorKeyCompressed {

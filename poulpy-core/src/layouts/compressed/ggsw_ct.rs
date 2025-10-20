@@ -138,7 +138,7 @@ impl GGSWCompressed<Vec<u8>> {
             base2k,
             dsize,
             rank,
-            seed: Vec::new(),
+            seed: vec![[0u8; 32]; dnum.as_usize() * (rank.as_usize() + 1)],
         }
     }
 
@@ -260,7 +260,7 @@ where
     }
 }
 
-impl<B: Backend> GGSWDecompress for Module<B> where Self: GGSWDecompress {}
+impl<B: Backend> GGSWDecompress for Module<B> where Self: GLWEDecompress {}
 
 impl<D: DataMut> GGSW<D> {
     pub fn decompress<O, M>(&mut self, module: &M, other: &O)

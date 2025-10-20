@@ -3,10 +3,7 @@ use poulpy_hal::layouts::{Backend, DataMut, Module, Scratch, VecZnx};
 use crate::{
     GGSWExpandRows, ScratchTakeCore,
     keyswitching::glwe_ct::GLWEKeyswitch,
-    layouts::{
-        GGLWEInfos, GGSW, GGSWInfos, GGSWToMut, GGSWToRef,
-        prepared::{GLWESwitchingKeyPreparedToRef, TensorKeyPreparedToRef},
-    },
+    layouts::{GGLWEInfos, GGLWEPreparedToRef, GGSW, GGSWInfos, GGSWToMut, GGSWToRef, prepared::TensorKeyPreparedToRef},
 };
 
 impl GGSW<Vec<u8>> {
@@ -32,7 +29,7 @@ impl<D: DataMut> GGSW<D> {
     pub fn keyswitch<M, A, K, T, BE: Backend>(&mut self, module: &M, a: &A, key: &K, tsk: &T, scratch: &mut Scratch<BE>)
     where
         A: GGSWToRef,
-        K: GLWESwitchingKeyPreparedToRef<BE>,
+        K: GGLWEPreparedToRef<BE>,
         T: TensorKeyPreparedToRef<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
         M: GGSWKeyswitch<BE>,
@@ -42,7 +39,7 @@ impl<D: DataMut> GGSW<D> {
 
     pub fn keyswitch_inplace<M, K, T, BE: Backend>(&mut self, module: &M, key: &K, tsk: &T, scratch: &mut Scratch<BE>)
     where
-        K: GLWESwitchingKeyPreparedToRef<BE>,
+        K: GGLWEPreparedToRef<BE>,
         T: TensorKeyPreparedToRef<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
         M: GGSWKeyswitch<BE>,
@@ -93,14 +90,15 @@ where
     where
         R: GGSWToMut,
         A: GGSWToRef,
-        K: GLWESwitchingKeyPreparedToRef<BE>,
+        K: GGLWEPreparedToRef<BE>,
         T: TensorKeyPreparedToRef<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         let res: &mut GGSW<&mut [u8]> = &mut res.to_mut();
         let a: &GGSW<&[u8]> = &a.to_ref();
 
-        assert_eq!(res.ggsw_layout(), a.ggsw_layout());
+        assert!(res.dnum() <= a.dnum());
+        assert_eq!(res.dsize(), a.dsize());
 
         for row in 0..a.dnum().into() {
             // Key-switch column 0, i.e.
@@ -114,7 +112,7 @@ where
     fn ggsw_keyswitch_inplace<R, K, T>(&self, res: &mut R, key: &K, tsk: &T, scratch: &mut Scratch<BE>)
     where
         R: GGSWToMut,
-        K: GLWESwitchingKeyPreparedToRef<BE>,
+        K: GGLWEPreparedToRef<BE>,
         T: TensorKeyPreparedToRef<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {

@@ -1,16 +1,13 @@
 use poulpy_hal::layouts::{Backend, Data, DataMut, DataRef, Module, Scratch};
 
 use crate::layouts::{
-    AutomorphismKeyToRef, Base2K, Degree, Dnum, Dsize, GGLWEInfos, GLWEInfos, LWEInfos, Rank, TorusPrecision,
-    prepared::{
-        GLWESwitchingKeyPrepare, GLWESwitchingKeyPrepared, GLWESwitchingKeyPreparedAlloc, GLWESwitchingKeyPreparedToMut,
-        GLWESwitchingKeyPreparedToRef,
-    },
+    Base2K, Degree, Dnum, Dsize, GGLWEInfos, GGLWEPrepare, GGLWEPrepared, GGLWEPreparedAlloc, GGLWEPreparedToMut,
+    GGLWEPreparedToRef, GGLWEToRef, GLWEInfos, LWEInfos, Rank, TorusPrecision,
 };
 
 #[derive(PartialEq, Eq)]
 pub struct AutomorphismKeyPrepared<D: Data, B: Backend> {
-    pub(crate) key: GLWESwitchingKeyPrepared<D, B>,
+    pub(crate) key: GGLWEPrepared<D, B>,
     pub(crate) p: i64,
 }
 
@@ -78,7 +75,7 @@ impl<D: Data, B: Backend> GGLWEInfos for AutomorphismKeyPrepared<D, B> {
 
 pub trait AutomorphismKeyPreparedAlloc<B: Backend>
 where
-    Self: GLWESwitchingKeyPreparedAlloc<B>,
+    Self: GGLWEPreparedAlloc<B>,
 {
     fn alloc_automorphism_key_prepared(
         &self,
@@ -89,7 +86,7 @@ where
         dsize: Dsize,
     ) -> AutomorphismKeyPrepared<Vec<u8>, B> {
         AutomorphismKeyPrepared::<Vec<u8>, B> {
-            key: self.alloc_glwe_switching_key_prepared(base2k, k, rank, rank, dnum, dsize),
+            key: self.alloc_gglwe_prepared(base2k, k, rank, rank, dnum, dsize),
             p: 0,
         }
     }
@@ -120,7 +117,7 @@ where
         dnum: Dnum,
         dsize: Dsize,
     ) -> usize {
-        self.bytes_of_glwe_switching_key_prepared(base2k, k, rank, rank, dnum, dsize)
+        self.bytes_of_gglwe_prepared(base2k, k, rank, rank, dnum, dsize)
     }
 
     fn bytes_of_automorphism_key_prepared_from_infos<A>(&self, infos: &A) -> usize
@@ -130,7 +127,7 @@ where
         assert_eq!(
             infos.rank_in(),
             infos.rank_out(),
-            "rank_in != rank_out is not supported for GGLWEAutomorphismKeyPrepared"
+            "rank_in != rank_out is not supported for AutomorphismKeyPrepared"
         );
         self.bytes_of_automorphism_key_prepared(
             infos.base2k(),
@@ -142,7 +139,7 @@ where
     }
 }
 
-impl<B: Backend> AutomorphismKeyPreparedAlloc<B> for Module<B> where Module<B>: GLWESwitchingKeyPreparedAlloc<B> {}
+impl<B: Backend> AutomorphismKeyPreparedAlloc<B> for Module<B> where Module<B>: GGLWEPreparedAlloc<B> {}
 
 impl<B: Backend> AutomorphismKeyPrepared<Vec<u8>, B> {
     pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
@@ -178,26 +175,26 @@ impl<B: Backend> AutomorphismKeyPrepared<Vec<u8>, B> {
 
 pub trait PrepareAutomorphismKey<B: Backend>
 where
-    Self: GLWESwitchingKeyPrepare<B>,
+    Self: GGLWEPrepare<B>,
 {
     fn prepare_automorphism_key_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos,
     {
-        self.prepare_glwe_switching_key_tmp_bytes(infos)
+        self.prepare_gglwe_tmp_bytes(infos)
     }
 
     fn prepare_automorphism_key<R, O>(&self, res: &mut R, other: &O, scratch: &mut Scratch<B>)
     where
-        R: AutomorphismKeyPreparedToMut<B> + SetAutomorphismGaloisElement,
-        O: AutomorphismKeyToRef + GetAutomorphismGaloisElement,
+        R: GGLWEPreparedToMut<B> + SetAutomorphismGaloisElement,
+        O: GGLWEToRef + GetAutomorphismGaloisElement,
     {
-        self.prepare_glwe_switching(&mut res.to_mut().key, &other.to_ref().key, scratch);
+        self.prepare_gglwe(res, other, scratch);
         res.set_p(other.p());
     }
 }
 
-impl<B: Backend> PrepareAutomorphismKey<B> for Module<B> where Module<B>: GLWESwitchingKeyPrepare<B> {}
+impl<B: Backend> PrepareAutomorphismKey<B> for Module<B> where Module<B>: GGLWEPrepare<B> {}
 
 impl<B: Backend> AutomorphismKeyPrepared<Vec<u8>, B> {
     pub fn prepare_tmp_bytes<M>(&self, module: &M) -> usize
@@ -211,35 +208,21 @@ impl<B: Backend> AutomorphismKeyPrepared<Vec<u8>, B> {
 impl<D: DataMut, B: Backend> AutomorphismKeyPrepared<D, B> {
     pub fn prepare<O, M>(&mut self, module: &M, other: &O, scratch: &mut Scratch<B>)
     where
-        O: AutomorphismKeyToRef + GetAutomorphismGaloisElement,
+        O: GGLWEToRef + GetAutomorphismGaloisElement,
         M: PrepareAutomorphismKey<B>,
     {
         module.prepare_automorphism_key(self, other, scratch);
     }
 }
 
-pub trait AutomorphismKeyPreparedToMut<B: Backend> {
-    fn to_mut(&mut self) -> AutomorphismKeyPrepared<&mut [u8], B>;
-}
-
-impl<D: DataMut, B: Backend> AutomorphismKeyPreparedToMut<B> for AutomorphismKeyPrepared<D, B> {
-    fn to_mut(&mut self) -> AutomorphismKeyPrepared<&mut [u8], B> {
-        AutomorphismKeyPrepared {
-            p: self.p,
-            key: self.key.to_mut(),
-        }
+impl<D: DataMut, B: Backend> GGLWEPreparedToMut<B> for AutomorphismKeyPrepared<D, B> {
+    fn to_mut(&mut self) -> GGLWEPrepared<&mut [u8], B> {
+        self.key.to_mut()
     }
 }
 
-pub trait AutomorphismKeyPreparedToRef<B: Backend> {
-    fn to_ref(&self) -> AutomorphismKeyPrepared<&[u8], B>;
-}
-
-impl<D: DataRef, B: Backend> AutomorphismKeyPreparedToRef<B> for AutomorphismKeyPrepared<D, B> {
-    fn to_ref(&self) -> AutomorphismKeyPrepared<&[u8], B> {
-        AutomorphismKeyPrepared {
-            p: self.p,
-            key: self.key.to_ref(),
-        }
+impl<D: DataRef, BE: Backend> GGLWEPreparedToRef<BE> for AutomorphismKeyPrepared<D, BE> {
+    fn to_ref(&self) -> GGLWEPrepared<&[u8], BE> {
+        self.key.to_ref()
     }
 }

@@ -158,7 +158,6 @@ where
                 self.ring_degree()
             );
 
-            assert_eq!(res.lwe_layout(), other.lwe_layout());
             assert_eq!(res.glwe_layout(), other.glwe_layout());
 
             let mut source: Source = Source::new(other.seed);

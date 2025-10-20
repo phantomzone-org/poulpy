@@ -119,10 +119,6 @@ where
         + VmpApplyDftToDftTmpBytes
         + VecZnxBigBytesOf
         + VecZnxNormalizeTmpBytes
-        + VecZnxDftBytesOf
-        + VmpApplyDftToDftTmpBytes
-        + VecZnxBigBytesOf
-        + VecZnxNormalizeTmpBytes
         + VecZnxDftApply<BE>
         + VecZnxDftCopy<BE>
         + VmpApplyDftToDft<BE>
@@ -236,7 +232,7 @@ where
                     // =
                     // (-(x0s0 + x1s1 + x2s2) + s0(a0s0 + a1s1 + a2s2), x0, x1, x2)
                     for col_i in 1..cols {
-                        let pmat: &VmpPMat<&[u8], BE> = &tsk.at(col_i - 1, col_j - 1).key.data; // Selects Enc(s[i]s[j])
+                        let pmat: &VmpPMat<&[u8], BE> = &tsk.at(col_i - 1, col_j - 1).data; // Selects Enc(s[i]s[j])
 
                         // Extracts a[i] and multipies with Enc(s[i]s[j])
                         for di in 0..dsize {

@@ -258,7 +258,8 @@ where
         let res: &mut GGLWE<&mut [u8]> = &mut res.to_mut();
         let other: &GGLWECompressed<&[u8]> = &other.to_ref();
 
-        assert_eq!(res.gglwe_layout(), other.gglwe_layout());
+        assert_eq!(res.dsize(), other.dsize());
+        assert!(res.dnum() <= other.dnum());
 
         let rank_in: usize = res.rank_in().into();
         let dnum: usize = res.dnum().into();

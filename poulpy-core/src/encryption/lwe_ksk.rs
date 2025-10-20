@@ -8,8 +8,8 @@ use crate::{
     ScratchTakeCore,
     encryption::gglwe_ksk::GLWESwitchingKeyEncryptSk,
     layouts::{
-        GGLWEInfos, GLWESecret, GLWESwitchingKey, LWEInfos, LWESecret, LWESecretToRef, LWESwitchingKey, LWESwitchingKeyToMut,
-        Rank,
+        GGLWEInfos, GGLWEToMut, GLWESecret, GLWESwitchingKey, GLWESwitchingKeyDegreesMut, LWEInfos, LWESecret, LWESecretToRef,
+        LWESwitchingKey, Rank,
         prepared::{GLWESecretPrepared, GLWESecretPreparedAlloc},
     },
 };
@@ -56,7 +56,7 @@ pub trait LWESwitchingKeyEncrypt<BE: Backend> {
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
-        R: LWESwitchingKeyToMut,
+        R: GGLWEToMut + GLWESwitchingKeyDegreesMut + GGLWEInfos,
         S1: LWESecretToRef,
         S2: LWESecretToRef;
 }
@@ -100,13 +100,12 @@ where
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
-        R: LWESwitchingKeyToMut,
+        R: GGLWEToMut + GLWESwitchingKeyDegreesMut + GGLWEInfos,
         S1: LWESecretToRef,
         S2: LWESecretToRef,
     {
-        let res: &mut LWESwitchingKey<&mut [u8]> = &mut res.to_mut();
         let sk_lwe_in: &LWESecret<&[u8]> = &sk_lwe_in.to_ref();
-        let sk_lwe_out = &sk_lwe_out.to_ref();
+        let sk_lwe_out: &LWESecret<&[u8]> = &sk_lwe_out.to_ref();
 
         assert!(sk_lwe_in.n().0 <= res.n().0);
         assert!(sk_lwe_out.n().0 <= res.n().0);
@@ -124,7 +123,7 @@ where
         self.vec_znx_automorphism_inplace(-1, &mut sk_in_glwe.data.as_vec_znx_mut(), 0, scratch_2);
 
         self.glwe_switching_key_encrypt_sk(
-            &mut res.0,
+            res,
             &sk_in_glwe,
             &sk_out_glwe,
             source_xa,

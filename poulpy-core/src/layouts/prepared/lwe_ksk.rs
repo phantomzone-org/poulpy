@@ -1,11 +1,9 @@
 use poulpy_hal::layouts::{Backend, Data, DataMut, DataRef, Module, Scratch};
 
 use crate::layouts::{
-    Base2K, Degree, Dnum, Dsize, GGLWEInfos, GLWEInfos, LWEInfos, LWESwitchingKeyToRef, Rank, TorusPrecision,
-    prepared::{
-        GLWESwitchingKeyPrepare, GLWESwitchingKeyPrepared, GLWESwitchingKeyPreparedAlloc, GLWESwitchingKeyPreparedToMut,
-        GLWESwitchingKeyPreparedToRef,
-    },
+    Base2K, Degree, Dnum, Dsize, GGLWEInfos, GGLWEPrepared, GGLWEPreparedToMut, GGLWEPreparedToRef, GGLWEToRef, GLWEInfos,
+    GLWESwitchingKeyDegrees, GLWESwitchingKeyDegreesMut, LWEInfos, Rank, TorusPrecision,
+    prepared::{GLWESwitchingKeyPrepare, GLWESwitchingKeyPrepared, GLWESwitchingKeyPreparedAlloc},
 };
 
 #[derive(PartialEq, Eq)]
@@ -160,10 +158,10 @@ where
     }
     fn prepare_lwe_switching_key<R, O>(&self, res: &mut R, other: &O, scratch: &mut Scratch<B>)
     where
-        R: LWESwitchingKeyPreparedToMut<B>,
-        O: LWESwitchingKeyToRef,
+        R: GGLWEPreparedToMut<B> + GLWESwitchingKeyDegreesMut,
+        O: GGLWEToRef + GLWESwitchingKeyDegrees,
     {
-        self.prepare_glwe_switching(&mut res.to_mut().0, &other.to_ref().0, scratch);
+        self.prepare_glwe_switching(res, other, scratch);
     }
 }
 
@@ -182,35 +180,37 @@ impl<B: Backend> LWESwitchingKeyPrepared<Vec<u8>, B> {
 impl<D: DataMut, B: Backend> LWESwitchingKeyPrepared<D, B> {
     pub fn prepare<O, M>(&mut self, module: &M, other: &O, scratch: &mut Scratch<B>)
     where
-        O: LWESwitchingKeyToRef,
+        O: GGLWEToRef + GLWESwitchingKeyDegrees,
         M: LWESwitchingKeyPrepare<B>,
     {
         module.prepare_lwe_switching_key(self, other, scratch);
     }
 }
 
-pub trait LWESwitchingKeyPreparedToRef<B: Backend> {
-    fn to_ref(&self) -> LWESwitchingKeyPrepared<&[u8], B>;
-}
-
-impl<D: DataRef, B: Backend> LWESwitchingKeyPreparedToRef<B> for LWESwitchingKeyPrepared<D, B>
+impl<D: DataRef, B: Backend> GGLWEPreparedToRef<B> for LWESwitchingKeyPrepared<D, B>
 where
-    GLWESwitchingKeyPrepared<D, B>: GLWESwitchingKeyPreparedToRef<B>,
+    GGLWEPrepared<D, B>: GGLWEPreparedToRef<B>,
 {
-    fn to_ref(&self) -> LWESwitchingKeyPrepared<&[u8], B> {
-        LWESwitchingKeyPrepared(self.0.to_ref())
+    fn to_ref(&self) -> GGLWEPrepared<&[u8], B> {
+        self.0.to_ref()
     }
 }
 
-pub trait LWESwitchingKeyPreparedToMut<B: Backend> {
-    fn to_mut(&mut self) -> LWESwitchingKeyPrepared<&mut [u8], B>;
+impl<D: DataMut, B: Backend> GGLWEPreparedToMut<B> for LWESwitchingKeyPrepared<D, B>
+where
+    GGLWEPrepared<D, B>: GGLWEPreparedToMut<B>,
+{
+    fn to_mut(&mut self) -> GGLWEPrepared<&mut [u8], B> {
+        self.0.to_mut()
+    }
 }
 
-impl<D: DataMut, B: Backend> LWESwitchingKeyPreparedToMut<B> for LWESwitchingKeyPrepared<D, B>
-where
-    GLWESwitchingKeyPrepared<D, B>: GLWESwitchingKeyPreparedToMut<B>,
-{
-    fn to_mut(&mut self) -> LWESwitchingKeyPrepared<&mut [u8], B> {
-        LWESwitchingKeyPrepared(self.0.to_mut())
+impl<D: DataMut, B: Backend> GLWESwitchingKeyDegreesMut for LWESwitchingKeyPrepared<D, B> {
+    fn input_degree(&mut self) -> &mut Degree {
+        &mut self.0.input_degree
+    }
+
+    fn output_degree(&mut self) -> &mut Degree {
+        &mut self.0.output_degree
     }
 }

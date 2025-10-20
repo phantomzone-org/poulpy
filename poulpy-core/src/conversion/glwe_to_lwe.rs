@@ -5,10 +5,7 @@ use poulpy_hal::{
 
 use crate::{
     GLWEKeyswitch, ScratchTakeCore,
-    layouts::{
-        GGLWEInfos, GLWE, GLWEInfos, GLWELayout, GLWEToRef, LWE, LWEInfos, LWEToMut, Rank,
-        prepared::{LWEToGLWESwitchingKeyPrepared, LWEToGLWESwitchingKeyPreparedToRef},
-    },
+    layouts::{GGLWEInfos, GGLWEPreparedToRef, GLWE, GLWEInfos, GLWELayout, GLWEToRef, LWE, LWEInfos, LWEToMut, Rank},
 };
 
 pub trait LWESampleExtract
@@ -71,12 +68,11 @@ where
     where
         R: LWEToMut,
         A: GLWEToRef,
-        K: LWEToGLWESwitchingKeyPreparedToRef<BE> + GGLWEInfos,
+        K: GGLWEPreparedToRef<BE> + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         let res: &mut LWE<&mut [u8]> = &mut res.to_mut();
         let a: &GLWE<&[u8]> = &a.to_ref();
-        let key: &LWEToGLWESwitchingKeyPrepared<&[u8], BE> = &key.to_ref();
 
         assert_eq!(a.n(), self.n() as u32);
         assert_eq!(key.n(), self.n() as u32);
@@ -90,7 +86,7 @@ where
         };
 
         let (mut tmp_glwe, scratch_1) = scratch.take_glwe_ct(self, &glwe_layout);
-        self.glwe_keyswitch(&mut tmp_glwe, a, &key.0, scratch_1);
+        self.glwe_keyswitch(&mut tmp_glwe, a, key, scratch_1);
         self.lwe_sample_extract(res, &tmp_glwe);
     }
 }
@@ -120,7 +116,7 @@ impl<D: DataMut> LWE<D> {
     where
         R: LWEToMut,
         A: GLWEToRef,
-        K: LWEToGLWESwitchingKeyPreparedToRef<BE> + GGLWEInfos,
+        K: GGLWEPreparedToRef<BE> + GGLWEInfos,
         M: LWEFromGLWE<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {

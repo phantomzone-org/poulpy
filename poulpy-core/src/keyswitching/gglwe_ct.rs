@@ -3,11 +3,7 @@ use poulpy_hal::layouts::{Backend, DataMut, Module, Scratch};
 use crate::{
     ScratchTakeCore,
     keyswitching::glwe_ct::GLWEKeyswitch,
-    layouts::{
-        AutomorphismKey, AutomorphismKeyToRef, GGLWE, GGLWEInfos, GGLWEToMut, GGLWEToRef, GLWESwitchingKey,
-        GLWESwitchingKeyToRef,
-        prepared::{GLWESwitchingKeyPrepared, GLWESwitchingKeyPreparedToRef},
-    },
+    layouts::{AutomorphismKey, GGLWE, GGLWEInfos, GGLWEPreparedToRef, GGLWEToMut, GGLWEToRef, GLWESwitchingKey},
 };
 
 impl AutomorphismKey<Vec<u8>> {
@@ -25,21 +21,21 @@ impl AutomorphismKey<Vec<u8>> {
 impl<DataSelf: DataMut> AutomorphismKey<DataSelf> {
     pub fn keyswitch<A, B, M, BE: Backend>(&mut self, module: &M, a: &A, b: &B, scratch: &mut Scratch<BE>)
     where
-        A: AutomorphismKeyToRef,
-        B: GLWESwitchingKeyPreparedToRef<BE>,
+        A: GGLWEToRef + GGLWEToRef,
+        B: GGLWEPreparedToRef<BE> + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
         M: GGLWEKeyswitch<BE>,
     {
-        module.gglwe_keyswitch(&mut self.key.key, &a.to_ref().key.key, b, scratch);
+        module.gglwe_keyswitch(self, a, b, scratch);
     }
 
     pub fn keyswitch_inplace<A, M, BE: Backend>(&mut self, module: &M, a: &A, scratch: &mut Scratch<BE>)
     where
-        A: GLWESwitchingKeyPreparedToRef<BE>,
+        A: GGLWEPreparedToRef<BE> + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
         M: GGLWEKeyswitch<BE>,
     {
-        module.gglwe_keyswitch_inplace(&mut self.key.key, a, scratch);
+        module.gglwe_keyswitch_inplace(self, a, scratch);
     }
 }
 
@@ -58,21 +54,21 @@ impl GLWESwitchingKey<Vec<u8>> {
 impl<DataSelf: DataMut> GLWESwitchingKey<DataSelf> {
     pub fn keyswitch<A, B, M, BE: Backend>(&mut self, module: &M, a: &A, b: &B, scratch: &mut Scratch<BE>)
     where
-        A: GLWESwitchingKeyToRef,
-        B: GLWESwitchingKeyPreparedToRef<BE>,
+        A: GGLWEToRef,
+        B: GGLWEPreparedToRef<BE> + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
         M: GGLWEKeyswitch<BE>,
     {
-        module.gglwe_keyswitch(&mut self.key, &a.to_ref().key, b, scratch);
+        module.gglwe_keyswitch(self, a, b, scratch);
     }
 
     pub fn keyswitch_inplace<A, M, BE: Backend>(&mut self, module: &M, a: &A, scratch: &mut Scratch<BE>)
     where
-        A: GLWESwitchingKeyPreparedToRef<BE>,
+        A: GGLWEPreparedToRef<BE> + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
         M: GGLWEKeyswitch<BE>,
     {
-        module.gglwe_keyswitch_inplace(&mut self.key, a, scratch);
+        module.gglwe_keyswitch_inplace(self, a, scratch);
     }
 }
 
@@ -92,7 +88,7 @@ impl<DataSelf: DataMut> GGLWE<DataSelf> {
     pub fn keyswitch<A, B, M, BE: Backend>(&mut self, module: &M, a: &A, b: &B, scratch: &mut Scratch<BE>)
     where
         A: GGLWEToRef,
-        B: GLWESwitchingKeyPreparedToRef<BE>,
+        B: GGLWEPreparedToRef<BE> + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
         M: GGLWEKeyswitch<BE>,
     {
@@ -101,7 +97,7 @@ impl<DataSelf: DataMut> GGLWE<DataSelf> {
 
     pub fn keyswitch_inplace<A, M, BE: Backend>(&mut self, module: &M, a: &A, scratch: &mut Scratch<BE>)
     where
-        A: GLWESwitchingKeyPreparedToRef<BE>,
+        A: GGLWEPreparedToRef<BE> + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
         M: GGLWEKeyswitch<BE>,
     {
@@ -128,12 +124,11 @@ where
     where
         R: GGLWEToMut,
         A: GGLWEToRef,
-        B: GLWESwitchingKeyPreparedToRef<BE>,
+        B: GGLWEPreparedToRef<BE> + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         let res: &mut GGLWE<&mut [u8]> = &mut res.to_mut();
         let a: &GGLWE<&[u8]> = &a.to_ref();
-        let b: &GLWESwitchingKeyPrepared<&[u8], BE> = &b.to_ref();
 
         assert_eq!(
             res.rank_in(),
@@ -180,11 +175,10 @@ where
     fn gglwe_keyswitch_inplace<R, A>(&self, res: &mut R, a: &A, scratch: &mut Scratch<BE>)
     where
         R: GGLWEToMut,
-        A: GLWESwitchingKeyPreparedToRef<BE>,
+        A: GGLWEPreparedToRef<BE> + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         let res: &mut GGLWE<&mut [u8]> = &mut res.to_mut();
-        let a: &GLWESwitchingKeyPrepared<&[u8], BE> = &a.to_ref();
 
         assert_eq!(
             res.rank_out(),

@@ -4,8 +4,8 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Dnum, Dsize, GGLWEInfos, GLWEInfos, GLWESwitchingKey, GLWESwitchingKeySetMetaData, GLWESwitchingKeyToMut,
-    LWEInfos, Rank, TorusPrecision,
+    Base2K, Degree, Dnum, Dsize, GGLWECompressedSeedMut, GGLWEInfos, GGLWEToMut, GLWEInfos, GLWESwitchingKey,
+    GLWESwitchingKeyDegrees, GLWESwitchingKeyDegreesMut, LWEInfos, Rank, TorusPrecision,
     compressed::{GGLWECompressed, GGLWECompressedToMut, GGLWECompressedToRef, GGLWEDecompress},
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
@@ -14,8 +14,34 @@ use std::fmt;
 #[derive(PartialEq, Eq, Clone)]
 pub struct GLWESwitchingKeyCompressed<D: Data> {
     pub(crate) key: GGLWECompressed<D>,
-    pub(crate) sk_in_n: usize,  // Degree of sk_in
-    pub(crate) sk_out_n: usize, // Degree of sk_out
+    pub(crate) input_degree: Degree,  // Degree of sk_in
+    pub(crate) output_degree: Degree, // Degree of sk_out
+}
+
+impl<D: DataMut> GGLWECompressedSeedMut for GLWESwitchingKeyCompressed<D> {
+    fn seed_mut(&mut self) -> &mut Vec<[u8; 32]> {
+        &mut self.key.seed
+    }
+}
+
+impl<D: DataRef> GLWESwitchingKeyDegrees for GLWESwitchingKeyCompressed<D> {
+    fn output_degree(&self) -> &Degree {
+        &self.output_degree
+    }
+
+    fn input_degree(&self) -> &Degree {
+        &self.input_degree
+    }
+}
+
+impl<D: DataMut> GLWESwitchingKeyDegreesMut for GLWESwitchingKeyCompressed<D> {
+    fn output_degree(&mut self) -> &mut Degree {
+        &mut self.output_degree
+    }
+
+    fn input_degree(&mut self) -> &mut Degree {
+        &mut self.input_degree
+    }
 }
 
 impl<D: Data> LWEInfos for GLWESwitchingKeyCompressed<D> {
@@ -76,7 +102,7 @@ impl<D: DataRef> fmt::Display for GLWESwitchingKeyCompressed<D> {
         write!(
             f,
             "(GLWESwitchingKeyCompressed: sk_in_n={} sk_out_n={}) {}",
-            self.sk_in_n, self.sk_out_n, self.key.data
+            self.input_degree, self.output_degree, self.key.data
         )
     }
 }
@@ -100,8 +126,8 @@ impl GLWESwitchingKeyCompressed<Vec<u8>> {
     pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank_in: Rank, rank_out: Rank, dnum: Dnum, dsize: Dsize) -> Self {
         GLWESwitchingKeyCompressed {
             key: GGLWECompressed::alloc(n, base2k, k, rank_in, rank_out, dnum, dsize),
-            sk_in_n: 0,
-            sk_out_n: 0,
+            input_degree: Degree(0),
+            output_degree: Degree(0),
         }
     }
 
@@ -120,16 +146,16 @@ where {
 
 impl<D: DataMut> ReaderFrom for GLWESwitchingKeyCompressed<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
-        self.sk_in_n = reader.read_u64::<LittleEndian>()? as usize;
-        self.sk_out_n = reader.read_u64::<LittleEndian>()? as usize;
+        self.input_degree = Degree(reader.read_u32::<LittleEndian>()? as u32);
+        self.output_degree = Degree(reader.read_u32::<LittleEndian>()? as u32);
         self.key.read_from(reader)
     }
 }
 
 impl<D: DataRef> WriterTo for GLWESwitchingKeyCompressed<D> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
-        writer.write_u64::<LittleEndian>(self.sk_in_n as u64)?;
-        writer.write_u64::<LittleEndian>(self.sk_out_n as u64)?;
+        writer.write_u32::<LittleEndian>(self.input_degree.into())?;
+        writer.write_u32::<LittleEndian>(self.output_degree.into())?;
         self.key.write_to(writer)
     }
 }
@@ -140,13 +166,13 @@ where
 {
     fn decompress_glwe_switching_key<R, O>(&self, res: &mut R, other: &O)
     where
-        R: GLWESwitchingKeyToMut + GLWESwitchingKeySetMetaData,
-        O: GLWESwitchingKeyCompressedToRef,
+        R: GGLWEToMut + GLWESwitchingKeyDegreesMut,
+        O: GGLWECompressedToRef + GLWESwitchingKeyDegrees,
     {
-        let other: &GLWESwitchingKeyCompressed<&[u8]> = &other.to_ref();
-        self.decompress_gglwe(&mut res.to_mut().key, &other.key);
-        res.set_sk_in_n(other.sk_in_n);
-        res.set_sk_out_n(other.sk_out_n);
+        self.decompress_gglwe(res, other);
+
+        *res.input_degree() = *other.input_degree();
+        *res.output_degree() = *other.output_degree();
     }
 }
 
@@ -155,43 +181,21 @@ impl<B: Backend> GLWESwitchingKeyDecompress for Module<B> where Self: GGLWEDecom
 impl<D: DataMut> GLWESwitchingKey<D> {
     pub fn decompress<O, M>(&mut self, module: &M, other: &O)
     where
-        O: GLWESwitchingKeyCompressedToRef,
+        O: GGLWECompressedToRef + GLWESwitchingKeyDegrees,
         M: GLWESwitchingKeyDecompress,
     {
         module.decompress_glwe_switching_key(self, other);
     }
 }
 
-pub trait GLWESwitchingKeyCompressedToMut {
-    fn to_mut(&mut self) -> GLWESwitchingKeyCompressed<&mut [u8]>;
-}
-
-impl<D: DataMut> GLWESwitchingKeyCompressedToMut for GLWESwitchingKeyCompressed<D>
-where
-    GGLWECompressed<D>: GGLWECompressedToMut,
-{
-    fn to_mut(&mut self) -> GLWESwitchingKeyCompressed<&mut [u8]> {
-        GLWESwitchingKeyCompressed {
-            sk_in_n: self.sk_in_n,
-            sk_out_n: self.sk_out_n,
-            key: self.key.to_mut(),
-        }
+impl<D: DataMut> GGLWECompressedToMut for GLWESwitchingKeyCompressed<D> {
+    fn to_mut(&mut self) -> GGLWECompressed<&mut [u8]> {
+        self.key.to_mut()
     }
 }
 
-pub trait GLWESwitchingKeyCompressedToRef {
-    fn to_ref(&self) -> GLWESwitchingKeyCompressed<&[u8]>;
-}
-
-impl<D: DataRef> GLWESwitchingKeyCompressedToRef for GLWESwitchingKeyCompressed<D>
-where
-    GGLWECompressed<D>: GGLWECompressedToRef,
-{
-    fn to_ref(&self) -> GLWESwitchingKeyCompressed<&[u8]> {
-        GLWESwitchingKeyCompressed {
-            sk_in_n: self.sk_in_n,
-            sk_out_n: self.sk_out_n,
-            key: self.key.to_ref(),
-        }
+impl<D: DataRef> GGLWECompressedToRef for GLWESwitchingKeyCompressed<D> {
+    fn to_ref(&self) -> GGLWECompressed<&[u8]> {
+        self.key.to_ref()
     }
 }

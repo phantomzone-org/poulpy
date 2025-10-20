@@ -5,15 +5,21 @@ use poulpy_hal::{
 };
 
 use crate::{
-    ScratchTakeCore,
+    LWEDecrypt, LWEEncryptSk, LWEKeySwitch, LWESwitchingKeyEncrypt, ScratchTakeCore,
     layouts::{
-        LWE, LWELayout, LWEPlaintext, LWESecret, LWESwitchingKey, LWESwitchingKeyLayout, prepared::LWESwitchingKeyPrepared,
+        LWE, LWELayout, LWEPlaintext, LWESecret, LWESwitchingKey, LWESwitchingKeyLayout, LWESwitchingKeyPrepare,
+        LWESwitchingKeyPreparedAlloc, prepared::LWESwitchingKeyPrepared,
     },
 };
 
 pub fn test_lwe_keyswitch<BE: Backend>(module: &Module<BE>)
 where
-    Module<BE>:,
+    Module<BE>: LWEKeySwitch<BE>
+        + LWESwitchingKeyEncrypt<BE>
+        + LWEEncryptSk<BE>
+        + LWESwitchingKeyPreparedAlloc<BE>
+        + LWEDecrypt<BE>
+        + LWESwitchingKeyPrepare<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
@@ -89,7 +95,8 @@ where
 
     let mut lwe_ct_out: LWE<Vec<u8>> = LWE::alloc_from_infos(&lwe_out_infos);
 
-    let ksk_prepared: LWESwitchingKeyPrepared<Vec<u8>, BE> = ksk.prepare_alloc(module, scratch.borrow());
+    let mut ksk_prepared: LWESwitchingKeyPrepared<Vec<u8>, BE> = LWESwitchingKeyPrepared::alloc_from_infos(module, &ksk);
+    ksk_prepared.prepare(module, &ksk, scratch.borrow());
 
     lwe_ct_out.keyswitch(module, &lwe_ct_in, &ksk_prepared, scratch.borrow());
 

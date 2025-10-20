@@ -4,7 +4,7 @@ use poulpy_hal::{
         VecZnxCopy, VecZnxDftAlloc, VecZnxDftApply, VecZnxFillUniform, VecZnxIdftApplyTmpA, VecZnxSubScalarInplace,
         VecZnxSwitchRing,
     },
-    layouts::{Backend, Module, Scratch, ScratchOwned, VecZnxDft},
+    layouts::{Backend, Module, Scratch, ScratchOwned, VecZnxBig, VecZnxDft},
     source::Source,
 };
 
@@ -73,8 +73,8 @@ where
 
         let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&tensor_key_infos);
 
-        let mut sk_ij_dft = module.vec_znx_dft_alloc(1, 1);
-        let mut sk_ij_big = module.vec_znx_big_alloc(1, 1);
+        let mut sk_ij_dft: VecZnxDft<Vec<u8>, BE> = module.vec_znx_dft_alloc(1, 1);
+        let mut sk_ij_big: VecZnxBig<Vec<u8>, BE> = module.vec_znx_big_alloc(1, 1);
         let mut sk_ij: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), 1_u32.into());
         let mut sk_dft: VecZnxDft<Vec<u8>, BE> = module.vec_znx_dft_alloc(rank, 1);
 
@@ -126,8 +126,6 @@ where
         + VecZnxFillUniform
         + VecZnxCopy
         + VecZnxSwitchRing,
-    // + VecZnxNormalizeInplaceImpl<BE>
-    // + VecZnxNormalizeImpl<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
@@ -170,8 +168,8 @@ where
 
         let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&tensor_key_infos);
 
-        let mut sk_ij_dft = module.vec_znx_dft_alloc(1, 1);
-        let mut sk_ij_big = module.vec_znx_big_alloc(1, 1);
+        let mut sk_ij_dft: VecZnxDft<Vec<u8>, BE> = module.vec_znx_dft_alloc(1, 1);
+        let mut sk_ij_big: VecZnxBig<Vec<u8>, BE> = module.vec_znx_big_alloc(1, 1);
         let mut sk_ij: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), 1_u32.into());
         let mut sk_dft: VecZnxDft<Vec<u8>, BE> = module.vec_znx_dft_alloc(rank, 1);
 

@@ -4,8 +4,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Dnum, Dsize, GGLWEInfos, GLWEInfos, GLWESwitchingKey, GLWESwitchingKeyToMut, GLWESwitchingKeyToRef, LWEInfos,
-    Rank, TorusPrecision,
+    Base2K, Degree, Dnum, Dsize, GGLWE, GGLWEInfos, GGLWEToMut, GGLWEToRef, GLWEInfos, LWEInfos, Rank, TorusPrecision,
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
@@ -23,7 +22,7 @@ pub struct TensorKeyLayout {
 
 #[derive(PartialEq, Eq, Clone)]
 pub struct TensorKey<D: Data> {
-    pub(crate) keys: Vec<GLWESwitchingKey<D>>,
+    pub(crate) keys: Vec<GGLWE<D>>,
 }
 
 impl<D: Data> LWEInfos for TensorKey<D> {
@@ -116,7 +115,7 @@ impl<D: DataMut> FillUniform for TensorKey<D> {
     fn fill_uniform(&mut self, log_bound: usize, source: &mut Source) {
         self.keys
             .iter_mut()
-            .for_each(|key: &mut GLWESwitchingKey<D>| key.fill_uniform(log_bound, source))
+            .for_each(|key: &mut GGLWE<D>| key.fill_uniform(log_bound, source))
     }
 }
 
@@ -154,7 +153,7 @@ impl TensorKey<Vec<u8>> {
         let pairs: u32 = (((rank.0 + 1) * rank.0) >> 1).max(1);
         TensorKey {
             keys: (0..pairs)
-                .map(|_| GLWESwitchingKey::alloc(n, base2k, k, Rank(1), rank, dnum, dsize))
+                .map(|_| GGLWE::alloc(n, base2k, k, Rank(1), rank, dnum, dsize))
                 .collect(),
         }
     }
@@ -180,13 +179,13 @@ impl TensorKey<Vec<u8>> {
 
     pub fn bytes_of(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize {
         let pairs: usize = (((rank.0 + 1) * rank.0) >> 1).max(1) as usize;
-        pairs * GLWESwitchingKey::bytes_of(n, base2k, k, Rank(1), rank, dnum, dsize)
+        pairs * GGLWE::bytes_of(n, base2k, k, Rank(1), rank, dnum, dsize)
     }
 }
 
 impl<D: DataMut> TensorKey<D> {
-    // Returns a mutable reference to GLWESwitchingKey_{s}(s[i] * s[j])
-    pub fn at_mut(&mut self, mut i: usize, mut j: usize) -> &mut GLWESwitchingKey<D> {
+    // Returns a mutable reference to GGLWE_{s}(s[i] * s[j])
+    pub fn at_mut(&mut self, mut i: usize, mut j: usize) -> &mut GGLWE<D> {
         if i > j {
             std::mem::swap(&mut i, &mut j);
         };
@@ -196,8 +195,8 @@ impl<D: DataMut> TensorKey<D> {
 }
 
 impl<D: DataRef> TensorKey<D> {
-    // Returns a reference to GLWESwitchingKey_{s}(s[i] * s[j])
-    pub fn at(&self, mut i: usize, mut j: usize) -> &GLWESwitchingKey<D> {
+    // Returns a reference to GGLWE_{s}(s[i] * s[j])
+    pub fn at(&self, mut i: usize, mut j: usize) -> &GGLWE<D> {
         if i > j {
             std::mem::swap(&mut i, &mut j);
         };
@@ -238,7 +237,7 @@ pub trait TensorKeyToRef {
 
 impl<D: DataRef> TensorKeyToRef for TensorKey<D>
 where
-    GLWESwitchingKey<D>: GLWESwitchingKeyToRef,
+    GGLWE<D>: GGLWEToRef,
 {
     fn to_ref(&self) -> TensorKey<&[u8]> {
         TensorKey {
@@ -253,7 +252,7 @@ pub trait TensorKeyToMut {
 
 impl<D: DataMut> TensorKeyToMut for TensorKey<D>
 where
-    GLWESwitchingKey<D>: GLWESwitchingKeyToMut,
+    GGLWE<D>: GGLWEToMut,
 {
     fn to_mut(&mut self) -> TensorKey<&mut [u8]> {
         TensorKey {

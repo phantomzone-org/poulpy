@@ -7,10 +7,8 @@ use crate::{
     ScratchTakeCore,
     automorphism::glwe_ct::GLWEAutomorphism,
     layouts::{
-        AutomorphismKey, AutomorphismKeyToMut, AutomorphismKeyToRef, GGLWEInfos, GLWE, GLWEInfos,
-        prepared::{
-            AutomorphismKeyPrepared, AutomorphismKeyPreparedToRef, GetAutomorphismGaloisElement, SetAutomorphismGaloisElement,
-        },
+        AutomorphismKey, GGLWE, GGLWEInfos, GGLWEPreparedToRef, GGLWEToMut, GGLWEToRef, GLWE,
+        prepared::{GetAutomorphismGaloisElement, SetAutomorphismGaloisElement},
     },
 };
 
@@ -29,8 +27,8 @@ impl AutomorphismKey<Vec<u8>> {
 impl<DataSelf: DataMut> AutomorphismKey<DataSelf> {
     pub fn automorphism<A, K, M, BE: Backend>(&mut self, module: &M, a: &A, key: &K, scratch: &mut Scratch<BE>)
     where
-        A: AutomorphismKeyToRef + GetAutomorphismGaloisElement,
-        K: AutomorphismKeyPreparedToRef<BE> + GetAutomorphismGaloisElement,
+        A: GGLWEToRef + GetAutomorphismGaloisElement + GGLWEInfos,
+        K: GGLWEPreparedToRef<BE> + GetAutomorphismGaloisElement + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
         M: AutomorphismKeyAutomorphism<BE>,
     {
@@ -39,7 +37,7 @@ impl<DataSelf: DataMut> AutomorphismKey<DataSelf> {
 
     pub fn automorphism_inplace<K, M, BE: Backend>(&mut self, module: &M, key: &K, scratch: &mut Scratch<BE>)
     where
-        K: AutomorphismKeyPreparedToRef<BE> + GetAutomorphismGaloisElement,
+        K: GGLWEPreparedToRef<BE> + GetAutomorphismGaloisElement + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
         M: AutomorphismKeyAutomorphism<BE>,
     {
@@ -67,35 +65,34 @@ where
 
     fn automorphism_key_automorphism<R, A, K>(&self, res: &mut R, a: &A, key: &K, scratch: &mut Scratch<BE>)
     where
-        R: AutomorphismKeyToMut + SetAutomorphismGaloisElement,
-        A: AutomorphismKeyToRef + GetAutomorphismGaloisElement,
-        K: AutomorphismKeyPreparedToRef<BE> + GetAutomorphismGaloisElement,
+        R: GGLWEToMut + SetAutomorphismGaloisElement + GGLWEInfos,
+        A: GGLWEToRef + GetAutomorphismGaloisElement + GGLWEInfos,
+        K: GGLWEPreparedToRef<BE> + GetAutomorphismGaloisElement + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
+        assert!(
+            res.dnum().as_u32() <= a.dnum().as_u32(),
+            "res dnum: {} > a dnum: {}",
+            res.dnum(),
+            a.dnum()
+        );
+
+        assert_eq!(
+            res.dsize(),
+            a.dsize(),
+            "res dnum: {} != a dnum: {}",
+            res.dsize(),
+            a.dsize()
+        );
+
+        let cols_out: usize = (key.rank_out() + 1).into();
+
+        let p: i64 = a.p();
+        let p_inv: i64 = self.galois_element_inv(p);
+
         {
-            let res: &mut AutomorphismKey<&mut [u8]> = &mut res.to_mut();
-            let a: &AutomorphismKey<&[u8]> = &a.to_ref();
-            let key: &AutomorphismKeyPrepared<&[u8], _> = &key.to_ref();
-
-            assert!(
-                res.dnum().as_u32() <= a.dnum().as_u32(),
-                "res dnum: {} > a dnum: {}",
-                res.dnum(),
-                a.dnum()
-            );
-
-            assert_eq!(
-                res.dsize(),
-                a.dsize(),
-                "res dnum: {} != a dnum: {}",
-                res.dsize(),
-                a.dsize()
-            );
-
-            let cols_out: usize = (key.rank_out() + 1).into();
-
-            let p: i64 = a.p();
-            let p_inv: i64 = self.galois_element_inv(p);
+            let res: &mut GGLWE<&mut [u8]> = &mut res.to_mut();
+            let a: &GGLWE<&[u8]> = &a.to_ref();
 
             for row in 0..res.dnum().as_usize() {
                 for col in 0..cols_out {
@@ -104,11 +101,11 @@ where
 
                     // Reverts the automorphism X^{-k}: (-pi^{-1}_{k}(s)a + s, a) to (-sa + pi_{k}(s), a)
                     for i in 0..cols_out {
-                        self.vec_znx_automorphism(a.p(), res_tmp.data_mut(), i, &a_ct.data, i);
+                        self.vec_znx_automorphism(p, res_tmp.data_mut(), i, &a_ct.data, i);
                     }
 
                     // Key-switch (-sa + pi_{k}(s), a) to (-pi^{-1}_{k'}(s)a + pi_{k}(s), a)
-                    self.glwe_keyswitch_inplace(&mut res_tmp, &key.key, scratch);
+                    self.glwe_keyswitch_inplace(&mut res_tmp, key, scratch);
 
                     // Applies back the automorphism X^{-k}: (-pi^{-1}_{k'}(s)a + pi_{k}(s), a) to (-pi^{-1}_{k'+k}(s)a + s, a)
                     (0..cols_out).for_each(|i| {
@@ -118,32 +115,29 @@ where
             }
         }
 
-        res.set_p((a.p() * key.p()) % (self.cyclotomic_order() as i64));
+        res.set_p((p * key.p()) % (self.cyclotomic_order() as i64));
     }
 
     fn automorphism_key_automorphism_inplace<R, K>(&self, res: &mut R, key: &K, scratch: &mut Scratch<BE>)
     where
-        R: AutomorphismKeyToMut + SetAutomorphismGaloisElement + GetAutomorphismGaloisElement,
-        K: AutomorphismKeyPreparedToRef<BE> + GetAutomorphismGaloisElement,
+        R: GGLWEToMut + SetAutomorphismGaloisElement + GetAutomorphismGaloisElement + GGLWEInfos,
+        K: GGLWEPreparedToRef<BE> + GetAutomorphismGaloisElement + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
+        assert_eq!(
+            res.rank(),
+            key.rank(),
+            "key rank: {} != key rank: {}",
+            res.rank(),
+            key.rank()
+        );
+
+        let cols_out: usize = (key.rank_out() + 1).into();
+        let p: i64 = res.p();
+        let p_inv: i64 = self.galois_element_inv(p);
+
         {
-            let res: &mut AutomorphismKey<&mut [u8]> = &mut res.to_mut();
-            let key: &AutomorphismKeyPrepared<&[u8], _> = &key.to_ref();
-
-            assert_eq!(
-                res.rank(),
-                key.rank(),
-                "key rank: {} != key rank: {}",
-                res.rank(),
-                key.rank()
-            );
-
-            let cols_out: usize = (key.rank_out() + 1).into();
-
-            let p: i64 = res.p();
-            let p_inv: i64 = self.galois_element_inv(p);
-
+            let res: &mut GGLWE<&mut [u8]> = &mut res.to_mut();
             for row in 0..res.dnum().as_usize() {
                 for col in 0..cols_out {
                     let mut res_tmp: GLWE<&mut [u8]> = res.at_mut(row, col);
@@ -154,7 +148,7 @@ where
                     }
 
                     // Key-switch (-sa + pi_{k}(s), a) to (-pi^{-1}_{k'}(s)a + pi_{k}(s), a)
-                    self.glwe_keyswitch_inplace(&mut res_tmp, &key.key, scratch);
+                    self.glwe_keyswitch_inplace(&mut res_tmp, key, scratch);
 
                     // Applies back the automorphism X^{-k}: (-pi^{-1}_{k'}(s)a + pi_{k}(s), a) to (-pi^{-1}_{k'+k}(s)a + s, a)
                     for i in 0..cols_out {

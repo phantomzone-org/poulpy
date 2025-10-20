@@ -1,7 +1,6 @@
 use poulpy_hal::{
     api::{ScratchOwnedAlloc, ScratchOwnedBorrow, ZnAddNormal, ZnFillUniform, ZnNormalizeInplace},
     layouts::{Backend, DataMut, Module, ScratchOwned, Zn, ZnxView, ZnxViewMut},
-    oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl},
     source::Source,
 };
 
@@ -16,7 +15,6 @@ impl<DataSelf: DataMut> LWE<DataSelf> {
         P: LWEPlaintextToRef,
         S: LWESecretToRef,
         M: LWEEncryptSk<BE>,
-        BE: Backend + ScratchOwnedAllocImpl<BE> + ScratchOwnedBorrowImpl<BE>,
     {
         module.lwe_encrypt_sk(self, pt, sk, source_xa, source_xe);
     }
@@ -33,7 +31,7 @@ pub trait LWEEncryptSk<BE: Backend> {
 impl<BE: Backend> LWEEncryptSk<BE> for Module<BE>
 where
     Self: Sized + ZnFillUniform + ZnAddNormal + ZnNormalizeInplace<BE>,
-    BE: ScratchOwnedAllocImpl<BE> + ScratchOwnedBorrowImpl<BE>,
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
 {
     fn lwe_encrypt_sk<R, P, S>(&self, res: &mut R, pt: &P, sk: &S, source_xa: &mut Source, source_xe: &mut Source)
     where

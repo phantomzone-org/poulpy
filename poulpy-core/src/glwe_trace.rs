@@ -8,8 +8,8 @@ use poulpy_hal::{
 use crate::{
     GLWEAutomorphism, GLWECopy, GLWEShift, ScratchTakeCore,
     layouts::{
-        Base2K, GGLWEInfos, GLWE, GLWEInfos, GLWELayout, GLWEToMut, GLWEToRef, LWEInfos,
-        prepared::{AutomorphismKeyPreparedToRef, GetAutomorphismGaloisElement},
+        Base2K, GGLWEInfos, GGLWEPreparedToRef, GLWE, GLWEInfos, GLWELayout, GLWEToMut, GLWEToRef, LWEInfos,
+        prepared::GetAutomorphismGaloisElement,
     },
 };
 
@@ -43,7 +43,7 @@ impl<D: DataMut> GLWE<D> {
         scratch: &mut Scratch<BE>,
     ) where
         A: GLWEToRef,
-        K: AutomorphismKeyPreparedToRef<BE> + GGLWEInfos + GetAutomorphismGaloisElement,
+        K: GGLWEPreparedToRef<BE> + GetAutomorphismGaloisElement + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
         M: GLWETrace<BE>,
     {
@@ -58,7 +58,7 @@ impl<D: DataMut> GLWE<D> {
         keys: &HashMap<i64, K>,
         scratch: &mut Scratch<BE>,
     ) where
-        K: AutomorphismKeyPreparedToRef<BE> + GGLWEInfos + GetAutomorphismGaloisElement,
+        K: GGLWEPreparedToRef<BE> + GetAutomorphismGaloisElement + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
         M: GLWETrace<BE>,
     {
@@ -110,7 +110,7 @@ where
     where
         R: GLWEToMut,
         A: GLWEToRef,
-        K: AutomorphismKeyPreparedToRef<BE> + GGLWEInfos + GetAutomorphismGaloisElement,
+        K: GGLWEPreparedToRef<BE> + GetAutomorphismGaloisElement + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         self.glwe_copy(res, a);
@@ -120,7 +120,7 @@ where
     fn glwe_trace_inplace<R, K>(&self, res: &mut R, start: usize, end: usize, keys: &HashMap<i64, K>, scratch: &mut Scratch<BE>)
     where
         R: GLWEToMut,
-        K: AutomorphismKeyPreparedToRef<BE> + GGLWEInfos + GetAutomorphismGaloisElement,
+        K: GGLWEPreparedToRef<BE> + GetAutomorphismGaloisElement + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
