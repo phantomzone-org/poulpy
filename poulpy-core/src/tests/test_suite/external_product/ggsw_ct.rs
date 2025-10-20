@@ -1,74 +1,32 @@
 use poulpy_hal::{
-    api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolBytesOf, SvpPrepare,
-        VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigAlloc,
-        VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftAlloc, VecZnxDftApply,
-        VecZnxDftBytesOf, VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA, VecZnxNormalize,
-        VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotateInplace, VecZnxSub, VecZnxSubInplace, VmpApplyDftToDft,
-        VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes, VmpPMatAlloc, VmpPrepare,
-    },
-    layouts::{Backend, Module, ScalarZnx, ScalarZnxToMut, ScratchOwned, ZnxViewMut},
-    oep::{
-        ScratchAvailableImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeScalarZnxImpl, TakeSvpPPolImpl,
-        TakeVecZnxBigImpl, TakeVecZnxDftImpl, TakeVecZnxImpl, VecZnxBigAllocBytesImpl, VecZnxDftAllocBytesImpl,
-    },
+    api::{ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxRotateInplace},
+    layouts::{Backend, Module, ScalarZnx, ScalarZnxToMut, Scratch, ScratchOwned, ZnxViewMut},
     source::Source,
 };
 
 use crate::{
+    GGSWEncryptSk, GGSWExternalProduct, GGSWNoise, ScratchTakeCore,
     encryption::SIGMA,
     layouts::{
-        GGSW, GGSWCiphertextLayout, GLWESecret,
-        prepared::{GGSWPrepared, GLWESecretPrepared, PrepareAlloc},
+        GGSW, GGSWLayout, GGSWPrepare, GGSWPreparedAlloc, GLWESecret, GLWESecretPrepare, GLWESecretPreparedAlloc,
+        prepared::{GGSWPrepared, GLWESecretPrepared},
     },
     noise::noise_ggsw_product,
 };
 
 #[allow(clippy::too_many_arguments)]
-pub fn test_ggsw_external_product<B>(module: &Module<B>)
+pub fn test_ggsw_external_product<BE: Backend>(module: &Module<BE>)
 where
-    Module<B>: VecZnxDftBytesOf
-        + VecZnxBigNormalize<B>
-        + VecZnxDftApply<B>
-        + SvpApplyDftToDftInplace<B>
-        + VecZnxIdftApplyConsume<B>
-        + VecZnxNormalizeTmpBytes
-        + VecZnxFillUniform
-        + VecZnxSubInplace
-        + VecZnxAddInplace
-        + VecZnxNormalizeInplace<B>
-        + VecZnxAddNormal
-        + VecZnxNormalize<B>
-        + VecZnxSub
-        + SvpPrepare<B>
-        + SvpPPolBytesOf
-        + SvpPPolAlloc<B>
-        + VecZnxBigBytesOf
-        + VecZnxBigAddInplace<B>
-        + VecZnxBigAddSmallInplace<B>
-        + VecZnxAddScalarInplace
-        + VecZnxCopy
-        + VmpPMatAlloc<B>
-        + VecZnxRotateInplace<B>
-        + VmpApplyDftToDftTmpBytes
-        + VmpApplyDftToDft<B>
-        + VmpApplyDftToDftAdd<B>
-        + VmpPrepare<B>
-        + VecZnxBigAlloc<B>
-        + VecZnxDftAlloc<B>
-        + VecZnxBigNormalizeTmpBytes
-        + VecZnxIdftApplyTmpA<B>,
-    B: Backend
-        + TakeVecZnxDftImpl<B>
-        + TakeVecZnxBigImpl<B>
-        + ScratchOwnedAllocImpl<B>
-        + ScratchOwnedBorrowImpl<B>
-        + ScratchAvailableImpl<B>
-        + TakeScalarZnxImpl<B>
-        + TakeVecZnxImpl<B>
-        + VecZnxDftAllocBytesImpl<B>
-        + VecZnxBigAllocBytesImpl<B>
-        + TakeSvpPPolImpl<B>,
+    Module<BE>: GGSWEncryptSk<BE>
+        + GGSWExternalProduct<BE>
+        + GLWESecretPrepare<BE>
+        + GLWESecretPreparedAlloc<BE>
+        + GGSWPrepare<BE>
+        + GGSWPreparedAlloc<BE>
+        + VecZnxRotateInplace<BE>
+        + GGSWNoise<BE>,
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
+    Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
     let base2k: usize = 12;
     let k_in: usize = 60;
@@ -84,7 +42,7 @@ where
             let dnum_in: usize = k_in.div_euclid(base2k * di);
             let dsize_in: usize = 1;
 
-            let ggsw_in_infos: GGSWCiphertextLayout = GGSWCiphertextLayout {
+            let ggsw_in_infos: GGSWLayout = GGSWLayout {
                 n: n.into(),
                 base2k: base2k.into(),
                 k: k_in.into(),
@@ -93,7 +51,7 @@ where
                 rank: rank.into(),
             };
 
-            let ggsw_out_infos: GGSWCiphertextLayout = GGSWCiphertextLayout {
+            let ggsw_out_infos: GGSWLayout = GGSWLayout {
                 n: n.into(),
                 base2k: base2k.into(),
                 k: k_out.into(),
@@ -102,7 +60,7 @@ where
                 rank: rank.into(),
             };
 
-            let ggsw_apply_infos: GGSWCiphertextLayout = GGSWCiphertextLayout {
+            let ggsw_apply_infos: GGSWLayout = GGSWLayout {
                 n: n.into(),
                 base2k: base2k.into(),
                 k: k_apply.into(),
@@ -127,7 +85,7 @@ where
 
             pt_apply.to_mut().raw_mut()[k] = 1; //X^{k}
 
-            let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
+            let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
                 GGSW::encrypt_sk_tmp_bytes(module, &ggsw_apply_infos)
                     | GGSW::encrypt_sk_tmp_bytes(module, &ggsw_in_infos)
                     | GGSW::external_product_tmp_bytes(module, &ggsw_out_infos, &ggsw_in_infos, &ggsw_apply_infos),
@@ -135,7 +93,9 @@ where
 
             let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank.into());
             sk.fill_ternary_prob(0.5, &mut source_xs);
-            let sk_prepared: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
+
+            let mut sk_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(module, rank.into());
+            sk_prepared.prepare(module, &sk);
 
             ggsw_apply.encrypt_sk(
                 module,
@@ -155,7 +115,8 @@ where
                 scratch.borrow(),
             );
 
-            let ct_rhs_prepared: GGSWPrepared<Vec<u8>, B> = ggsw_apply.prepare_alloc(module, scratch.borrow());
+            let mut ct_rhs_prepared: GGSWPrepared<Vec<u8>, BE> = GGSWPrepared::alloc_from_infos(module, &ggsw_apply);
+            ct_rhs_prepared.prepare(module, &ggsw_apply, scratch.borrow());
 
             ggsw_out.external_product(module, &ggsw_in, &ct_rhs_prepared, scratch.borrow());
 
@@ -190,50 +151,18 @@ where
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn test_ggsw_external_product_inplace<B>(module: &Module<B>)
+pub fn test_ggsw_external_product_inplace<BE: Backend>(module: &Module<BE>)
 where
-    Module<B>: VecZnxDftBytesOf
-        + VecZnxBigNormalize<B>
-        + VecZnxDftApply<B>
-        + SvpApplyDftToDftInplace<B>
-        + VecZnxIdftApplyConsume<B>
-        + VecZnxNormalizeTmpBytes
-        + VecZnxFillUniform
-        + VecZnxSubInplace
-        + VecZnxAddInplace
-        + VecZnxNormalizeInplace<B>
-        + VecZnxAddNormal
-        + VecZnxNormalize<B>
-        + VecZnxSub
-        + SvpPrepare<B>
-        + SvpPPolBytesOf
-        + SvpPPolAlloc<B>
-        + VecZnxBigBytesOf
-        + VecZnxBigAddInplace<B>
-        + VecZnxBigAddSmallInplace<B>
-        + VecZnxAddScalarInplace
-        + VecZnxCopy
-        + VmpPMatAlloc<B>
-        + VecZnxRotateInplace<B>
-        + VmpApplyDftToDftTmpBytes
-        + VmpApplyDftToDft<B>
-        + VmpApplyDftToDftAdd<B>
-        + VmpPrepare<B>
-        + VecZnxBigAlloc<B>
-        + VecZnxDftAlloc<B>
-        + VecZnxBigNormalizeTmpBytes
-        + VecZnxIdftApplyTmpA<B>,
-    B: Backend
-        + TakeVecZnxDftImpl<B>
-        + TakeVecZnxBigImpl<B>
-        + ScratchOwnedAllocImpl<B>
-        + ScratchOwnedBorrowImpl<B>
-        + ScratchAvailableImpl<B>
-        + TakeScalarZnxImpl<B>
-        + TakeVecZnxImpl<B>
-        + VecZnxDftAllocBytesImpl<B>
-        + VecZnxBigAllocBytesImpl<B>
-        + TakeSvpPPolImpl<B>,
+    Module<BE>: GGSWEncryptSk<BE>
+        + GGSWExternalProduct<BE>
+        + GLWESecretPrepare<BE>
+        + GLWESecretPreparedAlloc<BE>
+        + GGSWPrepare<BE>
+        + GGSWPreparedAlloc<BE>
+        + VecZnxRotateInplace<BE>
+        + GGSWNoise<BE>,
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
+    Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
     let base2k: usize = 12;
     let k_out: usize = 60;
@@ -247,7 +176,7 @@ where
             let dnum_in: usize = k_out.div_euclid(base2k * di);
             let dsize_in: usize = 1;
 
-            let ggsw_out_infos: GGSWCiphertextLayout = GGSWCiphertextLayout {
+            let ggsw_out_infos: GGSWLayout = GGSWLayout {
                 n: n.into(),
                 base2k: base2k.into(),
                 k: k_out.into(),
@@ -256,7 +185,7 @@ where
                 rank: rank.into(),
             };
 
-            let ggsw_apply_infos: GGSWCiphertextLayout = GGSWCiphertextLayout {
+            let ggsw_apply_infos: GGSWLayout = GGSWLayout {
                 n: n.into(),
                 base2k: base2k.into(),
                 k: k_apply.into(),
@@ -281,15 +210,17 @@ where
 
             pt_apply.to_mut().raw_mut()[k] = 1; //X^{k}
 
-            let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
+            let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
                 GGSW::encrypt_sk_tmp_bytes(module, &ggsw_apply_infos)
                     | GGSW::encrypt_sk_tmp_bytes(module, &ggsw_out_infos)
-                    | GGSW::external_product_inplace_tmp_bytes(module, &ggsw_out_infos, &ggsw_apply_infos),
+                    | GGSW::external_product_tmp_bytes(module, &ggsw_out_infos, &ggsw_out_infos, &ggsw_apply_infos),
             );
 
             let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank.into());
             sk.fill_ternary_prob(0.5, &mut source_xs);
-            let sk_prepared: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
+
+            let mut sk_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(module, rank.into());
+            sk_prepared.prepare(module, &sk);
 
             ggsw_apply.encrypt_sk(
                 module,
@@ -309,7 +240,8 @@ where
                 scratch.borrow(),
             );
 
-            let ct_rhs_prepared: GGSWPrepared<Vec<u8>, B> = ggsw_apply.prepare_alloc(module, scratch.borrow());
+            let mut ct_rhs_prepared: GGSWPrepared<Vec<u8>, BE> = GGSWPrepared::alloc_from_infos(module, &ggsw_apply);
+            ct_rhs_prepared.prepare(module, &ggsw_apply, scratch.borrow());
 
             ggsw_out.external_product_inplace(module, &ct_rhs_prepared, scratch.borrow());
 

@@ -1,6 +1,6 @@
 // pub mod automorphism;
 pub mod encryption;
-// pub mod external_product;
+pub mod external_product;
 pub mod keyswitch;
 
 // mod conversion;

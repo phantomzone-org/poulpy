@@ -95,13 +95,7 @@ where
 impl<BE: Backend> GGLWEExternalProduct<BE> for Module<BE> where Self: GLWEExternalProduct<BE> {}
 
 impl GLWESwitchingKey<Vec<u8>> {
-    pub fn external_product_tmp_bytes<R, A, B, M, BE: Backend>(
-        &self,
-        module: &M,
-        res_infos: &R,
-        a_infos: &A,
-        b_infos: &B,
-    ) -> usize
+    pub fn external_product_tmp_bytes<R, A, B, M, BE: Backend>(module: &M, res_infos: &R, a_infos: &A, b_infos: &B) -> usize
     where
         R: GGLWEInfos,
         A: GGLWEInfos,
