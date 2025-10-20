@@ -7,7 +7,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Dnum, Dsize, GGLWE, GGLWEInfos, GGLWEToMut, GLWEInfos, GetDegree, LWEInfos, Rank, TorusPrecision,
+    Base2K, Degree, Dnum, Dsize, GGLWE, GGLWEInfos, GGLWEToMut, GLWEInfos, LWEInfos, Rank, TorusPrecision,
     compressed::{GLWECompressed, GLWEDecompress},
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
@@ -105,19 +105,23 @@ impl<D: DataRef> fmt::Display for GGLWECompressed<D> {
     }
 }
 
-pub trait GGLWECompressedAlloc
-where
-    Self: GetDegree,
-{
-    fn alloc_gglwe_compressed(
-        &self,
-        base2k: Base2K,
-        k: TorusPrecision,
-        rank_in: Rank,
-        rank_out: Rank,
-        dnum: Dnum,
-        dsize: Dsize,
-    ) -> GGLWECompressed<Vec<u8>> {
+impl GGLWECompressed<Vec<u8>> {
+    pub fn alloc_from_infos<A>(infos: &A) -> Self
+    where
+        A: GGLWEInfos,
+    {
+        Self::alloc(
+            infos.n(),
+            infos.base2k(),
+            infos.k(),
+            infos.rank_in(),
+            infos.rank_out(),
+            infos.dnum(),
+            infos.dsize(),
+        )
+    }
+
+    pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank_in: Rank, rank_out: Rank, dnum: Dnum, dsize: Dsize) -> Self {
         let size: usize = k.0.div_ceil(base2k.0) as usize;
         debug_assert!(
             size as u32 > dsize.0,
@@ -134,7 +138,7 @@ where
 
         GGLWECompressed {
             data: MatZnx::alloc(
-                self.ring_degree().into(),
+                n.into(),
                 dnum.into(),
                 rank_in.into(),
                 1,
@@ -148,22 +152,21 @@ where
         }
     }
 
-    fn alloc_gglwe_compressed_from_infos<A>(&self, infos: &A) -> GGLWECompressed<Vec<u8>>
+    pub fn bytes_of_from_infos<A>(infos: &A) -> usize
     where
         A: GGLWEInfos,
     {
-        assert_eq!(infos.n(), self.ring_degree());
-        self.alloc_gglwe_compressed(
+        Self::bytes_of(
+            infos.n(),
             infos.base2k(),
             infos.k(),
             infos.rank_in(),
-            infos.rank_out(),
             infos.dnum(),
             infos.dsize(),
         )
     }
 
-    fn bytes_of_gglwe_compressed(&self, base2k: Base2K, k: TorusPrecision, rank_in: Rank, dnum: Dnum, dsize: Dsize) -> usize {
+    pub fn bytes_of(n: Degree, base2k: Base2K, k: TorusPrecision, rank_in: Rank, dnum: Dnum, dsize: Dsize) -> usize {
         let size: usize = k.0.div_ceil(base2k.0) as usize;
         debug_assert!(
             size as u32 > dsize.0,
@@ -179,68 +182,12 @@ where
         );
 
         MatZnx::bytes_of(
-            self.ring_degree().into(),
+            n.into(),
             dnum.into(),
             rank_in.into(),
             1,
             k.0.div_ceil(base2k.0) as usize,
         )
-    }
-
-    fn bytes_of_gglwe_compressed_from_infos<A>(&self, infos: &A) -> usize
-    where
-        A: GGLWEInfos,
-    {
-        assert_eq!(infos.n(), self.ring_degree());
-        self.bytes_of_gglwe_compressed(
-            infos.base2k(),
-            infos.k(),
-            infos.rank_in(),
-            infos.dnum(),
-            infos.dsize(),
-        )
-    }
-}
-
-impl<B: Backend> GGLWECompressedAlloc for Module<B> where Self: GetDegree {}
-
-impl GGLWECompressed<Vec<u8>> {
-    pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
-    where
-        A: GGLWEInfos,
-        M: GGLWECompressedAlloc,
-    {
-        module.alloc_gglwe_compressed_from_infos(infos)
-    }
-
-    pub fn alloc<M>(
-        module: &M,
-        base2k: Base2K,
-        k: TorusPrecision,
-        rank_in: Rank,
-        rank_out: Rank,
-        dnum: Dnum,
-        dsize: Dsize,
-    ) -> Self
-    where
-        M: GGLWECompressedAlloc,
-    {
-        module.alloc_gglwe_compressed(base2k, k, rank_in, rank_out, dnum, dsize)
-    }
-
-    pub fn bytes_of_from_infos<A, M>(module: &M, infos: &A) -> usize
-    where
-        A: GGLWEInfos,
-        M: GGLWECompressedAlloc,
-    {
-        module.bytes_of_gglwe_compressed_from_infos(infos)
-    }
-
-    pub fn byte_of<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank_in: Rank, dnum: Dnum, dsize: Dsize) -> usize
-    where
-        M: GGLWECompressedAlloc,
-    {
-        module.bytes_of_gglwe_compressed(base2k, k, rank_in, dnum, dsize)
     }
 }
 

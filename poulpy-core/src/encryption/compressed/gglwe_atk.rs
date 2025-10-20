@@ -8,7 +8,7 @@ use crate::{
     ScratchTakeCore,
     encryption::compressed::gglwe_ksk::GLWESwitchingKeyCompressedEncryptSk,
     layouts::{
-        GGLWEInfos, GLWEInfos, GLWESecret, GLWESecretAlloc, GLWESecretToRef, LWEInfos,
+        GGLWEInfos, GLWEInfos, GLWESecret, GLWESecretToRef, LWEInfos,
         compressed::{AutomorphismKeyCompressed, AutomorphismKeyCompressedToMut},
     },
 };
@@ -68,7 +68,7 @@ where
     where
         A: GGLWEInfos,
     {
-        self.glwe_switching_key_compressed_encrypt_sk_tmp_bytes(infos) + self.bytes_of_glwe_secret(infos.rank())
+        self.glwe_switching_key_compressed_encrypt_sk_tmp_bytes(infos) + GLWESecret::bytes_of(self.n().into(), infos.rank())
     }
 
     fn automorphism_key_compressed_encrypt_sk<R, S>(

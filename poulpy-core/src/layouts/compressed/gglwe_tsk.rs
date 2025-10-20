@@ -6,8 +6,7 @@ use poulpy_hal::{
 use crate::layouts::{
     Base2K, Degree, Dnum, Dsize, GGLWEInfos, GLWEInfos, LWEInfos, Rank, TensorKey, TensorKeyToMut, TorusPrecision,
     compressed::{
-        GLWESwitchingKeyCompressed, GLWESwitchingKeyCompressedAlloc, GLWESwitchingKeyCompressedToMut,
-        GLWESwitchingKeyCompressedToRef, GLWESwitchingKeyDecompress,
+        GLWESwitchingKeyCompressed, GLWESwitchingKeyCompressedToMut, GLWESwitchingKeyCompressedToRef, GLWESwitchingKeyDecompress,
     },
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
@@ -82,38 +81,36 @@ impl<D: DataRef> fmt::Display for TensorKeyCompressed<D> {
     }
 }
 
-impl<BE: Backend> TensorKeyCompressedAlloc for Module<BE> where Self: GLWESwitchingKeyCompressedAlloc {}
+impl TensorKeyCompressed<Vec<u8>> {
+    pub fn alloc_from_infos<A>(infos: &A) -> Self
+    where
+        A: GGLWEInfos,
+    {
+        Self::alloc(
+            infos.n(),
+            infos.base2k(),
+            infos.k(),
+            infos.rank(),
+            infos.dnum(),
+            infos.dsize(),
+        )
+    }
 
-pub trait TensorKeyCompressedAlloc
-where
-    Self: GLWESwitchingKeyCompressedAlloc,
-{
-    fn alloc_tensor_key_compressed(
-        &self,
-        base2k: Base2K,
-        k: TorusPrecision,
-        rank: Rank,
-        dnum: Dnum,
-        dsize: Dsize,
-    ) -> TensorKeyCompressed<Vec<u8>> {
+    pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> Self {
         let pairs: u32 = (((rank.as_u32() + 1) * rank.as_u32()) >> 1).max(1);
         TensorKeyCompressed {
             keys: (0..pairs)
-                .map(|_| self.alloc_glwe_switching_key_compressed(base2k, k, Rank(1), rank, dnum, dsize))
+                .map(|_| GLWESwitchingKeyCompressed::alloc(n, base2k, k, Rank(1), rank, dnum, dsize))
                 .collect(),
         }
     }
 
-    fn alloc_tensor_key_compressed_from_infos<A>(&self, infos: &A) -> TensorKeyCompressed<Vec<u8>>
+    pub fn bytes_of_from_infos<A>(infos: &A) -> usize
     where
         A: GGLWEInfos,
     {
-        assert_eq!(
-            infos.rank_in(),
-            infos.rank_out(),
-            "rank_in != rank_out is not supported for GGLWETensorKeyCompressed"
-        );
-        self.alloc_tensor_key_compressed(
+        Self::bytes_of(
+            infos.n(),
             infos.base2k(),
             infos.k(),
             infos.rank(),
@@ -122,54 +119,9 @@ where
         )
     }
 
-    fn bytes_of_tensor_key_compressed(&self, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize {
+    pub fn bytes_of(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize {
         let pairs: usize = (((rank.0 + 1) * rank.0) >> 1).max(1) as usize;
-        pairs * self.bytes_of_glwe_switching_key_compressed(base2k, k, Rank(1), dnum, dsize)
-    }
-
-    fn bytes_of_tensor_key_compressed_from_infos<A>(&self, infos: &A) -> usize
-    where
-        A: GGLWEInfos,
-    {
-        self.bytes_of_tensor_key_compressed(
-            infos.base2k(),
-            infos.k(),
-            infos.rank(),
-            infos.dnum(),
-            infos.dsize(),
-        )
-    }
-}
-
-impl TensorKeyCompressed<Vec<u8>> {
-    pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
-    where
-        A: GGLWEInfos,
-        M: TensorKeyCompressedAlloc,
-    {
-        module.alloc_tensor_key_compressed_from_infos(infos)
-    }
-
-    pub fn alloc<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> Self
-    where
-        M: TensorKeyCompressedAlloc,
-    {
-        module.alloc_tensor_key_compressed(base2k, k, rank, dnum, dsize)
-    }
-
-    pub fn bytes_of_from_infos<A, M>(module: &M, infos: &A) -> usize
-    where
-        A: GGLWEInfos,
-        M: TensorKeyCompressedAlloc,
-    {
-        module.bytes_of_tensor_key_compressed_from_infos(infos)
-    }
-
-    pub fn bytes_of<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize
-    where
-        M: TensorKeyCompressedAlloc,
-    {
-        module.bytes_of_tensor_key_compressed(base2k, k, rank, dnum, dsize)
+        pairs * GLWESwitchingKeyCompressed::bytes_of(n, base2k, k, Rank(1), dnum, dsize)
     }
 }
 

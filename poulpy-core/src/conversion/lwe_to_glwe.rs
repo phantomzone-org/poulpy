@@ -6,16 +6,16 @@ use poulpy_hal::{
 use crate::{
     GLWEKeyswitch, ScratchTakeCore,
     layouts::{
-        GGLWEInfos, GLWE, GLWEAlloc, GLWEInfos, GLWELayout, GLWEToMut, LWE, LWEInfos, LWEToRef,
+        GGLWEInfos, GLWE, GLWEInfos, GLWELayout, GLWEToMut, LWE, LWEInfos, LWEToRef,
         prepared::{LWEToGLWESwitchingKeyPrepared, LWEToGLWESwitchingKeyPreparedToRef},
     },
 };
 
-impl<BE: Backend> GLWEFromLWE<BE> for Module<BE> where Self: GLWEKeyswitch<BE> + GLWEAlloc {}
+impl<BE: Backend> GLWEFromLWE<BE> for Module<BE> where Self: GLWEKeyswitch<BE> {}
 
 pub trait GLWEFromLWE<BE: Backend>
 where
-    Self: GLWEKeyswitch<BE> + GLWEAlloc,
+    Self: GLWEKeyswitch<BE>,
 {
     fn glwe_from_lwe_tmp_bytes<R, A, K>(&self, glwe_infos: &R, lwe_infos: &A, key_infos: &K) -> usize
     where
@@ -23,7 +23,8 @@ where
         A: LWEInfos,
         K: GGLWEInfos,
     {
-        let ct: usize = self.bytes_of_glwe(
+        let ct: usize = GLWE::bytes_of(
+            self.n().into(),
             key_infos.base2k(),
             lwe_infos.k().max(glwe_infos.k()),
             1u32.into(),

@@ -1,12 +1,10 @@
 use poulpy_hal::{
-    layouts::{
-        Backend, Data, DataMut, DataRef, FillUniform, MatZnx, MatZnxToMut, MatZnxToRef, Module, ReaderFrom, WriterTo, ZnxInfos,
-    },
+    layouts::{Data, DataMut, DataRef, FillUniform, MatZnx, MatZnxToMut, MatZnxToRef, ReaderFrom, WriterTo, ZnxInfos},
     source::Source,
 };
 use std::fmt;
 
-use crate::layouts::{Base2K, Degree, Dnum, Dsize, GLWE, GLWEInfos, GetDegree, LWEInfos, Rank, TorusPrecision};
+use crate::layouts::{Base2K, Degree, Dnum, Dsize, GLWE, GLWEInfos, LWEInfos, Rank, TorusPrecision};
 
 pub trait GGSWInfos
 where
@@ -152,13 +150,22 @@ impl<D: DataMut> GGSW<D> {
     }
 }
 
-impl<B: Backend> GGSWAlloc for Module<B> where Self: GetDegree {}
+impl GGSW<Vec<u8>> {
+    pub fn alloc_from_infos<A>(infos: &A) -> Self
+    where
+        A: GGSWInfos,
+    {
+        Self::alloc(
+            infos.n(),
+            infos.base2k(),
+            infos.k(),
+            infos.rank(),
+            infos.dnum(),
+            infos.dsize(),
+        )
+    }
 
-pub trait GGSWAlloc
-where
-    Self: GetDegree,
-{
-    fn alloc_ggsw(&self, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> GGSW<Vec<u8>> {
+    pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> Self {
         let size: usize = k.0.div_ceil(base2k.0) as usize;
         debug_assert!(
             size as u32 > dsize.0,
@@ -175,7 +182,7 @@ where
 
         GGSW {
             data: MatZnx::alloc(
-                self.ring_degree().into(),
+                n.into(),
                 dnum.into(),
                 (rank + 1).into(),
                 (rank + 1).into(),
@@ -187,11 +194,12 @@ where
         }
     }
 
-    fn alloc_ggsw_from_infos<A>(&self, infos: &A) -> GGSW<Vec<u8>>
+    pub fn bytes_of_from_infos<A>(infos: &A) -> usize
     where
         A: GGSWInfos,
     {
-        self.alloc_ggsw(
+        Self::bytes_of(
+            infos.n(),
             infos.base2k(),
             infos.k(),
             infos.rank(),
@@ -200,7 +208,7 @@ where
         )
     }
 
-    fn bytes_of_ggsw(&self, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize {
+    pub fn bytes_of(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize {
         let size: usize = k.0.div_ceil(base2k.0) as usize;
         debug_assert!(
             size as u32 > dsize.0,
@@ -216,57 +224,12 @@ where
         );
 
         MatZnx::bytes_of(
-            self.ring_degree().into(),
+            n.into(),
             dnum.into(),
             (rank + 1).into(),
             (rank + 1).into(),
             k.0.div_ceil(base2k.0) as usize,
         )
-    }
-
-    fn bytes_of_ggsw_from_infos<A>(&self, infos: &A) -> usize
-    where
-        A: GGSWInfos,
-    {
-        self.bytes_of_ggsw(
-            infos.base2k(),
-            infos.k(),
-            infos.rank(),
-            infos.dnum(),
-            infos.dsize(),
-        )
-    }
-}
-
-impl GGSW<Vec<u8>> {
-    pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
-    where
-        A: GGSWInfos,
-        M: GGSWAlloc,
-    {
-        module.alloc_ggsw_from_infos(infos)
-    }
-
-    pub fn alloc<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> Self
-    where
-        M: GGSWAlloc,
-    {
-        module.alloc_ggsw(base2k, k, rank, dnum, dsize)
-    }
-
-    pub fn bytes_of_from_infos<A, M>(module: &M, infos: &A) -> usize
-    where
-        A: GGSWInfos,
-        M: GGSWAlloc,
-    {
-        module.bytes_of_ggsw_from_infos(infos)
-    }
-
-    pub fn bytes_of<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize
-    where
-        M: GGSWAlloc,
-    {
-        module.bytes_of_ggsw(base2k, k, rank, dnum, dsize)
     }
 }
 

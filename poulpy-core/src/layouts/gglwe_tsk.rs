@@ -1,11 +1,11 @@
 use poulpy_hal::{
-    layouts::{Backend, Data, DataMut, DataRef, FillUniform, Module, ReaderFrom, WriterTo},
+    layouts::{Data, DataMut, DataRef, FillUniform, ReaderFrom, WriterTo},
     source::Source,
 };
 
 use crate::layouts::{
-    Base2K, Degree, Dnum, Dsize, GGLWEInfos, GLWEInfos, GLWESwitchingKey, GLWESwitchingKeyAlloc, GLWESwitchingKeyToMut,
-    GLWESwitchingKeyToRef, LWEInfos, Rank, TorusPrecision,
+    Base2K, Degree, Dnum, Dsize, GGLWEInfos, GLWEInfos, GLWESwitchingKey, GLWESwitchingKeyToMut, GLWESwitchingKeyToRef, LWEInfos,
+    Rank, TorusPrecision,
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
@@ -130,20 +130,36 @@ impl<D: DataRef> fmt::Display for TensorKey<D> {
     }
 }
 
-pub trait TensorKeyAlloc
-where
-    Self: GLWESwitchingKeyAlloc,
-{
-    fn alloc_tensor_key(&self, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> TensorKey<Vec<u8>> {
+impl TensorKey<Vec<u8>> {
+    pub fn alloc_from_infos<A>(infos: &A) -> Self
+    where
+        A: GGLWEInfos,
+    {
+        assert_eq!(
+            infos.rank_in(),
+            infos.rank_out(),
+            "rank_in != rank_out is not supported for GGLWETensorKey"
+        );
+        Self::alloc(
+            infos.n(),
+            infos.base2k(),
+            infos.k(),
+            infos.rank(),
+            infos.dnum(),
+            infos.dsize(),
+        )
+    }
+
+    pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> Self {
         let pairs: u32 = (((rank.0 + 1) * rank.0) >> 1).max(1);
         TensorKey {
             keys: (0..pairs)
-                .map(|_| self.alloc_glwe_switching_key(base2k, k, Rank(1), rank, dnum, dsize))
+                .map(|_| GLWESwitchingKey::alloc(n, base2k, k, Rank(1), rank, dnum, dsize))
                 .collect(),
         }
     }
 
-    fn alloc_tensor_key_from_infos<A>(&self, infos: &A) -> TensorKey<Vec<u8>>
+    pub fn bytes_of_from_infos<A>(infos: &A) -> usize
     where
         A: GGLWEInfos,
     {
@@ -152,7 +168,8 @@ where
             infos.rank_out(),
             "rank_in != rank_out is not supported for GGLWETensorKey"
         );
-        self.alloc_tensor_key(
+        Self::bytes_of(
+            infos.n(),
             infos.base2k(),
             infos.k(),
             infos.rank(),
@@ -161,61 +178,9 @@ where
         )
     }
 
-    fn bytes_of_tensor_key(&self, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize {
+    pub fn bytes_of(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize {
         let pairs: usize = (((rank.0 + 1) * rank.0) >> 1).max(1) as usize;
-        pairs * self.bytes_of_glwe_switching_key(base2k, k, Rank(1), rank, dnum, dsize)
-    }
-
-    fn bytes_of_tensor_key_from_infos<A>(&self, infos: &A) -> usize
-    where
-        A: GGLWEInfos,
-    {
-        assert_eq!(
-            infos.rank_in(),
-            infos.rank_out(),
-            "rank_in != rank_out is not supported for GGLWETensorKey"
-        );
-        self.bytes_of_tensor_key(
-            infos.base2k(),
-            infos.k(),
-            infos.rank(),
-            infos.dnum(),
-            infos.dsize(),
-        )
-    }
-}
-
-impl<B: Backend> TensorKeyAlloc for Module<B> where Self: GLWESwitchingKeyAlloc {}
-
-impl TensorKey<Vec<u8>> {
-    pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
-    where
-        A: GGLWEInfos,
-        M: TensorKeyAlloc,
-    {
-        module.alloc_tensor_key_from_infos(infos)
-    }
-
-    pub fn alloc<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> Self
-    where
-        M: TensorKeyAlloc,
-    {
-        module.alloc_tensor_key(base2k, k, rank, dnum, dsize)
-    }
-
-    pub fn bytes_of_from_infos<A, M>(module: &M, infos: &A) -> usize
-    where
-        A: GGLWEInfos,
-        M: TensorKeyAlloc,
-    {
-        module.bytes_of_tensor_key_from_infos(infos)
-    }
-
-    pub fn bytes_of<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize
-    where
-        M: TensorKeyAlloc,
-    {
-        module.bytes_of_tensor_key(base2k, k, rank, dnum, dsize)
+        pairs * GLWESwitchingKey::bytes_of(n, base2k, k, Rank(1), rank, dnum, dsize)
     }
 }
 

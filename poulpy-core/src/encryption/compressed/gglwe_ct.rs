@@ -11,7 +11,7 @@ use crate::{
         glwe_ct::{GLWEEncryptSk, GLWEEncryptSkInternal},
     },
     layouts::{
-        GGLWECompressedSeedMut, GGLWEInfos, GLWEPlaintextAlloc, GLWESecretPrepared, LWEInfos,
+        GGLWECompressedSeedMut, GGLWEInfos, GLWEPlaintext, GLWESecretPrepared, LWEInfos,
         compressed::{GGLWECompressed, GGLWECompressedToMut},
         prepared::GLWESecretPreparedToRef,
     },
@@ -82,7 +82,7 @@ where
     {
         self.glwe_encrypt_sk_tmp_bytes(infos)
             .max(self.vec_znx_normalize_tmp_bytes())
-            + self.bytes_of_glwe_plaintext_from_infos(infos)
+            + GLWEPlaintext::bytes_of_from_infos(infos)
     }
 
     fn gglwe_compressed_encrypt_sk<R, P, S>(

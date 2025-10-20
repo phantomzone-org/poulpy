@@ -1,12 +1,11 @@
 use poulpy_hal::{
     layouts::{
-        Backend, Data, DataMut, DataRef, FillUniform, Module, ReaderFrom, ToOwnedDeep, VecZnx, VecZnxToMut, VecZnxToRef,
-        WriterTo, ZnxInfos,
+        Data, DataMut, DataRef, FillUniform, ReaderFrom, ToOwnedDeep, VecZnx, VecZnxToMut, VecZnxToRef, WriterTo, ZnxInfos,
     },
     source::Source,
 };
 
-use crate::layouts::{Base2K, Degree, GetDegree, LWEInfos, Rank, TorusPrecision};
+use crate::layouts::{Base2K, Degree, LWEInfos, Rank, TorusPrecision};
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::fmt;
 
@@ -146,76 +145,31 @@ impl<D: DataMut> FillUniform for GLWE<D> {
     }
 }
 
-pub trait GLWEAlloc
-where
-    Self: GetDegree,
-{
-    fn alloc_glwe(&self, base2k: Base2K, k: TorusPrecision, rank: Rank) -> GLWE<Vec<u8>> {
+impl GLWE<Vec<u8>> {
+    pub fn alloc_from_infos<A>(infos: &A) -> Self
+    where
+        A: GLWEInfos,
+    {
+        Self::alloc(infos.n(), infos.base2k(), infos.k(), infos.rank())
+    }
+
+    pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank) -> Self {
         GLWE {
-            data: VecZnx::alloc(
-                self.ring_degree().into(),
-                (rank + 1).into(),
-                k.0.div_ceil(base2k.0) as usize,
-            ),
+            data: VecZnx::alloc(n.into(), (rank + 1).into(), k.0.div_ceil(base2k.0) as usize),
             base2k,
             k,
         }
     }
 
-    fn alloc_glwe_from_infos<A>(&self, infos: &A) -> GLWE<Vec<u8>>
+    pub fn bytes_of_from_infos<A>(infos: &A) -> usize
     where
         A: GLWEInfos,
     {
-        self.alloc_glwe(infos.base2k(), infos.k(), infos.rank())
+        Self::bytes_of(infos.n(), infos.base2k(), infos.k(), infos.rank())
     }
 
-    fn bytes_of_glwe(&self, base2k: Base2K, k: TorusPrecision, rank: Rank) -> usize {
-        VecZnx::bytes_of(
-            self.ring_degree().into(),
-            (rank + 1).into(),
-            k.0.div_ceil(base2k.0) as usize,
-        )
-    }
-
-    fn bytes_of_glwe_from_infos<A>(&self, infos: &A) -> usize
-    where
-        A: GLWEInfos,
-    {
-        self.bytes_of_glwe(infos.base2k(), infos.k(), infos.rank())
-    }
-}
-
-impl<B: Backend> GLWEAlloc for Module<B> where Self: GetDegree {}
-
-impl GLWE<Vec<u8>> {
-    pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
-    where
-        A: GLWEInfos,
-        M: GLWEAlloc,
-    {
-        module.alloc_glwe_from_infos(infos)
-    }
-
-    pub fn alloc<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank: Rank) -> Self
-    where
-        M: GLWEAlloc,
-    {
-        module.alloc_glwe(base2k, k, rank)
-    }
-
-    pub fn bytes_of_from_infos<A, M>(module: &M, infos: &A) -> usize
-    where
-        A: GLWEInfos,
-        M: GLWEAlloc,
-    {
-        module.bytes_of_glwe_from_infos(infos)
-    }
-
-    pub fn bytes_of<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank: Rank) -> usize
-    where
-        M: GLWEAlloc,
-    {
-        module.bytes_of_glwe(base2k, k, rank)
+    pub fn bytes_of(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank) -> usize {
+        VecZnx::bytes_of(n.into(), (rank + 1).into(), k.0.div_ceil(base2k.0) as usize)
     }
 }
 

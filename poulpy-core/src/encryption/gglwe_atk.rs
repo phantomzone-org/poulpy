@@ -80,7 +80,7 @@ where
             infos.rank_out(),
             "rank_in != rank_out is not supported for GGLWEAutomorphismKey"
         );
-        self.glwe_switching_key_encrypt_sk_tmp_bytes(infos) + GLWESecret::bytes_of_from_infos(self, infos)
+        self.glwe_switching_key_encrypt_sk_tmp_bytes(infos) + GLWESecret::bytes_of_from_infos(infos)
     }
 
     fn automorphism_key_encrypt_sk<R, S>(

@@ -9,7 +9,7 @@ use crate::{
     GLWEAdd, GLWEAutomorphism, GLWECopy, GLWENormalize, GLWERotate, GLWEShift, GLWESub, ScratchTakeCore,
     glwe_trace::GLWETrace,
     layouts::{
-        GGLWEInfos, GLWE, GLWEAlloc, GLWEInfos, GLWEToMut, GLWEToRef, LWEInfos,
+        GGLWEInfos, GLWE, GLWEInfos, GLWEToMut, GLWEToRef, LWEInfos,
         prepared::{AutomorphismKeyPreparedToRef, GetAutomorphismGaloisElement},
     },
 };
@@ -41,13 +41,12 @@ impl Accumulator {
     /// * `base2k`: base 2 logarithm of the GLWE ciphertext in memory digit representation.
     /// * `k`: base 2 precision of the GLWE ciphertext precision over the Torus.
     /// * `rank`: rank of the GLWE ciphertext.
-    pub fn alloc<A, M, BE: Backend>(module: &M, infos: &A) -> Self
+    pub fn alloc<A>(infos: &A) -> Self
     where
         A: GLWEInfos,
-        M: GLWEPacking<BE>,
     {
         Self {
-            data: GLWE::alloc_from_infos(module, infos),
+            data: GLWE::alloc_from_infos(infos),
             value: false,
             control: false,
         }
@@ -59,20 +58,18 @@ impl GLWEPacker {
     ///
     /// # Arguments
     ///
-    /// * `module`: static backend FFT tables.
     /// * `log_batch`: packs coefficients which are multiples of X^{N/2^log_batch}.
     ///   i.e. with `log_batch=0` only the constant coefficient is packed
     ///   and N GLWE ciphertext can be packed. With `log_batch=2` all coefficients
     ///   which are multiples of X^{N/4} are packed. Meaning that N/4 ciphertexts
     ///   can be packed.
-    pub fn alloc<A, M, BE: Backend>(module: &M, infos: &A, log_batch: usize) -> Self
+    pub fn alloc<A>(infos: &A, log_batch: usize) -> Self
     where
         A: GLWEInfos,
-        M: GLWEPacking<BE>,
     {
         let mut accumulators: Vec<Accumulator> = Vec::<Accumulator>::new();
         let log_n: usize = infos.n().log2();
-        (0..log_n - log_batch).for_each(|_| accumulators.push(Accumulator::alloc(module, infos)));
+        (0..log_n - log_batch).for_each(|_| accumulators.push(Accumulator::alloc(infos)));
         GLWEPacker {
             accumulators,
             log_batch,
@@ -96,7 +93,7 @@ impl GLWEPacker {
         K: GGLWEInfos,
         M: GLWEPacking<BE>,
     {
-        module.bytes_of_glwe_from_infos(res_infos)
+        GLWE::bytes_of_from_infos(res_infos)
             + module
                 .glwe_rsh_tmp_byte()
                 .max(module.glwe_automorphism_tmp_bytes(res_infos, res_infos, key_infos))
@@ -169,7 +166,6 @@ impl<BE: Backend> GLWEPacking<BE> for Module<BE> where
         + GLWEAdd
         + GLWENormalize<BE>
         + GLWECopy
-        + GLWEAlloc
 {
 }
 
@@ -183,8 +179,7 @@ where
         + GLWEShift<BE>
         + GLWEAdd
         + GLWENormalize<BE>
-        + GLWECopy
-        + GLWEAlloc,
+        + GLWECopy,
 {
     /// Packs [x_0: GLWE(m_0), x_1: GLWE(m_1), ..., x_i: GLWE(m_i)]
     /// to [0: GLWE(m_0 * X^x_0 + m_1 * X^x_1 + ... + m_i * X^x_i)]

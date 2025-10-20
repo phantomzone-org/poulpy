@@ -1,11 +1,10 @@
 use poulpy_hal::{
-    layouts::{Backend, Data, DataMut, DataRef, FillUniform, Module, ReaderFrom, WriterTo},
+    layouts::{Data, DataMut, DataRef, FillUniform, ReaderFrom, WriterTo},
     source::Source,
 };
 
 use crate::layouts::{
-    Base2K, Degree, Dnum, Dsize, GGLWE, GGLWEAlloc, GGLWEInfos, GGLWEToMut, GGLWEToRef, GLWE, GLWEInfos, LWEInfos, Rank,
-    TorusPrecision,
+    Base2K, Degree, Dnum, Dsize, GGLWE, GGLWEInfos, GGLWEToMut, GGLWEToRef, GLWE, GLWEInfos, LWEInfos, Rank, TorusPrecision,
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
@@ -163,31 +162,13 @@ impl<D: DataMut> FillUniform for GLWESwitchingKey<D> {
     }
 }
 
-pub trait GLWESwitchingKeyAlloc
-where
-    Self: GGLWEAlloc,
-{
-    fn alloc_glwe_switching_key(
-        &self,
-        base2k: Base2K,
-        k: TorusPrecision,
-        rank_in: Rank,
-        rank_out: Rank,
-        dnum: Dnum,
-        dsize: Dsize,
-    ) -> GLWESwitchingKey<Vec<u8>> {
-        GLWESwitchingKey {
-            key: self.alloc_gglwe(base2k, k, rank_in, rank_out, dnum, dsize),
-            sk_in_n: 0,
-            sk_out_n: 0,
-        }
-    }
-
-    fn alloc_glwe_switching_key_from_infos<A>(&self, infos: &A) -> GLWESwitchingKey<Vec<u8>>
+impl GLWESwitchingKey<Vec<u8>> {
+    pub fn alloc_from_infos<A>(infos: &A) -> Self
     where
         A: GGLWEInfos,
     {
-        self.alloc_glwe_switching_key(
+        Self::alloc(
+            infos.n(),
             infos.base2k(),
             infos.k(),
             infos.rank_in(),
@@ -197,8 +178,31 @@ where
         )
     }
 
-    fn bytes_of_glwe_switching_key(
-        &self,
+    pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank_in: Rank, rank_out: Rank, dnum: Dnum, dsize: Dsize) -> Self {
+        GLWESwitchingKey {
+            key: GGLWE::alloc(n, base2k, k, rank_in, rank_out, dnum, dsize),
+            sk_in_n: 0,
+            sk_out_n: 0,
+        }
+    }
+
+    pub fn bytes_of_from_infos<A>(infos: &A) -> usize
+    where
+        A: GGLWEInfos,
+    {
+        Self::bytes_of(
+            infos.n(),
+            infos.base2k(),
+            infos.k(),
+            infos.rank_in(),
+            infos.rank_out(),
+            infos.dnum(),
+            infos.dsize(),
+        )
+    }
+
+    pub fn bytes_of(
+        n: Degree,
         base2k: Base2K,
         k: TorusPrecision,
         rank_in: Rank,
@@ -206,71 +210,7 @@ where
         dnum: Dnum,
         dsize: Dsize,
     ) -> usize {
-        self.bytes_of_gglwe(base2k, k, rank_in, rank_out, dnum, dsize)
-    }
-
-    fn bytes_of_glwe_switching_key_from_infos<A>(&self, infos: &A) -> usize
-    where
-        A: GGLWEInfos,
-    {
-        self.bytes_of_glwe_switching_key(
-            infos.base2k(),
-            infos.k(),
-            infos.rank_in(),
-            infos.rank_out(),
-            infos.dnum(),
-            infos.dsize(),
-        )
-    }
-}
-
-impl<B: Backend> GLWESwitchingKeyAlloc for Module<B> where Self: GGLWEAlloc {}
-
-impl GLWESwitchingKey<Vec<u8>> {
-    pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
-    where
-        A: GGLWEInfos,
-        M: GLWESwitchingKeyAlloc,
-    {
-        module.alloc_glwe_switching_key_from_infos(infos)
-    }
-
-    pub fn alloc<M>(
-        module: &M,
-        base2k: Base2K,
-        k: TorusPrecision,
-        rank_in: Rank,
-        rank_out: Rank,
-        dnum: Dnum,
-        dsize: Dsize,
-    ) -> Self
-    where
-        M: GLWESwitchingKeyAlloc,
-    {
-        module.alloc_glwe_switching_key(base2k, k, rank_in, rank_out, dnum, dsize)
-    }
-
-    pub fn bytes_of_from_infos<A, M>(module: &M, infos: &A) -> usize
-    where
-        A: GGLWEInfos,
-        M: GLWESwitchingKeyAlloc,
-    {
-        module.bytes_of_glwe_switching_key_from_infos(infos)
-    }
-
-    pub fn bytes_of<M>(
-        module: &M,
-        base2k: Base2K,
-        k: TorusPrecision,
-        rank_in: Rank,
-        rank_out: Rank,
-        dnum: Dnum,
-        dsize: Dsize,
-    ) -> usize
-    where
-        M: GLWESwitchingKeyAlloc,
-    {
-        module.bytes_of_glwe_switching_key(base2k, k, rank_in, rank_out, dnum, dsize)
+        GGLWE::bytes_of(n, base2k, k, rank_in, rank_out, dnum, dsize)
     }
 }
 

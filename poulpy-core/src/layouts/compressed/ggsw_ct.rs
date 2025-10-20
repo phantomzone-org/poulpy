@@ -6,7 +6,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Dnum, Dsize, GGSW, GGSWInfos, GGSWToMut, GLWEInfos, GetDegree, LWEInfos, Rank, TorusPrecision,
+    Base2K, Degree, Dnum, Dsize, GGSW, GGSWInfos, GGSWToMut, GLWEInfos, LWEInfos, Rank, TorusPrecision,
     compressed::{GLWECompressed, GLWEDecompress},
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
@@ -96,20 +96,22 @@ impl<D: DataMut> FillUniform for GGSWCompressed<D> {
     }
 }
 
-impl<BE: Backend> GGSWCompressedAlloc for Module<BE> where Self: GetDegree {}
+impl GGSWCompressed<Vec<u8>> {
+    pub fn alloc_from_infos<A>(infos: &A) -> Self
+    where
+        A: GGSWInfos,
+    {
+        Self::alloc(
+            infos.n(),
+            infos.base2k(),
+            infos.k(),
+            infos.rank(),
+            infos.dnum(),
+            infos.dsize(),
+        )
+    }
 
-pub trait GGSWCompressedAlloc
-where
-    Self: GetDegree,
-{
-    fn alloc_ggsw_compressed(
-        &self,
-        base2k: Base2K,
-        k: TorusPrecision,
-        rank: Rank,
-        dnum: Dnum,
-        dsize: Dsize,
-    ) -> GGSWCompressed<Vec<u8>> {
+    pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> Self {
         let size: usize = k.0.div_ceil(base2k.0) as usize;
         assert!(
             size as u32 > dsize.0,
@@ -126,7 +128,7 @@ where
 
         GGSWCompressed {
             data: MatZnx::alloc(
-                self.ring_degree().into(),
+                n.into(),
                 dnum.into(),
                 (rank + 1).into(),
                 1,
@@ -140,11 +142,12 @@ where
         }
     }
 
-    fn alloc_ggsw_compressed_from_infos<A>(&self, infos: &A) -> GGSWCompressed<Vec<u8>>
+    pub fn bytes_of_from_infos<A>(infos: &A) -> usize
     where
         A: GGSWInfos,
     {
-        self.alloc_ggsw_compressed(
+        Self::bytes_of(
+            infos.n(),
             infos.base2k(),
             infos.k(),
             infos.rank(),
@@ -153,7 +156,7 @@ where
         )
     }
 
-    fn bytes_of_ggsw_compressed(&self, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize {
+    pub fn bytes_of(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize {
         let size: usize = k.0.div_ceil(base2k.0) as usize;
         assert!(
             size as u32 > dsize.0,
@@ -169,57 +172,12 @@ where
         );
 
         MatZnx::bytes_of(
-            self.ring_degree().into(),
+            n.into(),
             dnum.into(),
             (rank + 1).into(),
             1,
             k.0.div_ceil(base2k.0) as usize,
         )
-    }
-
-    fn bytes_of_ggsw_compressed_key_from_infos<A>(&self, infos: &A) -> usize
-    where
-        A: GGSWInfos,
-    {
-        self.bytes_of_ggsw_compressed(
-            infos.base2k(),
-            infos.k(),
-            infos.rank(),
-            infos.dnum(),
-            infos.dsize(),
-        )
-    }
-}
-
-impl GGSWCompressed<Vec<u8>> {
-    pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
-    where
-        A: GGSWInfos,
-        M: GGSWCompressedAlloc,
-    {
-        module.alloc_ggsw_compressed_from_infos(infos)
-    }
-
-    pub fn alloc<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> Self
-    where
-        M: GGSWCompressedAlloc,
-    {
-        module.alloc_ggsw_compressed(base2k, k, rank, dnum, dsize)
-    }
-
-    pub fn bytes_of_from_infos<A, M>(module: &M, infos: &A) -> usize
-    where
-        A: GGSWInfos,
-        M: GGSWCompressedAlloc,
-    {
-        module.bytes_of_ggsw_compressed_key_from_infos(infos)
-    }
-
-    pub fn bytes_of<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize
-    where
-        M: GGSWCompressedAlloc,
-    {
-        module.bytes_of_ggsw_compressed(base2k, k, rank, dnum, dsize)
     }
 }
 

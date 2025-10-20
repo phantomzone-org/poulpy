@@ -6,7 +6,7 @@ use poulpy_hal::{
 use crate::layouts::{
     Base2K, Degree, Dnum, Dsize, GGLWEInfos, GLWEInfos, GLWESwitchingKey, GLWESwitchingKeySetMetaData, GLWESwitchingKeyToMut,
     LWEInfos, Rank, TorusPrecision,
-    compressed::{GGLWECompressed, GGLWECompressedAlloc, GGLWECompressedToMut, GGLWECompressedToRef, GGLWEDecompress},
+    compressed::{GGLWECompressed, GGLWECompressedToMut, GGLWECompressedToRef, GGLWEDecompress},
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::fmt;
@@ -81,33 +81,13 @@ impl<D: DataRef> fmt::Display for GLWESwitchingKeyCompressed<D> {
     }
 }
 
-impl<BE: Backend> GLWESwitchingKeyCompressedAlloc for Module<BE> where Self: GGLWECompressedAlloc {}
-
-pub trait GLWESwitchingKeyCompressedAlloc
-where
-    Self: GGLWECompressedAlloc,
-{
-    fn alloc_glwe_switching_key_compressed(
-        &self,
-        base2k: Base2K,
-        k: TorusPrecision,
-        rank_in: Rank,
-        rank_out: Rank,
-        dnum: Dnum,
-        dsize: Dsize,
-    ) -> GLWESwitchingKeyCompressed<Vec<u8>> {
-        GLWESwitchingKeyCompressed {
-            key: self.alloc_gglwe_compressed(base2k, k, rank_in, rank_out, dnum, dsize),
-            sk_in_n: 0,
-            sk_out_n: 0,
-        }
-    }
-
-    fn alloc_glwe_switching_key_compressed_from_infos<A>(&self, infos: &A) -> GLWESwitchingKeyCompressed<Vec<u8>>
+impl GLWESwitchingKeyCompressed<Vec<u8>> {
+    pub fn alloc_from_infos<A>(infos: &A) -> Self
     where
         A: GGLWEInfos,
     {
-        self.alloc_glwe_switching_key_compressed(
+        Self::alloc(
+            infos.n(),
             infos.base2k(),
             infos.k(),
             infos.rank_in(),
@@ -117,62 +97,24 @@ where
         )
     }
 
-    fn bytes_of_glwe_switching_key_compressed(
-        &self,
-        base2k: Base2K,
-        k: TorusPrecision,
-        rank_in: Rank,
-        dnum: Dnum,
-        dsize: Dsize,
-    ) -> usize {
-        self.bytes_of_gglwe_compressed(base2k, k, rank_in, dnum, dsize)
+    pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank_in: Rank, rank_out: Rank, dnum: Dnum, dsize: Dsize) -> Self {
+        GLWESwitchingKeyCompressed {
+            key: GGLWECompressed::alloc(n, base2k, k, rank_in, rank_out, dnum, dsize),
+            sk_in_n: 0,
+            sk_out_n: 0,
+        }
     }
 
-    fn bytes_of_glwe_switching_key_compressed_from_infos<A>(&self, infos: &A) -> usize
+    pub fn bytes_of_from_infos<A>(infos: &A) -> usize
     where
         A: GGLWEInfos,
     {
-        self.bytes_of_gglwe_compressed_from_infos(infos)
-    }
-}
-
-impl GLWESwitchingKeyCompressed<Vec<u8>> {
-    pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
-    where
-        A: GGLWEInfos,
-        M: GLWESwitchingKeyCompressedAlloc,
-    {
-        module.alloc_glwe_switching_key_compressed_from_infos(infos)
+        GGLWECompressed::bytes_of_from_infos(infos)
     }
 
-    pub fn alloc<M>(
-        module: &M,
-        base2k: Base2K,
-        k: TorusPrecision,
-        rank_in: Rank,
-        rank_out: Rank,
-        dnum: Dnum,
-        dsize: Dsize,
-    ) -> Self
-    where
-        M: GLWESwitchingKeyCompressedAlloc,
-    {
-        module.alloc_glwe_switching_key_compressed(base2k, k, rank_in, rank_out, dnum, dsize)
-    }
-
-    pub fn bytes_of_from_infos<A, M>(module: &M, infos: &A) -> usize
-    where
-        A: GGLWEInfos,
-        M: GLWESwitchingKeyCompressedAlloc,
-    {
-        module.bytes_of_glwe_switching_key_compressed_from_infos(infos)
-    }
-
-    pub fn bytes_of<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank_in: Rank, dnum: Dnum, dsize: Dsize) -> usize
-    where
-        M: GLWESwitchingKeyCompressedAlloc,
-    {
-        module.bytes_of_glwe_switching_key_compressed(base2k, k, rank_in, dnum, dsize)
+    pub fn bytes_of(n: Degree, base2k: Base2K, k: TorusPrecision, rank_in: Rank, dnum: Dnum, dsize: Dsize) -> usize
+where {
+        GGLWECompressed::bytes_of(n, base2k, k, rank_in, dnum, dsize)
     }
 }
 

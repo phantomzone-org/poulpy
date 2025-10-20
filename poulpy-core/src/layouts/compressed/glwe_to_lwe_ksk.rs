@@ -9,8 +9,7 @@ use crate::layouts::{
     Base2K, Degree, Dnum, Dsize, GGLWEInfos, GLWEInfos, GLWEToLWESwitchingKey, GLWEToLWESwitchingKeyToMut, LWEInfos, Rank,
     TorusPrecision,
     compressed::{
-        GLWESwitchingKeyCompressed, GLWESwitchingKeyCompressedAlloc, GLWESwitchingKeyCompressedToMut,
-        GLWESwitchingKeyCompressedToRef, GLWESwitchingKeyDecompress,
+        GLWESwitchingKeyCompressed, GLWESwitchingKeyCompressedToMut, GLWESwitchingKeyCompressedToRef, GLWESwitchingKeyDecompress,
     },
 };
 
@@ -88,96 +87,61 @@ impl<D: DataRef> WriterTo for GLWEToLWESwitchingKeyCompressed<D> {
     }
 }
 
-pub trait GLWEToLWESwitchingKeyCompressedAlloc
-where
-    Self: GLWESwitchingKeyCompressedAlloc,
-{
-    fn alloc_glwe_to_lwe_switching_key_compressed(
-        &self,
-        base2k: Base2K,
-        k: TorusPrecision,
-        rank_in: Rank,
-        dnum: Dnum,
-    ) -> GLWEToLWESwitchingKeyCompressed<Vec<u8>> {
-        GLWEToLWESwitchingKeyCompressed(self.alloc_glwe_switching_key_compressed(base2k, k, rank_in, Rank(1), dnum, Dsize(1)))
-    }
-
-    fn alloc_glwe_to_lwe_switching_key_compressed_from_infos<A>(&self, infos: &A) -> GLWEToLWESwitchingKeyCompressed<Vec<u8>>
-    where
-        A: GGLWEInfos,
-    {
-        assert_eq!(
-            infos.rank_out().0,
-            1,
-            "rank_out > 1 is unsupported for GLWEToLWESwitchingKeyCompressed"
-        );
-        assert_eq!(
-            infos.dsize().0,
-            1,
-            "dsize > 1 is unsupported for GLWEToLWESwitchingKeyCompressed"
-        );
-        self.alloc_glwe_to_lwe_switching_key_compressed(infos.base2k(), infos.k(), infos.rank_in(), infos.dnum())
-    }
-
-    fn bytes_of_glwe_to_lwe_switching_key_compressed(
-        &self,
-        base2k: Base2K,
-        k: TorusPrecision,
-        rank_in: Rank,
-        dnum: Dnum,
-    ) -> usize {
-        self.bytes_of_glwe_switching_key_compressed(base2k, k, rank_in, dnum, Dsize(1))
-    }
-
-    fn bytes_of_glwe_to_lwe_switching_key_compressed_from_infos<A>(&self, infos: &A) -> usize
-    where
-        A: GGLWEInfos,
-    {
-        assert_eq!(
-            infos.rank_out().0,
-            1,
-            "rank_out > 1 is unsupported for GLWEToLWESwitchingKeyCompressed"
-        );
-        assert_eq!(
-            infos.dsize().0,
-            1,
-            "dsize > 1 is unsupported for GLWEToLWESwitchingKeyCompressed"
-        );
-        self.bytes_of_glwe_switching_key_compressed_from_infos(infos)
-    }
-}
-
-impl<B: Backend> GLWEToLWESwitchingKeyCompressedAlloc for Module<B> where Self: GLWESwitchingKeyCompressedAlloc {}
-
 impl GLWEToLWESwitchingKeyCompressed<Vec<u8>> {
-    pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
+    pub fn alloc_from_infos<A>(infos: &A) -> Self
     where
         A: GGLWEInfos,
-        M: GLWEToLWESwitchingKeyCompressedAlloc,
     {
-        module.alloc_glwe_to_lwe_switching_key_compressed_from_infos(infos)
+        assert_eq!(
+            infos.rank_out().0,
+            1,
+            "rank_out > 1 is unsupported for GLWEToLWESwitchingKeyCompressed"
+        );
+        assert_eq!(
+            infos.dsize().0,
+            1,
+            "dsize > 1 is unsupported for GLWEToLWESwitchingKeyCompressed"
+        );
+        Self::alloc(
+            infos.n(),
+            infos.base2k(),
+            infos.k(),
+            infos.rank_in(),
+            infos.dnum(),
+        )
     }
 
-    pub fn alloc<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank_in: Rank, dnum: Dnum) -> Self
-    where
-        M: GLWEToLWESwitchingKeyCompressedAlloc,
-    {
-        module.alloc_glwe_to_lwe_switching_key_compressed(base2k, k, rank_in, dnum)
+    pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank_in: Rank, dnum: Dnum) -> Self {
+        GLWEToLWESwitchingKeyCompressed(GLWESwitchingKeyCompressed::alloc(
+            n,
+            base2k,
+            k,
+            rank_in,
+            Rank(1),
+            dnum,
+            Dsize(1),
+        ))
     }
 
-    pub fn bytes_of_from_infos<A, M>(module: &M, infos: &A) -> usize
+    pub fn bytes_of_from_infos<A>(infos: &A) -> usize
     where
         A: GGLWEInfos,
-        M: GLWEToLWESwitchingKeyCompressedAlloc,
     {
-        module.bytes_of_glwe_to_lwe_switching_key_compressed_from_infos(infos)
+        assert_eq!(
+            infos.rank_out().0,
+            1,
+            "rank_out > 1 is unsupported for GLWEToLWESwitchingKeyCompressed"
+        );
+        assert_eq!(
+            infos.dsize().0,
+            1,
+            "dsize > 1 is unsupported for GLWEToLWESwitchingKeyCompressed"
+        );
+        GLWESwitchingKeyCompressed::bytes_of_from_infos(infos)
     }
 
-    pub fn bytes_of<M>(module: &M, base2k: Base2K, k: TorusPrecision, dnum: Dnum, rank_in: Rank) -> usize
-    where
-        M: GLWEToLWESwitchingKeyCompressedAlloc,
-    {
-        module.bytes_of_glwe_to_lwe_switching_key_compressed(base2k, k, rank_in, dnum)
+    pub fn bytes_of(n: Degree, base2k: Base2K, k: TorusPrecision, dnum: Dnum, rank_in: Rank) -> usize {
+        GLWESwitchingKeyCompressed::bytes_of(n, base2k, k, rank_in, dnum, Dsize(1))
     }
 }
 

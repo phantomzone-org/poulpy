@@ -8,7 +8,7 @@ use crate::{
     SIGMA, ScratchTakeCore,
     encryption::glwe_ct::{GLWEEncryptSk, GLWEEncryptSkInternal},
     layouts::{
-        GGSW, GGSWInfos, GGSWToMut, GLWEInfos, GLWEPlaintextAlloc, LWEInfos,
+        GGSW, GGSWInfos, GGSWToMut, GLWEInfos, GLWEPlaintext, LWEInfos,
         prepared::{GLWESecretPrepared, GLWESecretPreparedToRef},
     },
 };
@@ -79,7 +79,7 @@ where
     {
         self.glwe_encrypt_sk_tmp_bytes(infos)
             .max(self.vec_znx_normalize_tmp_bytes())
-            + self.bytes_of_glwe_plaintext_from_infos(infos)
+            + GLWEPlaintext::bytes_of_from_infos(infos)
     }
 
     fn ggsw_encrypt_sk<R, P, S>(

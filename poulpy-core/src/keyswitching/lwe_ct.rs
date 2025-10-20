@@ -7,7 +7,7 @@ use crate::{
     LWESampleExtract, ScratchTakeCore,
     keyswitching::glwe_ct::GLWEKeyswitch,
     layouts::{
-        GGLWEInfos, GLWE, GLWEAlloc, GLWELayout, LWE, LWEInfos, LWEToMut, LWEToRef, Rank, TorusPrecision,
+        GGLWEInfos, GLWE, GLWELayout, LWE, LWEInfos, LWEToMut, LWEToRef, Rank, TorusPrecision,
         prepared::{LWESwitchingKeyPrepared, LWESwitchingKeyPreparedToRef},
     },
 };
@@ -40,7 +40,7 @@ impl<BE: Backend> LWEKeySwitch<BE> for Module<BE> where Self: LWEKeySwitch<BE> {
 
 pub trait LWEKeySwitch<BE: Backend>
 where
-    Self: GLWEKeyswitch<BE> + GLWEAlloc + LWESampleExtract,
+    Self: GLWEKeyswitch<BE> + LWESampleExtract,
 {
     fn lwe_keyswitch_tmp_bytes<R, A, K>(&self, res_infos: &R, a_infos: &A, key_infos: &K) -> usize
     where
@@ -51,21 +51,21 @@ where
         let max_k: TorusPrecision = a_infos.k().max(res_infos.k());
 
         let glwe_a_infos: GLWELayout = GLWELayout {
-            n: self.ring_degree(),
+            n: self.n().into(),
             base2k: a_infos.base2k(),
             k: max_k,
             rank: Rank(1),
         };
 
         let glwe_res_infos: GLWELayout = GLWELayout {
-            n: self.ring_degree(),
+            n: self.n().into(),
             base2k: res_infos.base2k(),
             k: max_k,
             rank: Rank(1),
         };
 
-        let glwe_in: usize = GLWE::bytes_of_from_infos(self, &glwe_a_infos);
-        let glwe_out: usize = GLWE::bytes_of_from_infos(self, &glwe_res_infos);
+        let glwe_in: usize = GLWE::bytes_of_from_infos(&glwe_a_infos);
+        let glwe_out: usize = GLWE::bytes_of_from_infos(&glwe_res_infos);
         let ks: usize = self.glwe_keyswitch_tmp_bytes(&glwe_res_infos, &glwe_a_infos, key_infos);
 
         glwe_in + glwe_out + ks

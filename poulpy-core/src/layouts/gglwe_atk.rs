@@ -1,11 +1,11 @@
 use poulpy_hal::{
-    layouts::{Backend, Data, DataMut, DataRef, FillUniform, Module, ReaderFrom, WriterTo},
+    layouts::{Data, DataMut, DataRef, FillUniform, ReaderFrom, WriterTo},
     source::Source,
 };
 
 use crate::layouts::{
-    Base2K, Degree, Dnum, Dsize, GGLWEInfos, GLWE, GLWEInfos, GLWESwitchingKey, GLWESwitchingKeyAlloc, GLWESwitchingKeyToMut,
-    GLWESwitchingKeyToRef, LWEInfos, Rank, TorusPrecision,
+    Base2K, Degree, Dnum, Dsize, GGLWEInfos, GLWE, GLWEInfos, GLWESwitchingKey, GLWESwitchingKeyToMut, GLWESwitchingKeyToRef,
+    LWEInfos, Rank, TorusPrecision,
     prepared::{GetAutomorphismGaloisElement, SetAutomorphismGaloisElement},
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
@@ -144,31 +144,13 @@ impl<D: DataRef> fmt::Display for AutomorphismKey<D> {
     }
 }
 
-impl<B: Backend> AutomorphismKeyAlloc for Module<B> where Self: GLWESwitchingKeyAlloc {}
-
-pub trait AutomorphismKeyAlloc
-where
-    Self: GLWESwitchingKeyAlloc,
-{
-    fn alloc_automorphism_key(
-        &self,
-        base2k: Base2K,
-        k: TorusPrecision,
-        rank: Rank,
-        dnum: Dnum,
-        dsize: Dsize,
-    ) -> AutomorphismKey<Vec<u8>> {
-        AutomorphismKey {
-            key: self.alloc_glwe_switching_key(base2k, k, rank, rank, dnum, dsize),
-            p: 0,
-        }
-    }
-
-    fn alloc_automorphism_key_from_infos<A>(&self, infos: &A) -> AutomorphismKey<Vec<u8>>
+impl AutomorphismKey<Vec<u8>> {
+    pub fn alloc_from_infos<A>(infos: &A) -> Self
     where
         A: GGLWEInfos,
     {
-        self.alloc_automorphism_key(
+        Self::alloc(
+            infos.n(),
             infos.base2k(),
             infos.k(),
             infos.rank(),
@@ -177,11 +159,14 @@ where
         )
     }
 
-    fn bytes_of_automorphism_key(&self, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize {
-        self.bytes_of_glwe_switching_key(base2k, k, rank, rank, dnum, dsize)
+    pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> Self {
+        AutomorphismKey {
+            key: GLWESwitchingKey::alloc(n, base2k, k, rank, rank, dnum, dsize),
+            p: 0,
+        }
     }
 
-    fn bytes_of_automorphism_key_from_infos<A>(&self, infos: &A) -> usize
+    pub fn bytes_of_from_infos<A>(infos: &A) -> usize
     where
         A: GGLWEInfos,
     {
@@ -190,7 +175,8 @@ where
             infos.rank_out(),
             "rank_in != rank_out is not supported for AutomorphismKey"
         );
-        self.bytes_of_automorphism_key(
+        Self::bytes_of(
+            infos.n(),
             infos.base2k(),
             infos.k(),
             infos.rank(),
@@ -198,37 +184,9 @@ where
             infos.dsize(),
         )
     }
-}
 
-impl AutomorphismKey<Vec<u8>> {
-    pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
-    where
-        A: GGLWEInfos,
-        M: AutomorphismKeyAlloc,
-    {
-        module.alloc_automorphism_key_from_infos(infos)
-    }
-
-    pub fn alloc_with<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> Self
-    where
-        M: AutomorphismKeyAlloc,
-    {
-        module.alloc_automorphism_key(base2k, k, rank, dnum, dsize)
-    }
-
-    pub fn bytes_of_from_infos<A, M>(module: &M, infos: &A) -> usize
-    where
-        A: GGLWEInfos,
-        M: AutomorphismKeyAlloc,
-    {
-        module.bytes_of_automorphism_key_from_infos(infos)
-    }
-
-    pub fn bytes_of<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize
-    where
-        M: AutomorphismKeyAlloc,
-    {
-        module.bytes_of_automorphism_key(base2k, k, rank, dnum, dsize)
+    pub fn bytes_of(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize {
+        GLWESwitchingKey::bytes_of(n, base2k, k, rank, rank, dnum, dsize)
     }
 }
 

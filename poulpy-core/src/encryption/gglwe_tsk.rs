@@ -82,7 +82,7 @@ where
             + self.bytes_of_vec_znx_dft(infos.rank_out().into(), 1)
             + self.bytes_of_vec_znx_big(1, 1)
             + self.bytes_of_vec_znx_dft(1, 1)
-            + GLWESecret::bytes_of(self, Rank(1))
+            + GLWESecret::bytes_of(self.n().into(), Rank(1))
             + GLWESwitchingKey::encrypt_sk_tmp_bytes(self, infos)
     }
 

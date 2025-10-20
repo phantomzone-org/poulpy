@@ -88,17 +88,17 @@ impl<D: DataMut> FillUniform for GLWECompressed<D> {
     }
 }
 
-pub trait GLWECompressedAlloc
-where
-    Self: GetDegree,
-{
-    fn alloc_glwe_compressed(&self, base2k: Base2K, k: TorusPrecision, rank: Rank) -> GLWECompressed<Vec<u8>> {
+impl GLWECompressed<Vec<u8>> {
+    pub fn alloc_from_infos<A>(infos: &A) -> Self
+    where
+        A: GLWEInfos,
+    {
+        Self::alloc(infos.n(), infos.base2k(), infos.k(), infos.rank())
+    }
+
+    pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank) -> Self {
         GLWECompressed {
-            data: VecZnx::alloc(
-                self.ring_degree().into(),
-                1,
-                k.0.div_ceil(base2k.0) as usize,
-            ),
+            data: VecZnx::alloc(n.into(), 1, k.0.div_ceil(base2k.0) as usize),
             base2k,
             k,
             rank,
@@ -106,62 +106,15 @@ where
         }
     }
 
-    fn alloc_glwe_compressed_from_infos<A>(&self, infos: &A) -> GLWECompressed<Vec<u8>>
+    pub fn bytes_of_from_infos<A>(infos: &A) -> usize
     where
         A: GLWEInfos,
     {
-        assert_eq!(self.ring_degree(), infos.n());
-        self.alloc_glwe_compressed(infos.base2k(), infos.k(), infos.rank())
+        Self::bytes_of(infos.n(), infos.base2k(), infos.k())
     }
 
-    fn bytes_of_glwe_compressed(&self, base2k: Base2K, k: TorusPrecision) -> usize {
-        VecZnx::bytes_of(
-            self.ring_degree().into(),
-            1,
-            k.0.div_ceil(base2k.0) as usize,
-        )
-    }
-
-    fn bytes_of_glwe_compressed_from_infos<A>(&self, infos: &A) -> usize
-    where
-        A: GLWEInfos,
-    {
-        assert_eq!(self.ring_degree(), infos.n());
-        self.bytes_of_glwe_compressed(infos.base2k(), infos.k())
-    }
-}
-
-impl<B: Backend> GLWECompressedAlloc for Module<B> where Self: GetDegree {}
-
-impl GLWECompressed<Vec<u8>> {
-    pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
-    where
-        A: GLWEInfos,
-        M: GLWECompressedAlloc,
-    {
-        module.alloc_glwe_compressed_from_infos(infos)
-    }
-
-    pub fn alloc<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank: Rank) -> Self
-    where
-        M: GLWECompressedAlloc,
-    {
-        module.alloc_glwe_compressed(base2k, k, rank)
-    }
-
-    pub fn bytes_of_from_infos<A, M>(module: &M, infos: &A) -> usize
-    where
-        A: GLWEInfos,
-        M: GLWECompressedAlloc,
-    {
-        module.bytes_of_glwe_compressed_from_infos(infos)
-    }
-
-    pub fn bytes_of<M>(module: &M, base2k: Base2K, k: TorusPrecision) -> usize
-    where
-        M: GLWECompressedAlloc,
-    {
-        module.bytes_of_glwe_compressed(base2k, k)
+    pub fn bytes_of(n: Degree, base2k: Base2K, k: TorusPrecision) -> usize {
+        VecZnx::bytes_of(n.into(), 1, k.0.div_ceil(base2k.0) as usize)
     }
 }
 

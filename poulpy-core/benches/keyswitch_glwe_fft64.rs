@@ -62,9 +62,9 @@ fn bench_keyswitch_glwe_fft64(c: &mut Criterion) {
             rank,
         };
 
-        let mut ksk: AutomorphismKey<Vec<u8>> = AutomorphismKey::alloc_from_infos(&module, &gglwe_atk_layout);
-        let mut ct_in: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&module, &glwe_in_layout);
-        let mut ct_out: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&module, &glwe_out_layout);
+        let mut ksk: AutomorphismKey<Vec<u8>> = AutomorphismKey::alloc_from_infos(&gglwe_atk_layout);
+        let mut ct_in: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_in_layout);
+        let mut ct_out: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_out_layout);
 
         let mut scratch: ScratchOwned<FFT64Spqlios> = ScratchOwned::alloc(
             GLWESwitchingKey::encrypt_sk_tmp_bytes(&module, &gglwe_atk_layout)
@@ -81,7 +81,7 @@ fn bench_keyswitch_glwe_fft64(c: &mut Criterion) {
         let mut source_xe: Source = Source::new([0u8; 32]);
         let mut source_xa: Source = Source::new([0u8; 32]);
 
-        let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&module, &glwe_in_layout);
+        let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_in_layout);
         sk_in.fill_ternary_prob(0.5, &mut source_xs);
 
         let mut sk_in_dft: GLWESecretPrepared<Vec<u8>, FFT64Spqlios> = GLWESecretPrepared::alloc(&module, rank);
@@ -177,8 +177,8 @@ fn bench_keyswitch_glwe_inplace_fft64(c: &mut Criterion) {
             rank,
         };
 
-        let mut ksk: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc_from_infos(&module, &gglwe_layout);
-        let mut ct: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&module, &glwe_layout);
+        let mut ksk: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc_from_infos(&gglwe_layout);
+        let mut ct: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_layout);
 
         let mut scratch: ScratchOwned<FFT64Spqlios> = ScratchOwned::alloc(
             GLWESwitchingKey::encrypt_sk_tmp_bytes(&module, &gglwe_layout)
@@ -190,13 +190,13 @@ fn bench_keyswitch_glwe_inplace_fft64(c: &mut Criterion) {
         let mut source_xe: Source = Source::new([0u8; 32]);
         let mut source_xa: Source = Source::new([0u8; 32]);
 
-        let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&module, &glwe_layout);
+        let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_layout);
         sk_in.fill_ternary_prob(0.5, &mut source_xs);
 
         let mut sk_in_dft: GLWESecretPrepared<Vec<u8>, FFT64Spqlios> = GLWESecretPrepared::alloc(&module, rank);
         sk_in_dft.prepare(&module, &sk_in);
 
-        let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&module, &glwe_layout);
+        let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_layout);
         sk_out.fill_ternary_prob(0.5, &mut source_xs);
 
         ksk.encrypt_sk(

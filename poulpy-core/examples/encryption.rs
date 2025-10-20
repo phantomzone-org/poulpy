@@ -43,9 +43,9 @@ fn main() {
     let glwe_pt_infos: GLWEPlaintextLayout = GLWEPlaintextLayout { n, base2k, k: k_pt };
 
     // Allocates ciphertext & plaintexts
-    let mut ct: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&module, &glwe_ct_infos);
-    let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&module, &glwe_pt_infos);
-    let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&module, &glwe_pt_infos);
+    let mut ct: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_ct_infos);
+    let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_pt_infos);
+    let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_pt_infos);
 
     // CPRNG
     let mut source_xs: Source = Source::new([0u8; 32]);
@@ -58,7 +58,7 @@ fn main() {
     );
 
     // Generate secret-key
-    let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&module, &glwe_ct_infos);
+    let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_ct_infos);
     sk.fill_ternary_prob(0.5, &mut source_xs);
 
     // Backend-prepared secret

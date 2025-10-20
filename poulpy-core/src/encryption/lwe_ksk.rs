@@ -85,7 +85,7 @@ where
             1,
             "rank_out > 1 is not supported for LWESwitchingKey"
         );
-        GLWESecret::bytes_of(self, Rank(1))
+        GLWESecret::bytes_of(self.n().into(), Rank(1))
             + GLWESecretPrepared::bytes_of(self, Rank(1))
             + GLWESwitchingKey::encrypt_sk_tmp_bytes(self, infos)
     }

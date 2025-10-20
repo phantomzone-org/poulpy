@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    layouts::{Backend, Data, DataMut, DataRef, Module, ScalarZnx, ScalarZnxToMut, ScalarZnxToRef, ZnxInfos, ZnxView, ZnxZero},
+    layouts::{Data, DataMut, DataRef, ScalarZnx, ScalarZnxToMut, ScalarZnxToRef, ZnxInfos, ZnxView, ZnxZero},
     source::Source,
 };
 
@@ -13,23 +13,12 @@ pub struct LWESecret<D: Data> {
     pub(crate) dist: Distribution,
 }
 
-pub trait LWESecretAlloc {
-    fn alloc_lwe_secret(&self, n: Degree) -> LWESecret<Vec<u8>> {
+impl LWESecret<Vec<u8>> {
+    pub fn alloc(n: Degree) -> Self {
         LWESecret {
             data: ScalarZnx::alloc(n.into(), 1),
             dist: Distribution::NONE,
         }
-    }
-}
-
-impl<B: Backend> LWESecretAlloc for Module<B> {}
-
-impl LWESecret<Vec<u8>> {
-    pub fn alloc<M>(module: &M, n: Degree) -> Self
-    where
-        M: LWESecretAlloc,
-    {
-        module.alloc_lwe_secret(n)
     }
 }
 

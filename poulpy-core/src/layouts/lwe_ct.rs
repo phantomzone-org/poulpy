@@ -1,7 +1,7 @@
 use std::fmt;
 
 use poulpy_hal::{
-    layouts::{Backend, Data, DataMut, DataRef, FillUniform, Module, ReaderFrom, WriterTo, Zn, ZnToMut, ZnToRef, ZnxInfos},
+    layouts::{Data, DataMut, DataRef, FillUniform, ReaderFrom, WriterTo, Zn, ZnToMut, ZnToRef, ZnxInfos},
     source::Source,
 };
 
@@ -125,8 +125,15 @@ where
     }
 }
 
-pub trait LWEAlloc {
-    fn alloc_lwe(&self, n: Degree, base2k: Base2K, k: TorusPrecision) -> LWE<Vec<u8>> {
+impl LWE<Vec<u8>> {
+    pub fn alloc_from_infos<A>(infos: &A) -> Self
+    where
+        A: LWEInfos,
+    {
+        Self::alloc(infos.n(), infos.base2k(), infos.k())
+    }
+
+    pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision) -> Self {
         LWE {
             data: Zn::alloc((n + 1).into(), 1, k.0.div_ceil(base2k.0) as usize),
             k,
@@ -134,56 +141,15 @@ pub trait LWEAlloc {
         }
     }
 
-    fn alloc_lwe_from_infos<A>(&self, infos: &A) -> LWE<Vec<u8>>
+    pub fn bytes_of_from_infos<A>(infos: &A) -> usize
     where
         A: LWEInfos,
     {
-        self.alloc_lwe(infos.n(), infos.base2k(), infos.k())
+        Self::bytes_of(infos.n(), infos.base2k(), infos.k())
     }
 
-    fn bytes_of_lwe(&self, n: Degree, base2k: Base2K, k: TorusPrecision) -> usize {
+    pub fn bytes_of(n: Degree, base2k: Base2K, k: TorusPrecision) -> usize {
         Zn::bytes_of((n + 1).into(), 1, k.0.div_ceil(base2k.0) as usize)
-    }
-
-    fn bytes_of_lwe_from_infos<A>(&self, infos: &A) -> usize
-    where
-        A: LWEInfos,
-    {
-        self.bytes_of_lwe(infos.n(), infos.base2k(), infos.k())
-    }
-}
-
-impl<B: Backend> LWEAlloc for Module<B> {}
-
-impl LWE<Vec<u8>> {
-    pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
-    where
-        A: LWEInfos,
-        M: LWEAlloc,
-    {
-        module.alloc_lwe_from_infos(infos)
-    }
-
-    pub fn alloc<M>(module: &M, n: Degree, base2k: Base2K, k: TorusPrecision) -> Self
-    where
-        M: LWEAlloc,
-    {
-        module.alloc_lwe(n, base2k, k)
-    }
-
-    pub fn bytes_of_from_infos<A, M>(module: &M, infos: &A) -> usize
-    where
-        A: LWEInfos,
-        M: LWEAlloc,
-    {
-        module.bytes_of_lwe_from_infos(infos)
-    }
-
-    pub fn bytes_of<M>(module: &M, n: Degree, base2k: Base2K, k: TorusPrecision) -> usize
-    where
-        M: LWEAlloc,
-    {
-        module.bytes_of_lwe(n, base2k, k)
     }
 }
 

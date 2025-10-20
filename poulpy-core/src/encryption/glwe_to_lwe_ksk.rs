@@ -72,7 +72,7 @@ where
         A: GGLWEInfos,
     {
         GLWESecretPrepared::bytes_of(self, infos.rank_in())
-            + (GLWESwitchingKey::encrypt_sk_tmp_bytes(self, infos) | GLWESecret::bytes_of(self, infos.rank_in()))
+            + (GLWESwitchingKey::encrypt_sk_tmp_bytes(self, infos) | GLWESecret::bytes_of(self.n().into(), infos.rank_in()))
     }
 
     fn glwe_to_lwe_switching_key_encrypt_sk<R, S1, S2>(

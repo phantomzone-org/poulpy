@@ -6,8 +6,7 @@ use poulpy_hal::{
 use crate::layouts::{
     AutomorphismKey, AutomorphismKeyToMut, Base2K, Degree, Dnum, Dsize, GGLWEInfos, GLWEInfos, LWEInfos, Rank, TorusPrecision,
     compressed::{
-        GLWESwitchingKeyCompressed, GLWESwitchingKeyCompressedAlloc, GLWESwitchingKeyCompressedToMut,
-        GLWESwitchingKeyCompressedToRef, GLWESwitchingKeyDecompress,
+        GLWESwitchingKeyCompressed, GLWESwitchingKeyCompressedToMut, GLWESwitchingKeyCompressedToRef, GLWESwitchingKeyDecompress,
     },
     prepared::{GetAutomorphismGaloisElement, SetAutomorphismGaloisElement},
 };
@@ -86,32 +85,34 @@ impl<D: DataRef> fmt::Display for AutomorphismKeyCompressed<D> {
     }
 }
 
-impl<BE: Backend> AutomorphismKeyCompressedAlloc for Module<BE> where Self: GLWESwitchingKeyCompressedAlloc {}
+impl AutomorphismKeyCompressed<Vec<u8>> {
+    pub fn alloc_from_infos<A>(infos: &A) -> Self
+    where
+        A: GGLWEInfos,
+    {
+        Self::alloc(
+            infos.n(),
+            infos.base2k(),
+            infos.k(),
+            infos.rank(),
+            infos.dnum(),
+            infos.dsize(),
+        )
+    }
 
-pub trait AutomorphismKeyCompressedAlloc
-where
-    Self: GLWESwitchingKeyCompressedAlloc,
-{
-    fn alloc_automorphism_key_compressed(
-        &self,
-        base2k: Base2K,
-        k: TorusPrecision,
-        rank: Rank,
-        dnum: Dnum,
-        dsize: Dsize,
-    ) -> AutomorphismKeyCompressed<Vec<u8>> {
+    pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> Self {
         AutomorphismKeyCompressed {
-            key: self.alloc_glwe_switching_key_compressed(base2k, k, rank, rank, dnum, dsize),
+            key: GLWESwitchingKeyCompressed::alloc(n, base2k, k, rank, rank, dnum, dsize),
             p: 0,
         }
     }
 
-    fn alloc_automorphism_key_compressed_from_infos<A>(&self, infos: &A) -> AutomorphismKeyCompressed<Vec<u8>>
+    pub fn bytes_of_from_infos<A>(infos: &A) -> usize
     where
         A: GGLWEInfos,
     {
-        assert_eq!(infos.rank_in(), infos.rank_out());
-        self.alloc_automorphism_key_compressed(
+        Self::bytes_of(
+            infos.n(),
             infos.base2k(),
             infos.k(),
             infos.rank(),
@@ -120,61 +121,8 @@ where
         )
     }
 
-    fn bytes_of_automorphism_key_compressed(
-        &self,
-        base2k: Base2K,
-        k: TorusPrecision,
-        rank: Rank,
-        dnum: Dnum,
-        dsize: Dsize,
-    ) -> usize {
-        self.bytes_of_glwe_switching_key_compressed(base2k, k, rank, dnum, dsize)
-    }
-
-    fn bytes_of_automorphism_key_compressed_from_infos<A>(&self, infos: &A) -> usize
-    where
-        A: GGLWEInfos,
-    {
-        assert_eq!(infos.rank_in(), infos.rank_out());
-        self.bytes_of_automorphism_key_compressed(
-            infos.base2k(),
-            infos.k(),
-            infos.rank(),
-            infos.dnum(),
-            infos.dsize(),
-        )
-    }
-}
-
-impl AutomorphismKeyCompressed<Vec<u8>> {
-    pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
-    where
-        A: GGLWEInfos,
-        M: AutomorphismKeyCompressedAlloc,
-    {
-        module.alloc_automorphism_key_compressed_from_infos(infos)
-    }
-
-    pub fn alloc<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> Self
-    where
-        M: AutomorphismKeyCompressedAlloc,
-    {
-        module.alloc_automorphism_key_compressed(base2k, k, rank, dnum, dsize)
-    }
-
-    pub fn bytes_of_from_infos<A, M>(module: &M, infos: &A) -> usize
-    where
-        A: GGLWEInfos,
-        M: AutomorphismKeyCompressedAlloc,
-    {
-        module.bytes_of_automorphism_key_compressed_from_infos(infos)
-    }
-
-    pub fn bytes_of<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize
-    where
-        M: AutomorphismKeyCompressedAlloc,
-    {
-        module.bytes_of_automorphism_key_compressed(base2k, k, rank, dnum, dsize)
+    pub fn bytes_of(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize {
+        GLWESwitchingKeyCompressed::bytes_of(n, base2k, k, rank, dnum, dsize)
     }
 }
 

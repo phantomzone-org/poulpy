@@ -6,7 +6,7 @@ use poulpy_hal::{
 use crate::{
     GLWEKeyswitch, ScratchTakeCore,
     layouts::{
-        GGLWEInfos, GLWE, GLWEAlloc, GLWEInfos, GLWELayout, GLWEToRef, LWE, LWEInfos, LWEToMut, Rank,
+        GGLWEInfos, GLWE, GLWEInfos, GLWELayout, GLWEToRef, LWE, LWEInfos, LWEToMut, Rank,
         prepared::{LWEToGLWESwitchingKeyPrepared, LWEToGLWESwitchingKeyPreparedToRef},
     },
 };
@@ -40,11 +40,11 @@ where
 }
 
 impl<BE: Backend> LWESampleExtract for Module<BE> where Self: ModuleN {}
-impl<BE: Backend> LWEFromGLWE<BE> for Module<BE> where Self: GLWEKeyswitch<BE> + GLWEAlloc + LWESampleExtract {}
+impl<BE: Backend> LWEFromGLWE<BE> for Module<BE> where Self: GLWEKeyswitch<BE> + LWESampleExtract {}
 
 pub trait LWEFromGLWE<BE: Backend>
 where
-    Self: GLWEKeyswitch<BE> + GLWEAlloc + LWESampleExtract,
+    Self: GLWEKeyswitch<BE> + LWESampleExtract,
 {
     fn lwe_from_glwe_tmp_bytes<R, A, K>(&self, lwe_infos: &R, glwe_infos: &A, key_infos: &K) -> usize
     where
@@ -59,8 +59,12 @@ where
             rank: Rank(1),
         };
 
-        self.bytes_of_glwe(lwe_infos.base2k(), lwe_infos.k(), 1u32.into())
-            + self.glwe_keyswitch_tmp_bytes(&res_infos, glwe_infos, key_infos)
+        GLWE::bytes_of(
+            self.n().into(),
+            lwe_infos.base2k(),
+            lwe_infos.k(),
+            1u32.into(),
+        ) + self.glwe_keyswitch_tmp_bytes(&res_infos, glwe_infos, key_infos)
     }
 
     fn lwe_from_glwe<R, A, K>(&self, res: &mut R, a: &A, key: &K, scratch: &mut Scratch<BE>)
