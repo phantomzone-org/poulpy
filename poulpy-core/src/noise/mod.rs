@@ -3,8 +3,8 @@ mod ggsw_ct;
 mod glwe_ct;
 
 pub use gglwe_ct::*;
-// pub use ggsw_ct::*;
-// pub use glwe_ct::*;
+pub use ggsw_ct::*;
+pub use glwe_ct::*;
 
 #[allow(clippy::too_many_arguments)]
 #[allow(dead_code)]

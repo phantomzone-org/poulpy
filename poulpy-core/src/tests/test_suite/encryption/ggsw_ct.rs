@@ -1,32 +1,23 @@
 use poulpy_hal::{
-    api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolBytesOf, SvpPrepare,
-        VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigAlloc,
-        VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftAlloc, VecZnxDftApply,
-        VecZnxDftBytesOf, VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA, VecZnxNormalize,
-        VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubInplace, VmpPMatAlloc, VmpPrepare,
-    },
-    layouts::{Backend, Module, ScalarZnx, ScratchOwned},
-    oep::{
-        ScratchAvailableImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeScalarZnxImpl, TakeSvpPPolImpl,
-        TakeVecZnxBigImpl, TakeVecZnxDftImpl, TakeVecZnxImpl, VecZnxBigAllocBytesImpl, VecZnxDftAllocBytesImpl,
-    },
+    api::{ScratchOwnedAlloc, ScratchOwnedBorrow},
+    layouts::{Backend, Module, ScalarZnx, Scratch, ScratchOwned},
     source::Source,
 };
 
 use crate::{
+    GGSWCompressedEncryptSk, GGSWEncryptSk, GGSWNoise, ScratchTakeCore,
     encryption::SIGMA,
     layouts::{
-        GGSW, GGSWCiphertextLayout, GLWESecret,
-        compressed::{Decompress, GGSWCompressed},
-        prepared::{GLWESecretPrepared, PrepareAlloc},
+        GGSW, GGSWDecompress, GGSWLayout, GLWESecret, GLWESecretPrepare, GLWESecretPreparedAlloc, compressed::GGSWCompressed,
+        prepared::GLWESecretPrepared,
     },
 };
 
-pub fn test_ggsw_encrypt_sk<B: Backend>(module: &Module<B>)
+pub fn test_ggsw_encrypt_sk<BE: Backend>(module: &Module<BE>)
 where
-    ScratchOwned<B>: ScratchOwnedAlloc<B>,
-    Module<B>: SvpPrepare<B>,
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
+    Scratch<BE>: ScratchTakeCore<BE>,
+    Module<BE>: GGSWEncryptSk<BE> + GLWESecretPreparedAlloc<BE> + GLWESecretPrepare<BE> + GGSWNoise<BE>,
 {
     let base2k: usize = 12;
     let k: usize = 54;
@@ -36,7 +27,7 @@ where
             let n: usize = module.n();
             let dnum: usize = (k - di * base2k) / (di * base2k);
 
-            let ggsw_infos: GGSWCiphertextLayout = GGSWCiphertextLayout {
+            let ggsw_infos: GGSWLayout = GGSWLayout {
                 n: n.into(),
                 base2k: base2k.into(),
                 k: k.into(),
@@ -55,11 +46,13 @@ where
 
             pt_scalar.fill_ternary_hw(0, n, &mut source_xs);
 
-            let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GGSW::encrypt_sk_tmp_bytes(module, &ggsw_infos));
+            let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(GGSW::encrypt_sk_tmp_bytes(module, &ggsw_infos));
 
             let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&ggsw_infos);
             sk.fill_ternary_prob(0.5, &mut source_xs);
-            let sk_prepared: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
+
+            let mut sk_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(module, rank.into());
+            sk_prepared.prepare(module, &sk);
 
             ct.encrypt_sk(
                 module,
@@ -77,46 +70,12 @@ where
     }
 }
 
-pub fn test_ggsw_compressed_encrypt_sk<B>(module: &Module<B>)
+pub fn test_ggsw_compressed_encrypt_sk<BE: Backend>(module: &Module<BE>)
 where
-    Module<B>: VecZnxDftBytesOf
-        + VecZnxBigNormalize<B>
-        + VecZnxDftApply<B>
-        + SvpApplyDftToDftInplace<B>
-        + VecZnxIdftApplyConsume<B>
-        + VecZnxNormalizeTmpBytes
-        + VecZnxFillUniform
-        + VecZnxSubInplace
-        + VecZnxAddInplace
-        + VecZnxNormalizeInplace<B>
-        + VecZnxAddNormal
-        + VecZnxNormalize<B>
-        + VecZnxSub
-        + SvpPrepare<B>
-        + SvpPPolBytesOf
-        + SvpPPolAlloc<B>
-        + VecZnxBigAddSmallInplace<B>
-        + VecZnxAddScalarInplace
-        + VecZnxBigBytesOf
-        + VecZnxBigAddInplace<B>
-        + VecZnxCopy
-        + VmpPMatAlloc<B>
-        + VmpPrepare<B>
-        + VecZnxBigAlloc<B>
-        + VecZnxDftAlloc<B>
-        + VecZnxBigNormalizeTmpBytes
-        + VecZnxIdftApplyTmpA<B>,
-    B: Backend
-        + TakeVecZnxDftImpl<B>
-        + TakeVecZnxBigImpl<B>
-        + ScratchOwnedAllocImpl<B>
-        + ScratchOwnedBorrowImpl<B>
-        + ScratchAvailableImpl<B>
-        + TakeScalarZnxImpl<B>
-        + TakeVecZnxImpl<B>
-        + VecZnxDftAllocBytesImpl<B>
-        + VecZnxBigAllocBytesImpl<B>
-        + TakeSvpPPolImpl<B>,
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
+    Scratch<BE>: ScratchTakeCore<BE>,
+    Module<BE>:
+        GGSWCompressedEncryptSk<BE> + GLWESecretPreparedAlloc<BE> + GLWESecretPrepare<BE> + GGSWNoise<BE> + GGSWDecompress,
 {
     let base2k: usize = 12;
     let k: usize = 54;
@@ -126,7 +85,7 @@ where
             let n: usize = module.n();
             let dnum: usize = (k - di * base2k) / (di * base2k);
 
-            let ggsw_infos: GGSWCiphertextLayout = GGSWCiphertextLayout {
+            let ggsw_infos: GGSWLayout = GGSWLayout {
                 n: n.into(),
                 base2k: base2k.into(),
                 k: k.into(),
@@ -144,14 +103,13 @@ where
 
             pt_scalar.fill_ternary_hw(0, n, &mut source_xs);
 
-            let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GGSWCompressed::encrypt_sk_tmp_bytes(
-                module,
-                &ggsw_infos,
-            ));
+            let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(GGSWCompressed::encrypt_sk_tmp_bytes(module, &ggsw_infos));
 
             let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&ggsw_infos);
             sk.fill_ternary_prob(0.5, &mut source_xs);
-            let sk_prepared: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
+
+            let mut sk_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(module, rank.into());
+            sk_prepared.prepare(module, &sk);
 
             let seed_xa: [u8; 32] = [1u8; 32];
 

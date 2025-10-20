@@ -21,6 +21,7 @@ pub use encryption::*;
 pub use external_product::*;
 pub use glwe_packing::*;
 pub use keyswitching::*;
+pub use noise::*;
 
 pub use encryption::SIGMA;
 
