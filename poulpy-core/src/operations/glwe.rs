@@ -179,6 +179,8 @@ where
     }
 }
 
+impl<BE: Backend> GLWERotate<BE> for Module<BE> where Self: ModuleN + VecZnxRotate + VecZnxRotateInplace<BE> {}
+
 pub trait GLWERotate<BE: Backend>
 where
     Self: ModuleN + VecZnxRotate + VecZnxRotateInplace<BE>,
@@ -253,6 +255,8 @@ where
     }
 }
 
+impl<BE: Backend> GLWECopy for Module<BE> where Self: ModuleN + VecZnxCopy {}
+
 pub trait GLWECopy
 where
     Self: ModuleN + VecZnxCopy,
@@ -277,6 +281,8 @@ where
         res.set_base2k(a.base2k());
     }
 }
+
+impl<BE: Backend> GLWEShift<BE> for Module<BE> where Self: ModuleN + VecZnxRshInplace<BE> {}
 
 pub trait GLWEShift<BE: Backend>
 where
@@ -307,6 +313,8 @@ impl GLWE<Vec<u8>> {
         module.glwe_rsh_tmp_byte()
     }
 }
+
+impl<BE: Backend> GLWENormalize<BE> for Module<BE> where Self: ModuleN + VecZnxNormalize<BE> + VecZnxNormalizeInplace<BE> {}
 
 pub trait GLWENormalize<BE: Backend>
 where

@@ -1,78 +1,34 @@
 use std::collections::HashMap;
 
 use poulpy_hal::{
-    api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolBytesOf, SvpPrepare,
-        VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxAutomorphism, VecZnxAutomorphismInplace,
-        VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigAutomorphismInplace, VecZnxBigBytesOf, VecZnxBigNormalize,
-        VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallNegateInplace, VecZnxCopy, VecZnxDftApply, VecZnxDftBytesOf,
-        VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxNegateInplace, VecZnxNormalize, VecZnxNormalizeInplace,
-        VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace, VecZnxRshInplace, VecZnxSub, VecZnxSubInplace,
-        VecZnxSwitchRing, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes, VmpPMatAlloc, VmpPrepare,
-    },
-    layouts::{Backend, Module, ScratchOwned},
-    oep::{
-        ScratchAvailableImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeScalarZnxImpl, TakeSvpPPolImpl,
-        TakeVecZnxBigImpl, TakeVecZnxDftImpl, TakeVecZnxImpl,
-    },
+    api::{ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow},
+    layouts::{Backend, Module, Scratch, ScratchOwned},
     source::Source,
 };
 
 use crate::{
-    GLWEOperations, GLWEPacker,
+    AutomorphismKeyEncryptSk, GLWEDecrypt, GLWEEncryptSk, GLWEPacker, GLWEPacking, GLWERotate, GLWESub, ScratchTakeCore,
     layouts::{
-        AutomorphismKey, AutomorphismKeyLayout, GLWE, GLWELayout, GLWEPlaintext, GLWESecret,
-        prepared::{AutomorphismKeyPrepared, GLWESecretPrepared, PrepareAlloc},
+        AutomorphismKey, AutomorphismKeyLayout, AutomorphismKeyPrepare, AutomorphismKeyPreparedAlloc, GLWE, GLWELayout,
+        GLWEPlaintext, GLWESecret, GLWESecretPrepare, GLWESecretPreparedAlloc,
+        prepared::{AutomorphismKeyPrepared, GLWESecretPrepared},
     },
 };
 
-pub fn test_glwe_packing<B>(module: &Module<B>)
+pub fn test_glwe_packing<BE: Backend>(module: &Module<BE>)
 where
-    Module<B>: VecZnxDftBytesOf
-        + VecZnxAutomorphism
-        + VecZnxBigAutomorphismInplace<B>
-        + VecZnxBigSubSmallNegateInplace<B>
-        + VecZnxNegateInplace
-        + VecZnxRshInplace<B>
-        + VecZnxRotateInplace<B>
-        + VecZnxBigNormalize<B>
-        + VecZnxDftApply<B>
-        + VecZnxRotate
-        + SvpApplyDftToDftInplace<B>
-        + VecZnxIdftApplyConsume<B>
-        + VecZnxFillUniform
-        + VecZnxSubInplace
-        + VecZnxAddInplace
-        + VecZnxNormalizeInplace<B>
-        + VecZnxAddNormal
-        + VecZnxNormalize<B>
-        + VecZnxSub
-        + SvpPrepare<B>
-        + SvpPPolBytesOf
-        + SvpPPolAlloc<B>
-        + VecZnxBigBytesOf
-        + VecZnxBigAddInplace<B>
-        + VecZnxBigAddSmallInplace<B>
-        + VecZnxNormalizeTmpBytes
-        + VecZnxAddScalarInplace
-        + VmpPMatAlloc<B>
-        + VmpPrepare<B>
-        + VmpApplyDftToDftTmpBytes
-        + VmpApplyDftToDft<B>
-        + VmpApplyDftToDftAdd<B>
-        + VecZnxBigNormalizeTmpBytes
-        + VecZnxSwitchRing
-        + VecZnxAutomorphismInplace<B>
-        + VecZnxCopy,
-    B: Backend
-        + TakeVecZnxDftImpl<B>
-        + TakeVecZnxBigImpl<B>
-        + TakeSvpPPolImpl<B>
-        + ScratchOwnedAllocImpl<B>
-        + ScratchOwnedBorrowImpl<B>
-        + ScratchAvailableImpl<B>
-        + TakeScalarZnxImpl<B>
-        + TakeVecZnxImpl<B>,
+    Module<BE>: GLWEEncryptSk<BE>
+        + AutomorphismKeyEncryptSk<BE>
+        + AutomorphismKeyPrepare<BE>
+        + AutomorphismKeyPreparedAlloc<BE>
+        + GLWEPacking<BE>
+        + GLWESecretPrepare<BE>
+        + GLWESecretPreparedAlloc<BE>
+        + GLWESub
+        + GLWEDecrypt<BE>
+        + GLWERotate<BE>,
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
+    Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
     let mut source_xs: Source = Source::new([0u8; 32]);
     let mut source_xe: Source = Source::new([0u8; 32]);
@@ -104,7 +60,7 @@ where
         dnum: dnum.into(),
     };
 
-    let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
+    let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
         GLWE::encrypt_sk_tmp_bytes(module, &glwe_out_infos)
             | AutomorphismKey::encrypt_sk_tmp_bytes(module, &key_infos)
             | GLWEPacker::tmp_bytes(module, &glwe_out_infos, &key_infos),
@@ -112,7 +68,9 @@ where
 
     let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_out_infos);
     sk.fill_ternary_prob(0.5, &mut source_xs);
-    let sk_dft: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
+
+    let mut sk_dft: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc_from_infos(module, &sk);
+    sk_dft.prepare(module, &sk);
 
     let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_out_infos);
     let mut data: Vec<i64> = vec![0i64; n];
@@ -124,7 +82,7 @@ where
 
     let gal_els: Vec<i64> = GLWEPacker::galois_elements(module);
 
-    let mut auto_keys: HashMap<i64, AutomorphismKeyPrepared<Vec<u8>, B>> = HashMap::new();
+    let mut auto_keys: HashMap<i64, AutomorphismKeyPrepared<Vec<u8>, BE>> = HashMap::new();
     let mut tmp: AutomorphismKey<Vec<u8>> = AutomorphismKey::alloc_from_infos(&key_infos);
     gal_els.iter().for_each(|gal_el| {
         tmp.encrypt_sk(
@@ -135,13 +93,14 @@ where
             &mut source_xe,
             scratch.borrow(),
         );
-        let atk_prepared: AutomorphismKeyPrepared<Vec<u8>, B> = tmp.prepare_alloc(module, scratch.borrow());
+        let mut atk_prepared: AutomorphismKeyPrepared<Vec<u8>, BE> = AutomorphismKeyPrepared::alloc_from_infos(module, &tmp);
+        atk_prepared.prepare(module, &tmp, scratch.borrow());
         auto_keys.insert(*gal_el, atk_prepared);
     });
 
     let log_batch: usize = 0;
 
-    let mut packer: GLWEPacker = GLWEPacker::new(&glwe_out_infos, log_batch);
+    let mut packer: GLWEPacker = GLWEPacker::alloc(&glwe_out_infos, log_batch);
 
     let mut ct: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_out_infos);
 
@@ -166,7 +125,7 @@ where
             scratch.borrow(),
         );
 
-        pt.rotate_inplace(module, -(1 << log_batch), scratch.borrow()); // X^-batch * pt
+        module.glwe_rotate_inplace(-(1 << log_batch), &mut pt, scratch.borrow()); // X^-batch * pt
 
         if reverse_bits_msb(i, log_n as u32).is_multiple_of(5) {
             packer.add(module, Some(&ct), &auto_keys, scratch.borrow());
@@ -190,7 +149,7 @@ where
 
     res.decrypt(module, &mut pt, &sk_dft, scratch.borrow());
 
-    pt.sub_inplace_ab(module, &pt_want);
+    module.glwe_sub_inplace(&mut pt, &pt_want);
 
     let noise_have: f64 = pt.std().log2();
 
