@@ -20,6 +20,12 @@ pub struct AutomorphismKeyCompressed<D: Data> {
     pub(crate) p: i64,
 }
 
+impl<D: Data> GetAutomorphismGaloisElement for AutomorphismKeyCompressed<D> {
+    fn p(&self) -> i64 {
+        self.p
+    }
+}
+
 impl<D: Data> LWEInfos for AutomorphismKeyCompressed<D> {
     fn n(&self) -> Degree {
         self.key.n()
@@ -37,6 +43,7 @@ impl<D: Data> LWEInfos for AutomorphismKeyCompressed<D> {
         self.key.size()
     }
 }
+
 impl<D: Data> GLWEInfos for AutomorphismKeyCompressed<D> {
     fn rank(&self) -> Rank {
         self.rank_out()
@@ -199,7 +206,7 @@ where
     }
 }
 
-impl<B: Backend> AutomorphismKeyDecompress for Module<B> where Self: AutomorphismKeyDecompress {}
+impl<B: Backend> AutomorphismKeyDecompress for Module<B> where Self: GLWESwitchingKeyDecompress {}
 
 impl<D: DataMut> AutomorphismKey<D>
 where
