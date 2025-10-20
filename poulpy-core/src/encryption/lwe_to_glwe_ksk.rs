@@ -16,7 +16,7 @@ impl LWEToGLWESwitchingKey<Vec<u8>> {
     pub fn encrypt_sk_tmp_bytes<M, A, BE: Backend>(module: &M, infos: &A) -> usize
     where
         A: GGLWEInfos,
-        M: LWEToGLWESwitchingKeyEncrypt<BE>,
+        M: LWEToGLWESwitchingKeyEncryptSk<BE>,
     {
         module.lwe_to_glwe_switching_key_encrypt_sk_tmp_bytes(infos)
     }
@@ -34,14 +34,14 @@ impl<D: DataMut> LWEToGLWESwitchingKey<D> {
     ) where
         S1: LWESecretToRef,
         S2: GLWESecretPreparedToRef<BE>,
-        M: LWEToGLWESwitchingKeyEncrypt<BE>,
+        M: LWEToGLWESwitchingKeyEncryptSk<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         module.lwe_to_glwe_switching_key_encrypt_sk(self, sk_lwe, sk_glwe, source_xa, source_xe, scratch);
     }
 }
 
-pub trait LWEToGLWESwitchingKeyEncrypt<BE: Backend> {
+pub trait LWEToGLWESwitchingKeyEncryptSk<BE: Backend> {
     fn lwe_to_glwe_switching_key_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos;
@@ -60,7 +60,7 @@ pub trait LWEToGLWESwitchingKeyEncrypt<BE: Backend> {
         R: GGLWEToMut;
 }
 
-impl<BE: Backend> LWEToGLWESwitchingKeyEncrypt<BE> for Module<BE>
+impl<BE: Backend> LWEToGLWESwitchingKeyEncryptSk<BE> for Module<BE>
 where
     Self: ModuleN
         + GGLWEEncryptSk<BE>

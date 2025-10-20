@@ -59,8 +59,8 @@ ggsw_automorphism => crate::tests::test_suite::automorphism::test_ggsw_automorph
 ggsw_automorphism_inplace => crate::tests::test_suite::automorphism::test_ggsw_automorphism_inplace,
 // LWE
 lwe_keyswitch => crate::tests::test_suite::keyswitch::test_lwe_keyswitch,
-// glwe_to_lwe => crate::tests::test_suite::test_glwe_to_lwe,
-// lwe_to_glwe => crate::tests::test_suite::test_lwe_to_glwe,
+glwe_to_lwe => crate::tests::test_suite::test_glwe_to_lwe,
+lwe_to_glwe => crate::tests::test_suite::test_lwe_to_glwe,
 }
 );
 // #[cfg(test)]

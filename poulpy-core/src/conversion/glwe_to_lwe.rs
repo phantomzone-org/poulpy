@@ -112,14 +112,13 @@ impl<D: DataMut> LWE<D> {
         module.lwe_sample_extract(self, a);
     }
 
-    pub fn from_glwe<R, A, K, M, BE: Backend>(&self, module: &M, res: &mut R, a: &A, key: &K, scratch: &mut Scratch<BE>)
+    pub fn from_glwe<A, K, M, BE: Backend>(&mut self, module: &M, a: &A, key: &K, scratch: &mut Scratch<BE>)
     where
-        R: LWEToMut,
         A: GLWEToRef,
         K: GGLWEPreparedToRef<BE> + GGLWEInfos,
         M: LWEFromGLWE<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        module.lwe_from_glwe(res, a, key, scratch);
+        module.lwe_from_glwe(self, a, key, scratch);
     }
 }

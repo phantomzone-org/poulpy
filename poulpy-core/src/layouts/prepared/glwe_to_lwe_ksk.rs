@@ -206,3 +206,13 @@ impl<D: DataMut, B: Backend> GLWESwitchingKeyDegreesMut for GLWEToLWESwitchingKe
         &mut self.0.output_degree
     }
 }
+
+impl<D: DataRef, B: Backend> GLWESwitchingKeyDegrees for GLWEToLWESwitchingKeyPrepared<D, B> {
+    fn input_degree(&self) -> &Degree {
+        &self.0.input_degree
+    }
+
+    fn output_degree(&self) -> &Degree {
+        &self.0.output_degree
+    }
+}

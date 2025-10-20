@@ -4,7 +4,7 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    Base2K, Degree, Dnum, Dsize, GGLWE, GGLWEInfos, GGLWEToMut, GGLWEToRef, GLWEInfos, GLWESwitchingKey,
+    Base2K, Degree, Dnum, Dsize, GGLWE, GGLWEInfos, GGLWEToMut, GGLWEToRef, GLWEInfos, GLWESwitchingKey, GLWESwitchingKeyDegrees,
     GLWESwitchingKeyDegreesMut, LWEInfos, Rank, TorusPrecision,
 };
 
@@ -215,5 +215,15 @@ impl<D: DataMut> GLWESwitchingKeyDegreesMut for GLWEToLWESwitchingKey<D> {
 
     fn output_degree(&mut self) -> &mut Degree {
         &mut self.0.output_degree
+    }
+}
+
+impl<D: DataRef> GLWESwitchingKeyDegrees for GLWEToLWESwitchingKey<D> {
+    fn input_degree(&self) -> &Degree {
+        &self.0.input_degree
+    }
+
+    fn output_degree(&self) -> &Degree {
+        &self.0.output_degree
     }
 }
