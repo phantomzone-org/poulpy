@@ -34,7 +34,7 @@ gglwe_switching_key_encrypt_sk => crate::tests::test_suite::encryption::test_ggl
 gglwe_switching_key_compressed_encrypt_sk => crate::tests::test_suite::encryption::test_gglwe_switching_key_compressed_encrypt_sk,
 gglwe_automorphism_key_encrypt_sk => crate::tests::test_suite::encryption::test_gglwe_automorphism_key_encrypt_sk,
 gglwe_automorphism_key_compressed_encrypt_sk => crate::tests::test_suite::encryption::test_gglwe_automorphism_key_compressed_encrypt_sk,
-// gglwe_tensor_key_encrypt_sk => crate::tests::test_suite::encryption::test_gglwe_tensor_key_encrypt_sk,
+gglwe_tensor_key_encrypt_sk => crate::tests::test_suite::encryption::test_gglwe_tensor_key_encrypt_sk,
 // gglwe_tensor_key_compressed_encrypt_sk => crate::tests::test_suite::encryption::test_gglwe_tensor_key_compressed_encrypt_sk,
 // GGLWE Keyswitching
 // gglwe_switching_key_keyswitch => crate::tests::test_suite::keyswitch::test_gglwe_switching_key_keyswitch,

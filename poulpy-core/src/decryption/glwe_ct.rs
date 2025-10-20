@@ -3,7 +3,7 @@ use poulpy_hal::{
         ModuleN, ScratchTakeBasic, SvpApplyDftToDftInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigBytesOf,
         VecZnxBigNormalize, VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxNormalizeTmpBytes,
     },
-    layouts::{Backend, DataMut, DataViewMut, Module, Scratch},
+    layouts::{Backend, DataRef, DataViewMut, Module, Scratch},
 };
 
 use crate::layouts::{
@@ -21,8 +21,8 @@ impl GLWE<Vec<u8>> {
     }
 }
 
-impl<DataSelf: DataMut> GLWE<DataSelf> {
-    pub fn decrypt<P, S, M, BE: Backend>(&mut self, module: &M, pt: &mut P, sk: &S, scratch: &mut Scratch<BE>)
+impl<DataSelf: DataRef> GLWE<DataSelf> {
+    pub fn decrypt<P, S, M, BE: Backend>(&self, module: &M, pt: &mut P, sk: &S, scratch: &mut Scratch<BE>)
     where
         P: GLWEPlaintextToMut,
         S: GLWESecretPreparedToRef<BE>,
