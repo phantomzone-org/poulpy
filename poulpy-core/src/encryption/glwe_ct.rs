@@ -510,7 +510,7 @@ where
                 // ct[i] = uniform (+ pt)
                 self.vec_znx_fill_uniform(base2k, ct, col_ct, source_xa);
 
-                println!("vec_znx_fill_uniform: {}", ct);
+                // println!("vec_znx_fill_uniform: {}", ct);
 
                 let (mut ci_dft, scratch_3) = scratch_2.take_vec_znx_dft(self, 1, size);
 

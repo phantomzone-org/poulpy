@@ -16,17 +16,17 @@ use crate::{
     },
 };
 
-pub fn test_glwe_encrypt_sk<B: Backend>(module: &Module<B>)
+pub fn test_glwe_encrypt_sk<BE: Backend>(module: &Module<BE>)
 where
-    Module<B>: GLWEAlloc
-        + GLWEEncryptSk<B>
-        + GLWEDecrypt<B>
-        + GLWESecretPreparedAlloc<B>
-        + GLWESecretPrepare<B>
+    Module<BE>: GLWEAlloc
+        + GLWEEncryptSk<BE>
+        + GLWEDecrypt<BE>
+        + GLWESecretPreparedAlloc<BE>
+        + GLWESecretPrepare<BE>
         + VecZnxFillUniform
         + GLWESub,
-    ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
-    Scratch<B>: ScratchAvailable + ScratchTakeCore<B>,
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
+    Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
     let base2k: usize = 8;
     let k_ct: usize = 54;
@@ -56,13 +56,13 @@ where
         let mut source_xe: Source = Source::new([0u8; 32]);
         let mut source_xa: Source = Source::new([0u8; 32]);
 
-        let mut scratch: ScratchOwned<B> =
+        let mut scratch: ScratchOwned<BE> =
             ScratchOwned::alloc(GLWE::encrypt_sk_tmp_bytes(module, &glwe_infos) | GLWE::decrypt_tmp_bytes(module, &glwe_infos));
 
         let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(module, &glwe_infos);
         sk.fill_ternary_prob(0.5, &mut source_xs);
 
-        let mut sk_prepared: GLWESecretPrepared<Vec<u8>, B> = GLWESecretPrepared::alloc(module, rank.into());
+        let mut sk_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(module, rank.into());
         sk_prepared.prepare(module, &sk);
 
         module.vec_znx_fill_uniform(base2k, &mut pt_want.data, 0, &mut source_xa);
@@ -87,24 +87,24 @@ where
     }
 }
 
-pub fn test_glwe_compressed_encrypt_sk<B: Backend>(module: &Module<B>)
+pub fn test_glwe_compressed_encrypt_sk<BE: Backend>(module: &Module<BE>)
 where
-    Module<B>: GLWEAlloc
-        + GLWECompressedEncryptSk<B>
-        + GLWEDecrypt<B>
-        + GLWESecretPreparedAlloc<B>
-        + GLWESecretPrepare<B>
+    Module<BE>: GLWEAlloc
+        + GLWECompressedEncryptSk<BE>
+        + GLWEDecrypt<BE>
+        + GLWESecretPreparedAlloc<BE>
+        + GLWESecretPrepare<BE>
         + VecZnxFillUniform
         + GLWESub,
-    ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
-    Scratch<B>: ScratchAvailable + ScratchTakeCore<B>,
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
+    Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
     let base2k: usize = 8;
     let k_ct: usize = 54;
     let k_pt: usize = 30;
 
     for rank in 1_usize..3 {
-        println!("rank: {}", rank);
+        // println!("rank: {}", rank);
         let n: usize = module.n();
 
         let glwe_infos: GLWELayout = GLWELayout {
@@ -129,14 +129,14 @@ where
         let mut source_xe: Source = Source::new([0u8; 32]);
         let mut source_xa: Source = Source::new([0u8; 32]);
 
-        let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
+        let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
             GLWECompressed::encrypt_sk_tmp_bytes(module, &glwe_infos) | GLWE::decrypt_tmp_bytes(module, &glwe_infos),
         );
 
         let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(module, &glwe_infos);
         sk.fill_ternary_prob(0.5, &mut source_xs);
 
-        let mut sk_prepared: GLWESecretPrepared<Vec<u8>, B> = GLWESecretPrepared::alloc(module, rank.into());
+        let mut sk_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(module, rank.into());
         sk_prepared.prepare(module, &sk);
 
         module.vec_znx_fill_uniform(base2k, &mut pt_want.data, 0, &mut source_xa);
@@ -170,17 +170,17 @@ where
     }
 }
 
-pub fn test_glwe_encrypt_zero_sk<B: Backend>(module: &Module<B>)
+pub fn test_glwe_encrypt_zero_sk<BE: Backend>(module: &Module<BE>)
 where
-    Module<B>: GLWEAlloc
-        + GLWEEncryptSk<B>
-        + GLWEDecrypt<B>
-        + GLWESecretPreparedAlloc<B>
-        + GLWESecretPrepare<B>
+    Module<BE>: GLWEAlloc
+        + GLWEEncryptSk<BE>
+        + GLWEDecrypt<BE>
+        + GLWESecretPreparedAlloc<BE>
+        + GLWESecretPrepare<BE>
         + VecZnxFillUniform
         + GLWESub,
-    ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
-    Scratch<B>: ScratchAvailable + ScratchTakeCore<B>,
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
+    Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
     let base2k: usize = 8;
     let k_ct: usize = 54;
@@ -201,13 +201,13 @@ where
         let mut source_xe: Source = Source::new([1u8; 32]);
         let mut source_xa: Source = Source::new([0u8; 32]);
 
-        let mut scratch: ScratchOwned<B> =
+        let mut scratch: ScratchOwned<BE> =
             ScratchOwned::alloc(GLWE::decrypt_tmp_bytes(module, &glwe_infos) | GLWE::encrypt_sk_tmp_bytes(module, &glwe_infos));
 
         let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(module, &glwe_infos);
         sk.fill_ternary_prob(0.5, &mut source_xs);
 
-        let mut sk_prepared: GLWESecretPrepared<Vec<u8>, B> = GLWESecretPrepared::alloc(module, rank.into());
+        let mut sk_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(module, rank.into());
         sk_prepared.prepare(module, &sk);
 
         let mut ct: GLWE<Vec<u8>> = GLWE::alloc_from_infos(module, &glwe_infos);
@@ -225,20 +225,20 @@ where
     }
 }
 
-pub fn test_glwe_encrypt_pk<B: Backend>(module: &Module<B>)
+pub fn test_glwe_encrypt_pk<BE: Backend>(module: &Module<BE>)
 where
-    Module<B>: GLWEAlloc
-        + GLWEEncryptPk<B>
-        + GLWEPublicKeyPrepare<B>
-        + GLWEPublicKeyPreparedAlloc<B>
-        + GLWEPublicKeyGenerate<B>
-        + GLWEDecrypt<B>
-        + GLWESecretPreparedAlloc<B>
-        + GLWESecretPrepare<B>
+    Module<BE>: GLWEAlloc
+        + GLWEEncryptPk<BE>
+        + GLWEPublicKeyPrepare<BE>
+        + GLWEPublicKeyPreparedAlloc<BE>
+        + GLWEPublicKeyGenerate<BE>
+        + GLWEDecrypt<BE>
+        + GLWESecretPreparedAlloc<BE>
+        + GLWESecretPrepare<BE>
         + VecZnxFillUniform
         + GLWESub,
-    ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
-    Scratch<B>: ScratchAvailable + ScratchTakeCore<B>,
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
+    Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
     let base2k: usize = 8;
     let k_ct: usize = 54;
@@ -262,13 +262,13 @@ where
         let mut source_xa: Source = Source::new([0u8; 32]);
         let mut source_xu: Source = Source::new([0u8; 32]);
 
-        let mut scratch: ScratchOwned<B> =
+        let mut scratch: ScratchOwned<BE> =
             ScratchOwned::alloc(GLWE::decrypt_tmp_bytes(module, &glwe_infos) | GLWE::encrypt_pk_tmp_bytes(module, &glwe_infos));
 
         let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(module, &glwe_infos);
         sk.fill_ternary_prob(0.5, &mut source_xs);
 
-        let mut sk_prepared: GLWESecretPrepared<Vec<u8>, B> = GLWESecretPrepared::alloc(module, rank.into());
+        let mut sk_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(module, rank.into());
         sk_prepared.prepare(module, &sk);
 
         let mut pk: GLWEPublicKey<Vec<u8>> = GLWEPublicKey::alloc_from_infos(module, &glwe_infos);
@@ -276,7 +276,7 @@ where
 
         module.vec_znx_fill_uniform(base2k, &mut pt_want.data, 0, &mut source_xa);
 
-        let mut pk_prepared: GLWEPublicKeyPrepared<Vec<u8>, B> = GLWEPublicKeyPrepared::alloc_from_infos(module, &glwe_infos);
+        let mut pk_prepared: GLWEPublicKeyPrepared<Vec<u8>, BE> = GLWEPublicKeyPrepared::alloc_from_infos(module, &glwe_infos);
         pk_prepared.prepare(module, &pk);
 
         ct.encrypt_pk(
