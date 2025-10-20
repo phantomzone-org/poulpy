@@ -11,7 +11,7 @@ use crate::{
 };
 
 impl AutomorphismKey<Vec<u8>> {
-    pub fn keyswitch_inplace_tmp_bytes<R, A, K, M, BE: Backend>(module: &M, res_infos: &R, a_infos: &A, key_infos: &K) -> usize
+    pub fn keyswitch_tmp_bytes<R, A, K, M, BE: Backend>(module: &M, res_infos: &R, a_infos: &A, key_infos: &K) -> usize
     where
         R: GGLWEInfos,
         A: GGLWEInfos,
@@ -44,7 +44,7 @@ impl<DataSelf: DataMut> AutomorphismKey<DataSelf> {
 }
 
 impl GLWESwitchingKey<Vec<u8>> {
-    pub fn keyswitch_inplace_tmp_bytes<R, A, K, M, BE: Backend>(module: &M, res_infos: &R, a_infos: &A, key_infos: &K) -> usize
+    pub fn keyswitch_tmp_bytes<R, A, K, M, BE: Backend>(module: &M, res_infos: &R, a_infos: &A, key_infos: &K) -> usize
     where
         R: GGLWEInfos,
         A: GGLWEInfos,
@@ -77,7 +77,7 @@ impl<DataSelf: DataMut> GLWESwitchingKey<DataSelf> {
 }
 
 impl GGLWE<Vec<u8>> {
-    pub fn keyswitch_inplace_tmp_bytes<R, A, K, M, BE: Backend>(module: &M, res_infos: &R, a_infos: &A, key_infos: &K) -> usize
+    pub fn keyswitch_tmp_bytes<R, A, K, M, BE: Backend>(module: &M, res_infos: &R, a_infos: &A, key_infos: &K) -> usize
     where
         R: GGLWEInfos,
         A: GGLWEInfos,

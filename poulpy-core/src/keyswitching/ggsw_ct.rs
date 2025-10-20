@@ -1,4 +1,4 @@
-use poulpy_hal::layouts::{Backend, DataMut, Scratch, VecZnx};
+use poulpy_hal::layouts::{Backend, DataMut, Module, Scratch, VecZnx};
 
 use crate::{
     GGSWExpandRows, ScratchTakeCore,
@@ -50,6 +50,8 @@ impl<D: DataMut> GGSW<D> {
         module.ggsw_keyswitch_inplace(self, key, tsk, scratch);
     }
 }
+
+impl<BE: Backend> GGSWKeyswitch<BE> for Module<BE> where Self: GLWEKeyswitch<BE> + GGSWExpandRows<BE> {}
 
 pub trait GGSWKeyswitch<BE: Backend>
 where

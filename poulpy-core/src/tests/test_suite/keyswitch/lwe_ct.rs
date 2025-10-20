@@ -1,68 +1,21 @@
 use poulpy_hal::{
-    api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolBytesOf, SvpPrepare,
-        VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxAutomorphismInplace, VecZnxBigAddInplace,
-        VecZnxBigAddSmallInplace, VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftApply,
-        VecZnxDftBytesOf, VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeInplace,
-        VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubInplace, VecZnxSwitchRing, VmpApplyDftToDft, VmpApplyDftToDftAdd,
-        VmpApplyDftToDftTmpBytes, VmpPMatAlloc, VmpPrepare, ZnAddNormal, ZnFillUniform, ZnNormalizeInplace,
-    },
-    layouts::{Backend, Module, ScratchOwned, ZnxView},
-    oep::{
-        ScratchAvailableImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeScalarZnxImpl, TakeSvpPPolImpl,
-        TakeVecZnxBigImpl, TakeVecZnxDftImpl, TakeVecZnxImpl,
-    },
+    api::{ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow},
+    layouts::{Backend, Module, Scratch, ScratchOwned, ZnxView},
     source::Source,
 };
 
-use crate::layouts::{
-    LWE, LWECiphertextLayout, LWEPlaintext, LWESecret, LWESwitchingKey, LWESwitchingKeyLayout,
-    prepared::{LWESwitchingKeyPrepared, PrepareAlloc},
+use crate::{
+    ScratchTakeCore,
+    layouts::{
+        LWE, LWELayout, LWEPlaintext, LWESecret, LWESwitchingKey, LWESwitchingKeyLayout, prepared::LWESwitchingKeyPrepared,
+    },
 };
 
-pub fn test_lwe_keyswitch<B>(module: &Module<B>)
+pub fn test_lwe_keyswitch<BE: Backend>(module: &Module<BE>)
 where
-    Module<B>: VecZnxDftBytesOf
-        + VecZnxBigNormalize<B>
-        + VecZnxDftApply<B>
-        + SvpApplyDftToDftInplace<B>
-        + VecZnxIdftApplyConsume<B>
-        + VecZnxFillUniform
-        + VecZnxSubInplace
-        + VecZnxAddInplace
-        + VecZnxNormalizeInplace<B>
-        + VecZnxAddNormal
-        + VecZnxNormalize<B>
-        + VecZnxSub
-        + SvpPrepare<B>
-        + SvpPPolBytesOf
-        + SvpPPolAlloc<B>
-        + VecZnxBigBytesOf
-        + VecZnxBigAddInplace<B>
-        + VecZnxBigAddSmallInplace<B>
-        + VecZnxNormalizeTmpBytes
-        + VecZnxAddScalarInplace
-        + VmpPMatAlloc<B>
-        + VmpPrepare<B>
-        + VmpApplyDftToDftTmpBytes
-        + VmpApplyDftToDft<B>
-        + VmpApplyDftToDftAdd<B>
-        + VecZnxBigNormalizeTmpBytes
-        + VecZnxSwitchRing
-        + VecZnxAutomorphismInplace<B>
-        + ZnNormalizeInplace<B>
-        + ZnFillUniform
-        + ZnAddNormal
-        + VecZnxCopy,
-    B: Backend
-        + TakeVecZnxDftImpl<B>
-        + TakeVecZnxBigImpl<B>
-        + TakeSvpPPolImpl<B>
-        + ScratchOwnedAllocImpl<B>
-        + ScratchOwnedBorrowImpl<B>
-        + ScratchAvailableImpl<B>
-        + TakeScalarZnxImpl<B>
-        + TakeVecZnxImpl<B>,
+    Module<BE>:,
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
+    Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
     let n: usize = module.n();
     let base2k: usize = 17;
@@ -86,19 +39,19 @@ where
         dnum: dnum.into(),
     };
 
-    let lwe_in_infos: LWECiphertextLayout = LWECiphertextLayout {
+    let lwe_in_infos: LWELayout = LWELayout {
         n: n_lwe_in.into(),
         base2k: base2k.into(),
         k: k_lwe_ct.into(),
     };
 
-    let lwe_out_infos: LWECiphertextLayout = LWECiphertextLayout {
+    let lwe_out_infos: LWELayout = LWELayout {
         n: n_lwe_out.into(),
         k: k_lwe_ct.into(),
         base2k: base2k.into(),
     };
 
-    let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
+    let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
         LWESwitchingKey::encrypt_sk_tmp_bytes(module, &key_apply_infos)
             | LWE::keyswitch_tmp_bytes(module, &lwe_out_infos, &lwe_in_infos, &key_apply_infos),
     );
@@ -136,7 +89,7 @@ where
 
     let mut lwe_ct_out: LWE<Vec<u8>> = LWE::alloc_from_infos(&lwe_out_infos);
 
-    let ksk_prepared: LWESwitchingKeyPrepared<Vec<u8>, B> = ksk.prepare_alloc(module, scratch.borrow());
+    let ksk_prepared: LWESwitchingKeyPrepared<Vec<u8>, BE> = ksk.prepare_alloc(module, scratch.borrow());
 
     lwe_ct_out.keyswitch(module, &lwe_ct_in, &ksk_prepared, scratch.borrow());
 
