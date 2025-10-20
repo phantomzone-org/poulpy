@@ -5,8 +5,8 @@ pub mod keyswitch;
 
 mod conversion;
 mod packing;
-// mod trace;
+mod trace;
 
 pub use conversion::*;
 pub use packing::*;
-// pub use trace::*;
+pub use trace::*;

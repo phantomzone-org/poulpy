@@ -1,4 +1,8 @@
-use std::{fmt::{Debug, Display}, marker::PhantomData, ptr::NonNull};
+use std::{
+    fmt::{Debug, Display},
+    marker::PhantomData,
+    ptr::NonNull,
+};
 
 use rand_distr::num_traits::Zero;
 
@@ -113,8 +117,10 @@ where
             panic!("cannot invert 0")
         }
 
-        let g_exp: u64 =
-            mod_exp_u64(gal_el.unsigned_abs(), (self.cyclotomic_order() - 1) as usize) & (self.cyclotomic_order() - 1) as u64;
+        let g_exp: u64 = mod_exp_u64(
+            gal_el.unsigned_abs(),
+            (self.cyclotomic_order() - 1) as usize,
+        ) & (self.cyclotomic_order() - 1) as u64;
         g_exp as i64 * gal_el.signum()
     }
 }

@@ -1,76 +1,38 @@
 use std::collections::HashMap;
 
 use poulpy_hal::{
-    api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolBytesOf, SvpPrepare,
-        VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxAutomorphism, VecZnxBigAddInplace,
-        VecZnxBigAddSmallInplace, VecZnxBigAutomorphismInplace, VecZnxBigBytesOf, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
-        VecZnxBigSubSmallNegateInplace, VecZnxCopy, VecZnxDftApply, VecZnxDftBytesOf, VecZnxFillUniform, VecZnxIdftApplyConsume,
-        VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotateInplace, VecZnxRshInplace, VecZnxSub,
-        VecZnxSubInplace, VecZnxSwitchRing, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes, VmpPMatAlloc,
-        VmpPrepare,
-    },
-    layouts::{Backend, Module, ScratchOwned, ZnxView, ZnxViewMut},
-    oep::{
-        ScratchAvailableImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeScalarZnxImpl, TakeSvpPPolImpl,
-        TakeVecZnxBigImpl, TakeVecZnxDftImpl, TakeVecZnxImpl,
-    },
+    api::{ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxFillUniform, VecZnxNormalizeInplace, VecZnxSubInplace},
+    layouts::{Backend, Module, Scratch, ScratchOwned, ZnxView, ZnxViewMut},
     source::Source,
 };
 
 use crate::{
+    AutomorphismKeyEncryptSk, GLWEDecrypt, GLWEEncryptSk, ScratchTakeCore,
     encryption::SIGMA,
+    glwe_trace::GLWETrace,
     layouts::{
-        AutomorphismKey, AutomorphismKeyLayout, GLWE, GLWELayout, GLWEPlaintext, GLWESecret, LWEInfos,
-        prepared::{AutomorphismKeyPrepared, GLWESecretPrepared, PrepareAlloc},
+        AutomorphismKey, AutomorphismKeyLayout, AutomorphismKeyPrepare, AutomorphismKeyPreparedAlloc, GLWE, GLWELayout,
+        GLWEPlaintext, GLWESecret, GLWESecretPrepare, GLWESecretPreparedAlloc, LWEInfos,
+        prepared::{AutomorphismKeyPrepared, GLWESecretPrepared},
     },
     noise::var_noise_gglwe_product,
 };
 
-pub fn test_glwe_trace_inplace<B>(module: &Module<B>)
+pub fn test_glwe_trace_inplace<BE: Backend>(module: &Module<BE>)
 where
-    Module<B>: VecZnxDftBytesOf
-        + VecZnxAutomorphism
-        + VecZnxBigAutomorphismInplace<B>
-        + VecZnxBigSubSmallNegateInplace<B>
-        + VecZnxRshInplace<B>
-        + VecZnxRotateInplace<B>
-        + VecZnxBigNormalize<B>
-        + VecZnxDftApply<B>
-        + SvpApplyDftToDftInplace<B>
-        + VecZnxIdftApplyConsume<B>
+    Module<BE>: GLWETrace<BE>
+        + GLWEEncryptSk<BE>
+        + GLWEDecrypt<BE>
+        + AutomorphismKeyEncryptSk<BE>
+        + AutomorphismKeyPrepare<BE>
+        + AutomorphismKeyPreparedAlloc<BE>
         + VecZnxFillUniform
+        + GLWESecretPrepare<BE>
+        + GLWESecretPreparedAlloc<BE>
         + VecZnxSubInplace
-        + VecZnxAddInplace
-        + VecZnxNormalizeInplace<B>
-        + VecZnxAddNormal
-        + VecZnxNormalize<B>
-        + VecZnxSub
-        + SvpPrepare<B>
-        + SvpPPolBytesOf
-        + SvpPPolAlloc<B>
-        + VecZnxBigBytesOf
-        + VecZnxBigAddInplace<B>
-        + VecZnxBigAddSmallInplace<B>
-        + VecZnxNormalizeTmpBytes
-        + VecZnxAddScalarInplace
-        + VmpPMatAlloc<B>
-        + VmpPrepare<B>
-        + VmpApplyDftToDftTmpBytes
-        + VmpApplyDftToDft<B>
-        + VmpApplyDftToDftAdd<B>
-        + VecZnxBigNormalizeTmpBytes
-        + VecZnxSwitchRing
-        + VecZnxCopy,
-    B: Backend
-        + TakeVecZnxDftImpl<B>
-        + TakeVecZnxBigImpl<B>
-        + TakeSvpPPolImpl<B>
-        + ScratchOwnedAllocImpl<B>
-        + ScratchOwnedBorrowImpl<B>
-        + ScratchAvailableImpl<B>
-        + TakeScalarZnxImpl<B>
-        + TakeVecZnxImpl<B>,
+        + VecZnxNormalizeInplace<BE>,
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
+    Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
     let base2k: usize = 8;
     let k: usize = 54;
@@ -106,16 +68,18 @@ where
         let mut source_xe: Source = Source::new([0u8; 32]);
         let mut source_xa: Source = Source::new([0u8; 32]);
 
-        let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
+        let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
             GLWE::encrypt_sk_tmp_bytes(module, &glwe_out_infos)
                 | GLWE::decrypt_tmp_bytes(module, &glwe_out_infos)
                 | AutomorphismKey::encrypt_sk_tmp_bytes(module, &key_infos)
-                | GLWE::trace_inplace_tmp_bytes(module, &glwe_out_infos, &key_infos),
+                | GLWE::trace_tmp_bytes(module, &glwe_out_infos, &glwe_out_infos, &key_infos),
         );
 
         let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_out_infos);
         sk.fill_ternary_prob(0.5, &mut source_xs);
-        let sk_dft: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
+
+        let mut sk_dft: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc_from_infos(module, &sk);
+        sk_dft.prepare(module, &sk);
 
         let mut data_want: Vec<i64> = vec![0i64; n];
 
@@ -134,7 +98,7 @@ where
             scratch.borrow(),
         );
 
-        let mut auto_keys: HashMap<i64, AutomorphismKeyPrepared<Vec<u8>, B>> = HashMap::new();
+        let mut auto_keys: HashMap<i64, AutomorphismKeyPrepared<Vec<u8>, BE>> = HashMap::new();
         let gal_els: Vec<i64> = GLWE::trace_galois_elements(module);
         let mut tmp: AutomorphismKey<Vec<u8>> = AutomorphismKey::alloc_from_infos(&key_infos);
         gal_els.iter().for_each(|gal_el| {
@@ -146,7 +110,8 @@ where
                 &mut source_xe,
                 scratch.borrow(),
             );
-            let atk_prepared: AutomorphismKeyPrepared<Vec<u8>, B> = tmp.prepare_alloc(module, scratch.borrow());
+            let mut atk_prepared: AutomorphismKeyPrepared<Vec<u8>, BE> = AutomorphismKeyPrepared::alloc_from_infos(module, &tmp);
+            atk_prepared.prepare(module, &tmp, scratch.borrow());
             auto_keys.insert(*gal_el, atk_prepared);
         });
 
