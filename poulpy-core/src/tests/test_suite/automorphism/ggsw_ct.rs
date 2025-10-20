@@ -1,79 +1,36 @@
 use poulpy_hal::{
-    api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolBytesOf,
-        SvpPrepare, VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxAutomorphism, VecZnxAutomorphismInplace,
-        VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigAlloc, VecZnxBigBytesOf, VecZnxBigNormalize,
-        VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftAddInplace, VecZnxDftAlloc, VecZnxDftApply, VecZnxDftBytesOf,
-        VecZnxDftCopy, VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA, VecZnxNormalize, VecZnxNormalizeInplace,
-        VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubInplace, VecZnxSwitchRing, VmpApplyDftToDft, VmpApplyDftToDftAdd,
-        VmpApplyDftToDftTmpBytes, VmpPMatAlloc, VmpPrepare,
-    },
-    layouts::{Backend, Module, ScalarZnx, ScratchOwned},
-    oep::{
-        ScratchAvailableImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeScalarZnxImpl, TakeSvpPPolImpl,
-        TakeVecZnxBigImpl, TakeVecZnxDftImpl, TakeVecZnxImpl, VecZnxBigAllocBytesImpl, VecZnxDftAllocBytesImpl,
-    },
+    api::{ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAutomorphismInplace},
+    layouts::{Backend, Module, ScalarZnx, Scratch, ScratchOwned},
     source::Source,
 };
 
 use crate::{
+    AutomorphismKeyEncryptSk, GGSWAutomorphism, GGSWEncryptSk, GGSWNoise, ScratchTakeCore, TensorKeyEncryptSk,
     encryption::SIGMA,
     layouts::{
-        AutomorphismKey, GGSW, GGSWCiphertextLayout, GLWESecret, TensorKey, TensorKeyLayout,
-        prepared::{AutomorphismKeyPrepared, GLWESecretPrepared, Prepare, PrepareAlloc, TensorKeyPrepared},
+        AutomorphismKey, AutomorphismKeyPrepare, AutomorphismKeyPreparedAlloc, GGSW, GGSWLayout, GLWESecret, GLWESecretPrepare,
+        GLWESecretPreparedAlloc, TensorKey, TensorKeyLayout, TensorKeyPrepare, TensorKeyPreparedAlloc,
+        prepared::{AutomorphismKeyPrepared, GLWESecretPrepared, TensorKeyPrepared},
     },
     noise::noise_ggsw_keyswitch,
 };
 
-pub fn test_ggsw_automorphism<B>(module: &Module<B>)
+pub fn test_ggsw_automorphism<BE: Backend>(module: &Module<BE>)
 where
-    Module<B>: VecZnxDftBytesOf
-        + VecZnxBigBytesOf
-        + VecZnxDftApply<B>
-        + SvpApplyDftToDftInplace<B>
-        + VecZnxIdftApplyConsume<B>
-        + VecZnxBigAddInplace<B>
-        + VecZnxBigAddSmallInplace<B>
-        + VecZnxBigNormalize<B>
-        + VecZnxNormalizeTmpBytes
-        + VecZnxBigAlloc<B>
-        + VecZnxDftAlloc<B>
-        + VecZnxBigNormalizeTmpBytes
-        + VecZnxIdftApplyTmpA<B>
-        + SvpPrepare<B>
-        + SvpPPolBytesOf
-        + SvpPPolAlloc<B>
-        + VecZnxAddScalarInplace
-        + VecZnxCopy
-        + VecZnxSubInplace
-        + VmpPMatAlloc<B>
-        + VmpPrepare<B>
-        + VmpApplyDftToDftTmpBytes
-        + VmpApplyDftToDft<B>
-        + VmpApplyDftToDftAdd<B>
-        + VecZnxDftCopy<B>
-        + VecZnxDftAddInplace<B>
-        + VecZnxFillUniform
-        + VecZnxAddInplace
-        + VecZnxNormalizeInplace<B>
-        + VecZnxAddNormal
-        + VecZnxNormalize<B>
-        + VecZnxSub
-        + SvpApplyDftToDft<B>
-        + VecZnxSwitchRing
-        + VecZnxAutomorphismInplace<B>
-        + VecZnxAutomorphism,
-    B: Backend
-        + TakeVecZnxDftImpl<B>
-        + TakeVecZnxBigImpl<B>
-        + ScratchOwnedAllocImpl<B>
-        + ScratchOwnedBorrowImpl<B>
-        + ScratchAvailableImpl<B>
-        + TakeScalarZnxImpl<B>
-        + TakeVecZnxImpl<B>
-        + VecZnxDftAllocBytesImpl<B>
-        + VecZnxBigAllocBytesImpl<B>
-        + TakeSvpPPolImpl<B>,
+    Module<BE>: GGSWEncryptSk<BE>
+        + AutomorphismKeyEncryptSk<BE>
+        + AutomorphismKeyPreparedAlloc<BE>
+        + AutomorphismKeyPrepare<BE>
+        + GGSWAutomorphism<BE>
+        + TensorKeyPrepare<BE>
+        + TensorKeyPreparedAlloc<BE>
+        + TensorKeyEncryptSk<BE>
+        + GLWESecretPrepare<BE>
+        + GLWESecretPreparedAlloc<BE>
+        + VecZnxAutomorphismInplace<BE>
+        + GGSWNoise<BE>,
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
+    Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
     let base2k: usize = 12;
     let k_in: usize = 54;
@@ -92,7 +49,7 @@ where
 
             let dsize_in: usize = 1;
 
-            let ggsw_in_layout: GGSWCiphertextLayout = GGSWCiphertextLayout {
+            let ggsw_in_layout: GGSWLayout = GGSWLayout {
                 n: n.into(),
                 base2k: base2k.into(),
                 k: k_in.into(),
@@ -101,7 +58,7 @@ where
                 rank: rank.into(),
             };
 
-            let ggsw_out_layout: GGSWCiphertextLayout = GGSWCiphertextLayout {
+            let ggsw_out_layout: GGSWLayout = GGSWLayout {
                 n: n.into(),
                 base2k: base2k.into(),
                 k: k_out.into(),
@@ -138,7 +95,7 @@ where
             let mut source_xe: Source = Source::new([0u8; 32]);
             let mut source_xa: Source = Source::new([0u8; 32]);
 
-            let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
+            let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
                 GGSW::encrypt_sk_tmp_bytes(module, &ct_in)
                     | AutomorphismKey::encrypt_sk_tmp_bytes(module, &auto_key)
                     | TensorKey::encrypt_sk_tmp_bytes(module, &tensor_key)
@@ -149,7 +106,9 @@ where
 
             let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&ct_out);
             sk.fill_ternary_prob(var_xs, &mut source_xs);
-            let sk_prepared: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
+
+            let mut sk_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc_from_infos(module, &sk);
+            sk_prepared.prepare(module, &sk);
 
             auto_key.encrypt_sk(
                 module,
@@ -178,11 +137,12 @@ where
                 scratch.borrow(),
             );
 
-            let mut auto_key_prepared: AutomorphismKeyPrepared<Vec<u8>, B> =
+            let mut auto_key_prepared: AutomorphismKeyPrepared<Vec<u8>, BE> =
                 AutomorphismKeyPrepared::alloc_from_infos(module, &auto_key_layout);
             auto_key_prepared.prepare(module, &auto_key, scratch.borrow());
 
-            let mut tsk_prepared: TensorKeyPrepared<Vec<u8>, B> = TensorKeyPrepared::alloc_from_infos(module, &tensor_key_layout);
+            let mut tsk_prepared: TensorKeyPrepared<Vec<u8>, BE> =
+                TensorKeyPrepared::alloc_from_infos(module, &tensor_key_layout);
             tsk_prepared.prepare(module, &tensor_key, scratch.borrow());
 
             ct_out.automorphism(
@@ -217,56 +177,22 @@ where
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn test_ggsw_automorphism_inplace<B>(module: &Module<B>)
+pub fn test_ggsw_automorphism_inplace<BE: Backend>(module: &Module<BE>)
 where
-    Module<B>: VecZnxDftBytesOf
-        + VecZnxBigBytesOf
-        + VecZnxDftApply<B>
-        + SvpApplyDftToDftInplace<B>
-        + VecZnxIdftApplyConsume<B>
-        + VecZnxBigAddInplace<B>
-        + VecZnxBigAddSmallInplace<B>
-        + VecZnxBigNormalize<B>
-        + VecZnxNormalizeTmpBytes
-        + VecZnxBigAlloc<B>
-        + VecZnxDftAlloc<B>
-        + VecZnxBigNormalizeTmpBytes
-        + VecZnxIdftApplyTmpA<B>
-        + SvpPrepare<B>
-        + SvpPPolBytesOf
-        + SvpPPolAlloc<B>
-        + VecZnxAddScalarInplace
-        + VecZnxCopy
-        + VecZnxSubInplace
-        + VmpPMatAlloc<B>
-        + VmpPrepare<B>
-        + VmpApplyDftToDftTmpBytes
-        + VmpApplyDftToDft<B>
-        + VmpApplyDftToDftAdd<B>
-        + VecZnxBigAddSmallInplace<B>
-        + VecZnxDftCopy<B>
-        + VecZnxDftAddInplace<B>
-        + VecZnxAddInplace
-        + VecZnxNormalizeInplace<B>
-        + VecZnxAddNormal
-        + VecZnxNormalize<B>
-        + VecZnxSub
-        + VecZnxFillUniform
-        + SvpApplyDftToDft<B>
-        + VecZnxSwitchRing
-        + VecZnxAutomorphismInplace<B>
-        + VecZnxAutomorphism,
-    B: Backend
-        + TakeVecZnxDftImpl<B>
-        + TakeVecZnxBigImpl<B>
-        + ScratchOwnedAllocImpl<B>
-        + ScratchOwnedBorrowImpl<B>
-        + ScratchAvailableImpl<B>
-        + TakeScalarZnxImpl<B>
-        + TakeVecZnxImpl<B>
-        + VecZnxDftAllocBytesImpl<B>
-        + VecZnxBigAllocBytesImpl<B>
-        + TakeSvpPPolImpl<B>,
+    Module<BE>: GGSWEncryptSk<BE>
+        + AutomorphismKeyEncryptSk<BE>
+        + AutomorphismKeyPreparedAlloc<BE>
+        + AutomorphismKeyPrepare<BE>
+        + GGSWAutomorphism<BE>
+        + TensorKeyPrepare<BE>
+        + TensorKeyPreparedAlloc<BE>
+        + TensorKeyEncryptSk<BE>
+        + GLWESecretPrepare<BE>
+        + GLWESecretPreparedAlloc<BE>
+        + VecZnxAutomorphismInplace<BE>
+        + GGSWNoise<BE>,
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
+    Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
     let base2k: usize = 12;
     let k_out: usize = 54;
@@ -282,7 +208,7 @@ where
             let dnum_in: usize = k_out.div_euclid(base2k * di);
             let dsize_in: usize = 1;
 
-            let ggsw_out_layout: GGSWCiphertextLayout = GGSWCiphertextLayout {
+            let ggsw_out_layout: GGSWLayout = GGSWLayout {
                 n: n.into(),
                 base2k: base2k.into(),
                 k: k_out.into(),
@@ -318,18 +244,20 @@ where
             let mut source_xe: Source = Source::new([0u8; 32]);
             let mut source_xa: Source = Source::new([0u8; 32]);
 
-            let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
+            let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
                 GGSW::encrypt_sk_tmp_bytes(module, &ct)
                     | AutomorphismKey::encrypt_sk_tmp_bytes(module, &auto_key)
                     | TensorKey::encrypt_sk_tmp_bytes(module, &tensor_key)
-                    | GGSW::automorphism_inplace_tmp_bytes(module, &ct, &auto_key, &tensor_key),
+                    | GGSW::automorphism_tmp_bytes(module, &ct, &ct, &auto_key, &tensor_key),
             );
 
             let var_xs: f64 = 0.5;
 
             let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&ct);
             sk.fill_ternary_prob(var_xs, &mut source_xs);
-            let sk_prepared: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
+
+            let mut sk_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc_from_infos(module, &sk);
+            sk_prepared.prepare(module, &sk);
 
             auto_key.encrypt_sk(
                 module,
@@ -358,11 +286,12 @@ where
                 scratch.borrow(),
             );
 
-            let mut auto_key_prepared: AutomorphismKeyPrepared<Vec<u8>, B> =
+            let mut auto_key_prepared: AutomorphismKeyPrepared<Vec<u8>, BE> =
                 AutomorphismKeyPrepared::alloc_from_infos(module, &auto_key_layout);
             auto_key_prepared.prepare(module, &auto_key, scratch.borrow());
 
-            let mut tsk_prepared: TensorKeyPrepared<Vec<u8>, B> = TensorKeyPrepared::alloc_from_infos(module, &tensor_key_layout);
+            let mut tsk_prepared: TensorKeyPrepared<Vec<u8>, BE> =
+                TensorKeyPrepared::alloc_from_infos(module, &tensor_key_layout);
             tsk_prepared.prepare(module, &tensor_key, scratch.borrow());
 
             ct.automorphism_inplace(module, &auto_key_prepared, &tsk_prepared, scratch.borrow());

@@ -114,7 +114,7 @@ where
         }
 
         let g_exp: u64 =
-            mod_exp_u64(GALOISGENERATOR, (self.cyclotomic_order() - 1) as usize) & (self.cyclotomic_order() - 1) as u64;
+            mod_exp_u64(gal_el.unsigned_abs(), (self.cyclotomic_order() - 1) as usize) & (self.cyclotomic_order() - 1) as u64;
         g_exp as i64 * gal_el.signum()
     }
 }

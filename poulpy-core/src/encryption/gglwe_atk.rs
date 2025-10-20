@@ -121,7 +121,7 @@ where
 
         {
             let (mut sk_out, _) = scratch_1.take_glwe_secret(self, sk.rank());
-            (0..res.rank_out().into()).for_each(|i| {
+            for i in 0..res.rank().into() {
                 self.vec_znx_automorphism(
                     self.galois_element_inv(p),
                     &mut sk_out.data.as_vec_znx_mut(),
@@ -129,7 +129,7 @@ where
                     &sk.data.as_vec_znx(),
                     i,
                 );
-            });
+            }
             sk_out_prepared.prepare(self, &sk_out);
         }
 

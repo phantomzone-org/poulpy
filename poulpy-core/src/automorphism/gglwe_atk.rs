@@ -86,6 +86,7 @@ where
         );
 
         let cols_out: usize = (key.rank_out() + 1).into();
+        let cols_in: usize = key.rank_in().into();
 
         let p: i64 = a.p();
         let p_inv: i64 = self.galois_element_inv(p);
@@ -95,7 +96,7 @@ where
             let a: &GGLWE<&[u8]> = &a.to_ref();
 
             for row in 0..res.dnum().as_usize() {
-                for col in 0..cols_out {
+                for col in 0..cols_in {
                     let mut res_tmp: GLWE<&mut [u8]> = res.at_mut(row, col);
                     let a_ct: GLWE<&[u8]> = a.at(row, col);
 
@@ -133,18 +134,19 @@ where
         );
 
         let cols_out: usize = (key.rank_out() + 1).into();
+        let cols_in: usize = key.rank_in().into();
         let p: i64 = res.p();
         let p_inv: i64 = self.galois_element_inv(p);
 
         {
             let res: &mut GGLWE<&mut [u8]> = &mut res.to_mut();
             for row in 0..res.dnum().as_usize() {
-                for col in 0..cols_out {
+                for col in 0..cols_in {
                     let mut res_tmp: GLWE<&mut [u8]> = res.at_mut(row, col);
 
                     // Reverts the automorphism X^{-k}: (-pi^{-1}_{k}(s)a + s, a) to (-sa + pi_{k}(s), a)
                     for i in 0..cols_out {
-                        self.vec_znx_automorphism_inplace(p_inv, res_tmp.data_mut(), i, scratch);
+                        self.vec_znx_automorphism_inplace(p, res_tmp.data_mut(), i, scratch);
                     }
 
                     // Key-switch (-sa + pi_{k}(s), a) to (-pi^{-1}_{k'}(s)a + pi_{k}(s), a)

@@ -21,8 +21,8 @@ backend_test_suite!(
 glwe_keyswitch => crate::tests::test_suite::keyswitch::test_glwe_keyswitch,
 glwe_keyswitch_inplace => crate::tests::test_suite::keyswitch::test_glwe_keyswitch_inplace,
 // GLWE Automorphism
-// glwe_automorphism => crate::tests::test_suite::automorphism::test_glwe_automorphism,
-// glwe_automorphism_inplace => crate::tests::test_suite::automorphism::test_glwe_automorphism_inplace,
+glwe_automorphism => crate::tests::test_suite::automorphism::test_glwe_automorphism,
+glwe_automorphism_inplace => crate::tests::test_suite::automorphism::test_glwe_automorphism_inplace,
 // GLWE External Product
 glwe_external_product => crate::tests::test_suite::external_product::test_glwe_external_product,
 glwe_external_product_inplace => crate::tests::test_suite::external_product::test_glwe_external_product_inplace,
@@ -43,8 +43,8 @@ gglwe_switching_key_keyswitch_inplace => crate::tests::test_suite::keyswitch::te
 gglwe_switching_key_external_product => crate::tests::test_suite::external_product::test_gglwe_switching_key_external_product,
 gglwe_switching_key_external_product_inplace => crate::tests::test_suite::external_product::test_gglwe_switching_key_external_product_inplace,
 // GGLWE Automorphism
-// gglwe_automorphism_key_automorphism => crate::tests::test_suite::automorphism::test_gglwe_automorphism_key_automorphism,
-// gglwe_automorphism_key_automorphism_inplace => crate::tests::test_suite::automorphism::test_gglwe_automorphism_key_automorphism_inplace,
+gglwe_automorphism_key_automorphism => crate::tests::test_suite::automorphism::test_gglwe_automorphism_key_automorphism,
+gglwe_automorphism_key_automorphism_inplace => crate::tests::test_suite::automorphism::test_gglwe_automorphism_key_automorphism_inplace,
 // GGSW Encryption
 ggsw_encrypt_sk => crate::tests::test_suite::encryption::test_ggsw_encrypt_sk,
 ggsw_compressed_encrypt_sk => crate::tests::test_suite::encryption::test_ggsw_compressed_encrypt_sk,
@@ -55,8 +55,8 @@ ggsw_keyswitch_inplace => crate::tests::test_suite::keyswitch::test_ggsw_keyswit
 ggsw_external_product => crate::tests::test_suite::external_product::test_ggsw_external_product,
 ggsw_external_product_inplace => crate::tests::test_suite::external_product::test_ggsw_external_product_inplace,
 // GGSW Automorphism
-// ggsw_automorphism => crate::tests::test_suite::automorphism::test_ggsw_automorphism,
-// ggsw_automorphism_inplace => crate::tests::test_suite::automorphism::test_ggsw_automorphism_inplace,
+ggsw_automorphism => crate::tests::test_suite::automorphism::test_ggsw_automorphism,
+ggsw_automorphism_inplace => crate::tests::test_suite::automorphism::test_ggsw_automorphism_inplace,
 // LWE
 lwe_keyswitch => crate::tests::test_suite::keyswitch::test_lwe_keyswitch,
 // glwe_to_lwe => crate::tests::test_suite::test_glwe_to_lwe,
