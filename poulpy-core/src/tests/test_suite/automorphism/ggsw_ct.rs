@@ -8,8 +8,8 @@ use crate::{
     AutomorphismKeyEncryptSk, GGSWAutomorphism, GGSWEncryptSk, GGSWNoise, ScratchTakeCore, TensorKeyEncryptSk,
     encryption::SIGMA,
     layouts::{
-        AutomorphismKey, GGSW, GGSWLayout, GLWEAutomorphismKeyPreparedApi, GLWESecret, GLWESecretPreparedApi, TensorKey,
-        TensorKeyLayout, TensorKeyPreparedAlloc,
+        AutomorphismKey, GGSW, GGSWLayout, GLWEAutomorphismKeyPreparedFactory, GLWESecret, GLWESecretPreparedFactory, TensorKey,
+        TensorKeyLayout, TensorKeyPreparedFactory,
         prepared::{GLWEAutomorphismKeyPrepared, GLWESecretPrepared, TensorKeyPrepared},
     },
     noise::noise_ggsw_keyswitch,
@@ -19,11 +19,11 @@ pub fn test_ggsw_automorphism<BE: Backend>(module: &Module<BE>)
 where
     Module<BE>: GGSWEncryptSk<BE>
         + AutomorphismKeyEncryptSk<BE>
-        + GLWEAutomorphismKeyPreparedApi<BE>
+        + GLWEAutomorphismKeyPreparedFactory<BE>
         + GGSWAutomorphism<BE>
-        + TensorKeyPreparedAlloc<BE>
+        + TensorKeyPreparedFactory<BE>
         + TensorKeyEncryptSk<BE>
-        + GLWESecretPreparedApi<BE>
+        + GLWESecretPreparedFactory<BE>
         + VecZnxAutomorphismInplace<BE>
         + GGSWNoise<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
@@ -178,11 +178,11 @@ pub fn test_ggsw_automorphism_inplace<BE: Backend>(module: &Module<BE>)
 where
     Module<BE>: GGSWEncryptSk<BE>
         + AutomorphismKeyEncryptSk<BE>
-        + GLWEAutomorphismKeyPreparedApi<BE>
+        + GLWEAutomorphismKeyPreparedFactory<BE>
         + GGSWAutomorphism<BE>
-        + TensorKeyPreparedAlloc<BE>
+        + TensorKeyPreparedFactory<BE>
         + TensorKeyEncryptSk<BE>
-        + GLWESecretPreparedApi<BE>
+        + GLWESecretPreparedFactory<BE>
         + VecZnxAutomorphismInplace<BE>
         + GGSWNoise<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,

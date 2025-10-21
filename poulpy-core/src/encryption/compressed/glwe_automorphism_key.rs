@@ -8,7 +8,7 @@ use crate::{
     GGLWECompressedEncryptSk, ScratchTakeCore,
     layouts::{
         GGLWECompressedSeedMut, GGLWECompressedToMut, GGLWEInfos, GLWEInfos, GLWESecret, GLWESecretPrepared,
-        GLWESecretPreparedApi, GLWESecretToRef, LWEInfos, SetGaloisElement, compressed::GLWEAutomorphismKeyCompressed,
+        GLWESecretPreparedFactory, GLWESecretToRef, LWEInfos, SetGaloisElement, compressed::GLWEAutomorphismKeyCompressed,
     },
 };
 
@@ -60,7 +60,7 @@ pub trait AutomorphismKeyCompressedEncryptSk<BE: Backend> {
 
 impl<BE: Backend> AutomorphismKeyCompressedEncryptSk<BE> for Module<BE>
 where
-    Self: ModuleN + GaloisElement + VecZnxAutomorphism + GGLWECompressedEncryptSk<BE> + GLWESecretPreparedApi<BE>,
+    Self: ModuleN + GaloisElement + VecZnxAutomorphism + GGLWECompressedEncryptSk<BE> + GLWESecretPreparedFactory<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     fn automorphism_key_compressed_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize

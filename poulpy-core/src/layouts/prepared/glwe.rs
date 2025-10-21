@@ -36,7 +36,7 @@ impl<D: Data, B: Backend> GLWEInfos for GLWEPrepared<D, B> {
     }
 }
 
-pub trait GLWEPreparedAlloc<B: Backend>
+pub trait GLWEPreparedFactory<B: Backend>
 where
     Self: GetDegree + VecZnxDftAlloc<B> + VecZnxDftBytesOf + VecZnxDftApply<B>,
 {
@@ -88,20 +88,20 @@ where
     }
 }
 
-impl<B: Backend> GLWEPreparedAlloc<B> for Module<B> where Self: VecZnxDftAlloc<B> + VecZnxDftBytesOf + VecZnxDftApply<B> {}
+impl<B: Backend> GLWEPreparedFactory<B> for Module<B> where Self: VecZnxDftAlloc<B> + VecZnxDftBytesOf + VecZnxDftApply<B> {}
 
 impl<B: Backend> GLWEPrepared<Vec<u8>, B> {
     pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
     where
         A: GLWEInfos,
-        M: GLWEPreparedAlloc<B>,
+        M: GLWEPreparedFactory<B>,
     {
         module.alloc_glwe_prepared_from_infos(infos)
     }
 
     pub fn alloc<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank: Rank) -> Self
     where
-        M: GLWEPreparedAlloc<B>,
+        M: GLWEPreparedFactory<B>,
     {
         module.alloc_glwe_prepared(base2k, k, rank)
     }
@@ -109,14 +109,14 @@ impl<B: Backend> GLWEPrepared<Vec<u8>, B> {
     pub fn bytes_of_from_infos<A, M>(module: &M, infos: &A) -> usize
     where
         A: GLWEInfos,
-        M: GLWEPreparedAlloc<B>,
+        M: GLWEPreparedFactory<B>,
     {
         module.bytes_of_glwe_prepared_from_infos(infos)
     }
 
     pub fn bytes_of<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank: Rank) -> usize
     where
-        M: GLWEPreparedAlloc<B>,
+        M: GLWEPreparedFactory<B>,
     {
         module.bytes_of_glwe_prepared(base2k, k, rank)
     }
@@ -126,7 +126,7 @@ impl<D: DataMut, B: Backend> GLWEPrepared<D, B> {
     pub fn prepare<O, M>(&mut self, module: &M, other: &O)
     where
         O: GLWEToRef,
-        M: GLWEPreparedAlloc<B>,
+        M: GLWEPreparedFactory<B>,
     {
         module.prepare_glwe(self, other);
     }

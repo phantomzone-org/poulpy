@@ -7,7 +7,7 @@ use crate::{
     GetDistribution, GetDistributionMut,
     dist::Distribution,
     layouts::{
-        Base2K, Degree, GLWEInfos, GLWEPrepared, GLWEPreparedAlloc, GLWEPreparedToMut, GLWEPreparedToRef, GLWEToRef, GetDegree,
+        Base2K, Degree, GLWEInfos, GLWEPrepared, GLWEPreparedFactory, GLWEPreparedToMut, GLWEPreparedToRef, GLWEToRef, GetDegree,
         LWEInfos, Rank, TorusPrecision,
     },
 };
@@ -54,9 +54,9 @@ impl<D: Data, B: Backend> GLWEInfos for GLWEPublicKeyPrepared<D, B> {
     }
 }
 
-pub trait GLWEPublicKeyPreparedAlloc<B: Backend>
+pub trait GLWEPublicKeyPreparedFactory<B: Backend>
 where
-    Self: GetDegree + GLWEPreparedAlloc<B>,
+    Self: GetDegree + GLWEPreparedFactory<B>,
 {
     fn alloc_glwe_public_key_prepared(&self, base2k: Base2K, k: TorusPrecision, rank: Rank) -> GLWEPublicKeyPrepared<Vec<u8>, B> {
         GLWEPublicKeyPrepared {
@@ -93,20 +93,20 @@ where
     }
 }
 
-impl<B: Backend> GLWEPublicKeyPreparedAlloc<B> for Module<B> where Self: VecZnxDftAlloc<B> + VecZnxDftBytesOf + VecZnxDftApply<B> {}
+impl<B: Backend> GLWEPublicKeyPreparedFactory<B> for Module<B> where Self: VecZnxDftAlloc<B> + VecZnxDftBytesOf + VecZnxDftApply<B> {}
 
 impl<B: Backend> GLWEPublicKeyPrepared<Vec<u8>, B> {
     pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
     where
         A: GLWEInfos,
-        M: GLWEPublicKeyPreparedAlloc<B>,
+        M: GLWEPublicKeyPreparedFactory<B>,
     {
         module.alloc_glwe_public_key_prepared_from_infos(infos)
     }
 
     pub fn alloc<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank: Rank) -> Self
     where
-        M: GLWEPublicKeyPreparedAlloc<B>,
+        M: GLWEPublicKeyPreparedFactory<B>,
     {
         module.alloc_glwe_public_key_prepared(base2k, k, rank)
     }
@@ -114,14 +114,14 @@ impl<B: Backend> GLWEPublicKeyPrepared<Vec<u8>, B> {
     pub fn bytes_of_from_infos<A, M>(module: &M, infos: &A) -> usize
     where
         A: GLWEInfos,
-        M: GLWEPublicKeyPreparedAlloc<B>,
+        M: GLWEPublicKeyPreparedFactory<B>,
     {
         module.bytes_of_glwe_public_key_prepared_from_infos(infos)
     }
 
     pub fn bytes_of<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank: Rank) -> usize
     where
-        M: GLWEPublicKeyPreparedAlloc<B>,
+        M: GLWEPublicKeyPreparedFactory<B>,
     {
         module.bytes_of_glwe_public_key_prepared(base2k, k, rank)
     }
@@ -131,7 +131,7 @@ impl<D: DataMut, B: Backend> GLWEPublicKeyPrepared<D, B> {
     pub fn prepare<O, M>(&mut self, module: &M, other: &O)
     where
         O: GLWEToRef + GetDistribution,
-        M: GLWEPublicKeyPreparedAlloc<B>,
+        M: GLWEPublicKeyPreparedFactory<B>,
     {
         module.prepare_glwe_public_key(self, other);
     }

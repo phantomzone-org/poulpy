@@ -7,7 +7,7 @@ use poulpy_hal::{
 use crate::{
     GGLWEEncryptSk, ScratchTakeCore,
     layouts::{
-        GGLWE, GGLWEInfos, GGLWEToMut, GLWESecret, GLWESecretPreparedApi, GLWESecretPreparedToRef, LWEInfos, LWESecret,
+        GGLWE, GGLWEInfos, GGLWEToMut, GLWESecret, GLWESecretPreparedFactory, GLWESecretPreparedToRef, LWEInfos, LWESecret,
         LWESecretToRef, LWEToGLWESwitchingKey, Rank,
     },
 };
@@ -65,7 +65,7 @@ where
     Self: ModuleN
         + GGLWEEncryptSk<BE>
         + VecZnxAutomorphismInplace<BE>
-        + GLWESecretPreparedApi<BE>
+        + GLWESecretPreparedFactory<BE>
         + VecZnxAutomorphismInplaceTmpBytes,
     Scratch<BE>: ScratchTakeCore<BE>,
 {

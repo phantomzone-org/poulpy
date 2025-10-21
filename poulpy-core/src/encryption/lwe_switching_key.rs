@@ -10,7 +10,7 @@ use crate::{
     layouts::{
         GGLWEInfos, GGLWEToMut, GLWESecret, GLWESwitchingKey, GLWESwitchingKeyDegreesMut, LWEInfos, LWESecret, LWESecretToRef,
         LWESwitchingKey, Rank,
-        prepared::{GLWESecretPrepared, GLWESecretPreparedApi},
+        prepared::{GLWESecretPrepared, GLWESecretPreparedFactory},
     },
 };
 
@@ -63,7 +63,7 @@ pub trait LWESwitchingKeyEncrypt<BE: Backend> {
 
 impl<BE: Backend> LWESwitchingKeyEncrypt<BE> for Module<BE>
 where
-    Self: ModuleN + GLWESwitchingKeyEncryptSk<BE> + GLWESecretPreparedApi<BE> + VecZnxAutomorphismInplace<BE>,
+    Self: ModuleN + GLWESwitchingKeyEncryptSk<BE> + GLWESecretPreparedFactory<BE> + VecZnxAutomorphismInplace<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     fn lwe_switching_key_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize

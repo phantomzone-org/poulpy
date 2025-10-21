@@ -11,8 +11,8 @@ use crate::{
     encryption::SIGMA,
     glwe_trace::GLWETrace,
     layouts::{
-        AutomorphismKey, AutomorphismKeyLayout, GLWE, GLWEAutomorphismKeyPreparedApi, GLWELayout, GLWEPlaintext, GLWESecret,
-        GLWESecretPreparedApi, LWEInfos,
+        AutomorphismKey, AutomorphismKeyLayout, GLWE, GLWEAutomorphismKeyPreparedFactory, GLWELayout, GLWEPlaintext, GLWESecret,
+        GLWESecretPreparedFactory, LWEInfos,
         prepared::{GLWEAutomorphismKeyPrepared, GLWESecretPrepared},
     },
     noise::var_noise_gglwe_product,
@@ -24,9 +24,9 @@ where
         + GLWEEncryptSk<BE>
         + GLWEDecrypt<BE>
         + AutomorphismKeyEncryptSk<BE>
-        + GLWEAutomorphismKeyPreparedApi<BE>
+        + GLWEAutomorphismKeyPreparedFactory<BE>
         + VecZnxFillUniform
-        + GLWESecretPreparedApi<BE>
+        + GLWESecretPreparedFactory<BE>
         + VecZnxSubInplace
         + VecZnxNormalizeInplace<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,

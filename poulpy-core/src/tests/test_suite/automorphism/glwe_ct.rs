@@ -8,8 +8,8 @@ use crate::{
     AutomorphismKeyEncryptSk, GLWEAutomorphism, GLWEDecrypt, GLWEEncryptSk, GLWENoise, ScratchTakeCore,
     encryption::SIGMA,
     layouts::{
-        AutomorphismKey, AutomorphismKeyLayout, GLWE, GLWEAutomorphismKeyPreparedApi, GLWELayout, GLWEPlaintext, GLWESecret,
-        GLWESecretPreparedApi,
+        AutomorphismKey, AutomorphismKeyLayout, GLWE, GLWEAutomorphismKeyPreparedFactory, GLWELayout, GLWEPlaintext, GLWESecret,
+        GLWESecretPreparedFactory,
         prepared::{GLWEAutomorphismKeyPrepared, GLWESecretPrepared},
     },
     noise::log2_std_noise_gglwe_product,
@@ -18,12 +18,12 @@ use crate::{
 pub fn test_glwe_automorphism<BE: Backend>(module: &Module<BE>)
 where
     Module<BE>: GLWEEncryptSk<BE>
-        + GLWESecretPreparedApi<BE>
+        + GLWESecretPreparedFactory<BE>
         + VecZnxFillUniform
         + GLWEDecrypt<BE>
         + GLWEAutomorphism<BE>
         + AutomorphismKeyEncryptSk<BE>
-        + GLWEAutomorphismKeyPreparedApi<BE>
+        + GLWEAutomorphismKeyPreparedFactory<BE>
         + GLWENoise<BE>
         + VecZnxAutomorphismInplace<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
@@ -136,12 +136,12 @@ where
 pub fn test_glwe_automorphism_inplace<BE: Backend>(module: &Module<BE>)
 where
     Module<BE>: GLWEEncryptSk<BE>
-        + GLWESecretPreparedApi<BE>
+        + GLWESecretPreparedFactory<BE>
         + VecZnxFillUniform
         + GLWEDecrypt<BE>
         + GLWEAutomorphism<BE>
         + AutomorphismKeyEncryptSk<BE>
-        + GLWEAutomorphismKeyPreparedApi<BE>
+        + GLWEAutomorphismKeyPreparedFactory<BE>
         + GLWENoise<BE>
         + VecZnxAutomorphismInplace<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,

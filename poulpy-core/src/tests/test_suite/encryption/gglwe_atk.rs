@@ -9,7 +9,7 @@ use crate::{
     GLWESwitchingKeyEncryptSk, ScratchTakeCore,
     encryption::SIGMA,
     layouts::{
-        AutomorphismKey, AutomorphismKeyDecompress, AutomorphismKeyLayout, GLWEInfos, GLWESecret, GLWESecretPreparedApi,
+        AutomorphismKey, AutomorphismKeyDecompress, AutomorphismKeyLayout, GLWEInfos, GLWESecret, GLWESecretPreparedFactory,
         GLWESwitchingKeyDecompress, compressed::GLWEAutomorphismKeyCompressed, prepared::GLWESecretPrepared,
     },
     noise::GGLWENoise,
@@ -19,7 +19,7 @@ pub fn test_gglwe_automorphism_key_encrypt_sk<BE: Backend>(module: &Module<BE>)
 where
     Module<BE>: AutomorphismKeyEncryptSk<BE>
         + GGLWEKeyswitch<BE>
-        + GLWESecretPreparedApi<BE>
+        + GLWESecretPreparedFactory<BE>
         + GLWESwitchingKeyEncryptSk<BE>
         + GLWESwitchingKeyCompressedEncryptSk<BE>
         + GLWESwitchingKeyDecompress
@@ -91,7 +91,7 @@ pub fn test_gglwe_automorphism_key_compressed_encrypt_sk<BE: Backend>(module: &M
 where
     Module<BE>: AutomorphismKeyCompressedEncryptSk<BE>
         + GGLWEKeyswitch<BE>
-        + GLWESecretPreparedApi<BE>
+        + GLWESecretPreparedFactory<BE>
         + GLWESwitchingKeyEncryptSk<BE>
         + GLWESwitchingKeyCompressedEncryptSk<BE>
         + AutomorphismKeyDecompress

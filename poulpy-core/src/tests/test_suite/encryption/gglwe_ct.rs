@@ -9,8 +9,8 @@ use crate::{
     decryption::GLWEDecrypt,
     encryption::SIGMA,
     layouts::{
-        GGLWELayout, GLWESecret, GLWESecretPreparedApi, GLWESwitchingKey, GLWESwitchingKeyCompressed, GLWESwitchingKeyDecompress,
-        prepared::{GGLWEPreparedAlloc, GLWESecretPrepared},
+        GGLWELayout, GLWESecret, GLWESecretPreparedFactory, GLWESwitchingKey, GLWESwitchingKeyCompressed, GLWESwitchingKeyDecompress,
+        prepared::{GGLWEPreparedFactory, GLWESecretPrepared},
     },
     noise::GGLWENoise,
 };
@@ -18,10 +18,10 @@ use crate::{
 pub fn test_gglwe_switching_key_encrypt_sk<BE: Backend>(module: &Module<BE>)
 where
     Module<BE>: GGLWEEncryptSk<BE>
-        + GGLWEPreparedAlloc<BE>
+        + GGLWEPreparedFactory<BE>
         + GGLWEKeyswitch<BE>
         + GLWEDecrypt<BE>
-        + GLWESecretPreparedApi<BE>
+        + GLWESecretPreparedFactory<BE>
         + GLWESwitchingKeyEncryptSk<BE>
         + VecZnxFillUniform
         + GGLWENoise<BE>,
@@ -83,10 +83,10 @@ where
 pub fn test_gglwe_switching_key_compressed_encrypt_sk<BE: Backend>(module: &Module<BE>)
 where
     Module<BE>: GGLWEEncryptSk<BE>
-        + GGLWEPreparedAlloc<BE>
+        + GGLWEPreparedFactory<BE>
         + GGLWEKeyswitch<BE>
         + GLWEDecrypt<BE>
-        + GLWESecretPreparedApi<BE>
+        + GLWESecretPreparedFactory<BE>
         + GLWESwitchingKeyEncryptSk<BE>
         + GLWESwitchingKeyCompressedEncryptSk<BE>
         + GLWESwitchingKeyDecompress

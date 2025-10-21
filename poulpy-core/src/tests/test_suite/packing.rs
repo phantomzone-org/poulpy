@@ -9,8 +9,8 @@ use poulpy_hal::{
 use crate::{
     AutomorphismKeyEncryptSk, GLWEDecrypt, GLWEEncryptSk, GLWEPacker, GLWEPacking, GLWERotate, GLWESub, ScratchTakeCore,
     layouts::{
-        AutomorphismKey, AutomorphismKeyLayout, GLWE, GLWEAutomorphismKeyPreparedApi, GLWELayout, GLWEPlaintext, GLWESecret,
-        GLWESecretPreparedApi,
+        AutomorphismKey, AutomorphismKeyLayout, GLWE, GLWEAutomorphismKeyPreparedFactory, GLWELayout, GLWEPlaintext, GLWESecret,
+        GLWESecretPreparedFactory,
         prepared::{GLWEAutomorphismKeyPrepared, GLWESecretPrepared},
     },
 };
@@ -19,9 +19,9 @@ pub fn test_glwe_packing<BE: Backend>(module: &Module<BE>)
 where
     Module<BE>: GLWEEncryptSk<BE>
         + AutomorphismKeyEncryptSk<BE>
-        + GLWEAutomorphismKeyPreparedApi<BE>
+        + GLWEAutomorphismKeyPreparedFactory<BE>
         + GLWEPacking<BE>
-        + GLWESecretPreparedApi<BE>
+        + GLWESecretPreparedFactory<BE>
         + GLWESub
         + GLWEDecrypt<BE>
         + GLWERotate<BE>,

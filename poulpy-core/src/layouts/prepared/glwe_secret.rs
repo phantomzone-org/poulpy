@@ -49,7 +49,7 @@ impl<D: Data, B: Backend> GLWEInfos for GLWESecretPrepared<D, B> {
     }
 }
 
-pub trait GLWESecretPreparedApi<B: Backend>
+pub trait GLWESecretPreparedFactory<B: Backend>
 where
     Self: GetDegree + SvpPPolBytesOf + SvpPPolAlloc<B> + SvpPrepare<B>,
 {
@@ -96,20 +96,20 @@ where
     }
 }
 
-impl<B: Backend> GLWESecretPreparedApi<B> for Module<B> where Self: GetDegree + SvpPPolBytesOf + SvpPPolAlloc<B> + SvpPrepare<B> {}
+impl<B: Backend> GLWESecretPreparedFactory<B> for Module<B> where Self: GetDegree + SvpPPolBytesOf + SvpPPolAlloc<B> + SvpPrepare<B> {}
 
 impl<B: Backend> GLWESecretPrepared<Vec<u8>, B> {
     pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
     where
         A: GLWEInfos,
-        M: GLWESecretPreparedApi<B>,
+        M: GLWESecretPreparedFactory<B>,
     {
         module.alloc_glwe_secret_prepared_from_infos(infos)
     }
 
     pub fn alloc<M>(module: &M, rank: Rank) -> Self
     where
-        M: GLWESecretPreparedApi<B>,
+        M: GLWESecretPreparedFactory<B>,
     {
         module.alloc_glwe_secret_prepared(rank)
     }
@@ -117,14 +117,14 @@ impl<B: Backend> GLWESecretPrepared<Vec<u8>, B> {
     pub fn bytes_of_from_infos<A, M>(module: &M, infos: &A) -> usize
     where
         A: GLWEInfos,
-        M: GLWESecretPreparedApi<B>,
+        M: GLWESecretPreparedFactory<B>,
     {
         module.bytes_of_glwe_secret_prepared_from_infos(infos)
     }
 
     pub fn bytes_of<M>(module: &M, rank: Rank) -> usize
     where
-        M: GLWESecretPreparedApi<B>,
+        M: GLWESecretPreparedFactory<B>,
     {
         module.bytes_of_glwe_secret_prepared(rank)
     }
@@ -143,7 +143,7 @@ impl<D: Data, B: Backend> GLWESecretPrepared<D, B> {
 impl<D: DataMut, B: Backend> GLWESecretPrepared<D, B> {
     pub fn prepare<M, O>(&mut self, module: &M, other: &O)
     where
-        M: GLWESecretPreparedApi<B>,
+        M: GLWESecretPreparedFactory<B>,
         O: GLWESecretToRef + GetDistribution,
     {
         module.prepare_glwe_secret(self, other);

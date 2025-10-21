@@ -8,7 +8,7 @@ use crate::{
     GGSWEncryptSk, GGSWExternalProduct, GGSWNoise, ScratchTakeCore,
     encryption::SIGMA,
     layouts::{
-        GGSW, GGSWLayout, GGSWPreparedAlloc, GLWESecret, GLWESecretPreparedApi,
+        GGSW, GGSWLayout, GGSWPreparedFactory, GLWESecret, GLWESecretPreparedFactory,
         prepared::{GGSWPrepared, GLWESecretPrepared},
     },
     noise::noise_ggsw_product,
@@ -19,8 +19,8 @@ pub fn test_ggsw_external_product<BE: Backend>(module: &Module<BE>)
 where
     Module<BE>: GGSWEncryptSk<BE>
         + GGSWExternalProduct<BE>
-        + GLWESecretPreparedApi<BE>
-        + GGSWPreparedAlloc<BE>
+        + GLWESecretPreparedFactory<BE>
+        + GGSWPreparedFactory<BE>
         + VecZnxRotateInplace<BE>
         + GGSWNoise<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
@@ -153,8 +153,8 @@ pub fn test_ggsw_external_product_inplace<BE: Backend>(module: &Module<BE>)
 where
     Module<BE>: GGSWEncryptSk<BE>
         + GGSWExternalProduct<BE>
-        + GLWESecretPreparedApi<BE>
-        + GGSWPreparedAlloc<BE>
+        + GLWESecretPreparedFactory<BE>
+        + GGSWPreparedFactory<BE>
         + VecZnxRotateInplace<BE>
         + GGSWNoise<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,

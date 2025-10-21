@@ -57,7 +57,7 @@ impl<D: Data, B: Backend> GGLWEInfos for GGLWEPrepared<D, B> {
     }
 }
 
-pub trait GGLWEPreparedAlloc<BE: Backend>
+pub trait GGLWEPreparedFactory<BE: Backend>
 where
     Self: GetDegree + VmpPMatAlloc<BE> + VmpPMatBytesOf + VmpPrepare<BE> + VmpPrepareTmpBytes,
 {
@@ -178,7 +178,7 @@ where
     }
 }
 
-impl<BE: Backend> GGLWEPreparedAlloc<BE> for Module<BE> where
+impl<BE: Backend> GGLWEPreparedFactory<BE> for Module<BE> where
     Module<BE>: GetDegree + VmpPMatAlloc<BE> + VmpPMatBytesOf + VmpPrepare<BE> + VmpPrepareTmpBytes
 {
 }
@@ -187,7 +187,7 @@ impl<B: Backend> GGLWEPrepared<Vec<u8>, B> {
     pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
     where
         A: GGLWEInfos,
-        M: GGLWEPreparedAlloc<B>,
+        M: GGLWEPreparedFactory<B>,
     {
         module.alloc_gglwe_prepared_from_infos(infos)
     }
@@ -202,7 +202,7 @@ impl<B: Backend> GGLWEPrepared<Vec<u8>, B> {
         dsize: Dsize,
     ) -> Self
     where
-        M: GGLWEPreparedAlloc<B>,
+        M: GGLWEPreparedFactory<B>,
     {
         module.alloc_gglwe_prepared(base2k, k, rank_in, rank_out, dnum, dsize)
     }
@@ -210,7 +210,7 @@ impl<B: Backend> GGLWEPrepared<Vec<u8>, B> {
     pub fn bytes_of_from_infos<A, M>(module: &M, infos: &A) -> usize
     where
         A: GGLWEInfos,
-        M: GGLWEPreparedAlloc<B>,
+        M: GGLWEPreparedFactory<B>,
     {
         module.bytes_of_gglwe_prepared_from_infos(infos)
     }
@@ -225,7 +225,7 @@ impl<B: Backend> GGLWEPrepared<Vec<u8>, B> {
         dsize: Dsize,
     ) -> usize
     where
-        M: GGLWEPreparedAlloc<B>,
+        M: GGLWEPreparedFactory<B>,
     {
         module.bytes_of_gglwe_prepared(base2k, k, rank_in, rank_out, dnum, dsize)
     }
@@ -235,7 +235,7 @@ impl<D: DataMut, B: Backend> GGLWEPrepared<D, B> {
     pub fn prepare<O, M>(&mut self, module: &M, other: &O, scratch: &mut Scratch<B>)
     where
         O: GGLWEToRef,
-        M: GGLWEPreparedAlloc<B>,
+        M: GGLWEPreparedFactory<B>,
     {
         module.prepare_gglwe(self, other, scratch);
     }
@@ -244,7 +244,7 @@ impl<D: DataMut, B: Backend> GGLWEPrepared<D, B> {
 impl<B: Backend> GGLWEPrepared<Vec<u8>, B> {
     pub fn prepare_tmp_bytes<M>(&self, module: &M) -> usize
     where
-        M: GGLWEPreparedAlloc<B>,
+        M: GGLWEPreparedFactory<B>,
     {
         module.prepare_gglwe_tmp_bytes(self)
     }

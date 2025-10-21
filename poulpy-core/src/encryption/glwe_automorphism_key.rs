@@ -7,7 +7,7 @@ use poulpy_hal::{
 use crate::{
     GGLWEEncryptSk, ScratchTakeCore,
     layouts::{
-        AutomorphismKey, GGLWEInfos, GGLWEToMut, GGLWEToRef, GLWEInfos, GLWESecret, GLWESecretPrepared, GLWESecretPreparedApi,
+        AutomorphismKey, GGLWEInfos, GGLWEToMut, GGLWEToRef, GLWEInfos, GLWESecret, GLWESecretPrepared, GLWESecretPreparedFactory,
         GLWESecretToRef, LWEInfos, SetGaloisElement,
     },
 };
@@ -70,7 +70,7 @@ pub trait AutomorphismKeyEncryptSk<BE: Backend> {
 
 impl<BE: Backend> AutomorphismKeyEncryptSk<BE> for Module<BE>
 where
-    Self: GGLWEEncryptSk<BE> + VecZnxAutomorphism + GaloisElement + SvpPPolBytesOf + GLWESecretPreparedApi<BE>,
+    Self: GGLWEEncryptSk<BE> + VecZnxAutomorphism + GaloisElement + SvpPPolBytesOf + GLWESecretPreparedFactory<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     fn automorphism_key_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize

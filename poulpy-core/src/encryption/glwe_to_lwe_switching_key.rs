@@ -9,7 +9,7 @@ use crate::{
     layouts::{
         GGLWE, GGLWEInfos, GGLWEToMut, GLWESecret, GLWESecretToRef, GLWEToLWESwitchingKey, LWEInfos, LWESecret, LWESecretToRef,
         Rank,
-        prepared::{GLWESecretPrepared, GLWESecretPreparedApi},
+        prepared::{GLWESecretPrepared, GLWESecretPreparedFactory},
     },
 };
 
@@ -65,7 +65,7 @@ impl<BE: Backend> GLWEToLWESwitchingKeyEncryptSk<BE> for Module<BE>
 where
     Self: ModuleN
         + GGLWEEncryptSk<BE>
-        + GLWESecretPreparedApi<BE>
+        + GLWESecretPreparedFactory<BE>
         + VecZnxAutomorphismInplace<BE>
         + VecZnxAutomorphismInplaceTmpBytes,
     Scratch<BE>: ScratchTakeCore<BE>,

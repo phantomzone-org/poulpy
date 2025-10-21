@@ -49,7 +49,7 @@ impl<D: Data, B: Backend> GGSWInfos for GGSWPrepared<D, B> {
     }
 }
 
-pub trait GGSWPreparedAlloc<B: Backend>
+pub trait GGSWPreparedFactory<B: Backend>
 where
     Self: GetDegree + VmpPMatAlloc<B> + VmpPMatBytesOf + VmpPrepareTmpBytes + VmpPrepare<B>,
 {
@@ -162,7 +162,7 @@ where
     }
 }
 
-impl<B: Backend> GGSWPreparedAlloc<B> for Module<B> where
+impl<B: Backend> GGSWPreparedFactory<B> for Module<B> where
     Self: GetDegree + VmpPMatAlloc<B> + VmpPMatBytesOf + VmpPrepareTmpBytes + VmpPrepare<B>
 {
 }
@@ -171,14 +171,14 @@ impl<B: Backend> GGSWPrepared<Vec<u8>, B> {
     pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
     where
         A: GGSWInfos,
-        M: GGSWPreparedAlloc<B>,
+        M: GGSWPreparedFactory<B>,
     {
         module.alloc_ggsw_prepared_from_infos(infos)
     }
 
     pub fn alloc<M>(module: &M, base2k: Base2K, k: TorusPrecision, dnum: Dnum, dsize: Dsize, rank: Rank) -> Self
     where
-        M: GGSWPreparedAlloc<B>,
+        M: GGSWPreparedFactory<B>,
     {
         module.alloc_ggsw_prepared(base2k, k, dnum, dsize, rank)
     }
@@ -186,14 +186,14 @@ impl<B: Backend> GGSWPrepared<Vec<u8>, B> {
     pub fn bytes_of_from_infos<A, M>(module: &M, infos: &A) -> usize
     where
         A: GGSWInfos,
-        M: GGSWPreparedAlloc<B>,
+        M: GGSWPreparedFactory<B>,
     {
         module.bytes_of_ggsw_prepared_from_infos(infos)
     }
 
     pub fn bytes_of<M>(module: &M, base2k: Base2K, k: TorusPrecision, dnum: Dnum, dsize: Dsize, rank: Rank) -> usize
     where
-        M: GGSWPreparedAlloc<B>,
+        M: GGSWPreparedFactory<B>,
     {
         module.bytes_of_ggsw_prepared(base2k, k, dnum, dsize, rank)
     }
@@ -209,7 +209,7 @@ impl<B: Backend> GGSWPrepared<Vec<u8>, B> {
     pub fn prepare_tmp_bytes<A, M>(&self, module: &M, infos: &A) -> usize
     where
         A: GGSWInfos,
-        M: GGSWPreparedAlloc<B>,
+        M: GGSWPreparedFactory<B>,
     {
         module.ggsw_prepare_tmp_bytes(infos)
     }
@@ -219,7 +219,7 @@ impl<D: DataMut, B: Backend> GGSWPrepared<D, B> {
     pub fn prepare<O, M>(&mut self, module: &M, other: &O, scratch: &mut Scratch<B>)
     where
         O: GGSWToRef,
-        M: GGSWPreparedAlloc<B>,
+        M: GGSWPreparedFactory<B>,
     {
         module.ggsw_prepare(self, other, scratch);
     }

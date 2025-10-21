@@ -8,8 +8,8 @@ use crate::{
     GLWEEncryptSk, GLWEKeyswitch, GLWENoise, GLWESwitchingKeyEncryptSk, ScratchTakeCore,
     encryption::SIGMA,
     layouts::{
-        GLWE, GLWELayout, GLWEPlaintext, GLWESecret, GLWESecretPreparedApi, GLWESwitchingKey, GLWESwitchingKeyLayout,
-        GLWESwitchingKeyPreparedAlloc,
+        GLWE, GLWELayout, GLWEPlaintext, GLWESecret, GLWESecretPreparedFactory, GLWESwitchingKey, GLWESwitchingKeyLayout,
+        GLWESwitchingKeyPreparedFactory,
         prepared::{GLWESecretPrepared, GLWESwitchingKeyPrepared},
     },
     noise::log2_std_noise_gglwe_product,
@@ -22,8 +22,8 @@ where
         + GLWESwitchingKeyEncryptSk<BE>
         + GLWEEncryptSk<BE>
         + GLWEKeyswitch<BE>
-        + GLWESecretPreparedApi<BE>
-        + GLWESwitchingKeyPreparedAlloc<BE>
+        + GLWESecretPreparedFactory<BE>
+        + GLWESwitchingKeyPreparedFactory<BE>
         + GLWENoise<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
@@ -143,8 +143,8 @@ where
         + GLWESwitchingKeyEncryptSk<BE>
         + GLWEEncryptSk<BE>
         + GLWEKeyswitch<BE>
-        + GLWESecretPreparedApi<BE>
-        + GLWESwitchingKeyPreparedAlloc<BE>
+        + GLWESecretPreparedFactory<BE>
+        + GLWESwitchingKeyPreparedFactory<BE>
         + GLWENoise<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,

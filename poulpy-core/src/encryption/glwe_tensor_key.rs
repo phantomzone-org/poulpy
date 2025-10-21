@@ -11,7 +11,7 @@ use crate::{
     GGLWEEncryptSk, GetDistribution, ScratchTakeCore,
     layouts::{
         GGLWE, GGLWEInfos, GLWEInfos, GLWESecret, GLWESecretToRef, LWEInfos, Rank, TensorKey, TensorKeyToMut,
-        prepared::{GLWESecretPrepared, GLWESecretPreparedApi},
+        prepared::{GLWESecretPrepared, GLWESecretPreparedFactory},
     },
 };
 
@@ -65,7 +65,7 @@ where
         + GGLWEEncryptSk<BE>
         + VecZnxDftBytesOf
         + VecZnxBigBytesOf
-        + GLWESecretPreparedApi<BE>
+        + GLWESecretPreparedFactory<BE>
         + VecZnxDftApply<BE>
         + SvpApplyDftToDft<BE>
         + VecZnxIdftApplyTmpA<BE>

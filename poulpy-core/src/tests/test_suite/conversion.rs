@@ -8,9 +8,9 @@ use crate::{
     GLWEDecrypt, GLWEEncryptSk, GLWEFromLWE, GLWEToLWESwitchingKeyEncryptSk, LWEDecrypt, LWEEncryptSk,
     LWEToGLWESwitchingKeyEncryptSk, ScratchTakeCore,
     layouts::{
-        Base2K, Degree, Dnum, GLWE, GLWELayout, GLWEPlaintext, GLWESecret, GLWESecretPreparedApi, GLWEToLWEKeyLayout,
-        GLWEToLWESwitchingKey, GLWEToLWESwitchingKeyPreparedAlloc, LWE, LWELayout, LWEPlaintext, LWESecret,
-        LWEToGLWESwitchingKey, LWEToGLWESwitchingKeyLayout, LWEToGLWESwitchingKeyPreparedAlloc, Rank, TorusPrecision,
+        Base2K, Degree, Dnum, GLWE, GLWELayout, GLWEPlaintext, GLWESecret, GLWESecretPreparedFactory, GLWEToLWEKeyLayout,
+        GLWEToLWESwitchingKey, GLWEToLWESwitchingKeyPreparedFactory, LWE, LWELayout, LWEPlaintext, LWESecret,
+        LWEToGLWESwitchingKey, LWEToGLWESwitchingKeyLayout, LWEToGLWESwitchingKeyPreparedFactory, Rank, TorusPrecision,
         prepared::{GLWESecretPrepared, GLWEToLWESwitchingKeyPrepared, LWEToGLWESwitchingKeyPrepared},
     },
 };
@@ -20,9 +20,9 @@ where
     Module<BE>: GLWEFromLWE<BE>
         + LWEToGLWESwitchingKeyEncryptSk<BE>
         + GLWEDecrypt<BE>
-        + GLWESecretPreparedApi<BE>
+        + GLWESecretPreparedFactory<BE>
         + LWEEncryptSk<BE>
-        + LWEToGLWESwitchingKeyPreparedAlloc<BE>,
+        + LWEToGLWESwitchingKeyPreparedFactory<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
@@ -112,9 +112,9 @@ where
         + GLWEEncryptSk<BE>
         + LWEDecrypt<BE>
         + GLWEDecrypt<BE>
-        + GLWESecretPreparedApi<BE>
+        + GLWESecretPreparedFactory<BE>
         + GLWEToLWESwitchingKeyEncryptSk<BE>
-        + GLWEToLWESwitchingKeyPreparedAlloc<BE>,
+        + GLWEToLWESwitchingKeyPreparedFactory<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {

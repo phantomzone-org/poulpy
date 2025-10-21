@@ -3,7 +3,7 @@ use poulpy_hal::layouts::{Backend, Data, DataMut, DataRef, Module, Scratch};
 use crate::layouts::{
     Base2K, Degree, Dnum, Dsize, GGLWEInfos, GGLWEPrepared, GGLWEPreparedToMut, GGLWEPreparedToRef, GGLWEToRef, GLWEInfos,
     GLWESwitchingKeyDegrees, GLWESwitchingKeyDegreesMut, LWEInfos, Rank, TorusPrecision,
-    prepared::{GLWESwitchingKeyPrepared, GLWESwitchingKeyPreparedAlloc},
+    prepared::{GLWESwitchingKeyPrepared, GLWESwitchingKeyPreparedFactory},
 };
 
 #[derive(PartialEq, Eq)]
@@ -51,9 +51,9 @@ impl<D: Data, B: Backend> GGLWEInfos for GLWEToLWESwitchingKeyPrepared<D, B> {
     }
 }
 
-pub trait GLWEToLWESwitchingKeyPreparedAlloc<B: Backend>
+pub trait GLWEToLWESwitchingKeyPreparedFactory<B: Backend>
 where
-    Self: GLWESwitchingKeyPreparedAlloc<B>,
+    Self: GLWESwitchingKeyPreparedFactory<B>,
 {
     fn alloc_glwe_to_lwe_switching_key_prepared(
         &self,
@@ -118,20 +118,20 @@ where
     }
 }
 
-impl<B: Backend> GLWEToLWESwitchingKeyPreparedAlloc<B> for Module<B> where Self: GLWESwitchingKeyPreparedAlloc<B> {}
+impl<B: Backend> GLWEToLWESwitchingKeyPreparedFactory<B> for Module<B> where Self: GLWESwitchingKeyPreparedFactory<B> {}
 
 impl<B: Backend> GLWEToLWESwitchingKeyPrepared<Vec<u8>, B> {
     pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
     where
         A: GGLWEInfos,
-        M: GLWEToLWESwitchingKeyPreparedAlloc<B>,
+        M: GLWEToLWESwitchingKeyPreparedFactory<B>,
     {
         module.alloc_glwe_to_lwe_switching_key_prepared_from_infos(infos)
     }
 
     pub fn alloc<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank_in: Rank, dnum: Dnum) -> Self
     where
-        M: GLWEToLWESwitchingKeyPreparedAlloc<B>,
+        M: GLWEToLWESwitchingKeyPreparedFactory<B>,
     {
         module.alloc_glwe_to_lwe_switching_key_prepared(base2k, k, rank_in, dnum)
     }
@@ -139,14 +139,14 @@ impl<B: Backend> GLWEToLWESwitchingKeyPrepared<Vec<u8>, B> {
     pub fn bytes_of_from_infos<A, M>(module: &M, infos: &A) -> usize
     where
         A: GGLWEInfos,
-        M: GLWEToLWESwitchingKeyPreparedAlloc<B>,
+        M: GLWEToLWESwitchingKeyPreparedFactory<B>,
     {
         module.bytes_of_glwe_to_lwe_switching_key_prepared_from_infos(infos)
     }
 
     pub fn bytes_of<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank_in: Rank, dnum: Dnum) -> usize
     where
-        M: GLWEToLWESwitchingKeyPreparedAlloc<B>,
+        M: GLWEToLWESwitchingKeyPreparedFactory<B>,
     {
         module.bytes_of_glwe_to_lwe_switching_key_prepared(base2k, k, rank_in, dnum)
     }
@@ -156,7 +156,7 @@ impl<B: Backend> GLWEToLWESwitchingKeyPrepared<Vec<u8>, B> {
     pub fn prepare_tmp_bytes<A, M>(&self, module: &M, infos: &A)
     where
         A: GGLWEInfos,
-        M: GLWEToLWESwitchingKeyPreparedAlloc<B>,
+        M: GLWEToLWESwitchingKeyPreparedFactory<B>,
     {
         module.prepare_glwe_to_lwe_switching_key_tmp_bytes(infos);
     }
@@ -166,7 +166,7 @@ impl<D: DataMut, B: Backend> GLWEToLWESwitchingKeyPrepared<D, B> {
     pub fn prepare<O, M>(&mut self, module: &M, other: &O, scratch: &mut Scratch<B>)
     where
         O: GGLWEToRef + GLWESwitchingKeyDegrees,
-        M: GLWEToLWESwitchingKeyPreparedAlloc<B>,
+        M: GLWEToLWESwitchingKeyPreparedFactory<B>,
     {
         module.prepare_glwe_to_lwe_switching_key(self, other, scratch);
     }

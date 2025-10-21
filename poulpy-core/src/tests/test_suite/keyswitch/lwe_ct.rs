@@ -7,7 +7,7 @@ use poulpy_hal::{
 use crate::{
     LWEDecrypt, LWEEncryptSk, LWEKeySwitch, LWESwitchingKeyEncrypt, ScratchTakeCore,
     layouts::{
-        LWE, LWELayout, LWEPlaintext, LWESecret, LWESwitchingKey, LWESwitchingKeyLayout, LWESwitchingKeyPreparedAlloc,
+        LWE, LWELayout, LWEPlaintext, LWESecret, LWESwitchingKey, LWESwitchingKeyLayout, LWESwitchingKeyPreparedFactory,
         prepared::LWESwitchingKeyPrepared,
     },
 };
@@ -15,7 +15,7 @@ use crate::{
 pub fn test_lwe_keyswitch<BE: Backend>(module: &Module<BE>)
 where
     Module<BE>:
-        LWEKeySwitch<BE> + LWESwitchingKeyEncrypt<BE> + LWEEncryptSk<BE> + LWESwitchingKeyPreparedAlloc<BE> + LWEDecrypt<BE>,
+        LWEKeySwitch<BE> + LWESwitchingKeyEncrypt<BE> + LWEEncryptSk<BE> + LWESwitchingKeyPreparedFactory<BE> + LWEDecrypt<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {

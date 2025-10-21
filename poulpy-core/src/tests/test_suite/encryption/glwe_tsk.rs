@@ -13,7 +13,7 @@ use crate::{
     decryption::GLWEDecrypt,
     encryption::SIGMA,
     layouts::{
-        Dsize, GLWEPlaintext, GLWESecret, GLWESecretPreparedApi, GLWETensorKeyCompressed, TensorKey, TensorKeyLayout,
+        Dsize, GLWEPlaintext, GLWESecret, GLWESecretPreparedFactory, GLWETensorKeyCompressed, TensorKey, TensorKeyLayout,
         prepared::GLWESecretPrepared,
     },
 };
@@ -21,7 +21,7 @@ use crate::{
 pub fn test_gglwe_tensor_key_encrypt_sk<BE: Backend>(module: &Module<BE>)
 where
     Module<BE>: TensorKeyEncryptSk<BE>
-        + GLWESecretPreparedApi<BE>
+        + GLWESecretPreparedFactory<BE>
         + GLWEDecrypt<BE>
         + VecZnxDftAlloc<BE>
         + VecZnxBigAlloc<BE>
@@ -112,7 +112,7 @@ where
 pub fn test_gglwe_tensor_key_compressed_encrypt_sk<BE: Backend>(module: &Module<BE>)
 where
     Module<BE>: TensorKeyEncryptSk<BE>
-        + GLWESecretPreparedApi<BE>
+        + GLWESecretPreparedFactory<BE>
         + GGLWETensorKeyCompressedEncryptSk<BE>
         + GLWEDecrypt<BE>
         + VecZnxDftAlloc<BE>

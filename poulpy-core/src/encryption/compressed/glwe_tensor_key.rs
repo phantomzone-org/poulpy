@@ -10,7 +10,7 @@ use poulpy_hal::{
 use crate::{
     GGLWECompressedEncryptSk, GetDistribution, ScratchTakeCore, TensorKeyEncryptSk,
     layouts::{
-        GGLWEInfos, GLWEInfos, GLWESecret, GLWESecretPrepared, GLWESecretPreparedApi, GLWESecretToRef, LWEInfos, Rank,
+        GGLWEInfos, GLWEInfos, GLWESecret, GLWESecretPrepared, GLWESecretPreparedFactory, GLWESecretToRef, LWEInfos, Rank,
         TensorKeyCompressedAtMut, compressed::GLWETensorKeyCompressed,
     },
 };
@@ -72,7 +72,7 @@ where
         + SvpPPolBytesOf
         + VecZnxDftBytesOf
         + VecZnxBigBytesOf
-        + GLWESecretPreparedApi<BE>,
+        + GLWESecretPreparedFactory<BE>,
     Scratch<BE>: ScratchTakeBasic + ScratchTakeCore<BE>,
 {
     fn tensor_key_compressed_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize

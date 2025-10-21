@@ -10,7 +10,7 @@ use crate::{
         GGLWECompressedSeedMut, GGLWECompressedToMut, GGLWEInfos, GLWEInfos, GLWESecret, GLWESecretToRef,
         GLWESwitchingKeyDegreesMut, LWEInfos,
         compressed::GLWESwitchingKeyCompressed,
-        prepared::{GLWESecretPrepared, GLWESecretPreparedApi},
+        prepared::{GLWESecretPrepared, GLWESecretPreparedFactory},
     },
 };
 
@@ -64,7 +64,7 @@ pub trait GLWESwitchingKeyCompressedEncryptSk<BE: Backend> {
 
 impl<BE: Backend> GLWESwitchingKeyCompressedEncryptSk<BE> for Module<BE>
 where
-    Self: ModuleN + GGLWECompressedEncryptSk<BE> + GLWESecretPreparedApi<BE> + VecZnxSwitchRing,
+    Self: ModuleN + GGLWECompressedEncryptSk<BE> + GLWESecretPreparedFactory<BE> + VecZnxSwitchRing,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     fn glwe_switching_key_compressed_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
