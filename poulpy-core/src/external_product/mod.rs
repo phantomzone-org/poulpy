@@ -1,8 +1,7 @@
-mod gglwe_atk;
-mod gglwe_ksk;
-mod ggsw_ct;
-mod glwe_ct;
+mod gglwe;
+mod ggsw;
+mod glwe;
 
-pub use gglwe_ksk::*;
-pub use ggsw_ct::*;
-pub use glwe_ct::*;
+pub use gglwe::*;
+pub use ggsw::*;
+pub use glwe::*;

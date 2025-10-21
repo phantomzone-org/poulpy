@@ -11,9 +11,9 @@ use crate::{
     encryption::SIGMA,
     glwe_trace::GLWETrace,
     layouts::{
-        AutomorphismKey, AutomorphismKeyLayout, AutomorphismKeyPrepare, AutomorphismKeyPreparedAlloc, GLWE, GLWELayout,
-        GLWEPlaintext, GLWESecret, GLWESecretPrepare, GLWESecretPreparedAlloc, LWEInfos,
-        prepared::{AutomorphismKeyPrepared, GLWESecretPrepared},
+        AutomorphismKey, AutomorphismKeyLayout, GLWE, GLWEAutomorphismKeyPreparedApi, GLWELayout, GLWEPlaintext, GLWESecret,
+        GLWESecretPreparedApi, LWEInfos,
+        prepared::{GLWEAutomorphismKeyPrepared, GLWESecretPrepared},
     },
     noise::var_noise_gglwe_product,
 };
@@ -24,11 +24,9 @@ where
         + GLWEEncryptSk<BE>
         + GLWEDecrypt<BE>
         + AutomorphismKeyEncryptSk<BE>
-        + AutomorphismKeyPrepare<BE>
-        + AutomorphismKeyPreparedAlloc<BE>
+        + GLWEAutomorphismKeyPreparedApi<BE>
         + VecZnxFillUniform
-        + GLWESecretPrepare<BE>
-        + GLWESecretPreparedAlloc<BE>
+        + GLWESecretPreparedApi<BE>
         + VecZnxSubInplace
         + VecZnxNormalizeInplace<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
@@ -98,7 +96,7 @@ where
             scratch.borrow(),
         );
 
-        let mut auto_keys: HashMap<i64, AutomorphismKeyPrepared<Vec<u8>, BE>> = HashMap::new();
+        let mut auto_keys: HashMap<i64, GLWEAutomorphismKeyPrepared<Vec<u8>, BE>> = HashMap::new();
         let gal_els: Vec<i64> = GLWE::trace_galois_elements(module);
         let mut tmp: AutomorphismKey<Vec<u8>> = AutomorphismKey::alloc_from_infos(&key_infos);
         gal_els.iter().for_each(|gal_el| {
@@ -110,7 +108,8 @@ where
                 &mut source_xe,
                 scratch.borrow(),
             );
-            let mut atk_prepared: AutomorphismKeyPrepared<Vec<u8>, BE> = AutomorphismKeyPrepared::alloc_from_infos(module, &tmp);
+            let mut atk_prepared: GLWEAutomorphismKeyPrepared<Vec<u8>, BE> =
+                GLWEAutomorphismKeyPrepared::alloc_from_infos(module, &tmp);
             atk_prepared.prepare(module, &tmp, scratch.borrow());
             auto_keys.insert(*gal_el, atk_prepared);
         });

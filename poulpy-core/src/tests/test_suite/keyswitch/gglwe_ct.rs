@@ -8,8 +8,7 @@ use crate::{
     GGLWEKeyswitch, GGLWENoise, GLWESwitchingKeyEncryptSk, ScratchTakeCore,
     encryption::SIGMA,
     layouts::{
-        GLWESecret, GLWESecretPrepare, GLWESecretPreparedAlloc, GLWESwitchingKey, GLWESwitchingKeyLayout,
-        GLWESwitchingKeyPrepare, GLWESwitchingKeyPreparedAlloc,
+        GLWESecret, GLWESecretPreparedApi, GLWESwitchingKey, GLWESwitchingKeyLayout, GLWESwitchingKeyPreparedAlloc,
         prepared::{GLWESecretPrepared, GLWESwitchingKeyPrepared},
     },
     noise::log2_std_noise_gglwe_product,
@@ -19,10 +18,8 @@ pub fn test_gglwe_switching_key_keyswitch<BE: Backend>(module: &Module<BE>)
 where
     Module<BE>: GLWESwitchingKeyEncryptSk<BE>
         + GGLWEKeyswitch<BE>
-        + GLWESecretPrepare<BE>
         + GLWESwitchingKeyPreparedAlloc<BE>
-        + GLWESecretPreparedAlloc<BE>
-        + GLWESwitchingKeyPrepare<BE>
+        + GLWESecretPreparedApi<BE>
         + GGLWENoise<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
@@ -165,9 +162,7 @@ pub fn test_gglwe_switching_key_keyswitch_inplace<BE: Backend>(module: &Module<B
 where
     Module<BE>: GLWESwitchingKeyEncryptSk<BE>
         + GGLWEKeyswitch<BE>
-        + GLWESecretPrepare<BE>
-        + GLWESecretPreparedAlloc<BE>
-        + GLWESwitchingKeyPrepare<BE>
+        + GLWESecretPreparedApi<BE>
         + GGLWENoise<BE>
         + GLWESwitchingKeyPreparedAlloc<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,

@@ -7,8 +7,7 @@ use crate::{
     ScratchTakeCore,
     automorphism::glwe_ct::GLWEAutomorphism,
     layouts::{
-        AutomorphismKey, GGLWE, GGLWEInfos, GGLWEPreparedToRef, GGLWEToMut, GGLWEToRef, GLWE,
-        prepared::{GetAutomorphismGaloisElement, SetAutomorphismGaloisElement},
+        AutomorphismKey, GGLWE, GGLWEInfos, GGLWEPreparedToRef, GGLWEToMut, GGLWEToRef, GLWE, GetGaloisElement, SetGaloisElement,
     },
 };
 
@@ -18,7 +17,7 @@ impl AutomorphismKey<Vec<u8>> {
         R: GGLWEInfos,
         A: GGLWEInfos,
         K: GGLWEInfos,
-        M: AutomorphismKeyAutomorphism<BE>,
+        M: GLWEAutomorphismKeyAutomorphism<BE>,
     {
         module.automorphism_key_automorphism_tmp_bytes(res_infos, a_infos, key_infos)
     }
@@ -27,30 +26,30 @@ impl AutomorphismKey<Vec<u8>> {
 impl<DataSelf: DataMut> AutomorphismKey<DataSelf> {
     pub fn automorphism<A, K, M, BE: Backend>(&mut self, module: &M, a: &A, key: &K, scratch: &mut Scratch<BE>)
     where
-        A: GGLWEToRef + GetAutomorphismGaloisElement + GGLWEInfos,
-        K: GGLWEPreparedToRef<BE> + GetAutomorphismGaloisElement + GGLWEInfos,
+        A: GGLWEToRef + GetGaloisElement + GGLWEInfos,
+        K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
-        M: AutomorphismKeyAutomorphism<BE>,
+        M: GLWEAutomorphismKeyAutomorphism<BE>,
     {
         module.automorphism_key_automorphism(self, a, key, scratch);
     }
 
     pub fn automorphism_inplace<K, M, BE: Backend>(&mut self, module: &M, key: &K, scratch: &mut Scratch<BE>)
     where
-        K: GGLWEPreparedToRef<BE> + GetAutomorphismGaloisElement + GGLWEInfos,
+        K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
-        M: AutomorphismKeyAutomorphism<BE>,
+        M: GLWEAutomorphismKeyAutomorphism<BE>,
     {
         module.automorphism_key_automorphism_inplace(self, key, scratch);
     }
 }
 
-impl<BE: Backend> AutomorphismKeyAutomorphism<BE> for Module<BE> where
+impl<BE: Backend> GLWEAutomorphismKeyAutomorphism<BE> for Module<BE> where
     Self: GaloisElement + GLWEAutomorphism<BE> + VecZnxAutomorphism
 {
 }
 
-pub trait AutomorphismKeyAutomorphism<BE: Backend>
+pub trait GLWEAutomorphismKeyAutomorphism<BE: Backend>
 where
     Self: GaloisElement + GLWEAutomorphism<BE> + VecZnxAutomorphism,
 {
@@ -65,9 +64,9 @@ where
 
     fn automorphism_key_automorphism<R, A, K>(&self, res: &mut R, a: &A, key: &K, scratch: &mut Scratch<BE>)
     where
-        R: GGLWEToMut + SetAutomorphismGaloisElement + GGLWEInfos,
-        A: GGLWEToRef + GetAutomorphismGaloisElement + GGLWEInfos,
-        K: GGLWEPreparedToRef<BE> + GetAutomorphismGaloisElement + GGLWEInfos,
+        R: GGLWEToMut + SetGaloisElement + GGLWEInfos,
+        A: GGLWEToRef + GetGaloisElement + GGLWEInfos,
+        K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         assert!(
@@ -121,8 +120,8 @@ where
 
     fn automorphism_key_automorphism_inplace<R, K>(&self, res: &mut R, key: &K, scratch: &mut Scratch<BE>)
     where
-        R: GGLWEToMut + SetAutomorphismGaloisElement + GetAutomorphismGaloisElement + GGLWEInfos,
-        K: GGLWEPreparedToRef<BE> + GetAutomorphismGaloisElement + GGLWEInfos,
+        R: GGLWEToMut + SetGaloisElement + GetGaloisElement + GGLWEInfos,
+        K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         assert_eq!(

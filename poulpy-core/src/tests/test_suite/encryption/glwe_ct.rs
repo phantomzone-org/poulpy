@@ -9,8 +9,8 @@ use crate::{
     decryption::GLWEDecrypt,
     encryption::SIGMA,
     layouts::{
-        GLWE, GLWELayout, GLWEPlaintext, GLWEPlaintextLayout, GLWEPublicKey, GLWEPublicKeyPrepare, GLWEPublicKeyPreparedAlloc,
-        GLWESecret, GLWESecretPrepare, GLWESecretPreparedAlloc, LWEInfos,
+        GLWE, GLWELayout, GLWEPlaintext, GLWEPlaintextLayout, GLWEPublicKey, GLWEPublicKeyPreparedAlloc, GLWESecret,
+        GLWESecretPreparedApi, LWEInfos,
         compressed::GLWECompressed,
         prepared::{GLWEPublicKeyPrepared, GLWESecretPrepared},
     },
@@ -18,8 +18,7 @@ use crate::{
 
 pub fn test_glwe_encrypt_sk<BE: Backend>(module: &Module<BE>)
 where
-    Module<BE>:
-        GLWEEncryptSk<BE> + GLWEDecrypt<BE> + GLWESecretPreparedAlloc<BE> + GLWESecretPrepare<BE> + VecZnxFillUniform + GLWESub,
+    Module<BE>: GLWEEncryptSk<BE> + GLWEDecrypt<BE> + GLWESecretPreparedApi<BE> + VecZnxFillUniform + GLWESub,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
@@ -84,12 +83,7 @@ where
 
 pub fn test_glwe_compressed_encrypt_sk<BE: Backend>(module: &Module<BE>)
 where
-    Module<BE>: GLWECompressedEncryptSk<BE>
-        + GLWEDecrypt<BE>
-        + GLWESecretPreparedAlloc<BE>
-        + GLWESecretPrepare<BE>
-        + VecZnxFillUniform
-        + GLWESub,
+    Module<BE>: GLWECompressedEncryptSk<BE> + GLWEDecrypt<BE> + GLWESecretPreparedApi<BE> + VecZnxFillUniform + GLWESub,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
@@ -166,8 +160,7 @@ where
 
 pub fn test_glwe_encrypt_zero_sk<BE: Backend>(module: &Module<BE>)
 where
-    Module<BE>:
-        GLWEEncryptSk<BE> + GLWEDecrypt<BE> + GLWESecretPreparedAlloc<BE> + GLWESecretPrepare<BE> + VecZnxFillUniform + GLWESub,
+    Module<BE>: GLWEEncryptSk<BE> + GLWEDecrypt<BE> + GLWESecretPreparedApi<BE> + VecZnxFillUniform + GLWESub,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
@@ -217,12 +210,10 @@ where
 pub fn test_glwe_encrypt_pk<BE: Backend>(module: &Module<BE>)
 where
     Module<BE>: GLWEEncryptPk<BE>
-        + GLWEPublicKeyPrepare<BE>
         + GLWEPublicKeyPreparedAlloc<BE>
         + GLWEPublicKeyGenerate<BE>
         + GLWEDecrypt<BE>
-        + GLWESecretPreparedAlloc<BE>
-        + GLWESecretPrepare<BE>
+        + GLWESecretPreparedApi<BE>
         + VecZnxFillUniform
         + GLWESub,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,

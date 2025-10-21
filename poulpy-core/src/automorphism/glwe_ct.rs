@@ -8,9 +8,7 @@ use poulpy_hal::{
 
 use crate::{
     GLWEKeyswitch, ScratchTakeCore, keyswitch_internal,
-    layouts::{
-        GGLWEInfos, GGLWEPreparedToRef, GLWE, GLWEInfos, GLWEToMut, GLWEToRef, LWEInfos, prepared::GetAutomorphismGaloisElement,
-    },
+    layouts::{GGLWEInfos, GGLWEPreparedToRef, GLWE, GLWEInfos, GLWEToMut, GLWEToRef, GetGaloisElement, LWEInfos},
 };
 
 impl GLWE<Vec<u8>> {
@@ -30,7 +28,7 @@ impl<DataSelf: DataMut> GLWE<DataSelf> {
     where
         M: GLWEAutomorphism<BE>,
         A: GLWEToRef,
-        K: GetAutomorphismGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
+        K: GetGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         module.glwe_automorphism(self, a, key, scratch);
@@ -40,7 +38,7 @@ impl<DataSelf: DataMut> GLWE<DataSelf> {
     where
         M: GLWEAutomorphism<BE>,
         A: GLWEToRef,
-        K: GetAutomorphismGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
+        K: GetGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         module.glwe_automorphism_add(self, a, key, scratch);
@@ -50,7 +48,7 @@ impl<DataSelf: DataMut> GLWE<DataSelf> {
     where
         M: GLWEAutomorphism<BE>,
         A: GLWEToRef,
-        K: GetAutomorphismGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
+        K: GetGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         module.glwe_automorphism_sub(self, a, key, scratch);
@@ -60,7 +58,7 @@ impl<DataSelf: DataMut> GLWE<DataSelf> {
     where
         M: GLWEAutomorphism<BE>,
         A: GLWEToRef,
-        K: GetAutomorphismGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
+        K: GetGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         module.glwe_automorphism_sub_negate(self, a, key, scratch);
@@ -69,7 +67,7 @@ impl<DataSelf: DataMut> GLWE<DataSelf> {
     pub fn automorphism_inplace<M, K, BE: Backend>(&mut self, module: &M, key: &K, scratch: &mut Scratch<BE>)
     where
         M: GLWEAutomorphism<BE>,
-        K: GetAutomorphismGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
+        K: GetGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         module.glwe_automorphism_inplace(self, key, scratch);
@@ -78,7 +76,7 @@ impl<DataSelf: DataMut> GLWE<DataSelf> {
     pub fn automorphism_add_inplace<M, K, BE: Backend>(&mut self, module: &M, key: &K, scratch: &mut Scratch<BE>)
     where
         M: GLWEAutomorphism<BE>,
-        K: GetAutomorphismGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
+        K: GetGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         module.glwe_automorphism_add_inplace(self, key, scratch);
@@ -87,7 +85,7 @@ impl<DataSelf: DataMut> GLWE<DataSelf> {
     pub fn automorphism_sub_inplace<M, K, BE: Backend>(&mut self, module: &M, key: &K, scratch: &mut Scratch<BE>)
     where
         M: GLWEAutomorphism<BE>,
-        K: GetAutomorphismGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
+        K: GetGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         module.glwe_automorphism_sub_inplace(self, key, scratch);
@@ -96,7 +94,7 @@ impl<DataSelf: DataMut> GLWE<DataSelf> {
     pub fn automorphism_sub_negate_inplace<M, K, BE: Backend>(&mut self, module: &M, key: &K, scratch: &mut Scratch<BE>)
     where
         M: GLWEAutomorphism<BE>,
-        K: GetAutomorphismGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
+        K: GetGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         module.glwe_automorphism_sub_negate_inplace(self, key, scratch);
@@ -124,7 +122,7 @@ where
     where
         R: GLWEToMut,
         A: GLWEToRef,
-        K: GetAutomorphismGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
+        K: GetGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         self.glwe_keyswitch(res, a, key, scratch);
@@ -139,7 +137,7 @@ where
     fn glwe_automorphism_inplace<R, K>(&self, res: &mut R, key: &K, scratch: &mut Scratch<BE>)
     where
         R: GLWEToMut,
-        K: GetAutomorphismGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
+        K: GetGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         self.glwe_keyswitch_inplace(res, key, scratch);
@@ -155,7 +153,7 @@ where
     where
         R: GLWEToMut,
         A: GLWEToRef,
-        K: GetAutomorphismGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
+        K: GetGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
@@ -182,7 +180,7 @@ where
     fn glwe_automorphism_add_inplace<R, K>(&self, res: &mut R, key: &K, scratch: &mut Scratch<BE>)
     where
         R: GLWEToMut,
-        K: GetAutomorphismGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
+        K: GetGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
@@ -209,7 +207,7 @@ where
     where
         R: GLWEToMut,
         A: GLWEToRef,
-        K: GetAutomorphismGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
+        K: GetGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
@@ -237,7 +235,7 @@ where
     where
         R: GLWEToMut,
         A: GLWEToRef,
-        K: GetAutomorphismGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
+        K: GetGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
@@ -264,7 +262,7 @@ where
     fn glwe_automorphism_sub_inplace<R, K>(&self, res: &mut R, key: &K, scratch: &mut Scratch<BE>)
     where
         R: GLWEToMut,
-        K: GetAutomorphismGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
+        K: GetGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
@@ -290,7 +288,7 @@ where
     fn glwe_automorphism_sub_negate_inplace<R, K>(&self, res: &mut R, key: &K, scratch: &mut Scratch<BE>)
     where
         R: GLWEToMut,
-        K: GetAutomorphismGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
+        K: GetGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();

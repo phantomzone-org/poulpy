@@ -1,9 +1,9 @@
-mod gglwe_ct;
-mod ggsw_ct;
-mod glwe_ct;
-mod lwe_ct;
+mod gglwe;
+mod ggsw;
+mod glwe;
+mod lwe;
 
-pub use gglwe_ct::*;
-pub use ggsw_ct::*;
-pub use glwe_ct::*;
-pub use lwe_ct::*;
+pub use gglwe::*;
+pub use ggsw::*;
+pub use glwe::*;
+pub use lwe::*;

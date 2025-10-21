@@ -1,13 +1,13 @@
-mod gglwe_atk;
-mod gglwe_ct;
-mod gglwe_ksk;
-mod gglwe_tsk;
-mod ggsw_ct;
+mod gglwe;
+mod ggsw;
+mod glwe_automorphism_key;
 mod glwe_ct;
+mod glwe_switching_key;
+mod glwe_tensor_key;
 
-pub use gglwe_atk::*;
-pub use gglwe_ct::*;
-pub use gglwe_ksk::*;
-pub use gglwe_tsk::*;
-pub use ggsw_ct::*;
+pub use gglwe::*;
+pub use ggsw::*;
+pub use glwe_automorphism_key::*;
 pub use glwe_ct::*;
+pub use glwe_switching_key::*;
+pub use glwe_tensor_key::*;

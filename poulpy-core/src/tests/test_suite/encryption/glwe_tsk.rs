@@ -13,16 +13,15 @@ use crate::{
     decryption::GLWEDecrypt,
     encryption::SIGMA,
     layouts::{
-        Dsize, GLWEPlaintext, GLWESecret, GLWESecretPrepare, GLWESecretPreparedAlloc, TensorKey, TensorKeyCompressed,
-        TensorKeyLayout, prepared::GLWESecretPrepared,
+        Dsize, GLWEPlaintext, GLWESecret, GLWESecretPreparedApi, GLWETensorKeyCompressed, TensorKey, TensorKeyLayout,
+        prepared::GLWESecretPrepared,
     },
 };
 
 pub fn test_gglwe_tensor_key_encrypt_sk<BE: Backend>(module: &Module<BE>)
 where
     Module<BE>: TensorKeyEncryptSk<BE>
-        + GLWESecretPrepare<BE>
-        + GLWESecretPreparedAlloc<BE>
+        + GLWESecretPreparedApi<BE>
         + GLWEDecrypt<BE>
         + VecZnxDftAlloc<BE>
         + VecZnxBigAlloc<BE>
@@ -113,8 +112,7 @@ where
 pub fn test_gglwe_tensor_key_compressed_encrypt_sk<BE: Backend>(module: &Module<BE>)
 where
     Module<BE>: TensorKeyEncryptSk<BE>
-        + GLWESecretPrepare<BE>
-        + GLWESecretPreparedAlloc<BE>
+        + GLWESecretPreparedApi<BE>
         + GGLWETensorKeyCompressedEncryptSk<BE>
         + GLWEDecrypt<BE>
         + VecZnxDftAlloc<BE>
@@ -144,12 +142,13 @@ where
             rank: rank.into(),
         };
 
-        let mut tensor_key_compressed: TensorKeyCompressed<Vec<u8>> = TensorKeyCompressed::alloc_from_infos(&tensor_key_infos);
+        let mut tensor_key_compressed: GLWETensorKeyCompressed<Vec<u8>> =
+            GLWETensorKeyCompressed::alloc_from_infos(&tensor_key_infos);
 
         let mut source_xs: Source = Source::new([0u8; 32]);
         let mut source_xe: Source = Source::new([0u8; 32]);
 
-        let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(TensorKeyCompressed::encrypt_sk_tmp_bytes(
+        let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(GLWETensorKeyCompressed::encrypt_sk_tmp_bytes(
             module,
             &tensor_key_infos,
         ));

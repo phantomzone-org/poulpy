@@ -8,9 +8,9 @@ use crate::{
     AutomorphismKeyEncryptSk, GGSWAutomorphism, GGSWEncryptSk, GGSWNoise, ScratchTakeCore, TensorKeyEncryptSk,
     encryption::SIGMA,
     layouts::{
-        AutomorphismKey, AutomorphismKeyPrepare, AutomorphismKeyPreparedAlloc, GGSW, GGSWLayout, GLWESecret, GLWESecretPrepare,
-        GLWESecretPreparedAlloc, TensorKey, TensorKeyLayout, TensorKeyPrepare, TensorKeyPreparedAlloc,
-        prepared::{AutomorphismKeyPrepared, GLWESecretPrepared, TensorKeyPrepared},
+        AutomorphismKey, GGSW, GGSWLayout, GLWEAutomorphismKeyPreparedApi, GLWESecret, GLWESecretPreparedApi, TensorKey,
+        TensorKeyLayout, TensorKeyPreparedAlloc,
+        prepared::{GLWEAutomorphismKeyPrepared, GLWESecretPrepared, TensorKeyPrepared},
     },
     noise::noise_ggsw_keyswitch,
 };
@@ -19,14 +19,11 @@ pub fn test_ggsw_automorphism<BE: Backend>(module: &Module<BE>)
 where
     Module<BE>: GGSWEncryptSk<BE>
         + AutomorphismKeyEncryptSk<BE>
-        + AutomorphismKeyPreparedAlloc<BE>
-        + AutomorphismKeyPrepare<BE>
+        + GLWEAutomorphismKeyPreparedApi<BE>
         + GGSWAutomorphism<BE>
-        + TensorKeyPrepare<BE>
         + TensorKeyPreparedAlloc<BE>
         + TensorKeyEncryptSk<BE>
-        + GLWESecretPrepare<BE>
-        + GLWESecretPreparedAlloc<BE>
+        + GLWESecretPreparedApi<BE>
         + VecZnxAutomorphismInplace<BE>
         + GGSWNoise<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
@@ -137,8 +134,8 @@ where
                 scratch.borrow(),
             );
 
-            let mut auto_key_prepared: AutomorphismKeyPrepared<Vec<u8>, BE> =
-                AutomorphismKeyPrepared::alloc_from_infos(module, &auto_key_layout);
+            let mut auto_key_prepared: GLWEAutomorphismKeyPrepared<Vec<u8>, BE> =
+                GLWEAutomorphismKeyPrepared::alloc_from_infos(module, &auto_key_layout);
             auto_key_prepared.prepare(module, &auto_key, scratch.borrow());
 
             let mut tsk_prepared: TensorKeyPrepared<Vec<u8>, BE> =
@@ -181,14 +178,11 @@ pub fn test_ggsw_automorphism_inplace<BE: Backend>(module: &Module<BE>)
 where
     Module<BE>: GGSWEncryptSk<BE>
         + AutomorphismKeyEncryptSk<BE>
-        + AutomorphismKeyPreparedAlloc<BE>
-        + AutomorphismKeyPrepare<BE>
+        + GLWEAutomorphismKeyPreparedApi<BE>
         + GGSWAutomorphism<BE>
-        + TensorKeyPrepare<BE>
         + TensorKeyPreparedAlloc<BE>
         + TensorKeyEncryptSk<BE>
-        + GLWESecretPrepare<BE>
-        + GLWESecretPreparedAlloc<BE>
+        + GLWESecretPreparedApi<BE>
         + VecZnxAutomorphismInplace<BE>
         + GGSWNoise<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
@@ -286,8 +280,8 @@ where
                 scratch.borrow(),
             );
 
-            let mut auto_key_prepared: AutomorphismKeyPrepared<Vec<u8>, BE> =
-                AutomorphismKeyPrepared::alloc_from_infos(module, &auto_key_layout);
+            let mut auto_key_prepared: GLWEAutomorphismKeyPrepared<Vec<u8>, BE> =
+                GLWEAutomorphismKeyPrepared::alloc_from_infos(module, &auto_key_layout);
             auto_key_prepared.prepare(module, &auto_key, scratch.borrow());
 
             let mut tsk_prepared: TensorKeyPrepared<Vec<u8>, BE> =

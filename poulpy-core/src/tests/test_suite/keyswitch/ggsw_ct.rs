@@ -8,9 +8,8 @@ use crate::{
     GGSWEncryptSk, GGSWKeyswitch, GGSWNoise, GLWESwitchingKeyEncryptSk, ScratchTakeCore, TensorKeyEncryptSk,
     encryption::SIGMA,
     layouts::{
-        GGSW, GGSWLayout, GLWESecret, GLWESecretPrepare, GLWESecretPreparedAlloc, GLWESwitchingKey, GLWESwitchingKeyLayout,
-        GLWESwitchingKeyPrepare, GLWESwitchingKeyPreparedAlloc, TensorKey, TensorKeyLayout, TensorKeyPrepare,
-        TensorKeyPreparedAlloc,
+        GGSW, GGSWLayout, GLWESecret, GLWESecretPreparedApi, GLWESwitchingKey, GLWESwitchingKeyLayout,
+        GLWESwitchingKeyPreparedAlloc, TensorKey, TensorKeyLayout, TensorKeyPreparedAlloc,
         prepared::{GLWESecretPrepared, GLWESwitchingKeyPrepared, TensorKeyPrepared},
     },
     noise::noise_ggsw_keyswitch,
@@ -23,13 +22,10 @@ where
         + GLWESwitchingKeyEncryptSk<BE>
         + TensorKeyEncryptSk<BE>
         + GGSWKeyswitch<BE>
-        + GLWESecretPreparedAlloc<BE>
-        + GLWESecretPrepare<BE>
+        + GLWESecretPreparedApi<BE>
         + TensorKeyPreparedAlloc<BE>
         + GLWESwitchingKeyPreparedAlloc<BE>
-        + GGSWNoise<BE>
-        + GLWESwitchingKeyPrepare<BE>
-        + TensorKeyPrepare<BE>,
+        + GGSWNoise<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
@@ -191,13 +187,10 @@ where
         + GLWESwitchingKeyEncryptSk<BE>
         + TensorKeyEncryptSk<BE>
         + GGSWKeyswitch<BE>
-        + GLWESecretPreparedAlloc<BE>
-        + GLWESecretPrepare<BE>
+        + GLWESecretPreparedApi<BE>
         + TensorKeyPreparedAlloc<BE>
         + GLWESwitchingKeyPreparedAlloc<BE>
-        + GGSWNoise<BE>
-        + GLWESwitchingKeyPrepare<BE>
-        + TensorKeyPrepare<BE>,
+        + GGSWNoise<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {

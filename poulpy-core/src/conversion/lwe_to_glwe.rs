@@ -50,7 +50,7 @@ where
         assert_eq!(ksk.n(), self.n() as u32);
         assert!(lwe.n() <= self.n() as u32);
 
-        let (mut glwe, scratch_1) = scratch.take_glwe_ct(
+        let (mut glwe, scratch_1) = scratch.take_glwe(
             self,
             &GLWELayout {
                 n: ksk.n(),

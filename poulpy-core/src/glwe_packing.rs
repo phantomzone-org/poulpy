@@ -8,9 +8,7 @@ use poulpy_hal::{
 use crate::{
     GLWEAdd, GLWEAutomorphism, GLWECopy, GLWENormalize, GLWERotate, GLWEShift, GLWESub, ScratchTakeCore,
     glwe_trace::GLWETrace,
-    layouts::{
-        GGLWEInfos, GGLWEPreparedToRef, GLWE, GLWEInfos, GLWEToMut, GLWEToRef, LWEInfos, prepared::GetAutomorphismGaloisElement,
-    },
+    layouts::{GGLWEInfos, GGLWEPreparedToRef, GLWE, GLWEInfos, GLWEToMut, GLWEToRef, GetGaloisElement, LWEInfos},
 };
 
 /// [GLWEPacker] enables only the fly GLWE packing
@@ -117,7 +115,7 @@ impl GLWEPacker {
     pub fn add<A, K, M, BE: Backend>(&mut self, module: &M, a: Option<&A>, auto_keys: &HashMap<i64, K>, scratch: &mut Scratch<BE>)
     where
         A: GLWEToRef + GLWEInfos,
-        K: GGLWEPreparedToRef<BE> + GetAutomorphismGaloisElement + GGLWEInfos,
+        K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
         M: GLWEPacking<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
@@ -190,7 +188,7 @@ where
         scratch: &mut Scratch<BE>,
     ) where
         R: GLWEToMut + GLWEToRef + GLWEInfos,
-        K: GGLWEPreparedToRef<BE> + GetAutomorphismGaloisElement + GGLWEInfos,
+        K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         #[cfg(debug_assertions)]
@@ -234,7 +232,7 @@ fn pack_core<A, K, M, BE: Backend>(
     scratch: &mut Scratch<BE>,
 ) where
     A: GLWEToRef + GLWEInfos,
-    K: GGLWEPreparedToRef<BE> + GetAutomorphismGaloisElement + GGLWEInfos,
+    K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
     M: ModuleLogN
         + GLWEAutomorphism<BE>
         + GaloisElement
@@ -307,7 +305,7 @@ fn combine<B, M, K, BE: Backend>(
     B: GLWEToRef + GLWEInfos,
     M: GLWEAutomorphism<BE> + GaloisElement + GLWERotate<BE> + GLWESub + GLWEShift<BE> + GLWEAdd + GLWENormalize<BE>,
     B: GLWEToRef + GLWEInfos,
-    K: GGLWEPreparedToRef<BE> + GetAutomorphismGaloisElement + GGLWEInfos,
+    K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     let log_n: usize = acc.data.n().log2();
@@ -333,7 +331,7 @@ fn combine<B, M, K, BE: Backend>(
     // since 2*(I(X) * Q/2) = I(X) * Q = 0 mod Q.
     if acc.value {
         if let Some(b) = b {
-            let (mut tmp_b, scratch_1) = scratch.take_glwe_ct(module, a);
+            let (mut tmp_b, scratch_1) = scratch.take_glwe(module, a);
 
             // a = a * X^-t
             module.glwe_rotate_inplace(-t, a, scratch_1);
@@ -373,7 +371,7 @@ fn combine<B, M, K, BE: Backend>(
             }
         }
     } else if let Some(b) = b {
-        let (mut tmp_b, scratch_1) = scratch.take_glwe_ct(module, a);
+        let (mut tmp_b, scratch_1) = scratch.take_glwe(module, a);
         module.glwe_rotate(t, &mut tmp_b, b);
         module.glwe_rsh(1, &mut tmp_b, scratch_1);
 
@@ -400,7 +398,7 @@ fn pack_internal<M, A, B, K, BE: Backend>(
     M: GLWEAutomorphism<BE> + GLWERotate<BE> + GLWESub + GLWEShift<BE> + GLWEAdd + GLWENormalize<BE>,
     A: GLWEToMut + GLWEToRef + GLWEInfos,
     B: GLWEToMut + GLWEToRef + GLWEInfos,
-    K: GGLWEPreparedToRef<BE> + GetAutomorphismGaloisElement + GGLWEInfos,
+    K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     // Goal is to evaluate: a = a + b*X^t + phi(a - b*X^t))
@@ -417,7 +415,7 @@ fn pack_internal<M, A, B, K, BE: Backend>(
         let t: i64 = 1 << (a.n().log2() - i - 1);
 
         if let Some(b) = b.as_deref_mut() {
-            let (mut tmp_b, scratch_1) = scratch.take_glwe_ct(module, a);
+            let (mut tmp_b, scratch_1) = scratch.take_glwe(module, a);
 
             // a = a * X^-t
             module.glwe_rotate_inplace(-t, a, scratch_1);
@@ -451,7 +449,7 @@ fn pack_internal<M, A, B, K, BE: Backend>(
     } else if let Some(b) = b.as_deref_mut() {
         let t: i64 = 1 << (b.n().log2() - i - 1);
 
-        let (mut tmp_b, scratch_1) = scratch.take_glwe_ct(module, b);
+        let (mut tmp_b, scratch_1) = scratch.take_glwe(module, b);
         module.glwe_rotate(t, &mut tmp_b, b);
         module.glwe_rsh(1, &mut tmp_b, scratch_1);
 

@@ -8,10 +8,9 @@ use crate::{
     GLWEDecrypt, GLWEEncryptSk, GLWEFromLWE, GLWEToLWESwitchingKeyEncryptSk, LWEDecrypt, LWEEncryptSk,
     LWEToGLWESwitchingKeyEncryptSk, ScratchTakeCore,
     layouts::{
-        Base2K, Degree, Dnum, GLWE, GLWELayout, GLWEPlaintext, GLWESecret, GLWESecretPrepare, GLWESecretPreparedAlloc,
-        GLWEToLWEKeyLayout, GLWEToLWESwitchingKey, GLWEToLWESwitchingKeyPrepare, GLWEToLWESwitchingKeyPreparedAlloc, LWE,
-        LWELayout, LWEPlaintext, LWESecret, LWEToGLWESwitchingKey, LWEToGLWESwitchingKeyLayout, LWEToGLWESwitchingKeyPrepare,
-        LWEToGLWESwitchingKeyPreparedAlloc, Rank, TorusPrecision,
+        Base2K, Degree, Dnum, GLWE, GLWELayout, GLWEPlaintext, GLWESecret, GLWESecretPreparedApi, GLWEToLWEKeyLayout,
+        GLWEToLWESwitchingKey, GLWEToLWESwitchingKeyPreparedAlloc, LWE, LWELayout, LWEPlaintext, LWESecret,
+        LWEToGLWESwitchingKey, LWEToGLWESwitchingKeyLayout, LWEToGLWESwitchingKeyPreparedAlloc, Rank, TorusPrecision,
         prepared::{GLWESecretPrepared, GLWEToLWESwitchingKeyPrepared, LWEToGLWESwitchingKeyPrepared},
     },
 };
@@ -21,11 +20,9 @@ where
     Module<BE>: GLWEFromLWE<BE>
         + LWEToGLWESwitchingKeyEncryptSk<BE>
         + GLWEDecrypt<BE>
-        + GLWESecretPrepare<BE>
-        + GLWESecretPreparedAlloc<BE>
+        + GLWESecretPreparedApi<BE>
         + LWEEncryptSk<BE>
-        + LWEToGLWESwitchingKeyPreparedAlloc<BE>
-        + LWEToGLWESwitchingKeyPrepare<BE>,
+        + LWEToGLWESwitchingKeyPreparedAlloc<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
@@ -115,10 +112,8 @@ where
         + GLWEEncryptSk<BE>
         + LWEDecrypt<BE>
         + GLWEDecrypt<BE>
-        + GLWESecretPrepare<BE>
-        + GLWESecretPreparedAlloc<BE>
+        + GLWESecretPreparedApi<BE>
         + GLWEToLWESwitchingKeyEncryptSk<BE>
-        + GLWEToLWESwitchingKeyPrepare<BE>
         + GLWEToLWESwitchingKeyPreparedAlloc<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,

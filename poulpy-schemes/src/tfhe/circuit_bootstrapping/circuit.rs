@@ -20,7 +20,7 @@ use poulpy_core::{
 };
 
 use poulpy_core::glwe_packing;
-use poulpy_core::layouts::{GGSW, GLWE, LWE, prepared::AutomorphismKeyPrepared};
+use poulpy_core::layouts::{GGSW, GLWE, LWE, prepared::GLWEAutomorphismKeyPrepared};
 
 use crate::tfhe::{
     blind_rotation::{
@@ -268,7 +268,7 @@ fn post_process<DataRes, DataA, B: Backend>(
     log_gap_in: usize,
     log_gap_out: usize,
     log_domain: usize,
-    auto_keys: &HashMap<i64, AutomorphismKeyPrepared<Vec<u8>, B>>,
+    auto_keys: &HashMap<i64, GLWEAutomorphismKeyPrepared<Vec<u8>, B>>,
     scratch: &mut Scratch<B>,
 ) where
     DataRes: DataMut,

@@ -8,8 +8,7 @@ use crate::{
     GGSWEncryptSk, GLWEEncryptSk, GLWEExternalProduct, GLWENoise, ScratchTakeCore,
     encryption::SIGMA,
     layouts::{
-        GGSW, GGSWLayout, GGSWPrepare, GGSWPreparedAlloc, GLWE, GLWELayout, GLWEPlaintext, GLWESecret, GLWESecretPrepare,
-        GLWESecretPreparedAlloc,
+        GGSW, GGSWLayout, GGSWPreparedAlloc, GLWE, GLWELayout, GLWEPlaintext, GLWESecret, GLWESecretPreparedApi,
         prepared::{GGSWPrepared, GLWESecretPrepared},
     },
     noise::noise_ggsw_product,
@@ -19,15 +18,13 @@ use crate::{
 pub fn test_glwe_external_product<BE: Backend>(module: &Module<BE>)
 where
     Module<BE>: GGSWEncryptSk<BE>
-        + GGSWPrepare<BE>
         + GGSWPreparedAlloc<BE>
         + VecZnxFillUniform
         + GLWEExternalProduct<BE>
         + GLWEEncryptSk<BE>
         + GLWENoise<BE>
         + VecZnxRotateInplace<BE>
-        + GLWESecretPrepare<BE>
-        + GLWESecretPreparedAlloc<BE>,
+        + GLWESecretPreparedApi<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
@@ -151,15 +148,13 @@ where
 pub fn test_glwe_external_product_inplace<BE: Backend>(module: &Module<BE>)
 where
     Module<BE>: GGSWEncryptSk<BE>
-        + GGSWPrepare<BE>
         + GGSWPreparedAlloc<BE>
         + VecZnxFillUniform
         + GLWEExternalProduct<BE>
         + GLWEEncryptSk<BE>
         + GLWENoise<BE>
         + VecZnxRotateInplace<BE>
-        + GLWESecretPrepare<BE>
-        + GLWESecretPreparedAlloc<BE>,
+        + GLWESecretPreparedApi<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {

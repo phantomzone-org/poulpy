@@ -7,7 +7,7 @@ use crate::{
     GGSWExpandRows, ScratchTakeCore,
     automorphism::glwe_ct::GLWEAutomorphism,
     layouts::{
-        GGLWEInfos, GGLWEPreparedToRef, GGSW, GGSWInfos, GGSWToMut, GGSWToRef, GetAutomorphismGaloisElement,
+        GGLWEInfos, GGLWEPreparedToRef, GGSW, GGSWInfos, GGSWToMut, GGSWToRef, GetGaloisElement,
         prepared::{TensorKeyPrepared, TensorKeyPreparedToRef},
     },
 };
@@ -35,7 +35,7 @@ impl<D: DataMut> GGSW<D> {
     pub fn automorphism<A, K, T, M, BE: Backend>(&mut self, module: &M, a: &A, key: &K, tsk: &T, scratch: &mut Scratch<BE>)
     where
         A: GGSWToRef,
-        K: GetAutomorphismGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
+        K: GetGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
         T: TensorKeyPreparedToRef<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
         M: GGSWAutomorphism<BE>,
@@ -45,7 +45,7 @@ impl<D: DataMut> GGSW<D> {
 
     pub fn automorphism_inplace<K, T, M, BE: Backend>(&mut self, module: &M, key: &K, tsk: &T, scratch: &mut Scratch<BE>)
     where
-        K: GetAutomorphismGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
+        K: GetGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
         T: TensorKeyPreparedToRef<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
         M: GGSWAutomorphism<BE>,
@@ -78,7 +78,7 @@ where
     where
         R: GGSWToMut,
         A: GGSWToRef,
-        K: GetAutomorphismGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
+        K: GetGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
         T: TensorKeyPreparedToRef<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
@@ -103,7 +103,7 @@ where
     fn ggsw_automorphism_inplace<R, K, T>(&self, res: &mut R, key: &K, tsk: &T, scratch: &mut Scratch<BE>)
     where
         R: GGSWToMut,
-        K: GetAutomorphismGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
+        K: GetGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
         T: TensorKeyPreparedToRef<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {

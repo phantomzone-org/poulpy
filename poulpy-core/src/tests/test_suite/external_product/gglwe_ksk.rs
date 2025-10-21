@@ -8,8 +8,7 @@ use crate::{
     GGLWEExternalProduct, GGLWENoise, GGSWEncryptSk, GLWESwitchingKeyEncryptSk, ScratchTakeCore,
     encryption::SIGMA,
     layouts::{
-        GGSW, GGSWLayout, GGSWPrepare, GGSWPreparedAlloc, GLWESecret, GLWESecretPrepare, GLWESecretPreparedAlloc,
-        GLWESwitchingKey, GLWESwitchingKeyLayout,
+        GGSW, GGSWLayout, GGSWPreparedAlloc, GLWESecret, GLWESecretPreparedApi, GLWESwitchingKey, GLWESwitchingKeyLayout,
         prepared::{GGSWPrepared, GLWESecretPrepared},
     },
     noise::noise_ggsw_product,
@@ -21,10 +20,8 @@ where
     Module<BE>: GGLWEExternalProduct<BE>
         + GGSWEncryptSk<BE>
         + GLWESwitchingKeyEncryptSk<BE>
-        + GLWESecretPrepare<BE>
-        + GLWESecretPreparedAlloc<BE>
+        + GLWESecretPreparedApi<BE>
         + VecZnxRotateInplace<BE>
-        + GGSWPrepare<BE>
         + GGSWPreparedAlloc<BE>
         + GGLWENoise<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
@@ -172,10 +169,8 @@ where
     Module<BE>: GGLWEExternalProduct<BE>
         + GGSWEncryptSk<BE>
         + GLWESwitchingKeyEncryptSk<BE>
-        + GLWESecretPrepare<BE>
-        + GLWESecretPreparedAlloc<BE>
+        + GLWESecretPreparedApi<BE>
         + VecZnxRotateInplace<BE>
-        + GGSWPrepare<BE>
         + GGSWPreparedAlloc<BE>
         + GGLWENoise<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,

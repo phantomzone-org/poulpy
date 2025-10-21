@@ -4,10 +4,7 @@ use poulpy_hal::{
 };
 
 use crate::{
-    encryption::{
-        SIGMA,
-        glwe_ct::{GLWEEncryptSk, GLWEEncryptSkInternal},
-    },
+    encryption::{GLWEEncryptSk, GLWEEncryptSkInternal, SIGMA},
     layouts::{
         GLWECompressedSeedMut, GLWEInfos, GLWEPlaintextToRef, LWEInfos,
         compressed::{GLWECompressed, GLWECompressedToMut},

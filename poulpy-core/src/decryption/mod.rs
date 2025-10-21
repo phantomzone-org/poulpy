@@ -1,5 +1,5 @@
-mod glwe_ct;
-mod lwe_ct;
+mod glwe;
+mod lwe;
 
-pub use glwe_ct::*;
-pub use lwe_ct::*;
+pub use glwe::*;
+pub use lwe::*;

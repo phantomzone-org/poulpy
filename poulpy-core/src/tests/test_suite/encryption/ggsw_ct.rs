@@ -8,7 +8,7 @@ use crate::{
     GGSWCompressedEncryptSk, GGSWEncryptSk, GGSWNoise, ScratchTakeCore,
     encryption::SIGMA,
     layouts::{
-        GGSW, GGSWDecompress, GGSWLayout, GLWESecret, GLWESecretPrepare, GLWESecretPreparedAlloc, compressed::GGSWCompressed,
+        GGSW, GGSWDecompress, GGSWLayout, GLWESecret, GLWESecretPreparedApi, compressed::GGSWCompressed,
         prepared::GLWESecretPrepared,
     },
 };
@@ -17,7 +17,7 @@ pub fn test_ggsw_encrypt_sk<BE: Backend>(module: &Module<BE>)
 where
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
-    Module<BE>: GGSWEncryptSk<BE> + GLWESecretPreparedAlloc<BE> + GLWESecretPrepare<BE> + GGSWNoise<BE>,
+    Module<BE>: GGSWEncryptSk<BE> + GLWESecretPreparedApi<BE> + GGSWNoise<BE>,
 {
     let base2k: usize = 12;
     let k: usize = 54;
@@ -74,8 +74,7 @@ pub fn test_ggsw_compressed_encrypt_sk<BE: Backend>(module: &Module<BE>)
 where
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
-    Module<BE>:
-        GGSWCompressedEncryptSk<BE> + GLWESecretPreparedAlloc<BE> + GLWESecretPrepare<BE> + GGSWNoise<BE> + GGSWDecompress,
+    Module<BE>: GGSWCompressedEncryptSk<BE> + GLWESecretPreparedApi<BE> + GGSWNoise<BE> + GGSWDecompress,
 {
     let base2k: usize = 12;
     let k: usize = 54;

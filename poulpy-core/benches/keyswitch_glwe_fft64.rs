@@ -1,7 +1,7 @@
 use poulpy_core::layouts::{
     AutomorphismKey, AutomorphismKeyLayout, Base2K, Degree, Dnum, Dsize, GLWE, GLWELayout, GLWESecret, GLWESwitchingKey,
     GLWESwitchingKeyLayout, GLWESwitchingKeyPrepared, Rank, TorusPrecision,
-    prepared::{AutomorphismKeyPrepared, GLWESecretPrepared},
+    prepared::{GLWEAutomorphismKeyPrepared, GLWESecretPrepared},
 };
 use std::{hint::black_box, time::Duration};
 
@@ -104,7 +104,8 @@ fn bench_keyswitch_glwe_fft64(c: &mut Criterion) {
             scratch.borrow(),
         );
 
-        let mut ksk_prepared: AutomorphismKeyPrepared<Vec<u8>, _> = AutomorphismKeyPrepared::alloc_from_infos(&module, &ksk);
+        let mut ksk_prepared: GLWEAutomorphismKeyPrepared<Vec<u8>, _> =
+            GLWEAutomorphismKeyPrepared::alloc_from_infos(&module, &ksk);
         ksk_prepared.prepare(&module, &ksk, scratch.borrow());
 
         move || {

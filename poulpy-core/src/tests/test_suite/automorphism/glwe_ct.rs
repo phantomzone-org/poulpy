@@ -8,9 +8,9 @@ use crate::{
     AutomorphismKeyEncryptSk, GLWEAutomorphism, GLWEDecrypt, GLWEEncryptSk, GLWENoise, ScratchTakeCore,
     encryption::SIGMA,
     layouts::{
-        AutomorphismKey, AutomorphismKeyLayout, AutomorphismKeyPrepare, AutomorphismKeyPreparedAlloc, GLWE, GLWELayout,
-        GLWEPlaintext, GLWESecret, GLWESecretPrepare, GLWESecretPreparedAlloc,
-        prepared::{AutomorphismKeyPrepared, GLWESecretPrepared},
+        AutomorphismKey, AutomorphismKeyLayout, GLWE, GLWEAutomorphismKeyPreparedApi, GLWELayout, GLWEPlaintext, GLWESecret,
+        GLWESecretPreparedApi,
+        prepared::{GLWEAutomorphismKeyPrepared, GLWESecretPrepared},
     },
     noise::log2_std_noise_gglwe_product,
 };
@@ -18,14 +18,12 @@ use crate::{
 pub fn test_glwe_automorphism<BE: Backend>(module: &Module<BE>)
 where
     Module<BE>: GLWEEncryptSk<BE>
-        + GLWESecretPrepare<BE>
-        + GLWESecretPreparedAlloc<BE>
+        + GLWESecretPreparedApi<BE>
         + VecZnxFillUniform
         + GLWEDecrypt<BE>
         + GLWEAutomorphism<BE>
         + AutomorphismKeyEncryptSk<BE>
-        + AutomorphismKeyPrepare<BE>
-        + AutomorphismKeyPreparedAlloc<BE>
+        + GLWEAutomorphismKeyPreparedApi<BE>
         + GLWENoise<BE>
         + VecZnxAutomorphismInplace<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
@@ -108,8 +106,8 @@ where
                 scratch.borrow(),
             );
 
-            let mut autokey_prepared: AutomorphismKeyPrepared<Vec<u8>, BE> =
-                AutomorphismKeyPrepared::alloc_from_infos(module, &autokey_infos);
+            let mut autokey_prepared: GLWEAutomorphismKeyPrepared<Vec<u8>, BE> =
+                GLWEAutomorphismKeyPrepared::alloc_from_infos(module, &autokey_infos);
             autokey_prepared.prepare(module, &autokey, scratch.borrow());
 
             ct_out.automorphism(module, &ct_in, &autokey_prepared, scratch.borrow());
@@ -138,14 +136,12 @@ where
 pub fn test_glwe_automorphism_inplace<BE: Backend>(module: &Module<BE>)
 where
     Module<BE>: GLWEEncryptSk<BE>
-        + GLWESecretPrepare<BE>
-        + GLWESecretPreparedAlloc<BE>
+        + GLWESecretPreparedApi<BE>
         + VecZnxFillUniform
         + GLWEDecrypt<BE>
         + GLWEAutomorphism<BE>
         + AutomorphismKeyEncryptSk<BE>
-        + AutomorphismKeyPrepare<BE>
-        + AutomorphismKeyPreparedAlloc<BE>
+        + GLWEAutomorphismKeyPreparedApi<BE>
         + GLWENoise<BE>
         + VecZnxAutomorphismInplace<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
@@ -219,8 +215,8 @@ where
                 scratch.borrow(),
             );
 
-            let mut autokey_prepared: AutomorphismKeyPrepared<Vec<u8>, BE> =
-                AutomorphismKeyPrepared::alloc_from_infos(module, &autokey);
+            let mut autokey_prepared: GLWEAutomorphismKeyPrepared<Vec<u8>, BE> =
+                GLWEAutomorphismKeyPrepared::alloc_from_infos(module, &autokey);
             autokey_prepared.prepare(module, &autokey, scratch.borrow());
 
             ct.automorphism_inplace(module, &autokey_prepared, scratch.borrow());

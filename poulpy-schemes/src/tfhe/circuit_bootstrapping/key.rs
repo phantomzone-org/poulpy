@@ -1,7 +1,7 @@
 use poulpy_core::layouts::{
     AutomorphismKey, AutomorphismKeyLayout, GGLWEInfos, GGSWInfos, GLWE, GLWEInfos, GLWESecret, LWEInfos, LWESecret, TensorKey,
     TensorKeyLayout,
-    prepared::{AutomorphismKeyPrepared, GLWESecretPrepared, PrepareAlloc, TensorKeyPrepared},
+    prepared::{GLWEAutomorphismKeyPrepared, GLWESecretPrepared, PrepareAlloc, TensorKeyPrepared},
 };
 use std::collections::HashMap;
 
@@ -155,7 +155,7 @@ where
 pub struct CircuitBootstrappingKeyPrepared<D: Data, BRA: BlindRotationAlgo, B: Backend> {
     pub(crate) brk: BlindRotationKeyPrepared<D, BRA, B>,
     pub(crate) tsk: TensorKeyPrepared<Vec<u8>, B>,
-    pub(crate) atk: HashMap<i64, AutomorphismKeyPrepared<Vec<u8>, B>>,
+    pub(crate) atk: HashMap<i64, GLWEAutomorphismKeyPrepared<Vec<u8>, B>>,
 }
 
 impl<D: DataRef, BRA: BlindRotationAlgo, B: Backend> CircuitBootstrappingKeyInfos for CircuitBootstrappingKeyPrepared<D, BRA, B> {
@@ -200,12 +200,12 @@ where
     Module<B>: VmpPMatAlloc<B> + VmpPrepare<B>,
     BlindRotationKey<D, BRA>: PrepareAlloc<B, BlindRotationKeyPrepared<Vec<u8>, BRA, B>>,
     TensorKey<D>: PrepareAlloc<B, TensorKeyPrepared<Vec<u8>, B>>,
-    AutomorphismKey<D>: PrepareAlloc<B, AutomorphismKeyPrepared<Vec<u8>, B>>,
+    AutomorphismKey<D>: PrepareAlloc<B, GLWEAutomorphismKeyPrepared<Vec<u8>, B>>,
 {
     fn prepare_alloc(&self, module: &Module<B>, scratch: &mut Scratch<B>) -> CircuitBootstrappingKeyPrepared<Vec<u8>, BRA, B> {
         let brk: BlindRotationKeyPrepared<Vec<u8>, BRA, B> = self.brk.prepare_alloc(module, scratch);
         let tsk: TensorKeyPrepared<Vec<u8>, B> = self.tsk.prepare_alloc(module, scratch);
-        let mut atk: HashMap<i64, AutomorphismKeyPrepared<Vec<u8>, B>> = HashMap::new();
+        let mut atk: HashMap<i64, GLWEAutomorphismKeyPrepared<Vec<u8>, B>> = HashMap::new();
         for (key, value) in &self.atk {
             atk.insert(*key, value.prepare_alloc(module, scratch));
         }

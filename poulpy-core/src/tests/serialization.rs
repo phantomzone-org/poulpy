@@ -4,9 +4,9 @@ use crate::layouts::{
     AutomorphismKey, Base2K, Degree, Dnum, Dsize, GGLWE, GGSW, GLWE, GLWESwitchingKey, GLWEToLWESwitchingKey, LWE,
     LWESwitchingKey, LWEToGLWESwitchingKey, Rank, TensorKey, TorusPrecision,
     compressed::{
-        AutomorphismKeyCompressed, GGLWECompressed, GGSWCompressed, GLWECompressed, GLWESwitchingKeyCompressed,
-        GLWEToLWESwitchingKeyCompressed, LWECompressed, LWESwitchingKeyCompressed, LWEToGLWESwitchingKeyCompressed,
-        TensorKeyCompressed,
+        GGLWECompressed, GGSWCompressed, GLWEAutomorphismKeyCompressed, GLWECompressed, GLWESwitchingKeyCompressed,
+        GLWETensorKeyCompressed, GLWEToLWESwitchingKeyCompressed, LWECompressed, LWESwitchingKeyCompressed,
+        LWEToGLWESwitchingKeyCompressed,
     },
 };
 
@@ -75,7 +75,8 @@ fn test_automorphism_key_serialization() {
 
 #[test]
 fn test_automorphism_key_compressed_serialization() {
-    let original: AutomorphismKeyCompressed<Vec<u8>> = AutomorphismKeyCompressed::alloc(N_GLWE, BASE2K, K, RANK, DNUM, DSIZE);
+    let original: GLWEAutomorphismKeyCompressed<Vec<u8>> =
+        GLWEAutomorphismKeyCompressed::alloc(N_GLWE, BASE2K, K, RANK, DNUM, DSIZE);
     test_reader_writer_interface(original);
 }
 
@@ -87,7 +88,7 @@ fn test_tensor_key_serialization() {
 
 #[test]
 fn test_tensor_key_compressed_serialization() {
-    let original: TensorKeyCompressed<Vec<u8>> = TensorKeyCompressed::alloc(N_GLWE, BASE2K, K, RANK, DNUM, DSIZE);
+    let original: GLWETensorKeyCompressed<Vec<u8>> = GLWETensorKeyCompressed::alloc(N_GLWE, BASE2K, K, RANK, DNUM, DSIZE);
     test_reader_writer_interface(original);
 }
 
