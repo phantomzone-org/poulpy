@@ -109,7 +109,7 @@ where
         let dsize: usize = res.dsize().into();
         let cols: usize = (rank + 1).into();
 
-        let (mut tmp_pt, scratch_1) = scratch.take_glwe_plaintext(self, res);
+        let (mut tmp_pt, scratch_1) = scratch.take_glwe_plaintext(res);
 
         for row_i in 0..res.dnum().into() {
             tmp_pt.data.zero();

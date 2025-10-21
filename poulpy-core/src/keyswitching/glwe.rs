@@ -278,7 +278,7 @@ where
                 module.vec_znx_dft_apply(1, 0, &mut ai_dft, col_i, a.data(), col_i + 1);
             });
         } else {
-            let (mut a_conv, scratch_2) = scratch_1.take_vec_znx(module, 1, a_size);
+            let (mut a_conv, scratch_2) = scratch_1.take_vec_znx(module.n(), 1, a_size);
             (0..cols - 1).for_each(|col_i| {
                 module.vec_znx_normalize(
                     base2k_out,
@@ -324,7 +324,7 @@ where
                 }
             }
         } else {
-            let (mut a_conv, scratch_2) = scratch_1.take_vec_znx(module, cols - 1, a_size);
+            let (mut a_conv, scratch_2) = scratch_1.take_vec_znx(module.n(), cols - 1, a_size);
             for j in 0..cols - 1 {
                 module.vec_znx_normalize(
                     base2k_out,

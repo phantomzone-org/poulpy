@@ -19,13 +19,11 @@ pub trait ScratchTakeCore<B: Backend>
 where
     Self: ScratchTakeBasic + ScratchAvailable,
 {
-    fn take_glwe<A, M>(&mut self, module: &M, infos: &A) -> (GLWE<&mut [u8]>, &mut Self)
+    fn take_glwe<A>(&mut self, infos: &A) -> (GLWE<&mut [u8]>, &mut Self)
     where
         A: GLWEInfos,
-        M: ModuleN,
     {
-        assert_eq!(module.n() as u32, infos.n());
-        let (data, scratch) = self.take_vec_znx(module, (infos.rank() + 1).into(), infos.size());
+        let (data, scratch) = self.take_vec_znx(infos.n().into(), (infos.rank() + 1).into(), infos.size());
         (
             GLWE {
                 k: infos.k(),
@@ -36,28 +34,25 @@ where
         )
     }
 
-    fn take_glwe_slice<A, M>(&mut self, module: &M, size: usize, infos: &A) -> (Vec<GLWE<&mut [u8]>>, &mut Self)
+    fn take_glwe_slice<A>(&mut self, size: usize, infos: &A) -> (Vec<GLWE<&mut [u8]>>, &mut Self)
     where
         A: GLWEInfos,
-        M: ModuleN,
     {
         let mut scratch: &mut Self = self;
         let mut cts: Vec<GLWE<&mut [u8]>> = Vec::with_capacity(size);
         for _ in 0..size {
-            let (ct, new_scratch) = scratch.take_glwe(module, infos);
+            let (ct, new_scratch) = scratch.take_glwe(infos);
             scratch = new_scratch;
             cts.push(ct);
         }
         (cts, scratch)
     }
 
-    fn take_glwe_plaintext<A, M>(&mut self, module: &M, infos: &A) -> (GLWEPlaintext<&mut [u8]>, &mut Self)
+    fn take_glwe_plaintext<A>(&mut self, infos: &A) -> (GLWEPlaintext<&mut [u8]>, &mut Self)
     where
         A: GLWEInfos,
-        M: ModuleN,
     {
-        assert_eq!(module.n() as u32, infos.n());
-        let (data, scratch) = self.take_vec_znx(module, 1, infos.size());
+        let (data, scratch) = self.take_vec_znx(infos.n().into(), 1, infos.size());
         (
             GLWEPlaintext {
                 k: infos.k(),
@@ -68,14 +63,12 @@ where
         )
     }
 
-    fn take_gglwe<A, M>(&mut self, module: &M, infos: &A) -> (GGLWE<&mut [u8]>, &mut Self)
+    fn take_gglwe<A>(&mut self, infos: &A) -> (GGLWE<&mut [u8]>, &mut Self)
     where
         A: GGLWEInfos,
-        M: ModuleN,
     {
-        assert_eq!(module.n() as u32, infos.n());
         let (data, scratch) = self.take_mat_znx(
-            module,
+            infos.n().into(),
             infos.dnum().0.div_ceil(infos.dsize().0) as usize,
             infos.rank_in().into(),
             (infos.rank_out() + 1).into(),
@@ -116,14 +109,12 @@ where
         )
     }
 
-    fn take_ggsw<A, M>(&mut self, module: &M, infos: &A) -> (GGSW<&mut [u8]>, &mut Self)
+    fn take_ggsw<A>(&mut self, infos: &A) -> (GGSW<&mut [u8]>, &mut Self)
     where
         A: GGSWInfos,
-        M: ModuleN,
     {
-        assert_eq!(module.n() as u32, infos.n());
         let (data, scratch) = self.take_mat_znx(
-            module,
+            infos.n().into(),
             infos.dnum().into(),
             (infos.rank() + 1).into(),
             (infos.rank() + 1).into(),
@@ -184,13 +175,11 @@ where
         (cts, scratch)
     }
 
-    fn take_glwe_public_key<A, M>(&mut self, module: &M, infos: &A) -> (GLWEPublicKey<&mut [u8]>, &mut Self)
+    fn take_glwe_public_key<A>(&mut self, infos: &A) -> (GLWEPublicKey<&mut [u8]>, &mut Self)
     where
         A: GLWEInfos,
-        M: ModuleN,
     {
-        assert_eq!(module.n() as u32, infos.n());
-        let (data, scratch) = self.take_glwe(module, infos);
+        let (data, scratch) = self.take_glwe(infos);
         (
             GLWEPublicKey {
                 dist: Distribution::NONE,
@@ -232,11 +221,8 @@ where
         )
     }
 
-    fn take_glwe_secret<M>(&mut self, module: &M, rank: Rank) -> (GLWESecret<&mut [u8]>, &mut Self)
-    where
-        M: ModuleN,
-    {
-        let (data, scratch) = self.take_scalar_znx(module, rank.into());
+    fn take_glwe_secret(&mut self, n: Degree, rank: Rank) -> (GLWESecret<&mut [u8]>, &mut Self) {
+        let (data, scratch) = self.take_scalar_znx(n.into(), rank.into());
         (
             GLWESecret {
                 data,
@@ -260,13 +246,11 @@ where
         )
     }
 
-    fn take_glwe_switching_key<A, M>(&mut self, module: &M, infos: &A) -> (GLWESwitchingKey<&mut [u8]>, &mut Self)
+    fn take_glwe_switching_key<A>(&mut self, infos: &A) -> (GLWESwitchingKey<&mut [u8]>, &mut Self)
     where
         A: GGLWEInfos,
-        M: ModuleN,
     {
-        assert_eq!(module.n() as u32, infos.n());
-        let (data, scratch) = self.take_gglwe(module, infos);
+        let (data, scratch) = self.take_gglwe(infos);
         (
             GLWESwitchingKey {
                 key: data,
@@ -298,17 +282,15 @@ where
         )
     }
 
-    fn take_gglwe_automorphism_key<A, M>(&mut self, module: &M, infos: &A) -> (AutomorphismKey<&mut [u8]>, &mut Self)
+    fn take_glwe_automorphism_key<A>(&mut self, infos: &A) -> (AutomorphismKey<&mut [u8]>, &mut Self)
     where
         A: GGLWEInfos,
-        M: ModuleN,
     {
-        assert_eq!(module.n() as u32, infos.n());
-        let (data, scratch) = self.take_gglwe(module, infos);
+        let (data, scratch) = self.take_gglwe(infos);
         (AutomorphismKey { key: data, p: 0 }, scratch)
     }
 
-    fn take_gglwe_automorphism_key_prepared<A, M>(
+    fn take_glwe_automorphism_key_prepared<A, M>(
         &mut self,
         module: &M,
         infos: &A,
@@ -322,12 +304,10 @@ where
         (GLWEAutomorphismKeyPrepared { key: data, p: 0 }, scratch)
     }
 
-    fn take_tensor_key<A, M>(&mut self, module: &M, infos: &A) -> (TensorKey<&mut [u8]>, &mut Self)
+    fn take_glwe_tensor_key<A, M>(&mut self, infos: &A) -> (TensorKey<&mut [u8]>, &mut Self)
     where
         A: GGLWEInfos,
-        M: ModuleN,
     {
-        assert_eq!(module.n() as u32, infos.n());
         assert_eq!(
             infos.rank_in(),
             infos.rank_out(),
@@ -342,19 +322,19 @@ where
         ksk_infos.rank_in = Rank(1);
 
         if pairs != 0 {
-            let (gglwe, s) = scratch.take_gglwe(module, &ksk_infos);
+            let (gglwe, s) = scratch.take_gglwe(&ksk_infos);
             scratch = s;
             keys.push(gglwe);
         }
         for _ in 1..pairs {
-            let (gglwe, s) = scratch.take_gglwe(module, &ksk_infos);
+            let (gglwe, s) = scratch.take_gglwe(&ksk_infos);
             scratch = s;
             keys.push(gglwe);
         }
         (TensorKey { keys }, scratch)
     }
 
-    fn take_gglwe_tensor_key_prepared<A, M>(&mut self, module: &M, infos: &A) -> (TensorKeyPrepared<&mut [u8], B>, &mut Self)
+    fn take_glwe_tensor_key_prepared<A, M>(&mut self, module: &M, infos: &A) -> (TensorKeyPrepared<&mut [u8], B>, &mut Self)
     where
         A: GGLWEInfos,
         M: ModuleN + VmpPMatBytesOf,

@@ -6,7 +6,6 @@ use poulpy_hal::{
 
 use crate::{
     GLWEEncryptSk, ScratchTakeCore,
-    layouts::GLWEInfos,
     layouts::{
         GGLWE, GGLWEInfos, GGLWEToMut, GLWEPlaintext, LWEInfos,
         prepared::{GLWESecretPrepared, GLWESecretPreparedToRef},
@@ -143,7 +142,7 @@ where
         let base2k: usize = res.base2k().into();
         let rank_in: usize = res.rank_in().into();
 
-        let (mut tmp_pt, scrach_1) = scratch.take_glwe_plaintext(self, &res.glwe_layout());
+        let (mut tmp_pt, scrach_1) = scratch.take_glwe_plaintext(res);
         // For each input column (i.e. rank) produces a GGLWE of rank_out+1 columns
         //
         // Example for ksk rank 2 to rank 3:

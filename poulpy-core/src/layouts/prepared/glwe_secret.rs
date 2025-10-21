@@ -96,7 +96,10 @@ where
     }
 }
 
-impl<B: Backend> GLWESecretPreparedFactory<B> for Module<B> where Self: GetDegree + SvpPPolBytesOf + SvpPPolAlloc<B> + SvpPrepare<B> {}
+impl<B: Backend> GLWESecretPreparedFactory<B> for Module<B> where
+    Self: GetDegree + SvpPPolBytesOf + SvpPPolAlloc<B> + SvpPrepare<B>
+{
+}
 
 impl<B: Backend> GLWESecretPrepared<Vec<u8>, B> {
     pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self

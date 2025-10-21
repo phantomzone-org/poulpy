@@ -8,7 +8,7 @@ use crate::{
     ScratchTakeCore,
     encryption::{GGSWEncryptSk, GLWEEncryptSkInternal, SIGMA},
     layouts::{
-        GGSWCompressedSeedMut, GGSWInfos, GLWEInfos, LWEInfos,
+        GGSWCompressedSeedMut, GGSWInfos, LWEInfos,
         compressed::{GGSWCompressed, GGSWCompressedToMut},
         prepared::{GLWESecretPrepared, GLWESecretPreparedToRef},
     },
@@ -107,7 +107,7 @@ where
 
             println!("res.seed: {:?}", res.seed);
 
-            let (mut tmp_pt, scratch_1) = scratch.take_glwe_plaintext(self, &res.glwe_layout());
+            let (mut tmp_pt, scratch_1) = scratch.take_glwe_plaintext(res);
 
             let mut source = Source::new(seed_xa);
 

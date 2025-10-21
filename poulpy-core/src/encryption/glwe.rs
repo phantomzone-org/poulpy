@@ -372,7 +372,7 @@ where
         let (mut u_dft, scratch_1) = scratch.take_svp_ppol(self, 1);
 
         {
-            let (mut u, _) = scratch_1.take_scalar_znx(self, 1);
+            let (mut u, _) = scratch_1.take_scalar_znx(self.n(), 1);
             match pk.dist() {
                 Distribution::NONE => panic!(
                     "invalid public key: SecretDistribution::NONE, ensure it has been correctly intialized through \
@@ -499,11 +499,11 @@ where
 
         let size: usize = ct.size();
 
-        let (mut c0, scratch_1) = scratch.take_vec_znx(self, 1, size);
+        let (mut c0, scratch_1) = scratch.take_vec_znx(self.n(), 1, size);
         c0.zero();
 
         {
-            let (mut ci, scratch_2) = scratch_1.take_vec_znx(self, 1, size);
+            let (mut ci, scratch_2) = scratch_1.take_vec_znx(self.n(), 1, size);
 
             // ct[i] = uniform
             // ct[0] -= c[i] * s[i],

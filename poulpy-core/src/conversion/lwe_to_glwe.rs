@@ -50,15 +50,12 @@ where
         assert_eq!(ksk.n(), self.n() as u32);
         assert!(lwe.n() <= self.n() as u32);
 
-        let (mut glwe, scratch_1) = scratch.take_glwe(
-            self,
-            &GLWELayout {
-                n: ksk.n(),
-                base2k: ksk.base2k(),
-                k: lwe.k(),
-                rank: 1u32.into(),
-            },
-        );
+        let (mut glwe, scratch_1) = scratch.take_glwe(&GLWELayout {
+            n: ksk.n(),
+            base2k: ksk.base2k(),
+            k: lwe.k(),
+            rank: 1u32.into(),
+        });
         glwe.data.zero();
 
         let n_lwe: usize = lwe.n().into();
@@ -70,7 +67,7 @@ where
                 glwe.data.at_mut(1, i)[..n_lwe].copy_from_slice(&data_lwe[1..]);
             }
         } else {
-            let (mut a_conv, scratch_2) = scratch_1.take_vec_znx(self, 1, lwe.size());
+            let (mut a_conv, scratch_2) = scratch_1.take_vec_znx(self.n(), 1, lwe.size());
             a_conv.zero();
             for j in 0..lwe.size() {
                 let data_lwe: &[i64] = lwe.data.at(0, j);

@@ -99,7 +99,7 @@ where
 
         assert!(sk_lwe.n().0 <= self.n() as u32);
 
-        let (mut sk_lwe_as_glwe, scratch_1) = scratch.take_glwe_secret(self, Rank(1));
+        let (mut sk_lwe_as_glwe, scratch_1) = scratch.take_glwe_secret(self.n().into(), Rank(1));
         sk_lwe_as_glwe.data.at_mut(0, 0)[..sk_lwe.n().into()].copy_from_slice(sk_lwe.data.at(0, 0));
         sk_lwe_as_glwe.data.at_mut(0, 0)[sk_lwe.n().into()..].fill(0);
         self.vec_znx_automorphism_inplace(-1, &mut sk_lwe_as_glwe.data.as_vec_znx_mut(), 0, scratch_1);

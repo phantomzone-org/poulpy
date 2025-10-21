@@ -35,7 +35,7 @@ impl<DataSelf: DataMut> TensorKey<DataSelf> {
         scratch: &mut Scratch<BE>,
     ) where
         M: TensorKeyEncryptSk<BE>,
-        S: GLWESecretToRef + GetDistribution,
+        S: GLWESecretToRef + GetDistribution + GLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         module.tensor_key_encrypt_sk(self, sk, source_xa, source_xe, scratch);
@@ -56,7 +56,7 @@ pub trait TensorKeyEncryptSk<BE: Backend> {
         scratch: &mut Scratch<BE>,
     ) where
         R: TensorKeyToMut,
-        S: GLWESecretToRef + GetDistribution;
+        S: GLWESecretToRef + GetDistribution + GLWEInfos;
 }
 
 impl<BE: Backend> TensorKeyEncryptSk<BE> for Module<BE>
@@ -93,14 +93,14 @@ where
         scratch: &mut Scratch<BE>,
     ) where
         R: TensorKeyToMut,
-        S: GLWESecretToRef + GetDistribution,
+        S: GLWESecretToRef + GetDistribution + GLWEInfos,
     {
         let res: &mut TensorKey<&mut [u8]> = &mut res.to_mut();
 
         // let n: RingDegree = sk.n();
         let rank: Rank = res.rank_out();
 
-        let (mut sk_prepared, scratch_1) = scratch.take_glwe_secret_prepared(self, rank);
+        let (mut sk_prepared, scratch_1) = scratch.take_glwe_secret_prepared(self, sk.rank());
         sk_prepared.prepare(self, sk);
 
         let sk: &GLWESecret<&[u8]> = &sk.to_ref();
@@ -115,7 +115,7 @@ where
         });
 
         let (mut sk_ij_big, scratch_3) = scratch_2.take_vec_znx_big(self, 1, 1);
-        let (mut sk_ij, scratch_4) = scratch_3.take_glwe_secret(self, Rank(1));
+        let (mut sk_ij, scratch_4) = scratch_3.take_glwe_secret(self.n().into(), Rank(1));
         let (mut sk_ij_dft, scratch_5) = scratch_4.take_vec_znx_dft(self, 1, 1);
 
         (0..rank.into()).for_each(|i| {

@@ -85,7 +85,7 @@ where
             rank: Rank(1),
         };
 
-        let (mut tmp_glwe, scratch_1) = scratch.take_glwe(self, &glwe_layout);
+        let (mut tmp_glwe, scratch_1) = scratch.take_glwe(&glwe_layout);
         self.glwe_keyswitch(&mut tmp_glwe, a, key, scratch_1);
         self.lwe_sample_extract(res, &tmp_glwe);
     }

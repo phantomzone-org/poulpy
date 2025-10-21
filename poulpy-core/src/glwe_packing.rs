@@ -331,7 +331,7 @@ fn combine<B, M, K, BE: Backend>(
     // since 2*(I(X) * Q/2) = I(X) * Q = 0 mod Q.
     if acc.value {
         if let Some(b) = b {
-            let (mut tmp_b, scratch_1) = scratch.take_glwe(module, a);
+            let (mut tmp_b, scratch_1) = scratch.take_glwe(a);
 
             // a = a * X^-t
             module.glwe_rotate_inplace(-t, a, scratch_1);
@@ -371,7 +371,7 @@ fn combine<B, M, K, BE: Backend>(
             }
         }
     } else if let Some(b) = b {
-        let (mut tmp_b, scratch_1) = scratch.take_glwe(module, a);
+        let (mut tmp_b, scratch_1) = scratch.take_glwe(a);
         module.glwe_rotate(t, &mut tmp_b, b);
         module.glwe_rsh(1, &mut tmp_b, scratch_1);
 
@@ -415,7 +415,7 @@ fn pack_internal<M, A, B, K, BE: Backend>(
         let t: i64 = 1 << (a.n().log2() - i - 1);
 
         if let Some(b) = b.as_deref_mut() {
-            let (mut tmp_b, scratch_1) = scratch.take_glwe(module, a);
+            let (mut tmp_b, scratch_1) = scratch.take_glwe(a);
 
             // a = a * X^-t
             module.glwe_rotate_inplace(-t, a, scratch_1);
@@ -449,7 +449,7 @@ fn pack_internal<M, A, B, K, BE: Backend>(
     } else if let Some(b) = b.as_deref_mut() {
         let t: i64 = 1 << (b.n().log2() - i - 1);
 
-        let (mut tmp_b, scratch_1) = scratch.take_glwe(module, b);
+        let (mut tmp_b, scratch_1) = scratch.take_glwe(b);
         module.glwe_rotate(t, &mut tmp_b, b);
         module.glwe_rsh(1, &mut tmp_b, scratch_1);
 

@@ -111,8 +111,8 @@ where
         assert!(sk_lwe_out.n().0 <= res.n().0);
         assert!(res.n() <= self.n() as u32);
 
-        let (mut sk_in_glwe, scratch_1) = scratch.take_glwe_secret(self, Rank(1));
-        let (mut sk_out_glwe, scratch_2) = scratch_1.take_glwe_secret(self, Rank(1));
+        let (mut sk_in_glwe, scratch_1) = scratch.take_glwe_secret(self.n().into(), Rank(1));
+        let (mut sk_out_glwe, scratch_2) = scratch_1.take_glwe_secret(self.n().into(), Rank(1));
 
         sk_out_glwe.data.at_mut(0, 0)[..sk_lwe_out.n().into()].copy_from_slice(sk_lwe_out.data.at(0, 0));
         sk_out_glwe.data.at_mut(0, 0)[sk_lwe_out.n().into()..].fill(0);

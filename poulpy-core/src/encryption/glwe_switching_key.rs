@@ -109,7 +109,7 @@ where
             self.glwe_switching_key_encrypt_sk_tmp_bytes(res)
         );
 
-        let (mut sk_in_tmp, scratch_1) = scratch.take_scalar_znx(self, sk_in.rank().into());
+        let (mut sk_in_tmp, scratch_1) = scratch.take_scalar_znx(self.n(), sk_in.rank().into());
         for i in 0..sk_in.rank().into() {
             self.vec_znx_switch_ring(
                 &mut sk_in_tmp.as_vec_znx_mut(),
@@ -121,7 +121,7 @@ where
 
         let (mut sk_out_tmp, scratch_2) = scratch_1.take_glwe_secret_prepared(self, sk_out.rank());
         {
-            let (mut tmp, _) = scratch_2.take_scalar_znx(self, 1);
+            let (mut tmp, _) = scratch_2.take_scalar_znx(self.n(), 1);
             for i in 0..sk_out.rank().into() {
                 self.vec_znx_switch_ring(&mut tmp.as_vec_znx_mut(), 0, &sk_out.data.as_vec_znx(), i);
                 self.svp_prepare(&mut sk_out_tmp.data, i, &tmp, 0);

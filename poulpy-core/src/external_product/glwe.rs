@@ -147,7 +147,7 @@ where
                 }
             }
         } else {
-            let (mut a_conv, scratch_3) = scratch_2.take_vec_znx(self, cols, a_size);
+            let (mut a_conv, scratch_3) = scratch_2.take_vec_znx(self.n(), cols, a_size);
 
             for j in 0..cols {
                 self.vec_znx_normalize(
@@ -262,7 +262,7 @@ where
                 }
             }
         } else {
-            let (mut a_conv, scratch_3) = scratch_2.take_vec_znx(self, cols, a_size);
+            let (mut a_conv, scratch_3) = scratch_2.take_vec_znx(self.n(), cols, a_size);
 
             for j in 0..cols {
                 self.vec_znx_normalize(

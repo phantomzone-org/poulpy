@@ -186,7 +186,7 @@ where
                     self.vec_znx_dft_apply(1, 0, &mut ci_dft, i, a, i);
                 }
             } else {
-                let (mut a_conv, scratch_2) = scratch_1.take_vec_znx(self, 1, a_size);
+                let (mut a_conv, scratch_2) = scratch_1.take_vec_znx(self.n(), 1, a_size);
                 for i in 0..cols {
                     self.vec_znx_normalize(basek_tsk, &mut a_conv, 0, basek_in, a, i, scratch_2);
                     self.vec_znx_dft_apply(1, 0, &mut ci_dft, i, &a_conv, 0);

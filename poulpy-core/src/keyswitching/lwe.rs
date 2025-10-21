@@ -87,26 +87,20 @@ where
 
         let a_size: usize = a.k().div_ceil(ksk.base2k()) as usize;
 
-        let (mut glwe_in, scratch_1) = scratch.take_glwe(
-            self,
-            &GLWELayout {
-                n: ksk.n(),
-                base2k: a.base2k(),
-                k: max_k,
-                rank: Rank(1),
-            },
-        );
+        let (mut glwe_in, scratch_1) = scratch.take_glwe(&GLWELayout {
+            n: ksk.n(),
+            base2k: a.base2k(),
+            k: max_k,
+            rank: Rank(1),
+        });
         glwe_in.data.zero();
 
-        let (mut glwe_out, scratch_1) = scratch_1.take_glwe(
-            self,
-            &GLWELayout {
-                n: ksk.n(),
-                base2k: res.base2k(),
-                k: max_k,
-                rank: Rank(1),
-            },
-        );
+        let (mut glwe_out, scratch_1) = scratch_1.take_glwe(&GLWELayout {
+            n: ksk.n(),
+            base2k: res.base2k(),
+            k: max_k,
+            rank: Rank(1),
+        });
 
         let n_lwe: usize = a.n().into();
 

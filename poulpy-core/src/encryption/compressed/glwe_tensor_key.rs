@@ -99,7 +99,7 @@ where
         R: GGLWEInfos + TensorKeyCompressedAtMut<D>,
         S: GLWESecretToRef + GetDistribution,
     {
-        let (mut sk_dft_prep, scratch_1) = scratch.take_glwe_secret_prepared(self, res.rank_out());
+        let (mut sk_dft_prep, scratch_1) = scratch.take_glwe_secret_prepared(self, res.rank());
         sk_dft_prep.prepare(self, sk);
 
         let sk: &GLWESecret<&[u8]> = &sk.to_ref();
@@ -120,7 +120,7 @@ where
         }
 
         let (mut sk_ij_big, scratch_3) = scratch_2.take_vec_znx_big(self, 1, 1);
-        let (mut sk_ij, scratch_4) = scratch_3.take_glwe_secret(self, Rank(1));
+        let (mut sk_ij, scratch_4) = scratch_3.take_glwe_secret(self.n().into(), Rank(1));
         let (mut sk_ij_dft, scratch_5) = scratch_4.take_vec_znx_dft(self, 1, 1);
 
         let mut source_xa: Source = Source::new(seed_xa);

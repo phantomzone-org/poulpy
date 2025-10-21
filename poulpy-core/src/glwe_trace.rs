@@ -140,15 +140,12 @@ where
         }
 
         if res.base2k() != basek_ksk {
-            let (mut self_conv, scratch_1) = scratch.take_glwe(
-                self,
-                &GLWELayout {
-                    n: self.n().into(),
-                    base2k: basek_ksk,
-                    k: res.k(),
-                    rank: res.rank(),
-                },
-            );
+            let (mut self_conv, scratch_1) = scratch.take_glwe(&GLWELayout {
+                n: self.n().into(),
+                base2k: basek_ksk,
+                k: res.k(),
+                rank: res.rank(),
+            });
 
             for j in 0..(res.rank() + 1).into() {
                 self.vec_znx_normalize(

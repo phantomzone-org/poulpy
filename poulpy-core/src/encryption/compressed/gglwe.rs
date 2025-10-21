@@ -142,7 +142,7 @@ where
 
             let mut source_xa = Source::new(seed);
 
-            let (mut tmp_pt, scrach_1) = scratch.take_glwe_plaintext(self, res);
+            let (mut tmp_pt, scrach_1) = scratch.take_glwe_plaintext(res);
             for col_i in 0..rank_in {
                 for d_i in 0..dnum {
                     // Adds the scalar_znx_pt to the i-th limb of the vec_znx_pt
