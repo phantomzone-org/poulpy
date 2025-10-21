@@ -1,14 +1,12 @@
 use itertools::Itertools;
 use poulpy_core::{
-    GLWEOperations, TakeGLWEPlaintext, TakeGLWESlice, glwe_packing,
     layouts::{
-        GLWE, GLWEInfos, GLWEPlaintextLayout, LWEInfos, TorusPrecision,
-        prepared::{GLWEAutomorphismKeyPrepared, GLWESecretPrepared},
-    },
+        prepared::{GLWEAutomorphismKeyPrepared, GLWESecretPrepared}, GLWEInfos, GLWEPlaintextLayout, LWEInfos, TorusPrecision, GLWE
+    }, ScratchTakeCore,
 };
 use poulpy_hal::{
     api::{
-        ScratchAvailable, SvpApplyDftToDftInplace, TakeVecZnx, TakeVecZnxBig, TakeVecZnxDft, VecZnxAddInplace, VecZnxAddNormal,
+        ScratchAvailable, SvpApplyDftToDftInplace, VecZnxAddInplace, VecZnxAddNormal,
         VecZnxAddScalarInplace, VecZnxAutomorphismInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace,
         VecZnxBigAutomorphismInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallNegateInplace, VecZnxCopy,
         VecZnxDftApply, VecZnxDftBytesOf, VecZnxDftCopy, VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA,
@@ -62,7 +60,7 @@ impl<D: DataMut, T: UnsignedInteger> FheUintWord<D, T> {
             + VecZnxAutomorphismInplace<BE>
             + VecZnxBigSubSmallNegateInplace<BE>
             + VecZnxRotate,
-        Scratch<BE>: TakeVecZnxDft<BE> + ScratchAvailable + TakeVecZnx + TakeGLWESlice,
+        Scratch<BE>: ScratchTakeCore<BE>,
     {
         // Repacks the GLWE ciphertexts bits
         let gap: usize = module.n() / T::WORD_SIZE;
@@ -122,7 +120,7 @@ impl<D: DataMut, T: UnsignedInteger + ToBits> FheUintWord<D, T> {
             + VecZnxAddNormal
             + VecZnxNormalize<BE>
             + VecZnxSub,
-        Scratch<BE>: TakeVecZnxDft<BE> + ScratchAvailable + TakeVecZnx + TakeGLWEPlaintext<BE>,
+        Scratch<BE>: ScratchTakeCore<BE>,
     {
         #[cfg(debug_assertions)]
         {
@@ -167,7 +165,7 @@ impl<D: DataRef, T: UnsignedInteger + FromBits> FheUintWord<D, T> {
             + VecZnxBigAddInplace<BE>
             + VecZnxBigAddSmallInplace<BE>
             + VecZnxBigNormalize<BE>,
-        Scratch<BE>: TakeVecZnxDft<BE> + TakeVecZnxBig<BE> + TakeGLWEPlaintext<BE>,
+        Scratch<BE>: ScratchTakeCore<BE>,
     {
         #[cfg(debug_assertions)]
         {

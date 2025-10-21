@@ -1,14 +1,13 @@
 use poulpy_core::layouts::{
     AutomorphismKey, AutomorphismKeyLayout, GGLWEInfos, GGSWInfos, GLWE, GLWEInfos, GLWESecret, LWEInfos, LWESecret, TensorKey,
     TensorKeyLayout,
-    prepared::{GLWEAutomorphismKeyPrepared, GLWESecretPrepared, PrepareAlloc, TensorKeyPrepared},
+    prepared::{GLWEAutomorphismKeyPrepared, GLWESecretPrepared, TensorKeyPrepared},
 };
 use std::collections::HashMap;
 
 use poulpy_hal::{
     api::{
-        ScratchAvailable, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolBytesOf, SvpPrepare, TakeScalarZnx,
-        TakeSvpPPol, TakeVecZnx, TakeVecZnxBig, TakeVecZnxDft, VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace,
+        ScratchAvailable, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolBytesOf, SvpPrepare, VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace,
         VecZnxAutomorphism, VecZnxBigNormalize, VecZnxDftApply, VecZnxDftBytesOf, VecZnxFillUniform, VecZnxIdftApplyConsume,
         VecZnxIdftApplyTmpA, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubInplace,
         VecZnxSwitchRing, VmpPMatAlloc, VmpPrepare,

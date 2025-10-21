@@ -23,9 +23,8 @@ pub use external_product::*;
 pub use glwe_packing::*;
 pub use keyswitching::*;
 pub use noise::*;
+pub use scratch::*;
 
 pub use encryption::SIGMA;
-
-pub use scratch::*;
 
 pub mod tests;

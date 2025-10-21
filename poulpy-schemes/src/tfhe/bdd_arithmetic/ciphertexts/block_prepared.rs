@@ -144,7 +144,7 @@ impl<D: DataMut, T: UnsignedInteger + ToBits, BE: Backend> FheUintBlocksPrep<D, 
             assert_eq!(sk.n(), module.n() as u32);
         }
 
-        let (mut tmp_ggsw, scratch_1) = scratch.take_ggsw(module, self);
+        let (mut tmp_ggsw, scratch_1) = scratch.take_ggsw(self);
         let (mut pt, scratch_2) = scratch_1.take_scalar_znx(module.n(), 1);
 
         for i in 0..T::WORD_SIZE {

@@ -1,158 +1,142 @@
 use itertools::izip;
 use poulpy_hal::{
     api::{
-        ScratchAvailable, SvpApplyDftToDft, SvpPPolBytesOf, TakeVecZnx, TakeVecZnxBig, TakeVecZnxDft, TakeVecZnxDftSlice,
-        TakeVecZnxSlice, VecZnxAddInplace, VecZnxBigAddSmallInplace, VecZnxBigBytesOf, VecZnxBigNormalize,
-        VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftAdd, VecZnxDftAddInplace, VecZnxDftApply, VecZnxDftBytesOf,
-        VecZnxDftSubInplace, VecZnxDftZero, VecZnxIdftApply, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpBytes,
-        VecZnxMulXpMinusOneInplace, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate,
-        VecZnxSubInplace, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
+        ModuleN, ScratchTakeBasic, SvpApplyDftToDft, VecZnxBigAddSmallInplace, VecZnxBigBytesOf, VecZnxBigNormalize,
+        VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftAddInplace, VecZnxDftApply, VecZnxDftBytesOf, VecZnxDftSubInplace,
+        VecZnxDftZero, VecZnxIdftApply, VecZnxIdftApplyTmpBytes, VecZnxRotate, VmpApplyDftToDft, VmpApplyDftToDftTmpBytes,
     },
-    layouts::{Backend, DataMut, DataRef, Module, Scratch, SvpPPol, VecZnx, ZnxView, ZnxZero},
+    layouts::{Backend, DataMut, DataRef, Module, Scratch, SvpPPol, VecZnx, ZnxZero},
 };
 
 use poulpy_core::{
-    Distribution, GLWEOperations, TakeGLWE,
+    Distribution, GLWEAdd, GLWEExternalProduct, GLWEMulXpMinusOne, GLWENormalize, ScratchTakeCore,
     layouts::{GGSWInfos, GLWE, GLWEInfos, GLWEToMut, LWE, LWEInfos, LWEToRef},
 };
 
 use crate::tfhe::blind_rotation::{
-    BlincRotationExecute, BlindRotationKeyInfos, BlindRotationKeyPrepared, CGGI, LookUpTable, LookUpTableRotationDirection,
+    BlindRotationExecute, BlindRotationKeyInfos, BlindRotationKeyPrepared, CGGI, LookupTable, mod_switch_2n,
 };
 
-#[allow(clippy::too_many_arguments)]
-pub fn cggi_blind_rotate_tmp_bytes<B: Backend, OUT, GGSW>(
-    module: &Module<B>,
-    block_size: usize,
-    extension_factor: usize,
-    glwe_infos: &OUT,
-    brk_infos: &GGSW,
-) -> usize
+impl<BE: Backend> BlindRotationExecute<CGGI, BE> for Module<BE>
 where
-    OUT: GLWEInfos,
-    GGSW: GGSWInfos,
-    Module<B>: VecZnxDftBytesOf
-        + VmpApplyDftToDftTmpBytes
-        + VecZnxNormalizeTmpBytes
+    Self: VecZnxDftBytesOf
         + VecZnxBigBytesOf
-        + VecZnxIdftApplyTmpBytes
-        + VecZnxBigNormalizeTmpBytes,
-{
-    let brk_size: usize = brk_infos.size();
-
-    if block_size > 1 {
-        let cols: usize = (brk_infos.rank() + 1).into();
-        let dnum: usize = brk_infos.dnum().into();
-        let acc_dft: usize = module.bytes_of_vec_znx_dft(cols, dnum) * extension_factor;
-        let acc_big: usize = module.bytes_of_vec_znx_big(1, brk_size);
-        let vmp_res: usize = module.bytes_of_vec_znx_dft(cols, brk_size) * extension_factor;
-        let vmp_xai: usize = module.bytes_of_vec_znx_dft(1, brk_size);
-        let acc_dft_add: usize = vmp_res;
-        let vmp: usize = module.vmp_apply_dft_to_dft_tmp_bytes(brk_size, dnum, dnum, 2, 2, brk_size); // GGSW product: (1 x 2) x (2 x 2)
-        let acc: usize = if extension_factor > 1 {
-            VecZnx::bytes_of(module.n(), cols, glwe_infos.size()) * extension_factor
-        } else {
-            0
-        };
-
-        acc + acc_dft
-            + acc_dft_add
-            + vmp_res
-            + vmp_xai
-            + (vmp | (acc_big + (module.vec_znx_big_normalize_tmp_bytes() | module.vec_znx_idft_apply_tmp_bytes())))
-    } else {
-        GLWE::bytes_of(glwe_infos) + GLWE::external_product_inplace_tmp_bytes(module, glwe_infos, brk_infos)
-    }
-}
-
-impl<D: DataRef, B: Backend> BlincRotationExecute<B> for BlindRotationKeyPrepared<D, CGGI, B>
-where
-    Module<B>: VecZnxBigBytesOf
-        + VecZnxDftBytesOf
-        + SvpPPolBytesOf
         + VmpApplyDftToDftTmpBytes
         + VecZnxBigNormalizeTmpBytes
         + VecZnxIdftApplyTmpBytes
-        + VecZnxIdftApply<B>
-        + VecZnxDftAdd<B>
-        + VecZnxDftAddInplace<B>
-        + VecZnxDftApply<B>
-        + VecZnxDftZero<B>
-        + SvpApplyDftToDft<B>
-        + VecZnxDftSubInplace<B>
-        + VecZnxBigAddSmallInplace<B>
+        + GLWEExternalProduct<BE>
+        + ModuleN
         + VecZnxRotate
-        + VecZnxAddInplace
-        + VecZnxSubInplace
-        + VecZnxNormalize<B>
-        + VecZnxNormalizeInplace<B>
+        + VecZnxDftApply<BE>
+        + VecZnxDftZero<BE>
+        + VmpApplyDftToDft<BE>
+        + SvpApplyDftToDft<BE>
+        + VecZnxDftAddInplace<BE>
+        + VecZnxDftSubInplace<BE>
+        + VecZnxIdftApply<BE>
+        + VecZnxBigAddSmallInplace<BE>
+        + VecZnxBigNormalize<BE>
         + VecZnxCopy
-        + VecZnxMulXpMinusOneInplace<B>
-        + VmpApplyDftToDft<B>
-        + VmpApplyDftToDftAdd<B>
-        + VecZnxIdftApplyConsume<B>
-        + VecZnxBigNormalize<B>
-        + VecZnxNormalizeTmpBytes,
-    Scratch<B>: TakeVecZnxDftSlice<B> + TakeVecZnxDft<B> + TakeVecZnxBig<B> + TakeVecZnxSlice + TakeVecZnx + ScratchAvailable,
+        + GLWEMulXpMinusOne<BE>
+        + GLWEAdd
+        + GLWENormalize<BE>,
+    Scratch<BE>: ScratchTakeCore<BE>,
 {
-    fn execute<DR: DataMut, DI: DataRef>(
+    fn blind_rotation_execute_tmp_bytes<G, B>(
         &self,
-        module: &Module<B>,
+        block_size: usize,
+        extension_factor: usize,
+        glwe_infos: &G,
+        brk_infos: &B,
+    ) -> usize
+    where
+        G: GLWEInfos,
+        B: GGSWInfos,
+    {
+        let brk_size: usize = brk_infos.size();
+
+        if block_size > 1 {
+            let cols: usize = (brk_infos.rank() + 1).into();
+            let dnum: usize = brk_infos.dnum().into();
+            let acc_dft: usize = self.bytes_of_vec_znx_dft(cols, dnum) * extension_factor;
+            let acc_big: usize = self.bytes_of_vec_znx_big(1, brk_size);
+            let vmp_res: usize = self.bytes_of_vec_znx_dft(cols, brk_size) * extension_factor;
+            let vmp_xai: usize = self.bytes_of_vec_znx_dft(1, brk_size);
+            let acc_dft_add: usize = vmp_res;
+            let vmp: usize = self.vmp_apply_dft_to_dft_tmp_bytes(brk_size, dnum, dnum, 2, 2, brk_size); // GGSW product: (1 x 2) x (2 x 2)
+            let acc: usize = if extension_factor > 1 {
+                VecZnx::bytes_of(self.n(), cols, glwe_infos.size()) * extension_factor
+            } else {
+                0
+            };
+
+            acc + acc_dft
+                + acc_dft_add
+                + vmp_res
+                + vmp_xai
+                + (vmp
+                    | (acc_big
+                        + (self
+                            .vec_znx_big_normalize_tmp_bytes()
+                            .max(self.vec_znx_idft_apply_tmp_bytes()))))
+        } else {
+            GLWE::bytes_of_from_infos(glwe_infos) + GLWE::external_product_tmp_bytes(self, glwe_infos, glwe_infos, brk_infos)
+        }
+    }
+
+    fn blind_rotation_execute<DR, DL, DB>(
+        &self,
         res: &mut GLWE<DR>,
-        lwe: &LWE<DI>,
-        lut: &LookUpTable,
-        scratch: &mut Scratch<B>,
-    ) {
-        match self.dist {
+        lwe: &LWE<DL>,
+        lut: &LookupTable,
+        brk: &BlindRotationKeyPrepared<DB, CGGI, BE>,
+        scratch: &mut Scratch<BE>,
+    ) where
+        DR: DataMut,
+        DL: DataRef,
+        DB: DataRef,
+    {
+        match brk.dist {
             Distribution::BinaryBlock(_) | Distribution::BinaryFixed(_) | Distribution::BinaryProb(_) | Distribution::ZERO => {
                 if lut.extension_factor() > 1 {
-                    execute_block_binary_extended(module, res, lwe, lut, self, scratch)
-                } else if self.block_size() > 1 {
-                    execute_block_binary(module, res, lwe, lut, self, scratch);
+                    execute_block_binary_extended(self, res, lwe, lut, brk, scratch)
+                } else if brk.block_size() > 1 {
+                    execute_block_binary(self, res, lwe, lut, brk, scratch);
                 } else {
-                    execute_standard(module, res, lwe, lut, self, scratch);
+                    execute_standard(self, res, lwe, lut, brk, scratch);
                 }
             }
-            _ => panic!("invalid CGGI distribution"),
+            _ => panic!("invalid CGGI distribution (have you prepared the key?)"),
         }
     }
 }
 
-fn execute_block_binary_extended<DataRes, DataIn, DataBrk, B: Backend>(
-    module: &Module<B>,
+fn execute_block_binary_extended<DataRes, DataIn, DataBrk, M, BE: Backend>(
+    module: &M,
     res: &mut GLWE<DataRes>,
     lwe: &LWE<DataIn>,
-    lut: &LookUpTable,
-    brk: &BlindRotationKeyPrepared<DataBrk, CGGI, B>,
-    scratch: &mut Scratch<B>,
+    lut: &LookupTable,
+    brk: &BlindRotationKeyPrepared<DataBrk, CGGI, BE>,
+    scratch: &mut Scratch<BE>,
 ) where
     DataRes: DataMut,
     DataIn: DataRef,
     DataBrk: DataRef,
-    Module<B>: VecZnxBigBytesOf
-        + VecZnxDftBytesOf
-        + SvpPPolBytesOf
-        + VmpApplyDftToDftTmpBytes
-        + VecZnxBigNormalizeTmpBytes
-        + VecZnxIdftApplyTmpBytes
-        + VecZnxIdftApply<B>
-        + VecZnxDftAdd<B>
-        + VecZnxDftAddInplace<B>
-        + VecZnxDftApply<B>
-        + VecZnxDftZero<B>
-        + SvpApplyDftToDft<B>
-        + VecZnxDftSubInplace<B>
-        + VecZnxBigAddSmallInplace<B>
+    M: VecZnxDftBytesOf
+        + ModuleN
         + VecZnxRotate
-        + VecZnxAddInplace
-        + VecZnxSubInplace
-        + VecZnxNormalize<B>
-        + VecZnxNormalizeInplace<B>
+        + VecZnxDftApply<BE>
+        + VecZnxDftZero<BE>
+        + VmpApplyDftToDft<BE>
+        + SvpApplyDftToDft<BE>
+        + VecZnxDftAddInplace<BE>
+        + VecZnxDftSubInplace<BE>
+        + VecZnxIdftApply<BE>
+        + VecZnxBigAddSmallInplace<BE>
+        + VecZnxBigNormalize<BE>
         + VecZnxCopy
-        + VecZnxMulXpMinusOneInplace<B>
-        + VecZnxBigNormalize<B>
-        + VmpApplyDftToDft<B>,
-    Scratch<B>: TakeVecZnxDftSlice<B> + TakeVecZnxDft<B> + TakeVecZnxBig<B> + TakeVecZnxSlice + ScratchAvailable + TakeVecZnx,
+        + VecZnxBigBytesOf,
+    Scratch<BE>: ScratchTakeCore<BE>,
 {
     let n_glwe: usize = brk.n_glwe().into();
     let extension_factor: usize = lut.extension_factor();
@@ -161,16 +145,16 @@ fn execute_block_binary_extended<DataRes, DataIn, DataBrk, B: Backend>(
     let cols: usize = (res.rank() + 1).into();
 
     let (mut acc, scratch_1) = scratch.take_vec_znx_slice(extension_factor, n_glwe, cols, res.size());
-    let (mut acc_dft, scratch_2) = scratch_1.take_vec_znx_dft_slice(extension_factor, n_glwe, cols, dnum);
-    let (mut vmp_res, scratch_3) = scratch_2.take_vec_znx_dft_slice(extension_factor, n_glwe, cols, brk.size());
-    let (mut acc_add_dft, scratch_4) = scratch_3.take_vec_znx_dft_slice(extension_factor, n_glwe, cols, brk.size());
-    let (mut vmp_xai, scratch_5) = scratch_4.take_vec_znx_dft(n_glwe, 1, brk.size());
+    let (mut acc_dft, scratch_2) = scratch_1.take_vec_znx_dft_slice(module, extension_factor, cols, dnum);
+    let (mut vmp_res, scratch_3) = scratch_2.take_vec_znx_dft_slice(module, extension_factor, cols, brk.size());
+    let (mut acc_add_dft, scratch_4) = scratch_3.take_vec_znx_dft_slice(module, extension_factor, cols, brk.size());
+    let (mut vmp_xai, scratch_5) = scratch_4.take_vec_znx_dft(module, 1, brk.size());
 
     (0..extension_factor).for_each(|i| {
         acc[i].zero();
     });
 
-    let x_pow_a: &Vec<SvpPPol<Vec<u8>, B>>;
+    let x_pow_a: &Vec<SvpPPol<Vec<u8>, BE>>;
     if let Some(b) = &brk.x_pow_a {
         x_pow_a = b
     } else {
@@ -268,7 +252,7 @@ fn execute_block_binary_extended<DataRes, DataIn, DataBrk, B: Backend>(
         });
 
         {
-            let (mut acc_add_big, scratch7) = scratch_5.take_vec_znx_big(n_glwe, 1, brk.size());
+            let (mut acc_add_big, scratch7) = scratch_5.take_vec_znx_big(module, 1, brk.size());
 
             (0..extension_factor).for_each(|j| {
                 (0..cols).for_each(|i| {
@@ -285,41 +269,32 @@ fn execute_block_binary_extended<DataRes, DataIn, DataBrk, B: Backend>(
     });
 }
 
-fn execute_block_binary<DataRes, DataIn, DataBrk, B: Backend>(
-    module: &Module<B>,
+fn execute_block_binary<DataRes, DataIn, DataBrk, M, BE: Backend>(
+    module: &M,
     res: &mut GLWE<DataRes>,
     lwe: &LWE<DataIn>,
-    lut: &LookUpTable,
-    brk: &BlindRotationKeyPrepared<DataBrk, CGGI, B>,
-    scratch: &mut Scratch<B>,
+    lut: &LookupTable,
+    brk: &BlindRotationKeyPrepared<DataBrk, CGGI, BE>,
+    scratch: &mut Scratch<BE>,
 ) where
     DataRes: DataMut,
     DataIn: DataRef,
     DataBrk: DataRef,
-    Module<B>: VecZnxBigBytesOf
-        + VecZnxDftBytesOf
-        + SvpPPolBytesOf
-        + VmpApplyDftToDftTmpBytes
-        + VecZnxBigNormalizeTmpBytes
-        + VecZnxIdftApplyTmpBytes
-        + VecZnxIdftApply<B>
-        + VecZnxDftAdd<B>
-        + VecZnxDftAddInplace<B>
-        + VecZnxDftApply<B>
-        + VecZnxDftZero<B>
-        + SvpApplyDftToDft<B>
-        + VecZnxDftSubInplace<B>
-        + VecZnxBigAddSmallInplace<B>
+    M: VecZnxDftBytesOf
+        + ModuleN
         + VecZnxRotate
-        + VecZnxAddInplace
-        + VecZnxSubInplace
-        + VecZnxNormalize<B>
-        + VecZnxNormalizeInplace<B>
+        + VecZnxDftApply<BE>
+        + VecZnxDftZero<BE>
+        + VmpApplyDftToDft<BE>
+        + SvpApplyDftToDft<BE>
+        + VecZnxDftAddInplace<BE>
+        + VecZnxDftSubInplace<BE>
+        + VecZnxIdftApply<BE>
+        + VecZnxBigAddSmallInplace<BE>
+        + VecZnxBigNormalize<BE>
         + VecZnxCopy
-        + VecZnxMulXpMinusOneInplace<B>
-        + VmpApplyDftToDft<B>
-        + VecZnxBigNormalize<B>,
-    Scratch<B>: TakeVecZnxDftSlice<B> + TakeVecZnxDft<B> + TakeVecZnxBig<B> + TakeVecZnxSlice + ScratchAvailable + TakeVecZnx,
+        + VecZnxBigBytesOf,
+    Scratch<BE>: ScratchTakeCore<BE>,
 {
     let n_glwe: usize = brk.n_glwe().into();
     let mut lwe_2n: Vec<i64> = vec![0i64; (lwe.n() + 1).into()]; // TODO: from scratch space
@@ -350,12 +325,12 @@ fn execute_block_binary<DataRes, DataIn, DataBrk, B: Backend>(
 
     // ACC + [sum DFT(X^ai -1) * (DFT(ACC) x BRKi)]
 
-    let (mut acc_dft, scratch_1) = scratch.take_vec_znx_dft(n_glwe, cols, dnum);
-    let (mut vmp_res, scratch_2) = scratch_1.take_vec_znx_dft(n_glwe, cols, brk.size());
-    let (mut acc_add_dft, scratch_3) = scratch_2.take_vec_znx_dft(n_glwe, cols, brk.size());
-    let (mut vmp_xai, scratch_4) = scratch_3.take_vec_znx_dft(n_glwe, 1, brk.size());
+    let (mut acc_dft, scratch_1) = scratch.take_vec_znx_dft(module, cols, dnum);
+    let (mut vmp_res, scratch_2) = scratch_1.take_vec_znx_dft(module, cols, brk.size());
+    let (mut acc_add_dft, scratch_3) = scratch_2.take_vec_znx_dft(module, cols, brk.size());
+    let (mut vmp_xai, scratch_4) = scratch_3.take_vec_znx_dft(module, 1, brk.size());
 
-    let x_pow_a: &Vec<SvpPPol<Vec<u8>, B>>;
+    let x_pow_a: &Vec<SvpPPol<Vec<u8>, BE>>;
     if let Some(b) = &brk.x_pow_a {
         x_pow_a = b
     } else {
@@ -388,7 +363,7 @@ fn execute_block_binary<DataRes, DataIn, DataBrk, B: Backend>(
         });
 
         {
-            let (mut acc_add_big, scratch_5) = scratch_4.take_vec_znx_big(n_glwe, 1, brk.size());
+            let (mut acc_add_big, scratch_5) = scratch_4.take_vec_znx_big(module, 1, brk.size());
 
             (0..cols).for_each(|i| {
                 module.vec_znx_idft_apply(&mut acc_add_big, 0, &acc_add_dft, i, scratch_5);
@@ -407,44 +382,19 @@ fn execute_block_binary<DataRes, DataIn, DataBrk, B: Backend>(
     });
 }
 
-fn execute_standard<DataRes, DataIn, DataBrk, B: Backend>(
-    module: &Module<B>,
+fn execute_standard<DataRes, DataIn, DataBrk, M, BE: Backend>(
+    module: &M,
     res: &mut GLWE<DataRes>,
     lwe: &LWE<DataIn>,
-    lut: &LookUpTable,
-    brk: &BlindRotationKeyPrepared<DataBrk, CGGI, B>,
-    scratch: &mut Scratch<B>,
+    lut: &LookupTable,
+    brk: &BlindRotationKeyPrepared<DataBrk, CGGI, BE>,
+    scratch: &mut Scratch<BE>,
 ) where
     DataRes: DataMut,
     DataIn: DataRef,
     DataBrk: DataRef,
-    Module<B>: VecZnxBigBytesOf
-        + VecZnxDftBytesOf
-        + SvpPPolBytesOf
-        + VmpApplyDftToDftTmpBytes
-        + VecZnxBigNormalizeTmpBytes
-        + VecZnxIdftApplyTmpBytes
-        + VecZnxIdftApply<B>
-        + VecZnxDftAdd<B>
-        + VecZnxDftAddInplace<B>
-        + VecZnxDftApply<B>
-        + VecZnxDftZero<B>
-        + SvpApplyDftToDft<B>
-        + VecZnxDftSubInplace<B>
-        + VecZnxBigAddSmallInplace<B>
-        + VecZnxRotate
-        + VecZnxAddInplace
-        + VecZnxSubInplace
-        + VecZnxNormalize<B>
-        + VecZnxNormalizeInplace<B>
-        + VecZnxCopy
-        + VecZnxMulXpMinusOneInplace<B>
-        + VmpApplyDftToDft<B>
-        + VmpApplyDftToDftAdd<B>
-        + VecZnxIdftApplyConsume<B>
-        + VecZnxBigNormalize<B>
-        + VecZnxNormalizeTmpBytes,
-    Scratch<B>: TakeVecZnxDftSlice<B> + TakeVecZnxDft<B> + TakeVecZnxBig<B> + TakeVecZnxSlice + ScratchAvailable + TakeVecZnx,
+    M: VecZnxRotate + GLWEExternalProduct<BE> + GLWEMulXpMinusOne<BE> + GLWEAdd + GLWENormalize<BE>,
+    Scratch<BE>: ScratchTakeCore<BE>,
 {
     #[cfg(debug_assertions)]
     {
@@ -498,7 +448,7 @@ fn execute_standard<DataRes, DataIn, DataBrk, B: Backend>(
     module.vec_znx_rotate(b, out_mut.data_mut(), 0, &lut.data[0], 0);
 
     // ACC + [sum DFT(X^ai -1) * (DFT(ACC) x BRKi)]
-    let (mut acc_tmp, scratch_1) = scratch.take_glwe_ct(&out_mut);
+    let (mut acc_tmp, scratch_1) = scratch.take_glwe(&out_mut);
 
     // TODO: see if faster by skipping normalization in external product and keeping acc in big coeffs
     // TODO: first iteration can be optimized to be a gglwe product
@@ -507,55 +457,13 @@ fn execute_standard<DataRes, DataIn, DataBrk, B: Backend>(
         acc_tmp.external_product(module, &out_mut, ski, scratch_1);
 
         // acc_tmp = (sk[i] * acc) * (X^{ai} - 1)
-        acc_tmp.mul_xp_minus_one_inplace(module, *ai, scratch_1);
+        module.glwe_mul_xp_minus_one_inplace(*ai, &mut acc_tmp, scratch_1);
 
         // acc = acc + (sk[i] * acc) * (X^{ai} - 1)
-        out_mut.add_inplace(module, &acc_tmp);
+        module.glwe_add_inplace(&mut out_mut, &acc_tmp);
     });
 
     // We can normalize only at the end because we add normalized values in [-2^{base2k-1}, 2^{base2k-1}]
     // on top of each others, thus ~ 2^{63-base2k} additions are supported before overflow.
-    out_mut.normalize_inplace(module, scratch_1);
-}
-
-pub fn mod_switch_2n(n: usize, res: &mut [i64], lwe: &LWE<&[u8]>, rot_dir: LookUpTableRotationDirection) {
-    let base2k: usize = lwe.base2k().into();
-
-    let log2n: usize = usize::BITS as usize - (n - 1).leading_zeros() as usize + 1;
-
-    res.copy_from_slice(lwe.data().at(0, 0));
-
-    match rot_dir {
-        LookUpTableRotationDirection::Left => {
-            res.iter_mut().for_each(|x| *x = -*x);
-        }
-        LookUpTableRotationDirection::Right => {}
-    }
-
-    if base2k > log2n {
-        let diff: usize = base2k - (log2n - 1); // additional -1 because we map to [-N/2, N/2) instead of [0, N)
-        res.iter_mut().for_each(|x| {
-            *x = div_round_by_pow2(x, diff);
-        })
-    } else {
-        let rem: usize = base2k - (log2n % base2k);
-        let size: usize = log2n.div_ceil(base2k);
-        (1..size).for_each(|i| {
-            if i == size - 1 && rem != base2k {
-                let k_rem: usize = base2k - rem;
-                izip!(lwe.data().at(0, i).iter(), res.iter_mut()).for_each(|(x, y)| {
-                    *y = (*y << k_rem) + (x >> rem);
-                });
-            } else {
-                izip!(lwe.data().at(0, i).iter(), res.iter_mut()).for_each(|(x, y)| {
-                    *y = (*y << base2k) + x;
-                });
-            }
-        })
-    }
-}
-
-#[inline(always)]
-fn div_round_by_pow2(x: &i64, k: usize) -> i64 {
-    (x + (1 << (k - 1))) >> k
+    module.glwe_normalize_inplace(&mut out_mut, scratch_1);
 }

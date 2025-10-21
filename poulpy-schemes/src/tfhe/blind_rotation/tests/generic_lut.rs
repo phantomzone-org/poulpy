@@ -1,25 +1,12 @@
 use std::vec;
 
-use poulpy_hal::{
-    api::{
-        VecZnxCopy, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotateInplace, VecZnxRotateInplaceTmpBytes,
-        VecZnxSwitchRing,
-    },
-    layouts::{Backend, Module},
-    oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeSliceImpl},
-};
+use poulpy_hal::api::ModuleN;
 
-use crate::tfhe::blind_rotation::{DivRound, LookUpTable};
+use crate::tfhe::blind_rotation::{DivRound, LookUpTableLayout, LookupTable, LookupTableFactory};
 
-pub fn test_lut_standard<B>(module: &Module<B>)
+pub fn test_lut_standard<M>(module: &M)
 where
-    Module<B>: VecZnxRotateInplace<B>
-        + VecZnxNormalizeInplace<B>
-        + VecZnxNormalizeTmpBytes
-        + VecZnxSwitchRing
-        + VecZnxCopy
-        + VecZnxRotateInplaceTmpBytes,
-    B: Backend + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B> + TakeSliceImpl<B>,
+    M: LookupTableFactory + ModuleN,
 {
     let base2k: usize = 20;
     let k_lut: usize = 40;
@@ -33,7 +20,14 @@ where
         .enumerate()
         .for_each(|(i, x)| *x = (i as i64) - 8);
 
-    let mut lut: LookUpTable = LookUpTable::alloc(module, base2k, k_lut, extension_factor);
+    let lut_infos: LookUpTableLayout = LookUpTableLayout {
+        n: module.n().into(),
+        extension_factor,
+        k: k_lut.into(),
+        base2k: base2k.into(),
+    };
+
+    let mut lut: LookupTable = LookupTable::alloc(&lut_infos);
     lut.set(module, &f, log_scale);
 
     let half_step: i64 = lut.domain_size().div_round(message_modulus << 1) as i64;
@@ -51,15 +45,9 @@ where
     });
 }
 
-pub fn test_lut_extended<B>(module: &Module<B>)
+pub fn test_lut_extended<M>(module: &M)
 where
-    Module<B>: VecZnxRotateInplace<B>
-        + VecZnxNormalizeInplace<B>
-        + VecZnxNormalizeTmpBytes
-        + VecZnxSwitchRing
-        + VecZnxCopy
-        + VecZnxRotateInplaceTmpBytes,
-    B: Backend + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B> + TakeSliceImpl<B>,
+    M: LookupTableFactory + ModuleN,
 {
     let base2k: usize = 20;
     let k_lut: usize = 40;
@@ -73,7 +61,14 @@ where
         .enumerate()
         .for_each(|(i, x)| *x = (i as i64) - 8);
 
-    let mut lut: LookUpTable = LookUpTable::alloc(module, base2k, k_lut, extension_factor);
+    let lut_infos: LookUpTableLayout = LookUpTableLayout {
+        n: module.n().into(),
+        extension_factor,
+        k: k_lut.into(),
+        base2k: base2k.into(),
+    };
+
+    let mut lut: LookupTable = LookupTable::alloc(&lut_infos);
     lut.set(module, &f, log_scale);
 
     let half_step: i64 = lut.domain_size().div_round(message_modulus << 1) as i64;

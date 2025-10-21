@@ -1,10 +1,8 @@
 use itertools::Itertools;
 use poulpy_core::{
-    GLWEExternalProductInplace, GLWEOperations, TakeGLWESlice,
     layouts::{
-        GLWE, GLWEToMut, LWEInfos,
-        prepared::{GGSWPrepared, GGSWPreparedToRef},
-    },
+        prepared::{GGSWPrepared, GGSWPreparedToRef}, GLWEToMut, LWEInfos, GLWE
+    }, GLWEExternalProduct, ScratchTakeCore
 };
 use poulpy_hal::{
     api::{VecZnxAddInplace, VecZnxCopy, VecZnxNegateInplace, VecZnxSub},
@@ -49,7 +47,7 @@ impl<C: BitCircuitInfo, const N: usize, T: UnsignedInteger, BE: Backend> Circuit
 where
     Self: GetBitCircuitInfo<T>,
     Module<BE>: Cmux<BE> + VecZnxCopy,
-    Scratch<BE>: TakeGLWESlice,
+    Scratch<BE>: ScratchTakeCore<BE>,
 {
     fn execute<O>(
         &self,
@@ -169,7 +167,7 @@ pub trait Cmux<BE: Backend> {
 
 impl<BE: Backend> Cmux<BE> for Module<BE>
 where
-    Module<BE>: GLWEExternalProductInplace<BE> + VecZnxSub + VecZnxCopy + VecZnxNegateInplace + VecZnxAddInplace,
+    Module<BE>: GLWEExternalProduct<BE> + VecZnxSub + VecZnxCopy + VecZnxNegateInplace + VecZnxAddInplace,
 {
     fn cmux<O, T, F, S>(&self, out: &mut GLWE<O>, t: &GLWE<T>, f: &GLWE<F>, s: &GGSWPrepared<S, BE>, scratch: &mut Scratch<BE>)
     where

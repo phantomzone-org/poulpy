@@ -9,16 +9,13 @@ use crate::tfhe::{
     },
 };
 use poulpy_core::{
-    TakeGGSW, TakeGLWE,
     layouts::{
-        GLWESecret, GLWEToLWEKeyLayout, GLWEToLWESwitchingKey, LWE, LWESecret,
-        prepared::{GLWEToLWESwitchingKeyPrepared, Prepare, PrepareAlloc},
-    },
+        prepared::GLWEToLWESwitchingKeyPrepared, GLWESecret, GLWEToLWEKeyLayout, GLWEToLWESwitchingKey, LWESecret
+    }, ScratchTakeCore,
 };
 use poulpy_hal::{
     api::{
-        ScratchAvailable, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolBytesOf, SvpPrepare, TakeScalarZnx,
-        TakeSvpPPol, TakeVecZnx, TakeVecZnxBig, TakeVecZnxDft, VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace,
+        ScratchAvailable, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolBytesOf, SvpPrepare, VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace,
         VecZnxAutomorphism, VecZnxAutomorphismInplace, VecZnxBigAddSmallInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
         VecZnxDftApply, VecZnxDftBytesOf, VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA, VecZnxNormalize,
         VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxSub, VecZnxSubInplace, VecZnxSwitchRing,
@@ -96,7 +93,7 @@ impl<BRA: BlindRotationAlgo> BDDKey<Vec<u8>, Vec<u8>, BRA> {
             + SvpPPolAlloc<BE>
             + VecZnxAutomorphism
             + VecZnxAutomorphismInplace<BE>,
-        Scratch<BE>: TakeVecZnxDft<BE> + ScratchAvailable + TakeVecZnx + TakeScalarZnx + TakeSvpPPol<BE> + TakeVecZnxBig<BE>,
+        Scratch<BE>: ScratchTakeCore<BE>,
     {
         let mut ks: GLWEToLWESwitchingKey<Vec<u8>> = GLWEToLWESwitchingKey::alloc(&infos.ks_infos());
         ks.encrypt_sk(module, sk_lwe, sk_glwe, source_xa, source_xe, scratch);
@@ -217,7 +214,7 @@ where
         + VecZnxBigNormalize<BE>
         + VecZnxNormalize<BE>
         + VecZnxNormalizeTmpBytes,
-    Scratch<BE>: ScratchAvailable + TakeVecZnxDft<BE> + TakeGLWE + TakeVecZnx + TakeGGSW,
+    Scratch<BE>: ScratchTakeCore<BE>,
     CircuitBootstrappingKeyPrepared<CBT, BRA, BE>: CirtuitBootstrappingExecute<BE>,
 {
     fn prepare(

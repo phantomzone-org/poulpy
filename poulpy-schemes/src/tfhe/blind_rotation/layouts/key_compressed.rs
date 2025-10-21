@@ -20,6 +20,24 @@ pub struct BlindRotationKeyCompressed<D: Data, BRT: BlindRotationAlgo> {
     pub(crate) _phantom: PhantomData<BRT>,
 }
 
+pub trait BlindRotationKeyCompressedFactory<BRA: BlindRotationAlgo> {
+    fn blind_rotation_key_compressed_alloc<A>(infos: &A) -> BlindRotationKeyCompressed<Vec<u8>, BRA>
+    where
+        A: BlindRotationKeyInfos;
+}
+
+impl<BRA: BlindRotationAlgo> BlindRotationKeyCompressed<Vec<u8>, BRA>
+where
+    Self: BlindRotationKeyCompressedFactory<BRA>,
+{
+    pub fn alloc<A>(infos: &A) -> BlindRotationKeyCompressed<Vec<u8>, BRA>
+    where
+        A: BlindRotationKeyInfos,
+    {
+        Self::blind_rotation_key_compressed_alloc(infos)
+    }
+}
+
 impl<D: DataRef, BRT: BlindRotationAlgo> fmt::Debug for BlindRotationKeyCompressed<D, BRT> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{self}")

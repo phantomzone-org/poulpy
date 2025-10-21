@@ -4,6 +4,7 @@ use poulpy_hal::{
 };
 
 use crate::{
+    GetDistribution,
     dist::Distribution,
     layouts::{Base2K, Degree, LWEInfos, TorusPrecision},
 };
@@ -19,6 +20,12 @@ impl LWESecret<Vec<u8>> {
             data: ScalarZnx::alloc(n.into(), 1),
             dist: Distribution::NONE,
         }
+    }
+}
+
+impl<D: DataRef> GetDistribution for LWESecret<D> {
+    fn dist(&self) -> &Distribution {
+        &self.dist
     }
 }
 

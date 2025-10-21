@@ -1,35 +1,11 @@
-mod cggi_algo;
-mod cggi_key;
-mod key;
-mod key_compressed;
-mod key_prepared;
+mod algorithms;
+mod encryption;
+mod layouts;
 mod lut;
 mod utils;
 
-pub use cggi_algo::*;
-pub use key::*;
-pub use key_compressed::*;
-pub use key_prepared::*;
+pub use algorithms::*;
+pub use encryption::*;
+pub use layouts::*;
 pub use lut::*;
-
 pub mod tests;
-
-use poulpy_core::layouts::{GLWE, LWE};
-use poulpy_hal::layouts::{Backend, DataMut, DataRef, Module, Scratch};
-
-pub trait BlindRotationAlgo {}
-
-#[derive(Clone)]
-pub struct CGGI {}
-impl BlindRotationAlgo for CGGI {}
-
-pub trait BlincRotationExecute<B: Backend> {
-    fn execute<DR: DataMut, DI: DataRef>(
-        &self,
-        module: &Module<B>,
-        res: &mut GLWE<DR>,
-        lwe: &LWE<DI>,
-        lut: &LookUpTable,
-        scratch: &mut Scratch<B>,
-    );
-}

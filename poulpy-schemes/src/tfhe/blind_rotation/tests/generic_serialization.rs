@@ -1,8 +1,6 @@
 use poulpy_hal::test_suite::serialization::test_reader_writer_interface;
 
-use crate::tfhe::blind_rotation::{
-    BlindRotationKey, BlindRotationKeyAlloc, BlindRotationKeyCompressed, BlindRotationKeyLayout, CGGI,
-};
+use crate::tfhe::blind_rotation::{BlindRotationKey, BlindRotationKeyCompressed, BlindRotationKeyLayout, CGGI};
 
 #[test]
 fn test_cggi_blind_rotation_key_serialization() {
@@ -14,7 +12,6 @@ fn test_cggi_blind_rotation_key_serialization() {
         dnum: 2_usize.into(),
         rank: 2_usize.into(),
     };
-
     let original: BlindRotationKey<Vec<u8>, CGGI> = BlindRotationKey::alloc(&layout);
     test_reader_writer_interface(original);
 }
@@ -29,7 +26,6 @@ fn test_cggi_blind_rotation_key_compressed_serialization() {
         dnum: 2_usize.into(),
         rank: 2_usize.into(),
     };
-
     let original: BlindRotationKeyCompressed<Vec<u8>, CGGI> = BlindRotationKeyCompressed::alloc(&layout);
     test_reader_writer_interface(original);
 }

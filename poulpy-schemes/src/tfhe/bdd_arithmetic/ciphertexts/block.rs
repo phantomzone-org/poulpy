@@ -2,17 +2,19 @@ use std::marker::PhantomData;
 
 use poulpy_core::layouts::{Base2K, GLWE, GLWEInfos, GLWEPlaintextLayout, LWEInfos, Rank, TorusPrecision};
 
-use poulpy_core::{TakeGLWEPlaintext, layouts::prepared::GLWESecretPrepared};
+#[cfg(test)]
+use poulpy_core::ScratchTakeCore;
+use poulpy_core::{layouts::prepared::GLWESecretPrepared};
 use poulpy_hal::api::VecZnxBigBytesOf;
 #[cfg(test)]
 use poulpy_hal::api::{
-    ScratchAvailable, TakeVecZnx, VecZnxAddInplace, VecZnxAddNormal, VecZnxFillUniform, VecZnxNormalize, VecZnxSub,
+    VecZnxAddInplace, VecZnxAddNormal, VecZnxFillUniform, VecZnxNormalize, VecZnxSub,
 };
 #[cfg(test)]
 use poulpy_hal::source::Source;
 use poulpy_hal::{
     api::{
-        TakeVecZnxBig, TakeVecZnxDft, VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigNormalize, VecZnxDftApply,
+        VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigNormalize, VecZnxDftApply,
         VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxNormalizeTmpBytes,
     },
     layouts::{Backend, Data, DataMut, DataRef, Module, Scratch},
@@ -96,7 +98,7 @@ impl<D: DataMut, T: UnsignedInteger + ToBits> FheUintBlocks<D, T> {
             + VecZnxAddNormal
             + VecZnxNormalize<BE>
             + VecZnxSub,
-        Scratch<BE>: TakeVecZnxDft<BE> + ScratchAvailable + TakeVecZnx + TakeGLWEPlaintext<BE>,
+        Scratch<BE>: ScratchTakeCore<BE>,
     {
         use poulpy_core::layouts::GLWEPlaintextLayout;
 
@@ -136,7 +138,7 @@ impl<D: DataRef, T: UnsignedInteger + FromBits + ToBits> FheUintBlocks<D, T> {
             + VecZnxBigAddInplace<BE>
             + VecZnxBigAddSmallInplace<BE>
             + VecZnxBigNormalize<BE>,
-        Scratch<BE>: TakeVecZnxDft<BE> + TakeVecZnxBig<BE> + TakeGLWEPlaintext<BE>,
+        Scratch<BE>: ScratchTakeCore<BE>,
     {
         #[cfg(debug_assertions)]
         {
@@ -186,7 +188,7 @@ impl<D: DataRef, T: UnsignedInteger + FromBits + ToBits> FheUintBlocks<D, T> {
             + VecZnxNormalizeTmpBytes
             + VecZnxSubInplace
             + VecZnxNormalizeInplace<BE>,
-        Scratch<BE>: TakeGLWEPlaintext<BE> + TakeVecZnxDft<BE> + TakeVecZnxBig<BE>,
+        Scratch<BE>: ScratchTakeCore<BE>,
     {
         #[cfg(debug_assertions)]
         {

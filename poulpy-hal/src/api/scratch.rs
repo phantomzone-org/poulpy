@@ -34,13 +34,9 @@ pub trait ScratchTakeBasic
 where
     Self: TakeSlice,
 {
-    fn take_scalar_znx(&mut self, n: usize, cols: usize) -> (ScalarZnx<&mut [u8]>, &mut Self)
-    {
+    fn take_scalar_znx(&mut self, n: usize, cols: usize) -> (ScalarZnx<&mut [u8]>, &mut Self) {
         let (take_slice, rem_slice) = self.take_slice(ScalarZnx::bytes_of(n, cols));
-        (
-            ScalarZnx::from_data(take_slice, n, cols),
-            rem_slice,
-        )
+        (ScalarZnx::from_data(take_slice, n, cols), rem_slice)
     }
 
     fn take_svp_ppol<M, B: Backend>(&mut self, module: &M, cols: usize) -> (SvpPPol<&mut [u8], B>, &mut Self)
@@ -51,12 +47,9 @@ where
         (SvpPPol::from_data(take_slice, module.n(), cols), rem_slice)
     }
 
-    fn take_vec_znx(&mut self, n: usize, cols: usize, size: usize) -> (VecZnx<&mut [u8]>, &mut Self){
+    fn take_vec_znx(&mut self, n: usize, cols: usize, size: usize) -> (VecZnx<&mut [u8]>, &mut Self) {
         let (take_slice, rem_slice) = self.take_slice(VecZnx::bytes_of(n, cols, size));
-        (
-            VecZnx::from_data(take_slice, n, cols, size),
-            rem_slice,
-        )
+        (VecZnx::from_data(take_slice, n, cols, size), rem_slice)
     }
 
     fn take_vec_znx_big<M, B: Backend>(&mut self, module: &M, cols: usize, size: usize) -> (VecZnxBig<&mut [u8], B>, &mut Self)
@@ -102,7 +95,7 @@ where
         (slice, scratch)
     }
 
-    fn take_vec_znx_slice(&mut self, n: usize, len: usize, cols: usize, size: usize) -> (Vec<VecZnx<&mut [u8]>>, &mut Self){
+    fn take_vec_znx_slice(&mut self, len: usize, n: usize, cols: usize, size: usize) -> (Vec<VecZnx<&mut [u8]>>, &mut Self) {
         let mut scratch: &mut Self = self;
         let mut slice: Vec<VecZnx<&mut [u8]>> = Vec::with_capacity(len);
         for _ in 0..len {
@@ -133,13 +126,12 @@ where
 
     fn take_mat_znx(
         &mut self,
-        n: usize, 
+        n: usize,
         rows: usize,
         cols_in: usize,
         cols_out: usize,
         size: usize,
-    ) -> (MatZnx<&mut [u8]>, &mut Self)
-    {
+    ) -> (MatZnx<&mut [u8]>, &mut Self) {
         let (take_slice, rem_slice) = self.take_slice(MatZnx::bytes_of(n, rows, cols_in, cols_out, size));
         (
             MatZnx::from_data(take_slice, n, rows, cols_in, cols_out, size),

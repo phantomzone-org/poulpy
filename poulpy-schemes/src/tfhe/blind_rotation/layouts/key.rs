@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    layouts::{Backend, Data, DataMut, DataRef, FillUniform, Module, ReaderFrom, Scratch, WriterTo},
+    layouts::{Data, DataMut, DataRef, FillUniform, ReaderFrom, WriterTo},
     source::Source,
 };
 
@@ -7,10 +7,7 @@ use std::{fmt, marker::PhantomData};
 
 use poulpy_core::{
     Distribution,
-    layouts::{
-        Base2K, Degree, Dnum, Dsize, GGSW, GGSWInfos, GLWEInfos, LWEInfos, LWESecret, Rank, TorusPrecision,
-        prepared::GLWESecretPrepared,
-    },
+    layouts::{Base2K, Degree, Dnum, Dsize, GGSW, GGSWInfos, GLWEInfos, LWEInfos, Rank, TorusPrecision},
 };
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
@@ -81,26 +78,29 @@ pub trait BlindRotationKeyAlloc {
         A: BlindRotationKeyInfos;
 }
 
-pub trait BlindRotationKeyEncryptSk<B: Backend> {
-    #[allow(clippy::too_many_arguments)]
-    fn encrypt_sk<DataSkGLWE, DataSkLWE>(
-        &mut self,
-        module: &Module<B>,
-        sk_glwe: &GLWESecretPrepared<DataSkGLWE, B>,
-        sk_lwe: &LWESecret<DataSkLWE>,
-        source_xa: &mut Source,
-        source_xe: &mut Source,
-        scratch: &mut Scratch<B>,
-    ) where
-        DataSkGLWE: DataRef,
-        DataSkLWE: DataRef;
-}
-
 #[derive(Clone)]
 pub struct BlindRotationKey<D: Data, BRT: BlindRotationAlgo> {
     pub(crate) keys: Vec<GGSW<D>>,
     pub(crate) dist: Distribution,
     pub(crate) _phantom: PhantomData<BRT>,
+}
+
+pub trait BlindRotationKeyFactory<BRA: BlindRotationAlgo> {
+    fn blind_rotation_key_alloc<A>(infos: &A) -> BlindRotationKey<Vec<u8>, BRA>
+    where
+        A: BlindRotationKeyInfos;
+}
+
+impl<BRA: BlindRotationAlgo> BlindRotationKey<Vec<u8>, BRA>
+where
+    Self: BlindRotationKeyFactory<BRA>,
+{
+    pub fn alloc<A>(infos: &A) -> BlindRotationKey<Vec<u8>, BRA>
+    where
+        A: BlindRotationKeyInfos,
+    {
+        Self::blind_rotation_key_alloc(infos)
+    }
 }
 
 impl<D: DataRef, BRT: BlindRotationAlgo> fmt::Debug for BlindRotationKey<D, BRT> {

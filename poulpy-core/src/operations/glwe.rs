@@ -217,6 +217,8 @@ where
     }
 }
 
+impl<BE: Backend> GLWEMulXpMinusOne<BE> for Module<BE> where Self: ModuleN + VecZnxMulXpMinusOne + VecZnxMulXpMinusOneInplace<BE> {}
+
 pub trait GLWEMulXpMinusOne<BE: Backend>
 where
     Self: ModuleN + VecZnxMulXpMinusOne + VecZnxMulXpMinusOneInplace<BE>,

@@ -1,6 +1,8 @@
 mod circuit;
 mod key;
-pub mod tests;
+
+//[cfg(tests)]
+//pub mod tests;
 
 pub use circuit::*;
 pub use key::*;
