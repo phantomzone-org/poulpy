@@ -3,12 +3,12 @@ use poulpy_hal::layouts::{Backend, DataMut, Module, Scratch, ZnxZero};
 use crate::{
     GLWEExternalProduct, ScratchTakeCore,
     layouts::{
-        AutomorphismKey, GGLWE, GGLWEInfos, GGLWEToMut, GGLWEToRef, GGSWInfos, GGSWPrepared, GLWEInfos, GLWESwitchingKey,
+        GGLWE, GGLWEInfos, GGLWEToMut, GGLWEToRef, GGSWInfos, GGSWPrepared, GLWEAutomorphismKey, GLWEInfos, GLWESwitchingKey,
         prepared::GGSWPreparedToRef,
     },
 };
 
-impl AutomorphismKey<Vec<u8>> {
+impl GLWEAutomorphismKey<Vec<u8>> {
     pub fn external_product_tmp_bytes<R, A, B, M, BE: Backend>(
         &self,
         module: &M,
@@ -26,7 +26,7 @@ impl AutomorphismKey<Vec<u8>> {
     }
 }
 
-impl<DataSelf: DataMut> AutomorphismKey<DataSelf> {
+impl<DataSelf: DataMut> GLWEAutomorphismKey<DataSelf> {
     pub fn external_product<A, B, M, BE: Backend>(&mut self, module: &M, a: &A, b: &B, scratch: &mut Scratch<BE>)
     where
         M: GGLWEExternalProduct<BE>,

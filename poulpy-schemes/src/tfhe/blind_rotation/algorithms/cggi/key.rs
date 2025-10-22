@@ -29,7 +29,7 @@ impl<D: DataRef> BlindRotationKeyFactory<CGGI> for BlindRotationKey<D, CGGI> {
     }
 }
 
-impl<BE: Backend> BlindRotationKeyEncryptSk<BE, CGGI> for Module<BE>
+impl<BE: Backend> BlindRotationKeyEncryptSk<CGGI, BE> for Module<BE>
 where
     Self: GGSWEncryptSk<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,

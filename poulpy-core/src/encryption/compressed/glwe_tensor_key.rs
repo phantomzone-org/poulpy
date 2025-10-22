@@ -8,10 +8,10 @@ use poulpy_hal::{
 };
 
 use crate::{
-    GGLWECompressedEncryptSk, GetDistribution, ScratchTakeCore, TensorKeyEncryptSk,
+    GGLWECompressedEncryptSk, GLWETensorKeyEncryptSk, GetDistribution, ScratchTakeCore,
     layouts::{
-        GGLWEInfos, GLWEInfos, GLWESecret, GLWESecretPrepared, GLWESecretPreparedFactory, GLWESecretToRef, LWEInfos, Rank,
-        TensorKeyCompressedAtMut, compressed::GLWETensorKeyCompressed,
+        GGLWEInfos, GLWEInfos, GLWESecret, GLWESecretPrepared, GLWESecretPreparedFactory, GLWESecretToRef,
+        GLWETensorKeyCompressedAtMut, LWEInfos, Rank, compressed::GLWETensorKeyCompressed,
     },
 };
 
@@ -19,9 +19,9 @@ impl GLWETensorKeyCompressed<Vec<u8>> {
     pub fn encrypt_sk_tmp_bytes<M, A, BE: Backend>(module: &M, infos: &A) -> usize
     where
         A: GGLWEInfos,
-        M: GGLWETensorKeyCompressedEncryptSk<BE>,
+        M: GLWETensorKeyCompressedEncryptSk<BE>,
     {
-        module.tensor_key_compressed_encrypt_sk_tmp_bytes(infos)
+        module.glwe_tensor_key_compressed_encrypt_sk_tmp_bytes(infos)
     }
 }
 
@@ -35,18 +35,18 @@ impl<DataSelf: DataMut> GLWETensorKeyCompressed<DataSelf> {
         scratch: &mut Scratch<BE>,
     ) where
         S: GLWESecretToRef + GetDistribution,
-        M: GGLWETensorKeyCompressedEncryptSk<BE>,
+        M: GLWETensorKeyCompressedEncryptSk<BE>,
     {
-        module.tensor_key_compressed_encrypt_sk(self, sk, seed_xa, source_xe, scratch);
+        module.glwe_tensor_key_compressed_encrypt_sk(self, sk, seed_xa, source_xe, scratch);
     }
 }
 
-pub trait GGLWETensorKeyCompressedEncryptSk<BE: Backend> {
-    fn tensor_key_compressed_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
+pub trait GLWETensorKeyCompressedEncryptSk<BE: Backend> {
+    fn glwe_tensor_key_compressed_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos;
 
-    fn tensor_key_compressed_encrypt_sk<R, S, D>(
+    fn glwe_tensor_key_compressed_encrypt_sk<R, S, D>(
         &self,
         res: &mut R,
         sk: &S,
@@ -55,15 +55,15 @@ pub trait GGLWETensorKeyCompressedEncryptSk<BE: Backend> {
         scratch: &mut Scratch<BE>,
     ) where
         D: DataMut,
-        R: TensorKeyCompressedAtMut<D> + GGLWEInfos,
+        R: GLWETensorKeyCompressedAtMut<D> + GGLWEInfos,
         S: GLWESecretToRef + GetDistribution;
 }
 
-impl<BE: Backend> GGLWETensorKeyCompressedEncryptSk<BE> for Module<BE>
+impl<BE: Backend> GLWETensorKeyCompressedEncryptSk<BE> for Module<BE>
 where
     Self: ModuleN
         + GGLWECompressedEncryptSk<BE>
-        + TensorKeyEncryptSk<BE>
+        + GLWETensorKeyEncryptSk<BE>
         + VecZnxDftApply<BE>
         + SvpApplyDftToDft<BE>
         + VecZnxIdftApplyTmpA<BE>
@@ -75,7 +75,7 @@ where
         + GLWESecretPreparedFactory<BE>,
     Scratch<BE>: ScratchTakeBasic + ScratchTakeCore<BE>,
 {
-    fn tensor_key_compressed_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
+    fn glwe_tensor_key_compressed_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos,
     {
@@ -87,7 +87,7 @@ where
             + self.gglwe_compressed_encrypt_sk_tmp_bytes(infos)
     }
 
-    fn tensor_key_compressed_encrypt_sk<R, S, D>(
+    fn glwe_tensor_key_compressed_encrypt_sk<R, S, D>(
         &self,
         res: &mut R,
         sk: &S,
@@ -96,7 +96,7 @@ where
         scratch: &mut Scratch<BE>,
     ) where
         D: DataMut,
-        R: GGLWEInfos + TensorKeyCompressedAtMut<D>,
+        R: GGLWEInfos + GLWETensorKeyCompressedAtMut<D>,
         S: GLWESecretToRef + GetDistribution,
     {
         let (mut sk_dft_prep, scratch_1) = scratch.take_glwe_secret_prepared(self, res.rank());

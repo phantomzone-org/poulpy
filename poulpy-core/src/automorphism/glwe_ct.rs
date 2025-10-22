@@ -54,7 +54,7 @@ impl<DataSelf: DataMut> GLWE<DataSelf> {
         module.glwe_automorphism_sub(self, a, key, scratch);
     }
 
-    pub fn glwe_automorphism_sub_negate<M, A, K, BE: Backend>(&mut self, module: &M, a: &A, key: &K, scratch: &mut Scratch<BE>)
+    pub fn automorphism_sub_negate<M, A, K, BE: Backend>(&mut self, module: &M, a: &A, key: &K, scratch: &mut Scratch<BE>)
     where
         M: GLWEAutomorphism<BE>,
         A: GLWEToRef,

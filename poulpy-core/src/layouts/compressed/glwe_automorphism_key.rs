@@ -4,8 +4,8 @@ use poulpy_hal::{
 };
 
 use crate::layouts::{
-    AutomorphismKey, Base2K, Degree, Dnum, Dsize, GGLWECompressed, GGLWECompressedSeedMut, GGLWECompressedToMut,
-    GGLWECompressedToRef, GGLWEDecompress, GGLWEInfos, GGLWEToMut, GLWEDecompress, GLWEInfos, GetGaloisElement, LWEInfos, Rank,
+    Base2K, Degree, Dnum, Dsize, GGLWECompressed, GGLWECompressedSeedMut, GGLWECompressedToMut, GGLWECompressedToRef,
+    GGLWEDecompress, GGLWEInfos, GGLWEToMut, GLWEAutomorphismKey, GLWEDecompress, GLWEInfos, GetGaloisElement, LWEInfos, Rank,
     SetGaloisElement, TorusPrecision,
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
@@ -154,7 +154,7 @@ where
 
 impl<B: Backend> AutomorphismKeyDecompress for Module<B> where Self: GLWEDecompress {}
 
-impl<D: DataMut> AutomorphismKey<D>
+impl<D: DataMut> GLWEAutomorphismKey<D>
 where
     Self: SetGaloisElement,
 {

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use poulpy_hal::{
     api::ModuleLogN,
-    layouts::{Backend, DataMut, GaloisElement, Module, Scratch, VecZnx},
+    layouts::{Backend, DataMut, GaloisElement, Module, Scratch, VecZnx, galois_element},
 };
 
 use crate::{
@@ -70,20 +70,25 @@ impl<BE: Backend> GLWETrace<BE> for Module<BE> where
 {
 }
 
+#[inline(always)]
+pub fn trace_galois_elements(log_n: usize, cyclotomic_order: i64) -> Vec<i64> {
+    (0..log_n)
+        .map(|i| {
+            if i == 0 {
+                -1
+            } else {
+                galois_element(1 << (i - 1), cyclotomic_order)
+            }
+        })
+        .collect()
+}
+
 pub trait GLWETrace<BE: Backend>
 where
     Self: ModuleLogN + GaloisElement + GLWEAutomorphism<BE> + GLWEShift<BE> + GLWECopy,
 {
     fn glwe_trace_galois_elements(&self) -> Vec<i64> {
-        (0..self.log_n())
-            .map(|i| {
-                if i == 0 {
-                    -1
-                } else {
-                    self.galois_element(1 << (i - 1))
-                }
-            })
-            .collect()
+        trace_galois_elements(self.log_n(), self.cyclotomic_order())
     }
 
     fn glwe_trace_tmp_bytes<R, A, K>(&self, res_infos: &R, a_infos: &A, key_infos: &K) -> usize

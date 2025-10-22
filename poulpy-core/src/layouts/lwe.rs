@@ -10,6 +10,9 @@ use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
 pub trait LWEInfos {
     fn n(&self) -> Degree;
+    fn log_n(&self) -> usize {
+        (u64::BITS - (self.n().as_usize() as u64 - 1).leading_zeros()) as usize
+    }
     fn k(&self) -> TorusPrecision;
     fn max_k(&self) -> TorusPrecision {
         TorusPrecision(self.k().0 * self.size() as u32)

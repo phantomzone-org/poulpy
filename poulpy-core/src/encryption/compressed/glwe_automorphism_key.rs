@@ -16,9 +16,9 @@ impl GLWEAutomorphismKeyCompressed<Vec<u8>> {
     pub fn encrypt_sk_tmp_bytes<M, BE: Backend, A>(module: &M, infos: &A) -> usize
     where
         A: GGLWEInfos,
-        M: AutomorphismKeyCompressedEncryptSk<BE>,
+        M: GLWEAutomorphismKeyCompressedEncryptSk<BE>,
     {
-        module.automorphism_key_compressed_encrypt_sk_tmp_bytes(infos)
+        module.glwe_automorphism_key_compressed_encrypt_sk_tmp_bytes(infos)
     }
 }
 
@@ -34,18 +34,18 @@ impl<DataSelf: DataMut> GLWEAutomorphismKeyCompressed<DataSelf> {
         scratch: &mut Scratch<BE>,
     ) where
         S: GLWESecretToRef + GLWEInfos,
-        M: AutomorphismKeyCompressedEncryptSk<BE>,
+        M: GLWEAutomorphismKeyCompressedEncryptSk<BE>,
     {
-        module.automorphism_key_compressed_encrypt_sk(self, p, sk, seed_xa, source_xe, scratch);
+        module.glwe_automorphism_key_compressed_encrypt_sk(self, p, sk, seed_xa, source_xe, scratch);
     }
 }
 
-pub trait AutomorphismKeyCompressedEncryptSk<BE: Backend> {
-    fn automorphism_key_compressed_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
+pub trait GLWEAutomorphismKeyCompressedEncryptSk<BE: Backend> {
+    fn glwe_automorphism_key_compressed_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos;
 
-    fn automorphism_key_compressed_encrypt_sk<R, S>(
+    fn glwe_automorphism_key_compressed_encrypt_sk<R, S>(
         &self,
         res: &mut R,
         p: i64,
@@ -58,12 +58,12 @@ pub trait AutomorphismKeyCompressedEncryptSk<BE: Backend> {
         S: GLWESecretToRef + GLWEInfos;
 }
 
-impl<BE: Backend> AutomorphismKeyCompressedEncryptSk<BE> for Module<BE>
+impl<BE: Backend> GLWEAutomorphismKeyCompressedEncryptSk<BE> for Module<BE>
 where
     Self: ModuleN + GaloisElement + VecZnxAutomorphism + GGLWECompressedEncryptSk<BE> + GLWESecretPreparedFactory<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
-    fn automorphism_key_compressed_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
+    fn glwe_automorphism_key_compressed_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos,
     {
@@ -73,7 +73,7 @@ where
             + GLWESecretPrepared::bytes_of_from_infos(self, infos)
     }
 
-    fn automorphism_key_compressed_encrypt_sk<R, S>(
+    fn glwe_automorphism_key_compressed_encrypt_sk<R, S>(
         &self,
         res: &mut R,
         p: i64,

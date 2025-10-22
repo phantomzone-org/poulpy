@@ -5,19 +5,20 @@ use poulpy_hal::{
 };
 
 use crate::{
-    AutomorphismKeyCompressedEncryptSk, AutomorphismKeyEncryptSk, GGLWEKeyswitch, GLWESwitchingKeyCompressedEncryptSk,
+    GGLWEKeyswitch, GLWEAutomorphismKeyCompressedEncryptSk, GLWEAutomorphismKeyEncryptSk, GLWESwitchingKeyCompressedEncryptSk,
     GLWESwitchingKeyEncryptSk, ScratchTakeCore,
     encryption::SIGMA,
     layouts::{
-        AutomorphismKey, AutomorphismKeyDecompress, AutomorphismKeyLayout, GLWEInfos, GLWESecret, GLWESecretPreparedFactory,
-        GLWESwitchingKeyDecompress, compressed::GLWEAutomorphismKeyCompressed, prepared::GLWESecretPrepared,
+        AutomorphismKeyDecompress, GLWEAutomorphismKey, GLWEAutomorphismKeyLayout, GLWEInfos, GLWESecret,
+        GLWESecretPreparedFactory, GLWESwitchingKeyDecompress, compressed::GLWEAutomorphismKeyCompressed,
+        prepared::GLWESecretPrepared,
     },
     noise::GGLWENoise,
 };
 
 pub fn test_gglwe_automorphism_key_encrypt_sk<BE: Backend>(module: &Module<BE>)
 where
-    Module<BE>: AutomorphismKeyEncryptSk<BE>
+    Module<BE>: GLWEAutomorphismKeyEncryptSk<BE>
         + GGLWEKeyswitch<BE>
         + GLWESecretPreparedFactory<BE>
         + GLWESwitchingKeyEncryptSk<BE>
@@ -37,7 +38,7 @@ where
             let n: usize = module.n();
             let dnum: usize = (k_ksk - di * base2k) / (di * base2k);
 
-            let atk_infos: AutomorphismKeyLayout = AutomorphismKeyLayout {
+            let atk_infos: GLWEAutomorphismKeyLayout = GLWEAutomorphismKeyLayout {
                 n: n.into(),
                 base2k: base2k.into(),
                 k: k_ksk.into(),
@@ -46,13 +47,15 @@ where
                 rank: rank.into(),
             };
 
-            let mut atk: AutomorphismKey<Vec<u8>> = AutomorphismKey::alloc_from_infos(&atk_infos);
+            let mut atk: GLWEAutomorphismKey<Vec<u8>> = GLWEAutomorphismKey::alloc_from_infos(&atk_infos);
 
             let mut source_xs: Source = Source::new([0u8; 32]);
             let mut source_xe: Source = Source::new([0u8; 32]);
             let mut source_xa: Source = Source::new([0u8; 32]);
 
-            let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(AutomorphismKey::encrypt_sk_tmp_bytes(module, &atk_infos));
+            let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(GLWEAutomorphismKey::encrypt_sk_tmp_bytes(
+                module, &atk_infos,
+            ));
 
             let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&atk_infos);
             sk.fill_ternary_prob(0.5, &mut source_xs);
@@ -89,7 +92,7 @@ where
 
 pub fn test_gglwe_automorphism_key_compressed_encrypt_sk<BE: Backend>(module: &Module<BE>)
 where
-    Module<BE>: AutomorphismKeyCompressedEncryptSk<BE>
+    Module<BE>: GLWEAutomorphismKeyCompressedEncryptSk<BE>
         + GGLWEKeyswitch<BE>
         + GLWESecretPreparedFactory<BE>
         + GLWESwitchingKeyEncryptSk<BE>
@@ -109,7 +112,7 @@ where
             let n: usize = module.n();
             let dnum: usize = (k_ksk - di * base2k) / (di * base2k);
 
-            let atk_infos: AutomorphismKeyLayout = AutomorphismKeyLayout {
+            let atk_infos: GLWEAutomorphismKeyLayout = GLWEAutomorphismKeyLayout {
                 n: n.into(),
                 base2k: base2k.into(),
                 k: k_ksk.into(),
@@ -150,7 +153,7 @@ where
             let mut sk_out_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(module, sk_out.rank().into());
             sk_out_prepared.prepare(module, &sk_out);
 
-            let mut atk: AutomorphismKey<Vec<u8>> = AutomorphismKey::alloc_from_infos(&atk_infos);
+            let mut atk: GLWEAutomorphismKey<Vec<u8>> = GLWEAutomorphismKey::alloc_from_infos(&atk_infos);
             atk.decompress(module, &atk_compressed);
 
             atk.key

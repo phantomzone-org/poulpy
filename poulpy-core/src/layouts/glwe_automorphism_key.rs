@@ -11,7 +11,7 @@ use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use std::fmt;
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
-pub struct AutomorphismKeyLayout {
+pub struct GLWEAutomorphismKeyLayout {
     pub n: Degree,
     pub base2k: Base2K,
     pub k: TorusPrecision,
@@ -21,7 +21,7 @@ pub struct AutomorphismKeyLayout {
 }
 
 #[derive(PartialEq, Eq, Clone)]
-pub struct AutomorphismKey<D: Data> {
+pub struct GLWEAutomorphismKey<D: Data> {
     pub(crate) key: GGLWE<D>,
     pub(crate) p: i64,
 }
@@ -34,25 +34,25 @@ pub trait SetGaloisElement {
     fn set_p(&mut self, p: i64);
 }
 
-impl<D: DataMut> SetGaloisElement for AutomorphismKey<D> {
+impl<D: DataMut> SetGaloisElement for GLWEAutomorphismKey<D> {
     fn set_p(&mut self, p: i64) {
         self.p = p
     }
 }
 
-impl<D: DataRef> GetGaloisElement for AutomorphismKey<D> {
+impl<D: DataRef> GetGaloisElement for GLWEAutomorphismKey<D> {
     fn p(&self) -> i64 {
         self.p
     }
 }
 
-impl<D: Data> AutomorphismKey<D> {
+impl<D: Data> GLWEAutomorphismKey<D> {
     pub fn p(&self) -> i64 {
         self.p
     }
 }
 
-impl<D: Data> LWEInfos for AutomorphismKey<D> {
+impl<D: Data> LWEInfos for GLWEAutomorphismKey<D> {
     fn n(&self) -> Degree {
         self.key.n()
     }
@@ -70,13 +70,13 @@ impl<D: Data> LWEInfos for AutomorphismKey<D> {
     }
 }
 
-impl<D: Data> GLWEInfos for AutomorphismKey<D> {
+impl<D: Data> GLWEInfos for GLWEAutomorphismKey<D> {
     fn rank(&self) -> Rank {
         self.rank_out()
     }
 }
 
-impl<D: Data> GGLWEInfos for AutomorphismKey<D> {
+impl<D: Data> GGLWEInfos for GLWEAutomorphismKey<D> {
     fn rank_in(&self) -> Rank {
         self.key.rank_in()
     }
@@ -94,7 +94,7 @@ impl<D: Data> GGLWEInfos for AutomorphismKey<D> {
     }
 }
 
-impl LWEInfos for AutomorphismKeyLayout {
+impl LWEInfos for GLWEAutomorphismKeyLayout {
     fn base2k(&self) -> Base2K {
         self.base2k
     }
@@ -108,13 +108,13 @@ impl LWEInfos for AutomorphismKeyLayout {
     }
 }
 
-impl GLWEInfos for AutomorphismKeyLayout {
+impl GLWEInfos for GLWEAutomorphismKeyLayout {
     fn rank(&self) -> Rank {
         self.rank
     }
 }
 
-impl GGLWEInfos for AutomorphismKeyLayout {
+impl GGLWEInfos for GLWEAutomorphismKeyLayout {
     fn rank_in(&self) -> Rank {
         self.rank
     }
@@ -132,25 +132,25 @@ impl GGLWEInfos for AutomorphismKeyLayout {
     }
 }
 
-impl<D: DataRef> fmt::Debug for AutomorphismKey<D> {
+impl<D: DataRef> fmt::Debug for GLWEAutomorphismKey<D> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{self}")
     }
 }
 
-impl<D: DataMut> FillUniform for AutomorphismKey<D> {
+impl<D: DataMut> FillUniform for GLWEAutomorphismKey<D> {
     fn fill_uniform(&mut self, log_bound: usize, source: &mut Source) {
         self.key.fill_uniform(log_bound, source);
     }
 }
 
-impl<D: DataRef> fmt::Display for AutomorphismKey<D> {
+impl<D: DataRef> fmt::Display for GLWEAutomorphismKey<D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "(AutomorphismKey: p={}) {}", self.p, self.key)
     }
 }
 
-impl AutomorphismKey<Vec<u8>> {
+impl GLWEAutomorphismKey<Vec<u8>> {
     pub fn alloc_from_infos<A>(infos: &A) -> Self
     where
         A: GGLWEInfos,
@@ -166,7 +166,7 @@ impl AutomorphismKey<Vec<u8>> {
     }
 
     pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> Self {
-        AutomorphismKey {
+        GLWEAutomorphismKey {
             key: GGLWE::alloc(n, base2k, k, rank, rank, dnum, dsize),
             p: 0,
         }
@@ -196,38 +196,38 @@ impl AutomorphismKey<Vec<u8>> {
     }
 }
 
-impl<D: DataMut> GGLWEToMut for AutomorphismKey<D> {
+impl<D: DataMut> GGLWEToMut for GLWEAutomorphismKey<D> {
     fn to_mut(&mut self) -> GGLWE<&mut [u8]> {
         self.key.to_mut()
     }
 }
 
-impl<D: DataMut> GGLWEToRef for AutomorphismKey<D> {
+impl<D: DataMut> GGLWEToRef for GLWEAutomorphismKey<D> {
     fn to_ref(&self) -> GGLWE<&[u8]> {
         self.key.to_ref()
     }
 }
 
-impl<D: DataRef> AutomorphismKey<D> {
+impl<D: DataRef> GLWEAutomorphismKey<D> {
     pub fn at(&self, row: usize, col: usize) -> GLWE<&[u8]> {
         self.key.at(row, col)
     }
 }
 
-impl<D: DataMut> AutomorphismKey<D> {
+impl<D: DataMut> GLWEAutomorphismKey<D> {
     pub fn at_mut(&mut self, row: usize, col: usize) -> GLWE<&mut [u8]> {
         self.key.at_mut(row, col)
     }
 }
 
-impl<D: DataMut> ReaderFrom for AutomorphismKey<D> {
+impl<D: DataMut> ReaderFrom for GLWEAutomorphismKey<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
         self.p = reader.read_u64::<LittleEndian>()? as i64;
         self.key.read_from(reader)
     }
 }
 
-impl<D: DataRef> WriterTo for AutomorphismKey<D> {
+impl<D: DataRef> WriterTo for GLWEAutomorphismKey<D> {
     fn write_to<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
         writer.write_u64::<LittleEndian>(self.p as u64)?;
         self.key.write_to(writer)

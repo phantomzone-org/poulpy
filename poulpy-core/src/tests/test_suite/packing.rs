@@ -7,10 +7,10 @@ use poulpy_hal::{
 };
 
 use crate::{
-    AutomorphismKeyEncryptSk, GLWEDecrypt, GLWEEncryptSk, GLWEPacker, GLWEPacking, GLWERotate, GLWESub, ScratchTakeCore,
+    GLWEAutomorphismKeyEncryptSk, GLWEDecrypt, GLWEEncryptSk, GLWEPacker, GLWEPacking, GLWERotate, GLWESub, ScratchTakeCore,
     layouts::{
-        AutomorphismKey, AutomorphismKeyLayout, GLWE, GLWEAutomorphismKeyPreparedFactory, GLWELayout, GLWEPlaintext, GLWESecret,
-        GLWESecretPreparedFactory,
+        GLWE, GLWEAutomorphismKey, GLWEAutomorphismKeyLayout, GLWEAutomorphismKeyPreparedFactory, GLWELayout, GLWEPlaintext,
+        GLWESecret, GLWESecretPreparedFactory,
         prepared::{GLWEAutomorphismKeyPrepared, GLWESecretPrepared},
     },
 };
@@ -18,7 +18,7 @@ use crate::{
 pub fn test_glwe_packing<BE: Backend>(module: &Module<BE>)
 where
     Module<BE>: GLWEEncryptSk<BE>
-        + AutomorphismKeyEncryptSk<BE>
+        + GLWEAutomorphismKeyEncryptSk<BE>
         + GLWEAutomorphismKeyPreparedFactory<BE>
         + GLWEPacking<BE>
         + GLWESecretPreparedFactory<BE>
@@ -49,7 +49,7 @@ where
         rank: rank.into(),
     };
 
-    let key_infos: AutomorphismKeyLayout = AutomorphismKeyLayout {
+    let key_infos: GLWEAutomorphismKeyLayout = GLWEAutomorphismKeyLayout {
         n: n.into(),
         base2k: base2k.into(),
         k: k_ksk.into(),
@@ -60,7 +60,7 @@ where
 
     let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
         GLWE::encrypt_sk_tmp_bytes(module, &glwe_out_infos)
-            | AutomorphismKey::encrypt_sk_tmp_bytes(module, &key_infos)
+            | GLWEAutomorphismKey::encrypt_sk_tmp_bytes(module, &key_infos)
             | GLWEPacker::tmp_bytes(module, &glwe_out_infos, &key_infos),
     );
 
@@ -81,7 +81,7 @@ where
     let gal_els: Vec<i64> = GLWEPacker::galois_elements(module);
 
     let mut auto_keys: HashMap<i64, GLWEAutomorphismKeyPrepared<Vec<u8>, BE>> = HashMap::new();
-    let mut tmp: AutomorphismKey<Vec<u8>> = AutomorphismKey::alloc_from_infos(&key_infos);
+    let mut tmp: GLWEAutomorphismKey<Vec<u8>> = GLWEAutomorphismKey::alloc_from_infos(&key_infos);
     gal_els.iter().for_each(|gal_el| {
         tmp.encrypt_sk(
             module,

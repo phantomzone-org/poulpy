@@ -3,7 +3,7 @@ use poulpy_hal::layouts::{Backend, DataMut, Module, Scratch, VecZnx};
 use crate::{
     GGSWExpandRows, ScratchTakeCore,
     keyswitching::GLWEKeyswitch,
-    layouts::{GGLWEInfos, GGLWEPreparedToRef, GGSW, GGSWInfos, GGSWToMut, GGSWToRef, prepared::TensorKeyPreparedToRef},
+    layouts::{GGLWEInfos, GGLWEPreparedToRef, GGSW, GGSWInfos, GGSWToMut, GGSWToRef, prepared::GLWETensorKeyPreparedToRef},
 };
 
 impl GGSW<Vec<u8>> {
@@ -30,7 +30,7 @@ impl<D: DataMut> GGSW<D> {
     where
         A: GGSWToRef,
         K: GGLWEPreparedToRef<BE>,
-        T: TensorKeyPreparedToRef<BE>,
+        T: GLWETensorKeyPreparedToRef<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
         M: GGSWKeyswitch<BE>,
     {
@@ -40,7 +40,7 @@ impl<D: DataMut> GGSW<D> {
     pub fn keyswitch_inplace<M, K, T, BE: Backend>(&mut self, module: &M, key: &K, tsk: &T, scratch: &mut Scratch<BE>)
     where
         K: GGLWEPreparedToRef<BE>,
-        T: TensorKeyPreparedToRef<BE>,
+        T: GLWETensorKeyPreparedToRef<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
         M: GGSWKeyswitch<BE>,
     {
@@ -91,7 +91,7 @@ where
         R: GGSWToMut,
         A: GGSWToRef,
         K: GGLWEPreparedToRef<BE>,
-        T: TensorKeyPreparedToRef<BE>,
+        T: GLWETensorKeyPreparedToRef<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         let res: &mut GGSW<&mut [u8]> = &mut res.to_mut();
@@ -113,7 +113,7 @@ where
     where
         R: GGSWToMut,
         K: GGLWEPreparedToRef<BE>,
-        T: TensorKeyPreparedToRef<BE>,
+        T: GLWETensorKeyPreparedToRef<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         let res: &mut GGSW<&mut [u8]> = &mut res.to_mut();

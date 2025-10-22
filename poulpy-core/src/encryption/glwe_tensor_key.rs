@@ -10,22 +10,22 @@ use poulpy_hal::{
 use crate::{
     GGLWEEncryptSk, GetDistribution, ScratchTakeCore,
     layouts::{
-        GGLWE, GGLWEInfos, GLWEInfos, GLWESecret, GLWESecretToRef, LWEInfos, Rank, TensorKey, TensorKeyToMut,
+        GGLWE, GGLWEInfos, GLWEInfos, GLWESecret, GLWESecretToRef, GLWETensorKey, GLWETensorKeyToMut, LWEInfos, Rank,
         prepared::{GLWESecretPrepared, GLWESecretPreparedFactory},
     },
 };
 
-impl TensorKey<Vec<u8>> {
+impl GLWETensorKey<Vec<u8>> {
     pub fn encrypt_sk_tmp_bytes<M, A, BE: Backend>(module: &M, infos: &A) -> usize
     where
         A: GGLWEInfos,
-        M: TensorKeyEncryptSk<BE>,
+        M: GLWETensorKeyEncryptSk<BE>,
     {
-        module.tensor_key_encrypt_sk_tmp_bytes(infos)
+        module.glwe_tensor_key_encrypt_sk_tmp_bytes(infos)
     }
 }
 
-impl<DataSelf: DataMut> TensorKey<DataSelf> {
+impl<DataSelf: DataMut> GLWETensorKey<DataSelf> {
     pub fn encrypt_sk<M, S, BE: Backend>(
         &mut self,
         module: &M,
@@ -34,20 +34,20 @@ impl<DataSelf: DataMut> TensorKey<DataSelf> {
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
-        M: TensorKeyEncryptSk<BE>,
+        M: GLWETensorKeyEncryptSk<BE>,
         S: GLWESecretToRef + GetDistribution + GLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        module.tensor_key_encrypt_sk(self, sk, source_xa, source_xe, scratch);
+        module.glwe_tensor_key_encrypt_sk(self, sk, source_xa, source_xe, scratch);
     }
 }
 
-pub trait TensorKeyEncryptSk<BE: Backend> {
-    fn tensor_key_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
+pub trait GLWETensorKeyEncryptSk<BE: Backend> {
+    fn glwe_tensor_key_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos;
 
-    fn tensor_key_encrypt_sk<R, S>(
+    fn glwe_tensor_key_encrypt_sk<R, S>(
         &self,
         res: &mut R,
         sk: &S,
@@ -55,11 +55,11 @@ pub trait TensorKeyEncryptSk<BE: Backend> {
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
-        R: TensorKeyToMut,
+        R: GLWETensorKeyToMut,
         S: GLWESecretToRef + GetDistribution + GLWEInfos;
 }
 
-impl<BE: Backend> TensorKeyEncryptSk<BE> for Module<BE>
+impl<BE: Backend> GLWETensorKeyEncryptSk<BE> for Module<BE>
 where
     Self: ModuleN
         + GGLWEEncryptSk<BE>
@@ -72,7 +72,7 @@ where
         + VecZnxBigNormalize<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
-    fn tensor_key_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
+    fn glwe_tensor_key_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos,
     {
@@ -84,7 +84,7 @@ where
             + GGLWE::encrypt_sk_tmp_bytes(self, infos)
     }
 
-    fn tensor_key_encrypt_sk<R, S>(
+    fn glwe_tensor_key_encrypt_sk<R, S>(
         &self,
         res: &mut R,
         sk: &S,
@@ -92,10 +92,10 @@ where
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
-        R: TensorKeyToMut,
+        R: GLWETensorKeyToMut,
         S: GLWESecretToRef + GetDistribution + GLWEInfos,
     {
-        let res: &mut TensorKey<&mut [u8]> = &mut res.to_mut();
+        let res: &mut GLWETensorKey<&mut [u8]> = &mut res.to_mut();
 
         // let n: RingDegree = sk.n();
         let rank: Rank = res.rank_out();

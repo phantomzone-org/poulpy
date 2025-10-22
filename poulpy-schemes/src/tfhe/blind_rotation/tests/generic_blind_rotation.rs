@@ -24,14 +24,13 @@ pub fn test_blind_rotation<BRA: BlindRotationAlgo, M, BE: Backend>(
     block_size: usize,
     extension_factor: usize,
 ) where
-    M: BlindRotationKeyEncryptSk<BE, BRA>
-        + BlindRotationKeyPreparedFactory<BE, BRA>
+    M: BlindRotationKeyEncryptSk<BRA, BE>
+        + BlindRotationKeyPreparedFactory<BRA, BE>
         + BlindRotationExecute<BRA, BE>
-        + GLWESecretPreparedFactory<BE>
-        + BlindRotationExecute<BRA, BE>
-        + LWEEncryptSk<BE>
         + LookupTableFactory
-        + GLWEDecrypt<BE>,
+        + GLWESecretPreparedFactory<BE>
+        + GLWEDecrypt<BE>
+        + LWEEncryptSk<BE>,
     BlindRotationKey<Vec<u8>, BRA>: BlindRotationKeyFactory<BRA>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,

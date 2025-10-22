@@ -5,11 +5,11 @@ use poulpy_hal::{
 };
 
 use crate::{
-    AutomorphismKeyEncryptSk, GLWEAutomorphismKeyAutomorphism, GLWEDecrypt, ScratchTakeCore,
+    GLWEAutomorphismKeyAutomorphism, GLWEAutomorphismKeyEncryptSk, GLWEDecrypt, ScratchTakeCore,
     encryption::SIGMA,
     layouts::{
-        AutomorphismKey, AutomorphismKeyLayout, GGLWEInfos, GLWEAutomorphismKeyPreparedFactory, GLWEPlaintext, GLWESecret,
-        GLWESecretPreparedFactory,
+        GGLWEInfos, GLWEAutomorphismKey, GLWEAutomorphismKeyLayout, GLWEAutomorphismKeyPreparedFactory, GLWEPlaintext,
+        GLWESecret, GLWESecretPreparedFactory,
         prepared::{GLWEAutomorphismKeyPrepared, GLWESecretPrepared},
     },
     noise::log2_std_noise_gglwe_product,
@@ -18,7 +18,7 @@ use crate::{
 #[allow(clippy::too_many_arguments)]
 pub fn test_gglwe_automorphism_key_automorphism<BE: Backend>(module: &Module<BE>)
 where
-    Module<BE>: AutomorphismKeyEncryptSk<BE>
+    Module<BE>: GLWEAutomorphismKeyEncryptSk<BE>
         + GLWEAutomorphismKeyPreparedFactory<BE>
         + GLWEAutomorphismKeyAutomorphism<BE>
         + VecZnxAutomorphism
@@ -46,7 +46,7 @@ where
             let dnum_out: usize = k_out / (base2k * di);
             let dnum_apply: usize = k_in.div_ceil(base2k * di);
 
-            let auto_key_in_infos: AutomorphismKeyLayout = AutomorphismKeyLayout {
+            let auto_key_in_infos: GLWEAutomorphismKeyLayout = GLWEAutomorphismKeyLayout {
                 n: n.into(),
                 base2k: base2k.into(),
                 k: k_in.into(),
@@ -55,7 +55,7 @@ where
                 rank: rank.into(),
             };
 
-            let auto_key_out_infos: AutomorphismKeyLayout = AutomorphismKeyLayout {
+            let auto_key_out_infos: GLWEAutomorphismKeyLayout = GLWEAutomorphismKeyLayout {
                 n: n.into(),
                 base2k: base2k.into(),
                 k: k_out.into(),
@@ -64,7 +64,7 @@ where
                 rank: rank.into(),
             };
 
-            let auto_key_apply_infos: AutomorphismKeyLayout = AutomorphismKeyLayout {
+            let auto_key_apply_infos: GLWEAutomorphismKeyLayout = GLWEAutomorphismKeyLayout {
                 n: n.into(),
                 base2k: base2k.into(),
                 k: k_apply.into(),
@@ -73,18 +73,18 @@ where
                 rank: rank.into(),
             };
 
-            let mut auto_key_in: AutomorphismKey<Vec<u8>> = AutomorphismKey::alloc_from_infos(&auto_key_in_infos);
-            let mut auto_key_out: AutomorphismKey<Vec<u8>> = AutomorphismKey::alloc_from_infos(&auto_key_out_infos);
-            let mut auto_key_apply: AutomorphismKey<Vec<u8>> = AutomorphismKey::alloc_from_infos(&auto_key_apply_infos);
+            let mut auto_key_in: GLWEAutomorphismKey<Vec<u8>> = GLWEAutomorphismKey::alloc_from_infos(&auto_key_in_infos);
+            let mut auto_key_out: GLWEAutomorphismKey<Vec<u8>> = GLWEAutomorphismKey::alloc_from_infos(&auto_key_out_infos);
+            let mut auto_key_apply: GLWEAutomorphismKey<Vec<u8>> = GLWEAutomorphismKey::alloc_from_infos(&auto_key_apply_infos);
 
             let mut source_xs: Source = Source::new([0u8; 32]);
             let mut source_xe: Source = Source::new([0u8; 32]);
             let mut source_xa: Source = Source::new([0u8; 32]);
 
             let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
-                AutomorphismKey::encrypt_sk_tmp_bytes(module, &auto_key_in_infos)
-                    | AutomorphismKey::encrypt_sk_tmp_bytes(module, &auto_key_apply_infos)
-                    | AutomorphismKey::automorphism_tmp_bytes(
+                GLWEAutomorphismKey::encrypt_sk_tmp_bytes(module, &auto_key_in_infos)
+                    | GLWEAutomorphismKey::encrypt_sk_tmp_bytes(module, &auto_key_apply_infos)
+                    | GLWEAutomorphismKey::automorphism_tmp_bytes(
                         module,
                         &auto_key_out_infos,
                         &auto_key_in_infos,
@@ -187,7 +187,7 @@ where
 #[allow(clippy::too_many_arguments)]
 pub fn test_gglwe_automorphism_key_automorphism_inplace<BE: Backend>(module: &Module<BE>)
 where
-    Module<BE>: AutomorphismKeyEncryptSk<BE>
+    Module<BE>: GLWEAutomorphismKeyEncryptSk<BE>
         + GLWEAutomorphismKeyPreparedFactory<BE>
         + GLWEAutomorphismKeyAutomorphism<BE>
         + VecZnxAutomorphism
@@ -213,7 +213,7 @@ where
             let dnum_in: usize = k_in / (base2k * di);
             let dnum_apply: usize = k_in.div_ceil(base2k * di);
 
-            let auto_key_layout: AutomorphismKeyLayout = AutomorphismKeyLayout {
+            let auto_key_layout: GLWEAutomorphismKeyLayout = GLWEAutomorphismKeyLayout {
                 n: n.into(),
                 base2k: base2k.into(),
                 k: k_in.into(),
@@ -222,7 +222,7 @@ where
                 rank: rank.into(),
             };
 
-            let auto_key_apply_layout: AutomorphismKeyLayout = AutomorphismKeyLayout {
+            let auto_key_apply_layout: GLWEAutomorphismKeyLayout = GLWEAutomorphismKeyLayout {
                 n: n.into(),
                 base2k: base2k.into(),
                 k: k_apply.into(),
@@ -231,17 +231,17 @@ where
                 rank: rank.into(),
             };
 
-            let mut auto_key: AutomorphismKey<Vec<u8>> = AutomorphismKey::alloc_from_infos(&auto_key_layout);
-            let mut auto_key_apply: AutomorphismKey<Vec<u8>> = AutomorphismKey::alloc_from_infos(&auto_key_apply_layout);
+            let mut auto_key: GLWEAutomorphismKey<Vec<u8>> = GLWEAutomorphismKey::alloc_from_infos(&auto_key_layout);
+            let mut auto_key_apply: GLWEAutomorphismKey<Vec<u8>> = GLWEAutomorphismKey::alloc_from_infos(&auto_key_apply_layout);
 
             let mut source_xs: Source = Source::new([0u8; 32]);
             let mut source_xe: Source = Source::new([0u8; 32]);
             let mut source_xa: Source = Source::new([0u8; 32]);
 
             let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
-                AutomorphismKey::encrypt_sk_tmp_bytes(module, &auto_key)
-                    | AutomorphismKey::encrypt_sk_tmp_bytes(module, &auto_key_apply)
-                    | AutomorphismKey::automorphism_tmp_bytes(module, &auto_key, &auto_key, &auto_key_apply),
+                GLWEAutomorphismKey::encrypt_sk_tmp_bytes(module, &auto_key)
+                    | GLWEAutomorphismKey::encrypt_sk_tmp_bytes(module, &auto_key_apply)
+                    | GLWEAutomorphismKey::automorphism_tmp_bytes(module, &auto_key, &auto_key, &auto_key_apply),
             );
 
             let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&auto_key);

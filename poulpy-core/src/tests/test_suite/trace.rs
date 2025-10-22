@@ -7,12 +7,12 @@ use poulpy_hal::{
 };
 
 use crate::{
-    AutomorphismKeyEncryptSk, GLWEDecrypt, GLWEEncryptSk, ScratchTakeCore,
+    GLWEAutomorphismKeyEncryptSk, GLWEDecrypt, GLWEEncryptSk, ScratchTakeCore,
     encryption::SIGMA,
     glwe_trace::GLWETrace,
     layouts::{
-        AutomorphismKey, AutomorphismKeyLayout, GLWE, GLWEAutomorphismKeyPreparedFactory, GLWELayout, GLWEPlaintext, GLWESecret,
-        GLWESecretPreparedFactory, LWEInfos,
+        GLWE, GLWEAutomorphismKey, GLWEAutomorphismKeyLayout, GLWEAutomorphismKeyPreparedFactory, GLWELayout, GLWEPlaintext,
+        GLWESecret, GLWESecretPreparedFactory, LWEInfos,
         prepared::{GLWEAutomorphismKeyPrepared, GLWESecretPrepared},
     },
     noise::var_noise_gglwe_product,
@@ -23,7 +23,7 @@ where
     Module<BE>: GLWETrace<BE>
         + GLWEEncryptSk<BE>
         + GLWEDecrypt<BE>
-        + AutomorphismKeyEncryptSk<BE>
+        + GLWEAutomorphismKeyEncryptSk<BE>
         + GLWEAutomorphismKeyPreparedFactory<BE>
         + VecZnxFillUniform
         + GLWESecretPreparedFactory<BE>
@@ -49,7 +49,7 @@ where
             rank: rank.into(),
         };
 
-        let key_infos: AutomorphismKeyLayout = AutomorphismKeyLayout {
+        let key_infos: GLWEAutomorphismKeyLayout = GLWEAutomorphismKeyLayout {
             n: n.into(),
             base2k: base2k.into(),
             k: k_autokey.into(),
@@ -69,7 +69,7 @@ where
         let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
             GLWE::encrypt_sk_tmp_bytes(module, &glwe_out_infos)
                 | GLWE::decrypt_tmp_bytes(module, &glwe_out_infos)
-                | AutomorphismKey::encrypt_sk_tmp_bytes(module, &key_infos)
+                | GLWEAutomorphismKey::encrypt_sk_tmp_bytes(module, &key_infos)
                 | GLWE::trace_tmp_bytes(module, &glwe_out_infos, &glwe_out_infos, &key_infos),
         );
 
@@ -98,7 +98,7 @@ where
 
         let mut auto_keys: HashMap<i64, GLWEAutomorphismKeyPrepared<Vec<u8>, BE>> = HashMap::new();
         let gal_els: Vec<i64> = GLWE::trace_galois_elements(module);
-        let mut tmp: AutomorphismKey<Vec<u8>> = AutomorphismKey::alloc_from_infos(&key_infos);
+        let mut tmp: GLWEAutomorphismKey<Vec<u8>> = GLWEAutomorphismKey::alloc_from_infos(&key_infos);
         gal_els.iter().for_each(|gal_el| {
             tmp.encrypt_sk(
                 module,

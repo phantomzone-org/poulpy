@@ -10,7 +10,7 @@ use poulpy_core::{
 
 use crate::tfhe::blind_rotation::{BlindRotationAlgo, BlindRotationKey};
 
-pub trait BlindRotationKeyEncryptSk<B: Backend, BRA: BlindRotationAlgo> {
+pub trait BlindRotationKeyEncryptSk<BRA: BlindRotationAlgo, B: Backend> {
     fn blind_rotation_key_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GGSWInfos;
@@ -43,7 +43,7 @@ impl<D: DataMut, BRA: BlindRotationAlgo> BlindRotationKey<D, BRA> {
         S0: GLWESecretPreparedToRef<BE> + GLWEInfos,
         S1: LWESecretToRef + LWEInfos + GetDistribution,
         Scratch<BE>: ScratchTakeCore<BE>,
-        M: BlindRotationKeyEncryptSk<BE, BRA>,
+        M: BlindRotationKeyEncryptSk<BRA, BE>,
     {
         module.blind_rotation_key_encrypt_sk(self, sk_glwe, sk_lwe, source_xa, source_xe, scratch);
     }
@@ -53,7 +53,7 @@ impl<BRA: BlindRotationAlgo> BlindRotationKey<Vec<u8>, BRA> {
     pub fn encrypt_sk_tmp_bytes<A, M, BE: Backend>(module: &M, infos: &A) -> usize
     where
         A: GGSWInfos,
-        M: BlindRotationKeyEncryptSk<BE, BRA>,
+        M: BlindRotationKeyEncryptSk<BRA, BE>,
     {
         module.blind_rotation_key_encrypt_sk_tmp_bytes(infos)
     }

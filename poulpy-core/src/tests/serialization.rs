@@ -1,8 +1,8 @@
 use poulpy_hal::test_suite::serialization::test_reader_writer_interface;
 
 use crate::layouts::{
-    AutomorphismKey, Base2K, Degree, Dnum, Dsize, GGLWE, GGSW, GLWE, GLWESwitchingKey, GLWEToLWESwitchingKey, LWE,
-    LWESwitchingKey, LWEToGLWESwitchingKey, Rank, TensorKey, TorusPrecision,
+    Base2K, Degree, Dnum, Dsize, GGLWE, GGSW, GLWE, GLWEAutomorphismKey, GLWESwitchingKey, GLWETensorKey, GLWEToLWESwitchingKey,
+    LWE, LWESwitchingKey, LWEToGLWESwitchingKey, Rank, TorusPrecision,
     compressed::{
         GGLWECompressed, GGSWCompressed, GLWEAutomorphismKeyCompressed, GLWECompressed, GLWESwitchingKeyCompressed,
         GLWETensorKeyCompressed, GLWEToLWESwitchingKeyCompressed, LWECompressed, LWESwitchingKeyCompressed,
@@ -69,7 +69,7 @@ fn test_glwe_switching_key_compressed_serialization() {
 
 #[test]
 fn test_automorphism_key_serialization() {
-    let original: AutomorphismKey<Vec<u8>> = AutomorphismKey::alloc(N_GLWE, BASE2K, K, RANK, DNUM, DSIZE);
+    let original: GLWEAutomorphismKey<Vec<u8>> = GLWEAutomorphismKey::alloc(N_GLWE, BASE2K, K, RANK, DNUM, DSIZE);
     test_reader_writer_interface(original);
 }
 
@@ -82,7 +82,7 @@ fn test_automorphism_key_compressed_serialization() {
 
 #[test]
 fn test_tensor_key_serialization() {
-    let original: TensorKey<Vec<u8>> = TensorKey::alloc(N_GLWE, BASE2K, K, RANK, DNUM, DSIZE);
+    let original: GLWETensorKey<Vec<u8>> = GLWETensorKey::alloc(N_GLWE, BASE2K, K, RANK, DNUM, DSIZE);
     test_reader_writer_interface(original);
 }
 

@@ -1,9 +1,9 @@
 use poulpy_core::{
-    GLWEOperations,
+    GLWENormalize,
     layouts::{
-        AutomorphismKeyLayout, GGSW, GGSWLayout, GLWE, GLWELayout, GLWEPlaintext, GLWESecret, LWE, LWEInfos, LWELayout,
-        LWEPlaintext, LWESecret, TensorKeyLayout,
-        prepared::{GGSWPrepared, GLWESecretPrepared, PrepareAlloc},
+        GGSW, GGSWLayout, GLWE, GLWEAutomorphismKeyLayout, GLWELayout, GLWEPlaintext, GLWESecret, GLWETensorKeyLayout, LWE,
+        LWEInfos, LWELayout, LWEPlaintext, LWESecret,
+        prepared::{GGSWPrepared, GLWESecretPrepared},
     },
 };
 use std::time::Instant;
@@ -22,10 +22,7 @@ use poulpy_hal::{
 
 use poulpy_schemes::tfhe::{
     blind_rotation::{BlindRotationKeyLayout, CGGI},
-    circuit_bootstrapping::{
-        CircuitBootstrappingKey, CircuitBootstrappingKeyEncryptSk, CircuitBootstrappingKeyLayout,
-        CircuitBootstrappingKeyPrepared, CirtuitBootstrappingExecute,
-    },
+    circuit_bootstrapping::{CircuitBootstrappingKey, CircuitBootstrappingKeyLayout, CircuitBootstrappingKeyPrepared},
 };
 
 fn main() {
@@ -89,7 +86,7 @@ fn main() {
             dnum: rows_brk.into(),
             rank: rank.into(),
         },
-        layout_atk: AutomorphismKeyLayout {
+        layout_atk: GLWEAutomorphismKeyLayout {
             n: n_glwe.into(),
             base2k: base2k.into(),
             k: k_trace.into(),
@@ -97,7 +94,7 @@ fn main() {
             dsize: 1_u32.into(),
             rank: rank.into(),
         },
-        layout_tsk: TensorKeyLayout {
+        layout_tsk: GLWETensorKeyLayout {
             n: n_glwe.into(),
             base2k: base2k.into(),
             k: k_tsk.into(),
@@ -145,7 +142,8 @@ fn main() {
     // sk_glwe.fill_zero();
 
     // GLWE secret prepared (opaque backend dependant write only struct)
-    let sk_glwe_prepared: GLWESecretPrepared<Vec<u8>, BackendImpl> = sk_glwe.prepare_alloc(&module, scratch.borrow());
+    let mut sk_glwe_prepared: GLWESecretPrepared<Vec<u8>, BackendImpl> = GLWESecretPrepared::alloc(&module, rank.into());
+    sk_glwe_prepared.prepare(&module, &sk_glwe);
 
     // Plaintext value to circuit bootstrap
     let data: i64 = 1 % (1 << k_lwe_pt);
@@ -175,23 +173,26 @@ fn main() {
     let now: Instant = Instant::now();
 
     // Circuit bootstrapping evaluation key
-    let cbt_key: CircuitBootstrappingKey<Vec<u8>, CGGI> = CircuitBootstrappingKey::encrypt_sk(
+    let mut cbt_key: CircuitBootstrappingKey<Vec<u8>, CGGI> = CircuitBootstrappingKey::alloc_from_infos(&cbt_infos);
+
+    cbt_key.encrypt_sk(
         &module,
         &sk_lwe,
         &sk_glwe,
-        &cbt_infos,
         &mut source_xa,
         &mut source_xe,
         scratch.borrow(),
     );
+
     println!("CBT-KGEN: {} ms", now.elapsed().as_millis());
 
     // Output GGSW
     let mut res: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_infos);
 
     // Circuit bootstrapping key prepared (opaque backend dependant write only struct)
-    let cbt_prepared: CircuitBootstrappingKeyPrepared<Vec<u8>, CGGI, BackendImpl> =
-        cbt_key.prepare_alloc(&module, scratch.borrow());
+    let mut cbt_prepared: CircuitBootstrappingKeyPrepared<Vec<u8>, CGGI, BackendImpl> =
+        CircuitBootstrappingKeyPrepared::alloc_from_infos(&module, &cbt_infos);
+    cbt_prepared.prepare(&module, &cbt_key, scratch.borrow());
 
     // Apply circuit bootstrapping: LWE(data * 2^{- (k_lwe_pt + 2)}) -> GGSW(data)
     let now: Instant = Instant::now();
@@ -234,7 +235,7 @@ fn main() {
         .for_each(|(x, y)| *y = (x % (1 << (k_glwe_pt - 1))) as i64 - (1 << (k_glwe_pt - 2)));
 
     pt_glwe.encode_vec_i64(&data_vec, (k_lwe_pt + 2).into());
-    pt_glwe.normalize_inplace(&module, scratch.borrow());
+    module.glwe_normalize_inplace(&mut pt_glwe, scratch.borrow());
 
     println!("{}", pt_glwe);
 
@@ -249,7 +250,8 @@ fn main() {
     );
 
     // Prepare GGSW output of circuit bootstrapping (opaque backend dependant write only struct)
-    let res_prepared: GGSWPrepared<Vec<u8>, BackendImpl> = res.prepare_alloc(&module, scratch.borrow());
+    let mut res_prepared: GGSWPrepared<Vec<u8>, BackendImpl> = GGSWPrepared::alloc_from_infos(&module, &res);
+    res_prepared.prepare(&module, &res, scratch.borrow());
 
     // Apply GLWE x GGSW
     ct_glwe.external_product_inplace(&module, &res_prepared, scratch.borrow());

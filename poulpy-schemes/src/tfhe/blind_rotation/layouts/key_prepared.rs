@@ -3,13 +3,13 @@ use poulpy_hal::layouts::{Backend, Data, DataMut, DataRef, Scratch, SvpPPol};
 use std::marker::PhantomData;
 
 use poulpy_core::{
-    Distribution, ScratchTakeCore,
+    Distribution,
     layouts::{Base2K, Degree, Dnum, Dsize, GGSWInfos, GLWEInfos, LWEInfos, Rank, TorusPrecision, prepared::GGSWPrepared},
 };
 
 use crate::tfhe::blind_rotation::{BlindRotationAlgo, BlindRotationKey, BlindRotationKeyInfos};
 
-pub trait BlindRotationKeyPreparedFactory<BE: Backend, BRA: BlindRotationAlgo> {
+pub trait BlindRotationKeyPreparedFactory<BRA: BlindRotationAlgo, BE: Backend> {
     fn blind_rotation_key_prepared_alloc<A>(&self, infos: &A) -> BlindRotationKeyPrepared<Vec<u8>, BRA, BE>
     where
         A: BlindRotationKeyInfos;
@@ -21,27 +21,23 @@ pub trait BlindRotationKeyPreparedFactory<BE: Backend, BRA: BlindRotationAlgo> {
         scratch: &mut Scratch<BE>,
     ) where
         DM: DataMut,
-        DR: DataRef,
-        Scratch<BE>: ScratchTakeCore<BE>;
+        DR: DataRef;
 }
 
 impl<BE: Backend, BRA: BlindRotationAlgo> BlindRotationKeyPrepared<Vec<u8>, BRA, BE> {
     pub fn alloc<A, M>(module: &M, infos: &A) -> Self
     where
         A: BlindRotationKeyInfos,
-        M: BlindRotationKeyPreparedFactory<BE, BRA>,
+        M: BlindRotationKeyPreparedFactory<BRA, BE>,
     {
         module.blind_rotation_key_prepared_alloc(infos)
     }
 }
 
-impl<D: DataMut, BRA: BlindRotationAlgo, BE: Backend> BlindRotationKeyPrepared<D, BRA, BE>
-where
-    Scratch<BE>: ScratchTakeCore<BE>,
-{
+impl<D: DataMut, BRA: BlindRotationAlgo, BE: Backend> BlindRotationKeyPrepared<D, BRA, BE> {
     pub fn prepare<DR: DataRef, M>(&mut self, module: &M, other: &BlindRotationKey<DR, BRA>, scratch: &mut Scratch<BE>)
     where
-        M: BlindRotationKeyPreparedFactory<BE, BRA>,
+        M: BlindRotationKeyPreparedFactory<BRA, BE>,
     {
         module.blind_rotation_key_prepare(self, other, scratch);
     }

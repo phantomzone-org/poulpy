@@ -6,11 +6,11 @@ use poulpy_hal::{
 use crate::{
     dist::Distribution,
     layouts::{
-        AutomorphismKey, Degree, GGLWE, GGLWEInfos, GGLWELayout, GGSW, GGSWInfos, GLWE, GLWEInfos, GLWEPlaintext, GLWEPrepared,
-        GLWEPublicKey, GLWESecret, GLWESwitchingKey, Rank, TensorKey,
+        Degree, GGLWE, GGLWEInfos, GGLWELayout, GGSW, GGSWInfos, GLWE, GLWEAutomorphismKey, GLWEInfos, GLWEPlaintext,
+        GLWEPrepared, GLWEPublicKey, GLWESecret, GLWESwitchingKey, GLWETensorKey, Rank,
         prepared::{
             GGLWEPrepared, GGSWPrepared, GLWEAutomorphismKeyPrepared, GLWEPublicKeyPrepared, GLWESecretPrepared,
-            GLWESwitchingKeyPrepared, TensorKeyPrepared,
+            GLWESwitchingKeyPrepared, GLWETensorKeyPrepared,
         },
     },
 };
@@ -282,12 +282,12 @@ where
         )
     }
 
-    fn take_glwe_automorphism_key<A>(&mut self, infos: &A) -> (AutomorphismKey<&mut [u8]>, &mut Self)
+    fn take_glwe_automorphism_key<A>(&mut self, infos: &A) -> (GLWEAutomorphismKey<&mut [u8]>, &mut Self)
     where
         A: GGLWEInfos,
     {
         let (data, scratch) = self.take_gglwe(infos);
-        (AutomorphismKey { key: data, p: 0 }, scratch)
+        (GLWEAutomorphismKey { key: data, p: 0 }, scratch)
     }
 
     fn take_glwe_automorphism_key_prepared<A, M>(
@@ -304,14 +304,14 @@ where
         (GLWEAutomorphismKeyPrepared { key: data, p: 0 }, scratch)
     }
 
-    fn take_glwe_tensor_key<A, M>(&mut self, infos: &A) -> (TensorKey<&mut [u8]>, &mut Self)
+    fn take_glwe_tensor_key<A, M>(&mut self, infos: &A) -> (GLWETensorKey<&mut [u8]>, &mut Self)
     where
         A: GGLWEInfos,
     {
         assert_eq!(
             infos.rank_in(),
             infos.rank_out(),
-            "rank_in != rank_out is not supported for GGLWETensorKey"
+            "rank_in != rank_out is not supported for GLWETensorKey"
         );
         let mut keys: Vec<GGLWE<&mut [u8]>> = Vec::new();
         let pairs: usize = (((infos.rank_out().0 + 1) * infos.rank_out().0) >> 1).max(1) as usize;
@@ -331,10 +331,10 @@ where
             scratch = s;
             keys.push(gglwe);
         }
-        (TensorKey { keys }, scratch)
+        (GLWETensorKey { keys }, scratch)
     }
 
-    fn take_glwe_tensor_key_prepared<A, M>(&mut self, module: &M, infos: &A) -> (TensorKeyPrepared<&mut [u8], B>, &mut Self)
+    fn take_glwe_tensor_key_prepared<A, M>(&mut self, module: &M, infos: &A) -> (GLWETensorKeyPrepared<&mut [u8], B>, &mut Self)
     where
         A: GGLWEInfos,
         M: ModuleN + VmpPMatBytesOf,
@@ -364,7 +364,7 @@ where
             scratch = s;
             keys.push(gglwe);
         }
-        (TensorKeyPrepared { keys }, scratch)
+        (GLWETensorKeyPrepared { keys }, scratch)
     }
 }
 

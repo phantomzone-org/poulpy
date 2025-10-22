@@ -21,6 +21,7 @@ pub use dist::*;
 pub use encryption::*;
 pub use external_product::*;
 pub use glwe_packing::*;
+pub use glwe_trace::*;
 pub use keyswitching::*;
 pub use noise::*;
 pub use scratch::*;

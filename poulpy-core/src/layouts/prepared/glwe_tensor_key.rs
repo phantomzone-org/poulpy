@@ -2,15 +2,15 @@ use poulpy_hal::layouts::{Backend, Data, DataMut, DataRef, Module, Scratch};
 
 use crate::layouts::{
     Base2K, Degree, Dnum, Dsize, GGLWEInfos, GGLWEPrepared, GGLWEPreparedFactory, GGLWEPreparedToMut, GGLWEPreparedToRef,
-    GLWEInfos, LWEInfos, Rank, TensorKey, TensorKeyToRef, TorusPrecision,
+    GLWEInfos, GLWETensorKey, GLWETensorKeyToRef, LWEInfos, Rank, TorusPrecision,
 };
 
 #[derive(PartialEq, Eq)]
-pub struct TensorKeyPrepared<D: Data, B: Backend> {
+pub struct GLWETensorKeyPrepared<D: Data, B: Backend> {
     pub(crate) keys: Vec<GGLWEPrepared<D, B>>,
 }
 
-impl<D: Data, B: Backend> LWEInfos for TensorKeyPrepared<D, B> {
+impl<D: Data, B: Backend> LWEInfos for GLWETensorKeyPrepared<D, B> {
     fn n(&self) -> Degree {
         self.keys[0].n()
     }
@@ -28,13 +28,13 @@ impl<D: Data, B: Backend> LWEInfos for TensorKeyPrepared<D, B> {
     }
 }
 
-impl<D: Data, B: Backend> GLWEInfos for TensorKeyPrepared<D, B> {
+impl<D: Data, B: Backend> GLWEInfos for GLWETensorKeyPrepared<D, B> {
     fn rank(&self) -> Rank {
         self.rank_out()
     }
 }
 
-impl<D: Data, B: Backend> GGLWEInfos for TensorKeyPrepared<D, B> {
+impl<D: Data, B: Backend> GGLWEInfos for GLWETensorKeyPrepared<D, B> {
     fn rank_in(&self) -> Rank {
         self.rank_out()
     }
@@ -52,7 +52,7 @@ impl<D: Data, B: Backend> GGLWEInfos for TensorKeyPrepared<D, B> {
     }
 }
 
-pub trait TensorKeyPreparedFactory<B: Backend>
+pub trait GLWETensorKeyPreparedFactory<B: Backend>
 where
     Self: GGLWEPreparedFactory<B>,
 {
@@ -63,16 +63,16 @@ where
         dnum: Dnum,
         dsize: Dsize,
         rank: Rank,
-    ) -> TensorKeyPrepared<Vec<u8>, B> {
+    ) -> GLWETensorKeyPrepared<Vec<u8>, B> {
         let pairs: u32 = (((rank.as_u32() + 1) * rank.as_u32()) >> 1).max(1);
-        TensorKeyPrepared {
+        GLWETensorKeyPrepared {
             keys: (0..pairs)
                 .map(|_| self.alloc_gglwe_prepared(base2k, k, Rank(1), rank, dnum, dsize))
                 .collect(),
         }
     }
 
-    fn alloc_tensor_key_prepared_from_infos<A>(&self, infos: &A) -> TensorKeyPrepared<Vec<u8>, B>
+    fn alloc_tensor_key_prepared_from_infos<A>(&self, infos: &A) -> GLWETensorKeyPrepared<Vec<u8>, B>
     where
         A: GGLWEInfos,
     {
@@ -117,11 +117,11 @@ where
 
     fn prepare_tensor_key<R, O>(&self, res: &mut R, other: &O, scratch: &mut Scratch<B>)
     where
-        R: TensorKeyPreparedToMut<B>,
-        O: TensorKeyToRef,
+        R: GLWETensorKeyPreparedToMut<B>,
+        O: GLWETensorKeyToRef,
     {
-        let mut res: TensorKeyPrepared<&mut [u8], B> = res.to_mut();
-        let other: TensorKey<&[u8]> = other.to_ref();
+        let mut res: GLWETensorKeyPrepared<&mut [u8], B> = res.to_mut();
+        let other: GLWETensorKey<&[u8]> = other.to_ref();
 
         assert_eq!(res.keys.len(), other.keys.len());
 
@@ -131,20 +131,20 @@ where
     }
 }
 
-impl<B: Backend> TensorKeyPreparedFactory<B> for Module<B> where Module<B>: GGLWEPreparedFactory<B> {}
+impl<B: Backend> GLWETensorKeyPreparedFactory<B> for Module<B> where Module<B>: GGLWEPreparedFactory<B> {}
 
-impl<B: Backend> TensorKeyPrepared<Vec<u8>, B> {
+impl<B: Backend> GLWETensorKeyPrepared<Vec<u8>, B> {
     pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
     where
         A: GGLWEInfos,
-        M: TensorKeyPreparedFactory<B>,
+        M: GLWETensorKeyPreparedFactory<B>,
     {
         module.alloc_tensor_key_prepared_from_infos(infos)
     }
 
     pub fn alloc_with<M>(module: &M, base2k: Base2K, k: TorusPrecision, dnum: Dnum, dsize: Dsize, rank: Rank) -> Self
     where
-        M: TensorKeyPreparedFactory<B>,
+        M: GLWETensorKeyPreparedFactory<B>,
     {
         module.alloc_tensor_key_prepared(base2k, k, dnum, dsize, rank)
     }
@@ -152,20 +152,20 @@ impl<B: Backend> TensorKeyPrepared<Vec<u8>, B> {
     pub fn bytes_of_from_infos<A, M>(module: &M, infos: &A) -> usize
     where
         A: GGLWEInfos,
-        M: TensorKeyPreparedFactory<B>,
+        M: GLWETensorKeyPreparedFactory<B>,
     {
         module.bytes_of_tensor_key_prepared_from_infos(infos)
     }
 
     pub fn bytes_of<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize
     where
-        M: TensorKeyPreparedFactory<B>,
+        M: GLWETensorKeyPreparedFactory<B>,
     {
         module.bytes_of_tensor_key_prepared(base2k, k, rank, dnum, dsize)
     }
 }
 
-impl<D: DataMut, B: Backend> TensorKeyPrepared<D, B> {
+impl<D: DataMut, B: Backend> GLWETensorKeyPrepared<D, B> {
     // Returns a mutable reference to GGLWE_{s}(s[i] * s[j])
     pub fn at_mut(&mut self, mut i: usize, mut j: usize) -> &mut GGLWEPrepared<D, B> {
         if i > j {
@@ -176,7 +176,7 @@ impl<D: DataMut, B: Backend> TensorKeyPrepared<D, B> {
     }
 }
 
-impl<D: DataRef, B: Backend> TensorKeyPrepared<D, B> {
+impl<D: DataRef, B: Backend> GLWETensorKeyPrepared<D, B> {
     // Returns a reference to GGLWE_{s}(s[i] * s[j])
     pub fn at(&self, mut i: usize, mut j: usize) -> &GGLWEPrepared<D, B> {
         if i > j {
@@ -187,51 +187,51 @@ impl<D: DataRef, B: Backend> TensorKeyPrepared<D, B> {
     }
 }
 
-impl<B: Backend> TensorKeyPrepared<Vec<u8>, B> {
+impl<B: Backend> GLWETensorKeyPrepared<Vec<u8>, B> {
     pub fn prepare_tmp_bytes<A, M>(&self, module: &M, infos: &A) -> usize
     where
         A: GGLWEInfos,
-        M: TensorKeyPreparedFactory<B>,
+        M: GLWETensorKeyPreparedFactory<B>,
     {
         module.prepare_tensor_key_tmp_bytes(infos)
     }
 }
 
-impl<D: DataMut, B: Backend> TensorKeyPrepared<D, B> {
+impl<D: DataMut, B: Backend> GLWETensorKeyPrepared<D, B> {
     pub fn prepare<O, M>(&mut self, module: &M, other: &O, scratch: &mut Scratch<B>)
     where
-        O: TensorKeyToRef,
-        M: TensorKeyPreparedFactory<B>,
+        O: GLWETensorKeyToRef,
+        M: GLWETensorKeyPreparedFactory<B>,
     {
         module.prepare_tensor_key(self, other, scratch);
     }
 }
 
-pub trait TensorKeyPreparedToMut<B: Backend> {
-    fn to_mut(&mut self) -> TensorKeyPrepared<&mut [u8], B>;
+pub trait GLWETensorKeyPreparedToMut<B: Backend> {
+    fn to_mut(&mut self) -> GLWETensorKeyPrepared<&mut [u8], B>;
 }
 
-impl<D: DataMut, B: Backend> TensorKeyPreparedToMut<B> for TensorKeyPrepared<D, B>
+impl<D: DataMut, B: Backend> GLWETensorKeyPreparedToMut<B> for GLWETensorKeyPrepared<D, B>
 where
     GGLWEPrepared<D, B>: GGLWEPreparedToMut<B>,
 {
-    fn to_mut(&mut self) -> TensorKeyPrepared<&mut [u8], B> {
-        TensorKeyPrepared {
+    fn to_mut(&mut self) -> GLWETensorKeyPrepared<&mut [u8], B> {
+        GLWETensorKeyPrepared {
             keys: self.keys.iter_mut().map(|c| c.to_mut()).collect(),
         }
     }
 }
 
-pub trait TensorKeyPreparedToRef<B: Backend> {
-    fn to_ref(&self) -> TensorKeyPrepared<&[u8], B>;
+pub trait GLWETensorKeyPreparedToRef<B: Backend> {
+    fn to_ref(&self) -> GLWETensorKeyPrepared<&[u8], B>;
 }
 
-impl<D: DataRef, B: Backend> TensorKeyPreparedToRef<B> for TensorKeyPrepared<D, B>
+impl<D: DataRef, B: Backend> GLWETensorKeyPreparedToRef<B> for GLWETensorKeyPrepared<D, B>
 where
     GGLWEPrepared<D, B>: GGLWEPreparedToRef<B>,
 {
-    fn to_ref(&self) -> TensorKeyPrepared<&[u8], B> {
-        TensorKeyPrepared {
+    fn to_ref(&self) -> GLWETensorKeyPrepared<&[u8], B> {
+        GLWETensorKeyPrepared {
             keys: self.keys.iter().map(|c| c.to_ref()).collect(),
         }
     }

@@ -9,18 +9,18 @@ use poulpy_hal::{
 };
 
 use crate::{
-    GGLWETensorKeyCompressedEncryptSk, ScratchTakeCore, TensorKeyEncryptSk,
+    GLWETensorKeyCompressedEncryptSk, GLWETensorKeyEncryptSk, ScratchTakeCore,
     decryption::GLWEDecrypt,
     encryption::SIGMA,
     layouts::{
-        Dsize, GLWEPlaintext, GLWESecret, GLWESecretPreparedFactory, GLWETensorKeyCompressed, TensorKey, TensorKeyLayout,
+        Dsize, GLWEPlaintext, GLWESecret, GLWESecretPreparedFactory, GLWETensorKey, GLWETensorKeyCompressed, GLWETensorKeyLayout,
         prepared::GLWESecretPrepared,
     },
 };
 
 pub fn test_gglwe_tensor_key_encrypt_sk<BE: Backend>(module: &Module<BE>)
 where
-    Module<BE>: TensorKeyEncryptSk<BE>
+    Module<BE>: GLWETensorKeyEncryptSk<BE>
         + GLWESecretPreparedFactory<BE>
         + GLWEDecrypt<BE>
         + VecZnxDftAlloc<BE>
@@ -40,7 +40,7 @@ where
         let n: usize = module.n();
         let dnum: usize = k / base2k;
 
-        let tensor_key_infos = TensorKeyLayout {
+        let tensor_key_infos = GLWETensorKeyLayout {
             n: n.into(),
             base2k: base2k.into(),
             k: k.into(),
@@ -49,13 +49,16 @@ where
             rank: rank.into(),
         };
 
-        let mut tensor_key: TensorKey<Vec<u8>> = TensorKey::alloc_from_infos(&tensor_key_infos);
+        let mut tensor_key: GLWETensorKey<Vec<u8>> = GLWETensorKey::alloc_from_infos(&tensor_key_infos);
 
         let mut source_xs: Source = Source::new([0u8; 32]);
         let mut source_xe: Source = Source::new([0u8; 32]);
         let mut source_xa: Source = Source::new([0u8; 32]);
 
-        let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(TensorKey::encrypt_sk_tmp_bytes(module, &tensor_key_infos));
+        let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(GLWETensorKey::encrypt_sk_tmp_bytes(
+            module,
+            &tensor_key_infos,
+        ));
 
         let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&tensor_key_infos);
         sk.fill_ternary_prob(0.5, &mut source_xs);
@@ -111,9 +114,9 @@ where
 
 pub fn test_gglwe_tensor_key_compressed_encrypt_sk<BE: Backend>(module: &Module<BE>)
 where
-    Module<BE>: TensorKeyEncryptSk<BE>
+    Module<BE>: GLWETensorKeyEncryptSk<BE>
         + GLWESecretPreparedFactory<BE>
-        + GGLWETensorKeyCompressedEncryptSk<BE>
+        + GLWETensorKeyCompressedEncryptSk<BE>
         + GLWEDecrypt<BE>
         + VecZnxDftAlloc<BE>
         + VecZnxBigAlloc<BE>
@@ -133,7 +136,7 @@ where
         let n: usize = module.n();
         let dnum: usize = k / base2k;
 
-        let tensor_key_infos: TensorKeyLayout = TensorKeyLayout {
+        let tensor_key_infos: GLWETensorKeyLayout = GLWETensorKeyLayout {
             n: n.into(),
             base2k: base2k.into(),
             k: k.into(),
@@ -162,7 +165,7 @@ where
 
         tensor_key_compressed.encrypt_sk(module, &sk, seed_xa, &mut source_xe, scratch.borrow());
 
-        let mut tensor_key: TensorKey<Vec<u8>> = TensorKey::alloc_from_infos(&tensor_key_infos);
+        let mut tensor_key: GLWETensorKey<Vec<u8>> = GLWETensorKey::alloc_from_infos(&tensor_key_infos);
         tensor_key.decompress(module, &tensor_key_compressed);
 
         let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&tensor_key_infos);

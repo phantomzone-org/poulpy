@@ -11,7 +11,7 @@ use crate::{
     GLWECopy, ScratchTakeCore,
     layouts::{
         GGLWE, GGLWEInfos, GGLWEToRef, GGSW, GGSWInfos, GGSWToMut, GLWEInfos, LWEInfos,
-        prepared::{TensorKeyPrepared, TensorKeyPreparedToRef},
+        prepared::{GLWETensorKeyPrepared, GLWETensorKeyPreparedToRef},
     },
 };
 
@@ -31,7 +31,7 @@ impl<D: DataMut> GGSW<D> {
     where
         M: GGSWFromGGLWE<BE>,
         G: GGLWEToRef,
-        T: TensorKeyPreparedToRef<BE>,
+        T: GLWETensorKeyPreparedToRef<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         module.ggsw_from_gglwe(self, gglwe, tsk, scratch);
@@ -54,12 +54,12 @@ where
     where
         R: GGSWToMut,
         A: GGLWEToRef,
-        T: TensorKeyPreparedToRef<BE>,
+        T: GLWETensorKeyPreparedToRef<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         let res: &mut GGSW<&mut [u8]> = &mut res.to_mut();
         let a: &GGLWE<&[u8]> = &a.to_ref();
-        let tsk: &TensorKeyPrepared<&[u8], BE> = &tsk.to_ref();
+        let tsk: &GLWETensorKeyPrepared<&[u8], BE> = &tsk.to_ref();
 
         assert_eq!(res.rank(), a.rank_out());
         assert_eq!(res.dnum(), a.dnum());
@@ -85,7 +85,7 @@ pub trait GGSWFromGGLWE<BE: Backend> {
     where
         R: GGSWToMut,
         A: GGLWEToRef,
-        T: TensorKeyPreparedToRef<BE>,
+        T: GLWETensorKeyPreparedToRef<BE>,
         Scratch<BE>: ScratchTakeCore<BE>;
 }
 
@@ -158,11 +158,11 @@ where
     fn ggsw_expand_row<R, T>(&self, res: &mut R, tsk: &T, scratch: &mut Scratch<BE>)
     where
         R: GGSWToMut,
-        T: TensorKeyPreparedToRef<BE>,
+        T: GLWETensorKeyPreparedToRef<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         let res: &mut GGSW<&mut [u8]> = &mut res.to_mut();
-        let tsk: &TensorKeyPrepared<&[u8], BE> = &tsk.to_ref();
+        let tsk: &GLWETensorKeyPrepared<&[u8], BE> = &tsk.to_ref();
 
         let basek_in: usize = res.base2k().into();
         let basek_tsk: usize = tsk.base2k().into();

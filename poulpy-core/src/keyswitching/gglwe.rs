@@ -3,10 +3,10 @@ use poulpy_hal::layouts::{Backend, DataMut, Module, Scratch};
 use crate::{
     ScratchTakeCore,
     keyswitching::GLWEKeyswitch,
-    layouts::{AutomorphismKey, GGLWE, GGLWEInfos, GGLWEPreparedToRef, GGLWEToMut, GGLWEToRef, GLWESwitchingKey},
+    layouts::{GGLWE, GGLWEInfos, GGLWEPreparedToRef, GGLWEToMut, GGLWEToRef, GLWEAutomorphismKey, GLWESwitchingKey},
 };
 
-impl AutomorphismKey<Vec<u8>> {
+impl GLWEAutomorphismKey<Vec<u8>> {
     pub fn keyswitch_tmp_bytes<R, A, K, M, BE: Backend>(module: &M, res_infos: &R, a_infos: &A, key_infos: &K) -> usize
     where
         R: GGLWEInfos,
@@ -18,7 +18,7 @@ impl AutomorphismKey<Vec<u8>> {
     }
 }
 
-impl<DataSelf: DataMut> AutomorphismKey<DataSelf> {
+impl<DataSelf: DataMut> GLWEAutomorphismKey<DataSelf> {
     pub fn keyswitch<A, B, M, BE: Backend>(&mut self, module: &M, a: &A, b: &B, scratch: &mut Scratch<BE>)
     where
         A: GGLWEToRef + GGLWEToRef,

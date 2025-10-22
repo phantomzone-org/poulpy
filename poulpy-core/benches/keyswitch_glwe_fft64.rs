@@ -1,5 +1,5 @@
 use poulpy_core::layouts::{
-    AutomorphismKey, AutomorphismKeyLayout, Base2K, Degree, Dnum, Dsize, GLWE, GLWELayout, GLWESecret, GLWESwitchingKey,
+    Base2K, Degree, Dnum, Dsize, GLWE, GLWEAutomorphismKey, GLWEAutomorphismKeyLayout, GLWELayout, GLWESecret, GLWESwitchingKey,
     GLWESwitchingKeyLayout, GLWESwitchingKeyPrepared, Rank, TorusPrecision,
     prepared::{GLWEAutomorphismKeyPrepared, GLWESecretPrepared},
 };
@@ -39,7 +39,7 @@ fn bench_keyswitch_glwe_fft64(c: &mut Criterion) {
 
         let dnum: Dnum = p.k_ct_in.div_ceil(p.base2k.0 * dsize.0).into();
 
-        let gglwe_atk_layout: AutomorphismKeyLayout = AutomorphismKeyLayout {
+        let gglwe_atk_layout: GLWEAutomorphismKeyLayout = GLWEAutomorphismKeyLayout {
             n,
             base2k,
             k: k_gglwe,
@@ -62,7 +62,7 @@ fn bench_keyswitch_glwe_fft64(c: &mut Criterion) {
             rank,
         };
 
-        let mut ksk: AutomorphismKey<Vec<u8>> = AutomorphismKey::alloc_from_infos(&gglwe_atk_layout);
+        let mut ksk: GLWEAutomorphismKey<Vec<u8>> = GLWEAutomorphismKey::alloc_from_infos(&gglwe_atk_layout);
         let mut ct_in: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_in_layout);
         let mut ct_out: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_out_layout);
 

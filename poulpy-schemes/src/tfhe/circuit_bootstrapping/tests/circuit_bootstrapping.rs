@@ -1,108 +1,49 @@
 use std::time::Instant;
 
 use poulpy_hal::{
-    api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolBytesOf,
-        SvpPrepare, VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxAutomorphism, VecZnxAutomorphismInplace,
-        VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigAlloc, VecZnxBigAutomorphismInplace, VecZnxBigBytesOf,
-        VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallNegateInplace, VecZnxCopy, VecZnxDftAddInplace,
-        VecZnxDftAlloc, VecZnxDftApply, VecZnxDftBytesOf, VecZnxDftCopy, VecZnxFillUniform, VecZnxIdftApplyConsume,
-        VecZnxIdftApplyTmpA, VecZnxNegateInplace, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate,
-        VecZnxRotateInplace, VecZnxRotateInplaceTmpBytes, VecZnxRshInplace, VecZnxSub, VecZnxSubInplace, VecZnxSwitchRing,
-        VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes, VmpPMatAlloc, VmpPrepare, ZnAddNormal, ZnFillUniform,
-        ZnNormalizeInplace,
-    },
-    layouts::{Backend, Module, ScalarZnx, ScratchOwned, ZnxView, ZnxViewMut},
-    oep::{
-        ScratchAvailableImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeMatZnxImpl, TakeScalarZnxImpl, TakeSliceImpl,
-        TakeSvpPPolImpl, TakeVecZnxBigImpl, TakeVecZnxDftImpl, TakeVecZnxDftSliceImpl, TakeVecZnxImpl, TakeVecZnxSliceImpl,
-    },
+    api::{ModuleN, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxRotateInplace},
+    layouts::{Backend, ScalarZnx, Scratch, ScratchOwned, ZnxView, ZnxViewMut},
     source::Source,
 };
 
 use crate::tfhe::{
-    blind_rotation::{
-        BlincRotationExecute, BlindRotationAlgo, BlindRotationKey, BlindRotationKeyAlloc, BlindRotationKeyEncryptSk,
-        BlindRotationKeyLayout, BlindRotationKeyPrepared,
-    },
+    blind_rotation::{BlindRotationAlgo, BlindRotationKey, BlindRotationKeyFactory, BlindRotationKeyLayout},
     circuit_bootstrapping::{
         CircuitBootstrappingKey, CircuitBootstrappingKeyEncryptSk, CircuitBootstrappingKeyLayout,
-        CircuitBootstrappingKeyPrepared, CirtuitBootstrappingExecute,
+        CircuitBootstrappingKeyPrepared, CircuitBootstrappingKeyPreparedFactory, CirtuitBootstrappingExecute,
     },
 };
 
-use poulpy_core::layouts::{AutomorphismKeyLayout, Dsize, GGSWLayout, LWELayout, TensorKeyLayout, prepared::PrepareAlloc};
+use poulpy_core::{
+    GGSWNoise, GLWEDecrypt, GLWEEncryptSk, GLWEExternalProduct, LWEEncryptSk, ScratchTakeCore,
+    layouts::{
+        Dsize, GGSWLayout, GGSWPreparedFactory, GLWEAutomorphismKeyLayout, GLWESecretPreparedFactory, GLWETensorKeyLayout,
+        LWELayout,
+    },
+};
 
 use poulpy_core::layouts::{
     GGSW, GLWE, GLWEPlaintext, GLWESecret, LWE, LWEPlaintext, LWESecret,
     prepared::{GGSWPrepared, GLWESecretPrepared},
 };
 
-pub fn test_circuit_bootstrapping_to_exponent<B, BRA: BlindRotationAlgo>(module: &Module<B>)
+pub fn test_circuit_bootstrapping_to_exponent<BE: Backend, M, BRA: BlindRotationAlgo>(module: &M)
 where
-    Module<B>: VecZnxFillUniform
-        + VecZnxAddNormal
-        + VecZnxNormalizeInplace<B>
-        + VecZnxDftBytesOf
-        + VecZnxBigNormalize<B>
-        + VecZnxDftApply<B>
-        + SvpApplyDftToDftInplace<B>
-        + VecZnxIdftApplyConsume<B>
-        + VecZnxNormalizeTmpBytes
-        + VecZnxSubInplace
-        + VecZnxAddInplace
-        + VecZnxNormalize<B>
-        + VecZnxSub
-        + VecZnxAddScalarInplace
-        + VecZnxAutomorphism
-        + VecZnxSwitchRing
-        + VecZnxBigBytesOf
-        + VecZnxIdftApplyTmpA<B>
-        + SvpApplyDftToDft<B>
-        + VecZnxBigAddInplace<B>
-        + VecZnxBigAddSmallInplace<B>
-        + VecZnxBigAlloc<B>
-        + VecZnxDftAlloc<B>
-        + VecZnxBigNormalizeTmpBytes
-        + VmpPMatAlloc<B>
-        + VmpPrepare<B>
-        + SvpPrepare<B>
-        + SvpPPolAlloc<B>
-        + VmpApplyDftToDftTmpBytes
-        + VmpApplyDftToDft<B>
-        + VmpApplyDftToDftAdd<B>
-        + SvpPPolBytesOf
-        + VecZnxRotateInplace<B>
-        + VecZnxBigAutomorphismInplace<B>
-        + VecZnxRshInplace<B>
-        + VecZnxDftCopy<B>
-        + VecZnxNegateInplace
-        + VecZnxCopy
-        + VecZnxAutomorphismInplace<B>
-        + VecZnxBigSubSmallNegateInplace<B>
-        + VecZnxRotateInplaceTmpBytes
-        + VecZnxBigBytesOf
-        + VecZnxDftAddInplace<B>
-        + VecZnxRotate
-        + ZnFillUniform
-        + ZnAddNormal
-        + ZnNormalizeInplace<B>,
-    B: Backend
-        + ScratchOwnedAllocImpl<B>
-        + ScratchOwnedBorrowImpl<B>
-        + TakeVecZnxDftImpl<B>
-        + ScratchAvailableImpl<B>
-        + TakeVecZnxImpl<B>
-        + TakeScalarZnxImpl<B>
-        + TakeSvpPPolImpl<B>
-        + TakeVecZnxBigImpl<B>
-        + TakeVecZnxDftSliceImpl<B>
-        + TakeMatZnxImpl<B>
-        + TakeVecZnxSliceImpl<B>
-        + TakeSliceImpl<B>,
-    BlindRotationKey<Vec<u8>, BRA>: PrepareAlloc<B, BlindRotationKeyPrepared<Vec<u8>, BRA, B>>,
-    BlindRotationKeyPrepared<Vec<u8>, BRA, B>: BlincRotationExecute<B>,
-    BlindRotationKey<Vec<u8>, BRA>: BlindRotationKeyAlloc + BlindRotationKeyEncryptSk<B>,
+    M: ModuleN
+        + GLWESecretPreparedFactory<BE>
+        + GLWEExternalProduct<BE>
+        + GLWEDecrypt<BE>
+        + LWEEncryptSk<BE>
+        + CircuitBootstrappingKeyEncryptSk<BRA, BE>
+        + CircuitBootstrappingKeyPreparedFactory<BRA, BE>
+        + CirtuitBootstrappingExecute<BRA, BE>
+        + GGSWPreparedFactory<BE>
+        + GGSWNoise<BE>
+        + GLWEEncryptSk<BE>
+        + VecZnxRotateInplace<BE>,
+    BlindRotationKey<Vec<u8>, BRA>: BlindRotationKeyFactory<BRA>, // TODO find a way to remove this bound or move it to CBT KEY
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
+    Scratch<BE>: ScratchTakeCore<BE>,
 {
     let n_glwe: usize = module.n();
     let base2k: usize = 17;
@@ -141,7 +82,7 @@ where
             dnum: rows_brk.into(),
             rank: rank.into(),
         },
-        layout_atk: AutomorphismKeyLayout {
+        layout_atk: GLWEAutomorphismKeyLayout {
             n: n_glwe.into(),
             base2k: base2k.into(),
             k: k_atk.into(),
@@ -149,7 +90,7 @@ where
             rank: rank.into(),
             dsize: Dsize(1),
         },
-        layout_tsk: TensorKeyLayout {
+        layout_tsk: GLWETensorKeyLayout {
             n: n_glwe.into(),
             base2k: base2k.into(),
             k: k_tsk.into(),
@@ -168,7 +109,7 @@ where
         rank: rank.into(),
     };
 
-    let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(1 << 23);
+    let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(1 << 23);
 
     let mut source_xs: Source = Source::new([1u8; 32]);
     let mut source_xa: Source = Source::new([1u8; 32]);
@@ -180,7 +121,8 @@ where
     let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc(n_glwe.into(), rank.into());
     sk_glwe.fill_ternary_prob(0.5, &mut source_xs);
 
-    let sk_glwe_prepared: GLWESecretPrepared<Vec<u8>, B> = sk_glwe.prepare_alloc(module, scratch.borrow());
+    let mut sk_glwe_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(module, rank.into());
+    sk_glwe_prepared.prepare(module, &sk_glwe);
 
     let data: i64 = 1;
 
@@ -193,22 +135,27 @@ where
     ct_lwe.encrypt_sk(module, &pt_lwe, &sk_lwe, &mut source_xa, &mut source_xe);
 
     let now: Instant = Instant::now();
-    let cbt_key: CircuitBootstrappingKey<Vec<u8>, BRA> = CircuitBootstrappingKey::encrypt_sk(
+    let mut cbt_key: CircuitBootstrappingKey<Vec<u8>, BRA> = CircuitBootstrappingKey::alloc_from_infos(&cbt_infos);
+    println!("CBT-ALLOC: {} ms", now.elapsed().as_millis());
+
+    let now: Instant = Instant::now();
+    cbt_key.encrypt_sk(
         module,
         &sk_lwe,
         &sk_glwe,
-        &cbt_infos,
         &mut source_xa,
         &mut source_xe,
         scratch.borrow(),
     );
-    println!("CBT-KGEN: {} ms", now.elapsed().as_millis());
+    println!("CBT-ENCRYPT: {} ms", now.elapsed().as_millis());
 
     let mut res: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_infos);
 
     let log_gap_out = 1;
 
-    let cbt_prepared: CircuitBootstrappingKeyPrepared<Vec<u8>, BRA, B> = cbt_key.prepare_alloc(module, scratch.borrow());
+    let mut cbt_prepared: CircuitBootstrappingKeyPrepared<Vec<u8>, BRA, BE> =
+        CircuitBootstrappingKeyPrepared::alloc_from_infos(module, &cbt_infos);
+    cbt_prepared.prepare(module, &cbt_key, scratch.borrow());
 
     let now: Instant = Instant::now();
     cbt_prepared.execute_to_exponent(
@@ -247,7 +194,8 @@ where
         scratch.borrow(),
     );
 
-    let res_prepared: GGSWPrepared<Vec<u8>, B> = res.prepare_alloc(module, scratch.borrow());
+    let mut res_prepared: GGSWPrepared<Vec<u8>, BE> = GGSWPrepared::alloc_from_infos(module, &res);
+    res_prepared.prepare(module, &res, scratch.borrow());
 
     ct_glwe.external_product_inplace(module, &res_prepared, scratch.borrow());
 
@@ -260,71 +208,23 @@ where
     assert_eq!(pt_res.data.at(0, 0), pt_want);
 }
 
-pub fn test_circuit_bootstrapping_to_constant<B, BRA: BlindRotationAlgo>(module: &Module<B>)
+pub fn test_circuit_bootstrapping_to_constant<BE: Backend, M, BRA: BlindRotationAlgo>(module: &M)
 where
-    Module<B>: VecZnxFillUniform
-        + VecZnxAddNormal
-        + VecZnxNormalizeInplace<B>
-        + VecZnxDftBytesOf
-        + VecZnxBigNormalize<B>
-        + VecZnxDftApply<B>
-        + SvpApplyDftToDftInplace<B>
-        + VecZnxIdftApplyConsume<B>
-        + VecZnxNormalizeTmpBytes
-        + VecZnxSubInplace
-        + VecZnxAddInplace
-        + VecZnxNormalize<B>
-        + VecZnxSub
-        + VecZnxAddScalarInplace
-        + VecZnxAutomorphism
-        + VecZnxSwitchRing
-        + VecZnxBigBytesOf
-        + VecZnxIdftApplyTmpA<B>
-        + SvpApplyDftToDft<B>
-        + VecZnxBigAddInplace<B>
-        + VecZnxBigAddSmallInplace<B>
-        + VecZnxBigAlloc<B>
-        + VecZnxDftAlloc<B>
-        + VecZnxBigNormalizeTmpBytes
-        + VmpPMatAlloc<B>
-        + VmpPrepare<B>
-        + SvpPrepare<B>
-        + SvpPPolAlloc<B>
-        + VmpApplyDftToDftTmpBytes
-        + VmpApplyDftToDft<B>
-        + VmpApplyDftToDftAdd<B>
-        + SvpPPolBytesOf
-        + VecZnxRotateInplace<B>
-        + VecZnxBigAutomorphismInplace<B>
-        + VecZnxRotateInplaceTmpBytes
-        + VecZnxRshInplace<B>
-        + VecZnxDftCopy<B>
-        + VecZnxNegateInplace
-        + VecZnxCopy
-        + VecZnxAutomorphismInplace<B>
-        + VecZnxBigSubSmallNegateInplace<B>
-        + VecZnxBigBytesOf
-        + VecZnxDftAddInplace<B>
-        + VecZnxRotate
-        + ZnFillUniform
-        + ZnAddNormal
-        + ZnNormalizeInplace<B>,
-    B: Backend
-        + ScratchOwnedAllocImpl<B>
-        + ScratchOwnedBorrowImpl<B>
-        + TakeVecZnxDftImpl<B>
-        + ScratchAvailableImpl<B>
-        + TakeVecZnxImpl<B>
-        + TakeScalarZnxImpl<B>
-        + TakeSvpPPolImpl<B>
-        + TakeVecZnxBigImpl<B>
-        + TakeVecZnxDftSliceImpl<B>
-        + TakeMatZnxImpl<B>
-        + TakeVecZnxSliceImpl<B>
-        + TakeSliceImpl<B>,
-    BlindRotationKey<Vec<u8>, BRA>: PrepareAlloc<B, BlindRotationKeyPrepared<Vec<u8>, BRA, B>>,
-    BlindRotationKeyPrepared<Vec<u8>, BRA, B>: BlincRotationExecute<B>,
-    BlindRotationKey<Vec<u8>, BRA>: BlindRotationKeyAlloc + BlindRotationKeyEncryptSk<B>,
+    M: ModuleN
+        + GLWESecretPreparedFactory<BE>
+        + GLWEExternalProduct<BE>
+        + GLWEDecrypt<BE>
+        + LWEEncryptSk<BE>
+        + CircuitBootstrappingKeyEncryptSk<BRA, BE>
+        + CircuitBootstrappingKeyPreparedFactory<BRA, BE>
+        + CirtuitBootstrappingExecute<BRA, BE>
+        + GGSWPreparedFactory<BE>
+        + GGSWNoise<BE>
+        + GLWEEncryptSk<BE>
+        + VecZnxRotateInplace<BE>,
+    BlindRotationKey<Vec<u8>, BRA>: BlindRotationKeyFactory<BRA>, // TODO find a way to remove this bound or move it to CBT KEY
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
+    Scratch<BE>: ScratchTakeCore<BE>,
 {
     let n_glwe: usize = module.n();
     let base2k: usize = 14;
@@ -363,7 +263,7 @@ where
             dnum: rows_brk.into(),
             rank: rank.into(),
         },
-        layout_atk: AutomorphismKeyLayout {
+        layout_atk: GLWEAutomorphismKeyLayout {
             n: n_glwe.into(),
             base2k: base2k.into(),
             k: k_atk.into(),
@@ -371,7 +271,7 @@ where
             rank: rank.into(),
             dsize: Dsize(1),
         },
-        layout_tsk: TensorKeyLayout {
+        layout_tsk: GLWETensorKeyLayout {
             n: n_glwe.into(),
             base2k: base2k.into(),
             k: k_tsk.into(),
@@ -390,7 +290,7 @@ where
         rank: rank.into(),
     };
 
-    let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(1 << 23);
+    let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(1 << 23);
 
     let mut source_xs: Source = Source::new([1u8; 32]);
     let mut source_xa: Source = Source::new([1u8; 32]);
@@ -402,7 +302,8 @@ where
     let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc(n_glwe.into(), rank.into());
     sk_glwe.fill_ternary_prob(0.5, &mut source_xs);
 
-    let sk_glwe_prepared: GLWESecretPrepared<Vec<u8>, B> = sk_glwe.prepare_alloc(module, scratch.borrow());
+    let mut sk_glwe_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(module, rank.into());
+    sk_glwe_prepared.prepare(module, &sk_glwe);
 
     let data: i64 = 1;
 
@@ -415,20 +316,25 @@ where
     ct_lwe.encrypt_sk(module, &pt_lwe, &sk_lwe, &mut source_xa, &mut source_xe);
 
     let now: Instant = Instant::now();
-    let cbt_key: CircuitBootstrappingKey<Vec<u8>, BRA> = CircuitBootstrappingKey::encrypt_sk(
+    let mut cbt_key: CircuitBootstrappingKey<Vec<u8>, BRA> = CircuitBootstrappingKey::alloc_from_infos(&cbt_infos);
+    println!("CBT-ALLOC: {} ms", now.elapsed().as_millis());
+
+    let now: Instant = Instant::now();
+    cbt_key.encrypt_sk(
         module,
         &sk_lwe,
         &sk_glwe,
-        &cbt_infos,
         &mut source_xa,
         &mut source_xe,
         scratch.borrow(),
     );
-    println!("CBT-KGEN: {} ms", now.elapsed().as_millis());
+    println!("CBT-ENCRYPT: {} ms", now.elapsed().as_millis());
 
     let mut res: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_infos);
 
-    let cbt_prepared: CircuitBootstrappingKeyPrepared<Vec<u8>, BRA, B> = cbt_key.prepare_alloc(module, scratch.borrow());
+    let mut cbt_prepared: CircuitBootstrappingKeyPrepared<Vec<u8>, BRA, BE> =
+        CircuitBootstrappingKeyPrepared::alloc_from_infos(module, &cbt_infos);
+    cbt_prepared.prepare(module, &cbt_key, scratch.borrow());
 
     let now: Instant = Instant::now();
     cbt_prepared.execute_to_constant(
@@ -460,7 +366,8 @@ where
         scratch.borrow(),
     );
 
-    let res_prepared: GGSWPrepared<Vec<u8>, B> = res.prepare_alloc(module, scratch.borrow());
+    let mut res_prepared: GGSWPrepared<Vec<u8>, BE> = GGSWPrepared::alloc_from_infos(module, &res);
+    res_prepared.prepare(module, &res, scratch.borrow());
 
     ct_glwe.external_product_inplace(module, &res_prepared, scratch.borrow());
 

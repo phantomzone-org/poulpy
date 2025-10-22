@@ -97,18 +97,23 @@ impl<BE: Backend> ModuleLogN for Module<BE> where Self: ModuleN {}
 
 impl<BE: Backend> CyclotomicOrder for Module<BE> where Self: ModuleN {}
 
+#[inline(always)]
+pub fn galois_element(generator: i64, cyclotomic_order: i64) -> i64 {
+    if generator == 0 {
+        return 1;
+    }
+
+    let g_exp: u64 = mod_exp_u64(GALOISGENERATOR, generator.unsigned_abs() as usize) & (cyclotomic_order - 1) as u64;
+    g_exp as i64 * generator.signum()
+}
+
 pub trait GaloisElement
 where
     Self: CyclotomicOrder,
 {
     // Returns GALOISGENERATOR^|generator| * sign(generator)
     fn galois_element(&self, generator: i64) -> i64 {
-        if generator == 0 {
-            return 1;
-        }
-
-        let g_exp: u64 = mod_exp_u64(GALOISGENERATOR, generator.unsigned_abs() as usize) & (self.cyclotomic_order() - 1) as u64;
-        g_exp as i64 * generator.signum()
+        galois_element(generator, self.cyclotomic_order())
     }
 
     // Returns gen^-1

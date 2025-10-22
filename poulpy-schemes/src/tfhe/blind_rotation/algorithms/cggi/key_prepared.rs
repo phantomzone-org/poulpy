@@ -15,7 +15,7 @@ use crate::tfhe::blind_rotation::{
     utils::set_xai_plus_y,
 };
 
-impl<BE: Backend> BlindRotationKeyPreparedFactory<BE, CGGI> for Module<BE>
+impl<BE: Backend> BlindRotationKeyPreparedFactory<CGGI, BE> for Module<BE>
 where
     Self: GGSWPreparedFactory<BE> + SvpPPolAlloc<BE> + SvpPrepare<BE>,
 {
