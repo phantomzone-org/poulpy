@@ -128,6 +128,8 @@ where
             }
         }
 
+        sk_out_tmp.dist = sk_out.dist;
+
         self.gglwe_encrypt_sk(
             res,
             &sk_in_tmp,

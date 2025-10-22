@@ -6,8 +6,10 @@ use poulpy_hal::{
 };
 
 use poulpy_core::{
-    GGSWFromGGLWE, GLWEPacking, GLWETrace, ScratchTakeCore,
-    layouts::{Dsize, GGLWELayout, GGSWInfos, GGSWToMut, GLWEInfos, GLWEToMut, GLWEToRef, LWEInfos, LWEToRef},
+    GGSWFromGGLWE, GLWEDecrypt, GLWEPacking, GLWETrace, ScratchTakeCore,
+    layouts::{
+        Dsize, GGLWELayout, GGSWInfos, GGSWToMut, GLWEInfos, GLWESecretPreparedFactory, GLWEToMut, GLWEToRef, LWEInfos, LWEToRef,
+    },
 };
 
 use poulpy_core::layouts::{GGSW, GLWE, LWE, prepared::GLWEAutomorphismKeyPrepared};
@@ -94,7 +96,14 @@ impl<D: DataRef, BRA: BlindRotationAlgo, BE: Backend> CircuitBootstrappingKeyPre
 
 impl<BRA: BlindRotationAlgo, BE: Backend> CirtuitBootstrappingExecute<BRA, BE> for Module<BE>
 where
-    Self: ModuleN + LookupTableFactory + BlindRotationExecute<BRA, BE> + GLWETrace<BE> + GLWEPacking<BE> + GGSWFromGGLWE<BE>,
+    Self: ModuleN
+        + LookupTableFactory
+        + BlindRotationExecute<BRA, BE>
+        + GLWETrace<BE>
+        + GLWEPacking<BE>
+        + GGSWFromGGLWE<BE>
+        + GLWESecretPreparedFactory<BE>
+        + GLWEDecrypt<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
@@ -167,7 +176,14 @@ pub fn circuit_bootstrap_core<R, L, D, M, BRA: BlindRotationAlgo, BE: Backend>(
     R: GGSWToMut,
     L: LWEToRef,
     D: DataRef,
-    M: ModuleN + LookupTableFactory + BlindRotationExecute<BRA, BE> + GLWETrace<BE> + GLWEPacking<BE> + GGSWFromGGLWE<BE>,
+    M: ModuleN
+        + LookupTableFactory
+        + BlindRotationExecute<BRA, BE>
+        + GLWETrace<BE>
+        + GLWEPacking<BE>
+        + GGSWFromGGLWE<BE>
+        + GLWESecretPreparedFactory<BE>
+        + GLWEDecrypt<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
@@ -254,6 +270,12 @@ pub fn circuit_bootstrap_core<R, L, D, M, BRA: BlindRotationAlgo, BE: Backend>(
         } else {
             tmp_glwe.trace(module, 0, module.log_n(), &res_glwe, &key.atk, scratch_2);
         }
+
+        // let sk_glwe: &poulpy_core::layouts::GLWESecret<&[u8]> = &sk_glwe.to_ref();
+        // let sk_glwe_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(module, sk_glwe.rank());
+        // let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&res_glwe);
+        // res_glwe.decrypt(module, &mut pt, &sk_glwe_prepared, scratch_2);
+        // println!("pt[{i}]: {}", pt);
 
         if i < dnum {
             module.glwe_rotate_inplace(-(gap as i64), &mut res_glwe, scratch_2);

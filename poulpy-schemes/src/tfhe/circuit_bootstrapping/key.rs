@@ -1,5 +1,5 @@
 use poulpy_core::{
-    GLWEAutomorphismKeyEncryptSk, GLWETensorKeyEncryptSk, GetDistribution, ScratchTakeCore,
+    Distribution, GLWEAutomorphismKeyEncryptSk, GLWETensorKeyEncryptSk, GetDistribution, ScratchTakeCore,
     layouts::{
         GGLWEInfos, GGSWInfos, GLWEAutomorphismKey, GLWEAutomorphismKeyLayout, GLWEInfos, GLWESecretPreparedFactory,
         GLWESecretToRef, GLWETensorKey, GLWETensorKeyLayout, LWEInfos, LWESecretToRef, prepared::GLWESecretPrepared,
@@ -140,11 +140,14 @@ where
         assert_eq!(sk_glwe.n(), atk_infos.n());
         assert_eq!(sk_glwe.n(), tsk_infos.n());
 
+        assert!(sk_glwe.dist() != &Distribution::NONE);
+
         for (p, atk) in res.atk.iter_mut() {
             atk.encrypt_sk(self, *p, sk_glwe, source_xa, source_xe, scratch);
         }
 
-        let sk_glwe_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(self, brk_infos.rank());
+        let mut sk_glwe_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(self, brk_infos.rank());
+        sk_glwe_prepared.prepare(self, sk_glwe);
 
         res.brk.encrypt_sk(
             self,

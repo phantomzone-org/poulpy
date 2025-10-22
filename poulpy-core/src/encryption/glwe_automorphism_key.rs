@@ -116,6 +116,8 @@ where
 
         {
             let (mut sk_out, _) = scratch_1.take_glwe_secret(sk.n(), sk.rank());
+            sk_out.dist = sk.dist;
+
             for i in 0..sk.rank().into() {
                 self.vec_znx_automorphism(
                     self.galois_element_inv(p),

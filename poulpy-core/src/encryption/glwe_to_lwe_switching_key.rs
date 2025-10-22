@@ -101,6 +101,7 @@ where
 
         {
             let (mut sk_lwe_as_glwe, scratch_2) = scratch_1.take_glwe_secret(self.n().into(), sk_lwe_as_glwe_prep.rank());
+            sk_lwe_as_glwe.dist = sk_lwe.dist;
             sk_lwe_as_glwe.data.zero();
             sk_lwe_as_glwe.data.at_mut(0, 0)[..sk_lwe.n().into()].copy_from_slice(sk_lwe.data.at(0, 0));
             self.vec_znx_automorphism_inplace(-1, &mut sk_lwe_as_glwe.data.as_vec_znx_mut(), 0, scratch_2);

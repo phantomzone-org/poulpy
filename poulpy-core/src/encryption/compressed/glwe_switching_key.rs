@@ -121,6 +121,8 @@ where
             }
         }
 
+        sk_out_tmp.dist = sk_out.dist;
+
         self.gglwe_compressed_encrypt_sk(res, &sk_in_tmp, &sk_out_tmp, seed_xa, source_xe, scratch_2);
 
         *res.input_degree() = sk_in.n();

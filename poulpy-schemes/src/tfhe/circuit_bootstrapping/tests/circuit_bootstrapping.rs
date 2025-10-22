@@ -229,7 +229,7 @@ where
     let n_glwe: usize = module.n();
     let base2k: usize = 14;
     let extension_factor: usize = 1;
-    let rank: usize = 2;
+    let rank: usize = 1;
 
     let n_lwe: usize = 77;
     let k_lwe_pt: usize = 1;

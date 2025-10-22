@@ -192,6 +192,8 @@ where
                 );
             }
         } else {
+            // println!("res: {}", res);
+
             for i in start..end {
                 self.glwe_rsh(1, res, scratch);
 

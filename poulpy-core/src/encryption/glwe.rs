@@ -485,17 +485,19 @@ where
         let ct: &mut VecZnx<&mut [u8]> = &mut res.to_mut();
         let sk: GLWESecretPrepared<&[u8], BE> = sk.to_ref();
 
-        #[cfg(debug_assertions)]
-        {
-            if compressed {
-                assert_eq!(
-                    ct.cols(),
-                    1,
-                    "invalid glwe: compressed tag=true but #cols={} != 1",
-                    ct.cols()
-                )
-            }
+        if compressed {
+            assert_eq!(
+                ct.cols(),
+                1,
+                "invalid glwe: compressed tag=true but #cols={} != 1",
+                ct.cols()
+            )
         }
+
+        assert!(
+            sk.dist != Distribution::NONE,
+            "glwe secret distribution is NONE (have you prepared the key?)"
+        );
 
         let size: usize = ct.size();
 

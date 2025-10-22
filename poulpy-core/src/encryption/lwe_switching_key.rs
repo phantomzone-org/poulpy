@@ -111,21 +111,24 @@ where
         assert!(sk_lwe_out.n().0 <= res.n().0);
         assert!(res.n() <= self.n() as u32);
 
-        let (mut sk_in_glwe, scratch_1) = scratch.take_glwe_secret(self.n().into(), Rank(1));
-        let (mut sk_out_glwe, scratch_2) = scratch_1.take_glwe_secret(self.n().into(), Rank(1));
+        let (mut sk_glwe_in, scratch_1) = scratch.take_glwe_secret(self.n().into(), Rank(1));
+        let (mut sk_glwe_out, scratch_2) = scratch_1.take_glwe_secret(self.n().into(), Rank(1));
 
-        sk_out_glwe.data.at_mut(0, 0)[..sk_lwe_out.n().into()].copy_from_slice(sk_lwe_out.data.at(0, 0));
-        sk_out_glwe.data.at_mut(0, 0)[sk_lwe_out.n().into()..].fill(0);
-        self.vec_znx_automorphism_inplace(-1, &mut sk_out_glwe.data.as_vec_znx_mut(), 0, scratch_2);
+        sk_glwe_in.dist = sk_lwe_in.dist;
+        sk_glwe_out.dist = sk_lwe_out.dist;
 
-        sk_in_glwe.data.at_mut(0, 0)[..sk_lwe_in.n().into()].copy_from_slice(sk_lwe_in.data.at(0, 0));
-        sk_in_glwe.data.at_mut(0, 0)[sk_lwe_in.n().into()..].fill(0);
-        self.vec_znx_automorphism_inplace(-1, &mut sk_in_glwe.data.as_vec_znx_mut(), 0, scratch_2);
+        sk_glwe_out.data.at_mut(0, 0)[..sk_lwe_out.n().into()].copy_from_slice(sk_lwe_out.data.at(0, 0));
+        sk_glwe_out.data.at_mut(0, 0)[sk_lwe_out.n().into()..].fill(0);
+        self.vec_znx_automorphism_inplace(-1, &mut sk_glwe_out.data.as_vec_znx_mut(), 0, scratch_2);
+
+        sk_glwe_in.data.at_mut(0, 0)[..sk_lwe_in.n().into()].copy_from_slice(sk_lwe_in.data.at(0, 0));
+        sk_glwe_in.data.at_mut(0, 0)[sk_lwe_in.n().into()..].fill(0);
+        self.vec_znx_automorphism_inplace(-1, &mut sk_glwe_in.data.as_vec_znx_mut(), 0, scratch_2);
 
         self.glwe_switching_key_encrypt_sk(
             res,
-            &sk_in_glwe,
-            &sk_out_glwe,
+            &sk_glwe_in,
+            &sk_glwe_out,
             source_xa,
             source_xe,
             scratch_2,
