@@ -118,7 +118,7 @@ impl<D: DataMut, T: UnsignedInteger + ToBits> FheUintBlocks<D, T> {
         let (mut pt, scratch_1) = scratch.take_glwe_pt(&pt_infos);
 
         for i in 0..T::WORD_SIZE {
-            pt.encode_coeff_i64(value.bit(i) as i64, TorusPrecision(1), 0);
+            pt.encode_coeff_i64(value.bit(i) as i64, TorusPrecision(2), 0);
             self.blocks[i].encrypt_sk(&module, &pt, sk, source_xa, source_xe, scratch_1);
         }
     }
