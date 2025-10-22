@@ -116,7 +116,7 @@ where
             }
         }
 
-        res.set_p((p * key.p()) % (self.cyclotomic_order() as i64));
+        res.set_p((p * key.p()) % self.cyclotomic_order());
     }
 
     fn glwe_automorphism_key_automorphism_inplace<R, K>(&self, res: &mut R, key: &K, scratch: &mut Scratch<BE>)
@@ -160,6 +160,6 @@ where
             }
         }
 
-        res.set_p((res.p() * key.p()) % (self.cyclotomic_order() as i64));
+        res.set_p((res.p() * key.p()) % self.cyclotomic_order());
     }
 }

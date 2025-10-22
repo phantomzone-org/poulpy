@@ -43,7 +43,7 @@ pub trait GetDegree {
 
 impl<B: Backend> GetDegree for Module<B> {
     fn ring_degree(&self) -> Degree {
-        Self::n(&self).into()
+        Self::n(self).into()
     }
 }
 

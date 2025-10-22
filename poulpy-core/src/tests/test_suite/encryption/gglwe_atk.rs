@@ -81,7 +81,7 @@ where
                     i,
                 );
             });
-            let mut sk_out_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(module, sk_out.rank().into());
+            let mut sk_out_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(module, sk_out.rank());
             sk_out_prepared.prepare(module, &sk_out);
 
             atk.key
@@ -150,7 +150,7 @@ where
                     i,
                 );
             });
-            let mut sk_out_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(module, sk_out.rank().into());
+            let mut sk_out_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(module, sk_out.rank());
             sk_out_prepared.prepare(module, &sk_out);
 
             let mut atk: GLWEAutomorphismKey<Vec<u8>> = GLWEAutomorphismKey::alloc_from_infos(&atk_infos);

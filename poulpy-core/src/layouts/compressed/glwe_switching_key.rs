@@ -146,8 +146,8 @@ where {
 
 impl<D: DataMut> ReaderFrom for GLWESwitchingKeyCompressed<D> {
     fn read_from<R: std::io::Read>(&mut self, reader: &mut R) -> std::io::Result<()> {
-        self.input_degree = Degree(reader.read_u32::<LittleEndian>()? as u32);
-        self.output_degree = Degree(reader.read_u32::<LittleEndian>()? as u32);
+        self.input_degree = Degree(reader.read_u32::<LittleEndian>()?);
+        self.output_degree = Degree(reader.read_u32::<LittleEndian>()?);
         self.key.read_from(reader)
     }
 }

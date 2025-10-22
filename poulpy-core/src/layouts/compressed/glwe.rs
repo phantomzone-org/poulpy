@@ -192,7 +192,7 @@ pub trait GLWECompressedToRef {
 impl<D: DataRef> GLWECompressedToRef for GLWECompressed<D> {
     fn to_ref(&self) -> GLWECompressed<&[u8]> {
         GLWECompressed {
-            seed: self.seed.clone(),
+            seed: self.seed,
             base2k: self.base2k,
             k: self.k,
             rank: self.rank,
@@ -208,7 +208,7 @@ pub trait GLWECompressedToMut {
 impl<D: DataMut> GLWECompressedToMut for GLWECompressed<D> {
     fn to_mut(&mut self) -> GLWECompressed<&mut [u8]> {
         GLWECompressed {
-            seed: self.seed.clone(),
+            seed: self.seed,
             base2k: self.base2k,
             k: self.k,
             rank: self.rank,

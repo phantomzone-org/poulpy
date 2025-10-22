@@ -18,10 +18,21 @@ use crate::tfhe::{
     blind_rotation::{
         BlindRotationAlgo, BlindRotationExecute, LookUpTableLayout, LookUpTableRotationDirection, LookupTable, LookupTableFactory,
     },
-    circuit_bootstrapping::CircuitBootstrappingKeyPrepared,
+    circuit_bootstrapping::{CircuitBootstrappingKeyInfos, CircuitBootstrappingKeyPrepared},
 };
 
 pub trait CirtuitBootstrappingExecute<BRA: BlindRotationAlgo, BE: Backend> {
+    fn circuit_bootstrapping_execute_tmp_bytes<R, A>(
+        &self,
+        block_size: usize,
+        extension_factor: usize,
+        res_infos: &R,
+        cbt_infos: &A,
+    ) -> usize
+    where
+        R: GGSWInfos,
+        A: CircuitBootstrappingKeyInfos;
+
     fn circuit_bootstrapping_execute_to_constant<R, L, D>(
         &self,
         res: &mut R,
@@ -68,6 +79,7 @@ impl<D: DataRef, BRA: BlindRotationAlgo, BE: Backend> CircuitBootstrappingKeyPre
         module.circuit_bootstrapping_execute_to_constant(res, lwe, self, log_domain, extension_factor, scratch);
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn execute_to_exponent<R, L, M>(
         &self,
         module: &M,
@@ -107,6 +119,27 @@ where
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
+    fn circuit_bootstrapping_execute_tmp_bytes<R, A>(
+        &self,
+        block_size: usize,
+        extension_factor: usize,
+        res_infos: &R,
+        cbt_infos: &A,
+    ) -> usize
+    where
+        R: GGSWInfos,
+        A: CircuitBootstrappingKeyInfos,
+    {
+        self.blind_rotation_execute_tmp_bytes(
+            block_size,
+            extension_factor,
+            res_infos,
+            &cbt_infos.brk_infos(),
+        )
+        .max(self.glwe_trace_tmp_bytes(res_infos, res_infos, &cbt_infos.atk_infos()))
+        .max(self.ggsw_from_gglwe_tmp_bytes(res_infos, &cbt_infos.tsk_infos()))
+    }
+
     fn circuit_bootstrapping_execute_to_constant<R, L, D>(
         &self,
         res: &mut R,

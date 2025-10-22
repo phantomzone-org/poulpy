@@ -166,7 +166,10 @@ impl<D: DataRef, B: Backend> GLWESecretPreparedToRef<B> for GLWESecretPrepared<D
     }
 }
 
-pub trait GLWESecretPreparedToMut<B: Backend> {
+pub trait GLWESecretPreparedToMut<B: Backend>
+where
+    Self: GLWESecretPreparedToRef<B>,
+{
     fn to_mut(&mut self) -> GLWESecretPrepared<&mut [u8], B>;
 }
 

@@ -427,6 +427,7 @@ where
 }
 
 pub(crate) trait GLWEEncryptSkInternal<BE: Backend> {
+    #[allow(clippy::too_many_arguments)]
     fn glwe_encrypt_sk_internal<R, P, S>(
         &self,
         base2k: usize,

@@ -102,11 +102,11 @@ where
         self.bytes_of_glwe_to_lwe_switching_key_prepared(infos.base2k(), infos.k(), infos.rank_in(), infos.dnum())
     }
 
-    fn prepare_glwe_to_lwe_switching_key_tmp_bytes<A>(&self, infos: &A)
+    fn prepare_glwe_to_lwe_switching_key_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos,
     {
-        self.prepare_glwe_switching_key_tmp_bytes(infos);
+        self.prepare_glwe_switching_key_tmp_bytes(infos)
     }
 
     fn prepare_glwe_to_lwe_switching_key<R, O>(&self, res: &mut R, other: &O, scratch: &mut Scratch<B>)

@@ -69,7 +69,7 @@ pub trait GLWEAutomorphismKeyPreparedFactory<B: Backend>
 where
     Self: GGLWEPreparedFactory<B>,
 {
-    fn alloc_automorphism_key_prepared(
+    fn alloc_glwe_automorphism_key_prepared(
         &self,
         base2k: Base2K,
         k: TorusPrecision,
@@ -83,7 +83,7 @@ where
         }
     }
 
-    fn alloc_automorphism_key_prepared_from_infos<A>(&self, infos: &A) -> GLWEAutomorphismKeyPrepared<Vec<u8>, B>
+    fn alloc_glwe_automorphism_key_prepared_from_infos<A>(&self, infos: &A) -> GLWEAutomorphismKeyPrepared<Vec<u8>, B>
     where
         A: GGLWEInfos,
     {
@@ -92,7 +92,7 @@ where
             infos.rank_out(),
             "rank_in != rank_out is not supported for AutomorphismKeyPrepared"
         );
-        self.alloc_automorphism_key_prepared(
+        self.alloc_glwe_automorphism_key_prepared(
             infos.base2k(),
             infos.k(),
             infos.rank(),
@@ -101,7 +101,7 @@ where
         )
     }
 
-    fn bytes_of_automorphism_key_prepared(
+    fn bytes_of_glwe_automorphism_key_prepared(
         &self,
         base2k: Base2K,
         k: TorusPrecision,
@@ -112,7 +112,7 @@ where
         self.bytes_of_gglwe_prepared(base2k, k, rank, rank, dnum, dsize)
     }
 
-    fn bytes_of_automorphism_key_prepared_from_infos<A>(&self, infos: &A) -> usize
+    fn bytes_of_glwe_automorphism_key_prepared_from_infos<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos,
     {
@@ -121,7 +121,7 @@ where
             infos.rank_out(),
             "rank_in != rank_out is not supported for AutomorphismKeyPrepared"
         );
-        self.bytes_of_automorphism_key_prepared(
+        self.bytes_of_glwe_automorphism_key_prepared(
             infos.base2k(),
             infos.k(),
             infos.rank(),
@@ -130,14 +130,14 @@ where
         )
     }
 
-    fn prepare_automorphism_key_tmp_bytes<A>(&self, infos: &A) -> usize
+    fn prepare_glwe_automorphism_key_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos,
     {
         self.prepare_gglwe_tmp_bytes(infos)
     }
 
-    fn prepare_automorphism_key<R, O>(&self, res: &mut R, other: &O, scratch: &mut Scratch<B>)
+    fn prepare_glwe_automorphism_key<R, O>(&self, res: &mut R, other: &O, scratch: &mut Scratch<B>)
     where
         R: GGLWEPreparedToMut<B> + SetGaloisElement,
         O: GGLWEToRef + GetGaloisElement,
@@ -155,14 +155,14 @@ impl<B: Backend> GLWEAutomorphismKeyPrepared<Vec<u8>, B> {
         A: GGLWEInfos,
         M: GLWEAutomorphismKeyPreparedFactory<B>,
     {
-        module.alloc_automorphism_key_prepared_from_infos(infos)
+        module.alloc_glwe_automorphism_key_prepared_from_infos(infos)
     }
 
     pub fn alloc<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> Self
     where
         M: GLWEAutomorphismKeyPreparedFactory<B>,
     {
-        module.alloc_automorphism_key_prepared(base2k, k, rank, dnum, dsize)
+        module.alloc_glwe_automorphism_key_prepared(base2k, k, rank, dnum, dsize)
     }
 
     pub fn bytes_of_from_infos<A, M>(module: &M, infos: &A) -> usize
@@ -170,14 +170,14 @@ impl<B: Backend> GLWEAutomorphismKeyPrepared<Vec<u8>, B> {
         A: GGLWEInfos,
         M: GLWEAutomorphismKeyPreparedFactory<B>,
     {
-        module.bytes_of_automorphism_key_prepared_from_infos(infos)
+        module.bytes_of_glwe_automorphism_key_prepared_from_infos(infos)
     }
 
     pub fn bytes_of<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank: Rank, dnum: Dnum, dsize: Dsize) -> usize
     where
         M: GLWEAutomorphismKeyPreparedFactory<B>,
     {
-        module.bytes_of_automorphism_key_prepared(base2k, k, rank, dnum, dsize)
+        module.bytes_of_glwe_automorphism_key_prepared(base2k, k, rank, dnum, dsize)
     }
 }
 
@@ -186,7 +186,7 @@ impl<B: Backend> GLWEAutomorphismKeyPrepared<Vec<u8>, B> {
     where
         M: GLWEAutomorphismKeyPreparedFactory<B>,
     {
-        module.prepare_automorphism_key_tmp_bytes(self)
+        module.prepare_glwe_automorphism_key_tmp_bytes(self)
     }
 }
 
@@ -196,7 +196,7 @@ impl<D: DataMut, B: Backend> GLWEAutomorphismKeyPrepared<D, B> {
         O: GGLWEToRef + GetGaloisElement,
         M: GLWEAutomorphismKeyPreparedFactory<B>,
     {
-        module.prepare_automorphism_key(self, other, scratch);
+        module.prepare_glwe_automorphism_key(self, other, scratch);
     }
 }
 

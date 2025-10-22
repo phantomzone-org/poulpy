@@ -107,7 +107,7 @@ where
         let base2k: usize = res.base2k().into();
         let rank: usize = res.rank().into();
         let dsize: usize = res.dsize().into();
-        let cols: usize = (rank + 1).into();
+        let cols: usize = rank + 1;
 
         let (mut tmp_pt, scratch_1) = scratch.take_glwe_plaintext(res);
 

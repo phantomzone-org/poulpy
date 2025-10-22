@@ -14,7 +14,11 @@ pub trait BlindRotationKeyPreparedFactory<BRA: BlindRotationAlgo, BE: Backend> {
     where
         A: BlindRotationKeyInfos;
 
-    fn blind_rotation_key_prepare<DM, DR>(
+    fn blind_rotation_key_prepare_tmp_bytes<A>(&self, infos: &A) -> usize
+    where
+        A: BlindRotationKeyInfos;
+
+    fn prepare_blind_rotation_key<DM, DR>(
         &self,
         res: &mut BlindRotationKeyPrepared<DM, BRA, BE>,
         other: &BlindRotationKey<DR, BRA>,
@@ -32,6 +36,14 @@ impl<BE: Backend, BRA: BlindRotationAlgo> BlindRotationKeyPrepared<Vec<u8>, BRA,
     {
         module.blind_rotation_key_prepared_alloc(infos)
     }
+
+    pub fn prepare_tmp_bytes<M, A>(module: &M, infos: &A) -> usize
+    where
+        A: BlindRotationKeyInfos,
+        M: BlindRotationKeyPreparedFactory<BRA, BE>,
+    {
+        module.blind_rotation_key_prepare_tmp_bytes(infos)
+    }
 }
 
 impl<D: DataMut, BRA: BlindRotationAlgo, BE: Backend> BlindRotationKeyPrepared<D, BRA, BE> {
@@ -39,7 +51,7 @@ impl<D: DataMut, BRA: BlindRotationAlgo, BE: Backend> BlindRotationKeyPrepared<D
     where
         M: BlindRotationKeyPreparedFactory<BRA, BE>,
     {
-        module.blind_rotation_key_prepare(self, other, scratch);
+        module.prepare_blind_rotation_key(self, other, scratch);
     }
 }
 

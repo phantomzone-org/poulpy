@@ -1,7 +1,7 @@
 #[cfg(test)]
 use poulpy_core::layouts::{
-    AutomorphismKeyLayout, Base2K, Degree, Dnum, Dsize, GGSWLayout, GLWELayout, GLWEToLWEKeyLayout, Rank, TensorKeyLayout,
-    TorusPrecision,
+    Base2K, Degree, Dnum, Dsize, GGSWLayout, GLWEAutomorphismKeyLayout, GLWELayout, GLWETensorKeyLayout, GLWEToLWEKeyLayout,
+    Rank, TorusPrecision,
 };
 
 #[cfg(test)]
@@ -53,7 +53,7 @@ pub(crate) static TEST_BDD_KEY_LAYOUT: BDDKeyLayout = BDDKeyLayout {
             dnum: Dnum(3),
             rank: Rank(TEST_RANK),
         },
-        layout_atk: AutomorphismKeyLayout {
+        layout_atk: GLWEAutomorphismKeyLayout {
             n: Degree(TEST_N_GLWE),
             base2k: Base2K(TEST_BASE2K),
             k: TorusPrecision(52),
@@ -61,7 +61,7 @@ pub(crate) static TEST_BDD_KEY_LAYOUT: BDDKeyLayout = BDDKeyLayout {
             dnum: Dnum(3),
             dsize: Dsize(1),
         },
-        layout_tsk: TensorKeyLayout {
+        layout_tsk: GLWETensorKeyLayout {
             n: Degree(TEST_N_GLWE),
             base2k: Base2K(TEST_BASE2K),
             k: TorusPrecision(52),

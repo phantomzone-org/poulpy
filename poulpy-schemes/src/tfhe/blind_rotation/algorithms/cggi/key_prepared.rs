@@ -33,7 +33,14 @@ where
         }
     }
 
-    fn blind_rotation_key_prepare<DM, DR>(
+    fn blind_rotation_key_prepare_tmp_bytes<A>(&self, infos: &A) -> usize
+    where
+        A: BlindRotationKeyInfos,
+    {
+        self.ggsw_prepare_tmp_bytes(infos)
+    }
+
+    fn prepare_blind_rotation_key<DM, DR>(
         &self,
         res: &mut BlindRotationKeyPrepared<DM, CGGI, BE>,
         other: &BlindRotationKey<DR, CGGI>,

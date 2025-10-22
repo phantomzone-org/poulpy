@@ -1,13 +1,12 @@
 use itertools::Itertools;
 use poulpy_core::{
+    GLWEAdd, GLWECopy, GLWEExternalProduct, GLWESub, ScratchTakeCore,
     layouts::{
-        prepared::{GGSWPrepared, GGSWPreparedToRef}, GLWEToMut, LWEInfos, GLWE
-    }, GLWEExternalProduct, ScratchTakeCore
+        GLWE, LWEInfos,
+        prepared::{GGSWPrepared, GGSWPreparedToRef},
+    },
 };
-use poulpy_hal::{
-    api::{VecZnxAddInplace, VecZnxCopy, VecZnxNegateInplace, VecZnxSub},
-    layouts::{Backend, DataMut, DataRef, Module, Scratch, ZnxZero},
-};
+use poulpy_hal::layouts::{Backend, DataMut, DataRef, Module, Scratch, ZnxZero};
 
 use crate::tfhe::bdd_arithmetic::UnsignedInteger;
 
@@ -29,45 +28,43 @@ pub(crate) struct BitCircuit<const N: usize, const K: usize> {
 
 pub struct Circuit<C: BitCircuitInfo, const N: usize>(pub [C; N]);
 
-pub trait CircuitExecute<BE: Backend, T: UnsignedInteger>
-where
-    Self: GetBitCircuitInfo<T>,
-{
-    fn execute<O>(
+pub trait ExecuteBDDCircuit<T: UnsignedInteger, BE: Backend> {
+    fn execute_bdd_circuit<C, O>(
         &self,
-        module: &Module<BE>,
         out: &mut [GLWE<O>],
         inputs: &[&dyn GGSWPreparedToRef<BE>],
+        circuit: &C,
         scratch: &mut Scratch<BE>,
     ) where
+        C: GetBitCircuitInfo<T>,
         O: DataMut;
 }
 
-impl<C: BitCircuitInfo, const N: usize, T: UnsignedInteger, BE: Backend> CircuitExecute<BE, T> for Circuit<C, N>
+impl<T: UnsignedInteger, BE: Backend> ExecuteBDDCircuit<T, BE> for Module<BE>
 where
-    Self: GetBitCircuitInfo<T>,
-    Module<BE>: Cmux<BE> + VecZnxCopy,
+    Self: Cmux<BE> + GLWECopy,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
-    fn execute<O>(
+    fn execute_bdd_circuit<C, O>(
         &self,
-        module: &Module<BE>,
         out: &mut [GLWE<O>],
         inputs: &[&dyn GGSWPreparedToRef<BE>],
+        circuit: &C,
         scratch: &mut Scratch<BE>,
     ) where
+        C: GetBitCircuitInfo<T>,
         O: DataMut,
     {
         #[cfg(debug_assertions)]
         {
-            assert_eq!(inputs.len(), self.input_size());
-            assert!(out.len() >= self.output_size());
+            assert_eq!(inputs.len(), circuit.input_size());
+            assert!(out.len() >= circuit.output_size());
         }
 
-        for (i, out_i) in out.iter_mut().enumerate().take(self.output_size()) {
-            let (nodes, levels, max_inter_state) = self.get_circuit(i);
+        for (i, out_i) in out.iter_mut().enumerate().take(circuit.output_size()) {
+            let (nodes, levels, max_inter_state) = circuit.get_circuit(i);
 
-            let (mut level, scratch_1) = scratch.take_glwe_ct_slice(max_inter_state * 2, out_i);
+            let (mut level, scratch_1) = scratch.take_glwe_slice(max_inter_state * 2, out_i);
 
             level.iter_mut().for_each(|ct| ct.data_mut().zero());
 
@@ -87,9 +84,9 @@ where
 
                 for (j, node) in nodes_lvl.iter().enumerate() {
                     if node.low_index == node.high_index {
-                        next_level[j].copy(module, prev_level[node.low_index]);
+                        self.glwe_copy(next_level[j], prev_level[node.low_index]);
                     } else {
-                        module.cmux(
+                        self.cmux(
                             next_level[j],
                             prev_level[node.high_index],
                             prev_level[node.low_index],
@@ -105,7 +102,7 @@ where
             // handle last output
             // there's always only 1 node at last level
             let node: &Node = nodes.last().unwrap();
-            module.cmux(
+            self.cmux(
                 out_i,
                 prev_level[node.high_index],
                 prev_level[node.low_index],
@@ -114,7 +111,7 @@ where
             );
         }
 
-        for out_i in out.iter_mut().skip(self.output_size()) {
+        for out_i in out.iter_mut().skip(circuit.output_size()) {
             out_i.data_mut().zero();
         }
     }
@@ -167,7 +164,8 @@ pub trait Cmux<BE: Backend> {
 
 impl<BE: Backend> Cmux<BE> for Module<BE>
 where
-    Module<BE>: GLWEExternalProduct<BE> + VecZnxSub + VecZnxCopy + VecZnxNegateInplace + VecZnxAddInplace,
+    Module<BE>: GLWEExternalProduct<BE> + GLWESub + GLWEAdd,
+    Scratch<BE>: ScratchTakeCore<BE>,
 {
     fn cmux<O, T, F, S>(&self, out: &mut GLWE<O>, t: &GLWE<T>, f: &GLWE<F>, s: &GGSWPrepared<S, BE>, scratch: &mut Scratch<BE>)
     where
@@ -177,8 +175,8 @@ where
         S: DataRef,
     {
         // let mut out: GLWECiphertext<&mut [u8]> = out.to_mut();
-        out.sub(self, t, f);
-        out.external_product_inplace(self, s, scratch);
-        out.to_mut().add_inplace(self, f);
+        self.glwe_sub(out, t, f);
+        self.glwe_external_product_inplace(out, s, scratch);
+        self.glwe_add_inplace(out, f);
     }
 }

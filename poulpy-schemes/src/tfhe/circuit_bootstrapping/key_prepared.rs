@@ -75,6 +75,16 @@ where
                 .collect(),
         }
     }
+
+    fn circuit_bootstrapping_key_prepare_tmp_bytes<A>(&self, infos: &A) -> usize
+    where
+        A: CircuitBootstrappingKeyInfos,
+    {
+        self.blind_rotation_key_prepare_tmp_bytes(&infos.brk_infos())
+            .max(self.prepare_tensor_key_tmp_bytes(&infos.tsk_infos()))
+            .max(self.prepare_glwe_automorphism_key_tmp_bytes(&infos.atk_infos()))
+    }
+
     fn circuit_bootstrapping_key_prepare<DM, DR>(
         &self,
         res: &mut CircuitBootstrappingKeyPrepared<DM, BRA, BE>,

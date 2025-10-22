@@ -1,26 +1,17 @@
 use std::marker::PhantomData;
 
-use poulpy_core::layouts::{Base2K, GLWE, GLWEInfos, GLWEPlaintextLayout, LWEInfos, Rank, TorusPrecision};
+use poulpy_core::{
+    GLWEDecrypt, GLWENoise,
+    layouts::{Base2K, GLWE, GLWEInfos, GLWEPlaintextLayout, GLWESecretPreparedToRef, LWEInfos, Rank, TorusPrecision},
+};
 
 #[cfg(test)]
+use poulpy_core::GLWEEncryptSk;
 use poulpy_core::ScratchTakeCore;
-use poulpy_core::{layouts::prepared::GLWESecretPrepared};
-use poulpy_hal::api::VecZnxBigBytesOf;
+use poulpy_hal::layouts::{Backend, Data, DataMut, DataRef, Module, Scratch};
 #[cfg(test)]
-use poulpy_hal::api::{
-    VecZnxAddInplace, VecZnxAddNormal, VecZnxFillUniform, VecZnxNormalize, VecZnxSub,
-};
 #[cfg(test)]
 use poulpy_hal::source::Source;
-use poulpy_hal::{
-    api::{
-        VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigNormalize, VecZnxDftApply,
-        VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxNormalizeTmpBytes,
-    },
-    layouts::{Backend, Data, DataMut, DataRef, Module, Scratch},
-};
-
-use poulpy_hal::api::{SvpApplyDftToDftInplace, VecZnxNormalizeInplace, VecZnxSubInplace};
 
 use crate::tfhe::bdd_arithmetic::{FromBits, ToBits, UnsignedInteger};
 
@@ -79,25 +70,13 @@ impl<D: DataMut, T: UnsignedInteger + ToBits> FheUintBlocks<D, T> {
         &mut self,
         module: &Module<BE>,
         value: T,
-        sk: &GLWESecretPrepared<S, BE>,
+        sk: &S,
         source_xa: &mut Source,
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
-        S: DataRef,
-        Module<BE>: VecZnxDftBytesOf
-            + VecZnxBigNormalize<BE>
-            + VecZnxDftApply<BE>
-            + SvpApplyDftToDftInplace<BE>
-            + VecZnxIdftApplyConsume<BE>
-            + VecZnxNormalizeTmpBytes
-            + VecZnxFillUniform
-            + VecZnxSubInplace
-            + VecZnxAddInplace
-            + VecZnxNormalizeInplace<BE>
-            + VecZnxAddNormal
-            + VecZnxNormalize<BE>
-            + VecZnxSub,
+        S: GLWESecretPreparedToRef<BE> + GLWEInfos,
+        Module<BE>: GLWEEncryptSk<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         use poulpy_core::layouts::GLWEPlaintextLayout;
@@ -115,29 +94,20 @@ impl<D: DataMut, T: UnsignedInteger + ToBits> FheUintBlocks<D, T> {
             k: 1_usize.into(),
         };
 
-        let (mut pt, scratch_1) = scratch.take_glwe_pt(&pt_infos);
+        let (mut pt, scratch_1) = scratch.take_glwe_plaintext(&pt_infos);
 
         for i in 0..T::WORD_SIZE {
             pt.encode_coeff_i64(value.bit(i) as i64, TorusPrecision(2), 0);
-            self.blocks[i].encrypt_sk(&module, &pt, sk, source_xa, source_xe, scratch_1);
+            self.blocks[i].encrypt_sk(module, &pt, sk, source_xa, source_xe, scratch_1);
         }
     }
 }
 
 impl<D: DataRef, T: UnsignedInteger + FromBits + ToBits> FheUintBlocks<D, T> {
-    pub fn decrypt<S: DataRef, BE: Backend>(
-        &self,
-        module: &Module<BE>,
-        sk: &GLWESecretPrepared<S, BE>,
-        scratch: &mut Scratch<BE>,
-    ) -> T
+    pub fn decrypt<S, BE: Backend>(&self, module: &Module<BE>, sk: &S, scratch: &mut Scratch<BE>) -> T
     where
-        Module<BE>: VecZnxDftApply<BE>
-            + SvpApplyDftToDftInplace<BE>
-            + VecZnxIdftApplyConsume<BE>
-            + VecZnxBigAddInplace<BE>
-            + VecZnxBigAddSmallInplace<BE>
-            + VecZnxBigNormalize<BE>,
+        Module<BE>: GLWEDecrypt<BE>,
+        S: GLWESecretPreparedToRef<BE> + GLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         #[cfg(debug_assertions)]
@@ -153,7 +123,7 @@ impl<D: DataRef, T: UnsignedInteger + FromBits + ToBits> FheUintBlocks<D, T> {
             k: self.k(),
         };
 
-        let (mut pt, scratch_1) = scratch.take_glwe_pt(&pt_infos);
+        let (mut pt, scratch_1) = scratch.take_glwe_plaintext(&pt_infos);
 
         let mut bits: Vec<u8> = vec![0u8; T::WORD_SIZE];
 
@@ -169,25 +139,10 @@ impl<D: DataRef, T: UnsignedInteger + FromBits + ToBits> FheUintBlocks<D, T> {
         T::from_bits(&bits)
     }
 
-    pub fn noise<S: DataRef, BE: Backend>(
-        &self,
-        module: &Module<BE>,
-        sk: &GLWESecretPrepared<S, BE>,
-        want: T,
-        scratch: &mut Scratch<BE>,
-    ) -> Vec<f64>
+    pub fn noise<S, BE: Backend>(&self, module: &Module<BE>, sk: &S, want: T, scratch: &mut Scratch<BE>) -> Vec<f64>
     where
-        Module<BE>: VecZnxDftBytesOf
-            + VecZnxBigBytesOf
-            + VecZnxDftApply<BE>
-            + SvpApplyDftToDftInplace<BE>
-            + VecZnxIdftApplyConsume<BE>
-            + VecZnxBigAddInplace<BE>
-            + VecZnxBigAddSmallInplace<BE>
-            + VecZnxBigNormalize<BE>
-            + VecZnxNormalizeTmpBytes
-            + VecZnxSubInplace
-            + VecZnxNormalizeInplace<BE>,
+        Module<BE>: GLWENoise<BE>,
+        S: GLWESecretPreparedToRef<BE> + GLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         #[cfg(debug_assertions)]
@@ -203,7 +158,7 @@ impl<D: DataRef, T: UnsignedInteger + FromBits + ToBits> FheUintBlocks<D, T> {
             k: 1_usize.into(),
         };
 
-        let (mut pt_want, scratch_1) = scratch.take_glwe_pt(&pt_infos);
+        let (mut pt_want, scratch_1) = scratch.take_glwe_plaintext(&pt_infos);
 
         let mut noise: Vec<f64> = vec![0f64; T::WORD_SIZE];
 
