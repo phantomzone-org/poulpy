@@ -1,80 +1,56 @@
 use poulpy_hal::{
-    api::{
-        ScratchAvailable, TakeVecZnx, TakeVecZnxDft, VecZnxBigAddSmallInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
-        VecZnxDftAllocBytes, VecZnxDftApply, VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeTmpBytes, VmpApplyDftToDft,
-        VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
-    },
-    layouts::{Backend, DataMut, DataRef, Module, Scratch, VecZnx, ZnxView, ZnxViewMut, ZnxZero},
+    api::ScratchTakeBasic,
+    layouts::{Backend, DataMut, Module, Scratch, VecZnx, ZnxView, ZnxViewMut, ZnxZero},
 };
 
 use crate::{
-    TakeGLWECt,
-    layouts::{
-        GGLWEInfos, GLWECiphertext, GLWECiphertextLayout, GLWEInfos, LWECiphertext, LWEInfos,
-        prepared::LWEToGLWESwitchingKeyPrepared,
-    },
+    GLWEKeyswitch, ScratchTakeCore,
+    layouts::{GGLWEInfos, GGLWEPreparedToRef, GLWE, GLWEInfos, GLWELayout, GLWEToMut, LWE, LWEInfos, LWEToRef},
 };
 
-impl GLWECiphertext<Vec<u8>> {
-    pub fn from_lwe_scratch_space<B: Backend, OUT, IN, KEY>(
-        module: &Module<B>,
-        glwe_infos: &OUT,
-        lwe_infos: &IN,
-        key_infos: &KEY,
-    ) -> usize
+impl<BE: Backend> GLWEFromLWE<BE> for Module<BE> where Self: GLWEKeyswitch<BE> {}
+
+pub trait GLWEFromLWE<BE: Backend>
+where
+    Self: GLWEKeyswitch<BE>,
+{
+    fn glwe_from_lwe_tmp_bytes<R, A, K>(&self, glwe_infos: &R, lwe_infos: &A, key_infos: &K) -> usize
     where
-        OUT: GLWEInfos,
-        IN: LWEInfos,
-        KEY: GGLWEInfos,
-        Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
+        R: GLWEInfos,
+        A: LWEInfos,
+        K: GGLWEInfos,
     {
-        let ct: usize = GLWECiphertext::alloc_bytes_with(
-            module.n().into(),
+        let ct: usize = GLWE::bytes_of(
+            self.n().into(),
             key_infos.base2k(),
             lwe_infos.k().max(glwe_infos.k()),
             1u32.into(),
         );
-        let ks: usize = GLWECiphertext::keyswitch_inplace_scratch_space(module, glwe_infos, key_infos);
+
+        let ks: usize = self.glwe_keyswitch_tmp_bytes(glwe_infos, glwe_infos, key_infos);
         if lwe_infos.base2k() == key_infos.base2k() {
             ct + ks
         } else {
-            let a_conv = VecZnx::alloc_bytes(module.n(), 1, lwe_infos.size()) + module.vec_znx_normalize_tmp_bytes();
+            let a_conv = VecZnx::bytes_of(self.n(), 1, lwe_infos.size()) + self.vec_znx_normalize_tmp_bytes();
             ct + a_conv + ks
         }
     }
-}
 
-impl<D: DataMut> GLWECiphertext<D> {
-    pub fn from_lwe<DLwe, DKsk, B: Backend>(
-        &mut self,
-        module: &Module<B>,
-        lwe: &LWECiphertext<DLwe>,
-        ksk: &LWEToGLWESwitchingKeyPrepared<DKsk, B>,
-        scratch: &mut Scratch<B>,
-    ) where
-        DLwe: DataRef,
-        DKsk: DataRef,
-        Module<B>: VecZnxDftAllocBytes
-            + VmpApplyDftToDftTmpBytes
-            + VecZnxBigNormalizeTmpBytes
-            + VmpApplyDftToDft<B>
-            + VmpApplyDftToDftAdd<B>
-            + VecZnxDftApply<B>
-            + VecZnxIdftApplyConsume<B>
-            + VecZnxBigAddSmallInplace<B>
-            + VecZnxBigNormalize<B>
-            + VecZnxNormalize<B>
-            + VecZnxNormalizeTmpBytes,
-        Scratch<B>: ScratchAvailable + TakeVecZnxDft<B> + TakeGLWECt + TakeVecZnx,
+    fn glwe_from_lwe<R, A, K>(&self, res: &mut R, lwe: &A, ksk: &K, scratch: &mut Scratch<BE>)
+    where
+        R: GLWEToMut,
+        A: LWEToRef,
+        K: GGLWEPreparedToRef<BE> + GGLWEInfos,
+        Scratch<BE>: ScratchTakeCore<BE>,
     {
-        #[cfg(debug_assertions)]
-        {
-            assert_eq!(self.n(), module.n() as u32);
-            assert_eq!(ksk.n(), module.n() as u32);
-            assert!(lwe.n() <= module.n() as u32);
-        }
+        let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
+        let lwe: &LWE<&[u8]> = &lwe.to_ref();
 
-        let (mut glwe, scratch_1) = scratch.take_glwe_ct(&GLWECiphertextLayout {
+        assert_eq!(res.n(), self.n() as u32);
+        assert_eq!(ksk.n(), self.n() as u32);
+        assert!(lwe.n() <= self.n() as u32);
+
+        let (mut glwe, scratch_1) = scratch.take_glwe(&GLWELayout {
             n: ksk.n(),
             base2k: ksk.base2k(),
             k: lwe.k(),
@@ -91,14 +67,14 @@ impl<D: DataMut> GLWECiphertext<D> {
                 glwe.data.at_mut(1, i)[..n_lwe].copy_from_slice(&data_lwe[1..]);
             }
         } else {
-            let (mut a_conv, scratch_2) = scratch_1.take_vec_znx(module.n(), 1, lwe.size());
+            let (mut a_conv, scratch_2) = scratch_1.take_vec_znx(self.n(), 1, lwe.size());
             a_conv.zero();
             for j in 0..lwe.size() {
                 let data_lwe: &[i64] = lwe.data.at(0, j);
                 a_conv.at_mut(0, j)[0] = data_lwe[0]
             }
 
-            module.vec_znx_normalize(
+            self.vec_znx_normalize(
                 ksk.base2k().into(),
                 &mut glwe.data,
                 0,
@@ -114,7 +90,7 @@ impl<D: DataMut> GLWECiphertext<D> {
                 a_conv.at_mut(0, j)[..n_lwe].copy_from_slice(&data_lwe[1..]);
             }
 
-            module.vec_znx_normalize(
+            self.vec_znx_normalize(
                 ksk.base2k().into(),
                 &mut glwe.data,
                 1,
@@ -125,6 +101,30 @@ impl<D: DataMut> GLWECiphertext<D> {
             );
         }
 
-        self.keyswitch(module, &glwe, &ksk.0, scratch_1);
+        self.glwe_keyswitch(res, &glwe, ksk, scratch_1);
+    }
+}
+
+impl GLWE<Vec<u8>> {
+    pub fn from_lwe_tmp_bytes<R, A, K, M, BE: Backend>(module: &M, glwe_infos: &R, lwe_infos: &A, key_infos: &K) -> usize
+    where
+        R: GLWEInfos,
+        A: LWEInfos,
+        K: GGLWEInfos,
+        M: GLWEFromLWE<BE>,
+    {
+        module.glwe_from_lwe_tmp_bytes(glwe_infos, lwe_infos, key_infos)
+    }
+}
+
+impl<D: DataMut> GLWE<D> {
+    pub fn from_lwe<A, K, M, BE: Backend>(&mut self, module: &M, lwe: &A, ksk: &K, scratch: &mut Scratch<BE>)
+    where
+        M: GLWEFromLWE<BE>,
+        A: LWEToRef,
+        K: GGLWEPreparedToRef<BE> + GGLWEInfos,
+        Scratch<BE>: ScratchTakeCore<BE>,
+    {
+        module.glwe_from_lwe(self, lwe, ksk, scratch);
     }
 }

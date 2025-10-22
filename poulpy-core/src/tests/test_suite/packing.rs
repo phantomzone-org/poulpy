@@ -1,78 +1,32 @@
 use std::collections::HashMap;
 
 use poulpy_hal::{
-    api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare,
-        VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxAutomorphism, VecZnxAutomorphismInplace,
-        VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigAllocBytes, VecZnxBigAutomorphismInplace, VecZnxBigNormalize,
-        VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallNegateInplace, VecZnxCopy, VecZnxDftAllocBytes, VecZnxDftApply,
-        VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxNegateInplace, VecZnxNormalize, VecZnxNormalizeInplace,
-        VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace, VecZnxRshInplace, VecZnxSub, VecZnxSubInplace,
-        VecZnxSwitchRing, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes, VmpPMatAlloc, VmpPrepare,
-    },
-    layouts::{Backend, Module, ScratchOwned},
-    oep::{
-        ScratchAvailableImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeScalarZnxImpl, TakeSvpPPolImpl,
-        TakeVecZnxBigImpl, TakeVecZnxDftImpl, TakeVecZnxImpl,
-    },
+    api::{ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow},
+    layouts::{Backend, Module, Scratch, ScratchOwned},
     source::Source,
 };
 
 use crate::{
-    GLWEOperations, GLWEPacker,
+    GLWEAutomorphismKeyEncryptSk, GLWEDecrypt, GLWEEncryptSk, GLWEPacker, GLWEPacking, GLWERotate, GLWESub, ScratchTakeCore,
     layouts::{
-        GGLWEAutomorphismKey, GGLWEAutomorphismKeyLayout, GLWECiphertext, GLWECiphertextLayout, GLWEPlaintext, GLWESecret,
-        prepared::{GGLWEAutomorphismKeyPrepared, GLWESecretPrepared, PrepareAlloc},
+        GLWE, GLWEAutomorphismKey, GLWEAutomorphismKeyLayout, GLWEAutomorphismKeyPreparedFactory, GLWELayout, GLWEPlaintext,
+        GLWESecret, GLWESecretPreparedFactory,
+        prepared::{GLWEAutomorphismKeyPrepared, GLWESecretPrepared},
     },
 };
 
-pub fn test_glwe_packing<B>(module: &Module<B>)
+pub fn test_glwe_packing<BE: Backend>(module: &Module<BE>)
 where
-    Module<B>: VecZnxDftAllocBytes
-        + VecZnxAutomorphism
-        + VecZnxBigAutomorphismInplace<B>
-        + VecZnxBigSubSmallNegateInplace<B>
-        + VecZnxNegateInplace
-        + VecZnxRshInplace<B>
-        + VecZnxRotateInplace<B>
-        + VecZnxBigNormalize<B>
-        + VecZnxDftApply<B>
-        + VecZnxRotate
-        + SvpApplyDftToDftInplace<B>
-        + VecZnxIdftApplyConsume<B>
-        + VecZnxFillUniform
-        + VecZnxSubInplace
-        + VecZnxAddInplace
-        + VecZnxNormalizeInplace<B>
-        + VecZnxAddNormal
-        + VecZnxNormalize<B>
-        + VecZnxSub
-        + SvpPrepare<B>
-        + SvpPPolAllocBytes
-        + SvpPPolAlloc<B>
-        + VecZnxBigAllocBytes
-        + VecZnxBigAddInplace<B>
-        + VecZnxBigAddSmallInplace<B>
-        + VecZnxNormalizeTmpBytes
-        + VecZnxAddScalarInplace
-        + VmpPMatAlloc<B>
-        + VmpPrepare<B>
-        + VmpApplyDftToDftTmpBytes
-        + VmpApplyDftToDft<B>
-        + VmpApplyDftToDftAdd<B>
-        + VecZnxBigNormalizeTmpBytes
-        + VecZnxSwitchRing
-        + VecZnxAutomorphismInplace<B>
-        + VecZnxCopy,
-    B: Backend
-        + TakeVecZnxDftImpl<B>
-        + TakeVecZnxBigImpl<B>
-        + TakeSvpPPolImpl<B>
-        + ScratchOwnedAllocImpl<B>
-        + ScratchOwnedBorrowImpl<B>
-        + ScratchAvailableImpl<B>
-        + TakeScalarZnxImpl<B>
-        + TakeVecZnxImpl<B>,
+    Module<BE>: GLWEEncryptSk<BE>
+        + GLWEAutomorphismKeyEncryptSk<BE>
+        + GLWEAutomorphismKeyPreparedFactory<BE>
+        + GLWEPacking<BE>
+        + GLWESecretPreparedFactory<BE>
+        + GLWESub
+        + GLWEDecrypt<BE>
+        + GLWERotate<BE>,
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
+    Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
     let mut source_xs: Source = Source::new([0u8; 32]);
     let mut source_xe: Source = Source::new([0u8; 32]);
@@ -88,14 +42,14 @@ where
 
     let dnum: usize = k_ct.div_ceil(base2k * dsize);
 
-    let glwe_out_infos: GLWECiphertextLayout = GLWECiphertextLayout {
+    let glwe_out_infos: GLWELayout = GLWELayout {
         n: n.into(),
         base2k: base2k.into(),
         k: k_ct.into(),
         rank: rank.into(),
     };
 
-    let key_infos: GGLWEAutomorphismKeyLayout = GGLWEAutomorphismKeyLayout {
+    let key_infos: GLWEAutomorphismKeyLayout = GLWEAutomorphismKeyLayout {
         n: n.into(),
         base2k: base2k.into(),
         k: k_ksk.into(),
@@ -104,17 +58,19 @@ where
         dnum: dnum.into(),
     };
 
-    let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-        GLWECiphertext::encrypt_sk_scratch_space(module, &glwe_out_infos)
-            | GGLWEAutomorphismKey::encrypt_sk_scratch_space(module, &key_infos)
-            | GLWEPacker::scratch_space(module, &glwe_out_infos, &key_infos),
+    let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
+        GLWE::encrypt_sk_tmp_bytes(module, &glwe_out_infos)
+            | GLWEAutomorphismKey::encrypt_sk_tmp_bytes(module, &key_infos)
+            | GLWEPacker::tmp_bytes(module, &glwe_out_infos, &key_infos),
     );
 
-    let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(&glwe_out_infos);
+    let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_out_infos);
     sk.fill_ternary_prob(0.5, &mut source_xs);
-    let sk_dft: GLWESecretPrepared<Vec<u8>, B> = sk.prepare_alloc(module, scratch.borrow());
 
-    let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&glwe_out_infos);
+    let mut sk_dft: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc_from_infos(module, &sk);
+    sk_dft.prepare(module, &sk);
+
+    let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_out_infos);
     let mut data: Vec<i64> = vec![0i64; n];
     data.iter_mut().enumerate().for_each(|(i, x)| {
         *x = i as i64;
@@ -124,8 +80,8 @@ where
 
     let gal_els: Vec<i64> = GLWEPacker::galois_elements(module);
 
-    let mut auto_keys: HashMap<i64, GGLWEAutomorphismKeyPrepared<Vec<u8>, B>> = HashMap::new();
-    let mut tmp: GGLWEAutomorphismKey<Vec<u8>> = GGLWEAutomorphismKey::alloc(&key_infos);
+    let mut auto_keys: HashMap<i64, GLWEAutomorphismKeyPrepared<Vec<u8>, BE>> = HashMap::new();
+    let mut tmp: GLWEAutomorphismKey<Vec<u8>> = GLWEAutomorphismKey::alloc_from_infos(&key_infos);
     gal_els.iter().for_each(|gal_el| {
         tmp.encrypt_sk(
             module,
@@ -135,15 +91,17 @@ where
             &mut source_xe,
             scratch.borrow(),
         );
-        let atk_prepared: GGLWEAutomorphismKeyPrepared<Vec<u8>, B> = tmp.prepare_alloc(module, scratch.borrow());
+        let mut atk_prepared: GLWEAutomorphismKeyPrepared<Vec<u8>, BE> =
+            GLWEAutomorphismKeyPrepared::alloc_from_infos(module, &tmp);
+        atk_prepared.prepare(module, &tmp, scratch.borrow());
         auto_keys.insert(*gal_el, atk_prepared);
     });
 
     let log_batch: usize = 0;
 
-    let mut packer: GLWEPacker = GLWEPacker::new(&glwe_out_infos, log_batch);
+    let mut packer: GLWEPacker = GLWEPacker::alloc(&glwe_out_infos, log_batch);
 
-    let mut ct: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&glwe_out_infos);
+    let mut ct: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_out_infos);
 
     ct.encrypt_sk(
         module,
@@ -166,24 +124,19 @@ where
             scratch.borrow(),
         );
 
-        pt.rotate_inplace(module, -(1 << log_batch), scratch.borrow()); // X^-batch * pt
+        module.glwe_rotate_inplace(-(1 << log_batch), &mut pt, scratch.borrow()); // X^-batch * pt
 
         if reverse_bits_msb(i, log_n as u32).is_multiple_of(5) {
             packer.add(module, Some(&ct), &auto_keys, scratch.borrow());
         } else {
-            packer.add(
-                module,
-                None::<&GLWECiphertext<Vec<u8>>>,
-                &auto_keys,
-                scratch.borrow(),
-            )
+            packer.add(module, None::<&GLWE<Vec<u8>>>, &auto_keys, scratch.borrow())
         }
     });
 
-    let mut res: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&glwe_out_infos);
+    let mut res: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_out_infos);
     packer.flush(module, &mut res);
 
-    let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&glwe_out_infos);
+    let mut pt_want: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_out_infos);
     let mut data: Vec<i64> = vec![0i64; n];
     data.iter_mut().enumerate().for_each(|(i, x)| {
         if i.is_multiple_of(5) {
@@ -195,7 +148,7 @@ where
 
     res.decrypt(module, &mut pt, &sk_dft, scratch.borrow());
 
-    pt.sub_inplace_ab(module, &pt_want);
+    module.glwe_sub_inplace(&mut pt, &pt_want);
 
     let noise_have: f64 = pt.std().log2();
 

@@ -1,171 +1,124 @@
 use poulpy_hal::{
-    api::{
-        ScratchAvailable, TakeVecZnx, TakeVecZnxBig, TakeVecZnxDft, VecZnxAutomorphismInplace, VecZnxBigAddSmallInplace,
-        VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxDftAddInplace, VecZnxDftAllocBytes,
-        VecZnxDftApply, VecZnxDftCopy, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA, VecZnxNormalize, VecZnxNormalizeTmpBytes,
-        VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
+    api::ScratchAvailable,
+    layouts::{Backend, DataMut, Module, Scratch},
+};
+
+use crate::{
+    GGSWExpandRows, ScratchTakeCore,
+    automorphism::glwe_ct::GLWEAutomorphism,
+    layouts::{
+        GGLWEInfos, GGLWEPreparedToRef, GGSW, GGSWInfos, GGSWToMut, GGSWToRef, GetGaloisElement,
+        prepared::{GLWETensorKeyPrepared, GLWETensorKeyPreparedToRef},
     },
-    layouts::{Backend, DataMut, DataRef, Module, Scratch},
 };
 
-use crate::layouts::{
-    GGLWEInfos, GGSWCiphertext, GGSWInfos, GLWECiphertext,
-    prepared::{GGLWEAutomorphismKeyPrepared, GGLWETensorKeyPrepared},
-};
-
-impl GGSWCiphertext<Vec<u8>> {
-    pub fn automorphism_scratch_space<B: Backend, OUT, IN, KEY, TSK>(
-        module: &Module<B>,
-        out_infos: &OUT,
-        in_infos: &IN,
-        key_infos: &KEY,
-        tsk_infos: &TSK,
+impl GGSW<Vec<u8>> {
+    pub fn automorphism_tmp_bytes<R, A, K, T, M, BE: Backend>(
+        module: &M,
+        res_infos: &R,
+        a_infos: &A,
+        key_infos: &K,
+        tsk_infos: &T,
     ) -> usize
     where
-        OUT: GGSWInfos,
-        IN: GGSWInfos,
-        KEY: GGLWEInfos,
-        TSK: GGLWEInfos,
-        Module<B>: VecZnxDftAllocBytes
-            + VmpApplyDftToDftTmpBytes
-            + VecZnxBigAllocBytes
-            + VecZnxNormalizeTmpBytes
-            + VecZnxBigNormalizeTmpBytes,
+        R: GGSWInfos,
+        A: GGSWInfos,
+        K: GGLWEInfos,
+        T: GGLWEInfos,
+        M: GGSWAutomorphism<BE>,
     {
-        let out_size: usize = out_infos.size();
-        let ci_dft: usize = module.vec_znx_dft_alloc_bytes((key_infos.rank_out() + 1).into(), out_size);
-        let ks_internal: usize = GLWECiphertext::keyswitch_scratch_space(
-            module,
-            &out_infos.glwe_layout(),
-            &in_infos.glwe_layout(),
-            key_infos,
-        );
-        let expand: usize = GGSWCiphertext::expand_row_scratch_space(module, out_infos, tsk_infos);
-        ci_dft + (ks_internal | expand)
-    }
-
-    pub fn automorphism_inplace_scratch_space<B: Backend, OUT, KEY, TSK>(
-        module: &Module<B>,
-        out_infos: &OUT,
-        key_infos: &KEY,
-        tsk_infos: &TSK,
-    ) -> usize
-    where
-        OUT: GGSWInfos,
-        KEY: GGLWEInfos,
-        TSK: GGLWEInfos,
-        Module<B>: VecZnxDftAllocBytes
-            + VmpApplyDftToDftTmpBytes
-            + VecZnxBigAllocBytes
-            + VecZnxNormalizeTmpBytes
-            + VecZnxBigNormalizeTmpBytes,
-    {
-        GGSWCiphertext::automorphism_scratch_space(module, out_infos, out_infos, key_infos, tsk_infos)
+        module.ggsw_automorphism_tmp_bytes(res_infos, a_infos, key_infos, tsk_infos)
     }
 }
 
-impl<DataSelf: DataMut> GGSWCiphertext<DataSelf> {
-    pub fn automorphism<DataLhs: DataRef, DataAk: DataRef, DataTsk: DataRef, B: Backend>(
-        &mut self,
-        module: &Module<B>,
-        lhs: &GGSWCiphertext<DataLhs>,
-        auto_key: &GGLWEAutomorphismKeyPrepared<DataAk, B>,
-        tensor_key: &GGLWETensorKeyPrepared<DataTsk, B>,
-        scratch: &mut Scratch<B>,
-    ) where
-        Module<B>: VecZnxDftAllocBytes
-            + VmpApplyDftToDftTmpBytes
-            + VecZnxBigNormalizeTmpBytes
-            + VmpApplyDftToDft<B>
-            + VmpApplyDftToDftAdd<B>
-            + VecZnxDftApply<B>
-            + VecZnxIdftApplyConsume<B>
-            + VecZnxBigAddSmallInplace<B>
-            + VecZnxBigNormalize<B>
-            + VecZnxAutomorphismInplace<B>
-            + VecZnxBigAllocBytes
-            + VecZnxNormalizeTmpBytes
-            + VecZnxDftCopy<B>
-            + VecZnxDftAddInplace<B>
-            + VecZnxIdftApplyTmpA<B>
-            + VecZnxNormalize<B>,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnxBig<B> + TakeVecZnx,
+impl<D: DataMut> GGSW<D> {
+    pub fn automorphism<A, K, T, M, BE: Backend>(&mut self, module: &M, a: &A, key: &K, tsk: &T, scratch: &mut Scratch<BE>)
+    where
+        A: GGSWToRef,
+        K: GetGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
+        T: GLWETensorKeyPreparedToRef<BE>,
+        Scratch<BE>: ScratchTakeCore<BE>,
+        M: GGSWAutomorphism<BE>,
     {
-        #[cfg(debug_assertions)]
-        {
-            use crate::layouts::{GLWEInfos, LWEInfos};
-
-            assert_eq!(self.n(), module.n() as u32);
-            assert_eq!(lhs.n(), module.n() as u32);
-            assert_eq!(auto_key.n(), module.n() as u32);
-            assert_eq!(tensor_key.n(), module.n() as u32);
-
-            assert_eq!(
-                self.rank(),
-                lhs.rank(),
-                "ggsw_out rank: {} != ggsw_in rank: {}",
-                self.rank(),
-                lhs.rank()
-            );
-            assert_eq!(
-                self.rank(),
-                auto_key.rank_out(),
-                "ggsw_in rank: {} != auto_key rank: {}",
-                self.rank(),
-                auto_key.rank_out()
-            );
-            assert_eq!(
-                self.rank(),
-                tensor_key.rank_out(),
-                "ggsw_in rank: {} != tensor_key rank: {}",
-                self.rank(),
-                tensor_key.rank_out()
-            );
-            assert!(scratch.available() >= GGSWCiphertext::automorphism_scratch_space(module, self, lhs, auto_key, tensor_key))
-        };
-
-        // Keyswitch the j-th row of the col 0
-        (0..lhs.dnum().into()).for_each(|row_i| {
-            // Key-switch column 0, i.e.
-            // col 0: (-(a0s0 + a1s1 + a2s2) + M[i], a0, a1, a2) -> (-(a0pi^-1(s0) + a1pi^-1(s1) + a2pi^-1(s2)) + M[i], a0, a1, a2)
-            self.at_mut(row_i, 0)
-                .automorphism(module, &lhs.at(row_i, 0), auto_key, scratch);
-        });
-        self.expand_row(module, tensor_key, scratch);
+        module.ggsw_automorphism(self, a, key, tsk, scratch);
     }
 
-    pub fn automorphism_inplace<DataKsk: DataRef, DataTsk: DataRef, B: Backend>(
-        &mut self,
-        module: &Module<B>,
-        auto_key: &GGLWEAutomorphismKeyPrepared<DataKsk, B>,
-        tensor_key: &GGLWETensorKeyPrepared<DataTsk, B>,
-        scratch: &mut Scratch<B>,
-    ) where
-        Module<B>: VecZnxDftAllocBytes
-            + VmpApplyDftToDftTmpBytes
-            + VecZnxBigNormalizeTmpBytes
-            + VmpApplyDftToDft<B>
-            + VmpApplyDftToDftAdd<B>
-            + VecZnxDftApply<B>
-            + VecZnxIdftApplyConsume<B>
-            + VecZnxBigAddSmallInplace<B>
-            + VecZnxBigNormalize<B>
-            + VecZnxAutomorphismInplace<B>
-            + VecZnxBigAllocBytes
-            + VecZnxNormalizeTmpBytes
-            + VecZnxDftCopy<B>
-            + VecZnxDftAddInplace<B>
-            + VecZnxIdftApplyTmpA<B>
-            + VecZnxNormalize<B>,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnxBig<B> + TakeVecZnx,
+    pub fn automorphism_inplace<K, T, M, BE: Backend>(&mut self, module: &M, key: &K, tsk: &T, scratch: &mut Scratch<BE>)
+    where
+        K: GetGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
+        T: GLWETensorKeyPreparedToRef<BE>,
+        Scratch<BE>: ScratchTakeCore<BE>,
+        M: GGSWAutomorphism<BE>,
     {
-        // Keyswitch the j-th row of the col 0
-        (0..self.dnum().into()).for_each(|row_i| {
-            // Key-switch column 0, i.e.
-            // col 0: (-(a0s0 + a1s1 + a2s2) + M[i], a0, a1, a2) -> (-(a0pi^-1(s0) + a1pi^-1(s1) + a2pi^-1(s2)) + M[i], a0, a1, a2)
-            self.at_mut(row_i, 0)
-                .automorphism_inplace(module, auto_key, scratch);
-        });
-        self.expand_row(module, tensor_key, scratch);
+        module.ggsw_automorphism_inplace(self, key, tsk, scratch);
     }
 }
+
+impl<BE: Backend> GGSWAutomorphism<BE> for Module<BE> where Self: GLWEAutomorphism<BE> + GGSWExpandRows<BE> {}
+
+pub trait GGSWAutomorphism<BE: Backend>
+where
+    Self: GLWEAutomorphism<BE> + GGSWExpandRows<BE>,
+{
+    fn ggsw_automorphism_tmp_bytes<R, A, K, T>(&self, res_infos: &R, a_infos: &A, key_infos: &K, tsk_infos: &T) -> usize
+    where
+        R: GGSWInfos,
+        A: GGSWInfos,
+        K: GGLWEInfos,
+        T: GGLWEInfos,
+    {
+        let out_size: usize = res_infos.size();
+        let ci_dft: usize = self.bytes_of_vec_znx_dft((key_infos.rank_out() + 1).into(), out_size);
+        let ks_internal: usize = self.glwe_automorphism_tmp_bytes(res_infos, a_infos, key_infos);
+        let expand: usize = self.ggsw_expand_rows_tmp_bytes(res_infos, tsk_infos);
+        ci_dft + (ks_internal.max(expand))
+    }
+
+    fn ggsw_automorphism<R, A, K, T>(&self, res: &mut R, a: &A, key: &K, tsk: &T, scratch: &mut Scratch<BE>)
+    where
+        R: GGSWToMut,
+        A: GGSWToRef,
+        K: GetGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
+        T: GLWETensorKeyPreparedToRef<BE>,
+        Scratch<BE>: ScratchTakeCore<BE>,
+    {
+        let res: &mut GGSW<&mut [u8]> = &mut res.to_mut();
+        let a: &GGSW<&[u8]> = &a.to_ref();
+        let tsk: &GLWETensorKeyPrepared<&[u8], BE> = &tsk.to_ref();
+
+        assert_eq!(res.dsize(), a.dsize());
+        assert!(res.dnum() <= a.dnum());
+        assert!(scratch.available() >= self.ggsw_automorphism_tmp_bytes(res, a, key, tsk));
+
+        // Keyswitch the j-th row of the col 0
+        for row in 0..res.dnum().as_usize() {
+            // Key-switch column 0, i.e.
+            // col 0: (-(a0s0 + a1s1 + a2s2) + M[i], a0, a1, a2) -> (-(a0pi^-1(s0) + a1pi^-1(s1) + a2pi^-1(s2)) + M[i], a0, a1, a2)
+            self.glwe_automorphism(&mut res.at_mut(row, 0), &a.at(row, 0), key, scratch);
+        }
+
+        self.ggsw_expand_row(res, tsk, scratch);
+    }
+
+    fn ggsw_automorphism_inplace<R, K, T>(&self, res: &mut R, key: &K, tsk: &T, scratch: &mut Scratch<BE>)
+    where
+        R: GGSWToMut,
+        K: GetGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
+        T: GLWETensorKeyPreparedToRef<BE>,
+        Scratch<BE>: ScratchTakeCore<BE>,
+    {
+        let res: &mut GGSW<&mut [u8]> = &mut res.to_mut();
+        let tsk: &GLWETensorKeyPrepared<&[u8], BE> = &tsk.to_ref();
+
+        // Keyswitch the j-th row of the col 0
+        for row in 0..res.dnum().as_usize() {
+            // Key-switch column 0, i.e.
+            // col 0: (-(a0s0 + a1s1 + a2s2) + M[i], a0, a1, a2) -> (-(a0pi^-1(s0) + a1pi^-1(s1) + a2pi^-1(s2)) + M[i], a0, a1, a2)
+            self.glwe_automorphism_inplace(&mut res.at_mut(row, 0), key, scratch);
+        }
+
+        self.ggsw_expand_row(res, tsk, scratch);
+    }
+}
+
+impl<DataSelf: DataMut> GGSW<DataSelf> {}

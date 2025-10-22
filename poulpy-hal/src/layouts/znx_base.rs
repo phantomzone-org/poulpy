@@ -1,3 +1,5 @@
+use std::fmt::{Debug, Display};
+
 use crate::{
     layouts::{Backend, Data, DataMut, DataRef},
     source::Source,
@@ -48,7 +50,7 @@ pub trait DataViewMut: DataView {
 }
 
 pub trait ZnxView: ZnxInfos + DataView<D: DataRef> {
-    type Scalar: Copy + Zero;
+    type Scalar: Copy + Zero + Display + Debug;
 
     /// Returns a non-mutable pointer to the underlying coefficients array.
     fn as_ptr(&self) -> *const Self::Scalar {

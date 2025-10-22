@@ -1,68 +1,23 @@
 use poulpy_hal::{
-    api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare,
-        VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxAutomorphismInplace, VecZnxBigAddInplace,
-        VecZnxBigAddSmallInplace, VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxCopy,
-        VecZnxDftAllocBytes, VecZnxDftApply, VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeInplace,
-        VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubInplace, VecZnxSwitchRing, VmpApplyDftToDft, VmpApplyDftToDftAdd,
-        VmpApplyDftToDftTmpBytes, VmpPMatAlloc, VmpPrepare, ZnAddNormal, ZnFillUniform, ZnNormalizeInplace,
-    },
-    layouts::{Backend, Module, ScratchOwned, ZnxView},
-    oep::{
-        ScratchAvailableImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeScalarZnxImpl, TakeSvpPPolImpl,
-        TakeVecZnxBigImpl, TakeVecZnxDftImpl, TakeVecZnxImpl,
-    },
+    api::{ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow},
+    layouts::{Backend, Module, Scratch, ScratchOwned, ZnxView},
     source::Source,
 };
 
-use crate::layouts::{
-    LWECiphertext, LWECiphertextLayout, LWEPlaintext, LWESecret, LWESwitchingKey, LWESwitchingKeyLayout,
-    prepared::{LWESwitchingKeyPrepared, PrepareAlloc},
+use crate::{
+    LWEDecrypt, LWEEncryptSk, LWEKeySwitch, LWESwitchingKeyEncrypt, ScratchTakeCore,
+    layouts::{
+        LWE, LWELayout, LWEPlaintext, LWESecret, LWESwitchingKey, LWESwitchingKeyLayout, LWESwitchingKeyPreparedFactory,
+        prepared::LWESwitchingKeyPrepared,
+    },
 };
 
-pub fn test_lwe_keyswitch<B>(module: &Module<B>)
+pub fn test_lwe_keyswitch<BE: Backend>(module: &Module<BE>)
 where
-    Module<B>: VecZnxDftAllocBytes
-        + VecZnxBigNormalize<B>
-        + VecZnxDftApply<B>
-        + SvpApplyDftToDftInplace<B>
-        + VecZnxIdftApplyConsume<B>
-        + VecZnxFillUniform
-        + VecZnxSubInplace
-        + VecZnxAddInplace
-        + VecZnxNormalizeInplace<B>
-        + VecZnxAddNormal
-        + VecZnxNormalize<B>
-        + VecZnxSub
-        + SvpPrepare<B>
-        + SvpPPolAllocBytes
-        + SvpPPolAlloc<B>
-        + VecZnxBigAllocBytes
-        + VecZnxBigAddInplace<B>
-        + VecZnxBigAddSmallInplace<B>
-        + VecZnxNormalizeTmpBytes
-        + VecZnxAddScalarInplace
-        + VmpPMatAlloc<B>
-        + VmpPrepare<B>
-        + VmpApplyDftToDftTmpBytes
-        + VmpApplyDftToDft<B>
-        + VmpApplyDftToDftAdd<B>
-        + VecZnxBigNormalizeTmpBytes
-        + VecZnxSwitchRing
-        + VecZnxAutomorphismInplace<B>
-        + ZnNormalizeInplace<B>
-        + ZnFillUniform
-        + ZnAddNormal
-        + VecZnxCopy,
-    B: Backend
-        + TakeVecZnxDftImpl<B>
-        + TakeVecZnxBigImpl<B>
-        + TakeSvpPPolImpl<B>
-        + ScratchOwnedAllocImpl<B>
-        + ScratchOwnedBorrowImpl<B>
-        + ScratchAvailableImpl<B>
-        + TakeScalarZnxImpl<B>
-        + TakeVecZnxImpl<B>,
+    Module<BE>:
+        LWEKeySwitch<BE> + LWESwitchingKeyEncrypt<BE> + LWEEncryptSk<BE> + LWESwitchingKeyPreparedFactory<BE> + LWEDecrypt<BE>,
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
+    Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
     let n: usize = module.n();
     let base2k: usize = 17;
@@ -86,21 +41,21 @@ where
         dnum: dnum.into(),
     };
 
-    let lwe_in_infos: LWECiphertextLayout = LWECiphertextLayout {
+    let lwe_in_infos: LWELayout = LWELayout {
         n: n_lwe_in.into(),
         base2k: base2k.into(),
         k: k_lwe_ct.into(),
     };
 
-    let lwe_out_infos: LWECiphertextLayout = LWECiphertextLayout {
+    let lwe_out_infos: LWELayout = LWELayout {
         n: n_lwe_out.into(),
         k: k_lwe_ct.into(),
         base2k: base2k.into(),
     };
 
-    let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(
-        LWESwitchingKey::encrypt_sk_scratch_space(module, &key_apply_infos)
-            | LWECiphertext::keyswitch_scratch_space(module, &lwe_out_infos, &lwe_in_infos, &key_apply_infos),
+    let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
+        LWESwitchingKey::encrypt_sk_tmp_bytes(module, &key_apply_infos)
+            | LWE::keyswitch_tmp_bytes(module, &lwe_out_infos, &lwe_in_infos, &key_apply_infos),
     );
 
     let mut sk_lwe_in: LWESecret<Vec<u8>> = LWESecret::alloc(n_lwe_in.into());
@@ -111,10 +66,10 @@ where
 
     let data: i64 = 17;
 
-    let mut lwe_pt_in: LWEPlaintext<Vec<u8>> = LWEPlaintext::alloc_with(base2k.into(), k_lwe_pt.into());
+    let mut lwe_pt_in: LWEPlaintext<Vec<u8>> = LWEPlaintext::alloc(base2k.into(), k_lwe_pt.into());
     lwe_pt_in.encode_i64(data, k_lwe_pt.into());
 
-    let mut lwe_ct_in: LWECiphertext<Vec<u8>> = LWECiphertext::alloc(&lwe_in_infos);
+    let mut lwe_ct_in: LWE<Vec<u8>> = LWE::alloc_from_infos(&lwe_in_infos);
     lwe_ct_in.encrypt_sk(
         module,
         &lwe_pt_in,
@@ -123,7 +78,7 @@ where
         &mut source_xe,
     );
 
-    let mut ksk: LWESwitchingKey<Vec<u8>> = LWESwitchingKey::alloc(&key_apply_infos);
+    let mut ksk: LWESwitchingKey<Vec<u8>> = LWESwitchingKey::alloc_from_infos(&key_apply_infos);
 
     ksk.encrypt_sk(
         module,
@@ -134,13 +89,14 @@ where
         scratch.borrow(),
     );
 
-    let mut lwe_ct_out: LWECiphertext<Vec<u8>> = LWECiphertext::alloc(&lwe_out_infos);
+    let mut lwe_ct_out: LWE<Vec<u8>> = LWE::alloc_from_infos(&lwe_out_infos);
 
-    let ksk_prepared: LWESwitchingKeyPrepared<Vec<u8>, B> = ksk.prepare_alloc(module, scratch.borrow());
+    let mut ksk_prepared: LWESwitchingKeyPrepared<Vec<u8>, BE> = LWESwitchingKeyPrepared::alloc_from_infos(module, &ksk);
+    ksk_prepared.prepare(module, &ksk, scratch.borrow());
 
     lwe_ct_out.keyswitch(module, &lwe_ct_in, &ksk_prepared, scratch.borrow());
 
-    let mut lwe_pt_out: LWEPlaintext<Vec<u8>> = LWEPlaintext::alloc(&lwe_out_infos);
+    let mut lwe_pt_out: LWEPlaintext<Vec<u8>> = LWEPlaintext::alloc_from_infos(&lwe_out_infos);
     lwe_ct_out.decrypt(module, &mut lwe_pt_out, &sk_lwe_out);
 
     assert_eq!(lwe_pt_in.data.at(0, 0)[0], lwe_pt_out.data.at(0, 0)[0]);

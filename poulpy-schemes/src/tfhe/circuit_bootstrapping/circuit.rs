@@ -1,185 +1,231 @@
 use std::collections::HashMap;
 
 use poulpy_hal::{
-    api::{
-        ScratchAvailable, TakeMatZnx, TakeSlice, TakeVecZnx, TakeVecZnxBig, TakeVecZnxDft, TakeVecZnxDftSlice, TakeVecZnxSlice,
-        VecZnxAddInplace, VecZnxAutomorphismInplace, VecZnxBigAddSmallInplace, VecZnxBigAllocBytes, VecZnxBigAutomorphismInplace,
-        VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallNegateInplace, VecZnxCopy, VecZnxDftAddInplace,
-        VecZnxDftAllocBytes, VecZnxDftApply, VecZnxDftCopy, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA, VecZnxNegateInplace,
-        VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace,
-        VecZnxRotateInplaceTmpBytes, VecZnxRshInplace, VecZnxSub, VecZnxSubInplace, VecZnxSwitchRing, VmpApplyDftToDft,
-        VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
-    },
-    layouts::{Backend, DataMut, DataRef, Module, Scratch, ToOwnedDeep},
-    oep::{ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl},
+    api::{ModuleLogN, ModuleN, ScratchOwnedAlloc, ScratchOwnedBorrow},
+    layouts::{Backend, DataRef, Module, Scratch, ScratchOwned, ToOwnedDeep},
 };
 
 use poulpy_core::{
-    GLWEOperations, TakeGGLWE, TakeGLWECt,
-    layouts::{Dsize, GGLWECiphertextLayout, GGSWInfos, GLWEInfos, LWEInfos},
+    GGSWFromGGLWE, GLWEDecrypt, GLWEPacking, GLWETrace, ScratchTakeCore,
+    layouts::{
+        Dsize, GGLWELayout, GGSWInfos, GGSWToMut, GLWEInfos, GLWESecretPreparedFactory, GLWEToMut, GLWEToRef, LWEInfos, LWEToRef,
+    },
 };
 
-use poulpy_core::glwe_packing;
-use poulpy_core::layouts::{GGSWCiphertext, GLWECiphertext, LWECiphertext, prepared::GGLWEAutomorphismKeyPrepared};
+use poulpy_core::layouts::{GGSW, GLWE, LWE, prepared::GLWEAutomorphismKeyPrepared};
 
 use crate::tfhe::{
     blind_rotation::{
-        BlincRotationExecute, BlindRotationAlgo, BlindRotationKeyPrepared, LookUpTable, LookUpTableRotationDirection,
+        BlindRotationAlgo, BlindRotationExecute, LookUpTableLayout, LookUpTableRotationDirection, LookupTable, LookupTableFactory,
     },
-    circuit_bootstrapping::{CircuitBootstrappingKeyPrepared, CirtuitBootstrappingExecute},
+    circuit_bootstrapping::{CircuitBootstrappingKeyInfos, CircuitBootstrappingKeyPrepared},
 };
 
-impl<D: DataRef, BRA: BlindRotationAlgo, B> CirtuitBootstrappingExecute<B> for CircuitBootstrappingKeyPrepared<D, BRA, B>
-where
-    Module<B>: VecZnxRotateInplace<B>
-        + VecZnxNormalizeInplace<B>
-        + VecZnxNormalizeTmpBytes
-        + VecZnxSwitchRing
-        + VecZnxBigAutomorphismInplace<B>
-        + VecZnxRshInplace<B>
-        + VecZnxDftCopy<B>
-        + VecZnxIdftApplyTmpA<B>
-        + VecZnxSub
-        + VecZnxAddInplace
-        + VecZnxNegateInplace
-        + VecZnxCopy
-        + VecZnxSubInplace
-        + VecZnxDftAllocBytes
-        + VmpApplyDftToDftTmpBytes
-        + VecZnxBigNormalizeTmpBytes
-        + VmpApplyDftToDft<B>
-        + VmpApplyDftToDftAdd<B>
-        + VecZnxDftApply<B>
-        + VecZnxIdftApplyConsume<B>
-        + VecZnxBigAddSmallInplace<B>
-        + VecZnxBigNormalize<B>
-        + VecZnxAutomorphismInplace<B>
-        + VecZnxBigSubSmallNegateInplace<B>
-        + VecZnxRotateInplaceTmpBytes
-        + VecZnxBigAllocBytes
-        + VecZnxDftAddInplace<B>
-        + VecZnxRotate
-        + VecZnxNormalize<B>,
-    B: Backend + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
-    Scratch<B>: TakeVecZnx
-        + TakeVecZnxDftSlice<B>
-        + TakeVecZnxBig<B>
-        + TakeVecZnxDft<B>
-        + TakeMatZnx
-        + ScratchAvailable
-        + TakeVecZnxSlice
-        + TakeSlice,
-    BlindRotationKeyPrepared<D, BRA, B>: BlincRotationExecute<B>,
-{
-    fn execute_to_constant<DM: DataMut, DR: DataRef>(
+pub trait CirtuitBootstrappingExecute<BRA: BlindRotationAlgo, BE: Backend> {
+    fn circuit_bootstrapping_execute_tmp_bytes<R, A>(
         &self,
-        module: &Module<B>,
-        res: &mut GGSWCiphertext<DM>,
-        lwe: &LWECiphertext<DR>,
+        block_size: usize,
+        extension_factor: usize,
+        res_infos: &R,
+        cbt_infos: &A,
+    ) -> usize
+    where
+        R: GGSWInfos,
+        A: CircuitBootstrappingKeyInfos;
+
+    fn circuit_bootstrapping_execute_to_constant<R, L, D>(
+        &self,
+        res: &mut R,
+        lwe: &L,
+        key: &CircuitBootstrappingKeyPrepared<D, BRA, BE>,
         log_domain: usize,
         extension_factor: usize,
-        scratch: &mut Scratch<B>,
-    ) {
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: GGSWToMut + GGSWInfos,
+        L: LWEToRef + LWEInfos,
+        D: DataRef;
+
+    #[allow(clippy::too_many_arguments)]
+    fn circuit_bootstrapping_execute_to_exponent<R, L, D>(
+        &self,
+        log_gap_out: usize,
+        res: &mut R,
+        lwe: &L,
+        key: &CircuitBootstrappingKeyPrepared<D, BRA, BE>,
+        log_domain: usize,
+        extension_factor: usize,
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: GGSWToMut + GGSWInfos,
+        L: LWEToRef + LWEInfos,
+        D: DataRef;
+}
+
+impl<D: DataRef, BRA: BlindRotationAlgo, BE: Backend> CircuitBootstrappingKeyPrepared<D, BRA, BE> {
+    pub fn execute_to_constant<M, L, R>(
+        &self,
+        module: &M,
+        res: &mut R,
+        lwe: &L,
+        log_domain: usize,
+        extension_factor: usize,
+        scratch: &mut Scratch<BE>,
+    ) where
+        M: CirtuitBootstrappingExecute<BRA, BE>,
+        R: GGSWToMut + GGSWInfos,
+        L: LWEToRef + LWEInfos,
+    {
+        module.circuit_bootstrapping_execute_to_constant(res, lwe, self, log_domain, extension_factor, scratch);
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn execute_to_exponent<R, L, M>(
+        &self,
+        module: &M,
+        log_gap_out: usize,
+        res: &mut R,
+        lwe: &L,
+        log_domain: usize,
+        extension_factor: usize,
+        scratch: &mut Scratch<BE>,
+    ) where
+        M: CirtuitBootstrappingExecute<BRA, BE>,
+        R: GGSWToMut + GGSWInfos,
+        L: LWEToRef + LWEInfos,
+    {
+        module.circuit_bootstrapping_execute_to_exponent(
+            log_gap_out,
+            res,
+            lwe,
+            self,
+            log_domain,
+            extension_factor,
+            scratch,
+        );
+    }
+}
+
+impl<BRA: BlindRotationAlgo, BE: Backend> CirtuitBootstrappingExecute<BRA, BE> for Module<BE>
+where
+    Self: ModuleN
+        + LookupTableFactory
+        + BlindRotationExecute<BRA, BE>
+        + GLWETrace<BE>
+        + GLWEPacking<BE>
+        + GGSWFromGGLWE<BE>
+        + GLWESecretPreparedFactory<BE>
+        + GLWEDecrypt<BE>,
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
+    Scratch<BE>: ScratchTakeCore<BE>,
+{
+    fn circuit_bootstrapping_execute_tmp_bytes<R, A>(
+        &self,
+        block_size: usize,
+        extension_factor: usize,
+        res_infos: &R,
+        cbt_infos: &A,
+    ) -> usize
+    where
+        R: GGSWInfos,
+        A: CircuitBootstrappingKeyInfos,
+    {
+        self.blind_rotation_execute_tmp_bytes(
+            block_size,
+            extension_factor,
+            res_infos,
+            &cbt_infos.brk_infos(),
+        )
+        .max(self.glwe_trace_tmp_bytes(res_infos, res_infos, &cbt_infos.atk_infos()))
+        .max(self.ggsw_from_gglwe_tmp_bytes(res_infos, &cbt_infos.tsk_infos()))
+    }
+
+    fn circuit_bootstrapping_execute_to_constant<R, L, D>(
+        &self,
+        res: &mut R,
+        lwe: &L,
+        key: &CircuitBootstrappingKeyPrepared<D, BRA, BE>,
+        log_domain: usize,
+        extension_factor: usize,
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: GGSWToMut + GGSWInfos,
+        L: LWEToRef + LWEInfos,
+        D: DataRef,
+    {
         circuit_bootstrap_core(
             false,
-            module,
+            self,
             0,
             res,
             lwe,
             log_domain,
             extension_factor,
-            self,
+            key,
             scratch,
         );
     }
 
-    fn execute_to_exponent<DM: DataMut, DR: DataRef>(
+    fn circuit_bootstrapping_execute_to_exponent<R, L, D>(
         &self,
-        module: &Module<B>,
         log_gap_out: usize,
-        res: &mut GGSWCiphertext<DM>,
-        lwe: &LWECiphertext<DR>,
+        res: &mut R,
+        lwe: &L,
+        key: &CircuitBootstrappingKeyPrepared<D, BRA, BE>,
         log_domain: usize,
         extension_factor: usize,
-        scratch: &mut Scratch<B>,
-    ) {
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: GGSWToMut + GGSWInfos,
+        L: LWEToRef + LWEInfos,
+        D: DataRef,
+    {
         circuit_bootstrap_core(
             true,
-            module,
+            self,
             log_gap_out,
             res,
             lwe,
             log_domain,
             extension_factor,
-            self,
+            key,
             scratch,
         );
     }
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn circuit_bootstrap_core<DRes, DLwe, DBrk, BRA: BlindRotationAlgo, B>(
+pub fn circuit_bootstrap_core<R, L, D, M, BRA: BlindRotationAlgo, BE: Backend>(
     to_exponent: bool,
-    module: &Module<B>,
+    module: &M,
     log_gap_out: usize,
-    res: &mut GGSWCiphertext<DRes>,
-    lwe: &LWECiphertext<DLwe>,
+    res: &mut R,
+    lwe: &L,
     log_domain: usize,
     extension_factor: usize,
-    key: &CircuitBootstrappingKeyPrepared<DBrk, BRA, B>,
-    scratch: &mut Scratch<B>,
+    key: &CircuitBootstrappingKeyPrepared<D, BRA, BE>,
+    scratch: &mut Scratch<BE>,
 ) where
-    DRes: DataMut,
-    DLwe: DataRef,
-    DBrk: DataRef,
-    Module<B>: VecZnxRotateInplace<B>
-        + VecZnxNormalizeInplace<B>
-        + VecZnxNormalizeTmpBytes
-        + VecZnxSwitchRing
-        + VecZnxBigAutomorphismInplace<B>
-        + VecZnxRshInplace<B>
-        + VecZnxDftCopy<B>
-        + VecZnxIdftApplyTmpA<B>
-        + VecZnxSub
-        + VecZnxAddInplace
-        + VecZnxNegateInplace
-        + VecZnxCopy
-        + VecZnxSubInplace
-        + VecZnxDftAllocBytes
-        + VmpApplyDftToDftTmpBytes
-        + VecZnxBigNormalizeTmpBytes
-        + VmpApplyDftToDft<B>
-        + VmpApplyDftToDftAdd<B>
-        + VecZnxDftApply<B>
-        + VecZnxIdftApplyConsume<B>
-        + VecZnxBigAddSmallInplace<B>
-        + VecZnxBigNormalize<B>
-        + VecZnxAutomorphismInplace<B>
-        + VecZnxBigSubSmallNegateInplace<B>
-        + VecZnxBigAllocBytes
-        + VecZnxDftAddInplace<B>
-        + VecZnxRotateInplaceTmpBytes
-        + VecZnxRotate
-        + VecZnxNormalize<B>,
-    B: Backend + ScratchOwnedAllocImpl<B> + ScratchOwnedBorrowImpl<B>,
-    Scratch<B>: TakeVecZnxDftSlice<B>
-        + TakeVecZnxBig<B>
-        + TakeVecZnxDft<B>
-        + TakeVecZnx
-        + ScratchAvailable
-        + TakeVecZnxSlice
-        + TakeMatZnx
-        + TakeSlice,
-    BlindRotationKeyPrepared<DBrk, BRA, B>: BlincRotationExecute<B>,
+    R: GGSWToMut,
+    L: LWEToRef,
+    D: DataRef,
+    M: ModuleN
+        + LookupTableFactory
+        + BlindRotationExecute<BRA, BE>
+        + GLWETrace<BE>
+        + GLWEPacking<BE>
+        + GGSWFromGGLWE<BE>
+        + GLWESecretPreparedFactory<BE>
+        + GLWEDecrypt<BE>,
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
+    Scratch<BE>: ScratchTakeCore<BE>,
 {
-    #[cfg(debug_assertions)]
-    {
-        use poulpy_core::layouts::LWEInfos;
+    let res: &mut GGSW<&mut [u8]> = &mut res.to_mut();
+    let lwe: &LWE<&[u8]> = &lwe.to_ref();
 
-        assert_eq!(res.n(), key.brk.n());
-        assert_eq!(lwe.base2k(), key.brk.base2k());
-        assert_eq!(res.base2k(), key.brk.base2k());
-    }
+    assert_eq!(res.n(), key.brk.n());
+    assert_eq!(lwe.base2k(), key.brk.base2k());
+    assert_eq!(res.base2k(), key.brk.base2k());
 
     let n: usize = res.n().into();
     let base2k: usize = res.base2k().into();
@@ -203,8 +249,15 @@ pub fn circuit_bootstrap_core<DRes, DLwe, DBrk, BRA: BlindRotationAlgo, B>(
         });
     }
 
+    let lut_infos: LookUpTableLayout = LookUpTableLayout {
+        n: module.n().into(),
+        extension_factor,
+        k: (base2k * dnum).into(),
+        base2k: base2k.into(),
+    };
+
     // Lut precision, basically must be able to hold the decomposition power basis of the GGSW
-    let mut lut: LookUpTable = LookUpTable::alloc(module, base2k, base2k * dnum, extension_factor);
+    let mut lut: LookupTable = LookupTable::alloc(&lut_infos);
     lut.set(module, &f, base2k * dnum);
 
     if to_exponent {
@@ -212,9 +265,9 @@ pub fn circuit_bootstrap_core<DRes, DLwe, DBrk, BRA: BlindRotationAlgo, B>(
     }
 
     // TODO: separate GGSW k from output of blind rotation k
-    let (mut res_glwe, scratch_1) = scratch.take_glwe_ct(res);
+    let (mut res_glwe, scratch_1) = scratch.take_glwe(res);
 
-    let gglwe_infos: GGLWECiphertextLayout = GGLWECiphertextLayout {
+    let gglwe_infos: GGLWELayout = GGLWELayout {
         n: n.into(),
         base2k: base2k.into(),
         k: k.into(),
@@ -233,7 +286,7 @@ pub fn circuit_bootstrap_core<DRes, DLwe, DBrk, BRA: BlindRotationAlgo, B>(
     let log_gap_in: usize = (usize::BITS - (gap * alpha - 1).leading_zeros()) as _;
 
     (0..dnum).for_each(|i| {
-        let mut tmp_glwe: GLWECiphertext<&mut [u8]> = tmp_gglwe.at_mut(i, 0);
+        let mut tmp_glwe: GLWE<&mut [u8]> = tmp_gglwe.at_mut(i, 0);
 
         if to_exponent {
             // Isolates i-th LUT and moves coefficients according to requested gap.
@@ -251,8 +304,14 @@ pub fn circuit_bootstrap_core<DRes, DLwe, DBrk, BRA: BlindRotationAlgo, B>(
             tmp_glwe.trace(module, 0, module.log_n(), &res_glwe, &key.atk, scratch_2);
         }
 
+        // let sk_glwe: &poulpy_core::layouts::GLWESecret<&[u8]> = &sk_glwe.to_ref();
+        // let sk_glwe_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(module, sk_glwe.rank());
+        // let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&res_glwe);
+        // res_glwe.decrypt(module, &mut pt, &sk_glwe_prepared, scratch_2);
+        // println!("pt[{i}]: {}", pt);
+
         if i < dnum {
-            res_glwe.rotate_inplace(module, -(gap as i64), scratch_2);
+            module.glwe_rotate_inplace(-(gap as i64), &mut res_glwe, scratch_2);
         }
     });
 
@@ -261,49 +320,27 @@ pub fn circuit_bootstrap_core<DRes, DLwe, DBrk, BRA: BlindRotationAlgo, B>(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn post_process<DataRes, DataA, B: Backend>(
-    module: &Module<B>,
-    res: &mut GLWECiphertext<DataRes>,
-    a: &GLWECiphertext<DataA>,
+fn post_process<R, A, M, BE: Backend>(
+    module: &M,
+    res: &mut R,
+    a: &A,
     log_gap_in: usize,
     log_gap_out: usize,
     log_domain: usize,
-    auto_keys: &HashMap<i64, GGLWEAutomorphismKeyPrepared<Vec<u8>, B>>,
-    scratch: &mut Scratch<B>,
+    auto_keys: &HashMap<i64, GLWEAutomorphismKeyPrepared<Vec<u8>, BE>>,
+    scratch: &mut Scratch<BE>,
 ) where
-    DataRes: DataMut,
-    DataA: DataRef,
-    Module<B>: VecZnxRotateInplace<B>
-        + VecZnxNormalizeInplace<B>
-        + VecZnxNormalizeTmpBytes
-        + VecZnxSwitchRing
-        + VecZnxBigAutomorphismInplace<B>
-        + VecZnxRshInplace<B>
-        + VecZnxDftCopy<B>
-        + VecZnxIdftApplyTmpA<B>
-        + VecZnxSub
-        + VecZnxAddInplace
-        + VecZnxNegateInplace
-        + VecZnxCopy
-        + VecZnxSubInplace
-        + VecZnxDftAllocBytes
-        + VmpApplyDftToDftTmpBytes
-        + VecZnxBigNormalizeTmpBytes
-        + VmpApplyDftToDft<B>
-        + VmpApplyDftToDftAdd<B>
-        + VecZnxDftApply<B>
-        + VecZnxIdftApplyConsume<B>
-        + VecZnxBigAddSmallInplace<B>
-        + VecZnxBigNormalize<B>
-        + VecZnxAutomorphismInplace<B>
-        + VecZnxBigSubSmallNegateInplace<B>
-        + VecZnxRotate
-        + VecZnxNormalize<B>,
-    Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
+    R: GLWEToMut,
+    A: GLWEToRef,
+    M: ModuleLogN + GLWETrace<BE> + GLWEPacking<BE>,
+    Scratch<BE>: ScratchTakeCore<BE>,
 {
+    let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
+    let a: &GLWE<&[u8]> = &a.to_ref();
+
     let log_n: usize = module.log_n();
 
-    let mut cts: HashMap<usize, &mut GLWECiphertext<Vec<u8>>> = HashMap::new();
+    let mut cts: HashMap<usize, &mut GLWE<Vec<u8>>> = HashMap::new();
 
     // First partial trace, vanishes all coefficients which are not multiples of gap_in
     // [1, 1, 1, 1, 0, 0, 0, ..., 0, 0, -1, -1, -1, -1] -> [1, 0, 0, 0, 0, 0, 0, ..., 0, 0, 0, 0, 0, 0]
@@ -322,11 +359,11 @@ fn post_process<DataRes, DataA, B: Backend>(
         let steps: usize = 1 << log_domain;
 
         // TODO: from Scratch
-        let mut cts_vec: Vec<GLWECiphertext<Vec<u8>>> = Vec::new();
+        let mut cts_vec: Vec<GLWE<Vec<u8>>> = Vec::new();
 
         for i in 0..steps {
             if i != 0 {
-                res.rotate_inplace(module, -(1 << log_gap_in), scratch);
+                module.glwe_rotate_inplace(-(1 << log_gap_in), res, scratch);
             }
             cts_vec.push(res.to_owned_deep());
         }
@@ -335,8 +372,9 @@ fn post_process<DataRes, DataA, B: Backend>(
             cts.insert(i * (1 << log_gap_out), ct);
         }
 
-        glwe_packing(module, &mut cts, log_gap_out, auto_keys, scratch);
-        let packed: &mut GLWECiphertext<Vec<u8>> = cts.remove(&0).unwrap();
+        module.glwe_pack(&mut cts, log_gap_out, auto_keys, scratch);
+
+        let packed: &mut GLWE<Vec<u8>> = cts.remove(&0).unwrap();
         res.trace(
             module,
             log_n - log_gap_out,

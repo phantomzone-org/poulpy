@@ -15,7 +15,7 @@ pub unsafe trait VmpPMatAllocImpl<B: Backend> {
 /// * See [crate::api::VmpPMatAllocBytes] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VmpPMatAllocBytesImpl<B: Backend> {
-    fn vmp_pmat_alloc_bytes_impl(n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize;
+    fn vmp_pmat_bytes_of_impl(n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize;
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)

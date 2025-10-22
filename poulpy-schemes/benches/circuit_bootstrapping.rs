@@ -2,107 +2,46 @@ use std::hint::black_box;
 
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use poulpy_backend::{FFT64Avx, FFT64Ref, FFT64Spqlios};
-use poulpy_core::layouts::{
-    Dsize, GGLWEAutomorphismKeyLayout, GGLWETensorKeyLayout, GGSWCiphertext, GGSWCiphertextLayout, GLWESecret, LWECiphertext,
-    LWECiphertextLayout, LWESecret, prepared::PrepareAlloc,
+use poulpy_core::{
+    GGSWNoise, GLWEDecrypt, GLWEEncryptSk, GLWEExternalProduct, LWEEncryptSk, ScratchTakeCore,
+    layouts::{
+        Dsize, GGSW, GGSWLayout, GGSWPreparedFactory, GLWEAutomorphismKeyLayout, GLWESecret, GLWESecretPreparedFactory,
+        GLWETensorKeyLayout, LWE, LWELayout, LWESecret,
+    },
 };
 use poulpy_hal::{
-    api::{
-        ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolAlloc,
-        SvpPPolAllocBytes, SvpPrepare, VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxAutomorphism,
-        VecZnxAutomorphismInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigAlloc, VecZnxBigAllocBytes,
-        VecZnxBigAutomorphismInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallNegateInplace, VecZnxCopy,
-        VecZnxDftAddInplace, VecZnxDftAlloc, VecZnxDftAllocBytes, VecZnxDftApply, VecZnxDftCopy, VecZnxFillUniform,
-        VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA, VecZnxNegateInplace, VecZnxNormalize, VecZnxNormalizeInplace,
-        VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace, VecZnxRotateInplaceTmpBytes, VecZnxRshInplace, VecZnxSub,
-        VecZnxSubInplace, VecZnxSwitchRing, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes, VmpPMatAlloc,
-        VmpPrepare, ZnAddNormal, ZnFillUniform, ZnNormalizeInplace,
-    },
-    layouts::{Backend, Module, ScratchOwned},
-    oep::{
-        ScratchAvailableImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeMatZnxImpl, TakeScalarZnxImpl, TakeSliceImpl,
-        TakeSvpPPolImpl, TakeVecZnxBigImpl, TakeVecZnxDftImpl, TakeVecZnxDftSliceImpl, TakeVecZnxImpl, TakeVecZnxSliceImpl,
-    },
+    api::{ModuleN, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxRotateInplace},
+    layouts::{Backend, Module, Scratch, ScratchOwned},
     source::Source,
 };
 use poulpy_schemes::tfhe::{
     blind_rotation::{
-        BlincRotationExecute, BlindRotationAlgo, BlindRotationKey, BlindRotationKeyAlloc, BlindRotationKeyEncryptSk,
-        BlindRotationKeyInfos, BlindRotationKeyLayout, BlindRotationKeyPrepared, CGGI,
+        BlindRotationAlgo, BlindRotationKey, BlindRotationKeyFactory, BlindRotationKeyInfos, BlindRotationKeyLayout, CGGI,
     },
     circuit_bootstrapping::{
         CircuitBootstrappingKey, CircuitBootstrappingKeyEncryptSk, CircuitBootstrappingKeyLayout,
-        CircuitBootstrappingKeyPrepared, CirtuitBootstrappingExecute,
+        CircuitBootstrappingKeyPrepared, CircuitBootstrappingKeyPreparedFactory, CirtuitBootstrappingExecute,
     },
 };
 
-pub fn benc_circuit_bootstrapping<B: Backend, BRA: BlindRotationAlgo>(c: &mut Criterion, label: &str)
+pub fn benc_circuit_bootstrapping<BE: Backend, BRA: BlindRotationAlgo>(c: &mut Criterion, label: &str)
 where
-    Module<B>: ModuleNew<B>
-        + VecZnxFillUniform
-        + VecZnxAddNormal
-        + VecZnxNormalizeInplace<B>
-        + VecZnxDftAllocBytes
-        + VecZnxBigNormalize<B>
-        + VecZnxDftApply<B>
-        + SvpApplyDftToDftInplace<B>
-        + VecZnxIdftApplyConsume<B>
-        + VecZnxNormalizeTmpBytes
-        + VecZnxSubInplace
-        + VecZnxAddInplace
-        + VecZnxNormalize<B>
-        + VecZnxSub
-        + VecZnxAddScalarInplace
-        + VecZnxAutomorphism
-        + VecZnxSwitchRing
-        + VecZnxBigAllocBytes
-        + VecZnxIdftApplyTmpA<B>
-        + SvpApplyDftToDft<B>
-        + VecZnxBigAddInplace<B>
-        + VecZnxBigAddSmallInplace<B>
-        + VecZnxBigAlloc<B>
-        + VecZnxDftAlloc<B>
-        + VecZnxBigNormalizeTmpBytes
-        + VmpPMatAlloc<B>
-        + VmpPrepare<B>
-        + SvpPrepare<B>
-        + SvpPPolAlloc<B>
-        + VmpApplyDftToDftTmpBytes
-        + VmpApplyDftToDft<B>
-        + VmpApplyDftToDftAdd<B>
-        + SvpPPolAllocBytes
-        + VecZnxRotateInplace<B>
-        + VecZnxBigAutomorphismInplace<B>
-        + VecZnxRshInplace<B>
-        + VecZnxDftCopy<B>
-        + VecZnxNegateInplace
-        + VecZnxCopy
-        + VecZnxAutomorphismInplace<B>
-        + VecZnxBigSubSmallNegateInplace<B>
-        + VecZnxRotateInplaceTmpBytes
-        + VecZnxBigAllocBytes
-        + VecZnxDftAddInplace<B>
-        + VecZnxRotate
-        + ZnFillUniform
-        + ZnAddNormal
-        + ZnNormalizeInplace<B>,
-    ScratchOwned<B>: ScratchOwnedAlloc<B> + ScratchOwnedBorrow<B>,
-    B: Backend
-        + ScratchOwnedAllocImpl<B>
-        + ScratchOwnedBorrowImpl<B>
-        + TakeVecZnxDftImpl<B>
-        + ScratchAvailableImpl<B>
-        + TakeVecZnxImpl<B>
-        + TakeScalarZnxImpl<B>
-        + TakeSvpPPolImpl<B>
-        + TakeVecZnxBigImpl<B>
-        + TakeVecZnxDftSliceImpl<B>
-        + TakeMatZnxImpl<B>
-        + TakeVecZnxSliceImpl<B>
-        + TakeSliceImpl<B>,
-    BlindRotationKey<Vec<u8>, BRA>: PrepareAlloc<B, BlindRotationKeyPrepared<Vec<u8>, BRA, B>>,
-    BlindRotationKeyPrepared<Vec<u8>, BRA, B>: BlincRotationExecute<B>,
-    BlindRotationKey<Vec<u8>, BRA>: BlindRotationKeyAlloc + BlindRotationKeyEncryptSk<B>,
+    Module<BE>: ModuleNew<BE>
+        + ModuleN
+        + GLWESecretPreparedFactory<BE>
+        + GLWEExternalProduct<BE>
+        + GLWEDecrypt<BE>
+        + LWEEncryptSk<BE>
+        + CircuitBootstrappingKeyEncryptSk<BRA, BE>
+        + CircuitBootstrappingKeyPreparedFactory<BRA, BE>
+        + CirtuitBootstrappingExecute<BRA, BE>
+        + GGSWPreparedFactory<BE>
+        + GGSWNoise<BE>
+        + GLWEEncryptSk<BE>
+        + VecZnxRotateInplace<BE>,
+    BlindRotationKey<Vec<u8>, BRA>: BlindRotationKeyFactory<BRA>, // TODO find a way to remove this bound or move it to CBT KEY
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
+    Scratch<BE>: ScratchTakeCore<BE>,
 {
     let group_name: String = format!("circuit_bootstrapping::{label}");
 
@@ -113,86 +52,38 @@ where
         extension_factor: usize,
         k_pt: usize,
         block_size: usize,
-        lwe_infos: LWECiphertextLayout,
-        ggsw_infos: GGSWCiphertextLayout,
+        lwe_infos: LWELayout,
+        ggsw_infos: GGSWLayout,
         cbt_infos: CircuitBootstrappingKeyLayout,
     }
 
-    fn runner<B: Backend, BRA: BlindRotationAlgo>(params: &Params) -> impl FnMut()
+    fn runner<BE: Backend, BRA: BlindRotationAlgo>(params: &Params) -> impl FnMut()
     where
-        Module<B>: ModuleNew<B>
-            + VecZnxFillUniform
-            + VecZnxAddNormal
-            + VecZnxNormalizeInplace<B>
-            + VecZnxDftAllocBytes
-            + VecZnxBigNormalize<B>
-            + VecZnxDftApply<B>
-            + SvpApplyDftToDftInplace<B>
-            + VecZnxIdftApplyConsume<B>
-            + VecZnxNormalizeTmpBytes
-            + VecZnxSubInplace
-            + VecZnxAddInplace
-            + VecZnxNormalize<B>
-            + VecZnxSub
-            + VecZnxAddScalarInplace
-            + VecZnxAutomorphism
-            + VecZnxSwitchRing
-            + VecZnxBigAllocBytes
-            + VecZnxIdftApplyTmpA<B>
-            + SvpApplyDftToDft<B>
-            + VecZnxBigAddInplace<B>
-            + VecZnxBigAddSmallInplace<B>
-            + VecZnxBigAlloc<B>
-            + VecZnxDftAlloc<B>
-            + VecZnxBigNormalizeTmpBytes
-            + VmpPMatAlloc<B>
-            + VmpPrepare<B>
-            + SvpPrepare<B>
-            + SvpPPolAlloc<B>
-            + VmpApplyDftToDftTmpBytes
-            + VmpApplyDftToDft<B>
-            + VmpApplyDftToDftAdd<B>
-            + SvpPPolAllocBytes
-            + VecZnxRotateInplace<B>
-            + VecZnxBigAutomorphismInplace<B>
-            + VecZnxRshInplace<B>
-            + VecZnxDftCopy<B>
-            + VecZnxNegateInplace
-            + VecZnxCopy
-            + VecZnxAutomorphismInplace<B>
-            + VecZnxBigSubSmallNegateInplace<B>
-            + VecZnxRotateInplaceTmpBytes
-            + VecZnxBigAllocBytes
-            + VecZnxDftAddInplace<B>
-            + VecZnxRotate
-            + ZnFillUniform
-            + ZnAddNormal
-            + ZnNormalizeInplace<B>,
-        B: Backend
-            + ScratchOwnedAllocImpl<B>
-            + ScratchOwnedBorrowImpl<B>
-            + TakeVecZnxDftImpl<B>
-            + ScratchAvailableImpl<B>
-            + TakeVecZnxImpl<B>
-            + TakeScalarZnxImpl<B>
-            + TakeSvpPPolImpl<B>
-            + TakeVecZnxBigImpl<B>
-            + TakeVecZnxDftSliceImpl<B>
-            + TakeMatZnxImpl<B>
-            + TakeVecZnxSliceImpl<B>
-            + TakeSliceImpl<B>,
-        BlindRotationKey<Vec<u8>, BRA>: PrepareAlloc<B, BlindRotationKeyPrepared<Vec<u8>, BRA, B>>,
-        BlindRotationKeyPrepared<Vec<u8>, BRA, B>: BlincRotationExecute<B>,
-        BlindRotationKey<Vec<u8>, BRA>: BlindRotationKeyAlloc + BlindRotationKeyEncryptSk<B>,
+        Module<BE>: ModuleNew<BE>
+            + ModuleN
+            + GLWESecretPreparedFactory<BE>
+            + GLWEExternalProduct<BE>
+            + GLWEDecrypt<BE>
+            + LWEEncryptSk<BE>
+            + CircuitBootstrappingKeyEncryptSk<BRA, BE>
+            + CircuitBootstrappingKeyPreparedFactory<BRA, BE>
+            + CirtuitBootstrappingExecute<BRA, BE>
+            + GGSWPreparedFactory<BE>
+            + GGSWNoise<BE>
+            + GLWEEncryptSk<BE>
+            + VecZnxRotateInplace<BE>,
+        BlindRotationKey<Vec<u8>, BRA>: BlindRotationKeyFactory<BRA>, /* TODO find a way to remove this bound or move it to CBT KEY */
+        ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
+        Scratch<BE>: ScratchTakeCore<BE>,
     {
         // Scratch space (4MB)
-        let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(1 << 22);
+        let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(1 << 22);
 
         let n_glwe: poulpy_core::layouts::Degree = params.cbt_infos.layout_brk.n_glwe();
         let n_lwe: poulpy_core::layouts::Degree = params.cbt_infos.layout_brk.n_lwe();
         let rank: poulpy_core::layouts::Rank = params.cbt_infos.layout_brk.rank;
 
-        let module: Module<B> = Module::<B>::new(n_glwe.as_u32() as u64);
+        let module: Module<BE> = Module::<BE>::new(n_glwe.as_u32() as u64);
 
         let mut source_xs: Source = Source::new([1u8; 32]);
         let mut source_xa: Source = Source::new([1u8; 32]);
@@ -202,25 +93,26 @@ where
         sk_lwe.fill_binary_block(params.block_size, &mut source_xs);
         sk_lwe.fill_zero();
 
-        let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc_with(n_glwe, rank);
+        let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc(n_glwe, rank);
         sk_glwe.fill_ternary_prob(0.5, &mut source_xs);
 
-        let ct_lwe: LWECiphertext<Vec<u8>> = LWECiphertext::alloc(&params.lwe_infos);
+        let ct_lwe: LWE<Vec<u8>> = LWE::alloc_from_infos(&params.lwe_infos);
 
         // Circuit bootstrapping evaluation key
-        let cbt_key: CircuitBootstrappingKey<Vec<u8>, BRA> = CircuitBootstrappingKey::encrypt_sk(
+        let mut cbt_key: CircuitBootstrappingKey<Vec<u8>, BRA> = CircuitBootstrappingKey::alloc_from_infos(&params.cbt_infos);
+        cbt_key.encrypt_sk(
             &module,
             &sk_lwe,
             &sk_glwe,
-            &params.cbt_infos,
             &mut source_xa,
             &mut source_xe,
             scratch.borrow(),
         );
 
-        let mut res: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(&params.ggsw_infos);
-        let cbt_prepared: CircuitBootstrappingKeyPrepared<Vec<u8>, BRA, B> = cbt_key.prepare_alloc(&module, scratch.borrow());
-
+        let mut res: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&params.ggsw_infos);
+        let mut cbt_prepared: CircuitBootstrappingKeyPrepared<Vec<u8>, BRA, BE> =
+            CircuitBootstrappingKeyPrepared::alloc_from_infos(&module, &params.cbt_infos);
+        cbt_prepared.prepare(&module, &cbt_key, scratch.borrow());
         move || {
             cbt_prepared.execute_to_constant(
                 &module,
@@ -238,13 +130,13 @@ where
         name: String::from("1-bit"),
         extension_factor: 1,
         k_pt: 1,
-        lwe_infos: LWECiphertextLayout {
+        lwe_infos: LWELayout {
             n: 574_u32.into(),
             k: 13_u32.into(),
             base2k: 13_u32.into(),
         },
         block_size: 7,
-        ggsw_infos: GGSWCiphertextLayout {
+        ggsw_infos: GGSWLayout {
             n: 1024_u32.into(),
             base2k: 13_u32.into(),
             k: 26_u32.into(),
@@ -261,7 +153,7 @@ where
                 dnum: 3_u32.into(),
                 rank: 2_u32.into(),
             },
-            layout_atk: GGLWEAutomorphismKeyLayout {
+            layout_atk: GLWEAutomorphismKeyLayout {
                 n: 1024_u32.into(),
                 base2k: 13_u32.into(),
                 k: 52_u32.into(),
@@ -269,7 +161,7 @@ where
                 dsize: Dsize(1),
                 rank: 2_u32.into(),
             },
-            layout_tsk: GGLWETensorKeyLayout {
+            layout_tsk: GLWETensorKeyLayout {
                 n: 1024_u32.into(),
                 base2k: 13_u32.into(),
                 k: 52_u32.into(),
@@ -280,7 +172,7 @@ where
         },
     }] {
         let id: BenchmarkId = BenchmarkId::from_parameter(params.name.clone());
-        let mut runner = runner::<B, BRA>(&params);
+        let mut runner = runner::<BE, BRA>(&params);
         group.bench_with_input(id, &(), |b, _| b.iter(&mut runner));
     }
 

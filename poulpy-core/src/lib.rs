@@ -14,12 +14,18 @@ mod utils;
 
 pub use operations::*;
 pub mod layouts;
+pub use automorphism::*;
+pub use conversion::*;
+pub use decryption::*;
 pub use dist::*;
+pub use encryption::*;
 pub use external_product::*;
 pub use glwe_packing::*;
+pub use glwe_trace::*;
+pub use keyswitching::*;
+pub use noise::*;
+pub use scratch::*;
 
 pub use encryption::SIGMA;
-
-pub use scratch::*;
 
 pub mod tests;

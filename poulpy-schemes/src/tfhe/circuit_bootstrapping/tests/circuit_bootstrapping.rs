@@ -1,110 +1,49 @@
 use std::time::Instant;
 
 use poulpy_hal::{
-    api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDft, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolAllocBytes,
-        SvpPrepare, VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxAutomorphism, VecZnxAutomorphismInplace,
-        VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigAlloc, VecZnxBigAllocBytes, VecZnxBigAutomorphismInplace,
-        VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallNegateInplace, VecZnxCopy, VecZnxDftAddInplace,
-        VecZnxDftAlloc, VecZnxDftAllocBytes, VecZnxDftApply, VecZnxDftCopy, VecZnxFillUniform, VecZnxIdftApplyConsume,
-        VecZnxIdftApplyTmpA, VecZnxNegateInplace, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate,
-        VecZnxRotateInplace, VecZnxRotateInplaceTmpBytes, VecZnxRshInplace, VecZnxSub, VecZnxSubInplace, VecZnxSwitchRing,
-        VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes, VmpPMatAlloc, VmpPrepare, ZnAddNormal, ZnFillUniform,
-        ZnNormalizeInplace,
-    },
-    layouts::{Backend, Module, ScalarZnx, ScratchOwned, ZnxView, ZnxViewMut},
-    oep::{
-        ScratchAvailableImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeMatZnxImpl, TakeScalarZnxImpl, TakeSliceImpl,
-        TakeSvpPPolImpl, TakeVecZnxBigImpl, TakeVecZnxDftImpl, TakeVecZnxDftSliceImpl, TakeVecZnxImpl, TakeVecZnxSliceImpl,
-    },
+    api::{ModuleN, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxRotateInplace},
+    layouts::{Backend, ScalarZnx, Scratch, ScratchOwned, ZnxView, ZnxViewMut},
     source::Source,
 };
 
 use crate::tfhe::{
-    blind_rotation::{
-        BlincRotationExecute, BlindRotationAlgo, BlindRotationKey, BlindRotationKeyAlloc, BlindRotationKeyEncryptSk,
-        BlindRotationKeyLayout, BlindRotationKeyPrepared,
-    },
+    blind_rotation::{BlindRotationAlgo, BlindRotationKey, BlindRotationKeyFactory, BlindRotationKeyLayout},
     circuit_bootstrapping::{
         CircuitBootstrappingKey, CircuitBootstrappingKeyEncryptSk, CircuitBootstrappingKeyLayout,
-        CircuitBootstrappingKeyPrepared, CirtuitBootstrappingExecute,
+        CircuitBootstrappingKeyPrepared, CircuitBootstrappingKeyPreparedFactory, CirtuitBootstrappingExecute,
+    },
+};
+
+use poulpy_core::{
+    GGSWNoise, GLWEDecrypt, GLWEEncryptSk, GLWEExternalProduct, LWEEncryptSk, ScratchTakeCore,
+    layouts::{
+        Dsize, GGSWLayout, GGSWPreparedFactory, GLWEAutomorphismKeyLayout, GLWESecretPreparedFactory, GLWETensorKeyLayout,
+        LWELayout,
     },
 };
 
 use poulpy_core::layouts::{
-    Dsize, GGLWEAutomorphismKeyLayout, GGLWETensorKeyLayout, GGSWCiphertextLayout, LWECiphertextLayout, prepared::PrepareAlloc,
+    GGSW, GLWE, GLWEPlaintext, GLWESecret, LWE, LWEPlaintext, LWESecret,
+    prepared::{GGSWPrepared, GLWESecretPrepared},
 };
 
-use poulpy_core::layouts::{
-    GGSWCiphertext, GLWECiphertext, GLWEPlaintext, GLWESecret, LWECiphertext, LWEPlaintext, LWESecret,
-    prepared::{GGSWCiphertextPrepared, GLWESecretPrepared},
-};
-
-pub fn test_circuit_bootstrapping_to_exponent<B, BRA: BlindRotationAlgo>(module: &Module<B>)
+pub fn test_circuit_bootstrapping_to_exponent<BE: Backend, M, BRA: BlindRotationAlgo>(module: &M)
 where
-    Module<B>: VecZnxFillUniform
-        + VecZnxAddNormal
-        + VecZnxNormalizeInplace<B>
-        + VecZnxDftAllocBytes
-        + VecZnxBigNormalize<B>
-        + VecZnxDftApply<B>
-        + SvpApplyDftToDftInplace<B>
-        + VecZnxIdftApplyConsume<B>
-        + VecZnxNormalizeTmpBytes
-        + VecZnxSubInplace
-        + VecZnxAddInplace
-        + VecZnxNormalize<B>
-        + VecZnxSub
-        + VecZnxAddScalarInplace
-        + VecZnxAutomorphism
-        + VecZnxSwitchRing
-        + VecZnxBigAllocBytes
-        + VecZnxIdftApplyTmpA<B>
-        + SvpApplyDftToDft<B>
-        + VecZnxBigAddInplace<B>
-        + VecZnxBigAddSmallInplace<B>
-        + VecZnxBigAlloc<B>
-        + VecZnxDftAlloc<B>
-        + VecZnxBigNormalizeTmpBytes
-        + VmpPMatAlloc<B>
-        + VmpPrepare<B>
-        + SvpPrepare<B>
-        + SvpPPolAlloc<B>
-        + VmpApplyDftToDftTmpBytes
-        + VmpApplyDftToDft<B>
-        + VmpApplyDftToDftAdd<B>
-        + SvpPPolAllocBytes
-        + VecZnxRotateInplace<B>
-        + VecZnxBigAutomorphismInplace<B>
-        + VecZnxRshInplace<B>
-        + VecZnxDftCopy<B>
-        + VecZnxNegateInplace
-        + VecZnxCopy
-        + VecZnxAutomorphismInplace<B>
-        + VecZnxBigSubSmallNegateInplace<B>
-        + VecZnxRotateInplaceTmpBytes
-        + VecZnxBigAllocBytes
-        + VecZnxDftAddInplace<B>
-        + VecZnxRotate
-        + ZnFillUniform
-        + ZnAddNormal
-        + ZnNormalizeInplace<B>,
-    B: Backend
-        + ScratchOwnedAllocImpl<B>
-        + ScratchOwnedBorrowImpl<B>
-        + TakeVecZnxDftImpl<B>
-        + ScratchAvailableImpl<B>
-        + TakeVecZnxImpl<B>
-        + TakeScalarZnxImpl<B>
-        + TakeSvpPPolImpl<B>
-        + TakeVecZnxBigImpl<B>
-        + TakeVecZnxDftSliceImpl<B>
-        + TakeMatZnxImpl<B>
-        + TakeVecZnxSliceImpl<B>
-        + TakeSliceImpl<B>,
-    BlindRotationKey<Vec<u8>, BRA>: PrepareAlloc<B, BlindRotationKeyPrepared<Vec<u8>, BRA, B>>,
-    BlindRotationKeyPrepared<Vec<u8>, BRA, B>: BlincRotationExecute<B>,
-    BlindRotationKey<Vec<u8>, BRA>: BlindRotationKeyAlloc + BlindRotationKeyEncryptSk<B>,
+    M: ModuleN
+        + GLWESecretPreparedFactory<BE>
+        + GLWEExternalProduct<BE>
+        + GLWEDecrypt<BE>
+        + LWEEncryptSk<BE>
+        + CircuitBootstrappingKeyEncryptSk<BRA, BE>
+        + CircuitBootstrappingKeyPreparedFactory<BRA, BE>
+        + CirtuitBootstrappingExecute<BRA, BE>
+        + GGSWPreparedFactory<BE>
+        + GGSWNoise<BE>
+        + GLWEEncryptSk<BE>
+        + VecZnxRotateInplace<BE>,
+    BlindRotationKey<Vec<u8>, BRA>: BlindRotationKeyFactory<BRA>, // TODO find a way to remove this bound or move it to CBT KEY
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
+    Scratch<BE>: ScratchTakeCore<BE>,
 {
     let n_glwe: usize = module.n();
     let base2k: usize = 17;
@@ -128,7 +67,7 @@ where
     let k_ggsw_res: usize = 4 * base2k;
     let rows_ggsw_res: usize = 2;
 
-    let lwe_infos: LWECiphertextLayout = LWECiphertextLayout {
+    let lwe_infos: LWELayout = LWELayout {
         n: n_lwe.into(),
         k: k_lwe_ct.into(),
         base2k: base2k.into(),
@@ -143,7 +82,7 @@ where
             dnum: rows_brk.into(),
             rank: rank.into(),
         },
-        layout_atk: GGLWEAutomorphismKeyLayout {
+        layout_atk: GLWEAutomorphismKeyLayout {
             n: n_glwe.into(),
             base2k: base2k.into(),
             k: k_atk.into(),
@@ -151,7 +90,7 @@ where
             rank: rank.into(),
             dsize: Dsize(1),
         },
-        layout_tsk: GGLWETensorKeyLayout {
+        layout_tsk: GLWETensorKeyLayout {
             n: n_glwe.into(),
             base2k: base2k.into(),
             k: k_tsk.into(),
@@ -161,7 +100,7 @@ where
         },
     };
 
-    let ggsw_infos: GGSWCiphertextLayout = GGSWCiphertextLayout {
+    let ggsw_infos: GGSWLayout = GGSWLayout {
         n: n_glwe.into(),
         base2k: base2k.into(),
         k: k_ggsw_res.into(),
@@ -170,7 +109,7 @@ where
         rank: rank.into(),
     };
 
-    let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(1 << 23);
+    let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(1 << 23);
 
     let mut source_xs: Source = Source::new([1u8; 32]);
     let mut source_xa: Source = Source::new([1u8; 32]);
@@ -179,38 +118,44 @@ where
     let mut sk_lwe: LWESecret<Vec<u8>> = LWESecret::alloc(n_lwe.into());
     sk_lwe.fill_binary_block(block_size, &mut source_xs);
 
-    let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc_with(n_glwe.into(), rank.into());
+    let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc(n_glwe.into(), rank.into());
     sk_glwe.fill_ternary_prob(0.5, &mut source_xs);
 
-    let sk_glwe_prepared: GLWESecretPrepared<Vec<u8>, B> = sk_glwe.prepare_alloc(module, scratch.borrow());
+    let mut sk_glwe_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(module, rank.into());
+    sk_glwe_prepared.prepare(module, &sk_glwe);
 
     let data: i64 = 1;
 
-    let mut pt_lwe: LWEPlaintext<Vec<u8>> = LWEPlaintext::alloc_with(base2k.into(), k_lwe_pt.into());
+    let mut pt_lwe: LWEPlaintext<Vec<u8>> = LWEPlaintext::alloc(base2k.into(), k_lwe_pt.into());
     pt_lwe.encode_i64(data, (k_lwe_pt + 1).into());
 
     println!("pt_lwe: {pt_lwe}");
 
-    let mut ct_lwe: LWECiphertext<Vec<u8>> = LWECiphertext::alloc(&lwe_infos);
+    let mut ct_lwe: LWE<Vec<u8>> = LWE::alloc_from_infos(&lwe_infos);
     ct_lwe.encrypt_sk(module, &pt_lwe, &sk_lwe, &mut source_xa, &mut source_xe);
 
     let now: Instant = Instant::now();
-    let cbt_key: CircuitBootstrappingKey<Vec<u8>, BRA> = CircuitBootstrappingKey::encrypt_sk(
+    let mut cbt_key: CircuitBootstrappingKey<Vec<u8>, BRA> = CircuitBootstrappingKey::alloc_from_infos(&cbt_infos);
+    println!("CBT-ALLOC: {} ms", now.elapsed().as_millis());
+
+    let now: Instant = Instant::now();
+    cbt_key.encrypt_sk(
         module,
         &sk_lwe,
         &sk_glwe,
-        &cbt_infos,
         &mut source_xa,
         &mut source_xe,
         scratch.borrow(),
     );
-    println!("CBT-KGEN: {} ms", now.elapsed().as_millis());
+    println!("CBT-ENCRYPT: {} ms", now.elapsed().as_millis());
 
-    let mut res: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(&ggsw_infos);
+    let mut res: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_infos);
 
     let log_gap_out = 1;
 
-    let cbt_prepared: CircuitBootstrappingKeyPrepared<Vec<u8>, BRA, B> = cbt_key.prepare_alloc(module, scratch.borrow());
+    let mut cbt_prepared: CircuitBootstrappingKeyPrepared<Vec<u8>, BRA, BE> =
+        CircuitBootstrappingKeyPrepared::alloc_from_infos(module, &cbt_infos);
+    cbt_prepared.prepare(module, &cbt_key, scratch.borrow());
 
     let now: Instant = Instant::now();
     cbt_prepared.execute_to_exponent(
@@ -236,8 +181,8 @@ where
 
     res.print_noise(module, &sk_glwe_prepared, &pt_ggsw);
 
-    let mut ct_glwe: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&ggsw_infos);
-    let mut pt_glwe: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&ggsw_infos);
+    let mut ct_glwe: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&ggsw_infos);
+    let mut pt_glwe: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&ggsw_infos);
     pt_glwe.data.at_mut(0, 0)[0] = 1 << (base2k - 2);
 
     ct_glwe.encrypt_sk(
@@ -249,11 +194,12 @@ where
         scratch.borrow(),
     );
 
-    let res_prepared: GGSWCiphertextPrepared<Vec<u8>, B> = res.prepare_alloc(module, scratch.borrow());
+    let mut res_prepared: GGSWPrepared<Vec<u8>, BE> = GGSWPrepared::alloc_from_infos(module, &res);
+    res_prepared.prepare(module, &res, scratch.borrow());
 
     ct_glwe.external_product_inplace(module, &res_prepared, scratch.borrow());
 
-    let mut pt_res: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&ggsw_infos);
+    let mut pt_res: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&ggsw_infos);
     ct_glwe.decrypt(module, &mut pt_res, &sk_glwe_prepared, scratch.borrow());
 
     // Parameters are set such that the first limb should be noiseless.
@@ -262,76 +208,28 @@ where
     assert_eq!(pt_res.data.at(0, 0), pt_want);
 }
 
-pub fn test_circuit_bootstrapping_to_constant<B, BRA: BlindRotationAlgo>(module: &Module<B>)
+pub fn test_circuit_bootstrapping_to_constant<BE: Backend, M, BRA: BlindRotationAlgo>(module: &M)
 where
-    Module<B>: VecZnxFillUniform
-        + VecZnxAddNormal
-        + VecZnxNormalizeInplace<B>
-        + VecZnxDftAllocBytes
-        + VecZnxBigNormalize<B>
-        + VecZnxDftApply<B>
-        + SvpApplyDftToDftInplace<B>
-        + VecZnxIdftApplyConsume<B>
-        + VecZnxNormalizeTmpBytes
-        + VecZnxSubInplace
-        + VecZnxAddInplace
-        + VecZnxNormalize<B>
-        + VecZnxSub
-        + VecZnxAddScalarInplace
-        + VecZnxAutomorphism
-        + VecZnxSwitchRing
-        + VecZnxBigAllocBytes
-        + VecZnxIdftApplyTmpA<B>
-        + SvpApplyDftToDft<B>
-        + VecZnxBigAddInplace<B>
-        + VecZnxBigAddSmallInplace<B>
-        + VecZnxBigAlloc<B>
-        + VecZnxDftAlloc<B>
-        + VecZnxBigNormalizeTmpBytes
-        + VmpPMatAlloc<B>
-        + VmpPrepare<B>
-        + SvpPrepare<B>
-        + SvpPPolAlloc<B>
-        + VmpApplyDftToDftTmpBytes
-        + VmpApplyDftToDft<B>
-        + VmpApplyDftToDftAdd<B>
-        + SvpPPolAllocBytes
-        + VecZnxRotateInplace<B>
-        + VecZnxBigAutomorphismInplace<B>
-        + VecZnxRotateInplaceTmpBytes
-        + VecZnxRshInplace<B>
-        + VecZnxDftCopy<B>
-        + VecZnxNegateInplace
-        + VecZnxCopy
-        + VecZnxAutomorphismInplace<B>
-        + VecZnxBigSubSmallNegateInplace<B>
-        + VecZnxBigAllocBytes
-        + VecZnxDftAddInplace<B>
-        + VecZnxRotate
-        + ZnFillUniform
-        + ZnAddNormal
-        + ZnNormalizeInplace<B>,
-    B: Backend
-        + ScratchOwnedAllocImpl<B>
-        + ScratchOwnedBorrowImpl<B>
-        + TakeVecZnxDftImpl<B>
-        + ScratchAvailableImpl<B>
-        + TakeVecZnxImpl<B>
-        + TakeScalarZnxImpl<B>
-        + TakeSvpPPolImpl<B>
-        + TakeVecZnxBigImpl<B>
-        + TakeVecZnxDftSliceImpl<B>
-        + TakeMatZnxImpl<B>
-        + TakeVecZnxSliceImpl<B>
-        + TakeSliceImpl<B>,
-    BlindRotationKey<Vec<u8>, BRA>: PrepareAlloc<B, BlindRotationKeyPrepared<Vec<u8>, BRA, B>>,
-    BlindRotationKeyPrepared<Vec<u8>, BRA, B>: BlincRotationExecute<B>,
-    BlindRotationKey<Vec<u8>, BRA>: BlindRotationKeyAlloc + BlindRotationKeyEncryptSk<B>,
+    M: ModuleN
+        + GLWESecretPreparedFactory<BE>
+        + GLWEExternalProduct<BE>
+        + GLWEDecrypt<BE>
+        + LWEEncryptSk<BE>
+        + CircuitBootstrappingKeyEncryptSk<BRA, BE>
+        + CircuitBootstrappingKeyPreparedFactory<BRA, BE>
+        + CirtuitBootstrappingExecute<BRA, BE>
+        + GGSWPreparedFactory<BE>
+        + GGSWNoise<BE>
+        + GLWEEncryptSk<BE>
+        + VecZnxRotateInplace<BE>,
+    BlindRotationKey<Vec<u8>, BRA>: BlindRotationKeyFactory<BRA>, // TODO find a way to remove this bound or move it to CBT KEY
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
+    Scratch<BE>: ScratchTakeCore<BE>,
 {
     let n_glwe: usize = module.n();
     let base2k: usize = 14;
     let extension_factor: usize = 1;
-    let rank: usize = 2;
+    let rank: usize = 1;
 
     let n_lwe: usize = 77;
     let k_lwe_pt: usize = 1;
@@ -350,7 +248,7 @@ where
     let k_ggsw_res: usize = 4 * base2k;
     let rows_ggsw_res: usize = 3;
 
-    let lwe_infos: LWECiphertextLayout = LWECiphertextLayout {
+    let lwe_infos: LWELayout = LWELayout {
         n: n_lwe.into(),
         k: k_lwe_ct.into(),
         base2k: base2k.into(),
@@ -365,7 +263,7 @@ where
             dnum: rows_brk.into(),
             rank: rank.into(),
         },
-        layout_atk: GGLWEAutomorphismKeyLayout {
+        layout_atk: GLWEAutomorphismKeyLayout {
             n: n_glwe.into(),
             base2k: base2k.into(),
             k: k_atk.into(),
@@ -373,7 +271,7 @@ where
             rank: rank.into(),
             dsize: Dsize(1),
         },
-        layout_tsk: GGLWETensorKeyLayout {
+        layout_tsk: GLWETensorKeyLayout {
             n: n_glwe.into(),
             base2k: base2k.into(),
             k: k_tsk.into(),
@@ -383,7 +281,7 @@ where
         },
     };
 
-    let ggsw_infos: GGSWCiphertextLayout = GGSWCiphertextLayout {
+    let ggsw_infos: GGSWLayout = GGSWLayout {
         n: n_glwe.into(),
         base2k: base2k.into(),
         k: k_ggsw_res.into(),
@@ -392,7 +290,7 @@ where
         rank: rank.into(),
     };
 
-    let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(1 << 23);
+    let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(1 << 23);
 
     let mut source_xs: Source = Source::new([1u8; 32]);
     let mut source_xa: Source = Source::new([1u8; 32]);
@@ -401,36 +299,42 @@ where
     let mut sk_lwe: LWESecret<Vec<u8>> = LWESecret::alloc(n_lwe.into());
     sk_lwe.fill_binary_block(block_size, &mut source_xs);
 
-    let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc_with(n_glwe.into(), rank.into());
+    let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc(n_glwe.into(), rank.into());
     sk_glwe.fill_ternary_prob(0.5, &mut source_xs);
 
-    let sk_glwe_prepared: GLWESecretPrepared<Vec<u8>, B> = sk_glwe.prepare_alloc(module, scratch.borrow());
+    let mut sk_glwe_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(module, rank.into());
+    sk_glwe_prepared.prepare(module, &sk_glwe);
 
     let data: i64 = 1;
 
-    let mut pt_lwe: LWEPlaintext<Vec<u8>> = LWEPlaintext::alloc_with(base2k.into(), k_lwe_pt.into());
+    let mut pt_lwe: LWEPlaintext<Vec<u8>> = LWEPlaintext::alloc(base2k.into(), k_lwe_pt.into());
     pt_lwe.encode_i64(data, (k_lwe_pt + 1).into());
 
     println!("pt_lwe: {pt_lwe}");
 
-    let mut ct_lwe: LWECiphertext<Vec<u8>> = LWECiphertext::alloc(&lwe_infos);
+    let mut ct_lwe: LWE<Vec<u8>> = LWE::alloc_from_infos(&lwe_infos);
     ct_lwe.encrypt_sk(module, &pt_lwe, &sk_lwe, &mut source_xa, &mut source_xe);
 
     let now: Instant = Instant::now();
-    let cbt_key: CircuitBootstrappingKey<Vec<u8>, BRA> = CircuitBootstrappingKey::encrypt_sk(
+    let mut cbt_key: CircuitBootstrappingKey<Vec<u8>, BRA> = CircuitBootstrappingKey::alloc_from_infos(&cbt_infos);
+    println!("CBT-ALLOC: {} ms", now.elapsed().as_millis());
+
+    let now: Instant = Instant::now();
+    cbt_key.encrypt_sk(
         module,
         &sk_lwe,
         &sk_glwe,
-        &cbt_infos,
         &mut source_xa,
         &mut source_xe,
         scratch.borrow(),
     );
-    println!("CBT-KGEN: {} ms", now.elapsed().as_millis());
+    println!("CBT-ENCRYPT: {} ms", now.elapsed().as_millis());
 
-    let mut res: GGSWCiphertext<Vec<u8>> = GGSWCiphertext::alloc(&ggsw_infos);
+    let mut res: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_infos);
 
-    let cbt_prepared: CircuitBootstrappingKeyPrepared<Vec<u8>, BRA, B> = cbt_key.prepare_alloc(module, scratch.borrow());
+    let mut cbt_prepared: CircuitBootstrappingKeyPrepared<Vec<u8>, BRA, BE> =
+        CircuitBootstrappingKeyPrepared::alloc_from_infos(module, &cbt_infos);
+    cbt_prepared.prepare(module, &cbt_key, scratch.borrow());
 
     let now: Instant = Instant::now();
     cbt_prepared.execute_to_constant(
@@ -449,8 +353,8 @@ where
 
     res.print_noise(module, &sk_glwe_prepared, &pt_ggsw);
 
-    let mut ct_glwe: GLWECiphertext<Vec<u8>> = GLWECiphertext::alloc(&ggsw_infos);
-    let mut pt_glwe: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&ggsw_infos);
+    let mut ct_glwe: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&ggsw_infos);
+    let mut pt_glwe: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&ggsw_infos);
     pt_glwe.data.at_mut(0, 0)[0] = 1 << (base2k - k_lwe_pt - 1);
 
     ct_glwe.encrypt_sk(
@@ -462,11 +366,12 @@ where
         scratch.borrow(),
     );
 
-    let res_prepared: GGSWCiphertextPrepared<Vec<u8>, B> = res.prepare_alloc(module, scratch.borrow());
+    let mut res_prepared: GGSWPrepared<Vec<u8>, BE> = GGSWPrepared::alloc_from_infos(module, &res);
+    res_prepared.prepare(module, &res, scratch.borrow());
 
     ct_glwe.external_product_inplace(module, &res_prepared, scratch.borrow());
 
-    let mut pt_res: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc(&ggsw_infos);
+    let mut pt_res: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&ggsw_infos);
     ct_glwe.decrypt(module, &mut pt_res, &sk_glwe_prepared, scratch.borrow());
 
     // Parameters are set such that the first limb should be noiseless.

@@ -1,22 +1,14 @@
 use itertools::Itertools;
 use poulpy_core::{
-    GLWEOperations, TakeGLWECtSlice, TakeGLWEPt, glwe_packing,
+    GLWECopy, GLWEDecrypt, GLWEEncryptSk, GLWEPacking, ScratchTakeCore,
     layouts::{
-        GLWECiphertext, GLWEInfos, GLWEPlaintextLayout, LWEInfos, TorusPrecision,
-        prepared::{GGLWEAutomorphismKeyPrepared, GLWESecretPrepared},
+        GLWE, GLWEInfos, GLWEPlaintextLayout, GLWESecretPreparedToRef, LWEInfos, TorusPrecision,
+        prepared::GLWEAutomorphismKeyPrepared,
     },
 };
 use poulpy_hal::{
-    api::{
-        ScratchAvailable, SvpApplyDftToDftInplace, TakeVecZnx, TakeVecZnxBig, TakeVecZnxDft, VecZnxAddInplace, VecZnxAddNormal,
-        VecZnxAddScalarInplace, VecZnxAutomorphismInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace,
-        VecZnxBigAutomorphismInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallNegateInplace, VecZnxCopy,
-        VecZnxDftAllocBytes, VecZnxDftApply, VecZnxDftCopy, VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA,
-        VecZnxNegateInplace, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace,
-        VecZnxRshInplace, VecZnxSub, VecZnxSubInplace, VecZnxSwitchRing, VmpApplyDftToDft, VmpApplyDftToDftAdd,
-        VmpApplyDftToDftTmpBytes,
-    },
-    layouts::{Backend, Data, DataMut, DataRef, Module, Scratch},
+    api::ModuleN,
+    layouts::{Backend, Data, DataMut, DataRef, Scratch},
     source::Source,
 };
 use std::{collections::HashMap, marker::PhantomData};
@@ -24,57 +16,33 @@ use std::{collections::HashMap, marker::PhantomData};
 use crate::tfhe::bdd_arithmetic::{FromBits, ToBits, UnsignedInteger};
 
 /// A FHE ciphertext encrypting a [UnsignedInteger].
-pub struct FheUintWord<D: Data, T: UnsignedInteger>(pub(crate) GLWECiphertext<D>, pub(crate) PhantomData<T>);
+pub struct FheUintWord<D: Data, T: UnsignedInteger>(pub(crate) GLWE<D>, pub(crate) PhantomData<T>);
 
 impl<D: DataMut, T: UnsignedInteger> FheUintWord<D, T> {
     #[allow(dead_code)]
-    fn post_process<ATK, BE: Backend>(
+    fn post_process<ATK, M, BE: Backend>(
         &mut self,
-        module: &Module<BE>,
-        mut tmp_res: Vec<GLWECiphertext<&mut [u8]>>,
-        auto_keys: &HashMap<i64, GGLWEAutomorphismKeyPrepared<ATK, BE>>,
+        module: &M,
+        mut tmp_res: Vec<GLWE<&mut [u8]>>,
+        auto_keys: &HashMap<i64, GLWEAutomorphismKeyPrepared<ATK, BE>>,
         scratch: &mut Scratch<BE>,
     ) where
         ATK: DataRef,
-        Module<BE>: VecZnxSub
-            + VecZnxCopy
-            + VecZnxNegateInplace
-            + VecZnxDftAllocBytes
-            + VecZnxAddInplace
-            + VmpApplyDftToDftTmpBytes
-            + VecZnxNormalizeTmpBytes
-            + VecZnxDftApply<BE>
-            + VmpApplyDftToDft<BE>
-            + VmpApplyDftToDftAdd<BE>
-            + VecZnxIdftApplyConsume<BE>
-            + VecZnxBigNormalize<BE>
-            + VecZnxNormalize<BE>
-            + VecZnxRotateInplace<BE>
-            + VecZnxNormalizeInplace<BE>
-            + VecZnxSwitchRing
-            + VecZnxBigAutomorphismInplace<BE>
-            + VecZnxRshInplace<BE>
-            + VecZnxDftCopy<BE>
-            + VecZnxIdftApplyTmpA<BE>
-            + VecZnxSubInplace
-            + VecZnxBigNormalizeTmpBytes
-            + VecZnxBigAddSmallInplace<BE>
-            + VecZnxAutomorphismInplace<BE>
-            + VecZnxBigSubSmallNegateInplace<BE>
-            + VecZnxRotate,
-        Scratch<BE>: TakeVecZnxDft<BE> + ScratchAvailable + TakeVecZnx + TakeGLWECtSlice,
+        M: GLWEPacking<BE> + GLWECopy,
+        Scratch<BE>: ScratchTakeCore<BE>,
     {
         // Repacks the GLWE ciphertexts bits
         let gap: usize = module.n() / T::WORD_SIZE;
         let log_gap: usize = (usize::BITS - (gap - 1).leading_zeros()) as usize;
-        let mut cts: HashMap<usize, &mut GLWECiphertext<&mut [u8]>> = HashMap::new();
+        let mut cts: HashMap<usize, &mut GLWE<&mut [u8]>> = HashMap::new();
         for (i, ct) in tmp_res.iter_mut().enumerate().take(T::WORD_SIZE) {
             cts.insert(i * gap, ct);
         }
-        glwe_packing(module, &mut cts, log_gap, auto_keys, scratch);
+
+        module.glwe_pack(&mut cts, log_gap, auto_keys, scratch);
 
         // And copies the repacked ciphertext on the receiver.
-        self.0.copy(module, cts.remove(&0).unwrap())
+        module.glwe_copy(&mut self.0, cts.remove(&0).unwrap());
     }
 }
 
@@ -99,30 +67,18 @@ impl<D: DataRef, T: UnsignedInteger> GLWEInfos for FheUintWord<D, T> {
 }
 
 impl<D: DataMut, T: UnsignedInteger + ToBits> FheUintWord<D, T> {
-    pub fn encrypt_sk<S: DataRef, BE: Backend>(
+    pub fn encrypt_sk<S, M, BE: Backend>(
         &mut self,
-        module: &Module<BE>,
+        module: &M,
         data: T,
-        sk: &GLWESecretPrepared<S, BE>,
+        sk: &S,
         source_xa: &mut Source,
         source_xe: &mut Source,
         scratch: &mut Scratch<BE>,
     ) where
-        Module<BE>: VecZnxAddScalarInplace
-            + VecZnxDftAllocBytes
-            + VecZnxBigNormalize<BE>
-            + VecZnxDftApply<BE>
-            + SvpApplyDftToDftInplace<BE>
-            + VecZnxIdftApplyConsume<BE>
-            + VecZnxNormalizeTmpBytes
-            + VecZnxFillUniform
-            + VecZnxSubInplace
-            + VecZnxAddInplace
-            + VecZnxNormalizeInplace<BE>
-            + VecZnxAddNormal
-            + VecZnxNormalize<BE>
-            + VecZnxSub,
-        Scratch<BE>: TakeVecZnxDft<BE> + ScratchAvailable + TakeVecZnx + TakeGLWEPt<BE>,
+        S: GLWESecretPreparedToRef<BE> + GLWEInfos,
+        M: ModuleN + GLWEEncryptSk<BE>,
+        Scratch<BE>: ScratchTakeCore<BE>,
     {
         #[cfg(debug_assertions)]
         {
@@ -145,7 +101,7 @@ impl<D: DataMut, T: UnsignedInteger + ToBits> FheUintWord<D, T> {
             k: 1_usize.into(),
         };
 
-        let (mut pt, scratch_1) = scratch.take_glwe_pt(&pt_infos);
+        let (mut pt, scratch_1) = scratch.take_glwe_plaintext(&pt_infos);
 
         pt.encode_vec_i64(&data_bits, TorusPrecision(1));
         self.0
@@ -154,20 +110,11 @@ impl<D: DataMut, T: UnsignedInteger + ToBits> FheUintWord<D, T> {
 }
 
 impl<D: DataRef, T: UnsignedInteger + FromBits> FheUintWord<D, T> {
-    pub fn decrypt<S: DataRef, BE: Backend>(
-        &self,
-        module: &Module<BE>,
-        sk: &GLWESecretPrepared<S, BE>,
-        scratch: &mut Scratch<BE>,
-    ) -> T
+    pub fn decrypt<S, M, BE: Backend>(&self, module: &M, sk: &S, scratch: &mut Scratch<BE>) -> T
     where
-        Module<BE>: VecZnxDftApply<BE>
-            + SvpApplyDftToDftInplace<BE>
-            + VecZnxIdftApplyConsume<BE>
-            + VecZnxBigAddInplace<BE>
-            + VecZnxBigAddSmallInplace<BE>
-            + VecZnxBigNormalize<BE>,
-        Scratch<BE>: TakeVecZnxDft<BE> + TakeVecZnxBig<BE> + TakeGLWEPt<BE>,
+        S: GLWESecretPreparedToRef<BE> + GLWEInfos,
+        M: GLWEDecrypt<BE>,
+        Scratch<BE>: ScratchTakeCore<BE>,
     {
         #[cfg(debug_assertions)]
         {
@@ -184,7 +131,7 @@ impl<D: DataRef, T: UnsignedInteger + FromBits> FheUintWord<D, T> {
             k: 1_usize.into(),
         };
 
-        let (mut pt, scratch_1) = scratch.take_glwe_pt(&pt_infos);
+        let (mut pt, scratch_1) = scratch.take_glwe_plaintext(&pt_infos);
 
         self.0.decrypt(module, &mut pt, sk, scratch_1);
 

@@ -132,18 +132,18 @@ impl<D: DataMut> ScalarZnx<D> {
 }
 
 impl ScalarZnx<Vec<u8>> {
-    pub fn alloc_bytes(n: usize, cols: usize) -> usize {
+    pub fn bytes_of(n: usize, cols: usize) -> usize {
         n * cols * size_of::<i64>()
     }
 
     pub fn alloc(n: usize, cols: usize) -> Self {
-        let data: Vec<u8> = alloc_aligned::<u8>(Self::alloc_bytes(n, cols));
+        let data: Vec<u8> = alloc_aligned::<u8>(Self::bytes_of(n, cols));
         Self { data, n, cols }
     }
 
     pub fn from_bytes(n: usize, cols: usize, bytes: impl Into<Vec<u8>>) -> Self {
         let data: Vec<u8> = bytes.into();
-        assert!(data.len() == Self::alloc_bytes(n, cols));
+        assert!(data.len() == Self::bytes_of(n, cols));
         Self { data, n, cols }
     }
 }

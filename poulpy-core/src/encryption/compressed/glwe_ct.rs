@@ -1,100 +1,109 @@
 use poulpy_hal::{
-    api::{
-        ScratchAvailable, SvpApplyDftToDftInplace, TakeVecZnx, TakeVecZnxDft, VecZnxAddInplace, VecZnxAddNormal,
-        VecZnxBigNormalize, VecZnxDftAllocBytes, VecZnxDftApply, VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxNormalize,
-        VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubInplace,
-    },
-    layouts::{Backend, DataMut, DataRef, Module, Scratch},
+    layouts::{Backend, DataMut, Module, Scratch},
     source::Source,
 };
 
 use crate::{
-    encryption::{SIGMA, glwe_ct::glwe_encrypt_sk_internal},
+    encryption::{GLWEEncryptSk, GLWEEncryptSkInternal, SIGMA},
     layouts::{
-        GLWECiphertext, GLWEInfos, GLWEPlaintext, LWEInfos, compressed::GLWECiphertextCompressed, prepared::GLWESecretPrepared,
+        GLWECompressedSeedMut, GLWEInfos, GLWEPlaintextToRef, LWEInfos,
+        compressed::{GLWECompressed, GLWECompressedToMut},
+        prepared::GLWESecretPreparedToRef,
     },
 };
 
-impl GLWECiphertextCompressed<Vec<u8>> {
-    pub fn encrypt_sk_scratch_space<B: Backend, A>(module: &Module<B>, infos: &A) -> usize
+impl GLWECompressed<Vec<u8>> {
+    pub fn encrypt_sk_tmp_bytes<M, A, BE: Backend>(module: &M, infos: &A) -> usize
     where
         A: GLWEInfos,
-        Module<B>: VecZnxNormalizeTmpBytes + VecZnxDftAllocBytes,
+        M: GLWECompressedEncryptSk<BE>,
     {
-        GLWECiphertext::encrypt_sk_scratch_space(module, infos)
+        module.glwe_compressed_encrypt_sk_tmp_bytes(infos)
     }
 }
 
-impl<D: DataMut> GLWECiphertextCompressed<D> {
+impl<D: DataMut> GLWECompressed<D> {
     #[allow(clippy::too_many_arguments)]
-    pub fn encrypt_sk<DataPt: DataRef, DataSk: DataRef, B: Backend>(
+    pub fn encrypt_sk<M, P, S, BE: Backend>(
         &mut self,
-        module: &Module<B>,
-        pt: &GLWEPlaintext<DataPt>,
-        sk: &GLWESecretPrepared<DataSk, B>,
+        module: &M,
+        pt: &P,
+        sk: &S,
         seed_xa: [u8; 32],
         source_xe: &mut Source,
-        scratch: &mut Scratch<B>,
+        scratch: &mut Scratch<BE>,
     ) where
-        Module<B>: VecZnxDftAllocBytes
-            + VecZnxBigNormalize<B>
-            + VecZnxDftApply<B>
-            + SvpApplyDftToDftInplace<B>
-            + VecZnxIdftApplyConsume<B>
-            + VecZnxNormalizeTmpBytes
-            + VecZnxFillUniform
-            + VecZnxSubInplace
-            + VecZnxAddInplace
-            + VecZnxNormalizeInplace<B>
-            + VecZnxAddNormal
-            + VecZnxNormalize<B>
-            + VecZnxSub,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
+        M: GLWECompressedEncryptSk<BE>,
+        P: GLWEPlaintextToRef,
+        S: GLWESecretPreparedToRef<BE>,
     {
-        self.encrypt_sk_internal(module, Some((pt, 0)), sk, seed_xa, source_xe, scratch);
+        module.glwe_compressed_encrypt_sk(self, pt, sk, seed_xa, source_xe, scratch);
+    }
+}
+
+pub trait GLWECompressedEncryptSk<BE: Backend> {
+    fn glwe_compressed_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
+    where
+        A: GLWEInfos;
+
+    fn glwe_compressed_encrypt_sk<R, P, S>(
+        &self,
+        res: &mut R,
+        pt: &P,
+        sk: &S,
+        seed_xa: [u8; 32],
+        source_xe: &mut Source,
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: GLWECompressedToMut + GLWECompressedSeedMut,
+        P: GLWEPlaintextToRef,
+        S: GLWESecretPreparedToRef<BE>;
+}
+
+impl<BE: Backend> GLWECompressedEncryptSk<BE> for Module<BE>
+where
+    Self: GLWEEncryptSkInternal<BE> + GLWEEncryptSk<BE>,
+{
+    fn glwe_compressed_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
+    where
+        A: GLWEInfos,
+    {
+        self.glwe_encrypt_sk_tmp_bytes(infos)
     }
 
-    #[allow(clippy::too_many_arguments)]
-    pub(crate) fn encrypt_sk_internal<DataPt: DataRef, DataSk: DataRef, B: Backend>(
-        &mut self,
-        module: &Module<B>,
-        pt: Option<(&GLWEPlaintext<DataPt>, usize)>,
-        sk: &GLWESecretPrepared<DataSk, B>,
+    fn glwe_compressed_encrypt_sk<R, P, S>(
+        &self,
+        res: &mut R,
+        pt: &P,
+        sk: &S,
         seed_xa: [u8; 32],
         source_xe: &mut Source,
-        scratch: &mut Scratch<B>,
+        scratch: &mut Scratch<BE>,
     ) where
-        Module<B>: VecZnxDftAllocBytes
-            + VecZnxBigNormalize<B>
-            + VecZnxDftApply<B>
-            + SvpApplyDftToDftInplace<B>
-            + VecZnxIdftApplyConsume<B>
-            + VecZnxNormalizeTmpBytes
-            + VecZnxFillUniform
-            + VecZnxSubInplace
-            + VecZnxAddInplace
-            + VecZnxNormalizeInplace<B>
-            + VecZnxAddNormal
-            + VecZnxNormalize<B>
-            + VecZnxSub,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
+        R: GLWECompressedToMut + GLWECompressedSeedMut,
+        P: GLWEPlaintextToRef,
+        S: GLWESecretPreparedToRef<BE>,
     {
-        let mut source_xa = Source::new(seed_xa);
-        let cols: usize = (self.rank() + 1).into();
-        glwe_encrypt_sk_internal(
-            module,
-            self.base2k().into(),
-            self.k().into(),
-            &mut self.data,
-            cols,
-            true,
-            pt,
-            sk,
-            &mut source_xa,
-            source_xe,
-            SIGMA,
-            scratch,
-        );
-        self.seed = seed_xa;
+        {
+            let res: &mut GLWECompressed<&mut [u8]> = &mut res.to_mut();
+            let mut source_xa: Source = Source::new(seed_xa);
+            let cols: usize = (res.rank() + 1).into();
+
+            self.glwe_encrypt_sk_internal(
+                res.base2k().into(),
+                res.k().into(),
+                &mut res.data,
+                cols,
+                true,
+                Some((pt, 0)),
+                sk,
+                &mut source_xa,
+                source_xe,
+                SIGMA,
+                scratch,
+            );
+        }
+
+        res.seed_mut().copy_from_slice(&seed_xa);
     }
 }

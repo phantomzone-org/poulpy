@@ -114,12 +114,12 @@ impl<D: Data> MatZnx<D> {
 }
 
 impl MatZnx<Vec<u8>> {
-    pub fn alloc_bytes(n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize {
-        rows * cols_in * VecZnx::<Vec<u8>>::alloc_bytes(n, cols_out, size)
+    pub fn bytes_of(n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> usize {
+        rows * cols_in * VecZnx::<Vec<u8>>::bytes_of(n, cols_out, size)
     }
 
     pub fn alloc(n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize) -> Self {
-        let data: Vec<u8> = alloc_aligned(Self::alloc_bytes(n, rows, cols_in, cols_out, size));
+        let data: Vec<u8> = alloc_aligned(Self::bytes_of(n, rows, cols_in, cols_out, size));
         Self {
             data,
             n,
@@ -132,7 +132,7 @@ impl MatZnx<Vec<u8>> {
 
     pub fn from_bytes(n: usize, rows: usize, cols_in: usize, cols_out: usize, size: usize, bytes: impl Into<Vec<u8>>) -> Self {
         let data: Vec<u8> = bytes.into();
-        assert!(data.len() == Self::alloc_bytes(n, rows, cols_in, cols_out, size));
+        assert!(data.len() == Self::bytes_of(n, rows, cols_in, cols_out, size));
         Self {
             data,
             n,
@@ -153,7 +153,7 @@ impl<D: DataRef> MatZnx<D> {
         }
 
         let self_ref: MatZnx<&[u8]> = self.to_ref();
-        let nb_bytes: usize = VecZnx::<Vec<u8>>::alloc_bytes(self.n, self.cols_out, self.size);
+        let nb_bytes: usize = VecZnx::<Vec<u8>>::bytes_of(self.n, self.cols_out, self.size);
         let start: usize = nb_bytes * self.cols() * row + col * nb_bytes;
         let end: usize = start + nb_bytes;
 
@@ -181,7 +181,7 @@ impl<D: DataMut> MatZnx<D> {
         let size: usize = self.size();
 
         let self_ref: MatZnx<&mut [u8]> = self.to_mut();
-        let nb_bytes: usize = VecZnx::<Vec<u8>>::alloc_bytes(n, cols_out, size);
+        let nb_bytes: usize = VecZnx::<Vec<u8>>::bytes_of(n, cols_out, size);
         let start: usize = nb_bytes * cols_in * row + col * nb_bytes;
         let end: usize = start + nb_bytes;
 

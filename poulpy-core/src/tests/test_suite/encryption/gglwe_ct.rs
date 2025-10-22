@@ -1,77 +1,44 @@
 use poulpy_hal::{
-    api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare,
-        VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxBigAddInplace, VecZnxBigAddSmallInplace,
-        VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxCopy, VecZnxDftAllocBytes, VecZnxDftApply, VecZnxFillUniform,
-        VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubInplace,
-        VecZnxSubScalarInplace, VecZnxSwitchRing, VmpPMatAlloc, VmpPrepare,
-    },
-    layouts::{Backend, Module, ScratchOwned},
-    oep::{
-        ScratchAvailableImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeScalarZnxImpl, TakeSvpPPolImpl,
-        TakeVecZnxBigImpl, TakeVecZnxDftImpl, TakeVecZnxImpl, VecZnxBigAllocBytesImpl, VecZnxDftAllocBytesImpl,
-    },
+    api::{ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxFillUniform},
+    layouts::{Backend, Module, Scratch, ScratchOwned},
     source::Source,
 };
 
 use crate::{
+    GGLWEEncryptSk, GGLWEKeyswitch, GLWESwitchingKeyCompressedEncryptSk, GLWESwitchingKeyEncryptSk, ScratchTakeCore,
+    decryption::GLWEDecrypt,
     encryption::SIGMA,
     layouts::{
-        GGLWECiphertextLayout, GGLWESwitchingKey, GLWESecret,
-        compressed::{Decompress, GGLWESwitchingKeyCompressed},
-        prepared::{GLWESecretPrepared, PrepareAlloc},
+        GGLWELayout, GLWESecret, GLWESecretPreparedFactory, GLWESwitchingKey, GLWESwitchingKeyCompressed,
+        GLWESwitchingKeyDecompress,
+        prepared::{GGLWEPreparedFactory, GLWESecretPrepared},
     },
+    noise::GGLWENoise,
 };
 
-pub fn test_gglwe_switching_key_encrypt_sk<B>(module: &Module<B>)
+pub fn test_gglwe_switching_key_encrypt_sk<BE: Backend>(module: &Module<BE>)
 where
-    Module<B>: VecZnxDftAllocBytes
-        + VecZnxBigNormalize<B>
-        + VecZnxDftApply<B>
-        + SvpApplyDftToDftInplace<B>
-        + VecZnxIdftApplyConsume<B>
-        + VecZnxNormalizeTmpBytes
+    Module<BE>: GGLWEEncryptSk<BE>
+        + GGLWEPreparedFactory<BE>
+        + GGLWEKeyswitch<BE>
+        + GLWEDecrypt<BE>
+        + GLWESecretPreparedFactory<BE>
+        + GLWESwitchingKeyEncryptSk<BE>
         + VecZnxFillUniform
-        + VecZnxSubInplace
-        + VecZnxAddInplace
-        + VecZnxNormalizeInplace<B>
-        + VecZnxAddNormal
-        + VecZnxNormalize<B>
-        + VecZnxSub
-        + SvpPrepare<B>
-        + SvpPPolAllocBytes
-        + SvpPPolAlloc<B>
-        + VecZnxBigAddSmallInplace<B>
-        + VecZnxSwitchRing
-        + VecZnxAddScalarInplace
-        + VecZnxBigAllocBytes
-        + VecZnxBigAddInplace<B>
-        + VecZnxSubScalarInplace
-        + VecZnxCopy
-        + VmpPMatAlloc<B>
-        + VmpPrepare<B>,
-    B: Backend
-        + TakeVecZnxDftImpl<B>
-        + TakeVecZnxBigImpl<B>
-        + ScratchOwnedAllocImpl<B>
-        + ScratchOwnedBorrowImpl<B>
-        + ScratchAvailableImpl<B>
-        + TakeScalarZnxImpl<B>
-        + TakeVecZnxImpl<B>
-        + VecZnxDftAllocBytesImpl<B>
-        + VecZnxBigAllocBytesImpl<B>
-        + TakeSvpPPolImpl<B>,
+        + GGLWENoise<BE>,
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
+    Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
+    let n: usize = module.n();
     let base2k: usize = 12;
     let k_ksk: usize = 54;
     let dsize: usize = k_ksk / base2k;
     for rank_in in 1_usize..3 {
         for rank_out in 1_usize..3 {
             for di in 1_usize..dsize + 1 {
-                let n: usize = module.n();
                 let dnum: usize = (k_ksk - di * base2k) / (di * base2k);
 
-                let gglwe_infos: GGLWECiphertextLayout = GGLWECiphertextLayout {
+                let gglwe_infos: GGLWELayout = GGLWELayout {
                     n: n.into(),
                     base2k: base2k.into(),
                     k: k_ksk.into(),
@@ -81,23 +48,22 @@ where
                     rank_out: rank_out.into(),
                 };
 
-                let mut ksk: GGLWESwitchingKey<Vec<u8>> = GGLWESwitchingKey::alloc(&gglwe_infos);
+                let mut ksk: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc_from_infos(&gglwe_infos);
 
                 let mut source_xs: Source = Source::new([0u8; 32]);
                 let mut source_xe: Source = Source::new([0u8; 32]);
                 let mut source_xa: Source = Source::new([0u8; 32]);
 
-                let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GGLWESwitchingKey::encrypt_sk_scratch_space(
-                    module,
-                    &gglwe_infos,
-                ));
+                let mut scratch: ScratchOwned<BE> =
+                    ScratchOwned::alloc(GLWESwitchingKey::encrypt_sk_tmp_bytes(module, &gglwe_infos));
 
-                let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc_with(n.into(), rank_in.into());
+                let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank_in.into());
                 sk_in.fill_ternary_prob(0.5, &mut source_xs);
 
-                let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc_with(n.into(), rank_out.into());
+                let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank_out.into());
                 sk_out.fill_ternary_prob(0.5, &mut source_xs);
-                let sk_out_prepared: GLWESecretPrepared<Vec<u8>, B> = sk_out.prepare_alloc(module, scratch.borrow());
+                let mut sk_out_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(module, rank_out.into());
+                sk_out_prepared.prepare(module, &sk_out);
 
                 ksk.encrypt_sk(
                     module,
@@ -115,55 +81,31 @@ where
     }
 }
 
-pub fn test_gglwe_switching_key_compressed_encrypt_sk<B>(module: &Module<B>)
+pub fn test_gglwe_switching_key_compressed_encrypt_sk<BE: Backend>(module: &Module<BE>)
 where
-    Module<B>: VecZnxDftAllocBytes
-        + VecZnxBigNormalize<B>
-        + VecZnxDftApply<B>
-        + SvpApplyDftToDftInplace<B>
-        + VecZnxIdftApplyConsume<B>
-        + VecZnxNormalizeTmpBytes
-        + VecZnxFillUniform
-        + VecZnxSubInplace
-        + VecZnxAddInplace
-        + VecZnxNormalizeInplace<B>
-        + VecZnxAddNormal
-        + VecZnxNormalize<B>
-        + VecZnxSub
-        + SvpPrepare<B>
-        + SvpPPolAllocBytes
-        + SvpPPolAlloc<B>
-        + VecZnxBigAddSmallInplace<B>
-        + VecZnxSwitchRing
-        + VecZnxAddScalarInplace
-        + VecZnxBigAllocBytes
-        + VecZnxBigAddInplace<B>
-        + VecZnxSubScalarInplace
-        + VecZnxCopy
-        + VmpPMatAlloc<B>
-        + VmpPrepare<B>,
-    B: Backend
-        + TakeVecZnxDftImpl<B>
-        + TakeVecZnxBigImpl<B>
-        + ScratchOwnedAllocImpl<B>
-        + ScratchOwnedBorrowImpl<B>
-        + ScratchAvailableImpl<B>
-        + TakeScalarZnxImpl<B>
-        + TakeVecZnxImpl<B>
-        + VecZnxDftAllocBytesImpl<B>
-        + VecZnxBigAllocBytesImpl<B>
-        + TakeSvpPPolImpl<B>,
+    Module<BE>: GGLWEEncryptSk<BE>
+        + GGLWEPreparedFactory<BE>
+        + GGLWEKeyswitch<BE>
+        + GLWEDecrypt<BE>
+        + GLWESecretPreparedFactory<BE>
+        + GLWESwitchingKeyEncryptSk<BE>
+        + GLWESwitchingKeyCompressedEncryptSk<BE>
+        + GLWESwitchingKeyDecompress
+        + GGLWENoise<BE>
+        + VecZnxFillUniform,
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
+    Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
+    let n: usize = module.n();
     let base2k: usize = 12;
     let k_ksk: usize = 54;
     let dsize: usize = k_ksk / base2k;
     for rank_in in 1_usize..3 {
         for rank_out in 1_usize..3 {
             for di in 1_usize..dsize + 1 {
-                let n: usize = module.n();
                 let dnum: usize = (k_ksk - di * base2k) / (di * base2k);
 
-                let gglwe_infos: GGLWECiphertextLayout = GGLWECiphertextLayout {
+                let gglwe_infos: GGLWELayout = GGLWELayout {
                     n: n.into(),
                     base2k: base2k.into(),
                     k: k_ksk.into(),
@@ -173,22 +115,24 @@ where
                     rank_out: rank_out.into(),
                 };
 
-                let mut ksk_compressed: GGLWESwitchingKeyCompressed<Vec<u8>> = GGLWESwitchingKeyCompressed::alloc(&gglwe_infos);
+                let mut ksk_compressed: GLWESwitchingKeyCompressed<Vec<u8>> =
+                    GLWESwitchingKeyCompressed::alloc_from_infos(&gglwe_infos);
 
                 let mut source_xs: Source = Source::new([0u8; 32]);
                 let mut source_xe: Source = Source::new([0u8; 32]);
 
-                let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GGLWESwitchingKeyCompressed::encrypt_sk_scratch_space(
+                let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(GLWESwitchingKeyCompressed::encrypt_sk_tmp_bytes(
                     module,
                     &gglwe_infos,
                 ));
 
-                let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc_with(n.into(), rank_in.into());
+                let mut sk_in: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank_in.into());
                 sk_in.fill_ternary_prob(0.5, &mut source_xs);
 
-                let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc_with(n.into(), rank_out.into());
+                let mut sk_out: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), rank_out.into());
                 sk_out.fill_ternary_prob(0.5, &mut source_xs);
-                let sk_out_prepared: GLWESecretPrepared<Vec<u8>, B> = sk_out.prepare_alloc(module, scratch.borrow());
+                let mut sk_out_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(module, rank_out.into());
+                sk_out_prepared.prepare(module, &sk_out);
 
                 let seed_xa = [1u8; 32];
 
@@ -201,7 +145,7 @@ where
                     scratch.borrow(),
                 );
 
-                let mut ksk: GGLWESwitchingKey<Vec<u8>> = GGLWESwitchingKey::alloc(&gglwe_infos);
+                let mut ksk: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc_from_infos(&gglwe_infos);
                 ksk.decompress(module, &ksk_compressed);
 
                 ksk.key

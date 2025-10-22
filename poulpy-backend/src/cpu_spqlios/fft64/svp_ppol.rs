@@ -27,7 +27,7 @@ unsafe impl SvpPPolAllocImpl<Self> for FFT64Spqlios {
 }
 
 unsafe impl SvpPPolAllocBytesImpl<Self> for FFT64Spqlios {
-    fn svp_ppol_alloc_bytes_impl(n: usize, cols: usize) -> usize {
+    fn svp_ppol_bytes_of_impl(n: usize, cols: usize) -> usize {
         FFT64Spqlios::layout_prep_word_count() * n * cols * size_of::<f64>()
     }
 }

@@ -1,52 +1,50 @@
-mod gglwe_atk;
-mod gglwe_ct;
-mod gglwe_ksk;
-mod gglwe_tsk;
-mod ggsw_ct;
-mod glwe_ct;
-mod glwe_pk;
-mod glwe_pt;
-mod glwe_sk;
-mod glwe_to_lwe_ksk;
-mod lwe_ct;
-mod lwe_ksk;
-mod lwe_pt;
-mod lwe_sk;
-mod lwe_to_glwe_ksk;
+mod gglwe;
+mod ggsw;
+mod glwe;
+mod glwe_automorphism_key;
+mod glwe_plaintext;
+mod glwe_public_key;
+mod glwe_secret;
+mod glwe_switching_key;
+mod glwe_tensor_key;
+mod glwe_to_lwe_switching_key;
+mod lwe;
+mod lwe_plaintext;
+mod lwe_secret;
+mod lwe_switching_key;
+mod lwe_to_glwe_switching_key;
 
 pub mod compressed;
 pub mod prepared;
 
-pub use gglwe_atk::*;
-pub use gglwe_ct::*;
-pub use gglwe_ksk::*;
-pub use gglwe_tsk::*;
-pub use ggsw_ct::*;
-pub use glwe_ct::*;
-pub use glwe_pk::*;
-pub use glwe_pt::*;
-pub use glwe_sk::*;
-pub use glwe_to_lwe_ksk::*;
-pub use lwe_ct::*;
-pub use lwe_ksk::*;
-pub use lwe_pt::*;
-pub use lwe_sk::*;
-pub use lwe_to_glwe_ksk::*;
+pub use compressed::*;
+pub use gglwe::*;
+pub use ggsw::*;
+pub use glwe::*;
+pub use glwe_automorphism_key::*;
+pub use glwe_plaintext::*;
+pub use glwe_public_key::*;
+pub use glwe_secret::*;
+pub use glwe_switching_key::*;
+pub use glwe_tensor_key::*;
+pub use glwe_to_lwe_switching_key::*;
+pub use lwe::*;
+pub use lwe_plaintext::*;
+pub use lwe_secret::*;
+pub use lwe_switching_key::*;
+pub use lwe_to_glwe_switching_key::*;
+pub use prepared::*;
 
-#[derive(Debug)]
-pub enum BuildError {
-    MissingData,
-    MissingBase2K,
-    MissingK,
-    MissingDigits,
-    ZeroDegree,
-    NonPowerOfTwoDegree,
-    ZeroBase2K,
-    ZeroTorusPrecision,
-    ZeroCols,
-    ZeroLimbs,
-    ZeroRank,
-    ZeroDigits,
+use poulpy_hal::layouts::{Backend, Module};
+
+pub trait GetDegree {
+    fn ring_degree(&self) -> Degree;
+}
+
+impl<B: Backend> GetDegree for Module<B> {
+    fn ring_degree(&self) -> Degree {
+        Self::n(self).into()
+    }
 }
 
 /// Newtype over `u32` with arithmetic and comparisons against same type and `u32`.

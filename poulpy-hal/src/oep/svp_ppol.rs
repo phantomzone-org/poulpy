@@ -23,7 +23,7 @@ pub unsafe trait SvpPPolAllocImpl<B: Backend> {
 /// * See [crate::api::SvpPPolAllocBytes] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait SvpPPolAllocBytesImpl<B: Backend> {
-    fn svp_ppol_alloc_bytes_impl(n: usize, cols: usize) -> usize;
+    fn svp_ppol_bytes_of_impl(n: usize, cols: usize) -> usize;
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)

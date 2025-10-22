@@ -1,181 +1,189 @@
 use std::collections::HashMap;
 
 use poulpy_hal::{
-    api::{
-        ScratchAvailable, TakeVecZnx, TakeVecZnxDft, VecZnxBigAddSmallInplace, VecZnxBigAutomorphismInplace, VecZnxBigNormalize,
-        VecZnxBigNormalizeTmpBytes, VecZnxCopy, VecZnxDftAllocBytes, VecZnxDftApply, VecZnxIdftApplyConsume, VecZnxNormalize,
-        VecZnxNormalizeTmpBytes, VecZnxRshInplace, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
-    },
-    layouts::{Backend, DataMut, DataRef, Module, Scratch, VecZnx},
+    api::ModuleLogN,
+    layouts::{Backend, DataMut, GaloisElement, Module, Scratch, VecZnx, galois_element},
 };
 
 use crate::{
-    TakeGLWECt,
+    GLWEAutomorphism, GLWECopy, GLWEShift, ScratchTakeCore,
     layouts::{
-        Base2K, GGLWEInfos, GLWECiphertext, GLWECiphertextLayout, GLWEInfos, LWEInfos, prepared::GGLWEAutomorphismKeyPrepared,
+        Base2K, GGLWEInfos, GGLWEPreparedToRef, GLWE, GLWEInfos, GLWELayout, GLWEToMut, GLWEToRef, GetGaloisElement, LWEInfos,
     },
-    operations::GLWEOperations,
 };
 
-impl GLWECiphertext<Vec<u8>> {
-    pub fn trace_galois_elements<B: Backend>(module: &Module<B>) -> Vec<i64> {
-        let mut gal_els: Vec<i64> = Vec::new();
-        (0..module.log_n()).for_each(|i| {
-            if i == 0 {
-                gal_els.push(-1);
-            } else {
-                gal_els.push(module.galois_element(1 << (i - 1)));
-            }
-        });
-        gal_els
+impl GLWE<Vec<u8>> {
+    pub fn trace_galois_elements<M, BE: Backend>(module: &M) -> Vec<i64>
+    where
+        M: GLWETrace<BE>,
+    {
+        module.glwe_trace_galois_elements()
     }
 
-    pub fn trace_scratch_space<B: Backend, OUT, IN, KEY>(
-        module: &Module<B>,
-        out_infos: &OUT,
-        in_infos: &IN,
-        key_infos: &KEY,
-    ) -> usize
+    pub fn trace_tmp_bytes<R, A, K, M, BE: Backend>(module: &M, res_infos: &R, a_infos: &A, key_infos: &K) -> usize
     where
-        OUT: GLWEInfos,
-        IN: GLWEInfos,
-        KEY: GGLWEInfos,
-        Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
+        R: GLWEInfos,
+        A: GLWEInfos,
+        K: GGLWEInfos,
+        M: GLWETrace<BE>,
     {
-        let trace: usize = Self::automorphism_inplace_scratch_space(module, out_infos, key_infos);
-        if in_infos.base2k() != key_infos.base2k() {
-            let glwe_conv: usize = VecZnx::alloc_bytes(
-                module.n(),
+        module.glwe_automorphism_tmp_bytes(res_infos, a_infos, key_infos)
+    }
+}
+
+impl<D: DataMut> GLWE<D> {
+    pub fn trace<A, K, M, BE: Backend>(
+        &mut self,
+        module: &M,
+        start: usize,
+        end: usize,
+        a: &A,
+        keys: &HashMap<i64, K>,
+        scratch: &mut Scratch<BE>,
+    ) where
+        A: GLWEToRef,
+        K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
+        Scratch<BE>: ScratchTakeCore<BE>,
+        M: GLWETrace<BE>,
+    {
+        module.glwe_trace(self, start, end, a, keys, scratch);
+    }
+
+    pub fn trace_inplace<K, M, BE: Backend>(
+        &mut self,
+        module: &M,
+        start: usize,
+        end: usize,
+        keys: &HashMap<i64, K>,
+        scratch: &mut Scratch<BE>,
+    ) where
+        K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
+        Scratch<BE>: ScratchTakeCore<BE>,
+        M: GLWETrace<BE>,
+    {
+        module.glwe_trace_inplace(self, start, end, keys, scratch);
+    }
+}
+
+impl<BE: Backend> GLWETrace<BE> for Module<BE> where
+    Self: ModuleLogN + GaloisElement + GLWEAutomorphism<BE> + GLWEShift<BE> + GLWECopy
+{
+}
+
+#[inline(always)]
+pub fn trace_galois_elements(log_n: usize, cyclotomic_order: i64) -> Vec<i64> {
+    (0..log_n)
+        .map(|i| {
+            if i == 0 {
+                -1
+            } else {
+                galois_element(1 << (i - 1), cyclotomic_order)
+            }
+        })
+        .collect()
+}
+
+pub trait GLWETrace<BE: Backend>
+where
+    Self: ModuleLogN + GaloisElement + GLWEAutomorphism<BE> + GLWEShift<BE> + GLWECopy,
+{
+    fn glwe_trace_galois_elements(&self) -> Vec<i64> {
+        trace_galois_elements(self.log_n(), self.cyclotomic_order())
+    }
+
+    fn glwe_trace_tmp_bytes<R, A, K>(&self, res_infos: &R, a_infos: &A, key_infos: &K) -> usize
+    where
+        R: GLWEInfos,
+        A: GLWEInfos,
+        K: GGLWEInfos,
+    {
+        let trace: usize = self.glwe_automorphism_tmp_bytes(res_infos, a_infos, key_infos);
+        if a_infos.base2k() != key_infos.base2k() {
+            let glwe_conv: usize = VecZnx::bytes_of(
+                self.n(),
                 (key_infos.rank_out() + 1).into(),
-                out_infos.k().min(in_infos.k()).div_ceil(key_infos.base2k()) as usize,
-            ) + module.vec_znx_normalize_tmp_bytes();
+                res_infos.k().min(a_infos.k()).div_ceil(key_infos.base2k()) as usize,
+            ) + self.vec_znx_normalize_tmp_bytes();
             return glwe_conv + trace;
         }
 
         trace
     }
 
-    pub fn trace_inplace_scratch_space<B: Backend, OUT, KEY>(module: &Module<B>, out_infos: &OUT, key_infos: &KEY) -> usize
+    fn glwe_trace<R, A, K>(&self, res: &mut R, start: usize, end: usize, a: &A, keys: &HashMap<i64, K>, scratch: &mut Scratch<BE>)
     where
-        OUT: GLWEInfos,
-        KEY: GGLWEInfos,
-        Module<B>: VecZnxDftAllocBytes + VmpApplyDftToDftTmpBytes + VecZnxBigNormalizeTmpBytes + VecZnxNormalizeTmpBytes,
+        R: GLWEToMut,
+        A: GLWEToRef,
+        K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
+        Scratch<BE>: ScratchTakeCore<BE>,
     {
-        Self::trace_scratch_space(module, out_infos, out_infos, key_infos)
-    }
-}
-
-impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
-    pub fn trace<DataLhs: DataRef, DataAK: DataRef, B: Backend>(
-        &mut self,
-        module: &Module<B>,
-        start: usize,
-        end: usize,
-        lhs: &GLWECiphertext<DataLhs>,
-        auto_keys: &HashMap<i64, GGLWEAutomorphismKeyPrepared<DataAK, B>>,
-        scratch: &mut Scratch<B>,
-    ) where
-        Module<B>: VecZnxDftAllocBytes
-            + VmpApplyDftToDftTmpBytes
-            + VecZnxBigNormalizeTmpBytes
-            + VmpApplyDftToDft<B>
-            + VmpApplyDftToDftAdd<B>
-            + VecZnxDftApply<B>
-            + VecZnxIdftApplyConsume<B>
-            + VecZnxBigAddSmallInplace<B>
-            + VecZnxBigNormalize<B>
-            + VecZnxBigAutomorphismInplace<B>
-            + VecZnxRshInplace<B>
-            + VecZnxCopy
-            + VecZnxNormalizeTmpBytes
-            + VecZnxNormalize<B>,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
-    {
-        self.copy(module, lhs);
-        self.trace_inplace(module, start, end, auto_keys, scratch);
+        self.glwe_copy(res, a);
+        self.glwe_trace_inplace(res, start, end, keys, scratch);
     }
 
-    pub fn trace_inplace<DataAK: DataRef, B: Backend>(
-        &mut self,
-        module: &Module<B>,
-        start: usize,
-        end: usize,
-        auto_keys: &HashMap<i64, GGLWEAutomorphismKeyPrepared<DataAK, B>>,
-        scratch: &mut Scratch<B>,
-    ) where
-        Module<B>: VecZnxDftAllocBytes
-            + VmpApplyDftToDftTmpBytes
-            + VecZnxBigNormalizeTmpBytes
-            + VmpApplyDftToDft<B>
-            + VmpApplyDftToDftAdd<B>
-            + VecZnxDftApply<B>
-            + VecZnxIdftApplyConsume<B>
-            + VecZnxBigAddSmallInplace<B>
-            + VecZnxBigNormalize<B>
-            + VecZnxBigAutomorphismInplace<B>
-            + VecZnxRshInplace<B>
-            + VecZnxNormalizeTmpBytes
-            + VecZnxNormalize<B>,
-        Scratch<B>: TakeVecZnxDft<B> + ScratchAvailable + TakeVecZnx,
+    fn glwe_trace_inplace<R, K>(&self, res: &mut R, start: usize, end: usize, keys: &HashMap<i64, K>, scratch: &mut Scratch<BE>)
+    where
+        R: GLWEToMut,
+        K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
+        Scratch<BE>: ScratchTakeCore<BE>,
     {
-        let basek_ksk: Base2K = auto_keys
-            .get(auto_keys.keys().next().unwrap())
-            .unwrap()
-            .base2k();
+        let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
+
+        let basek_ksk: Base2K = keys.get(keys.keys().next().unwrap()).unwrap().base2k();
 
         #[cfg(debug_assertions)]
         {
-            assert_eq!(self.n(), module.n() as u32);
+            assert_eq!(res.n(), self.n() as u32);
             assert!(start < end);
-            assert!(end <= module.log_n());
-            for key in auto_keys.values() {
-                assert_eq!(key.n(), module.n() as u32);
+            assert!(end <= self.log_n());
+            for key in keys.values() {
+                assert_eq!(key.n(), self.n() as u32);
                 assert_eq!(key.base2k(), basek_ksk);
-                assert_eq!(key.rank_in(), self.rank());
-                assert_eq!(key.rank_out(), self.rank());
+                assert_eq!(key.rank_in(), res.rank());
+                assert_eq!(key.rank_out(), res.rank());
             }
         }
 
-        if self.base2k() != basek_ksk {
-            let (mut self_conv, scratch_1) = scratch.take_glwe_ct(&GLWECiphertextLayout {
-                n: module.n().into(),
+        if res.base2k() != basek_ksk {
+            let (mut self_conv, scratch_1) = scratch.take_glwe(&GLWELayout {
+                n: self.n().into(),
                 base2k: basek_ksk,
-                k: self.k(),
-                rank: self.rank(),
+                k: res.k(),
+                rank: res.rank(),
             });
 
-            for j in 0..(self.rank() + 1).into() {
-                module.vec_znx_normalize(
+            for j in 0..(res.rank() + 1).into() {
+                self.vec_znx_normalize(
                     basek_ksk.into(),
                     &mut self_conv.data,
                     j,
                     basek_ksk.into(),
-                    &self.data,
+                    res.data(),
                     j,
                     scratch_1,
                 );
             }
 
             for i in start..end {
-                self_conv.rsh(module, 1, scratch_1);
+                self.glwe_rsh(1, &mut self_conv, scratch_1);
 
                 let p: i64 = if i == 0 {
                     -1
                 } else {
-                    module.galois_element(1 << (i - 1))
+                    self.galois_element(1 << (i - 1))
                 };
 
-                if let Some(key) = auto_keys.get(&p) {
-                    self_conv.automorphism_add_inplace(module, key, scratch_1);
+                if let Some(key) = keys.get(&p) {
+                    self.glwe_automorphism_add_inplace(&mut self_conv, key, scratch_1);
                 } else {
-                    panic!("auto_keys[{p}] is empty")
+                    panic!("keys[{p}] is empty")
                 }
             }
 
-            for j in 0..(self.rank() + 1).into() {
-                module.vec_znx_normalize(
-                    self.base2k().into(),
-                    &mut self.data,
+            for j in 0..(res.rank() + 1).into() {
+                self.vec_znx_normalize(
+                    res.base2k().into(),
+                    res.data_mut(),
                     j,
                     basek_ksk.into(),
                     &self_conv.data,
@@ -184,19 +192,21 @@ impl<DataSelf: DataMut> GLWECiphertext<DataSelf> {
                 );
             }
         } else {
+            // println!("res: {}", res);
+
             for i in start..end {
-                self.rsh(module, 1, scratch);
+                self.glwe_rsh(1, res, scratch);
 
                 let p: i64 = if i == 0 {
                     -1
                 } else {
-                    module.galois_element(1 << (i - 1))
+                    self.galois_element(1 << (i - 1))
                 };
 
-                if let Some(key) = auto_keys.get(&p) {
-                    self.automorphism_add_inplace(module, key, scratch);
+                if let Some(key) = keys.get(&p) {
+                    self.glwe_automorphism_add_inplace(res, key, scratch);
                 } else {
-                    panic!("auto_keys[{p}] is empty")
+                    panic!("keys[{p}] is empty")
                 }
             }
         }

@@ -1,71 +1,34 @@
 use poulpy_hal::{
-    api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDftInplace, SvpPPolAlloc, SvpPPolAllocBytes, SvpPrepare,
-        VecZnxAddInplace, VecZnxAddNormal, VecZnxAddScalarInplace, VecZnxAutomorphism, VecZnxAutomorphismInplace,
-        VecZnxBigAddInplace, VecZnxBigAddSmallInplace, VecZnxBigAllocBytes, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
-        VecZnxCopy, VecZnxDftAllocBytes, VecZnxDftApply, VecZnxFillUniform, VecZnxIdftApplyConsume, VecZnxNormalize,
-        VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxSub, VecZnxSubInplace, VecZnxSubScalarInplace, VecZnxSwitchRing,
-        VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes, VmpPMatAlloc, VmpPrepare,
-    },
-    layouts::{Backend, Module, ScratchOwned},
-    oep::{
-        ScratchAvailableImpl, ScratchOwnedAllocImpl, ScratchOwnedBorrowImpl, TakeScalarZnxImpl, TakeSvpPPolImpl,
-        TakeVecZnxBigImpl, TakeVecZnxDftImpl, TakeVecZnxImpl,
-    },
+    api::{ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxAutomorphism, VecZnxFillUniform},
+    layouts::{Backend, GaloisElement, Module, Scratch, ScratchOwned},
     source::Source,
 };
 
 use crate::{
+    GGLWEKeyswitch, GLWEAutomorphismKeyCompressedEncryptSk, GLWEAutomorphismKeyEncryptSk, GLWESwitchingKeyCompressedEncryptSk,
+    GLWESwitchingKeyEncryptSk, ScratchTakeCore,
     encryption::SIGMA,
     layouts::{
-        GGLWEAutomorphismKey, GGLWEAutomorphismKeyLayout, GLWEInfos, GLWESecret,
-        compressed::{Decompress, GGLWEAutomorphismKeyCompressed},
-        prepared::{GLWESecretPrepared, PrepareAlloc},
+        AutomorphismKeyDecompress, GLWEAutomorphismKey, GLWEAutomorphismKeyLayout, GLWEInfos, GLWESecret,
+        GLWESecretPreparedFactory, GLWESwitchingKeyDecompress, compressed::GLWEAutomorphismKeyCompressed,
+        prepared::GLWESecretPrepared,
     },
+    noise::GGLWENoise,
 };
 
-pub fn test_gglwe_automorphisk_key_encrypt_sk<B>(module: &Module<B>)
+pub fn test_gglwe_automorphism_key_encrypt_sk<BE: Backend>(module: &Module<BE>)
 where
-    Module<B>: VecZnxDftAllocBytes
-        + VecZnxBigNormalize<B>
-        + VecZnxDftApply<B>
-        + SvpApplyDftToDftInplace<B>
-        + VecZnxIdftApplyConsume<B>
-        + VecZnxNormalizeTmpBytes
+    Module<BE>: GLWEAutomorphismKeyEncryptSk<BE>
+        + GGLWEKeyswitch<BE>
+        + GLWESecretPreparedFactory<BE>
+        + GLWESwitchingKeyEncryptSk<BE>
+        + GLWESwitchingKeyCompressedEncryptSk<BE>
+        + GLWESwitchingKeyDecompress
+        + GGLWENoise<BE>
         + VecZnxFillUniform
-        + VecZnxSubInplace
-        + VecZnxAddInplace
-        + VecZnxNormalizeInplace<B>
-        + VecZnxAddNormal
-        + VecZnxNormalize<B>
-        + VecZnxSub
-        + SvpPrepare<B>
-        + SvpPPolAllocBytes
-        + SvpPPolAlloc<B>
-        + VmpApplyDftToDftTmpBytes
-        + VecZnxBigNormalizeTmpBytes
-        + VmpApplyDftToDft<B>
-        + VmpApplyDftToDftAdd<B>
-        + VecZnxBigAddSmallInplace<B>
-        + VecZnxAutomorphism
-        + VecZnxSwitchRing
-        + VecZnxAddScalarInplace
-        + VecZnxAutomorphismInplace<B>
-        + VecZnxBigAllocBytes
-        + VecZnxBigAddInplace<B>
-        + VecZnxSubScalarInplace
-        + VecZnxCopy
-        + VmpPMatAlloc<B>
-        + VmpPrepare<B>,
-    B: Backend
-        + ScratchOwnedAllocImpl<B>
-        + ScratchOwnedBorrowImpl<B>
-        + ScratchAvailableImpl<B>
-        + TakeScalarZnxImpl<B>
-        + TakeVecZnxDftImpl<B>
-        + TakeVecZnxImpl<B>
-        + TakeSvpPPolImpl<B>
-        + TakeVecZnxBigImpl<B>,
+        + VecZnxAutomorphism,
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
+    Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
     let base2k: usize = 12;
     let k_ksk: usize = 60;
@@ -75,7 +38,7 @@ where
             let n: usize = module.n();
             let dnum: usize = (k_ksk - di * base2k) / (di * base2k);
 
-            let atk_infos: GGLWEAutomorphismKeyLayout = GGLWEAutomorphismKeyLayout {
+            let atk_infos: GLWEAutomorphismKeyLayout = GLWEAutomorphismKeyLayout {
                 n: n.into(),
                 base2k: base2k.into(),
                 k: k_ksk.into(),
@@ -84,17 +47,17 @@ where
                 rank: rank.into(),
             };
 
-            let mut atk: GGLWEAutomorphismKey<Vec<u8>> = GGLWEAutomorphismKey::alloc(&atk_infos);
+            let mut atk: GLWEAutomorphismKey<Vec<u8>> = GLWEAutomorphismKey::alloc_from_infos(&atk_infos);
 
             let mut source_xs: Source = Source::new([0u8; 32]);
             let mut source_xe: Source = Source::new([0u8; 32]);
             let mut source_xa: Source = Source::new([0u8; 32]);
 
-            let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GGLWEAutomorphismKey::encrypt_sk_scratch_space(
+            let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(GLWEAutomorphismKey::encrypt_sk_tmp_bytes(
                 module, &atk_infos,
             ));
 
-            let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(&atk_infos);
+            let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&atk_infos);
             sk.fill_ternary_prob(0.5, &mut source_xs);
 
             let p = -5;
@@ -118,57 +81,28 @@ where
                     i,
                 );
             });
-            let sk_out_prepared: GLWESecretPrepared<Vec<u8>, B> = sk_out.prepare_alloc(module, scratch.borrow());
+            let mut sk_out_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(module, sk_out.rank());
+            sk_out_prepared.prepare(module, &sk_out);
 
             atk.key
-                .key
                 .assert_noise(module, &sk_out_prepared, &sk.data, SIGMA);
         }
     }
 }
 
-pub fn test_gglwe_automorphisk_key_compressed_encrypt_sk<B>(module: &Module<B>)
+pub fn test_gglwe_automorphism_key_compressed_encrypt_sk<BE: Backend>(module: &Module<BE>)
 where
-    Module<B>: VecZnxDftAllocBytes
-        + VecZnxBigNormalize<B>
-        + VecZnxDftApply<B>
-        + SvpApplyDftToDftInplace<B>
-        + VecZnxIdftApplyConsume<B>
-        + VecZnxNormalizeTmpBytes
-        + VecZnxFillUniform
-        + VecZnxSubInplace
-        + VecZnxAddInplace
-        + VecZnxNormalizeInplace<B>
-        + VecZnxAddNormal
-        + VecZnxNormalize<B>
-        + VecZnxSub
-        + SvpPrepare<B>
-        + SvpPPolAllocBytes
-        + SvpPPolAlloc<B>
-        + VmpApplyDftToDftTmpBytes
-        + VecZnxBigNormalizeTmpBytes
-        + VmpApplyDftToDft<B>
-        + VmpApplyDftToDftAdd<B>
-        + VecZnxBigAddSmallInplace<B>
+    Module<BE>: GLWEAutomorphismKeyCompressedEncryptSk<BE>
+        + GGLWEKeyswitch<BE>
+        + GLWESecretPreparedFactory<BE>
+        + GLWESwitchingKeyEncryptSk<BE>
+        + GLWESwitchingKeyCompressedEncryptSk<BE>
+        + AutomorphismKeyDecompress
         + VecZnxAutomorphism
-        + VecZnxSwitchRing
-        + VecZnxAddScalarInplace
-        + VecZnxAutomorphismInplace<B>
-        + VecZnxBigAllocBytes
-        + VecZnxBigAddInplace<B>
-        + VecZnxSubScalarInplace
-        + VecZnxCopy
-        + VmpPMatAlloc<B>
-        + VmpPrepare<B>,
-    B: Backend
-        + ScratchOwnedAllocImpl<B>
-        + ScratchOwnedBorrowImpl<B>
-        + ScratchAvailableImpl<B>
-        + TakeScalarZnxImpl<B>
-        + TakeVecZnxDftImpl<B>
-        + TakeVecZnxImpl<B>
-        + TakeSvpPPolImpl<B>
-        + TakeVecZnxBigImpl<B>,
+        + VecZnxFillUniform
+        + GGLWENoise<BE>,
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
+    Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
     let base2k: usize = 12;
     let k_ksk: usize = 60;
@@ -178,7 +112,7 @@ where
             let n: usize = module.n();
             let dnum: usize = (k_ksk - di * base2k) / (di * base2k);
 
-            let atk_infos: GGLWEAutomorphismKeyLayout = GGLWEAutomorphismKeyLayout {
+            let atk_infos: GLWEAutomorphismKeyLayout = GLWEAutomorphismKeyLayout {
                 n: n.into(),
                 base2k: base2k.into(),
                 k: k_ksk.into(),
@@ -187,16 +121,17 @@ where
                 rank: rank.into(),
             };
 
-            let mut atk_compressed: GGLWEAutomorphismKeyCompressed<Vec<u8>> = GGLWEAutomorphismKeyCompressed::alloc(&atk_infos);
+            let mut atk_compressed: GLWEAutomorphismKeyCompressed<Vec<u8>> =
+                GLWEAutomorphismKeyCompressed::alloc_from_infos(&atk_infos);
 
             let mut source_xs: Source = Source::new([0u8; 32]);
             let mut source_xe: Source = Source::new([0u8; 32]);
 
-            let mut scratch: ScratchOwned<B> = ScratchOwned::alloc(GGLWEAutomorphismKey::encrypt_sk_scratch_space(
+            let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(GLWEAutomorphismKeyCompressed::encrypt_sk_tmp_bytes(
                 module, &atk_infos,
             ));
 
-            let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(&atk_infos);
+            let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&atk_infos);
             sk.fill_ternary_prob(0.5, &mut source_xs);
 
             let p = -5;
@@ -215,13 +150,13 @@ where
                     i,
                 );
             });
-            let sk_out_prepared = sk_out.prepare_alloc(module, scratch.borrow());
+            let mut sk_out_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(module, sk_out.rank());
+            sk_out_prepared.prepare(module, &sk_out);
 
-            let mut atk: GGLWEAutomorphismKey<Vec<u8>> = GGLWEAutomorphismKey::alloc(&atk_infos);
+            let mut atk: GLWEAutomorphismKey<Vec<u8>> = GLWEAutomorphismKey::alloc_from_infos(&atk_infos);
             atk.decompress(module, &atk_compressed);
 
             atk.key
-                .key
                 .assert_noise(module, &sk_out_prepared, &sk.data, SIGMA);
         }
     }
