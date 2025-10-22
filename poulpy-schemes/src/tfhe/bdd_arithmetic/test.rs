@@ -2,7 +2,7 @@ use std::time::Instant;
 
 use poulpy_backend::FFT64Ref;
 use poulpy_core::{
-    GGSWNoise, GLWEDecrypt, GLWENoise, ScratchTakeCore,
+    GGSWNoise, GLWEDecrypt, GLWEEncryptSk, GLWENoise, ScratchTakeCore,
     layouts::{GGSWLayout, GLWELayout, GLWESecret, GLWESecretPreparedFactory, LWEInfos, LWESecret, prepared::GLWESecretPrepared},
 };
 use poulpy_hal::{
@@ -40,7 +40,8 @@ where
         + BDDKeyPreparedFactory<BRA, BE>
         + GGSWNoise<BE>
         + FheUintBlocksPrepare<BRA, u32, BE>
-        + ExecuteBDDCircuit2WTo1W<u32, BE>,
+        + ExecuteBDDCircuit2WTo1W<u32, BE>
+        + GLWEEncryptSk<BE>,
     BlindRotationKey<Vec<u8>, BRA>: BlindRotationKeyFactory<BRA>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
@@ -63,54 +64,11 @@ where
     let mut sk_glwe_prep: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc_from_infos(&module, &glwe_infos);
     sk_glwe_prep.prepare(&module, &sk_glwe);
 
-    let a: u32 = source.next_u32();
-    let b: u32 = source.next_u32();
+    let a: u32 = 645139204;
+    let b: u32 = 0;
 
     println!("a: {a}");
     println!("b: {b}");
-
-    let mut a_enc_prep: FheUintBlocksPrepared<Vec<u8>, u32, BE> =
-        FheUintBlocksPrepared::<Vec<u8>, u32, BE>::alloc(&module, &ggsw_infos);
-    let mut b_enc_prep: FheUintBlocksPrepared<Vec<u8>, u32, BE> =
-        FheUintBlocksPrepared::<Vec<u8>, u32, BE>::alloc(&module, &ggsw_infos);
-    let mut c_enc: FheUintBlocks<Vec<u8>, u32> = FheUintBlocks::<Vec<u8>, u32>::alloc(&module, &glwe_infos);
-    let mut c_enc_prep_debug: FheUintBlocksPreparedDebug<Vec<u8>, u32> =
-        FheUintBlocksPreparedDebug::<Vec<u8>, u32>::alloc(&module, &ggsw_infos);
-    let mut c_enc_prep: FheUintBlocksPrepared<Vec<u8>, u32, BE> =
-        FheUintBlocksPrepared::<Vec<u8>, u32, BE>::alloc(&module, &ggsw_infos);
-
-    a_enc_prep.encrypt_sk(
-        &module,
-        a,
-        &sk_glwe_prep,
-        &mut source_xa,
-        &mut source_xe,
-        scratch.borrow(),
-    );
-    b_enc_prep.encrypt_sk(
-        &module,
-        b,
-        &sk_glwe_prep,
-        &mut source_xa,
-        &mut source_xe,
-        scratch.borrow(),
-    );
-
-    let start: Instant = Instant::now();
-    c_enc.sub(&module, &a_enc_prep, &b_enc_prep, scratch.borrow());
-
-    let duration: std::time::Duration = start.elapsed();
-    println!("add: {} ms", duration.as_millis());
-
-    println!(
-        "have: {}",
-        c_enc.decrypt(&module, &sk_glwe_prep, scratch.borrow())
-    );
-    println!("want: {}", a.wrapping_sub(b));
-    println!(
-        "noise: {:?}",
-        c_enc.noise(&module, &sk_glwe_prep, a.wrapping_sub(b), scratch.borrow())
-    );
 
     let n_lwe: u32 = TEST_N_LWE;
     let block_size: u32 = TEST_BLOCK_SIZE;
@@ -123,6 +81,8 @@ where
     let mut bdd_key: BDDKey<Vec<u8>, BRA> = BDDKey::alloc_from_infos(&bdd_key_infos);
 
     let now: Instant = Instant::now();
+    source.fill_bytes(&mut scratch.borrow().data);
+    scratch.borrow().data.fill(0);
     bdd_key.encrypt_sk(
         &module,
         &sk_lwe,
@@ -132,37 +92,46 @@ where
         scratch.borrow(),
     );
     let mut bdd_key_prepared: BDDKeyPrepared<Vec<u8>, BRA, BE> = BDDKeyPrepared::alloc_from_infos(&module, &bdd_key_infos);
+    source.fill_bytes(&mut scratch.borrow().data);
     bdd_key_prepared.prepare(&module, &bdd_key, scratch.borrow());
     println!("BDD-KGEN: {} ms", now.elapsed().as_millis());
 
-    let now: Instant = Instant::now();
-    c_enc_prep_debug.prepare(&module, &c_enc, &bdd_key_prepared, scratch.borrow());
-    println!("CBT: {} ms", now.elapsed().as_millis());
+    let mut sum_enc: FheUintBlocks<Vec<u8>, u32> = FheUintBlocks::<Vec<u8>, u32>::alloc(&module, &glwe_infos);
+    let mut a_enc_prep: FheUintBlocksPrepared<Vec<u8>, u32, BE> =
+        FheUintBlocksPrepared::<Vec<u8>, u32, BE>::alloc(&module, &ggsw_infos);
+    let mut b_enc_prep: FheUintBlocksPrepared<Vec<u8>, u32, BE> =
+        FheUintBlocksPrepared::<Vec<u8>, u32, BE>::alloc(&module, &ggsw_infos);
 
-    c_enc_prep_debug.noise(&module, &sk_glwe_prep, a.wrapping_sub(b));
+    source.fill_bytes(&mut scratch.borrow().data);
+    a_enc_prep.encrypt_sk(
+        &module,
+        a,
+        &sk_glwe_prep,
+        &mut source_xa,
+        &mut source_xe,
+        scratch.borrow(),
+    );
+    source.fill_bytes(&mut scratch.borrow().data);
+    b_enc_prep.encrypt_sk(
+        &module,
+        b,
+        &sk_glwe_prep,
+        &mut source_xa,
+        &mut source_xe,
+        scratch.borrow(),
+    );
 
-    let now: Instant = Instant::now();
-    c_enc_prep.prepare(&module, &c_enc, &bdd_key_prepared, scratch.borrow());
-    println!("CBT: {} ms", now.elapsed().as_millis());
-
-    let start: Instant = Instant::now();
-    c_enc.add(&module, &c_enc_prep, &b_enc_prep, scratch.borrow());
-
-    let duration: std::time::Duration = start.elapsed();
-    println!("add: {} ms", duration.as_millis());
+    // d + a
+    sum_enc.add(&module, &a_enc_prep, &b_enc_prep, scratch.borrow());
 
     println!(
-        "have: {}",
-        c_enc.decrypt(&module, &sk_glwe_prep, scratch.borrow())
+        "other have: {:032b}",
+        sum_enc.decrypt(&module, &sk_glwe_prep, scratch.borrow())
     );
-    println!("want: {}", b.wrapping_add(a.wrapping_sub(b)));
-    println!(
-        "noise: {:?}",
-        c_enc.noise(
-            &module,
-            &sk_glwe_prep,
-            b.wrapping_add(a.wrapping_sub(b)),
-            scratch.borrow()
-        )
-    );
+
+    println!("other want: {:032b}", b.wrapping_add(a));
+
+    // print a, b, and d
+    println!("a: {a}");
+    println!("b: {b}");
 }

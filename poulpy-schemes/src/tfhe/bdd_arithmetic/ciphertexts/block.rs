@@ -8,7 +8,7 @@ use poulpy_core::{
 #[cfg(test)]
 use poulpy_core::GLWEEncryptSk;
 use poulpy_core::ScratchTakeCore;
-use poulpy_hal::layouts::{Backend, Data, DataMut, DataRef, Module, Scratch};
+use poulpy_hal::layouts::{Backend, Data, DataMut, DataRef, Module, Scratch, ZnxZero};
 #[cfg(test)]
 #[cfg(test)]
 use poulpy_hal::source::Source;
@@ -80,6 +80,7 @@ impl<D: DataMut, T: UnsignedInteger + ToBits> FheUintBlocks<D, T> {
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         use poulpy_core::layouts::GLWEPlaintextLayout;
+        use poulpy_hal::layouts::ZnxZero;
 
         #[cfg(debug_assertions)]
         {
@@ -95,6 +96,7 @@ impl<D: DataMut, T: UnsignedInteger + ToBits> FheUintBlocks<D, T> {
         };
 
         let (mut pt, scratch_1) = scratch.take_glwe_plaintext(&pt_infos);
+        pt.data.zero();
 
         for i in 0..T::WORD_SIZE {
             pt.encode_coeff_i64(value.bit(i) as i64, TorusPrecision(2), 0);
@@ -159,6 +161,7 @@ impl<D: DataRef, T: UnsignedInteger + FromBits + ToBits> FheUintBlocks<D, T> {
         };
 
         let (mut pt_want, scratch_1) = scratch.take_glwe_plaintext(&pt_infos);
+        pt_want.data.zero();
 
         let mut noise: Vec<f64> = vec![0f64; T::WORD_SIZE];
 

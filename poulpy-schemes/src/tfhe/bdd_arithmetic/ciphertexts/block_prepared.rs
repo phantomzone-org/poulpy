@@ -107,7 +107,7 @@ where
         S: GLWESecretPreparedToRef<BE> + GLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        use poulpy_hal::api::ScratchTakeBasic;
+        use poulpy_hal::{api::ScratchTakeBasic, layouts::ZnxZero};
 
         assert!(self.n().is_multiple_of(T::WORD_SIZE));
         assert_eq!(res.n(), self.n() as u32);
@@ -115,10 +115,10 @@ where
 
         let (mut tmp_ggsw, scratch_1) = scratch.take_ggsw(res);
         let (mut pt, scratch_2) = scratch_1.take_scalar_znx(self.n(), 1);
+        pt.zero();
 
         for i in 0..T::WORD_SIZE {
             use poulpy_hal::layouts::ZnxViewMut;
-
             pt.at_mut(0, 0)[0] = value.bit(i) as i64;
             tmp_ggsw.encrypt_sk(self, &pt, sk, source_xa, source_xe, scratch_2);
             res.blocks[i].prepare(self, &tmp_ggsw, scratch_2);

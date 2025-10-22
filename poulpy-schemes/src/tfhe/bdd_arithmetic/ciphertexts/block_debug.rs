@@ -88,6 +88,7 @@ impl<D: DataRef, T: UnsignedInteger> GGSWInfos for FheUintBlocksPreparedDebug<D,
 }
 
 impl<D: DataRef, T: UnsignedInteger + ToBits> FheUintBlocksPreparedDebug<D, T> {
+    #[allow(dead_code)]
     pub(crate) fn noise<S, M, BE: Backend>(&self, module: &M, sk: &S, want: T)
     where
         S: GLWESecretPreparedToRef<BE>,
@@ -129,6 +130,7 @@ where
 }
 
 impl<D: DataMut, T: UnsignedInteger> FheUintBlocksPreparedDebug<D, T> {
+    #[allow(dead_code)]
     pub fn prepare<BRA, M, O, K, BE: Backend>(
         &mut self,
         module: &M,
