@@ -3,6 +3,10 @@ members = ["poulpy-hal", "poulpy-core", "poulpy-backend", "poulpy-schemes"]
 resolver = "3"
 
 [workspace.dependencies]
+poulpy-hal = {path = "poulpy-hal"}
+poulpy-core = {path = "poulpy-core"}
+poulpy-backend = {path = "poulpy-backend"}
+poulpy-schemes = {path = "poulpy-schemes"}
 rug = "1.27"
 rand = "0.9.1"
 rand_chacha = "0.9.0"

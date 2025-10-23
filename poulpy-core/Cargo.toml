@@ -1,6 +1,6 @@
 [package]
 name = "poulpy-core"
-version = "0.1.1"
+version = "0.2.0"
 edition = "2024"
 license = "Apache-2.0"
 description = "A backend agnostic crate implementing RLWE-based encryption & arithmetic."
@@ -11,8 +11,8 @@ documentation = "https://docs.rs/poulpy"
 [dependencies]
 rug = {workspace = true}
 criterion = {workspace = true}
-poulpy-hal = {path="../poulpy-hal"}
-poulpy-backend = {path="../poulpy-backend"}
+poulpy-hal = {workspace = true}
+poulpy-backend = {workspace = true}
 itertools = {workspace = true}
 byteorder = {workspace = true}
 once_cell = {workspace = true}

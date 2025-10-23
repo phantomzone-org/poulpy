@@ -1,6 +1,6 @@
 [package]
 name = "poulpy-schemes"
-version = "0.1.1"
+version = "0.2.0"
 edition = "2024"
 license = "Apache-2.0"
 readme = "README.md"
@@ -10,9 +10,9 @@ homepage = "https://github.com/phantomzone-org/poulpy"
 documentation = "https://docs.rs/poulpy"
 
 [dependencies]
-poulpy-backend = {path="../poulpy-backend"}
-poulpy-hal = {path="../poulpy-hal"}
-poulpy-core = {path="../poulpy-core"}
+poulpy-backend = {workspace = true}
+poulpy-hal = {workspace = true}
+poulpy-core = {workspace = true}
 criterion = {workspace = true}
 itertools = "0.14.0"
 byteorder = "1.5.0"
