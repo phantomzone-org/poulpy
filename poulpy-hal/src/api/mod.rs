@@ -1,3 +1,4 @@
+mod convolution;
 mod module;
 mod scratch;
 mod svp_ppol;
@@ -7,6 +8,7 @@ mod vec_znx_dft;
 mod vmp_pmat;
 mod zn;
 
+pub use convolution::*;
 pub use module::*;
 pub use scratch::*;
 pub use svp_ppol::*;

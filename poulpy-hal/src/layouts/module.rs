@@ -4,6 +4,7 @@ use std::{
     ptr::NonNull,
 };
 
+use bytemuck::Pod;
 use rand_distr::num_traits::Zero;
 
 use crate::{
@@ -13,8 +14,8 @@ use crate::{
 
 #[allow(clippy::missing_safety_doc)]
 pub trait Backend: Sized {
-    type ScalarBig: Copy + Zero + Display + Debug;
-    type ScalarPrep: Copy + Zero + Display + Debug;
+    type ScalarBig: Copy + Zero + Display + Debug + Pod;
+    type ScalarPrep: Copy + Zero + Display + Debug + Pod;
     type Handle: 'static;
     fn layout_prep_word_count() -> usize;
     fn layout_big_word_count() -> usize;

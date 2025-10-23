@@ -92,6 +92,44 @@ where
     }
 }
 
+/// res = res + a * 2^{a_scale * base2k}.
+pub fn vec_znx_dft_add_scaled_inplace<R, A, BE>(res: &mut R, res_col: usize, a: &A, a_col: usize, a_scale: i64)
+where
+    BE: Backend<ScalarPrep = f64> + ReimAddInplace,
+    R: VecZnxDftToMut<BE>,
+    A: VecZnxDftToRef<BE>,
+{
+    let a: VecZnxDft<&[u8], BE> = a.to_ref();
+    let mut res: VecZnxDft<&mut [u8], BE> = res.to_mut();
+
+    #[cfg(debug_assertions)]
+    {
+        assert_eq!(a.n(), res.n());
+    }
+
+    let res_size: usize = res.size();
+    let a_size: usize = a.size();
+
+    if a_scale > 0 {
+        let shift: usize = (a_scale as usize).min(a_size);
+        let sum_size: usize = a_size.min(res_size).saturating_sub(shift);
+        for j in 0..sum_size {
+            BE::reim_add_inplace(res.at_mut(res_col, j), a.at(a_col, j + shift));
+        }
+    } else if a_scale < 0 {
+        let shift: usize = (a_scale.unsigned_abs() as usize).min(res_size);
+        let sum_size: usize = a_size.min(res_size).saturating_sub(shift);
+        for j in 0..sum_size {
+            BE::reim_add_inplace(res.at_mut(res_col, j + shift), a.at(a_col, j));
+        }
+    } else {
+        let sum_size: usize = a_size.min(res_size);
+        for j in 0..sum_size {
+            BE::reim_add_inplace(res.at_mut(res_col, j), a.at(a_col, j));
+        }
+    }
+}
+
 pub fn vec_znx_dft_copy<R, A, BE>(step: usize, offset: usize, res: &mut R, res_col: usize, a: &A, a_col: usize)
 where
     BE: Backend<ScalarPrep = f64> + ReimCopy + ReimZero,

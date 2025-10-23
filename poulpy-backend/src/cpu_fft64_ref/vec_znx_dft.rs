@@ -4,14 +4,15 @@ use poulpy_hal::{
         VecZnxToRef,
     },
     oep::{
-        VecZnxDftAddImpl, VecZnxDftAddInplaceImpl, VecZnxDftAllocBytesImpl, VecZnxDftAllocImpl, VecZnxDftApplyImpl,
-        VecZnxDftCopyImpl, VecZnxDftFromBytesImpl, VecZnxDftSubImpl, VecZnxDftSubInplaceImpl, VecZnxDftSubNegateInplaceImpl,
-        VecZnxDftZeroImpl, VecZnxIdftApplyConsumeImpl, VecZnxIdftApplyImpl, VecZnxIdftApplyTmpAImpl, VecZnxIdftApplyTmpBytesImpl,
+        VecZnxDftAddImpl, VecZnxDftAddInplaceImpl, VecZnxDftAddScaledInplaceImpl, VecZnxDftAllocBytesImpl, VecZnxDftAllocImpl,
+        VecZnxDftApplyImpl, VecZnxDftCopyImpl, VecZnxDftFromBytesImpl, VecZnxDftSubImpl, VecZnxDftSubInplaceImpl,
+        VecZnxDftSubNegateInplaceImpl, VecZnxDftZeroImpl, VecZnxIdftApplyConsumeImpl, VecZnxIdftApplyImpl,
+        VecZnxIdftApplyTmpAImpl, VecZnxIdftApplyTmpBytesImpl,
     },
     reference::fft64::vec_znx_dft::{
-        vec_znx_dft_add, vec_znx_dft_add_inplace, vec_znx_dft_apply, vec_znx_dft_copy, vec_znx_dft_sub, vec_znx_dft_sub_inplace,
-        vec_znx_dft_sub_negate_inplace, vec_znx_dft_zero, vec_znx_idft_apply, vec_znx_idft_apply_consume,
-        vec_znx_idft_apply_tmpa,
+        vec_znx_dft_add, vec_znx_dft_add_inplace, vec_znx_dft_add_scaled_inplace, vec_znx_dft_apply, vec_znx_dft_copy,
+        vec_znx_dft_sub, vec_znx_dft_sub_inplace, vec_znx_dft_sub_negate_inplace, vec_znx_dft_zero, vec_znx_idft_apply,
+        vec_znx_idft_apply_consume, vec_znx_idft_apply_tmpa,
     },
 };
 
@@ -108,6 +109,22 @@ unsafe impl VecZnxDftAddImpl<Self> for FFT64Ref {
         B: VecZnxDftToRef<Self>,
     {
         vec_znx_dft_add(res, res_col, a, a_col, b, b_col);
+    }
+}
+
+unsafe impl VecZnxDftAddScaledInplaceImpl<Self> for FFT64Ref {
+    fn vec_znx_dft_add_scaled_inplace_impl<R, A>(
+        _module: &Module<Self>,
+        res: &mut R,
+        res_col: usize,
+        a: &A,
+        a_col: usize,
+        a_scale: i64,
+    ) where
+        R: VecZnxDftToMut<Self>,
+        A: VecZnxDftToRef<Self>,
+    {
+        vec_znx_dft_add_scaled_inplace(res, res_col, a, a_col, a_scale);
     }
 }
 

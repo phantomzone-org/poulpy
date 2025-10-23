@@ -1,17 +1,18 @@
 use crate::{
     api::{
-        VecZnxDftAdd, VecZnxDftAddInplace, VecZnxDftAlloc, VecZnxDftApply, VecZnxDftBytesOf, VecZnxDftCopy, VecZnxDftFromBytes,
-        VecZnxDftSub, VecZnxDftSubInplace, VecZnxDftSubNegateInplace, VecZnxDftZero, VecZnxIdftApply, VecZnxIdftApplyConsume,
-        VecZnxIdftApplyTmpA, VecZnxIdftApplyTmpBytes,
+        VecZnxDftAdd, VecZnxDftAddInplace, VecZnxDftAddScaledInplace, VecZnxDftAlloc, VecZnxDftApply, VecZnxDftBytesOf,
+        VecZnxDftCopy, VecZnxDftFromBytes, VecZnxDftSub, VecZnxDftSubInplace, VecZnxDftSubNegateInplace, VecZnxDftZero,
+        VecZnxIdftApply, VecZnxIdftApplyConsume, VecZnxIdftApplyTmpA, VecZnxIdftApplyTmpBytes,
     },
     layouts::{
         Backend, Data, Module, Scratch, VecZnxBig, VecZnxBigToMut, VecZnxDft, VecZnxDftOwned, VecZnxDftToMut, VecZnxDftToRef,
         VecZnxToRef,
     },
     oep::{
-        VecZnxDftAddImpl, VecZnxDftAddInplaceImpl, VecZnxDftAllocBytesImpl, VecZnxDftAllocImpl, VecZnxDftApplyImpl,
-        VecZnxDftCopyImpl, VecZnxDftFromBytesImpl, VecZnxDftSubImpl, VecZnxDftSubInplaceImpl, VecZnxDftSubNegateInplaceImpl,
-        VecZnxDftZeroImpl, VecZnxIdftApplyConsumeImpl, VecZnxIdftApplyImpl, VecZnxIdftApplyTmpAImpl, VecZnxIdftApplyTmpBytesImpl,
+        VecZnxDftAddImpl, VecZnxDftAddInplaceImpl, VecZnxDftAddScaledInplaceImpl, VecZnxDftAllocBytesImpl, VecZnxDftAllocImpl,
+        VecZnxDftApplyImpl, VecZnxDftCopyImpl, VecZnxDftFromBytesImpl, VecZnxDftSubImpl, VecZnxDftSubInplaceImpl,
+        VecZnxDftSubNegateInplaceImpl, VecZnxDftZeroImpl, VecZnxIdftApplyConsumeImpl, VecZnxIdftApplyImpl,
+        VecZnxIdftApplyTmpAImpl, VecZnxIdftApplyTmpBytesImpl,
     },
 };
 
@@ -126,6 +127,19 @@ where
         A: VecZnxDftToRef<B>,
     {
         B::vec_znx_dft_add_inplace_impl(self, res, res_col, a, a_col);
+    }
+}
+
+impl<B> VecZnxDftAddScaledInplace<B> for Module<B>
+where
+    B: Backend + VecZnxDftAddScaledInplaceImpl<B>,
+{
+    fn vec_znx_dft_add_scaled_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, a_scale: i64)
+    where
+        R: VecZnxDftToMut<B>,
+        A: VecZnxDftToRef<B>,
+    {
+        B::vec_znx_dft_add_scaled_inplace_impl(self, res, res_col, a, a_col, a_scale);
     }
 }
 
