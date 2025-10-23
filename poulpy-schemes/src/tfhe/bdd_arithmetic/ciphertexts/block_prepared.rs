@@ -3,17 +3,16 @@ use std::marker::PhantomData;
 use poulpy_core::layouts::{
     Base2K, Dnum, Dsize, GGSWInfos, GGSWPreparedFactory, GLWEInfos, LWEInfos, Rank, TorusPrecision, prepared::GGSWPrepared,
 };
-#[cfg(test)]
+
 use poulpy_core::{GGSWEncryptSk, ScratchTakeCore, layouts::GLWESecretPreparedToRef};
 use poulpy_hal::layouts::{Backend, Data, DataRef, Module};
-#[cfg(test)]
+
 use poulpy_hal::{
     api::ModuleN,
     layouts::{DataMut, Scratch},
     source::Source,
 };
 
-#[cfg(test)]
 use crate::tfhe::bdd_arithmetic::ToBits;
 use crate::tfhe::bdd_arithmetic::UnsignedInteger;
 
@@ -83,13 +82,11 @@ impl<T: UnsignedInteger, BE: Backend> FheUintBlocksPrepared<Vec<u8>, T, BE> {
     }
 }
 
-#[cfg(test)]
 impl<T: UnsignedInteger + ToBits, BE: Backend> FheUintBlocksPreparedEncryptSk<T, BE> for Module<BE> where
     Self: Sized + ModuleN + GGSWEncryptSk<BE> + GGSWPreparedFactory<BE>
 {
 }
 
-#[cfg(test)]
 pub trait FheUintBlocksPreparedEncryptSk<T: UnsignedInteger + ToBits, BE: Backend>
 where
     Self: Sized + ModuleN + GGSWEncryptSk<BE> + GGSWPreparedFactory<BE>,
@@ -126,7 +123,6 @@ where
     }
 }
 
-#[cfg(test)]
 impl<D: DataMut, T: UnsignedInteger + ToBits, BE: Backend> FheUintBlocksPrepared<D, T, BE> {
     pub(crate) fn encrypt_sk<M, S>(
         &mut self,

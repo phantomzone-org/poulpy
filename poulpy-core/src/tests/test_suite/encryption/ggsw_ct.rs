@@ -65,7 +65,7 @@ where
 
             let noise_f = |_col_i: usize| -(k as f64) + SIGMA.log2() + 0.5;
 
-            ct.assert_noise(module, &sk_prepared, &pt_scalar, noise_f);
+            ct.assert_noise(module, &sk_prepared, &pt_scalar, &noise_f);
         }
     }
 }
@@ -126,7 +126,7 @@ where
             let mut ct: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_infos);
             ct.decompress(module, &ct_compressed);
 
-            ct.assert_noise(module, &sk_prepared, &pt_scalar, noise_f);
+            ct.assert_noise(module, &sk_prepared, &pt_scalar, &noise_f);
         }
     }
 }

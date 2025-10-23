@@ -175,7 +175,7 @@ where
                 ) + 0.5
             };
 
-            ggsw_out.assert_noise(module, &sk_out_prepared, &pt_scalar, max_noise);
+            ggsw_out.assert_noise(module, &sk_out_prepared, &pt_scalar, &max_noise);
         }
     }
 }
@@ -323,7 +323,7 @@ where
                 ) + 0.5
             };
 
-            ggsw_out.assert_noise(module, &sk_out_prepared, &pt_scalar, max_noise);
+            ggsw_out.assert_noise(module, &sk_out_prepared, &pt_scalar, &max_noise);
         }
     }
 }

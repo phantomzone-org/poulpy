@@ -1,30 +1,44 @@
-#[cfg(test)]
+mod add;
+mod and;
+mod or;
+mod prepare;
+mod sll;
+mod slt;
+mod sltu;
+mod sra;
+mod srl;
+mod sub;
+mod xor;
+
+pub use add::*;
+pub use and::*;
+pub use or::*;
+pub use prepare::*;
+pub use sll::*;
+pub use slt::*;
+pub use sltu::*;
+pub use sra::*;
+pub use srl::*;
+pub use sub::*;
+pub use xor::*;
+
 use poulpy_core::layouts::{
     Base2K, Degree, Dnum, Dsize, GGSWLayout, GLWEAutomorphismKeyLayout, GLWELayout, GLWETensorKeyLayout, GLWEToLWEKeyLayout,
     Rank, TorusPrecision,
 };
 
-#[cfg(test)]
 use crate::tfhe::{
     bdd_arithmetic::BDDKeyLayout, blind_rotation::BlindRotationKeyLayout, circuit_bootstrapping::CircuitBootstrappingKeyLayout,
 };
 
-#[cfg(test)]
 pub(crate) const TEST_N_GLWE: u32 = 512;
-#[cfg(test)]
 pub(crate) const TEST_N_LWE: u32 = 77;
-#[cfg(test)]
 pub(crate) const TEST_BASE2K: u32 = 13;
-#[cfg(test)]
 pub(crate) const TEST_K_GLWE: u32 = 26;
-#[cfg(test)]
 pub(crate) const TEST_K_GGSW: u32 = 39;
-#[cfg(test)]
 pub(crate) const TEST_BLOCK_SIZE: u32 = 7;
-#[cfg(test)]
 pub(crate) const TEST_RANK: u32 = 2;
 
-#[cfg(test)]
 pub(crate) static TEST_GLWE_INFOS: GLWELayout = GLWELayout {
     n: Degree(TEST_N_GLWE),
     base2k: Base2K(TEST_BASE2K),
@@ -32,7 +46,6 @@ pub(crate) static TEST_GLWE_INFOS: GLWELayout = GLWELayout {
     rank: Rank(TEST_RANK),
 };
 
-#[cfg(test)]
 pub(crate) static TEST_GGSW_INFOS: GGSWLayout = GGSWLayout {
     n: Degree(TEST_N_GLWE),
     base2k: Base2K(TEST_BASE2K),
@@ -42,7 +55,6 @@ pub(crate) static TEST_GGSW_INFOS: GGSWLayout = GGSWLayout {
     dsize: Dsize(1),
 };
 
-#[cfg(test)]
 pub(crate) static TEST_BDD_KEY_LAYOUT: BDDKeyLayout = BDDKeyLayout {
     cbt: CircuitBootstrappingKeyLayout {
         layout_brk: BlindRotationKeyLayout {

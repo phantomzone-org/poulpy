@@ -11,7 +11,7 @@ use crate::layouts::prepared::GLWESecretPreparedToRef;
 use crate::layouts::{GGSW, GGSWInfos, GGSWToRef, GLWEInfos, GLWEPlaintext, LWEInfos, prepared::GLWESecretPrepared};
 
 impl<D: DataRef> GGSW<D> {
-    pub fn assert_noise<M, BE: Backend, P, S, F>(&self, module: &M, sk_prepared: &S, pt_want: &P, max_noise: F)
+    pub fn assert_noise<M, BE: Backend, P, S, F>(&self, module: &M, sk_prepared: &S, pt_want: &P, max_noise: &F)
     where
         S: GLWESecretPreparedToRef<BE>,
         P: ScalarZnxToRef,
@@ -32,7 +32,7 @@ impl<D: DataRef> GGSW<D> {
 }
 
 pub trait GGSWNoise<BE: Backend> {
-    fn ggsw_assert_noise<R, S, P, F>(&self, res: &R, sk_prepared: &S, pt_want: &P, max_noise: F)
+    fn ggsw_assert_noise<R, S, P, F>(&self, res: &R, sk_prepared: &S, pt_want: &P, max_noise: &F)
     where
         R: GGSWToRef,
         S: GLWESecretPreparedToRef<BE>,
@@ -57,7 +57,7 @@ where
     Scratch<BE>: ScratchTakeBasic,
     ScratchOwned<BE>: ScratchOwnedBorrow<BE> + ScratchOwnedAlloc<BE>,
 {
-    fn ggsw_assert_noise<R, S, P, F>(&self, res: &R, sk_prepared: &S, pt_want: &P, max_noise: F)
+    fn ggsw_assert_noise<R, S, P, F>(&self, res: &R, sk_prepared: &S, pt_want: &P, max_noise: &F)
     where
         R: GGSWToRef,
         S: GLWESecretPreparedToRef<BE>,

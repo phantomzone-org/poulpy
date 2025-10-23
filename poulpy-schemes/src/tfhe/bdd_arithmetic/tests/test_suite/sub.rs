@@ -1,9 +1,6 @@
-use std::time::Instant;
-
-use poulpy_backend::FFT64Ref;
 use poulpy_core::{
     GGSWNoise, GLWEDecrypt, GLWEEncryptSk, GLWENoise, ScratchTakeCore,
-    layouts::{GGSWLayout, GLWELayout, GLWESecret, GLWESecretPreparedFactory, LWEInfos, LWESecret, prepared::GLWESecretPrepared},
+    layouts::{GGSWLayout, GLWELayout, GLWESecret, GLWESecretPreparedFactory, LWEInfos, prepared::GLWESecretPrepared},
 };
 use poulpy_hal::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
@@ -14,20 +11,14 @@ use rand::RngCore;
 
 use crate::tfhe::{
     bdd_arithmetic::{
-        Add, BDDKey, BDDKeyEncryptSk, BDDKeyLayout, BDDKeyPrepared, BDDKeyPreparedFactory, ExecuteBDDCircuit2WTo1W,
-        FheUintBlockDebugPrepare, FheUintBlocks, FheUintBlocksPrepare, FheUintBlocksPrepared, FheUintBlocksPreparedDebug,
-        FheUintBlocksPreparedEncryptSk, FheUintBlocksPreparedFactory, Sub, TEST_BDD_KEY_LAYOUT, TEST_BLOCK_SIZE, TEST_GGSW_INFOS,
-        TEST_GLWE_INFOS, TEST_N_LWE,
+        BDDKeyEncryptSk, BDDKeyPreparedFactory, ExecuteBDDCircuit2WTo1W, FheUintBlockDebugPrepare, FheUintBlocks,
+        FheUintBlocksPrepare, FheUintBlocksPrepared, FheUintBlocksPreparedEncryptSk, FheUintBlocksPreparedFactory, Sub,
+        tests::test_suite::{TEST_GGSW_INFOS, TEST_GLWE_INFOS},
     },
-    blind_rotation::{BlindRotationAlgo, BlindRotationKey, BlindRotationKeyFactory, CGGI},
+    blind_rotation::{BlindRotationAlgo, BlindRotationKey, BlindRotationKeyFactory},
 };
 
-#[test]
-fn test_bdd_2w_to_1w_fft64_ref() {
-    test_bdd_2w_to_1w::<FFT64Ref, CGGI>()
-}
-
-fn test_bdd_2w_to_1w<BE: Backend, BRA: BlindRotationAlgo>()
+pub fn test_bdd_sub<BRA: BlindRotationAlgo, BE: Backend>()
 where
     Module<BE>: ModuleNew<BE>
         + GLWESecretPreparedFactory<BE>
@@ -64,43 +55,14 @@ where
     let mut sk_glwe_prep: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc_from_infos(&module, &glwe_infos);
     sk_glwe_prep.prepare(&module, &sk_glwe);
 
-    let a: u32 = 645139204;
-    let b: u32 = 0;
-
-    println!("a: {a}");
-    println!("b: {b}");
-
-    let n_lwe: u32 = TEST_N_LWE;
-    let block_size: u32 = TEST_BLOCK_SIZE;
-
-    let mut sk_lwe: LWESecret<Vec<u8>> = LWESecret::alloc(n_lwe.into());
-    sk_lwe.fill_binary_block(block_size as usize, &mut source_xs);
-
-    let bdd_key_infos: BDDKeyLayout = TEST_BDD_KEY_LAYOUT;
-
-    let mut bdd_key: BDDKey<Vec<u8>, BRA> = BDDKey::alloc_from_infos(&bdd_key_infos);
-
-    let now: Instant = Instant::now();
-    source.fill_bytes(&mut scratch.borrow().data);
-    scratch.borrow().data.fill(0);
-    bdd_key.encrypt_sk(
-        &module,
-        &sk_lwe,
-        &sk_glwe,
-        &mut source_xa,
-        &mut source_xe,
-        scratch.borrow(),
-    );
-    let mut bdd_key_prepared: BDDKeyPrepared<Vec<u8>, BRA, BE> = BDDKeyPrepared::alloc_from_infos(&module, &bdd_key_infos);
-    source.fill_bytes(&mut scratch.borrow().data);
-    bdd_key_prepared.prepare(&module, &bdd_key, scratch.borrow());
-    println!("BDD-KGEN: {} ms", now.elapsed().as_millis());
-
-    let mut sum_enc: FheUintBlocks<Vec<u8>, u32> = FheUintBlocks::<Vec<u8>, u32>::alloc(&module, &glwe_infos);
+    let mut res: FheUintBlocks<Vec<u8>, u32> = FheUintBlocks::<Vec<u8>, u32>::alloc_from_infos(&module, &glwe_infos);
     let mut a_enc_prep: FheUintBlocksPrepared<Vec<u8>, u32, BE> =
         FheUintBlocksPrepared::<Vec<u8>, u32, BE>::alloc(&module, &ggsw_infos);
     let mut b_enc_prep: FheUintBlocksPrepared<Vec<u8>, u32, BE> =
         FheUintBlocksPrepared::<Vec<u8>, u32, BE>::alloc(&module, &ggsw_infos);
+
+    let a: u32 = source.next_u32();
+    let b: u32 = source.next_u32();
 
     source.fill_bytes(&mut scratch.borrow().data);
     a_enc_prep.encrypt_sk(
@@ -121,17 +83,10 @@ where
         scratch.borrow(),
     );
 
-    // d + a
-    sum_enc.add(&module, &a_enc_prep, &b_enc_prep, scratch.borrow());
+    res.sub(&module, &a_enc_prep, &b_enc_prep, scratch.borrow());
 
-    println!(
-        "other have: {:032b}",
-        sum_enc.decrypt(&module, &sk_glwe_prep, scratch.borrow())
+    assert_eq!(
+        res.decrypt(&module, &sk_glwe_prep, scratch.borrow()),
+        a.wrapping_sub(b)
     );
-
-    println!("other want: {:032b}", b.wrapping_add(a));
-
-    // print a, b, and d
-    println!("a: {a}");
-    println!("b: {b}");
 }

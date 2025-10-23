@@ -7,32 +7,30 @@ use crate::tfhe::{
     circuit_bootstrapping::CirtuitBootstrappingExecute,
 };
 use poulpy_core::GGSWNoise;
-#[cfg(test)]
+
 use poulpy_core::layouts::{Base2K, Dnum, Dsize, Rank, TorusPrecision};
 use poulpy_core::layouts::{GGSW, GLWESecretPreparedToRef};
 use poulpy_core::{
     LWEFromGLWE, ScratchTakeCore,
     layouts::{GGSWInfos, GGSWPreparedFactory, GLWEInfos, LWE, LWEInfos},
 };
-#[cfg(test)]
+
 use poulpy_hal::api::ModuleN;
 use poulpy_hal::layouts::{Backend, Data, DataMut, DataRef, Module, Scratch};
 
-pub(crate) struct FheUintBlocksPreparedDebug<D: Data, T: UnsignedInteger> {
+pub struct FheUintBlocksPreparedDebug<D: Data, T: UnsignedInteger> {
     pub(crate) blocks: Vec<GGSW<D>>,
     pub(crate) _base: u8,
     pub(crate) _phantom: PhantomData<T>,
 }
 
-#[cfg(test)]
 impl<T: UnsignedInteger> FheUintBlocksPreparedDebug<Vec<u8>, T> {
-    #[allow(dead_code)]
-    pub(crate) fn alloc<A, M>(module: &M, infos: &A) -> Self
+    pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
     where
         M: ModuleN,
         A: GGSWInfos,
     {
-        Self::alloc_with(
+        Self::alloc(
             module,
             infos.base2k(),
             infos.k(),
@@ -42,8 +40,7 @@ impl<T: UnsignedInteger> FheUintBlocksPreparedDebug<Vec<u8>, T> {
         )
     }
 
-    #[allow(dead_code)]
-    pub(crate) fn alloc_with<M>(module: &M, base2k: Base2K, k: TorusPrecision, dnum: Dnum, dsize: Dsize, rank: Rank) -> Self
+    pub fn alloc<M>(module: &M, base2k: Base2K, k: TorusPrecision, dnum: Dnum, dsize: Dsize, rank: Rank) -> Self
     where
         M: ModuleN,
     {
@@ -88,8 +85,7 @@ impl<D: DataRef, T: UnsignedInteger> GGSWInfos for FheUintBlocksPreparedDebug<D,
 }
 
 impl<D: DataRef, T: UnsignedInteger + ToBits> FheUintBlocksPreparedDebug<D, T> {
-    #[allow(dead_code)]
-    pub(crate) fn noise<S, M, BE: Backend>(&self, module: &M, sk: &S, want: T)
+    pub fn print_noise<S, M, BE: Backend>(&self, module: &M, sk: &S, want: T)
     where
         S: GLWESecretPreparedToRef<BE>,
         M: GGSWNoise<BE>,
@@ -99,6 +95,20 @@ impl<D: DataRef, T: UnsignedInteger + ToBits> FheUintBlocksPreparedDebug<D, T> {
             let mut pt_want = ScalarZnx::alloc(self.n().into(), 1);
             pt_want.at_mut(0, 0)[0] = want.bit(i) as i64;
             ggsw.print_noise(module, sk, &pt_want);
+        }
+    }
+
+    pub fn assert_noise<S, M, F, BE: Backend>(&self, module: &M, sk: &S, want: T, max_noise: &F)
+    where
+        S: GLWESecretPreparedToRef<BE>,
+        M: GGSWNoise<BE>,
+        F: Fn(usize) -> f64,
+    {
+        for (i, ggsw) in self.blocks.iter().enumerate() {
+            use poulpy_hal::layouts::{ScalarZnx, ZnxViewMut};
+            let mut pt_want = ScalarZnx::alloc(self.n().into(), 1);
+            pt_want.at_mut(0, 0)[0] = want.bit(i) as i64;
+            ggsw.assert_noise(module, sk, &pt_want, max_noise);
         }
     }
 }
@@ -130,7 +140,6 @@ where
 }
 
 impl<D: DataMut, T: UnsignedInteger> FheUintBlocksPreparedDebug<D, T> {
-    #[allow(dead_code)]
     pub fn prepare<BRA, M, O, K, BE: Backend>(
         &mut self,
         module: &M,

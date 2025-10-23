@@ -5,12 +5,9 @@ use poulpy_core::{
     layouts::{Base2K, GLWE, GLWEInfos, GLWEPlaintextLayout, GLWESecretPreparedToRef, LWEInfos, Rank, TorusPrecision},
 };
 
-#[cfg(test)]
 use poulpy_core::GLWEEncryptSk;
 use poulpy_core::ScratchTakeCore;
 use poulpy_hal::layouts::{Backend, Data, DataMut, DataRef, Module, Scratch, ZnxZero};
-#[cfg(test)]
-#[cfg(test)]
 use poulpy_hal::source::Source;
 
 use crate::tfhe::bdd_arithmetic::{FromBits, ToBits, UnsignedInteger};
@@ -43,16 +40,14 @@ impl<D: DataRef, T: UnsignedInteger> GLWEInfos for FheUintBlocks<D, T> {
 }
 
 impl<T: UnsignedInteger> FheUintBlocks<Vec<u8>, T> {
-    #[allow(dead_code)]
-    pub(crate) fn alloc<A, BE: Backend>(module: &Module<BE>, infos: &A) -> Self
+    pub fn alloc_from_infos<A, BE: Backend>(module: &Module<BE>, infos: &A) -> Self
     where
         A: GLWEInfos,
     {
-        Self::alloc_with(module, infos.base2k(), infos.k(), infos.rank())
+        Self::alloc(module, infos.base2k(), infos.k(), infos.rank())
     }
 
-    #[allow(dead_code)]
-    pub(crate) fn alloc_with<BE: Backend>(module: &Module<BE>, base2k: Base2K, k: TorusPrecision, rank: Rank) -> Self {
+    pub fn alloc<BE: Backend>(module: &Module<BE>, base2k: Base2K, k: TorusPrecision, rank: Rank) -> Self {
         Self {
             blocks: (0..T::WORD_SIZE)
                 .map(|_| GLWE::alloc(module.n().into(), base2k, k, rank))
@@ -64,9 +59,7 @@ impl<T: UnsignedInteger> FheUintBlocks<Vec<u8>, T> {
 }
 
 impl<D: DataMut, T: UnsignedInteger + ToBits> FheUintBlocks<D, T> {
-    #[allow(dead_code)]
-    #[cfg(test)]
-    pub(crate) fn encrypt_sk<S, BE: Backend>(
+    pub fn encrypt_sk<S, BE: Backend>(
         &mut self,
         module: &Module<BE>,
         value: T,
