@@ -168,7 +168,7 @@ where
                 ) + 0.5
             };
 
-            ct_out.assert_noise(module, &sk_prepared, &pt_scalar, max_noise);
+            ct_out.assert_noise(module, &sk_prepared, &pt_scalar, &max_noise);
         }
     }
 }
@@ -308,7 +308,7 @@ where
                 ) + 0.5
             };
 
-            ct.assert_noise(module, &sk_prepared, &pt_scalar, max_noise);
+            ct.assert_noise(module, &sk_prepared, &pt_scalar, &max_noise);
         }
     }
 }

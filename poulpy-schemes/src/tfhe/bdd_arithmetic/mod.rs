@@ -3,7 +3,6 @@ mod ciphertexts;
 mod circuits;
 mod eval;
 mod key;
-mod parameters;
 
 pub use bdd_2w_to_1w::*;
 pub use ciphertexts::*;
@@ -11,11 +10,7 @@ pub(crate) use circuits::*;
 pub(crate) use eval::*;
 pub use key::*;
 
-#[cfg(test)]
-pub(crate) use parameters::*;
-
-#[cfg(test)]
-mod test;
+pub mod tests;
 
 pub trait UnsignedInteger: Copy + 'static {
     const WORD_SIZE: usize;

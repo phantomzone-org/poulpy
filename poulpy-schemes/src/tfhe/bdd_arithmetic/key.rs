@@ -1,4 +1,3 @@
-#[cfg(test)]
 use crate::tfhe::bdd_arithmetic::FheUintBlocksPreparedDebug;
 use crate::tfhe::{
     bdd_arithmetic::{FheUintBlocks, FheUintBlocksPrepared, UnsignedInteger},
@@ -281,8 +280,7 @@ impl<D: DataMut, T: UnsignedInteger, BE: Backend> FheUintBlocksPrepared<D, T, BE
     }
 }
 
-#[cfg(test)]
-pub(crate) trait FheUintBlockDebugPrepare<BRA: BlindRotationAlgo, T: UnsignedInteger, BE: Backend> {
+pub trait FheUintBlockDebugPrepare<BRA: BlindRotationAlgo, T: UnsignedInteger, BE: Backend> {
     fn fhe_uint_block_debug_prepare<DM, DR0, DR1>(
         &self,
         res: &mut FheUintBlocksPreparedDebug<DM, T>,

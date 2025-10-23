@@ -3,17 +3,16 @@ use std::marker::PhantomData;
 use poulpy_core::layouts::{
     Base2K, Dnum, Dsize, GGSWInfos, GGSWPreparedFactory, GLWEInfos, LWEInfos, Rank, TorusPrecision, prepared::GGSWPrepared,
 };
-#[cfg(test)]
+
 use poulpy_core::{GGSWEncryptSk, ScratchTakeCore, layouts::GLWESecretPreparedToRef};
 use poulpy_hal::layouts::{Backend, Data, DataRef, Module};
-#[cfg(test)]
+
 use poulpy_hal::{
     api::ModuleN,
     layouts::{DataMut, Scratch},
     source::Source,
 };
 
-#[cfg(test)]
 use crate::tfhe::bdd_arithmetic::ToBits;
 use crate::tfhe::bdd_arithmetic::UnsignedInteger;
 
@@ -83,13 +82,11 @@ impl<T: UnsignedInteger, BE: Backend> FheUintBlocksPrepared<Vec<u8>, T, BE> {
     }
 }
 
-#[cfg(test)]
 impl<T: UnsignedInteger + ToBits, BE: Backend> FheUintBlocksPreparedEncryptSk<T, BE> for Module<BE> where
     Self: Sized + ModuleN + GGSWEncryptSk<BE> + GGSWPreparedFactory<BE>
 {
 }
 
-#[cfg(test)]
 pub trait FheUintBlocksPreparedEncryptSk<T: UnsignedInteger + ToBits, BE: Backend>
 where
     Self: Sized + ModuleN + GGSWEncryptSk<BE> + GGSWPreparedFactory<BE>,
@@ -107,7 +104,7 @@ where
         S: GLWESecretPreparedToRef<BE> + GLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        use poulpy_hal::api::ScratchTakeBasic;
+        use poulpy_hal::{api::ScratchTakeBasic, layouts::ZnxZero};
 
         assert!(self.n().is_multiple_of(T::WORD_SIZE));
         assert_eq!(res.n(), self.n() as u32);
@@ -115,10 +112,10 @@ where
 
         let (mut tmp_ggsw, scratch_1) = scratch.take_ggsw(res);
         let (mut pt, scratch_2) = scratch_1.take_scalar_znx(self.n(), 1);
+        pt.zero();
 
         for i in 0..T::WORD_SIZE {
             use poulpy_hal::layouts::ZnxViewMut;
-
             pt.at_mut(0, 0)[0] = value.bit(i) as i64;
             tmp_ggsw.encrypt_sk(self, &pt, sk, source_xa, source_xe, scratch_2);
             res.blocks[i].prepare(self, &tmp_ggsw, scratch_2);
@@ -126,7 +123,6 @@ where
     }
 }
 
-#[cfg(test)]
 impl<D: DataMut, T: UnsignedInteger + ToBits, BE: Backend> FheUintBlocksPrepared<D, T, BE> {
     pub(crate) fn encrypt_sk<M, S>(
         &mut self,
