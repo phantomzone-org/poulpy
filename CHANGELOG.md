@@ -1,5 +1,21 @@
 # CHANGELOG
 
+## [0.3.0] - 2025-10-23
+
+- Fixed builds on MACOS
+
+### Breaking changes
+    - The changes to `poulpy-core` required to break some of the existing API. For example the API `prepare_alloc` has been removed and the trait `Prepare<...>` has been broken down for each different ciphertext type (e.g. GLWEPrepare). To achieve the same functionality, the user must allocated the prepared ciphertext, and then call prepare on it.
+
+### `poulpy-hal`
+    - Added cross-base2k normalization
+
+### `poulpy-core`
+    - Added functionality-based traits, which removes the need to import the low-levels traits of `poulpy-hal` and makes backend agnostic code much cleaner. For example instead of having to import each individual traits required for the encryption of a GLWE, only the trait `GLWEEncryptSk` is needed.
+
+### `poulpy-schemes`
+    - Added basic framework for binary decicion circuit (BDD) arithmetic along with some operations.
+
 ## [0.2.0] - 2025-09-15
 
 ### Breaking changes

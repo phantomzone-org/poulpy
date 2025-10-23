@@ -70,9 +70,9 @@ Poulpy is licensed under the Apache-2.0 License. See [NOTICE](./NOTICE) & [LICEN
 Please use the following BibTex entry for citing Poulpy
 
     @misc{poulpy,
-	    title = {Poulpy v0.1.0},
+	    title = {Poulpy v0.3.0},
 	    howpublished = {Online: \url{https://github.com/phantomzone-org/poulpy}},
-	    month = Aug,
+	    month = Oct,
 	    year = 2025,
 	    note = {Phantom Zone}
     }
