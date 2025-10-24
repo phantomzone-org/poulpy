@@ -202,7 +202,7 @@ impl<D: DataMut> GGLWEToMut for GLWEAutomorphismKey<D> {
     }
 }
 
-impl<D: DataMut> GGLWEToRef for GLWEAutomorphismKey<D> {
+impl<D: DataRef> GGLWEToRef for GLWEAutomorphismKey<D> {
     fn to_ref(&self) -> GGLWE<&[u8]> {
         self.key.to_ref()
     }
