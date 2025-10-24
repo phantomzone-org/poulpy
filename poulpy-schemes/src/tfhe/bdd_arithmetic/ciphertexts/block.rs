@@ -39,6 +39,17 @@ impl<D: DataRef, T: UnsignedInteger> GLWEInfos for FheUintBlocks<D, T> {
     }
 }
 
+impl<D: Data, T: UnsignedInteger> FheUintBlocks<D, T> {
+    pub fn new(blocks: Vec<GLWE<D>>) -> Self {
+        assert_eq!(blocks.len(), T::WORD_SIZE);
+        Self {
+            blocks,
+            _base: 1,
+            _phantom: PhantomData,
+        }
+    }
+}
+
 impl<T: UnsignedInteger> FheUintBlocks<Vec<u8>, T> {
     pub fn alloc_from_infos<A, BE: Backend>(module: &Module<BE>, infos: &A) -> Self
     where

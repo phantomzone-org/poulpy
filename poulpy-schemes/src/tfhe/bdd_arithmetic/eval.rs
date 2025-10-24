@@ -3,12 +3,9 @@ use core::panic;
 use itertools::Itertools;
 use poulpy_core::{
     GLWEAdd, GLWECopy, GLWEExternalProduct, GLWESub, ScratchTakeCore,
-    layouts::{
-        GLWE, LWEInfos,
-        prepared::{GGSWPrepared, GGSWPreparedToRef},
-    },
+    layouts::{GLWE, GLWEToMut, GLWEToRef, LWEInfos, prepared::GGSWPreparedToRef},
 };
-use poulpy_hal::layouts::{Backend, DataMut, DataRef, Module, Scratch, ZnxZero};
+use poulpy_hal::layouts::{Backend, DataMut, Module, Scratch, ZnxZero};
 
 use crate::tfhe::bdd_arithmetic::UnsignedInteger;
 
@@ -146,30 +143,38 @@ pub enum Node {
     None,
 }
 
-pub trait Cmux<BE: Backend> {
-    fn cmux<O, T, F, S>(&self, out: &mut GLWE<O>, t: &GLWE<T>, f: &GLWE<F>, s: &GGSWPrepared<S, BE>, scratch: &mut Scratch<BE>)
+pub trait Cmux<BE: Backend>
+where
+    Self: GLWEExternalProduct<BE> + GLWESub + GLWEAdd,
+    Scratch<BE>: ScratchTakeCore<BE>,
+{
+    fn cmux<R, T, F, S>(&self, res: &mut R, t: &T, f: &F, s: &S, scratch: &mut Scratch<BE>)
     where
-        O: DataMut,
-        T: DataRef,
-        F: DataRef,
-        S: DataRef;
+        R: GLWEToMut,
+        T: GLWEToRef,
+        F: GLWEToRef,
+        S: GGSWPreparedToRef<BE>,
+    {
+        self.glwe_sub(res, t, f);
+        self.glwe_external_product_inplace(res, s, scratch);
+        self.glwe_add_inplace(res, f);
+    }
+
+    fn cmux_inplace<R, A, S>(&self, res: &mut R, a: &A, s: &S, scratch: &mut Scratch<BE>)
+    where
+        R: GLWEToMut,
+        A: GLWEToRef,
+        S: GGSWPreparedToRef<BE>,
+    {
+        self.glwe_sub_inplace(res, a);
+        self.glwe_external_product_inplace(res, s, scratch);
+        self.glwe_add_inplace(res, a);
+    }
 }
 
 impl<BE: Backend> Cmux<BE> for Module<BE>
 where
-    Module<BE>: GLWEExternalProduct<BE> + GLWESub + GLWEAdd,
+    Self: GLWEExternalProduct<BE> + GLWESub + GLWEAdd,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
-    fn cmux<O, T, F, S>(&self, out: &mut GLWE<O>, t: &GLWE<T>, f: &GLWE<F>, s: &GGSWPrepared<S, BE>, scratch: &mut Scratch<BE>)
-    where
-        O: DataMut,
-        T: DataRef,
-        F: DataRef,
-        S: DataRef,
-    {
-        // let mut out: GLWECiphertext<&mut [u8]> = out.to_mut();
-        self.glwe_sub(out, t, f);
-        self.glwe_external_product_inplace(out, s, scratch);
-        self.glwe_add_inplace(out, f);
-    }
 }

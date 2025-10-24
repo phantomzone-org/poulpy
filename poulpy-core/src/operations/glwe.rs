@@ -5,6 +5,7 @@ use poulpy_hal::{
         VecZnxSubInplace, VecZnxSubNegateInplace,
     },
     layouts::{Backend, Module, Scratch, VecZnx, ZnxZero},
+    reference::vec_znx::vec_znx_rotate_inplace_tmp_bytes,
 };
 
 use crate::{
@@ -185,6 +186,10 @@ pub trait GLWERotate<BE: Backend>
 where
     Self: ModuleN + VecZnxRotate + VecZnxRotateInplace<BE>,
 {
+    fn glwe_rotate_tmp_bytes(&self) -> usize {
+        vec_znx_rotate_inplace_tmp_bytes(self.n())
+    }
+
     fn glwe_rotate<R, A>(&self, k: i64, res: &mut R, a: &A)
     where
         R: GLWEToMut,
