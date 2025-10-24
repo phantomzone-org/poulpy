@@ -1,4 +1,8 @@
-use poulpy_hal::{backend_test_suite, cross_backend_test_suite};
+use poulpy_hal::{
+    api::ModuleNew, backend_test_suite, cross_backend_test_suite, layouts::Module, test_suite::convolution::test_convolution,
+};
+
+use crate::FFT64Avx;
 
 cross_backend_test_suite! {
     mod vec_znx,
@@ -114,4 +118,10 @@ backend_test_suite! {
         test_vec_znx_add_normal => poulpy_hal::test_suite::vec_znx::test_vec_znx_add_normal,
         test_vec_znx_big_sub_small_b_inplace => poulpy_hal::reference::fft64::vec_znx_big::test_vec_znx_big_add_normal,
     }
+}
+
+#[test]
+fn test_convolution_fft64_avx() {
+    let module: Module<FFT64Avx> = Module::<FFT64Avx>::new(64);
+    test_convolution(&module);
 }

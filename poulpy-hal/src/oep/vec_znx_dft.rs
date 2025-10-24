@@ -104,6 +104,23 @@ pub unsafe trait VecZnxDftAddImpl<B: Backend> {
 }
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See TODO reference implementation.
+/// * See [crate::api::VecZnxDftAddScaledInplace] for corresponding public API.
+/// # Safety [crate::doc::backend_safety] for safety contract.
+pub unsafe trait VecZnxDftAddScaledInplaceImpl<B: Backend> {
+    fn vec_znx_dft_add_scaled_inplace_impl<R, A>(
+        module: &Module<B>,
+        res: &mut R,
+        res_col: usize,
+        a: &A,
+        a_col: usize,
+        a_scale: i64,
+    ) where
+        R: VecZnxDftToMut<B>,
+        A: VecZnxDftToRef<B>;
+}
+
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
 /// * See the [poulpy-backend/src/cpu_fft64_ref/vec_znx_dft.rs](https://github.com/phantomzone-org/poulpy/blob/main/poulpy-backend/src/cpu_fft64_ref/vec_znx_dft.rs) reference implementation.
 /// * See [crate::api::VecZnxDftAddInplace] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.

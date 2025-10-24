@@ -1,3 +1,4 @@
+pub mod convolution;
 pub mod serialization;
 pub mod svp;
 pub mod vec_znx;

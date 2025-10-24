@@ -9,4 +9,7 @@ mod vmp;
 mod zn;
 mod znx;
 
+#[cfg(test)]
+mod tests;
+
 pub struct FFT64Ref {}

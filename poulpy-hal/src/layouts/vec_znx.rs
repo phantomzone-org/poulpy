@@ -6,8 +6,8 @@ use std::{
 use crate::{
     alloc_aligned,
     layouts::{
-        Data, DataMut, DataRef, DataView, DataViewMut, DigestU64, FillUniform, ReaderFrom, ToOwnedDeep, WriterTo, ZnxInfos,
-        ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero,
+        Data, DataMut, DataRef, DataView, DataViewMut, DigestU64, FillUniform, ReaderFrom, ScalarZnx, ToOwnedDeep, WriterTo,
+        ZnxInfos, ZnxSliceSize, ZnxView, ZnxViewMut, ZnxZero,
     },
     source::Source,
 };
@@ -23,6 +23,26 @@ pub struct VecZnx<D: Data> {
     pub cols: usize,
     pub size: usize,
     pub max_size: usize,
+}
+
+impl<D: DataRef> VecZnx<D> {
+    pub fn as_scalar_znx_ref(&self, col: usize, limb: usize) -> ScalarZnx<&[u8]> {
+        ScalarZnx {
+            data: bytemuck::cast_slice(self.at(col, limb)),
+            n: self.n,
+            cols: 1,
+        }
+    }
+}
+
+impl<D: DataMut> VecZnx<D> {
+    pub fn as_scalar_znx_mut(&mut self, col: usize, limb: usize) -> ScalarZnx<&mut [u8]> {
+        ScalarZnx {
+            n: self.n,
+            cols: 1,
+            data: bytemuck::cast_slice_mut(self.at_mut(col, limb)),
+        }
+    }
 }
 
 impl<D: Data + Default> Default for VecZnx<D> {

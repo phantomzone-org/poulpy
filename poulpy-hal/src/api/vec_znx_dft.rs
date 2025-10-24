@@ -60,6 +60,13 @@ pub trait VecZnxDftAddInplace<B: Backend> {
         A: VecZnxDftToRef<B>;
 }
 
+pub trait VecZnxDftAddScaledInplace<B: Backend> {
+    fn vec_znx_dft_add_scaled_inplace<R, A>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, a_scale: i64)
+    where
+        R: VecZnxDftToMut<B>,
+        A: VecZnxDftToRef<B>;
+}
+
 pub trait VecZnxDftSub<B: Backend> {
     fn vec_znx_dft_sub<R, A, D>(&self, res: &mut R, res_col: usize, a: &A, a_col: usize, b: &D, b_col: usize)
     where

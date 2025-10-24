@@ -4,6 +4,7 @@ use crate::{
     layouts::{Backend, Data, DataMut, DataRef},
     source::Source,
 };
+use bytemuck::Pod;
 use rand_distr::num_traits::Zero;
 
 pub trait ZnxInfos {
@@ -50,7 +51,7 @@ pub trait DataViewMut: DataView {
 }
 
 pub trait ZnxView: ZnxInfos + DataView<D: DataRef> {
-    type Scalar: Copy + Zero + Display + Debug;
+    type Scalar: Copy + Zero + Display + Debug + Pod;
 
     /// Returns a non-mutable pointer to the underlying coefficients array.
     fn as_ptr(&self) -> *const Self::Scalar {
