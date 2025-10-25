@@ -11,6 +11,14 @@ where
     Self: GLWEBlindRotation<T, BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
+    fn ggsw_blind_rotation_tmp_bytes<R, K>(&self, res_infos: &R, k_infos: &K) -> usize
+    where
+        R: GLWEInfos,
+        K: GGSWInfos,
+    {
+        self.glwe_blind_rotation_tmp_bytes(res_infos, k_infos)
+    }
+
     fn ggsw_blind_rotation<R, K>(
         &self,
         res: &mut R,
@@ -46,12 +54,12 @@ where
     Self: GLWECopy + GLWERotate<BE> + Cmux<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
-    fn glwe_blind_rotation_tmp_bytes<R, A, B>(&self, res_infos: &R, b_infos: &B) -> usize
+    fn glwe_blind_rotation_tmp_bytes<R, K>(&self, res_infos: &R, k_infos: &K) -> usize
     where
         R: GLWEInfos,
-        B: GGSWInfos,
+        K: GGSWInfos,
     {
-        self.cmux_tmp_bytes(res_infos, res_infos, b_infos) + GLWE::bytes_of_from_infos(res_infos)
+        self.cmux_tmp_bytes(res_infos, res_infos, k_infos) + GLWE::bytes_of_from_infos(res_infos)
     }
 
     /// Homomorphic multiplication of res by X^{k[bit_start..bit_start + bit_size] * bit_step}.
