@@ -3,7 +3,7 @@ use core::panic;
 use itertools::Itertools;
 use poulpy_core::{
     GLWEAdd, GLWECopy, GLWEExternalProduct, GLWESub, ScratchTakeCore,
-    layouts::{GLWE, GLWEToMut, GLWEToRef, LWEInfos, prepared::GGSWPreparedToRef},
+    layouts::{GGSWInfos, GLWE, GLWEInfos, GLWEToMut, GLWEToRef, LWEInfos, prepared::GGSWPreparedToRef},
 };
 use poulpy_hal::layouts::{Backend, DataMut, Module, Scratch, ZnxZero};
 
@@ -148,6 +148,15 @@ where
     Self: GLWEExternalProduct<BE> + GLWESub + GLWEAdd,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
+    fn cmux_tmp_bytes<R, A, B>(&self, res_infos: &R, a_infos: &A, b_infos: &B) -> usize
+    where
+        R: GLWEInfos,
+        A: GLWEInfos,
+        B: GGSWInfos,
+    {
+        self.glwe_external_product_tmp_bytes(res_infos, a_infos, b_infos)
+    }
+
     fn cmux<R, T, F, S>(&self, res: &mut R, t: &T, f: &F, s: &S, scratch: &mut Scratch<BE>)
     where
         R: GLWEToMut,
