@@ -1,5 +1,6 @@
 mod add;
 mod and;
+mod glwe_blind_rotation;
 mod or;
 mod prepare;
 mod sll;
@@ -12,6 +13,7 @@ mod xor;
 
 pub use add::*;
 pub use and::*;
+pub use glwe_blind_rotation::*;
 pub use or::*;
 pub use prepare::*;
 pub use sll::*;

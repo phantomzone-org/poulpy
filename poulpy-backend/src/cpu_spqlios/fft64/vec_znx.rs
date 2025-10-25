@@ -15,7 +15,7 @@ use poulpy_hal::{
         VecZnxNormalizeInplaceImpl, VecZnxNormalizeTmpBytesImpl, VecZnxRotateImpl, VecZnxRotateInplaceImpl,
         VecZnxRotateInplaceTmpBytesImpl, VecZnxRshImpl, VecZnxRshInplaceImpl, VecZnxRshTmpBytesImpl, VecZnxSplitRingImpl,
         VecZnxSplitRingTmpBytesImpl, VecZnxSubImpl, VecZnxSubInplaceImpl, VecZnxSubNegateInplaceImpl, VecZnxSubScalarImpl,
-        VecZnxSubScalarInplaceImpl, VecZnxSwitchRingImpl,
+        VecZnxSubScalarInplaceImpl, VecZnxSwitchRingImpl, VecZnxZeroImpl,
     },
     reference::{
         vec_znx::{
@@ -23,7 +23,7 @@ use poulpy_hal::{
             vec_znx_fill_uniform_ref, vec_znx_lsh, vec_znx_lsh_inplace, vec_znx_lsh_tmp_bytes, vec_znx_merge_rings,
             vec_znx_merge_rings_tmp_bytes, vec_znx_mul_xp_minus_one_inplace_tmp_bytes, vec_znx_normalize_tmp_bytes,
             vec_znx_rotate_inplace_tmp_bytes, vec_znx_rsh, vec_znx_rsh_inplace, vec_znx_rsh_tmp_bytes, vec_znx_split_ring,
-            vec_znx_split_ring_tmp_bytes, vec_znx_switch_ring,
+            vec_znx_split_ring_tmp_bytes, vec_znx_switch_ring, vec_znx_zero,
         },
         znx::{znx_copy_ref, znx_zero_ref},
     },
@@ -34,6 +34,15 @@ use crate::cpu_spqlios::{
     FFT64Spqlios,
     ffi::{module::module_info_t, vec_znx, znx},
 };
+
+unsafe impl VecZnxZeroImpl<Self> for FFT64Spqlios {
+    fn vec_znx_zero_impl<R>(_module: &Module<Self>, res: &mut R, res_col: usize)
+    where
+        R: VecZnxToMut,
+    {
+        vec_znx_zero::<_, FFT64Spqlios>(res, res_col);
+    }
+}
 
 unsafe impl VecZnxNormalizeTmpBytesImpl<Self> for FFT64Spqlios {
     fn vec_znx_normalize_tmp_bytes_impl(module: &Module<Self>) -> usize {

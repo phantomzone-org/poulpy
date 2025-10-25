@@ -13,6 +13,7 @@ mod split_ring;
 mod sub;
 mod sub_scalar;
 mod switch_ring;
+mod zero;
 
 pub use add::*;
 pub use add_scalar::*;
@@ -29,3 +30,4 @@ pub use split_ring::*;
 pub use sub::*;
 pub use sub_scalar::*;
 pub use switch_ring::*;
+pub use zero::*;

@@ -4,6 +4,16 @@ use crate::{
 };
 
 /// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See TODO for reference implementation.
+/// * See [crate::api::VecZnxZero] for corresponding public API.
+/// # Safety [crate::doc::backend_safety] for safety contract.
+pub unsafe trait VecZnxZeroImpl<B: Backend> {
+    fn vec_znx_zero_impl<R>(module: &Module<B>, res: &mut R, res_col: usize)
+    where
+        R: VecZnxToMut;
+}
+
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
 /// * See [poulpy-backend/src/cpu_fft64_ref/vec_znx.rs](https://github.com/phantomzone-org/poulpy/blob/main/poulpy-backend/src/cpu_fft64_ref/vec_znx.rs) for reference implementation.
 /// * See [crate::api::VecZnxNormalizeTmpBytes] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.

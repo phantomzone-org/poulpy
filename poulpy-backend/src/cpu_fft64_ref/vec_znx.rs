@@ -14,7 +14,7 @@ use poulpy_hal::{
         VecZnxNormalizeInplaceImpl, VecZnxNormalizeTmpBytesImpl, VecZnxRotateImpl, VecZnxRotateInplaceImpl,
         VecZnxRotateInplaceTmpBytesImpl, VecZnxRshImpl, VecZnxRshInplaceImpl, VecZnxRshTmpBytesImpl, VecZnxSplitRingImpl,
         VecZnxSplitRingTmpBytesImpl, VecZnxSubImpl, VecZnxSubInplaceImpl, VecZnxSubNegateInplaceImpl, VecZnxSubScalarImpl,
-        VecZnxSubScalarInplaceImpl, VecZnxSwitchRingImpl,
+        VecZnxSubScalarInplaceImpl, VecZnxSwitchRingImpl, VecZnxZeroImpl,
     },
     reference::vec_znx::{
         vec_znx_add, vec_znx_add_inplace, vec_znx_add_normal_ref, vec_znx_add_scalar, vec_znx_add_scalar_inplace,
@@ -25,12 +25,21 @@ use poulpy_hal::{
         vec_znx_normalize_inplace, vec_znx_normalize_tmp_bytes, vec_znx_rotate, vec_znx_rotate_inplace,
         vec_znx_rotate_inplace_tmp_bytes, vec_znx_rsh, vec_znx_rsh_inplace, vec_znx_rsh_tmp_bytes, vec_znx_split_ring,
         vec_znx_split_ring_tmp_bytes, vec_znx_sub, vec_znx_sub_inplace, vec_znx_sub_negate_inplace, vec_znx_sub_scalar,
-        vec_znx_sub_scalar_inplace, vec_znx_switch_ring,
+        vec_znx_sub_scalar_inplace, vec_znx_switch_ring, vec_znx_zero,
     },
     source::Source,
 };
 
 use crate::cpu_fft64_ref::FFT64Ref;
+
+unsafe impl VecZnxZeroImpl<Self> for FFT64Ref {
+    fn vec_znx_zero_impl<R>(_module: &Module<Self>, res: &mut R, res_col: usize)
+    where
+        R: VecZnxToMut,
+    {
+        vec_znx_zero::<_, FFT64Ref>(res, res_col);
+    }
+}
 
 unsafe impl VecZnxNormalizeTmpBytesImpl<Self> for FFT64Ref {
     fn vec_znx_normalize_tmp_bytes_impl(module: &Module<Self>) -> usize {

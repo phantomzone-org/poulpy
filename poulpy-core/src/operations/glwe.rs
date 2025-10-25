@@ -2,7 +2,7 @@ use poulpy_hal::{
     api::{
         ModuleN, VecZnxAdd, VecZnxAddInplace, VecZnxCopy, VecZnxMulXpMinusOne, VecZnxMulXpMinusOneInplace, VecZnxNegateInplace,
         VecZnxNormalize, VecZnxNormalizeInplace, VecZnxRotate, VecZnxRotateInplace, VecZnxRshInplace, VecZnxSub,
-        VecZnxSubInplace, VecZnxSubNegateInplace,
+        VecZnxSubInplace, VecZnxSubNegateInplace, VecZnxZero,
     },
     layouts::{Backend, Module, Scratch, VecZnx, ZnxZero},
     reference::vec_znx::vec_znx_rotate_inplace_tmp_bytes,
@@ -262,11 +262,11 @@ where
     }
 }
 
-impl<BE: Backend> GLWECopy for Module<BE> where Self: ModuleN + VecZnxCopy {}
+impl<BE: Backend> GLWECopy for Module<BE> where Self: ModuleN + VecZnxCopy + VecZnxZero {}
 
 pub trait GLWECopy
 where
-    Self: ModuleN + VecZnxCopy,
+    Self: ModuleN + VecZnxCopy + VecZnxZero,
 {
     fn glwe_copy<R, A>(&self, res: &mut R, a: &A)
     where
@@ -278,10 +278,15 @@ where
 
         assert_eq!(res.n(), self.n() as u32);
         assert_eq!(a.n(), self.n() as u32);
-        assert_eq!(res.rank(), a.rank());
 
-        for i in 0..res.rank().as_usize() + 1 {
+        let min_rank: usize = res.rank().min(a.rank()).as_usize() + 1;
+
+        for i in 0..min_rank {
             self.vec_znx_copy(res.data_mut(), i, a.data(), i);
+        }
+
+        for i in min_rank..(res.rank() + 1).into() {
+            self.vec_znx_zero(res.data_mut(), i);
         }
 
         res.set_k(a.k().min(res.max_k()));
