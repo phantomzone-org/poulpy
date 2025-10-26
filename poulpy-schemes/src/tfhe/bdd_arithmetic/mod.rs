@@ -1,12 +1,12 @@
 mod bdd_2w_to_1w;
-mod bdd_rotation;
+mod blind_rotation;
 mod ciphertexts;
 mod circuits;
 mod eval;
 mod key;
 
 pub use bdd_2w_to_1w::*;
-pub use bdd_rotation::*;
+pub use blind_rotation::*;
 pub use ciphertexts::*;
 pub(crate) use circuits::*;
 pub(crate) use eval::*;

@@ -21,16 +21,16 @@ where
     Self: GLWEBlindRotation<T, BE> + VecZnxAddScalarInplace + VecZnxNormalizeInplace<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
-    fn ggsw_blind_rotate_from_ggsw_tmp_bytes<R, K>(&self, res_infos: &R, k_infos: &K) -> usize
+    fn ggsw_to_ggsw_blind_rotation_tmp_bytes<R, K>(&self, res_infos: &R, k_infos: &K) -> usize
     where
         R: GLWEInfos,
         K: GGSWInfos,
     {
-        self.glwe_blind_rotation_tmp_bytes(res_infos, k_infos)
+        self.glwe_to_glwe_blind_rotation_tmp_bytes(res_infos, k_infos)
     }
 
     /// res <- a * X^{((k>>bit_rsh) % 2^bit_mask) << bit_lsh}.
-    fn ggsw_blind_rotate_from_ggsw<R, A, K>(
+    fn ggsw_to_ggsw_blind_rotation<R, A, K>(
         &self,
         res: &mut R,
         a: &A,
@@ -53,7 +53,7 @@ where
 
         for col in 0..(res.rank() + 1).into() {
             for row in 0..res.dnum().into() {
-                self.glwe_blind_rotation(
+                self.glwe_to_glwe_blind_rotation(
                     &mut res.at_mut(row, col),
                     &a.at(row, col),
                     k,
@@ -66,15 +66,15 @@ where
         }
     }
 
-    fn ggsw_blind_rotate_from_scalar_tmp_bytes<R, K>(&self, res_infos: &R, k_infos: &K) -> usize
+    fn scalar_to_ggsw_blind_rotation_tmp_bytes<R, K>(&self, res_infos: &R, k_infos: &K) -> usize
     where
         R: GLWEInfos,
         K: GGSWInfos,
     {
-        self.glwe_blind_rotation_tmp_bytes(res_infos, k_infos) + GLWE::bytes_of_from_infos(res_infos)
+        self.glwe_to_glwe_blind_rotation_tmp_bytes(res_infos, k_infos) + GLWE::bytes_of_from_infos(res_infos)
     }
 
-    fn ggsw_blind_rotate_from_scalar<R, S, K>(
+    fn scalar_to_ggsw_blind_rotation<R, S, K>(
         &self,
         res: &mut R,
         test_vector: &S,
@@ -109,7 +109,7 @@ where
                 );
                 self.vec_znx_normalize_inplace(base2k, tmp_glwe.data_mut(), col, scratch_1);
 
-                self.glwe_blind_rotation(
+                self.glwe_to_glwe_blind_rotation(
                     &mut res.at_mut(row, col),
                     &tmp_glwe,
                     k,
@@ -135,7 +135,7 @@ where
     Self: GLWECopy + GLWERotate<BE> + Cmux<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
-    fn glwe_blind_rotation_tmp_bytes<R, K>(&self, res_infos: &R, k_infos: &K) -> usize
+    fn glwe_to_glwe_blind_rotation_tmp_bytes<R, K>(&self, res_infos: &R, k_infos: &K) -> usize
     where
         R: GLWEInfos,
         K: GGSWInfos,
@@ -144,7 +144,7 @@ where
     }
 
     /// res <- a * X^{((k>>bit_rsh) % 2^bit_mask) << bit_lsh}.
-    fn glwe_blind_rotation<R, A, K>(
+    fn glwe_to_glwe_blind_rotation<R, A, K>(
         &self,
         res: &mut R,
         a: &A,

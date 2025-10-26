@@ -14,7 +14,7 @@ use rand::RngCore;
 
 use crate::tfhe::bdd_arithmetic::{FheUintBlocksPrepared, GGSWBlindRotation};
 
-pub fn test_ggsw_blind_rotation<BE: Backend>()
+pub fn test_scalar_to_ggsw_blind_rotation<BE: Backend>()
 where
     Module<BE>: ModuleNew<BE>
         + GLWESecretPreparedFactory<BE>
@@ -117,7 +117,7 @@ where
             // How many bits to take
             let bit_size: usize = (32 - bit_start).min(digit);
 
-            module.ggsw_blind_rotate_from_scalar(
+            module.scalar_to_ggsw_blind_rotation(
                 &mut res,
                 &scalar,
                 &k_enc_prep,
