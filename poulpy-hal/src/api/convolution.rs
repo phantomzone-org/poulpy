@@ -123,6 +123,7 @@ where
             self.svp_apply_dft_to_dft(&mut res_tmp, 0, &ppol, 0, b, b_col);
             self.vec_znx_dft_add_scaled_inplace(res, res_col, &res_tmp, 0, -(1 + a_limb as i64) + k);
         }
+  
     }
 
     fn bivariate_convolution_single<R, A, B>(

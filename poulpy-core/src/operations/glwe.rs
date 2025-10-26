@@ -1,17 +1,25 @@
 use poulpy_hal::{
     api::{
-        ModuleN, VecZnxAdd, VecZnxAddInplace, VecZnxCopy, VecZnxMulXpMinusOne, VecZnxMulXpMinusOneInplace, VecZnxNegateInplace,
-        VecZnxNormalize, VecZnxNormalizeInplace, VecZnxRotate, VecZnxRotateInplace, VecZnxRshInplace, VecZnxSub,
-        VecZnxSubInplace, VecZnxSubNegateInplace, VecZnxZero,
+        Convolution, ModuleN, VecZnxAdd, VecZnxAddInplace, VecZnxCopy, VecZnxMulXpMinusOne, VecZnxMulXpMinusOneInplace, VecZnxNegateInplace, VecZnxNormalize, VecZnxNormalizeInplace, VecZnxRotate, VecZnxRotateInplace, VecZnxRshInplace, VecZnxSub, VecZnxSubInplace, VecZnxSubNegateInplace, VecZnxZero
     },
     layouts::{Backend, Module, Scratch, VecZnx, ZnxZero},
     reference::vec_znx::vec_znx_rotate_inplace_tmp_bytes,
 };
 
 use crate::{
-    ScratchTakeCore,
-    layouts::{GLWE, GLWEInfos, GLWEToMut, GLWEToRef, LWEInfos, SetGLWEInfos, TorusPrecision},
+    layouts::{GLWEInfos, GLWETensor, GLWETensorToMut, GLWEToMut, GLWEToRef, LWEInfos, SetGLWEInfos, TorusPrecision, GLWE}, ScratchTakeCore
 };
+
+pub trait GLWETensoring<BE: Backend> where Self: Convolution<BE>, Scratch<BE>: ScratchTakeCore<BE> {
+    fn glwe_tensor<R, A, B>(&self, res: &mut R, res_scale: i64, a: &A, b: &B, scratch: &mut Scratch<BE>) where R: GLWETensorToMut, A: GLWEToRef, B: GLWEToRef{
+
+        let res: &mut GLWETensor<&mut [u8]> = &mut res.to_mut();
+        let a: &mut GLWE<&[u8]> = &mut a.to_ref();
+        let b: &GLWE<&[u8]> = &b.to_ref();
+
+        self.bivariate_convolution(res.data_mut(), res_scale, a, b, scratch);
+    }
+}
 
 pub trait GLWEAdd
 where
