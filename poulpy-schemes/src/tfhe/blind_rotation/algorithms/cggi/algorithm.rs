@@ -189,12 +189,12 @@ fn execute_block_binary_extended<DataRes, DataIn, DataBrk, M, BE: Backend>(
         brk.data.chunks_exact(block_size)
     )
     .for_each(|(ai, ski)| {
-        (0..extension_factor).for_each(|i| {
-            (0..cols).for_each(|j| {
+        for i in 0..extension_factor {
+            for j in 0..cols {
                 module.vec_znx_dft_apply(1, 0, &mut acc_dft[i], j, &acc[i], j);
-            });
-            module.vec_znx_dft_zero(&mut acc_add_dft[i])
-        });
+                module.vec_znx_dft_zero(&mut acc_add_dft[i], j)
+            }
+        }
 
         // TODO: first & last iterations can be optimized
         izip!(ai.iter(), ski.iter()).for_each(|(aii, skii)| {
@@ -342,11 +342,10 @@ fn execute_block_binary<DataRes, DataIn, DataBrk, M, BE: Backend>(
         brk.data.chunks_exact(block_size)
     )
     .for_each(|(ai, ski)| {
-        (0..cols).for_each(|j| {
+        for j in 0..cols {
             module.vec_znx_dft_apply(1, 0, &mut acc_dft, j, out_mut.data_mut(), j);
-        });
-
-        module.vec_znx_dft_zero(&mut acc_add_dft);
+            module.vec_znx_dft_zero(&mut acc_add_dft, j)
+        }
 
         izip!(ai.iter(), ski.iter()).for_each(|(aii, skii)| {
             let ai_pos: usize = ((aii + two_n as i64) & (two_n - 1) as i64) as usize;

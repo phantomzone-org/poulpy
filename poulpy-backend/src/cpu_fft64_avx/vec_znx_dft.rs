@@ -194,10 +194,10 @@ unsafe impl VecZnxDftCopyImpl<Self> for FFT64Avx {
 }
 
 unsafe impl VecZnxDftZeroImpl<Self> for FFT64Avx {
-    fn vec_znx_dft_zero_impl<R>(_module: &Module<Self>, res: &mut R)
+    fn vec_znx_dft_zero_impl<R>(_module: &Module<Self>, res: &mut R, res_col: usize)
     where
         R: VecZnxDftToMut<Self>,
     {
-        vec_znx_dft_zero(res);
+        vec_znx_dft_zero(res, res_col);
     }
 }

@@ -188,7 +188,7 @@ pub unsafe trait VecZnxDftCopyImpl<B: Backend> {
 /// * See [crate::api::VecZnxDftZero] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
 pub unsafe trait VecZnxDftZeroImpl<B: Backend> {
-    fn vec_znx_dft_zero_impl<R>(module: &Module<B>, res: &mut R)
+    fn vec_znx_dft_zero_impl<R>(module: &Module<B>, res: &mut R, res_col: usize)
     where
         R: VecZnxDftToMut<B>;
 }

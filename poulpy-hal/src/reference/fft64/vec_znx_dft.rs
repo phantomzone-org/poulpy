@@ -118,7 +118,7 @@ where
         }
     } else if a_scale < 0 {
         let shift: usize = (a_scale.unsigned_abs() as usize).min(res_size);
-        let sum_size: usize = a_size.min(res_size).saturating_sub(shift);
+        let sum_size: usize = a_size.min(res_size.saturating_sub(shift));
         for j in 0..sum_size {
             BE::reim_add_inplace(res.at_mut(res_col, j + shift), a.at(a_col, j));
         }
@@ -398,10 +398,13 @@ where
     }
 }
 
-pub fn vec_znx_dft_zero<R, BE>(res: &mut R)
+pub fn vec_znx_dft_zero<R, BE>(res: &mut R, res_col: usize)
 where
     R: VecZnxDftToMut<BE>,
     BE: Backend<ScalarPrep = f64> + ReimZero,
 {
-    BE::reim_zero(res.to_mut().raw_mut());
+    let res: &mut VecZnxDft<&mut [u8], BE> = &mut res.to_mut();
+    for j in 0..res.size() {
+        BE::reim_zero(res.at_mut(res_col, j))
+    }
 }

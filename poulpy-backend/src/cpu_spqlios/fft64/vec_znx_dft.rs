@@ -12,7 +12,7 @@ use poulpy_hal::{
     reference::{
         fft64::{
             reim::{ReimCopy, ReimZero, reim_copy_ref, reim_negate_inplace_ref, reim_negate_ref, reim_zero_ref},
-            vec_znx_dft::vec_znx_dft_copy,
+            vec_znx_dft::{vec_znx_dft_copy, vec_znx_dft_zero},
         },
         znx::znx_zero_ref,
     },
@@ -426,10 +426,10 @@ impl ReimZero for FFT64Spqlios {
 }
 
 unsafe impl VecZnxDftZeroImpl<Self> for FFT64Spqlios {
-    fn vec_znx_dft_zero_impl<R>(_module: &Module<Self>, res: &mut R)
+    fn vec_znx_dft_zero_impl<R>(_module: &Module<Self>, res: &mut R, res_col: usize)
     where
         R: VecZnxDftToMut<Self>,
     {
-        res.to_mut().data.fill(0);
+        vec_znx_dft_zero(res, res_col);
     }
 }
