@@ -70,11 +70,7 @@ where
     data.iter_mut().enumerate().for_each(|(i, x)| *x = i as i64);
     test_glwe.encode_vec_i64(&data, base2k.as_usize().into());
 
-    println!("pt: {}", test_glwe);
-
     let k: u32 = source.next_u32();
-
-    println!("k: {k}");
 
     let mut k_enc_prep: FheUintBlocksPrepared<Vec<u8>, u32, BE> =
         FheUintBlocksPrepared::<Vec<u8>, u32, BE>::alloc(&module, &ggsw_infos);

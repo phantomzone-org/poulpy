@@ -6,39 +6,19 @@ use crate::{
     layouts::{Backend, Module, Scratch, VecZnxDftToMut, VecZnxDftToRef, VecZnxToRef, ZnxInfos},
 };
 
-impl<BE: Backend> Convolution<BE> for Module<BE>
+impl<BE: Backend> BivariateTensoring<BE> for Module<BE>
 where
-    Self: Sized
-        + ModuleN
-        + SvpPPolAlloc<BE>
-        + SvpApplyDftToDft<BE>
-        + SvpPrepare<BE>
-        + SvpPPolBytesOf
-        + VecZnxDftBytesOf
-        + VecZnxDftAddScaledInplace<BE>
-        + VecZnxDftZero<BE>,
+    Self: BivariateConvolution<BE>,
     Scratch<BE>: ScratchTakeBasic,
 {
 }
 
-pub trait Convolution<BE: Backend>
+pub trait BivariateTensoring<BE: Backend>
 where
-    Self: Sized
-        + ModuleN
-        + SvpPPolAlloc<BE>
-        + SvpApplyDftToDft<BE>
-        + SvpPrepare<BE>
-        + SvpPPolBytesOf
-        + VecZnxDftBytesOf
-        + VecZnxDftAddScaledInplace<BE>
-        + VecZnxDftZero<BE>,
+    Self: BivariateConvolution<BE>,
     Scratch<BE>: ScratchTakeBasic,
 {
-    fn convolution_tmp_bytes(&self, b_size: usize) -> usize {
-        self.bytes_of_svp_ppol(1) + self.bytes_of_vec_znx_dft(1, b_size)
-    }
-
-    fn bivariate_convolution_full<R, A, B>(&self, k: i64, res: &mut R, a: &A, b: &B, scratch: &mut Scratch<BE>)
+    fn bivariate_tensoring<R, A, B>(&self, k: i64, res: &mut R, a: &A, b: &B, scratch: &mut Scratch<BE>)
     where
         R: VecZnxDftToMut<BE>,
         A: VecZnxToRef,
@@ -55,13 +35,47 @@ where
         assert!(res_cols >= a_cols + b_cols - 1);
 
         for res_col in 0..res_cols {
-            let a_min: usize = res_col.saturating_sub(b_cols - 1);
-            let a_max: usize = res_col.min(a_cols - 1);
-            self.bivariate_convolution_single(k, res, res_col, a, a_min, b, res_col - a_min, scratch);
-            for a_col in a_min + 1..a_max + 1 {
-                self.bivariate_convolution_single_add(k, res, res_col, a, a_col, b, res_col - a_col, scratch);
+            self.vec_znx_dft_zero(res, res_col);
+        }
+
+        for a_col in 0..a_cols {
+            for b_col in 0..b_cols {
+                self.bivariate_convolution_add(k, res, a_col + b_col, a, a_col, b, b_col, scratch);
             }
         }
+    }
+}
+
+impl<BE: Backend> BivariateConvolution<BE> for Module<BE>
+where
+    Self: Sized
+        + ModuleN
+        + SvpPPolAlloc<BE>
+        + SvpApplyDftToDft<BE>
+        + SvpPrepare<BE>
+        + SvpPPolBytesOf
+        + VecZnxDftBytesOf
+        + VecZnxDftAddScaledInplace<BE>
+        + VecZnxDftZero<BE>,
+    Scratch<BE>: ScratchTakeBasic,
+{
+}
+
+pub trait BivariateConvolution<BE: Backend>
+where
+    Self: Sized
+        + ModuleN
+        + SvpPPolAlloc<BE>
+        + SvpApplyDftToDft<BE>
+        + SvpPrepare<BE>
+        + SvpPPolBytesOf
+        + VecZnxDftBytesOf
+        + VecZnxDftAddScaledInplace<BE>
+        + VecZnxDftZero<BE>,
+    Scratch<BE>: ScratchTakeBasic,
+{
+    fn convolution_tmp_bytes(&self, b_size: usize) -> usize {
+        self.bytes_of_svp_ppol(1) + self.bytes_of_vec_znx_dft(1, b_size)
     }
 
     /// Evaluates a bivariate convolution over Z[X, Y] / (X^N + 1) where Y = 2^-K over the
@@ -96,7 +110,7 @@ where
     ///       [r03, r13, r23, r33]
     ///
     /// If res.size() < a.size() + b.size() + 1 + k, result is truncated accordingly in the Y dimension.
-    fn bivariate_convolution_single_add<R, A, B>(
+    fn bivariate_convolution_add<R, A, B>(
         &self,
         k: i64,
         res: &mut R,
@@ -123,10 +137,9 @@ where
             self.svp_apply_dft_to_dft(&mut res_tmp, 0, &ppol, 0, b, b_col);
             self.vec_znx_dft_add_scaled_inplace(res, res_col, &res_tmp, 0, -(1 + a_limb as i64) + k);
         }
-  
     }
 
-    fn bivariate_convolution_single<R, A, B>(
+    fn bivariate_convolution<R, A, B>(
         &self,
         k: i64,
         res: &mut R,
@@ -142,6 +155,6 @@ where
         B: VecZnxDftToRef<BE>,
     {
         self.vec_znx_dft_zero(res, res_col);
-        self.bivariate_convolution_single_add(k, res, res_col, a, a_col, b, b_col, scratch);
+        self.bivariate_convolution_add(k, res, res_col, a, a_col, b, b_col, scratch);
     }
 }

@@ -29,6 +29,7 @@ where
         self.glwe_to_glwe_blind_rotation_tmp_bytes(res_infos, k_infos)
     }
 
+    #[allow(clippy::too_many_arguments)]
     /// res <- a * X^{((k>>bit_rsh) % 2^bit_mask) << bit_lsh}.
     fn ggsw_to_ggsw_blind_rotation<R, A, K>(
         &self,
@@ -74,6 +75,7 @@ where
         self.glwe_to_glwe_blind_rotation_tmp_bytes(res_infos, k_infos) + GLWE::bytes_of_from_infos(res_infos)
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn scalar_to_ggsw_blind_rotation<R, S, K>(
         &self,
         res: &mut R,
@@ -143,6 +145,7 @@ where
         self.cmux_tmp_bytes(res_infos, res_infos, k_infos) + GLWE::bytes_of_from_infos(res_infos)
     }
 
+    #[allow(clippy::too_many_arguments)]
     /// res <- a * X^{((k>>bit_rsh) % 2^bit_mask) << bit_lsh}.
     fn glwe_to_glwe_blind_rotation<R, A, K>(
         &self,
@@ -162,6 +165,7 @@ where
         assert!(bit_rsh + bit_mask <= T::WORD_SIZE);
 
         let mut res: GLWE<&mut [u8]> = res.to_mut();
+        let a: &GLWE<&[u8]> = &a.to_ref();
 
         let (mut tmp_res, scratch_1) = scratch.take_glwe(&res);
 

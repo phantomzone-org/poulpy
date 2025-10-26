@@ -1,6 +1,6 @@
 use crate::{
     api::{
-        Convolution, ModuleN, ScratchOwnedAlloc, ScratchOwnedBorrow, ScratchTakeBasic, TakeSlice, VecZnxBigAlloc,
+        BivariateTensoring, ModuleN, ScratchOwnedAlloc, ScratchOwnedBorrow, ScratchTakeBasic, TakeSlice, VecZnxBigAlloc,
         VecZnxBigNormalize, VecZnxDftAlloc, VecZnxDftApply, VecZnxIdftApplyTmpA, VecZnxNormalizeInplace,
     },
     layouts::{
@@ -10,10 +10,10 @@ use crate::{
     source::Source,
 };
 
-pub fn test_convolution<M, BE: Backend>(module: &M)
+pub fn test_bivariate_tensoring<M, BE: Backend>(module: &M)
 where
     M: ModuleN
-        + Convolution<BE>
+        + BivariateTensoring<BE>
         + VecZnxDftAlloc<BE>
         + VecZnxDftApply<BE>
         + VecZnxIdftApplyTmpA<BE>
@@ -55,7 +55,7 @@ where
     for mut k in 0..(2 * c_size + 1) as i64 {
         k -= c_size as i64;
 
-        module.bivariate_convolution_full(k, &mut c_have_dft, &a, &b_dft, scratch.borrow());
+        module.bivariate_tensoring(k, &mut c_have_dft, &a, &b_dft, scratch.borrow());
 
         for i in 0..c_cols {
             module.vec_znx_idft_apply_tmpa(&mut c_have_big, i, &mut c_have_dft, i);
@@ -73,13 +73,13 @@ where
             );
         }
 
-        convolution_naive(module, base2k, k, &mut c_want, &a, &b, scratch.borrow());
+        bivariate_tensoring_naive(module, base2k, k, &mut c_want, &a, &b, scratch.borrow());
 
         assert_eq!(c_want, c_have);
     }
 }
 
-fn convolution_naive<R, A, B, M, BE: Backend>(
+fn bivariate_tensoring_naive<R, A, B, M, BE: Backend>(
     module: &M,
     base2k: usize,
     k: i64,

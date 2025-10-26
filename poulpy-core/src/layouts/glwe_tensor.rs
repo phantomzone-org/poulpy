@@ -93,7 +93,7 @@ impl GLWETensor<Vec<u8>> {
     }
 
     pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank) -> Self {
-        let pairs: usize = (((rank + 1) * rank).as_usize() >> 1).max(1) as usize;
+        let pairs: usize = (((rank + 1) * rank).as_usize() >> 1).max(1);
         GLWETensor {
             data: VecZnx::alloc(n.into(), pairs + 1, k.0.div_ceil(base2k.0) as usize),
             base2k,
@@ -110,7 +110,7 @@ impl GLWETensor<Vec<u8>> {
     }
 
     pub fn bytes_of(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank) -> usize {
-        let pairs: usize = (((rank + 1) * rank).as_usize() >> 1).max(1) as usize;
+        let pairs: usize = (((rank + 1) * rank).as_usize() >> 1).max(1);
         VecZnx::bytes_of(n.into(), pairs + 1, k.0.div_ceil(base2k.0) as usize)
     }
 }
