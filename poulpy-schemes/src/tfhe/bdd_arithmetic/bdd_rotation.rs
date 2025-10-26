@@ -1,24 +1,27 @@
 use poulpy_core::{
     GLWECopy, GLWERotate, ScratchTakeCore,
-    layouts::{GGSW, GGSWInfos, GGSWToMut, GGSWToRef, GLWE, GLWEInfos, GLWEToMut, GLWEToRef},
+    layouts::{GGSW, GGSWInfos, GGSWToMut, GGSWToRef, GLWE, GLWEInfos, GLWEToMut, GLWEToRef, LWEInfos},
 };
-use poulpy_hal::layouts::{Backend, Module, Scratch};
+use poulpy_hal::{
+    api::{VecZnxAddScalarInplace, VecZnxNormalizeInplace},
+    layouts::{Backend, Module, ScalarZnx, ScalarZnxToRef, Scratch, ZnxZero},
+};
 
 use crate::tfhe::bdd_arithmetic::{Cmux, GetGGSWBit, UnsignedInteger};
 
 impl<T: UnsignedInteger, BE: Backend> GGSWBlindRotation<T, BE> for Module<BE>
 where
-    Self: GLWEBlindRotation<T, BE>,
+    Self: GLWEBlindRotation<T, BE> + VecZnxAddScalarInplace + VecZnxNormalizeInplace<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
 }
 
 pub trait GGSWBlindRotation<T: UnsignedInteger, BE: Backend>
 where
-    Self: GLWEBlindRotation<T, BE>,
+    Self: GLWEBlindRotation<T, BE> + VecZnxAddScalarInplace + VecZnxNormalizeInplace<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
-    fn ggsw_blind_rotation_tmp_bytes<R, K>(&self, res_infos: &R, k_infos: &K) -> usize
+    fn ggsw_blind_rotate_from_ggsw_tmp_bytes<R, K>(&self, res_infos: &R, k_infos: &K) -> usize
     where
         R: GLWEInfos,
         K: GGSWInfos,
@@ -26,34 +29,94 @@ where
         self.glwe_blind_rotation_tmp_bytes(res_infos, k_infos)
     }
 
-    fn ggsw_blind_rotation<R, G, K>(
+    /// res <- a * X^{((k>>bit_rsh) % 2^bit_mask) << bit_lsh}.
+    fn ggsw_blind_rotate_from_ggsw<R, A, K>(
         &self,
         res: &mut R,
-        test_ggsw: &G,
+        a: &A,
         k: &K,
         bit_start: usize,
-        bit_size: usize,
-        bit_step: usize,
+        bit_mask: usize,
+        bit_lsh: usize,
         scratch: &mut Scratch<BE>,
     ) where
         R: GGSWToMut,
-        G: GGSWToRef,
+        A: GGSWToRef,
         K: GetGGSWBit<T, BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         let res: &mut GGSW<&mut [u8]> = &mut res.to_mut();
-        let test_ggsw: &GGSW<&[u8]> = &test_ggsw.to_ref();
+        let a: &GGSW<&[u8]> = &a.to_ref();
 
-        for row in 0..res.dnum().into() {
-            for col in 0..(res.rank() + 1).into() {
+        assert!(res.dnum() <= a.dnum());
+        assert_eq!(res.dsize(), a.dsize());
+
+        for col in 0..(res.rank() + 1).into() {
+            for row in 0..res.dnum().into() {
                 self.glwe_blind_rotation(
                     &mut res.at_mut(row, col),
-                    &test_ggsw.at(row, col),
+                    &a.at(row, col),
                     k,
                     bit_start,
-                    bit_size,
-                    bit_step,
+                    bit_mask,
+                    bit_lsh,
                     scratch,
+                );
+            }
+        }
+    }
+
+    fn ggsw_blind_rotate_from_scalar_tmp_bytes<R, K>(&self, res_infos: &R, k_infos: &K) -> usize
+    where
+        R: GLWEInfos,
+        K: GGSWInfos,
+    {
+        self.glwe_blind_rotation_tmp_bytes(res_infos, k_infos) + GLWE::bytes_of_from_infos(res_infos)
+    }
+
+    fn ggsw_blind_rotate_from_scalar<R, S, K>(
+        &self,
+        res: &mut R,
+        test_vector: &S,
+        k: &K,
+        bit_start: usize,
+        bit_mask: usize,
+        bit_lsh: usize,
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: GGSWToMut,
+        S: ScalarZnxToRef,
+        K: GetGGSWBit<T, BE>,
+        Scratch<BE>: ScratchTakeCore<BE>,
+    {
+        let res: &mut GGSW<&mut [u8]> = &mut res.to_mut();
+        let test_vector: &ScalarZnx<&[u8]> = &test_vector.to_ref();
+
+        let base2k: usize = res.base2k().into();
+        let dsize: usize = res.dsize().into();
+
+        let (mut tmp_glwe, scratch_1) = scratch.take_glwe(res);
+
+        for col in 0..(res.rank() + 1).into() {
+            for row in 0..res.dnum().into() {
+                tmp_glwe.data_mut().zero();
+                self.vec_znx_add_scalar_inplace(
+                    tmp_glwe.data_mut(),
+                    col,
+                    (dsize - 1) + row * dsize,
+                    test_vector,
+                    0,
+                );
+                self.vec_znx_normalize_inplace(base2k, tmp_glwe.data_mut(), col, scratch_1);
+
+                self.glwe_blind_rotation(
+                    &mut res.at_mut(row, col),
+                    &tmp_glwe,
+                    k,
+                    bit_start,
+                    bit_mask,
+                    bit_lsh,
+                    scratch_1,
                 );
             }
         }
@@ -80,47 +143,50 @@ where
         self.cmux_tmp_bytes(res_infos, res_infos, k_infos) + GLWE::bytes_of_from_infos(res_infos)
     }
 
-    /// Homomorphic multiplication of res by X^{k[bit_start..bit_start + bit_size] * bit_step}.
-    fn glwe_blind_rotation<R, G, K>(
+    /// res <- a * X^{((k>>bit_rsh) % 2^bit_mask) << bit_lsh}.
+    fn glwe_blind_rotation<R, A, K>(
         &self,
         res: &mut R,
-        test_glwe: &G,
+        a: &A,
         k: &K,
-        bit_start: usize,
-        bit_size: usize,
-        bit_step: usize,
+        bit_rsh: usize,
+        bit_mask: usize,
+        bit_lsh: usize,
         scratch: &mut Scratch<BE>,
     ) where
         R: GLWEToMut,
-        G: GLWEToRef,
+        A: GLWEToRef,
         K: GetGGSWBit<T, BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        assert!(bit_start + bit_size <= T::WORD_SIZE);
+        assert!(bit_rsh + bit_mask <= T::WORD_SIZE);
 
         let mut res: GLWE<&mut [u8]> = res.to_mut();
 
         let (mut tmp_res, scratch_1) = scratch.take_glwe(&res);
 
-        // res <- test_glwe
-        self.glwe_copy(&mut res, test_glwe);
+        // a <- a ; b <- a * X^{-2^{i + bit_lsh}}
+        self.glwe_rotate(-1 << bit_lsh, &mut res, a);
+
+        // b <- (b - a) * GGSW(b[i]) + a
+        self.cmux_inplace(&mut res, a, &k.get_bit(bit_rsh), scratch_1);
 
         // a_is_res = true  => (a, b) = (&mut res, &mut tmp_res)
         // a_is_res = false => (a, b) = (&mut tmp_res, &mut res)
         let mut a_is_res: bool = true;
 
-        for i in 0..bit_size {
+        for i in 1..bit_mask {
             let (a, b) = if a_is_res {
                 (&mut res, &mut tmp_res)
             } else {
                 (&mut tmp_res, &mut res)
             };
 
-            // a <- a ; b <- a * X^{-2^{i + bit_step}}
-            self.glwe_rotate(-1 << (i + bit_step), b, a);
+            // a <- a ; b <- a * X^{-2^{i + bit_lsh}}
+            self.glwe_rotate(-1 << (i + bit_lsh), b, a);
 
             // b <- (b - a) * GGSW(b[i]) + a
-            self.cmux_inplace(b, a, &k.get_bit(i + bit_start), scratch_1);
+            self.cmux_inplace(b, a, &k.get_bit(i + bit_rsh), scratch_1);
 
             // ping-pong roles for next iter
             a_is_res = !a_is_res;

@@ -1,5 +1,6 @@
 mod add;
 mod and;
+mod ggsw_blind_rotations;
 mod glwe_blind_rotation;
 mod or;
 mod prepare;
@@ -13,6 +14,7 @@ mod xor;
 
 pub use add::*;
 pub use and::*;
+pub use ggsw_blind_rotations::*;
 pub use glwe_blind_rotation::*;
 pub use or::*;
 pub use prepare::*;

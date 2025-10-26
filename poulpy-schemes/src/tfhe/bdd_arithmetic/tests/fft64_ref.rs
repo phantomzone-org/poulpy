@@ -3,7 +3,7 @@ use poulpy_backend::FFT64Ref;
 use crate::tfhe::{
     bdd_arithmetic::tests::test_suite::{
         test_bdd_add, test_bdd_and, test_bdd_or, test_bdd_prepare, test_bdd_sll, test_bdd_slt, test_bdd_sltu, test_bdd_sra,
-        test_bdd_srl, test_bdd_sub, test_bdd_xor, test_glwe_blind_rotation,
+        test_bdd_srl, test_bdd_sub, test_bdd_xor, test_ggsw_blind_rotation, test_glwe_blind_rotation,
     },
     blind_rotation::CGGI,
 };
@@ -11,6 +11,11 @@ use crate::tfhe::{
 #[test]
 fn test_glwe_blind_rotation_fft64_ref() {
     test_glwe_blind_rotation::<FFT64Ref>()
+}
+
+#[test]
+fn test_ggsw_blind_rotation_fft64_ref() {
+    test_ggsw_blind_rotation::<FFT64Ref>()
 }
 
 #[test]
