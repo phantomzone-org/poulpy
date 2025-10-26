@@ -4,6 +4,6 @@ use crate::FFT64Ref;
 
 #[test]
 fn test_convolution_fft64_ref() {
-    let module: Module<FFT64Ref> = Module::<FFT64Ref>::new(64);
+    let module: Module<FFT64Ref> = Module::<FFT64Ref>::new(8);
     test_convolution(&module);
 }

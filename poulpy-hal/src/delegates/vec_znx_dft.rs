@@ -200,10 +200,10 @@ impl<B> VecZnxDftZero<B> for Module<B>
 where
     B: Backend + VecZnxDftZeroImpl<B>,
 {
-    fn vec_znx_dft_zero<R>(&self, res: &mut R)
+    fn vec_znx_dft_zero<R>(&self, res: &mut R, res_col: usize)
     where
         R: VecZnxDftToMut<B>,
     {
-        B::vec_znx_dft_zero_impl(self, res);
+        B::vec_znx_dft_zero_impl(self, res, res_col);
     }
 }

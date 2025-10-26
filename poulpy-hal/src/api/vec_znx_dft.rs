@@ -97,7 +97,7 @@ pub trait VecZnxDftCopy<B: Backend> {
 }
 
 pub trait VecZnxDftZero<B: Backend> {
-    fn vec_znx_dft_zero<R>(&self, res: &mut R)
+    fn vec_znx_dft_zero<R>(&self, res: &mut R, res_col: usize)
     where
         R: VecZnxDftToMut<B>;
 }
