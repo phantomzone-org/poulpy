@@ -67,6 +67,14 @@ where
             );
         }
     }
+
+    // fn glwe_relinearize<R, A, T>(&self, res: &mut R, a: &A, tsk: &T, scratch: &mut Scratch<BE>)
+    // where
+    // R: GLWEToRef,
+    // A: GLWETensorToRef,
+    // T: GLWETensorKeyPreparedToRef<BE>,
+    // {
+    // }
 }
 
 pub trait GLWEAdd

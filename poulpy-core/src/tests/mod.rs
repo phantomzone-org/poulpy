@@ -36,6 +36,7 @@ gglwe_automorphism_key_encrypt_sk => crate::tests::test_suite::encryption::test_
 gglwe_automorphism_key_compressed_encrypt_sk => crate::tests::test_suite::encryption::test_gglwe_automorphism_key_compressed_encrypt_sk,
 gglwe_tensor_key_encrypt_sk => crate::tests::test_suite::encryption::test_gglwe_tensor_key_encrypt_sk,
 gglwe_tensor_key_compressed_encrypt_sk => crate::tests::test_suite::encryption::test_gglwe_tensor_key_compressed_encrypt_sk,
+gglwe_to_ggsw_key_encrypt_sk => crate::tests::test_suite::encryption::test_gglwe_to_ggsw_key_encrypt_sk,
 // GGLWE Keyswitching
 gglwe_switching_key_keyswitch => crate::tests::test_suite::keyswitch::test_gglwe_switching_key_keyswitch,
 gglwe_switching_key_keyswitch_inplace => crate::tests::test_suite::keyswitch::test_gglwe_switching_key_keyswitch_inplace,
@@ -75,7 +76,7 @@ backend_test_suite!(
  glwe_encrypt_zero_sk => crate::tests::test_suite::encryption::test_glwe_encrypt_zero_sk,
  glwe_encrypt_pk => crate::tests::test_suite::encryption::test_glwe_encrypt_pk,
 // GLWE Keyswitch
-    glwe_keyswitch => crate::tests::test_suite::keyswitch::test_glwe_keyswitch,
+glwe_keyswitch => crate::tests::test_suite::keyswitch::test_glwe_keyswitch,
 glwe_keyswitch_inplace => crate::tests::test_suite::keyswitch::test_glwe_keyswitch_inplace,
 // GLWE Automorphism
 glwe_automorphism => crate::tests::test_suite::automorphism::test_glwe_automorphism,
@@ -93,6 +94,7 @@ gglwe_automorphism_key_encrypt_sk => crate::tests::test_suite::encryption::test_
 gglwe_automorphism_key_compressed_encrypt_sk => crate::tests::test_suite::encryption::test_gglwe_automorphism_key_compressed_encrypt_sk,
 gglwe_tensor_key_encrypt_sk => crate::tests::test_suite::encryption::test_gglwe_tensor_key_encrypt_sk,
 gglwe_tensor_key_compressed_encrypt_sk => crate::tests::test_suite::encryption::test_gglwe_tensor_key_compressed_encrypt_sk,
+gglwe_to_ggsw_key_encrypt_sk => crate::tests::test_suite::encryption::test_gglwe_to_ggsw_key_encrypt_sk,
 // GGLWE Keyswitching
 gglwe_switching_key_keyswitch => crate::tests::test_suite::keyswitch::test_gglwe_switching_key_keyswitch,
 gglwe_switching_key_keyswitch_inplace => crate::tests::test_suite::keyswitch::test_gglwe_switching_key_keyswitch_inplace,

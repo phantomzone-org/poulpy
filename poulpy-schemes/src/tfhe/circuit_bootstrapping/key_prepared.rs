@@ -1,8 +1,8 @@
 use poulpy_core::{
     layouts::{
-        GGLWEInfos, GGSWInfos, GLWEAutomorphismKeyLayout, GLWEAutomorphismKeyPreparedFactory, GLWEInfos, GLWETensorKeyLayout,
-        GLWETensorKeyPreparedFactory, LWEInfos,
-        prepared::{GLWEAutomorphismKeyPrepared, GLWETensorKeyPrepared},
+        GGLWEInfos, GGLWEToGGSWKeyPrepared, GGLWEToGGSWKeyPreparedFactory, GGSWInfos, GLWEAutomorphismKeyLayout,
+        GLWEAutomorphismKeyPreparedFactory, GLWEInfos, GLWETensorKeyLayout, GLWETensorKeyPreparedFactory, LWEInfos,
+        prepared::GLWEAutomorphismKeyPrepared,
     },
     trace_galois_elements,
 };
@@ -50,7 +50,7 @@ pub trait CircuitBootstrappingKeyPreparedFactory<BRA: BlindRotationAlgo, BE: Bac
 where
     Self: Sized
         + BlindRotationKeyPreparedFactory<BRA, BE>
-        + GLWETensorKeyPreparedFactory<BE>
+        + GGLWEToGGSWKeyPreparedFactory<BE>
         + GLWEAutomorphismKeyPreparedFactory<BE>,
 {
     fn circuit_bootstrapping_key_prepared_alloc_from_infos<A>(
@@ -65,7 +65,7 @@ where
 
         CircuitBootstrappingKeyPrepared {
             brk: BlindRotationKeyPrepared::alloc(self, &infos.brk_infos()),
-            tsk: GLWETensorKeyPrepared::alloc_from_infos(self, &infos.tsk_infos()),
+            tsk: GGLWEToGGSWKeyPrepared::alloc_from_infos(self, &infos.tsk_infos()),
             atk: gal_els
                 .iter()
                 .map(|&gal_el| {
@@ -81,7 +81,7 @@ where
         A: CircuitBootstrappingKeyInfos,
     {
         self.blind_rotation_key_prepare_tmp_bytes(&infos.brk_infos())
-            .max(self.prepare_tensor_key_tmp_bytes(&infos.tsk_infos()))
+            .max(self.prepare_gglwe_to_ggsw_key_tmp_bytes(&infos.tsk_infos()))
             .max(self.prepare_glwe_automorphism_key_tmp_bytes(&infos.atk_infos()))
     }
 
@@ -105,7 +105,7 @@ where
 
 pub struct CircuitBootstrappingKeyPrepared<D: Data, BRA: BlindRotationAlgo, B: Backend> {
     pub(crate) brk: BlindRotationKeyPrepared<D, BRA, B>,
-    pub(crate) tsk: GLWETensorKeyPrepared<Vec<u8>, B>,
+    pub(crate) tsk: GGLWEToGGSWKeyPrepared<Vec<u8>, B>,
     pub(crate) atk: HashMap<i64, GLWEAutomorphismKeyPrepared<Vec<u8>, B>>,
 }
 

@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    api::ScratchTakeBasic,
+    api::{ScratchTakeBasic, VecZnxNormalize, VecZnxNormalizeTmpBytes},
     layouts::{Backend, DataMut, Module, Scratch, VecZnx, ZnxView, ZnxViewMut, ZnxZero},
 };
 
@@ -8,11 +8,10 @@ use crate::{
     layouts::{GGLWEInfos, GGLWEPreparedToRef, GLWE, GLWEInfos, GLWELayout, GLWEToMut, LWE, LWEInfos, LWEToRef},
 };
 
-impl<BE: Backend> GLWEFromLWE<BE> for Module<BE> where Self: GLWEKeyswitch<BE> {}
-
-pub trait GLWEFromLWE<BE: Backend>
+impl<BE: Backend> GLWEFromLWE<BE> for Module<BE>
 where
-    Self: GLWEKeyswitch<BE>,
+    Self: GLWEKeyswitch<BE> + VecZnxNormalizeTmpBytes + VecZnxNormalize<BE>,
+    Scratch<BE>: ScratchTakeCore<BE>,
 {
     fn glwe_from_lwe_tmp_bytes<R, A, K>(&self, glwe_infos: &R, lwe_infos: &A, key_infos: &K) -> usize
     where
@@ -41,7 +40,6 @@ where
         R: GLWEToMut,
         A: LWEToRef,
         K: GGLWEPreparedToRef<BE> + GGLWEInfos,
-        Scratch<BE>: ScratchTakeCore<BE>,
     {
         let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
         let lwe: &LWE<&[u8]> = &lwe.to_ref();
@@ -103,6 +101,23 @@ where
 
         self.glwe_keyswitch(res, &glwe, ksk, scratch_1);
     }
+}
+
+pub trait GLWEFromLWE<BE: Backend>
+where
+    Self: GLWEKeyswitch<BE>,
+{
+    fn glwe_from_lwe_tmp_bytes<R, A, K>(&self, glwe_infos: &R, lwe_infos: &A, key_infos: &K) -> usize
+    where
+        R: GLWEInfos,
+        A: LWEInfos,
+        K: GGLWEInfos;
+
+    fn glwe_from_lwe<R, A, K>(&self, res: &mut R, lwe: &A, ksk: &K, scratch: &mut Scratch<BE>)
+    where
+        R: GLWEToMut,
+        A: LWEToRef,
+        K: GGLWEPreparedToRef<BE> + GGLWEInfos;
 }
 
 impl GLWE<Vec<u8>> {

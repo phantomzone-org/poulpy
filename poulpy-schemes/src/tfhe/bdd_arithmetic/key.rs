@@ -10,8 +10,8 @@ use crate::tfhe::{
 use poulpy_core::{
     GLWEToLWESwitchingKeyEncryptSk, GetDistribution, LWEFromGLWE, ScratchTakeCore,
     layouts::{
-        GGSWInfos, GGSWPreparedFactory, GLWEInfos, GLWESecretToRef, GLWEToLWEKeyLayout, GLWEToLWESwitchingKey,
-        GLWEToLWESwitchingKeyPreparedFactory, LWE, LWEInfos, LWESecretToRef, prepared::GLWEToLWESwitchingKeyPrepared,
+        GGSWInfos, GGSWPreparedFactory, GLWEInfos, GLWESecretToRef, GLWEToLWEKey, GLWEToLWEKeyLayout,
+        GLWEToLWEKeyPreparedFactory, LWE, LWEInfos, LWESecretToRef, prepared::GLWEToLWEKeyPrepared,
     },
 };
 use poulpy_hal::{
@@ -46,7 +46,7 @@ where
     BRA: BlindRotationAlgo,
 {
     cbt: CircuitBootstrappingKey<D, BRA>,
-    ks: GLWEToLWESwitchingKey<D>,
+    ks: GLWEToLWEKey<D>,
 }
 
 impl<BRA: BlindRotationAlgo> BDDKey<Vec<u8>, BRA>
@@ -59,7 +59,7 @@ where
     {
         Self {
             cbt: CircuitBootstrappingKey::alloc_from_infos(&infos.cbt_infos()),
-            ks: GLWEToLWESwitchingKey::alloc_from_infos(&infos.ks_infos()),
+            ks: GLWEToLWEKey::alloc_from_infos(&infos.ks_infos()),
         }
     }
 }
@@ -130,12 +130,12 @@ where
     BE: Backend,
 {
     pub(crate) cbt: CircuitBootstrappingKeyPrepared<D, BRA, BE>,
-    pub(crate) ks: GLWEToLWESwitchingKeyPrepared<D, BE>,
+    pub(crate) ks: GLWEToLWEKeyPrepared<D, BE>,
 }
 
 pub trait BDDKeyPreparedFactory<BRA: BlindRotationAlgo, BE: Backend>
 where
-    Self: Sized + CircuitBootstrappingKeyPreparedFactory<BRA, BE> + GLWEToLWESwitchingKeyPreparedFactory<BE>,
+    Self: Sized + CircuitBootstrappingKeyPreparedFactory<BRA, BE> + GLWEToLWEKeyPreparedFactory<BE>,
 {
     fn alloc_bdd_key_from_infos<A>(&self, infos: &A) -> BDDKeyPrepared<Vec<u8>, BRA, BE>
     where
@@ -143,7 +143,7 @@ where
     {
         BDDKeyPrepared {
             cbt: CircuitBootstrappingKeyPrepared::alloc_from_infos(self, &infos.cbt_infos()),
-            ks: GLWEToLWESwitchingKeyPrepared::alloc_from_infos(self, &infos.ks_infos()),
+            ks: GLWEToLWEKeyPrepared::alloc_from_infos(self, &infos.ks_infos()),
         }
     }
 
@@ -152,7 +152,7 @@ where
         A: BDDKeyInfos,
     {
         self.circuit_bootstrapping_key_prepare_tmp_bytes(&infos.cbt_infos())
-            .max(self.prepare_glwe_to_lwe_switching_key_tmp_bytes(&infos.ks_infos()))
+            .max(self.prepare_glwe_to_lwe_key_tmp_bytes(&infos.ks_infos()))
     }
 
     fn prepare_bdd_key<DM, DR>(&self, res: &mut BDDKeyPrepared<DM, BRA, BE>, other: &BDDKey<DR, BRA>, scratch: &mut Scratch<BE>)
@@ -166,7 +166,7 @@ where
     }
 }
 impl<BRA: BlindRotationAlgo, BE: Backend> BDDKeyPreparedFactory<BRA, BE> for Module<BE> where
-    Self: Sized + CircuitBootstrappingKeyPreparedFactory<BRA, BE> + GLWEToLWESwitchingKeyPreparedFactory<BE>
+    Self: Sized + CircuitBootstrappingKeyPreparedFactory<BRA, BE> + GLWEToLWEKeyPreparedFactory<BE>
 {
 }
 

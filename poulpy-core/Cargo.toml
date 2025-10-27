@@ -15,6 +15,7 @@ poulpy-hal = {workspace = true}
 poulpy-backend = {workspace = true}
 itertools = {workspace = true}
 byteorder = {workspace = true}
+bytemuck = {workspace = true}
 once_cell = {workspace = true}
 
 [[bench]]

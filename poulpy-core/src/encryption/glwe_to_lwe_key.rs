@@ -7,23 +7,22 @@ use poulpy_hal::{
 use crate::{
     GGLWEEncryptSk, ScratchTakeCore,
     layouts::{
-        GGLWE, GGLWEInfos, GGLWEToMut, GLWESecret, GLWESecretToRef, GLWEToLWESwitchingKey, LWEInfos, LWESecret, LWESecretToRef,
-        Rank,
+        GGLWE, GGLWEInfos, GGLWEToMut, GLWESecret, GLWESecretToRef, GLWEToLWEKey, LWEInfos, LWESecret, LWESecretToRef, Rank,
         prepared::{GLWESecretPrepared, GLWESecretPreparedFactory},
     },
 };
 
-impl GLWEToLWESwitchingKey<Vec<u8>> {
+impl GLWEToLWEKey<Vec<u8>> {
     pub fn encrypt_sk_tmp_bytes<M, A, BE: Backend>(module: &M, infos: &A) -> usize
     where
         A: GGLWEInfos,
         M: GLWEToLWESwitchingKeyEncryptSk<BE>,
     {
-        module.glwe_to_lwe_switching_key_encrypt_sk_tmp_bytes(infos)
+        module.glwe_to_lwe_key_encrypt_sk_tmp_bytes(infos)
     }
 }
 
-impl<D: DataMut> GLWEToLWESwitchingKey<D> {
+impl<D: DataMut> GLWEToLWEKey<D> {
     pub fn encrypt_sk<M, S1, S2, BE: Backend>(
         &mut self,
         module: &M,
@@ -38,16 +37,16 @@ impl<D: DataMut> GLWEToLWESwitchingKey<D> {
         S2: GLWESecretToRef,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        module.glwe_to_lwe_switching_key_encrypt_sk(self, sk_lwe, sk_glwe, source_xa, source_xe, scratch);
+        module.glwe_to_lwe_key_encrypt_sk(self, sk_lwe, sk_glwe, source_xa, source_xe, scratch);
     }
 }
 
 pub trait GLWEToLWESwitchingKeyEncryptSk<BE: Backend> {
-    fn glwe_to_lwe_switching_key_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
+    fn glwe_to_lwe_key_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos;
 
-    fn glwe_to_lwe_switching_key_encrypt_sk<R, S1, S2>(
+    fn glwe_to_lwe_key_encrypt_sk<R, S1, S2>(
         &self,
         res: &mut R,
         sk_lwe: &S1,
@@ -70,7 +69,7 @@ where
         + VecZnxAutomorphismInplaceTmpBytes,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
-    fn glwe_to_lwe_switching_key_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
+    fn glwe_to_lwe_key_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos,
     {
@@ -79,7 +78,7 @@ where
                 .max(GLWESecret::bytes_of(self.n().into(), infos.rank_in()) + self.vec_znx_automorphism_inplace_tmp_bytes())
     }
 
-    fn glwe_to_lwe_switching_key_encrypt_sk<R, S1, S2>(
+    fn glwe_to_lwe_key_encrypt_sk<R, S1, S2>(
         &self,
         res: &mut R,
         sk_lwe: &S1,

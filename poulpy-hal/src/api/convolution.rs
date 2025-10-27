@@ -78,6 +78,7 @@ where
         self.bytes_of_svp_ppol(1) + self.bytes_of_vec_znx_dft(1, b_size)
     }
 
+    #[allow(clippy::too_many_arguments)]
     /// Evaluates a bivariate convolution over Z[X, Y] / (X^N + 1) where Y = 2^-K over the
     /// selected columsn and stores the result on the selected column, scaled by 2^{k * Base2K}
     ///
@@ -139,6 +140,7 @@ where
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn bivariate_convolution<R, A, B>(
         &self,
         k: i64,

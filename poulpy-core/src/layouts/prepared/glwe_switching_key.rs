@@ -109,7 +109,7 @@ where
         )
     }
 
-    fn bytes_of_glwe_switching_key_prepared(
+    fn bytes_of_glwe_key_prepared(
         &self,
         base2k: Base2K,
         k: TorusPrecision,
@@ -125,7 +125,7 @@ where
     where
         A: GGLWEInfos,
     {
-        self.bytes_of_glwe_switching_key_prepared(
+        self.bytes_of_glwe_key_prepared(
             infos.base2k(),
             infos.k(),
             infos.rank_in(),
@@ -199,7 +199,7 @@ impl<B: Backend> GLWESwitchingKeyPrepared<Vec<u8>, B> {
     where
         M: GLWESwitchingKeyPreparedFactory<B>,
     {
-        module.bytes_of_glwe_switching_key_prepared(base2k, k, rank_in, rank_out, dnum, dsize)
+        module.bytes_of_glwe_key_prepared(base2k, k, rank_in, rank_out, dnum, dsize)
     }
 }
 

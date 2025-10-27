@@ -6,7 +6,7 @@ use poulpy_hal::{
 };
 
 use poulpy_core::{
-    GGSWFromGGLWE, GLWEDecrypt, GLWEPacking, GLWETrace, ScratchTakeCore,
+    GGSWFromGGLWE, GLWEDecrypt, GLWEPacking, GLWERotate, GLWETrace, ScratchTakeCore,
     layouts::{
         Dsize, GGLWELayout, GGSWInfos, GGSWToMut, GLWEInfos, GLWESecretPreparedFactory, GLWEToMut, GLWEToRef, LWEInfos, LWEToRef,
     },
@@ -115,7 +115,8 @@ where
         + GLWEPacking<BE>
         + GGSWFromGGLWE<BE>
         + GLWESecretPreparedFactory<BE>
-        + GLWEDecrypt<BE>,
+        + GLWEDecrypt<BE>
+        + GLWERotate<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
@@ -216,7 +217,9 @@ pub fn circuit_bootstrap_core<R, L, D, M, BRA: BlindRotationAlgo, BE: Backend>(
         + GLWEPacking<BE>
         + GGSWFromGGLWE<BE>
         + GLWESecretPreparedFactory<BE>
-        + GLWEDecrypt<BE>,
+        + GLWEDecrypt<BE>
+        + GLWERotate<BE>
+        + ModuleLogN,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
@@ -332,7 +335,7 @@ fn post_process<R, A, M, BE: Backend>(
 ) where
     R: GLWEToMut,
     A: GLWEToRef,
-    M: ModuleLogN + GLWETrace<BE> + GLWEPacking<BE>,
+    M: ModuleLogN + GLWETrace<BE> + GLWEPacking<BE> + GLWERotate<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();

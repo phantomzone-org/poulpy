@@ -7,7 +7,7 @@ use poulpy_hal::{
 };
 
 use crate::{
-    GLWEAutomorphismKeyEncryptSk, GLWEDecrypt, GLWEEncryptSk, GLWEPacker, GLWEPacking, GLWERotate, GLWESub, ScratchTakeCore,
+    GLWEAutomorphismKeyEncryptSk, GLWEDecrypt, GLWEEncryptSk, GLWEPacker, GLWEPackerOps, GLWERotate, GLWESub, ScratchTakeCore,
     layouts::{
         GLWE, GLWEAutomorphismKey, GLWEAutomorphismKeyLayout, GLWEAutomorphismKeyPreparedFactory, GLWELayout, GLWEPlaintext,
         GLWESecret, GLWESecretPreparedFactory,
@@ -20,7 +20,7 @@ where
     Module<BE>: GLWEEncryptSk<BE>
         + GLWEAutomorphismKeyEncryptSk<BE>
         + GLWEAutomorphismKeyPreparedFactory<BE>
-        + GLWEPacking<BE>
+        + GLWEPackerOps<BE>
         + GLWESecretPreparedFactory<BE>
         + GLWESub
         + GLWEDecrypt<BE>
