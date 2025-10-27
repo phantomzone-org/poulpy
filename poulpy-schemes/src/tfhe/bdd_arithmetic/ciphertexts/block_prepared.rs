@@ -24,6 +24,12 @@ pub struct FheUintBlocksPrepared<D: Data, T: UnsignedInteger, B: Backend> {
     pub(crate) _phantom: PhantomData<T>,
 }
 
+impl<D: Data, T: UnsignedInteger, B: Backend> FheUintBlocksPrepared<D, T, B> {
+    pub fn blocks(&self) -> &Vec<GGSWPrepared<D, B>> {
+        &self.blocks
+    }
+}
+
 impl<T: UnsignedInteger, BE: Backend> FheUintBlocksPreparedFactory<T, BE> for Module<BE> where
     Self: Sized + GGSWPreparedFactory<BE>
 {

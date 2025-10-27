@@ -178,8 +178,6 @@ where
         let res: &mut GLWESecret<&mut [u8]> = &mut res.to_mut();
         let a: &GLWESecret<&[u8]> = &a.to_ref();
 
-        println!("res.rank: {} a.rank: {}", res.rank(), a.rank());
-
         assert_eq!(res.rank(), GLWESecretTensor::pairs(a.rank().into()) as u32);
         assert_eq!(res.n(), self.n() as u32);
         assert_eq!(a.n(), self.n() as u32);
