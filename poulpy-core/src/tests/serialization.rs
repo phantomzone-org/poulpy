@@ -1,12 +1,12 @@
 use poulpy_hal::test_suite::serialization::test_reader_writer_interface;
 
 use crate::layouts::{
-    Base2K, Degree, Dnum, Dsize, GGLWE, GGSW, GLWE, GLWEAutomorphismKey, GLWESwitchingKey, GLWETensorKey, GLWEToLWESwitchingKey,
-    LWE, LWESwitchingKey, LWEToGLWESwitchingKey, Rank, TorusPrecision,
+    Base2K, Degree, Dnum, Dsize, GGLWE, GGSW, GLWE, GLWEAutomorphismKey, GLWESwitchingKey, GLWETensorKey, GLWEToLWEKey, LWE,
+    LWESwitchingKey, LWEToGLWEKey, Rank, TorusPrecision,
     compressed::{
         GGLWECompressed, GGSWCompressed, GLWEAutomorphismKeyCompressed, GLWECompressed, GLWESwitchingKeyCompressed,
         GLWETensorKeyCompressed, GLWEToLWESwitchingKeyCompressed, LWECompressed, LWESwitchingKeyCompressed,
-        LWEToGLWESwitchingKeyCompressed,
+        LWEToGLWEKeyCompressed,
     },
 };
 
@@ -93,28 +93,27 @@ fn test_tensor_key_compressed_serialization() {
 }
 
 #[test]
-fn glwe_to_lwe_switching_key_serialization() {
-    let original: GLWEToLWESwitchingKey<Vec<u8>> = GLWEToLWESwitchingKey::alloc(N_GLWE, BASE2K, K, RANK, DNUM);
+fn glwe_to_lwe_key_serialization() {
+    let original: GLWEToLWEKey<Vec<u8>> = GLWEToLWEKey::alloc(N_GLWE, BASE2K, K, RANK, DNUM);
     test_reader_writer_interface(original);
 }
 
 #[test]
-fn glwe_to_lwe_switching_key_compressed_serialization() {
+fn glwe_to_lwe_key_compressed_serialization() {
     let original: GLWEToLWESwitchingKeyCompressed<Vec<u8>> =
         GLWEToLWESwitchingKeyCompressed::alloc(N_GLWE, BASE2K, K, RANK, DNUM);
     test_reader_writer_interface(original);
 }
 
 #[test]
-fn lwe_to_glwe_switching_key_serialization() {
-    let original: LWEToGLWESwitchingKey<Vec<u8>> = LWEToGLWESwitchingKey::alloc(N_GLWE, BASE2K, K, RANK, DNUM);
+fn lwe_to_glwe_key_serialization() {
+    let original: LWEToGLWEKey<Vec<u8>> = LWEToGLWEKey::alloc(N_GLWE, BASE2K, K, RANK, DNUM);
     test_reader_writer_interface(original);
 }
 
 #[test]
-fn lwe_to_glwe_switching_key_compressed_serialization() {
-    let original: LWEToGLWESwitchingKeyCompressed<Vec<u8>> =
-        LWEToGLWESwitchingKeyCompressed::alloc(N_GLWE, BASE2K, K, RANK, DNUM);
+fn lwe_to_glwe_key_compressed_serialization() {
+    let original: LWEToGLWEKeyCompressed<Vec<u8>> = LWEToGLWEKeyCompressed::alloc(N_GLWE, BASE2K, K, RANK, DNUM);
     test_reader_writer_interface(original);
 }
 

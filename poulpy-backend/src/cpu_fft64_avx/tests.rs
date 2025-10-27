@@ -1,5 +1,6 @@
 use poulpy_hal::{
-    api::ModuleNew, backend_test_suite, cross_backend_test_suite, layouts::Module, test_suite::convolution::test_convolution,
+    api::ModuleNew, backend_test_suite, cross_backend_test_suite, layouts::Module,
+    test_suite::convolution::test_bivariate_tensoring,
 };
 
 use crate::FFT64Avx;
@@ -123,5 +124,5 @@ backend_test_suite! {
 #[test]
 fn test_convolution_fft64_avx() {
     let module: Module<FFT64Avx> = Module::<FFT64Avx>::new(64);
-    test_convolution(&module);
+    test_bivariate_tensoring(&module);
 }

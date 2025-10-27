@@ -3,6 +3,7 @@ use std::marker::PhantomData;
 use poulpy_core::layouts::{
     Base2K, Dnum, Dsize, GGSWInfos, GGSWPreparedFactory, GLWEInfos, LWEInfos, Rank, TorusPrecision, prepared::GGSWPrepared,
 };
+use poulpy_core::layouts::{GGSWPreparedToMut, GGSWPreparedToRef};
 
 use poulpy_core::{GGSWEncryptSk, ScratchTakeCore, layouts::GLWESecretPreparedToRef};
 use poulpy_hal::layouts::{Backend, Data, DataRef, Module};
@@ -26,6 +27,28 @@ pub struct FheUintBlocksPrepared<D: Data, T: UnsignedInteger, B: Backend> {
 impl<T: UnsignedInteger, BE: Backend> FheUintBlocksPreparedFactory<T, BE> for Module<BE> where
     Self: Sized + GGSWPreparedFactory<BE>
 {
+}
+
+pub trait GetGGSWBit<T: UnsignedInteger, BE: Backend> {
+    fn get_bit(&self, bit: usize) -> GGSWPrepared<&[u8], BE>;
+}
+
+impl<D: DataRef, T: UnsignedInteger, BE: Backend> GetGGSWBit<T, BE> for FheUintBlocksPrepared<D, T, BE> {
+    fn get_bit(&self, bit: usize) -> GGSWPrepared<&[u8], BE> {
+        assert!(bit <= self.blocks.len());
+        self.blocks[bit].to_ref()
+    }
+}
+
+pub trait GetGGSWBitMut<T: UnsignedInteger, BE: Backend> {
+    fn get_bit(&mut self, bit: usize) -> GGSWPrepared<&mut [u8], BE>;
+}
+
+impl<D: DataMut, T: UnsignedInteger, BE: Backend> GetGGSWBitMut<T, BE> for FheUintBlocksPrepared<D, T, BE> {
+    fn get_bit(&mut self, bit: usize) -> GGSWPrepared<&mut [u8], BE> {
+        assert!(bit <= self.blocks.len());
+        self.blocks[bit].to_mut()
+    }
 }
 
 pub trait FheUintBlocksPreparedFactory<T: UnsignedInteger, BE: Backend>

@@ -1,11 +1,10 @@
 use poulpy_hal::{
-    api::VecZnxAutomorphism,
-    layouts::{Backend, DataMut, GaloisElement, Module, Scratch},
+    api::{VecZnxAutomorphism, VecZnxAutomorphismInplace},
+    layouts::{Backend, CyclotomicOrder, DataMut, GaloisElement, Module, Scratch},
 };
 
 use crate::{
-    ScratchTakeCore,
-    automorphism::glwe_ct::GLWEAutomorphism,
+    GLWEKeyswitch, ScratchTakeCore,
     layouts::{
         GGLWE, GGLWEInfos, GGLWEPreparedToRef, GGLWEToMut, GGLWEToRef, GLWE, GLWEAutomorphismKey, GetGaloisElement,
         SetGaloisElement,
@@ -45,14 +44,10 @@ impl<DataSelf: DataMut> GLWEAutomorphismKey<DataSelf> {
     }
 }
 
-impl<BE: Backend> GLWEAutomorphismKeyAutomorphism<BE> for Module<BE> where
-    Self: GaloisElement + GLWEAutomorphism<BE> + VecZnxAutomorphism
-{
-}
-
-pub trait GLWEAutomorphismKeyAutomorphism<BE: Backend>
+impl<BE: Backend> GLWEAutomorphismKeyAutomorphism<BE> for Module<BE>
 where
-    Self: GaloisElement + GLWEAutomorphism<BE> + VecZnxAutomorphism,
+    Self: GaloisElement + GLWEKeyswitch<BE> + VecZnxAutomorphism + VecZnxAutomorphismInplace<BE> + CyclotomicOrder,
+    Scratch<BE>: ScratchTakeCore<BE>,
 {
     fn glwe_automorphism_key_automorphism_tmp_bytes<R, A, K>(&self, res_infos: &R, a_infos: &A, key_infos: &K) -> usize
     where
@@ -68,7 +63,6 @@ where
         R: GGLWEToMut + SetGaloisElement + GGLWEInfos,
         A: GGLWEToRef + GetGaloisElement + GGLWEInfos,
         K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
-        Scratch<BE>: ScratchTakeCore<BE>,
     {
         assert!(
             res.dnum().as_u32() <= a.dnum().as_u32(),
@@ -162,4 +156,23 @@ where
 
         res.set_p((res.p() * key.p()) % self.cyclotomic_order());
     }
+}
+
+pub trait GLWEAutomorphismKeyAutomorphism<BE: Backend> {
+    fn glwe_automorphism_key_automorphism_tmp_bytes<R, A, K>(&self, res_infos: &R, a_infos: &A, key_infos: &K) -> usize
+    where
+        R: GGLWEInfos,
+        A: GGLWEInfos,
+        K: GGLWEInfos;
+
+    fn glwe_automorphism_key_automorphism<R, A, K>(&self, res: &mut R, a: &A, key: &K, scratch: &mut Scratch<BE>)
+    where
+        R: GGLWEToMut + SetGaloisElement + GGLWEInfos,
+        A: GGLWEToRef + GetGaloisElement + GGLWEInfos,
+        K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos;
+
+    fn glwe_automorphism_key_automorphism_inplace<R, K>(&self, res: &mut R, key: &K, scratch: &mut Scratch<BE>)
+    where
+        R: GGLWEToMut + SetGaloisElement + GetGaloisElement + GGLWEInfos,
+        K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos;
 }

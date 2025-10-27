@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use poulpy_hal::{
-    api::ModuleLogN,
-    layouts::{Backend, DataMut, GaloisElement, Module, Scratch, VecZnx, galois_element},
+    api::{ModuleLogN, VecZnxNormalize, VecZnxNormalizeTmpBytes},
+    layouts::{Backend, CyclotomicOrder, DataMut, GaloisElement, Module, Scratch, VecZnx, galois_element},
 };
 
 use crate::{
@@ -27,7 +27,7 @@ impl GLWE<Vec<u8>> {
         K: GGLWEInfos,
         M: GLWETrace<BE>,
     {
-        module.glwe_automorphism_tmp_bytes(res_infos, a_infos, key_infos)
+        module.glwe_trace_tmp_bytes(res_infos, a_infos, key_infos)
     }
 }
 
@@ -65,11 +65,6 @@ impl<D: DataMut> GLWE<D> {
     }
 }
 
-impl<BE: Backend> GLWETrace<BE> for Module<BE> where
-    Self: ModuleLogN + GaloisElement + GLWEAutomorphism<BE> + GLWEShift<BE> + GLWECopy
-{
-}
-
 #[inline(always)]
 pub fn trace_galois_elements(log_n: usize, cyclotomic_order: i64) -> Vec<i64> {
     (0..log_n)
@@ -83,9 +78,17 @@ pub fn trace_galois_elements(log_n: usize, cyclotomic_order: i64) -> Vec<i64> {
         .collect()
 }
 
-pub trait GLWETrace<BE: Backend>
+impl<BE: Backend> GLWETrace<BE> for Module<BE>
 where
-    Self: ModuleLogN + GaloisElement + GLWEAutomorphism<BE> + GLWEShift<BE> + GLWECopy,
+    Self: ModuleLogN
+        + GaloisElement
+        + GLWEAutomorphism<BE>
+        + GLWEShift<BE>
+        + GLWECopy
+        + CyclotomicOrder
+        + VecZnxNormalizeTmpBytes
+        + VecZnxNormalize<BE>,
+    Scratch<BE>: ScratchTakeCore<BE>,
 {
     fn glwe_trace_galois_elements(&self) -> Vec<i64> {
         trace_galois_elements(self.log_n(), self.cyclotomic_order())
@@ -115,7 +118,6 @@ where
         R: GLWEToMut,
         A: GLWEToRef,
         K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
-        Scratch<BE>: ScratchTakeCore<BE>,
     {
         self.glwe_copy(res, a);
         self.glwe_trace_inplace(res, start, end, keys, scratch);
@@ -125,7 +127,6 @@ where
     where
         R: GLWEToMut,
         K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
-        Scratch<BE>: ScratchTakeCore<BE>,
     {
         let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
 
@@ -211,4 +212,32 @@ where
             }
         }
     }
+}
+
+pub trait GLWETrace<BE: Backend> {
+    fn glwe_trace_galois_elements(&self) -> Vec<i64>;
+
+    fn glwe_trace_tmp_bytes<R, A, K>(&self, res_infos: &R, a_infos: &A, key_infos: &K) -> usize
+    where
+        R: GLWEInfos,
+        A: GLWEInfos,
+        K: GGLWEInfos;
+
+    fn glwe_trace<R, A, K>(
+        &self,
+        res: &mut R,
+        start: usize,
+        end: usize,
+        a: &A,
+        keys: &HashMap<i64, K>,
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: GLWEToMut,
+        A: GLWEToRef,
+        K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos;
+
+    fn glwe_trace_inplace<R, K>(&self, res: &mut R, start: usize, end: usize, keys: &HashMap<i64, K>, scratch: &mut Scratch<BE>)
+    where
+        R: GLWEToMut,
+        K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos;
 }

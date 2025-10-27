@@ -148,7 +148,7 @@ where
         // Example for ksk rank 2 to rank 3:
         //
         // (-(a0*s0 + a1*s1 + a2*s2) + s0', a0, a1, a2)
-        // (-(b0*s0 + b1*s1 + b2*s2) + s0', b0, b1, b2)
+        // (-(b0*s0 + b1*s1 + b2*s2) + s1', b0, b1, b2)
         //
         // Example ksk rank 2 to rank 1
         //

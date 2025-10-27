@@ -162,6 +162,7 @@ where
                     sk_prepared,
                     scratch.borrow(),
                 );
+
                 self.vec_znx_sub_inplace(&mut pt_have.data, 0, &pt.data, 0);
 
                 let std_pt: f64 = pt_have.data.std(base2k, 0).log2();

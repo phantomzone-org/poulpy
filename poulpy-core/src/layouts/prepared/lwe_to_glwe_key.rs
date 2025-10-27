@@ -8,9 +8,9 @@ use crate::layouts::{
 
 /// A special [GLWESwitchingKey] required to for the conversion from [LWE] to [GLWE].
 #[derive(PartialEq, Eq)]
-pub struct LWEToGLWESwitchingKeyPrepared<D: Data, B: Backend>(pub(crate) GLWESwitchingKeyPrepared<D, B>);
+pub struct LWEToGLWEKeyPrepared<D: Data, B: Backend>(pub(crate) GLWESwitchingKeyPrepared<D, B>);
 
-impl<D: Data, B: Backend> LWEInfos for LWEToGLWESwitchingKeyPrepared<D, B> {
+impl<D: Data, B: Backend> LWEInfos for LWEToGLWEKeyPrepared<D, B> {
     fn base2k(&self) -> Base2K {
         self.0.base2k()
     }
@@ -28,13 +28,13 @@ impl<D: Data, B: Backend> LWEInfos for LWEToGLWESwitchingKeyPrepared<D, B> {
     }
 }
 
-impl<D: Data, B: Backend> GLWEInfos for LWEToGLWESwitchingKeyPrepared<D, B> {
+impl<D: Data, B: Backend> GLWEInfos for LWEToGLWEKeyPrepared<D, B> {
     fn rank(&self) -> Rank {
         self.rank_out()
     }
 }
 
-impl<D: Data, B: Backend> GGLWEInfos for LWEToGLWESwitchingKeyPrepared<D, B> {
+impl<D: Data, B: Backend> GGLWEInfos for LWEToGLWEKeyPrepared<D, B> {
     fn dsize(&self) -> Dsize {
         self.0.dsize()
     }
@@ -52,71 +52,65 @@ impl<D: Data, B: Backend> GGLWEInfos for LWEToGLWESwitchingKeyPrepared<D, B> {
     }
 }
 
-pub trait LWEToGLWESwitchingKeyPreparedFactory<B: Backend>
+pub trait LWEToGLWEKeyPreparedFactory<B: Backend>
 where
     Self: GLWESwitchingKeyPreparedFactory<B>,
 {
-    fn alloc_lwe_to_glwe_switching_key_prepared(
+    fn alloc_lwe_to_glwe_key_prepared(
         &self,
         base2k: Base2K,
         k: TorusPrecision,
         rank_out: Rank,
         dnum: Dnum,
-    ) -> LWEToGLWESwitchingKeyPrepared<Vec<u8>, B> {
-        LWEToGLWESwitchingKeyPrepared(self.alloc_glwe_switching_key_prepared(base2k, k, Rank(1), rank_out, dnum, Dsize(1)))
+    ) -> LWEToGLWEKeyPrepared<Vec<u8>, B> {
+        LWEToGLWEKeyPrepared(self.alloc_glwe_switching_key_prepared(base2k, k, Rank(1), rank_out, dnum, Dsize(1)))
     }
-    fn alloc_lwe_to_glwe_switching_key_prepared_from_infos<A>(&self, infos: &A) -> LWEToGLWESwitchingKeyPrepared<Vec<u8>, B>
+    fn alloc_lwe_to_glwe_key_prepared_from_infos<A>(&self, infos: &A) -> LWEToGLWEKeyPrepared<Vec<u8>, B>
     where
         A: GGLWEInfos,
     {
         debug_assert_eq!(
             infos.rank_in().0,
             1,
-            "rank_in > 1 is not supported for LWEToGLWESwitchingKey"
+            "rank_in > 1 is not supported for LWEToGLWEKey"
         );
         debug_assert_eq!(
             infos.dsize().0,
             1,
-            "dsize > 1 is not supported for LWEToGLWESwitchingKey"
+            "dsize > 1 is not supported for LWEToGLWEKey"
         );
-        self.alloc_lwe_to_glwe_switching_key_prepared(infos.base2k(), infos.k(), infos.rank_out(), infos.dnum())
+        self.alloc_lwe_to_glwe_key_prepared(infos.base2k(), infos.k(), infos.rank_out(), infos.dnum())
     }
 
-    fn bytes_of_lwe_to_glwe_switching_key_prepared(
-        &self,
-        base2k: Base2K,
-        k: TorusPrecision,
-        rank_out: Rank,
-        dnum: Dnum,
-    ) -> usize {
-        self.bytes_of_glwe_switching_key_prepared(base2k, k, Rank(1), rank_out, dnum, Dsize(1))
+    fn bytes_of_lwe_to_glwe_key_prepared(&self, base2k: Base2K, k: TorusPrecision, rank_out: Rank, dnum: Dnum) -> usize {
+        self.bytes_of_glwe_key_prepared(base2k, k, Rank(1), rank_out, dnum, Dsize(1))
     }
 
-    fn bytes_of_lwe_to_glwe_switching_key_prepared_from_infos<A>(&self, infos: &A) -> usize
+    fn bytes_of_lwe_to_glwe_key_prepared_from_infos<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos,
     {
         debug_assert_eq!(
             infos.rank_in().0,
             1,
-            "rank_in > 1 is not supported for LWEToGLWESwitchingKey"
+            "rank_in > 1 is not supported for LWEToGLWEKey"
         );
         debug_assert_eq!(
             infos.dsize().0,
             1,
-            "dsize > 1 is not supported for LWEToGLWESwitchingKey"
+            "dsize > 1 is not supported for LWEToGLWEKey"
         );
-        self.bytes_of_lwe_to_glwe_switching_key_prepared(infos.base2k(), infos.k(), infos.rank_out(), infos.dnum())
+        self.bytes_of_lwe_to_glwe_key_prepared(infos.base2k(), infos.k(), infos.rank_out(), infos.dnum())
     }
 
-    fn prepare_lwe_to_glwe_switching_key_tmp_bytes<A>(&self, infos: &A)
+    fn prepare_lwe_to_glwe_key_tmp_bytes<A>(&self, infos: &A)
     where
         A: GGLWEInfos,
     {
         self.prepare_glwe_switching_key_tmp_bytes(infos);
     }
 
-    fn prepare_lwe_to_glwe_switching_key<R, O>(&self, res: &mut R, other: &O, scratch: &mut Scratch<B>)
+    fn prepare_lwe_to_glwe_key<R, O>(&self, res: &mut R, other: &O, scratch: &mut Scratch<B>)
     where
         R: GGLWEPreparedToMut<B> + GLWESwitchingKeyDegreesMut,
         O: GGLWEToRef + GLWESwitchingKeyDegrees,
@@ -125,61 +119,61 @@ where
     }
 }
 
-impl<B: Backend> LWEToGLWESwitchingKeyPreparedFactory<B> for Module<B> where Self: GLWESwitchingKeyPreparedFactory<B> {}
+impl<B: Backend> LWEToGLWEKeyPreparedFactory<B> for Module<B> where Self: GLWESwitchingKeyPreparedFactory<B> {}
 
-impl<B: Backend> LWEToGLWESwitchingKeyPrepared<Vec<u8>, B> {
+impl<B: Backend> LWEToGLWEKeyPrepared<Vec<u8>, B> {
     pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
     where
         A: GGLWEInfos,
-        M: LWEToGLWESwitchingKeyPreparedFactory<B>,
+        M: LWEToGLWEKeyPreparedFactory<B>,
     {
-        module.alloc_lwe_to_glwe_switching_key_prepared_from_infos(infos)
+        module.alloc_lwe_to_glwe_key_prepared_from_infos(infos)
     }
 
     pub fn alloc<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank_out: Rank, dnum: Dnum) -> Self
     where
-        M: LWEToGLWESwitchingKeyPreparedFactory<B>,
+        M: LWEToGLWEKeyPreparedFactory<B>,
     {
-        module.alloc_lwe_to_glwe_switching_key_prepared(base2k, k, rank_out, dnum)
+        module.alloc_lwe_to_glwe_key_prepared(base2k, k, rank_out, dnum)
     }
 
     pub fn bytes_of_from_infos<A, M>(module: &M, infos: &A) -> usize
     where
         A: GGLWEInfos,
-        M: LWEToGLWESwitchingKeyPreparedFactory<B>,
+        M: LWEToGLWEKeyPreparedFactory<B>,
     {
-        module.bytes_of_lwe_to_glwe_switching_key_prepared_from_infos(infos)
+        module.bytes_of_lwe_to_glwe_key_prepared_from_infos(infos)
     }
 
     pub fn bytes_of<M>(module: &M, base2k: Base2K, k: TorusPrecision, rank_out: Rank, dnum: Dnum) -> usize
     where
-        M: LWEToGLWESwitchingKeyPreparedFactory<B>,
+        M: LWEToGLWEKeyPreparedFactory<B>,
     {
-        module.bytes_of_lwe_to_glwe_switching_key_prepared(base2k, k, rank_out, dnum)
+        module.bytes_of_lwe_to_glwe_key_prepared(base2k, k, rank_out, dnum)
     }
 }
 
-impl<B: Backend> LWEToGLWESwitchingKeyPrepared<Vec<u8>, B> {
+impl<B: Backend> LWEToGLWEKeyPrepared<Vec<u8>, B> {
     pub fn prepare_tmp_bytes<A, M>(&self, module: &M, infos: &A)
     where
         A: GGLWEInfos,
-        M: LWEToGLWESwitchingKeyPreparedFactory<B>,
+        M: LWEToGLWEKeyPreparedFactory<B>,
     {
-        module.prepare_lwe_to_glwe_switching_key_tmp_bytes(infos);
+        module.prepare_lwe_to_glwe_key_tmp_bytes(infos);
     }
 }
 
-impl<D: DataMut, B: Backend> LWEToGLWESwitchingKeyPrepared<D, B> {
+impl<D: DataMut, B: Backend> LWEToGLWEKeyPrepared<D, B> {
     pub fn prepare<O, M>(&mut self, module: &M, other: &O, scratch: &mut Scratch<B>)
     where
         O: GGLWEToRef + GLWESwitchingKeyDegrees,
-        M: LWEToGLWESwitchingKeyPreparedFactory<B>,
+        M: LWEToGLWEKeyPreparedFactory<B>,
     {
-        module.prepare_lwe_to_glwe_switching_key(self, other, scratch);
+        module.prepare_lwe_to_glwe_key(self, other, scratch);
     }
 }
 
-impl<D: DataRef, B: Backend> GGLWEPreparedToRef<B> for LWEToGLWESwitchingKeyPrepared<D, B>
+impl<D: DataRef, B: Backend> GGLWEPreparedToRef<B> for LWEToGLWEKeyPrepared<D, B>
 where
     GLWESwitchingKeyPrepared<D, B>: GGLWEPreparedToRef<B>,
 {
@@ -188,7 +182,7 @@ where
     }
 }
 
-impl<D: DataMut, B: Backend> GGLWEPreparedToMut<B> for LWEToGLWESwitchingKeyPrepared<D, B>
+impl<D: DataMut, B: Backend> GGLWEPreparedToMut<B> for LWEToGLWEKeyPrepared<D, B>
 where
     GLWESwitchingKeyPrepared<D, B>: GGLWEPreparedToMut<B>,
 {
@@ -197,7 +191,7 @@ where
     }
 }
 
-impl<D: DataMut, B: Backend> GLWESwitchingKeyDegreesMut for LWEToGLWESwitchingKeyPrepared<D, B> {
+impl<D: DataMut, B: Backend> GLWESwitchingKeyDegreesMut for LWEToGLWEKeyPrepared<D, B> {
     fn input_degree(&mut self) -> &mut Degree {
         &mut self.0.input_degree
     }

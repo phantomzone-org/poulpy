@@ -1,38 +1,44 @@
 mod gglwe;
+mod gglwe_to_ggsw_key;
 mod ggsw;
 mod glwe;
 mod glwe_automorphism_key;
 mod glwe_plaintext;
 mod glwe_public_key;
 mod glwe_secret;
+mod glwe_secret_tensor;
 mod glwe_switching_key;
+mod glwe_tensor;
 mod glwe_tensor_key;
-mod glwe_to_lwe_switching_key;
+mod glwe_to_lwe_key;
 mod lwe;
 mod lwe_plaintext;
 mod lwe_secret;
 mod lwe_switching_key;
-mod lwe_to_glwe_switching_key;
+mod lwe_to_glwe_key;
 
 pub mod compressed;
 pub mod prepared;
 
 pub use compressed::*;
 pub use gglwe::*;
+pub use gglwe_to_ggsw_key::*;
 pub use ggsw::*;
 pub use glwe::*;
 pub use glwe_automorphism_key::*;
 pub use glwe_plaintext::*;
 pub use glwe_public_key::*;
 pub use glwe_secret::*;
+pub use glwe_secret_tensor::*;
 pub use glwe_switching_key::*;
+pub use glwe_tensor::*;
 pub use glwe_tensor_key::*;
-pub use glwe_to_lwe_switching_key::*;
+pub use glwe_to_lwe_key::*;
 pub use lwe::*;
 pub use lwe_plaintext::*;
 pub use lwe_secret::*;
 pub use lwe_switching_key::*;
-pub use lwe_to_glwe_switching_key::*;
+pub use lwe_to_glwe_key::*;
 pub use prepared::*;
 
 use poulpy_hal::layouts::{Backend, Module};

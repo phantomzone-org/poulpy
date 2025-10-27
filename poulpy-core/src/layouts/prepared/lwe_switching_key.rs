@@ -86,7 +86,7 @@ where
     }
 
     fn bytes_of_lwe_switching_key_prepared(&self, base2k: Base2K, k: TorusPrecision, dnum: Dnum) -> usize {
-        self.bytes_of_glwe_switching_key_prepared(base2k, k, Rank(1), Rank(1), dnum, Dsize(1))
+        self.bytes_of_glwe_key_prepared(base2k, k, Rank(1), Rank(1), dnum, Dsize(1))
     }
 
     fn bytes_of_lwe_switching_key_prepared_from_infos<A>(&self, infos: &A) -> usize

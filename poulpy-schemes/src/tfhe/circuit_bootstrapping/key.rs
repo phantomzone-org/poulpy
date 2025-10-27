@@ -1,8 +1,8 @@
 use poulpy_core::{
-    Distribution, GLWEAutomorphismKeyEncryptSk, GLWETensorKeyEncryptSk, GetDistribution, ScratchTakeCore,
+    Distribution, GGLWEToGGSWKeyEncryptSk, GLWEAutomorphismKeyEncryptSk, GetDistribution, ScratchTakeCore,
     layouts::{
-        GGLWEInfos, GGSWInfos, GLWEAutomorphismKey, GLWEAutomorphismKeyLayout, GLWEInfos, GLWESecretPreparedFactory,
-        GLWESecretToRef, GLWETensorKey, GLWETensorKeyLayout, LWEInfos, LWESecretToRef, prepared::GLWESecretPrepared,
+        GGLWEInfos, GGLWEToGGSWKey, GGSWInfos, GLWEAutomorphismKey, GLWEAutomorphismKeyLayout, GLWEInfos,
+        GLWESecretPreparedFactory, GLWESecretToRef, GLWETensorKeyLayout, LWEInfos, LWESecretToRef, prepared::GLWESecretPrepared,
     },
     trace_galois_elements,
 };
@@ -81,14 +81,14 @@ impl<BRA: BlindRotationAlgo> CircuitBootstrappingKey<Vec<u8>, BRA> {
                     (gal_el, key)
                 })
                 .collect(),
-            tsk: GLWETensorKey::alloc_from_infos(trk_infos),
+            tsk: GGLWEToGGSWKey::alloc_from_infos(trk_infos),
         }
     }
 }
 
 pub struct CircuitBootstrappingKey<D: Data, BRA: BlindRotationAlgo> {
     pub(crate) brk: BlindRotationKey<D, BRA>,
-    pub(crate) tsk: GLWETensorKey<Vec<u8>>,
+    pub(crate) tsk: GGLWEToGGSWKey<Vec<u8>>,
     pub(crate) atk: HashMap<i64, GLWEAutomorphismKey<Vec<u8>>>,
 }
 
@@ -112,7 +112,7 @@ impl<D: DataMut, BRA: BlindRotationAlgo> CircuitBootstrappingKey<D, BRA> {
 
 impl<BRA: BlindRotationAlgo, BE: Backend> CircuitBootstrappingKeyEncryptSk<BRA, BE> for Module<BE>
 where
-    Self: GLWETensorKeyEncryptSk<BE>
+    Self: GGLWEToGGSWKeyEncryptSk<BE>
         + BlindRotationKeyEncryptSk<BRA, BE>
         + GLWEAutomorphismKeyEncryptSk<BE>
         + GLWESecretPreparedFactory<BE>,

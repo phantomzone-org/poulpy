@@ -8,6 +8,12 @@ pub trait VecZnxNormalizeTmpBytes {
     fn vec_znx_normalize_tmp_bytes(&self) -> usize;
 }
 
+pub trait VecZnxZero {
+    fn vec_znx_zero<R>(&self, res: &mut R, res_col: usize)
+    where
+        R: VecZnxToMut;
+}
+
 pub trait VecZnxNormalize<B: Backend> {
     #[allow(clippy::too_many_arguments)]
     /// Normalizes the selected column of `a` and stores the result into the selected column of `res`.

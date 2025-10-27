@@ -8,10 +8,10 @@ use crate::{
     GLWEDecrypt, GLWEEncryptSk, GLWEFromLWE, GLWEToLWESwitchingKeyEncryptSk, LWEDecrypt, LWEEncryptSk,
     LWEToGLWESwitchingKeyEncryptSk, ScratchTakeCore,
     layouts::{
-        Base2K, Degree, Dnum, GLWE, GLWELayout, GLWEPlaintext, GLWESecret, GLWESecretPreparedFactory, GLWEToLWEKeyLayout,
-        GLWEToLWESwitchingKey, GLWEToLWESwitchingKeyPreparedFactory, LWE, LWELayout, LWEPlaintext, LWESecret,
-        LWEToGLWESwitchingKey, LWEToGLWESwitchingKeyLayout, LWEToGLWESwitchingKeyPreparedFactory, Rank, TorusPrecision,
-        prepared::{GLWESecretPrepared, GLWEToLWESwitchingKeyPrepared, LWEToGLWESwitchingKeyPrepared},
+        Base2K, Degree, Dnum, GLWE, GLWELayout, GLWEPlaintext, GLWESecret, GLWESecretPreparedFactory, GLWEToLWEKey,
+        GLWEToLWEKeyLayout, GLWEToLWEKeyPrepared, GLWEToLWEKeyPreparedFactory, LWE, LWELayout, LWEPlaintext, LWESecret,
+        LWEToGLWEKey, LWEToGLWEKeyLayout, LWEToGLWEKeyPrepared, LWEToGLWEKeyPreparedFactory, Rank, TorusPrecision,
+        prepared::GLWESecretPrepared,
     },
 };
 
@@ -22,7 +22,7 @@ where
         + GLWEDecrypt<BE>
         + GLWESecretPreparedFactory<BE>
         + LWEEncryptSk<BE>
-        + LWEToGLWESwitchingKeyPreparedFactory<BE>,
+        + LWEToGLWEKeyPreparedFactory<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
@@ -36,7 +36,7 @@ where
     let mut source_xa: Source = Source::new([0u8; 32]);
     let mut source_xe: Source = Source::new([0u8; 32]);
 
-    let lwe_to_glwe_infos: LWEToGLWESwitchingKeyLayout = LWEToGLWESwitchingKeyLayout {
+    let lwe_to_glwe_infos: LWEToGLWEKeyLayout = LWEToGLWEKeyLayout {
         n: n_glwe,
         base2k: Base2K(17),
         k: TorusPrecision(51),
@@ -58,7 +58,7 @@ where
     };
 
     let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
-        LWEToGLWESwitchingKey::encrypt_sk_tmp_bytes(module, &lwe_to_glwe_infos)
+        LWEToGLWEKey::encrypt_sk_tmp_bytes(module, &lwe_to_glwe_infos)
             | GLWE::from_lwe_tmp_bytes(module, &glwe_infos, &lwe_infos, &lwe_to_glwe_infos)
             | GLWE::decrypt_tmp_bytes(module, &glwe_infos),
     );
@@ -80,7 +80,7 @@ where
     let mut lwe_ct: LWE<Vec<u8>> = LWE::alloc_from_infos(&lwe_infos);
     lwe_ct.encrypt_sk(module, &lwe_pt, &sk_lwe, &mut source_xa, &mut source_xe);
 
-    let mut ksk: LWEToGLWESwitchingKey<Vec<u8>> = LWEToGLWESwitchingKey::alloc_from_infos(&lwe_to_glwe_infos);
+    let mut ksk: LWEToGLWEKey<Vec<u8>> = LWEToGLWEKey::alloc_from_infos(&lwe_to_glwe_infos);
 
     ksk.encrypt_sk(
         module,
@@ -93,8 +93,7 @@ where
 
     let mut glwe_ct: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_infos);
 
-    let mut ksk_prepared: LWEToGLWESwitchingKeyPrepared<Vec<u8>, BE> =
-        LWEToGLWESwitchingKeyPrepared::alloc_from_infos(module, &ksk);
+    let mut ksk_prepared: LWEToGLWEKeyPrepared<Vec<u8>, BE> = LWEToGLWEKeyPrepared::alloc_from_infos(module, &ksk);
     ksk_prepared.prepare(module, &ksk, scratch.borrow());
 
     glwe_ct.from_lwe(module, &lwe_ct, &ksk_prepared, scratch.borrow());
@@ -114,7 +113,7 @@ where
         + GLWEDecrypt<BE>
         + GLWESecretPreparedFactory<BE>
         + GLWEToLWESwitchingKeyEncryptSk<BE>
-        + GLWEToLWESwitchingKeyPreparedFactory<BE>,
+        + GLWEToLWEKeyPreparedFactory<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
@@ -150,7 +149,7 @@ where
     let mut source_xe: Source = Source::new([0u8; 32]);
 
     let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
-        GLWEToLWESwitchingKey::encrypt_sk_tmp_bytes(module, &glwe_to_lwe_infos)
+        GLWEToLWEKey::encrypt_sk_tmp_bytes(module, &glwe_to_lwe_infos)
             | LWE::from_glwe_tmp_bytes(module, &lwe_infos, &glwe_infos, &glwe_to_lwe_infos)
             | GLWE::decrypt_tmp_bytes(module, &glwe_infos),
     );
@@ -178,7 +177,7 @@ where
         scratch.borrow(),
     );
 
-    let mut ksk: GLWEToLWESwitchingKey<Vec<u8>> = GLWEToLWESwitchingKey::alloc_from_infos(&glwe_to_lwe_infos);
+    let mut ksk: GLWEToLWEKey<Vec<u8>> = GLWEToLWEKey::alloc_from_infos(&glwe_to_lwe_infos);
 
     ksk.encrypt_sk(
         module,
@@ -191,8 +190,7 @@ where
 
     let mut lwe_ct: LWE<Vec<u8>> = LWE::alloc_from_infos(&lwe_infos);
 
-    let mut ksk_prepared: GLWEToLWESwitchingKeyPrepared<Vec<u8>, BE> =
-        GLWEToLWESwitchingKeyPrepared::alloc_from_infos(module, &ksk);
+    let mut ksk_prepared: GLWEToLWEKeyPrepared<Vec<u8>, BE> = GLWEToLWEKeyPrepared::alloc_from_infos(module, &ksk);
     ksk_prepared.prepare(module, &ksk, scratch.borrow());
 
     lwe_ct.from_glwe(module, &glwe_ct, &ksk_prepared, scratch.borrow());

@@ -7,7 +7,7 @@ use crate::{
     dist::Distribution,
     layouts::{
         Degree, GGLWE, GGLWEInfos, GGLWELayout, GGSW, GGSWInfos, GLWE, GLWEAutomorphismKey, GLWEInfos, GLWEPlaintext,
-        GLWEPrepared, GLWEPublicKey, GLWESecret, GLWESwitchingKey, GLWETensorKey, Rank,
+        GLWEPrepared, GLWEPublicKey, GLWESecret, GLWESecretTensor, GLWESwitchingKey, GLWETensorKey, Rank,
         prepared::{
             GGLWEPrepared, GGSWPrepared, GLWEAutomorphismKeyPrepared, GLWEPublicKeyPrepared, GLWESecretPrepared,
             GLWESwitchingKeyPrepared, GLWETensorKeyPrepared,
@@ -232,6 +232,18 @@ where
         )
     }
 
+    fn take_glwe_secret_tensor(&mut self, n: Degree, rank: Rank) -> (GLWESecretTensor<&mut [u8]>, &mut Self) {
+        let (data, scratch) = self.take_scalar_znx(n.into(), GLWESecretTensor::pairs(rank.into()));
+        (
+            GLWESecretTensor {
+                data,
+                rank,
+                dist: Distribution::NONE,
+            },
+            scratch,
+        )
+    }
+
     fn take_glwe_secret_prepared<M>(&mut self, module: &M, rank: Rank) -> (GLWESecretPrepared<&mut [u8], B>, &mut Self)
     where
         M: ModuleN + SvpPPolBytesOf,
@@ -313,25 +325,12 @@ where
             infos.rank_out(),
             "rank_in != rank_out is not supported for GLWETensorKey"
         );
-        let mut keys: Vec<GGLWE<&mut [u8]>> = Vec::new();
-        let pairs: usize = (((infos.rank_out().0 + 1) * infos.rank_out().0) >> 1).max(1) as usize;
 
-        let mut scratch: &mut Self = self;
-
+        let pairs: u32 = (((infos.rank_out().0 + 1) * infos.rank_out().0) >> 1).max(1);
         let mut ksk_infos: GGLWELayout = infos.gglwe_layout();
-        ksk_infos.rank_in = Rank(1);
-
-        if pairs != 0 {
-            let (gglwe, s) = scratch.take_gglwe(&ksk_infos);
-            scratch = s;
-            keys.push(gglwe);
-        }
-        for _ in 1..pairs {
-            let (gglwe, s) = scratch.take_gglwe(&ksk_infos);
-            scratch = s;
-            keys.push(gglwe);
-        }
-        (GLWETensorKey { keys }, scratch)
+        ksk_infos.rank_in = Rank(pairs);
+        let (data, scratch) = self.take_gglwe(infos);
+        (GLWETensorKey(data), scratch)
     }
 
     fn take_glwe_tensor_key_prepared<A, M>(&mut self, module: &M, infos: &A) -> (GLWETensorKeyPrepared<&mut [u8], B>, &mut Self)
@@ -346,25 +345,11 @@ where
             "rank_in != rank_out is not supported for GGLWETensorKeyPrepared"
         );
 
-        let mut keys: Vec<GGLWEPrepared<&mut [u8], B>> = Vec::new();
-        let pairs: usize = (((infos.rank_out().0 + 1) * infos.rank_out().0) >> 1).max(1) as usize;
-
-        let mut scratch: &mut Self = self;
-
+        let pairs: u32 = (((infos.rank_out().0 + 1) * infos.rank_out().0) >> 1).max(1);
         let mut ksk_infos: GGLWELayout = infos.gglwe_layout();
-        ksk_infos.rank_in = Rank(1);
-
-        if pairs != 0 {
-            let (gglwe, s) = scratch.take_gglwe_prepared(module, &ksk_infos);
-            scratch = s;
-            keys.push(gglwe);
-        }
-        for _ in 1..pairs {
-            let (gglwe, s) = scratch.take_gglwe_prepared(module, &ksk_infos);
-            scratch = s;
-            keys.push(gglwe);
-        }
-        (GLWETensorKeyPrepared { keys }, scratch)
+        ksk_infos.rank_in = Rank(pairs);
+        let (data, scratch) = self.take_gglwe_prepared(module, infos);
+        (GLWETensorKeyPrepared(data), scratch)
     }
 }
 

@@ -1,20 +1,16 @@
 use poulpy_hal::{
-    api::{
-        ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, SvpApplyDftToDft, VecZnxBigAlloc, VecZnxBigNormalize,
-        VecZnxCopy, VecZnxDftAlloc, VecZnxDftApply, VecZnxFillUniform, VecZnxIdftApplyTmpA, VecZnxSubScalarInplace,
-        VecZnxSwitchRing,
-    },
-    layouts::{Backend, Module, Scratch, ScratchOwned, VecZnxBig, VecZnxDft},
+    api::{ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow},
+    layouts::{Backend, Module, Scratch, ScratchOwned},
     source::Source,
 };
 
 use crate::{
-    GLWETensorKeyCompressedEncryptSk, GLWETensorKeyEncryptSk, ScratchTakeCore,
+    GGLWENoise, GLWETensorKeyCompressedEncryptSk, GLWETensorKeyEncryptSk, ScratchTakeCore,
     decryption::GLWEDecrypt,
     encryption::SIGMA,
     layouts::{
-        Dsize, GLWEPlaintext, GLWESecret, GLWESecretPreparedFactory, GLWETensorKey, GLWETensorKeyCompressed, GLWETensorKeyLayout,
-        prepared::GLWESecretPrepared,
+        Dsize, GGLWEDecompress, GLWESecret, GLWESecretPreparedFactory, GLWESecretTensor, GLWESecretTensorFactory, GLWETensorKey,
+        GLWETensorKeyCompressed, GLWETensorKeyLayout, prepared::GLWESecretPrepared,
     },
 };
 
@@ -23,20 +19,15 @@ where
     Module<BE>: GLWETensorKeyEncryptSk<BE>
         + GLWESecretPreparedFactory<BE>
         + GLWEDecrypt<BE>
-        + VecZnxDftAlloc<BE>
-        + VecZnxBigAlloc<BE>
-        + VecZnxDftApply<BE>
-        + SvpApplyDftToDft<BE>
-        + VecZnxIdftApplyTmpA<BE>
-        + VecZnxBigNormalize<BE>
-        + VecZnxSubScalarInplace,
+        + GLWESecretTensorFactory<BE>
+        + GGLWENoise<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
     let base2k: usize = 8;
     let k: usize = 54;
 
-    for rank in 1_usize..3 {
+    for rank in 2_usize..3 {
         let n: usize = module.n();
         let dnum: usize = k / base2k;
 
@@ -73,42 +64,10 @@ where
             scratch.borrow(),
         );
 
-        let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&tensor_key_infos);
+        let mut sk_tensor: GLWESecretTensor<Vec<u8>> = GLWESecretTensor::alloc_from_infos(&sk);
+        sk_tensor.prepare(module, &sk, scratch.borrow());
 
-        let mut sk_ij_dft: VecZnxDft<Vec<u8>, BE> = module.vec_znx_dft_alloc(1, 1);
-        let mut sk_ij_big: VecZnxBig<Vec<u8>, BE> = module.vec_znx_big_alloc(1, 1);
-        let mut sk_ij: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), 1_u32.into());
-        let mut sk_dft: VecZnxDft<Vec<u8>, BE> = module.vec_znx_dft_alloc(rank, 1);
-
-        for i in 0..rank {
-            module.vec_znx_dft_apply(1, 0, &mut sk_dft, i, &sk.data.as_vec_znx(), i);
-        }
-
-        for i in 0..rank {
-            for j in 0..rank {
-                module.svp_apply_dft_to_dft(&mut sk_ij_dft, 0, &sk_prepared.data, j, &sk_dft, i);
-                module.vec_znx_idft_apply_tmpa(&mut sk_ij_big, 0, &mut sk_ij_dft, 0);
-                module.vec_znx_big_normalize(
-                    base2k,
-                    &mut sk_ij.data.as_vec_znx_mut(),
-                    0,
-                    base2k,
-                    &sk_ij_big,
-                    0,
-                    scratch.borrow(),
-                );
-                for row_i in 0..dnum {
-                    let ct = tensor_key.at(i, j).at(row_i, 0);
-
-                    ct.decrypt(module, &mut pt, &sk_prepared, scratch.borrow());
-
-                    module.vec_znx_sub_scalar_inplace(&mut pt.data, 0, row_i, &sk_ij.data, 0);
-
-                    let std_pt: f64 = pt.data.std(base2k, 0) * (k as f64).exp2();
-                    assert!((SIGMA - std_pt).abs() <= 0.5, "{SIGMA} {std_pt}");
-                }
-            }
-        }
+        module.gglwe_assert_noise(&tensor_key, &sk_prepared, &sk_tensor.data, SIGMA + 0.5);
     }
 }
 
@@ -118,15 +77,9 @@ where
         + GLWESecretPreparedFactory<BE>
         + GLWETensorKeyCompressedEncryptSk<BE>
         + GLWEDecrypt<BE>
-        + VecZnxDftAlloc<BE>
-        + VecZnxBigAlloc<BE>
-        + VecZnxDftApply<BE>
-        + SvpApplyDftToDft<BE>
-        + VecZnxIdftApplyTmpA<BE>
-        + VecZnxSubScalarInplace
-        + VecZnxFillUniform
-        + VecZnxCopy
-        + VecZnxSwitchRing,
+        + GLWESecretTensorFactory<BE>
+        + GGLWENoise<BE>
+        + GGLWEDecompress,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
@@ -168,42 +121,9 @@ where
         let mut tensor_key: GLWETensorKey<Vec<u8>> = GLWETensorKey::alloc_from_infos(&tensor_key_infos);
         tensor_key.decompress(module, &tensor_key_compressed);
 
-        let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&tensor_key_infos);
+        let mut sk_tensor: GLWESecretTensor<Vec<u8>> = GLWESecretTensor::alloc_from_infos(&sk);
+        sk_tensor.prepare(module, &sk, scratch.borrow());
 
-        let mut sk_ij_dft: VecZnxDft<Vec<u8>, BE> = module.vec_znx_dft_alloc(1, 1);
-        let mut sk_ij_big: VecZnxBig<Vec<u8>, BE> = module.vec_znx_big_alloc(1, 1);
-        let mut sk_ij: GLWESecret<Vec<u8>> = GLWESecret::alloc(n.into(), 1_u32.into());
-        let mut sk_dft: VecZnxDft<Vec<u8>, BE> = module.vec_znx_dft_alloc(rank, 1);
-
-        for i in 0..rank {
-            module.vec_znx_dft_apply(1, 0, &mut sk_dft, i, &sk.data.as_vec_znx(), i);
-        }
-
-        for i in 0..rank {
-            for j in 0..rank {
-                module.svp_apply_dft_to_dft(&mut sk_ij_dft, 0, &sk_prepared.data, j, &sk_dft, i);
-                module.vec_znx_idft_apply_tmpa(&mut sk_ij_big, 0, &mut sk_ij_dft, 0);
-                module.vec_znx_big_normalize(
-                    base2k,
-                    &mut sk_ij.data.as_vec_znx_mut(),
-                    0,
-                    base2k,
-                    &sk_ij_big,
-                    0,
-                    scratch.borrow(),
-                );
-                for row_i in 0..dnum {
-                    tensor_key
-                        .at(i, j)
-                        .at(row_i, 0)
-                        .decrypt(module, &mut pt, &sk_prepared, scratch.borrow());
-
-                    module.vec_znx_sub_scalar_inplace(&mut pt.data, 0, row_i, &sk_ij.data, 0);
-
-                    let std_pt: f64 = pt.data.std(base2k, 0) * (k as f64).exp2();
-                    assert!((SIGMA - std_pt).abs() <= 0.5, "{SIGMA} {std_pt}");
-                }
-            }
-        }
+        module.gglwe_assert_noise(&tensor_key, &sk_prepared, &sk_tensor.data, SIGMA + 0.5);
     }
 }

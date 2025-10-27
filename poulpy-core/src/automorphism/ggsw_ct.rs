@@ -7,8 +7,8 @@ use crate::{
     GGSWExpandRows, ScratchTakeCore,
     automorphism::glwe_ct::GLWEAutomorphism,
     layouts::{
-        GGLWEInfos, GGLWEPreparedToRef, GGSW, GGSWInfos, GGSWToMut, GGSWToRef, GetGaloisElement,
-        prepared::{GLWETensorKeyPrepared, GLWETensorKeyPreparedToRef},
+        GGLWEInfos, GGLWEPreparedToRef, GGLWEToGGSWKeyPrepared, GGLWEToGGSWKeyPreparedToRef, GGSW, GGSWInfos, GGSWToMut,
+        GGSWToRef, GetGaloisElement,
     },
 };
 
@@ -36,7 +36,7 @@ impl<D: DataMut> GGSW<D> {
     where
         A: GGSWToRef,
         K: GetGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
-        T: GLWETensorKeyPreparedToRef<BE>,
+        T: GGLWEToGGSWKeyPreparedToRef<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
         M: GGSWAutomorphism<BE>,
     {
@@ -46,7 +46,7 @@ impl<D: DataMut> GGSW<D> {
     pub fn automorphism_inplace<K, T, M, BE: Backend>(&mut self, module: &M, key: &K, tsk: &T, scratch: &mut Scratch<BE>)
     where
         K: GetGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
-        T: GLWETensorKeyPreparedToRef<BE>,
+        T: GGLWEToGGSWKeyPreparedToRef<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
         M: GGSWAutomorphism<BE>,
     {
@@ -67,11 +67,8 @@ where
         K: GGLWEInfos,
         T: GGLWEInfos,
     {
-        let out_size: usize = res_infos.size();
-        let ci_dft: usize = self.bytes_of_vec_znx_dft((key_infos.rank_out() + 1).into(), out_size);
-        let ks_internal: usize = self.glwe_automorphism_tmp_bytes(res_infos, a_infos, key_infos);
-        let expand: usize = self.ggsw_expand_rows_tmp_bytes(res_infos, tsk_infos);
-        ci_dft + (ks_internal.max(expand))
+        self.glwe_automorphism_tmp_bytes(res_infos, a_infos, key_infos)
+            .max(self.ggsw_expand_rows_tmp_bytes(res_infos, tsk_infos))
     }
 
     fn ggsw_automorphism<R, A, K, T>(&self, res: &mut R, a: &A, key: &K, tsk: &T, scratch: &mut Scratch<BE>)
@@ -79,12 +76,12 @@ where
         R: GGSWToMut,
         A: GGSWToRef,
         K: GetGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
-        T: GLWETensorKeyPreparedToRef<BE>,
+        T: GGLWEToGGSWKeyPreparedToRef<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         let res: &mut GGSW<&mut [u8]> = &mut res.to_mut();
         let a: &GGSW<&[u8]> = &a.to_ref();
-        let tsk: &GLWETensorKeyPrepared<&[u8], BE> = &tsk.to_ref();
+        let tsk: &GGLWEToGGSWKeyPrepared<&[u8], BE> = &tsk.to_ref();
 
         assert_eq!(res.dsize(), a.dsize());
         assert!(res.dnum() <= a.dnum());
@@ -104,11 +101,11 @@ where
     where
         R: GGSWToMut,
         K: GetGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
-        T: GLWETensorKeyPreparedToRef<BE>,
+        T: GGLWEToGGSWKeyPreparedToRef<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         let res: &mut GGSW<&mut [u8]> = &mut res.to_mut();
-        let tsk: &GLWETensorKeyPrepared<&[u8], BE> = &tsk.to_ref();
+        let tsk: &GGLWEToGGSWKeyPrepared<&[u8], BE> = &tsk.to_ref();
 
         // Keyswitch the j-th row of the col 0
         for row in 0..res.dnum().as_usize() {

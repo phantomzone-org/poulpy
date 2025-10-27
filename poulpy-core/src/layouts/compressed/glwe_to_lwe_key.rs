@@ -7,7 +7,7 @@ use poulpy_hal::{
 
 use crate::layouts::{
     Base2K, Degree, Dnum, Dsize, GGLWECompressed, GGLWECompressedToMut, GGLWECompressedToRef, GGLWEInfos, GGLWEToMut, GLWEInfos,
-    GLWESwitchingKeyDegrees, GLWESwitchingKeyDegreesMut, GLWEToLWESwitchingKey, LWEInfos, Rank, TorusPrecision,
+    GLWESwitchingKeyDegrees, GLWESwitchingKeyDegreesMut, GLWEToLWEKey, LWEInfos, Rank, TorusPrecision,
     compressed::{GLWESwitchingKeyCompressed, GLWESwitchingKeyDecompress},
 };
 
@@ -147,7 +147,7 @@ pub trait GLWEToLWESwitchingKeyDecompress
 where
     Self: GLWESwitchingKeyDecompress,
 {
-    fn decompress_glwe_to_lwe_switching_key<R, O>(&self, res: &mut R, other: &O)
+    fn decompress_glwe_to_lwe_key<R, O>(&self, res: &mut R, other: &O)
     where
         R: GGLWEToMut + GLWESwitchingKeyDegreesMut,
         O: GGLWECompressedToRef + GLWESwitchingKeyDegrees,
@@ -158,13 +158,13 @@ where
 
 impl<B: Backend> GLWEToLWESwitchingKeyDecompress for Module<B> where Self: GLWESwitchingKeyDecompress {}
 
-impl<D: DataMut> GLWEToLWESwitchingKey<D> {
+impl<D: DataMut> GLWEToLWEKey<D> {
     pub fn decompress<O, M>(&mut self, module: &M, other: &O)
     where
         O: GGLWECompressedToRef + GLWESwitchingKeyDegrees,
         M: GLWEToLWESwitchingKeyDecompress,
     {
-        module.decompress_glwe_to_lwe_switching_key(self, other);
+        module.decompress_glwe_to_lwe_key(self, other);
     }
 }
 

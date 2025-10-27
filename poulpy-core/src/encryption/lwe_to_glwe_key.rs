@@ -8,21 +8,21 @@ use crate::{
     GGLWEEncryptSk, ScratchTakeCore,
     layouts::{
         GGLWE, GGLWEInfos, GGLWEToMut, GLWESecret, GLWESecretPreparedFactory, GLWESecretPreparedToRef, LWEInfos, LWESecret,
-        LWESecretToRef, LWEToGLWESwitchingKey, Rank,
+        LWESecretToRef, LWEToGLWEKey, Rank,
     },
 };
 
-impl LWEToGLWESwitchingKey<Vec<u8>> {
+impl LWEToGLWEKey<Vec<u8>> {
     pub fn encrypt_sk_tmp_bytes<M, A, BE: Backend>(module: &M, infos: &A) -> usize
     where
         A: GGLWEInfos,
         M: LWEToGLWESwitchingKeyEncryptSk<BE>,
     {
-        module.lwe_to_glwe_switching_key_encrypt_sk_tmp_bytes(infos)
+        module.lwe_to_glwe_key_encrypt_sk_tmp_bytes(infos)
     }
 }
 
-impl<D: DataMut> LWEToGLWESwitchingKey<D> {
+impl<D: DataMut> LWEToGLWEKey<D> {
     pub fn encrypt_sk<S1, S2, M, BE: Backend>(
         &mut self,
         module: &M,
@@ -37,16 +37,16 @@ impl<D: DataMut> LWEToGLWESwitchingKey<D> {
         M: LWEToGLWESwitchingKeyEncryptSk<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        module.lwe_to_glwe_switching_key_encrypt_sk(self, sk_lwe, sk_glwe, source_xa, source_xe, scratch);
+        module.lwe_to_glwe_key_encrypt_sk(self, sk_lwe, sk_glwe, source_xa, source_xe, scratch);
     }
 }
 
 pub trait LWEToGLWESwitchingKeyEncryptSk<BE: Backend> {
-    fn lwe_to_glwe_switching_key_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
+    fn lwe_to_glwe_key_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos;
 
-    fn lwe_to_glwe_switching_key_encrypt_sk<R, S1, S2>(
+    fn lwe_to_glwe_key_encrypt_sk<R, S1, S2>(
         &self,
         res: &mut R,
         sk_lwe: &S1,
@@ -69,20 +69,20 @@ where
         + VecZnxAutomorphismInplaceTmpBytes,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
-    fn lwe_to_glwe_switching_key_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
+    fn lwe_to_glwe_key_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
     where
         A: GGLWEInfos,
     {
         debug_assert_eq!(
             infos.rank_in(),
             Rank(1),
-            "rank_in != 1 is not supported for LWEToGLWESwitchingKey"
+            "rank_in != 1 is not supported for LWEToGLWEKeyPrepared"
         );
         GLWESecret::bytes_of(self.n().into(), infos.rank_in())
             + GGLWE::encrypt_sk_tmp_bytes(self, infos).max(self.vec_znx_automorphism_inplace_tmp_bytes())
     }
 
-    fn lwe_to_glwe_switching_key_encrypt_sk<R, S1, S2>(
+    fn lwe_to_glwe_key_encrypt_sk<R, S1, S2>(
         &self,
         res: &mut R,
         sk_lwe: &S1,

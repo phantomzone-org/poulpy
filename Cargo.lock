@@ -49,9 +49,9 @@ checksum = "79296716171880943b8470b5f8d03aa55eb2e645a4874bdbb28adb49162e012c"
 
 [[package]]
 name = "bytemuck"
-version = "1.23.2"
+version = "1.24.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3995eaeebcdf32f91f980d360f78732ddc061097ab4e39991ae7a6ace9194677"
+checksum = "1fbdf580320f38b612e485521afda1ee26d10cc9884efaaa750d383e13e3c5f4"
 
 [[package]]
 name = "byteorder"
@@ -353,7 +353,7 @@ dependencies = [
 
 [[package]]
 name = "poulpy-backend"
-version = "0.2.0"
+version = "0.3.1"
 dependencies = [
  "byteorder",
  "cmake",
@@ -370,8 +370,9 @@ dependencies = [
 
 [[package]]
 name = "poulpy-core"
-version = "0.2.0"
+version = "0.3.1"
 dependencies = [
+ "bytemuck",
  "byteorder",
  "criterion",
  "itertools 0.14.0",
@@ -383,7 +384,7 @@ dependencies = [
 
 [[package]]
 name = "poulpy-hal"
-version = "0.2.0"
+version = "0.3.1"
 dependencies = [
  "bytemuck",
  "byteorder",
@@ -400,7 +401,7 @@ dependencies = [
 
 [[package]]
 name = "poulpy-schemes"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "byteorder",
  "criterion",
@@ -534,9 +535,9 @@ checksum = "2b15c43186be67a4fd63bee50d0303afffcef381492ebe2c5d87f324e1b8815c"
 
 [[package]]
 name = "rug"
-version = "1.27.0"
+version = "1.28.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4207e8d668e5b8eb574bda8322088ccd0d7782d3d03c7e8d562e82ed82bdcbc3"
+checksum = "58ad2e973fe3c3214251a840a621812a4f40468da814b1a3d6947d433c2af11f"
 dependencies = [
  "az",
  "gmp-mpfr-sys",
