@@ -2,13 +2,18 @@
 
 ## [0.3.2] - 2025-10-27
 
+### `poulpy-schemes`
+ - Added `sign` argument to GGSW-based blind rotation, which enables to choose the rotation direction of the test vector.
+
+## [0.3.2] - 2025-10-27
+
 ### `poulpy-hal`
 - Improved convolution functionality
 
 ### `poulpy-core`
  - Rename `GLWEToLWESwitchingKey` to `GLWEToLWEKey`.
  - Rename `LWEToGLWESwitchingKey` to `LWEToGLWEKey`.
- - Add `GLWESecretTensor` which stores the flattened upper triangular matrix of the pairs  `sk[i] * sk[j]`.
+ - Add `GLWESecretTensor` which stores the flattened upper right of the tensor matrix of the pairs  `sk[i] * sk[j]`.
  - Add `GGLWEToGGSWKey`, `GGLWEToGGSWKeyPrepared`, `GGLWEToGGSWKeyCompressed`, which encrypts the full tensor matrix of all pairs `sk[i] * sk[j]`, with one `GGLWE` per row.
  - Update `GGLWEToGGSW` API to take `GGLWEToGGSWKey` instead of the `GLWETensorKey`
  - Add `GLWETensor`, the result of tensoring two `GLWE` of identical rank.

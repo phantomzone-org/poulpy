@@ -106,6 +106,7 @@ where
                 &mut res,
                 &test_glwe,
                 &k_enc_prep,
+                false,
                 bit_start,
                 bit_size,
                 bit_step,

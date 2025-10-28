@@ -36,7 +36,8 @@ where
         res: &mut R,
         a: &A,
         k: &K,
-        bit_start: usize,
+        sign: bool,
+        bit_rsh: usize,
         bit_mask: usize,
         bit_lsh: usize,
         scratch: &mut Scratch<BE>,
@@ -58,7 +59,8 @@ where
                     &mut res.at_mut(row, col),
                     &a.at(row, col),
                     k,
-                    bit_start,
+                    sign,
+                    bit_rsh,
                     bit_mask,
                     bit_lsh,
                     scratch,
@@ -81,7 +83,8 @@ where
         res: &mut R,
         test_vector: &S,
         k: &K,
-        bit_start: usize,
+        sign: bool,
+        bit_rsh: usize,
         bit_mask: usize,
         bit_lsh: usize,
         scratch: &mut Scratch<BE>,
@@ -115,7 +118,8 @@ where
                     &mut res.at_mut(row, col),
                     &tmp_glwe,
                     k,
-                    bit_start,
+                    sign,
+                    bit_rsh,
                     bit_mask,
                     bit_lsh,
                     scratch_1,
@@ -146,12 +150,13 @@ where
     }
 
     #[allow(clippy::too_many_arguments)]
-    /// res <- a * X^{((k>>bit_rsh) % 2^bit_mask) << bit_lsh}.
+    /// res <- a * X^{sign * ((k>>bit_rsh) % 2^bit_mask) << bit_lsh}.
     fn glwe_to_glwe_blind_rotation<R, A, K>(
         &self,
         res: &mut R,
         a: &A,
         k: &K,
+        sign: bool,
         bit_rsh: usize,
         bit_mask: usize,
         bit_lsh: usize,
@@ -170,7 +175,10 @@ where
         let (mut tmp_res, scratch_1) = scratch.take_glwe(&res);
 
         // a <- a ; b <- a * X^{-2^{i + bit_lsh}}
-        self.glwe_rotate(-1 << bit_lsh, &mut res, a);
+        match sign {
+            true => self.glwe_rotate(1 << bit_lsh, &mut res, a),
+            false => self.glwe_rotate(-1 << bit_lsh, &mut res, a),
+        }
 
         // b <- (b - a) * GGSW(b[i]) + a
         self.cmux_inplace(&mut res, a, &k.get_bit(bit_rsh), scratch_1);
@@ -187,7 +195,10 @@ where
             };
 
             // a <- a ; b <- a * X^{-2^{i + bit_lsh}}
-            self.glwe_rotate(-1 << (i + bit_lsh), b, a);
+            match sign {
+                true => self.glwe_rotate(1 << (i + bit_lsh), b, a),
+                false => self.glwe_rotate(-1 << (i + bit_lsh), b, a),
+            }
 
             // b <- (b - a) * GGSW(b[i]) + a
             self.cmux_inplace(b, a, &k.get_bit(i + bit_rsh), scratch_1);

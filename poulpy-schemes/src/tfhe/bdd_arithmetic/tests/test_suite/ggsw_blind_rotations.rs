@@ -121,6 +121,7 @@ where
                 &mut res,
                 &scalar,
                 &k_enc_prep,
+                false,
                 bit_start,
                 bit_size,
                 bit_step,
