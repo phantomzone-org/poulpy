@@ -1,5 +1,23 @@
 # CHANGELOG
 
+## [0.3.2] - 2025-10-27
+
+### `poulpy-hal`
+- Improved convolution functionality
+
+### `poulpy-core`
+ - Rename `GLWEToLWESwitchingKey` to `GLWEToLWEKey`.
+ - Rename `LWEToGLWESwitchingKey` to `LWEToGLWEKey`.
+ - Add `GLWESecretTensor` which stores the flattened upper triangular matrix of the pairs  `sk[i] * sk[j]`.
+ - Add `GGLWEToGGSWKey`, `GGLWEToGGSWKeyPrepared`, `GGLWEToGGSWKeyCompressed`, which encrypts the full tensor matrix of all pairs `sk[i] * sk[j]`, with one `GGLWE` per row.
+ - Update `GGLWEToGGSW` API to take `GGLWEToGGSWKey` instead of the `GLWETensorKey`
+ - Add `GLWETensor`, the result of tensoring two `GLWE` of identical rank.
+ - Changed `GLWETensorKey` to be an encryption of `GLWESecretTensor` (preliminary work for `GLWEFromGLWETensor`, a.k.a relinearization). 
+
+### `poulpy-schemes`
+ - Add `GLWEBlindRotation`, a `GGSW`-based blind rotation that evaluates `GLWE <- GLWE * X^{((k>>bit_rsh) % 2^bit_mask) << bit_lsh}.` (`k` = `FheUintBlocksPrepared`).
+ - Add `GGSWBlindRotation`, a `GGSW`-based blind rotation that evaluates `GGSW <- (GGSW or ScalarZnx) * X^{((k>>bit_rsh) % 2^bit_mask) << bit_lsh}.` (`k` = `FheUintBlocksPrepared`).
+
 ## [0.3.1] - 2025-10-24
 
 ### `poulpy-hal`
@@ -45,7 +63,7 @@
  - Added tests suite for `FFTRef` and `FFTAvx` backends.
 
 ### Other
-- Fixed a few minor bugs.
+ - Fixed a few minor bugs.
 
 ## [0.1.0] - 2025-08-25
-- Initial release.
+ - Initial release.
