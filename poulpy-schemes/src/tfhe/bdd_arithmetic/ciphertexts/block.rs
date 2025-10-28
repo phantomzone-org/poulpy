@@ -19,6 +19,12 @@ pub struct FheUintBlocks<D: Data, T: UnsignedInteger> {
     pub(crate) _phantom: PhantomData<T>,
 }
 
+impl<D: DataRef, T: UnsignedInteger> FheUintBlocks<D, T> {
+    pub fn blocks(&self) -> &Vec<GLWE<D>> {
+        &self.blocks
+    }
+}
+
 impl<D: DataRef, T: UnsignedInteger> LWEInfos for FheUintBlocks<D, T> {
     fn base2k(&self) -> poulpy_core::layouts::Base2K {
         self.blocks[0].base2k()
