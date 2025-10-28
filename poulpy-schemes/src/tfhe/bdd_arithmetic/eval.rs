@@ -146,7 +146,6 @@ pub enum Node {
 pub trait Cmux<BE: Backend>
 where
     Self: GLWEExternalProduct<BE> + GLWESub + GLWEAdd,
-    Scratch<BE>: ScratchTakeCore<BE>,
 {
     fn cmux_tmp_bytes<R, A, B>(&self, res_infos: &R, a_infos: &A, b_infos: &B) -> usize
     where
@@ -163,6 +162,7 @@ where
         T: GLWEToRef,
         F: GLWEToRef,
         S: GGSWPreparedToRef<BE>,
+        Scratch<BE>: ScratchTakeCore<BE>,
     {
         self.glwe_sub(res, t, f);
         self.glwe_external_product_inplace(res, s, scratch);
@@ -174,6 +174,7 @@ where
         R: GLWEToMut,
         A: GLWEToRef,
         S: GGSWPreparedToRef<BE>,
+        Scratch<BE>: ScratchTakeCore<BE>,
     {
         self.glwe_sub_inplace(res, a);
         self.glwe_external_product_inplace(res, s, scratch);

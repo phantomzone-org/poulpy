@@ -19,7 +19,6 @@ where
 pub trait GGSWBlindRotation<T: UnsignedInteger, BE: Backend>
 where
     Self: GLWEBlindRotation<T, BE> + VecZnxAddScalarInplace + VecZnxNormalizeInplace<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
 {
     fn ggsw_to_ggsw_blind_rotation_tmp_bytes<R, K>(&self, res_infos: &R, k_infos: &K) -> usize
     where
@@ -139,7 +138,6 @@ where
 pub trait GLWEBlindRotation<T: UnsignedInteger, BE: Backend>
 where
     Self: GLWECopy + GLWERotate<BE> + Cmux<BE>,
-    Scratch<BE>: ScratchTakeCore<BE>,
 {
     fn glwe_to_glwe_blind_rotation_tmp_bytes<R, K>(&self, res_infos: &R, k_infos: &K) -> usize
     where
