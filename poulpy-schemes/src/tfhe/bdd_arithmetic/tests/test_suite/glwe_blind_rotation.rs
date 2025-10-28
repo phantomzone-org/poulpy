@@ -101,7 +101,7 @@ where
             // How many bits to take
             let bit_size: usize = (32 - bit_start).min(digit);
 
-            module.glwe_to_glwe_blind_rotation(
+            module.glwe_blind_rotation(
                 &mut res,
                 &test_glwe,
                 &k_enc_prep,
