@@ -11,9 +11,9 @@ use rand::RngCore;
 
 use crate::tfhe::{
     bdd_arithmetic::{
-        BDDKey, BDDKeyEncryptSk, BDDKeyLayout, BDDKeyPrepared, BDDKeyPreparedFactory, ExecuteBDDCircuit2WTo1W,
-        FheUintBlockDebugPrepare, FheUintBlocks, FheUintBlocksPrepare, FheUintBlocksPreparedDebug,
-        FheUintBlocksPreparedEncryptSk, FheUintBlocksPreparedFactory,
+        BDDKey, BDDKeyEncryptSk, BDDKeyLayout, BDDKeyPreparedFactory, BddKeyPrepared, ExecuteBDDCircuit2WTo1W, FheUint,
+        FheUintBlockDebugPrepare, FheUintBlocksPrepare, FheUintBlocksPreparedEncryptSk, FheUintBlocksPreparedFactory,
+        FheUintPreparedDebug,
         tests::test_suite::{TEST_BASE2K, TEST_BDD_KEY_LAYOUT, TEST_BLOCK_SIZE, TEST_GGSW_INFOS, TEST_GLWE_INFOS, TEST_N_LWE},
     },
     blind_rotation::{BlindRotationAlgo, BlindRotationKey, BlindRotationKeyFactory},
@@ -79,12 +79,12 @@ where
         &mut source_xe,
         scratch.borrow(),
     );
-    let mut bdd_key_prepared: BDDKeyPrepared<Vec<u8>, BRA, BE> = BDDKeyPrepared::alloc_from_infos(&module, &bdd_key_infos);
+    let mut bdd_key_prepared: BddKeyPrepared<Vec<u8>, BRA, BE> = BddKeyPrepared::alloc_from_infos(&module, &bdd_key_infos);
     source.fill_bytes(&mut scratch.borrow().data);
     bdd_key_prepared.prepare(&module, &bdd_key, scratch.borrow());
 
     // GLWE(value)
-    let mut c_enc: FheUintBlocks<Vec<u8>, u32> = FheUintBlocks::alloc_from_infos(&module, &glwe_infos);
+    let mut c_enc: FheUint<Vec<u8>, u32> = FheUint::alloc_from_infos(&module, &glwe_infos);
     let value: u32 = source.next_u32();
     c_enc.encrypt_sk(
         &module,
@@ -96,8 +96,8 @@ where
     );
 
     // GGSW(0)
-    let mut c_enc_prep_debug: FheUintBlocksPreparedDebug<Vec<u8>, u32> =
-        FheUintBlocksPreparedDebug::<Vec<u8>, u32>::alloc_from_infos(&module, &ggsw_infos);
+    let mut c_enc_prep_debug: FheUintPreparedDebug<Vec<u8>, u32> =
+        FheUintPreparedDebug::<Vec<u8>, u32>::alloc_from_infos(&module, &ggsw_infos);
 
     // GGSW(value)
     c_enc_prep_debug.prepare(&module, &c_enc, &bdd_key_prepared, scratch.borrow());

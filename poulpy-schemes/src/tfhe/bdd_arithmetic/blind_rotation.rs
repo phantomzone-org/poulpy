@@ -43,7 +43,7 @@ where
     ) where
         R: GGSWToMut,
         A: GGSWToRef,
-        K: GetGGSWBit<T, BE>,
+        K: GetGGSWBit<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         let res: &mut GGSW<&mut [u8]> = &mut res.to_mut();
@@ -90,7 +90,7 @@ where
     ) where
         R: GGSWToMut,
         S: ScalarZnxToRef,
-        K: GetGGSWBit<T, BE>,
+        K: GetGGSWBit<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         let res: &mut GGSW<&mut [u8]> = &mut res.to_mut();
@@ -162,7 +162,7 @@ where
     ) where
         R: GLWEToMut,
         A: GLWEToRef,
-        K: GetGGSWBit<T, BE>,
+        K: GetGGSWBit<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         assert!(bit_rsh + bit_mask <= T::WORD_SIZE);

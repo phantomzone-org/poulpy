@@ -18,16 +18,9 @@ use crate::tfhe::bdd_arithmetic::ToBits;
 use crate::tfhe::bdd_arithmetic::UnsignedInteger;
 
 /// A prepared FHE ciphertext encrypting the bits of an [UnsignedInteger].
-pub struct FheUintBlocksPrepared<D: Data, T: UnsignedInteger, B: Backend> {
-    pub(crate) blocks: Vec<GGSWPrepared<D, B>>,
-    pub(crate) _base: u8,
+pub struct FheUintPrepared<D: Data, T: UnsignedInteger, B: Backend> {
+    pub(crate) bits: Vec<GGSWPrepared<D, B>>,
     pub(crate) _phantom: PhantomData<T>,
-}
-
-impl<D: Data, T: UnsignedInteger, B: Backend> FheUintBlocksPrepared<D, T, B> {
-    pub fn blocks(&self) -> &Vec<GGSWPrepared<D, B>> {
-        &self.blocks
-    }
 }
 
 impl<T: UnsignedInteger, BE: Backend> FheUintBlocksPreparedFactory<T, BE> for Module<BE> where
@@ -35,14 +28,14 @@ impl<T: UnsignedInteger, BE: Backend> FheUintBlocksPreparedFactory<T, BE> for Mo
 {
 }
 
-pub trait GetGGSWBit<T: UnsignedInteger, BE: Backend> {
+pub trait GetGGSWBit<BE: Backend> {
     fn get_bit(&self, bit: usize) -> GGSWPrepared<&[u8], BE>;
 }
 
-impl<D: DataRef, T: UnsignedInteger, BE: Backend> GetGGSWBit<T, BE> for FheUintBlocksPrepared<D, T, BE> {
+impl<D: DataRef, T: UnsignedInteger, BE: Backend> GetGGSWBit<BE> for FheUintPrepared<D, T, BE> {
     fn get_bit(&self, bit: usize) -> GGSWPrepared<&[u8], BE> {
-        assert!(bit <= self.blocks.len());
-        self.blocks[bit].to_ref()
+        assert!(bit <= self.bits.len());
+        self.bits[bit].to_ref()
     }
 }
 
@@ -50,10 +43,10 @@ pub trait GetGGSWBitMut<T: UnsignedInteger, BE: Backend> {
     fn get_bit(&mut self, bit: usize) -> GGSWPrepared<&mut [u8], BE>;
 }
 
-impl<D: DataMut, T: UnsignedInteger, BE: Backend> GetGGSWBitMut<T, BE> for FheUintBlocksPrepared<D, T, BE> {
+impl<D: DataMut, T: UnsignedInteger, BE: Backend> GetGGSWBitMut<T, BE> for FheUintPrepared<D, T, BE> {
     fn get_bit(&mut self, bit: usize) -> GGSWPrepared<&mut [u8], BE> {
-        assert!(bit <= self.blocks.len());
-        self.blocks[bit].to_mut()
+        assert!(bit <= self.bits.len());
+        self.bits[bit].to_mut()
     }
 }
 
@@ -61,28 +54,27 @@ pub trait FheUintBlocksPreparedFactory<T: UnsignedInteger, BE: Backend>
 where
     Self: Sized + GGSWPreparedFactory<BE>,
 {
-    fn alloc_fhe_uint_blocks_prepared(
+    fn alloc_fhe_uint_prepared(
         &self,
         base2k: Base2K,
         k: TorusPrecision,
         dnum: Dnum,
         dsize: Dsize,
         rank: Rank,
-    ) -> FheUintBlocksPrepared<Vec<u8>, T, BE> {
-        FheUintBlocksPrepared {
-            blocks: (0..T::WORD_SIZE)
+    ) -> FheUintPrepared<Vec<u8>, T, BE> {
+        FheUintPrepared {
+            bits: (0..T::WORD_SIZE)
                 .map(|_| GGSWPrepared::alloc(self, base2k, k, dnum, dsize, rank))
                 .collect(),
-            _base: 1,
             _phantom: PhantomData,
         }
     }
 
-    fn alloc_fhe_uint_blocks_prepared_from_infos<A>(&self, infos: &A) -> FheUintBlocksPrepared<Vec<u8>, T, BE>
+    fn alloc_fhe_uint_prepared_from_infos<A>(&self, infos: &A) -> FheUintPrepared<Vec<u8>, T, BE>
     where
         A: GGSWInfos,
     {
-        self.alloc_fhe_uint_blocks_prepared(
+        self.alloc_fhe_uint_prepared(
             infos.base2k(),
             infos.k(),
             infos.dnum(),
@@ -92,20 +84,20 @@ where
     }
 }
 
-impl<T: UnsignedInteger, BE: Backend> FheUintBlocksPrepared<Vec<u8>, T, BE> {
+impl<T: UnsignedInteger, BE: Backend> FheUintPrepared<Vec<u8>, T, BE> {
     pub fn alloc<A, M>(module: &M, infos: &A) -> Self
     where
         A: GGSWInfos,
         M: FheUintBlocksPreparedFactory<T, BE>,
     {
-        module.alloc_fhe_uint_blocks_prepared_from_infos(infos)
+        module.alloc_fhe_uint_prepared_from_infos(infos)
     }
 
     pub fn alloc_with<M>(module: &M, base2k: Base2K, k: TorusPrecision, dnum: Dnum, dsize: Dsize, rank: Rank) -> Self
     where
         M: FheUintBlocksPreparedFactory<T, BE>,
     {
-        module.alloc_fhe_uint_blocks_prepared(base2k, k, dnum, dsize, rank)
+        module.alloc_fhe_uint_prepared(base2k, k, dnum, dsize, rank)
     }
 }
 
@@ -118,9 +110,9 @@ pub trait FheUintBlocksPreparedEncryptSk<T: UnsignedInteger + ToBits, BE: Backen
 where
     Self: Sized + ModuleN + GGSWEncryptSk<BE> + GGSWPreparedFactory<BE>,
 {
-    fn fhe_uint_blocks_prepared_encrypt_sk<DM, S>(
+    fn fhe_uint_prepared_encrypt_sk<DM, S>(
         &self,
-        res: &mut FheUintBlocksPrepared<DM, T, BE>,
+        res: &mut FheUintPrepared<DM, T, BE>,
         value: T,
         sk: &S,
         source_xa: &mut Source,
@@ -145,12 +137,12 @@ where
             use poulpy_hal::layouts::ZnxViewMut;
             pt.at_mut(0, 0)[0] = value.bit(i) as i64;
             tmp_ggsw.encrypt_sk(self, &pt, sk, source_xa, source_xe, scratch_2);
-            res.blocks[i].prepare(self, &tmp_ggsw, scratch_2);
+            res.bits[i].prepare(self, &tmp_ggsw, scratch_2);
         }
     }
 }
 
-impl<D: DataMut, T: UnsignedInteger + ToBits, BE: Backend> FheUintBlocksPrepared<D, T, BE> {
+impl<D: DataMut, T: UnsignedInteger + ToBits, BE: Backend> FheUintPrepared<D, T, BE> {
     pub fn encrypt_sk<M, S>(
         &mut self,
         module: &M,
@@ -164,36 +156,36 @@ impl<D: DataMut, T: UnsignedInteger + ToBits, BE: Backend> FheUintBlocksPrepared
         M: FheUintBlocksPreparedEncryptSk<T, BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        module.fhe_uint_blocks_prepared_encrypt_sk(self, value, sk, source_xa, source_xe, scratch);
+        module.fhe_uint_prepared_encrypt_sk(self, value, sk, source_xa, source_xe, scratch);
     }
 }
 
-impl<D: DataRef, T: UnsignedInteger, B: Backend> LWEInfos for FheUintBlocksPrepared<D, T, B> {
+impl<D: DataRef, T: UnsignedInteger, B: Backend> LWEInfos for FheUintPrepared<D, T, B> {
     fn base2k(&self) -> poulpy_core::layouts::Base2K {
-        self.blocks[0].base2k()
+        self.bits[0].base2k()
     }
 
     fn k(&self) -> poulpy_core::layouts::TorusPrecision {
-        self.blocks[0].k()
+        self.bits[0].k()
     }
 
     fn n(&self) -> poulpy_core::layouts::Degree {
-        self.blocks[0].n()
+        self.bits[0].n()
     }
 }
 
-impl<D: DataRef, T: UnsignedInteger, B: Backend> GLWEInfos for FheUintBlocksPrepared<D, T, B> {
+impl<D: DataRef, T: UnsignedInteger, B: Backend> GLWEInfos for FheUintPrepared<D, T, B> {
     fn rank(&self) -> poulpy_core::layouts::Rank {
-        self.blocks[0].rank()
+        self.bits[0].rank()
     }
 }
 
-impl<D: DataRef, T: UnsignedInteger, B: Backend> GGSWInfos for FheUintBlocksPrepared<D, T, B> {
+impl<D: DataRef, T: UnsignedInteger, B: Backend> GGSWInfos for FheUintPrepared<D, T, B> {
     fn dsize(&self) -> poulpy_core::layouts::Dsize {
-        self.blocks[0].dsize()
+        self.bits[0].dsize()
     }
 
     fn dnum(&self) -> poulpy_core::layouts::Dnum {
-        self.blocks[0].dnum()
+        self.bits[0].dnum()
     }
 }

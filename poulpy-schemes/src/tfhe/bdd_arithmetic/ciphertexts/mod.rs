@@ -1,11 +1,11 @@
-mod block;
-mod block_prepared;
-mod word;
+mod fhe_uint_compressed;
+mod fhe_uint_prepared;
+mod fheuint;
 
-mod block_debug;
+mod fhe_uint_prepared_debug;
 
-pub use block_debug::*;
+pub use fhe_uint_prepared_debug::*;
 
-pub use block::*;
-pub use block_prepared::*;
-pub use word::*;
+pub use fhe_uint_compressed::*;
+pub use fhe_uint_prepared::*;
+pub use fheuint::*;

@@ -15,10 +15,10 @@ use std::{collections::HashMap, marker::PhantomData};
 
 use crate::tfhe::bdd_arithmetic::{FromBits, ToBits, UnsignedInteger};
 
-/// A FHE ciphertext encrypting a [UnsignedInteger].
-pub struct FheUintWord<D: Data, T: UnsignedInteger>(pub(crate) GLWE<D>, pub(crate) PhantomData<T>);
+/// An FHE ciphertext encrypting the bits of an [UnsignedInteger] in compressed format (ideal for decryption/serialization).
+pub struct FheUintCompressed<D: Data, T: UnsignedInteger>(pub(crate) GLWE<D>, pub(crate) PhantomData<T>);
 
-impl<D: DataMut, T: UnsignedInteger> FheUintWord<D, T> {
+impl<D: DataMut, T: UnsignedInteger> FheUintCompressed<D, T> {
     #[allow(dead_code)]
     fn post_process<ATK, M, BE: Backend>(
         &mut self,
@@ -46,7 +46,7 @@ impl<D: DataMut, T: UnsignedInteger> FheUintWord<D, T> {
     }
 }
 
-impl<D: DataRef, T: UnsignedInteger> LWEInfos for FheUintWord<D, T> {
+impl<D: DataRef, T: UnsignedInteger> LWEInfos for FheUintCompressed<D, T> {
     fn base2k(&self) -> poulpy_core::layouts::Base2K {
         self.0.base2k()
     }
@@ -60,13 +60,13 @@ impl<D: DataRef, T: UnsignedInteger> LWEInfos for FheUintWord<D, T> {
     }
 }
 
-impl<D: DataRef, T: UnsignedInteger> GLWEInfos for FheUintWord<D, T> {
+impl<D: DataRef, T: UnsignedInteger> GLWEInfos for FheUintCompressed<D, T> {
     fn rank(&self) -> poulpy_core::layouts::Rank {
         self.0.rank()
     }
 }
 
-impl<D: DataMut, T: UnsignedInteger + ToBits> FheUintWord<D, T> {
+impl<D: DataMut, T: UnsignedInteger + ToBits> FheUintCompressed<D, T> {
     pub fn encrypt_sk<S, M, BE: Backend>(
         &mut self,
         module: &M,
@@ -109,7 +109,7 @@ impl<D: DataMut, T: UnsignedInteger + ToBits> FheUintWord<D, T> {
     }
 }
 
-impl<D: DataRef, T: UnsignedInteger + FromBits> FheUintWord<D, T> {
+impl<D: DataRef, T: UnsignedInteger + FromBits> FheUintCompressed<D, T> {
     pub fn decrypt<S, M, BE: Backend>(&self, module: &M, sk: &S, scratch: &mut Scratch<BE>) -> T
     where
         S: GLWESecretPreparedToRef<BE> + GLWEInfos,

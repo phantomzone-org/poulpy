@@ -175,12 +175,12 @@ impl GLWEToLWEKey<Vec<u8>> {
         assert_eq!(
             infos.rank_out().0,
             1,
-            "rank_out > 1 is not supported for GLWEToLWESwitchingKey"
+            "rank_out > 1 is not supported for GLWEToLWEKey"
         );
         assert_eq!(
             infos.dsize().0,
             1,
-            "dsize > 1 is not supported for GLWEToLWESwitchingKey"
+            "dsize > 1 is not supported for GLWEToLWEKey"
         );
         Self::bytes_of(
             infos.n(),

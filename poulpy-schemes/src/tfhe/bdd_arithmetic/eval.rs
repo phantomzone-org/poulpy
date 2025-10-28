@@ -7,7 +7,7 @@ use poulpy_core::{
 };
 use poulpy_hal::layouts::{Backend, DataMut, Module, Scratch, ZnxZero};
 
-use crate::tfhe::bdd_arithmetic::UnsignedInteger;
+use crate::tfhe::bdd_arithmetic::{GetGGSWBit, UnsignedInteger};
 
 pub trait BitCircuitInfo {
     fn info(&self) -> (&[Node], usize);
@@ -27,15 +27,15 @@ pub(crate) struct BitCircuit<const N: usize> {
 pub struct Circuit<C: BitCircuitInfo, const N: usize>(pub [C; N]);
 
 pub trait ExecuteBDDCircuit<T: UnsignedInteger, BE: Backend> {
-    fn execute_bdd_circuit<C, O>(
-        &self,
-        out: &mut [GLWE<O>],
-        inputs: &[&dyn GGSWPreparedToRef<BE>],
-        circuit: &C,
-        scratch: &mut Scratch<BE>,
-    ) where
+    fn execute_bdd_circuit<C, G, O>(&self, out: &mut [GLWE<O>], inputs: &G, circuit: &C, scratch: &mut Scratch<BE>)
+    where
+        G: GetGGSWBit<BE> + BitSize,
         C: GetBitCircuitInfo<T>,
         O: DataMut;
+}
+
+pub trait BitSize {
+    fn bit_size(&self) -> usize;
 }
 
 impl<T: UnsignedInteger, BE: Backend> ExecuteBDDCircuit<T, BE> for Module<BE>
@@ -43,19 +43,15 @@ where
     Self: Cmux<BE> + GLWECopy,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
-    fn execute_bdd_circuit<C, O>(
-        &self,
-        out: &mut [GLWE<O>],
-        inputs: &[&dyn GGSWPreparedToRef<BE>],
-        circuit: &C,
-        scratch: &mut Scratch<BE>,
-    ) where
+    fn execute_bdd_circuit<C, G, O>(&self, out: &mut [GLWE<O>], inputs: &G, circuit: &C, scratch: &mut Scratch<BE>)
+    where
+        G: GetGGSWBit<BE> + BitSize,
         C: GetBitCircuitInfo<T>,
         O: DataMut,
     {
         #[cfg(debug_assertions)]
         {
-            assert_eq!(inputs.len(), circuit.input_size());
+            assert_eq!(inputs.bit_size(), circuit.input_size());
             assert!(out.len() >= circuit.output_size());
         }
 
@@ -86,7 +82,7 @@ where
                                 next_level[j],
                                 prev_level[*hi_idx],
                                 prev_level[*lo_idx],
-                                &inputs[*in_idx].to_ref(),
+                                &inputs.get_bit(*in_idx),
                                 scratch_1,
                             );
                         }
@@ -106,7 +102,7 @@ where
                         out_i,
                         prev_level[*hi_idx],
                         prev_level[*lo_idx],
-                        &inputs[*in_idx].to_ref(),
+                        &inputs.get_bit(*in_idx),
                         scratch_1,
                     );
                 }

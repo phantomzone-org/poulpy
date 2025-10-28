@@ -11,8 +11,8 @@ use rand::RngCore;
 
 use crate::tfhe::{
     bdd_arithmetic::{
-        BDDKeyEncryptSk, BDDKeyPreparedFactory, ExecuteBDDCircuit2WTo1W, FheUintBlockDebugPrepare, FheUintBlocks,
-        FheUintBlocksPrepare, FheUintBlocksPrepared, FheUintBlocksPreparedEncryptSk, FheUintBlocksPreparedFactory, Or,
+        BDDKeyEncryptSk, BDDKeyPreparedFactory, ExecuteBDDCircuit2WTo1W, FheUint, FheUintBlockDebugPrepare, FheUintBlocksPrepare,
+        FheUintBlocksPreparedEncryptSk, FheUintBlocksPreparedFactory, FheUintPrepared, Or,
         tests::test_suite::{TEST_GGSW_INFOS, TEST_GLWE_INFOS},
     },
     blind_rotation::{BlindRotationAlgo, BlindRotationKey, BlindRotationKeyFactory},
@@ -55,11 +55,9 @@ where
     let mut sk_glwe_prep: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc_from_infos(&module, &glwe_infos);
     sk_glwe_prep.prepare(&module, &sk_glwe);
 
-    let mut res: FheUintBlocks<Vec<u8>, u32> = FheUintBlocks::<Vec<u8>, u32>::alloc_from_infos(&module, &glwe_infos);
-    let mut a_enc_prep: FheUintBlocksPrepared<Vec<u8>, u32, BE> =
-        FheUintBlocksPrepared::<Vec<u8>, u32, BE>::alloc(&module, &ggsw_infos);
-    let mut b_enc_prep: FheUintBlocksPrepared<Vec<u8>, u32, BE> =
-        FheUintBlocksPrepared::<Vec<u8>, u32, BE>::alloc(&module, &ggsw_infos);
+    let mut res: FheUint<Vec<u8>, u32> = FheUint::<Vec<u8>, u32>::alloc_from_infos(&module, &glwe_infos);
+    let mut a_enc_prep: FheUintPrepared<Vec<u8>, u32, BE> = FheUintPrepared::<Vec<u8>, u32, BE>::alloc(&module, &ggsw_infos);
+    let mut b_enc_prep: FheUintPrepared<Vec<u8>, u32, BE> = FheUintPrepared::<Vec<u8>, u32, BE>::alloc(&module, &ggsw_infos);
 
     let a: u32 = source.next_u32();
     let b: u32 = source.next_u32();

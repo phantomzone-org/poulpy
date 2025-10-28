@@ -12,7 +12,7 @@ use poulpy_hal::{
 };
 use rand::RngCore;
 
-use crate::tfhe::bdd_arithmetic::{FheUintBlocksPrepared, GGSWBlindRotation};
+use crate::tfhe::bdd_arithmetic::{FheUintPrepared, GGSWBlindRotation};
 
 pub fn test_scalar_to_ggsw_blind_rotation<BE: Backend>()
 where
@@ -80,8 +80,7 @@ where
 
     // println!("k: {k}");
 
-    let mut k_enc_prep: FheUintBlocksPrepared<Vec<u8>, u32, BE> =
-        FheUintBlocksPrepared::<Vec<u8>, u32, BE>::alloc(&module, &ggsw_k_infos);
+    let mut k_enc_prep: FheUintPrepared<Vec<u8>, u32, BE> = FheUintPrepared::<Vec<u8>, u32, BE>::alloc(&module, &ggsw_k_infos);
     k_enc_prep.encrypt_sk(
         &module,
         k,

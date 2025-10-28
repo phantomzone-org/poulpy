@@ -12,7 +12,7 @@ use poulpy_hal::{
 };
 use rand::RngCore;
 
-use crate::tfhe::bdd_arithmetic::{FheUintBlocksPrepared, GLWEBlindRotation};
+use crate::tfhe::bdd_arithmetic::{FheUintPrepared, GLWEBlindRotation};
 
 pub fn test_glwe_to_glwe_blind_rotation<BE: Backend>()
 where
@@ -72,8 +72,7 @@ where
 
     let k: u32 = source.next_u32();
 
-    let mut k_enc_prep: FheUintBlocksPrepared<Vec<u8>, u32, BE> =
-        FheUintBlocksPrepared::<Vec<u8>, u32, BE>::alloc(&module, &ggsw_infos);
+    let mut k_enc_prep: FheUintPrepared<Vec<u8>, u32, BE> = FheUintPrepared::<Vec<u8>, u32, BE>::alloc(&module, &ggsw_infos);
     k_enc_prep.encrypt_sk(
         &module,
         k,
