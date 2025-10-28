@@ -7,6 +7,7 @@ use crate::tfhe::{
         CircuitBootstrappingKeyPrepared, CircuitBootstrappingKeyPreparedFactory, CirtuitBootstrappingExecute,
     },
 };
+
 use poulpy_core::{
     GLWEToLWESwitchingKeyEncryptSk, GetDistribution, LWEFromGLWE, ScratchTakeCore,
     layouts::{
@@ -45,8 +46,8 @@ where
     D: Data,
     BRA: BlindRotationAlgo,
 {
-    cbt: CircuitBootstrappingKey<D, BRA>,
-    ks: GLWEToLWEKey<D>,
+    pub(crate) cbt: CircuitBootstrappingKey<D, BRA>,
+    pub(crate) ks: GLWEToLWEKey<D>,
 }
 
 impl<BRA: BlindRotationAlgo> BDDKey<Vec<u8>, BRA>
@@ -123,7 +124,7 @@ impl<D: DataMut, BRA: BlindRotationAlgo> BDDKey<D, BRA> {
     }
 }
 
-pub struct BddKeyPrepared<D, BRA, BE>
+pub struct BDDKeyPrepared<D, BRA, BE>
 where
     D: Data,
     BRA: BlindRotationAlgo,
@@ -137,11 +138,11 @@ pub trait BDDKeyPreparedFactory<BRA: BlindRotationAlgo, BE: Backend>
 where
     Self: Sized + CircuitBootstrappingKeyPreparedFactory<BRA, BE> + GLWEToLWEKeyPreparedFactory<BE>,
 {
-    fn alloc_bdd_key_from_infos<A>(&self, infos: &A) -> BddKeyPrepared<Vec<u8>, BRA, BE>
+    fn alloc_bdd_key_from_infos<A>(&self, infos: &A) -> BDDKeyPrepared<Vec<u8>, BRA, BE>
     where
         A: BDDKeyInfos,
     {
-        BddKeyPrepared {
+        BDDKeyPrepared {
             cbt: CircuitBootstrappingKeyPrepared::alloc_from_infos(self, &infos.cbt_infos()),
             ks: GLWEToLWEKeyPrepared::alloc_from_infos(self, &infos.ks_infos()),
         }
@@ -155,7 +156,7 @@ where
             .max(self.prepare_glwe_to_lwe_key_tmp_bytes(&infos.ks_infos()))
     }
 
-    fn prepare_bdd_key<DM, DR>(&self, res: &mut BddKeyPrepared<DM, BRA, BE>, other: &BDDKey<DR, BRA>, scratch: &mut Scratch<BE>)
+    fn prepare_bdd_key<DM, DR>(&self, res: &mut BDDKeyPrepared<DM, BRA, BE>, other: &BDDKey<DR, BRA>, scratch: &mut Scratch<BE>)
     where
         DM: DataMut,
         DR: DataRef,
@@ -170,7 +171,7 @@ impl<BRA: BlindRotationAlgo, BE: Backend> BDDKeyPreparedFactory<BRA, BE> for Mod
 {
 }
 
-impl<BRA: BlindRotationAlgo, BE: Backend> BddKeyPrepared<Vec<u8>, BRA, BE> {
+impl<BRA: BlindRotationAlgo, BE: Backend> BDDKeyPrepared<Vec<u8>, BRA, BE> {
     pub fn alloc_from_infos<M, A>(module: &M, infos: &A) -> Self
     where
         M: BDDKeyPreparedFactory<BRA, BE>,
@@ -180,7 +181,7 @@ impl<BRA: BlindRotationAlgo, BE: Backend> BddKeyPrepared<Vec<u8>, BRA, BE> {
     }
 }
 
-impl<D: DataMut, BRA: BlindRotationAlgo, BE: Backend> BddKeyPrepared<D, BRA, BE> {
+impl<D: DataMut, BRA: BlindRotationAlgo, BE: Backend> BDDKeyPrepared<D, BRA, BE> {
     pub fn prepare<DR, M>(&mut self, module: &M, other: &BDDKey<DR, BRA>, scratch: &mut Scratch<BE>)
     where
         DR: DataRef,
@@ -200,7 +201,7 @@ pub trait FheUintBlocksPrepare<BRA: BlindRotationAlgo, T: UnsignedInteger, BE: B
         &self,
         res: &mut FheUintPrepared<DM, T, BE>,
         bits: &FheUint<DR0, T>,
-        key: &BddKeyPrepared<DR1, BRA, BE>,
+        key: &BDDKeyPrepared<DR1, BRA, BE>,
         scratch: &mut Scratch<BE>,
     ) where
         DM: DataMut,
@@ -230,19 +231,17 @@ where
         &self,
         res: &mut FheUintPrepared<DM, T, BE>,
         bits: &FheUint<DR0, T>,
-        key: &BddKeyPrepared<DR1, BRA, BE>,
+        key: &BDDKeyPrepared<DR1, BRA, BE>,
         scratch: &mut Scratch<BE>,
     ) where
         DM: DataMut,
         DR0: DataRef,
         DR1: DataRef,
     {
-        assert_eq!(res.bits.len(), bits.bits.len());
-
-        let mut lwe: LWE<Vec<u8>> = LWE::alloc_from_infos(&bits.bits[0]); //TODO: add TakeLWE
+        let mut lwe: LWE<Vec<u8>> = LWE::alloc_from_infos(bits); //TODO: add TakeLWE
         let (mut tmp_ggsw, scratch_1) = scratch.take_ggsw(res);
-        for (dst, src) in res.bits.iter_mut().zip(bits.bits.iter()) {
-            lwe.from_glwe(self, src, &key.ks, scratch_1);
+        for (bit, dst) in res.bits.iter_mut().enumerate() {
+            bits.get_bit(self, bit, &mut lwe, &key.ks, scratch_1);
             key.cbt
                 .execute_to_constant(self, &mut tmp_ggsw, &lwe, 1, 1, scratch_1);
             dst.prepare(self, &tmp_ggsw, scratch_1);
@@ -255,7 +254,7 @@ impl<D: DataMut, T: UnsignedInteger, BE: Backend> FheUintPrepared<D, T, BE> {
         &mut self,
         module: &M,
         other: &FheUint<O, T>,
-        key: &BddKeyPrepared<K, BRA, BE>,
+        key: &BDDKeyPrepared<K, BRA, BE>,
         scratch: &mut Scratch<BE>,
     ) where
         BRA: BlindRotationAlgo,
@@ -273,7 +272,7 @@ pub trait FheUintBlockDebugPrepare<BRA: BlindRotationAlgo, T: UnsignedInteger, B
         &self,
         res: &mut FheUintPreparedDebug<DM, T>,
         bits: &FheUint<DR0, T>,
-        key: &BddKeyPrepared<DR1, BRA, BE>,
+        key: &BDDKeyPrepared<DR1, BRA, BE>,
         scratch: &mut Scratch<BE>,
     ) where
         DM: DataMut,

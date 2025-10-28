@@ -1,6 +1,6 @@
 use poulpy_core::{
     GGSWNoise, GLWEDecrypt, GLWEEncryptSk, GLWENoise, ScratchTakeCore,
-    layouts::{GGSWLayout, GLWELayout, GLWESecret, GLWESecretPreparedFactory, LWEInfos, prepared::GLWESecretPrepared},
+    layouts::{GGSWLayout, GLWELayout, GLWESecretPreparedFactory, prepared::GLWESecretPrepared},
 };
 use poulpy_hal::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
@@ -11,14 +11,14 @@ use rand::RngCore;
 
 use crate::tfhe::{
     bdd_arithmetic::{
-        BDDKeyEncryptSk, BDDKeyPreparedFactory, ExecuteBDDCircuit2WTo1W, FheUint, FheUintBlockDebugPrepare, FheUintBlocksPrepare,
-        FheUintBlocksPreparedEncryptSk, FheUintBlocksPreparedFactory, FheUintPrepared, Sltu,
-        tests::test_suite::{TEST_GGSW_INFOS, TEST_GLWE_INFOS},
+        BDDKeyEncryptSk, BDDKeyPrepared, BDDKeyPreparedFactory, ExecuteBDDCircuit2WTo1W, FheUint, FheUintBlockDebugPrepare,
+        FheUintBlocksPrepare, FheUintBlocksPreparedEncryptSk, FheUintBlocksPreparedFactory, FheUintPrepared, Sltu,
+        tests::test_suite::{TEST_GGSW_INFOS, TEST_GLWE_INFOS, TestContext},
     },
     blind_rotation::{BlindRotationAlgo, BlindRotationKey, BlindRotationKeyFactory},
 };
 
-pub fn test_bdd_sltu<BRA: BlindRotationAlgo, BE: Backend>()
+pub fn test_bdd_sltu<BRA: BlindRotationAlgo, BE: Backend>(test_context: &TestContext<BRA, BE>)
 where
     Module<BE>: ModuleNew<BE>
         + GLWESecretPreparedFactory<BE>
@@ -40,52 +40,53 @@ where
     let glwe_infos: GLWELayout = TEST_GLWE_INFOS;
     let ggsw_infos: GGSWLayout = TEST_GGSW_INFOS;
 
-    let n_glwe: usize = glwe_infos.n().into();
+    let module: &Module<BE> = &test_context.module;
+    let sk_glwe_prep: &GLWESecretPrepared<Vec<u8>, BE> = &test_context.sk_glwe;
+    let bdd_key_prepared: &BDDKeyPrepared<Vec<u8>, BRA, BE> = &test_context.bdd_key;
 
-    let module: Module<BE> = Module::<BE>::new(n_glwe as u64);
     let mut source: Source = Source::new([6u8; 32]);
-    let mut source_xs: Source = Source::new([1u8; 32]);
     let mut source_xa: Source = Source::new([2u8; 32]);
     let mut source_xe: Source = Source::new([3u8; 32]);
 
     let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(1 << 22);
 
-    let mut sk_glwe: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&glwe_infos);
-    sk_glwe.fill_ternary_prob(0.5, &mut source_xs);
-    let mut sk_glwe_prep: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc_from_infos(&module, &glwe_infos);
-    sk_glwe_prep.prepare(&module, &sk_glwe);
-
-    let mut res: FheUint<Vec<u8>, u32> = FheUint::<Vec<u8>, u32>::alloc_from_infos(&module, &glwe_infos);
-    let mut a_enc_prep: FheUintPrepared<Vec<u8>, u32, BE> = FheUintPrepared::<Vec<u8>, u32, BE>::alloc(&module, &ggsw_infos);
-    let mut b_enc_prep: FheUintPrepared<Vec<u8>, u32, BE> = FheUintPrepared::<Vec<u8>, u32, BE>::alloc(&module, &ggsw_infos);
+    let mut res: FheUint<Vec<u8>, u32> = FheUint::<Vec<u8>, u32>::alloc_from_infos(&glwe_infos);
+    let mut a_enc_prep: FheUintPrepared<Vec<u8>, u32, BE> = FheUintPrepared::<Vec<u8>, u32, BE>::alloc(module, &ggsw_infos);
+    let mut b_enc_prep: FheUintPrepared<Vec<u8>, u32, BE> = FheUintPrepared::<Vec<u8>, u32, BE>::alloc(module, &ggsw_infos);
 
     let a: u32 = source.next_u32();
     let b: u32 = source.next_u32();
 
     source.fill_bytes(&mut scratch.borrow().data);
     a_enc_prep.encrypt_sk(
-        &module,
+        module,
         a,
-        &sk_glwe_prep,
+        sk_glwe_prep,
         &mut source_xa,
         &mut source_xe,
         scratch.borrow(),
     );
     source.fill_bytes(&mut scratch.borrow().data);
     b_enc_prep.encrypt_sk(
-        &module,
+        module,
         b,
-        &sk_glwe_prep,
+        sk_glwe_prep,
         &mut source_xa,
         &mut source_xe,
         scratch.borrow(),
     );
 
     // d + a
-    res.sltu(&module, &a_enc_prep, &b_enc_prep, scratch.borrow());
+    res.sltu(
+        module,
+        &a_enc_prep,
+        &b_enc_prep,
+        bdd_key_prepared,
+        scratch.borrow(),
+    );
 
     assert_eq!(
-        res.decrypt(&module, &sk_glwe_prep, scratch.borrow()),
+        res.decrypt(module, sk_glwe_prep, scratch.borrow()),
         (a < b) as u32
     );
 }

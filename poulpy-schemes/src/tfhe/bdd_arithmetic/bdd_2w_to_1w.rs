@@ -1,36 +1,43 @@
 use std::marker::PhantomData;
 
-use poulpy_core::layouts::GGSWPrepared;
+use poulpy_core::{GLWECopy, GLWEPacking, ScratchTakeCore, layouts::GGSWPrepared};
 use poulpy_hal::layouts::{Backend, DataMut, DataRef, Module, Scratch};
 
-use crate::tfhe::bdd_arithmetic::{
-    BitSize, ExecuteBDDCircuit, FheUint, FheUintPrepared, GetBitCircuitInfo, GetGGSWBit, UnsignedInteger, circuits,
+use crate::tfhe::{
+    bdd_arithmetic::{
+        BDDKeyPrepared, BitSize, ExecuteBDDCircuit, FheUint, FheUintPrepared, GetBitCircuitInfo, GetGGSWBit, UnsignedInteger,
+        circuits,
+    },
+    blind_rotation::BlindRotationAlgo,
 };
 
-impl<T: UnsignedInteger, BE: Backend> ExecuteBDDCircuit2WTo1W<T, BE> for Module<BE> where Self: Sized + ExecuteBDDCircuit<T, BE> {}
+impl<T: UnsignedInteger, BE: Backend> ExecuteBDDCircuit2WTo1W<T, BE> for Module<BE> where
+    Self: Sized + ExecuteBDDCircuit<T, BE> + GLWEPacking<BE> + GLWECopy
+{
+}
 
 pub trait ExecuteBDDCircuit2WTo1W<T: UnsignedInteger, BE: Backend>
 where
-    Self: Sized + ExecuteBDDCircuit<T, BE>,
+    Self: Sized + ExecuteBDDCircuit<T, BE> + GLWEPacking<BE> + GLWECopy,
 {
     /// Operations Z x Z -> Z
-    fn execute_bdd_circuit_2w_to_1w<R, C, A, B>(
+    fn execute_bdd_circuit_2w_to_1w<R, C, A, B, DK, BRA>(
         &self,
         out: &mut FheUint<R, T>,
         circuit: &C,
         a: &FheUintPrepared<A, T, BE>,
         b: &FheUintPrepared<B, T, BE>,
+        key: &BDDKeyPrepared<DK, BRA, BE>,
         scratch: &mut Scratch<BE>,
     ) where
+        BRA: BlindRotationAlgo,
+        DK: DataRef,
         C: GetBitCircuitInfo<T>,
         R: DataMut,
         A: DataRef,
         B: DataRef,
+        Scratch<BE>: ScratchTakeCore<BE>,
     {
-        assert_eq!(out.bits.len(), T::WORD_SIZE);
-        assert_eq!(b.bits.len(), T::WORD_SIZE);
-        assert_eq!(b.bits.len(), T::WORD_SIZE);
-
         // Collects inputs into a single array
         let inputs: Vec<&dyn GetGGSWBit<BE>> = [a as &dyn GetGGSWBit<BE>, b as &dyn GetGGSWBit<BE>].to_vec();
         let helper: FheUintHelper<'_, T, BE> = FheUintHelper {
@@ -38,8 +45,13 @@ where
             _phantom: PhantomData,
         };
 
+        let (mut out_bits, scratch_1) = scratch.take_glwe_slice(T::WORD_SIZE, out);
+
         // Evaluates out[i] = circuit[i](a, b)
-        self.execute_bdd_circuit(&mut out.bits, &helper, circuit, scratch);
+        self.execute_bdd_circuit(&mut out_bits, &helper, circuit, scratch_1);
+
+        // Repacks the bits
+        out.pack(self, out_bits, &key.cbt.atk, scratch_1);
     }
 }
 
@@ -88,16 +100,20 @@ macro_rules! define_bdd_2w_to_1w_trait {
     ($(#[$meta:meta])* $vis:vis $trait_name:ident, $method_name:ident) => {
         $(#[$meta])*
         $vis trait $trait_name<T: UnsignedInteger, BE: Backend> {
-            fn $method_name<A, M, B>(
+            fn $method_name<A, M, K, BRA, B>(
                 &mut self,
                 module: &M,
                 a: &FheUintPrepared<A, T, BE>,
                 b: &FheUintPrepared<B, T, BE>,
+                key: &BDDKeyPrepared<K, BRA, BE>,
                 scratch: &mut Scratch<BE>,
             ) where
                 M: ExecuteBDDCircuit2WTo1W<T, BE>,
                 A: DataRef,
-                B: DataRef;
+                B: DataRef,
+                K: DataRef,
+                BRA: BlindRotationAlgo,
+                Scratch<BE>: ScratchTakeCore<BE>;
         }
     };
 }
@@ -106,18 +122,22 @@ macro_rules! define_bdd_2w_to_1w_trait {
 macro_rules! impl_bdd_2w_to_1w_trait {
     ($trait_name:ident, $method_name:ident, $ty:ty, $n:literal, $circuit_ty:ty, $output_circuits:path) => {
         impl<D: DataMut, BE: Backend> $trait_name<$ty, BE> for FheUint<D, $ty> {
-            fn $method_name<A, M, B>(
+            fn $method_name<A, M, K, BRA, B>(
                 &mut self,
                 module: &M,
                 a: &FheUintPrepared<A, $ty, BE>,
                 b: &FheUintPrepared<B, $ty, BE>,
+                key: &BDDKeyPrepared<K, BRA, BE>,
                 scratch: &mut Scratch<BE>,
             ) where
                 M: ExecuteBDDCircuit2WTo1W<$ty, BE>,
                 A: DataRef,
                 B: DataRef,
+                K: DataRef,
+                BRA: BlindRotationAlgo,
+                Scratch<BE>: ScratchTakeCore<BE>,
             {
-                module.execute_bdd_circuit_2w_to_1w(self, &$output_circuits, a, b, scratch)
+                module.execute_bdd_circuit_2w_to_1w(self, &$output_circuits, a, b, key, scratch)
             }
         }
     };

@@ -4,7 +4,7 @@ use poulpy_hal::{
 };
 
 use crate::{
-    GLWEKeyswitch, ScratchTakeCore,
+    GLWEKeyswitch, GLWERotate, ScratchTakeCore,
     layouts::{GGLWEInfos, GGLWEPreparedToRef, GLWE, GLWEInfos, GLWELayout, GLWEToRef, LWE, LWEInfos, LWEToMut, Rank},
 };
 
@@ -37,11 +37,11 @@ where
 }
 
 impl<BE: Backend> LWESampleExtract for Module<BE> where Self: ModuleN {}
-impl<BE: Backend> LWEFromGLWE<BE> for Module<BE> where Self: GLWEKeyswitch<BE> + LWESampleExtract {}
+impl<BE: Backend> LWEFromGLWE<BE> for Module<BE> where Self: GLWEKeyswitch<BE> + LWESampleExtract + GLWERotate<BE> {}
 
 pub trait LWEFromGLWE<BE: Backend>
 where
-    Self: GLWEKeyswitch<BE> + LWESampleExtract,
+    Self: GLWEKeyswitch<BE> + LWESampleExtract + GLWERotate<BE>,
 {
     fn lwe_from_glwe_tmp_bytes<R, A, K>(&self, lwe_infos: &R, glwe_infos: &A, key_infos: &K) -> usize
     where
@@ -61,10 +61,11 @@ where
             lwe_infos.base2k(),
             lwe_infos.k(),
             1u32.into(),
-        ) + self.glwe_keyswitch_tmp_bytes(&res_infos, glwe_infos, key_infos)
+        ) + GLWE::bytes_of_from_infos(glwe_infos)
+            + self.glwe_keyswitch_tmp_bytes(&res_infos, glwe_infos, key_infos)
     }
 
-    fn lwe_from_glwe<R, A, K>(&self, res: &mut R, a: &A, key: &K, scratch: &mut Scratch<BE>)
+    fn lwe_from_glwe<R, A, K>(&self, res: &mut R, a: &A, a_idx: usize, key: &K, scratch: &mut Scratch<BE>)
     where
         R: LWEToMut,
         A: GLWEToRef,
@@ -85,9 +86,20 @@ where
             rank: Rank(1),
         };
 
-        let (mut tmp_glwe, scratch_1) = scratch.take_glwe(&glwe_layout);
-        self.glwe_keyswitch(&mut tmp_glwe, a, key, scratch_1);
-        self.lwe_sample_extract(res, &tmp_glwe);
+        let (mut tmp_glwe_rank_1, scratch_1) = scratch.take_glwe(&glwe_layout);
+
+        match a_idx {
+            0 => {
+                self.glwe_keyswitch(&mut tmp_glwe_rank_1, a, key, scratch_1);
+            }
+            _ => {
+                let (mut tmp_glwe_in, scratch_2) = scratch_1.take_glwe(a);
+                self.glwe_rotate(-(a_idx as i64), &mut tmp_glwe_in, a);
+                self.glwe_keyswitch(&mut tmp_glwe_rank_1, &tmp_glwe_in, key, scratch_2);
+            }
+        }
+
+        self.lwe_sample_extract(res, &tmp_glwe_rank_1);
     }
 }
 
@@ -112,13 +124,13 @@ impl<D: DataMut> LWE<D> {
         module.lwe_sample_extract(self, a);
     }
 
-    pub fn from_glwe<A, K, M, BE: Backend>(&mut self, module: &M, a: &A, key: &K, scratch: &mut Scratch<BE>)
+    pub fn from_glwe<A, K, M, BE: Backend>(&mut self, module: &M, a: &A, a_idx: usize, key: &K, scratch: &mut Scratch<BE>)
     where
         A: GLWEToRef,
         K: GGLWEPreparedToRef<BE> + GGLWEInfos,
         M: LWEFromGLWE<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        module.lwe_from_glwe(self, a, key, scratch);
+        module.lwe_from_glwe(self, a, a_idx, key, scratch);
     }
 }

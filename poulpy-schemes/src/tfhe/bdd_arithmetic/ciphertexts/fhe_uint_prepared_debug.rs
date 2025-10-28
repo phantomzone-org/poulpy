@@ -1,10 +1,8 @@
 use std::marker::PhantomData;
 
-use crate::tfhe::bdd_arithmetic::{BddKeyPrepared, FheUintBlockDebugPrepare, ToBits};
+use crate::tfhe::bdd_arithmetic::{BDDKeyPrepared, FheUint, FheUintBlockDebugPrepare, ToBits};
 use crate::tfhe::{
-    bdd_arithmetic::{FheUint, UnsignedInteger},
-    blind_rotation::BlindRotationAlgo,
-    circuit_bootstrapping::CirtuitBootstrappingExecute,
+    bdd_arithmetic::UnsignedInteger, blind_rotation::BlindRotationAlgo, circuit_bootstrapping::CirtuitBootstrappingExecute,
 };
 use poulpy_core::GGSWNoise;
 
@@ -113,25 +111,23 @@ impl<D: DataRef, T: UnsignedInteger + ToBits> FheUintPreparedDebug<D, T> {
 
 impl<BRA: BlindRotationAlgo, BE: Backend, T: UnsignedInteger> FheUintBlockDebugPrepare<BRA, T, BE> for Module<BE>
 where
-    Self: LWEFromGLWE<BE> + CirtuitBootstrappingExecute<BRA, BE> + GGSWPreparedFactory<BE>,
+    Self: ModuleN + LWEFromGLWE<BE> + CirtuitBootstrappingExecute<BRA, BE> + GGSWPreparedFactory<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     fn fhe_uint_debug_prepare<DM, DR0, DR1>(
         &self,
         res: &mut FheUintPreparedDebug<DM, T>,
         bits: &FheUint<DR0, T>,
-        key: &BddKeyPrepared<DR1, BRA, BE>,
+        key: &BDDKeyPrepared<DR1, BRA, BE>,
         scratch: &mut Scratch<BE>,
     ) where
         DM: DataMut,
         DR0: DataRef,
         DR1: DataRef,
     {
-        assert_eq!(res.bits.len(), bits.bits.len());
-
-        let mut lwe: LWE<Vec<u8>> = LWE::alloc_from_infos(&bits.bits[0]); //TODO: add TakeLWE
-        for (dst, src) in res.bits.iter_mut().zip(bits.bits.iter()) {
-            lwe.from_glwe(self, src, &key.ks, scratch);
+        let mut lwe: LWE<Vec<u8>> = LWE::alloc_from_infos(bits); //TODO: add TakeLWE
+        for (bit, dst) in res.bits.iter_mut().enumerate() {
+            bits.get_bit(self, bit, &mut lwe, &key.ks, scratch);
             key.cbt.execute_to_constant(self, dst, &lwe, 1, 1, scratch);
         }
     }
@@ -142,7 +138,7 @@ impl<D: DataMut, T: UnsignedInteger> FheUintPreparedDebug<D, T> {
         &mut self,
         module: &M,
         other: &FheUint<O, T>,
-        key: &BddKeyPrepared<K, BRA, BE>,
+        key: &BDDKeyPrepared<K, BRA, BE>,
         scratch: &mut Scratch<BE>,
     ) where
         BRA: BlindRotationAlgo,

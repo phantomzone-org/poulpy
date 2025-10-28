@@ -5,7 +5,7 @@ use poulpy_hal::{
 };
 
 use crate::{
-    GLWEDecrypt, GLWEEncryptSk, GLWEFromLWE, GLWEToLWESwitchingKeyEncryptSk, LWEDecrypt, LWEEncryptSk,
+    GLWEDecrypt, GLWEEncryptSk, GLWEFromLWE, GLWEToLWESwitchingKeyEncryptSk, LWEDecrypt, LWEEncryptSk, LWEFromGLWE,
     LWEToGLWESwitchingKeyEncryptSk, ScratchTakeCore,
     layouts::{
         Base2K, Degree, Dnum, GLWE, GLWELayout, GLWEPlaintext, GLWESecret, GLWESecretPreparedFactory, GLWEToLWEKey,
@@ -110,6 +110,7 @@ where
         + GLWEToLWESwitchingKeyEncryptSk<BE>
         + GLWEEncryptSk<BE>
         + LWEDecrypt<BE>
+        + LWEFromGLWE<BE>
         + GLWEDecrypt<BE>
         + GLWESecretPreparedFactory<BE>
         + GLWEToLWESwitchingKeyEncryptSk<BE>
@@ -163,9 +164,14 @@ where
     let mut sk_lwe: LWESecret<Vec<u8>> = LWESecret::alloc(n_lwe);
     sk_lwe.fill_ternary_prob(0.5, &mut source_xs);
 
-    let data: i64 = 17;
+    let a_idx: usize = 1;
+
+    let mut data: Vec<i64> = vec![0i64; module.n()];
+    data[a_idx] = 17;
     let mut glwe_pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_infos);
-    glwe_pt.encode_coeff_i64(data, k_lwe_pt, 0);
+    glwe_pt.encode_vec_i64(&data, k_lwe_pt);
+
+    println!("glwe_pt: {glwe_pt}");
 
     let mut glwe_ct: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_infos);
     glwe_ct.encrypt_sk(
@@ -193,10 +199,10 @@ where
     let mut ksk_prepared: GLWEToLWEKeyPrepared<Vec<u8>, BE> = GLWEToLWEKeyPrepared::alloc_from_infos(module, &ksk);
     ksk_prepared.prepare(module, &ksk, scratch.borrow());
 
-    lwe_ct.from_glwe(module, &glwe_ct, &ksk_prepared, scratch.borrow());
+    lwe_ct.from_glwe(module, &glwe_ct, a_idx, &ksk_prepared, scratch.borrow());
 
     let mut lwe_pt: LWEPlaintext<Vec<u8>> = LWEPlaintext::alloc_from_infos(&lwe_infos);
     lwe_ct.decrypt(module, &mut lwe_pt, &sk_lwe);
 
-    assert_eq!(glwe_pt.data.at(0, 0)[0], lwe_pt.data.at(0, 0)[0]);
+    assert_eq!(glwe_pt.data.at(0, 0)[a_idx], lwe_pt.data.at(0, 0)[0]);
 }
