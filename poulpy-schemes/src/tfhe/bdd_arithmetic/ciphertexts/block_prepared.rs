@@ -93,8 +93,7 @@ where
 }
 
 impl<T: UnsignedInteger, BE: Backend> FheUintBlocksPrepared<Vec<u8>, T, BE> {
-    #[allow(dead_code)]
-    pub(crate) fn alloc<A, M>(module: &M, infos: &A) -> Self
+    pub fn alloc<A, M>(module: &M, infos: &A) -> Self
     where
         A: GGSWInfos,
         M: FheUintBlocksPreparedFactory<T, BE>,
@@ -102,8 +101,7 @@ impl<T: UnsignedInteger, BE: Backend> FheUintBlocksPrepared<Vec<u8>, T, BE> {
         module.alloc_fhe_uint_blocks_prepared_from_infos(infos)
     }
 
-    #[allow(dead_code)]
-    pub(crate) fn alloc_with<M>(module: &M, base2k: Base2K, k: TorusPrecision, dnum: Dnum, dsize: Dsize, rank: Rank) -> Self
+    pub fn alloc_with<M>(module: &M, base2k: Base2K, k: TorusPrecision, dnum: Dnum, dsize: Dsize, rank: Rank) -> Self
     where
         M: FheUintBlocksPreparedFactory<T, BE>,
     {
@@ -153,7 +151,7 @@ where
 }
 
 impl<D: DataMut, T: UnsignedInteger + ToBits, BE: Backend> FheUintBlocksPrepared<D, T, BE> {
-    pub(crate) fn encrypt_sk<M, S>(
+    pub fn encrypt_sk<M, S>(
         &mut self,
         module: &M,
         value: T,
