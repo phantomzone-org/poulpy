@@ -1,5 +1,5 @@
 use poulpy_core::{
-    GLWECopy, GLWEDecrypt, GLWEEncryptSk, GLWEPacking, GLWERotate, LWEFromGLWE, ScratchTakeCore,
+    GLWEAdd, GLWECopy, GLWEDecrypt, GLWEEncryptSk, GLWEPacking, GLWERotate, GLWESub, GLWETrace, LWEFromGLWE, ScratchTakeCore,
     layouts::{
         Base2K, Degree, GGLWEInfos, GGLWEPreparedToRef, GLWE, GLWEInfos, GLWEPlaintextLayout, GLWESecretPreparedToRef, GLWEToMut,
         GLWEToRef, LWEInfos, LWEToMut, Rank, TorusPrecision,
@@ -170,54 +170,109 @@ impl<D: DataMut, T: UnsignedInteger> FheUint<D, T> {
         module.glwe_copy(&mut self.bits, cts.remove(&0).unwrap());
     }
 
-    // pub fn copy_byte<D0, D1, BRA, M, BE: Backend>(
-    // &mut self,
-    // module: &M,
-    // byte_self: usize,
-    // byte_a: usize,
-    // a: &FheUint<D1, T>,
-    // keys: &BDDKeyPrepared<D0, BRA, BE>,
-    // scratch: &mut Scratch<BE>,
-    // ) where
-    // D0: DataRef,
-    // D1: DataRef,
-    // BRA: BlindRotationAlgo,
-    // M:ModuleLogN + GLWERotate<BE> + GLWETrace<BE> + GLWESub + GLWEAdd,
-    // Scratch<BE>: ScratchTakeBDD<T, BE>,
-    // {
-    // let (mut tmp_fhe_uint_byte, scratch_1) = scratch.take_fhe_uint(a);
-    //
-    //
-    // let log_gap: usize = module.log_n() - T::LOG_BITS as usize;
-    // module.glwe_rotate(-((T::bit_index(byte_a << 3) << log_gap) as i64), tmp_fhe_uint_byte, self);
-    // module.glwe_trace_inplace(&mut tmp_fhe_uint_byte, module.log_n() - 3, module.log_n(),&keys.cbt.atk, scratch);
-    //
-    // let log_gap: usize = module.log_n() - T::LOG_BITS as usize;
-    // let rot: i64 = (T::bit_index(byte_self << 3) << log_gap) as i64;
-    //
-    // Move starting byte index to first coefficient
-    // module.glwe_rotate_inplace(-rot, &mut self.bits, scratch);
-    //
-    // Stores this byte (everything else zeroed) into tmp_trace
-    // let (mut tmp_trace, scratch_1) = scratch.take_glwe(self);
-    // module.glwe_trace(
-    // &mut tmp_trace,
-    // module.log_n() - 3,
-    // module.log_n(),
-    // self,
-    // &keys.cbt.atk,
-    // scratch_1,
-    // );
-    //
-    // Subtracts the byte
-    // module.glwe_sub_inplace(&mut self.bits, &tmp_trace);
-    //
-    // module.glwe_add_inplace(&mut self.bits, &tmp_fhe_uint_byte);
-    //
-    // Moves back into the original position
-    // module.glwe_rotate_inplace(-rot, &mut self.bits, scratch);
-    //
-    // }
+    #[allow(clippy::too_many_arguments)]
+    pub fn splice_u16<D0, A, B, BRA, M, BE: Backend>(
+        &mut self,
+        module: &M,
+        dst: usize,
+        src: usize,
+        a: &A,
+        b: &B,
+        keys: &BDDKeyPrepared<D0, BRA, BE>,
+        scratch: &mut Scratch<BE>,
+    ) where
+        D0: DataRef,
+        A: GLWEToRef + GLWEInfos,
+        B: GLWEToRef + GLWEInfos,
+        BRA: BlindRotationAlgo,
+        M: ModuleLogN + GLWERotate<BE> + GLWETrace<BE> + GLWESub + GLWEAdd + GLWECopy,
+        Scratch<BE>: ScratchTakeBDD<T, BE>,
+    {
+        assert!(dst < (T::BITS >> 4) as usize);
+        assert!(src < (T::BITS >> 4) as usize);
+
+        let (mut tmp, scratch_1) = scratch.take_fhe_uint(self);
+        tmp.splice_u8(module, dst << 1, src << 1, a, b, keys, scratch_1);
+        self.splice_u8(
+            module,
+            (dst << 1) + 1,
+            (src << 1) + 1,
+            &tmp,
+            b,
+            keys,
+            scratch_1,
+        );
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    // Store on the receiver a where the byte_a-th byte of a has been replaced by byte_src2 of src2.
+    pub fn splice_u8<D0, A, B, BRA, M, BE: Backend>(
+        &mut self,
+        module: &M,
+        dst: usize,
+        src: usize,
+        a: &A,
+        b: &B,
+        keys: &BDDKeyPrepared<D0, BRA, BE>,
+        scratch: &mut Scratch<BE>,
+    ) where
+        D0: DataRef,
+        A: GLWEToRef + GLWEInfos,
+        B: GLWEToRef + GLWEInfos,
+        BRA: BlindRotationAlgo,
+        M: ModuleLogN + GLWERotate<BE> + GLWETrace<BE> + GLWESub + GLWEAdd + GLWECopy,
+        Scratch<BE>: ScratchTakeBDD<T, BE>,
+    {
+        assert!(dst < (T::BITS >> 3) as usize);
+        assert!(src < (T::BITS >> 3) as usize);
+
+        // 1) Zero the byte receiver
+        let log_gap: usize = module.log_n() - T::LOG_BITS as usize;
+        let trace_start = (T::LOG_BITS - T::LOG_BYTES) as usize;
+        let rot: i64 = (T::bit_index(dst << 3) << log_gap) as i64;
+
+        // Move a to self and align byte
+        module.glwe_rotate(-rot, &mut self.bits, a);
+
+        // Stores this byte (everything else zeroed) into tmp_trace
+        let (mut tmp_trace, scratch_1) = scratch.take_glwe(a);
+        module.glwe_trace(
+            &mut tmp_trace,
+            trace_start,
+            module.log_n(),
+            self,
+            &keys.cbt.atk,
+            scratch_1,
+        );
+
+        // Subtracts to self to zero it
+        module.glwe_sub_inplace(&mut self.bits, &tmp_trace);
+
+        // Isolate the byte to transfer from a
+        let (mut tmp_fhe_uint_byte, scratch_1) = scratch.take_fhe_uint(b);
+
+        // Move a[byte_a] into a[0]
+        module.glwe_rotate(
+            -((T::bit_index(src << 3) << log_gap) as i64),
+            &mut tmp_fhe_uint_byte,
+            b,
+        );
+
+        // Zeroes all other bytes
+        module.glwe_trace_inplace(
+            &mut tmp_fhe_uint_byte,
+            trace_start,
+            module.log_n(),
+            &keys.cbt.atk,
+            scratch_1,
+        );
+
+        // Add self[0] += a[0]
+        module.glwe_add_inplace(&mut self.bits, &tmp_fhe_uint_byte);
+
+        // Moves back self[0] to self[byte_tg]
+        module.glwe_rotate_inplace(rot, &mut self.bits, scratch);
+    }
 }
 
 impl<D: DataMut, T: UnsignedInteger> GLWEToMut for FheUint<D, T> {

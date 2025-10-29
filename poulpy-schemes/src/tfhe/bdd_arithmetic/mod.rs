@@ -22,7 +22,7 @@ pub trait UnsignedInteger: Copy + 'static {
 
     #[inline(always)]
     fn bit_index(i: usize) -> usize {
-        ((i & Self::LOG_BYTES_MASK) << 3) | (i >> Self::LOG_BYTES)
+        ((i & 7) << Self::LOG_BYTES) | (i >> 3)
     }
 }
 
