@@ -195,7 +195,7 @@ where
         K: GetGGSWBit<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        assert!(bit_rsh + bit_mask <= T::WORD_SIZE);
+        assert!(bit_rsh + bit_mask <= T::BITS as usize);
 
         let mut res: GLWE<&mut [u8]> = res.to_mut();
 

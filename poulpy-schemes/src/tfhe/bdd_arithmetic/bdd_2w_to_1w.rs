@@ -1,7 +1,10 @@
 use std::marker::PhantomData;
 
 use poulpy_core::{GLWECopy, GLWEPacking, ScratchTakeCore, layouts::GGSWPrepared};
-use poulpy_hal::layouts::{Backend, DataMut, DataRef, Module, Scratch};
+use poulpy_hal::{
+    api::ModuleLogN,
+    layouts::{Backend, DataMut, DataRef, Module, Scratch},
+};
 
 use crate::tfhe::{
     bdd_arithmetic::{
@@ -18,7 +21,7 @@ impl<T: UnsignedInteger, BE: Backend> ExecuteBDDCircuit2WTo1W<T, BE> for Module<
 
 pub trait ExecuteBDDCircuit2WTo1W<T: UnsignedInteger, BE: Backend>
 where
-    Self: Sized + ExecuteBDDCircuit<T, BE> + GLWEPacking<BE> + GLWECopy,
+    Self: Sized + ModuleLogN + ExecuteBDDCircuit<T, BE> + GLWEPacking<BE> + GLWECopy,
 {
     /// Operations Z x Z -> Z
     fn execute_bdd_circuit_2w_to_1w<R, C, A, B, DK, BRA>(
@@ -45,7 +48,7 @@ where
             _phantom: PhantomData,
         };
 
-        let (mut out_bits, scratch_1) = scratch.take_glwe_slice(T::WORD_SIZE, out);
+        let (mut out_bits, scratch_1) = scratch.take_glwe_slice(T::BITS as usize, out);
 
         // Evaluates out[i] = circuit[i](a, b)
         self.execute_bdd_circuit(&mut out_bits, &helper, circuit, scratch_1);
@@ -62,15 +65,15 @@ struct FheUintHelper<'a, T: UnsignedInteger, BE: Backend> {
 
 impl<'a, T: UnsignedInteger, BE: Backend> GetGGSWBit<BE> for FheUintHelper<'a, T, BE> {
     fn get_bit(&self, bit: usize) -> GGSWPrepared<&[u8], BE> {
-        let lo: usize = bit % T::WORD_SIZE;
-        let hi: usize = bit / T::WORD_SIZE;
+        let lo: usize = bit % T::BITS as usize;
+        let hi: usize = bit / T::BITS as usize;
         self.data[hi].get_bit(lo)
     }
 }
 
 impl<'a, T: UnsignedInteger, BE: Backend> BitSize for FheUintHelper<'a, T, BE> {
     fn bit_size(&self) -> usize {
-        T::WORD_SIZE * self.data.len()
+        T::BITS as usize * self.data.len()
     }
 }
 

@@ -63,7 +63,7 @@ where
         rank: Rank,
     ) -> FheUintPrepared<Vec<u8>, T, BE> {
         FheUintPrepared {
-            bits: (0..T::WORD_SIZE)
+            bits: (0..T::BITS)
                 .map(|_| GGSWPrepared::alloc(self, base2k, k, dnum, dsize, rank))
                 .collect(),
             _phantom: PhantomData,
@@ -125,7 +125,7 @@ where
     {
         use poulpy_hal::{api::ScratchTakeBasic, layouts::ZnxZero};
 
-        assert!(self.n().is_multiple_of(T::WORD_SIZE));
+        assert!(self.n().is_multiple_of(T::BITS as usize));
         assert_eq!(res.n(), self.n() as u32);
         assert_eq!(sk.n(), self.n() as u32);
 
@@ -133,7 +133,7 @@ where
         let (mut pt, scratch_2) = scratch_1.take_scalar_znx(self.n(), 1);
         pt.zero();
 
-        for i in 0..T::WORD_SIZE {
+        for i in 0..T::BITS as usize {
             use poulpy_hal::layouts::ZnxViewMut;
             pt.at_mut(0, 0)[0] = value.bit(i) as i64;
             tmp_ggsw.encrypt_sk(self, &pt, sk, source_xa, source_xe, scratch_2);

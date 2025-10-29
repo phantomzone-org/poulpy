@@ -42,7 +42,7 @@ impl<T: UnsignedInteger> FheUintPreparedDebug<Vec<u8>, T> {
         M: ModuleN,
     {
         Self {
-            bits: (0..T::WORD_SIZE)
+            bits: (0..T::BITS)
                 .map(|_| GGSW::alloc(module.n().into(), base2k, k, rank, dnum, dsize))
                 .collect(),
             _phantom: PhantomData,

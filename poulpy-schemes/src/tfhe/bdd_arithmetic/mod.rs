@@ -15,23 +15,46 @@ pub use key::*;
 pub mod tests;
 
 pub trait UnsignedInteger: Copy + 'static {
-    const WORD_SIZE: usize;
+    const BITS: u32;
+    const LOG_BITS: u32;
+    const LOG_BYTES: u32;
+    const LOG_BYTES_MASK: usize;
+
+    #[inline(always)]
+    fn bit_index(i: usize) -> usize {
+        ((i & Self::LOG_BYTES_MASK) << 3) | (i >> Self::LOG_BYTES)
+    }
 }
 
 impl UnsignedInteger for u8 {
-    const WORD_SIZE: usize = 8;
+    const BITS: u32 = u8::BITS;
+    const LOG_BITS: u32 = (u32::BITS - (Self::BITS - 1).leading_zeros());
+    const LOG_BYTES: u32 = Self::LOG_BITS - 3;
+    const LOG_BYTES_MASK: usize = (1 << Self::LOG_BYTES) - 1;
 }
 impl UnsignedInteger for u16 {
-    const WORD_SIZE: usize = 16;
+    const BITS: u32 = u16::BITS;
+    const LOG_BITS: u32 = (u32::BITS - (Self::BITS - 1).leading_zeros());
+    const LOG_BYTES: u32 = Self::LOG_BITS - 3;
+    const LOG_BYTES_MASK: usize = (1 << Self::LOG_BYTES) - 1;
 }
 impl UnsignedInteger for u32 {
-    const WORD_SIZE: usize = 32;
+    const BITS: u32 = u32::BITS;
+    const LOG_BITS: u32 = (u32::BITS - (Self::BITS - 1).leading_zeros());
+    const LOG_BYTES: u32 = Self::LOG_BITS - 3;
+    const LOG_BYTES_MASK: usize = (1 << Self::LOG_BYTES) - 1;
 }
 impl UnsignedInteger for u64 {
-    const WORD_SIZE: usize = 64;
+    const BITS: u32 = u64::BITS;
+    const LOG_BITS: u32 = (u32::BITS - (Self::BITS - 1).leading_zeros());
+    const LOG_BYTES: u32 = Self::LOG_BITS >> 3;
+    const LOG_BYTES_MASK: usize = (1 << Self::LOG_BYTES) - 1;
 }
 impl UnsignedInteger for u128 {
-    const WORD_SIZE: usize = 128;
+    const BITS: u32 = u128::BITS;
+    const LOG_BITS: u32 = (u32::BITS - (Self::BITS - 1).leading_zeros());
+    const LOG_BYTES: u32 = Self::LOG_BITS >> 3;
+    const LOG_BYTES_MASK: usize = (1 << Self::LOG_BYTES) - 1;
 }
 
 pub trait ToBits {

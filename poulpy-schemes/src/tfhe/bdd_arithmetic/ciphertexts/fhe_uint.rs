@@ -1,4 +1,3 @@
-use itertools::Itertools;
 use poulpy_core::{
     GLWECopy, GLWEDecrypt, GLWEEncryptSk, GLWEPacking, GLWERotate, LWEFromGLWE, ScratchTakeCore,
     layouts::{
@@ -7,7 +6,7 @@ use poulpy_core::{
     },
 };
 use poulpy_hal::{
-    api::ModuleN,
+    api::ModuleLogN,
     layouts::{Backend, Data, DataMut, DataRef, Scratch},
     source::Source,
 };
@@ -68,22 +67,23 @@ impl<D: DataMut, T: UnsignedInteger + ToBits> FheUint<D, T> {
         scratch: &mut Scratch<BE>,
     ) where
         S: GLWESecretPreparedToRef<BE> + GLWEInfos,
-        M: ModuleN + GLWEEncryptSk<BE>,
+        M: ModuleLogN + GLWEEncryptSk<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         #[cfg(debug_assertions)]
         {
-            assert!(module.n().is_multiple_of(T::WORD_SIZE));
+            assert!(module.n().is_multiple_of(T::BITS as usize));
             assert_eq!(self.n(), module.n() as u32);
             assert_eq!(sk.n(), module.n() as u32);
         }
 
-        let gap: usize = module.n() / T::WORD_SIZE;
-
         let mut data_bits: Vec<i64> = vec![0i64; module.n()];
 
-        for i in 0..T::WORD_SIZE {
-            data_bits[i * gap] = data.bit(i) as i64
+        let log_gap: usize = module.log_n() - T::LOG_BITS as usize;
+
+        // Interleaves bytes
+        for i in 0..T::BITS as usize {
+            data_bits[T::bit_index(i) << log_gap] = data.bit(i) as i64
         }
 
         let pt_infos = GLWEPlaintextLayout {
@@ -104,17 +104,15 @@ impl<D: DataRef, T: UnsignedInteger + FromBits> FheUint<D, T> {
     pub fn decrypt<S, M, BE: Backend>(&self, module: &M, sk: &S, scratch: &mut Scratch<BE>) -> T
     where
         S: GLWESecretPreparedToRef<BE> + GLWEInfos,
-        M: GLWEDecrypt<BE>,
+        M: ModuleLogN + GLWEDecrypt<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         #[cfg(debug_assertions)]
         {
-            assert!(module.n().is_multiple_of(T::WORD_SIZE));
+            assert!(module.n().is_multiple_of(T::BITS as usize));
             assert_eq!(self.n(), module.n() as u32);
             assert_eq!(sk.n(), module.n() as u32);
         }
-
-        let gap: usize = module.n() / T::WORD_SIZE;
 
         let pt_infos = GLWEPlaintextLayout {
             n: self.n(),
@@ -126,11 +124,18 @@ impl<D: DataRef, T: UnsignedInteger + FromBits> FheUint<D, T> {
 
         self.bits.decrypt(module, &mut pt, sk, scratch_1);
 
-        let mut data: Vec<i64> = vec![0i64; module.n()];
+        let mut data_bits: Vec<i64> = vec![0i64; module.n()];
+        pt.decode_vec_i64(&mut data_bits, TorusPrecision(2));
 
-        pt.decode_vec_i64(&mut data, TorusPrecision(2));
+        let mut bits: Vec<u8> = vec![0u8; T::BITS as usize];
 
-        let bits: Vec<u8> = data.iter().step_by(gap).map(|c| *c as u8).collect_vec();
+        let log_gap: usize = module.log_n() - T::LOG_BITS as usize;
+
+        // Retrives from interleaved bytes
+        for i in 0..T::BITS as usize {
+            bits[i] = data_bits[T::bit_index(i) << log_gap] as u8
+        }
+
         T::from_bits(&bits)
     }
 }
@@ -146,15 +151,14 @@ impl<D: DataMut, T: UnsignedInteger> FheUint<D, T> {
     ) where
         D1: DataMut,
         ATK: DataRef,
-        M: GLWEPacking<BE> + GLWECopy,
+        M: ModuleLogN + GLWEPacking<BE> + GLWECopy,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         // Repacks the GLWE ciphertexts bits
-        let gap: usize = module.n() / T::WORD_SIZE;
-        let log_gap: usize = (usize::BITS - (gap - 1).leading_zeros()) as usize;
+        let log_gap: usize = module.log_n() - T::LOG_BITS as usize;
         let mut cts: HashMap<usize, &mut GLWE<D1>> = HashMap::new();
-        for (i, ct) in tmp_res.iter_mut().enumerate().take(T::WORD_SIZE) {
-            cts.insert(i * gap, ct);
+        for (i, ct) in tmp_res.iter_mut().enumerate().take(T::BITS as usize) {
+            cts.insert(T::bit_index(i) << log_gap, ct);
         }
 
         module.glwe_pack(&mut cts, log_gap, auto_keys, scratch);
@@ -169,11 +173,12 @@ impl<D: DataRef, T: UnsignedInteger> FheUint<D, T> {
     where
         L: LWEToMut,
         K: GGLWEPreparedToRef<BE> + GGLWEInfos,
-        M: LWEFromGLWE<BE> + GLWERotate<BE>,
+        M: ModuleLogN + LWEFromGLWE<BE> + GLWERotate<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        let gap: usize = module.n() / T::WORD_SIZE;
-        res.to_mut().from_glwe(module, self, bit * gap, ks, scratch);
+        let log_gap: usize = module.log_n() - T::LOG_BITS as usize;
+        res.to_mut()
+            .from_glwe(module, self, T::bit_index(bit) << log_gap, ks, scratch);
     }
 }
 
