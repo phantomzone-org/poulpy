@@ -207,7 +207,10 @@ pub trait GLWEToMut {
     fn to_mut(&mut self) -> GLWE<&mut [u8]>;
 }
 
-impl<D: DataMut> GLWEToMut for GLWE<D> {
+impl<D: DataMut> GLWEToMut for GLWE<D>
+where
+    Self: GLWEToRef,
+{
     fn to_mut(&mut self) -> GLWE<&mut [u8]> {
         GLWE {
             k: self.k,

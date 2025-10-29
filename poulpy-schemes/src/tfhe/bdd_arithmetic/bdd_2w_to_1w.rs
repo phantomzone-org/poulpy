@@ -54,7 +54,7 @@ where
         self.execute_bdd_circuit(&mut out_bits, &helper, circuit, scratch_1);
 
         // Repacks the bits
-        out.pack(self, out_bits, &key.cbt.atk, scratch_1);
+        out.pack(self, out_bits, key, scratch_1);
     }
 }
 
