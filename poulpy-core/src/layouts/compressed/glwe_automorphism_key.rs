@@ -138,7 +138,7 @@ impl<D: DataRef> WriterTo for GLWEAutomorphismKeyCompressed<D> {
     }
 }
 
-pub trait AutomorphismKeyDecompress
+pub trait GLWEAutomorphismKeyDecompress
 where
     Self: GGLWEDecompress,
 {
@@ -152,7 +152,7 @@ where
     }
 }
 
-impl<B: Backend> AutomorphismKeyDecompress for Module<B> where Self: GLWEDecompress {}
+impl<B: Backend> GLWEAutomorphismKeyDecompress for Module<B> where Self: GLWEDecompress {}
 
 impl<D: DataMut> GLWEAutomorphismKey<D>
 where
@@ -161,7 +161,7 @@ where
     pub fn decompress<O, M>(&mut self, module: &M, other: &O)
     where
         O: GGLWECompressedToRef + GetGaloisElement,
-        M: AutomorphismKeyDecompress,
+        M: GLWEAutomorphismKeyDecompress,
     {
         module.decompress_automorphism_key(self, other);
     }

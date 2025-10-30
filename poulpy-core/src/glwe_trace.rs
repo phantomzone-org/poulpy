@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use poulpy_hal::{
     api::{ModuleLogN, VecZnxNormalize, VecZnxNormalizeTmpBytes},
     layouts::{Backend, CyclotomicOrder, DataMut, GaloisElement, Module, Scratch, VecZnx, galois_element},
@@ -8,7 +6,8 @@ use poulpy_hal::{
 use crate::{
     GLWEAutomorphism, GLWECopy, GLWEShift, ScratchTakeCore,
     layouts::{
-        Base2K, GGLWEInfos, GGLWEPreparedToRef, GLWE, GLWEInfos, GLWELayout, GLWEToMut, GLWEToRef, GetGaloisElement, LWEInfos,
+        GGLWEInfos, GGLWELayout, GGLWEPreparedToRef, GLWE, GLWEAutomorphismKeyHelper, GLWEInfos, GLWELayout, GLWEToMut,
+        GLWEToRef, GetGaloisElement, LWEInfos,
     },
 };
 
@@ -32,32 +31,34 @@ impl GLWE<Vec<u8>> {
 }
 
 impl<D: DataMut> GLWE<D> {
-    pub fn trace<A, K, M, BE: Backend>(
+    pub fn trace<A, H, K, M, BE: Backend>(
         &mut self,
         module: &M,
         start: usize,
         end: usize,
         a: &A,
-        keys: &HashMap<i64, K>,
+        keys: &H,
         scratch: &mut Scratch<BE>,
     ) where
         A: GLWEToRef,
         K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
+        H: GLWEAutomorphismKeyHelper<K, BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
         M: GLWETrace<BE>,
     {
         module.glwe_trace(self, start, end, a, keys, scratch);
     }
 
-    pub fn trace_inplace<K, M, BE: Backend>(
+    pub fn trace_inplace<H, K, M, BE: Backend>(
         &mut self,
         module: &M,
         start: usize,
         end: usize,
-        keys: &HashMap<i64, K>,
+        keys: &H,
         scratch: &mut Scratch<BE>,
     ) where
         K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
+        H: GLWEAutomorphismKeyHelper<K, BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
         M: GLWETrace<BE>,
     {
@@ -113,52 +114,48 @@ where
         trace
     }
 
-    fn glwe_trace<R, A, K>(&self, res: &mut R, start: usize, end: usize, a: &A, keys: &HashMap<i64, K>, scratch: &mut Scratch<BE>)
+    fn glwe_trace<R, A, K, H>(&self, res: &mut R, start: usize, end: usize, a: &A, keys: &H, scratch: &mut Scratch<BE>)
     where
         R: GLWEToMut,
         A: GLWEToRef,
         K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
+        H: GLWEAutomorphismKeyHelper<K, BE>,
     {
         self.glwe_copy(res, a);
         self.glwe_trace_inplace(res, start, end, keys, scratch);
     }
 
-    fn glwe_trace_inplace<R, K>(&self, res: &mut R, start: usize, end: usize, keys: &HashMap<i64, K>, scratch: &mut Scratch<BE>)
+    fn glwe_trace_inplace<R, K, H>(&self, res: &mut R, start: usize, end: usize, keys: &H, scratch: &mut Scratch<BE>)
     where
         R: GLWEToMut,
         K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
+        H: GLWEAutomorphismKeyHelper<K, BE>,
     {
         let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
 
-        let basek_ksk: Base2K = keys.get(keys.keys().next().unwrap()).unwrap().base2k();
+        let ksk_infos: &GGLWELayout = &keys.automorphism_key_infos();
 
-        #[cfg(debug_assertions)]
-        {
-            assert_eq!(res.n(), self.n() as u32);
-            assert!(start < end);
-            assert!(end <= self.log_n());
-            for key in keys.values() {
-                assert_eq!(key.n(), self.n() as u32);
-                assert_eq!(key.base2k(), basek_ksk);
-                assert_eq!(key.rank_in(), res.rank());
-                assert_eq!(key.rank_out(), res.rank());
-            }
-        }
+        assert_eq!(res.n(), self.n() as u32);
+        assert_eq!(ksk_infos.n(), self.n() as u32);
+        assert!(start < end);
+        assert!(end <= self.log_n());
+        assert_eq!(ksk_infos.rank_in(), res.rank());
+        assert_eq!(ksk_infos.rank_out(), res.rank());
 
-        if res.base2k() != basek_ksk {
+        if res.base2k() != ksk_infos.base2k() {
             let (mut self_conv, scratch_1) = scratch.take_glwe(&GLWELayout {
                 n: self.n().into(),
-                base2k: basek_ksk,
+                base2k: ksk_infos.base2k(),
                 k: res.k(),
                 rank: res.rank(),
             });
 
             for j in 0..(res.rank() + 1).into() {
                 self.vec_znx_normalize(
-                    basek_ksk.into(),
+                    ksk_infos.base2k().into(),
                     &mut self_conv.data,
                     j,
-                    basek_ksk.into(),
+                    res.base2k().into(),
                     res.data(),
                     j,
                     scratch_1,
@@ -174,7 +171,7 @@ where
                     self.galois_element(1 << (i - 1))
                 };
 
-                if let Some(key) = keys.get(&p) {
+                if let Some(key) = keys.get_automorphism_key(p) {
                     self.glwe_automorphism_add_inplace(&mut self_conv, key, scratch_1);
                 } else {
                     panic!("keys[{p}] is empty")
@@ -186,7 +183,7 @@ where
                     res.base2k().into(),
                     res.data_mut(),
                     j,
-                    basek_ksk.into(),
+                    ksk_infos.base2k().into(),
                     &self_conv.data,
                     j,
                     scratch_1,
@@ -204,7 +201,7 @@ where
                     self.galois_element(1 << (i - 1))
                 };
 
-                if let Some(key) = keys.get(&p) {
+                if let Some(key) = keys.get_automorphism_key(p) {
                     self.glwe_automorphism_add_inplace(res, key, scratch);
                 } else {
                     panic!("keys[{p}] is empty")
@@ -223,21 +220,16 @@ pub trait GLWETrace<BE: Backend> {
         A: GLWEInfos,
         K: GGLWEInfos;
 
-    fn glwe_trace<R, A, K>(
-        &self,
-        res: &mut R,
-        start: usize,
-        end: usize,
-        a: &A,
-        keys: &HashMap<i64, K>,
-        scratch: &mut Scratch<BE>,
-    ) where
-        R: GLWEToMut,
-        A: GLWEToRef,
-        K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos;
-
-    fn glwe_trace_inplace<R, K>(&self, res: &mut R, start: usize, end: usize, keys: &HashMap<i64, K>, scratch: &mut Scratch<BE>)
+    fn glwe_trace<R, A, K, H>(&self, res: &mut R, start: usize, end: usize, a: &A, keys: &H, scratch: &mut Scratch<BE>)
     where
         R: GLWEToMut,
-        K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos;
+        A: GLWEToRef,
+        K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
+        H: GLWEAutomorphismKeyHelper<K, BE>;
+
+    fn glwe_trace_inplace<R, K, H>(&self, res: &mut R, start: usize, end: usize, keys: &H, scratch: &mut Scratch<BE>)
+    where
+        R: GLWEToMut,
+        K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
+        H: GLWEAutomorphismKeyHelper<K, BE>;
 }

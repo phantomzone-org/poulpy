@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use poulpy_hal::{
     api::ModuleLogN,
     layouts::{Backend, GaloisElement, Module, Scratch},
@@ -8,7 +6,10 @@ use poulpy_hal::{
 use crate::{
     GLWEAdd, GLWEAutomorphism, GLWECopy, GLWENormalize, GLWERotate, GLWEShift, GLWESub, ScratchTakeCore,
     glwe_trace::GLWETrace,
-    layouts::{GGLWEInfos, GGLWEPreparedToRef, GLWE, GLWEInfos, GLWEToMut, GLWEToRef, GetGaloisElement, LWEInfos},
+    layouts::{
+        GGLWEInfos, GGLWEPreparedToRef, GLWE, GLWEAutomorphismKeyHelper, GLWEInfos, GLWEToMut, GLWEToRef, GetGaloisElement,
+        LWEInfos,
+    },
 };
 
 /// [GLWEPacker] enables only the fly GLWE packing
@@ -110,12 +111,13 @@ impl GLWEPacker {
     /// * `res`: space to append fully packed ciphertext. Only when the number
     ///   of packed ciphertexts reaches N/2^log_batch is a result written.
     /// * `a`: ciphertext to pack. Can optionally give None to pack a 0 ciphertext.
-    /// * `auto_keys`: a [HashMap] containing the [AutomorphismKeyExec]s.
+    /// * `auto_keys`: an implementation of [GLWEAutomorphismKeyHelper], containing [GLWEAutomorphismKeyPrepared] with index of [Self::galois_elements].
     /// * `scratch`: scratch space of size at least [Self::tmp_bytes].
-    pub fn add<A, K, M, BE: Backend>(&mut self, module: &M, a: Option<&A>, auto_keys: &HashMap<i64, K>, scratch: &mut Scratch<BE>)
+    pub fn add<A, K, H, M, BE: Backend>(&mut self, module: &M, a: Option<&A>, auto_keys: &H, scratch: &mut Scratch<BE>)
     where
         A: GLWEToRef + GLWEInfos,
         K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
+        H: GLWEAutomorphismKeyHelper<K, BE>,
         M: GLWEPackerOps<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
@@ -187,28 +189,23 @@ where
         + GLWEAdd
         + GLWENormalize<BE>,
 {
-    fn packer_add<A, K>(
-        &self,
-        packer: &mut GLWEPacker,
-        a: Option<&A>,
-        i: usize,
-        auto_keys: &HashMap<i64, K>,
-        scratch: &mut Scratch<BE>,
-    ) where
+    fn packer_add<A, K, H>(&self, packer: &mut GLWEPacker, a: Option<&A>, i: usize, auto_keys: &H, scratch: &mut Scratch<BE>)
+    where
         A: GLWEToRef + GLWEInfos,
         K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
+        H: GLWEAutomorphismKeyHelper<K, BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         pack_core(self, a, &mut packer.accumulators, i, auto_keys, scratch)
     }
 }
 
-fn pack_core<A, K, M, BE: Backend>(
+fn pack_core<A, K, H, M, BE: Backend>(
     module: &M,
     a: Option<&A>,
     accumulators: &mut [Accumulator],
     i: usize,
-    auto_keys: &HashMap<i64, K>,
+    auto_keys: &H,
     scratch: &mut Scratch<BE>,
 ) where
     A: GLWEToRef + GLWEInfos,
@@ -229,6 +226,7 @@ fn pack_core<A, K, M, BE: Backend>(
         + GLWEAdd
         + GLWENormalize<BE>,
     K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
+    H: GLWEAutomorphismKeyHelper<K, BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     let log_n: usize = module.log_n();
@@ -280,12 +278,12 @@ fn pack_core<A, K, M, BE: Backend>(
     }
 }
 
-fn combine<B, K, M, BE: Backend>(
+fn combine<B, K, H, M, BE: Backend>(
     module: &M,
     acc: &mut Accumulator,
     b: Option<&B>,
     i: usize,
-    auto_keys: &HashMap<i64, K>,
+    auto_keys: &H,
     scratch: &mut Scratch<BE>,
 ) where
     B: GLWEToRef + GLWEInfos,
@@ -307,6 +305,7 @@ fn combine<B, K, M, BE: Backend>(
         + GLWEAdd
         + GLWENormalize<BE>,
     K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
+    H: GLWEAutomorphismKeyHelper<K, BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     let log_n: usize = acc.data.n().log2();
@@ -348,7 +347,7 @@ fn combine<B, K, M, BE: Backend>(
             module.glwe_normalize_inplace(&mut tmp_b, scratch_1);
 
             // tmp_b = phi(a * X^-t - b)
-            if let Some(auto_key) = auto_keys.get(&gal_el) {
+            if let Some(auto_key) = auto_keys.get_automorphism_key(gal_el) {
                 module.glwe_automorphism_inplace(&mut tmp_b, auto_key, scratch_1);
             } else {
                 panic!("auto_key[{gal_el}] not found");
@@ -365,7 +364,7 @@ fn combine<B, K, M, BE: Backend>(
         } else {
             module.glwe_rsh(1, a, scratch);
             // a = a + phi(a)
-            if let Some(auto_key) = auto_keys.get(&gal_el) {
+            if let Some(auto_key) = auto_keys.get_automorphism_key(gal_el) {
                 module.glwe_automorphism_add_inplace(a, auto_key, scratch);
             } else {
                 panic!("auto_key[{gal_el}] not found");
@@ -377,7 +376,7 @@ fn combine<B, K, M, BE: Backend>(
         module.glwe_rsh(1, &mut tmp_b, scratch_1);
 
         // a = (b* X^t - phi(b* X^t))
-        if let Some(auto_key) = auto_keys.get(&gal_el) {
+        if let Some(auto_key) = auto_keys.get_automorphism_key(gal_el) {
             module.glwe_automorphism_sub_negate(a, &tmp_b, auto_key, scratch_1);
         } else {
             panic!("auto_key[{gal_el}] not found");

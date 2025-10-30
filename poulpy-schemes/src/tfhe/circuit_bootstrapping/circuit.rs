@@ -8,11 +8,12 @@ use poulpy_hal::{
 use poulpy_core::{
     GGSWFromGGLWE, GLWEDecrypt, GLWEPacking, GLWERotate, GLWETrace, ScratchTakeCore,
     layouts::{
-        Dsize, GGLWELayout, GGSWInfos, GGSWToMut, GLWEInfos, GLWESecretPreparedFactory, GLWEToMut, GLWEToRef, LWEInfos, LWEToRef,
+        Dsize, GGLWEInfos, GGLWELayout, GGLWEPreparedToRef, GGSWInfos, GGSWToMut, GLWEAutomorphismKeyHelper, GLWEInfos,
+        GLWESecretPreparedFactory, GLWEToMut, GLWEToRef, GetGaloisElement, LWEInfos, LWEToRef,
     },
 };
 
-use poulpy_core::layouts::{GGSW, GLWE, LWE, prepared::GLWEAutomorphismKeyPrepared};
+use poulpy_core::layouts::{GGSW, GLWE, LWE};
 
 use crate::tfhe::{
     blind_rotation::{
@@ -323,18 +324,20 @@ pub fn circuit_bootstrap_core<R, L, D, M, BRA: BlindRotationAlgo, BE: Backend>(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn post_process<R, A, M, BE: Backend>(
+fn post_process<R, A, M, H, K, BE: Backend>(
     module: &M,
     res: &mut R,
     a: &A,
     log_gap_in: usize,
     log_gap_out: usize,
     log_domain: usize,
-    auto_keys: &HashMap<i64, GLWEAutomorphismKeyPrepared<Vec<u8>, BE>>,
+    auto_keys: &H,
     scratch: &mut Scratch<BE>,
 ) where
     R: GLWEToMut,
     A: GLWEToRef,
+    H: GLWEAutomorphismKeyHelper<K, BE>,
+    K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
     M: ModuleLogN + GLWETrace<BE> + GLWEPacking<BE> + GLWERotate<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {

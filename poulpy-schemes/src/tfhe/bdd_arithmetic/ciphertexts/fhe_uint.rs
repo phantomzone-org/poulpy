@@ -1,8 +1,8 @@
 use poulpy_core::{
     GLWEAdd, GLWECopy, GLWEDecrypt, GLWEEncryptSk, GLWEPacking, GLWERotate, GLWESub, GLWETrace, LWEFromGLWE, ScratchTakeCore,
     layouts::{
-        Base2K, Degree, GGLWEInfos, GGLWEPreparedToRef, GLWE, GLWEInfos, GLWEPlaintextLayout, GLWESecretPreparedToRef, GLWEToMut,
-        GLWEToRef, LWEInfos, LWEToMut, Rank, TorusPrecision,
+        Base2K, Degree, GGLWEInfos, GGLWEPreparedToRef, GLWE, GLWEAutomorphismKeyHelper, GLWEInfos, GLWEPlaintextLayout,
+        GLWESecretPreparedToRef, GLWEToMut, GLWEToRef, GetGaloisElement, LWEInfos, LWEToMut, Rank, TorusPrecision,
     },
 };
 use poulpy_hal::{
@@ -171,20 +171,20 @@ impl<D: DataMut, T: UnsignedInteger> FheUint<D, T> {
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub fn splice_u16<D0, A, B, BRA, M, BE: Backend>(
+    pub fn splice_u16<A, B, H, K, M, BE: Backend>(
         &mut self,
         module: &M,
         dst: usize,
         src: usize,
         a: &A,
         b: &B,
-        keys: &BDDKeyPrepared<D0, BRA, BE>,
+        keys: &H,
         scratch: &mut Scratch<BE>,
     ) where
-        D0: DataRef,
         A: GLWEToRef + GLWEInfos,
         B: GLWEToRef + GLWEInfos,
-        BRA: BlindRotationAlgo,
+        H: GLWEAutomorphismKeyHelper<K, BE>,
+        K: GGLWEPreparedToRef<BE> + GGLWEInfos + GetGaloisElement,
         M: ModuleLogN + GLWERotate<BE> + GLWETrace<BE> + GLWESub + GLWEAdd + GLWECopy,
         Scratch<BE>: ScratchTakeBDD<T, BE>,
     {
@@ -206,20 +206,20 @@ impl<D: DataMut, T: UnsignedInteger> FheUint<D, T> {
 
     #[allow(clippy::too_many_arguments)]
     // Store on the receiver a where the byte_a-th byte of a has been replaced by byte_src2 of src2.
-    pub fn splice_u8<D0, A, B, BRA, M, BE: Backend>(
+    pub fn splice_u8<A, B, H, K, M, BE: Backend>(
         &mut self,
         module: &M,
         dst: usize,
         src: usize,
         a: &A,
         b: &B,
-        keys: &BDDKeyPrepared<D0, BRA, BE>,
+        keys: &H,
         scratch: &mut Scratch<BE>,
     ) where
-        D0: DataRef,
         A: GLWEToRef + GLWEInfos,
         B: GLWEToRef + GLWEInfos,
-        BRA: BlindRotationAlgo,
+        H: GLWEAutomorphismKeyHelper<K, BE>,
+        K: GGLWEPreparedToRef<BE> + GGLWEInfos + GetGaloisElement,
         M: ModuleLogN + GLWERotate<BE> + GLWETrace<BE> + GLWESub + GLWEAdd + GLWECopy,
         Scratch<BE>: ScratchTakeBDD<T, BE>,
     {
@@ -241,7 +241,7 @@ impl<D: DataMut, T: UnsignedInteger> FheUint<D, T> {
             trace_start,
             module.log_n(),
             self,
-            &keys.cbt.atk,
+            keys,
             scratch_1,
         );
 
@@ -263,7 +263,7 @@ impl<D: DataMut, T: UnsignedInteger> FheUint<D, T> {
             &mut tmp_fhe_uint_byte,
             trace_start,
             module.log_n(),
-            &keys.cbt.atk,
+            keys,
             scratch_1,
         );
 

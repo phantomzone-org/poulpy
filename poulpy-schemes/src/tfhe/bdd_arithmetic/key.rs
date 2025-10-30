@@ -8,6 +8,7 @@ use crate::tfhe::{
     },
 };
 
+use poulpy_core::layouts::{GLWEAutomorphismKeyHelper, GLWEAutomorphismKeyPrepared};
 use poulpy_core::{
     GLWEToLWESwitchingKeyEncryptSk, GetDistribution, LWEFromGLWE, ScratchTakeCore,
     layouts::{
@@ -132,6 +133,18 @@ where
 {
     pub(crate) cbt: CircuitBootstrappingKeyPrepared<D, BRA, BE>,
     pub(crate) ks: GLWEToLWEKeyPrepared<D, BE>,
+}
+
+impl<D: DataRef, BRA: BlindRotationAlgo, BE: Backend> GLWEAutomorphismKeyHelper<GLWEAutomorphismKeyPrepared<D, BE>, BE>
+    for BDDKeyPrepared<D, BRA, BE>
+{
+    fn automorphism_key_infos(&self) -> poulpy_core::layouts::GGLWELayout {
+        self.cbt.automorphism_key_infos()
+    }
+
+    fn get_automorphism_key(&self, k: i64) -> Option<&GLWEAutomorphismKeyPrepared<D, BE>> {
+        self.cbt.get_automorphism_key(k)
+    }
 }
 
 pub trait BDDKeyPreparedFactory<BRA: BlindRotationAlgo, BE: Backend>

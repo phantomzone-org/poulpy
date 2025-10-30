@@ -1,14 +1,20 @@
 use poulpy_hal::{
-    layouts::{Data, DataMut, DataRef, FillUniform, ReaderFrom, WriterTo},
+    layouts::{Backend, Data, DataMut, DataRef, FillUniform, ReaderFrom, WriterTo},
     source::Source,
 };
 
 use crate::layouts::{
-    Base2K, Degree, Dnum, Dsize, GGLWE, GGLWEInfos, GGLWEToMut, GGLWEToRef, GLWE, GLWEInfos, LWEInfos, Rank, TorusPrecision,
+    Base2K, Degree, Dnum, Dsize, GGLWE, GGLWEInfos, GGLWELayout, GGLWEToMut, GGLWEToRef, GLWE, GLWEInfos, LWEInfos, Rank,
+    TorusPrecision,
 };
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
 use std::fmt;
+
+pub trait GLWEAutomorphismKeyHelper<K, BE: Backend> {
+    fn get_automorphism_key(&self, k: i64) -> Option<&K>;
+    fn automorphism_key_infos(&self) -> GGLWELayout;
+}
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
 pub struct GLWEAutomorphismKeyLayout {

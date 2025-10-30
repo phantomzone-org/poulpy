@@ -1,9 +1,27 @@
+use std::collections::HashMap;
+
 use poulpy_hal::layouts::{Backend, Data, DataMut, DataRef, Module, Scratch};
 
 use crate::layouts::{
-    Base2K, Degree, Dnum, Dsize, GGLWEInfos, GGLWEPrepared, GGLWEPreparedFactory, GGLWEPreparedToMut, GGLWEPreparedToRef,
-    GGLWEToRef, GLWEInfos, GetGaloisElement, LWEInfos, Rank, SetGaloisElement, TorusPrecision,
+    Base2K, Degree, Dnum, Dsize, GGLWEInfos, GGLWELayout, GGLWEPrepared, GGLWEPreparedFactory, GGLWEPreparedToMut,
+    GGLWEPreparedToRef, GGLWEToRef, GLWEAutomorphismKeyHelper, GLWEInfos, GetGaloisElement, LWEInfos, Rank, SetGaloisElement,
+    TorusPrecision,
 };
+
+impl<K, BE: Backend> GLWEAutomorphismKeyHelper<K, BE> for HashMap<i64, K>
+where
+    K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
+{
+    fn get_automorphism_key(&self, k: i64) -> Option<&K> {
+        self.get(&k)
+    }
+
+    fn automorphism_key_infos(&self) -> GGLWELayout {
+        self.get(self.keys().next().unwrap())
+            .unwrap()
+            .gglwe_layout()
+    }
+}
 
 #[derive(PartialEq, Eq)]
 pub struct GLWEAutomorphismKeyPrepared<D: Data, B: Backend> {

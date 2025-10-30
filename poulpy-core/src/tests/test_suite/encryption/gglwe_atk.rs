@@ -9,7 +9,7 @@ use crate::{
     GLWESwitchingKeyEncryptSk, ScratchTakeCore,
     encryption::SIGMA,
     layouts::{
-        AutomorphismKeyDecompress, GLWEAutomorphismKey, GLWEAutomorphismKeyLayout, GLWEInfos, GLWESecret,
+        GLWEAutomorphismKey, GLWEAutomorphismKeyDecompress, GLWEAutomorphismKeyLayout, GLWEInfos, GLWESecret,
         GLWESecretPreparedFactory, GLWESwitchingKeyDecompress, compressed::GLWEAutomorphismKeyCompressed,
         prepared::GLWESecretPrepared,
     },
@@ -97,7 +97,7 @@ where
         + GLWESecretPreparedFactory<BE>
         + GLWESwitchingKeyEncryptSk<BE>
         + GLWESwitchingKeyCompressedEncryptSk<BE>
-        + AutomorphismKeyDecompress
+        + GLWEAutomorphismKeyDecompress
         + VecZnxAutomorphism
         + VecZnxFillUniform
         + GGLWENoise<BE>,

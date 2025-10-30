@@ -7,20 +7,16 @@ use poulpy_hal::{
 
 use crate::{
     GLWEAdd, GLWEAutomorphism, GLWECopy, GLWENormalize, GLWERotate, GLWEShift, GLWESub, ScratchTakeCore,
-    layouts::{GGLWEInfos, GGLWEPreparedToRef, GLWEInfos, GLWEToMut, GLWEToRef, GetGaloisElement},
+    layouts::{GGLWEInfos, GGLWEPreparedToRef, GLWEAutomorphismKeyHelper, GLWEInfos, GLWEToMut, GLWEToRef, GetGaloisElement},
 };
 pub trait GLWEPacking<BE: Backend> {
     /// Packs [x_0: GLWE(m_0), x_1: GLWE(m_1), ..., x_i: GLWE(m_i)]
     /// to [0: GLWE(m_0 * X^x_0 + m_1 * X^x_1 + ... + m_i * X^x_i)]
-    fn glwe_pack<R, K>(
-        &self,
-        cts: &mut HashMap<usize, &mut R>,
-        log_gap_out: usize,
-        keys: &HashMap<i64, K>,
-        scratch: &mut Scratch<BE>,
-    ) where
+    fn glwe_pack<R, K, H>(&self, cts: &mut HashMap<usize, &mut R>, log_gap_out: usize, keys: &H, scratch: &mut Scratch<BE>)
+    where
         R: GLWEToMut + GLWEToRef + GLWEInfos,
-        K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos;
+        K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
+        H: GLWEAutomorphismKeyHelper<K, BE>;
 }
 
 impl<BE: Backend> GLWEPacking<BE> for Module<BE>
@@ -38,15 +34,11 @@ where
 {
     /// Packs [x_0: GLWE(m_0), x_1: GLWE(m_1), ..., x_i: GLWE(m_i)]
     /// to [0: GLWE(m_0 * X^x_0 + m_1 * X^x_1 + ... + m_i * X^x_i)]
-    fn glwe_pack<R, K>(
-        &self,
-        cts: &mut HashMap<usize, &mut R>,
-        log_gap_out: usize,
-        keys: &HashMap<i64, K>,
-        scratch: &mut Scratch<BE>,
-    ) where
+    fn glwe_pack<R, K, H>(&self, cts: &mut HashMap<usize, &mut R>, log_gap_out: usize, keys: &H, scratch: &mut Scratch<BE>)
+    where
         R: GLWEToMut + GLWEToRef + GLWEInfos,
         K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
+        H: GLWEAutomorphismKeyHelper<K, BE>,
     {
         #[cfg(debug_assertions)]
         {
@@ -59,9 +51,10 @@ where
             let t: usize = (1 << log_n).min(1 << (log_n - 1 - i));
 
             let key: &K = if i == 0 {
-                keys.get(&-1).unwrap()
+                keys.get_automorphism_key(-1).unwrap()
             } else {
-                keys.get(&self.galois_element(1 << (i - 1))).unwrap()
+                keys.get_automorphism_key(self.galois_element(1 << (i - 1)))
+                    .unwrap()
             };
 
             for j in 0..t {
