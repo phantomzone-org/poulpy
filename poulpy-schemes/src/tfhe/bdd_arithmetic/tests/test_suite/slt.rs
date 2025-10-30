@@ -51,8 +51,8 @@ where
     let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(1 << 22);
 
     let mut res: FheUint<Vec<u8>, u32> = FheUint::<Vec<u8>, u32>::alloc_from_infos(&glwe_infos);
-    let mut a_enc_prep: FheUintPrepared<Vec<u8>, u32, BE> = FheUintPrepared::<Vec<u8>, u32, BE>::alloc(module, &ggsw_infos);
-    let mut b_enc_prep: FheUintPrepared<Vec<u8>, u32, BE> = FheUintPrepared::<Vec<u8>, u32, BE>::alloc(module, &ggsw_infos);
+    let mut a_enc_prep: FheUintPrepared<Vec<u8>, u32, BE> = FheUintPrepared::<Vec<u8>, u32, BE>::alloc_from_infos(module, &ggsw_infos);
+    let mut b_enc_prep: FheUintPrepared<Vec<u8>, u32, BE> = FheUintPrepared::<Vec<u8>, u32, BE>::alloc_from_infos(module, &ggsw_infos);
 
     let a: u32 = source.next_u32();
     let b: u32 = source.next_u32();
