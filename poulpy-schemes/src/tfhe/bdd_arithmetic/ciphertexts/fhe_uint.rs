@@ -173,6 +173,7 @@ impl<D: DataMut, T: UnsignedInteger> FheUint<D, T> {
     }
 
     #[allow(clippy::too_many_arguments)]
+    // Self <- ((a.rotate_right(dst<<4) & 0xFFFF_0000) | (b.rotate_right(src<<4) & 0x0000_FFFF)).rotate_left(dst<<4);
     pub fn splice_u16<A, B, H, K, M, BE: Backend>(
         &mut self,
         module: &M,
@@ -207,7 +208,7 @@ impl<D: DataMut, T: UnsignedInteger> FheUint<D, T> {
     }
 
     #[allow(clippy::too_many_arguments)]
-    // Store on the receiver a where the byte_a-th byte of a has been replaced by byte_src2 of src2.
+    // Self <- ((a.rotate_right(dst<<3) & 0xFFFF_FF00) | (b.rotate_right(src<<3) & 0x0000_00FF)).rotate_left(dst<<3);
     pub fn splice_u8<A, B, H, K, M, BE: Backend>(
         &mut self,
         module: &M,
