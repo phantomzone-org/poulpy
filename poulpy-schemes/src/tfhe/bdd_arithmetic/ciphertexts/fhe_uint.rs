@@ -12,10 +12,7 @@ use poulpy_hal::{
 };
 use std::{collections::HashMap, marker::PhantomData};
 
-use crate::tfhe::{
-    bdd_arithmetic::{BDDKeyPrepared, FromBits, ToBits, UnsignedInteger},
-    blind_rotation::BlindRotationAlgo,
-};
+use crate::tfhe::bdd_arithmetic::{FromBits, ToBits, UnsignedInteger};
 
 /// An FHE ciphertext encrypting the bits of an [UnsignedInteger].
 pub struct FheUint<D: Data, T: UnsignedInteger> {
@@ -34,6 +31,18 @@ impl<T: UnsignedInteger> FheUint<Vec<u8>, T> {
     pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision, rank: Rank) -> Self {
         Self {
             bits: GLWE::alloc(n, base2k, k, rank),
+            _phantom: PhantomData,
+        }
+    }
+}
+
+impl<'a, T: UnsignedInteger> FheUint<&'a mut [u8], T> {
+    pub fn from_glwe_to_mut<G>(glwe: &'a mut G) -> Self
+    where
+        G: GLWEToMut,
+    {
+        FheUint {
+            bits: glwe.to_mut(),
             _phantom: PhantomData,
         }
     }
@@ -145,16 +154,12 @@ impl<D: DataRef, T: UnsignedInteger + FromBits> FheUint<D, T> {
 
 impl<D: DataMut, T: UnsignedInteger> FheUint<D, T> {
     /// Packs Vec<GLWE(bit[i])> into [FheUint].
-    pub fn pack<G, D1, M, BRA: BlindRotationAlgo, BE: Backend>(
-        &mut self,
-        module: &M,
-        mut bits: Vec<G>,
-        key: &BDDKeyPrepared<D1, BRA, BE>,
-        scratch: &mut Scratch<BE>,
-    ) where
+    pub fn pack<G, M, K, H, BE: Backend>(&mut self, module: &M, mut bits: Vec<G>, keys: &H, scratch: &mut Scratch<BE>)
+    where
         G: GLWEToMut + GLWEToRef + GLWEInfos,
-        D1: DataRef,
         M: ModuleLogN + GLWEPacking<BE> + GLWECopy,
+        K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
+        H: GLWEAutomorphismKeyHelper<K, BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         // Repacks the GLWE ciphertexts bits
@@ -164,10 +169,7 @@ impl<D: DataMut, T: UnsignedInteger> FheUint<D, T> {
             cts.insert(T::bit_index(i) << log_gap, ct);
         }
 
-        module.glwe_pack(&mut cts, log_gap, &key.cbt.atk, scratch);
-
-        // And copies the repacked ciphertext on the receiver.
-        module.glwe_copy(&mut self.bits, cts.remove(&0).unwrap());
+        module.glwe_pack(&mut self.bits, cts, log_gap, keys, scratch);
     }
 
     #[allow(clippy::too_many_arguments)]

@@ -71,7 +71,8 @@ where
 
     let k: u32 = source.next_u32();
 
-    let mut k_enc_prep: FheUintPrepared<Vec<u8>, u32, BE> = FheUintPrepared::<Vec<u8>, u32, BE>::alloc_from_infos(module, &ggsw_infos);
+    let mut k_enc_prep: FheUintPrepared<Vec<u8>, u32, BE> =
+        FheUintPrepared::<Vec<u8>, u32, BE>::alloc_from_infos(module, &ggsw_infos);
     k_enc_prep.encrypt_sk(
         module,
         k,

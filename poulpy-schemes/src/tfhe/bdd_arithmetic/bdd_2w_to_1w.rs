@@ -1,17 +1,16 @@
 use std::marker::PhantomData;
 
-use poulpy_core::{GLWECopy, GLWEPacking, ScratchTakeCore, layouts::GGSWPrepared};
+use poulpy_core::{
+    GLWECopy, GLWEPacking, ScratchTakeCore,
+    layouts::{GGLWEInfos, GGLWEPreparedToRef, GGSWPrepared, GLWEAutomorphismKeyHelper, GetGaloisElement},
+};
 use poulpy_hal::{
     api::ModuleLogN,
     layouts::{Backend, DataMut, DataRef, Module, Scratch},
 };
 
-use crate::tfhe::{
-    bdd_arithmetic::{
-        BDDKeyPrepared, BitSize, ExecuteBDDCircuit, FheUint, FheUintPrepared, GetBitCircuitInfo, GetGGSWBit, UnsignedInteger,
-        circuits,
-    },
-    blind_rotation::BlindRotationAlgo,
+use crate::tfhe::bdd_arithmetic::{
+    BitSize, ExecuteBDDCircuit, FheUint, FheUintPrepared, GetBitCircuitInfo, GetGGSWBit, UnsignedInteger, circuits,
 };
 
 impl<T: UnsignedInteger, BE: Backend> ExecuteBDDCircuit2WTo1W<T, BE> for Module<BE> where
@@ -24,21 +23,21 @@ where
     Self: Sized + ModuleLogN + ExecuteBDDCircuit<T, BE> + GLWEPacking<BE> + GLWECopy,
 {
     /// Operations Z x Z -> Z
-    fn execute_bdd_circuit_2w_to_1w<R, C, A, B, DK, BRA>(
+    fn execute_bdd_circuit_2w_to_1w<R, C, A, B, K, H>(
         &self,
         out: &mut FheUint<R, T>,
         circuit: &C,
         a: &FheUintPrepared<A, T, BE>,
         b: &FheUintPrepared<B, T, BE>,
-        key: &BDDKeyPrepared<DK, BRA, BE>,
+        key: &H,
         scratch: &mut Scratch<BE>,
     ) where
-        BRA: BlindRotationAlgo,
-        DK: DataRef,
         C: GetBitCircuitInfo<T>,
         R: DataMut,
         A: DataRef,
         B: DataRef,
+        K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
+        H: GLWEAutomorphismKeyHelper<K, BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         // Collects inputs into a single array
@@ -103,19 +102,19 @@ macro_rules! define_bdd_2w_to_1w_trait {
     ($(#[$meta:meta])* $vis:vis $trait_name:ident, $method_name:ident) => {
         $(#[$meta])*
         $vis trait $trait_name<T: UnsignedInteger, BE: Backend> {
-            fn $method_name<A, M, K, BRA, B>(
+            fn $method_name<A, M, K, H, B>(
                 &mut self,
                 module: &M,
                 a: &FheUintPrepared<A, T, BE>,
                 b: &FheUintPrepared<B, T, BE>,
-                key: &BDDKeyPrepared<K, BRA, BE>,
+                key: &H,
                 scratch: &mut Scratch<BE>,
             ) where
                 M: ExecuteBDDCircuit2WTo1W<T, BE>,
                 A: DataRef,
                 B: DataRef,
-                K: DataRef,
-                BRA: BlindRotationAlgo,
+                K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
+                H: GLWEAutomorphismKeyHelper<K, BE>,
                 Scratch<BE>: ScratchTakeCore<BE>;
         }
     };
@@ -125,19 +124,19 @@ macro_rules! define_bdd_2w_to_1w_trait {
 macro_rules! impl_bdd_2w_to_1w_trait {
     ($trait_name:ident, $method_name:ident, $ty:ty, $n:literal, $circuit_ty:ty, $output_circuits:path) => {
         impl<D: DataMut, BE: Backend> $trait_name<$ty, BE> for FheUint<D, $ty> {
-            fn $method_name<A, M, K, BRA, B>(
+            fn $method_name<A, M, K, H, B>(
                 &mut self,
                 module: &M,
                 a: &FheUintPrepared<A, $ty, BE>,
                 b: &FheUintPrepared<B, $ty, BE>,
-                key: &BDDKeyPrepared<K, BRA, BE>,
+                key: &H,
                 scratch: &mut Scratch<BE>,
             ) where
                 M: ExecuteBDDCircuit2WTo1W<$ty, BE>,
                 A: DataRef,
                 B: DataRef,
-                K: DataRef,
-                BRA: BlindRotationAlgo,
+                K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
+                H: GLWEAutomorphismKeyHelper<K, BE>,
                 Scratch<BE>: ScratchTakeCore<BE>,
             {
                 module.execute_bdd_circuit_2w_to_1w(self, &$output_circuits, a, b, key, scratch)

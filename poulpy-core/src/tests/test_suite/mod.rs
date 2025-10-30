@@ -4,9 +4,9 @@ pub mod external_product;
 pub mod keyswitch;
 
 mod conversion;
-mod packing;
+mod glwe_packer;
 mod trace;
 
 pub use conversion::*;
-pub use packing::*;
+pub use glwe_packer::*;
 pub use trace::*;

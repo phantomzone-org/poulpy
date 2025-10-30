@@ -378,16 +378,6 @@ fn post_process<R, A, M, H, K, BE: Backend>(
             cts.insert(i * (1 << log_gap_out), ct);
         }
 
-        module.glwe_pack(&mut cts, log_gap_out, auto_keys, scratch);
-
-        let packed: &mut GLWE<Vec<u8>> = cts.remove(&0).unwrap();
-        res.trace(
-            module,
-            log_n - log_gap_out,
-            log_n,
-            packed,
-            auto_keys,
-            scratch,
-        );
+        module.glwe_pack(res, cts, log_gap_out, auto_keys, scratch);
     }
 }

@@ -15,7 +15,7 @@ use crate::{
     },
 };
 
-pub fn test_glwe_packing<BE: Backend>(module: &Module<BE>)
+pub fn test_glwe_packer<BE: Backend>(module: &Module<BE>)
 where
     Module<BE>: GLWEEncryptSk<BE>
         + GLWEAutomorphismKeyEncryptSk<BE>

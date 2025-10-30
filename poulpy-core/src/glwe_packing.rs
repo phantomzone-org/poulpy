@@ -6,15 +6,22 @@ use poulpy_hal::{
 };
 
 use crate::{
-    GLWEAdd, GLWEAutomorphism, GLWECopy, GLWENormalize, GLWERotate, GLWEShift, GLWESub, ScratchTakeCore,
+    GLWEAdd, GLWEAutomorphism, GLWECopy, GLWENormalize, GLWERotate, GLWEShift, GLWESub, GLWETrace, ScratchTakeCore,
     layouts::{GGLWEInfos, GGLWEPreparedToRef, GLWEAutomorphismKeyHelper, GLWEInfos, GLWEToMut, GLWEToRef, GetGaloisElement},
 };
 pub trait GLWEPacking<BE: Backend> {
     /// Packs [x_0: GLWE(m_0), x_1: GLWE(m_1), ..., x_i: GLWE(m_i)]
     /// to [0: GLWE(m_0 * X^x_0 + m_1 * X^x_1 + ... + m_i * X^x_i)]
-    fn glwe_pack<R, K, H>(&self, cts: &mut HashMap<usize, &mut R>, log_gap_out: usize, keys: &H, scratch: &mut Scratch<BE>)
-    where
-        R: GLWEToMut + GLWEToRef + GLWEInfos,
+    fn glwe_pack<R, A, K, H>(
+        &self,
+        res: &mut R,
+        a: HashMap<usize, &mut A>,
+        log_gap_out: usize,
+        keys: &H,
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: GLWEToMut,
+        A: GLWEToMut + GLWEToRef + GLWEInfos,
         K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>;
 }
@@ -29,21 +36,26 @@ where
         + GLWEShift<BE>
         + GLWEAdd
         + GLWENormalize<BE>
-        + GLWECopy,
+        + GLWECopy
+        + GLWETrace<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     /// Packs [x_0: GLWE(m_0), x_1: GLWE(m_1), ..., x_i: GLWE(m_i)]
     /// to [0: GLWE(m_0 * X^x_0 + m_1 * X^x_1 + ... + m_i * X^x_i)]
-    fn glwe_pack<R, K, H>(&self, cts: &mut HashMap<usize, &mut R>, log_gap_out: usize, keys: &H, scratch: &mut Scratch<BE>)
-    where
-        R: GLWEToMut + GLWEToRef + GLWEInfos,
+    fn glwe_pack<R, A, K, H>(
+        &self,
+        res: &mut R,
+        mut a: HashMap<usize, &mut A>,
+        log_gap_out: usize,
+        keys: &H,
+        scratch: &mut Scratch<BE>,
+    ) where
+        R: GLWEToMut,
+        A: GLWEToMut + GLWEToRef + GLWEInfos,
         K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
     {
-        #[cfg(debug_assertions)]
-        {
-            assert!(*cts.keys().max().unwrap() < self.n())
-        }
+        assert!(*a.keys().max().unwrap() < self.n());
 
         let log_n: usize = self.log_n();
 
@@ -58,18 +70,27 @@ where
             };
 
             for j in 0..t {
-                let mut a: Option<&mut R> = cts.remove(&j);
-                let mut b: Option<&mut R> = cts.remove(&(j + t));
+                let mut lo: Option<&mut A> = a.remove(&j);
+                let mut hi: Option<&mut A> = a.remove(&(j + t));
 
-                pack_internal(self, &mut a, &mut b, i, key, scratch);
+                pack_internal(self, &mut lo, &mut hi, i, key, scratch);
 
-                if let Some(a) = a {
-                    cts.insert(j, a);
-                } else if let Some(b) = b {
-                    cts.insert(j, b);
+                if let Some(lo) = lo {
+                    a.insert(j, lo);
+                } else if let Some(hi) = hi {
+                    a.insert(j, hi);
                 }
             }
         }
+
+        self.glwe_trace(
+            res,
+            log_n - log_gap_out,
+            log_n,
+            *a.get(&0).unwrap(),
+            keys,
+            scratch,
+        );
     }
 }
 
