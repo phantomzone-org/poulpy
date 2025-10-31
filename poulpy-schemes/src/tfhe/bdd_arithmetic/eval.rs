@@ -19,12 +19,32 @@ pub trait GetBitCircuitInfo<T: UnsignedInteger> {
     fn get_circuit(&self, bit: usize) -> (&[Node], usize);
 }
 
-pub(crate) struct BitCircuit<const N: usize> {
-    pub(crate) nodes: [Node; N],
-    pub(crate) max_inter_state: usize,
+pub struct BitCircuit<const N: usize> {
+    pub nodes: [Node; N],
+    pub max_inter_state: usize,
+}
+
+pub trait BitCircuitFamily {
+    const INPUT_BITS: usize;
+    const OUTPUT_BITS: usize;
 }
 
 pub struct Circuit<C: BitCircuitInfo, const N: usize>(pub [C; N]);
+
+impl<C, T: UnsignedInteger, const N: usize> GetBitCircuitInfo<T> for Circuit<C, N>
+where
+    C: BitCircuitInfo + BitCircuitFamily,
+{
+    fn input_size(&self) -> usize {
+        C::INPUT_BITS
+    }
+    fn output_size(&self) -> usize {
+        C::OUTPUT_BITS
+    }
+    fn get_circuit(&self, bit: usize) -> (&[Node], usize) {
+        self.0[bit].info()
+    }
+}
 
 pub trait ExecuteBDDCircuit<T: UnsignedInteger, BE: Backend> {
     fn execute_bdd_circuit<C, G, O>(&self, out: &mut [GLWE<O>], inputs: &G, circuit: &C, scratch: &mut Scratch<BE>)
@@ -51,7 +71,7 @@ where
     {
         #[cfg(debug_assertions)]
         {
-            assert_eq!(inputs.bit_size(), circuit.input_size());
+            assert!(inputs.bit_size() >= circuit.input_size());
             assert!(out.len() >= circuit.output_size());
         }
 
@@ -119,7 +139,7 @@ where
 }
 
 impl<const N: usize> BitCircuit<N> {
-    pub(crate) const fn new(nodes: [Node; N], max_inter_state: usize) -> Self {
+    pub const fn new(nodes: [Node; N], max_inter_state: usize) -> Self {
         Self {
             nodes,
             max_inter_state,

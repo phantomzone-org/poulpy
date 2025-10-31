@@ -1,4 +1,4 @@
-use crate::tfhe::bdd_arithmetic::{BitCircuit, BitCircuitInfo, Circuit, GetBitCircuitInfo, Node};
+use crate::tfhe::bdd_arithmetic::{BitCircuit, BitCircuitFamily, BitCircuitInfo, Circuit, Node};
 pub(crate) enum AnyBitCircuit {
     B0(BitCircuit<256>),
 }
@@ -10,16 +10,9 @@ impl BitCircuitInfo for AnyBitCircuit {
     }
 }
 
-impl GetBitCircuitInfo<u32> for Circuit<AnyBitCircuit, 1usize> {
-    fn input_size(&self) -> usize {
-        2 * u32::BITS as usize
-    }
-    fn output_size(&self) -> usize {
-        1
-    }
-    fn get_circuit(&self, bit: usize) -> (&[Node], usize) {
-        self.0[bit].info()
-    }
+impl BitCircuitFamily for AnyBitCircuit {
+    const INPUT_BITS: usize = 64;
+    const OUTPUT_BITS: usize = 1;
 }
 
 pub(crate) static OUTPUT_CIRCUITS: Circuit<AnyBitCircuit, 1usize> = Circuit([AnyBitCircuit::B0(BitCircuit::new(
