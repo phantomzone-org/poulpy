@@ -122,7 +122,7 @@ macro_rules! define_bdd_2w_to_1w_trait {
 
 #[macro_export]
 macro_rules! impl_bdd_2w_to_1w_trait {
-    ($trait_name:ident, $method_name:ident, $ty:ty, $n:literal, $circuit_ty:ty, $output_circuits:path) => {
+    ($trait_name:ident, $method_name:ident, $ty:ty, $circuit_ty:ty, $output_circuits:path) => {
         impl<D: DataMut, BE: Backend> $trait_name<$ty, BE> for FheUint<D, $ty> {
             fn $method_name<A, M, K, H, B>(
                 &mut self,
@@ -160,7 +160,6 @@ impl_bdd_2w_to_1w_trait!(
     Add,
     add,
     u32,
-    32,
     circuits::u32::add_codegen::AnyBitCircuit,
     circuits::u32::add_codegen::OUTPUT_CIRCUITS
 );
@@ -169,7 +168,6 @@ impl_bdd_2w_to_1w_trait!(
     Sub,
     sub,
     u32,
-    32,
     circuits::u32::sub_codegen::AnyBitCircuit,
     circuits::u32::sub_codegen::OUTPUT_CIRCUITS
 );
@@ -178,7 +176,6 @@ impl_bdd_2w_to_1w_trait!(
     Sll,
     sll,
     u32,
-    32,
     circuits::u32::sll_codegen::AnyBitCircuit,
     circuits::u32::sll_codegen::OUTPUT_CIRCUITS
 );
@@ -187,7 +184,6 @@ impl_bdd_2w_to_1w_trait!(
     Sra,
     sra,
     u32,
-    32,
     circuits::u32::sra_codegen::AnyBitCircuit,
     circuits::u32::sra_codegen::OUTPUT_CIRCUITS
 );
@@ -196,7 +192,6 @@ impl_bdd_2w_to_1w_trait!(
     Srl,
     srl,
     u32,
-    32,
     circuits::u32::srl_codegen::AnyBitCircuit,
     circuits::u32::srl_codegen::OUTPUT_CIRCUITS
 );
@@ -205,7 +200,6 @@ impl_bdd_2w_to_1w_trait!(
     Slt,
     slt,
     u32,
-    1,
     circuits::u32::slt_codegen::AnyBitCircuit,
     circuits::u32::slt_codegen::OUTPUT_CIRCUITS
 );
@@ -214,7 +208,6 @@ impl_bdd_2w_to_1w_trait!(
     Sltu,
     sltu,
     u32,
-    1,
     circuits::u32::sltu_codegen::AnyBitCircuit,
     circuits::u32::sltu_codegen::OUTPUT_CIRCUITS
 );
@@ -223,7 +216,6 @@ impl_bdd_2w_to_1w_trait!(
     And,
     and,
     u32,
-    32,
     circuits::u32::and_codegen::AnyBitCircuit,
     circuits::u32::and_codegen::OUTPUT_CIRCUITS
 );
@@ -232,7 +224,6 @@ impl_bdd_2w_to_1w_trait!(
     Or,
     or,
     u32,
-    32,
     circuits::u32::or_codegen::AnyBitCircuit,
     circuits::u32::or_codegen::OUTPUT_CIRCUITS
 );
@@ -241,7 +232,6 @@ impl_bdd_2w_to_1w_trait!(
     Xor,
     xor,
     u32,
-    32,
     circuits::u32::xor_codegen::AnyBitCircuit,
     circuits::u32::xor_codegen::OUTPUT_CIRCUITS
 );
