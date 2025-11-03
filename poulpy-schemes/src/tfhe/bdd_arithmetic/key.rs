@@ -210,16 +210,17 @@ pub trait FheUintBlocksPrepare<BRA: BlindRotationAlgo, T: UnsignedInteger, BE: B
     where
         R: GGSWInfos,
         A: BDDKeyInfos;
-    fn fhe_uint_prepare<DM, DR0, DR1>(
+    fn fhe_uint_prepare<DM, DB, DK, K>(
         &self,
         res: &mut FheUintPrepared<DM, T, BE>,
-        bits: &FheUint<DR0, T>,
-        key: &BDDKeyPrepared<DR1, BRA, BE>,
+        bits: &FheUint<DB, T>,
+        key: &K,
         scratch: &mut Scratch<BE>,
     ) where
         DM: DataMut,
-        DR0: DataRef,
-        DR1: DataRef;
+        DB: DataRef,
+        DK: DataRef,
+        K: BDDKeyHelper<DK, BRA, BE>;
 }
 
 impl<BRA: BlindRotationAlgo, BE: Backend, T: UnsignedInteger> FheUintBlocksPrepare<BRA, T, BE> for Module<BE>
@@ -240,39 +241,46 @@ where
         )
     }
 
-    fn fhe_uint_prepare<DM, DR0, DR1>(
+    fn fhe_uint_prepare<DM, DB, DK, K>(
         &self,
         res: &mut FheUintPrepared<DM, T, BE>,
-        bits: &FheUint<DR0, T>,
-        key: &BDDKeyPrepared<DR1, BRA, BE>,
+        bits: &FheUint<DB, T>,
+        key: &K,
         scratch: &mut Scratch<BE>,
     ) where
         DM: DataMut,
-        DR0: DataRef,
-        DR1: DataRef,
+        DB: DataRef,
+        DK: DataRef,
+        K: BDDKeyHelper<DK, BRA, BE>,
     {
+        let (cbt, ks) = key.get_cbt_key();
+
         let mut lwe: LWE<Vec<u8>> = LWE::alloc_from_infos(bits); //TODO: add TakeLWE
         let (mut tmp_ggsw, scratch_1) = scratch.take_ggsw(res);
         for (bit, dst) in res.bits.iter_mut().enumerate() {
-            bits.get_bit(self, bit, &mut lwe, &key.ks, scratch_1);
-            key.cbt
-                .execute_to_constant(self, &mut tmp_ggsw, &lwe, 1, 1, scratch_1);
+            bits.get_bit(self, bit, &mut lwe, ks, scratch_1);
+            cbt.execute_to_constant(self, &mut tmp_ggsw, &lwe, 1, 1, scratch_1);
             dst.prepare(self, &tmp_ggsw, scratch_1);
         }
     }
 }
 
+pub trait BDDKeyHelper<D: DataRef, BRA: BlindRotationAlgo, BE: Backend> {
+    fn get_cbt_key(
+        &self,
+    ) -> (
+        &CircuitBootstrappingKeyPrepared<D, BRA, BE>,
+        &GLWEToLWEKeyPrepared<D, BE>,
+    );
+}
+
 impl<D: DataMut, T: UnsignedInteger, BE: Backend> FheUintPrepared<D, T, BE> {
-    pub fn prepare<BRA, M, O, K>(
-        &mut self,
-        module: &M,
-        other: &FheUint<O, T>,
-        key: &BDDKeyPrepared<K, BRA, BE>,
-        scratch: &mut Scratch<BE>,
-    ) where
+    pub fn prepare<BRA, M, O, K, DK>(&mut self, module: &M, other: &FheUint<O, T>, key: &K, scratch: &mut Scratch<BE>)
+    where
         BRA: BlindRotationAlgo,
         O: DataRef,
-        K: DataRef,
+        DK: DataRef,
+        K: BDDKeyHelper<DK, BRA, BE>,
         M: FheUintBlocksPrepare<BRA, T, BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
