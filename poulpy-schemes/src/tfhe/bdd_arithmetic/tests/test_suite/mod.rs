@@ -3,6 +3,7 @@ mod and;
 mod fheuint;
 mod ggsw_blind_rotations;
 mod glwe_blind_rotation;
+mod glwe_blind_selection;
 mod or;
 mod prepare;
 mod sll;
@@ -18,6 +19,7 @@ pub use and::*;
 pub use fheuint::*;
 pub use ggsw_blind_rotations::*;
 pub use glwe_blind_rotation::*;
+pub use glwe_blind_selection::*;
 pub use or::*;
 use poulpy_hal::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},

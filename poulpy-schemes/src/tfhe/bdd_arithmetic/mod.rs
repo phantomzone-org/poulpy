@@ -1,5 +1,6 @@
 mod bdd_2w_to_1w;
 mod blind_rotation;
+mod blind_selection;
 mod ciphertexts;
 mod circuits;
 mod eval;
@@ -7,6 +8,7 @@ mod key;
 
 pub use bdd_2w_to_1w::*;
 pub use blind_rotation::*;
+pub use blind_selection::*;
 pub use ciphertexts::*;
 pub(crate) use circuits::*;
 pub use eval::*;

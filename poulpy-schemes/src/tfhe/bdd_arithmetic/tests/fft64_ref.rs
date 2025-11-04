@@ -6,13 +6,18 @@ use crate::tfhe::{
     bdd_arithmetic::tests::test_suite::{
         TestContext, test_bdd_add, test_bdd_and, test_bdd_or, test_bdd_prepare, test_bdd_sll, test_bdd_slt, test_bdd_sltu,
         test_bdd_sra, test_bdd_srl, test_bdd_sub, test_bdd_xor, test_fhe_uint_splice_u8, test_fhe_uint_splice_u16,
-        test_glwe_to_glwe_blind_rotation, test_scalar_to_ggsw_blind_rotation,
+        test_glwe_blind_selection, test_glwe_to_glwe_blind_rotation, test_scalar_to_ggsw_blind_rotation,
     },
     blind_rotation::CGGI,
 };
 
 static TEST_CONTEXT_CGGI_FFT64_REF: LazyLock<TestContext<CGGI, FFT64Ref>> =
     LazyLock::new(|| TestContext::<CGGI, FFT64Ref>::new());
+
+#[test]
+fn test_glwe_blind_selection_fft64_ref() {
+    test_glwe_blind_selection(&TEST_CONTEXT_CGGI_FFT64_REF)
+}
 
 #[test]
 fn test_fhe_uint_splice_u8_fft64_ref() {
