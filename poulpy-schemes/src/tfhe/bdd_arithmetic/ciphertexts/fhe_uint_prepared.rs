@@ -23,7 +23,7 @@ pub struct FheUintPrepared<D: Data, T: UnsignedInteger, B: Backend> {
     pub(crate) _phantom: PhantomData<T>,
 }
 
-impl<T: UnsignedInteger, BE: Backend> FheUintBlocksPreparedFactory<T, BE> for Module<BE> where
+impl<T: UnsignedInteger, BE: Backend> FheUintPreparedFactory<T, BE> for Module<BE> where
     Self: Sized + GGSWPreparedFactory<BE>
 {
 }
@@ -50,7 +50,7 @@ impl<D: DataMut, T: UnsignedInteger, BE: Backend> GetGGSWBitMut<T, BE> for FheUi
     }
 }
 
-pub trait FheUintBlocksPreparedFactory<T: UnsignedInteger, BE: Backend>
+pub trait FheUintPreparedFactory<T: UnsignedInteger, BE: Backend>
 where
     Self: Sized + GGSWPreparedFactory<BE>,
 {
@@ -88,25 +88,25 @@ impl<T: UnsignedInteger, BE: Backend> FheUintPrepared<Vec<u8>, T, BE> {
     pub fn alloc_from_infos<A, M>(module: &M, infos: &A) -> Self
     where
         A: GGSWInfos,
-        M: FheUintBlocksPreparedFactory<T, BE>,
+        M: FheUintPreparedFactory<T, BE>,
     {
         module.alloc_fhe_uint_prepared_from_infos(infos)
     }
 
     pub fn alloc<M>(module: &M, base2k: Base2K, k: TorusPrecision, dnum: Dnum, dsize: Dsize, rank: Rank) -> Self
     where
-        M: FheUintBlocksPreparedFactory<T, BE>,
+        M: FheUintPreparedFactory<T, BE>,
     {
         module.alloc_fhe_uint_prepared(base2k, k, dnum, dsize, rank)
     }
 }
 
-impl<T: UnsignedInteger + ToBits, BE: Backend> FheUintBlocksPreparedEncryptSk<T, BE> for Module<BE> where
+impl<T: UnsignedInteger + ToBits, BE: Backend> FheUintPreparedEncryptSk<T, BE> for Module<BE> where
     Self: Sized + ModuleN + GGSWEncryptSk<BE> + GGSWPreparedFactory<BE>
 {
 }
 
-pub trait FheUintBlocksPreparedEncryptSk<T: UnsignedInteger + ToBits, BE: Backend>
+pub trait FheUintPreparedEncryptSk<T: UnsignedInteger + ToBits, BE: Backend>
 where
     Self: Sized + ModuleN + GGSWEncryptSk<BE> + GGSWPreparedFactory<BE>,
 {
@@ -153,7 +153,7 @@ impl<D: DataMut, T: UnsignedInteger + ToBits, BE: Backend> FheUintPrepared<D, T,
         scratch: &mut Scratch<BE>,
     ) where
         S: GLWESecretPreparedToRef<BE> + GLWEInfos,
-        M: FheUintBlocksPreparedEncryptSk<T, BE>,
+        M: FheUintPreparedEncryptSk<T, BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         module.fhe_uint_prepared_encrypt_sk(self, value, sk, source_xa, source_xe, scratch);

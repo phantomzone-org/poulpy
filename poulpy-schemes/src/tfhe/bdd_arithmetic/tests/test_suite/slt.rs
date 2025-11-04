@@ -12,7 +12,7 @@ use rand::RngCore;
 use crate::tfhe::{
     bdd_arithmetic::{
         BDDKeyEncryptSk, BDDKeyPrepared, BDDKeyPreparedFactory, ExecuteBDDCircuit2WTo1W, FheUint, FheUintBlockDebugPrepare,
-        FheUintBlocksPrepare, FheUintBlocksPreparedEncryptSk, FheUintBlocksPreparedFactory, FheUintPrepared, Slt,
+        FheUintPrepare, FheUintPreparedEncryptSk, FheUintPreparedFactory, FheUintPrepared, Slt,
         tests::test_suite::{TEST_GGSW_INFOS, TEST_GLWE_INFOS, TestContext},
     },
     blind_rotation::{BlindRotationAlgo, BlindRotationKey, BlindRotationKeyFactory},
@@ -24,13 +24,13 @@ where
         + GLWESecretPreparedFactory<BE>
         + GLWEDecrypt<BE>
         + GLWENoise<BE>
-        + FheUintBlocksPreparedFactory<u32, BE>
-        + FheUintBlocksPreparedEncryptSk<u32, BE>
+        + FheUintPreparedFactory<u32, BE>
+        + FheUintPreparedEncryptSk<u32, BE>
         + FheUintBlockDebugPrepare<BRA, u32, BE>
         + BDDKeyEncryptSk<BRA, BE>
         + BDDKeyPreparedFactory<BRA, BE>
         + GGSWNoise<BE>
-        + FheUintBlocksPrepare<BRA, u32, BE>
+        + FheUintPrepare<BRA, u32, BE>
         + ExecuteBDDCircuit2WTo1W<u32, BE>
         + GLWEEncryptSk<BE>,
     BlindRotationKey<Vec<u8>, BRA>: BlindRotationKeyFactory<BRA>,

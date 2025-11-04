@@ -205,7 +205,7 @@ impl<D: DataMut, BRA: BlindRotationAlgo, BE: Backend> BDDKeyPrepared<D, BRA, BE>
     }
 }
 
-pub trait FheUintBlocksPrepare<BRA: BlindRotationAlgo, T: UnsignedInteger, BE: Backend> {
+pub trait FheUintPrepare<BRA: BlindRotationAlgo, T: UnsignedInteger, BE: Backend> {
     fn fhe_uint_prepare_tmp_bytes<R, A>(&self, block_size: usize, extension_factor: usize, res_infos: &R, infos: &A) -> usize
     where
         R: GGSWInfos,
@@ -223,7 +223,7 @@ pub trait FheUintBlocksPrepare<BRA: BlindRotationAlgo, T: UnsignedInteger, BE: B
         K: BDDKeyHelper<DK, BRA, BE>;
 }
 
-impl<BRA: BlindRotationAlgo, BE: Backend, T: UnsignedInteger> FheUintBlocksPrepare<BRA, T, BE> for Module<BE>
+impl<BRA: BlindRotationAlgo, BE: Backend, T: UnsignedInteger> FheUintPrepare<BRA, T, BE> for Module<BE>
 where
     Self: LWEFromGLWE<BE> + CirtuitBootstrappingExecute<BRA, BE> + GGSWPreparedFactory<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
@@ -281,7 +281,7 @@ impl<D: DataMut, T: UnsignedInteger, BE: Backend> FheUintPrepared<D, T, BE> {
         O: DataRef,
         DK: DataRef,
         K: BDDKeyHelper<DK, BRA, BE>,
-        M: FheUintBlocksPrepare<BRA, T, BE>,
+        M: FheUintPrepare<BRA, T, BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         module.fhe_uint_prepare(self, other, key, scratch);
