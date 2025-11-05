@@ -1,8 +1,8 @@
 use poulpy_core::{
     Distribution, GGLWEToGGSWKeyEncryptSk, GLWEAutomorphismKeyEncryptSk, GetDistribution, ScratchTakeCore,
     layouts::{
-        GGLWEInfos, GGLWEToGGSWKey, GGSWInfos, GLWEAutomorphismKey, GLWEAutomorphismKeyLayout, GLWEInfos,
-        GLWESecretPreparedFactory, GLWESecretToRef, GLWETensorKeyLayout, LWEInfos, LWESecretToRef, prepared::GLWESecretPrepared,
+        GGLWEInfos, GGLWEToGGSWKey, GGLWEToGGSWKeyLayout, GGSWInfos, GLWEAutomorphismKey, GLWEAutomorphismKeyLayout, GLWEInfos,
+        GLWESecretPreparedFactory, GLWESecretToRef, LWEInfos, LWESecretToRef, prepared::GLWESecretPrepared,
     },
     trace_galois_elements,
 };
@@ -21,14 +21,14 @@ use crate::tfhe::blind_rotation::{
 pub trait CircuitBootstrappingKeyInfos {
     fn brk_infos(&self) -> BlindRotationKeyLayout;
     fn atk_infos(&self) -> GLWEAutomorphismKeyLayout;
-    fn tsk_infos(&self) -> GLWETensorKeyLayout;
+    fn tsk_infos(&self) -> GGLWEToGGSWKeyLayout;
 }
 
 #[derive(Debug, Clone, Copy)]
 pub struct CircuitBootstrappingKeyLayout {
     pub layout_brk: BlindRotationKeyLayout,
     pub layout_atk: GLWEAutomorphismKeyLayout,
-    pub layout_tsk: GLWETensorKeyLayout,
+    pub layout_tsk: GGLWEToGGSWKeyLayout,
 }
 
 impl CircuitBootstrappingKeyInfos for CircuitBootstrappingKeyLayout {
@@ -40,7 +40,7 @@ impl CircuitBootstrappingKeyInfos for CircuitBootstrappingKeyLayout {
         self.layout_brk
     }
 
-    fn tsk_infos(&self) -> GLWETensorKeyLayout {
+    fn tsk_infos(&self) -> GGLWEToGGSWKeyLayout {
         self.layout_tsk
     }
 }
@@ -69,7 +69,7 @@ impl<BRA: BlindRotationAlgo> CircuitBootstrappingKey<Vec<u8>, BRA> {
     {
         let atk_infos: &GLWEAutomorphismKeyLayout = &infos.atk_infos();
         let brk_infos: &BlindRotationKeyLayout = &infos.brk_infos();
-        let trk_infos: &GLWETensorKeyLayout = &infos.tsk_infos();
+        let trk_infos: &GGLWEToGGSWKeyLayout = &infos.tsk_infos();
         let gal_els: Vec<i64> = trace_galois_elements(atk_infos.log_n(), 2 * atk_infos.n().as_usize() as i64);
 
         Self {
@@ -133,7 +133,7 @@ where
     {
         let brk_infos: &BlindRotationKeyLayout = &res.brk_infos();
         let atk_infos: &GLWEAutomorphismKeyLayout = &res.atk_infos();
-        let tsk_infos: &GLWETensorKeyLayout = &res.tsk_infos();
+        let tsk_infos: &GGLWEToGGSWKeyLayout = &res.tsk_infos();
 
         assert_eq!(sk_lwe.n(), brk_infos.n_lwe());
         assert_eq!(sk_glwe.n(), brk_infos.n_glwe());
@@ -187,8 +187,8 @@ impl<D: DataRef, BRA: BlindRotationAlgo> CircuitBootstrappingKeyInfos for Circui
         }
     }
 
-    fn tsk_infos(&self) -> GLWETensorKeyLayout {
-        GLWETensorKeyLayout {
+    fn tsk_infos(&self) -> GGLWEToGGSWKeyLayout {
+        GGLWEToGGSWKeyLayout {
             n: self.tsk.n(),
             base2k: self.tsk.base2k(),
             k: self.tsk.k(),

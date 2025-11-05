@@ -38,8 +38,8 @@ pub use xor::*;
 use poulpy_core::{
     ScratchTakeCore,
     layouts::{
-        Base2K, Degree, Dnum, Dsize, GGSWLayout, GLWEAutomorphismKeyLayout, GLWELayout, GLWESecret, GLWESecretPrepared,
-        GLWESecretPreparedFactory, GLWETensorKeyLayout, GLWEToLWEKeyLayout, LWESecret, Rank, TorusPrecision,
+        Base2K, Degree, Dnum, Dsize, GGLWEToGGSWKeyLayout, GGSWLayout, GLWEAutomorphismKeyLayout, GLWELayout, GLWESecret,
+        GLWESecretPrepared, GLWESecretPreparedFactory, GLWEToLWEKeyLayout, LWESecret, Rank, TorusPrecision,
     },
 };
 
@@ -167,7 +167,7 @@ pub(crate) static TEST_BDD_KEY_LAYOUT: BDDKeyLayout = BDDKeyLayout {
             dnum: Dnum(3),
             dsize: Dsize(1),
         },
-        layout_tsk: GLWETensorKeyLayout {
+        layout_tsk: GGLWEToGGSWKeyLayout {
             n: Degree(TEST_N_GLWE),
             base2k: Base2K(TEST_BASE2K),
             k: TorusPrecision(52),

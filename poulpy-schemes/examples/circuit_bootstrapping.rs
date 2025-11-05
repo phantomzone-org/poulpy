@@ -1,7 +1,7 @@
 use poulpy_core::{
     GLWENormalize,
     layouts::{
-        GGSW, GGSWLayout, GLWE, GLWEAutomorphismKeyLayout, GLWELayout, GLWEPlaintext, GLWESecret, GLWETensorKeyLayout, LWE,
+        GGLWEToGGSWKeyLayout, GGSW, GGSWLayout, GLWE, GLWEAutomorphismKeyLayout, GLWELayout, GLWEPlaintext, GLWESecret, LWE,
         LWEInfos, LWELayout, LWEPlaintext, LWESecret,
         prepared::{GGSWPrepared, GLWESecretPrepared},
     },
@@ -94,7 +94,7 @@ fn main() {
             dsize: 1_u32.into(),
             rank: rank.into(),
         },
-        layout_tsk: GLWETensorKeyLayout {
+        layout_tsk: GGLWEToGGSWKeyLayout {
             n: n_glwe.into(),
             base2k: base2k.into(),
             k: k_tsk.into(),

@@ -1,7 +1,7 @@
 use poulpy_core::{
     layouts::{
-        GGLWEInfos, GGLWEToGGSWKeyPrepared, GGLWEToGGSWKeyPreparedFactory, GGSWInfos, GLWEAutomorphismKeyHelper,
-        GLWEAutomorphismKeyLayout, GLWEAutomorphismKeyPreparedFactory, GLWEInfos, GLWETensorKeyLayout,
+        GGLWEInfos, GGLWEToGGSWKeyLayout, GGLWEToGGSWKeyPrepared, GGLWEToGGSWKeyPreparedFactory, GGSWInfos,
+        GLWEAutomorphismKeyHelper, GLWEAutomorphismKeyLayout, GLWEAutomorphismKeyPreparedFactory, GLWEInfos,
         GLWETensorKeyPreparedFactory, LWEInfos, prepared::GLWEAutomorphismKeyPrepared,
     },
     trace_galois_elements,
@@ -145,8 +145,8 @@ impl<D: DataRef, BRA: BlindRotationAlgo, B: Backend> CircuitBootstrappingKeyInfo
         }
     }
 
-    fn tsk_infos(&self) -> GLWETensorKeyLayout {
-        GLWETensorKeyLayout {
+    fn tsk_infos(&self) -> GGLWEToGGSWKeyLayout {
+        GGLWEToGGSWKeyLayout {
             n: self.tsk.n(),
             base2k: self.tsk.base2k(),
             k: self.tsk.k(),

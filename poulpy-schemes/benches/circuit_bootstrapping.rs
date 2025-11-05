@@ -5,8 +5,8 @@ use poulpy_backend::{FFT64Avx, FFT64Ref, FFT64Spqlios};
 use poulpy_core::{
     GGSWNoise, GLWEDecrypt, GLWEEncryptSk, GLWEExternalProduct, LWEEncryptSk, ScratchTakeCore,
     layouts::{
-        Dsize, GGSW, GGSWLayout, GGSWPreparedFactory, GLWEAutomorphismKeyLayout, GLWESecret, GLWESecretPreparedFactory,
-        GLWETensorKeyLayout, LWE, LWELayout, LWESecret,
+        Dsize, GGLWEToGGSWKeyLayout, GGSW, GGSWLayout, GGSWPreparedFactory, GLWEAutomorphismKeyLayout, GLWESecret,
+        GLWESecretPreparedFactory, LWE, LWELayout, LWESecret,
     },
 };
 use poulpy_hal::{
@@ -161,7 +161,7 @@ where
                 dsize: Dsize(1),
                 rank: 2_u32.into(),
             },
-            layout_tsk: GLWETensorKeyLayout {
+            layout_tsk: GGLWEToGGSWKeyLayout {
                 n: 1024_u32.into(),
                 base2k: 13_u32.into(),
                 k: 52_u32.into(),

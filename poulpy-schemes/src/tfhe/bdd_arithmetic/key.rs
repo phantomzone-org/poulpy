@@ -194,6 +194,17 @@ impl<BRA: BlindRotationAlgo, BE: Backend> BDDKeyPrepared<Vec<u8>, BRA, BE> {
     }
 }
 
+impl<D: DataRef, BRA: BlindRotationAlgo, BE: Backend> BDDKeyHelper<D, BRA, BE> for BDDKeyPrepared<D, BRA, BE> {
+    fn get_cbt_key(
+        &self,
+    ) -> (
+        &CircuitBootstrappingKeyPrepared<D, BRA, BE>,
+        &GLWEToLWEKeyPrepared<D, BE>,
+    ) {
+        (&self.cbt, &self.ks)
+    }
+}
+
 pub trait BDDKeyHelper<D: DataRef, BRA: BlindRotationAlgo, BE: Backend> {
     fn get_cbt_key(
         &self,

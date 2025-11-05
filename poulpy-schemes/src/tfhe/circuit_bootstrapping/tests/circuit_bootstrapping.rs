@@ -17,7 +17,7 @@ use crate::tfhe::{
 use poulpy_core::{
     GGSWNoise, GLWEDecrypt, GLWEEncryptSk, GLWEExternalProduct, LWEEncryptSk, ScratchTakeCore,
     layouts::{
-        Dsize, GGSWLayout, GGSWPreparedFactory, GLWEAutomorphismKeyLayout, GLWESecretPreparedFactory, GLWETensorKeyLayout,
+        Dsize, GGLWEToGGSWKeyLayout, GGSWLayout, GGSWPreparedFactory, GLWEAutomorphismKeyLayout, GLWESecretPreparedFactory,
         LWELayout,
     },
 };
@@ -90,7 +90,7 @@ where
             rank: rank.into(),
             dsize: Dsize(1),
         },
-        layout_tsk: GLWETensorKeyLayout {
+        layout_tsk: GGLWEToGGSWKeyLayout {
             n: n_glwe.into(),
             base2k: base2k.into(),
             k: k_tsk.into(),
@@ -271,7 +271,7 @@ where
             rank: rank.into(),
             dsize: Dsize(1),
         },
-        layout_tsk: GLWETensorKeyLayout {
+        layout_tsk: GGLWEToGGSWKeyLayout {
             n: n_glwe.into(),
             base2k: base2k.into(),
             k: k_tsk.into(),
