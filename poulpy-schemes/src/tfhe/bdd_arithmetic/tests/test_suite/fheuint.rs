@@ -7,10 +7,11 @@ use poulpy_hal::{
     layouts::{Backend, Module, Scratch, ScratchOwned},
     source::Source,
 };
+use rand::RngCore;
 
 use crate::tfhe::{
     bdd_arithmetic::{
-        BDDKeyPrepared, FheUint, ScratchTakeBDD,
+        BDDKeyPrepared, FheUint, ScratchTakeBDD, ToBits,
         tests::test_suite::{TEST_GLWE_INFOS, TestContext},
     },
     blind_rotation::BlindRotationAlgo,
@@ -169,5 +170,42 @@ where
             let c_want: u32 = ((a_r & 0xFFFF_0000) | (b_r & 0x0000_FFFF)).rotate_left(rj);
             assert_eq!(c_want, c_enc.decrypt(module, sk, scratch.borrow()));
         }
+    }
+}
+
+pub fn test_fhe_uint_get_bit_glwe<BRA: BlindRotationAlgo, BE: Backend>(test_context: &TestContext<BRA, BE>)
+where
+    Module<BE>: GLWEEncryptSk<BE> + GLWERotate<BE> + GLWETrace<BE> + GLWESub + GLWEAdd + GLWEDecrypt<BE>,
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
+    Scratch<BE>: ScratchTakeBDD<u32, BE>,
+{
+    let glwe_infos: GLWELayout = TEST_GLWE_INFOS;
+
+    let module: &Module<BE> = &test_context.module;
+    let sk: &GLWESecretPrepared<Vec<u8>, BE> = &test_context.sk_glwe;
+    let keys: &BDDKeyPrepared<Vec<u8>, BRA, BE> = &test_context.bdd_key;
+
+    let mut source_xa: Source = Source::new([2u8; 32]);
+    let mut source_xe: Source = Source::new([3u8; 32]);
+
+    let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(1 << 22);
+
+    let mut a_enc: FheUint<Vec<u8>, u32> = FheUint::<Vec<u8>, u32>::alloc_from_infos(&glwe_infos);
+    let mut c_enc: FheUint<Vec<u8>, u32> = FheUint::<Vec<u8>, u32>::alloc_from_infos(&glwe_infos);
+
+    let a: u32 = source_xa.next_u32();
+
+    a_enc.encrypt_sk(
+        module,
+        a,
+        sk,
+        &mut source_xa,
+        &mut source_xe,
+        scratch.borrow(),
+    );
+
+    for i in 0..32 {
+        a_enc.get_bit_glwe(module, i, &mut c_enc, keys, scratch.borrow());
+        assert_eq!(a.bit(i) as u32, c_enc.decrypt(module, sk, scratch.borrow()));
     }
 }

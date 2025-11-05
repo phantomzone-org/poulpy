@@ -287,7 +287,7 @@ where
 impl<T: UnsignedInteger, BE: Backend> ScratchTakeBDD<T, BE> for Scratch<BE> where Self: ScratchTakeCore<BE> {}
 
 impl<D: DataRef, T: UnsignedInteger> FheUint<D, T> {
-    pub fn get_bit<R, K, M, BE: Backend>(&self, module: &M, bit: usize, res: &mut R, ks: &K, scratch: &mut Scratch<BE>)
+    pub fn get_bit_lwe<R, K, M, BE: Backend>(&self, module: &M, bit: usize, res: &mut R, ks: &K, scratch: &mut Scratch<BE>)
     where
         R: LWEToMut,
         K: GGLWEPreparedToRef<BE> + GGLWEInfos,
@@ -297,6 +297,37 @@ impl<D: DataRef, T: UnsignedInteger> FheUint<D, T> {
         let log_gap: usize = module.log_n() - T::LOG_BITS as usize;
         res.to_mut()
             .from_glwe(module, self, T::bit_index(bit) << log_gap, ks, scratch);
+    }
+
+    pub fn get_bit_glwe<R, K, M, H, BE: Backend>(&self, module: &M, bit: usize, res: &mut R, keys: &H, scratch: &mut Scratch<BE>)
+    where
+        R: GLWEToMut,
+        K: GGLWEPreparedToRef<BE> + GGLWEInfos,
+        M: ModuleLogN + GLWERotate<BE> + GLWETrace<BE>,
+        H: GLWEAutomorphismKeyHelper<K, BE>,
+        K: GGLWEPreparedToRef<BE> + GGLWEInfos + GetGaloisElement,
+        Scratch<BE>: ScratchTakeCore<BE>,
+    {
+        let log_gap: usize = module.log_n() - T::LOG_BITS as usize;
+        let rot = (T::bit_index(bit) << log_gap) as i64;
+        module.glwe_rotate(-rot, res, self);
+        module.glwe_trace_inplace(res, 0, keys, scratch);
+    }
+
+    pub fn get_byte<R, K, M, H, BE: Backend>(&self, module: &M, byte: usize, res: &mut R, keys: &H, scratch: &mut Scratch<BE>)
+    where
+        R: GLWEToMut,
+        K: GGLWEPreparedToRef<BE> + GGLWEInfos,
+        M: ModuleLogN + GLWERotate<BE> + GLWETrace<BE>,
+        H: GLWEAutomorphismKeyHelper<K, BE>,
+        K: GGLWEPreparedToRef<BE> + GGLWEInfos + GetGaloisElement,
+        Scratch<BE>: ScratchTakeCore<BE>,
+    {
+        let log_gap: usize = module.log_n() - T::LOG_BITS as usize;
+        let trace_start = (T::LOG_BITS - T::LOG_BYTES) as usize;
+        let rot = (T::bit_index(byte << 3) << log_gap) as i64;
+        module.glwe_rotate(-rot, res, self);
+        module.glwe_trace_inplace(res, trace_start, keys, scratch);
     }
 }
 

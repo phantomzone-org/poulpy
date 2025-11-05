@@ -127,7 +127,7 @@ where
     {
         let mut lwe: LWE<Vec<u8>> = LWE::alloc_from_infos(bits); //TODO: add TakeLWE
         for (bit, dst) in res.bits.iter_mut().enumerate() {
-            bits.get_bit(self, bit, &mut lwe, &key.ks, scratch);
+            bits.get_bit_lwe(self, bit, &mut lwe, &key.ks, scratch);
             key.cbt.execute_to_constant(self, dst, &lwe, 1, 1, scratch);
         }
     }

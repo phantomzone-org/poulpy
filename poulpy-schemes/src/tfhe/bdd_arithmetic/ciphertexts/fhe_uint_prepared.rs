@@ -254,7 +254,7 @@ where
         let mut lwe: LWE<Vec<u8>> = LWE::alloc_from_infos(bits); //TODO: add TakeLWE
         let (mut tmp_ggsw, scratch_1) = scratch.take_ggsw(res);
         for (bit, dst) in res.bits.iter_mut().enumerate() {
-            bits.get_bit(self, bit, &mut lwe, ks, scratch_1);
+            bits.get_bit_lwe(self, bit, &mut lwe, ks, scratch_1);
             cbt.execute_to_constant(self, &mut tmp_ggsw, &lwe, 1, 1, scratch_1);
             dst.prepare(self, &tmp_ggsw, scratch_1);
         }
