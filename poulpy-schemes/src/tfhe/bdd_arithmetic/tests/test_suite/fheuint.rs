@@ -58,7 +58,7 @@ where
 }
 
 pub fn sext(x: u32, byte: usize) -> u32 {
-    x | ((x >> (byte << 3)) & 1) * (0xFFFF_FFFF & (0xFFFF_FFFF << (byte << 3)))
+    x | (((x >> (byte << 3)) & 1) * (0xFFFF_FFFF << (byte << 3)))
 }
 
 pub fn test_fhe_uint_splice_u8<BRA: BlindRotationAlgo, BE: Backend>(test_context: &TestContext<BRA, BE>)

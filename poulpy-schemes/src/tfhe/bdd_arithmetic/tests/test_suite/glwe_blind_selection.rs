@@ -129,7 +129,7 @@ where
         res.decrypt(module, &mut pt, sk_glwe_prep, scratch.borrow());
 
         let idx = ((k >> bit_start) & mask) as usize;
-        if idx.is_multiple_of(3) {
+        if !idx.is_multiple_of(3) {
             assert_eq!(0, pt.decode_coeff_i64(TorusPrecision(base2k.as_u32()), 0));
         } else {
             assert_eq!(
