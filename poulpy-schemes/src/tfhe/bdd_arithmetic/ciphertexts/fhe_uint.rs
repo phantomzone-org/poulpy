@@ -239,14 +239,7 @@ impl<D: DataMut, T: UnsignedInteger> FheUint<D, T> {
 
         // Stores this byte (everything else zeroed) into tmp_trace
         let (mut tmp_trace, scratch_1) = scratch.take_glwe(a);
-        module.glwe_trace(
-            &mut tmp_trace,
-            trace_start,
-            module.log_n(),
-            self,
-            keys,
-            scratch_1,
-        );
+        module.glwe_trace(&mut tmp_trace, trace_start, self, keys, scratch_1);
 
         // Subtracts to self to zero it
         module.glwe_sub_inplace(&mut self.bits, &tmp_trace);
@@ -262,13 +255,7 @@ impl<D: DataMut, T: UnsignedInteger> FheUint<D, T> {
         );
 
         // Zeroes all other bytes
-        module.glwe_trace_inplace(
-            &mut tmp_fhe_uint_byte,
-            trace_start,
-            module.log_n(),
-            keys,
-            scratch_1,
-        );
+        module.glwe_trace_inplace(&mut tmp_fhe_uint_byte, trace_start, keys, scratch_1);
 
         // Add self[0] += a[0]
         module.glwe_add_inplace(&mut self.bits, &tmp_fhe_uint_byte);
@@ -322,5 +309,42 @@ impl<D: DataRef, T: UnsignedInteger> FheUint<D, T> {
 impl<D: DataRef, T: UnsignedInteger> GLWEToRef for FheUint<D, T> {
     fn to_ref(&self) -> GLWE<&[u8]> {
         self.bits.to_ref()
+    }
+}
+
+impl<D: DataMut, T: UnsignedInteger> FheUint<D, T> {
+    pub fn sext<M, H, K, BE>(&mut self, module: &M, byte: usize, keys: &H, scratch: &mut Scratch<BE>)
+    where
+        M:,
+        H: GLWEAutomorphismKeyHelper<K, BE>,
+        K: GGLWEPreparedToRef<BE> + GGLWEInfos + GetGaloisElement,
+        BE: Backend,
+        M: ModuleLogN + GLWERotate<BE> + GLWETrace<BE> + GLWEAdd + GLWESub + GLWECopy,
+        Scratch<BE>: ScratchTakeCore<BE>,
+    {
+        assert!(byte < (1 << T::LOG_BYTES));
+
+        let log_gap: usize = module.log_n() - T::LOG_BITS as usize;
+        let rot: i64 = (T::bit_index(byte << 3) << log_gap) as i64;
+
+        let (mut sext, scratch_1) = scratch.take_glwe(self);
+
+        // Extract MSB
+        module.glwe_rotate(-rot, &mut sext, &self.bits);
+        module.glwe_trace_inplace(&mut sext, 0, keys, scratch_1);
+
+        // Replicates MSB in byte
+        for i in 0..3 {
+            let (mut tmp, _) = scratch_1.take_glwe(self);
+            module.glwe_rotate(((1 << T::LOG_BYTES) << log_gap) << i, &mut tmp, &sext);
+            module.glwe_add_inplace(&mut sext, &tmp);
+        }
+
+        // Splice sext
+        let (mut tmp, scratch_2) = scratch_1.take_glwe(self);
+        for i in byte..(1 << T::LOG_BYTES) as usize {
+            FheUint::<&mut [u8], T>::from_glwe_to_mut(&mut tmp).splice_u8(module, i, 0, &self.bits, &sext, keys, scratch_2);
+            module.glwe_copy(&mut self.bits, &tmp);
+        }
     }
 }

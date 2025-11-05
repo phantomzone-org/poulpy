@@ -114,8 +114,7 @@ where
             auto_keys.insert(*gal_el, atk_prepared);
         });
 
-        glwe_out.trace_inplace(module, 0, 5, &auto_keys, scratch.borrow());
-        glwe_out.trace_inplace(module, 5, module.log_n(), &auto_keys, scratch.borrow());
+        glwe_out.trace_inplace(module, 0, &auto_keys, scratch.borrow());
 
         (0..pt_want.size()).for_each(|i| pt_want.data.at_mut(0, i)[0] = pt_have.data.at(0, i)[0]);
 

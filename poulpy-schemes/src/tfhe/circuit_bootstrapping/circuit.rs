@@ -305,7 +305,7 @@ pub fn circuit_bootstrap_core<R, L, D, M, BRA: BlindRotationAlgo, BE: Backend>(
                 scratch_2,
             );
         } else {
-            tmp_glwe.trace(module, 0, module.log_n(), &res_glwe, &key.atk, scratch_2);
+            tmp_glwe.trace(module, 0, &res_glwe, &key.atk, scratch_2);
         }
 
         // let sk_glwe: &poulpy_core::layouts::GLWESecret<&[u8]> = &sk_glwe.to_ref();
@@ -344,8 +344,6 @@ fn post_process<R, A, M, H, K, BE: Backend>(
     let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
     let a: &GLWE<&[u8]> = &a.to_ref();
 
-    let log_n: usize = module.log_n();
-
     let mut cts: HashMap<usize, &mut GLWE<Vec<u8>>> = HashMap::new();
 
     // First partial trace, vanishes all coefficients which are not multiples of gap_in
@@ -353,7 +351,6 @@ fn post_process<R, A, M, H, K, BE: Backend>(
     res.trace(
         module,
         module.log_n() - log_gap_in + 1,
-        log_n,
         a,
         auto_keys,
         scratch,

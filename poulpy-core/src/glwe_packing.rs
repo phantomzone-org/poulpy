@@ -83,14 +83,7 @@ where
             }
         }
 
-        self.glwe_trace(
-            res,
-            log_n - log_gap_out,
-            log_n,
-            *a.get(&0).unwrap(),
-            keys,
-            scratch,
-        );
+        self.glwe_trace(res, log_n - log_gap_out, *a.get(&0).unwrap(), keys, scratch);
     }
 }
 

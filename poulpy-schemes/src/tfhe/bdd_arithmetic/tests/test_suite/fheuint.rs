@@ -16,6 +16,51 @@ use crate::tfhe::{
     blind_rotation::BlindRotationAlgo,
 };
 
+pub fn test_fhe_uint_sext<BRA: BlindRotationAlgo, BE: Backend>(test_context: &TestContext<BRA, BE>)
+where
+    Module<BE>: GLWEEncryptSk<BE> + GLWERotate<BE> + GLWETrace<BE> + GLWESub + GLWEAdd + GLWEDecrypt<BE>,
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
+    Scratch<BE>: ScratchTakeBDD<u32, BE>,
+{
+    let glwe_infos: GLWELayout = TEST_GLWE_INFOS;
+
+    let module: &Module<BE> = &test_context.module;
+    let sk: &GLWESecretPrepared<Vec<u8>, BE> = &test_context.sk_glwe;
+    let keys: &BDDKeyPrepared<Vec<u8>, BRA, BE> = &test_context.bdd_key;
+
+    let mut source_xa: Source = Source::new([2u8; 32]);
+    let mut source_xe: Source = Source::new([3u8; 32]);
+
+    let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(1 << 22);
+
+    let mut a_enc: FheUint<Vec<u8>, u32> = FheUint::<Vec<u8>, u32>::alloc_from_infos(&glwe_infos);
+
+    for j in 0..3 {
+        for i in 0..32 {
+            let a: u32 = 0xFFFFFFFF >> i;
+
+            a_enc.encrypt_sk(
+                module,
+                a,
+                sk,
+                &mut source_xa,
+                &mut source_xe,
+                scratch.borrow(),
+            );
+
+            a_enc.sext(module, j, keys, scratch.borrow());
+
+            // println!("{:08x} -> {:08x} {:08x}", a, sext(a, j), a_enc.decrypt(module, sk, scratch.borrow()));
+
+            assert_eq!(sext(a, j), a_enc.decrypt(module, sk, scratch.borrow()));
+        }
+    }
+}
+
+pub fn sext(x: u32, byte: usize) -> u32 {
+    x | ((x >> (byte << 3)) & 1) * (0xFFFF_FFFF & (0xFFFF_FFFF << (byte << 3)))
+}
+
 pub fn test_fhe_uint_splice_u8<BRA: BlindRotationAlgo, BE: Backend>(test_context: &TestContext<BRA, BE>)
 where
     Module<BE>: GLWEEncryptSk<BE> + GLWERotate<BE> + GLWETrace<BE> + GLWESub + GLWEAdd + GLWEDecrypt<BE>,

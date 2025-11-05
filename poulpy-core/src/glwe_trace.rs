@@ -31,38 +31,25 @@ impl GLWE<Vec<u8>> {
 }
 
 impl<D: DataMut> GLWE<D> {
-    pub fn trace<A, H, K, M, BE: Backend>(
-        &mut self,
-        module: &M,
-        start: usize,
-        end: usize,
-        a: &A,
-        keys: &H,
-        scratch: &mut Scratch<BE>,
-    ) where
+    pub fn trace<A, H, K, M, BE: Backend>(&mut self, module: &M, skip: usize, a: &A, keys: &H, scratch: &mut Scratch<BE>)
+    where
         A: GLWEToRef,
         K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
         M: GLWETrace<BE>,
     {
-        module.glwe_trace(self, start, end, a, keys, scratch);
+        module.glwe_trace(self, skip, a, keys, scratch);
     }
 
-    pub fn trace_inplace<H, K, M, BE: Backend>(
-        &mut self,
-        module: &M,
-        start: usize,
-        end: usize,
-        keys: &H,
-        scratch: &mut Scratch<BE>,
-    ) where
+    pub fn trace_inplace<H, K, M, BE: Backend>(&mut self, module: &M, skip: usize, keys: &H, scratch: &mut Scratch<BE>)
+    where
         K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
         M: GLWETrace<BE>,
     {
-        module.glwe_trace_inplace(self, start, end, keys, scratch);
+        module.glwe_trace_inplace(self, skip, keys, scratch);
     }
 }
 
@@ -114,7 +101,7 @@ where
         trace
     }
 
-    fn glwe_trace<R, A, K, H>(&self, res: &mut R, start: usize, end: usize, a: &A, keys: &H, scratch: &mut Scratch<BE>)
+    fn glwe_trace<R, A, K, H>(&self, res: &mut R, skip: usize, a: &A, keys: &H, scratch: &mut Scratch<BE>)
     where
         R: GLWEToMut,
         A: GLWEToRef,
@@ -122,10 +109,10 @@ where
         H: GLWEAutomorphismKeyHelper<K, BE>,
     {
         self.glwe_copy(res, a);
-        self.glwe_trace_inplace(res, start, end, keys, scratch);
+        self.glwe_trace_inplace(res, skip, keys, scratch);
     }
 
-    fn glwe_trace_inplace<R, K, H>(&self, res: &mut R, start: usize, end: usize, keys: &H, scratch: &mut Scratch<BE>)
+    fn glwe_trace_inplace<R, K, H>(&self, res: &mut R, skip: usize, keys: &H, scratch: &mut Scratch<BE>)
     where
         R: GLWEToMut,
         K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
@@ -134,11 +121,11 @@ where
         let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
 
         let ksk_infos: &GGLWELayout = &keys.automorphism_key_infos();
+        let log_n: usize = self.log_n();
 
         assert_eq!(res.n(), self.n() as u32);
         assert_eq!(ksk_infos.n(), self.n() as u32);
-        assert!(start < end);
-        assert!(end <= self.log_n());
+        assert!(skip <= log_n);
         assert_eq!(ksk_infos.rank_in(), res.rank());
         assert_eq!(ksk_infos.rank_out(), res.rank());
 
@@ -162,7 +149,7 @@ where
                 );
             }
 
-            for i in start..end {
+            for i in skip..log_n {
                 self.glwe_rsh(1, &mut self_conv, scratch_1);
 
                 let p: i64 = if i == 0 {
@@ -192,7 +179,7 @@ where
         } else {
             // println!("res: {}", res);
 
-            for i in start..end {
+            for i in skip..log_n {
                 self.glwe_rsh(1, res, scratch);
 
                 let p: i64 = if i == 0 {
@@ -220,14 +207,14 @@ pub trait GLWETrace<BE: Backend> {
         A: GLWEInfos,
         K: GGLWEInfos;
 
-    fn glwe_trace<R, A, K, H>(&self, res: &mut R, start: usize, end: usize, a: &A, keys: &H, scratch: &mut Scratch<BE>)
+    fn glwe_trace<R, A, K, H>(&self, res: &mut R, skip: usize, a: &A, keys: &H, scratch: &mut Scratch<BE>)
     where
         R: GLWEToMut,
         A: GLWEToRef,
         K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>;
 
-    fn glwe_trace_inplace<R, K, H>(&self, res: &mut R, start: usize, end: usize, keys: &H, scratch: &mut Scratch<BE>)
+    fn glwe_trace_inplace<R, K, H>(&self, res: &mut R, skip: usize, keys: &H, scratch: &mut Scratch<BE>)
     where
         R: GLWEToMut,
         K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,

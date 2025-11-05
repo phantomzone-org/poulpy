@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use crate::tfhe::bdd_arithmetic::{BDDKeyPrepared, FheUint, FheUintBlockDebugPrepare, ToBits};
+use crate::tfhe::bdd_arithmetic::{BDDKeyPrepared, FheUint, FheUintPrepareDebug, ToBits};
 use crate::tfhe::{
     bdd_arithmetic::UnsignedInteger, blind_rotation::BlindRotationAlgo, circuit_bootstrapping::CirtuitBootstrappingExecute,
 };
@@ -109,7 +109,7 @@ impl<D: DataRef, T: UnsignedInteger + ToBits> FheUintPreparedDebug<D, T> {
     }
 }
 
-impl<BRA: BlindRotationAlgo, BE: Backend, T: UnsignedInteger> FheUintBlockDebugPrepare<BRA, T, BE> for Module<BE>
+impl<BRA: BlindRotationAlgo, BE: Backend, T: UnsignedInteger> FheUintPrepareDebug<BRA, T, BE> for Module<BE>
 where
     Self: ModuleN + LWEFromGLWE<BE> + CirtuitBootstrappingExecute<BRA, BE> + GGSWPreparedFactory<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
@@ -144,7 +144,7 @@ impl<D: DataMut, T: UnsignedInteger> FheUintPreparedDebug<D, T> {
         BRA: BlindRotationAlgo,
         O: DataRef,
         K: DataRef,
-        M: FheUintBlockDebugPrepare<BRA, T, BE>,
+        M: FheUintPrepareDebug<BRA, T, BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         module.fhe_uint_debug_prepare(self, other, key, scratch);
