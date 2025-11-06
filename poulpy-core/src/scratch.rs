@@ -155,6 +155,24 @@ where
         )
     }
 
+    fn take_ggsw_slice<A>(
+        &mut self,
+        size: usize,
+        infos: &A,
+    ) -> (Vec<GGSW<&mut [u8]>>, &mut Self)
+    where
+        A: GGSWInfos,
+    {
+        let mut scratch: &mut Self = self;
+        let mut cts: Vec<GGSW<&mut [u8]>> = Vec::with_capacity(size);
+        for _ in 0..size {
+            let (ct, new_scratch) = scratch.take_ggsw(infos);
+            scratch = new_scratch;
+            cts.push(ct)
+        }
+        (cts, scratch)
+    }
+
     fn take_ggsw_prepared_slice<A, M>(
         &mut self,
         module: &M,
