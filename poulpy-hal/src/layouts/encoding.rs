@@ -164,13 +164,15 @@ impl<D: DataRef> VecZnx<D> {
         data.copy_from_slice(a.at(col, 0));
         let rem: usize = base2k - (k % base2k);
         if k < base2k {
-            data.iter_mut().for_each(|x| *x >>= rem);
+            let scale = 1 << rem as i64;
+            data.iter_mut().for_each(|x| *x = div_round(*x, scale));
         } else {
             (1..size).for_each(|i| {
                 if i == size - 1 && rem != base2k {
                     let k_rem: usize = (base2k - rem) % base2k;
+                    let scale: i64 = 1 << rem as i64;
                     izip!(a.at(col, i).iter(), data.iter_mut()).for_each(|(x, y)| {
-                        *y = (*y << k_rem) + (x >> rem);
+                        *y = (*y << k_rem) + div_round(*x, scale);
                     });
                 } else {
                     izip!(a.at(col, i).iter(), data.iter_mut()).for_each(|(x, y)| {
@@ -197,7 +199,8 @@ impl<D: DataRef> VecZnx<D> {
             let x: i64 = a.at(col, j)[idx];
             if j == size - 1 && rem != base2k {
                 let k_rem: usize = (base2k - rem) % base2k;
-                res = (res << k_rem) + (x >> rem);
+                let scale: i64 = 1 << rem as i64;
+                res = (res << k_rem) + div_round(x, scale);
             } else {
                 res = (res << base2k) + x;
             }
@@ -293,7 +296,8 @@ impl<D: DataRef> Zn<D> {
             let x: i64 = a.at(0, j)[0];
             if j == size - 1 && rem != base2k {
                 let k_rem: usize = (base2k - rem) % base2k;
-                res = (res << k_rem) + (x >> rem);
+                let scale: i64 = 1 << rem as i64;
+                res = (res << k_rem) + div_round(x, scale);
             } else {
                 res = (res << base2k) + x;
             }
@@ -322,5 +326,17 @@ impl<D: DataRef> Zn<D> {
         });
 
         res
+    }
+}
+
+#[inline]
+pub fn div_round(a: i64, b: i64) -> i64 {
+    assert!(b != 0, "division by zero");
+    let div: i64 = a / b;
+    let rem: i64 = a % b;
+    if (2 * rem.abs()) >= b.abs() {
+        div + a.signum() * b.signum()
+    } else {
+        div
     }
 }

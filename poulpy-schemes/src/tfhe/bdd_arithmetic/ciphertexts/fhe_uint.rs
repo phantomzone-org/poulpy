@@ -1,5 +1,6 @@
 use poulpy_core::{
-    GLWEAdd, GLWECopy, GLWEDecrypt, GLWEEncryptSk, GLWEPacking, GLWERotate, GLWESub, GLWETrace, LWEFromGLWE, ScratchTakeCore,
+    GLWEAdd, GLWECopy, GLWEDecrypt, GLWEEncryptSk, GLWENoise, GLWEPacking, GLWERotate, GLWESub, GLWETrace, LWEFromGLWE,
+    ScratchTakeCore,
     layouts::{
         Base2K, Degree, GGLWEInfos, GGLWEPreparedToRef, GLWE, GLWEAutomorphismKeyHelper, GLWEInfos, GLWEPlaintextLayout,
         GLWESecretPreparedToRef, GLWEToMut, GLWEToRef, GetGaloisElement, LWEInfos, LWEToMut, Rank, TorusPrecision,
@@ -101,7 +102,7 @@ impl<D: DataMut, T: UnsignedInteger + ToBits> FheUint<D, T> {
         let pt_infos = GLWEPlaintextLayout {
             n: self.n(),
             base2k: self.base2k(),
-            k: 1_usize.into(),
+            k: 2_usize.into(),
         };
 
         let (mut pt, scratch_1) = scratch.take_glwe_plaintext(&pt_infos);
@@ -113,6 +114,29 @@ impl<D: DataMut, T: UnsignedInteger + ToBits> FheUint<D, T> {
 }
 
 impl<D: DataRef, T: UnsignedInteger + FromBits> FheUint<D, T> {
+    pub fn noise<S, M, BE: Backend>(&self, module: &M, want: u32, sk: &S, scratch: &mut Scratch<BE>) -> f64
+    where
+        S: GLWESecretPreparedToRef<BE> + GLWEInfos,
+        M: ModuleLogN + GLWEDecrypt<BE> + GLWENoise<BE>,
+        Scratch<BE>: ScratchTakeCore<BE>,
+    {
+        #[cfg(debug_assertions)]
+        {
+            assert!(module.n().is_multiple_of(T::BITS as usize));
+            assert_eq!(self.n(), module.n() as u32);
+            assert_eq!(sk.n(), module.n() as u32);
+        }
+
+        let (mut pt, scratch_1) = scratch.take_glwe_plaintext(self);
+        let mut data_bits = vec![0i64; module.n()];
+        let log_gap: usize = module.log_n() - T::LOG_BITS as usize;
+        for i in 0..T::BITS as usize {
+            data_bits[T::bit_index(i) << log_gap] = want.bit(i) as i64
+        }
+        pt.encode_vec_i64(&data_bits, TorusPrecision(2));
+        self.bits.noise(module, sk, &pt, scratch_1)
+    }
+
     pub fn decrypt<S, M, BE: Backend>(&self, module: &M, sk: &S, scratch: &mut Scratch<BE>) -> T
     where
         S: GLWESecretPreparedToRef<BE> + GLWEInfos,
