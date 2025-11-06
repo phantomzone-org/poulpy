@@ -59,7 +59,7 @@ where
         res_basek: usize,
         res: &mut R,
         res_col: usize,
-        a_basek: usize,
+        _a_basek: usize,
         a: &A,
         a_col: usize,
         scratch: &mut Scratch<Self>,
@@ -74,7 +74,7 @@ where
         {
             assert_eq!(res.n(), a.n());
             assert_eq!(
-                res_basek, a_basek,
+                res_basek, _a_basek,
                 "res_basek != a_basek -> base2k conversion is not supported"
             )
         }

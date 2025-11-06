@@ -16,27 +16,27 @@ where
     let a: VecZnx<&[u8]> = a.to_ref();
     let a_size = a.size();
 
-    let (n_in, n_out) = (a.n(), res[0].to_mut().n());
+    let (_n_in, _n_out) = (a.n(), res[0].to_mut().n());
 
     #[cfg(debug_assertions)]
     {
         assert_eq!(tmp.len(), a.n());
 
         assert!(
-            n_out < n_in,
+            _n_out < _n_in,
             "invalid a: output ring degree should be smaller"
         );
 
         res[1..].iter_mut().for_each(|bi| {
             assert_eq!(
                 bi.to_mut().n(),
-                n_out,
+                _n_out,
                 "invalid input a: all VecZnx must have the same degree"
             )
         });
 
-        assert!(n_in.is_multiple_of(n_out));
-        assert_eq!(res.len(), n_in / n_out);
+        assert!(_n_in.is_multiple_of(_n_out));
+        assert_eq!(res.len(), _n_in / _n_out);
     }
 
     res.iter_mut().enumerate().for_each(|(i, bi)| {
