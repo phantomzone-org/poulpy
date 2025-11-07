@@ -382,8 +382,8 @@ impl<D: DataMut, T: UnsignedInteger> FheUint<D, T> {
 
         let (mut out_bits, scratch_1) = scratch.take_glwe_slice(T::BITS as usize, self);
 
-        for i in 0..T::BITS as usize {
-            module.cmux(&mut out_bits[i], &one, &zero, &other.get_bit(i), scratch_1);
+        for (i, bits) in out_bits.iter_mut().enumerate().take(T::BITS as usize) {
+            module.cmux(bits, &one, &zero, &other.get_bit(i), scratch_1);
         }
 
         self.pack(module, out_bits, keys, scratch_1);

@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    api::ScratchAvailable,
+    api::{ModuleN, ScratchAvailable},
     layouts::{Backend, DataMut, Module, Scratch, ZnxZero},
 };
 
@@ -13,7 +13,7 @@ use crate::{
 
 pub trait GGSWExternalProduct<BE: Backend>
 where
-    Self: GLWEExternalProduct<BE>,
+    Self: GLWEExternalProduct<BE> + ModuleN,
 {
     fn ggsw_external_product_tmp_bytes<R, A, B>(&self, res_infos: &R, a_infos: &A, b_infos: &B) -> usize
     where
