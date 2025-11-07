@@ -13,7 +13,7 @@ use poulpy_hal::{
 };
 use std::{collections::HashMap, marker::PhantomData};
 
-use crate::tfhe::bdd_arithmetic::{FromBits, ToBits, UnsignedInteger};
+use crate::tfhe::bdd_arithmetic::{Cmux, FheUintPrepared, FromBits, GetGGSWBit, ToBits, UnsignedInteger};
 
 /// An FHE ciphertext encrypting the bits of an [UnsignedInteger].
 pub struct FheUint<D: Data, T: UnsignedInteger> {
@@ -362,6 +362,33 @@ impl<D: DataRef, T: UnsignedInteger> GLWEToRef for FheUint<D, T> {
 }
 
 impl<D: DataMut, T: UnsignedInteger> FheUint<D, T> {
+    pub fn from_fhe_uint_prepared<M, DR, H, K, BE: Backend>(
+        &mut self,
+        module: &M,
+        other: &FheUintPrepared<DR, T, BE>,
+        keys: &H,
+        scratch: &mut Scratch<BE>,
+    ) where
+        DR: DataRef,
+        M: Cmux<BE> + ModuleLogN + GLWEPacking<BE> + GLWECopy,
+        Scratch<BE>: ScratchTakeCore<BE>,
+        K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
+        H: GLWEAutomorphismKeyHelper<K, BE>,
+    {
+        let zero: GLWE<Vec<u8>> = GLWE::alloc_from_infos(self);
+        let mut one: GLWE<Vec<u8>> = GLWE::alloc_from_infos(self);
+        one.data_mut()
+            .encode_coeff_i64(self.base2k().into(), 0, 2, 0, 1);
+
+        let (mut out_bits, scratch_1) = scratch.take_glwe_slice(T::BITS as usize, self);
+
+        for i in 0..T::BITS as usize {
+            module.cmux(&mut out_bits[i], &one, &zero, &other.get_bit(i), scratch_1);
+        }
+
+        self.pack(module, out_bits, keys, scratch_1);
+    }
+
     pub fn zero_byte<M, K, H, BE: Backend>(&mut self, module: &M, byte: usize, keys: &H, scratch: &mut Scratch<BE>)
     where
         H: GLWEAutomorphismKeyHelper<K, BE>,
