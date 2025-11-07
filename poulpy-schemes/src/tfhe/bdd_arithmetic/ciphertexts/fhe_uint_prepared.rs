@@ -312,7 +312,7 @@ impl<D: DataMut, T: UnsignedInteger, BE: Backend> FheUintPrepared<D, T, BE> {
     {
         module.fhe_uint_prepare(self, other, key, scratch);
     }
-    pub fn prepare_partial<BRA, M, O, K, DK>(
+    pub fn prepare_custom<BRA, M, O, K, DK>(
         &mut self,
         module: &M,
         other: &FheUint<O, T>,
