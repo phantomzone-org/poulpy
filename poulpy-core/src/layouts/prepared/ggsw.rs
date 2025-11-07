@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    api::{VmpPMatAlloc, VmpPMatBytesOf, VmpPrepare, VmpPrepareTmpBytes},
+    api::{VmpPMatAlloc, VmpPMatBytesOf, VmpPrepare, VmpPrepareTmpBytes, VmpZero},
     layouts::{Backend, Data, DataMut, DataRef, Module, Scratch, VmpPMat, VmpPMatToMut, VmpPMatToRef, ZnxInfos},
 };
 
@@ -51,7 +51,7 @@ impl<D: Data, B: Backend> GGSWInfos for GGSWPrepared<D, B> {
 
 pub trait GGSWPreparedFactory<B: Backend>
 where
-    Self: GetDegree + VmpPMatAlloc<B> + VmpPMatBytesOf + VmpPrepareTmpBytes + VmpPrepare<B>,
+    Self: GetDegree + VmpPMatAlloc<B> + VmpPMatBytesOf + VmpPrepareTmpBytes + VmpPrepare<B> + VmpZero<B>,
 {
     fn alloc_ggsw_prepared(
         &self,
@@ -163,7 +163,7 @@ where
 }
 
 impl<B: Backend> GGSWPreparedFactory<B> for Module<B> where
-    Self: GetDegree + VmpPMatAlloc<B> + VmpPMatBytesOf + VmpPrepareTmpBytes + VmpPrepare<B>
+    Self: GetDegree + VmpPMatAlloc<B> + VmpPMatBytesOf + VmpPrepareTmpBytes + VmpPrepare<B> + VmpZero<B>
 {
 }
 
@@ -222,6 +222,13 @@ impl<D: DataMut, B: Backend> GGSWPrepared<D, B> {
         M: GGSWPreparedFactory<B>,
     {
         module.ggsw_prepare(self, other, scratch);
+    }
+
+    pub fn zero<M>(&mut self, module: &M)
+    where
+        M: GGSWPreparedFactory<B>,
+    {
+        module.vmp_zero(&mut self.data);
     }
 }
 

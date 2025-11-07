@@ -217,6 +217,19 @@ pub trait FheUintPrepare<BRA: BlindRotationAlgo, T: UnsignedInteger, BE: Backend
         DB: DataRef,
         DK: DataRef,
         K: BDDKeyHelper<DK, BRA, BE>;
+    fn fhe_uint_prepare_custom<DM, DB, DK, K>(
+        &self,
+        res: &mut FheUintPrepared<DM, T, BE>,
+        bits: &FheUint<DB, T>,
+        bit_start: usize,
+        bit_end: usize,
+        key: &K,
+        scratch: &mut Scratch<BE>,
+    ) where
+        DM: DataMut,
+        DB: DataRef,
+        DK: DataRef,
+        K: BDDKeyHelper<DK, BRA, BE>;
 }
 
 impl<BRA: BlindRotationAlgo, BE: Backend, T: UnsignedInteger> FheUintPrepare<BRA, T, BE> for Module<BE>
@@ -249,14 +262,40 @@ where
         DK: DataRef,
         K: BDDKeyHelper<DK, BRA, BE>,
     {
+        self.fhe_uint_prepare_custom(res, bits, 0, T::BITS as usize, key, scratch);
+    }
+
+    fn fhe_uint_prepare_custom<DM, DB, DK, K>(
+        &self,
+        res: &mut FheUintPrepared<DM, T, BE>,
+        bits: &FheUint<DB, T>,
+        bit_start: usize,
+        bit_end: usize,
+        key: &K,
+        scratch: &mut Scratch<BE>,
+    ) where
+        DM: DataMut,
+        DB: DataRef,
+        DK: DataRef,
+        K: BDDKeyHelper<DK, BRA, BE>,
+    {
         let (cbt, ks) = key.get_cbt_key();
 
         let mut lwe: LWE<Vec<u8>> = LWE::alloc_from_infos(bits); //TODO: add TakeLWE
         let (mut tmp_ggsw, scratch_1) = scratch.take_ggsw(res);
-        for (bit, dst) in res.bits.iter_mut().enumerate() {
+        for (bit, dst) in res.bits[bit_start..bit_end].iter_mut().enumerate() {
+            // TODO: set the rest of the bits to a prepared zero GGSW
             bits.get_bit_lwe(self, bit, &mut lwe, ks, scratch_1);
             cbt.execute_to_constant(self, &mut tmp_ggsw, &lwe, 1, 1, scratch_1);
             dst.prepare(self, &tmp_ggsw, scratch_1);
+        }
+
+        for i in 0..bit_start {
+            res.bits[i].zero(self);
+        }
+
+        for i in bit_end..T::BITS as usize {
+            res.bits[i].zero(self);
         }
     }
 }
@@ -272,5 +311,23 @@ impl<D: DataMut, T: UnsignedInteger, BE: Backend> FheUintPrepared<D, T, BE> {
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         module.fhe_uint_prepare(self, other, key, scratch);
+    }
+    pub fn prepare_partial<BRA, M, O, K, DK>(
+        &mut self,
+        module: &M,
+        other: &FheUint<O, T>,
+        bit_start: usize,
+        bit_end: usize,
+        key: &K,
+        scratch: &mut Scratch<BE>,
+    ) where
+        BRA: BlindRotationAlgo,
+        O: DataRef,
+        DK: DataRef,
+        K: BDDKeyHelper<DK, BRA, BE>,
+        M: FheUintPrepare<BRA, T, BE>,
+        Scratch<BE>: ScratchTakeCore<BE>,
+    {
+        module.fhe_uint_prepare_custom(self, other, bit_start, bit_end, key, scratch);
     }
 }

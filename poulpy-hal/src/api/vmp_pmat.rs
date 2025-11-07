@@ -111,3 +111,9 @@ pub trait VmpApplyDftToDftAdd<B: Backend> {
         A: VecZnxDftToRef<B>,
         C: VmpPMatToRef<B>;
 }
+
+pub trait VmpZero<B: Backend> {
+    fn vmp_zero<R>(&self, res: &mut R)
+    where
+        R: VmpPMatToMut<B>;
+}

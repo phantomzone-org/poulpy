@@ -1,7 +1,7 @@
 use crate::{
     api::{
         VmpApplyDft, VmpApplyDftTmpBytes, VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftAddTmpBytes,
-        VmpApplyDftToDftTmpBytes, VmpPMatAlloc, VmpPMatBytesOf, VmpPMatFromBytes, VmpPrepare, VmpPrepareTmpBytes,
+        VmpApplyDftToDftTmpBytes, VmpPMatAlloc, VmpPMatBytesOf, VmpPMatFromBytes, VmpPrepare, VmpPrepareTmpBytes, VmpZero,
     },
     layouts::{
         Backend, MatZnxToRef, Module, Scratch, VecZnxDftToMut, VecZnxDftToRef, VecZnxToRef, VmpPMatOwned, VmpPMatToMut,
@@ -10,7 +10,7 @@ use crate::{
     oep::{
         VmpApplyDftImpl, VmpApplyDftTmpBytesImpl, VmpApplyDftToDftAddImpl, VmpApplyDftToDftAddTmpBytesImpl, VmpApplyDftToDftImpl,
         VmpApplyDftToDftTmpBytesImpl, VmpPMatAllocBytesImpl, VmpPMatAllocImpl, VmpPMatFromBytesImpl, VmpPrepareImpl,
-        VmpPrepareTmpBytesImpl,
+        VmpPrepareTmpBytesImpl, VmpZeroImpl,
     },
 };
 
@@ -159,5 +159,17 @@ where
         C: VmpPMatToRef<B>,
     {
         B::vmp_apply_dft_to_dft_add_impl(self, res, a, b, scale, scratch);
+    }
+}
+
+impl<B> VmpZero<B> for Module<B>
+where
+    B: Backend + VmpZeroImpl<B>,
+{
+    fn vmp_zero<R>(&self, res: &mut R)
+    where
+        R: VmpPMatToMut<B>,
+    {
+        B::vmp_zero_impl(self, res);
     }
 }

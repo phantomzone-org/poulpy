@@ -6,10 +6,11 @@ use poulpy_hal::{
     },
     oep::{
         VmpApplyDftToDftAddImpl, VmpApplyDftToDftAddTmpBytesImpl, VmpApplyDftToDftImpl, VmpApplyDftToDftTmpBytesImpl,
-        VmpPMatAllocBytesImpl, VmpPMatAllocImpl, VmpPrepareImpl, VmpPrepareTmpBytesImpl,
+        VmpPMatAllocBytesImpl, VmpPMatAllocImpl, VmpPrepareImpl, VmpPrepareTmpBytesImpl, VmpZeroImpl,
     },
     reference::fft64::vmp::{
         vmp_apply_dft_to_dft, vmp_apply_dft_to_dft_add, vmp_apply_dft_to_dft_tmp_bytes, vmp_prepare, vmp_prepare_tmp_bytes,
+        vmp_zero,
     },
 };
 
@@ -139,5 +140,14 @@ unsafe impl VmpApplyDftToDftAddTmpBytesImpl<Self> for FFT64Ref {
         _b_size: usize,
     ) -> usize {
         vmp_apply_dft_to_dft_tmp_bytes(a_size, b_rows, b_cols_in)
+    }
+}
+
+unsafe impl VmpZeroImpl<Self> for FFT64Ref {
+    fn vmp_zero_impl<R>(_module: &Module<Self>, res: &mut R)
+    where
+        R: VmpPMatToMut<Self>,
+    {
+        vmp_zero(res);
     }
 }

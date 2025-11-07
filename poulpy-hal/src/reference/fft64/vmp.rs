@@ -1,6 +1,6 @@
 use crate::{
     cast_mut,
-    layouts::{MatZnx, MatZnxToRef, VecZnx, VecZnxToRef, VmpPMatToMut, ZnxView, ZnxViewMut},
+    layouts::{DataViewMut, MatZnx, MatZnxToRef, VecZnx, VecZnxToRef, VmpPMatToMut, ZnxView, ZnxViewMut},
     oep::VecZnxDftAllocBytesImpl,
     reference::fft64::{
         reim::{ReimDFTExecute, ReimFFTTable, ReimFromZnx, ReimZero},
@@ -155,6 +155,13 @@ where
 pub fn vmp_apply_dft_to_dft_tmp_bytes(a_size: usize, prows: usize, pcols_in: usize) -> usize {
     let row_max: usize = (a_size).min(prows);
     (16 + 8 * row_max * pcols_in) * size_of::<f64>()
+}
+
+pub fn vmp_zero<R, BE: Backend>(res: &mut R)
+where
+    R: VmpPMatToMut<BE>,
+{
+    res.to_mut().data_mut().fill(0);
 }
 
 pub fn vmp_apply_dft_to_dft<R, A, M, BE>(res: &mut R, a: &A, pmat: &M, tmp_bytes: &mut [f64])
