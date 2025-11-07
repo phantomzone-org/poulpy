@@ -145,3 +145,13 @@ pub unsafe trait VmpApplyDftToDftAddImpl<B: Backend> {
         A: VecZnxDftToRef<B>,
         C: VmpPMatToRef<B>;
 }
+
+/// # THIS TRAIT IS AN OPEN EXTENSION POINT (unsafe)
+/// * See TODO.
+/// * See [crate::api::VmpZero] for corresponding public API.
+/// # Safety [crate::doc::backend_safety] for safety contract.
+pub unsafe trait VmpZeroImpl<B: Backend> {
+    fn vmp_zero_impl<R>(module: &Module<B>, res: &mut R)
+    where
+        R: VmpPMatToMut<B>;
+}

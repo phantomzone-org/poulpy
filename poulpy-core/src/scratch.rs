@@ -155,11 +155,7 @@ where
         )
     }
 
-    fn take_ggsw_slice<A>(
-        &mut self,
-        size: usize,
-        infos: &A,
-    ) -> (Vec<GGSW<&mut [u8]>>, &mut Self)
+    fn take_ggsw_slice<A>(&mut self, size: usize, infos: &A) -> (Vec<GGSW<&mut [u8]>>, &mut Self)
     where
         A: GGSWInfos,
     {

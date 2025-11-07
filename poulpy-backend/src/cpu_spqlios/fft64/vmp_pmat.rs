@@ -6,8 +6,9 @@ use poulpy_hal::{
     },
     oep::{
         VmpApplyDftToDftAddImpl, VmpApplyDftToDftAddTmpBytesImpl, VmpApplyDftToDftImpl, VmpApplyDftToDftTmpBytesImpl,
-        VmpPMatAllocBytesImpl, VmpPMatAllocImpl, VmpPMatFromBytesImpl, VmpPrepareImpl, VmpPrepareTmpBytesImpl,
+        VmpPMatAllocBytesImpl, VmpPMatAllocImpl, VmpPMatFromBytesImpl, VmpPrepareImpl, VmpPrepareTmpBytesImpl, VmpZeroImpl,
     },
+    reference::fft64::vmp::vmp_zero,
 };
 
 use crate::cpu_spqlios::{
@@ -267,5 +268,14 @@ unsafe impl VmpApplyDftToDftAddImpl<Self> for FFT64Spqlios {
                 tmp_bytes.as_mut_ptr(),
             )
         }
+    }
+}
+
+unsafe impl VmpZeroImpl<Self> for FFT64Spqlios {
+    fn vmp_zero_impl<R>(_module: &Module<Self>, res: &mut R)
+    where
+        R: VmpPMatToMut<Self>,
+    {
+        vmp_zero(res);
     }
 }
