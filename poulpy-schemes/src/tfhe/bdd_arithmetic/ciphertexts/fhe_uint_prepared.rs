@@ -1,12 +1,15 @@
 use std::marker::PhantomData;
 
-use poulpy_core::LWEFromGLWE;
 use poulpy_core::layouts::{
     Base2K, Dnum, Dsize, GGSWInfos, GGSWPreparedFactory, GLWEInfos, LWEInfos, Rank, TorusPrecision, prepared::GGSWPrepared,
 };
-use poulpy_core::layouts::{GGSWPreparedToMut, GGSWPreparedToRef, LWE};
+use poulpy_core::layouts::{
+    GGLWEInfos, GGLWEPreparedToRef, GGSWPreparedToMut, GGSWPreparedToRef, GLWEAutomorphismKeyHelper, GetGaloisElement, LWE,
+};
+use poulpy_core::{GLWECopy, GLWEDecrypt, GLWEPacking, LWEFromGLWE};
 
 use poulpy_core::{GGSWEncryptSk, ScratchTakeCore, layouts::GLWESecretPreparedToRef};
+use poulpy_hal::api::ModuleLogN;
 use poulpy_hal::layouts::{Backend, Data, DataRef, Module};
 
 use poulpy_hal::{
@@ -15,8 +18,8 @@ use poulpy_hal::{
     source::Source,
 };
 
-use crate::tfhe::bdd_arithmetic::UnsignedInteger;
 use crate::tfhe::bdd_arithmetic::{BDDKey, BDDKeyHelper, BDDKeyInfos, BDDKeyPrepared, BDDKeyPreparedFactory, FheUint, ToBits};
+use crate::tfhe::bdd_arithmetic::{Cmux, FromBits, ScratchTakeBDD, UnsignedInteger};
 use crate::tfhe::blind_rotation::BlindRotationAlgo;
 use crate::tfhe::circuit_bootstrapping::CirtuitBootstrappingExecute;
 
@@ -157,6 +160,21 @@ impl<D: DataMut, T: UnsignedInteger + ToBits, BE: Backend> FheUintPrepared<D, T,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         module.fhe_uint_prepared_encrypt_sk(self, value, sk, source_xa, source_xe, scratch);
+    }
+}
+
+impl<D: DataRef, T: UnsignedInteger + FromBits, BE: Backend> FheUintPrepared<D, T, BE> {
+    pub fn decrypt<M, S, H, K>(&self, module: &M, sk: &S, keys: &H, scratch: &mut Scratch<BE>) -> T
+    where
+        M: ModuleLogN + GLWEDecrypt<BE> + Cmux<BE> + GLWEPacking<BE> + GLWECopy,
+        S: GLWESecretPreparedToRef<BE> + GLWEInfos,
+        Scratch<BE>: ScratchTakeCore<BE>,
+        K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
+        H: GLWEAutomorphismKeyHelper<K, BE>,
+    {
+        let (mut tmp, scratch_1) = scratch.take_fhe_uint(self);
+        tmp.from_fhe_uint_prepared(module, self, keys, scratch_1);
+        tmp.decrypt(module, sk, scratch_1)
     }
 }
 
