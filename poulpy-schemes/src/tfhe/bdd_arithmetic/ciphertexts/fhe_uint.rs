@@ -426,7 +426,7 @@ impl<D: DataMut, T: UnsignedInteger> FheUint<D, T> {
         assert!(byte < (1 << T::LOG_BYTES));
 
         let log_gap: usize = module.log_n() - T::LOG_BITS as usize;
-        let rot: i64 = (T::bit_index(byte << 3) << log_gap) as i64;
+        let rot: i64 = (T::bit_index((byte << 3) + 7) << log_gap) as i64;
 
         let (mut sext, scratch_1) = scratch.take_glwe(self);
 
@@ -443,7 +443,7 @@ impl<D: DataMut, T: UnsignedInteger> FheUint<D, T> {
 
         // Splice sext
         let (mut tmp, scratch_2) = scratch_1.take_glwe(self);
-        for i in byte..(1 << T::LOG_BYTES) as usize {
+        for i in (byte + 1)..(1 << T::LOG_BYTES) as usize {
             FheUint::<&mut [u8], T>::from_glwe_to_mut(&mut tmp).splice_u8(module, i, 0, &self.bits, &sext, keys, scratch_2);
             module.glwe_copy(&mut self.bits, &tmp);
         }

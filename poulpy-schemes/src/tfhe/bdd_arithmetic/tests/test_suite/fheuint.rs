@@ -37,29 +37,52 @@ where
     let mut a_enc: FheUint<Vec<u8>, u32> = FheUint::<Vec<u8>, u32>::alloc_from_infos(&glwe_infos);
 
     for j in 0..3 {
-        for i in 0..32 {
-            let a: u32 = 0xFFFFFFFF >> i;
+        let a: u32 = 0x8483_8281;
+        a_enc.encrypt_sk(
+            module,
+            a,
+            sk,
+            &mut source_xa,
+            &mut source_xe,
+            scratch.borrow(),
+        );
 
-            a_enc.encrypt_sk(
-                module,
-                a,
-                sk,
-                &mut source_xa,
-                &mut source_xe,
-                scratch.borrow(),
-            );
+        a_enc.sext(module, j, keys, scratch.borrow());
 
-            a_enc.sext(module, j, keys, scratch.borrow());
+        // println!("{:08x} -> {:08x} {:08x}", a, sext(a, j), a_enc.decrypt(module, sk, scratch.borrow()));
 
-            // println!("{:08x} -> {:08x} {:08x}", a, sext(a, j), a_enc.decrypt(module, sk, scratch.borrow()));
+        assert_eq!(
+            sext(a, ((1 + j as u32) << 3) - 1),
+            a_enc.decrypt(module, sk, scratch.borrow())
+        );
+    }
 
-            assert_eq!(sext(a, j), a_enc.decrypt(module, sk, scratch.borrow()));
-        }
+    for j in 0..3 {
+        let a: u32 = 0x4443_4241;
+        a_enc.encrypt_sk(
+            module,
+            a,
+            sk,
+            &mut source_xa,
+            &mut source_xe,
+            scratch.borrow(),
+        );
+
+        a_enc.sext(module, j, keys, scratch.borrow());
+
+        // println!("{:08x} -> {:08x} {:08x}", a, sext(a, j), a_enc.decrypt(module, sk, scratch.borrow()));
+
+        assert_eq!(
+            sext(a, ((1 + j as u32) << 3) - 1),
+            a_enc.decrypt(module, sk, scratch.borrow())
+        );
     }
 }
 
-pub fn sext(x: u32, byte: usize) -> u32 {
-    x | (((x >> (byte << 3)) & 1) * (0xFFFF_FFFF << (byte << 3)))
+pub(crate) fn sext(x: u32, bits: u32) -> u32 {
+    let lo: u32 = x << (u32::BITS - bits) >> (u32::BITS - bits);
+    let hi: u32 = ((x >> bits) & 1) * (0xFFFF_FFFF << bits);
+    hi | lo
 }
 
 pub fn test_fhe_uint_splice_u8<BRA: BlindRotationAlgo, BE: Backend>(test_context: &TestContext<BRA, BE>)
