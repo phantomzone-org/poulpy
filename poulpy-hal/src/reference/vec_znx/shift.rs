@@ -662,8 +662,8 @@ mod tests {
                         vec_znx_normalize_inplace::<_, ZnxRef>(base2k, &mut res_ref, j, &mut carry);
                         vec_znx_normalize_inplace::<_, ZnxRef>(base2k, &mut res_test, j, &mut carry);
 
-                        assert!(res_ref.std(base2k, j).log2() - (k as f64) <= (k * base2k) as f64);
-                        assert!(res_test.std(base2k, j).log2() - (k as f64) <= (k * base2k) as f64);
+                        assert!(res_ref.stats(base2k, j).std().log2() - (k as f64) <= (k * base2k) as f64);
+                        assert!(res_test.stats(base2k, j).std().log2() - (k as f64) <= (k * base2k) as f64);
                     }
                 }
             }

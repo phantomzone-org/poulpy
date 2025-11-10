@@ -150,7 +150,7 @@ where
 
     module.glwe_sub_inplace(&mut pt, &pt_want);
 
-    let noise_have: f64 = pt.std().log2();
+    let noise_have: f64 = pt.stats().std().log2();
 
     assert!(
         noise_have < -((k_ct - base2k) as f64),

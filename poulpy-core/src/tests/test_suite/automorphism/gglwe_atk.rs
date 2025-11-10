@@ -159,7 +159,7 @@ where
                         col_i,
                     );
 
-                    let noise_have: f64 = pt.data.std(base2k, 0).log2();
+                    let noise_have: f64 = pt.data.stats(base2k, 0).std().log2();
                     let noise_want: f64 = log2_std_noise_gglwe_product(
                         n as f64,
                         base2k * di,
@@ -306,7 +306,7 @@ where
                         col_i,
                     );
 
-                    let noise_have: f64 = pt.data.std(base2k, 0).log2();
+                    let noise_have: f64 = pt.data.stats(base2k, 0).std().log2();
                     let noise_want: f64 = log2_std_noise_gglwe_product(
                         n as f64,
                         base2k * di,

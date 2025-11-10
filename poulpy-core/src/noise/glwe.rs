@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::{ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxNormalizeInplace, VecZnxSubInplace},
-    layouts::{Backend, DataRef, Module, Scratch, ScratchOwned},
+    layouts::{Backend, DataRef, Module, Scratch, ScratchOwned, Stats},
 };
 
 use crate::{
@@ -10,7 +10,7 @@ use crate::{
 };
 
 impl<D: DataRef> GLWE<D> {
-    pub fn noise<M, S, P, BE: Backend>(&self, module: &M, sk_prepared: &S, pt_want: &P, scratch: &mut Scratch<BE>) -> f64
+    pub fn noise<M, S, P, BE: Backend>(&self, module: &M, sk_prepared: &S, pt_want: &P, scratch: &mut Scratch<BE>) -> Stats
     where
         M: GLWENoise<BE>,
         S: GLWESecretPreparedToRef<BE>,
@@ -30,7 +30,7 @@ impl<D: DataRef> GLWE<D> {
 }
 
 pub trait GLWENoise<BE: Backend> {
-    fn glwe_noise<R, S, P>(&self, res: &R, sk_prepared: &S, pt_want: &P, scratch: &mut Scratch<BE>) -> f64
+    fn glwe_noise<R, S, P>(&self, res: &R, sk_prepared: &S, pt_want: &P, scratch: &mut Scratch<BE>) -> Stats
     where
         R: GLWEToRef,
         S: GLWESecretPreparedToRef<BE>,
@@ -49,7 +49,7 @@ where
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
-    fn glwe_noise<R, S, P>(&self, res: &R, sk_prepared: &S, pt_want: &P, scratch: &mut Scratch<BE>) -> f64
+    fn glwe_noise<R, S, P>(&self, res: &R, sk_prepared: &S, pt_want: &P, scratch: &mut Scratch<BE>) -> Stats
     where
         R: GLWEToRef,
         S: GLWESecretPreparedToRef<BE>,
@@ -63,7 +63,7 @@ where
         self.glwe_decrypt(res, &mut pt_have, sk_prepared, scratch);
         self.vec_znx_sub_inplace(&mut pt_have.data, 0, &pt_want.data, 0);
         self.vec_znx_normalize_inplace(res_ref.base2k().into(), &mut pt_have.data, 0, scratch);
-        pt_have.data.std(res_ref.base2k().into(), 0).log2()
+        pt_have.data.stats(res_ref.base2k().into(), 0)
     }
 
     fn glwe_assert_noise<R, S, P>(&self, res: &R, sk_prepared: &S, pt_want: &P, max_noise: f64)
@@ -74,7 +74,10 @@ where
     {
         let res: &GLWE<&[u8]> = &res.to_ref();
         let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(self.glwe_decrypt_tmp_bytes(res));
-        let noise_have: f64 = self.glwe_noise(res, sk_prepared, pt_want, scratch.borrow());
+        let noise_have: f64 = self
+            .glwe_noise(res, sk_prepared, pt_want, scratch.borrow())
+            .std()
+            .log2();
         assert!(noise_have <= max_noise, "{noise_have} {max_noise}");
     }
 }

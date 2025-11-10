@@ -717,7 +717,7 @@ where
                     assert_eq!(a.at(col_j, limb_i), zero);
                 })
             } else {
-                let std: f64 = a.std(base2k, col_i);
+                let std: f64 = a.stats(base2k, col_i).std();
                 assert!(
                     (std - one_12_sqrt).abs() < 0.01,
                     "std={std} ~!= {one_12_sqrt}",
@@ -750,7 +750,7 @@ where
                     assert_eq!(a.at(col_j, limb_i), zero);
                 })
             } else {
-                let std: f64 = a.std(base2k, col_i) * k_f64;
+                let std: f64 = a.stats(base2k, col_i).std() * k_f64;
                 assert!((std - sigma).abs() < 0.1, "std={std} ~!= {sigma}");
             }
         })
@@ -782,7 +782,7 @@ where
                     assert_eq!(a.at(col_j, limb_i), zero);
                 })
             } else {
-                let std: f64 = a.std(base2k, col_i) * k_f64;
+                let std: f64 = a.stats(base2k, col_i).std() * k_f64;
                 assert!(
                     (std - sigma * sqrt2).abs() < 0.1,
                     "std={std} ~!= {}",

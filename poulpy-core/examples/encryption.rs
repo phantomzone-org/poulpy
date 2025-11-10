@@ -85,7 +85,7 @@ fn main() {
     module.glwe_sub_inplace(&mut pt_want, &pt_have);
 
     // Ideal vs. actual noise
-    let noise_have: f64 = pt_want.data.std(base2k.into(), 0) * (ct.k().as_u32() as f64).exp2();
+    let noise_have: f64 = pt_want.data.stats(base2k.into(), 0).std() * (ct.k().as_u32() as f64).exp2();
     let noise_want: f64 = SIGMA;
 
     // Check

@@ -123,7 +123,7 @@ where
         module.vec_znx_sub_inplace(&mut pt_want.data, 0, &pt_have.data, 0);
         module.vec_znx_normalize_inplace(base2k, &mut pt_want.data, 0, scratch.borrow());
 
-        let noise_have: f64 = pt_want.std().log2();
+        let noise_have: f64 = pt_want.stats().std().log2();
 
         let mut noise_want: f64 = var_noise_gglwe_product(
             n as f64,

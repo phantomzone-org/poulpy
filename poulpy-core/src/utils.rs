@@ -1,5 +1,5 @@
 use crate::layouts::{GLWEPlaintext, LWEInfos, LWEPlaintext, TorusPrecision};
-use poulpy_hal::layouts::{DataMut, DataRef};
+use poulpy_hal::layouts::{DataMut, DataRef, Stats};
 use rug::Float;
 
 impl<D: DataMut> GLWEPlaintext<D> {
@@ -29,8 +29,8 @@ impl<D: DataRef> GLWEPlaintext<D> {
         self.data.decode_vec_float(self.base2k().into(), 0, data);
     }
 
-    pub fn std(&self) -> f64 {
-        self.data.std(self.base2k().into(), 0)
+    pub fn stats(&self) -> Stats {
+        self.data.stats(self.base2k().into(), 0)
     }
 }
 

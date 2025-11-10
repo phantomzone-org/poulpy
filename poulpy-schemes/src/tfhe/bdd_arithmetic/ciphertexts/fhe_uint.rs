@@ -8,7 +8,7 @@ use poulpy_core::{
 };
 use poulpy_hal::{
     api::ModuleLogN,
-    layouts::{Backend, Data, DataMut, DataRef, Scratch},
+    layouts::{Backend, Data, DataMut, DataRef, Scratch, Stats},
     source::Source,
 };
 use std::{collections::HashMap, marker::PhantomData};
@@ -114,7 +114,7 @@ impl<D: DataMut, T: UnsignedInteger + ToBits> FheUint<D, T> {
 }
 
 impl<D: DataRef, T: UnsignedInteger + FromBits> FheUint<D, T> {
-    pub fn noise<S, M, BE: Backend>(&self, module: &M, want: u32, sk: &S, scratch: &mut Scratch<BE>) -> f64
+    pub fn noise<S, M, BE: Backend>(&self, module: &M, want: u32, sk: &S, scratch: &mut Scratch<BE>) -> Stats
     where
         S: GLWESecretPreparedToRef<BE> + GLWEInfos,
         M: ModuleLogN + GLWEDecrypt<BE> + GLWENoise<BE>,

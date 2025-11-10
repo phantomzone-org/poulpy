@@ -74,7 +74,7 @@ where
 
         module.glwe_sub_inplace(&mut pt_want, &pt_have);
 
-        let noise_have: f64 = pt_want.data.std(base2k, 0) * (ct.k().as_u32() as f64).exp2();
+        let noise_have: f64 = pt_want.data.stats(base2k, 0).std() * (ct.k().as_u32() as f64).exp2();
         let noise_want: f64 = SIGMA;
 
         assert!(noise_have <= noise_want + 0.2);
@@ -147,7 +147,7 @@ where
 
         module.glwe_sub_inplace(&mut pt_want, &pt_have);
 
-        let noise_have: f64 = pt_want.data.std(base2k, 0) * (ct.k().as_u32() as f64).exp2();
+        let noise_have: f64 = pt_want.data.stats(base2k, 0).std() * (ct.k().as_u32() as f64).exp2();
         let noise_want: f64 = SIGMA;
 
         assert!(
@@ -203,7 +203,7 @@ where
         );
         ct.decrypt(module, &mut pt, &sk_prepared, scratch.borrow());
 
-        assert!((SIGMA - pt.data.std(base2k, 0) * (k_ct as f64).exp2()) <= 0.2);
+        assert!((SIGMA - pt.data.stats(base2k, 0).std() * (k_ct as f64).exp2()) <= 0.2);
     }
 }
 
@@ -271,7 +271,7 @@ where
 
         module.glwe_sub_inplace(&mut pt_want, &pt_have);
 
-        let noise_have: f64 = pt_want.data.std(base2k, 0).log2();
+        let noise_have: f64 = pt_want.data.stats(base2k, 0).std().log2();
         let noise_want: f64 = ((((rank as f64) + 1.0) * n as f64 * 0.5 * SIGMA * SIGMA).sqrt()).log2() - (k_ct as f64);
 
         assert!(

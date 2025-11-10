@@ -60,7 +60,7 @@ where
 
                 self.vec_znx_sub_scalar_inplace(&mut pt.data, 0, (dsize - 1) + row_i * dsize, pt_want, col_i);
 
-                let noise_have: f64 = pt.data.std(base2k, 0).log2();
+                let noise_have: f64 = pt.data.stats(base2k, 0).std().log2();
 
                 println!("noise_have: {noise_have}");
 

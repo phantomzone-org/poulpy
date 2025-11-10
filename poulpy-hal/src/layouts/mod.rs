@@ -18,6 +18,7 @@ pub use module::*;
 pub use scalar_znx::*;
 pub use scratch::*;
 pub use serialization::*;
+pub use stats::*;
 pub use svp_ppol::*;
 pub use vec_znx::*;
 pub use vec_znx_big::*;

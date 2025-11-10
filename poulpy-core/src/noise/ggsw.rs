@@ -107,7 +107,7 @@ where
 
                 self.vec_znx_sub_inplace(&mut pt_have.data, 0, &pt.data, 0);
 
-                let std_pt: f64 = pt_have.data.std(base2k, 0).log2();
+                let std_pt: f64 = pt_have.data.stats(base2k, 0).std().log2();
                 let noise: f64 = max_noise(col_j);
                 assert!(std_pt <= noise, "{std_pt} > {noise}");
 
@@ -165,7 +165,7 @@ where
 
                 self.vec_znx_sub_inplace(&mut pt_have.data, 0, &pt.data, 0);
 
-                let std_pt: f64 = pt_have.data.std(base2k, 0).log2();
+                let std_pt: f64 = pt_have.data.stats(base2k, 0).std().log2();
                 println!("col: {col_j} row: {row_i}: {std_pt}");
                 pt.data.zero();
             }
