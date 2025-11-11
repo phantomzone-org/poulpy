@@ -35,7 +35,7 @@ pub use zero::*;
 
 #[inline(always)]
 pub(crate) fn as_arr<const size: usize, R: Float + FloatConst>(x: &[R]) -> &[R; size] {
-    debug_assert!(x.len() >= size);
+    debug_assert!(x.len() >= size, "x.len():{} < size:{}", x.len(), size);
     unsafe { &*(x.as_ptr() as *const [R; size]) }
 }
 

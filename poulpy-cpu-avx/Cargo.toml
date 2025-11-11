@@ -32,5 +32,5 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 
 [[bench]]
-name = "vmp"
+name = "convolution"
 harness = false

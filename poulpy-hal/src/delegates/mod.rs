@@ -1,3 +1,4 @@
+mod convolution;
 mod module;
 mod scratch;
 mod svp_ppol;
