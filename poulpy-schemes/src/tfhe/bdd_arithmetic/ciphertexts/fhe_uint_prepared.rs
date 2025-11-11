@@ -414,6 +414,19 @@ impl<D: DataMut + Send, T: UnsignedInteger + Sync, BE: Backend + Sync> FheUintPr
     {
         module.fhe_uint_prepare(self, other, key, scratch);
     }
+
+    pub fn prepare_multi_threaded<BRA, M, O, K, DK>(&mut self, module: &M, other: &FheUint<O, T>, key: &K, scratch: &mut Scratch<BE>)
+    where
+        BRA: BlindRotationAlgo + Sync,
+        O: DataRef + Sync,
+        DK: DataRef + Sync,
+        K: BDDKeyHelper<DK, BRA, BE>,
+        M: FheUintPrepare<BRA, T, BE>,
+        Scratch<BE>: ScratchTakeCore<BE>,
+    {
+        module.fhe_uint_prepare_multi_threaded(self, other, key, scratch);
+    }
+
     pub fn prepare_custom<BRA, M, O, K, DK>(
         &mut self,
         module: &M,
@@ -431,5 +444,24 @@ impl<D: DataMut + Send, T: UnsignedInteger + Sync, BE: Backend + Sync> FheUintPr
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         module.fhe_uint_prepare_custom(self, other, bit_start, bit_end, key, scratch);
+    }
+
+    pub fn prepare_custom_multi_threaded<BRA, M, O, K, DK>(
+        &mut self,
+        module: &M,
+        other: &FheUint<O, T>,
+        bit_start: usize,
+        bit_end: usize,
+        key: &K,
+        scratch: &mut Scratch<BE>,
+    ) where
+        BRA: BlindRotationAlgo + Sync,
+        O: DataRef + Sync,
+        DK: DataRef + Sync,
+        K: BDDKeyHelper<DK, BRA, BE>,
+        M: FheUintPrepare<BRA, T, BE>,
+        Scratch<BE>: ScratchTakeCore<BE>,
+    {
+        module.fhe_uint_prepare_custom_multi_threaded(self, other, bit_start, bit_end, key, scratch);
     }
 }
