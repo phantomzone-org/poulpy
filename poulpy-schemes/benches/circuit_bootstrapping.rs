@@ -1,7 +1,7 @@
 use std::hint::black_box;
 
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
-use poulpy_backend::{FFT64Avx, FFT64Ref, FFT64Spqlios};
+use poulpy_backend::{FFT64Ref, FFT64Spqlios};
 use poulpy_core::{
     GGSWNoise, GLWEDecrypt, GLWEEncryptSk, GLWEExternalProduct, LWEEncryptSk, ScratchTakeCore,
     layouts::{
@@ -183,9 +183,9 @@ fn bench_circuit_bootstrapping_cpu_ref_fft64(c: &mut Criterion) {
     benc_circuit_bootstrapping::<FFT64Ref, CGGI>(c, "fft64_ref");
 }
 
-fn bench_circuit_bootstrapping_cpu_avx_fft64(c: &mut Criterion) {
-    benc_circuit_bootstrapping::<FFT64Avx, CGGI>(c, "fft64_avx");
-}
+// fn bench_circuit_bootstrapping_cpu_avx_fft64(c: &mut Criterion) {
+//     benc_circuit_bootstrapping::<FFT64Avx, CGGI>(c, "fft64_avx");
+// }
 
 fn bench_circuit_bootstrapping_cpu_spqlios_fft64(c: &mut Criterion) {
     benc_circuit_bootstrapping::<FFT64Spqlios, CGGI>(c, "fft64_spqlios");
@@ -194,7 +194,7 @@ fn bench_circuit_bootstrapping_cpu_spqlios_fft64(c: &mut Criterion) {
 criterion_group!(
     benches,
     bench_circuit_bootstrapping_cpu_ref_fft64,
-    bench_circuit_bootstrapping_cpu_avx_fft64,
+    // bench_circuit_bootstrapping_cpu_avx_fft64,
     bench_circuit_bootstrapping_cpu_spqlios_fft64,
 );
 

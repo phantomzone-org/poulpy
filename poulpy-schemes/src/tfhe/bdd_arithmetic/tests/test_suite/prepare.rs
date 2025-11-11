@@ -18,7 +18,7 @@ use crate::tfhe::{
     blind_rotation::{BlindRotationAlgo, BlindRotationKey, BlindRotationKeyFactory},
 };
 
-pub fn test_bdd_prepare<BRA: BlindRotationAlgo, BE: Backend>(test_context: &TestContext<BRA, BE>)
+pub fn test_bdd_prepare<BRA: BlindRotationAlgo + Sync, BE: Backend + Sync>(test_context: &TestContext<BRA, BE>)
 where
     Module<BE>: ModuleNew<BE>
         + GLWESecretPreparedFactory<BE>

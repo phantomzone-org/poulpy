@@ -123,6 +123,18 @@ impl<BRA: BlindRotationAlgo, BE: Backend> TestContext<BRA, BE> {
             module,
         }
     }
+
+    pub fn get_glwe_infos(&self) -> GLWELayout {
+        TEST_GLWE_INFOS
+    }
+
+    pub fn get_ggsw_infos(&self) -> GGSWLayout {
+        TEST_GGSW_INFOS
+    }
+
+    pub fn get_base2k(&self) -> Base2K {
+        Base2K(TEST_BASE2K)
+    }
 }
 
 pub(crate) const TEST_N_GLWE: u32 = 256;

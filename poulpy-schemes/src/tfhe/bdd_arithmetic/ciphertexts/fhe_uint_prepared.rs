@@ -4,19 +4,21 @@ use poulpy_core::layouts::{
     Base2K, Dnum, Dsize, GGSWInfos, GGSWPreparedFactory, GLWEInfos, LWEInfos, Rank, TorusPrecision, prepared::GGSWPrepared,
 };
 use poulpy_core::layouts::{
-    GGLWEInfos, GGLWEPreparedToRef, GGSWPreparedToMut, GGSWPreparedToRef, GLWEAutomorphismKeyHelper, GetGaloisElement, LWE,
+    GGLWEInfos, GGLWEPreparedToRef, GGSW, GGSWPreparedToMut, GGSWPreparedToRef, GLWEAutomorphismKeyHelper, GetGaloisElement, LWE
 };
 use poulpy_core::{GLWECopy, GLWEDecrypt, GLWEPacking, LWEFromGLWE};
 
 use poulpy_core::{GGSWEncryptSk, ScratchTakeCore, layouts::GLWESecretPreparedToRef};
-use poulpy_hal::api::ModuleLogN;
-use poulpy_hal::layouts::{Backend, Data, DataRef, Module};
+use poulpy_hal::api::{ModuleLogN, ScratchOwnedAlloc, ScratchOwnedBorrow};
+use poulpy_hal::layouts::{Backend, Data, DataRef, Module, ScratchOwned};
 
 use poulpy_hal::{
     api::ModuleN,
     layouts::{DataMut, Scratch},
     source::Source,
 };
+use rayon::iter::IntoParallelRefMutIterator;
+use rayon::prelude::*;
 
 use crate::tfhe::bdd_arithmetic::{BDDKey, BDDKeyHelper, BDDKeyInfos, BDDKeyPrepared, BDDKeyPreparedFactory, FheUint, ToBits};
 use crate::tfhe::bdd_arithmetic::{Cmux, FromBits, ScratchTakeBDD, UnsignedInteger};
@@ -219,7 +221,7 @@ impl<D: DataMut, BRA: BlindRotationAlgo, BE: Backend> BDDKeyPrepared<D, BRA, BE>
     }
 }
 
-pub trait FheUintPrepare<BRA: BlindRotationAlgo, T: UnsignedInteger, BE: Backend> {
+pub trait FheUintPrepare<BRA: BlindRotationAlgo + Sync, T: UnsignedInteger + Sync, BE: Backend + Sync> {
     fn fhe_uint_prepare_tmp_bytes<R, A>(&self, block_size: usize, extension_factor: usize, res_infos: &R, infos: &A) -> usize
     where
         R: GGSWInfos,
@@ -235,6 +237,17 @@ pub trait FheUintPrepare<BRA: BlindRotationAlgo, T: UnsignedInteger, BE: Backend
         DB: DataRef,
         DK: DataRef,
         K: BDDKeyHelper<DK, BRA, BE>;
+    fn fhe_uint_prepare_multi_threaded<DM, DB, DK, K>(
+        &self,
+        res: &mut FheUintPrepared<DM, T, BE>,
+        bits: &FheUint<DB, T>,
+        key: &K,
+        scratch: &mut Scratch<BE>,
+    ) where
+        DM: DataMut + Send,
+        DB: DataRef + Sync,
+        DK: DataRef + Sync,
+        K: BDDKeyHelper<DK, BRA, BE>;
     fn fhe_uint_prepare_custom<DM, DB, DK, K>(
         &self,
         res: &mut FheUintPrepared<DM, T, BE>,
@@ -248,12 +261,27 @@ pub trait FheUintPrepare<BRA: BlindRotationAlgo, T: UnsignedInteger, BE: Backend
         DB: DataRef,
         DK: DataRef,
         K: BDDKeyHelper<DK, BRA, BE>;
+    fn fhe_uint_prepare_custom_multi_threaded<DM, DB, DK, K>(
+            &self,
+            res: &mut FheUintPrepared<DM, T, BE>,
+            bits: &FheUint<DB, T>,
+            bit_start: usize,
+            bit_end: usize,
+            key: &K,
+            scratch: &mut Scratch<BE>,
+        ) where
+            DM: DataMut + Send,
+            DB: DataRef + Sync,
+            DK: DataRef + Sync,
+            K: BDDKeyHelper<DK, BRA, BE>;
+        
 }
 
-impl<BRA: BlindRotationAlgo, BE: Backend, T: UnsignedInteger> FheUintPrepare<BRA, T, BE> for Module<BE>
+impl<BRA: BlindRotationAlgo + Sync, BE: Backend + Sync, T: UnsignedInteger + Sync> FheUintPrepare<BRA, T, BE> for Module<BE>
 where
     Self: LWEFromGLWE<BE> + CirtuitBootstrappingExecute<BRA, BE> + GGSWPreparedFactory<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
 {
     fn fhe_uint_prepare_tmp_bytes<R, A>(&self, block_size: usize, extension_factor: usize, res_infos: &R, bdd_infos: &A) -> usize
     where
@@ -281,6 +309,21 @@ where
         K: BDDKeyHelper<DK, BRA, BE>,
     {
         self.fhe_uint_prepare_custom(res, bits, 0, T::BITS as usize, key, scratch);
+    }
+
+    fn fhe_uint_prepare_multi_threaded<DM, DB, DK, K>(
+        &self,
+        res: &mut FheUintPrepared<DM, T, BE>,
+        bits: &FheUint<DB, T>,
+        key: &K,
+        scratch: &mut Scratch<BE>,
+    ) where
+        DM: DataMut + Send,
+        DB: DataRef + Sync,
+        DK: DataRef + Sync,
+        K: BDDKeyHelper<DK, BRA, BE>,
+    {
+        self.fhe_uint_prepare_custom_multi_threaded(res, bits, 0, T::BITS as usize, key, scratch);
     }
 
     fn fhe_uint_prepare_custom<DM, DB, DK, K>(
@@ -316,14 +359,55 @@ where
             res.bits[i].zero(self);
         }
     }
+
+    fn fhe_uint_prepare_custom_multi_threaded<DM, DB, DK, K>(
+        &self,
+        res: &mut FheUintPrepared<DM, T, BE>,
+        bits: &FheUint<DB, T>,
+        bit_start: usize,
+        bit_end: usize,
+        key: &K,
+        scratch: &mut Scratch<BE>,
+    ) where
+        DM: DataMut + Send,
+        DB: DataRef + Sync,
+        DK: DataRef + Sync,
+        K: BDDKeyHelper<DK, BRA, BE>,
+    {
+        let (cbt, ks) = key.get_cbt_key();
+
+        res.bits[bit_start..bit_end]
+        .par_iter_mut()
+        .enumerate()
+        .for_each(|(i, dst): (usize, &mut GGSWPrepared<DM, BE>)| {
+            let bit = bit_start + i;
+    
+            let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(1 << 21); // TODO: Set scratch correctly
+            let mut lwe: LWE<Vec<u8>> = LWE::alloc_from_infos(bits);      // TODO: TakeLWE
+            let mut tmp_ggsw: GGSW<Vec<u8>> = GGSW::alloc_from_infos(dst);
+    
+            bits.get_bit_lwe(self, bit, &mut lwe, ks, scratch.borrow());
+            cbt.execute_to_constant(self, &mut tmp_ggsw, &lwe, 1, 1, scratch.borrow());
+            dst.prepare(self, &tmp_ggsw, scratch.borrow());
+        });
+    
+
+        for i in 0..bit_start {
+            res.bits[i].zero(self);
+        }
+
+        for i in bit_end..T::BITS as usize {
+            res.bits[i].zero(self);
+        }
+    }
 }
 
-impl<D: DataMut, T: UnsignedInteger, BE: Backend> FheUintPrepared<D, T, BE> {
+impl<D: DataMut + Send, T: UnsignedInteger + Sync, BE: Backend + Sync> FheUintPrepared<D, T, BE> {
     pub fn prepare<BRA, M, O, K, DK>(&mut self, module: &M, other: &FheUint<O, T>, key: &K, scratch: &mut Scratch<BE>)
     where
-        BRA: BlindRotationAlgo,
-        O: DataRef,
-        DK: DataRef,
+        BRA: BlindRotationAlgo + Sync,
+        O: DataRef + Sync,
+        DK: DataRef + Sync,
         K: BDDKeyHelper<DK, BRA, BE>,
         M: FheUintPrepare<BRA, T, BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
@@ -339,9 +423,9 @@ impl<D: DataMut, T: UnsignedInteger, BE: Backend> FheUintPrepared<D, T, BE> {
         key: &K,
         scratch: &mut Scratch<BE>,
     ) where
-        BRA: BlindRotationAlgo,
-        O: DataRef,
-        DK: DataRef,
+        BRA: BlindRotationAlgo + Sync,
+        O: DataRef + Sync,
+        DK: DataRef + Sync,
         K: BDDKeyHelper<DK, BRA, BE>,
         M: FheUintPrepare<BRA, T, BE>,
         Scratch<BE>: ScratchTakeCore<BE>,

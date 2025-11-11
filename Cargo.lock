@@ -410,6 +410,7 @@ dependencies = [
  "poulpy-core",
  "poulpy-hal",
  "rand",
+ "rayon",
 ]
 
 [[package]]

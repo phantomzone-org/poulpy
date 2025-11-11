@@ -15,6 +15,13 @@ pub struct GGSWPrepared<D: Data, B: Backend> {
     pub(crate) dsize: Dsize,
 }
 
+unsafe impl<D, B> Send for GGSWPrepared<D, B>
+where
+    D: Data + Send,
+    B: Backend,
+{
+}
+
 impl<D: Data, B: Backend> LWEInfos for GGSWPrepared<D, B> {
     fn n(&self) -> Degree {
         Degree(self.data.n() as u32)
