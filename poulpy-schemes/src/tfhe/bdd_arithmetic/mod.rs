@@ -16,7 +16,7 @@ pub use key::*;
 
 pub mod tests;
 
-pub trait UnsignedInteger: Copy + 'static {
+pub trait UnsignedInteger: Copy + Sync + Send + 'static {
     const BITS: u32;
     const LOG_BITS: u32;
     const LOG_BYTES: u32;

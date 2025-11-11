@@ -1,4 +1,5 @@
 use crate::tfhe::bdd_arithmetic::FheUintPreparedDebug;
+use crate::tfhe::circuit_bootstrapping::CircuitBootstrappingKeyInfos;
 use crate::tfhe::{
     bdd_arithmetic::{FheUint, UnsignedInteger},
     blind_rotation::{BlindRotationAlgo, BlindRotationKey, BlindRotationKeyFactory},
@@ -8,7 +9,7 @@ use crate::tfhe::{
     },
 };
 
-use poulpy_core::layouts::{GLWEAutomorphismKeyHelper, GLWEAutomorphismKeyPrepared};
+use poulpy_core::layouts::{GGLWEInfos, GLWEAutomorphismKeyHelper, GLWEAutomorphismKeyPrepared};
 use poulpy_core::{
     GLWEToLWESwitchingKeyEncryptSk, GetDistribution, ScratchTakeCore,
     layouts::{
@@ -133,6 +134,21 @@ where
 {
     pub(crate) cbt: CircuitBootstrappingKeyPrepared<D, BRA, BE>,
     pub(crate) ks: GLWEToLWEKeyPrepared<D, BE>,
+}
+
+impl<D: DataRef, BRA: BlindRotationAlgo, BE: Backend> BDDKeyInfos for BDDKeyPrepared<D, BRA, BE>{
+    fn cbt_infos(&self) -> CircuitBootstrappingKeyLayout {
+        CircuitBootstrappingKeyLayout { layout_brk: self.cbt.brk_infos(), layout_atk: self.cbt.atk_infos(), layout_tsk: self.cbt.tsk_infos() }
+    }
+    fn ks_infos(&self) -> GLWEToLWEKeyLayout {
+        GLWEToLWEKeyLayout{
+            n: self.ks.n(),
+            base2k: self.ks.base2k(),
+            k: self.ks.k(),
+            rank_in: self.ks.rank_in(),
+            dnum: self.ks.dnum()
+        }
+    }
 }
 
 impl<D: DataRef, BRA: BlindRotationAlgo, BE: Backend> GLWEAutomorphismKeyHelper<GLWEAutomorphismKeyPrepared<D, BE>, BE>

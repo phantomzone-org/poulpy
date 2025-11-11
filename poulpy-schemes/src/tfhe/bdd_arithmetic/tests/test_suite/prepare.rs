@@ -30,7 +30,7 @@ where
         + BDDKeyEncryptSk<BRA, BE>
         + BDDKeyPreparedFactory<BRA, BE>
         + GGSWNoise<BE>
-        + FheUintPrepare<BRA, u32, BE>
+        + FheUintPrepare<BRA, BE>
         + ExecuteBDDCircuit2WTo1W<u32, BE>
         + GLWEEncryptSk<BE>,
     BlindRotationKey<Vec<u8>, BRA>: BlindRotationKeyFactory<BRA>,
@@ -67,8 +67,10 @@ where
     let mut c_enc_prep_debug: FheUintPreparedDebug<Vec<u8>, u32> =
         FheUintPreparedDebug::<Vec<u8>, u32>::alloc_from_infos(module, &ggsw_infos);
 
+    let mut scratch_2 = ScratchOwned::alloc(module.fhe_uint_prepare_tmp_bytes(7, 1, &c_enc_prep_debug, &c_enc, bdd_key_prepared));
+
     // GGSW(value)
-    c_enc_prep_debug.prepare(module, &c_enc, bdd_key_prepared, scratch.borrow());
+    c_enc_prep_debug.prepare(module, &c_enc, bdd_key_prepared, scratch_2.borrow());
 
     let max_noise = |col_i: usize| {
         let mut noise: f64 = -(ggsw_infos.size() as f64 * TEST_BASE2K as f64) + SIGMA.log2() + 2.0;

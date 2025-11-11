@@ -1,6 +1,6 @@
 use crate::{
     api::{ModuleN, SvpPPolBytesOf, VecZnxBigBytesOf, VecZnxDftBytesOf, VmpPMatBytesOf},
-    layouts::{Backend, MatZnx, ScalarZnx, Scratch, SvpPPol, VecZnx, VecZnxBig, VecZnxDft, VmpPMat},
+    layouts::{Backend, MatZnx, ScalarZnx, Scratch, SvpPPol, VecZnx, VecZnxBig, VecZnxDft, VmpPMat, Zn},
 };
 
 /// Allocates a new [crate::layouts::ScratchOwned] of `size` aligned bytes.
@@ -28,7 +28,17 @@ pub trait TakeSlice {
     fn take_slice<T>(&mut self, len: usize) -> (&mut [T], &mut Self);
 }
 
-impl<B: Backend> ScratchTakeBasic for Scratch<B> where Self: TakeSlice {}
+impl<BE: Backend> Scratch<BE>
+where
+    Self: TakeSlice + ScratchFromBytes<BE>,
+{
+    pub fn split_at_mut(&mut self, len: usize) -> (&mut Scratch<BE>, &mut Self) {
+        let (take_slice, rem_slice) = self.take_slice(len);
+        (Self::from_bytes(take_slice), rem_slice)
+    }
+}
+
+impl<B: Backend> ScratchTakeBasic for Scratch<B> where Self: TakeSlice + ScratchFromBytes<B> {}
 
 pub trait ScratchTakeBasic
 where
@@ -45,6 +55,11 @@ where
     {
         let (take_slice, rem_slice) = self.take_slice(module.bytes_of_svp_ppol(cols));
         (SvpPPol::from_data(take_slice, module.n(), cols), rem_slice)
+    }
+
+    fn take_zn(&mut self, n: usize, cols: usize, size: usize) -> (Zn<&mut [u8]>, &mut Self) {
+        let (take_slice, rem_slice) = self.take_slice(Zn::bytes_of(n, cols, size));
+        (Zn::from_data(take_slice, n, cols, size), rem_slice)
     }
 
     fn take_vec_znx(&mut self, n: usize, cols: usize, size: usize) -> (VecZnx<&mut [u8]>, &mut Self) {

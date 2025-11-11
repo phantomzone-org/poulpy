@@ -30,7 +30,7 @@ where
         + BDDKeyEncryptSk<BRA, BE>
         + BDDKeyPreparedFactory<BRA, BE>
         + GGSWNoise<BE>
-        + FheUintPrepare<BRA, u32, BE>
+        + FheUintPrepare<BRA, BE>
         + ExecuteBDDCircuit2WTo1W<u32, BE>
         + GLWEEncryptSk<BE>,
     BlindRotationKey<Vec<u8>, BRA>: BlindRotationKeyFactory<BRA>,

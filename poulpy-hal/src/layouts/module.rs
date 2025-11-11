@@ -13,7 +13,7 @@ use crate::{
 };
 
 #[allow(clippy::missing_safety_doc)]
-pub trait Backend: Sized {
+pub trait Backend: Sized + Sync + Send {
     type ScalarBig: Copy + Zero + Display + Debug + Pod;
     type ScalarPrep: Copy + Zero + Display + Debug + Pod;
     type Handle: 'static;
