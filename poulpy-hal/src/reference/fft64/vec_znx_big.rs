@@ -301,7 +301,7 @@ pub fn vec_znx_big_add_normal_ref<R, B: Backend<ScalarBig = i64>>(
 pub fn test_vec_znx_big_add_normal<B>(module: &Module<B>)
 where
     Module<B>: VecZnxBigAddNormal<B>,
-    B: Backend<ScalarBig = i64> + VecZnxBigAllocBytesImpl<B>,
+    B: Backend<ScalarBig = i64> + VecZnxBigAllocBytesImpl,
 {
     let n: usize = module.n();
     let base2k: usize = 17;

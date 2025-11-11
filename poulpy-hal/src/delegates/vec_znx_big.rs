@@ -51,7 +51,7 @@ where
 
 impl<B> VecZnxBigBytesOf for Module<B>
 where
-    B: Backend + VecZnxBigAllocBytesImpl<B>,
+    B: Backend + VecZnxBigAllocBytesImpl,
 {
     fn bytes_of_vec_znx_big(&self, cols: usize, size: usize) -> usize {
         B::vec_znx_big_bytes_of_impl(self.n(), cols, size)

@@ -11,7 +11,8 @@ use poulpy_hal::{
                 ReimToZnxInplace, ReimZero, reim_copy_ref, reim_zero_ref,
             },
             reim4::{
-                Reim4Extract1Blk, Reim4Mat1ColProd, Reim4Mat2Cols2ndColProd, Reim4Mat2ColsProd, Reim4Save1Blk, Reim4Save2Blks,
+                Reim4Convolution1Coeff, Reim4Convolution2Coeffs, Reim4Extract1BlkContiguous, Reim4Mat1ColProd,
+                Reim4Mat2Cols2ndColProd, Reim4Mat2ColsProd, Reim4Save1Blk, Reim4Save1BlkContiguous, Reim4Save2Blks,
             },
         },
         znx::{
@@ -33,7 +34,8 @@ use crate::{
     },
     reim_to_znx_i64_bnd63_avx2_fma,
     reim4::{
-        reim4_extract_1blk_from_reim_avx, reim4_save_1blk_to_reim_avx, reim4_save_2blk_to_reim_avx,
+        reim4_convolution_1coeff_avx, reim4_convolution_2coeffs_avx, reim4_extract_1blk_from_reim_contiguous_avx,
+        reim4_save_1blk_to_reim_avx, reim4_save_1blk_to_reim_contiguous_avx, reim4_save_2blk_to_reim_avx,
         reim4_vec_mat1col_product_avx, reim4_vec_mat2cols_2ndcol_product_avx, reim4_vec_mat2cols_product_avx,
     },
     znx_avx::{
@@ -470,11 +472,37 @@ impl ReimZero for FFT64Avx {
     }
 }
 
-impl Reim4Extract1Blk for FFT64Avx {
+impl Reim4Convolution1Coeff for FFT64Avx {
     #[inline(always)]
-    fn reim4_extract_1blk(m: usize, rows: usize, blk: usize, dst: &mut [f64], src: &[f64]) {
+    fn reim4_convolution_1coeff(k: usize, dst: &mut [f64; 8], a: &[f64], a_size: usize, b: &[f64], b_size: usize) {
         unsafe {
-            reim4_extract_1blk_from_reim_avx(m, rows, blk, dst, src);
+            reim4_convolution_1coeff_avx(k, dst, a, a_size, b, b_size);
+        }
+    }
+}
+
+impl Reim4Convolution2Coeffs for FFT64Avx {
+    #[inline(always)]
+    fn reim4_convolution_2coeffs(k: usize, dst: &mut [f64; 16], a: &[f64], a_size: usize, b: &[f64], b_size: usize) {
+        unsafe {
+            reim4_convolution_2coeffs_avx(k, dst, a, a_size, b, b_size);
+        }
+    }
+}
+
+impl Reim4Extract1BlkContiguous for FFT64Avx {
+    #[inline(always)]
+    fn reim4_extract_1blk_contiguous(m: usize, rows: usize, blk: usize, dst: &mut [f64], src: &[f64]) {
+        unsafe {
+            reim4_extract_1blk_from_reim_contiguous_avx(m, rows, blk, dst, src);
+        }
+    }
+}
+
+impl Reim4Save1BlkContiguous for FFT64Avx {
+    fn reim4_save_1blk_contiguous(m: usize, rows: usize, blk: usize, dst: &mut [f64], src: &[f64]) {
+        unsafe {
+            reim4_save_1blk_to_reim_contiguous_avx(m, rows, blk, dst, src);
         }
     }
 }

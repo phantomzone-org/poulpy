@@ -93,7 +93,7 @@ where
 
 impl<D: DataRef + From<Vec<u8>>, B: Backend> VecZnxBig<D, B>
 where
-    B: VecZnxBigAllocBytesImpl<B>,
+    B: VecZnxBigAllocBytesImpl,
 {
     pub fn alloc(n: usize, cols: usize, size: usize) -> Self {
         let data = alloc_aligned::<u8>(B::vec_znx_big_bytes_of_impl(n, cols, size));

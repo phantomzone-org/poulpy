@@ -1,3 +1,4 @@
+mod convolution;
 mod encoding;
 mod mat_znx;
 mod module;
@@ -12,6 +13,7 @@ mod vec_znx_dft;
 mod vmp_pmat;
 mod znx_base;
 
+pub use convolution::*;
 pub use mat_znx::*;
 pub use module::*;
 pub use scalar_znx::*;

@@ -34,7 +34,7 @@ pub unsafe trait VecZnxBigFromBytesImpl<B: Backend> {
 /// * See the [poulpy-backend/src/cpu_fft64_ref/vec_znx_big.rs](https://github.com/phantomzone-org/poulpy/blob/main/poulpy-backend/src/cpu_fft64_ref/vec_znx_big.rs) reference implementation.
 /// * See [crate::api::VecZnxBigAllocBytes] for corresponding public API.
 /// # Safety [crate::doc::backend_safety] for safety contract.
-pub unsafe trait VecZnxBigAllocBytesImpl<B: Backend> {
+pub unsafe trait VecZnxBigAllocBytesImpl {
     fn vec_znx_big_bytes_of_impl(n: usize, cols: usize, size: usize) -> usize;
 }
 
