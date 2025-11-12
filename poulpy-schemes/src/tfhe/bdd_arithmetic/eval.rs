@@ -145,14 +145,15 @@ where
         let chunk_size: usize = circuit.output_size().div_ceil(threads);
 
         thread::scope(|scope| {
-            for (scratch_thread, out_chunk) in scratches
+            for (thread_idx, (scratch_thread, out_chunk)) in scratches
                 .iter_mut()
                 .zip(out[..circuit.output_size()].chunks_mut(chunk_size))
+                .enumerate()
             {
                 // Capture chunk + thread scratch by move
                 scope.spawn(move || {
                     for (idx, out_i) in out_chunk.iter_mut().enumerate() {
-                        let (nodes, state_size) = circuit.get_circuit(idx);
+                        let (nodes, state_size) = circuit.get_circuit(thread_idx * chunk_size + idx);
 
                         if state_size == 0 {
                             out_i.data_mut().zero();
