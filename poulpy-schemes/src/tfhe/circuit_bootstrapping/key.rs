@@ -19,6 +19,7 @@ use crate::tfhe::blind_rotation::{
 };
 
 pub trait CircuitBootstrappingKeyInfos {
+    fn block_size(&self) -> usize;
     fn brk_infos(&self) -> BlindRotationKeyLayout;
     fn atk_infos(&self) -> GLWEAutomorphismKeyLayout;
     fn tsk_infos(&self) -> GGLWEToGGSWKeyLayout;
@@ -32,6 +33,10 @@ pub struct CircuitBootstrappingKeyLayout {
 }
 
 impl CircuitBootstrappingKeyInfos for CircuitBootstrappingKeyLayout {
+    fn block_size(&self) -> usize {
+        unimplemented!("unimplemented for CircuitBootstrappingKeyLayout")
+    }
+
     fn atk_infos(&self) -> GLWEAutomorphismKeyLayout {
         self.layout_atk
     }
@@ -164,6 +169,10 @@ where
 }
 
 impl<D: DataRef, BRA: BlindRotationAlgo> CircuitBootstrappingKeyInfos for CircuitBootstrappingKey<D, BRA> {
+    fn block_size(&self) -> usize {
+        self.brk.block_size()
+    }
+
     fn atk_infos(&self) -> GLWEAutomorphismKeyLayout {
         let (_, atk) = self.atk.iter().next().expect("atk is empty");
         GLWEAutomorphismKeyLayout {

@@ -122,6 +122,10 @@ impl<D: DataRef, BRA: BlindRotationAlgo, BE: Backend> GLWEAutomorphismKeyHelper<
 }
 
 impl<D: DataRef, BRA: BlindRotationAlgo, B: Backend> CircuitBootstrappingKeyInfos for CircuitBootstrappingKeyPrepared<D, BRA, B> {
+    fn block_size(&self) -> usize {
+        self.brk.block_size()
+    }
+
     fn atk_infos(&self) -> GLWEAutomorphismKeyLayout {
         let (_, atk) = self.atk.iter().next().expect("atk is empty");
         GLWEAutomorphismKeyLayout {

@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    api::{ModuleN, ScratchAvailable, ScratchTakeBasic, SvpPPolBytesOf, VecZnxDftBytesOf, VmpPMatBytesOf},
+    api::{ModuleN, ScratchAvailable, ScratchFromBytes, ScratchTakeBasic, SvpPPolBytesOf, VecZnxDftBytesOf, VmpPMatBytesOf},
     layouts::{Backend, Scratch},
 };
 
@@ -7,7 +7,7 @@ use crate::{
     dist::Distribution,
     layouts::{
         Degree, GGLWE, GGLWEInfos, GGLWELayout, GGSW, GGSWInfos, GLWE, GLWEAutomorphismKey, GLWEInfos, GLWEPlaintext,
-        GLWEPrepared, GLWEPublicKey, GLWESecret, GLWESecretTensor, GLWESwitchingKey, GLWETensorKey, Rank,
+        GLWEPrepared, GLWEPublicKey, GLWESecret, GLWESecretTensor, GLWESwitchingKey, GLWETensorKey, LWE, LWEInfos, Rank,
         prepared::{
             GGLWEPrepared, GGSWPrepared, GLWEAutomorphismKeyPrepared, GLWEPublicKeyPrepared, GLWESecretPrepared,
             GLWESwitchingKeyPrepared, GLWETensorKeyPrepared,
@@ -17,8 +17,23 @@ use crate::{
 
 pub trait ScratchTakeCore<B: Backend>
 where
-    Self: ScratchTakeBasic + ScratchAvailable,
+    Self: ScratchTakeBasic + ScratchAvailable + ScratchFromBytes<B>,
 {
+    fn take_lwe<A>(&mut self, infos: &A) -> (LWE<&mut [u8]>, &mut Self)
+    where
+        A: LWEInfos,
+    {
+        let (data, scratch) = self.take_zn(infos.n().into(), 1, infos.size());
+        (
+            LWE {
+                k: infos.k(),
+                base2k: infos.base2k(),
+                data,
+            },
+            scratch,
+        )
+    }
+
     fn take_glwe<A>(&mut self, infos: &A) -> (GLWE<&mut [u8]>, &mut Self)
     where
         A: GLWEInfos,
@@ -367,4 +382,4 @@ where
     }
 }
 
-impl<B: Backend> ScratchTakeCore<B> for Scratch<B> where Self: ScratchTakeBasic + ScratchAvailable {}
+impl<B: Backend> ScratchTakeCore<B> for Scratch<B> where Self: ScratchTakeBasic + ScratchAvailable + ScratchFromBytes<B> {}

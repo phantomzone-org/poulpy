@@ -75,6 +75,14 @@ where
 }
 
 impl<BRA: BlindRotationAlgo, BE: Backend> TestContext<BRA, BE> {
+    pub fn glwe_infos(&self) -> GLWELayout {
+        TEST_GLWE_INFOS
+    }
+
+    pub fn ggsw_infos(&self) -> GGSWLayout {
+        TEST_GGSW_INFOS
+    }
+
     pub fn new() -> Self
     where
         Module<BE>: ModuleNew<BE>

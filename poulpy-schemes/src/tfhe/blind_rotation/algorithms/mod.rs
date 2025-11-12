@@ -11,7 +11,7 @@ use poulpy_hal::layouts::{Backend, DataMut, DataRef, Scratch, ZnxView};
 
 use crate::tfhe::blind_rotation::{BlindRotationKeyInfos, BlindRotationKeyPrepared, LookUpTableRotationDirection, LookupTable};
 
-pub trait BlindRotationAlgo {}
+pub trait BlindRotationAlgo: Sync {}
 
 pub trait BlindRotationExecute<BRA: BlindRotationAlgo, BE: Backend> {
     fn blind_rotation_execute_tmp_bytes<G, B>(

@@ -1,15 +1,15 @@
 use std::collections::HashMap;
 
 use poulpy_hal::{
-    api::{ModuleLogN, ModuleN, ScratchOwnedAlloc, ScratchOwnedBorrow},
+    api::{ModuleLogN, ModuleN, ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow},
     layouts::{Backend, DataRef, Module, Scratch, ScratchOwned, ToOwnedDeep},
 };
 
 use poulpy_core::{
     GGSWFromGGLWE, GLWEDecrypt, GLWEPacking, GLWERotate, GLWETrace, ScratchTakeCore,
     layouts::{
-        Dsize, GGLWEInfos, GGLWELayout, GGLWEPreparedToRef, GGSWInfos, GGSWToMut, GLWEAutomorphismKeyHelper, GLWEInfos,
-        GLWESecretPreparedFactory, GLWEToMut, GLWEToRef, GetGaloisElement, LWEInfos, LWEToRef,
+        Dsize, GGLWE, GGLWEInfos, GGLWELayout, GGLWEPreparedToRef, GGSWInfos, GGSWToMut, GLWEAutomorphismKeyHelper, GLWEInfos,
+        GLWESecretPreparedFactory, GLWEToMut, GLWEToRef, GetGaloisElement, LWEInfos, LWEToRef, Rank,
     },
 };
 
@@ -132,6 +132,16 @@ where
         R: GGSWInfos,
         A: CircuitBootstrappingKeyInfos,
     {
+        let gglwe_infos: GGLWELayout = GGLWELayout {
+            n: res_infos.n(),
+            base2k: res_infos.base2k(),
+            k: res_infos.k(),
+            dnum: res_infos.dnum(),
+            dsize: Dsize(1),
+            rank_in: res_infos.rank().max(Rank(1)),
+            rank_out: res_infos.rank(),
+        };
+
         self.blind_rotation_execute_tmp_bytes(
             block_size,
             extension_factor,
@@ -140,6 +150,8 @@ where
         )
         .max(self.glwe_trace_tmp_bytes(res_infos, res_infos, &cbt_infos.atk_infos()))
         .max(self.ggsw_from_gglwe_tmp_bytes(res_infos, &cbt_infos.tsk_infos()))
+            + GLWE::bytes_of_from_infos(res_infos)
+            + GGLWE::bytes_of_from_infos(&gglwe_infos)
     }
 
     fn circuit_bootstrapping_execute_to_constant<R, L, D>(
@@ -155,6 +167,10 @@ where
         L: LWEToRef + LWEInfos,
         D: DataRef,
     {
+        assert!(
+            scratch.available() >= self.circuit_bootstrapping_execute_tmp_bytes(key.block_size(), extension_factor, res, key)
+        );
+
         circuit_bootstrap_core(
             false,
             self,
@@ -182,6 +198,10 @@ where
         L: LWEToRef + LWEInfos,
         D: DataRef,
     {
+        assert!(
+            scratch.available() >= self.circuit_bootstrapping_execute_tmp_bytes(key.block_size(), extension_factor, res, key)
+        );
+
         circuit_bootstrap_core(
             true,
             self,

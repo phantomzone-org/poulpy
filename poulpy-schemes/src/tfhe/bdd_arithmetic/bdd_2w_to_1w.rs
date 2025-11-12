@@ -13,17 +13,14 @@ use crate::tfhe::bdd_arithmetic::{
     BitSize, ExecuteBDDCircuit, FheUint, FheUintPrepared, GetBitCircuitInfo, GetGGSWBit, UnsignedInteger, circuits,
 };
 
-impl<T: UnsignedInteger, BE: Backend> ExecuteBDDCircuit2WTo1W<T, BE> for Module<BE> where
-    Self: Sized + ExecuteBDDCircuit<T, BE> + GLWEPacking<BE> + GLWECopy
-{
-}
+impl<BE: Backend> ExecuteBDDCircuit2WTo1W<BE> for Module<BE> where Self: Sized + ExecuteBDDCircuit<BE> + GLWEPacking<BE> + GLWECopy
+{}
 
-pub trait ExecuteBDDCircuit2WTo1W<T: UnsignedInteger, BE: Backend>
+pub trait ExecuteBDDCircuit2WTo1W<BE: Backend>
 where
-    Self: Sized + ModuleLogN + ExecuteBDDCircuit<T, BE> + GLWEPacking<BE> + GLWECopy,
+    Self: Sized + ModuleLogN + ExecuteBDDCircuit<BE> + GLWEPacking<BE> + GLWECopy,
 {
-    /// Operations Z x Z -> Z
-    fn execute_bdd_circuit_2w_to_1w<R, C, A, B, K, H>(
+    fn execute_bdd_circuit_2w_to_1w<R, C, A, B, K, H, T>(
         &self,
         out: &mut FheUint<R, T>,
         circuit: &C,
@@ -32,7 +29,32 @@ where
         key: &H,
         scratch: &mut Scratch<BE>,
     ) where
-        C: GetBitCircuitInfo<T>,
+        T: UnsignedInteger,
+        C: GetBitCircuitInfo,
+        R: DataMut,
+        A: DataRef,
+        B: DataRef,
+        K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
+        H: GLWEAutomorphismKeyHelper<K, BE>,
+        Scratch<BE>: ScratchTakeCore<BE>,
+    {
+        self.execute_bdd_circuit_2w_to_1w_multi_thread(1, out, circuit, a, b, key, scratch);
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    /// Operations Z x Z -> Z
+    fn execute_bdd_circuit_2w_to_1w_multi_thread<R, C, A, B, K, H, T>(
+        &self,
+        threads: usize,
+        out: &mut FheUint<R, T>,
+        circuit: &C,
+        a: &FheUintPrepared<A, T, BE>,
+        b: &FheUintPrepared<B, T, BE>,
+        key: &H,
+        scratch: &mut Scratch<BE>,
+    ) where
+        T: UnsignedInteger,
+        C: GetBitCircuitInfo,
         R: DataMut,
         A: DataRef,
         B: DataRef,
@@ -50,7 +72,7 @@ where
         let (mut out_bits, scratch_1) = scratch.take_glwe_slice(T::BITS as usize, out);
 
         // Evaluates out[i] = circuit[i](a, b)
-        self.execute_bdd_circuit(&mut out_bits, &helper, circuit, scratch_1);
+        self.execute_bdd_circuit_multi_thread(threads, &mut out_bits, &helper, circuit, scratch_1);
 
         // Repacks the bits
         out.pack(self, out_bits, key, scratch_1);
@@ -100,22 +122,43 @@ where
 #[macro_export]
 macro_rules! define_bdd_2w_to_1w_trait {
     ($(#[$meta:meta])* $vis:vis $trait_name:ident, $method_name:ident) => {
-        $(#[$meta])*
-        $vis trait $trait_name<T: UnsignedInteger, BE: Backend> {
-            fn $method_name<A, M, K, H, B>(
-                &mut self,
-                module: &M,
-                a: &FheUintPrepared<A, T, BE>,
-                b: &FheUintPrepared<B, T, BE>,
-                key: &H,
-                scratch: &mut Scratch<BE>,
-            ) where
-                M: ExecuteBDDCircuit2WTo1W<T, BE>,
-                A: DataRef,
-                B: DataRef,
-                K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
-                H: GLWEAutomorphismKeyHelper<K, BE>,
-                Scratch<BE>: ScratchTakeCore<BE>;
+        paste::paste! {
+            $(#[$meta])*
+            $vis trait $trait_name<T: UnsignedInteger, BE: Backend> {
+
+                /// Single-threaded version
+                fn $method_name<A, M, K, H, B>(
+                    &mut self,
+                    module: &M,
+                    a: &FheUintPrepared<A, T, BE>,
+                    b: &FheUintPrepared<B, T, BE>,
+                    key: &H,
+                    scratch: &mut Scratch<BE>,
+                ) where
+                    M: ExecuteBDDCircuit2WTo1W<BE>,
+                    A: DataRef,
+                    B: DataRef,
+                    K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
+                    H: GLWEAutomorphismKeyHelper<K, BE>,
+                    Scratch<BE>: ScratchTakeCore<BE>;
+
+                /// Multithreaded version – same vis, method_name + "_multi_thread"
+                fn [<$method_name _multi_thread>]<A, M, K, H, B>(
+                    &mut self,
+                    threads: usize,
+                    module: &M,
+                    a: &FheUintPrepared<A, T, BE>,
+                    b: &FheUintPrepared<B, T, BE>,
+                    key: &H,
+                    scratch: &mut Scratch<BE>,
+                ) where
+                    M: ExecuteBDDCircuit2WTo1W<BE>,
+                    A: DataRef,
+                    B: DataRef,
+                    K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
+                    H: GLWEAutomorphismKeyHelper<K, BE>,
+                    Scratch<BE>: ScratchTakeCore<BE>;
+            }
         }
     };
 }
@@ -123,23 +166,45 @@ macro_rules! define_bdd_2w_to_1w_trait {
 #[macro_export]
 macro_rules! impl_bdd_2w_to_1w_trait {
     ($trait_name:ident, $method_name:ident, $ty:ty, $circuit_ty:ty, $output_circuits:path) => {
-        impl<D: DataMut, BE: Backend> $trait_name<$ty, BE> for FheUint<D, $ty> {
-            fn $method_name<A, M, K, H, B>(
-                &mut self,
-                module: &M,
-                a: &FheUintPrepared<A, $ty, BE>,
-                b: &FheUintPrepared<B, $ty, BE>,
-                key: &H,
-                scratch: &mut Scratch<BE>,
-            ) where
-                M: ExecuteBDDCircuit2WTo1W<$ty, BE>,
-                A: DataRef,
-                B: DataRef,
-                K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
-                H: GLWEAutomorphismKeyHelper<K, BE>,
-                Scratch<BE>: ScratchTakeCore<BE>,
-            {
-                module.execute_bdd_circuit_2w_to_1w(self, &$output_circuits, a, b, key, scratch)
+        paste::paste! {
+            impl<D: DataMut, BE: Backend> $trait_name<$ty, BE> for FheUint<D, $ty> {
+
+                fn $method_name<A, M, K, H, B>(
+                    &mut self,
+                    module: &M,
+                    a: &FheUintPrepared<A, $ty, BE>,
+                    b: &FheUintPrepared<B, $ty, BE>,
+                    key: &H,
+                    scratch: &mut Scratch<BE>,
+                ) where
+                    M: ExecuteBDDCircuit2WTo1W<BE>,
+                    A: DataRef,
+                    B: DataRef,
+                    K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
+                    H: GLWEAutomorphismKeyHelper<K, BE>,
+                    Scratch<BE>: ScratchTakeCore<BE>,
+                {
+                    module.execute_bdd_circuit_2w_to_1w(self, &$output_circuits, a, b, key, scratch)
+                }
+
+                fn [<$method_name _multi_thread>]<A, M, K, H, B>(
+                    &mut self,
+                    threads: usize,
+                    module: &M,
+                    a: &FheUintPrepared<A, $ty, BE>,
+                    b: &FheUintPrepared<B, $ty, BE>,
+                    key: &H,
+                    scratch: &mut Scratch<BE>,
+                ) where
+                    M: ExecuteBDDCircuit2WTo1W<BE>,
+                    A: DataRef,
+                    B: DataRef,
+                    K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
+                    H: GLWEAutomorphismKeyHelper<K, BE>,
+                    Scratch<BE>: ScratchTakeCore<BE>,
+                {
+                    module.execute_bdd_circuit_2w_to_1w_multi_thread(threads, self, &$output_circuits, a, b, key, scratch)
+                }
             }
         }
     };

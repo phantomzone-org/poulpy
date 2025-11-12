@@ -10,7 +10,7 @@ use poulpy_core::layouts::{Base2K, Dnum, Dsize, Rank, TorusPrecision};
 use poulpy_core::layouts::{GGSW, GLWESecretPreparedToRef};
 use poulpy_core::{
     LWEFromGLWE, ScratchTakeCore,
-    layouts::{GGSWInfos, GGSWPreparedFactory, GLWEInfos, LWE, LWEInfos},
+    layouts::{GGSWInfos, GGSWPreparedFactory, GLWEInfos, LWEInfos},
 };
 
 use poulpy_hal::api::ModuleN;
@@ -125,10 +125,12 @@ where
         DR0: DataRef,
         DR1: DataRef,
     {
-        let mut lwe: LWE<Vec<u8>> = LWE::alloc_from_infos(bits); //TODO: add TakeLWE
+        let (_, scratch_1) = scratch.take_ggsw(res);
+        let (mut tmp_lwe, scratch_2) = scratch_1.take_lwe(bits);
         for (bit, dst) in res.bits.iter_mut().enumerate() {
-            bits.get_bit_lwe(self, bit, &mut lwe, &key.ks, scratch);
-            key.cbt.execute_to_constant(self, dst, &lwe, 1, 1, scratch);
+            bits.get_bit_lwe(self, bit, &mut tmp_lwe, &key.ks, scratch_2);
+            key.cbt
+                .execute_to_constant(self, dst, &tmp_lwe, 1, 1, scratch_2);
         }
     }
 }

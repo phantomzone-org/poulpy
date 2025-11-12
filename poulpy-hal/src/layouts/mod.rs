@@ -28,8 +28,8 @@ pub use zn::*;
 pub use znx_base::*;
 
 pub trait Data = PartialEq + Eq + Sized + Default;
-pub trait DataRef = Data + AsRef<[u8]>;
-pub trait DataMut = DataRef + AsMut<[u8]>;
+pub trait DataRef = Data + AsRef<[u8]> + Sync;
+pub trait DataMut = DataRef + AsMut<[u8]> + Send;
 
 pub trait ToOwnedDeep {
     type Owned;

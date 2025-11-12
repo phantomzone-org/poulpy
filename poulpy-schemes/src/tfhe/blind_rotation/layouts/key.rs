@@ -188,8 +188,7 @@ impl<D: DataRef, BRT: BlindRotationAlgo> BlindRotationKeyInfos for BlindRotation
 }
 
 impl<D: DataRef, BRT: BlindRotationAlgo> BlindRotationKey<D, BRT> {
-    #[allow(dead_code)]
-    fn block_size(&self) -> usize {
+    pub fn block_size(&self) -> usize {
         match self.dist {
             Distribution::BinaryBlock(value) => value,
             _ => 1,
