@@ -2,8 +2,8 @@ use poulpy_hal::{
     api::{
         BivariateTensoring, ModuleN, ScratchTakeBasic, VecZnxAdd, VecZnxAddInplace, VecZnxBigNormalize, VecZnxCopy,
         VecZnxIdftApplyConsume, VecZnxMulXpMinusOne, VecZnxMulXpMinusOneInplace, VecZnxNegate, VecZnxNormalize,
-        VecZnxNormalizeInplace, VecZnxRotate, VecZnxRotateInplace, VecZnxRshInplace, VecZnxSub, VecZnxSubInplace,
-        VecZnxSubNegateInplace, VecZnxZero,
+        VecZnxNormalizeInplace, VecZnxNormalizeTmpBytes, VecZnxRotate, VecZnxRotateInplace, VecZnxRshInplace, VecZnxSub,
+        VecZnxSubInplace, VecZnxSubNegateInplace, VecZnxZero,
     },
     layouts::{Backend, Module, Scratch, VecZnx, VecZnxBig, ZnxInfos},
     reference::vec_znx::vec_znx_rotate_inplace_tmp_bytes,
@@ -389,12 +389,19 @@ impl GLWE<Vec<u8>> {
     }
 }
 
-impl<BE: Backend> GLWENormalize<BE> for Module<BE> where Self: ModuleN + VecZnxNormalize<BE> + VecZnxNormalizeInplace<BE> {}
+impl<BE: Backend> GLWENormalize<BE> for Module<BE> where
+    Self: ModuleN + VecZnxNormalize<BE> + VecZnxNormalizeInplace<BE> + VecZnxNormalizeTmpBytes
+{
+}
 
 pub trait GLWENormalize<BE: Backend>
 where
-    Self: ModuleN + VecZnxNormalize<BE> + VecZnxNormalizeInplace<BE>,
+    Self: ModuleN + VecZnxNormalize<BE> + VecZnxNormalizeInplace<BE> + VecZnxNormalizeTmpBytes,
 {
+    fn glwe_normalize_tmp_bytes(&self) -> usize {
+        self.vec_znx_normalize_tmp_bytes()
+    }
+
     fn glwe_normalize<R, A>(&self, res: &mut R, a: &A, scratch: &mut Scratch<BE>)
     where
         R: GLWEToMut,

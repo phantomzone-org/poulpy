@@ -331,7 +331,11 @@ where
 
         let scratch_thread_size = self.fhe_uint_prepare_tmp_bytes(cbt.block_size(), 1, res, bits, key);
 
-        assert!(scratch.available() >= threads * scratch_thread_size);
+        assert!(
+            scratch.available() >= threads * scratch_thread_size,
+            "scratch.available():{} < threads:{threads} * scratch_thread_size:{scratch_thread_size}",
+            scratch.available()
+        );
 
         let chunk_size: usize = bit_count.div_ceil(threads);
 
