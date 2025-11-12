@@ -133,8 +133,8 @@ impl<BRA: BlindRotationAlgo, BE: Backend> TestContext<BRA, BE> {
     }
 }
 
-pub(crate) const TEST_N_GLWE: u32 = 1024;
-pub(crate) const TEST_N_LWE: u32 = 574;
+pub(crate) const TEST_N_GLWE: u32 = 256;
+pub(crate) const TEST_N_LWE: u32 = 77;
 pub(crate) const TEST_BASE2K: u32 = 13;
 pub(crate) const TEST_K_GLWE: u32 = 26;
 pub(crate) const TEST_K_GGSW: u32 = 39;

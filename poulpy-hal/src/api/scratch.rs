@@ -30,11 +30,23 @@ pub trait TakeSlice {
 
 impl<BE: Backend> Scratch<BE>
 where
-    Self: TakeSlice + ScratchFromBytes<BE>,
+    Self: TakeSlice + ScratchAvailable + ScratchFromBytes<BE>,
 {
     pub fn split_at_mut(&mut self, len: usize) -> (&mut Scratch<BE>, &mut Self) {
         let (take_slice, rem_slice) = self.take_slice(len);
         (Self::from_bytes(take_slice), rem_slice)
+    }
+
+    pub fn split_mut(&mut self, n: usize, len: usize) -> (Vec<&mut Scratch<BE>>, &mut Self) {
+        assert!(self.available() >= n * len);
+        let mut scratches: Vec<&mut Scratch<BE>> = Vec::with_capacity(n);
+        let mut scratch: &mut Scratch<BE> = self;
+        for _ in 0..n {
+            let (tmp, scratch_new) = scratch.split_at_mut(len);
+            scratch = scratch_new;
+            scratches.push(tmp);
+        }
+        (scratches, scratch)
     }
 }
 

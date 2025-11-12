@@ -31,7 +31,7 @@ where
         + BDDKeyPreparedFactory<BRA, BE>
         + GGSWNoise<BE>
         + FheUintPrepare<BRA, BE>
-        + ExecuteBDDCircuit2WTo1W<u32, BE>
+        + ExecuteBDDCircuit2WTo1W<BE>
         + GLWEEncryptSk<BE>,
     BlindRotationKey<Vec<u8>, BRA>: BlindRotationKeyFactory<BRA>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,

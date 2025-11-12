@@ -8,7 +8,8 @@ use poulpy_hal::{
 use poulpy_core::{
     GGSWFromGGLWE, GLWEDecrypt, GLWEPacking, GLWERotate, GLWETrace, ScratchTakeCore,
     layouts::{
-        Dsize, GGLWE, GGLWEInfos, GGLWELayout, GGLWEPreparedToRef, GGSWInfos, GGSWToMut, GLWEAutomorphismKeyHelper, GLWEInfos, GLWESecretPreparedFactory, GLWEToMut, GLWEToRef, GetGaloisElement, LWEInfos, LWEToRef, Rank
+        Dsize, GGLWE, GGLWEInfos, GGLWELayout, GGLWEPreparedToRef, GGSWInfos, GGSWToMut, GLWEAutomorphismKeyHelper, GLWEInfos,
+        GLWESecretPreparedFactory, GLWEToMut, GLWEToRef, GetGaloisElement, LWEInfos, LWEToRef, Rank,
     },
 };
 
@@ -131,14 +132,13 @@ where
         R: GGSWInfos,
         A: CircuitBootstrappingKeyInfos,
     {
-
         let gglwe_infos: GGLWELayout = GGLWELayout {
             n: res_infos.n(),
             base2k: res_infos.base2k(),
             k: res_infos.k(),
             dnum: res_infos.dnum(),
             dsize: Dsize(1),
-            rank_in: res_infos.rank().max(Rank(1)).into(),
+            rank_in: res_infos.rank().max(Rank(1)),
             rank_out: res_infos.rank(),
         };
 
@@ -149,7 +149,9 @@ where
             &cbt_infos.brk_infos(),
         )
         .max(self.glwe_trace_tmp_bytes(res_infos, res_infos, &cbt_infos.atk_infos()))
-        .max(self.ggsw_from_gglwe_tmp_bytes(res_infos, &cbt_infos.tsk_infos())) + GLWE::bytes_of_from_infos(res_infos) + GGLWE::bytes_of_from_infos(&gglwe_infos)
+        .max(self.ggsw_from_gglwe_tmp_bytes(res_infos, &cbt_infos.tsk_infos()))
+            + GLWE::bytes_of_from_infos(res_infos)
+            + GGLWE::bytes_of_from_infos(&gglwe_infos)
     }
 
     fn circuit_bootstrapping_execute_to_constant<R, L, D>(
@@ -164,9 +166,10 @@ where
         R: GGSWToMut + GGSWInfos,
         L: LWEToRef + LWEInfos,
         D: DataRef,
-    {   
-
-        assert!(scratch.available() >= self.circuit_bootstrapping_execute_tmp_bytes(key.block_size(), extension_factor, res, key));
+    {
+        assert!(
+            scratch.available() >= self.circuit_bootstrapping_execute_tmp_bytes(key.block_size(), extension_factor, res, key)
+        );
 
         circuit_bootstrap_core(
             false,
@@ -194,9 +197,10 @@ where
         R: GGSWToMut + GGSWInfos,
         L: LWEToRef + LWEInfos,
         D: DataRef,
-    {   
-
-        assert!(scratch.available() >= self.circuit_bootstrapping_execute_tmp_bytes(key.block_size(), extension_factor, res, key));
+    {
+        assert!(
+            scratch.available() >= self.circuit_bootstrapping_execute_tmp_bytes(key.block_size(), extension_factor, res, key)
+        );
 
         circuit_bootstrap_core(
             true,
@@ -239,7 +243,7 @@ pub fn circuit_bootstrap_core<R, L, D, M, BRA: BlindRotationAlgo, BE: Backend>(
         + ModuleLogN,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
-{   
+{
     let res: &mut GGSW<&mut [u8]> = &mut res.to_mut();
     let lwe: &LWE<&[u8]> = &lwe.to_ref();
 

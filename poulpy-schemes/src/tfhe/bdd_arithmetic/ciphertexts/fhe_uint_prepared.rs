@@ -33,7 +33,7 @@ pub struct FheUintPrepared<D: Data, T: UnsignedInteger, B: Backend> {
 
 impl<T: UnsignedInteger, BE: Backend> FheUintPreparedFactory<T, BE> for Module<BE> where Self: Sized + GGSWPreparedFactory<BE> {}
 
-pub trait GetGGSWBit<BE: Backend> {
+pub trait GetGGSWBit<BE: Backend>: Sync {
     fn get_bit(&self, bit: usize) -> GGSWPrepared<&[u8], BE>;
 }
 
@@ -222,7 +222,14 @@ impl<D: DataMut, BRA: BlindRotationAlgo, BE: Backend> BDDKeyPrepared<D, BRA, BE>
 }
 
 pub trait FheUintPrepare<BRA: BlindRotationAlgo, BE: Backend> {
-    fn fhe_uint_prepare_tmp_bytes<R, A, B>(&self, block_size: usize, extension_factor: usize, res_infos: &R, bits_infos: &A, bdd_infos: &B) -> usize
+    fn fhe_uint_prepare_tmp_bytes<R, A, B>(
+        &self,
+        block_size: usize,
+        extension_factor: usize,
+        res_infos: &R,
+        bits_infos: &A,
+        bdd_infos: &B,
+    ) -> usize
     where
         R: GGSWInfos,
         A: GLWEInfos,
@@ -258,6 +265,7 @@ pub trait FheUintPrepare<BRA: BlindRotationAlgo, BE: Backend> {
     {
         self.fhe_uint_prepare_custom_multi_thread(1, res, bits, bit_start, bit_count, key, scratch)
     }
+    #[allow(clippy::too_many_arguments)]
     fn fhe_uint_prepare_custom_multi_thread<DM, DB, DK, K, T: UnsignedInteger>(
         &self,
         threads: usize,
@@ -279,7 +287,14 @@ where
     Self: LWEFromGLWE<BE> + CirtuitBootstrappingExecute<BRA, BE> + GGSWPreparedFactory<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
-    fn fhe_uint_prepare_tmp_bytes<R, A, B>(&self, block_size: usize, extension_factor: usize, res_infos: &R, bits_infos: &A, bdd_infos: &B) -> usize
+    fn fhe_uint_prepare_tmp_bytes<R, A, B>(
+        &self,
+        block_size: usize,
+        extension_factor: usize,
+        res_infos: &R,
+        bits_infos: &A,
+        bdd_infos: &B,
+    ) -> usize
     where
         R: GGSWInfos,
         A: GLWEInfos,
@@ -302,7 +317,7 @@ where
         bit_start: usize,
         bit_count: usize,
         key: &K,
-        mut scratch: &mut Scratch<BE>,
+        scratch: &mut Scratch<BE>,
     ) where
         DM: DataMut,
         DB: DataRef,
@@ -318,16 +333,9 @@ where
 
         assert!(scratch.available() >= threads * scratch_thread_size);
 
-        // How many bits we need to process
-        let chunk_size: usize = bit_count.div_ceil(threads); // ceil division
+        let chunk_size: usize = bit_count.div_ceil(threads);
 
-        let mut scratches = Vec::new();
-        for _ in 0..(threads - 1) {
-            let (tmp, scratch_new) = scratch.split_at_mut(scratch_thread_size);
-            scratch = scratch_new;
-            scratches.push(tmp);
-        }
-        scratches.push(scratch);
+        let (mut scratches, _) = scratch.split_mut(threads, scratch_thread_size);
 
         let ggsw_infos: &GGSWLayout = &res.ggsw_layout();
 
@@ -392,6 +400,7 @@ impl<D: DataMut, T: UnsignedInteger, BE: Backend> FheUintPrepared<D, T, BE> {
         module.fhe_uint_prepare_custom(self, other, bit_start, bit_end, key, scratch);
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn prepare_custom_multi_thread<BRA, M, O, K, DK>(
         &mut self,
         threads: usize,
