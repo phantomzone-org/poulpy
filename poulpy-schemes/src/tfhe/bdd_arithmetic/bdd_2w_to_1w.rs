@@ -30,7 +30,7 @@ where
         scratch: &mut Scratch<BE>,
     ) where
         T: UnsignedInteger,
-        C: GetBitCircuitInfo<T>,
+        C: GetBitCircuitInfo,
         R: DataMut,
         A: DataRef,
         B: DataRef,
@@ -54,7 +54,7 @@ where
         scratch: &mut Scratch<BE>,
     ) where
         T: UnsignedInteger,
-        C: GetBitCircuitInfo<T>,
+        C: GetBitCircuitInfo,
         R: DataMut,
         A: DataRef,
         B: DataRef,

@@ -14,13 +14,13 @@ use poulpy_hal::{
     layouts::{Backend, DataMut, Module, Scratch, VecZnxBig, ZnxZero},
 };
 
-use crate::tfhe::bdd_arithmetic::{GetGGSWBit, UnsignedInteger};
+use crate::tfhe::bdd_arithmetic::GetGGSWBit;
 
 pub trait BitCircuitInfo: Sync {
     fn info(&self) -> (&[Node], usize);
 }
 
-pub trait GetBitCircuitInfo<T: UnsignedInteger>: Sync {
+pub trait GetBitCircuitInfo: Sync {
     fn input_size(&self) -> usize;
     fn output_size(&self) -> usize;
     fn get_circuit(&self, bit: usize) -> (&[Node], usize);
@@ -38,7 +38,7 @@ pub trait BitCircuitFamily {
 
 pub struct Circuit<C: BitCircuitInfo, const N: usize>(pub [C; N]);
 
-impl<C, T: UnsignedInteger, const N: usize> GetBitCircuitInfo<T> for Circuit<C, N>
+impl<C, const N: usize> GetBitCircuitInfo for Circuit<C, N>
 where
     C: BitCircuitInfo + BitCircuitFamily,
 {
@@ -59,21 +59,16 @@ pub trait ExecuteBDDCircuit<BE: Backend> {
         R: GLWEInfos,
         G: GGSWInfos;
 
-    fn execute_bdd_circuit<C, G, O, T: UnsignedInteger>(
-        &self,
-        out: &mut [GLWE<O>],
-        inputs: &G,
-        circuit: &C,
-        scratch: &mut Scratch<BE>,
-    ) where
+    fn execute_bdd_circuit<C, G, O>(&self, out: &mut [GLWE<O>], inputs: &G, circuit: &C, scratch: &mut Scratch<BE>)
+    where
         G: GetGGSWBit<BE> + BitSize,
-        C: GetBitCircuitInfo<T>,
+        C: GetBitCircuitInfo,
         O: DataMut,
     {
         self.execute_bdd_circuit_multi_thread(1, out, inputs, circuit, scratch);
     }
 
-    fn execute_bdd_circuit_multi_thread<C, G, O, T: UnsignedInteger>(
+    fn execute_bdd_circuit_multi_thread<C, G, O>(
         &self,
         threads: usize,
         out: &mut [GLWE<O>],
@@ -82,7 +77,7 @@ pub trait ExecuteBDDCircuit<BE: Backend> {
         scratch: &mut Scratch<BE>,
     ) where
         G: GetGGSWBit<BE> + BitSize,
-        C: GetBitCircuitInfo<T>,
+        C: GetBitCircuitInfo,
         O: DataMut;
 }
 
@@ -103,7 +98,7 @@ where
         2 * state_size * GLWE::bytes_of_from_infos(res_infos) + self.cmux_tmp_bytes(res_infos, res_infos, ggsw_infos)
     }
 
-    fn execute_bdd_circuit_multi_thread<C, G, O, T: UnsignedInteger>(
+    fn execute_bdd_circuit_multi_thread<C, G, O>(
         &self,
         threads: usize,
         out: &mut [GLWE<O>],
@@ -112,7 +107,7 @@ where
         scratch: &mut Scratch<BE>,
     ) where
         G: GetGGSWBit<BE> + BitSize,
-        C: GetBitCircuitInfo<T>,
+        C: GetBitCircuitInfo,
         O: DataMut,
     {
         #[cfg(debug_assertions)]
