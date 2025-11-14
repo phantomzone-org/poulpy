@@ -68,6 +68,10 @@ where
 }
 
 pub trait BDDKeyEncryptSk<BRA: BlindRotationAlgo, BE: Backend> {
+    fn bdd_key_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
+    where
+        A: BDDKeyInfos;
+
     fn bdd_key_encrypt_sk<D, S0, S1>(
         &self,
         res: &mut BDDKey<D, BRA>,
@@ -87,6 +91,14 @@ where
     Self: CircuitBootstrappingKeyEncryptSk<BRA, BE> + GLWEToLWESwitchingKeyEncryptSk<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
+    fn bdd_key_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
+    where
+        A: BDDKeyInfos,
+    {
+        self.circuit_bootstrapping_key_encrypt_sk_tmp_bytes(&infos.cbt_infos())
+            .max(self.glwe_to_lwe_key_encrypt_sk_tmp_bytes(&infos.ks_infos()))
+    }
+
     fn bdd_key_encrypt_sk<D, S0, S1>(
         &self,
         res: &mut BDDKey<D, BRA>,
