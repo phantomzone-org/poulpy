@@ -51,6 +51,10 @@ impl CircuitBootstrappingKeyInfos for CircuitBootstrappingKeyLayout {
 }
 
 pub trait CircuitBootstrappingKeyEncryptSk<BRA: BlindRotationAlgo, BE: Backend> {
+    fn circuit_bootstrapping_key_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
+    where
+        A: CircuitBootstrappingKeyInfos;
+
     #[allow(clippy::too_many_arguments)]
     fn circuit_bootstrapping_key_encrypt_sk<D, S0, S1>(
         &self,
@@ -123,6 +127,15 @@ where
         + GLWESecretPreparedFactory<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
+    fn circuit_bootstrapping_key_encrypt_sk_tmp_bytes<A>(&self, infos: &A) -> usize
+    where
+        A: CircuitBootstrappingKeyInfos,
+    {
+        self.glwe_automorphism_key_encrypt_sk_tmp_bytes(&infos.atk_infos())
+            .max(self.blind_rotation_key_encrypt_sk_tmp_bytes(&infos.brk_infos()))
+            .max(self.gglwe_to_ggsw_key_encrypt_sk_tmp_bytes(&infos.tsk_infos()))
+    }
+
     fn circuit_bootstrapping_key_encrypt_sk<D, S0, S1>(
         &self,
         res: &mut CircuitBootstrappingKey<D, BRA>,
