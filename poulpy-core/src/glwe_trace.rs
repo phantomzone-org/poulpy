@@ -33,7 +33,7 @@ impl GLWE<Vec<u8>> {
 impl<D: DataMut> GLWE<D> {
     pub fn trace<A, H, K, M, BE: Backend>(&mut self, module: &M, skip: usize, a: &A, keys: &H, scratch: &mut Scratch<BE>)
     where
-        A: GLWEToRef,
+        A: GLWEToRef + GLWEInfos,
         K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
@@ -98,18 +98,31 @@ where
             return glwe_conv + trace;
         }
 
-        trace
+        let tmp = if res_infos.k() > a_infos.k() {
+            GLWE::bytes_of_from_infos(res_infos)
+        } else {
+            GLWE::bytes_of_from_infos(a_infos)
+        };
+
+        trace + tmp
     }
 
     fn glwe_trace<R, A, K, H>(&self, res: &mut R, skip: usize, a: &A, keys: &H, scratch: &mut Scratch<BE>)
     where
-        R: GLWEToMut,
-        A: GLWEToRef,
+        R: GLWEToMut + GLWEInfos,
+        A: GLWEToRef + GLWEInfos,
         K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
     {
-        self.glwe_copy(res, a);
-        self.glwe_trace_inplace(res, skip, keys, scratch);
+        let (mut tmp, scratch_1) = if a.k() > res.k() {
+            scratch.take_glwe(a)
+        } else {
+            scratch.take_glwe(res)
+        };
+
+        self.glwe_copy(&mut tmp, a);
+        self.glwe_trace_inplace(&mut tmp, skip, keys, scratch_1);
+        self.glwe_copy(res, &tmp);
     }
 
     fn glwe_trace_inplace<R, K, H>(&self, res: &mut R, skip: usize, keys: &H, scratch: &mut Scratch<BE>)
@@ -177,8 +190,6 @@ where
                 );
             }
         } else {
-            // println!("res: {}", res);
-
             for i in skip..log_n {
                 self.glwe_rsh(1, res, scratch);
 
@@ -209,8 +220,8 @@ pub trait GLWETrace<BE: Backend> {
 
     fn glwe_trace<R, A, K, H>(&self, res: &mut R, skip: usize, a: &A, keys: &H, scratch: &mut Scratch<BE>)
     where
-        R: GLWEToMut,
-        A: GLWEToRef,
+        R: GLWEToMut + GLWEInfos,
+        A: GLWEToRef + GLWEInfos,
         K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>;
 

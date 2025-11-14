@@ -20,7 +20,7 @@ pub trait GLWEPacking<BE: Backend> {
         keys: &H,
         scratch: &mut Scratch<BE>,
     ) where
-        R: GLWEToMut,
+        R: GLWEToMut + GLWEInfos,
         A: GLWEToMut + GLWEToRef + GLWEInfos,
         K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>;
@@ -50,7 +50,7 @@ where
         keys: &H,
         scratch: &mut Scratch<BE>,
     ) where
-        R: GLWEToMut,
+        R: GLWEToMut + GLWEInfos,
         A: GLWEToMut + GLWEToRef + GLWEInfos,
         K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
