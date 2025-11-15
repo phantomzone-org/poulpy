@@ -189,7 +189,7 @@ impl<D: DataRef> WriterTo for GLWE<D> {
     }
 }
 
-pub trait GLWEToRef {
+pub trait GLWEToRef: Sized {
     fn to_ref(&self) -> GLWE<&[u8]>;
 }
 
@@ -203,14 +203,11 @@ impl<D: DataRef> GLWEToRef for GLWE<D> {
     }
 }
 
-pub trait GLWEToMut {
+pub trait GLWEToMut: GLWEToRef {
     fn to_mut(&mut self) -> GLWE<&mut [u8]>;
 }
 
-impl<D: DataMut> GLWEToMut for GLWE<D>
-where
-    Self: GLWEToRef,
-{
+impl<D: DataMut> GLWEToMut for GLWE<D> {
     fn to_mut(&mut self) -> GLWE<&mut [u8]> {
         GLWE {
             k: self.k,

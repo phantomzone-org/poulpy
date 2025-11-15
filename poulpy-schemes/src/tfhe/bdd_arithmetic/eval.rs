@@ -4,14 +4,16 @@ use std::thread;
 use itertools::Itertools;
 use poulpy_core::{
     GLWECopy, GLWEExternalProductInternal, GLWENormalize, GLWESub, ScratchTakeCore,
-    layouts::{GGSWInfos, GGSWPrepared, GLWE, GLWEInfos, GLWEToMut, GLWEToRef, LWEInfos, prepared::GGSWPreparedToRef},
+    layouts::{
+        GGSWInfos, GGSWPrepared, GLWE, GLWEInfos, GLWELayout, GLWEToMut, GLWEToRef, LWEInfos, prepared::GGSWPreparedToRef,
+    },
 };
 use poulpy_hal::{
     api::{
-        ScratchAvailable, ScratchTakeBasic, VecZnxBigAddSmallInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
-        VecZnxDftBytesOf,
+        ScratchAvailable, ScratchTakeBasic, VecZnxBigAddSmall, VecZnxBigAddSmallInplace, VecZnxBigBytesOf, VecZnxBigNormalize,
+        VecZnxBigNormalizeTmpBytes, VecZnxBigSubSmallA, VecZnxDftBytesOf,
     },
-    layouts::{Backend, DataMut, Module, Scratch, VecZnxBig, ZnxZero},
+    layouts::{Backend, DataMut, Module, Scratch, VecZnxBig, ZnxInfos, ZnxZero},
 };
 
 use crate::tfhe::bdd_arithmetic::GetGGSWBit;
@@ -260,6 +262,204 @@ pub enum Node {
     None,
 }
 
+impl<BE: Backend> Cswap<BE> for Module<BE> where
+    Self: Sized
+        + GLWEExternalProductInternal<BE>
+        + GLWESub
+        + VecZnxBigAddSmallInplace<BE>
+        + GLWENormalize<BE>
+        + VecZnxDftBytesOf
+        + VecZnxBigNormalize<BE>
+        + VecZnxBigNormalizeTmpBytes
+        + GLWENormalize<BE>
+        + VecZnxBigAddSmall<BE>
+        + VecZnxBigSubSmallA<BE>
+        + VecZnxBigBytesOf
+{
+}
+
+pub trait Cswap<BE: Backend>
+where
+    Self: Sized
+        + GLWEExternalProductInternal<BE>
+        + GLWESub
+        + GLWECopy
+        + VecZnxBigAddSmallInplace<BE>
+        + GLWENormalize<BE>
+        + VecZnxDftBytesOf
+        + VecZnxBigNormalize<BE>
+        + VecZnxBigNormalizeTmpBytes
+        + GLWENormalize<BE>
+        + VecZnxBigAddSmall<BE>
+        + VecZnxBigSubSmallA<BE>
+        + VecZnxBigBytesOf,
+{
+    fn cswap_tmp_bytes<R, A, S>(&self, res_a_infos: &R, res_b_infos: &A, s_infos: &S) -> usize
+    where
+        R: GLWEInfos,
+        A: GLWEInfos,
+        S: GGSWInfos,
+    {
+        let res_dft: usize = self.bytes_of_vec_znx_dft((s_infos.rank() + 1).into(), s_infos.size());
+        let mut tot = res_dft
+            + (self.glwe_external_product_internal_tmp_bytes(res_a_infos, res_b_infos, s_infos)
+                + GLWE::bytes_of_from_infos(&GLWELayout {
+                    n: s_infos.n(),
+                    base2k: s_infos.base2k(),
+                    k: res_a_infos.k().max(res_b_infos.k()),
+                    rank: s_infos.rank(),
+                }))
+            .max(self.vec_znx_big_normalize_tmp_bytes());
+
+        if res_a_infos.base2k() != s_infos.base2k() {
+            tot += GLWE::bytes_of_from_infos(&GLWELayout {
+                n: res_a_infos.n(),
+                base2k: s_infos.base2k(),
+                k: res_a_infos.k(),
+                rank: res_a_infos.rank(),
+            });
+
+            tot += GLWE::bytes_of_from_infos(&GLWELayout {
+                n: res_b_infos.n(),
+                base2k: s_infos.base2k(),
+                k: res_b_infos.k(),
+                rank: res_b_infos.rank(),
+            });
+        }
+
+        tot += self.bytes_of_vec_znx_big(1, s_infos.size());
+
+        tot
+    }
+
+    fn cswap<A, B, S>(&self, res_a: &mut A, res_b: &mut B, s: &S, scratch: &mut Scratch<BE>)
+    where
+        A: GLWEToMut,
+        B: GLWEToMut,
+        S: GGSWPreparedToRef<BE> + GGSWInfos,
+        Scratch<BE>: ScratchTakeCore<BE>,
+    {
+        let res_a: &mut GLWE<&mut [u8]> = &mut res_a.to_mut();
+        let res_b: &mut GLWE<&mut [u8]> = &mut res_b.to_mut();
+        let s: &GGSWPrepared<&[u8], BE> = &s.to_ref();
+        assert_eq!(res_a.base2k(), res_b.base2k());
+
+        let res_base2k: usize = res_a.base2k().as_usize();
+        let s_base2k: usize = s.base2k().as_usize();
+
+        if res_base2k == s_base2k {
+            let res_big: VecZnxBig<&mut [u8], BE>;
+            let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (s.rank() + 1).into(), s.size()); // Todo optimise
+            {
+                // Temporary value storing a - b
+                let tmp_c_infos: GLWELayout = GLWELayout {
+                    n: s.n(),
+                    base2k: s.base2k(),
+                    k: res_a.k().max(res_b.k()),
+                    rank: s.rank(),
+                };
+                let (mut tmp_c, scratch_2) = scratch_1.take_glwe(&tmp_c_infos);
+                self.glwe_sub(&mut tmp_c, res_b, res_a);
+                res_big = self.glwe_external_product_internal(res_dft, &tmp_c, s, scratch_2);
+            }
+
+            // Single column res_big to store temporary value before normalization
+            let (mut res_big_tmp, scratch_2) = scratch_1.take_vec_znx_big::<_, BE>(self, 1, res_big.size());
+
+            // res_a = (b-a) * bit + a
+            for j in 0..(res_a.rank() + 1).into() {
+                self.vec_znx_big_add_small(&mut res_big_tmp, 0, &res_big, j, res_a.data(), j);
+                self.vec_znx_big_normalize(
+                    res_base2k,
+                    res_a.data_mut(),
+                    j,
+                    s_base2k,
+                    &res_big_tmp,
+                    0,
+                    scratch_2,
+                );
+            }
+
+            // res_b = a - (a - b) * bit = (b - a) * bit + a
+            for j in 0..(res_b.rank() + 1).into() {
+                self.vec_znx_big_sub_small_a(&mut res_big_tmp, 0, res_b.data(), j, &res_big, j);
+                self.vec_znx_big_normalize(
+                    res_base2k,
+                    res_b.data_mut(),
+                    j,
+                    s_base2k,
+                    &res_big_tmp,
+                    0,
+                    scratch_2,
+                );
+            }
+        } else {
+            let (mut tmp_a, scratch_1) = scratch.take_glwe(&GLWELayout {
+                n: res_a.n(),
+                base2k: s.base2k(),
+                k: res_a.k(),
+                rank: res_a.rank(),
+            });
+
+            let (mut tmp_b, scratch_2) = scratch_1.take_glwe(&GLWELayout {
+                n: res_b.n(),
+                base2k: s.base2k(),
+                k: res_b.k(),
+                rank: res_b.rank(),
+            });
+
+            self.glwe_normalize(&mut tmp_a, res_a, scratch_2);
+            self.glwe_normalize(&mut tmp_b, res_b, scratch_2);
+
+            let res_big: VecZnxBig<&mut [u8], BE>;
+            let (res_dft, scratch_3) = scratch_2.take_vec_znx_dft(self, (s.rank() + 1).into(), s.size()); // Todo optimise
+            {
+                // Temporary value storing a - b
+                let tmp_c_infos: GLWELayout = GLWELayout {
+                    n: s.n(),
+                    base2k: s.base2k(),
+                    k: res_a.k().max(res_b.k()),
+                    rank: s.rank(),
+                };
+                let (mut tmp_c, scratch_4) = scratch_3.take_glwe(&tmp_c_infos);
+                self.glwe_sub(&mut tmp_c, res_b, res_a);
+                res_big = self.glwe_external_product_internal(res_dft, &tmp_c, s, scratch_4);
+            }
+
+            // Single column res_big to store temporary value before normalization
+            let (mut res_big_tmp, scratch_4) = scratch_3.take_vec_znx_big::<_, BE>(self, 1, res_big.size());
+
+            // res_a = (b-a) * bit + a
+            for j in 0..(res_a.rank() + 1).into() {
+                self.vec_znx_big_add_small(&mut res_big_tmp, 0, &res_big, j, tmp_a.data(), j);
+                self.vec_znx_big_normalize(
+                    res_base2k,
+                    res_a.data_mut(),
+                    j,
+                    s_base2k,
+                    &res_big_tmp,
+                    0,
+                    scratch_4,
+                );
+            }
+
+            // res_b = a - (a - b) * bit = (b - a) * bit + a
+            for j in 0..(res_b.rank() + 1).into() {
+                self.vec_znx_big_sub_small_a(&mut res_big_tmp, 0, tmp_b.data(), j, &res_big, j);
+                self.vec_znx_big_normalize(
+                    res_base2k,
+                    res_b.data_mut(),
+                    j,
+                    s_base2k,
+                    &res_big_tmp,
+                    0,
+                    scratch_4,
+                );
+            }
+        }
+    }
+}
+
 pub trait Cmux<BE: Backend>
 where
     Self: Sized
@@ -284,6 +484,7 @@ where
                 .max(self.vec_znx_big_normalize_tmp_bytes())
     }
 
+    // res = (t - f) * s + f
     fn cmux<R, T, F, S>(&self, res: &mut R, t: &T, f: &F, s: &S, scratch: &mut Scratch<BE>)
     where
         R: GLWEToMut,
@@ -316,6 +517,46 @@ where
         }
     }
 
+    // res = (a - res) * s + res
+    fn cmux_inplace_neg<R, A, S>(&self, res: &mut R, a: &A, s: &S, scratch: &mut Scratch<BE>)
+    where
+        R: GLWEToMut,
+        A: GLWEToRef,
+        S: GGSWPreparedToRef<BE> + GGSWInfos,
+        Scratch<BE>: ScratchTakeCore<BE>,
+    {
+        let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
+        let s: &GGSWPrepared<&[u8], BE> = &s.to_ref();
+        let a: &GLWE<&[u8]> = &a.to_ref();
+
+        assert_eq!(res.base2k(), a.base2k());
+
+        let res_base2k: usize = res.base2k().into();
+        let ggsw_base2k: usize = s.base2k().into();
+        let (mut tmp, scratch_1) = scratch.take_glwe(&GLWELayout {
+            n: s.n(),
+            base2k: res.base2k(),
+            k: res.k().max(a.k()),
+            rank: res.rank(),
+        });
+        self.glwe_sub(&mut tmp, a, res);
+        let (res_dft, scratch_2) = scratch_1.take_vec_znx_dft(self, (res.rank() + 1).into(), s.size()); // Todo optimise
+        let mut res_big: VecZnxBig<&mut [u8], BE> = self.glwe_external_product_internal(res_dft, &tmp, s, scratch_2);
+        for j in 0..(res.rank() + 1).into() {
+            self.vec_znx_big_add_small_inplace(&mut res_big, j, res.data(), j);
+            self.vec_znx_big_normalize(
+                res_base2k,
+                res.data_mut(),
+                j,
+                ggsw_base2k,
+                &res_big,
+                j,
+                scratch_2,
+            );
+        }
+    }
+
+    // res = (res - a) * s + a
     fn cmux_inplace<R, A, S>(&self, res: &mut R, a: &A, s: &S, scratch: &mut Scratch<BE>)
     where
         R: GLWEToMut,

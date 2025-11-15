@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use poulpy_core::{
     GLWECopy, GLWEDecrypt, ScratchTakeCore,
-    layouts::{GGSWInfos, GGSWPrepared, GLWE, GLWEInfos, GLWEToMut, GLWEToRef},
+    layouts::{GGSWInfos, GGSWPrepared, GLWE, GLWEInfos, GLWEToMut},
 };
 use poulpy_hal::layouts::{Backend, Module, Scratch, ZnxZero};
 
@@ -33,7 +33,7 @@ where
         scratch: &mut Scratch<BE>,
     ) where
         R: GLWEToMut,
-        A: GLWEToMut + GLWEToRef,
+        A: GLWEToMut,
         K: GetGGSWBit<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {

@@ -402,6 +402,84 @@ where
         self.vec_znx_normalize_tmp_bytes()
     }
 
+    /// Usage:
+    /// let mut tmp_b: Option<GLWE<&mut [u8]>> = None;
+    /// let (b_conv, scratch_1) = glwe_maybe_convert_in_place(self, b, res.base2k().as_u32(), &mut tmp_b, scratch);
+    fn glwe_maybe_cross_normalize_to_ref<'a, A>(
+        &self,
+        glwe: &'a A,
+        target_base2k: usize,
+        tmp_slot: &'a mut Option<GLWE<&'a mut [u8]>>, // caller-owned scratch-backed temp
+        scratch: &'a mut Scratch<BE>,
+    ) -> (GLWE<&'a [u8]>, &'a mut Scratch<BE>)
+    where
+        A: GLWEToRef + GLWEInfos,
+        Scratch<BE>: ScratchTakeCore<BE>,
+    {
+        // No conversion: just use the original GLWE
+        if glwe.base2k().as_usize() == target_base2k {
+            // Drop any previous temp; it's stale for this base
+            tmp_slot.take();
+            return (glwe.to_ref(), scratch);
+        }
+
+        // Conversion: allocate a temporary GLWE in scratch
+        let mut layout = glwe.glwe_layout();
+        layout.base2k = target_base2k.into();
+
+        let (tmp, scratch2) = scratch.take_glwe(&layout);
+        *tmp_slot = Some(tmp);
+
+        // Get a mutable handle to the temp and normalize into it
+        let tmp_ref: &mut GLWE<&mut [u8]> = tmp_slot
+            .as_mut()
+            .expect("tmp_slot just set to Some, but found None");
+
+        self.glwe_normalize(tmp_ref, glwe, scratch2);
+
+        // Return a trait-object view of the temp
+        (tmp_ref.to_ref(), scratch2)
+    }
+
+    /// Usage:
+    /// let mut tmp_b: Option<GLWE<&mut [u8]>> = None;
+    /// let (b_conv, scratch_1) = glwe_maybe_convert_in_place(self, b, res.base2k().as_u32(), &mut tmp_b, scratch);
+    fn glwe_maybe_cross_normalize_to_mut<'a, A>(
+        &self,
+        glwe: &'a mut A,
+        target_base2k: usize,
+        tmp_slot: &'a mut Option<GLWE<&'a mut [u8]>>, // caller-owned scratch-backed temp
+        scratch: &'a mut Scratch<BE>,
+    ) -> (GLWE<&'a mut [u8]>, &'a mut Scratch<BE>)
+    where
+        A: GLWEToMut + GLWEInfos,
+        Scratch<BE>: ScratchTakeCore<BE>,
+    {
+        // No conversion: just use the original GLWE
+        if glwe.base2k().as_usize() == target_base2k {
+            // Drop any previous temp; it's stale for this base
+            tmp_slot.take();
+            return (glwe.to_mut(), scratch);
+        }
+
+        // Conversion: allocate a temporary GLWE in scratch
+        let mut layout = glwe.glwe_layout();
+        layout.base2k = target_base2k.into();
+
+        let (tmp, scratch2) = scratch.take_glwe(&layout);
+        *tmp_slot = Some(tmp);
+
+        // Get a mutable handle to the temp and normalize into it
+        let tmp_ref: &mut GLWE<&mut [u8]> = tmp_slot
+            .as_mut()
+            .expect("tmp_slot just set to Some, but found None");
+
+        self.glwe_normalize(tmp_ref, glwe, scratch2);
+
+        // Return a trait-object view of the temp
+        (tmp_ref.to_mut(), scratch2)
+    }
+
     fn glwe_normalize<R, A>(&self, res: &mut R, a: &A, scratch: &mut Scratch<BE>)
     where
         R: GLWEToMut,

@@ -7,7 +7,7 @@ use poulpy_hal::{
 
 use crate::{
     GLWEAdd, GLWEAutomorphism, GLWECopy, GLWENormalize, GLWERotate, GLWEShift, GLWESub, GLWETrace, ScratchTakeCore,
-    layouts::{GGLWEInfos, GGLWEPreparedToRef, GLWEAutomorphismKeyHelper, GLWEInfos, GLWEToMut, GLWEToRef, GetGaloisElement},
+    layouts::{GGLWEInfos, GGLWEPreparedToRef, GLWEAutomorphismKeyHelper, GLWEInfos, GLWEToMut, GetGaloisElement},
 };
 pub trait GLWEPacking<BE: Backend> {
     /// Packs [x_0: GLWE(m_0), x_1: GLWE(m_1), ..., x_i: GLWE(m_i)]
@@ -21,7 +21,7 @@ pub trait GLWEPacking<BE: Backend> {
         scratch: &mut Scratch<BE>,
     ) where
         R: GLWEToMut + GLWEInfos,
-        A: GLWEToMut + GLWEToRef + GLWEInfos,
+        A: GLWEToMut + GLWEInfos,
         K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>;
 }
@@ -51,7 +51,7 @@ where
         scratch: &mut Scratch<BE>,
     ) where
         R: GLWEToMut + GLWEInfos,
-        A: GLWEToMut + GLWEToRef + GLWEInfos,
+        A: GLWEToMut + GLWEInfos,
         K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
     {
@@ -97,8 +97,8 @@ fn pack_internal<M, A, B, K, BE: Backend>(
     scratch: &mut Scratch<BE>,
 ) where
     M: GLWEAutomorphism<BE> + GLWERotate<BE> + GLWESub + GLWEShift<BE> + GLWEAdd + GLWENormalize<BE>,
-    A: GLWEToMut + GLWEToRef + GLWEInfos,
-    B: GLWEToMut + GLWEToRef + GLWEInfos,
+    A: GLWEToMut + GLWEInfos,
+    B: GLWEToMut + GLWEInfos,
     K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
     Scratch<BE>: ScratchTakeCore<BE>,
 {

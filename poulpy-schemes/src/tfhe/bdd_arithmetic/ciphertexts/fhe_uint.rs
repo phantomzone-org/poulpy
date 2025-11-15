@@ -49,6 +49,18 @@ impl<'a, T: UnsignedInteger> FheUint<&'a mut [u8], T> {
     }
 }
 
+impl<'a, T: UnsignedInteger> FheUint<&'a [u8], T> {
+    pub fn from_glwe_to_ref<G>(glwe: &'a G) -> Self
+    where
+        G: GLWEToRef,
+    {
+        FheUint {
+            bits: glwe.to_ref(),
+            _phantom: PhantomData,
+        }
+    }
+}
+
 impl<D: DataRef, T: UnsignedInteger> LWEInfos for FheUint<D, T> {
     fn base2k(&self) -> poulpy_core::layouts::Base2K {
         self.bits.base2k()
@@ -180,7 +192,7 @@ impl<D: DataMut, T: UnsignedInteger> FheUint<D, T> {
     /// Packs Vec<GLWE(bit[i])> into [FheUint].
     pub fn pack<G, M, K, H, BE: Backend>(&mut self, module: &M, mut bits: Vec<G>, keys: &H, scratch: &mut Scratch<BE>)
     where
-        G: GLWEToMut + GLWEToRef + GLWEInfos,
+        G: GLWEToMut + GLWEInfos,
         M: ModuleLogN + GLWEPacking<BE> + GLWECopy,
         K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,

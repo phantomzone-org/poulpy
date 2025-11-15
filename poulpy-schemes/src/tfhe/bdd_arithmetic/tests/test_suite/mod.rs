@@ -12,6 +12,7 @@ mod sltu;
 mod sra;
 mod srl;
 mod sub;
+mod swap;
 mod xor;
 
 pub use add::*;
@@ -33,6 +34,7 @@ pub use sltu::*;
 pub use sra::*;
 pub use srl::*;
 pub use sub::*;
+pub use swap::*;
 pub use xor::*;
 
 use poulpy_core::{

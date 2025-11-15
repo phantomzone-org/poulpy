@@ -1,16 +1,16 @@
 use poulpy_hal::{
     api::{
-        ModuleN, ScratchTakeBasic, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxDftApply, VecZnxDftBytesOf,
-        VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeTmpBytes, VmpApplyDftToDft, VmpApplyDftToDftAdd,
-        VmpApplyDftToDftTmpBytes,
+        ModuleN, ScratchTakeBasic, VecZnxBigAddSmallInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes, VecZnxDftApply,
+        VecZnxDftBytesOf, VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeTmpBytes, VmpApplyDftToDft,
+        VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
     },
     layouts::{Backend, DataMut, DataViewMut, Module, Scratch, VecZnx, VecZnxBig, VecZnxDft},
 };
 
 use crate::{
-    ScratchTakeCore,
+    GLWENormalize, ScratchTakeCore,
     layouts::{
-        GGSWInfos, GLWE, GLWEInfos, GLWEToMut, GLWEToRef, LWEInfos,
+        GGSWInfos, GLWE, GLWEInfos, GLWELayout, GLWEToMut, GLWEToRef, LWEInfos,
         prepared::{GGSWPrepared, GGSWPreparedToRef},
     },
 };
@@ -67,11 +67,22 @@ pub trait GLWEExternalProduct<BE: Backend> {
         A: GLWEToRef,
         D: GGSWPreparedToRef<BE> + GGSWInfos,
         Scratch<BE>: ScratchTakeCore<BE>;
+    fn glwe_external_product_add<R, A, D>(&self, res: &mut R, lhs: &A, rhs: &D, scratch: &mut Scratch<BE>)
+    where
+        R: GLWEToMut,
+        A: GLWEToRef,
+        D: GGSWPreparedToRef<BE> + GGSWInfos,
+        Scratch<BE>: ScratchTakeCore<BE>;
 }
 
 impl<BE: Backend> GLWEExternalProduct<BE> for Module<BE>
 where
-    Self: GLWEExternalProductInternal<BE> + VecZnxDftBytesOf + VecZnxBigNormalize<BE> + VecZnxBigNormalizeTmpBytes,
+    Self: GLWEExternalProductInternal<BE>
+        + VecZnxDftBytesOf
+        + VecZnxBigNormalize<BE>
+        + VecZnxBigNormalizeTmpBytes
+        + VecZnxBigAddSmallInplace<BE>
+        + GLWENormalize<BE>,
 {
     fn glwe_external_product_tmp_bytes<R, A, B>(&self, res_infos: &R, a_infos: &A, b_infos: &B) -> usize
     where
@@ -161,6 +172,80 @@ where
                 j,
                 scratch_1,
             );
+        }
+    }
+
+    fn glwe_external_product_add<R, A, D>(&self, res: &mut R, a: &A, key: &D, scratch: &mut Scratch<BE>)
+    where
+        R: GLWEToMut,
+        A: GLWEToRef,
+        D: GGSWPreparedToRef<BE>,
+        Scratch<BE>: ScratchTakeCore<BE>,
+    {
+        let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
+        let a: &GLWE<&[u8]> = &a.to_ref();
+        let key: &GGSWPrepared<&[u8], BE> = &key.to_ref();
+
+        assert_eq!(a.base2k(), res.base2k());
+
+        let res_base2k: usize = res.base2k().into();
+        let key_base2k: usize = key.base2k().into();
+
+        #[cfg(debug_assertions)]
+        {
+            use poulpy_hal::api::ScratchAvailable;
+
+            assert_eq!(key.rank(), a.rank());
+            assert_eq!(key.rank(), res.rank());
+            assert_eq!(key.n(), res.n());
+            assert_eq!(a.n(), res.n());
+            assert!(scratch.available() >= self.glwe_external_product_tmp_bytes(res, a, key));
+        }
+
+        if res_base2k == key_base2k {
+            let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), key.size()); // Todo optimise
+            let mut res_big = self.glwe_external_product_internal(res_dft, a, key, scratch_1);
+            for j in 0..(res.rank() + 1).into() {
+                self.vec_znx_big_add_small_inplace(&mut res_big, j, res.data(), j);
+                self.vec_znx_big_normalize(
+                    res_base2k,
+                    &mut res.data,
+                    j,
+                    key_base2k,
+                    &res_big,
+                    j,
+                    scratch_1,
+                );
+            }
+        } else {
+            let (mut a_conv, scratch_1) = scratch.take_glwe(&GLWELayout {
+                n: a.n(),
+                base2k: key.base2k(),
+                k: a.k(),
+                rank: a.rank(),
+            });
+            let (mut res_conv, scratch_2) = scratch_1.take_glwe(&GLWELayout {
+                n: res.n(),
+                base2k: key.base2k(),
+                k: res.k(),
+                rank: res.rank(),
+            });
+            self.glwe_normalize(&mut a_conv, a, scratch_2);
+            self.glwe_normalize(&mut res_conv, res, scratch_2);
+            let (res_dft, scratch_2) = scratch_2.take_vec_znx_dft(self, (res.rank() + 1).into(), key.size()); // Todo optimise
+            let mut res_big = self.glwe_external_product_internal(res_dft, &a_conv, key, scratch_2);
+            for j in 0..(res.rank() + 1).into() {
+                self.vec_znx_big_add_small_inplace(&mut res_big, j, res_conv.data(), j);
+                self.vec_znx_big_normalize(
+                    res_base2k,
+                    &mut res.data,
+                    j,
+                    key_base2k,
+                    &res_big,
+                    j,
+                    scratch_2,
+                );
+            }
         }
     }
 }

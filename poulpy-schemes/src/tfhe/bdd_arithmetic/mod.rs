@@ -1,4 +1,5 @@
 mod bdd_2w_to_1w;
+mod blind_retrieval;
 mod blind_rotation;
 mod blind_selection;
 mod ciphertexts;
@@ -7,6 +8,7 @@ mod eval;
 mod key;
 
 pub use bdd_2w_to_1w::*;
+pub use blind_retrieval::*;
 pub use blind_rotation::*;
 pub use blind_selection::*;
 pub use ciphertexts::*;
