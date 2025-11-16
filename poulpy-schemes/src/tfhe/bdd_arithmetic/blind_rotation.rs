@@ -11,14 +11,14 @@ use crate::tfhe::bdd_arithmetic::{Cmux, GetGGSWBit, UnsignedInteger};
 
 impl<T: UnsignedInteger, BE: Backend> GGSWBlindRotation<T, BE> for Module<BE>
 where
-    Self: GLWEBlindRotation<T, BE> + VecZnxAddScalarInplace + VecZnxNormalizeInplace<BE>,
+    Self: GLWEBlindRotation<BE> + VecZnxAddScalarInplace + VecZnxNormalizeInplace<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
 }
 
 pub trait GGSWBlindRotation<T: UnsignedInteger, BE: Backend>
 where
-    Self: GLWEBlindRotation<T, BE> + VecZnxAddScalarInplace + VecZnxNormalizeInplace<BE>,
+    Self: GLWEBlindRotation<BE> + VecZnxAddScalarInplace + VecZnxNormalizeInplace<BE>,
 {
     fn ggsw_to_ggsw_blind_rotation_tmp_bytes<R, K>(&self, res_infos: &R, k_infos: &K) -> usize
     where
@@ -161,14 +161,14 @@ where
     }
 }
 
-impl<T: UnsignedInteger, BE: Backend> GLWEBlindRotation<T, BE> for Module<BE>
+impl<BE: Backend> GLWEBlindRotation<BE> for Module<BE>
 where
     Self: GLWECopy + GLWERotate<BE> + Cmux<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
 }
 
-pub trait GLWEBlindRotation<T: UnsignedInteger, BE: Backend>
+pub trait GLWEBlindRotation<BE: Backend>
 where
     Self: GLWECopy + GLWERotate<BE> + Cmux<BE>,
 {
@@ -184,7 +184,7 @@ where
     fn glwe_blind_rotation_inplace<R, K>(
         &self,
         res: &mut R,
-        fhe_uint: &K,
+        value: &K,
         sign: bool,
         bit_rsh: usize,
         bit_mask: usize,
@@ -195,8 +195,6 @@ where
         K: GetGGSWBit<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        assert!(bit_rsh + bit_mask <= T::BITS as usize);
-
         let mut res: GLWE<&mut [u8]> = res.to_mut();
 
         let (mut tmp_res, scratch_1) = scratch.take_glwe(&res);
@@ -219,7 +217,7 @@ where
             }
 
             // b <- (b - a) * GGSW(b[i]) + a
-            self.cmux_inplace(b, a, &fhe_uint.get_bit(i + bit_rsh), scratch_1);
+            self.cmux_inplace(b, a, &value.get_bit(i + bit_rsh), scratch_1);
 
             // ping-pong roles for next iter
             a_is_res = !a_is_res;

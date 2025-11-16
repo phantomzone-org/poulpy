@@ -178,22 +178,28 @@ where
         })
         .collect_vec();
 
+    let mut retriever: GLWEBlindRetriever = GLWEBlindRetriever::alloc(&glwe_infos, data.len());
     for idx in 0..data.len() as u32 {
+        let offset = 2;
         let mut idx_enc: FheUintPrepared<Vec<u8>, u32, BE> = FheUintPrepared::alloc_from_infos(module, &ggsw_infos);
         idx_enc.encrypt_sk(
             module,
-            idx,
+            idx << offset,
             sk,
             &mut source_xa,
             &mut source_xe,
             scratch.borrow(),
         );
 
-        let mut retriever: GLWEBlindRetriever = GLWEBlindRetriever::alloc(&glwe_infos, 25);
         let mut res: FheUint<Vec<u8>, u32> = FheUint::alloc_from_infos(&glwe_infos);
-        retriever.retrieve(module, &mut res, &data_enc, &idx_enc, scratch.borrow());
-
-        println!("{}", res.decrypt(module, sk, scratch.borrow()));
+        retriever.retrieve(
+            module,
+            &mut res,
+            &data_enc,
+            &idx_enc,
+            offset,
+            scratch.borrow(),
+        );
 
         assert_eq!(
             data[idx as usize],

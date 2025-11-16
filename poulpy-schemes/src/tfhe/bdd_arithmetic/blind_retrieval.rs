@@ -17,13 +17,22 @@ impl GLWEBlindRetriever {
     where
         A: GLWEInfos,
     {
-        let log2_max_address: usize = (u32::BITS - (size as u32 - 1).leading_zeros()) as usize;
+        let bit_size: usize = (u32::BITS - (size as u32 - 1).leading_zeros()) as usize;
         Self {
-            accumulators: (0..log2_max_address)
+            accumulators: (0..bit_size)
                 .map(|_| Accumulator::alloc(infos))
                 .collect_vec(),
             counter: 0,
         }
+    }
+
+    pub fn retrieve_tmp_bytes<M, R, S, BE: Backend>(module: &M, res: &R, selector: &S) -> usize
+    where
+        M: Cmux<BE>,
+        R: GLWEInfos,
+        S: GGSWInfos,
+    {
+        module.cmux_tmp_bytes(res, res, selector)
     }
 
     pub fn retrieve<M, R, A, S, BE: Backend>(
@@ -32,6 +41,7 @@ impl GLWEBlindRetriever {
         res: &mut R,
         data: &[A],
         selector: &S,
+        offset: usize,
         scratch: &mut Scratch<BE>,
     ) where
         M: GLWECopy + Cmux<BE>,
@@ -41,14 +51,13 @@ impl GLWEBlindRetriever {
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         self.reset();
-
         for ct in data {
-            self.add(module, ct, selector, scratch);
+            self.add(module, ct, selector, offset, scratch);
         }
-        self.flush(module, res, selector, scratch);
+        self.flush(module, res, selector, offset, scratch);
     }
 
-    pub fn add<A, S, M, BE: Backend>(&mut self, module: &M, a: &A, selector: &S, scratch: &mut Scratch<BE>)
+    pub fn add<A, S, M, BE: Backend>(&mut self, module: &M, a: &A, selector: &S, offset: usize, scratch: &mut Scratch<BE>)
     where
         A: GLWEToRef,
         S: GetGGSWBit<BE>,
@@ -61,11 +70,19 @@ impl GLWEBlindRetriever {
             1 << self.accumulators.len()
         );
 
-        add_core(module, a, &mut self.accumulators, 0, selector, scratch);
+        add_core(
+            module,
+            a,
+            &mut self.accumulators,
+            0,
+            selector,
+            offset,
+            scratch,
+        );
         self.counter += 1;
     }
 
-    pub fn flush<R, M, S, BE: Backend>(&mut self, module: &M, res: &mut R, selector: &S, scratch: &mut Scratch<BE>)
+    pub fn flush<R, M, S, BE: Backend>(&mut self, module: &M, res: &mut R, selector: &S, offset: usize, scratch: &mut Scratch<BE>)
     where
         R: GLWEToMut,
         S: GetGGSWBit<BE>,
@@ -81,6 +98,7 @@ impl GLWEBlindRetriever {
                     acc_next,
                     i + 1,
                     selector,
+                    offset,
                     scratch,
                 );
                 acc_prev[0].num = 0
@@ -94,6 +112,7 @@ impl GLWEBlindRetriever {
         for acc in self.accumulators.iter_mut() {
             acc.num = 0;
         }
+        self.counter = 0;
     }
 }
 
@@ -120,6 +139,7 @@ fn add_core<A, S, M, BE: Backend>(
     accumulators: &mut [Accumulator],
     i: usize,
     selector: &S,
+    offset: usize,
     scratch: &mut Scratch<BE>,
 ) where
     A: GLWEToRef,
@@ -136,7 +156,12 @@ fn add_core<A, S, M, BE: Backend>(
             acc_prev[0].num = 1;
         }
         1 => {
-            module.cmux_inplace_neg(&mut acc_prev[0].data, a, &selector.get_bit(i), scratch);
+            module.cmux_inplace_neg(
+                &mut acc_prev[0].data,
+                a,
+                &selector.get_bit(i + offset),
+                scratch,
+            );
 
             if !acc_next.is_empty() {
                 add_core(
@@ -145,6 +170,7 @@ fn add_core<A, S, M, BE: Backend>(
                     acc_next,
                     i + 1,
                     selector,
+                    offset,
                     scratch,
                 );
             }

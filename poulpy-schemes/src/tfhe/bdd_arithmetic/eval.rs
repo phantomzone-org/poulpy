@@ -471,16 +471,16 @@ where
         + VecZnxBigNormalize<BE>
         + VecZnxBigNormalizeTmpBytes,
 {
-    fn cmux_tmp_bytes<R, A, B>(&self, res_infos: &R, a_infos: &A, b_infos: &B) -> usize
+    fn cmux_tmp_bytes<R, A, B>(&self, res_infos: &R, a_infos: &A, selector_infos: &B) -> usize
     where
         R: GLWEInfos,
         A: GLWEInfos,
         B: GGSWInfos,
     {
-        let res_dft: usize = self.bytes_of_vec_znx_dft((b_infos.rank() + 1).into(), b_infos.size());
+        let res_dft: usize = self.bytes_of_vec_znx_dft((selector_infos.rank() + 1).into(), selector_infos.size());
         res_dft
             + self
-                .glwe_external_product_internal_tmp_bytes(res_infos, a_infos, b_infos)
+                .glwe_external_product_internal_tmp_bytes(res_infos, a_infos, selector_infos)
                 .max(self.vec_znx_big_normalize_tmp_bytes())
     }
 

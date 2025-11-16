@@ -26,7 +26,7 @@ where
         + GLWESecretPreparedFactory<BE>
         + GGSWPreparedFactory<BE>
         + GGSWEncryptSk<BE>
-        + GLWEBlindRotation<u32, BE>
+        + GLWEBlindRotation<BE>
         + GLWEDecrypt<BE>
         + GLWEEncryptSk<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
