@@ -1,3 +1,4 @@
+mod bdd_1w_to_1w;
 mod bdd_2w_to_1w;
 mod blind_retrieval;
 mod blind_rotation;
@@ -7,6 +8,7 @@ mod circuits;
 mod eval;
 mod key;
 
+pub use bdd_1w_to_1w::*;
 pub use bdd_2w_to_1w::*;
 pub use blind_retrieval::*;
 pub use blind_rotation::*;

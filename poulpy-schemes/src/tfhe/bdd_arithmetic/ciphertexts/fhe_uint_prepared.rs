@@ -20,7 +20,9 @@ use poulpy_hal::{
     source::Source,
 };
 
-use crate::tfhe::bdd_arithmetic::{BDDKey, BDDKeyHelper, BDDKeyInfos, BDDKeyPrepared, BDDKeyPreparedFactory, FheUint, ToBits};
+use crate::tfhe::bdd_arithmetic::{
+    BDDKey, BDDKeyHelper, BDDKeyInfos, BDDKeyPrepared, BDDKeyPreparedFactory, BitSize, FheUint, ToBits,
+};
 use crate::tfhe::bdd_arithmetic::{Cmux, FromBits, ScratchTakeBDD, UnsignedInteger};
 use crate::tfhe::blind_rotation::BlindRotationAlgo;
 use crate::tfhe::circuit_bootstrapping::{CircuitBootstrappingKeyInfos, CirtuitBootstrappingExecute};
@@ -52,6 +54,12 @@ impl<D: DataMut, T: UnsignedInteger, BE: Backend> GetGGSWBitMut<T, BE> for FheUi
     fn get_bit(&mut self, bit: usize) -> GGSWPrepared<&mut [u8], BE> {
         assert!(bit <= self.bits.len());
         self.bits[bit].to_mut()
+    }
+}
+
+impl<D: Data, T: UnsignedInteger, BE: Backend> BitSize for FheUintPrepared<D, T, BE> {
+    fn bit_size(&self) -> usize {
+        T::BITS as usize
     }
 }
 

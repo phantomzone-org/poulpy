@@ -209,7 +209,6 @@ macro_rules! impl_bdd_2w_to_1w_trait {
         }
     };
 }
-
 define_bdd_2w_to_1w_trait!(pub Add, add);
 define_bdd_2w_to_1w_trait!(pub Sub, sub);
 define_bdd_2w_to_1w_trait!(pub Sll, sll);
