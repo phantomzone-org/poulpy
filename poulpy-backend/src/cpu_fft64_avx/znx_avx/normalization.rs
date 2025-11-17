@@ -68,7 +68,6 @@ pub fn znx_extract_digit_addmul_avx(base2k: usize, lsh: usize, res: &mut [i64], 
     #[cfg(debug_assertions)]
     {
         assert_eq!(res.len(), src.len());
-        assert!(lsh < base2k);
     }
 
     use std::arch::x86_64::{
