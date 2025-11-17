@@ -79,8 +79,6 @@ where
                 );
             }
 
-            println!("pt_want: {}", pt_want.as_vec_znx());
-
             module.gglwe_assert_noise(key.at(i), &sk_prepared, &pt_want, max_noise);
         }
     }

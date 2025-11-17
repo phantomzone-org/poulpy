@@ -92,7 +92,7 @@ where
     let k_pt: usize = 30;
 
     for rank in 1_usize..3 {
-        // println!("rank: {}", rank);
+
         let n: usize = module.n();
 
         let glwe_infos: GLWELayout = GLWELayout {

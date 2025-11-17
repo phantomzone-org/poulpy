@@ -28,36 +28,37 @@ where
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
-    let base2k: usize = 12;
+    let base2k_glwe: usize = 12;
+    let base2k_gglwe: usize = 8;
     let k_in: usize = 45;
-    let dsize: usize = k_in.div_ceil(base2k);
+    let dsize: usize = k_in.div_ceil(base2k_gglwe);
 
     for rank_in in 1_usize..3 {
         for rank_out in 1_usize..3 {
-            for di in 1_usize..dsize + 1 {
-                let k_ksk: usize = k_in + base2k * di;
+            for di in 1_usize..dsize+1 {
+                let k_ksk: usize = k_in + base2k_gglwe * di;
                 let k_out: usize = k_ksk; // better capture noise
 
                 let n: usize = module.n();
-                let dnum: usize = k_in.div_ceil(base2k * dsize);
+                let dnum: usize = k_in.div_ceil(base2k_gglwe * dsize);
 
                 let glwe_in_infos: GLWELayout = GLWELayout {
                     n: n.into(),
-                    base2k: base2k.into(),
+                    base2k: base2k_glwe.into(),
                     k: k_in.into(),
                     rank: rank_in.into(),
                 };
 
                 let glwe_out_infos: GLWELayout = GLWELayout {
                     n: n.into(),
-                    base2k: base2k.into(),
+                    base2k: base2k_glwe.into(),
                     k: k_out.into(),
                     rank: rank_out.into(),
                 };
 
                 let ksk: GLWESwitchingKeyLayout = GLWESwitchingKeyLayout {
                     n: n.into(),
-                    base2k: base2k.into(),
+                    base2k: base2k_gglwe.into(),
                     k: k_ksk.into(),
                     dnum: dnum.into(),
                     dsize: di.into(),
@@ -74,7 +75,7 @@ where
                 let mut source_xe: Source = Source::new([0u8; 32]);
                 let mut source_xa: Source = Source::new([0u8; 32]);
 
-                module.vec_znx_fill_uniform(base2k, &mut pt_want.data, 0, &mut source_xa);
+                module.vec_znx_fill_uniform(base2k_glwe, &mut pt_want.data, 0, &mut source_xa);
 
                 let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
                     GLWESwitchingKey::encrypt_sk_tmp_bytes(module, &ksk)
@@ -120,7 +121,7 @@ where
 
                 let max_noise: f64 = log2_std_noise_gglwe_product(
                     module.n() as f64,
-                    base2k * dsize,
+                    base2k_gglwe * dsize,
                     0.5,
                     0.5,
                     0f64,

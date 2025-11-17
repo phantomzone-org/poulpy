@@ -1,19 +1,87 @@
 use poulpy_hal::{
-    api::{ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, Module, Scratch, ScratchOwned, ZnxView},
+    api::{ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxFillUniform},
+    layouts::{Backend, FillUniform, Module, Scratch, ScratchOwned, ZnxView},
     source::Source,
 };
+use rug::Float;
 
 use crate::{
-    GLWEDecrypt, GLWEEncryptSk, GLWEFromLWE, GLWEToLWESwitchingKeyEncryptSk, LWEDecrypt, LWEEncryptSk, LWEFromGLWE,
-    LWEToGLWESwitchingKeyEncryptSk, ScratchTakeCore,
-    layouts::{
-        Base2K, Degree, Dnum, GLWE, GLWELayout, GLWEPlaintext, GLWESecret, GLWESecretPreparedFactory, GLWEToLWEKey,
-        GLWEToLWEKeyLayout, GLWEToLWEKeyPrepared, GLWEToLWEKeyPreparedFactory, LWE, LWELayout, LWEPlaintext, LWESecret,
-        LWEToGLWEKey, LWEToGLWEKeyLayout, LWEToGLWEKeyPrepared, LWEToGLWEKeyPreparedFactory, Rank, TorusPrecision,
-        prepared::GLWESecretPrepared,
-    },
+    GLWEDecrypt, GLWEEncryptSk, GLWEFromLWE, GLWENoise, GLWENormalize, GLWEToLWESwitchingKeyEncryptSk, LWEDecrypt, LWEEncryptSk, LWEFromGLWE, LWEToGLWESwitchingKeyEncryptSk, SIGMA, ScratchTakeCore, layouts::{
+        Base2K, Degree, Dnum, GLWE, GLWELayout, GLWEPlaintext, GLWESecret, GLWESecretPreparedFactory, GLWEToLWEKey, GLWEToLWEKeyLayout, GLWEToLWEKeyPrepared, GLWEToLWEKeyPreparedFactory, LWE, LWEInfos, LWELayout, LWEPlaintext, LWESecret, LWEToGLWEKey, LWEToGLWEKeyLayout, LWEToGLWEKeyPrepared, LWEToGLWEKeyPreparedFactory, Rank, TorusPrecision, prepared::GLWESecretPrepared
+    }
 };
+
+pub fn test_glwe_base2k_conversion<BE: Backend>(module: &Module<BE>)
+where
+    Module<BE>: GLWEEncryptSk<BE>
+        + GLWEDecrypt<BE>
+        + GLWENormalize<BE>
+        + VecZnxFillUniform
+        + GLWESecretPreparedFactory<BE>
+        + GLWENoise<BE>,
+    ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
+    Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
+{
+    let n_glwe: Degree = Degree(module.n() as u32);
+
+    let mut source_xs: Source = Source::new([0u8; 32]);
+    let mut source_xa: Source = Source::new([0u8; 32]);
+    let mut source_xe: Source = Source::new([0u8; 32]);
+
+    for rank in 1_usize..3 {
+        for bases in [[12, 8], [8, 12]] {
+            let glwe_infos_in: GLWELayout = GLWELayout {
+                n: n_glwe,
+                base2k: Base2K(bases[0]),
+                k: TorusPrecision(34),
+                rank: Rank(rank as u32),
+            };
+
+            let glwe_infos_out: GLWELayout = GLWELayout {
+                n: n_glwe,
+                base2k: Base2K(bases[1]),
+                k: TorusPrecision(34),
+                rank: Rank(rank as u32),
+            };
+
+            let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc(module.n().into(), rank.into());
+            sk.fill_ternary_prob(0.5, &mut source_xs);
+
+            let mut sk_prep: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc_from_infos(module, &sk);
+            sk_prep.prepare(module, &sk);
+
+            let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
+                GLWE::encrypt_sk_tmp_bytes(module, &glwe_infos_in).max(GLWE::decrypt_tmp_bytes(module, &glwe_infos_out)),
+            );
+
+            let mut ct_in: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_infos_in);
+            let mut ct_out: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_infos_out);
+
+            let pt_in: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_infos_in);
+            let pt_out: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_infos_in);
+
+            ct_in.encrypt_sk(
+                module,
+                &pt_in,
+                &sk_prep,
+                &mut source_xa,
+                &mut source_xe,
+                scratch.borrow(),
+            );
+
+            let mut data: Vec<Float> = (0..module.n()).map(|_| Float::with_val(128, 0)).collect();
+            ct_in.data().decode_vec_float(ct_in.base2k().into(), 0, &mut data);
+
+            ct_out.fill_uniform(ct_out.base2k().into(),&mut source_xa);
+            module.glwe_normalize(&mut ct_out, &ct_in, scratch.borrow());
+            
+            let mut data_conv: Vec<Float> = (0..module.n()).map(|_| Float::with_val(128, 0)).collect();
+            ct_out.data().decode_vec_float(ct_out.base2k().into(), 0, &mut data_conv);
+
+            ct_out.assert_noise(module, &sk_prep, &pt_out, -(ct_out.k().as_u32() as f64) + SIGMA.log2() + 0.5);
+        }
+    }
+}
 
 pub fn test_lwe_to_glwe<BE: Backend>(module: &Module<BE>)
 where

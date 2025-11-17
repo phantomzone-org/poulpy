@@ -62,8 +62,6 @@ where
 
                 let noise_have: f64 = pt.data.stats(base2k, 0).std().log2();
 
-                println!("noise_have: {noise_have}");
-
                 assert!(
                     noise_have <= max_noise,
                     "noise_have: {noise_have} > max_noise: {max_noise}"

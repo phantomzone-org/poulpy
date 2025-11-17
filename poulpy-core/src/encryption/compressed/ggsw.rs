@@ -105,8 +105,6 @@ where
         {
             let res: &mut GGSWCompressed<&mut [u8]> = &mut res.to_mut();
 
-            println!("res.seed: {:?}", res.seed);
-
             let (mut tmp_pt, scratch_1) = scratch.take_glwe_plaintext(res);
 
             let mut source = Source::new(seed_xa);

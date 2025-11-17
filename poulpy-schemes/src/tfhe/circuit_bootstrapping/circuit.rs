@@ -328,12 +328,6 @@ pub fn circuit_bootstrap_core<R, L, D, M, BRA: BlindRotationAlgo, BE: Backend>(
             tmp_glwe.trace(module, 0, &res_glwe, &key.atk, scratch_2);
         }
 
-        // let sk_glwe: &poulpy_core::layouts::GLWESecret<&[u8]> = &sk_glwe.to_ref();
-        // let sk_glwe_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(module, sk_glwe.rank());
-        // let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&res_glwe);
-        // res_glwe.decrypt(module, &mut pt, &sk_glwe_prepared, scratch_2);
-        // println!("pt[{i}]: {}", pt);
-
         if i < dnum {
             module.glwe_rotate_inplace(-(gap as i64), &mut res_glwe, scratch_2);
         }
