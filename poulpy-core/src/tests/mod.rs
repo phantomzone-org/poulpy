@@ -6,7 +6,6 @@ mod serialization;
 #[allow(unused_imports)]
 use poulpy_hal::backend_test_suite;
 
-
 #[cfg(test)]
 backend_test_suite!(
  mod cpu_ref,
@@ -22,7 +21,7 @@ backend_test_suite!(
 glwe_base2k_conv => crate::tests::test_suite::test_glwe_base2k_conversion,
 // GLWE Keyswitch
 glwe_keyswitch => crate::tests::test_suite::keyswitch::test_glwe_keyswitch,
-//glwe_keyswitch_inplace => crate::tests::test_suite::keyswitch::test_glwe_keyswitch_inplace,
+glwe_keyswitch_inplace => crate::tests::test_suite::keyswitch::test_glwe_keyswitch_inplace,
 // GLWE Automorphism
 glwe_automorphism => crate::tests::test_suite::automorphism::test_glwe_automorphism,
 glwe_automorphism_inplace => crate::tests::test_suite::automorphism::test_glwe_automorphism_inplace,
@@ -80,6 +79,8 @@ backend_test_suite!(
  glwe_compressed_encrypt_sk => crate::tests::test_suite::encryption::test_glwe_compressed_encrypt_sk,
  glwe_encrypt_zero_sk => crate::tests::test_suite::encryption::test_glwe_encrypt_zero_sk,
  glwe_encrypt_pk => crate::tests::test_suite::encryption::test_glwe_encrypt_pk,
+ // GLWE Base2k Conversion
+glwe_base2k_conv => crate::tests::test_suite::test_glwe_base2k_conversion,
 // GLWE Keyswitch
 glwe_keyswitch => crate::tests::test_suite::keyswitch::test_glwe_keyswitch,
 glwe_keyswitch_inplace => crate::tests::test_suite::keyswitch::test_glwe_keyswitch_inplace,
