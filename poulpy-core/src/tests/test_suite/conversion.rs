@@ -6,9 +6,14 @@ use poulpy_hal::{
 use rug::Float;
 
 use crate::{
-    GLWEDecrypt, GLWEEncryptSk, GLWEFromLWE, GLWENoise, GLWENormalize, GLWEToLWESwitchingKeyEncryptSk, LWEDecrypt, LWEEncryptSk, LWEFromGLWE, LWEToGLWESwitchingKeyEncryptSk, SIGMA, ScratchTakeCore, layouts::{
-        Base2K, Degree, Dnum, GLWE, GLWELayout, GLWEPlaintext, GLWESecret, GLWESecretPreparedFactory, GLWEToLWEKey, GLWEToLWEKeyLayout, GLWEToLWEKeyPrepared, GLWEToLWEKeyPreparedFactory, LWE, LWEInfos, LWELayout, LWEPlaintext, LWESecret, LWEToGLWEKey, LWEToGLWEKeyLayout, LWEToGLWEKeyPrepared, LWEToGLWEKeyPreparedFactory, Rank, TorusPrecision, prepared::GLWESecretPrepared
-    }
+    GLWEDecrypt, GLWEEncryptSk, GLWEFromLWE, GLWENoise, GLWENormalize, GLWEToLWESwitchingKeyEncryptSk, LWEDecrypt, LWEEncryptSk,
+    LWEFromGLWE, LWEToGLWESwitchingKeyEncryptSk, SIGMA, ScratchTakeCore,
+    layouts::{
+        Base2K, Degree, Dnum, GLWE, GLWELayout, GLWEPlaintext, GLWESecret, GLWESecretPreparedFactory, GLWEToLWEKey,
+        GLWEToLWEKeyLayout, GLWEToLWEKeyPrepared, GLWEToLWEKeyPreparedFactory, LWE, LWEInfos, LWELayout, LWEPlaintext, LWESecret,
+        LWEToGLWEKey, LWEToGLWEKeyLayout, LWEToGLWEKeyPrepared, LWEToGLWEKeyPreparedFactory, Rank, TorusPrecision,
+        prepared::GLWESecretPrepared,
+    },
 };
 
 pub fn test_glwe_base2k_conversion<BE: Backend>(module: &Module<BE>)
@@ -70,15 +75,24 @@ where
             );
 
             let mut data: Vec<Float> = (0..module.n()).map(|_| Float::with_val(128, 0)).collect();
-            ct_in.data().decode_vec_float(ct_in.base2k().into(), 0, &mut data);
+            ct_in
+                .data()
+                .decode_vec_float(ct_in.base2k().into(), 0, &mut data);
 
-            ct_out.fill_uniform(ct_out.base2k().into(),&mut source_xa);
+            ct_out.fill_uniform(ct_out.base2k().into(), &mut source_xa);
             module.glwe_normalize(&mut ct_out, &ct_in, scratch.borrow());
-            
-            let mut data_conv: Vec<Float> = (0..module.n()).map(|_| Float::with_val(128, 0)).collect();
-            ct_out.data().decode_vec_float(ct_out.base2k().into(), 0, &mut data_conv);
 
-            ct_out.assert_noise(module, &sk_prep, &pt_out, -(ct_out.k().as_u32() as f64) + SIGMA.log2() + 0.5);
+            let mut data_conv: Vec<Float> = (0..module.n()).map(|_| Float::with_val(128, 0)).collect();
+            ct_out
+                .data()
+                .decode_vec_float(ct_out.base2k().into(), 0, &mut data_conv);
+
+            ct_out.assert_noise(
+                module,
+                &sk_prep,
+                &pt_out,
+                -(ct_out.k().as_u32() as f64) + SIGMA.log2() + 0.5,
+            );
         }
     }
 }

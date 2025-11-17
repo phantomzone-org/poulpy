@@ -4,12 +4,12 @@ use poulpy_hal::{
         VecZnxDftApply, VecZnxDftBytesOf, VecZnxDftCopy, VecZnxIdftApplyConsume, VecZnxNormalize, VecZnxNormalizeTmpBytes,
         VmpApplyDftToDft, VmpApplyDftToDftAdd, VmpApplyDftToDftTmpBytes,
     },
-    layouts::{Backend, DataMut, DataViewMut, Module, Scratch, VecZnx, VecZnxBig, VecZnxDft, VecZnxDftToRef, VmpPMat, ZnxInfos},
+    layouts::{Backend, DataMut, DataViewMut, Module, Scratch, VecZnxBig, VecZnxDft, VecZnxDftToRef, VmpPMat, ZnxInfos},
 };
 
 use crate::{
-    ScratchTakeCore,
-    layouts::{GGLWEInfos, GGLWEPrepared, GGLWEPreparedToRef, GLWE, GLWEInfos, GLWEToMut, GLWEToRef, LWEInfos},
+    GLWENormalize, ScratchTakeCore,
+    layouts::{GGLWEInfos, GGLWEPrepared, GGLWEPreparedToRef, GLWE, GLWEInfos, GLWELayout, GLWEToMut, GLWEToRef, LWEInfos},
 };
 
 impl GLWE<Vec<u8>> {
@@ -47,7 +47,7 @@ impl<D: DataMut> GLWE<D> {
 
 impl<BE: Backend> GLWEKeyswitch<BE> for Module<BE>
 where
-    Self: Sized + GLWEKeySwitchInternal<BE> + VecZnxBigNormalizeTmpBytes + VecZnxBigNormalize<BE>,
+    Self: Sized + GLWEKeySwitchInternal<BE> + VecZnxBigNormalizeTmpBytes + VecZnxBigNormalize<BE> + GLWENormalize<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     fn glwe_keyswitch_tmp_bytes<R, A, B>(&self, res_infos: &R, a_infos: &A, key_infos: &B) -> usize
@@ -57,9 +57,21 @@ where
         B: GGLWEInfos,
     {
         let cols: usize = res_infos.rank().as_usize() + 1;
-        self.glwe_keyswitch_internal_tmp_bytes(res_infos, a_infos, key_infos)
+        let size: usize = self
+            .glwe_keyswitch_internal_tmp_bytes(res_infos, a_infos, key_infos)
             .max(self.vec_znx_big_normalize_tmp_bytes())
-            + self.bytes_of_vec_znx_dft(cols, key_infos.size())
+            + self.bytes_of_vec_znx_dft(cols, key_infos.size());
+
+        if a_infos.base2k() != key_infos.base2k() {
+            size + GLWE::bytes_of_from_infos(&GLWELayout {
+                n: a_infos.n(),
+                base2k: key_infos.base2k(),
+                k: a_infos.k(),
+                rank: a_infos.rank(),
+            })
+        } else {
+            size
+        }
     }
 
     fn glwe_keyswitch<R, A, K>(&self, res: &mut R, a: &A, key: &K, scratch: &mut Scratch<BE>)
@@ -70,28 +82,28 @@ where
     {
         let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
         let a: &GLWE<&[u8]> = &a.to_ref();
-        let b: &GGLWEPrepared<&[u8], BE> = &key.to_ref();
+        let key: &GGLWEPrepared<&[u8], BE> = &key.to_ref();
 
         assert_eq!(
             a.rank(),
-            b.rank_in(),
+            key.rank_in(),
             "a.rank(): {} != b.rank_in(): {}",
             a.rank(),
-            b.rank_in()
+            key.rank_in()
         );
         assert_eq!(
             res.rank(),
-            b.rank_out(),
+            key.rank_out(),
             "res.rank(): {} != b.rank_out(): {}",
             res.rank(),
-            b.rank_out()
+            key.rank_out()
         );
 
         assert_eq!(res.n(), self.n() as u32);
         assert_eq!(a.n(), self.n() as u32);
-        assert_eq!(b.n(), self.n() as u32);
+        assert_eq!(key.n(), self.n() as u32);
 
-        let scrach_needed: usize = self.glwe_keyswitch_tmp_bytes(res, a, b);
+        let scrach_needed: usize = self.glwe_keyswitch_tmp_bytes(res, a, key);
 
         assert!(
             scratch.available() >= scrach_needed,
@@ -99,17 +111,31 @@ where
             scratch.available(),
         );
 
-        let basek_out: usize = res.base2k().into();
-        let base2k_out: usize = b.base2k().into();
+        let base2k_a: usize = a.base2k().into();
+        let base2k_key: usize = key.base2k().into();
+        let base2k_res: usize = res.base2k().into();
 
-        let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), b.size()); // Todo optimise
-        let res_big: VecZnxBig<&mut [u8], BE> = self.glwe_keyswitch_internal(res_dft, a, b, scratch_1);
+        let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), key.size()); // Todo optimise
+
+        let res_big: VecZnxBig<&mut [u8], BE> = if base2k_a != base2k_key {
+            let (mut a_conv, scratch_2) = scratch_1.take_glwe(&GLWELayout {
+                n: a.n(),
+                base2k: key.base2k(),
+                k: a.k(),
+                rank: a.rank(),
+            });
+            self.glwe_normalize(&mut a_conv, a, scratch_2);
+            self.glwe_keyswitch_internal(res_dft, &a_conv, key, scratch_2)
+        } else {
+            self.glwe_keyswitch_internal(res_dft, a, key, scratch_1)
+        };
+
         for i in 0..(res.rank() + 1).into() {
             self.vec_znx_big_normalize(
-                basek_out,
+                base2k_res,
                 &mut res.data,
                 i,
-                base2k_out,
+                base2k_key,
                 &res_big,
                 i,
                 scratch_1,
@@ -151,17 +177,31 @@ where
             scratch.available(),
         );
 
-        let base2k_in: usize = res.base2k().into();
-        let base2k_out: usize = key.base2k().into();
+        let base2k_res: usize = res.base2k().as_usize();
+        let base2k_key: usize = key.base2k().as_usize();
 
         let (res_dft, scratch_1) = scratch.take_vec_znx_dft(self, (res.rank() + 1).into(), key.size()); // Todo optimise
-        let res_big: VecZnxBig<&mut [u8], BE> = self.glwe_keyswitch_internal(res_dft, res, key, scratch_1);
+
+        let res_big: VecZnxBig<&mut [u8], BE> = if base2k_res != base2k_key {
+            let (mut res_conv, scratch_2) = scratch_1.take_glwe(&GLWELayout {
+                n: res.n(),
+                base2k: key.base2k(),
+                k: res.k(),
+                rank: res.rank(),
+            });
+            self.glwe_normalize(&mut res_conv, res, scratch_2);
+
+            self.glwe_keyswitch_internal(res_dft, &res_conv, key, scratch_2)
+        } else {
+            self.glwe_keyswitch_internal(res_dft, res, key, scratch_1)
+        };
+
         for i in 0..(res.rank() + 1).into() {
             self.vec_znx_big_normalize(
-                base2k_in,
-                &mut res.data,
+                base2k_res,
+                res.data_mut(),
                 i,
-                base2k_out,
+                base2k_key,
                 &res_big,
                 i,
                 scratch_1,
@@ -216,14 +256,7 @@ where
     {
         let cols: usize = (a_infos.rank() + 1).into();
         let a_size: usize = a_infos.size();
-
-        let a_conv = if a_infos.base2k() == key_infos.base2k() {
-            0
-        } else {
-            VecZnx::bytes_of(self.n(), 1, a_size) + self.vec_znx_normalize_tmp_bytes()
-        };
-
-        self.gglwe_product_dft_tmp_bytes(res_infos.size(), a_size, key_infos) + self.bytes_of_vec_znx_dft(cols, a_size) + a_conv
+        self.gglwe_product_dft_tmp_bytes(res_infos.size(), a_size, key_infos) + self.bytes_of_vec_znx_dft(cols, a_size)
     }
 
     fn glwe_keyswitch_internal<DR, A, K>(
@@ -241,36 +274,14 @@ where
     {
         let a: &GLWE<&[u8]> = &a.to_ref();
         let key: &GGLWEPrepared<&[u8], BE> = &key.to_ref();
-
-        let base2k_in: usize = a.base2k().into();
-        let base2k_out: usize = key.base2k().into();
+        assert_eq!(a.base2k(), key.base2k());
         let cols: usize = (a.rank() + 1).into();
-        let a_size: usize = (a.size() * base2k_in).div_ceil(base2k_out);
-
+        let a_size: usize = a.size();
         let (mut a_dft, scratch_1) = scratch.take_vec_znx_dft(self, cols - 1, a_size);
-
-        if base2k_in == base2k_out {
-            for col_i in 0..cols - 1 {
-                self.vec_znx_dft_apply(1, 0, &mut a_dft, col_i, a.data(), col_i + 1);
-            }
-        } else {
-            let (mut a_conv, scratch_2) = scratch_1.take_vec_znx(self.n(), 1, a_size);
-            for i in 0..cols - 1 {
-                self.vec_znx_normalize(
-                    base2k_out,
-                    &mut a_conv,
-                    0,
-                    base2k_in,
-                    a.data(),
-                    i + 1,
-                    scratch_2,
-                );
-                self.vec_znx_dft_apply(1, 0, &mut a_dft, i, &a_conv, 0);
-            }
+        for col_i in 0..cols - 1 {
+            self.vec_znx_dft_apply(1, 0, &mut a_dft, col_i, a.data(), col_i + 1);
         }
-
         self.gglwe_product_dft(&mut res, &a_dft, key, scratch_1);
-
         let mut res_big: VecZnxBig<DR, BE> = self.vec_znx_idft_apply_consume(res);
         self.vec_znx_big_add_small_inplace(&mut res_big, 0, a.data(), 0);
         res_big
