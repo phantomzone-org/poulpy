@@ -15,7 +15,7 @@ pub trait LWEInfos {
     }
     fn k(&self) -> TorusPrecision;
     fn max_k(&self) -> TorusPrecision {
-        TorusPrecision(self.k().0 * self.size() as u32)
+        TorusPrecision(self.base2k().0 * self.size() as u32)
     }
     fn base2k(&self) -> Base2K;
     fn size(&self) -> usize {
