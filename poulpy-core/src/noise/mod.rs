@@ -40,6 +40,32 @@ pub(crate) fn var_noise_gglwe_product(
 
 #[allow(clippy::too_many_arguments)]
 #[allow(dead_code)]
+pub(crate) fn var_noise_gglwe_product_v2(
+    n: f64,
+    logq: usize,
+    dnum: usize,
+    dsize: usize,
+    base2k: usize,
+    var_xs: f64,
+    var_msg: f64,
+    var_a_err: f64,
+    var_gct_err_lhs: f64,
+    var_gct_err_rhs: f64,
+    rank_in: f64,
+) -> f64 {
+    let base: f64 = ((dsize * base2k) as f64).exp2();
+    let var_base: f64 = base * base / 12f64;
+    let scale: f64 = (logq as f64).exp2();
+
+    let mut noise: f64 = (dnum as f64) * n * var_base * (var_gct_err_lhs + var_xs * var_gct_err_rhs);
+    noise += var_msg * var_a_err * var_base * n;
+    noise *= rank_in;
+    noise /= scale * scale;
+    noise
+}
+
+#[allow(clippy::too_many_arguments)]
+#[allow(dead_code)]
 pub(crate) fn log2_std_noise_gglwe_product(
     n: f64,
     base2k: usize,
