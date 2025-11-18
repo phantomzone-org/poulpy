@@ -34,9 +34,9 @@ impl GGSW<Vec<u8>> {
 impl<D: DataMut> GGSW<D> {
     pub fn automorphism<A, K, T, M, BE: Backend>(&mut self, module: &M, a: &A, key: &K, tsk: &T, scratch: &mut Scratch<BE>)
     where
-        A: GGSWToRef,
+        A: GGSWToRef + GGSWInfos,
         K: GetGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
-        T: GGLWEToGGSWKeyPreparedToRef<BE>,
+        T: GGLWEToGGSWKeyPreparedToRef<BE> + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
         M: GGSWAutomorphism<BE>,
     {
@@ -73,19 +73,20 @@ where
 
     fn ggsw_automorphism<R, A, K, T>(&self, res: &mut R, a: &A, key: &K, tsk: &T, scratch: &mut Scratch<BE>)
     where
-        R: GGSWToMut,
-        A: GGSWToRef,
+        R: GGSWToMut + GGSWInfos,
+        A: GGSWToRef + GGSWInfos,
         K: GetGaloisElement + GGLWEPreparedToRef<BE> + GGLWEInfos,
-        T: GGLWEToGGSWKeyPreparedToRef<BE>,
+        T: GGLWEToGGSWKeyPreparedToRef<BE> + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
+        assert_eq!(res.dsize(), a.dsize());
+        assert_eq!(res.base2k(), a.base2k());
+        assert!(res.dnum() <= a.dnum());
+        assert!(scratch.available() >= self.ggsw_automorphism_tmp_bytes(res, a, key, tsk));
+
         let res: &mut GGSW<&mut [u8]> = &mut res.to_mut();
         let a: &GGSW<&[u8]> = &a.to_ref();
         let tsk: &GGLWEToGGSWKeyPrepared<&[u8], BE> = &tsk.to_ref();
-
-        assert_eq!(res.dsize(), a.dsize());
-        assert!(res.dnum() <= a.dnum());
-        assert!(scratch.available() >= self.ggsw_automorphism_tmp_bytes(res, a, key, tsk));
 
         // Keyswitch the j-th row of the col 0
         for row in 0..res.dnum().as_usize() {

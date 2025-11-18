@@ -57,21 +57,19 @@ where
         B: GGLWEInfos,
     {
         let cols: usize = res_infos.rank().as_usize() + 1;
-        let size: usize = self
-            .glwe_keyswitch_internal_tmp_bytes(res_infos, a_infos, key_infos)
-            .max(self.vec_znx_big_normalize_tmp_bytes())
-            + self.bytes_of_vec_znx_dft(cols, key_infos.size());
-
-        if a_infos.base2k() != key_infos.base2k() {
-            size + GLWE::bytes_of_from_infos(&GLWELayout {
+        let size: usize = if a_infos.base2k() != key_infos.base2k() {
+            let a_conv_infos = &GLWELayout {
                 n: a_infos.n(),
                 base2k: key_infos.base2k(),
                 k: a_infos.k(),
                 rank: a_infos.rank(),
-            })
+            };
+            self.glwe_keyswitch_internal_tmp_bytes(res_infos, a_conv_infos, key_infos) + GLWE::bytes_of_from_infos(a_conv_infos)
         } else {
-            size
-        }
+            self.glwe_keyswitch_internal_tmp_bytes(res_infos, a_infos, key_infos)
+        };
+
+        size.max(self.vec_znx_big_normalize_tmp_bytes()) + self.bytes_of_vec_znx_dft(cols, key_infos.size())
     }
 
     fn glwe_keyswitch<R, A, K>(&self, res: &mut R, a: &A, key: &K, scratch: &mut Scratch<BE>)
@@ -256,7 +254,7 @@ where
     {
         let cols: usize = (a_infos.rank() + 1).into();
         let a_size: usize = a_infos.size();
-        self.gglwe_product_dft_tmp_bytes(res_infos.size(), a_size, key_infos) + self.bytes_of_vec_znx_dft(cols, a_size)
+        self.gglwe_product_dft_tmp_bytes(res_infos.size(), a_size, key_infos) + self.bytes_of_vec_znx_dft(cols - 1, a_size)
     }
 
     fn glwe_keyswitch_internal<DR, A, K>(

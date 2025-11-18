@@ -12,7 +12,6 @@ use crate::{
         GLWESwitchingKeyPreparedFactory, LWEInfos,
         prepared::{GLWESecretPrepared, GLWESwitchingKeyPrepared},
     },
-    noise::log2_std_noise_gglwe_product,
     var_noise_gglwe_product_v2,
 };
 

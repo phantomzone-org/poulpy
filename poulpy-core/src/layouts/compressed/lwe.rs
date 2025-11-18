@@ -1,10 +1,10 @@
 use std::fmt;
 
 use poulpy_hal::{
-    api::ZnFillUniform,
+    api::VecZnxFillUniform,
     layouts::{
-        Backend, Data, DataMut, DataRef, FillUniform, Module, ReaderFrom, WriterTo, Zn, ZnToMut, ZnToRef, ZnxInfos, ZnxView,
-        ZnxViewMut,
+        Backend, Data, DataMut, DataRef, FillUniform, Module, ReaderFrom, VecZnx, VecZnxToMut, VecZnxToRef, WriterTo, ZnxInfos,
+        ZnxView, ZnxViewMut,
     },
     source::Source,
 };
@@ -13,7 +13,7 @@ use crate::layouts::{Base2K, Degree, LWE, LWEInfos, LWEToMut, TorusPrecision};
 
 #[derive(PartialEq, Eq, Clone)]
 pub struct LWECompressed<D: Data> {
-    pub(crate) data: Zn<D>,
+    pub(crate) data: VecZnx<D>,
     pub(crate) k: TorusPrecision,
     pub(crate) base2k: Base2K,
     pub(crate) seed: [u8; 32],
@@ -72,7 +72,7 @@ impl LWECompressed<Vec<u8>> {
 
     pub fn alloc(base2k: Base2K, k: TorusPrecision) -> Self {
         LWECompressed {
-            data: Zn::alloc(1, 1, k.0.div_ceil(base2k.0) as usize),
+            data: VecZnx::alloc(1, 1, k.0.div_ceil(base2k.0) as usize),
             k,
             base2k,
             seed: [0u8; 32],
@@ -87,7 +87,7 @@ impl LWECompressed<Vec<u8>> {
     }
 
     pub fn bytes_of(base2k: Base2K, k: TorusPrecision) -> usize {
-        Zn::bytes_of(1, 1, k.0.div_ceil(base2k.0) as usize)
+        VecZnx::bytes_of(1, 1, k.0.div_ceil(base2k.0) as usize)
     }
 }
 
@@ -113,7 +113,7 @@ impl<D: DataRef> WriterTo for LWECompressed<D> {
 
 pub trait LWEDecompress
 where
-    Self: ZnFillUniform,
+    Self: VecZnxFillUniform,
 {
     fn decompress_lwe<R, O>(&self, res: &mut R, other: &O)
     where
@@ -126,20 +126,14 @@ where
         assert_eq!(res.lwe_layout(), other.lwe_layout());
 
         let mut source: Source = Source::new(other.seed);
-        self.zn_fill_uniform(
-            res.n().into(),
-            other.base2k().into(),
-            &mut res.data,
-            0,
-            &mut source,
-        );
+        self.vec_znx_fill_uniform(other.base2k().into(), &mut res.data, 0, &mut source);
         for i in 0..res.size() {
             res.data.at_mut(0, i)[0] = other.data.at(0, i)[0];
         }
     }
 }
 
-impl<B: Backend> LWEDecompress for Module<B> where Self: ZnFillUniform {}
+impl<B: Backend> LWEDecompress for Module<B> where Self: VecZnxFillUniform {}
 
 impl<D: DataMut> LWE<D> {
     pub fn decompress<O, M>(&mut self, module: &M, other: &O)

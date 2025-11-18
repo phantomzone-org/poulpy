@@ -132,7 +132,14 @@ where
     println!("pt_lwe: {pt_lwe}");
 
     let mut ct_lwe: LWE<Vec<u8>> = LWE::alloc_from_infos(&lwe_infos);
-    ct_lwe.encrypt_sk(module, &pt_lwe, &sk_lwe, &mut source_xa, &mut source_xe);
+    ct_lwe.encrypt_sk(
+        module,
+        &pt_lwe,
+        &sk_lwe,
+        &mut source_xa,
+        &mut source_xe,
+        scratch.borrow(),
+    );
 
     let now: Instant = Instant::now();
     let mut cbt_key: CircuitBootstrappingKey<Vec<u8>, BRA> = CircuitBootstrappingKey::alloc_from_infos(&cbt_infos);
@@ -313,7 +320,14 @@ where
     println!("pt_lwe: {pt_lwe}");
 
     let mut ct_lwe: LWE<Vec<u8>> = LWE::alloc_from_infos(&lwe_infos);
-    ct_lwe.encrypt_sk(module, &pt_lwe, &sk_lwe, &mut source_xa, &mut source_xe);
+    ct_lwe.encrypt_sk(
+        module,
+        &pt_lwe,
+        &sk_lwe,
+        &mut source_xa,
+        &mut source_xe,
+        scratch.borrow(),
+    );
 
     let now: Instant = Instant::now();
     let mut cbt_key: CircuitBootstrappingKey<Vec<u8>, BRA> = CircuitBootstrappingKey::alloc_from_infos(&cbt_infos);

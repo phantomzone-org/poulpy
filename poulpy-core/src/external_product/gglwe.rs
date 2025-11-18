@@ -30,8 +30,8 @@ impl<DataSelf: DataMut> GLWEAutomorphismKey<DataSelf> {
     pub fn external_product<A, B, M, BE: Backend>(&mut self, module: &M, a: &A, b: &B, scratch: &mut Scratch<BE>)
     where
         M: GGLWEExternalProduct<BE>,
-        A: GGLWEToRef,
-        B: GGSWPreparedToRef<BE>,
+        A: GGLWEToRef + GGLWEInfos,
+        B: GGSWPreparedToRef<BE> + GGSWInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         module.gglwe_external_product(self, a, b, scratch);
@@ -62,15 +62,11 @@ where
 
     fn gglwe_external_product<R, A, B>(&self, res: &mut R, a: &A, b: &B, scratch: &mut Scratch<BE>)
     where
-        R: GGLWEToMut,
-        A: GGLWEToRef,
-        B: GGSWPreparedToRef<BE>,
+        R: GGLWEToMut + GGLWEInfos,
+        A: GGLWEToRef + GGLWEInfos,
+        B: GGSWPreparedToRef<BE> + GGSWInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        let res: &mut GGLWE<&mut [u8]> = &mut res.to_mut();
-        let a: &GGLWE<&[u8]> = &a.to_ref();
-        let b: &GGSWPrepared<&[u8], BE> = &b.to_ref();
-
         assert_eq!(
             res.rank_in(),
             a.rank_in(),
@@ -92,6 +88,11 @@ where
             res.rank_out(),
             b.rank()
         );
+        assert_eq!(res.base2k(), a.base2k());
+
+        let res: &mut GGLWE<&mut [u8]> = &mut res.to_mut();
+        let a: &GGLWE<&[u8]> = &a.to_ref();
+        let b: &GGSWPrepared<&[u8], BE> = &b.to_ref();
 
         for row in 0..res.dnum().into() {
             for col in 0..res.rank_in().into() {
@@ -149,8 +150,8 @@ impl<DataSelf: DataMut> GLWESwitchingKey<DataSelf> {
     pub fn external_product<A, B, M, BE: Backend>(&mut self, module: &M, a: &A, b: &B, scratch: &mut Scratch<BE>)
     where
         M: GGLWEExternalProduct<BE>,
-        A: GGLWEToRef,
-        B: GGSWPreparedToRef<BE>,
+        A: GGLWEToRef + GGLWEInfos,
+        B: GGSWPreparedToRef<BE> + GGSWInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         module.gglwe_external_product(self, a, b, scratch);

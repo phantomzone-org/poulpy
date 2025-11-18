@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    api::{ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxFillUniform},
+    api::{ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxFillUniform, VecZnxNormalize},
     layouts::{Backend, FillUniform, Module, Scratch, ScratchOwned, ZnxView},
     source::Source,
 };
@@ -104,7 +104,8 @@ where
         + GLWEDecrypt<BE>
         + GLWESecretPreparedFactory<BE>
         + LWEEncryptSk<BE>
-        + LWEToGLWEKeyPreparedFactory<BE>,
+        + LWEToGLWEKeyPreparedFactory<BE>
+        + VecZnxNormalize<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
@@ -120,23 +121,23 @@ where
 
     let lwe_to_glwe_infos: LWEToGLWEKeyLayout = LWEToGLWEKeyLayout {
         n: n_glwe,
-        base2k: Base2K(17),
-        k: TorusPrecision(51),
+        base2k: Base2K(13),
+        k: TorusPrecision(92),
         dnum: Dnum(2),
         rank_out: rank,
     };
 
     let glwe_infos: GLWELayout = GLWELayout {
         n: n_glwe,
-        base2k: Base2K(17),
-        k: TorusPrecision(34),
+        base2k: Base2K(15),
+        k: TorusPrecision(75),
         rank,
     };
 
     let lwe_infos: LWELayout = LWELayout {
         n: n_lwe,
         base2k: Base2K(17),
-        k: TorusPrecision(34),
+        k: TorusPrecision(75),
     };
 
     let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
@@ -160,7 +161,14 @@ where
     lwe_pt.encode_i64(data, k_lwe_pt);
 
     let mut lwe_ct: LWE<Vec<u8>> = LWE::alloc_from_infos(&lwe_infos);
-    lwe_ct.encrypt_sk(module, &lwe_pt, &sk_lwe, &mut source_xa, &mut source_xe);
+    lwe_ct.encrypt_sk(
+        module,
+        &lwe_pt,
+        &sk_lwe,
+        &mut source_xa,
+        &mut source_xe,
+        scratch.borrow(),
+    );
 
     let mut ksk: LWEToGLWEKey<Vec<u8>> = LWEToGLWEKey::alloc_from_infos(&lwe_to_glwe_infos);
 
@@ -183,7 +191,19 @@ where
     let mut glwe_pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_infos);
     glwe_ct.decrypt(module, &mut glwe_pt, &sk_glwe_prepared, scratch.borrow());
 
-    assert_eq!(glwe_pt.data.at(0, 0)[0], lwe_pt.data.at(0, 0)[0]);
+    let mut lwe_pt_conv = LWEPlaintext::alloc(glwe_pt.base2k(), lwe_pt.k());
+
+    module.vec_znx_normalize(
+        glwe_pt.base2k().as_usize(),
+        lwe_pt_conv.data_mut(),
+        0,
+        lwe_pt.base2k().as_usize(),
+        lwe_pt.data(),
+        0,
+        scratch.borrow(),
+    );
+
+    assert_eq!(glwe_pt.data.at(0, 0)[0], lwe_pt_conv.data.at(0, 0)[0]);
 }
 
 pub fn test_glwe_to_lwe<BE: Backend>(module: &Module<BE>)
@@ -196,7 +216,8 @@ where
         + GLWEDecrypt<BE>
         + GLWESecretPreparedFactory<BE>
         + GLWEToLWESwitchingKeyEncryptSk<BE>
-        + GLWEToLWEKeyPreparedFactory<BE>,
+        + GLWEToLWEKeyPreparedFactory<BE>
+        + VecZnxNormalize<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
@@ -208,8 +229,8 @@ where
 
     let glwe_to_lwe_infos: GLWEToLWEKeyLayout = GLWEToLWEKeyLayout {
         n: n_glwe,
-        base2k: Base2K(17),
-        k: TorusPrecision(51),
+        base2k: Base2K(13),
+        k: TorusPrecision(91),
         dnum: Dnum(2),
         rank_in: rank,
     };
@@ -217,14 +238,14 @@ where
     let glwe_infos: GLWELayout = GLWELayout {
         n: n_glwe,
         base2k: Base2K(17),
-        k: TorusPrecision(34),
+        k: TorusPrecision(72),
         rank,
     };
 
     let lwe_infos: LWELayout = LWELayout {
         n: n_lwe,
-        base2k: Base2K(17),
-        k: TorusPrecision(34),
+        base2k: Base2K(15),
+        k: TorusPrecision(72),
     };
 
     let mut source_xs: Source = Source::new([0u8; 32]);
@@ -284,7 +305,19 @@ where
     lwe_ct.from_glwe(module, &glwe_ct, a_idx, &ksk_prepared, scratch.borrow());
 
     let mut lwe_pt: LWEPlaintext<Vec<u8>> = LWEPlaintext::alloc_from_infos(&lwe_infos);
-    lwe_ct.decrypt(module, &mut lwe_pt, &sk_lwe);
+    lwe_ct.decrypt(module, &mut lwe_pt, &sk_lwe, scratch.borrow());
 
-    assert_eq!(glwe_pt.data.at(0, 0)[a_idx], lwe_pt.data.at(0, 0)[0]);
+    let mut glwe_pt_conv = GLWEPlaintext::alloc(glwe_ct.n(), lwe_pt.base2k(), lwe_pt.k());
+
+    module.vec_znx_normalize(
+        lwe_pt.base2k().as_usize(),
+        glwe_pt_conv.data_mut(),
+        0,
+        glwe_ct.base2k().as_usize(),
+        glwe_pt.data(),
+        0,
+        scratch.borrow(),
+    );
+
+    assert_eq!(glwe_pt_conv.data.at(0, 0)[a_idx], lwe_pt.data.at(0, 0)[0]);
 }

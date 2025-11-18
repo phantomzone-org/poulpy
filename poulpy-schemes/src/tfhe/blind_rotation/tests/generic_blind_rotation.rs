@@ -111,7 +111,14 @@ pub fn test_blind_rotation<BRA: BlindRotationAlgo, M, BE: Backend>(
 
     pt_lwe.encode_i64(x, (log_message_modulus + 1).into());
 
-    lwe.encrypt_sk(module, &pt_lwe, &sk_lwe, &mut source_xa, &mut source_xe);
+    lwe.encrypt_sk(
+        module,
+        &pt_lwe,
+        &sk_lwe,
+        &mut source_xa,
+        &mut source_xe,
+        scratch.borrow(),
+    );
 
     let f = |x: i64| -> i64 { 2 * x + 1 };
 

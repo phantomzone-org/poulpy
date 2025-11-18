@@ -10,7 +10,6 @@ mod vec_znx;
 mod vec_znx_big;
 mod vec_znx_dft;
 mod vmp_pmat;
-mod zn;
 mod znx_base;
 
 pub use mat_znx::*;
@@ -24,7 +23,6 @@ pub use vec_znx::*;
 pub use vec_znx_big::*;
 pub use vec_znx_dft::*;
 pub use vmp_pmat::*;
-pub use zn::*;
 pub use znx_base::*;
 
 pub trait Data = PartialEq + Eq + Sized + Default;

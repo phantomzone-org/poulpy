@@ -21,7 +21,7 @@ impl GLWEAutomorphismKey<Vec<u8>> {
 impl<DataSelf: DataMut> GLWEAutomorphismKey<DataSelf> {
     pub fn keyswitch<A, B, M, BE: Backend>(&mut self, module: &M, a: &A, b: &B, scratch: &mut Scratch<BE>)
     where
-        A: GGLWEToRef + GGLWEToRef,
+        A: GGLWEToRef + GGLWEInfos,
         B: GGLWEPreparedToRef<BE> + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
         M: GGLWEKeyswitch<BE>,
@@ -54,7 +54,7 @@ impl GLWESwitchingKey<Vec<u8>> {
 impl<DataSelf: DataMut> GLWESwitchingKey<DataSelf> {
     pub fn keyswitch<A, B, M, BE: Backend>(&mut self, module: &M, a: &A, b: &B, scratch: &mut Scratch<BE>)
     where
-        A: GGLWEToRef,
+        A: GGLWEToRef + GGLWEInfos,
         B: GGLWEPreparedToRef<BE> + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
         M: GGLWEKeyswitch<BE>,
@@ -87,7 +87,7 @@ impl GGLWE<Vec<u8>> {
 impl<DataSelf: DataMut> GGLWE<DataSelf> {
     pub fn keyswitch<A, B, M, BE: Backend>(&mut self, module: &M, a: &A, b: &B, scratch: &mut Scratch<BE>)
     where
-        A: GGLWEToRef,
+        A: GGLWEToRef + GGLWEInfos,
         B: GGLWEPreparedToRef<BE> + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
         M: GGLWEKeyswitch<BE>,
@@ -122,14 +122,11 @@ where
 
     fn gglwe_keyswitch<R, A, B>(&self, res: &mut R, a: &A, b: &B, scratch: &mut Scratch<BE>)
     where
-        R: GGLWEToMut,
-        A: GGLWEToRef,
+        R: GGLWEToMut + GGLWEInfos,
+        A: GGLWEToRef + GGLWEInfos,
         B: GGLWEPreparedToRef<BE> + GGLWEInfos,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
-        let res: &mut GGLWE<&mut [u8]> = &mut res.to_mut();
-        let a: &GGLWE<&[u8]> = &a.to_ref();
-
         assert_eq!(
             res.rank_in(),
             a.rank_in(),
@@ -164,6 +161,10 @@ where
             res.dsize(),
             a.dsize()
         );
+        assert_eq!(res.base2k(), a.base2k());
+
+        let res: &mut GGLWE<&mut [u8]> = &mut res.to_mut();
+        let a: &GGLWE<&[u8]> = &a.to_ref();
 
         for row in 0..res.dnum().into() {
             for col in 0..res.rank_in().into() {

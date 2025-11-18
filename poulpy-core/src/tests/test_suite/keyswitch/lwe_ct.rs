@@ -1,5 +1,5 @@
 use poulpy_hal::{
-    api::{ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow},
+    api::{ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxNormalize},
     layouts::{Backend, Module, Scratch, ScratchOwned, ZnxView},
     source::Source,
 };
@@ -14,21 +14,27 @@ use crate::{
 
 pub fn test_lwe_keyswitch<BE: Backend>(module: &Module<BE>)
 where
-    Module<BE>:
-        LWEKeySwitch<BE> + LWESwitchingKeyEncrypt<BE> + LWEEncryptSk<BE> + LWESwitchingKeyPreparedFactory<BE> + LWEDecrypt<BE>,
+    Module<BE>: LWEKeySwitch<BE>
+        + LWESwitchingKeyEncrypt<BE>
+        + LWEEncryptSk<BE>
+        + LWESwitchingKeyPreparedFactory<BE>
+        + LWEDecrypt<BE>
+        + VecZnxNormalize<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
     let n: usize = module.n();
-    let base2k: usize = 17;
+    let base2k_in: usize = 17;
+    let base2k_out: usize = 15;
+    let base2k_key: usize = 13;
 
-    let n_lwe_in: usize = 22;
-    let n_lwe_out: usize = 30;
-    let k_lwe_ct: usize = 2 * base2k;
+    let n_lwe_in: usize = module.n() >> 1;
+    let n_lwe_out: usize = module.n() >> 1;
+    let k_lwe_ct: usize = 102;
     let k_lwe_pt: usize = 8;
 
-    let k_ksk: usize = k_lwe_ct + base2k;
-    let dnum: usize = k_lwe_ct.div_ceil(base2k);
+    let k_ksk: usize = k_lwe_ct + base2k_key;
+    let dnum: usize = k_lwe_ct.div_ceil(base2k_key);
 
     let mut source_xs: Source = Source::new([0u8; 32]);
     let mut source_xa: Source = Source::new([0u8; 32]);
@@ -36,21 +42,21 @@ where
 
     let key_apply_infos: LWESwitchingKeyLayout = LWESwitchingKeyLayout {
         n: n.into(),
-        base2k: base2k.into(),
+        base2k: base2k_key.into(),
         k: k_ksk.into(),
         dnum: dnum.into(),
     };
 
     let lwe_in_infos: LWELayout = LWELayout {
         n: n_lwe_in.into(),
-        base2k: base2k.into(),
+        base2k: base2k_in.into(),
         k: k_lwe_ct.into(),
     };
 
     let lwe_out_infos: LWELayout = LWELayout {
         n: n_lwe_out.into(),
         k: k_lwe_ct.into(),
-        base2k: base2k.into(),
+        base2k: base2k_out.into(),
     };
 
     let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
@@ -66,7 +72,7 @@ where
 
     let data: i64 = 17;
 
-    let mut lwe_pt_in: LWEPlaintext<Vec<u8>> = LWEPlaintext::alloc(base2k.into(), k_lwe_pt.into());
+    let mut lwe_pt_in: LWEPlaintext<Vec<u8>> = LWEPlaintext::alloc(base2k_in.into(), k_lwe_pt.into());
     lwe_pt_in.encode_i64(data, k_lwe_pt.into());
 
     let mut lwe_ct_in: LWE<Vec<u8>> = LWE::alloc_from_infos(&lwe_in_infos);
@@ -76,6 +82,7 @@ where
         &sk_lwe_in,
         &mut source_xa,
         &mut source_xe,
+        scratch.borrow(),
     );
 
     let mut ksk: LWESwitchingKey<Vec<u8>> = LWESwitchingKey::alloc_from_infos(&key_apply_infos);
@@ -97,7 +104,18 @@ where
     lwe_ct_out.keyswitch(module, &lwe_ct_in, &ksk_prepared, scratch.borrow());
 
     let mut lwe_pt_out: LWEPlaintext<Vec<u8>> = LWEPlaintext::alloc_from_infos(&lwe_out_infos);
-    lwe_ct_out.decrypt(module, &mut lwe_pt_out, &sk_lwe_out);
+    lwe_ct_out.decrypt(module, &mut lwe_pt_out, &sk_lwe_out, scratch.borrow());
 
-    assert_eq!(lwe_pt_in.data.at(0, 0)[0], lwe_pt_out.data.at(0, 0)[0]);
+    let mut lwe_pt_want: LWEPlaintext<Vec<u8>> = LWEPlaintext::alloc_from_infos(&lwe_out_infos);
+    module.vec_znx_normalize(
+        base2k_out,
+        lwe_pt_want.data_mut(),
+        0,
+        base2k_in,
+        lwe_pt_in.data(),
+        0,
+        scratch.borrow(),
+    );
+
+    assert_eq!(lwe_pt_want.data.at(0, 0)[0], lwe_pt_out.data.at(0, 0)[0]);
 }

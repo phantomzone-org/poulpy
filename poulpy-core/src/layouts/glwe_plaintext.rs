@@ -158,3 +158,15 @@ impl<D: DataMut> GLWEPlaintextToMut for GLWEPlaintext<D> {
         }
     }
 }
+
+impl<D: DataMut> GLWEPlaintext<D> {
+    pub fn data_mut(&mut self) -> &mut VecZnx<D> {
+        &mut self.data
+    }
+}
+
+impl<D: DataRef> GLWEPlaintext<D> {
+    pub fn data(&self) -> &VecZnx<D> {
+        &self.data
+    }
+}

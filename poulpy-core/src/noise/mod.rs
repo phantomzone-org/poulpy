@@ -42,7 +42,7 @@ pub(crate) fn var_noise_gglwe_product(
 #[allow(dead_code)]
 pub(crate) fn var_noise_gglwe_product_v2(
     n: f64,
-    logq: usize,
+    k_ksk: usize,
     dnum: usize,
     dsize: usize,
     base2k: usize,
@@ -55,7 +55,7 @@ pub(crate) fn var_noise_gglwe_product_v2(
 ) -> f64 {
     let base: f64 = ((dsize * base2k) as f64).exp2();
     let var_base: f64 = base * base / 12f64;
-    let scale: f64 = (logq as f64).exp2();
+    let scale: f64 = (k_ksk as f64).exp2();
 
     let mut noise: f64 = (dnum as f64) * n * var_base * (var_gct_err_lhs + var_xs * var_gct_err_rhs);
     noise += var_msg * var_a_err * var_base * n;

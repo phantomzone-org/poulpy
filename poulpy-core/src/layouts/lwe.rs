@@ -1,7 +1,7 @@
 use std::fmt;
 
 use poulpy_hal::{
-    layouts::{Data, DataMut, DataRef, FillUniform, ReaderFrom, WriterTo, Zn, ZnToMut, ZnToRef, ZnxInfos},
+    layouts::{Data, DataMut, DataRef, FillUniform, ReaderFrom, VecZnx, VecZnxToMut, VecZnxToRef, WriterTo, ZnxInfos},
     source::Source,
 };
 
@@ -57,7 +57,7 @@ impl LWEInfos for LWELayout {
 }
 #[derive(PartialEq, Eq, Clone)]
 pub struct LWE<D: Data> {
-    pub(crate) data: Zn<D>,
+    pub(crate) data: VecZnx<D>,
     pub(crate) k: TorusPrecision,
     pub(crate) base2k: Base2K,
 }
@@ -90,13 +90,13 @@ impl<D: Data> SetLWEInfos for LWE<D> {
 }
 
 impl<D: DataRef> LWE<D> {
-    pub fn data(&self) -> &Zn<D> {
+    pub fn data(&self) -> &VecZnx<D> {
         &self.data
     }
 }
 
 impl<D: DataMut> LWE<D> {
-    pub fn data_mut(&mut self) -> &Zn<D> {
+    pub fn data_mut(&mut self) -> &VecZnx<D> {
         &mut self.data
     }
 }
@@ -121,7 +121,7 @@ impl<D: DataRef> fmt::Display for LWE<D> {
 
 impl<D: DataMut> FillUniform for LWE<D>
 where
-    Zn<D>: FillUniform,
+    VecZnx<D>: FillUniform,
 {
     fn fill_uniform(&mut self, log_bound: usize, source: &mut Source) {
         self.data.fill_uniform(log_bound, source);
@@ -138,7 +138,7 @@ impl LWE<Vec<u8>> {
 
     pub fn alloc(n: Degree, base2k: Base2K, k: TorusPrecision) -> Self {
         LWE {
-            data: Zn::alloc((n + 1).into(), 1, k.0.div_ceil(base2k.0) as usize),
+            data: VecZnx::alloc((n + 1).into(), 1, k.0.div_ceil(base2k.0) as usize),
             k,
             base2k,
         }
@@ -152,7 +152,7 @@ impl LWE<Vec<u8>> {
     }
 
     pub fn bytes_of(n: Degree, base2k: Base2K, k: TorusPrecision) -> usize {
-        Zn::bytes_of((n + 1).into(), 1, k.0.div_ceil(base2k.0) as usize)
+        VecZnx::bytes_of((n + 1).into(), 1, k.0.div_ceil(base2k.0) as usize)
     }
 }
 
