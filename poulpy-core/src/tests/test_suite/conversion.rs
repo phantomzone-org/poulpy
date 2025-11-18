@@ -275,8 +275,6 @@ where
     let mut glwe_pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_infos);
     glwe_pt.encode_vec_i64(&data, k_lwe_pt);
 
-    println!("glwe_pt: {glwe_pt}");
-
     let mut glwe_ct: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_infos);
     glwe_ct.encrypt_sk(
         module,

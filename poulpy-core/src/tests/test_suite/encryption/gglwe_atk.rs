@@ -176,7 +176,6 @@ where
 
             let max_noise: f64 = SIGMA.log2() - (atk.k().as_usize() as f64) + 0.5;
 
-            println!("rank: {rank} dsize: {dsize} dnum: {dnum}");
             for row in 0..atk.dnum().as_usize() {
                 for col in 0..atk.rank().as_usize() {
                     let noise_have = atk

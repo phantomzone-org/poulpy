@@ -143,20 +143,21 @@ where
             let mut source_xa = Source::new(seed);
 
             let (mut tmp_pt, scrach_1) = scratch.take_glwe_plaintext(res);
-            for col_i in 0..rank_in {
-                for d_i in 0..dnum {
+
+            for col_j in 0..rank_in {
+                for row_i in 0..dnum {
                     // Adds the scalar_znx_pt to the i-th limb of the vec_znx_pt
                     tmp_pt.data.zero(); // zeroes for next iteration
-                    self.vec_znx_add_scalar_inplace(&mut tmp_pt.data, 0, (dsize - 1) + d_i * dsize, pt, col_i);
+                    self.vec_znx_add_scalar_inplace(&mut tmp_pt.data, 0, (dsize - 1) + row_i * dsize, pt, col_j);
                     self.vec_znx_normalize_inplace(base2k, &mut tmp_pt.data, 0, scrach_1);
 
                     let (seed, mut source_xa_tmp) = source_xa.branch();
-                    seeds[col_i * dnum + d_i] = seed;
+                    seeds[row_i * rank_in + col_j] = seed;
 
                     self.glwe_encrypt_sk_internal(
                         res.base2k().into(),
                         res.k().into(),
-                        &mut res.at_mut(d_i, col_i).data,
+                        &mut res.at_mut(row_i, col_j).data,
                         cols,
                         true,
                         Some((&tmp_pt, 0)),

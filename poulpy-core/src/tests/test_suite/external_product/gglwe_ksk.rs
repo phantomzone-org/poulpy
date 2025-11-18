@@ -8,7 +8,7 @@ use crate::{
     GGLWEExternalProduct, GGLWENoise, GGSWEncryptSk, GLWESwitchingKeyEncryptSk, ScratchTakeCore,
     encryption::SIGMA,
     layouts::{
-        GGLWEInfos, GGSW, GGSWLayout, GGSWPreparedFactory, GLWEInfos, GLWESecret, GLWESecretPreparedFactory, GLWESwitchingKey,
+        GGLWEInfos, GGSW, GGSWLayout, GGSWPreparedFactory, GLWESecret, GLWESecretPreparedFactory, GLWESwitchingKey,
         GLWESwitchingKeyLayout,
         prepared::{GGSWPrepared, GLWESecretPrepared},
     },

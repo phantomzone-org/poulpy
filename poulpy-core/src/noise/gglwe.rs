@@ -1,6 +1,6 @@
 use poulpy_hal::{
     api::VecZnxAddScalarInplace,
-    layouts::{Backend, DataRef, Module, ScalarZnxToRef, Scratch, Stats, ZnxInfos, ZnxZero},
+    layouts::{Backend, DataRef, Module, ScalarZnxToRef, Scratch, Stats, ZnxZero},
 };
 
 use crate::{
@@ -78,7 +78,6 @@ where
         let dsize: usize = res.dsize().into();
         let (mut pt, scratch_1) = scratch.take_glwe_plaintext(res);
         pt.data_mut().zero();
-        println!("col: {res_col} {}", pt_want.to_ref().cols());
         self.vec_znx_add_scalar_inplace(
             &mut pt.data,
             0,

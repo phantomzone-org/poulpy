@@ -9,7 +9,7 @@ use crate::{
     decryption::GLWEDecrypt,
     encryption::SIGMA,
     layouts::{
-        Dsize, GGLWEDecompress, GGLWEInfos, GLWEInfos, GLWESecret, GLWESecretPreparedFactory, GLWESecretTensor,
+        Dsize, GGLWEDecompress, GGLWEInfos, GLWESecret, GLWESecretPreparedFactory, GLWESecretTensor,
         GLWESecretTensorFactory, GLWETensorKey, GLWETensorKeyCompressed, GLWETensorKeyLayout, LWEInfos,
         prepared::GLWESecretPrepared,
     },
@@ -71,7 +71,7 @@ where
         let max_noise: f64 = SIGMA.log2() - (tensor_key.k().as_usize() as f64) + 0.5;
 
         for row in 0..tensor_key.dnum().as_usize() {
-            for col in 0..tensor_key.rank().as_usize() + 1 {
+            for col in 0..tensor_key.rank_in().as_usize() {
                 assert!(
                     tensor_key
                         .0
@@ -148,7 +148,7 @@ where
         let max_noise: f64 = SIGMA.log2() - (tensor_key.k().as_usize() as f64) + 0.5;
 
         for row in 0..tensor_key.dnum().as_usize() {
-            for col in 0..tensor_key.rank().as_usize() + 1 {
+            for col in 0..tensor_key.rank_in().as_usize() {
                 assert!(
                     tensor_key
                         .0

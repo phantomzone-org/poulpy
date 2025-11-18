@@ -10,8 +10,8 @@ use crate::{
     encryption::SIGMA,
     layouts::{
         Dsize, GGLWE, GGLWEDecompress, GGLWEInfos, GGLWEToGGSWKey, GGLWEToGGSWKeyCompressed, GGLWEToGGSWKeyDecompress,
-        GGLWEToGGSWKeyLayout, GLWESecret, GLWESecretPreparedFactory, GLWESecretTensor, GLWESecretTensorFactory,
-        LWEInfos, prepared::GLWESecretPrepared,
+        GGLWEToGGSWKeyLayout, GLWESecret, GLWESecretPreparedFactory, GLWESecretTensor, GLWESecretTensorFactory, LWEInfos,
+        prepared::GLWESecretPrepared,
     },
 };
 
