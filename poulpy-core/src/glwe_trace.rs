@@ -1,10 +1,10 @@
 use poulpy_hal::{
-    api::{ModuleLogN, VecZnxNormalize, VecZnxNormalizeTmpBytes},
+    api::{ModuleLogN, VecZnxNormalizeTmpBytes},
     layouts::{Backend, CyclotomicOrder, DataMut, GaloisElement, Module, Scratch, VecZnx, galois_element},
 };
 
 use crate::{
-    GLWEAutomorphism, GLWECopy, GLWEShift, ScratchTakeCore,
+    GLWEAutomorphism, GLWECopy, GLWENormalize, GLWEShift, ScratchTakeCore,
     layouts::{
         GGLWEInfos, GGLWELayout, GGLWEPreparedToRef, GLWE, GLWEAutomorphismKeyHelper, GLWEInfos, GLWELayout, GLWEToMut,
         GLWEToRef, GetGaloisElement, LWEInfos,
@@ -75,7 +75,7 @@ where
         + GLWECopy
         + CyclotomicOrder
         + VecZnxNormalizeTmpBytes
-        + VecZnxNormalize<BE>,
+        + GLWENormalize<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     fn glwe_trace_galois_elements(&self) -> Vec<i64> {
@@ -114,15 +114,28 @@ where
         K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
         H: GLWEAutomorphismKeyHelper<K, BE>,
     {
-        let (mut tmp, scratch_1) = if a.k() > res.k() {
-            scratch.take_glwe(a)
-        } else {
-            scratch.take_glwe(res)
-        };
+        let atk_layout: &GGLWELayout = &keys.automorphism_key_infos();
 
-        self.glwe_copy(&mut tmp, a);
+        let (mut tmp, scratch_1) = scratch.take_glwe(&GLWELayout {
+            n: res.n(),
+            base2k: atk_layout.base2k(),
+            k: a.k().max(res.k()),
+            rank: res.rank(),
+        });
+
+        if a.base2k() == atk_layout.base2k() {
+            self.glwe_copy(&mut tmp, a);
+        } else {
+            self.glwe_normalize(&mut tmp, a, scratch_1);
+        }
+
         self.glwe_trace_inplace(&mut tmp, skip, keys, scratch_1);
-        self.glwe_copy(res, &tmp);
+
+        if res.base2k() == atk_layout.base2k() {
+            self.glwe_copy(res, &tmp);
+        } else {
+            self.glwe_normalize(res, &tmp, scratch_1);
+        }
     }
 
     fn glwe_trace_inplace<R, K, H>(&self, res: &mut R, skip: usize, keys: &H, scratch: &mut Scratch<BE>)
@@ -143,52 +156,15 @@ where
         assert_eq!(ksk_infos.rank_out(), res.rank());
 
         if res.base2k() != ksk_infos.base2k() {
-            let (mut self_conv, scratch_1) = scratch.take_glwe(&GLWELayout {
+            let (mut res_conv, scratch_1) = scratch.take_glwe(&GLWELayout {
                 n: self.n().into(),
                 base2k: ksk_infos.base2k(),
                 k: res.k(),
                 rank: res.rank(),
             });
-
-            for j in 0..(res.rank() + 1).into() {
-                self.vec_znx_normalize(
-                    ksk_infos.base2k().into(),
-                    &mut self_conv.data,
-                    j,
-                    res.base2k().into(),
-                    res.data(),
-                    j,
-                    scratch_1,
-                );
-            }
-
-            for i in skip..log_n {
-                self.glwe_rsh(1, &mut self_conv, scratch_1);
-
-                let p: i64 = if i == 0 {
-                    -1
-                } else {
-                    self.galois_element(1 << (i - 1))
-                };
-
-                if let Some(key) = keys.get_automorphism_key(p) {
-                    self.glwe_automorphism_add_inplace(&mut self_conv, key, scratch_1);
-                } else {
-                    panic!("keys[{p}] is empty")
-                }
-            }
-
-            for j in 0..(res.rank() + 1).into() {
-                self.vec_znx_normalize(
-                    res.base2k().into(),
-                    res.data_mut(),
-                    j,
-                    ksk_infos.base2k().into(),
-                    &self_conv.data,
-                    j,
-                    scratch_1,
-                );
-            }
+            self.glwe_normalize(&mut res_conv, res, scratch_1);
+            self.glwe_trace_inplace(&mut res_conv, skip, keys, scratch_1);
+            self.glwe_normalize(res, &res_conv, scratch_1);
         } else {
             for i in skip..log_n {
                 self.glwe_rsh(1, res, scratch);

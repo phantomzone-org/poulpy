@@ -32,26 +32,27 @@ where
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
-    let base2k: usize = 8;
+    let base2k_out: usize = 15;
+    let base2k_key: usize = 10;
     let k: usize = 54;
 
     for rank in 1_usize..3 {
         let n: usize = module.n();
-        let k_autokey: usize = k + base2k;
+        let k_autokey: usize = k + base2k_key;
 
         let dsize: usize = 1;
-        let dnum: usize = k.div_ceil(base2k * dsize);
+        let dnum: usize = k.div_ceil(base2k_key * dsize);
 
         let glwe_out_infos: GLWELayout = GLWELayout {
             n: n.into(),
-            base2k: base2k.into(),
+            base2k: base2k_out.into(),
             k: k.into(),
             rank: rank.into(),
         };
 
         let key_infos: GLWEAutomorphismKeyLayout = GLWEAutomorphismKeyLayout {
             n: n.into(),
-            base2k: base2k.into(),
+            base2k: base2k_key.into(),
             k: k_autokey.into(),
             rank: rank.into(),
             dsize: dsize.into(),
@@ -85,7 +86,7 @@ where
             .iter_mut()
             .for_each(|x| *x = source_xa.next_i64() & 0xFF);
 
-        module.vec_znx_fill_uniform(base2k, &mut pt_have.data, 0, &mut source_xa);
+        module.vec_znx_fill_uniform(base2k_out, &mut pt_have.data, 0, &mut source_xa);
 
         glwe_out.encrypt_sk(
             module,
@@ -121,13 +122,18 @@ where
         glwe_out.decrypt(module, &mut pt_have, &sk_dft, scratch.borrow());
 
         module.vec_znx_sub_inplace(&mut pt_want.data, 0, &pt_have.data, 0);
-        module.vec_znx_normalize_inplace(base2k, &mut pt_want.data, 0, scratch.borrow());
+        module.vec_znx_normalize_inplace(
+            pt_want.base2k().as_usize(),
+            &mut pt_want.data,
+            0,
+            scratch.borrow(),
+        );
 
         let noise_have: f64 = pt_want.stats().std().log2();
 
         let mut noise_want: f64 = var_noise_gglwe_product(
             n as f64,
-            base2k,
+            base2k_key * dsize,
             0.5,
             0.5,
             1.0 / 12.0,

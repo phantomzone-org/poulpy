@@ -8,7 +8,7 @@ use crate::{
     GGSWEncryptSk, GGSWExternalProduct, GGSWNoise, ScratchTakeCore,
     encryption::SIGMA,
     layouts::{
-        GGSW, GGSWLayout, GGSWPreparedFactory, GLWESecret, GLWESecretPreparedFactory,
+        GGSW, GGSWInfos, GGSWLayout, GGSWPreparedFactory, GLWEInfos, GLWESecret, GLWESecretPreparedFactory,
         prepared::{GGSWPrepared, GLWESecretPrepared},
     },
     noise::noise_ggsw_product,
@@ -146,7 +146,17 @@ where
                 ) + 0.5
             };
 
-            ggsw_out.assert_noise(module, &sk_prepared, &pt_in, &max_noise);
+            for row in 0..ggsw_out.dnum().as_usize() {
+                for col in 0..ggsw_out.rank().as_usize() + 1 {
+                    assert!(
+                        ggsw_out
+                            .noise(module, row, col, &pt_in, &sk_prepared, scratch.borrow())
+                            .std()
+                            .log2()
+                            <= max_noise(col)
+                    )
+                }
+            }
         }
     }
 }
@@ -271,7 +281,17 @@ where
                 ) + 0.5
             };
 
-            ggsw_out.assert_noise(module, &sk_prepared, &pt_in, &max_noise);
+            for row in 0..ggsw_out.dnum().as_usize() {
+                for col in 0..ggsw_out.rank().as_usize() + 1 {
+                    assert!(
+                        ggsw_out
+                            .noise(module, row, col, &pt_in, &sk_prepared, scratch.borrow())
+                            .std()
+                            .log2()
+                            <= max_noise(col)
+                    )
+                }
+            }
         }
     }
 }

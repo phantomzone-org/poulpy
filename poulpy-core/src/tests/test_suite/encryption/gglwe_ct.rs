@@ -9,8 +9,8 @@ use crate::{
     decryption::GLWEDecrypt,
     encryption::SIGMA,
     layouts::{
-        GGLWELayout, GLWESecret, GLWESecretPreparedFactory, GLWESwitchingKey, GLWESwitchingKeyCompressed,
-        GLWESwitchingKeyDecompress,
+        GGLWEInfos, GGLWELayout, GLWESecret, GLWESecretPreparedFactory, GLWESwitchingKey, GLWESwitchingKeyCompressed,
+        GLWESwitchingKeyDecompress, LWEInfos,
         prepared::{GGLWEPreparedFactory, GLWESecretPrepared},
     },
     noise::GGLWENoise,
@@ -74,8 +74,30 @@ where
                     scratch.borrow(),
                 );
 
-                ksk.key
-                    .assert_noise(module, &sk_out_prepared, &sk_in.data, SIGMA);
+                let max_noise: f64 = SIGMA.log2() - (ksk.k().as_usize() as f64) + 0.5;
+
+                for row in 0..ksk.dnum().as_usize() {
+                    for col in 0..ksk.rank_in().as_usize() {
+                        let noise_have = ksk
+                            .key
+                            .noise(
+                                module,
+                                row,
+                                col,
+                                &sk_in.data,
+                                &sk_out_prepared,
+                                scratch.borrow(),
+                            )
+                            .std()
+                            .log2();
+
+                        assert!(
+                            noise_have < max_noise + 0.5,
+                            "row:{row} col:{col} noise_have:{noise_have} > max_noise:{}",
+                            max_noise + 0.5
+                        );
+                    }
+                }
             }
         }
     }
@@ -148,8 +170,30 @@ where
                 let mut ksk: GLWESwitchingKey<Vec<u8>> = GLWESwitchingKey::alloc_from_infos(&gglwe_infos);
                 ksk.decompress(module, &ksk_compressed);
 
-                ksk.key
-                    .assert_noise(module, &sk_out_prepared, &sk_in.data, SIGMA);
+                let max_noise: f64 = SIGMA.log2() - (ksk.k().as_usize() as f64) + 0.5;
+
+                for row in 0..ksk.dnum().as_usize() {
+                    for col in 0..ksk.rank_in().as_usize() {
+                        let noise_have = ksk
+                            .key
+                            .noise(
+                                module,
+                                row,
+                                col,
+                                &sk_in.data,
+                                &sk_out_prepared,
+                                scratch.borrow(),
+                            )
+                            .std()
+                            .log2();
+
+                        assert!(
+                            noise_have < max_noise + 0.5,
+                            "row:{row} col:{col} noise_have:{noise_have} > max_noise:{}",
+                            max_noise + 0.5
+                        );
+                    }
+                }
             }
         }
     }

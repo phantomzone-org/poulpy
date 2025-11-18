@@ -1,8 +1,8 @@
 use poulpy_core::{
     GLWENormalize,
     layouts::{
-        GGLWEToGGSWKeyLayout, GGSW, GGSWLayout, GLWE, GLWEAutomorphismKeyLayout, GLWELayout, GLWEPlaintext, GLWESecret, LWE,
-        LWELayout, LWEPlaintext, LWESecret,
+        GGLWEToGGSWKeyLayout, GGSW, GGSWInfos, GGSWLayout, GLWE, GLWEAutomorphismKeyLayout, GLWEInfos, GLWELayout, GLWEPlaintext,
+        GLWESecret, LWE, LWELayout, LWEPlaintext, LWESecret,
         prepared::{GGSWPrepared, GLWESecretPrepared},
     },
 };
@@ -212,7 +212,23 @@ fn main() {
     pt_ggsw.at_mut(0, 0)[0] = data;
 
     // Prints noise of GGSW(data)
-    res.print_noise(&module, &sk_glwe_prepared, &pt_ggsw);
+    for row in 0..res.dnum().as_usize() {
+        for col in 0..res.rank().as_usize() + 1 {
+            println!(
+                "row:{row} col:{col} -> {}",
+                res.noise(
+                    &module,
+                    row,
+                    col,
+                    &pt_ggsw,
+                    &sk_glwe_prepared,
+                    scratch.borrow()
+                )
+                .std()
+                .log2()
+            )
+        }
+    }
 
     // Tests RLWE(1) * GGSW(data)
 

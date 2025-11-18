@@ -132,17 +132,21 @@ impl GLWEPacker {
     }
 
     /// Flush result to`res`.
-    pub fn flush<R, M, BE: Backend>(&mut self, module: &M, res: &mut R)
+    pub fn flush<R, M, BE: Backend>(&mut self, module: &M, res: &mut R, scratch: &mut Scratch<BE>)
     where
-        R: GLWEToMut,
+        R: GLWEToMut + GLWEInfos,
         M: GLWEPackerOps<BE>,
+        Scratch<BE>: ScratchTakeCore<BE>,
     {
         assert!(self.counter as u32 == self.accumulators[0].data.n());
-        // Copy result GLWE into res GLWE
-        module.glwe_copy(
-            res,
-            &self.accumulators[module.log_n() - self.log_batch - 1].data,
-        );
+
+        let out: &GLWE<Vec<u8>> = &self.accumulators[module.log_n() - self.log_batch - 1].data;
+
+        if out.base2k() == res.base2k() {
+            module.glwe_copy(res, out)
+        } else {
+            module.glwe_normalize(res, out, scratch);
+        }
 
         self.reset();
     }
@@ -244,7 +248,11 @@ fn pack_core<A, K, H, M, BE: Backend>(
 
         // No previous value -> copies and sets flags accordingly
         if let Some(a_ref) = a {
-            module.glwe_copy(&mut acc_mut_ref.data, a_ref);
+            if a_ref.base2k() == acc_mut_ref.data.base2k() {
+                module.glwe_copy(&mut acc_mut_ref.data, a_ref);
+            } else {
+                module.glwe_normalize(&mut acc_mut_ref.data, a_ref, scratch);
+            }
             acc_mut_ref.value = true
         } else {
             acc_mut_ref.value = false
@@ -331,30 +339,29 @@ fn combine<B, K, H, M, BE: Backend>(
     // since 2*(I(X) * Q/2) = I(X) * Q = 0 mod Q.
     if acc.value {
         if let Some(b) = b {
-            let (mut tmp_b, scratch_1) = scratch.take_glwe(a);
+            let (mut tmp, scratch_1) = scratch.take_glwe(a);
 
             // a = a * X^-t
             module.glwe_rotate_inplace(-t, a, scratch_1);
 
             // tmp_b = a * X^-t - b
-            module.glwe_sub(&mut tmp_b, a, b);
-            module.glwe_rsh(1, &mut tmp_b, scratch_1);
-
+            module.glwe_sub(&mut tmp, a, b);
+            module.glwe_rsh(1, &mut tmp, scratch_1);
             // a = a * X^-t + b
             module.glwe_add_inplace(a, b);
-            module.glwe_rsh(1, a, scratch_1);
 
-            module.glwe_normalize_inplace(&mut tmp_b, scratch_1);
+            module.glwe_rsh(1, a, scratch_1);
+            module.glwe_normalize_inplace(&mut tmp, scratch_1);
 
             // tmp_b = phi(a * X^-t - b)
             if let Some(auto_key) = auto_keys.get_automorphism_key(gal_el) {
-                module.glwe_automorphism_inplace(&mut tmp_b, auto_key, scratch_1);
+                module.glwe_automorphism_inplace(&mut tmp, auto_key, scratch_1);
             } else {
                 panic!("auto_key[{gal_el}] not found");
             }
 
             // a = a * X^-t + b - phi(a * X^-t - b)
-            module.glwe_sub_inplace(a, &tmp_b);
+            module.glwe_sub_inplace(a, &tmp);
             module.glwe_normalize_inplace(a, scratch_1);
 
             // a = a + b * X^t - phi(a * X^-t - b) * X^t

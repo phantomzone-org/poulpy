@@ -56,14 +56,14 @@ where
             sk_prep.prepare(module, &sk);
 
             let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
-                GLWE::encrypt_sk_tmp_bytes(module, &glwe_infos_in).max(GLWE::decrypt_tmp_bytes(module, &glwe_infos_out)),
+                GLWE::encrypt_sk_tmp_bytes(module, &glwe_infos_in).max(module.glwe_noise_tmp_bytes(&glwe_infos_out)),
             );
 
             let mut ct_in: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_infos_in);
             let mut ct_out: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&glwe_infos_out);
 
             let pt_in: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_infos_in);
-            let pt_out: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_infos_in);
+            let pt_out: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&glwe_infos_out);
 
             ct_in.encrypt_sk(
                 module,
@@ -87,12 +87,13 @@ where
                 .data()
                 .decode_vec_float(ct_out.base2k().into(), 0, &mut data_conv);
 
-            ct_out.assert_noise(
-                module,
-                &sk_prep,
-                &pt_out,
-                -(ct_out.k().as_u32() as f64) + SIGMA.log2() + 0.5,
-            );
+            assert!(
+                ct_out
+                    .noise(module, &pt_out, &sk_prep, scratch.borrow())
+                    .std()
+                    .log2()
+                    <= -(ct_out.k().as_u32() as f64) + SIGMA.log2() + 0.50
+            )
         }
     }
 }

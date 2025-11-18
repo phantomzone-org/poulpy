@@ -135,7 +135,13 @@ where
             module.glwe_normalize(&mut pt_out, &pt_in, scratch.borrow());
             module.vec_znx_automorphism_inplace(p, &mut pt_out.data, 0, scratch.borrow());
 
-            ct_out.assert_noise(module, &sk_prepared, &pt_out, max_noise + 1.0);
+            assert!(
+                ct_out
+                    .noise(module, &pt_out, &sk_prepared, scratch.borrow())
+                    .std()
+                    .log2()
+                    <= max_noise + 1.0
+            )
         }
     }
 }
@@ -249,7 +255,12 @@ where
 
             module.vec_znx_automorphism_inplace(p, &mut pt_want.data, 0, scratch.borrow());
 
-            ct.assert_noise(module, &sk_prepared, &pt_want, max_noise + 1.0);
+            assert!(
+                ct.noise(module, &pt_want, &sk_prepared, scratch.borrow())
+                    .std()
+                    .log2()
+                    <= max_noise + 1.0
+            )
         }
     }
 }

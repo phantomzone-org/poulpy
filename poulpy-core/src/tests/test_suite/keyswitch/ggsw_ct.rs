@@ -8,8 +8,8 @@ use crate::{
     GGLWEToGGSWKeyEncryptSk, GGSWEncryptSk, GGSWKeyswitch, GGSWNoise, GLWESwitchingKeyEncryptSk, ScratchTakeCore,
     encryption::SIGMA,
     layouts::{
-        GGLWEToGGSWKey, GGLWEToGGSWKeyPrepared, GGLWEToGGSWKeyPreparedFactory, GGSW, GGSWLayout, GLWESecret,
-        GLWESecretPreparedFactory, GLWESwitchingKey, GLWESwitchingKeyLayout, GLWESwitchingKeyPreparedFactory,
+        GGLWEToGGSWKey, GGLWEToGGSWKeyPrepared, GGLWEToGGSWKeyPreparedFactory, GGSW, GGSWInfos, GGSWLayout, GLWEInfos,
+        GLWESecret, GLWESecretPreparedFactory, GLWESwitchingKey, GLWESwitchingKeyLayout, GLWESwitchingKeyPreparedFactory,
         GLWETensorKeyLayout,
         prepared::{GLWESecretPrepared, GLWESwitchingKeyPrepared},
     },
@@ -180,7 +180,24 @@ where
                 ) + 0.5
             };
 
-            ggsw_out.assert_noise(module, &sk_out_prepared, &pt_scalar, &max_noise);
+            for row in 0..ggsw_out.dnum().as_usize() {
+                for col in 0..ggsw_out.rank().as_usize() + 1 {
+                    assert!(
+                        ggsw_out
+                            .noise(
+                                module,
+                                row,
+                                col,
+                                &pt_scalar,
+                                &sk_out_prepared,
+                                scratch.borrow()
+                            )
+                            .std()
+                            .log2()
+                            <= max_noise(col)
+                    )
+                }
+            }
         }
     }
 }
@@ -330,7 +347,24 @@ where
                 ) + 0.5
             };
 
-            ggsw_out.assert_noise(module, &sk_out_prepared, &pt_scalar, &max_noise);
+            for row in 0..ggsw_out.dnum().as_usize() {
+                for col in 0..ggsw_out.rank().as_usize() + 1 {
+                    assert!(
+                        ggsw_out
+                            .noise(
+                                module,
+                                row,
+                                col,
+                                &pt_scalar,
+                                &sk_out_prepared,
+                                scratch.borrow()
+                            )
+                            .std()
+                            .log2()
+                            <= max_noise(col)
+                    )
+                }
+            }
         }
     }
 }

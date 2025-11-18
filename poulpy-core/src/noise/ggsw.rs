@@ -1,45 +1,49 @@
 use poulpy_hal::{
     api::{
-        ScratchOwnedAlloc, ScratchOwnedBorrow, ScratchTakeBasic, SvpApplyDftToDftInplace, VecZnxAddScalarInplace, VecZnxBigAlloc,
-        VecZnxBigNormalize, VecZnxDftAlloc, VecZnxDftApply, VecZnxIdftApplyTmpA, VecZnxNormalizeTmpBytes, VecZnxSubInplace,
+        ScratchTakeBasic, SvpApplyDftToDftInplace, VecZnxAddScalarInplace, VecZnxBigNormalize, VecZnxBigNormalizeTmpBytes,
+        VecZnxDftApply, VecZnxDftBytesOf, VecZnxIdftApplyConsume,
     },
-    layouts::{Backend, DataRef, Module, ScalarZnxToRef, Scratch, ScratchOwned, VecZnxBig, VecZnxDft, ZnxZero},
+    layouts::{Backend, DataRef, Module, ScalarZnxToRef, Scratch, Stats, ZnxZero},
 };
 
-use crate::decryption::GLWEDecrypt;
-use crate::layouts::prepared::GLWESecretPreparedToRef;
-use crate::layouts::{GGSW, GGSWInfos, GGSWToRef, GLWEInfos, GLWEPlaintext, LWEInfos, prepared::GLWESecretPrepared};
+use crate::layouts::{GGSW, GGSWInfos, GGSWToRef, LWEInfos, prepared::GLWESecretPrepared};
+use crate::{GLWENoise, layouts::prepared::GLWESecretPreparedToRef};
+use crate::{ScratchTakeCore, layouts::GLWEPlaintext};
 
 impl<D: DataRef> GGSW<D> {
-    pub fn assert_noise<M, BE: Backend, P, S, F>(&self, module: &M, sk_prepared: &S, pt_want: &P, max_noise: &F)
+    pub fn noise<M, BE: Backend, P, S>(
+        &self,
+        module: &M,
+        row: usize,
+        col: usize,
+        pt_want: &P,
+        sk_prepared: &S,
+        scratch: &mut Scratch<BE>,
+    ) -> Stats
     where
         S: GLWESecretPreparedToRef<BE>,
         P: ScalarZnxToRef,
         M: GGSWNoise<BE>,
-        F: Fn(usize) -> f64,
+        Scratch<BE>: ScratchTakeCore<BE>,
     {
-        module.ggsw_assert_noise(self, sk_prepared, pt_want, max_noise);
-    }
-
-    pub fn print_noise<M, BE: Backend, P, S>(&self, module: &M, sk_prepared: &S, pt_want: &P)
-    where
-        S: GLWESecretPreparedToRef<BE>,
-        P: ScalarZnxToRef,
-        M: GGSWNoise<BE>,
-    {
-        module.ggsw_print_noise(self, sk_prepared, pt_want);
+        module.ggsw_noise(self, row, col, pt_want, sk_prepared, scratch)
     }
 }
 
 pub trait GGSWNoise<BE: Backend> {
-    fn ggsw_assert_noise<R, S, P, F>(&self, res: &R, sk_prepared: &S, pt_want: &P, max_noise: &F)
+    fn ggsw_noise_tmp_bytes<A>(&self, infos: &A) -> usize
     where
-        R: GGSWToRef,
-        S: GLWESecretPreparedToRef<BE>,
-        P: ScalarZnxToRef,
-        F: Fn(usize) -> f64;
+        A: GGSWInfos;
 
-    fn ggsw_print_noise<R, S, P>(&self, res: &R, sk_prepared: &S, pt_want: &P)
+    fn ggsw_noise<R, S, P>(
+        &self,
+        res: &R,
+        res_row: usize,
+        res_col: usize,
+        pt_want: &P,
+        sk_prepared: &S,
+        scratch: &mut Scratch<BE>,
+    ) -> Stats
     where
         R: GGSWToRef,
         S: GLWESecretPreparedToRef<BE>,
@@ -48,79 +52,39 @@ pub trait GGSWNoise<BE: Backend> {
 
 impl<BE: Backend> GGSWNoise<BE> for Module<BE>
 where
-    Module<BE>: GLWEDecrypt<BE>
-        + VecZnxDftAlloc<BE>
-        + VecZnxBigAlloc<BE>
-        + VecZnxAddScalarInplace
-        + VecZnxIdftApplyTmpA<BE>
-        + VecZnxSubInplace,
-    Scratch<BE>: ScratchTakeBasic,
-    ScratchOwned<BE>: ScratchOwnedBorrow<BE> + ScratchOwnedAlloc<BE>,
+    Module<BE>: VecZnxAddScalarInplace
+        + VecZnxDftApply<BE>
+        + SvpApplyDftToDftInplace<BE>
+        + VecZnxIdftApplyConsume<BE>
+        + VecZnxDftBytesOf
+        + VecZnxBigNormalize<BE>
+        + VecZnxBigNormalizeTmpBytes
+        + GLWENoise<BE>,
+    Scratch<BE>: ScratchTakeCore<BE>,
 {
-    fn ggsw_assert_noise<R, S, P, F>(&self, res: &R, sk_prepared: &S, pt_want: &P, max_noise: &F)
+    fn ggsw_noise_tmp_bytes<A>(&self, infos: &A) -> usize
     where
-        R: GGSWToRef,
-        S: GLWESecretPreparedToRef<BE>,
-        P: ScalarZnxToRef,
-        F: Fn(usize) -> f64,
+        A: GGSWInfos,
     {
-        let res: &GGSW<&[u8]> = &res.to_ref();
-        let sk_prepared: &GLWESecretPrepared<&[u8], BE> = &sk_prepared.to_ref();
-
-        let base2k: usize = res.base2k().into();
-        let dsize: usize = res.dsize().into();
-
-        let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(res);
-        let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(res);
-        let mut pt_dft: VecZnxDft<Vec<u8>, BE> = self.vec_znx_dft_alloc(1, res.size());
-        let mut pt_big: VecZnxBig<Vec<u8>, BE> = self.vec_znx_big_alloc(1, res.size());
-
-        let mut scratch: ScratchOwned<BE> =
-            ScratchOwned::alloc(self.glwe_decrypt_tmp_bytes(res) | self.vec_znx_normalize_tmp_bytes());
-
-        (0..(res.rank() + 1).into()).for_each(|col_j| {
-            (0..res.dnum().into()).for_each(|row_i| {
-                self.vec_znx_add_scalar_inplace(&mut pt.data, 0, (dsize - 1) + row_i * dsize, pt_want, 0);
-
-                // mul with sk[col_j-1]
-                if col_j > 0 {
-                    self.vec_znx_dft_apply(1, 0, &mut pt_dft, 0, &pt.data, 0);
-                    self.svp_apply_dft_to_dft_inplace(&mut pt_dft, 0, &sk_prepared.data, col_j - 1);
-                    self.vec_znx_idft_apply_tmpa(&mut pt_big, 0, &mut pt_dft, 0);
-                    self.vec_znx_big_normalize(
-                        base2k,
-                        &mut pt.data,
-                        0,
-                        base2k,
-                        &pt_big,
-                        0,
-                        scratch.borrow(),
-                    );
-                }
-
-                self.glwe_decrypt(
-                    &res.at(row_i, col_j),
-                    &mut pt_have,
-                    sk_prepared,
-                    scratch.borrow(),
-                );
-
-                self.vec_znx_sub_inplace(&mut pt_have.data, 0, &pt.data, 0);
-
-                let std_pt: f64 = pt_have.data.stats(base2k, 0).std().log2();
-                let noise: f64 = max_noise(col_j);
-                assert!(std_pt <= noise, "{std_pt} > {noise}");
-
-                pt.data.zero();
-            });
-        });
+        GLWEPlaintext::bytes_of_from_infos(infos)
+            + (self.bytes_of_vec_znx_dft(1, infos.size()) + self.vec_znx_big_normalize_tmp_bytes())
+                .max(self.glwe_noise_tmp_bytes(infos))
     }
 
-    fn ggsw_print_noise<R, S, P>(&self, res: &R, sk_prepared: &S, pt_want: &P)
+    fn ggsw_noise<R, S, P>(
+        &self,
+        res: &R,
+        res_row: usize,
+        res_col: usize,
+        pt_want: &P,
+        sk_prepared: &S,
+        scratch: &mut Scratch<BE>,
+    ) -> Stats
     where
         R: GGSWToRef,
         S: GLWESecretPreparedToRef<BE>,
         P: ScalarZnxToRef,
+        Scratch<BE>: ScratchTakeCore<BE>,
     {
         let res: &GGSW<&[u8]> = &res.to_ref();
         let sk_prepared: &GLWESecretPrepared<&[u8], BE> = &sk_prepared.to_ref();
@@ -128,47 +92,19 @@ where
         let base2k: usize = res.base2k().into();
         let dsize: usize = res.dsize().into();
 
-        let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(res);
-        let mut pt_have: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(res);
-        let mut pt_dft: VecZnxDft<Vec<u8>, BE> = self.vec_znx_dft_alloc(1, res.size());
-        let mut pt_big: VecZnxBig<Vec<u8>, BE> = self.vec_znx_big_alloc(1, res.size());
+        let (mut pt, scratch_1) = scratch.take_glwe_plaintext(res);
+        pt.data_mut().zero();
+        self.vec_znx_add_scalar_inplace(&mut pt.data, 0, (dsize - 1) + res_row * dsize, pt_want, 0);
 
-        let mut scratch: ScratchOwned<BE> =
-            ScratchOwned::alloc(self.glwe_decrypt_tmp_bytes(res) | self.vec_znx_normalize_tmp_bytes());
-
-        for col_j in 0..(res.rank() + 1).into() {
-            for row_i in 0..res.dnum().into() {
-                self.vec_znx_add_scalar_inplace(&mut pt.data, 0, (dsize - 1) + row_i * dsize, pt_want, 0);
-
-                // mul with sk[col_j-1]
-                if col_j > 0 {
-                    self.vec_znx_dft_apply(1, 0, &mut pt_dft, 0, &pt.data, 0);
-                    self.svp_apply_dft_to_dft_inplace(&mut pt_dft, 0, &sk_prepared.data, col_j - 1);
-                    self.vec_znx_idft_apply_tmpa(&mut pt_big, 0, &mut pt_dft, 0);
-                    self.vec_znx_big_normalize(
-                        base2k,
-                        &mut pt.data,
-                        0,
-                        base2k,
-                        &pt_big,
-                        0,
-                        scratch.borrow(),
-                    );
-                }
-
-                self.glwe_decrypt(
-                    &res.at(row_i, col_j),
-                    &mut pt_have,
-                    sk_prepared,
-                    scratch.borrow(),
-                );
-
-                self.vec_znx_sub_inplace(&mut pt_have.data, 0, &pt.data, 0);
-
-                let std_pt: f64 = pt_have.data.stats(base2k, 0).std().log2();
-                println!("col: {col_j} row: {row_i}: {std_pt}");
-                pt.data.zero();
-            }
+        // mul with sk[col_j-1]
+        if res_col > 0 {
+            let (mut pt_dft, scratch_2) = scratch_1.take_vec_znx_dft(self, 1, res.size());
+            self.vec_znx_dft_apply(1, 0, &mut pt_dft, 0, &pt.data, 0);
+            self.svp_apply_dft_to_dft_inplace(&mut pt_dft, 0, &sk_prepared.data, res_col - 1);
+            let pt_big = self.vec_znx_idft_apply_consume(pt_dft);
+            self.vec_znx_big_normalize(base2k, &mut pt.data, 0, base2k, &pt_big, 0, scratch_2);
         }
+
+        self.glwe_noise(&res.at(res_row, res_col), &pt, sk_prepared, scratch_1)
     }
 }

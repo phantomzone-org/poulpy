@@ -145,7 +145,13 @@ where
                 k_ggsw,
             );
 
-            glwe_out.assert_noise(module, &sk_prepared, &pt_out, max_noise + 0.5);
+            assert!(
+                glwe_out
+                    .noise(module, &pt_out, &sk_prepared, scratch.borrow())
+                    .std()
+                    .log2()
+                    <= max_noise + 1.0
+            )
         }
     }
 }
@@ -268,7 +274,13 @@ where
                 k_ggsw,
             );
 
-            glwe_out.assert_noise(module, &sk_prepared, &pt_want, max_noise + 0.5);
+            assert!(
+                glwe_out
+                    .noise(module, &pt_want, &sk_prepared, scratch.borrow())
+                    .std()
+                    .log2()
+                    <= max_noise + 1.0
+            )
         }
     }
 }

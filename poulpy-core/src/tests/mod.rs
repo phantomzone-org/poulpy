@@ -30,7 +30,8 @@ glwe_external_product => crate::tests::test_suite::external_product::test_glwe_e
 glwe_external_product_inplace => crate::tests::test_suite::external_product::test_glwe_external_product_inplace,
 // GLWE Trace
 glwe_trace_inplace => crate::tests::test_suite::test_glwe_trace_inplace,
-glwe_packing => crate::tests::test_suite::test_glwe_packer,
+glwe_packing => crate::tests::test_suite::test_glwe_packing,
+glwe_packer => crate::tests::test_suite::test_glwe_packer,
 // GGLWE Encryption
 gglwe_switching_key_encrypt_sk => crate::tests::test_suite::encryption::test_gglwe_switching_key_encrypt_sk,
 gglwe_switching_key_compressed_encrypt_sk => crate::tests::test_suite::encryption::test_gglwe_switching_key_compressed_encrypt_sk,
@@ -92,7 +93,8 @@ glwe_external_product => crate::tests::test_suite::external_product::test_glwe_e
 glwe_external_product_inplace => crate::tests::test_suite::external_product::test_glwe_external_product_inplace,
 // GLWE Trace
 glwe_trace_inplace => crate::tests::test_suite::test_glwe_trace_inplace,
-glwe_packing => crate::tests::test_suite::test_glwe_packer,
+glwe_packing => crate::tests::test_suite::test_glwe_packing,
+glwe_packer => crate::tests::test_suite::test_glwe_packer,
 // GGLWE Encryption
 gglwe_switching_key_encrypt_sk => crate::tests::test_suite::encryption::test_gglwe_switching_key_encrypt_sk,
 gglwe_switching_key_compressed_encrypt_sk => crate::tests::test_suite::encryption::test_gglwe_switching_key_compressed_encrypt_sk,

@@ -1,8 +1,8 @@
 use poulpy_core::{
     GGSWEncryptSk, GGSWNoise, GLWEDecrypt, GLWEEncryptSk, SIGMA, ScratchTakeCore,
     layouts::{
-        Base2K, Dnum, Dsize, GGSW, GGSWLayout, GGSWPreparedFactory, GLWESecretPrepared, GLWESecretPreparedFactory, LWEInfos,
-        Rank, TorusPrecision,
+        Base2K, Dnum, Dsize, GGSW, GGSWInfos, GGSWLayout, GGSWPreparedFactory, GLWEInfos, GLWESecretPrepared,
+        GLWESecretPreparedFactory, LWEInfos, Rank, TorusPrecision,
     },
 };
 use poulpy_hal::{
@@ -131,9 +131,23 @@ where
 
             module.vec_znx_rotate_inplace(-rot, &mut scalar_want.as_vec_znx_mut(), 0, scratch.borrow());
 
-            // res.print_noise(&module, &sk_glwe_prep, &scalar_want);
-
-            res.assert_noise(module, sk_glwe_prep, &scalar_want, &max_noise);
+            for row in 0..res.dnum().as_usize() {
+                for col in 0..res.rank().as_usize() + 1 {
+                    assert!(
+                        res.noise(
+                            module,
+                            row,
+                            col,
+                            &scalar_want,
+                            sk_glwe_prep,
+                            scratch.borrow()
+                        )
+                        .std()
+                        .log2()
+                            <= max_noise(col)
+                    )
+                }
+            }
 
             bit_step += digit;
             bit_start += digit;

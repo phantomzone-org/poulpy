@@ -146,7 +146,7 @@ impl<D: DataRef, T: UnsignedInteger + FromBits> FheUint<D, T> {
             data_bits[T::bit_index(i) << log_gap] = want.bit(i) as i64
         }
         pt.encode_vec_i64(&data_bits, TorusPrecision(2));
-        self.bits.noise(module, sk, &pt, scratch_1)
+        self.bits.noise(module, &pt, sk, scratch_1)
     }
 
     pub fn decrypt<S, M, BE: Backend>(&self, module: &M, sk: &S, scratch: &mut Scratch<BE>) -> T

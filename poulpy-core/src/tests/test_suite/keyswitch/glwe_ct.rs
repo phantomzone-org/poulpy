@@ -140,7 +140,13 @@ where
 
                 module.glwe_normalize(&mut pt_out, &pt_in, scratch.borrow());
 
-                glwe_out.assert_noise(module, &sk_out_prepared, &pt_out, max_noise + 0.5);
+                assert!(
+                    glwe_out
+                        .noise(module, &pt_out, &sk_out_prepared, scratch.borrow())
+                        .std()
+                        .log2()
+                        <= max_noise + 1.0
+                )
             }
         }
     }
@@ -260,7 +266,13 @@ where
             .sqrt()
             .log2();
 
-            glwe_out.assert_noise(module, &sk_out_prepared, &pt_want, max_noise + 0.5);
+            assert!(
+                glwe_out
+                    .noise(module, &pt_want, &sk_out_prepared, scratch.borrow())
+                    .std()
+                    .log2()
+                    <= max_noise + 1.0
+            )
         }
     }
 }

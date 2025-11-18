@@ -1,10 +1,10 @@
 use poulpy_core::{
     GGSWNoise, GLWEDecrypt, GLWEEncryptSk, GLWENoise, SIGMA, ScratchTakeCore,
-    layouts::{GGSWLayout, GLWELayout, GLWESecretPreparedFactory, LWEInfos, prepared::GLWESecretPrepared},
+    layouts::{GGSWInfos, GGSWLayout, GLWEInfos, GLWELayout, GLWESecretPreparedFactory, LWEInfos, prepared::GLWESecretPrepared},
 };
 use poulpy_hal::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, Module, Scratch, ScratchOwned},
+    layouts::{Backend, Module, Scratch, ScratchOwned, Stats},
     source::Source,
 };
 use rand::RngCore;
@@ -81,7 +81,12 @@ where
         noise
     };
 
-    // c_enc_prep_debug.print_noise(module, sk_glwe_prep, value);
-
-    c_enc_prep_debug.assert_noise(module, sk_glwe_prep, value, &max_noise);
+    for row in 0..c_enc_prep_debug.dnum().as_usize() {
+        for col in 0..c_enc_prep_debug.rank().as_usize() + 1 {
+            let stats: Vec<Stats> = c_enc_prep_debug.noise(module, row, col, value, sk_glwe_prep, scratch.borrow());
+            for stat in &stats {
+                assert!(stat.std().log2() <= max_noise(col))
+            }
+        }
+    }
 }

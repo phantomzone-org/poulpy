@@ -8,8 +8,8 @@ use crate::{
     GGSWCompressedEncryptSk, GGSWEncryptSk, GGSWNoise, ScratchTakeCore,
     encryption::SIGMA,
     layouts::{
-        GGSW, GGSWDecompress, GGSWLayout, GLWESecret, GLWESecretPreparedFactory, compressed::GGSWCompressed,
-        prepared::GLWESecretPrepared,
+        GGSW, GGSWDecompress, GGSWInfos, GGSWLayout, GLWEInfos, GLWESecret, GLWESecretPreparedFactory,
+        compressed::GGSWCompressed, prepared::GLWESecretPrepared,
     },
 };
 
@@ -65,7 +65,16 @@ where
 
             let noise_f = |_col_i: usize| -(k as f64) + SIGMA.log2() + 0.5;
 
-            ct.assert_noise(module, &sk_prepared, &pt_scalar, &noise_f);
+            for row in 0..ct.dnum().as_usize() {
+                for col in 0..ct.rank().as_usize() + 1 {
+                    assert!(
+                        ct.noise(module, row, col, &pt_scalar, &sk_prepared, scratch.borrow())
+                            .std()
+                            .log2()
+                            <= noise_f(col)
+                    )
+                }
+            }
         }
     }
 }
@@ -126,7 +135,16 @@ where
             let mut ct: GGSW<Vec<u8>> = GGSW::alloc_from_infos(&ggsw_infos);
             ct.decompress(module, &ct_compressed);
 
-            ct.assert_noise(module, &sk_prepared, &pt_scalar, &noise_f);
+            for row in 0..ct.dnum().as_usize() {
+                for col in 0..ct.rank().as_usize() + 1 {
+                    assert!(
+                        ct.noise(module, row, col, &pt_scalar, &sk_prepared, scratch.borrow())
+                            .std()
+                            .log2()
+                            <= noise_f(col)
+                    )
+                }
+            }
         }
     }
 }

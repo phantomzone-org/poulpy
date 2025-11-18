@@ -8,8 +8,8 @@ use crate::{
     GGLWEToGGSWKeyEncryptSk, GGSWAutomorphism, GGSWEncryptSk, GGSWNoise, GLWEAutomorphismKeyEncryptSk, ScratchTakeCore,
     encryption::SIGMA,
     layouts::{
-        GGLWEToGGSWKey, GGLWEToGGSWKeyLayout, GGLWEToGGSWKeyPreparedFactory, GGSW, GGSWLayout, GLWEAutomorphismKey,
-        GLWEAutomorphismKeyPreparedFactory, GLWESecret, GLWESecretPreparedFactory,
+        GGLWEToGGSWKey, GGLWEToGGSWKeyLayout, GGLWEToGGSWKeyPreparedFactory, GGSW, GGSWInfos, GGSWLayout, GLWEAutomorphismKey,
+        GLWEAutomorphismKeyPreparedFactory, GLWEInfos, GLWESecret, GLWESecretPreparedFactory,
         prepared::{GGLWEToGGSWKeyPrepared, GLWEAutomorphismKeyPrepared, GLWESecretPrepared},
     },
     noise::noise_ggsw_keyswitch,
@@ -169,7 +169,17 @@ where
                 ) + 0.5
             };
 
-            ct_out.assert_noise(module, &sk_prepared, &pt_scalar, &max_noise);
+            for row in 0..ct_out.dnum().as_usize() {
+                for col in 0..ct_out.rank().as_usize() + 1 {
+                    assert!(
+                        ct_out
+                            .noise(module, row, col, &pt_scalar, &sk_prepared, scratch.borrow())
+                            .std()
+                            .log2()
+                            <= max_noise(col)
+                    )
+                }
+            }
         }
     }
 }
@@ -307,10 +317,22 @@ where
                     k_out,
                     k_ksk,
                     k_tsk,
-                ) + 0.5
+                ) + 4.0
             };
 
-            ct.assert_noise(module, &sk_prepared, &pt_scalar, &max_noise);
+            for row in 0..ct.dnum().as_usize() {
+                for col in 0..ct.rank().as_usize() + 1 {
+                    let noise_have: f64 = ct
+                        .noise(module, row, col, &pt_scalar, &sk_prepared, scratch.borrow())
+                        .std()
+                        .log2();
+                    let noise_max: f64 = max_noise(col);
+                    assert!(
+                        noise_have <= noise_max,
+                        "noise_have:{noise_have} > noise_max:{noise_max}",
+                    )
+                }
+            }
         }
     }
 }

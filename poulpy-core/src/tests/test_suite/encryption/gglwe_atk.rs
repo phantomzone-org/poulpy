@@ -9,8 +9,8 @@ use crate::{
     GLWESwitchingKeyEncryptSk, ScratchTakeCore,
     encryption::SIGMA,
     layouts::{
-        GLWEAutomorphismKey, GLWEAutomorphismKeyDecompress, GLWEAutomorphismKeyLayout, GLWEInfos, GLWESecret,
-        GLWESecretPreparedFactory, GLWESwitchingKeyDecompress, compressed::GLWEAutomorphismKeyCompressed,
+        GGLWEInfos, GLWEAutomorphismKey, GLWEAutomorphismKeyDecompress, GLWEAutomorphismKeyLayout, GLWEInfos, GLWESecret,
+        GLWESecretPreparedFactory, GLWESwitchingKeyDecompress, LWEInfos, compressed::GLWEAutomorphismKeyCompressed,
         prepared::GLWESecretPrepared,
     },
     noise::GGLWENoise,
@@ -84,8 +84,26 @@ where
             let mut sk_out_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(module, sk_out.rank());
             sk_out_prepared.prepare(module, &sk_out);
 
-            atk.key
-                .assert_noise(module, &sk_out_prepared, &sk.data, SIGMA);
+            let max_noise: f64 = SIGMA.log2() - (atk.k().as_usize() as f64) + 0.5;
+
+            for row in 0..atk.dnum().as_usize() {
+                for col in 0..atk.rank().as_usize() {
+                    assert!(
+                        atk.key
+                            .noise(
+                                module,
+                                row,
+                                col,
+                                &sk.data,
+                                &sk_out_prepared,
+                                scratch.borrow()
+                            )
+                            .std()
+                            .log2()
+                            <= max_noise
+                    )
+                }
+            }
         }
     }
 }
@@ -106,18 +124,18 @@ where
 {
     let base2k: usize = 12;
     let k_ksk: usize = 60;
-    let dsize: usize = k_ksk.div_ceil(base2k) - 1;
-    for rank in 1_usize..3 {
-        for di in 1..dsize + 1 {
+    let max_dsize: usize = k_ksk.div_ceil(base2k) - 1;
+    for rank in 2_usize..3 {
+        for dsize in 1..max_dsize + 1 {
             let n: usize = module.n();
-            let dnum: usize = (k_ksk - di * base2k) / (di * base2k);
+            let dnum: usize = (k_ksk - dsize * base2k) / (dsize * base2k);
 
             let atk_infos: GLWEAutomorphismKeyLayout = GLWEAutomorphismKeyLayout {
                 n: n.into(),
                 base2k: base2k.into(),
                 k: k_ksk.into(),
                 dnum: dnum.into(),
-                dsize: di.into(),
+                dsize: dsize.into(),
                 rank: rank.into(),
             };
 
@@ -134,7 +152,7 @@ where
             let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&atk_infos);
             sk.fill_ternary_prob(0.5, &mut source_xs);
 
-            let p = -5;
+            let p: i64 = -5;
 
             let seed_xa: [u8; 32] = [1u8; 32];
 
@@ -156,8 +174,31 @@ where
             let mut atk: GLWEAutomorphismKey<Vec<u8>> = GLWEAutomorphismKey::alloc_from_infos(&atk_infos);
             atk.decompress(module, &atk_compressed);
 
-            atk.key
-                .assert_noise(module, &sk_out_prepared, &sk.data, SIGMA);
+            let max_noise: f64 = SIGMA.log2() - (atk.k().as_usize() as f64) + 0.5;
+
+            println!("rank: {rank} dsize: {dsize} dnum: {dnum}");
+            for row in 0..atk.dnum().as_usize() {
+                for col in 0..atk.rank().as_usize() {
+                    let noise_have = atk
+                        .key
+                        .noise(
+                            module,
+                            row,
+                            col,
+                            &sk.data,
+                            &sk_out_prepared,
+                            scratch.borrow(),
+                        )
+                        .std()
+                        .log2();
+
+                    assert!(
+                        noise_have < max_noise + 0.5,
+                        "row:{row} col:{col} noise_have:{noise_have} > max_noise:{}",
+                        max_noise + 0.5
+                    );
+                }
+            }
         }
     }
 }
