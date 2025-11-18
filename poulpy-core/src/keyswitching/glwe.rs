@@ -27,8 +27,8 @@ impl GLWE<Vec<u8>> {
 impl<D: DataMut> GLWE<D> {
     pub fn keyswitch<A, B, M, BE: Backend>(&mut self, module: &M, a: &A, b: &B, scratch: &mut Scratch<BE>)
     where
-        A: GLWEToRef,
-        B: GGLWEPreparedToRef<BE>,
+        A: GLWEToRef + GLWEInfos,
+        B: GGLWEPreparedToRef<BE> + GGLWEInfos,
         M: GLWEKeyswitch<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
@@ -37,7 +37,7 @@ impl<D: DataMut> GLWE<D> {
 
     pub fn keyswitch_inplace<A, M, BE: Backend>(&mut self, module: &M, a: &A, scratch: &mut Scratch<BE>)
     where
-        A: GGLWEPreparedToRef<BE>,
+        A: GGLWEPreparedToRef<BE> + GGLWEInfos,
         M: GLWEKeyswitch<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
@@ -74,14 +74,10 @@ where
 
     fn glwe_keyswitch<R, A, K>(&self, res: &mut R, a: &A, key: &K, scratch: &mut Scratch<BE>)
     where
-        R: GLWEToMut,
-        A: GLWEToRef,
-        K: GGLWEPreparedToRef<BE>,
+        R: GLWEToMut + GLWEInfos,
+        A: GLWEToRef + GLWEInfos,
+        K: GGLWEPreparedToRef<BE> + GGLWEInfos,
     {
-        let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
-        let a: &GLWE<&[u8]> = &a.to_ref();
-        let key: &GGLWEPrepared<&[u8], BE> = &key.to_ref();
-
         assert_eq!(
             a.rank(),
             key.rank_in(),
@@ -128,10 +124,11 @@ where
             self.glwe_keyswitch_internal(res_dft, a, key, scratch_1)
         };
 
+        let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
         for i in 0..(res.rank() + 1).into() {
             self.vec_znx_big_normalize(
                 base2k_res,
-                &mut res.data,
+                res.data_mut(),
                 i,
                 base2k_key,
                 &res_big,
@@ -143,12 +140,9 @@ where
 
     fn glwe_keyswitch_inplace<R, K>(&self, res: &mut R, key: &K, scratch: &mut Scratch<BE>)
     where
-        R: GLWEToMut,
-        K: GGLWEPreparedToRef<BE>,
+        R: GLWEToMut + GLWEInfos,
+        K: GGLWEPreparedToRef<BE> + GGLWEInfos,
     {
-        let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
-        let key: &GGLWEPrepared<&[u8], BE> = &key.to_ref();
-
         assert_eq!(
             res.rank(),
             key.rank_in(),
@@ -194,6 +188,7 @@ where
             self.glwe_keyswitch_internal(res_dft, res, key, scratch_1)
         };
 
+        let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
         for i in 0..(res.rank() + 1).into() {
             self.vec_znx_big_normalize(
                 base2k_res,
@@ -217,14 +212,14 @@ pub trait GLWEKeyswitch<BE: Backend> {
 
     fn glwe_keyswitch<R, A, K>(&self, res: &mut R, a: &A, key: &K, scratch: &mut Scratch<BE>)
     where
-        R: GLWEToMut,
-        A: GLWEToRef,
-        K: GGLWEPreparedToRef<BE>;
+        R: GLWEToMut + GLWEInfos,
+        A: GLWEToRef + GLWEInfos,
+        K: GGLWEPreparedToRef<BE> + GGLWEInfos;
 
     fn glwe_keyswitch_inplace<R, K>(&self, res: &mut R, key: &K, scratch: &mut Scratch<BE>)
     where
-        R: GLWEToMut,
-        K: GGLWEPreparedToRef<BE>;
+        R: GLWEToMut + GLWEInfos,
+        K: GGLWEPreparedToRef<BE> + GGLWEInfos;
 }
 
 impl<BE: Backend> GLWEKeySwitchInternal<BE> for Module<BE> where

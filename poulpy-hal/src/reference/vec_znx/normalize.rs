@@ -53,7 +53,7 @@ pub fn vec_znx_normalize<R, A, ZNXARI>(
     let res_size: usize = res.size();
     let a_size: usize = a.size();
 
-    let carry = &mut carry[..2 * n];
+    let carry: &mut [i64] = &mut carry[..2 * n];
 
     if res_base2k == a_base2k {
         if a_size > res_size {

@@ -160,7 +160,7 @@ where
     let k_out: usize = 102;
     let max_dsize: usize = k_out.div_ceil(base2k_key);
 
-    let p = -5;
+    let p: i64 = -5;
     for rank in 1_usize..3 {
         for dsize in 1..max_dsize + 1 {
             let k_ksk: usize = k_out + base2k_key * dsize;
