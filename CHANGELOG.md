@@ -1,6 +1,37 @@
 # CHANGELOG
 
-## [0.3.2] - 2025-10-27
+## [0.4.0] - 2025-10-27
+
+### Summary
+- Full support for base2k operations.
+- Many improvments to BDD arithmetic.
+- Removal of **poulpy-backend** & spqlios backend.
+- Addition of individual crates for each specific backend.
+- Some minor bug fixes.
+
+### `poulpy-hal`
+- Add cross-base2k normalization
+
+### `poulpy-core`
+- Add full support for automatic cross-base2k operations & updated tests accordingly.
+- Updated noise helper API.
+- Fixed many tests that didn't assess noise correctly.
+- Fixed decoding function to use arithmetic rounded division instead of arithmetic right shift.
+- Fixed packing to clean values correctly.
+
+### `poulpy-schemes`
+- Renamed `tfhe` crate to `bin_fhe`.
+- Improved support & API for BDD arithmetic, including multi-thread acceleration.
+- Updated crate to support cross-base2k operations.
+- Add additional operations, such as splice_u8, splice_u16 and sign extension.
+- Add `GLWEBlindRetriever` and `GLWEBlindRetrieval`: a `GGSW`-based blind reversible retrieval (enables to instantiate encrypted ROM/RAM like object).
+- Improved Cmux speed
+
+### `poulpy-cpu-ref`
+- A new crate that provides the refernce CPU implementation of **poulpy-hal**. This replaces the previous **poulpy-backend/cpu_ref**.
+
+### `poulpy-cpu-avx`
+- A new crate that provides an AVX/FMA accelerated CPU implementation of **poulpy-hal**. This replaces the previous **poulpy-backend/cpu_avx**.
 
 ### `poulpy-schemes`
  - Added `sign` argument to GGSW-based blind rotation, which enables to choose the rotation direction of the test vector.
