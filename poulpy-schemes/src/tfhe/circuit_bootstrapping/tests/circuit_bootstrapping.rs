@@ -46,7 +46,11 @@ where
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     let n_glwe: usize = module.n();
-    let base2k: usize = 17;
+    let base2k_res: usize = 15;
+    let base2k_lwe: usize = 14;
+    let base2k_brk: usize = 13;
+    let base2k_tsk: usize = 12;
+    let base2k_atk: usize = 11;
     let extension_factor: usize = 1;
     let rank: usize = 1;
 
@@ -55,36 +59,36 @@ where
     let k_lwe_ct: usize = 22;
     let block_size: usize = 7;
 
-    let k_brk: usize = 5 * base2k;
+    let k_ggsw_res: usize = 4 * base2k_res;
+    let rows_ggsw_res: usize = 3;
+
+    let k_brk: usize = k_ggsw_res + base2k_brk;
     let rows_brk: usize = 4;
 
-    let k_atk: usize = 5 * base2k;
+    let k_atk: usize = k_ggsw_res + base2k_tsk;
     let rows_atk: usize = 4;
 
-    let k_tsk: usize = 5 * base2k;
+    let k_tsk: usize = k_ggsw_res + base2k_atk;
     let rows_tsk: usize = 4;
-
-    let k_ggsw_res: usize = 4 * base2k;
-    let rows_ggsw_res: usize = 2;
 
     let lwe_infos: LWELayout = LWELayout {
         n: n_lwe.into(),
         k: k_lwe_ct.into(),
-        base2k: base2k.into(),
+        base2k: base2k_lwe.into(),
     };
 
     let cbt_infos: CircuitBootstrappingKeyLayout = CircuitBootstrappingKeyLayout {
         layout_brk: BlindRotationKeyLayout {
             n_glwe: n_glwe.into(),
             n_lwe: n_lwe.into(),
-            base2k: base2k.into(),
+            base2k: base2k_brk.into(),
             k: k_brk.into(),
             dnum: rows_brk.into(),
             rank: rank.into(),
         },
         layout_atk: GLWEAutomorphismKeyLayout {
             n: n_glwe.into(),
-            base2k: base2k.into(),
+            base2k: base2k_atk.into(),
             k: k_atk.into(),
             dnum: rows_atk.into(),
             rank: rank.into(),
@@ -92,7 +96,7 @@ where
         },
         layout_tsk: GGLWEToGGSWKeyLayout {
             n: n_glwe.into(),
-            base2k: base2k.into(),
+            base2k: base2k_tsk.into(),
             k: k_tsk.into(),
             dnum: rows_tsk.into(),
             dsize: Dsize(1),
@@ -102,7 +106,7 @@ where
 
     let ggsw_infos: GGSWLayout = GGSWLayout {
         n: n_glwe.into(),
-        base2k: base2k.into(),
+        base2k: base2k_res.into(),
         k: k_ggsw_res.into(),
         dnum: rows_ggsw_res.into(),
         dsize: Dsize(1),
@@ -126,7 +130,7 @@ where
 
     let data: i64 = 1;
 
-    let mut pt_lwe: LWEPlaintext<Vec<u8>> = LWEPlaintext::alloc(base2k.into(), k_lwe_pt.into());
+    let mut pt_lwe: LWEPlaintext<Vec<u8>> = LWEPlaintext::alloc(base2k_lwe.into(), k_lwe_pt.into());
     pt_lwe.encode_i64(data, (k_lwe_pt + 1).into());
 
     println!("pt_lwe: {pt_lwe}");
@@ -205,7 +209,7 @@ where
     }
     let mut ct_glwe: GLWE<Vec<u8>> = GLWE::alloc_from_infos(&ggsw_infos);
     let mut pt_glwe: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&ggsw_infos);
-    pt_glwe.data.at_mut(0, 0)[0] = 1 << (base2k - 2);
+    pt_glwe.data.at_mut(0, 0)[0] = 1 << (base2k_res - 2);
 
     ct_glwe.encrypt_sk(
         module,
@@ -249,7 +253,8 @@ where
     Scratch<BE>: ScratchTakeCore<BE>,
 {
     let n_glwe: usize = module.n();
-    let base2k_res: usize = 14;
+    let base2k_res: usize = 15;
+    let base2k_lwe: usize = 14;
     let base2k_brk: usize = 13;
     let base2k_tsk: usize = 12;
     let base2k_atk: usize = 11;
@@ -265,7 +270,7 @@ where
     let rows_ggsw_res: usize = 3;
 
     let k_brk: usize = k_ggsw_res + base2k_brk;
-    let rows_brk: usize = 3;
+    let rows_brk: usize = 4;
 
     let k_atk: usize = k_ggsw_res + base2k_tsk;
     let rows_atk: usize = 4;
@@ -276,7 +281,7 @@ where
     let lwe_infos: LWELayout = LWELayout {
         n: n_lwe.into(),
         k: k_lwe_ct.into(),
-        base2k: base2k_brk.into(),
+        base2k: base2k_lwe.into(),
     };
 
     let cbt_infos: CircuitBootstrappingKeyLayout = CircuitBootstrappingKeyLayout {
@@ -332,7 +337,7 @@ where
 
     let data: i64 = 1;
 
-    let mut pt_lwe: LWEPlaintext<Vec<u8>> = LWEPlaintext::alloc(base2k_res.into(), k_lwe_pt.into());
+    let mut pt_lwe: LWEPlaintext<Vec<u8>> = LWEPlaintext::alloc(base2k_lwe.into(), k_lwe_pt.into());
     pt_lwe.encode_i64(data, (k_lwe_pt + 1).into());
 
     println!("pt_lwe: {pt_lwe}");

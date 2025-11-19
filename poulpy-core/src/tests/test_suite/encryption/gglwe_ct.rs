@@ -10,8 +10,8 @@ use crate::{
     decryption::GLWEDecrypt,
     encryption::SIGMA,
     layouts::{
-        GGLWE, GGLWECompressed, GGLWEInfos, GGLWELayout, GLWESecret, GLWESecretPreparedFactory,
-        GLWESwitchingKey, GLWESwitchingKeyCompressed, GLWESwitchingKeyDecompress, LWEInfos,
+        GGLWE, GGLWECompressed, GGLWEInfos, GGLWELayout, GLWESecret, GLWESecretPreparedFactory, GLWESwitchingKey,
+        GLWESwitchingKeyCompressed, GLWESwitchingKeyDecompress, LWEInfos,
         prepared::{GGLWEPreparedFactory, GLWESecretPrepared},
     },
     noise::GGLWENoise,

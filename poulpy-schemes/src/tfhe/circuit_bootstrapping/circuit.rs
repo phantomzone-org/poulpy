@@ -389,12 +389,12 @@ fn post_process<R, A, M, H, K, BE: Backend>(
         // TODO: from Scratch
         let (mut cts_vec, scratch_2) = scratch_1.take_glwe_slice(steps, a);
 
-        for i in 0..steps {
+        for (i, ct) in cts_vec.iter_mut().enumerate().take(steps) {
             if i != 0 {
                 module.glwe_rotate_inplace(-(1 << log_gap_in), &mut a_trace, scratch_2);
             }
 
-            module.glwe_copy(&mut cts_vec[i], &a_trace);
+            module.glwe_copy(ct, &a_trace);
         }
 
         let mut cts: HashMap<usize, &mut GLWE<&mut [u8]>> = HashMap::new();
