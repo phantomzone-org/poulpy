@@ -9,10 +9,10 @@ use poulpy_core::{
 use std::time::Instant;
 
 #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
-use poulpy_backend::FFT64Avx as BackendImpl;
+use poulpy_cpu_avx::FFT64Avx as BackendImpl;
 
 #[cfg(not(any(target_arch = "x86_64", target_arch = "x86")))]
-use poulpy_backend::FFT64Ref as BackendImpl;
+use poulpy_cpu_ref::FFT64Ref as BackendImpl;
 
 use poulpy_hal::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxNormalizeInplace},
@@ -20,7 +20,7 @@ use poulpy_hal::{
     source::Source,
 };
 
-use poulpy_schemes::tfhe::{
+use poulpy_schemes::bin_fhe::{
     blind_rotation::{BlindRotationKeyLayout, CGGI},
     circuit_bootstrapping::{CircuitBootstrappingKey, CircuitBootstrappingKeyLayout, CircuitBootstrappingKeyPrepared},
 };

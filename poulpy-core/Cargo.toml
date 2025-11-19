@@ -12,11 +12,13 @@ documentation = "https://docs.rs/poulpy"
 rug = {workspace = true}
 criterion = {workspace = true}
 poulpy-hal = {workspace = true}
-poulpy-backend = {workspace = true}
+poulpy-cpu-avx = {workspace = true}
+poulpy-cpu-ref = {workspace = true}
 itertools = {workspace = true}
 byteorder = {workspace = true}
 bytemuck = {workspace = true}
 once_cell = {workspace = true}
+paste = {workspace = true}
 
 [[bench]]
 name = "external_product_glwe_fft64"

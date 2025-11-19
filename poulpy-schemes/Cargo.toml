@@ -10,7 +10,8 @@ homepage = "https://github.com/phantomzone-org/poulpy"
 documentation = "https://docs.rs/poulpy"
 
 [dependencies]
-poulpy-backend = {workspace = true}
+poulpy-cpu-avx = {workspace = true}
+poulpy-cpu-ref = {workspace = true}
 poulpy-hal = {workspace = true}
 poulpy-core = {workspace = true}
 criterion = {workspace = true}

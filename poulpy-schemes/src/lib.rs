@@ -1,1 +1,1 @@
-pub mod tfhe;
+pub mod bin_fhe;

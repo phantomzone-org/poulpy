@@ -358,14 +358,31 @@ dependencies = [
 ]
 
 [[package]]
-name = "poulpy-backend"
+name = "poulpy-core"
 version = "0.3.2"
 dependencies = [
+ "bytemuck",
  "byteorder",
- "cmake",
  "criterion",
  "itertools 0.14.0",
  "once_cell",
+ "paste",
+ "poulpy-cpu-avx",
+ "poulpy-cpu-ref",
+ "poulpy-hal",
+ "rug",
+]
+
+[[package]]
+name = "poulpy-cpu-avx"
+version = "0.3.2"
+dependencies = [
+ "byteorder",
+ "criterion",
+ "itertools 0.14.0",
+ "once_cell",
+ "paste",
+ "poulpy-cpu-ref",
  "poulpy-hal",
  "rand",
  "rand_chacha",
@@ -375,16 +392,18 @@ dependencies = [
 ]
 
 [[package]]
-name = "poulpy-core"
+name = "poulpy-cpu-ref"
 version = "0.3.2"
 dependencies = [
- "bytemuck",
  "byteorder",
  "criterion",
  "itertools 0.14.0",
  "once_cell",
- "poulpy-backend",
  "poulpy-hal",
+ "rand",
+ "rand_chacha",
+ "rand_core",
+ "rand_distr",
  "rug",
 ]
 
@@ -398,6 +417,7 @@ dependencies = [
  "criterion",
  "itertools 0.14.0",
  "once_cell",
+ "paste",
  "rand",
  "rand_chacha",
  "rand_core",
@@ -413,8 +433,9 @@ dependencies = [
  "criterion",
  "itertools 0.14.0",
  "paste",
- "poulpy-backend",
  "poulpy-core",
+ "poulpy-cpu-avx",
+ "poulpy-cpu-ref",
  "poulpy-hal",
  "rand",
 ]
