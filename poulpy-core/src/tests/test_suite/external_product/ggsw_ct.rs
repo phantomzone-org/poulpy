@@ -8,7 +8,7 @@ use crate::{
     GGSWEncryptSk, GGSWExternalProduct, GGSWNoise, ScratchTakeCore,
     encryption::SIGMA,
     layouts::{
-        GGSW, GGSWLayout, GGSWPreparedFactory, GLWESecret, GLWESecretPreparedFactory,
+        GGSW, GGSWInfos, GGSWLayout, GGSWPreparedFactory, GLWEInfos, GLWESecret, GLWESecretPreparedFactory,
         prepared::{GGSWPrepared, GLWESecretPrepared},
     },
     noise::noise_ggsw_product,
@@ -26,23 +26,26 @@ where
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
-    let base2k: usize = 12;
-    let k_in: usize = 60;
-    let dsize: usize = k_in.div_ceil(base2k);
+    let base2k_in: usize = 17;
+    let base2k_key: usize = 13;
+    let base2k_out: usize = base2k_in; // MUST BE SAME
+    let k_in: usize = 102;
+    let max_dsize: usize = k_in.div_ceil(base2k_key);
+
     for rank in 1_usize..3 {
-        for di in 1..dsize + 1 {
-            let k_apply: usize = k_in + base2k * di;
+        for dsize in 1..max_dsize + 1 {
+            let k_apply: usize = k_in + base2k_key * dsize;
 
             let k_out: usize = k_in; // Better capture noise.
 
             let n: usize = module.n();
-            let dnum: usize = k_in.div_ceil(base2k * di);
-            let dnum_in: usize = k_in.div_euclid(base2k * di);
+            let dnum: usize = k_in.div_ceil(base2k_key * dsize);
+            let dnum_in: usize = k_in / base2k_in;
             let dsize_in: usize = 1;
 
             let ggsw_in_infos: GGSWLayout = GGSWLayout {
                 n: n.into(),
-                base2k: base2k.into(),
+                base2k: base2k_in.into(),
                 k: k_in.into(),
                 dnum: dnum_in.into(),
                 dsize: dsize_in.into(),
@@ -51,7 +54,7 @@ where
 
             let ggsw_out_infos: GGSWLayout = GGSWLayout {
                 n: n.into(),
-                base2k: base2k.into(),
+                base2k: base2k_out.into(),
                 k: k_out.into(),
                 dnum: dnum_in.into(),
                 dsize: dsize_in.into(),
@@ -60,10 +63,10 @@ where
 
             let ggsw_apply_infos: GGSWLayout = GGSWLayout {
                 n: n.into(),
-                base2k: base2k.into(),
+                base2k: base2k_key.into(),
                 k: k_apply.into(),
                 dnum: dnum.into(),
-                dsize: di.into(),
+                dsize: dsize.into(),
                 rank: rank.into(),
             };
 
@@ -130,7 +133,7 @@ where
             let max_noise = |_col_j: usize| -> f64 {
                 noise_ggsw_product(
                     n as f64,
-                    base2k * di,
+                    base2k_key * dsize,
                     0.5,
                     var_msg,
                     var_a0_err,
@@ -143,7 +146,17 @@ where
                 ) + 0.5
             };
 
-            ggsw_out.assert_noise(module, &sk_prepared, &pt_in, &max_noise);
+            for row in 0..ggsw_out.dnum().as_usize() {
+                for col in 0..ggsw_out.rank().as_usize() + 1 {
+                    assert!(
+                        ggsw_out
+                            .noise(module, row, col, &pt_in, &sk_prepared, scratch.borrow())
+                            .std()
+                            .log2()
+                            <= max_noise(col)
+                    )
+                }
+            }
         }
     }
 }
@@ -160,21 +173,23 @@ where
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
-    let base2k: usize = 12;
-    let k_out: usize = 60;
-    let dsize: usize = k_out.div_ceil(base2k);
+    let base2k_out: usize = 17;
+    let base2k_key: usize = 13;
+    let k_out: usize = 102;
+    let max_dsize: usize = k_out.div_ceil(base2k_key);
+
     for rank in 1_usize..3 {
-        for di in 1..dsize + 1 {
-            let k_apply: usize = k_out + base2k * di;
+        for dsize in 1..max_dsize + 1 {
+            let k_apply: usize = k_out + base2k_key * dsize;
 
             let n: usize = module.n();
-            let dnum: usize = k_out.div_ceil(di * base2k);
-            let dnum_in: usize = k_out.div_euclid(base2k * di);
+            let dnum: usize = k_out.div_ceil(dsize * base2k_key);
+            let dnum_in: usize = k_out / base2k_out;
             let dsize_in: usize = 1;
 
             let ggsw_out_infos: GGSWLayout = GGSWLayout {
                 n: n.into(),
-                base2k: base2k.into(),
+                base2k: base2k_out.into(),
                 k: k_out.into(),
                 dnum: dnum_in.into(),
                 dsize: dsize_in.into(),
@@ -183,10 +198,10 @@ where
 
             let ggsw_apply_infos: GGSWLayout = GGSWLayout {
                 n: n.into(),
-                base2k: base2k.into(),
+                base2k: base2k_key.into(),
                 k: k_apply.into(),
                 dnum: dnum.into(),
-                dsize: di.into(),
+                dsize: dsize.into(),
                 rank: rank.into(),
             };
 
@@ -253,7 +268,7 @@ where
             let max_noise = |_col_j: usize| -> f64 {
                 noise_ggsw_product(
                     n as f64,
-                    base2k * di,
+                    base2k_key * dsize,
                     0.5,
                     var_msg,
                     var_a0_err,
@@ -266,7 +281,17 @@ where
                 ) + 0.5
             };
 
-            ggsw_out.assert_noise(module, &sk_prepared, &pt_in, &max_noise);
+            for row in 0..ggsw_out.dnum().as_usize() {
+                for col in 0..ggsw_out.rank().as_usize() + 1 {
+                    assert!(
+                        ggsw_out
+                            .noise(module, row, col, &pt_in, &sk_prepared, scratch.borrow())
+                            .std()
+                            .log2()
+                            <= max_noise(col)
+                    )
+                }
+            }
         }
     }
 }

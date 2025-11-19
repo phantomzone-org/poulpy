@@ -83,34 +83,30 @@ where
         assert_eq!(ksk.n(), self.n() as u32);
         assert!(scratch.available() >= self.lwe_keyswitch_tmp_bytes(res, a, ksk));
 
-        let max_k: TorusPrecision = res.k().max(a.k());
-
-        let a_size: usize = a.k().div_ceil(ksk.base2k()) as usize;
-
         let (mut glwe_in, scratch_1) = scratch.take_glwe(&GLWELayout {
             n: ksk.n(),
             base2k: a.base2k(),
-            k: max_k,
+            k: a.k(),
             rank: Rank(1),
         });
         glwe_in.data.zero();
 
-        let (mut glwe_out, scratch_1) = scratch_1.take_glwe(&GLWELayout {
-            n: ksk.n(),
-            base2k: res.base2k(),
-            k: max_k,
-            rank: Rank(1),
-        });
-
         let n_lwe: usize = a.n().into();
 
-        for i in 0..a_size {
+        for i in 0..a.size() {
             let data_lwe: &[i64] = a.data.at(0, i);
             glwe_in.data.at_mut(0, i)[0] = data_lwe[0];
             glwe_in.data.at_mut(1, i)[..n_lwe].copy_from_slice(&data_lwe[1..]);
         }
 
-        self.glwe_keyswitch(&mut glwe_out, &glwe_in, ksk, scratch_1);
+        let (mut glwe_out, scratch_2) = scratch_1.take_glwe(&GLWELayout {
+            n: ksk.n(),
+            base2k: res.base2k(),
+            k: res.k(),
+            rank: Rank(1),
+        });
+
+        self.glwe_keyswitch(&mut glwe_out, &glwe_in, ksk, scratch_2);
         self.lwe_sample_extract(res, &glwe_out);
     }
 }

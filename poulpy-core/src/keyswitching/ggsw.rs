@@ -3,7 +3,7 @@ use poulpy_hal::layouts::{Backend, DataMut, Module, Scratch};
 use crate::{
     GGSWExpandRows, ScratchTakeCore,
     keyswitching::GLWEKeyswitch,
-    layouts::{GGLWEInfos, GGLWEPreparedToRef, GGLWEToGGSWKeyPreparedToRef, GGSW, GGSWInfos, GGSWToMut, GGSWToRef},
+    layouts::{GGLWEInfos, GGLWEPreparedToRef, GGLWEToGGSWKeyPreparedToRef, GGSW, GGSWInfos, GGSWToMut, GGSWToRef, LWEInfos},
 };
 
 impl GGSW<Vec<u8>> {
@@ -29,7 +29,7 @@ impl<D: DataMut> GGSW<D> {
     pub fn keyswitch<M, A, K, T, BE: Backend>(&mut self, module: &M, a: &A, key: &K, tsk: &T, scratch: &mut Scratch<BE>)
     where
         A: GGSWToRef,
-        K: GGLWEPreparedToRef<BE>,
+        K: GGLWEPreparedToRef<BE> + GGLWEInfos,
         T: GGLWEToGGSWKeyPreparedToRef<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
         M: GGSWKeyswitch<BE>,
@@ -39,7 +39,7 @@ impl<D: DataMut> GGSW<D> {
 
     pub fn keyswitch_inplace<M, K, T, BE: Backend>(&mut self, module: &M, key: &K, tsk: &T, scratch: &mut Scratch<BE>)
     where
-        K: GGLWEPreparedToRef<BE>,
+        K: GGLWEPreparedToRef<BE> + GGLWEInfos,
         T: GGLWEToGGSWKeyPreparedToRef<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
         M: GGSWKeyswitch<BE>,
@@ -70,7 +70,7 @@ where
     fn ggsw_keyswitch_inplace<R, K, T>(&self, res: &mut R, key: &K, tsk: &T, scratch: &mut Scratch<BE>)
     where
         R: GGSWToMut,
-        K: GGLWEPreparedToRef<BE>,
+        K: GGLWEPreparedToRef<BE> + GGLWEInfos,
         T: GGLWEToGGSWKeyPreparedToRef<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
@@ -89,7 +89,7 @@ where
     where
         R: GGSWToMut,
         A: GGSWToRef,
-        K: GGLWEPreparedToRef<BE>,
+        K: GGLWEPreparedToRef<BE> + GGLWEInfos,
         T: GGLWEToGGSWKeyPreparedToRef<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
@@ -98,6 +98,7 @@ where
 
         assert!(res.dnum() <= a.dnum());
         assert_eq!(res.dsize(), a.dsize());
+        assert_eq!(res.base2k(), a.base2k());
 
         for row in 0..a.dnum().into() {
             // Key-switch column 0, i.e.
@@ -124,14 +125,14 @@ where
     where
         R: GGSWToMut,
         A: GGSWToRef,
-        K: GGLWEPreparedToRef<BE>,
+        K: GGLWEPreparedToRef<BE> + GGLWEInfos,
         T: GGLWEToGGSWKeyPreparedToRef<BE>,
         Scratch<BE>: ScratchTakeCore<BE>;
 
     fn ggsw_keyswitch_inplace<R, K, T>(&self, res: &mut R, key: &K, tsk: &T, scratch: &mut Scratch<BE>)
     where
         R: GGSWToMut,
-        K: GGLWEPreparedToRef<BE>,
+        K: GGLWEPreparedToRef<BE> + GGLWEInfos,
         T: GGLWEToGGSWKeyPreparedToRef<BE>,
         Scratch<BE>: ScratchTakeCore<BE>;
 }

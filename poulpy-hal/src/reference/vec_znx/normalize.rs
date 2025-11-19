@@ -53,6 +53,8 @@ pub fn vec_znx_normalize<R, A, ZNXARI>(
     let res_size: usize = res.size();
     let a_size: usize = a.size();
 
+    let carry: &mut [i64] = &mut carry[..2 * n];
+
     if res_base2k == a_base2k {
         if a_size > res_size {
             for j in (res_size..a_size).rev() {
@@ -95,9 +97,9 @@ pub fn vec_znx_normalize<R, A, ZNXARI>(
         // Get carry for limbs of a that have higher precision than res
         for j in (a_min_size..a_size).rev() {
             if j == a_size - 1 {
-                ZNXARI::znx_normalize_first_step_carry_only(res_base2k, 0, a.at(a_col, j), carry);
+                ZNXARI::znx_normalize_first_step_carry_only(a_base2k, 0, a.at(a_col, j), carry);
             } else {
-                ZNXARI::znx_normalize_middle_step_carry_only(res_base2k, 0, a.at(a_col, j), carry);
+                ZNXARI::znx_normalize_middle_step_carry_only(a_base2k, 0, a.at(a_col, j), carry);
             }
         }
 
@@ -117,6 +119,10 @@ pub fn vec_znx_normalize<R, A, ZNXARI>(
         // Trackers: wow much of res is left to be populated
         // for the current limb.
         let mut res_left: usize = res_base2k;
+
+        for j in 0..res_size {
+            ZNXARI::znx_zero(res.at_mut(res_col, j));
+        }
 
         for j in (0..a_min_size).rev() {
             // Trackers: wow much of a_norm is left to
@@ -195,10 +201,6 @@ pub fn vec_znx_normalize<R, A, ZNXARI>(
                     break;
                 }
             }
-        }
-
-        for j in res_min_size..res_size {
-            ZNXARI::znx_zero(res.at_mut(res_col, j));
         }
     }
 }
@@ -379,14 +381,6 @@ fn test_vec_znx_normalize_conv() {
                 let mut err: Float = data_want[i].clone();
                 err.sub_assign_round(&data_res[i], Round::Nearest);
                 err = err.abs();
-
-                // println!(
-                // "want: {} have: {} tmp: {} (want-have): {}",
-                // data_want[i].to_f64(),
-                // data_res[i].to_f64(),
-                // data_tmp[i].to_f64(),
-                // err.to_f64()
-                // );
 
                 let err_log2: f64 = err
                     .clone()

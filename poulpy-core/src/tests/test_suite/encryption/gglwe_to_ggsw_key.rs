@@ -9,8 +9,9 @@ use crate::{
     decryption::GLWEDecrypt,
     encryption::SIGMA,
     layouts::{
-        Dsize, GGLWEDecompress, GGLWEToGGSWKey, GGLWEToGGSWKeyCompressed, GGLWEToGGSWKeyDecompress, GGLWEToGGSWKeyLayout,
-        GLWESecret, GLWESecretPreparedFactory, GLWESecretTensor, GLWESecretTensorFactory, LWEInfos, prepared::GLWESecretPrepared,
+        Dsize, GGLWE, GGLWEDecompress, GGLWEInfos, GGLWEToGGSWKey, GGLWEToGGSWKeyCompressed, GGLWEToGGSWKeyDecompress,
+        GGLWEToGGSWKeyLayout, GLWESecret, GLWESecretPreparedFactory, GLWESecretTensor, GLWESecretTensorFactory, LWEInfos,
+        prepared::GLWESecretPrepared,
     },
 };
 
@@ -79,9 +80,17 @@ where
                 );
             }
 
-            println!("pt_want: {}", pt_want.as_vec_znx());
-
-            module.gglwe_assert_noise(key.at(i), &sk_prepared, &pt_want, max_noise);
+            let ksk: &GGLWE<Vec<u8>> = key.at(i);
+            for row in 0..ksk.dnum().as_usize() {
+                for col in 0..ksk.rank_in().as_usize() {
+                    assert!(
+                        ksk.noise(module, row, col, &pt_want, &sk_prepared, scratch.borrow())
+                            .std()
+                            .log2()
+                            <= max_noise
+                    )
+                }
+            }
         }
     }
 }
@@ -137,8 +146,31 @@ where
         let mut sk_tensor: GLWESecretTensor<Vec<u8>> = GLWESecretTensor::alloc_from_infos(&sk);
         sk_tensor.prepare(module, &sk, scratch.borrow());
 
+        let max_noise = SIGMA.log2() + 0.5 - (key.k().as_u32() as f64);
+
+        let mut pt_want: ScalarZnx<Vec<u8>> = ScalarZnx::alloc(module.n(), rank);
+
         for i in 0..rank {
-            module.gglwe_assert_noise(key.at(i), &sk_prepared, &sk_tensor.data, SIGMA + 0.5);
+            for j in 0..rank {
+                module.vec_znx_copy(
+                    &mut pt_want.as_vec_znx_mut(),
+                    j,
+                    &sk_tensor.at(i, j).as_vec_znx(),
+                    0,
+                );
+            }
+
+            let ksk: &GGLWE<Vec<u8>> = key.at(i);
+            for row in 0..ksk.dnum().as_usize() {
+                for col in 0..ksk.rank_in().as_usize() {
+                    assert!(
+                        ksk.noise(module, row, col, &pt_want, &sk_prepared, scratch.borrow())
+                            .std()
+                            .log2()
+                            <= max_noise
+                    )
+                }
+            }
         }
     }
 }

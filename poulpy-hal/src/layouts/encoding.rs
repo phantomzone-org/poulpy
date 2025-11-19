@@ -2,7 +2,7 @@ use itertools::izip;
 use rug::{Assign, Float};
 
 use crate::{
-    layouts::{DataMut, DataRef, VecZnx, VecZnxToMut, VecZnxToRef, Zn, ZnToMut, ZnToRef, ZnxInfos, ZnxView, ZnxViewMut},
+    layouts::{DataMut, DataRef, VecZnx, VecZnxToMut, VecZnxToRef, ZnxInfos, ZnxView, ZnxViewMut},
     reference::znx::{
         ZnxNormalizeFinalStepInplace, ZnxNormalizeFirstStepInplace, ZnxNormalizeMiddleStepInplace, ZnxRef, ZnxZero,
         get_carry_i128, get_digit_i128, znx_zero_ref,
@@ -242,90 +242,6 @@ impl<D: DataRef> VecZnx<D> {
                 });
             }
         });
-    }
-}
-
-impl<D: DataMut> Zn<D> {
-    pub fn encode_i64(&mut self, base2k: usize, k: usize, data: i64) {
-        let size: usize = k.div_ceil(base2k);
-
-        #[cfg(debug_assertions)]
-        {
-            let a: Zn<&mut [u8]> = self.to_mut();
-            assert!(
-                size <= a.size(),
-                "invalid argument k.div_ceil(base2k)={} > a.size()={}",
-                size,
-                a.size()
-            );
-        }
-
-        let mut a: Zn<&mut [u8]> = self.to_mut();
-        let a_size = a.size();
-
-        for j in 0..a_size {
-            a.at_mut(0, j)[0] = 0
-        }
-
-        a.at_mut(0, size - 1)[0] = data;
-
-        let mut carry: Vec<i64> = vec![0i64; 1];
-        let k_rem: usize = (base2k - (k % base2k)) % base2k;
-
-        for j in (0..size).rev() {
-            let slice = &mut a.at_mut(0, j)[..1];
-
-            if j == size - 1 {
-                ZnxRef::znx_normalize_first_step_inplace(base2k, k_rem, slice, &mut carry);
-            } else if j == 0 {
-                ZnxRef::znx_normalize_final_step_inplace(base2k, k_rem, slice, &mut carry);
-            } else {
-                ZnxRef::znx_normalize_middle_step_inplace(base2k, k_rem, slice, &mut carry);
-            }
-        }
-    }
-}
-
-impl<D: DataRef> Zn<D> {
-    pub fn decode_i64(&self, base2k: usize, k: usize) -> i64 {
-        let a: Zn<&[u8]> = self.to_ref();
-        let size: usize = k.div_ceil(base2k);
-        let mut res: i64 = 0;
-        let rem: usize = base2k - (k % base2k);
-        (0..size).for_each(|j| {
-            let x: i64 = a.at(0, j)[0];
-            if j == size - 1 && rem != base2k {
-                let k_rem: usize = (base2k - rem) % base2k;
-                let scale: i64 = 1 << rem as i64;
-                res = (res << k_rem) + div_round(x, scale);
-            } else {
-                res = (res << base2k) + x;
-            }
-        });
-        res
-    }
-
-    pub fn decode_float(&self, base2k: usize) -> Float {
-        let a: Zn<&[u8]> = self.to_ref();
-        let size: usize = a.size();
-        let prec: u32 = (base2k * size) as u32;
-
-        // 2^{base2k}
-        let base: Float = Float::with_val(prec, (1 << base2k) as f64);
-        let mut res: Float = Float::with_val(prec, (1 << base2k) as f64);
-
-        // y[i] = sum x[j][i] * 2^{-base2k*j}
-        (0..size).for_each(|i| {
-            if i == 0 {
-                res.assign(a.at(0, size - i - 1)[0]);
-                res /= &base;
-            } else {
-                res += Float::with_val(prec, a.at(0, size - i - 1)[0]);
-                res /= &base;
-            }
-        });
-
-        res
     }
 }
 

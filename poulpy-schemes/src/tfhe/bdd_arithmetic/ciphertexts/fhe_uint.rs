@@ -1,9 +1,10 @@
 use poulpy_core::{
-    GLWEAdd, GLWECopy, GLWEDecrypt, GLWEEncryptSk, GLWENoise, GLWEPacking, GLWERotate, GLWESub, GLWETrace, LWEFromGLWE,
-    ScratchTakeCore,
+    GLWEAdd, GLWECopy, GLWEDecrypt, GLWEEncryptSk, GLWEKeyswitch, GLWENoise, GLWEPacking, GLWERotate, GLWESub, GLWETrace,
+    LWEFromGLWE, ScratchTakeCore,
     layouts::{
-        Base2K, Degree, GGLWEInfos, GGLWEPreparedToRef, GLWE, GLWEAutomorphismKeyHelper, GLWEInfos, GLWEPlaintextLayout,
-        GLWESecretPreparedToRef, GLWEToMut, GLWEToRef, GetGaloisElement, LWEInfos, LWEToMut, Rank, TorusPrecision,
+        Base2K, Degree, GGLWEInfos, GGLWEPreparedToRef, GLWE, GLWEAutomorphismKeyHelper, GLWEInfos, GLWELayout,
+        GLWEPlaintextLayout, GLWESecretPreparedToRef, GLWEToMut, GLWEToRef, GetGaloisElement, LWEInfos, LWEToMut, Rank,
+        TorusPrecision,
     },
 };
 use poulpy_hal::{
@@ -146,7 +147,7 @@ impl<D: DataRef, T: UnsignedInteger + FromBits> FheUint<D, T> {
             data_bits[T::bit_index(i) << log_gap] = want.bit(i) as i64
         }
         pt.encode_vec_i64(&data_bits, TorusPrecision(2));
-        self.bits.noise(module, sk, &pt, scratch_1)
+        self.bits.noise(module, &pt, sk, scratch_1)
     }
 
     pub fn decrypt<S, M, BE: Backend>(&self, module: &M, sk: &S, scratch: &mut Scratch<BE>) -> T
@@ -323,16 +324,41 @@ where
 impl<T: UnsignedInteger, BE: Backend> ScratchTakeBDD<T, BE> for Scratch<BE> where Self: ScratchTakeCore<BE> {}
 
 impl<D: DataRef, T: UnsignedInteger> FheUint<D, T> {
-    pub fn get_bit_lwe<R, K, M, BE: Backend>(&self, module: &M, bit: usize, res: &mut R, ks: &K, scratch: &mut Scratch<BE>)
-    where
+    pub fn get_bit_lwe<R, KGLWE, KLWE, M, BE: Backend>(
+        &self,
+        module: &M,
+        bit: usize,
+        res: &mut R,
+        ks_glwe: Option<&KGLWE>,
+        ks_lwe: &KLWE,
+        scratch: &mut Scratch<BE>,
+    ) where
         R: LWEToMut,
-        K: GGLWEPreparedToRef<BE> + GGLWEInfos,
-        M: ModuleLogN + LWEFromGLWE<BE> + GLWERotate<BE>,
+        KGLWE: GGLWEPreparedToRef<BE> + GGLWEInfos,
+        KLWE: GGLWEPreparedToRef<BE> + GGLWEInfos,
+        M: ModuleLogN + LWEFromGLWE<BE> + GLWERotate<BE> + GLWEKeyswitch<BE>,
         Scratch<BE>: ScratchTakeCore<BE>,
     {
         let log_gap: usize = module.log_n() - T::LOG_BITS as usize;
-        res.to_mut()
-            .from_glwe(module, self, T::bit_index(bit) << log_gap, ks, scratch);
+        if let Some(ks_glwe) = ks_glwe {
+            let (mut res_tmp, scratch_1) = scratch.take_glwe(&GLWELayout {
+                n: self.n(),
+                base2k: ks_lwe.base2k(),
+                k: ks_lwe.k().min(self.k()),
+                rank: ks_lwe.rank_out(),
+            });
+            module.glwe_keyswitch(&mut res_tmp, self, ks_glwe, scratch_1);
+            res.to_mut().from_glwe(
+                module,
+                &res_tmp,
+                T::bit_index(bit) << log_gap,
+                ks_lwe,
+                scratch_1,
+            );
+        } else {
+            res.to_mut()
+                .from_glwe(module, self, T::bit_index(bit) << log_gap, ks_lwe, scratch);
+        }
     }
 
     pub fn get_bit_glwe<R, K, M, H, BE: Backend>(&self, module: &M, bit: usize, res: &mut R, keys: &H, scratch: &mut Scratch<BE>)

@@ -50,6 +50,8 @@ where
             b.rank()
         );
 
+        assert_eq!(res.base2k(), a.base2k());
+
         assert!(scratch.available() >= self.ggsw_external_product_tmp_bytes(res, a, b));
 
         let min_dnum: usize = res.dnum().min(a.dnum()).into();

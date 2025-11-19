@@ -1,10 +1,10 @@
 use poulpy_core::{
     GGSWNoise, GLWEDecrypt, GLWEEncryptSk, GLWENoise, SIGMA, ScratchTakeCore,
-    layouts::{GGSWLayout, GLWELayout, GLWESecretPreparedFactory, LWEInfos, prepared::GLWESecretPrepared},
+    layouts::{GGSWInfos, GGSWLayout, GLWEInfos, GLWELayout, GLWESecretPreparedFactory, LWEInfos, prepared::GLWESecretPrepared},
 };
 use poulpy_hal::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, Module, Scratch, ScratchOwned},
+    layouts::{Backend, Module, Scratch, ScratchOwned, Stats},
     source::Source,
 };
 use rand::RngCore;
@@ -13,7 +13,7 @@ use crate::tfhe::{
     bdd_arithmetic::{
         BDDKeyEncryptSk, BDDKeyPrepared, BDDKeyPreparedFactory, ExecuteBDDCircuit2WTo1W, FheUint, FheUintPrepare,
         FheUintPrepareDebug, FheUintPreparedDebug, FheUintPreparedEncryptSk, FheUintPreparedFactory,
-        tests::test_suite::{TEST_BASE2K, TEST_GGSW_INFOS, TEST_GLWE_INFOS, TestContext},
+        tests::test_suite::{TEST_GGSW_INFOS, TEST_GLWE_INFOS, TestContext},
     },
     blind_rotation::{BlindRotationAlgo, BlindRotationKey, BlindRotationKeyFactory},
 };
@@ -73,7 +73,7 @@ where
     c_enc_prep_debug.prepare(module, &c_enc, bdd_key_prepared, scratch_2.borrow());
 
     let max_noise = |col_i: usize| {
-        let mut noise: f64 = -(ggsw_infos.size() as f64 * TEST_BASE2K as f64) + SIGMA.log2() + 2.0;
+        let mut noise: f64 = -(ggsw_infos.size() as f64 * ggsw_infos.base2k().as_usize() as f64) + SIGMA.log2() + 2.0;
         noise += 0.5 * ggsw_infos.log_n() as f64;
         if col_i != 0 {
             noise += 0.5 * ggsw_infos.log_n() as f64
@@ -81,7 +81,17 @@ where
         noise
     };
 
-    // c_enc_prep_debug.print_noise(module, sk_glwe_prep, value);
-
-    c_enc_prep_debug.assert_noise(module, sk_glwe_prep, value, &max_noise);
+    for row in 0..c_enc_prep_debug.dnum().as_usize() {
+        for col in 0..c_enc_prep_debug.rank().as_usize() + 1 {
+            let stats: Vec<Stats> = c_enc_prep_debug.noise(module, row, col, value, sk_glwe_prep, scratch.borrow());
+            for (i, stat) in stats.iter().enumerate() {
+                let noise_have: f64 = stat.std().log2();
+                let noise_max: f64 = max_noise(col);
+                assert!(
+                    noise_have <= noise_max,
+                    "bit: {i} noise_have: {noise_have} > noise_max: {noise_max}"
+                )
+            }
+        }
+    }
 }

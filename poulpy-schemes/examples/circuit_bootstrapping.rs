@@ -1,8 +1,8 @@
 use poulpy_core::{
     GLWENormalize,
     layouts::{
-        GGLWEToGGSWKeyLayout, GGSW, GGSWLayout, GLWE, GLWEAutomorphismKeyLayout, GLWELayout, GLWEPlaintext, GLWESecret, LWE,
-        LWEInfos, LWELayout, LWEPlaintext, LWESecret,
+        GGLWEToGGSWKeyLayout, GGSW, GGSWInfos, GGSWLayout, GLWE, GLWEAutomorphismKeyLayout, GLWEInfos, GLWELayout, GLWEPlaintext,
+        GLWESecret, LWE, LWELayout, LWEPlaintext, LWESecret,
         prepared::{GGSWPrepared, GLWESecretPrepared},
     },
 };
@@ -15,7 +15,7 @@ use poulpy_backend::FFT64Avx as BackendImpl;
 use poulpy_backend::FFT64Ref as BackendImpl;
 
 use poulpy_hal::{
-    api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, ZnNormalizeInplace},
+    api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxNormalizeInplace},
     layouts::{Module, ScalarZnx, ScratchOwned, ZnxView, ZnxViewMut},
     source::Source,
 };
@@ -155,20 +155,21 @@ fn main() {
     pt_lwe.encode_i64(data, (k_lwe_pt + 1).into()); // +1 for padding bit
 
     // Normalize plaintext to nicely print coefficients
-    module.zn_normalize_inplace(
-        pt_lwe.n().into(),
-        base2k,
-        pt_lwe.data_mut(),
-        0,
-        scratch.borrow(),
-    );
+    module.vec_znx_normalize_inplace(base2k, pt_lwe.data_mut(), 0, scratch.borrow());
     println!("pt_lwe: {pt_lwe}");
 
     // LWE ciphertext
     let mut ct_lwe: LWE<Vec<u8>> = LWE::alloc_from_infos(&lwe_infos);
 
     // Encrypt LWE Plaintext
-    ct_lwe.encrypt_sk(&module, &pt_lwe, &sk_lwe, &mut source_xa, &mut source_xe);
+    ct_lwe.encrypt_sk(
+        &module,
+        &pt_lwe,
+        &sk_lwe,
+        &mut source_xa,
+        &mut source_xe,
+        scratch.borrow(),
+    );
 
     let now: Instant = Instant::now();
 
@@ -211,7 +212,23 @@ fn main() {
     pt_ggsw.at_mut(0, 0)[0] = data;
 
     // Prints noise of GGSW(data)
-    res.print_noise(&module, &sk_glwe_prepared, &pt_ggsw);
+    for row in 0..res.dnum().as_usize() {
+        for col in 0..res.rank().as_usize() + 1 {
+            println!(
+                "row:{row} col:{col} -> {}",
+                res.noise(
+                    &module,
+                    row,
+                    col,
+                    &pt_ggsw,
+                    &sk_glwe_prepared,
+                    scratch.borrow()
+                )
+                .std()
+                .log2()
+            )
+        }
+    }
 
     // Tests RLWE(1) * GGSW(data)
 

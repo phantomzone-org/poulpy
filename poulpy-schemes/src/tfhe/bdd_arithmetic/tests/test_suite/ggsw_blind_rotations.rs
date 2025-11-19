@@ -1,8 +1,8 @@
 use poulpy_core::{
     GGSWEncryptSk, GGSWNoise, GLWEDecrypt, GLWEEncryptSk, SIGMA, ScratchTakeCore,
     layouts::{
-        Base2K, Dnum, Dsize, GGSW, GGSWLayout, GGSWPreparedFactory, GLWESecretPrepared, GLWESecretPreparedFactory, LWEInfos,
-        Rank, TorusPrecision,
+        Base2K, Dnum, Dsize, GGSW, GGSWInfos, GGSWLayout, GGSWPreparedFactory, GLWEInfos, GLWESecretPrepared,
+        GLWESecretPreparedFactory, LWEInfos, Rank, TorusPrecision,
     },
 };
 use poulpy_hal::{
@@ -15,7 +15,7 @@ use rand::RngCore;
 use crate::tfhe::{
     bdd_arithmetic::{
         FheUintPrepared, GGSWBlindRotation,
-        tests::test_suite::{TEST_BASE2K, TEST_RANK, TestContext},
+        tests::test_suite::{TEST_FHEUINT_BASE2K, TEST_RANK, TestContext},
     },
     blind_rotation::BlindRotationAlgo,
 };
@@ -37,7 +37,7 @@ where
     let module: &Module<BE> = &test_context.module;
     let sk_glwe_prep: &GLWESecretPrepared<Vec<u8>, BE> = &test_context.sk_glwe;
 
-    let base2k: Base2K = TEST_BASE2K.into();
+    let base2k: Base2K = TEST_FHEUINT_BASE2K.into();
     let rank: Rank = TEST_RANK.into();
     let k_ggsw_res: TorusPrecision = TorusPrecision(39);
     let k_ggsw_apply: TorusPrecision = TorusPrecision(52);
@@ -75,8 +75,6 @@ where
         .for_each(|(i, x)| *x = i as i64);
 
     let k: u32 = source.next_u32();
-
-    // println!("k: {k}");
 
     let mut k_enc_prep: FheUintPrepared<Vec<u8>, u32, BE> =
         FheUintPrepared::<Vec<u8>, u32, BE>::alloc_from_infos(module, &ggsw_k_infos);
@@ -133,9 +131,23 @@ where
 
             module.vec_znx_rotate_inplace(-rot, &mut scalar_want.as_vec_znx_mut(), 0, scratch.borrow());
 
-            // res.print_noise(&module, &sk_glwe_prep, &scalar_want);
-
-            res.assert_noise(module, sk_glwe_prep, &scalar_want, &max_noise);
+            for row in 0..res.dnum().as_usize() {
+                for col in 0..res.rank().as_usize() + 1 {
+                    assert!(
+                        res.noise(
+                            module,
+                            row,
+                            col,
+                            &scalar_want,
+                            sk_glwe_prep,
+                            scratch.borrow()
+                        )
+                        .std()
+                        .log2()
+                            <= max_noise(col)
+                    )
+                }
+            }
 
             bit_step += digit;
             bit_start += digit;

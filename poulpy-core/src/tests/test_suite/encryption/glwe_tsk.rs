@@ -9,8 +9,8 @@ use crate::{
     decryption::GLWEDecrypt,
     encryption::SIGMA,
     layouts::{
-        Dsize, GGLWEDecompress, GLWESecret, GLWESecretPreparedFactory, GLWESecretTensor, GLWESecretTensorFactory, GLWETensorKey,
-        GLWETensorKeyCompressed, GLWETensorKeyLayout, prepared::GLWESecretPrepared,
+        Dsize, GGLWEDecompress, GGLWEInfos, GLWESecret, GLWESecretPreparedFactory, GLWESecretTensor, GLWESecretTensorFactory,
+        GLWETensorKey, GLWETensorKeyCompressed, GLWETensorKeyLayout, LWEInfos, prepared::GLWESecretPrepared,
     },
 };
 
@@ -67,7 +67,27 @@ where
         let mut sk_tensor: GLWESecretTensor<Vec<u8>> = GLWESecretTensor::alloc_from_infos(&sk);
         sk_tensor.prepare(module, &sk, scratch.borrow());
 
-        module.gglwe_assert_noise(&tensor_key, &sk_prepared, &sk_tensor.data, SIGMA + 0.5);
+        let max_noise: f64 = SIGMA.log2() - (tensor_key.k().as_usize() as f64) + 0.5;
+
+        for row in 0..tensor_key.dnum().as_usize() {
+            for col in 0..tensor_key.rank_in().as_usize() {
+                assert!(
+                    tensor_key
+                        .0
+                        .noise(
+                            module,
+                            row,
+                            col,
+                            &sk_tensor.data,
+                            &sk_prepared,
+                            scratch.borrow()
+                        )
+                        .std()
+                        .log2()
+                        <= max_noise
+                )
+            }
+        }
     }
 }
 
@@ -124,6 +144,26 @@ where
         let mut sk_tensor: GLWESecretTensor<Vec<u8>> = GLWESecretTensor::alloc_from_infos(&sk);
         sk_tensor.prepare(module, &sk, scratch.borrow());
 
-        module.gglwe_assert_noise(&tensor_key, &sk_prepared, &sk_tensor.data, SIGMA + 0.5);
+        let max_noise: f64 = SIGMA.log2() - (tensor_key.k().as_usize() as f64) + 0.5;
+
+        for row in 0..tensor_key.dnum().as_usize() {
+            for col in 0..tensor_key.rank_in().as_usize() {
+                assert!(
+                    tensor_key
+                        .0
+                        .noise(
+                            module,
+                            row,
+                            col,
+                            &sk_tensor.data,
+                            &sk_prepared,
+                            scratch.borrow()
+                        )
+                        .std()
+                        .log2()
+                        <= max_noise
+                )
+            }
+        }
     }
 }

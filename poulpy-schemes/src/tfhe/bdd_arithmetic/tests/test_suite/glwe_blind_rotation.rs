@@ -15,7 +15,7 @@ use rand::RngCore;
 use crate::tfhe::{
     bdd_arithmetic::{
         FheUintPrepared, GLWEBlindRotation,
-        tests::test_suite::{TEST_BASE2K, TEST_RANK, TestContext},
+        tests::test_suite::{TEST_FHEUINT_BASE2K, TEST_RANK, TestContext},
     },
     blind_rotation::BlindRotationAlgo,
 };
@@ -35,7 +35,7 @@ where
     let module: &Module<BE> = &test_context.module;
     let sk_glwe_prep: &GLWESecretPrepared<Vec<u8>, BE> = &test_context.sk_glwe;
 
-    let base2k: Base2K = TEST_BASE2K.into();
+    let base2k: Base2K = TEST_FHEUINT_BASE2K.into();
     let rank: Rank = TEST_RANK.into();
     let k_glwe: TorusPrecision = TorusPrecision(26);
     let k_ggsw: TorusPrecision = TorusPrecision(39);

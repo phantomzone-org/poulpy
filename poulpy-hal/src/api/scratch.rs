@@ -1,6 +1,6 @@
 use crate::{
     api::{ModuleN, SvpPPolBytesOf, VecZnxBigBytesOf, VecZnxDftBytesOf, VmpPMatBytesOf},
-    layouts::{Backend, MatZnx, ScalarZnx, Scratch, SvpPPol, VecZnx, VecZnxBig, VecZnxDft, VmpPMat, Zn},
+    layouts::{Backend, MatZnx, ScalarZnx, Scratch, SvpPPol, VecZnx, VecZnxBig, VecZnxDft, VmpPMat},
 };
 
 /// Allocates a new [crate::layouts::ScratchOwned] of `size` aligned bytes.
@@ -67,11 +67,6 @@ where
     {
         let (take_slice, rem_slice) = self.take_slice(module.bytes_of_svp_ppol(cols));
         (SvpPPol::from_data(take_slice, module.n(), cols), rem_slice)
-    }
-
-    fn take_zn(&mut self, n: usize, cols: usize, size: usize) -> (Zn<&mut [u8]>, &mut Self) {
-        let (take_slice, rem_slice) = self.take_slice(Zn::bytes_of(n, cols, size));
-        (Zn::from_data(take_slice, n, cols, size), rem_slice)
     }
 
     fn take_vec_znx(&mut self, n: usize, cols: usize, size: usize) -> (VecZnx<&mut [u8]>, &mut Self) {

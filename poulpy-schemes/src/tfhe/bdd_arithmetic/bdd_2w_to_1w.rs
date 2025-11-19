@@ -98,27 +98,6 @@ impl<'a, T: UnsignedInteger, BE: Backend> BitSize for FheUintHelper<'a, T, BE> {
     }
 }
 
-pub struct JoinedBits<A, B> {
-    pub lo: A,
-    pub hi: B,
-    pub split: usize, // 32 in your example
-}
-
-impl<A, B, BE> GetGGSWBit<BE> for JoinedBits<A, B>
-where
-    BE: Backend,
-    A: GetGGSWBit<BE>,
-    B: GetGGSWBit<BE>,
-{
-    fn get_bit(&self, bit: usize) -> GGSWPrepared<&[u8], BE> {
-        if bit < self.split {
-            self.lo.get_bit(bit)
-        } else {
-            self.hi.get_bit(bit - self.split)
-        }
-    }
-}
-
 #[macro_export]
 macro_rules! define_bdd_2w_to_1w_trait {
     ($(#[$meta:meta])* $vis:vis $trait_name:ident, $method_name:ident) => {

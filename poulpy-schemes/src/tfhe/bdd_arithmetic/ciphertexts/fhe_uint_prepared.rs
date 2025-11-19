@@ -333,7 +333,7 @@ where
         K: BDDKeyHelper<DK, BRA, BE> + BDDKeyInfos,
     {
         let bit_end = bit_start + bit_count;
-        let (cbt, ks) = key.get_cbt_key();
+        let (cbt, ks_glwe, ks_lwe) = key.get_cbt_key();
 
         assert!(bit_end <= T::BITS as usize);
 
@@ -363,7 +363,14 @@ where
                     let (mut tmp_ggsw, scratch_1) = scratch_thread.take_ggsw(ggsw_infos);
                     let (mut tmp_lwe, scratch_2) = scratch_1.take_lwe(bits);
                     for (local_bit, dst) in res_bits_chunk.iter_mut().enumerate() {
-                        bits.get_bit_lwe(self, start + local_bit, &mut tmp_lwe, ks, scratch_2);
+                        bits.get_bit_lwe(
+                            self,
+                            start + local_bit,
+                            &mut tmp_lwe,
+                            ks_glwe,
+                            ks_lwe,
+                            scratch_2,
+                        );
                         cbt.execute_to_constant(self, &mut tmp_ggsw, &tmp_lwe, 1, 1, scratch_2);
                         dst.prepare(self, &tmp_ggsw, scratch_2);
                     }

@@ -263,9 +263,8 @@ where
 
         let rank_in: usize = res.rank_in().into();
         let dnum: usize = res.dnum().into();
-
-        for row_i in 0..dnum {
-            for col_i in 0..rank_in {
+        for col_i in 0..rank_in {
+            for row_i in 0..dnum {
                 self.decompress_glwe(&mut res.at_mut(row_i, col_i), &other.at(row_i, col_i));
             }
         }

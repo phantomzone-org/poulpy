@@ -2,14 +2,14 @@ use std::collections::HashMap;
 
 use poulpy_hal::{
     api::{ModuleLogN, ModuleN, ScratchAvailable, ScratchOwnedAlloc, ScratchOwnedBorrow},
-    layouts::{Backend, DataRef, Module, Scratch, ScratchOwned, ToOwnedDeep},
+    layouts::{Backend, DataRef, Module, Scratch, ScratchOwned},
 };
 
 use poulpy_core::{
-    GGSWFromGGLWE, GLWEDecrypt, GLWEPacking, GLWERotate, GLWETrace, ScratchTakeCore,
+    GGSWExpandRows, GGSWFromGGLWE, GLWECopy, GLWEDecrypt, GLWENormalize, GLWEPacking, GLWERotate, GLWETrace, ScratchTakeCore,
     layouts::{
         Dsize, GGLWE, GGLWEInfos, GGLWELayout, GGLWEPreparedToRef, GGSWInfos, GGSWToMut, GLWEAutomorphismKeyHelper, GLWEInfos,
-        GLWESecretPreparedFactory, GLWEToMut, GLWEToRef, GetGaloisElement, LWEInfos, LWEToRef, Rank,
+        GLWELayout, GLWESecretPreparedFactory, GLWEToMut, GLWEToRef, GetGaloisElement, LWEInfos, LWEToRef, Rank,
     },
 };
 
@@ -114,10 +114,12 @@ where
         + BlindRotationExecute<BRA, BE>
         + GLWETrace<BE>
         + GLWEPacking<BE>
-        + GGSWFromGGLWE<BE>
         + GLWESecretPreparedFactory<BE>
         + GLWEDecrypt<BE>
-        + GLWERotate<BE>,
+        + GLWERotate<BE>
+        + GLWENormalize<BE>
+        + GLWECopy
+        + GGSWExpandRows<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
@@ -240,7 +242,10 @@ pub fn circuit_bootstrap_core<R, L, D, M, BRA: BlindRotationAlgo, BE: Backend>(
         + GLWESecretPreparedFactory<BE>
         + GLWEDecrypt<BE>
         + GLWERotate<BE>
-        + ModuleLogN,
+        + ModuleLogN
+        + GLWENormalize<BE>
+        + GLWECopy
+        + GGSWExpandRows<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
@@ -248,27 +253,22 @@ pub fn circuit_bootstrap_core<R, L, D, M, BRA: BlindRotationAlgo, BE: Backend>(
     let lwe: &LWE<&[u8]> = &lwe.to_ref();
 
     assert_eq!(res.n(), key.brk.n());
-    assert_eq!(lwe.base2k(), key.brk.base2k());
-    assert_eq!(res.base2k(), key.brk.base2k());
 
-    let n: usize = res.n().into();
-    let base2k: usize = res.base2k().into();
-    let dnum: usize = res.dnum().into();
-    let rank: usize = res.rank().into();
-    let k: usize = res.k().into();
+    let base2k_res: usize = res.base2k().as_usize();
+    let dnum_res: usize = res.dnum().into();
 
-    let alpha: usize = dnum.next_power_of_two();
+    let alpha: usize = dnum_res.next_power_of_two();
 
     let mut f: Vec<i64> = vec![0i64; (1 << log_domain) * alpha];
 
     if to_exponent {
-        (0..dnum).for_each(|i| {
-            f[i] = 1 << (base2k * (dnum - 1 - i));
+        (0..dnum_res).for_each(|i| {
+            f[i] = 1 << (base2k_res * (dnum_res - 1 - i));
         });
     } else {
         (0..1 << log_domain).for_each(|j| {
-            (0..dnum).for_each(|i| {
-                f[j * alpha + i] = j as i64 * (1 << (base2k * (dnum - 1 - i)));
+            (0..dnum_res).for_each(|i| {
+                f[j * alpha + i] = j as i64 * (1 << (base2k_res * (dnum_res - 1 - i)));
             });
         });
     }
@@ -276,71 +276,79 @@ pub fn circuit_bootstrap_core<R, L, D, M, BRA: BlindRotationAlgo, BE: Backend>(
     let lut_infos: LookUpTableLayout = LookUpTableLayout {
         n: module.n().into(),
         extension_factor,
-        k: (base2k * dnum).into(),
-        base2k: base2k.into(),
+        k: (base2k_res * dnum_res).into(),
+        base2k: key.brk.base2k(),
     };
 
     // Lut precision, basically must be able to hold the decomposition power basis of the GGSW
     let mut lut: LookupTable = LookupTable::alloc(&lut_infos);
-    lut.set(module, &f, base2k * dnum);
+    lut.set(module, &f, base2k_res * dnum_res);
 
     if to_exponent {
         lut.set_rotation_direction(LookUpTableRotationDirection::Right);
     }
 
-    // TODO: separate GGSW k from output of blind rotation k
-    let (mut res_glwe, scratch_1) = scratch.take_glwe(res);
-
-    let gglwe_infos: GGLWELayout = GGLWELayout {
-        n: n.into(),
-        base2k: base2k.into(),
-        k: k.into(),
-        dnum: dnum.into(),
-        dsize: Dsize(1),
-        rank_in: rank.max(1).into(),
-        rank_out: rank.into(),
+    let glwe_brk_layout = &GLWELayout {
+        n: key.brk.n(),
+        base2k: key.brk.base2k(),
+        k: key.brk.k(),
+        rank: key.brk.rank(),
     };
 
-    let (mut tmp_gglwe, scratch_2) = scratch_1.take_gglwe(&gglwe_infos);
+    let atk_layout: &GGLWELayout = &key.atk.automorphism_key_infos();
 
-    key.brk.execute(module, &mut res_glwe, lwe, &lut, scratch_2);
+    let glwe_atk_layout: &GLWELayout = &GLWELayout {
+        n: glwe_brk_layout.n(),
+        base2k: atk_layout.base2k(),
+        k: glwe_brk_layout.k(),
+        rank: glwe_brk_layout.rank(),
+    };
+
+    let (mut res_glwe_atk_layout, scratch_1) = scratch.take_glwe(glwe_atk_layout);
+
+    // Execute blind rotation over BRK layout and returns result over ATK layout
+    {
+        let (mut res_glwe_brk_layout, scratch_2) = scratch_1.take_glwe(glwe_brk_layout);
+        key.brk
+            .execute(module, &mut res_glwe_brk_layout, lwe, &lut, scratch_2);
+
+        if res_glwe_brk_layout.base2k() == res_glwe_atk_layout.base2k() {
+            module.glwe_copy(&mut res_glwe_atk_layout, &res_glwe_brk_layout);
+        } else {
+            module.glwe_normalize(&mut res_glwe_atk_layout, &res_glwe_brk_layout, scratch_2);
+        }
+    }
 
     let gap: usize = 2 * lut.drift / lut.extension_factor();
 
     let log_gap_in: usize = (usize::BITS - (gap * alpha - 1).leading_zeros()) as _;
 
-    (0..dnum).for_each(|i| {
-        let mut tmp_glwe: GLWE<&mut [u8]> = tmp_gglwe.at_mut(i, 0);
+    for i in 0..dnum_res {
+        let mut res_row: GLWE<&mut [u8]> = res.at_mut(i, 0);
 
         if to_exponent {
             // Isolates i-th LUT and moves coefficients according to requested gap.
             post_process(
                 module,
-                &mut tmp_glwe,
-                &res_glwe,
+                &mut res_row,
+                &res_glwe_atk_layout,
                 log_gap_in,
                 log_gap_out,
                 log_domain,
                 &key.atk,
-                scratch_2,
+                scratch_1,
             );
         } else {
-            tmp_glwe.trace(module, 0, &res_glwe, &key.atk, scratch_2);
+            module.glwe_trace(&mut res_row, 0, &res_glwe_atk_layout, &key.atk, scratch_1);
         }
 
-        // let sk_glwe: &poulpy_core::layouts::GLWESecret<&[u8]> = &sk_glwe.to_ref();
-        // let sk_glwe_prepared: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc(module, sk_glwe.rank());
-        // let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&res_glwe);
-        // res_glwe.decrypt(module, &mut pt, &sk_glwe_prepared, scratch_2);
-        // println!("pt[{i}]: {}", pt);
-
-        if i < dnum {
-            module.glwe_rotate_inplace(-(gap as i64), &mut res_glwe, scratch_2);
+        if i < dnum_res {
+            module.glwe_rotate_inplace(-(gap as i64), &mut res_glwe_atk_layout, scratch_1);
         }
-    });
+    }
 
     // Expands GGLWE to GGSW using GGLWE(s^2)
-    res.from_gglwe(module, &tmp_gglwe, &key.tsk, scratch_2);
+    module.ggsw_expand_row(res, &key.tsk, scratch);
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -354,47 +362,48 @@ fn post_process<R, A, M, H, K, BE: Backend>(
     auto_keys: &H,
     scratch: &mut Scratch<BE>,
 ) where
-    R: GLWEToMut,
-    A: GLWEToRef,
+    R: GLWEToMut + GLWEInfos,
+    A: GLWEToRef + GLWEInfos,
     H: GLWEAutomorphismKeyHelper<K, BE>,
     K: GGLWEPreparedToRef<BE> + GetGaloisElement + GGLWEInfos,
-    M: ModuleLogN + GLWETrace<BE> + GLWEPacking<BE> + GLWERotate<BE>,
+    M: ModuleLogN + GLWETrace<BE> + GLWEPacking<BE> + GLWERotate<BE> + GLWECopy,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
-    let res: &mut GLWE<&mut [u8]> = &mut res.to_mut();
-    let a: &GLWE<&[u8]> = &a.to_ref();
-
-    let mut cts: HashMap<usize, &mut GLWE<Vec<u8>>> = HashMap::new();
-
-    // First partial trace, vanishes all coefficients which are not multiples of gap_in
-    // [1, 1, 1, 1, 0, 0, 0, ..., 0, 0, -1, -1, -1, -1] -> [1, 0, 0, 0, 0, 0, 0, ..., 0, 0, 0, 0, 0, 0]
-    res.trace(
-        module,
-        module.log_n() - log_gap_in + 1,
-        a,
-        auto_keys,
-        scratch,
-    );
-
     // TODO: optimize with packing and final partial trace
     // If gap_out < gap_in, then we need to repack, i.e. reduce the cap between coefficients.
     if log_gap_in != log_gap_out {
+        let (mut a_trace, scratch_1) = scratch.take_glwe(a);
+
+        // First partial trace, vanishes all coefficients which are not multiples of gap_in
+        // [1, 1, 1, 1, 0, 0, 0, ..., 0, 0, -1, -1, -1, -1] -> [1, 0, 0, 0, 0, 0, 0, ..., 0, 0, 0, 0, 0, 0]
+        module.glwe_trace(
+            &mut a_trace,
+            module.log_n() - log_gap_in + 1,
+            a,
+            auto_keys,
+            scratch_1,
+        );
+
         let steps: usize = 1 << log_domain;
 
         // TODO: from Scratch
-        let mut cts_vec: Vec<GLWE<Vec<u8>>> = Vec::new();
+        let (mut cts_vec, scratch_2) = scratch_1.take_glwe_slice(steps, a);
 
-        for i in 0..steps {
+        for (i, ct) in cts_vec.iter_mut().enumerate().take(steps) {
             if i != 0 {
-                module.glwe_rotate_inplace(-(1 << log_gap_in), res, scratch);
+                module.glwe_rotate_inplace(-(1 << log_gap_in), &mut a_trace, scratch_2);
             }
-            cts_vec.push(res.to_owned_deep());
+
+            module.glwe_copy(ct, &a_trace);
         }
 
+        let mut cts: HashMap<usize, &mut GLWE<&mut [u8]>> = HashMap::new();
         for (i, ct) in cts_vec.iter_mut().enumerate().take(steps) {
             cts.insert(i * (1 << log_gap_out), ct);
         }
 
-        module.glwe_pack(res, cts, log_gap_out, auto_keys, scratch);
+        module.glwe_pack(res, cts, log_gap_out, auto_keys, scratch_2);
+    } else {
+        module.glwe_trace(res, module.log_n() - log_gap_in + 1, a, auto_keys, scratch);
     }
 }

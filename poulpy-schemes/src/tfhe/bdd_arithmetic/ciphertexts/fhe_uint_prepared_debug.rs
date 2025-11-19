@@ -13,8 +13,8 @@ use poulpy_core::{
     layouts::{GGSWInfos, GGSWPreparedFactory, GLWEInfos, LWEInfos},
 };
 
-use poulpy_hal::api::ModuleN;
-use poulpy_hal::layouts::{Backend, Data, DataMut, DataRef, Module, Scratch};
+use poulpy_hal::api::{ModuleN, ScratchTakeBasic};
+use poulpy_hal::layouts::{Backend, Data, DataMut, DataRef, Module, Scratch, Stats, ZnxZero};
 
 pub struct FheUintPreparedDebug<D: Data, T: UnsignedInteger> {
     pub(crate) bits: Vec<GGSW<D>>,
@@ -81,31 +81,29 @@ impl<D: DataRef, T: UnsignedInteger> GGSWInfos for FheUintPreparedDebug<D, T> {
 }
 
 impl<D: DataRef, T: UnsignedInteger + ToBits> FheUintPreparedDebug<D, T> {
-    pub fn print_noise<S, M, BE: Backend>(&self, module: &M, sk: &S, want: T)
+    pub fn noise<S, M, BE: Backend>(
+        &self,
+        module: &M,
+        row: usize,
+        col: usize,
+        want: T,
+        sk: &S,
+        scratch: &mut Scratch<BE>,
+    ) -> Vec<Stats>
     where
         S: GLWESecretPreparedToRef<BE>,
         M: GGSWNoise<BE>,
+        Scratch<BE>: ScratchTakeCore<BE>,
     {
+        let mut stats = Vec::new();
         for (i, ggsw) in self.bits.iter().enumerate() {
-            use poulpy_hal::layouts::{ScalarZnx, ZnxViewMut};
-            let mut pt_want = ScalarZnx::alloc(self.n().into(), 1);
+            use poulpy_hal::layouts::ZnxViewMut;
+            let (mut pt_want, scratch_1) = scratch.take_scalar_znx(self.n().into(), 1);
+            pt_want.zero();
             pt_want.at_mut(0, 0)[0] = want.bit(i) as i64;
-            ggsw.print_noise(module, sk, &pt_want);
+            stats.push(ggsw.noise(module, row, col, &pt_want, sk, scratch_1));
         }
-    }
-
-    pub fn assert_noise<S, M, F, BE: Backend>(&self, module: &M, sk: &S, want: T, max_noise: &F)
-    where
-        S: GLWESecretPreparedToRef<BE>,
-        M: GGSWNoise<BE>,
-        F: Fn(usize) -> f64,
-    {
-        for (i, ggsw) in self.bits.iter().enumerate() {
-            use poulpy_hal::layouts::{ScalarZnx, ZnxViewMut};
-            let mut pt_want = ScalarZnx::alloc(self.n().into(), 1);
-            pt_want.at_mut(0, 0)[0] = want.bit(i) as i64;
-            ggsw.assert_noise(module, sk, &pt_want, max_noise);
-        }
+        stats
     }
 }
 
@@ -128,7 +126,14 @@ where
         let (_, scratch_1) = scratch.take_ggsw(res);
         let (mut tmp_lwe, scratch_2) = scratch_1.take_lwe(bits);
         for (bit, dst) in res.bits.iter_mut().enumerate() {
-            bits.get_bit_lwe(self, bit, &mut tmp_lwe, &key.ks, scratch_2);
+            bits.get_bit_lwe(
+                self,
+                bit,
+                &mut tmp_lwe,
+                key.ks_glwe.as_ref(),
+                &key.ks_lwe,
+                scratch_2,
+            );
             key.cbt
                 .execute_to_constant(self, dst, &tmp_lwe, 1, 1, scratch_2);
         }

@@ -5,14 +5,14 @@ use poulpy_hal::{
 };
 
 use crate::{
-    GLWEAutomorphismKeyAutomorphism, GLWEAutomorphismKeyEncryptSk, GLWEDecrypt, ScratchTakeCore,
+    GGLWENoise, GLWEAutomorphismKeyAutomorphism, GLWEAutomorphismKeyEncryptSk, ScratchTakeCore,
     encryption::SIGMA,
     layouts::{
-        GGLWEInfos, GLWEAutomorphismKey, GLWEAutomorphismKeyLayout, GLWEAutomorphismKeyPreparedFactory, GLWEPlaintext,
-        GLWESecret, GLWESecretPreparedFactory,
+        GGLWEInfos, GLWEAutomorphismKey, GLWEAutomorphismKeyLayout, GLWEAutomorphismKeyPreparedFactory, GLWEInfos, GLWESecret,
+        GLWESecretPreparedFactory,
         prepared::{GLWEAutomorphismKeyPrepared, GLWESecretPrepared},
     },
-    noise::log2_std_noise_gglwe_product,
+    var_noise_gglwe_product_v2,
 };
 
 #[allow(clippy::too_many_arguments)]
@@ -25,30 +25,31 @@ where
         + GaloisElement
         + VecZnxSubScalarInplace
         + GLWESecretPreparedFactory<BE>
-        + GLWEDecrypt<BE>,
+        + GGLWENoise<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
-    let base2k: usize = 12;
-    let k_in: usize = 60;
-    let k_out: usize = 40;
-    let dsize: usize = k_in.div_ceil(base2k);
+    let base2k_in: usize = 17;
+    let base2k_key: usize = 13;
+    let base2k_out: usize = base2k_in; // MUST BE SAME
+    let k_in: usize = 102;
+    let max_dsize: usize = k_in.div_ceil(base2k_key);
     let p0: i64 = -1;
     let p1: i64 = -5;
     for rank in 1_usize..3 {
-        for di in 1..dsize + 1 {
-            let k_apply: usize = (dsize + di) * base2k;
+        for dsize in 1..max_dsize + 1 {
+            let k_ksk: usize = k_in + base2k_key * dsize;
+            let k_out: usize = k_ksk; // Better capture noise.
 
             let n: usize = module.n();
             let dsize_in: usize = 1;
 
-            let dnum_in: usize = k_in / (base2k * di);
-            let dnum_out: usize = k_out / (base2k * di);
-            let dnum_apply: usize = k_in.div_ceil(base2k * di);
+            let dnum_in: usize = k_in / base2k_in;
+            let dnum_ksk: usize = k_in.div_ceil(base2k_key * dsize);
 
             let auto_key_in_infos: GLWEAutomorphismKeyLayout = GLWEAutomorphismKeyLayout {
                 n: n.into(),
-                base2k: base2k.into(),
+                base2k: base2k_in.into(),
                 k: k_in.into(),
                 dnum: dnum_in.into(),
                 dsize: dsize_in.into(),
@@ -57,19 +58,19 @@ where
 
             let auto_key_out_infos: GLWEAutomorphismKeyLayout = GLWEAutomorphismKeyLayout {
                 n: n.into(),
-                base2k: base2k.into(),
+                base2k: base2k_out.into(),
                 k: k_out.into(),
-                dnum: dnum_out.into(),
+                dnum: dnum_in.into(),
                 dsize: dsize_in.into(),
                 rank: rank.into(),
             };
 
             let auto_key_apply_infos: GLWEAutomorphismKeyLayout = GLWEAutomorphismKeyLayout {
                 n: n.into(),
-                base2k: base2k.into(),
-                k: k_apply.into(),
-                dnum: dnum_apply.into(),
-                dsize: di.into(),
+                base2k: base2k_key.into(),
+                k: k_ksk.into(),
+                dnum: dnum_ksk.into(),
+                dsize: dsize.into(),
                 rank: rank.into(),
             };
 
@@ -83,13 +84,16 @@ where
 
             let mut scratch: ScratchOwned<BE> = ScratchOwned::alloc(
                 GLWEAutomorphismKey::encrypt_sk_tmp_bytes(module, &auto_key_in_infos)
-                    | GLWEAutomorphismKey::encrypt_sk_tmp_bytes(module, &auto_key_apply_infos)
-                    | GLWEAutomorphismKey::automorphism_tmp_bytes(
+                    .max(GLWEAutomorphismKey::encrypt_sk_tmp_bytes(
+                        module,
+                        &auto_key_apply_infos,
+                    ))
+                    .max(GLWEAutomorphismKey::automorphism_tmp_bytes(
                         module,
                         &auto_key_out_infos,
                         &auto_key_in_infos,
                         &auto_key_apply_infos,
-                    ),
+                    )),
             );
 
             let mut sk: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&auto_key_in);
@@ -128,8 +132,6 @@ where
                 scratch.borrow(),
             );
 
-            let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&auto_key_out_infos);
-
             let mut sk_auto: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&auto_key_out_infos);
             sk_auto.fill_zero(); // Necessary to avoid panic of unfilled sk
             for i in 0..rank {
@@ -145,41 +147,37 @@ where
             let mut sk_auto_dft: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc_from_infos(module, &sk_auto);
             sk_auto_dft.prepare(module, &sk_auto);
 
-            (0..auto_key_out.rank_in().into()).for_each(|col_i| {
-                (0..auto_key_out.dnum().into()).for_each(|row_i| {
-                    auto_key_out
-                        .at(row_i, col_i)
-                        .decrypt(module, &mut pt, &sk_auto_dft, scratch.borrow());
+            let max_noise: f64 = var_noise_gglwe_product_v2(
+                module.n() as f64,
+                k_ksk,
+                dnum_ksk,
+                dsize,
+                base2k_key,
+                0.5,
+                0.5,
+                0f64,
+                SIGMA * SIGMA,
+                0f64,
+                rank as f64,
+            )
+            .sqrt()
+            .log2();
 
-                    module.vec_znx_sub_scalar_inplace(
-                        &mut pt.data,
-                        0,
-                        (dsize_in - 1) + row_i * dsize_in,
-                        &sk.data,
-                        col_i,
-                    );
-
-                    let noise_have: f64 = pt.data.stats(base2k, 0).std().log2();
-                    let noise_want: f64 = log2_std_noise_gglwe_product(
-                        n as f64,
-                        base2k * di,
-                        0.5,
-                        0.5,
-                        0f64,
-                        SIGMA * SIGMA,
-                        0f64,
-                        rank as f64,
-                        k_out,
-                        k_apply,
-                    );
+            for row in 0..auto_key_out.dnum().as_usize() {
+                for col in 0..auto_key_out.rank().as_usize() {
+                    let noise_have = auto_key_out
+                        .key
+                        .noise(module, row, col, &sk.data, &sk_auto_dft, scratch.borrow())
+                        .std()
+                        .log2();
 
                     assert!(
-                        noise_have < noise_want + 0.5,
-                        "{noise_have} {}",
-                        noise_want + 0.5
+                        noise_have < max_noise + 0.5,
+                        "{noise_have} > {}",
+                        max_noise + 0.5
                     );
-                });
-            });
+                }
+            }
         }
     }
 }
@@ -194,29 +192,31 @@ where
         + GaloisElement
         + VecZnxSubScalarInplace
         + GLWESecretPreparedFactory<BE>
-        + GLWEDecrypt<BE>,
+        + GGLWENoise<BE>,
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
-    let base2k: usize = 12;
-    let k_in: usize = 60;
-    let dsize: usize = k_in.div_ceil(base2k);
+    let base2k_out: usize = 17;
+    let base2k_key: usize = 13;
+    let k_out: usize = 102;
+    let max_dsize: usize = k_out.div_ceil(base2k_key);
+
     let p0: i64 = -1;
     let p1: i64 = -5;
     for rank in 1_usize..3 {
-        for di in 1..dsize + 1 {
-            let k_apply: usize = (dsize + di) * base2k;
+        for dsize in 1..max_dsize + 1 {
+            let k_ksk: usize = k_out + base2k_key * dsize;
 
             let n: usize = module.n();
             let dsize_in: usize = 1;
 
-            let dnum_in: usize = k_in / (base2k * di);
-            let dnum_apply: usize = k_in.div_ceil(base2k * di);
+            let dnum_in: usize = k_out / base2k_out;
+            let dnum_ksk: usize = k_out.div_ceil(base2k_key * dsize);
 
             let auto_key_layout: GLWEAutomorphismKeyLayout = GLWEAutomorphismKeyLayout {
                 n: n.into(),
-                base2k: base2k.into(),
-                k: k_in.into(),
+                base2k: base2k_out.into(),
+                k: k_out.into(),
                 dnum: dnum_in.into(),
                 dsize: dsize_in.into(),
                 rank: rank.into(),
@@ -224,10 +224,10 @@ where
 
             let auto_key_apply_layout: GLWEAutomorphismKeyLayout = GLWEAutomorphismKeyLayout {
                 n: n.into(),
-                base2k: base2k.into(),
-                k: k_apply.into(),
-                dnum: dnum_apply.into(),
-                dsize: di.into(),
+                base2k: base2k_key.into(),
+                k: k_ksk.into(),
+                dnum: dnum_ksk.into(),
+                dsize: dsize.into(),
                 rank: rank.into(),
             };
 
@@ -275,8 +275,6 @@ where
             // gglwe_{s1}(s0) (x) gglwe_{s2}(s1) = gglwe_{s2}(s0)
             auto_key.automorphism_inplace(module, &auto_key_apply_prepared, scratch.borrow());
 
-            let mut pt: GLWEPlaintext<Vec<u8>> = GLWEPlaintext::alloc_from_infos(&auto_key);
-
             let mut sk_auto: GLWESecret<Vec<u8>> = GLWESecret::alloc_from_infos(&auto_key);
             sk_auto.fill_zero(); // Necessary to avoid panic of unfilled sk
 
@@ -293,40 +291,37 @@ where
             let mut sk_auto_dft: GLWESecretPrepared<Vec<u8>, BE> = GLWESecretPrepared::alloc_from_infos(module, &sk_auto);
             sk_auto_dft.prepare(module, &sk_auto);
 
-            (0..auto_key.rank_in().into()).for_each(|col_i| {
-                (0..auto_key.dnum().into()).for_each(|row_i| {
-                    auto_key
-                        .at(row_i, col_i)
-                        .decrypt(module, &mut pt, &sk_auto_dft, scratch.borrow());
-                    module.vec_znx_sub_scalar_inplace(
-                        &mut pt.data,
-                        0,
-                        (dsize_in - 1) + row_i * dsize_in,
-                        &sk.data,
-                        col_i,
-                    );
+            let max_noise: f64 = var_noise_gglwe_product_v2(
+                module.n() as f64,
+                k_ksk,
+                dnum_ksk,
+                dsize,
+                base2k_key,
+                0.5,
+                0.5,
+                0f64,
+                SIGMA * SIGMA,
+                0f64,
+                rank as f64,
+            )
+            .sqrt()
+            .log2();
 
-                    let noise_have: f64 = pt.data.stats(base2k, 0).std().log2();
-                    let noise_want: f64 = log2_std_noise_gglwe_product(
-                        n as f64,
-                        base2k * di,
-                        0.5,
-                        0.5,
-                        0f64,
-                        SIGMA * SIGMA,
-                        0f64,
-                        rank as f64,
-                        k_in,
-                        k_apply,
-                    );
+            for row in 0..auto_key.dnum().as_usize() {
+                for col in 0..auto_key.rank().as_usize() {
+                    let noise_have = auto_key
+                        .key
+                        .noise(module, row, col, &sk.data, &sk_auto_dft, scratch.borrow())
+                        .std()
+                        .log2();
 
                     assert!(
-                        noise_have < noise_want + 0.5,
+                        noise_have < max_noise + 0.5,
                         "{noise_have} {}",
-                        noise_want + 0.5
+                        max_noise + 0.5
                     );
-                });
-            });
+                }
+            }
         }
     }
 }

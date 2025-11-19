@@ -8,8 +8,8 @@ use crate::{
     GGLWEToGGSWKeyEncryptSk, GGSWEncryptSk, GGSWKeyswitch, GGSWNoise, GLWESwitchingKeyEncryptSk, ScratchTakeCore,
     encryption::SIGMA,
     layouts::{
-        GGLWEToGGSWKey, GGLWEToGGSWKeyPrepared, GGLWEToGGSWKeyPreparedFactory, GGSW, GGSWLayout, GLWESecret,
-        GLWESecretPreparedFactory, GLWESwitchingKey, GLWESwitchingKeyLayout, GLWESwitchingKeyPreparedFactory,
+        GGLWEToGGSWKey, GGLWEToGGSWKeyPrepared, GGLWEToGGSWKeyPreparedFactory, GGSW, GGSWInfos, GGSWLayout, GLWEInfos,
+        GLWESecret, GLWESecretPreparedFactory, GLWESwitchingKey, GLWESwitchingKeyLayout, GLWESwitchingKeyPreparedFactory,
         GLWETensorKeyLayout,
         prepared::{GLWESecretPrepared, GLWESwitchingKeyPrepared},
     },
@@ -30,53 +30,57 @@ where
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
-    let base2k: usize = 12;
-    let k_in: usize = 54;
-    let dsize: usize = k_in.div_ceil(base2k);
+    let base2k_in: usize = 17;
+    let base2k_key: usize = 13;
+    let base2k_out: usize = base2k_in; // MUST BE SAME
+    let k_in: usize = 102;
+    let max_dsize: usize = k_in.div_ceil(base2k_key);
+
     for rank in 1_usize..3 {
-        for di in 1..dsize + 1 {
-            let k_ksk: usize = k_in + base2k * di;
+        for dsize in 1..max_dsize + 1 {
+            let k_ksk: usize = k_in + base2k_key * dsize;
             let k_tsk: usize = k_ksk;
             let k_out: usize = k_ksk; // Better capture noise.
 
             let n: usize = module.n();
-            let dnum: usize = k_in.div_ceil(di * base2k);
+            let dnum_in: usize = k_in / base2k_in;
+            let dnum_ksk: usize = k_in.div_ceil(base2k_key * dsize);
 
             let dsize_in: usize = 1;
 
             let ggsw_in_infos: GGSWLayout = GGSWLayout {
                 n: n.into(),
-                base2k: base2k.into(),
+                base2k: base2k_in.into(),
                 k: k_in.into(),
-                dnum: dnum.into(),
+                dnum: dnum_in.into(),
                 dsize: dsize_in.into(),
                 rank: rank.into(),
             };
 
             let ggsw_out_infos: GGSWLayout = GGSWLayout {
                 n: n.into(),
-                base2k: base2k.into(),
+                base2k: base2k_out.into(),
                 k: k_out.into(),
-                dnum: dnum.into(),
+                dnum: dnum_in.into(),
                 dsize: dsize_in.into(),
                 rank: rank.into(),
             };
 
             let tsk_infos: GLWETensorKeyLayout = GLWETensorKeyLayout {
                 n: n.into(),
-                base2k: base2k.into(),
+                base2k: base2k_key.into(),
                 k: k_tsk.into(),
-                dnum: dnum.into(),
-                dsize: di.into(),
+                dnum: dnum_ksk.into(),
+                dsize: dsize.into(),
                 rank: rank.into(),
             };
 
             let ksk_apply_infos: GLWESwitchingKeyLayout = GLWESwitchingKeyLayout {
                 n: n.into(),
-                base2k: base2k.into(),
+                base2k: base2k_key.into(),
                 k: k_ksk.into(),
-                dnum: dnum.into(),
-                dsize: di.into(),
+                dnum: dnum_ksk.into(),
+                dsize: dsize.into(),
                 rank_in: rank.into(),
                 rank_out: rank.into(),
             };
@@ -163,7 +167,7 @@ where
             let max_noise = |col_j: usize| -> f64 {
                 noise_ggsw_keyswitch(
                     n as f64,
-                    base2k * di,
+                    base2k_key * dsize,
                     col_j,
                     var_xs,
                     0f64,
@@ -176,7 +180,24 @@ where
                 ) + 0.5
             };
 
-            ggsw_out.assert_noise(module, &sk_out_prepared, &pt_scalar, &max_noise);
+            for row in 0..ggsw_out.dnum().as_usize() {
+                for col in 0..ggsw_out.rank().as_usize() + 1 {
+                    assert!(
+                        ggsw_out
+                            .noise(
+                                module,
+                                row,
+                                col,
+                                &pt_scalar,
+                                &sk_out_prepared,
+                                scratch.borrow()
+                            )
+                            .std()
+                            .log2()
+                            <= max_noise(col)
+                    )
+                }
+            }
         }
     }
 }
@@ -195,43 +216,45 @@ where
     ScratchOwned<BE>: ScratchOwnedAlloc<BE> + ScratchOwnedBorrow<BE>,
     Scratch<BE>: ScratchAvailable + ScratchTakeCore<BE>,
 {
-    let base2k: usize = 12;
-    let k_out: usize = 54;
-    let dsize: usize = k_out.div_ceil(base2k);
+    let base2k_out: usize = 17;
+    let base2k_key: usize = 13;
+    let k_out: usize = 102;
+    let max_dsize: usize = k_out.div_ceil(base2k_key);
+
     for rank in 1_usize..3 {
-        for di in 1..dsize + 1 {
-            let k_ksk: usize = k_out + base2k * di;
+        for dsize in 1..max_dsize + 1 {
+            let k_ksk: usize = k_out + base2k_key * dsize;
             let k_tsk: usize = k_ksk;
 
             let n: usize = module.n();
-            let dnum: usize = k_out.div_ceil(di * base2k);
-
+            let dnum_in: usize = k_out / base2k_out;
+            let dnum_ksk: usize = k_out.div_ceil(base2k_key * dsize);
             let dsize_in: usize = 1;
 
             let ggsw_out_infos: GGSWLayout = GGSWLayout {
                 n: n.into(),
-                base2k: base2k.into(),
+                base2k: base2k_out.into(),
                 k: k_out.into(),
-                dnum: dnum.into(),
+                dnum: dnum_in.into(),
                 dsize: dsize_in.into(),
                 rank: rank.into(),
             };
 
             let tsk_infos: GLWETensorKeyLayout = GLWETensorKeyLayout {
                 n: n.into(),
-                base2k: base2k.into(),
+                base2k: base2k_key.into(),
                 k: k_tsk.into(),
-                dnum: dnum.into(),
-                dsize: di.into(),
+                dnum: dnum_ksk.into(),
+                dsize: dsize.into(),
                 rank: rank.into(),
             };
 
             let ksk_apply_infos: GLWESwitchingKeyLayout = GLWESwitchingKeyLayout {
                 n: n.into(),
-                base2k: base2k.into(),
+                base2k: base2k_key.into(),
                 k: k_ksk.into(),
-                dnum: dnum.into(),
-                dsize: di.into(),
+                dnum: dnum_ksk.into(),
+                dsize: dsize.into(),
                 rank_in: rank.into(),
                 rank_out: rank.into(),
             };
@@ -311,7 +334,7 @@ where
             let max_noise = |col_j: usize| -> f64 {
                 noise_ggsw_keyswitch(
                     n as f64,
-                    base2k * di,
+                    base2k_key * dsize,
                     col_j,
                     var_xs,
                     0f64,
@@ -324,7 +347,24 @@ where
                 ) + 0.5
             };
 
-            ggsw_out.assert_noise(module, &sk_out_prepared, &pt_scalar, &max_noise);
+            for row in 0..ggsw_out.dnum().as_usize() {
+                for col in 0..ggsw_out.rank().as_usize() + 1 {
+                    assert!(
+                        ggsw_out
+                            .noise(
+                                module,
+                                row,
+                                col,
+                                &pt_scalar,
+                                &sk_out_prepared,
+                                scratch.borrow()
+                            )
+                            .std()
+                            .log2()
+                            <= max_noise(col)
+                    )
+                }
+            }
         }
     }
 }

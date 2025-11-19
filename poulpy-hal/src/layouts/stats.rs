@@ -32,7 +32,7 @@ impl<D: DataRef> VecZnx<D> {
 
         data.iter().for_each(|x| {
             avg.add_assign_round(x, Round::Nearest);
-            max.max_mut(&Float::with_val(53, x.abs_ref()));
+            max.max_mut(&Float::with_val(prec, x.abs_ref()));
         });
         avg.div_assign_round(Float::with_val(prec, data.len()), Round::Nearest);
         data.iter_mut().for_each(|x| {

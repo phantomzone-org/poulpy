@@ -37,16 +37,20 @@ impl<D: DataRef> GLWEPlaintext<D> {
 impl<D: DataMut> LWEPlaintext<D> {
     pub fn encode_i64(&mut self, data: i64, k: TorusPrecision) {
         let base2k: usize = self.base2k().into();
-        self.data.encode_i64(base2k, k.into(), data);
+        self.data.encode_coeff_i64(base2k, 0, k.into(), 0, data);
     }
 }
 
 impl<D: DataRef> LWEPlaintext<D> {
     pub fn decode_i64(&self, k: TorusPrecision) -> i64 {
-        self.data.decode_i64(self.base2k().into(), k.into())
+        self.data
+            .decode_coeff_i64(self.base2k().into(), 0, k.into(), 0)
     }
 
     pub fn decode_float(&self) -> Float {
-        self.data.decode_float(self.base2k().into())
+        let mut out: [Float; 1] = [Float::new(self.k().as_u32())];
+        self.data
+            .decode_vec_float(self.base2k().into(), 0, &mut out);
+        out[0].clone()
     }
 }

@@ -49,8 +49,6 @@ where
 
         a_enc.sext(module, j, keys, scratch.borrow());
 
-        // println!("{:08x} -> {:08x} {:08x}", a, sext(a, j), a_enc.decrypt(module, sk, scratch.borrow()));
-
         assert_eq!(
             sext(a, ((1 + j as u32) << 3) - 1),
             a_enc.decrypt(module, sk, scratch.borrow())
@@ -69,8 +67,6 @@ where
         );
 
         a_enc.sext(module, j, keys, scratch.borrow());
-
-        // println!("{:08x} -> {:08x} {:08x}", a, sext(a, j), a_enc.decrypt(module, sk, scratch.borrow()));
 
         assert_eq!(
             sext(a, ((1 + j as u32) << 3) - 1),

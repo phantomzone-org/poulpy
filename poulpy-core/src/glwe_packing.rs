@@ -7,9 +7,16 @@ use poulpy_hal::{
 
 use crate::{
     GLWEAdd, GLWEAutomorphism, GLWECopy, GLWENormalize, GLWERotate, GLWEShift, GLWESub, GLWETrace, ScratchTakeCore,
-    layouts::{GGLWEInfos, GGLWEPreparedToRef, GLWEAutomorphismKeyHelper, GLWEInfos, GLWEToMut, GetGaloisElement},
+    layouts::{GGLWEInfos, GGLWEPreparedToRef, GLWE, GLWEAutomorphismKeyHelper, GLWEInfos, GLWEToMut, GetGaloisElement},
 };
 pub trait GLWEPacking<BE: Backend> {
+    fn glwe_pack_galois_elements(&self) -> Vec<i64>;
+
+    fn glwe_pack_tmp_bytes<R, K>(&self, res: &R, key: &K) -> usize
+    where
+        R: GLWEInfos,
+        K: GGLWEInfos;
+
     /// Packs [x_0: GLWE(m_0), x_1: GLWE(m_1), ..., x_i: GLWE(m_i)]
     /// to [0: GLWE(m_0 * X^x_0 + m_1 * X^x_1 + ... + m_i * X^x_i)]
     fn glwe_pack<R, A, K, H>(
@@ -40,6 +47,22 @@ where
         + GLWETrace<BE>,
     Scratch<BE>: ScratchTakeCore<BE>,
 {
+    fn glwe_pack_galois_elements(&self) -> Vec<i64> {
+        self.glwe_trace_galois_elements()
+    }
+
+    fn glwe_pack_tmp_bytes<R, K>(&self, res: &R, key: &K) -> usize
+    where
+        R: GLWEInfos,
+        K: GGLWEInfos,
+    {
+        self.glwe_rotate_tmp_bytes()
+            .max(self.glwe_rsh_tmp_byte())
+            .max(self.glwe_normalize_tmp_bytes())
+            .max(self.glwe_automorphism_tmp_bytes(res, res, key))
+            + GLWE::bytes_of_from_infos(res)
+    }
+
     /// Packs [x_0: GLWE(m_0), x_1: GLWE(m_1), ..., x_i: GLWE(m_i)]
     /// to [0: GLWE(m_0 * X^x_0 + m_1 * X^x_1 + ... + m_i * X^x_i)]
     fn glwe_pack<R, A, K, H>(

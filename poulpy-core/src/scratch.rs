@@ -23,7 +23,7 @@ where
     where
         A: LWEInfos,
     {
-        let (data, scratch) = self.take_zn(infos.n().into(), 1, infos.size());
+        let (data, scratch) = self.take_vec_znx(infos.n().into(), 1, infos.size());
         (
             LWE {
                 k: infos.k(),
