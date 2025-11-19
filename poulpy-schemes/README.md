@@ -8,5 +8,8 @@ See [./examples/circuit_bootstrapping.rs](./examples/circuit_bootstrapping.rs)
 
 ## Available Schemes
 
-- TFHE/FHEW: under construction. Blind rotation & circuit bootstrapping implemented.
-- CKKS: planned
+- **BIN FHE**:
+  - **bdd_arithmetic**: high level API for u32 arithmetic (u8 to u256 planned) using binary decision circuits. Also provides API for blind retrieval, blind rotation (using encpypted integers) and blind selection.
+  - **blind_rotation**: API for blind rotation (LWE(m) -> GLWE(X^m))
+  - **circuit_bootstrapping**: API for circuit bootstrapping (LWE(m) -> GGSW(m) or GGSW(X^m)).
+- **CKKS**: planned
