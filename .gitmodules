@@ -1,3 +1,0 @@
-[submodule "poulpy-backend/src/cpu_spqlios/spqlios-arithmetic"]
-	path = poulpy-backend/src/cpu_spqlios/spqlios-arithmetic
-	url = https://github.com/phantomzone-org/spqlios-arithmetic
