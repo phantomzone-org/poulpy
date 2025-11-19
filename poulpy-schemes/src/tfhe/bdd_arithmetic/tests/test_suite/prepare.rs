@@ -13,7 +13,7 @@ use crate::tfhe::{
     bdd_arithmetic::{
         BDDKeyEncryptSk, BDDKeyPrepared, BDDKeyPreparedFactory, ExecuteBDDCircuit2WTo1W, FheUint, FheUintPrepare,
         FheUintPrepareDebug, FheUintPreparedDebug, FheUintPreparedEncryptSk, FheUintPreparedFactory,
-        tests::test_suite::{TEST_BASE2K, TEST_GGSW_INFOS, TEST_GLWE_INFOS, TestContext},
+        tests::test_suite::{TEST_GGSW_INFOS, TEST_GLWE_INFOS, TestContext},
     },
     blind_rotation::{BlindRotationAlgo, BlindRotationKey, BlindRotationKeyFactory},
 };
@@ -73,7 +73,7 @@ where
     c_enc_prep_debug.prepare(module, &c_enc, bdd_key_prepared, scratch_2.borrow());
 
     let max_noise = |col_i: usize| {
-        let mut noise: f64 = -(ggsw_infos.size() as f64 * TEST_BASE2K as f64) + SIGMA.log2() + 2.0;
+        let mut noise: f64 = -(ggsw_infos.size() as f64 * ggsw_infos.base2k().as_usize() as f64) + SIGMA.log2() + 2.0;
         noise += 0.5 * ggsw_infos.log_n() as f64;
         if col_i != 0 {
             noise += 0.5 * ggsw_infos.log_n() as f64
@@ -87,7 +87,10 @@ where
             for (i, stat) in stats.iter().enumerate() {
                 let noise_have: f64 = stat.std().log2();
                 let noise_max: f64 = max_noise(col);
-                assert!(noise_have <= noise_max, "bit: {i} noise_have: {noise_have} > noise_max: {noise_max}")
+                assert!(
+                    noise_have <= noise_max,
+                    "bit: {i} noise_have: {noise_have} > noise_max: {noise_max}"
+                )
             }
         }
     }

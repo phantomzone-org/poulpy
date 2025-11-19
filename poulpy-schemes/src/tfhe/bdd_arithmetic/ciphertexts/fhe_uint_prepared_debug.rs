@@ -126,7 +126,14 @@ where
         let (_, scratch_1) = scratch.take_ggsw(res);
         let (mut tmp_lwe, scratch_2) = scratch_1.take_lwe(bits);
         for (bit, dst) in res.bits.iter_mut().enumerate() {
-            bits.get_bit_lwe(self, bit, &mut tmp_lwe, &key.ks, scratch_2);
+            bits.get_bit_lwe(
+                self,
+                bit,
+                &mut tmp_lwe,
+                key.ks_glwe.as_ref(),
+                &key.ks_lwe,
+                scratch_2,
+            );
             key.cbt
                 .execute_to_constant(self, dst, &tmp_lwe, 1, 1, scratch_2);
         }
