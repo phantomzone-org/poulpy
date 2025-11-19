@@ -17,8 +17,9 @@
 
 - **`poulpy-hal`**: a crate providing layouts and a trait-based hardware acceleration layer with open extension points, matching the API and types of spqlios-arithmetic. This crate does not provide concrete implementations other than the layouts (e.g. `VecZnx`, `VmpPmat`).
 - **`poulpy-core`**: a backend agnostic crate implementing scheme agnostic RLWE arithmetic for LWE, GLWE, GGLWE and GGSW ciphertexts using **`poulpy-hal`**. Can be instantiated with any backend provided by **`poulpy-backend`**.
-- **`poulpy-schemes`**: a backend agnostic crate implementing mainstream FHE schemes using **`poulpy-core`** and **`poulpy-hal`**. The crate can be instantiated with any backend provided by **`poulpy-backend`**.
-- **`poulpy-backend`**: a crate providing concrete implementations of **`poulpy-hal`** for various representations and hardwares.
+- **`poulpy-schemes`**: a backend agnostic crate implementing mainstream FHE schemes using **`poulpy-core`** and **`poulpy-hal`**.
+- **`poulpy-cpu-ref`**: the reference CPU implementatin of **`poulpy-hal`**.
+- **`poulpy-cpu-ref`**: an AVX accelerated CPU implementation of **`poulpy-hal`**.
 
 ## Bivariate Polynomial Representation
 
@@ -43,7 +44,8 @@ This provides the following benefits:
 - **`poulpy-hal`**: https://crates.io/crates/poulpy-hal
 - **`poulpy-core`**: https://crates.io/crates/poulpy-core
 - **`poulpy-schemes`**: https://crates.io/crates/poulpy-schemes
-- **`poulpy-backend`**: https://crates.io/crates/poulpy-backend
+- **`poulpy-cpu-ref`**: https://crates.io/crates/poulpy-cpu-ref
+- **`poulpy-cpu-avx`**: https://crates.io/crates/poulpy-cpu-avx
 
 ## Documentation
 
@@ -70,9 +72,9 @@ Poulpy is licensed under the Apache-2.0 License. See [NOTICE](./NOTICE) & [LICEN
 Please use the following BibTex entry for citing Poulpy
 
     @misc{poulpy,
-	    title = {Poulpy v0.3.0},
+	    title = {Poulpy v0.4.0},
 	    howpublished = {Online: \url{https://github.com/phantomzone-org/poulpy}},
-	    month = Oct,
+	    month = Nov,
 	    year = 2025,
 	    note = {Phantom Zone}
     }
