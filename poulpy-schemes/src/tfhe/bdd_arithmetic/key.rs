@@ -71,15 +71,12 @@ where
     where
         A: BDDKeyInfos,
     {
-        let ks_glwe: Option<GLWESwitchingKey<Vec<u8>>> = if let Some(ks_infos) = &infos.ks_glwe_infos() {
-            Some(GLWESwitchingKey::alloc_from_infos(ks_infos))
-        } else {
-            None
-        };
-
         Self {
             cbt: CircuitBootstrappingKey::alloc_from_infos(&infos.cbt_infos()),
-            ks_glwe: ks_glwe,
+            ks_glwe: infos
+                .ks_glwe_infos()
+                .as_ref()
+                .map(GLWESwitchingKey::alloc_from_infos),
             ks_lwe: GLWEToLWEKey::alloc_from_infos(&infos.ks_lwe_infos()),
         }
     }
@@ -185,19 +182,15 @@ impl<D: DataRef, BRA: BlindRotationAlgo, BE: Backend> BDDKeyInfos for BDDKeyPrep
         }
     }
     fn ks_glwe_infos(&self) -> Option<GLWESwitchingKeyLayout> {
-        if let Some(ks_glwe) = &self.ks_glwe {
-            Some(GLWESwitchingKeyLayout {
-                n: ks_glwe.n(),
-                base2k: ks_glwe.base2k(),
-                k: ks_glwe.k(),
-                rank_in: ks_glwe.rank_in(),
-                rank_out: ks_glwe.rank_out(),
-                dnum: ks_glwe.dnum(),
-                dsize: ks_glwe.dsize(),
-            })
-        } else {
-            None
-        }
+        self.ks_glwe.as_ref().map(|ks_glwe| GLWESwitchingKeyLayout {
+            n: ks_glwe.n(),
+            base2k: ks_glwe.base2k(),
+            k: ks_glwe.k(),
+            rank_in: ks_glwe.rank_in(),
+            rank_out: ks_glwe.rank_out(),
+            dnum: ks_glwe.dnum(),
+            dsize: ks_glwe.dsize(),
+        })
     }
     fn ks_lwe_infos(&self) -> GLWEToLWEKeyLayout {
         GLWEToLWEKeyLayout {
@@ -301,6 +294,7 @@ impl<D: DataRef, BRA: BlindRotationAlgo, BE: Backend> BDDKeyHelper<D, BRA, BE> f
 }
 
 pub trait BDDKeyHelper<D: DataRef, BRA: BlindRotationAlgo, BE: Backend> {
+    #[allow(clippy::type_complexity)]
     fn get_cbt_key(
         &self,
     ) -> (

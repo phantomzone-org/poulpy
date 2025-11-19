@@ -1,6 +1,6 @@
 use std::sync::LazyLock;
 
-use poulpy_backend::FFT64Ref;
+use poulpy_cpu_ref::FFT64Ref;
 
 use crate::tfhe::{
     bdd_arithmetic::tests::test_suite::{

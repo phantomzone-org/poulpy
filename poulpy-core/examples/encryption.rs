@@ -1,4 +1,3 @@
-use poulpy_backend::cpu_spqlios::FFT64Spqlios;
 use poulpy_core::{
     GLWESub, SIGMA,
     layouts::{
@@ -6,6 +5,7 @@ use poulpy_core::{
         prepared::GLWESecretPrepared,
     },
 };
+use poulpy_cpu_ref::FFT64Ref;
 use poulpy_hal::{
     api::{ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxFillUniform},
     layouts::{Module, ScratchOwned},
@@ -31,7 +31,7 @@ fn main() {
     let rank: Rank = Rank(1);
 
     // Instantiate Module (DFT Tables)
-    let module: Module<FFT64Spqlios> = Module::<FFT64Spqlios>::new(n.0 as u64);
+    let module: Module<FFT64Ref> = Module::<FFT64Ref>::new(n.0 as u64);
 
     let glwe_ct_infos: GLWELayout = GLWELayout {
         n,
@@ -53,7 +53,7 @@ fn main() {
     let mut source_xa: Source = Source::new([2u8; 32]);
 
     // Scratch space
-    let mut scratch: ScratchOwned<FFT64Spqlios> = ScratchOwned::alloc(
+    let mut scratch: ScratchOwned<FFT64Ref> = ScratchOwned::alloc(
         GLWE::encrypt_sk_tmp_bytes(&module, &glwe_ct_infos) | GLWE::decrypt_tmp_bytes(&module, &glwe_ct_infos),
     );
 
@@ -62,7 +62,7 @@ fn main() {
     sk.fill_ternary_prob(0.5, &mut source_xs);
 
     // Backend-prepared secret
-    let mut sk_prepared: GLWESecretPrepared<Vec<u8>, FFT64Spqlios> = GLWESecretPrepared::alloc(&module, rank);
+    let mut sk_prepared: GLWESecretPrepared<Vec<u8>, FFT64Ref> = GLWESecretPrepared::alloc(&module, rank);
     sk_prepared.prepare(&module, &sk);
 
     // Uniform plaintext

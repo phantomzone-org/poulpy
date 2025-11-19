@@ -1,4 +1,4 @@
-use poulpy_backend::cpu_fft64_ref::FFT64Ref;
+use poulpy_cpu_ref::FFT64Ref;
 use poulpy_hal::{api::ModuleNew, layouts::Module};
 
 use crate::tfhe::{
