@@ -82,6 +82,6 @@ flowchart TD
     E{SvpApply}-->VecZnxDft-->|IDFT|VecZnxBig-->|Normalize|VecZnx
 ```
 
-## Testing
+## Tests
 
-A full generic and backend agnostic testing suit for the layouts and public API is planned. This will allow to test the correctness of any backend easily.
+A fully generic cross-backend test suite is available in [`src/test_suite`](./src/test_suite).
