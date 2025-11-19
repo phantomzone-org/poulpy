@@ -48,12 +48,20 @@ impl<D: DataRef, T: UnsignedInteger, BE: Backend> GetGGSWBit<BE> for FheUintPrep
 
 pub trait GetGGSWBitMut<T: UnsignedInteger, BE: Backend> {
     fn get_bit(&mut self, bit: usize) -> GGSWPrepared<&mut [u8], BE>;
+    fn get_bits(&mut self, start: usize, count: usize) -> Vec<GGSWPrepared<&mut [u8], BE>>;
 }
 
 impl<D: DataMut, T: UnsignedInteger, BE: Backend> GetGGSWBitMut<T, BE> for FheUintPrepared<D, T, BE> {
     fn get_bit(&mut self, bit: usize) -> GGSWPrepared<&mut [u8], BE> {
         assert!(bit <= self.bits.len());
         self.bits[bit].to_mut()
+    }
+    fn get_bits(&mut self, start: usize, count: usize) -> Vec<GGSWPrepared<&mut [u8], BE>> {
+        assert!(start + count <= self.bits.len());
+        self.bits[start..start + count]
+            .iter_mut()
+            .map(|bit| bit.to_mut())
+            .collect()
     }
 }
 
