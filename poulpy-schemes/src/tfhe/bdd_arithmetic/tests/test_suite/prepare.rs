@@ -84,8 +84,10 @@ where
     for row in 0..c_enc_prep_debug.dnum().as_usize() {
         for col in 0..c_enc_prep_debug.rank().as_usize() + 1 {
             let stats: Vec<Stats> = c_enc_prep_debug.noise(module, row, col, value, sk_glwe_prep, scratch.borrow());
-            for stat in &stats {
-                assert!(stat.std().log2() <= max_noise(col))
+            for (i, stat) in stats.iter().enumerate() {
+                let noise_have: f64 = stat.std().log2();
+                let noise_max: f64 = max_noise(col);
+                assert!(noise_have <= noise_max, "bit: {i} noise_have: {noise_have} > noise_max: {noise_max}")
             }
         }
     }

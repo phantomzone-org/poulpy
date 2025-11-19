@@ -14,7 +14,7 @@ use poulpy_core::{
 };
 
 use poulpy_hal::api::{ModuleN, ScratchTakeBasic};
-use poulpy_hal::layouts::{Backend, Data, DataMut, DataRef, Module, Scratch, Stats};
+use poulpy_hal::layouts::{Backend, Data, DataMut, DataRef, Module, Scratch, Stats, ZnxZero};
 
 pub struct FheUintPreparedDebug<D: Data, T: UnsignedInteger> {
     pub(crate) bits: Vec<GGSW<D>>,
@@ -99,6 +99,7 @@ impl<D: DataRef, T: UnsignedInteger + ToBits> FheUintPreparedDebug<D, T> {
         for (i, ggsw) in self.bits.iter().enumerate() {
             use poulpy_hal::layouts::ZnxViewMut;
             let (mut pt_want, scratch_1) = scratch.take_scalar_znx(self.n().into(), 1);
+            pt_want.zero();
             pt_want.at_mut(0, 0)[0] = want.bit(i) as i64;
             stats.push(ggsw.noise(module, row, col, &pt_want, sk, scratch_1));
         }
