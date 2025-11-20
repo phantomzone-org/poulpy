@@ -1,7 +1,7 @@
 use poulpy_cpu_ref::FFT64Ref;
 use poulpy_hal::{api::ModuleNew, layouts::Module};
 
-use crate::tfhe::blind_rotation::{
+use crate::bin_fhe::blind_rotation::{
     CGGI,
     tests::test_suite::{
         generic_blind_rotation::test_blind_rotation,

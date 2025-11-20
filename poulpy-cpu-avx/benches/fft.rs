@@ -1,3 +1,4 @@
+#![cfg(target_arch = "x86_64")]
 use std::hint::black_box;
 
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};

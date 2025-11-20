@@ -1,3 +1,4 @@
+#![cfg(target_arch = "x86_64")]
 // poulpy-backend/benches/vec_znx_add.rs
 use criterion::{Criterion, criterion_group, criterion_main};
 use poulpy_cpu_avx::FFT64Avx;

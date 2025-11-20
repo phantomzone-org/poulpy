@@ -8,8 +8,11 @@ use poulpy_core::{
         GLWESecretPreparedFactory, LWE, LWELayout, LWESecret,
     },
 };
+#[cfg(target_arch = "x86_64")]
 use poulpy_cpu_avx::FFT64Avx;
+#[cfg(not(target_arch = "x86_64"))]
 use poulpy_cpu_ref::FFT64Ref;
+
 use poulpy_hal::{
     api::{ModuleN, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxRotateInplace},
     layouts::{Backend, Module, Scratch, ScratchOwned},
@@ -180,18 +183,18 @@ where
     group.finish();
 }
 
+#[cfg(not(target_arch = "x86_64"))]
 fn bench_circuit_bootstrapping_cpu_ref_fft64(c: &mut Criterion) {
     benc_circuit_bootstrapping::<FFT64Ref, CGGI>(c, "fft64_ref");
 }
 
+#[cfg(target_arch = "x86_64")]
 fn bench_circuit_bootstrapping_cpu_avx_fft64(c: &mut Criterion) {
     benc_circuit_bootstrapping::<FFT64Avx, CGGI>(c, "fft64_avx");
 }
 
-criterion_group!(
-    benches,
-    bench_circuit_bootstrapping_cpu_ref_fft64,
-    bench_circuit_bootstrapping_cpu_avx_fft64,
-);
-
+#[cfg(target_arch = "x86_64")]
+criterion_group!(benches, bench_circuit_bootstrapping_cpu_ref_fft64, bench_circuit_bootstrapping_cpu_avx_fft64,);
+#[cfg(not(target_arch = "x86_64"))]
+criterion_group!(benches, bench_circuit_bootstrapping_cpu_ref_fft64,);
 criterion_main!(benches);
