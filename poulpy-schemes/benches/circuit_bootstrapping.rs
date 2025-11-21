@@ -8,8 +8,13 @@ use poulpy_core::{
         GLWESecretPreparedFactory, LWE, LWELayout, LWESecret,
     },
 };
-use poulpy_cpu_avx::FFT64Avx;
-use poulpy_cpu_ref::FFT64Ref;
+
+#[cfg(all(feature = "enable-avx", target_arch = "x86_64"))]
+pub use poulpy_cpu_avx::FFT64Avx as BackendImpl;
+
+#[cfg(not(all(feature = "enable-avx", target_arch = "x86_64")))]
+pub use poulpy_cpu_ref::FFT64Ref as BackendImpl;
+
 use poulpy_hal::{
     api::{ModuleN, ModuleNew, ScratchOwnedAlloc, ScratchOwnedBorrow, VecZnxRotateInplace},
     layouts::{Backend, Module, Scratch, ScratchOwned},
@@ -127,7 +132,7 @@ where
         }
     }
 
-    for params in [Params {
+    let params: Params = Params {
         name: String::from("1-bit"),
         extension_factor: 1,
         k_pt: 1,
@@ -171,27 +176,22 @@ where
                 rank: 2_u32.into(),
             },
         },
-    }] {
-        let id: BenchmarkId = BenchmarkId::from_parameter(params.name.clone());
-        let mut runner = runner::<BE, BRA>(&params);
-        group.bench_with_input(id, &(), |b, _| b.iter(&mut runner));
-    }
+    };
+
+    let id: BenchmarkId = BenchmarkId::from_parameter(params.name.clone());
+    let mut runner = runner::<BE, BRA>(&params);
+    group.bench_with_input(id, &(), |b, _| b.iter(&mut runner));
 
     group.finish();
 }
 
-fn bench_circuit_bootstrapping_cpu_ref_fft64(c: &mut Criterion) {
-    benc_circuit_bootstrapping::<FFT64Ref, CGGI>(c, "fft64_ref");
+fn bench_circuit_bootstrapping_fft64(c: &mut Criterion) {
+    #[cfg(all(feature = "enable-avx", target_arch = "x86_64"))]
+    let label = "fft64_avx";
+    #[cfg(not(all(feature = "enable-avx", target_arch = "x86_64")))]
+    let label = "fft64_ref";
+    benc_circuit_bootstrapping::<BackendImpl, CGGI>(c, label);
 }
 
-fn bench_circuit_bootstrapping_cpu_avx_fft64(c: &mut Criterion) {
-    benc_circuit_bootstrapping::<FFT64Avx, CGGI>(c, "fft64_avx");
-}
-
-criterion_group!(
-    benches,
-    bench_circuit_bootstrapping_cpu_ref_fft64,
-    bench_circuit_bootstrapping_cpu_avx_fft64,
-);
-
+criterion_group!(benches, bench_circuit_bootstrapping_fft64);
 criterion_main!(benches);

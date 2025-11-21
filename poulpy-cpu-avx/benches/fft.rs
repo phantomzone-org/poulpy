@@ -1,10 +1,17 @@
-use std::hint::black_box;
+use criterion::{Criterion, criterion_group, criterion_main};
 
-use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
-use poulpy_cpu_avx::{ReimFFTAvx, ReimIFFTAvx};
-use poulpy_hal::reference::fft64::reim::{ReimDFTExecute, ReimFFTTable, ReimIFFTTable};
+#[cfg(not(all(feature = "enable-avx", target_arch = "x86_64", target_feature = "avx2", target_feature = "fma")))]
+fn bench_ifft_avx2_fma(_c: &mut Criterion) {
+    eprintln!("Skipping: AVX IFft benchmark requires x86_64 + AVX2 + FMA");
+}
 
+#[cfg(all(feature = "enable-avx", target_arch = "x86_64", target_feature = "avx2", target_feature = "fma"))]
 pub fn bench_ifft_avx2_fma(c: &mut Criterion) {
+    use criterion::BenchmarkId;
+    use poulpy_cpu_avx::ReimIFFTAvx;
+    use poulpy_hal::reference::fft64::reim::{ReimDFTExecute, ReimIFFTTable};
+    use std::hint::black_box;
+
     let group_name: String = "ifft_avx2_fma".to_string();
 
     let mut group = c.benchmark_group(group_name);
@@ -40,7 +47,18 @@ pub fn bench_ifft_avx2_fma(c: &mut Criterion) {
     group.finish();
 }
 
+#[cfg(not(all(feature = "enable-avx", target_arch = "x86_64", target_feature = "avx2", target_feature = "fma")))]
+fn bench_fft_avx2_fma(_c: &mut Criterion) {
+    eprintln!("Skipping: AVX FFT benchmark requires x86_64 + AVX2 + FMA");
+}
+
+#[cfg(all(feature = "enable-avx", target_arch = "x86_64", target_feature = "avx2", target_feature = "fma"))]
 pub fn bench_fft_avx2_fma(c: &mut Criterion) {
+    use criterion::BenchmarkId;
+    use poulpy_cpu_avx::ReimFFTAvx;
+    use poulpy_hal::reference::fft64::reim::{ReimDFTExecute, ReimFFTTable};
+    use std::hint::black_box;
+
     let group_name: String = "fft_avx2_fma".to_string();
 
     let mut group = c.benchmark_group(group_name);

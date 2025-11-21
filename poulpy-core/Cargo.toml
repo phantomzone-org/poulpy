@@ -8,12 +8,16 @@ repository = "https://github.com/phantomzone-org/poulpy"
 homepage = "https://github.com/phantomzone-org/poulpy"
 documentation = "https://docs.rs/poulpy"
 
+[features]
+enable-avx = ["dep:poulpy-cpu-avx"]
+default = ["dep:poulpy-cpu-ref"]
+
 [dependencies]
 rug = {workspace = true}
 criterion = {workspace = true}
 poulpy-hal = {workspace = true}
-poulpy-cpu-avx = {workspace = true}
-poulpy-cpu-ref = {workspace = true}
+poulpy-cpu-avx = {workspace = true, optional = true}
+poulpy-cpu-ref = {workspace = true, optional = true}
 itertools = {workspace = true}
 byteorder = {workspace = true}
 bytemuck = {workspace = true}
