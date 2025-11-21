@@ -360,22 +360,6 @@ dependencies = [
 [[package]]
 name = "poulpy-core"
 version = "0.4.0"
-dependencies = [
- "bytemuck",
- "byteorder",
- "criterion",
- "itertools 0.14.0",
- "once_cell",
- "paste",
- "poulpy-cpu-avx 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "poulpy-cpu-ref 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "poulpy-hal 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "rug",
-]
-
-[[package]]
-name = "poulpy-core"
-version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "92939708ce0721e120e7ab9e317816a06b9d7bcb95e065b1452e0c78de95fad2"
 dependencies = [
@@ -385,27 +369,25 @@ dependencies = [
  "itertools 0.14.0",
  "once_cell",
  "paste",
- "poulpy-cpu-avx 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "poulpy-cpu-ref 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "poulpy-hal 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "poulpy-cpu-avx 0.1.0",
+ "poulpy-cpu-ref 0.1.0",
+ "poulpy-hal 0.4.0",
  "rug",
 ]
 
 [[package]]
-name = "poulpy-cpu-avx"
-version = "0.1.0"
+name = "poulpy-core"
+version = "0.4.1"
 dependencies = [
+ "bytemuck",
  "byteorder",
  "criterion",
  "itertools 0.14.0",
  "once_cell",
  "paste",
- "poulpy-cpu-ref 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "poulpy-hal 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "rand",
- "rand_chacha",
- "rand_core",
- "rand_distr",
+ "poulpy-cpu-avx 0.1.0",
+ "poulpy-cpu-ref 0.1.0",
+ "poulpy-hal 0.4.0",
  "rug",
 ]
 
@@ -420,8 +402,8 @@ dependencies = [
  "itertools 0.14.0",
  "once_cell",
  "paste",
- "poulpy-cpu-ref 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "poulpy-hal 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "poulpy-cpu-ref 0.1.0",
+ "poulpy-hal 0.4.0",
  "rand",
  "rand_chacha",
  "rand_core",
@@ -430,14 +412,16 @@ dependencies = [
 ]
 
 [[package]]
-name = "poulpy-cpu-ref"
-version = "0.1.0"
+name = "poulpy-cpu-avx"
+version = "0.1.1"
 dependencies = [
  "byteorder",
  "criterion",
  "itertools 0.14.0",
  "once_cell",
- "poulpy-hal 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "paste",
+ "poulpy-cpu-ref 0.1.0",
+ "poulpy-hal 0.4.0",
  "rand",
  "rand_chacha",
  "rand_core",
@@ -455,7 +439,7 @@ dependencies = [
  "criterion",
  "itertools 0.14.0",
  "once_cell",
- "poulpy-hal 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "poulpy-hal 0.4.0",
  "rand",
  "rand_chacha",
  "rand_core",
@@ -464,16 +448,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "poulpy-hal"
-version = "0.4.0"
+name = "poulpy-cpu-ref"
+version = "0.1.1"
 dependencies = [
- "bytemuck",
  "byteorder",
- "cmake",
  "criterion",
  "itertools 0.14.0",
  "once_cell",
- "paste",
+ "poulpy-hal 0.4.0",
  "rand",
  "rand_chacha",
  "rand_core",
@@ -502,17 +484,35 @@ dependencies = [
 ]
 
 [[package]]
+name = "poulpy-hal"
+version = "0.4.1"
+dependencies = [
+ "bytemuck",
+ "byteorder",
+ "cmake",
+ "criterion",
+ "itertools 0.14.0",
+ "once_cell",
+ "paste",
+ "rand",
+ "rand_chacha",
+ "rand_core",
+ "rand_distr",
+ "rug",
+]
+
+[[package]]
 name = "poulpy-schemes"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "byteorder",
  "criterion",
  "itertools 0.14.0",
  "paste",
- "poulpy-core 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "poulpy-cpu-avx 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "poulpy-cpu-ref 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "poulpy-hal 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "poulpy-core 0.4.0",
+ "poulpy-cpu-avx 0.1.0",
+ "poulpy-cpu-ref 0.1.0",
+ "poulpy-hal 0.4.0",
  "rand",
 ]
 
